@@ -1,0 +1,17 @@
+{
+  "name": "@dazzxq/components",
+  "version": "0.1.0",
+  "description": "Shared UI Web Components library",
+  "type": "module",
+  "main": "index.js",
+  "files": [
+    "src",
+    "index.js"
+  ],
+  "keywords": ["web-components", "ui", "tailwind"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dazzxq/components.git"
+  },
+  "license": "MIT"
+}
