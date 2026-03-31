@@ -1,17 +1,17 @@
 {
-  "name": "@dazzxq/components",
+  "name": "@dazzxq/td-components",
   "version": "0.1.0",
-  "description": "Shared UI Web Components library",
+  "description": "Shared UI Web Components library — vanilla CSS, BEM with td- prefix",
   "type": "module",
   "main": "index.js",
   "files": [
     "src",
     "index.js"
   ],
-  "keywords": ["web-components", "ui", "tailwind"],
+  "keywords": ["web-components", "ui"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/dazzxq/components.git"
+    "url": "https://github.com/dazzxq/td-components.git"
   },
   "license": "MIT"
 }
