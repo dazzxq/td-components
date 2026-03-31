@@ -1,18 +1,18 @@
 # Requirements: td-components
 
 **Defined:** 2026-03-31
-**Core Value:** Drop vào bất kỳ project nào, import component cần dùng, chạy ngay
+**Core Value:** Drop vao bat ky project nao, import component can dung, chay ngay
 
 ## v1 Requirements
 
 ### Base Architecture
 
-- [ ] **BASE-01**: TdBaseElement base class với lifecycle management (connectedCallback, disconnectedCallback)
-- [ ] **BASE-02**: Cleanup tracking tự động — mọi event listener, timer, observer được track và cleanup khi disconnect
-- [ ] **BASE-03**: Attribute/property sync — getter/setter tự sinh cho observedAttributes
-- [ ] **BASE-04**: HTML escape utility chống XSS
-- [ ] **BASE-05**: Auto-registration với collision check (`customElements.get` trước khi define)
-- [ ] **BASE-06**: Event emission helper — dispatch CustomEvent với bubbles + detail
+- [ ] **BASE-01**: TdBaseElement base class voi lifecycle management (connectedCallback, disconnectedCallback)
+- [ ] **BASE-02**: Cleanup tracking tu dong — moi event listener, timer, observer duoc track va cleanup khi disconnect
+- [ ] **BASE-03**: Attribute/property sync — getter/setter tu sinh cho observedAttributes
+- [ ] **BASE-04**: HTML escape utility chong XSS
+- [ ] **BASE-05**: Auto-registration voi collision check (`customElements.get` truoc khi define)
+- [ ] **BASE-06**: Event emission helper — dispatch CustomEvent voi bubbles + detail
 
 ### Form Controls
 
@@ -40,21 +40,21 @@
 
 ### Utility
 
-- [ ] **UTIL-01**: DateTime — format (custom tokens), relative time (tiếng Việt), parse ISO/timestamp
+- [ ] **UTIL-01**: DateTime — format (custom tokens), relative time (tieng Viet), parse ISO/timestamp
 
 ### Developer Experience
 
-- [ ] **DX-01**: Storybook setup với @storybook/web-components-vite + Tailwind
-- [ ] **DX-02**: Storybook stories cho mỗi component với controls và composition examples
-- [ ] **DX-03**: Granular import — `import 'td-components/toggle'` chỉ load toggle
-- [ ] **DX-04**: README hướng dẫn install, Tailwind config (content path), usage
+- [ ] **DX-01**: Storybook setup voi @storybook/web-components-vite + Tailwind
+- [ ] **DX-02**: Storybook stories cho moi component voi controls va composition examples
+- [ ] **DX-03**: Granular import — `import 'td-components/toggle'` chi load toggle
+- [ ] **DX-04**: README huong dan install, Tailwind config (content path), usage
 
 ## v2 Requirements
 
 ### Theming
 
-- **THEME-01**: CSS custom properties cho màu sắc chính (--td-primary, --td-danger...)
-- **THEME-02**: Dark mode support (prefers-color-scheme hoặc .dark class)
+- **THEME-01**: CSS custom properties cho mau sac chinh (--td-primary, --td-danger...)
+- **THEME-02**: Dark mode support (prefers-color-scheme hoac .dark class)
 
 ### Additional Components
 
@@ -66,16 +66,16 @@
 
 | Feature | Reason |
 |---------|--------|
-| Shadow DOM | Chặn Tailwind CSS từ host page |
-| Post Card | CMS-specific, không generic |
-| Media Picker | Gắn chặt với media library CMS |
+| Shadow DOM | Chan Tailwind CSS tu host page |
+| Post Card | CMS-specific, khong generic |
+| Media Picker | Gan chat voi media library CMS |
 | Notification dropdown | Polling/badge specific cho CMS |
-| Action Buttons presets | Gắn với permission system CMS |
-| Framework wrappers (React/Vue) | Solo dev dùng Blade, không cần |
-| SSR support | Web Components chạy client-side |
-| i18n built-in | Consumer tự translate |
-| Form validation library | Component chỉ hiển thị error state |
-| npm registry publish | GitHub install đủ cho solo dev |
+| Action Buttons presets | Gan voi permission system CMS |
+| Framework wrappers (React/Vue) | Solo dev dung Blade, khong can |
+| SSR support | Web Components chay client-side |
+| i18n built-in | Consumer tu translate |
+| Form validation library | Component chi hien thi error state |
+| npm registry publish | GitHub install du cho solo dev |
 
 ## Traceability
 
@@ -90,29 +90,29 @@
 | DX-01 | Phase 1 | Pending |
 | DX-03 | Phase 1 | Pending |
 | DX-04 | Phase 1 | Pending |
-| FORM-01 | Pending | Pending |
-| FORM-02 | Pending | Pending |
-| FORM-03 | Pending | Pending |
-| FORM-04 | Pending | Pending |
-| FORM-05 | Pending | Pending |
-| FORM-06 | Pending | Pending |
-| FEED-01 | Pending | Pending |
-| FEED-02 | Pending | Pending |
-| FEED-03 | Pending | Pending |
-| FEED-04 | Pending | Pending |
-| FEED-05 | Pending | Pending |
-| DISP-01 | Pending | Pending |
-| DISP-02 | Pending | Pending |
-| DISP-03 | Pending | Pending |
-| DISP-04 | Pending | Pending |
-| UTIL-01 | Pending | Pending |
-| DX-02 | Pending | Pending |
+| FORM-01 | Phase 2 | Pending |
+| FORM-02 | Phase 2 | Pending |
+| FORM-03 | Phase 2 | Pending |
+| FORM-04 | Phase 2 | Pending |
+| FORM-05 | Phase 2 | Pending |
+| FORM-06 | Phase 2 | Pending |
+| UTIL-01 | Phase 2 | Pending |
+| FEED-01 | Phase 3 | Pending |
+| FEED-02 | Phase 3 | Pending |
+| FEED-03 | Phase 3 | Pending |
+| FEED-04 | Phase 3 | Pending |
+| FEED-05 | Phase 3 | Pending |
+| DISP-01 | Phase 4 | Pending |
+| DISP-02 | Phase 4 | Pending |
+| DISP-03 | Phase 4 | Pending |
+| DISP-04 | Phase 4 | Pending |
+| DX-02 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 26 total
-- Mapped to phases: 9 (roadmap chưa tạo)
-- Unmapped: 17 ⚠️
+- Mapped to phases: 26/26
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-31*
-*Last updated: 2026-03-31 after initial definition*
+*Last updated: 2026-03-31 after roadmap creation*
