@@ -4,15 +4,23 @@
   "description": "Shared UI Web Components library — vanilla CSS, BEM with td- prefix",
   "type": "module",
   "main": "index.js",
+  "scripts": {
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
+  },
   "exports": {
     ".": "./index.js",
-    "./base": "./src/base/td-base-element.js"
+    "./base": "./src/base/td-base-element.js",
+    "./sample": "./src/base/sample/td-sample.js"
   },
   "files": [
     "src",
     "index.js"
   ],
-  "keywords": ["web-components", "ui"],
+  "keywords": [
+    "web-components",
+    "ui"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/dazzxq/td-components.git"
@@ -21,5 +29,11 @@
   "peerDependencies": {
     "tailwindcss": ">=3.0.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@storybook/addon-a11y": "^8.6.14",
+    "@storybook/addon-essentials": "^8.6.14",
+    "@storybook/web-components-vite": "^8.6.14",
+    "autoprefixer": "^10.4.27",
+    "storybook": "^8.6.14"
+  }
 }
