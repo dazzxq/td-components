@@ -26,12 +26,11 @@ Migrate 22 DCMS components from global namespace JS to a shared Web Components l
   2. Storybook launches and renders a sample component with Tailwind styles applied
   3. A consumer project can `npm install github:dazzxq/td-components` and import a single component without pulling the entire library
   4. README documents install steps, Tailwind content path config, and basic usage
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
-- [ ] 01-03: TBD
+- [ ] 01-01-PLAN.md — TdBaseElement base class, utilities, project structure, package.json exports
+- [ ] 01-02-PLAN.md — Storybook setup, sample component, README documentation
 
 ### Phase 2: Form Controls
 **Goal**: Users can drop in form components (toggle, button, checkbox, input, slider, dropdown) and the datetime utility that cover the same functionality as DCMS originals
@@ -89,7 +88,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/3 | Not started | - |
+| 1. Foundation | 0/2 | Not started | - |
 | 2. Form Controls | 0/3 | Not started | - |
 | 3. Feedback & Overlay | 0/2 | Not started | - |
 | 4. Display & Stories | 0/2 | Not started | - |
