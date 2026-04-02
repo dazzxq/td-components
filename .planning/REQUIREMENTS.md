@@ -7,12 +7,12 @@
 
 ### Base Architecture
 
-- [ ] **BASE-01**: TdBaseElement base class voi lifecycle management (connectedCallback, disconnectedCallback)
-- [ ] **BASE-02**: Cleanup tracking tu dong — moi event listener, timer, observer duoc track va cleanup khi disconnect
-- [ ] **BASE-03**: Attribute/property sync — getter/setter tu sinh cho observedAttributes
-- [ ] **BASE-04**: HTML escape utility chong XSS
-- [ ] **BASE-05**: Auto-registration voi collision check (`customElements.get` truoc khi define)
-- [ ] **BASE-06**: Event emission helper — dispatch CustomEvent voi bubbles + detail
+- [x] **BASE-01**: TdBaseElement base class voi lifecycle management (connectedCallback, disconnectedCallback)
+- [x] **BASE-02**: Cleanup tracking tu dong — moi event listener, timer, observer duoc track va cleanup khi disconnect
+- [x] **BASE-03**: Attribute/property sync — getter/setter tu sinh cho observedAttributes
+- [x] **BASE-04**: HTML escape utility chong XSS
+- [x] **BASE-05**: Auto-registration voi collision check (`customElements.get` truoc khi define)
+- [x] **BASE-06**: Event emission helper — dispatch CustomEvent voi bubbles + detail
 
 ### Form Controls
 
@@ -46,7 +46,7 @@
 
 - [ ] **DX-01**: Storybook setup voi @storybook/web-components-vite + Tailwind
 - [ ] **DX-02**: Storybook stories cho moi component voi controls va composition examples
-- [ ] **DX-03**: Granular import — `import 'td-components/toggle'` chi load toggle
+- [x] **DX-03**: Granular import — `import 'td-components/toggle'` chi load toggle
 - [ ] **DX-04**: README huong dan install, Tailwind config (content path), usage
 
 ## v2 Requirements
@@ -81,14 +81,14 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BASE-01 | Phase 1 | Pending |
-| BASE-02 | Phase 1 | Pending |
-| BASE-03 | Phase 1 | Pending |
-| BASE-04 | Phase 1 | Pending |
-| BASE-05 | Phase 1 | Pending |
-| BASE-06 | Phase 1 | Pending |
+| BASE-01 | Phase 1 | Complete |
+| BASE-02 | Phase 1 | Complete |
+| BASE-03 | Phase 1 | Complete |
+| BASE-04 | Phase 1 | Complete |
+| BASE-05 | Phase 1 | Complete |
+| BASE-06 | Phase 1 | Complete |
 | DX-01 | Phase 1 | Pending |
-| DX-03 | Phase 1 | Pending |
+| DX-03 | Phase 1 | Complete |
 | DX-04 | Phase 1 | Pending |
 | FORM-01 | Phase 2 | Pending |
 | FORM-02 | Phase 2 | Pending |

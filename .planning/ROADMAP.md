@@ -29,7 +29,7 @@ Migrate 22 DCMS components from global namespace JS to a shared Web Components l
 **Plans:** 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — TdBaseElement base class, utilities, project structure, package.json exports
+- [x] 01-01-PLAN.md — TdBaseElement base class, utilities, project structure, package.json exports
 - [ ] 01-02-PLAN.md — Storybook setup, sample component, README documentation
 
 ### Phase 2: Form Controls
