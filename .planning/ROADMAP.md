@@ -59,12 +59,13 @@ Plans:
   2. Toast notifications appear in 4 variants, auto-dismiss after timeout, cap at 5 visible with FIFO eviction
   3. Tooltip auto-positions relative to its trigger, shows arrow, and reuses a single global instance
   4. Loading component works as both fullscreen overlay and inline spinner with configurable max duration
-**Plans**: TBD
+**Plans:** 3 plans
 **UI hint**: yes
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md — Modal + ModalStackManager (stacking, focus trap, Promise API, animations)
+- [ ] 03-02-PLAN.md — Toast notifications + Loading overlay/spinner
+- [ ] 03-03-PLAN.md — Tooltip auto-init singleton + package exports wiring
 
 ### Phase 4: Display & Stories
 **Goal**: Users can render data tables, tabbed interfaces, pagination, and empty states, with complete Storybook stories for every component in the library
@@ -91,5 +92,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 |-------|----------------|--------|-----------|
 | 1. Foundation | 0/2 | Not started | - |
 | 2. Form Controls | 0/4 | Not started | - |
-| 3. Feedback & Overlay | 0/2 | Not started | - |
+| 3. Feedback & Overlay | 0/3 | Not started | - |
 | 4. Display & Stories | 0/2 | Not started | - |
