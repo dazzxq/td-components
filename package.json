@@ -4,6 +4,10 @@
   "description": "Shared UI Web Components library — vanilla CSS, BEM with td- prefix",
   "type": "module",
   "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./base": "./src/base/td-base-element.js"
+  },
   "files": [
     "src",
     "index.js"
@@ -13,5 +17,9 @@
     "type": "git",
     "url": "https://github.com/dazzxq/td-components.git"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "peerDependencies": {
+    "tailwindcss": ">=3.0.0"
+  },
+  "devDependencies": {}
 }
