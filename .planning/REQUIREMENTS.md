@@ -20,8 +20,8 @@
 - [x] **FORM-02**: Button — 6 variants, loading state, icon support, custom color
 - [x] **FORM-03**: Checkbox — custom SVG checkmark, 3 sizes, custom color
 - [ ] **FORM-04**: Input Field — text/password/email/textarea, character counter, validation, error/helper text
-- [ ] **FORM-05**: Slider — range input, step marks, value label, touch support
-- [ ] **FORM-06**: Dropdown — searchable, keyboard navigation, auto-positioning, clear button
+- [x] **FORM-05**: Slider — range input, step marks, value label, touch support
+- [x] **FORM-06**: Dropdown — searchable, keyboard navigation, auto-positioning, clear button
 
 ### Feedback & Overlay
 
@@ -94,8 +94,8 @@
 | FORM-02 | Phase 2 | Complete |
 | FORM-03 | Phase 2 | Complete |
 | FORM-04 | Phase 2 | Pending |
-| FORM-05 | Phase 2 | Pending |
-| FORM-06 | Phase 2 | Pending |
+| FORM-05 | Phase 2 | Complete |
+| FORM-06 | Phase 2 | Complete |
 | UTIL-01 | Phase 2 | Pending |
 | FEED-01 | Phase 3 | Pending |
 | FEED-02 | Phase 3 | Pending |
