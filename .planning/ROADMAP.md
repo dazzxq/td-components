@@ -48,7 +48,7 @@ Plans:
 - [x] 02-01-PLAN.md — Toggle, Checkbox, Button components with stories
 - [x] 02-02-PLAN.md — DateTime utility with tests, Input Field component with story
 - [x] 02-03-PLAN.md — Slider and Dropdown components with stories
-- [ ] 02-04-PLAN.md — Package exports wiring and Storybook visual verification
+- [x] 02-04-PLAN.md — Package exports wiring and Storybook visual verification
 
 ### Phase 3: Feedback & Overlay
 **Goal**: Users can trigger modals, toasts, tooltips, and loading overlays that handle stacking, positioning, and auto-dismiss correctly
