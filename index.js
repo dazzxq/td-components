@@ -1,1 +1,8 @@
 export { TdBaseElement } from './src/base/td-base-element.js';
+export { TdToggle } from './src/form/td-toggle.js';
+export { TdCheckbox } from './src/form/td-checkbox.js';
+export { TdButton } from './src/form/td-button.js';
+export { TdInputField } from './src/form/td-input-field.js';
+export { TdSlider } from './src/form/td-slider.js';
+export { TdDropdown } from './src/form/td-dropdown.js';
+export { TdDateTime } from './src/utils/datetime.js';

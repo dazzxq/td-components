@@ -11,7 +11,14 @@
   "exports": {
     ".": "./index.js",
     "./base": "./src/base/td-base-element.js",
-    "./sample": "./src/base/sample/td-sample.js"
+    "./sample": "./src/base/sample/td-sample.js",
+    "./toggle": "./src/form/td-toggle.js",
+    "./checkbox": "./src/form/td-checkbox.js",
+    "./button": "./src/form/td-button.js",
+    "./input-field": "./src/form/td-input-field.js",
+    "./slider": "./src/form/td-slider.js",
+    "./dropdown": "./src/form/td-dropdown.js",
+    "./datetime": "./src/utils/datetime.js"
   },
   "files": [
     "src",
