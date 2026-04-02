@@ -45,7 +45,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 02-01-PLAN.md — Toggle, Checkbox, Button components with stories
+- [x] 02-01-PLAN.md — Toggle, Checkbox, Button components with stories
 - [ ] 02-02-PLAN.md — DateTime utility with tests, Input Field component with story
 - [ ] 02-03-PLAN.md — Slider and Dropdown components with stories
 - [ ] 02-04-PLAN.md — Package exports wiring and Storybook visual verification

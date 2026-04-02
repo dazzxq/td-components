@@ -16,9 +16,9 @@
 
 ### Form Controls
 
-- [ ] **FORM-01**: Toggle — switch on/off, checked/disabled attributes, change event
-- [ ] **FORM-02**: Button — 6 variants, loading state, icon support, custom color
-- [ ] **FORM-03**: Checkbox — custom SVG checkmark, 3 sizes, custom color
+- [x] **FORM-01**: Toggle — switch on/off, checked/disabled attributes, change event
+- [x] **FORM-02**: Button — 6 variants, loading state, icon support, custom color
+- [x] **FORM-03**: Checkbox — custom SVG checkmark, 3 sizes, custom color
 - [ ] **FORM-04**: Input Field — text/password/email/textarea, character counter, validation, error/helper text
 - [ ] **FORM-05**: Slider — range input, step marks, value label, touch support
 - [ ] **FORM-06**: Dropdown — searchable, keyboard navigation, auto-positioning, clear button
@@ -90,9 +90,9 @@
 | DX-01 | Phase 1 | Complete |
 | DX-03 | Phase 1 | Complete |
 | DX-04 | Phase 1 | Complete |
-| FORM-01 | Phase 2 | Pending |
-| FORM-02 | Phase 2 | Pending |
-| FORM-03 | Phase 2 | Pending |
+| FORM-01 | Phase 2 | Complete |
+| FORM-02 | Phase 2 | Complete |
+| FORM-03 | Phase 2 | Complete |
 | FORM-04 | Phase 2 | Pending |
 | FORM-05 | Phase 2 | Pending |
 | FORM-06 | Phase 2 | Pending |
