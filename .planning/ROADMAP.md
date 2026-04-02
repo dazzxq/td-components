@@ -30,7 +30,7 @@ Migrate 22 DCMS components from global namespace JS to a shared Web Components l
 
 Plans:
 - [x] 01-01-PLAN.md — TdBaseElement base class, utilities, project structure, package.json exports
-- [ ] 01-02-PLAN.md — Storybook setup, sample component, README documentation
+- [x] 01-02-PLAN.md — Storybook setup, sample component, README documentation
 
 ### Phase 2: Form Controls
 **Goal**: Users can drop in form components (toggle, button, checkbox, input, slider, dropdown) and the datetime utility that cover the same functionality as DCMS originals

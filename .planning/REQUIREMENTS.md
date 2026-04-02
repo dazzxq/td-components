@@ -44,10 +44,10 @@
 
 ### Developer Experience
 
-- [ ] **DX-01**: Storybook setup voi @storybook/web-components-vite + Tailwind
+- [x] **DX-01**: Storybook setup voi @storybook/web-components-vite + Tailwind
 - [ ] **DX-02**: Storybook stories cho moi component voi controls va composition examples
 - [x] **DX-03**: Granular import — `import 'td-components/toggle'` chi load toggle
-- [ ] **DX-04**: README huong dan install, Tailwind config (content path), usage
+- [x] **DX-04**: README huong dan install, Tailwind config (content path), usage
 
 ## v2 Requirements
 
@@ -87,9 +87,9 @@
 | BASE-04 | Phase 1 | Complete |
 | BASE-05 | Phase 1 | Complete |
 | BASE-06 | Phase 1 | Complete |
-| DX-01 | Phase 1 | Pending |
+| DX-01 | Phase 1 | Complete |
 | DX-03 | Phase 1 | Complete |
-| DX-04 | Phase 1 | Pending |
+| DX-04 | Phase 1 | Complete |
 | FORM-01 | Phase 2 | Pending |
 | FORM-02 | Phase 2 | Pending |
 | FORM-03 | Phase 2 | Pending |
