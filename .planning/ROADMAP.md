@@ -41,13 +41,14 @@ Plans:
   2. Dropdown supports search filtering, keyboard navigation (arrow keys, enter, escape), and auto-positions its popup to stay within viewport
   3. Input field shows character counter, validation error text, and supports text/password/email/textarea modes
   4. DateTime utility formats dates with custom tokens and outputs Vietnamese relative time strings
-**Plans**: TBD
+**Plans:** 4 plans
 **UI hint**: yes
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
-- [ ] 02-03: TBD
+- [ ] 02-01-PLAN.md — Toggle, Checkbox, Button components with stories
+- [ ] 02-02-PLAN.md — DateTime utility with tests, Input Field component with story
+- [ ] 02-03-PLAN.md — Slider and Dropdown components with stories
+- [ ] 02-04-PLAN.md — Package exports wiring and Storybook visual verification
 
 ### Phase 3: Feedback & Overlay
 **Goal**: Users can trigger modals, toasts, tooltips, and loading overlays that handle stacking, positioning, and auto-dismiss correctly
@@ -89,6 +90,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 0/2 | Not started | - |
-| 2. Form Controls | 0/3 | Not started | - |
+| 2. Form Controls | 0/4 | Not started | - |
 | 3. Feedback & Overlay | 0/2 | Not started | - |
 | 4. Display & Stories | 0/2 | Not started | - |
