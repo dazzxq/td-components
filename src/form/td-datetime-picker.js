@@ -334,6 +334,7 @@ export class TdDatetimePicker extends TdBaseElement {
     // Scroll → detect closest option (CSS scroll-snap handles the snapping)
     let scrollTimer;
     wheel.addEventListener('scroll', () => {
+      if (wheel._programmaticScroll) return; // ignore during programmatic scroll
       clearTimeout(scrollTimer);
       scrollTimer = setTimeout(() => {
         this._updateWheelFromScroll(wheel, type);
@@ -353,7 +354,11 @@ export class TdDatetimePicker extends TdBaseElement {
     if (!opt) return;
     const container = wheel.parentElement;
     const scrollTop = opt.offsetTop - container.offsetHeight / 2 + opt.offsetHeight / 2;
+    // Lock scroll listener during programmatic scroll to prevent fighting
+    wheel._programmaticScroll = true;
     wheel.scrollTo({ top: scrollTop, behavior: smooth ? 'smooth' : 'instant' });
+    // Unlock after animation completes
+    setTimeout(() => { wheel._programmaticScroll = false; }, smooth ? 400 : 50);
   }
 
   _updateWheelFromScroll(wheel, type) {
