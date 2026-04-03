@@ -33,7 +33,7 @@
 
 ### Display
 
-- [ ] **DISP-01**: Table — sortable columns, pagination, zebra striping, loading skeleton
+- [x] **DISP-01**: Table — sortable columns, pagination, zebra striping, loading skeleton
 - [x] **DISP-02**: Tabs — icon + label, 2 sizes, smooth transitions
 - [x] **DISP-03**: Pagination — page nav, ellipsis, info text, custom active color
 - [x] **DISP-04**: Empty State — icon, title, message, action buttons, 3 sizes
@@ -102,7 +102,7 @@
 | FEED-03 | Phase 3 | Complete |
 | FEED-04 | Phase 3 | Complete |
 | FEED-05 | Phase 3 | Complete |
-| DISP-01 | Phase 4 | Pending |
+| DISP-01 | Phase 4 | Complete |
 | DISP-02 | Phase 4 | Complete |
 | DISP-03 | Phase 4 | Complete |
 | DISP-04 | Phase 4 | Complete |
