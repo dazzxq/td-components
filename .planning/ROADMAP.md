@@ -81,7 +81,7 @@ Plans:
 
 Plans:
 - [ ] 04-01-PLAN.md — Pagination + Empty State components with stories
-- [ ] 04-02-PLAN.md — Tabs component with stories
+- [x] 04-02-PLAN.md — Tabs component with stories
 - [ ] 04-03-PLAN.md — Table component with integrated pagination and stories
 - [ ] 04-04-PLAN.md — Feedback stories, composition examples, package exports wiring
 
