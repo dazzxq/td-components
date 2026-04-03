@@ -65,7 +65,7 @@ Plans:
 Plans:
 - [x] 03-01-PLAN.md — Modal + ModalStackManager (stacking, focus trap, Promise API, animations)
 - [x] 03-02-PLAN.md — Toast notifications + Loading overlay/spinner
-- [ ] 03-03-PLAN.md — Tooltip auto-init singleton + package exports wiring
+- [x] 03-03-PLAN.md — Tooltip auto-init singleton + package exports wiring
 
 ### Phase 4: Display & Stories
 **Goal**: Users can render data tables, tabbed interfaces, pagination, and empty states, with complete Storybook stories for every component in the library
