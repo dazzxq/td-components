@@ -76,7 +76,10 @@ export class TdTabs extends TdBaseElement {
       `;
     }).join('');
 
-    return `<div class="td-tabs-container flex gap-1 p-1 rounded-xl" style="background: rgba(0, 0, 0, 0.04);">${tabsHtml}</div>`;
+    return `<div class="td-tabs-container flex gap-1 p-1 rounded-xl" style="position: relative; background: rgba(0, 0, 0, 0.04);">
+      ${tabsHtml}
+      <div class="td-tabs-indicator" style="position: absolute; bottom: 2px; height: 2px; border-radius: 1px; background: #1f2937; transition: left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); width: 0; opacity: 0;"></div>
+    </div>`;
   }
 
   afterRender() {
@@ -87,6 +90,25 @@ export class TdTabs extends TdBaseElement {
       this._tabButtons.set(tabId, btn);
       this.listen(btn, 'click', () => this._handleTabClick(tabId));
     });
+
+    // Position indicator on active tab after paint
+    requestAnimationFrame(() => this._updateIndicator());
+  }
+
+  /**
+   * Update the sliding indicator position to match the active tab button.
+   * @private
+   */
+  _updateIndicator() {
+    const container = this.querySelector('.td-tabs-container');
+    const indicator = this.querySelector('.td-tabs-indicator');
+    const activeBtn = this._tabButtons.get(this._activeTabId);
+
+    if (!container || !indicator || !activeBtn) return;
+
+    indicator.style.left = `${activeBtn.offsetLeft}px`;
+    indicator.style.width = `${activeBtn.offsetWidth}px`;
+    indicator.style.opacity = '1';
   }
 
   // Prevent full re-render for active-tab attribute changes — just switch styles
@@ -133,6 +155,9 @@ export class TdTabs extends TdBaseElement {
     }
 
     this._activeTabId = tabId;
+
+    // Animate indicator to new tab position
+    this._updateIndicator();
 
     if (fireEvents) {
       if (this._onChange) {

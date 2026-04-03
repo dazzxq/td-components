@@ -9,7 +9,7 @@ import { TdBaseElement } from '../base/td-base-element.js';
  * @attr {number} items-per-page - Items per page (default 10)
  * @attr {number} current-page - Current page, 1-based (default 1)
  * @attr {string} active-color - CSS color for active page (default '#ef4444')
- * @attr {string} item-label - Label shown in info text (default 'muc')
+ * @attr {string} item-label - Label shown in info text (default 'mục')
  * @attr {number} max-pages - Number of page buttons to show (default 5)
  * @fires page-change - When page changes, detail: { page }
  */
@@ -24,7 +24,7 @@ export class TdPagination extends TdBaseElement {
   _getItemsPerPage() { return Math.max(1, parseInt(this.getAttribute('items-per-page') || '10', 10)); }
   _getCurrentPage() { return Math.max(1, parseInt(this.getAttribute('current-page') || '1', 10)); }
   _getActiveColor() { return this.getAttribute('active-color') || '#ef4444'; }
-  _getItemLabel() { return this.getAttribute('item-label') || 'muc'; }
+  _getItemLabel() { return this.getAttribute('item-label') || 'mục'; }
   _getMaxPages() { return Math.max(1, parseInt(this.getAttribute('max-pages') || '5', 10)); }
 
   _getTotalPages() {
@@ -69,9 +69,9 @@ export class TdPagination extends TdBaseElement {
     return `
       <div class="td-pagination-container flex justify-end">
         <div class="flex items-center gap-3 text-sm">
-          <span class="td-pagination-info text-gray-600">${this.escapeHtml(`Hien thi ${start}-${end} / ${totalItems} ${itemLabel}`)}</span>
+          <span class="td-pagination-info text-gray-600">${this.escapeHtml(`Hiển thị ${start}-${end} / ${totalItems} ${itemLabel}`)}</span>
           <div class="flex items-center gap-2">
-            <button class="td-pagination-prev w-8 h-8 inline-flex items-center justify-center rounded-md border border-gray-300 text-gray-700 transition-colors ${disabledLeftClasses}" ${navDisabledLeft ? 'disabled' : ''} title="Trang truoc">
+            <button class="td-pagination-prev w-8 h-8 inline-flex items-center justify-center rounded-md border border-gray-300 text-gray-700 transition-colors ${disabledLeftClasses}" ${navDisabledLeft ? 'disabled' : ''} title="Trang trước">
               ${chevronLeft}
             </button>
             <span class="td-pagination-pages inline-flex items-center gap-1">

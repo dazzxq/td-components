@@ -6,8 +6,8 @@ import { TdBaseElement } from '../base/td-base-element.js';
  *
  * @element td-empty-state
  * @attr {string} icon - SVG string or icon identifier (default renders inline inbox SVG)
- * @attr {string} title - Title text (default 'Khong co du lieu')
- * @attr {string} message - Message text (default 'Chua co muc nao duoc tao.')
+ * @attr {string} title - Title text (default 'Không có dữ liệu')
+ * @attr {string} message - Message text (default 'Chưa có mục nào được tạo.')
  * @attr {string} size - Size variant: 'sm' | 'md' | 'lg' (default 'md')
  * @attr {boolean} compact - Compact mode with reduced padding
  *
@@ -52,8 +52,8 @@ export class TdEmptyState extends TdBaseElement {
     return TdEmptyState._sizeMap[size] || TdEmptyState._sizeMap.md;
   }
 
-  _getTitle() { return this.getAttribute('title') || 'Khong co du lieu'; }
-  _getMessage() { return this.getAttribute('message') || 'Chua co muc nao duoc tao.'; }
+  _getTitle() { return this.getAttribute('title') || 'Không có dữ liệu'; }
+  _getMessage() { return this.getAttribute('message') || 'Chưa có mục nào được tạo.'; }
   _isCompact() { return this.hasAttribute('compact'); }
 
   // --- Default inbox SVG icon ---
@@ -69,8 +69,11 @@ export class TdEmptyState extends TdBaseElement {
     }
 
     return `
-      <svg class="td-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:${s.icon}px;height:${s.icon}px;color:#9ca3af;">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859M12 3v8.25m0 0l-3-3m3 3l3-3M2.25 13.5V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.5"/>
+      <svg class="td-empty-icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" style="width:${s.icon}px;height:${s.icon}px;color:#9ca3af;">
+        <rect x="12" y="24" width="40" height="28" rx="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M12 32h14l4 6h4l4-6h14" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M26 18l6-6 6 6" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/>
+        <path d="M32 12v12" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/>
       </svg>
     `;
   }

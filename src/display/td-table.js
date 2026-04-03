@@ -13,7 +13,7 @@ import './td-empty-state.js';
  * @attr {boolean} loading - Show loading skeleton
  * @attr {number} loading-rows - Number of skeleton rows (default 5)
  * @attr {string} title - Optional table title
- * @attr {string} empty-text - Empty state text (default 'Khong co du lieu')
+ * @attr {string} empty-text - Empty state text (default 'Không có dữ liệu')
  * @attr {boolean} server-mode - Enable server-side mode
  * @attr {number} total-items - Total items for server mode pagination
  *
@@ -70,7 +70,7 @@ export class TdTable extends TdBaseElement {
   _isLoading() { return this.hasAttribute('loading'); }
   _getLoadingRows() { return Math.max(1, parseInt(this.getAttribute('loading-rows') || '5', 10)); }
   _getTitle() { return this.getAttribute('title') || ''; }
-  _getEmptyText() { return this.getAttribute('empty-text') || 'Khong co du lieu'; }
+  _getEmptyText() { return this.getAttribute('empty-text') || 'Không có dữ liệu'; }
   _isServerMode() { return this.hasAttribute('server-mode'); }
   _getTotalItems() { return Math.max(0, parseInt(this.getAttribute('total-items') || '0', 10)); }
 
@@ -201,7 +201,7 @@ export class TdTable extends TdBaseElement {
       items-per-page="${perPage}"
       current-page="${this._currentPage}"
       active-color="${activeColor}"
-      item-label="muc"
+      item-label="mục"
     ></td-pagination>`;
   }
 
@@ -283,7 +283,7 @@ export class TdTable extends TdBaseElement {
     if (rows.length === 0) {
       bodyHTML = `<tr><td colspan="${columns.length || 1}" class="px-6 py-16">
         <td-empty-state
-          title="Khong co du lieu"
+          title="Không có dữ liệu"
           message="${this.escapeHtml(emptyText)}"
           size="sm"
           compact
