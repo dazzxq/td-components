@@ -35,8 +35,8 @@
 
 - [ ] **DISP-01**: Table — sortable columns, pagination, zebra striping, loading skeleton
 - [x] **DISP-02**: Tabs — icon + label, 2 sizes, smooth transitions
-- [ ] **DISP-03**: Pagination — page nav, ellipsis, info text, custom active color
-- [ ] **DISP-04**: Empty State — icon, title, message, action buttons, 3 sizes
+- [x] **DISP-03**: Pagination — page nav, ellipsis, info text, custom active color
+- [x] **DISP-04**: Empty State — icon, title, message, action buttons, 3 sizes
 
 ### Utility
 
@@ -104,8 +104,8 @@
 | FEED-05 | Phase 3 | Complete |
 | DISP-01 | Phase 4 | Pending |
 | DISP-02 | Phase 4 | Complete |
-| DISP-03 | Phase 4 | Pending |
-| DISP-04 | Phase 4 | Pending |
+| DISP-03 | Phase 4 | Complete |
+| DISP-04 | Phase 4 | Complete |
 | DX-02 | Phase 4 | Pending |
 
 **Coverage:**

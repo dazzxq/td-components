@@ -80,7 +80,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 04-01-PLAN.md — Pagination + Empty State components with stories
+- [x] 04-01-PLAN.md — Pagination + Empty State components with stories
 - [x] 04-02-PLAN.md — Tabs component with stories
 - [ ] 04-03-PLAN.md — Table component with integrated pagination and stories
 - [ ] 04-04-PLAN.md — Feedback stories, composition examples, package exports wiring
@@ -95,4 +95,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | 1. Foundation | 0/2 | Not started | - |
 | 2. Form Controls | 0/4 | Not started | - |
 | 3. Feedback & Overlay | 2/3 | In Progress|  |
-| 4. Display & Stories | 0/4 | Not started | - |
+| 4. Display & Stories | 2/4 | In Progress | - |
