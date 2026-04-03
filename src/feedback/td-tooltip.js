@@ -91,15 +91,14 @@ export class TdTooltip {
             z-index: 1;
         `;
 
-        // Arrow element — 8x8 rotated 45deg diamond
+        // Arrow element — CSS border triangle (no diamond artifact)
         const arrow = document.createElement('span');
         arrow.className = 'td-tooltip-arrow';
         arrow.style.cssText = `
             position: absolute;
-            width: 8px;
-            height: 8px;
-            background-color: rgba(30, 30, 30, 0.75);
-            transform: rotate(45deg);
+            width: 0;
+            height: 0;
+            border: 6px solid transparent;
             z-index: 0;
         `;
 
@@ -280,9 +279,7 @@ export class TdTooltip {
         if (this.tooltipContent) {
             this.tooltipContent.style.color = textColor;
         }
-        if (this.tooltipArrow) {
-            this.tooltipArrow.style.backgroundColor = bgColor;
-        }
+        // Arrow border color is set in position() based on direction
 
         // Prepare for measurement
         this.tooltip.style.left = '0px';
@@ -352,32 +349,38 @@ export class TdTooltip {
             this.tooltipArrow.style.display = 'block';
         }
 
-        const arrowSize = 8;
-        const arrowHalfSize = arrowSize / 2; // 4px
+        const arrowSize = 6; // border width — triangle is 12px wide, 6px tall
+        const bgColor = this.tooltip.style.backgroundColor || 'rgba(30, 30, 30, 0.75)';
 
         switch (pos) {
             case 'bottom':
                 left = anchorCenterX - (tipRect.width / 2);
                 top = elBottom + offset;
                 if (this.tooltipArrow) {
-                    this.tooltipArrow.style.top = `${-arrowHalfSize + 2}px`;
-                    this.tooltipArrow.style.left = `${Math.round(tipRect.width / 2 - arrowHalfSize)}px`;
+                    // Arrow points up
+                    this.tooltipArrow.style.borderColor = `transparent transparent ${bgColor} transparent`;
+                    this.tooltipArrow.style.top = `${-arrowSize * 2}px`;
+                    this.tooltipArrow.style.left = `${Math.round(tipRect.width / 2 - arrowSize)}px`;
                 }
                 break;
             case 'left':
                 left = elLeft - tipRect.width - offset;
                 top = anchorCenterY - (tipRect.height / 2);
                 if (this.tooltipArrow) {
-                    this.tooltipArrow.style.top = `${Math.round(tipRect.height / 2 - arrowHalfSize)}px`;
-                    this.tooltipArrow.style.left = `${Math.round(tipRect.width - arrowHalfSize - 2)}px`;
+                    // Arrow points right
+                    this.tooltipArrow.style.borderColor = `transparent transparent transparent ${bgColor}`;
+                    this.tooltipArrow.style.top = `${Math.round(tipRect.height / 2 - arrowSize)}px`;
+                    this.tooltipArrow.style.left = `${Math.round(tipRect.width)}px`;
                 }
                 break;
             case 'right':
                 left = elRight + offset;
                 top = anchorCenterY - (tipRect.height / 2);
                 if (this.tooltipArrow) {
-                    this.tooltipArrow.style.top = `${Math.round(tipRect.height / 2 - arrowHalfSize)}px`;
-                    this.tooltipArrow.style.left = `${-arrowHalfSize + 2}px`;
+                    // Arrow points left
+                    this.tooltipArrow.style.borderColor = `transparent ${bgColor} transparent transparent`;
+                    this.tooltipArrow.style.top = `${Math.round(tipRect.height / 2 - arrowSize)}px`;
+                    this.tooltipArrow.style.left = `${-arrowSize * 2}px`;
                 }
                 break;
             case 'top':
@@ -385,8 +388,10 @@ export class TdTooltip {
                 left = anchorCenterX - (tipRect.width / 2);
                 top = elTop - tipRect.height - offset;
                 if (this.tooltipArrow) {
-                    this.tooltipArrow.style.top = `${Math.round(tipRect.height - arrowHalfSize - 2)}px`;
-                    this.tooltipArrow.style.left = `${Math.round(tipRect.width / 2 - arrowHalfSize)}px`;
+                    // Arrow points down
+                    this.tooltipArrow.style.borderColor = `${bgColor} transparent transparent transparent`;
+                    this.tooltipArrow.style.top = `${Math.round(tipRect.height)}px`;
+                    this.tooltipArrow.style.left = `${Math.round(tipRect.width / 2 - arrowSize)}px`;
                 }
         }
 
@@ -406,15 +411,14 @@ export class TdTooltip {
 
         // Adjust arrow to point to anchor when tooltip is clamped
         if (this.tooltipArrow) {
-            const arrowHalf = 4;
             if (pos === 'top' || pos === 'bottom') {
-                const desiredArrowLeft = anchorCenterX - left - arrowHalf;
+                const desiredArrowLeft = anchorCenterX - left - arrowSize;
                 const minArrow = 10;
                 const maxArrow = tipRect.width - 10;
                 const clampedArrowLeft = Math.max(minArrow, Math.min(desiredArrowLeft, maxArrow));
                 this.tooltipArrow.style.left = `${Math.round(clampedArrowLeft)}px`;
             } else if (pos === 'left' || pos === 'right') {
-                const desiredArrowTop = anchorCenterY - top - arrowHalf;
+                const desiredArrowTop = anchorCenterY - top - arrowSize;
                 const minArrowY = 10;
                 const maxArrowY = tipRect.height - 10;
                 const clampedArrowTop = Math.max(minArrowY, Math.min(desiredArrowTop, maxArrowY));

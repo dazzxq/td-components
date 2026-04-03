@@ -113,14 +113,6 @@ export class TdModal {
    * @returns {string} Modal ID
    */
   static show(options = {}) {
-    // Check if this is a loading modal
-    const isNewLoadingModal = options.showHeader === false && options.showFooter === false && options.closable === false;
-
-    // If showing a non-loading modal, close all loading modals first
-    if (!isNewLoadingModal) {
-      this._closeAllLoadingModals();
-    }
-
     // Create new modal element
     const modal = this._createModalElement();
     const modalId = modal.id;
@@ -241,9 +233,9 @@ export class TdModal {
   /**
    * Confirm dialog — returns Promise<boolean>
    * @param {Object} options
-   * @param {string} [options.title='Xac nhan'] - Dialog title
-   * @param {string} [options.message='Ban co chac chan?'] - Message text
-   * @param {string} [options.confirmText='Xac nhan'] - Confirm button text
+   * @param {string} [options.title='Xác nhận'] - Dialog title
+   * @param {string} [options.message='Bạn có chắc chắn?'] - Message text
+   * @param {string} [options.confirmText='Xác nhận'] - Confirm button text
    * @param {string} [options.cancelText='Huy'] - Cancel button text
    * @param {string} [options.confirmVariant='primary'] - Confirm button variant
    * @param {Function} [options.onConfirm] - Confirm callback
@@ -253,10 +245,10 @@ export class TdModal {
   static confirm(options = {}) {
     return new Promise((resolve) => {
       const {
-        title = 'Xac nhan',
-        message = 'Ban co chac chan?',
-        confirmText = 'Xac nhan',
-        cancelText = 'Huy',
+        title = 'Xác nhận',
+        message = 'Bạn có chắc chắn?',
+        confirmText = 'Xác nhận',
+        cancelText = 'Hủy',
         confirmVariant = 'primary',
         onConfirm = () => {},
         onCancel = () => {},
@@ -302,16 +294,16 @@ export class TdModal {
   /**
    * Success dialog — returns Promise<boolean>
    * @param {Object} options
-   * @param {string} [options.title='Thanh cong'] - Dialog title
-   * @param {string} [options.message='Thao tac da hoan tat'] - Message text
+   * @param {string} [options.title='Thành công'] - Dialog title
+   * @param {string} [options.message='Thao tác đã hoàn tất'] - Message text
    * @param {string} [options.okText='OK'] - OK button text
    * @returns {Promise<boolean>}
    */
   static success(options = {}) {
     return new Promise((resolve) => {
       const {
-        title = 'Thanh cong',
-        message = 'Thao tac da hoan tat',
+        title = 'Thành công',
+        message = 'Thao tác đã hoàn tất',
         okText = 'OK',
       } = options;
 
@@ -345,16 +337,16 @@ export class TdModal {
   /**
    * Error dialog — returns Promise<boolean>
    * @param {Object} options
-   * @param {string} [options.title='Loi'] - Dialog title
-   * @param {string} [options.message='Da xay ra loi'] - Message text
+   * @param {string} [options.title='Lỗi'] - Dialog title
+   * @param {string} [options.message='Đã xảy ra lỗi'] - Message text
    * @param {string} [options.okText='OK'] - OK button text
    * @returns {Promise<boolean>}
    */
   static error(options = {}) {
     return new Promise((resolve) => {
       const {
-        title = 'Loi',
-        message = 'Da xay ra loi',
+        title = 'Lỗi',
+        message = 'Đã xảy ra lỗi',
         okText = 'OK',
       } = options;
 
@@ -388,7 +380,7 @@ export class TdModal {
   /**
    * Info dialog — returns Promise<boolean>
    * @param {Object} options
-   * @param {string} [options.title='Thong tin'] - Dialog title
+   * @param {string} [options.title='Thông tin'] - Dialog title
    * @param {string} [options.message=''] - Message text
    * @param {string} [options.okText='OK'] - OK button text
    * @returns {Promise<boolean>}
@@ -396,7 +388,7 @@ export class TdModal {
   static info(options = {}) {
     return new Promise((resolve) => {
       const {
-        title = 'Thong tin',
+        title = 'Thông tin',
         message = '',
         okText = 'OK',
       } = options;
@@ -428,34 +420,7 @@ export class TdModal {
     });
   }
 
-  /**
-   * Loading dialog (non-closable, no header/footer)
-   * @param {string|Object} messageOrOptions - Loading message or { message: string }
-   * @returns {string} Modal ID
-   */
-  static loading(messageOrOptions = 'Dang tai...') {
-    const message = typeof messageOrOptions === 'string'
-      ? messageOrOptions
-      : (messageOrOptions.message || 'Dang tai...');
-
-    return TdModal.show({
-      title: '',
-      body: `
-        <div class="flex flex-col items-center justify-center py-8">
-          <svg class="animate-spin h-12 w-12 text-gray-900 mb-4" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          <p class="text-gray-900 font-medium text-sm sm:text-base">${escapeHtml(message)}</p>
-        </div>
-      `,
-      footer: null,
-      size: 'sm',
-      closable: false,
-      showHeader: false,
-      showFooter: false,
-    });
-  }
+  // TdModal.loading() removed — use TdLoading.show() / TdLoading.hide() instead
 
   /**
    * Configure modal content and styling
@@ -708,36 +673,4 @@ export class TdModal {
     }
   }
 
-  /**
-   * Close all loading modals (modals with spinner and no header/footer)
-   * @private
-   */
-  static _closeAllLoadingModals() {
-    const stack = TdModalStackManager.stack;
-    if (!stack || stack.length === 0) return;
-
-    const loadingModalIds = [];
-    for (let i = stack.length - 1; i >= 0; i--) {
-      const modalInstance = stack[i];
-      if (!modalInstance || !modalInstance.element) continue;
-
-      const body = modalInstance.element.querySelector('.td-modal-body');
-      const header = modalInstance.element.querySelector('.td-modal-header');
-      const footer = modalInstance.element.querySelector('.td-modal-footer');
-
-      const hasSpinner = body && body.querySelector('.animate-spin') !== null;
-      const hasNoHeader = !header || header.style.display === 'none';
-      const hasNoFooter = !footer || footer.style.display === 'none' || footer.classList.contains('hidden');
-
-      if (hasSpinner && hasNoHeader && hasNoFooter) {
-        loadingModalIds.push(modalInstance.id);
-      } else {
-        break;
-      }
-    }
-
-    loadingModalIds.forEach(modalId => {
-      TdModal.closeById(modalId);
-    });
-  }
 }

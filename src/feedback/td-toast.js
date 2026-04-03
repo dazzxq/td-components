@@ -28,6 +28,8 @@ export class TdToast {
     static TOAST_Z_INDEX_BASE = 99999;
     static MAX_VISIBLE = 5;
     static _activeToasts = [];
+    static _pendingQueue = [];
+    static _flushScheduled = false;
 
     /**
      * Get dynamic z-index for toast container.
@@ -102,7 +104,8 @@ export class TdToast {
     }
 
     /**
-     * Show a toast notification.
+     * Show a toast notification. Uses staggered queue to prevent lag when
+     * multiple toasts fire simultaneously.
      * @param {string} message - Toast message text
      * @param {'success'|'error'|'warning'|'info'} type - Toast variant
      * @param {number} duration - Auto-dismiss delay in ms (0 = no auto-dismiss)
@@ -110,6 +113,30 @@ export class TdToast {
     static show(message, type = 'info', duration = 4000) {
         if (!message) return;
 
+        TdToast._pendingQueue.push({ message, type, duration });
+        if (!TdToast._flushScheduled) {
+            TdToast._flushScheduled = true;
+            setTimeout(() => TdToast._flush(), 50);
+        }
+    }
+
+    /**
+     * Flush queued toasts with staggered rendering (80ms between each).
+     * @private
+     */
+    static _flush() {
+        TdToast._flushScheduled = false;
+        const queue = TdToast._pendingQueue.splice(0);
+        queue.forEach((item, i) => {
+            setTimeout(() => TdToast._showSingle(item.message, item.type, item.duration), i * 80);
+        });
+    }
+
+    /**
+     * Internal: render a single toast immediately.
+     * @private
+     */
+    static _showSingle(message, type, duration) {
         TdToast.ensureContainer();
 
         // Update z-index dynamically each time

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>td-components Demo</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; }
+    .demo-section { border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+    .demo-section h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; }
+    .demo-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; }
+    .demo-label { font-size: 0.875rem; color: #6b7280; min-width: 100px; }
+    .demo-code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.8rem; }
+    hr { border: none; border-top: 1px solid #e5e7eb; margin: 32px 0; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900 p-8 max-w-5xl mx-auto">
+
+  <h1 class="text-3xl font-bold mb-2">td-components Demo</h1>
+  <p class="text-gray-500 mb-8">Test tất cả components trực tiếp. Mở DevTools Console để xem events.</p>
+
+  <!-- ═══════════════════ TOGGLE ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Toggle <span class="demo-code">&lt;td-toggle&gt;</span></h2>
+    <div class="demo-row">
+      <span class="demo-label">Default:</span>
+      <td-toggle label="Bật/Tắt"></td-toggle>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label">Checked:</span>
+      <td-toggle label="Đã bật" checked></td-toggle>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label">Disabled:</span>
+      <td-toggle label="Không thể đổi" checked disabled></td-toggle>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label">Sizes:</span>
+      <td-toggle size="sm" label="SM"></td-toggle>
+      <td-toggle size="md" label="MD"></td-toggle>
+      <td-toggle size="lg" label="LG"></td-toggle>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label">Custom color:</span>
+      <td-toggle color="green" label="Green" checked></td-toggle>
+      <td-toggle color="red" label="Red" checked></td-toggle>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ BUTTON ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Button <span class="demo-code">&lt;td-button&gt;</span></h2>
+    <div class="demo-row">
+      <td-button variant="primary">Primary</td-button>
+      <td-button variant="secondary">Secondary</td-button>
+      <td-button variant="success">Success</td-button>
+      <td-button variant="danger">Danger</td-button>
+      <td-button variant="info">Info</td-button>
+      <td-button variant="warning">Warning</td-button>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label">Loading:</span>
+      <td-button variant="primary" id="btn-loading">Click để loading</td-button>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label">Disabled:</span>
+      <td-button variant="primary" disabled>Disabled</td-button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ CHECKBOX ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Checkbox <span class="demo-code">&lt;td-checkbox&gt;</span></h2>
+    <div class="demo-row">
+      <td-checkbox label="Đồng ý điều khoản"></td-checkbox>
+    </div>
+    <div class="demo-row">
+      <td-checkbox label="Đã chọn" checked></td-checkbox>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label">Sizes:</span>
+      <td-checkbox size="sm" label="SM"></td-checkbox>
+      <td-checkbox size="md" label="MD" checked></td-checkbox>
+      <td-checkbox size="lg" label="LG"></td-checkbox>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label">Custom color:</span>
+      <td-checkbox color="green" label="Green" checked></td-checkbox>
+      <td-checkbox color="red" label="Red" checked></td-checkbox>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ INPUT FIELD ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Input Field <span class="demo-code">&lt;td-input-field&gt;</span></h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <td-input-field label="Họ tên" placeholder="Nhập họ tên..." required></td-input-field>
+      <td-input-field label="Email" type="email" placeholder="email@example.com"></td-input-field>
+      <td-input-field label="Mật khẩu" type="password" placeholder="••••••••"></td-input-field>
+      <td-input-field label="Tiêu đề bài viết" maxlength="100" placeholder="Tối đa 100 ký tự"></td-input-field>
+      <td-input-field label="Mô tả" type="textarea" placeholder="Nhập mô tả..." helper="Tối thiểu 50 từ" style="grid-column: span 2;"></td-input-field>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ SLIDER ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Slider <span class="demo-code">&lt;td-slider&gt;</span></h2>
+    <div style="max-width: 400px;">
+      <div class="demo-row">
+        <td-slider label="Âm lượng" min="0" max="100" value="60" style="width:100%"></td-slider>
+      </div>
+      <div class="demo-row">
+        <td-slider label="Bước 10" min="0" max="100" value="30" step="10" style="width:100%"></td-slider>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ DROPDOWN ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Dropdown <span class="demo-code">&lt;td-dropdown&gt;</span></h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <td-dropdown id="dropdown-basic" label="Chọn danh mục" placeholder="-- Chọn --"></td-dropdown>
+      <td-dropdown id="dropdown-search" label="Có tìm kiếm" placeholder="Tìm..." searchable></td-dropdown>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- ═══════════════════ MODAL ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Modal <span class="demo-code">TdModal.confirm()</span></h2>
+    <div class="demo-row">
+      <button onclick="testModalConfirm()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Confirm Dialog</button>
+      <button onclick="testModalInfo()" class="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700">Info Modal</button>
+      <button onclick="testModalSuccess()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Success Modal</button>
+      <button onclick="testModalError()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Error Modal</button>
+      <button onclick="testModalLoading()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Loading Modal (3s)</button>
+      <button onclick="testModalStacked()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Stacked Modals</button>
+    </div>
+    <p class="text-sm text-gray-500 mt-2">Kết quả confirm hiển thị trong Console.</p>
+  </div>
+
+  <!-- ═══════════════════ TOAST ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Toast <span class="demo-code">TdToast.success()</span></h2>
+    <div class="demo-row">
+      <button onclick="TdToast.success('Đã lưu thành công!')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Success</button>
+      <button onclick="TdToast.error('Lỗi kết nối server!')" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Error</button>
+      <button onclick="TdToast.warning('Dữ liệu chưa lưu!')" class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700">Warning</button>
+      <button onclick="TdToast.info('Có 2 bài viết mới')" class="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700">Info</button>
+      <button onclick="spamToasts()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Spam 8 toasts (test FIFO)</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ TOOLTIP ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Tooltip <span class="demo-code">data-tooltip</span></h2>
+    <div class="demo-row">
+      <button data-tooltip="Đây là tooltip mặc định" class="px-4 py-2 bg-gray-200 rounded-lg">Hover tôi</button>
+      <button data-tooltip="Tooltip màu đỏ" data-tooltip-color="red" class="px-4 py-2 bg-gray-200 rounded-lg">Màu đỏ</button>
+      <button data-tooltip="Tooltip màu xanh" data-tooltip-color="green" class="px-4 py-2 bg-gray-200 rounded-lg">Màu xanh</button>
+      <button data-tooltip="Tooltip dài hơn một chút để test wrap text khi nội dung nhiều" class="px-4 py-2 bg-gray-200 rounded-lg">Tooltip dài</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ LOADING ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Loading <span class="demo-code">TdLoading.show()</span></h2>
+    <div class="demo-row">
+      <button onclick="TdLoading.show('Đang tải...'); setTimeout(() => TdLoading.hide(), 2000)" class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800">Fullscreen Loading (2s)</button>
+      <button onclick="TdLoading.show('Đang xử lý...'); setTimeout(() => TdLoading.hide(), 3000)" class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800">Loading 3s</button>
+      <span class="demo-label">Inline spinner:</span>
+      <span id="inline-spinner-container"></span>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- ═══════════════════ TABLE ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Table <span class="demo-code">&lt;td-table&gt;</span></h2>
+    <td-table id="demo-table"></td-table>
+  </div>
+
+  <!-- ═══════════════════ TABS ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Tabs <span class="demo-code">&lt;td-tabs&gt;</span></h2>
+    <td-tabs id="demo-tabs"></td-tabs>
+    <div id="tab-content" class="mt-4 p-4 bg-white rounded-lg border">
+      Chọn tab ở trên để thay đổi nội dung.
+    </div>
+  </div>
+
+  <!-- ═══════════════════ PAGINATION ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Pagination <span class="demo-code">&lt;td-pagination&gt;</span></h2>
+    <td-pagination total="150" per-page="10" current="3"></td-pagination>
+    <p class="text-sm text-gray-500 mt-2">Xem Console khi click page.</p>
+  </div>
+
+  <!-- ═══════════════════ EMPTY STATE ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Empty State <span class="demo-code">&lt;td-empty-state&gt;</span></h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <td-empty-state title="Chưa có bài viết" message="Bắt đầu viết bài đầu tiên của bạn" id="empty-with-action"></td-empty-state>
+      <td-empty-state title="Không tìm thấy" message="Thử tìm với từ khóa khác" size="sm" compact></td-empty-state>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ SCRIPTS ═══════════════════ -->
+  <script type="module">
+    // Import tất cả components
+    import './src/form/td-toggle.js';
+    import './src/form/td-button.js';
+    import './src/form/td-checkbox.js';
+    import './src/form/td-input-field.js';
+    import './src/form/td-slider.js';
+    import './src/form/td-dropdown.js';
+    import './src/feedback/td-modal.js';
+    import './src/feedback/td-toast.js';
+    import './src/feedback/td-tooltip.js';
+    import './src/feedback/td-loading.js';
+    import './src/display/td-table.js';
+    import './src/display/td-tabs.js';
+    import './src/display/td-pagination.js';
+    import './src/display/td-empty-state.js';
+
+    import { TdModal } from './src/feedback/td-modal.js';
+    import { TdToast } from './src/feedback/td-toast.js';
+    import { TdLoading, TdLoadingSpinner } from './src/feedback/td-loading.js';
+
+    // Expose cho onclick handlers
+    window.TdModal = TdModal;
+    window.TdToast = TdToast;
+    window.TdLoading = TdLoading;
+
+    // ── Dropdown options ──
+    document.querySelector('#dropdown-basic').options = [
+      { value: 'news', label: 'Tin tức' },
+      { value: 'sports', label: 'Thể thao' },
+      { value: 'tech', label: 'Công nghệ' },
+      { value: 'entertainment', label: 'Giải trí' },
+      { value: 'science', label: 'Khoa học' },
+    ];
+    document.querySelector('#dropdown-search').options = [
+      { value: 'hn', label: 'Hà Nội' },
+      { value: 'hcm', label: 'TP. Hồ Chí Minh' },
+      { value: 'dn', label: 'Đà Nẵng' },
+      { value: 'hp', label: 'Hải Phòng' },
+      { value: 'ct', label: 'Cần Thơ' },
+      { value: 'na', label: 'Nghệ An' },
+      { value: 'ht', label: 'Hà Tĩnh' },
+      { value: 'vinh', label: 'Vinh' },
+    ];
+
+    // ── Button loading demo ──
+    document.querySelector('#btn-loading').addEventListener('click', function() {
+      this.setAttribute('loading', '');
+      setTimeout(() => this.removeAttribute('loading'), 2000);
+    });
+
+    // ── Table data ──
+    const table = document.querySelector('#demo-table');
+    table.columns = [
+      { key: 'id', label: 'ID', sortable: true, width: '60px' },
+      { key: 'title', label: 'Tiêu đề', sortable: true },
+      { key: 'author', label: 'Tác giả', sortable: true },
+      { key: 'status', label: 'Trạng thái', render: (val) => {
+        const colors = { published: 'bg-green-100 text-green-700', draft: 'bg-gray-100 text-gray-600', archived: 'bg-yellow-100 text-yellow-700' };
+        return `<span class="px-2 py-1 rounded-full text-xs font-medium ${colors[val] || ''}">${val}</span>`;
+      }},
+      { key: 'views', label: 'Lượt xem', sortable: true, width: '100px' },
+    ];
+    table.data = [
+      { id: 1, title: 'Hướng dẫn Web Components', author: 'Duyệt', status: 'published', views: 1250 },
+      { id: 2, title: 'Tailwind CSS Tips & Tricks', author: 'Duyệt', status: 'published', views: 890 },
+      { id: 3, title: 'JavaScript ES2025 Features', author: 'Minh', status: 'draft', views: 0 },
+      { id: 4, title: 'Laravel 12 Migration Guide', author: 'Hùng', status: 'published', views: 2100 },
+      { id: 5, title: 'Building a CMS from Scratch', author: 'Duyệt', status: 'archived', views: 3400 },
+      { id: 6, title: 'Storybook for Web Components', author: 'Linh', status: 'draft', views: 0 },
+      { id: 7, title: 'Docker Compose Best Practices', author: 'Minh', status: 'published', views: 670 },
+      { id: 8, title: 'Git Workflow cho team nhỏ', author: 'Duyệt', status: 'published', views: 1580 },
+    ];
+
+    // ── Tabs ──
+    const tabs = document.querySelector('#demo-tabs');
+    tabs.tabs = [
+      { id: 'all', label: 'Tất cả', icon: '📋' },
+      { id: 'published', label: 'Đã xuất bản', icon: '✅' },
+      { id: 'draft', label: 'Nháp', icon: '📝' },
+    ];
+    tabs.addEventListener('tab-change', (e) => {
+      const contents = {
+        all: 'Hiển thị tất cả bài viết (8 bài)',
+        published: 'Hiển thị bài đã xuất bản (5 bài)',
+        draft: 'Hiển thị bài nháp (2 bài)',
+      };
+      document.querySelector('#tab-content').textContent = contents[e.detail.id] || '';
+    });
+
+    // ── Pagination events ──
+    document.querySelector('td-pagination').addEventListener('page-change', (e) => {
+      console.log('Page changed to:', e.detail.page);
+    });
+
+    // ── Empty State actions ──
+    const emptyState = document.querySelector('#empty-with-action');
+    emptyState.actions = [
+      { label: 'Tạo bài viết', variant: 'primary', onClick: () => TdToast.info('Đang mở editor...') },
+    ];
+
+    // ── Inline spinner ──
+    const spinner = TdLoadingSpinner.create({ size: 'md' });
+    document.querySelector('#inline-spinner-container').appendChild(spinner);
+
+    // ── Modal test functions ──
+    window.testModalConfirm = async () => {
+      const ok = await TdModal.confirm({ title: 'Xác nhận xóa', message: 'Bạn có chắc muốn xóa bài viết này không?' });
+      console.log('Confirm result:', ok);
+      if (ok) TdToast.success('Đã xóa!');
+      else TdToast.info('Đã hủy');
+    };
+    window.testModalInfo = () => TdModal.info({ title: 'Thông báo', message: 'Hệ thống sẽ bảo trì vào 2:00 AM.' });
+    window.testModalSuccess = () => TdModal.success({ title: 'Thành công', message: 'Bài viết đã được xuất bản!' });
+    window.testModalError = () => TdModal.error({ title: 'Lỗi', message: 'Không thể kết nối tới server. Vui lòng thử lại.' });
+    window.testModalLoading = () => {
+      TdLoading.show('Đang xử lý...');
+      setTimeout(() => { TdLoading.hide(); TdToast.success('Xong!'); }, 3000);
+    };
+    window.testModalStacked = async () => {
+      TdModal.show({ title: 'Modal 1', body: '<p>Đây là modal đầu tiên. Click button bên dưới để mở modal thứ 2.</p><button onclick="TdModal.show({title:\'Modal 2\', body:\'<p>Modal thứ 2 chồng lên modal 1!</p>\'})" class="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg">Mở Modal 2</button>' });
+    };
+    window.spamToasts = () => {
+      for (let i = 1; i <= 8; i++) {
+        const types = ['success', 'error', 'warning', 'info'];
+        TdToast[types[i % 4]](`Toast #${i} — test FIFO (max 5)`);
+      }
+    };
+
+    // ── Log all component events ──
+    document.addEventListener('change', (e) => {
+      if (e.target.tagName?.startsWith('TD-')) {
+        console.log(`[${e.target.tagName}] change:`, e.detail);
+      }
+    });
+  </script>
+
+</body>
+</html>

@@ -1,4 +1,5 @@
 import { TdModal } from './td-modal.js';
+import { TdLoading } from './td-loading.js';
 
 export default {
   title: 'Feedback/Modal',
@@ -16,8 +17,8 @@ export const SimpleModal = {
     const btn = canvasElement.querySelector('#simple-modal-btn');
     btn.addEventListener('click', () => {
       TdModal.show({
-        title: 'Thong bao',
-        body: '<p class="text-gray-600">Noi dung modal co the chua HTML, hinh anh, hoac bat ky noi dung nao.</p>',
+        title: 'Thông báo',
+        body: '<p class="text-gray-600">Nội dung modal có thể chứa HTML, hình ảnh, hoặc bất kỳ nội dung nào.</p>',
       });
     });
   },
@@ -38,13 +39,13 @@ export const ConfirmDialog = {
     const result = canvasElement.querySelector('#confirm-result');
     btn.addEventListener('click', async () => {
       const ok = await TdModal.confirm({
-        title: 'Xac nhan xoa',
-        message: 'Ban co chac chan muon xoa muc nay? Hanh dong nay khong the hoan tac.',
+        title: 'Xác nhận xóa',
+        message: 'Bạn có chắc chắn muốn xóa mục này? Hành động này không thể hoàn tác.',
         confirmVariant: 'danger',
-        confirmText: 'Xoa',
-        cancelText: 'Huy',
+        confirmText: 'Xóa',
+        cancelText: 'Hủy',
       });
-      result.textContent = ok ? 'Da xac nhan xoa!' : 'Da huy.';
+      result.textContent = ok ? 'Đã xác nhận xóa!' : 'Đã hủy.';
     });
   },
 };
@@ -59,12 +60,13 @@ export const SuccessDialog = {
   play: ({ canvasElement }) => {
     const btn = canvasElement.querySelector('#success-modal-btn');
     btn.addEventListener('click', () => {
-      TdModal.success({ title: 'Thanh cong', message: 'Da luu thanh cong!' });
+      TdModal.success({ title: 'Thành công', message: 'Đã lưu thành công!' });
     });
   },
 };
 
 export const LoadingModal = {
+  name: 'Loading (uses TdLoading)',
   render: () => `
     <button class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors"
             id="loading-modal-btn">
@@ -74,8 +76,8 @@ export const LoadingModal = {
   play: ({ canvasElement }) => {
     const btn = canvasElement.querySelector('#loading-modal-btn');
     btn.addEventListener('click', () => {
-      const loadId = TdModal.loading('Dang xu ly...');
-      setTimeout(() => TdModal.closeById(loadId), 2000);
+      TdLoading.show('Đang xử lý...');
+      setTimeout(() => TdLoading.hide(), 2000);
     });
   },
 };
@@ -92,13 +94,13 @@ export const StackedModals = {
     btn.addEventListener('click', () => {
       TdModal.show({
         title: 'Modal 1 — Background',
-        body: '<p class="text-gray-600">Day la modal dau tien. Modal thu hai se hien thi phia tren.</p>',
+        body: '<p class="text-gray-600">Đây là modal đầu tiên. Modal thứ hai sẽ hiển thị phía trên.</p>',
         size: 'lg',
       });
       setTimeout(() => {
         TdModal.show({
           title: 'Modal 2 — Foreground',
-          body: '<p class="text-gray-600">Day la modal thu hai, hien thi chong len modal dau tien.</p>',
+          body: '<p class="text-gray-600">Đây là modal thứ hai, hiển thị chồng lên modal đầu tiên.</p>',
           size: 'sm',
         });
       }, 300);

@@ -42,9 +42,15 @@ export class TdLoading {
                         <circle class="td-spinner-arc" cx="25" cy="25" r="20"></circle>
                     </svg>
                 </div>
-                <p id="td-loading-message" class="td-loading-message">Dang tai...</p>
+                <p id="td-loading-message" class="td-loading-message">Đang tải...</p>
             </div>
-            <style>
+        `;
+
+        // Inject styles into <head> so keyframes are always available
+        if (!document.getElementById('td-loading-styles')) {
+            const styleEl = document.createElement('style');
+            styleEl.id = 'td-loading-styles';
+            styleEl.textContent = `
                 .td-loading-card {
                     display: flex;
                     flex-direction: column;
@@ -125,8 +131,9 @@ export class TdLoading {
                         stroke-dashoffset: -35;
                     }
                 }
-            </style>
-        `;
+            `;
+            document.head.appendChild(styleEl);
+        }
 
         document.body.appendChild(overlay);
         TdLoading.element = overlay;
@@ -138,18 +145,18 @@ export class TdLoading {
      *   - String: loading message text
      *   - Object: { message, maxDuration } where maxDuration defaults to 30000ms
      */
-    static show(messageOrOptions = 'Dang tai...') {
+    static show(messageOrOptions = 'Đang tải...') {
         if (!TdLoading.element) {
             TdLoading.init();
         }
 
-        let message = 'Dang tai...';
+        let message = 'Đang tải...';
         let maxDuration = 30000;
 
         if (typeof messageOrOptions === 'string') {
             message = messageOrOptions;
         } else if (messageOrOptions && typeof messageOrOptions === 'object') {
-            message = messageOrOptions.message || 'Dang tai...';
+            message = messageOrOptions.message || 'Đang tải...';
             if ('maxDuration' in messageOrOptions) {
                 maxDuration = messageOrOptions.maxDuration;
             }
@@ -165,6 +172,7 @@ export class TdLoading {
         }
 
         TdLoading.element.classList.remove('hidden');
+        TdLoading.element.style.display = 'flex';
 
         // Set auto-hide timer if maxDuration is enabled
         if (maxDuration && maxDuration > 0) {
@@ -185,6 +193,7 @@ export class TdLoading {
         }
         if (TdLoading.element) {
             TdLoading.element.classList.add('hidden');
+            TdLoading.element.style.display = 'none';
         }
     }
 
@@ -195,7 +204,7 @@ export class TdLoading {
      * @param {string} message - Loading message
      * @returns {Promise<*>} Result of asyncFn
      */
-    static async wrap(asyncFn, message = 'Dang tai...') {
+    static async wrap(asyncFn, message = 'Đang tải...') {
         try {
             TdLoading.show(message);
             return await asyncFn();
