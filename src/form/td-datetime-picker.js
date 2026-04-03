@@ -177,12 +177,8 @@ export class TdDatetimePicker extends TdBaseElement {
           transparent 50%,
           rgba(248,249,250,0.1) 70%, rgba(248,249,250,0.9) 100%);
       }
-      .td-dtp-wheel {
-        scrollbar-width: none; -ms-overflow-style: none;
-        scroll-snap-type: y mandatory;
-      }
+      .td-dtp-wheel { scrollbar-width: none; -ms-overflow-style: none; }
       .td-dtp-wheel::-webkit-scrollbar { display: none; }
-      .td-dtp-wheel-option { scroll-snap-align: center; }
       .td-dtp-wheel-option:hover { color: #666; }
       .td-dtp-wheel-option.selected { font-size: 22px; font-weight: 600; color: #333; transform: scale(1.1); }
       .td-dtp-wheel-container::before {
@@ -244,19 +240,11 @@ export class TdDatetimePicker extends TdBaseElement {
         <h6 class="m-0 mb-3 text-sm font-semibold text-gray-600">Chọn giờ:</h6>
         <div class="flex items-center justify-center gap-5 py-5">
           <div class="td-dtp-wheel-container relative w-20 h-[200px] overflow-hidden rounded-lg">
-            <div class="td-dtp-wheel flex flex-col items-center overflow-y-auto" style="height:200px" id="td-dtp-${uid}-hour" data-type="hour">
-              <div class="td-dtp-wheel-spacer" style="min-height:80px;flex-shrink:0"></div>
-              ${hourOpts}
-              <div class="td-dtp-wheel-spacer" style="min-height:80px;flex-shrink:0"></div>
-            </div>
+            <div class="td-dtp-wheel flex flex-col items-center py-20 h-full overflow-y-auto scroll-smooth" id="td-dtp-${uid}-hour" data-type="hour">${hourOpts}</div>
           </div>
           <div class="text-2xl font-semibold text-gray-800 mx-2.5">:</div>
           <div class="td-dtp-wheel-container relative w-20 h-[200px] overflow-hidden rounded-lg">
-            <div class="td-dtp-wheel flex flex-col items-center overflow-y-auto" style="height:200px" id="td-dtp-${uid}-minute" data-type="minute">
-              <div class="td-dtp-wheel-spacer" style="min-height:80px;flex-shrink:0"></div>
-              ${minOpts}
-              <div class="td-dtp-wheel-spacer" style="min-height:80px;flex-shrink:0"></div>
-            </div>
+            <div class="td-dtp-wheel flex flex-col items-center py-20 h-full overflow-y-auto scroll-smooth" id="td-dtp-${uid}-minute" data-type="minute">${minOpts}</div>
           </div>
         </div>
       </div>
@@ -335,18 +323,23 @@ export class TdDatetimePicker extends TdBaseElement {
       const val = parseInt(opt.dataset.value, 10);
       if (type === 'hour') this._hour = val;
       else this._minute = val;
-      this._centerWheel(wheel, val, true);
+      this._centerWheel(wheel, val);
       this._updatePreview();
     });
 
-    // Scroll → detect closest option (CSS scroll-snap handles the snapping)
+    // Scroll → detect closest → snap to center
     let scrollTimer;
     wheel.addEventListener('scroll', () => {
-      if (wheel._programmaticScroll) return; // ignore during programmatic scroll
       clearTimeout(scrollTimer);
       scrollTimer = setTimeout(() => {
         this._updateWheelFromScroll(wheel, type);
-      }, 80);
+        // Snap: center the selected option after scroll stops
+        const selected = wheel.querySelector('.td-dtp-wheel-option.selected');
+        if (selected) {
+          const val = parseInt(selected.dataset.value, 10);
+          this._centerWheel(wheel, val);
+        }
+      }, 150);
     });
 
     // Center initial value
@@ -357,29 +350,21 @@ export class TdDatetimePicker extends TdBaseElement {
     }
   }
 
-  _centerWheel(wheel, value, smooth = false) {
+  _centerWheel(wheel, value) {
     const opt = wheel.querySelector(`[data-value="${value}"]`);
     if (!opt) return;
-    // Calculate: we want the option centered in the 200px container.
-    // opt.offsetTop is relative to the wheel's scrollable content.
-    // Container is 200px, option is 40px, so center = offsetTop - 80.
-    const containerHeight = wheel.parentElement.offsetHeight; // 200
-    const optionHeight = opt.offsetHeight; // 40
-    const targetScroll = opt.offsetTop - (containerHeight / 2) + (optionHeight / 2);
-    // Lock scroll listener during programmatic scroll
-    wheel._programmaticScroll = true;
-    wheel.scrollTo({ top: targetScroll, behavior: smooth ? 'smooth' : 'instant' });
-    setTimeout(() => { wheel._programmaticScroll = false; }, smooth ? 500 : 50);
+    const container = wheel.parentElement;
+    const scrollTop = opt.offsetTop - container.offsetHeight / 2 + opt.offsetHeight / 2;
+    wheel.scrollTo({ top: scrollTop, behavior: 'smooth' });
   }
 
   _updateWheelFromScroll(wheel, type) {
-    const containerHeight = wheel.parentElement.offsetHeight;
-    const scrollCenter = wheel.scrollTop + containerHeight / 2;
+    const container = wheel.parentElement;
+    const centerY = wheel.scrollTop + container.offsetHeight / 2;
     let closest = null, closestDist = Infinity;
 
     wheel.querySelectorAll('.td-dtp-wheel-option').forEach(opt => {
-      const optCenter = opt.offsetTop + opt.offsetHeight / 2;
-      const dist = Math.abs(optCenter - scrollCenter);
+      const dist = Math.abs(opt.offsetTop + opt.offsetHeight / 2 - centerY);
       if (dist < closestDist) { closestDist = dist; closest = opt; }
     });
 
@@ -433,12 +418,12 @@ export class TdDatetimePicker extends TdBaseElement {
     if (hourWheel) {
       hourWheel.querySelectorAll('.td-dtp-wheel-option').forEach(o => o.classList.remove('selected'));
       const hOpt = hourWheel.querySelector(`[data-value="${this._hour}"]`);
-      if (hOpt) { hOpt.classList.add('selected'); this._centerWheel(hourWheel, this._hour, true); }
+      if (hOpt) { hOpt.classList.add('selected'); this._centerWheel(hourWheel, this._hour); }
     }
     if (minWheel) {
       minWheel.querySelectorAll('.td-dtp-wheel-option').forEach(o => o.classList.remove('selected'));
       const mOpt = minWheel.querySelector(`[data-value="${this._minute}"]`);
-      if (mOpt) { mOpt.classList.add('selected'); this._centerWheel(minWheel, this._minute, true); }
+      if (mOpt) { mOpt.classList.add('selected'); this._centerWheel(minWheel, this._minute); }
     }
 
     this._updatePreview();
