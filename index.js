@@ -6,6 +6,7 @@ export { TdInputField } from './src/form/td-input-field.js';
 export { TdSlider } from './src/form/td-slider.js';
 export { TdDropdown } from './src/form/td-dropdown.js';
 export { TdDateTime } from './src/utils/datetime.js';
+export { TdDatetimePicker } from './src/form/td-datetime-picker.js';
 export { TdModalStackManager } from './src/feedback/td-modal-stack.js';
 export { TdModal } from './src/feedback/td-modal.js';
 export { TdToast } from './src/feedback/td-toast.js';
