@@ -18,7 +18,7 @@ import { TdModal } from '../feedback/td-modal.js';
  * @fires change - When date confirmed, detail: { value, dbValue }
  */
 export class TdDatetimePicker extends TdBaseElement {
-  static get observedAttributes() { return ['value', 'placeholder', 'disabled', 'label']; }
+  static get observedAttributes() { return ['value', 'placeholder', 'disabled', 'label', 'minute-step']; }
   static get booleanAttributes() { return ['disabled']; }
 
   static _nextId = 0;
@@ -86,6 +86,18 @@ export class TdDatetimePicker extends TdBaseElement {
     const h = String(this._hour ?? 0).padStart(2, '0');
     const mi = String(this._minute ?? 0).padStart(2, '0');
     return `${y}-${mo}-${d} ${h}:${mi}:00`;
+  }
+
+  /** Get minute step from attribute (default 1) */
+  _getMinuteStep() {
+    const step = parseInt(this.getAttribute('minute-step'), 10);
+    return (step > 0 && step <= 30 && 60 % step === 0) ? step : 1;
+  }
+
+  /** Snap minute to nearest step */
+  _snapMinute(minute) {
+    const step = this._getMinuteStep();
+    return Math.round(minute / step) * step % 60;
   }
 
   /** Validate date */
@@ -213,9 +225,13 @@ export class TdDatetimePicker extends TdBaseElement {
       return `<div class="td-dtp-wheel-option flex items-center justify-center w-full h-10 text-lg text-gray-400 cursor-pointer transition-all select-none${sel}" data-value="${i}">${String(i).padStart(2, '0')}</div>`;
     }).join('');
 
-    // Minute wheel (0-59)
-    const minOpts = Array.from({ length: 60 }, (_, i) => {
-      const sel = i === this._minute ? ' selected' : '';
+    // Minute wheel with step
+    const step = this._getMinuteStep();
+    const minuteValues = [];
+    for (let i = 0; i < 60; i += step) minuteValues.push(i);
+    const snappedMinute = this._snapMinute(this._minute ?? 0);
+    const minOpts = minuteValues.map(i => {
+      const sel = i === snappedMinute ? ' selected' : '';
       return `<div class="td-dtp-wheel-option flex items-center justify-center w-full h-10 text-lg text-gray-400 cursor-pointer transition-all select-none${sel}" data-value="${i}">${String(i).padStart(2, '0')}</div>`;
     }).join('');
 
@@ -311,16 +327,27 @@ export class TdDatetimePicker extends TdBaseElement {
       this._updatePreview();
     });
 
-    // Scroll to update
+    // Scroll → detect closest → snap to center
     let scrollTimer;
     wheel.addEventListener('scroll', () => {
       clearTimeout(scrollTimer);
-      scrollTimer = setTimeout(() => this._updateWheelFromScroll(wheel, type), 100);
+      scrollTimer = setTimeout(() => {
+        this._updateWheelFromScroll(wheel, type);
+        // Snap: center the selected option after scroll stops
+        const selected = wheel.querySelector('.td-dtp-wheel-option.selected');
+        if (selected) {
+          const val = parseInt(selected.dataset.value, 10);
+          this._centerWheel(wheel, val);
+        }
+      }, 150);
     });
 
-    // Center initial
-    const initVal = type === 'hour' ? this._hour : this._minute;
-    if (initVal !== null) this._centerWheel(wheel, initVal);
+    // Center initial value
+    const initVal = type === 'hour' ? this._hour : (this._snapMinute(this._minute ?? 0));
+    if (initVal !== null) {
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => this._centerWheel(wheel, initVal));
+    }
   }
 
   _centerWheel(wheel, value) {
@@ -375,7 +402,7 @@ export class TdDatetimePicker extends TdBaseElement {
     this._month = now.getMonth() + 1;
     this._year = now.getFullYear();
     this._hour = now.getHours();
-    this._minute = now.getMinutes();
+    this._minute = this._snapMinute(now.getMinutes());
 
     const uid = this._uid;
     const dayInput = document.getElementById(`td-dtp-${uid}-day`);
