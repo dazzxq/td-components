@@ -177,8 +177,12 @@ export class TdDatetimePicker extends TdBaseElement {
           transparent 50%,
           rgba(248,249,250,0.1) 70%, rgba(248,249,250,0.9) 100%);
       }
-      .td-dtp-wheel { scrollbar-width: none; -ms-overflow-style: none; }
+      .td-dtp-wheel {
+        scrollbar-width: none; -ms-overflow-style: none;
+        scroll-snap-type: y mandatory;
+      }
       .td-dtp-wheel::-webkit-scrollbar { display: none; }
+      .td-dtp-wheel-option { scroll-snap-align: center; }
       .td-dtp-wheel-option:hover { color: #666; }
       .td-dtp-wheel-option.selected { font-size: 22px; font-weight: 600; color: #333; transform: scale(1.1); }
       .td-dtp-wheel-container::before {
@@ -323,23 +327,17 @@ export class TdDatetimePicker extends TdBaseElement {
       const val = parseInt(opt.dataset.value, 10);
       if (type === 'hour') this._hour = val;
       else this._minute = val;
-      this._centerWheel(wheel, val);
+      this._centerWheel(wheel, val, true);
       this._updatePreview();
     });
 
-    // Scroll → detect closest → snap to center
+    // Scroll → detect closest option (CSS scroll-snap handles the snapping)
     let scrollTimer;
     wheel.addEventListener('scroll', () => {
       clearTimeout(scrollTimer);
       scrollTimer = setTimeout(() => {
         this._updateWheelFromScroll(wheel, type);
-        // Snap: center the selected option after scroll stops
-        const selected = wheel.querySelector('.td-dtp-wheel-option.selected');
-        if (selected) {
-          const val = parseInt(selected.dataset.value, 10);
-          this._centerWheel(wheel, val);
-        }
-      }, 150);
+      }, 80);
     });
 
     // Center initial value
@@ -350,12 +348,12 @@ export class TdDatetimePicker extends TdBaseElement {
     }
   }
 
-  _centerWheel(wheel, value) {
+  _centerWheel(wheel, value, smooth = false) {
     const opt = wheel.querySelector(`[data-value="${value}"]`);
     if (!opt) return;
     const container = wheel.parentElement;
     const scrollTop = opt.offsetTop - container.offsetHeight / 2 + opt.offsetHeight / 2;
-    wheel.scrollTo({ top: scrollTop, behavior: 'smooth' });
+    wheel.scrollTo({ top: scrollTop, behavior: smooth ? 'smooth' : 'instant' });
   }
 
   _updateWheelFromScroll(wheel, type) {
