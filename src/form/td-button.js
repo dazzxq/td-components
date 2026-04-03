@@ -175,7 +175,7 @@ export class TdButton extends TdBaseElement {
     baseClasses.push(sizeClass);
 
     if (isFullWidth) baseClasses.push('w-full');
-    if (isDisabled || isLoading) baseClasses.push('opacity-50 cursor-not-allowed pointer-events-none');
+    if (isDisabled || isLoading) baseClasses.push('opacity-50 cursor-not-allowed');
 
     // Variant classes (only when no custom color)
     if (!customColor) {

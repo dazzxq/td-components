@@ -156,6 +156,55 @@ export class TdToggle extends TdBaseElement {
     `;
   }
 
+  /**
+   * Override attributeChangedCallback to do lightweight DOM updates
+   * instead of full re-render for 'checked' and 'color' changes.
+   */
+  attributeChangedCallback(name, oldVal, newVal) {
+    if (oldVal === newVal) return;
+    if (!this._initialized) return;
+
+    if (name === 'checked') {
+      this._updateToggleState();
+      return;
+    }
+
+    if (name === 'color') {
+      this._injectStyle(newVal || '#4ADE80');
+      return;
+    }
+
+    // For other attributes (disabled, label, size), full re-render
+    this._doRender();
+  }
+
+  /**
+   * Lightweight DOM update for toggle state — no re-render, CSS transition plays.
+   * @private
+   */
+  _updateToggleState() {
+    const isChecked = this.hasAttribute('checked');
+    const track = this.querySelector('.td-toggle-track');
+    const thumb = this.querySelector('.td-toggle-thumb');
+    const crossIcon = this.querySelector('.td-toggle-icon:first-child');
+    const checkIcon = this.querySelector('.td-toggle-icon:last-child');
+
+    if (track) {
+      track.classList.toggle('td-toggle-track--active', isChecked);
+    }
+    if (thumb) {
+      thumb.classList.toggle('td-toggle-thumb--active', isChecked);
+    }
+    if (crossIcon) {
+      crossIcon.style.opacity = isChecked ? '0' : '1';
+      crossIcon.style.position = isChecked ? 'absolute' : 'static';
+    }
+    if (checkIcon) {
+      checkIcon.style.opacity = isChecked ? '1' : '0';
+      checkIcon.style.position = isChecked ? 'static' : 'absolute';
+    }
+  }
+
   afterRender() {
     const labelEl = this.querySelector('label');
     if (labelEl) {

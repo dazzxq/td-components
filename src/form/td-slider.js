@@ -213,18 +213,6 @@ export class TdSlider extends TdBaseElement {
       }
     });
 
-    // Hover effects (not during drag)
-    this.listen(this._input, 'mouseenter', () => {
-      if (!this.hasAttribute('disabled') && !this.isDragging) {
-        this._thumb.style.transform = 'translateY(-50%) scale(1.15)';
-      }
-    });
-
-    this.listen(this._input, 'mouseleave', () => {
-      if (!this.isDragging) {
-        this._thumb.style.transform = 'translateY(-50%) scale(1)';
-      }
-    });
   }
 
   // Override attributeChangedCallback to avoid full re-render during drag

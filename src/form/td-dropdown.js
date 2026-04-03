@@ -5,7 +5,7 @@ import { TdBaseElement } from '../base/td-base-element.js';
  * Port of dcms-dropdown.js to Web Component extending TdBaseElement.
  *
  * @element td-dropdown
- * @attr {string} placeholder - Placeholder text (default "Chon mot tuy chon")
+ * @attr {string} placeholder - Placeholder text (default "Chọn một tùy chọn")
  * @attr {boolean} searchable - Enable search filtering (default on)
  * @attr {boolean} disabled - Disable the dropdown
  * @attr {boolean} allow-clear - Show clear option when item selected (default on)
@@ -84,7 +84,7 @@ export class TdDropdown extends TdBaseElement {
 
   // --- Attribute helpers ---
 
-  _getPlaceholder() { return this.getAttribute('placeholder') || 'Chon mot tuy chon'; }
+  _getPlaceholder() { return this.getAttribute('placeholder') || 'Chọn một tùy chọn'; }
   _isSearchable() { return !this.hasAttribute('searchable') || this.hasAttribute('searchable'); }
   _isDisabled() { return this.hasAttribute('disabled'); }
   _isAllowClear() { return !this.hasAttribute('allow-clear') || this.hasAttribute('allow-clear'); }
@@ -132,6 +132,7 @@ export class TdDropdown extends TdBaseElement {
         -webkit-backdrop-filter: blur(16px) saturate(160%);
         border: 1px solid rgba(255,255,255,0.5);
         box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.9);
+        transition: none;
       `;
       document.body.appendChild(this._menuElement);
       this._cleanups.push(() => {
@@ -193,7 +194,7 @@ export class TdDropdown extends TdBaseElement {
             type="text"
             class="td-dropdown-search w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500/50 text-gray-900 placeholder-gray-400"
             style="border-color: rgba(0,0,0,0.08); background: rgba(255,255,255,0.5);"
-            placeholder="Tim kiem...">
+            placeholder="Tìm kiếm...">
         </div>
       ` : ''}
       <div class="td-dropdown-options py-1 overflow-y-auto" role="listbox" style="max-height: ${maxHeight * 40}px;">
@@ -225,14 +226,14 @@ export class TdDropdown extends TdBaseElement {
           class="td-dropdown-option td-dropdown-option-clear w-full text-left px-3 py-2 text-sm text-gray-500 hover:bg-black/5 hover:text-gray-700 focus:outline-none focus:bg-black/5 transition-colors border-b border-black/[0.06]"
           data-value="__CLEAR__">
           <div class="flex items-center justify-between">
-            <span class="truncate">&#10005; Khong chon</span>
+            <span class="truncate">&#10005; Không chọn</span>
           </div>
         </button>
       `;
     }
 
     if (this._filteredData.length === 0) {
-      return clearHtml + `<div class="px-3 py-2 text-sm text-gray-500 italic">Khong tim thay ket qua</div>`;
+      return clearHtml + `<div class="px-3 py-2 text-sm text-gray-500 italic">Không tìm thấy kết quả</div>`;
     }
 
     const optionsHtml = this._filteredData.map((item, index) => {
