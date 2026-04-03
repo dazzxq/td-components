@@ -69,16 +69,16 @@ export class TdTabs extends TdBaseElement {
       return `
         <button
           type="button"
-          class="td-tab-btn flex-1 ${s.padding} ${s.text} font-medium rounded-lg transition-all duration-200 ${isActive ? '' : 'text-gray-500 hover:text-gray-700 hover:bg-white/50'}"
+          class="td-tab-btn flex-1 ${s.padding} ${s.text} font-medium rounded-lg transition-colors duration-200 ${isActive ? 'text-gray-800' : 'text-gray-500 hover:text-gray-700'}"
           data-tab-id="${this.escapeHtml(tab.id)}"
-          ${isActive ? `style="background: rgba(255, 255, 255, 0.9); color: #1f2937; box-shadow: 0 1px 3px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9);"` : ''}
+          style="position: relative; z-index: 1; background: transparent;"
         >${iconHtml}${this.escapeHtml(tab.label)}</button>
       `;
     }).join('');
 
     return `<div class="td-tabs-container flex gap-1 p-1 rounded-xl" style="position: relative; background: rgba(0, 0, 0, 0.04);">
+      <div class="td-tabs-indicator" style="position: absolute; top: 4px; bottom: 4px; border-radius: 8px; background: rgba(255,255,255,0.9); box-shadow: 0 1px 3px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9); transition: left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); width: 0; opacity: 0; z-index: 0;"></div>
       ${tabsHtml}
-      <div class="td-tabs-indicator" style="position: absolute; bottom: 2px; height: 2px; border-radius: 1px; background: #1f2937; transition: left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); width: 0; opacity: 0;"></div>
     </div>`;
   }
 
@@ -143,15 +143,15 @@ export class TdTabs extends TdBaseElement {
     // Deactivate previous
     const prevBtn = this._tabButtons.get(this._activeTabId);
     if (prevBtn) {
-      prevBtn.style.cssText = '';
-      prevBtn.classList.add('text-gray-500', 'hover:text-gray-700', 'hover:bg-white/50');
+      prevBtn.classList.remove('text-gray-800');
+      prevBtn.classList.add('text-gray-500', 'hover:text-gray-700');
     }
 
     // Activate new
     const newBtn = this._tabButtons.get(tabId);
     if (newBtn) {
-      newBtn.style.cssText = 'background: rgba(255, 255, 255, 0.9); color: #1f2937; box-shadow: 0 1px 3px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9);';
-      newBtn.classList.remove('text-gray-500', 'hover:text-gray-700', 'hover:bg-white/50');
+      newBtn.classList.add('text-gray-800');
+      newBtn.classList.remove('text-gray-500', 'hover:text-gray-700');
     }
 
     this._activeTabId = tabId;

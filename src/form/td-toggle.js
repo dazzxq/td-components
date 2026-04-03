@@ -36,16 +36,26 @@ export class TdToggle extends TdBaseElement {
     return this.getAttribute('color') || '#4ADE80';
   }
 
-  /** @private */
-  _parseHexToRgb(hex) {
-    if (!hex || !hex.startsWith('#')) return { r: 74, g: 222, b: 128 };
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    if (!result) return { r: 74, g: 222, b: 128 };
-    return {
-      r: parseInt(result[1], 16),
-      g: parseInt(result[2], 16),
-      b: parseInt(result[3], 16),
-    };
+  /** @private - Convert any CSS color to RGB using computed style */
+  _parseHexToRgb(color) {
+    if (!color) return { r: 74, g: 222, b: 128 };
+    // Try hex first
+    if (color.startsWith('#')) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(color);
+      if (result) return { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) };
+      // Short hex (#abc)
+      const short = /^#?([a-f\d])([a-f\d])([a-f\d])$/i.exec(color);
+      if (short) return { r: parseInt(short[1]+short[1], 16), g: parseInt(short[2]+short[2], 16), b: parseInt(short[3]+short[3], 16) };
+    }
+    // Named colors / rgb() / etc — use computed style
+    const temp = document.createElement('div');
+    temp.style.color = color;
+    document.body.appendChild(temp);
+    const computed = getComputedStyle(temp).color;
+    document.body.removeChild(temp);
+    const m = computed.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+    if (m) return { r: parseInt(m[1]), g: parseInt(m[2]), b: parseInt(m[3]) };
+    return { r: 74, g: 222, b: 128 };
   }
 
   /** @private */
@@ -171,6 +181,9 @@ export class TdToggle extends TdBaseElement {
 
     if (name === 'color') {
       this._injectStyle(newVal || '#4ADE80');
+      // Also update check icon stroke color
+      const checkIcon = this.querySelector('.td-toggle-icon:last-child path');
+      if (checkIcon) checkIcon.setAttribute('stroke', newVal || '#4ADE80');
       return;
     }
 

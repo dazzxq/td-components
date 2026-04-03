@@ -357,9 +357,9 @@ export class TdTooltip {
                 left = anchorCenterX - (tipRect.width / 2);
                 top = elBottom + offset;
                 if (this.tooltipArrow) {
-                    // Arrow points up
+                    // Arrow points up — flush with tooltip top edge
                     this.tooltipArrow.style.borderColor = `transparent transparent ${bgColor} transparent`;
-                    this.tooltipArrow.style.top = `${-arrowSize * 2}px`;
+                    this.tooltipArrow.style.top = `${-arrowSize * 2 + 1}px`;
                     this.tooltipArrow.style.left = `${Math.round(tipRect.width / 2 - arrowSize)}px`;
                 }
                 break;
@@ -367,20 +367,20 @@ export class TdTooltip {
                 left = elLeft - tipRect.width - offset;
                 top = anchorCenterY - (tipRect.height / 2);
                 if (this.tooltipArrow) {
-                    // Arrow points right
+                    // Arrow points right — flush with tooltip right edge
                     this.tooltipArrow.style.borderColor = `transparent transparent transparent ${bgColor}`;
                     this.tooltipArrow.style.top = `${Math.round(tipRect.height / 2 - arrowSize)}px`;
-                    this.tooltipArrow.style.left = `${Math.round(tipRect.width)}px`;
+                    this.tooltipArrow.style.left = `${tipRect.width - 1}px`;
                 }
                 break;
             case 'right':
                 left = elRight + offset;
                 top = anchorCenterY - (tipRect.height / 2);
                 if (this.tooltipArrow) {
-                    // Arrow points left
+                    // Arrow points left — flush with tooltip left edge
                     this.tooltipArrow.style.borderColor = `transparent ${bgColor} transparent transparent`;
                     this.tooltipArrow.style.top = `${Math.round(tipRect.height / 2 - arrowSize)}px`;
-                    this.tooltipArrow.style.left = `${-arrowSize * 2}px`;
+                    this.tooltipArrow.style.left = `${-arrowSize * 2 + 1}px`;
                 }
                 break;
             case 'top':
@@ -388,9 +388,9 @@ export class TdTooltip {
                 left = anchorCenterX - (tipRect.width / 2);
                 top = elTop - tipRect.height - offset;
                 if (this.tooltipArrow) {
-                    // Arrow points down
+                    // Arrow points down — flush with tooltip bottom edge
                     this.tooltipArrow.style.borderColor = `${bgColor} transparent transparent transparent`;
-                    this.tooltipArrow.style.top = `${Math.round(tipRect.height)}px`;
+                    this.tooltipArrow.style.top = `${tipRect.height - 1}px`;
                     this.tooltipArrow.style.left = `${Math.round(tipRect.width / 2 - arrowSize)}px`;
                 }
         }
