@@ -64,7 +64,7 @@ Plans:
 
 Plans:
 - [ ] 03-01-PLAN.md — Modal + ModalStackManager (stacking, focus trap, Promise API, animations)
-- [ ] 03-02-PLAN.md — Toast notifications + Loading overlay/spinner
+- [x] 03-02-PLAN.md — Toast notifications + Loading overlay/spinner
 - [ ] 03-03-PLAN.md — Tooltip auto-init singleton + package exports wiring
 
 ### Phase 4: Display & Stories

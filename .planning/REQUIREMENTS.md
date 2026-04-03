@@ -27,9 +27,9 @@
 
 - [ ] **FEED-01**: Modal — stacked modals, focus trap, backdrop click, entrance/exit animation
 - [ ] **FEED-02**: Modal Stack Manager — z-index management, body scroll lock, backdrop opacity
-- [ ] **FEED-03**: Toast — 4 variants (success/error/warning/info), auto-dismiss, max 5 visible, FIFO
+- [x] **FEED-03**: Toast — 4 variants (success/error/warning/info), auto-dismiss, max 5 visible, FIFO
 - [ ] **FEED-04**: Tooltip — auto-positioning, arrow, global singleton, custom color
-- [ ] **FEED-05**: Loading — fullscreen overlay + inline spinner, auto-hide with maxDuration
+- [x] **FEED-05**: Loading — fullscreen overlay + inline spinner, auto-hide with maxDuration
 
 ### Display
 
@@ -99,9 +99,9 @@
 | UTIL-01 | Phase 2 | Complete |
 | FEED-01 | Phase 3 | Pending |
 | FEED-02 | Phase 3 | Pending |
-| FEED-03 | Phase 3 | Pending |
+| FEED-03 | Phase 3 | Complete |
 | FEED-04 | Phase 3 | Pending |
-| FEED-05 | Phase 3 | Pending |
+| FEED-05 | Phase 3 | Complete |
 | DISP-01 | Phase 4 | Pending |
 | DISP-02 | Phase 4 | Pending |
 | DISP-03 | Phase 4 | Pending |
