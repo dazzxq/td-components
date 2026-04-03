@@ -45,7 +45,7 @@
 ### Developer Experience
 
 - [x] **DX-01**: Storybook setup voi @storybook/web-components-vite + Tailwind
-- [ ] **DX-02**: Storybook stories cho moi component voi controls va composition examples
+- [x] **DX-02**: Storybook stories cho moi component voi controls va composition examples
 - [x] **DX-03**: Granular import — `import 'td-components/toggle'` chi load toggle
 - [x] **DX-04**: README huong dan install, Tailwind config (content path), usage
 
@@ -106,7 +106,7 @@
 | DISP-02 | Phase 4 | Complete |
 | DISP-03 | Phase 4 | Complete |
 | DISP-04 | Phase 4 | Complete |
-| DX-02 | Phase 4 | Pending |
+| DX-02 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 26 total
