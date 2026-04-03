@@ -244,11 +244,19 @@ export class TdDatetimePicker extends TdBaseElement {
         <h6 class="m-0 mb-3 text-sm font-semibold text-gray-600">Chọn giờ:</h6>
         <div class="flex items-center justify-center gap-5 py-5">
           <div class="td-dtp-wheel-container relative w-20 h-[200px] overflow-hidden rounded-lg">
-            <div class="td-dtp-wheel flex flex-col items-center py-20 h-full overflow-y-auto scroll-smooth" id="td-dtp-${uid}-hour" data-type="hour">${hourOpts}</div>
+            <div class="td-dtp-wheel flex flex-col items-center overflow-y-auto" id="td-dtp-${uid}-hour" data-type="hour">
+              <div class="td-dtp-wheel-spacer" style="min-height:80px;flex-shrink:0"></div>
+              ${hourOpts}
+              <div class="td-dtp-wheel-spacer" style="min-height:80px;flex-shrink:0"></div>
+            </div>
           </div>
           <div class="text-2xl font-semibold text-gray-800 mx-2.5">:</div>
           <div class="td-dtp-wheel-container relative w-20 h-[200px] overflow-hidden rounded-lg">
-            <div class="td-dtp-wheel flex flex-col items-center py-20 h-full overflow-y-auto scroll-smooth" id="td-dtp-${uid}-minute" data-type="minute">${minOpts}</div>
+            <div class="td-dtp-wheel flex flex-col items-center overflow-y-auto" id="td-dtp-${uid}-minute" data-type="minute">
+              <div class="td-dtp-wheel-spacer" style="min-height:80px;flex-shrink:0"></div>
+              ${minOpts}
+              <div class="td-dtp-wheel-spacer" style="min-height:80px;flex-shrink:0"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -352,22 +360,26 @@ export class TdDatetimePicker extends TdBaseElement {
   _centerWheel(wheel, value, smooth = false) {
     const opt = wheel.querySelector(`[data-value="${value}"]`);
     if (!opt) return;
-    const container = wheel.parentElement;
-    const scrollTop = opt.offsetTop - container.offsetHeight / 2 + opt.offsetHeight / 2;
-    // Lock scroll listener during programmatic scroll to prevent fighting
+    // Calculate: we want the option centered in the 200px container.
+    // opt.offsetTop is relative to the wheel's scrollable content.
+    // Container is 200px, option is 40px, so center = offsetTop - 80.
+    const containerHeight = wheel.parentElement.offsetHeight; // 200
+    const optionHeight = opt.offsetHeight; // 40
+    const targetScroll = opt.offsetTop - (containerHeight / 2) + (optionHeight / 2);
+    // Lock scroll listener during programmatic scroll
     wheel._programmaticScroll = true;
-    wheel.scrollTo({ top: scrollTop, behavior: smooth ? 'smooth' : 'instant' });
-    // Unlock after animation completes
-    setTimeout(() => { wheel._programmaticScroll = false; }, smooth ? 400 : 50);
+    wheel.scrollTo({ top: targetScroll, behavior: smooth ? 'smooth' : 'instant' });
+    setTimeout(() => { wheel._programmaticScroll = false; }, smooth ? 500 : 50);
   }
 
   _updateWheelFromScroll(wheel, type) {
-    const container = wheel.parentElement;
-    const centerY = wheel.scrollTop + container.offsetHeight / 2;
+    const containerHeight = wheel.parentElement.offsetHeight;
+    const scrollCenter = wheel.scrollTop + containerHeight / 2;
     let closest = null, closestDist = Infinity;
 
     wheel.querySelectorAll('.td-dtp-wheel-option').forEach(opt => {
-      const dist = Math.abs(opt.offsetTop + opt.offsetHeight / 2 - centerY);
+      const optCenter = opt.offsetTop + opt.offsetHeight / 2;
+      const dist = Math.abs(optCenter - scrollCenter);
       if (dist < closestDist) { closestDist = dist; closest = opt; }
     });
 
