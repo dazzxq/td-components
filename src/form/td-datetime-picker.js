@@ -244,7 +244,7 @@ export class TdDatetimePicker extends TdBaseElement {
         <h6 class="m-0 mb-3 text-sm font-semibold text-gray-600">Chọn giờ:</h6>
         <div class="flex items-center justify-center gap-5 py-5">
           <div class="td-dtp-wheel-container relative w-20 h-[200px] overflow-hidden rounded-lg">
-            <div class="td-dtp-wheel flex flex-col items-center overflow-y-auto" id="td-dtp-${uid}-hour" data-type="hour">
+            <div class="td-dtp-wheel flex flex-col items-center overflow-y-auto" style="height:200px" id="td-dtp-${uid}-hour" data-type="hour">
               <div class="td-dtp-wheel-spacer" style="min-height:80px;flex-shrink:0"></div>
               ${hourOpts}
               <div class="td-dtp-wheel-spacer" style="min-height:80px;flex-shrink:0"></div>
@@ -252,7 +252,7 @@ export class TdDatetimePicker extends TdBaseElement {
           </div>
           <div class="text-2xl font-semibold text-gray-800 mx-2.5">:</div>
           <div class="td-dtp-wheel-container relative w-20 h-[200px] overflow-hidden rounded-lg">
-            <div class="td-dtp-wheel flex flex-col items-center overflow-y-auto" id="td-dtp-${uid}-minute" data-type="minute">
+            <div class="td-dtp-wheel flex flex-col items-center overflow-y-auto" style="height:200px" id="td-dtp-${uid}-minute" data-type="minute">
               <div class="td-dtp-wheel-spacer" style="min-height:80px;flex-shrink:0"></div>
               ${minOpts}
               <div class="td-dtp-wheel-spacer" style="min-height:80px;flex-shrink:0"></div>
