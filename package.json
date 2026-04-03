@@ -18,7 +18,12 @@
     "./input-field": "./src/form/td-input-field.js",
     "./slider": "./src/form/td-slider.js",
     "./dropdown": "./src/form/td-dropdown.js",
-    "./datetime": "./src/utils/datetime.js"
+    "./datetime": "./src/utils/datetime.js",
+    "./modal": "./src/feedback/td-modal.js",
+    "./modal-stack": "./src/feedback/td-modal-stack.js",
+    "./toast": "./src/feedback/td-toast.js",
+    "./tooltip": "./src/feedback/td-tooltip.js",
+    "./loading": "./src/feedback/td-loading.js"
   },
   "files": [
     "src",
