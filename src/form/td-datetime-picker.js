@@ -416,12 +416,12 @@ export class TdDatetimePicker extends TdBaseElement {
     if (hourWheel) {
       hourWheel.querySelectorAll('.td-dtp-wheel-option').forEach(o => o.classList.remove('selected'));
       const hOpt = hourWheel.querySelector(`[data-value="${this._hour}"]`);
-      if (hOpt) { hOpt.classList.add('selected'); this._centerWheel(hourWheel, this._hour); }
+      if (hOpt) { hOpt.classList.add('selected'); this._centerWheel(hourWheel, this._hour, true); }
     }
     if (minWheel) {
       minWheel.querySelectorAll('.td-dtp-wheel-option').forEach(o => o.classList.remove('selected'));
       const mOpt = minWheel.querySelector(`[data-value="${this._minute}"]`);
-      if (mOpt) { mOpt.classList.add('selected'); this._centerWheel(minWheel, this._minute); }
+      if (mOpt) { mOpt.classList.add('selected'); this._centerWheel(minWheel, this._minute, true); }
     }
 
     this._updatePreview();
