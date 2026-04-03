@@ -76,12 +76,14 @@ Plans:
   2. Tabs component switches content panels with icon+label support and smooth transitions
   3. Pagination renders page navigation with ellipsis, info text, and custom active color
   4. Every component in the library has a Storybook story with controls and at least one composition example
-**Plans**: TBD
+**Plans:** 4 plans
 **UI hint**: yes
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
+- [ ] 04-01-PLAN.md — Pagination + Empty State components with stories
+- [ ] 04-02-PLAN.md — Tabs component with stories
+- [ ] 04-03-PLAN.md — Table component with integrated pagination and stories
+- [ ] 04-04-PLAN.md — Feedback stories, composition examples, package exports wiring
 
 ## Progress
 
@@ -93,4 +95,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | 1. Foundation | 0/2 | Not started | - |
 | 2. Form Controls | 0/4 | Not started | - |
 | 3. Feedback & Overlay | 2/3 | In Progress|  |
-| 4. Display & Stories | 0/2 | Not started | - |
+| 4. Display & Stories | 0/4 | Not started | - |
