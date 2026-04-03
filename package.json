@@ -23,7 +23,11 @@
     "./modal-stack": "./src/feedback/td-modal-stack.js",
     "./toast": "./src/feedback/td-toast.js",
     "./tooltip": "./src/feedback/td-tooltip.js",
-    "./loading": "./src/feedback/td-loading.js"
+    "./loading": "./src/feedback/td-loading.js",
+    "./table": "./src/display/td-table.js",
+    "./tabs": "./src/display/td-tabs.js",
+    "./pagination": "./src/display/td-pagination.js",
+    "./empty-state": "./src/display/td-empty-state.js"
   },
   "files": [
     "src",

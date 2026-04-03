@@ -11,3 +11,7 @@ export { TdModal } from './src/feedback/td-modal.js';
 export { TdToast } from './src/feedback/td-toast.js';
 export { TdTooltip, tdTooltip } from './src/feedback/td-tooltip.js';
 export { TdLoading, TdLoadingSpinner } from './src/feedback/td-loading.js';
+export { TdTable } from './src/display/td-table.js';
+export { TdTabs } from './src/display/td-tabs.js';
+export { TdPagination } from './src/display/td-pagination.js';
+export { TdEmptyState } from './src/display/td-empty-state.js';
