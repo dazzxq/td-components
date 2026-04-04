@@ -14,6 +14,7 @@ Migrate 22 DCMS components from global namespace JS to a shared Web Components l
 - [ ] **Phase 2: Form Controls** - Toggle, button, checkbox, input, slider, dropdown, datetime
 - [ ] **Phase 3: Feedback & Overlay** - Modal stack, toast, tooltip, loading
 - [ ] **Phase 4: Display & Stories** - Table, tabs, pagination, empty state, complete Storybook coverage
+- [ ] **Phase 5: Tailwind v4 Migration** - Remove v3 remnants, fix renamed classes, update peerDependencies, update README
 
 ## Phase Details
 
@@ -85,10 +86,26 @@ Plans:
 - [x] 04-03-PLAN.md — Table component with integrated pagination and stories
 - [x] 04-04-PLAN.md — Feedback stories, composition examples, package exports wiring
 
+### Phase 5: đổi sang tailwind v4 cho tôi đi mà ko làm break mọi thứ
+**Goal**: Complete Tailwind v3-to-v4 migration: fix renamed utility classes, delete v3 config, update peerDependencies and README for v4 consumers
+**Depends on:** Phase 4
+**Requirements**: TW4-01, TW4-02, TW4-03, TW4-04, TW4-05
+**Success Criteria** (what must be TRUE):
+  1. All component Tailwind classes produce the same visual output under v4 as they did under v3
+  2. No v3 config remnants (tailwind.config.js deleted, autoprefixer removed)
+  3. peerDependencies require Tailwind v4+
+  4. README documents v4 consumer setup with @source directive
+  5. Storybook renders all components correctly
+**Plans:** 2 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Fix renamed utility classes, delete v3 config, update package.json
+- [ ] 05-02-PLAN.md — Update README with v4 consumer instructions, Storybook visual verification
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -96,3 +113,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | 2. Form Controls | 0/4 | Not started | - |
 | 3. Feedback & Overlay | 2/3 | In Progress|  |
 | 4. Display & Stories | 2/4 | In Progress | - |
+| 5. Tailwind v4 Migration | 0/2 | Not started | - |
