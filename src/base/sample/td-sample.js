@@ -20,11 +20,11 @@ export class TdSample extends TdBaseElement {
     const isDisabled = this.hasAttribute('disabled');
 
     return `
-      <div class="p-4 border rounded-lg shadow-sm">
+      <div class="p-4 border border-gray-200 rounded-lg shadow-xs">
         <h3 class="text-lg font-bold">${label}</h3>
         <p class="mt-1 text-gray-600">Count: ${count}</p>
         <button
-          class="mt-2 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+          class="mt-2 px-3 py-1 bg-blue-500 text-white rounded-sm hover:bg-blue-600 disabled:opacity-50"
           ${isDisabled ? 'disabled' : ''}
         >Increment</button>
       </div>

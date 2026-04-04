@@ -202,20 +202,20 @@ export class TdDatetimePicker extends TdBaseElement {
           <div class="flex flex-col">
             <label class="text-xs font-medium text-gray-500 mb-1">Ngày</label>
             <input type="number" id="td-dtp-${uid}-day" min="1" max="31" value="${this._day || 1}"
-              class="px-2 py-2 border border-gray-300 rounded text-sm text-center focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"/>
+              class="px-2 py-2 border border-gray-300 rounded-sm text-sm text-center focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"/>
           </div>
           <div class="flex flex-col">
             <label class="text-xs font-medium text-gray-500 mb-1">Tháng</label>
             <input type="number" id="td-dtp-${uid}-month" min="1" max="12" value="${this._month || 1}"
-              class="px-2 py-2 border border-gray-300 rounded text-sm text-center focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"/>
+              class="px-2 py-2 border border-gray-300 rounded-sm text-sm text-center focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"/>
           </div>
           <div class="flex flex-col">
             <label class="text-xs font-medium text-gray-500 mb-1">Năm</label>
             <input type="number" id="td-dtp-${uid}-year" min="2000" max="2099" value="${this._year || new Date().getFullYear()}"
-              class="px-2 py-2 border border-gray-300 rounded text-sm text-center focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"/>
+              class="px-2 py-2 border border-gray-300 rounded-sm text-sm text-center focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"/>
           </div>
         </div>
-        <div id="td-dtp-${uid}-error" class="mt-2 px-2 py-1.5 bg-red-100 border border-red-200 rounded text-xs text-red-800 hidden"></div>
+        <div id="td-dtp-${uid}-error" class="mt-2 px-2 py-1.5 bg-red-100 border border-red-200 rounded-sm text-xs text-red-800 hidden"></div>
       </div>
     `;
 
@@ -251,7 +251,7 @@ export class TdDatetimePicker extends TdBaseElement {
     `;
 
     const previewHtml = `
-      <div class="mt-4 px-3 py-2 bg-gray-50 border border-gray-200 rounded text-center text-sm font-bold text-gray-600">
+      <div class="mt-4 px-3 py-2 bg-gray-50 border border-gray-200 rounded-sm text-center text-sm font-bold text-gray-600">
         <span id="td-dtp-${uid}-preview">${this._formatDisplay()}</span>
       </div>
     `;

@@ -224,7 +224,7 @@ export class TdTable extends TdBaseElement {
       const cells = columns.map(col => {
         const style = this._getColumnWidthStyle(col);
         const w = Math.round(Math.random() * 40 + 60);
-        return `<td class="px-6 py-4" style="${style}"><div class="h-4 bg-gray-200 rounded animate-pulse" style="width:${w}%"></div></td>`;
+        return `<td class="px-6 py-4" style="${style}"><div class="h-4 bg-gray-200 rounded-sm animate-pulse" style="width:${w}%"></div></td>`;
       }).join('');
       bodyRows += `<tr${zebraClass}>${cells}</tr>`;
     }
@@ -232,8 +232,8 @@ export class TdTable extends TdBaseElement {
     return `
       <div class="rounded-xl overflow-hidden" style="background:rgba(255,255,255,0.85);border:1px solid rgba(0,0,0,0.06);box-shadow:0 1px 3px rgba(0,0,0,0.08),0 4px 16px rgba(0,0,0,0.04),inset 0 1px 0 rgba(255,255,255,0.9);">
         <div class="flex items-center justify-between px-6 py-4" style="border-bottom:1px solid rgba(0,0,0,0.06);box-shadow:inset 0 -1px 0 rgba(255,255,255,0.5);">
-          ${titleText ? `<div class="h-6 w-32 bg-gray-200 rounded animate-pulse"></div>` : '<div></div>'}
-          <div class="h-8 w-64 bg-gray-200 rounded animate-pulse"></div>
+          ${titleText ? `<div class="h-6 w-32 bg-gray-200 rounded-sm animate-pulse"></div>` : '<div></div>'}
+          <div class="h-8 w-64 bg-gray-200 rounded-sm animate-pulse"></div>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full">
@@ -244,7 +244,7 @@ export class TdTable extends TdBaseElement {
           </table>
         </div>
         <div class="flex items-center justify-end px-6 py-4" style="border-top:1px solid rgba(0,0,0,0.06);background:rgba(249,250,251,0.5);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);">
-          <div class="h-8 w-64 bg-gray-200 rounded animate-pulse"></div>
+          <div class="h-8 w-64 bg-gray-200 rounded-sm animate-pulse"></div>
         </div>
       </div>
     `;
