@@ -10,19 +10,28 @@ No Shadow DOM -- components use Tailwind classes from your host page. No framewo
 npm install github:dazzxq/td-components
 ```
 
-## Tailwind Configuration
+## Tailwind Configuration (v4)
 
-Add the component source files to your `tailwind.config.js` content array. This is **required** -- without it, Tailwind will purge the CSS classes used by components and they will render without styles.
+This library requires **Tailwind CSS v4+**. Add the component source to your CSS so Tailwind scans component classes (v4 excludes `node_modules` by default).
+
+```css
+/* your main CSS file */
+@import "tailwindcss";
+@source "../node_modules/@dazzxq/td-components/src";
+```
+
+Your PostCSS config should use the v4 plugin:
 
 ```js
-// tailwind.config.js
+// postcss.config.js
 export default {
-  content: [
-    // ... your project files
-    './node_modules/@dazzxq/td-components/src/**/*.js',
-  ],
+  plugins: {
+    '@tailwindcss/postcss': {},
+  },
 };
 ```
+
+> **Migrating from v3?** Replace your v3 config content array with the `@source` directive above. See the [Tailwind v4 upgrade guide](https://tailwindcss.com/docs/upgrade-guide) for details.
 
 ## Usage
 
