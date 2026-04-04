@@ -99,7 +99,7 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Fix renamed utility classes, delete v3 config, update package.json
+- [x] 05-01-PLAN.md — Fix renamed utility classes, delete v3 config, update package.json
 - [ ] 05-02-PLAN.md — Update README with v4 consumer instructions, Storybook visual verification
 
 ## Progress
