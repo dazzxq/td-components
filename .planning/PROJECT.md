@@ -47,7 +47,7 @@ Drop vào bất kỳ project nào, import component cần dùng, chạy ngay —
 ## Constraints
 
 - **No Shadow DOM**: Components phải dùng được Tailwind classes từ host page
-- **No build step bắt buộc**: Project import vào chỉ cần có Vite (hoặc bundler tương đương) và Tailwind
+- **No build step bắt buộc**: Project import vào chỉ cần có Vite (hoặc bundler tương đương) và Tailwind v4+
 - **Backward compatible concept**: Các component mới phải cover cùng functionality như DCMS components gốc
 - **Solo dev**: Không over-engineer, giữ simple
 
@@ -80,4 +80,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-31 after initialization*
+*Last updated: 2026-04-04 after Phase 5 (Tailwind v4 migration) completion*
