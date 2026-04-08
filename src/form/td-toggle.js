@@ -148,8 +148,8 @@ export class TdToggle extends TdBaseElement {
     const disabledClass = isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer';
 
     return `
-      <div class="flex items-center gap-3">
-        <label class="${this._uniqueClass} relative inline-block ${disabledClass}">
+      <div class="flex items-center gap-2" style="line-height:1">
+        <label class="${this._uniqueClass} relative inline-flex items-center ${disabledClass}" style="vertical-align:middle">
           <div class="td-toggle-track${trackActive}">
             <div class="td-toggle-thumb${thumbActive}">
               <svg viewBox="0 0 12 12" fill="none" class="td-toggle-icon" style="opacity:${crossOpacity};position:${crossPosition}">
@@ -161,7 +161,7 @@ export class TdToggle extends TdBaseElement {
             </div>
           </div>
         </label>
-        ${label ? `<span class="text-sm font-medium text-gray-700 select-none">${label}</span>` : ''}
+        ${label ? `<span class="text-sm font-medium text-gray-700 select-none" style="line-height:${s.height}px">${label}</span>` : ''}
       </div>
     `;
   }
@@ -226,11 +226,12 @@ export class TdToggle extends TdBaseElement {
         if (this.hasAttribute('disabled')) return;
 
         const isChecked = this.hasAttribute('checked');
-        if (isChecked) {
-          this.removeAttribute('checked');
-        } else {
-          this.setAttribute('checked', '');
-        }
+
+        // Only emit event — do NOT toggle state here.
+        // The consumer is responsible for setting/removing the checked attribute
+        // after confirming the action or receiving API success.
+        // This prevents the toggle from flipping when the user cancels a confirm
+        // dialog or when the API call fails.
         this.emit('change', { checked: !isChecked });
       });
     }
