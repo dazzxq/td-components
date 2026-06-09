@@ -1,9 +1,95 @@
 import { TdFormElement } from '../base/td-form-element.js';
+import { adoptStyles } from '../utils/adopt-styles.js';
+import { applyStyles } from '../utils/css-safe.js';
+
+/**
+ * Static stylesheet for td-checkbox, adopted ONCE per document via a constructable
+ * `CSSStyleSheet` (CSP-strict: no injected `<style>`, no `style="…"`). These rules are
+ * SHARED across every instance, so they key off STABLE, element-scoped selectors
+ * (`td-checkbox .td-checkmark`, …) — never a per-instance random class.
+ *
+ * What lives here (and ONLY here):
+ *  - the `:checked ~` SIBLING combinators that style the checkmark/icon LIVE off the
+ *    native `<input>:checked` state (CSSOM cannot express a selector/combinator), so
+ *    toggling needs no re-render;
+ *  - the static box/icon/label appearance that does NOT vary per instance.
+ *
+ * Per-instance DYNAMIC values are NOT here — they are applied via CSSOM in `_applyStyles`:
+ *  - the checked color is the custom property `--td-cb-color` (set on the host),
+ *    referenced by the `:checked ~ .td-checkmark` rule below;
+ *  - the size-driven px scalars (box/icon width-height, label padding/min-height/font-size,
+ *    label line-height) are set directly on the target child elements.
+ * @private
+ */
+const TD_CHECKBOX_CSS = `
+  td-checkbox .td-checkbox {
+    display: inline-flex;
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+    align-items: center;
+    vertical-align: middle;
+  }
+  td-checkbox .td-checkbox.td-checkbox--disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  td-checkbox .td-checkbox-input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+  }
+  td-checkbox .td-checkmark {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    background-color: rgba(0, 0, 0, 0.04);
+    border: 1.5px solid rgba(0, 0, 0, 0.12);
+    border-radius: 6px;
+    transition: background-color 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                border-color 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                box-shadow 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  td-checkbox .td-checkbox-input:checked ~ .td-checkmark {
+    background-color: var(--td-cb-color, #2196F3);
+    border-color: var(--td-cb-color, #2196F3);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+  td-checkbox .td-checkmark-icon {
+    opacity: 0;
+    transform: scale(0.85);
+    transition: opacity 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  td-checkbox .td-checkbox-input:checked ~ .td-checkmark .td-checkmark-icon {
+    opacity: 1;
+    transform: scale(1);
+  }
+  td-checkbox .td-checkbox-label {
+    margin-left: 8px;
+    vertical-align: middle;
+    display: inline-flex;
+    align-items: center;
+    height: 100%;
+  }
+`;
 
 /**
  * Checkbox component with custom SVG checkmark and color support.
  * Form-associated (ElementInternals): submits its `value` (default "on") only when
  * checked, supports `required` (valueMissing), reset, and `<fieldset disabled>`.
+ *
+ * CSP-strict: the box/checkmark styling lives in a constructable stylesheet adopted once
+ * (the `:checked ~` sibling rules drive the checked look with no re-render), the custom
+ * checked color is the host custom property `--td-cb-color`, and the size-driven px
+ * scalars are applied per-element via CSSOM in {@link TdCheckbox#_applyStyles}. No injected
+ * `<style>` and no declarative `style="…"`.
  *
  * @element td-checkbox
  * @attr {boolean} checked - Whether the checkbox is checked
@@ -20,12 +106,6 @@ export class TdCheckbox extends TdFormElement {
   static get observedAttributes() { return [...super.observedAttributes, 'checked', 'value', 'label', 'size', 'color']; }
   static get booleanAttributes() { return [...super.booleanAttributes, 'checked']; }
 
-  constructor() {
-    super();
-    this._uniqueClass = 'td-checkbox-' + Math.random().toString(36).slice(2, 8);
-    this._styleEl = null;
-  }
-
   /** @private */
   _getSizeConfig() {
     const sizes = {
@@ -41,96 +121,13 @@ export class TdCheckbox extends TdFormElement {
     return this.safeColor(this.getAttribute('color'), '#2196F3');
   }
 
-  /** @private */
-  _buildStyleContent() {
-    const s = this._getSizeConfig();
-    const color = this._getColor();
-    const isChecked = this.hasAttribute('checked');
-    const cls = this._uniqueClass;
-
-    return `
-      .${cls} {
-        display: inline-flex;
-        position: relative;
-        padding-left: ${s.box + 10}px;
-        cursor: pointer;
-        font-size: ${s.fontSize};
-        user-select: none;
-        align-items: center;
-        vertical-align: middle;
-        min-height: ${s.minHeight}px;
-        padding-top: ${s.padding};
-        padding-bottom: ${s.padding};
-      }
-      .${cls}.td-checkbox--disabled {
-        cursor: not-allowed;
-        opacity: 0.5;
-      }
-      .${cls} .td-checkbox-input {
-        position: absolute;
-        opacity: 0;
-        cursor: pointer;
-        height: 0;
-        width: 0;
-      }
-      .${cls} .td-checkmark {
-        position: absolute;
-        top: 50%;
-        left: 0;
-        transform: translateY(-50%);
-        height: ${s.box}px;
-        width: ${s.box}px;
-        background-color: rgba(0, 0, 0, 0.04);
-        border: 1.5px solid rgba(0, 0, 0, 0.12);
-        border-radius: 6px;
-        transition: background-color 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                    border-color 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                    box-shadow 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .${cls} .td-checkbox-input:checked ~ .td-checkmark {
-        background-color: ${color};
-        border-color: ${color};
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
-      }
-      .${cls} .td-checkmark-icon {
-        width: ${s.icon}px;
-        height: ${s.icon}px;
-        opacity: ${isChecked ? 1 : 0};
-        transform: scale(${isChecked ? 1 : 0.85});
-        transition: opacity 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-      }
-      .${cls} .td-checkbox-input:checked ~ .td-checkmark .td-checkmark-icon {
-        opacity: 1;
-        transform: scale(1);
-      }
-      .${cls} .td-checkbox-label {
-        margin-left: 8px;
-        vertical-align: middle;
-        line-height: ${s.box}px;
-        display: inline-flex;
-        align-items: center;
-        height: 100%;
-      }
-    `;
-  }
-
-  /** @private */
-  _injectStyle() {
-    if (!this._styleEl) {
-      this._styleEl = document.createElement('style');
-      document.head.appendChild(this._styleEl);
-      this._cleanups.push(() => {
-        if (this._styleEl && this._styleEl.parentNode) {
-          this._styleEl.parentNode.removeChild(this._styleEl);
-          this._styleEl = null;
-        }
-      });
-    }
-    this._styleEl.textContent = this._buildStyleContent();
+  connectedCallback() {
+    // Adopt the static stylesheet ONCE (idempotent, lazy — never at module top-level).
+    // On unsupported browsers/SSR this is a no-op (returns false) and the component still
+    // renders structurally via Tailwind classes + the CSSOM size scalars; only the
+    // selector/`:checked`-driven box embellishments are absent (graceful degradation).
+    adoptStyles(TD_CHECKBOX_CSS, 'td-checkbox');
+    super.connectedCallback();
   }
 
   render() {
@@ -139,10 +136,8 @@ export class TdCheckbox extends TdFormElement {
     const label = this.escapeHtml(this.getAttribute('label') || '');
     const s = this._getSizeConfig();
 
-    this._injectStyle();
-
     return `
-      <label class="${this._uniqueClass}${isDisabled ? ' td-checkbox--disabled' : ''} relative inline-block select-none cursor-pointer">
+      <label class="td-checkbox${isDisabled ? ' td-checkbox--disabled' : ''} relative inline-block select-none cursor-pointer">
         <input type="checkbox" class="td-checkbox-input"
           ${isChecked ? 'checked' : ''}
           ${isDisabled ? 'disabled' : ''}
@@ -156,6 +151,43 @@ export class TdCheckbox extends TdFormElement {
         ${label ? `<span class="td-checkbox-label">${label}</span>` : ''}
       </label>
     `;
+  }
+
+  /**
+   * @private CSP-safe per-element SCALAR styling via CSSOM (no `style="…"`). Auto-invoked
+   * by the base after `afterRender()` on the initial render AND on every observed-attribute
+   * re-render (`checked`/`size`/`color`/`disabled`/`label`), so the custom checked color
+   * and the size-driven px stay correct as state changes. Selector/`:checked` rules and the
+   * default color live in the adopted sheet; only per-instance scalars are set here.
+   */
+  _applyStyles() {
+    const s = this._getSizeConfig();
+    // Custom checked color → host custom property, consumed by the sheet's
+    // `:checked ~ .td-checkmark { background/border: var(--td-cb-color) }` rule.
+    this.style.setProperty('--td-cb-color', this._getColor());
+
+    // Size-driven px on the label root (drives the absolute checkmark's geometry).
+    applyStyles(this.querySelector('.td-checkbox'), {
+      'padding-left': (s.box + 10) + 'px',
+      'font-size': s.fontSize,
+      'min-height': s.minHeight + 'px',
+      'padding-top': s.padding,
+      'padding-bottom': s.padding,
+    });
+    // Box size.
+    applyStyles(this.querySelector('.td-checkmark'), {
+      width: s.box + 'px',
+      height: s.box + 'px',
+    });
+    // Icon size (opacity/scale stay sheet-driven off `:checked`).
+    applyStyles(this.querySelector('.td-checkmark-icon'), {
+      width: s.icon + 'px',
+      height: s.icon + 'px',
+    });
+    // Label line-height tracks the box height.
+    applyStyles(this.querySelector('.td-checkbox-label'), {
+      'line-height': s.box + 'px',
+    });
   }
 
   afterRender() {
