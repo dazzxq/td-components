@@ -1,4 +1,5 @@
 import { TdBaseElement } from '../base/td-base-element.js';
+import { applyStyles } from '../utils/css-safe.js';
 
 /**
  * Empty state component for tables, modals, and standalone sections.
@@ -63,15 +64,22 @@ export class TdEmptyState extends TdBaseElement {
   _getIconHtml(s) {
     const customIcon = this.getAttribute('icon');
     if (customIcon && customIcon !== 'inbox') {
-      // If user provides custom SVG string (starts with <svg)
+      // CONSUMER RAW-SVG HATCH (OUT OF SCOPE for the lib's CSP guarantee): a value
+      // starting with `<svg` is injected verbatim as trusted raw HTML. The library does
+      // NOT sanitize it — if the consumer passes inline `style=`/`<style>` here, a strict
+      // CSP will block that consumer content. Documented in the @attr JSDoc above.
       if (customIcon.trim().startsWith('<svg')) {
         return customIcon;
       }
       // Otherwise treat as text identifier — still show default
     }
 
+    // LIBRARY-AUTHORED default icon. CSP-safe: width/height are SVG PRESENTATION
+    // ATTRIBUTES (not inline style=); the `color` scalar that drives `currentColor` for
+    // `stroke` is applied via CSSOM in `_applyStyles()` (keyed off the stable
+    // `.td-empty-icon` class).
     return `
-      <svg class="td-empty-icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" style="width:${s.icon}px;height:${s.icon}px;color:#9ca3af;">
+      <svg class="td-empty-icon" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" width="${s.icon}" height="${s.icon}">
         <rect x="12" y="24" width="40" height="28" rx="3" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M12 32h14l4 6h4l4-6h14" stroke-linecap="round" stroke-linejoin="round"/>
         <path d="M26 18l6-6 6 6" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/>
@@ -83,25 +91,22 @@ export class TdEmptyState extends TdBaseElement {
   // --- Rendering ---
 
   render() {
-    const s = this._getSize();
     const title = this._getTitle();
     const message = this._getMessage();
-    const compact = this._isCompact();
-    const padding = compact ? Math.round(s.padding / 2) : s.padding;
+    const s = this._getSize();
 
     return `
-      <div class="td-empty-state-card w-full flex flex-col items-center justify-center text-center border border-dashed rounded-xl"
-           style="border-color:rgba(0,0,0,0.12);padding:${padding}px;background-color:rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8);">
-        <div style="margin-bottom:${s.gap}px;">
+      <div class="td-empty-state-card w-full flex flex-col items-center justify-center text-center border border-dashed rounded-xl">
+        <div class="td-empty-icon-wrap">
           ${this._getIconHtml(s)}
         </div>
-        <h3 class="td-empty-title font-semibold text-gray-800 ${s.title}" style="margin-bottom:${s.gap - 2}px;">
+        <h3 class="td-empty-title font-semibold text-gray-800 ${s.title}">
           ${this.escapeHtml(title)}
         </h3>
         <p class="td-empty-message text-gray-500 ${s.message}">
           ${this.escapeHtml(message)}
         </p>
-        <div class="td-empty-actions flex flex-wrap gap-2" style="margin-top:${s.gap + 6}px;${this._actions.length === 0 ? 'display:none;' : ''}">
+        <div class="td-empty-actions flex flex-wrap gap-2">
         </div>
       </div>
     `;
@@ -109,6 +114,45 @@ export class TdEmptyState extends TdBaseElement {
 
   afterRender() {
     this._renderActions();
+  }
+
+  /**
+   * CSP-safe per-element SCALAR styling via CSSOM (replaces the former declarative
+   * `style="…"` attributes). Auto-invoked by TdBaseElement after `afterRender()` on the
+   * initial render and on every observed-attribute re-render, so size/compact-driven
+   * scalars stay correct as attributes change. All values are library-authored constants
+   * (size map ints + fixed colors), so no attribute-derived sanitization is needed.
+   */
+  _applyStyles() {
+    const s = this._getSize();
+    const padding = this._isCompact() ? Math.round(s.padding / 2) : s.padding;
+
+    applyStyles(this.querySelector('.td-empty-state-card'), {
+      'border-color': 'rgba(0,0,0,0.12)',
+      padding: `${padding}px`,
+      'background-color': 'rgba(255,255,255,0.6)',
+      'box-shadow': 'inset 0 1px 0 rgba(255,255,255,0.8)',
+    });
+
+    applyStyles(this.querySelector('.td-empty-icon-wrap'), {
+      'margin-bottom': `${s.gap}px`,
+    });
+
+    // Default icon color drives `currentColor` for the SVG `stroke`. Only present for the
+    // library-authored default icon; a consumer raw `<svg>` has no `.td-empty-icon` node,
+    // so this is a no-op for that hatch.
+    applyStyles(this.querySelector('.td-empty-icon'), {
+      color: '#9ca3af',
+    });
+
+    applyStyles(this.querySelector('.td-empty-title'), {
+      'margin-bottom': `${s.gap - 2}px`,
+    });
+
+    applyStyles(this.querySelector('.td-empty-actions'), {
+      'margin-top': `${s.gap + 6}px`,
+      display: this._actions.length === 0 ? 'none' : null,
+    });
   }
 
   /**
