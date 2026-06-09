@@ -84,7 +84,7 @@ export const CustomLabel = {
       total-items="150"
       items-per-page="20"
       current-page="3"
-      item-label="bai viet"
+      item-label="bài viết"
     ></td-pagination>
   `,
 };

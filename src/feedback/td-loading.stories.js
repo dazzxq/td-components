@@ -14,7 +14,7 @@ export const FullscreenOverlay = {
   `,
   play: ({ canvasElement }) => {
     canvasElement.querySelector('#loading-show-btn').addEventListener('click', () => {
-      TdLoading.show('Dang tai du lieu...');
+      TdLoading.show('Đang tải dữ liệu...');
       setTimeout(() => TdLoading.hide(), 2000);
     });
   },
@@ -73,15 +73,15 @@ export const CustomMessage = {
   `,
   play: ({ canvasElement }) => {
     canvasElement.querySelector('#loading-save-btn').addEventListener('click', () => {
-      TdLoading.show('Dang luu du lieu...');
+      TdLoading.show('Đang lưu dữ liệu...');
       setTimeout(() => TdLoading.hide(), 2000);
     });
     canvasElement.querySelector('#loading-upload-btn').addEventListener('click', () => {
-      TdLoading.show('Dang tai file len...');
+      TdLoading.show('Đang tải file lên...');
       setTimeout(() => TdLoading.hide(), 2000);
     });
     canvasElement.querySelector('#loading-delete-btn').addEventListener('click', () => {
-      TdLoading.show('Dang xoa...');
+      TdLoading.show('Đang xóa...');
       setTimeout(() => TdLoading.hide(), 2000);
     });
   },
@@ -93,11 +93,11 @@ export const WithAutoHide = {
             id="loading-autohide-btn">
       Show Loading (auto-hide 3s)
     </button>
-    <p class="mt-2 text-sm text-gray-500">Loading se tu dong an sau 3 giay (maxDuration).</p>
+    <p class="mt-2 text-sm text-gray-500">Loading sẽ tự động ẩn sau 3 giây (maxDuration).</p>
   `,
   play: ({ canvasElement }) => {
     canvasElement.querySelector('#loading-autohide-btn').addEventListener('click', () => {
-      TdLoading.show({ message: 'Se tu dong an...', maxDuration: 3000 });
+      TdLoading.show({ message: 'Sẽ tự động ẩn...', maxDuration: 3000 });
     });
   },
 };

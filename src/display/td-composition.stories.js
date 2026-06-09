@@ -17,12 +17,12 @@ export const TableWithActions = {
     const table = canvasElement.querySelector('#action-table');
 
     table.columns = [
-      { key: 'name', label: 'Ten', sortable: true },
+      { key: 'name', label: 'Tên', sortable: true },
       { key: 'email', label: 'Email' },
-      { key: 'role', label: 'Vai tro' },
+      { key: 'role', label: 'Vai trò' },
       {
         key: 'actions',
-        label: 'Thao tac',
+        label: 'Thao tác',
         align: 'center',
         render: (value, row) => {
           const container = document.createElement('div');
@@ -34,12 +34,12 @@ export const TableWithActions = {
           viewBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             TdModal.show({
-              title: `Chi tiet: ${row.name}`,
+              title: `Chi tiết: ${row.name}`,
               body: `
                 <div class="space-y-2">
-                  <p><strong>Ten:</strong> ${row.name}</p>
+                  <p><strong>Tên:</strong> ${row.name}</p>
                   <p><strong>Email:</strong> ${row.email}</p>
-                  <p><strong>Vai tro:</strong> ${row.role}</p>
+                  <p><strong>Vai trò:</strong> ${row.role}</p>
                 </div>
               `,
             });
@@ -47,17 +47,17 @@ export const TableWithActions = {
 
           const deleteBtn = document.createElement('button');
           deleteBtn.className = 'px-3 py-1 text-xs bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors';
-          deleteBtn.textContent = 'Xoa';
+          deleteBtn.textContent = 'Xóa';
           deleteBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
             const ok = await TdModal.confirm({
-              title: 'Xac nhan xoa',
-              message: `Ban co chac chan muon xoa "${row.name}"?`,
+              title: 'Xác nhận xóa',
+              message: `Bạn có chắc chắn muốn xóa "${row.name}"?`,
               confirmVariant: 'danger',
-              confirmText: 'Xoa',
+              confirmText: 'Xóa',
             });
             if (ok) {
-              TdToast.success(`Da xoa "${row.name}"!`);
+              TdToast.success(`Đã xóa "${row.name}"!`);
             }
           });
 
@@ -80,13 +80,13 @@ export const TableWithActions = {
 export const FormAndFeedback = {
   render: () => `
     <div class="max-w-md mx-auto p-6 bg-white rounded-xl border border-gray-200 space-y-4">
-      <h3 class="text-lg font-bold text-gray-900">Tao nguoi dung moi</h3>
+      <h3 class="text-lg font-bold text-gray-900">Tạo người dùng mới</h3>
 
-      <td-input-field id="comp-name" label="Ho ten" placeholder="Nhap ho ten"></td-input-field>
+      <td-input-field id="comp-name" label="Họ tên" placeholder="Nhập họ tên"></td-input-field>
 
-      <td-dropdown id="comp-role" label="Vai tro" placeholder="Chon vai tro"></td-dropdown>
+      <td-dropdown id="comp-role" label="Vai trò" placeholder="Chọn vai trò"></td-dropdown>
 
-      <td-button id="comp-submit" variant="primary" label="Luu nguoi dung" full-width></td-button>
+      <td-button id="comp-submit" variant="primary" label="Lưu người dùng" full-width></td-button>
     </div>
   `,
   play: ({ canvasElement }) => {
@@ -105,15 +105,15 @@ export const FormAndFeedback = {
       const name = nameField ? nameField.getValue() : '';
 
       if (!name) {
-        if (nameField) nameField.setError('Vui long nhap ho ten');
-        TdToast.warning('Vui long dien day du thong tin!');
+        if (nameField) nameField.setError('Vui lòng nhập họ tên');
+        TdToast.warning('Vui lòng điền đầy đủ thông tin!');
         return;
       }
 
-      TdLoading.show('Dang luu nguoi dung...');
+      TdLoading.show('Đang lưu người dùng...');
       await new Promise(r => setTimeout(r, 1500));
       TdLoading.hide();
-      TdToast.success(`Da tao nguoi dung "${name}" thanh cong!`);
+      TdToast.success(`Đã tạo người dùng "${name}" thành công!`);
     });
   },
 };
