@@ -173,7 +173,6 @@ export class TdDropdown extends TdBaseElement {
     if (this._isOpen) {
       this._removeGlobalListeners();
     }
-    // Cancel pending RAF
     if (this._scrollRafId) {
       cancelAnimationFrame(this._scrollRafId);
       this._scrollRafId = null;
@@ -544,7 +543,6 @@ export class TdDropdown extends TdBaseElement {
     this._isOpen = false;
     this._highlightedIndex = -1;
 
-    // Cancel pending RAF
     if (this._scrollRafId) {
       cancelAnimationFrame(this._scrollRafId);
       this._scrollRafId = null;
@@ -583,6 +581,13 @@ export class TdDropdown extends TdBaseElement {
     if (!button) return;
 
     const rect = button.getBoundingClientRect();
+
+    // Close if button has scrolled fully out of viewport
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      this.close();
+      return;
+    }
+
     const buttonWidth = rect.width;
     this._menuElement.style.width = `${buttonWidth}px`;
     this._menuElement.style.minWidth = `${buttonWidth}px`;
