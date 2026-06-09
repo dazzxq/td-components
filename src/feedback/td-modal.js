@@ -279,14 +279,23 @@ export class TdModal {
         onCancel = () => {},
       } = options;
 
+      // Settled-flag + resolve-first pattern (ported from dcms-modal.js:603-651).
+      // Guarantees the Promise resolves EXACTLY ONCE across every close path —
+      // confirm button (→ true), cancel button / X / backdrop / closeAll (→ false) —
+      // and never hangs even if a user callback throws (resolve happens BEFORE the
+      // callback, which is wrapped in try/catch).
+      let settled = false;
+
       const cancelButton = document.createElement('button');
       cancelButton.type = 'button';
       cancelButton.textContent = cancelText;
       cancelButton.className = 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors';
       cancelButton.addEventListener('click', () => {
-        TdModal.closeById(modalId);
-        onCancel();
+        if (settled) return;
+        settled = true;
         resolve(false);
+        try { TdModal.closeById(modalId); } catch (_) {}
+        try { onCancel(); } catch (_) {}
       });
 
       const variantClasses = {
@@ -301,9 +310,11 @@ export class TdModal {
       confirmButton.textContent = confirmText;
       confirmButton.className = `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${variantClasses[confirmVariant] || variantClasses.primary}`;
       confirmButton.addEventListener('click', () => {
-        TdModal.closeById(modalId);
-        onConfirm();
+        if (settled) return;
+        settled = true;
         resolve(true);
+        try { TdModal.closeById(modalId); } catch (_) {}
+        try { onConfirm(); } catch (_) {}
       });
 
       const modalId = TdModal.show({
@@ -312,6 +323,14 @@ export class TdModal {
         footer: [cancelButton, confirmButton],
         size: 'sm',
         focusTarget: cancelButton,
+        // Fires from closeById (X / backdrop) AND closeAll. Button paths already
+        // settled → no-op. Dismiss path: claim the slot, resolve false, run onCancel.
+        onClose: () => {
+          if (settled) return;
+          settled = true;
+          resolve(false);
+          try { onCancel(); } catch (_) {}
+        },
       });
     });
   }
@@ -332,13 +351,17 @@ export class TdModal {
         okText = 'OK',
       } = options;
 
+      // Settled-flag pattern (see confirm()): OK → true, dismiss (X/backdrop/closeAll) → false.
+      let settled = false;
       const okButton = document.createElement('button');
       okButton.type = 'button';
       okButton.textContent = okText;
       okButton.className = 'px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-green-600 hover:bg-green-700 text-white';
       okButton.addEventListener('click', () => {
-        TdModal.closeById(modalId);
+        if (settled) return;
+        settled = true;
         resolve(true);
+        try { TdModal.closeById(modalId); } catch (_) {}
       });
 
       const modalId = TdModal.show({
@@ -355,6 +378,11 @@ export class TdModal {
         `,
         footer: [okButton],
         size: 'sm',
+        onClose: () => {
+          if (settled) return;
+          settled = true;
+          resolve(false);
+        },
       });
     });
   }
@@ -375,13 +403,17 @@ export class TdModal {
         okText = 'OK',
       } = options;
 
+      // Settled-flag pattern (see confirm()): OK → true, dismiss (X/backdrop/closeAll) → false.
+      let settled = false;
       const okButton = document.createElement('button');
       okButton.type = 'button';
       okButton.textContent = okText;
       okButton.className = 'px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-red-600 hover:bg-red-700 text-white';
       okButton.addEventListener('click', () => {
-        TdModal.closeById(modalId);
+        if (settled) return;
+        settled = true;
         resolve(true);
+        try { TdModal.closeById(modalId); } catch (_) {}
       });
 
       const modalId = TdModal.show({
@@ -398,6 +430,11 @@ export class TdModal {
         `,
         footer: [okButton],
         size: 'sm',
+        onClose: () => {
+          if (settled) return;
+          settled = true;
+          resolve(false);
+        },
       });
     });
   }
@@ -418,13 +455,17 @@ export class TdModal {
         okText = 'OK',
       } = options;
 
+      // Settled-flag pattern (see confirm()): OK → true, dismiss (X/backdrop/closeAll) → false.
+      let settled = false;
       const okButton = document.createElement('button');
       okButton.type = 'button';
       okButton.textContent = okText;
       okButton.className = 'px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white';
       okButton.addEventListener('click', () => {
-        TdModal.closeById(modalId);
+        if (settled) return;
+        settled = true;
         resolve(true);
+        try { TdModal.closeById(modalId); } catch (_) {}
       });
 
       const modalId = TdModal.show({
@@ -441,6 +482,11 @@ export class TdModal {
         `,
         footer: [okButton],
         size: 'sm',
+        onClose: () => {
+          if (settled) return;
+          settled = true;
+          resolve(false);
+        },
       });
     });
   }

@@ -112,6 +112,41 @@ describe('td-toggle (form-associated, uncontrolled by default)', () => {
     expect(el.hasAttribute('checked')).to.equal(false);
     expect(new FormData(form).get('sw')).to.equal(null);
   });
+
+  // --- a11y: ARIA switch role + aria-checked sync (new) ---
+
+  it('exposes role="switch" with aria-checked reflecting state', () => {
+    const el = mount('<td-toggle></td-toggle>');
+    const sw = el.querySelector('label[role="switch"]');
+    expect(sw).to.not.equal(null);
+    expect(sw.getAttribute('aria-checked')).to.equal('false');
+    el.setAttribute('checked', '');
+    expect(sw.getAttribute('aria-checked')).to.equal('true'); // synced without re-render
+    el.removeAttribute('checked');
+    expect(sw.getAttribute('aria-checked')).to.equal('false');
+  });
+
+  it('reflects a `checked` attribute present at mount', () => {
+    const el = mount('<td-toggle checked></td-toggle>');
+    expect(el.querySelector('label[role="switch"]').getAttribute('aria-checked')).to.equal('true');
+  });
+
+  it('is keyboard-operable: Space toggles it', () => {
+    const form = mount('<form><td-toggle name="sw"></td-toggle></form>');
+    const el = form.querySelector('td-toggle');
+    let detail = null;
+    el.addEventListener('change', (e) => { detail = e.detail; });
+    const sw = el.querySelector('label[role="switch"]');
+    sw.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    expect(el.hasAttribute('checked')).to.equal(true);
+    expect(detail).to.deep.equal({ checked: true });
+    expect(sw.getAttribute('aria-checked')).to.equal('true');
+  });
+
+  it('disabled toggle is removed from the tab order', () => {
+    const el = mount('<td-toggle disabled></td-toggle>');
+    expect(el.querySelector('label[role="switch"]').getAttribute('tabindex')).to.equal('-1');
+  });
 });
 
 describe('td-slider (form-associated)', () => {

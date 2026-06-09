@@ -135,9 +135,15 @@ export class TdToggle extends TdFormElement {
     const crossOpacity = isChecked ? '0' : '1';
     const checkOpacity = isChecked ? '1' : '0';
 
+    // a11y: the interactive label is exposed as an ARIA switch (role + aria-checked),
+    // mirroring the dcms toggle. It is keyboard-focusable (tabindex) and operable via
+    // Space/Enter (see afterRender) so it behaves like a native switch. `aria-checked`
+    // is kept in sync on every state change in `_updateToggleState()` / re-render.
+    const ariaDisabled = isDisabled ? ' aria-disabled="true"' : '';
+    const tabIndex = isDisabled ? '-1' : '0';
     return `
       <div class="flex items-center gap-2 td-toggle-root">
-        <label class="relative inline-flex items-center ${disabledClass}">
+        <label class="relative inline-flex items-center ${disabledClass}" role="switch" aria-checked="${isChecked ? 'true' : 'false'}" tabindex="${tabIndex}"${ariaDisabled}>
           <div class="td-toggle-track${trackActive}">
             <div class="td-toggle-thumb${thumbActive}">
               <svg viewBox="0 0 12 12" fill="none" class="td-toggle-icon" opacity="${crossOpacity}">
@@ -286,6 +292,9 @@ export class TdToggle extends TdFormElement {
   _updateToggleState() {
     const isChecked = this.hasAttribute('checked');
     const m = this._scalarStyles();
+    // a11y: keep the ARIA switch state in sync on the no-re-render `checked` path.
+    const switchEl = this.querySelector('label[role="switch"]');
+    if (switchEl) switchEl.setAttribute('aria-checked', isChecked ? 'true' : 'false');
     const track = this.querySelector('.td-toggle-track');
     const thumb = this.querySelector('.td-toggle-thumb');
     const crossIcon = this.querySelector('.td-toggle-icon:first-child');
@@ -314,22 +323,38 @@ export class TdToggle extends TdFormElement {
     if (labelEl) {
       this.listen(labelEl, 'click', (e) => {
         e.preventDefault();
-        if (this._effectiveDisabled) return;
-
-        const isChecked = this.hasAttribute('checked');
-
-        // 0.2.0: UNCONTROLLED by default — self-toggle like a native checkbox.
-        // With the `controlled` attribute we keep the legacy emit-only behavior, so
-        // the consumer sets/removes `checked` after confirming the action / API success.
-        if (!this.hasAttribute('controlled')) {
-          if (isChecked) this.removeAttribute('checked');
-          else this.setAttribute('checked', ''); // → attributeChangedCallback updates UI + form value
+        this._toggleFromUser();
+      });
+      // a11y: a `role="switch"` must be operable by keyboard. Space/Enter toggle it,
+      // matching native switch/checkbox behavior. preventDefault stops Space scrolling.
+      this.listen(labelEl, 'keydown', (e) => {
+        if (e.key === ' ' || e.key === 'Enter' || e.key === 'Spacebar') {
+          e.preventDefault();
+          this._toggleFromUser();
         }
-
-        this.emit('change', { checked: !isChecked });
       });
     }
     this._syncForm();
+  }
+
+  /**
+   * Shared user-initiated toggle action (click or Space/Enter). Respects `disabled`
+   * and the `controlled` opt-out, then emits `change`.
+   * @private
+   */
+  _toggleFromUser() {
+    if (this._effectiveDisabled) return;
+    const isChecked = this.hasAttribute('checked');
+
+    // 0.2.0: UNCONTROLLED by default — self-toggle like a native checkbox.
+    // With the `controlled` attribute we keep the legacy emit-only behavior, so
+    // the consumer sets/removes `checked` after confirming the action / API success.
+    if (!this.hasAttribute('controlled')) {
+      if (isChecked) this.removeAttribute('checked');
+      else this.setAttribute('checked', ''); // → attributeChangedCallback updates UI + form value
+    }
+
+    this.emit('change', { checked: !isChecked });
   }
 
   /** @private Push the toggle state into form submission + constraint validation. */

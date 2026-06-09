@@ -100,9 +100,27 @@ export class TdDropdown extends TdFormElement {
   // --- Attribute helpers ---
 
   _getPlaceholder() { return this.getAttribute('placeholder') || 'Chọn một tùy chọn'; }
-  _isSearchable() { return !this.hasAttribute('searchable') || this.hasAttribute('searchable'); }
+  /**
+   * Default ON. Off only when explicitly disabled via `searchable="false"`/`"0"`/`"off"`.
+   * (Mirrors dcms's `searchable !== false` default; an absent attribute or a bare
+   * presence — `searchable`, `searchable=""` — keeps it enabled.)
+   * @private
+   */
+  _isSearchable() { return !this._isDisabledFlag('searchable'); }
   _isDisabled() { return this._effectiveDisabled; }
-  _isAllowClear() { return !this.hasAttribute('allow-clear') || this.hasAttribute('allow-clear'); }
+  /** Default ON; off only when explicitly `allow-clear="false"`/`"0"`/`"off"`. @private */
+  _isAllowClear() { return !this._isDisabledFlag('allow-clear'); }
+
+  /**
+   * True when a default-on boolean-ish attribute is explicitly turned OFF.
+   * Off = `attr="false" | "0" | "off"` (case-insensitive). Absent or any other
+   * presence (including `attr=""`) stays ON. @private
+   */
+  _isDisabledFlag(name) {
+    if (!this.hasAttribute(name)) return false;
+    const v = (this.getAttribute(name) || '').trim().toLowerCase();
+    return v === 'false' || v === '0' || v === 'off';
+  }
   _getMaxHeight() { return parseInt(this.getAttribute('max-height') || '5', 10); }
   _getValueKey() { return this.getAttribute('value-key') || 'value'; }
   _getLabelKey() { return this.getAttribute('label-key') || 'label'; }

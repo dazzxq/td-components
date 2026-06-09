@@ -104,6 +104,41 @@ describe('td-input-field (form-associated)', () => {
     inner.dispatchEvent(new Event('input'));
     expect(new FormData(form).get('bio')).to.equal('some text');
   });
+
+  // --- date type (new) ---
+
+  it('type="date" renders a native date input (not text)', () => {
+    const form = mount('<form><td-input-field name="d" type="date" value="2026-06-10"></td-input-field></form>');
+    const el = form.querySelector('td-input-field');
+    const inner = el.querySelector('.td-input');
+    expect(inner.getAttribute('type')).to.equal('date');
+    expect(inner.hasAttribute('name')).to.equal(false); // host owns submission
+    expect(new FormData(form).get('d')).to.equal('2026-06-10');
+  });
+
+  it('type="date" forwards min/max to the inner control', () => {
+    const form = mount('<form><td-input-field name="d" type="date" min="2026-01-01" max="2026-12-31"></td-input-field></form>');
+    const inner = form.querySelector('.td-input');
+    expect(inner.getAttribute('min')).to.equal('2026-01-01');
+    expect(inner.getAttribute('max')).to.equal('2026-12-31');
+  });
+
+  it('type="date" computes range validity on the host', () => {
+    const form = mount('<form><td-input-field name="d" type="date" value="2027-01-01" min="2026-01-01" max="2026-12-31"></td-input-field></form>');
+    const el = form.querySelector('td-input-field');
+    expect(el.validity.rangeOverflow).to.equal(true);
+    expect(el.checkValidity()).to.equal(false);
+    el.setAttribute('value', '2026-06-10');
+    expect(el.checkValidity()).to.equal(true);
+    expect(new FormData(form).get('d')).to.equal('2026-06-10');
+  });
+
+  it('type="date" required + empty blocks submit', () => {
+    const form = mount('<form><td-input-field name="d" type="date" required></td-input-field></form>');
+    const el = form.querySelector('td-input-field');
+    expect(el.validity.valueMissing).to.equal(true);
+    expect(el.checkValidity()).to.equal(false);
+  });
 });
 
 describe('td-dropdown (form-associated)', () => {
@@ -195,6 +230,41 @@ describe('td-dropdown (form-associated)', () => {
     el.options = [{ value: 'nope', label: 'Later' }];
     expect(el.getValue()).to.equal('nope');
     expect(new FormData(form).get('city')).to.equal('nope');
+  });
+
+  // --- searchable / allow-clear toggle (bug fix: _isSearchable/_isAllowClear were always true) ---
+
+  it('searchable defaults ON (search box rendered)', () => {
+    const { el } = mountDropdown();
+    el.open();
+    expect(el._menuElement.querySelector('.td-dropdown-search')).to.not.equal(null);
+  });
+
+  it('searchable="false" disables the search box', () => {
+    const { el } = mountDropdown('searchable="false"');
+    expect(el._isSearchable()).to.equal(false);
+    el.open();
+    expect(el._menuElement.querySelector('.td-dropdown-search')).to.equal(null);
+  });
+
+  it('bare `searchable` attribute keeps it ON', () => {
+    const { el } = mountDropdown('searchable');
+    expect(el._isSearchable()).to.equal(true);
+    el.open();
+    expect(el._menuElement.querySelector('.td-dropdown-search')).to.not.equal(null);
+  });
+
+  it('allow-clear defaults ON (clear option shown when selected)', () => {
+    const { el } = mountDropdown('value="hn"');
+    el.open();
+    expect(el._menuElement.querySelector('.td-dropdown-option-clear')).to.not.equal(null);
+  });
+
+  it('allow-clear="false" hides the clear option', () => {
+    const { el } = mountDropdown('value="hn" allow-clear="false"');
+    expect(el._isAllowClear()).to.equal(false);
+    el.open();
+    expect(el._menuElement.querySelector('.td-dropdown-option-clear')).to.equal(null);
   });
 });
 

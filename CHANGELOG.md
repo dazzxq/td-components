@@ -2,6 +2,44 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.4.0
+
+Logic / behavioral / a11y improvements ported from the dcms-components comparison. **Fully
+backward-compatible** — no public attribute, property, event, or rendered visual output
+changes; CSP parity gate stays at 73/73. New additions only.
+
+### Fixed
+
+- **`td-dropdown`** — `searchable` and `allow-clear` can finally be turned **off**. Their
+  internal checks (`_isSearchable()` / `_isAllowClear()`) were written `!hasAttr || hasAttr`,
+  which always returned `true`, so the search box and clear option could never be disabled.
+  They now default **ON** and turn off only when explicitly set to a falsy value
+  (`searchable="false"` / `"0"` / `"off"`, likewise `allow-clear`); a bare/absent attribute
+  stays ON.
+- **`td-modal.confirm()` promise hang** — dismissing a `confirm()` via the X button, the
+  backdrop, or `closeAll()` left its Promise **unresolved forever** (no `onClose` handler).
+  Ported dcms's settled-flag + resolve-first pattern: every close path now resolves **exactly
+  once** (confirm → `true`; cancel / X / backdrop / `closeAll` → `false`), and a throwing user
+  callback (`onConfirm`/`onCancel`) can no longer hang the Promise. `success`/`error`/`info`
+  got the same treatment (OK → `true`, dismiss → `false`).
+
+### Added
+
+- **`td-input-field` `type="date"`** — now renders a native `<input type="date">` (calendar
+  picker) instead of degrading to `text`. Native `min`/`max` are forwarded to the inner control
+  for `date`, and the host independently recomputes range/type validity via its probe so
+  constraint validation stays correct. Form-association is unchanged (the host still owns
+  submission/validity).
+- **`td-toggle` a11y** — the switch now exposes `role="switch"` with `aria-checked` kept in sync
+  on every state change, plus `aria-disabled`, keyboard focusability (`tabindex`), and Space/Enter
+  operability. No visual change.
+- **`src/utils/dom-utils.js` toolbox** (new subpath export `@dazzxq/td-components/dom-utils`) —
+  pure, framework-free helpers ported from `dcms-utils.js`: `slugify` (Vietnamese-aware),
+  `formatFileSize`, `formatNumber`, `debounce`, `throttle`, `getAccessibleTextColor`,
+  `contrastRatio`, plus `parseColorToRgb`/`relativeLuminance`. No component is forced to use it;
+  it is an opt-in toolbox. App/Laravel-coupled helpers (CSRF, API-response, image-resize URL)
+  were intentionally excluded.
+
 ## 0.3.1
 
 `td-button` now supports a `type` attribute (`button`|`submit`|`reset`, default `button`, whitelisted) so it can submit/reset a form (light-DOM inner `<button>`). Backward compatible.
