@@ -1,4 +1,5 @@
 import { TdBaseElement } from '../base/td-base-element.js';
+import { applyStyles } from '../utils/css-safe.js';
 
 /**
  * Pagination component with page navigation, ellipsis, info text, and custom active color.
@@ -37,7 +38,6 @@ export class TdPagination extends TdBaseElement {
     const totalItems = this._getTotalItems();
     const itemsPerPage = this._getItemsPerPage();
     const currentPage = this._getCurrentPage();
-    const activeColor = this._getActiveColor();
     const itemLabel = this._getItemLabel();
     const maxPages = this._getMaxPages();
     const totalPages = this._getTotalPages();
@@ -58,7 +58,9 @@ export class TdPagination extends TdBaseElement {
       }
       const isActive = item === currentPage;
       if (isActive) {
-        return `<span class="px-2 py-1 rounded-md font-semibold cursor-default" style="color:${activeColor}">${item}</span>`;
+        // CSP-strict: the per-element active color is a SCALAR style → applied via CSSOM in
+        // `_applyStyles()` (no inline `style=`). `data-active-page` is the stable selector hook.
+        return `<span class="px-2 py-1 rounded-md font-semibold cursor-default" data-active-page>${item}</span>`;
       }
       return `<span class="px-2 py-1 rounded-md text-gray-700 hover:bg-black/5 cursor-pointer transition-colors" data-page="${item}">${item}</span>`;
     }).join('');
@@ -108,6 +110,16 @@ export class TdPagination extends TdBaseElement {
         this._setPage(page);
       });
     });
+  }
+
+  /**
+   * CSP-strict hook (auto-invoked by the base class after every render): apply the
+   * per-element SCALAR active-page color via CSSOM instead of a declarative `style=`.
+   * `active-color` is sanitized through `safeColor` in `_getActiveColor()`.
+   */
+  _applyStyles() {
+    const active = this.querySelector('.td-pagination-pages [data-active-page]');
+    if (active) applyStyles(active, { color: this._getActiveColor() });
   }
 
   /**
