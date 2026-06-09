@@ -1,4 +1,5 @@
 import { TdBaseElement } from '../base/td-base-element.js';
+import { applyStyles } from '../utils/css-safe.js';
 
 /**
  * Button component with glass styling, 6 variants, loading state, and icon support.
@@ -185,15 +186,10 @@ export class TdButton extends TdBaseElement {
 
     const classes = baseClasses.join(' ');
 
-    // Build inline styles for glass effect
-    let inlineStyle = '';
-    if (customColor) {
-      const textColor = customTextColor || TdButton._getContrastColor(customColor);
-      inlineStyle = `background-color:${customColor};color:${textColor};border-color:${customColor};`;
-    } else {
-      const gs = TdButton._glassStyles[variant] || TdButton._glassStyles.primary;
-      inlineStyle = `background:${gs.background};backdrop-filter:${gs.backdropFilter};-webkit-backdrop-filter:${gs.backdropFilter};box-shadow:${gs.boxShadow};`;
-    }
+    // Per-element scalar styles for the glass / custom-color effect are NOT written as a
+    // declarative style attribute (a strict CSP `style-src 'self'` blocks that). They are
+    // applied via CSSOM in `_applyStyles()` (auto-invoked by the base after every render);
+    // `_styleMap()` is the single source of truth for both code paths.
 
     // Build button content
     let content = '';
@@ -218,11 +214,50 @@ export class TdButton extends TdBaseElement {
     return `
       <button
         class="${classes}"
-        style="${inlineStyle}"
         ${isDisabled || isLoading ? 'disabled' : ''}
         type="button"
       >${content}</button>
     `;
+  }
+
+  /**
+   * Compute the per-element scalar style map for the inner `<button>`. Single source of
+   * truth for `_applyStyles()`. Returns CSSOM-ready property→value pairs (no selectors).
+   * @private
+   * @returns {Record<string, string|null>}
+   */
+  _styleMap() {
+    const variant = this.getAttribute('variant') || 'primary';
+    const customColor = this.safeColor(this.getAttribute('color'), '');
+    const customTextColor = this.safeColor(this.getAttribute('text-color'), '');
+
+    if (customColor) {
+      const textColor = customTextColor || TdButton._getContrastColor(customColor);
+      return {
+        'background-color': customColor,
+        'color': textColor,
+        'border-color': customColor,
+      };
+    }
+    const gs = TdButton._glassStyles[variant] || TdButton._glassStyles.primary;
+    return {
+      'background': gs.background,
+      'backdrop-filter': gs.backdropFilter,
+      '-webkit-backdrop-filter': gs.backdropFilter,
+      'box-shadow': gs.boxShadow,
+    };
+  }
+
+  /**
+   * CSP-safe replacement for the old inline style attribute. Auto-invoked by the base
+   * after `afterRender()` on the initial render AND on every observed-attribute
+   * re-render, so variant/color/state-dependent scalars stay correct as state changes.
+   * @private
+   */
+  _applyStyles() {
+    const btn = this.querySelector('button');
+    if (!btn) return;
+    applyStyles(btn, this._styleMap());
   }
 
   afterRender() {
