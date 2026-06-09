@@ -1,5 +1,42 @@
 import { TdFormElement } from '../base/td-form-element.js';
 import { TdModal } from '../feedback/td-modal.js';
+import { adoptStyles } from '../utils/adopt-styles.js';
+
+/**
+ * Static stylesheet for the wheel picker UI (was a JS-injected `<style>` element,
+ * BLOCKED under a strict CSP). Adopted ONCE per document via `adoptStyles` from
+ * `_open()`. These rules are SELECTOR / pseudo / `::before` / `.selected`-state driven
+ * (not per-element scalars), so they cannot live on the element via CSSOM — a
+ * constructable stylesheet is the only CSP-safe carrier.
+ *
+ * Selectors stay BARE (`.td-dtp-*`, already namespaced by that class prefix) rather than
+ * host-scoped (`td-datetime-picker …`): the wheel UI is rendered into a `TdModal` that is
+ * PORTALED to `document.body`, OUTSIDE the host element — a host-scoped selector would not
+ * match it. `adoptStyles` adopts into `document`, so a document-level (bare) selector
+ * covers the portaled nodes. The CSP gate reads these by bare class from `document` too.
+ *
+ * NOTE: the `.td-dtp-wheel-container::before` highlight-band rule is authored here so the
+ * band renders; the gate does not assert its pseudo-element computed style directly (a
+ * documented deferred parity gap — getComputedStyle can't key a `::before` by class alone).
+ */
+const WHEEL_STYLES = `
+  .td-dtp-wheel-container {
+    background: linear-gradient(to bottom,
+      rgba(248,249,250,0.9) 0%, rgba(248,249,250,0.1) 30%,
+      transparent 50%,
+      rgba(248,249,250,0.1) 70%, rgba(248,249,250,0.9) 100%);
+  }
+  .td-dtp-wheel { scrollbar-width: none; -ms-overflow-style: none; }
+  .td-dtp-wheel::-webkit-scrollbar { display: none; }
+  .td-dtp-wheel-option:hover { color: #666; }
+  .td-dtp-wheel-option.selected { font-size: 22px; font-weight: 600; color: #333; transform: scale(1.1); }
+  .td-dtp-wheel-container::before {
+    content: ''; position: absolute; top: 50%; left: 0; right: 0;
+    height: 40px; transform: translateY(-50%);
+    border-top: 1px solid #e9ecef; border-bottom: 1px solid #e9ecef;
+    background: rgba(59, 130, 246, 0.05); pointer-events: none; z-index: 1;
+  }
+`;
 
 /**
  * DateTimePicker Web Component
@@ -276,7 +313,10 @@ export class TdDatetimePicker extends TdFormElement {
   _open() {
     if (this._isOpen) return;
     this._isOpen = true;
-    this._injectStyles();
+    // Adopt the wheel stylesheet lazily (browser-only, idempotent, never throws). On an
+    // unsupported browser / SSR it returns false and the wheel still renders structurally
+    // via its Tailwind classes — only the gradient band + .selected emphasis are absent.
+    adoptStyles(WHEEL_STYLES, 'td-datetime-picker');
     this._renderModal();
   }
 
@@ -285,31 +325,6 @@ export class TdDatetimePicker extends TdFormElement {
     if (this._modalId) TdModal.closeById(this._modalId);
     this._modalId = null;
     this._isOpen = false;
-  }
-
-  _injectStyles() {
-    if (document.getElementById('td-datetime-picker-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'td-datetime-picker-styles';
-    style.textContent = `
-      .td-dtp-wheel-container {
-        background: linear-gradient(to bottom,
-          rgba(248,249,250,0.9) 0%, rgba(248,249,250,0.1) 30%,
-          transparent 50%,
-          rgba(248,249,250,0.1) 70%, rgba(248,249,250,0.9) 100%);
-      }
-      .td-dtp-wheel { scrollbar-width: none; -ms-overflow-style: none; }
-      .td-dtp-wheel::-webkit-scrollbar { display: none; }
-      .td-dtp-wheel-option:hover { color: #666; }
-      .td-dtp-wheel-option.selected { font-size: 22px; font-weight: 600; color: #333; transform: scale(1.1); }
-      .td-dtp-wheel-container::before {
-        content: ''; position: absolute; top: 50%; left: 0; right: 0;
-        height: 40px; transform: translateY(-50%);
-        border-top: 1px solid #e9ecef; border-bottom: 1px solid #e9ecef;
-        background: rgba(59, 130, 246, 0.05); pointer-events: none; z-index: 1;
-      }
-    `;
-    document.head.appendChild(style);
   }
 
   _renderModal() {
