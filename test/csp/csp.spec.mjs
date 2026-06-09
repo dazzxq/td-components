@@ -512,16 +512,24 @@ async function main() {
     throw new Error(`Missing Tailwind fixture ${FIXTURE_CSS} — run npm run build:csp-fixture first.`);
   }
 
+  // Optional component filter (orchestration aid): `node csp.spec.mjs td-checkbox td-toggle`
+  // runs ONLY those components in isolation. No args = full suite (unchanged behavior).
+  const FILTER = process.argv.slice(2).filter(Boolean);
+  const inFilter = (name) => FILTER.length === 0 || FILTER.includes(name);
+
   const browser = await chromium.launch();
   const results = [];
   const cleanResults = [];
   try {
     console.log(`\nCSP GATE — strict header: content-security-policy: ${CSP_HEADER}`);
-    console.log(`Origin: ${ORIGIN}  | px tolerance: ±${PX_TOLERANCE}px\n`);
+    console.log(`Origin: ${ORIGIN}  | px tolerance: ±${PX_TOLERANCE}px`);
+    if (FILTER.length) console.log(`Filter: ${FILTER.join(', ')}`);
+    console.log('');
 
     console.log('=== AFFECTED components (must FAIL pre-refactor) ===');
     for (const [component, states] of Object.entries(MATRIX)) {
       if (component.startsWith('_')) continue;
+      if (!inFilter(component)) continue;
       const modulePath = MATRIX._meta.modules[component];
       if (!modulePath) throw new Error(`No module path for ${component} in matrix _meta.modules`);
       for (const state of states) {
@@ -533,6 +541,7 @@ async function main() {
 
     console.log('\n=== CLEAN components (must PASS pre-refactor) ===');
     for (const c of CLEAN) {
+      if (!inFilter(c.name)) continue;
       const r = await runCleanComponent(browser, c.name, c.module, c.exercise);
       cleanResults.push(r);
       console.log(fmt(r));
