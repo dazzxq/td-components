@@ -15,11 +15,12 @@ import { applyStyles } from '../utils/css-safe.js';
  * @attr {string} color - Custom background color (overrides variant)
  * @attr {string} text-color - Custom text color (auto-calculated if not set)
  * @attr {string} label - Button text (alternative to textContent)
+ * @attr {string} type - Inner button type: button | submit | reset (default: button, whitelisted)
  * @fires click - When clicked, detail: {}
  */
 export class TdButton extends TdBaseElement {
   static get observedAttributes() {
-    return ['variant', 'size', 'icon', 'icon-position', 'loading', 'disabled', 'full-width', 'color', 'text-color', 'label'];
+    return ['variant', 'size', 'icon', 'icon-position', 'loading', 'disabled', 'full-width', 'color', 'text-color', 'label', 'type'];
   }
   static get booleanAttributes() { return ['loading', 'disabled', 'full-width']; }
 
@@ -164,6 +165,8 @@ export class TdButton extends TdBaseElement {
     const customColor = this.safeColor(this.getAttribute('color'), '');
     const customTextColor = this.safeColor(this.getAttribute('text-color'), '');
     const buttonText = this.escapeHtml(this._getButtonText());
+    // Whitelist the inner button type — never interpolate the raw attribute (attribute-injection).
+    const type = ['submit', 'reset', 'button'].includes(this.getAttribute('type')) ? this.getAttribute('type') : 'button';
 
     // Build CSS classes
     const baseClasses = [
@@ -215,7 +218,7 @@ export class TdButton extends TdBaseElement {
       <button
         class="${classes}"
         ${isDisabled || isLoading ? 'disabled' : ''}
-        type="button"
+        type="${type}"
       >${content}</button>
     `;
   }

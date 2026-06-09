@@ -2,6 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import './td-checkbox.js';
 import './td-toggle.js';
 import './td-slider.js';
+import './td-button.js';
 
 // A submit in the runner would navigate/reload and kill the mocha session.
 document.addEventListener('submit', (e) => e.preventDefault(), true);
@@ -158,5 +159,44 @@ describe('td-slider (form-associated)', () => {
     expect(new FormData(form).get('s')).to.equal('50');
     form.reset();
     expect(new FormData(form).get('s')).to.equal(initial); // back to the captured initial, not min
+  });
+});
+
+describe('td-button (form submit/reset)', () => {
+  it('type="submit" submits the enclosing form on click', () => {
+    const form = mount('<form><td-button type="submit" label="Go"></td-button></form>');
+    const btn = form.querySelector('td-button').querySelector('button');
+    expect(btn.type).to.equal('submit');
+    let submitted = false;
+    form.addEventListener('submit', (e) => { e.preventDefault(); submitted = true; });
+    btn.click();
+    expect(submitted).to.equal(true);
+  });
+
+  it('default type="button" does NOT submit the form', () => {
+    const form = mount('<form><td-button label="Nope"></td-button></form>');
+    const btn = form.querySelector('td-button').querySelector('button');
+    expect(btn.type).to.equal('button');
+    let submitted = false;
+    form.addEventListener('submit', (e) => { e.preventDefault(); submitted = true; });
+    btn.click();
+    expect(submitted).to.equal(false);
+  });
+
+  it('type="reset" resets the form on click', () => {
+    const form = mount('<form><input name="x" value="orig"><td-button type="reset" label="Reset"></td-button></form>');
+    const input = form.querySelector('input');
+    input.value = 'changed';
+    form.querySelector('td-button').querySelector('button').click();
+    expect(input.value).to.equal('orig');
+  });
+
+  it('disabled type="submit" does not submit', () => {
+    const form = mount('<form><td-button type="submit" disabled label="Go"></td-button></form>');
+    const btn = form.querySelector('td-button').querySelector('button');
+    let submitted = false;
+    form.addEventListener('submit', (e) => { e.preventDefault(); submitted = true; });
+    btn.click();
+    expect(submitted).to.equal(false);
   });
 });

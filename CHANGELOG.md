@@ -2,6 +2,10 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.3.1
+
+`td-button` now supports a `type` attribute (`button`|`submit`|`reset`, default `button`, whitelisted) so it can submit/reset a form (light-DOM inner `<button>`). Backward compatible.
+
 ## 0.3.0
 
 **CSP-strict compatible** — no declarative inline styles, no injected `<style>`; styling is
