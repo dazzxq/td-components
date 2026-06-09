@@ -4,6 +4,8 @@ Shared UI Web Components library. Drop into any project, import what you need, i
 
 No Shadow DOM -- components use Tailwind classes from your host page. No framework dependency -- vanilla JS Custom Elements that work everywhere.
 
+Each component is **independent** (import only what you need) and **customized through params** -- HTML attributes for scalars, JS properties for data/callbacks. See the **[Component Catalog](docs/COMPONENTS.md)** for every component, its params, and usage examples.
+
 ## Install
 
 ```bash
