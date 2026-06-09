@@ -1,0 +1,294 @@
+import { TdBaseElement } from './td-base-element.js';
+
+let _autoIdCounter = 0;
+
+/**
+ * Base class for form-associated td-components. Extends {@link TdBaseElement}
+ * with native form participation via **ElementInternals** (no Shadow DOM).
+ *
+ * A subclass gets the standard form-control contract for free and only has to
+ * call {@link TdFormElement#_setFormValue} (and optionally {@link TdFormElement#_setValidity})
+ * whenever its value changes:
+ *
+ * - `static formAssociated = true` + `attachInternals()` so the element submits
+ *   its value in any host `<form>` (FormData/POST) and participates in
+ *   constraint validation, form reset, and `<fieldset disabled>` propagation.
+ * - Reflected `name` / `disabled` / `required` attributes (public API unchanged).
+ * - Read-only `form` / `validity` / `validationMessage` / `willValidate` / `labels`.
+ * - `checkValidity()` / `reportValidity()` delegating to internals.
+ * - **Label association (ISSUE-2):** an external `<label for="<host-id>">` targets
+ *   the CUSTOM ELEMENT (form-associated CEs are labelable, so `el.labels` works);
+ *   the host is given an `id` if it has none, the inner native control carries NO
+ *   colliding `id`, and a label click focuses the inner control via the overridden
+ *   {@link TdFormElement#focus}.
+ * - **Default-state + reset (ISSUE-4):** the initial `value`/`checked` attributes are
+ *   captured ONCE at connect, kept separate from the live state that mutates during
+ *   use; {@link TdFormElement#formResetCallback} restores them. `setFormValue(value, state)`
+ *   carries a display `state` for controls where the shown value ≠ the submitted value
+ *   (e.g. dropdown label vs id); {@link TdFormElement#formStateRestoreCallback} re-applies
+ *   it on autofill/bfcache.
+ * - **Effective-disabled (ISSUE-5):** {@link TdFormElement#_effectiveDisabled} is
+ *   `(disabled attr) OR (ancestor <fieldset disabled>)`. Rendering and every event
+ *   guard read this flag; a fieldset-disabled state never reflects onto the `disabled`
+ *   attribute.
+ *
+ * Subclasses override the small protected hooks (`_restoreDefaults`, `_restoreState`,
+ * `_focusTarget`, `_validationAnchor`) as needed.
+ *
+ * @element (abstract)
+ */
+export class TdFormElement extends TdBaseElement {
+  static formAssociated = true;
+
+  /** @returns {string[]} Base observed attributes. Subclasses must spread these in. */
+  static get observedAttributes() {
+    return ['name', 'disabled', 'required'];
+  }
+
+  /** @returns {string[]} Base boolean attributes. Subclasses must spread these in. */
+  static get booleanAttributes() {
+    return ['disabled', 'required'];
+  }
+
+  constructor() {
+    super();
+    /** @type {ElementInternals} */
+    this._internals = this.attachInternals();
+    /** @type {boolean} disabled attr OR ancestor <fieldset disabled> */
+    this._effectiveDisabled = false;
+    /** @type {boolean} last value from formDisabledCallback */
+    this._ancestorDisabled = false;
+    /** @private */
+    this._defaultsCaptured = false;
+    /** @type {string} initial `value` attribute, captured once */
+    this._defaultValue = '';
+    /** @type {boolean} initial `checked` attribute, captured once */
+    this._defaultChecked = false;
+    /** @private Constraint flags set by the subclass (separate from customError). */
+    this._baseFlags = {};
+    /** @private */
+    this._baseMessage = '';
+    /** @private @type {HTMLElement|undefined} */
+    this._baseAnchor = undefined;
+    /** @private Custom validity message (setCustomValidity), kept separate. */
+    this._customMessage = '';
+  }
+
+  connectedCallback() {
+    // Compute effective-disabled BEFORE the first render so guards/styling are correct.
+    this._effectiveDisabled = this.hasAttribute('disabled') || this._ancestorDisabled;
+    // Assign the host id BEFORE the first render so a subclass that renders an internal
+    // `<label for="${this.id}">` gets a real target on the very first paint (ISSUE-1).
+    this._ensureId();
+    super.connectedCallback(); // _setupProperties + first _doRender (if not yet initialized)
+    if (!this._defaultsCaptured) {
+      this._captureDefaults();
+      this._defaultsCaptured = true;
+    }
+  }
+
+  // --- Form identity / state (read-only, delegate to internals) ---
+
+  /** @returns {HTMLFormElement|null} The owning form, or null. */
+  get form() { return this._internals.form; }
+
+  /** @returns {ValidityState} */
+  get validity() { return this._internals.validity; }
+
+  /** @returns {string} */
+  get validationMessage() { return this._internals.validationMessage; }
+
+  /** @returns {boolean} */
+  get willValidate() { return this._internals.willValidate; }
+
+  /** @returns {NodeList} Labels associated with this element via `<label for>`. */
+  get labels() { return this._internals.labels; }
+
+  /** @returns {boolean} */
+  checkValidity() { return this._internals.checkValidity(); }
+
+  /** @returns {boolean} */
+  reportValidity() { return this._internals.reportValidity(); }
+
+  // --- Value + validity wrappers (subclasses call these) ---
+
+  /**
+   * Set the value submitted in FormData.
+   * @param {File|string|FormData|null} value - The submitted value (null = not submitted).
+   * @param {File|string|FormData|null} [state] - Optional display/restore state when it differs
+   *   from the submitted value (e.g. a dropdown's label vs its id).
+   * @protected
+   */
+  _setFormValue(value, state) {
+    if (state === undefined) this._internals.setFormValue(value);
+    else this._internals.setFormValue(value, state);
+  }
+
+  /**
+   * Set constraint-validation flags. Passing an empty/all-false object clears validity.
+   * @param {ValidityStateFlags} [flags] - e.g. `{ valueMissing: true }`.
+   * @param {string} [message] - Validation message (required when any flag is set).
+   * @param {HTMLElement} [anchor] - Element the browser anchors the validity bubble to.
+   * @protected
+   */
+  _setValidity(flags = {}, message, anchor) {
+    const hasFlag = flags && Object.values(flags).some(Boolean);
+    this._baseFlags = hasFlag ? { ...flags } : {};
+    this._baseMessage = hasFlag ? (message ?? '') : '';
+    this._baseAnchor = anchor;
+    this._applyValidity();
+  }
+
+  /**
+   * Native-style custom validity hook. Mirrors `HTMLInputElement.setCustomValidity`:
+   * a non-empty message adds a `customError`; an empty string clears ONLY the custom
+   * error WITHOUT wiping subclass constraint flags like `valueMissing` (ISSUE-2).
+   * @param {string} message
+   */
+  setCustomValidity(message) {
+    this._customMessage = message || '';
+    this._applyValidity();
+  }
+
+  /**
+   * @private Merge subclass constraint flags with the custom-error message and push the
+   * combined validity to internals. Custom message takes display precedence when present.
+   */
+  _applyValidity() {
+    const flags = { ...this._baseFlags };
+    let message = this._baseMessage;
+    if (this._customMessage) {
+      flags.customError = true;
+      message = this._customMessage;
+    }
+    const hasFlag = Object.values(flags).some(Boolean);
+    if (!hasFlag) {
+      this._internals.setValidity({});
+      return;
+    }
+    // The stored anchor may have been detached by a re-render (TdBaseElement replaces
+    // innerHTML), so only reuse it while it is still a descendant; else re-resolve it (ISSUE-4).
+    const anchor = (this._baseAnchor && this.contains(this._baseAnchor))
+      ? this._baseAnchor
+      : this._validationAnchor();
+    this._internals.setValidity(flags, message || ' ', anchor);
+  }
+
+  /**
+   * Element the validity bubble anchors to. Defaults to the inner focusable control.
+   * @returns {HTMLElement|undefined}
+   * @protected
+   */
+  _validationAnchor() {
+    return this._focusTarget() ?? undefined;
+  }
+
+  // --- Defaults + reset (ISSUE-4) ---
+
+  /**
+   * Capture the initial submitted state ONCE, separate from the live value.
+   * Subclasses with non-`value` semantics may override.
+   * @protected
+   */
+  _captureDefaults() {
+    this._defaultValue = this.getAttribute('value') ?? '';
+    this._defaultChecked = this.hasAttribute('checked');
+  }
+
+  /** Restore live state to the captured defaults on form reset. */
+  formResetCallback() {
+    this._restoreDefaults();
+  }
+
+  /**
+   * Restore the control's live state to its captured defaults. Default implementation
+   * handles `value`-based controls; checkbox/toggle/dropdown/datetime override.
+   * @protected
+   */
+  _restoreDefaults() {
+    if (this.constructor.observedAttributes.includes('value')) {
+      this.value = this._defaultValue; // setter reflects the attribute → re-render
+    }
+  }
+
+  /**
+   * Re-apply restored state on autofill / bfcache restore.
+   * @param {File|string|FormData} state
+   * @param {'restore'|'autocomplete'} mode
+   */
+  formStateRestoreCallback(state, mode) {
+    this._restoreState(state, mode);
+  }
+
+  /**
+   * Apply a restored `state` (the 2nd arg of setFormValue) back to the live UI.
+   * Stateful controls where display ≠ submitted value override this.
+   * @param {File|string|FormData} state
+   * @param {'restore'|'autocomplete'} _mode
+   * @protected
+   */
+  _restoreState(state, _mode) {
+    if (this.constructor.observedAttributes.includes('value') && typeof state === 'string') {
+      this.value = state;
+    }
+  }
+
+  // --- Disabled propagation (ISSUE-5) ---
+
+  /**
+   * Called by the platform when an ancestor `<fieldset disabled>` toggles.
+   * Updates the effective-disabled state WITHOUT touching the `disabled` attribute.
+   * @param {boolean} disabled
+   */
+  formDisabledCallback(disabled) {
+    this._ancestorDisabled = !!disabled;
+    this._syncEffectiveDisabled();
+  }
+
+  /** @private Recompute `_effectiveDisabled`; re-render only if it changed. */
+  _syncEffectiveDisabled() {
+    const next = this.hasAttribute('disabled') || this._ancestorDisabled;
+    if (next !== this._effectiveDisabled) {
+      this._effectiveDisabled = next;
+      if (this._initialized) this._doRender();
+    }
+  }
+
+  attributeChangedCallback(name, oldVal, newVal) {
+    if (name === 'disabled') {
+      // Keep effective-disabled in sync, then fall through to the base re-render.
+      this._effectiveDisabled = newVal !== null || this._ancestorDisabled;
+    }
+    super.attributeChangedCallback(name, oldVal, newVal);
+  }
+
+  // --- Id + label-click focus delegation (ISSUE-2) ---
+
+  /** @private Give the host an id so external `<label for>` can target it. */
+  _ensureId() {
+    if (!this.id) {
+      this.id = `td-${this.localName || 'form-el'}-${++_autoIdCounter}`;
+    }
+  }
+
+  /**
+   * The inner focusable native control. Subclasses override to return their
+   * `<input>`/`<textarea>`/button so label clicks and validity bubbles land there.
+   * @returns {HTMLElement|null}
+   * @protected
+   */
+  _focusTarget() {
+    return this.querySelector('input, textarea, select, [contenteditable="true"], button, [tabindex]');
+  }
+
+  /**
+   * Delegate focus to the inner control. Clicking an external `<label for="<host-id>">`
+   * focuses this element (FACE elements are labelable); we forward that to the real control.
+   * @param {FocusOptions} [options]
+   */
+  focus(options) {
+    const target = this._focusTarget();
+    if (target && typeof target.focus === 'function') target.focus(options);
+    else super.focus(options);
+  }
+}

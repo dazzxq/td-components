@@ -160,8 +160,8 @@ export class TdButton extends TdBaseElement {
     const isLoading = this.hasAttribute('loading');
     const isDisabled = this.hasAttribute('disabled');
     const isFullWidth = this.hasAttribute('full-width');
-    const customColor = this.getAttribute('color') || '';
-    const customTextColor = this.getAttribute('text-color') || '';
+    const customColor = this.safeColor(this.getAttribute('color'), '');
+    const customTextColor = this.safeColor(this.getAttribute('text-color'), '');
     const buttonText = this.escapeHtml(this._getButtonText());
 
     // Build CSS classes
@@ -230,7 +230,7 @@ export class TdButton extends TdBaseElement {
     if (!btn) return;
 
     const variant = this.getAttribute('variant') || 'primary';
-    const customColor = this.getAttribute('color') || '';
+    const customColor = this.safeColor(this.getAttribute('color'), '');
     const isLoading = this.hasAttribute('loading');
     const isDisabled = this.hasAttribute('disabled');
 

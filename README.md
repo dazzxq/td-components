@@ -4,6 +4,8 @@ Shared UI Web Components library. Drop into any project, import what you need, i
 
 No Shadow DOM -- components use Tailwind classes from your host page. No framework dependency -- vanilla JS Custom Elements that work everywhere.
 
+Each component is **independent** (import only what you need) and **customized through params** -- HTML attributes for scalars, JS properties for data/callbacks. See the **[Component Catalog](docs/COMPONENTS.md)** for every component, its params, and usage examples.
+
 ## Install
 
 ```bash
@@ -63,6 +65,46 @@ import '@dazzxq/td-components';
     });
 </script>
 ```
+
+### Use in a `<form>`
+
+As of **0.2.0**, every form control is a real form-associated custom element — give it a
+`name`, drop it in a `<form>`, and it submits in `FormData`/POST, supports `required` and
+constraint validation, resets with the form, and is excluded by an ancestor
+`<fieldset disabled>` — just like a native control.
+
+```html
+<form id="signup">
+  <td-input-field name="email" type="email" label="Email" required></td-input-field>
+  <td-checkbox name="agree" required label="I agree"></td-checkbox>
+  <td-dropdown name="plan" value="pro" required></td-dropdown>
+  <button type="submit">Sign up</button>
+</form>
+
+<script type="module">
+  import '@dazzxq/td-components/input-field';
+  import '@dazzxq/td-components/checkbox';
+  import '@dazzxq/td-components/dropdown';
+
+  const form = document.getElementById('signup');
+  // Provide the options; the dropdown's `value="pro"` resolves to a selection once they load.
+  form.querySelector('td-dropdown').options = [{ value: 'pro', label: 'Pro' }];
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!form.reportValidity()) return;          // native validation, incl. the custom controls
+    console.log(Object.fromEntries(new FormData(form)));  // e.g. { email: 'a@b.com', agree: 'on', plan: 'pro' }
+  });
+</script>
+```
+
+**Browser support:** form association uses
+[`ElementInternals`](https://developer.mozilla.org/docs/Web/API/ElementInternals), supported
+in all current evergreen browsers (Chrome/Edge 77+, Firefox 98+, Safari 16.4+). For older
+engines, load a [form-associated CE polyfill](https://www.npmjs.com/package/element-internals-polyfill)
+before importing the components.
+
+See the **[Component Catalog](docs/COMPONENTS.md)** for every component's params, and
+**[CHANGELOG.md](CHANGELOG.md)** for the 0.2.0 breaking changes.
 
 ## Creating Components
 

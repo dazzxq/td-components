@@ -23,7 +23,7 @@ export class TdPagination extends TdBaseElement {
   _getTotalItems() { return Math.max(0, parseInt(this.getAttribute('total-items') || '0', 10)); }
   _getItemsPerPage() { return Math.max(1, parseInt(this.getAttribute('items-per-page') || '10', 10)); }
   _getCurrentPage() { return Math.max(1, parseInt(this.getAttribute('current-page') || '1', 10)); }
-  _getActiveColor() { return this.getAttribute('active-color') || '#ef4444'; }
+  _getActiveColor() { return this.safeColor(this.getAttribute('active-color'), '#ef4444'); }
   _getItemLabel() { return this.getAttribute('item-label') || 'mục'; }
   _getMaxPages() { return Math.max(1, parseInt(this.getAttribute('max-pages') || '5', 10)); }
 

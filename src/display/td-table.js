@@ -1,4 +1,5 @@
 import { TdBaseElement } from '../base/td-base-element.js';
+import { safeCssDimension } from '../utils/css-safe.js';
 import './td-pagination.js';
 import './td-empty-state.js';
 
@@ -17,7 +18,7 @@ import './td-empty-state.js';
  * @attr {boolean} server-mode - Enable server-side mode
  * @attr {number} total-items - Total items for server mode pagination
  *
- * @property {Array<{key: string, label: string, sortable?: boolean, width?: string, widthType?: string, minWidth?: string, maxWidth?: string, align?: string, render?: Function}>} columns - Column definitions
+ * @property {Array<{key: string, label: string, sortable?: boolean, width?: string, widthType?: string, minWidth?: string, maxWidth?: string, align?: string, render?: Function}>} columns - Column definitions. `render(row)` returns **trusted raw HTML** for that cell (developer-authored — sanitize any end-user data inside it yourself). Cells WITHOUT a `render` show the plain value, always escaped. `label` is escaped; `width`/`align` are CSS-sanitized.
  * @property {Array<Object>} data - Row data array
  * @property {Function} onSort - Server mode sort callback ({key, direction})
  * @property {Function} onPageChange - Server mode page change callback (page)
@@ -65,7 +66,7 @@ export class TdTable extends TdBaseElement {
   // --- Attribute helpers ---
 
   _getPerPage() { return Math.max(1, parseInt(this.getAttribute('per-page') || '10', 10)); }
-  _getActiveColor() { return this.getAttribute('active-color') || '#ef4444'; }
+  _getActiveColor() { return this.safeColor(this.getAttribute('active-color'), '#ef4444'); }
   _isZebra() { return !this.hasAttribute('zebra') || this.hasAttribute('zebra'); }
   _isLoading() { return this.hasAttribute('loading'); }
   _getLoadingRows() { return Math.max(1, parseInt(this.getAttribute('loading-rows') || '5', 10)); }
@@ -178,16 +179,23 @@ export class TdTable extends TdBaseElement {
   // --- Column width styles ---
 
   _getColumnWidthStyle(col) {
+    // `col` is developer-supplied config (trusted), but dimensions/align still enter a
+    // CSS context — sanitize them so a stray/hostile value can't break out of the rule.
     const widthType = col.widthType || 'flexible';
     let style = '';
-    if (widthType === 'fixed' && col.width) {
-      style = `width:${col.width};min-width:${col.width};max-width:${col.width};`;
+    const width = safeCssDimension(col.width, '');
+    if (widthType === 'fixed' && width) {
+      style = `width:${width};min-width:${width};max-width:${width};`;
     } else {
       style = 'width:auto;';
-      if (col.minWidth) style += `min-width:${col.minWidth};`;
-      if (col.maxWidth) style += `max-width:${col.maxWidth};`;
+      const minW = safeCssDimension(col.minWidth, '');
+      const maxW = safeCssDimension(col.maxWidth, '');
+      if (minW) style += `min-width:${minW};`;
+      if (maxW) style += `max-width:${maxW};`;
     }
-    if (col.align) style += `text-align:${col.align};`;
+    if (['left', 'center', 'right', 'justify'].includes(col.align)) {
+      style += `text-align:${col.align};`;
+    }
     return style;
   }
 
@@ -267,9 +275,10 @@ export class TdTable extends TdBaseElement {
     // Header columns
     const headerCols = columns.map(col => {
       const style = this._getColumnWidthStyle(col);
+      const attrKey = this.escapeHtml(String(col.key ?? ''));
       if (col.sortable) {
-        return `<th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style="${style}" data-sort-key="${col.key}">
-          <button type="button" class="td-table-sort-btn inline-flex items-center gap-1.5 hover:text-gray-900 transition-colors" data-sort-key="${col.key}">
+        return `<th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" style="${style}" data-sort-key="${attrKey}">
+          <button type="button" class="td-table-sort-btn inline-flex items-center gap-1.5 hover:text-gray-900 transition-colors" data-sort-key="${attrKey}">
             <span>${this.escapeHtml(col.label)}</span>
             ${this._getSortIcon(col.key)}
           </button>
@@ -296,7 +305,8 @@ export class TdTable extends TdBaseElement {
           const style = this._getColumnWidthStyle(col);
           // Will handle render in afterRender for elements; for now mark with data attribute
           if (col.render && typeof col.render === 'function') {
-            return `<td class="px-6 py-4 text-sm text-gray-900 td-table-render-cell" style="${style}" data-col-key="${col.key}" data-row-idx="${idx}"></td>`;
+            const attrKey = this.escapeHtml(String(col.key ?? ''));
+            return `<td class="px-6 py-4 text-sm text-gray-900 td-table-render-cell" style="${style}" data-col-key="${attrKey}" data-row-idx="${idx}"></td>`;
           }
           const value = row[col.key];
           const display = value == null ? '' : this.escapeHtml(String(value));

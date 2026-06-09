@@ -1,4 +1,5 @@
 import { escapeHtml } from '../utils/escape.js';
+import { safeColor } from '../utils/css-safe.js';
 
 /**
  * Base class for all td-components. Extends HTMLElement with:
@@ -124,8 +125,17 @@ export class TdBaseElement extends HTMLElement {
 
   // --- Utilities ---
 
-  /** Escape HTML entities to prevent XSS. */
+  /** Escape HTML entities to prevent XSS in HTML-text and quoted-attribute contexts. */
   escapeHtml(str) {
     return escapeHtml(str);
+  }
+
+  /**
+   * Validate a CSS color before interpolating it into injected CSS or a `style="…"`
+   * attribute. Returns `fallback` for anything that isn't a safe color shape — use this
+   * (NOT escapeHtml) for any attribute-derived value that lands in a CSS context.
+   */
+  safeColor(value, fallback = '') {
+    return safeColor(value, fallback);
   }
 }

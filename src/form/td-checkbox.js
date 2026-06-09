@@ -1,18 +1,24 @@
-import { TdBaseElement } from '../base/td-base-element.js';
+import { TdFormElement } from '../base/td-form-element.js';
 
 /**
  * Checkbox component with custom SVG checkmark and color support.
+ * Form-associated (ElementInternals): submits its `value` (default "on") only when
+ * checked, supports `required` (valueMissing), reset, and `<fieldset disabled>`.
  *
  * @element td-checkbox
  * @attr {boolean} checked - Whether the checkbox is checked
+ * @attr {string} value - Submitted value when checked (default: "on")
+ * @attr {string} name - Form field name (submitted via the host)
+ * @attr {boolean} required - Must be checked for the form to be valid
+ * @attr {boolean} disabled - Disables interaction (also via ancestor <fieldset disabled>)
  * @attr {string} label - Label text displayed next to the checkbox
  * @attr {string} size - Size variant: sm | md | lg (default: md)
  * @attr {string} color - Checked background/border color (default: #2196F3)
  * @fires change - When toggled, detail: { checked: boolean }
  */
-export class TdCheckbox extends TdBaseElement {
-  static get observedAttributes() { return ['checked', 'label', 'size', 'color']; }
-  static get booleanAttributes() { return ['checked']; }
+export class TdCheckbox extends TdFormElement {
+  static get observedAttributes() { return [...super.observedAttributes, 'checked', 'value', 'label', 'size', 'color']; }
+  static get booleanAttributes() { return [...super.booleanAttributes, 'checked']; }
 
   constructor() {
     super();
@@ -32,7 +38,7 @@ export class TdCheckbox extends TdBaseElement {
 
   /** @private */
   _getColor() {
-    return this.getAttribute('color') || '#2196F3';
+    return this.safeColor(this.getAttribute('color'), '#2196F3');
   }
 
   /** @private */
@@ -55,6 +61,10 @@ export class TdCheckbox extends TdBaseElement {
         min-height: ${s.minHeight}px;
         padding-top: ${s.padding};
         padding-bottom: ${s.padding};
+      }
+      .${cls}.td-checkbox--disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
       }
       .${cls} .td-checkbox-input {
         position: absolute;
@@ -125,15 +135,17 @@ export class TdCheckbox extends TdBaseElement {
 
   render() {
     const isChecked = this.hasAttribute('checked');
+    const isDisabled = this._effectiveDisabled;
     const label = this.escapeHtml(this.getAttribute('label') || '');
     const s = this._getSizeConfig();
 
     this._injectStyle();
 
     return `
-      <label class="${this._uniqueClass} relative inline-block select-none cursor-pointer">
+      <label class="${this._uniqueClass}${isDisabled ? ' td-checkbox--disabled' : ''} relative inline-block select-none cursor-pointer">
         <input type="checkbox" class="td-checkbox-input"
           ${isChecked ? 'checked' : ''}
+          ${isDisabled ? 'disabled' : ''}
           aria-checked="${isChecked}"
         />
         <span class="td-checkmark">
@@ -157,9 +169,41 @@ export class TdCheckbox extends TdBaseElement {
           this.removeAttribute('checked');
         }
         input.setAttribute('aria-checked', String(checked));
+        this._syncForm();
         this.emit('change', { checked });
       });
     }
+    this._syncForm();
+  }
+
+  /** @private Push the checkbox state into form submission + constraint validation. */
+  _syncForm() {
+    const checked = this.hasAttribute('checked');
+    const value = this.getAttribute('value') ?? 'on';
+    this._setFormValue(checked ? value : null);
+    if (this.hasAttribute('required') && !checked) {
+      this._setValidity({ valueMissing: true }, 'Please check this box.', this._focusTarget());
+    } else {
+      this._setValidity({});
+    }
+  }
+
+  _captureDefaults() {
+    super._captureDefaults();
+    // Presence-aware: null = no `value` attr (submits "on"); a string = explicit value (ISSUE-2).
+    this._defaultValueAttr = this.getAttribute('value');
+  }
+
+  _restoreDefaults() {
+    if (this._defaultChecked) this.setAttribute('checked', '');
+    else this.removeAttribute('checked');
+    if (this._defaultValueAttr === null) this.removeAttribute('value');
+    else this.setAttribute('value', this._defaultValueAttr);
+    this._syncForm();
+  }
+
+  _focusTarget() {
+    return this.querySelector('.td-checkbox-input');
   }
 }
 

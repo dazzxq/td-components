@@ -1,4 +1,4 @@
-import { TdBaseElement } from '../base/td-base-element.js';
+import { TdFormElement } from '../base/td-form-element.js';
 import { TdModal } from '../feedback/td-modal.js';
 
 /**
@@ -8,18 +8,26 @@ import { TdModal } from '../feedback/td-modal.js';
  *
  * Format: Display "dd/mm/yyyy - hh:mm" ↔ DB "yyyy-mm-dd hh:mm:ss"
  *
+ * **Form-associated (ElementInternals, 0.2.0):** submits an **ISO 8601** value
+ * (`YYYY-MM-DDTHH:mm:00`) by default; set `form-value-format="display"` (dd/mm/yyyy - hh:mm)
+ * or `form-value-format="db"` (yyyy-mm-dd hh:mm:ss) to change the submitted shape. The
+ * display string is carried as the restore state. An invalid date sets `badInput`.
+ *
  * Ported from DCMS DateTimePicker.
  *
  * @element td-datetime-picker
  * @attr {string} value - Display format value (dd/mm/yyyy - hh:mm)
  * @attr {string} placeholder - Placeholder text (default: dd/mm/yyyy - hh:mm)
- * @attr {boolean} disabled - Disables interaction
+ * @attr {boolean} disabled - Disables interaction (also via ancestor <fieldset disabled>)
+ * @attr {boolean} required - A valid date must be present for the form to be valid
+ * @attr {string} name - Form field name (submitted via the host)
  * @attr {string} label - Label text
+ * @attr {string} form-value-format - Submitted format: iso (default) | display | db
  * @fires change - When date confirmed, detail: { value, dbValue }
  */
-export class TdDatetimePicker extends TdBaseElement {
-  static get observedAttributes() { return ['value', 'placeholder', 'disabled', 'label', 'minute-step']; }
-  static get booleanAttributes() { return ['disabled']; }
+export class TdDatetimePicker extends TdFormElement {
+  static get observedAttributes() { return [...super.observedAttributes, 'value', 'placeholder', 'label', 'minute-step', 'form-value-format']; }
+  static get booleanAttributes() { return [...super.booleanAttributes]; }
 
   static _nextId = 0;
 
@@ -42,22 +50,30 @@ export class TdDatetimePicker extends TdBaseElement {
 
   /** @private */
   _initFromValue() {
+    this._parseError = false;
+    this._rawValue = '';
     const val = this.getAttribute('value');
     if (val) {
-      this._parseDisplayValue(val);
+      this._setFromDisplay(val);
     } else {
+      // No explicit value: the wheels still default to "now" for a pleasant first open,
+      // but nothing is submitted and a `required` field reports valueMissing.
       const now = new Date();
       this._day = now.getDate();
       this._month = now.getMonth() + 1;
       this._year = now.getFullYear();
       this._hour = now.getHours();
       this._minute = now.getMinutes();
+      this._hasValue = false;
     }
   }
 
-  /** Parse "dd/mm/yyyy - hh:mm" to internal values */
+  /**
+   * Parse "dd/mm/yyyy - hh:mm" to internal values.
+   * @returns {boolean} true if the string matched the display format.
+   */
   _parseDisplayValue(str) {
-    if (!str) return;
+    if (!str) return false;
     const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s*-\s*(\d{1,2}):(\d{1,2})$/);
     if (m) {
       this._day = parseInt(m[1], 10);
@@ -65,7 +81,19 @@ export class TdDatetimePicker extends TdBaseElement {
       this._year = parseInt(m[3], 10);
       this._hour = parseInt(m[4], 10);
       this._minute = parseInt(m[5], 10);
+      return true;
     }
+    return false;
+  }
+
+  /**
+   * @private Apply an external display-format string as the current value, tracking a
+   * parse error so a malformed string is never silently submitted as a stale/default date.
+   */
+  _setFromDisplay(str) {
+    this._rawValue = str || '';
+    this._parseError = !this._parseDisplayValue(str);
+    this._hasValue = true;
   }
 
   /** Format internal values to "dd/mm/yyyy - hh:mm" */
@@ -88,6 +116,28 @@ export class TdDatetimePicker extends TdBaseElement {
     return `${y}-${mo}-${d} ${h}:${mi}:00`;
   }
 
+  /** Convert to ISO 8601 (local, no timezone) "yyyy-mm-ddThh:mm:00" */
+  _toISOFormat() {
+    const d = String(this._day || 1).padStart(2, '0');
+    const mo = String(this._month || 1).padStart(2, '0');
+    const y = String(this._year || new Date().getFullYear());
+    const h = String(this._hour ?? 0).padStart(2, '0');
+    const mi = String(this._minute ?? 0).padStart(2, '0');
+    return `${y}-${mo}-${d}T${h}:${mi}:00`;
+  }
+
+  /** @private The string submitted in FormData, per `form-value-format`. */
+  _formValue() {
+    // Never derive a formatted value from stale date parts when the input didn't parse —
+    // submit the raw string instead (it stays paired with a badInput validity flag).
+    if (this._parseError) return this._rawValue;
+    switch (this.getAttribute('form-value-format')) {
+      case 'display': return this._formatDisplay();
+      case 'db': return this._toDBFormat();
+      default: return this._toISOFormat();
+    }
+  }
+
   /** Get minute step from attribute (default 1) */
   _getMinuteStep() {
     const step = parseInt(this.getAttribute('minute-step'), 10);
@@ -102,6 +152,9 @@ export class TdDatetimePicker extends TdBaseElement {
 
   /** Validate date */
   _validate() {
+    if (this._parseError) {
+      return { valid: false, error: 'Định dạng ngày giờ không hợp lệ' };
+    }
     if (!this._day || !this._month || !this._year) {
       return { valid: false, error: 'Vui lòng nhập đầy đủ ngày, tháng, năm' };
     }
@@ -119,10 +172,10 @@ export class TdDatetimePicker extends TdBaseElement {
   // ── Rendering ──
 
   render() {
-    const value = this._formatDisplay();
+    const value = !this._hasValue ? '' : (this._parseError ? this._rawValue : this._formatDisplay());
     const placeholder = this.getAttribute('placeholder') || 'dd/mm/yyyy - hh:mm';
     const label = this.getAttribute('label') || '';
-    const isDisabled = this.hasAttribute('disabled');
+    const isDisabled = this._effectiveDisabled;
     const disabledClass = isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer';
 
     return `
@@ -145,8 +198,76 @@ export class TdDatetimePicker extends TdBaseElement {
 
   afterRender() {
     const input = this.querySelector('input');
-    if (input && !this.hasAttribute('disabled')) {
+    if (input && !this._effectiveDisabled) {
       this.listen(input, 'click', () => this._open());
+    }
+    this._syncForm();
+  }
+
+  // --- Form participation ---
+
+  /** @private Push the current datetime + validity to the form. */
+  _syncForm() {
+    if (!this._hasValue) {
+      this._setFormValue(null);
+      if (this.hasAttribute('required')) {
+        this._setValidity({ valueMissing: true }, 'Vui lòng chọn ngày giờ', this._focusTarget());
+      } else {
+        this._setValidity({});
+      }
+      return;
+    }
+    this._setFormValue(this._formValue(), this._parseError ? this._rawValue : this._formatDisplay());
+    const v = this._validate();
+    if (!v.valid) {
+      this._setValidity({ badInput: true }, v.error, this._focusTarget());
+    } else {
+      this._setValidity({});
+    }
+  }
+
+  _captureDefaults() {
+    super._captureDefaults();
+    /** @private null = no initial `value` attr (defaults to "now"); a string = explicit. */
+    this._defaultValueAttr = this.getAttribute('value');
+  }
+
+  _restoreDefaults() {
+    const dv = this._defaultValueAttr;
+    if (dv == null || dv === '') {
+      this.removeAttribute('value');
+      this._initFromValue(); // resets wheels to "now" and clears _hasValue/_parseError
+    } else {
+      this._setFromDisplay(dv);
+      if (this.getAttribute('value') !== dv) this.setAttribute('value', dv);
+    }
+    this._doRender();
+    this._syncForm();
+  }
+
+  _restoreState(state, _mode) {
+    if (typeof state === 'string') this.setValue(state);
+  }
+
+  _focusTarget() {
+    return this.querySelector('input');
+  }
+
+  attributeChangedCallback(name, oldVal, newVal) {
+    if (oldVal === newVal) return;
+    // Keep internal date state + presence in sync when `value` is set/cleared externally.
+    if (name === 'value' && this._initialized) {
+      if (newVal) {
+        this._setFromDisplay(newVal);
+      } else {
+        this._hasValue = false;
+        this._parseError = false;
+        this._rawValue = '';
+      }
+    }
+    super.attributeChangedCallback(name, oldVal, newVal);
+    if (this._initialized && (name === 'value' || name === 'form-value-format')) {
+      this._syncForm();
     }
   }
 
@@ -441,8 +562,14 @@ export class TdDatetimePicker extends TdBaseElement {
     const input = this.querySelector('input');
     if (input) input.value = value;
 
-    // Update attribute
+    // Mark an explicit, parsed user selection + update attribute
+    this._hasValue = true;
+    this._parseError = false;
+    this._rawValue = value;
     this.setAttribute('value', value);
+
+    // Form participation
+    this._syncForm();
 
     // Emit change
     this.emit('change', { value, dbValue });
@@ -458,12 +585,25 @@ export class TdDatetimePicker extends TdBaseElement {
   /** Get DB format value */
   getDBValue() { return this._toDBFormat(); }
 
-  /** Set value from display format */
+  /** Set value from display format ('' / null clears it) */
   setValue(displayValue) {
-    this._parseDisplayValue(displayValue);
-    const input = this.querySelector('input');
-    if (input) input.value = this._formatDisplay();
-    this.setAttribute('value', this._formatDisplay());
+    if (!displayValue) {
+      this._hasValue = false;
+      this._parseError = false;
+      this._rawValue = '';
+      this.removeAttribute('value');
+      this._doRender();
+      this._syncForm();
+      return;
+    }
+    // Store the raw string (not a reformatted one) so a malformed value stays visible.
+    if (this.getAttribute('value') === displayValue) {
+      this._setFromDisplay(displayValue);
+      this._doRender();
+      this._syncForm();
+    } else {
+      this.setAttribute('value', displayValue); // → attributeChangedCallback parses + renders + syncs
+    }
   }
 
   /** Set value from DB format */
@@ -476,9 +616,13 @@ export class TdDatetimePicker extends TdBaseElement {
       this._year = date.getFullYear();
       this._hour = date.getHours();
       this._minute = date.getMinutes();
+      this._hasValue = true;
+      this._parseError = false;
+      this._rawValue = this._formatDisplay();
       const input = this.querySelector('input');
       if (input) input.value = this._formatDisplay();
       this.setAttribute('value', this._formatDisplay());
+      this._syncForm();
     } catch { /* invalid date */ }
   }
 }

@@ -10,6 +10,8 @@
  * - Max 5 visible with FIFO eviction
  */
 
+import { escapeHtml } from '../utils/escape.js';
+
 /**
  * Try to import TdModalStackManager for dynamic z-index.
  * If not available (parallel wave execution), fallback to base z-index.
@@ -152,7 +154,7 @@ export class TdToast {
         toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
         toast.innerHTML = `
             <div class="px-4 py-3 rounded-xl text-white border border-white/20 ${theme.bg} ${theme.hover}" style="box-shadow: 0 8px 32px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);">
-                <span class="text-sm leading-relaxed block">${message}</span>
+                <span class="text-sm leading-relaxed block">${escapeHtml(message)}</span>
             </div>
         `;
 

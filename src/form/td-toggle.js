@@ -1,19 +1,29 @@
-import { TdBaseElement } from '../base/td-base-element.js';
+import { TdFormElement } from '../base/td-form-element.js';
 
 /**
  * Toggle switch component with SVG cross/checkmark icons and bounce animation.
+ * Form-associated (ElementInternals): submits its `value` (default "on") only when
+ * checked, supports `required`, reset, and `<fieldset disabled>`.
+ *
+ * **0.2.0 BREAKING:** the toggle is now **UNCONTROLLED by default** — clicking it
+ * self-toggles like a native checkbox AND emits `change`. Add the boolean `controlled`
+ * attribute to restore the old emit-only behavior (the consumer flips `checked`).
  *
  * @element td-toggle
  * @attr {boolean} checked - Whether the toggle is on
- * @attr {boolean} disabled - Disables interaction
+ * @attr {boolean} controlled - Opt-in: emit `change` only, do NOT self-toggle (legacy behavior)
+ * @attr {string} value - Submitted value when checked (default: "on")
+ * @attr {string} name - Form field name (submitted via the host)
+ * @attr {boolean} required - Must be on for the form to be valid
+ * @attr {boolean} disabled - Disables interaction (also via ancestor <fieldset disabled>)
  * @attr {string} label - Label text displayed next to the switch
  * @attr {string} size - Size variant: sm | md | lg (default: md)
  * @attr {string} color - Active color (default: #4ADE80)
  * @fires change - When toggled, detail: { checked: boolean }
  */
-export class TdToggle extends TdBaseElement {
-  static get observedAttributes() { return ['checked', 'disabled', 'label', 'size', 'color']; }
-  static get booleanAttributes() { return ['checked', 'disabled']; }
+export class TdToggle extends TdFormElement {
+  static get observedAttributes() { return [...super.observedAttributes, 'checked', 'controlled', 'value', 'label', 'size', 'color']; }
+  static get booleanAttributes() { return [...super.booleanAttributes, 'checked', 'controlled']; }
 
   constructor() {
     super();
@@ -33,7 +43,7 @@ export class TdToggle extends TdBaseElement {
 
   /** @private */
   _getColor() {
-    return this.getAttribute('color') || '#4ADE80';
+    return this.safeColor(this.getAttribute('color'), '#4ADE80');
   }
 
   /** @private - Convert any CSS color to RGB using computed style */
@@ -132,7 +142,7 @@ export class TdToggle extends TdBaseElement {
 
   render() {
     const isChecked = this.hasAttribute('checked');
-    const isDisabled = this.hasAttribute('disabled');
+    const isDisabled = this._effectiveDisabled;
     const label = this.escapeHtml(this.getAttribute('label') || '');
     const color = this._getColor();
     const s = this._getSizeConfig();
@@ -167,8 +177,8 @@ export class TdToggle extends TdBaseElement {
   }
 
   /**
-   * Override attributeChangedCallback to do lightweight DOM updates
-   * instead of full re-render for 'checked' and 'color' changes.
+   * Lightweight DOM updates for 'checked'/'color'; full re-render otherwise.
+   * 'disabled' keeps `_effectiveDisabled` in sync (it changes the rendered guard classes).
    */
   attributeChangedCallback(name, oldVal, newVal) {
     if (oldVal === newVal) return;
@@ -176,18 +186,25 @@ export class TdToggle extends TdBaseElement {
 
     if (name === 'checked') {
       this._updateToggleState();
+      this._syncForm();
       return;
     }
 
     if (name === 'color') {
-      this._injectStyle(newVal || '#4ADE80');
-      // Also update check icon stroke color
+      const color = this._getColor();
+      this._injectStyle(color);
       const checkIcon = this.querySelector('.td-toggle-icon:last-child path');
-      if (checkIcon) checkIcon.setAttribute('stroke', newVal || '#4ADE80');
+      if (checkIcon) checkIcon.setAttribute('stroke', color);
       return;
     }
 
-    // For other attributes (disabled, label, size), full re-render
+    if (name === 'disabled') {
+      this._effectiveDisabled = newVal !== null || this._ancestorDisabled;
+      this._doRender();
+      return;
+    }
+
+    // For other attributes (controlled, value, label, size, name, required): full re-render
     this._doRender();
   }
 
@@ -223,18 +240,52 @@ export class TdToggle extends TdBaseElement {
     if (labelEl) {
       this.listen(labelEl, 'click', (e) => {
         e.preventDefault();
-        if (this.hasAttribute('disabled')) return;
+        if (this._effectiveDisabled) return;
 
         const isChecked = this.hasAttribute('checked');
 
-        // Only emit event — do NOT toggle state here.
-        // The consumer is responsible for setting/removing the checked attribute
-        // after confirming the action or receiving API success.
-        // This prevents the toggle from flipping when the user cancels a confirm
-        // dialog or when the API call fails.
+        // 0.2.0: UNCONTROLLED by default — self-toggle like a native checkbox.
+        // With the `controlled` attribute we keep the legacy emit-only behavior, so
+        // the consumer sets/removes `checked` after confirming the action / API success.
+        if (!this.hasAttribute('controlled')) {
+          if (isChecked) this.removeAttribute('checked');
+          else this.setAttribute('checked', ''); // → attributeChangedCallback updates UI + form value
+        }
+
         this.emit('change', { checked: !isChecked });
       });
     }
+    this._syncForm();
+  }
+
+  /** @private Push the toggle state into form submission + constraint validation. */
+  _syncForm() {
+    const checked = this.hasAttribute('checked');
+    const value = this.getAttribute('value') ?? 'on';
+    this._setFormValue(checked ? value : null);
+    if (this.hasAttribute('required') && !checked) {
+      this._setValidity({ valueMissing: true }, 'Please turn this on.', this._focusTarget());
+    } else {
+      this._setValidity({});
+    }
+  }
+
+  _captureDefaults() {
+    super._captureDefaults();
+    // Presence-aware: null = no `value` attr (submits "on"); a string = explicit value (ISSUE-2).
+    this._defaultValueAttr = this.getAttribute('value');
+  }
+
+  _restoreDefaults() {
+    if (this._defaultChecked) this.setAttribute('checked', '');
+    else this.removeAttribute('checked');
+    if (this._defaultValueAttr === null) this.removeAttribute('value');
+    else this.setAttribute('value', this._defaultValueAttr);
+    this._syncForm();
+  }
+
+  _focusTarget() {
+    return this.querySelector('label');
   }
 }
 

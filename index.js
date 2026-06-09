@@ -1,4 +1,5 @@
 export { TdBaseElement } from './src/base/td-base-element.js';
+export { TdFormElement } from './src/base/td-form-element.js';
 export { TdToggle } from './src/form/td-toggle.js';
 export { TdCheckbox } from './src/form/td-checkbox.js';
 export { TdButton } from './src/form/td-button.js';

@@ -2,15 +2,15 @@ import './td-table.js';
 
 const sampleColumns = [
   { key: 'id', label: 'ID', sortable: true, width: '80px', widthType: 'fixed' },
-  { key: 'name', label: 'Ten', sortable: true },
+  { key: 'name', label: 'Tên', sortable: true },
   { key: 'email', label: 'Email', sortable: true },
-  { key: 'role', label: 'Vai tro' },
-  { key: 'status', label: 'Trang thai', render: (row) => `<span class="px-2 py-1 rounded-full text-xs font-medium ${row.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}">${row.status}</span>` },
+  { key: 'role', label: 'Vai trò' },
+  { key: 'status', label: 'Trạng thái', render: (row) => `<span class="px-2 py-1 rounded-full text-xs font-medium ${row.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}">${row.status}</span>` },
 ];
 
 const sampleData = Array.from({ length: 47 }, (_, i) => ({
   id: i + 1,
-  name: `Nguoi dung ${i + 1}`,
+  name: `Người dùng ${i + 1}`,
   email: `user${i + 1}@example.com`,
   role: i % 3 === 0 ? 'Admin' : i % 3 === 1 ? 'Editor' : 'Viewer',
   status: i % 4 === 0 ? 'inactive' : 'active',
@@ -47,7 +47,7 @@ export const Loading = {
 };
 
 export const Empty = {
-  render: () => `<td-table zebra empty-text="Khong co du lieu de hien thi"></td-table>`,
+  render: () => `<td-table zebra empty-text="Không có dữ liệu để hiển thị"></td-table>`,
   play: async ({ canvasElement }) => {
     const el = canvasElement.querySelector('td-table');
     el.columns = sampleColumns;
@@ -56,7 +56,7 @@ export const Empty = {
 };
 
 export const WithTitle = {
-  render: () => `<td-table zebra title="Danh sach nguoi dung"></td-table>`,
+  render: () => `<td-table zebra title="Danh sách người dùng"></td-table>`,
   play: async ({ canvasElement }) => {
     const el = canvasElement.querySelector('td-table');
     el.columns = sampleColumns;
@@ -79,9 +79,9 @@ export const CustomRender = {
     const el = canvasElement.querySelector('td-table');
     el.columns = [
       { key: 'id', label: 'ID', sortable: true, width: '60px', widthType: 'fixed' },
-      { key: 'name', label: 'Ten', sortable: true },
-      { key: 'status', label: 'Trang thai', render: (row) => `<span class="px-2 py-1 rounded-full text-xs font-medium ${row.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${row.status === 'active' ? 'Hoat dong' : 'Ngung'}</span>` },
-      { key: 'actions', label: 'Thao tac', align: 'right', render: (row) => `<button class="px-3 py-1 text-xs rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">Chi tiet</button>` },
+      { key: 'name', label: 'Tên', sortable: true },
+      { key: 'status', label: 'Trạng thái', render: (row) => `<span class="px-2 py-1 rounded-full text-xs font-medium ${row.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${row.status === 'active' ? 'Hoạt động' : 'Ngừng'}</span>` },
+      { key: 'actions', label: 'Thao tác', align: 'right', render: (row) => `<button class="px-3 py-1 text-xs rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors">Chi tiết</button>` },
     ];
     el.data = sampleData.slice(0, 15);
   },

@@ -1,14 +1,17 @@
-import { TdBaseElement } from '../base/td-base-element.js';
+import { TdFormElement } from '../base/td-form-element.js';
+import { safeHexColor } from '../utils/css-safe.js';
 
 /**
  * Slider component with glass styling, step marks, touch support.
- * Port of dcms-slider.js to Web Component extending TdBaseElement.
+ * Form-associated (ElementInternals): submits its numeric `value`, supports reset,
+ * range/step constraint validation, and `<fieldset disabled>`.
  *
  * @element td-slider
  * @attr {number} min - Minimum value (default 0)
  * @attr {number} max - Maximum value (default 100)
  * @attr {number} value - Current value (default 0)
  * @attr {number} step - Step increment (default 1)
+ * @attr {string} name - Form field name (submitted via the host)
  * @attr {string} size - Size preset: sm, md, lg (default md)
  * @attr {string} color - Thumb/active track color (default #3b82f6)
  * @attr {string} track-color - Inactive track color (default #e5e7eb)
@@ -17,17 +20,17 @@ import { TdBaseElement } from '../base/td-base-element.js';
  * @attr {string} label-position - Value label position: top, bottom (default top)
  * @attr {boolean} show-step-labels - Show min/max labels
  * @attr {boolean} show-step-marks - Show step marks on track
- * @attr {boolean} disabled - Disable the slider
+ * @attr {boolean} disabled - Disable the slider (also via ancestor <fieldset disabled>)
  * @fires input - During drag, detail: { value: number }
  * @fires change - After release, detail: { value: number }
  */
-export class TdSlider extends TdBaseElement {
+export class TdSlider extends TdFormElement {
   static get observedAttributes() {
-    return ['min', 'max', 'value', 'step', 'size', 'color', 'track-color', 'label', 'show-label', 'label-position', 'show-step-labels', 'show-step-marks', 'disabled'];
+    return [...super.observedAttributes, 'min', 'max', 'value', 'step', 'size', 'color', 'track-color', 'label', 'show-label', 'label-position', 'show-step-labels', 'show-step-marks'];
   }
 
   static get booleanAttributes() {
-    return ['show-label', 'show-step-labels', 'show-step-marks', 'disabled'];
+    return [...super.booleanAttributes, 'show-label', 'show-step-labels', 'show-step-marks'];
   }
 
   constructor() {
@@ -46,8 +49,10 @@ export class TdSlider extends TdBaseElement {
   _getValue() { return parseFloat(this.getAttribute('value') || '0'); }
   _getStep() { return parseFloat(this.getAttribute('step') || '1'); }
   _getSize() { return this.getAttribute('size') || 'md'; }
-  _getColor() { return this.getAttribute('color') || '#3b82f6'; }
-  _getTrackColor() { return this.getAttribute('track-color') || '#e5e7eb'; }
+  // Hex-only: the styles append a 2-digit alpha suffix (e.g. `${color}f2`), which only
+  // yields valid CSS for a normalized 6-digit hex.
+  _getColor() { return safeHexColor(this.getAttribute('color'), '#3b82f6'); }
+  _getTrackColor() { return this.safeColor(this.getAttribute('track-color'), '#e5e7eb'); }
   _getLabel() { return this.getAttribute('label') || ''; }
   _getLabelPosition() { return this.getAttribute('label-position') || 'top'; }
 
@@ -81,7 +86,7 @@ export class TdSlider extends TdBaseElement {
     const labelPosition = this._getLabelPosition();
     const showStepLabels = this.hasAttribute('show-step-labels');
     const showStepMarks = this.hasAttribute('show-step-marks');
-    const isDisabled = this.hasAttribute('disabled');
+    const isDisabled = this._effectiveDisabled;
     const preset = this._getSizePreset();
     const thumbSize = preset.thumb;
     const trackHeight = preset.trackH;
@@ -159,20 +164,24 @@ export class TdSlider extends TdBaseElement {
     // Input event (during drag) — instant response
     this.listen(this._input, 'input', (e) => {
       const value = parseFloat(e.target.value);
+      this.setAttribute('value', String(value)); // keep host attr + form value in sync
       this._updateUI(true);
+      this._syncForm();
       this.emit('input', { value });
     });
 
     // Change event (after release)
     this.listen(this._input, 'change', (e) => {
       const value = parseFloat(e.target.value);
+      this.setAttribute('value', String(value));
       this._updateUI(false);
+      this._syncForm();
       this.emit('change', { value });
     });
 
     // Mousedown — start dragging
     this.listen(this._input, 'mousedown', () => {
-      if (!this.hasAttribute('disabled')) {
+      if (!this._effectiveDisabled) {
         this.isDragging = true;
         this._thumb.style.transition = 'none';
         this._trackActive.style.transition = 'none';
@@ -194,7 +203,7 @@ export class TdSlider extends TdBaseElement {
 
     // Touch events
     this.listen(this._input, 'touchstart', () => {
-      if (!this.hasAttribute('disabled')) {
+      if (!this._effectiveDisabled) {
         this.isDragging = true;
         this._thumb.style.transition = 'none';
         this._trackActive.style.transition = 'none';
@@ -213,6 +222,7 @@ export class TdSlider extends TdBaseElement {
       }
     });
 
+    this._syncForm();
   }
 
   // Override attributeChangedCallback to avoid full re-render during drag
@@ -220,10 +230,18 @@ export class TdSlider extends TdBaseElement {
     if (oldVal === newVal) return;
     if (!this._initialized) return;
 
-    // For value changes during interaction, just update UI
+    // For value changes during interaction, just update UI + form value
     if (name === 'value' && this._input) {
       this._input.value = newVal;
       this._updateUI(this.isDragging);
+      this._syncForm();
+      return;
+    }
+
+    // Keep effective-disabled in sync, then re-render (disabled changes the rendered guard)
+    if (name === 'disabled') {
+      this._effectiveDisabled = newVal !== null || this._ancestorDisabled;
+      this._doRender();
       return;
     }
 
@@ -250,6 +268,49 @@ export class TdSlider extends TdBaseElement {
     if (this._valueLabel) {
       this._valueLabel.textContent = value;
     }
+  }
+
+  /** @private Push the current value into form submission + range/step validation. */
+  _syncForm() {
+    // Validate/submit the COMPONENT value (host attribute), not the native range input's
+    // value — the native <input type=range> clamps/snaps invalid values, which would hide
+    // rangeOverflow/Underflow/stepMismatch and submit a sanitized value (ISSUE-1).
+    const value = this._getValue();
+    this._setFormValue(String(value));
+
+    const min = this._getMin();
+    const max = this._getMax();
+    const step = this._getStep();
+    if (value < min) {
+      this._setValidity({ rangeUnderflow: true }, `Value must be ≥ ${min}.`, this._focusTarget());
+    } else if (value > max) {
+      this._setValidity({ rangeOverflow: true }, `Value must be ≤ ${max}.`, this._focusTarget());
+    } else if (step > 0 && Math.abs(((value - min) / step) - Math.round((value - min) / step)) > 1e-9) {
+      this._setValidity({ stepMismatch: true }, `Value must be a multiple of ${step}.`, this._focusTarget());
+    } else {
+      this._setValidity({});
+    }
+  }
+
+  _captureDefaults() {
+    super._captureDefaults();
+    // Presence-aware: null = no initial `value` attr → _getValue() resolves to its 0 default.
+    // Falling back to `min` would change the post-reset value/validity (ISSUE-3).
+    this._defaultValueAttr = this.getAttribute('value');
+  }
+
+  _restoreDefaults() {
+    if (this._defaultValueAttr === null) this.removeAttribute('value');
+    else this.setAttribute('value', this._defaultValueAttr);
+    if (this._input) {
+      this._input.value = String(this._getValue());
+      this._updateUI(false);
+    }
+    this._syncForm();
+  }
+
+  _focusTarget() {
+    return this.querySelector('.td-slider-input');
   }
 
   // --- Public API ---

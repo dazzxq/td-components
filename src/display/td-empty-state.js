@@ -5,7 +5,9 @@ import { TdBaseElement } from '../base/td-base-element.js';
  * Port of dcms-empty-state.js (EmptyState) to Web Component extending TdBaseElement.
  *
  * @element td-empty-state
- * @attr {string} icon - SVG string or icon identifier (default renders inline inbox SVG)
+ * @attr {string} icon - Icon identifier OR a raw `<svg>…</svg>` string. A value starting
+ *   with `<svg` is injected as **trusted raw HTML** — pass only developer-authored markup,
+ *   never end-user input. `title`/`message` are always escaped.
  * @attr {string} title - Title text (default 'Không có dữ liệu')
  * @attr {string} message - Message text (default 'Chưa có mục nào được tạo.')
  * @attr {string} size - Size variant: 'sm' | 'md' | 'lg' (default 'md')

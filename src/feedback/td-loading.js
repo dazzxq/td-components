@@ -14,6 +14,8 @@
  * - prefers-reduced-motion support
  */
 
+import { safeColor } from '../utils/css-safe.js';
+
 /**
  * Fullscreen loading overlay utility.
  * Does NOT extend TdBaseElement — standalone static class.
@@ -236,6 +238,10 @@ export class TdLoadingSpinner {
             className = ''
         } = options;
 
+        // Caller-provided colors land in SVG `stroke` attributes via innerHTML — sanitize.
+        const safeColorValue = safeColor(color, '#3b82f6');
+        const safeTrackColor = safeColor(trackColor, 'rgba(59, 130, 246, 0.15)');
+
         const sizes = {
             sm: { width: 20, strokeWidth: 3 },
             md: { width: 32, strokeWidth: 4 },
@@ -254,8 +260,8 @@ export class TdLoadingSpinner {
 
         container.innerHTML = `
             <svg viewBox="0 0 50 50" style="width: 100%; height: 100%;">
-                <circle cx="25" cy="25" r="20" fill="none" stroke="${trackColor}" stroke-width="${s.strokeWidth}"></circle>
-                <circle cx="25" cy="25" r="20" fill="none" stroke="${color}" stroke-width="${s.strokeWidth}" stroke-linecap="round"
+                <circle cx="25" cy="25" r="20" fill="none" stroke="${safeTrackColor}" stroke-width="${s.strokeWidth}"></circle>
+                <circle cx="25" cy="25" r="20" fill="none" stroke="${safeColorValue}" stroke-width="${s.strokeWidth}" stroke-linecap="round"
                     style="stroke-dasharray: 90, 150; animation: td-inline-spinner-dash 1.4s ease-in-out infinite;"></circle>
             </svg>
         `;
