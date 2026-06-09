@@ -1,6 +1,6 @@
 {
   "name": "@dazzxq/td-components",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Shared UI Web Components library — vanilla CSS, BEM with td- prefix",
   "type": "module",
   "main": "index.js",
