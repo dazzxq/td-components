@@ -19,63 +19,38 @@ import { adoptStyles } from '../utils/adopt-styles.js';
 
 /**
  * Single constructable stylesheet for BOTH the overlay spinner and the inline factory
- * spinner. Under a strict CSP (`default-src 'self'; style-src 'self'`, NO `unsafe-inline`)
- * a JS-injected `<style>` element is BLOCKED, so the previous two injected `<style>`
- * blocks (`#td-loading-styles` + `#td-spinner-keyframes`) would silently kill the
- * `@keyframes`-driven animation. `@keyframes` and `@media (prefers-reduced-motion)` ARE
- * expressible in a constructable `CSSStyleSheet`, so everything — the card chrome, the
- * spinner selectors, all four keyframe sets, and the reduced-motion override — lives here
- * and is adopted into `document` LAZILY (from `init()` / `create()`, never at module
- * top-level). Both the overlay (portaled to `document.body`) and inline spinners (mounted
- * anywhere in the light DOM) are reached by a sheet on the top-level document.
+ * spinner — ANIMATION ENHANCEMENTS ONLY. Under a strict CSP (`default-src 'self';
+ * style-src 'self'`, NO `unsafe-inline`) a JS-injected `<style>` element is BLOCKED, so
+ * the previous injected `<style>` blocks would silently kill the `@keyframes`-driven
+ * animation. `@keyframes`, the `animation:` shorthands that reference them, and the
+ * `@media (prefers-reduced-motion)` overrides ARE expressible in a constructable
+ * `CSSStyleSheet`, so ONLY those live here and are adopted into `document` LAZILY (from
+ * `init()` / `create()`, never at module top-level).
  *
- * Keyframe names + selector class names are kept STABLE so the rotation `transform`
- * (rotate) and arc `stroke-dashoffset`/`stroke-dasharray` animate identically to the
- * pre-CSP version. On an unsupported browser/SSR `adoptStyles` returns false and the
- * spinner still renders structurally (it just won't animate — acceptable degradation).
+ * IMPORTANT (codex ISSUE-1): NO structural rules live in this sheet. The spinner's
+ * load-bearing PAINT (`fill`/`stroke`/`stroke-width`/`stroke-linecap`/`stroke-dasharray`)
+ * is applied via SVG PRESENTATION ATTRIBUTES on the `<circle>` elements, and the card +
+ * spinner-container LAYOUT (display/flex/padding/size/radius/background/shadow/margins)
+ * is applied via CSSOM (`element.style.*`) in `init()` / `create()`. Both paths are
+ * CSP-safe and apply on EVERY browser — including those where `adoptStyles()` returns
+ * `false` (SSR / pre-Chromium-73 / pre-Safari-16.4 / pre-Firefox-101). On such a browser
+ * the spinner STILL renders STRUCTURALLY (correct paint + layout, visible); it merely
+ * does not SPIN — that animation loss is the only acceptable degradation. The
+ * documented adopt-styles contract ("only selector/keyframe embellishments degrade;
+ * component still renders structurally") is therefore honoured.
+ *
+ * Keyframe names + the `.td-circular-spinner` / `.td-spinner-arc` / `.td-spinner-arc-inline`
+ * selectors are kept STABLE so, under a supporting browser, rotation + dash animate
+ * identically to the pre-CSP version (the CSP parity gate proves this under Chromium).
  *
  * @type {string}
  */
 const TD_LOADING_CSS = `
-.td-loading-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 32px 44px;
-    border-radius: 20px;
-    background: rgb(255, 255, 255);
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    box-shadow:
-        0 24px 80px rgba(0, 0, 0, 0.15),
-        0 8px 32px rgba(0, 0, 0, 0.1),
-        inset 0 1px 0 rgba(255, 255, 255, 0.9);
-}
-
 .td-circular-spinner {
-    width: 56px;
-    height: 56px;
-    margin-bottom: 16px;
     animation: td-spinner-rotate 1.4s linear infinite;
 }
 
-.td-circular-spinner svg {
-    width: 100%;
-    height: 100%;
-}
-
-.td-spinner-track {
-    fill: none;
-    stroke: rgba(59, 130, 246, 0.15);
-    stroke-width: 4;
-}
-
 .td-spinner-arc {
-    fill: none;
-    stroke: #3b82f6;
-    stroke-width: 4;
-    stroke-linecap: round;
-    stroke-dasharray: 90, 150;
-    stroke-dashoffset: 0;
     animation: td-spinner-dash 1.4s ease-in-out infinite;
 }
 
@@ -96,15 +71,6 @@ const TD_LOADING_CSS = `
         stroke-dasharray: 90, 150;
         stroke-dashoffset: -124;
     }
-}
-
-.td-loading-message {
-    margin: 0;
-    font-size: 15px;
-    font-weight: 500;
-    color: #374151;
-    text-align: center;
-    letter-spacing: -0.01em;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -168,20 +134,62 @@ export class TdLoading {
         // CSSOM scalar (allowed under CSP) — NOT a declarative style= attribute.
         overlay.style.cssText = 'background: rgba(0, 0, 0, 0.25);';
 
-        // SVG width/height are PRESENTATION ATTRIBUTES (not a declarative style="…"),
-        // so they are CSP-safe inside this innerHTML string. The animation/keyframes
-        // come from the adopted sheet's `.td-circular-spinner` / `.td-spinner-arc` rules.
+        // STRUCTURE (codex ISSUE-1): the spinner's PAINT lives in SVG presentation
+        // ATTRIBUTES (`fill`/`stroke`/`stroke-width`/`stroke-linecap`/`stroke-dasharray`)
+        // and the card + container LAYOUT is applied via CSSOM below — both CSP-safe and
+        // applied on EVERY browser, including ones where `adoptStyles` returned false.
+        // Only the spin/dash ANIMATION (from the adopted sheet's `.td-circular-spinner` /
+        // `.td-spinner-arc` keyframe rules) is allowed to degrade on an ancient browser.
         overlay.innerHTML = `
             <div class="td-loading-card">
                 <div class="td-circular-spinner">
                     <svg viewBox="0 0 50 50" width="100%" height="100%">
-                        <circle class="td-spinner-track" cx="25" cy="25" r="20"></circle>
-                        <circle class="td-spinner-arc" cx="25" cy="25" r="20"></circle>
+                        <circle class="td-spinner-track" cx="25" cy="25" r="20"
+                            fill="none" stroke="rgba(59, 130, 246, 0.15)" stroke-width="4"></circle>
+                        <circle class="td-spinner-arc" cx="25" cy="25" r="20"
+                            fill="none" stroke="#3b82f6" stroke-width="4" stroke-linecap="round"
+                            stroke-dasharray="90, 150"></circle>
                     </svg>
                 </div>
                 <p id="td-loading-message" class="td-loading-message">Đang tải...</p>
             </div>
         `;
+
+        // CARD + CONTAINER LAYOUT via CSSOM (CSP-safe; ALWAYS applies, sheet-independent).
+        // The `animation:` shorthand is intentionally NOT set here — it stays in the
+        // adopted sheet so the `@media (prefers-reduced-motion)` override can win, and so
+        // its loss (no spin) is the single acceptable degradation on an ancient browser.
+        const card = overlay.querySelector('.td-loading-card');
+        if (card) {
+            card.style.cssText =
+                'display: flex;' +
+                'flex-direction: column;' +
+                'align-items: center;' +
+                'padding: 32px 44px;' +
+                'border-radius: 20px;' +
+                'background: rgb(255, 255, 255);' +
+                'border: 1px solid rgba(0, 0, 0, 0.08);' +
+                'box-shadow: 0 24px 80px rgba(0, 0, 0, 0.15),' +
+                ' 0 8px 32px rgba(0, 0, 0, 0.1),' +
+                ' inset 0 1px 0 rgba(255, 255, 255, 0.9);';
+        }
+        const container = overlay.querySelector('.td-circular-spinner');
+        if (container) {
+            container.style.cssText =
+                'width: 56px;' +
+                'height: 56px;' +
+                'margin-bottom: 16px;';
+        }
+        const message = overlay.querySelector('#td-loading-message');
+        if (message) {
+            message.style.cssText =
+                'margin: 0;' +
+                'font-size: 15px;' +
+                'font-weight: 500;' +
+                'color: #374151;' +
+                'text-align: center;' +
+                'letter-spacing: -0.01em;';
+        }
 
         document.body.appendChild(overlay);
         TdLoading.element = overlay;
