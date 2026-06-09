@@ -15,6 +15,98 @@
  */
 
 import { safeColor } from '../utils/css-safe.js';
+import { adoptStyles } from '../utils/adopt-styles.js';
+
+/**
+ * Single constructable stylesheet for BOTH the overlay spinner and the inline factory
+ * spinner — ANIMATION ENHANCEMENTS ONLY. Under a strict CSP (`default-src 'self';
+ * style-src 'self'`, NO `unsafe-inline`) a JS-injected `<style>` element is BLOCKED, so
+ * the previous injected `<style>` blocks would silently kill the `@keyframes`-driven
+ * animation. `@keyframes`, the `animation:` shorthands that reference them, and the
+ * `@media (prefers-reduced-motion)` overrides ARE expressible in a constructable
+ * `CSSStyleSheet`, so ONLY those live here and are adopted into `document` LAZILY (from
+ * `init()` / `create()`, never at module top-level).
+ *
+ * IMPORTANT (codex ISSUE-1): NO structural rules live in this sheet. The spinner's
+ * load-bearing PAINT (`fill`/`stroke`/`stroke-width`/`stroke-linecap`/`stroke-dasharray`)
+ * is applied via SVG PRESENTATION ATTRIBUTES on the `<circle>` elements, and the card +
+ * spinner-container LAYOUT (display/flex/padding/size/radius/background/shadow/margins)
+ * is applied via CSSOM (`element.style.*`) in `init()` / `create()`. Both paths are
+ * CSP-safe and apply on EVERY browser — including those where `adoptStyles()` returns
+ * `false` (SSR / pre-Chromium-73 / pre-Safari-16.4 / pre-Firefox-101). On such a browser
+ * the spinner STILL renders STRUCTURALLY (correct paint + layout, visible); it merely
+ * does not SPIN — that animation loss is the only acceptable degradation. The
+ * documented adopt-styles contract ("only selector/keyframe embellishments degrade;
+ * component still renders structurally") is therefore honoured.
+ *
+ * Keyframe names + the `.td-circular-spinner` / `.td-spinner-arc` / `.td-spinner-arc-inline`
+ * selectors are kept STABLE so, under a supporting browser, rotation + dash animate
+ * identically to the pre-CSP version (the CSP parity gate proves this under Chromium).
+ *
+ * @type {string}
+ */
+const TD_LOADING_CSS = `
+.td-circular-spinner {
+    animation: td-spinner-rotate 1.4s linear infinite;
+}
+
+.td-spinner-arc {
+    animation: td-spinner-dash 1.4s ease-in-out infinite;
+}
+
+@keyframes td-spinner-rotate {
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes td-spinner-dash {
+    0% {
+        stroke-dasharray: 1, 150;
+        stroke-dashoffset: 0;
+    }
+    50% {
+        stroke-dasharray: 90, 150;
+        stroke-dashoffset: -35;
+    }
+    100% {
+        stroke-dasharray: 90, 150;
+        stroke-dashoffset: -124;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .td-circular-spinner {
+        animation: td-spinner-rotate 2.8s linear infinite;
+    }
+    .td-spinner-arc {
+        animation: none;
+        stroke-dasharray: 90, 150;
+        stroke-dashoffset: -35;
+    }
+}
+
+.td-spinner-arc-inline {
+    animation: td-inline-spinner-dash 1.4s ease-in-out infinite;
+}
+
+@keyframes td-inline-spinner-rotate {
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes td-inline-spinner-dash {
+    0% {
+        stroke-dasharray: 1, 150;
+        stroke-dashoffset: 0;
+    }
+    50% {
+        stroke-dasharray: 90, 150;
+        stroke-dashoffset: -35;
+    }
+    100% {
+        stroke-dasharray: 90, 150;
+        stroke-dashoffset: -124;
+    }
+}
+`;
 
 /**
  * Fullscreen loading overlay utility.
@@ -31,110 +123,72 @@ export class TdLoading {
     static init() {
         if (TdLoading.element) return;
 
+        // Adopt the spinner stylesheet (keyframes + selectors + reduced-motion) into the
+        // top-level document — CSP-safe replacement for the old injected <style>. Lazy +
+        // idempotent; degrades to a no-op (returns false) in SSR/old browsers.
+        adoptStyles(TD_LOADING_CSS, 'td-loading');
+
         const overlay = document.createElement('div');
         overlay.id = 'td-loading';
         overlay.className = 'fixed inset-0 z-[99999] hidden flex items-center justify-center';
+        // CSSOM scalar (allowed under CSP) — NOT a declarative style= attribute.
         overlay.style.cssText = 'background: rgba(0, 0, 0, 0.25);';
 
+        // STRUCTURE (codex ISSUE-1): the spinner's PAINT lives in SVG presentation
+        // ATTRIBUTES (`fill`/`stroke`/`stroke-width`/`stroke-linecap`/`stroke-dasharray`)
+        // and the card + container LAYOUT is applied via CSSOM below — both CSP-safe and
+        // applied on EVERY browser, including ones where `adoptStyles` returned false.
+        // Only the spin/dash ANIMATION (from the adopted sheet's `.td-circular-spinner` /
+        // `.td-spinner-arc` keyframe rules) is allowed to degrade on an ancient browser.
         overlay.innerHTML = `
             <div class="td-loading-card">
                 <div class="td-circular-spinner">
-                    <svg viewBox="0 0 50 50">
-                        <circle class="td-spinner-track" cx="25" cy="25" r="20"></circle>
-                        <circle class="td-spinner-arc" cx="25" cy="25" r="20"></circle>
+                    <svg viewBox="0 0 50 50" width="100%" height="100%">
+                        <circle class="td-spinner-track" cx="25" cy="25" r="20"
+                            fill="none" stroke="rgba(59, 130, 246, 0.15)" stroke-width="4"></circle>
+                        <circle class="td-spinner-arc" cx="25" cy="25" r="20"
+                            fill="none" stroke="#3b82f6" stroke-width="4" stroke-linecap="round"
+                            stroke-dasharray="90, 150"></circle>
                     </svg>
                 </div>
                 <p id="td-loading-message" class="td-loading-message">Đang tải...</p>
             </div>
         `;
 
-        // Inject styles into <head> so keyframes are always available
-        if (!document.getElementById('td-loading-styles')) {
-            const styleEl = document.createElement('style');
-            styleEl.id = 'td-loading-styles';
-            styleEl.textContent = `
-                .td-loading-card {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    padding: 32px 44px;
-                    border-radius: 20px;
-                    background: rgb(255, 255, 255);
-                    border: 1px solid rgba(0, 0, 0, 0.08);
-                    box-shadow:
-                        0 24px 80px rgba(0, 0, 0, 0.15),
-                        0 8px 32px rgba(0, 0, 0, 0.1),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.9);
-                }
-
-                .td-circular-spinner {
-                    width: 56px;
-                    height: 56px;
-                    margin-bottom: 16px;
-                    animation: td-spinner-rotate 1.4s linear infinite;
-                }
-
-                .td-circular-spinner svg {
-                    width: 100%;
-                    height: 100%;
-                }
-
-                .td-spinner-track {
-                    fill: none;
-                    stroke: rgba(59, 130, 246, 0.15);
-                    stroke-width: 4;
-                }
-
-                .td-spinner-arc {
-                    fill: none;
-                    stroke: #3b82f6;
-                    stroke-width: 4;
-                    stroke-linecap: round;
-                    stroke-dasharray: 90, 150;
-                    stroke-dashoffset: 0;
-                    animation: td-spinner-dash 1.4s ease-in-out infinite;
-                }
-
-                @keyframes td-spinner-rotate {
-                    100% { transform: rotate(360deg); }
-                }
-
-                @keyframes td-spinner-dash {
-                    0% {
-                        stroke-dasharray: 1, 150;
-                        stroke-dashoffset: 0;
-                    }
-                    50% {
-                        stroke-dasharray: 90, 150;
-                        stroke-dashoffset: -35;
-                    }
-                    100% {
-                        stroke-dasharray: 90, 150;
-                        stroke-dashoffset: -124;
-                    }
-                }
-
-                .td-loading-message {
-                    margin: 0;
-                    font-size: 15px;
-                    font-weight: 500;
-                    color: #374151;
-                    text-align: center;
-                    letter-spacing: -0.01em;
-                }
-
-                @media (prefers-reduced-motion: reduce) {
-                    .td-circular-spinner {
-                        animation: td-spinner-rotate 2.8s linear infinite;
-                    }
-                    .td-spinner-arc {
-                        animation: none;
-                        stroke-dasharray: 90, 150;
-                        stroke-dashoffset: -35;
-                    }
-                }
-            `;
-            document.head.appendChild(styleEl);
+        // CARD + CONTAINER LAYOUT via CSSOM (CSP-safe; ALWAYS applies, sheet-independent).
+        // The `animation:` shorthand is intentionally NOT set here — it stays in the
+        // adopted sheet so the `@media (prefers-reduced-motion)` override can win, and so
+        // its loss (no spin) is the single acceptable degradation on an ancient browser.
+        const card = overlay.querySelector('.td-loading-card');
+        if (card) {
+            card.style.cssText =
+                'display: flex;' +
+                'flex-direction: column;' +
+                'align-items: center;' +
+                'padding: 32px 44px;' +
+                'border-radius: 20px;' +
+                'background: rgb(255, 255, 255);' +
+                'border: 1px solid rgba(0, 0, 0, 0.08);' +
+                'box-shadow: 0 24px 80px rgba(0, 0, 0, 0.15),' +
+                ' 0 8px 32px rgba(0, 0, 0, 0.1),' +
+                ' inset 0 1px 0 rgba(255, 255, 255, 0.9);';
+        }
+        const container = overlay.querySelector('.td-circular-spinner');
+        if (container) {
+            container.style.cssText =
+                'width: 56px;' +
+                'height: 56px;' +
+                'margin-bottom: 16px;';
+        }
+        const message = overlay.querySelector('#td-loading-message');
+        if (message) {
+            message.style.cssText =
+                'margin: 0;' +
+                'font-size: 15px;' +
+                'font-weight: 500;' +
+                'color: #374151;' +
+                'text-align: center;' +
+                'letter-spacing: -0.01em;';
         }
 
         document.body.appendChild(overlay);
@@ -174,6 +228,7 @@ export class TdLoading {
         }
 
         TdLoading.element.classList.remove('hidden');
+        // CSSOM scalar (allowed under CSP) — NOT a declarative style= attribute.
         TdLoading.element.style.display = 'flex';
 
         // Set auto-hide timer if maxDuration is enabled
@@ -195,6 +250,7 @@ export class TdLoading {
         }
         if (TdLoading.element) {
             TdLoading.element.classList.add('hidden');
+            // CSSOM scalar (allowed under CSP) — NOT a declarative style= attribute.
             TdLoading.element.style.display = 'none';
         }
     }
@@ -238,7 +294,13 @@ export class TdLoadingSpinner {
             className = ''
         } = options;
 
-        // Caller-provided colors land in SVG `stroke` attributes via innerHTML — sanitize.
+        // Adopt the spinner stylesheet (keyframes for the rotate + dash animations the
+        // inline spinner references) — CSP-safe, lazy, idempotent. Shares the same sheet
+        // as the overlay via the 'td-loading' key.
+        adoptStyles(TD_LOADING_CSS, 'td-loading');
+
+        // Caller-provided colors land in SVG `stroke` presentation attributes via
+        // innerHTML — sanitize.
         const safeColorValue = safeColor(color, '#3b82f6');
         const safeTrackColor = safeColor(trackColor, 'rgba(59, 130, 246, 0.15)');
 
@@ -251,6 +313,9 @@ export class TdLoadingSpinner {
 
         const container = document.createElement('div');
         container.className = `td-spinner ${className}`.trim();
+        // CSSOM (allowed under CSP) — sets per-instance size scalars + the rotation
+        // animation. The referenced `td-inline-spinner-rotate` @keyframes lives in the
+        // adopted sheet (TD_LOADING_CSS), so this is CSP-safe.
         container.style.cssText = `
             display: inline-block;
             width: ${s.width}px;
@@ -258,39 +323,15 @@ export class TdLoadingSpinner {
             animation: td-inline-spinner-rotate 1.4s linear infinite;
         `;
 
+        // SVG attributes only — width/height/stroke/stroke-width/stroke-dasharray are
+        // PRESENTATION ATTRIBUTES (CSP-safe), not declarative style="…". The arc's dash
+        // animation comes from the `.td-spinner-arc-inline` class rule in the adopted sheet.
         container.innerHTML = `
-            <svg viewBox="0 0 50 50" style="width: 100%; height: 100%;">
+            <svg viewBox="0 0 50 50" width="100%" height="100%">
                 <circle cx="25" cy="25" r="20" fill="none" stroke="${safeTrackColor}" stroke-width="${s.strokeWidth}"></circle>
-                <circle cx="25" cy="25" r="20" fill="none" stroke="${safeColorValue}" stroke-width="${s.strokeWidth}" stroke-linecap="round"
-                    style="stroke-dasharray: 90, 150; animation: td-inline-spinner-dash 1.4s ease-in-out infinite;"></circle>
+                <circle class="td-spinner-arc-inline" cx="25" cy="25" r="20" fill="none" stroke="${safeColorValue}" stroke-width="${s.strokeWidth}" stroke-linecap="round" stroke-dasharray="90,150"></circle>
             </svg>
         `;
-
-        // Inject keyframe styles once
-        if (!document.getElementById('td-spinner-keyframes')) {
-            const style = document.createElement('style');
-            style.id = 'td-spinner-keyframes';
-            style.textContent = `
-                @keyframes td-inline-spinner-rotate {
-                    100% { transform: rotate(360deg); }
-                }
-                @keyframes td-inline-spinner-dash {
-                    0% {
-                        stroke-dasharray: 1, 150;
-                        stroke-dashoffset: 0;
-                    }
-                    50% {
-                        stroke-dasharray: 90, 150;
-                        stroke-dashoffset: -35;
-                    }
-                    100% {
-                        stroke-dasharray: 90, 150;
-                        stroke-dashoffset: -124;
-                    }
-                }
-            `;
-            document.head.appendChild(style);
-        }
 
         return container;
     }

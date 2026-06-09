@@ -78,3 +78,30 @@ export function clampNumber(value, min, max, fallback) {
   if (!Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(min, n));
 }
+
+/**
+ * Apply a map of SCALAR styles to an element via CSSOM (`el.style.setProperty`), which
+ * is the CSP-allowed replacement for a declarative `style="…"` attribute. Use this in a
+ * component's `_applyStyles()` to set per-element state-dependent scalars (color, size,
+ * width %, etc.) after each render.
+ *
+ * Entries whose value is `null` or `undefined` are SKIPPED (so a component can pass a
+ * computed map and omit a property by leaving it nullish, rather than writing an empty
+ * string). Other values are stringified. Setting via `setProperty` parses each value as a
+ * single CSS value, so a stray `;`/`}` cannot inject a second declaration — but values
+ * derived from PUBLIC attributes should still be passed through `safeColor` /
+ * `safeCssDimension` first. No-op (and never throws) if `el` is null/undefined.
+ *
+ * @param {Element|null|undefined} el - Target element (e.g. a node from `this.querySelector`).
+ * @param {Record<string, string|number|null|undefined>} styles - Map of CSS property → value.
+ *   Keys may be standard property names (`'width'`) or custom properties (`'--c'`).
+ * @returns {void}
+ */
+export function applyStyles(el, styles) {
+  if (!el || !styles) return;
+  for (const prop in styles) {
+    const value = styles[prop];
+    if (value == null) continue;
+    el.style.setProperty(prop, String(value));
+  }
+}

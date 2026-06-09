@@ -1,0 +1,19 @@
+/*
+ * Tailwind v4 build entry for the CSP test fixture.
+ *
+ * This mirrors the consumer model: `@import "tailwindcss";` plus explicit
+ * `@source` directives so Tailwind scans the SAME files the consumer would and
+ * compiles EVERY utility/arbitrary class the components emit.
+ *
+ * Paths are relative to THIS css file (test/csp/fixture/):
+ *   ../../../src/**\/*.js  -> all component sources (the real class usage)
+ *   ./sentinels.html       -> known-value sentinel classes (compile oracle)
+ *
+ * Without the sentinel @source, an unused sentinel class would be absent from
+ * the output (Tailwind v4 only emits classes it finds) — defeating the
+ * vacuous-parity check. We force the sentinels in on purpose.
+ */
+@import "tailwindcss";
+
+@source "../../../src/**/*.js";
+@source "./sentinels.html";

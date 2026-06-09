@@ -1,4 +1,5 @@
 import { TdFormElement } from '../base/td-form-element.js';
+import { applyStyles } from '../utils/css-safe.js';
 
 /**
  * Multi-type input field component with validation, counter, and label support.
@@ -109,24 +110,6 @@ export class TdInputField extends TdFormElement {
     const rows = parseInt(this.getAttribute('rows') || '4', 10);
 
     const s = TdInputField._sizeMap[size] || TdInputField._sizeMap.md;
-    const colors = TdInputField._colors;
-    const hasError = !!errorText;
-    const borderColor = hasError ? colors.borderError : colors.border;
-    const bg = isDisabled ? colors.bgDisabled : colors.bgNormal;
-
-    const commonStyle = `
-      width: 100%;
-      border: 1px solid ${borderColor};
-      border-radius: ${s.radius};
-      padding: ${s.py} ${s.px};
-      outline: none;
-      transition: box-shadow .2s cubic-bezier(0.25,0.46,0.45,0.94),
-                  border-color .2s cubic-bezier(0.25,0.46,0.45,0.94),
-                  background-color .2s cubic-bezier(0.25,0.46,0.45,0.94);
-      background-color: ${bg};
-      color: ${colors.textNormal};
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
-    `.replace(/\n\s*/g, ' ').trim();
 
     let labelHtml = '';
     if (label) {
@@ -142,11 +125,10 @@ export class TdInputField extends TdFormElement {
     // NOTE: no `name`, no `required` on the inner control — the host owns submission + validity.
 
     if (type === 'textarea') {
-      const textareaHeight = `${s.h * rows / 2 + 8}px`;
       const maxLenAttr = maxLength && limitType === 'char' ? ` maxlength="${maxLength}"` : '';
+      // Scalar styles (commonStyle + height + resize) applied via CSSOM in _applyStyles().
       fieldHtml = `<textarea
         class="td-input td-input-textarea block ${s.text}"
-        style="${commonStyle} height: ${textareaHeight}; resize: vertical;"
         placeholder="${escapedPlaceholder}"
         rows="${rows}"
         ${isDisabled ? 'disabled' : ''}
@@ -155,13 +137,12 @@ export class TdInputField extends TdFormElement {
         ${idAttr}
       >${escapedValue}</textarea>`;
     } else if (type === 'contenteditable') {
-      const ceStyle = `${commonStyle} height: ${s.h}px; overflow-y: auto;`;
+      // Scalar styles (commonStyle + height + overflow-y) applied via CSSOM in _applyStyles().
       fieldHtml = `<div
         class="td-input td-input-editable block ${s.text}"
         contenteditable="${isDisabled || isReadonly ? 'false' : 'true'}"
         role="textbox"
         aria-multiline="false"
-        style="${ceStyle}"
         data-placeholder="${escapedPlaceholder}"
         ${maxLength ? `data-max-length="${maxLength}"` : ''}
         ${idAttr}
@@ -171,10 +152,10 @@ export class TdInputField extends TdFormElement {
       const inputMode = TdInputField._inputModeMap[type];
       const inputModeAttr = inputType === 'text' && inputMode ? ` inputmode="${inputMode}"` : '';
       const maxLenAttr = maxLength && limitType === 'char' ? ` maxlength="${maxLength}"` : '';
+      // Scalar styles (commonStyle + height) applied via CSSOM in _applyStyles().
       fieldHtml = `<input
         type="${inputType}"
         class="td-input td-input-${inputType} block ${s.text}"
-        style="${commonStyle} height: ${s.h}px;"
         value="${escapedValue}"
         placeholder="${escapedPlaceholder}"
         ${isDisabled ? 'disabled' : ''}
@@ -184,21 +165,19 @@ export class TdInputField extends TdFormElement {
       />`;
     }
 
-    // Counter
+    // Counter (scalar styles applied via CSSOM in _applyStyles()).
     let counterHtml = '';
     if (maxLength) {
       const currentCount = this._countValue(value, limitType);
       const unit = limitType === 'word' ? 'từ' : 'ký tự';
-      const counterColor = currentCount >= parseInt(maxLength, 10) ? colors.textError : colors.textMuted;
-      counterHtml = `<div class="td-input-counter text-xs mt-1 text-right" style="font-size: 12px; margin-top: 4px; text-align: right; color: ${counterColor};">${currentCount}/${maxLength} ${unit}</div>`;
+      counterHtml = `<div class="td-input-counter text-xs mt-1 text-right">${currentCount}/${maxLength} ${unit}</div>`;
     }
 
-    // Note (error or helper)
+    // Note (error or helper; scalar styles applied via CSSOM in _applyStyles()).
     let noteHtml = '';
     if (errorText || helperText) {
-      const noteColor = errorText ? colors.textError : colors.textMuted;
       const noteText = errorText || helperText;
-      noteHtml = `<div class="td-input-note mt-1" style="color: ${noteColor}; font-size: 12px;">${this.escapeHtml(noteText)}</div>`;
+      noteHtml = `<div class="td-input-note mt-1">${this.escapeHtml(noteText)}</div>`;
     }
 
     return `
@@ -209,6 +188,84 @@ export class TdInputField extends TdFormElement {
         ${noteHtml}
       </div>
     `;
+  }
+
+  /**
+   * @private CSP-safe per-element SCALAR styling (replaces the removed declarative
+   * `style="…"` attributes). Auto-invoked by the base after `afterRender()` on the
+   * initial render AND every observed-attribute re-render. For internal-state changes
+   * (focus/blur/counter) the relevant handlers re-apply scalars directly via CSSOM.
+   *
+   * No SELECTOR/pseudo rule is needed: `:focus` styling is driven imperatively by the
+   * focus/blur listeners in `afterRender()` (CSSOM — CSP-allowed), exactly as before.
+   */
+  _applyStyles() {
+    const type = this.getAttribute('type') || 'text';
+    const size = this.getAttribute('size') || 'md';
+    const s = TdInputField._sizeMap[size] || TdInputField._sizeMap.md;
+    const colors = TdInputField._colors;
+
+    const isDisabled = this._effectiveDisabled;
+    const hasError = !!this.getAttribute('error-text');
+    const borderColor = hasError ? colors.borderError : colors.border;
+    const bg = isDisabled ? colors.bgDisabled : colors.bgNormal;
+
+    // --- Field control (input / textarea / contenteditable) ---
+    const field = this._getFieldElement();
+    if (field) {
+      const height = type === 'textarea'
+        ? `${(s.h * parseInt(this.getAttribute('rows') || '4', 10)) / 2 + 8}px`
+        : `${s.h}px`;
+      // `_applyStyles()` runs AFTER `afterRender()` (per the base render order), so it
+      // must not clobber the muted placeholder color that `afterRender()` set on an empty
+      // contenteditable field — preserve `textPlaceholder` while the `.td-placeholder`
+      // class is present (otherwise use the normal text color).
+      const isCePlaceholder = type === 'contenteditable' && field.classList.contains('td-placeholder');
+      applyStyles(field, {
+        width: '100%',
+        'border-width': '1px',
+        'border-style': 'solid',
+        'border-color': borderColor,
+        'border-radius': s.radius,
+        padding: `${s.py} ${s.px}`,
+        outline: 'none',
+        transition: 'box-shadow .2s cubic-bezier(0.25,0.46,0.45,0.94),' +
+          ' border-color .2s cubic-bezier(0.25,0.46,0.45,0.94),' +
+          ' background-color .2s cubic-bezier(0.25,0.46,0.45,0.94)',
+        'background-color': bg,
+        color: isCePlaceholder ? colors.textPlaceholder : colors.textNormal,
+        'box-shadow': 'inset 0 1px 0 rgba(255,255,255,0.9)',
+        height,
+        // type-specific scalars (only set the relevant one; others left at UA default)
+        resize: type === 'textarea' ? 'vertical' : null,
+        'overflow-y': type === 'contenteditable' ? 'auto' : null,
+      });
+    }
+
+    // --- Counter ---
+    const counter = this.querySelector('.td-input-counter');
+    if (counter) {
+      const maxLength = parseInt(this.getAttribute('max-length'), 10);
+      const limitType = this.getAttribute('limit-type') || 'char';
+      const currentCount = this._countValue(this.getAttribute('value') || '', limitType);
+      const full = Number.isFinite(maxLength) && currentCount >= maxLength;
+      applyStyles(counter, {
+        'font-size': '12px',
+        'margin-top': '4px',
+        'text-align': 'right',
+        color: full ? colors.textError : colors.textMuted,
+      });
+    }
+
+    // --- Note (error or helper) ---
+    const note = this.querySelector('.td-input-note');
+    if (note) {
+      const hasErrorText = !!this.getAttribute('error-text');
+      applyStyles(note, {
+        color: hasErrorText ? colors.textError : colors.textMuted,
+        'font-size': '12px',
+      });
+    }
   }
 
   afterRender() {

@@ -1,4 +1,5 @@
 import { TdFormElement } from '../base/td-form-element.js';
+import { applyStyles } from '../utils/css-safe.js';
 
 /**
  * Dropdown component with searchable popup, keyboard navigation, auto-positioning.
@@ -124,15 +125,36 @@ export class TdDropdown extends TdFormElement {
           ${isDisabled ? 'disabled' : ''}
           aria-haspopup="listbox"
           aria-expanded="${this._isOpen}"
-          class="td-dropdown-button w-full border rounded-xl text-left text-gray-900 focus-visible:outline-none transition-[background-color,opacity] duration-200 flex items-center justify-between text-sm ${disabledClass}"
-          style="background-color: rgba(255,255,255,0.72); border-color: rgba(0,0,0,0.1); padding: 8px 14px; height: 40px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);">
+          class="td-dropdown-button w-full border rounded-xl text-left text-gray-900 focus-visible:outline-none transition-[background-color,opacity] duration-200 flex items-center justify-between text-sm ${disabledClass}">
           <span class="td-dropdown-selected truncate">${displayText}</span>
-          <svg class="td-dropdown-arrow w-4 h-4 text-gray-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="${this._isOpen ? 'transform: rotate(180deg);' : ''}">
+          <svg class="td-dropdown-arrow w-4 h-4 text-gray-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </button>
       </div>
     `;
+  }
+
+  /**
+   * @private CSP-safe scalar styling via CSSOM (replaces the removed declarative inline styles).
+   * Auto-invoked by the base after `afterRender()` on the initial render AND on every
+   * observed-attribute re-render. Sets the button's static box/visual scalars and the
+   * arrow's open/closed rotation. `open()`/`close()` additionally mutate `arrow.style`
+   * directly (no re-render fires there), so the chevron stays in sync with toggles.
+   */
+  _applyStyles() {
+    const button = this.querySelector('.td-dropdown-button');
+    applyStyles(button, {
+      'background-color': 'rgba(255,255,255,0.72)',
+      'border-color': 'rgba(0,0,0,0.1)',
+      'padding': '8px 14px',
+      'height': '40px',
+      'box-shadow': 'inset 0 1px 0 rgba(255,255,255,0.9)',
+    });
+    // Closed → leave `transform` unset so it computes to `none` (parity with the original
+    // empty inline value); open → rotate the chevron. `applyStyles` skips nullish values.
+    const arrow = this.querySelector('.td-dropdown-arrow');
+    applyStyles(arrow, { transform: this._isOpen ? 'rotate(180deg)' : null });
   }
 
   afterRender() {
@@ -252,14 +274,24 @@ export class TdDropdown extends TdFormElement {
           <input
             type="text"
             class="td-dropdown-search w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500/50 text-gray-900 placeholder-gray-400"
-            style="border-color: rgba(0,0,0,0.08); background: rgba(255,255,255,0.5);"
             placeholder="Tìm kiếm...">
         </div>
       ` : ''}
-      <div class="td-dropdown-options py-1 overflow-y-auto" role="listbox" style="max-height: ${maxHeight * 40}px;">
+      <div class="td-dropdown-options py-1 overflow-y-auto" role="listbox">
         ${this._renderOptions()}
       </div>
     `;
+
+    // CSP-safe scalar styling for the portaled menu (replaces the removed declarative inline styles).
+    // The menu lives on document.body, so it can't be styled by `_applyStyles()` (which
+    // scopes to the host); apply here, right after its innerHTML is set.
+    const searchInput = this._menuElement.querySelector('.td-dropdown-search');
+    applyStyles(searchInput, {
+      'border-color': 'rgba(0,0,0,0.08)',
+      'background': 'rgba(255,255,255,0.5)',
+    });
+    const optionsContainer = this._menuElement.querySelector('.td-dropdown-options');
+    applyStyles(optionsContainer, { 'max-height': `${maxHeight * 40}px` });
 
     this._bindMenuEvents();
   }

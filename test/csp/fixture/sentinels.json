@@ -1,0 +1,5 @@
+[
+  { "class": "rounded-xl", "prop": "border-radius", "expected": "12px" },
+  { "class": "w-[123px]", "prop": "width", "expected": "123px" },
+  { "class": "opacity-50", "prop": "opacity", "expected": "0.5" }
+]

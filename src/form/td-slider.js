@@ -1,5 +1,5 @@
 import { TdFormElement } from '../base/td-form-element.js';
-import { safeHexColor } from '../utils/css-safe.js';
+import { safeHexColor, applyStyles } from '../utils/css-safe.js';
 
 /**
  * Slider component with glass styling, step marks, touch support.
@@ -100,23 +100,26 @@ export class TdSlider extends TdFormElement {
       ? `<div class="td-slider-main-label text-sm font-medium text-gray-700 mb-2">${escapedLabel}</div>`
       : '';
 
-    // Value label
+    // Value label — color is a per-instance scalar applied via CSSOM in _applyStyles().
     const valueLabelHtml = showLabel
-      ? `<div class="td-slider-value-label text-center text-sm font-semibold mb-2" style="color: ${color};">${value}</div>`
+      ? `<div class="td-slider-value-label text-center text-sm font-semibold mb-2">${value}</div>`
       : '';
 
-    // Step marks
+    // Step marks — the per-mark left % and mark height are per-instance scalars applied
+    // via CSSOM in _applyStyles() (keyed by the stable .td-slider-step-mark class +
+    // data-pct / data-mark-h), so no declarative style= survives in the markup.
     let stepMarksHtml = '';
     if (showStepMarks) {
       const stepCount = Math.floor((max - min) / step) + 1;
+      const markH = Math.max(8, trackHeight + 2);
       let marks = '';
       for (let i = 0; i < stepCount; i++) {
         const stepValue = min + (i * step);
         if (stepValue > max + 0.0001) break;
         const pct = ((stepValue - min) / (max - min)) * 100;
         marks += `
-          <div class="td-slider-step-mark absolute" style="left: ${pct}%; top: 50%; transform: translate(-50%, -50%); width: 2px; height: ${Math.max(8, trackHeight + 2)}px; background-color: rgba(0,0,0,0.15); border-radius: 1px; z-index: 1;" title="${stepValue}">
-            <div class="td-slider-step-mark-label absolute top-full mt-1 left-1/2 -translate-x-1/2 text-gray-500 whitespace-nowrap" style="font-size: 10px; line-height: 1; font-weight: 500;">${stepValue}</div>
+          <div class="td-slider-step-mark absolute" data-pct="${pct}" data-mark-h="${markH}" title="${stepValue}">
+            <div class="td-slider-step-mark-label absolute top-full mt-1 left-1/2 -translate-x-1/2 text-gray-500 whitespace-nowrap">${stepValue}</div>
           </div>`;
       }
       stepMarksHtml = `<div class="td-slider-step-marks absolute inset-0 pointer-events-none">${marks}</div>`;
@@ -132,25 +135,112 @@ export class TdSlider extends TdFormElement {
         </div>`;
     }
 
-    const paddingBottom = showStepMarks ? (thumbSize / 2 + 24) : (thumbSize / 2);
-
+    // All per-element scalar styling (container width, wrap padding/margin, track height,
+    // track-bg bg/shadow, track-active gradient/shadow/width, thumb size/gradient/left/
+    // border/shadow/transition/opacity, disabled input cursor) is applied via CSSOM in
+    // _applyStyles() after render (it recomputes from the same size preset / value), so
+    // NO declarative style= remains. Only the variable-count step marks carry their
+    // per-mark scalars on data-* (read back in _applyStyles).
     return `
-      <div class="td-slider-container" style="width: ${preset.width};">
+      <div class="td-slider-container">
         ${mainLabelHtml}
         ${showLabel && labelPosition === 'top' ? valueLabelHtml : ''}
-        <div class="td-slider-wrap relative" style="padding-top: ${thumbSize / 2}px; padding-bottom: ${paddingBottom}px;${showStepMarks ? ' margin-bottom: 32px;' : ''}">
-          <div class="td-slider-track-container relative" style="height: ${trackHeight}px;">
-            <div class="td-slider-track-bg absolute inset-0 rounded-full" style="background-color: rgba(0,0,0,0.08); box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);"></div>
-            <div class="td-slider-track-active absolute left-0 top-0 bottom-0 rounded-full" style="background: linear-gradient(180deg, ${color}f2 0%, ${color} 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.25); width: ${percentage}%;"></div>
+        <div class="td-slider-wrap relative">
+          <div class="td-slider-track-container relative">
+            <div class="td-slider-track-bg absolute inset-0 rounded-full"></div>
+            <div class="td-slider-track-active absolute left-0 top-0 bottom-0 rounded-full"></div>
             ${stepMarksHtml}
-            <div class="td-slider-thumb absolute top-1/2 -translate-y-1/2 rounded-full pointer-events-none" style="width: ${thumbSize}px; height: ${thumbSize}px; background: linear-gradient(180deg, ${color}f2 0%, ${color} 100%); left: calc(${percentage}% - ${thumbSize / 2}px); border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.15), 0 4px 12px ${color}40, inset 0 1px 0 rgba(255,255,255,0.3); transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); z-index: 10;${isDisabled ? ' opacity: 0.5;' : ''}"></div>
-            <input type="range" class="td-slider-input absolute inset-0 w-full opacity-0 cursor-pointer" min="${min}" max="${max}" step="${step}" value="${value}" ${isDisabled ? 'disabled style="cursor: not-allowed;"' : ''} role="slider" aria-valuemin="${min}" aria-valuemax="${max}" aria-valuenow="${value}"${escapedLabel ? ` aria-label="${escapedLabel}"` : ''}>
+            <div class="td-slider-thumb absolute top-1/2 -translate-y-1/2 rounded-full pointer-events-none"></div>
+            <input type="range" class="td-slider-input absolute inset-0 w-full opacity-0 cursor-pointer" min="${min}" max="${max}" step="${step}" value="${value}" ${isDisabled ? 'disabled' : ''} role="slider" aria-valuemin="${min}" aria-valuemax="${max}" aria-valuenow="${value}"${escapedLabel ? ` aria-label="${escapedLabel}"` : ''}>
           </div>
         </div>
         ${showLabel && labelPosition === 'bottom' ? valueLabelHtml : ''}
         ${stepLabelsHtml}
       </div>
     `;
+  }
+
+  /**
+   * CSP-safe per-element SCALAR styling via CSSOM (replaces the removed declarative
+   * `style="…"` attributes). Auto-invoked by the base after every render
+   * (afterRender → _applyStyles). The thumb/track gradient + thumb glow embed the
+   * per-instance custom `color`; the track-fill width + thumb left are the value-driven
+   * scalars (also re-applied live in _updateUI during drag).
+   * @private
+   */
+  _applyStyles() {
+    const root = this.querySelector('.td-slider-container');
+    if (!root) return;
+
+    const color = this._getColor();           // normalized 6-digit hex (safeHexColor)
+    const preset = this._getSizePreset();
+    const thumbSize = preset.thumb;
+    const trackHeight = preset.trackH;
+    const value = this._getValue();
+    const percentage = this._getPercentage(value);
+    const isDisabled = this._effectiveDisabled;
+    const gradient = `linear-gradient(180deg, ${color}f2 0%, ${color} 100%)`;
+
+    applyStyles(root, { width: preset.width });
+
+    const wrap = this.querySelector('.td-slider-wrap');
+    applyStyles(wrap, {
+      'padding-top': `${thumbSize / 2}px`,
+      'padding-bottom': `${this.hasAttribute('show-step-marks') ? thumbSize / 2 + 24 : thumbSize / 2}px`,
+      'margin-bottom': this.hasAttribute('show-step-marks') ? '32px' : null,
+    });
+
+    applyStyles(this.querySelector('.td-slider-track-container'), {
+      height: `${trackHeight}px`,
+    });
+
+    applyStyles(this.querySelector('.td-slider-track-bg'), {
+      'background-color': 'rgba(0,0,0,0.08)',
+      'box-shadow': 'inset 0 1px 2px rgba(0,0,0,0.1)',
+    });
+
+    applyStyles(this._trackActive || this.querySelector('.td-slider-track-active'), {
+      background: gradient,
+      'box-shadow': 'inset 0 1px 0 rgba(255,255,255,0.25)',
+      width: `${percentage}%`,
+    });
+
+    applyStyles(this._thumb || this.querySelector('.td-slider-thumb'), {
+      width: `${thumbSize}px`,
+      height: `${thumbSize}px`,
+      background: gradient,
+      left: `calc(${percentage}% - ${thumbSize / 2}px)`,
+      border: '3px solid white',
+      'box-shadow': `0 2px 8px rgba(0,0,0,0.15), 0 4px 12px ${color}40, inset 0 1px 0 rgba(255,255,255,0.3)`,
+      transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+      'z-index': '10',
+      opacity: isDisabled ? '0.5' : null,
+    });
+
+    const input = this._input || this.querySelector('.td-slider-input');
+    if (isDisabled) applyStyles(input, { cursor: 'not-allowed' });
+
+    if (this._valueLabel) applyStyles(this._valueLabel, { color });
+
+    // Step marks: per-mark left % + height (read from data-* emitted in render()).
+    const marks = this.querySelectorAll('.td-slider-step-mark');
+    for (const mark of marks) {
+      applyStyles(mark, {
+        left: `${mark.dataset.pct}%`,
+        top: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '2px',
+        height: `${mark.dataset.markH}px`,
+        'background-color': 'rgba(0,0,0,0.15)',
+        'border-radius': '1px',
+        'z-index': '1',
+      });
+      applyStyles(mark.querySelector('.td-slider-step-mark-label'), {
+        'font-size': '10px',
+        'line-height': '1',
+        'font-weight': '500',
+      });
+    }
   }
 
   afterRender() {

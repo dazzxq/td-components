@@ -1,0 +1,14 @@
+<!--
+  Sentinel markup for the CSP Tailwind fixture.
+
+  These classes are NOT necessarily used by any component. They are pinned here
+  with KNOWN expected computed values so downstream tasks (0B baseline + Task 1
+  CSP harness) can prove the fixture actually compiled real Tailwind output.
+  If a sentinel computes to its unstyled default, the fixture failed to build
+  and the whole CSP suite must fail (so "parity" can never mean "both unstyled").
+
+  Keep this list in sync with sentinels.json.
+-->
+<div class="rounded-xl"></div>
+<div class="w-[123px]"></div>
+<div class="opacity-50"></div>

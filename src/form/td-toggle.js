@@ -1,4 +1,38 @@
 import { TdFormElement } from '../base/td-form-element.js';
+import { applyStyles } from '../utils/css-safe.js';
+import { adoptStyles } from '../utils/adopt-styles.js';
+
+/**
+ * Static, per-instance-INVARIANT rules adopted ONCE per document via a constructable
+ * stylesheet (CSP-safe; a strict `style-src 'self'` blocks an injected `<style>`).
+ *
+ * ENHANCEMENT-ONLY (codex ISSUE-1): this sheet carries ONLY the three `transition`s
+ * (track background + box-shadow, thumb transform, icon opacity). These are genuine,
+ * non-load-bearing embellishments — on a browser WITHOUT `adoptedStyleSheets` (where
+ * `adoptStyles()` returns false) losing them only removes the animation; the switch
+ * still renders and conveys state.
+ *
+ * Everything STRUCTURAL (track `position:relative`/`display:inline-block`; thumb
+ * `position:absolute`/`display:flex`/centering/`background-color:#fff`/`border-radius`;
+ * track/thumb sizing + base background/box-shadow) AND everything STATE-CONVEYING (the
+ * checked track color gradient/glow, the thumb translate, the icon opacity/position) is
+ * applied as CSSOM SCALARS in `_applyStyles()` / `_updateToggleState()` so it works on
+ * EVERY browser regardless of the adopted sheet — and because the transitions live here,
+ * the browser still animates each scalar change when supported. The SVG icon `style=`
+ * became presentation attributes (`opacity`) + CSSOM `position`.
+ */
+const TOGGLE_SHEET = `
+td-toggle .td-toggle-track {
+  transition: background 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              box-shadow 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+td-toggle .td-toggle-thumb {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+td-toggle .td-toggle-icon {
+  transition: opacity 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+`;
 
 /**
  * Toggle switch component with SVG cross/checkmark icons and bounce animation.
@@ -8,6 +42,12 @@ import { TdFormElement } from '../base/td-form-element.js';
  * **0.2.0 BREAKING:** the toggle is now **UNCONTROLLED by default** — clicking it
  * self-toggles like a native checkbox AND emits `change`. Add the boolean `controlled`
  * attribute to restore the old emit-only behavior (the consumer flips `checked`).
+ *
+ * **0.3.0 CSP-strict:** no declarative `style=` and no injected `<style>`. The static
+ * transitions/structure live in a constructable stylesheet (`adoptStyles`); per-instance,
+ * state-dependent scalars (size dimensions, active gradient/box-shadow built from the
+ * custom color, thumb translate, icon opacity/position) are applied via CSSOM in
+ * `_applyStyles()`; the SVG icons use presentation attributes instead of inline style.
  *
  * @element td-toggle
  * @attr {boolean} checked - Whether the toggle is on
@@ -25,10 +65,12 @@ export class TdToggle extends TdFormElement {
   static get observedAttributes() { return [...super.observedAttributes, 'checked', 'controlled', 'value', 'label', 'size', 'color']; }
   static get booleanAttributes() { return [...super.booleanAttributes, 'checked', 'controlled']; }
 
-  constructor() {
-    super();
-    this._uniqueClass = 'td-toggle-' + Math.random().toString(36).slice(2, 8);
-    this._styleEl = null;
+  connectedCallback() {
+    // Adopt the static stylesheet lazily (never at module top-level) — idempotent,
+    // feature-detected, never throws. Returns false in node/SSR or old browsers, where
+    // the component still renders structurally (Tailwind classes + CSSOM scalars apply).
+    adoptStyles(TOGGLE_SHEET, 'td-toggle');
+    super.connectedCallback();
   }
 
   /** @private */
@@ -68,70 +110,6 @@ export class TdToggle extends TdFormElement {
     return { r: 74, g: 222, b: 128 };
   }
 
-  /** @private */
-  _buildStyleContent(color) {
-    const s = this._getSizeConfig();
-    const translateX = s.width - s.thumb - s.offset * 2;
-    const rgb = this._parseHexToRgb(color);
-    const darker = { r: Math.max(0, rgb.r - 20), g: Math.max(0, rgb.g - 20), b: Math.max(0, rgb.b - 20) };
-    const cls = this._uniqueClass;
-
-    return `
-      .${cls} .td-toggle-track {
-        width: ${s.width}px;
-        height: ${s.height}px;
-        background: rgba(0, 0, 0, 0.1);
-        border-radius: ${s.height / 2}px;
-        position: relative;
-        transition: background 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                    box-shadow 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        display: inline-block;
-        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
-      }
-      .${cls} .td-toggle-track--active {
-        background: linear-gradient(180deg, rgba(${rgb.r},${rgb.g},${rgb.b},0.95) 0%, rgba(${darker.r},${darker.g},${darker.b},0.95) 100%);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 8px rgba(${rgb.r},${rgb.g},${rgb.b},0.3);
-      }
-      .${cls} .td-toggle-thumb {
-        width: ${s.thumb}px;
-        height: ${s.thumb}px;
-        background-color: #fff;
-        border-radius: 50%;
-        position: absolute;
-        top: ${s.offset}px;
-        left: ${s.offset}px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.1);
-        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-      }
-      .${cls} .td-toggle-thumb--active {
-        transform: translateX(${translateX}px);
-      }
-      .${cls} .td-toggle-icon {
-        width: ${s.iconSize}px;
-        height: ${s.iconSize}px;
-        transition: opacity 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-      }
-    `;
-  }
-
-  /** @private */
-  _injectStyle(color) {
-    if (!this._styleEl) {
-      this._styleEl = document.createElement('style');
-      document.head.appendChild(this._styleEl);
-      this._cleanups.push(() => {
-        if (this._styleEl && this._styleEl.parentNode) {
-          this._styleEl.parentNode.removeChild(this._styleEl);
-          this._styleEl = null;
-        }
-      });
-    }
-    this._styleEl.textContent = this._buildStyleContent(color);
-  }
-
   /**
    * Change toggle color at runtime without re-rendering.
    * @param {string} newColor - CSS hex color (e.g. '#f59e0b')
@@ -147,33 +125,122 @@ export class TdToggle extends TdFormElement {
     const color = this._getColor();
     const s = this._getSizeConfig();
 
-    this._injectStyle(color);
-
-    const crossOpacity = isChecked ? '0' : '1';
-    const crossPosition = isChecked ? 'absolute' : 'static';
-    const checkOpacity = isChecked ? '1' : '0';
-    const checkPosition = isChecked ? 'static' : 'absolute';
     const trackActive = isChecked ? ' td-toggle-track--active' : '';
     const thumbActive = isChecked ? ' td-toggle-thumb--active' : '';
     const disabledClass = isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer';
 
+    // SVG icons: the old inline `style="opacity:…;position:…"` is gone. `opacity` is an
+    // SVG PRESENTATION ATTRIBUTE (not a CSS context — not gated by CSP); `position` is set
+    // via CSSOM in `_applyStyles()` (with the transition coming from the adopted sheet).
+    const crossOpacity = isChecked ? '0' : '1';
+    const checkOpacity = isChecked ? '1' : '0';
+
     return `
-      <div class="flex items-center gap-2" style="line-height:1">
-        <label class="${this._uniqueClass} relative inline-flex items-center ${disabledClass}" style="vertical-align:middle">
+      <div class="flex items-center gap-2 td-toggle-root">
+        <label class="relative inline-flex items-center ${disabledClass}">
           <div class="td-toggle-track${trackActive}">
             <div class="td-toggle-thumb${thumbActive}">
-              <svg viewBox="0 0 12 12" fill="none" class="td-toggle-icon" style="opacity:${crossOpacity};position:${crossPosition}">
+              <svg viewBox="0 0 12 12" fill="none" class="td-toggle-icon" opacity="${crossOpacity}">
                 <path d="M3 3L9 9M9 3L3 9" stroke="#9ca3af" stroke-width="${s.stroke}" stroke-linecap="round"></path>
               </svg>
-              <svg viewBox="0 0 12 12" fill="none" class="td-toggle-icon" style="opacity:${checkOpacity};position:${checkPosition}">
+              <svg viewBox="0 0 12 12" fill="none" class="td-toggle-icon" opacity="${checkOpacity}">
                 <path d="M2.5 6L5 8.5L9.5 3.5" stroke="${this.escapeHtml(color)}" stroke-width="${s.stroke}" stroke-linecap="round"></path>
               </svg>
             </div>
           </div>
         </label>
-        ${label ? `<span class="text-sm font-medium text-gray-700 select-none" style="line-height:${s.height}px">${label}</span>` : ''}
+        ${label ? `<span class="text-sm font-medium text-gray-700 select-none td-toggle-label">${label}</span>` : ''}
       </div>
     `;
+  }
+
+  /**
+   * Per-element scalar style maps for the current state — single source of truth shared
+   * by `_applyStyles()` (full render) and `_updateToggleState()` (lightweight check toggle).
+   * All values are CSSOM-ready (no selectors). Color-derived strings are built from the
+   * sanitized `_getColor()`; sizes from `_getSizeConfig()`.
+   * @private
+   */
+  _scalarStyles() {
+    const isChecked = this.hasAttribute('checked');
+    const s = this._getSizeConfig();
+    const translateX = s.width - s.thumb - s.offset * 2;
+    const color = this._getColor();
+    const rgb = this._parseHexToRgb(color);
+    const darker = { r: Math.max(0, rgb.r - 20), g: Math.max(0, rgb.g - 20), b: Math.max(0, rgb.b - 20) };
+
+    const trackActiveBg = `linear-gradient(180deg, rgba(${rgb.r},${rgb.g},${rgb.b},0.95) 0%, rgba(${darker.r},${darker.g},${darker.b},0.95) 100%)`;
+    const trackActiveShadow = `inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 8px rgba(${rgb.r},${rgb.g},${rgb.b},0.3)`;
+
+    return {
+      track: {
+        // STRUCTURAL (must apply on every browser, not sheet-only): the track is the
+        // positioning context for the absolutely-positioned thumb and lays out inline.
+        'position': 'relative',
+        'display': 'inline-block',
+        'width': `${s.width}px`,
+        'height': `${s.height}px`,
+        'border-radius': `${s.height / 2}px`,
+        // State-dependent: active → color gradient + glow; inactive → base tint + inset.
+        // Setting `background` (shorthand) clears the other-state value so parity holds.
+        'background': isChecked ? trackActiveBg : 'rgba(0, 0, 0, 0.1)',
+        'box-shadow': isChecked ? trackActiveShadow : 'inset 0 1px 2px rgba(0, 0, 0, 0.08)',
+      },
+      thumb: {
+        // STRUCTURAL: absolute inside the track, centered flex for the icons, round white
+        // knob. All load-bearing — must apply via CSSOM, never via the adopted sheet only.
+        'position': 'absolute',
+        'display': 'flex',
+        'align-items': 'center',
+        'justify-content': 'center',
+        'background-color': '#fff',
+        'border-radius': '50%',
+        'box-shadow': '0 2px 8px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.1)',
+        'width': `${s.thumb}px`,
+        'height': `${s.thumb}px`,
+        'top': `${s.offset}px`,
+        'left': `${s.offset}px`,
+        // STATE: translate to the "on" position when checked; off position otherwise.
+        'transform': isChecked ? `translateX(${translateX}px)` : 'none',
+      },
+      iconSize: {
+        'width': `${s.iconSize}px`,
+        'height': `${s.iconSize}px`,
+      },
+      crossPosition: isChecked ? 'absolute' : 'static',
+      checkPosition: isChecked ? 'static' : 'absolute',
+    };
+  }
+
+  /**
+   * CSP-safe replacement for the removed declarative `style=` attributes. Auto-invoked by
+   * the base after `afterRender()` on the initial render AND on every observed-attribute
+   * re-render (size/color/disabled/value/label/controlled funnel through `_doRender()`),
+   * so size- and color-dependent scalars stay correct. The `checked` attribute takes the
+   * lightweight `_updateToggleState()` path instead (no re-render) — which re-applies the
+   * SAME maps so the CSS transition (from the adopted sheet) animates.
+   * @private
+   */
+  _applyStyles() {
+    const m = this._scalarStyles();
+    const root = this.querySelector('.td-toggle-root');
+    const track = this.querySelector('.td-toggle-track');
+    const thumb = this.querySelector('.td-toggle-thumb');
+    const crossIcon = this.querySelector('.td-toggle-icon:first-child');
+    const checkIcon = this.querySelector('.td-toggle-icon:last-child');
+
+    // Root: tighten line-height so the inline switch doesn't inherit text leading. Moved
+    // off the adopted sheet (was sheet-only) → CSSOM so it holds without adoptedStyleSheets.
+    applyStyles(root, { 'line-height': '1' });
+    applyStyles(track, m.track);
+    applyStyles(thumb, m.thumb);
+    applyStyles(crossIcon, { ...m.iconSize, 'position': m.crossPosition });
+    applyStyles(checkIcon, { ...m.iconSize, 'position': m.checkPosition });
+
+    // Optional label span: line-height tracks the switch height (size-dependent). Not in
+    // the parity matrix, but kept for visual fidelity with the pre-refactor inline style.
+    const labelSpan = this.querySelector('.td-toggle-label');
+    if (labelSpan) applyStyles(labelSpan, { 'line-height': m.track.height });
   }
 
   /**
@@ -191,8 +258,10 @@ export class TdToggle extends TdFormElement {
     }
 
     if (name === 'color') {
+      // Re-apply color-derived scalars (active gradient/box-shadow) + the SVG stroke
+      // presentation attribute, without a full re-render.
+      this._applyStyles();
       const color = this._getColor();
-      this._injectStyle(color);
       const checkIcon = this.querySelector('.td-toggle-icon:last-child path');
       if (checkIcon) checkIcon.setAttribute('stroke', color);
       return;
@@ -210,10 +279,13 @@ export class TdToggle extends TdFormElement {
 
   /**
    * Lightweight DOM update for toggle state — no re-render, CSS transition plays.
+   * Re-applies the SCALAR maps (CSSOM) + toggles the active classes + the SVG `opacity`
+   * presentation attribute. The adopted sheet's transitions animate the scalar changes.
    * @private
    */
   _updateToggleState() {
     const isChecked = this.hasAttribute('checked');
+    const m = this._scalarStyles();
     const track = this.querySelector('.td-toggle-track');
     const thumb = this.querySelector('.td-toggle-thumb');
     const crossIcon = this.querySelector('.td-toggle-icon:first-child');
@@ -221,17 +293,19 @@ export class TdToggle extends TdFormElement {
 
     if (track) {
       track.classList.toggle('td-toggle-track--active', isChecked);
+      applyStyles(track, m.track);
     }
     if (thumb) {
       thumb.classList.toggle('td-toggle-thumb--active', isChecked);
+      applyStyles(thumb, m.thumb);
     }
     if (crossIcon) {
-      crossIcon.style.opacity = isChecked ? '0' : '1';
-      crossIcon.style.position = isChecked ? 'absolute' : 'static';
+      crossIcon.setAttribute('opacity', isChecked ? '0' : '1');
+      crossIcon.style.setProperty('position', m.crossPosition);
     }
     if (checkIcon) {
-      checkIcon.style.opacity = isChecked ? '1' : '0';
-      checkIcon.style.position = isChecked ? 'static' : 'absolute';
+      checkIcon.setAttribute('opacity', isChecked ? '1' : '0');
+      checkIcon.style.setProperty('position', m.checkPosition);
     }
   }
 

@@ -56,10 +56,31 @@ export class TdBaseElement extends HTMLElement {
   _doRender() {
     this.innerHTML = this.render();
     this.afterRender();
+    // CSP-strict hardening hook: apply per-element SCALAR styles via CSSOM after each
+    // render. Optional-chaining so subclasses that don't define `_applyStyles` are
+    // completely unaffected. See the `_applyStyles()` contract on the class JSDoc.
+    this._applyStyles?.();
   }
 
   /** Hook for subclass to bind events after render. Called after every render. */
   afterRender() {}
+
+  /**
+   * CSP-hardening contract for subclasses (no-op by default — define it to opt in):
+   *
+   * Define `_applyStyles()` to set per-element SCALAR styles via CSSOM
+   * (`el.style.setProperty(...)`) after each render. It is called automatically here
+   * after `afterRender()` on the initial render AND on every observed-attribute
+   * re-render (since `attributeChangedCallback` funnels through `_doRender()`), so
+   * state-dependent scalars (color, size, width %, etc.) stay correct as state changes.
+   *
+   * Put SELECTOR / pseudo-class (`:hover`/`:focus`/`:checked`/`:disabled`),
+   * `::before`/`::after`, state-combinator, `@keyframes`, and `@media` rules in a
+   * constructable stylesheet adopted ONCE via `adoptStyles(css, key)` from
+   * `utils/adopt-styles.js`, keyed off STABLE classes / `data-*` attributes the
+   * component toggles — NOT inline `style=` and NOT an injected `<style>` element,
+   * both of which a strict CSP (`style-src 'self'`, no `unsafe-inline`) blocks.
+   */
 
   // --- Attribute/Property Sync ---
 

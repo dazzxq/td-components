@@ -2,6 +2,51 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.3.0
+
+**CSP-strict compatible** — no declarative inline styles, no injected `<style>`; styling is
+applied via CSSOM (`element.style`) and **constructable stylesheets** (`adoptedStyleSheets`).
+The library now renders correctly under a strict `Content-Security-Policy: default-src 'self'`
+with **no `style-src 'unsafe-inline'`**. A non-vacuous parity gate (`npm run test:csp`) proves,
+under that enforced header, zero CSP violations **and** pixel-identical computed styles vs a
+pre-refactor baseline across every component's full state matrix (73 states).
+
+### ⚠️ Compatibility notes (compatibility-impacting minor)
+
+1. **Requires `adoptedStyleSheets`** — Chromium 73+, Safari 16.4+, Firefox 101+. On an older
+   browser (or SSR) the constructable-stylesheet helper degrades gracefully: components still
+   render structurally (Tailwind utility classes + CSSOM scalars apply); only the
+   selector/pseudo-class/`@keyframes` embellishments (hover, checked, spinner animation) are
+   absent. No CSS-file fallback (the library ships no CSS by design).
+2. **The DOM no longer carries the old inline `style` attributes.** Per-element styling is now
+   set imperatively via CSSOM, and shared selector/state/keyframe rules live in an adopted
+   stylesheet. Any consumer/integration/test that inspected those inline `style="…"` attributes
+   (or an injected `<style>` element) will observe the change. Public attributes, properties,
+   events, and rendered visual output are unchanged.
+3. **Trusted raw-HTML escape hatches remain the consumer's CSP responsibility** (unchanged from
+   0.2.0): `TdModal.show({ body })`, `td-table` column `render(row)`, and `td-empty-state`'s raw
+   `<svg>` icon inject consumer HTML verbatim — if you pass `style="…"`/`<style>` through them, a
+   strict CSP will block it. This release hardens only **library-authored** render output.
+
+### Changed
+
+- Every component's styling moved off declarative inline `style=`/injected `<style>`:
+  per-instance scalars → CSSOM (`utils/css-safe.js` gains `applyStyles(el, map)`); selector,
+  pseudo-class, `::before`/`::after`, state-combinator, `@keyframes`, and `@media` rules → a
+  single per-component constructable stylesheet adopted once via the new
+  **`utils/adopt-styles.js`** (`adoptStyles(css, key)` — feature-detected, lazy, idempotent,
+  never throws in node/SSR). Per-instance dynamic values inside selector rules use CSS custom
+  properties set via CSSOM. SVG inline styles → SVG presentation attributes.
+- `TdBaseElement` calls an optional `_applyStyles()` hook after `afterRender()` on every render
+  (initial + observed-attribute re-render), so state-dependent scalars stay correct.
+
+### Added
+
+- `npm run test:csp` — a standalone Playwright CSP parity gate (strict-CSP render + zero
+  violations + computed-style parity + animation liveness), wired into `npm test`. Added
+  explicit pinned devDeps `playwright-core` and `@tailwindcss/cli` + a deterministic Tailwind
+  fixture used as the parity oracle.
+
 ## 0.2.0
 
 The form-controls release: every form control is now a real **form-associated custom

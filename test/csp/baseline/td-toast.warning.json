@@ -1,0 +1,79 @@
+{
+  "_component": "td-toast",
+  "_state": "warning",
+  "_reducedMotion": false,
+  "_excludedProps": [],
+  "_sentinels": [
+    {
+      "class": "rounded-xl",
+      "prop": "border-radius",
+      "value": "12px"
+    },
+    {
+      "class": "w-[123px]",
+      "prop": "width",
+      "value": "123px"
+    },
+    {
+      "class": "opacity-50",
+      "prop": "opacity",
+      "value": "0.5"
+    }
+  ],
+  "styles": {
+    ".toast-item > div": {
+      "width": "80.5938px",
+      "height": "48.75px",
+      "min-height": "0px",
+      "max-height": "none",
+      "padding-top": "12px",
+      "padding-bottom": "12px",
+      "padding-left": "16px",
+      "padding-right": "16px",
+      "margin-top": "0px",
+      "margin-bottom": "0px",
+      "margin-left": "0px",
+      "display": "block",
+      "position": "static",
+      "top": "auto",
+      "left": "auto",
+      "right": "auto",
+      "bottom": "auto",
+      "z-index": "auto",
+      "opacity": "1",
+      "color": "rgb(255, 255, 255)",
+      "background-color": "oklab(0.795 0.0126846 0.183562 / 0.85)",
+      "background-image": "none",
+      "border-top-width": "1px",
+      "border-right-width": "1px",
+      "border-bottom-width": "1px",
+      "border-left-width": "1px",
+      "border-top-color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.2)",
+      "border-right-color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.2)",
+      "border-bottom-color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.2)",
+      "border-left-color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.2)",
+      "border-top-left-radius": "12px",
+      "border-top-right-radius": "12px",
+      "border-bottom-left-radius": "12px",
+      "border-bottom-right-radius": "12px",
+      "box-shadow": "rgba(0, 0, 0, 0.1) 0px 8px 32px 0px, rgba(255, 255, 255, 0.2) 0px 1px 0px 0px inset",
+      "transform": "none",
+      "transition": "all",
+      "backdrop-filter": "blur(10px)",
+      "-webkit-backdrop-filter": "",
+      "font-size": "16px",
+      "font-weight": "400",
+      "line-height": "24px",
+      "text-align": "start",
+      "resize": "none",
+      "overflow-y": "visible",
+      "cursor": "pointer",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px",
+      "stroke-dasharray": "none",
+      "stroke-dashoffset": "0px",
+      "stroke-linecap": "butt"
+    }
+  }
+}

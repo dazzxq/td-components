@@ -31,6 +31,25 @@
 
 import { TdModalStackManager } from './td-modal-stack.js';
 import { escapeHtml } from '../utils/escape.js';
+import { adoptStyles } from '../utils/adopt-styles.js';
+
+/**
+ * Static, library-authored styling for the modal dialog surface (glass morphism).
+ * Previously a declarative `style="…"` on `.td-modal-content`; under a strict CSP
+ * (`default-src 'self'`, no `unsafe-inline`) inline styles are BLOCKED, so these
+ * non-varying rules move into a constructable stylesheet adopted into `document`
+ * (the modal portals to `document.body`, so a document-level sheet covers it).
+ * Scoped to the stable `.td-modal-content` class. Per-instance scalars (size,
+ * width, height, transforms, transitions, animation opacity) remain on the
+ * element via CSSOM — they are CSP-allowed and vary per call.
+ */
+const TD_MODAL_SHEET = `
+.td-modal-content {
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+}
+`;
 
 export class TdModal {
   static _focusTrapHandlers = new Map();
@@ -54,7 +73,7 @@ export class TdModal {
       <div class="fixed inset-0 overflow-y-auto">
         <div class="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
           <!-- Modal Content -->
-          <div class="td-modal-content bg-white/[0.9] rounded-t-3xl sm:rounded-[20px] border border-white/50 max-w-lg w-full transform transition-all" style="box-shadow: 0 24px 80px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.5); backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%);">
+          <div class="td-modal-content bg-white/[0.9] rounded-t-3xl sm:rounded-[20px] border border-white/50 max-w-lg w-full transform transition-all">
             <!-- Header -->
             <div class="td-modal-header px-4 sm:px-6 py-3 sm:py-4 border-b border-black/[0.06] flex items-center justify-between">
               <h3 class="td-modal-title text-lg sm:text-xl font-bold text-gray-900"></h3>
@@ -113,6 +132,12 @@ export class TdModal {
    * @returns {string} Modal ID
    */
   static show(options = {}) {
+    // Adopt the static dialog-surface stylesheet LAZILY (browser-only, idempotent,
+    // never at module top-level). Adopted into `document` because the modal portals
+    // to `document.body`. Returns false on old browsers/SSR → still renders
+    // structurally (Tailwind classes + CSSOM scalars) without the glass embellishment.
+    adoptStyles(TD_MODAL_SHEET, 'td-modal');
+
     // Create new modal element
     const modal = this._createModalElement();
     const modalId = modal.id;
