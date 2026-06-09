@@ -11,6 +11,26 @@
  */
 
 import { escapeHtml } from '../utils/escape.js';
+import { adoptStyles } from '../utils/adopt-styles.js';
+
+/**
+ * Static stylesheet for toast surfaces. The box-shadow + backdrop-filter on the inner
+ * `.toast-item > div` are NOT expressible as Tailwind utilities the fixture emits, so
+ * under a strict CSP (no `unsafe-inline`) they cannot ride on a declarative `style="…"`.
+ * They are identical for every toast type, so they live in ONE constructable stylesheet
+ * adopted into `document` (toasts are portaled to `document.body`, so the sheet must be
+ * on the top-level document — not a shadow root — to reach them). Adopted LAZILY from
+ * `_showSingle`, never at module top-level (so importing in node/SSR cannot throw).
+ *
+ * @type {string}
+ */
+const TD_TOAST_CSS = `
+.toast-item > div {
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+`;
 
 /**
  * Try to import TdModalStackManager for dynamic z-index.
@@ -139,6 +159,12 @@ export class TdToast {
      * @private
      */
     static _showSingle(message, type, duration) {
+        // Adopt the toast surface stylesheet ONCE (idempotent). Lazy — never at module
+        // top-level. Adopts into `document` so it reaches the portaled toast nodes on
+        // `document.body`. On unsupported browsers/SSR this is a no-op (returns false)
+        // and the toast still renders structurally via its Tailwind classes.
+        adoptStyles(TD_TOAST_CSS, 'td-toast');
+
         TdToast.ensureContainer();
 
         // Update z-index dynamically each time
@@ -153,7 +179,7 @@ export class TdToast {
         toast.setAttribute('role', 'alert');
         toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
         toast.innerHTML = `
-            <div class="px-4 py-3 rounded-xl text-white border border-white/20 ${theme.bg} ${theme.hover}" style="box-shadow: 0 8px 32px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);">
+            <div class="px-4 py-3 rounded-xl text-white border border-white/20 ${theme.bg} ${theme.hover}">
                 <span class="text-sm leading-relaxed block">${escapeHtml(message)}</span>
             </div>
         `;
