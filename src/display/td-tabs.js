@@ -1,4 +1,58 @@
 import { TdBaseElement } from '../base/td-base-element.js';
+import { adoptStyles } from '../utils/adopt-styles.js';
+
+/**
+ * Static stylesheet for td-tabs — CSP-strict hardening.
+ *
+ * Under a strict `Content-Security-Policy` (`style-src 'self'`, no `unsafe-inline`) a
+ * declarative `style="…"` attribute is BLOCKED. The container/button/indicator glass
+ * styling here is identical for every td-tabs instance (no per-instance values), so it
+ * lives in ONE constructable stylesheet adopted via `adoptStyles` (lazy, idempotent,
+ * feature-detected, never throwing). Per-element DYNAMIC scalars that differ per
+ * instance — the indicator's `left`/`width`/`opacity`, measured from the active button's
+ * geometry — stay on the element via CSSOM (`_updateIndicator`), which CSP allows.
+ *
+ * The sheet is adopted into `document` (td-tabs renders in light DOM), so every selector
+ * is element-scoped with a `td-tabs ` prefix to keep the blast radius to this component's
+ * own nodes — a host page reusing these generic class names is never affected.
+ *
+ * Selectors are STABLE element-scoped classes / `data-*`:
+ *  - `.td-tabs-container` carries the glass background; the populated variant
+ *    (`[data-populated]`) is `position: relative` so the absolutely-positioned indicator
+ *    anchors to it (the empty container stays `position: static`, matching baseline).
+ *  - `.td-tab-btn` sits above the indicator (`z-index: 1`, transparent background).
+ *  - `.td-tabs-indicator` holds the moving pill: position/box-shadow/border-radius/
+ *    background and the `left`/`width` transition. Its initial `width: 0; opacity: 0` is
+ *    overridden via CSSOM once positioned, so the active pill becomes visible (opacity is
+ *    asserted by the parity gate).
+ *
+ * @type {string}
+ */
+const TD_TABS_CSS = `
+td-tabs .td-tabs-container {
+  background: rgba(0, 0, 0, 0.04);
+}
+td-tabs .td-tabs-container[data-populated] {
+  position: relative;
+}
+td-tabs .td-tab-btn {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+td-tabs .td-tabs-indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 0;
+  opacity: 0;
+  z-index: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+`;
 
 /**
  * Tabs component with liquid glass style horizontal tab buttons.
@@ -52,11 +106,23 @@ export class TdTabs extends TdBaseElement {
     return sizes[size] || sizes.md;
   }
 
+  // --- Lifecycle ---
+
+  connectedCallback() {
+    // Adopt the static stylesheet ONCE (idempotent, lazy — never at module top-level).
+    // On unsupported browsers/SSR this is a no-op (returns false) and the component still
+    // renders structurally via its Tailwind classes; only the glass embellishments and
+    // indicator transition are absent. Adopted into `document` (td-tabs renders in the
+    // light DOM, so its nodes are reached by the top-level document sheet).
+    adoptStyles(TD_TABS_CSS, 'td-tabs');
+    super.connectedCallback();
+  }
+
   // --- Rendering ---
 
   render() {
     if (this._tabs.length === 0) {
-      return '<div class="td-tabs-container flex gap-1 p-1 rounded-xl" style="background: rgba(0, 0, 0, 0.04);"></div>';
+      return '<div class="td-tabs-container flex gap-1 p-1 rounded-xl"></div>';
     }
 
     const s = this._getSizeConfig();
@@ -71,13 +137,12 @@ export class TdTabs extends TdBaseElement {
           type="button"
           class="td-tab-btn flex-1 ${s.padding} ${s.text} font-medium rounded-lg transition-colors duration-200 ${isActive ? 'text-gray-800' : 'text-gray-500 hover:text-gray-700'}"
           data-tab-id="${this.escapeHtml(tab.id)}"
-          style="position: relative; z-index: 1; background: transparent;"
         >${iconHtml}${this.escapeHtml(tab.label)}</button>
       `;
     }).join('');
 
-    return `<div class="td-tabs-container flex gap-1 p-1 rounded-xl" style="position: relative; background: rgba(0, 0, 0, 0.04);">
-      <div class="td-tabs-indicator" style="position: absolute; top: 4px; bottom: 4px; border-radius: 8px; background: rgba(255,255,255,0.9); box-shadow: 0 1px 3px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9); transition: left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); width: 0; opacity: 0; z-index: 0;"></div>
+    return `<div class="td-tabs-container flex gap-1 p-1 rounded-xl" data-populated>
+      <div class="td-tabs-indicator"></div>
       ${tabsHtml}
     </div>`;
   }
