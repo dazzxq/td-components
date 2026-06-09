@@ -89,6 +89,21 @@
 
 <task type="auto">
   <name>Task 3: Style unification — self-contained baseline, Tailwind optional</name>
+  <status>DESCOPED 2026-06-09 (operator override) — Tailwind v4 stays a REQUIRED peer dependency; the body below is NOT implemented.</status>
+  <!-- DECISION (operator override): every consumer of this lib (incl. the s3 dashboard)
+       already loads Tailwind, so reimplementing each component's baseline look as
+       plain/scoped CSS is wasted effort + a regression risk. This reverses locked
+       decision D-2 ("works without Tailwind") for these owner-controlled consumers.
+       Consequences:
+         - package.json keeps `tailwindcss: ">=4.0.0"` as a REQUIRED peerDependency
+           (NOT optional). README already documents the required v4 `@source` setup — no change.
+         - Existing per-instance dynamic self-injected CSS (checkbox/toggle/slider/datetime/
+           loading) STAYS — it encodes runtime values Tailwind can't express; unrelated to decoupling.
+         - No no-Tailwind smoke test; the shared injectStyle(id,css) refactor (ISSUE-13) is NOT done.
+         - 0.2.0 breaking-change list (Task 6) drops "tailwind optional" → TWO breaking changes only:
+           toggle uncontrolled-by-default, input-field inner `name` removed.
+         - FOLLOW-UP for s3 04-05: the dashboard must load Tailwind v4 with an `@source`
+           directive pointing at the vendored td-components/src. -->
   <files>src/base/td-base-element.js, ALL of src/**/*.js (every component that uses Tailwind classes), src/styles/*, README.md, package.json, test/no-tailwind.spec.*</files>
   <action>
     Standardize on the **self-injected, per-instance-scoped CSS** pattern (already used by td-checkbox/td-toggle): factor the helper as a **module-level `injectStyle(id, css)` function** (ISSUE-13) in a shared util (e.g. `src/utils/style.js`) with global dedupe-by-id + a returned cleanup handle — usable by BOTH `TdBaseElement` subclasses AND any non-element utility; `TdBaseElement` exposes a thin `injectStyle()` that delegates to it and registers cleanup. Migrate EVERY component that currently relies on Tailwind classes for baseline look — **ISSUE-8: this is ALL components, not just button/slider/dropdown/datetime**; the survey shows checkbox, toggle, input-field also carry Tailwind utility classes in layout/text paths, and the display/feedback components (table, tabs, pagination, modal, toast, tooltip, loading, empty-state) too. Each ships its essential look as scoped CSS so it renders correctly with NO host Tailwind. Tailwind classes may remain ONLY as optional, host-overridable polish. Update `package.json`: `tailwindcss` → `peerDependenciesMeta: { tailwindcss: { optional: true } }`; README states baseline works without Tailwind.
