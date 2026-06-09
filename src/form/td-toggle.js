@@ -6,36 +6,27 @@ import { adoptStyles } from '../utils/adopt-styles.js';
  * Static, per-instance-INVARIANT rules adopted ONCE per document via a constructable
  * stylesheet (CSP-safe; a strict `style-src 'self'` blocks an injected `<style>`).
  *
- * Element-scoped (`td-toggle …`) and keyed off STABLE classes the component renders.
- * It carries ONLY what a selector/transition needs and what is identical for every
- * instance: position/display structure and the three transitions (track background +
- * box-shadow, thumb transform, icon opacity). Everything per-instance / state-dependent
- * (size-driven dimensions, the active gradient + active box-shadow built from the custom
- * color, the thumb translate, the icon opacity/position) is applied as CSSOM SCALARS in
- * `_applyStyles()` so the values stay correct as `checked`/`disabled`/`size`/`color`
- * change — and because the transitions live here, the browser still animates each scalar
- * change. SVG icon `style=` became presentation attributes (`opacity`) + CSSOM `position`.
+ * ENHANCEMENT-ONLY (codex ISSUE-1): this sheet carries ONLY the three `transition`s
+ * (track background + box-shadow, thumb transform, icon opacity). These are genuine,
+ * non-load-bearing embellishments — on a browser WITHOUT `adoptedStyleSheets` (where
+ * `adoptStyles()` returns false) losing them only removes the animation; the switch
+ * still renders and conveys state.
+ *
+ * Everything STRUCTURAL (track `position:relative`/`display:inline-block`; thumb
+ * `position:absolute`/`display:flex`/centering/`background-color:#fff`/`border-radius`;
+ * track/thumb sizing + base background/box-shadow) AND everything STATE-CONVEYING (the
+ * checked track color gradient/glow, the thumb translate, the icon opacity/position) is
+ * applied as CSSOM SCALARS in `_applyStyles()` / `_updateToggleState()` so it works on
+ * EVERY browser regardless of the adopted sheet — and because the transitions live here,
+ * the browser still animates each scalar change when supported. The SVG icon `style=`
+ * became presentation attributes (`opacity`) + CSSOM `position`.
  */
 const TOGGLE_SHEET = `
-td-toggle .td-toggle-root {
-  line-height: 1;
-}
 td-toggle .td-toggle-track {
-  position: relative;
-  display: inline-block;
-  background: rgba(0, 0, 0, 0.1);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
   transition: background 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
               box-shadow 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 td-toggle .td-toggle-thumb {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #fff;
-  border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 td-toggle .td-toggle-icon {
@@ -183,6 +174,10 @@ export class TdToggle extends TdFormElement {
 
     return {
       track: {
+        // STRUCTURAL (must apply on every browser, not sheet-only): the track is the
+        // positioning context for the absolutely-positioned thumb and lays out inline.
+        'position': 'relative',
+        'display': 'inline-block',
         'width': `${s.width}px`,
         'height': `${s.height}px`,
         'border-radius': `${s.height / 2}px`,
@@ -192,10 +187,20 @@ export class TdToggle extends TdFormElement {
         'box-shadow': isChecked ? trackActiveShadow : 'inset 0 1px 2px rgba(0, 0, 0, 0.08)',
       },
       thumb: {
+        // STRUCTURAL: absolute inside the track, centered flex for the icons, round white
+        // knob. All load-bearing — must apply via CSSOM, never via the adopted sheet only.
+        'position': 'absolute',
+        'display': 'flex',
+        'align-items': 'center',
+        'justify-content': 'center',
+        'background-color': '#fff',
+        'border-radius': '50%',
+        'box-shadow': '0 2px 8px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.1)',
         'width': `${s.thumb}px`,
         'height': `${s.thumb}px`,
         'top': `${s.offset}px`,
         'left': `${s.offset}px`,
+        // STATE: translate to the "on" position when checked; off position otherwise.
         'transform': isChecked ? `translateX(${translateX}px)` : 'none',
       },
       iconSize: {
@@ -218,11 +223,15 @@ export class TdToggle extends TdFormElement {
    */
   _applyStyles() {
     const m = this._scalarStyles();
+    const root = this.querySelector('.td-toggle-root');
     const track = this.querySelector('.td-toggle-track');
     const thumb = this.querySelector('.td-toggle-thumb');
     const crossIcon = this.querySelector('.td-toggle-icon:first-child');
     const checkIcon = this.querySelector('.td-toggle-icon:last-child');
 
+    // Root: tighten line-height so the inline switch doesn't inherit text leading. Moved
+    // off the adopted sheet (was sheet-only) → CSSOM so it holds without adoptedStyleSheets.
+    applyStyles(root, { 'line-height': '1' });
     applyStyles(track, m.track);
     applyStyles(thumb, m.thumb);
     applyStyles(crossIcon, { ...m.iconSize, 'position': m.crossPosition });
