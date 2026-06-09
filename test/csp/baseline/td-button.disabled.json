@@ -1,0 +1,79 @@
+{
+  "_component": "td-button",
+  "_state": "disabled",
+  "_reducedMotion": false,
+  "_excludedProps": [],
+  "_sentinels": [
+    {
+      "class": "rounded-xl",
+      "prop": "border-radius",
+      "value": "12px"
+    },
+    {
+      "class": "w-[123px]",
+      "prop": "width",
+      "value": "123px"
+    },
+    {
+      "class": "opacity-50",
+      "prop": "opacity",
+      "value": "0.5"
+    }
+  ],
+  "styles": {
+    "button": {
+      "width": "73.75px",
+      "height": "42px",
+      "min-height": "0px",
+      "max-height": "none",
+      "padding-top": "10px",
+      "padding-bottom": "10px",
+      "padding-left": "20px",
+      "padding-right": "20px",
+      "margin-top": "0px",
+      "margin-bottom": "0px",
+      "margin-left": "0px",
+      "display": "inline-flex",
+      "position": "static",
+      "top": "auto",
+      "left": "auto",
+      "right": "auto",
+      "bottom": "auto",
+      "z-index": "auto",
+      "opacity": "0.5",
+      "color": "rgb(255, 255, 255)",
+      "background-color": "rgba(31, 41, 55, 0.85)",
+      "background-image": "none",
+      "border-top-width": "1px",
+      "border-right-width": "1px",
+      "border-bottom-width": "1px",
+      "border-left-width": "1px",
+      "border-top-color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.1)",
+      "border-right-color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.1)",
+      "border-bottom-color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.1)",
+      "border-left-color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.1)",
+      "border-top-left-radius": "10px",
+      "border-top-right-radius": "10px",
+      "border-bottom-left-radius": "10px",
+      "border-bottom-right-radius": "10px",
+      "box-shadow": "rgba(0, 0, 0, 0.1) 0px 1px 3px 0px, rgba(31, 41, 55, 0.2) 0px 4px 12px 0px, rgba(255, 255, 255, 0.1) 0px 1px 0px 0px inset",
+      "transform": "none",
+      "transition": "transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+      "backdrop-filter": "blur(8px)",
+      "-webkit-backdrop-filter": "",
+      "font-size": "14px",
+      "font-weight": "500",
+      "line-height": "20px",
+      "text-align": "center",
+      "resize": "none",
+      "overflow-y": "visible",
+      "cursor": "not-allowed",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px",
+      "stroke-dasharray": "none",
+      "stroke-dashoffset": "0px",
+      "stroke-linecap": "butt"
+    }
+  }
+}

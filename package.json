@@ -9,6 +9,7 @@
     "test:node": "node --test --test-force-exit \"src/**/*.test.js\"",
     "test:browser": "web-test-runner",
     "build:csp-fixture": "tailwindcss -i test/csp/fixture/input.css -o test/csp/fixture/tailwind.css",
+    "capture:baseline": "node test/csp/capture-baseline.mjs",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },

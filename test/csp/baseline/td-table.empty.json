@@ -1,0 +1,79 @@
+{
+  "_component": "td-table",
+  "_state": "empty",
+  "_reducedMotion": false,
+  "_excludedProps": [],
+  "_sentinels": [
+    {
+      "class": "rounded-xl",
+      "prop": "border-radius",
+      "value": "12px"
+    },
+    {
+      "class": "w-[123px]",
+      "prop": "width",
+      "value": "123px"
+    },
+    {
+      "class": "opacity-50",
+      "prop": "opacity",
+      "value": "0.5"
+    }
+  ],
+  "styles": {
+    ".td-table-container": {
+      "width": "1280px",
+      "height": "271px",
+      "min-height": "0px",
+      "max-height": "none",
+      "padding-top": "0px",
+      "padding-bottom": "0px",
+      "padding-left": "0px",
+      "padding-right": "0px",
+      "margin-top": "0px",
+      "margin-bottom": "0px",
+      "margin-left": "0px",
+      "display": "block",
+      "position": "static",
+      "top": "auto",
+      "left": "auto",
+      "right": "auto",
+      "bottom": "auto",
+      "z-index": "auto",
+      "opacity": "1",
+      "color": "rgb(0, 0, 0)",
+      "background-color": "rgba(255, 255, 255, 0.85)",
+      "background-image": "none",
+      "border-top-width": "1px",
+      "border-right-width": "1px",
+      "border-bottom-width": "1px",
+      "border-left-width": "1px",
+      "border-top-color": "rgba(0, 0, 0, 0.06)",
+      "border-right-color": "rgba(0, 0, 0, 0.06)",
+      "border-bottom-color": "rgba(0, 0, 0, 0.06)",
+      "border-left-color": "rgba(0, 0, 0, 0.06)",
+      "border-top-left-radius": "12px",
+      "border-top-right-radius": "12px",
+      "border-bottom-left-radius": "12px",
+      "border-bottom-right-radius": "12px",
+      "box-shadow": "rgba(0, 0, 0, 0.08) 0px 1px 3px 0px, rgba(0, 0, 0, 0.04) 0px 4px 16px 0px, rgba(255, 255, 255, 0.9) 0px 1px 0px 0px inset",
+      "transform": "none",
+      "transition": "all",
+      "backdrop-filter": "none",
+      "-webkit-backdrop-filter": "",
+      "font-size": "16px",
+      "font-weight": "400",
+      "line-height": "24px",
+      "text-align": "start",
+      "resize": "none",
+      "overflow-y": "hidden",
+      "cursor": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px",
+      "stroke-dasharray": "none",
+      "stroke-dashoffset": "0px",
+      "stroke-linecap": "butt"
+    }
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "_component": "td-slider",
+  "_state": "show-value-label",
+  "_reducedMotion": false,
+  "_excludedProps": [],
+  "_sentinels": [
+    {
+      "class": "rounded-xl",
+      "prop": "border-radius",
+      "value": "12px"
+    },
+    {
+      "class": "w-[123px]",
+      "prop": "width",
+      "value": "123px"
+    },
+    {
+      "class": "opacity-50",
+      "prop": "opacity",
+      "value": "0.5"
+    }
+  ],
+  "styles": {
+    ".td-slider-value-label": {
+      "width": "300px",
+      "height": "20px",
+      "min-height": "0px",
+      "max-height": "none",
+      "padding-top": "0px",
+      "padding-bottom": "0px",
+      "padding-left": "0px",
+      "padding-right": "0px",
+      "margin-top": "0px",
+      "margin-bottom": "8px",
+      "margin-left": "0px",
+      "display": "block",
+      "position": "static",
+      "top": "auto",
+      "left": "auto",
+      "right": "auto",
+      "bottom": "auto",
+      "z-index": "auto",
+      "opacity": "1",
+      "color": "rgb(14, 165, 233)",
+      "background-color": "rgba(0, 0, 0, 0)",
+      "background-image": "none",
+      "border-top-width": "0px",
+      "border-right-width": "0px",
+      "border-bottom-width": "0px",
+      "border-left-width": "0px",
+      "border-top-color": "rgb(14, 165, 233)",
+      "border-right-color": "rgb(14, 165, 233)",
+      "border-bottom-color": "rgb(14, 165, 233)",
+      "border-left-color": "rgb(14, 165, 233)",
+      "border-top-left-radius": "0px",
+      "border-top-right-radius": "0px",
+      "border-bottom-left-radius": "0px",
+      "border-bottom-right-radius": "0px",
+      "box-shadow": "none",
+      "transform": "none",
+      "transition": "all",
+      "backdrop-filter": "none",
+      "-webkit-backdrop-filter": "",
+      "font-size": "14px",
+      "font-weight": "600",
+      "line-height": "20px",
+      "text-align": "center",
+      "resize": "none",
+      "overflow-y": "visible",
+      "cursor": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px",
+      "stroke-dasharray": "none",
+      "stroke-dashoffset": "0px",
+      "stroke-linecap": "butt"
+    }
+  }
+}

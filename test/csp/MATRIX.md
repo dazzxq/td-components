@@ -1,0 +1,133 @@
+# Per-component STATE MATRIX (Task 0B parity oracle)
+
+For every component with ≥1 CSP-blocking construct (see `INVENTORY.md`), this enumerates the
+states/attributes/interactions whose **styling differs**, the **styled elements** snapshotted, and
+how each state is reached. The machine-readable source of truth is `matrix.json`; this is its
+human companion. Each `(component, state)` pair has a committed baseline at
+`baseline/<component>.<state>.json`, captured pre-refactor under a permissive page with the
+deterministic Tailwind fixture — the oracle Task 1 asserts post-refactor parity against.
+
+**Total: 70 states across 14 components.**
+
+## How states are reached (capture mechanics)
+
+- **Custom-element components** (toggle, checkbox, slider, input-field, dropdown, button, tabs,
+  pagination, empty-state, table): inserted as `markup` into `#__mount`; they self-upgrade and
+  render synchronously on `connectedCallback`. Property-driven ones (dropdown `.options`,
+  tabs `.tabs`, table `.columns`/`.data`) use a `setup` JS string instead.
+- **Static-class / portaled components** (modal `TdModal.show`, toast `TdToast.<type>`,
+  loading `TdLoading.show` / `TdLoadingSpinner.create`): driven by a `setup` JS string; their
+  DOM is appended to `document.body` and read with `portal: true`.
+- **Pseudo-states**: `input-field.text-focus` calls `el.focus()` on `.td-input` before snapshot
+  (labelled `text-focus`). No blocking construct is `:hover`-driven, so only focus is exercised
+  here; `:hover`/`:active` selector parity is a Task-1 adopted-sheet concern, not a static baseline.
+- **Settle**: after render we await 2×RAF; portaled/RAF-positioned states (dropdown-open, modal,
+  toast, tabs) additionally wait `settle` ms so transitions/positioning finish before snapshot.
+
+## Time/layout/random-dependent values EXCLUDED from baselines (determinism)
+
+These are excluded per-state (`excludeProps` in `matrix.json`) because they vary run-to-run and are
+**not** produced by the blocking construct being removed. Verified: two independent capture runs
+produce byte-identical baselines.
+
+| Component.state | excluded prop(s) | why |
+|---|---|---|
+| td-tabs.default, td-tabs.size-sm | `left`, `width` ONLY | indicator left/width are RAF-measured from active-button geometry in `_updateIndicator()`. `opacity` is KEPT (deterministically set to 1 after the construct's initial `opacity:0`) so the oracle catches an invisible-indicator regression. `transform` is also kept (deterministic `none`). |
+| td-table.loading | `width` | skeleton bar widths use `Math.random()` (`td-table.js:234`) |
+| td-loading.overlay | `transform`, `stroke-dashoffset` | captured under `prefers-reduced-motion: reduce` (overlay HAS a reduced-motion rule pinning dasharray to `90,150`); rotate transform + dashoffset still tick — Task 1 asserts liveness separately |
+| td-loading.inline-* | `transform`, `stroke-dashoffset`, `stroke-dasharray` | the inline spinner has **no** reduced-motion rule; arc transform + dashoffset + dasharray all animate live |
+
+## Component matrices
+
+### td-toggle (5 declarative + 1 injected `<style>` + 2 SVG `style=`)
+Styled els: `.td-toggle-track`, `.td-toggle-thumb`, `.td-toggle-icon:first-child` (cross),
+`.td-toggle-icon:last-child` (check), check `path` (color).
+States: `unchecked`, `checked`, `disabled`, `disabled-checked`, `custom-color` (#f59e0b),
+`size-sm`, `size-lg`. (7)
+
+### td-checkbox (1 injected `<style>`)
+Styled els: `.td-checkmark` (the `:checked ~` bg/border rule), `.td-checkmark-icon` (opacity/scale),
+`.td-checkbox-label`.
+States: `unchecked`, `checked`, `disabled`, `custom-color` (#10b981), `size-sm`, `size-lg`. (6)
+
+### td-slider (10 declarative)
+Styled els: `.td-slider-container`, `.td-slider-track-bg`, `.td-slider-track-active` (width %),
+`.td-slider-thumb` (left/size/opacity), `.td-slider-track-container`, `.td-slider-value-label`,
+`.td-slider-step-mark(-label)`, `.td-slider-input`.
+States: `min`, `mid`, `max`, `disabled`, `custom-color` (#a855f7), `show-value-label`,
+`size-sm`, `size-lg`, `step-marks`. (9)
+
+### td-input-field (5 declarative)
+Styled els: `.td-input` / `.td-input-textarea`, `.td-input-note`, `.td-input-counter`.
+States: `text`, `text-focus` (focus pseudo), `textarea`, `number`, `size-sm`, `size-lg`,
+`disabled`, `error` (red border + note), `note`, `counter`, `counter-full` (count==max → error color). (11)
+
+### td-dropdown (4 declarative incl. 1 SVG `style=`; menu portaled to body)
+Styled els: `.td-dropdown-button`, `.td-dropdown-arrow` (rotate when open), `.td-dropdown-selected`,
+and (portaled) `.td-dropdown-search`, `.td-dropdown-options` (max-height).
+States: `closed`, `closed-selected`, `open` (portal + settle), `disabled`. (4)
+
+### td-button (1 declarative — variant glass OR custom-color inline style)
+Styled el: inner `button` (bg/box-shadow/backdrop-filter from `_glassStyles[variant]`, or
+bg/color/border from custom color).
+States: `primary`, `secondary`, `success`, `danger`, `warning`, `custom-color` (#6366f1),
+`disabled`, `loading`. (8)
+
+### td-tabs (4 declarative)
+Styled els: `.td-tabs-container`, `.td-tabs-indicator` (excl. layout-derived left/width only;
+opacity/transform kept), `.td-tab-btn`.
+States: `default`, `empty` (no tabs), `size-sm`. (3)
+
+### td-pagination (1 declarative — active page color)
+Styled el: the active page `<span>` (`.td-pagination-pages > span.font-semibold` /
+`:first-child` when current==1).
+States: `page1`, `page3`, `custom-color` (#0ea5e9). (3)
+
+### td-empty-state (5 declarative incl. 1 SVG `style=`)
+Styled els: `.td-empty-state-card` (border/padding/bg/shadow), `.td-empty-icon` (SVG size/color),
+`.td-empty-title` (margin), `.td-empty-actions` (margin + display:none when no actions).
+States: `default`, `compact` (half padding), `size-sm`, `size-lg`. (4)
+
+### td-table (17 declarative; imports td-pagination + td-empty-state)
+Styled els: `.td-table-container` (card), `.td-table-row[data-row-idx]` (zebra bg + transition),
+header `th[data-sort-key]`, first cell; loading: `#probe > div` (skeleton card), `thead tr`,
+`tbody tr` rows.
+States: `data` (zebra row 1 tinted), `data-no-zebra` (note: `_isZebra()` is structurally
+always-true in v0.2.0, so row 1 is still tinted), `sortable-header`, `loading` (excl. random
+widths), `empty` (renders nested td-empty-state). (5)
+
+### td-modal (1 declarative; portaled to body)
+Styled el: `.td-modal-content` (box-shadow + backdrop-filter), `.td-modal-backdrop`.
+States: `default` (`TdModal.show({title, body})`). (1)
+
+### td-toast (1 declarative; portaled to body)
+Styled el: inner `.toast-item > div` (box-shadow + backdrop-filter; `${theme.bg}` is a Tailwind
+class, captured via background-color). Captured after enter transition settles.
+States: `info`, `success`, `error`, `warning`. (4)
+
+### td-loading (2 declarative + 2 injected `<style>` + 4 `@keyframes`/6 `animation:` + SVG `style=`)
+Overlay styled els: `.td-loading-card`, `.td-circular-spinner`, `.td-spinner-track`,
+`.td-spinner-arc` (stroke/dasharray). Inline styled els: `.td-spinner` + its two `<circle>`s.
+States: `overlay` (reduced-motion), `inline-sm`, `inline-md`, `inline-lg` (#10b981). (4)
+
+### td-datetime-picker (1 injected `<style id="td-datetime-picker-styles">`; wheel UI portaled into a TdModal)
+Styled els (portaled): `.td-dtp-wheel-container` (gradient `background-image` + the `::before`
+highlight band), `.td-dtp-wheel-option.selected` (font-size/weight/color/transform). Reached by
+`p._open()`. The `::before` pseudo-band can't be keyed by class via `getComputedStyle` here —
+its parity is deferred to the Task-1 adopted-sheet check; this baseline locks the directly-styled
+container + selected-option rules.
+States: `open`. (1)
+
+## EXCLUDED components (no blocking construct → not in matrix)
+
+| Component | Why excluded |
+|---|---|
+| feedback/td-tooltip | Styles entirely via CSSOM (`el.style.cssText` / `el.style.<prop>`) — CSP-ALLOWED per the spike. Zero blocking constructs; already CSP-clean. |
+| feedback/td-modal-stack | Pure z-index/stack manager; no inline/injected style. |
+| base/td-base-element | 0 real constructs (its only `style=` grep hit is a JSDoc comment). |
+| base/td-form-element, base/sample/td-sample | No render-style constructs. |
+| utils/* | No DOM-style constructs (css-safe.js comment only). |
+
+(NOTE: `form/td-datetime-picker` IS a hardening target — it now has a real matrix entry above
+(`open` state) capturing its injected-`<style>` rules on the portaled wheel UI. It is no longer
+excluded.)
