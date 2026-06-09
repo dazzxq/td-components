@@ -97,7 +97,10 @@ export class TdInputField extends TdFormElement {
     const isDisabled = this._effectiveDisabled;
     const isReadonly = this.hasAttribute('readonly');
     const isRequired = this.hasAttribute('required');
-    const maxLength = this.getAttribute('max-length');
+    // Coerce once to a positive-integer string ('' if absent/invalid) — never interpolate
+    // the raw attribute into `maxlength=""` / `data-max-length=""` / counter text.
+    const maxLenNum = Number.parseInt(this.getAttribute('max-length'), 10);
+    const maxLength = Number.isFinite(maxLenNum) && maxLenNum > 0 ? String(maxLenNum) : '';
     const limitType = this.getAttribute('limit-type') || 'char';
     const label = this.getAttribute('label') || '';
     const helperText = this.getAttribute('helper-text') || '';

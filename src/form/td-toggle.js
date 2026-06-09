@@ -43,7 +43,7 @@ export class TdToggle extends TdFormElement {
 
   /** @private */
   _getColor() {
-    return this.getAttribute('color') || '#4ADE80';
+    return this.safeColor(this.getAttribute('color'), '#4ADE80');
   }
 
   /** @private - Convert any CSS color to RGB using computed style */
@@ -191,9 +191,10 @@ export class TdToggle extends TdFormElement {
     }
 
     if (name === 'color') {
-      this._injectStyle(newVal || '#4ADE80');
+      const color = this._getColor();
+      this._injectStyle(color);
       const checkIcon = this.querySelector('.td-toggle-icon:last-child path');
-      if (checkIcon) checkIcon.setAttribute('stroke', newVal || '#4ADE80');
+      if (checkIcon) checkIcon.setAttribute('stroke', color);
       return;
     }
 

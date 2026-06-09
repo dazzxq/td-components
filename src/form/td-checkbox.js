@@ -38,7 +38,7 @@ export class TdCheckbox extends TdFormElement {
 
   /** @private */
   _getColor() {
-    return this.getAttribute('color') || '#2196F3';
+    return this.safeColor(this.getAttribute('color'), '#2196F3');
   }
 
   /** @private */

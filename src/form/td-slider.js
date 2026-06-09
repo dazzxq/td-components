@@ -1,4 +1,5 @@
 import { TdFormElement } from '../base/td-form-element.js';
+import { safeHexColor } from '../utils/css-safe.js';
 
 /**
  * Slider component with glass styling, step marks, touch support.
@@ -48,8 +49,10 @@ export class TdSlider extends TdFormElement {
   _getValue() { return parseFloat(this.getAttribute('value') || '0'); }
   _getStep() { return parseFloat(this.getAttribute('step') || '1'); }
   _getSize() { return this.getAttribute('size') || 'md'; }
-  _getColor() { return this.getAttribute('color') || '#3b82f6'; }
-  _getTrackColor() { return this.getAttribute('track-color') || '#e5e7eb'; }
+  // Hex-only: the styles append a 2-digit alpha suffix (e.g. `${color}f2`), which only
+  // yields valid CSS for a normalized 6-digit hex.
+  _getColor() { return safeHexColor(this.getAttribute('color'), '#3b82f6'); }
+  _getTrackColor() { return this.safeColor(this.getAttribute('track-color'), '#e5e7eb'); }
   _getLabel() { return this.getAttribute('label') || ''; }
   _getLabelPosition() { return this.getAttribute('label-position') || 'top'; }
 

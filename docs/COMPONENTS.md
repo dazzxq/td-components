@@ -346,6 +346,28 @@ tabs.addEventListener('tab-change', (e) => show(e.detail.tabId));
 
 ---
 
+## Security model (XSS)
+
+Components render via `innerHTML`, and values flow into different contexts — each needs a different sanitizer. The library applies these by context:
+
+| Context | Where | Helper / rule |
+|---------|-------|---------------|
+| **HTML text** | label, message, title, option labels, cell values | `escapeHtml()` |
+| **HTML attribute** (quoted) | `value=""`, `placeholder=""`, `data-*`, icon class, `field-id` | `escapeHtml()` (sufficient for quoted attributes — it escapes `& < > " '`) |
+| **CSS value** | `color` / `track-color` / `active-color` / `text-color` injected into a `<style>` rule or `style=""` | **`safeColor()`** — whitelists hex / named / `rgb()/hsl()`; anything else falls back to the default (closes the `color="red;}…"` and attribute-breakout vectors) |
+| **CSS dimension** | table `col.width/minWidth/maxWidth` | `safeCssDimension()` — number + optional unit only |
+| **class names** | size/type/variant | enumerated against a whitelist |
+| **numeric** | `rows`, `max-length`, `min/max/step`, counts, page numbers | `Number()`-coerce / `clampNumber()` — never the raw string |
+
+Sanitizers live in `src/utils/escape.js` (`escapeHtml`) and `src/utils/css-safe.js` (`safeColor`, `safeCssDimension`, `clampNumber`); `TdBaseElement` exposes `this.escapeHtml()` and `this.safeColor()`.
+
+**Trusted raw-HTML escape hatches** (opt-in, developer's responsibility — never pass end-user input):
+- `TdModal.show({ body })` — `body` is raw HTML/an element by design. (`confirm/success/error/info` escape their `message`.)
+- `td-table` column `render(row)` — returns raw cell HTML. Cells without `render` show the escaped plain value.
+- `td-empty-state` `icon` — a value starting with `<svg` is injected raw.
+
+Plain-string attributes/props always default to **escaped**; raw HTML is only ever an explicit opt-in.
+
 ## See also
 
 - [README](../README.md) — install, Tailwind v4 setup, and how to build your own component on `TdBaseElement`.
