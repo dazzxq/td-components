@@ -5,9 +5,10 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "npm run test:node && npm run test:browser",
+    "test": "npm run test:node && npm run test:browser && npm run test:csp",
     "test:node": "node --test --test-force-exit \"src/**/*.test.js\"",
     "test:browser": "web-test-runner",
+    "test:csp": "node test/csp/csp.spec.mjs",
     "build:csp-fixture": "tailwindcss -i test/csp/fixture/input.css -o test/csp/fixture/tailwind.css",
     "capture:baseline": "node test/csp/capture-baseline.mjs",
     "storybook": "storybook dev -p 6006",
