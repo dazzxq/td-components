@@ -1,13 +1,20 @@
-import { TdBaseElement } from '../base/td-base-element.js';
+import { TdFormElement } from '../base/td-form-element.js';
 
 /**
  * Dropdown component with searchable popup, keyboard navigation, auto-positioning.
- * Port of dcms-dropdown.js to Web Component extending TdBaseElement.
+ * Port of dcms-dropdown.js to a form-associated Web Component.
+ *
+ * **Form-associated (ElementInternals, 0.2.0):** submits the selected option's value
+ * in any host `<form>`, supports `required` (→ `valueMissing` until something is
+ * picked), reset (restores the initial `value`), `<fieldset disabled>`, and
+ * state restore (bfcache/autofill re-selects by value).
  *
  * @element td-dropdown
  * @attr {string} placeholder - Placeholder text (default "Chọn một tùy chọn")
  * @attr {boolean} searchable - Enable search filtering (default on)
- * @attr {boolean} disabled - Disable the dropdown
+ * @attr {boolean} disabled - Disable the dropdown (also via ancestor <fieldset disabled>)
+ * @attr {boolean} required - A value must be selected for the form to be valid
+ * @attr {string} name - Form field name (submitted via the host)
  * @attr {boolean} allow-clear - Show clear option when item selected (default on)
  * @attr {number} max-height - Max visible options count (default 5)
  * @attr {string} value-key - Key for option value (default "value")
@@ -19,13 +26,13 @@ import { TdBaseElement } from '../base/td-base-element.js';
  * @property {Function} onChange - Callback receiving value only
  * @property {Function} onSelect - Callback receiving full item object
  */
-export class TdDropdown extends TdBaseElement {
+export class TdDropdown extends TdFormElement {
   static get observedAttributes() {
-    return ['placeholder', 'searchable', 'disabled', 'allow-clear', 'max-height', 'value-key', 'label-key', 'value'];
+    return [...super.observedAttributes, 'placeholder', 'searchable', 'allow-clear', 'max-height', 'value-key', 'label-key', 'value'];
   }
 
   static get booleanAttributes() {
-    return ['searchable', 'disabled', 'allow-clear'];
+    return [...super.booleanAttributes, 'searchable', 'allow-clear'];
   }
 
   /** @type {TdDropdown[]} Track all open dropdowns for closeAllExcept */
@@ -35,6 +42,8 @@ export class TdDropdown extends TdBaseElement {
     super();
     this._options = [];
     this._selectedItem = null;
+    /** @private A value set before its option existed; resolved when options arrive. */
+    this._pendingValue = null;
     this._filteredData = [];
     this._highlightedIndex = -1;
     this._isOpen = false;
@@ -71,6 +80,11 @@ export class TdDropdown extends TdBaseElement {
     this._options = Array.isArray(data) ? data : [];
     this._filteredData = [...this._options];
     this._setInitialValue();
+    // Resolve a value that was set (e.g. via setValue/state-restore) before options arrived.
+    // A pending value is the most recent explicit selection, so it overrides any stale one.
+    if (this._pendingValue != null) {
+      this.setValue(this._pendingValue);
+    }
     if (this._menuElement) {
       this._renderMenuOptions();
     }
@@ -86,7 +100,7 @@ export class TdDropdown extends TdBaseElement {
 
   _getPlaceholder() { return this.getAttribute('placeholder') || 'Chọn một tùy chọn'; }
   _isSearchable() { return !this.hasAttribute('searchable') || this.hasAttribute('searchable'); }
-  _isDisabled() { return this.hasAttribute('disabled'); }
+  _isDisabled() { return this._effectiveDisabled; }
   _isAllowClear() { return !this.hasAttribute('allow-clear') || this.hasAttribute('allow-clear'); }
   _getMaxHeight() { return parseInt(this.getAttribute('max-height') || '5', 10); }
   _getValueKey() { return this.getAttribute('value-key') || 'value'; }
@@ -153,19 +167,65 @@ export class TdDropdown extends TdBaseElement {
         if (idx > -1) TdDropdown._openDropdowns.splice(idx, 1);
       });
     }
+
+    // Push the current selection + validity into the form on (re)render.
+    this._syncForm();
   }
 
   // Prevent full re-render for value attribute changes
   attributeChangedCallback(name, oldVal, newVal) {
     if (oldVal === newVal) return;
+    if (name === 'disabled') {
+      // Keep effective-disabled in sync without forcing a full re-render path divergence.
+      this._effectiveDisabled = newVal !== null || this._ancestorDisabled;
+    }
     if (!this._initialized) return;
 
-    if (name === 'value' && newVal) {
+    if (name === 'value') {
       this.setValue(newVal);
+      this._syncForm();
       return;
     }
 
     this._doRender();
+  }
+
+  // --- Form participation ---
+
+  /** @private Push the selected value + validity to the form. */
+  _syncForm() {
+    const val = this.getValue();
+    this._setFormValue(val == null || val === '' ? null : String(val));
+    if (this.hasAttribute('required') && (val == null || val === '')) {
+      this._setValidity({ valueMissing: true }, 'Vui lòng chọn một tùy chọn', this._focusTarget());
+    } else {
+      this._setValidity({});
+    }
+  }
+
+  _captureDefaults() {
+    super._captureDefaults();
+    /** @private null = no initial `value` attr; a string = explicit initial value. */
+    this._defaultValueAttr = this.getAttribute('value');
+  }
+
+  _restoreDefaults() {
+    const dv = this._defaultValueAttr;
+    if (dv == null) this.removeAttribute('value');
+    else this.setAttribute('value', dv);
+    this.setValue(dv ?? null);
+    this._syncForm();
+  }
+
+  _restoreState(state, _mode) {
+    if (typeof state === 'string') {
+      this.setValue(state);
+      this._syncForm();
+    }
+  }
+
+  _focusTarget() {
+    return this.querySelector('.td-dropdown-button');
   }
 
   disconnectedCallback() {
@@ -432,6 +492,9 @@ export class TdDropdown extends TdBaseElement {
     this._renderMenuOptions();
     this.close();
 
+    // Form participation
+    this._syncForm();
+
     // Fire callbacks
     this._fireCallback(item);
     this.emit('change', { value: item[valueKey], item });
@@ -447,6 +510,9 @@ export class TdDropdown extends TdBaseElement {
     }
     this._renderMenuOptions();
     this.close();
+
+    // Form participation
+    this._syncForm();
 
     this._fireCallback(null);
     this.emit('change', { value: null, item: null });
@@ -473,6 +539,8 @@ export class TdDropdown extends TdBaseElement {
       if (selectedSpan) {
         selectedSpan.textContent = item[labelKey];
       }
+      // Reflect the resolved initial selection into the form.
+      if (this._initialized) this._syncForm();
     }
   }
 
@@ -615,9 +683,11 @@ export class TdDropdown extends TdBaseElement {
   setValue(value) {
     if (value === null || value === undefined || value === '') {
       this._selectedItem = null;
+      this._pendingValue = null;
       const selectedSpan = this.querySelector('.td-dropdown-selected');
       if (selectedSpan) selectedSpan.textContent = this._getPlaceholder();
       this._renderMenuOptions();
+      this._syncForm();
       return;
     }
     const vk = this._getValueKey();
@@ -625,9 +695,20 @@ export class TdDropdown extends TdBaseElement {
     const item = this._options.find(i => String(i[vk]) === String(value));
     if (item) {
       this._selectedItem = item;
+      this._pendingValue = null;
       const selectedSpan = this.querySelector('.td-dropdown-selected');
       if (selectedSpan) selectedSpan.textContent = item[lk];
       this._renderMenuOptions();
+      this._syncForm();
+    } else {
+      // Value not in the current options — drop any stale selection, remember the value,
+      // and resolve it once matching options arrive.
+      this._pendingValue = String(value);
+      this._selectedItem = null;
+      const selectedSpan = this.querySelector('.td-dropdown-selected');
+      if (selectedSpan) selectedSpan.textContent = this._getPlaceholder();
+      this._renderMenuOptions();
+      this._syncForm();
     }
   }
 
@@ -638,6 +719,10 @@ export class TdDropdown extends TdBaseElement {
   updateData(newData) {
     this._options = Array.isArray(newData) ? newData : [];
     this._filteredData = [...this._options];
+    // Resolve a value set before these options arrived (same as the `options` setter).
+    if (this._pendingValue != null) {
+      this.setValue(this._pendingValue);
+    }
     this._renderMenuOptions();
     if (this._isOpen) this._updatePosition();
   }

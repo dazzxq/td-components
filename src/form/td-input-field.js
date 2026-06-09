@@ -1,41 +1,65 @@
-import { TdBaseElement } from '../base/td-base-element.js';
+import { TdFormElement } from '../base/td-form-element.js';
 
 /**
  * Multi-type input field component with validation, counter, and label support.
  * Ported from DCMS InputField — supports text/password/email/tel/number/url/search/textarea/contenteditable.
+ *
+ * **Form-associated (ElementInternals, 0.2.0):** the HOST submits its value in any
+ * `<form>` (FormData/POST) and owns ALL constraint validation. The inner native
+ * control carries NO `name` and NO native constraints — for `email`/`url`/`number`
+ * it is rendered as `type="text"` (+ `inputmode`) so it can never independently
+ * block the host form; the host recomputes `typeMismatch`/`rangeUnderflow`/
+ * `rangeOverflow`/`stepMismatch`/`tooLong`/`valueMissing` off a detached probe input
+ * and pushes them via {@link TdFormElement#_setValidity}. `password` keeps its real
+ * type (masking) — it has no value-dependent native constraint once `required` is
+ * removed from the inner control.
+ *
+ * **0.2.0 BREAKING:** the inner `<input>`/`<textarea>` no longer carries a `name`
+ * attribute (submission goes through the host); use the host's `name` instead.
  *
  * @element td-input-field
  * @attr {string} type - Input type: text|password|email|tel|number|url|search|textarea|contenteditable (default: text)
  * @attr {string} size - Size variant: sm|md|lg (default: md)
  * @attr {string} value - Current value
  * @attr {string} placeholder - Placeholder text
- * @attr {boolean} disabled - Disables the input
+ * @attr {boolean} disabled - Disables the input (also via ancestor <fieldset disabled>)
  * @attr {boolean} readonly - Makes input read-only
  * @attr {boolean} required - Marks field as required (shows asterisk on label)
  * @attr {number} max-length - Character/word limit
  * @attr {string} limit-type - Limit type: char|word (default: char)
+ * @attr {string} min - Minimum (number type)
+ * @attr {string} max - Maximum (number type)
+ * @attr {string} step - Step (number type)
  * @attr {string} label - Label text
  * @attr {string} helper-text - Helper text below input
  * @attr {string} error-text - Error text below input (red)
- * @attr {string} field-id - id attribute forwarded to the actual input element (for label[for] / FormData)
- * @attr {string} name - name attribute forwarded to the actual input element (for FormData)
+ * @attr {string} field-id - id attribute forwarded to the inner input (for the internal label[for])
+ * @attr {string} name - Form field name (submitted via the host)
  * @attr {number} rows - Number of rows for textarea (default 4)
- * @attr {string} validate-on - Auto-trigger checkValidity(): blur|input|change
+ * @attr {string} validate-on - Auto-show the inline error: blur|input|change
  * @fires input - When input value changes
  * @fires change - When input loses focus (blur)
  */
-export class TdInputField extends TdBaseElement {
+export class TdInputField extends TdFormElement {
   static get observedAttributes() {
     return [
-      'type', 'size', 'value', 'placeholder', 'disabled', 'readonly', 'required',
-      'max-length', 'limit-type', 'label', 'helper-text', 'error-text',
-      'field-id', 'name', 'rows', 'validate-on',
+      ...super.observedAttributes,
+      'type', 'size', 'value', 'placeholder', 'readonly',
+      'max-length', 'limit-type', 'min', 'max', 'step',
+      'label', 'helper-text', 'error-text',
+      'field-id', 'rows', 'validate-on',
     ];
   }
 
   static get booleanAttributes() {
-    return ['disabled', 'readonly', 'required'];
+    return [...super.booleanAttributes, 'readonly'];
   }
+
+  /** @private value-dependent native constraints live on these types → neutralize the inner control. */
+  static _neutralizeTypes = ['email', 'url', 'number'];
+
+  /** @private inputmode hints kept when the real type is downgraded to text. */
+  static _inputModeMap = { email: 'email', url: 'url', number: 'decimal', tel: 'tel', search: 'search' };
 
   /** @private */
   static _sizeMap = {
@@ -58,12 +82,19 @@ export class TdInputField extends TdBaseElement {
     focusBorder: 'rgba(59, 130, 246, 0.5)',
   };
 
+  /** @private Resolve the inner control's render type (neutralized) from the public `type`. */
+  _resolveInputType(rawType) {
+    if (rawType === 'textarea' || rawType === 'contenteditable') return rawType;
+    if (TdInputField._neutralizeTypes.includes(rawType)) return 'text';
+    return ['text', 'password', 'tel', 'search'].includes(rawType) ? rawType : 'text';
+  }
+
   render() {
     const type = this.getAttribute('type') || 'text';
     const size = this.getAttribute('size') || 'md';
     const value = this.getAttribute('value') || '';
     const placeholder = this.getAttribute('placeholder') || '';
-    const isDisabled = this.hasAttribute('disabled');
+    const isDisabled = this._effectiveDisabled;
     const isReadonly = this.hasAttribute('readonly');
     const isRequired = this.hasAttribute('required');
     const maxLength = this.getAttribute('max-length');
@@ -72,7 +103,6 @@ export class TdInputField extends TdBaseElement {
     const helperText = this.getAttribute('helper-text') || '';
     const errorText = this.getAttribute('error-text') || '';
     const fieldId = this.getAttribute('field-id') || '';
-    const name = this.getAttribute('name') || '';
     const rows = parseInt(this.getAttribute('rows') || '4', 10);
 
     const s = TdInputField._sizeMap[size] || TdInputField._sizeMap.md;
@@ -106,7 +136,7 @@ export class TdInputField extends TdBaseElement {
     const escapedValue = this.escapeHtml(value);
     const escapedPlaceholder = this.escapeHtml(placeholder);
     const idAttr = fieldId ? ` id="${this.escapeHtml(fieldId)}"` : '';
-    const nameAttr = name ? ` name="${this.escapeHtml(name)}"` : '';
+    // NOTE: no `name`, no `required` on the inner control — the host owns submission + validity.
 
     if (type === 'textarea') {
       const textareaHeight = `${s.h * rows / 2 + 8}px`;
@@ -118,9 +148,8 @@ export class TdInputField extends TdBaseElement {
         rows="${rows}"
         ${isDisabled ? 'disabled' : ''}
         ${isReadonly ? 'readonly' : ''}
-        ${isRequired ? 'required' : ''}
         ${maxLenAttr}
-        ${idAttr}${nameAttr}
+        ${idAttr}
       >${escapedValue}</textarea>`;
     } else if (type === 'contenteditable') {
       const ceStyle = `${commonStyle} height: ${s.h}px; overflow-y: auto;`;
@@ -135,7 +164,9 @@ export class TdInputField extends TdBaseElement {
         ${idAttr}
       >${value ? this.escapeHtml(value) : ''}</div>`;
     } else {
-      const inputType = ['text', 'password', 'email', 'tel', 'number', 'url', 'search'].includes(type) ? type : 'text';
+      const inputType = this._resolveInputType(type);
+      const inputMode = TdInputField._inputModeMap[type];
+      const inputModeAttr = inputType === 'text' && inputMode ? ` inputmode="${inputMode}"` : '';
       const maxLenAttr = maxLength && limitType === 'char' ? ` maxlength="${maxLength}"` : '';
       fieldHtml = `<input
         type="${inputType}"
@@ -145,9 +176,8 @@ export class TdInputField extends TdBaseElement {
         placeholder="${escapedPlaceholder}"
         ${isDisabled ? 'disabled' : ''}
         ${isReadonly ? 'readonly' : ''}
-        ${isRequired ? 'required' : ''}
-        ${maxLenAttr}
-        ${idAttr}${nameAttr}
+        ${maxLenAttr}${inputModeAttr}
+        ${idAttr}
       />`;
     }
 
@@ -210,6 +240,8 @@ export class TdInputField extends TdBaseElement {
         field.innerText = field.dataset.placeholder || '';
         field.style.color = colors.textPlaceholder;
       }
+      this._syncForm();
+      if (validateOn === 'blur' || validateOn === 'change') this._showInlineValidity();
       // Emit change event on blur
       this.emit('change', { value: this.getValue() });
     });
@@ -218,14 +250,10 @@ export class TdInputField extends TdBaseElement {
     this.listen(field, 'input', () => {
       this._updateCounter();
       this._handleWordLimit();
+      this._syncForm();
+      if (validateOn === 'input') this._showInlineValidity();
       this.emit('input', { value: this.getValue() });
     });
-
-    // Auto-validation
-    if (validateOn) {
-      const eventName = type === 'contenteditable' && validateOn === 'change' ? 'blur' : validateOn;
-      this.listen(field, eventName, () => this._checkValidity());
-    }
 
     // contenteditable placeholder init
     if (type === 'contenteditable' && !field.innerText.trim()) {
@@ -234,15 +262,119 @@ export class TdInputField extends TdBaseElement {
       field.style.color = colors.textPlaceholder;
     }
 
-    // Expose public API methods on the element
+    // Expose public API methods on the element (NOTE: checkValidity/focus are NOT
+    // re-bound — the form-associated base owns them so form.requestSubmit() works).
     this.getValue = this._getValue.bind(this);
     this.setValue = this._setValue.bind(this);
     this.setError = this._setError.bind(this);
     this.setHelper = this._setHelper.bind(this);
     this.setDisabled = this._setDisabled.bind(this);
     this.setReadOnly = this._setReadOnly.bind(this);
-    this.checkValidity = this._checkValidity.bind(this);
-    this.focus = () => field.focus();
+
+    // Initial form value + validity so an untouched required field already blocks submit.
+    this._syncForm();
+  }
+
+  // --- Form participation ---
+
+  /** @private Push the current value + recomputed constraint validity to the form. */
+  _syncForm() {
+    this._setFormValue(this._getValue());
+    const { flags, message } = this._computeValidity();
+    this._setValidity(flags, message, this._focusTarget());
+  }
+
+  /**
+   * @private Recompute native-style constraint validity off the COMPONENT value,
+   * using a detached probe input for type/range/step (the inner control is neutralized).
+   * @returns {{flags: ValidityStateFlags, message: string}}
+   */
+  _computeValidity() {
+    const type = this.getAttribute('type') || 'text';
+    const value = this._getValue();
+    const required = this.hasAttribute('required');
+    const maxLength = parseInt(this.getAttribute('max-length'), 10);
+    const limitType = this.getAttribute('limit-type') || 'char';
+    const isEmpty = value == null || String(value).trim() === '';
+
+    if (required && isEmpty) {
+      return { flags: { valueMissing: true }, message: 'Trường này là bắt buộc' };
+    }
+
+    if (maxLength && maxLength > 0 && value) {
+      const count = this._countValue(value, limitType);
+      if (count > maxLength) {
+        const unit = limitType === 'word' ? 'từ' : 'ký tự';
+        return { flags: { tooLong: true }, message: `Vượt quá giới hạn ${maxLength} ${unit}` };
+      }
+    }
+
+    if (!isEmpty && TdInputField._neutralizeTypes.includes(type)) {
+      // `number` must be syntax-checked BEFORE the probe: assigning an invalid number
+      // string to a native `<input type="number">` sanitizes `.value` to "" (which then
+      // reads as valid), so "abc" would slip through. Validate the HTML floating-point
+      // grammar explicitly, then use the probe only for range/step.
+      if (type === 'number') {
+        const trimmed = String(value).trim();
+        if (!/^-?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?$/.test(trimmed)) {
+          return { flags: { badInput: true }, message: 'Giá trị không hợp lệ' };
+        }
+      }
+      const probe = document.createElement('input');
+      probe.type = type;
+      if (type === 'number') {
+        for (const a of ['min', 'max', 'step']) {
+          const v = this.getAttribute(a);
+          if (v != null) probe.setAttribute(a, v);
+        }
+      }
+      probe.value = String(value);
+      const v = probe.validity;
+      if (v.badInput || v.typeMismatch) {
+        const msg = type === 'number' ? 'Giá trị không hợp lệ'
+          : type === 'email' ? 'Email không hợp lệ' : 'URL không hợp lệ';
+        return { flags: { typeMismatch: true }, message: msg };
+      }
+      if (v.rangeUnderflow) return { flags: { rangeUnderflow: true }, message: `Giá trị tối thiểu là ${this.getAttribute('min')}` };
+      if (v.rangeOverflow) return { flags: { rangeOverflow: true }, message: `Giá trị tối đa là ${this.getAttribute('max')}` };
+      if (v.stepMismatch) return { flags: { stepMismatch: true }, message: 'Giá trị không đúng bước nhảy' };
+    }
+
+    return { flags: {}, message: '' };
+  }
+
+  /** @private Mirror the current constraint message into the inline note (validate-on UX). */
+  _showInlineValidity() {
+    const { message } = this._computeValidity();
+    this._setError(message || '');
+  }
+
+  // --- Default capture + reset (presence-aware) ---
+
+  _captureDefaults() {
+    super._captureDefaults();
+    /** @private null = no initial `value` attr; a string = explicit initial value. */
+    this._defaultValueAttr = this.getAttribute('value');
+  }
+
+  _restoreDefaults() {
+    if (this._defaultValueAttr === null) this.removeAttribute('value');
+    else this.setAttribute('value', this._defaultValueAttr);
+    // The `value` attribute change re-renders; force the field text too in case the
+    // attribute value is unchanged (no attributeChangedCallback fires).
+    this._setValue(this._defaultValueAttr ?? '');
+    this._syncForm();
+  }
+
+  _restoreState(state, _mode) {
+    if (typeof state === 'string') {
+      this._setValue(state);
+      this._syncForm();
+    }
+  }
+
+  _focusTarget() {
+    return this.querySelector('.td-input');
   }
 
   // --- Private helpers ---
@@ -350,6 +482,7 @@ export class TdInputField extends TdBaseElement {
       field.value = val ?? '';
     }
     this._updateCounter();
+    this._syncForm();
   }
 
   /** @private Truncate text to limit */
@@ -364,7 +497,7 @@ export class TdInputField extends TdBaseElement {
     return text.substring(0, maxLength);
   }
 
-  /** @private Set error text and red border */
+  /** @private Set error text and red border (visual only; use setCustomValidity for constraint state) */
   _setError(msg) {
     const field = this._getFieldElement();
     const colors = TdInputField._colors;
@@ -397,83 +530,14 @@ export class TdInputField extends TdBaseElement {
 
   /** @private Toggle disabled state */
   _setDisabled(bool) {
-    const type = this.getAttribute('type') || 'text';
-    const field = this._getFieldElement();
-    const colors = TdInputField._colors;
-    if (!field) return;
-    if (type === 'contenteditable') {
-      field.contentEditable = bool ? 'false' : 'true';
-      field.style.cursor = bool ? 'not-allowed' : '';
-      field.style.backgroundColor = bool ? colors.bgDisabled : colors.bgNormal;
-    } else {
-      field.disabled = !!bool;
-      field.style.cursor = bool ? 'not-allowed' : '';
-      field.style.backgroundColor = bool ? colors.bgDisabled : colors.bgNormal;
-    }
-    if (bool) {
-      this.setAttribute('disabled', '');
-    } else {
-      this.removeAttribute('disabled');
-    }
+    if (bool) this.setAttribute('disabled', '');
+    else this.removeAttribute('disabled');
   }
 
   /** @private Toggle readonly state */
   _setReadOnly(bool) {
-    const type = this.getAttribute('type') || 'text';
-    const field = this._getFieldElement();
-    const colors = TdInputField._colors;
-    if (!field) return;
-    if (type === 'contenteditable') {
-      field.contentEditable = bool ? 'false' : 'true';
-    } else {
-      field.readOnly = !!bool;
-    }
-    field.style.cursor = bool ? 'not-allowed' : '';
-    field.style.backgroundColor = bool ? colors.bgDisabled : colors.bgNormal;
-    if (bool) {
-      this.setAttribute('readonly', '');
-    } else {
-      this.removeAttribute('readonly');
-    }
-  }
-
-  /** @private Validate required + maxLength, set error if invalid */
-  _checkValidity() {
-    const type = this.getAttribute('type') || 'text';
-    const field = this._getFieldElement();
-    const isRequired = this.hasAttribute('required');
-    const maxLength = parseInt(this.getAttribute('max-length'), 10);
-    const limitType = this.getAttribute('limit-type') || 'char';
-
-    if (!field) return false;
-
-    if (maxLength && maxLength > 0) {
-      const currentCount = this._countValue(this.getValue(), limitType);
-      if (currentCount > maxLength) {
-        const unit = limitType === 'word' ? 'từ' : 'ký tự';
-        this._setError(`Vượt quá giới hạn ${maxLength} ${unit}`);
-        return false;
-      }
-    }
-
-    if (type === 'contenteditable') {
-      const text = field.innerText.trim();
-      if (isRequired && !text) {
-        this._setError('Trường này là bắt buộc');
-        return false;
-      }
-      this._setError('');
-      return true;
-    }
-
-    if (field.checkValidity && !field.checkValidity()) {
-      const message = field.validationMessage || 'Trường này là bắt buộc';
-      this._setError(message);
-      return false;
-    }
-
-    this._setError('');
-    return true;
+    if (bool) this.setAttribute('readonly', '');
+    else this.removeAttribute('readonly');
   }
 }
 
