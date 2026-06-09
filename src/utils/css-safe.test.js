@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { safeColor, safeHexColor, safeCssDimension, clampNumber } from './css-safe.js';
+import { safeColor, safeHexColor, safeCssDimension, clampNumber, applyStyles } from './css-safe.js';
 
 test('safeColor accepts valid colors', () => {
   assert.equal(safeColor('#fff'), '#fff');
@@ -54,4 +54,35 @@ test('clampNumber coerces + clamps + falls back', () => {
   assert.equal(clampNumber('-99', 0, 10, 1), 0);
   assert.equal(clampNumber('abc', 0, 10, 7), 7);
   assert.equal(clampNumber(Infinity, 0, 10, 7), 7);
+});
+
+// Minimal fake element capturing setProperty calls — no DOM needed in node.
+function fakeEl() {
+  const set = [];
+  return { set, style: { setProperty: (prop, value) => set.push([prop, value]) } };
+}
+
+test('applyStyles sets each prop via setProperty, stringifying values', () => {
+  const el = fakeEl();
+  applyStyles(el, { width: '50%', '--c': '#3b82f6', opacity: 0.5, 'z-index': 10 });
+  assert.deepEqual(el.set, [
+    ['width', '50%'],
+    ['--c', '#3b82f6'],
+    ['opacity', '0.5'],
+    ['z-index', '10'],
+  ]);
+});
+
+test('applyStyles skips null/undefined values (omit-by-nullish)', () => {
+  const el = fakeEl();
+  applyStyles(el, { color: 'red', background: null, border: undefined, width: 0 });
+  assert.deepEqual(el.set, [['color', 'red'], ['width', '0']]);
+});
+
+test('applyStyles is a no-op (never throws) for null el or null styles', () => {
+  assert.doesNotThrow(() => applyStyles(null, { color: 'red' }));
+  assert.doesNotThrow(() => applyStyles(undefined, { color: 'red' }));
+  const el = fakeEl();
+  assert.doesNotThrow(() => applyStyles(el, null));
+  assert.deepEqual(el.set, []);
 });
