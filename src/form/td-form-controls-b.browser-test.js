@@ -266,6 +266,35 @@ describe('td-dropdown (form-associated)', () => {
     el.open();
     expect(el._menuElement.querySelector('.td-dropdown-option-clear')).to.equal(null);
   });
+
+  // JS property API must be able to disable the default-ON flags (codex ISSUE-1).
+  it('JS property `searchable = false` disables it; getter stays boolean', () => {
+    const { el } = mountDropdown();
+    expect(el.searchable).to.equal(true);              // default ON, boolean (not "")
+    el.searchable = false;
+    expect(el.searchable).to.equal(false);             // getter reflects the change
+    expect(el.getAttribute('searchable')).to.equal('false');
+    el.open();
+    expect(el._menuElement.querySelector('.td-dropdown-search')).to.equal(null);
+  });
+
+  it('JS property `searchable = true` re-enables a disabled flag', () => {
+    const { el } = mountDropdown('searchable="false"');
+    expect(el.searchable).to.equal(false);
+    el.searchable = true;
+    expect(el.searchable).to.equal(true);
+    el.open();
+    expect(el._menuElement.querySelector('.td-dropdown-search')).to.not.equal(null);
+  });
+
+  it('JS property `allowClear = false` disables the clear option', () => {
+    const { el } = mountDropdown('value="hn"');
+    expect(el.allowClear).to.equal(true);
+    el.allowClear = false;
+    expect(el.allowClear).to.equal(false);
+    el.open();
+    expect(el._menuElement.querySelector('.td-dropdown-option-clear')).to.equal(null);
+  });
 });
 
 describe('td-datetime-picker (form-associated)', () => {

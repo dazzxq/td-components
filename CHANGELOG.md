@@ -15,7 +15,9 @@ One **deliberate behavioral change**: `td-modal` no longer dismisses on backdrop
   which always returned `true`, so the search box and clear option could never be disabled.
   They now default **ON** and turn off only when explicitly set to a falsy value
   (`searchable="false"` / `"0"` / `"off"`, likewise `allow-clear`); a bare/absent attribute
-  stays ON.
+  stays ON. Both the **attribute** and the **JS property** disable them — `el.searchable = false`
+  / `el.allowClear = false` write `="false"` (not `removeAttribute`, which the base mapping did,
+  leaving the flag stuck ON), and the property getter returns a real boolean.
 - **`td-modal.confirm()` promise hang** — dismissing a `confirm()` (X button or `closeAll()`)
   left its Promise **unresolved forever** (no `onClose` handler). Ported dcms's settled-flag +
   resolve-first pattern: every close path now resolves **exactly once** (confirm → `true`;

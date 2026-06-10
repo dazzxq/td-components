@@ -32,8 +32,12 @@ export class TdDropdown extends TdFormElement {
     return [...super.observedAttributes, 'placeholder', 'searchable', 'allow-clear', 'max-height', 'value-key', 'label-key', 'value'];
   }
 
+  // NOTE: `searchable`/`allow-clear` are intentionally NOT booleanAttributes. They are
+  // default-ON tri-state flags (absent → ON; `="false"`/`"0"`/`"off"` → OFF), which the base
+  // naive boolean property mapping (absent === false) cannot express. We own their JS
+  // properties in `_setupProperties()` below so `el.searchable = false` actually disables them.
   static get booleanAttributes() {
-    return [...super.booleanAttributes, 'searchable', 'allow-clear'];
+    return [...super.booleanAttributes];
   }
 
   /** @type {TdDropdown[]} Track all open dropdowns for closeAllExcept */
@@ -72,6 +76,27 @@ export class TdDropdown extends TdFormElement {
       });
     };
     this._boundOnResize = () => this._updatePosition();
+  }
+
+  /**
+   * Own the JS properties for the default-ON tri-state flags. The base wires every observed
+   * attribute to a naive property; for `allow-clear` it can't even be skipped (the skip guard
+   * keys off the hyphenated attr name), and its setter would `removeAttribute` on `false`,
+   * leaving the flag ON. We redefine AFTER super so `el.searchable`/`el.allowClear`:
+   *   - get → the real boolean (`_isSearchable()`/`_isAllowClear()`)
+   *   - set false → `attr="false"` (OFF); set true → remove attr (back to default ON)
+   * keeping the JS property and the attribute consistent.
+   * @private
+   */
+  _setupProperties() {
+    super._setupProperties();
+    const own = (prop, attr, isOn) => Object.defineProperty(this, prop, {
+      get: () => isOn(),
+      set: (v) => { v === false ? this.setAttribute(attr, 'false') : this.removeAttribute(attr); },
+      configurable: true,
+    });
+    own('searchable', 'searchable', () => this._isSearchable());
+    own('allowClear', 'allow-clear', () => this._isAllowClear());
   }
 
   // --- Property accessors ---
