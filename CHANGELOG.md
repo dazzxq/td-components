@@ -4,9 +4,9 @@ All notable changes to **td-components** are documented here.
 
 ## 0.4.0
 
-Logic / behavioral / a11y improvements ported from the dcms-components comparison. **Fully
-backward-compatible** — no public attribute, property, event, or rendered visual output
-changes; CSP parity gate stays at 73/73. New additions only.
+Logic / behavioral / a11y improvements ported from the dcms-components comparison. No public
+attribute/property/event renames and no rendered visual change; CSP parity gate stays at 73/73.
+One **deliberate behavioral change**: `td-modal` no longer dismisses on backdrop-click (see Changed).
 
 ### Fixed
 
@@ -16,12 +16,20 @@ changes; CSP parity gate stays at 73/73. New additions only.
   They now default **ON** and turn off only when explicitly set to a falsy value
   (`searchable="false"` / `"0"` / `"off"`, likewise `allow-clear`); a bare/absent attribute
   stays ON.
-- **`td-modal.confirm()` promise hang** — dismissing a `confirm()` via the X button, the
-  backdrop, or `closeAll()` left its Promise **unresolved forever** (no `onClose` handler).
-  Ported dcms's settled-flag + resolve-first pattern: every close path now resolves **exactly
-  once** (confirm → `true`; cancel / X / backdrop / `closeAll` → `false`), and a throwing user
-  callback (`onConfirm`/`onCancel`) can no longer hang the Promise. `success`/`error`/`info`
-  got the same treatment (OK → `true`, dismiss → `false`).
+- **`td-modal.confirm()` promise hang** — dismissing a `confirm()` (X button or `closeAll()`)
+  left its Promise **unresolved forever** (no `onClose` handler). Ported dcms's settled-flag +
+  resolve-first pattern: every close path now resolves **exactly once** (confirm → `true`;
+  cancel / X / `closeAll` → `false`), and a throwing user callback (`onConfirm`/`onCancel`) can
+  no longer hang the Promise. `success`/`error`/`info` got the same treatment (OK → `true`,
+  dismiss → `false`).
+
+### Changed
+
+- **`td-modal` no longer closes on backdrop-click** (the click-to-dismiss handler was removed),
+  and it never closed on ESC — **deliberate**, to prevent **accidental dismissal**. A modal is
+  dismissed only via the **X button**, a **footer button**, or programmatically
+  (`closeById`/`closeAll`). `closable:false` now solely **hides the X** (force-action modal). The
+  Tab focus-trap is unchanged.
 
 ### Added
 

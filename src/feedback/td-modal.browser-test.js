@@ -35,10 +35,16 @@ describe('TdModal.confirm (resolve-on-dismiss)', () => {
     expect(await p).to.equal(false);
   });
 
-  it('resolves false when dismissed via the backdrop', async () => {
-    const p = TdModal.confirm({});
+  it('does NOT close on backdrop click (deliberate — prevents accidental dismissal)', async () => {
+    let settled = false;
+    const p = TdModal.confirm({}).then((v) => { settled = true; return v; });
     const modal = topModal();
     modal.querySelector('.td-modal-backdrop').click();
+    await Promise.resolve(); // let any (unwanted) resolution flush
+    expect(settled).to.equal(false);                 // backdrop did nothing
+    expect(document.body.contains(modal)).to.equal(true); // still open
+    // Clean up: close via the X so the promise resolves and afterEach stays clean.
+    modal.querySelector('.td-modal-close').click();
     expect(await p).to.equal(false);
   });
 

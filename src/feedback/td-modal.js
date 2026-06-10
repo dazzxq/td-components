@@ -97,13 +97,11 @@ export class TdModal {
     document.body.appendChild(modal);
 
     // Setup event listeners
-    const backdrop = modal.querySelector('.td-modal-backdrop');
     const closeBtn = modal.querySelector('.td-modal-close');
 
-    backdrop.addEventListener('click', () => {
-      TdModal.closeById(modalId);
-    });
-
+    // DELIBERATE: no backdrop-click-to-close and no ESC-to-close. This modal must be
+    // dismissed ONLY via the X button, a footer button, or programmatically — to prevent
+    // accidental dismissal (operator policy). The backdrop is visual (dimming) only.
     closeBtn.addEventListener('click', () => {
       TdModal.closeById(modalId);
     });
@@ -121,7 +119,7 @@ export class TdModal {
    * @param {string|null} [options.width=null] - Custom width (overrides size)
    * @param {string|null} [options.height=null] - Custom height
    * @param {boolean} [options.fullViewport=false] - Full viewport mode
-   * @param {boolean} [options.closable=true] - Allow closing via backdrop/button
+   * @param {boolean} [options.closable=true] - Show the X (close) button. The modal NEVER closes on backdrop-click or ESC (deliberate, prevents accidental dismissal); set false to also hide the X (force-action — close only via a footer button or programmatically)
    * @param {boolean} [options.showHeader=true] - Show header
    * @param {boolean} [options.showFooter=true] - Show footer
    * @param {Function|null} [options.onClose=null] - Close callback
@@ -652,20 +650,14 @@ export class TdModal {
       }
     }
 
-    // Show/hide close button
+    // Show/hide the X (close) button. `closable:false` hides it (force-action modal:
+    // close only via a footer button or programmatically). The backdrop never closes the
+    // modal in any case (no click handler), so there is nothing to disable there.
     const closeBtn = modalElement.querySelector('.td-modal-close');
     if (closable) {
       closeBtn.classList.remove('hidden');
     } else {
       closeBtn.classList.add('hidden');
-    }
-
-    // Disable backdrop click if not closable
-    const backdrop = modalElement.querySelector('.td-modal-backdrop');
-    if (!closable) {
-      backdrop.style.pointerEvents = 'none';
-    } else {
-      backdrop.style.pointerEvents = '';
     }
   }
 
