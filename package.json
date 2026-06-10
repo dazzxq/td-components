@@ -1,6 +1,6 @@
 {
   "name": "@dazzxq/td-components",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Shared UI Web Components library — vanilla CSS, BEM with td- prefix",
   "type": "module",
   "main": "index.js",
@@ -35,7 +35,8 @@
     "./table": "./src/display/td-table.js",
     "./tabs": "./src/display/td-tabs.js",
     "./pagination": "./src/display/td-pagination.js",
-    "./empty-state": "./src/display/td-empty-state.js"
+    "./empty-state": "./src/display/td-empty-state.js",
+    "./dom-utils": "./src/utils/dom-utils.js"
   },
   "files": [
     "src",

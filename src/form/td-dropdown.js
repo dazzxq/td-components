@@ -32,8 +32,12 @@ export class TdDropdown extends TdFormElement {
     return [...super.observedAttributes, 'placeholder', 'searchable', 'allow-clear', 'max-height', 'value-key', 'label-key', 'value'];
   }
 
+  // NOTE: `searchable`/`allow-clear` are intentionally NOT booleanAttributes. They are
+  // default-ON tri-state flags (absent → ON; `="false"`/`"0"`/`"off"` → OFF), which the base
+  // naive boolean property mapping (absent === false) cannot express. We own their JS
+  // properties in `_setupProperties()` below so `el.searchable = false` actually disables them.
   static get booleanAttributes() {
-    return [...super.booleanAttributes, 'searchable', 'allow-clear'];
+    return [...super.booleanAttributes];
   }
 
   /** @type {TdDropdown[]} Track all open dropdowns for closeAllExcept */
@@ -74,6 +78,27 @@ export class TdDropdown extends TdFormElement {
     this._boundOnResize = () => this._updatePosition();
   }
 
+  /**
+   * Own the JS properties for the default-ON tri-state flags. The base wires every observed
+   * attribute to a naive property; for `allow-clear` it can't even be skipped (the skip guard
+   * keys off the hyphenated attr name), and its setter would `removeAttribute` on `false`,
+   * leaving the flag ON. We redefine AFTER super so `el.searchable`/`el.allowClear`:
+   *   - get → the real boolean (`_isSearchable()`/`_isAllowClear()`)
+   *   - set false → `attr="false"` (OFF); set true → remove attr (back to default ON)
+   * keeping the JS property and the attribute consistent.
+   * @private
+   */
+  _setupProperties() {
+    super._setupProperties();
+    const own = (prop, attr, isOn) => Object.defineProperty(this, prop, {
+      get: () => isOn(),
+      set: (v) => { v === false ? this.setAttribute(attr, 'false') : this.removeAttribute(attr); },
+      configurable: true,
+    });
+    own('searchable', 'searchable', () => this._isSearchable());
+    own('allowClear', 'allow-clear', () => this._isAllowClear());
+  }
+
   // --- Property accessors ---
 
   get options() { return this._options; }
@@ -100,9 +125,27 @@ export class TdDropdown extends TdFormElement {
   // --- Attribute helpers ---
 
   _getPlaceholder() { return this.getAttribute('placeholder') || 'Chọn một tùy chọn'; }
-  _isSearchable() { return !this.hasAttribute('searchable') || this.hasAttribute('searchable'); }
+  /**
+   * Default ON. Off only when explicitly disabled via `searchable="false"`/`"0"`/`"off"`.
+   * (Mirrors dcms's `searchable !== false` default; an absent attribute or a bare
+   * presence — `searchable`, `searchable=""` — keeps it enabled.)
+   * @private
+   */
+  _isSearchable() { return !this._isDisabledFlag('searchable'); }
   _isDisabled() { return this._effectiveDisabled; }
-  _isAllowClear() { return !this.hasAttribute('allow-clear') || this.hasAttribute('allow-clear'); }
+  /** Default ON; off only when explicitly `allow-clear="false"`/`"0"`/`"off"`. @private */
+  _isAllowClear() { return !this._isDisabledFlag('allow-clear'); }
+
+  /**
+   * True when a default-on boolean-ish attribute is explicitly turned OFF.
+   * Off = `attr="false" | "0" | "off"` (case-insensitive). Absent or any other
+   * presence (including `attr=""`) stays ON. @private
+   */
+  _isDisabledFlag(name) {
+    if (!this.hasAttribute(name)) return false;
+    const v = (this.getAttribute(name) || '').trim().toLowerCase();
+    return v === 'false' || v === '0' || v === 'off';
+  }
   _getMaxHeight() { return parseInt(this.getAttribute('max-height') || '5', 10); }
   _getValueKey() { return this.getAttribute('value-key') || 'value'; }
   _getLabelKey() { return this.getAttribute('label-key') || 'label'; }

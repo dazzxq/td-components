@@ -87,7 +87,11 @@ export class TdInputField extends TdFormElement {
   _resolveInputType(rawType) {
     if (rawType === 'textarea' || rawType === 'contenteditable') return rawType;
     if (TdInputField._neutralizeTypes.includes(rawType)) return 'text';
-    return ['text', 'password', 'tel', 'search'].includes(rawType) ? rawType : 'text';
+    // `date` keeps its real type → native calendar picker. Its `min`/`max`/`value`
+    // are forwarded to the inner control for the picker UI; the inner control has no
+    // `name`, so it never participates in host submission, and the host still
+    // recomputes range validity via the probe in `_computeValidity()`.
+    return ['text', 'password', 'tel', 'search', 'date'].includes(rawType) ? rawType : 'text';
   }
 
   render() {
@@ -152,6 +156,17 @@ export class TdInputField extends TdFormElement {
       const inputMode = TdInputField._inputModeMap[type];
       const inputModeAttr = inputType === 'text' && inputMode ? ` inputmode="${inputMode}"` : '';
       const maxLenAttr = maxLength && limitType === 'char' ? ` maxlength="${maxLength}"` : '';
+      // Forward native `min`/`max` to the inner control for value-bounded types
+      // (`number` is rendered as `text` so it gets no native min/max, but `date`
+      // keeps its real type → the native picker honours these bounds). The host
+      // still independently recomputes range validity in `_computeValidity()`.
+      let rangeAttrs = '';
+      if (inputType === 'date') {
+        const minV = this.getAttribute('min');
+        const maxV = this.getAttribute('max');
+        if (minV != null) rangeAttrs += ` min="${this.escapeHtml(minV)}"`;
+        if (maxV != null) rangeAttrs += ` max="${this.escapeHtml(maxV)}"`;
+      }
       // Scalar styles (commonStyle + height) applied via CSSOM in _applyStyles().
       fieldHtml = `<input
         type="${inputType}"
@@ -160,7 +175,7 @@ export class TdInputField extends TdFormElement {
         placeholder="${escapedPlaceholder}"
         ${isDisabled ? 'disabled' : ''}
         ${isReadonly ? 'readonly' : ''}
-        ${maxLenAttr}${inputModeAttr}
+        ${maxLenAttr}${inputModeAttr}${rangeAttrs}
         ${idAttr}
       />`;
     }
@@ -398,6 +413,27 @@ export class TdInputField extends TdFormElement {
       if (v.rangeUnderflow) return { flags: { rangeUnderflow: true }, message: `Giá trị tối thiểu là ${this.getAttribute('min')}` };
       if (v.rangeOverflow) return { flags: { rangeOverflow: true }, message: `Giá trị tối đa là ${this.getAttribute('max')}` };
       if (v.stepMismatch) return { flags: { stepMismatch: true }, message: 'Giá trị không đúng bước nhảy' };
+    }
+
+    // `date`: the inner control keeps its real type, but the HOST still owns validity.
+    // Recompute type/range off a detached `type="date"` probe so a bad/out-of-range
+    // value is reported through ElementInternals (consistent with number/email/url).
+    if (!isEmpty && type === 'date') {
+      const probe = document.createElement('input');
+      probe.type = 'date';
+      for (const a of ['min', 'max']) {
+        const av = this.getAttribute(a);
+        if (av != null) probe.setAttribute(a, av);
+      }
+      probe.value = String(value);
+      const v = probe.validity;
+      // An invalid date string is sanitized to "" by the native control → reads back
+      // as empty, so detect the mismatch explicitly (ISO `yyyy-mm-dd` round-trip).
+      if (probe.value === '' || v.badInput || v.typeMismatch) {
+        return { flags: { typeMismatch: true }, message: 'Ngày không hợp lệ' };
+      }
+      if (v.rangeUnderflow) return { flags: { rangeUnderflow: true }, message: `Ngày tối thiểu là ${this.getAttribute('min')}` };
+      if (v.rangeOverflow) return { flags: { rangeOverflow: true }, message: `Ngày tối đa là ${this.getAttribute('max')}` };
     }
 
     return { flags: {}, message: '' };
