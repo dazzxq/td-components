@@ -48,7 +48,8 @@ export class TdPagination extends TdBaseElement {
   /** Current page clamped to [1, totalPages] (the attribute may be out of range). */
   _getCurrentPage() { return Math.min(this._getTotalPages(), Math.max(1, this._int('current-page', 1))); }
   _getItemLabel() { return this.getAttribute('item-label') || 'mục'; }
-  _getMaxPages() { return Math.max(1, this._int('max-pages', 5)); }
+  /** Window size, clamped to 1…25 (security review: bounded DOM regardless of attribute values). */
+  _getMaxPages() { return Math.max(1, Math.min(25, this._int('max-pages', 5))); }
   _getNavLabel() { return (this.getAttribute('aria-label') || '').trim() || 'Phân trang'; }
 
   _getTotalPages() {

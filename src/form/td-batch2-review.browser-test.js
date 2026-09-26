@@ -92,3 +92,32 @@ describe('v0.8.0 impl-review fixes', () => {
     expect(ok.querySelectorAll('.td-slider__mark').length).to.equal(51);
   });
 });
+
+describe('v0.8.0 security-review fixes', () => {
+  it('renderIconDefinition validates its input', async () => {
+    const { renderIconDefinition } = await import('../icons/td-icon.js');
+    const bad = [
+      { viewBox: '0 0 24 24', nodes: [['image', { href: 'bad://x', onerror: 'globalThis.pwned=1' }]] },
+      { viewBox: '0 0 24 24', nodes: [['script', {}]] },
+      { viewBox: '0 0 24 24', nodes: [['foreignObject', {}]] },
+      { viewBox: '0 0 24 24', nodes: [['path', { d: 'M0 0', style: 'x' }]] },
+      { viewBox: '0 0 24 24', nodes: [['rect', { x: 'url(#a)' }]] },
+    ];
+    for (const def of bad) expect(renderIconDefinition(def)).to.equal(null);
+    expect(globalThis.pwned).to.equal(undefined);
+    expect(renderIconDefinition({ viewBox: '0 0 24 24', nodes: [['path', { d: 'M1 1h4' }]] })).to.not.equal(null);
+  });
+
+  it('svg strings: size, DTD and shape-count limits', () => {
+    const head = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">';
+    expect(svgStringToDefinition(`<!DOCTYPE svg [<!ENTITY a "x">]>${head}<path d="M0 0"/></svg>`)).to.equal(null);
+    expect(svgStringToDefinition(head + '<path d="M0 0h1"/>'.repeat(65) + '</svg>')).to.equal(null);
+    expect(svgStringToDefinition(`${head}<path d="${'M0 0'.repeat(3000)}"/></svg>`)).to.equal(null);
+    expect(svgStringToDefinition(head + 'x'.repeat(40000) + '</svg>')).to.equal(null);
+  });
+
+  it('pagination max-pages is clamped (bounded DOM)', () => {
+    const el = mount('<td-pagination total-items="100000000" items-per-page="1" current-page="500" max-pages="100000"></td-pagination>');
+    expect(el.querySelectorAll('.td-pagination__page').length).to.be.at.most(27);
+  });
+});

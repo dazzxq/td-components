@@ -56,6 +56,8 @@ decisions D1–D19 in `v0.8.0-batch2-inventory.md`). Built in parallel by four a
 
 - td-empty-state raw-SVG hatch closed: strings are parsed as `image/svg+xml` and rebuilt from the icon geometry
   allowlist (root attributes allowlisted too); anything else is rejected.
+- `renderIconDefinition()` validates its input (it is exported); SVG strings are bounded (32 KB, no DTD, ≤ 64 shapes,
+  attribute values ≤ 8 000 chars); td-pagination `max-pages` clamped to 25 (bounded DOM for API/CMS-bound values).
 
 ## 0.7.0
 

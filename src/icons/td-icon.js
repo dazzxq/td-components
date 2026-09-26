@@ -37,6 +37,10 @@ const ATTRS = {
   'fill-opacity': /^(0(\.\d+)?|1(\.0+)?)$/,
   'stroke-opacity': /^(0(\.\d+)?|1(\.0+)?)$/,
 };
+// Complexity limits (security review: bounded parsing/validation/rendering work for untrusted input).
+const MAX_NODES = 64;
+const MAX_ATTR_LENGTH = 8000;
+const MAX_SVG_STRING = 32000;
 const VIEWBOX = /^-?\d+(\.\d+)?( -?\d+(\.\d+)?){3}$/;
 
 /** @type {Map<string, {viewBox: string, paint: 'stroke'|'fill', nodes: Array<[string, Record<string,string>]>}>} */
@@ -61,6 +65,7 @@ export function _validateIconDefinition(name, def) {
   const paint = def.paint == null ? 'stroke' : def.paint;
   if (paint !== 'stroke' && paint !== 'fill') throw new TypeError(`icon "${name}": paint must be "stroke" or "fill"`);
   if (!Array.isArray(def.nodes) || !def.nodes.length) throw new TypeError(`icon "${name}": nodes must be a non-empty array`);
+  if (def.nodes.length > MAX_NODES) throw new TypeError(`icon "${name}": more than ${MAX_NODES} shapes`);
   const nodes = def.nodes.map((node, i) => {
     if (!Array.isArray(node) || node.length !== 2) throw new TypeError(`icon "${name}": node ${i} must be [tag, attrs]`);
     const [tag, attrs] = node;
@@ -71,6 +76,7 @@ export function _validateIconDefinition(name, def) {
       const rule = ATTRS[k];
       const val = String(v);
       if (!rule) throw new TypeError(`icon "${name}": attribute "${k}" not allowed`);
+      if (val.length > MAX_ATTR_LENGTH) throw new TypeError(`icon "${name}": attribute "${k}" is too long`);
       if (!rule.test(val)) throw new TypeError(`icon "${name}": attribute "${k}" has an invalid value`);
       clean[k] = val;
     }
@@ -190,6 +196,7 @@ export function fillIconSlots(root) {
  */
 export function svgStringToDefinition(str) {
   if (typeof str !== 'string' || typeof DOMParser === 'undefined') return null;
+  if (str.length > MAX_SVG_STRING || /<!(DOCTYPE|ENTITY)/i.test(str)) return null; // no DTDs, bounded size
   let doc;
   try {
     doc = new DOMParser().parseFromString(str.trim(), 'image/svg+xml');
@@ -233,8 +240,14 @@ export function svgStringToDefinition(str) {
  */
 export function renderIconDefinition(def, opts = {}) {
   if (!def) return null;
+  let safe;
+  try {
+    safe = _validateIconDefinition('inline', def); // exported → never trust the caller's definition
+  } catch {
+    return null;
+  }
   const key = '__td-inline-def__';
-  registry.set(key, def);
+  registry.set(key, safe);
   try {
     const svg = tdIcon(key, opts);
     if (svg) svg.setAttribute('data-icon', 'custom');
