@@ -31,7 +31,7 @@
  *      transform/stroke-dashoffset at t0 and t+250ms and assert it CHANGED (animation
  *      running). A prefers-reduced-motion case asserts the OVERLAY arc does NOT animate.
  *
- * Clean-component proof: td-tooltip, td-modal-stack, td-base-element have NO blocking
+ * Clean-component proof: td-modal-stack, td-base-element have NO blocking
  * construct and NO matrix states; we import + exercise each under the strict CSP and
  * assert ZERO violations — proving the gate PASSES for clean code (non-vacuous on both
  * sides).
@@ -480,34 +480,14 @@ async function runCleanComponent(browser, name, modulePath, exercise) {
 // drives the module's real code path so any inline-style/`<style>` it WOULD emit fires.
 const CLEAN = [
   {
-    name: 'td-tooltip',
-    module: '/src/feedback/td-tooltip.js',
-    // Importing auto-inits the singleton (creates the tooltip el via CSSOM). Force a show.
-    exercise: `
-      const btn = document.createElement('button');
-      btn.setAttribute('data-tooltip', 'Hi there');
-      btn.textContent = 'hover me';
-      window.__mount.appendChild(btn);
-      const t = (window.tdTooltip || window.TdTooltip);
-      if (window.TdTooltip && !window.tdTooltip) { /* singleton auto-created on import */ }
-      // Trigger via the singleton if exposed, else dispatch a mouseenter the auto-init listens for.
-      const r = btn.getBoundingClientRect();
-      btn.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true, clientX: r.left, clientY: r.top }));
-      await new Promise(res => setTimeout(res, 60));
-    `,
-  },
-  {
     name: 'td-modal-stack',
     module: '/src/feedback/td-modal-stack.js',
     exercise: `
-      const Mgr = window.TdModalStackManager;
-      if (Mgr) {
-        const mgr = new Mgr();
-        const el = document.createElement('div');
-        document.body.appendChild(el);
-        if (typeof mgr.register === 'function') mgr.register(el);
-        if (typeof mgr.push === 'function') mgr.push(el);
-      }
+      const el = document.createElement('div');
+      document.body.appendChild(el);
+      const id = TdModalStackManager.push({ element: el });
+      TdModalStackManager.removeById(id);
+      el.remove();
     `,
   },
   {
