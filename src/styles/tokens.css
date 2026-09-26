@@ -78,6 +78,7 @@
 		--td-z-popover: 450;
 		--td-z-loading: 480; /* blocking overlay: above modal/popover, below toast */
 		--td-z-toast: 500;
+		--td-z-tooltip: 510; /* mirrors src/utils/layers.js LAYERS */
 
 		/* ===== Motion ===== */
 		--td-dur-fast: 120ms;

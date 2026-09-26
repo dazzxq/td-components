@@ -1,3 +1,4 @@
+import { placeFloating, isReferenceHidden } from '../utils/floating.js';
 import { TdFormElement } from '../base/td-form-element.js';
 import { applyStyles } from '../utils/css-safe.js';
 
@@ -724,11 +725,7 @@ export class TdDropdown extends TdFormElement {
 
     // Close once the trigger is effectively hidden (scrolled out of the viewport, or
     // no longer rendered) — a menu floating over unrelated content is worse than closing.
-    const EDGE = 8;
-    const notRendered = rect.width === 0 && rect.height === 0;
-    const offVertical = rect.bottom < EDGE || rect.top > window.innerHeight - EDGE;
-    const offHorizontal = rect.right < EDGE || rect.left > window.innerWidth - EDGE;
-    if (notRendered || offVertical || offHorizontal) {
+    if (isReferenceHidden(rect)) {
       this.close();
       return;
     }
@@ -748,37 +745,11 @@ export class TdDropdown extends TdFormElement {
   _placeMenu(rect) {
     const menu = this._menuElement;
     if (!menu) return;
-    const GAP = 8;
-    const MARGIN = 8;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-
-    // Never wider than the viewport; keep an 8px margin only when there is room for it
-    // (a full-width trigger keeps a full-width, aligned menu).
-    const width = Math.min(rect.width, vw);
-    menu.style.width = `${width}px`;
-    menu.style.minWidth = `${width}px`;
-    menu.style.maxWidth = `${width}px`;
-    const margin = vw - width >= 2 * MARGIN ? MARGIN : 0;
-    const left = Math.max(margin, Math.min(rect.left, vw - width - margin));
-    menu.style.left = `${left}px`;
-
-    const list = menu.querySelector('.td-dropdown-options');
-    if (list) list.style.maxHeight = `${this._getMaxHeight() * 40}px`;
-
-    const naturalH = menu.offsetHeight;
-    const chromeH = list ? naturalH - list.offsetHeight : 0;
-    const below = vh - rect.bottom - GAP - MARGIN;
-    const above = rect.top - GAP - MARGIN;
-    const placeBelow = naturalH <= below || below >= above;
-    const space = Math.max(0, placeBelow ? below : above);
-
-    if (naturalH > space && list) {
-      list.style.maxHeight = `${Math.max(0, space - chromeH)}px`;
-    }
-    const h = menu.offsetHeight;
-    const top = placeBelow ? rect.bottom + GAP : rect.top - GAP - h;
-    menu.style.top = `${top}px`;
+    placeFloating(rect, menu, {
+      width: 'match',
+      list: menu.querySelector('.td-dropdown-options'),
+      listMax: this._getMaxHeight() * 40,
+    });
   }
 
   /** @private */

@@ -3,6 +3,8 @@
  * scroll-lock.js: every overlay takes a LEASE; the manager computes which `<body>` children must be inert.
  *
  * - A lease names the elements it keeps interactive (its own overlay). `#td-toast-container` is always kept.
+ * - FLOATING registrations (registerFloating: dropdown menu, tooltip, toast container) never inert anything; they
+ *   only exempt their element from LOWER blocking leases (a menu opened inside a modal stays usable).
  * - Leases stack by `layer` (the overlay's z-index token; ties: later lease on top): an element kept by a
  *   HIGHER layer is exempt from LOWER leases, so a loading overlay (480) opened over the lightbox (350) stays
  *   usable, while the lightbox becomes inert under it — in either opening order.
@@ -11,7 +13,7 @@
  * - Body children appended while a lease is active are handled (MutationObserver on `<body>` childList).
  */
 
-/** @type {Array<{ keep: Set<Element>, layer: number, seq: number }>} */
+/** @type {Array<{ keep: Set<Element>, layer: number, seq: number, blocking: boolean }>} */
 const leases = [];
 /** Elements WE made inert. */
 const managed = new Set();
@@ -26,7 +28,7 @@ function isKeptByHigher(el, index) {
 function shouldBeInert(el) {
   if (el.id === 'td-toast-container') return false;
   for (let i = 0; i < leases.length; i++) {
-    if (leases[i].keep.has(el)) continue;
+    if (!leases[i].blocking || leases[i].keep.has(el)) continue;
     if (!isKeptByHigher(el, i)) return true;
   }
   return false;
@@ -53,15 +55,9 @@ function sync() {
   }
 }
 
-/**
- * Take an inert lease.
- * @param {Element[]} keep elements that stay interactive (the overlay itself)
- * @param {number} [layer=0] stacking layer (use the overlay's z-index token value)
- * @returns {() => void} release (idempotent)
- */
-export function acquireInert(keep = [], layer = 0) {
+function addLease(keep, layer, blocking) {
   if (typeof document === 'undefined') return () => {};
-  const lease = { keep: new Set(keep.filter(Boolean)), layer: Number(layer) || 0, seq: ++seq };
+  const lease = { keep: new Set(keep.filter(Boolean)), layer: Number(layer) || 0, seq: ++seq, blocking };
   leases.push(lease);
   leases.sort((a, b) => a.layer - b.layer || a.seq - b.seq);
   if (!observer && typeof MutationObserver !== 'undefined' && document.body) {
@@ -81,4 +77,31 @@ export function acquireInert(keep = [], layer = 0) {
       observer = null;
     }
   };
+}
+
+/**
+ * Take a blocking inert lease.
+ * @param {Element[]} keep elements that stay interactive (the overlay itself)
+ * @param {number} [layer=0] stacking layer (use the overlay's z-index token value)
+ * @returns {() => void} release (idempotent)
+ */
+export function acquireInert(keep = [], layer = 0) {
+  return addLease(keep, layer, true);
+}
+
+/**
+ * Register a non-blocking floating element (portaled to `<body>`): exempt from LOWER blocking leases, never
+ * inerts anything. A blocking lease at a higher layer still inerts it.
+ * @param {Element} el
+ * @param {number} layer
+ * @returns {() => void} release (idempotent)
+ */
+export function registerFloating(el, layer = 0) {
+  return addLease([el], layer, false);
+}
+
+/** @returns {boolean} whether a floating registration above `layer` is active */
+export function hasFloatingAbove(layer) {
+  const l = Number(layer) || 0;
+  return leases.some((x) => !x.blocking && x.layer > l);
 }

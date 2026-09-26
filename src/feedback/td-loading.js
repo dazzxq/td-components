@@ -1,7 +1,7 @@
 import { lockScroll } from '../utils/scroll-lock.js';
-import { acquireInert } from '../utils/inert-lock.js';
+import { LAYERS, register as registerLayer, trapTab } from '../utils/layers.js';
 
-const LOADING_LAYER = 480; // --td-z-loading
+const LOADING_LAYER = LAYERS.loading; // --td-z-loading
 import { safeColor } from '../utils/css-safe.js';
 
 /**
@@ -83,7 +83,13 @@ export class TdLoading {
       const saved = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       TdLoading._active = {
         releaseScroll: lockScroll(),
-        releaseInert: acquireInert([el], LOADING_LAYER), // shared, ref-counted with other overlays
+        layer: registerLayer({ // blocking inert lease + keyboard boundary (Escape swallowed, Tab held)
+          layer: LOADING_LAYER,
+          element: el,
+          blocking: true,
+          onEscape: () => true,
+          onTab: (e) => trapTab(e, /** @type {HTMLElement} */ (el.querySelector('.td-loading__card') || el), LOADING_LAYER),
+        }),
         savedFocus: saved,
       };
       el.hidden = false;
@@ -126,7 +132,7 @@ export class TdLoading {
       el.removeAttribute('aria-busy');
     }
     if (!active) return;
-    active.releaseInert();
+    active.layer.release();
     active.releaseScroll();
     const f = active.savedFocus;
     if (f && f.isConnected && typeof f.focus === 'function') {
