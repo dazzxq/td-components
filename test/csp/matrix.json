@@ -25,7 +25,8 @@
       "td-input-field",
       "td-tabs",
       "td-pagination",
-      "td-empty-state"
+      "td-empty-state",
+      "td-slider"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [
@@ -209,81 +210,104 @@
   "td-slider": [
     {
       "state": "min",
-      "markup": "<td-slider min=\"0\" max=\"100\" value=\"0\"></td-slider>",
+      "markup": "<td-slider value=\"0\"></td-slider>",
       "selectors": [
-        ".td-slider-container",
-        ".td-slider-track-bg",
-        ".td-slider-track-active",
-        ".td-slider-thumb"
-      ]
+        ".td-slider",
+        ".td-slider__track",
+        ".td-slider__fill",
+        ".td-slider__thumb"
+      ],
+      "settle": 300
     },
     {
       "state": "mid",
-      "markup": "<td-slider min=\"0\" max=\"100\" value=\"50\"></td-slider>",
+      "markup": "<td-slider value=\"50\"></td-slider>",
       "selectors": [
-        ".td-slider-container",
-        ".td-slider-track-active",
-        ".td-slider-thumb"
-      ]
+        ".td-slider",
+        ".td-slider__track",
+        ".td-slider__fill",
+        ".td-slider__thumb"
+      ],
+      "settle": 300
     },
     {
       "state": "max",
-      "markup": "<td-slider min=\"0\" max=\"100\" value=\"100\"></td-slider>",
+      "markup": "<td-slider value=\"100\"></td-slider>",
       "selectors": [
-        ".td-slider-container",
-        ".td-slider-track-active",
-        ".td-slider-thumb"
-      ]
+        ".td-slider",
+        ".td-slider__track",
+        ".td-slider__fill",
+        ".td-slider__thumb"
+      ],
+      "settle": 300
     },
     {
       "state": "disabled",
-      "markup": "<td-slider min=\"0\" max=\"100\" value=\"50\" disabled></td-slider>",
+      "markup": "<td-slider value=\"40\" disabled></td-slider>",
       "selectors": [
-        ".td-slider-thumb",
-        ".td-slider-input"
-      ]
+        ".td-slider__fill",
+        ".td-slider__thumb",
+        ".td-slider__input"
+      ],
+      "settle": 300
     },
     {
       "state": "custom-color",
-      "markup": "<td-slider min=\"0\" max=\"100\" value=\"50\" color=\"#a855f7\"></td-slider>",
+      "markup": "<td-slider value=\"60\" color=\"#10b981\"></td-slider>",
       "selectors": [
-        ".td-slider-track-active",
-        ".td-slider-thumb"
-      ]
+        ".td-slider__fill",
+        ".td-slider__thumb"
+      ],
+      "settle": 300
     },
     {
       "state": "show-value-label",
-      "markup": "<td-slider min=\"0\" max=\"100\" value=\"50\" show-label color=\"#0ea5e9\"></td-slider>",
+      "markup": "<td-slider value=\"30\" show-label></td-slider>",
       "selectors": [
-        ".td-slider-value-label"
-      ]
+        ".td-slider__value"
+      ],
+      "settle": 300
     },
     {
       "state": "size-sm",
-      "markup": "<td-slider min=\"0\" max=\"100\" value=\"50\" size=\"sm\"></td-slider>",
+      "markup": "<td-slider value=\"50\" size=\"sm\"></td-slider>",
       "selectors": [
-        ".td-slider-container",
-        ".td-slider-track-container",
-        ".td-slider-thumb"
-      ]
+        ".td-slider",
+        ".td-slider__control",
+        ".td-slider__track",
+        ".td-slider__thumb"
+      ],
+      "settle": 300
     },
     {
       "state": "size-lg",
-      "markup": "<td-slider min=\"0\" max=\"100\" value=\"50\" size=\"lg\"></td-slider>",
+      "markup": "<td-slider value=\"50\" size=\"lg\"></td-slider>",
       "selectors": [
-        ".td-slider-container",
-        ".td-slider-track-container",
-        ".td-slider-thumb"
-      ]
+        ".td-slider",
+        ".td-slider__control",
+        ".td-slider__track",
+        ".td-slider__thumb"
+      ],
+      "settle": 300
     },
     {
       "state": "step-marks",
-      "markup": "<td-slider min=\"0\" max=\"4\" step=\"1\" value=\"2\" show-step-marks></td-slider>",
+      "markup": "<td-slider value=\"50\" min=\"0\" max=\"100\" step=\"25\" show-step-marks></td-slider>",
       "selectors": [
-        ".td-slider-wrap",
-        ".td-slider-step-mark",
-        ".td-slider-step-mark-label"
-      ]
+        ".td-slider__control",
+        ".td-slider__mark",
+        ".td-slider__mark-label"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "dragging",
+      "setup": "const s=document.createElement('td-slider'); s.setAttribute('value','50'); window.__mount.appendChild(s); s.querySelector('.td-slider').setAttribute('data-dragging','');",
+      "selectors": [
+        ".td-slider__thumb",
+        ".td-slider__fill"
+      ],
+      "settle": 400
     }
   ],
   "td-input-field": [

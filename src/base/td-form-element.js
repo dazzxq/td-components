@@ -48,7 +48,7 @@ export class TdFormElement extends TdBaseElement {
 
   /**
    * Opt-in error contract (setError/clearError/`error-text`). Subclasses that return true must also
-   * list `'error-text'` in their observedAttributes. td-input-field keeps its own until its migration.
+   * list `'error-text'` in their observedAttributes. Used by checkbox, switch, input-field, slider.
    * @returns {boolean}
    */
   static get errorContract() { return false; }
@@ -91,6 +91,19 @@ export class TdFormElement extends TdBaseElement {
     // `<label for="${this.id}">` gets a real target on the very first paint (ISSUE-1).
     this._ensureId();
     super.connectedCallback(); // _setupProperties + first _doRender (if not yet initialized)
+    // External <label for="host-id">: the browser runs the label's activation on the HOST (form-associated
+    // custom elements are labelable). Forward it to the inner control like a native one: focus it, and
+    // activate checkable controls (checkbox/switch).
+    if (!this._labelForwarder) {
+      this._labelForwarder = (e) => {
+        if (e.target !== this || this._effectiveDisabled) return;
+        const control = this._focusTarget();
+        if (!control) return;
+        control.focus();
+        if (control instanceof HTMLInputElement && (control.type === 'checkbox' || control.type === 'radio')) control.click();
+      };
+      this.addEventListener('click', this._labelForwarder);
+    }
     if (!this._defaultsCaptured) {
       this._captureDefaults();
       this._defaultsCaptured = true;

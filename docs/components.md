@@ -59,6 +59,9 @@ Events: the native `click` of the inner button.
 
 ### `td-input-field` — `@dazzxq/td-components/input-field`
 
+> **Token-native (0.8.0):** needs `td.css`, no Tailwind. Internal classes changed — see [class map](migration/class-map.md).
+
+
 A text/number/textarea/contenteditable field with label, helper/error text, and a char/word counter. The host owns validation; for `email`/`url`/`number` the host computes `typeMismatch`/range/step so the field never double-blocks a form.
 
 ```html
@@ -83,15 +86,19 @@ A text/number/textarea/contenteditable field with label, helper/error text, and 
 | `limit-type` | string | `char` | `char` \| `word` |
 | `min` / `max` / `step` | string | — | Range/step (`number`); `min`/`max` also forwarded to `date` |
 | `label` | string | — | Label text |
-| `helper-text` | string | — | Helper text below the field |
-| `error-text` | string | — | Error text below the field (red) |
-| `field-id` | string | — | `id` forwarded to the inner input (for the internal `<label for>`) |
+| `helper-text` | string | — | Helper text (`.td-field__note`), shown together with an error |
+| `error-text` | string | — | Error (error contract: `.td-field-error` + `aria-invalid`/`aria-errormessage`/`aria-describedby`) |
+| `field-id` | string | `{host-id}-control` | `id` of the inner control, used verbatim; the label always points at it |
+| `aria-label` | string | — | Name when there is no `label` (else external `<label for="host-id">` is used) |
 | `name` | string | — | Form field name (submitted via the host) |
 | `rows` | number | `4` | Rows for `textarea` |
 | `validate-on` | string | — | Auto-show the inline error on `blur` \| `input` \| `change` |
 
-**Events:** `input` → `{ value }` (on change) · `change` → `{ value }` (on blur)
-**Methods:** `getValue()`, `setValue(v)`, `setError(msg)`, `setHelper(msg)`, `setDisabled(bool)`, `setReadOnly(bool)` + standard `checkValidity()`/`reportValidity()`.
+**Events:** exactly one `input` → `{ value }` per edit · `change` → `{ value }` on blur **only if the value changed**
+(0.8.0; the native events no longer bubble).
+**Methods:** `getValue()`, `setValue(v)`, `setError(msg)` / `clearError()`, `setHelper(msg)`, `setDisabled(bool)`,
+`setReadOnly(bool)` + standard `checkValidity()`/`reportValidity()`. Attribute changes update in place (focus + caret
+kept). Counter shows `data-state="limit"` at the limit (no red border). Form reset clears the error.
 
 > **0.2.0 BREAKING:** the inner `<input>`/`<textarea>` no longer carries a `name`; submission goes through the host's `name`.
 
@@ -149,6 +156,9 @@ A switch (`.td-switch`, native `<input type="checkbox" role="switch">`). **Uncon
 
 ### `td-slider` — `@dazzxq/td-components/slider`
 
+> **Token-native (0.8.0):** needs `td.css`, no Tailwind. Internal classes changed — see [class map](migration/class-map.md).
+
+
 ```html
 <td-slider name="volume" min="0" max="100" value="30" show-label></td-slider>
 ```
@@ -160,8 +170,9 @@ A switch (`.td-switch`, native `<input type="checkbox" role="switch">`). **Uncon
 | `step` | number | `1` | Step increment |
 | `name` | string | — | Form field name |
 | `size` | string | `md` | `sm` \| `md` \| `lg` |
-| `color` | string | `#3b82f6` | Thumb/active track color |
-| `track-color` | string | `#e5e7eb` | Inactive track color |
+| `color` | string | `--td-slider-color` (accent) | Fill/thumb colour (any safe CSS colour) |
+| `track-color` | string | `--td-slider-track` | Inactive track colour |
+| `error-text` / `aria-label` | string | — | Error contract; name when there is no `label` |
 | `label` | string | — | Main label text |
 | `show-label` | boolean | `false` | Show the current value label |
 | `label-position` | string | `top` | `top` \| `bottom` |
@@ -169,7 +180,10 @@ A switch (`.td-switch`, native `<input type="checkbox" role="switch">`). **Uncon
 | `show-step-marks` | boolean | `false` | Show step marks on the track |
 | `disabled` | boolean | `false` | Disable (also via `<fieldset disabled>`) |
 
-**Events:** `input` → `{ value }` (during drag) · `change` → `{ value }` (on release). Range/step validity is computed against the component value.
+**Events:** exactly one `input` → `{ value }` during drag and one `change` → `{ value }` on release. Range/step validity
+is computed against the component value. Native range underneath (keyboard: arrows, Page, Home, End), `aria-valuetext`
+formatted to the step; hit area covers the whole control (≥ 24 px, 44 px on touch); width token `--td-slider-w`
+(`max-width: 100%`); step marks only when ≤ 50; the knob lifts into glass only while dragged.
 
 ### `td-dropdown` — `@dazzxq/td-components/dropdown`
 
@@ -352,10 +366,13 @@ t.data = rows;
 
 ### `td-tabs` — `@dazzxq/td-components/tabs`
 
+> **Token-native (0.8.0):** needs `td.css`, no Tailwind. Internal classes changed — see [class map](migration/class-map.md).
+
+
 ```js
 import '@dazzxq/td-components/tabs';
 const tabs = document.querySelector('td-tabs');
-tabs.tabs = [{ id: 'a', label: 'Account' }, { id: 'b', label: 'Billing', icon: '💳' }];
+tabs.tabs = [{ id: 'a', label: 'Account', panel: 'panel-a' }, { id: 'b', label: 'Billing', icon: 'link' }];
 tabs.addEventListener('tab-change', (e) => show(e.detail.tabId));
 ```
 
@@ -363,10 +380,18 @@ tabs.addEventListener('tab-change', (e) => show(e.detail.tabId));
 |-----------|------|---------|-------------|
 | `size` | string | `md` | `sm` \| `md` |
 | `active-tab` | string | — | ID of the initially active tab |
+| `activation` | string | `manual` | `manual`: arrows move focus, Enter/Space select · `auto`: arrows also select |
+| `aria-label` | string | `Các thẻ` | Tablist name (`aria-labelledby` is forwarded too) |
 
-**Properties:** `tabs` (`{id, label, icon?}[]`), `onChange(tabId)` · **Events:** `tab-change` → `{ tabId }`
+**Properties:** `tabs` (`{id, label, icon?, panel?}[]` — `icon` is a registry name; a class list is deprecated; `panel`
+is an element id: td-tabs sets its `role="tabpanel"`, `aria-labelledby`, `hidden`, `tabindex` and restores them when it
+stops managing it), `onChange(tabId)` · **Events:** `tab-change` → `{ tabId }` (once per selection).
+**Keyboard:** ← → (wrap, RTL-aware), Home, End move focus; Enter/Space select. Roles `tablist`/`tab`, roving tabindex.
 
 ### `td-pagination` — `@dazzxq/td-components/pagination`
+
+> **Token-native (0.8.0):** needs `td.css`, no Tailwind. Internal classes changed — see [class map](migration/class-map.md).
+
 
 ```html
 <td-pagination total-items="240" items-per-page="20" current-page="1"></td-pagination>
@@ -377,13 +402,18 @@ tabs.addEventListener('tab-change', (e) => show(e.detail.tabId));
 | `total-items` | number | `0` | Total item count |
 | `items-per-page` | number | `10` | Page size |
 | `current-page` | number | `1` | Current page (1-based) |
-| `active-color` | string | `#ef4444` | Active page color |
+| `active-color` | string | `--td-pagination-active` (accent) | Current-page pill colour (text colour chosen for contrast) |
 | `item-label` | string | `mục` | Noun in the info text |
-| `max-pages` | number | `5` | Page buttons to show |
+| `max-pages` | number | `5` | Window of consecutive page numbers (first/last always shown) |
+| `aria-label` | string | `Phân trang` | Name of the `<nav>` landmark |
 
-**Events:** `page-change` → `{ page }`
+**Events:** `page-change` → `{ page }`. Page numbers are buttons with `aria-current="page"`; prev/next stay focusable
+with `aria-disabled`; focus is kept across page changes; `current-page` is clamped; the info line is `aria-live`.
 
 ### `td-empty-state` — `@dazzxq/td-components/empty-state`
+
+> **Token-native (0.8.0):** needs `td.css`, no Tailwind. Internal classes changed — see [class map](migration/class-map.md).
+
 
 ```html
 <td-empty-state title="No invoices yet" message="Create your first invoice." size="lg"></td-empty-state>
@@ -391,13 +421,15 @@ tabs.addEventListener('tab-change', (e) => show(e.detail.tabId));
 
 | Attribute | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `icon` | string | inbox SVG | SVG string or icon identifier |
+| `icon` | string | `inbox` | Icon registry name. A raw `<svg …>` string is **deprecated**: rendered only if it passes the geometry allowlist, else `inbox` + a warning |
 | `title` | string | `Không có dữ liệu` | Title text |
 | `message` | string | `Chưa có mục nào được tạo.` | Message text |
 | `size` | string | `md` | `sm` \| `md` \| `lg` |
 | `compact` | boolean | `false` | Reduced padding |
+| `heading-level` | number | `3` | Title heading level (2–6) |
 
-**Properties:** `actions` (`{label, variant?, onClick}[]`) — renders action buttons.
+**Properties:** `actions` (`{label, variant?: 'primary'|'secondary'|'danger', onClick}[]`) — `.td-btn` buttons (listeners
+replaced, not stacked, on reassignment); `iconNode` — a trusted `SVGElement` (cloned), the supported custom-icon hatch.
 
 ---
 

@@ -39,12 +39,17 @@ export class TdBaseElement extends HTMLElement {
       this._initialized = true;
       this._setupProperties();
       this._doRender();
+    } else if (this._needsRebind) {
+      // Moved/re-inserted: disconnect ran every cleanup (listeners, timers) → render again to re-bind.
+      this._needsRebind = false;
+      this._doRender();
     }
   }
 
   disconnectedCallback() {
     this._cleanups.forEach(fn => fn());
     this._cleanups = [];
+    if (this._initialized) this._needsRebind = true;
   }
 
   // --- Rendering ---

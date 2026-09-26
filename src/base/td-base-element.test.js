@@ -141,8 +141,22 @@ describe('TdBaseElement', () => {
       }
       const el = new TestEl();
       el.connectedCallback();
-      el.connectedCallback(); // simulates DOM move
+      el.connectedCallback(); // connect again without a disconnect: no duplicate render
       assert.equal(renderCount, 1);
+    });
+
+    it('re-renders once after disconnect → connect (DOM move) to re-bind listeners', () => {
+      let renderCount = 0;
+      class TestEl extends TdBaseElement {
+        render() { renderCount++; return '<p>test</p>'; }
+      }
+      const el = new TestEl();
+      el.connectedCallback();
+      el.disconnectedCallback();
+      el.connectedCallback();
+      assert.equal(renderCount, 2);
+      el.connectedCallback();
+      assert.equal(renderCount, 2);
     });
   });
 

@@ -2,6 +2,7 @@ import { expect } from '@esm-bundle/chai';
 import './td-checkbox.js';
 import './td-toggle.js';
 import './td-button.js';
+import './td-input-field.js';
 import { TdButton } from './td-button.js';
 import { TdLoading, TdLoadingSpinner } from '../feedback/td-loading.js';
 import { TdToast } from '../feedback/td-toast.js';
@@ -408,5 +409,28 @@ describe('batch 1 — review round 2', () => {
     expect(el.querySelectorAll('.td-field-error').length).to.equal(1);
     expect(el.querySelector('.td-field-error').id).to.equal('renamed-error');
     expect(el.querySelector('input').getAttribute('aria-errormessage')).to.equal('renamed-error');
+  });
+});
+
+describe('base — external label + reconnect', () => {
+  it('clicking an external <label for=host> focuses the inner control (and toggles checkables)', () => {
+    const wrap = mount('<div><label for="ext-f">Họ tên</label><td-input-field id="ext-f"></td-input-field>'
+      + '<label for="ext-c">Đồng ý</label><td-checkbox id="ext-c"></td-checkbox></div>');
+    wrap.querySelector('label[for="ext-f"]').click();
+    expect(document.activeElement === wrap.querySelector('#ext-f .td-field__control')).to.equal(true);
+    const cb = wrap.querySelector('#ext-c');
+    wrap.querySelector('label[for="ext-c"]').click();
+    expect(cb.hasAttribute('checked')).to.equal(true);
+    expect(document.activeElement === cb.querySelector('input')).to.equal(true);
+  });
+
+  it('a moved element keeps working (listeners re-bound on reconnect)', () => {
+    const cb = mount('<td-checkbox label="x"></td-checkbox>');
+    const other = mount('<div></div>');
+    other.appendChild(cb);
+    const got = [];
+    cb.addEventListener('change', (e) => got.push(e.detail));
+    cb.querySelector('input').click();
+    expect(got).to.deep.equal([{ checked: true }]);
   });
 });

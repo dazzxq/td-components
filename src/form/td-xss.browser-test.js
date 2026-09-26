@@ -51,10 +51,11 @@ describe('CSS-injection containment (color attributes)', () => {
   it('td-slider: breakout payload cannot inject an element or escape the style attr', () => {
     window.__xss = false;
     const el = mount(`<td-slider value="50" color='"><img src=x onerror="window.__xss=true">'></td-slider>`);
-    expect(el._getColor()).to.equal('#3b82f6');
+    expect(el._getColor()).to.equal('');
+    expect(el.style.getPropertyValue('--td-slider-color')).to.equal('');
     expect(el.querySelector('img')).to.equal(null);
     expect(window.__xss).to.equal(false);
-    expect(el.querySelector('.td-slider-thumb').getAttribute('style')).to.not.include('onerror');
+    expect(el.querySelector('.td-slider__thumb').hasAttribute('style')).to.equal(false);
   });
 
   it('td-button: malicious color falls back to variant styling', () => {

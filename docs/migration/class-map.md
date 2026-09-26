@@ -19,5 +19,29 @@ update their selectors using this table when upgrading. No legacy aliases are sh
 | td-loading | `.td-loading-card`, `.td-circular-spinner`, `.td-loading-message` | `.td-loading__card` (+ glass recipe), `.td-loading__spinner.td-spinner`, `.td-loading__message` | — | 0.7.0 |
 | td-loading | `.td-spinner-track/-arc/-arc-inline` | `.td-spinner__track` / `.td-spinner__arc` | — | 0.7.0 |
 | (all form controls) | — | `.td-field-error` (error contract note) | — | 0.7.0 |
+| td-input-field | `.td-input-field` / `.td-input-wrapper` | `.td-field.td-field--{size}[--textarea\|--editable]` (wrapper removed) | — | 0.8.0 |
+| td-input-field | `.td-input-label` (+ `span.text-red-500`) | `.td-field__label` (+ `.td-field__required[aria-hidden]`) | — | 0.8.0 |
+| td-input-field | `.td-input(.td-input-{type}\|-textarea\|-editable)` | `.td-field__control` | `:focus-visible`, `:disabled`, `[aria-invalid]`, `:placeholder-shown`, `:empty` | 0.8.0 |
+| td-input-field | `.td-placeholder` | removed (`:empty::before`) | `:empty` | 0.8.0 |
+| td-input-field | `.td-input-counter` | `.td-field__counter` (in `.td-field__footer`) | `[data-state="limit"]` (count ≥ max) | 0.8.0 |
+| td-input-field | `.td-input-note` | `.td-field__note` (helper) + `.td-field-error` (error) | `[aria-invalid]` | 0.8.0 |
+| td-slider | `.td-slider-container` | `.td-slider.td-slider--{size}` | `[data-dragging]` | 0.8.0 |
+| td-slider | `.td-slider-main-label` / `.td-slider-value-label` | `.td-slider__label` / `output.td-slider__value` | — | 0.8.0 |
+| td-slider | `.td-slider-wrap` + `.td-slider-track-container` | `.td-slider__control` | — | 0.8.0 |
+| td-slider | `.td-slider-track-bg` / `.td-slider-track-active` | `.td-slider__track` / `.td-slider__fill` | host `--td-slider-pct` | 0.8.0 |
+| td-slider | `.td-slider-thumb` / `.td-slider-input` | `.td-slider__thumb` / `.td-slider__input` | `:focus-visible ~`, `:disabled ~` | 0.8.0 |
+| td-slider | `.td-slider-step-marks/-mark/-mark-label`, `.td-slider-step-labels` | `.td-slider__marks/__mark/__mark-label`, `.td-slider__range` | — | 0.8.0 |
+| td-pagination | `.td-pagination-container` | `nav.td-pagination` | — | 0.8.0 |
+| td-pagination | `.td-pagination-info` | `.td-pagination__info` | — | 0.8.0 |
+| td-pagination | `.td-pagination-prev/-next` | `.td-pagination__nav--prev/--next` | `[aria-disabled]` | 0.8.0 |
+| td-pagination | `.td-pagination-pages`, `span[data-page]`, `span[data-active-page]` | `ul.td-pagination__pages`, `button.td-pagination__page[data-page]` | `[aria-current="page"]` | 0.8.0 |
+| td-pagination | ellipsis `span` | `li.td-pagination__ellipsis[aria-hidden]` | — | 0.8.0 |
+| td-tabs | `.td-tabs-container[data-populated]` | `.td-tabs.td-tabs--{sm\|md}[role=tablist]` | `data-state="empty\|ready"` | 0.8.0 |
+| td-tabs | `.td-tabs-indicator` | `.td-tabs__indicator` | `--td-tabs-ind-x/-w` on `.td-tabs` | 0.8.0 |
+| td-tabs | `.td-tab-btn` (+ gray text classes) | `.td-tabs__tab[role=tab]` (+ `__icon`, `__label`) | `[aria-selected]` | 0.8.0 |
+| td-empty-state | `.td-empty-state-card` | `.td-empty-state.td-empty-state--{size}[--compact]` | — | 0.8.0 |
+| td-empty-state | `.td-empty-icon-wrap` / `.td-empty-icon` | `.td-empty-state__icon` / `svg.td-icon` | — | 0.8.0 |
+| td-empty-state | `.td-empty-title` / `.td-empty-message` | `.td-empty-state__title` / `__message` | — | 0.8.0 |
+| td-empty-state | `.td-empty-actions` (+ Tailwind buttons) | `.td-empty-state__actions` (+ `.td-btn`) | `[hidden]` | 0.8.0 |
 
 State rule: JS never toggles visual classes; state lives in `aria-*`, `[hidden]`, `:checked`, `data-state`.
