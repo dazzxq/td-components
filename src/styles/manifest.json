@@ -6,6 +6,12 @@
     "theme-dark.css",
     "glass.css",
     "components/icon.css",
+    "components/field.css",
+    "components/spinner.css",
+    "components/button.css",
+    "components/checkbox.css",
+    "components/switch.css",
+    "components/loading.css",
     "components/lightbox.css",
     "utilities.css"
   ]

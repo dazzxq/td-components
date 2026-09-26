@@ -1,3 +1,4 @@
+import '../styles/story-layout.css';
 import './td-checkbox.js';
 
 export default {
@@ -17,14 +18,13 @@ export const Default = {
       ${args.checked ? 'checked' : ''}
       label="${args.label || ''}"
       size="${args.size || 'md'}"
-      color="${args.color || '#2196F3'}"
+      ${args.color ? `color="${args.color}"` : ''}
     ></td-checkbox>
   `,
   args: {
     checked: false,
     label: 'Accept terms',
     size: 'md',
-    color: '#2196F3',
   },
 };
 
@@ -46,4 +46,14 @@ export const LargeSize = {
 export const CustomColor = {
   ...Default,
   args: { ...Default.args, checked: true, color: '#10b981', label: 'Green checkbox' },
+};
+
+/** Error contract: `error-text` / setError() → aria-invalid + aria-errormessage + note. */
+export const WithError = {
+  render: () => `<td-checkbox label="Tôi đồng ý với điều khoản" error-text="Bạn cần chọn mục này để tiếp tục"></td-checkbox>`,
+};
+
+/** Unlabeled (named by aria-label); the hit area stays ≥ 24×24 (44 on touch). */
+export const AriaLabelOnly = {
+  render: () => `<div class="sb-row"><td-checkbox size="sm" aria-label="Chọn"></td-checkbox><td-checkbox aria-label="Chọn"></td-checkbox><td-checkbox size="lg" aria-label="Chọn" checked></td-checkbox></div>`,
 };

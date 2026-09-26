@@ -1,0 +1,12 @@
+<!-- TdLoading overlay + inline spinner contract. -->
+<template data-component="td-loading-overlay">
+  <div id="td-loading" class="td-loading" role="status" aria-live="polite">
+    <div class="td-loading__card td-glass-surface td-glass-surface--strong" tabindex="-1">
+      <span class="td-loading__spinner td-spinner td-spinner--lg" aria-hidden="true"><svg aria-hidden="true" class="td-spinner__svg"><circle class="td-spinner__track"></circle><circle class="td-spinner__arc"></circle></svg></span>
+      <p id="td-loading-message" class="td-loading__message">Đang tải...</p>
+    </div>
+  </div>
+</template>
+<template data-component="td-loading-spinner">
+  <span class="td-spinner td-spinner--md" aria-hidden="true"><svg aria-hidden="true" class="td-spinner__svg"><circle class="td-spinner__track"></circle><circle class="td-spinner__arc"></circle></svg></span>
+</template>

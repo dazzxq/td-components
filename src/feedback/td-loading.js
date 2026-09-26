@@ -1,338 +1,192 @@
-/**
- * TdLoading — Fullscreen loading overlay with Google-style circular spinner
- * TdLoadingSpinner — Inline spinner factory
- *
- * Static API: TdLoading.show(msg), TdLoading.hide(), TdLoading.wrap(fn)
- * Factory API: TdLoadingSpinner.create({size, color})
- *
- * Features:
- * - Fullscreen overlay with dark backdrop
- * - Google Material Design circular SVG spinner
- * - maxDuration auto-hide (default 30s)
- * - Async wrapper function
- * - Inline spinner for loading states
- * - prefers-reduced-motion support
- */
+import { lockScroll } from '../utils/scroll-lock.js';
+import { acquireInert } from '../utils/inert-lock.js';
 
+const LOADING_LAYER = 480; // --td-z-loading
 import { safeColor } from '../utils/css-safe.js';
-import { adoptStyles } from '../utils/adopt-styles.js';
 
 /**
- * Single constructable stylesheet for BOTH the overlay spinner and the inline factory
- * spinner — ANIMATION ENHANCEMENTS ONLY. Under a strict CSP (`default-src 'self';
- * style-src 'self'`, NO `unsafe-inline`) a JS-injected `<style>` element is BLOCKED, so
- * the previous injected `<style>` blocks would silently kill the `@keyframes`-driven
- * animation. `@keyframes`, the `animation:` shorthands that reference them, and the
- * `@media (prefers-reduced-motion)` overrides ARE expressible in a constructable
- * `CSSStyleSheet`, so ONLY those live here and are adopted into `document` LAZILY (from
- * `init()` / `create()`, never at module top-level).
+ * TdLoading — fullscreen blocking loading overlay + TdLoadingSpinner (inline). Token-native (needs td.css;
+ * no Tailwind). Styles: src/styles/components/loading.css + spinner.css.
  *
- * IMPORTANT (codex ISSUE-1): NO structural rules live in this sheet. The spinner's
- * load-bearing PAINT (`fill`/`stroke`/`stroke-width`/`stroke-linecap`/`stroke-dasharray`)
- * is applied via SVG PRESENTATION ATTRIBUTES on the `<circle>` elements, and the card +
- * spinner-container LAYOUT (display/flex/padding/size/radius/background/shadow/margins)
- * is applied via CSSOM (`element.style.*`) in `init()` / `create()`. Both paths are
- * CSP-safe and apply on EVERY browser — including those where `adoptStyles()` returns
- * `false` (SSR / pre-Chromium-73 / pre-Safari-16.4 / pre-Firefox-101). On such a browser
- * the spinner STILL renders STRUCTURALLY (correct paint + layout, visible); it merely
- * does not SPIN — that animation loss is the only acceptable degradation. The
- * documented adopt-styles contract ("only selector/keyframe embellishments degrade;
- * component still renders structurally") is therefore honoured.
+ * Overlay DOM contract:
+ *   <div id="td-loading" class="td-loading" role="status" aria-live="polite" hidden [data-state="open"]>
+ *     <div class="td-loading__card td-glass-surface td-glass-surface--strong" tabindex="-1">
+ *       <span class="td-loading__spinner td-spinner td-spinner--lg" aria-hidden="true">svg</span>
+ *       <p id="td-loading-message" class="td-loading__message">…</p>
+ *     </div>
+ *   </div>
  *
- * Keyframe names + the `.td-circular-spinner` / `.td-spinner-arc` / `.td-spinner-arc-inline`
- * selectors are kept STABLE so, under a supporting browser, rotation + dash animate
- * identically to the pre-CSP version (the CSP parity gate proves this under Chromium).
- *
- * @type {string}
+ * While shown: the card holds focus (previous focus restored after), `<body>` children except the overlay and
+ * `#td-toast-container` are `inert` (only what it set is restored), one scroll lease is held. Every exit path —
+ * `hide()`, max-duration auto-hide, the last concurrent `wrap()` settling — goes through one `_release()`.
  */
-const TD_LOADING_CSS = `
-.td-circular-spinner {
-    animation: td-spinner-rotate 1.4s linear infinite;
-}
 
-.td-spinner-arc {
-    animation: td-spinner-dash 1.4s ease-in-out infinite;
-}
+const SVG = '<svg class="td-spinner__svg" viewBox="0 0 50 50" aria-hidden="true" focusable="false">'
+  + '<circle class="td-spinner__track" cx="25" cy="25" r="20"></circle>'
+  + '<circle class="td-spinner__arc" cx="25" cy="25" r="20"></circle></svg>';
 
-@keyframes td-spinner-rotate {
-    100% { transform: rotate(360deg); }
-}
+const DEFAULT_MESSAGE = 'Đang tải...';
 
-@keyframes td-spinner-dash {
-    0% {
-        stroke-dasharray: 1, 150;
-        stroke-dashoffset: 0;
-    }
-    50% {
-        stroke-dasharray: 90, 150;
-        stroke-dashoffset: -35;
-    }
-    100% {
-        stroke-dasharray: 90, 150;
-        stroke-dashoffset: -124;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .td-circular-spinner {
-        animation: td-spinner-rotate 2.8s linear infinite;
-    }
-    .td-spinner-arc {
-        animation: none;
-        stroke-dasharray: 90, 150;
-        stroke-dashoffset: -35;
-    }
-}
-
-.td-spinner-arc-inline {
-    animation: td-inline-spinner-dash 1.4s ease-in-out infinite;
-}
-
-@keyframes td-inline-spinner-rotate {
-    100% { transform: rotate(360deg); }
-}
-
-@keyframes td-inline-spinner-dash {
-    0% {
-        stroke-dasharray: 1, 150;
-        stroke-dashoffset: 0;
-    }
-    50% {
-        stroke-dasharray: 90, 150;
-        stroke-dashoffset: -35;
-    }
-    100% {
-        stroke-dasharray: 90, 150;
-        stroke-dashoffset: -124;
-    }
-}
-`;
-
-/**
- * Fullscreen loading overlay utility.
- * Does NOT extend TdBaseElement — standalone static class.
- */
 export class TdLoading {
-    static element = null;
-    static _maxDurationTimer = null;
+  /** @type {HTMLElement|null} */
+  static element = null;
+  static _maxDurationTimer = null;
+  /** @private active session: { releaseScroll, inerted, savedFocus } | null */
+  static _active = null;
+  /** @private concurrent wrap() count of the current generation */
+  static _wrapCount = 0;
+  /** @private bumped by hide(): wraps from an older generation never touch the current one */
+  static _generation = 0;
 
-    /**
-     * Initialize the loading overlay element.
-     * Creates and appends to body on first call.
-     */
-    static init() {
-        if (TdLoading.element) return;
+  /** Build the overlay once (appended to <body>). */
+  static init() {
+    if (TdLoading.element && TdLoading.element.isConnected) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'td-loading';
+    overlay.className = 'td-loading';
+    overlay.setAttribute('role', 'status');
+    overlay.setAttribute('aria-live', 'polite');
+    overlay.hidden = true;
+    overlay.innerHTML = '<div class="td-loading__card td-glass-surface td-glass-surface--strong" tabindex="-1">'
+      + `<span class="td-loading__spinner td-spinner td-spinner--lg" aria-hidden="true">${SVG}</span>`
+      + '<p id="td-loading-message" class="td-loading__message"></p>'
+      + '</div>';
+    document.body.appendChild(overlay);
+    TdLoading.element = overlay;
+  }
 
-        // Adopt the spinner stylesheet (keyframes + selectors + reduced-motion) into the
-        // top-level document — CSP-safe replacement for the old injected <style>. Lazy +
-        // idempotent; degrades to a no-op (returns false) in SSR/old browsers.
-        adoptStyles(TD_LOADING_CSS, 'td-loading');
+  /**
+   * Show the overlay.
+   * @param {string|{message?: string, maxDuration?: number|false}} [messageOrOptions]
+   *   maxDuration defaults to 30000 ms (auto-hide safety net; false/0 disables).
+   */
+  static show(messageOrOptions = DEFAULT_MESSAGE) {
+    TdLoading.init();
+    let message = DEFAULT_MESSAGE;
+    let maxDuration = 30000;
+    if (typeof messageOrOptions === 'string') {
+      message = messageOrOptions; // verbatim (an explicit '' shows no text)
+    } else if (messageOrOptions && typeof messageOrOptions === 'object') {
+      message = messageOrOptions.message || DEFAULT_MESSAGE;
+      if ('maxDuration' in messageOrOptions) maxDuration = messageOrOptions.maxDuration;
+    }
+    const el = TdLoading.element;
+    const msgEl = el.querySelector('#td-loading-message');
+    if (msgEl) msgEl.textContent = message;
 
-        const overlay = document.createElement('div');
-        overlay.id = 'td-loading';
-        overlay.className = 'fixed inset-0 z-[99999] hidden flex items-center justify-center';
-        // CSSOM scalar (allowed under CSP) — NOT a declarative style= attribute.
-        overlay.style.cssText = 'background: rgba(0, 0, 0, 0.25);';
-
-        // STRUCTURE (codex ISSUE-1): the spinner's PAINT lives in SVG presentation
-        // ATTRIBUTES (`fill`/`stroke`/`stroke-width`/`stroke-linecap`/`stroke-dasharray`)
-        // and the card + container LAYOUT is applied via CSSOM below — both CSP-safe and
-        // applied on EVERY browser, including ones where `adoptStyles` returned false.
-        // Only the spin/dash ANIMATION (from the adopted sheet's `.td-circular-spinner` /
-        // `.td-spinner-arc` keyframe rules) is allowed to degrade on an ancient browser.
-        overlay.innerHTML = `
-            <div class="td-loading-card">
-                <div class="td-circular-spinner">
-                    <svg viewBox="0 0 50 50" width="100%" height="100%">
-                        <circle class="td-spinner-track" cx="25" cy="25" r="20"
-                            fill="none" stroke="rgba(59, 130, 246, 0.15)" stroke-width="4"></circle>
-                        <circle class="td-spinner-arc" cx="25" cy="25" r="20"
-                            fill="none" stroke="#3b82f6" stroke-width="4" stroke-linecap="round"
-                            stroke-dasharray="90, 150"></circle>
-                    </svg>
-                </div>
-                <p id="td-loading-message" class="td-loading-message">Đang tải...</p>
-            </div>
-        `;
-
-        // CARD + CONTAINER LAYOUT via CSSOM (CSP-safe; ALWAYS applies, sheet-independent).
-        // The `animation:` shorthand is intentionally NOT set here — it stays in the
-        // adopted sheet so the `@media (prefers-reduced-motion)` override can win, and so
-        // its loss (no spin) is the single acceptable degradation on an ancient browser.
-        const card = overlay.querySelector('.td-loading-card');
-        if (card) {
-            card.style.cssText =
-                'display: flex;' +
-                'flex-direction: column;' +
-                'align-items: center;' +
-                'padding: 32px 44px;' +
-                'border-radius: 20px;' +
-                'background: rgb(255, 255, 255);' +
-                'border: 1px solid rgba(0, 0, 0, 0.08);' +
-                'box-shadow: 0 24px 80px rgba(0, 0, 0, 0.15),' +
-                ' 0 8px 32px rgba(0, 0, 0, 0.1),' +
-                ' inset 0 1px 0 rgba(255, 255, 255, 0.9);';
-        }
-        const container = overlay.querySelector('.td-circular-spinner');
-        if (container) {
-            container.style.cssText =
-                'width: 56px;' +
-                'height: 56px;' +
-                'margin-bottom: 16px;';
-        }
-        const message = overlay.querySelector('#td-loading-message');
-        if (message) {
-            message.style.cssText =
-                'margin: 0;' +
-                'font-size: 15px;' +
-                'font-weight: 500;' +
-                'color: #374151;' +
-                'text-align: center;' +
-                'letter-spacing: -0.01em;';
-        }
-
-        document.body.appendChild(overlay);
-        TdLoading.element = overlay;
+    if (TdLoading._maxDurationTimer) {
+      clearTimeout(TdLoading._maxDurationTimer);
+      TdLoading._maxDurationTimer = null;
     }
 
-    /**
-     * Show loading overlay.
-     * @param {string|{message?: string, maxDuration?: number|false}} messageOrOptions
-     *   - String: loading message text
-     *   - Object: { message, maxDuration } where maxDuration defaults to 30000ms
-     */
-    static show(messageOrOptions = 'Đang tải...') {
-        if (!TdLoading.element) {
-            TdLoading.init();
-        }
-
-        let message = 'Đang tải...';
-        let maxDuration = 30000;
-
-        if (typeof messageOrOptions === 'string') {
-            message = messageOrOptions;
-        } else if (messageOrOptions && typeof messageOrOptions === 'object') {
-            message = messageOrOptions.message || 'Đang tải...';
-            if ('maxDuration' in messageOrOptions) {
-                maxDuration = messageOrOptions.maxDuration;
-            }
-        }
-
-        const messageEl = TdLoading.element.querySelector('#td-loading-message');
-        if (messageEl) messageEl.textContent = message;
-
-        // Clear any existing maxDuration timer
-        if (TdLoading._maxDurationTimer) {
-            clearTimeout(TdLoading._maxDurationTimer);
-            TdLoading._maxDurationTimer = null;
-        }
-
-        TdLoading.element.classList.remove('hidden');
-        // CSSOM scalar (allowed under CSP) — NOT a declarative style= attribute.
-        TdLoading.element.style.display = 'flex';
-
-        // Set auto-hide timer if maxDuration is enabled
-        if (maxDuration && maxDuration > 0) {
-            TdLoading._maxDurationTimer = setTimeout(() => {
-                console.warn('Loading auto-hidden after maxDuration (' + maxDuration + 'ms)');
-                TdLoading.hide();
-            }, maxDuration);
-        }
+    if (!TdLoading._active) {
+      const saved = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      TdLoading._active = {
+        releaseScroll: lockScroll(),
+        releaseInert: acquireInert([el], LOADING_LAYER), // shared, ref-counted with other overlays
+        savedFocus: saved,
+      };
+      el.hidden = false;
+      el.setAttribute('aria-busy', 'true');
+      requestAnimationFrame(() => {
+        if (!TdLoading._active) return;
+        el.setAttribute('data-state', 'open');
+      });
+      const card = el.querySelector('.td-loading__card');
+      if (card) card.focus({ preventScroll: true });
     }
 
-    /**
-     * Hide loading overlay.
-     */
-    static hide() {
-        if (TdLoading._maxDurationTimer) {
-            clearTimeout(TdLoading._maxDurationTimer);
-            TdLoading._maxDurationTimer = null;
-        }
-        if (TdLoading.element) {
-            TdLoading.element.classList.add('hidden');
-            // CSSOM scalar (allowed under CSP) — NOT a declarative style= attribute.
-            TdLoading.element.style.display = 'none';
-        }
+    if (maxDuration && maxDuration > 0) {
+      TdLoading._maxDurationTimer = setTimeout(() => {
+        console.warn(`Loading auto-hidden after maxDuration (${maxDuration}ms)`);
+        TdLoading.hide();
+      }, maxDuration);
     }
+  }
 
-    /**
-     * Wrap an async function with loading overlay.
-     * Shows loading before, hides after (even on error).
-     * @param {Function} asyncFn - Async function to execute
-     * @param {string} message - Loading message
-     * @returns {Promise<*>} Result of asyncFn
-     */
-    static async wrap(asyncFn, message = 'Đang tải...') {
-        try {
-            TdLoading.show(message);
-            return await asyncFn();
-        } finally {
-            TdLoading.hide();
-        }
+  /** Hide the overlay (also ends every pending wrap() count). */
+  static hide() {
+    TdLoading._wrapCount = 0;
+    TdLoading._generation += 1;
+    TdLoading._release();
+  }
+
+  /** @private Single exit path: restores inert, scroll and focus exactly once. */
+  static _release() {
+    if (TdLoading._maxDurationTimer) {
+      clearTimeout(TdLoading._maxDurationTimer);
+      TdLoading._maxDurationTimer = null;
     }
+    const active = TdLoading._active;
+    TdLoading._active = null;
+    const el = TdLoading.element;
+    if (el) {
+      el.hidden = true;
+      el.removeAttribute('data-state');
+      el.removeAttribute('aria-busy');
+    }
+    if (!active) return;
+    active.releaseInert();
+    active.releaseScroll();
+    const f = active.savedFocus;
+    if (f && f.isConnected && typeof f.focus === 'function') {
+      try { f.focus({ preventScroll: true }); } catch { /* ignore */ }
+    }
+  }
+
+  /**
+   * Run an async function under the overlay. Ref-counted: concurrent wraps keep the overlay until the LAST one
+   * settles (fulfilled or rejected). A direct hide() ends them all.
+   * @template T
+   * @param {() => Promise<T>} asyncFn
+   * @param {string} [message]
+   * @returns {Promise<T>}
+   */
+  static async wrap(asyncFn, message = DEFAULT_MESSAGE) {
+    const gen = TdLoading._generation;
+    TdLoading._wrapCount += 1;
+    TdLoading.show(message);
+    try {
+      return await asyncFn();
+    } finally {
+      // Only the generation this wrap joined; a hide() in between started a new one.
+      if (gen === TdLoading._generation && TdLoading._wrapCount > 0) {
+        TdLoading._wrapCount -= 1;
+        if (TdLoading._wrapCount === 0) TdLoading._release();
+      }
+    }
+  }
 }
 
-/**
- * Inline loading spinner factory.
- * Creates standalone spinner elements for inline use.
- */
+/** Inline spinner factory. */
 export class TdLoadingSpinner {
-    /**
-     * Create an inline loading spinner element.
-     * @param {Object} options - Spinner configuration
-     * @param {'sm'|'md'|'lg'} options.size - Spinner size (default 'md')
-     * @param {string} options.color - Spinner arc color (default '#3b82f6')
-     * @param {string} options.trackColor - Track color (default 'rgba(59, 130, 246, 0.15)')
-     * @param {string} options.className - Additional CSS classes
-     * @returns {HTMLElement} Spinner container element
-     */
-    static create(options = {}) {
-        const {
-            size = 'md',
-            color = '#3b82f6',
-            trackColor = 'rgba(59, 130, 246, 0.15)',
-            className = ''
-        } = options;
-
-        // Adopt the spinner stylesheet (keyframes for the rotate + dash animations the
-        // inline spinner references) — CSP-safe, lazy, idempotent. Shares the same sheet
-        // as the overlay via the 'td-loading' key.
-        adoptStyles(TD_LOADING_CSS, 'td-loading');
-
-        // Caller-provided colors land in SVG `stroke` presentation attributes via
-        // innerHTML — sanitize.
-        const safeColorValue = safeColor(color, '#3b82f6');
-        const safeTrackColor = safeColor(trackColor, 'rgba(59, 130, 246, 0.15)');
-
-        const sizes = {
-            sm: { width: 20, strokeWidth: 3 },
-            md: { width: 32, strokeWidth: 4 },
-            lg: { width: 48, strokeWidth: 5 }
-        };
-        const s = sizes[size] || sizes.md;
-
-        const container = document.createElement('div');
-        container.className = `td-spinner ${className}`.trim();
-        // CSSOM (allowed under CSP) — sets per-instance size scalars + the rotation
-        // animation. The referenced `td-inline-spinner-rotate` @keyframes lives in the
-        // adopted sheet (TD_LOADING_CSS), so this is CSP-safe.
-        container.style.cssText = `
-            display: inline-block;
-            width: ${s.width}px;
-            height: ${s.width}px;
-            animation: td-inline-spinner-rotate 1.4s linear infinite;
-        `;
-
-        // SVG attributes only — width/height/stroke/stroke-width/stroke-dasharray are
-        // PRESENTATION ATTRIBUTES (CSP-safe), not declarative style="…". The arc's dash
-        // animation comes from the `.td-spinner-arc-inline` class rule in the adopted sheet.
-        container.innerHTML = `
-            <svg viewBox="0 0 50 50" width="100%" height="100%">
-                <circle cx="25" cy="25" r="20" fill="none" stroke="${safeTrackColor}" stroke-width="${s.strokeWidth}"></circle>
-                <circle class="td-spinner-arc-inline" cx="25" cy="25" r="20" fill="none" stroke="${safeColorValue}" stroke-width="${s.strokeWidth}" stroke-linecap="round" stroke-dasharray="90,150"></circle>
-            </svg>
-        `;
-
-        return container;
+  /**
+   * @param {{ size?: 'sm'|'md'|'lg', color?: string, trackColor?: string, className?: string, label?: string }} [options]
+   *   `label` → role="status" + aria-label (meaningful); none → aria-hidden (decorative).
+   * @returns {HTMLElement}
+   */
+  static create(options = {}) {
+    const { size = 'md', color = '', trackColor = '', className = '', label = '' } = options;
+    const el = document.createElement('span');
+    const s = ['sm', 'md', 'lg'].includes(size) ? size : 'md';
+    el.className = `td-spinner td-spinner--${s}`;
+    if (typeof className === 'string') {
+      for (const c of className.split(/\s+/)) if (c) el.classList.add(c); // DOM class API: no HTML context
     }
+    const fg = safeColor(color, '');
+    const track = safeColor(trackColor, '');
+    if (fg) el.style.setProperty('--td-spinner-color', fg);
+    if (track) {
+      el.style.setProperty('--td-spinner-track', track);
+      el.setAttribute('data-track', '');
+    }
+    if (typeof label === 'string' && label.trim()) {
+      el.setAttribute('role', 'status');
+      el.setAttribute('aria-label', label.trim());
+    } else {
+      el.setAttribute('aria-hidden', 'true');
+    }
+    el.innerHTML = SVG; // constant markup, no interpolation
+    return el;
+  }
 }

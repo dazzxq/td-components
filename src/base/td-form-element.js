@@ -45,6 +45,13 @@ export class TdFormElement extends TdBaseElement {
     return ['name', 'disabled', 'required'];
   }
 
+  /**
+   * Opt-in error contract (setError/clearError/`error-text`). Subclasses that return true must also
+   * list `'error-text'` in their observedAttributes. td-input-field keeps its own until its migration.
+   * @returns {boolean}
+   */
+  static get errorContract() { return false; }
+
   /** @returns {string[]} Base boolean attributes. Subclasses must spread these in. */
   static get booleanAttributes() {
     return ['disabled', 'required'];
@@ -72,6 +79,8 @@ export class TdFormElement extends TdBaseElement {
     this._baseAnchor = undefined;
     /** @private Custom validity message (setCustomValidity), kept separate. */
     this._customMessage = '';
+    /** @private Runtime error (setError); null = use the `error-text` attribute. */
+    this._runtimeError = null;
   }
 
   connectedCallback() {
@@ -183,6 +192,71 @@ export class TdFormElement extends TdBaseElement {
     return this._focusTarget() ?? undefined;
   }
 
+  // --- Error contract (visual + a11y; constraint validity stays in setCustomValidity) ---
+
+  /**
+   * Show an error message for this control (aria-invalid + aria-errormessage + a text note).
+   * `setError('')` / `clearError()` clears it. A later `error-text` attribute value replaces it.
+   * @param {string} message
+   */
+  setError(message) {
+    if (!this.constructor.errorContract) return;
+    this._runtimeError = message ? String(message) : '';
+    this._applyErrorState();
+  }
+
+  /** Clear the error set by setError() or the `error-text` attribute. */
+  clearError() {
+    this.setError('');
+  }
+
+  /** @returns {string} the error currently shown ('' = none) */
+  get errorMessage() {
+    if (this._runtimeError != null) return this._runtimeError;
+    return this.getAttribute('error-text') || '';
+  }
+
+  /**
+   * Where the error note is placed (appended). Default: the host.
+   * @returns {HTMLElement}
+   * @protected
+   */
+  _errorHost() {
+    return this;
+  }
+
+  /** @protected Sync the note + aria on the focus target with the current error. */
+  _applyErrorState() {
+    if (!this.constructor.errorContract || !this._initialized) return;
+    const msg = this.errorMessage;
+    const target = this._focusTarget();
+    const id = `${this.id}-error`;
+    // Direct reference (no selector built from the id); a re-render detaches it → recreate.
+    let note = this._errorNote && this.contains(this._errorNote) ? this._errorNote : null;
+    if (msg) {
+      if (!note) {
+        note = document.createElement('span');
+        note.className = 'td-field-error';
+        this._errorHost().appendChild(note);
+        this._errorNote = note;
+      }
+      note.id = id;
+      note.setAttribute('data-for', this.id);
+      note.textContent = msg;
+      if (target) {
+        target.setAttribute('aria-invalid', 'true');
+        target.setAttribute('aria-errormessage', id);
+      }
+    } else {
+      if (note) note.remove();
+      this._errorNote = null;
+      if (target) {
+        target.removeAttribute('aria-invalid');
+        target.removeAttribute('aria-errormessage');
+      }
+    }
+  }
+
   // --- Defaults + reset (ISSUE-4) ---
 
   /**
@@ -195,9 +269,13 @@ export class TdFormElement extends TdBaseElement {
     this._defaultChecked = this.hasAttribute('checked');
   }
 
-  /** Restore live state to the captured defaults on form reset. */
+  /** Restore live state to the captured defaults on form reset (also clears a shown error). */
   formResetCallback() {
     this._restoreDefaults();
+    if (this.constructor.errorContract) {
+      this._runtimeError = '';
+      this._applyErrorState();
+    }
   }
 
   /**
@@ -255,6 +333,13 @@ export class TdFormElement extends TdBaseElement {
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
+    if (name === 'error-text' && this.constructor.errorContract) {
+      if (oldVal !== newVal) {
+        this._runtimeError = null; // the latest attribute value is the current intent
+        this._applyErrorState();
+      }
+      return; // no re-render needed
+    }
     if (name === 'disabled') {
       // Keep effective-disabled in sync, then fall through to the base re-render.
       this._effectiveDisabled = newVal !== null || this._ancestorDisabled;

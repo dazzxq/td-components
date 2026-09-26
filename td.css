@@ -86,6 +86,7 @@
 		--td-z-lightbox: 350; /* below modal/popover/toast: confirms + menus open ON TOP of the viewer */
 		--td-z-modal: 400;
 		--td-z-popover: 450;
+		--td-z-loading: 480; /* blocking overlay: above modal/popover, below toast */
 		--td-z-toast: 500;
 
 		/* ===== Motion ===== */
@@ -126,7 +127,28 @@
 		--td-control-fg: var(--td-gray-900);
 		--td-control-border: var(--td-gray-300);
 		--td-control-radius: var(--td-radius-md);
+		--td-control-border-strong: var(--td-gray-500); /* ≥ 3:1 non-text contrast on white (3.42:1) */
 		--td-touch-min: 44px; /* minimum hit target for touch controls */
+
+		/* ===== Buttons (content layer: SOLID, never glass — liquid-glass R1/R7) ===== */
+		--td-btn-radius: var(--td-radius-lg); /* capsule on coarse pointers (button.css) */
+		--td-btn-primary-bg: var(--td-accent);
+		--td-btn-primary-fg: var(--td-accent-contrast);
+		--td-btn-secondary-bg: var(--td-gray-100);
+		--td-btn-secondary-fg: var(--td-gray-900);
+		--td-btn-secondary-border: rgb(0 0 0 / 12%);
+		--td-btn-secondary-hover: var(--td-gray-200);
+
+		/* ===== Checkbox / switch (WCAG 1.4.11: boundaries ≥ 3:1) ===== */
+		--td-checkbox-color: var(--td-accent);
+		--td-checkbox-border: var(--td-control-border-strong);
+		--td-switch-on: #16a34a;       /* 3.3:1 vs white page; white thumb on it 3.3:1 */
+		--td-switch-off: var(--td-gray-100);
+		--td-switch-edge: var(--td-control-border-strong);
+		--td-switch-thumb: #fff;
+
+		/* ===== Form errors (error contract) ===== */
+		--td-field-error: var(--td-color-error);
 
 		/* ===== Icons (src/icons) ===== */
 		--td-icon-s: 1rem;
@@ -242,6 +264,14 @@
 		--td-control-bg: #1c1c1e;
 		--td-control-fg: #f5f5f7;
 		--td-control-border: #45454b;
+		--td-control-border-strong: #8a8a93;
+
+		--td-btn-primary-bg: #2563eb; /* white text 5.17:1 (the dark accent #3b82f6 would be 3.68:1) */
+		--td-btn-secondary-bg: #2c2c30;
+		--td-btn-secondary-fg: #f5f5f7;
+		--td-btn-secondary-border: rgb(255 255 255 / 12%);
+		--td-btn-secondary-hover: #3a3a3e;
+		--td-switch-off: #2c2c30;
 
 		--td-glass-bg: rgb(30 30 32 / 70%);            /* 64 % measured 4.61:1 → 70 % */
 		--td-glass-bg-strong: rgb(30 30 32 / 84%);
@@ -452,6 +482,635 @@
 	td-icon {
 		display: inline-flex;
 		line-height: 0;
+	}
+}
+
+/* ---- src/styles/components/field.css ---- */
+/* Error contract note (TdFormElement.setError / error-text) shared by form controls. */
+@layer td.component {
+	.td-field-error {
+		display: block;
+		margin-top: var(--td-space-2xs);
+		font-size: var(--td-text-xs);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-error);
+	}
+}
+
+/* ---- src/styles/components/spinner.css ---- */
+/*
+ * Shared spinner (.td-spinner): td-button loading, TdLoading overlay, TdLoadingSpinner.create().
+ * Colour: var(--td-spinner-color, currentColor); track: var(--td-spinner-track, 15% of the colour).
+ * Reduced motion: no rotation, arc pinned (still shows "busy"). Forced colours: CanvasText.
+ */
+@layer td.component {
+	.td-spinner {
+		--td-spinner-size: 2rem;
+
+		display: inline-block;
+		flex: 0 0 auto;
+		width: var(--td-spinner-size);
+		height: var(--td-spinner-size);
+		line-height: 0;
+		color: var(--td-spinner-color, currentColor);
+	}
+
+	.td-spinner--sm { --td-spinner-size: 1.25rem; }
+	.td-spinner--md { --td-spinner-size: 2rem; }
+	.td-spinner--lg { --td-spinner-size: 3rem; }
+
+	.td-spinner__svg {
+		display: block;
+		width: 100%;
+		height: 100%;
+		animation: td-spinner-rotate 1.4s linear infinite;
+	}
+
+	.td-spinner__track,
+	.td-spinner__arc {
+		fill: none;
+		stroke-width: 4;
+	}
+
+	.td-spinner__track {
+		stroke: var(--td-spinner-track, currentColor);
+		stroke-opacity: 0.18;
+	}
+
+	.td-spinner[data-track] .td-spinner__track {
+		stroke-opacity: 1;
+	}
+
+	.td-spinner__arc {
+		stroke: currentColor;
+		stroke-linecap: round;
+		stroke-dasharray: 90, 150;
+		stroke-dashoffset: 0;
+		animation: td-spinner-dash 1.4s ease-in-out infinite;
+	}
+
+	@keyframes td-spinner-rotate {
+		to { transform: rotate(360deg); }
+	}
+
+	@keyframes td-spinner-dash {
+		0% { stroke-dasharray: 1, 150; stroke-dashoffset: 0; }
+		50% { stroke-dasharray: 90, 150; stroke-dashoffset: -35; }
+		100% { stroke-dasharray: 90, 150; stroke-dashoffset: -124; }
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-spinner__svg,
+		.td-spinner__arc {
+			animation: none;
+		}
+
+		.td-spinner__arc {
+			stroke-dasharray: 90, 150;
+			stroke-dashoffset: -35;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-spinner {
+			color: CanvasText;
+		}
+	}
+}
+
+/* ---- src/styles/components/button.css ---- */
+/*
+ * td-button (src/form/td-button.js). Content layer → SOLID, never glass (liquid-glass R1/R7).
+ * The ONE primary action on a floating bar uses .td-glass-tint instead.
+ * State: :disabled (native) · [aria-busy="true"] (loading, focus kept) · :focus-visible.
+ * Per-instance colours: host custom properties --td-btn-bg / --td-btn-fg (+ .td-btn--custom).
+ */
+@layer td.component {
+	td-button {
+		display: inline-block;
+	}
+
+	td-button:has(.td-btn--full) {
+		display: block;
+	}
+
+	.td-btn[hidden] {
+		display: none;
+	}
+
+	.td-btn {
+		--td-btn-bg-v: var(--td-control-bg);
+		--td-btn-fg-v: var(--td-control-fg);
+		--td-btn-border-v: var(--td-control-border);
+
+		position: relative;
+		box-sizing: border-box;
+		display: inline-flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		justify-content: center;
+		min-height: 2.5rem;
+		padding: 0 1.25rem;
+		margin: 0;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-semibold);
+		line-height: 1.25;
+		color: var(--td-btn-fg-v);
+		white-space: nowrap;
+		cursor: pointer;
+		background: var(--td-btn-bg-v);
+		border: 1px solid var(--td-btn-border-v);
+		border-radius: var(--td-btn-radius);
+		transition:
+			background var(--td-dur-fast) var(--td-ease),
+			border-color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease),
+			transform 100ms var(--td-ease);
+		appearance: none;
+	}
+
+	.td-btn--sm { min-height: 2rem; padding: 0 0.85rem; font-size: var(--td-text-xs); }
+	.td-btn--lg { min-height: 3rem; padding: 0 1.6rem; font-size: var(--td-text-base); }
+	.td-btn--full { display: flex; width: 100%; }
+
+	.td-btn--primary {
+		--td-btn-bg-v: var(--td-btn-primary-bg);
+		--td-btn-fg-v: var(--td-btn-primary-fg);
+		--td-btn-border-v: var(--td-btn-primary-bg);
+	}
+
+	.td-btn--secondary {
+		--td-btn-bg-v: var(--td-btn-secondary-bg);
+		--td-btn-fg-v: var(--td-btn-secondary-fg);
+		--td-btn-border-v: var(--td-btn-secondary-border);
+	}
+
+	.td-btn--success { --td-btn-bg-v: var(--td-color-success); --td-btn-fg-v: var(--td-color-on-status); --td-btn-border-v: var(--td-color-success); }
+	.td-btn--danger { --td-btn-bg-v: var(--td-color-error); --td-btn-fg-v: var(--td-color-on-status); --td-btn-border-v: var(--td-color-error); }
+	.td-btn--warning { --td-btn-bg-v: var(--td-color-warning); --td-btn-fg-v: var(--td-color-on-status); --td-btn-border-v: var(--td-color-warning); }
+	.td-btn--info { --td-btn-bg-v: var(--td-color-info); --td-btn-fg-v: var(--td-color-on-status); --td-btn-border-v: var(--td-color-info); }
+
+	.td-btn--custom {
+		--td-btn-bg-v: var(--td-btn-bg);
+		--td-btn-fg-v: var(--td-btn-fg);
+		--td-btn-border-v: var(--td-btn-bg);
+	}
+
+	/* Hover never lowers text contrast: an overlay that darkens under light text (default) or lightens under
+	   dark text (custom colours set --td-btn-hover accordingly). Secondary uses its own lighter/darker fill. */
+	.td-btn:hover:not(:disabled, [aria-busy="true"]) {
+		background-image: linear-gradient(var(--td-btn-hover, rgb(0 0 0 / 12%)), var(--td-btn-hover, rgb(0 0 0 / 12%)));
+	}
+
+	.td-btn--secondary:hover:not(:disabled, [aria-busy="true"]) {
+		background: var(--td-btn-secondary-hover);
+		background-image: none;
+	}
+
+	.td-btn:active:not(:disabled, [aria-busy="true"]) {
+		transform: scale(var(--_td-glass-press, 0.98));
+	}
+
+	.td-btn:focus-visible {
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-btn:disabled {
+		cursor: not-allowed;
+		opacity: 0.55;
+	}
+
+	.td-btn__icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+
+	/* Loading: keep the size, hide the content, show the shared spinner. */
+	.td-btn[aria-busy="true"] {
+		cursor: progress;
+	}
+
+	.td-btn[aria-busy="true"] > .td-btn__label,
+	.td-btn[aria-busy="true"] > .td-btn__icon {
+		visibility: hidden;
+	}
+
+	.td-btn__spinner {
+		position: absolute;
+		inset: 0;
+		width: auto;
+		height: auto;
+		margin: auto;
+		--td-spinner-size: 1.1em;
+	}
+
+	.td-btn__spinner:not([hidden]) {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.td-btn__spinner .td-spinner__svg {
+		width: var(--td-spinner-size);
+		height: var(--td-spinner-size);
+	}
+
+	@media (pointer: coarse) {
+		.td-btn { min-height: var(--td-touch-min); border-radius: var(--td-radius-full); }
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-btn { transition: none; }
+		.td-btn:active:not(:disabled, [aria-busy="true"]) { transform: none; }
+	}
+
+	@media (forced-colors: active) {
+		.td-btn { border-color: ButtonText; }
+	}
+}
+
+/* ---- src/styles/components/checkbox.css ---- */
+/*
+ * td-checkbox (src/form/td-checkbox.js). Content-layer control: solid, never glass.
+ * State: :checked / :disabled / :focus-visible on .td-checkbox__input, [aria-invalid] for the error contract.
+ * Host custom property --td-checkbox-color (from the `color` attribute) overrides the token.
+ */
+@layer td.component {
+	td-checkbox {
+		display: inline-block;
+	}
+
+	.td-checkbox {
+		--td-checkbox-box: 1.25rem;
+
+		position: relative;
+		box-sizing: border-box;
+		display: inline-flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		justify-content: flex-start;
+		line-height: var(--td-leading-normal); /* own it: never inherit the host page's */
+		min-width: 24px;   /* hit target ≥ 24×24 for every size (WCAG 2.5.8) */
+		min-height: 24px;
+		font-family: var(--td-font-sans);
+		color: var(--td-control-fg);
+		cursor: pointer;
+		user-select: none;
+	}
+
+	.td-checkbox--sm { --td-checkbox-box: 1rem; font-size: var(--td-text-sm); }
+	.td-checkbox--md { font-size: var(--td-text-base); }
+	.td-checkbox--lg { --td-checkbox-box: 1.5rem; font-size: var(--td-text-md); }
+
+	/* Visually hidden, still focusable and form-native. */
+	.td-checkbox__input {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	.td-checkbox__mark {
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		width: var(--td-checkbox-box);
+		height: var(--td-checkbox-box);
+		color: var(--td-accent-contrast);
+		background: var(--td-control-bg);
+		border: 1.5px solid var(--td-checkbox-border);
+		border-radius: 6px;
+		line-height: 1;
+		transition:
+			background var(--td-dur-fast) var(--td-ease),
+			border-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-checkbox__icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+
+	.td-checkbox__svg {
+		width: calc(var(--td-checkbox-box) * 0.7);
+		height: calc(var(--td-checkbox-box) * 0.7);
+		stroke-width: 3;
+		opacity: 0;
+		transform: scale(0.85);
+		transition:
+			opacity var(--td-dur-fast) var(--td-ease),
+			transform var(--td-dur-base) var(--td-ease-spring);
+	}
+
+	.td-checkbox__input:checked ~ .td-checkbox__mark {
+		background: var(--td-checkbox-color);
+		border-color: var(--td-checkbox-color);
+	}
+
+	.td-checkbox__input:checked ~ .td-checkbox__mark .td-checkbox__svg {
+		opacity: 1;
+		transform: scale(1);
+	}
+
+	.td-checkbox__input:focus-visible ~ .td-checkbox__mark {
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-checkbox__input[aria-invalid="true"] ~ .td-checkbox__mark {
+		border-color: var(--td-field-error);
+	}
+
+	.td-checkbox:has(.td-checkbox__input:disabled) {
+		cursor: not-allowed;
+		opacity: 0.5;
+	}
+
+	.td-checkbox__label {
+		line-height: var(--td-leading-snug, 1.375);
+	}
+
+	@media (pointer: coarse) {
+		.td-checkbox {
+			min-width: var(--td-touch-min);
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-checkbox__mark,
+		.td-checkbox__svg {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-checkbox__mark {
+			border-color: ButtonText;
+		}
+
+		.td-checkbox__input:checked ~ .td-checkbox__mark {
+			color: HighlightText;
+			background: Highlight;
+			border-color: Highlight;
+		}
+	}
+}
+
+/* ---- src/styles/components/switch.css ---- */
+/*
+ * td-toggle → .td-switch (src/form/td-toggle.js; the 135 kit contract). Content-layer control: solid track;
+ * the knob only "lifts" while pressed ([data-dragging]), disabled under reduced motion.
+ * WCAG 1.4.11: on track --td-switch-on (#16a34a, 3.3:1 on white; white thumb on it 3.3:1); off track light
+ * fill + --td-switch-edge (gray-500, 3.42:1) border; the thumb carries the same edge while off.
+ * Host custom property --td-switch-on (from the `color` attribute) overrides the token.
+ */
+@layer td.component {
+	td-toggle {
+		display: inline-block;
+	}
+
+	.td-switch {
+		--td-switch-w: 2.75rem;
+		--td-switch-h: 1.5rem;
+		--td-switch-thumb-d: 1.125rem;
+		--td-switch-pad: calc((var(--td-switch-h) - var(--td-switch-thumb-d)) / 2);
+
+		position: relative;
+		display: inline-flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		min-width: 24px;   /* hit target ≥ 24×24 */
+		min-height: 24px;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: 1.4;
+		color: var(--td-control-fg);
+		cursor: pointer;
+		user-select: none;
+	}
+
+	.td-switch--sm {
+		--td-switch-w: 2.25rem;
+		--td-switch-h: 1.25rem;
+		--td-switch-thumb-d: 0.95rem;
+	}
+
+	.td-switch--lg {
+		--td-switch-w: 3.5rem;
+		--td-switch-h: 1.75rem;
+		--td-switch-thumb-d: 1.375rem;
+
+		font-size: var(--td-text-base);
+	}
+
+	.td-switch__input {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	.td-switch__track {
+		position: relative;
+		box-sizing: border-box;
+		display: inline-block;
+		flex: 0 0 auto;
+		width: var(--td-switch-w);
+		height: var(--td-switch-h);
+		background: var(--td-switch-off);
+		border: 1px solid var(--td-switch-edge);
+		border-radius: var(--td-radius-full);
+		transition:
+			background var(--td-dur-base) var(--td-ease),
+			border-color var(--td-dur-base) var(--td-ease);
+	}
+
+	.td-switch__thumb {
+		position: absolute;
+		top: 50%;
+		left: 0;
+		box-sizing: border-box;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: var(--td-switch-thumb-d);
+		height: var(--td-switch-thumb-d);
+		color: var(--td-control-muted, var(--td-gray-600));
+		background: var(--td-switch-thumb);
+		border: 1px solid var(--td-switch-edge);
+		border-radius: var(--td-radius-full);
+		box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
+		transform: translate(calc(var(--td-switch-pad) - 1px), -50%) scale(1);
+		transition:
+			transform var(--td-dur-base) var(--_td-glass-ease-flex, var(--td-glass-ease-flex)),
+			border-color var(--td-dur-base) var(--td-ease);
+	}
+
+	.td-switch__icon {
+		position: absolute;
+		display: inline-flex;
+		line-height: 0;
+		transition: opacity var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-switch__icon .td-icon {
+		width: calc(var(--td-switch-thumb-d) * 0.55);
+		height: calc(var(--td-switch-thumb-d) * 0.55);
+		stroke-width: 3;
+	}
+
+	.td-switch__icon--on {
+		color: var(--td-switch-on);
+		opacity: 0;
+	}
+
+	.td-switch__input:checked + .td-switch__track {
+		background: var(--td-switch-on);
+		border-color: var(--td-switch-on);
+	}
+
+	.td-switch__input:checked + .td-switch__track .td-switch__thumb {
+		border-color: transparent;
+		transform:
+			translate(calc(var(--td-switch-w) - var(--td-switch-thumb-d) - var(--td-switch-pad) - 1px), -50%)
+			scale(1);
+	}
+
+	.td-switch__input:checked + .td-switch__track .td-switch__icon--on { opacity: 1; }
+	.td-switch__input:checked + .td-switch__track .td-switch__icon--off { opacity: 0; }
+
+	/* Knob lift while pressed (glass only during interaction). */
+	.td-switch[data-dragging] .td-switch__thumb {
+		transform: translate(calc(var(--td-switch-pad) - 1px), -50%) scale(var(--_td-glass-lift-knob, var(--td-glass-lift-scale)));
+	}
+
+	.td-switch[data-dragging] .td-switch__input:checked + .td-switch__track .td-switch__thumb {
+		transform:
+			translate(calc(var(--td-switch-w) - var(--td-switch-thumb-d) - var(--td-switch-pad) - 1px), -50%)
+			scale(var(--_td-glass-lift-knob, var(--td-glass-lift-scale)));
+	}
+
+	.td-switch__input:focus-visible + .td-switch__track {
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-switch__input[aria-invalid="true"] + .td-switch__track {
+		border-color: var(--td-field-error);
+	}
+
+	.td-switch:has(.td-switch__input:disabled) {
+		cursor: not-allowed;
+		opacity: 0.5;
+	}
+
+	@media (pointer: coarse) {
+		.td-switch {
+			min-width: var(--td-touch-min);
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-switch__track,
+		.td-switch__thumb,
+		.td-switch__icon {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-switch__track {
+			border-color: CanvasText;
+		}
+
+		.td-switch__thumb {
+			background: CanvasText;
+			border-color: CanvasText;
+		}
+
+		.td-switch__input:checked + .td-switch__track {
+			background: Highlight;
+			border-color: Highlight;
+		}
+	}
+}
+
+/* ---- src/styles/components/loading.css ---- */
+/*
+ * TdLoading overlay (src/feedback/td-loading.js). Floating + text-bearing → Regular STRONG glass card over a
+ * plain scrim (liquid-glass R12; scrim not blurred). State: [hidden] · [data-state="open"] (fade).
+ */
+@layer td.component {
+	.td-loading {
+		position: fixed;
+		inset: 0;
+		z-index: var(--td-z-loading);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		line-height: var(--td-leading-normal); /* own it: never inherit the host page's */
+		background: var(--td-glass-scrim);
+		opacity: 0;
+		transition: opacity var(--td-dur-base) var(--td-ease);
+	}
+
+	.td-loading[hidden] {
+		display: none;
+	}
+
+	.td-loading[data-state="open"] {
+		opacity: 1;
+	}
+
+	.td-loading__card {
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-md);
+		align-items: center;
+		min-width: 12rem;
+		max-width: min(24rem, calc(100vw - 2 * var(--td-gutter)));
+		padding: var(--td-space-xl) 2.75rem;
+		border-radius: var(--td-glass-radius);
+		outline: none;
+	}
+
+	.td-loading__spinner {
+		color: var(--td-accent);
+	}
+
+	.td-loading__message {
+		margin: 0;
+		font-family: var(--td-font-sans);
+		font-size: 0.9375rem;
+		line-height: var(--td-leading-normal);
+		font-weight: var(--td-fw-medium);
+		color: var(--td-color-text);
+		text-align: center;
+		letter-spacing: -0.01em;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-loading { transition: none; }
 	}
 }
 

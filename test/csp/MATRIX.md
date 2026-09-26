@@ -1,3 +1,8 @@
+> **0.7.0 note:** td-button, td-checkbox, td-toggle and td-loading are **token-native** (`_meta.tokenNative` in
+> `matrix.json`). Their states/selectors below are historical; current selectors live in `matrix.json` and their
+> baselines are captured with `td.css` only (`node test/csp/capture-baseline.mjs <components…>`). The default run
+> serves td.css only for them, the `legacy+td` run serves Tailwind + td.css against the same baselines.
+
 # Per-component STATE MATRIX (Task 0B parity oracle)
 
 For every component with ≥1 CSP-blocking construct (see `INVENTORY.md`), this enumerates the

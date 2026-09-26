@@ -1,3 +1,4 @@
+import '../styles/story-layout.css';
 import './td-button.js';
 
 export default {
@@ -42,7 +43,7 @@ export const Default = {
 
 export const AllVariants = {
   render: () => `
-    <div class="flex flex-wrap items-center gap-3">
+    <div class="sb-row">
       <td-button variant="primary" label="Primary"></td-button>
       <td-button variant="secondary" label="Secondary"></td-button>
       <td-button variant="success" label="Success"></td-button>
@@ -60,7 +61,7 @@ export const Loading = {
 
 export const WithIcon = {
   ...Default,
-  args: { ...Default.args, icon: 'fas fa-edit', label: 'Edit' },
+  args: { ...Default.args, icon: 'download', label: 'Tải xuống' },
 };
 
 export const Disabled = {
@@ -76,4 +77,25 @@ export const FullWidth = {
 export const CustomColor = {
   ...Default,
   args: { ...Default.args, color: '#8b5cf6', label: 'Purple Button' },
+};
+
+/** Sizes; on touch screens every size grows to the 44px minimum and becomes a capsule. */
+export const Sizes = {
+  render: () => `
+    <div class="sb-row">
+      <td-button size="sm" label="Small"></td-button>
+      <td-button size="md" label="Medium"></td-button>
+      <td-button size="lg" label="Large"></td-button>
+    </div>
+  `,
+};
+
+/** Icon-only: pass aria-label (forwarded to the inner button). */
+export const IconOnly = {
+  render: () => `
+    <div class="sb-row">
+      <td-button variant="secondary" icon="close" aria-label="Đóng"></td-button>
+      <td-button variant="secondary" icon="more" aria-label="Thêm"></td-button>
+    </div>
+  `,
 };

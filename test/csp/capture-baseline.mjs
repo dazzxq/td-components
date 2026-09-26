@@ -47,9 +47,13 @@ function urlToFile(url) {
 
 async function fulfillFromDisk(route, request) {
   const url = request.url();
-  if (url === `${ORIGIN}/` || url === `${ORIGIN}/mount.html`) {
-    const html = `<!doctype html><html><head><meta charset="utf-8">` +
-      `<link rel="stylesheet" href="${ORIGIN}/fixture/tailwind.css">` +
+  const u = new URL(url);
+  if (u.pathname === '/' || u.pathname === '/mount.html') {
+    // ?profile=td → token-native components are captured with td.css ONLY (no Tailwind).
+    const css = u.searchParams.get('profile') === 'td'
+      ? `<link rel="stylesheet" href="${ORIGIN}/td.css">`
+      : `<link rel="stylesheet" href="${ORIGIN}/fixture/tailwind.css">`;
+    const html = `<!doctype html><html><head><meta charset="utf-8">` + css +
       `</head><body><div id="__mount"></div></body></html>`;
     return route.fulfill({ status: 200, contentType: 'text/html', body: html });
   }
@@ -74,7 +78,12 @@ const READ_FN = `(selector, props, fromBody) => {
 }`;
 
 /** Verify the fixture is live: the three sentinels must compute to expected values. */
-async function assertSentinels(page) {
+async function assertSentinels(page, profile = 'legacy') {
+  if (profile === 'td') {
+    const got = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--td-glass-radius').trim());
+    if (got !== '20px') throw new Error(`Sentinel check failed — td.css not live (--td-glass-radius = "${got}")`);
+    return [{ class: ':root (td.css)', prop: '--td-glass-radius', expected: '20px', got, ok: true }];
+  }
   const result = await page.evaluate(({ sentinels }) => {
     const mount = document.getElementById('__mount');
     const probe = document.createElement('div');
@@ -97,21 +106,22 @@ async function assertSentinels(page) {
   return result;
 }
 
-async function freshPage(browser, reducedMotion) {
+async function freshPage(browser, reducedMotion, profile = 'legacy') {
   const ctx = await browser.newContext(reducedMotion ? { reducedMotion: 'reduce' } : {});
   const page = await ctx.newPage();
   await page.route('**/*', (route, request) => fulfillFromDisk(route, request));
-  await page.goto(`${ORIGIN}/mount.html`, { waitUntil: 'load' });
+  await page.goto(`${ORIGIN}/mount.html${profile === 'td' ? '?profile=td' : ''}`, { waitUntil: 'load' });
   await page.evaluate(() => { window.__mount = document.getElementById('__mount'); });
   return { ctx, page };
 }
 
 async function captureState(browser, component, modulePath, state) {
   const reduced = !!state.reducedMotion;
-  const { ctx, page } = await freshPage(browser, reduced);
+  const profile = (MATRIX._meta.tokenNative || []).includes(component) ? 'td' : 'legacy';
+  const { ctx, page } = await freshPage(browser, reduced, profile);
   try {
     // Sentinel gate per fresh page — proves the fixture is live, not vacuous.
-    await assertSentinels(page);
+    await assertSentinels(page, profile);
 
     // Import the real source module (also defines static classes like TdModal/TdToast/TdLoading).
     await page.evaluate(async ({ origin, modulePath }) => {
@@ -163,10 +173,11 @@ async function captureState(browser, component, modulePath, state) {
     }
 
     // Record the sentinel proof + metadata alongside the snapshot.
-    const sentinelProof = await assertSentinels(page);
+    const sentinelProof = await assertSentinels(page, profile);
     const out = {
       _component: component,
       _state: state.state,
+      _profile: profile,
       _reducedMotion: reduced,
       _excludedProps: [...exclude],
       _sentinels: sentinelProof.map(s => ({ class: s.class, prop: s.prop, value: s.got })),
@@ -189,8 +200,11 @@ async function main() {
   const browser = await chromium.launch();
   const written = [];
   try {
+    // Optional filter: `node capture-baseline.mjs td-button td-checkbox` re-captures only those components.
+    const only = process.argv.slice(2);
     for (const [component, states] of Object.entries(MATRIX)) {
       if (component.startsWith('_')) continue;
+      if (only.length && !only.includes(component)) continue;
       const modulePath = MATRIX._meta.modules[component];
       if (!modulePath) throw new Error(`No module path for ${component} in matrix _meta.modules`);
       for (const state of states) {

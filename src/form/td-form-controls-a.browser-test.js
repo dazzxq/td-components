@@ -20,7 +20,7 @@ describe('td-checkbox (form-associated)', () => {
     const form = mount('<form><td-checkbox name="agree"></td-checkbox></form>');
     const el = form.querySelector('td-checkbox');
     expect(new FormData(form).get('agree')).to.equal(null);
-    el.querySelector('.td-checkbox-input').click();
+    el.querySelector('.td-checkbox__input').click();
     expect(el.hasAttribute('checked')).to.equal(true);
     expect(new FormData(form).get('agree')).to.equal('on');
   });
@@ -39,14 +39,14 @@ describe('td-checkbox (form-associated)', () => {
     form.addEventListener('submit', (e) => { e.preventDefault(); submitted = true; });
     form.requestSubmit();
     expect(submitted).to.equal(false);
-    el.querySelector('.td-checkbox-input').click();
+    el.querySelector('.td-checkbox__input').click();
     expect(el.checkValidity()).to.equal(true);
   });
 
   it('reset restores the default checked state', () => {
     const form = mount('<form><td-checkbox name="t" checked></td-checkbox></form>');
     const el = form.querySelector('td-checkbox');
-    el.querySelector('.td-checkbox-input').click(); // uncheck
+    el.querySelector('.td-checkbox__input').click(); // uncheck
     expect(new FormData(form).get('t')).to.equal(null);
     form.reset();
     expect(el.hasAttribute('checked')).to.equal(true);
@@ -113,39 +113,41 @@ describe('td-toggle (form-associated, uncontrolled by default)', () => {
     expect(new FormData(form).get('sw')).to.equal(null);
   });
 
-  // --- a11y: ARIA switch role + aria-checked sync (new) ---
+  // --- a11y (0.7.0): native <input type="checkbox" role="switch"> ---
 
-  it('exposes role="switch" with aria-checked reflecting state', () => {
+  it('exposes a native input with role="switch" whose checked state follows the attribute', () => {
     const el = mount('<td-toggle></td-toggle>');
-    const sw = el.querySelector('label[role="switch"]');
-    expect(sw).to.not.equal(null);
-    expect(sw.getAttribute('aria-checked')).to.equal('false');
+    const sw = el.querySelector('input[role="switch"]');
+    expect(sw !== null).to.equal(true);
+    expect(sw.checked).to.equal(false);
     el.setAttribute('checked', '');
-    expect(sw.getAttribute('aria-checked')).to.equal('true'); // synced without re-render
+    expect(sw.checked).to.equal(true); // synced without re-render
+    expect(el.querySelector('input[role="switch"]') === sw).to.equal(true);
     el.removeAttribute('checked');
-    expect(sw.getAttribute('aria-checked')).to.equal('false');
+    expect(sw.checked).to.equal(false);
   });
 
   it('reflects a `checked` attribute present at mount', () => {
     const el = mount('<td-toggle checked></td-toggle>');
-    expect(el.querySelector('label[role="switch"]').getAttribute('aria-checked')).to.equal('true');
+    expect(el.querySelector('input[role="switch"]').checked).to.equal(true);
   });
 
-  it('is keyboard-operable: Space toggles it', () => {
+  it('activation (what Space triggers; trusted Space is covered in td-batch1) toggles it once', () => {
     const form = mount('<form><td-toggle name="sw"></td-toggle></form>');
     const el = form.querySelector('td-toggle');
-    let detail = null;
-    el.addEventListener('change', (e) => { detail = e.detail; });
-    const sw = el.querySelector('label[role="switch"]');
-    sw.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    const events = [];
+    el.addEventListener('change', (e) => { events.push(e.detail); });
+    const sw = el.querySelector('input[role="switch"]');
+    sw.focus();
+    sw.click(); // what Space does on a focused checkbox
     expect(el.hasAttribute('checked')).to.equal(true);
-    expect(detail).to.deep.equal({ checked: true });
-    expect(sw.getAttribute('aria-checked')).to.equal('true');
+    expect(events).to.deep.equal([{ checked: true }]);
+    expect(document.activeElement === sw).to.equal(true); // focus kept (no re-render)
   });
 
-  it('disabled toggle is removed from the tab order', () => {
+  it('disabled toggle uses a natively disabled input (out of the tab order)', () => {
     const el = mount('<td-toggle disabled></td-toggle>');
-    expect(el.querySelector('label[role="switch"]').getAttribute('tabindex')).to.equal('-1');
+    expect(el.querySelector('input[role="switch"]').disabled).to.equal(true);
   });
 });
 

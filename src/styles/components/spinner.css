@@ -1,0 +1,79 @@
+/*
+ * Shared spinner (.td-spinner): td-button loading, TdLoading overlay, TdLoadingSpinner.create().
+ * Colour: var(--td-spinner-color, currentColor); track: var(--td-spinner-track, 15% of the colour).
+ * Reduced motion: no rotation, arc pinned (still shows "busy"). Forced colours: CanvasText.
+ */
+@layer td.component {
+	.td-spinner {
+		--td-spinner-size: 2rem;
+
+		display: inline-block;
+		flex: 0 0 auto;
+		width: var(--td-spinner-size);
+		height: var(--td-spinner-size);
+		line-height: 0;
+		color: var(--td-spinner-color, currentColor);
+	}
+
+	.td-spinner--sm { --td-spinner-size: 1.25rem; }
+	.td-spinner--md { --td-spinner-size: 2rem; }
+	.td-spinner--lg { --td-spinner-size: 3rem; }
+
+	.td-spinner__svg {
+		display: block;
+		width: 100%;
+		height: 100%;
+		animation: td-spinner-rotate 1.4s linear infinite;
+	}
+
+	.td-spinner__track,
+	.td-spinner__arc {
+		fill: none;
+		stroke-width: 4;
+	}
+
+	.td-spinner__track {
+		stroke: var(--td-spinner-track, currentColor);
+		stroke-opacity: 0.18;
+	}
+
+	.td-spinner[data-track] .td-spinner__track {
+		stroke-opacity: 1;
+	}
+
+	.td-spinner__arc {
+		stroke: currentColor;
+		stroke-linecap: round;
+		stroke-dasharray: 90, 150;
+		stroke-dashoffset: 0;
+		animation: td-spinner-dash 1.4s ease-in-out infinite;
+	}
+
+	@keyframes td-spinner-rotate {
+		to { transform: rotate(360deg); }
+	}
+
+	@keyframes td-spinner-dash {
+		0% { stroke-dasharray: 1, 150; stroke-dashoffset: 0; }
+		50% { stroke-dasharray: 90, 150; stroke-dashoffset: -35; }
+		100% { stroke-dasharray: 90, 150; stroke-dashoffset: -124; }
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-spinner__svg,
+		.td-spinner__arc {
+			animation: none;
+		}
+
+		.td-spinner__arc {
+			stroke-dasharray: 90, 150;
+			stroke-dashoffset: -35;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-spinner {
+			color: CanvasText;
+		}
+	}
+}

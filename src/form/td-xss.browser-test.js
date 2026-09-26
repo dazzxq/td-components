@@ -1,5 +1,6 @@
 import { expect } from '@esm-bundle/chai';
 import './td-checkbox.js';
+import './td-toggle.js';
 import './td-slider.js';
 import './td-button.js';
 import './td-input-field.js';
@@ -25,20 +26,26 @@ const CSS_PAYLOAD = 'red;} html{display:none} .x{color:';
 const HTML_PAYLOAD = '<img src=x onerror="window.__xss=true">';
 
 describe('CSS-injection containment (color attributes)', () => {
-  it('td-checkbox: malicious color falls back; CSSOM custom property has no payload', () => {
+  it('td-checkbox: malicious color is dropped (token default applies); no payload in CSSOM', () => {
     const el = mount(`<td-checkbox color="${CSS_PAYLOAD}"></td-checkbox>`);
-    expect(el._getColor()).to.equal('#2196F3');
-    // Checked color now flows via CSSOM into the host custom property (no injected <style>).
-    // setProperty parses a single CSS value, so a `;}`-breakout payload is dropped entirely.
-    const cssVar = el.style.getPropertyValue('--td-cb-color').trim();
-    expect(cssVar).to.equal('#2196F3');
-    expect(cssVar).to.not.include('display:none');
+    expect(el._getColor()).to.equal('');
+    const cssVar = el.style.getPropertyValue('--td-checkbox-color').trim();
+    expect(cssVar).to.equal('');
+    expect(el.getAttribute('style') || '').to.not.include('display:none');
   });
 
   it('td-checkbox: a valid hex still works', () => {
     const el = mount('<td-checkbox color="#10b981"></td-checkbox>');
     expect(el._getColor()).to.equal('#10b981');
-    expect(el.style.getPropertyValue('--td-cb-color').trim()).to.equal('#10b981');
+    expect(el.style.getPropertyValue('--td-checkbox-color').trim()).to.equal('#10b981');
+  });
+
+  it('td-toggle / td-button: malicious colours never reach CSSOM', () => {
+    const t = mount(`<td-toggle color="${CSS_PAYLOAD}"></td-toggle>`);
+    expect(t.style.getPropertyValue('--td-switch-on')).to.equal('');
+    const b = mount(`<td-button color="${CSS_PAYLOAD}" text-color="${CSS_PAYLOAD}">x</td-button>`);
+    expect(b.style.getPropertyValue('--td-btn-bg')).to.equal('');
+    expect(b.querySelector('button').className).to.not.include('td-btn--custom');
   });
 
   it('td-slider: breakout payload cannot inject an element or escape the style attr', () => {

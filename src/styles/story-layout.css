@@ -1,0 +1,5 @@
+/* Storybook-only layout helpers for token-native stories (NOT part of td.css). */
+.sb-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-family: var(--td-font-sans); }
+.sb-col { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.sb-stack { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; font-family: var(--td-font-sans); }
+.sb-note { margin: 8px 0 0; font: 13px/1.5 var(--td-font-sans); color: var(--td-color-text-muted); }

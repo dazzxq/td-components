@@ -1,0 +1,10 @@
+/* Error contract note (TdFormElement.setError / error-text) shared by form controls. */
+@layer td.component {
+	.td-field-error {
+		display: block;
+		margin-top: var(--td-space-2xs);
+		font-size: var(--td-text-xs);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-error);
+	}
+}

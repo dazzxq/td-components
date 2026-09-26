@@ -1,303 +1,275 @@
 import { TdBaseElement } from '../base/td-base-element.js';
-import { applyStyles } from '../utils/css-safe.js';
+import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
+
+const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning'];
+const SIZES = ['sm', 'md', 'lg'];
+const TYPES = ['submit', 'reset', 'button'];
+const CLASS_TOKEN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
+const _contrastCache = new Map();
+/** input string → parsed colour | null (one engine probe per distinct colour, invalid ones included) */
+const _parseCache = new Map();
 
 /**
- * Button component with glass styling, 6 variants, loading state, and icon support.
+ * Button — token-native (needs td.css; no Tailwind). Styles: src/styles/components/button.css.
+ * Content-layer control: SOLID fills, never glass (docs/design/liquid-glass.md R1/R7); status variants
+ * use the semantic colour tokens (all ≥ 4.5:1 with their text).
+ *
+ * DOM contract:
+ *   <button class="td-btn td-btn--{variant} td-btn--{size}[ td-btn--full][ td-btn--custom]" type="…">
+ *     [<span class="td-btn__icon" data-td-icon="name">svg</span>]<span class="td-btn__label">…</span>
+ *     <span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden>…</span>
+ *   </button>
+ * Loading = `aria-busy="true"` + `aria-disabled="true"` on the button (focus kept, clicks swallowed);
+ * `disabled` = native disabled. Both update in place (no re-render → focus is not lost).
  *
  * @element td-button
- * @attr {string} variant - Style variant: primary | secondary | success | danger | info | warning (default: primary)
- * @attr {string} size - Size: sm | md | lg (default: md)
- * @attr {string} icon - Icon CSS class (e.g. "fas fa-edit")
- * @attr {string} icon-position - Icon position: left | right (default: left)
- * @attr {boolean} loading - Shows spinner and disables button
- * @attr {boolean} disabled - Disables button
- * @attr {boolean} full-width - Makes button full width
- * @attr {string} color - Custom background color (overrides variant)
- * @attr {string} text-color - Custom text color (auto-calculated if not set)
- * @attr {string} label - Button text (alternative to textContent)
- * @attr {string} type - Inner button type: button | submit | reset (default: button, whitelisted)
- * @fires click - When clicked, detail: {}
+ * @attr {string} variant - primary | secondary | success | danger | info | warning (default: primary)
+ * @attr {string} size - sm | md | lg (default: md)
+ * @attr {string} icon - Icon registry name (e.g. "download"). DEPRECATED: any other value is treated as a
+ *   legacy class list (e.g. Font Awesome "fas fa-edit") rendered as `<i aria-hidden="true">`.
+ * @attr {string} icon-position - left | right (default: left)
+ * @attr {boolean} loading - Busy state (aria-busy), keeps focus
+ * @attr {boolean} disabled - Native disabled
+ * @attr {boolean} full-width
+ * @attr {string} color - Custom background (safeColor) — overrides the variant
+ * @attr {string} text-color - Custom text colour (default: black/white by WCAG contrast)
+ * @attr {string} label - Button text (else the element's initial text)
+ * @attr {string} type - button | submit | reset (default: button, whitelisted)
+ * @attr {string} aria-label - Forwarded to the inner button (icon-only buttons)
  */
 export class TdButton extends TdBaseElement {
   static get observedAttributes() {
-    return ['variant', 'size', 'icon', 'icon-position', 'loading', 'disabled', 'full-width', 'color', 'text-color', 'label', 'type'];
+    return ['variant', 'size', 'icon', 'icon-position', 'loading', 'disabled', 'full-width', 'color', 'text-color', 'label', 'type', 'aria-label'];
   }
+
   static get booleanAttributes() { return ['loading', 'disabled', 'full-width']; }
 
-  /** @private */
-  static _glassStyles = {
-    primary: {
-      background: 'rgba(31, 41, 55, 0.85)',
-      backdropFilter: 'blur(8px)',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.10), 0 4px 12px rgba(31, 41, 55, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.10)',
-      hoverBoxShadow: '0 2px 6px rgba(0, 0, 0, 0.12), 0 8px 20px rgba(31, 41, 55, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
-    },
-    secondary: {
-      background: 'rgba(0, 0, 0, 0.04)',
-      backdropFilter: 'blur(8px)',
-      boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 1px 2px rgba(0, 0, 0, 0.05)',
-      hoverBoxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 2px 4px rgba(0, 0, 0, 0.08)',
-    },
-    success: {
-      background: 'rgba(34, 197, 94, 0.85)',
-      backdropFilter: 'blur(8px)',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.10), 0 4px 12px rgba(34, 197, 94, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.25)',
-      hoverBoxShadow: '0 2px 6px rgba(0, 0, 0, 0.12), 0 8px 20px rgba(34, 197, 94, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.30)',
-    },
-    danger: {
-      background: 'rgba(239, 68, 68, 0.85)',
-      backdropFilter: 'blur(8px)',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.10), 0 4px 12px rgba(239, 68, 68, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.22)',
-      hoverBoxShadow: '0 2px 6px rgba(0, 0, 0, 0.12), 0 8px 20px rgba(239, 68, 68, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.28)',
-    },
-    info: {
-      background: 'rgba(59, 130, 246, 0.85)',
-      backdropFilter: 'blur(8px)',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.10), 0 4px 12px rgba(59, 130, 246, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.25)',
-      hoverBoxShadow: '0 2px 6px rgba(0, 0, 0, 0.12), 0 8px 20px rgba(59, 130, 246, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.30)',
-    },
-    warning: {
-      background: 'rgba(249, 115, 22, 0.85)',
-      backdropFilter: 'blur(8px)',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.10), 0 4px 12px rgba(249, 115, 22, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.25)',
-      hoverBoxShadow: '0 2px 6px rgba(0, 0, 0, 0.12), 0 8px 20px rgba(249, 115, 22, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.30)',
-    },
-  };
+  /**
+   * Parse a colour to RGBA. In a browser, any CSS colour is resolved through a temporary probe
+   * (appended, read, removed synchronously; cached). Without a DOM: hex (3/4/6/8) and rgb()/rgba().
+   * @param {string} color
+   * @returns {{ r: number, g: number, b: number, a: number } | null}
+   */
+  static _parseColor(color) {
+    if (!color || typeof color !== 'string') return null;
+    const key = color.trim();
+    if (_parseCache.has(key)) return _parseCache.get(key);
+    const parsed = TdButton._parseColorUncached(key);
+    if (_parseCache.size > 500) _parseCache.clear(); // bounded
+    _parseCache.set(key, parsed);
+    return parsed;
+  }
 
   /** @private */
-  static _variantClasses = {
-    primary: 'text-white focus:ring-gray-500/30 border border-white/[0.1] active:scale-[0.98] active:duration-100',
-    secondary: 'text-gray-700 border border-black/[0.12] hover:bg-black/[0.06] focus:ring-gray-500/20 active:scale-[0.98] active:duration-100',
-    success: 'text-white focus:ring-green-500/30 border border-white/[0.15] active:scale-[0.98] active:duration-100',
-    danger: 'text-white focus:ring-red-500/30 border border-white/[0.15] active:scale-[0.98] active:duration-100',
-    info: 'text-white focus:ring-blue-500/30 border border-white/[0.15] active:scale-[0.98] active:duration-100',
-    warning: 'text-white focus:ring-orange-400/30 border border-white/[0.15] active:scale-[0.98] active:duration-100',
-  };
+  static _parseColorUncached(color) {
+    const hex = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(color.trim());
+    if (hex) {
+      let h = hex[1];
+      if (h.length <= 4) h = [...h].map((c) => c + c).join('');
+      const c = {
+        r: parseInt(h.slice(0, 2), 16),
+        g: parseInt(h.slice(2, 4), 16),
+        b: parseInt(h.slice(4, 6), 16),
+        a: h.length === 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1,
+      };
+      c.css = c.a < 1 ? `rgba(${c.r}, ${c.g}, ${c.b}, ${+c.a.toFixed(3)})` : `rgb(${c.r}, ${c.g}, ${c.b})`;
+      return c;
+    }
+    let resolved = color.trim();
+    // In a browser EVERY colour (incl. rgb()/rgba() with %, hsl, named…) is normalised by the engine.
+    if (typeof document !== 'undefined' && document.documentElement) {
+      const probe = document.createElement('span');
+      probe.style.setProperty('color', resolved);
+      if (!probe.style.getPropertyValue('color')) return null; // not a valid colour
+      document.documentElement.appendChild(probe);
+      resolved = getComputedStyle(probe).color;
+      probe.remove();
+    }
+    const m = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:[\s,/]+([\d.]+%?))?\s*\)$/i.exec(resolved);
+    if (!m) return null;
+    let a = 1;
+    if (m[4] != null) a = m[4].endsWith('%') ? parseFloat(m[4]) / 100 : parseFloat(m[4]);
+    const out = { r: +m[1], g: +m[2], b: +m[3], a };
+    out.css = a < 1 ? `rgba(${out.r}, ${out.g}, ${out.b}, ${a})` : `rgb(${out.r}, ${out.g}, ${out.b})`;
+    return out;
+  }
 
-  /** @private */
-  static _sizeClasses = {
-    sm: 'px-3 py-1.5 text-xs',
-    md: 'px-5 py-2.5 text-sm',
-    lg: 'px-6 py-3 text-base',
-  };
+  /** @param {{r:number,g:number,b:number}} c @returns {number} WCAG relative luminance */
+  static _luminance({ r, g, b }) {
+    const lin = (v) => {
+      const s = v / 255;
+      return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  }
 
   /**
-   * Get contrast color (black or white) for a given background.
-   * @param {string} color - Hex color string
-   * @returns {string} '#000000' or '#ffffff'
+   * Black or white text for a background, by the higher WCAG contrast ratio. Translucent colours are
+   * composited over white (pass `text-color` for translucent backgrounds on other surfaces).
+   * @param {string} color
+   * @returns {'#000000'|'#ffffff'}
    */
   static _getContrastColor(color) {
-    const rgb = TdButton._hexToRgb(color);
-    if (!rgb) return '#ffffff';
-    const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
-    return luminance > 0.5 ? '#000000' : '#ffffff';
+    if (_contrastCache.has(color)) return _contrastCache.get(color);
+    const c = TdButton._parseColor(color);
+    let out = '#ffffff';
+    if (c) {
+      const over = (v) => v * c.a + 255 * (1 - c.a);
+      const L = TdButton._luminance({ r: over(c.r), g: over(c.g), b: over(c.b) });
+      const withBlack = (L + 0.05) / 0.05;
+      const withWhite = 1.05 / (L + 0.05);
+      out = withBlack >= withWhite ? '#000000' : '#ffffff';
+    }
+    if (_contrastCache.size > 500) _contrastCache.clear(); // bounded, like _parseCache
+    _contrastCache.set(color, out);
+    return out;
+  }
+
+  /** Back-compat alias (≤ 0.6): hex/rgb → {r,g,b} | null. */
+  static _hexToRgb(hex) {
+    const c = TdButton._parseColor(hex);
+    return c ? { r: c.r, g: c.g, b: c.b } : null;
+  }
+
+  /** @private Visible text; '' for an icon-only button (icon + aria-label, no text). */
+  _getButtonText() {
+    const text = this.getAttribute('label') || this._originalText;
+    if (text) return text;
+    if (this.getAttribute('icon') && this.getAttribute('aria-label')) return '';
+    return 'Button';
   }
 
   /**
-   * Convert hex color to RGB object.
-   * @param {string} hex - Color string (hex or named)
-   * @returns {{ r: number, g: number, b: number } | null}
+   * @private The custom colour NORMALISED to rgb()/rgba() (contextual values such as currentColor are
+   * resolved once, not re-evaluated inside the button). '' when absent/unsafe/unresolvable.
    */
-  static _hexToRgb(hex) {
-    if (!hex) return null;
-    if (hex.startsWith('#')) {
-      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-      return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
-      } : null;
-    }
-    // For non-hex colors, attempt basic parsing
-    const match = hex.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
-    if (match) {
-      return { r: parseInt(match[1]), g: parseInt(match[2]), b: parseInt(match[3]) };
-    }
-    return null;
-  }
-
-  /** @private */
-  _getButtonText() {
-    return this.getAttribute('label') || this._originalText || 'Button';
+  _customColor() {
+    const c = this.safeColor(this.getAttribute('color'), '');
+    const parsed = c ? TdButton._parseColor(c) : null;
+    return parsed ? parsed.css : '';
   }
 
   connectedCallback() {
-    // Capture textContent before first render overwrites it
-    if (!this._originalText) {
-      const text = this.textContent.trim();
-      this._originalText = text || '';
-    }
+    if (this._originalText === undefined) this._originalText = (this.textContent || '').trim();
+    // Custom colours go on the host BEFORE the first render, else the new button's background/border would
+    // transition from transparent on first paint. Later renders use the base post-render _applyStyles().
+    if (!this._initialized) this._applyStyles();
     super.connectedCallback();
   }
 
-  /**
-   * Set loading state programmatically.
-   * @param {boolean} isLoading
-   */
+  /** @param {boolean} isLoading */
   setLoading(isLoading) {
-    if (isLoading) {
-      this.setAttribute('loading', '');
-    } else {
-      this.removeAttribute('loading');
-    }
+    if (isLoading) this.setAttribute('loading', '');
+    else this.removeAttribute('loading');
   }
 
-  /**
-   * Set disabled state programmatically.
-   * @param {boolean} isDisabled
-   */
+  /** @param {boolean} isDisabled */
   setDisabled(isDisabled) {
-    if (isDisabled) {
-      this.setAttribute('disabled', '');
-    } else {
-      this.removeAttribute('disabled');
+    if (isDisabled) this.setAttribute('disabled', '');
+    else this.removeAttribute('disabled');
+  }
+
+  /** @private */
+  _iconMarkup(icon) {
+    if (!icon) return '';
+    if (hasIcon(icon)) {
+      return `<span class="td-btn__icon" data-td-icon="${this.escapeHtml(icon)}" data-td-icon-size="s" aria-hidden="true"></span>`;
     }
+    const classes = icon.split(/\s+/).filter((c) => CLASS_TOKEN.test(c)).join(' ');
+    if (!classes) return '';
+    return `<span class="td-btn__icon" aria-hidden="true"><i class="${this.escapeHtml(classes)}" aria-hidden="true"></i></span>`;
   }
 
   render() {
-    const variant = this.getAttribute('variant') || 'primary';
-    const size = this.getAttribute('size') || 'md';
-    const icon = this.getAttribute('icon') || '';
-    const iconPosition = this.getAttribute('icon-position') || 'left';
-    const isLoading = this.hasAttribute('loading');
-    const isDisabled = this.hasAttribute('disabled');
-    const isFullWidth = this.hasAttribute('full-width');
-    const customColor = this.safeColor(this.getAttribute('color'), '');
-    const customTextColor = this.safeColor(this.getAttribute('text-color'), '');
-    const buttonText = this.escapeHtml(this._getButtonText());
-    // Whitelist the inner button type — never interpolate the raw attribute (attribute-injection).
-    const type = ['submit', 'reset', 'button'].includes(this.getAttribute('type')) ? this.getAttribute('type') : 'button';
-
-    // Build CSS classes
-    const baseClasses = [
-      'inline-flex items-center justify-center font-medium rounded-[10px]',
-      'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-offset-1',
-      'transition-[transform,opacity,background-color] duration-200',
-    ];
-
-    const sizeClass = TdButton._sizeClasses[size] || TdButton._sizeClasses.md;
-    baseClasses.push(sizeClass);
-
-    if (isFullWidth) baseClasses.push('w-full');
-    if (isDisabled || isLoading) baseClasses.push('opacity-50 cursor-not-allowed');
-
-    // Variant classes (only when no custom color)
-    if (!customColor) {
-      const vc = TdButton._variantClasses[variant] || TdButton._variantClasses.primary;
-      baseClasses.push(vc);
-    }
-
-    const classes = baseClasses.join(' ');
-
-    // Per-element scalar styles for the glass / custom-color effect are NOT written as a
-    // declarative style attribute (a strict CSP `style-src 'self'` blocks that). They are
-    // applied via CSSOM in `_applyStyles()` (auto-invoked by the base after every render);
-    // `_styleMap()` is the single source of truth for both code paths.
-
-    // Build button content
-    let content = '';
-    if (isLoading) {
-      const iconLeft = icon && iconPosition === 'left' ? `<i class="${this.escapeHtml(icon)} mr-2 opacity-0 pointer-events-none select-none"></i>` : '';
-      const iconRight = icon && iconPosition === 'right' ? `<i class="${this.escapeHtml(icon)} ml-2 opacity-0 pointer-events-none select-none"></i>` : '';
-      content = `
-        <span class="relative inline-flex items-center justify-center">
-          <svg class="animate-spin h-4 w-4 absolute" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          ${iconLeft}<span class="opacity-0 pointer-events-none select-none">${buttonText}</span>${iconRight}
-        </span>
-      `;
-    } else {
-      const iconLeft = icon && iconPosition === 'left' ? `<i class="${this.escapeHtml(icon)} mr-2"></i>` : '';
-      const iconRight = icon && iconPosition === 'right' ? `<i class="${this.escapeHtml(icon)} ml-2"></i>` : '';
-      content = `${iconLeft}<span>${buttonText}</span>${iconRight}`;
-    }
-
-    return `
-      <button
-        class="${classes}"
-        ${isDisabled || isLoading ? 'disabled' : ''}
-        type="${type}"
-      >${content}</button>
-    `;
+    const variant = VARIANTS.includes(this.getAttribute('variant')) ? this.getAttribute('variant') : 'primary';
+    const size = SIZES.includes(this.getAttribute('size')) ? this.getAttribute('size') : 'md';
+    const rawType = this.getAttribute('type');
+    const type = TYPES.includes(rawType) ? rawType : 'button';
+    const custom = !!this._customColor();
+    const classes = ['td-btn', `td-btn--${variant}`, `td-btn--${size}`];
+    if (this.hasAttribute('full-width')) classes.push('td-btn--full');
+    if (custom) classes.push('td-btn--custom');
+    const icon = this._iconMarkup(this.getAttribute('icon') || '');
+    const right = this.getAttribute('icon-position') === 'right';
+    const text = this._getButtonText();
+    const label = text ? `<span class="td-btn__label">${this.escapeHtml(text)}</span>` : '';
+    return `<button class="${classes.join(' ')}" type="${type}">`
+      + (right ? label + icon : icon + label)
+      + '<span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden>'
+      + '<svg class="td-spinner__svg" viewBox="0 0 50 50" aria-hidden="true" focusable="false">'
+      + '<circle class="td-spinner__track" cx="25" cy="25" r="20"></circle>'
+      + '<circle class="td-spinner__arc" cx="25" cy="25" r="20"></circle></svg></span>'
+      + '</button>';
   }
 
-  /**
-   * Compute the per-element scalar style map for the inner `<button>`. Single source of
-   * truth for `_applyStyles()`. Returns CSSOM-ready property→value pairs (no selectors).
-   * @private
-   * @returns {Record<string, string|null>}
-   */
-  _styleMap() {
-    const variant = this.getAttribute('variant') || 'primary';
-    const customColor = this.safeColor(this.getAttribute('color'), '');
-    const customTextColor = this.safeColor(this.getAttribute('text-color'), '');
-
-    if (customColor) {
-      const textColor = customTextColor || TdButton._getContrastColor(customColor);
-      return {
-        'background-color': customColor,
-        'color': textColor,
-        'border-color': customColor,
-      };
+  attributeChangedCallback(name, oldVal, newVal) {
+    if (oldVal === newVal || !this._initialized) return;
+    if (name === 'loading' || name === 'disabled') { this._syncState(); return; }
+    if (name === 'label') {
+      const l = this.querySelector('.td-btn__label');
+      const text = this._getButtonText();
+      if (l && text) { l.textContent = text; return; }
     }
-    const gs = TdButton._glassStyles[variant] || TdButton._glassStyles.primary;
-    return {
-      'background': gs.background,
-      'backdrop-filter': gs.backdropFilter,
-      '-webkit-backdrop-filter': gs.backdropFilter,
-      'box-shadow': gs.boxShadow,
-    };
-  }
-
-  /**
-   * CSP-safe replacement for the old inline style attribute. Auto-invoked by the base
-   * after `afterRender()` on the initial render AND on every observed-attribute
-   * re-render, so variant/color/state-dependent scalars stay correct as state changes.
-   * @private
-   */
-  _applyStyles() {
-    const btn = this.querySelector('button');
-    if (!btn) return;
-    applyStyles(btn, this._styleMap());
+    if (name === 'aria-label') {
+      // Structural when it decides whether an icon-only button shows a text label.
+      const hasLabel = !!this.querySelector('.td-btn__label');
+      if (hasLabel !== !!this._getButtonText()) { this._doRender(); return; }
+      this._syncState();
+      return;
+    }
+    if (name === 'color' || name === 'text-color') { this._applyStyles(); this._doRender(); return; }
+    this._doRender();
   }
 
   afterRender() {
+    fillIconSlots(this);
     const btn = this.querySelector('button');
     if (!btn) return;
-
-    const variant = this.getAttribute('variant') || 'primary';
-    const customColor = this.safeColor(this.getAttribute('color'), '');
-    const isLoading = this.hasAttribute('loading');
-    const isDisabled = this.hasAttribute('disabled');
-
-    // Click handler — only guard loading/disabled, let native click bubble
-    // Do NOT emit('click') — native click already bubbles from inner <button>
-    // to <td-button>. Emitting a second click caused double-fire in React.
+    // Busy: swallow activation (the button stays focusable; aria-disabled announces it).
     this.listen(btn, 'click', (e) => {
-      if (isLoading || isDisabled) {
-        e.stopPropagation();
+      if (this.hasAttribute('loading')) {
         e.preventDefault();
+        e.stopImmediatePropagation();
       }
-    });
+    }, { capture: true });
+    this._syncState();
+  }
 
-    // Hover/focus effects for glass styles (non-custom-color)
-    if (!customColor && !isLoading && !isDisabled) {
-      const gs = TdButton._glassStyles[variant] || TdButton._glassStyles.primary;
+  /** @private In-place state: disabled, busy, forwarded aria-label. */
+  _syncState() {
+    const btn = this.querySelector('button');
+    if (!btn) return;
+    const loading = this.hasAttribute('loading');
+    btn.disabled = this.hasAttribute('disabled');
+    if (loading) {
+      btn.setAttribute('aria-busy', 'true');
+      btn.setAttribute('aria-disabled', 'true');
+    } else {
+      btn.removeAttribute('aria-busy');
+      btn.removeAttribute('aria-disabled');
+    }
+    const spinner = this.querySelector('.td-btn__spinner');
+    if (spinner) spinner.hidden = !loading;
+    const aria = this.getAttribute('aria-label');
+    if (aria) btn.setAttribute('aria-label', aria);
+    else btn.removeAttribute('aria-label');
+  }
 
-      this.listen(btn, 'mouseenter', () => {
-        btn.style.boxShadow = gs.hoverBoxShadow;
-      });
-      this.listen(btn, 'mouseleave', () => {
-        btn.style.boxShadow = gs.boxShadow;
-      });
-      this.listen(btn, 'focus', () => {
-        btn.style.boxShadow = gs.hoverBoxShadow;
-      });
-      this.listen(btn, 'blur', () => {
-        btn.style.boxShadow = gs.boxShadow;
-      });
+  /** Per-instance custom colours via host CSSOM custom properties (CSP-safe). */
+  _applyStyles() {
+    if (!this.style) return; // non-DOM environments (node render tests)
+    const bg = this._customColor();
+    if (bg) {
+      const fg = this.safeColor(this.getAttribute('text-color'), '') || TdButton._getContrastColor(bg);
+      this.style.setProperty('--td-btn-bg', bg);
+      this.style.setProperty('--td-btn-fg', fg);
+      // Hover overlay that INCREASES contrast: darken under light text, lighten under dark text.
+      const light = TdButton._getContrastColor(fg) === '#000000';
+      this.style.setProperty('--td-btn-hover', light ? 'rgb(0 0 0 / 12%)' : 'rgb(255 255 255 / 30%)');
+    } else {
+      this.style.removeProperty('--td-btn-bg');
+      this.style.removeProperty('--td-btn-fg');
+      this.style.removeProperty('--td-btn-hover');
     }
   }
 }

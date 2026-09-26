@@ -33,7 +33,7 @@ Theme it by overriding public `--td-*` tokens in your own **unlayered** CSS (see
 `<html data-td-theme="dark">`. Turn glass off manually: `<html data-td-glass="off">`.
 
 Components are migrating from Tailwind to this kit ([ADR 0008](docs/decisions/0008-drop-tailwind-token-css.md)).
-Until a component is migrated it still needs Tailwind (below).
+**Token-native (td.css only):** lightbox, icons, button, checkbox, toggle, loading. The others still need Tailwind (below).
 
 ## Tailwind Configuration (v4) — legacy components
 

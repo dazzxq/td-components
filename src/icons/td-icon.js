@@ -155,3 +155,19 @@ export function tdIcon(name, opts = {}) {
   }
   return svg;
 }
+
+/**
+ * Fill every `[data-td-icon="name"]` slot under `root` with its icon (components that render HTML
+ * strings emit empty slots, then call this after render). Optional `data-td-icon-size` (s|m|l|px) and
+ * `data-td-icon-class`. Idempotent: the slot's children are replaced.
+ * @param {ParentNode} root
+ */
+export function fillIconSlots(root) {
+  if (!root || typeof root.querySelectorAll !== 'function') return;
+  for (const slot of root.querySelectorAll('[data-td-icon]')) {
+    const rawSize = slot.getAttribute('data-td-icon-size') || 'm';
+    const size = /^\d+$/.test(rawSize) ? Number(rawSize) : rawSize;
+    const svg = tdIcon(slot.getAttribute('data-td-icon'), { size, class: slot.getAttribute('data-td-icon-class') || '' });
+    slot.replaceChildren(...(svg ? [svg] : []));
+  }
+}

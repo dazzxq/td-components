@@ -80,9 +80,13 @@ function urlToFile(url) {
  */
 async function fulfillFromDisk(route, request) {
   const url = request.url();
-  if (url === `${ORIGIN}/` || url === `${ORIGIN}/mount.html`) {
-    const html = `<!doctype html><html><head><meta charset="utf-8">` +
-      `<link rel="stylesheet" href="${ORIGIN}/fixture/tailwind.css">` + EXTRA_CSS +
+  const u = new URL(url);
+  if (u.pathname === '/' || u.pathname === '/mount.html') {
+    const p = u.searchParams.get('profile') || PROFILE;
+    const TW = `<link rel="stylesheet" href="${ORIGIN}/fixture/tailwind.css">`;
+    const TD = `<link rel="stylesheet" href="${ORIGIN}/td.css">`;
+    const css = p === 'td' ? TD : p === 'legacy+td' ? TW + TD : TW;
+    const html = `<!doctype html><html><head><meta charset="utf-8">` + css +
       `</head><body><div id="__mount"></div></body></html>`;
     return route.fulfill({
       status: 200,
@@ -129,7 +133,12 @@ const READ_FN = `(selector, props, fromBody) => {
 }`;
 
 /** Verify the fixture is live: the three sentinels must compute to expected values. */
-async function checkSentinels(page) {
+async function checkSentinels(page, pageProfile = PROFILE) {
+  const tdSentinel = async () => {
+    const got = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--td-glass-radius').trim());
+    return { class: ':root (td.css)', prop: '--td-glass-radius', expected: '20px', got, ok: got === '20px' };
+  };
+  if (pageProfile === 'td') return [await tdSentinel()];
   const result = await page.evaluate(({ sentinels }) => {
     const mount = document.getElementById('__mount');
     const probe = document.createElement('div');
@@ -143,10 +152,9 @@ async function checkSentinels(page) {
     probe.remove();
     return out;
   }, { sentinels: SENTINELS });
-  if (PROFILE === 'legacy+td') {
+  if (pageProfile === 'legacy+td') {
     // td.css must really be applied (a 404 would make the combined run pass vacuously).
-    const got = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--td-glass-radius').trim());
-    result.push({ class: ':root (td.css)', prop: '--td-glass-radius', expected: '20px', got, ok: got === '20px' });
+    result.push(await tdSentinel());
   }
   return result;
 }
@@ -156,7 +164,7 @@ async function checkSentinels(page) {
  * BEFORE any document script runs (addInitScript), expose the __cspViolation binding,
  * and collect console / pageerror text that looks CSP-related.
  */
-async function freshPage(browser, reducedMotion) {
+async function freshPage(browser, reducedMotion, pageProfile = PROFILE) {
   const ctx = await browser.newContext(reducedMotion ? { reducedMotion: 'reduce' } : {});
   const page = await ctx.newPage();
   const violations = [];
@@ -177,7 +185,7 @@ async function freshPage(browser, reducedMotion) {
   });
 
   await page.route('**/*', (route, request) => fulfillFromDisk(route, request));
-  await page.goto(`${ORIGIN}/mount.html`, { waitUntil: 'load' });
+  await page.goto(`${ORIGIN}/mount.html?profile=${encodeURIComponent(pageProfile)}`, { waitUntil: 'load' });
   await page.evaluate(() => { window.__mount = document.getElementById('__mount'); });
   return { ctx, page, violations, errors, consoleCsp };
 }
@@ -252,11 +260,14 @@ function numericClose(a, b) {
 
 async function runState(browser, component, modulePath, state) {
   const reduced = !!state.reducedMotion;
-  const { ctx, page, violations, errors, consoleCsp } = await freshPage(browser, reduced);
+  // Token-native components: td.css only in the default run; Tailwind + td.css in the combined run.
+  const tokenNative = (MATRIX._meta.tokenNative || []).includes(component);
+  const pageProfile = tokenNative ? (PROFILE === 'legacy' ? 'td' : 'legacy+td') : PROFILE;
+  const { ctx, page, violations, errors, consoleCsp } = await freshPage(browser, reduced, pageProfile);
   const result = { component, state: state.state, pass: true, reasons: [] };
   try {
     // (5) Sentinel gate — fixture must be live under strict CSP, or the whole suite aborts.
-    const sentinels = await checkSentinels(page);
+    const sentinels = await checkSentinels(page, pageProfile);
     const badSentinels = sentinels.filter(s => !s.ok);
     if (badSentinels.length) {
       const detail = badSentinels.map(b => `.${b.class}{${b.prop}} expected ${b.expected} got "${b.got}"`).join('; ');
@@ -363,8 +374,8 @@ class SentinelError extends Error {}
  */
 async function assertLoadingLiveness(page, state, reduced) {
   const isOverlay = state.state === 'overlay';
-  const arcSel = isOverlay ? '.td-spinner-arc' : '.td-spinner svg circle:last-child';
-  const rotSel = isOverlay ? '.td-circular-spinner' : '.td-spinner';
+  const arcSel = isOverlay ? '.td-loading__spinner .td-spinner__arc' : '.td-spinner__arc';
+  const rotSel = isOverlay ? '.td-loading__spinner .td-spinner__svg' : '.td-spinner__svg';
   const fromBody = isOverlay; // overlay is portaled to body
 
   const sample = async () => page.evaluate(({ arcSel, rotSel, fromBody }) => {

@@ -2,6 +2,56 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.7.0
+
+Migration **batch 1**: `td-button`, `td-checkbox`, `td-toggle`, `TdLoading` are now **token-native** (td.css only,
+no Tailwind, no adopted stylesheets). Plan: `docs/plans/v0.7.0-batch1.md` (Codex plan-review APPROVE, decisions D1–D10).
+
+### Breaking (internal DOM / classes)
+
+- Internal classes renamed to BEM — see `docs/migration/class-map.md`. Public tags, attributes, properties, methods
+  and events are unchanged except the behaviour changes below.
+- These four components **require `td.css`** (`import '@dazzxq/td-components/td.css'` or `<link>`).
+- `td-checkbox` host custom property `--td-cb-color` → `--td-checkbox-color`.
+
+### Behaviour changes
+
+- **One `change` event** for `td-checkbox` / `td-toggle` (the inner input's native `change`/`input` no longer bubble
+  alongside the CustomEvent).
+- **`td-toggle`** is a native `<input type="checkbox" role="switch">` (accessible name, native Space/disabled/focus);
+  **Enter no longer toggles** (APG switch pattern).
+- **`td-button` loading** keeps focus: `aria-busy` + `aria-disabled` + swallowed clicks instead of native `disabled`
+  and a re-render. `disabled`/`loading`/`label` update in place.
+- **`td-button` look**: solid fills (glass removed — liquid-glass R1/R7); status variants use the semantic colour
+  tokens (all ≥ 4.5:1; the old glass variants were 2.0–3.2:1). Radius token `--td-btn-radius` (14 px; capsule on
+  touch). `icon` takes a registry name; other values are a deprecated legacy class list.
+- **`td-checkbox` default colour** is the accent token (was `#2196F3`); **`td-toggle` default on-colour** `#16a34a`
+  (was `#4ADE80`, 1.7:1) with a 3:1 off-track edge (WCAG 1.4.11).
+- **`TdLoading.wrap()` is ref-counted**; the overlay is `role="status"`, holds focus, makes the page `inert`
+  (toasts excluded) and locks scroll, restoring all of it exactly once. `z-index` token `--td-z-loading: 480`
+  (was 99999: now below toasts).
+
+### Added
+
+- **Error contract** in `TdFormElement` (opt-in; on for checkbox + switch): `setError(msg)`, `clearError()`,
+  `errorMessage`, `error-text` attribute → `aria-invalid` + `aria-errormessage` + `.td-field-error` note; cleared on reset.
+- **Accessible-name precedence** for checkbox/switch: `label` → host `aria-label` → external `<label for>` via
+  `aria-labelledby`. Hit areas ≥ 24 px (44 px on touch).
+- **Shared inert lease** `src/utils/inert-lock.js` (security review): TdLoading and td-lightbox no longer make the
+  page inert independently — overlapping overlays stack by layer, `inert` is removed only when no overlay needs it,
+  body children appended while blocked are covered, the site's own `inert` is never touched.
+- `TdCheckableElement` base; `fillIconSlots()` in `@dazzxq/td-components/icons`; shared `.td-spinner`;
+  tokens `--td-btn-*`, `--td-checkbox-*`, `--td-switch-*`, `--td-control-border-strong`, `--td-field-error`,
+  `--td-z-loading`; `TdLoadingSpinner.create({ label })`; `td-button` forwards `aria-label`; button auto text colour
+  by WCAG contrast for any CSS colour (browser-resolved; alpha composited over white).
+- CSP harness: token-native profile (`_meta.tokenNative`; td.css-only baselines, 28 states; the `legacy+td` run proves
+  host Tailwind cannot alter them); golden markup contracts `test/contracts/{button,checkbox,switch,loading}.html`;
+  batch-1 browser suite (contrast, focus, events, naming, error contract, hit targets, loading lifecycle).
+
+### Removed
+
+- `*-csp-fallback.browser-test.js` for checkbox/toggle/loading (they tested the adopted-sheet fallback ADR 0008 removes).
+
 ## 0.6.0
 
 First **token-native** component and the shared icon registry. Plan: `docs/plans/v0.6.0-lightbox.md`

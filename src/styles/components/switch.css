@@ -1,0 +1,184 @@
+/*
+ * td-toggle → .td-switch (src/form/td-toggle.js; the 135 kit contract). Content-layer control: solid track;
+ * the knob only "lifts" while pressed ([data-dragging]), disabled under reduced motion.
+ * WCAG 1.4.11: on track --td-switch-on (#16a34a, 3.3:1 on white; white thumb on it 3.3:1); off track light
+ * fill + --td-switch-edge (gray-500, 3.42:1) border; the thumb carries the same edge while off.
+ * Host custom property --td-switch-on (from the `color` attribute) overrides the token.
+ */
+@layer td.component {
+	td-toggle {
+		display: inline-block;
+	}
+
+	.td-switch {
+		--td-switch-w: 2.75rem;
+		--td-switch-h: 1.5rem;
+		--td-switch-thumb-d: 1.125rem;
+		--td-switch-pad: calc((var(--td-switch-h) - var(--td-switch-thumb-d)) / 2);
+
+		position: relative;
+		display: inline-flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		min-width: 24px;   /* hit target ≥ 24×24 */
+		min-height: 24px;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: 1.4;
+		color: var(--td-control-fg);
+		cursor: pointer;
+		user-select: none;
+	}
+
+	.td-switch--sm {
+		--td-switch-w: 2.25rem;
+		--td-switch-h: 1.25rem;
+		--td-switch-thumb-d: 0.95rem;
+	}
+
+	.td-switch--lg {
+		--td-switch-w: 3.5rem;
+		--td-switch-h: 1.75rem;
+		--td-switch-thumb-d: 1.375rem;
+
+		font-size: var(--td-text-base);
+	}
+
+	.td-switch__input {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	.td-switch__track {
+		position: relative;
+		box-sizing: border-box;
+		display: inline-block;
+		flex: 0 0 auto;
+		width: var(--td-switch-w);
+		height: var(--td-switch-h);
+		background: var(--td-switch-off);
+		border: 1px solid var(--td-switch-edge);
+		border-radius: var(--td-radius-full);
+		transition:
+			background var(--td-dur-base) var(--td-ease),
+			border-color var(--td-dur-base) var(--td-ease);
+	}
+
+	.td-switch__thumb {
+		position: absolute;
+		top: 50%;
+		left: 0;
+		box-sizing: border-box;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: var(--td-switch-thumb-d);
+		height: var(--td-switch-thumb-d);
+		color: var(--td-control-muted, var(--td-gray-600));
+		background: var(--td-switch-thumb);
+		border: 1px solid var(--td-switch-edge);
+		border-radius: var(--td-radius-full);
+		box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
+		transform: translate(calc(var(--td-switch-pad) - 1px), -50%) scale(1);
+		transition:
+			transform var(--td-dur-base) var(--_td-glass-ease-flex, var(--td-glass-ease-flex)),
+			border-color var(--td-dur-base) var(--td-ease);
+	}
+
+	.td-switch__icon {
+		position: absolute;
+		display: inline-flex;
+		line-height: 0;
+		transition: opacity var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-switch__icon .td-icon {
+		width: calc(var(--td-switch-thumb-d) * 0.55);
+		height: calc(var(--td-switch-thumb-d) * 0.55);
+		stroke-width: 3;
+	}
+
+	.td-switch__icon--on {
+		color: var(--td-switch-on);
+		opacity: 0;
+	}
+
+	.td-switch__input:checked + .td-switch__track {
+		background: var(--td-switch-on);
+		border-color: var(--td-switch-on);
+	}
+
+	.td-switch__input:checked + .td-switch__track .td-switch__thumb {
+		border-color: transparent;
+		transform:
+			translate(calc(var(--td-switch-w) - var(--td-switch-thumb-d) - var(--td-switch-pad) - 1px), -50%)
+			scale(1);
+	}
+
+	.td-switch__input:checked + .td-switch__track .td-switch__icon--on { opacity: 1; }
+	.td-switch__input:checked + .td-switch__track .td-switch__icon--off { opacity: 0; }
+
+	/* Knob lift while pressed (glass only during interaction). */
+	.td-switch[data-dragging] .td-switch__thumb {
+		transform: translate(calc(var(--td-switch-pad) - 1px), -50%) scale(var(--_td-glass-lift-knob, var(--td-glass-lift-scale)));
+	}
+
+	.td-switch[data-dragging] .td-switch__input:checked + .td-switch__track .td-switch__thumb {
+		transform:
+			translate(calc(var(--td-switch-w) - var(--td-switch-thumb-d) - var(--td-switch-pad) - 1px), -50%)
+			scale(var(--_td-glass-lift-knob, var(--td-glass-lift-scale)));
+	}
+
+	.td-switch__input:focus-visible + .td-switch__track {
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-switch__input[aria-invalid="true"] + .td-switch__track {
+		border-color: var(--td-field-error);
+	}
+
+	.td-switch:has(.td-switch__input:disabled) {
+		cursor: not-allowed;
+		opacity: 0.5;
+	}
+
+	@media (pointer: coarse) {
+		.td-switch {
+			min-width: var(--td-touch-min);
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-switch__track,
+		.td-switch__thumb,
+		.td-switch__icon {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-switch__track {
+			border-color: CanvasText;
+		}
+
+		.td-switch__thumb {
+			background: CanvasText;
+			border-color: CanvasText;
+		}
+
+		.td-switch__input:checked + .td-switch__track {
+			background: Highlight;
+			border-color: Highlight;
+		}
+	}
+}
