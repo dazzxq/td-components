@@ -262,7 +262,10 @@ async function runState(browser, component, modulePath, state) {
   const reduced = !!state.reducedMotion;
   // Token-native components: td.css only in the default run; Tailwind + td.css in the combined run.
   const tokenNative = (MATRIX._meta.tokenNative || []).includes(component);
-  const pageProfile = tokenNative ? (PROFILE === 'legacy' ? 'td' : 'legacy+td') : PROFILE;
+  // Mixed: a legacy component rendering token-native children (td-table → pagination/empty-state) always
+  // gets Tailwind + td.css.
+  const mixed = (MATRIX._meta.mixed || []).includes(component);
+  const pageProfile = tokenNative ? (PROFILE === 'legacy' ? 'td' : 'legacy+td') : mixed ? 'legacy+td' : PROFILE;
   const { ctx, page, violations, errors, consoleCsp } = await freshPage(browser, reduced, pageProfile);
   const result = { component, state: state.state, pass: true, reasons: [] };
   try {

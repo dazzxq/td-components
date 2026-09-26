@@ -6,7 +6,9 @@ import { TdLoading, TdLoadingSpinner } from '../feedback/td-loading.js';
 
 // Golden markup contracts (test/contracts/*.html): the element tree (tags, classes, contract attributes)
 // a component renders must equal the fixture SSR adapters emit. Text/ids/geometry are not compared.
-const KEEP = ['type', 'role', 'aria-hidden', 'hidden', 'data-td-icon', 'data-icon', 'tabindex', 'aria-live'];
+const KEEP = ['type', 'role', 'aria-hidden', 'hidden', 'data-td-icon', 'data-icon', 'tabindex', 'aria-live',
+  'aria-selected', 'aria-current', 'aria-disabled', 'aria-controls', 'aria-labelledby', 'aria-describedby',
+  'aria-errormessage', 'aria-invalid', 'aria-required', 'aria-label', 'data-state', 'for', 'id'];
 function shape(el) {
   const attrs = KEEP.filter((a) => el.hasAttribute(a)).map((a) => `${a}=${el.getAttribute(a)}`);
   const cls = [...el.classList].sort().join('.');
@@ -22,11 +24,19 @@ const host = document.createElement('div');
 document.body.appendChild(host);
 afterEach(() => { host.innerHTML = ''; TdLoading.hide(); });
 
-for (const file of ['button.html', 'checkbox.html', 'switch.html']) {
+// Contract templates: data-markup (host HTML) + optional data-setup (JS run with `el` = the host, e.g. setting
+// `.tabs`) + optional data-await (ms to wait, e.g. for rAF-driven state).
+for (const file of ['button.html', 'checkbox.html', 'switch.html', 'input-field.html', 'slider.html',
+  'pagination.html', 'tabs.html', 'empty-state.html']) {
   it(`contract ${file}`, async () => {
     for (const t of await templates(file)) {
       host.innerHTML = t.getAttribute('data-markup');
-      const rendered = host.firstElementChild.firstElementChild;
+      const el = host.firstElementChild;
+      const setup = t.getAttribute('data-setup');
+      if (setup) new Function('el', setup)(el);
+      const pause = Number(t.getAttribute('data-await') || 0);
+      if (pause) await new Promise((r) => setTimeout(r, pause));
+      const rendered = el.firstElementChild;
       const expected = t.content.firstElementChild;
       expect(shape(rendered)).to.deep.equal(shape(expected));
     }
