@@ -2,7 +2,7 @@
  * Shared, ref-counted background `inert` for blocking overlays (TdLoading, td-lightbox, …). Same idea as
  * scroll-lock.js: every overlay takes a LEASE; the manager computes which `<body>` children must be inert.
  *
- * - A lease names the elements it keeps interactive (its own overlay). `#td-toast-container` is always kept.
+ * - A lease names the elements it keeps interactive (its own overlay).
  * - FLOATING registrations (registerFloating: dropdown menu, tooltip, toast container) never inert anything; they
  *   only exempt their element from LOWER blocking leases (a menu opened inside a modal stays usable).
  * - Leases stack by `layer` (the overlay's z-index token; ties: later lease on top): an element kept by a
@@ -26,7 +26,6 @@ function isKeptByHigher(el, index) {
 }
 
 function shouldBeInert(el) {
-  if (el.id === 'td-toast-container') return false;
   for (let i = 0; i < leases.length; i++) {
     if (!leases[i].blocking || leases[i].keep.has(el)) continue;
     if (!isKeptByHigher(el, i)) return true;

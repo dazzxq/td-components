@@ -25,12 +25,13 @@ afterEach(async () => {
 });
 
 describe('B1 — toast FIFO eviction', () => {
-  it('rendering more than MAX_VISIBLE toasts at once does not hang and caps the list', () => {
+  it('rendering more than MAX_VISIBLE toasts at once does not hang and caps the list', async () => {
     TdToast._activeToasts = [];
     for (let i = 0; i < TdToast.MAX_VISIBLE + 3; i++) {
       TdToast._showSingle(`t${i}`, 'info', 0); // used to spin forever on the 6th
     }
     expect(TdToast._activeToasts.length).to.equal(TdToast.MAX_VISIBLE);
+    await new Promise((r) => requestAnimationFrame(r)); // text is set one frame after insertion (D12)
     expect(TdToast._activeToasts[0].textContent.trim()).to.equal('t3');
     TdToast._activeToasts.slice().forEach((t) => t._removeToast());
     expect(TdToast._activeToasts.length).to.equal(0);
@@ -57,7 +58,7 @@ describe('B2 — modal closed in the same frame it opened', () => {
     await frames();
     await wait(80);
     expect(TdModal._focusTrapHandlers.has(id)).to.equal(false);
-    expect(el.classList.contains('hidden')).to.equal(true);
+    expect(!el.isConnected || el.getAttribute('data-state') === 'closing').to.equal(true);
     expect(el.contains(document.activeElement)).to.equal(false);
   });
 

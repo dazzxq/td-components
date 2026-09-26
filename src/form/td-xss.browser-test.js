@@ -138,9 +138,10 @@ describe('HTML-injection containment (text/attribute contexts)', () => {
     expect(el.querySelector('.td-field__counter')).to.not.equal(null);
   });
 
-  it('td-toast: message is rendered as text, not HTML', () => {
+  it('td-toast: message is rendered as text, not HTML', async () => {
     window.__xss = false;
     TdToast._showSingle(HTML_PAYLOAD, 'info', 0);
+    await new Promise((r) => requestAnimationFrame(r)); // text is set one frame after insertion (D12)
     expect(TdToast.container.querySelector('img')).to.equal(null);
     expect(window.__xss).to.equal(false);
     expect(TdToast.container.textContent).to.include('<img');
