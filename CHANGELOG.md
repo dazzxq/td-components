@@ -2,6 +2,50 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.4.1
+
+Bugfix release on the current (Tailwind) architecture. Sources: dcms2 + dwp fixes since 2026-06
+(see `docs/history/2026-09-sync-dcms-dwp.md`). No API removals.
+
+### Fixed
+
+- **`TdToast` froze the tab on the 6th simultaneous toast.** The FIFO cap looped on
+  `_activeToasts.length`, but a toast only left that list after its 180ms exit animation, so the
+  `while` never terminated. Toasts now leave the list synchronously (`shift()` + removal before the
+  animation).
+- **`TdToast` roles** — every toast was `role="alert"` while also declaring `aria-live="polite"`.
+  Now `role="status"` (polite) for success/info/warning and `role="alert"` only for errors.
+- **Storybook build (and older-target consumer builds) broke** on the top-level
+  `await import('./td-modal-stack.js')` in `td-toast.js`. Replaced with a static import.
+- **`TdModal` closed in the same frame it opened leaked its focus trap.** The entrance rAFs and the
+  50ms auto-focus timer now re-check that the modal is still open, so a modal closed immediately is
+  never un-hidden, never traps Tab, and never steals focus. `TdModal.closeAll()` now also removes
+  every focus-trap listener (it previously left them attached).
+- **Modal scroll lock clobbered the host page.** `TdModalStackManager` wrote
+  `document.body.style.overflow = 'hidden'` / `''`, erasing any overflow the page had set and
+  turning `<body>` into a scroll container (breaks `position: sticky`). It now uses a shared,
+  ref-counted lock on `<html>` (`src/utils/scroll-lock.js`) that restores the page's previous inline
+  value exactly. Other overlays can take their own lease (`lockScroll()` → release fn).
+- **`td-input-field` `setError('')` erased the helper text**, and focus/blur reset the border from
+  the `error-text` *attribute*, dropping a runtime `setError()` border. Error and helper are now
+  separate states: the note shows the error if any, otherwise the helper; the red border survives
+  focus/blur and the counter; the inner control gets `aria-invalid="true"` while in error. A new
+  `error-text` / `helper-text` attribute value replaces an earlier runtime override.
+- **`td-dropdown` placement and focus.**
+  - The menu no longer clamps `top` to 8px (which covered the trigger / fixed headers): it opens on
+    the side with more room and caps the options list height to fit the viewport.
+  - Clamped horizontally into the viewport.
+  - Closes once the trigger is effectively hidden (within 8px of the viewport edge or not rendered),
+    not only when fully off-screen.
+  - The delayed search-box focus timer is cancelled on close / disconnect / destroy.
+  - Closing while focus is inside the menu returns focus to the trigger.
+
+### Added
+
+- `src/utils/scroll-lock.js` — `lockScroll()` / `isScrollLocked()` (internal utility, used by the
+  modal stack; will be shared with `td-lightbox`).
+- Browser regression suite `src/feedback/td-regressions-v041.browser-test.js` (B1–B6).
+
 ## 0.4.0
 
 Logic / behavioral / a11y improvements ported from the dcms-components comparison. No public
@@ -136,7 +180,7 @@ element** (via `ElementInternals`), and a context-based XSS model hardens the wh
 - CSS-context sanitizers (`src/utils/css-safe.js`): `safeColor`, `safeHexColor`,
   `safeCssDimension`, `clampNumber`; `TdBaseElement.safeColor()`.
 - Real-browser test suite (`@web/test-runner` + Playwright) for form behavior and XSS.
-- Docs: a full [component catalog](docs/COMPONENTS.md) with a security model / context table.
+- Docs: a full [component catalog](docs/components.md) with a security model / context table.
 
 ### Security
 
