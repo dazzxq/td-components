@@ -4,7 +4,9 @@ Shared UI Web Components library. Drop into any project, import what you need, i
 
 No Shadow DOM -- components use Tailwind classes from your host page. No framework dependency -- vanilla JS Custom Elements that work everywhere.
 
-Each component is **independent** (import only what you need) and **customized through params** -- HTML attributes for scalars, JS properties for data/callbacks. See the **[Component Catalog](docs/COMPONENTS.md)** for every component, its params, and usage examples.
+Each component is **independent** (import only what you need) and **customized through params** -- HTML attributes for scalars, JS properties for data/callbacks. See the **[Component Catalog](docs/components.md)** for every component, its params, and usage examples.
+
+**Docs:** [docs/README.md](docs/README.md) — vision, roadmap, architecture, conventions, decisions.
 
 ## Install
 
@@ -103,7 +105,7 @@ in all current evergreen browsers (Chrome/Edge 77+, Firefox 98+, Safari 16.4+). 
 engines, load a [form-associated CE polyfill](https://www.npmjs.com/package/element-internals-polyfill)
 before importing the components.
 
-See the **[Component Catalog](docs/COMPONENTS.md)** for every component's params, and
+See the **[Component Catalog](docs/components.md)** for every component's params, and
 **[CHANGELOG.md](CHANGELOG.md)** for the 0.2.0 breaking changes.
 
 ## Creating Components
@@ -159,7 +161,12 @@ Boolean attributes use `hasAttribute()` (present = true, absent = false). String
 ## Development
 
 ```bash
-npm run storybook    # Start Storybook at http://localhost:6006
+npm test                 # all three layers: node + browser + csp
+npm run test:node        # unit tests (node --test + DOM shim), src/**/*.test.js
+npm run test:browser     # real-browser tests (@web/test-runner + Playwright), src/**/*.browser-test.js
+npm run test:csp         # strict-CSP parity gate (Playwright), test/csp/
+npm run storybook        # Start Storybook at http://localhost:6006
+npm run build-storybook  # Static Storybook build
 ```
 
 ## License
