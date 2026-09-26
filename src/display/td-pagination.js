@@ -38,9 +38,11 @@ export class TdPagination extends TdBaseElement {
 
   // --- Attribute helpers ---
 
+  /** Integer attribute; values outside the safe-integer range are clamped (float precision would break paging). */
   _int(name, fallback) {
     const n = parseInt(this.getAttribute(name) ?? '', 10);
-    return Number.isFinite(n) ? n : fallback;
+    if (!Number.isFinite(n)) return fallback;
+    return Math.max(-Number.MAX_SAFE_INTEGER, Math.min(Number.MAX_SAFE_INTEGER, n));
   }
 
   _getTotalItems() { return Math.max(0, this._int('total-items', 0)); }
@@ -227,7 +229,8 @@ export class TdPagination extends TdBaseElement {
       if (start === 3) items.push(2);
       else if (start > 3) items.push('...');
     }
-    for (let p = start; p <= end; p++) items.push(p);
+    // Index-bounded (never more than maxPages iterations, whatever the page numbers' magnitude).
+    for (let i = 0; i < maxPages && start + i <= end; i++) items.push(start + i);
     if (end < totalPages) {
       if (end === totalPages - 2) items.push(totalPages - 1);
       else if (end < totalPages - 2) items.push('...');

@@ -116,6 +116,11 @@ describe('v0.8.0 security-review fixes', () => {
     expect(svgStringToDefinition(head + 'x'.repeat(40000) + '</svg>')).to.equal(null);
   });
 
+  it('pagination stays bounded above Number.MAX_SAFE_INTEGER', () => {
+    const el = mount('<td-pagination total-items="100000000000000000000" items-per-page="1" current-page="10000000000000000000" max-pages="25"></td-pagination>');
+    expect(el.querySelectorAll('.td-pagination__page').length).to.be.at.most(27);
+  });
+
   it('pagination max-pages is clamped (bounded DOM)', () => {
     const el = mount('<td-pagination total-items="100000000" items-per-page="1" current-page="500" max-pages="100000"></td-pagination>');
     expect(el.querySelectorAll('.td-pagination__page').length).to.be.at.most(27);
