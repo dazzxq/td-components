@@ -1,0 +1,16 @@
+<!-- td-tabs markup contract. `data-setup` is a JS function body run with `el` = the mounted host (td-tabs takes its
+     tabs as a JS property). Explicit host id → deterministic tab ids {host-id}-tab-{i}. SSR adapters emit the
+     .td-tabs tablist (td.css styles it; without JS the indicator stays hidden until data-state="ready").
+     Checked by src/display/td-batch2-tabs.browser-test.js (and the shared contract test once it gains data-setup). -->
+<template data-component="td-tabs"
+          data-markup='<td-tabs id="tabs-c" size="sm" active-tab="b"></td-tabs>'
+          data-setup='el.tabs = [{ id: "a", label: "Tải lên", icon: "upload", panel: "tabs-c-panel-a" }, { id: "b", label: "Liên kết" }];'>
+  <div class="td-tabs td-tabs--sm" role="tablist" aria-label="Các thẻ" data-state="ready">
+    <span class="td-tabs__indicator" aria-hidden="true"></span>
+    <button type="button" role="tab" class="td-tabs__tab" id="tabs-c-tab-0" data-tab-id="a" aria-selected="false" tabindex="-1" aria-controls="tabs-c-panel-a"><span class="td-tabs__icon" data-td-icon="upload" data-td-icon-size="s" aria-hidden="true"><svg aria-hidden="true" class="td-icon td-icon--s" data-icon="upload"></svg></span><span class="td-tabs__label">Tải lên</span></button>
+    <button type="button" role="tab" class="td-tabs__tab" id="tabs-c-tab-1" data-tab-id="b" aria-selected="true" tabindex="0"><span class="td-tabs__label">Liên kết</span></button>
+  </div>
+</template>
+<template data-component="td-tabs" data-markup='<td-tabs id="tabs-e"></td-tabs>'>
+  <div class="td-tabs td-tabs--md" data-state="empty"></div>
+</template>

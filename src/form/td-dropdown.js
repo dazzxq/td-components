@@ -214,10 +214,11 @@ export class TdDropdown extends TdFormElement {
         transition: none;
       `;
       document.body.appendChild(this._menuElement);
+      const menu = this._menuElement;
       this._cleanups.push(() => {
-        if (this._menuElement && this._menuElement.parentNode) {
-          this._menuElement.parentNode.removeChild(this._menuElement);
-        }
+        if (menu.parentNode) menu.parentNode.removeChild(menu);
+        // Detached on disconnect → forget it so a reconnect (DOM move) recreates the portal.
+        if (this._menuElement === menu) this._menuElement = null;
       });
     }
 
@@ -298,6 +299,7 @@ export class TdDropdown extends TdFormElement {
     // Close if open
     if (this._isOpen) {
       this._removeGlobalListeners();
+      this._isOpen = false; // the portaled menu is removed by the cleanup below
     }
     if (this._scrollRafId) {
       cancelAnimationFrame(this._scrollRafId);

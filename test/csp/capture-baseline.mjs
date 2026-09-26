@@ -50,9 +50,12 @@ async function fulfillFromDisk(route, request) {
   const u = new URL(url);
   if (u.pathname === '/' || u.pathname === '/mount.html') {
     // ?profile=td → token-native components are captured with td.css ONLY (no Tailwind).
-    const css = u.searchParams.get('profile') === 'td'
-      ? `<link rel="stylesheet" href="${ORIGIN}/td.css">`
-      : `<link rel="stylesheet" href="${ORIGIN}/fixture/tailwind.css">`;
+    const p = u.searchParams.get('profile');
+    const TW = `<link rel="stylesheet" href="${ORIGIN}/fixture/tailwind.css">`;
+    const TD = `<link rel="stylesheet" href="${ORIGIN}/td.css">`;
+    const RESET = `<link rel="stylesheet" href="${ORIGIN}/fixture/harness.css">`;
+    // td → token-native (td.css only); legacy+td → mixed legacy component with token-native children.
+    const css = p === 'td' ? RESET + TD : p === 'legacy+td' ? TW + TD : TW;
     const html = `<!doctype html><html><head><meta charset="utf-8">` + css +
       `</head><body><div id="__mount"></div></body></html>`;
     return route.fulfill({ status: 200, contentType: 'text/html', body: html });
@@ -79,6 +82,11 @@ const READ_FN = `(selector, props, fromBody) => {
 
 /** Verify the fixture is live: the three sentinels must compute to expected values. */
 async function assertSentinels(page, profile = 'legacy') {
+  if (profile === 'legacy+td') {
+    const tw = await assertSentinels(page, 'legacy');
+    const td = await assertSentinels(page, 'td');
+    return [...tw, ...td];
+  }
   if (profile === 'td') {
     const got = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--td-glass-radius').trim());
     if (got !== '20px') throw new Error(`Sentinel check failed — td.css not live (--td-glass-radius = "${got}")`);
@@ -110,14 +118,15 @@ async function freshPage(browser, reducedMotion, profile = 'legacy') {
   const ctx = await browser.newContext(reducedMotion ? { reducedMotion: 'reduce' } : {});
   const page = await ctx.newPage();
   await page.route('**/*', (route, request) => fulfillFromDisk(route, request));
-  await page.goto(`${ORIGIN}/mount.html${profile === 'td' ? '?profile=td' : ''}`, { waitUntil: 'load' });
+  await page.goto(`${ORIGIN}/mount.html${profile !== 'legacy' ? `?profile=${encodeURIComponent(profile)}` : ''}`, { waitUntil: 'load' });
   await page.evaluate(() => { window.__mount = document.getElementById('__mount'); });
   return { ctx, page };
 }
 
 async function captureState(browser, component, modulePath, state) {
   const reduced = !!state.reducedMotion;
-  const profile = (MATRIX._meta.tokenNative || []).includes(component) ? 'td' : 'legacy';
+  const profile = (MATRIX._meta.tokenNative || []).includes(component) ? 'td'
+    : (MATRIX._meta.mixed || []).includes(component) ? 'legacy+td' : 'legacy';
   const { ctx, page } = await freshPage(browser, reduced, profile);
   try {
     // Sentinel gate per fresh page — proves the fixture is live, not vacuous.

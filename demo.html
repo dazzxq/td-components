@@ -98,8 +98,8 @@
       <td-input-field label="Họ tên" placeholder="Nhập họ tên..." required></td-input-field>
       <td-input-field label="Email" type="email" placeholder="email@example.com"></td-input-field>
       <td-input-field label="Mật khẩu" type="password" placeholder="••••••••"></td-input-field>
-      <td-input-field label="Tiêu đề bài viết" maxlength="100" placeholder="Tối đa 100 ký tự"></td-input-field>
-      <td-input-field label="Mô tả" type="textarea" placeholder="Nhập mô tả..." helper="Tối thiểu 50 từ" style="grid-column: span 2;"></td-input-field>
+      <td-input-field label="Tiêu đề bài viết" max-length="100" placeholder="Tối đa 100 ký tự"></td-input-field>
+      <td-input-field label="Mô tả" type="textarea" placeholder="Nhập mô tả..." helper-text="Tối thiểu 50 từ" style="grid-column: span 2;"></td-input-field>
     </div>
   </div>
 
@@ -206,7 +206,7 @@
   <!-- ═══════════════════ PAGINATION ═══════════════════ -->
   <div class="demo-section">
     <h2>Pagination <span class="demo-code">&lt;td-pagination&gt;</span></h2>
-    <td-pagination total="150" per-page="10" current="3"></td-pagination>
+    <td-pagination total-items="150" items-per-page="10" current-page="3"></td-pagination>
     <p class="text-sm text-gray-500 mt-2">Xem Console khi click page.</p>
   </div>
 

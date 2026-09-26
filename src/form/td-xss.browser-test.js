@@ -51,10 +51,11 @@ describe('CSS-injection containment (color attributes)', () => {
   it('td-slider: breakout payload cannot inject an element or escape the style attr', () => {
     window.__xss = false;
     const el = mount(`<td-slider value="50" color='"><img src=x onerror="window.__xss=true">'></td-slider>`);
-    expect(el._getColor()).to.equal('#3b82f6');
+    expect(el._getColor()).to.equal('');
+    expect(el.style.getPropertyValue('--td-slider-color')).to.equal('');
     expect(el.querySelector('img')).to.equal(null);
     expect(window.__xss).to.equal(false);
-    expect(el.querySelector('.td-slider-thumb').getAttribute('style')).to.not.include('onerror');
+    expect(el.querySelector('.td-slider__thumb').hasAttribute('style')).to.equal(false);
   });
 
   it('td-button: malicious color falls back to variant styling', () => {
@@ -84,7 +85,7 @@ describe('HTML-injection containment (text/attribute contexts)', () => {
     el.setAttribute('value', '"><script>alert(1)</script>');
     container.appendChild(el);
     expect(el.querySelector('script')).to.equal(null);
-    expect(el.querySelector('.td-input').value).to.equal('"><script>alert(1)</script>');
+    expect(el.querySelector('.td-field__control').value).to.equal('"><script>alert(1)</script>');
   });
 
   it('td-dropdown: an option label with HTML is escaped in the menu', () => {
@@ -122,19 +123,19 @@ describe('HTML-injection containment (text/attribute contexts)', () => {
     expect(el.querySelector('img')).to.equal(null);
     expect(window.__xss).to.equal(false);
     // coerced to the leading integer; the payload is stripped, never interpolated raw
-    expect(el.querySelector('.td-input').getAttribute('maxlength')).to.equal('5');
+    expect(el.querySelector('.td-field__control').getAttribute('maxlength')).to.equal('5');
   });
 
   it('td-input-field: a non-numeric max-length is dropped entirely', () => {
     const el = mount('<td-input-field max-length="abc"><\/td-input-field>');
-    expect(el.querySelector('.td-input').hasAttribute('maxlength')).to.equal(false);
-    expect(el.querySelector('.td-input-counter')).to.equal(null);
+    expect(el.querySelector('.td-field__control').hasAttribute('maxlength')).to.equal(false);
+    expect(el.querySelector('.td-field__counter')).to.equal(null);
   });
 
   it('td-input-field: a valid max-length still applies', () => {
     const el = mount('<td-input-field max-length="10"></td-input-field>');
-    expect(el.querySelector('.td-input').getAttribute('maxlength')).to.equal('10');
-    expect(el.querySelector('.td-input-counter')).to.not.equal(null);
+    expect(el.querySelector('.td-field__control').getAttribute('maxlength')).to.equal('10');
+    expect(el.querySelector('.td-field__counter')).to.not.equal(null);
   });
 
   it('td-toast: message is rendered as text, not HTML', () => {

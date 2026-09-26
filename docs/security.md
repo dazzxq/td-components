@@ -25,7 +25,7 @@ Không bao giờ đưa input của người dùng cuối qua các đường này
 
 - `TdModal.show({ body })`: `body` là HTML/element thô. (`confirm/success/error/info` có escape `message`.)
 - `td-table` column `render(row)`: trả về HTML ô thô. Ô không có `render` hiển thị giá trị đã escape.
-- `td-empty-state` `icon`: giá trị bắt đầu bằng `<svg` được chèn nguyên văn.
+- `td-empty-state` `icon`: ~~chuỗi `<svg` chèn nguyên văn~~ — **đã đóng (0.8.0)**: chuỗi SVG (deprecated) chỉ được render sau khi qua allowlist hình học dùng chung (`svgStringToDefinition`, parse `image/svg+xml`, dựng lại bằng `createElementNS`; `script`/`foreignObject`/`use`/`on*`/`style`/`url()` → từ chối, về `inbox`). Hatch được hỗ trợ: property `iconNode` (SVGElement tin cậy).
 
 Dưới CSP strict, nội dung đi qua các hatch này cũng phải "sạch CSP" (không `style="…"`, không `<style>`), vì lib
 không bảo đảm được phần đó.

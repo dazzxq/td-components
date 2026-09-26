@@ -486,7 +486,45 @@
 }
 
 /* ---- src/styles/components/field.css ---- */
-/* Error contract note (TdFormElement.setError / error-text) shared by form controls. */
+/*
+ * Form fields. `.td-field-error` = the error-contract note (TdFormElement.setError / error-text) shared by every
+ * form control; `.td-field` = td-input-field (src/form/td-input-field.js; block from the 135 kit, AA colours — D5).
+ * Content layer: solid fill, never glass. State: :focus / :focus-visible / :disabled / [readonly] /
+ * [aria-readonly] / [aria-disabled] / [aria-invalid="true"] / :empty (editable placeholder) on the control,
+ * [data-state="limit"] on the counter (colour only — D9), [hidden] on the footer/note.
+ */
+@layer td.tokens {
+	:root {
+		--td-field-bg: var(--td-control-bg);
+		--td-field-bg-focus: var(--td-control-bg);
+		--td-field-bg-disabled: var(--td-gray-100);
+		--td-field-bg-readonly: var(--td-color-surface-muted);
+		--td-field-fg: var(--td-control-fg);
+		--td-field-fg-disabled: var(--td-color-text-muted);
+		--td-field-border: var(--td-control-border-strong);   /* 3.42:1 on white (WCAG 1.4.11) */
+		--td-field-border-hover: var(--td-gray-600);
+		--td-field-focus: var(--td-focus);
+		--td-field-focus-ring: var(--td-focus-ring);
+		--td-field-placeholder: var(--td-gray-600);            /* 5.28:1 on white */
+		--td-field-note: var(--td-color-text-muted);
+		--td-field-label: var(--td-gray-700);
+		--td-field-radius-sm: 10px;
+		--td-field-radius-md: 12px;
+		--td-field-radius-lg: 14px;
+		--td-field-h-sm: 32px;
+		--td-field-h-md: 40px;
+		--td-field-h-lg: 48px;
+	}
+
+	:root[data-td-theme="dark"] {
+		--td-field-bg-disabled: var(--td-color-surface-muted);
+		--td-field-bg-readonly: var(--td-color-surface-muted);
+		--td-field-border-hover: var(--td-gray-400);
+		--td-field-placeholder: var(--td-gray-400);            /* 6.6:1 on #1c1c1e (gray-600 would be 3.2:1) */
+		--td-field-label: var(--td-gray-300);
+	}
+}
+
 @layer td.component {
 	.td-field-error {
 		display: block;
@@ -494,6 +532,208 @@
 		font-size: var(--td-text-xs);
 		line-height: var(--td-leading-normal);
 		color: var(--td-field-error);
+	}
+
+	td-input-field {
+		display: block;
+	}
+
+	.td-field {
+		--_td-field-h: var(--td-field-h-md);
+		--_td-field-radius: var(--td-field-radius-md);
+		--_td-field-pad: 8px 14px;
+
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-fg);
+	}
+
+	.td-field--sm {
+		--_td-field-h: var(--td-field-h-sm);
+		--_td-field-radius: var(--td-field-radius-sm);
+		--_td-field-pad: 6px 12px;
+	}
+
+	.td-field--lg {
+		--_td-field-h: var(--td-field-h-lg);
+		--_td-field-radius: var(--td-field-radius-lg);
+		--_td-field-pad: 10px 16px;
+
+		font-size: var(--td-text-base);
+	}
+
+	.td-field *,
+	.td-field *::before {
+		box-sizing: border-box;
+	}
+
+	.td-field__label {
+		display: block;
+		margin: 0 0 var(--td-space-2xs);
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-medium);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-label);
+	}
+
+	.td-field__required {
+		color: var(--td-field-error);
+	}
+
+	.td-field__control {
+		display: block;
+		width: 100%;
+		height: var(--_td-field-h);
+		padding: var(--_td-field-pad);
+		margin: 0;
+		font: inherit;
+		color: var(--td-field-fg);
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--_td-field-radius);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: none;
+		appearance: none;
+		transition:
+			border-color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease),
+			background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-field__control::placeholder {
+		color: var(--td-field-placeholder);
+		opacity: 1;
+	}
+
+	.td-field--textarea .td-field__control {
+		height: auto;
+		min-height: var(--_td-field-h);
+		resize: vertical;
+	}
+
+	.td-field--editable .td-field__control {
+		height: auto;
+		min-height: var(--_td-field-h);
+		overflow-y: auto;
+		overflow-wrap: anywhere;
+		white-space: pre-wrap;
+		cursor: text;
+	}
+
+	/* Placeholder of the editable div: CSS only, never text in the value (the JS keeps :empty true). */
+	.td-field__control[data-placeholder]:empty::before {
+		color: var(--td-field-placeholder);
+		pointer-events: none;
+		content: attr(data-placeholder);
+	}
+
+	.td-field__control:hover:not(:disabled, [aria-disabled="true"], :focus) {
+		border-color: var(--td-field-border-hover);
+	}
+
+	.td-field__control:focus {
+		background: var(--td-field-bg-focus);
+		border-color: var(--td-field-focus);
+	}
+
+	.td-field__control:focus-visible {
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	.td-field__control[readonly],
+	.td-field__control[aria-readonly="true"] {
+		background: var(--td-field-bg-readonly);
+	}
+
+	.td-field__control:disabled,
+	.td-field__control[aria-disabled="true"] {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-field-bg-disabled);
+	}
+
+	/* A visible error keeps the red border, focused or not (only a shown error — never the counter). */
+	.td-field__control[aria-invalid="true"],
+	.td-field__control[aria-invalid="true"]:focus,
+	.td-field__control[aria-invalid="true"]:hover {
+		border-color: var(--td-field-error);
+	}
+
+	.td-field__footer {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		column-gap: var(--td-space-xs);
+		align-items: start;
+		margin-top: var(--td-space-2xs);
+		font-size: var(--td-text-xs);
+		line-height: var(--td-leading-normal);
+	}
+
+	.td-field__footer[hidden],
+	.td-field__note[hidden] {
+		display: none;
+	}
+
+	.td-field__footer .td-field-error,
+	.td-field__note {
+		grid-column: 1;
+		min-width: 0;
+		margin: 0;
+	}
+
+	.td-field__note {
+		color: var(--td-field-note);
+	}
+
+	.td-field__counter {
+		grid-row: 1;
+		grid-column: 2;
+		font-variant-numeric: tabular-nums;
+		color: var(--td-field-note);
+		text-align: right;
+	}
+
+	.td-field__counter[data-state="limit"] {
+		color: var(--td-field-error);
+	}
+
+	@media (pointer: coarse) {
+		.td-field__control {
+			min-height: var(--td-touch-min);
+			font-size: max(1rem, 1em); /* ≥ 16px: iOS does not zoom on focus */
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-field__control {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-field__control {
+			border-color: CanvasText;
+		}
+
+		.td-field__control:focus-visible {
+			outline-color: Highlight;
+		}
+
+		.td-field__control[aria-invalid="true"] {
+			border-width: 2px;
+			border-style: dashed;
+		}
+
+		.td-field__control[data-placeholder]:empty::before,
+		.td-field__control::placeholder {
+			color: GrayText;
+		}
 	}
 }
 
@@ -1111,6 +1351,771 @@
 
 	@media (prefers-reduced-motion: reduce) {
 		.td-loading { transition: none; }
+	}
+}
+
+/* ---- src/styles/components/slider.css ---- */
+/*
+ * td-slider (src/form/td-slider.js) — plan v0.8.0-batch2 D11/D12/D14. Content-layer control: the track is a fill,
+ * the thumb is SOLID at rest and lifts into a clear glass lens only while dragged ([data-dragging], liquid-glass
+ * §3.5; no scale under reduced motion via --_td-glass-lift-knob).
+ * Geometry: the native range (opacity 0) covers the whole .td-slider__control (≥ 24 px, 44 px on touch) and its
+ * thumb is exactly --td-slider-thumb wide, so the native thumb travels [0, 100% - thumb] — the decorative thumb
+ * uses the same travel: left = pct × (100% - thumb). Value: host custom property --td-slider-pct (0…1).
+ * Host custom properties from attributes: --td-slider-color (`color`), --td-slider-track (`track-color`).
+ * Public width override: --td-slider-w (unset by default → size token), always max-width: 100%.
+ * WCAG 1.4.11: thumb = white fill with a 2px --td-slider-color ring (accent 5.17:1 on white).
+ */
+@layer td.tokens {
+	:root {
+		--td-slider-color: var(--td-accent);
+		--td-slider-track: var(--td-gray-200);
+		--td-slider-thumb-bg: #fff;
+		--td-slider-disabled: var(--td-gray-400);
+		--td-slider-w-sm: 200px;
+		--td-slider-w-md: 300px;
+		--td-slider-w-lg: 400px;
+		--td-slider-h-sm: 4px;
+		--td-slider-h-md: 6px;
+		--td-slider-h-lg: 8px;
+		--td-slider-thumb-sm: 14px;
+		--td-slider-thumb-md: 18px;
+		--td-slider-thumb-lg: 22px;
+	}
+
+	:root[data-td-theme="dark"] {
+		--td-slider-track: #3a3a40;
+		--td-slider-thumb-bg: #fff;
+		--td-slider-disabled: #5a5a62;
+	}
+}
+
+@layer td.component {
+	td-slider {
+		display: block;
+		max-width: 100%;
+	}
+
+	.td-slider {
+		--td-slider-h: var(--td-slider-h-md);
+		--td-slider-thumb: var(--td-slider-thumb-md);
+		--_td-slider-w: var(--td-slider-w-md);
+
+		position: relative;
+		box-sizing: border-box;
+		display: block;
+		width: var(--td-slider-w, var(--_td-slider-w));
+		max-width: 100%;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text);
+	}
+
+	.td-slider--sm {
+		--td-slider-h: var(--td-slider-h-sm);
+		--td-slider-thumb: var(--td-slider-thumb-sm);
+		--_td-slider-w: var(--td-slider-w-sm);
+	}
+
+	.td-slider--lg {
+		--td-slider-h: var(--td-slider-h-lg);
+		--td-slider-thumb: var(--td-slider-thumb-lg);
+		--_td-slider-w: var(--td-slider-w-lg);
+	}
+
+	.td-slider *,
+	.td-slider *::before,
+	.td-slider *::after {
+		box-sizing: border-box;
+	}
+
+	.td-slider__label {
+		display: block;
+		margin-bottom: var(--td-space-xs);
+		font-weight: var(--td-fw-medium);
+		color: var(--td-color-text);
+	}
+
+	.td-slider__value {
+		display: block;
+		margin-block: var(--td-space-2xs);
+		font-weight: var(--td-fw-semibold);
+		font-variant-numeric: tabular-nums;
+		text-align: center;
+		color: var(--td-color-text);
+	}
+
+	/* The interactive box: hit area ≥ 24 px (WCAG 2.5.8). */
+	.td-slider__control {
+		position: relative;
+		display: block;
+		width: 100%;
+		height: max(var(--td-slider-thumb), 24px);
+	}
+
+	.td-slider__control:has(.td-slider__marks) {
+		margin-bottom: 1.5rem; /* room for the mark labels */
+	}
+
+	/* Native range: invisible, covers the whole control, thumb width = --td-slider-thumb (pointer ↔ value). */
+	.td-slider__input {
+		position: absolute;
+		inset: 0;
+		font: inherit;
+		color: inherit;        /* own it: UA disabled colours vs host resets (Tailwind preflight) differ */
+		border-color: transparent;
+		z-index: 2;
+		width: 100%;
+		height: 100%;
+		padding: 0;
+		margin: 0;
+		background: transparent;
+		border: 0;
+		opacity: 0;
+		cursor: pointer;
+		appearance: none;
+		-webkit-appearance: none;
+		touch-action: none;
+	}
+
+	.td-slider__input::-webkit-slider-runnable-track {
+		height: 100%;
+		background: transparent;
+		border: 0;
+	}
+
+	.td-slider__input::-webkit-slider-thumb {
+		width: var(--td-slider-thumb);
+		height: 100%;
+		border: 0;
+		appearance: none;
+		-webkit-appearance: none;
+	}
+
+	.td-slider__input::-moz-range-track {
+		height: 100%;
+		background: transparent;
+		border: 0;
+	}
+
+	.td-slider__input::-moz-range-thumb {
+		width: var(--td-slider-thumb);
+		height: 100%;
+		border: 0;
+		border-radius: 0;
+	}
+
+	.td-slider__input:disabled {
+		cursor: not-allowed;
+	}
+
+	.td-slider__track {
+		position: absolute;
+		top: 50%;
+		right: 0;
+		left: 0;
+		height: var(--td-slider-h);
+		overflow: hidden;
+		background: var(--td-slider-track);
+		border-radius: var(--td-radius-full);
+		transform: translateY(-50%);
+	}
+
+	/* Fill reaches the thumb centre. */
+	.td-slider__fill {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		width: calc(var(--td-slider-thumb) / 2 + var(--td-slider-pct, 0) * (100% - var(--td-slider-thumb)));
+		background: var(--td-slider-color);
+		border-radius: inherit;
+	}
+
+	.td-slider__marks {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+	}
+
+	.td-slider__mark {
+		position: absolute;
+		top: 50%;
+		left: calc(var(--td-slider-thumb) / 2 + var(--td-slider-mark, 0) * (100% - var(--td-slider-thumb)));
+		width: 2px;
+		height: calc(var(--td-slider-h) + 4px);
+		background: var(--td-control-border-strong);
+		border-radius: 1px;
+		transform: translate(-50%, -50%);
+	}
+
+	.td-slider__mark-label {
+		position: absolute;
+		top: calc(100% + (var(--td-slider-thumb) - var(--td-slider-h)) / 2 + 2px);
+		left: 50%;
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-medium);
+		line-height: 1;
+		color: var(--td-color-text-muted);
+		white-space: nowrap;
+		transform: translateX(-50%);
+	}
+
+	.td-slider__thumb {
+		position: absolute;
+		top: 50%;
+		left: calc(var(--td-slider-pct, 0) * (100% - var(--td-slider-thumb)));
+		z-index: 1;
+		width: var(--td-slider-thumb);
+		height: var(--td-slider-thumb);
+		pointer-events: none;
+		background: var(--td-slider-thumb-bg);
+		border: 2px solid var(--td-slider-color);
+		border-radius: var(--td-radius-full);
+		box-shadow: var(--td-shadow-2);
+		transform: translateY(-50%) scale(1);
+		transition:
+			transform var(--_td-glass-dur, var(--td-glass-dur)) var(--_td-glass-ease-flex, var(--td-glass-ease-flex)),
+			background-color var(--_td-glass-dur, var(--td-glass-dur)) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease);
+	}
+
+	/* Knob lifts into a clear glass lens only while dragged. */
+	.td-slider[data-dragging] .td-slider__thumb {
+		background: var(--td-glass-clear-bg);
+		-webkit-backdrop-filter: blur(2px) saturate(160%);
+		backdrop-filter: blur(2px) saturate(160%);
+		box-shadow: inset 0 1px 0 var(--td-glass-clear-edge), 0 0 0 4px var(--td-slider-color), var(--td-shadow-3);
+		transform: translateY(-50%) scale(var(--_td-glass-lift-knob, var(--td-glass-lift-scale)));
+	}
+
+	@supports (color: color-mix(in srgb, red 50%, transparent)) {
+		.td-slider__thumb {
+			box-shadow: var(--td-shadow-2), 0 2px 8px color-mix(in srgb, var(--td-slider-color) 30%, transparent);
+		}
+
+		.td-slider[data-dragging] .td-slider__thumb {
+			box-shadow:
+				inset 0 1px 0 var(--td-glass-clear-edge),
+				0 0 0 4px color-mix(in srgb, var(--td-slider-color) 25%, transparent),
+				var(--td-shadow-3);
+		}
+	}
+
+	.td-slider__input:focus-visible ~ .td-slider__thumb {
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-slider__input[aria-invalid="true"] ~ .td-slider__thumb {
+		border-color: var(--td-field-error);
+	}
+
+	.td-slider__input:disabled ~ .td-slider__track .td-slider__fill {
+		background: var(--td-slider-disabled);
+	}
+
+	.td-slider__input:disabled ~ .td-slider__thumb {
+		border-color: var(--td-slider-disabled);
+		box-shadow: none;
+	}
+
+	.td-slider:has(.td-slider__input:disabled) {
+		color: var(--td-color-text-muted);
+	}
+
+	.td-slider__range {
+		display: flex;
+		justify-content: space-between;
+		margin-top: var(--td-space-2xs);
+		font-size: var(--td-text-xs);
+		color: var(--td-color-text-muted);
+	}
+
+	.td-slider > .td-field-error {
+		margin-top: var(--td-space-2xs);
+	}
+
+	@media (pointer: coarse) {
+		.td-slider__control {
+			height: max(var(--td-slider-thumb), var(--td-touch-min));
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-slider__thumb {
+			transition: none;
+		}
+
+		.td-slider[data-dragging] .td-slider__thumb {
+			transform: translateY(-50%) scale(1);
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-slider__track {
+			border: 1px solid CanvasText;
+		}
+
+		.td-slider__fill,
+		.td-slider__thumb,
+		.td-slider__mark {
+			forced-color-adjust: none;
+		}
+
+		.td-slider__fill {
+			background: Highlight;
+		}
+
+		.td-slider__mark {
+			background: CanvasText;
+		}
+
+		.td-slider__thumb,
+		.td-slider[data-dragging] .td-slider__thumb {
+			background: Canvas;
+			border-color: Highlight;
+			box-shadow: none;
+		}
+
+		.td-slider__input:disabled ~ .td-slider__track .td-slider__fill {
+			background: GrayText;
+		}
+
+		.td-slider__input:disabled ~ .td-slider__thumb {
+			border-color: GrayText;
+		}
+
+		.td-slider__input:focus-visible ~ .td-slider__thumb {
+			outline: 2px solid CanvasText;
+		}
+	}
+}
+
+/* ---- src/styles/components/pagination.css ---- */
+/*
+ * td-pagination (src/display/td-pagination.js). Content layer → SOLID, never glass (liquid-glass: current page = fill).
+ * State: [aria-current="page"] (current page) · [aria-disabled="true"] (prev/next at the ends; focus kept, click guarded)
+ * · :hover · :focus-visible.
+ * Per-instance colours: host custom properties --td-pagination-active / --td-pagination-active-fg (from `active-color`;
+ * the fg is chosen by WCAG contrast in JS).
+ */
+@layer td.tokens {
+	:root {
+		--td-pagination-active: var(--td-accent);
+		--td-pagination-active-fg: var(--td-accent-contrast);
+		--td-pagination-item-size: 2rem;
+	}
+
+	:root[data-td-theme="dark"] {
+		/* white text on the dark accent #3b82f6 is 3.68:1 → use the button primary blue (5.17:1), like .td-btn--primary */
+		--td-pagination-active: #2563eb;
+		--td-pagination-active-fg: #fff;
+	}
+}
+
+@layer td.component {
+	td-pagination {
+		display: block;
+	}
+
+	.td-pagination {
+		box-sizing: border-box;
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs) var(--td-space-sm);
+		align-items: center;
+		justify-content: flex-end;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text);
+	}
+
+	.td-pagination *,
+	.td-pagination *::before,
+	.td-pagination *::after {
+		box-sizing: border-box;
+	}
+
+	.td-pagination__info {
+		margin: 0;
+		color: var(--td-color-text-muted);
+	}
+
+	.td-pagination__controls {
+		display: flex;
+		gap: var(--td-space-2xs);
+		align-items: center;
+	}
+
+	.td-pagination__pages {
+		display: flex;
+		gap: var(--td-space-2xs);
+		align-items: center;
+		padding: 0;
+		margin: 0;
+		list-style: none;
+	}
+
+	.td-pagination__pages > li {
+		display: flex;
+		margin: 0;
+		padding: 0;
+	}
+
+	.td-pagination__page,
+	.td-pagination__nav {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: var(--td-pagination-item-size);
+		height: var(--td-pagination-item-size);
+		padding: 0 var(--td-space-xs);
+		margin: 0;
+		font: inherit;
+		font-variant-numeric: tabular-nums;
+		color: var(--td-color-text);
+		cursor: pointer;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--td-radius-full);
+		transition:
+			background var(--td-dur-fast) var(--td-ease),
+			color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+	}
+
+	.td-pagination__nav {
+		padding: 0;
+		border-color: var(--td-control-border);
+	}
+
+	.td-pagination__icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+
+	.td-pagination__page:hover:not([aria-current="page"]),
+	.td-pagination__nav:hover:not([aria-disabled="true"]) {
+		background: var(--td-color-hover-strong);
+	}
+
+	.td-pagination__page[aria-current="page"] {
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-pagination-active-fg);
+		cursor: default;
+		background: var(--td-pagination-active);
+		border-color: var(--td-pagination-active);
+	}
+
+	.td-pagination__nav[aria-disabled="true"] {
+		cursor: not-allowed;
+		opacity: 0.45;
+	}
+
+	.td-pagination__page:focus-visible,
+	.td-pagination__nav:focus-visible {
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-pagination__ellipsis {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 1.5rem;
+		color: var(--td-color-text-muted);
+		user-select: none;
+	}
+
+	@media (pointer: coarse) {
+		.td-pagination { --td-pagination-item-size: var(--td-touch-min); }
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-pagination__page,
+		.td-pagination__nav { transition: none; }
+	}
+
+	@media (forced-colors: active) {
+		.td-pagination__nav { border-color: ButtonText; }
+		.td-pagination__page[aria-current="page"] {
+			color: HighlightText;
+			background: Highlight;
+			border-color: Highlight;
+			forced-color-adjust: none;
+		}
+		.td-pagination__nav[aria-disabled="true"] { color: GrayText; border-color: GrayText; opacity: 1; }
+	}
+}
+
+/* ---- src/styles/components/tabs.css ---- */
+/*
+ * td-tabs (src/display/td-tabs.js). Content-layer segmented control: NO glass (liquid-glass.md, td-tabs row) —
+ * trough --td-tabs-bg (= --td-color-hover), selected pill --td-tabs-pill (= --td-color-surface) + shadow.
+ * State: [aria-selected] on .td-tabs__tab, data-state="empty|ready" on .td-tabs (ready = indicator measured).
+ * The indicator is positioned by the CSSOM custom properties --td-tabs-ind-x / --td-tabs-ind-w (set by JS on
+ * .td-tabs), never by inline style markup.
+ * AA: inactive text gray-600 on the trough ≥ 4.5:1 (light + dark); selected = text colour + weight + pill;
+ * forced colours: selected tab gets a 2px Highlight border (the pill disappears).
+ */
+@layer td.tokens {
+	:root {
+		--td-tabs-bg: var(--td-color-hover);
+		--td-tabs-pill: var(--td-color-surface);
+		--td-tabs-pill-shadow: var(--td-shadow-1);
+		--td-tabs-fg: var(--td-color-text-muted);
+		--td-tabs-fg-hover: var(--td-color-text);
+		--td-tabs-fg-active: var(--td-color-text);
+		--td-tabs-radius: 12px;
+		--td-tabs-pad: 4px;
+	}
+
+	:root[data-td-theme="dark"] {
+		/* the dark surface is darker than the translucent trough → a lighter translucent pill */
+		--td-tabs-pill: rgb(255 255 255 / 14%);
+		--td-tabs-pill-shadow: 0 1px 2px rgb(0 0 0 / 40%);
+	}
+}
+
+@layer td.component {
+	td-tabs {
+		display: block;
+	}
+
+	.td-tabs {
+		--_td-tabs-inner-radius: max(4px, calc(var(--td-tabs-radius) - var(--td-tabs-pad))); /* concentric (R8) */
+
+		position: relative;
+		box-sizing: border-box;
+		display: flex;
+		gap: var(--td-tabs-pad);
+		padding: var(--td-tabs-pad);
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-xs);
+		line-height: var(--td-leading-tight);
+		background: var(--td-tabs-bg);
+		border-radius: var(--td-tabs-radius);
+	}
+
+	.td-tabs__indicator {
+		position: absolute;
+		top: var(--td-tabs-pad);
+		bottom: var(--td-tabs-pad);
+		left: 0;
+		z-index: 0;
+		display: none; /* shown once measured: no slide-in from x = 0 on first paint */
+		box-sizing: border-box;
+		width: var(--td-tabs-ind-w, 0px);
+		background: var(--td-tabs-pill);
+		border-radius: var(--_td-tabs-inner-radius);
+		box-shadow: var(--td-tabs-pill-shadow);
+		transform: translateX(var(--td-tabs-ind-x, 0px));
+		pointer-events: none;
+		transition:
+			transform var(--td-dur-slow) var(--td-ease-out),
+			width var(--td-dur-slow) var(--td-ease-out);
+	}
+
+	.td-tabs[data-state="ready"] > .td-tabs__indicator {
+		display: block;
+	}
+
+	.td-tabs__tab {
+		position: relative;
+		z-index: 1;
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: 1 1 0;
+		gap: 6px;
+		align-items: center;
+		justify-content: center;
+		min-width: 0;
+		min-height: 24px; /* hit target ≥ 24 px (WCAG 2.5.8) */
+		margin: 0;
+		padding: 8px 12px;
+		font: inherit;
+		font-weight: var(--td-fw-medium);
+		color: var(--td-tabs-fg);
+		text-align: center;
+		text-transform: none;
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: var(--_td-tabs-inner-radius);
+		appearance: none;
+		-webkit-tap-highlight-color: transparent;
+		transition: color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-tabs--sm .td-tabs__tab {
+		padding: 6px 12px;
+	}
+
+	.td-tabs__tab:hover {
+		color: var(--td-tabs-fg-hover);
+	}
+
+	.td-tabs__tab[aria-selected="true"] {
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-tabs-fg-active);
+	}
+
+	.td-tabs__tab:focus-visible {
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-tabs__icon {
+		display: inline-flex;
+		flex: 0 0 auto;
+		line-height: 0;
+	}
+
+	.td-tabs__label {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	@media (pointer: coarse) {
+		.td-tabs__tab {
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-tabs__indicator,
+		.td-tabs__tab {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-tabs {
+			border: 1px solid CanvasText;
+		}
+
+		.td-tabs[data-state="ready"] > .td-tabs__indicator {
+			display: none;
+		}
+
+		.td-tabs__tab {
+			border: 2px solid transparent;
+		}
+
+		.td-tabs__tab[aria-selected="true"] {
+			border-color: Highlight;
+		}
+	}
+}
+
+/* ---- src/styles/components/empty-state.css ---- */
+/*
+ * td-empty-state (src/display/td-empty-state.js). Content layer → SOLID card, never glass (liquid-glass: no inset
+ * highlight; a primary CTA may be a solid .td-btn).
+ * Variants: .td-empty-state--sm|md|lg, --compact. State: .td-empty-state__actions[hidden] when there are no actions.
+ * Action buttons reuse the .td-btn CSS contract (button.css).
+ */
+@layer td.tokens {
+	:root {
+		--td-empty-state-bg: var(--td-color-surface);
+		--td-empty-state-border: var(--td-color-border-strong);
+		--td-empty-state-icon: var(--td-color-text-subtle);
+	}
+}
+
+@layer td.component {
+	td-empty-state {
+		display: block;
+	}
+
+	.td-empty-state {
+		--td-empty-state-pad: 22px;
+		--td-empty-state-gap: 10px;
+
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		padding: var(--td-empty-state-pad);
+		font-family: var(--td-font-sans);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text);
+		text-align: center;
+		background: var(--td-empty-state-bg);
+		border: 1px dashed var(--td-empty-state-border);
+		border-radius: var(--td-radius-lg);
+	}
+
+	.td-empty-state *,
+	.td-empty-state *::before,
+	.td-empty-state *::after {
+		box-sizing: border-box;
+	}
+
+	.td-empty-state--sm { --td-empty-state-pad: 16px; --td-empty-state-gap: 8px; }
+	.td-empty-state--lg { --td-empty-state-pad: 28px; --td-empty-state-gap: 12px; }
+
+	.td-empty-state--sm.td-empty-state--compact { --td-empty-state-pad: 8px; }
+	.td-empty-state--md.td-empty-state--compact { --td-empty-state-pad: 11px; }
+	.td-empty-state--lg.td-empty-state--compact { --td-empty-state-pad: 14px; }
+
+	.td-empty-state__icon {
+		display: inline-flex;
+		margin-bottom: var(--td-empty-state-gap);
+		line-height: 0;
+		color: var(--td-empty-state-icon);
+	}
+
+	.td-empty-state__title {
+		margin: 0 0 calc(var(--td-empty-state-gap) - 2px);
+		font-size: var(--td-text-md);
+		font-weight: var(--td-fw-semibold);
+		line-height: var(--td-leading-tight);
+		color: var(--td-color-text);
+	}
+
+	.td-empty-state__message {
+		margin: 0;
+		font-size: var(--td-text-sm);
+		color: var(--td-color-text-muted);
+	}
+
+	.td-empty-state--sm .td-empty-state__title { font-size: var(--td-text-base); }
+	.td-empty-state--sm .td-empty-state__message { font-size: var(--td-text-xs); }
+	.td-empty-state--lg .td-empty-state__title { font-size: var(--td-text-lg); }
+	.td-empty-state--lg .td-empty-state__message { font-size: var(--td-text-base); }
+
+	.td-empty-state__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+		justify-content: center;
+		margin-top: calc(var(--td-empty-state-gap) + 6px);
+	}
+
+	.td-empty-state__actions[hidden] {
+		display: none;
+	}
+
+	@media (forced-colors: active) {
+		.td-empty-state { border-color: CanvasText; }
+		.td-empty-state__icon { color: CanvasText; }
+	}
+
+	/* No motion of its own (action buttons follow button.css, incl. its reduced-motion and coarse-pointer rules). */
+	@media (prefers-reduced-motion: reduce) {
+		.td-empty-state { transition: none; }
 	}
 }
 

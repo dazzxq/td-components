@@ -1,4 +1,5 @@
 import './td-pagination.js';
+import '../styles/story-layout.css';
 
 export default {
   title: 'Display/Pagination',
@@ -10,6 +11,7 @@ export default {
     'active-color': { control: 'color' },
     'item-label': { control: 'text' },
     'max-pages': { control: 'number' },
+    'aria-label': { control: 'text' },
   },
 };
 
@@ -22,6 +24,7 @@ export const Default = {
       ${args['active-color'] ? `active-color="${args['active-color']}"` : ''}
       ${args['item-label'] ? `item-label="${args['item-label']}"` : ''}
       ${args['max-pages'] ? `max-pages="${args['max-pages']}"` : ''}
+      ${args['aria-label'] ? `aria-label="${args['aria-label']}"` : ''}
     ></td-pagination>
   `,
   args: {
@@ -86,5 +89,19 @@ export const CustomLabel = {
       current-page="3"
       item-label="bài viết"
     ></td-pagination>
+  `,
+};
+
+export const WindowSize = {
+  render: () => `
+    <td-pagination total-items="1000" items-per-page="10" current-page="50" max-pages="3" aria-label="Phân trang (max-pages=3)"></td-pagination>
+    <p class="sb-note">max-pages = kích thước cửa sổ trang liên tiếp; trang đầu/cuối luôn hiện.</p>
+  `,
+};
+
+export const TranslucentColor = {
+  render: () => `
+    <td-pagination total-items="200" items-per-page="10" current-page="5" active-color="rgba(37, 99, 235, 0.25)"></td-pagination>
+    <p class="sb-note">Màu trong suốt: chữ đen/trắng chọn theo tương phản với màu đã phủ lên nền thật.</p>
   `,
 };

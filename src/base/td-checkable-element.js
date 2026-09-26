@@ -1,8 +1,6 @@
 import { TdFormElement } from './td-form-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 
-let _labelIdCounter = 0;
-
 /**
  * Shared base for checkbox-like controls (td-checkbox, td-toggle). Plan: docs/plans/v0.7.0-batch1.md.
  *
@@ -95,21 +93,9 @@ export class TdCheckableElement extends TdFormElement {
     else this.style.removeProperty(prop);
   }
 
-  /** @protected Accessible name precedence (see class doc). */
+  /** @protected Accessible name precedence (see class doc; shared helper in TdFormElement). */
   _applyAccessibleName() {
-    const input = this._focusTarget();
-    if (!input) return;
-    input.removeAttribute('aria-label');
-    input.removeAttribute('aria-labelledby');
-    if (this.getAttribute('label')) return; // the wrapping <label> names it
-    const aria = this.getAttribute('aria-label');
-    if (aria) { input.setAttribute('aria-label', aria); return; }
-    const labels = this._internals && this._internals.labels ? [...this._internals.labels] : [];
-    const ids = labels.map((l) => {
-      if (!l.id) l.id = `td-lbl-${++_labelIdCounter}`;
-      return l.id;
-    });
-    if (ids.length) input.setAttribute('aria-labelledby', ids.join(' '));
+    super._applyAccessibleName(this._focusTarget(), !!this.getAttribute('label'));
   }
 
   /** @protected Push the state into form submission + constraint validation. */

@@ -1,0 +1,32 @@
+<!-- td-input-field markup contract (SSR: emit this inside <td-input-field id="…"> or standalone with td.css).
+     Ids derive from the host id: {host}-label / {host}-control (or field-id verbatim) / {host}-note / {host}-counter /
+     {host}-error. aria-describedby = consumer ids + note (when a helper shows) + counter + error (while shown). -->
+<template data-component="td-input-field" data-markup='<td-input-field id="if-text" label="Họ tên" helper-text="Tên đầy đủ" max-length="50" value="An" required></td-input-field>'>
+  <div class="td-field td-field--md">
+    <label class="td-field__label" id="if-text-label" for="if-text-control">Họ tên<span class="td-field__required" aria-hidden="true"> *</span></label>
+    <input type="text" class="td-field__control" id="if-text-control" value="An" maxlength="50" aria-required="true" aria-describedby="if-text-note if-text-counter">
+    <div class="td-field__footer">
+      <div class="td-field__note" id="if-text-note">Tên đầy đủ</div>
+      <div class="td-field__counter" id="if-text-counter">2/50 ký tự</div>
+    </div>
+  </div>
+</template>
+<template data-component="td-input-field" data-markup='<td-input-field id="if-area" type="textarea" label="Mô tả" rows="3" placeholder="Viết mô tả"></td-input-field>'>
+  <div class="td-field td-field--md td-field--textarea">
+    <label class="td-field__label" id="if-area-label" for="if-area-control">Mô tả</label>
+    <textarea class="td-field__control" id="if-area-control" rows="3" placeholder="Viết mô tả"></textarea>
+    <div class="td-field__footer" hidden>
+      <div class="td-field__note" id="if-area-note" hidden></div>
+    </div>
+  </div>
+</template>
+<template data-component="td-input-field" data-markup='<td-input-field id="if-err" type="email" label="Email" helper-text="Dùng email công ty" error-text="Email không hợp lệ" value="x"></td-input-field>'>
+  <div class="td-field td-field--md">
+    <label class="td-field__label" id="if-err-label" for="if-err-control">Email</label>
+    <input type="text" class="td-field__control" id="if-err-control" value="x" inputmode="email" aria-describedby="if-err-note if-err-error" aria-invalid="true" aria-errormessage="if-err-error">
+    <div class="td-field__footer">
+      <span class="td-field-error" id="if-err-error" data-for="if-err">Email không hợp lệ</span>
+      <div class="td-field__note" id="if-err-note">Dùng email công ty</div>
+    </div>
+  </div>
+</template>

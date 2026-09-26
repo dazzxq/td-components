@@ -1,6 +1,7 @@
 import { TdBaseElement } from './td-base-element.js';
 
 let _autoIdCounter = 0;
+let _labelIdCounter = 0;
 
 /**
  * Base class for form-associated td-components. Extends {@link TdBaseElement}
@@ -47,7 +48,7 @@ export class TdFormElement extends TdBaseElement {
 
   /**
    * Opt-in error contract (setError/clearError/`error-text`). Subclasses that return true must also
-   * list `'error-text'` in their observedAttributes. td-input-field keeps its own until its migration.
+   * list `'error-text'` in their observedAttributes. Used by checkbox, switch, input-field, slider.
    * @returns {boolean}
    */
   static get errorContract() { return false; }
@@ -90,6 +91,19 @@ export class TdFormElement extends TdBaseElement {
     // `<label for="${this.id}">` gets a real target on the very first paint (ISSUE-1).
     this._ensureId();
     super.connectedCallback(); // _setupProperties + first _doRender (if not yet initialized)
+    // External <label for="host-id">: the browser runs the label's activation on the HOST (form-associated
+    // custom elements are labelable). Forward it to the inner control like a native one: focus it, and
+    // activate checkable controls (checkbox/switch).
+    if (!this._labelForwarder) {
+      this._labelForwarder = (e) => {
+        if (e.target !== this || this._effectiveDisabled) return;
+        const control = this._focusTarget();
+        if (!control) return;
+        control.focus();
+        if (control instanceof HTMLInputElement && (control.type === 'checkbox' || control.type === 'radio')) control.click();
+      };
+      this.addEventListener('click', this._labelForwarder);
+    }
     if (!this._defaultsCaptured) {
       this._captureDefaults();
       this._defaultsCaptured = true;
@@ -225,6 +239,75 @@ export class TdFormElement extends TdBaseElement {
     return this;
   }
 
+  /**
+   * Insert a freshly created error note. Default: append to `_errorHost()`. Subclasses with a footer
+   * (td-input-field) override to prepend it there.
+   * @param {HTMLElement} note
+   * @protected
+   */
+  _mountErrorNote(note) {
+    this._errorHost().appendChild(note);
+  }
+
+  /**
+   * Ids (helper note, counter…) the subclass wants in the control's `aria-describedby`, besides the error.
+   * @returns {string[]}
+   * @protected
+   */
+  _describedByIds() {
+    return [];
+  }
+
+  /**
+   * Merge the component-owned description ids (+ the error id while an error shows) into the control's
+   * `aria-describedby`, preserving any ids the page put there itself.
+   * @protected
+   */
+  _syncDescribedBy() {
+    const target = this._focusTarget();
+    if (!target) return;
+    const own = [...this._describedByIds()];
+    if (this.constructor.errorContract && this.errorMessage) own.push(`${this.id}-error`);
+    const prevOwn = this._ownDescribedBy || new Set();
+    let foreign;
+    if (this._describedByTarget && this._describedByTarget !== target) {
+      // The control was replaced by a re-render: keep the page's own ids from the previous control.
+      foreign = this._foreignDescribedBy || [];
+    } else {
+      const current = (target.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+      foreign = current.filter((idRef) => !prevOwn.has(idRef));
+    }
+    this._describedByTarget = target;
+    this._foreignDescribedBy = foreign;
+    const next = [...new Set([...foreign, ...own])];
+    if (next.length) target.setAttribute('aria-describedby', next.join(' '));
+    else target.removeAttribute('aria-describedby');
+    this._ownDescribedBy = new Set(own);
+  }
+
+  /**
+   * Accessible-name precedence shared by every form control: (1) a visible internal label names it (nothing
+   * to add); (2) else the host `aria-label` is copied to the control; (3) else the ids of external
+   * `<label for="host-id">` elements (generated when missing) become the control's `aria-labelledby`.
+   * @param {HTMLElement|null} control
+   * @param {boolean} hasVisibleLabel
+   * @protected
+   */
+  _applyAccessibleName(control, hasVisibleLabel) {
+    if (!control) return;
+    control.removeAttribute('aria-label');
+    if (!hasVisibleLabel) control.removeAttribute('aria-labelledby');
+    if (hasVisibleLabel) return;
+    const aria = this.getAttribute('aria-label');
+    if (aria) { control.setAttribute('aria-label', aria); return; }
+    const labels = this._internals && this._internals.labels ? [...this._internals.labels] : [];
+    const ids = labels.map((l) => {
+      if (!l.id) l.id = `td-lbl-${++_labelIdCounter}`;
+      return l.id;
+    });
+    if (ids.length) control.setAttribute('aria-labelledby', ids.join(' '));
+  }
+
   /** @protected Sync the note + aria on the focus target with the current error. */
   _applyErrorState() {
     if (!this.constructor.errorContract || !this._initialized) return;
@@ -237,7 +320,7 @@ export class TdFormElement extends TdBaseElement {
       if (!note) {
         note = document.createElement('span');
         note.className = 'td-field-error';
-        this._errorHost().appendChild(note);
+        this._mountErrorNote(note);
         this._errorNote = note;
       }
       note.id = id;
@@ -255,6 +338,7 @@ export class TdFormElement extends TdBaseElement {
         target.removeAttribute('aria-errormessage');
       }
     }
+    this._syncDescribedBy(); // error id also in aria-describedby (aria-errormessage support is patchy)
   }
 
   // --- Defaults + reset (ISSUE-4) ---

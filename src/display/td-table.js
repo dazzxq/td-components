@@ -22,7 +22,7 @@ import './td-empty-state.js';
  *
  * @element td-table
  * @attr {number} per-page - Items per page (default 10)
- * @attr {string} active-color - CSS color for pagination active state (default '#ef4444')
+ * @attr {string} active-color - CSS color for the pagination current page (default: td-pagination's token)
  * @attr {boolean} zebra - Zebra striping on alternating rows (default true)
  * @attr {boolean} loading - Show loading skeleton
  * @attr {number} loading-rows - Number of skeleton rows (default 5)
@@ -134,7 +134,7 @@ export class TdTable extends TdBaseElement {
   // --- Attribute helpers ---
 
   _getPerPage() { return Math.max(1, parseInt(this.getAttribute('per-page') || '10', 10)); }
-  _getActiveColor() { return this.safeColor(this.getAttribute('active-color'), '#ef4444'); }
+  _getActiveColor() { return this.safeColor(this.getAttribute('active-color'), ''); }
   _isZebra() { return !this.hasAttribute('zebra') || this.hasAttribute('zebra'); }
   _isLoading() { return this.hasAttribute('loading'); }
   _getLoadingRows() { return Math.max(1, parseInt(this.getAttribute('loading-rows') || '5', 10)); }
@@ -273,15 +273,16 @@ export class TdTable extends TdBaseElement {
 
   // --- Pagination HTML ---
 
-  _renderPagination(totalItems) {
+  _renderPagination(totalItems, label = 'Phân trang') {
     const perPage = this._getPerPage();
     const activeColor = this._getActiveColor();
     return `<td-pagination
       total-items="${totalItems}"
       items-per-page="${perPage}"
       current-page="${this._currentPage}"
-      active-color="${activeColor}"
+      ${activeColor ? `active-color="${activeColor}"` : ''}
       item-label="mục"
+      aria-label="${this.escapeHtml(label)}"
     ></td-pagination>`;
   }
 
@@ -388,14 +389,14 @@ export class TdTable extends TdBaseElement {
     const headerSection = (titleText || hasData) ? `
       <div class="td-table-header-bar flex items-center justify-between px-6 py-4">
         ${titleText ? `<h3 class="text-lg font-semibold text-gray-900">${this.escapeHtml(titleText)}</h3>` : '<div></div>'}
-        ${hasData ? `<div class="td-table-header-pagination">${this._renderPagination(totalItems)}</div>` : ''}
+        ${hasData ? `<div class="td-table-header-pagination">${this._renderPagination(totalItems, 'Phân trang (trên)')}</div>` : ''}
       </div>
     ` : '';
 
     // Footer
     const footerSection = hasData ? `
       <div class="td-table-footer-bar flex items-center justify-end px-6 py-4">
-        <div class="td-table-footer-pagination">${this._renderPagination(totalItems)}</div>
+        <div class="td-table-footer-pagination">${this._renderPagination(totalItems, 'Phân trang (dưới)')}</div>
       </div>
     ` : '';
 

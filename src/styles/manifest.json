@@ -12,6 +12,10 @@
     "components/checkbox.css",
     "components/switch.css",
     "components/loading.css",
+    "components/slider.css",
+    "components/pagination.css",
+    "components/tabs.css",
+    "components/empty-state.css",
     "components/lightbox.css",
     "utilities.css"
   ]

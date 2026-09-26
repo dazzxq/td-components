@@ -2,6 +2,63 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.8.0
+
+Migration **batch 2**: `td-input-field`, `td-slider`, `td-pagination`, `td-tabs`, `td-empty-state` are now
+**token-native** (td.css only). Plan: `docs/plans/v0.8.0-batch2.md` (Codex plan-review APPROVE, 3 rounds; inventory +
+decisions D1–D19 in `v0.8.0-batch2-inventory.md`). Built in parallel by four agents in isolated worktrees, integrated here.
+
+### Breaking (internal DOM / classes)
+
+- Internal classes renamed to BEM — `docs/migration/class-map.md` (`.td-input*` → `.td-field*`, `.td-slider-*` →
+  `.td-slider__*`, `.td-pagination-*` → `.td-pagination__*`, `.td-tab-btn` → `.td-tabs__tab`, `.td-empty-*` →
+  `.td-empty-state__*`). These components require `td.css`.
+
+### Behaviour changes
+
+- **One event per kind** for input-field and slider (native `input`/`change` no longer bubble); input-field `change`
+  only when the value changed since focus.
+- **Tabs keyboard:** APG roles, roving tabindex, ← → Home End move focus, **Enter/Space select** (manual activation);
+  `activation="auto"` makes arrows select. Default tablist name "Các thẻ".
+- **Pagination:** page numbers are buttons (`aria-current`), focus kept across page changes, `max-pages` is now the
+  window of consecutive pages (was only a threshold — bug), current page is a solid accent pill (was red text,
+  3.76:1), `current-page` clamped. td-table no longer forces `#ef4444` and names its two paginations.
+- **Input-field:** error AND helper show together; form reset clears the error; attribute changes update in place
+  (focus + caret kept); the counter at the limit no longer turns the border red; the label is always associated
+  (`field-id` verbatim, else `{host-id}-control`).
+- **Slider:** default colour is the accent token; `color` accepts any safe CSS colour; `track-color` is applied
+  (it was ignored); step marks only when ≤ 50; `role=slider`/`aria-value*` duplicates removed (native range).
+- **Empty-state:** raw `<svg>` string `icon` deprecated and validated (see Security); unknown icon names warn and fall
+  back to `inbox`; `actions` render `.td-btn` buttons and no longer stack listeners.
+
+### Added
+
+- `aria-required`, `aria-describedby` (helper, counter, error), host `aria-label` forwarding and external
+  `<label for>` naming for every form control (shared `_applyAccessibleName` in `TdFormElement`); the error id is also
+  in `aria-describedby` for checkbox/switch (AT support for `aria-errormessage` is patchy).
+- `TdFormElement`: `_mountErrorNote`, `_describedByIds`, `_syncDescribedBy` hooks; slider + input-field on the error
+  contract.
+- td-tabs `tab.panel` (managed tabpanel with attribute restore), `activation`, `aria-label`; td-pagination `aria-label`;
+  td-empty-state `iconNode`, `heading-level`; td-slider `--td-slider-w`, `aria-valuetext`, knob glass lift while
+  dragging; icons `upload`, `link`, `image`; `svgStringToDefinition` / `renderIconDefinition`.
+- CSP harness: `_meta.mixed` (td-table: Tailwind + td.css), td-only page body reset (`fixture/harness.css`), 44 new
+  token-native baselines; contract fixtures for all five; per-component batch-2 browser suites.
+
+### Fixed
+
+- **External `<label for="host-id">` click** now focuses the inner control (and toggles checkbox/switch) — the base
+  class documented it but never did it.
+- **Moving an element in the DOM** kept it rendered but dead (listeners were removed on disconnect and never re-bound);
+  it now re-renders on reconnect.
+- Tabs indicator re-measured on resize (ResizeObserver); the `tabs` setter re-validates the active tab.
+
+### Security
+
+- td-empty-state raw-SVG hatch closed: strings are parsed as `image/svg+xml` and rebuilt from the icon geometry
+  allowlist (root attributes allowlisted too); anything else is rejected.
+- `renderIconDefinition()` validates its input (it is exported); SVG strings are bounded (32 KB, no DTD, ≤ 64 shapes,
+  attribute values ≤ 8 000 chars); td-pagination `max-pages` clamped to 25 (bounded DOM for API/CMS-bound values).
+
 ## 0.7.0
 
 Migration **batch 1**: `td-button`, `td-checkbox`, `td-toggle`, `TdLoading` are now **token-native** (td.css only,

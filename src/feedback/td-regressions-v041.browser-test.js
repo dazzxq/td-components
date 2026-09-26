@@ -99,32 +99,34 @@ describe('B3 — scroll lock', () => {
 });
 
 describe('B4 — input-field error/helper', () => {
-  it('setError(\'\') restores the helper text', () => {
+  it('error and helper coexist; setError(\'\') leaves the helper', () => {
     const el = mount('<td-input-field helper-text="Gợi ý"></td-input-field>');
-    const note = () => el.querySelector('.td-input-note');
+    const control = () => el.querySelector('.td-field__control');
     el.setError('Sai rồi');
-    expect(note().textContent).to.equal('Sai rồi');
-    expect(el.querySelector('.td-input').getAttribute('aria-invalid')).to.equal('true');
+    expect(el.querySelector('.td-field-error').textContent).to.equal('Sai rồi');
+    expect(el.querySelector('.td-field__note').textContent).to.equal('Gợi ý');
+    expect(control().getAttribute('aria-invalid')).to.equal('true');
     el.setError('');
-    expect(note().textContent).to.equal('Gợi ý');
-    expect(el.querySelector('.td-input').hasAttribute('aria-invalid')).to.equal(false);
+    expect(el.querySelector('.td-field-error')).to.equal(null);
+    expect(el.querySelector('.td-field__note').textContent).to.equal('Gợi ý');
+    expect(control().hasAttribute('aria-invalid')).to.equal(false);
   });
 
-  it('keeps the red error border across focus/blur', () => {
+  it('keeps the error state across focus/blur', () => {
     const el = mount('<td-input-field></td-input-field>');
-    const input = el.querySelector('.td-input');
+    const input = el.querySelector('.td-field__control');
     el.setError('Sai');
-    const red = input.style.borderColor;
-    input.dispatchEvent(new Event('focus'));
-    input.dispatchEvent(new Event('blur'));
-    expect(input.style.borderColor).to.equal(red);
+    input.focus();
+    input.blur();
+    expect(input.getAttribute('aria-invalid')).to.equal('true'); // computed red border: td-batch2-input-field
+    expect(el.querySelector('.td-field-error').textContent).to.equal('Sai');
   });
 
   it('a new error-text attribute value wins over an earlier runtime setError', () => {
     const el = mount('<td-input-field></td-input-field>');
     el.setError('');
     el.setAttribute('error-text', 'Từ server');
-    expect(el.querySelector('.td-input-note').textContent).to.equal('Từ server');
+    expect(el.querySelector('.td-field-error').textContent).to.equal('Từ server');
   });
 });
 
@@ -176,9 +178,9 @@ describe('B5 — dropdown placement + focus', () => {
 describe('B4/B5 — review follow-ups', () => {
   it('an error-text attribute sets aria-invalid on the inner control', () => {
     const el = mount('<td-input-field error-text="Lỗi"></td-input-field>');
-    expect(el.querySelector('.td-input').getAttribute('aria-invalid')).to.equal('true');
+    expect(el.querySelector('.td-field__control').getAttribute('aria-invalid')).to.equal('true');
     el.removeAttribute('error-text');
-    expect(el.querySelector('.td-input').hasAttribute('aria-invalid')).to.equal(false);
+    expect(el.querySelector('.td-field__control').hasAttribute('aria-invalid')).to.equal(false);
   });
 
   it('caps the menu width to the viewport', () => {

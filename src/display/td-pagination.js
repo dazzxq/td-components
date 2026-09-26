@@ -1,177 +1,242 @@
 import { TdBaseElement } from '../base/td-base-element.js';
-import { applyStyles } from '../utils/css-safe.js';
+import { TdButton } from '../form/td-button.js';
+import { fillIconSlots } from '../icons/td-icon.js';
 
 /**
- * Pagination component with page navigation, ellipsis, info text, and custom active color.
- * Port of dcms-pagination.js (PaginationSimple) to Web Component extending TdBaseElement.
+ * Pagination — token-native (v0.8.0). Styles: td.css (`components/pagination.css`, block `.td-pagination`).
+ *
+ * Markup: `<nav class="td-pagination" aria-label>` > `p.td-pagination__info[aria-live=polite]` +
+ * `.td-pagination__controls` (prev/next `button.td-pagination__nav` with registry `prev`/`next` icons,
+ * `ul.td-pagination__pages` of `button.td-pagination__page[data-page]`, current = `[aria-current="page"]`).
+ * Page changes keep the nav + live region and rebuild only the controls, restoring keyboard focus.
  *
  * @element td-pagination
  * @attr {number} total-items - Total number of items (default 0)
  * @attr {number} items-per-page - Items per page (default 10)
- * @attr {number} current-page - Current page, 1-based (default 1)
- * @attr {string} active-color - CSS color for active page (default '#ef4444')
+ * @attr {number} current-page - Current page, 1-based (default 1; clamped to [1, totalPages] when rendered)
+ * @attr {string} active-color - Current-page pill colour (safeColor; default token `--td-pagination-active`
+ *   = accent). The text colour is chosen by WCAG contrast against the colour as rendered (translucent colours
+ *   are composited over the nearest opaque ancestor background, fallback the page `--td-color-bg`).
  * @attr {string} item-label - Label shown in info text (default 'mục')
- * @attr {number} max-pages - Number of page buttons to show (default 5)
+ * @attr {number} max-pages - Size of the sliding window of consecutive page buttons (default 5); the first and
+ *   last pages are always shown, gaps as an ellipsis.
+ * @attr {string} aria-label - Landmark name of the `<nav>` (default 'Phân trang'); give each instance on a page
+ *   a distinct label.
  * @fires page-change - When page changes, detail: { page }
  */
 export class TdPagination extends TdBaseElement {
   static get observedAttributes() {
-    return ['total-items', 'items-per-page', 'current-page', 'active-color', 'item-label', 'max-pages'];
+    return ['total-items', 'items-per-page', 'current-page', 'active-color', 'item-label', 'max-pages', 'aria-label'];
+  }
+
+  constructor() {
+    super();
+    // One delegated listener on the host for the element's lifetime (no per-render listeners to leak,
+    // survives disconnect/reconnect).
+    this.addEventListener('click', (e) => this._onClick(e));
   }
 
   // --- Attribute helpers ---
 
-  _getTotalItems() { return Math.max(0, parseInt(this.getAttribute('total-items') || '0', 10)); }
-  _getItemsPerPage() { return Math.max(1, parseInt(this.getAttribute('items-per-page') || '10', 10)); }
-  _getCurrentPage() { return Math.max(1, parseInt(this.getAttribute('current-page') || '1', 10)); }
-  _getActiveColor() { return this.safeColor(this.getAttribute('active-color'), '#ef4444'); }
+  /** Integer attribute; values outside the safe-integer range are clamped (float precision would break paging). */
+  _int(name, fallback) {
+    const n = parseInt(this.getAttribute(name) ?? '', 10);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.max(-Number.MAX_SAFE_INTEGER, Math.min(Number.MAX_SAFE_INTEGER, n));
+  }
+
+  _getTotalItems() { return Math.max(0, this._int('total-items', 0)); }
+  _getItemsPerPage() { return Math.max(1, this._int('items-per-page', 10)); }
+  /** Current page clamped to [1, totalPages] (the attribute may be out of range). */
+  _getCurrentPage() { return Math.min(this._getTotalPages(), Math.max(1, this._int('current-page', 1))); }
   _getItemLabel() { return this.getAttribute('item-label') || 'mục'; }
-  _getMaxPages() { return Math.max(1, parseInt(this.getAttribute('max-pages') || '5', 10)); }
+  /** Window size, clamped to 1…25 (security review: bounded DOM regardless of attribute values). */
+  _getMaxPages() { return Math.max(1, Math.min(25, this._int('max-pages', 5))); }
+  _getNavLabel() { return (this.getAttribute('aria-label') || '').trim() || 'Phân trang'; }
 
   _getTotalPages() {
     return Math.max(1, Math.ceil(this._getTotalItems() / this._getItemsPerPage()));
   }
 
+  _infoText() {
+    const total = this._getTotalItems();
+    const per = this._getItemsPerPage();
+    const page = this._getCurrentPage();
+    const start = total === 0 ? 0 : (page - 1) * per + 1;
+    const end = Math.min(page * per, total);
+    return `Hiển thị ${start}-${end} / ${total} ${this._getItemLabel()}`;
+  }
+
   // --- Rendering ---
 
   render() {
-    const totalItems = this._getTotalItems();
-    const itemsPerPage = this._getItemsPerPage();
-    const currentPage = this._getCurrentPage();
-    const itemLabel = this._getItemLabel();
-    const maxPages = this._getMaxPages();
+    return `<nav class="td-pagination" aria-label="${this.escapeHtml(this._getNavLabel())}">`
+      + `<p class="td-pagination__info" aria-live="polite">${this.escapeHtml(this._infoText())}</p>`
+      + `<div class="td-pagination__controls">${this._controlsHtml()}</div>`
+      + '</nav>';
+  }
+
+  _controlsHtml() {
+    const current = this._getCurrentPage();
     const totalPages = this._getTotalPages();
-
-    const start = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
-    const end = Math.min(currentPage * itemsPerPage, totalItems);
-
-    const pageItems = this._buildPageItems(totalPages, currentPage, maxPages);
-    const navDisabledLeft = currentPage <= 1;
-    const navDisabledRight = currentPage >= totalPages;
-
-    const disabledLeftClasses = navDisabledLeft ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'hover:bg-black/5';
-    const disabledRightClasses = navDisabledRight ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'hover:bg-black/5';
-
-    const pageNumbersHTML = pageItems.map(item => {
-      if (item === '...') {
-        return `<span class="px-2 text-gray-500">...</span>`;
-      }
-      const isActive = item === currentPage;
-      if (isActive) {
-        // CSP-strict: the per-element active color is a SCALAR style → applied via CSSOM in
-        // `_applyStyles()` (no inline `style=`). `data-active-page` is the stable selector hook.
-        return `<span class="px-2 py-1 rounded-md font-semibold cursor-default" data-active-page>${item}</span>`;
-      }
-      return `<span class="px-2 py-1 rounded-md text-gray-700 hover:bg-black/5 cursor-pointer transition-colors" data-page="${item}">${item}</span>`;
+    const nav = (dir, label, disabled) => `<button type="button" class="td-pagination__nav td-pagination__nav--${dir}"`
+      + ` data-nav="${dir}" aria-label="${label}"${disabled ? ' aria-disabled="true"' : ''}>`
+      + `<span class="td-pagination__icon" data-td-icon="${dir}"></span></button>`;
+    const items = this._buildPageItems(totalPages, current, this._getMaxPages()).map((item) => {
+      if (item === '...') return '<li class="td-pagination__ellipsis" aria-hidden="true">…</li>';
+      const cur = item === current ? ' aria-current="page"' : '';
+      return `<li><button type="button" class="td-pagination__page" data-page="${item}" aria-label="Trang ${item}"${cur}>${item}</button></li>`;
     }).join('');
+    return nav('prev', 'Trang trước', current <= 1)
+      + `<ul class="td-pagination__pages">${items}</ul>`
+      + nav('next', 'Trang sau', current >= totalPages);
+  }
 
-    const chevronLeft = `<svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>`;
-    const chevronRight = `<svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>`;
-
-    return `
-      <div class="td-pagination-container flex justify-end">
-        <div class="flex items-center gap-3 text-sm">
-          <span class="td-pagination-info text-gray-600">${this.escapeHtml(`Hiển thị ${start}-${end} / ${totalItems} ${itemLabel}`)}</span>
-          <div class="flex items-center gap-2">
-            <button class="td-pagination-prev w-8 h-8 inline-flex items-center justify-center rounded-md border border-gray-300 text-gray-700 transition-colors ${disabledLeftClasses}" ${navDisabledLeft ? 'disabled' : ''} title="Trang trước">
-              ${chevronLeft}
-            </button>
-            <span class="td-pagination-pages inline-flex items-center gap-1">
-              ${pageNumbersHTML}
-            </span>
-            <button class="td-pagination-next w-8 h-8 inline-flex items-center justify-center rounded-md border border-gray-300 text-gray-700 transition-colors ${disabledRightClasses}" ${navDisabledRight ? 'disabled' : ''} title="Trang sau">
-              ${chevronRight}
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
+  /**
+   * First render builds the whole tree; later renders keep the `<nav>` and the live region (so the info text
+   * change is announced) and rebuild only the controls, re-focusing the control the user was on.
+   * @private
+   */
+  _doRender() {
+    // Colours first: the host custom properties exist before the buttons get their first computed style (so the
+    // current page never animates from the token colours to the custom ones).
+    this._applyStyles();
+    const nav = this.querySelector(':scope > .td-pagination');
+    if (!nav) {
+      this.innerHTML = this.render();
+      this.afterRender();
+      return;
+    }
+    const focusKey = this._focusKey();
+    nav.setAttribute('aria-label', this._getNavLabel());
+    const info = nav.querySelector('.td-pagination__info');
+    const text = this._infoText();
+    if (info && info.textContent !== text) info.textContent = text;
+    const controls = nav.querySelector('.td-pagination__controls');
+    if (controls) controls.innerHTML = this._controlsHtml();
+    this.afterRender();
+    if (focusKey) this._restoreFocus(focusKey);
   }
 
   afterRender() {
-    const prevBtn = this.querySelector('.td-pagination-prev');
-    const nextBtn = this.querySelector('.td-pagination-next');
+    fillIconSlots(this);
+  }
 
-    if (prevBtn && !prevBtn.disabled) {
-      this.listen(prevBtn, 'click', () => {
-        this._setPage(this._getCurrentPage() - 1);
-      });
+  /** @private The role of the focused control inside this pagination, or null. */
+  _focusKey() {
+    const a = document.activeElement;
+    if (!a || !this.contains(a)) return null;
+    if (a.hasAttribute('data-nav')) return a.getAttribute('data-nav');
+    if (a.hasAttribute('data-page')) return `page:${a.getAttribute('data-page')}`;
+    return null;
+  }
+
+  /** @private */
+  _restoreFocus(key) {
+    let target = null;
+    if (key === 'prev' || key === 'next') {
+      target = this.querySelector(`[data-nav="${key}"]:not([aria-disabled="true"])`);
+    } else {
+      target = this.querySelector(`.td-pagination__page[data-page="${key.slice(5)}"]`);
     }
+    target = target || this.querySelector('.td-pagination__page[aria-current="page"]');
+    target?.focus();
+  }
 
-    if (nextBtn && !nextBtn.disabled) {
-      this.listen(nextBtn, 'click', () => {
-        this._setPage(this._getCurrentPage() + 1);
-      });
-    }
-
-    this.querySelectorAll('.td-pagination-pages [data-page]').forEach(el => {
-      this.listen(el, 'click', () => {
-        const page = parseInt(el.getAttribute('data-page'), 10);
-        this._setPage(page);
-      });
-    });
+  /** @private Delegated click handler (buttons only; aria-disabled nav buttons are inert). */
+  _onClick(e) {
+    const btn = e.target instanceof Element ? e.target.closest('button') : null;
+    if (!btn || !this.contains(btn)) return;
+    if (btn.getAttribute('aria-disabled') === 'true') { e.preventDefault(); return; }
+    const dir = btn.getAttribute('data-nav');
+    if (dir === 'prev') this._setPage(this._getCurrentPage() - 1);
+    else if (dir === 'next') this._setPage(this._getCurrentPage() + 1);
+    else if (btn.hasAttribute('data-page')) this._setPage(parseInt(btn.getAttribute('data-page'), 10));
   }
 
   /**
-   * CSP-strict hook (auto-invoked by the base class after every render): apply the
-   * per-element SCALAR active-page color via CSSOM instead of a declarative `style=`.
-   * `active-color` is sanitized through `safeColor` in `_getActiveColor()`.
+   * D10: `active-color` → host `--td-pagination-active` (safeColor) + `--td-pagination-active-fg` chosen by
+   * WCAG contrast against the colour as rendered. Without a (valid) colour both are removed and the tokens apply.
+   * @private
    */
   _applyStyles() {
-    const active = this.querySelector('.td-pagination-pages [data-active-page]');
-    if (active) applyStyles(active, { color: this._getActiveColor() });
+    const color = this.safeColor(this.getAttribute('active-color'), '');
+    const parsed = color ? TdButton._parseColor(color) : null;
+    if (!parsed) {
+      this.style.removeProperty('--td-pagination-active');
+      this.style.removeProperty('--td-pagination-active-fg');
+      return;
+    }
+    // The NORMALISED literal (contextual values such as currentColor resolved once) — exactly the colour the
+    // contrast was computed for.
+    this.style.setProperty('--td-pagination-active', parsed.css);
+    this.style.setProperty('--td-pagination-active-fg', TdPagination._contrastFg(parsed, this._backdrop()));
   }
 
-  /**
-   * Override attributeChangedCallback to optimize current-page changes.
-   * Only update display without full re-render for current-page.
-   */
-  attributeChangedCallback(name, oldVal, newVal) {
-    if (oldVal === newVal) return;
-    if (!this._initialized) return;
+  /** @private The opaque colour behind this element: translucent ancestor backgrounds composited over the
+   * nearest opaque one (fallback: the page `--td-color-bg`, else white). */
+  _backdrop() {
+    const layers = [];
+    let base = null;
+    for (let el = this; el; el = el.parentElement) {
+      const c = TdButton._parseColor(getComputedStyle(el).backgroundColor);
+      if (!c || c.a <= 0) continue;
+      if (c.a >= 1) { base = c; break; }
+      layers.push(c);
+    }
+    if (!base) {
+      const page = getComputedStyle(document.documentElement).getPropertyValue('--td-color-bg').trim();
+      const p = page ? TdButton._parseColor(page) : null;
+      base = p ? TdPagination._over(p, { r: 255, g: 255, b: 255 }) : { r: 255, g: 255, b: 255 };
+    }
+    for (let i = layers.length - 1; i >= 0; i--) base = TdPagination._over(layers[i], base);
+    return base;
+  }
 
-    // For current-page changes, update display (still need re-render for button states)
+  /** @private Composite colour `c` (with alpha) over an opaque `under`. */
+  static _over(c, under) {
+    const a = c.a == null ? 1 : c.a;
+    const mix = (k) => c[k] * a + under[k] * (1 - a);
+    return { r: mix('r'), g: mix('g'), b: mix('b'), a: 1 };
+  }
+
+  /** @private Black or white, whichever contrasts more with `color` rendered over `under`. */
+  static _contrastFg(color, under) {
+    const L = TdButton._luminance(TdPagination._over(color, under));
+    return (L + 0.05) / 0.05 >= 1.05 / (L + 0.05) ? '#000000' : '#ffffff';
+  }
+
+  attributeChangedCallback(name, oldVal, newVal) {
+    if (oldVal === newVal || !this._initialized) return;
+    if (name === 'active-color') { this._applyStyles(); return; }
     this._doRender();
   }
 
   // --- Page logic ---
 
   /**
-   * Build page items array with ellipsis for large page counts.
-   * Ported directly from dcms-pagination.js PaginationSimple._buildPageItems.
+   * Page items: a window of `maxPages` consecutive pages around the current one (clamped to the range),
+   * plus the first/last page; a gap of one page shows that page, larger gaps an ellipsis.
    */
-  _buildPageItems(totalPages, currentPage, maxPagesToShow) {
-    const pages = [];
-    if (totalPages <= maxPagesToShow) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-      return pages;
+  _buildPageItems(totalPages, currentPage, maxPages) {
+    if (totalPages <= maxPages) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    let start = currentPage - Math.floor((maxPages - 1) / 2);
+    start = Math.max(1, Math.min(start, totalPages - maxPages + 1));
+    const end = start + maxPages - 1;
+    const items = [];
+    if (start > 1) {
+      items.push(1);
+      if (start === 3) items.push(2);
+      else if (start > 3) items.push('...');
     }
-    const showNeighbors = 1;
-    const firstBlock = [1, 2, 3, 4, 5];
-    const lastBlock = [totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
-    const nearStart = currentPage <= 3;
-    const nearEnd = currentPage >= totalPages - 2;
-
-    if (nearStart) {
-      pages.push(...firstBlock);
-      pages.push('...');
-      pages.push(totalPages);
-      return Array.from(new Set(pages.filter(n => typeof n === 'number' ? n >= 1 && n <= totalPages : true)));
+    // Index-bounded (never more than maxPages iterations, whatever the page numbers' magnitude).
+    for (let i = 0; i < maxPages && start + i <= end; i++) items.push(start + i);
+    if (end < totalPages) {
+      if (end === totalPages - 2) items.push(totalPages - 1);
+      else if (end < totalPages - 2) items.push('...');
+      items.push(totalPages);
     }
-    if (nearEnd) {
-      pages.push(1);
-      pages.push('...');
-      pages.push(...lastBlock);
-      return Array.from(new Set(pages.filter(n => typeof n === 'number' ? n >= 1 && n <= totalPages : true)));
-    }
-    pages.push(1);
-    pages.push('...');
-    pages.push(currentPage - showNeighbors);
-    pages.push(currentPage);
-    pages.push(currentPage + showNeighbors);
-    pages.push('...');
-    pages.push(totalPages);
-    return Array.from(new Set(pages.filter(n => typeof n === 'number' ? n >= 1 && n <= totalPages : true)));
+    return items;
   }
 
   /**
@@ -180,7 +245,7 @@ export class TdPagination extends TdBaseElement {
    */
   _setPage(page) {
     const totalPages = this._getTotalPages();
-    const newPage = Math.max(1, Math.min(totalPages, parseInt(page) || 1));
+    const newPage = Math.max(1, Math.min(totalPages, parseInt(page, 10) || 1));
     if (newPage === this._getCurrentPage()) return;
 
     this.setAttribute('current-page', String(newPage));

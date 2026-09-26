@@ -1,4 +1,5 @@
 import './td-empty-state.js';
+import '../styles/story-layout.css';
 
 export default {
   title: 'Display/EmptyState',
@@ -8,6 +9,8 @@ export default {
     message: { control: 'text' },
     size: { control: 'select', options: ['sm', 'md', 'lg'] },
     compact: { control: 'boolean' },
+    icon: { control: 'text' },
+    'heading-level': { control: 'select', options: [2, 3, 4, 5, 6] },
   },
 };
 
@@ -17,6 +20,8 @@ export const Default = {
       title="${args.title || 'Không có dữ liệu'}"
       message="${args.message || 'Chưa có mục nào được tạo.'}"
       size="${args.size || 'md'}"
+      ${args.icon ? `icon="${args.icon}"` : ''}
+      ${args['heading-level'] ? `heading-level="${args['heading-level']}"` : ''}
       ${args.compact ? 'compact' : ''}
     ></td-empty-state>
   `,
@@ -30,20 +35,21 @@ export const Default = {
 
 export const AllSizes = {
   render: () => `
-    <div class="flex flex-col gap-6">
-      <div>
-        <p class="text-sm text-gray-500 mb-2">Small</p>
-        <td-empty-state size="sm" title="Không có dữ liệu" message="Size sm"></td-empty-state>
-      </div>
-      <div>
-        <p class="text-sm text-gray-500 mb-2">Medium (default)</p>
-        <td-empty-state size="md" title="Không có dữ liệu" message="Size md"></td-empty-state>
-      </div>
-      <div>
-        <p class="text-sm text-gray-500 mb-2">Large</p>
-        <td-empty-state size="lg" title="Không có dữ liệu" message="Size lg"></td-empty-state>
-      </div>
+    <div class="sb-stack">
+      <p class="sb-note">Small</p>
+      <td-empty-state size="sm" title="Không có dữ liệu" message="Size sm"></td-empty-state>
+      <p class="sb-note">Medium (default)</p>
+      <td-empty-state size="md" title="Không có dữ liệu" message="Size md"></td-empty-state>
+      <p class="sb-note">Large</p>
+      <td-empty-state size="lg" title="Không có dữ liệu" message="Size lg"></td-empty-state>
     </div>
+  `,
+};
+
+export const RegistryIcon = {
+  render: () => `
+    <td-empty-state icon="search" heading-level="2" title="Không có kết quả" message="Thử từ khoá khác."></td-empty-state>
+    <p class="sb-note">icon = tên trong registry (unknown → inbox + console.warn). SVG tuỳ biến: property <code>iconNode</code>.</p>
   `,
 };
 
@@ -60,6 +66,7 @@ export const WithActions = {
       el.actions = [
         { label: 'Tạo mới', variant: 'primary', onClick: () => console.log('Create clicked') },
         { label: 'Nhập từ file', variant: 'secondary', onClick: () => console.log('Import clicked') },
+        { label: 'Xoá bộ lọc', variant: 'danger', onClick: () => console.log('Clear clicked') },
       ];
     }
   },
@@ -67,7 +74,7 @@ export const WithActions = {
 
 export const Compact = {
   render: () => `
-    <div style="max-width: 400px;">
+    <div class="sb-stack">
       <td-empty-state
         compact
         title="Không có kết quả"

@@ -38,7 +38,7 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 `setError` + `aria-invalid` + `aria-errormessage`.
 
 - `done` Batch 1: button, checkbox, toggle, loading (v0.7.0; + error contract, `TdCheckableElement`, spinner)
-- `todo` Batch 2: input-field, slider, pagination, tabs (+ ARIA tablist/tab, bàn phím), empty-state
+- `done` Batch 2: input-field, slider, pagination, tabs (+ ARIA, bàn phím), empty-state (v0.8.0)
 - `todo` Batch 3: tooltip (+ focus, role, `aria-describedby`), toast, dropdown (+ Home/End/Tab, `aria-activedescendant`), modal (+ `role=dialog`, `aria-modal`, `aria-labelledby`, trả focus, `onShow`, footer async) / modal-stack
 - `todo` Batch 4: datetime-picker, table (+ sticky header, `cellPaddingClass`)
 
@@ -50,6 +50,8 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `todo` Release cuối của đợt migrate: bỏ peer Tailwind
 
 ## Later — backlog
+
+- `todo` input-field: floating label (additive) + textarea autoresize bằng CSS `field-sizing` (D4 hoãn)
 
 - `todo` Dev deps: nâng `@web/test-runner` 1.x (bỏ `extract-zip` qua puppeteer) và Storybook 9 (bỏ `uuid` cũ) — breaking, chỉ ảnh hưởng tooling
 

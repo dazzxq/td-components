@@ -156,7 +156,7 @@ describe('td-slider (form-associated)', () => {
     const form = mount('<form><td-slider name="vol" value="30" min="0" max="100"></td-slider></form>');
     const el = form.querySelector('td-slider');
     expect(new FormData(form).get('vol')).to.equal('30');
-    const input = el.querySelector('.td-slider-input');
+    const input = el.querySelector('.td-slider__input');
     input.value = '70';
     input.dispatchEvent(new Event('input'));
     expect(new FormData(form).get('vol')).to.equal('70');
@@ -165,7 +165,7 @@ describe('td-slider (form-associated)', () => {
   it('reset restores the default value after interaction', () => {
     const form = mount('<form><td-slider name="vol" value="30" min="0" max="100"></td-slider></form>');
     const el = form.querySelector('td-slider');
-    const input = el.querySelector('.td-slider-input');
+    const input = el.querySelector('.td-slider__input');
     input.value = '85';
     input.dispatchEvent(new Event('change'));
     expect(new FormData(form).get('vol')).to.equal('85');
@@ -190,7 +190,7 @@ describe('td-slider (form-associated)', () => {
   it('reset restores the absent-value default consistently with nonzero min (ISSUE-3)', () => {
     const form = mount('<form><td-slider name="s" min="10" max="100"></td-slider></form>');
     const initial = new FormData(form).get('s'); // resolves to the '0' default
-    const input = form.querySelector('.td-slider-input');
+    const input = form.querySelector('.td-slider__input');
     input.value = '50';
     input.dispatchEvent(new Event('change'));
     expect(new FormData(form).get('s')).to.equal('50');

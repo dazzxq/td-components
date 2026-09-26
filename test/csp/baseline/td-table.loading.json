@@ -1,6 +1,7 @@
 {
   "_component": "td-table",
   "_state": "loading",
+  "_profile": "legacy+td",
   "_reducedMotion": false,
   "_excludedProps": [
     "width"
@@ -20,6 +21,11 @@
       "class": "opacity-50",
       "prop": "opacity",
       "value": "0.5"
+    },
+    {
+      "class": ":root (td.css)",
+      "prop": "--td-glass-radius",
+      "value": "20px"
     }
   ],
   "styles": {
