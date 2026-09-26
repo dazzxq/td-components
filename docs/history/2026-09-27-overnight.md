@@ -1,0 +1,33 @@
+# Nhật ký chạy qua đêm — 2026-09-27
+
+Mục tiêu user giao: "làm hết các task" theo roadmap. Quy tắc: mỗi release một branch → Codex plan-review →
+code → Codex impl-review (+ security-review khi đụng input người dùng) → merge + tag trên máy. **Không push.**
+Quyết định thiết kế mơ hồ → debate Codex (`/codex-think-about` hoặc bảng Decisions trong plan-review).
+
+## Đã xong (merge vào `main`, có tag)
+
+| Tag | Nội dung | Codex |
+|---|---|---|
+| `v0.4.1` | 7 bug (toast treo tab, focus-trap modal rò, scroll lock phá `sticky`, input-field mất helper, dropdown đè/định vị, role toast, Storybook build hỏng) + chuyển `.planning` (GSD) → `docs/` hub-and-spoke | impl APPROVE (3 vòng) |
+| `v0.5.0` | Nền tảng `td.css`: token `--td-*`, layer, Liquid Glass recipes + fallback a11y không phá được, dark opt-in, gate CSP 3 engine × `'self'`/nonce-only | plan APPROVE (3), impl APPROVE (2) |
+| `v0.6.0` | `td-lightbox` (port sạch lõi dwp, hook `download/video/history/panel/toolbar/isAllowedUrl`) + **icon registry** (Lucide, `tdIcon`, `<td-icon>`, ADR 0010 — ý tưởng của user) | plan (3), think-about icon (đồng thuận), impl (3), security (3) |
+| `v0.7.0` | Batch 1 token-native: button, checkbox, toggle (switch native), loading + error contract, accessible name, spinner dùng chung, inert lease dùng chung | plan (3), impl (5), security (2) |
+
+## Phát hiện đáng chú ý
+
+- Nhiều lỗi a11y thật đã sửa: checkbox mất focus + 2 event `change`, switch không có tên truy cập, button glass
+  2.0–3.2:1 (không đạt AA), loading không chặn bàn phím, dialog lightbox không nhận focus (transition `visibility`).
+- `adoptedStyleSheets` + CSSOM chạy được dưới CSP nonce-only ở Chromium, Firefox 151, WebKit (Safari 26.4) — đã đo.
+- Harness CSP profile kết hợp (Tailwind + td.css) bắt được lỗi thật: component thừa kế `line-height`/`box-sizing`
+  của trang → component nay tự khai báo.
+- Dev deps: Storybook nâng 8.6.18 (GHSA WebSocket hijack). Còn `extract-zip`/`uuid` (chỉ tooling, cần nâng major) →
+  roadmap backlog.
+
+## Cần user xem / quyết
+
+- Giao diện mới (Storybook: Foundations/Glass, Foundations/Icons, Feedback/Lightbox, Form/Button|Checkbox|Toggle,
+  Feedback/Loading). Màu/bo góc là token — đổi dễ nếu không ưng (`--td-btn-radius`, `--td-accent`, `--td-switch-on`).
+- Push lên GitHub khi đã kiểm tra (`git push --follow-tags`).
+- 135/dwp chưa đụng tới; hướng dẫn tích hợp trong `docs/roadmap.md` mục External.
+
+(Các batch tiếp theo được ghi thêm bên dưới khi xong.)

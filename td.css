@@ -1114,6 +1114,26 @@
 	}
 }
 
+/* ---- src/styles/components/slider.css ---- */
+/* td-slider — token-native styles (batch 2). */
+@layer td.component {
+}
+
+/* ---- src/styles/components/pagination.css ---- */
+/* td-pagination — token-native styles (batch 2). */
+@layer td.component {
+}
+
+/* ---- src/styles/components/tabs.css ---- */
+/* td-tabs — token-native styles (batch 2). */
+@layer td.component {
+}
+
+/* ---- src/styles/components/empty-state.css ---- */
+/* td-empty-state — token-native styles (batch 2). */
+@layer td.component {
+}
+
 /* ---- src/styles/components/lightbox.css ---- */
 /*
  * td-lightbox — image/video viewer (src/feedback/td-lightbox.js). Adapted from the 135 kit.

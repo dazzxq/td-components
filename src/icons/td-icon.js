@@ -47,6 +47,14 @@ const registry = new Map();
  * @returns {{viewBox: string, paint: 'stroke'|'fill', nodes: Array}}
  */
 function validate(name, def) {
+  return _validateIconDefinition(name, def);
+}
+
+/**
+ * The ONE geometry validator (registerIcons + svgStringToDefinition). Throws on anything outside the allowlist.
+ * @internal
+ */
+export function _validateIconDefinition(name, def) {
   if (!def || typeof def !== 'object' || Array.isArray(def)) throw new TypeError(`icon "${name}": definition must be an object`);
   const viewBox = def.viewBox == null ? '0 0 24 24' : String(def.viewBox);
   if (!VIEWBOX.test(viewBox)) throw new TypeError(`icon "${name}": invalid viewBox`);
@@ -169,5 +177,62 @@ export function fillIconSlots(root) {
     const size = /^\d+$/.test(rawSize) ? Number(rawSize) : rawSize;
     const svg = tdIcon(slot.getAttribute('data-td-icon'), { size, class: slot.getAttribute('data-td-icon-class') || '' });
     slot.replaceChildren(...(svg ? [svg] : []));
+  }
+}
+
+/**
+ * Convert an SVG MARKUP STRING to a validated icon definition, or null. Used for deprecated string inputs
+ * (e.g. td-empty-state `icon="<svg …>"`). Parsed as `image/svg+xml` (never HTML); the root must be `<svg>` with a
+ * valid viewBox; every child must be an allowlisted shape with allowlisted attributes — anything else (script,
+ * foreignObject, use/href, on*, style, url(), nested groups, parser errors) → null. No partial rendering.
+ * @param {string} str
+ * @returns {{viewBox: string, paint: 'stroke'|'fill', nodes: Array}|null}
+ */
+export function svgStringToDefinition(str) {
+  if (typeof str !== 'string' || typeof DOMParser === 'undefined') return null;
+  let doc;
+  try {
+    doc = new DOMParser().parseFromString(str.trim(), 'image/svg+xml');
+  } catch {
+    return null;
+  }
+  const root = doc.documentElement;
+  if (!root || root.localName !== 'svg' || root.namespaceURI !== SVG_NS || doc.getElementsByTagName('parsererror').length) {
+    return null;
+  }
+  const fill = (root.getAttribute('fill') || '').trim().toLowerCase();
+  const def = {
+    viewBox: root.getAttribute('viewBox') || '0 0 24 24',
+    paint: fill && fill !== 'none' ? 'fill' : 'stroke',
+    nodes: [],
+  };
+  for (const child of root.children) {
+    const attrs = {};
+    for (const a of child.attributes) attrs[a.name] = a.value;
+    def.nodes.push([child.localName, attrs]);
+  }
+  try {
+    return _validateIconDefinition('svg-string', def);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Render a validated definition (from svgStringToDefinition) without registering it.
+ * @param {{viewBox: string, paint: string, nodes: Array}} def
+ * @param {{ size?: 's'|'m'|'l'|number, class?: string }} [opts]
+ * @returns {SVGSVGElement|null}
+ */
+export function renderIconDefinition(def, opts = {}) {
+  if (!def) return null;
+  const key = '__td-inline-def__';
+  registry.set(key, def);
+  try {
+    const svg = tdIcon(key, opts);
+    if (svg) svg.setAttribute('data-icon', 'custom');
+    return svg;
+  } finally {
+    registry.delete(key);
   }
 }
