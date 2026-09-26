@@ -1,3 +1,161 @@
-/* td-tabs — token-native styles (batch 2). */
+/*
+ * td-tabs (src/display/td-tabs.js). Content-layer segmented control: NO glass (liquid-glass.md, td-tabs row) —
+ * trough --td-tabs-bg (= --td-color-hover), selected pill --td-tabs-pill (= --td-color-surface) + shadow.
+ * State: [aria-selected] on .td-tabs__tab, data-state="empty|ready" on .td-tabs (ready = indicator measured).
+ * The indicator is positioned by the CSSOM custom properties --td-tabs-ind-x / --td-tabs-ind-w (set by JS on
+ * .td-tabs), never by inline style markup.
+ * AA: inactive text gray-600 on the trough ≥ 4.5:1 (light + dark); selected = text colour + weight + pill;
+ * forced colours: selected tab gets a 2px Highlight border (the pill disappears).
+ */
+@layer td.tokens {
+	:root {
+		--td-tabs-bg: var(--td-color-hover);
+		--td-tabs-pill: var(--td-color-surface);
+		--td-tabs-pill-shadow: var(--td-shadow-1);
+		--td-tabs-fg: var(--td-color-text-muted);
+		--td-tabs-fg-hover: var(--td-color-text);
+		--td-tabs-fg-active: var(--td-color-text);
+		--td-tabs-radius: 12px;
+		--td-tabs-pad: 4px;
+	}
+
+	:root[data-td-theme="dark"] {
+		/* the dark surface is darker than the translucent trough → a lighter translucent pill */
+		--td-tabs-pill: rgb(255 255 255 / 14%);
+		--td-tabs-pill-shadow: 0 1px 2px rgb(0 0 0 / 40%);
+	}
+}
+
 @layer td.component {
+	td-tabs {
+		display: block;
+	}
+
+	.td-tabs {
+		--_td-tabs-inner-radius: max(4px, calc(var(--td-tabs-radius) - var(--td-tabs-pad))); /* concentric (R8) */
+
+		position: relative;
+		box-sizing: border-box;
+		display: flex;
+		gap: var(--td-tabs-pad);
+		padding: var(--td-tabs-pad);
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-xs);
+		line-height: var(--td-leading-tight);
+		background: var(--td-tabs-bg);
+		border-radius: var(--td-tabs-radius);
+	}
+
+	.td-tabs__indicator {
+		position: absolute;
+		top: var(--td-tabs-pad);
+		bottom: var(--td-tabs-pad);
+		left: 0;
+		z-index: 0;
+		display: none; /* shown once measured: no slide-in from x = 0 on first paint */
+		box-sizing: border-box;
+		width: var(--td-tabs-ind-w, 0px);
+		background: var(--td-tabs-pill);
+		border-radius: var(--_td-tabs-inner-radius);
+		box-shadow: var(--td-tabs-pill-shadow);
+		transform: translateX(var(--td-tabs-ind-x, 0px));
+		pointer-events: none;
+		transition:
+			transform var(--td-dur-slow) var(--td-ease-out),
+			width var(--td-dur-slow) var(--td-ease-out);
+	}
+
+	.td-tabs[data-state="ready"] > .td-tabs__indicator {
+		display: block;
+	}
+
+	.td-tabs__tab {
+		position: relative;
+		z-index: 1;
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: 1 1 0;
+		gap: 6px;
+		align-items: center;
+		justify-content: center;
+		min-width: 0;
+		min-height: 24px; /* hit target ≥ 24 px (WCAG 2.5.8) */
+		margin: 0;
+		padding: 8px 12px;
+		font: inherit;
+		font-weight: var(--td-fw-medium);
+		color: var(--td-tabs-fg);
+		text-align: center;
+		text-transform: none;
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: var(--_td-tabs-inner-radius);
+		appearance: none;
+		-webkit-tap-highlight-color: transparent;
+		transition: color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-tabs--sm .td-tabs__tab {
+		padding: 6px 12px;
+	}
+
+	.td-tabs__tab:hover {
+		color: var(--td-tabs-fg-hover);
+	}
+
+	.td-tabs__tab[aria-selected="true"] {
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-tabs-fg-active);
+	}
+
+	.td-tabs__tab:focus-visible {
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-tabs__icon {
+		display: inline-flex;
+		flex: 0 0 auto;
+		line-height: 0;
+	}
+
+	.td-tabs__label {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	@media (pointer: coarse) {
+		.td-tabs__tab {
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-tabs__indicator,
+		.td-tabs__tab {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-tabs {
+			border: 1px solid CanvasText;
+		}
+
+		.td-tabs[data-state="ready"] > .td-tabs__indicator {
+			display: none;
+		}
+
+		.td-tabs__tab {
+			border: 2px solid transparent;
+		}
+
+		.td-tabs__tab[aria-selected="true"] {
+			border-color: Highlight;
+		}
+	}
 }
