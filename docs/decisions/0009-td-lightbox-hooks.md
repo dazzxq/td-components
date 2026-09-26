@@ -24,7 +24,7 @@ component token-native đầu tiên (pilot cho [0008](0008-drop-tailwind-token-c
   - `panel(ctx)` → Element
   - `toolbar`: `[{ id, icon, label, onClick, visible }]`
   - `isForeignLayerOpen()`: có layer khác đang mở (để không cướp phím/đóng nhầm)
-  - `labels`: mặc định tiếng Anh
+  - `labels`: mặc định **tiếng Việt** (user chốt 2026-09-27; mọi site đều tiếng Việt), ghi đè được
 - **Click backdrop thì ĐÓNG** (khác `td-modal`, [0006](0006-modal-no-backdrop-close.md)): trình xem ảnh, không có gì để mất.
 - Dùng Pointer Events (không dò `'ontouchstart'`). Background `inert`: chỉ ghi nhận và khôi phục những phần tử nó
   đã đổi. Scroll lock dùng chung, đếm tham chiếu, chung với modal stack.

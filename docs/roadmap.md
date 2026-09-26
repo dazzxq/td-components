@@ -23,14 +23,16 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` CSP harness dual-profile (legacy Tailwind + token-native) + gate nonce-only (Chromium/Firefox/WebKit)
 - `done` Fixture tham chiếu glass Regular & Clear
 - `done` Scroll-lock overlay dùng chung (ref-count) — `src/utils/scroll-lock.js`, ship trong 0.4.1
-- `todo` Fixture markup contract (golden HTML) cho SSR adapter → làm cùng td-lightbox (component token-native đầu tiên)
+- `done` Fixture markup contract (golden HTML): bắt đầu với td-lightbox
 - `done` Bảng mapping class cũ → mới
 
-## Now — td-lightbox pilot ([ADR 0009](decisions/0009-td-lightbox-hooks.md))
+## Done — td-lightbox pilot (v0.6.0) ([ADR 0009](decisions/0009-td-lightbox-hooks.md))
 
-- `todo` `td-lightbox` token-native đầu tiên, chạy thật trên 135 trước
+- `done` `td-lightbox` token-native đầu tiên (v0.6.0). Chạy thật trên 135 → mục External
+- `done` Icon registry (ADR 0010) + `<td-icon>`
+- `done` Fixture markup contract đầu tiên: `test/contracts/lightbox.html`
 
-## Later — v0.5.x migrate component cũ theo batch
+## Now — migrate component cũ theo batch (mỗi component: token CSS + BEM + a11y + icon registry)
 
 Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract ở `TdFormElement`:
 `setError` + `aria-invalid` + `aria-errormessage`.
@@ -49,6 +51,8 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 
 ## Later — backlog
 
+- `todo` Dev deps: nâng `@web/test-runner` 1.x (bỏ `extract-zip` qua puppeteer) và Storybook 9 (bỏ `uuid` cũ) — breaking, chỉ ảnh hưởng tooling
+
 - dark theme: tinh chỉnh giá trị (hiện chỉ tính toán, chưa render thử)
 - toggle `commit()` / trạng thái pending (optimistic)
 - button `run(asyncFn)`
@@ -66,7 +70,8 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - s3 dashboard: re-vendor bản CSP-hardened (xem [history](history/README.md#v03--csp-strict-2026-06-10))
 - dwp: migrate sang td **sau v1.0** (token + button trước, `dwp-admin-compat.css`, adapter lightbox)
 - 135: adapter PHP (`td_ui_*`) xuất BEM của td
-- 135: sửa token: glass bg alpha 0.72/0.86 (đúng theo comment của chính nó), override `--td-glass-solid: var(--c-paper-2)`, đặt `data-td-theme="light"`
+- 135: sửa token: glass bg alpha 0.72/0.86 (đúng theo comment của chính nó), override `--td-glass-solid: var(--c-paper-2)` (không cần `data-td-theme="light"` nữa: dark của td chỉ bật khi site tự đặt `data-td-theme="dark"`)
+- 135: thay `public/assets/js/ui/lightbox.js` + `td-lightbox.css` bằng `td.css` + `TdLightbox.bind()` (markup `data-td-lightbox*`, xem `test/contracts/lightbox.html`); icon qua `icons.json`
 
 ## Không làm
 

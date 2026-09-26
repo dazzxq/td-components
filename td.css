@@ -128,6 +128,12 @@
 		--td-control-radius: var(--td-radius-md);
 		--td-touch-min: 44px; /* minimum hit target for touch controls */
 
+		/* ===== Icons (src/icons) ===== */
+		--td-icon-s: 1rem;
+		--td-icon-m: 1.25rem;
+		--td-icon-l: 1.5rem;
+		--td-icon-stroke: 2;
+
 		/* ================= Liquid Glass — Regular (light) =================
 		   --td-glass-edge is the INSET top highlight; --td-glass-border the OUTER line. Never swap them. */
 		--td-glass-bg: rgb(250 250 251 / 72%);        /* icon / short-label controls: bars, pills */
@@ -423,6 +429,539 @@
 			--_td-glass-tint-fill: ButtonFace !important;
 			--_td-glass-tint-fg: ButtonText !important;
 			--_td-glass-tint-line: ButtonText !important;
+		}
+	}
+}
+
+/* ---- src/styles/components/icon.css ---- */
+/* td icons (src/icons/td-icon.js). Sizes are tokens; numeric sizes use width/height attributes. */
+@layer td.component {
+	.td-icon {
+		display: inline-block;
+		flex-shrink: 0;
+		overflow: visible;
+		vertical-align: middle;
+		stroke-width: var(--td-icon-stroke, 2);
+	}
+
+	.td-icon--s { width: var(--td-icon-s); height: var(--td-icon-s); }
+	.td-icon--m { width: var(--td-icon-m); height: var(--td-icon-m); }
+	.td-icon--l { width: var(--td-icon-l); height: var(--td-icon-l); }
+
+	/* The <td-icon> façade is layout-neutral. */
+	td-icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+}
+
+/* ---- src/styles/components/lightbox.css ---- */
+/*
+ * td-lightbox — image/video viewer (src/feedback/td-lightbox.js). Adapted from the 135 kit.
+ * Always dark: its background is the photograph, not the site theme → local tokens, no dark remap.
+ * Glass (docs/design/liquid-glass.md): toolbar + counter are CLEAR glass over the photo
+ * (`td-glass-surface td-glass-surface--clear`, fallbacks from glass.css) with a LOCAL dim layer;
+ * the info panel / sheet is solid. State comes from attributes set by JS, never visual classes:
+ *   overlay [data-state="open"] [data-dragging] [data-closing-down] [data-zoomed] [data-panel]
+ *   panel [data-sheet="open"] · img [data-loading] · [hidden] for binary visibility.
+ */
+@layer td.component {
+	.td-lightbox {
+		--td-lb-dur: 0.24s;
+		--td-lb-dur-fast: 0.15s;
+		--td-lb-ease: var(--td-ease-out);
+		--td-lb-btn: 40px;
+		--td-lb-bar-pad: var(--td-glass-pad);
+		--td-lb-bar-h: calc(var(--td-lb-btn) + 2 * var(--td-lb-bar-pad) + 2px);
+		--td-lb-bar-top: 14px;
+		--td-lb-bar-side: 14px;
+		--td-lb-sheet-peek: 2.25rem;
+		--td-lb-panel-w: 22rem;
+		--td-lb-backdrop: rgb(8 8 9 / 94%);
+		--td-lb-panel-bg: rgb(20 20 22 / 96%);
+		--td-lb-fg: #fff;
+
+		position: fixed;
+		inset: 0;
+		z-index: var(--td-z-lightbox);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-family: var(--td-font-sans);
+		color: var(--td-lb-fg);
+		visibility: hidden;
+		opacity: 0;
+		/* Closing: fade out, THEN become hidden. */
+		transition:
+			opacity var(--td-lb-dur) var(--td-lb-ease),
+			visibility 0s linear var(--td-lb-dur);
+	}
+
+	.td-lightbox:focus {
+		outline: none;
+	}
+
+	/* Parts declare display:flex/inline-flex, which beats the UA [hidden] rule → restore it. */
+	.td-lightbox [hidden] {
+		display: none !important;
+	}
+
+	/* Opening: visible IMMEDIATELY (a still-hidden dialog cannot receive focus), then fade in. */
+	.td-lightbox[data-state="open"] {
+		visibility: visible;
+		opacity: 1;
+		transition:
+			opacity var(--td-lb-dur) var(--td-lb-ease),
+			visibility 0s;
+	}
+
+	.td-lightbox__backdrop {
+		position: absolute;
+		inset: 0;
+		cursor: zoom-out;
+		background: var(--td-lb-backdrop);
+	}
+
+	.td-lightbox__stage {
+		position: relative;
+		z-index: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		max-width: 92vw;
+		max-height: 88vh;
+		touch-action: none; /* pinch / pan / swipe are handled with Pointer Events */
+		translate: 0 0;
+		transition:
+			translate var(--td-lb-dur) var(--td-lb-ease),
+			scale var(--td-lb-dur) var(--td-lb-ease);
+	}
+
+	/* Swipe-down feedback: the stage follows the finger (translate — the zoom owns `transform` on the img). */
+	.td-lightbox[data-dragging] .td-lightbox__stage {
+		translate: 0 var(--td-lb-drag, 0);
+		transition: none;
+	}
+
+	.td-lightbox[data-dragging] {
+		opacity: clamp(0.45, calc(1 - var(--td-lb-drag, 0px) / 320px), 1);
+	}
+
+	.td-lightbox[data-closing-down] .td-lightbox__stage {
+		scale: 0.88;
+		translate: 0 45vh;
+	}
+
+	.td-lightbox[data-closing-down] {
+		opacity: 0;
+	}
+
+	.td-lightbox__img {
+		display: block;
+		max-width: 92vw;
+		max-height: 88vh;
+		object-fit: contain;
+		user-select: none;
+		transition: opacity var(--td-lb-dur) var(--td-lb-ease);
+		-webkit-user-drag: none;
+	}
+
+	.td-lightbox__img:not([src]) {
+		visibility: hidden;
+	}
+
+	.td-lightbox__img[data-loading] {
+		opacity: 0;
+	}
+
+	/* Animated zoom step (click / double-tap / pinch release); off under reduced motion below. */
+	.td-lightbox__img[data-zoom-anim] {
+		transition:
+			transform 0.3s var(--td-ease-out),
+			opacity var(--td-lb-dur) var(--td-lb-ease);
+	}
+
+	@media (pointer: fine) {
+		.td-lightbox__img {
+			cursor: zoom-in;
+		}
+
+		.td-lightbox[data-zoomed] .td-lightbox__img {
+			cursor: zoom-out;
+		}
+	}
+
+	.td-lightbox__video {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.td-lightbox__video-el {
+		display: block;
+		max-width: 92vw;
+		max-height: 88vh;
+		background: #000;
+	}
+
+	.td-lightbox__spinner {
+		position: absolute;
+		z-index: 2;
+		display: block;
+		width: 32px;
+		height: 32px;
+		border: 3px solid rgb(255 255 255 / 15%);
+		border-top-color: #fff;
+		border-radius: 50%;
+		animation: td-lb-spin 0.7s linear infinite;
+	}
+
+	@keyframes td-lb-spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	/* Top-left cluster: back (panel mode only) + counter, centred on the toolbar's axis. */
+	.td-lightbox__lead {
+		position: absolute;
+		top: var(--td-lb-bar-top);
+		left: var(--td-lb-bar-side);
+		z-index: 10;
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+		min-height: var(--td-lb-bar-h);
+	}
+
+	/* Counter: Clear glass capsule (recipe from glass.css) + local dim. */
+	.td-lightbox__counter {
+		position: relative;
+		isolation: isolate;
+		display: inline-flex;
+		align-items: center;
+		padding: 6px 12px;
+		font-size: 13px;
+		font-weight: var(--td-fw-semibold);
+		font-variant-numeric: tabular-nums;
+		line-height: 1;
+		letter-spacing: 0.01em;
+		user-select: none;
+		border-radius: var(--td-glass-capsule);
+	}
+
+	.td-lightbox__counter::before,
+	.td-lightbox__toolbar::before {
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		pointer-events: none;
+		content: "";
+		background: var(--_td-glass-dim, var(--td-glass-dim));
+		border-radius: inherit;
+	}
+
+	.td-lightbox__caption {
+		position: absolute;
+		right: 0;
+		bottom: 0;
+		left: 0;
+		z-index: 10;
+		padding: 48px 18px 18px;
+		font-size: var(--td-text-sm);
+		line-height: 1.45;
+		color: rgb(255 255 255 / 90%);
+		text-align: center;
+		pointer-events: none;
+		background: linear-gradient(to top, rgb(0 0 0 / 70%), transparent);
+	}
+
+	/* Toolbar: Clear glass + local dim, concentric with its buttons (inner = outer − padding). */
+	.td-lightbox__toolbar {
+		position: absolute;
+		top: var(--td-lb-bar-top);
+		right: var(--td-lb-bar-side);
+		z-index: 10;
+		isolation: isolate;
+		display: flex;
+		gap: 4px;
+		align-items: center;
+		padding: var(--td-lb-bar-pad);
+		border-radius: var(--td-glass-capsule);
+	}
+
+	.td-lightbox__btn {
+		all: unset;
+		box-sizing: border-box;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: var(--td-lb-btn);
+		height: var(--td-lb-btn);
+		color: var(--td-lb-fg);
+		cursor: pointer;
+		border-radius: var(--td-glass-capsule);
+		opacity: 0.92;
+		transition:
+			opacity var(--td-lb-dur-fast) var(--td-lb-ease),
+			background var(--td-lb-dur-fast) var(--td-lb-ease);
+	}
+
+	/* The back button sits outside the toolbar → its own dim disc (no glass on glass). */
+	.td-lightbox__back {
+		background: rgb(0 0 0 / 45%);
+		border: 1px solid rgb(255 255 255 / 20%);
+	}
+
+	.td-lightbox__btn:hover {
+		background: rgb(255 255 255 / 14%);
+		opacity: 1;
+	}
+
+	.td-lightbox__btn:focus-visible {
+		background: rgb(255 255 255 / 14%);
+		outline: 2px solid #fff;
+		outline-offset: 1px;
+		opacity: 1;
+	}
+
+	.td-lightbox__btn[aria-pressed="true"],
+	.td-lightbox__btn[data-on] {
+		color: #ffd60a;
+	}
+
+	.td-lightbox__icon {
+		display: block; /* out of the inline box → no baseline gap, true centring */
+	}
+
+	.td-lightbox__btn[data-text] {
+		width: auto;
+		padding-inline: 0.75rem;
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-semibold);
+	}
+
+	/* ── Panel mode ([data-panel] only when a panel renderer returned an element) ─────────────────── */
+	.td-lightbox__panel {
+		position: absolute;
+		inset-block: 0;
+		inset-inline-end: 0;
+		z-index: 2;
+		box-sizing: border-box;
+		width: var(--td-lb-panel-w);
+		max-width: 100%;
+		padding: calc(var(--td-lb-bar-top) + var(--td-lb-bar-h) + 0.5rem) 1.25rem 1.25rem;
+		overflow-y: auto;
+		font-size: var(--td-text-sm);
+		line-height: 1.5;
+		color: var(--td-lb-fg);
+		background: var(--td-lb-panel-bg);
+		overscroll-behavior: contain;
+	}
+
+	.td-lightbox__panel-caption {
+		margin: 0;
+		font-size: 0.9375rem;
+		line-height: 1.6;
+		color: rgb(255 255 255 / 88%);
+		overflow-wrap: anywhere;
+	}
+
+	/* The caption already sits in the panel → no duplicate strip over the image. */
+	.td-lightbox[data-panel] .td-lightbox__caption {
+		display: none;
+	}
+
+	@media (width > 900px) {
+		.td-lightbox[data-panel] {
+			display: grid;
+			grid-template-rows: 100%;
+			grid-template-columns: minmax(0, 1fr) var(--td-lb-panel-w);
+			align-items: stretch;
+			justify-items: stretch;
+		}
+
+		.td-lightbox[data-panel] .td-lightbox__backdrop {
+			grid-area: 1 / 1 / -1 / -1;
+		}
+
+		/* The COLUMN clips the zoom (not the stage, which hugs the unzoomed image). */
+		.td-lightbox[data-panel] .td-lightbox__col {
+			display: grid;
+			grid-row: 1;
+			grid-column: 1;
+			place-items: center;
+			min-width: 0;
+			min-height: 0;
+			overflow: hidden;
+		}
+
+		.td-lightbox[data-panel] .td-lightbox__stage {
+			max-width: 100%;
+			max-height: 100%;
+		}
+
+		.td-lightbox[data-panel] .td-lightbox__img {
+			max-width: 100%;
+			max-height: 100vh;
+		}
+
+		.td-lightbox[data-panel] .td-lightbox__panel {
+			position: relative;
+			inset: auto;
+			grid-row: 1;
+			grid-column: 2;
+			width: auto;
+			max-width: none;
+			padding-block-start: var(--td-lb-bar-top);
+		}
+
+		.td-lightbox[data-panel] .td-lightbox__toolbar {
+			right: calc(var(--td-lb-panel-w) + var(--td-lb-bar-side));
+		}
+
+		.td-lightbox__grab {
+			display: none;
+		}
+	}
+
+	@media (width <= 900px) {
+		.td-lightbox[data-panel] .td-lightbox__stage,
+		.td-lightbox[data-panel] .td-lightbox__img {
+			max-width: 100vw;
+			max-height: calc(100dvh - var(--td-lb-sheet-peek) - 1rem);
+		}
+
+		/* Bottom sheet, closed by default: only the grab handle peeks out. Swipe up / tap to open. */
+		.td-lightbox__panel {
+			inset-block: auto 0;
+			inset-inline: 0;
+			width: auto;
+			max-height: 72dvh;
+			padding-block-start: 0;
+			border-start-start-radius: var(--td-radius-lg);
+			border-start-end-radius: var(--td-radius-lg);
+			translate: 0 calc(100% - var(--td-lb-sheet-peek));
+			transition: translate var(--td-lb-dur) var(--td-lb-ease);
+		}
+
+		.td-lightbox__panel[data-sheet="open"] {
+			translate: 0 0;
+		}
+
+		.td-lightbox__grab {
+			all: unset;
+			position: sticky;
+			top: 0;
+			z-index: 1;
+			box-sizing: border-box;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 100%;
+			height: var(--td-lb-sheet-peek);
+			cursor: pointer;
+			background: var(--td-lb-panel-bg);
+		}
+
+		/* Chevron from two borders: up when closed, down when open. */
+		.td-lightbox__grab-bar {
+			width: 0.7rem;
+			height: 0.7rem;
+			border: solid rgb(255 255 255 / 55%);
+			border-width: 2px 2px 0 0;
+			rotate: -45deg;
+			translate: 0 0.18rem;
+			transition:
+				rotate var(--td-lb-dur) var(--td-lb-ease),
+				translate var(--td-lb-dur) var(--td-lb-ease);
+		}
+
+		.td-lightbox__panel[data-sheet="open"] .td-lightbox__grab-bar {
+			rotate: 135deg;
+			translate: 0 -0.1rem;
+		}
+
+		.td-lightbox__grab:focus-visible {
+			outline: 2px solid #fff;
+			outline-offset: -4px;
+		}
+
+		.td-lightbox__panel-body {
+			padding-block-end: 1.25rem;
+		}
+	}
+
+	@media (width <= 767px) {
+		.td-lightbox__stage,
+		.td-lightbox__img,
+		.td-lightbox__video-el {
+			max-width: 100vw;
+			max-height: 100dvh;
+		}
+	}
+
+	/* Touch: 44 px hit targets (docs/design/liquid-glass.md geometry rule). */
+	@media (pointer: coarse) {
+		.td-lightbox {
+			--td-lb-btn: var(--td-touch-min);
+		}
+	}
+
+	/* Safe areas (notch / home indicator). env() = 0 without viewport-fit=cover. */
+	@supports (padding: max(0px)) {
+		.td-lightbox {
+			--td-lb-bar-top: max(14px, env(safe-area-inset-top));
+			--td-lb-bar-side: max(14px, env(safe-area-inset-right));
+		}
+
+		.td-lightbox__lead {
+			left: max(14px, env(safe-area-inset-left));
+		}
+
+		.td-lightbox__caption {
+			padding-bottom: max(18px, env(safe-area-inset-bottom));
+		}
+	}
+
+	/* Trigger affordance for bind(). */
+	[data-td-lightbox],
+	[data-td-lightbox-group] [data-td-lightbox-item] {
+		cursor: zoom-in;
+	}
+
+	@media (prefers-contrast: more) {
+		.td-lightbox__caption {
+			background: rgb(0 0 0 / 92%);
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-lightbox__panel {
+			background: Canvas;
+			border: 1px solid CanvasText;
+		}
+
+		.td-lightbox__btn {
+			color: ButtonText;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-lightbox,
+		.td-lightbox__img,
+		.td-lightbox__img[data-zoom-anim],
+		.td-lightbox__panel,
+		.td-lightbox__stage,
+		.td-lightbox__grab-bar,
+		.td-lightbox__btn {
+			transition: none;
+		}
+
+		/* The swipe still closes — it just does not slide. */
+		.td-lightbox[data-closing-down] .td-lightbox__stage {
+			scale: 1;
+			translate: 0 0;
 		}
 	}
 }

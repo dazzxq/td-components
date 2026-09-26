@@ -1,0 +1,20 @@
+/* td icons (src/icons/td-icon.js). Sizes are tokens; numeric sizes use width/height attributes. */
+@layer td.component {
+	.td-icon {
+		display: inline-block;
+		flex-shrink: 0;
+		overflow: visible;
+		vertical-align: middle;
+		stroke-width: var(--td-icon-stroke, 2);
+	}
+
+	.td-icon--s { width: var(--td-icon-s); height: var(--td-icon-s); }
+	.td-icon--m { width: var(--td-icon-m); height: var(--td-icon-m); }
+	.td-icon--l { width: var(--td-icon-l); height: var(--td-icon-l); }
+
+	/* The <td-icon> façade is layout-neutral. */
+	td-icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+}

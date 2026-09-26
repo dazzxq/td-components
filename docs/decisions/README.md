@@ -14,3 +14,4 @@ muốn đổi thì viết ADR mới và đánh dấu cái cũ `Superseded by`.
 | [0007](0007-td-canonical-over-dcms.md) | td là thư viện chuẩn; dcms2 độc lập | Accepted |
 | [0008](0008-drop-tailwind-token-css.md) | Bỏ Tailwind → CSS token phân lớp `td.css` | Accepted 2026-09-27 |
 | [0009](0009-td-lightbox-hooks.md) | td-lightbox: port clean-room + hook | Accepted 2026-09-27 |
+| [0010](0010-icon-registry.md) | Icon registry: render theo tên (Lucide), không hardcode SVG | Accepted 2026-09-27 |

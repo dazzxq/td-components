@@ -252,6 +252,37 @@ TdToast.show('Custom', 'info', 4000);     // (message, type, duration)
 ```
 `show(message, type, duration)` — `type`: `success` \| `error` \| `warning` \| `info`; `duration` ms (`0` = sticky). Shortcuts: `success` / `error` / `warning` / `info`.
 
+### `TdLightbox` — `@dazzxq/td-components/lightbox`
+
+Token-native image/video viewer (needs `td.css`, **no Tailwind**). [ADR 0009](decisions/0009-td-lightbox-hooks.md).
+
+```js
+import { TdLightbox } from '@dazzxq/td-components/lightbox';
+const lb = TdLightbox.open(items, options); // → handle | null
+lb.next(); lb.prev(); lb.goTo(2); lb.close(); lb.index; lb.count; lb.token; lb.isOpen
+const unbind = TdLightbox.bind(root = document, options); // click delegation
+```
+
+- **Item** `{ type?: 'image'|'video', src, poster?, caption?, alt?, provider?, data? }` (a string = `{ src }`).
+  Items whose URLs fail `isAllowedUrl` are dropped; nothing viewable → `null`.
+- **Options** (all optional): `index`, `labels` (Vietnamese defaults; `counter: (i, n) => …`),
+  `isAllowedUrl(url, item)` (default: `https:`; `http:` only on an `http:` page; other schemes opt-in), `download(item, ctx) → url|null` (default: same-origin
+  images), `video(item, mountEl, { signal }) → {destroy()}|Promise|null` (default native `<video>`; plug Plyr
+  here — failures fall back to the poster), `history: false|true|{ push, back, onPop(cb) → unsubscribe }`,
+  `panel: false|true|(ctx) → Element|null` (`true` = caption panel; 2 columns ≥ 900px, bottom sheet below),
+  `toolbar: [{ id, label, icon?, iconNode?, onClick(ctx, button), visible?(ctx) }]` (`icon` = registry name),
+  `closeOnBackdrop` (default `true`), `isForeignLayerOpen()` (default: a td-modal is open → keys deferred).
+- **ctx** `{ index, count, item, token, handle }`. **Events** on `document`: `td-lightbox-open|change|close`,
+  `detail { index, count, token, item }`.
+- **Keyboard** Esc · ← → · F · Tab trapped. **Gestures** (Pointer Events): pinch 1–4×, pan, double-tap /
+  mouse click zoom 2×, swipe ← → navigate, swipe ↓ close, swipe ↑ info sheet.
+- **Markup contract** for `bind()` / SSR (golden fixture `test/contracts/lightbox.html`):
+  `[data-td-lightbox]` single trigger (value = URL, or inner `<img>` / wrapping `<a href>` to an image);
+  gallery `[data-td-lightbox-group] > … [data-td-lightbox-item]`, optional `data-td-lightbox-src|type|poster|
+  caption|provider`; caption falls back to `<figcaption>` then `alt`. The opened index is the clicked element's
+  position among the VALID items.
+- History contract, failure isolation and race rules: `docs/plans/v0.6.0-lightbox.md`.
+
 ### `TdLoading` — `@dazzxq/td-components/loading`
 
 ```js
@@ -357,6 +388,24 @@ tabs.addEventListener('tab-change', (e) => show(e.detail.tabId));
 ---
 
 ## Utilities
+
+### Icons — `@dazzxq/td-components/icons`
+
+Render icons by name ([ADR 0010](decisions/0010-icon-registry.md)); never hardcode SVG.
+
+```js
+import { tdIcon, registerIcons, hasIcon, listIcons } from '@dazzxq/td-components/icons';
+btn.appendChild(tdIcon('close'));                                   // decorative
+el.appendChild(tdIcon('info', { size: 'l', label: 'Thông tin' }));  // meaningful (role="img")
+registerIcons({ 'site-camera': { viewBox: '0 0 24 24', paint: 'stroke', nodes: [['path', { d: '…' }]] } });
+```
+
+- Sizes: `'s' | 'm' | 'l'` (tokens `--td-icon-s|m|l`) or an integer 8–128 (px). Stroke: `--td-icon-stroke`.
+- Core set (Lucide geometry, td names): see Storybook **Foundations/Icons** or `listIcons()`. Add core icons in
+  `src/icons/icons.json` → `npm run build:icons`. PHP adapters read `@dazzxq/td-components/icons.json`.
+- `<td-icon name size label>`: `import '@dazzxq/td-components/icon-element'` (keeps an SSR-rendered child).
+- `registerIcons` accepts data only (allowlisted shape tags + geometry attributes), rejects name collisions and
+  is all-or-nothing.
 
 ### `TdDateTime` — `@dazzxq/td-components/datetime`
 

@@ -6,6 +6,7 @@ const config = {
     '@storybook/addon-a11y',
   ],
   framework: '@storybook/web-components-vite',
+  staticDirs: ['./public'],
 };
 
 export default config;
