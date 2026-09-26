@@ -8,7 +8,7 @@ afterEach(() => {
 
 /** Helper: the latest modal root element appended to <body>. */
 function topModal() {
-  const all = document.body.querySelectorAll(':scope > [id^="td-modal-"]');
+  const all = document.body.querySelectorAll(':scope > .td-modal[id^="td-modal-"]:not([data-state="closing"])');
   return all[all.length - 1];
 }
 
@@ -16,7 +16,7 @@ describe('TdModal.confirm (resolve-on-dismiss)', () => {
   it('resolves true when the confirm button is clicked', async () => {
     const p = TdModal.confirm({ title: 'T', message: 'M' });
     const modal = topModal();
-    const buttons = modal.querySelectorAll('.td-modal-footer button');
+    const buttons = modal.querySelectorAll('.td-modal__footer button');
     buttons[buttons.length - 1].click(); // confirm is last
     expect(await p).to.equal(true);
   });
@@ -24,14 +24,14 @@ describe('TdModal.confirm (resolve-on-dismiss)', () => {
   it('resolves false when the cancel button is clicked', async () => {
     const p = TdModal.confirm({});
     const modal = topModal();
-    modal.querySelector('.td-modal-footer button').click(); // cancel is first
+    modal.querySelector('.td-modal__footer button').click(); // cancel is first
     expect(await p).to.equal(false);
   });
 
   it('resolves false when dismissed via the X button (was a hang bug)', async () => {
     const p = TdModal.confirm({});
     const modal = topModal();
-    modal.querySelector('.td-modal-close').click();
+    modal.querySelector('.td-modal__close').click();
     expect(await p).to.equal(false);
   });
 
@@ -39,12 +39,12 @@ describe('TdModal.confirm (resolve-on-dismiss)', () => {
     let settled = false;
     const p = TdModal.confirm({}).then((v) => { settled = true; return v; });
     const modal = topModal();
-    modal.querySelector('.td-modal-backdrop').click();
+    modal.querySelector('.td-modal__backdrop').click();
     await Promise.resolve(); // let any (unwanted) resolution flush
     expect(settled).to.equal(false);                 // backdrop did nothing
     expect(document.body.contains(modal)).to.equal(true); // still open
     // Clean up: close via the X so the promise resolves and afterEach stays clean.
-    modal.querySelector('.td-modal-close').click();
+    modal.querySelector('.td-modal__close').click();
     expect(await p).to.equal(false);
   });
 
@@ -58,7 +58,7 @@ describe('TdModal.confirm (resolve-on-dismiss)', () => {
     let resolveCount = 0;
     const p = TdModal.confirm({}).then((v) => { resolveCount += 1; return v; });
     const modal = topModal();
-    const buttons = modal.querySelectorAll('.td-modal-footer button');
+    const buttons = modal.querySelectorAll('.td-modal__footer button');
     buttons[buttons.length - 1].click(); // confirm → true
     // The confirm path also closes the modal; firing onClose again must NOT re-resolve.
     expect(await p).to.equal(true);
@@ -69,7 +69,7 @@ describe('TdModal.confirm (resolve-on-dismiss)', () => {
   it('still resolves even if onConfirm throws', async () => {
     const p = TdModal.confirm({ onConfirm: () => { throw new Error('boom'); } });
     const modal = topModal();
-    const buttons = modal.querySelectorAll('.td-modal-footer button');
+    const buttons = modal.querySelectorAll('.td-modal__footer button');
     buttons[buttons.length - 1].click();
     expect(await p).to.equal(true); // resolve happened before the throwing callback
   });
@@ -78,7 +78,7 @@ describe('TdModal.confirm (resolve-on-dismiss)', () => {
     let cancels = 0;
     const p = TdModal.confirm({ onCancel: () => { cancels += 1; } });
     const modal = topModal();
-    modal.querySelector('.td-modal-close').click();
+    modal.querySelector('.td-modal__close').click();
     expect(await p).to.equal(false);
     expect(cancels).to.equal(1);
   });
@@ -89,14 +89,14 @@ describe('TdModal.success/error/info (resolve-on-dismiss)', () => {
     it(`${kind}: OK resolves true`, async () => {
       const p = TdModal[kind]({ message: 'hi' });
       const modal = topModal();
-      modal.querySelector('.td-modal-footer button').click();
+      modal.querySelector('.td-modal__footer button').click();
       expect(await p).to.equal(true);
     });
 
     it(`${kind}: dismiss via X resolves false`, async () => {
       const p = TdModal[kind]({ message: 'hi' });
       const modal = topModal();
-      modal.querySelector('.td-modal-close').click();
+      modal.querySelector('.td-modal__close').click();
       expect(await p).to.equal(false);
     });
   }
