@@ -37,7 +37,7 @@ describe('td-input-field (form-associated)', () => {
     form.requestSubmit();
     expect(submitted).to.equal(false);
     // Type something → becomes valid + submittable.
-    const inner = el.querySelector('.td-input');
+    const inner = el.querySelector('.td-field__control');
     inner.value = 'abc';
     inner.dispatchEvent(new Event('input'));
     expect(el.checkValidity()).to.equal(true);
@@ -47,9 +47,9 @@ describe('td-input-field (form-associated)', () => {
   it('email type computes typeMismatch on the host (inner is rendered as text)', () => {
     const form = mount('<form><td-input-field name="e" type="email" value="bad"></td-input-field></form>');
     const el = form.querySelector('td-input-field');
-    expect(el.querySelector('.td-input').getAttribute('type')).to.equal('text');
+    expect(el.querySelector('.td-field__control').getAttribute('type')).to.equal('text');
     expect(el.validity.typeMismatch).to.equal(true);
-    const inner = el.querySelector('.td-input');
+    const inner = el.querySelector('.td-field__control');
     inner.value = 'a@b.com';
     inner.dispatchEvent(new Event('input'));
     expect(el.validity.typeMismatch).to.equal(false);
@@ -66,7 +66,7 @@ describe('td-input-field (form-associated)', () => {
   it('number type rejects non-numeric text as badInput (ISSUE-1)', () => {
     const form = mount('<form><td-input-field name="n" type="number"></td-input-field></form>');
     const el = form.querySelector('td-input-field');
-    const inner = el.querySelector('.td-input');
+    const inner = el.querySelector('.td-field__control');
     inner.value = 'abc';
     inner.dispatchEvent(new Event('input'));
     expect(el.validity.badInput).to.equal(true);
@@ -79,7 +79,7 @@ describe('td-input-field (form-associated)', () => {
   it('reset restores the default value after typing', () => {
     const form = mount('<form><td-input-field name="x" value="hello"></td-input-field></form>');
     const el = form.querySelector('td-input-field');
-    const inner = el.querySelector('.td-input');
+    const inner = el.querySelector('.td-field__control');
     inner.value = 'world';
     inner.dispatchEvent(new Event('input'));
     expect(new FormData(form).get('x')).to.equal('world');
@@ -110,7 +110,7 @@ describe('td-input-field (form-associated)', () => {
   it('type="date" renders a native date input (not text)', () => {
     const form = mount('<form><td-input-field name="d" type="date" value="2026-06-10"></td-input-field></form>');
     const el = form.querySelector('td-input-field');
-    const inner = el.querySelector('.td-input');
+    const inner = el.querySelector('.td-field__control');
     expect(inner.getAttribute('type')).to.equal('date');
     expect(inner.hasAttribute('name')).to.equal(false); // host owns submission
     expect(new FormData(form).get('d')).to.equal('2026-06-10');
@@ -118,7 +118,7 @@ describe('td-input-field (form-associated)', () => {
 
   it('type="date" forwards min/max to the inner control', () => {
     const form = mount('<form><td-input-field name="d" type="date" min="2026-01-01" max="2026-12-31"></td-input-field></form>');
-    const inner = form.querySelector('.td-input');
+    const inner = form.querySelector('.td-field__control');
     expect(inner.getAttribute('min')).to.equal('2026-01-01');
     expect(inner.getAttribute('max')).to.equal('2026-12-31');
   });

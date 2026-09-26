@@ -84,7 +84,7 @@ describe('HTML-injection containment (text/attribute contexts)', () => {
     el.setAttribute('value', '"><script>alert(1)</script>');
     container.appendChild(el);
     expect(el.querySelector('script')).to.equal(null);
-    expect(el.querySelector('.td-input').value).to.equal('"><script>alert(1)</script>');
+    expect(el.querySelector('.td-field__control').value).to.equal('"><script>alert(1)</script>');
   });
 
   it('td-dropdown: an option label with HTML is escaped in the menu', () => {
@@ -122,19 +122,19 @@ describe('HTML-injection containment (text/attribute contexts)', () => {
     expect(el.querySelector('img')).to.equal(null);
     expect(window.__xss).to.equal(false);
     // coerced to the leading integer; the payload is stripped, never interpolated raw
-    expect(el.querySelector('.td-input').getAttribute('maxlength')).to.equal('5');
+    expect(el.querySelector('.td-field__control').getAttribute('maxlength')).to.equal('5');
   });
 
   it('td-input-field: a non-numeric max-length is dropped entirely', () => {
     const el = mount('<td-input-field max-length="abc"><\/td-input-field>');
-    expect(el.querySelector('.td-input').hasAttribute('maxlength')).to.equal(false);
-    expect(el.querySelector('.td-input-counter')).to.equal(null);
+    expect(el.querySelector('.td-field__control').hasAttribute('maxlength')).to.equal(false);
+    expect(el.querySelector('.td-field__counter')).to.equal(null);
   });
 
   it('td-input-field: a valid max-length still applies', () => {
     const el = mount('<td-input-field max-length="10"></td-input-field>');
-    expect(el.querySelector('.td-input').getAttribute('maxlength')).to.equal('10');
-    expect(el.querySelector('.td-input-counter')).to.not.equal(null);
+    expect(el.querySelector('.td-field__control').getAttribute('maxlength')).to.equal('10');
+    expect(el.querySelector('.td-field__counter')).to.not.equal(null);
   });
 
   it('td-toast: message is rendered as text, not HTML', () => {
