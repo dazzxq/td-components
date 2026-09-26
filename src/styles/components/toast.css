@@ -1,0 +1,175 @@
+/*
+ * td-toast (src/feedback/td-toast.js). Floating + text-bearing → Regular STRONG glass (liquid-glass td-toast row),
+ * no saturated fills (D13): the variant is the registry status icon (--td-color-{type}, AA colours) + an error
+ * border tint. Top-right by default (D11) — a site moves the stack with tokens only, e.g. 135/dwp bottom-centre:
+ *   :root { --td-toast-top: auto; --td-toast-bottom: 1.5rem; --td-toast-inline-end: auto;
+ *           --td-toast-inline-start: 50%; --td-toast-shift: -50%; --td-toast-align: center; }
+ * State: data-state="entering|open|closing" (fade + slide; reduced motion → opacity only) · [data-paused].
+ * Over an open modal the toast goes solid (R3 "no glass on glass", D20 private tokens, fallbacks still win).
+ */
+@layer td.tokens {
+	:root {
+		--td-toast-top: 5rem;
+		--td-toast-bottom: auto;
+		--td-toast-inline-end: 1rem;
+		--td-toast-inline-start: auto;
+		--td-toast-shift: 0%;
+		--td-toast-align: flex-end;
+		--td-toast-gap: var(--td-space-xs);
+		--td-toast-max-w: 28rem;
+		/* one-line toast = 44px tall → 22px radius is a capsule (R9); wrapped text keeps a soft rounded box */
+		--td-toast-radius: 22px;
+		--td-toast-fg: var(--td-color-text);
+		--td-toast-close-fg: var(--td-color-text-muted);
+		--td-toast-close-hover: var(--td-color-hover-strong);
+		--td-toast-error-border: color-mix(in srgb, var(--td-color-error) 45%, transparent);
+		--td-toast-enter-shift: 0.5rem;
+	}
+}
+
+@layer td.component {
+	.td-toasts {
+		position: fixed;
+		top: var(--td-toast-top);
+		bottom: var(--td-toast-bottom);
+		inset-inline-start: var(--td-toast-inline-start);
+		inset-inline-end: var(--td-toast-inline-end);
+		z-index: var(--td-z-toast);
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-toast-gap);
+		align-items: var(--td-toast-align);
+		width: max-content;
+		max-width: calc(100vw - 2 * var(--td-gutter));
+		font-family: var(--td-font-sans);
+		line-height: var(--td-leading-normal);
+		pointer-events: none; /* the page stays clickable around the stack */
+		transform: translateX(var(--td-toast-shift));
+	}
+
+	.td-toast {
+		box-sizing: border-box;
+		display: flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		max-width: min(var(--td-toast-max-w), 100%);
+		min-height: var(--td-touch-min);
+		padding: var(--td-space-2xs) var(--td-space-2xs) var(--td-space-2xs) var(--td-space-sm);
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-medium);
+		line-height: 1.4;
+		color: var(--_td-glass-fg, var(--td-toast-fg)); /* the recipe's fallbacks (contrast/forced) still win */
+		border-radius: var(--td-toast-radius);
+		pointer-events: auto;
+		cursor: pointer; /* click anywhere dismisses (keyboard: the close button) */
+		opacity: 0;
+		transform: translateY(calc(-1 * var(--td-toast-enter-shift)));
+		transition:
+			opacity var(--td-dur-base) var(--td-ease),
+			transform var(--td-dur-base) var(--td-ease-out);
+	}
+
+	.td-toast[data-state="open"] {
+		opacity: 1;
+		transform: none;
+	}
+
+	.td-toast[data-state="closing"] {
+		pointer-events: none;
+		opacity: 0;
+		transform: translateX(var(--td-toast-enter-shift));
+	}
+
+	.td-toast__icon {
+		display: inline-flex;
+		flex: none;
+		line-height: 0;
+		color: var(--td-color-info);
+	}
+
+	.td-toast--success .td-toast__icon { color: var(--td-color-success); }
+	.td-toast--warning .td-toast__icon { color: var(--td-color-warning); }
+	.td-toast--error .td-toast__icon { color: var(--td-color-error); }
+
+	.td-toast--error {
+		border-color: var(--_td-glass-line, var(--td-toast-error-border));
+	}
+
+	.td-toast__message {
+		flex: 1 1 auto;
+		min-width: 0;
+		padding-block: var(--td-space-2xs);
+		overflow-wrap: anywhere;
+	}
+
+	.td-toast__close {
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		line-height: 0;
+		color: var(--td-toast-close-fg);
+		cursor: pointer;
+		background: transparent; /* a fill on glass, never glass (R3) */
+		border: 0;
+		border-radius: var(--td-glass-capsule);
+		transition: background-color var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-toast__close:hover {
+		color: var(--td-toast-fg);
+		background: var(--td-toast-close-hover);
+	}
+
+	.td-toast__close:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	/* R3 / D20: over an open modal the toast is solid (not !important → the a11y fallbacks in td.tokens win). */
+	:root:has(.td-modal[data-state="open"]) .td-toast {
+		--_td-glass-fill: var(--td-glass-solid);
+		--_td-glass-filter: none;
+	}
+
+	@media (pointer: coarse) {
+		.td-toast__close {
+			width: var(--td-touch-min);
+			height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-toast,
+		.td-toast[data-state="closing"] {
+			transform: none;
+			transition: opacity var(--td-dur-fast) linear;
+		}
+
+		.td-toast__close { transition: none; }
+	}
+
+	@media (forced-colors: active) {
+		.td-toast__icon,
+		.td-toast__close {
+			color: CanvasText;
+		}
+
+		.td-toast__close {
+			border: 1px solid ButtonText;
+		}
+
+		.td-toast__close:focus-visible {
+			outline: 2px solid Highlight;
+		}
+	}
+}
