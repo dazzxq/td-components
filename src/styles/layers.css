@@ -1,0 +1,5 @@
+/*
+ * Layer order for the whole kit — declared ONCE, first. Unlayered site CSS beats every layer,
+ * so sites theme by overriding public `--td-*` tokens without editing core (ADR 0008).
+ */
+@layer td.tokens, td.component, td.utilities;

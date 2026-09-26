@@ -1,4 +1,6 @@
 /*
+ * !! SUPERSEDED (v0.5.0): the shipped tokens + recipes live in src/styles/tokens.css, theme-dark.css, glass.css.
+ * !! Kept as the research draft (measured contrast numbers, 135 override example).
  * !! REFERENCE DRAFT — NOT wired into src/. Values are the source for v0.5.0 tokens; the MECHANISM
  * !! below is partly superseded by ADR 0008 (2026-09-27):
  * !!   - Do NOT declare the private --_td-glass-* aliases on :root (var() resolves where declared, so a

@@ -1,0 +1,19 @@
+/* Storybook-only layout for the Foundations stories (not part of td.css). */
+.fd-stage { position: relative; height: 400px; padding: 32px; border-radius: 16px; overflow: hidden;
+  font-family: var(--td-font-sans); background: var(--td-color-bg); color: var(--td-color-text); }
+.fd-stage--photo { background:
+  radial-gradient(circle at 20% 30%, #ffd166 0 18%, transparent 19%),
+  radial-gradient(circle at 75% 60%, #06d6a0 0 22%, transparent 23%),
+  radial-gradient(circle at 45% 85%, #ef476f 0 15%, transparent 16%),
+  linear-gradient(135deg, #118ab2, #073b4c); color: #fff; }
+.fd-text p { max-width: 60ch; line-height: 1.6; margin: 0 0 12px; }
+.fd-float { position: absolute; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; align-items: center;
+  border-radius: var(--td-glass-radius); }
+.fd-float.td-glass-surface { padding: var(--td-glass-pad); }
+.fd-float--top { top: 24px; } .fd-float--bottom { bottom: 24px; }
+.fd-btn { min-width: var(--td-touch-min); min-height: var(--td-touch-min); padding: 0 16px; border-radius: var(--td-glass-radius-inner);
+  border: 0; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
+.fd-card { width: min(420px, 100%); padding: 20px; border-radius: var(--td-glass-radius); margin: 48px auto 0; }
+.fd-dim { position: absolute; left: 0; right: 0; height: 120px; }
+.fd-dim--top { top: 0; } .fd-dim--bottom { bottom: 0; }
+.fd-group { display: flex; gap: 4px; padding: var(--td-glass-pad); border-radius: var(--td-glass-radius); }

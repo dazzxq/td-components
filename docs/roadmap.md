@@ -14,19 +14,19 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` **B6** toast: `role=status` (trừ error giữ assertive/alert)
 - `done` **B7** storybook build hỏng do top-level `await` ở `td-toast.js:41`
 
-## Now — v0.5.0 foundation ([ADR 0008](decisions/0008-drop-tailwind-token-css.md))
+## Done — v0.5.0 foundation ([ADR 0008](decisions/0008-drop-tailwind-token-css.md))
 
-- `todo` Token `--td-*` (khởi đầu từ `td-tokens.css` của 135 + [glass tokens](design/glass-tokens.css))
-- `todo` `glass.css` theo [liquid-glass.md](design/liquid-glass.md), fallback trên `.td-glass-surface`
-- `todo` Layer prelude `@layer td.tokens, td.component, td.utilities`
-- `todo` Build `td.css` (script node concat theo manifest) + CI rebuild-and-diff
-- `todo` CSP harness dual-profile (legacy Tailwind + token-native) + gate nonce-only (Chromium/Firefox/WebKit)
-- `todo` Fixture tham chiếu glass Regular & Clear
+- `done` Token `--td-*` (khởi đầu từ `td-tokens.css` của 135 + [glass tokens](design/glass-tokens.css))
+- `done` `glass.css` theo [liquid-glass.md](design/liquid-glass.md), fallback trên `.td-glass-surface`
+- `done` Layer prelude `@layer td.tokens, td.component, td.utilities`
+- `done` Build `td.css` (script node concat theo manifest) + CI rebuild-and-diff
+- `done` CSP harness dual-profile (legacy Tailwind + token-native) + gate nonce-only (Chromium/Firefox/WebKit)
+- `done` Fixture tham chiếu glass Regular & Clear
 - `done` Scroll-lock overlay dùng chung (ref-count) — `src/utils/scroll-lock.js`, ship trong 0.4.1
-- `todo` Fixture markup contract (golden HTML) cho SSR adapter
-- `todo` Bảng mapping class cũ → mới
+- `todo` Fixture markup contract (golden HTML) cho SSR adapter → làm cùng td-lightbox (component token-native đầu tiên)
+- `done` Bảng mapping class cũ → mới
 
-## Next — v0.5.x td-lightbox pilot ([ADR 0009](decisions/0009-td-lightbox-hooks.md))
+## Now — td-lightbox pilot ([ADR 0009](decisions/0009-td-lightbox-hooks.md))
 
 - `todo` `td-lightbox` token-native đầu tiên, chạy thật trên 135 trước
 

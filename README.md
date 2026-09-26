@@ -14,7 +14,28 @@ Each component is **independent** (import only what you need) and **customized t
 npm install github:dazzxq/td-components
 ```
 
-## Tailwind Configuration (v4)
+## Styles: `td.css` (token kit)
+
+Load the kit stylesheet once. It is reset-free and CSP-safe (plain file, no inline styles).
+
+```js
+// Vite / bundler
+import '@dazzxq/td-components/td.css';
+```
+
+```html
+<!-- plain PHP / HTML (add nonce="…" under a nonce-based CSP) -->
+<link rel="stylesheet" href="/node_modules/@dazzxq/td-components/td.css">
+```
+
+Theme it by overriding public `--td-*` tokens in your own **unlayered** CSS (see
+[docs/architecture.md](docs/architecture.md#site-tuỳ-biến-thế-nào)). Dark theme is opt-in:
+`<html data-td-theme="dark">`. Turn glass off manually: `<html data-td-glass="off">`.
+
+Components are migrating from Tailwind to this kit ([ADR 0008](docs/decisions/0008-drop-tailwind-token-css.md)).
+Until a component is migrated it still needs Tailwind (below).
+
+## Tailwind Configuration (v4) — legacy components
 
 This library requires **Tailwind CSS v4+**. Add the component source to your CSS so Tailwind scans component classes (v4 excludes `node_modules` by default).
 
