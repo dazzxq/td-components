@@ -21,9 +21,17 @@
       "td-button",
       "td-checkbox",
       "td-toggle",
-      "td-loading"
+      "td-loading",
+      "td-input-field",
+      "td-tabs",
+      "td-pagination",
+      "td-empty-state"
     ],
-    "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them)."
+    "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
+    "mixed": [
+      "td-table"
+    ],
+    "mixedNote": "Legacy components that render token-native children (td-table → td-pagination, td-empty-state) are served Tailwind + td.css in BOTH runs; their baselines are captured the same way."
   },
   "td-toggle": [
     {
@@ -283,81 +291,127 @@
       "state": "text",
       "markup": "<td-input-field type=\"text\" label=\"Name\" placeholder=\"Your name\"></td-input-field>",
       "selectors": [
-        ".td-input"
-      ]
+        ".td-field",
+        ".td-field__label",
+        ".td-field__control"
+      ],
+      "settle": 300
     },
     {
       "state": "text-focus",
       "markup": "<td-input-field type=\"text\" label=\"Name\" placeholder=\"Your name\"></td-input-field>",
       "selectors": [
-        ".td-input"
+        ".td-field",
+        ".td-field__label",
+        ".td-field__control"
       ],
+      "settle": 300,
       "pseudo": "focus",
-      "focusSelector": ".td-input"
+      "focusSelector": ".td-field__control"
     },
     {
       "state": "textarea",
       "markup": "<td-input-field type=\"textarea\" label=\"Bio\" rows=\"4\"></td-input-field>",
       "selectors": [
-        ".td-input-textarea"
-      ]
+        ".td-field",
+        ".td-field__label",
+        ".td-field__control"
+      ],
+      "settle": 300
     },
     {
       "state": "number",
       "markup": "<td-input-field type=\"number\" label=\"Qty\"></td-input-field>",
       "selectors": [
-        ".td-input"
-      ]
+        ".td-field",
+        ".td-field__label",
+        ".td-field__control"
+      ],
+      "settle": 300
     },
     {
       "state": "size-sm",
       "markup": "<td-input-field type=\"text\" size=\"sm\" label=\"Name\"></td-input-field>",
       "selectors": [
-        ".td-input"
-      ]
+        ".td-field",
+        ".td-field__label",
+        ".td-field__control"
+      ],
+      "settle": 300
     },
     {
       "state": "size-lg",
       "markup": "<td-input-field type=\"text\" size=\"lg\" label=\"Name\"></td-input-field>",
       "selectors": [
-        ".td-input"
-      ]
+        ".td-field",
+        ".td-field__label",
+        ".td-field__control"
+      ],
+      "settle": 300
     },
     {
       "state": "disabled",
       "markup": "<td-input-field type=\"text\" label=\"Name\" disabled></td-input-field>",
       "selectors": [
-        ".td-input"
-      ]
+        ".td-field",
+        ".td-field__label",
+        ".td-field__control"
+      ],
+      "settle": 300
     },
     {
       "state": "error",
       "markup": "<td-input-field type=\"text\" label=\"Name\" error-text=\"Required\"></td-input-field>",
       "selectors": [
-        ".td-input",
-        ".td-input-note"
-      ]
+        ".td-field__control",
+        ".td-field-error"
+      ],
+      "settle": 300
     },
     {
       "state": "note",
       "markup": "<td-input-field type=\"text\" label=\"Name\" helper-text=\"Optional\"></td-input-field>",
       "selectors": [
-        ".td-input-note"
-      ]
+        ".td-field__control",
+        ".td-field__note"
+      ],
+      "settle": 300
     },
     {
       "state": "counter",
-      "markup": "<td-input-field type=\"text\" label=\"Name\" max-length=\"10\" value=\"hi\"></td-input-field>",
+      "markup": "<td-input-field type=\"text\" label=\"Name\" max-length=\"10\" value=\"abc\"></td-input-field>",
       "selectors": [
-        ".td-input-counter"
-      ]
+        ".td-field__control",
+        ".td-field__counter"
+      ],
+      "settle": 300
     },
     {
       "state": "counter-full",
-      "markup": "<td-input-field type=\"text\" label=\"Name\" max-length=\"2\" value=\"hi\"></td-input-field>",
+      "markup": "<td-input-field type=\"text\" label=\"Name\" max-length=\"3\" value=\"abc\"></td-input-field>",
       "selectors": [
-        ".td-input-counter"
-      ]
+        ".td-field__control",
+        ".td-field__counter"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "error-helper",
+      "markup": "<td-input-field type=\"text\" label=\"Name\" helper-text=\"Optional\" error-text=\"Required\"></td-input-field>",
+      "selectors": [
+        ".td-field__control",
+        ".td-field-error",
+        ".td-field__note"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "editable-placeholder",
+      "markup": "<td-input-field type=\"contenteditable\" label=\"Note\" placeholder=\"Viết gì đó\"></td-input-field>",
+      "selectors": [
+        ".td-field__control"
+      ],
+      "settle": 300
     }
   ],
   "td-dropdown": [
@@ -490,36 +544,50 @@
   "td-tabs": [
     {
       "state": "default",
-      "setup": "const t=document.createElement('td-tabs'); t.id='probe'; window.__mount.appendChild(t); t.tabs=[{id:'a',label:'One'},{id:'b',label:'Two'}];",
+      "setup": "const t=document.createElement('td-tabs'); t.id='probe';  window.__mount.appendChild(t); t.tabs=[{id:'a',label:'One'},{id:'b',label:'Two'}];",
       "selectors": [
-        ".td-tabs-container",
-        ".td-tabs-indicator",
-        ".td-tab-btn"
+        ".td-tabs",
+        ".td-tabs__indicator",
+        ".td-tabs__tab"
       ],
       "excludeProps": [
-        "left",
+        "transform",
         "width"
       ],
-      "settle": 350,
-      "settleNote": "ONLY indicator left/width are excluded — they are RAF-measured from active-button geometry. opacity IS kept: _updateIndicator() deterministically sets opacity=1 after the injected style's initial opacity:0, so the oracle WILL catch a refactor that leaves the active indicator invisible."
+      "settle": 350
     },
     {
       "state": "empty",
       "setup": "const t=document.createElement('td-tabs'); t.id='probe'; window.__mount.appendChild(t); t.tabs=[];",
       "selectors": [
-        ".td-tabs-container"
-      ]
+        ".td-tabs"
+      ],
+      "settle": 350
     },
     {
       "state": "size-sm",
       "setup": "const t=document.createElement('td-tabs'); t.id='probe'; t.setAttribute('size','sm'); window.__mount.appendChild(t); t.tabs=[{id:'a',label:'One'},{id:'b',label:'Two'}];",
       "selectors": [
-        ".td-tabs-container",
-        ".td-tabs-indicator",
-        ".td-tab-btn"
+        ".td-tabs",
+        ".td-tabs__indicator",
+        ".td-tabs__tab"
       ],
       "excludeProps": [
-        "left",
+        "transform",
+        "width"
+      ],
+      "settle": 350
+    },
+    {
+      "state": "selected-second",
+      "setup": "const t=document.createElement('td-tabs'); t.id='probe';  window.__mount.appendChild(t); t.tabs=[{id:'a',label:'One'},{id:'b',label:'Two'}]; t.setActiveTab('b');",
+      "selectors": [
+        ".td-tabs",
+        ".td-tabs__indicator",
+        ".td-tabs__tab"
+      ],
+      "excludeProps": [
+        "transform",
         "width"
       ],
       "settle": 350
@@ -530,22 +598,36 @@
       "state": "page1",
       "markup": "<td-pagination total-items=\"50\" items-per-page=\"10\" current-page=\"1\"></td-pagination>",
       "selectors": [
-        ".td-pagination-pages > span:first-child"
-      ]
+        ".td-pagination",
+        ".td-pagination__info",
+        ".td-pagination__page[aria-current=\"page\"]",
+        ".td-pagination__nav--prev"
+      ],
+      "settle": 300
     },
     {
       "state": "page3",
       "markup": "<td-pagination total-items=\"50\" items-per-page=\"10\" current-page=\"3\"></td-pagination>",
       "selectors": [
-        ".td-pagination-pages > span.font-semibold"
-      ]
+        ".td-pagination__page[aria-current=\"page\"]"
+      ],
+      "settle": 300
     },
     {
       "state": "custom-color",
       "markup": "<td-pagination total-items=\"50\" items-per-page=\"10\" current-page=\"1\" active-color=\"#0ea5e9\"></td-pagination>",
       "selectors": [
-        ".td-pagination-pages > span:first-child"
-      ]
+        ".td-pagination__page[aria-current=\"page\"]"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "last-page",
+      "markup": "<td-pagination total-items=\"50\" items-per-page=\"10\" current-page=\"5\"></td-pagination>",
+      "selectors": [
+        ".td-pagination__nav--next"
+      ],
+      "settle": 300
     }
   ],
   "td-empty-state": [
@@ -553,36 +635,45 @@
       "state": "default",
       "markup": "<td-empty-state></td-empty-state>",
       "selectors": [
-        ".td-empty-state-card",
-        ".td-empty-icon",
-        ".td-empty-title",
-        ".td-empty-actions"
+        ".td-empty-state",
+        ".td-empty-state__icon svg",
+        ".td-empty-state__title",
+        ".td-empty-state__actions"
       ]
     },
     {
       "state": "compact",
       "markup": "<td-empty-state compact></td-empty-state>",
       "selectors": [
-        ".td-empty-state-card",
-        ".td-empty-icon"
+        ".td-empty-state",
+        ".td-empty-state__icon svg",
+        ".td-empty-state__title"
       ]
     },
     {
       "state": "size-sm",
       "markup": "<td-empty-state size=\"sm\"></td-empty-state>",
       "selectors": [
-        ".td-empty-state-card",
-        ".td-empty-icon",
-        ".td-empty-title"
+        ".td-empty-state",
+        ".td-empty-state__icon svg",
+        ".td-empty-state__title"
       ]
     },
     {
       "state": "size-lg",
       "markup": "<td-empty-state size=\"lg\"></td-empty-state>",
       "selectors": [
-        ".td-empty-state-card",
-        ".td-empty-icon",
-        ".td-empty-title"
+        ".td-empty-state",
+        ".td-empty-state__icon svg",
+        ".td-empty-state__title"
+      ]
+    },
+    {
+      "state": "actions",
+      "setup": "const e=document.createElement('td-empty-state'); window.__mount.appendChild(e); e.actions=[{label:'Tạo mới',variant:'primary',onClick(){}}];",
+      "selectors": [
+        ".td-empty-state__actions",
+        ".td-empty-state__actions .td-btn"
       ]
     }
   ],

@@ -1,6 +1,7 @@
 {
   "_component": "td-table",
   "_state": "sortable-header",
+  "_profile": "legacy+td",
   "_reducedMotion": false,
   "_excludedProps": [],
   "_sentinels": [
@@ -18,6 +19,11 @@
       "class": "opacity-50",
       "prop": "opacity",
       "value": "0.5"
+    },
+    {
+      "class": ":root (td.css)",
+      "prop": "--td-glass-radius",
+      "value": "20px"
     }
   ],
   "styles": {

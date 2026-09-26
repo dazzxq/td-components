@@ -53,8 +53,9 @@ async function fulfillFromDisk(route, request) {
     const p = u.searchParams.get('profile');
     const TW = `<link rel="stylesheet" href="${ORIGIN}/fixture/tailwind.css">`;
     const TD = `<link rel="stylesheet" href="${ORIGIN}/td.css">`;
+    const RESET = `<link rel="stylesheet" href="${ORIGIN}/fixture/harness.css">`;
     // td → token-native (td.css only); legacy+td → mixed legacy component with token-native children.
-    const css = p === 'td' ? TD : p === 'legacy+td' ? TW + TD : TW;
+    const css = p === 'td' ? RESET + TD : p === 'legacy+td' ? TW + TD : TW;
     const html = `<!doctype html><html><head><meta charset="utf-8">` + css +
       `</head><body><div id="__mount"></div></body></html>`;
     return route.fulfill({ status: 200, contentType: 'text/html', body: html });
@@ -117,7 +118,7 @@ async function freshPage(browser, reducedMotion, profile = 'legacy') {
   const ctx = await browser.newContext(reducedMotion ? { reducedMotion: 'reduce' } : {});
   const page = await ctx.newPage();
   await page.route('**/*', (route, request) => fulfillFromDisk(route, request));
-  await page.goto(`${ORIGIN}/mount.html${profile !== 'legacy' ? `?profile=${profile}` : ''}`, { waitUntil: 'load' });
+  await page.goto(`${ORIGIN}/mount.html${profile !== 'legacy' ? `?profile=${encodeURIComponent(profile)}` : ''}`, { waitUntil: 'load' });
   await page.evaluate(() => { window.__mount = document.getElementById('__mount'); });
   return { ctx, page };
 }

@@ -1,6 +1,7 @@
 {
   "_component": "td-table",
   "_state": "empty",
+  "_profile": "legacy+td",
   "_reducedMotion": false,
   "_excludedProps": [],
   "_sentinels": [
@@ -18,12 +19,17 @@
       "class": "opacity-50",
       "prop": "opacity",
       "value": "0.5"
+    },
+    {
+      "class": ":root (td.css)",
+      "prop": "--td-glass-radius",
+      "value": "20px"
     }
   ],
   "styles": {
     ".td-table-container": {
       "width": "1280px",
-      "height": "271px",
+      "height": "269px",
       "min-height": "0px",
       "max-height": "none",
       "padding-top": "0px",

@@ -85,7 +85,8 @@ async function fulfillFromDisk(route, request) {
     const p = u.searchParams.get('profile') || PROFILE;
     const TW = `<link rel="stylesheet" href="${ORIGIN}/fixture/tailwind.css">`;
     const TD = `<link rel="stylesheet" href="${ORIGIN}/td.css">`;
-    const css = p === 'td' ? TD : p === 'legacy+td' ? TW + TD : TW;
+    const RESET = `<link rel="stylesheet" href="${ORIGIN}/fixture/harness.css">`;
+    const css = p === 'td' ? RESET + TD : p === 'legacy+td' ? TW + TD : TW;
     const html = `<!doctype html><html><head><meta charset="utf-8">` + css +
       `</head><body><div id="__mount"></div></body></html>`;
     return route.fulfill({
