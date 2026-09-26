@@ -19,6 +19,7 @@
     "components/lightbox.css",
     "components/toast.css",
     "components/tooltip.css",
+    "components/modal.css",
     "utilities.css"
   ]
 }

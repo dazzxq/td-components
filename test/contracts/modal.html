@@ -1,0 +1,68 @@
+<!-- TdModal markup contract (portaled root, one per open dialog). `data-setup` is a JS function body run with
+     `TdModal` in scope; it returns the modal id (Promise dialogs: the setup opens them and returns null → the top
+     root is used). `{id}` stands for the generated modal id. Compared after the open state (two frames).
+     Checked by src/feedback/td-batch3-modal.browser-test.js. -->
+<template data-component="td-modal"
+          data-setup='return TdModal.show({ title: "Tiêu đề", body: "<p>Nội dung</p>", actions: [{ label: "Hủy" }, { label: "Lưu", variant: "primary" }] });'>
+  <div id="{id}" class="td-modal td-modal--md" data-state="open">
+    <div class="td-modal__backdrop" aria-hidden="true"></div>
+    <div class="td-modal__dialog td-glass-surface td-glass-surface--strong td-glass-surface--lg" role="dialog" aria-modal="true" aria-labelledby="{id}-title" tabindex="-1">
+      <div class="td-modal__header">
+        <h2 class="td-modal__title" id="{id}-title">Tiêu đề</h2>
+        <button type="button" class="td-modal__close" aria-label="Đóng"><span class="td-modal__close-icon" data-td-icon="close" aria-hidden="true"><svg aria-hidden="true" class="td-icon td-icon--m" data-icon="close"></svg></span></button>
+      </div>
+      <div class="td-modal__body"><p>Nội dung</p></div>
+      <div class="td-modal__footer">
+        <button type="button" class="td-btn td-btn--secondary"><span class="td-btn__label">Hủy</span><span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden><svg class="td-spinner__svg" aria-hidden="true"><circle class="td-spinner__track"></circle><circle class="td-spinner__arc"></circle></svg></span></button>
+        <button type="button" class="td-btn td-btn--primary"><span class="td-btn__label">Lưu</span><span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden><svg class="td-spinner__svg" aria-hidden="true"><circle class="td-spinner__track"></circle><circle class="td-spinner__arc"></circle></svg></span></button>
+      </div>
+    </div>
+  </div>
+</template>
+<template data-component="td-modal-confirm"
+          data-setup='TdModal.confirm({ title: "Xóa?", message: "Không thể hoàn tác.", confirmVariant: "danger" }); return null;'>
+  <div id="{id}" class="td-modal td-modal--sm" data-state="open">
+    <div class="td-modal__backdrop" aria-hidden="true"></div>
+    <div class="td-modal__dialog td-glass-surface td-glass-surface--strong td-glass-surface--lg" role="alertdialog" aria-modal="true" aria-labelledby="{id}-title" aria-describedby="{id}-message" tabindex="-1">
+      <div class="td-modal__header">
+        <h2 class="td-modal__title" id="{id}-title">Xóa?</h2>
+        <button type="button" class="td-modal__close" aria-label="Đóng"><span class="td-modal__close-icon" data-td-icon="close" aria-hidden="true"><svg aria-hidden="true" class="td-icon td-icon--m" data-icon="close"></svg></span></button>
+      </div>
+      <div class="td-modal__body"><div class="td-modal__message"><p class="td-modal__text" id="{id}-message">Không thể hoàn tác.</p></div></div>
+      <div class="td-modal__footer">
+        <button type="button" class="td-btn td-btn--secondary"><span class="td-btn__label">Hủy</span><span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden><svg class="td-spinner__svg" aria-hidden="true"><circle class="td-spinner__track"></circle><circle class="td-spinner__arc"></circle></svg></span></button>
+        <button type="button" class="td-btn td-btn--danger"><span class="td-btn__label">Xác nhận</span><span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden><svg class="td-spinner__svg" aria-hidden="true"><circle class="td-spinner__track"></circle><circle class="td-spinner__arc"></circle></svg></span></button>
+      </div>
+    </div>
+  </div>
+</template>
+<template data-component="td-modal-success"
+          data-setup='TdModal.success({ message: "Đã lưu." }); return null;'>
+  <div id="{id}" class="td-modal td-modal--sm" data-state="open">
+    <div class="td-modal__backdrop" aria-hidden="true"></div>
+    <div class="td-modal__dialog td-glass-surface td-glass-surface--strong td-glass-surface--lg" role="alertdialog" aria-modal="true" aria-labelledby="{id}-title" aria-describedby="{id}-message" tabindex="-1">
+      <div class="td-modal__header">
+        <h2 class="td-modal__title" id="{id}-title">Thành công</h2>
+        <button type="button" class="td-modal__close" aria-label="Đóng"><span class="td-modal__close-icon" data-td-icon="close" aria-hidden="true"><svg aria-hidden="true" class="td-icon td-icon--m" data-icon="close"></svg></span></button>
+      </div>
+      <div class="td-modal__body"><div class="td-modal__message td-modal__message--success"><span class="td-modal__icon" data-td-icon="success" data-td-icon-size="l" aria-hidden="true"><svg aria-hidden="true" class="td-icon td-icon--l" data-icon="success"></svg></span><p class="td-modal__text" id="{id}-message">Đã lưu.</p></div></div>
+      <div class="td-modal__footer">
+        <button type="button" class="td-btn td-btn--success"><span class="td-btn__label">OK</span><span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden><svg class="td-spinner__svg" aria-hidden="true"><circle class="td-spinner__track"></circle><circle class="td-spinner__arc"></circle></svg></span></button>
+      </div>
+    </div>
+  </div>
+</template>
+<template data-component="td-modal-closable-false"
+          data-setup='return TdModal.show({ title: "Bắt buộc", body: "<p>Chọn một thao tác.</p>", closable: false });'>
+  <div id="{id}" class="td-modal td-modal--md" data-state="open">
+    <div class="td-modal__backdrop" aria-hidden="true"></div>
+    <div class="td-modal__dialog td-glass-surface td-glass-surface--strong td-glass-surface--lg" role="dialog" aria-modal="true" aria-labelledby="{id}-title" tabindex="-1">
+      <div class="td-modal__header">
+        <h2 class="td-modal__title" id="{id}-title">Bắt buộc</h2>
+        <button type="button" class="td-modal__close" aria-label="Đóng" hidden><span class="td-modal__close-icon" data-td-icon="close" aria-hidden="true"><svg aria-hidden="true" class="td-icon td-icon--m" data-icon="close"></svg></span></button>
+      </div>
+      <div class="td-modal__body"><p>Chọn một thao tác.</p></div>
+      <div class="td-modal__footer" hidden></div>
+    </div>
+  </div>
+</template>

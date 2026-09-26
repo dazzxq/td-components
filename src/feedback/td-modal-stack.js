@@ -1,26 +1,32 @@
 /**
- * TdModalStackManager
- * Manages z-index stacking and backdrop opacity for multiple modals.
+ * TdModalStackManager — bookkeeping for stacked TdModal dialogs (static, no TdBaseElement).
  *
- * Features:
- * - Automatic z-index calculation for stacked modals
- * - Backdrop opacity management
- * - Page scroll lock via the shared ref-counted lock (utils/scroll-lock.js)
- * - Modal ID generation
- *
- * Ported from DCMS ModalStackManager — standalone utility class (no TdBaseElement).
+ * - z-index comes from the token `--td-z-modal` (components/modal.css); every modal shares it and later modals
+ *   stack by DOM order (plan v0.9.0 D5). `BASE_Z_INDEX` is an OPT-IN override: when a consumer sets it to a number,
+ *   each root gets an inline `z-index` (CSSOM, CSP-allowed) of `BASE + i·INCREMENT` and one console warning points to
+ *   the `--td-z-*` token set (override the set, not one layer).
+ * - `instance.zIndex / backdropOpacity / stackIndex` are still computed (read-only compatibility); the backdrop
+ *   opacity is no longer written (the scrim is `--td-glass-scrim`).
+ * - Every non-top root carries `[data-covered]` (CSS turns its glass dialog solid — "no glass on glass", D20).
+ * - One page scroll lease (utils/scroll-lock.js) while the stack is non-empty.
+ * - `closeAll()` delegates to each instance's `close()` (TdModal instances), so focus, layer leases and `onClose`
+ *   run exactly once per dialog.
  */
 
 import { lockScroll } from '../utils/scroll-lock.js';
+import { LAYERS } from '../utils/layers.js';
 
 export class TdModalStackManager {
   static stack = [];
-  static BASE_Z_INDEX = 9999;
+  /** @type {number|null} opt-in inline z-index base (null = use the --td-z-modal token) */
+  static BASE_Z_INDEX = null;
   static Z_INDEX_INCREMENT = 100;
   static BACKDROP_BASE_OPACITY = 0.5;
   static BACKDROP_OPACITY_INCREMENT = 0.05;
   /** @type {(() => void)|null} scroll-lock lease held while the stack is non-empty */
   static _releaseScroll = null;
+  /** @private one warning per page for the BASE_Z_INDEX override */
+  static _warnedZ = false;
 
   /** @private */
   static _syncScrollLock() {
@@ -32,158 +38,117 @@ export class TdModalStackManager {
     }
   }
 
-  /**
-   * Generate unique modal ID
-   * @returns {string}
-   */
-  static generateId() {
-    return 'td-modal-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+  /** @private numeric override base, or null */
+  static _zBase() {
+    const b = this.BASE_Z_INDEX;
+    return typeof b === 'number' && Number.isFinite(b) ? b : null;
+  }
+
+  /** @private recompute compat numbers, inline z (override only) and [data-covered] for the whole stack */
+  static _sync() {
+    const base = this._zBase();
+    if (base !== null && this.stack.length && !this._warnedZ) {
+      this._warnedZ = true;
+      console.warn('TdModalStackManager.BASE_Z_INDEX is deprecated: modals use the --td-z-modal token. '
+        + 'Sites with fixed chrome above it should override the whole --td-z-* set instead.');
+    }
+    const last = this.stack.length - 1;
+    this.stack.forEach((m, i) => {
+      m.stackIndex = i;
+      m.zIndex = (base !== null ? base : LAYERS.modal) + (base !== null ? i * this.Z_INDEX_INCREMENT : 0);
+      m.backdropOpacity = Math.min(this.BACKDROP_BASE_OPACITY + i * this.BACKDROP_OPACITY_INCREMENT, 0.8);
+      const el = m.element;
+      if (!el || typeof el.setAttribute !== 'function') return;
+      if (base !== null) el.style.zIndex = String(m.zIndex);
+      if (i < last) el.setAttribute('data-covered', '');
+      else el.removeAttribute('data-covered');
+    });
   }
 
   /**
-   * Push modal to stack
-   * @param {Object} modalInstance - Modal instance object
-   * @returns {string} Modal ID
+   * Generate a unique modal id.
+   * @returns {string}
+   */
+  static generateId() {
+    return 'td-modal-' + Date.now() + '-' + Math.random().toString(36).slice(2, 11);
+  }
+
+  /**
+   * Push a modal instance on top of the stack.
+   * @param {{ id?: string, element?: HTMLElement }} modalInstance
+   * @returns {string} modal id
    */
   static push(modalInstance) {
-    const stackSize = this.stack.length;
-    const zIndex = this.BASE_Z_INDEX + (stackSize * this.Z_INDEX_INCREMENT);
-    const backdropOpacity = Math.min(
-      this.BACKDROP_BASE_OPACITY + (stackSize * this.BACKDROP_OPACITY_INCREMENT),
-      0.8
-    );
-
-    modalInstance.zIndex = zIndex;
-    modalInstance.backdropOpacity = backdropOpacity;
-    modalInstance.stackIndex = stackSize;
-
-    if (!modalInstance.id) {
-      modalInstance.id = this.generateId();
-    }
-
+    if (!modalInstance.id) modalInstance.id = this.generateId();
     this.stack.push(modalInstance);
-
-    // Apply z-index to modal element
-    if (modalInstance.element) {
-      modalInstance.element.style.zIndex = zIndex.toString();
-
-      // Apply backdrop opacity if backdrop exists
-      const backdrop = modalInstance.element.querySelector('.td-modal-backdrop');
-      if (backdrop) {
-        backdrop.style.opacity = backdropOpacity.toString();
-      }
-    }
-
+    this._sync();
     this._syncScrollLock();
-
     return modalInstance.id;
   }
 
   /**
-   * Pop modal from stack (close top modal)
-   * @returns {Object|null} Removed modal instance or null
+   * Pop the top instance (bookkeeping only — does not close it).
+   * @returns {Object|null}
    */
   static pop() {
     if (this.stack.length === 0) return null;
-
     const removed = this.stack.pop();
-
+    if (removed && removed.element && typeof removed.element.removeAttribute === 'function') {
+      removed.element.removeAttribute('data-covered');
+    }
+    this._sync();
     this._syncScrollLock();
-
     return removed;
   }
 
-  /**
-   * Get top modal (current active modal)
-   * @returns {Object|null} Top modal instance or null
-   */
+  /** @returns {Object|null} top modal instance */
   static getTop() {
     return this.stack.length > 0 ? this.stack[this.stack.length - 1] : null;
   }
 
-  /**
-   * Get stack size
-   * @returns {number} Number of modals in stack
-   */
+  /** @returns {number} */
   static getStackSize() {
     return this.stack.length;
   }
 
   /**
-   * Remove modal by ID from stack
-   * @param {string} modalId - Modal ID to remove
-   * @returns {Object|null} Removed modal instance or null
+   * Remove an instance by id (bookkeeping only — TdModal.closeById does the closing).
+   * @param {string} modalId
+   * @returns {Object|null}
    */
   static removeById(modalId) {
-    const index = this.stack.findIndex(m => m.id === modalId);
-    if (index !== -1) {
-      const removed = this.stack.splice(index, 1)[0];
-
-      // Recalculate z-index for remaining modals
-      this.stack.forEach((modal, idx) => {
-        modal.stackIndex = idx;
-        modal.zIndex = this.BASE_Z_INDEX + (idx * this.Z_INDEX_INCREMENT);
-        modal.backdropOpacity = Math.min(
-          this.BACKDROP_BASE_OPACITY + (idx * this.BACKDROP_OPACITY_INCREMENT),
-          0.8
-        );
-
-        if (modal.element) {
-          modal.element.style.zIndex = modal.zIndex.toString();
-          const backdrop = modal.element.querySelector('.td-modal-backdrop');
-          if (backdrop) {
-            backdrop.style.opacity = modal.backdropOpacity.toString();
-          }
-        }
-      });
-
-      this._syncScrollLock();
-
-      return removed;
+    const index = this.stack.findIndex((m) => m.id === modalId);
+    if (index === -1) return null;
+    const removed = this.stack.splice(index, 1)[0];
+    if (removed && removed.element && typeof removed.element.removeAttribute === 'function') {
+      removed.element.removeAttribute('data-covered');
     }
-    return null;
+    this._sync();
+    this._syncScrollLock();
+    return removed;
   }
 
-  /**
-   * Close all modals with exit animation
-   */
+  /** Close every modal, top first. TdModal instances close through their own `close()`. */
   static closeAll() {
-    // Close from top to bottom with exit animation
-    while (this.stack.length > 0) {
-      const modal = this.pop();
-      if (modal && modal.element) {
-        const contentEl = modal.element.querySelector('.td-modal-content');
-        const backdrop = modal.element.querySelector('.td-modal-backdrop');
-
-        if (contentEl) {
-          contentEl.style.transition = 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1)';
-          contentEl.style.opacity = '0';
-          contentEl.style.transform = 'scale(0.95)';
-        }
-        if (backdrop) {
-          backdrop.style.transition = 'opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1)';
-          backdrop.style.opacity = '0';
-        }
-
-        // Remove from DOM after animation
-        const el = modal.element;
-        setTimeout(() => {
-          if (el && el.parentNode) {
-            el.remove();
-          }
-        }, 200);
+    let guard = this.stack.length + 1;
+    while (this.stack.length > 0 && guard-- > 0) {
+      const top = this.getTop();
+      if (top && typeof top.close === 'function') {
+        try { top.close(); } catch (err) { console.error(err); }
       }
-      if (modal && modal.onClose) {
-        modal.onClose();
+      if (this.getTop() === top) { // plain instance (or a close() that did not unregister): legacy path
+        this.pop();
+        const el = top && top.element;
+        if (el && el.parentNode) el.remove();
+        if (top && typeof top.onClose === 'function') {
+          try { top.onClose(); } catch (err) { console.error(err); }
+        }
       }
     }
     this._syncScrollLock();
   }
 
-  /**
-   * Ensure body scroll state is consistent with stack.
-   * Call when stack might be desync (e.g., after error during modal lifecycle).
-   */
+  /** Re-sync the scroll lease with the stack (after an error during a modal lifecycle). */
   static ensureScrollState() {
     this._syncScrollLock();
   }
