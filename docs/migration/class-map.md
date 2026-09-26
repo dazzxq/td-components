@@ -43,5 +43,20 @@ update their selectors using this table when upgrading. No legacy aliases are sh
 | td-empty-state | `.td-empty-icon-wrap` / `.td-empty-icon` | `.td-empty-state__icon` / `svg.td-icon` | — | 0.8.0 |
 | td-empty-state | `.td-empty-title` / `.td-empty-message` | `.td-empty-state__title` / `__message` | — | 0.8.0 |
 | td-empty-state | `.td-empty-actions` (+ Tailwind buttons) | `.td-empty-state__actions` (+ `.td-btn`) | `[hidden]` | 0.8.0 |
+| td-modal | root `div[id^=td-modal-].fixed.inset-0.hidden` | `.td-modal.td-modal--{size}[--viewport]` | `[hidden]`, `data-state`, `[data-covered]` | 0.9.0 |
+| td-modal | `.td-modal-backdrop` | `.td-modal__backdrop` | — | 0.9.0 |
+| td-modal | scroller/aligner divs | removed | — | 0.9.0 |
+| td-modal | `.td-modal-content` | `.td-modal__dialog[role=dialog\|alertdialog][aria-modal]` | — | 0.9.0 |
+| td-modal | `.td-modal-header` / `.td-modal-title` (h3) | `.td-modal__header` / `h2.td-modal__title` | `[hidden]` | 0.9.0 |
+| td-modal | `.td-modal-close` | `.td-modal__close[aria-label]` | `[hidden]` | 0.9.0 |
+| td-modal | `.td-modal-body` / `.td-modal-footer` | `.td-modal__body` / `.td-modal__footer` | `[hidden]` | 0.9.0 |
+| td-modal | Tailwind footer buttons, icon svgs | `.td-btn.td-btn--{variant}`, `.td-modal__message/__icon/__text` | `[aria-busy]` | 0.9.0 |
+| td-toast | `#td-toast-container` (Tailwind) | `#td-toast-container.td-toasts` | — | 0.9.0 |
+| td-toast | `.toast-item` (+ translate/opacity classes) + inner fill div | `.td-toast.td-toast--{type}` (+ `__icon`, `__message`, `__close`) | `data-state`, `[data-paused]` | 0.9.0 |
+| td-tooltip | `.td-tooltip` / `.td-tooltip-content` / `.td-tooltip-arrow` | `.td-tooltip[role=tooltip]` / `.td-tooltip__content` / removed | `[hidden]`, `data-state`, `data-placement`, `[data-custom]` | 0.9.0 |
+| td-dropdown | `.td-dropdown-container` | `.td-dropdown` | — | 0.9.0 |
+| td-dropdown | `.td-dropdown-button` / `-selected` / `-arrow` | `.td-dropdown__trigger[role=combobox]` / `__value` / `__arrow` | `[aria-expanded]`, `[aria-invalid]`, `[data-placeholder]` | 0.9.0 |
+| td-dropdown | `.td-dropdown-menu` / `-search` / `-options` | `.td-dropdown__menu` / `__search(-wrap)` / `__options` | `[hidden]`, `data-placement` (`bottom\|top`) | 0.9.0 |
+| td-dropdown | `.td-dropdown-option` / `-option-clear` / empty div | `.td-dropdown__option[role=option]` / `--clear` / `__empty` | `[aria-selected]`, `[data-active]` | 0.9.0 |
 
 State rule: JS never toggles visual classes; state lives in `aria-*`, `[hidden]`, `:checked`, `data-state`.

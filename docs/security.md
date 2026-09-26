@@ -23,7 +23,7 @@ Mặc định mọi chuỗi đều được escape; raw HTML chỉ có khi opt-i
 
 Không bao giờ đưa input của người dùng cuối qua các đường này:
 
-- `TdModal.show({ body })`: `body` là HTML/element thô. (`confirm/success/error/info` có escape `message`.)
+- `TdModal.show({ body })`: `body` dạng chuỗi là HTML thô (ưu tiên truyền Node). `confirm/success/error/info`: `message` là text; `messageHtml` là HTML tin cậy (0.9.0).
 - `td-table` column `render(row)`: trả về HTML ô thô. Ô không có `render` hiển thị giá trị đã escape.
 - `td-empty-state` `icon`: ~~chuỗi `<svg` chèn nguyên văn~~ — **đã đóng (0.8.0)**: chuỗi SVG (deprecated) chỉ được render sau khi qua allowlist hình học dùng chung (`svgStringToDefinition`, parse `image/svg+xml`, dựng lại bằng `createElementNS`; `script`/`foreignObject`/`use`/`on*`/`style`/`url()` → từ chối, về `inbox`). Hatch được hỗ trợ: property `iconNode` (SVGElement tin cậy).
 

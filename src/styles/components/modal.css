@@ -111,10 +111,9 @@
 			transform var(--td-dur-slow) var(--td-glass-ease-flex);
 	}
 
-	/* No glass on glass (liquid-glass R3, D20): a dialog covered by another one goes solid; floating surfaces
-	   shown over an open modal too. Private tokens, NOT !important → the a11y fallbacks (td.tokens) still win. */
-	.td-modal[data-covered] .td-modal__dialog,
-	:root:has(.td-modal[data-state="open"]) :is(.td-dropdown__menu, .td-tooltip, .td-toast) {
+	/* No glass on glass (liquid-glass R3, D20): a dialog covered by another one goes solid (menus, tooltips and
+	   toasts over an open modal: their own files). Private tokens, NOT !important → a11y fallbacks still win. */
+	.td-modal[data-covered] .td-modal__dialog {
 		--_td-glass-fill: var(--td-glass-solid);
 		--_td-glass-filter: none;
 	}
