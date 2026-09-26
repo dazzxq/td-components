@@ -2,6 +2,43 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.6.0
+
+First **token-native** component and the shared icon registry. Plan: `docs/plans/v0.6.0-lightbox.md`
+(Codex plan-review APPROVE). No change to existing components.
+
+### Security
+
+- Dev tooling: Storybook 8.6.14 → **8.6.18** (GHSA-mjf5-7g4m-gx5w WebSocket hijacking; GHSA-8452-54wp-rmv6
+  `.env` leak into builds) + `npm audit fix` (non-breaking). Remaining advisories are dev-only transitive deps
+  that need breaking majors (`extract-zip` via `@web/test-runner`'s puppeteer browsers — unused, tests use the
+  Playwright launcher; `uuid` via Storybook addons) — tracked in the roadmap. The published package has no runtime
+  dependencies.
+
+### Added
+
+- **`TdLightbox`** (`@dazzxq/td-components/lightbox`, [ADR 0009](docs/decisions/0009-td-lightbox-hooks.md)) —
+  clean-room port of the dwp lightbox core, styled by `td.css` (Clear glass chrome + local dim, solid panel):
+  - `open(items, options)` → handle, `bind(root, options)` → unbind, events `td-lightbox-open|change|close`;
+    no side effects on import, no window globals, no inline styles.
+  - Hooks: `isAllowedUrl` (default `https:`, `http:` only on an `http:` page — no cleartext downgrade), `download`, `video` (default native `<video>`; failure-isolated,
+    abortable), `history` (off by default; `true` or an adapter with a defined push/back/pop contract incl.
+    async-push races), `panel` (caption or custom element; 2-column / bottom sheet), `toolbar` (registry icons),
+    `labels` (Vietnamese defaults), `closeOnBackdrop`, `isForeignLayerOpen`.
+  - Pointer Events gestures (pinch, pan, double-tap / click zoom, swipe navigate / close / sheet), keyboard
+    (Esc, arrows, F, Tab trap that always holds), fullscreen, preload + spinner, render-token stale guards.
+  - Fixes vs the dwp original: restores only the `inert` it set, shares the ref-counted scroll lock with the
+    modal stack, no selector built from toolbar ids, no `innerHTML` icons, gallery index by element (not src).
+- **Icon registry** (`@dazzxq/td-components/icons`, [ADR 0010](docs/decisions/0010-icon-registry.md)) —
+  `tdIcon(name, { size, label, class })`, `registerIcons()` (allowlisted data only), `hasIcon`, `listIcons`,
+  opt-in `<td-icon>` (`./icon-element`); 24 core icons (Lucide geometry, td names) authored in
+  `src/icons/icons.json` (also exported for PHP) → generated `registry.js` (`build:icons` / `check:icons`);
+  size tokens `--td-icon-s|m|l`, `--td-icon-stroke`; `THIRD_PARTY_NOTICES.md`.
+- Tests: lightbox browser suite (42), icon suite, lightbox page in the token CSP gate (3 engines × self /
+  nonce-only: zero violations, zoom, close); markup contract fixture `test/contracts/lightbox.html`.
+- Storybook: **Feedback/Lightbox** (gallery, caption panel, hooks, video), **Foundations/Icons**; Foundations/Glass
+  stories use registry icons instead of text glyphs.
+
 ## 0.5.0
 
 Foundation for the token-driven kit ([ADR 0008](docs/decisions/0008-drop-tailwind-token-css.md),

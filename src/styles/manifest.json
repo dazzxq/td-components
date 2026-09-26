@@ -5,6 +5,8 @@
     "tokens.css",
     "theme-dark.css",
     "glass.css",
+    "components/icon.css",
+    "components/lightbox.css",
     "utilities.css"
   ]
 }

@@ -1,0 +1,18 @@
+<!--
+  td-lightbox markup contract (golden fixture). SSR adapters (135 td_ui_*, dwp dwp_ui_*) emit exactly
+  this shape; TdLightbox.bind() consumes it. Exercised by src/feedback/td-lightbox.browser-test.js.
+-->
+<figure data-td-lightbox data-td-lightbox-caption="Ảnh đơn">
+  <img src="/test/fixtures/1.svg" alt="Ảnh một">
+</figure>
+
+<div data-td-lightbox-group>
+  <a href="/test/fixtures/2.svg" data-td-lightbox-item><img src="/test/fixtures/2.svg" alt="Hai"></a>
+  <div data-td-lightbox-item data-td-lightbox-src="javascript:alert(1)"><img src="javascript:alert(1)" alt="Không hợp lệ"></div>
+  <figure data-td-lightbox-item>
+    <img src="/test/fixtures/3.svg" alt="Ba">
+    <figcaption>Chú thích ba</figcaption>
+  </figure>
+  <div data-td-lightbox-item data-td-lightbox-type="video" data-td-lightbox-src="/test/fixtures/clip.mp4"
+       data-td-lightbox-poster="/test/fixtures/4.svg" data-td-lightbox-caption="Video bốn"></div>
+</div>

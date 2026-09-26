@@ -1,4 +1,5 @@
 import './foundations.stories.css';
+import '../icons/td-icon-element.js';
 
 /**
  * Foundations — Liquid Glass recipes from td.css (docs/design/liquid-glass.md).
@@ -38,7 +39,7 @@ export const Regular = {
       ${LOREM}${LOREM}
       <div class="fd-float fd-float--bottom">
         <div class="fd-group td-glass-surface">
-          <button class="fd-btn" type="button" aria-label="Quay lại">←</button>
+          <button class="fd-btn" type="button" aria-label="Quay lại"><td-icon name="back"></td-icon></button>
           <button class="fd-btn" type="button">Chia sẻ</button>
         </div>
         <!-- Tint = a SEPARATE capsule next to the bar (never glass on glass). -->
@@ -66,9 +67,9 @@ export const ClearOverMedia = {
       <!-- Dim is LOCAL: a band behind the Clear control only, not the whole photo. -->
       <div class="fd-dim fd-dim--top td-glass-dim"></div>
       <div class="fd-float fd-float--top td-glass-surface td-glass-surface--clear">
-        <button class="fd-btn" type="button" aria-label="Đóng">✕</button>
-        <button class="fd-btn" type="button" aria-label="Phóng to">⤢</button>
-        <button class="fd-btn" type="button" aria-label="Tải xuống">↓</button>
+        <button class="fd-btn" type="button" aria-label="Đóng"><td-icon name="close"></td-icon></button>
+        <button class="fd-btn" type="button" aria-label="Phóng to"><td-icon name="fullscreen"></td-icon></button>
+        <button class="fd-btn" type="button" aria-label="Tải xuống"><td-icon name="download"></td-icon></button>
       </div>
     </div>`,
 };

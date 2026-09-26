@@ -118,6 +118,12 @@
 		--td-control-radius: var(--td-radius-md);
 		--td-touch-min: 44px; /* minimum hit target for touch controls */
 
+		/* ===== Icons (src/icons) ===== */
+		--td-icon-s: 1rem;
+		--td-icon-m: 1.25rem;
+		--td-icon-l: 1.5rem;
+		--td-icon-stroke: 2;
+
 		/* ================= Liquid Glass — Regular (light) =================
 		   --td-glass-edge is the INSET top highlight; --td-glass-border the OUTER line. Never swap them. */
 		--td-glass-bg: rgb(250 250 251 / 72%);        /* icon / short-label controls: bars, pills */

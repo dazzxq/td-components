@@ -62,6 +62,16 @@ const VIOLATION_INIT = `
     window.__v.push({ d: e.effectiveDirective || e.violatedDirective, uri: e.blockedURI, sample: e.sample || '' });
   });`;
 
+function lightboxHtml(profile) {
+  const n = PROFILES[profile].nonce ? ` nonce="${PROFILES[profile].nonce}"` : '';
+  return `<!doctype html><html lang="vi"><head><meta charset="utf-8">` +
+    `<link rel="stylesheet" href="${ORIGIN}/td.css"${n}>` +
+    `<script type="module" src="${ORIGIN}/test/tokens/lightbox-page.js"${n}></script>` +
+    `</head><body><p>page</p></body></html>`;
+}
+
+const MIME = { '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.css': 'text/css' };
+
 function html(profile) {
   const n = PROFILES[profile].nonce ? ` nonce="${PROFILES[profile].nonce}"` : '';
   return `<!doctype html><html lang="vi"><head><meta charset="utf-8">` +
@@ -70,17 +80,24 @@ function html(profile) {
     `</head><body>${BODY}</body></html>`;
 }
 
-async function freshPage(browser, profile, media = {}) {
+async function freshPage(browser, profile, media = {}, page0 = 'glass') {
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.addInitScript(VIOLATION_INIT);
   await page.route(`${ORIGIN}/**`, (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/' ) {
-      return route.fulfill({ status: 200, contentType: 'text/html', headers: { 'content-security-policy': PROFILES[profile].csp }, body: html(profile) });
+      const body = page0 === 'lightbox' ? lightboxHtml(profile) : html(profile);
+      return route.fulfill({ status: 200, contentType: 'text/html', headers: { 'content-security-policy': PROFILES[profile].csp }, body });
     }
     if (url.pathname === '/td.css') return route.fulfill({ status: 200, contentType: 'text/css', body: TD_CSS });
     if (url.pathname === '/site.css') return route.fulfill({ status: 200, contentType: 'text/css', body: SITE_CSS });
+    if (/^\/(src|test)\//.test(url.pathname) && !url.pathname.includes('..')) {
+      const ext = url.pathname.slice(url.pathname.lastIndexOf('.'));
+      return readFile(join(ROOT, url.pathname))
+        .then((body) => route.fulfill({ status: 200, contentType: MIME[ext] || 'application/octet-stream', body }))
+        .catch(() => route.fulfill({ status: 404, body: '' }));
+    }
     return route.fulfill({ status: 404, body: '' });
   });
   if (Object.keys(media).length) await page.emulateMedia(media);
@@ -258,6 +275,18 @@ async function runEngine(name, launcher) {
           }
           await emu.context.close();
         }
+      }
+
+      // td-lightbox (first token-native component): open → navigate → zoom → close, zero violations
+      {
+        const { page, context } = await freshPage(browser, profile, {}, 'lightbox');
+        const res = await page.evaluate(() => window.__lightboxRun);
+        const v = await page.evaluate(() => window.__v);
+        check(`${tag} lightbox zero CSP violations`, v.length === 0, JSON.stringify(v));
+        check(`${tag} lightbox visible while open`, res.visible === 'visible', res.visible);
+        check(`${tag} lightbox click-zoom`, res.zoomed === true, String(res.zoomed));
+        check(`${tag} lightbox closed`, res.closed === true);
+        await context.close();
       }
 
       // Informational probe: CSSOM + constructable sheets under this profile

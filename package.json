@@ -1,11 +1,11 @@
 {
   "name": "@dazzxq/td-components",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Shared UI Web Components library — single source of truth UI kit (token CSS + Liquid Glass)",
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "npm run check:css && npm run test:node && npm run test:browser && npm run test:csp && npm run test:csp:combined && npm run test:tokens",
+    "test": "npm run check:css && npm run check:icons && npm run test:node && npm run test:browser && npm run test:csp && npm run test:csp:combined && npm run test:tokens",
     "test:node": "node --test --test-force-exit \"src/**/*.test.js\"",
     "test:browser": "web-test-runner",
     "test:csp": "node test/csp/csp.spec.mjs",
@@ -13,6 +13,8 @@
     "test:tokens": "node test/tokens/tokens.spec.mjs",
     "build:css": "node scripts/build-css.mjs",
     "check:css": "node scripts/build-css.mjs --check",
+    "build:icons": "node scripts/build-icons.mjs",
+    "check:icons": "node scripts/build-icons.mjs --check",
     "build:csp-fixture": "tailwindcss -i test/csp/fixture/input.css -o test/csp/fixture/tailwind.css",
     "capture:baseline": "node test/csp/capture-baseline.mjs",
     "storybook": "storybook dev -p 6006",
@@ -21,6 +23,9 @@
   "exports": {
     ".": "./index.js",
     "./td.css": "./td.css",
+    "./icons": "./src/icons/td-icon.js",
+    "./icon-element": "./src/icons/td-icon-element.js",
+    "./icons.json": "./src/icons/icons.json",
     "./base": "./src/base/td-base-element.js",
     "./form-element": "./src/base/td-form-element.js",
     "./sample": "./src/base/sample/td-sample.js",
@@ -34,6 +39,7 @@
     "./datetime-picker": "./src/form/td-datetime-picker.js",
     "./modal": "./src/feedback/td-modal.js",
     "./modal-stack": "./src/feedback/td-modal-stack.js",
+    "./lightbox": "./src/feedback/td-lightbox.js",
     "./toast": "./src/feedback/td-toast.js",
     "./tooltip": "./src/feedback/td-tooltip.js",
     "./loading": "./src/feedback/td-loading.js",
@@ -46,7 +52,8 @@
   "files": [
     "src",
     "index.js",
-    "td.css"
+    "td.css",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "keywords": [
     "web-components",
@@ -62,14 +69,14 @@
   },
   "devDependencies": {
     "@esm-bundle/chai": "^4.3.4",
-    "@storybook/addon-a11y": "^8.6.14",
-    "@storybook/addon-essentials": "^8.6.14",
-    "@storybook/web-components-vite": "^8.6.14",
+    "@storybook/addon-a11y": "^8.6.18",
+    "@storybook/addon-essentials": "^8.6.18",
+    "@storybook/web-components-vite": "^8.6.18",
     "@tailwindcss/cli": "4.2.2",
     "@tailwindcss/postcss": "^4.2.2",
     "@web/test-runner": "^0.20.2",
     "@web/test-runner-playwright": "^0.11.1",
     "playwright-core": "1.60.0",
-    "storybook": "^8.6.14"
+    "storybook": "^8.6.18"
   }
 }
