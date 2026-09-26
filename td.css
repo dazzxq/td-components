@@ -1360,8 +1360,163 @@
 }
 
 /* ---- src/styles/components/pagination.css ---- */
-/* td-pagination — token-native styles (batch 2). */
+/*
+ * td-pagination (src/display/td-pagination.js). Content layer → SOLID, never glass (liquid-glass: current page = fill).
+ * State: [aria-current="page"] (current page) · [aria-disabled="true"] (prev/next at the ends; focus kept, click guarded)
+ * · :hover · :focus-visible.
+ * Per-instance colours: host custom properties --td-pagination-active / --td-pagination-active-fg (from `active-color`;
+ * the fg is chosen by WCAG contrast in JS).
+ */
+@layer td.tokens {
+	:root {
+		--td-pagination-active: var(--td-accent);
+		--td-pagination-active-fg: var(--td-accent-contrast);
+		--td-pagination-item-size: 2rem;
+	}
+
+	:root[data-td-theme="dark"] {
+		/* white text on the dark accent #3b82f6 is 3.68:1 → use the button primary blue (5.17:1), like .td-btn--primary */
+		--td-pagination-active: #2563eb;
+		--td-pagination-active-fg: #fff;
+	}
+}
+
 @layer td.component {
+	td-pagination {
+		display: block;
+	}
+
+	.td-pagination {
+		box-sizing: border-box;
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs) var(--td-space-sm);
+		align-items: center;
+		justify-content: flex-end;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text);
+	}
+
+	.td-pagination *,
+	.td-pagination *::before,
+	.td-pagination *::after {
+		box-sizing: border-box;
+	}
+
+	.td-pagination__info {
+		margin: 0;
+		color: var(--td-color-text-muted);
+	}
+
+	.td-pagination__controls {
+		display: flex;
+		gap: var(--td-space-2xs);
+		align-items: center;
+	}
+
+	.td-pagination__pages {
+		display: flex;
+		gap: var(--td-space-2xs);
+		align-items: center;
+		padding: 0;
+		margin: 0;
+		list-style: none;
+	}
+
+	.td-pagination__pages > li {
+		display: flex;
+		margin: 0;
+		padding: 0;
+	}
+
+	.td-pagination__page,
+	.td-pagination__nav {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: var(--td-pagination-item-size);
+		height: var(--td-pagination-item-size);
+		padding: 0 var(--td-space-xs);
+		margin: 0;
+		font: inherit;
+		font-variant-numeric: tabular-nums;
+		color: var(--td-color-text);
+		cursor: pointer;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--td-radius-full);
+		transition:
+			background var(--td-dur-fast) var(--td-ease),
+			color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+	}
+
+	.td-pagination__nav {
+		padding: 0;
+		border-color: var(--td-control-border);
+	}
+
+	.td-pagination__icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+
+	.td-pagination__page:hover:not([aria-current="page"]),
+	.td-pagination__nav:hover:not([aria-disabled="true"]) {
+		background: var(--td-color-hover-strong);
+	}
+
+	.td-pagination__page[aria-current="page"] {
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-pagination-active-fg);
+		cursor: default;
+		background: var(--td-pagination-active);
+		border-color: var(--td-pagination-active);
+	}
+
+	.td-pagination__nav[aria-disabled="true"] {
+		cursor: not-allowed;
+		opacity: 0.45;
+	}
+
+	.td-pagination__page:focus-visible,
+	.td-pagination__nav:focus-visible {
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-pagination__ellipsis {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 1.5rem;
+		color: var(--td-color-text-muted);
+		user-select: none;
+	}
+
+	@media (pointer: coarse) {
+		.td-pagination { --td-pagination-item-size: var(--td-touch-min); }
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-pagination__page,
+		.td-pagination__nav { transition: none; }
+	}
+
+	@media (forced-colors: active) {
+		.td-pagination__nav { border-color: ButtonText; }
+		.td-pagination__page[aria-current="page"] {
+			color: HighlightText;
+			background: Highlight;
+			border-color: Highlight;
+			forced-color-adjust: none;
+		}
+		.td-pagination__nav[aria-disabled="true"] { color: GrayText; border-color: GrayText; opacity: 1; }
+	}
 }
 
 /* ---- src/styles/components/tabs.css ---- */
@@ -1528,8 +1683,105 @@
 }
 
 /* ---- src/styles/components/empty-state.css ---- */
-/* td-empty-state — token-native styles (batch 2). */
+/*
+ * td-empty-state (src/display/td-empty-state.js). Content layer → SOLID card, never glass (liquid-glass: no inset
+ * highlight; a primary CTA may be a solid .td-btn).
+ * Variants: .td-empty-state--sm|md|lg, --compact. State: .td-empty-state__actions[hidden] when there are no actions.
+ * Action buttons reuse the .td-btn CSS contract (button.css).
+ */
+@layer td.tokens {
+	:root {
+		--td-empty-state-bg: var(--td-color-surface);
+		--td-empty-state-border: var(--td-color-border-strong);
+		--td-empty-state-icon: var(--td-color-text-subtle);
+	}
+}
+
 @layer td.component {
+	td-empty-state {
+		display: block;
+	}
+
+	.td-empty-state {
+		--td-empty-state-pad: 22px;
+		--td-empty-state-gap: 10px;
+
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		padding: var(--td-empty-state-pad);
+		font-family: var(--td-font-sans);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text);
+		text-align: center;
+		background: var(--td-empty-state-bg);
+		border: 1px dashed var(--td-empty-state-border);
+		border-radius: var(--td-radius-lg);
+	}
+
+	.td-empty-state *,
+	.td-empty-state *::before,
+	.td-empty-state *::after {
+		box-sizing: border-box;
+	}
+
+	.td-empty-state--sm { --td-empty-state-pad: 16px; --td-empty-state-gap: 8px; }
+	.td-empty-state--lg { --td-empty-state-pad: 28px; --td-empty-state-gap: 12px; }
+
+	.td-empty-state--sm.td-empty-state--compact { --td-empty-state-pad: 8px; }
+	.td-empty-state--md.td-empty-state--compact { --td-empty-state-pad: 11px; }
+	.td-empty-state--lg.td-empty-state--compact { --td-empty-state-pad: 14px; }
+
+	.td-empty-state__icon {
+		display: inline-flex;
+		margin-bottom: var(--td-empty-state-gap);
+		line-height: 0;
+		color: var(--td-empty-state-icon);
+	}
+
+	.td-empty-state__title {
+		margin: 0 0 calc(var(--td-empty-state-gap) - 2px);
+		font-size: var(--td-text-md);
+		font-weight: var(--td-fw-semibold);
+		line-height: var(--td-leading-tight);
+		color: var(--td-color-text);
+	}
+
+	.td-empty-state__message {
+		margin: 0;
+		font-size: var(--td-text-sm);
+		color: var(--td-color-text-muted);
+	}
+
+	.td-empty-state--sm .td-empty-state__title { font-size: var(--td-text-base); }
+	.td-empty-state--sm .td-empty-state__message { font-size: var(--td-text-xs); }
+	.td-empty-state--lg .td-empty-state__title { font-size: var(--td-text-lg); }
+	.td-empty-state--lg .td-empty-state__message { font-size: var(--td-text-base); }
+
+	.td-empty-state__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+		justify-content: center;
+		margin-top: calc(var(--td-empty-state-gap) + 6px);
+	}
+
+	.td-empty-state__actions[hidden] {
+		display: none;
+	}
+
+	@media (forced-colors: active) {
+		.td-empty-state { border-color: CanvasText; }
+		.td-empty-state__icon { color: CanvasText; }
+	}
+
+	/* No motion of its own (action buttons follow button.css, incl. its reduced-motion and coarse-pointer rules). */
+	@media (prefers-reduced-motion: reduce) {
+		.td-empty-state { transition: none; }
+	}
 }
 
 /* ---- src/styles/components/lightbox.css ---- */

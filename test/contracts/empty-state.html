@@ -1,0 +1,23 @@
+<!-- td-empty-state markup contract (SSR: emit this inside <td-empty-state> or standalone with td.css).
+     Actions container is [hidden] when there are no actions; action buttons use the .td-btn contract. -->
+<template data-component="td-empty-state" data-markup='<td-empty-state id="es-default"></td-empty-state>'>
+  <div class="td-empty-state td-empty-state--md">
+    <div class="td-empty-state__icon" aria-hidden="true"><span data-td-icon="inbox" data-td-icon-size="40"><svg aria-hidden="true" class="td-icon" data-icon="inbox"></svg></span></div>
+    <h3 class="td-empty-state__title">Không có dữ liệu</h3>
+    <p class="td-empty-state__message">Chưa có mục nào được tạo.</p>
+    <div class="td-empty-state__actions" hidden></div>
+  </div>
+</template>
+<template data-component="td-empty-state" data-markup='<td-empty-state id="es-search" icon="search" size="sm" compact heading-level="2" title="Không có kết quả" message="Thử thay đổi bộ lọc."></td-empty-state>'>
+  <div class="td-empty-state td-empty-state--sm td-empty-state--compact">
+    <div class="td-empty-state__icon" aria-hidden="true"><span data-td-icon="search" data-td-icon-size="28"><svg aria-hidden="true" class="td-icon" data-icon="search"></svg></span></div>
+    <h2 class="td-empty-state__title">Không có kết quả</h2>
+    <p class="td-empty-state__message">Thử thay đổi bộ lọc.</p>
+    <div class="td-empty-state__actions" hidden></div>
+  </div>
+</template>
+<!-- With actions (set via the `actions` JS property; SSR emits the buttons directly):
+  <div class="td-empty-state__actions">
+    <button type="button" class="td-btn td-btn--primary td-btn--sm">Tạo mới</button>
+    <button type="button" class="td-btn td-btn--secondary td-btn--sm">Nhập từ file</button>
+  </div> -->

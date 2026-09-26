@@ -1,3 +1,100 @@
-/* td-empty-state — token-native styles (batch 2). */
+/*
+ * td-empty-state (src/display/td-empty-state.js). Content layer → SOLID card, never glass (liquid-glass: no inset
+ * highlight; a primary CTA may be a solid .td-btn).
+ * Variants: .td-empty-state--sm|md|lg, --compact. State: .td-empty-state__actions[hidden] when there are no actions.
+ * Action buttons reuse the .td-btn CSS contract (button.css).
+ */
+@layer td.tokens {
+	:root {
+		--td-empty-state-bg: var(--td-color-surface);
+		--td-empty-state-border: var(--td-color-border-strong);
+		--td-empty-state-icon: var(--td-color-text-subtle);
+	}
+}
+
 @layer td.component {
+	td-empty-state {
+		display: block;
+	}
+
+	.td-empty-state {
+		--td-empty-state-pad: 22px;
+		--td-empty-state-gap: 10px;
+
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		padding: var(--td-empty-state-pad);
+		font-family: var(--td-font-sans);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text);
+		text-align: center;
+		background: var(--td-empty-state-bg);
+		border: 1px dashed var(--td-empty-state-border);
+		border-radius: var(--td-radius-lg);
+	}
+
+	.td-empty-state *,
+	.td-empty-state *::before,
+	.td-empty-state *::after {
+		box-sizing: border-box;
+	}
+
+	.td-empty-state--sm { --td-empty-state-pad: 16px; --td-empty-state-gap: 8px; }
+	.td-empty-state--lg { --td-empty-state-pad: 28px; --td-empty-state-gap: 12px; }
+
+	.td-empty-state--sm.td-empty-state--compact { --td-empty-state-pad: 8px; }
+	.td-empty-state--md.td-empty-state--compact { --td-empty-state-pad: 11px; }
+	.td-empty-state--lg.td-empty-state--compact { --td-empty-state-pad: 14px; }
+
+	.td-empty-state__icon {
+		display: inline-flex;
+		margin-bottom: var(--td-empty-state-gap);
+		line-height: 0;
+		color: var(--td-empty-state-icon);
+	}
+
+	.td-empty-state__title {
+		margin: 0 0 calc(var(--td-empty-state-gap) - 2px);
+		font-size: var(--td-text-md);
+		font-weight: var(--td-fw-semibold);
+		line-height: var(--td-leading-tight);
+		color: var(--td-color-text);
+	}
+
+	.td-empty-state__message {
+		margin: 0;
+		font-size: var(--td-text-sm);
+		color: var(--td-color-text-muted);
+	}
+
+	.td-empty-state--sm .td-empty-state__title { font-size: var(--td-text-base); }
+	.td-empty-state--sm .td-empty-state__message { font-size: var(--td-text-xs); }
+	.td-empty-state--lg .td-empty-state__title { font-size: var(--td-text-lg); }
+	.td-empty-state--lg .td-empty-state__message { font-size: var(--td-text-base); }
+
+	.td-empty-state__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+		justify-content: center;
+		margin-top: calc(var(--td-empty-state-gap) + 6px);
+	}
+
+	.td-empty-state__actions[hidden] {
+		display: none;
+	}
+
+	@media (forced-colors: active) {
+		.td-empty-state { border-color: CanvasText; }
+		.td-empty-state__icon { color: CanvasText; }
+	}
+
+	/* No motion of its own (action buttons follow button.css, incl. its reduced-motion and coarse-pointer rules). */
+	@media (prefers-reduced-motion: reduce) {
+		.td-empty-state { transition: none; }
+	}
 }

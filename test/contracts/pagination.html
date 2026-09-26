@@ -1,0 +1,32 @@
+<!-- td-pagination markup contract (SSR: emit this inside <td-pagination> or standalone with td.css).
+     Current page = button[aria-current="page"]; prev/next at the ends = [aria-disabled="true"] (still focusable). -->
+<template data-component="td-pagination" data-markup='<td-pagination id="pag-first" total-items="30" items-per-page="10" current-page="1"></td-pagination>'>
+  <nav class="td-pagination" aria-label="Phân trang">
+    <p class="td-pagination__info" aria-live="polite">Hiển thị 1-10 / 30 mục</p>
+    <div class="td-pagination__controls">
+      <button type="button" class="td-pagination__nav td-pagination__nav--prev" data-nav="prev" aria-label="Trang trước" aria-disabled="true"><span class="td-pagination__icon" data-td-icon="prev"><svg aria-hidden="true" class="td-icon td-icon--m" data-icon="prev"></svg></span></button>
+      <ul class="td-pagination__pages">
+        <li><button type="button" class="td-pagination__page" data-page="1" aria-label="Trang 1" aria-current="page">1</button></li>
+        <li><button type="button" class="td-pagination__page" data-page="2" aria-label="Trang 2">2</button></li>
+        <li><button type="button" class="td-pagination__page" data-page="3" aria-label="Trang 3">3</button></li>
+      </ul>
+      <button type="button" class="td-pagination__nav td-pagination__nav--next" data-nav="next" aria-label="Trang sau"><span class="td-pagination__icon" data-td-icon="next"><svg aria-hidden="true" class="td-icon td-icon--m" data-icon="next"></svg></span></button>
+    </div>
+  </nav>
+</template>
+<template data-component="td-pagination" data-markup='<td-pagination id="pag-window" aria-label="Kết quả" total-items="100" items-per-page="10" current-page="10" max-pages="3"></td-pagination>'>
+  <nav class="td-pagination" aria-label="Kết quả">
+    <p class="td-pagination__info" aria-live="polite">Hiển thị 91-100 / 100 mục</p>
+    <div class="td-pagination__controls">
+      <button type="button" class="td-pagination__nav td-pagination__nav--prev" data-nav="prev" aria-label="Trang trước"><span class="td-pagination__icon" data-td-icon="prev"><svg aria-hidden="true" class="td-icon td-icon--m" data-icon="prev"></svg></span></button>
+      <ul class="td-pagination__pages">
+        <li><button type="button" class="td-pagination__page" data-page="1" aria-label="Trang 1">1</button></li>
+        <li class="td-pagination__ellipsis" aria-hidden="true">…</li>
+        <li><button type="button" class="td-pagination__page" data-page="8" aria-label="Trang 8">8</button></li>
+        <li><button type="button" class="td-pagination__page" data-page="9" aria-label="Trang 9">9</button></li>
+        <li><button type="button" class="td-pagination__page" data-page="10" aria-label="Trang 10" aria-current="page">10</button></li>
+      </ul>
+      <button type="button" class="td-pagination__nav td-pagination__nav--next" data-nav="next" aria-label="Trang sau" aria-disabled="true"><span class="td-pagination__icon" data-td-icon="next"><svg aria-hidden="true" class="td-icon td-icon--m" data-icon="next"></svg></span></button>
+    </div>
+  </nav>
+</template>
