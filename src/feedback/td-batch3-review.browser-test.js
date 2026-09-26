@@ -117,3 +117,71 @@ describe('impl-review round 2: focus management', () => {
     opener.remove();
   });
 });
+
+describe('impl-review round 3: focus hand-off lifecycle', () => {
+  const pageBtn = () => {
+    const b = document.createElement('button');
+    b.textContent = 'opener';
+    document.body.appendChild(b);
+    return b;
+  };
+
+  it('hand-off still resolves after the modal subtree was removed (past EXIT_MS)', async () => {
+    const { TdLoading } = await import('./td-loading.js');
+    const opener = pageBtn();
+    opener.focus();
+    const id = TdModal.show({ title: 'x', body: '<input id="r3in">' });
+    await wait(80);
+    TdLoading.show('x');
+    TdModal.closeById(id);
+    await wait(400); // modal root removed
+    expect(document.getElementById('r3in')).to.equal(null);
+    TdLoading.hide();
+    expect(document.activeElement === opener).to.equal(true);
+    opener.remove();
+  });
+
+  it('a disabled saved control falls back to the top boundary dialog', async () => {
+    const { TdLoading } = await import('./td-loading.js');
+    TdModal.show({ title: 'x', body: '<button id="r3d">d</button>' });
+    await wait(80);
+    const d = document.getElementById('r3d');
+    d.focus();
+    TdLoading.show('x');
+    d.disabled = true;
+    TdLoading.hide();
+    const top = TdModalStackManager.getTop();
+    expect(document.activeElement === top.dialog).to.equal(true);
+  });
+
+  it('lightbox closed under loading: loading restores to the lightbox opener', async () => {
+    const { TdLoading } = await import('./td-loading.js');
+    const { TdLightbox } = await import('./td-lightbox.js');
+    const opener = pageBtn();
+    opener.focus();
+    TdLightbox.open(['/test/fixtures/1.svg']);
+    await wait(80);
+    TdLoading.show('x');
+    TdLightbox.close();
+    TdLoading.hide();
+    expect(document.activeElement === opener).to.equal(true);
+    opener.remove();
+  });
+
+  it('lightbox closed under a modal keeps focus in the modal; closing the modal lands on the page opener', async () => {
+    const { TdLightbox } = await import('./td-lightbox.js');
+    const opener = pageBtn();
+    opener.focus();
+    TdLightbox.open(['/test/fixtures/1.svg']);
+    await wait(80);
+    const inLb = document.querySelector('.td-lightbox button:not([hidden])');
+    inLb.focus(); // the modal's opener sits inside the lightbox
+    const id = TdModal.show({ title: 'x', body: '<input id="r3m">' });
+    await wait(80);
+    TdLightbox.close();
+    expect(document.activeElement.id).to.equal('r3m');
+    TdModal.closeById(id);
+    expect(document.activeElement === opener).to.equal(true);
+    opener.remove();
+  });
+});

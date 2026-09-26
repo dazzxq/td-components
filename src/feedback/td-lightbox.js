@@ -14,7 +14,9 @@
  */
 
 import { lockScroll } from '../utils/scroll-lock.js';
-import { LAYERS, register as registerLayer, hasActiveAbove, trapTab } from '../utils/layers.js';
+import {
+  LAYERS, register as registerLayer, hasActiveAbove, trapTab, setFocusHandoff, clearFocusHandoff, restoreFocus, followFocusHandoff,
+} from '../utils/layers.js';
 import { TdModalStackManager } from './td-modal-stack.js';
 
 const LIGHTBOX_LAYER = LAYERS.lightbox; // --td-z-lightbox
@@ -972,6 +974,7 @@ function openViewer(items, options = {}) {
   ui.fsBtn.hidden = !document.fullscreenEnabled;
 
   if (lifecycle !== 'open') {
+    clearFocusHandoff(ui.overlay);
     viewer = {
       savedFocus: document.activeElement instanceof HTMLElement ? document.activeElement : null,
       releaseScroll: lockScroll(),
@@ -1003,6 +1006,10 @@ function closeViewer() {
   const v = viewer;
   v.closed = true;
   v.hist.closed = true;
+  const focused = document.activeElement;
+  const focusWasHere = !focused || focused === document.body || ui.overlay.contains(focused);
+  // Where focus goes back to, recorded for a higher layer that holds focus now (loading / a modal) — D10 hand-off.
+  setFocusHandoff(ui.overlay, followFocusHandoff(v.savedFocus));
 
   ui.overlay.removeAttribute('data-state');
   ui.overlay.removeAttribute('data-dragging');
@@ -1027,9 +1034,7 @@ function closeViewer() {
   histMaybeUnsub();
 
   const detail = { index: session.index, count: session.items.length, token: session.token, item: session.items[session.index] };
-  if (v.savedFocus && v.savedFocus.isConnected) {
-    try { v.savedFocus.focus({ preventScroll: true }); } catch { /* ignore */ }
-  }
+  if (focusWasHere) restoreFocus(v.savedFocus); // never steal focus from a higher layer
   viewer = null;
   session = null;
   emit('td-lightbox-close', detail);

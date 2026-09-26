@@ -192,27 +192,64 @@ export function setFocusHandoff(container, target) {
   container.setAttribute('data-td-focus-handoff', '');
 }
 
-const usable = (el) => el instanceof HTMLElement && el.isConnected && !el.closest('[inert], [hidden], [data-td-focus-handoff]');
+/** Forget a container's hand-off (a persistent overlay that opens again, e.g. the lightbox). */
+export function clearFocusHandoff(container) {
+  if (!container) return;
+  delete /** @type {any} */ (container)._tdFocusHandoff;
+  container.removeAttribute('data-td-focus-handoff');
+}
+
+function usable(el) {
+  if (!(el instanceof HTMLElement) || !el.isConnected) return false;
+  if (el.matches(':disabled') || el.closest('[inert], [hidden], [data-td-focus-handoff]')) return false;
+  return el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+}
+
+/**
+ * Follow hand-offs from `saved` (also through containers already removed from the DOM). Record-time helper: the
+ * result may be temporarily inert (under a higher blocking layer); restoreFocus() checks usability at restore time.
+ * @param {HTMLElement|null} saved
+ * @returns {HTMLElement|null}
+ */
+export function followFocusHandoff(saved) {
+  let t = saved;
+  const seen = new Set();
+  while (t instanceof HTMLElement && !seen.has(t)) {
+    seen.add(t);
+    const c = t.closest('[data-td-focus-handoff]'); // works in detached subtrees too
+    if (!c) break;
+    t = /** @type {any} */ (c)._tdFocusHandoff || null;
+  }
+  return t instanceof HTMLElement ? t : null;
+}
+
+/**
+ * followFocusHandoff() + usable now (connected, enabled, rendered, not inert/hidden).
+ * @param {HTMLElement|null} saved
+ * @returns {HTMLElement|null}
+ */
+export function resolveFocusTarget(saved) {
+  const t = followFocusHandoff(saved);
+  return usable(t) ? t : null;
+}
+
+const tryFocus = (el) => {
+  if (!(el instanceof HTMLElement)) return false;
+  try { el.focus({ preventScroll: true }); } catch { return false; }
+  return document.activeElement === el;
+};
 
 /**
  * Restore focus to `saved` (a blocking overlay's opener), following hand-offs of containers that closed meanwhile;
- * falls back to the top keyboard boundary's element, else leaves focus alone.
+ * if that fails, the top keyboard boundary's dialog/element; else focus is left alone.
  * @param {HTMLElement|null} saved
  * @returns {boolean} whether focus was moved
  */
 export function restoreFocus(saved) {
-  let t = saved;
-  for (let i = 0; i < 16 && t instanceof HTMLElement && t.isConnected; i++) {
-    const c = t.closest('[data-td-focus-handoff]');
-    if (!c) break;
-    t = /** @type {any} */ (c)._tdFocusHandoff;
-  }
-  if (!usable(t)) {
-    const b = active.filter((r) => r.keyboard === 'boundary' && r.element instanceof HTMLElement);
-    const top = b[b.length - 1];
-    t = top ? /** @type {HTMLElement} */ (top.element.querySelector('[role="dialog"], [role="alertdialog"]') || top.element) : null;
-  }
-  if (!(t instanceof HTMLElement)) return false;
-  try { t.focus({ preventScroll: true }); } catch { return false; }
-  return document.activeElement === t;
+  if (tryFocus(resolveFocusTarget(saved))) return true;
+  const b = active.filter((r) => r.keyboard === 'boundary' && r.element instanceof HTMLElement);
+  const top = b[b.length - 1];
+  if (!top) return false;
+  const el = /** @type {HTMLElement} */ (top.element);
+  return tryFocus(el.querySelector('[role="dialog"], [role="alertdialog"]')) || tryFocus(el);
 }

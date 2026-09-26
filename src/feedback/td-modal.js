@@ -43,7 +43,7 @@
  */
 
 import { TdModalStackManager } from './td-modal-stack.js';
-import { LAYERS, register as registerLayer, trapTab, focusablesIn, setFocusHandoff } from '../utils/layers.js';
+import { LAYERS, register as registerLayer, trapTab, focusablesIn, setFocusHandoff, followFocusHandoff } from '../utils/layers.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 
 const MODAL_LAYER = LAYERS.modal; // --td-z-modal
@@ -337,8 +337,9 @@ export class TdModal {
         opener = owner.opener;
         owner = owner.openerOwner;
       }
-      const openerOk = opener && opener.isConnected && (!newTop || newTop.element.contains(opener));
-      const target = openerOk ? opener : (newTop ? newTop.dialog : null);
+      const resolved = followFocusHandoff(opener); // an opener inside a closed lightbox → that lightbox's opener
+      const openerOk = resolved && resolved.isConnected && (!newTop || newTop.element.contains(resolved));
+      const target = openerOk ? resolved : (newTop ? newTop.dialog : null);
       setFocusHandoff(root, target);
       if (focusWasHere) {
         if (target) {
