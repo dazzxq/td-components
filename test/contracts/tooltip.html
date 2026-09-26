@@ -1,0 +1,9 @@
+<!-- td-tooltip contract: the singleton while shown (portaled to <body>; geometry via CSSOM top/left, custom colours
+     via --td-tooltip-bg/-fg). The trigger carries aria-describedby="… td-tooltip" while shown (unless the text equals
+     its name). Checked by src/feedback/td-batch3-tooltip.browser-test.js. -->
+<template data-component="td-tooltip"
+          data-markup='<button type="button" data-tooltip="Lưu tài liệu">Lưu</button>'>
+  <div id="td-tooltip" class="td-tooltip td-glass-surface td-glass-surface--strong" role="tooltip" data-state="open" data-placement="top">
+    <span class="td-tooltip__content">Lưu tài liệu</span>
+  </div>
+</template>
