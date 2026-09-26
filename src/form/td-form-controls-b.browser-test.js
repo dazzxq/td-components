@@ -178,7 +178,7 @@ describe('td-dropdown (form-associated)', () => {
   it('selecting an option via the menu updates FormData', () => {
     const { form, el } = mountDropdown();
     el.open();
-    const opt = el._menuElement.querySelector('.td-dropdown-option[data-value="sg"]');
+    const opt = el._menuElement.querySelector('.td-dropdown__option[data-value="sg"]');
     opt.click();
     expect(new FormData(form).get('city')).to.equal('sg');
     expect(el.getValue()).to.equal('sg');
@@ -237,34 +237,34 @@ describe('td-dropdown (form-associated)', () => {
   it('searchable defaults ON (search box rendered)', () => {
     const { el } = mountDropdown();
     el.open();
-    expect(el._menuElement.querySelector('.td-dropdown-search')).to.not.equal(null);
+    expect(el._menuElement.querySelector('.td-dropdown__search')).to.not.equal(null);
   });
 
   it('searchable="false" disables the search box', () => {
     const { el } = mountDropdown('searchable="false"');
     expect(el._isSearchable()).to.equal(false);
     el.open();
-    expect(el._menuElement.querySelector('.td-dropdown-search')).to.equal(null);
+    expect(el._menuElement.querySelector('.td-dropdown__search')).to.equal(null);
   });
 
   it('bare `searchable` attribute keeps it ON', () => {
     const { el } = mountDropdown('searchable');
     expect(el._isSearchable()).to.equal(true);
     el.open();
-    expect(el._menuElement.querySelector('.td-dropdown-search')).to.not.equal(null);
+    expect(el._menuElement.querySelector('.td-dropdown__search')).to.not.equal(null);
   });
 
   it('allow-clear defaults ON (clear option shown when selected)', () => {
     const { el } = mountDropdown('value="hn"');
     el.open();
-    expect(el._menuElement.querySelector('.td-dropdown-option-clear')).to.not.equal(null);
+    expect(el._menuElement.querySelector('.td-dropdown__option--clear')).to.not.equal(null);
   });
 
   it('allow-clear="false" hides the clear option', () => {
     const { el } = mountDropdown('value="hn" allow-clear="false"');
     expect(el._isAllowClear()).to.equal(false);
     el.open();
-    expect(el._menuElement.querySelector('.td-dropdown-option-clear')).to.equal(null);
+    expect(el._menuElement.querySelector('.td-dropdown__option--clear')).to.equal(null);
   });
 
   // JS property API must be able to disable the default-ON flags (codex ISSUE-1).
@@ -275,7 +275,7 @@ describe('td-dropdown (form-associated)', () => {
     expect(el.searchable).to.equal(false);             // getter reflects the change
     expect(el.getAttribute('searchable')).to.equal('false');
     el.open();
-    expect(el._menuElement.querySelector('.td-dropdown-search')).to.equal(null);
+    expect(el._menuElement.querySelector('.td-dropdown__search')).to.equal(null);
   });
 
   it('JS property `searchable = true` re-enables a disabled flag', () => {
@@ -284,7 +284,7 @@ describe('td-dropdown (form-associated)', () => {
     el.searchable = true;
     expect(el.searchable).to.equal(true);
     el.open();
-    expect(el._menuElement.querySelector('.td-dropdown-search')).to.not.equal(null);
+    expect(el._menuElement.querySelector('.td-dropdown__search')).to.not.equal(null);
   });
 
   it('JS property `allowClear = false` disables the clear option', () => {
@@ -293,7 +293,7 @@ describe('td-dropdown (form-associated)', () => {
     el.allowClear = false;
     expect(el.allowClear).to.equal(false);
     el.open();
-    expect(el._menuElement.querySelector('.td-dropdown-option-clear')).to.equal(null);
+    expect(el._menuElement.querySelector('.td-dropdown__option--clear')).to.equal(null);
   });
 });
 
