@@ -2,13 +2,19 @@ import { expect } from '@esm-bundle/chai';
 import './td-button.js';
 import './td-checkbox.js';
 import './td-toggle.js';
+import './td-input-field.js';
+import './td-slider.js';
+import '../display/td-pagination.js';
+import '../display/td-tabs.js';
+import '../display/td-empty-state.js';
 import { TdLoading, TdLoadingSpinner } from '../feedback/td-loading.js';
 
 // Golden markup contracts (test/contracts/*.html): the element tree (tags, classes, contract attributes)
 // a component renders must equal the fixture SSR adapters emit. Text/ids/geometry are not compared.
 const KEEP = ['type', 'role', 'aria-hidden', 'hidden', 'data-td-icon', 'data-icon', 'tabindex', 'aria-live',
   'aria-selected', 'aria-current', 'aria-disabled', 'aria-controls', 'aria-labelledby', 'aria-describedby',
-  'aria-errormessage', 'aria-invalid', 'aria-required', 'aria-label', 'data-state', 'for', 'id'];
+  'aria-errormessage', 'aria-invalid', 'aria-required', 'aria-label', 'data-state', 'for', 'id',
+  'data-page', 'data-nav', 'data-td-icon-size'];
 function shape(el) {
   const attrs = KEEP.filter((a) => el.hasAttribute(a)).map((a) => `${a}=${el.getAttribute(a)}`);
   const cls = [...el.classList].sort().join('.');

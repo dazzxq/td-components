@@ -200,6 +200,12 @@ export function svgStringToDefinition(str) {
   if (!root || root.localName !== 'svg' || root.namespaceURI !== SVG_NS || doc.getElementsByTagName('parsererror').length) {
     return null;
   }
+  // Root attributes are allowlisted too (security review: `<svg onload=…>` must be rejected, not just dropped).
+  const ROOT_ATTRS = new Set(['xmlns', 'xmlns:xlink', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap',
+    'stroke-linejoin', 'width', 'height', 'class', 'aria-hidden', 'focusable', 'role', 'version']);
+  for (const a of root.attributes) {
+    if (!ROOT_ATTRS.has(a.name) || /url\s*\(|javascript:/i.test(a.value)) return null;
+  }
   const fill = (root.getAttribute('fill') || '').trim().toLowerCase();
   const def = {
     viewBox: root.getAttribute('viewBox') || '0 0 24 24',
