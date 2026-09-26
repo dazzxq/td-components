@@ -17,6 +17,7 @@
     "components/tabs.css",
     "components/empty-state.css",
     "components/lightbox.css",
+    "components/tooltip.css",
     "utilities.css"
   ]
 }

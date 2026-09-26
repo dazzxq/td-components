@@ -2631,6 +2631,99 @@
 	}
 }
 
+/* ---- src/styles/components/tooltip.css ---- */
+/*
+ * td-tooltip (src/feedback/td-tooltip.js). Small text-bearing floating chip → Regular STRONG glass
+ * (.td-glass-surface--strong on the element; no arrow — D14). Custom colour chips ([data-custom]) are SOLID.
+ * position: fixed, geometry (top/left) written by JS through CSSOM. Hoverable (pointer-events: auto, WCAG 1.4.13).
+ * State: [hidden] · [data-state="open"] (fade + scale from the trigger side) · data-placement · [data-custom].
+ * No interactive targets inside → no focus ring / coarse-pointer sizing needed.
+ */
+@layer td.tokens {
+	:root {
+		--td-tooltip-max-w: 18rem;
+		--td-tooltip-pad-y: 0.375rem;
+		--td-tooltip-pad-x: 0.625rem;
+		--td-tooltip-radius: var(--td-radius-md);
+		--td-tooltip-gap: 8px;
+		--td-tooltip-font-size: var(--td-text-xs);
+	}
+}
+
+@layer td.component {
+	.td-tooltip {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: var(--td-z-tooltip);
+		box-sizing: border-box;
+		width: max-content; /* shrink-to-fit … */
+		max-width: min(var(--td-tooltip-max-w), calc(100vw - 16px)); /* … but wraps (max-width beats width) */
+		padding: var(--td-tooltip-pad-y) var(--td-tooltip-pad-x);
+		font-family: var(--td-font-sans);
+		font-size: var(--td-tooltip-font-size);
+		font-weight: var(--td-fw-medium);
+		line-height: var(--td-leading-normal);
+		text-align: center;
+		white-space: normal;
+		overflow-wrap: anywhere;
+		border-radius: var(--td-tooltip-radius);
+		pointer-events: auto;
+		opacity: 0;
+		transform: scale(var(--_td-glass-enter, var(--td-glass-enter-scale)));
+		transform-origin: 50% 100%;
+		transition:
+			opacity var(--_td-glass-dur, var(--td-dur-fast)) var(--td-ease),
+			transform var(--_td-glass-dur, var(--td-glass-dur)) var(--td-glass-ease);
+	}
+
+	.td-tooltip[hidden] {
+		display: none;
+	}
+
+	.td-tooltip[data-state="open"] {
+		opacity: 1;
+		transform: none;
+	}
+
+	.td-tooltip[data-placement="bottom"] { transform-origin: 50% 0; }
+	.td-tooltip[data-placement="left"] { transform-origin: 100% 50%; }
+	.td-tooltip[data-placement="right"] { transform-origin: 0 50%; }
+
+	.td-tooltip__content {
+		display: block;
+	}
+
+	/* Custom colour chip (data-tooltip-color): solid, never glass. Colours come from CSSOM custom properties
+	   (validated with safeColor; fg = WCAG black/white unless data-tooltip-text-color is given). */
+	.td-tooltip[data-custom] {
+		background: var(--td-tooltip-bg);
+		color: var(--td-tooltip-fg);
+		border-color: transparent;
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
+
+	/* No glass on glass: over an open modal the chip goes solid (private tokens, so the a11y fallbacks still win). */
+	:root:has(.td-modal[data-state="open"]) .td-tooltip {
+		--_td-glass-fill: var(--td-glass-solid);
+		--_td-glass-filter: none;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-tooltip {
+			transform: none;
+			transition: opacity var(--td-dur-fast) linear;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-tooltip[data-custom] {
+			border-color: CanvasText;
+		}
+	}
+}
+
 /* ---- src/styles/utilities.css ---- */
 /* Utilities — kept minimal: td.css must stay reset-free (legacy Tailwind components share the page). */
 @layer td.utilities {
