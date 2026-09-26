@@ -1,5 +1,5 @@
 import { lockScroll } from '../utils/scroll-lock.js';
-import { LAYERS, register as registerLayer, trapTab } from '../utils/layers.js';
+import { LAYERS, register as registerLayer, trapTab, restoreFocus } from '../utils/layers.js';
 
 const LOADING_LAYER = LAYERS.loading; // --td-z-loading
 import { safeColor } from '../utils/css-safe.js';
@@ -134,10 +134,7 @@ export class TdLoading {
     if (!active) return;
     active.layer.release();
     active.releaseScroll();
-    const f = active.savedFocus;
-    if (f && f.isConnected && typeof f.focus === 'function') {
-      try { f.focus({ preventScroll: true }); } catch { /* ignore */ }
-    }
+    restoreFocus(active.savedFocus); // follows hand-offs of overlays closed meanwhile (e.g. a modal under us)
   }
 
   /**

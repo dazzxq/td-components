@@ -75,3 +75,45 @@ describe('dropdown ignores IME composition keys', () => {
     d.remove();
   });
 });
+
+describe('impl-review round 2: focus management', () => {
+  it('initial focus skips an unfocusable first field and lands on the next one', async () => {
+    const id = TdModal.show({ title: 'x', body: '<input id="r2a"><input id="r2b">' });
+    const a = document.getElementById('r2a');
+    a.style.setProperty('visibility', 'hidden');
+    await wait(80);
+    expect(document.activeElement && document.activeElement.id).to.equal('r2b');
+    TdModal.closeById(id);
+  });
+
+  it('stacked closeAll: the exiting modals are inert and not clickable before removal', async () => {
+    const { TdLoading } = await import('./td-loading.js');
+    TdModal.show({ title: 'a', body: '<button id="r2x">a</button>' });
+    TdModal.show({ title: 'b', body: '<button id="r2y">b</button>' });
+    await wait(60);
+    TdLoading.show('x');
+    TdModal.closeAll();
+    TdLoading.hide(); // releasing another lease must not revive the closing modals
+    const btn = document.getElementById('r2x');
+    expect(!!btn.closest('[inert]')).to.equal(true);
+    expect(getComputedStyle(btn.closest('.td-modal')).pointerEvents).to.equal('none');
+    btn.focus();
+    expect(document.activeElement === btn).to.equal(false);
+  });
+
+  it('a modal closed under the loading overlay: loading restores focus to the modal opener, not into the dead modal', async () => {
+    const { TdLoading } = await import('./td-loading.js');
+    const opener = document.createElement('button');
+    opener.textContent = 'open';
+    document.body.appendChild(opener);
+    opener.focus();
+    const id = TdModal.show({ title: 'x', body: '<input id="r2in">' });
+    await wait(80);
+    expect(document.activeElement.id).to.equal('r2in');
+    TdLoading.show('saving');
+    TdModal.closeById(id);
+    TdLoading.hide();
+    expect(document.activeElement === opener).to.equal(true);
+    opener.remove();
+  });
+});

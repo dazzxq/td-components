@@ -43,7 +43,7 @@
  */
 
 import { TdModalStackManager } from './td-modal-stack.js';
-import { LAYERS, register as registerLayer, trapTab, focusablesIn } from '../utils/layers.js';
+import { LAYERS, register as registerLayer, trapTab, focusablesIn, setFocusHandoff } from '../utils/layers.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 
 const MODAL_LAYER = LAYERS.modal; // --td-z-modal
@@ -269,12 +269,12 @@ export class TdModal {
       if (focusTarget instanceof HTMLElement && focusTarget.isConnected && dialog.contains(focusTarget)
         && tryFocus(focusTarget)) return;
       const body = dialog.querySelector('.td-modal__body');
-      const field = body ? [...body.querySelectorAll(FIELD)].find((el) => !el.closest('[hidden]') && el.getClientRects().length > 0) : null;
-      if (tryFocus(field)) return;
+      const eligible = new Set(focusablesIn(dialog));
+      const fields = body ? [...body.querySelectorAll(FIELD)].filter((el) => eligible.has(el)) : [];
+      for (const el of fields) if (tryFocus(el)) return;
       const close = dialog.querySelector('.td-modal__close');
-      const all = focusablesIn(dialog);
-      if (tryFocus(all.find((el) => el !== close))) return;
-      if (tryFocus(all[0])) return;
+      for (const el of eligible) if (el !== close && tryFocus(el)) return;
+      if (tryFocus(close)) return;
     }
     tryFocus(dialog);
   }
@@ -319,12 +319,17 @@ export class TdModal {
     const active = document.activeElement;
     const focusWasHere = !active || active === document.body || root.contains(active);
 
+    // Closing state first, and `inert` on the DIALOG (not the body child, whose inert inert-lock owns and may lift
+    // when another lease is released) so the exiting modal is never interactive again.
+    root.setAttribute('data-state', 'closing');
+    if (inst.dialog) inst.dialog.setAttribute('inert', '');
     TdModalStackManager.removeById(inst.id);
     TdModal._removeFocusTrap(inst.id);
     if (inst.layer) inst.layer.release();
 
-    // Focus (D10): only when this dialog was on top and focus was in it (never steal it from a higher layer).
-    if (wasTop && focusWasHere) {
+    // Focus (D10): resolved when this dialog was on top; moved only if focus was in it (never steal it from a higher
+    // layer — that layer follows the hand-off when it releases, e.g. the loading overlay).
+    if (wasTop) {
       const newTop = TdModalStackManager.getTop();
       let opener = inst.opener;
       let owner = inst.openerOwner;
@@ -334,15 +339,18 @@ export class TdModal {
       }
       const openerOk = opener && opener.isConnected && (!newTop || newTop.element.contains(opener));
       const target = openerOk ? opener : (newTop ? newTop.dialog : null);
-      if (target) {
-        try { target.focus({ preventScroll: true }); } catch { /* ignore */ }
-      } else if (root.contains(document.activeElement) && document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur();
+      setFocusHandoff(root, target);
+      if (focusWasHere) {
+        if (target) {
+          try { target.focus({ preventScroll: true }); } catch { /* ignore */ }
+        } else if (root.contains(document.activeElement) && document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
       }
+    } else {
+      setFocusHandoff(root, TdModalStackManager.getTop() ? TdModalStackManager.getTop().dialog : null);
     }
 
-    root.setAttribute('data-state', 'closing');
-    root.setAttribute('inert', '');
     if (typeof inst.onClose === 'function') {
       try { inst.onClose(value); } catch (err) { console.error(err); }
     }

@@ -140,7 +140,8 @@ const FOCUSABLE = 'a[href], area[href], button, input:not([type="hidden"]), sele
 export function focusablesIn(root) {
   if (!root) return [];
   return [...root.querySelectorAll(FOCUSABLE)].filter(
-    (el) => el.tabIndex >= 0 && !el.disabled && !el.closest('[hidden], [inert]') && el.getClientRects().length > 0,
+    (el) => el.tabIndex >= 0 && !el.matches(':disabled') && !el.closest('[hidden], [inert]')
+      && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden',
   );
 }
 
@@ -177,4 +178,41 @@ export function trapTab(e, container, layer) {
   e.preventDefault();
   nodes[target].focus({ preventScroll: true });
   return 'handled';
+}
+
+/**
+ * Focus hand-off for overlays that close while a HIGHER layer holds focus (e.g. a modal closed under the loading
+ * overlay): the closing container records where focus should go instead; restoreFocus() follows the chain.
+ * @param {Element} container the closing overlay root
+ * @param {HTMLElement|null} target its resolved restore target
+ */
+export function setFocusHandoff(container, target) {
+  if (!container) return;
+  /** @type {any} */ (container)._tdFocusHandoff = target || null;
+  container.setAttribute('data-td-focus-handoff', '');
+}
+
+const usable = (el) => el instanceof HTMLElement && el.isConnected && !el.closest('[inert], [hidden], [data-td-focus-handoff]');
+
+/**
+ * Restore focus to `saved` (a blocking overlay's opener), following hand-offs of containers that closed meanwhile;
+ * falls back to the top keyboard boundary's element, else leaves focus alone.
+ * @param {HTMLElement|null} saved
+ * @returns {boolean} whether focus was moved
+ */
+export function restoreFocus(saved) {
+  let t = saved;
+  for (let i = 0; i < 16 && t instanceof HTMLElement && t.isConnected; i++) {
+    const c = t.closest('[data-td-focus-handoff]');
+    if (!c) break;
+    t = /** @type {any} */ (c)._tdFocusHandoff;
+  }
+  if (!usable(t)) {
+    const b = active.filter((r) => r.keyboard === 'boundary' && r.element instanceof HTMLElement);
+    const top = b[b.length - 1];
+    t = top ? /** @type {HTMLElement} */ (top.element.querySelector('[role="dialog"], [role="alertdialog"]') || top.element) : null;
+  }
+  if (!(t instanceof HTMLElement)) return false;
+  try { t.focus({ preventScroll: true }); } catch { return false; }
+  return document.activeElement === t;
 }

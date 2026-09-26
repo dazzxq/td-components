@@ -113,6 +113,11 @@
 
 	/* No glass on glass (liquid-glass R3, D20): a dialog covered by another one goes solid (menus, tooltips and
 	   toasts over an open modal: their own files). Private tokens, NOT !important → a11y fallbacks still win. */
+	/* An exiting modal is never interactive (its dialog is also inert). */
+	.td-modal[data-state="closing"] {
+		pointer-events: none;
+	}
+
 	.td-modal[data-covered] .td-modal__dialog {
 		--_td-glass-fill: var(--td-glass-solid);
 		--_td-glass-filter: none;
