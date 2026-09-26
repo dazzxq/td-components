@@ -142,7 +142,7 @@ describe('batch 2 — td-pagination', () => {
 
   it('active-color: host custom property via safeColor; unsafe values ignored', () => {
     const el = mount('<td-pagination total-items="50" active-color="#8b5cf6"></td-pagination>');
-    expect(el.style.getPropertyValue('--td-pagination-active')).to.equal('#8b5cf6');
+    expect(el.style.getPropertyValue('--td-pagination-active')).to.equal('rgb(139, 92, 246)'); // normalised
     expect(getComputedStyle(current(el)).backgroundColor).to.equal('rgb(139, 92, 246)');
     el.setAttribute('active-color', 'red;} html{display:none');
     expect(el.style.getPropertyValue('--td-pagination-active')).to.equal('');

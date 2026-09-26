@@ -129,7 +129,7 @@ describe('batch 2 — td-tabs keyboard (trusted keys)', () => {
     await sendKeys({ press: 'End' });
     expect(document.activeElement === c).to.equal(true);
     expect(selected(el)).to.deep.equal(['true', 'false', 'false']);
-    expect(tabindexes(el)).to.deep.equal(['0', '-1', '-1']);
+    expect(tabindexes(el)).to.deep.equal(['-1', '-1', '0']); // roving tabindex follows focus (not selection)
     expect(got.events).to.deep.equal([]);
     expect(got.calls).to.deep.equal([]);
   });

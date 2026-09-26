@@ -50,6 +50,18 @@ describe('v0.8.0 impl-review fixes', () => {
     expect(tabs[0].getAttribute('aria-selected')).to.equal('true');
   });
 
+  it('clicking the still-selected tab after arrow navigation restores its tabindex', async () => {
+    const el = mount('<td-tabs></td-tabs>');
+    el.tabs = [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }];
+    const [a, b] = [...el.querySelectorAll('[role="tab"]')];
+    a.focus();
+    await sendKeys({ press: 'ArrowRight' });
+    expect(b.tabIndex).to.equal(0);
+    a.click();
+    expect(a.tabIndex).to.equal(0);
+    expect(b.tabIndex).to.equal(-1);
+  });
+
   it('pagination active colour is applied normalised (currentColor resolved)', () => {
     const el = mount('<td-pagination total-items="30" current-page="1" active-color="currentColor"></td-pagination>');
     const v = el.style.getPropertyValue('--td-pagination-active');

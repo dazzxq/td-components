@@ -340,7 +340,7 @@ describe('batch 2 — td-slider naming + error contract', () => {
     el.setAttribute('size', 'lg'); // re-render keeps the error
     expect(el.querySelector('.td-slider--lg > .td-field-error').textContent).to.equal('Từ server');
     expect(input().getAttribute('aria-invalid')).to.equal('true');
-    expect(input().getAttribute('aria-describedby')).to.equal('er-error');
+    expect(input().getAttribute('aria-describedby')).to.equal('page-hint er-error'); // page ids survive re-render
     el.setDisabled(true); // disabled routes through the base (effective-disabled + re-render)
     expect(input().disabled).to.equal(true);
     expect(el.querySelector('.td-field-error').textContent).to.equal('Từ server');

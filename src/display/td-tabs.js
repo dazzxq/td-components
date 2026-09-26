@@ -310,7 +310,9 @@ export class TdTabs extends TdBaseElement {
 
   _onClick(e) {
     const btn = this._tabFromEvent(e);
-    if (btn) this._select(btn.dataset.tabId, true);
+    if (!btn) return;
+    for (const b of this._buttons) b.tabIndex = b === btn ? 0 : -1; // also when re-clicking the selected tab
+    this._select(btn.dataset.tabId, true);
   }
 
   _onKeydown(e) {
