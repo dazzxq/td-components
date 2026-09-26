@@ -20,6 +20,7 @@
     "components/toast.css",
     "components/tooltip.css",
     "components/modal.css",
+    "components/dropdown.css",
     "utilities.css"
   ]
 }

@@ -1,17 +1,60 @@
 import { placeFloating, isReferenceHidden } from '../utils/floating.js';
+import { LAYERS, register as registerLayer } from '../utils/layers.js';
 import { TdFormElement } from '../base/td-form-element.js';
-import { applyStyles } from '../utils/css-safe.js';
+import { fillIconSlots } from '../icons/td-icon.js';
+
+const CLEAR = '__CLEAR__';
+const OPTION_PX = 40; // --td-dropdown-option-h: `max-height` = visible options × 40 px
+const TYPEAHEAD_MS = 500;
+
+/** Case- and diacritic-insensitive key for type-ahead ("hà" ~ "ha"). */
+const fold = (s) => String(s).normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase().replace(/đ/g, 'd');
 
 /**
- * Dropdown component with searchable popup, keyboard navigation, auto-positioning.
- * Port of dcms-dropdown.js to a form-associated Web Component.
+ * Dropdown (select-only combobox) with a searchable popup, keyboard navigation and auto-positioning.
+ * Token-native since 0.9.0 (plan v0.9.0-batch3 step 4, D17–D19): styles come from td.css
+ * (`components/dropdown.css`, block `.td-dropdown`); state lives in `aria-*`, `[hidden]`, `data-state`,
+ * `data-active`, `data-placement` — no Tailwind classes, only menu geometry is written through CSSOM.
  *
- * **Form-associated (ElementInternals, 0.2.0):** submits the selected option's value
- * in any host `<form>`, supports `required` (→ `valueMissing` until something is
- * picked), reset (restores the initial `value`), `<fieldset disabled>`, and
- * state restore (bfcache/autofill re-selects by value).
+ * Rendered DOM:
+ *   <td-dropdown id="{host}">
+ *     <div class="td-dropdown" data-state="closed|open">
+ *       [<label class="td-field__label" id="{host}-label" for="{host}-trigger">{label}[<span class="td-field__required"> *</span>]</label>]
+ *       <button type="button" class="td-dropdown__trigger" id="{host}-trigger" role="combobox" aria-haspopup="listbox"
+ *               aria-expanded aria-controls="{host}-listbox" [aria-activedescendant] [aria-required] [aria-invalid] …>
+ *         <span class="td-dropdown__value" [data-placeholder]>…</span>
+ *         <span class="td-dropdown__arrow" data-td-icon="down" aria-hidden="true"></span>
+ *       </button>
+ *     </div>
+ *     [<span class="td-field-error" id="{host}-error" data-for="{host}">…</span>]
+ *   </td-dropdown>
+ *   <body> portal (persistent while connected):
+ *   <div class="td-dropdown__menu td-glass-surface td-glass-surface--strong" id="{host}-menu" hidden data-state data-placement>
+ *     [<div class="td-dropdown__search-wrap"><input class="td-dropdown__search" aria-label="Tìm kiếm" aria-autocomplete="list"
+ *        aria-controls="{host}-listbox" [aria-activedescendant]></div>]
+ *     <div class="td-dropdown__options" role="listbox" id="{host}-listbox">
+ *       [<div class="td-dropdown__option td-dropdown__option--clear" role="option" id="{host}-opt-clear" data-value="__CLEAR__">…]
+ *       <div class="td-dropdown__option" role="option" id="{host}-opt-{i}" aria-selected data-value data-index [data-active]>…
+ *     </div>
+ *     <p class="td-dropdown__empty" role="status">[Không tìm thấy kết quả]</p>
+ *   </div>
+ *
+ * Keyboard (APG select-only combobox): options are never focusable; the focused control (trigger, or the search input
+ * when it has focus) carries `aria-activedescendant`. Closed trigger: ArrowDown/ArrowUp/Enter/Space open (active =
+ * selected or first), Home/End open on the first/last option, printable keys open + type-ahead. Open: ArrowUp/Down
+ * (wrap, the clear option is part of the model), Home/End (trigger only — in the search box they move the caret),
+ * PageUp/PageDown (± `max-height`), Enter selects the active option (also from the search box), Alt+ArrowUp selects,
+ * Space on the trigger selects (or closes), printable keys on the trigger = type-ahead. Escape and Tab go through the
+ * shared layer dispatcher (src/utils/layers.js): Escape closes and focuses the trigger (consumed, a lower layer never
+ * sees it); Tab from the search input returns focus to the trigger (D19), Tab on the trigger closes and passes the key
+ * on (a lower modal trap still wraps). The open menu is a floating registration at LAYERS.popover (usable in a modal).
+ *
+ * **Form-associated (ElementInternals, 0.2.0):** submits the selected option's value in any host `<form>`, supports
+ * `required` (→ `valueMissing` until something is picked), reset (restores the initial `value`), `<fieldset disabled>`,
+ * and state restore (bfcache/autofill re-selects by value). Error contract: `error-text`, `setError()`, `clearError()`.
  *
  * @element td-dropdown
+ * @attr {string} label - Visible label (names the combobox; 0.9.0)
  * @attr {string} placeholder - Placeholder text (default "Chọn một tùy chọn")
  * @attr {boolean} searchable - Enable search filtering (default on)
  * @attr {boolean} disabled - Disable the dropdown (also via ancestor <fieldset disabled>)
@@ -22,6 +65,7 @@ import { applyStyles } from '../utils/css-safe.js';
  * @attr {string} value-key - Key for option value (default "value")
  * @attr {string} label-key - Key for option label (default "label")
  * @attr {string} value - Initial selected value
+ * @attr {string} error-text - Error message (aria-invalid + note; 0.9.0)
  * @fires change - When selection changes, detail: { value, item }
  *
  * @property {Array<Object>} options - Array of option objects set via JS property
@@ -30,8 +74,11 @@ import { applyStyles } from '../utils/css-safe.js';
  */
 export class TdDropdown extends TdFormElement {
   static get observedAttributes() {
-    return [...super.observedAttributes, 'placeholder', 'searchable', 'allow-clear', 'max-height', 'value-key', 'label-key', 'value'];
+    return [...super.observedAttributes, 'placeholder', 'searchable', 'allow-clear', 'max-height', 'value-key',
+      'label-key', 'value', 'label', 'error-text', 'aria-label'];
   }
+
+  static get errorContract() { return true; }
 
   // NOTE: `searchable`/`allow-clear` are intentionally NOT booleanAttributes. They are
   // default-ON tri-state flags (absent → ON; `="false"`/`"0"`/`"off"` → OFF), which the base
@@ -51,23 +98,27 @@ export class TdDropdown extends TdFormElement {
     /** @private A value set before its option existed; resolved when options arrive. */
     this._pendingValue = null;
     this._filteredData = [];
-    this._highlightedIndex = -1;
+    /** @private navigation model of the rendered listbox: [{ clear: true } | { item }] */
+    this._nav = [];
+    /** @private index into `_nav` of the active (visually focused) option; -1 = none */
+    this._activeIndex = -1;
     this._isOpen = false;
     this._menuElement = null;
     this._scrollRafId = null;
+    /** @private layer registration while open (src/utils/layers.js) */
+    this._layer = null;
+    this._typeBuffer = '';
+    this._typeTimer = null;
+    /** @private timestamp of an Enter/Space handled on keydown (its activation click is ignored) */
+    this._suppressClick = 0;
 
     // Callbacks set via JS property
     this._onChange = null;
     this._onSelect = null;
 
-    // Bound handlers for global event management
-    this._boundClickOutside = (e) => {
-      if (!this.contains(e.target) && this._menuElement && !this._menuElement.contains(e.target)) {
-        this.close();
-      }
-    };
-    this._boundKeydown = (e) => {
-      if (this._isOpen) this._handleKeydown(e);
+    this._boundPointerOutside = (e) => {
+      const t = e.target;
+      if (!this.contains(t) && this._menuElement && !this._menuElement.contains(t)) this.close();
     };
     this._boundOnScroll = () => {
       if (this._scrollRafId) return;
@@ -112,9 +163,7 @@ export class TdDropdown extends TdFormElement {
     if (this._pendingValue != null) {
       this.setValue(this._pendingValue);
     }
-    if (this._menuElement) {
-      this._renderMenuOptions();
-    }
+    this._renderMenuOptions();
   }
 
   get onChange() { return this._onChange; }
@@ -126,6 +175,7 @@ export class TdDropdown extends TdFormElement {
   // --- Attribute helpers ---
 
   _getPlaceholder() { return this.getAttribute('placeholder') || 'Chọn một tùy chọn'; }
+  _getLabel() { return this.getAttribute('label') || ''; }
   /**
    * Default ON. Off only when explicitly disabled via `searchable="false"`/`"0"`/`"off"`.
    * (Mirrors dcms's `searchable !== false` default; an absent attribute or a bare
@@ -147,7 +197,10 @@ export class TdDropdown extends TdFormElement {
     const v = (this.getAttribute(name) || '').trim().toLowerCase();
     return v === 'false' || v === '0' || v === 'off';
   }
-  _getMaxHeight() { return parseInt(this.getAttribute('max-height') || '5', 10); }
+  _getMaxHeight() {
+    const n = parseInt(this.getAttribute('max-height') || '5', 10);
+    return Number.isFinite(n) && n > 0 ? Math.min(n, 100) : 5;
+  }
   _getValueKey() { return this.getAttribute('value-key') || 'value'; }
   _getLabelKey() { return this.getAttribute('label-key') || 'label'; }
   _getInitialValue() { return this.getAttribute('value') || null; }
@@ -155,76 +208,43 @@ export class TdDropdown extends TdFormElement {
   // --- Rendering ---
 
   render() {
-    const isDisabled = this._isDisabled();
-    const placeholder = this._getPlaceholder();
-    const disabledClass = isDisabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : '';
-    const displayText = this._selectedItem
-      ? this.escapeHtml(String(this._selectedItem[this._getLabelKey()]))
-      : this.escapeHtml(placeholder);
-
-    return `
-      <div class="td-dropdown-container">
-        <button
-          type="button"
-          ${isDisabled ? 'disabled' : ''}
-          aria-haspopup="listbox"
-          aria-expanded="${this._isOpen}"
-          class="td-dropdown-button w-full border rounded-xl text-left text-gray-900 focus-visible:outline-none transition-[background-color,opacity] duration-200 flex items-center justify-between text-sm ${disabledClass}">
-          <span class="td-dropdown-selected truncate">${displayText}</span>
-          <svg class="td-dropdown-arrow w-4 h-4 text-gray-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-          </svg>
-        </button>
-      </div>
-    `;
-  }
-
-  /**
-   * @private CSP-safe scalar styling via CSSOM (replaces the removed declarative inline styles).
-   * Auto-invoked by the base after `afterRender()` on the initial render AND on every
-   * observed-attribute re-render. Sets the button's static box/visual scalars and the
-   * arrow's open/closed rotation. `open()`/`close()` additionally mutate `arrow.style`
-   * directly (no re-render fires there), so the chevron stays in sync with toggles.
-   */
-  _applyStyles() {
-    const button = this.querySelector('.td-dropdown-button');
-    applyStyles(button, {
-      'background-color': 'rgba(255,255,255,0.72)',
-      'border-color': 'rgba(0,0,0,0.1)',
-      'padding': '8px 14px',
-      'height': '40px',
-      'box-shadow': 'inset 0 1px 0 rgba(255,255,255,0.9)',
-    });
-    // Closed → leave `transform` unset so it computes to `none` (parity with the original
-    // empty inline value); open → rotate the chevron. `applyStyles` skips nullish values.
-    const arrow = this.querySelector('.td-dropdown-arrow');
-    applyStyles(arrow, { transform: this._isOpen ? 'rotate(180deg)' : null });
+    const esc = (s) => this.escapeHtml(String(s));
+    const id = esc(this.id);
+    const label = this._getLabel();
+    const placeholder = !this._selectedItem;
+    const text = placeholder ? this._getPlaceholder() : this._selectedItem[this._getLabelKey()];
+    const labelHtml = label
+      ? `<label class="td-field__label" id="${id}-label" for="${id}-trigger">${esc(label)}</label>`
+      : '';
+    return `<div class="td-dropdown" data-state="${this._isOpen ? 'open' : 'closed'}">${labelHtml}`
+      + `<button type="button" class="td-dropdown__trigger" id="${id}-trigger" role="combobox" aria-haspopup="listbox"`
+      + ` aria-expanded="${this._isOpen}" aria-controls="${id}-listbox"${this._isDisabled() ? ' disabled' : ''}>`
+      + `<span class="td-dropdown__value"${placeholder ? ' data-placeholder' : ''}>${esc(text)}</span>`
+      + '<span class="td-dropdown__arrow" data-td-icon="down" aria-hidden="true"></span>'
+      + '</button></div>';
   }
 
   afterRender() {
-    // Create menu element and append to body (for fixed positioning)
+    // Persistent body portal (fixed positioning escapes overflow/transform clipping).
     if (!this._menuElement) {
-      this._menuElement = document.createElement('div');
-      this._menuElement.className = 'td-dropdown-menu fixed rounded-xl hidden z-[10010]';
-      this._menuElement.style.cssText = `
-        background: rgba(255,255,255,0.72);
-        backdrop-filter: blur(16px) saturate(160%);
-        -webkit-backdrop-filter: blur(16px) saturate(160%);
-        border: 1px solid rgba(255,255,255,0.5);
-        box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.9);
-        transition: none;
-      `;
-      document.body.appendChild(this._menuElement);
-      const menu = this._menuElement;
+      const menu = document.createElement('div');
+      menu.className = 'td-dropdown__menu td-glass-surface td-glass-surface--strong';
+      menu.hidden = true;
+      menu.setAttribute('data-state', 'closed');
+      this._bindMenuEvents(menu);
+      document.body.appendChild(menu);
+      this._menuElement = menu;
       this._cleanups.push(() => {
-        if (menu.parentNode) menu.parentNode.removeChild(menu);
+        menu.remove();
         // Detached on disconnect → forget it so a reconnect (DOM move) recreates the portal.
         if (this._menuElement === menu) this._menuElement = null;
       });
     }
+    this._menuElement.id = `${this.id}-menu`;
 
     this._renderMenuContent();
-    this._bindButtonEvents();
+    fillIconSlots(this);
+    this._bindTriggerEvents();
 
     // Register in open dropdowns list
     if (!TdDropdown._openDropdowns.includes(this)) {
@@ -235,26 +255,109 @@ export class TdDropdown extends TdFormElement {
       });
     }
 
+    this._applyName();
+    this._applyRequired();
+    if (this._isOpen && this._isDisabled()) this.close();
     // Push the current selection + validity into the form on (re)render.
     this._syncForm();
+    this._applyErrorState();
   }
 
-  // Prevent full re-render for value attribute changes
+  /** In place: `value`, `placeholder`, `disabled`, `required`, `name`, `aria-label`, `error-text`. */
   attributeChangedCallback(name, oldVal, newVal) {
     if (oldVal === newVal) return;
-    if (name === 'disabled') {
-      // Keep effective-disabled in sync without forcing a full re-render path divergence.
-      this._effectiveDisabled = newVal !== null || this._ancestorDisabled;
-    }
+    if (name === 'disabled') this._effectiveDisabled = newVal !== null || this._ancestorDisabled;
     if (!this._initialized) return;
-
-    if (name === 'value') {
-      this.setValue(newVal);
-      this._syncForm();
-      return;
+    switch (name) {
+      case 'value':
+        this.setValue(newVal);
+        this._syncForm();
+        return;
+      case 'placeholder':
+        this._updateValueText();
+        return;
+      case 'disabled':
+        this._applyDisabled();
+        return;
+      case 'required':
+        this._applyRequired();
+        this._syncForm();
+        return;
+      case 'name':
+        return;
+      case 'aria-label':
+        this._applyName();
+        return;
+      case 'error-text':
+        super.attributeChangedCallback(name, oldVal, newVal); // base error contract, no re-render
+        return;
+      default:
+        // label, searchable, allow-clear, max-height, value-key, label-key → structure changes.
+        if (this._isOpen) this.close();
+        this._doRender();
     }
+  }
 
-    this._doRender();
+  /** @protected <fieldset disabled> toggles in place (no re-render → focus kept). */
+  _syncEffectiveDisabled() {
+    const next = this.hasAttribute('disabled') || this._ancestorDisabled;
+    if (next === this._effectiveDisabled) return;
+    this._effectiveDisabled = next;
+    if (this._initialized) this._applyDisabled();
+  }
+
+  /** @private */
+  _applyDisabled() {
+    const trigger = this._trigger();
+    if (trigger) trigger.disabled = this._isDisabled();
+    if (this._isDisabled() && this._isOpen) this.close();
+  }
+
+  /** @private `aria-required` on the combobox + decorative asterisk in the label. */
+  _applyRequired() {
+    const trigger = this._trigger();
+    const required = this.hasAttribute('required');
+    if (trigger) {
+      if (required) trigger.setAttribute('aria-required', 'true');
+      else trigger.removeAttribute('aria-required');
+    }
+    const label = this.querySelector('.td-field__label');
+    if (!label) return;
+    let star = label.querySelector('.td-field__required');
+    if (required && !star) {
+      star = document.createElement('span');
+      star.className = 'td-field__required';
+      star.setAttribute('aria-hidden', 'true');
+      star.textContent = ' *';
+      label.appendChild(star);
+    } else if (!required && star) star.remove();
+  }
+
+  /** @private Naming precedence (TdFormElement helper) + the listbox mirrors the combobox name. */
+  _applyName() {
+    const trigger = this._trigger();
+    const hasLabel = !!this._getLabel();
+    this._applyAccessibleName(trigger, hasLabel);
+    const list = this._list();
+    if (!list) return;
+    list.removeAttribute('aria-label');
+    list.removeAttribute('aria-labelledby');
+    if (hasLabel) list.setAttribute('aria-labelledby', `${this.id}-label`);
+    else if (trigger && trigger.hasAttribute('aria-label')) list.setAttribute('aria-label', trigger.getAttribute('aria-label'));
+    else if (trigger && trigger.hasAttribute('aria-labelledby')) list.setAttribute('aria-labelledby', trigger.getAttribute('aria-labelledby'));
+  }
+
+  /** @private Trigger text: selected label or placeholder (`data-placeholder` styles it). */
+  _updateValueText() {
+    const span = this.querySelector('.td-dropdown__value');
+    if (!span) return;
+    if (this._selectedItem) {
+      span.textContent = String(this._selectedItem[this._getLabelKey()]);
+      span.removeAttribute('data-placeholder');
+    } else {
+      span.textContent = this._getPlaceholder();
+      span.setAttribute('data-placeholder', '');
+    }
   }
 
   // --- Form participation ---
@@ -292,15 +395,24 @@ export class TdDropdown extends TdFormElement {
   }
 
   _focusTarget() {
-    return this.querySelector('.td-dropdown-button');
+    return this.querySelector('.td-dropdown__trigger');
   }
+
+  /** @private */
+  _trigger() { return this.querySelector('.td-dropdown__trigger'); }
+  /** @private */
+  _list() { return this._menuElement ? this._menuElement.querySelector('.td-dropdown__options') : null; }
+  /** @private */
+  _search() { return this._menuElement ? this._menuElement.querySelector('.td-dropdown__search') : null; }
 
   disconnectedCallback() {
     this._clearSearchFocusTimer();
-    // Close if open
+    this._clearTypeahead();
     if (this._isOpen) {
       this._removeGlobalListeners();
+      this._releaseLayer();
       this._isOpen = false; // the portaled menu is removed by the cleanup below
+      this._activeIndex = -1;
     }
     if (this._scrollRafId) {
       cancelAnimationFrame(this._scrollRafId);
@@ -312,92 +424,52 @@ export class TdDropdown extends TdFormElement {
   // --- Menu rendering ---
 
   _renderMenuContent() {
-    const isSearchable = this._isSearchable();
-    const maxHeight = this._getMaxHeight();
-
-    this._menuElement.innerHTML = `
-      ${isSearchable ? `
-        <div class="p-2 border-b border-black/[0.06]">
-          <input
-            type="text"
-            class="td-dropdown-search w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500/50 text-gray-900 placeholder-gray-400"
-            placeholder="Tìm kiếm...">
-        </div>
-      ` : ''}
-      <div class="td-dropdown-options py-1 overflow-y-auto" role="listbox">
-        ${this._renderOptions()}
-      </div>
-    `;
-
-    // CSP-safe scalar styling for the portaled menu (replaces the removed declarative inline styles).
-    // The menu lives on document.body, so it can't be styled by `_applyStyles()` (which
-    // scopes to the host); apply here, right after its innerHTML is set.
-    const searchInput = this._menuElement.querySelector('.td-dropdown-search');
-    applyStyles(searchInput, {
-      'border-color': 'rgba(0,0,0,0.08)',
-      'background': 'rgba(255,255,255,0.5)',
-    });
-    const optionsContainer = this._menuElement.querySelector('.td-dropdown-options');
-    applyStyles(optionsContainer, { 'max-height': `${maxHeight * 40}px` });
-
-    this._bindMenuEvents();
+    const menu = this._menuElement;
+    if (!menu) return;
+    const id = this.escapeHtml(this.id);
+    const search = this._isSearchable()
+      ? '<div class="td-dropdown__search-wrap"><input type="text" class="td-dropdown__search" aria-label="Tìm kiếm"'
+        + ` placeholder="Tìm kiếm..." autocomplete="off" spellcheck="false" aria-autocomplete="list" aria-controls="${id}-listbox"></div>`
+      : '';
+    menu.innerHTML = `${search}<div class="td-dropdown__options" role="listbox" id="${id}-listbox"></div>`
+      + '<p class="td-dropdown__empty" role="status"></p>';
+    this._renderMenuOptions();
   }
 
+  /** Re-render the options (in place; the listbox, search box and empty-status region are kept). */
   _renderMenuOptions() {
-    const optionsContainer = this._menuElement.querySelector('.td-dropdown-options');
-    if (optionsContainer) {
-      optionsContainer.innerHTML = this._renderOptions();
-    }
-  }
-
-  _renderOptions() {
+    const list = this._list();
+    if (!list) return;
+    const esc = (s) => this.escapeHtml(String(s));
+    const id = esc(this.id);
     const valueKey = this._getValueKey();
     const labelKey = this._getLabelKey();
-    const allowClear = this._isAllowClear();
-
-    // Clear option
-    let clearHtml = '';
-    if (allowClear && this._selectedItem) {
-      clearHtml = `
-        <button
-          type="button"
-          class="td-dropdown-option td-dropdown-option-clear w-full text-left px-3 py-2 text-sm text-gray-500 hover:bg-black/5 hover:text-gray-700 focus:outline-none focus:bg-black/5 transition-colors border-b border-black/[0.06]"
-          data-value="__CLEAR__">
-          <div class="flex items-center justify-between">
-            <span class="truncate">&#10005; Không chọn</span>
-          </div>
-        </button>
-      `;
+    const nav = [];
+    let html = '';
+    if (this._isAllowClear() && this._selectedItem) {
+      nav.push({ clear: true });
+      html += `<div class="td-dropdown__option td-dropdown__option--clear" role="option" id="${id}-opt-clear"`
+        + ` aria-selected="false" data-value="${CLEAR}"><span class="td-dropdown__option-label">Không chọn</span></div>`;
     }
-
-    if (this._filteredData.length === 0) {
-      return clearHtml + `<div class="px-3 py-2 text-sm text-gray-500 italic">Không tìm thấy kết quả</div>`;
-    }
-
-    const optionsHtml = this._filteredData.map((item, index) => {
+    this._filteredData.forEach((item, index) => {
       const selected = this._isSelected(item);
-      const highlighted = index === this._highlightedIndex;
-      return `
-        <button
-          type="button"
-          role="option"
-          aria-selected="${selected}"
-          class="td-dropdown-option w-full text-left px-3 py-2 text-sm text-gray-900 hover:bg-black/5 focus:outline-none focus:bg-black/5 transition-colors ${selected ? 'bg-black/[0.06] font-medium' : ''} ${highlighted && !selected ? 'bg-black/[0.04]' : ''}"
-          data-value="${this.escapeHtml(String(item[valueKey]))}"
-          data-index="${index}">
-          <div class="flex items-center justify-between">
-            <span class="truncate">${this.escapeHtml(String(item[labelKey]))}</span>
-            ${selected ? `
-              <svg class="w-4 h-4 text-gray-900 shrink-0 ml-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-              </svg>
-            ` : ''}
-          </div>
-        </button>
-      `;
-    }).join('');
-
-    return clearHtml + optionsHtml;
+      nav.push({ item });
+      html += `<div class="td-dropdown__option" role="option" id="${id}-opt-${index}" aria-selected="${selected}"`
+        + ` data-value="${esc(item[valueKey])}" data-index="${index}">`
+        + `<span class="td-dropdown__option-label">${esc(item[labelKey])}</span>`
+        + (selected ? '<span class="td-dropdown__check" data-td-icon="check" aria-hidden="true"></span>' : '')
+        + '</div>';
+    });
+    list.innerHTML = html;
+    fillIconSlots(list);
+    this._nav = nav;
+    const empty = this._menuElement.querySelector('.td-dropdown__empty');
+    if (empty) {
+      const msg = this._filteredData.length ? '' : 'Không tìm thấy kết quả';
+      if (empty.textContent !== msg) empty.textContent = msg;
+    }
+    if (this._activeIndex >= nav.length) this._activeIndex = -1;
+    this._syncActive(false);
   }
 
   _isSelected(item) {
@@ -406,193 +478,295 @@ export class TdDropdown extends TdFormElement {
     return String(this._selectedItem[vk]) === String(item[vk]);
   }
 
+  /** @private index in `_nav` of the selected item (-1 = none) */
+  _selectedNavIndex() {
+    return this._nav.findIndex((n) => n.item && this._isSelected(n.item));
+  }
+
+  // --- Active option (aria-activedescendant) ---
+
+  /** @private `data-active` on the active option + `aria-activedescendant` on the focused control. */
+  _syncActive(scroll = true) {
+    const list = this._list();
+    let activeEl = null;
+    if (list) {
+      [...list.children].forEach((el, i) => {
+        if (i === this._activeIndex && this._isOpen) {
+          el.setAttribute('data-active', '');
+          activeEl = el;
+        } else el.removeAttribute('data-active');
+      });
+    }
+    this._syncActiveDescendant(activeEl);
+    if (activeEl && scroll && typeof activeEl.scrollIntoView === 'function') activeEl.scrollIntoView({ block: 'nearest' });
+  }
+
+  /** @private The attribute lives ONLY on the control that has DOM focus (search input, else the trigger). */
+  _syncActiveDescendant(activeEl = this._list()?.querySelector('[data-active]')) {
+    const trigger = this._trigger();
+    const search = this._search();
+    const owner = search && document.activeElement === search ? search : trigger;
+    for (const el of [trigger, search]) {
+      if (!el) continue;
+      if (el === owner && activeEl && this._isOpen) el.setAttribute('aria-activedescendant', activeEl.id);
+      else el.removeAttribute('aria-activedescendant');
+    }
+  }
+
+  /** @private */
+  _setActive(i) {
+    const n = this._nav.length;
+    this._activeIndex = n ? Math.max(-1, Math.min(i, n - 1)) : -1;
+    this._syncActive();
+  }
+
+  /** @private step through the model with wrap-around (as 0.4.x) */
+  _move(step) {
+    const n = this._nav.length;
+    if (!n) return;
+    const cur = this._activeIndex;
+    const next = cur < 0 ? (step > 0 ? 0 : n - 1) : (cur + step + n) % n;
+    this._setActive(next);
+  }
+
+  /** @private commit the active option (clear or item) */
+  _commitActive() {
+    const entry = this._nav[this._activeIndex];
+    if (!entry) return false;
+    if (entry.clear) this._clearSelection();
+    else this._selectItem(entry.item);
+    return true;
+  }
+
   // --- Event binding ---
 
-  _bindButtonEvents() {
-    const button = this.querySelector('.td-dropdown-button');
-    if (!button) return;
-
-    this.listen(button, 'click', (e) => {
+  _bindTriggerEvents() {
+    const trigger = this._trigger();
+    if (!trigger) return;
+    this.listen(trigger, 'click', (e) => {
+      e.stopPropagation();
       if (this._isDisabled()) {
         e.preventDefault();
-        e.stopPropagation();
         return;
       }
-      e.stopPropagation();
+      // The keyboard activation click of an Enter/Space already handled on keydown (mouse clicks have detail ≥ 1).
+      const suppressed = e.detail === 0 && this._suppressClick && performance.now() - this._suppressClick < 1000;
+      this._suppressClick = 0;
+      if (suppressed) return;
       this.toggle();
     });
+    this.listen(trigger, 'keydown', (e) => this._onKeydown(e, 'trigger'));
+    // Engines that still fire the activation click on keyup do so in the keyup default action → clear after it.
+    this.listen(trigger, 'keyup', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') window.setTimeout(() => { this._suppressClick = 0; }, 0);
+    });
+    this.listen(trigger, 'focus', () => this._syncActiveDescendant());
+  }
 
-    this.listen(button, 'focus', () => {
-      if (!this._isDisabled()) {
-        button.style.boxShadow = '0 0 0 3px rgba(59,130,246,.2), inset 0 1px 0 rgba(255,255,255,0.9)';
-        button.style.borderColor = 'rgba(59,130,246,0.5)';
+  /** @private Bound once per portal element (the menu is recreated after a reconnect). */
+  _bindMenuEvents(menu) {
+    // Options are not focusable: keep DOM focus on the trigger / search input while pressing inside the menu.
+    menu.addEventListener('mousedown', (e) => {
+      if (!(e.target instanceof Element) || !e.target.closest('.td-dropdown__search')) e.preventDefault();
+    });
+    menu.addEventListener('click', (e) => {
+      const option = e.target instanceof Element ? e.target.closest('.td-dropdown__option') : null;
+      if (!option || !menu.contains(option)) return;
+      const i = [...option.parentNode.children].indexOf(option);
+      this._activeIndex = i;
+      this._commitActive();
+    });
+    menu.addEventListener('mousemove', (e) => {
+      const option = e.target instanceof Element ? e.target.closest('.td-dropdown__option') : null;
+      if (!option) return;
+      const i = [...option.parentNode.children].indexOf(option);
+      if (i !== this._activeIndex) {
+        this._activeIndex = i;
+        this._syncActive(false);
       }
     });
-
-    this.listen(button, 'blur', () => {
-      this.setTimeout(() => {
-        if (!this._isOpen) {
-          button.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.9)';
-          button.style.borderColor = 'rgba(0,0,0,0.1)';
-        }
-      }, 100);
-    });
-  }
-
-  _bindMenuEvents() {
-    const searchInput = this._menuElement.querySelector('.td-dropdown-search');
-    const optionsContainer = this._menuElement.querySelector('.td-dropdown-options');
-
-    if (searchInput) {
-      searchInput.addEventListener('input', (e) => {
+    menu.addEventListener('input', (e) => {
+      if (e.target instanceof HTMLInputElement && e.target.classList.contains('td-dropdown__search')) {
         this._handleSearch(e.target.value);
-      });
-    }
-
-    if (optionsContainer) {
-      optionsContainer.addEventListener('click', (e) => {
-        const option = e.target.closest('.td-dropdown-option');
-        if (option) {
-          const value = option.dataset.value;
-          if (value === '__CLEAR__') {
-            this._clearSelection();
-          } else {
-            this._selectAndFire(value);
-          }
-        }
-      });
-
-      optionsContainer.addEventListener('mousemove', (e) => {
-        const option = e.target.closest('.td-dropdown-option[data-index]');
-        if (option) {
-          const idx = parseInt(option.dataset.index, 10);
-          if (idx !== this._highlightedIndex) {
-            this._highlightedIndex = idx;
-            this._updateHighlight();
-          }
-        }
-      });
-    }
+      }
+    });
+    menu.addEventListener('keydown', (e) => {
+      if (e.target instanceof HTMLInputElement && e.target.classList.contains('td-dropdown__search')) this._onKeydown(e, 'search');
+    });
+    menu.addEventListener('focusin', () => this._syncActiveDescendant());
   }
 
-  // --- Keyboard navigation ---
+  // --- Keyboard (Escape/Tab are handled by the layer registration, see open()) ---
 
-  _handleKeydown(e) {
-    switch (e.key) {
+  /**
+   * @private
+   * @param {KeyboardEvent} e
+   * @param {'trigger'|'search'} source
+   */
+  _onKeydown(e, source) {
+    if (this._isDisabled() || e.defaultPrevented) return;
+    const { key } = e;
+    const printable = key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
+    if (!this._isOpen) {
+      if (source !== 'trigger') return;
+      if (key === 'ArrowDown' || key === 'ArrowUp' || key === 'Enter' || key === ' ') {
+        e.preventDefault();
+        if (key === 'Enter' || key === ' ') this._suppressClick = performance.now();
+        this.open({ active: 'selected-or-first' });
+      } else if (key === 'Home' || key === 'End') {
+        e.preventDefault();
+        this.open({ active: key === 'Home' ? 'first' : 'last' });
+      } else if (printable) {
+        e.preventDefault();
+        this.open({ active: 'selected', focusSearch: false });
+        this._typeahead(key);
+      }
+      return;
+    }
+    const page = this._getMaxHeight();
+    switch (key) {
       case 'ArrowDown':
         e.preventDefault();
-        if (this._highlightedIndex < this._filteredData.length - 1) {
-          this._highlightedIndex++;
-        } else {
-          this._highlightedIndex = 0;
-        }
-        this._updateHighlight();
-        this._scrollHighlightedIntoView();
-        break;
-
+        if (!e.altKey) this._move(1);
+        return;
       case 'ArrowUp':
         e.preventDefault();
-        if (this._highlightedIndex > 0) {
-          this._highlightedIndex--;
-        } else {
-          this._highlightedIndex = this._filteredData.length - 1;
-        }
-        this._updateHighlight();
-        this._scrollHighlightedIntoView();
-        break;
-
+        if (e.altKey) {
+          if (!this._commitActive()) this.close();
+        } else this._move(-1);
+        return;
+      case 'Home':
+      case 'End':
+        if (source !== 'trigger') return; // search box: caret movement
+        e.preventDefault();
+        this._setActive(key === 'Home' ? 0 : this._nav.length - 1);
+        return;
+      case 'PageDown':
+        e.preventDefault();
+        this._setActive(this._activeIndex < 0 ? Math.min(page - 1, this._nav.length - 1) : this._activeIndex + page);
+        return;
+      case 'PageUp':
+        e.preventDefault();
+        this._setActive(Math.max(0, this._activeIndex - page));
+        return;
       case 'Enter':
         e.preventDefault();
-        if (this._highlightedIndex >= 0 && this._highlightedIndex < this._filteredData.length) {
-          const item = this._filteredData[this._highlightedIndex];
-          this._selectAndFire(item[this._getValueKey()]);
-        }
-        break;
-
-      case 'Escape':
+        if (source === 'trigger') this._suppressClick = performance.now();
+        if (!this._commitActive() && source === 'trigger') this.close();
+        return;
+      case ' ':
+        if (source !== 'trigger') return; // typing a space in the search box
         e.preventDefault();
-        this.close();
-        const btn = this.querySelector('.td-dropdown-button');
-        if (btn) btn.focus();
-        break;
+        this._suppressClick = performance.now();
+        if (this._typeBuffer) this._typeahead(key);
+        else if (!this._commitActive()) this.close();
+        return;
+      default:
+        if (printable && source === 'trigger') {
+          e.preventDefault();
+          this._typeahead(key);
+        }
     }
   }
 
-  _updateHighlight() {
-    if (!this._menuElement) return;
-    const options = this._menuElement.querySelectorAll('.td-dropdown-option[data-index]');
-    options.forEach((el) => {
-      const idx = parseInt(el.dataset.index, 10);
-      const isHighlighted = idx === this._highlightedIndex;
-      const isSelected = this._isSelected(this._filteredData[idx]);
-      if (isHighlighted && !isSelected) {
-        el.classList.add('bg-black/[0.04]');
-      } else {
-        el.classList.remove('bg-black/[0.04]');
+  /** @private APG type-ahead on the trigger: cycles through options starting with the typed prefix. */
+  _typeahead(char) {
+    this._clearTypeahead();
+    this._typeBuffer += char;
+    this._typeTimer = window.setTimeout(() => { this._typeTimer = null; this._typeBuffer = ''; }, TYPEAHEAD_MS);
+    const buf = fold(this._typeBuffer);
+    const same = [...buf].every((c) => c === buf[0]);
+    const prefix = same ? buf[0] : buf; // "aaa" cycles through the "a…" options
+    const labelKey = this._getLabelKey();
+    const n = this._nav.length;
+    const start = this._activeIndex < 0 ? 0 : this._activeIndex + (same || buf.length === 1 ? 1 : 0);
+    for (let k = 0; k < n; k++) {
+      const i = (start + k) % n;
+      const entry = this._nav[i];
+      if (entry.item && fold(entry.item[labelKey]).startsWith(prefix)) {
+        this._setActive(i);
+        return;
       }
-    });
+    }
   }
 
-  _scrollHighlightedIntoView() {
-    if (!this._menuElement) return;
-    const el = this._menuElement.querySelector(`.td-dropdown-option[data-index="${this._highlightedIndex}"]`);
-    if (el) el.scrollIntoView({ block: 'nearest' });
+  /** @private */
+  _clearTypeahead() {
+    if (this._typeTimer) {
+      window.clearTimeout(this._typeTimer);
+      this._typeTimer = null;
+    }
+    if (!this._isOpen) this._typeBuffer = '';
+  }
+
+  /** @private Layer Escape: close + focus the trigger; always consumed. */
+  _onLayerEscape() {
+    const trigger = this._trigger();
+    this.close();
+    if (trigger) trigger.focus({ preventScroll: true });
+    return true;
+  }
+
+  /**
+   * @private Layer Tab (D19): focus in the portaled search input → back to the trigger ('handled'); anything else →
+   * close and 'pass' so the natural order (or a lower modal trap) moves focus. Never selects.
+   * @param {KeyboardEvent} e
+   * @returns {'handled'|'pass'}
+   */
+  _onLayerTab(e) {
+    const menu = this._menuElement;
+    const trigger = this._trigger();
+    if (menu && menu.contains(document.activeElement)) {
+      e.preventDefault();
+      this.close(); // hands focus back to the trigger
+      if (trigger && document.activeElement !== trigger) trigger.focus({ preventScroll: true });
+      return 'handled';
+    }
+    this.close();
+    return 'pass';
   }
 
   // --- Search ---
 
   _handleSearch(query) {
-    const lowerQuery = query.toLowerCase().trim();
+    const q = String(query).toLowerCase().trim();
     const labelKey = this._getLabelKey();
-    this._filteredData = !lowerQuery
+    this._filteredData = !q
       ? [...this._options]
-      : this._options.filter(item =>
-          String(item[labelKey]).toLowerCase().includes(lowerQuery)
-        );
-    this._highlightedIndex = this._filteredData.length > 0 ? 0 : -1;
+      : this._options.filter((item) => String(item[labelKey]).toLowerCase().includes(q));
     this._renderMenuOptions();
+    // Active = first matching option (the clear option is skipped).
+    const first = this._nav.findIndex((n) => n.item);
+    this._setActive(first);
   }
 
   // --- Selection ---
 
   _selectAndFire(value) {
-    if (this._isDisabled()) return;
+    const item = this._options.find((i) => String(i[this._getValueKey()]) === String(value));
+    if (item) this._selectItem(item);
+  }
 
-    const valueKey = this._getValueKey();
-    const labelKey = this._getLabelKey();
-    const item = this._options.find(i => String(i[valueKey]) === String(value));
-    if (!item) return;
-
+  /** @private user selection: exactly ONE `change` event (+ onChange/onSelect). */
+  _selectItem(item) {
+    if (this._isDisabled() || !item) return;
     this._selectedItem = item;
-    const selectedSpan = this.querySelector('.td-dropdown-selected');
-    if (selectedSpan) {
-      selectedSpan.textContent = item[labelKey];
-    }
-    this._renderMenuOptions();
+    this._pendingValue = null;
+    this._updateValueText();
     this.close();
-
-    // Form participation
+    this._renderMenuOptions();
     this._syncForm();
-
-    // Fire callbacks
     this._fireCallback(item);
-    this.emit('change', { value: item[valueKey], item });
+    this.emit('change', { value: item[this._getValueKey()], item });
   }
 
   _clearSelection() {
     if (this._isDisabled()) return;
-
     this._selectedItem = null;
-    const selectedSpan = this.querySelector('.td-dropdown-selected');
-    if (selectedSpan) {
-      selectedSpan.textContent = this._getPlaceholder();
-    }
-    this._renderMenuOptions();
+    this._updateValueText();
     this.close();
-
-    // Form participation
+    this._renderMenuOptions();
     this._syncForm();
-
     this._fireCallback(null);
     this.emit('change', { value: null, item: null });
   }
@@ -608,16 +782,10 @@ export class TdDropdown extends TdFormElement {
   _setInitialValue() {
     const initialValue = this._getInitialValue();
     if (!initialValue) return;
-
-    const valueKey = this._getValueKey();
-    const labelKey = this._getLabelKey();
-    const item = this._options.find(i => String(i[valueKey]) === String(initialValue));
+    const item = this._options.find((i) => String(i[this._getValueKey()]) === String(initialValue));
     if (item) {
       this._selectedItem = item;
-      const selectedSpan = this.querySelector('.td-dropdown-selected');
-      if (selectedSpan) {
-        selectedSpan.textContent = item[labelKey];
-      }
+      this._updateValueText();
       // Reflect the resolved initial selection into the form.
       if (this._initialized) this._syncForm();
     }
@@ -629,30 +797,52 @@ export class TdDropdown extends TdFormElement {
     this._isOpen ? this.close() : this.open();
   }
 
-  open() {
+  /**
+   * Open the menu.
+   * @param {{ active?: 'selected'|'selected-or-first'|'first'|'last', focusSearch?: boolean }} [opts] internal
+   */
+  open(opts = {}) {
+    if (this._isOpen) {
+      this._updatePosition();
+      return;
+    }
+    const trigger = this._trigger();
+    const menu = this._menuElement;
+    if (!trigger || !menu || this._isDisabled()) return;
+
     // Close all other dropdowns
-    TdDropdown._openDropdowns.forEach(dd => {
+    TdDropdown._openDropdowns.forEach((dd) => {
       if (dd !== this && dd._isOpen) dd.close();
     });
 
-    const button = this.querySelector('.td-dropdown-button');
-    const arrow = this.querySelector('.td-dropdown-arrow');
-    if (!button || !this._menuElement) return;
-
-    const rect = button.getBoundingClientRect();
-    this._menuElement.classList.remove('hidden');
-    this._menuElement.style.visibility = 'hidden';
-    this._placeMenu(rect);
-    this._menuElement.style.visibility = '';
-
-    if (arrow) arrow.style.transform = 'rotate(180deg)';
-    button.setAttribute('aria-expanded', 'true');
     this._isOpen = true;
-    this._highlightedIndex = -1;
+    menu.hidden = false;
+    menu.setAttribute('data-state', 'open');
+    this.querySelector('.td-dropdown')?.setAttribute('data-state', 'open');
+    trigger.setAttribute('aria-expanded', 'true');
+    this._placeMenu(trigger.getBoundingClientRect());
 
-    // Focus search input
-    const searchInput = this._menuElement.querySelector('.td-dropdown-search');
-    if (searchInput && window.innerWidth >= 768) {
+    // Floating registration: exempt from a lower modal's inert lease; owns Escape/Tab while open.
+    this._layer = registerLayer({
+      layer: LAYERS.popover,
+      element: menu,
+      keyboard: 'boundary',
+      onEscape: () => this._onLayerEscape(),
+      onTab: (e) => this._onLayerTab(e),
+    });
+
+    const mode = opts.active || 'selected';
+    const sel = this._selectedNavIndex();
+    let active = sel;
+    if (mode === 'first') active = 0;
+    else if (mode === 'last') active = this._nav.length - 1;
+    else if (mode === 'selected-or-first' && sel < 0) active = this._nav.length ? 0 : -1;
+    this._activeIndex = -1;
+    this._setActive(active);
+
+    // Focus the search input (desktop only: on phones the keyboard would cover the list).
+    const searchInput = this._search();
+    if (searchInput && opts.focusSearch !== false && window.innerWidth >= 768) {
       this._clearSearchFocusTimer();
       this._searchFocusTimer = window.setTimeout(() => {
         this._searchFocusTimer = null;
@@ -660,56 +850,63 @@ export class TdDropdown extends TdFormElement {
       }, 100);
     }
 
-    // Add global listeners
     this._addGlobalListeners();
   }
 
   close() {
-    const button = this.querySelector('.td-dropdown-button');
-    const arrow = this.querySelector('.td-dropdown-arrow');
-    const searchInput = this._menuElement ? this._menuElement.querySelector('.td-dropdown-search') : null;
+    const trigger = this._trigger();
+    const menu = this._menuElement;
+    const searchInput = this._search();
 
     this._clearSearchFocusTimer();
+    const wasOpen = this._isOpen;
+    this._isOpen = false;
+    this._activeIndex = -1;
+    this._clearTypeahead();
 
     // Never leave focus stranded inside a hidden menu: hand it back to the trigger.
-    const menuHadFocus = !!(this._menuElement && this._menuElement.contains(document.activeElement));
-    if (this._menuElement) this._menuElement.classList.add('hidden');
-    if (menuHadFocus && button) button.focus({ preventScroll: true });
-    if (arrow) arrow.style.transform = 'rotate(0deg)';
-    if (button) {
-      button.setAttribute('aria-expanded', 'false');
-      button.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.9)';
-      button.style.borderColor = 'rgba(0,0,0,0.1)';
+    const menuHadFocus = !!(menu && menu.contains(document.activeElement));
+    if (menu) {
+      menu.hidden = true;
+      menu.setAttribute('data-state', 'closed');
     }
-    this._isOpen = false;
-    this._highlightedIndex = -1;
+    if (menuHadFocus && trigger) trigger.focus({ preventScroll: true });
+    this.querySelector('.td-dropdown')?.setAttribute('data-state', 'closed');
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
 
     if (this._scrollRafId) {
       cancelAnimationFrame(this._scrollRafId);
       this._scrollRafId = null;
     }
-
-    // Remove global listeners
     this._removeGlobalListeners();
+    this._releaseLayer();
 
     // Reset search
-    if (searchInput) {
+    if (searchInput && (searchInput.value || this._filteredData.length !== this._options.length)) {
       searchInput.value = '';
       this._filteredData = [...this._options];
       this._renderMenuOptions();
+    } else if (wasOpen) {
+      this._syncActive(false);
+    }
+  }
+
+  /** @private */
+  _releaseLayer() {
+    if (this._layer) {
+      this._layer.release();
+      this._layer = null;
     }
   }
 
   _addGlobalListeners() {
-    document.addEventListener('click', this._boundClickOutside);
-    document.addEventListener('keydown', this._boundKeydown);
+    document.addEventListener('pointerdown', this._boundPointerOutside, true);
     window.addEventListener('resize', this._boundOnResize);
     window.addEventListener('scroll', this._boundOnScroll, true);
   }
 
   _removeGlobalListeners() {
-    document.removeEventListener('click', this._boundClickOutside);
-    document.removeEventListener('keydown', this._boundKeydown);
+    document.removeEventListener('pointerdown', this._boundPointerOutside, true);
     window.removeEventListener('resize', this._boundOnResize);
     window.removeEventListener('scroll', this._boundOnScroll, true);
   }
@@ -718,38 +915,34 @@ export class TdDropdown extends TdFormElement {
 
   _updatePosition() {
     if (!this._isOpen || !this._menuElement) return;
-    const button = this.querySelector('.td-dropdown-button');
-    if (!button) return;
-
-    const rect = button.getBoundingClientRect();
-
+    const trigger = this._trigger();
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
     // Close once the trigger is effectively hidden (scrolled out of the viewport, or
     // no longer rendered) — a menu floating over unrelated content is worse than closing.
     if (isReferenceHidden(rect)) {
       this.close();
       return;
     }
-
     this._placeMenu(rect);
   }
 
   /**
-   * Size + position the portaled menu against the trigger rect:
-   * - same width as the trigger, clamped horizontally into the viewport;
-   * - opens on the side with room (below preferred), never overlapping the trigger;
-   * - when neither side fits, caps the options list height to the larger side
-   *   instead of clamping `top` (which used to cover the trigger / fixed headers).
+   * Size + position the portaled menu against the trigger rect (shared placeFloating, 0.4.1 B5 rules): same width as
+   * the trigger (viewport-capped), below preferred, flips to the side with room, caps the LIST height instead of
+   * clamping `top`. Geometry only via CSSOM; the side is exposed as `data-placement` (transform origin).
    * @private
    * @param {DOMRect} rect trigger rect
    */
   _placeMenu(rect) {
     const menu = this._menuElement;
     if (!menu) return;
-    placeFloating(rect, menu, {
+    const { side } = placeFloating(rect, menu, {
       width: 'match',
-      list: menu.querySelector('.td-dropdown-options'),
-      listMax: this._getMaxHeight() * 40,
+      list: this._list(),
+      listMax: this._getMaxHeight() * OPTION_PX,
     });
+    menu.setAttribute('data-placement', side);
   }
 
   /** @private */
@@ -771,32 +964,22 @@ export class TdDropdown extends TdFormElement {
     if (value === null || value === undefined || value === '') {
       this._selectedItem = null;
       this._pendingValue = null;
-      const selectedSpan = this.querySelector('.td-dropdown-selected');
-      if (selectedSpan) selectedSpan.textContent = this._getPlaceholder();
-      this._renderMenuOptions();
-      this._syncForm();
-      return;
-    }
-    const vk = this._getValueKey();
-    const lk = this._getLabelKey();
-    const item = this._options.find(i => String(i[vk]) === String(value));
-    if (item) {
-      this._selectedItem = item;
-      this._pendingValue = null;
-      const selectedSpan = this.querySelector('.td-dropdown-selected');
-      if (selectedSpan) selectedSpan.textContent = item[lk];
-      this._renderMenuOptions();
-      this._syncForm();
     } else {
-      // Value not in the current options — drop any stale selection, remember the value,
-      // and resolve it once matching options arrive.
-      this._pendingValue = String(value);
-      this._selectedItem = null;
-      const selectedSpan = this.querySelector('.td-dropdown-selected');
-      if (selectedSpan) selectedSpan.textContent = this._getPlaceholder();
-      this._renderMenuOptions();
-      this._syncForm();
+      const vk = this._getValueKey();
+      const item = this._options.find((i) => String(i[vk]) === String(value));
+      if (item) {
+        this._selectedItem = item;
+        this._pendingValue = null;
+      } else {
+        // Value not in the current options — drop any stale selection, remember the value,
+        // and resolve it once matching options arrive.
+        this._pendingValue = String(value);
+        this._selectedItem = null;
+      }
     }
+    this._updateValueText();
+    this._renderMenuOptions();
+    this._syncForm();
   }
 
   getSelectedItem() {
@@ -816,16 +999,17 @@ export class TdDropdown extends TdFormElement {
 
   destroy() {
     this._clearSearchFocusTimer();
+    this._clearTypeahead();
     this._removeGlobalListeners();
+    this._releaseLayer();
+    this._isOpen = false;
     if (this._scrollRafId) {
       cancelAnimationFrame(this._scrollRafId);
       this._scrollRafId = null;
     }
     const idx = TdDropdown._openDropdowns.indexOf(this);
     if (idx > -1) TdDropdown._openDropdowns.splice(idx, 1);
-    if (this._menuElement && this._menuElement.parentNode) {
-      this._menuElement.parentNode.removeChild(this._menuElement);
-    }
+    if (this._menuElement) this._menuElement.remove();
     this._menuElement = null;
     this.innerHTML = '';
   }
