@@ -1,14 +1,18 @@
 {
   "name": "@dazzxq/td-components",
-  "version": "0.4.1",
-  "description": "Shared UI Web Components library — vanilla CSS, BEM with td- prefix",
+  "version": "0.5.0",
+  "description": "Shared UI Web Components library — single source of truth UI kit (token CSS + Liquid Glass)",
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "npm run test:node && npm run test:browser && npm run test:csp",
+    "test": "npm run check:css && npm run test:node && npm run test:browser && npm run test:csp && npm run test:csp:combined && npm run test:tokens",
     "test:node": "node --test --test-force-exit \"src/**/*.test.js\"",
     "test:browser": "web-test-runner",
     "test:csp": "node test/csp/csp.spec.mjs",
+    "test:csp:combined": "CSP_PROFILE=legacy+td node test/csp/csp.spec.mjs",
+    "test:tokens": "node test/tokens/tokens.spec.mjs",
+    "build:css": "node scripts/build-css.mjs",
+    "check:css": "node scripts/build-css.mjs --check",
     "build:csp-fixture": "tailwindcss -i test/csp/fixture/input.css -o test/csp/fixture/tailwind.css",
     "capture:baseline": "node test/csp/capture-baseline.mjs",
     "storybook": "storybook dev -p 6006",
@@ -16,6 +20,7 @@
   },
   "exports": {
     ".": "./index.js",
+    "./td.css": "./td.css",
     "./base": "./src/base/td-base-element.js",
     "./form-element": "./src/base/td-form-element.js",
     "./sample": "./src/base/sample/td-sample.js",
@@ -40,7 +45,8 @@
   },
   "files": [
     "src",
-    "index.js"
+    "index.js",
+    "td.css"
   ],
   "keywords": [
     "web-components",

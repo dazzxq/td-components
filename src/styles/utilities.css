@@ -1,0 +1,14 @@
+/* Utilities — kept minimal: td.css must stay reset-free (legacy Tailwind components share the page). */
+@layer td.utilities {
+	.td-sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+}

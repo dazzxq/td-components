@@ -1,0 +1,10 @@
+{
+  "$comment": "Build order for td.css (scripts/build-css.mjs). layers.css MUST stay first. Component CSS goes under components/ between glass.css and utilities.css.",
+  "files": [
+    "layers.css",
+    "tokens.css",
+    "theme-dark.css",
+    "glass.css",
+    "utilities.css"
+  ]
+}

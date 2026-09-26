@@ -1,0 +1,188 @@
+/*
+ * td tokens — PUBLIC design primitives. Components reference ONLY custom properties.
+ * Sites override any `--td-*` below in their own UNLAYERED CSS (beats @layer td.tokens):
+ *
+ *   :root { --td-glass-bg: oklch(96% 0.014 80 / 0.72); --td-accent: #b3261e; }
+ *
+ * Never override `--_td-*` (private, resolved by the kit's accessibility fallbacks).
+ * Base scale adopted from the 135 `td-` kit; glass values from docs/design/liquid-glass.md.
+ * Light by default. Dark is opt-in: <html data-td-theme="dark"> (theme-dark.css).
+ */
+@layer td.tokens {
+	:root {
+		/* ===== Widths ===== */
+		--td-w-text: 640px;
+		--td-w-wide: 960px;
+		--td-w-wider: 1280px;
+		--td-gutter: 16px;
+		--td-gap: 24px;
+
+		/* ===== Type ===== */
+		--td-font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+		--td-font-mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+		--td-text-xs: 0.75rem;
+		--td-text-sm: 0.875rem;
+		--td-text-base: 1rem;
+		--td-text-md: 1.125rem;
+		--td-text-lg: 1.25rem;
+		--td-text-xl: 1.5rem;
+		--td-text-2xl: 2rem;
+		--td-leading-tight: 1.25;
+		--td-leading-normal: 1.5;
+		--td-leading-relaxed: 1.7;
+		--td-fw-normal: 400;
+		--td-fw-medium: 500;
+		--td-fw-semibold: 600;
+		--td-fw-bold: 700;
+
+		/* ===== Spacing ===== */
+		--td-space-2xs: 0.25rem;
+		--td-space-xs: 0.5rem;
+		--td-space-sm: 0.75rem;
+		--td-space-md: 1rem;
+		--td-space-lg: 1.5rem;
+		--td-space-xl: 2.25rem;
+
+		/* ===== Neutral ramp ===== */
+		--td-gray-50: #f7f7f8;
+		--td-gray-100: #f0f0f2;
+		--td-gray-200: #e4e4e7;
+		--td-gray-300: #d4d4d8;
+		--td-gray-400: #a1a1aa;
+		--td-gray-500: #8a8a93;
+		--td-gray-600: #6b6b73;
+		--td-gray-700: #45454b;
+		--td-gray-800: #2c2c30;
+		--td-gray-900: #1c1c1e;
+		--td-gray-950: #111113;
+
+		/* ===== Radius (concentric: inner = outer − padding) ===== */
+		--td-radius-sm: 4px;
+		--td-radius-md: 8px;
+		--td-radius-lg: 14px;
+		--td-radius-xl: 20px;
+		--td-radius-full: 9999px;
+
+		/* ===== Shadow ===== */
+		--td-shadow-1: 0 1px 2px rgb(0 0 0 / 6%);
+		--td-shadow-2: 0 2px 8px rgb(0 0 0 / 8%);
+		--td-shadow-3: 0 8px 24px rgb(0 0 0 / 12%);
+		--td-hairline: rgb(0 0 0 / 7%);
+
+		/* ===== Z-index scale ===== */
+		--td-z-dropdown: 100;
+		--td-z-sticky: 200;
+		--td-z-overlay: 300;
+		--td-z-lightbox: 350; /* below modal/popover/toast: confirms + menus open ON TOP of the viewer */
+		--td-z-modal: 400;
+		--td-z-popover: 450;
+		--td-z-toast: 500;
+
+		/* ===== Motion ===== */
+		--td-dur-fast: 120ms;
+		--td-dur-base: 200ms;
+		--td-dur-slow: 320ms;
+		--td-ease: cubic-bezier(0.4, 0, 0.2, 1);
+		--td-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+		--td-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+		/* ===== Semantic colours (the theme contract) ===== */
+		--td-color-bg: #fbfbfa;
+		--td-color-surface: #fff;
+		--td-color-surface-muted: var(--td-gray-50);
+		--td-color-text: var(--td-gray-900);
+		--td-color-text-muted: var(--td-gray-600);
+		--td-color-text-subtle: var(--td-gray-500);
+		--td-color-border: var(--td-gray-200);
+		--td-color-border-strong: var(--td-gray-300);
+		--td-color-hover: rgb(0 0 0 / 5%);
+		--td-color-hover-strong: rgb(0 0 0 / 8%);
+		--td-color-overlay: rgb(10 10 12 / 45%);
+		--td-color-skeleton: var(--td-gray-100);
+		--td-color-success: #15803d;
+		--td-color-warning: #b45309;
+		--td-color-error: #b91c1c;
+		--td-color-info: #1d4ed8;
+		--td-color-on-status: #fff;
+		--td-focus: #2563eb;
+		--td-focus-ring: 0 0 0 3px rgb(37 99 235 / 35%);
+
+		/* ===== Accent (one primary action per view) ===== */
+		--td-accent: #2563eb;
+		--td-accent-contrast: #fff;
+
+		/* ===== Controls ===== */
+		--td-control-bg: #fff;
+		--td-control-fg: var(--td-gray-900);
+		--td-control-border: var(--td-gray-300);
+		--td-control-radius: var(--td-radius-md);
+		--td-touch-min: 44px; /* minimum hit target for touch controls */
+
+		/* ================= Liquid Glass — Regular (light) =================
+		   --td-glass-edge is the INSET top highlight; --td-glass-border the OUTER line. Never swap them. */
+		--td-glass-bg: rgb(250 250 251 / 72%);        /* icon / short-label controls: bars, pills */
+		--td-glass-bg-strong: rgb(250 250 251 / 86%); /* text-bearing or large: modal, menu, toast */
+		--td-glass-fg: var(--td-color-text);
+		--td-glass-edge: rgb(255 255 255 / 75%);
+		--td-glass-bottom: rgb(255 255 255 / 10%);
+		--td-glass-border: rgb(0 0 0 / 12%);
+		--td-glass-blur: blur(18px) saturate(170%);    /* ≤ 20px radius: smooth scroll on phones */
+		--td-glass-blur-lg: blur(20px) saturate(170%);
+		--td-glass-shadow: 0 10px 30px -8px rgb(0 0 0 / 22%), 0 2px 6px -2px rgb(0 0 0 / 10%);
+		--td-glass-shadow-lg: 0 24px 60px -12px rgb(0 0 0 / 28%), 0 4px 12px -4px rgb(0 0 0 / 12%);
+		--td-glass-solid: #fbfbfc;                     /* opaque stand-in for every fallback */
+
+		/* ================= Liquid Glass — Clear (only over photos / video) ================= */
+		--td-glass-clear-bg: rgb(255 255 255 / 8%);
+		--td-glass-clear-edge: rgb(255 255 255 / 35%);
+		--td-glass-clear-border: rgb(255 255 255 / 18%);
+		--td-glass-clear-fg: #fff;
+		--td-glass-clear-shadow: 0 8px 24px -8px rgb(0 0 0 / 50%);
+		--td-glass-clear-solid: rgb(20 20 22 / 92%);
+		--td-glass-clear-glyph-shadow: drop-shadow(0 1px 1.5px rgb(0 0 0 / 55%));
+		/* Dim behind Clear: 35 % (Apple) only behind bold icons; TEXT on Clear needs 60 % (4.79:1 worst case). */
+		--td-glass-dim: rgb(0 0 0 / 35%);
+		--td-glass-dim-text: rgb(0 0 0 / 60%);
+
+		/* ================= Tint — ONE primary action per floating bar ================= */
+		--td-glass-tint: var(--td-accent);
+		--td-glass-tint-alpha: 90%;                    /* 82 % fails AA on white; 90 % ≥ 4.6:1 */
+		--td-glass-tint-fg: var(--td-accent-contrast);
+		--td-glass-tint-edge: rgb(255 255 255 / 30%);
+
+		/* ================= Interaction ================= */
+		--td-glass-glow: rgb(255 255 255 / 40%);
+		--td-glass-glow-size: 140px;
+		--td-glass-press-scale: 0.97;
+		--td-glass-lift-scale: 1.15;
+		--td-glass-enter-scale: 0.96;
+
+		/* ================= Scrim / scroll edge / geometry ================= */
+		--td-glass-scrim: var(--td-color-overlay);     /* behind modals; NOT blurred */
+		--td-scroll-edge-size: 40px;                   /* soft fade under a floating bar */
+		--td-scroll-edge-hard-bg: var(--td-glass-bg-strong); /* hard style: pinned table header */
+
+		/* ================= Glass motion ================= */
+		--td-glass-dur: var(--td-dur-base);
+		--td-glass-ease: var(--td-ease-out);
+		--td-glass-ease-flex: var(--td-ease-spring);
+		--td-glass-radius: 20px;
+		--td-glass-pad: 6px;
+		--td-glass-radius-min: 4px;
+		--td-glass-radius-inner: max(var(--td-glass-radius-min), calc(var(--td-glass-radius) - var(--td-glass-pad)));
+		--td-glass-capsule: 9999px;
+	}
+
+	/* Reduce Motion — "disables any elastic properties" (W219). Literals only (no var() → safe on
+	   :root; nothing to freeze). Components read `var(--_td-glass-X, var(--td-glass-X…))`. */
+	@media (prefers-reduced-motion: reduce) {
+		:root {
+			--_td-glass-press: 1 !important;          /* no press squash */
+			--_td-glass-lift-knob: 1 !important;      /* knob does not lift */
+			--_td-glass-enter: 1 !important;          /* no pop-in scale */
+			--_td-glass-dur: 120ms !important;        /* opacity crossfade only */
+			--_td-glass-ease-flex: linear !important; /* no overshoot */
+			--_td-glass-glow: rgb(255 255 255 / 20%) !important; /* feedback kept, halved, no tracking */
+		}
+	}
+}

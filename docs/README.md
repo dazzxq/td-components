@@ -5,7 +5,7 @@ td-components là **bộ UI kit duy nhất (single source of truth)** cho mọi 
 token, hook và tham số, không sửa lõi. Hướng hiện tại: bỏ Tailwind khỏi bên trong component, chuyển sang CSS
 token phân lớp (`td.css`) và ngôn ngữ thiết kế Liquid Glass.
 
-**Trạng thái (2026-09-27):** v0.4.1 (bugfix) đã ship · **v0.5.0 (nền token) đang làm**.
+**Trạng thái (2026-09-27):** v0.5.0 (nền token + Liquid Glass) đã ship · **td-lightbox (component token-native đầu tiên) đang làm**.
 Chi tiết ở [roadmap.md](roadmap.md), lịch sử thay đổi ở [CHANGELOG.md](../CHANGELOG.md).
 
 ## Tài liệu
@@ -20,6 +20,8 @@ Chi tiết ở [roadmap.md](roadmap.md), lịch sử thay đổi ở [CHANGELOG.
 | [security.md](security.md) | Mô hình XSS theo ngữ cảnh, cam kết CSP, raw-HTML hatch |
 | [design/liquid-glass.md](design/liquid-glass.md) | Bộ luật Liquid Glass (bắt buộc cho UI mới) · [glass-tokens.css](design/glass-tokens.css) · [nguồn Apple](design/sources/apple/README.md) |
 | [decisions/](decisions/README.md) | ADR: các quyết định kiến trúc |
+| [plans/](plans/) | Plan từng release (đã qua Codex plan-review) |
+| [migration/class-map.md](migration/class-map.md) | Bảng đổi class legacy → BEM token-native (điền theo batch) |
 | [history/](history/README.md) | Lịch sử milestone, so sánh dcms, đợt sync dcms/dwp 2026-09 |
 
 Cách làm việc: không dùng GSD. Một thay đổi = sửa code + cập nhật `roadmap.md` + `CHANGELOG.md`

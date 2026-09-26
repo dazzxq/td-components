@@ -55,6 +55,13 @@ const MATRIX = JSON.parse(await readFile(join(__dirname, 'matrix.json'), 'utf8')
 const BASELINE_DIR = join(__dirname, 'baseline');
 
 const ORIGIN = 'http://csp.local';
+// Profiles (ADR 0008 mixed period):
+//   legacy     — Tailwind fixture only (default; the original gate, unchanged)
+//   legacy+td  — Tailwind fixture THEN the kit's td.css. Compared against the SAME legacy
+//                baselines → proves td.css is reset-free for legacy components.
+const PROFILE = process.env.CSP_PROFILE || 'legacy';
+if (!['legacy', 'legacy+td'].includes(PROFILE)) throw new Error(`unknown CSP_PROFILE: ${PROFILE}`);
+const EXTRA_CSS = PROFILE === 'legacy+td' ? `<link rel="stylesheet" href="${'http://csp.local'}/td.css">` : '';
 const CSP_HEADER = "default-src 'self'; style-src 'self'; script-src 'self'";
 const PX_TOLERANCE = 0.5;
 const MIME = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.json': 'application/json' };
@@ -75,7 +82,7 @@ async function fulfillFromDisk(route, request) {
   const url = request.url();
   if (url === `${ORIGIN}/` || url === `${ORIGIN}/mount.html`) {
     const html = `<!doctype html><html><head><meta charset="utf-8">` +
-      `<link rel="stylesheet" href="${ORIGIN}/fixture/tailwind.css">` +
+      `<link rel="stylesheet" href="${ORIGIN}/fixture/tailwind.css">` + EXTRA_CSS +
       `</head><body><div id="__mount"></div></body></html>`;
     return route.fulfill({
       status: 200,
@@ -136,6 +143,11 @@ async function checkSentinels(page) {
     probe.remove();
     return out;
   }, { sentinels: SENTINELS });
+  if (PROFILE === 'legacy+td') {
+    // td.css must really be applied (a 404 would make the combined run pass vacuously).
+    const got = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--td-glass-radius').trim());
+    result.push({ class: ':root (td.css)', prop: '--td-glass-radius', expected: '20px', got, ok: got === '20px' });
+  }
   return result;
 }
 
@@ -563,6 +575,7 @@ async function main() {
   const cleanFailing = cleanResults.filter(r => !r.pass).map(r => r.component);
 
   console.log('\n========================= SUMMARY =========================');
+  console.log(`Profile: ${PROFILE}`);
   console.log(`States: ${passed.length} PASS / ${failed.length} FAIL (of ${all.length})`);
   console.log(`Affected components FAILING (≥1 failing state): ${affectedFailing.size}/${affectedComponents.size}`);
   console.log(`  ${[...affectedFailing].sort().join(', ') || '(none)'}`);

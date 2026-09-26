@@ -77,7 +77,7 @@ adopt-styles ◄── checkbox, toggle, datetime-picker, modal, toast, loading,
 dom-utils: độc lập, không component nào bắt buộc dùng
 ```
 
-## Kiến trúc style mục tiêu (đang chuyển)
+## Kiến trúc style mục tiêu (đang chuyển; nền tảng ship ở v0.5.0)
 
 Chốt ở [ADR 0008](decisions/0008-drop-tailwind-token-css.md) (2026-09-27). Áp dụng cho component token-native
 từ v0.5; component legacy giữ mô hình trên cho tới khi migrate.
@@ -98,3 +98,42 @@ từ v0.5; component legacy giữ mô hình trên cho tới khi migrate.
   Chi tiết: [design/liquid-glass.md](design/liquid-glass.md).
 - **Giai đoạn trộn**: `td.css` không reset; mỗi export gắn nhãn token-native hoặc legacy (Tailwind); CSP harness
   chạy hai profile. Bỏ peer Tailwind khi component cuối cùng migrate xong.
+
+### Nền tảng đã có (v0.5.0)
+
+| File | Layer | Nội dung |
+|---|---|---|
+| `src/styles/layers.css` | — | Câu khai báo thứ tự layer duy nhất (phải đứng đầu manifest) |
+| `src/styles/tokens.css` | `td.tokens` | Token public: type, spacing, gray, radius, shadow, z-index, motion, màu semantic, accent, control, glass (Regular/Clear/tint/interaction/geometry) |
+| `src/styles/theme-dark.css` | `td.tokens` | `:root[data-td-theme="dark"]` — dark **chỉ bật khi site đặt attribute**, không tự theo OS |
+| `src/styles/glass.css` | `td.component` + `td.tokens` | Recipe `.td-glass-surface(--strong/--lg/--clear)`, `.td-glass-dim(--text)`, `.td-glass-tint` + khối fallback |
+| `src/styles/utilities.css` | `td.utilities` | `.td-sr-only` |
+| `src/styles/manifest.json` | — | Thứ tự build |
+| `td.css` (root) | — | File build (commit), `npm run build:css`; `npm run check:css` fail nếu cũ |
+
+### Viết CSS cho component token-native
+
+1. Tạo `src/styles/components/<tên>.css`, bọc trong `@layer td.component { … }`, thêm vào `manifest.json`
+   (sau `glass.css`, trước `utilities.css`), chạy `npm run build:css`.
+2. Chỉ đọc token (`var(--td-*)`); giá trị per-instance (vị trí, kích thước động) ghi bằng CSSOM
+   `el.style.setProperty('--td-x', …)` — CSP cho phép.
+3. Class BEM `.td-x__el--mod`; trạng thái qua `aria-*` / `[hidden]` / `data-state`, không bật tắt class hiển thị.
+4. Bề mặt kính: thêm class recipe (`td-glass-surface …`) vào phần tử, **không** tự viết `backdrop-filter`.
+   Mọi recipe mới có filter/tint phải nằm trong selector list của khối fallback trong `glass.css`.
+5. Không reset/normalize toàn cục (component legacy dùng chung trang). `npm run test:csp:combined` bảo đảm điều này.
+
+### Site tuỳ biến thế nào
+
+```css
+/* CSS của site — KHÔNG đặt trong @layer → luôn thắng td.tokens */
+:root {
+  --td-accent: #b3261e;
+  --td-glass-bg: oklch(96% 0.014 80 / 0.72);
+  --td-glass-solid: #f3efe6;          /* nền đặc khi fallback: nên khớp giấy của site */
+}
+:root[data-td-theme="dark"] { --td-glass-solid: #1a1714; }   /* tinh chỉnh dark riêng */
+.sidebar { --td-glass-bg: rgb(0 0 0 / 40%); }                /* theme theo vùng: chạy được */
+```
+
+Không bao giờ ghi đè `--_td-*`. Tắt kính thủ công (Safari/iOS chưa có `prefers-reduced-transparency`):
+`<html data-td-glass="off">`. Gate kiểm chứng: `npm run test:tokens` (Chromium/Firefox/WebKit × CSP `'self'` và nonce-only).

@@ -2,6 +2,41 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.5.0
+
+Foundation for the token-driven kit ([ADR 0008](docs/decisions/0008-drop-tailwind-token-css.md),
+plan: `docs/plans/v0.5.0-foundation.md`). **No existing component changes appearance**: the legacy
+Tailwind components are untouched and the new stylesheet is reset-free (proven by a combined parity run).
+
+### Added
+
+- **`td.css`** (package export `@dazzxq/td-components/td.css`) — one canonical, self-contained stylesheet
+  built from `src/styles/` (`npm run build:css`; `npm run check:css` fails when stale):
+  - layer order `@layer td.tokens, td.component, td.utilities` declared once;
+  - public `--td-*` tokens (type, spacing, neutrals, radius, shadow, z-index, motion, semantic colours,
+    accent, controls) and the Liquid Glass token set (Regular, Clear, dim, tint, interaction, geometry);
+  - opt-in dark theme via `<html data-td-theme="dark">` (never automatic; experimental values);
+  - Liquid Glass recipes `.td-glass-surface` (`--strong`, `--lg`, `--clear`), `.td-glass-dim(--text)`,
+    `.td-glass-tint`, with accessibility fallbacks that sites cannot defeat by overriding public tokens:
+    no `backdrop-filter`, `prefers-reduced-transparency`, `<html data-td-glass="off">` (manual switch for
+    Safari/iOS), `prefers-contrast: more`, `forced-colors` (system colours), `prefers-reduced-motion`;
+  - `.td-sr-only`.
+- **Token gate** `npm run test:tokens` — Chromium, Firefox and WebKit × CSP `style-src 'self'` and
+  nonce-only (`style-src 'nonce-…'; style-src-attr 'none'`): zero violations, token resolution, subtree
+  theming, every fallback on every recipe, no automatic dark flip. Uses the newest cached Firefox/WebKit
+  when the pinned revision is not installed (`TD_FIREFOX_PATH` / `TD_WEBKIT_PATH` override).
+- **Combined legacy parity** `npm run test:csp:combined` — the legacy CSP harness with `td.css` linked after
+  the Tailwind fixture must match the same 73 baselines.
+- Storybook: `td.css` loaded globally; new **Foundations/Glass** stories (Regular, Strong + Large,
+  Clear over media, Clear + text) with `glass` on/off and `theme` light/dark controls.
+- Docs: CSS authoring + site override guide (`docs/architecture.md`), class-map skeleton
+  (`docs/migration/class-map.md`).
+
+### Verified
+
+- Under nonce-only CSP, CSSOM style writes **and** constructable stylesheets (`adoptedStyleSheets`) are
+  applied in all three engines → legacy `adoptStyles` components also work under nonce-only CSP.
+
 ## 0.4.1
 
 Bugfix release on the current (Tailwind) architecture. Sources: dcms2 + dwp fixes since 2026-06

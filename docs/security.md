@@ -55,8 +55,10 @@ style với baseline, animation của spinner thực sự chạy. Danh mục con
 **Giới hạn hiện tại:**
 - Cần `adoptedStyleSheets` (Chromium 73+, Safari 16.4+, Firefox 101+). Trình duyệt cũ vẫn render cấu trúc, chỉ mất
   hover/checked/animation.
-- Chưa chứng minh chạy được với CSP **nonce-only**. Theo [ADR 0008](decisions/0008-drop-tailwind-token-css.md), v0.5
-  thêm gate nonce-only trên Chromium/Firefox/WebKit trước khi tuyên bố hỗ trợ; `td.css` nạp bằng `<link nonce>`.
+- **CSP nonce-only (v0.5.0, đo 2026-09-27)** — `default-src 'self'; style-src 'nonce-…'; style-src-attr 'none'`:
+  `td.css` qua `<link nonce>` chạy với 0 violation trên Chromium, Firefox 151 và WebKit (Safari 26.4). Probe cùng
+  gate cho thấy ghi CSSOM `el.style.setProperty` **và** `new CSSStyleSheet()` + `adoptedStyleSheets` đều được áp dụng
+  trên cả ba engine → component legacy dùng `adoptStyles` cũng chạy dưới nonce-only. Gate: `npm run test:tokens`.
 
 ## 4. Checklist khi viết component
 
