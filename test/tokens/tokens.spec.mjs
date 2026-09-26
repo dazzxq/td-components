@@ -70,6 +70,14 @@ function lightboxHtml(profile) {
     `</head><body><p>page</p></body></html>`;
 }
 
+function componentsHtml(profile) {
+  const n = PROFILES[profile].nonce ? ` nonce="${PROFILES[profile].nonce}"` : '';
+  return `<!doctype html><html lang="vi"><head><meta charset="utf-8">` +
+    `<link rel="stylesheet" href="${ORIGIN}/td.css"${n}>` +
+    `<script type="module" src="${ORIGIN}/test/tokens/components-page.js"${n}></script>` +
+    `</head><body><div id="root"></div></body></html>`;
+}
+
 const MIME = { '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.css': 'text/css' };
 
 function html(profile) {
@@ -87,7 +95,7 @@ async function freshPage(browser, profile, media = {}, page0 = 'glass') {
   await page.route(`${ORIGIN}/**`, (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/' ) {
-      const body = page0 === 'lightbox' ? lightboxHtml(profile) : html(profile);
+      const body = page0 === 'lightbox' ? lightboxHtml(profile) : page0 === 'components' ? componentsHtml(profile) : html(profile);
       return route.fulfill({ status: 200, contentType: 'text/html', headers: { 'content-security-policy': PROFILES[profile].csp }, body });
     }
     if (url.pathname === '/td.css') return route.fulfill({ status: 200, contentType: 'text/css', body: TD_CSS });
@@ -286,6 +294,35 @@ async function runEngine(name, launcher) {
         check(`${tag} lightbox visible while open`, res.visible === 'visible', res.visible);
         check(`${tag} lightbox click-zoom`, res.zoomed === true, String(res.zoomed));
         check(`${tag} lightbox closed`, res.closed === true);
+        await context.close();
+      }
+
+      // Token-native components under emulated media (plan v0.8.0 review ISSUE-9)
+      {
+        const { page, context } = await freshPage(browser, profile, { reducedMotion: 'reduce' }, 'components');
+        const r = await page.evaluate(() => window.__componentsRun);
+        const v = await page.evaluate(() => window.__v);
+        check(`${tag} components zero CSP violations`, v.length === 0, JSON.stringify(v));
+        // translateY(-50%) scale(1) → matrix(1, 0, 0, 1, 0, ty): no knob lift under reduced motion
+        check(`${tag} reduced-motion slider knob not scaled`, /^matrix\(1, 0, 0, 1,/.test(r.thumbTransform), r.thumbTransform);
+        check(`${tag} reduced-motion tabs indicator no transition`, /^0s(, 0s)*$/.test(r.indicatorTransition), r.indicatorTransition);
+        check(`${tag} reduced-motion spinner frozen`, r.spinnerFrozen === true);
+        await context.close();
+      }
+      {
+        // Control: without reduced motion the dragged knob DOES lift (so the check above is not vacuous).
+        const { page, context } = await freshPage(browser, profile, {}, 'components');
+        const r = await page.evaluate(() => window.__componentsRun);
+        check(`${tag} dragging knob lifts (control)`, !/^matrix\(1, 0, 0, 1,/.test(r.thumbTransform), r.thumbTransform);
+        check(`${tag} spinner animates (control)`, r.spinnerFrozen === false);
+        await context.close();
+      }
+      if (name === 'chromium') {
+        const { page, context } = await freshPage(browser, profile, { forcedColors: 'active' }, 'components');
+        const r = await page.evaluate(() => window.__componentsRun);
+        check(`${tag} forced-colors tabs selected border = Highlight`, r.selectedBorder === r.highlight, `${r.selectedBorder} vs ${r.highlight}`);
+        check(`${tag} forced-colors pagination current = Highlight`, r.currentPageBg === r.highlight, `${r.currentPageBg} vs ${r.highlight}`);
+        check(`${tag} forced-colors slider fill = Highlight`, r.sliderFillBg === r.highlight, `${r.sliderFillBg} vs ${r.highlight}`);
         await context.close();
       }
 
