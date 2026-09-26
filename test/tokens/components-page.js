@@ -3,6 +3,8 @@ import '/src/form/td-slider.js';
 import '/src/display/td-tabs.js';
 import '/src/display/td-pagination.js';
 import { TdLoadingSpinner } from '/src/feedback/td-loading.js';
+import { TdModal } from '/src/feedback/td-modal.js';
+import { TdToast } from '/src/feedback/td-toast.js';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 window.__componentsRun = (async () => {
@@ -27,7 +29,29 @@ window.__componentsRun = (async () => {
   const d1 = cs(arc).strokeDashoffset;
   const thumb = document.querySelector('#sl .td-slider__thumb');
   const selected = document.querySelector('#tb .td-tabs__tab[aria-selected="true"]');
+  // Floating layer glass (v0.9.0): toast alone, then a modal (toast turns solid over it, D20), then glass off.
+  const glass = (el) => {
+    const c = cs(el);
+    return { bf: c.backdropFilter || c.webkitBackdropFilter || 'none', bg: c.backgroundColor };
+  };
+  TdToast._showSingle('Đã lưu', 'success', 0);
+  await wait(400);
+  const toastEl = document.querySelector('#td-toast-container .td-toast');
+  const toastAlone = glass(toastEl);
+  TdModal.show({ title: 'M', body: '<div>x</div>' });
+  await wait(500);
+  const dialog = document.querySelector('.td-modal__dialog');
+  const modalGlass = glass(dialog);
+  const toastOverModal = glass(toastEl);
+  document.documentElement.setAttribute('data-td-glass', 'off');
+  await wait(400);
+  const modalOff = glass(dialog);
+  TdModal.closeAll();
+  await wait(600); // modal gone → the toast is no longer "over a modal"; glass still off
+  const toastOff = glass(toastEl);
+  document.documentElement.removeAttribute('data-td-glass');
   return {
+    toastAlone, modalGlass, toastOverModal, modalOff, toastOff,
     highlight: cs(ref).backgroundColor,
     thumbTransform: cs(thumb).transform,
     thumbWidth: thumb.getBoundingClientRect().width,

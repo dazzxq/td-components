@@ -70,6 +70,16 @@ function lightboxHtml(profile) {
     `</head><body><p>page</p></body></html>`;
 }
 
+/** Floating-layer glass (v0.9.0): glass by default, solid toast over a modal (D20), opaque with glass off. */
+function floatingChecks(tag, r, mode) {
+  const opaque = (bg) => (rgba(bg) || [0, 0, 0, 0])[3] === 1;
+  check(`${tag} ${mode} modal dialog is glass (control)`, !noFilter(r.modalGlass.bf), r.modalGlass.bf);
+  check(`${tag} ${mode} toast is glass (control)`, !noFilter(r.toastAlone.bf), r.toastAlone.bf);
+  check(`${tag} ${mode} toast over modal is solid (D20)`, noFilter(r.toastOverModal.bf) && opaque(r.toastOverModal.bg), JSON.stringify(r.toastOverModal));
+  check(`${tag} ${mode} glass off → modal opaque, no filter`, noFilter(r.modalOff.bf) && opaque(r.modalOff.bg), JSON.stringify(r.modalOff));
+  check(`${tag} ${mode} glass off → toast opaque, no filter`, noFilter(r.toastOff.bf) && opaque(r.toastOff.bg), JSON.stringify(r.toastOff));
+}
+
 function componentsHtml(profile) {
   const n = PROFILES[profile].nonce ? ` nonce="${PROFILES[profile].nonce}"` : '';
   return `<!doctype html><html lang="vi"><head><meta charset="utf-8">` +
@@ -154,7 +164,9 @@ const noFilter = (v) => !v || v === 'none';
 
 const failures = [];
 const notes = [];
+let checks = 0;
 function check(label, ok, detail = '') {
+  checks += 1;
   if (!ok) failures.push(`${label}${detail ? ` — ${detail}` : ''}`);
 }
 
@@ -307,6 +319,7 @@ async function runEngine(name, launcher) {
         check(`${tag} reduced-motion slider knob not scaled`, /^matrix\(1, 0, 0, 1,/.test(r.thumbTransform), r.thumbTransform);
         check(`${tag} reduced-motion tabs indicator no transition`, /^0s(, 0s)*$/.test(r.indicatorTransition), r.indicatorTransition);
         check(`${tag} reduced-motion spinner frozen`, r.spinnerFrozen === true);
+        floatingChecks(tag, r, 'reduced-motion');
         await context.close();
       }
       {
@@ -315,6 +328,7 @@ async function runEngine(name, launcher) {
         const r = await page.evaluate(() => window.__componentsRun);
         check(`${tag} dragging knob lifts (control)`, !/^matrix\(1, 0, 0, 1,/.test(r.thumbTransform), r.thumbTransform);
         check(`${tag} spinner animates (control)`, r.spinnerFrozen === false);
+        floatingChecks(tag, r, 'default');
         await context.close();
       }
       if (name === 'chromium') {
@@ -323,6 +337,8 @@ async function runEngine(name, launcher) {
         check(`${tag} forced-colors tabs selected border = Highlight`, r.selectedBorder === r.highlight, `${r.selectedBorder} vs ${r.highlight}`);
         check(`${tag} forced-colors pagination current = Highlight`, r.currentPageBg === r.highlight, `${r.currentPageBg} vs ${r.highlight}`);
         check(`${tag} forced-colors slider fill = Highlight`, r.sliderFillBg === r.highlight, `${r.sliderFillBg} vs ${r.highlight}`);
+        check(`${tag} forced-colors modal no filter`, noFilter(r.modalGlass.bf), r.modalGlass.bf);
+        check(`${tag} forced-colors toast no filter`, noFilter(r.toastAlone.bf), r.toastAlone.bf);
         await context.close();
       }
 
@@ -368,4 +384,4 @@ if (failures.length) {
   for (const f of failures) console.log(`  FAIL ${f}`);
   process.exit(1);
 }
-console.log('Token gate: all checks passed (chromium, firefox, webkit × self, nonce).');
+console.log(`Token gate: all ${checks} checks passed (chromium, firefox, webkit × self, nonce).`);

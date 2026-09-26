@@ -30,7 +30,8 @@
       "td-slider",
       "td-modal",
       "td-toast",
-      "td-tooltip"
+      "td-tooltip",
+      "td-dropdown"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [
@@ -446,39 +447,73 @@
   "td-dropdown": [
     {
       "state": "closed",
-      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}];",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Chọn');  window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; ",
       "selectors": [
-        ".td-dropdown-button",
-        ".td-dropdown-arrow"
+        ".td-dropdown__trigger",
+        ".td-dropdown__arrow"
       ]
     },
     {
       "state": "closed-selected",
-      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; d.setAttribute('value','b');",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Chọn');  window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; d.setAttribute('value','b');",
       "selectors": [
-        ".td-dropdown-button",
-        ".td-dropdown-selected"
+        ".td-dropdown__trigger",
+        ".td-dropdown__value"
       ]
     },
     {
       "state": "open",
-      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; d.open();",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Chọn');  window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; d.open();",
       "selectors": [
-        ".td-dropdown-arrow",
-        ".td-dropdown-search",
-        ".td-dropdown-options"
+        ".td-dropdown__arrow",
+        ".td-dropdown__menu",
+        ".td-dropdown__search",
+        ".td-dropdown__options"
       ],
       "portal": [
-        ".td-dropdown-search",
-        ".td-dropdown-options"
+        ".td-dropdown__menu",
+        ".td-dropdown__search",
+        ".td-dropdown__options"
       ],
       "settle": 350
     },
     {
-      "state": "disabled",
-      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('disabled',''); window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'}];",
+      "state": "open-no-search",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Chọn'); d.setAttribute('searchable','false'); window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; d.open();",
       "selectors": [
-        ".td-dropdown-button"
+        ".td-dropdown__menu",
+        ".td-dropdown__options"
+      ],
+      "portal": [
+        ".td-dropdown__menu",
+        ".td-dropdown__options"
+      ],
+      "settle": 350
+    },
+    {
+      "state": "active-option",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Chọn'); d.setAttribute('searchable','false'); window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; d.open(); d.querySelector('.td-dropdown__trigger').focus(); d.querySelector('.td-dropdown__trigger').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));",
+      "selectors": [
+        ".td-dropdown__option[data-active]"
+      ],
+      "portal": [
+        ".td-dropdown__option[data-active]"
+      ],
+      "settle": 350
+    },
+    {
+      "state": "error",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Chọn'); d.setAttribute('error-text','Bắt buộc'); window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; ",
+      "selectors": [
+        ".td-dropdown__trigger",
+        ".td-field-error"
+      ]
+    },
+    {
+      "state": "disabled",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Chọn'); d.setAttribute('disabled',''); window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; ",
+      "selectors": [
+        ".td-dropdown__trigger"
       ]
     }
   ],
@@ -761,7 +796,7 @@
   "td-modal": [
     {
       "state": "default",
-      "setup": "window.__modalId = TdModal.show({ title:'Hello', body:'<p>Body</p>' });",
+      "setup": "window.__modalId = TdModal.show({ title:'Hello', body:'<div>Body</div>' });",
       "selectors": [
         ".td-modal__dialog",
         ".td-modal__backdrop"
@@ -774,7 +809,7 @@
     },
     {
       "state": "stacked",
-      "setup": "TdModal.show({ title:'Dưới', body:'<p>A</p>' }); TdModal.show({ title:'Trên', body:'<p>B</p>' });",
+      "setup": "TdModal.show({ title:'Dưới', body:'<div>A</div>' }); TdModal.show({ title:'Trên', body:'<div>B</div>' });",
       "selectors": [
         ".td-modal__dialog",
         ".td-modal__backdrop"
@@ -800,7 +835,7 @@
     },
     {
       "state": "viewport",
-      "setup": "TdModal.show({ title:'Full', body:'<p>Body</p>', fullViewport:true });",
+      "setup": "TdModal.show({ title:'Full', body:'<div>Body</div>', fullViewport:true });",
       "selectors": [
         ".td-modal__dialog",
         ".td-modal__backdrop"
@@ -970,7 +1005,9 @@
       "settle": 250,
       "excludeProps": [
         "left",
-        "top"
+        "top",
+        "right",
+        "bottom"
       ]
     },
     {
@@ -985,7 +1022,9 @@
       "settle": 250,
       "excludeProps": [
         "left",
-        "top"
+        "top",
+        "right",
+        "bottom"
       ]
     },
     {
@@ -1000,7 +1039,9 @@
       "settle": 250,
       "excludeProps": [
         "left",
-        "top"
+        "top",
+        "right",
+        "bottom"
       ]
     }
   ]
