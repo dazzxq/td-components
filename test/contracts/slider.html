@@ -1,0 +1,39 @@
+<!-- td-slider markup contract (SSR: emit this inside <td-slider id="…"> or standalone with td.css).
+     The host carries the value as the CSSOM custom property --td-slider-pct (0…1; e.g. 0.3); SSR without JS
+     sets it through a stylesheet rule or leaves it at 0. aria-valuetext = the value formatted to the step. -->
+<template data-component="td-slider" data-markup='<td-slider id="sl-a" label="Âm lượng" value="30" show-label show-step-labels></td-slider>'>
+  <div class="td-slider td-slider--md">
+    <span class="td-slider__label" id="sl-a-label">Âm lượng</span>
+    <output class="td-slider__value" for="sl-a-control" aria-hidden="true">30</output>
+    <div class="td-slider__control">
+      <input type="range" class="td-slider__input" id="sl-a-control" min="0" max="100" step="1" value="30" aria-labelledby="sl-a-label" aria-valuetext="30">
+      <span class="td-slider__track" aria-hidden="true"><span class="td-slider__fill"></span></span>
+      <span class="td-slider__thumb" aria-hidden="true"></span>
+    </div>
+    <div class="td-slider__range" aria-hidden="true"><span>0</span><span>100</span></div>
+  </div>
+</template>
+
+<template data-component="td-slider" data-markup='<td-slider id="sl-b" aria-label="Đánh giá" size="sm" min="0" max="4" step="1" value="2" show-step-marks show-label label-position="bottom"></td-slider>'>
+  <div class="td-slider td-slider--sm">
+    <div class="td-slider__control">
+      <input type="range" class="td-slider__input" id="sl-b-control" min="0" max="4" step="1" value="2" aria-label="Đánh giá" aria-valuetext="2">
+      <span class="td-slider__track" aria-hidden="true"><span class="td-slider__fill"></span></span>
+      <span class="td-slider__marks" aria-hidden="true"><span class="td-slider__mark"><span class="td-slider__mark-label">0</span></span><span class="td-slider__mark"><span class="td-slider__mark-label">1</span></span><span class="td-slider__mark"><span class="td-slider__mark-label">2</span></span><span class="td-slider__mark"><span class="td-slider__mark-label">3</span></span><span class="td-slider__mark"><span class="td-slider__mark-label">4</span></span></span>
+      <span class="td-slider__thumb" aria-hidden="true"></span>
+    </div>
+    <output class="td-slider__value" for="sl-b-control" aria-hidden="true">2</output>
+  </div>
+</template>
+
+<template data-component="td-slider" data-markup='<td-slider id="sl-c" label="Ngưỡng" size="lg" value="50" error-text="Giá trị quá cao"></td-slider>'>
+  <div class="td-slider td-slider--lg">
+    <span class="td-slider__label" id="sl-c-label">Ngưỡng</span>
+    <div class="td-slider__control">
+      <input type="range" class="td-slider__input" id="sl-c-control" min="0" max="100" step="1" value="50" aria-labelledby="sl-c-label" aria-valuetext="50" aria-invalid="true" aria-errormessage="sl-c-error" aria-describedby="sl-c-error">
+      <span class="td-slider__track" aria-hidden="true"><span class="td-slider__fill"></span></span>
+      <span class="td-slider__thumb" aria-hidden="true"></span>
+    </div>
+    <span class="td-field-error" id="sl-c-error" data-for="sl-c">Giá trị quá cao</span>
+  </div>
+</template>
