@@ -5,11 +5,13 @@
  * Features:
  * - Automatic z-index calculation for stacked modals
  * - Backdrop opacity management
- * - Body scroll lock/unlock
+ * - Page scroll lock via the shared ref-counted lock (utils/scroll-lock.js)
  * - Modal ID generation
  *
  * Ported from DCMS ModalStackManager — standalone utility class (no TdBaseElement).
  */
+
+import { lockScroll } from '../utils/scroll-lock.js';
 
 export class TdModalStackManager {
   static stack = [];
@@ -17,6 +19,18 @@ export class TdModalStackManager {
   static Z_INDEX_INCREMENT = 100;
   static BACKDROP_BASE_OPACITY = 0.5;
   static BACKDROP_OPACITY_INCREMENT = 0.05;
+  /** @type {(() => void)|null} scroll-lock lease held while the stack is non-empty */
+  static _releaseScroll = null;
+
+  /** @private */
+  static _syncScrollLock() {
+    if (this.stack.length > 0 && !this._releaseScroll) {
+      this._releaseScroll = lockScroll();
+    } else if (this.stack.length === 0 && this._releaseScroll) {
+      this._releaseScroll();
+      this._releaseScroll = null;
+    }
+  }
 
   /**
    * Generate unique modal ID
@@ -60,10 +74,7 @@ export class TdModalStackManager {
       }
     }
 
-    // Lock body scroll if first modal
-    if (stackSize === 0) {
-      document.body.style.overflow = 'hidden';
-    }
+    this._syncScrollLock();
 
     return modalInstance.id;
   }
@@ -77,10 +88,7 @@ export class TdModalStackManager {
 
     const removed = this.stack.pop();
 
-    // Unlock body scroll if no modals left
-    if (this.stack.length === 0) {
-      document.body.style.overflow = '';
-    }
+    this._syncScrollLock();
 
     return removed;
   }
@@ -129,10 +137,7 @@ export class TdModalStackManager {
         }
       });
 
-      // Unlock body scroll if no modals left
-      if (this.stack.length === 0) {
-        document.body.style.overflow = '';
-      }
+      this._syncScrollLock();
 
       return removed;
     }
@@ -172,7 +177,7 @@ export class TdModalStackManager {
         modal.onClose();
       }
     }
-    document.body.style.overflow = '';
+    this._syncScrollLock();
   }
 
   /**
@@ -180,9 +185,6 @@ export class TdModalStackManager {
    * Call when stack might be desync (e.g., after error during modal lifecycle).
    */
   static ensureScrollState() {
-    if (this.stack.length === 0 && document.body.style.overflow === 'hidden') {
-      console.warn('TdModalStack: scroll lock desync detected, resetting');
-      document.body.style.overflow = '';
-    }
+    this._syncScrollLock();
   }
 }

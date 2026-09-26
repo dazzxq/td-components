@@ -12,6 +12,7 @@
 
 import { escapeHtml } from '../utils/escape.js';
 import { adoptStyles } from '../utils/adopt-styles.js';
+import { TdModalStackManager } from './td-modal-stack.js';
 
 /**
  * Static stylesheet for toast surfaces. The box-shadow + backdrop-filter on the inner
@@ -31,19 +32,6 @@ const TD_TOAST_CSS = `
   backdrop-filter: blur(10px);
 }
 `;
-
-/**
- * Try to import TdModalStackManager for dynamic z-index.
- * If not available (parallel wave execution), fallback to base z-index.
- * @type {import('./td-modal-stack.js').TdModalStackManager|null}
- */
-let TdModalStackManager = null;
-try {
-    const mod = await import('./td-modal-stack.js');
-    TdModalStackManager = mod.TdModalStackManager || null;
-} catch {
-    // Modal stack not available — use base z-index
-}
 
 export class TdToast {
     static container = null;
@@ -176,7 +164,9 @@ export class TdToast {
 
         const toast = document.createElement('div');
         toast.className = 'toast-item w-full sm:w-auto max-w-md pointer-events-auto cursor-pointer transform transition-all duration-200 translate-x-4 opacity-0';
-        toast.setAttribute('role', 'alert');
+        // Only errors interrupt (role=alert, implicit assertive); everything else is an
+        // advisory status message (role=status, implicit polite).
+        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
         toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
         toast.innerHTML = `
             <div class="px-4 py-3 rounded-xl text-white border border-white/20 ${theme.bg} ${theme.hover}">
@@ -191,10 +181,10 @@ export class TdToast {
             toast._removed = true;
             toast.classList.add('translate-x-4', 'opacity-0');
             toast.classList.remove('translate-x-0', 'opacity-100');
-            setTimeout(() => {
-                toast.remove();
-                TdToast._activeToasts = TdToast._activeToasts.filter(t => t !== toast);
-            }, 180);
+            // Leave the active list synchronously: the FIFO cap below loops on its length,
+            // so deferring this to the exit-animation timeout made it spin forever.
+            TdToast._activeToasts = TdToast._activeToasts.filter(t => t !== toast);
+            setTimeout(() => toast.remove(), 180);
         };
 
         toast._removeToast = removeToast;
@@ -202,7 +192,7 @@ export class TdToast {
 
         // FIFO eviction when exceeding MAX_VISIBLE
         while (TdToast._activeToasts.length > TdToast.MAX_VISIBLE) {
-            const oldest = TdToast._activeToasts[0];
+            const oldest = TdToast._activeToasts.shift();
             if (oldest && oldest._removeToast) {
                 oldest._removeToast();
             }

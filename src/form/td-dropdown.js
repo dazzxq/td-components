@@ -294,6 +294,7 @@ export class TdDropdown extends TdFormElement {
   }
 
   disconnectedCallback() {
+    this._clearSearchFocusTimer();
     // Close if open
     if (this._isOpen) {
       this._removeGlobalListeners();
@@ -636,24 +637,9 @@ export class TdDropdown extends TdFormElement {
     if (!button || !this._menuElement) return;
 
     const rect = button.getBoundingClientRect();
-    const buttonWidth = rect.width;
-    this._menuElement.style.width = `${buttonWidth}px`;
-    this._menuElement.style.minWidth = `${buttonWidth}px`;
-    this._menuElement.style.maxWidth = `${buttonWidth}px`;
-    this._menuElement.style.left = `${rect.left}px`;
     this._menuElement.classList.remove('hidden');
     this._menuElement.style.visibility = 'hidden';
-
-    // Auto-position: below or above
-    const menuHeight = this._menuElement.offsetHeight;
-    let top = rect.bottom + 8;
-    if (top + menuHeight > window.innerHeight) {
-      top = rect.top - menuHeight - 8;
-    }
-    if (top < 0) {
-      top = 8;
-    }
-    this._menuElement.style.top = `${top}px`;
+    this._placeMenu(rect);
     this._menuElement.style.visibility = '';
 
     if (arrow) arrow.style.transform = 'rotate(180deg)';
@@ -664,7 +650,11 @@ export class TdDropdown extends TdFormElement {
     // Focus search input
     const searchInput = this._menuElement.querySelector('.td-dropdown-search');
     if (searchInput && window.innerWidth >= 768) {
-      window.setTimeout(() => searchInput.focus(), 100);
+      this._clearSearchFocusTimer();
+      this._searchFocusTimer = window.setTimeout(() => {
+        this._searchFocusTimer = null;
+        if (this._isOpen) searchInput.focus();
+      }, 100);
     }
 
     // Add global listeners
@@ -676,7 +666,12 @@ export class TdDropdown extends TdFormElement {
     const arrow = this.querySelector('.td-dropdown-arrow');
     const searchInput = this._menuElement ? this._menuElement.querySelector('.td-dropdown-search') : null;
 
+    this._clearSearchFocusTimer();
+
+    // Never leave focus stranded inside a hidden menu: hand it back to the trigger.
+    const menuHadFocus = !!(this._menuElement && this._menuElement.contains(document.activeElement));
     if (this._menuElement) this._menuElement.classList.add('hidden');
+    if (menuHadFocus && button) button.focus({ preventScroll: true });
     if (arrow) arrow.style.transform = 'rotate(0deg)';
     if (button) {
       button.setAttribute('aria-expanded', 'false');
@@ -725,27 +720,71 @@ export class TdDropdown extends TdFormElement {
 
     const rect = button.getBoundingClientRect();
 
-    // Close if button has scrolled fully out of viewport
-    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+    // Close once the trigger is effectively hidden (scrolled out of the viewport, or
+    // no longer rendered) — a menu floating over unrelated content is worse than closing.
+    const EDGE = 8;
+    const notRendered = rect.width === 0 && rect.height === 0;
+    const offVertical = rect.bottom < EDGE || rect.top > window.innerHeight - EDGE;
+    const offHorizontal = rect.right < EDGE || rect.left > window.innerWidth - EDGE;
+    if (notRendered || offVertical || offHorizontal) {
       this.close();
       return;
     }
 
-    const buttonWidth = rect.width;
-    this._menuElement.style.width = `${buttonWidth}px`;
-    this._menuElement.style.minWidth = `${buttonWidth}px`;
-    this._menuElement.style.maxWidth = `${buttonWidth}px`;
-    this._menuElement.style.left = `${rect.left}px`;
+    this._placeMenu(rect);
+  }
 
-    const menuHeight = this._menuElement.offsetHeight;
-    let top = rect.bottom + 8;
-    if (top + menuHeight > window.innerHeight) {
-      top = rect.top - menuHeight - 8;
+  /**
+   * Size + position the portaled menu against the trigger rect:
+   * - same width as the trigger, clamped horizontally into the viewport;
+   * - opens on the side with room (below preferred), never overlapping the trigger;
+   * - when neither side fits, caps the options list height to the larger side
+   *   instead of clamping `top` (which used to cover the trigger / fixed headers).
+   * @private
+   * @param {DOMRect} rect trigger rect
+   */
+  _placeMenu(rect) {
+    const menu = this._menuElement;
+    if (!menu) return;
+    const GAP = 8;
+    const MARGIN = 8;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Never wider than the viewport; keep an 8px margin only when there is room for it
+    // (a full-width trigger keeps a full-width, aligned menu).
+    const width = Math.min(rect.width, vw);
+    menu.style.width = `${width}px`;
+    menu.style.minWidth = `${width}px`;
+    menu.style.maxWidth = `${width}px`;
+    const margin = vw - width >= 2 * MARGIN ? MARGIN : 0;
+    const left = Math.max(margin, Math.min(rect.left, vw - width - margin));
+    menu.style.left = `${left}px`;
+
+    const list = menu.querySelector('.td-dropdown-options');
+    if (list) list.style.maxHeight = `${this._getMaxHeight() * 40}px`;
+
+    const naturalH = menu.offsetHeight;
+    const chromeH = list ? naturalH - list.offsetHeight : 0;
+    const below = vh - rect.bottom - GAP - MARGIN;
+    const above = rect.top - GAP - MARGIN;
+    const placeBelow = naturalH <= below || below >= above;
+    const space = Math.max(0, placeBelow ? below : above);
+
+    if (naturalH > space && list) {
+      list.style.maxHeight = `${Math.max(0, space - chromeH)}px`;
     }
-    if (top < 0) {
-      top = 8;
+    const h = menu.offsetHeight;
+    const top = placeBelow ? rect.bottom + GAP : rect.top - GAP - h;
+    menu.style.top = `${top}px`;
+  }
+
+  /** @private */
+  _clearSearchFocusTimer() {
+    if (this._searchFocusTimer) {
+      window.clearTimeout(this._searchFocusTimer);
+      this._searchFocusTimer = null;
     }
-    this._menuElement.style.top = `${top}px`;
   }
 
   // --- Public API ---
@@ -803,6 +842,7 @@ export class TdDropdown extends TdFormElement {
   }
 
   destroy() {
+    this._clearSearchFocusTimer();
     this._removeGlobalListeners();
     if (this._scrollRafId) {
       cancelAnimationFrame(this._scrollRafId);

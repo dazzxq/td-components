@@ -4,17 +4,17 @@ Roadmap sống. Mỗi item một dòng, kèm trạng thái: `todo` · `doing` ·
 Khi xong: đánh `done`, ghi vào [CHANGELOG.md](../CHANGELOG.md), rồi xoá dòng ở lần release sau.
 Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-09-sync-dcms-dwp.md).
 
-## Now — v0.4.1 bugfix (trên code Tailwind hiện tại)
+## Done — v0.4.1 bugfix (2026-09-27, xem CHANGELOG)
 
-- `todo` **B1** toast: vòng lặp FIFO vô hạn (`td-toast.js:204`: `_removeToast` chỉ xoá khỏi `_activeToasts` sau 180ms nên `while` không bao giờ thoát)
-- `todo` **B2** modal: guard liveness cho rAF (modal đã đóng trước frame) + rò rỉ focus-trap
-- `todo` **B3** modal-stack: scroll lock khôi phục trạng thái trước đó, không ghi đè `body.style.overflow = ''`
-- `todo` **B4** input-field: `setError('')` khôi phục helper text; viền lỗi không mất khi focus/blur
-- `todo` **B5** dropdown: placement không đè lên trigger, cap `max-height`, huỷ timer focus ô search, trả focus khi đóng, đóng khi trigger bị ẩn
-- `todo` **B6** toast: `role=status` (trừ error giữ assertive/alert)
-- `todo` **B7** storybook build hỏng do top-level `await` ở `td-toast.js:41`
+- `done` **B1** toast: vòng lặp FIFO vô hạn (`td-toast.js:204`: `_removeToast` chỉ xoá khỏi `_activeToasts` sau 180ms nên `while` không bao giờ thoát)
+- `done` **B2** modal: guard liveness cho rAF (modal đã đóng trước frame) + rò rỉ focus-trap
+- `done` **B3** modal-stack: scroll lock khôi phục trạng thái trước đó, không ghi đè `body.style.overflow = ''`
+- `done` **B4** input-field: `setError('')` khôi phục helper text; viền lỗi không mất khi focus/blur
+- `done` **B5** dropdown: placement không đè lên trigger, cap `max-height`, huỷ timer focus ô search, trả focus khi đóng, đóng khi trigger bị ẩn
+- `done` **B6** toast: `role=status` (trừ error giữ assertive/alert)
+- `done` **B7** storybook build hỏng do top-level `await` ở `td-toast.js:41`
 
-## Next — v0.5.0 foundation ([ADR 0008](decisions/0008-drop-tailwind-token-css.md))
+## Now — v0.5.0 foundation ([ADR 0008](decisions/0008-drop-tailwind-token-css.md))
 
 - `todo` Token `--td-*` (khởi đầu từ `td-tokens.css` của 135 + [glass tokens](design/glass-tokens.css))
 - `todo` `glass.css` theo [liquid-glass.md](design/liquid-glass.md), fallback trên `.td-glass-surface`
@@ -22,7 +22,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `todo` Build `td.css` (script node concat theo manifest) + CI rebuild-and-diff
 - `todo` CSP harness dual-profile (legacy Tailwind + token-native) + gate nonce-only (Chromium/Firefox/WebKit)
 - `todo` Fixture tham chiếu glass Regular & Clear
-- `todo` Scroll-lock overlay dùng chung (ref-count, chung modal-stack và lightbox)
+- `done` Scroll-lock overlay dùng chung (ref-count) — `src/utils/scroll-lock.js`, ship trong 0.4.1
 - `todo` Fixture markup contract (golden HTML) cho SSR adapter
 - `todo` Bảng mapping class cũ → mới
 

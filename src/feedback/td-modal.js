@@ -171,13 +171,18 @@ export class TdModal {
       backdrop.style.opacity = '0';
     }
 
-    // Show modal with animation
+    // Show modal with animation. Every deferred step re-checks liveness: if the modal
+    // was closed in the same frame it was opened (closeById/closeAll before the rAF
+    // fires), un-hiding it or installing a focus trap afterwards would leak a trap that
+    // steals focus and fade in a modal that is already animating out.
     requestAnimationFrame(() => {
+      if (!TdModal._isOpen(modalId)) return;
       modal.classList.remove('hidden');
       modal.style.display = 'block';
 
       // Animate entrance in next frame (after browser paints initial state)
       requestAnimationFrame(() => {
+        if (!TdModal._isOpen(modalId)) return;
         if (contentEl) {
           contentEl.style.opacity = '1';
           contentEl.style.transform = 'scale(1)';
@@ -250,7 +255,20 @@ export class TdModal {
    * Close all modals
    */
   static closeAll() {
+    for (const id of Array.from(TdModal._focusTrapHandlers.keys())) {
+      TdModal._removeFocusTrap(id);
+    }
     TdModalStackManager.closeAll();
+  }
+
+  /**
+   * Whether a modal with this id is still in the stack (not closed).
+   * @private
+   * @param {string} modalId
+   * @returns {boolean}
+   */
+  static _isOpen(modalId) {
+    return TdModalStackManager.stack.some(m => m.id === modalId);
   }
 
   /**
@@ -696,11 +714,12 @@ export class TdModal {
     };
 
     modalElement.addEventListener('keydown', handler);
-    TdModal._focusTrapHandlers.set(modalElement.id, handler);
+    TdModal._focusTrapHandlers.set(modalElement.id, { el: modalElement, handler });
 
     // Auto-focus: focusTarget > first input in body > first focusable
     if (autoFocus) {
       setTimeout(() => {
+        if (!TdModal._isOpen(modalElement.id)) return;
         if (focusTarget && typeof focusTarget.focus === 'function') {
           focusTarget.focus();
         } else {
@@ -726,12 +745,9 @@ export class TdModal {
    * @param {string} modalId - Modal ID
    */
   static _removeFocusTrap(modalId) {
-    const handler = TdModal._focusTrapHandlers.get(modalId);
-    if (handler) {
-      const el = document.getElementById(modalId);
-      if (el) {
-        el.removeEventListener('keydown', handler);
-      }
+    const entry = TdModal._focusTrapHandlers.get(modalId);
+    if (entry) {
+      entry.el.removeEventListener('keydown', entry.handler);
       TdModal._focusTrapHandlers.delete(modalId);
     }
   }

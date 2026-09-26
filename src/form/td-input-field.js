@@ -108,8 +108,8 @@ export class TdInputField extends TdFormElement {
     const maxLength = Number.isFinite(maxLenNum) && maxLenNum > 0 ? String(maxLenNum) : '';
     const limitType = this.getAttribute('limit-type') || 'char';
     const label = this.getAttribute('label') || '';
-    const helperText = this.getAttribute('helper-text') || '';
-    const errorText = this.getAttribute('error-text') || '';
+    const helperText = this._effectiveHelper();
+    const errorText = this._effectiveError();
     const fieldId = this.getAttribute('field-id') || '';
     const rows = parseInt(this.getAttribute('rows') || '4', 10);
 
@@ -221,13 +221,15 @@ export class TdInputField extends TdFormElement {
     const colors = TdInputField._colors;
 
     const isDisabled = this._effectiveDisabled;
-    const hasError = !!this.getAttribute('error-text');
+    const hasError = !!this._effectiveError();
     const borderColor = hasError ? colors.borderError : colors.border;
     const bg = isDisabled ? colors.bgDisabled : colors.bgNormal;
 
     // --- Field control (input / textarea / contenteditable) ---
     const field = this._getFieldElement();
     if (field) {
+      if (hasError) field.setAttribute('aria-invalid', 'true');
+      else field.removeAttribute('aria-invalid');
       const height = type === 'textarea'
         ? `${(s.h * parseInt(this.getAttribute('rows') || '4', 10)) / 2 + 8}px`
         : `${s.h}px`;
@@ -275,7 +277,7 @@ export class TdInputField extends TdFormElement {
     // --- Note (error or helper) ---
     const note = this.querySelector('.td-input-note');
     if (note) {
-      const hasErrorText = !!this.getAttribute('error-text');
+      const hasErrorText = !!this._effectiveError();
       applyStyles(note, {
         color: hasErrorText ? colors.textError : colors.textMuted,
         'font-size': '12px',
@@ -305,7 +307,7 @@ export class TdInputField extends TdFormElement {
     });
 
     this.listen(field, 'blur', () => {
-      const hasError = this.hasAttribute('error-text') && this.getAttribute('error-text');
+      const hasError = !!this._effectiveError();
       field.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.9)';
       field.style.borderColor = hasError ? colors.borderError : colors.border;
       field.style.backgroundColor = colors.bgNormal;
@@ -503,7 +505,7 @@ export class TdInputField extends TdFormElement {
 
     const field = this._getFieldElement();
     if (field) {
-      field.style.borderColor = currentCount >= maxLength ? colors.borderError : colors.border;
+      field.style.borderColor = (currentCount >= maxLength || this._effectiveError()) ? colors.borderError : colors.border;
     }
   }
 
@@ -593,35 +595,68 @@ export class TdInputField extends TdFormElement {
     return text.substring(0, maxLength);
   }
 
-  /** @private Set error text and red border (visual only; use setCustomValidity for constraint state) */
-  _setError(msg) {
-    const field = this._getFieldElement();
-    const colors = TdInputField._colors;
-    if (field) {
-      field.style.borderColor = msg ? colors.borderError : colors.border;
+  attributeChangedCallback(name, oldVal, newVal) {
+    // A new attribute value is the latest intent: drop the runtime override so it shows.
+    if (oldVal !== newVal) {
+      if (name === 'error-text') this._runtimeError = null;
+      if (name === 'helper-text') this._runtimeHelper = null;
     }
-    let note = this.querySelector('.td-input-note');
-    if (!note) {
-      note = document.createElement('div');
-      note.className = 'td-input-note mt-1';
-      note.style.fontSize = '12px';
-      this.querySelector('.td-input-field')?.appendChild(note);
-    }
-    note.style.color = msg ? colors.textError : colors.textMuted;
-    note.textContent = msg || '';
+    super.attributeChangedCallback(name, oldVal, newVal);
   }
 
-  /** @private Set helper text */
+  /**
+   * @private Effective error: a runtime setError() message wins over the `error-text`
+   * attribute. `null` = no runtime override.
+   * @returns {string}
+   */
+  _effectiveError() {
+    if (this._runtimeError != null) return this._runtimeError;
+    return this.getAttribute('error-text') || '';
+  }
+
+  /** @private Effective helper: runtime setHelper() wins over the `helper-text` attribute. */
+  _effectiveHelper() {
+    if (this._runtimeHelper != null) return this._runtimeHelper;
+    return this.getAttribute('helper-text') || '';
+  }
+
+  /**
+   * @private Set error text and red border (visual only; use setCustomValidity for
+   * constraint state). `setError('')` clears the error and brings the helper text back.
+   */
+  _setError(msg) {
+    this._runtimeError = msg ? String(msg) : '';
+    this._refreshNote();
+  }
+
+  /** @private Set helper text (shown whenever there is no error). */
   _setHelper(msg) {
+    this._runtimeHelper = msg ? String(msg) : '';
+    this._refreshNote();
+  }
+
+  /** @private Sync note text/color, border and aria-invalid with the effective error/helper. */
+  _refreshNote() {
+    const colors = TdInputField._colors;
+    const error = this._effectiveError();
+    const text = error || this._effectiveHelper();
+    const field = this._getFieldElement();
+    if (field) {
+      field.style.borderColor = error ? colors.borderError : colors.border;
+      if (error) field.setAttribute('aria-invalid', 'true');
+      else field.removeAttribute('aria-invalid');
+    }
     let note = this.querySelector('.td-input-note');
-    if (!note) {
+    if (!note && text) {
       note = document.createElement('div');
       note.className = 'td-input-note mt-1';
       note.style.fontSize = '12px';
       this.querySelector('.td-input-field')?.appendChild(note);
     }
-    note.style.color = TdInputField._colors.textMuted;
-    note.textContent = msg || '';
+    if (note) {
+      note.style.color = error ? colors.textError : colors.textMuted;
+      note.textContent = text;
+    }
   }
 
   /** @private Toggle disabled state */
