@@ -194,3 +194,23 @@ describe('floating: placeFloating / isReferenceHidden', () => {
     expect(isReferenceHidden({ top: 50, bottom: 80, left: 10, right: 50, width: 40, height: 30 })).to.equal(false);
   });
 });
+
+describe('review round 1 (v0.9.0 impl)', () => {
+  it('focusablesIn: native summary/iframe count; tabindex < 0 and disabled do not', async () => {
+    const { focusablesIn } = await import('./layers.js');
+    const root = portal('<details><summary id="s">x</summary></details><iframe id="f"></iframe>'
+      + '<span id="m2" tabindex="-2">x</span><span id="z" tabindex="0">x</span><button id="d" disabled>x</button>');
+    const ids = focusablesIn(root).map((el) => el.id);
+    expect(ids).to.deep.equal(['s', 'f', 'z']);
+  });
+
+  it('Escape during IME composition is not routed', () => {
+    let calls = 0;
+    const r = register({ layer: LAYERS.modal, element: portal(), onEscape: () => { calls++; } });
+    cleanup.push(() => r.release());
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true }));
+    expect(calls).to.equal(0);
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(calls).to.equal(1);
+  });
+});

@@ -419,6 +419,7 @@ export class TdModal {
         onCancel = () => {},
       } = options || {};
       let settled = false;
+      let confirming = false; // a close during onConfirm() is the confirmation, not a dismissal
       let modalId = '';
       const variant = ['primary', 'danger', 'success', 'warning'].includes(confirmVariant) ? confirmVariant : 'primary';
       const cancelButton = makeButton(cancelText, 'secondary');
@@ -447,7 +448,10 @@ export class TdModal {
       confirmButton.addEventListener('click', () => {
         if (settled || confirmButton.getAttribute('aria-busy') === 'true') return;
         let result;
+        confirming = true;
         try { result = typeof onConfirm === 'function' ? onConfirm() : undefined; } catch { result = undefined; }
+        confirming = false;
+        if (settled) return; // onConfirm closed the dialog itself (resolved true via onClose)
         if (!isThenable(result)) {
           if (!settle(true)) return;
           try { TdModal.closeById(modalId); } catch { /* ignore */ }
@@ -475,6 +479,7 @@ export class TdModal {
         size: 'sm',
         focusTarget: cancelButton,
         onClose: () => {
+          if (confirming) { settle(true); return; }
           if (!settle(false)) return;
           try { onCancel(); } catch { /* ignore */ }
         },

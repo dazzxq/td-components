@@ -35,6 +35,7 @@ function sort() {
 
 function onKeydown(e) {
   if (e.key !== 'Escape' && e.key !== 'Tab') return;
+  if (e.key === 'Escape' && (e.isComposing || e.keyCode === 229)) return; // IME: Escape cancels the composition
   const boundaries = active.filter((r) => r.keyboard === 'boundary');
   if (e.key === 'Escape') {
     const top = boundaries[boundaries.length - 1];
@@ -127,18 +128,19 @@ export function trapContainers(layer) {
   return active.filter((r) => r.includeInTrap && r.layer > layer && r.element).map((r) => r.element);
 }
 
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), '
-  + 'textarea:not([disabled]), video[controls], audio[controls], [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
+const FOCUSABLE = 'a[href], area[href], button, input:not([type="hidden"]), select, textarea, summary, iframe, '
+  + 'object, embed, video[controls], audio[controls], [tabindex], [contenteditable]:not([contenteditable="false"])';
 
 /**
- * Visible, focusable descendants of `root` (in DOM order).
+ * Visible, sequentially focusable descendants of `root` (in DOM order): native focusables + [tabindex], filtered by
+ * the element's own tabIndex (≥ 0), `disabled`, `[hidden]`/`[inert]` ancestors and rendering.
  * @param {Element} root
  * @returns {HTMLElement[]}
  */
 export function focusablesIn(root) {
   if (!root) return [];
   return [...root.querySelectorAll(FOCUSABLE)].filter(
-    (el) => !el.closest('[hidden], [inert]') && el.getClientRects().length > 0,
+    (el) => el.tabIndex >= 0 && !el.disabled && !el.closest('[hidden], [inert]') && el.getClientRects().length > 0,
   );
 }
 

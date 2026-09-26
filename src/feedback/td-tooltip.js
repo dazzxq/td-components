@@ -465,9 +465,9 @@ export class TdTooltip {
         const text = this.getTooltipContent(el) || '';
         if (this.tooltipContent) this.tooltipContent.textContent = text;
         else tip.textContent = text;
-        const bg = safeColor(el.dataset.tooltipColor);
+        const bg = this._opaqueColor(el.dataset.tooltipColor);
         if (bg) {
-            const fg = safeColor(el.dataset.tooltipTextColor) || this._getAccessibleTextColor(bg);
+            const fg = this._opaqueColor(el.dataset.tooltipTextColor) || this._getAccessibleTextColor(bg);
             tip.style.setProperty('--td-tooltip-bg', bg);
             tip.style.setProperty('--td-tooltip-fg', fg);
             tip.setAttribute('data-custom', '');
@@ -521,6 +521,30 @@ export class TdTooltip {
      * @param {string} color
      * @returns {{r: number, g: number, b: number}|null}
      */
+    /**
+     * A safe colour that the engine recognises AND that is fully opaque (a translucent / unknown / `transparent` custom
+     * background would make an unreadable chip) — else ''. Canvas serialises opaque colours as #rrggbb.
+     * @private
+     * @param {string|undefined} value
+     * @returns {string}
+     */
+    _opaqueColor(value) {
+        const c = safeColor(value);
+        if (!c) return '';
+        try {
+            const ctx = document.createElement('canvas').getContext('2d');
+            if (!ctx) return '';
+            ctx.fillStyle = '#010203';
+            ctx.fillStyle = c;
+            const v = String(ctx.fillStyle);
+            if (!/^#[0-9a-f]{6}$/i.test(v)) return ''; // rgba(...) → has alpha
+            if (v === '#010203' && !/^#010203$/i.test(c.trim())) return ''; // not recognised
+            return c;
+        } catch {
+            return '';
+        }
+    }
+
     _toComputedRGB(color) {
         try {
             const ctx = document.createElement('canvas').getContext('2d');

@@ -605,6 +605,7 @@ export class TdDropdown extends TdFormElement {
    */
   _onKeydown(e, source) {
     if (this._isDisabled() || e.defaultPrevented) return;
+    if (e.isComposing || e.keyCode === 229) return; // IME composition keys (Enter commits text, not an option)
     const { key } = e;
     const printable = key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey;
     if (!this._isOpen) {

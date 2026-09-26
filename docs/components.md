@@ -282,7 +282,7 @@ Promise dialogs use `role="alertdialog"`. A promise-returning `onConfirm` keeps 
 at `--td-z-modal` (400); only the body scrolls; below 640 px it is a bottom sheet (unless `fullViewport`). The page
 behind is `inert`, Tab is trapped (toast close buttons stay reachable), focus moves into the dialog on open (first
 field → first focusable → the dialog; `autoFocus:false` → the dialog; `focusTarget` only if inside it) and returns to
-the opener on close. Stacked dialogs: the covered one goes solid (`[data-covered]`). `TdModal.BASE_Z_INDEX` is an
+the opener on close. Stacked dialogs: the covered one goes solid (`[data-covered]`). `TdModalStackManager.BASE_Z_INDEX` (`@dazzxq/td-components/modal-stack`) is an
 opt-in override (warns); prefer overriding the `--td-z-*` tokens.
 
 **Dismissal (0.4.0):** a modal does **not** close on backdrop click or ESC (prevents accidental loss). It closes only via

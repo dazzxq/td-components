@@ -16,7 +16,7 @@ worktrees on a shared base (`utils/layers.js`, `utils/floating.js`), integrated 
   These components require `td.css`.
 - **z-index from tokens:** modal `--td-z-modal` 400, dropdown menu `--td-z-popover` 450 (was 10010), toast
   `--td-z-toast` 500 (was 99999), tooltip `--td-z-tooltip` 510 (new token). Sites with fixed chrome above these
-  override the whole `--td-z-*` set. `TdModal.BASE_Z_INDEX` is now an opt-in override (default `null`, warns);
+  override the whole `--td-z-*` set. `TdModalStackManager.BASE_Z_INDEX` (`@dazzxq/td-components/modal-stack`) is now an opt-in override (default `null`, warns);
   `TOAST_Z_INDEX_BASE` is 500 and `getToastZIndex()` returns the token value (both deprecated).
 - `TdToast.getTheme(type)` returns `{ type, icon }` (was Tailwind classes + SVG markup).
 
