@@ -164,7 +164,9 @@ export class TdPagination extends TdBaseElement {
       this.style.removeProperty('--td-pagination-active-fg');
       return;
     }
-    this.style.setProperty('--td-pagination-active', color);
+    // The NORMALISED literal (contextual values such as currentColor resolved once) — exactly the colour the
+    // contrast was computed for.
+    this.style.setProperty('--td-pagination-active', parsed.css);
     this.style.setProperty('--td-pagination-active-fg', TdPagination._contrastFg(parsed, this._backdrop()));
   }
 

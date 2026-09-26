@@ -206,9 +206,10 @@ export function svgStringToDefinition(str) {
   for (const a of root.attributes) {
     if (!ROOT_ATTRS.has(a.name) || /url\s*\(|javascript:/i.test(a.value)) return null;
   }
+  if (!root.hasAttribute('viewBox')) return null;
   const fill = (root.getAttribute('fill') || '').trim().toLowerCase();
   const def = {
-    viewBox: root.getAttribute('viewBox') || '0 0 24 24',
+    viewBox: root.getAttribute('viewBox'), // required (D1): missing → rejected by the validator below
     paint: fill && fill !== 'none' ? 'fill' : 'stroke',
     nodes: [],
   };

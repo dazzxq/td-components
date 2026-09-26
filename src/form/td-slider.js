@@ -113,11 +113,12 @@ export class TdSlider extends TdFormElement {
 
   _marksHtml(min, max, step) {
     if (!this.hasAttribute('show-step-marks') || !(max > min)) return '';
-    const count = Math.floor((max - min) / step + 1e-9);
-    if (count > MAX_MARKS) {
-      console.warn(`[td-slider] show-step-marks ignored: ${count} steps > ${MAX_MARKS}.`);
+    const span = (max - min) / step;
+    if (span > MAX_MARKS + 1e-9) {
+      console.warn(`[td-slider] show-step-marks ignored: ${span} steps > ${MAX_MARKS}.`);
       return '';
     }
+    const count = Math.floor(span + 1e-9);
     let marks = '';
     for (let i = 0; i <= count; i++) {
       const v = min + i * step;

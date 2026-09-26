@@ -329,6 +329,8 @@ export class TdTabs extends TdBaseElement {
     }
     e.preventDefault();
     const target = this._buttons[next];
+    // Roving tabindex follows FOCUS (manual mode too): the focused tab is the one Tab returns to.
+    for (const b of this._buttons) b.tabIndex = b === target ? 0 : -1;
     target.focus();
     if (this.getAttribute('activation') === 'auto') this._select(target.dataset.tabId, true);
   }

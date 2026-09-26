@@ -269,8 +269,16 @@ export class TdFormElement extends TdBaseElement {
     const own = [...this._describedByIds()];
     if (this.constructor.errorContract && this.errorMessage) own.push(`${this.id}-error`);
     const prevOwn = this._ownDescribedBy || new Set();
-    const current = (target.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
-    const foreign = current.filter((idRef) => !prevOwn.has(idRef));
+    let foreign;
+    if (this._describedByTarget && this._describedByTarget !== target) {
+      // The control was replaced by a re-render: keep the page's own ids from the previous control.
+      foreign = this._foreignDescribedBy || [];
+    } else {
+      const current = (target.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+      foreign = current.filter((idRef) => !prevOwn.has(idRef));
+    }
+    this._describedByTarget = target;
+    this._foreignDescribedBy = foreign;
     const next = [...new Set([...foreign, ...own])];
     if (next.length) target.setAttribute('aria-describedby', next.join(' '));
     else target.removeAttribute('aria-describedby');
