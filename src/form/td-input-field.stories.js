@@ -1,3 +1,4 @@
+import '../styles/story-layout.css';
 import './td-input-field.js';
 
 export default {
@@ -6,7 +7,7 @@ export default {
   argTypes: {
     type: {
       control: 'select',
-      options: ['text', 'password', 'email', 'tel', 'number', 'textarea', 'contenteditable'],
+      options: ['text', 'password', 'email', 'tel', 'number', 'url', 'search', 'date', 'textarea', 'contenteditable'],
     },
     size: { control: 'select', options: ['sm', 'md', 'lg'] },
     value: { control: 'text' },
@@ -165,4 +166,50 @@ export const LargeSize = {
     label: 'Large Input',
     placeholder: 'Large size...',
   },
+};
+
+export const ErrorWithHelper = {
+  render: Template,
+  args: {
+    ...Default.args,
+    type: 'email',
+    label: 'Email công ty',
+    value: 'an@',
+    'helper-text': 'Dùng email @congty.vn',
+    'error-text': 'Email không hợp lệ',
+    'max-length': 40,
+  },
+};
+
+export const ContentEditable = {
+  render: Template,
+  args: {
+    ...Default.args,
+    type: 'contenteditable',
+    label: 'Ghi chú',
+    placeholder: 'Nhập ghi chú…',
+  },
+};
+
+export const WordLimit = {
+  render: Template,
+  args: {
+    ...Default.args,
+    type: 'textarea',
+    label: 'Tóm tắt',
+    'max-length': 5,
+    'limit-type': 'word',
+    value: 'một hai ba bốn năm',
+  },
+};
+
+export const AllSizes = {
+  render: () => `
+    <div class="sb-stack">
+      <td-input-field size="sm" label="Nhỏ" placeholder="sm"></td-input-field>
+      <td-input-field size="md" label="Vừa" placeholder="md"></td-input-field>
+      <td-input-field size="lg" label="Lớn" placeholder="lg"></td-input-field>
+      <p class="sb-note">Coarse pointer: every control is ≥ 44 px tall.</p>
+    </div>
+  `,
 };
