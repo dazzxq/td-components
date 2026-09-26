@@ -37,7 +37,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract ở `TdFormElement`:
 `setError` + `aria-invalid` + `aria-errormessage`.
 
-- `todo` Batch 1: button, checkbox, toggle, loading
+- `done` Batch 1: button, checkbox, toggle, loading (v0.7.0; + error contract, `TdCheckableElement`, spinner)
 - `todo` Batch 2: input-field, slider, pagination, tabs (+ ARIA tablist/tab, bàn phím), empty-state
 - `todo` Batch 3: tooltip (+ focus, role, `aria-describedby`), toast, dropdown (+ Home/End/Tab, `aria-activedescendant`), modal (+ `role=dialog`, `aria-modal`, `aria-labelledby`, trả focus, `onShow`, footer async) / modal-stack
 - `todo` Batch 4: datetime-picker, table (+ sticky header, `cellPaddingClass`)

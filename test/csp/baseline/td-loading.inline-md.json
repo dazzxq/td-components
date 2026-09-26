@@ -1,6 +1,7 @@
 {
   "_component": "td-loading",
   "_state": "inline-md",
+  "_profile": "td",
   "_reducedMotion": false,
   "_excludedProps": [
     "transform",
@@ -9,19 +10,9 @@
   ],
   "_sentinels": [
     {
-      "class": "rounded-xl",
-      "prop": "border-radius",
-      "value": "12px"
-    },
-    {
-      "class": "w-[123px]",
-      "prop": "width",
-      "value": "123px"
-    },
-    {
-      "class": "opacity-50",
-      "prop": "opacity",
-      "value": "0.5"
+      "class": ":root (td.css)",
+      "prop": "--td-glass-radius",
+      "value": "20px"
     }
   ],
   "styles": {
@@ -66,7 +57,7 @@
       "-webkit-backdrop-filter": "",
       "font-size": "16px",
       "font-weight": "400",
-      "line-height": "24px",
+      "line-height": "0px",
       "text-align": "start",
       "resize": "none",
       "overflow-y": "visible",
@@ -76,7 +67,7 @@
       "stroke-width": "1px",
       "stroke-linecap": "butt"
     },
-    ".td-spinner svg circle:first-child": {
+    ".td-spinner__track": {
       "width": "auto",
       "height": "auto",
       "min-height": "0px",
@@ -117,17 +108,17 @@
       "-webkit-backdrop-filter": "",
       "font-size": "16px",
       "font-weight": "400",
-      "line-height": "24px",
+      "line-height": "0px",
       "text-align": "start",
       "resize": "none",
       "overflow-y": "visible",
       "cursor": "auto",
       "fill": "none",
-      "stroke": "rgba(59, 130, 246, 0.15)",
+      "stroke": "rgb(0, 0, 0)",
       "stroke-width": "4px",
       "stroke-linecap": "butt"
     },
-    ".td-spinner svg circle:last-child": {
+    ".td-spinner__arc": {
       "width": "auto",
       "height": "auto",
       "min-height": "0px",
@@ -168,13 +159,13 @@
       "-webkit-backdrop-filter": "",
       "font-size": "16px",
       "font-weight": "400",
-      "line-height": "24px",
+      "line-height": "0px",
       "text-align": "start",
       "resize": "none",
       "overflow-y": "visible",
       "cursor": "auto",
       "fill": "none",
-      "stroke": "rgb(59, 130, 246)",
+      "stroke": "rgb(0, 0, 0)",
       "stroke-width": "4px",
       "stroke-linecap": "round"
     }

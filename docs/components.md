@@ -29,32 +29,33 @@ Six controls below — `td-input-field`, `td-checkbox`, `td-toggle`, `td-slider`
 
 ### `td-button` — `@dazzxq/td-components/button`
 
-A styled button with variants, icons, and a loading state.
+> **Token-native (0.7.0):** needs `td.css`, no Tailwind. Internal classes changed — see [class map](migration/class-map.md).
+
+Solid content-layer button (never glass — the one primary action on a floating bar uses `.td-glass-tint`).
 
 ```html
-<td-button variant="primary" size="md" label="Save"></td-button>
-<td-button variant="danger" icon="fas fa-trash" loading></td-button>
-```
-```js
-import '@dazzxq/td-components/button';
-document.querySelector('td-button').addEventListener('click', () => save());
+<td-button variant="primary" label="Save"></td-button>
+<td-button variant="danger" icon="close" loading>Xoá</td-button>
+<td-button variant="secondary" icon="more" aria-label="Thêm"></td-button>
 ```
 
 | Attribute | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `variant` | string | `primary` | `primary` \| `secondary` \| `success` \| `danger` \| `info` \| `warning` |
-| `size` | string | `md` | `sm` \| `md` \| `lg` |
-| `icon` | string | — | Icon CSS class (e.g. `fas fa-edit`) |
+| `variant` | string | `primary` | `primary` \| `secondary` \| `success` \| `danger` \| `info` \| `warning` (status colours ≥ 4.5:1) |
+| `size` | string | `md` | `sm` \| `md` \| `lg` (32 / 40 / 48 px; 44 px + capsule on touch) |
+| `icon` | string | — | Icon **registry name** (e.g. `download`). Deprecated: any other value is treated as a legacy class list (e.g. `fas fa-edit`) |
 | `icon-position` | string | `left` | `left` \| `right` |
-| `loading` | boolean | `false` | Show spinner + disable |
-| `disabled` | boolean | `false` | Disable the button |
+| `loading` | boolean | `false` | `aria-busy` + `aria-disabled`, spinner, clicks swallowed, **focus kept** |
+| `disabled` | boolean | `false` | Native disabled |
 | `full-width` | boolean | `false` | Stretch to container width |
-| `color` | string | — | Custom background color (overrides `variant`) |
-| `text-color` | string | auto | Custom text color (auto-contrasted if unset) |
+| `color` | string | — | Custom background (overrides `variant`) |
+| `text-color` | string | auto | Custom text colour (auto: black/white by WCAG contrast; translucent colours composited over white) |
 | `label` | string | — | Button text (alternative to `textContent`) |
-| `type` | string | `button` | `button` \| `submit` \| `reset` (whitelisted; set on the inner `<button>`, so it submits/resets the enclosing form) — since 0.3.1 |
+| `type` | string | `button` | `button` \| `submit` \| `reset` (whitelisted) |
+| `aria-label` | string | — | Forwarded to the inner button (icon-only buttons) |
 
-**Events:** `click` → `{}`
+Tokens: `--td-btn-radius`, `--td-btn-primary-bg/-fg`, `--td-btn-secondary-*`. Methods: `setLoading(bool)`, `setDisabled(bool)`.
+Events: the native `click` of the inner button.
 
 ### `td-input-field` — `@dazzxq/td-components/input-field`
 
@@ -96,48 +97,53 @@ A text/number/textarea/contenteditable field with label, helper/error text, and 
 
 ### `td-checkbox` — `@dazzxq/td-components/checkbox`
 
+> **Token-native (0.7.0):** needs `td.css`, no Tailwind. Internal classes changed — see [class map](migration/class-map.md).
+
 ```html
 <td-checkbox name="agree" required label="I agree to the terms"></td-checkbox>
 <td-checkbox name="plan" value="pro" checked color="#10b981"></td-checkbox>
+<td-checkbox aria-label="Chọn dòng"></td-checkbox>
 ```
 
 | Attribute | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `checked` | boolean | `false` | Checked state |
+| `checked` | boolean | `false` | Checked state (changes update in place — focus kept) |
 | `value` | string | `on` | Submitted value when checked |
-| `name` | string | — | Form field name |
-| `required` | boolean | `false` | Must be checked for the form to be valid |
-| `disabled` | boolean | `false` | Disable (also via `<fieldset disabled>`) |
-| `label` | string | — | Label next to the box |
-| `size` | string | `md` | `sm` \| `md` \| `lg` |
-| `color` | string | `#2196F3` | Checked background/border color |
+| `name` / `required` / `disabled` | — | — | Form semantics (`disabled` also via `<fieldset disabled>`) |
+| `label` | string | — | Visible label (else host `aria-label`, else external `<label for="host-id">`) |
+| `size` | string | `md` | `sm` \| `md` \| `lg` (hit area ≥ 24 px, 44 px on touch) |
+| `color` | string | `--td-checkbox-color` (= accent) | Checked fill |
+| `error-text` | string | — | Error message (error contract below) |
 
-**Events:** `change` → `{ checked }`
+**Events:** exactly one `change` → `{ checked }` per user toggle (the inner input's native `change` is contained — 0.7.0).
+**Error contract** (also `td-toggle`): `setError(msg)`, `clearError()`, `errorMessage`, attribute `error-text` →
+`aria-invalid="true"` + `aria-errormessage` on the input and a `.td-field-error` note; cleared on form reset.
 
 ### `td-toggle` — `@dazzxq/td-components/toggle`
 
-A switch. **Uncontrolled by default** (clicking self-toggles like a native checkbox); add `controlled` for the legacy emit-only behavior where you flip `checked` yourself.
+> **Token-native (0.7.0):** needs `td.css`, no Tailwind. Internal classes changed — see [class map](migration/class-map.md).
+
+A switch (`.td-switch`, native `<input type="checkbox" role="switch">`). **Uncontrolled by default**; add
+`controlled` to emit `change` only (you flip `checked`).
 
 ```html
 <td-toggle name="notifications" label="Email me" checked></td-toggle>
-<td-toggle name="beta" controlled></td-toggle>
+<td-toggle name="beta" controlled aria-label="Beta"></td-toggle>
 ```
 
 | Attribute | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `checked` | boolean | `false` | On state |
-| `controlled` | boolean | `false` | Emit `change` only — do NOT self-toggle (legacy) |
-| `value` | string | `on` | Submitted value when on |
-| `name` | string | — | Form field name |
-| `required` | boolean | `false` | Must be on for the form to be valid |
-| `disabled` | boolean | `false` | Disable (also via `<fieldset disabled>`) |
-| `label` | string | — | Label next to the switch |
+| `controlled` | boolean | `false` | Emit `change` only — do NOT self-toggle |
+| `value` / `name` / `required` / `disabled` | — | — | Form semantics |
+| `label` | string | — | Visible label (naming precedence as td-checkbox) |
 | `size` | string | `md` | `sm` \| `md` \| `lg` |
-| `color` | string | `#4ADE80` | Active color |
+| `color` | string | `--td-switch-on` (#16a34a) | On colour (default colours meet WCAG 1.4.11 3:1) |
+| `error-text` | string | — | Error contract (see td-checkbox) |
 
-**Events:** `change` → `{ checked }`
-**Methods:** `setColor(cssColor)`
-**A11y (0.4.0):** `role="switch"` with `aria-checked` kept in sync, `aria-disabled`, focusable (`tabindex`), toggles on Space/Enter.
+**Events:** exactly one `change` → `{ checked }` (the requested state in `controlled` mode).
+**Methods:** `setColor(cssColor)`, `setError` / `clearError`.
+**Keyboard:** Space (native). **0.7.0:** Enter no longer toggles (APG switch pattern).
 
 > **0.2.0 BREAKING:** default behavior changed from controlled (emit-only) to uncontrolled (self-toggling).
 
@@ -285,13 +291,21 @@ const unbind = TdLightbox.bind(root = document, options); // click delegation
 
 ### `TdLoading` — `@dazzxq/td-components/loading`
 
+> **Token-native (0.7.0):** needs `td.css`, no Tailwind. Internal classes changed — see [class map](migration/class-map.md).
+
 ```js
 import { TdLoading, TdLoadingSpinner } from '@dazzxq/td-components/loading';
-TdLoading.show('Đang tải...');     // or TdLoading.show({ message, maxDuration })
+TdLoading.show('Đang tải...');            // or show({ message, maxDuration }) — default 30 s safety auto-hide
 TdLoading.hide();
-const spinnerEl = TdLoading.create({ size: 'md', color: '#3b82f6' }); // inline spinner element
+await TdLoading.wrap(() => save(), 'Đang lưu...'); // ref-counted across concurrent wraps
+const el = TdLoadingSpinner.create({ size: 'md', color: '#3b82f6', label: 'Đang tải' });
 ```
-Full-screen overlay (`show`/`hide`) plus an inline `TdLoadingSpinner` element via `create({ size, color, trackColor, className })`.
+
+- Overlay: `role="status"`, scrim + strong glass card, `z-index: var(--td-z-loading)` (above modals, below toasts).
+  While shown the page is `inert` (toasts stay live), scroll is locked and focus is held on the card; everything
+  is restored exactly once on `hide()`, auto-hide or the last `wrap()` settling (fulfilled or rejected).
+- `TdLoadingSpinner.create({ size, color, trackColor, className, label })` → `.td-spinner`; `label` makes it a
+  `role="status"`, otherwise it is decorative (`aria-hidden`). Reduced motion stops the rotation.
 
 ### `TdTooltip` — `@dazzxq/td-components/tooltip`
 

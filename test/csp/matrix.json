@@ -16,118 +16,773 @@
       "td-toast": "/src/feedback/td-toast.js",
       "td-loading": "/src/feedback/td-loading.js",
       "td-datetime-picker": "/src/form/td-datetime-picker.js"
-    }
+    },
+    "tokenNative": [
+      "td-button",
+      "td-checkbox",
+      "td-toggle",
+      "td-loading"
+    ],
+    "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them)."
   },
-
   "td-toggle": [
-    { "state": "unchecked", "markup": "<td-toggle label=\"Wifi\"></td-toggle>", "selectors": [".td-toggle-track", ".td-toggle-thumb", ".td-toggle-icon:first-child", ".td-toggle-icon:last-child"] },
-    { "state": "checked", "markup": "<td-toggle label=\"Wifi\" checked></td-toggle>", "selectors": [".td-toggle-track", ".td-toggle-thumb", ".td-toggle-icon:first-child", ".td-toggle-icon:last-child"] },
-    { "state": "disabled", "markup": "<td-toggle label=\"Wifi\" disabled></td-toggle>", "selectors": [".td-toggle-track", ".td-toggle-thumb"] },
-    { "state": "disabled-checked", "markup": "<td-toggle label=\"Wifi\" checked disabled></td-toggle>", "selectors": [".td-toggle-track", ".td-toggle-thumb"] },
-    { "state": "custom-color", "markup": "<td-toggle label=\"Wifi\" checked color=\"#f59e0b\"></td-toggle>", "selectors": [".td-toggle-track", ".td-toggle-icon:last-child path"] },
-    { "state": "size-sm", "markup": "<td-toggle label=\"Wifi\" size=\"sm\" checked></td-toggle>", "selectors": [".td-toggle-track", ".td-toggle-thumb", ".td-toggle-icon:last-child"] },
-    { "state": "size-lg", "markup": "<td-toggle label=\"Wifi\" size=\"lg\" checked></td-toggle>", "selectors": [".td-toggle-track", ".td-toggle-thumb", ".td-toggle-icon:last-child"] }
+    {
+      "state": "unchecked",
+      "markup": "<td-toggle label=\"Wifi\"></td-toggle>",
+      "selectors": [
+        ".td-switch",
+        ".td-switch__track",
+        ".td-switch__thumb",
+        ".td-switch__icon--off",
+        ".td-switch__icon--on",
+        ".td-switch__label"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "checked",
+      "markup": "<td-toggle label=\"Wifi\" checked></td-toggle>",
+      "selectors": [
+        ".td-switch",
+        ".td-switch__track",
+        ".td-switch__thumb",
+        ".td-switch__icon--off",
+        ".td-switch__icon--on",
+        ".td-switch__label"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "disabled",
+      "markup": "<td-toggle label=\"Wifi\" disabled></td-toggle>",
+      "selectors": [
+        ".td-switch",
+        ".td-switch__track",
+        ".td-switch__thumb",
+        ".td-switch__icon--off",
+        ".td-switch__icon--on",
+        ".td-switch__label"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "disabled-checked",
+      "markup": "<td-toggle label=\"Wifi\" disabled checked></td-toggle>",
+      "selectors": [
+        ".td-switch",
+        ".td-switch__track",
+        ".td-switch__thumb",
+        ".td-switch__icon--off",
+        ".td-switch__icon--on",
+        ".td-switch__label"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "custom-color",
+      "markup": "<td-toggle label=\"Wifi\" checked color=\"#6366f1\"></td-toggle>",
+      "selectors": [
+        ".td-switch",
+        ".td-switch__track",
+        ".td-switch__thumb",
+        ".td-switch__icon--off",
+        ".td-switch__icon--on",
+        ".td-switch__label"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "size-sm",
+      "markup": "<td-toggle label=\"Wifi\" size=\"sm\" checked></td-toggle>",
+      "selectors": [
+        ".td-switch",
+        ".td-switch__track",
+        ".td-switch__thumb",
+        ".td-switch__icon--off",
+        ".td-switch__icon--on",
+        ".td-switch__label"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "size-lg",
+      "markup": "<td-toggle label=\"Wifi\" size=\"lg\" checked></td-toggle>",
+      "selectors": [
+        ".td-switch",
+        ".td-switch__track",
+        ".td-switch__thumb",
+        ".td-switch__icon--off",
+        ".td-switch__icon--on",
+        ".td-switch__label"
+      ],
+      "settle": 300
+    }
   ],
-
   "td-checkbox": [
-    { "state": "unchecked", "markup": "<td-checkbox label=\"Accept\"></td-checkbox>", "selectors": [".td-checkmark", ".td-checkmark-icon", ".td-checkbox-label"] },
-    { "state": "checked", "markup": "<td-checkbox label=\"Accept\" checked></td-checkbox>", "selectors": [".td-checkmark", ".td-checkmark-icon", ".td-checkbox-label"] },
-    { "state": "disabled", "markup": "<td-checkbox label=\"Accept\" disabled></td-checkbox>", "selectors": [".td-checkmark"] },
-    { "state": "custom-color", "markup": "<td-checkbox label=\"Accept\" checked color=\"#10b981\"></td-checkbox>", "selectors": [".td-checkmark"] },
-    { "state": "size-sm", "markup": "<td-checkbox label=\"Accept\" size=\"sm\" checked></td-checkbox>", "selectors": [".td-checkmark", ".td-checkmark-icon"] },
-    { "state": "size-lg", "markup": "<td-checkbox label=\"Accept\" size=\"lg\" checked></td-checkbox>", "selectors": [".td-checkmark", ".td-checkmark-icon"] }
+    {
+      "state": "unchecked",
+      "markup": "<td-checkbox label=\"Accept\"></td-checkbox>",
+      "selectors": [
+        ".td-checkbox",
+        ".td-checkbox__mark",
+        ".td-checkbox__svg",
+        ".td-checkbox__label"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "checked",
+      "markup": "<td-checkbox label=\"Accept\" checked></td-checkbox>",
+      "selectors": [
+        ".td-checkbox",
+        ".td-checkbox__mark",
+        ".td-checkbox__svg",
+        ".td-checkbox__label"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "disabled",
+      "markup": "<td-checkbox label=\"Accept\" disabled></td-checkbox>",
+      "selectors": [
+        ".td-checkbox",
+        ".td-checkbox__mark",
+        ".td-checkbox__svg",
+        ".td-checkbox__label"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "custom-color",
+      "markup": "<td-checkbox label=\"Accept\" checked color=\"#10b981\"></td-checkbox>",
+      "selectors": [
+        ".td-checkbox",
+        ".td-checkbox__mark",
+        ".td-checkbox__svg",
+        ".td-checkbox__label"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "size-sm",
+      "markup": "<td-checkbox label=\"Accept\" size=\"sm\" checked></td-checkbox>",
+      "selectors": [
+        ".td-checkbox",
+        ".td-checkbox__mark",
+        ".td-checkbox__svg",
+        ".td-checkbox__label"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "size-lg",
+      "markup": "<td-checkbox label=\"Accept\" size=\"lg\" checked></td-checkbox>",
+      "selectors": [
+        ".td-checkbox",
+        ".td-checkbox__mark",
+        ".td-checkbox__svg",
+        ".td-checkbox__label"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "error",
+      "markup": "<td-checkbox label=\"Accept\" error-text=\"Required\"></td-checkbox>",
+      "selectors": [
+        ".td-checkbox",
+        ".td-checkbox__mark",
+        ".td-checkbox__svg",
+        ".td-checkbox__label",
+        ".td-field-error"
+      ],
+      "settle": 300
+    }
   ],
-
   "td-slider": [
-    { "state": "min", "markup": "<td-slider min=\"0\" max=\"100\" value=\"0\"></td-slider>", "selectors": [".td-slider-container", ".td-slider-track-bg", ".td-slider-track-active", ".td-slider-thumb"] },
-    { "state": "mid", "markup": "<td-slider min=\"0\" max=\"100\" value=\"50\"></td-slider>", "selectors": [".td-slider-container", ".td-slider-track-active", ".td-slider-thumb"] },
-    { "state": "max", "markup": "<td-slider min=\"0\" max=\"100\" value=\"100\"></td-slider>", "selectors": [".td-slider-container", ".td-slider-track-active", ".td-slider-thumb"] },
-    { "state": "disabled", "markup": "<td-slider min=\"0\" max=\"100\" value=\"50\" disabled></td-slider>", "selectors": [".td-slider-thumb", ".td-slider-input"] },
-    { "state": "custom-color", "markup": "<td-slider min=\"0\" max=\"100\" value=\"50\" color=\"#a855f7\"></td-slider>", "selectors": [".td-slider-track-active", ".td-slider-thumb"] },
-    { "state": "show-value-label", "markup": "<td-slider min=\"0\" max=\"100\" value=\"50\" show-label color=\"#0ea5e9\"></td-slider>", "selectors": [".td-slider-value-label"] },
-    { "state": "size-sm", "markup": "<td-slider min=\"0\" max=\"100\" value=\"50\" size=\"sm\"></td-slider>", "selectors": [".td-slider-container", ".td-slider-track-container", ".td-slider-thumb"] },
-    { "state": "size-lg", "markup": "<td-slider min=\"0\" max=\"100\" value=\"50\" size=\"lg\"></td-slider>", "selectors": [".td-slider-container", ".td-slider-track-container", ".td-slider-thumb"] },
-    { "state": "step-marks", "markup": "<td-slider min=\"0\" max=\"4\" step=\"1\" value=\"2\" show-step-marks></td-slider>", "selectors": [".td-slider-wrap", ".td-slider-step-mark", ".td-slider-step-mark-label"] }
+    {
+      "state": "min",
+      "markup": "<td-slider min=\"0\" max=\"100\" value=\"0\"></td-slider>",
+      "selectors": [
+        ".td-slider-container",
+        ".td-slider-track-bg",
+        ".td-slider-track-active",
+        ".td-slider-thumb"
+      ]
+    },
+    {
+      "state": "mid",
+      "markup": "<td-slider min=\"0\" max=\"100\" value=\"50\"></td-slider>",
+      "selectors": [
+        ".td-slider-container",
+        ".td-slider-track-active",
+        ".td-slider-thumb"
+      ]
+    },
+    {
+      "state": "max",
+      "markup": "<td-slider min=\"0\" max=\"100\" value=\"100\"></td-slider>",
+      "selectors": [
+        ".td-slider-container",
+        ".td-slider-track-active",
+        ".td-slider-thumb"
+      ]
+    },
+    {
+      "state": "disabled",
+      "markup": "<td-slider min=\"0\" max=\"100\" value=\"50\" disabled></td-slider>",
+      "selectors": [
+        ".td-slider-thumb",
+        ".td-slider-input"
+      ]
+    },
+    {
+      "state": "custom-color",
+      "markup": "<td-slider min=\"0\" max=\"100\" value=\"50\" color=\"#a855f7\"></td-slider>",
+      "selectors": [
+        ".td-slider-track-active",
+        ".td-slider-thumb"
+      ]
+    },
+    {
+      "state": "show-value-label",
+      "markup": "<td-slider min=\"0\" max=\"100\" value=\"50\" show-label color=\"#0ea5e9\"></td-slider>",
+      "selectors": [
+        ".td-slider-value-label"
+      ]
+    },
+    {
+      "state": "size-sm",
+      "markup": "<td-slider min=\"0\" max=\"100\" value=\"50\" size=\"sm\"></td-slider>",
+      "selectors": [
+        ".td-slider-container",
+        ".td-slider-track-container",
+        ".td-slider-thumb"
+      ]
+    },
+    {
+      "state": "size-lg",
+      "markup": "<td-slider min=\"0\" max=\"100\" value=\"50\" size=\"lg\"></td-slider>",
+      "selectors": [
+        ".td-slider-container",
+        ".td-slider-track-container",
+        ".td-slider-thumb"
+      ]
+    },
+    {
+      "state": "step-marks",
+      "markup": "<td-slider min=\"0\" max=\"4\" step=\"1\" value=\"2\" show-step-marks></td-slider>",
+      "selectors": [
+        ".td-slider-wrap",
+        ".td-slider-step-mark",
+        ".td-slider-step-mark-label"
+      ]
+    }
   ],
-
   "td-input-field": [
-    { "state": "text", "markup": "<td-input-field type=\"text\" label=\"Name\" placeholder=\"Your name\"></td-input-field>", "selectors": [".td-input"] },
-    { "state": "text-focus", "markup": "<td-input-field type=\"text\" label=\"Name\" placeholder=\"Your name\"></td-input-field>", "selectors": [".td-input"], "pseudo": "focus", "focusSelector": ".td-input" },
-    { "state": "textarea", "markup": "<td-input-field type=\"textarea\" label=\"Bio\" rows=\"4\"></td-input-field>", "selectors": [".td-input-textarea"] },
-    { "state": "number", "markup": "<td-input-field type=\"number\" label=\"Qty\"></td-input-field>", "selectors": [".td-input"] },
-    { "state": "size-sm", "markup": "<td-input-field type=\"text\" size=\"sm\" label=\"Name\"></td-input-field>", "selectors": [".td-input"] },
-    { "state": "size-lg", "markup": "<td-input-field type=\"text\" size=\"lg\" label=\"Name\"></td-input-field>", "selectors": [".td-input"] },
-    { "state": "disabled", "markup": "<td-input-field type=\"text\" label=\"Name\" disabled></td-input-field>", "selectors": [".td-input"] },
-    { "state": "error", "markup": "<td-input-field type=\"text\" label=\"Name\" error-text=\"Required\"></td-input-field>", "selectors": [".td-input", ".td-input-note"] },
-    { "state": "note", "markup": "<td-input-field type=\"text\" label=\"Name\" helper-text=\"Optional\"></td-input-field>", "selectors": [".td-input-note"] },
-    { "state": "counter", "markup": "<td-input-field type=\"text\" label=\"Name\" max-length=\"10\" value=\"hi\"></td-input-field>", "selectors": [".td-input-counter"] },
-    { "state": "counter-full", "markup": "<td-input-field type=\"text\" label=\"Name\" max-length=\"2\" value=\"hi\"></td-input-field>", "selectors": [".td-input-counter"] }
+    {
+      "state": "text",
+      "markup": "<td-input-field type=\"text\" label=\"Name\" placeholder=\"Your name\"></td-input-field>",
+      "selectors": [
+        ".td-input"
+      ]
+    },
+    {
+      "state": "text-focus",
+      "markup": "<td-input-field type=\"text\" label=\"Name\" placeholder=\"Your name\"></td-input-field>",
+      "selectors": [
+        ".td-input"
+      ],
+      "pseudo": "focus",
+      "focusSelector": ".td-input"
+    },
+    {
+      "state": "textarea",
+      "markup": "<td-input-field type=\"textarea\" label=\"Bio\" rows=\"4\"></td-input-field>",
+      "selectors": [
+        ".td-input-textarea"
+      ]
+    },
+    {
+      "state": "number",
+      "markup": "<td-input-field type=\"number\" label=\"Qty\"></td-input-field>",
+      "selectors": [
+        ".td-input"
+      ]
+    },
+    {
+      "state": "size-sm",
+      "markup": "<td-input-field type=\"text\" size=\"sm\" label=\"Name\"></td-input-field>",
+      "selectors": [
+        ".td-input"
+      ]
+    },
+    {
+      "state": "size-lg",
+      "markup": "<td-input-field type=\"text\" size=\"lg\" label=\"Name\"></td-input-field>",
+      "selectors": [
+        ".td-input"
+      ]
+    },
+    {
+      "state": "disabled",
+      "markup": "<td-input-field type=\"text\" label=\"Name\" disabled></td-input-field>",
+      "selectors": [
+        ".td-input"
+      ]
+    },
+    {
+      "state": "error",
+      "markup": "<td-input-field type=\"text\" label=\"Name\" error-text=\"Required\"></td-input-field>",
+      "selectors": [
+        ".td-input",
+        ".td-input-note"
+      ]
+    },
+    {
+      "state": "note",
+      "markup": "<td-input-field type=\"text\" label=\"Name\" helper-text=\"Optional\"></td-input-field>",
+      "selectors": [
+        ".td-input-note"
+      ]
+    },
+    {
+      "state": "counter",
+      "markup": "<td-input-field type=\"text\" label=\"Name\" max-length=\"10\" value=\"hi\"></td-input-field>",
+      "selectors": [
+        ".td-input-counter"
+      ]
+    },
+    {
+      "state": "counter-full",
+      "markup": "<td-input-field type=\"text\" label=\"Name\" max-length=\"2\" value=\"hi\"></td-input-field>",
+      "selectors": [
+        ".td-input-counter"
+      ]
+    }
   ],
-
   "td-dropdown": [
-    { "state": "closed", "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}];", "selectors": [".td-dropdown-button", ".td-dropdown-arrow"] },
-    { "state": "closed-selected", "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; d.setAttribute('value','b');", "selectors": [".td-dropdown-button", ".td-dropdown-selected"] },
-    { "state": "open", "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; d.open();", "selectors": [".td-dropdown-arrow", ".td-dropdown-search", ".td-dropdown-options"], "portal": [".td-dropdown-search", ".td-dropdown-options"], "settle": 350 },
-    { "state": "disabled", "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('disabled',''); window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'}];", "selectors": [".td-dropdown-button"] }
+    {
+      "state": "closed",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}];",
+      "selectors": [
+        ".td-dropdown-button",
+        ".td-dropdown-arrow"
+      ]
+    },
+    {
+      "state": "closed-selected",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; d.setAttribute('value','b');",
+      "selectors": [
+        ".td-dropdown-button",
+        ".td-dropdown-selected"
+      ]
+    },
+    {
+      "state": "open",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; d.open();",
+      "selectors": [
+        ".td-dropdown-arrow",
+        ".td-dropdown-search",
+        ".td-dropdown-options"
+      ],
+      "portal": [
+        ".td-dropdown-search",
+        ".td-dropdown-options"
+      ],
+      "settle": 350
+    },
+    {
+      "state": "disabled",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('disabled',''); window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'}];",
+      "selectors": [
+        ".td-dropdown-button"
+      ]
+    }
   ],
-
   "td-button": [
-    { "state": "primary", "markup": "<td-button variant=\"primary\">Save</td-button>", "selectors": ["button"] },
-    { "state": "secondary", "markup": "<td-button variant=\"secondary\">Cancel</td-button>", "selectors": ["button"] },
-    { "state": "success", "markup": "<td-button variant=\"success\">OK</td-button>", "selectors": ["button"] },
-    { "state": "danger", "markup": "<td-button variant=\"danger\">Delete</td-button>", "selectors": ["button"] },
-    { "state": "warning", "markup": "<td-button variant=\"warning\">Warn</td-button>", "selectors": ["button"] },
-    { "state": "custom-color", "markup": "<td-button color=\"#6366f1\">Custom</td-button>", "selectors": ["button"] },
-    { "state": "disabled", "markup": "<td-button disabled>Save</td-button>", "selectors": ["button"] },
-    { "state": "loading", "markup": "<td-button loading>Save</td-button>", "selectors": ["button"] }
+    {
+      "state": "primary",
+      "markup": "<td-button variant=\"primary\">Save</td-button>",
+      "selectors": [
+        "button",
+        ".td-btn__label"
+      ]
+    },
+    {
+      "state": "secondary",
+      "markup": "<td-button variant=\"secondary\">Cancel</td-button>",
+      "selectors": [
+        "button",
+        ".td-btn__label"
+      ]
+    },
+    {
+      "state": "success",
+      "markup": "<td-button variant=\"success\">Done</td-button>",
+      "selectors": [
+        "button",
+        ".td-btn__label"
+      ]
+    },
+    {
+      "state": "danger",
+      "markup": "<td-button variant=\"danger\">Delete</td-button>",
+      "selectors": [
+        "button",
+        ".td-btn__label"
+      ]
+    },
+    {
+      "state": "warning",
+      "markup": "<td-button variant=\"warning\">Careful</td-button>",
+      "selectors": [
+        "button",
+        ".td-btn__label"
+      ]
+    },
+    {
+      "state": "info",
+      "markup": "<td-button variant=\"info\">Info</td-button>",
+      "selectors": [
+        "button",
+        ".td-btn__label"
+      ]
+    },
+    {
+      "state": "custom-color",
+      "markup": "<td-button color=\"#6366f1\">Custom</td-button>",
+      "selectors": [
+        "button",
+        ".td-btn__label"
+      ]
+    },
+    {
+      "state": "disabled",
+      "markup": "<td-button disabled>Off</td-button>",
+      "selectors": [
+        "button",
+        ".td-btn__label"
+      ]
+    },
+    {
+      "state": "loading",
+      "markup": "<td-button loading>Busy</td-button>",
+      "selectors": [
+        "button",
+        ".td-btn__label",
+        ".td-btn__spinner"
+      ],
+      "excludeProps": [
+        "transform",
+        "stroke-dashoffset",
+        "stroke-dasharray"
+      ]
+    },
+    {
+      "state": "icon",
+      "markup": "<td-button icon=\"download\" size=\"lg\">Tải</td-button>",
+      "selectors": [
+        "button",
+        ".td-btn__icon svg"
+      ]
+    }
   ],
-
   "td-tabs": [
-    { "state": "default", "setup": "const t=document.createElement('td-tabs'); t.id='probe'; window.__mount.appendChild(t); t.tabs=[{id:'a',label:'One'},{id:'b',label:'Two'}];", "selectors": [".td-tabs-container", ".td-tabs-indicator", ".td-tab-btn"], "excludeProps": ["left", "width"], "settle": 350, "settleNote": "ONLY indicator left/width are excluded — they are RAF-measured from active-button geometry. opacity IS kept: _updateIndicator() deterministically sets opacity=1 after the injected style's initial opacity:0, so the oracle WILL catch a refactor that leaves the active indicator invisible." },
-    { "state": "empty", "setup": "const t=document.createElement('td-tabs'); t.id='probe'; window.__mount.appendChild(t); t.tabs=[];", "selectors": [".td-tabs-container"] },
-    { "state": "size-sm", "setup": "const t=document.createElement('td-tabs'); t.id='probe'; t.setAttribute('size','sm'); window.__mount.appendChild(t); t.tabs=[{id:'a',label:'One'},{id:'b',label:'Two'}];", "selectors": [".td-tabs-container", ".td-tabs-indicator", ".td-tab-btn"], "excludeProps": ["left", "width"], "settle": 350 }
+    {
+      "state": "default",
+      "setup": "const t=document.createElement('td-tabs'); t.id='probe'; window.__mount.appendChild(t); t.tabs=[{id:'a',label:'One'},{id:'b',label:'Two'}];",
+      "selectors": [
+        ".td-tabs-container",
+        ".td-tabs-indicator",
+        ".td-tab-btn"
+      ],
+      "excludeProps": [
+        "left",
+        "width"
+      ],
+      "settle": 350,
+      "settleNote": "ONLY indicator left/width are excluded — they are RAF-measured from active-button geometry. opacity IS kept: _updateIndicator() deterministically sets opacity=1 after the injected style's initial opacity:0, so the oracle WILL catch a refactor that leaves the active indicator invisible."
+    },
+    {
+      "state": "empty",
+      "setup": "const t=document.createElement('td-tabs'); t.id='probe'; window.__mount.appendChild(t); t.tabs=[];",
+      "selectors": [
+        ".td-tabs-container"
+      ]
+    },
+    {
+      "state": "size-sm",
+      "setup": "const t=document.createElement('td-tabs'); t.id='probe'; t.setAttribute('size','sm'); window.__mount.appendChild(t); t.tabs=[{id:'a',label:'One'},{id:'b',label:'Two'}];",
+      "selectors": [
+        ".td-tabs-container",
+        ".td-tabs-indicator",
+        ".td-tab-btn"
+      ],
+      "excludeProps": [
+        "left",
+        "width"
+      ],
+      "settle": 350
+    }
   ],
-
   "td-pagination": [
-    { "state": "page1", "markup": "<td-pagination total-items=\"50\" items-per-page=\"10\" current-page=\"1\"></td-pagination>", "selectors": [".td-pagination-pages > span:first-child"] },
-    { "state": "page3", "markup": "<td-pagination total-items=\"50\" items-per-page=\"10\" current-page=\"3\"></td-pagination>", "selectors": [".td-pagination-pages > span.font-semibold"] },
-    { "state": "custom-color", "markup": "<td-pagination total-items=\"50\" items-per-page=\"10\" current-page=\"1\" active-color=\"#0ea5e9\"></td-pagination>", "selectors": [".td-pagination-pages > span:first-child"] }
+    {
+      "state": "page1",
+      "markup": "<td-pagination total-items=\"50\" items-per-page=\"10\" current-page=\"1\"></td-pagination>",
+      "selectors": [
+        ".td-pagination-pages > span:first-child"
+      ]
+    },
+    {
+      "state": "page3",
+      "markup": "<td-pagination total-items=\"50\" items-per-page=\"10\" current-page=\"3\"></td-pagination>",
+      "selectors": [
+        ".td-pagination-pages > span.font-semibold"
+      ]
+    },
+    {
+      "state": "custom-color",
+      "markup": "<td-pagination total-items=\"50\" items-per-page=\"10\" current-page=\"1\" active-color=\"#0ea5e9\"></td-pagination>",
+      "selectors": [
+        ".td-pagination-pages > span:first-child"
+      ]
+    }
   ],
-
   "td-empty-state": [
-    { "state": "default", "markup": "<td-empty-state></td-empty-state>", "selectors": [".td-empty-state-card", ".td-empty-icon", ".td-empty-title", ".td-empty-actions"] },
-    { "state": "compact", "markup": "<td-empty-state compact></td-empty-state>", "selectors": [".td-empty-state-card", ".td-empty-icon"] },
-    { "state": "size-sm", "markup": "<td-empty-state size=\"sm\"></td-empty-state>", "selectors": [".td-empty-state-card", ".td-empty-icon", ".td-empty-title"] },
-    { "state": "size-lg", "markup": "<td-empty-state size=\"lg\"></td-empty-state>", "selectors": [".td-empty-state-card", ".td-empty-icon", ".td-empty-title"] }
+    {
+      "state": "default",
+      "markup": "<td-empty-state></td-empty-state>",
+      "selectors": [
+        ".td-empty-state-card",
+        ".td-empty-icon",
+        ".td-empty-title",
+        ".td-empty-actions"
+      ]
+    },
+    {
+      "state": "compact",
+      "markup": "<td-empty-state compact></td-empty-state>",
+      "selectors": [
+        ".td-empty-state-card",
+        ".td-empty-icon"
+      ]
+    },
+    {
+      "state": "size-sm",
+      "markup": "<td-empty-state size=\"sm\"></td-empty-state>",
+      "selectors": [
+        ".td-empty-state-card",
+        ".td-empty-icon",
+        ".td-empty-title"
+      ]
+    },
+    {
+      "state": "size-lg",
+      "markup": "<td-empty-state size=\"lg\"></td-empty-state>",
+      "selectors": [
+        ".td-empty-state-card",
+        ".td-empty-icon",
+        ".td-empty-title"
+      ]
+    }
   ],
-
   "td-table": [
-    { "state": "data", "setup": "const t=document.createElement('td-table'); t.id='probe'; window.__mount.appendChild(t); t.columns=[{key:'name',label:'Name',width:'200px'},{key:'age',label:'Age'}]; t.data=[{name:'Ann',age:30},{name:'Bob',age:25},{name:'Cy',age:40}];", "selectors": [".td-table-container", ".td-table-row[data-row-idx=\"0\"]", ".td-table-row[data-row-idx=\"1\"]", ".td-table-row[data-row-idx=\"0\"] td:first-child"] },
-    { "state": "data-no-zebra", "setup": "const t=document.createElement('td-table'); t.id='probe'; window.__mount.appendChild(t); t.columns=[{key:'name',label:'Name'}]; t.data=[{name:'Ann'},{name:'Bob'}];", "selectors": [".td-table-container", ".td-table-row[data-row-idx=\"1\"]"], "zebraNote": "_isZebra() is structurally always-true in v0.2.0 (!hasAttr||hasAttr); zebra row 1 is always tinted regardless of the zebra attribute" },
-    { "state": "sortable-header", "setup": "const t=document.createElement('td-table'); t.id='probe'; window.__mount.appendChild(t); t.columns=[{key:'name',label:'Name',sortable:true},{key:'age',label:'Age'}]; t.data=[{name:'Ann',age:30}];", "selectors": [".td-table-container", "thead th[data-sort-key=\"name\"]"] },
-    { "state": "loading", "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('loading',''); t.setAttribute('loading-rows','3'); window.__mount.appendChild(t); t.columns=[{key:'name',label:'Name',width:'200px'},{key:'age',label:'Age'}];", "selectors": ["#probe > div", "thead tr", "tbody tr:first-child", "tbody tr:nth-child(2)", "tbody tr:first-child td:first-child"], "excludeProps": ["width"], "selectorNote": "the loading skeleton root has no td-table-container class (only the data render does) — key it via #probe > div", "excludeNote": "loading skeleton bar widths use Math.random() — width excluded (non-deterministic). Row/cell border + zebra bg are deterministic." },
-    { "state": "empty", "setup": "const t=document.createElement('td-table'); t.id='probe'; window.__mount.appendChild(t); t.columns=[{key:'name',label:'Name'}]; t.data=[];", "selectors": [".td-table-container"] }
+    {
+      "state": "data",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; window.__mount.appendChild(t); t.columns=[{key:'name',label:'Name',width:'200px'},{key:'age',label:'Age'}]; t.data=[{name:'Ann',age:30},{name:'Bob',age:25},{name:'Cy',age:40}];",
+      "selectors": [
+        ".td-table-container",
+        ".td-table-row[data-row-idx=\"0\"]",
+        ".td-table-row[data-row-idx=\"1\"]",
+        ".td-table-row[data-row-idx=\"0\"] td:first-child"
+      ]
+    },
+    {
+      "state": "data-no-zebra",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; window.__mount.appendChild(t); t.columns=[{key:'name',label:'Name'}]; t.data=[{name:'Ann'},{name:'Bob'}];",
+      "selectors": [
+        ".td-table-container",
+        ".td-table-row[data-row-idx=\"1\"]"
+      ],
+      "zebraNote": "_isZebra() is structurally always-true in v0.2.0 (!hasAttr||hasAttr); zebra row 1 is always tinted regardless of the zebra attribute"
+    },
+    {
+      "state": "sortable-header",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; window.__mount.appendChild(t); t.columns=[{key:'name',label:'Name',sortable:true},{key:'age',label:'Age'}]; t.data=[{name:'Ann',age:30}];",
+      "selectors": [
+        ".td-table-container",
+        "thead th[data-sort-key=\"name\"]"
+      ]
+    },
+    {
+      "state": "loading",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('loading',''); t.setAttribute('loading-rows','3'); window.__mount.appendChild(t); t.columns=[{key:'name',label:'Name',width:'200px'},{key:'age',label:'Age'}];",
+      "selectors": [
+        "#probe > div",
+        "thead tr",
+        "tbody tr:first-child",
+        "tbody tr:nth-child(2)",
+        "tbody tr:first-child td:first-child"
+      ],
+      "excludeProps": [
+        "width"
+      ],
+      "selectorNote": "the loading skeleton root has no td-table-container class (only the data render does) — key it via #probe > div",
+      "excludeNote": "loading skeleton bar widths use Math.random() — width excluded (non-deterministic). Row/cell border + zebra bg are deterministic."
+    },
+    {
+      "state": "empty",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; window.__mount.appendChild(t); t.columns=[{key:'name',label:'Name'}]; t.data=[];",
+      "selectors": [
+        ".td-table-container"
+      ]
+    }
   ],
-
   "td-modal": [
-    { "state": "default", "setup": "window.__modalId = TdModal.show({ title:'Hello', body:'<p>Body</p>' });", "selectors": [".td-modal-content", ".td-modal-backdrop"], "portal": [".td-modal-content", ".td-modal-backdrop"], "settle": 350 }
+    {
+      "state": "default",
+      "setup": "window.__modalId = TdModal.show({ title:'Hello', body:'<p>Body</p>' });",
+      "selectors": [
+        ".td-modal-content",
+        ".td-modal-backdrop"
+      ],
+      "portal": [
+        ".td-modal-content",
+        ".td-modal-backdrop"
+      ],
+      "settle": 350
+    }
   ],
-
   "td-toast": [
-    { "state": "info", "setup": "TdToast.info('Heads up');", "selectors": [".toast-item > div"], "portal": [".toast-item > div"], "settle": 350 },
-    { "state": "success", "setup": "TdToast.success('Saved');", "selectors": [".toast-item > div"], "portal": [".toast-item > div"], "settle": 350 },
-    { "state": "error", "setup": "TdToast.error('Failed');", "selectors": [".toast-item > div"], "portal": [".toast-item > div"], "settle": 350 },
-    { "state": "warning", "setup": "TdToast.warning('Careful');", "selectors": [".toast-item > div"], "portal": [".toast-item > div"], "settle": 350 }
+    {
+      "state": "info",
+      "setup": "TdToast.info('Heads up');",
+      "selectors": [
+        ".toast-item > div"
+      ],
+      "portal": [
+        ".toast-item > div"
+      ],
+      "settle": 350
+    },
+    {
+      "state": "success",
+      "setup": "TdToast.success('Saved');",
+      "selectors": [
+        ".toast-item > div"
+      ],
+      "portal": [
+        ".toast-item > div"
+      ],
+      "settle": 350
+    },
+    {
+      "state": "error",
+      "setup": "TdToast.error('Failed');",
+      "selectors": [
+        ".toast-item > div"
+      ],
+      "portal": [
+        ".toast-item > div"
+      ],
+      "settle": 350
+    },
+    {
+      "state": "warning",
+      "setup": "TdToast.warning('Careful');",
+      "selectors": [
+        ".toast-item > div"
+      ],
+      "portal": [
+        ".toast-item > div"
+      ],
+      "settle": 350
+    }
   ],
-
   "td-loading": [
-    { "state": "overlay", "setup": "TdLoading.show('Loading');", "selectors": [".td-loading-card", ".td-circular-spinner", ".td-spinner-track", ".td-spinner-arc"], "portal": [".td-loading-card", ".td-circular-spinner", ".td-spinner-track", ".td-spinner-arc"], "reducedMotion": true, "excludeProps": ["transform", "stroke-dashoffset"], "excludeNote": "captured under prefers-reduced-motion; live rotate transform + dash animation are time-dependent (Task 1 asserts liveness separately)" },
-    { "state": "inline-sm", "setup": "const s=TdLoadingSpinner.create({size:'sm'}); window.__mount.appendChild(s);", "selectors": [".td-spinner", ".td-spinner svg circle:first-child", ".td-spinner svg circle:last-child"], "reducedMotion": false, "excludeProps": ["transform", "stroke-dashoffset", "stroke-dasharray"], "excludeNote": "inline spinner has NO prefers-reduced-motion rule (unlike the overlay) — the arc's transform + stroke-dashoffset + stroke-dasharray all animate live; excluded. Task 1 asserts liveness." },
-    { "state": "inline-md", "setup": "const s=TdLoadingSpinner.create({size:'md'}); window.__mount.appendChild(s);", "selectors": [".td-spinner", ".td-spinner svg circle:first-child", ".td-spinner svg circle:last-child"], "reducedMotion": false, "excludeProps": ["transform", "stroke-dashoffset", "stroke-dasharray"] },
-    { "state": "inline-lg", "setup": "const s=TdLoadingSpinner.create({size:'lg',color:'#10b981'}); window.__mount.appendChild(s);", "selectors": [".td-spinner", ".td-spinner svg circle:first-child", ".td-spinner svg circle:last-child"], "reducedMotion": false, "excludeProps": ["transform", "stroke-dashoffset", "stroke-dasharray"] }
+    {
+      "state": "overlay",
+      "setup": "TdLoading.show('Loading');",
+      "selectors": [
+        ".td-loading",
+        ".td-loading__card",
+        ".td-loading__spinner",
+        ".td-spinner__arc",
+        ".td-loading__message"
+      ],
+      "portal": [
+        ".td-loading",
+        ".td-loading__card",
+        ".td-loading__spinner",
+        ".td-spinner__arc",
+        ".td-loading__message"
+      ],
+      "reducedMotion": true,
+      "settle": 400,
+      "excludeProps": [
+        "transform",
+        "stroke-dashoffset",
+        "stroke-dasharray"
+      ],
+      "excludeNote": "captured under prefers-reduced-motion (rotation stops, arc pinned); liveness asserted separately"
+    },
+    {
+      "state": "inline-sm",
+      "setup": "window.__mount.appendChild(TdLoadingSpinner.create({size:'sm'}));",
+      "selectors": [
+        ".td-spinner",
+        ".td-spinner__track",
+        ".td-spinner__arc"
+      ],
+      "excludeProps": [
+        "transform",
+        "stroke-dashoffset",
+        "stroke-dasharray"
+      ]
+    },
+    {
+      "state": "inline-md",
+      "setup": "window.__mount.appendChild(TdLoadingSpinner.create({size:'md'}));",
+      "selectors": [
+        ".td-spinner",
+        ".td-spinner__track",
+        ".td-spinner__arc"
+      ],
+      "excludeProps": [
+        "transform",
+        "stroke-dashoffset",
+        "stroke-dasharray"
+      ]
+    },
+    {
+      "state": "inline-lg",
+      "setup": "window.__mount.appendChild(TdLoadingSpinner.create({size:'lg',color:'#10b981'}));",
+      "selectors": [
+        ".td-spinner",
+        ".td-spinner__track",
+        ".td-spinner__arc"
+      ],
+      "excludeProps": [
+        "transform",
+        "stroke-dashoffset",
+        "stroke-dasharray"
+      ]
+    }
   ],
-
   "td-datetime-picker": [
-    { "state": "open", "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('value','15/06/2026 - 09:30'); window.__mount.appendChild(p); p._open();", "selectors": [".td-dtp-wheel-container", ".td-dtp-wheel-option.selected"], "portal": [".td-dtp-wheel-container", ".td-dtp-wheel-option.selected"], "settle": 400, "constructNote": "td-datetime-picker's ONLY blocking construct is the injected <style id=td-datetime-picker-styles> (gradient .td-dtp-wheel-container background-image, .selected font/color/transform, ::before band). Opens inside a TdModal portaled to body via _open(). This captures the directly-styled rules; the ::before pseudo-band parity is a Task-1 adopted-sheet concern (getComputedStyle can't key it by class alone here)." }
+    {
+      "state": "open",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('value','15/06/2026 - 09:30'); window.__mount.appendChild(p); p._open();",
+      "selectors": [
+        ".td-dtp-wheel-container",
+        ".td-dtp-wheel-option.selected"
+      ],
+      "portal": [
+        ".td-dtp-wheel-container",
+        ".td-dtp-wheel-option.selected"
+      ],
+      "settle": 400,
+      "constructNote": "td-datetime-picker's ONLY blocking construct is the injected <style id=td-datetime-picker-styles> (gradient .td-dtp-wheel-container background-image, .selected font/color/transform, ::before band). Opens inside a TdModal portaled to body via _open(). This captures the directly-styled rules; the ::before pseudo-band parity is a Task-1 adopted-sheet concern (getComputedStyle can't key it by class alone here)."
+    }
   ]
 }

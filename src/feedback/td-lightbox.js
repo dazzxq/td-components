@@ -14,6 +14,9 @@
  */
 
 import { lockScroll } from '../utils/scroll-lock.js';
+import { acquireInert } from '../utils/inert-lock.js';
+
+const LIGHTBOX_LAYER = 350; // --td-z-lightbox
 import { TdModalStackManager } from './td-modal-stack.js';
 import { tdIcon } from '../icons/td-icon.js';
 
@@ -790,22 +793,6 @@ function onBackdropClick() {
   if (session && session.opts.closeOnBackdrop !== false) closeViewer();
 }
 
-/* ------------------------------------------------------------------ inert background */
-
-function setBackgroundInert() {
-  const changed = [];
-  for (const el of document.body.children) {
-    if (el === ui.overlay || el.id === 'td-toast-container' || el.hasAttribute('inert')) continue;
-    el.setAttribute('inert', '');
-    changed.push(el);
-  }
-  return changed;
-}
-
-function restoreBackground(changed) {
-  for (const el of changed) el.removeAttribute('inert'); // only what WE set
-}
-
 /* ------------------------------------------------------------------ slides */
 
 function isVideoSlide() {
@@ -993,7 +980,7 @@ function openViewer(items, options = {}) {
     viewer = {
       savedFocus: document.activeElement instanceof HTMLElement ? document.activeElement : null,
       releaseScroll: lockScroll(),
-      inerted: setBackgroundInert(),
+      releaseInert: acquireInert([ui.overlay], LIGHTBOX_LAYER), // shared, ref-counted with other overlays
       hist: { state: 'none', closed: false },
       closed: false,
     };
@@ -1033,7 +1020,7 @@ function closeViewer() {
   document.removeEventListener('keydown', onKeydown);
 
   v.releaseScroll();
-  restoreBackground(v.inerted);
+  v.releaseInert();
   if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
 
   if (v.hist.state === 'pushed') {

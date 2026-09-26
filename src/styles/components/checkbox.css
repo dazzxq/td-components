@@ -1,0 +1,134 @@
+/*
+ * td-checkbox (src/form/td-checkbox.js). Content-layer control: solid, never glass.
+ * State: :checked / :disabled / :focus-visible on .td-checkbox__input, [aria-invalid] for the error contract.
+ * Host custom property --td-checkbox-color (from the `color` attribute) overrides the token.
+ */
+@layer td.component {
+	td-checkbox {
+		display: inline-block;
+	}
+
+	.td-checkbox {
+		--td-checkbox-box: 1.25rem;
+
+		position: relative;
+		box-sizing: border-box;
+		display: inline-flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		justify-content: flex-start;
+		line-height: var(--td-leading-normal); /* own it: never inherit the host page's */
+		min-width: 24px;   /* hit target ≥ 24×24 for every size (WCAG 2.5.8) */
+		min-height: 24px;
+		font-family: var(--td-font-sans);
+		color: var(--td-control-fg);
+		cursor: pointer;
+		user-select: none;
+	}
+
+	.td-checkbox--sm { --td-checkbox-box: 1rem; font-size: var(--td-text-sm); }
+	.td-checkbox--md { font-size: var(--td-text-base); }
+	.td-checkbox--lg { --td-checkbox-box: 1.5rem; font-size: var(--td-text-md); }
+
+	/* Visually hidden, still focusable and form-native. */
+	.td-checkbox__input {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	.td-checkbox__mark {
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		width: var(--td-checkbox-box);
+		height: var(--td-checkbox-box);
+		color: var(--td-accent-contrast);
+		background: var(--td-control-bg);
+		border: 1.5px solid var(--td-checkbox-border);
+		border-radius: 6px;
+		line-height: 1;
+		transition:
+			background var(--td-dur-fast) var(--td-ease),
+			border-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-checkbox__icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+
+	.td-checkbox__svg {
+		width: calc(var(--td-checkbox-box) * 0.7);
+		height: calc(var(--td-checkbox-box) * 0.7);
+		stroke-width: 3;
+		opacity: 0;
+		transform: scale(0.85);
+		transition:
+			opacity var(--td-dur-fast) var(--td-ease),
+			transform var(--td-dur-base) var(--td-ease-spring);
+	}
+
+	.td-checkbox__input:checked ~ .td-checkbox__mark {
+		background: var(--td-checkbox-color);
+		border-color: var(--td-checkbox-color);
+	}
+
+	.td-checkbox__input:checked ~ .td-checkbox__mark .td-checkbox__svg {
+		opacity: 1;
+		transform: scale(1);
+	}
+
+	.td-checkbox__input:focus-visible ~ .td-checkbox__mark {
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-checkbox__input[aria-invalid="true"] ~ .td-checkbox__mark {
+		border-color: var(--td-field-error);
+	}
+
+	.td-checkbox:has(.td-checkbox__input:disabled) {
+		cursor: not-allowed;
+		opacity: 0.5;
+	}
+
+	.td-checkbox__label {
+		line-height: var(--td-leading-snug, 1.375);
+	}
+
+	@media (pointer: coarse) {
+		.td-checkbox {
+			min-width: var(--td-touch-min);
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-checkbox__mark,
+		.td-checkbox__svg {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-checkbox__mark {
+			border-color: ButtonText;
+		}
+
+		.td-checkbox__input:checked ~ .td-checkbox__mark {
+			color: HighlightText;
+			background: Highlight;
+			border-color: Highlight;
+		}
+	}
+}

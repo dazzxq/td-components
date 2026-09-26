@@ -1,3 +1,4 @@
+import '../styles/story-layout.css';
 import './td-toggle.js';
 
 export default {
@@ -19,7 +20,7 @@ export const Default = {
       ${args.disabled ? 'disabled' : ''}
       label="${args.label || ''}"
       size="${args.size || 'md'}"
-      color="${args.color || '#4ADE80'}"
+      ${args.color ? `color="${args.color}"` : ''}
     ></td-toggle>
   `,
   args: {
@@ -27,7 +28,6 @@ export const Default = {
     disabled: false,
     label: 'Toggle me',
     size: 'md',
-    color: '#4ADE80',
   },
 };
 
@@ -54,4 +54,14 @@ export const LargeSize = {
 export const CustomColor = {
   ...Default,
   args: { ...Default.args, checked: true, color: '#f59e0b', label: 'Amber toggle' },
+};
+
+/** Error contract: `error-text` / setError() → aria-invalid + aria-errormessage + note. */
+export const WithError = {
+  render: () => `<td-toggle label="Tôi đồng ý với điều khoản" error-text="Bạn cần chọn mục này để tiếp tục"></td-toggle>`,
+};
+
+/** Unlabeled (named by aria-label); the hit area stays ≥ 24×24 (44 on touch). */
+export const AriaLabelOnly = {
+  render: () => `<div class="sb-row"><td-toggle size="sm" aria-label="Chọn"></td-toggle><td-toggle aria-label="Chọn"></td-toggle><td-toggle size="lg" aria-label="Chọn" checked></td-toggle></div>`,
 };

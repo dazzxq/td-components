@@ -1,3 +1,5 @@
+import '../styles/story-layout.css';
+import '../form/td-button.js';
 import { TdLoading, TdLoadingSpinner } from './td-loading.js';
 
 export default {
@@ -5,99 +7,59 @@ export default {
   tags: ['autodocs'],
 };
 
+const on = (root, sel, fn) => root.querySelector(sel).addEventListener('click', fn);
+
+/** Blocking overlay: strong glass card over a plain scrim; page inert, focus held, restored after. */
 export const FullscreenOverlay = {
-  render: () => `
-    <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            id="loading-show-btn">
-      Show Loading (2s)
-    </button>
-  `,
-  play: ({ canvasElement }) => {
-    canvasElement.querySelector('#loading-show-btn').addEventListener('click', () => {
+  render: () => {
+    const root = document.createElement('div');
+    root.innerHTML = '<td-button id="loading-show-btn">Show loading (2s)</td-button>';
+    on(root, '#loading-show-btn', () => {
       TdLoading.show('Đang tải dữ liệu...');
       setTimeout(() => TdLoading.hide(), 2000);
     });
+    return root;
   },
 };
 
 export const InlineSpinner = {
   render: () => {
-    const container = document.createElement('div');
-    container.className = 'flex items-center gap-6 p-4';
-
-    const sizes = [
-      { size: 'sm', label: 'Small' },
-      { size: 'md', label: 'Medium' },
-      { size: 'lg', label: 'Large' },
-    ];
-
-    sizes.forEach(({ size, label }) => {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'flex flex-col items-center gap-2';
-
-      const spinner = TdLoadingSpinner.create({ size });
-      const text = document.createElement('span');
-      text.className = 'text-sm text-gray-500';
-      text.textContent = label;
-
-      wrapper.appendChild(spinner);
-      wrapper.appendChild(text);
-      container.appendChild(wrapper);
-    });
-
-    // Add a custom color spinner
-    const customWrapper = document.createElement('div');
-    customWrapper.className = 'flex flex-col items-center gap-2';
-    const customSpinner = TdLoadingSpinner.create({ size: 'md', color: '#8b5cf6', trackColor: 'rgba(139, 92, 246, 0.15)' });
-    const customText = document.createElement('span');
-    customText.className = 'text-sm text-gray-500';
-    customText.textContent = 'Custom Color';
-    customWrapper.appendChild(customSpinner);
-    customWrapper.appendChild(customText);
-    container.appendChild(customWrapper);
-
-    return container;
+    const row = document.createElement('div');
+    row.className = 'sb-row';
+    for (const [opts, text] of [[{ size: 'sm' }, 'Small'], [{ size: 'md' }, 'Medium'], [{ size: 'lg' }, 'Large'],
+      [{ size: 'md', color: '#8b5cf6', trackColor: 'rgba(139, 92, 246, 0.15)', label: 'Đang tải' }, 'Custom + label']]) {
+      const col = document.createElement('div');
+      col.className = 'sb-col';
+      const caption = document.createElement('span');
+      caption.className = 'sb-note';
+      caption.textContent = text;
+      col.append(TdLoadingSpinner.create(opts), caption);
+      row.appendChild(col);
+    }
+    return row;
   },
 };
 
-export const CustomMessage = {
-  render: () => `
-    <div class="flex flex-wrap gap-3">
-      <button class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors"
-              id="loading-save-btn">Saving...</button>
-      <button class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors"
-              id="loading-upload-btn">Uploading...</button>
-      <button class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors"
-              id="loading-delete-btn">Deleting...</button>
-    </div>
-  `,
-  play: ({ canvasElement }) => {
-    canvasElement.querySelector('#loading-save-btn').addEventListener('click', () => {
-      TdLoading.show('Đang lưu dữ liệu...');
-      setTimeout(() => TdLoading.hide(), 2000);
+/** wrap() is ref-counted: the overlay stays until the LAST concurrent task settles. */
+export const ConcurrentWrap = {
+  render: () => {
+    const root = document.createElement('div');
+    root.innerHTML = '<td-button id="wrap-btn" variant="secondary">Run 2 tasks (1s + 2.5s)</td-button>'
+      + '<p class="sb-note">The overlay hides only when both tasks finish.</p>';
+    on(root, '#wrap-btn', () => {
+      TdLoading.wrap(() => new Promise((r) => setTimeout(r, 1000)), 'Đang lưu...');
+      TdLoading.wrap(() => new Promise((r) => setTimeout(r, 2500)), 'Đang tải file lên...');
     });
-    canvasElement.querySelector('#loading-upload-btn').addEventListener('click', () => {
-      TdLoading.show('Đang tải file lên...');
-      setTimeout(() => TdLoading.hide(), 2000);
-    });
-    canvasElement.querySelector('#loading-delete-btn').addEventListener('click', () => {
-      TdLoading.show('Đang xóa...');
-      setTimeout(() => TdLoading.hide(), 2000);
-    });
+    return root;
   },
 };
 
 export const WithAutoHide = {
-  render: () => `
-    <button class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
-            id="loading-autohide-btn">
-      Show Loading (auto-hide 3s)
-    </button>
-    <p class="mt-2 text-sm text-gray-500">Loading sẽ tự động ẩn sau 3 giây (maxDuration).</p>
-  `,
-  play: ({ canvasElement }) => {
-    canvasElement.querySelector('#loading-autohide-btn').addEventListener('click', () => {
-      TdLoading.show({ message: 'Sẽ tự động ẩn...', maxDuration: 3000 });
-    });
+  render: () => {
+    const root = document.createElement('div');
+    root.innerHTML = '<td-button id="loading-autohide-btn" variant="warning">Show loading (auto-hide 3s)</td-button>'
+      + '<p class="sb-note">Loading sẽ tự động ẩn sau 3 giây (maxDuration).</p>';
+    on(root, '#loading-autohide-btn', () => TdLoading.show({ message: 'Sẽ tự động ẩn...', maxDuration: 3000 }));
+    return root;
   },
 };

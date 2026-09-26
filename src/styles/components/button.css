@@ -1,0 +1,152 @@
+/*
+ * td-button (src/form/td-button.js). Content layer → SOLID, never glass (liquid-glass R1/R7).
+ * The ONE primary action on a floating bar uses .td-glass-tint instead.
+ * State: :disabled (native) · [aria-busy="true"] (loading, focus kept) · :focus-visible.
+ * Per-instance colours: host custom properties --td-btn-bg / --td-btn-fg (+ .td-btn--custom).
+ */
+@layer td.component {
+	td-button {
+		display: inline-block;
+	}
+
+	td-button:has(.td-btn--full) {
+		display: block;
+	}
+
+	.td-btn[hidden] {
+		display: none;
+	}
+
+	.td-btn {
+		--td-btn-bg-v: var(--td-control-bg);
+		--td-btn-fg-v: var(--td-control-fg);
+		--td-btn-border-v: var(--td-control-border);
+
+		position: relative;
+		box-sizing: border-box;
+		display: inline-flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		justify-content: center;
+		min-height: 2.5rem;
+		padding: 0 1.25rem;
+		margin: 0;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-semibold);
+		line-height: 1.25;
+		color: var(--td-btn-fg-v);
+		white-space: nowrap;
+		cursor: pointer;
+		background: var(--td-btn-bg-v);
+		border: 1px solid var(--td-btn-border-v);
+		border-radius: var(--td-btn-radius);
+		transition:
+			background var(--td-dur-fast) var(--td-ease),
+			border-color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease),
+			transform 100ms var(--td-ease);
+		appearance: none;
+	}
+
+	.td-btn--sm { min-height: 2rem; padding: 0 0.85rem; font-size: var(--td-text-xs); }
+	.td-btn--lg { min-height: 3rem; padding: 0 1.6rem; font-size: var(--td-text-base); }
+	.td-btn--full { display: flex; width: 100%; }
+
+	.td-btn--primary {
+		--td-btn-bg-v: var(--td-btn-primary-bg);
+		--td-btn-fg-v: var(--td-btn-primary-fg);
+		--td-btn-border-v: var(--td-btn-primary-bg);
+	}
+
+	.td-btn--secondary {
+		--td-btn-bg-v: var(--td-btn-secondary-bg);
+		--td-btn-fg-v: var(--td-btn-secondary-fg);
+		--td-btn-border-v: var(--td-btn-secondary-border);
+	}
+
+	.td-btn--success { --td-btn-bg-v: var(--td-color-success); --td-btn-fg-v: var(--td-color-on-status); --td-btn-border-v: var(--td-color-success); }
+	.td-btn--danger { --td-btn-bg-v: var(--td-color-error); --td-btn-fg-v: var(--td-color-on-status); --td-btn-border-v: var(--td-color-error); }
+	.td-btn--warning { --td-btn-bg-v: var(--td-color-warning); --td-btn-fg-v: var(--td-color-on-status); --td-btn-border-v: var(--td-color-warning); }
+	.td-btn--info { --td-btn-bg-v: var(--td-color-info); --td-btn-fg-v: var(--td-color-on-status); --td-btn-border-v: var(--td-color-info); }
+
+	.td-btn--custom {
+		--td-btn-bg-v: var(--td-btn-bg);
+		--td-btn-fg-v: var(--td-btn-fg);
+		--td-btn-border-v: var(--td-btn-bg);
+	}
+
+	/* Hover never lowers text contrast: an overlay that darkens under light text (default) or lightens under
+	   dark text (custom colours set --td-btn-hover accordingly). Secondary uses its own lighter/darker fill. */
+	.td-btn:hover:not(:disabled, [aria-busy="true"]) {
+		background-image: linear-gradient(var(--td-btn-hover, rgb(0 0 0 / 12%)), var(--td-btn-hover, rgb(0 0 0 / 12%)));
+	}
+
+	.td-btn--secondary:hover:not(:disabled, [aria-busy="true"]) {
+		background: var(--td-btn-secondary-hover);
+		background-image: none;
+	}
+
+	.td-btn:active:not(:disabled, [aria-busy="true"]) {
+		transform: scale(var(--_td-glass-press, 0.98));
+	}
+
+	.td-btn:focus-visible {
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-btn:disabled {
+		cursor: not-allowed;
+		opacity: 0.55;
+	}
+
+	.td-btn__icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+
+	/* Loading: keep the size, hide the content, show the shared spinner. */
+	.td-btn[aria-busy="true"] {
+		cursor: progress;
+	}
+
+	.td-btn[aria-busy="true"] > .td-btn__label,
+	.td-btn[aria-busy="true"] > .td-btn__icon {
+		visibility: hidden;
+	}
+
+	.td-btn__spinner {
+		position: absolute;
+		inset: 0;
+		width: auto;
+		height: auto;
+		margin: auto;
+		--td-spinner-size: 1.1em;
+	}
+
+	.td-btn__spinner:not([hidden]) {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.td-btn__spinner .td-spinner__svg {
+		width: var(--td-spinner-size);
+		height: var(--td-spinner-size);
+	}
+
+	@media (pointer: coarse) {
+		.td-btn { min-height: var(--td-touch-min); border-radius: var(--td-radius-full); }
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-btn { transition: none; }
+		.td-btn:active:not(:disabled, [aria-busy="true"]) { transform: none; }
+	}
+
+	@media (forced-colors: active) {
+		.td-btn { border-color: ButtonText; }
+	}
+}
