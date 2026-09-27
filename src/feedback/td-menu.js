@@ -56,7 +56,6 @@ import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
 const TYPEAHEAD_MS = 500;
 const LIST_MAX = 448; // px, 28rem at 16px: the menu itself scrolls beyond this (or the room on the chosen side)
 const ALIGNS = ['start', 'center', 'end'];
-const SAFE_SCHEMES = ['http:', 'https:']; // inventory §1.5: http/https only (mail/phone → onSelect)
 
 let menuSeq = 0;
 let triggerSeq = 0;
@@ -67,20 +66,23 @@ const bound = new WeakMap();
 
 /**
  * Validate a link target (security.md: URL whitelist). Relative URLs resolve against the page; an explicit scheme
- * must be http/https. The string is normalised the way the URL parser does before the check.
+ * must be https (or http on an http page). The string is normalised the way the URL parser does before the check.
  * @param {unknown} href
+ * @param {{ href: string, protocol: string }|null} [page=location] the page URL (injectable for tests)
  * @returns {string|null} the href to use, or null when unsafe
  */
-export function safeMenuHref(href) {
+export function safeMenuHref(href, page = typeof location !== 'undefined' ? location : null) {
   if (typeof href !== 'string') return null;
   // URL parsing strips leading/trailing C0 controls + spaces and removes tab/newline anywhere ("java\tscript:").
   const norm = href.replace(/^[\u0000- ]+|[\u0000- ]+$/g, '').replace(/[\t\n\r]/g, '');
   if (!norm) return null;
   let url;
-  try { url = new URL(norm, typeof location !== 'undefined' ? location.href : 'http://localhost/'); } catch { return null; }
-  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(norm);
-  if (scheme) return SAFE_SCHEMES.includes(`${scheme[1].toLowerCase()}:`) ? norm : null;
-  return url ? norm : null; // relative (path, ?query, #hash, //host): same scheme as the page
+  try { url = new URL(norm, page ? page.href : 'https://localhost/'); } catch { return null; }
+  // Judge the RESOLVED protocol (relative URLs inherit the page's): https always; http only when the page itself is
+  // http (no cleartext downgrade from an HTTPS page — same fail-closed policy as td-lightbox defaultIsAllowedUrl).
+  if (url.protocol === 'https:') return norm;
+  if (url.protocol === 'http:' && page && page.protocol === 'http:') return norm;
+  return null;
 }
 
 const isFn = (f) => typeof f === 'function';

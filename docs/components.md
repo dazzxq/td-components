@@ -418,8 +418,8 @@ const unbind = TdMenu.bind(myButton, () => items, { align: 'end' }); // or bind 
 TdMenu.open(anchor, items); TdMenu.close(); TdMenu.isOpen(anchor);
 ```
 
-**Items:** `label`, `onSelect` (alias `onClick`), `href` (+ `newTab`; only http/https/relative — anything else,
-including `mailto:`/`tel:`, renders a disabled item and warns; use `onSelect` for those), `icon` (registry name) /
+**Items:** `label`, `onSelect` (alias `onClick`), `href` (+ `newTab`; https, or http only on an http page, relative URLs by their resolved protocol —
+anything else, including `mailto:`/`tel:`, renders a disabled item and warns; use `onSelect` for those), `icon` (registry name) /
 `iconNode` (trusted `SVGElement`, cloned), `hint`, `danger`, `disabled`, `type: 'checkbox' | 'radio'` + `checked` +
 `group`, `{ separator: true }`. The menu never mutates your items: a checkable item's new state arrives as
 `onSelect(ctx)` → `ctx.checked`; update your model to persist it. **Options:** `align`
@@ -604,6 +604,7 @@ const detach = TdFormValidation.attach(form, { rules, onValid: (e) => save() });
 - **Live revalidation** (`attach`): after the first failed submit, typing clears/updates a shown error, `change` /
   `focusout` show the current one; a server error on a field clears when the user edits it. Sites using `attach()`
   should drop `td-input-field[validate-on]` for the same fields.
+- A custom rule that **throws** makes the field invalid (`messages.ruleError`) — validation fails closed.
 - `TdFormValidation.labels` / `.messages` (Vietnamese, site-overridable).
 
 **With `TdModal` async actions** (no TdModal change needed):

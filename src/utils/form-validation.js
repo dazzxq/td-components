@@ -270,6 +270,7 @@ export class TdFormValidation {
    * td controls keep their own (Vietnamese) `validationMessage` unless a per-call `messages` override applies.
    */
   static messages = {
+    ruleError: 'Không thể kiểm tra giá trị này',
     valueMissing: 'Trường này là bắt buộc',
     typeMismatch: 'Giá trị không hợp lệ',
     typeMismatchEmail: 'Email không hợp lệ',
@@ -439,19 +440,18 @@ export class TdFormValidation {
     const name = controlName(el);
     const rule = rules && name && Object.prototype.hasOwnProperty.call(rules, name) ? rules[name] : null;
     if (typeof rule !== 'function' || typeof el.setCustomValidity !== 'function') return;
-    el.setCustomValidity('');
-    st.custom.delete(el);
+    // Run the rule FIRST; custom validity only changes once it has a result. A throwing rule FAILS CLOSED (security
+    // review v0.12.0: crafted input that makes a rule throw must not bypass it) with a generic message.
     let msg = '';
     try {
       msg = rule(valueOf(el, root), el, root);
     } catch (err) {
-      console.warn(`TdFormValidation: rule "${name}" threw`, err);
-      msg = '';
+      console.warn(`TdFormValidation: rule "${name}" threw — the field is treated as invalid`, err);
+      msg = TdFormValidation.messages.ruleError;
     }
-    if (msg) {
-      el.setCustomValidity(String(msg));
-      st.custom.add(el);
-    }
+    el.setCustomValidity(msg ? String(msg) : '');
+    if (msg) st.custom.add(el);
+    else st.custom.delete(el);
   }
 
   /** @private */

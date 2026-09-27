@@ -416,6 +416,14 @@ describe('v0.12 TdMenu — selection, checkable items, links', () => {
     expect(safeMenuHref('#top')).to.equal('#top');
     expect(safeMenuHref('mailto:a@b.vn')).to.equal(null); // http/https only (inventory §1.5)
     expect(safeMenuHref('tel:+8490')).to.equal(null);
+    // security review: no cleartext downgrade from an HTTPS page; relative URLs judged by the resolved protocol
+    const httpsPage = { href: 'https://site.vn/a/', protocol: 'https:' };
+    expect(safeMenuHref('http://evil.vn/x', httpsPage)).to.equal(null);
+    expect(safeMenuHref('https://a.vn/x', httpsPage)).to.equal('https://a.vn/x');
+    expect(safeMenuHref('/tin-tuc', httpsPage)).to.equal('/tin-tuc');
+    expect(safeMenuHref('//cdn.vn/f', httpsPage)).to.equal('//cdn.vn/f');
+    const httpPage = { href: 'http://site.vn/', protocol: 'http:' };
+    expect(safeMenuHref('http://a.vn/x', httpPage)).to.equal('http://a.vn/x');
     for (const bad of ['javascript:alert(1)', ' JaVaScRiPt:alert(1)', 'java\tscript:alert(1)', '\u0001javascript:x',
       'data:text/html,x', 'vbscript:x', 'http://[', '', null, 42]) {
       expect(safeMenuHref(bad), String(bad)).to.equal(null);

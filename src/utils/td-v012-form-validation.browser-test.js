@@ -166,12 +166,14 @@ describe('TdFormValidation.validate — custom rules (setCustomValidity)', () =>
     expect(form.querySelector('td-input-field').errorMessage).to.equal('');
   });
 
-  it('a rule that throws is treated as passing (warned), never breaks validate()', () => {
+  it('a rule that throws FAILS CLOSED (invalid, generic message, warned) and never breaks validate()', () => {
     const form = mount('<form><input name="a" value="1"></form>');
     const warn = console.warn; console.warn = () => {};
     try {
-      const r = TdFormValidation.validate(form, { rules: { a: () => { throw new Error('x'); } } });
-      expect(r.valid).to.equal(true);
+      const r = TdFormValidation.validate(form, { rules: { a: () => { throw new Error('x'); } }, summary: false, focus: false });
+      expect(r.valid).to.equal(false);
+      expect(r.errors[0].message).to.equal(TdFormValidation.messages.ruleError);
+      expect(form.checkValidity()).to.equal(false);
     } finally { console.warn = warn; }
   });
 });

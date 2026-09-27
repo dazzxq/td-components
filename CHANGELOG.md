@@ -12,7 +12,7 @@ All notable changes to **td-components** are documented here.
 
 - **`TdMenu`** (`./menu`): APG menu button as a static helper (`open`, `close`, `isOpen`, `bind`, `button`) —
   strong-glass popover at `--td-z-popover`, roving focus, type-ahead, checkable items (`menuitemcheckbox` /
-  `menuitemradio`), `hint` on any item, `href` whitelist http/https/relative (others render disabled), `iconNode` SVG only, caller items
+  `menuitemradio`), `hint` on any item, `href` whitelist https (http only on an http page; others render disabled), `iconNode` SVG only, caller items
   never mutated (`ctx.checked`), focus back to the
   trigger after a selection. Differences from dwp/135: no outside-press swallowing, no custom-node / secondary-action
   items, scrolling no longer closes the menu.
@@ -22,7 +22,7 @@ All notable changes to **td-components** are documented here.
   `search-error` event, `renderOption` / `renderChip` (Node or text).
 - **`TdFormValidation`** (`./form-validation`): `validate` / `apply` / `clear` / `attach`; native constraints + JS
   `rules`; server errors scoped to the root (fieldMap, name, dotted → bracket, `[data-field]` wrapper → real control);
-  focus the first invalid control; optional `role=alert` summary; live revalidation after the first failed submit.
+  a throwing rule fails closed; focus the first invalid control; optional `role=alert` summary; live revalidation after the first failed submit.
 - Shared: `utils/typeahead.js` (`fold`, `nextTypeaheadIndex`; td-dropdown uses it), `placeFloating` `align` option,
   `npm run check:stories` + `src/stories-dom.browser-test.js` (story XSS gate: node for string stories, real browser for
   every story; in `npm test`), `npm run test:engines` (menu Tab in Chromium, Firefox,
