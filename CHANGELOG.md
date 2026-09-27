@@ -2,6 +2,17 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.14.1
+
+### Changed (visual)
+
+- **Softer control borders** (owner request): input-field, textarea, dropdown (trigger + search), datetime-picker,
+  chip-input, toggle and checkbox rest on `--td-control-border-soft` (#d1d1d6 light / #3a3a3c dark, Apple systemGray4)
+  instead of gray-500; hover darkens to `--td-control-border-strong`, keyboard focus keeps the focus ring.
+  Trade-off: the resting border is ~1.5:1 (below WCAG 1.4.11's 3:1); sites that need strict 3:1 at rest set
+  `--td-control-border-soft: var(--td-control-border-strong)`. Tests now assert a visible soft border (≥ 1.3:1) and a
+  ≥ 3:1 hover border; 23 CSP baselines recaptured.
+
 ## 0.14.0
 
 **Real Liquid Glass.** The owner found the kit "not liquid glass at all"; the rules were re-derived in a Codex

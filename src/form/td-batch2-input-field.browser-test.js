@@ -4,6 +4,17 @@ import './td-input-field.js';
 import { TdInputField } from './td-input-field.js';
 import { TdButton } from './td-button.js';
 
+/** v0.14.1: resting control borders are soft (--td-control-border-soft, visible ≥ 1.3:1); the hover / strong border
+ *  (--td-control-border-strong) keeps ≥ 3:1. Resolves a token to a computed colour. */
+function tokenColor(name) {
+  const p = document.createElement('span');
+  p.style.setProperty('color', `var(${name})`);
+  document.body.appendChild(p);
+  const c = getComputedStyle(p).color;
+  p.remove();
+  return c;
+}
+
 // v0.8.0 batch 2 — td-input-field token-native (plan docs/plans/v0.8.0-batch2.md step 2). td.css only.
 const link = document.createElement('link');
 link.rel = 'stylesheet';
@@ -349,8 +360,11 @@ describe('batch 2 — td-input-field styles (td.css)', () => {
       const cs = getComputedStyle(input);
       const fieldBg = cs.backgroundColor;
       const pageBg = getComputedStyle(document.body).backgroundColor;
-      expect(ratio(cs.borderTopColor, fieldBg)).to.be.at.least(3);
-      expect(ratio(cs.borderTopColor, pageBg)).to.be.at.least(3);
+      // v0.14.1: soft border at rest (visible), the hover border keeps ≥ 3:1; focus shows the ring
+      expect(ratio(cs.borderTopColor, fieldBg)).to.be.at.least(1.3);
+      expect(ratio(cs.borderTopColor, pageBg)).to.be.at.least(1.3);
+      expect(ratio(tokenColor('--td-field-border-hover'), fieldBg)).to.be.at.least(3);
+      expect(ratio(tokenColor('--td-field-border-hover'), pageBg)).to.be.at.least(3);
       expect(ratio(getComputedStyle(input, '::placeholder').color, fieldBg)).to.be.at.least(4.5);
       expect(ratio(cs.color, fieldBg)).to.be.at.least(4.5);
       expect(ratio(getComputedStyle(el.querySelector('.td-field__label')).color, pageBg)).to.be.at.least(4.5);

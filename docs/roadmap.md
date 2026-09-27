@@ -49,6 +49,10 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` `TdFormValidation` (từ `dcms-form-validation.js`; constraint gốc + `rules` + lỗi server) (v0.12.0)
 - `done` Release cuối của đợt migrate: bỏ peer Tailwind (v0.11.0; `td-sample` token-native, Storybook/demo không Tailwind, guard test)
 
+## Done — v0.14.1 viền nhạt
+
+- `done` Viền input / dropdown / toggle / checkbox nhạt lúc nghỉ (`--td-control-border-soft`), đậm khi hover
+
 ## Done — v0.14.0 Liquid Glass thật
 
 - `done` Viết lại luật Liquid Glass (v2, Codex think-about), token mới, button kính, checkbox tròn, toast tint màu,
