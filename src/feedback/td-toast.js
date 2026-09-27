@@ -1,7 +1,8 @@
 /**
  * TdToast — toast notification utility. Token-native (needs td.css; no Tailwind). Styles:
  * src/styles/components/toast.css.
- * Static API: TdToast.show(msg, type, duration) · .success(msg) · .error(msg) · .warning(msg) · .info(msg)
+ * Static API: TdToast.show(msg, type, duration) · .success(msg) · .error(msg) · .warning(msg) · .info(msg) → a
+ * handle `{ close() }` · TdToast.clear() · TdToast.labels.close (close-button aria-label).
  *
  * DOM contract:
  *   <div id="td-toast-container" class="td-toasts">                       ← lazily appended to <body>, id kept
@@ -9,7 +10,7 @@
  *          role="status|alert" aria-live="polite|assertive" data-state="entering|open|closing" [data-paused]>
  *       <span class="td-toast__icon" aria-hidden="true"><svg class="td-icon …" data-icon="{type}"></svg></span>
  *       <span class="td-toast__message">{message — text set one frame after insertion}</span>
- *       <button type="button" class="td-toast__close" aria-label="Đóng"><svg data-icon="close"></svg></button>
+ *       <button type="button" class="td-toast__close" aria-label="{TdToast.labels.close}"><svg data-icon="close"></svg></button>
  *     </div>
  *   </div>
  *
@@ -26,6 +27,9 @@
  *   (LAYERS.toast, keyboard 'none', includeInTrap) → never inert under a modal/loading lease, and its close
  *   buttons join a blocking dialog's Tab cycle. Released after the last toast is removed.
  * - MAX_VISIBLE with FIFO eviction; evicted toasts leave the active list synchronously (0.4.1 B1).
+ * - The handle returned by show() is the REQUEST: close() drops it from the 50 ms queue, cancels its pending 80 ms
+ *   stagger timer, or dismisses the shown toast (like its close button); idempotent. clear() does all three for
+ *   every request.
  */
 
 import { tdIcon } from '../icons/td-icon.js';
@@ -46,8 +50,13 @@ export class TdToast {
   static MAX_VISIBLE = 5;
   /** @type {HTMLElement[]} */
   static _activeToasts = [];
+  /** Site-overridable UI strings (Vietnamese defaults). */
+  static labels = { close: CLOSE_LABEL };
+  /** @private requests waiting for the 50 ms flush */
   static _pendingQueue = [];
   static _flushScheduled = false;
+  /** @private requests whose stagger timer is pending */
+  static _scheduled = new Set();
   /** @private layer registration while ≥ 1 toast is in the DOM */
   static _layer = null;
   /** @private pause sources */
@@ -121,15 +130,19 @@ export class TdToast {
    * @param {string} message - Toast message text (rendered as text, never HTML)
    * @param {'success'|'error'|'warning'|'info'} type - Toast variant (unknown → info)
    * @param {number} duration - Auto-dismiss delay in ms (0 = sticky: dismissed by its close button or a click)
+   * @returns {{ close(): void }} handle of this request (queued, staggered or shown); close() is idempotent
    */
   static show(message, type = 'info', duration = 4000) {
-    if (!message) return;
+    const req = { message, type, duration, state: message ? 'queued' : 'closed', timer: null, toast: null };
+    const handle = { close: () => TdToast._cancel(req) };
+    if (!message) return handle;
 
-    TdToast._pendingQueue.push({ message, type, duration });
+    TdToast._pendingQueue.push(req);
     if (!TdToast._flushScheduled) {
       TdToast._flushScheduled = true;
       setTimeout(() => TdToast._flush(), 50);
     }
+    return handle;
   }
 
   /**
@@ -139,9 +152,45 @@ export class TdToast {
   static _flush() {
     TdToast._flushScheduled = false;
     const queue = TdToast._pendingQueue.splice(0);
-    queue.forEach((item, i) => {
-      setTimeout(() => TdToast._showSingle(item.message, item.type, item.duration), i * 80);
+    queue.forEach((req, i) => {
+      req.state = 'scheduled';
+      TdToast._scheduled.add(req);
+      req.timer = setTimeout(() => {
+        req.timer = null;
+        TdToast._scheduled.delete(req);
+        if (req.state !== 'scheduled') return;
+        req.state = 'shown';
+        req.toast = TdToast._showSingle(req.message, req.type, req.duration);
+      }, i * 80);
     });
+  }
+
+  /**
+   * @private End one request whatever its stage (idempotent).
+   * @param {{state: string, timer: *, toast: HTMLElement|null}} req
+   */
+  static _cancel(req) {
+    const was = req.state;
+    req.state = 'closed';
+    if (was === 'queued') {
+      const i = TdToast._pendingQueue.indexOf(req);
+      if (i !== -1) TdToast._pendingQueue.splice(i, 1);
+    } else if (was === 'scheduled') {
+      if (req.timer) clearTimeout(req.timer);
+      req.timer = null;
+      TdToast._scheduled.delete(req);
+    } else if (was === 'shown' && req.toast && req.toast._removeToast) {
+      req.toast._removeToast(); // no-op if it already went away
+    }
+  }
+
+  /** Drop every queued toast, cancel every pending stagger timer and dismiss every shown toast. */
+  static clear() {
+    for (const req of TdToast._pendingQueue.splice(0)) req.state = 'closed';
+    for (const req of [...TdToast._scheduled]) TdToast._cancel(req);
+    for (const t of TdToast._activeToasts.slice()) {
+      if (t._removeToast) t._removeToast();
+    }
   }
 
   /** @private whether auto-dismiss timers are currently frozen */
@@ -209,7 +258,7 @@ export class TdToast {
     const close = document.createElement('button');
     close.type = 'button';
     close.className = 'td-toast__close';
-    close.setAttribute('aria-label', CLOSE_LABEL);
+    close.setAttribute('aria-label', TdToast.labels.close || CLOSE_LABEL);
     const x = tdIcon('close', { size: 's' });
     if (x) close.appendChild(x);
 
@@ -295,35 +344,39 @@ export class TdToast {
    * Show success toast.
    * @param {string} message
    * @param {number} duration
+   * @returns {{ close(): void }}
    */
   static success(message, duration = 4000) {
-    TdToast.show(message, 'success', duration);
+    return TdToast.show(message, 'success', duration);
   }
 
   /**
    * Show error toast (longer default duration).
    * @param {string} message
    * @param {number} duration
+   * @returns {{ close(): void }}
    */
   static error(message, duration = 5000) {
-    TdToast.show(message, 'error', duration);
+    return TdToast.show(message, 'error', duration);
   }
 
   /**
    * Show warning toast.
    * @param {string} message
    * @param {number} duration
+   * @returns {{ close(): void }}
    */
   static warning(message, duration = 4000) {
-    TdToast.show(message, 'warning', duration);
+    return TdToast.show(message, 'warning', duration);
   }
 
   /**
    * Show info toast.
    * @param {string} message
    * @param {number} duration
+   * @returns {{ close(): void }}
    */
   static info(message, duration = 4000) {
-    TdToast.show(message, 'info', duration);
+    return TdToast.show(message, 'info', duration);
   }
 }

@@ -66,6 +66,26 @@ Gọi liên tiếp nhiều lần là an toàn: toast được xếp hàng và hi
 TdToast.MAX_VISIBLE = 3;   // đặt một lần khi khởi động site
 ```
 
+### Đóng toast bằng code
+
+Mọi lần gọi trả về một **handle** `{ close() }`. Handle đại diện cho **yêu cầu**, nên gọi `close()` lúc nào cũng được:
+toast còn trong hàng đợi → bị bỏ (không bao giờ hiện); đã hiện → đóng như bấm nút X. Gọi lại `close()` không làm gì.
+
+```js
+const saving = TdToast.info('Đang đồng bộ…', 0);   // sticky
+await sync();
+saving.close();
+TdToast.success('Đã đồng bộ');
+
+TdToast.clear();   // bỏ mọi toast đang chờ và đóng mọi toast đang hiện (vd. khi chuyển trang trong SPA)
+```
+
+### Đổi nhãn nút X
+
+```js
+TdToast.labels.close = 'Close';   // aria-label của nút X, mặc định 'Đóng'; đặt một lần khi khởi động
+```
+
 ### Đổi vị trí (chỉ bằng token CSS)
 
 Mặc định toast ở góc **trên bên phải**. Ví dụ đưa xuống **giữa phía dưới** (kiểu 135 / dwp):
@@ -85,11 +105,14 @@ Mặc định toast ở góc **trên bên phải**. Ví dụ đưa xuống **gi�
 
 | Chữ ký | Mô tả |
 |---|---|
-| `TdToast.show(message, type = 'info', duration = 4000)` | Hiện toast. `message`: text (giá trị rỗng / falsy như `''`, `null`, `0` → không hiện gì). `type`: `'success' \| 'error' \| 'warning' \| 'info'` (giá trị lạ → `info`). `duration`: mili-giây; `0` hoặc âm = sticky. Trả về `undefined`. |
-| `TdToast.success(message, duration = 4000)` | Rút gọn cho `show(message, 'success', duration)`. |
-| `TdToast.error(message, duration = 5000)` | Rút gọn cho `show(message, 'error', duration)`. |
-| `TdToast.warning(message, duration = 4000)` | Rút gọn cho `show(message, 'warning', duration)`. |
-| `TdToast.info(message, duration = 4000)` | Rút gọn cho `show(message, 'info', duration)`. |
+| `TdToast.show(message, type = 'info', duration = 4000)` | Hiện toast. `message`: text (giá trị rỗng / falsy như `''`, `null`, `0` → không hiện gì). `type`: `'success' \| 'error' \| 'warning' \| 'info'` (giá trị lạ → `info`). `duration`: mili-giây; `0` hoặc âm = sticky. Trả về handle `{ close() }` (từ 0.16.0; trước đó `undefined`). |
+| `TdToast.success(message, duration = 4000)` | Rút gọn cho `show(message, 'success', duration)`; trả handle. |
+| `TdToast.error(message, duration = 5000)` | Rút gọn cho `show(message, 'error', duration)`; trả handle. |
+| `TdToast.warning(message, duration = 4000)` | Rút gọn cho `show(message, 'warning', duration)`; trả handle. |
+| `TdToast.info(message, duration = 4000)` | Rút gọn cho `show(message, 'info', duration)`; trả handle. |
+| `handle.close()` | (0.16.0) Còn trong hàng đợi 50ms → gỡ khỏi hàng đợi; đang chờ lượt 80ms → huỷ lượt đó; đã hiện → đóng như nút X. Gọi lại → không làm gì. Với `message` rỗng handle vẫn có nhưng không làm gì. |
+| `TdToast.clear()` | (0.16.0) Xoá hàng đợi, huỷ mọi lượt đang chờ, đóng mọi toast đang hiện. |
+| `TdToast.labels` | (0.16.0) `{ close: 'Đóng' }` — `aria-label` của nút X, áp dụng cho toast tạo sau khi đổi. |
 | `TdToast.MAX_VISIBLE` | `5`. Số toast hiện cùng lúc tối đa; vượt quá thì cái cũ nhất bị đóng. |
 | `TdToast.container` | Phần tử `#td-toast-container` (hoặc `null` trước lần gọi đầu). Chỉ đọc. |
 | `TdToast.ensureContainer()` | Tạo vùng chứa nếu chưa có / đã bị gỡ khỏi DOM. Thường không cần gọi tay. |
@@ -97,14 +120,12 @@ Mặc định toast ở góc **trên bên phải**. Ví dụ đưa xuống **gi�
 | `TdToast.getToastZIndex()` | **Lỗi thời.** Trả z-index đã tính của vùng chứa (từ token `--td-z-toast`). |
 | `TdToast.TOAST_Z_INDEX_BASE` | **Lỗi thời.** `500`, chỉ còn để tương thích; z-index thật đến từ token `--td-z-toast`. |
 
-Toast không có API để đóng một toast cụ thể hay xoá tất cả bằng code: toast tự tắt theo `duration`, hoặc người dùng
-đóng.
-
 ## Hành vi
 
 - **Hẹn giờ tạm dừng** (WCAG 2.2.1) khi: con trỏ đang ở trên vùng toast, focus đang ở trong vùng toast, hoặc tab trình
   duyệt bị ẩn. Thời gian còn lại được giữ và chạy tiếp khi hết điều kiện. Toast đang tạm dừng có `[data-paused]`.
-- **Đóng:** mọi toast (kể cả sticky) có nút X (`aria-label="Đóng"`); click vào **bất kỳ đâu** trên toast cũng đóng nó.
+- **Đóng:** mọi toast (kể cả sticky) có nút X (`aria-label` = `TdToast.labels.close`, mặc định `"Đóng"`); click vào
+  **bất kỳ đâu** trên toast cũng đóng nó. Code đóng bằng `handle.close()` / `TdToast.clear()`.
 - **Hàng đợi:** lần gọi đầu được gom trong 50ms, sau đó mỗi toast hiện cách nhau 80ms. Vì vậy toast không xuất hiện
   "ngay trong cùng dòng code" — đừng truy vấn DOM toast ngay sau khi gọi `show()`.
 - **Trên modal / loading:** vùng toast không bao giờ bị `inert` bởi [modal](modal.md) hay [loading](loading.md); nút X
@@ -197,8 +218,6 @@ dùng [modal](modal.md).
   được nạp chưa.
 - **Đừng dùng toast cho lỗi bắt buộc xử lý.** Toast có thể biến mất trước khi người dùng đọc; lỗi quan trọng nên dùng
   `TdModal.error` hoặc hiện tại chỗ.
-- **Nhãn "Đóng" của nút X hiện chưa cấu hình được** (không có `TdToast.labels`). Site không dùng tiếng Việt cần biết
-  điều này.
 - **Toast bị header cố định che:** nâng `--td-toast-top`, hoặc nếu header có z-index lớn hơn 500 thì nâng cả bộ token
   `--td-z-*`. `TOAST_Z_INDEX_BASE` không còn tác dụng.
 - Đừng xoá `#td-toast-container` bằng tay; nếu nó bị gỡ, lần gọi sau kit tự tạo lại.

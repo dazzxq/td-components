@@ -318,7 +318,9 @@ ghi đè. Cách làm chuẩn: một module `i18n-<ngôn ngữ>.js` nạp **một
 | `options.labels` (theo từng lần gọi) | `@dazzxq/td-components/lightbox` | `dialog prev next close back fullscreen download info` (chuỗi), `counter(i, n)` (hàm) | Mỗi `TdLightbox.open()` / `bind()` — không có object tĩnh |
 | `TdHovercard.labels` | `@dazzxq/td-components/hovercard` | `loading error dialog` | Mỗi lần mở thẻ |
 | `TdMenu.labels` | `@dazzxq/td-components/menu` | `trigger` | Khi tạo `TdMenu.button()` |
-| `TdModal.labels` | `@dazzxq/td-components/modal` | `close confirm cancel ok` | Khi tạo dialog |
+| `TdModal.labels` | `@dazzxq/td-components/modal` | `close confirm cancel ok confirmTitle confirmMessage successTitle errorTitle infoTitle` (5 khoá cuối từ 0.16.0) | Khi tạo dialog |
+| `TdToast.labels` | `@dazzxq/td-components/toast` | `close` (0.16.0) | Khi tạo mỗi toast |
+| `TdLoading.labels` | `@dazzxq/td-components/loading` | `loading` (0.16.0) | Mỗi `show()` / `wrap()` không truyền `message` |
 | `TdDatetimePicker.labels` | `@dazzxq/td-components/datetime-picker` | `title placeholder date day month year time hour minute close now confirm` | Khi render / mở picker |
 | `TdDatetimePicker.messages` | như trên | `required format incomplete day month year hour minute date min max` (`{min}` `{max}`) | Khi kiểm tra giá trị |
 | `TdChipInput.labels` | `@dazzxq/td-components/chip-input` | `remove create chips added removed duplicate results noResults loading error max required` (`{label}` `{text}` `{n}` `{max}`) | Mỗi lần dùng; `el.messages` ghi đè cho một instance |
@@ -338,8 +340,8 @@ Giá trị mặc định từng khoá: [hooks.md](hooks.md) (mục của từng 
 | td-tabs | `aria-label` (mặc định `Các thẻ`) |
 | td-table | `empty-title`, `empty-text`, `aria-label` |
 | td-empty-state | `title`, `message` |
-| TdLoading | `TdLoading.show('Loading…')`, `TdLoading.wrap(fn, 'Loading…')` |
-| TdModal | `title`, `message`, `confirmText`, `cancelText`, `okText` — **tiêu đề mặc định** của `confirm` (`Xác nhận`), `success` (`Thành công`), `error` (`Lỗi`), `info` (`Thông tin`) và `message` mặc định của `confirm` không lấy từ `TdModal.labels`, phải truyền mỗi lần |
+| TdLoading | `TdLoading.show('Loading…')`, `TdLoading.wrap(fn, 'Loading…')` — ghi đè `TdLoading.labels.loading` cho một lần |
+| TdModal | `title`, `message`, `confirmText`, `cancelText`, `okText` — `message` mặc định của `success` (`Thao tác đã hoàn tất`) và `error` (`Đã xảy ra lỗi`) không lấy từ `TdModal.labels`, phải truyền mỗi lần |
 | TdFormValidation | Option `messages` theo từng field (áp cả cho control td) |
 | Control form td | `setError(message)` thay thông điệp hiển thị |
 
@@ -349,7 +351,6 @@ Biết trước để không mất công tìm:
 
 | Component | Chữ cố định |
 |---|---|
-| TdToast | `aria-label` nút đóng `Đóng` |
 | td-dropdown | `Tìm kiếm` (nhãn + placeholder ô tìm), `Không tìm thấy kết quả`, option bỏ chọn `Không chọn`, thông điệp `Vui lòng chọn một tùy chọn` |
 | td-pagination | `Trang trước`, `Trang sau`, `Trang {n}`, `Hiển thị {a}-{b} / {tổng} {item-label}` |
 | td-input-field | Thông điệp validation (`Trường này là bắt buộc`, `Email không hợp lệ`, `Vượt quá giới hạn … ký tự/từ`…) |
@@ -367,6 +368,8 @@ TdFormValidation không có `messages` cho field đó. Muốn đa ngôn ngữ ho
 import { TdHovercard } from '@dazzxq/td-components/hovercard';
 import { TdMenu } from '@dazzxq/td-components/menu';
 import { TdModal } from '@dazzxq/td-components/modal';
+import { TdToast } from '@dazzxq/td-components/toast';
+import { TdLoading } from '@dazzxq/td-components/loading';
 import { TdDatetimePicker } from '@dazzxq/td-components/datetime-picker';
 import { TdChipInput } from '@dazzxq/td-components/chip-input';
 import { TdTable } from '@dazzxq/td-components/table';
@@ -380,7 +383,11 @@ export const lightboxLabels = {
 
 Object.assign(TdHovercard.labels, { loading: 'Loading…', error: 'Could not load content.', dialog: 'More info' });
 Object.assign(TdMenu.labels, { trigger: 'Options' });
-Object.assign(TdModal.labels, { close: 'Close', confirm: 'Confirm', cancel: 'Cancel', ok: 'OK' });
+Object.assign(TdModal.labels, { close: 'Close', confirm: 'Confirm', cancel: 'Cancel', ok: 'OK',
+  confirmTitle: 'Confirm', confirmMessage: 'Are you sure?', successTitle: 'Success', errorTitle: 'Error',
+  infoTitle: 'Information' });
+TdToast.labels.close = 'Close';
+TdLoading.labels.loading = 'Loading...';
 
 Object.assign(TdDatetimePicker.labels, {
   title: 'Pick date and time', date: 'Date', day: 'Day', month: 'Month', year: 'Year',

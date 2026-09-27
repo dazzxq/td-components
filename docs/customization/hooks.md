@@ -281,17 +281,18 @@ Hàm tiện ích export kèm: `safeMenuHref(href) → string | null` (bộ lọc
 
 | Hàm | Option | Resolve |
 |---|---|---|
-| `TdModal.confirm(opts)` | `title` (`'Xác nhận'`), `message` (`'Bạn có chắc chắn?'`), `messageHtml` (HTML tin cậy, thắng `message`), `confirmText`, `cancelText`, `confirmVariant` (`primary danger success warning`), `onConfirm`, `onCancel` | `true` khi xác nhận; `false` khi huỷ / X / `closeAll` |
-| `TdModal.success(opts)` / `.error(opts)` / `.info(opts)` | `title`, `message`, `messageHtml`, `okText` | `true` khi bấm OK, `false` khi đóng cách khác |
+| `TdModal.confirm(opts)` | `title` (`labels.confirmTitle`), `message` (`labels.confirmMessage`), `messageHtml` (HTML tin cậy, thắng `message`), `confirmText`, `cancelText`, `confirmVariant` (`primary danger success warning`), `onConfirm`, `onCancel` | `true` khi xác nhận; `false` khi huỷ / X / `closeAll` |
+| `TdModal.success(opts)` / `.error(opts)` / `.info(opts)` | `title` (`labels.successTitle` / `errorTitle` / `infoTitle`), `message`, `messageHtml`, `okText` | `true` khi bấm OK, `false` khi đóng cách khác |
 
-`onConfirm()`: đồng bộ (kể cả ném lỗi) → resolve `true` và đóng. Trả Promise → nút xác nhận bận; settle khác `false` →
-`true` + đóng; resolve `false` hoặc reject → giữ mở (reject có `console.warn`). `onCancel()` ném lỗi bị nuốt.
+`onConfirm()`: đồng bộ trả `false` hoặc ném lỗi (`console.error`) → giữ mở (**đổi hành vi 0.16.0**, giống `actions`);
+giá trị đồng bộ khác → resolve `true` và đóng. Trả Promise → nút xác nhận bận; settle khác `false` → `true` + đóng;
+resolve `false` hoặc reject → giữ mở (reject có `console.warn`). `onCancel()` ném lỗi bị nuốt.
 
 ### Cấu hình tĩnh
 
 | Thành viên | Mặc định | Ghi chú |
 |---|---|---|
-| `TdModal.labels` | `{ close: 'Đóng', confirm: 'Xác nhận', cancel: 'Hủy', ok: 'OK' }` | `close` = `aria-label` nút X (đọc khi tạo dialog); `confirm` / `cancel` / `ok` = chữ nút mặc định. **Tiêu đề mặc định** của `confirm` / `success` / `error` / `info` không lấy từ đây, hãy truyền `title` |
+| `TdModal.labels` | `{ close: 'Đóng', confirm: 'Xác nhận', cancel: 'Hủy', ok: 'OK', confirmTitle: 'Xác nhận', confirmMessage: 'Bạn có chắc chắn?', successTitle: 'Thành công', errorTitle: 'Lỗi', infoTitle: 'Thông tin' }` | `close` = `aria-label` nút X (đọc khi tạo dialog); `confirm` / `cancel` / `ok` = chữ nút mặc định; `*Title` / `confirmMessage` (0.16.0) = tiêu đề / nội dung mặc định của các hộp thoại Promise. `message` mặc định của `success` / `error` không lấy từ đây |
 | `TdModalStackManager.BASE_Z_INDEX` | `null` | **Deprecated**. Gán số → mỗi modal nhận z-index inline `BASE + i × Z_INDEX_INCREMENT` (+ một cảnh báo). Nên dịch bộ `--td-z-*` thay vì dùng |
 | `TdModalStackManager.Z_INDEX_INCREMENT` | `100` | Chỉ dùng khi có `BASE_Z_INDEX` |
 
@@ -303,13 +304,16 @@ Hàm tiện ích export kèm: `safeMenuHref(href) → string | null` (bộ lọc
 
 | API / cấu hình | Chữ ký | Ghi chú |
 |---|---|---|
-| `TdToast.show(message, type = 'info', duration = 4000)` | `type` ∈ `success error warning info` (khác → info) | `message` luôn là **text**. `duration` ms; `0` = dính (chỉ đóng bằng nút X hoặc click). `message` rỗng → không hiện |
+| `TdToast.show(message, type = 'info', duration = 4000)` | `type` ∈ `success error warning info` (khác → info) | `message` luôn là **text**. `duration` ms; `0` = dính (đóng bằng nút X, click hoặc `handle.close()`). `message` rỗng → không hiện. Trả handle `{ close() }` (0.16.0; mọi hàm dưới cũng vậy) |
+| `handle.close()` | | (0.16.0) Đóng **yêu cầu**: còn trong hàng đợi 50 ms → bỏ; chờ lượt 80 ms → huỷ; đã hiện → đóng như nút X. Gọi lại → no-op |
+| `TdToast.clear()` | | (0.16.0) Xoá hàng đợi, huỷ lượt chờ, đóng mọi toast đang hiện |
+| `TdToast.labels` | `{ close: 'Đóng' }` | (0.16.0) `aria-label` nút đóng, đọc khi tạo mỗi toast |
 | `TdToast.success(msg, duration = 4000)` | | |
 | `TdToast.error(msg, duration = 5000)` | | Lỗi có `role="alert"` |
 | `TdToast.warning(msg, duration = 4000)` / `.info(msg, duration = 4000)` | | |
 | `TdToast.MAX_VISIBLE` | `5` | Vượt quá → toast cũ nhất bị đẩy ra (FIFO) |
 
-Không có callback đóng, không có action button, và **không** có object nhãn: `aria-label` nút đóng cố định `'Đóng'`.
+Không có callback đóng và không có action button.
 Vị trí / màu qua token `--td-toast-*` (xem [công thức 4](#4-toast-thời-lượng-riêng-toast-dính-vị-trí)).
 
 ---
@@ -320,8 +324,8 @@ Vị trí / màu qua token `--td-toast-*` (xem [công thức 4](#4-toast-thời-
 
 | API | Chữ ký | Ghi chú |
 |---|---|---|
-| `TdLoading.show(messageOrOptions)` | `string` hoặc `{ message?, maxDuration? }` | `message` mặc định `'Đang tải...'`. Truyền thẳng chuỗi `''` = không chữ; trong dạng object, `message` rỗng → dùng mặc định. `maxDuration` mặc định `30000` ms: quá hạn tự ẩn + `console.warn`; `false` / `0` tắt |
-| `TdLoading.wrap(asyncFn, message)` | `() => Promise<T>` | Trả về kết quả của `asyncFn` (reject lan ra ngoài). Đếm tham chiếu: nhiều `wrap` song song giữ overlay tới khi cái cuối settle |
+| `TdLoading.show(messageOrOptions)` | `string` hoặc `{ message?, maxDuration? }` | `message` mặc định `TdLoading.labels.loading` (`'Đang tải...'`, cấu hình được từ 0.16.0). Truyền thẳng chuỗi `''` = không chữ; trong dạng object, `message` rỗng → dùng mặc định. `maxDuration` mặc định `30000` ms: quá hạn tự ẩn + `console.warn`; `false` / `0` tắt |
+| `TdLoading.wrap(asyncFn, messageOrOptions)` | `() => Promise<T>`; tham số 2 như `show()` (object từ 0.16.0) | Trả về kết quả của `asyncFn` (reject lan ra ngoài). Đếm tham chiếu: nhiều `wrap` song song giữ overlay tới khi cái cuối settle |
 | `TdLoading.hide()` | | Kết thúc mọi `wrap` đang chờ |
 | `TdLoadingSpinner.create({ size, color, trackColor, className, label })` | `size`: `sm md lg` | `color` / `trackColor` qua `safeColor` rồi CSSOM. `label` có → `role="status"`; không → trang trí (`aria-hidden`) |
 
@@ -453,10 +457,11 @@ td-button **không** có hợp đồng lỗi (không form-associated). Thông b�
 | `focus` | như trên | `boolean` (mặc định `true`) | Focus control lỗi đầu tiên theo thứ tự DOM |
 | `fieldMap` | `apply` | `{ [key]: id \| Element }` | Map khoá lỗi server → control (id tìm **trong** root) |
 | `live` | `attach` | `boolean` (mặc định `true`) | Sau lần submit lỗi đầu, kiểm tra lại khi người dùng sửa |
-| `onValid` | `attach` | `(event, form) => void` | Có → submit **luôn** bị `preventDefault`, gọi `onValid` khi hợp lệ (SPA / modal). **Không bắt lỗi**: tự `try/catch` trong đó |
+| `onValid` | `attach` | `(event, form) => void` | Có → submit **luôn** bị `preventDefault`, gọi `onValid` khi hợp lệ (SPA / modal). Ném lỗi đồng bộ → bắt + `console.error` (0.16.0); Promise reject thì bạn tự xử lý |
 
 `attach(form)` ném `TypeError` nếu `form` không phải `<form>`. `validate()` ném lỗi bên trong `attach` → submit bị chặn
-(fail closed) + `console.error`.
+(fail closed) + `console.error`. Form `reset` → như `clear(form)` + tắt kiểm tra lại khi sửa tới lần submit lỗi kế tiếp
+(0.16.0).
 
 ### Cấu hình tĩnh
 
@@ -768,7 +773,9 @@ import { TdHovercard } from '@dazzxq/td-components/hovercard';
 import { TdTable } from '@dazzxq/td-components/table';
 
 Object.assign(TdMenu.labels, { trigger: 'Options' });
-Object.assign(TdModal.labels, { close: 'Close', confirm: 'Confirm', cancel: 'Cancel', ok: 'OK' });
+Object.assign(TdModal.labels, { close: 'Close', confirm: 'Confirm', cancel: 'Cancel', ok: 'OK',
+  confirmTitle: 'Confirm', confirmMessage: 'Are you sure?', successTitle: 'Success', errorTitle: 'Error',
+  infoTitle: 'Information' });
 Object.assign(TdHovercard.labels, { loading: 'Loading…', error: 'Could not load content.', dialog: 'More info' });
 Object.assign(TdTable.labels, { table: 'Data table', loading: 'Loading data…', itemLabel: 'items',
   paginationTop: 'Pagination (top)', paginationBottom: 'Pagination (bottom)',
