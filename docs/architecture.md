@@ -88,7 +88,7 @@ td-datetime-picker ──► feedback/td-modal ──► td-modal-stack
 td-table ──► td-pagination, td-empty-state
 modal, lightbox, loading, dropdown, tooltip, toast ──► utils/layers ──► utils/inert-lock
 dropdown, tooltip ──► utils/floating
-adopt-styles ◄── datetime-picker, table (legacy, tới batch 4)
+td-datetime-picker ──► utils/datetime
 dom-utils: độc lập, không component nào bắt buộc dùng
 ```
 

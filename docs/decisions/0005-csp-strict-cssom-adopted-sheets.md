@@ -1,6 +1,6 @@
 # 0005. CSP strict: CSSOM + constructable stylesheet
 
-- **Status:** Accepted (phần `adoptedStyleSheets` sẽ chỉ còn cho component legacy sau [0008](0008-drop-tailwind-token-css.md))
+- **Status:** Accepted — phần `adoptedStyleSheets` **superseded cho component** bởi [0008](0008-drop-tailwind-token-css.md) (`adopt-styles.js` đã xoá ở 0.10.0); CSSOM cho giá trị per-instance vẫn là luật
 - **Date:** 2026-06-10 (v0.3.0)
 
 ## Context
