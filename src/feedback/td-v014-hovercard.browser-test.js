@@ -814,6 +814,20 @@ describe('v0.14 TdHovercard — bindAll, unbind, reconnect', () => {
     expect(s0.hasAttribute('tabindex')).to.equal(false);
   });
 
+  it('unbinding an overlapping bindAll() keeps the explicit binding\'s pending hover intent (review ISSUE-10)', async () => {
+    host.insertAdjacentHTML('beforeend', '<template id="ov-tpl"><p>Mẫu</p></template>');
+    const root = add('<div><button type="button" data-td-hovercard-template="ov-tpl">Lan</button></div>');
+    const t = root.firstElementChild;
+    const ua = TdHovercard.bindAll(root);
+    bind(t, { content: () => '<p class="ov-explicit">JS</p>' });
+    await sendMouse({ type: 'move', position: center(t) });
+    await wait(100);
+    ua();
+    await wait(350);
+    expect(isOpen()).to.equal(true);
+    expect(cardEl().querySelector('.ov-explicit')).to.not.equal(null);
+  });
+
   it('nested bindAll roots: releasing either root first never restores stale ARIA under the other', () => {
     const outer = add('<div><div><span data-td-hovercard-template="x">Lan</span></div></div>');
     const inner = outer.firstElementChild;

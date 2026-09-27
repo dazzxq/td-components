@@ -99,6 +99,10 @@ let pending = null;
 let hoverTrigger = null;
 /** @type {HTMLElement|null} trigger whose card was dismissed with Escape while hovered: no reopen until it is left */
 let dismissedHover = null;
+/** The binding that recorded pending / hoverTrigger / dismissedHover: teardown clears only its own state (ISSUE-10). */
+let pendingBinding = null;
+let hoverBinding = null;
+let dismissedBinding = null;
 let overCard = false;
 let suppressFocus = false;
 /** @type {{ trigger: HTMLElement|null, at: number }} */
@@ -349,7 +353,7 @@ function onEscape() {
   if (!cur) return false;
   const a = document.activeElement;
   const back = a instanceof Node && (cur.trigger.contains(a) || card.contains(a));
-  if (hoverTrigger === cur.trigger) dismissedHover = cur.trigger; // WCAG 1.4.13: stays dismissed while hovered
+  if (hoverTrigger === cur.trigger) { dismissedHover = cur.trigger; dismissedBinding = hoverBinding; } // WCAG 1.4.13
   closeSession(back ? 'escape' : 'dismiss');
   return true;
 }
@@ -476,10 +480,12 @@ function open(trigger, binding) {
 function onOver(e, trigger, binding) {
   if (e.pointerType === 'touch' || !hoverCapable()) return;
   hoverTrigger = trigger;
+  hoverBinding = binding;
   if (cur && cur.trigger === trigger) { clearTimeout(hideTimer); return; }
   if (pending === trigger || dismissedHover === trigger) return;
   clearTimers();
   pending = trigger;
+  pendingBinding = binding;
   showTimer = setTimeout(() => {
     pending = null;
     if (hoverTrigger === trigger) open(trigger, binding);
@@ -548,10 +554,11 @@ function restoreTriggers(touched) {
 }
 
 function teardown(binding) {
+  // only the state THIS binding recorded — an overlapping live binding keeps its hover intent (ISSUE-10)
   if (cur && cur.binding === binding) closeSession('unbind');
-  else if (pending && binding.owns(pending)) clearTimers();
-  if (hoverTrigger && binding.owns(hoverTrigger)) hoverTrigger = null;
-  if (dismissedHover && binding.owns(dismissedHover)) dismissedHover = null;
+  else if (pending && pendingBinding === binding) clearTimers();
+  if (hoverTrigger && hoverBinding === binding) { hoverTrigger = null; hoverBinding = null; }
+  if (dismissedHover && dismissedBinding === binding) { dismissedHover = null; dismissedBinding = null; }
 }
 
 export class TdHovercard {
@@ -575,7 +582,6 @@ export class TdHovercard {
     const touched = new Map();
     const binding = {
       opts: { content: o.content, template: o.template, url: o.url, label: o.label },
-      owns: (t) => t === trigger,
       unbind: null,
     };
     if (cur && cur.trigger === trigger) closeSession('switch'); // was opened by another binding
@@ -619,7 +625,7 @@ export class TdHovercard {
     }
     const touched = new Map();
     const inRoot = (t) => root === document || root === t || root.contains(t);
-    const binding = { opts: {}, owns: (t) => touched.has(t) || (t instanceof Element && inRoot(t) && t.matches(DECL)) };
+    const binding = { opts: {} };
     const find = (e) => {
       const n = e.target;
       const t = n instanceof Element ? n.closest(DECL) : null;
