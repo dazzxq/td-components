@@ -160,13 +160,18 @@ export function hovercardUrl(raw) {
   return u.origin === location.origin ? u.href : null;
 }
 
+/** Cancel an unread response body (refused responses never keep streaming in the background). */
+function dropBody(res) {
+  if (res.body && typeof res.body.cancel === 'function') res.body.cancel().catch(() => {});
+}
+
 /** Body text, refused beyond MAX_BYTES (streamed when possible, so a huge body is never buffered whole). */
 async function readCapped(res) {
   const len = Number(res.headers.get('content-length'));
   const streamable = !!res.body && typeof res.body.getReader === 'function';
   if (len > MAX_BYTES || (!streamable && !(len >= 0 && res.headers.has('content-length')))) {
     // declared too big, or no stream to count bytes and no declared in-limit length: refuse WITHOUT reading it
-    if (res.body && typeof res.body.cancel === 'function') res.body.cancel().catch(() => {});
+    dropBody(res);
     throw new Error(`TdHovercard: response larger than ${MAX_BYTES} bytes (or of unknown size)`);
   }
   if (!streamable) return res.text(); // declared length ≤ MAX_BYTES
@@ -217,7 +222,7 @@ function fetchFragment(raw, useCache = true) {
     signal: ctrl.signal,
   })
     .then(async (res) => {
-      if (!res.ok) throw new Error(`TdHovercard: HTTP ${res.status}`);
+      if (!res.ok) { dropBody(res); throw new Error(`TdHovercard: HTTP ${res.status}`); }
       // the server said "never store" (e.g. per-user data): honour it for this in-memory cache too
       if (/\bno-store\b/i.test(res.headers.get('cache-control') || '')) rec.noStore = true;
       const type = (res.headers.get('content-type') || '').toLowerCase();
@@ -228,6 +233,7 @@ function fetchFragment(raw, useCache = true) {
         return data.html;
       }
       if (type.startsWith('text/html')) return readCapped(res);
+      dropBody(res);
       throw new Error(`TdHovercard: unsupported content-type "${type}"`);
     })
     .catch((err) => {
@@ -378,8 +384,9 @@ function renderContent(my, value) {
     // site hook (security review v0.14.0): e.g. DOMPurify / Sanitizer API / a Trusted Types policy
     try { value = TdHovercard.sanitize(value); } catch (err) { renderError(my, err); return; }
   }
-  if (isTrustedHTML(value) || typeof value === 'string') {
-    if (typeof value === 'string' && !value.trim()) { closeSession('empty'); return; }
+  const trusted = isTrustedHTML(value);
+  if (trusted || typeof value === 'string') {
+    if (!String(value).trim()) { closeSession('empty'); return; } // empty string / empty TrustedHTML → nothing opens
     // TrustedHTML: the site's policy vouched for it. String: the TRUSTED hatch (developer / same-origin
     // server-escaped markup) — see header. Under Trusted Types enforcement a plain string throws → error state.
     try { card.innerHTML = value; } catch (err) { renderError(my, err); return; }

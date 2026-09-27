@@ -18,6 +18,7 @@ Quyết định thiết kế mơ hồ → debate Codex (`/codex-think-about` ho�
 | `v0.11.0` | **Bỏ peer Tailwind** — site chỉ cần `td.css`: `td-sample` token-native, Storybook/PostCSS/demo không Tailwind, guard test chặn class Tailwind quay lại, docs viết lại | plan (2), impl (3; không đụng input → không cần security) |
 | `v0.12.0` | **3 component mới**: `TdMenu` (menu button APG), `<td-chip-input>` (combobox + search provider có abort), `TdFormValidation` (constraint gốc + rules + lỗi server, focus lỗi đầu, summary) — 3 agent song song; + gate XSS story (node + trình duyệt thật), test Tab 3 engine | plan (2), impl (3), security (3: rule throw → fail closed, không hạ HTTPS→HTTP) |
 | `v0.13.0` | Backlog nhanh: `TdButton.run()`, `td-toggle` `commit()` (optimistic + pending), textarea `autoresize`, form thật trong `demo.html`, GitHub CI (**chưa chạy trên GitHub**) | plan (2), impl (2) |
+| `v0.14.0` | **Liquid Glass thật** (luật v2 G1–G10 chốt bằng Codex think-about từ nguồn Apple; kính 40–60 %, sheen, viền 2 tông; nút = kính (tint cho nút màu); checkbox tròn; toast kính tint màu; kính đứng trước thắng), **tooltip = dwp** (mũi tên, hành vi dwp, giữ a11y), **menu đăng ký option** (`TdMenu.define/register/when`, `data-td-menu`), **`TdHovercard`** (truyền HTML tự do / template / URL cùng origin); gate tương phản render thật 1248 phép đo × 3 engine | think-about (đồng thuận), plan (3), impl (6 + 1 delta), security (4: hook `sanitize`, fetch giới hạn, Trusted Types, cache theo phiên) |
 
 ## Phát hiện đáng chú ý
 
@@ -63,5 +64,10 @@ Quyết định thiết kế mơ hồ → debate Codex (`/codex-think-about` ho�
 - Push lên GitHub khi đã kiểm tra (`git push --follow-tags`) — lần push đầu sẽ chạy CI mới (`.github/workflows/test.yml`),
   xem nó xanh chưa (chưa thể chạy thử trên máy).
 - 135/dwp chưa đụng tới; hướng dẫn tích hợp trong `docs/roadmap.md` mục External.
+
+- **v0.14.0 hovercard:** chuỗi HTML (từ `content()` hoặc URL) được tin như markup của dev — đúng yêu cầu "tự do thiết
+  kế". Nếu fragment có nội dung người dùng tạo (bio, bình luận…) thì site PHẢI gắn `TdHovercard.sanitize`
+  (vd. DOMPurify); trong SPA phải gọi `TdHovercard.clearCache()` khi logout/login. Xem `docs/security.md`.
+- Xem glass mới: Storybook **Foundations/Glass › Showcase**, hoặc `npm run demo` → mục Liquid Glass.
 
 (Các batch tiếp theo được ghi thêm bên dưới khi xong.)

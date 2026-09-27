@@ -698,6 +698,22 @@ describe('v0.14 TdHovercard — security review round 2 (size cancel, auth-scope
     expect(pulls <= 2, `pulled ${pulls} chunks`).to.equal(true);
   });
 
+  it('non-2xx and unsupported content-type responses cancel their (streaming) bodies', async () => {
+    const cancelled = [];
+    stubFetch((url) => new Response(new ReadableStream({
+      pull(c) { c.enqueue(new Uint8Array(64)); },
+      cancel() { cancelled.push(url); },
+    }), url.endsWith('/500') ? { status: 500, headers: { 'content-type': 'text/html' } } : { headers: { 'content-type': 'image/png' } }));
+    for (const u of ['/__hc/500', '/__hc/png']) {
+      const t = add('<button type="button">x</button>');
+      bind(t, { url: u });
+      await quiet(async () => { t.focus(); await flush(); await wait(20); });
+      expect(cardEl().getAttribute('data-state'), u).to.equal('error');
+      TdHovercard.close();
+    }
+    expect(cancelled.length).to.equal(2);
+  });
+
   it('Cache-Control: no-store, cache:false and data-td-hovercard-cache="false" always refetch', async () => {
     const calls = stubFetch((url) => new Response('<b>p</b>', { headers: {
       'content-type': 'text/html', ...(url.endsWith('/nostore') ? { 'cache-control': 'private, no-store' } : {}),
@@ -754,6 +770,7 @@ describe('v0.14 TdHovercard — security review round 2 (size cancel, auth-scope
         ['async', { content: () => new Promise((r) => setTimeout(() => r(policy.createHTML('<b class="async">a</b>')), 10)) }, '.async', null],
         ['url', { url: '/__hc/tt' }, '.u', (h) => policy.createHTML(h)],
         ['plain', { content: () => '<b class="plain">p</b>' }, null, null],
+        ['empty-trusted', { content: () => policy.createHTML('  ') }, 'EMPTY', null],
       ];
       for (const [name, opts, sel, san] of cases) {
         H.sanitize = san;
@@ -762,7 +779,9 @@ describe('v0.14 TdHovercard — security review round 2 (size cancel, auth-scope
         t.focus();
         await flush();
         await wait(40);
-        if (sel) {
+        if (sel === 'EMPTY') {
+          expect(card().hidden, name).to.equal(true); // nothing opens, like an empty string
+        } else if (sel) {
           expect(card().getAttribute('data-state'), name).to.equal('open');
           expect(card().querySelector(sel), name).to.not.equal(null);
         } else {
