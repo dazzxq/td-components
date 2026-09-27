@@ -716,6 +716,7 @@ describe('v0.14 TdHovercard — security review round 2 (size cancel, auth-scope
       t.blur();
     }
     for (const u of ['/nostore', '/opt', '/attr']) expect(calls.filter((x) => x.url.endsWith(u)).length, u).to.equal(2);
+    expect(calls.every((x) => x.init.cache === 'no-store'), 'the HTTP cache is bypassed too').to.equal(true);
   });
 
   it('clearCache() also closes the open card (it may show the previous user\'s data)', async () => {

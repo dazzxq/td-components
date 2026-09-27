@@ -212,6 +212,7 @@ function fetchFragment(raw, useCache = true) {
   const p = fetch(href, {
     credentials: 'same-origin',
     mode: 'same-origin', // a cross-origin redirect fails too
+    cache: 'no-store', // the component LRU is the ONLY cache: clearCache() / cache:false are never undone by the HTTP cache
     headers: { Accept: 'application/json, text/html;q=0.9' },
     signal: ctrl.signal,
   })
