@@ -2,6 +2,19 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.14.4
+
+### Fixed (visual)
+
+- **datetime-picker wheel band:** the selection band had only top/bottom borders (`border-block`), so its rounded ends
+  looked clipped ("missing side borders") — now a full 1px border, in the soft `--td-control-border-hover` tone
+  (`--td-dtp-band-border`) like the other control edges; the band fill and the bold selected value still mark it.
+
+### Added
+
+- `demo.html`: a **Lightbox** section (`TdLightbox.bind()` gallery with captions + a panel-mode button) — the component
+  shipped in 0.6.0 but was missing from the demo.
+
 ## 0.14.3
 
 ### Changed (visual) — "brighter, less grey" (owner feedback on the demo)
