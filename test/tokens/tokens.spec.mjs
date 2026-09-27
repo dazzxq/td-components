@@ -73,6 +73,9 @@ function lightboxHtml(profile) {
 /** Floating-layer glass (v0.9.0): glass by default, solid toast over a modal (D20), opaque with glass off. */
 function floatingChecks(tag, r, mode) {
   const opaque = (bg) => (rgba(bg) || [0, 0, 0, 0])[3] === 1;
+  for (const [k, v] of [['light', r.sticky], ['dark', r.stickyDark]]) {
+    check(`${tag} ${mode} table sticky header (${k}) sticky + opaque`, v.position === 'sticky' && opaque(v.bg), JSON.stringify(v));
+  }
   check(`${tag} ${mode} modal dialog is glass (control)`, !noFilter(r.modalGlass.bf), r.modalGlass.bf);
   check(`${tag} ${mode} toast is glass (control)`, !noFilter(r.toastAlone.bf), r.toastAlone.bf);
   check(`${tag} ${mode} toast over modal is solid (D20)`, noFilter(r.toastOverModal.bf) && opaque(r.toastOverModal.bg), JSON.stringify(r.toastOverModal));
@@ -320,6 +323,7 @@ async function runEngine(name, launcher) {
         check(`${tag} reduced-motion tabs indicator no transition`, /^0s(, 0s)*$/.test(r.indicatorTransition), r.indicatorTransition);
         check(`${tag} reduced-motion spinner frozen`, r.spinnerFrozen === true);
         floatingChecks(tag, r, 'reduced-motion');
+        check(`${tag} reduced-motion picker wheel moves instantly`, r.wheelSelected === '11' && r.wheelJumped === true, JSON.stringify([r.wheelSelected, r.wheelJumped]));
         await context.close();
       }
       {
@@ -329,6 +333,11 @@ async function runEngine(name, launcher) {
         check(`${tag} dragging knob lifts (control)`, !/^matrix\(1, 0, 0, 1,/.test(r.thumbTransform), r.thumbTransform);
         check(`${tag} spinner animates (control)`, r.spinnerFrozen === false);
         floatingChecks(tag, r, 'default');
+        check(`${tag} picker wheel selection follows the key (control)`, r.wheelSelected === '11', r.wheelSelected);
+        if (name === 'chromium') {
+          // smooth scrolling is observable in Chromium: without reduced motion the wheel has not jumped yet
+          check(`${tag} picker wheel animates without reduced motion (control)`, r.wheelJumped === false, String(r.wheelJumped));
+        }
         await context.close();
       }
       if (name === 'chromium') {

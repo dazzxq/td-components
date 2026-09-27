@@ -58,5 +58,16 @@ update their selectors using this table when upgrading. No legacy aliases are sh
 | td-dropdown | `.td-dropdown-button` / `-selected` / `-arrow` | `.td-dropdown__trigger[role=combobox]` / `__value` / `__arrow` | `[aria-expanded]`, `[aria-invalid]`, `[data-placeholder]` | 0.9.0 |
 | td-dropdown | `.td-dropdown-menu` / `-search` / `-options` | `.td-dropdown__menu` / `__search(-wrap)` / `__options` | `[hidden]`, `data-placement` (`bottom\|top`) | 0.9.0 |
 | td-dropdown | `.td-dropdown-option` / `-option-clear` / empty div | `.td-dropdown__option[role=option]` / `--clear` / `__empty` | `[aria-selected]`, `[data-active]` | 0.9.0 |
+| td-datetime-picker | host `label.block…` / `div.relative` / `input[readonly]` / calendar `svg` | `label.td-field__label` / `.td-dtp` / `button.td-dtp__trigger[role=combobox][aria-haspopup=dialog]` (+ `__value`, `__icon`) | `data-state`, `[aria-expanded]`, `[aria-invalid]`, `[data-placeholder]` | 0.10.0 |
+| td-datetime-picker | modal body HTML string (`div.p-4…`, `h6`, Tailwind inputs, `#td-dtp-{uid}-*` ids) | `.td-dtp-panel` (+ `__group`, `__legend`, `__fields`, `__field`, `__label`, `__input`, `__preview`, `__error`) | `[aria-invalid]`, `[hidden]` | 0.10.0 |
+| td-datetime-picker | `.td-dtp-wheel-container` / `.td-dtp-wheel` / `.td-dtp-wheel-option` | `.td-dtp-wheel` / `.td-dtp-wheel__list[role=listbox]` / `.td-dtp-wheel__option[role=option]` (+ `__sep`) | `[aria-selected]`, `aria-activedescendant` | 0.10.0 |
+| td-datetime-picker | `.selected` (JS-toggled) | removed | `[aria-selected="true"]` | 0.10.0 |
+| td-datetime-picker | Tailwind footer buttons | `.td-btn.td-btn--{secondary\|primary}` (TdModal `actions`) | — | 0.10.0 |
+| td-table | `.td-table-container.td-table-card` | `.td-table[--zebra\|--fixed\|--scroll-y]` | `data-state`, `[aria-busy]` | 0.10.0 |
+| td-table | `.td-table-header-bar` / `h3` / `.td-table-header-pagination` / `.td-table-footer-bar` | `.td-table__header` / `.td-table__title` / `.td-table__pagination` / `.td-table__footer` | `[hidden]` | 0.10.0 |
+| td-table | `div.overflow-x-auto` / `table.w-full` / `.td-table-thead-row` | `.td-table__scroll` / `.td-table__table` / `.td-table__head` | `tabindex`/`role=region` while overflowing | 0.10.0 |
+| td-table | `th` (Tailwind) / `.td-table-sort-btn` + svg | `th.td-table__th[scope=col]` / `.td-table__sort` + `.td-table__sort-icon` | `[aria-sort]` | 0.10.0 |
+| td-table | `.td-table-row[.td-table-zebra]` / `td` / `.td-table-render-cell` | `.td-table__row` / `.td-table__cell[--ellipsis\|--px-N]` / (marker removed) | `:hover` | 0.10.0 |
+| td-table | empty `td.px-6.py-16` / `.td-table-skel-row` + `.td-table-skel-bar` | `.td-table__empty-row > .td-table__empty` / `.td-table__row--skeleton` + `.td-table__skeleton` | `data-state` | 0.10.0 |
 
 State rule: JS never toggles visual classes; state lives in `aria-*`, `[hidden]`, `:checked`, `data-state`.

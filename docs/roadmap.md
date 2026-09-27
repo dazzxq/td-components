@@ -40,7 +40,7 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` Batch 1: button, checkbox, toggle, loading (v0.7.0; + error contract, `TdCheckableElement`, spinner)
 - `done` Batch 2: input-field, slider, pagination, tabs (+ ARIA, bàn phím), empty-state (v0.8.0)
 - `done` Batch 3 (lớp nổi): tooltip, toast, dropdown (combobox APG), modal / modal-stack + `layers.js` (một bộ điều phối Escape/Tab, inert lease có floating) (v0.9.0)
-- `todo` Batch 4: datetime-picker, table (+ sticky header, `cellPaddingClass`)
+- `done` Batch 4: datetime-picker (combobox + dialog, wheel listbox, `min`/`max`), table (in-place, sort APG, sticky header, `cellPaddingClass`) (v0.10.0) — mọi component đã token-native; `adopt-styles` đã xoá
 
 ## Later — component mới (token-native)
 

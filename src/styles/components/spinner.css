@@ -4,6 +4,10 @@
  * Reduced motion: no rotation, arc pinned (still shows "busy"). Forced colours: CanvasText.
  */
 @layer td.component {
+	.td-spinner[hidden] {
+		display: none; /* `display: inline-block` below would otherwise defeat [hidden] (idle button spinners) */
+	}
+
 	.td-spinner {
 		--td-spinner-size: 2rem;
 

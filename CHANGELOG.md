@@ -2,6 +2,57 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.10.0
+
+Migration **batch 4 — the last legacy components**: `td-datetime-picker` and `td-table` are now **token-native**
+(td.css only). Every component is now token-native; the Tailwind peer dependency is dropped in 1.0.0. Plan:
+`docs/plans/v0.10.0-batch4.md` (Codex plan-review APPROVE, 3 rounds; inventory + decisions D1–D25 in
+`v0.10.0-batch4-inventory.md`). Built by two agents in isolated worktrees on a shared base, integrated here.
+
+### Breaking (internal DOM / classes)
+
+- Internal classes renamed to BEM — `docs/migration/class-map.md` (`.td-dtp-wheel-*` → `.td-dtp-wheel__*`, the modal
+  body → `.td-dtp-panel__*`; `.td-table-*` → `.td-table__*`). Both components require `td.css`.
+- `src/utils/adopt-styles.js` removed (no component uses CSS-in-JS any more; it was never a package export).
+
+### Behaviour changes
+
+- **Datetime-picker:** the trigger is a `button[role=combobox][aria-haspopup=dialog]` (was a readonly input) and is
+  updated in place (focus kept); keyboard-operable end to end; Escape closes the dialog (TdModal `escapeCloses`, ADR
+  0006 addendum) and discards the edit, as do X and "Đóng"; hour/minute are validated (no more 25:99);
+  `getValue()`/`getDBValue()` return `''` when empty, invalid or outside `min`/`max` (was "now"); minutes snap down to `minute-step` when the
+  dialog opens; `setDBValue()` ignores garbage and accepts ISO-local; an invalid value submits its raw text.
+- **Table:** sorting/paging/data/loading update the table in place (focus stays on the sort button or page control;
+  one announcement per page change — the top pagination is `quiet`); `zebra="false"` works (was always on); server mode
+  keeps the page when `data` changes (was reset to 1) and requires `total-items` (paginations hidden + warning
+  otherwise); the page is clamped; `render` is resolved by column index and gets `(row, rowIdxInPage)`, a Node is
+  accepted; `update()` ignores non-array `data`/`columns`; default `empty-text` is "Chưa có dữ liệu để hiển thị.";
+  deterministic skeleton, title visible while loading; `th[scope=col]`.
+
+### Added
+
+- Picker: `min` / `max` (date-only bounds expand to 00:00 / 23:59), `error-text` + `setError()`/`clearError()`,
+  `aria-label` forwarding, site-overridable `labels` / `messages`; pure parse/format helpers in `utils/datetime.js`
+  (`parseDisplay`, `parseDb`, `parseIsoLocal`, `format*`, `isValidParts`, `parseBound`) with node tests.
+- Table: `max-height` (sticky header), `cellPaddingClass` (`px-0`…`px-6` → `td-table__cell--px-N`), column `ellipsis`
+  (+ auto fixed layout), `empty-title`, `heading-level`, `aria-label` / "Bảng dữ liệu" naming, `sort-change` event,
+  `data-col` / `data-col-key` hooks, focusable named scroll region while overflowing.
+- TdModal `escapeCloses` option; td-pagination `quiet`; icon `sort`; token `--td-color-sheen`.
+- Tests: batch-4 suites (picker 44, table 41, shared), contract fixtures, CSP states (picker 7, table 9 — `_meta.mixed`
+  is now empty), token gate sticky-header opacity (light + dark) in 3 engines.
+
+### Fixed
+
+- Idle spinners inside buttons were visible (`.td-spinner { display }` defeated `[hidden]`) — every TdModal action
+  button showed a ring.
+- `.td-field-error` inherited the host font (serif on unstyled pages).
+- Table border colour no longer depends on the host reset (UA `table { border-color: gray }` vs Tailwind preflight).
+
+### Security
+
+- Storybook stories escape every control value (all stories, see 0.9.0 security review); the table stories build row
+  content as Nodes. `render` string output stays a documented trusted-HTML hatch.
+
 ## 0.9.0
 
 Migration **batch 3 — the floating layer**: `TdModal` / `TdModalStackManager`, `TdToast`, `TdTooltip`, `td-dropdown`

@@ -31,13 +31,12 @@
       "td-modal",
       "td-toast",
       "td-tooltip",
-      "td-dropdown"
-    ],
-    "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
-    "mixed": [
+      "td-dropdown",
       "td-table",
       "td-datetime-picker"
     ],
+    "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
+    "mixed": [],
     "mixedNote": "Legacy components that render token-native children (td-table → td-pagination, td-empty-state) are served Tailwind + td.css in BOTH runs; their baselines are captured the same way."
   },
   "td-toggle": [
@@ -744,52 +743,76 @@
   "td-table": [
     {
       "state": "data",
-      "setup": "const t=document.createElement('td-table'); t.id='probe'; window.__mount.appendChild(t); t.columns=[{key:'name',label:'Name',width:'200px'},{key:'age',label:'Age'}]; t.data=[{name:'Ann',age:30},{name:'Bob',age:25},{name:'Cy',age:40}];",
+      "setup": "const t=document.createElement('td-table'); t.id='probe';  window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên',width:'200px'},{key:'age',label:'Tuổi'}]; t.data=[{name:'An',age:30},{name:'Bình',age:25},{name:'Cường',age:40}]; ",
       "selectors": [
-        ".td-table-container",
-        ".td-table-row[data-row-idx=\"0\"]",
-        ".td-table-row[data-row-idx=\"1\"]",
-        ".td-table-row[data-row-idx=\"0\"] td:first-child"
+        ".td-table",
+        ".td-table__row[data-row-idx=\"0\"]",
+        ".td-table__row[data-row-idx=\"1\"]",
+        ".td-table__row[data-row-idx=\"0\"] .td-table__cell:first-child"
       ]
     },
     {
       "state": "data-no-zebra",
-      "setup": "const t=document.createElement('td-table'); t.id='probe'; window.__mount.appendChild(t); t.columns=[{key:'name',label:'Name'}]; t.data=[{name:'Ann'},{name:'Bob'}];",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('zebra','false'); window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên',width:'200px'},{key:'age',label:'Tuổi'}]; t.data=[{name:'An',age:30},{name:'Bình',age:25},{name:'Cường',age:40}]; ",
       "selectors": [
-        ".td-table-container",
-        ".td-table-row[data-row-idx=\"1\"]"
-      ],
-      "zebraNote": "_isZebra() is structurally always-true in v0.2.0 (!hasAttr||hasAttr); zebra row 1 is always tinted regardless of the zebra attribute"
-    },
-    {
-      "state": "sortable-header",
-      "setup": "const t=document.createElement('td-table'); t.id='probe'; window.__mount.appendChild(t); t.columns=[{key:'name',label:'Name',sortable:true},{key:'age',label:'Age'}]; t.data=[{name:'Ann',age:30}];",
-      "selectors": [
-        ".td-table-container",
-        "thead th[data-sort-key=\"name\"]"
+        ".td-table",
+        ".td-table__row[data-row-idx=\"1\"]"
       ]
     },
     {
-      "state": "loading",
-      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('loading',''); t.setAttribute('loading-rows','3'); window.__mount.appendChild(t); t.columns=[{key:'name',label:'Name',width:'200px'},{key:'age',label:'Age'}];",
+      "state": "sortable-header",
+      "setup": "const t=document.createElement('td-table'); t.id='probe';  window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên',sortable:true},{key:'age',label:'Tuổi'}]; t.data=[{name:'An',age:30},{name:'Bình',age:25},{name:'Cường',age:40}]; ",
       "selectors": [
-        "#probe > div",
-        "thead tr",
-        "tbody tr:first-child",
-        "tbody tr:nth-child(2)",
-        "tbody tr:first-child td:first-child"
+        "th[data-col-key=\"name\"]",
+        ".td-table__sort"
+      ]
+    },
+    {
+      "state": "sorted-asc",
+      "setup": "const t=document.createElement('td-table'); t.id='probe';  window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên',sortable:true},{key:'age',label:'Tuổi'}]; t.data=[{name:'An',age:30},{name:'Bình',age:25},{name:'Cường',age:40}]; t.querySelector('.td-table__sort').click();",
+      "selectors": [
+        "th[aria-sort=\"ascending\"]",
+        ".td-table__sort"
       ],
-      "excludeProps": [
-        "width"
-      ],
-      "selectorNote": "the loading skeleton root has no td-table-container class (only the data render does) — key it via #probe > div",
-      "excludeNote": "loading skeleton bar widths use Math.random() — width excluded (non-deterministic). Row/cell border + zebra bg are deterministic."
+      "settle": 400
+    },
+    {
+      "state": "loading",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('loading',''); t.setAttribute('loading-rows','3'); window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên',width:'200px'},{key:'age',label:'Tuổi'}]; t.data=[]; ",
+      "selectors": [
+        ".td-table[data-state=\"loading\"]",
+        ".td-table__row--skeleton",
+        ".td-table__skeleton"
+      ]
     },
     {
       "state": "empty",
-      "setup": "const t=document.createElement('td-table'); t.id='probe'; window.__mount.appendChild(t); t.columns=[{key:'name',label:'Name'}]; t.data=[];",
+      "setup": "const t=document.createElement('td-table'); t.id='probe';  window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên',width:'200px'},{key:'age',label:'Tuổi'}]; t.data=[]; ",
       "selectors": [
-        ".td-table-container"
+        ".td-table__empty"
+      ]
+    },
+    {
+      "state": "scroll-y",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('max-height','120px'); window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên',width:'200px'},{key:'age',label:'Tuổi'}]; t.data=Array.from({length:12},(_, i)=>({name:'Hàng '+i,age:i})); ",
+      "selectors": [
+        ".td-table__scroll",
+        "thead th:first-child"
+      ]
+    },
+    {
+      "state": "fixed-ellipsis",
+      "setup": "const t=document.createElement('td-table'); t.id='probe';  window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên',width:'120px',ellipsis:true},{key:'age',label:'Tuổi'}]; t.data=[{name:'Một cái tên rất rất dài để cắt bằng dấu ba chấm',age:1}]; ",
+      "selectors": [
+        ".td-table__cell--ellipsis",
+        ".td-table__truncate"
+      ]
+    },
+    {
+      "state": "cell-padding",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.cellPaddingClass='px-2'; window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên',width:'200px'},{key:'age',label:'Tuổi'}]; t.data=[{name:'An',age:30},{name:'Bình',age:25},{name:'Cường',age:40}]; ",
+      "selectors": [
+        ".td-table__cell--px-2"
       ]
     }
   ],
@@ -978,18 +1001,80 @@
   ],
   "td-datetime-picker": [
     {
-      "state": "open",
-      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('value','15/06/2026 - 09:30'); window.__mount.appendChild(p); p._open();",
+      "state": "closed",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('value','15/06/2026 - 09:30'); window.__mount.appendChild(p); ",
       "selectors": [
-        ".td-dtp-wheel-container",
-        ".td-dtp-wheel-option.selected"
+        ".td-dtp__trigger",
+        ".td-dtp__value"
+      ]
+    },
+    {
+      "state": "placeholder",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian');  window.__mount.appendChild(p); ",
+      "selectors": [
+        ".td-dtp__trigger",
+        ".td-dtp__value[data-placeholder]"
+      ]
+    },
+    {
+      "state": "disabled",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('value','15/06/2026 - 09:30');p.setAttribute('disabled',''); window.__mount.appendChild(p); ",
+      "selectors": [
+        ".td-dtp__trigger"
+      ]
+    },
+    {
+      "state": "error",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('error-text','Bắt buộc'); window.__mount.appendChild(p); ",
+      "selectors": [
+        ".td-dtp__trigger[aria-invalid]",
+        ".td-field-error"
+      ]
+    },
+    {
+      "state": "open",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('value','15/06/2026 - 09:30'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
+      "selectors": [
+        ".td-dtp-panel__input",
+        ".td-dtp-wheel",
+        ".td-dtp-wheel__option[aria-selected=\"true\"]",
+        ".td-modal__footer .td-btn--primary"
       ],
       "portal": [
-        ".td-dtp-wheel-container",
-        ".td-dtp-wheel-option.selected"
+        ".td-dtp-panel__input",
+        ".td-dtp-wheel",
+        ".td-dtp-wheel__option[aria-selected=\"true\"]",
+        ".td-modal__footer .td-btn--primary"
       ],
-      "settle": 400,
-      "constructNote": "td-datetime-picker's ONLY blocking construct is the injected <style id=td-datetime-picker-styles> (gradient .td-dtp-wheel-container background-image, .selected font/color/transform, ::before band). Opens inside a TdModal portaled to body via _open(). This captures the directly-styled rules; the ::before pseudo-band parity is a Task-1 adopted-sheet concern (getComputedStyle can't key it by class alone here)."
+      "settle": 450
+    },
+    {
+      "state": "open-invalid",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('value','31/02/2026 - 09:30'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
+      "selectors": [
+        ".td-dtp-panel__error",
+        ".td-dtp-panel__input[aria-invalid]"
+      ],
+      "portal": [
+        ".td-dtp-panel__error",
+        ".td-dtp-panel__input[aria-invalid]"
+      ],
+      "settle": 450
+    },
+    {
+      "state": "wheel-active",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('value','15/06/2026 - 09:30'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
+      "selectors": [
+        ".td-dtp-wheel",
+        ".td-dtp-wheel__option[aria-selected=\"true\"]"
+      ],
+      "portal": [
+        ".td-dtp-wheel",
+        ".td-dtp-wheel__option[aria-selected=\"true\"]"
+      ],
+      "settle": 450,
+      "pseudo": "focus",
+      "focusSelector": ".td-dtp-wheel__list"
     }
   ],
   "td-tooltip": [

@@ -278,9 +278,13 @@
       { key: 'id', label: 'ID', sortable: true, width: '60px' },
       { key: 'title', label: 'Tiêu đề', sortable: true },
       { key: 'author', label: 'Tác giả', sortable: true },
-      { key: 'status', label: 'Trạng thái', render: (val) => {
+      { key: 'status', label: 'Trạng thái', render: (row) => {
+        // render(row, rowIdxInPage) → a Node (row data as text, never interpolated into HTML)
         const colors = { published: 'bg-green-100 text-green-700', draft: 'bg-gray-100 text-gray-600', archived: 'bg-yellow-100 text-yellow-700' };
-        return `<span class="px-2 py-1 rounded-full text-xs font-medium ${colors[val] || ''}">${val}</span>`;
+        const badge = document.createElement('span');
+        badge.className = `px-2 py-1 rounded-full text-xs font-medium ${colors[row.status] || ''}`;
+        badge.textContent = row.status;
+        return badge;
       }},
       { key: 'views', label: 'Lượt xem', sortable: true, width: '100px' },
     ];

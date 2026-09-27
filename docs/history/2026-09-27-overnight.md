@@ -14,6 +14,7 @@ Quyết định thiết kế mơ hồ → debate Codex (`/codex-think-about` ho�
 | `v0.7.0` | Batch 1 token-native: button, checkbox, toggle (switch native), loading + error contract, accessible name, spinner dùng chung, inert lease dùng chung | plan (3), impl (5), security (2) |
 | `v0.8.0` | Batch 2 token-native: input-field, slider, pagination, tabs (APG, manual activation), empty-state (đóng lỗ SVG thô) — 4 agent song song trong worktree riêng, tích hợp + sửa 2 lỗi base (label ngoài, di chuyển DOM) | plan (3), impl (3), security (3) |
 | `v0.9.0` | Batch 3 lớp nổi: modal/modal-stack, toast, tooltip, dropdown (combobox APG) + `utils/layers.js` (một bộ điều phối Escape/Tab, inert lease có floating, trả focus qua hand-off) — 4 agent song song | plan (4), impl (4), security (3) |
+| `v0.10.0` | Batch 4 (component legacy cuối): datetime-picker (combobox + dialog, bánh xe dạng listbox dùng bàn phím, `min`/`max`, parser dùng chung trong `utils/datetime.js`), table (cập nhật tại chỗ giữ focus, sort chuẩn APG, sticky header, `cellPaddingClass`) — **mọi component đã token-native**, `adopt-styles` đã xoá | plan (3), impl (3), security (1, 0 lỗi) |
 
 ## Phát hiện đáng chú ý
 
@@ -29,7 +30,15 @@ Quyết định thiết kế mơ hồ → debate Codex (`/codex-think-about` ho�
   trong suốt, modal đang đóng bị "sống lại", focus trả vào modal đã đóng khi loading tắt, lightbox giành focus của
   modal phía trên…) — tất cả đã sửa + có test hồi quy.
 
+- Batch 4: Codex bắt 10 lỗi (getter trả giá trị ngoài min/max, cận một phía tạo khoảng năm bất khả, số âm, mất
+  focus khi đổi label lúc đang mở, ID trùng khi mở lại nhanh…) — đã sửa + test. Lúc tích hợp còn tìm ra 3 lỗi CSS dùng
+  chung có sẵn từ trước (spinner rảnh hiện trong nút modal, note lỗi dùng font host, viền bảng phụ thuộc Tailwind).
+
 ## Cần user xem / quyết
+
+- **Tên release:** batch 4 đang là `v0.10.0`. Nếu muốn đánh dấu "migrate xong" là `v1.0.0` thì đổi tag; không thì
+  release kế (bỏ peer Tailwind, dọn `td-sample`/`demo.html`/docs) sẽ là 1.0.0.
+- Picker giờ đóng bằng Esc — ngoại lệ có chủ đích của ADR 0006 (addendum, `escapeCloses`), chỉ picker dùng.
 
 - Giao diện mới (Storybook: Foundations/Glass, Foundations/Icons, Feedback/Lightbox, Form/Button|Checkbox|Toggle,
   Feedback/Loading, Form/InputField|Slider, Display/Pagination|Tabs|EmptyState, Feedback/Modal|Toast|Tooltip,

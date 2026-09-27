@@ -106,6 +106,7 @@
 		--td-color-text-muted: var(--td-gray-600);
 		--td-color-text-subtle: var(--td-gray-500);
 		--td-color-border: var(--td-gray-200);
+		--td-color-sheen: rgb(255 255 255 / 60%); /* skeleton shimmer highlight */
 		--td-color-border-strong: var(--td-gray-300);
 		--td-color-hover: rgb(0 0 0 / 5%);
 		--td-color-hover-strong: rgb(0 0 0 / 8%);
@@ -245,6 +246,7 @@
 		--td-color-text-muted: #a1a1aa;
 		--td-color-text-subtle: #8a8a93;
 		--td-color-border: #2c2c30;
+		--td-color-sheen: rgb(255 255 255 / 8%);
 		--td-color-border-strong: #45454b;
 		--td-color-hover: rgb(255 255 255 / 6%);
 		--td-color-hover-strong: rgb(255 255 255 / 10%);
@@ -530,6 +532,7 @@
 	.td-field-error {
 		display: block;
 		margin-top: var(--td-space-2xs);
+		font-family: var(--td-font-sans); /* the note sits outside the control's root block: never inherit the host font */
 		font-size: var(--td-text-xs);
 		line-height: var(--td-leading-normal);
 		color: var(--td-field-error);
@@ -745,6 +748,10 @@
  * Reduced motion: no rotation, arc pinned (still shows "busy"). Forced colours: CanvasText.
  */
 @layer td.component {
+	.td-spinner[hidden] {
+		display: none; /* `display: inline-block` below would otherwise defeat [hidden] (idle button spinners) */
+	}
+
 	.td-spinner {
 		--td-spinner-size: 2rem;
 
@@ -3585,6 +3592,729 @@
 
 		.td-dropdown__option[aria-selected="true"] .td-dropdown__check {
 			color: Highlight;
+		}
+	}
+}
+
+/* ---- src/styles/components/table.css ---- */
+/*
+ * td-table (src/display/td-table.js). Content layer → SOLID surface, hairline rows, no glass (liquid-glass row
+ * "td-table: none"). The only scroll-edge treatment is the opaque sticky header fill (R10 "hard", D14).
+ * Modifiers (rendered from config, never toggled as state): .td-table--zebra · --fixed (table-layout) · --scroll-y
+ * (max-height → CSSOM --td-table-max-h). Cell padding: .td-table__cell--px-{0..6} (cellPaddingClass whitelist).
+ * State: [data-state="ready|loading|empty"] · table[aria-busy] · th[aria-sort] · wrappers [hidden] ·
+ * .td-table__scroll[tabindex] (only while overflowing) · :hover / :focus-within rows.
+ */
+@layer td.tokens {
+	:root {
+		--td-table-bg: var(--td-color-surface);
+		--td-table-fg: var(--td-color-text);
+		--td-table-border: var(--td-color-border);
+		--td-table-radius: var(--td-radius-lg);
+		--td-table-shadow: var(--td-shadow-1);
+		--td-table-head-bg: var(--td-color-surface-muted);
+		--td-table-head-fg: var(--td-color-text-muted);
+		--td-table-head-sticky-bg: var(--td-color-surface-muted); /* opaque on purpose (D14) */
+		--td-table-sort-icon: var(--td-color-text-subtle); /* ≥ 3:1 on the header fill, light and dark */
+		--td-table-row-border: var(--td-color-border);
+		--td-table-row-hover: var(--td-color-hover);
+		--td-table-zebra: rgb(0 0 0 / 2%);
+		--td-table-cell-px: 1.5rem;
+		--td-table-cell-py: 1rem;
+		--td-table-head-py: 0.75rem;
+		--td-table-skeleton: var(--td-color-skeleton);
+		--td-table-sheen: var(--td-color-sheen, rgb(255 255 255 / 60%));
+	}
+
+	:root[data-td-theme="dark"] {
+		--td-table-zebra: rgb(255 255 255 / 3%);
+		--td-table-sheen: var(--td-color-sheen, rgb(255 255 255 / 8%));
+	}
+}
+
+@layer td.component {
+	td-table {
+		display: block;
+	}
+
+	.td-table {
+		box-sizing: border-box;
+		overflow: hidden;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-table-fg);
+		background: var(--td-table-bg);
+		border: 1px solid var(--td-table-border);
+		border-radius: var(--td-table-radius);
+		box-shadow: var(--td-table-shadow);
+	}
+
+	.td-table *,
+	.td-table *::before,
+	.td-table *::after {
+		box-sizing: border-box;
+		border-color: var(--td-color-border); /* own it: UA `table { border-color: gray }` vs host resets differ */
+	}
+
+	/* Header bar: title + top pagination */
+	.td-table__header {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-sm) var(--td-space-md);
+		align-items: center;
+		justify-content: space-between;
+		padding: var(--td-space-md) var(--td-space-lg);
+		border-bottom: 1px solid var(--td-table-border);
+	}
+
+	.td-table__title {
+		margin: 0;
+		font-size: var(--td-text-md);
+		font-weight: var(--td-fw-semibold);
+		line-height: var(--td-leading-tight);
+		color: var(--td-table-fg);
+	}
+
+	.td-table__pagination {
+		margin-inline-start: auto;
+	}
+
+	.td-table__footer {
+		display: flex;
+		justify-content: flex-end;
+		padding: var(--td-space-md) var(--td-space-lg);
+		border-top: 1px solid var(--td-table-border);
+	}
+
+	.td-table__header[hidden],
+	.td-table__pagination[hidden],
+	.td-table__footer[hidden] {
+		display: none;
+	}
+
+	/* Scroll wrapper: horizontal scroll always; both axes with max-height (sticky header, D14) */
+	.td-table__scroll {
+		overflow-x: auto;
+	}
+
+	.td-table--scroll-y .td-table__scroll {
+		max-height: var(--td-table-max-h, none);
+		overflow: auto;
+		overscroll-behavior: contain;
+	}
+
+	.td-table__scroll:focus-visible {
+		/* The card clips outer shadows (overflow: hidden) → an inset outline stays visible, also in forced colours. */
+		outline: 2px solid var(--td-focus);
+		outline-offset: -2px;
+	}
+
+	.td-table__table {
+		width: 100%;
+		margin: 0;
+		border-collapse: separate; /* so the sticky header keeps its hairline */
+		border-spacing: 0;
+		color: inherit;
+	}
+
+	.td-table--fixed .td-table__table {
+		table-layout: fixed;
+	}
+
+	/* Cells */
+	.td-table__th,
+	.td-table__cell {
+		padding-inline: var(--td-table-cell-px);
+	}
+
+	.td-table__th {
+		padding-block: var(--td-table-head-py);
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-semibold);
+		line-height: var(--td-leading-normal);
+		color: var(--td-table-head-fg);
+		text-align: start;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		vertical-align: bottom;
+		background: var(--td-table-head-bg);
+		border-bottom: 1px solid var(--td-table-border);
+	}
+
+	.td-table__cell {
+		padding-block: var(--td-table-cell-py);
+		color: var(--td-table-fg);
+		vertical-align: middle;
+		border-bottom: 1px solid var(--td-table-row-border);
+	}
+
+	.td-table__body > tr:last-child > .td-table__cell,
+	.td-table__body > tr:last-child > .td-table__empty {
+		border-bottom: 0;
+	}
+
+	.td-table__cell--px-0 { --td-table-cell-px: 0; }
+	.td-table__cell--px-1 { --td-table-cell-px: 0.25rem; }
+	.td-table__cell--px-2 { --td-table-cell-px: 0.5rem; }
+	.td-table__cell--px-3 { --td-table-cell-px: 0.75rem; }
+	.td-table__cell--px-4 { --td-table-cell-px: 1rem; }
+	.td-table__cell--px-5 { --td-table-cell-px: 1.25rem; }
+	.td-table__cell--px-6 { --td-table-cell-px: 1.5rem; }
+
+	/* Sticky header (D14): opaque fill, local z-index above the body cells only */
+	.td-table--scroll-y .td-table__th {
+		position: sticky;
+		top: 0;
+		z-index: 1;
+		background: var(--td-table-head-sticky-bg);
+	}
+
+	/* Sort button (D12) */
+	.td-table__sort {
+		display: inline-flex;
+		gap: var(--td-space-2xs);
+		align-items: center;
+		padding: 2px 4px;
+		margin: -2px -4px;
+		font: inherit;
+		color: inherit;
+		text-align: inherit;
+		text-transform: inherit;
+		letter-spacing: inherit;
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: var(--td-radius-sm);
+		transition: color var(--td-dur-fast) var(--td-ease), background var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+	}
+
+	.td-table__sort:hover {
+		color: var(--td-table-fg);
+		background: var(--td-color-hover);
+	}
+
+	.td-table__sort:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-table__sort-icon {
+		display: inline-flex;
+		flex-direction: column; /* stacked up+down pair for the unsorted state */
+		align-items: center;
+		line-height: 0;
+		color: var(--td-table-sort-icon);
+	}
+
+	.td-table__sort-icon > svg + svg {
+		margin-top: -5px;
+	}
+
+	.td-table__th[aria-sort] {
+		color: var(--td-table-fg);
+	}
+
+	.td-table__th[aria-sort] .td-table__sort-icon {
+		color: currentColor;
+	}
+
+	/* Rows */
+	.td-table--zebra .td-table__row:nth-child(even) {
+		background: var(--td-table-zebra);
+	}
+
+	.td-table .td-table__row:not(.td-table__row--skeleton):hover,
+	.td-table .td-table__row:not(.td-table__row--skeleton):focus-within {
+		background: var(--td-table-row-hover);
+	}
+
+	.td-table__row {
+		transition: background var(--td-dur-fast) var(--td-ease);
+	}
+
+	/* Ellipsis (D21) */
+	.td-table__cell--ellipsis,
+	.td-table__truncate {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	/* Empty state: no card inside the card */
+	.td-table__empty {
+		padding: var(--td-space-lg);
+	}
+
+	.td-table__empty .td-empty-state {
+		background: transparent;
+		border: 0;
+	}
+
+	/* Loading skeleton (D19): deterministic widths, 135 shimmer */
+	.td-table__skeleton {
+		position: relative;
+		display: block;
+		width: 80%;
+		height: 0.875rem;
+		overflow: hidden;
+		background: var(--td-table-skeleton);
+		border-radius: var(--td-radius-sm);
+	}
+
+	.td-table__skeleton::after {
+		position: absolute;
+		inset: 0;
+		content: "";
+		background: linear-gradient(90deg, transparent, var(--td-table-sheen), transparent);
+		transform: translateX(-100%);
+		animation: td-table-shimmer 1.3s ease-in-out infinite;
+	}
+
+	.td-table__row--skeleton:nth-child(odd) .td-table__cell:nth-child(3n + 1) .td-table__skeleton { width: 60%; }
+	.td-table__row--skeleton:nth-child(even) .td-table__cell:nth-child(3n + 2) .td-table__skeleton { width: 95%; }
+	.td-table__row--skeleton .td-table__cell:nth-child(3n) .td-table__skeleton { width: 70%; }
+	.td-table__row--skeleton:nth-child(3n) .td-table__cell:nth-child(odd) .td-table__skeleton { width: 90%; }
+
+	@keyframes td-table-shimmer {
+		to {
+			transform: translateX(100%);
+		}
+	}
+
+	@media (pointer: coarse) {
+		.td-table__sort {
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-table__row,
+		.td-table__sort {
+			transition: none;
+		}
+
+		.td-table__skeleton::after {
+			animation: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-table,
+		.td-table__header,
+		.td-table__footer,
+		.td-table__th,
+		.td-table__cell {
+			border-color: CanvasText;
+		}
+
+		.td-table--scroll-y .td-table__th {
+			background: Canvas;
+		}
+
+		.td-table__sort-icon,
+		.td-table__th[aria-sort] .td-table__sort-icon {
+			color: CanvasText;
+		}
+
+		.td-table .td-table__row:not(.td-table__row--skeleton):hover {
+			outline: 2px solid Highlight;
+			outline-offset: -2px;
+		}
+
+		.td-table__skeleton {
+			background: GrayText;
+		}
+
+		.td-table__skeleton::after {
+			display: none;
+		}
+	}
+}
+
+/* ---- src/styles/components/datetime-picker.css ---- */
+/*
+ * td-datetime-picker (src/form/td-datetime-picker.js) — plan v0.10.0-batch4 item 1 (D1–D10), inventory §7.1.
+ * Blocks: .td-dtp (host: field-look trigger, content layer, never glass — reuses the --td-field-* tokens like the
+ * dropdown trigger), .td-dtp-panel (dialog body inside TdModal, which is already the glass layer: inner controls are
+ * plain fills — no glass on glass, R3), .td-dtp-wheel (hour/minute listbox wheels, CSS scroll-snap; the fade is a
+ * mask so it works on any backdrop and in dark; the selected row is a solid band + weight/size, never scale()).
+ * State: [aria-expanded] / :disabled / [aria-invalid] on the trigger, [data-placeholder] on the value, data-state on
+ * .td-dtp, [aria-invalid] on panel inputs, [hidden] on the error line, [aria-selected] on wheel options.
+ * JS writes no styles here (the wheels scroll through scrollTo; geometry comes from the tokens below).
+ */
+@layer td.tokens {
+	:root {
+		--td-dtp-option-h: 40px;                                  /* wheel row height (44px on coarse pointers) */
+		--td-dtp-visible: 5;                                      /* visible rows → wheel height = row × 5 (odd) */
+		--td-dtp-wheel-w: 5rem;
+		--td-dtp-band-bg: var(--td-color-hover-strong);
+		--td-dtp-band-border: var(--td-control-border-strong);    /* ≥ 3:1: the band marks the selection */
+		--td-dtp-option-fg: var(--td-color-text-muted);           /* ≥ 4.5:1 (was gray-400, 2.54:1) */
+		--td-dtp-option-selected-fg: var(--td-color-text);
+		--td-dtp-preview-bg: var(--td-color-hover);
+	}
+
+	@media (pointer: coarse) {
+		:root {
+			--td-dtp-option-h: var(--td-touch-min);
+		}
+	}
+}
+
+@layer td.component {
+	td-datetime-picker {
+		display: block;
+		font-family: var(--td-font-sans); /* the error-contract note sits outside .td-dtp */
+	}
+
+	/* ---- Host: trigger ---- */
+	.td-dtp {
+		box-sizing: border-box;
+		display: block;
+		width: 100%;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-fg);
+	}
+
+	.td-dtp *,
+	.td-dtp *::before {
+		box-sizing: border-box;
+	}
+
+	.td-dtp__trigger {
+		display: flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
+		min-width: 0;
+		height: var(--td-field-h-md);
+		padding: 8px 14px;
+		margin: 0;
+		font: inherit;
+		font-variant-numeric: tabular-nums;
+		color: var(--td-field-fg);
+		text-align: left;
+		cursor: pointer;
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: none;
+		appearance: none;
+		transition:
+			border-color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease),
+			background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-dtp__trigger:hover:not(:disabled, :focus-visible, [aria-expanded="true"]) {
+		border-color: var(--td-field-border-hover);
+	}
+
+	.td-dtp__trigger[aria-expanded="true"] {
+		border-color: var(--td-field-focus);
+	}
+
+	.td-dtp__trigger:focus-visible {
+		border-color: var(--td-field-focus);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-dtp__trigger:disabled {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-field-bg-disabled);
+	}
+
+	.td-dtp__trigger[aria-invalid="true"],
+	.td-dtp__trigger[aria-invalid="true"]:focus-visible,
+	.td-dtp__trigger[aria-invalid="true"][aria-expanded="true"] {
+		border-color: var(--td-field-error);
+	}
+
+	.td-dtp__value {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.td-dtp__value[data-placeholder] {
+		color: var(--td-field-placeholder);
+	}
+
+	.td-dtp__trigger:disabled .td-dtp__value {
+		color: var(--td-field-fg-disabled);
+	}
+
+	.td-dtp__icon {
+		display: inline-flex;
+		flex-shrink: 0;
+		color: var(--td-field-placeholder);
+	}
+
+	/* ---- Dialog body ---- */
+	.td-dtp-panel {
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-md);
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text);
+	}
+
+	.td-dtp-panel *,
+	.td-dtp-panel *::before {
+		box-sizing: border-box;
+	}
+
+	.td-dtp-panel__group {
+		min-width: 0;
+		padding: 0;
+		margin: 0;
+		border: 0;
+	}
+
+	.td-dtp-panel__legend {
+		padding: 0;
+		margin: 0 0 var(--td-space-xs);
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-field-label);
+	}
+
+	.td-dtp-panel__fields {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr);
+		gap: var(--td-space-sm);
+	}
+
+	.td-dtp-panel__field {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+	}
+
+	.td-dtp-panel__label {
+		margin: 0 0 var(--td-space-2xs);
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-medium);
+		color: var(--td-field-note);
+	}
+
+	.td-dtp-panel__input {
+		display: block;
+		width: 100%;
+		height: var(--td-field-h-md);
+		padding: 8px 10px;
+		margin: 0;
+		font: inherit;
+		font-variant-numeric: tabular-nums;
+		color: var(--td-field-fg);
+		text-align: center;
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: none;
+		transition:
+			border-color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-dtp-panel__input:focus {
+		border-color: var(--td-field-focus);
+	}
+
+	.td-dtp-panel__input:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-dtp-panel__input[aria-invalid="true"],
+	.td-dtp-panel__input[aria-invalid="true"]:focus {
+		border-color: var(--td-field-error);
+	}
+
+	.td-dtp-panel__wheels {
+		display: flex;
+		gap: var(--td-space-sm);
+		align-items: center;
+		justify-content: center;
+	}
+
+	.td-dtp-panel__preview {
+		padding: 8px 12px;
+		margin: 0;
+		font-weight: var(--td-fw-semibold);
+		font-variant-numeric: tabular-nums;
+		color: var(--td-color-text);
+		text-align: center;
+		background: var(--td-dtp-preview-bg);
+		border-radius: var(--td-glass-radius-inner);
+	}
+
+	.td-dtp-panel__error {
+		margin: 0;
+		font-size: var(--td-text-xs);
+		color: var(--td-field-error);
+	}
+
+	.td-dtp-panel__error[hidden] {
+		display: none;
+	}
+
+	/* ---- Wheel (listbox) ---- */
+	.td-dtp-wheel {
+		position: relative;
+		flex: none;
+		width: var(--td-dtp-wheel-w);
+		border-radius: var(--td-glass-radius-inner);
+	}
+
+	/* Selection band behind the centred row (the list paints above it: later positioned sibling). */
+	.td-dtp-wheel::before {
+		position: absolute;
+		inset-inline: 0;
+		top: calc(50% - var(--td-dtp-option-h) / 2);
+		height: var(--td-dtp-option-h);
+		pointer-events: none;
+		content: "";
+		background: var(--td-dtp-band-bg);
+		border-block: 1px solid var(--td-dtp-band-border);
+		border-radius: var(--td-radius-md);
+	}
+
+	.td-dtp-wheel:has(.td-dtp-wheel__list:focus-visible) {
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-dtp-wheel__list {
+		position: relative; /* options' offsetParent: centring needs no ancestor positioning */
+		height: calc(var(--td-dtp-option-h) * var(--td-dtp-visible));
+		padding-block: calc(var(--td-dtp-option-h) * (var(--td-dtp-visible) - 1) / 2);
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		scroll-behavior: auto; /* programmatic smooth scrolling is chosen per call (never under reduced motion) */
+		scroll-snap-type: y mandatory;
+		scrollbar-width: none;
+		outline: 2px solid transparent; /* focus ring on the wheel (the mask would clip it here) */
+		outline-offset: 2px;
+		mask-image: linear-gradient(to bottom, rgb(0 0 0 / 35%), #000 30%, #000 70%, rgb(0 0 0 / 35%));
+	}
+
+	.td-dtp-wheel__list::-webkit-scrollbar {
+		display: none;
+	}
+
+	.td-dtp-wheel__list:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: none;
+	}
+
+	.td-dtp-wheel__option {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: var(--td-dtp-option-h);
+		font-size: var(--td-text-base);
+		font-variant-numeric: tabular-nums;
+		color: var(--td-dtp-option-fg);
+		cursor: pointer;
+		user-select: none;
+		scroll-snap-align: center;
+	}
+
+	.td-dtp-wheel__option:hover {
+		color: var(--td-dtp-option-selected-fg);
+	}
+
+	.td-dtp-wheel__option[aria-selected="true"] {
+		font-size: var(--td-text-lg);
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-dtp-option-selected-fg);
+	}
+
+	.td-dtp-wheel__sep {
+		font-size: var(--td-text-lg);
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-color-text);
+	}
+
+	@media (pointer: coarse) {
+		.td-dtp__trigger {
+			height: auto;
+			min-height: var(--td-touch-min);
+		}
+
+		.td-dtp-panel__input {
+			height: auto;
+			min-height: var(--td-touch-min);
+			font-size: max(1rem, 1em); /* ≥ 16px: iOS does not zoom on focus */
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-dtp__trigger,
+		.td-dtp-panel__input {
+			transition: none;
+		}
+
+		.td-dtp-wheel__list {
+			scroll-behavior: auto;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-dtp__trigger,
+		.td-dtp-panel__input {
+			border-color: CanvasText;
+		}
+
+		.td-dtp__trigger:focus-visible,
+		.td-dtp-panel__input:focus-visible,
+		.td-dtp-wheel:has(.td-dtp-wheel__list:focus-visible) {
+			outline: 2px solid Highlight;
+		}
+
+		.td-dtp__trigger[aria-invalid="true"],
+		.td-dtp-panel__input[aria-invalid="true"] {
+			border-style: dashed;
+			border-width: 2px;
+		}
+
+		.td-dtp__value[data-placeholder] {
+			color: GrayText;
+		}
+
+		.td-dtp-wheel__list {
+			mask-image: none;
+		}
+
+		.td-dtp-wheel::before {
+			background: Canvas;
+			border-color: CanvasText;
+		}
+
+		.td-dtp-wheel__option[aria-selected="true"] {
+			color: HighlightText;
+			background: Highlight;
+			forced-color-adjust: none;
 		}
 	}
 }

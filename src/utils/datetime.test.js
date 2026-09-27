@@ -263,3 +263,118 @@ describe('TdDateTime._pad', () => {
     assert.equal(TdDateTime._pad(5, 3), '005');
   });
 });
+
+// --- Pure parts helpers (plan v0.10.0-batch4 D6) ---
+const dt = await import('./datetime.js');
+const P = (day, month, year, hour, minute) => ({ day, month, year, hour, minute });
+
+describe('parseDisplay / parseDb / parseIsoLocal', () => {
+  it('parses the display format (1–2 digit fields)', () => {
+    assert.deepEqual(dt.parseDisplay('15/06/2026 - 10:30'), P(15, 6, 2026, 10, 30));
+    assert.deepEqual(dt.parseDisplay('5/6/2026-9:05'), P(5, 6, 2026, 9, 5));
+  });
+  it('display is syntactic: out-of-range numbers parse, invalidReason catches them', () => {
+    const p = dt.parseDisplay('15/06/2026 - 25:99');
+    assert.deepEqual(p, P(15, 6, 2026, 25, 99));
+    assert.equal(dt.invalidReason(p), 'hour');
+    assert.equal(dt.isValidParts(p), false);
+  });
+  it('rejects malformed strings and non-strings', () => {
+    for (const s of ['garbage', '', '15/06/26 - 10:30', '15/06/2026', ' 15/06/2026 - 10:30', '15/06/2026 - 10:30x', null, 42]) {
+      assert.equal(dt.parseDisplay(s), null, String(s));
+    }
+  });
+  it('parses the DB format (space, optional seconds) without Date', () => {
+    assert.deepEqual(dt.parseDb('2026-06-15 10:30:00'), P(15, 6, 2026, 10, 30));
+    assert.deepEqual(dt.parseDb('2026-06-15 10:30'), P(15, 6, 2026, 10, 30));
+    assert.equal(dt.parseDb('2026-06-15T10:30:00'), null);
+    assert.equal(dt.parseDb('2026-06-15 10:30:60'), null);
+    assert.equal(dt.parseDb('garbage'), null);
+    assert.equal(dt.parseDb(undefined), null);
+  });
+  it('parses ISO-local (T, optional seconds, no zone)', () => {
+    assert.deepEqual(dt.parseIsoLocal('2026-06-15T10:30:00'), P(15, 6, 2026, 10, 30));
+    assert.deepEqual(dt.parseIsoLocal('2026-06-15T10:30'), P(15, 6, 2026, 10, 30));
+    assert.equal(dt.parseIsoLocal('2026-06-15T10:30:00Z'), null);
+    assert.equal(dt.parseIsoLocal('2026-06-15 10:30'), null);
+  });
+});
+
+describe('invalidReason / isValidParts', () => {
+  it('accepts real dates incl. 29/02 in leap years', () => {
+    assert.equal(dt.isValidParts(P(29, 2, 2024, 0, 0)), true);
+    assert.equal(dt.isValidParts(P(29, 2, 2000, 23, 59)), true);
+    assert.equal(dt.isValidParts(P(31, 12, 2099, 23, 59)), true);
+  });
+  it('names the failing part', () => {
+    assert.equal(dt.invalidReason(P(29, 2, 2026, 0, 0)), 'date');
+    assert.equal(dt.invalidReason(P(29, 2, 1900, 0, 0)), 'date');
+    assert.equal(dt.invalidReason(P(31, 4, 2026, 0, 0)), 'date');
+    assert.equal(dt.invalidReason(P(0, 1, 2026, 0, 0)), 'day');
+    assert.equal(dt.invalidReason(P(32, 1, 2026, 0, 0)), 'day');
+    assert.equal(dt.invalidReason(P(1, 13, 2026, 0, 0)), 'month');
+    assert.equal(dt.invalidReason(P(1, 1, 0, 0, 0)), 'year');
+    assert.equal(dt.invalidReason(P(1, 1, 2026, 24, 0)), 'hour');
+    assert.equal(dt.invalidReason(P(1, 1, 2026, 0, 60)), 'minute');
+    assert.equal(dt.invalidReason(P(NaN, 1, 2026, 0, 0)), 'incomplete');
+    assert.equal(dt.invalidReason(null), 'incomplete');
+  });
+});
+
+describe('formatDisplay / formatDb / formatIsoLocal', () => {
+  const p = P(5, 6, 2026, 9, 5);
+  it('pads every field', () => {
+    assert.equal(dt.formatDisplay(p), '05/06/2026 - 09:05');
+    assert.equal(dt.formatDb(p), '2026-06-05 09:05:00');
+    assert.equal(dt.formatIsoLocal(p), '2026-06-05T09:05:00');
+  });
+  it('round-trips through the parsers', () => {
+    assert.deepEqual(dt.parseDisplay(dt.formatDisplay(p)), p);
+    assert.deepEqual(dt.parseDb(dt.formatDb(p)), p);
+    assert.deepEqual(dt.parseIsoLocal(dt.formatIsoLocal(p)), p);
+  });
+});
+
+describe('compareParts / parseBound (D5)', () => {
+  it('orders parts', () => {
+    assert.ok(dt.compareParts(P(1, 1, 2026, 0, 0), P(31, 12, 2025, 23, 59)) > 0);
+    assert.ok(dt.compareParts(P(1, 1, 2026, 10, 0), P(1, 1, 2026, 10, 1)) < 0);
+    assert.equal(dt.compareParts(P(1, 1, 2026, 10, 0), P(1, 1, 2026, 10, 0)), 0);
+  });
+  it('date-only bounds expand to 00:00 (min) and 23:59 (max)', () => {
+    assert.deepEqual(dt.parseBound('2026-06-15', 'min'), P(15, 6, 2026, 0, 0));
+    assert.deepEqual(dt.parseBound('2026-06-15', 'max'), P(15, 6, 2026, 23, 59));
+    assert.deepEqual(dt.parseBound('15/06/2026', 'min'), P(15, 6, 2026, 0, 0));
+    assert.deepEqual(dt.parseBound('15/06/2026', 'max'), P(15, 6, 2026, 23, 59));
+  });
+  it('explicit times are exact (display and ISO-local)', () => {
+    assert.deepEqual(dt.parseBound('15/06/2026 - 10:30', 'max'), P(15, 6, 2026, 10, 30));
+    assert.deepEqual(dt.parseBound('2026-06-15T10:30', 'min'), P(15, 6, 2026, 10, 30));
+    assert.deepEqual(dt.parseBound(' 2026-06-15T10:30:00 ', 'max'), P(15, 6, 2026, 10, 30));
+  });
+  it('invalid bounds → null', () => {
+    for (const s of ['2026-02-30', '31/04/2026', 'soon', '', '2026-06-15 25:00', null]) {
+      assert.equal(dt.parseBound(s, 'min'), null, String(s));
+    }
+  });
+});
+
+describe('minute step (D7)', () => {
+  it('normalises the step', () => {
+    assert.equal(dt.normalizeMinuteStep('5'), 5);
+    assert.equal(dt.normalizeMinuteStep(15), 15);
+    assert.equal(dt.normalizeMinuteStep('7'), 1);
+    assert.equal(dt.normalizeMinuteStep('45'), 1);
+    assert.equal(dt.normalizeMinuteStep('0'), 1);
+    assert.equal(dt.normalizeMinuteStep(null), 1);
+  });
+  it('snaps DOWN, never into the next hour', () => {
+    assert.equal(dt.snapMinuteDown(58, 5), 55);
+    assert.equal(dt.snapMinuteDown(2, 5), 0);
+    assert.equal(dt.snapMinuteDown(59, 30), 30);
+    assert.equal(dt.snapMinuteDown(7, 1), 7);
+  });
+  it('partsFromDate reads local wall-clock fields', () => {
+    assert.deepEqual(dt.partsFromDate(new Date(2026, 5, 15, 10, 30)), P(15, 6, 2026, 10, 30));
+  });
+});

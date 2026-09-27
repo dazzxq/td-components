@@ -80,11 +80,11 @@ export class TdBaseElement extends HTMLElement {
    * state-dependent scalars (color, size, width %, etc.) stay correct as state changes.
    *
    * Put SELECTOR / pseudo-class (`:hover`/`:focus`/`:checked`/`:disabled`),
-   * `::before`/`::after`, state-combinator, `@keyframes`, and `@media` rules in a
-   * constructable stylesheet adopted ONCE via `adoptStyles(css, key)` from
-   * `utils/adopt-styles.js`, keyed off STABLE classes / `data-*` attributes the
-   * component toggles — NOT inline `style=` and NOT an injected `<style>` element,
-   * both of which a strict CSP (`style-src 'self'`, no `unsafe-inline`) blocks.
+   * `::before`/`::after`, state-combinator, `@keyframes`, and `@media` rules in the
+   * component's token CSS file (`src/styles/components/<name>.css`, built into td.css —
+   * ADR 0008), keyed off STABLE BEM classes / `aria-*` / `data-*` state — NOT inline
+   * `style=`, NOT an injected `<style>` and NOT CSS-in-JS (`adopt-styles.js` was removed
+   * in 0.10.0).
    */
 
   // --- Attribute/Property Sync ---

@@ -167,7 +167,10 @@ export class TdModal {
    * @param {string|null} [options.width=null] - Custom width (any valid CSS width without url()/var()).
    * @param {string|null} [options.height=null] - Custom height (same rule).
    * @param {boolean} [options.fullViewport=false] - Dialog fills the viewport (no bottom sheet).
-   * @param {boolean} [options.closable=true] - Show the X. The modal NEVER closes on backdrop click or Escape.
+   * @param {boolean} [options.closable=true] - Show the X. The modal NEVER closes on backdrop click, nor on Escape
+   *   unless `escapeCloses`.
+   * @param {boolean} [options.escapeCloses=false] - Escape closes the dialog (not while an action is busy). Only for
+   *   dialogs whose close loses no user data (ADR 0006 addendum), e.g. pickers.
    * @param {boolean} [options.showHeader=true] - Without a header the title becomes the dialog's `aria-label`.
    * @param {boolean} [options.showFooter=true]
    * @param {Function|null} [options.onClose=null] - Called once on every close path, after focus is restored.
@@ -225,7 +228,12 @@ export class TdModal {
       layer: MODAL_LAYER,
       element: root,
       blocking: true,
-      onEscape: () => true, // ADR 0006: Escape never closes; consumed so it cannot reach a layer below
+      // ADR 0006: Escape never closes (consumed so it cannot reach a layer below) — except `escapeCloses` dialogs
+      // whose close loses no user data (e.g. the datetime picker keeps a pending copy); never while busy.
+      onEscape: () => {
+        if (opts.escapeCloses === true && !instance.busy) instance.close();
+        return true;
+      },
       onTab: (e) => trapTab(e, dialog, MODAL_LAYER),
     });
     TdModal._focusTrapHandlers.set(id, { el: root, layer: instance.layer });

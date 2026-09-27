@@ -226,26 +226,35 @@ Tab stops; the focused control carries `aria-activedescendant`. Clicking outside
 
 ### `td-datetime-picker` — `@dazzxq/td-components/datetime-picker`
 
-Opens a wheel-style date/time modal. Displays `dd/mm/yyyy - hh:mm`; submits **ISO 8601** by default.
+Date/time picker: a combobox trigger opens a dialog (TdModal) with day/month/year fields and hour/minute wheels.
+Displays `dd/mm/yyyy - hh:mm`; submits **ISO 8601** by default. Token-native since 0.10.0 (requires `td.css`).
 
 ```html
-<td-datetime-picker name="starts_at" label="Start" required></td-datetime-picker>
-<td-datetime-picker name="ends_at" form-value-format="db"></td-datetime-picker>
+<td-datetime-picker name="starts_at" label="Bắt đầu" required min="2026-01-01"></td-datetime-picker>
+<td-datetime-picker name="ends_at" form-value-format="db" minute-step="15"></td-datetime-picker>
 ```
 
 | Attribute | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `value` | string | — | Display-format value (`dd/mm/yyyy - hh:mm`) |
+| `label` | string | — | Visible label; else host `aria-label` or an external `<label for>` names the trigger |
 | `placeholder` | string | `dd/mm/yyyy - hh:mm` | Placeholder text |
+| `min` / `max` | string | — | Bounds, display format or ISO-local `YYYY-MM-DD[THH:mm]`; a date-only `min` means 00:00, a date-only `max` 23:59. Validation only (`rangeUnderflow`/`rangeOverflow`, "Chọn" refuses) |
 | `disabled` | boolean | `false` | Disable (also via `<fieldset disabled>`) |
-| `required` | boolean | `false` | A valid date must be present for the form to be valid |
+| `required` | boolean | `false` | A valid date must be present (`aria-required`) |
+| `error-text` | string | — | Error contract (like input-field): `aria-invalid` + note; also `setError()` / `clearError()` |
 | `name` | string | — | Form field name |
-| `label` | string | — | Label text |
 | `form-value-format` | string | `iso` | Submitted shape: `iso` (`YYYY-MM-DDTHH:mm:00`) \| `display` \| `db` (`YYYY-MM-DD HH:mm:ss`) |
-| `minute-step` | number | `1` | Minute increment in the wheel |
+| `minute-step` | number | `1` | Minute increment (1–30, divides 60); values snap **down** when the dialog opens |
 
+**Keyboard:** trigger — Enter / Space / ↓ / Alt+↓ open. Dialog — Tab moves through day, month, year, the hour and
+minute wheels and the buttons; wheels: ↑ ↓ Home End PageUp PageDown (6 h / 15 min), click to pick; Escape, X and
+"Đóng" discard the edit; "Chọn" commits (one `change`) and focus returns to the trigger.
 **Events:** `change` → `{ value, dbValue }`
-**Methods:** `getValue()`, `getDBValue()`, `setValue(displayStr)`, `setDBValue(dbStr)`. With no value it submits nothing (and is `valueMissing` when `required`); a malformed value is reported as `badInput` rather than submitting a stale date.
+**Methods:** `getValue()` / `getDBValue()` (`''` when empty, invalid or outside `min`/`max`), `setValue(displayStr)`, `setDBValue(dbOrIsoStr)`
+(ignores garbage), `setError()`, `clearError()`. Static, site-overridable `TdDatetimePicker.labels` and `.messages`
+(Vietnamese). With no value it submits nothing (`valueMissing` when `required`); an invalid value submits its raw text
+and reports `badInput`.
 
 ---
 
@@ -381,32 +390,46 @@ elements keep their names and `title` untouched.
 
 ### `td-table` — `@dazzxq/td-components/table`
 
-Sortable, paginated data table. Columns and rows are JS properties; supports client and server modes.
+Sortable, paginated data table. Columns and rows are JS properties; client and server modes. Token-native since
+0.10.0 (requires `td.css`).
 
 ```js
 import '@dazzxq/td-components/table';
 const t = document.querySelector('td-table');
 t.columns = [
-  { key: 'name', label: 'Name', sortable: true },
-  { key: 'age', label: 'Age', align: 'right' },
-  { key: 'actions', label: '', render: (row) => `<td-button label="Edit"></td-button>` },
+  { key: 'name', label: 'Tên', sortable: true, ellipsis: true, width: '240px' },
+  { key: 'age', label: 'Tuổi', align: 'right', sortable: true },
+  { key: 'actions', label: '', render: (row) => makeEditButton(row) }, // Node preferred; a string is TRUSTED HTML
 ];
+t.cellPaddingClass = 'px-2';
 t.data = rows;
 ```
 
 | Attribute | Type | Default | Description |
 |-----------|------|---------|-------------|
+| `title` | string | — | Title in the header bar; names the table (`aria-labelledby`) |
+| `heading-level` | number | `3` | Title heading level (2–6) |
+| `aria-label` | string | — | Names the table when there is no title (fallback "Bảng dữ liệu") |
 | `per-page` | number | `10` | Items per page |
-| `active-color` | string | `#ef4444` | Pagination active color |
-| `zebra` | boolean | `true` | Alternating row stripes |
-| `loading` | boolean | `false` | Show skeleton |
+| `active-color` | string | pagination token | Pagination current-page colour |
+| `zebra` | flag | on | Alternating rows; turn off with `"false"`/`"0"`/`"off"` |
+| `max-height` | CSS length | — | Scrolls the body inside the card with a **sticky header** |
+| `loading` | boolean | `false` | Skeleton rows + `aria-busy` + one status message |
 | `loading-rows` | number | `5` | Skeleton row count |
-| `title` | string | — | Optional table title |
-| `empty-text` | string | `Không có dữ liệu` | Empty-state text |
-| `server-mode` | boolean | `false` | Server-side sort/paginate |
-| `total-items` | number | — | Total items (server mode) |
+| `empty-title` / `empty-text` | string | `Không có dữ liệu` / `Chưa có dữ liệu để hiển thị.` | Empty state |
+| `server-mode` | boolean | `false` | Server-side sort/paginate (keeps the page when `data` changes) |
+| `total-items` | number | — | **Required in server mode** (without it both paginations are hidden and a warning is logged) |
 
-**Properties:** `columns` (with `key`, `label`, `sortable`, `width`, `align`, `render(row)`…), `data`, `onSort({key,direction})`, `onPageChange(page)`.
+**Columns:** `key`, `label`, `sortable`, `align` (`left|center|right`), `width` / `widthType` / `minWidth` /
+`maxWidth` (validated CSS lengths), `ellipsis` (truncate + `title`; turns on fixed layout), `render(row,
+rowIdxInPage)` → Node (preferred) or **trusted** HTML string (never user data). **`cellPaddingClass`**: `px-0`…`px-6`
+only (anything else is ignored with a warning). Every `th`/`td` has `data-col` + `data-col-key` for site CSS (e.g.
+hiding columns on small screens).
+**Sorting:** sort buttons in the header (`aria-sort` on the active column), cycle asc → desc → none, Vietnamese
+collation (`Intl.Collator('vi', { numeric: true })`); a `render` column sorts by `row[key]`.
+**Events / callbacks:** `sort-change` → `{ key, direction }`, `onSort({key,direction})`, `onPageChange(page)`.
+Sorting and paging update the table in place (focus stays on the control; the page change is announced once).
+Wide tables scroll horizontally in a region that becomes focusable and named while it overflows.
 
 ### `td-tabs` — `@dazzxq/td-components/tabs`
 
