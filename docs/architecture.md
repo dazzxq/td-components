@@ -64,6 +64,20 @@ Không có `style="…"` và không chèn `<style>` trong output của lib.
 - Component có animation state (toggle, tabs) cập nhật DOM nhẹ thay vì render lại toàn bộ để transition chạy.
 - Phần tử portal ra `body` (menu dropdown, toast, tooltip, modal) phải tự dọn khi disconnect/đóng.
 
+## Lớp nổi (v0.9.0) — `utils/layers.js`
+
+Mọi overlay đăng ký `register({ layer, element, blocking, keyboard, onEscape, onTab, includeInTrap })` khi mở và
+`release()` khi đóng. Số layer = token z (`LAYERS`: dropdown 100, overlay 300, lightbox 350, modal 400, popover 450,
+loading 480, toast 500, tooltip 510 — giữ đồng bộ với `tokens.css`).
+
+- **Inert** (`inert-lock.js`): `blocking` (modal, lightbox, loading) làm `inert` mọi con của `body` bên dưới, trừ phần
+  tử đăng ký ở layer cao hơn; đăng ký floating (menu, tooltip, toast) không inert gì, chỉ được miễn khỏi lease thấp hơn.
+- **Bàn phím**: một listener `keydown` capture duy nhất. Escape → boundary cao nhất (luôn bị nuốt trừ khi `onEscape`
+  trả `false`); Tab → boundary cao nhất có `onTab`, `'pass'` chuyển xuống dưới. Toast đăng ký `keyboard:'none'` +
+  `includeInTrap` nên nút đóng của nó nằm trong vòng Tab của modal. Component KHÔNG tự bắt Escape/Tab trên document.
+- `trapTab(e, container, layer)` là trap dùng chung; `utils/floating.js` (`placeFloating`, `isReferenceHidden`) định
+  vị menu/tooltip.
+
 ## Sơ đồ phụ thuộc
 
 ```
@@ -72,8 +86,9 @@ td-form-element ──► td-base-element
 form/* (trừ button) ──► td-form-element ;  button ──► td-base-element
 td-datetime-picker ──► feedback/td-modal ──► td-modal-stack
 td-table ──► td-pagination, td-empty-state
-td-toast ──(dynamic import, tuỳ chọn)──► td-modal-stack
-adopt-styles ◄── checkbox, toggle, datetime-picker, modal, toast, loading, tabs, table
+modal, lightbox, loading, dropdown, tooltip, toast ──► utils/layers ──► utils/inert-lock
+dropdown, tooltip ──► utils/floating
+adopt-styles ◄── datetime-picker, table (legacy, tới batch 4)
 dom-utils: độc lập, không component nào bắt buộc dùng
 ```
 

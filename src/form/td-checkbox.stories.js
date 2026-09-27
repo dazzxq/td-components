@@ -1,3 +1,4 @@
+import { escapeHtml } from '../utils/escape.js';
 import '../styles/story-layout.css';
 import './td-checkbox.js';
 
@@ -16,9 +17,9 @@ export const Default = {
   render: (args) => `
     <td-checkbox
       ${args.checked ? 'checked' : ''}
-      label="${args.label || ''}"
-      size="${args.size || 'md'}"
-      ${args.color ? `color="${args.color}"` : ''}
+      label="${escapeHtml(String(args.label || ''))}"
+      size="${escapeHtml(String(args.size || 'md'))}"
+      ${args.color ? `color="${escapeHtml(String(args.color))}"` : ''}
     ></td-checkbox>
   `,
   args: {

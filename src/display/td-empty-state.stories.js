@@ -1,3 +1,4 @@
+import { escapeHtml } from '../utils/escape.js';
 import './td-empty-state.js';
 import '../styles/story-layout.css';
 
@@ -17,11 +18,11 @@ export default {
 export const Default = {
   render: (args) => `
     <td-empty-state
-      title="${args.title || 'Không có dữ liệu'}"
-      message="${args.message || 'Chưa có mục nào được tạo.'}"
-      size="${args.size || 'md'}"
-      ${args.icon ? `icon="${args.icon}"` : ''}
-      ${args['heading-level'] ? `heading-level="${args['heading-level']}"` : ''}
+      title="${escapeHtml(String(args.title || 'Không có dữ liệu'))}"
+      message="${escapeHtml(String(args.message || 'Chưa có mục nào được tạo.'))}"
+      size="${escapeHtml(String(args.size || 'md'))}"
+      ${args.icon ? `icon="${escapeHtml(String(args.icon))}"` : ''}
+      ${args['heading-level'] ? `heading-level="${escapeHtml(String(args['heading-level']))}"` : ''}
       ${args.compact ? 'compact' : ''}
     ></td-empty-state>
   `,

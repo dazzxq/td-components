@@ -1,286 +1,418 @@
 /**
- * TdModal
- * Universal Modal Component with Tailwind CSS.
- * All modals are stacked modals with their own DOM elements.
- * Single unified API for all modal operations.
+ * TdModal — stacked modal dialogs + Promise dialogs (static utility, no TdBaseElement). Token-native: needs td.css
+ * (src/styles/components/modal.css + button.css); no Tailwind, no adopted/inline <style>, CSP-strict.
  *
- * Features:
- * - Stacked modals with z-index management
- * - Full viewport mode support
- * - Loading modals (non-closable)
- * - Confirm, success, error, info dialogs
- * - Promise-based API
- * - Focus trap (Tab wrapping within modal)
- * - Entrance/exit animation (scale + opacity via rAF)
- * - Glass morphism styling
+ * DOM contract (one root per open dialog, portaled to <body>):
+ *   <div id="{id}" class="td-modal td-modal--{xs|sm|md|lg|xl|2xl|3xl|4xl|5xl|full}[ td-modal--viewport]"
+ *        data-state="opening|open|closing" [data-covered]>
+ *     <div class="td-modal__backdrop" aria-hidden="true"></div>             ← scrim, never closes (ADR 0006)
+ *     <div class="td-modal__dialog td-glass-surface td-glass-surface--strong td-glass-surface--lg"
+ *          role="dialog|alertdialog" aria-modal="true" aria-labelledby="{id}-title" | aria-label (no header)
+ *          [aria-describedby="{id}-message"] tabindex="-1"
+ *          (CSSOM: --td-modal-w, --td-modal-h, --td-modal-body-pad, --td-modal-body-overflow)>
+ *       <div class="td-modal__header" [hidden]>
+ *         <h2 class="td-modal__title" id="{id}-title">title</h2>
+ *         <button type="button" class="td-modal__close" aria-label="Đóng" [hidden]>
+ *           <span class="td-modal__close-icon" data-td-icon="close" aria-hidden="true">svg</span></button>
+ *       </div>
+ *       <div class="td-modal__body">body</div>
+ *       <div class="td-modal__footer" [hidden]>footer | .td-btn actions</div>
+ *     </div>
+ *   </div>
  *
- * Ported from DCMS Modal — standalone utility class (no TdBaseElement).
+ * Behaviour (plan v0.9.0 item 1):
+ * - Each open dialog registers with the layer registry (utils/layers.js) at LAYERS.modal as a BLOCKING boundary:
+ *   everything below it (page, lower modals, a lightbox) is `inert`; Tab is trapped (focus is pulled back from
+ *   anywhere); Escape is consumed and does nothing (ADR 0006 — it never closes, and it never reaches a layer
+ *   below); higher layers (dropdown menu, tooltip, loading) get the keyboard first. One scroll lease per stack.
+ * - Focus: moves into the dialog on open. Initial target: `focusTarget` (only if connected AND inside the dialog)
+ *   → first body field → first focusable other than the X → the X → the dialog. `autoFocus:false` → the dialog.
+ *   On close, focus returns to the opener only when this dialog was on top (else it stays where it is); if the
+ *   opener is gone/outside the new top dialog, the new top dialog is focused. Restored BEFORE `onClose`.
+ * - z-index: `var(--td-z-modal)` for every dialog; DOM order stacks. Covered dialogs `[data-covered]` go solid.
+ *
+ * Trusted-HTML hatches (developer content ONLY, never user input): `show({ body: '<html string>' })` and
+ * `messageHtml` on the Promise dialogs. `title`, `message`, button labels are always text.
  *
  * @example
- * // Simple modal
- * const id = TdModal.show({ title: 'Hello', body: '<p>Content</p>' });
- *
- * // Confirm dialog (Promise-based)
- * const ok = await TdModal.confirm({ title: 'Delete?', message: 'Are you sure?' });
- *
- * // Loading modal
- * const loadId = TdModal.loading('Processing...');
- * // ... later
- * TdModal.closeById(loadId);
+ * const id = TdModal.show({ title: 'Xin chào', body: formElement, actions: [
+ *   { label: 'Hủy', value: false },
+ *   { label: 'Lưu', variant: 'primary', value: true, onClick: () => save() }, // thenable → busy until settled
+ * ] });
+ * const ok = await TdModal.confirm({ title: 'Xóa?', message: 'Không thể hoàn tác.', confirmVariant: 'danger' });
  */
 
 import { TdModalStackManager } from './td-modal-stack.js';
-import { escapeHtml } from '../utils/escape.js';
-import { adoptStyles } from '../utils/adopt-styles.js';
+import { LAYERS, register as registerLayer, trapTab, focusablesIn, setFocusHandoff, followFocusHandoff } from '../utils/layers.js';
+import { fillIconSlots } from '../icons/td-icon.js';
+
+const MODAL_LAYER = LAYERS.modal; // --td-z-modal
+const SIZES = ['xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', 'full'];
+const BTN_VARIANTS = ['primary', 'secondary', 'danger', 'success', 'warning', 'info'];
+const OVERFLOWS = ['visible', 'hidden', 'auto', 'scroll', 'clip'];
+const FIELD = 'input:not([disabled]):not([type="hidden"]), textarea:not([disabled]), select:not([disabled])';
+const EXIT_MS = 220; // ≥ --td-dur-base (exit transition) before the root is removed
+const SPINNER = '<span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden>'
+  + '<svg class="td-spinner__svg" viewBox="0 0 50 50" aria-hidden="true" focusable="false">'
+  + '<circle class="td-spinner__track" cx="25" cy="25" r="20"></circle>'
+  + '<circle class="td-spinner__arc" cx="25" cy="25" r="20"></circle></svg></span>';
+
+const isThenable = (v) => !!v && (typeof v === 'object' || typeof v === 'function') && typeof v.then === 'function';
 
 /**
- * Static, library-authored styling for the modal dialog surface (glass morphism).
- * Previously a declarative `style="…"` on `.td-modal-content`; under a strict CSP
- * (`default-src 'self'`, no `unsafe-inline`) inline styles are BLOCKED, so these
- * non-varying rules move into a constructable stylesheet adopted into `document`
- * (the modal portals to `document.body`, so a document-level sheet covers it).
- * Scoped to the stable `.td-modal-content` class. Per-instance scalars (size,
- * width, height, transforms, transitions, animation opacity) remain on the
- * element via CSSOM — they are CSP-allowed and vary per call.
+ * A developer CSS value for `prop`, or '' (D22): must parse for that property and must not pull in url()/var().
+ * @param {string} prop
+ * @param {unknown} value
+ * @param {string} option name for the warning
  */
-const TD_MODAL_SHEET = `
-.td-modal-content {
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
+function cssValue(prop, value, option) {
+  if (value === null || value === undefined || value === '') return '';
+  const v = String(value).trim();
+  const ok = v && v.length <= 200 && !/url\(|var\(|image-set\(|[;{}]/i.test(v)
+    && typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports(prop, v);
+  if (!ok) {
+    console.warn(`TdModal: ignored invalid ${option} "${v}"`);
+    return '';
+  }
+  return v;
 }
-`;
+
+function prefersReducedMotion() {
+  try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
+}
+
+/**
+ * Build a `.td-btn` button (label as text). Busy state = aria-busy + aria-disabled + spinner (button.css).
+ * @param {string} label
+ * @param {string} variant
+ * @returns {HTMLButtonElement}
+ */
+function makeButton(label, variant) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = `td-btn td-btn--${BTN_VARIANTS.includes(variant) ? variant : 'secondary'}`;
+  const text = document.createElement('span');
+  text.className = 'td-btn__label';
+  text.textContent = label == null ? '' : String(label);
+  btn.appendChild(text);
+  btn.insertAdjacentHTML('beforeend', SPINNER); // constant markup, no interpolation
+  return btn;
+}
+
+function setButtonBusy(btn, busy) {
+  if (busy) {
+    btn.setAttribute('aria-busy', 'true');
+    btn.setAttribute('aria-disabled', 'true');
+  } else {
+    btn.removeAttribute('aria-busy');
+    btn.removeAttribute('aria-disabled');
+  }
+  const spinner = btn.querySelector('.td-btn__spinner');
+  if (spinner) spinner.hidden = !busy;
+}
 
 export class TdModal {
+  /** Default labels (Vietnamese); override per site: `TdModal.labels.close = 'Close'`. */
+  static labels = { close: 'Đóng', confirm: 'Xác nhận', cancel: 'Hủy', ok: 'OK' };
+
+  /**
+   * Compatibility map: modal id → `{ el, layer }` while the dialog's keyboard/inert registration is active.
+   * @type {Map<string, { el: HTMLElement, layer: { release(): void, isTop(): boolean } }>}
+   */
   static _focusTrapHandlers = new Map();
 
   /**
-   * Create a new modal DOM element
+   * Build the modal root (not yet attached).
    * @private
-   * @returns {HTMLElement} Modal container element
+   * @param {string} id
+   * @returns {HTMLElement}
    */
-  static _createModalElement() {
-    const modalId = TdModalStackManager.generateId();
-    const modal = document.createElement('div');
-    modal.id = modalId;
-    modal.className = 'fixed inset-0 hidden';
-
-    modal.innerHTML = `
-      <!-- Backdrop -->
-      <div class="td-modal-backdrop fixed inset-0 bg-black/25 transition-opacity"></div>
-
-      <!-- Modal Container -->
-      <div class="fixed inset-0 overflow-y-auto">
-        <div class="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
-          <!-- Modal Content -->
-          <div class="td-modal-content bg-white/[0.9] rounded-t-3xl sm:rounded-[20px] border border-white/50 max-w-lg w-full transform transition-all">
-            <!-- Header -->
-            <div class="td-modal-header px-4 sm:px-6 py-3 sm:py-4 border-b border-black/[0.06] flex items-center justify-between">
-              <h3 class="td-modal-title text-lg sm:text-xl font-bold text-gray-900"></h3>
-              <button type="button" class="td-modal-close text-gray-400 hover:text-gray-600 transition-colors p-1">
-                <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-              </button>
-            </div>
-
-            <!-- Body -->
-            <div class="td-modal-body px-4 sm:px-6 py-4 max-h-[60vh] sm:max-h-[70vh] overflow-y-auto text-gray-900"></div>
-
-            <!-- Footer -->
-            <div class="td-modal-footer px-4 sm:px-6 py-3 sm:py-4 border-t border-black/[0.06] flex flex-row justify-end gap-2"></div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    // Setup event listeners
-    const closeBtn = modal.querySelector('.td-modal-close');
-
-    // DELIBERATE: no backdrop-click-to-close and no ESC-to-close. This modal must be
-    // dismissed ONLY via the X button, a footer button, or programmatically — to prevent
-    // accidental dismissal (operator policy). The backdrop is visual (dimming) only.
-    closeBtn.addEventListener('click', () => {
-      TdModal.closeById(modalId);
-    });
-
-    return modal;
+  static _createModalElement(id) {
+    const root = document.createElement('div');
+    root.id = id;
+    root.className = 'td-modal td-modal--md';
+    root.setAttribute('data-state', 'opening');
+    // Static markup only; every dynamic value is set below through the DOM (textContent / attributes).
+    root.innerHTML = '<div class="td-modal__backdrop" aria-hidden="true"></div>'
+      + '<div class="td-modal__dialog td-glass-surface td-glass-surface--strong td-glass-surface--lg"'
+      + ' role="dialog" aria-modal="true" tabindex="-1">'
+      + '<div class="td-modal__header"><h2 class="td-modal__title"></h2>'
+      + '<button type="button" class="td-modal__close">'
+      + '<span class="td-modal__close-icon" data-td-icon="close" aria-hidden="true"></span></button></div>'
+      + '<div class="td-modal__body"></div>'
+      + '<div class="td-modal__footer" hidden></div>'
+      + '</div>';
+    root.querySelector('.td-modal__title').id = `${id}-title`;
+    root.querySelector('.td-modal__close').setAttribute('aria-label', TdModal.labels.close || 'Đóng');
+    fillIconSlots(root);
+    // No backdrop-click close (ADR 0006). Keep focus in the dialog when the scrim is clicked.
+    root.querySelector('.td-modal__backdrop').addEventListener('mousedown', (e) => e.preventDefault());
+    return root;
   }
 
   /**
-   * Show modal with content
-   * @param {Object} options - Modal configuration
-   * @param {string} [options.title='Modal'] - Modal title
-   * @param {string|HTMLElement} [options.body=''] - Body content (HTML string or element)
-   * @param {HTMLElement[]|HTMLElement|null} [options.footer=null] - Footer buttons
-   * @param {string} [options.size='md'] - Size: xs, sm, md, lg, xl, 2xl, 3xl, 4xl, 5xl, full
-   * @param {string|null} [options.width=null] - Custom width (overrides size)
-   * @param {string|null} [options.height=null] - Custom height
-   * @param {boolean} [options.fullViewport=false] - Full viewport mode
-   * @param {boolean} [options.closable=true] - Show the X (close) button. The modal NEVER closes on backdrop-click or ESC (deliberate, prevents accidental dismissal); set false to also hide the X (force-action — close only via a footer button or programmatically)
-   * @param {boolean} [options.showHeader=true] - Show header
-   * @param {boolean} [options.showFooter=true] - Show footer
-   * @param {Function|null} [options.onClose=null] - Close callback
-   * @param {boolean} [options.autoFocus=true] - Auto-focus first input
-   * @param {HTMLElement|null} [options.focusTarget=null] - Specific element to focus
-   * @param {string} [options.bodyPadding] - Custom body padding
-   * @param {string} [options.bodyOverflow] - Custom body overflow
-   * @returns {string} Modal ID
+   * Show a modal.
+   * @param {Object} options
+   * @param {string} [options.title='Modal'] - Title (text).
+   * @param {string|Node} [options.body=''] - Body: a Node (preferred) or an HTML string. **The string form is a
+   *   TRUSTED-HTML hatch** (`innerHTML`): developer markup only, never user input.
+   * @param {HTMLElement[]|HTMLElement|null} [options.footer=null] - Footer element(s), appended as is.
+   * @param {Array<{label: string, variant?: string, value?: *, close?: boolean, disabled?: boolean,
+   *   onClick?: (ctx: {id: string, value: *, button: HTMLButtonElement}) => (boolean|void|PromiseLike<*>)}>}
+   *   [options.actions] - Footer buttons (`.td-btn`; wins over `footer`). `onClick` returning a thenable keeps
+   *   the dialog open with that button busy (`aria-busy`) and the other actions + X disabled; resolved `false`,
+   *   sync `false`, `close:false` or a rejection keep it open; otherwise it closes and `onClose(value)` gets the
+   *   action's `value`.
+   * @param {string} [options.size='md'] - xs, sm, md, lg, xl, 2xl, 3xl, 4xl, 5xl, full.
+   * @param {string|null} [options.width=null] - Custom width (any valid CSS width without url()/var()).
+   * @param {string|null} [options.height=null] - Custom height (same rule).
+   * @param {boolean} [options.fullViewport=false] - Dialog fills the viewport (no bottom sheet).
+   * @param {boolean} [options.closable=true] - Show the X. The modal NEVER closes on backdrop click or Escape.
+   * @param {boolean} [options.showHeader=true] - Without a header the title becomes the dialog's `aria-label`.
+   * @param {boolean} [options.showFooter=true]
+   * @param {Function|null} [options.onClose=null] - Called once on every close path, after focus is restored.
+   * @param {(root: HTMLElement, payload: *) => void} [options.onShow] - Called once after the open state is set
+   *   (second animation frame) unless the modal was closed before; errors are caught and warned.
+   * @param {*} [options.onShowPayload] - Second argument of `onShow`.
+   * @param {boolean} [options.autoFocus=true] - false: focus the dialog itself instead of the first field.
+   * @param {HTMLElement|null} [options.focusTarget=null] - Initial focus (honoured only if inside the dialog).
+   * @param {string|number} [options.bodyPadding] - Body padding (valid CSS padding).
+   * @param {string} [options.bodyOverflow] - visible | hidden | auto | scroll | clip.
+   * @returns {string} Modal id
    */
   static show(options = {}) {
-    // Adopt the static dialog-surface stylesheet LAZILY (browser-only, idempotent,
-    // never at module top-level). Adopted into `document` because the modal portals
-    // to `document.body`. Returns false on old browsers/SSR → still renders
-    // structurally (Tailwind classes + CSSOM scalars) without the glass embellishment.
-    adoptStyles(TD_MODAL_SHEET, 'td-modal');
+    return TdModal._open(options, null);
+  }
 
-    // Create new modal element
-    const modal = this._createModalElement();
-    const modalId = modal.id;
+  /**
+   * @private
+   * @param {Object} options public show() options
+   * @param {{ role?: string, message?: HTMLElement }|null} internal promise-dialog extras
+   */
+  static _open(options = {}, internal = null) {
+    const opts = options || {};
+    const id = TdModalStackManager.generateId();
+    const root = TdModal._createModalElement(id);
+    const dialog = /** @type {HTMLElement} */ (root.querySelector('.td-modal__dialog'));
+    const opener = document.activeElement instanceof HTMLElement && document.activeElement !== document.body
+      ? document.activeElement : null;
 
-    // Push to stack
-    const modalInstance = {
-      id: modalId,
-      element: modal,
-      onClose: options.onClose || null,
-      closable: options.closable !== false,
+    const instance = {
+      id,
+      element: root,
+      dialog,
+      opener,
+      // the open modal the opener lives in (focus falls back through closed ancestors' openers)
+      openerOwner: opener ? TdModalStackManager.stack.find((m) => m.element.contains(opener)) || null : null,
+      onClose: typeof opts.onClose === 'function' ? opts.onClose : null,
+      closable: opts.closable !== false,
+      closed: false,
+      busy: false,
+      layer: null,
+      close: (value) => TdModal._closeInstance(instance, value),
     };
 
-    TdModalStackManager.push(modalInstance);
-
-    // Configure and show modal
-    this._configureModal(modal, options);
-
-    // --- Entrance animation setup ---
-    const contentEl = modal.querySelector('.td-modal-content');
-    const backdrop = modal.querySelector('.td-modal-backdrop');
-
-    // Save backdrop target opacity (set by TdModalStackManager.push)
-    const targetBackdropOpacity = backdrop ? (backdrop.style.opacity || '0.5') : '0.5';
-
-    // Set transitions
-    if (contentEl) {
-      contentEl.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-      contentEl.style.opacity = '0';
-      contentEl.style.transform = 'scale(0.95)';
-    }
-    if (backdrop) {
-      backdrop.style.transition = 'opacity 0.12s ease-out';
-      backdrop.style.opacity = '0';
+    TdModal._configureModal(root, opts, instance);
+    if (internal && internal.role) dialog.setAttribute('role', internal.role);
+    if (internal && internal.message) {
+      internal.message.id = `${id}-message`;
+      dialog.setAttribute('aria-describedby', internal.message.id);
     }
 
-    // Show modal with animation. Every deferred step re-checks liveness: if the modal
-    // was closed in the same frame it was opened (closeById/closeAll before the rAF
-    // fires), un-hiding it or installing a focus trap afterwards would leak a trap that
-    // steals focus and fade in a modal that is already animating out.
+    document.body.appendChild(root);
+    TdModalStackManager.push(instance);
+    instance.layer = registerLayer({
+      layer: MODAL_LAYER,
+      element: root,
+      blocking: true,
+      onEscape: () => true, // ADR 0006: Escape never closes; consumed so it cannot reach a layer below
+      onTab: (e) => trapTab(e, dialog, MODAL_LAYER),
+    });
+    TdModal._focusTrapHandlers.set(id, { el: root, layer: instance.layer });
+    // Focus moves into the dialog immediately (the opener is inert now); the initial target is chosen once the
+    // content is laid out (second frame).
+    try { dialog.focus({ preventScroll: true }); } catch { /* ignore */ }
+
+    const autoFocus = opts.autoFocus !== false;
+    const focusTarget = opts.focusTarget || null;
     requestAnimationFrame(() => {
-      if (!TdModal._isOpen(modalId)) return;
-      modal.classList.remove('hidden');
-      modal.style.display = 'block';
-
-      // Animate entrance in next frame (after browser paints initial state)
+      if (!TdModal._isOpen(id)) return;
       requestAnimationFrame(() => {
-        if (!TdModal._isOpen(modalId)) return;
-        if (contentEl) {
-          contentEl.style.opacity = '1';
-          contentEl.style.transform = 'scale(1)';
+        if (!TdModal._isOpen(id)) return;
+        root.setAttribute('data-state', 'open');
+        TdModal._initialFocus(instance, autoFocus, focusTarget);
+        if (typeof opts.onShow === 'function') {
+          try { opts.onShow(root, opts.onShowPayload); } catch (err) { console.warn('TdModal onShow failed:', err); }
         }
-        if (backdrop) {
-          backdrop.style.opacity = targetBackdropOpacity;
-        }
-      });
-
-      // Setup focus trap and auto-focus
-      TdModal._setupFocusTrap(modal, {
-        autoFocus: options.autoFocus !== false,
-        focusTarget: options.focusTarget || null,
       });
     });
-
-    return modalId;
+    return id;
   }
 
   /**
-   * Close top modal (current active modal)
+   * @private
+   * @param {object} instance
+   * @param {boolean} autoFocus
+   * @param {HTMLElement|null} focusTarget
    */
-  static close() {
-    const topModal = TdModalStackManager.getTop();
-    if (topModal) {
-      this.closeById(topModal.id);
+  static _initialFocus(instance, autoFocus, focusTarget) {
+    const { dialog, element: root } = instance;
+    if (TdModalStackManager.getTop() !== instance) return; // a later modal owns focus
+    const active = document.activeElement;
+    if (active && active !== dialog && active !== document.body && root.contains(active)) return; // user moved on
+    const tryFocus = (el) => {
+      if (!el || typeof el.focus !== 'function') return false;
+      try { el.focus({ preventScroll: true }); } catch { return false; }
+      return document.activeElement === el;
+    };
+    if (autoFocus) {
+      if (focusTarget instanceof HTMLElement && focusTarget.isConnected && dialog.contains(focusTarget)
+        && tryFocus(focusTarget)) return;
+      const body = dialog.querySelector('.td-modal__body');
+      const eligible = new Set(focusablesIn(dialog));
+      const fields = body ? [...body.querySelectorAll(FIELD)].filter((el) => eligible.has(el)) : [];
+      for (const el of fields) if (tryFocus(el)) return;
+      const close = dialog.querySelector('.td-modal__close');
+      for (const el of eligible) if (el !== close && tryFocus(el)) return;
+      if (tryFocus(close)) return;
     }
+    tryFocus(dialog);
+  }
+
+  /** Close the top modal. */
+  static close() {
+    const top = TdModalStackManager.getTop();
+    if (top) this.closeById(top.id);
   }
 
   /**
-   * Close modal by ID
-   * @param {string} modalId - Modal ID to close
+   * Close a modal by id (any position in the stack).
+   * @param {string} modalId
    */
   static closeById(modalId) {
+    const inst = TdModalStackManager.stack.find((m) => m.id === modalId);
+    if (inst && typeof inst.close === 'function') {
+      inst.close();
+      return;
+    }
     TdModal._removeFocusTrap(modalId);
-    const modalInstance = TdModalStackManager.removeById(modalId);
-    if (modalInstance && modalInstance.element) {
-      // --- Exit animation ---
-      const contentEl = modalInstance.element.querySelector('.td-modal-content');
-      const backdrop = modalInstance.element.querySelector('.td-modal-backdrop');
-
-      if (contentEl) {
-        contentEl.style.transition = 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1)';
-        contentEl.style.opacity = '0';
-        contentEl.style.transform = 'scale(0.95)';
-      }
-      if (backdrop) {
-        backdrop.style.transition = 'opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1)';
-        backdrop.style.opacity = '0';
-      }
-
-      if (modalInstance.onClose) {
-        modalInstance.onClose();
-      }
-
-      // Remove from DOM after exit animation completes
-      setTimeout(() => {
-        if (modalInstance.element) {
-          modalInstance.element.classList.add('hidden');
-          modalInstance.element.style.display = 'none';
-          if (modalInstance.element.parentNode) {
-            modalInstance.element.remove();
-          }
-        }
-      }, 200);
-    }
+    const removed = TdModalStackManager.removeById(modalId);
+    if (removed && removed.element && removed.element.parentNode) removed.element.remove();
   }
 
-  /**
-   * Close all modals
-   */
+  /** Close every modal (top first); focus ends on the bottom-most opener. */
   static closeAll() {
-    for (const id of Array.from(TdModal._focusTrapHandlers.keys())) {
-      TdModal._removeFocusTrap(id);
-    }
     TdModalStackManager.closeAll();
+    for (const id of Array.from(TdModal._focusTrapHandlers.keys())) TdModal._removeFocusTrap(id);
   }
 
   /**
-   * Whether a modal with this id is still in the stack (not closed).
+   * @private single close path (idempotent)
+   * @param {object} inst
+   * @param {*} [value] passed to onClose (action value)
+   */
+  static _closeInstance(inst, value) {
+    if (inst.closed) return;
+    inst.closed = true;
+    const root = inst.element;
+    const wasTop = TdModalStackManager.getTop() === inst;
+    const active = document.activeElement;
+    const focusWasHere = !active || active === document.body || root.contains(active);
+
+    // Closing state first, and `inert` on the DIALOG (not the body child, whose inert inert-lock owns and may lift
+    // when another lease is released) so the exiting modal is never interactive again.
+    root.setAttribute('data-state', 'closing');
+    if (inst.dialog) inst.dialog.setAttribute('inert', '');
+    TdModalStackManager.removeById(inst.id);
+    TdModal._removeFocusTrap(inst.id);
+    if (inst.layer) inst.layer.release();
+
+    // Focus (D10): resolved when this dialog was on top; moved only if focus was in it (never steal it from a higher
+    // layer — that layer follows the hand-off when it releases, e.g. the loading overlay).
+    if (wasTop) {
+      const newTop = TdModalStackManager.getTop();
+      let opener = inst.opener;
+      let owner = inst.openerOwner;
+      while (opener && owner && owner.closed) { // opener sat in a dialog that is gone → that dialog's opener
+        opener = owner.opener;
+        owner = owner.openerOwner;
+      }
+      const resolved = followFocusHandoff(opener); // an opener inside a closed lightbox → that lightbox's opener
+      const openerOk = resolved && resolved.isConnected && (!newTop || newTop.element.contains(resolved));
+      const target = openerOk ? resolved : (newTop ? newTop.dialog : null);
+      setFocusHandoff(root, target);
+      if (focusWasHere) {
+        if (target) {
+          try { target.focus({ preventScroll: true }); } catch { /* ignore */ }
+        } else if (root.contains(document.activeElement) && document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+      }
+    } else {
+      setFocusHandoff(root, TdModalStackManager.getTop() ? TdModalStackManager.getTop().dialog : null);
+    }
+
+    if (typeof inst.onClose === 'function') {
+      try { inst.onClose(value); } catch (err) { console.error(err); }
+    }
+    const remove = () => {
+      root.hidden = true;
+      if (root.parentNode) root.remove();
+    };
+    if (prefersReducedMotion()) setTimeout(remove, 0);
+    else setTimeout(remove, EXIT_MS);
+  }
+
+  /**
+   * Whether a modal with this id is still open (in the stack).
    * @private
    * @param {string} modalId
-   * @returns {boolean}
    */
   static _isOpen(modalId) {
-    return TdModalStackManager.stack.some(m => m.id === modalId);
+    return TdModalStackManager.stack.some((m) => m.id === modalId);
   }
 
   /**
-   * Confirm dialog — returns Promise<boolean>
+   * Promise-dialog message block (role=alertdialog + aria-describedby → the text).
+   * @private
+   * @param {'confirm'|'success'|'error'|'info'} kind
+   * @param {string} message text
+   * @param {string} [messageHtml] TRUSTED HTML (developer content only)
+   */
+  static _messageBlock(kind, message, messageHtml) {
+    const wrap = document.createElement('div');
+    wrap.className = kind === 'confirm' ? 'td-modal__message' : `td-modal__message td-modal__message--${kind}`;
+    if (kind !== 'confirm') {
+      const icon = document.createElement('span');
+      icon.className = 'td-modal__icon';
+      icon.setAttribute('data-td-icon', kind);
+      icon.setAttribute('data-td-icon-size', 'l');
+      icon.setAttribute('aria-hidden', 'true');
+      wrap.appendChild(icon);
+      fillIconSlots(wrap);
+    }
+    const p = document.createElement(typeof messageHtml === 'string' ? 'div' : 'p');
+    p.className = 'td-modal__text';
+    if (typeof messageHtml === 'string') p.innerHTML = messageHtml; // trusted hatch (D8)
+    else p.textContent = message == null ? '' : String(message);
+    wrap.appendChild(p);
+    return { wrap, text: p };
+  }
+
+  /**
+   * Confirm dialog — resolves exactly once: confirm → true; cancel / X / closeAll → false.
+   * `onConfirm` returning a thenable keeps the dialog open with the confirm button busy; it resolves true and
+   * closes when that settles to anything but `false`; `false` or a rejection keeps it open (D6). Sync callbacks
+   * (and throwing ones) resolve true and close.
    * @param {Object} options
-   * @param {string} [options.title='Xác nhận'] - Dialog title
-   * @param {string} [options.message='Bạn có chắc chắn?'] - Message text
-   * @param {string} [options.confirmText='Xác nhận'] - Confirm button text
-   * @param {string} [options.cancelText='Huy'] - Cancel button text
-   * @param {string} [options.confirmVariant='primary'] - Confirm button variant
-   * @param {Function} [options.onConfirm] - Confirm callback
-   * @param {Function} [options.onCancel] - Cancel callback
+   * @param {string} [options.title='Xác nhận']
+   * @param {string} [options.message='Bạn có chắc chắn?'] - Text.
+   * @param {string} [options.messageHtml] - TRUSTED HTML message (developer content only); wins over `message`.
+   * @param {string} [options.confirmText='Xác nhận']
+   * @param {string} [options.cancelText='Hủy']
+   * @param {'primary'|'danger'|'success'|'warning'} [options.confirmVariant='primary']
+   * @param {Function} [options.onConfirm]
+   * @param {Function} [options.onCancel]
    * @returns {Promise<boolean>}
    */
   static confirm(options = {}) {
@@ -288,236 +420,160 @@ export class TdModal {
       const {
         title = 'Xác nhận',
         message = 'Bạn có chắc chắn?',
-        confirmText = 'Xác nhận',
-        cancelText = 'Hủy',
+        messageHtml,
+        confirmText = TdModal.labels.confirm || 'Xác nhận',
+        cancelText = TdModal.labels.cancel || 'Hủy',
         confirmVariant = 'primary',
         onConfirm = () => {},
         onCancel = () => {},
-      } = options;
-
-      // Settled-flag + resolve-first pattern (ported from dcms-modal.js:603-651).
-      // Guarantees the Promise resolves EXACTLY ONCE across every close path —
-      // confirm button (→ true), cancel button / X / backdrop / closeAll (→ false) —
-      // and never hangs even if a user callback throws (resolve happens BEFORE the
-      // callback, which is wrapped in try/catch).
+      } = options || {};
       let settled = false;
+      let confirming = false; // a close during onConfirm() is the confirmation, not a dismissal
+      let modalId = '';
+      const variant = ['primary', 'danger', 'success', 'warning'].includes(confirmVariant) ? confirmVariant : 'primary';
+      const cancelButton = makeButton(cancelText, 'secondary');
+      const confirmButton = makeButton(confirmText, variant);
 
-      const cancelButton = document.createElement('button');
-      cancelButton.type = 'button';
-      cancelButton.textContent = cancelText;
-      cancelButton.className = 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors';
-      cancelButton.addEventListener('click', () => {
-        if (settled) return;
+      const settle = (value) => {
+        if (settled) return false;
         settled = true;
-        resolve(false);
-        try { TdModal.closeById(modalId); } catch (_) {}
-        try { onCancel(); } catch (_) {}
-      });
-
-      const variantClasses = {
-        primary: 'bg-blue-600 hover:bg-blue-700 text-white',
-        danger: 'bg-red-600 hover:bg-red-700 text-white',
-        success: 'bg-green-600 hover:bg-green-700 text-white',
-        warning: 'bg-yellow-500 hover:bg-yellow-600 text-white',
+        resolve(value);
+        return true;
+      };
+      const setBusy = (busy) => {
+        const inst = TdModalStackManager.stack.find((m) => m.id === modalId);
+        if (inst) inst.busy = busy;
+        setButtonBusy(confirmButton, busy);
+        cancelButton.disabled = busy;
+        const x = inst && inst.element.querySelector('.td-modal__close');
+        if (x) x.disabled = busy;
       };
 
-      const confirmButton = document.createElement('button');
-      confirmButton.type = 'button';
-      confirmButton.textContent = confirmText;
-      confirmButton.className = `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${variantClasses[confirmVariant] || variantClasses.primary}`;
+      cancelButton.addEventListener('click', () => {
+        if (!settle(false)) return;
+        try { TdModal.closeById(modalId); } catch { /* ignore */ }
+        try { onCancel(); } catch { /* ignore */ }
+      });
       confirmButton.addEventListener('click', () => {
-        if (settled) return;
-        settled = true;
-        resolve(true);
-        try { TdModal.closeById(modalId); } catch (_) {}
-        try { onConfirm(); } catch (_) {}
+        if (settled || confirmButton.getAttribute('aria-busy') === 'true') return;
+        let result;
+        confirming = true;
+        try { result = typeof onConfirm === 'function' ? onConfirm() : undefined; } catch { result = undefined; }
+        confirming = false;
+        if (settled) return; // onConfirm closed the dialog itself (resolved true via onClose)
+        if (!isThenable(result)) {
+          if (!settle(true)) return;
+          try { TdModal.closeById(modalId); } catch { /* ignore */ }
+          return;
+        }
+        setBusy(true);
+        Promise.resolve(result).then((v) => {
+          if (settled) return;
+          setBusy(false);
+          if (v === false) return; // keep open
+          settle(true);
+          TdModal.closeById(modalId);
+        }, (err) => {
+          if (settled) return;
+          setBusy(false);
+          console.warn('TdModal.confirm onConfirm rejected:', err);
+        });
       });
 
-      const modalId = TdModal.show({
+      const { wrap, text } = TdModal._messageBlock('confirm', message, messageHtml);
+      modalId = TdModal._open({
         title,
-        body: `<p class="text-gray-600 text-sm sm:text-base">${escapeHtml(message)}</p>`,
+        body: wrap,
         footer: [cancelButton, confirmButton],
         size: 'sm',
         focusTarget: cancelButton,
-        // Fires from closeById (X / backdrop) AND closeAll. Button paths already
-        // settled → no-op. Dismiss path: claim the slot, resolve false, run onCancel.
         onClose: () => {
-          if (settled) return;
-          settled = true;
-          resolve(false);
-          try { onCancel(); } catch (_) {}
+          if (confirming) { settle(true); return; }
+          if (!settle(false)) return;
+          try { onCancel(); } catch { /* ignore */ }
         },
-      });
+      }, { role: 'alertdialog', message: text });
     });
   }
 
   /**
-   * Success dialog — returns Promise<boolean>
-   * @param {Object} options
-   * @param {string} [options.title='Thành công'] - Dialog title
-   * @param {string} [options.message='Thao tác đã hoàn tất'] - Message text
-   * @param {string} [options.okText='OK'] - OK button text
+   * @private success/error/info: OK → true, dismiss → false.
+   * @param {'success'|'error'|'info'} kind
+   */
+  static _notice(kind, options, defaults) {
+    return new Promise((resolve) => {
+      const {
+        title = defaults.title,
+        message = defaults.message,
+        messageHtml,
+        okText = TdModal.labels.ok || 'OK',
+      } = options || {};
+      let settled = false;
+      let modalId = '';
+      const okButton = makeButton(okText, defaults.variant);
+      okButton.addEventListener('click', () => {
+        if (settled) return;
+        settled = true;
+        resolve(true);
+        try { TdModal.closeById(modalId); } catch { /* ignore */ }
+      });
+      const { wrap, text } = TdModal._messageBlock(kind, message, messageHtml);
+      modalId = TdModal._open({
+        title,
+        body: wrap,
+        footer: [okButton],
+        size: 'sm',
+        onClose: () => {
+          if (settled) return;
+          settled = true;
+          resolve(false);
+        },
+      }, { role: 'alertdialog', message: text });
+    });
+  }
+
+  /**
+   * Success dialog — OK → true, dismiss → false.
+   * @param {{ title?: string, message?: string, messageHtml?: string, okText?: string }} [options]
+   *   `messageHtml` is TRUSTED HTML (developer content only).
    * @returns {Promise<boolean>}
    */
   static success(options = {}) {
-    return new Promise((resolve) => {
-      const {
-        title = 'Thành công',
-        message = 'Thao tác đã hoàn tất',
-        okText = 'OK',
-      } = options;
-
-      // Settled-flag pattern (see confirm()): OK → true, dismiss (X/backdrop/closeAll) → false.
-      let settled = false;
-      const okButton = document.createElement('button');
-      okButton.type = 'button';
-      okButton.textContent = okText;
-      okButton.className = 'px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-green-600 hover:bg-green-700 text-white';
-      okButton.addEventListener('click', () => {
-        if (settled) return;
-        settled = true;
-        resolve(true);
-        try { TdModal.closeById(modalId); } catch (_) {}
-      });
-
-      const modalId = TdModal.show({
-        title,
-        body: `
-          <div class="flex items-start gap-3">
-            <div class="flex-shrink-0">
-              <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-            </div>
-            <p class="text-gray-600 text-sm sm:text-base">${escapeHtml(message)}</p>
-          </div>
-        `,
-        footer: [okButton],
-        size: 'sm',
-        onClose: () => {
-          if (settled) return;
-          settled = true;
-          resolve(false);
-        },
-      });
-    });
+    return TdModal._notice('success', options, { title: 'Thành công', message: 'Thao tác đã hoàn tất', variant: 'success' });
   }
 
   /**
-   * Error dialog — returns Promise<boolean>
-   * @param {Object} options
-   * @param {string} [options.title='Lỗi'] - Dialog title
-   * @param {string} [options.message='Đã xảy ra lỗi'] - Message text
-   * @param {string} [options.okText='OK'] - OK button text
+   * Error dialog — OK → true, dismiss → false.
+   * @param {{ title?: string, message?: string, messageHtml?: string, okText?: string }} [options]
+   *   `messageHtml` is TRUSTED HTML (developer content only).
    * @returns {Promise<boolean>}
    */
   static error(options = {}) {
-    return new Promise((resolve) => {
-      const {
-        title = 'Lỗi',
-        message = 'Đã xảy ra lỗi',
-        okText = 'OK',
-      } = options;
-
-      // Settled-flag pattern (see confirm()): OK → true, dismiss (X/backdrop/closeAll) → false.
-      let settled = false;
-      const okButton = document.createElement('button');
-      okButton.type = 'button';
-      okButton.textContent = okText;
-      okButton.className = 'px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-red-600 hover:bg-red-700 text-white';
-      okButton.addEventListener('click', () => {
-        if (settled) return;
-        settled = true;
-        resolve(true);
-        try { TdModal.closeById(modalId); } catch (_) {}
-      });
-
-      const modalId = TdModal.show({
-        title,
-        body: `
-          <div class="flex items-start gap-3">
-            <div class="flex-shrink-0">
-              <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </div>
-            <p class="text-gray-600 text-sm sm:text-base">${escapeHtml(message)}</p>
-          </div>
-        `,
-        footer: [okButton],
-        size: 'sm',
-        onClose: () => {
-          if (settled) return;
-          settled = true;
-          resolve(false);
-        },
-      });
-    });
+    return TdModal._notice('error', options, { title: 'Lỗi', message: 'Đã xảy ra lỗi', variant: 'danger' });
   }
 
   /**
-   * Info dialog — returns Promise<boolean>
-   * @param {Object} options
-   * @param {string} [options.title='Thông tin'] - Dialog title
-   * @param {string} [options.message=''] - Message text
-   * @param {string} [options.okText='OK'] - OK button text
+   * Info dialog — OK → true, dismiss → false.
+   * @param {{ title?: string, message?: string, messageHtml?: string, okText?: string }} [options]
+   *   `messageHtml` is TRUSTED HTML (developer content only).
    * @returns {Promise<boolean>}
    */
   static info(options = {}) {
-    return new Promise((resolve) => {
-      const {
-        title = 'Thông tin',
-        message = '',
-        okText = 'OK',
-      } = options;
-
-      // Settled-flag pattern (see confirm()): OK → true, dismiss (X/backdrop/closeAll) → false.
-      let settled = false;
-      const okButton = document.createElement('button');
-      okButton.type = 'button';
-      okButton.textContent = okText;
-      okButton.className = 'px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-blue-600 hover:bg-blue-700 text-white';
-      okButton.addEventListener('click', () => {
-        if (settled) return;
-        settled = true;
-        resolve(true);
-        try { TdModal.closeById(modalId); } catch (_) {}
-      });
-
-      const modalId = TdModal.show({
-        title,
-        body: `
-          <div class="flex items-start gap-3">
-            <div class="flex-shrink-0">
-              <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-            </div>
-            <p class="text-gray-600 text-sm sm:text-base">${escapeHtml(message)}</p>
-          </div>
-        `,
-        footer: [okButton],
-        size: 'sm',
-        onClose: () => {
-          if (settled) return;
-          settled = true;
-          resolve(false);
-        },
-      });
-    });
+    return TdModal._notice('info', options, { title: 'Thông tin', message: '', variant: 'primary' });
   }
 
   // TdModal.loading() removed — use TdLoading.show() / TdLoading.hide() instead
 
   /**
-   * Configure modal content and styling
+   * Configure content, size and per-instance custom properties.
    * @private
    */
-  static _configureModal(modalElement, options = {}) {
+  static _configureModal(root, options = {}, instance = null) {
     const {
       title = 'Modal',
       body = '',
       footer = null,
+      actions = null,
       size = 'md',
       width = null,
       height = null,
@@ -526,230 +582,119 @@ export class TdModal {
       showHeader = true,
       showFooter = true,
     } = options;
+    const dialog = root.querySelector('.td-modal__dialog');
+    const header = root.querySelector('.td-modal__header');
+    const titleEl = root.querySelector('.td-modal__title');
+    const closeBtn = root.querySelector('.td-modal__close');
+    const bodyEl = root.querySelector('.td-modal__body');
+    const footerEl = root.querySelector('.td-modal__footer');
+    const titleText = title == null ? '' : String(title);
 
-    // Handle header visibility
-    const headerEl = modalElement.querySelector('.td-modal-header');
+    titleEl.textContent = titleText;
+    header.hidden = !showHeader;
     if (showHeader) {
-      headerEl.style.display = '';
-      const titleEl = modalElement.querySelector('.td-modal-title');
-      titleEl.textContent = title;
+      dialog.setAttribute('aria-labelledby', titleEl.id);
+      dialog.removeAttribute('aria-label');
     } else {
-      headerEl.style.display = 'none';
+      dialog.removeAttribute('aria-labelledby');
+      if (titleText) dialog.setAttribute('aria-label', titleText);
     }
+    closeBtn.hidden = closable === false;
+    closeBtn.addEventListener('click', () => {
+      if (instance && instance.busy) return;
+      TdModal.closeById(root.id);
+    });
 
-    // Set body
-    const bodyEl = modalElement.querySelector('.td-modal-body');
-    if (typeof body === 'string') {
-      bodyEl.innerHTML = body;
-    } else {
-      bodyEl.innerHTML = '';
-      bodyEl.appendChild(body);
-    }
+    if (typeof body === 'string') bodyEl.innerHTML = body; // TRUSTED hatch (documented)
+    else if (body && typeof body === 'object' && typeof body.nodeType === 'number') bodyEl.appendChild(body);
 
-    // Handle footer visibility
-    const footerEl = modalElement.querySelector('.td-modal-footer');
-    if (showFooter && footer) {
-      footerEl.innerHTML = '';
-      if (Array.isArray(footer)) {
-        footer.forEach(btn => footerEl.appendChild(btn));
-      } else {
-        footerEl.appendChild(footer);
-      }
-      footerEl.classList.remove('hidden');
-      footerEl.style.display = '';
-    } else {
-      footerEl.classList.add('hidden');
-      footerEl.style.display = 'none';
-    }
-
-    // Set size
-    const contentEl = modalElement.querySelector('.td-modal-content');
-    const containerEl = modalElement.querySelector('.fixed.inset-0.overflow-y-auto');
-    const flexContainerEl = containerEl?.querySelector('.flex.min-h-full');
-
-    // Handle full viewport mode
-    if (fullViewport) {
-      if (containerEl) {
-        containerEl.style.overflow = 'hidden';
-        containerEl.classList.remove('overflow-y-auto');
-      }
-
-      if (flexContainerEl) {
-        flexContainerEl.classList.remove('items-end', 'sm:items-center', 'justify-center', 'p-0', 'sm:p-4');
-        flexContainerEl.style.display = 'flex';
-        flexContainerEl.style.alignItems = 'stretch';
-        flexContainerEl.style.justifyContent = 'stretch';
-        flexContainerEl.style.padding = '0';
-        flexContainerEl.style.minHeight = '100vh';
-      }
-
-      contentEl.className = contentEl.className.replace(/max-w-[\w-]+(\s+sm:max-w-[\w-]+)?(\s+mx-\d+)?/g, '');
-      contentEl.className = contentEl.className.replace(/rounded-t-3xl|sm:rounded-\[20px\]/g, '');
-      if (!contentEl.className.includes('shadow-xl')) {
-        contentEl.className += ' shadow-xl';
-      }
-      contentEl.style.width = '100vw';
-      contentEl.style.maxWidth = '100vw';
-      contentEl.style.height = '100vh';
-      contentEl.style.maxHeight = '100vh';
-      contentEl.style.margin = '0';
-      contentEl.style.borderRadius = '0';
-      contentEl.style.transform = 'none';
-
-      if (headerEl) headerEl.style.flexShrink = '0';
-      if (footerEl && !footerEl.classList.contains('hidden')) footerEl.style.flexShrink = '0';
-
-      bodyEl.style.display = 'flex';
-      bodyEl.style.flexDirection = 'column';
-      bodyEl.style.flex = '1';
-      bodyEl.style.minHeight = '0';
-      bodyEl.style.overflow = 'hidden';
-      bodyEl.style.padding = '0';
-      bodyEl.classList.remove('max-h-[60vh]', 'sm:max-h-[70vh]', 'overflow-y-auto', 'px-4', 'sm:px-6', 'py-4');
-
-      contentEl.style.display = 'flex';
-      contentEl.style.flexDirection = 'column';
-    } else {
-      // Normal modal sizing
-      contentEl.className = contentEl.className.replace(/max-w-[\w-]+(\s+sm:max-w-[\w-]+)?(\s+mx-\d+)?/g, '');
-      contentEl.style.width = '';
-      contentEl.style.maxWidth = '';
-      contentEl.style.height = '';
-      contentEl.style.maxHeight = '';
-
-      if (width) {
-        contentEl.style.width = width;
-        contentEl.style.maxWidth = width;
-      } else {
-        const sizes = {
-          xs: 'max-w-xs',
-          sm: 'max-w-sm',
-          md: 'max-w-md sm:max-w-lg',
-          lg: 'max-w-lg sm:max-w-2xl',
-          xl: 'max-w-xl sm:max-w-3xl',
-          '2xl': 'max-w-2xl sm:max-w-4xl',
-          '3xl': 'max-w-3xl sm:max-w-5xl',
-          '4xl': 'max-w-4xl sm:max-w-6xl',
-          '5xl': 'max-w-5xl sm:max-w-7xl',
-          full: 'max-w-full mx-4',
-        };
-        contentEl.className += ' ' + (sizes[size] || sizes.md);
-      }
-
-      if (height) {
-        contentEl.style.height = height;
-        contentEl.style.maxHeight = height;
-        contentEl.style.display = 'flex';
-        contentEl.style.flexDirection = 'column';
-
-        if (headerEl) headerEl.style.flexShrink = '0';
-        if (footerEl && !footerEl.classList.contains('hidden')) footerEl.style.flexShrink = '0';
-
-        bodyEl.style.display = 'flex';
-        bodyEl.style.flexDirection = 'column';
-        bodyEl.style.flex = '1';
-        bodyEl.style.minHeight = '0';
-        bodyEl.style.overflowY = 'auto';
-        bodyEl.classList.remove('max-h-[60vh]', 'sm:max-h-[70vh]');
+    footerEl.replaceChildren();
+    if (showFooter && Array.isArray(actions) && actions.length) {
+      TdModal._renderActions(footerEl, actions, instance, root);
+    } else if (showFooter && footer) {
+      for (const el of (Array.isArray(footer) ? footer : [footer])) {
+        if (el && typeof el.nodeType === 'number') footerEl.appendChild(el);
       }
     }
+    footerEl.hidden = footerEl.childNodes.length === 0;
 
-    // Optional body customization
+    root.className = `td-modal td-modal--${SIZES.includes(size) ? size : 'md'}${fullViewport ? ' td-modal--viewport' : ''}`;
+    const setProp = (name, v) => { if (v) dialog.style.setProperty(name, v); };
+    if (!fullViewport) {
+      setProp('--td-modal-w', cssValue('width', width, 'width'));
+      setProp('--td-modal-h', cssValue('height', height, 'height'));
+    }
     if (options.bodyPadding !== undefined) {
-      bodyEl.style.padding = options.bodyPadding;
-      if (options.bodyPadding === '0' || options.bodyPadding === 0) {
-        bodyEl.classList.remove('px-4', 'sm:px-6', 'py-4');
-      }
+      setProp('--td-modal-body-pad', cssValue('padding', options.bodyPadding, 'bodyPadding'));
     }
     if (options.bodyOverflow !== undefined) {
-      bodyEl.style.overflow = options.bodyOverflow;
-      if (options.bodyOverflow === 'hidden') {
-        bodyEl.classList.remove('overflow-y-auto');
-      }
-    }
-
-    // Show/hide the X (close) button. `closable:false` hides it (force-action modal:
-    // close only via a footer button or programmatically). The backdrop never closes the
-    // modal in any case (no click handler), so there is nothing to disable there.
-    const closeBtn = modalElement.querySelector('.td-modal-close');
-    if (closable) {
-      closeBtn.classList.remove('hidden');
-    } else {
-      closeBtn.classList.add('hidden');
+      const o = String(options.bodyOverflow);
+      if (OVERFLOWS.includes(o)) dialog.style.setProperty('--td-modal-body-overflow', o);
+      else console.warn(`TdModal: ignored invalid bodyOverflow "${o}"`);
     }
   }
 
   /**
-   * Setup focus trap for a modal element
+   * Footer actions (D6).
    * @private
-   * @param {HTMLElement} modalElement - Modal element
-   * @param {Object} options
-   * @param {boolean} [options.autoFocus=true] - Whether to auto-focus first element
-   * @param {HTMLElement|null} [options.focusTarget=null] - Specific element to focus
    */
-  static _setupFocusTrap(modalElement, options = {}) {
-    const { autoFocus = true, focusTarget = null } = options;
-    const FOCUSABLE = 'a[href], button:not([disabled]):not([style*="display: none"]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-    const handler = (e) => {
-      if (e.key !== 'Tab') return;
-
-      const focusable = Array.from(modalElement.querySelectorAll(FOCUSABLE)).filter(el => el.offsetParent !== null);
-      if (focusable.length === 0) return;
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-
-      if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
+  static _renderActions(footerEl, actions, instance, root) {
+    const buttons = [];
+    const closeWith = (value) => (instance ? instance.close(value) : TdModal.closeById(root.id));
+    const setBusy = (busyBtn, busy) => {
+      if (instance) instance.busy = busy;
+      for (const b of buttons) {
+        if (b.btn === busyBtn) setButtonBusy(b.btn, busy);
+        else b.btn.disabled = busy || b.disabled;
       }
+      const x = root.querySelector('.td-modal__close');
+      if (x) x.disabled = busy;
     };
-
-    modalElement.addEventListener('keydown', handler);
-    TdModal._focusTrapHandlers.set(modalElement.id, { el: modalElement, handler });
-
-    // Auto-focus: focusTarget > first input in body > first focusable
-    if (autoFocus) {
-      setTimeout(() => {
-        if (!TdModal._isOpen(modalElement.id)) return;
-        if (focusTarget && typeof focusTarget.focus === 'function') {
-          focusTarget.focus();
-        } else {
-          const body = modalElement.querySelector('.td-modal-body');
-          const INPUT_SELECTOR = 'input:not([disabled]):not([type="hidden"]), textarea:not([disabled]), select:not([disabled])';
-          const firstInput = body && body.querySelector(INPUT_SELECTOR);
-          if (firstInput && firstInput.offsetParent !== null) {
-            firstInput.focus();
-          } else {
-            const focusable = Array.from(modalElement.querySelectorAll(FOCUSABLE)).filter(el => el.offsetParent !== null);
-            if (focusable.length > 0) {
-              focusable[0].focus();
-            }
-          }
+    for (const a of actions) {
+      if (!a || typeof a !== 'object') continue;
+      const btn = makeButton(a.label, typeof a.variant === 'string' ? a.variant : 'secondary');
+      const entry = { btn, disabled: !!a.disabled };
+      btn.disabled = entry.disabled;
+      buttons.push(entry);
+      btn.addEventListener('click', () => {
+        if ((instance && (instance.busy || instance.closed)) || btn.getAttribute('aria-busy') === 'true') return;
+        const shouldClose = a.close !== false;
+        let result;
+        try {
+          result = typeof a.onClick === 'function' ? a.onClick({ id: root.id, value: a.value, button: btn }) : undefined;
+        } catch (err) {
+          console.error(err);
+          return; // a throwing handler keeps the dialog open
         }
-      }, 50);
+        if (!isThenable(result)) {
+          if (result !== false && shouldClose) closeWith(a.value);
+          return;
+        }
+        setBusy(btn, true);
+        Promise.resolve(result).then((v) => {
+          if (instance && instance.closed) return;
+          setBusy(btn, false);
+          if (v !== false && shouldClose) closeWith(a.value);
+        }, (err) => {
+          if (instance && instance.closed) return;
+          setBusy(btn, false);
+          console.warn('TdModal action rejected:', err);
+        });
+      });
+      footerEl.appendChild(btn);
     }
   }
 
   /**
-   * Remove focus trap for a modal element
+   * Release the keyboard/inert registration of a modal (idempotent).
    * @private
-   * @param {string} modalId - Modal ID
+   * @param {string} modalId
    */
   static _removeFocusTrap(modalId) {
     const entry = TdModal._focusTrapHandlers.get(modalId);
     if (entry) {
-      entry.el.removeEventListener('keydown', entry.handler);
       TdModal._focusTrapHandlers.delete(modalId);
+      if (entry.layer) entry.layer.release();
     }
   }
-
 }

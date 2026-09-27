@@ -25,12 +25,13 @@ afterEach(async () => {
 });
 
 describe('B1 — toast FIFO eviction', () => {
-  it('rendering more than MAX_VISIBLE toasts at once does not hang and caps the list', () => {
+  it('rendering more than MAX_VISIBLE toasts at once does not hang and caps the list', async () => {
     TdToast._activeToasts = [];
     for (let i = 0; i < TdToast.MAX_VISIBLE + 3; i++) {
       TdToast._showSingle(`t${i}`, 'info', 0); // used to spin forever on the 6th
     }
     expect(TdToast._activeToasts.length).to.equal(TdToast.MAX_VISIBLE);
+    await new Promise((r) => requestAnimationFrame(r)); // text is set one frame after insertion (D12)
     expect(TdToast._activeToasts[0].textContent.trim()).to.equal('t3');
     TdToast._activeToasts.slice().forEach((t) => t._removeToast());
     expect(TdToast._activeToasts.length).to.equal(0);
@@ -57,7 +58,7 @@ describe('B2 — modal closed in the same frame it opened', () => {
     await frames();
     await wait(80);
     expect(TdModal._focusTrapHandlers.has(id)).to.equal(false);
-    expect(el.classList.contains('hidden')).to.equal(true);
+    expect(!el.isConnected || el.getAttribute('data-state') === 'closing').to.equal(true);
     expect(el.contains(document.activeElement)).to.equal(false);
   });
 
@@ -143,7 +144,7 @@ describe('B5 — dropdown placement + focus', () => {
     el.open();
     // The harness has no Tailwind (`fixed` is inert), so assert the computed placement
     // (style.top + rendered height) rather than the static-flow layout box.
-    const btn = el.querySelector('.td-dropdown-button').getBoundingClientRect();
+    const btn = el.querySelector('.td-dropdown__trigger').getBoundingClientRect();
     const top = parseFloat(el._menuElement.style.top);
     const menu = { top, bottom: top + el._menuElement.offsetHeight };
     const overlaps = menu.top < btn.bottom && menu.bottom > btn.top;
@@ -154,14 +155,14 @@ describe('B5 — dropdown placement + focus', () => {
     container.style.paddingTop = '';
   });
 
-  it('returns focus to the trigger when closing with focus inside the menu', () => {
-    const el = makeDropdown(3);
+  it('returns focus to the trigger when closing with focus inside the menu', async () => {
+    const el = mount('<td-dropdown></td-dropdown>');
+    el.options = [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }];
     el.open();
-    const opt = el._menuElement.querySelector('.td-dropdown-option');
-    opt.setAttribute('tabindex', '-1');
-    opt.focus();
+    await wait(150); // search autofocus (≥ 768 px)
+    expect(document.activeElement === el._menuElement.querySelector('.td-dropdown__search')).to.equal(true);
     el.close();
-    expect(document.activeElement).to.equal(el.querySelector('.td-dropdown-button'));
+    expect(document.activeElement === el.querySelector('.td-dropdown__trigger')).to.equal(true);
   });
 
   it('cancels the pending search-focus timer on close', async () => {
@@ -170,7 +171,7 @@ describe('B5 — dropdown placement + focus', () => {
     el.open();
     el.close();
     await wait(150);
-    const search = el._menuElement.querySelector('.td-dropdown-search');
+    const search = el._menuElement.querySelector('.td-dropdown__search');
     expect(document.activeElement).to.not.equal(search);
   });
 });
@@ -186,7 +187,7 @@ describe('B4/B5 — review follow-ups', () => {
   it('caps the menu width to the viewport', () => {
     const el = mount(`<td-dropdown searchable="false" class="block" ></td-dropdown>`);
     el.options = [{ value: 'a', label: 'A' }];
-    const btn = el.querySelector('.td-dropdown-button');
+    const btn = el.querySelector('.td-dropdown__trigger');
     btn.style.width = `${window.innerWidth + 400}px`;
     el.open();
     expect(parseFloat(el._menuElement.style.width)).to.be.at.most(window.innerWidth);

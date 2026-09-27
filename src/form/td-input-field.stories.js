@@ -1,3 +1,4 @@
+import { escapeHtml } from '../utils/escape.js';
 import '../styles/story-layout.css';
 import './td-input-field.js';
 
@@ -25,18 +26,18 @@ export default {
 
 const Template = (args) => `
   <td-input-field
-    type="${args.type || 'text'}"
-    size="${args.size || 'md'}"
-    ${args.value ? `value="${args.value}"` : ''}
-    ${args.placeholder ? `placeholder="${args.placeholder}"` : ''}
+    type="${escapeHtml(String(args.type || 'text'))}"
+    size="${escapeHtml(String(args.size || 'md'))}"
+    ${args.value ? `value="${escapeHtml(String(args.value))}"` : ''}
+    ${args.placeholder ? `placeholder="${escapeHtml(String(args.placeholder))}"` : ''}
     ${args.disabled ? 'disabled' : ''}
     ${args.readonly ? 'readonly' : ''}
     ${args.required ? 'required' : ''}
-    ${args['max-length'] ? `max-length="${args['max-length']}"` : ''}
-    ${args['limit-type'] ? `limit-type="${args['limit-type']}"` : ''}
-    ${args.label ? `label="${args.label}"` : ''}
-    ${args['helper-text'] ? `helper-text="${args['helper-text']}"` : ''}
-    ${args['error-text'] ? `error-text="${args['error-text']}"` : ''}
+    ${args['max-length'] ? `max-length="${escapeHtml(String(args['max-length']))}"` : ''}
+    ${args['limit-type'] ? `limit-type="${escapeHtml(String(args['limit-type']))}"` : ''}
+    ${args.label ? `label="${escapeHtml(String(args.label))}"` : ''}
+    ${args['helper-text'] ? `helper-text="${escapeHtml(String(args['helper-text']))}"` : ''}
+    ${args['error-text'] ? `error-text="${escapeHtml(String(args['error-text']))}"` : ''}
   ></td-input-field>
 `;
 

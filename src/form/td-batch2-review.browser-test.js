@@ -76,7 +76,7 @@ describe('v0.8.0 impl-review fixes', () => {
     other.appendChild(el); // disconnect + connect
     expect(!!el._menuElement && document.body.contains(el._menuElement)).to.equal(true);
     el.open();
-    expect(el._menuElement.classList.contains('hidden')).to.equal(false);
+    expect(el._menuElement.hidden).to.equal(false);
     el.close();
   });
 

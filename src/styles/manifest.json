@@ -17,6 +17,10 @@
     "components/tabs.css",
     "components/empty-state.css",
     "components/lightbox.css",
+    "components/toast.css",
+    "components/tooltip.css",
+    "components/modal.css",
+    "components/dropdown.css",
     "utilities.css"
   ]
 }

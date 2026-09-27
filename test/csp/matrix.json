@@ -15,7 +15,8 @@
       "td-modal": "/src/feedback/td-modal.js",
       "td-toast": "/src/feedback/td-toast.js",
       "td-loading": "/src/feedback/td-loading.js",
-      "td-datetime-picker": "/src/form/td-datetime-picker.js"
+      "td-datetime-picker": "/src/form/td-datetime-picker.js",
+      "td-tooltip": "/src/feedback/td-tooltip.js"
     },
     "tokenNative": [
       "td-button",
@@ -26,11 +27,16 @@
       "td-tabs",
       "td-pagination",
       "td-empty-state",
-      "td-slider"
+      "td-slider",
+      "td-modal",
+      "td-toast",
+      "td-tooltip",
+      "td-dropdown"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [
-      "td-table"
+      "td-table",
+      "td-datetime-picker"
     ],
     "mixedNote": "Legacy components that render token-native children (td-table → td-pagination, td-empty-state) are served Tailwind + td.css in BOTH runs; their baselines are captured the same way."
   },
@@ -441,39 +447,73 @@
   "td-dropdown": [
     {
       "state": "closed",
-      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}];",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Chọn');  window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; ",
       "selectors": [
-        ".td-dropdown-button",
-        ".td-dropdown-arrow"
+        ".td-dropdown__trigger",
+        ".td-dropdown__arrow"
       ]
     },
     {
       "state": "closed-selected",
-      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; d.setAttribute('value','b');",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Chọn');  window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; d.setAttribute('value','b');",
       "selectors": [
-        ".td-dropdown-button",
-        ".td-dropdown-selected"
+        ".td-dropdown__trigger",
+        ".td-dropdown__value"
       ]
     },
     {
       "state": "open",
-      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; d.open();",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Chọn');  window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; d.open();",
       "selectors": [
-        ".td-dropdown-arrow",
-        ".td-dropdown-search",
-        ".td-dropdown-options"
+        ".td-dropdown__arrow",
+        ".td-dropdown__menu",
+        ".td-dropdown__search",
+        ".td-dropdown__options"
       ],
       "portal": [
-        ".td-dropdown-search",
-        ".td-dropdown-options"
+        ".td-dropdown__menu",
+        ".td-dropdown__search",
+        ".td-dropdown__options"
       ],
       "settle": 350
     },
     {
-      "state": "disabled",
-      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('disabled',''); window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'}];",
+      "state": "open-no-search",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Chọn'); d.setAttribute('searchable','false'); window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; d.open();",
       "selectors": [
-        ".td-dropdown-button"
+        ".td-dropdown__menu",
+        ".td-dropdown__options"
+      ],
+      "portal": [
+        ".td-dropdown__menu",
+        ".td-dropdown__options"
+      ],
+      "settle": 350
+    },
+    {
+      "state": "active-option",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Chọn'); d.setAttribute('searchable','false'); window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; d.open(); d.querySelector('.td-dropdown__trigger').focus(); d.querySelector('.td-dropdown__trigger').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));",
+      "selectors": [
+        ".td-dropdown__option[data-active]"
+      ],
+      "portal": [
+        ".td-dropdown__option[data-active]"
+      ],
+      "settle": 350
+    },
+    {
+      "state": "error",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Chọn'); d.setAttribute('error-text','Bắt buộc'); window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; ",
+      "selectors": [
+        ".td-dropdown__trigger",
+        ".td-field-error"
+      ]
+    },
+    {
+      "state": "disabled",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Chọn'); d.setAttribute('disabled',''); window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; ",
+      "selectors": [
+        ".td-dropdown__trigger"
       ]
     }
   ],
@@ -756,16 +796,55 @@
   "td-modal": [
     {
       "state": "default",
-      "setup": "window.__modalId = TdModal.show({ title:'Hello', body:'<p>Body</p>' });",
+      "setup": "window.__modalId = TdModal.show({ title:'Hello', body:'<div>Body</div>' });",
       "selectors": [
-        ".td-modal-content",
-        ".td-modal-backdrop"
+        ".td-modal__dialog",
+        ".td-modal__backdrop"
       ],
       "portal": [
-        ".td-modal-content",
-        ".td-modal-backdrop"
+        ".td-modal__dialog",
+        ".td-modal__backdrop"
       ],
-      "settle": 350
+      "settle": 400
+    },
+    {
+      "state": "stacked",
+      "setup": "TdModal.show({ title:'Dưới', body:'<div>A</div>' }); TdModal.show({ title:'Trên', body:'<div>B</div>' });",
+      "selectors": [
+        ".td-modal__dialog",
+        ".td-modal__backdrop"
+      ],
+      "portal": [
+        ".td-modal__dialog",
+        ".td-modal__backdrop"
+      ],
+      "settle": 400
+    },
+    {
+      "state": "confirm",
+      "setup": "TdModal.confirm({ title:'Xoá?', message:'Không thể hoàn tác.' });",
+      "selectors": [
+        ".td-modal__dialog",
+        ".td-modal__backdrop"
+      ],
+      "portal": [
+        ".td-modal__dialog",
+        ".td-modal__backdrop"
+      ],
+      "settle": 400
+    },
+    {
+      "state": "viewport",
+      "setup": "TdModal.show({ title:'Full', body:'<div>Body</div>', fullViewport:true });",
+      "selectors": [
+        ".td-modal__dialog",
+        ".td-modal__backdrop"
+      ],
+      "portal": [
+        ".td-modal__dialog",
+        ".td-modal__backdrop"
+      ],
+      "settle": 400
     }
   ],
   "td-toast": [
@@ -773,10 +852,10 @@
       "state": "info",
       "setup": "TdToast.info('Heads up');",
       "selectors": [
-        ".toast-item > div"
+        ".td-toast"
       ],
       "portal": [
-        ".toast-item > div"
+        ".td-toast"
       ],
       "settle": 350
     },
@@ -784,10 +863,10 @@
       "state": "success",
       "setup": "TdToast.success('Saved');",
       "selectors": [
-        ".toast-item > div"
+        ".td-toast"
       ],
       "portal": [
-        ".toast-item > div"
+        ".td-toast"
       ],
       "settle": 350
     },
@@ -795,10 +874,10 @@
       "state": "error",
       "setup": "TdToast.error('Failed');",
       "selectors": [
-        ".toast-item > div"
+        ".td-toast"
       ],
       "portal": [
-        ".toast-item > div"
+        ".td-toast"
       ],
       "settle": 350
     },
@@ -806,10 +885,23 @@
       "state": "warning",
       "setup": "TdToast.warning('Careful');",
       "selectors": [
-        ".toast-item > div"
+        ".td-toast"
       ],
       "portal": [
-        ".toast-item > div"
+        ".td-toast"
+      ],
+      "settle": 350
+    },
+    {
+      "state": "sticky",
+      "setup": "TdToast._showSingle('Giữ lại','warning',0);",
+      "selectors": [
+        ".td-toast",
+        ".td-toast__close"
+      ],
+      "portal": [
+        ".td-toast",
+        ".td-toast__close"
       ],
       "settle": 350
     }
@@ -898,6 +990,59 @@
       ],
       "settle": 400,
       "constructNote": "td-datetime-picker's ONLY blocking construct is the injected <style id=td-datetime-picker-styles> (gradient .td-dtp-wheel-container background-image, .selected font/color/transform, ::before band). Opens inside a TdModal portaled to body via _open(). This captures the directly-styled rules; the ::before pseudo-band parity is a Task-1 adopted-sheet concern (getComputedStyle can't key it by class alone here)."
+    }
+  ],
+  "td-tooltip": [
+    {
+      "state": "top",
+      "setup": "const b=document.createElement('button'); b.textContent='Nút'; b.style.setProperty('margin','80px'); b.setAttribute('data-tooltip','Gợi ý ngắn'); window.__mount.appendChild(b); tdTooltip.init(); tdTooltip.show(b);",
+      "selectors": [
+        ".td-tooltip"
+      ],
+      "portal": [
+        ".td-tooltip"
+      ],
+      "settle": 250,
+      "excludeProps": [
+        "left",
+        "top",
+        "right",
+        "bottom"
+      ]
+    },
+    {
+      "state": "bottom",
+      "setup": "const b=document.createElement('button'); b.textContent='Nút'; b.style.setProperty('margin','80px'); b.setAttribute('data-tooltip','Gợi ý ngắn'); b.setAttribute('data-tooltip-position','bottom'); window.__mount.appendChild(b); tdTooltip.init(); tdTooltip.show(b);",
+      "selectors": [
+        ".td-tooltip"
+      ],
+      "portal": [
+        ".td-tooltip"
+      ],
+      "settle": 250,
+      "excludeProps": [
+        "left",
+        "top",
+        "right",
+        "bottom"
+      ]
+    },
+    {
+      "state": "custom-color",
+      "setup": "const b=document.createElement('button'); b.textContent='Nút'; b.style.setProperty('margin','80px'); b.setAttribute('data-tooltip','Màu riêng'); b.setAttribute('data-tooltip-color','#1d4ed8'); window.__mount.appendChild(b); tdTooltip.init(); tdTooltip.show(b);",
+      "selectors": [
+        ".td-tooltip"
+      ],
+      "portal": [
+        ".td-tooltip"
+      ],
+      "settle": 250,
+      "excludeProps": [
+        "left",
+        "top",
+        "right",
+        "bottom"
+      ]
     }
   ]
 }

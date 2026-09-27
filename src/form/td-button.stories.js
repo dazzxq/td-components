@@ -1,3 +1,4 @@
+import { escapeHtml } from '../utils/escape.js';
 import '../styles/story-layout.css';
 import './td-button.js';
 
@@ -20,15 +21,15 @@ export default {
 export const Default = {
   render: (args) => `
     <td-button
-      variant="${args.variant || 'primary'}"
-      size="${args.size || 'md'}"
-      ${args.icon ? `icon="${args.icon}"` : ''}
-      ${args['icon-position'] ? `icon-position="${args['icon-position']}"` : ''}
+      variant="${escapeHtml(String(args.variant || 'primary'))}"
+      size="${escapeHtml(String(args.size || 'md'))}"
+      ${args.icon ? `icon="${escapeHtml(String(args.icon))}"` : ''}
+      ${args['icon-position'] ? `icon-position="${escapeHtml(String(args['icon-position']))}"` : ''}
       ${args.loading ? 'loading' : ''}
       ${args.disabled ? 'disabled' : ''}
       ${args['full-width'] ? 'full-width' : ''}
-      ${args.color ? `color="${args.color}"` : ''}
-      label="${args.label || 'Button'}"
+      ${args.color ? `color="${escapeHtml(String(args.color))}"` : ''}
+      label="${escapeHtml(String(args.label || 'Button'))}"
     ></td-button>
   `,
   args: {

@@ -187,10 +187,12 @@ formatted to the step; hit area covers the whole control (≥ 24 px, 44 px on to
 
 ### `td-dropdown` — `@dazzxq/td-components/dropdown`
 
-A searchable select with keyboard navigation. Options are supplied as a **JS property**; it submits the selected option's value.
+A searchable **select-only combobox** (WAI-ARIA APG). Options are supplied as a **JS property**; it submits the
+selected option's value. Token-native since 0.9.0 (requires `td.css`); the menu is a strong-glass popover portaled to
+`<body>` at `--td-z-popover` (450), so it works inside modals.
 
 ```html
-<td-dropdown name="city" required placeholder="Pick a city"></td-dropdown>
+<td-dropdown name="city" label="Thành phố" required placeholder="Chọn thành phố"></td-dropdown>
 ```
 ```js
 import '@dazzxq/td-components/dropdown';
@@ -202,18 +204,25 @@ dd.addEventListener('change', (e) => console.log(e.detail.value, e.detail.item))
 | Attribute | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `value` | string | — | Initial selected value |
+| `label` | string | — | Visible label (`label.td-field__label` → trigger). Else host `aria-label` or an external `<label for>` names it |
 | `placeholder` | string | `Chọn một tùy chọn` | Placeholder when nothing is selected |
 | `searchable` | flag | on | Search filtering. Default ON; turn off with `searchable="false"`/`"0"`/`"off"` or `el.searchable = false` |
-| `allow-clear` | flag | on | "Clear" option when something is selected. Same default-ON rule as `searchable` |
-| `disabled` | boolean | `false` | Disable (also via `<fieldset disabled>`) |
-| `required` | boolean | `false` | A value must be selected for the form to be valid |
+| `allow-clear` | flag | on | "Không chọn" option when something is selected (part of the arrow order). Same default-ON rule |
+| `disabled` | boolean | `false` | Disable (also via `<fieldset disabled>`); `open()` does nothing while disabled |
+| `required` | boolean | `false` | A value must be selected for the form to be valid (`aria-required`) |
+| `error-text` | string | — | Error contract (same as input-field): `aria-invalid` + error note; also `setError(msg)` / `clearError()` |
 | `name` | string | — | Form field name |
 | `max-height` | number | `5` | Max visible options before scrolling |
 | `value-key` / `label-key` | string | `value` / `label` | Object keys for value/label |
 
+**Keyboard:** closed — ↓ ↑ Enter Space open (Home/End open on the first/last option, typing jumps to a match,
+diacritics-insensitive). Open — ↑ ↓ wrap, Home End PageUp PageDown, Enter selects, Escape closes and returns focus to
+the trigger, Tab from the search box returns to the trigger, Tab on the trigger closes and moves on. Options are not
+Tab stops; the focused control carries `aria-activedescendant`. Clicking outside closes on `pointerdown`.
+
 **Properties:** `options: Array<Object>`, `onChange(value)`, `onSelect(item)`
-**Events:** `change` → `{ value, item }`
-**Methods:** `getValue()`, `setValue(v)`, `getSelectedItem()`, `updateData(arr)`. A value set before its option exists is remembered and resolved when `options`/`updateData()` arrives (async-safe).
+**Events:** exactly one `change` per selection → `{ value, item }`
+**Methods:** `getValue()`, `setValue(v)`, `getSelectedItem()`, `updateData(arr)`, `open()`, `close()`, `setError()`, `clearError()`. A value set before its option exists is remembered and resolved when `options`/`updateData()` arrives (async-safe).
 
 ### `td-datetime-picker` — `@dazzxq/td-components/datetime-picker`
 
@@ -249,28 +258,54 @@ These are **not** custom elements you place in markup — you import a class and
 ```js
 import { TdModal } from '@dazzxq/td-components/modal';
 
-const id = TdModal.show({ title: 'Edit', body: '<p>…</p>', size: 'lg' });
+const id = TdModal.show({ title: 'Sửa', body: formEl, size: 'lg' });
 TdModal.closeById(id);
 
-TdModal.confirm({ message: 'Delete this?', onConfirm: () => del() });
-TdModal.success({ message: 'Saved' });
-TdModal.error({ message: 'Something went wrong' });
-TdModal.info({ message: 'Heads up' });
+TdModal.confirm({ message: 'Xoá mục này?', onConfirm: () => api.delete() }); // → Promise<boolean>
+TdModal.success({ message: 'Đã lưu' });
+TdModal.error({ message: 'Có lỗi xảy ra' });
+TdModal.info({ message: 'Lưu ý' });
 ```
 
-`show(options)` options: `title`, `body` (HTML string or element), `footer` (button elements), `size` (`xs`…`5xl` \| `full`), `width`/`height`, `fullViewport`, `closable`, `showHeader`, `showFooter`, `onClose`, `autoFocus`, `focusTarget`, `bodyPadding`, `bodyOverflow`. Other methods: `close()`, `closeAll()`. Stacked modals are managed by `TdModalStackManager` (`@dazzxq/td-components/modal-stack`).
+`show(options)`: `title` (text), `body` (Node preferred; an HTML string is a **trusted** hatch), `footer` (elements) or
+`actions` (`[{ label, variant, value, close, disabled, onClick(ctx) }]` → `.td-btn` buttons; an `onClick` returning a
+thenable keeps the dialog open with that button busy until it settles — resolved `false`/rejection keep it open),
+`size` (`xs`…`5xl` \| `full`), `width`/`height`/`bodyPadding` (validated CSS values), `bodyOverflow`,
+`fullViewport`, `closable`, `showHeader`, `showFooter`, `onClose(value)`, `onShow(root, payload)` + `onShowPayload`,
+`autoFocus`, `focusTarget`. Other methods: `close()`, `closeAll()`. Default labels: `TdModal.labels`
+(`close: 'Đóng'`, `confirm: 'Xác nhận'`, `cancel: 'Hủy'`, `ok: 'OK'`).
 
-**Dismissal (0.4.0):** a modal does **not** close on backdrop click or ESC (prevents accidental loss). It closes only via the X button, a footer button, or `closeById`/`closeAll`. `closable: false` just hides the X (force-action modal). `confirm()` resolves exactly once: confirm → `true`; cancel / X / `closeAll` → `false`. `success`/`error`/`info`: OK → `true`, dismiss → `false`.
+`confirm/success/error/info`: `message` is text; `messageHtml` is **trusted** HTML (developer content only).
+Promise dialogs use `role="alertdialog"`. A promise-returning `onConfirm` keeps the dialog open until it settles.
+
+**Token-native (0.9.0):** `div[role=dialog][aria-modal=true]` named by its `h2` title, strong-glass dialog over a scrim
+at `--td-z-modal` (400); only the body scrolls; below 640 px it is a bottom sheet (unless `fullViewport`). The page
+behind is `inert`, Tab is trapped (toast close buttons stay reachable), focus moves into the dialog on open (first
+field → first focusable → the dialog; `autoFocus:false` → the dialog; `focusTarget` only if inside it) and returns to
+the opener on close. Stacked dialogs: the covered one goes solid (`[data-covered]`). `TdModalStackManager.BASE_Z_INDEX` (`@dazzxq/td-components/modal-stack`) is an
+opt-in override (warns); prefer overriding the `--td-z-*` tokens.
+
+**Dismissal (0.4.0):** a modal does **not** close on backdrop click or ESC (prevents accidental loss). It closes only via
+the X button, a footer button, or `closeById`/`closeAll`. Escape is swallowed by the modal (it never reaches a
+lightbox below). `closable: false` just hides the X (force-action modal). `confirm()` resolves exactly once: confirm →
+`true`; cancel / X / `closeAll` → `false`. `success`/`error`/`info`: OK → `true`, dismiss → `false`.
 
 ### `TdToast` — `@dazzxq/td-components/toast`
 
 ```js
 import { TdToast } from '@dazzxq/td-components/toast';
-TdToast.success('Saved');
-TdToast.error('Failed', 5000);            // (message, duration ms)
-TdToast.show('Custom', 'info', 4000);     // (message, type, duration)
+TdToast.success('Đã lưu');
+TdToast.error('Thất bại', 5000);          // (message, duration ms)
+TdToast.show('Tuỳ chỉnh', 'info', 4000);  // (message, type, duration)
 ```
-`show(message, type, duration)` — `type`: `success` \| `error` \| `warning` \| `info`; `duration` ms (`0` = sticky). Shortcuts: `success` / `error` / `warning` / `info`.
+`show(message, type, duration)` — `type`: `success` \| `error` \| `warning` \| `info`; `duration` ms (`0` = sticky).
+Shortcuts: `success` / `error` / `warning` / `info`. The message is **text only**.
+
+**Token-native (0.9.0):** strong-glass toasts with a registry status icon (no coloured fills), top-right at
+`--td-z-toast` (500). Every toast has a close button "Đóng"; timers pause while the stack is hovered or focused (and
+while the page is hidden). `role="status"` (polite), errors `role="alert"`. The text is set one frame after insertion
+so screen readers announce it. Placement is token-only: `--td-toast-top/-bottom/-inline-start/-inline-end/-align`
+(see `toast.css` for a bottom-centre example). Toasts stay keyboard-reachable while a modal is open.
 
 ### `TdLightbox` — `@dazzxq/td-components/lightbox`
 
@@ -323,13 +358,22 @@ const el = TdLoadingSpinner.create({ size: 'md', color: '#3b82f6', label: 'Đang
 
 ### `TdTooltip` — `@dazzxq/td-components/tooltip`
 
-Zero-API: importing the module auto-initializes a global singleton. Any element with `data-tooltip` shows a tooltip on hover.
+Zero-API: importing the module auto-initializes a global singleton. Any element with `data-tooltip` shows a tooltip.
 
 ```html
-<button data-tooltip="Delete" data-tooltip-position="bottom" data-tooltip-color="#ef4444">🗑</button>
+<button data-tooltip="Xoá" data-tooltip-position="bottom">…</button>
 <script type="module">import '@dazzxq/td-components/tooltip';</script>
 ```
-Customize per element: `data-tooltip` (text), `data-tooltip-position` (`top` \| `bottom` \| `left` \| `right`), `data-tooltip-color`.
+Per element: `data-tooltip` (text), `data-tooltip-position` (`top` \| `bottom` \| `left` \| `right`),
+`data-tooltip-color` (+ optional `data-tooltip-text-color`; custom colours render a solid chip).
+
+**Token-native (0.9.0):** `role="tooltip"` strong-glass chip (no arrow) at `--td-z-tooltip` (510), linked with
+`aria-describedby` while shown. Opens on mouse/pen hover and on keyboard focus, never on touch; stays while the pointer
+is on the trigger or the tooltip (100 ms grace) — no auto-hide; Escape dismisses. Long text wraps.
+**Naming (conservative):** only for `<button>`, `<a href>`, `input[type=button|submit|reset|image]` and explicit
+`role=button|link|tab|menuitem`: a trigger that already has a name loses its `title` (the tooltip is its
+description); an unnamed one gets its `title` (else `data-tooltip`, with a console warning) as `aria-label`. Other
+elements keep their names and `title` untouched.
 
 ---
 

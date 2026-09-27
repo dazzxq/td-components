@@ -1,7 +1,8 @@
+import { escapeHtml } from '../utils/escape.js';
 import './td-slider.js';
 import '../styles/story-layout.css';
 
-const attr = (name, v) => (v === undefined || v === null || v === '' ? '' : ` ${name}="${v}"`);
+const attr = (name, v) => (v === undefined || v === null || v === '' ? '' : ` ${name}="${escapeHtml(String(v))}"`);
 const flag = (name, v) => (v ? ` ${name}` : '');
 
 export default {

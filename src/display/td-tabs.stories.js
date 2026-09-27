@@ -1,3 +1,4 @@
+import { escapeHtml } from '../utils/escape.js';
 import './td-tabs.js';
 import '../styles/story-layout.css';
 
@@ -21,9 +22,9 @@ export const Default = {
   render: (args) => `
     <div class="sb-stack">
       <td-tabs
-        size="${args.size || 'md'}"
-        activation="${args.activation || 'manual'}"
-        ${args['active-tab'] ? `active-tab="${args['active-tab']}"` : ''}
+        size="${escapeHtml(String(args.size || 'md'))}"
+        activation="${escapeHtml(String(args.activation || 'manual'))}"
+        ${args['active-tab'] ? `active-tab="${escapeHtml(String(args['active-tab']))}"` : ''}
       ></td-tabs>
       <p class="sb-note">← → / Home / End di chuyển focus; Enter / Space chọn (activation="auto": mũi tên chọn luôn).</p>
     </div>
@@ -37,7 +38,7 @@ export const Default = {
 };
 
 export const WithIcons = {
-  render: (args) => `<td-tabs size="${args.size || 'md'}" aria-label="Nguồn ảnh"></td-tabs>`,
+  render: (args) => `<td-tabs size="${escapeHtml(String(args.size || 'md'))}" aria-label="Nguồn ảnh"></td-tabs>`,
   args: { size: 'md' },
   play: async ({ canvasElement }) => {
     const el = canvasElement.querySelector('td-tabs');

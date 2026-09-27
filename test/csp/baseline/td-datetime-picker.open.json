@@ -1,6 +1,7 @@
 {
   "_component": "td-datetime-picker",
   "_state": "open",
+  "_profile": "legacy+td",
   "_reducedMotion": false,
   "_excludedProps": [],
   "_sentinels": [
@@ -18,6 +19,11 @@
       "class": "opacity-50",
       "prop": "opacity",
       "value": "0.5"
+    },
+    {
+      "class": ":root (td.css)",
+      "prop": "--td-glass-radius",
+      "value": "20px"
     }
   ],
   "styles": {
@@ -41,17 +47,17 @@
       "bottom": "0px",
       "z-index": "auto",
       "opacity": "1",
-      "color": "oklch(0.21 0.034 264.665)",
+      "color": "rgb(28, 28, 30)",
       "background-color": "rgba(0, 0, 0, 0)",
       "background-image": "linear-gradient(rgba(248, 249, 250, 0.9) 0%, rgba(248, 249, 250, 0.1) 30%, rgba(0, 0, 0, 0) 50%, rgba(248, 249, 250, 0.1) 70%, rgba(248, 249, 250, 0.9) 100%)",
       "border-top-width": "0px",
       "border-right-width": "0px",
       "border-bottom-width": "0px",
       "border-left-width": "0px",
-      "border-top-color": "oklch(0.21 0.034 264.665)",
-      "border-right-color": "oklch(0.21 0.034 264.665)",
-      "border-bottom-color": "oklch(0.21 0.034 264.665)",
-      "border-left-color": "oklch(0.21 0.034 264.665)",
+      "border-top-color": "rgb(28, 28, 30)",
+      "border-right-color": "rgb(28, 28, 30)",
+      "border-bottom-color": "rgb(28, 28, 30)",
+      "border-left-color": "rgb(28, 28, 30)",
       "border-top-left-radius": "8px",
       "border-top-right-radius": "8px",
       "border-bottom-left-radius": "8px",

@@ -1,0 +1,330 @@
+/*
+ * td-modal + td-modal-stack (src/feedback/td-modal.js). Adapted from the 135 kit (td-ui.css .td-modal).
+ * Floating + text-bearing → Regular STRONG + LG glass dialog over a plain scrim (liquid-glass R12: never blurred).
+ * Layer: var(--td-z-modal) for every dialog; later dialogs stack by DOM order.
+ * State (set by JS, never visual classes):
+ *   root [hidden] · [data-state="opening|open|closing"] · [data-covered] (a dialog is stacked above → solid)
+ *   header / close / footer [hidden]
+ * Per-instance CSSOM custom properties on .td-modal__dialog (validated in JS):
+ *   --td-modal-w, --td-modal-h, --td-modal-body-pad, --td-modal-body-overflow
+ * Only .td-modal__body scrolls (header/footer pinned, D21). ≤ 640 px: bottom sheet (except --viewport).
+ */
+@layer td.tokens {
+	:root {
+		--td-modal-w-xs: 20rem;
+		--td-modal-w-sm: 24rem;
+		--td-modal-w-md: 32rem;
+		--td-modal-w-lg: 42rem;
+		--td-modal-w-xl: 48rem;
+		--td-modal-w-2xl: 56rem;
+		--td-modal-w-3xl: 64rem;
+		--td-modal-w-4xl: 72rem;
+		--td-modal-w-5xl: 80rem;
+		--td-modal-w-full: 100%;
+		--td-modal-gap: var(--td-space-md);          /* viewport margin around a centred dialog */
+		--td-modal-radius: var(--td-glass-radius);
+		--td-modal-sheet-radius: 24px;
+		--td-modal-pad-x: var(--td-space-lg);
+		--td-modal-pad-y: var(--td-space-md);
+	}
+}
+
+@layer td.component {
+	.td-modal {
+		--_td-modal-size: var(--td-modal-w-md);
+
+		position: fixed;
+		inset: 0;
+		z-index: var(--td-z-modal);
+		box-sizing: border-box;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: var(--td-modal-gap);
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-base);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text);
+	}
+
+	.td-modal *,
+	.td-modal *::before,
+	.td-modal *::after {
+		box-sizing: border-box;
+	}
+
+	.td-modal[hidden],
+	.td-modal__header[hidden],
+	.td-modal__close[hidden],
+	.td-modal__footer[hidden] {
+		display: none;
+	}
+
+	.td-modal--xs { --_td-modal-size: var(--td-modal-w-xs); }
+	.td-modal--sm { --_td-modal-size: var(--td-modal-w-sm); }
+	.td-modal--md { --_td-modal-size: var(--td-modal-w-md); }
+	.td-modal--lg { --_td-modal-size: var(--td-modal-w-lg); }
+	.td-modal--xl { --_td-modal-size: var(--td-modal-w-xl); }
+	.td-modal--2xl { --_td-modal-size: var(--td-modal-w-2xl); }
+	.td-modal--3xl { --_td-modal-size: var(--td-modal-w-3xl); }
+	.td-modal--4xl { --_td-modal-size: var(--td-modal-w-4xl); }
+	.td-modal--5xl { --_td-modal-size: var(--td-modal-w-5xl); }
+	.td-modal--full { --_td-modal-size: var(--td-modal-w-full); }
+
+	/* Scrim: darkens only (never blurred, never closes the dialog — ADR 0006). */
+	.td-modal__backdrop {
+		position: absolute;
+		inset: 0;
+		background: var(--td-glass-scrim);
+		opacity: 0;
+		transition: opacity var(--td-dur-base) var(--td-ease);
+	}
+
+	.td-modal[data-state="open"] .td-modal__backdrop {
+		opacity: 1;
+	}
+
+	/* Dialog: glass recipe classes give fill/border/rim/shadow/blur; this block owns geometry + motion. */
+	.td-modal__dialog {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		width: min(var(--td-modal-w, var(--_td-modal-size)), 100%);
+		height: var(--td-modal-h, auto);
+		max-height: calc(100dvh - 2 * var(--td-modal-gap));
+		overflow: hidden;
+		border-radius: var(--td-modal-radius);
+		outline: none;
+		isolation: isolate;
+		opacity: 0;
+		transform: scale(var(--td-glass-enter-scale));
+		transition:
+			opacity var(--td-dur-base) var(--td-ease),
+			transform var(--td-dur-base) var(--td-ease);
+	}
+
+	.td-modal[data-state="open"] .td-modal__dialog {
+		opacity: 1;
+		transform: none;
+		transition:
+			opacity var(--td-dur-base) var(--td-ease),
+			transform var(--td-dur-slow) var(--td-glass-ease-flex);
+	}
+
+	/* No glass on glass (liquid-glass R3, D20): a dialog covered by another one goes solid (menus, tooltips and
+	   toasts over an open modal: their own files). Private tokens, NOT !important → a11y fallbacks still win. */
+	/* An exiting modal is never interactive (its dialog is also inert). */
+	.td-modal[data-state="closing"] {
+		pointer-events: none;
+	}
+
+	.td-modal[data-covered] .td-modal__dialog {
+		--_td-glass-fill: var(--td-glass-solid);
+		--_td-glass-filter: none;
+	}
+
+	.td-modal__header {
+		display: flex;
+		flex: 0 0 auto;
+		gap: var(--td-space-sm);
+		align-items: center;
+		min-height: 3.5rem;
+		padding: var(--td-space-sm) var(--td-modal-pad-x);
+		border-bottom: 1px solid var(--td-hairline);
+	}
+
+	.td-modal .td-modal__title {
+		flex: 1 1 auto;
+		min-width: 0;
+		margin: 0;
+		font-family: inherit;
+		font-size: var(--td-text-lg);
+		font-weight: var(--td-fw-bold);
+		line-height: var(--td-leading-tight);
+		color: inherit;
+		overflow-wrap: anywhere;
+	}
+
+	.td-modal__close {
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		width: 2.25rem;
+		height: 2.25rem;
+		padding: 0;
+		margin: 0 calc(-1 * var(--td-space-xs)) 0 auto;
+		font: inherit;
+		color: var(--td-color-text-muted);
+		cursor: pointer;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--td-radius-full);
+		transition: background var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+	}
+
+	.td-modal__close:hover:not(:disabled) {
+		color: var(--td-color-text);
+		background: var(--td-color-hover-strong);
+	}
+
+	.td-modal__close:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-modal__close:disabled {
+		cursor: not-allowed;
+		opacity: 0.55;
+	}
+
+	.td-modal__close-icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+
+	/* The only scroller (D21). */
+	.td-modal__body {
+		flex: 1 1 auto;
+		min-height: 0;
+		padding: var(--td-modal-body-pad, var(--td-modal-pad-y) var(--td-modal-pad-x));
+		overflow: var(--td-modal-body-overflow, auto);
+		overscroll-behavior: contain;
+		color: inherit;
+		overflow-wrap: break-word;
+	}
+
+	.td-modal__footer {
+		display: flex;
+		flex: 0 0 auto;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+		align-items: center;
+		justify-content: flex-end;
+		padding: var(--td-space-sm) var(--td-modal-pad-x);
+		border-top: 1px solid var(--td-hairline);
+	}
+
+	/* Promise dialogs (confirm / success / error / info). */
+	.td-modal__message {
+		display: flex;
+		gap: var(--td-space-sm);
+		align-items: flex-start;
+	}
+
+	.td-modal__icon {
+		display: inline-flex;
+		flex: 0 0 auto;
+		line-height: 0;
+	}
+
+	.td-modal__message--success .td-modal__icon { color: var(--td-color-success); }
+	.td-modal__message--error .td-modal__icon { color: var(--td-color-error); }
+	.td-modal__message--info .td-modal__icon { color: var(--td-color-info); }
+
+	.td-modal__text {
+		flex: 1 1 auto;
+		min-width: 0;
+		margin: 0;
+		font-size: var(--td-text-base);
+		line-height: var(--td-leading-normal);
+		color: inherit;
+	}
+
+	.td-modal__message--success .td-modal__text,
+	.td-modal__message--error .td-modal__text,
+	.td-modal__message--info .td-modal__text {
+		padding-top: 0.125rem; /* optical alignment with the 24 px icon */
+	}
+
+	/* Full viewport. */
+	.td-modal--viewport {
+		padding: 0;
+	}
+
+	.td-modal--viewport .td-modal__dialog {
+		width: 100%;
+		height: 100dvh;
+		max-height: none;
+		border-radius: 0;
+	}
+
+	.td-modal--viewport .td-modal__body {
+		display: flex;
+		flex-direction: column;
+		padding: var(--td-modal-body-pad, 0);
+		overflow: var(--td-modal-body-overflow, hidden);
+	}
+
+	/* Phones: bottom sheet (no drag gesture — D24). */
+	@media (max-width: 640px) {
+		.td-modal:not(.td-modal--viewport) {
+			align-items: flex-end;
+			padding: 0;
+		}
+
+		.td-modal:not(.td-modal--viewport) .td-modal__dialog {
+			width: 100%;
+			max-height: min(var(--td-modal-h, 90dvh), 90dvh);
+			padding-bottom: env(safe-area-inset-bottom, 0);
+			border-bottom-width: 0;
+			border-radius: var(--td-modal-sheet-radius) var(--td-modal-sheet-radius) 0 0;
+			transform: translateY(100%);
+		}
+
+		.td-modal:not(.td-modal--viewport)[data-state="open"] .td-modal__dialog {
+			transform: none;
+		}
+	}
+
+	@media (pointer: coarse) {
+		.td-modal__close {
+			width: var(--td-touch-min);
+			height: var(--td-touch-min);
+			margin-inline-end: calc(-1 * var(--td-space-sm));
+		}
+	}
+
+	/* Reduced motion: opacity only (no scale / slide). */
+	@media (prefers-reduced-motion: reduce) {
+		.td-modal .td-modal__dialog,
+		.td-modal[data-state="open"] .td-modal__dialog,
+		.td-modal:not(.td-modal--viewport)[data-state="open"] .td-modal__dialog {
+			transform: none;
+			transition: opacity var(--td-dur-fast) linear;
+		}
+
+		.td-modal__backdrop {
+			transition: opacity var(--td-dur-fast) linear;
+		}
+
+		.td-modal__close {
+			transition: none;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) and (max-width: 640px) {
+		.td-modal:not(.td-modal--viewport) .td-modal__dialog {
+			transform: none;
+		}
+	}
+
+	/* Forced colours: the recipe gives the dialog Canvas + CanvasText border; keep structure visible. */
+	@media (forced-colors: active) {
+		.td-modal__header,
+		.td-modal__footer {
+			border-color: CanvasText;
+		}
+
+		.td-modal__close {
+			color: ButtonText;
+			border-color: ButtonText;
+		}
+
+		.td-modal__icon {
+			color: CanvasText;
+		}
+	}
+}

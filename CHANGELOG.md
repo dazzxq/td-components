@@ -2,6 +2,69 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.9.0
+
+Migration **batch 3 — the floating layer**: `TdModal` / `TdModalStackManager`, `TdToast`, `TdTooltip`, `td-dropdown`
+are now **token-native** (td.css only) and Liquid Glass. Plan: `docs/plans/v0.9.0-batch3.md` (Codex plan-review
+APPROVE, 4 rounds; inventory + decisions D1–D24 in `v0.9.0-batch3-inventory.md`). Built by four agents in isolated
+worktrees on a shared base (`utils/layers.js`, `utils/floating.js`), integrated here.
+
+### Breaking (internal DOM / classes / stacking)
+
+- Internal classes renamed to BEM — `docs/migration/class-map.md` (`.td-modal-*` → `.td-modal__*`, `.toast-item` →
+  `.td-toast`, `.td-tooltip-content` → `.td-tooltip__content` (arrow removed), `.td-dropdown-*` → `.td-dropdown__*`).
+  These components require `td.css`.
+- **z-index from tokens:** modal `--td-z-modal` 400, dropdown menu `--td-z-popover` 450 (was 10010), toast
+  `--td-z-toast` 500 (was 99999), tooltip `--td-z-tooltip` 510 (new token). Sites with fixed chrome above these
+  override the whole `--td-z-*` set. `TdModalStackManager.BASE_Z_INDEX` (`@dazzxq/td-components/modal-stack`) is now an opt-in override (default `null`, warns);
+  `TOAST_Z_INDEX_BASE` is 500 and `getToastZIndex()` returns the token value (both deprecated).
+- `TdToast.getTheme(type)` returns `{ type, icon }` (was Tailwind classes + SVG markup).
+
+### Behaviour changes
+
+- **One keyboard owner for overlays** (`utils/layers.js`): Escape goes only to the top layer (a menu or tooltip closes
+  itself; a modal swallows it, so it never reaches a lightbox below); Tab is trapped by the top blocking layer.
+  Lightbox and loading moved onto it; the loading overlay now holds Tab focus.
+- **Modal:** `role=dialog` + `aria-modal` + `aria-labelledby` (promise dialogs `alertdialog`), X named "Đóng"; focus
+  always moves into the dialog on open (`autoFocus:false` now focuses the dialog itself instead of nothing;
+  `focusTarget` only if inside it) and is restored to the opener **before** `onClose`; the page behind is `inert`;
+  only the body scrolls (old 60/70 vh cap removed); covered stacked dialogs go solid; a promise-returning `onConfirm`
+  keeps the dialog open until it settles; a sync `onConfirm` runs before the promise resolves; `onClose(value)` gets the
+  footer action's value. Still never closes on ESC/backdrop (ADR 0006); bottom sheet below 640 px kept.
+- **Toast:** strong glass + status icon (no coloured fills); every toast has a close button (sticky too); timers
+  pause on hover/focus and while the page is hidden; the message text appears one frame after insertion (announced);
+  reachable by keyboard while a modal is open.
+- **Tooltip:** `role=tooltip` + `aria-describedby` while shown; opens on keyboard focus; never on touch; no 30 s
+  auto-hide; hoverable (100 ms grace); Escape dismisses; scroll repositions instead of hiding; long text wraps;
+  `title` handling per D15 (see components.md); `data-tooltip-text-color` requires `data-tooltip-color`;
+  `disconnect()` fully tears down.
+- **Dropdown:** APG select-only combobox — trigger `role=combobox`, options are no longer Tab stops
+  (`aria-activedescendant`), clear option in the arrow order, type-ahead; Tab closes the menu; outside click closes on
+  `pointerdown`; exactly one `change` per selection; `open()` does nothing while disabled.
+
+### Added
+
+- `utils/layers.js` (`LAYERS`, `register`, `hasActiveAbove`, `trapContainers`, `focusablesIn`, `trapTab`),
+  `utils/floating.js` (`placeFloating`, `isReferenceHidden`), `inert-lock` `registerFloating` / `hasFloatingAbove`.
+- Modal `actions` (async footer buttons), `onShow(root, payload)` + `onShowPayload`, `messageHtml`, `TdModal.labels`.
+- Dropdown `label` attribute and error contract (`error-text`, `setError`, `clearError`), `aria-required`.
+- Toast placement tokens `--td-toast-top/-bottom/-inline-start/-inline-end/-align`.
+- Tests: layer + integration suites (loading over modal, menu in stacked modals, Escape routing, toast reachable over a
+  modal, tooltip over toast), per-component batch-3 suites, contract fixtures for all four, CSP matrix +20 states
+  (td-datetime-picker moved to `_meta.mixed`), token gate floating-glass fallbacks (glass off / forced colours / solid
+  over a modal) in 3 engines.
+
+### Fixed
+
+- CSP smoke tests for td-tooltip and td-modal-stack exercised nothing (dead event / instance methods on a static
+  class); the tooltip is now in the matrix and the stack smoke drives its static API.
+- Dropdown menu and tooltip usable inside a modal (floating registrations are exempt from the modal's inert lease).
+
+### Security
+
+- Trusted-HTML hatches documented: modal `body` (string form) and `messageHtml`; `message` and toast text are text only.
+- Modal `width`/`height`/`bodyPadding` validated with `CSS.supports` (no `url()`/`var()`) before use.
+
 ## 0.8.0
 
 Migration **batch 2**: `td-input-field`, `td-slider`, `td-pagination`, `td-tabs`, `td-empty-state` are now

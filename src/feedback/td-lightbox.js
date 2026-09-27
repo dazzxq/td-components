@@ -14,10 +14,12 @@
  */
 
 import { lockScroll } from '../utils/scroll-lock.js';
-import { acquireInert } from '../utils/inert-lock.js';
-
-const LIGHTBOX_LAYER = 350; // --td-z-lightbox
+import {
+  LAYERS, register as registerLayer, hasActiveAbove, trapTab, setFocusHandoff, clearFocusHandoff, restoreFocus, followFocusHandoff,
+} from '../utils/layers.js';
 import { TdModalStackManager } from './td-modal-stack.js';
+
+const LIGHTBOX_LAYER = LAYERS.lightbox; // --td-z-lightbox
 import { tdIcon } from '../icons/td-icon.js';
 
 const DEFAULT_LABELS = {
@@ -309,7 +311,7 @@ let renderToken = 0;
 let zoom = { scale: 1, x: 0, y: 0 };
 
 function isForeignLayerOpenDefault() {
-  return TdModalStackManager.stack.length > 0;
+  return hasActiveAbove(LIGHTBOX_LAYER) || TdModalStackManager.stack.length > 0;
 }
 
 function ctxOf() {
@@ -743,38 +745,33 @@ function resetTransient() {
 
 /* ------------------------------------------------------------------ keyboard / focus */
 
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), '
-  + 'textarea:not([disabled]), video[controls], audio[controls], [tabindex]:not([tabindex="-1"])';
+function isForeign() {
+  try { return !!session.opts.isForeignLayerOpen(); } catch { return false; }
+}
 
-function trapTab(e) {
-  const overlay = ui.overlay;
-  const nodes = [...overlay.querySelectorAll(FOCUSABLE)].filter(
-    (el) => !el.closest('[hidden]') && el.getClientRects().length > 0,
-  );
-  if (!nodes.length) { e.preventDefault(); overlay.focus(); return; }
-  const first = nodes[0];
-  const last = nodes[nodes.length - 1];
-  const active = document.activeElement;
-  const inside = overlay.contains(active);
-  if (e.shiftKey) {
-    if (!inside || active === first || active === overlay) { e.preventDefault(); last.focus(); }
-  } else if (!inside || active === last) {
-    e.preventDefault();
-    first.focus();
-  }
+/** Escape (via the layer dispatcher: only while the lightbox is the top keyboard boundary). */
+function onLayerEscape(e) {
+  if (lifecycle !== 'open' || !session || isForeign()) return false; // the layer on top owns the keyboard
+  if (e.defaultPrevented) return false;
+  if (e.target instanceof Node && ui.videoMount.contains(e.target)) return false; // media keys belong to the player
+  closeViewer();
+  return true;
+}
+
+/** Tab ALWAYS stays in the dialog (plus toasts), unless a site-declared foreign layer is on top. */
+function onLayerTab(e) {
+  if (lifecycle !== 'open' || !session || isForeign()) return 'pass';
+  return trapTab(e, ui.overlay, LIGHTBOX_LAYER);
 }
 
 function onKeydown(e) {
   if (lifecycle !== 'open' || !session) return;
-  let foreign = false;
-  try { foreign = !!session.opts.isForeignLayerOpen(); } catch { foreign = false; }
-  if (foreign) return; // the layer on top owns the keyboard
-  if (e.key === 'Tab') { trapTab(e); return; } // Tab ALWAYS stays in the dialog
+  if (isForeign()) return; // the layer on top owns the keyboard
+  if (e.key === 'Tab' || e.key === 'Escape') return; // routed by the layer dispatcher (onLayerTab/onLayerEscape)
   if (e.defaultPrevented) return;
   if (e.target instanceof Node && ui.videoMount.contains(e.target)) return; // media keys belong to the player
   if (e.ctrlKey || e.metaKey || e.altKey) return;
-  if (e.key === 'Escape') { e.preventDefault(); closeViewer(); }
-  else if (e.key === 'ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); navigate(-1); }
   else if (e.key === 'ArrowRight') { e.preventDefault(); navigate(1); }
   else if (e.key === 'f' || e.key === 'F') {
     if (!ui.fsBtn.hidden) { e.preventDefault(); toggleFullscreen(); }
@@ -977,10 +974,13 @@ function openViewer(items, options = {}) {
   ui.fsBtn.hidden = !document.fullscreenEnabled;
 
   if (lifecycle !== 'open') {
+    clearFocusHandoff(ui.overlay);
     viewer = {
       savedFocus: document.activeElement instanceof HTMLElement ? document.activeElement : null,
       releaseScroll: lockScroll(),
-      releaseInert: acquireInert([ui.overlay], LIGHTBOX_LAYER), // shared, ref-counted with other overlays
+      layer: registerLayer({ // blocking inert lease + keyboard boundary (shared with other overlays)
+        layer: LIGHTBOX_LAYER, element: ui.overlay, blocking: true, onEscape: onLayerEscape, onTab: onLayerTab,
+      }),
       hist: { state: 'none', closed: false },
       closed: false,
     };
@@ -1006,6 +1006,10 @@ function closeViewer() {
   const v = viewer;
   v.closed = true;
   v.hist.closed = true;
+  const focused = document.activeElement;
+  const focusWasHere = !focused || focused === document.body || ui.overlay.contains(focused);
+  // Where focus goes back to, recorded for a higher layer that holds focus now (loading / a modal) — D10 hand-off.
+  setFocusHandoff(ui.overlay, followFocusHandoff(v.savedFocus));
 
   ui.overlay.removeAttribute('data-state');
   ui.overlay.removeAttribute('data-dragging');
@@ -1020,7 +1024,7 @@ function closeViewer() {
   document.removeEventListener('keydown', onKeydown);
 
   v.releaseScroll();
-  v.releaseInert();
+  v.layer.release();
   if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
 
   if (v.hist.state === 'pushed') {
@@ -1030,9 +1034,7 @@ function closeViewer() {
   histMaybeUnsub();
 
   const detail = { index: session.index, count: session.items.length, token: session.token, item: session.items[session.index] };
-  if (v.savedFocus && v.savedFocus.isConnected) {
-    try { v.savedFocus.focus({ preventScroll: true }); } catch { /* ignore */ }
-  }
+  if (focusWasHere) restoreFocus(v.savedFocus); // never steal focus from a higher layer
   viewer = null;
   session = null;
   emit('td-lightbox-close', detail);

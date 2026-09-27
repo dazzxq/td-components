@@ -1,3 +1,4 @@
+import { escapeHtml } from '../utils/escape.js';
 import './td-pagination.js';
 import '../styles/story-layout.css';
 
@@ -18,13 +19,13 @@ export default {
 export const Default = {
   render: (args) => `
     <td-pagination
-      total-items="${args['total-items'] || 100}"
-      items-per-page="${args['items-per-page'] || 10}"
-      current-page="${args['current-page'] || 1}"
-      ${args['active-color'] ? `active-color="${args['active-color']}"` : ''}
-      ${args['item-label'] ? `item-label="${args['item-label']}"` : ''}
-      ${args['max-pages'] ? `max-pages="${args['max-pages']}"` : ''}
-      ${args['aria-label'] ? `aria-label="${args['aria-label']}"` : ''}
+      total-items="${escapeHtml(String(args['total-items'] || 100))}"
+      items-per-page="${escapeHtml(String(args['items-per-page'] || 10))}"
+      current-page="${escapeHtml(String(args['current-page'] || 1))}"
+      ${args['active-color'] ? `active-color="${escapeHtml(String(args['active-color']))}"` : ''}
+      ${args['item-label'] ? `item-label="${escapeHtml(String(args['item-label']))}"` : ''}
+      ${args['max-pages'] ? `max-pages="${escapeHtml(String(args['max-pages']))}"` : ''}
+      ${args['aria-label'] ? `aria-label="${escapeHtml(String(args['aria-label']))}"` : ''}
     ></td-pagination>
   `,
   args: {

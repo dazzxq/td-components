@@ -88,6 +88,7 @@
 		--td-z-popover: 450;
 		--td-z-loading: 480; /* blocking overlay: above modal/popover, below toast */
 		--td-z-toast: 500;
+		--td-z-tooltip: 510; /* mirrors src/utils/layers.js LAYERS */
 
 		/* ===== Motion ===== */
 		--td-dur-fast: 120ms;
@@ -2626,6 +2627,964 @@
 		.td-lightbox[data-closing-down] .td-lightbox__stage {
 			scale: 1;
 			translate: 0 0;
+		}
+	}
+}
+
+/* ---- src/styles/components/toast.css ---- */
+/*
+ * td-toast (src/feedback/td-toast.js). Floating + text-bearing → Regular STRONG glass (liquid-glass td-toast row),
+ * no saturated fills (D13): the variant is the registry status icon (--td-color-{type}, AA colours) + an error
+ * border tint. Top-right by default (D11) — a site moves the stack with tokens only, e.g. 135/dwp bottom-centre:
+ *   :root { --td-toast-top: auto; --td-toast-bottom: 1.5rem; --td-toast-inline-end: auto;
+ *           --td-toast-inline-start: 50%; --td-toast-shift: -50%; --td-toast-align: center; }
+ * State: data-state="entering|open|closing" (fade + slide; reduced motion → opacity only) · [data-paused].
+ * Over an open modal the toast goes solid (R3 "no glass on glass", D20 private tokens, fallbacks still win).
+ */
+@layer td.tokens {
+	:root {
+		--td-toast-top: 5rem;
+		--td-toast-bottom: auto;
+		--td-toast-inline-end: 1rem;
+		--td-toast-inline-start: auto;
+		--td-toast-shift: 0%;
+		--td-toast-align: flex-end;
+		--td-toast-gap: var(--td-space-xs);
+		--td-toast-max-w: 28rem;
+		/* one-line toast = 44px tall → 22px radius is a capsule (R9); wrapped text keeps a soft rounded box */
+		--td-toast-radius: 22px;
+		--td-toast-fg: var(--td-color-text);
+		--td-toast-close-fg: var(--td-color-text-muted);
+		--td-toast-close-hover: var(--td-color-hover-strong);
+		--td-toast-error-border: color-mix(in srgb, var(--td-color-error) 45%, transparent);
+		--td-toast-enter-shift: 0.5rem;
+	}
+}
+
+@layer td.component {
+	.td-toasts {
+		position: fixed;
+		top: var(--td-toast-top);
+		bottom: var(--td-toast-bottom);
+		inset-inline-start: var(--td-toast-inline-start);
+		inset-inline-end: var(--td-toast-inline-end);
+		z-index: var(--td-z-toast);
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-toast-gap);
+		align-items: var(--td-toast-align);
+		width: max-content;
+		max-width: calc(100vw - 2 * var(--td-gutter));
+		font-family: var(--td-font-sans);
+		line-height: var(--td-leading-normal);
+		pointer-events: none; /* the page stays clickable around the stack */
+		transform: translateX(var(--td-toast-shift));
+	}
+
+	.td-toast {
+		box-sizing: border-box;
+		display: flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		max-width: min(var(--td-toast-max-w), 100%);
+		min-height: var(--td-touch-min);
+		padding: var(--td-space-2xs) var(--td-space-2xs) var(--td-space-2xs) var(--td-space-sm);
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-medium);
+		line-height: 1.4;
+		color: var(--_td-glass-fg, var(--td-toast-fg)); /* the recipe's fallbacks (contrast/forced) still win */
+		border-radius: var(--td-toast-radius);
+		pointer-events: auto;
+		cursor: pointer; /* click anywhere dismisses (keyboard: the close button) */
+		opacity: 0;
+		transform: translateY(calc(-1 * var(--td-toast-enter-shift)));
+		transition:
+			opacity var(--td-dur-base) var(--td-ease),
+			transform var(--td-dur-base) var(--td-ease-out);
+	}
+
+	.td-toast[data-state="open"] {
+		opacity: 1;
+		transform: none;
+	}
+
+	.td-toast[data-state="closing"] {
+		pointer-events: none;
+		opacity: 0;
+		transform: translateX(var(--td-toast-enter-shift));
+	}
+
+	.td-toast__icon {
+		display: inline-flex;
+		flex: none;
+		line-height: 0;
+		color: var(--td-color-info);
+	}
+
+	.td-toast--success .td-toast__icon { color: var(--td-color-success); }
+	.td-toast--warning .td-toast__icon { color: var(--td-color-warning); }
+	.td-toast--error .td-toast__icon { color: var(--td-color-error); }
+
+	.td-toast--error {
+		border-color: var(--_td-glass-line, var(--td-toast-error-border));
+	}
+
+	.td-toast__message {
+		flex: 1 1 auto;
+		min-width: 0;
+		padding-block: var(--td-space-2xs);
+		overflow-wrap: anywhere;
+	}
+
+	.td-toast__close {
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		line-height: 0;
+		color: var(--td-toast-close-fg);
+		cursor: pointer;
+		background: transparent; /* a fill on glass, never glass (R3) */
+		border: 0;
+		border-radius: var(--td-glass-capsule);
+		transition: background-color var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-toast__close:hover {
+		color: var(--td-toast-fg);
+		background: var(--td-toast-close-hover);
+	}
+
+	.td-toast__close:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	/* R3 / D20: over an open modal the toast is solid (not !important → the a11y fallbacks in td.tokens win). */
+	:root:has(.td-modal[data-state="open"]) .td-toast {
+		--_td-glass-fill: var(--td-glass-solid);
+		--_td-glass-filter: none;
+	}
+
+	@media (pointer: coarse) {
+		.td-toast__close {
+			width: var(--td-touch-min);
+			height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-toast,
+		.td-toast[data-state="closing"] {
+			transform: none;
+			transition: opacity var(--td-dur-fast) linear;
+		}
+
+		.td-toast__close { transition: none; }
+	}
+
+	@media (forced-colors: active) {
+		.td-toast__icon,
+		.td-toast__close {
+			color: CanvasText;
+		}
+
+		.td-toast__close {
+			border: 1px solid ButtonText;
+		}
+
+		.td-toast__close:focus-visible {
+			outline: 2px solid Highlight;
+		}
+	}
+}
+
+/* ---- src/styles/components/tooltip.css ---- */
+/*
+ * td-tooltip (src/feedback/td-tooltip.js). Small text-bearing floating chip → Regular STRONG glass
+ * (.td-glass-surface--strong on the element; no arrow — D14). Custom colour chips ([data-custom]) are SOLID.
+ * position: fixed, geometry (top/left) written by JS through CSSOM. Hoverable (pointer-events: auto, WCAG 1.4.13).
+ * State: [hidden] · [data-state="open"] (fade + scale from the trigger side) · data-placement · [data-custom].
+ * No interactive targets inside → no focus ring / coarse-pointer sizing needed.
+ */
+@layer td.tokens {
+	:root {
+		--td-tooltip-max-w: 18rem;
+		--td-tooltip-pad-y: 0.375rem;
+		--td-tooltip-pad-x: 0.625rem;
+		--td-tooltip-radius: var(--td-radius-md);
+		--td-tooltip-gap: 8px;
+		--td-tooltip-font-size: var(--td-text-xs);
+	}
+}
+
+@layer td.component {
+	.td-tooltip {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: var(--td-z-tooltip);
+		box-sizing: border-box;
+		width: max-content; /* shrink-to-fit … */
+		max-width: min(var(--td-tooltip-max-w), calc(100vw - 16px)); /* … but wraps (max-width beats width) */
+		padding: var(--td-tooltip-pad-y) var(--td-tooltip-pad-x);
+		font-family: var(--td-font-sans);
+		font-size: var(--td-tooltip-font-size);
+		font-weight: var(--td-fw-medium);
+		line-height: var(--td-leading-normal);
+		text-align: center;
+		white-space: normal;
+		overflow-wrap: anywhere;
+		border-radius: var(--td-tooltip-radius);
+		pointer-events: auto;
+		opacity: 0;
+		transform: scale(var(--_td-glass-enter, var(--td-glass-enter-scale)));
+		transform-origin: 50% 100%;
+		transition:
+			opacity var(--_td-glass-dur, var(--td-dur-fast)) var(--td-ease),
+			transform var(--_td-glass-dur, var(--td-glass-dur)) var(--td-glass-ease);
+	}
+
+	.td-tooltip[hidden] {
+		display: none;
+	}
+
+	.td-tooltip[data-state="open"] {
+		opacity: 1;
+		transform: none;
+	}
+
+	.td-tooltip[data-placement="bottom"] { transform-origin: 50% 0; }
+	.td-tooltip[data-placement="left"] { transform-origin: 100% 50%; }
+	.td-tooltip[data-placement="right"] { transform-origin: 0 50%; }
+
+	.td-tooltip__content {
+		display: block;
+	}
+
+	/* Custom colour chip (data-tooltip-color): solid, never glass. Colours come from CSSOM custom properties
+	   (validated with safeColor; fg = WCAG black/white unless data-tooltip-text-color is given). */
+	.td-tooltip[data-custom] {
+		background: var(--td-tooltip-bg);
+		color: var(--td-tooltip-fg);
+		border-color: transparent;
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
+
+	/* No glass on glass: over an open modal the chip goes solid (private tokens, so the a11y fallbacks still win). */
+	:root:has(.td-modal[data-state="open"]) .td-tooltip {
+		--_td-glass-fill: var(--td-glass-solid);
+		--_td-glass-filter: none;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-tooltip {
+			transform: none;
+			transition: opacity var(--td-dur-fast) linear;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-tooltip[data-custom] {
+			border-color: CanvasText;
+		}
+	}
+}
+
+/* ---- src/styles/components/modal.css ---- */
+/*
+ * td-modal + td-modal-stack (src/feedback/td-modal.js). Adapted from the 135 kit (td-ui.css .td-modal).
+ * Floating + text-bearing → Regular STRONG + LG glass dialog over a plain scrim (liquid-glass R12: never blurred).
+ * Layer: var(--td-z-modal) for every dialog; later dialogs stack by DOM order.
+ * State (set by JS, never visual classes):
+ *   root [hidden] · [data-state="opening|open|closing"] · [data-covered] (a dialog is stacked above → solid)
+ *   header / close / footer [hidden]
+ * Per-instance CSSOM custom properties on .td-modal__dialog (validated in JS):
+ *   --td-modal-w, --td-modal-h, --td-modal-body-pad, --td-modal-body-overflow
+ * Only .td-modal__body scrolls (header/footer pinned, D21). ≤ 640 px: bottom sheet (except --viewport).
+ */
+@layer td.tokens {
+	:root {
+		--td-modal-w-xs: 20rem;
+		--td-modal-w-sm: 24rem;
+		--td-modal-w-md: 32rem;
+		--td-modal-w-lg: 42rem;
+		--td-modal-w-xl: 48rem;
+		--td-modal-w-2xl: 56rem;
+		--td-modal-w-3xl: 64rem;
+		--td-modal-w-4xl: 72rem;
+		--td-modal-w-5xl: 80rem;
+		--td-modal-w-full: 100%;
+		--td-modal-gap: var(--td-space-md);          /* viewport margin around a centred dialog */
+		--td-modal-radius: var(--td-glass-radius);
+		--td-modal-sheet-radius: 24px;
+		--td-modal-pad-x: var(--td-space-lg);
+		--td-modal-pad-y: var(--td-space-md);
+	}
+}
+
+@layer td.component {
+	.td-modal {
+		--_td-modal-size: var(--td-modal-w-md);
+
+		position: fixed;
+		inset: 0;
+		z-index: var(--td-z-modal);
+		box-sizing: border-box;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: var(--td-modal-gap);
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-base);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text);
+	}
+
+	.td-modal *,
+	.td-modal *::before,
+	.td-modal *::after {
+		box-sizing: border-box;
+	}
+
+	.td-modal[hidden],
+	.td-modal__header[hidden],
+	.td-modal__close[hidden],
+	.td-modal__footer[hidden] {
+		display: none;
+	}
+
+	.td-modal--xs { --_td-modal-size: var(--td-modal-w-xs); }
+	.td-modal--sm { --_td-modal-size: var(--td-modal-w-sm); }
+	.td-modal--md { --_td-modal-size: var(--td-modal-w-md); }
+	.td-modal--lg { --_td-modal-size: var(--td-modal-w-lg); }
+	.td-modal--xl { --_td-modal-size: var(--td-modal-w-xl); }
+	.td-modal--2xl { --_td-modal-size: var(--td-modal-w-2xl); }
+	.td-modal--3xl { --_td-modal-size: var(--td-modal-w-3xl); }
+	.td-modal--4xl { --_td-modal-size: var(--td-modal-w-4xl); }
+	.td-modal--5xl { --_td-modal-size: var(--td-modal-w-5xl); }
+	.td-modal--full { --_td-modal-size: var(--td-modal-w-full); }
+
+	/* Scrim: darkens only (never blurred, never closes the dialog — ADR 0006). */
+	.td-modal__backdrop {
+		position: absolute;
+		inset: 0;
+		background: var(--td-glass-scrim);
+		opacity: 0;
+		transition: opacity var(--td-dur-base) var(--td-ease);
+	}
+
+	.td-modal[data-state="open"] .td-modal__backdrop {
+		opacity: 1;
+	}
+
+	/* Dialog: glass recipe classes give fill/border/rim/shadow/blur; this block owns geometry + motion. */
+	.td-modal__dialog {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		width: min(var(--td-modal-w, var(--_td-modal-size)), 100%);
+		height: var(--td-modal-h, auto);
+		max-height: calc(100dvh - 2 * var(--td-modal-gap));
+		overflow: hidden;
+		border-radius: var(--td-modal-radius);
+		outline: none;
+		isolation: isolate;
+		opacity: 0;
+		transform: scale(var(--td-glass-enter-scale));
+		transition:
+			opacity var(--td-dur-base) var(--td-ease),
+			transform var(--td-dur-base) var(--td-ease);
+	}
+
+	.td-modal[data-state="open"] .td-modal__dialog {
+		opacity: 1;
+		transform: none;
+		transition:
+			opacity var(--td-dur-base) var(--td-ease),
+			transform var(--td-dur-slow) var(--td-glass-ease-flex);
+	}
+
+	/* No glass on glass (liquid-glass R3, D20): a dialog covered by another one goes solid (menus, tooltips and
+	   toasts over an open modal: their own files). Private tokens, NOT !important → a11y fallbacks still win. */
+	/* An exiting modal is never interactive (its dialog is also inert). */
+	.td-modal[data-state="closing"] {
+		pointer-events: none;
+	}
+
+	.td-modal[data-covered] .td-modal__dialog {
+		--_td-glass-fill: var(--td-glass-solid);
+		--_td-glass-filter: none;
+	}
+
+	.td-modal__header {
+		display: flex;
+		flex: 0 0 auto;
+		gap: var(--td-space-sm);
+		align-items: center;
+		min-height: 3.5rem;
+		padding: var(--td-space-sm) var(--td-modal-pad-x);
+		border-bottom: 1px solid var(--td-hairline);
+	}
+
+	.td-modal .td-modal__title {
+		flex: 1 1 auto;
+		min-width: 0;
+		margin: 0;
+		font-family: inherit;
+		font-size: var(--td-text-lg);
+		font-weight: var(--td-fw-bold);
+		line-height: var(--td-leading-tight);
+		color: inherit;
+		overflow-wrap: anywhere;
+	}
+
+	.td-modal__close {
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		width: 2.25rem;
+		height: 2.25rem;
+		padding: 0;
+		margin: 0 calc(-1 * var(--td-space-xs)) 0 auto;
+		font: inherit;
+		color: var(--td-color-text-muted);
+		cursor: pointer;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--td-radius-full);
+		transition: background var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+	}
+
+	.td-modal__close:hover:not(:disabled) {
+		color: var(--td-color-text);
+		background: var(--td-color-hover-strong);
+	}
+
+	.td-modal__close:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-modal__close:disabled {
+		cursor: not-allowed;
+		opacity: 0.55;
+	}
+
+	.td-modal__close-icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+
+	/* The only scroller (D21). */
+	.td-modal__body {
+		flex: 1 1 auto;
+		min-height: 0;
+		padding: var(--td-modal-body-pad, var(--td-modal-pad-y) var(--td-modal-pad-x));
+		overflow: var(--td-modal-body-overflow, auto);
+		overscroll-behavior: contain;
+		color: inherit;
+		overflow-wrap: break-word;
+	}
+
+	.td-modal__footer {
+		display: flex;
+		flex: 0 0 auto;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+		align-items: center;
+		justify-content: flex-end;
+		padding: var(--td-space-sm) var(--td-modal-pad-x);
+		border-top: 1px solid var(--td-hairline);
+	}
+
+	/* Promise dialogs (confirm / success / error / info). */
+	.td-modal__message {
+		display: flex;
+		gap: var(--td-space-sm);
+		align-items: flex-start;
+	}
+
+	.td-modal__icon {
+		display: inline-flex;
+		flex: 0 0 auto;
+		line-height: 0;
+	}
+
+	.td-modal__message--success .td-modal__icon { color: var(--td-color-success); }
+	.td-modal__message--error .td-modal__icon { color: var(--td-color-error); }
+	.td-modal__message--info .td-modal__icon { color: var(--td-color-info); }
+
+	.td-modal__text {
+		flex: 1 1 auto;
+		min-width: 0;
+		margin: 0;
+		font-size: var(--td-text-base);
+		line-height: var(--td-leading-normal);
+		color: inherit;
+	}
+
+	.td-modal__message--success .td-modal__text,
+	.td-modal__message--error .td-modal__text,
+	.td-modal__message--info .td-modal__text {
+		padding-top: 0.125rem; /* optical alignment with the 24 px icon */
+	}
+
+	/* Full viewport. */
+	.td-modal--viewport {
+		padding: 0;
+	}
+
+	.td-modal--viewport .td-modal__dialog {
+		width: 100%;
+		height: 100dvh;
+		max-height: none;
+		border-radius: 0;
+	}
+
+	.td-modal--viewport .td-modal__body {
+		display: flex;
+		flex-direction: column;
+		padding: var(--td-modal-body-pad, 0);
+		overflow: var(--td-modal-body-overflow, hidden);
+	}
+
+	/* Phones: bottom sheet (no drag gesture — D24). */
+	@media (max-width: 640px) {
+		.td-modal:not(.td-modal--viewport) {
+			align-items: flex-end;
+			padding: 0;
+		}
+
+		.td-modal:not(.td-modal--viewport) .td-modal__dialog {
+			width: 100%;
+			max-height: min(var(--td-modal-h, 90dvh), 90dvh);
+			padding-bottom: env(safe-area-inset-bottom, 0);
+			border-bottom-width: 0;
+			border-radius: var(--td-modal-sheet-radius) var(--td-modal-sheet-radius) 0 0;
+			transform: translateY(100%);
+		}
+
+		.td-modal:not(.td-modal--viewport)[data-state="open"] .td-modal__dialog {
+			transform: none;
+		}
+	}
+
+	@media (pointer: coarse) {
+		.td-modal__close {
+			width: var(--td-touch-min);
+			height: var(--td-touch-min);
+			margin-inline-end: calc(-1 * var(--td-space-sm));
+		}
+	}
+
+	/* Reduced motion: opacity only (no scale / slide). */
+	@media (prefers-reduced-motion: reduce) {
+		.td-modal .td-modal__dialog,
+		.td-modal[data-state="open"] .td-modal__dialog,
+		.td-modal:not(.td-modal--viewport)[data-state="open"] .td-modal__dialog {
+			transform: none;
+			transition: opacity var(--td-dur-fast) linear;
+		}
+
+		.td-modal__backdrop {
+			transition: opacity var(--td-dur-fast) linear;
+		}
+
+		.td-modal__close {
+			transition: none;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) and (max-width: 640px) {
+		.td-modal:not(.td-modal--viewport) .td-modal__dialog {
+			transform: none;
+		}
+	}
+
+	/* Forced colours: the recipe gives the dialog Canvas + CanvasText border; keep structure visible. */
+	@media (forced-colors: active) {
+		.td-modal__header,
+		.td-modal__footer {
+			border-color: CanvasText;
+		}
+
+		.td-modal__close {
+			color: ButtonText;
+			border-color: ButtonText;
+		}
+
+		.td-modal__icon {
+			color: CanvasText;
+		}
+	}
+}
+
+/* ---- src/styles/components/dropdown.css ---- */
+/*
+ * td-dropdown (src/form/td-dropdown.js) — plan v0.9.0-batch3 step 4 (D17–D19), inventory §7.4, 135 kit §10.5.
+ * Trigger = field look (content layer, never glass): reuses the --td-field-* tokens from field.css.
+ * Menu = body-portaled popover: Regular strong glass (.td-glass-surface--strong recipe), pad --td-glass-pad,
+ * radius --td-glass-radius, options concentric (--td-glass-radius-inner) plain fills — never glass on glass.
+ * State: [aria-expanded] / :disabled / [aria-invalid] on the trigger, [data-placeholder] on the value,
+ * [hidden] / data-state / data-placement on the menu, [aria-selected] / [data-active] on options.
+ * Only geometry (top/left/width, list max-height) is written by JS through CSSOM.
+ */
+@layer td.tokens {
+	:root {
+		--td-dropdown-option-h: 40px; /* JS mirrors it: max-height = visible options × 40 px */
+		--td-dropdown-option-hover: var(--td-color-hover);
+		--td-dropdown-option-active: var(--td-color-hover-strong);
+		--td-dropdown-option-active-line: var(--td-control-border-strong); /* ≥ 3:1 active outline (1.4.11) */
+		--td-dropdown-option-selected: var(--td-color-hover-strong);
+		--td-dropdown-search-bg: var(--td-color-hover);
+		--td-dropdown-search-border: var(--td-control-border-strong);    /* 3.42:1 light, 4.8:1 dark */
+		--td-dropdown-hairline: var(--td-color-border);
+	}
+
+	:root[data-td-theme="dark"] {
+		--td-dropdown-option-active-line: var(--td-control-border-strong);
+		--td-dropdown-search-bg: rgb(255 255 255 / 6%);
+	}
+}
+
+@layer td.component {
+	td-dropdown {
+		display: block;
+	}
+
+	.td-dropdown {
+		box-sizing: border-box;
+		display: block;
+		width: 100%;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-fg);
+	}
+
+	.td-dropdown *,
+	.td-dropdown *::before {
+		box-sizing: border-box;
+	}
+
+	.td-dropdown__trigger {
+		display: flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
+		min-width: 0;
+		height: var(--td-field-h-md);
+		padding: 8px 14px;
+		margin: 0;
+		font: inherit;
+		color: var(--td-field-fg);
+		text-align: left;
+		cursor: pointer;
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: none;
+		appearance: none;
+		transition:
+			border-color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease),
+			background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-dropdown__trigger:hover:not(:disabled, :focus-visible, [aria-expanded="true"]) {
+		border-color: var(--td-field-border-hover);
+	}
+
+	.td-dropdown__trigger[aria-expanded="true"] {
+		border-color: var(--td-field-focus);
+	}
+
+	.td-dropdown__trigger:focus-visible {
+		border-color: var(--td-field-focus);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-dropdown__trigger:disabled {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-field-bg-disabled);
+	}
+
+	.td-dropdown__trigger[aria-invalid="true"],
+	.td-dropdown__trigger[aria-invalid="true"]:focus-visible,
+	.td-dropdown__trigger[aria-invalid="true"][aria-expanded="true"] {
+		border-color: var(--td-field-error);
+	}
+
+	.td-dropdown__value {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.td-dropdown__value[data-placeholder] {
+		color: var(--td-field-placeholder);
+	}
+
+	.td-dropdown__trigger:disabled .td-dropdown__value {
+		color: var(--td-field-fg-disabled);
+	}
+
+	.td-dropdown__arrow {
+		display: inline-flex;
+		flex-shrink: 0;
+		color: var(--td-field-placeholder);
+		transition: transform var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-dropdown__trigger[aria-expanded="true"] .td-dropdown__arrow {
+		transform: rotate(180deg);
+	}
+
+	/* ---- Portaled menu (a <body> child) ---- */
+	.td-dropdown__menu {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: var(--td-z-popover);
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		padding: var(--td-glass-pad);
+		overflow: hidden;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		border-radius: var(--td-glass-radius);
+		transform-origin: top center;
+	}
+
+	.td-dropdown__menu *,
+	.td-dropdown__menu *::before {
+		box-sizing: border-box;
+	}
+
+	.td-dropdown__menu[hidden] {
+		display: none;
+	}
+
+	.td-dropdown__menu[data-placement="top"] {
+		transform-origin: bottom center;
+	}
+
+	.td-dropdown__menu[data-state="open"] {
+		opacity: 1;
+		transform: none;
+		transition:
+			opacity var(--td-glass-dur) var(--td-glass-ease),
+			transform var(--td-glass-dur) var(--td-glass-ease);
+	}
+
+	@starting-style {
+		.td-dropdown__menu[data-state="open"] {
+			opacity: 0;
+			transform: scale(var(--td-glass-enter-scale));
+		}
+	}
+
+	/* No glass on glass (D20): over an open modal the menu goes solid. Private tokens, so a11y fallbacks still win. */
+	:root:has(.td-modal[data-state="open"]) .td-dropdown__menu {
+		--_td-glass-fill: var(--td-glass-solid);
+		--_td-glass-filter: none;
+	}
+
+	.td-dropdown__search-wrap {
+		flex: none;
+		padding: 2px 2px var(--td-glass-pad);
+		margin-bottom: var(--td-glass-pad);
+		border-bottom: 1px solid var(--td-dropdown-hairline);
+	}
+
+	.td-dropdown__search {
+		display: block;
+		width: 100%;
+		height: 36px;
+		padding: 6px 12px;
+		margin: 0;
+		font: inherit;
+		color: var(--td-field-fg);
+		background: var(--td-dropdown-search-bg);
+		border: 1px solid var(--td-dropdown-search-border);
+		border-radius: var(--td-glass-radius-inner);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: none;
+		appearance: none;
+	}
+
+	.td-dropdown__search::placeholder {
+		color: var(--td-field-placeholder);
+		opacity: 1;
+	}
+
+	.td-dropdown__search:focus {
+		border-color: var(--td-field-focus);
+	}
+
+	.td-dropdown__search:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-dropdown__options {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		min-height: 0;
+		overflow-y: auto; /* scrolling inside the menu does NOT close it */
+		overscroll-behavior: contain;
+	}
+
+	.td-dropdown__option {
+		display: flex;
+		flex: none;
+		gap: var(--td-space-xs);
+		align-items: center;
+		justify-content: space-between;
+		min-height: var(--td-dropdown-option-h);
+		padding: 8px 10px;
+		color: inherit;
+		cursor: pointer;
+		user-select: none;
+		border-radius: var(--td-glass-radius-inner);
+	}
+
+	.td-dropdown__option:hover {
+		background: var(--td-dropdown-option-hover);
+	}
+
+	.td-dropdown__option[aria-selected="true"] {
+		font-weight: var(--td-fw-medium);
+		background: var(--td-dropdown-option-selected);
+	}
+
+	.td-dropdown__option[data-active] {
+		background: var(--td-dropdown-option-active);
+		box-shadow: inset 0 0 0 1px var(--td-dropdown-option-active-line);
+	}
+
+	.td-dropdown__option--clear {
+		color: var(--td-field-note);
+	}
+
+	.td-dropdown__option-label {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.td-dropdown__check {
+		display: inline-flex;
+		flex-shrink: 0;
+	}
+
+	.td-dropdown__empty {
+		padding: 8px 10px;
+		margin: 0;
+		font-style: italic;
+		color: var(--td-field-note);
+	}
+
+	.td-dropdown__empty:empty {
+		display: none;
+	}
+
+	@media (pointer: coarse) {
+		.td-dropdown__trigger {
+			height: auto;
+			min-height: var(--td-touch-min);
+		}
+
+		.td-dropdown__search {
+			height: auto;
+			min-height: var(--td-touch-min);
+			font-size: max(1rem, 1em); /* ≥ 16px: iOS does not zoom on focus */
+		}
+
+		.td-dropdown__option {
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-dropdown__trigger,
+		.td-dropdown__arrow {
+			transition: none;
+		}
+
+		/* opacity only, no scale */
+		.td-dropdown__menu[data-state="open"] {
+			transition: opacity var(--td-glass-dur) linear;
+		}
+
+		@starting-style {
+			.td-dropdown__menu[data-state="open"] {
+				opacity: 0;
+				transform: none;
+			}
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-dropdown__trigger,
+		.td-dropdown__search {
+			border-color: CanvasText;
+		}
+
+		.td-dropdown__trigger:focus-visible,
+		.td-dropdown__search:focus-visible {
+			outline-color: Highlight;
+		}
+
+		.td-dropdown__trigger[aria-invalid="true"] {
+			border-style: dashed;
+			border-width: 2px;
+		}
+
+		.td-dropdown__value[data-placeholder],
+		.td-dropdown__search::placeholder {
+			color: GrayText;
+		}
+
+		.td-dropdown__menu {
+			border: 1px solid CanvasText;
+		}
+
+		.td-dropdown__option[data-active] {
+			outline: 2px solid Highlight;
+			outline-offset: -2px;
+		}
+
+		.td-dropdown__option[aria-selected="true"] .td-dropdown__check {
+			color: Highlight;
 		}
 	}
 }
