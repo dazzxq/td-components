@@ -7,7 +7,8 @@
  *      blur, saturate, sheen, film, tint and wash;
  *   2. sample the interior (inset away from the rims/radius) and take the MINIMUM contrast against the declared ink
  *      (computed colour; alpha composited over each sampled pixel);
- *   3. require ≥ 4.7:1 for labels, ≥ 3.2:1 for icons / close glyphs / the loading spinner;
+ *   3. require ≥ 4.7:1 for labels, ≥ 3.2:1 for icons / close glyphs / the loading spinner; a DISABLED button's label
+ *      and icon need ≥ 2.2:1 (greyed out on purpose — WCAG 1.4.3 / 1.4.11 exempt inactive controls, v0.14.3);
  *   4. assert opacity 1 on the element and its ancestors (a faded element cannot hide a failure).
  * No dependencies: PNGs are decoded with node:zlib.
  *
@@ -25,6 +26,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const ORIGIN = 'http://td-contrast.test';
 const TD_CSS = await readFile(join(ROOT, 'td.css'), 'utf8');
 const LABEL_MIN = 4.7;
+const DISABLED_MIN = 2.2;
 const ICON_MIN = 3.2;
 const THEMES = ['light', 'dark'];
 const BACKDROPS = ['black', 'white', 'checker', 'photo'];
@@ -151,14 +153,18 @@ async function runEngine(name, launcher) {
         const lbl = info.name.includes(':loading') ? null : minFor(info.ink.label);
         if (lbl !== null) {
           checks++;
-          worst.set(`${theme} ${info.name}`, Math.min(worst.get(`${theme} ${info.name}`) ?? Infinity, lbl));
-          if (lbl < LABEL_MIN) failures.push(`${tag}: label ${lbl.toFixed(2)}:1 < ${LABEL_MIN}`);
+          // v0.14.3: a DISABLED label is greyed out on purpose (WCAG 1.4.3 exempts disabled controls) — it must stay
+          // legible (≥ DISABLED_MIN), not reach the AA text threshold
+          const min = info.name.includes(':disabled') ? DISABLED_MIN : LABEL_MIN;
+          if (min === LABEL_MIN) worst.set(`${theme} ${info.name}`, Math.min(worst.get(`${theme} ${info.name}`) ?? Infinity, lbl));
+          if (lbl < min) failures.push(`${tag}: label ${lbl.toFixed(2)}:1 < ${min}`);
         }
         for (const key of ['icon', 'close', 'spinner']) {
           if (!info.ink[key]) continue;
           checks++;
           const r = minFor(info.ink[key]);
-          if (r < ICON_MIN) failures.push(`${tag}: ${key} ${r.toFixed(2)}:1 < ${ICON_MIN}`);
+          const imin = info.name.includes(':disabled') ? DISABLED_MIN : ICON_MIN; // disabled icons greyed out like labels
+          if (r < imin) failures.push(`${tag}: ${key} ${r.toFixed(2)}:1 < ${imin}`);
         }
       }
     }

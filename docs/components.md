@@ -62,7 +62,9 @@ tinted prominent glass; a custom `color` is an opaque fill without blur.
 **Liquid Glass (0.14.0):** primary / success / danger / info / warning = tinted glass (`.glassProminent`), secondary =
 neutral strong glass; inside tables, `[data-td-density="dense"]` or a glass surface the look stays but without its own
 `backdrop-filter`; disabled uses opaque state colours; a custom `color` is an opaque fill. Hover = outer glow (the fill
-behind the label never changes; custom colours keep a contrast-safe overlay), press = `--td-glass-press-scale`. Contrast of every variant is
+behind the label never changes; custom colours keep a contrast-safe overlay), press = `--td-glass-press-scale`.
+0.14.3: secondary = white glass (`--td-btn-secondary-glass`) with a soft border, lighter `--td-btn-lift`, disabled greyed
+out (`--td-btn-disabled-bg/-fg/-border`, label ≥ 2.2:1 by design). Contrast of every variant is
 gated over black / white / checker / photo in 3 engines (`npm run test:contrast`). Tokens: `--td-btn-radius`,
 `--td-btn-{variant}-tint/-alpha/-film/-fg`, `--td-btn-sheen`, `--td-btn-disabled-bg/-fg/-border`, `--td-btn-secondary-*`. Methods: `setLoading(bool)`, `setDisabled(bool)`, **`run(asyncFn)`** (0.13.0): busy while `asyncFn` runs, cleared in
 `finally`, returns its result / rethrows; a call while running returns the same promise (no double submit).

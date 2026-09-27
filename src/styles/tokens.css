@@ -140,19 +140,19 @@
 		/* v0.14.0 glass buttons (liquid-glass G3): prominent = tinted glass (tint at alpha + contrast film + sheen + rim).
 		   Starting values; the token gate measures every pair over black / white / checker / photo in 3 engines. */
 		--td-btn-primary-tint: var(--td-btn-primary-bg);
-		--td-btn-primary-alpha: 90%;
-		--td-btn-primary-film: rgb(0 0 0 / 16%);
+		--td-btn-primary-alpha: 94%;                    /* v0.14.3: brighter — less alpha loss, lighter film */
+		--td-btn-primary-film: rgb(0 0 0 / 10%);
 		--td-btn-success-tint: #15803d;                 /* fixed: dark theme brightens --td-color-* for TEXT use */
-		--td-btn-success-alpha: 90%;
-		--td-btn-success-film: rgb(0 0 0 / 18%);
+		--td-btn-success-alpha: 94%;
+		--td-btn-success-film: rgb(0 0 0 / 13%);
 		--td-btn-success-fg: #fff;
 		--td-btn-danger-tint: #b91c1c;
-		--td-btn-danger-alpha: 90%;
-		--td-btn-danger-film: rgb(0 0 0 / 16%);
+		--td-btn-danger-alpha: 94%;
+		--td-btn-danger-film: rgb(0 0 0 / 6%);
 		--td-btn-danger-fg: #fff;
 		--td-btn-info-tint: #1d4ed8;
-		--td-btn-info-alpha: 90%;
-		--td-btn-info-film: rgb(0 0 0 / 16%);
+		--td-btn-info-alpha: 94%;
+		--td-btn-info-film: rgb(0 0 0 / 6%);
 		--td-btn-info-fg: #fff;
 		/* prominent buttons: a lighter sheen than surfaces (a white sheen over a tint lowers white-label contrast) */
 		--td-btn-sheen: linear-gradient(135deg, rgb(255 255 255 / 12%) 0%, rgb(255 255 255 / 3%) 30%, transparent 55%);
@@ -160,9 +160,15 @@
 		--td-btn-warning-alpha: 86%;
 		--td-btn-warning-film: rgb(255 255 255 / 10%);
 		--td-btn-warning-fg: #111113;
-		--td-btn-disabled-bg: #e7e7ea;                  /* opaque: disabled is a state colour, never element opacity */
-		--td-btn-disabled-fg: #52525b;                  /* 6.4:1 on the disabled fill */
-		--td-btn-disabled-border: rgb(0 0 0 / 10%);
+		/* v0.14.3: disabled reads as greyed out — pale fill, muted label (WCAG 1.4.3 exempts disabled controls; the
+		   contrast gate keeps it ≥ 2.2:1 so it stays legible). Opaque: a state colour, never element opacity. */
+		--td-btn-disabled-bg: #f4f4f5;
+		--td-btn-disabled-fg: #a1a1aa;
+		--td-btn-disabled-border: #e4e4e7;
+		/* v0.14.3: neutral (secondary) glass button — white glass + a visible soft border, no grey film */
+		--td-btn-secondary-glass: rgb(255 255 255 / 80%);
+		--td-btn-secondary-edge: var(--td-control-border-soft);
+		--td-btn-lift: 0 1px 2px rgb(0 0 0 / 8%), 0 3px 8px -4px rgb(0 0 0 / 14%);   /* lighter lift (was 30 %) */
 
 		/* ===== Checkbox / switch — v0.14.1: resting borders use the soft token (~1.5:1, below WCAG 1.4.11 by owner
 		   choice); hover uses --td-control-border-hover (~2.2:1, v0.14.2); switch on-colours still ≥ 3:1 ===== */
@@ -200,7 +206,6 @@
 		--td-glass-shadow: 0 10px 30px -10px rgb(0 0 0 / 34%), 0 2px 8px -3px rgb(0 0 0 / 16%);
 		--td-glass-shadow-lg: 0 24px 60px -18px rgb(0 0 0 / 38%), 0 6px 18px -8px rgb(0 0 0 / 18%);
 		--td-glass-solid: #f7f7f8;                     /* opaque stand-in for every fallback */
-		--td-glass-secondary-film: rgb(0 0 0 / 4%);   /* neutral glass buttons read as controls on white */
 
 		/* ================= Liquid Glass — Clear (only over photos / video) ================= */
 		--td-glass-clear-bg: rgb(255 255 255 / 6%);
