@@ -31,6 +31,7 @@ import { TdCheckableElement } from '../base/td-checkable-element.js';
  * @attr {string} color - On colour (default: token --td-switch-on)
  * @attr {string} error-text
  * @fires change - detail: { checked: boolean } — the requested state (exactly one per user action)
+ * @fires commit-error - detail: { checked: boolean, error } — a `commit()` failed and the switch reverted
  */
 export class TdToggle extends TdCheckableElement {
   static get observedAttributes() { return [...super.observedAttributes, 'controlled']; }
@@ -84,8 +85,64 @@ export class TdToggle extends TdCheckableElement {
     }
   }
 
-  /** Controlled: cancel the native toggle and emit the requested state once. */
+  /**
+   * Persist a switch change optimistically (v0.13.0): shows `next` at once, marks the switch pending (input
+   * `aria-busy`, `.td-switch[data-pending]`, further activation ignored) while `fn(next)` runs, then keeps `next` when it
+   * resolves (anything but `false`) or reverts and emits `commit-error` `{ checked: previous, error }` when it resolves
+   * `false` or rejects. Emits no extra `change`. Meant for `controlled` toggles:
+   * `el.addEventListener('change', (e) => el.commit((v) => save(v), e.detail.checked))`.
+   * @param {(next: boolean) => any} fn
+   * @param {boolean} [next] requested state (default: the opposite of the current one)
+   * @returns {Promise<boolean>} the final checked state (a call while pending returns the pending promise)
+   */
+  commit(fn, next) {
+    if (typeof fn !== 'function') return Promise.reject(new TypeError('TdToggle.commit: a function is required'));
+    if (this._pendingCommit) return this._pendingCommit;
+    const previous = this.hasAttribute('checked');
+    const target = typeof next === 'boolean' ? next : !previous;
+    const setChecked = (on) => { if (on) this.setAttribute('checked', ''); else this.removeAttribute('checked'); };
+    setChecked(target);
+    this._setPending(true);
+    const p = (async () => fn(target))().then(
+      (res) => {
+        if (res === false) {
+          setChecked(previous);
+          this.emit('commit-error', { checked: previous, error: null });
+          return previous;
+        }
+        return target;
+      },
+      (error) => {
+        setChecked(previous);
+        this.emit('commit-error', { checked: previous, error });
+        return previous;
+      },
+    ).finally(() => {
+      this._pendingCommit = null;
+      this._setPending(false);
+    });
+    this._pendingCommit = p;
+    return p;
+  }
+
+  /** @private */
+  _setPending(on) {
+    const input = this._focusTarget();
+    const root = this.querySelector('.td-switch');
+    if (input) { if (on) input.setAttribute('aria-busy', 'true'); else input.removeAttribute('aria-busy'); }
+    if (root) root.toggleAttribute('data-pending', on);
+  }
+
+  /** Controlled: cancel the native toggle and emit the requested state once. Pending commit: ignore activation. */
   _onInputClick(e) {
+    if (this._pendingCommit) {
+      e.preventDefault(); // pending: no toggle, no change (the input is re-synced below)
+      setTimeout(() => {
+        const input = this._focusTarget();
+        if (input) input.checked = this.hasAttribute('checked');
+      }, 0);
+      return true;
+    }
     if (!this.hasAttribute('controlled') || this._effectiveDisabled) return false;
     e.preventDefault(); // native checkbox reverts; no change event follows
     this.emit('change', { checked: !this.hasAttribute('checked') });

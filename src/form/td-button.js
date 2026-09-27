@@ -163,6 +163,27 @@ export class TdButton extends TdBaseElement {
     else this.removeAttribute('loading');
   }
 
+  /**
+   * Run an async action with the button busy (v0.13.0): `loading` is set for the duration and cleared in `finally`;
+   * the function's result is returned / its error rethrown. A call while one is running returns the SAME in-flight
+   * promise (no double submit).
+   * @template T
+   * @param {() => (T|Promise<T>)} fn
+   * @returns {Promise<T>}
+   */
+  run(fn) {
+    if (typeof fn !== 'function') return Promise.reject(new TypeError('TdButton.run: a function is required'));
+    if (this._running) return this._running;
+    const wasLoading = this.hasAttribute('loading');
+    this.setLoading(true);
+    const p = (async () => fn())().finally(() => {
+      this._running = null;
+      if (!wasLoading) this.setLoading(false);
+    });
+    this._running = p;
+    return p;
+  }
+
   /** @param {boolean} isDisabled */
   setDisabled(isDisabled) {
     if (isDisabled) this.setAttribute('disabled', '');

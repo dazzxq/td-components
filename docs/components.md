@@ -53,7 +53,8 @@ Solid content-layer button (never glass — the one primary action on a floating
 | `type` | string | `button` | `button` \| `submit` \| `reset` (whitelisted) |
 | `aria-label` | string | — | Forwarded to the inner button (icon-only buttons) |
 
-Tokens: `--td-btn-radius`, `--td-btn-primary-bg/-fg`, `--td-btn-secondary-*`. Methods: `setLoading(bool)`, `setDisabled(bool)`.
+Tokens: `--td-btn-radius`, `--td-btn-primary-bg/-fg`, `--td-btn-secondary-*`. Methods: `setLoading(bool)`, `setDisabled(bool)`, **`run(asyncFn)`** (0.13.0): busy while `asyncFn` runs, cleared in
+`finally`, returns its result / rethrows; a call while running returns the same promise (no double submit).
 Events: the native `click` of the inner button.
 
 ### `td-input-field` — `@dazzxq/td-components/input-field`
@@ -90,6 +91,7 @@ A text/number/textarea/contenteditable field with label, helper/error text, and 
 | `aria-label` | string | — | Name when there is no `label` (else external `<label for="host-id">` is used) |
 | `name` | string | — | Form field name (submitted via the host) |
 | `rows` | number | `4` | Rows for `textarea` |
+| `autoresize` | boolean | `false` | `textarea` grows with its content (0.13.0; CSS `field-sizing`, `rows` stays the minimum, capped by `--td-field-autoresize-max`, then scrolls; engines without `field-sizing` keep the fixed height) |
 | `validate-on` | string | — | Auto-show the inline error on `blur` \| `input` \| `change` |
 
 **Events:** exactly one `input` → `{ value }` per edit · `change` → `{ value }` on blur **only if the value changed**
@@ -145,7 +147,10 @@ A switch (`.td-switch`, native `<input type="checkbox" role="switch">`). **Uncon
 | `error-text` | string | — | Error contract (see td-checkbox) |
 
 **Events:** exactly one `change` → `{ checked }` (the requested state in `controlled` mode).
-**Methods:** `setColor(cssColor)`, `setError` / `clearError`.
+**Methods:** `setColor(cssColor)`, `setError` / `clearError`, **`commit(asyncFn, next?)`** (0.13.0) — optimistic save for
+a `controlled` toggle: shows `next` at once, pending (`aria-busy`, `.td-switch[data-pending]`, activation ignored) while
+`asyncFn(next)` runs; resolved `false` or a rejection reverts and fires **`commit-error`** `{ checked, error }`. No extra
+`change`. Recipe: `el.addEventListener('change', (e) => el.commit((v) => api.save(v), e.detail.checked))`.
 **Keyboard:** Space (native). **0.7.0:** Enter no longer toggles (APG switch pattern).
 
 > **0.2.0 BREAKING:** default behavior changed from controlled (emit-only) to uncontrolled (self-toggling).

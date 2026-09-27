@@ -212,6 +212,29 @@
     </div>
   </div>
 
+  <!-- ═══════════════════ FORM (v0.13.0) ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Form thật <span class="demo-code">TdFormValidation + run() + commit()</span></h2>
+    <form id="demo-form" class="demo-form">
+      <div class="demo-grid">
+        <td-input-field name="title" label="Tiêu đề" required max-length="80"></td-input-field>
+        <td-input-field name="email" type="email" label="Email liên hệ" required></td-input-field>
+        <td-dropdown id="demo-form-category" name="category" label="Chuyên mục" required></td-dropdown>
+        <td-datetime-picker name="publish_at" label="Thời điểm đăng" required></td-datetime-picker>
+        <td-chip-input id="demo-form-tags" name="tags[]" label="Từ khoá" allow-create max-items="5" class="demo-span-2"></td-chip-input>
+        <td-input-field name="summary" type="textarea" label="Tóm tắt" rows="2" autoresize class="demo-span-2"></td-input-field>
+      </div>
+      <div class="demo-row">
+        <td-checkbox name="agree" label="Tôi đồng ý với điều khoản" required></td-checkbox>
+        <td-toggle id="demo-form-public" name="public" label="Công khai" controlled></td-toggle>
+      </div>
+      <td-button id="demo-form-submit" type="submit" variant="primary">Gửi</td-button>
+    </form>
+    <p class="demo-note">Submit sai → TdFormValidation hiện lỗi, không gọi run(). Submit đúng → nút bận ~1s rồi in FormData.
+      Công tắc "Công khai" lưu thử bằng commit() (lần bật thứ hai giả lập lỗi mạng → tự trả về).</p>
+    <pre id="demo-form-output" class="demo-output" aria-live="polite"></pre>
+  </div>
+
   <!-- ═══════════════════ SCRIPTS ═══════════════════ -->
   <script type="module">
     // Import tất cả components
@@ -230,6 +253,8 @@
     import './src/display/td-tabs.js';
     import './src/display/td-pagination.js';
     import './src/display/td-empty-state.js';
+    import './src/form/td-chip-input.js';
+    import { TdFormValidation } from './src/utils/form-validation.js';
 
     import { TdModal } from './src/feedback/td-modal.js';
     import { TdToast } from './src/feedback/td-toast.js';
@@ -346,6 +371,35 @@
         TdToast[types[i % 4]](`Toast #${i} — test FIFO (max 5)`);
       }
     };
+
+    // ── Form (v0.13.0): validation gates run(); FormData rendered as text ──
+    document.querySelector('#demo-form-category').options = [
+      { value: 'news', label: 'Tin tức' }, { value: 'tech', label: 'Công nghệ' }, { value: 'sports', label: 'Thể thao' },
+    ];
+    document.querySelector('#demo-form-tags').options = [
+      { value: 'php', label: 'php' }, { value: 'laravel', label: 'laravel' }, { value: 'web-components', label: 'web-components' },
+    ];
+    const demoForm = document.querySelector('#demo-form');
+    const demoSubmit = document.querySelector('#demo-form-submit');
+    const demoOutput = document.querySelector('#demo-form-output');
+    TdFormValidation.attach(demoForm, {
+      onValid: () => demoSubmit.run(async () => {
+        await new Promise((r) => setTimeout(r, 1000));
+        const lines = [];
+        for (const [k, v] of new FormData(demoForm)) lines.push(`${k} = ${v}`);
+        demoOutput.textContent = lines.join('\n');
+      }),
+    });
+    const demoPublic = document.querySelector('#demo-form-public');
+    let saves = 0;
+    demoPublic.addEventListener('change', (e) => {
+      demoPublic.commit(async (next) => {
+        await new Promise((r) => setTimeout(r, 800));
+        saves += 1;
+        if (next && saves % 2 === 0) throw new Error('Lỗi mạng (giả lập)');
+      }, e.detail.checked);
+    });
+    demoPublic.addEventListener('commit-error', (e) => TdToast.error(e.detail.error ? e.detail.error.message : 'Không lưu được'));
 
     // ── Log all component events ──
     document.addEventListener('change', (e) => {

@@ -126,6 +126,20 @@
 	.td-switch__input:checked + .td-switch__track .td-switch__icon--off { opacity: 0; }
 
 	/* Knob lift while pressed (glass only during interaction). */
+	/* commit() pending (v0.13.0): the new state is shown but not yet saved */
+	.td-switch[data-pending] {
+		cursor: progress;
+	}
+
+	.td-switch[data-pending] .td-switch__thumb {
+		opacity: 0.6;
+		animation: td-switch-pending 900ms ease-in-out infinite alternate;
+	}
+
+	@keyframes td-switch-pending {
+		to { opacity: 0.35; }
+	}
+
 	.td-switch[data-dragging] .td-switch__thumb {
 		transform: translate(calc(var(--td-switch-pad) - 1px), -50%) scale(var(--_td-glass-lift-knob, var(--td-glass-lift-scale)));
 	}
@@ -159,6 +173,10 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
+		.td-switch[data-pending] .td-switch__thumb {
+			animation: none;
+		}
+
 		.td-switch__track,
 		.td-switch__thumb,
 		.td-switch__icon {

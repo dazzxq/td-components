@@ -5,7 +5,7 @@ td-components là **bộ UI kit duy nhất (single source of truth)** cho mọi 
 token, hook và tham số, không sửa lõi. Hướng hiện tại: bỏ Tailwind khỏi bên trong component, chuyển sang CSS
 token phân lớp (`td.css`) và ngôn ngữ thiết kế Liquid Glass.
 
-**Trạng thái (2026-09-27):** v0.12.0 (TdMenu, td-chip-input, TdFormValidation) đã ship — roadmap Now/Later đã xong; còn backlog.
+**Trạng thái (2026-09-27):** v0.13.0 (backlog: button `run`, toggle `commit`, textarea `autoresize`, demo form, CI) đã ship — roadmap Now/Later xong; backlog còn các mục cần user duyệt.
 Chi tiết ở [roadmap.md](roadmap.md), lịch sử thay đổi ở [CHANGELOG.md](../CHANGELOG.md).
 
 ## Tài liệu
