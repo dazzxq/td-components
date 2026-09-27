@@ -65,6 +65,8 @@ const htmlRes = (s) => new Response(s, { headers: { 'content-type': 'text/html; 
 
 afterEach(async () => {
   TdHovercard.close();
+  TdHovercard.sanitize = null;
+  TdHovercard.clearCache();
   while (unbinds.length) unbinds.pop()();
   TdModal.closeAll?.();
   window.fetch = realFetch;
@@ -591,6 +593,90 @@ describe('v0.14 TdHovercard — content sources', () => {
     await flush();
     expect(cardEl().getAttribute('data-state')).to.equal('open');
     expect(calls.filter((c) => c.url.endsWith('/flaky')).length).to.equal(2);
+  });
+});
+
+describe('v0.14 TdHovercard — security review (sanitize hook, bounded fetch)', () => {
+  const quiet = async (fn) => { const w = console.warn; console.warn = () => {}; try { await fn(); } finally { console.warn = w; } };
+
+  it('TdHovercard.sanitize receives every string (content() and URL fragments); Node sources bypass it; a throw → error', async () => {
+    stubFetch(() => htmlRes('<img src=x onerror="window.__pwned=1"><b class="s">u</b>'));
+    const seen = [];
+    TdHovercard.sanitize = (h) => { seen.push(h); return h.replace(/<img[^>]*>/g, ''); };
+    const a = add('<button type="button">A</button>');
+    bind(a, { url: '/__hc/san' });
+    a.focus();
+    await flush();
+    expect(cardEl().querySelector('img')).to.equal(null);
+    expect(cardEl().querySelector('b.s')).to.not.equal(null);
+    TdHovercard.close();
+    const b = add('<button type="button">B</button>');
+    bind(b, { content: () => '<i class="c">x</i>' });
+    b.focus();
+    expect(cardEl().querySelector('i.c')).to.not.equal(null);
+    TdHovercard.close();
+    const n = add('<button type="button">N</button>');
+    bind(n, { content: () => richCard('n') });
+    n.focus();
+    expect(seen.length).to.equal(2);
+    TdHovercard.close();
+    TdHovercard.sanitize = () => { throw new Error('nope'); };
+    const e = add('<button type="button">E</button>');
+    bind(e, { content: () => '<b>x</b>' });
+    await quiet(async () => { e.focus(); });
+    expect(cardEl().getAttribute('data-state')).to.equal('error');
+    expect(window.__pwned).to.equal(undefined);
+  });
+
+  it('#hash variants share one cache entry (one request); clearCache() forces a refetch', async () => {
+    const calls = stubFetch(() => json({ html: '<b>h</b>' }));
+    const a = add('<button type="button">A</button>');
+    const b = add('<button type="button">B</button>');
+    bind(a, { url: '/__hc/hash#1' });
+    bind(b, { url: '/__hc/hash#2' });
+    a.focus();
+    await flush();
+    b.focus();
+    await flush();
+    expect(cardEl().querySelector('b').textContent).to.equal('h');
+    expect(calls.length).to.equal(1);
+    expect(calls[0].url.includes('#')).to.equal(false);
+    TdHovercard.close();
+    TdHovercard.clearCache();
+    a.blur();
+    a.focus();
+    await flush();
+    expect(calls.length).to.equal(2);
+  });
+
+  it('a body over 256 KB is refused (error state, not cached)', async () => {
+    const big = `<p>${'x'.repeat(300 * 1024)}</p>`;
+    const calls = stubFetch(() => htmlRes(big));
+    const t = add('<button type="button">Lan</button>');
+    bind(t, { url: '/__hc/big' });
+    await quiet(async () => { t.focus(); await flush(); await wait(20); });
+    expect(cardEl().getAttribute('data-state')).to.equal('error');
+    TdHovercard.close();
+    t.blur();
+    await quiet(async () => { t.focus(); await flush(); await wait(20); });
+    expect(calls.length).to.equal(2);
+  });
+
+  it('closing the card aborts its request; the aborted fetch is not cached', async () => {
+    const signals = [];
+    window.fetch = (url, init) => { signals.push(init.signal); return new Promise((res, rej) => init.signal.addEventListener('abort', () => rej(new DOMException('aborted', 'AbortError')))); };
+    const t = add('<button type="button">Lan</button>');
+    bind(t, { url: '/__hc/slow' });
+    t.focus();
+    await flush();
+    expect(cardEl().getAttribute('data-state')).to.equal('loading');
+    TdHovercard.close();
+    expect(signals[0].aborted).to.equal(true);
+    t.blur();
+    t.focus();
+    await flush();
+    expect(signals.length, 'a new request, not the aborted cached promise').to.equal(2);
+    expect(signals[1].aborted).to.equal(false);
   });
 });
 

@@ -487,9 +487,13 @@ TdHovercard.bindAll(); // declarative: data-td-hovercard="/api/author/7/card" (s
 ```
 
 Sources: `content(trigger) → Node | string | Promise<…>`, a `<template id>` (cloned) or a **same-origin** URL (JSON
-`{ html }` or `text/html`, cached per URL). One render token guards every async source (a stale result never lands).
+`{ html }` or `text/html`; LRU cache of 50 URLs without `#hash`, ≤ 256 KB, 10 s timeout, aborted when the card closes;
+`TdHovercard.clearCache()`). One render token guards every async source (a stale result never lands).
 **A string is TRUSTED HTML** (developer markup or same-origin, server-escaped fragments — never raw user input); prefer a
-Node or `<template>`. Under strict CSP, `style=""` inside fragments is blocked — use classes. Keyboard: Tab from the
+Node or `<template>`. Fragments that may contain user-generated markup: set `TdHovercard.sanitize = (html) =>
+DOMPurify.sanitize(html)` (or the Sanitizer API / a Trusted Types policy; `TrustedHTML` values are accepted). Under
+strict CSP, `style=""` inside fragments is blocked — use classes. Mouse focus waits for the 350 ms hover intent; keyboard
+focus opens at once. Keyboard: Tab from the
 trigger enters the card, Shift+Tab returns, Tab past the last item closes it and moves on (inside a modal the trap
 continues), Escape closes and returns focus. `role="dialog"` named by `label` → `data-td-hovercard-label` → the
 trigger's `aria-label` → its text. Hover binding only on hover-capable pointers; `TdHovercard.close()`,

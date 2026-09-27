@@ -36,6 +36,9 @@ rules: `docs/design/liquid-glass.md` v2.
   context via `TdMenu.bindAll(root)`; `onSelect` / builders receive ctx.
 - **`TdHovercard`** (`./hovercard`): glass hover/focus card with Node, `<template>` or same-origin URL content (string =
   trusted HTML), loading / error states, render-token guard, keyboard contract that works inside a modal.
+  Security review: optional `TdHovercard.sanitize` hook (+ `TrustedHTML` accepted) for fragments with user content;
+  URL fetches bounded (LRU 50 without `#hash`, 256 KB streamed cap, 10 s timeout, one in flight, aborted on close,
+  `TdHovercard.clearCache()`).
 - **Rendered contrast gate** `npm run test:contrast` (buttons × states, toasts; light/dark; black/white/checker/photo;
   Chromium/Firefox/WebKit; minimum contrast; opacity assertion) — part of `npm test`.
 - Foundations/Glass › Showcase story and a Liquid Glass section in `demo.html`; CSP states for hovercard and the
