@@ -1,94 +1,102 @@
 import { TdBaseElement } from '../base/td-base-element.js';
 import { safeCssDimension, applyStyles } from '../utils/css-safe.js';
-import { adoptStyles } from '../utils/adopt-styles.js';
+import { tdIcon, hasIcon } from '../icons/td-icon.js';
 import './td-pagination.js';
 import './td-empty-state.js';
 
+/** `cellPaddingClass` vocabulary (dcms, Tailwind names) → `td-table__cell--px-{n}`. Lookup keys only (D15). */
+const CELL_PADDING = { 'px-0': 0, 'px-1': 1, 'px-2': 2, 'px-3': 3, 'px-4': 4, 'px-5': 5, 'px-6': 6 };
+const ALIGN = ['left', 'center', 'right', 'justify'];
+const OFF = new Set(['false', '0', 'off']);
+/** Attributes whose change rebuilds the structure; every other observed attribute updates in place (D11). */
+const STRUCTURAL = new Set(['title', 'heading-level', 'zebra', 'max-height']);
+
+let seq = 0;
+
 /**
- * Data table component with sorting, pagination, loading skeleton, custom column rendering.
- * Port of dcms-table.js (TableSimple) to Web Component extending TdBaseElement.
+ * A developer CSS value for `max-height`, or '' (D14): it must parse as a `max-height` and must not pull in
+ * url()/var() or break out of the declaration. Same rule as TdModal's `cssValue`.
+ * @param {unknown} value
+ * @returns {string}
+ */
+function safeMaxHeight(value) {
+  if (value === null || value === undefined) return '';
+  const v = String(value).trim();
+  if (!v) return '';
+  const ok = v.length <= 200 && !/url\(|var\(|image-set\(|[;{}]/i.test(v)
+    && typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports('max-height', v);
+  return ok ? v : '';
+}
+
+/**
+ * Data table — token-native (v0.10.0). Styles: td.css (`components/table.css`, block `.td-table`). Content layer:
+ * solid surface, hairline rows, no glass (the sticky header fill is opaque).
  *
- * CSP-strict hardening (v0.3.0): td-table emits ZERO declarative inline `style=` attributes.
- * - STATIC "chrome" rules (card background/border/shadow, header & footer bars, thead row
- *   border, data-row transition, zebra `:nth-child(even)` striping) live in ONE constructable
- *   stylesheet adopted once per document via `adoptStyles(SHEET, 'td-table')` (lazy, from
- *   `connectedCallback`), keyed off STABLE element-scoped classes — NOT inline `style=`.
- * - PER-COLUMN scalars (width / min-width / max-width / text-align) and the random skeleton
- *   bar widths are SCALAR styles applied via CSSOM (`applyStyles` → `el.style.setProperty`)
- *   in `_applyStyles()`, keyed off a stable `data-col` index. The base class auto-invokes
- *   `_applyStyles()` after `afterRender()` on initial render AND on every observed-attr /
- *   internal-state re-render, so per-column styling stays correct across sort/page/loading.
- * - Sort-icon SVGs use `opacity` as an SVG presentation attribute (no inline `style=`).
+ * Markup (structure rendered once; data, sort, page, loading and counts are updated IN PLACE — D11):
+ * `div.td-table[.td-table--zebra|--fixed|--scroll-y][data-state=ready|loading|empty]`
+ *   > `div.td-table__header` (`h{n}.td-table__title#{host}-title` + `div.td-table__pagination > td-pagination[quiet]`)
+ *   > `div.td-table__scroll` (focusable named `role=region` only while it overflows)
+ *     > `table.td-table__table[aria-labelledby|aria-label][aria-busy]` > `thead.td-table__head` (`th.td-table__th
+ *       [scope=col][data-col][data-col-key][aria-sort]`, sortable → `button.td-table__sort[data-sort-col]`)
+ *       + `tbody.td-table__body` (`tr.td-table__row[data-row-idx] > td.td-table__cell[data-col][data-col-key]`)
+ *   > `div.td-table__footer > td-pagination` > `p.td-sr-only[role=status]` (loading text).
+ * Sorting, paging and data loads keep `thead` and both paginations, so focus stays on the activated control and the
+ * bottom pagination's live region announces each page once (the top one is `quiet`).
  *
  * @element td-table
  * @attr {number} per-page - Items per page (default 10)
- * @attr {string} active-color - CSS color for the pagination current page (default: td-pagination's token)
- * @attr {boolean} zebra - Zebra striping on alternating rows (default true)
- * @attr {boolean} loading - Show loading skeleton
+ * @attr {string} active-color - Pagination current-page colour (safeColor; default: td-pagination's token)
+ * @attr {string} zebra - Striped rows, default ON; off only with `zebra="false"|"0"|"off"`
+ * @attr {boolean} loading - Loading state: `aria-busy`, status text, deterministic skeleton rows, paginations hidden
  * @attr {number} loading-rows - Number of skeleton rows (default 5)
- * @attr {string} title - Optional table title
- * @attr {string} empty-text - Empty state text (default 'Không có dữ liệu')
- * @attr {boolean} server-mode - Enable server-side mode
- * @attr {number} total-items - Total items for server mode pagination
+ * @attr {string} title - Table title (a heading that names the table). Also the global HTML attribute → browsers show
+ *   it as a tooltip over the component.
+ * @attr {number} heading-level - Heading level of the title, 2–6 (default 3); the empty state uses level + 1
+ * @attr {string} aria-label - Accessible name when there is no title (fallback: `TdTable.labels.table`)
+ * @attr {string} empty-title - Empty-state heading (default 'Không có dữ liệu')
+ * @attr {string} empty-text - Empty-state message (default 'Chưa có dữ liệu để hiển thị.')
+ * @attr {boolean} server-mode - Rows are one server page: no client sort/slice; `data` keeps the current page
+ * @attr {number} total-items - Server mode total (REQUIRED in server mode — without it the rows render, both
+ *   paginations stay hidden and one console warning is printed)
+ * @attr {string} max-height - Any CSS `max-height` (e.g. `320px`, `50vh`): the table scrolls inside and the header is
+ *   sticky (validated with `CSS.supports`; url()/var() rejected)
  *
- * @property {Array<{key: string, label: string, sortable?: boolean, width?: string, widthType?: string, minWidth?: string, maxWidth?: string, align?: string, render?: Function}>} columns - Column definitions. `render(row)` returns **trusted raw HTML** for that cell (developer-authored — sanitize any end-user data inside it yourself). Cells WITHOUT a `render` show the plain value, always escaped. `label` is escaped; `width`/`align` are CSS-sanitized.
- *
- * CONSUMER RAW-HTML HATCH (OUT OF SCOPE for the lib's CSP guarantee): column `render(row)`
- * returns CONSUMER-authored HTML that td-table injects verbatim (see `afterRender`). The
- * library does NOT parse/sanitize it — if a consumer hand-writes inline `style=`/`<style>`
- * into `col.render` output, a strict CSP will block THAT consumer content. This is the
- * consumer's responsibility (documented). Only LIBRARY-AUTHORED markup is CSP-hardened here.
- *
- * @property {Array<Object>} data - Row data array
- * @property {Function} onSort - Server mode sort callback ({key, direction})
- * @property {Function} onPageChange - Server mode page change callback (page)
+ * @property {Array<Object>} columns - Column definitions: `{ key, label, sortable?, width?, widthType?:
+ *   'fixed'|'flexible', minWidth?, maxWidth?, align?: 'left'|'center'|'right'|'justify', ellipsis?, render? }`.
+ *   `label` and plain values are always escaped; `width`/`minWidth`/`maxWidth` pass `safeCssDimension`, `align` a
+ *   whitelist, all applied via CSSOM. Columns are resolved by INDEX (keys may repeat, be numeric or missing).
+ *   `ellipsis: true` → one line, truncated, full text in `title`. Any `width` or `ellipsis` → `table-layout: fixed`.
+ *   `render(row, rowIdxInPage)` — TRUSTED HATCH: return a Node (preferred, appended), a string (**trusted HTML**,
+ *   developer markup only, injected with innerHTML — escape any end-user data inside it yourself; its CSP
+ *   compliance is the consumer's responsibility) or anything else (text). A render column sorts by `row[key]`.
+ * @property {Array<Object>} data - Rows. Client mode: resets to page 1. Server mode: keeps the current page.
+ * @property {string} cellPaddingClass - Cell horizontal padding, one of `px-0`…`px-6` (dcms vocabulary) → the
+ *   `td-table__cell--px-{n}` modifier on header, data and skeleton cells; anything else is ignored (one warning).
+ * @property {Function} onSort - `({key, direction})` after a sort change (server mode: sort on the server)
+ * @property {Function} onPageChange - `(page)` in server mode (fetch that page, then set `data`)
+ * @fires sort-change - `{ key, direction }` (direction `'asc'|'desc'|null`), bubbling, before `onSort`
+ * @fires page-change - from the inner td-pagination elements, `{ page }` (bubbles through the host)
  */
-
-/**
- * STATIC component stylesheet (selector-based rules a strict CSP allows only via an adopted
- * constructable sheet — NOT inline `style=` / injected `<style>`). All values are
- * library-authored constants; no per-instance dynamic value lives in a selector here.
- * Element-scoped under `td-table ` so it never leaks to host markup. Authored ONCE per module.
- */
-const TD_TABLE_SHEET = `
-td-table .td-table-card {
-  background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9);
-}
-td-table .td-table-header-bar {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.5);
-}
-td-table .td-table-footer-bar {
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-  background: rgba(249, 250, 251, 0.5);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
-}
-td-table .td-table-thead-row {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-}
-td-table .td-table-row {
-  transition: background-color 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-td-table .td-table-row.td-table-zebra:nth-child(even) {
-  background-color: rgba(0, 0, 0, 0.015);
-}
-td-table .td-table-row:hover {
-  background-color: rgba(0, 0, 0, 0.03);
-}
-td-table .td-table-skel-row.td-table-zebra:nth-child(even) {
-  background-color: rgba(0, 0, 0, 0.015);
-}
-`;
-
 export class TdTable extends TdBaseElement {
+  /** Site-overridable strings. */
+  static labels = {
+    table: 'Bảng dữ liệu',
+    loading: 'Đang tải dữ liệu…',
+    paginationTop: 'Phân trang (trên)',
+    paginationBottom: 'Phân trang (dưới)',
+    itemLabel: 'mục',
+    emptyTitle: 'Không có dữ liệu',
+    emptyText: 'Chưa có dữ liệu để hiển thị.',
+  };
+
   static get observedAttributes() {
-    return ['per-page', 'active-color', 'zebra', 'loading', 'loading-rows', 'title', 'empty-text', 'server-mode', 'total-items'];
+    return ['per-page', 'active-color', 'zebra', 'loading', 'loading-rows', 'title', 'heading-level', 'aria-label',
+      'empty-title', 'empty-text', 'server-mode', 'total-items', 'max-height'];
   }
 
+  // `zebra` is tri-state (default ON), so it is NOT a boolean attribute — see the `zebra` accessor.
   static get booleanAttributes() {
-    return ['zebra', 'loading', 'server-mode'];
+    return ['loading', 'server-mode'];
   }
 
   constructor() {
@@ -97,33 +105,35 @@ export class TdTable extends TdBaseElement {
     this._data = [];
     this._onSort = null;
     this._onPageChange = null;
-    this._sortState = { key: null, direction: null };
+    /** Sorted column by INDEX (fixes numeric/duplicate keys). */
+    this._sort = { col: null, direction: null };
     this._currentPage = 1;
+    this._cellPadding = null;
+    this._warned = new Set();
+    this._ro = null;
+    this._refocusPagination = null;
+    // Delegated listeners live for the element's lifetime (survive re-renders and reconnects).
+    this.addEventListener('click', (e) => this._onClick(e));
+    this.addEventListener('page-change', (e) => this._onPaginationChange(e));
   }
 
-  connectedCallback() {
-    // Adopt the static stylesheet LAZILY (browser-only, idempotent, never throws). On an
-    // unsupported browser / SSR this returns false and the table still renders structurally
-    // (Tailwind classes + CSSOM scalars apply); only the selector-driven chrome/zebra/hover
-    // embellishments are absent — the documented graceful degradation.
-    adoptStyles(TD_TABLE_SHEET, 'td-table');
-    super.connectedCallback();
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this._ro?.disconnect();
+    this._ro = null;
   }
 
-  // --- JS Property accessors ---
+  // --- JS properties ---
 
   get columns() { return this._columns; }
   set columns(val) {
     this._columns = Array.isArray(val) ? val : [];
+    this._resetStaleSort();
     if (this._initialized) this._doRender();
   }
 
   get data() { return this._data; }
-  set data(val) {
-    this._data = Array.isArray(val) ? val : [];
-    this._currentPage = 1;
-    if (this._initialized) this._doRender();
-  }
+  set data(val) { this.setData(val); }
 
   get onSort() { return this._onSort; }
   set onSort(fn) { this._onSort = typeof fn === 'function' ? fn : null; }
@@ -131,406 +141,482 @@ export class TdTable extends TdBaseElement {
   get onPageChange() { return this._onPageChange; }
   set onPageChange(fn) { this._onPageChange = typeof fn === 'function' ? fn : null; }
 
+  get cellPaddingClass() { return this._cellPadding || ''; }
+  set cellPaddingClass(val) {
+    const v = val == null ? '' : String(val).trim();
+    let next = null;
+    if (v && Object.hasOwn(CELL_PADDING, v)) next = v;
+    else if (v) this._warnOnce(`td-table: ignored cellPaddingClass "${v}" — use one of px-0 … px-6.`);
+    if (next === this._cellPadding) return;
+    this._cellPadding = next;
+    if (this._initialized) this._doRender();
+  }
+
+  /** Effective zebra flag. `el.zebra = false` writes `zebra="false"`; `true` removes the attribute (default ON). */
+  get zebra() { return this._isZebra(); }
+  set zebra(v) { if (v === false) this.setAttribute('zebra', 'false'); else this.removeAttribute('zebra'); }
+
   // --- Attribute helpers ---
 
-  _getPerPage() { return Math.max(1, parseInt(this.getAttribute('per-page') || '10', 10)); }
-  _getActiveColor() { return this.safeColor(this.getAttribute('active-color'), ''); }
-  _isZebra() { return !this.hasAttribute('zebra') || this.hasAttribute('zebra'); }
-  _isLoading() { return this.hasAttribute('loading'); }
-  _getLoadingRows() { return Math.max(1, parseInt(this.getAttribute('loading-rows') || '5', 10)); }
-  _getTitle() { return this.getAttribute('title') || ''; }
-  _getEmptyText() { return this.getAttribute('empty-text') || 'Không có dữ liệu'; }
-  _isServerMode() { return this.hasAttribute('server-mode'); }
-  _getTotalItems() { return Math.max(0, parseInt(this.getAttribute('total-items') || '0', 10)); }
+  _int(name, fallback) {
+    const n = parseInt(this.getAttribute(name) ?? '', 10);
+    return Number.isFinite(n) ? n : fallback;
+  }
 
-  // --- Override attributeChangedCallback ---
+  _getPerPage() { return Math.max(1, Math.min(10000, this._int('per-page', 10))); }
+  _getActiveColor() { return this.safeColor(this.getAttribute('active-color'), ''); }
+  _isZebra() {
+    if (!this.hasAttribute('zebra')) return true;
+    return !OFF.has((this.getAttribute('zebra') || '').trim().toLowerCase());
+  }
+  _isLoading() { return this.hasAttribute('loading'); }
+  _getLoadingRows() { return Math.max(1, Math.min(50, this._int('loading-rows', 5))); }
+  _getTitle() { return (this.getAttribute('title') || '').trim(); }
+  _getHeadingLevel() {
+    const n = this._int('heading-level', 3);
+    return n >= 2 && n <= 6 ? n : 3;
+  }
+  _getEmptyTitle() { return this.getAttribute('empty-title') || TdTable.labels.emptyTitle; }
+  _getEmptyText() { return this.getAttribute('empty-text') || TdTable.labels.emptyText; }
+  _isServerMode() { return this.hasAttribute('server-mode'); }
+  /** Server-mode total, or null when the attribute is missing/invalid. */
+  _getServerTotal() {
+    if (!this.hasAttribute('total-items')) return null;
+    const n = parseInt(this.getAttribute('total-items'), 10);
+    return Number.isFinite(n) ? Math.max(0, n) : null;
+  }
+  _getMaxHeight() { return safeMaxHeight(this.getAttribute('max-height')); }
+  _getHostLabel() { return (this.getAttribute('aria-label') || '').trim(); }
+  _isFixedLayout() {
+    return this._columns.some((c) => c && (c.ellipsis || safeCssDimension(c.width, '')));
+  }
+
+  _warnOnce(msg) {
+    if (this._warned.has(msg)) return;
+    this._warned.add(msg);
+    console.warn(msg);
+  }
 
   attributeChangedCallback(name, oldVal, newVal) {
-    if (oldVal === newVal) return;
-    if (!this._initialized) return;
-    this._doRender();
+    if (oldVal === newVal || !this._initialized) return;
+    if (STRUCTURAL.has(name)) this._doRender();
+    else this._update();
   }
 
-  // --- Sort logic (ported from DCMS) ---
+  // --- Structure (D11) ---
 
-  _handleSort(key) {
-    if (this._sortState.key !== key) {
-      this._sortState = { key, direction: 'asc' };
-    } else {
-      if (this._sortState.direction === 'asc') {
-        this._sortState.direction = 'desc';
-      } else if (this._sortState.direction === 'desc') {
-        this._sortState = { key: null, direction: null };
-      } else {
-        this._sortState.direction = 'asc';
+  _cellPadClass() {
+    return this._cellPadding ? ` td-table__cell--px-${CELL_PADDING[this._cellPadding]}` : '';
+  }
+
+  render() {
+    const title = this._getTitle();
+    const h = `h${this._getHeadingLevel()}`;
+    const mods = (this._isZebra() ? ' td-table--zebra' : '')
+      + (this._isFixedLayout() ? ' td-table--fixed' : '')
+      + (this._getMaxHeight() ? ' td-table--scroll-y' : '');
+    const pad = this._cellPadClass();
+    const esc = (v) => this.escapeHtml(v);
+    const heads = this._columns.map((col, ci) => {
+      const c = col || {};
+      const key = esc(String(c.key ?? ''));
+      const label = esc(c.label == null ? '' : String(c.label));
+      const inner = c.sortable
+        ? `<button type="button" class="td-table__sort" data-sort-col="${ci}"><span class="td-table__sort-label">${label}</span>`
+          + '<span class="td-table__sort-icon" aria-hidden="true"></span></button>'
+        : label;
+      return `<th class="td-table__th${pad}" scope="col" data-col="${ci}" data-col-key="${key}">${inner}</th>`;
+    }).join('');
+    const titleHtml = title ? `<${h} class="td-table__title" id="${esc(this._titleId)}">${esc(title)}</${h}>` : '';
+    const pag = (cls, label, quiet) => `<div class="${cls}"${quiet ? ' hidden' : ''}><td-pagination${quiet ? ' quiet' : ''}`
+      + ` item-label="${esc(TdTable.labels.itemLabel)}" aria-label="${esc(label)}"></td-pagination></div>`;
+    return `<div class="td-table${mods}" data-state="ready">`
+      + `<div class="td-table__header">${titleHtml}${pag('td-table__pagination', TdTable.labels.paginationTop, true)}</div>`
+      + '<div class="td-table__scroll"><table class="td-table__table">'
+      + `<thead class="td-table__head"><tr>${heads}</tr></thead><tbody class="td-table__body"></tbody></table></div>`
+      + `<div class="td-table__footer" hidden>${pag('td-table__pagination td-table__pagination--bottom', TdTable.labels.paginationBottom, false)}</div>`
+      + '<p class="td-sr-only" role="status"></p>'
+      + '</div>';
+  }
+
+  /** Structural render: only for columns / title / heading-level / zebra / max-height / cellPaddingClass. */
+  _doRender() {
+    if (!this._titleId) this._titleId = `${this.id || `td-table-${++seq}`}-title`;
+    this.innerHTML = this.render();
+    this._root = this.firstElementChild;
+    this._header = this._root.querySelector(':scope > .td-table__header');
+    this._scroll = this._root.querySelector(':scope > .td-table__scroll');
+    this._table = this._scroll.firstElementChild;
+    this._tbody = this._table.querySelector(':scope > tbody');
+    this._footer = this._root.querySelector(':scope > .td-table__footer');
+    this._pagTop = this._header.querySelector(':scope > .td-table__pagination > td-pagination');
+    this._pagBottom = this._footer.querySelector('td-pagination');
+    this._status = this._root.querySelector(':scope > [role="status"]');
+    const mh = this._getMaxHeight();
+    if (mh) this._root.style.setProperty('--td-table-max-h', mh);
+    else if (this.hasAttribute('max-height')) this._warnOnce(`td-table: ignored invalid max-height "${this.getAttribute('max-height')}".`);
+    this._syncSortUi();
+    this._update();
+    this._observeOverflow();
+  }
+
+  // --- In-place update (D11) ---
+
+  /** @private Sorted + paged view of the data; clamps the page (fixes 2.8.3). */
+  _view() {
+    if (this._isServerMode()) {
+      const total = this._getServerTotal();
+      if (total !== null) {
+        const pages = Math.max(1, Math.ceil(total / this._getPerPage()));
+        this._currentPage = Math.min(Math.max(1, this._currentPage), pages);
+      }
+      return { rows: this._data, total };
+    }
+    const rows = this._sortedRows();
+    const per = this._getPerPage();
+    const pages = Math.max(1, Math.ceil(rows.length / per));
+    this._currentPage = Math.min(Math.max(1, this._currentPage), pages);
+    const start = (this._currentPage - 1) * per;
+    return { rows: rows.slice(start, start + per), total: rows.length };
+  }
+
+  /** @private Client sort (D12): numbers numerically, strings with a vi numeric collator, nulls first in asc. */
+  _sortedRows() {
+    const rows = [...this._data];
+    const { col: ci, direction } = this._sort;
+    const col = ci === null ? null : this._columns[ci];
+    if (!col || !direction) return rows;
+    const key = col.key;
+    const collator = new Intl.Collator('vi', { numeric: true, sensitivity: 'base' });
+    const sign = direction === 'asc' ? 1 : -1;
+    const val = (row) => (row && typeof row === 'object' ? row[key] : undefined);
+    return rows.sort((a, b) => {
+      const va = val(a);
+      const vb = val(b);
+      if (va == null && vb == null) return 0;
+      if (va == null) return -sign;
+      if (vb == null) return sign;
+      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * sign;
+      return collator.compare(String(va), String(vb)) * sign;
+    });
+  }
+
+  _update() {
+    if (!this._root) return;
+    const loading = this._isLoading();
+    const server = this._isServerMode();
+    const active = document.activeElement;
+    if (active && (this._pagTop?.contains(active) || this._pagBottom?.contains(active))) {
+      this._refocusPagination = this._pagTop.contains(active) ? 'top' : 'bottom';
+    }
+    const { rows, total } = this._view();
+    const empty = !loading && rows.length === 0;
+
+    // Body
+    if (loading) this._tbody.innerHTML = this._skeletonHtml();
+    else if (empty) this._renderEmpty();
+    else this._renderRows(rows);
+
+    // Paginations (updated in place: live region + focus restore stay inside td-pagination)
+    let showPag = !loading;
+    let count = total;
+    if (server) {
+      if (total === null) {
+        showPag = false;
+        if (rows.length) this._warnOnce('td-table: server-mode needs `total-items` — pagination is hidden until it is set.');
+      } else if (total === 0) showPag = false;
+    } else if (total === 0) showPag = false;
+    if (showPag) {
+      const color = this._getActiveColor();
+      for (const p of [this._pagTop, this._pagBottom]) {
+        const set = (a, v) => { if (p.getAttribute(a) !== v) p.setAttribute(a, v); };
+        set('total-items', String(count));
+        set('items-per-page', String(this._getPerPage()));
+        set('current-page', String(this._currentPage));
+        if (color) set('active-color', color);
+        else p.removeAttribute('active-color');
       }
     }
+    this._pagTop.parentElement.hidden = !showPag;
+    this._footer.hidden = !showPag;
+    this._header.hidden = !showPag && !this._getTitle();
 
-    if (this._isServerMode() && this._onSort) {
-      this._onSort({ key: this._sortState.key, direction: this._sortState.direction });
-    } else {
-      this._currentPage = 1;
-      this._doRender();
+    // State + naming
+    this._root.setAttribute('data-state', loading ? 'loading' : empty ? 'empty' : 'ready');
+    if (loading) this._table.setAttribute('aria-busy', 'true');
+    else this._table.removeAttribute('aria-busy');
+    const statusText = loading ? TdTable.labels.loading : '';
+    if (this._status.textContent !== statusText) this._status.textContent = statusText;
+    this._applyName(this._table);
+    this._applyStyles();
+    this._syncOverflow();
+
+    if (!loading && !showPag) this._refocusPagination = null;
+    if (showPag && this._refocusPagination) {
+      const which = this._refocusPagination;
+      this._refocusPagination = null;
+      const a = document.activeElement;
+      if (!a || a === document.body || !a.isConnected) {
+        const p = which === 'top' ? this._pagTop : this._pagBottom;
+        p.querySelector('.td-pagination__page[aria-current="page"]')?.focus();
+      }
     }
   }
 
-  // --- Pagination + sorting: get current rows ---
-
-  _getCurrentRows() {
-    if (this._isServerMode()) {
-      return { rows: this._data || [], totalItems: this._getTotalItems() || 0 };
+  /** @private title → aria-labelledby, else host aria-label, else the fallback label (D18, review ISSUE-4). */
+  _applyName(el) {
+    if (this._getTitle()) {
+      el.setAttribute('aria-labelledby', this._titleId);
+      el.removeAttribute('aria-label');
+    } else {
+      el.removeAttribute('aria-labelledby');
+      el.setAttribute('aria-label', this._getHostLabel() || TdTable.labels.table);
     }
+  }
 
-    let rows = [...(this._data || [])];
+  _renderRows(rows) {
+    const esc = (v) => this.escapeHtml(v);
+    const pad = this._cellPadClass();
+    const cols = this._columns;
+    this._tbody.innerHTML = rows.map((row, ri) => {
+      const cells = cols.map((col, ci) => {
+        const c = col || {};
+        const cls = `td-table__cell${c.ellipsis ? ' td-table__cell--ellipsis' : ''}${pad}`;
+        const attrs = `class="${cls}" data-col="${ci}" data-col-key="${esc(String(c.key ?? ''))}"`;
+        if (typeof c.render === 'function') return `<td ${attrs}></td>`;
+        const v = row && typeof row === 'object' ? row[c.key] : undefined;
+        const text = v == null ? '' : String(v);
+        if (c.ellipsis) return `<td ${attrs}><div class="td-table__truncate" title="${esc(text)}">${esc(text)}</div></td>`;
+        return `<td ${attrs}>${esc(text)}</td>`;
+      }).join('');
+      return `<tr class="td-table__row" data-row-idx="${ri}">${cells}</tr>`;
+    }).join('');
 
-    // Sort
-    if (this._sortState.key && this._sortState.direction) {
-      const key = this._sortState.key;
-      const dir = this._sortState.direction;
-      rows.sort((a, b) => {
-        const va = a[key];
-        const vb = b[key];
-        if (va == null && vb == null) return 0;
-        if (va == null) return dir === 'asc' ? -1 : 1;
-        if (vb == null) return dir === 'asc' ? 1 : -1;
-        if (typeof va === 'number' && typeof vb === 'number') {
-          return dir === 'asc' ? va - vb : vb - va;
+    // Render cells, resolved by column INDEX (fixes 2.8.4). CONSUMER HATCH: a string is trusted developer HTML.
+    const trs = this._tbody.children;
+    cols.forEach((col, ci) => {
+      if (!col || typeof col.render !== 'function') return;
+      rows.forEach((row, ri) => {
+        const td = trs[ri].children[ci];
+        const out = col.render(row, ri);
+        let target = td;
+        if (col.ellipsis) {
+          target = document.createElement('div');
+          target.className = 'td-table__truncate';
+          td.appendChild(target);
         }
-        return dir === 'asc'
-          ? String(va).localeCompare(String(vb))
-          : String(vb).localeCompare(String(va));
+        if (typeof out === 'string') target.innerHTML = out;
+        else if (typeof Node !== 'undefined' && out instanceof Node) target.appendChild(out);
+        else target.textContent = out == null ? '' : String(out);
+        if (col.ellipsis && !target.querySelector('[title]')) target.title = target.textContent.trim();
       });
-    }
-
-    const totalItems = rows.length;
-    const perPage = this._getPerPage();
-    const start = (this._currentPage - 1) * perPage;
-    const pageRows = rows.slice(start, start + perPage);
-    return { rows: pageRows, totalItems };
+    });
   }
 
-  // --- Page change handler ---
+  _renderEmpty() {
+    const n = Math.max(1, this._columns.length);
+    const level = Math.min(6, (this._getTitle() ? this._getHeadingLevel() : 2) + 1);
+    const esc = (v) => this.escapeHtml(v);
+    this._tbody.innerHTML = `<tr class="td-table__empty-row"><td class="td-table__empty" colspan="${n}">`
+      + `<td-empty-state compact size="sm" heading-level="${level}" title="${esc(this._getEmptyTitle())}"`
+      + ` message="${esc(this._getEmptyText())}"></td-empty-state></td></tr>`;
+  }
 
-  _handlePageChange(page) {
+  /** Deterministic skeleton rows (widths come from td.css :nth-child rules — D19). */
+  _skeletonHtml() {
+    const pad = this._cellPadClass();
+    const cells = this._columns.map((_, ci) => `<td class="td-table__cell${pad}" data-col="${ci}"><span class="td-table__skeleton"></span></td>`).join('')
+      || `<td class="td-table__cell${pad}"><span class="td-table__skeleton"></span></td>`;
+    const row = `<tr class="td-table__row td-table__row--skeleton" aria-hidden="true">${cells}</tr>`;
+    return row.repeat(this._getLoadingRows());
+  }
+
+  // --- Sorting (D12) ---
+
+  /** @private New columns: drop the sort when its index no longer points at a sortable column. */
+  _resetStaleSort() {
+    const col = this._sort.col === null ? null : this._columns[this._sort.col];
+    if (!col || !col.sortable) this._sort = { col: null, direction: null };
+  }
+
+  _syncSortUi() {
+    if (!this._table) return;
+    for (const th of this._table.querySelectorAll(':scope > thead > tr > th')) {
+      const ci = Number(th.getAttribute('data-col'));
+      const on = this._sort.col === ci && this._sort.direction;
+      if (on) th.setAttribute('aria-sort', this._sort.direction === 'asc' ? 'ascending' : 'descending');
+      else th.removeAttribute('aria-sort');
+      const slot = th.querySelector(':scope > .td-table__sort > .td-table__sort-icon');
+      if (slot) this._fillSortIcon(slot, on ? this._sort.direction : null);
+    }
+  }
+
+  /** @private Registry icons: `up` / `down`; unsorted = `sort` when registered, else a stacked up+down pair. */
+  _fillSortIcon(slot, dir) {
+    const name = dir === 'asc' ? 'up' : dir === 'desc' ? 'down' : 'sort';
+    if (slot.getAttribute('data-sort-icon') === name) return;
+    slot.setAttribute('data-sort-icon', name);
+    let icons;
+    if (name !== 'sort') icons = [tdIcon(name, { size: 14 })];
+    else if (hasIcon('sort')) icons = [tdIcon('sort', { size: 14 })];
+    else icons = [tdIcon('up', { size: 12 }), tdIcon('down', { size: 12 })];
+    slot.replaceChildren(...icons.filter(Boolean));
+  }
+
+  _handleSort(ci) {
+    const col = this._columns[ci];
+    if (!col || !col.sortable) return;
+    if (this._sort.col !== ci) this._sort = { col: ci, direction: 'asc' };
+    else if (this._sort.direction === 'asc') this._sort = { col: ci, direction: 'desc' };
+    else this._sort = { col: null, direction: null };
+    const detail = { key: this._sort.col === null ? null : col.key, direction: this._sort.direction };
+    this._syncSortUi();
+    this.emit('sort-change', detail);
+    if (this._isServerMode()) {
+      this._onSort?.({ ...detail });
+      return;
+    }
+    this._currentPage = 1;
+    this._update();
+  }
+
+  _onClick(e) {
+    const btn = e.target instanceof Element ? e.target.closest('.td-table__sort') : null;
+    if (!btn || btn.closest('td-table') !== this) return;
+    this._handleSort(Number(btn.getAttribute('data-sort-col')));
+  }
+
+  // --- Paging ---
+
+  _onPaginationChange(e) {
+    const p = e.target;
+    if (p !== this._pagTop && p !== this._pagBottom) return;
+    const page = Number(e.detail?.page);
+    if (!Number.isFinite(page) || page === this._currentPage) return;
     this._currentPage = page;
-    if (this._isServerMode() && this._onPageChange) {
-      this._onPageChange(page);
+    if (this._isServerMode()) {
+      const other = p === this._pagTop ? this._pagBottom : this._pagTop;
+      other.setAttribute('current-page', String(page));
+      this._onPageChange?.(page);
+      return;
+    }
+    this._update();
+  }
+
+  // --- Overflow region (D16) ---
+
+  _observeOverflow() {
+    this._ro?.disconnect();
+    this._ro = null;
+    if (typeof ResizeObserver === 'undefined' || !this.isConnected) return;
+    this._ro = new ResizeObserver(() => this._syncOverflow());
+    this._ro.observe(this._scroll);
+    this._ro.observe(this._table);
+  }
+
+  /** @private Focusable + named `role=region` only while the wrapper overflows (keyboard scrolling, WCAG 2.1.1). */
+  _syncOverflow() {
+    const s = this._scroll;
+    if (!s) return;
+    const over = s.scrollWidth > s.clientWidth + 1 || s.scrollHeight > s.clientHeight + 1;
+    if (over) {
+      s.setAttribute('tabindex', '0');
+      s.setAttribute('role', 'region');
+      this._applyName(s);
     } else {
-      this._doRender();
+      for (const a of ['tabindex', 'role', 'aria-label', 'aria-labelledby']) s.removeAttribute(a);
     }
   }
 
-  // --- Sort indicator SVGs ---
-  // SVG `opacity` is a PRESENTATION ATTRIBUTE (not a CSS context) — CSP-safe, no inline style=.
+  // --- Column styles (CSSOM) ---
 
-  _getSortIcon(colKey) {
-    const isActive = this._sortState.key === colKey;
-    const dir = this._sortState.direction;
-
-    if (!isActive || !dir) {
-      // Both arrows, dimmed
-      return `<svg class="w-3 h-3" opacity="0.4" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 4l-6 6h12L12 4z"/>
-        <path d="M12 20l6-6H6l6 6z"/>
-      </svg>`;
-    }
-    if (dir === 'asc') {
-      return `<svg class="w-3 h-3" opacity="1" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 4l-6 6h12L12 4z"/>
-      </svg>`;
-    }
-    // desc
-    return `<svg class="w-3 h-3" opacity="1" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 20l6-6H6l6 6z"/>
-    </svg>`;
-  }
-
-  // --- Column width styles ---
-  // Returns a SCALAR style map for CSSOM (NOT an inline `style=` string). `col` is
-  // developer-supplied config (trusted), but dimensions still enter a CSS context — sanitize
-  // them via `safeCssDimension` so a stray/hostile value can't break out of the declaration.
-
+  /**
+   * Per-column SCALAR styles (width / min-width / max-width / text-align) for CSSOM. Column config is developer
+   * data, but it enters a CSS context: dimensions pass `safeCssDimension`, `align` a whitelist.
+   */
   _getColumnWidthStyles(col) {
-    const widthType = col.widthType || 'flexible';
+    const c = col || {};
+    const widthType = c.widthType || 'flexible';
     const styles = {};
-    const width = safeCssDimension(col.width, '');
+    const width = safeCssDimension(c.width, '');
     if (widthType === 'fixed' && width) {
       styles.width = width;
       styles['min-width'] = width;
       styles['max-width'] = width;
     } else {
       styles.width = 'auto';
-      const minW = safeCssDimension(col.minWidth, '');
-      const maxW = safeCssDimension(col.maxWidth, '');
+      const minW = safeCssDimension(c.minWidth, '');
+      const maxW = safeCssDimension(c.maxWidth, '');
       if (minW) styles['min-width'] = minW;
       if (maxW) styles['max-width'] = maxW;
     }
-    if (['left', 'center', 'right', 'justify'].includes(col.align)) {
-      styles['text-align'] = col.align;
-    }
+    if (ALIGN.includes(c.align)) styles['text-align'] = c.align;
     return styles;
   }
 
-  // --- Pagination HTML ---
-
-  _renderPagination(totalItems, label = 'Phân trang') {
-    const perPage = this._getPerPage();
-    const activeColor = this._getActiveColor();
-    return `<td-pagination
-      total-items="${totalItems}"
-      items-per-page="${perPage}"
-      current-page="${this._currentPage}"
-      ${activeColor ? `active-color="${activeColor}"` : ''}
-      item-label="mục"
-      aria-label="${this.escapeHtml(label)}"
-    ></td-pagination>`;
-  }
-
-  // --- Loading skeleton ---
-
-  _renderLoadingSkeleton() {
-    const columns = this._columns;
-    const loadingRows = this._getLoadingRows();
-    const titleText = this._getTitle();
-    const zebra = this._isZebra();
-    const zebraClass = zebra ? ' td-table-zebra' : '';
-
-    const headerCols = columns.map((col, ci) => {
-      return `<th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" data-col="${ci}">${this.escapeHtml(col.label)}</th>`;
-    }).join('');
-
-    let bodyRows = '';
-    for (let i = 0; i < loadingRows; i++) {
-      const cells = columns.map((col, ci) => {
-        const w = Math.round(Math.random() * 40 + 60);
-        return `<td class="px-6 py-4" data-col="${ci}"><div class="h-4 bg-gray-200 rounded-sm animate-pulse td-table-skel-bar" data-skel-w="${w}"></div></td>`;
-      }).join('');
-      bodyRows += `<tr class="td-table-skel-row${zebraClass}">${cells}</tr>`;
-    }
-
-    return `
-      <div class="td-table-container td-table-card rounded-xl overflow-hidden">
-        <div class="td-table-header-bar flex items-center justify-between px-6 py-4">
-          ${titleText ? `<div class="h-6 w-32 bg-gray-200 rounded-sm animate-pulse"></div>` : '<div></div>'}
-          <div class="h-8 w-64 bg-gray-200 rounded-sm animate-pulse"></div>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <thead>
-              <tr class="td-table-thead-row bg-gray-50/60">${headerCols}</tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50">${bodyRows}</tbody>
-          </table>
-        </div>
-        <div class="td-table-footer-bar flex items-center justify-end px-6 py-4">
-          <div class="h-8 w-64 bg-gray-200 rounded-sm animate-pulse"></div>
-        </div>
-      </div>
-    `;
-  }
-
-  // --- Main render ---
-
-  render() {
-    if (this._isLoading()) {
-      return this._renderLoadingSkeleton();
-    }
-
-    const columns = this._columns;
-    const { rows, totalItems } = this._getCurrentRows();
-    const hasData = rows.length > 0 || totalItems > 0;
-    const titleText = this._getTitle();
-    const zebra = this._isZebra();
-    const zebraClass = zebra ? ' td-table-zebra' : '';
-    const emptyText = this._getEmptyText();
-
-    // Header columns
-    const headerCols = columns.map((col, ci) => {
-      const attrKey = this.escapeHtml(String(col.key ?? ''));
-      if (col.sortable) {
-        return `<th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" data-col="${ci}" data-sort-key="${attrKey}">
-          <button type="button" class="td-table-sort-btn inline-flex items-center gap-1.5 hover:text-gray-900 transition-colors" data-sort-key="${attrKey}">
-            <span>${this.escapeHtml(col.label)}</span>
-            ${this._getSortIcon(col.key)}
-          </button>
-        </th>`;
-      }
-      return `<th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" data-col="${ci}">${this.escapeHtml(col.label)}</th>`;
-    }).join('');
-
-    // Body rows
-    let bodyHTML = '';
-    if (rows.length === 0) {
-      bodyHTML = `<tr><td colspan="${columns.length || 1}" class="px-6 py-16">
-        <td-empty-state
-          title="Không có dữ liệu"
-          message="${this.escapeHtml(emptyText)}"
-          size="sm"
-          compact
-        ></td-empty-state>
-      </td></tr>`;
-    } else {
-      bodyHTML = rows.map((row, idx) => {
-        const cells = columns.map((col, ci) => {
-          // Will handle render in afterRender for elements; for now mark with data attribute
-          if (col.render && typeof col.render === 'function') {
-            const attrKey = this.escapeHtml(String(col.key ?? ''));
-            return `<td class="px-6 py-4 text-sm text-gray-900 td-table-render-cell" data-col="${ci}" data-col-key="${attrKey}" data-row-idx="${idx}"></td>`;
-          }
-          const value = row[col.key];
-          const display = value == null ? '' : this.escapeHtml(String(value));
-          return `<td class="px-6 py-4 text-sm text-gray-900" data-col="${ci}">${display}</td>`;
-        }).join('');
-        return `<tr class="td-table-row${zebraClass} transition-colors" data-row-idx="${idx}">${cells}</tr>`;
-      }).join('');
-    }
-
-    // Header section
-    const headerSection = (titleText || hasData) ? `
-      <div class="td-table-header-bar flex items-center justify-between px-6 py-4">
-        ${titleText ? `<h3 class="text-lg font-semibold text-gray-900">${this.escapeHtml(titleText)}</h3>` : '<div></div>'}
-        ${hasData ? `<div class="td-table-header-pagination">${this._renderPagination(totalItems, 'Phân trang (trên)')}</div>` : ''}
-      </div>
-    ` : '';
-
-    // Footer
-    const footerSection = hasData ? `
-      <div class="td-table-footer-bar flex items-center justify-end px-6 py-4">
-        <div class="td-table-footer-pagination">${this._renderPagination(totalItems, 'Phân trang (dưới)')}</div>
-      </div>
-    ` : '';
-
-    return `
-      <div class="td-table-container td-table-card rounded-xl overflow-hidden">
-        ${headerSection}
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <thead>
-              <tr class="td-table-thead-row bg-gray-50/60">${headerCols}</tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50">${bodyHTML}</tbody>
-          </table>
-        </div>
-        ${footerSection}
-      </div>
-    `;
-  }
-
-  /**
-   * CSP-strict hook (auto-invoked by the base class after every render): apply per-element
-   * SCALAR styles via CSSOM (`el.style.setProperty`) instead of declarative `style=`.
-   * - Per-column width / min-width / max-width / text-align (sanitized via `safeCssDimension`),
-   *   keyed off the stable `data-col` index — applied to every header `<th>` and body `<td>`
-   *   in that column (data + loading skeleton).
-   * - The random skeleton-bar widths (`data-skel-w`) — non-deterministic, excluded from the
-   *   parity oracle, but still routed through CSSOM so no inline `style=` survives.
-   */
+  /** CSSOM per-column styles on this table's own header and body cells (never on nested tables in render cells). */
   _applyStyles() {
-    const columns = this._columns;
-
-    // Per-column scalar styles (width/align) → every cell/header sharing that data-col index.
-    columns.forEach((col, ci) => {
-      const styles = this._getColumnWidthStyles(col);
-      this.querySelectorAll(`[data-col="${ci}"]`).forEach(el => applyStyles(el, styles));
-    });
-
-    // Skeleton bar widths (random %, excluded from parity but must not be inline style=).
-    this.querySelectorAll('.td-table-skel-bar[data-skel-w]').forEach(bar => {
-      applyStyles(bar, { width: `${bar.dataset.skelW}%` });
-    });
-  }
-
-  afterRender() {
-    const { rows } = this._getCurrentRows();
-
-    // Handle custom render cells.
-    // CONSUMER RAW-HTML HATCH (out of scope for the lib's CSP guarantee): `col.render`
-    // returns CONSUMER-authored HTML injected verbatim below. The library does NOT
-    // sanitize it for CSP — if the consumer hand-writes inline `style=`/`<style>` here,
-    // a strict CSP will block that consumer content (documented on the @property JSDoc).
-    this.querySelectorAll('.td-table-render-cell').forEach(td => {
-      const colKey = td.dataset.colKey;
-      const rowIdx = parseInt(td.dataset.rowIdx, 10);
-      const col = this._columns.find(c => c.key === colKey);
-      const row = rows[rowIdx];
-      if (!col || !row || !col.render) return;
-
-      const rendered = col.render(row, rowIdx);
-      if (typeof rendered === 'string') {
-        td.innerHTML = rendered;
-      } else if (rendered instanceof HTMLElement) {
-        td.appendChild(rendered);
-      } else {
-        td.textContent = rendered == null ? '' : String(rendered);
-      }
-    });
-
-    // Bind sort buttons
-    this.querySelectorAll('.td-table-sort-btn').forEach(btn => {
-      const key = btn.dataset.sortKey;
-      this.listen(btn, 'click', () => this._handleSort(key));
-    });
-
-    // Row hover is handled by the adopted stylesheet's `.td-table-row:hover` rule (CSP-safe
-    // selector) — no per-element mouseenter/mouseleave CSSOM writes needed.
-
-    // Bind pagination events
-    this.querySelectorAll('td-pagination').forEach(pag => {
-      this.listen(pag, 'page-change', (e) => {
-        this._handlePageChange(e.detail.page);
-      });
-    });
+    if (!this._table) return;
+    const styles = this._columns.map((c) => this._getColumnWidthStyles(c));
+    const cells = this._table.querySelectorAll(':scope > thead > tr > [data-col], :scope > tbody > tr > [data-col]');
+    for (const cell of cells) {
+      const s = styles[Number(cell.getAttribute('data-col'))];
+      if (s) applyStyles(cell, s);
+    }
   }
 
   // --- Public API ---
 
-  /** Update data array and reset pagination */
+  /** Replace the rows. Client mode: back to page 1. Server mode: the current page is kept (fixes 2.8.2). */
   setData(data) {
     this._data = Array.isArray(data) ? data : [];
-    this._currentPage = 1;
-    if (this._initialized) this._doRender();
+    if (!this._isServerMode()) this._currentPage = 1;
+    if (this._initialized) this._update();
   }
 
-  /** Navigate to specific page */
+  /** Go to a page (clamped). Does not call `onPageChange`. */
   setPage(page) {
-    const perPage = this._getPerPage();
-    const totalItems = this._isServerMode() ? this._getTotalItems() : this._data.length;
-    const totalPages = Math.max(1, Math.ceil(totalItems / perPage));
-    this._currentPage = Math.max(1, Math.min(totalPages, parseInt(page) || 1));
-    if (this._initialized) this._doRender();
+    this._currentPage = Math.max(1, parseInt(page, 10) || 1);
+    if (this._initialized) this._update();
   }
 
-  /** Toggle loading state */
+  /** Toggle the loading state. */
   setLoading(bool) {
-    if (bool) {
-      this.setAttribute('loading', '');
-    } else {
-      this.removeAttribute('loading');
-    }
+    if (bool) this.setAttribute('loading', '');
+    else this.removeAttribute('loading');
   }
 
-  /** Get current table state */
+  /** Current state; `sort.key` is the sorted column's original key. */
   getState() {
+    const col = this._sort.col === null ? null : this._columns[this._sort.col];
     return {
       columns: this._columns,
       data: this._data,
       page: this._currentPage,
       perPage: this._getPerPage(),
-      sort: { ...this._sortState },
+      sort: { key: col ? col.key : null, direction: this._sort.direction },
     };
   }
 
-  /** Merge options and re-render */
+  /** Merge options (non-array `columns`/`data` are ignored; `data` follows setData's page rule, then `page`). */
   update(opts = {}) {
-    if (opts.columns) this._columns = opts.columns;
-    if (opts.data) {
-      this._data = opts.data;
-      this._currentPage = 1;
+    const o = opts && typeof opts === 'object' ? opts : {};
+    let structural = false;
+    if (Array.isArray(o.columns)) {
+      this._columns = o.columns;
+      this._resetStaleSort();
+      structural = true;
     }
-    if (opts.page) this._currentPage = Math.max(1, opts.page);
-    if (opts.onSort) this._onSort = opts.onSort;
-    if (opts.onPageChange) this._onPageChange = opts.onPageChange;
-    if (this._initialized) this._doRender();
+    if (Array.isArray(o.data)) {
+      this._data = o.data;
+      if (!this._isServerMode()) this._currentPage = 1;
+    }
+    if (o.page != null && Number.isFinite(Number(o.page))) this._currentPage = Math.max(1, Math.trunc(Number(o.page)));
+    if (typeof o.onSort === 'function') this._onSort = o.onSort;
+    if (typeof o.onPageChange === 'function') this._onPageChange = o.onPageChange;
+    if (!this._initialized) return;
+    if (structural) this._doRender();
+    else this._update();
   }
 }
 

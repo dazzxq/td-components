@@ -3589,6 +3589,343 @@
 	}
 }
 
+/* ---- src/styles/components/table.css ---- */
+/*
+ * td-table (src/display/td-table.js). Content layer → SOLID surface, hairline rows, no glass (liquid-glass row
+ * "td-table: none"). The only scroll-edge treatment is the opaque sticky header fill (R10 "hard", D14).
+ * Modifiers (rendered from config, never toggled as state): .td-table--zebra · --fixed (table-layout) · --scroll-y
+ * (max-height → CSSOM --td-table-max-h). Cell padding: .td-table__cell--px-{0..6} (cellPaddingClass whitelist).
+ * State: [data-state="ready|loading|empty"] · table[aria-busy] · th[aria-sort] · wrappers [hidden] ·
+ * .td-table__scroll[tabindex] (only while overflowing) · :hover / :focus-within rows.
+ */
+@layer td.tokens {
+	:root {
+		--td-table-bg: var(--td-color-surface);
+		--td-table-fg: var(--td-color-text);
+		--td-table-border: var(--td-color-border);
+		--td-table-radius: var(--td-radius-lg);
+		--td-table-shadow: var(--td-shadow-1);
+		--td-table-head-bg: var(--td-color-surface-muted);
+		--td-table-head-fg: var(--td-color-text-muted);
+		--td-table-head-sticky-bg: var(--td-color-surface-muted); /* opaque on purpose (D14) */
+		--td-table-sort-icon: var(--td-color-text-subtle); /* ≥ 3:1 on the header fill, light and dark */
+		--td-table-row-border: var(--td-color-border);
+		--td-table-row-hover: var(--td-color-hover);
+		--td-table-zebra: rgb(0 0 0 / 2%);
+		--td-table-cell-px: 1.5rem;
+		--td-table-cell-py: 1rem;
+		--td-table-head-py: 0.75rem;
+		--td-table-skeleton: var(--td-color-skeleton);
+		--td-table-sheen: var(--td-color-sheen, rgb(255 255 255 / 60%));
+	}
+
+	:root[data-td-theme="dark"] {
+		--td-table-zebra: rgb(255 255 255 / 3%);
+		--td-table-sheen: var(--td-color-sheen, rgb(255 255 255 / 8%));
+	}
+}
+
+@layer td.component {
+	td-table {
+		display: block;
+	}
+
+	.td-table {
+		box-sizing: border-box;
+		overflow: hidden;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-table-fg);
+		background: var(--td-table-bg);
+		border: 1px solid var(--td-table-border);
+		border-radius: var(--td-table-radius);
+		box-shadow: var(--td-table-shadow);
+	}
+
+	.td-table *,
+	.td-table *::before,
+	.td-table *::after {
+		box-sizing: border-box;
+	}
+
+	/* Header bar: title + top pagination */
+	.td-table__header {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-sm) var(--td-space-md);
+		align-items: center;
+		justify-content: space-between;
+		padding: var(--td-space-md) var(--td-space-lg);
+		border-bottom: 1px solid var(--td-table-border);
+	}
+
+	.td-table__title {
+		margin: 0;
+		font-size: var(--td-text-md);
+		font-weight: var(--td-fw-semibold);
+		line-height: var(--td-leading-tight);
+		color: var(--td-table-fg);
+	}
+
+	.td-table__pagination {
+		margin-inline-start: auto;
+	}
+
+	.td-table__footer {
+		display: flex;
+		justify-content: flex-end;
+		padding: var(--td-space-md) var(--td-space-lg);
+		border-top: 1px solid var(--td-table-border);
+	}
+
+	.td-table__header[hidden],
+	.td-table__pagination[hidden],
+	.td-table__footer[hidden] {
+		display: none;
+	}
+
+	/* Scroll wrapper: horizontal scroll always; both axes with max-height (sticky header, D14) */
+	.td-table__scroll {
+		overflow-x: auto;
+	}
+
+	.td-table--scroll-y .td-table__scroll {
+		max-height: var(--td-table-max-h, none);
+		overflow: auto;
+		overscroll-behavior: contain;
+	}
+
+	.td-table__scroll:focus-visible {
+		/* The card clips outer shadows (overflow: hidden) → an inset outline stays visible, also in forced colours. */
+		outline: 2px solid var(--td-focus);
+		outline-offset: -2px;
+	}
+
+	.td-table__table {
+		width: 100%;
+		margin: 0;
+		border-collapse: separate; /* so the sticky header keeps its hairline */
+		border-spacing: 0;
+		color: inherit;
+	}
+
+	.td-table--fixed .td-table__table {
+		table-layout: fixed;
+	}
+
+	/* Cells */
+	.td-table__th,
+	.td-table__cell {
+		padding-inline: var(--td-table-cell-px);
+	}
+
+	.td-table__th {
+		padding-block: var(--td-table-head-py);
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-semibold);
+		line-height: var(--td-leading-normal);
+		color: var(--td-table-head-fg);
+		text-align: start;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		vertical-align: bottom;
+		background: var(--td-table-head-bg);
+		border-bottom: 1px solid var(--td-table-border);
+	}
+
+	.td-table__cell {
+		padding-block: var(--td-table-cell-py);
+		color: var(--td-table-fg);
+		vertical-align: middle;
+		border-bottom: 1px solid var(--td-table-row-border);
+	}
+
+	.td-table__body > tr:last-child > .td-table__cell,
+	.td-table__body > tr:last-child > .td-table__empty {
+		border-bottom: 0;
+	}
+
+	.td-table__cell--px-0 { --td-table-cell-px: 0; }
+	.td-table__cell--px-1 { --td-table-cell-px: 0.25rem; }
+	.td-table__cell--px-2 { --td-table-cell-px: 0.5rem; }
+	.td-table__cell--px-3 { --td-table-cell-px: 0.75rem; }
+	.td-table__cell--px-4 { --td-table-cell-px: 1rem; }
+	.td-table__cell--px-5 { --td-table-cell-px: 1.25rem; }
+	.td-table__cell--px-6 { --td-table-cell-px: 1.5rem; }
+
+	/* Sticky header (D14): opaque fill, local z-index above the body cells only */
+	.td-table--scroll-y .td-table__th {
+		position: sticky;
+		top: 0;
+		z-index: 1;
+		background: var(--td-table-head-sticky-bg);
+	}
+
+	/* Sort button (D12) */
+	.td-table__sort {
+		display: inline-flex;
+		gap: var(--td-space-2xs);
+		align-items: center;
+		padding: 2px 4px;
+		margin: -2px -4px;
+		font: inherit;
+		color: inherit;
+		text-align: inherit;
+		text-transform: inherit;
+		letter-spacing: inherit;
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: var(--td-radius-sm);
+		transition: color var(--td-dur-fast) var(--td-ease), background var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+	}
+
+	.td-table__sort:hover {
+		color: var(--td-table-fg);
+		background: var(--td-color-hover);
+	}
+
+	.td-table__sort:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-table__sort-icon {
+		display: inline-flex;
+		flex-direction: column; /* stacked up+down pair for the unsorted state */
+		align-items: center;
+		line-height: 0;
+		color: var(--td-table-sort-icon);
+	}
+
+	.td-table__sort-icon > svg + svg {
+		margin-top: -5px;
+	}
+
+	.td-table__th[aria-sort] {
+		color: var(--td-table-fg);
+	}
+
+	.td-table__th[aria-sort] .td-table__sort-icon {
+		color: currentColor;
+	}
+
+	/* Rows */
+	.td-table--zebra .td-table__row:nth-child(even) {
+		background: var(--td-table-zebra);
+	}
+
+	.td-table .td-table__row:not(.td-table__row--skeleton):hover,
+	.td-table .td-table__row:not(.td-table__row--skeleton):focus-within {
+		background: var(--td-table-row-hover);
+	}
+
+	.td-table__row {
+		transition: background var(--td-dur-fast) var(--td-ease);
+	}
+
+	/* Ellipsis (D21) */
+	.td-table__cell--ellipsis,
+	.td-table__truncate {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	/* Empty state: no card inside the card */
+	.td-table__empty {
+		padding: var(--td-space-lg);
+	}
+
+	.td-table__empty .td-empty-state {
+		background: transparent;
+		border: 0;
+	}
+
+	/* Loading skeleton (D19): deterministic widths, 135 shimmer */
+	.td-table__skeleton {
+		position: relative;
+		display: block;
+		width: 80%;
+		height: 0.875rem;
+		overflow: hidden;
+		background: var(--td-table-skeleton);
+		border-radius: var(--td-radius-sm);
+	}
+
+	.td-table__skeleton::after {
+		position: absolute;
+		inset: 0;
+		content: "";
+		background: linear-gradient(90deg, transparent, var(--td-table-sheen), transparent);
+		transform: translateX(-100%);
+		animation: td-table-shimmer 1.3s ease-in-out infinite;
+	}
+
+	.td-table__row--skeleton:nth-child(odd) .td-table__cell:nth-child(3n + 1) .td-table__skeleton { width: 60%; }
+	.td-table__row--skeleton:nth-child(even) .td-table__cell:nth-child(3n + 2) .td-table__skeleton { width: 95%; }
+	.td-table__row--skeleton .td-table__cell:nth-child(3n) .td-table__skeleton { width: 70%; }
+	.td-table__row--skeleton:nth-child(3n) .td-table__cell:nth-child(odd) .td-table__skeleton { width: 90%; }
+
+	@keyframes td-table-shimmer {
+		to {
+			transform: translateX(100%);
+		}
+	}
+
+	@media (pointer: coarse) {
+		.td-table__sort {
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-table__row,
+		.td-table__sort {
+			transition: none;
+		}
+
+		.td-table__skeleton::after {
+			animation: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-table,
+		.td-table__header,
+		.td-table__footer,
+		.td-table__th,
+		.td-table__cell {
+			border-color: CanvasText;
+		}
+
+		.td-table--scroll-y .td-table__th {
+			background: Canvas;
+		}
+
+		.td-table__sort-icon,
+		.td-table__th[aria-sort] .td-table__sort-icon {
+			color: CanvasText;
+		}
+
+		.td-table .td-table__row:not(.td-table__row--skeleton):hover {
+			outline: 2px solid Highlight;
+			outline-offset: -2px;
+		}
+
+		.td-table__skeleton {
+			background: GrayText;
+		}
+
+		.td-table__skeleton::after {
+			display: none;
+		}
+	}
+}
+
 /* ---- src/styles/utilities.css ---- */
 /* Utilities — kept minimal: td.css must stay reset-free (legacy Tailwind components share the page). */
 @layer td.utilities {
