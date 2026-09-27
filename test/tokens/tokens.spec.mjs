@@ -73,6 +73,9 @@ function lightboxHtml(profile) {
 /** Floating-layer glass (v0.9.0): glass by default, solid toast over a modal (D20), opaque with glass off. */
 function floatingChecks(tag, r, mode) {
   const opaque = (bg) => (rgba(bg) || [0, 0, 0, 0])[3] === 1;
+  for (const [k, v] of [['light', r.sticky], ['dark', r.stickyDark]]) {
+    check(`${tag} ${mode} table sticky header (${k}) sticky + opaque`, v.position === 'sticky' && opaque(v.bg), JSON.stringify(v));
+  }
   check(`${tag} ${mode} modal dialog is glass (control)`, !noFilter(r.modalGlass.bf), r.modalGlass.bf);
   check(`${tag} ${mode} toast is glass (control)`, !noFilter(r.toastAlone.bf), r.toastAlone.bf);
   check(`${tag} ${mode} toast over modal is solid (D20)`, noFilter(r.toastOverModal.bf) && opaque(r.toastOverModal.bg), JSON.stringify(r.toastOverModal));

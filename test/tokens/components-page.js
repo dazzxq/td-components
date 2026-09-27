@@ -5,6 +5,7 @@ import '/src/display/td-pagination.js';
 import { TdLoadingSpinner } from '/src/feedback/td-loading.js';
 import { TdModal } from '/src/feedback/td-modal.js';
 import { TdToast } from '/src/feedback/td-toast.js';
+import '/src/display/td-table.js';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 window.__componentsRun = (async () => {
@@ -34,6 +35,20 @@ window.__componentsRun = (async () => {
     const c = cs(el);
     return { bf: c.backdropFilter || c.webkitBackdropFilter || 'none', bg: c.backgroundColor };
   };
+  // Table sticky header (v0.10.0 D14): opaque fill, light + dark (rows must never show through).
+  const table = document.createElement('td-table');
+  table.setAttribute('max-height', '120px');
+  table.setAttribute('aria-label', 'Bảng');
+  root.appendChild(table);
+  table.columns = [{ key: 'a', label: 'A' }];
+  table.data = Array.from({ length: 12 }, (_, i) => ({ a: `r${i}` }));
+  await wait(50);
+  const th = table.querySelector('thead th');
+  const sticky = { position: cs(th).position, bg: cs(th).backgroundColor };
+  document.documentElement.setAttribute('data-td-theme', 'dark');
+  await wait(50);
+  const stickyDark = { position: cs(th).position, bg: cs(th).backgroundColor };
+  document.documentElement.removeAttribute('data-td-theme');
   TdToast._showSingle('Đã lưu', 'success', 0);
   await wait(400);
   const toastEl = document.querySelector('#td-toast-container .td-toast');
@@ -51,6 +66,7 @@ window.__componentsRun = (async () => {
   const toastOff = glass(toastEl);
   document.documentElement.removeAttribute('data-td-glass');
   return {
+    sticky, stickyDark,
     toastAlone, modalGlass, toastOverModal, modalOff, toastOff,
     highlight: cs(ref).backgroundColor,
     thumbTransform: cs(thumb).transform,
