@@ -475,7 +475,7 @@ export function parseBound(str, kind) {
  * @param {unknown} value
  */
 export function normalizeMinuteStep(value) {
-  const n = typeof value === 'number' ? value : parseInt(String(value ?? ''), 10);
+  const n = typeof value === 'number' ? value : Number(String(value ?? '').trim() || NaN); // '5.5' / '5junk' → 1
   return Number.isInteger(n) && n > 0 && n <= 30 && 60 % n === 0 ? n : 1;
 }
 

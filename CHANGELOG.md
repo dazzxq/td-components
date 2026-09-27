@@ -20,7 +20,7 @@ Migration **batch 4 — the last legacy components**: `td-datetime-picker` and `
 - **Datetime-picker:** the trigger is a `button[role=combobox][aria-haspopup=dialog]` (was a readonly input) and is
   updated in place (focus kept); keyboard-operable end to end; Escape closes the dialog (TdModal `escapeCloses`, ADR
   0006 addendum) and discards the edit, as do X and "Đóng"; hour/minute are validated (no more 25:99);
-  `getValue()`/`getDBValue()` return `''` when empty or invalid (was "now"); minutes snap down to `minute-step` when the
+  `getValue()`/`getDBValue()` return `''` when empty, invalid or outside `min`/`max` (was "now"); minutes snap down to `minute-step` when the
   dialog opens; `setDBValue()` ignores garbage and accepts ISO-local; an invalid value submits its raw text.
 - **Table:** sorting/paging/data/loading update the table in place (focus stays on the sort button or page control;
   one announcement per page change — the top pagination is `quiet`); `zebra="false"` works (was always on); server mode

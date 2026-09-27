@@ -38,7 +38,7 @@ const prefersReducedMotion = () => {
  *     [<span class="td-field-error" id="{host}-error" data-for="{host}">…</span>]
  *   </td-datetime-picker>
  *
- * Panel (a Node body inside TdModal `escapeCloses: true`; `{p}` = `{host}-dtp`): `fieldset.td-dtp-panel__group`
+ * Panel (a Node body inside TdModal `escapeCloses: true`; `{p}` = `{host}-dtp{n}`, n unique per open): `fieldset.td-dtp-panel__group`
  * with three labelled `input.td-dtp-panel__input[type=number][inputmode=numeric]` (`{p}-day|month|year`), a
  * `[role=group]` with two wheels `.td-dtp-wheel > .td-dtp-wheel__list[role=listbox][tabindex=0]` named "Giờ" / "Phút"
  * (`{p}-hour|minute`) whose `.td-dtp-wheel__option[role=option]` children are never focusable, a preview and a
@@ -124,7 +124,10 @@ export class TdDatetimePicker extends TdFormElement {
   /** @private year range for the year field and the default-range check */
   _yearRange() {
     const { min, max } = this._bounds();
-    return { min: min ? min.year : DEFAULT_MIN_YEAR, max: max ? max.year : DEFAULT_MAX_YEAR };
+    if (!min && !max) return { min: DEFAULT_MIN_YEAR, max: DEFAULT_MAX_YEAR };
+    // An explicit bound replaces the whole default range: the other side is the helpers' valid year limit, so a
+    // one-sided bound outside 2000–2099 never yields an impossible range (review ISSUE-2).
+    return { min: min ? min.year : 1, max: max ? max.year : 9999 };
   }
 
   /** @private */
@@ -145,7 +148,7 @@ export class TdDatetimePicker extends TdFormElement {
         : reason === 'date' ? 'day' : reason;
       return { flag: 'badInput', message: reason === 'year' ? fill(M.year, years) : M[reason], field };
     }
-    if ((!min && p.year < DEFAULT_MIN_YEAR) || (!max && p.year > DEFAULT_MAX_YEAR)) {
+    if (!min && !max && (p.year < DEFAULT_MIN_YEAR || p.year > DEFAULT_MAX_YEAR)) {
       return { flag: 'badInput', message: fill(M.year, years), field: 'year' };
     }
     if (min && compareParts(p, min) < 0) return { flag: 'rangeUnderflow', message: fill(M.min, { min: formatDisplay(min) }), field: null };
@@ -260,7 +263,9 @@ export class TdDatetimePicker extends TdFormElement {
         super.attributeChangedCallback(name, oldVal, newVal); // base error contract, no re-render
         return;
       default: { // label
-        const hadFocus = this.contains(document.activeElement);
+        const active = document.activeElement;
+        const modalRoot = this._modalId ? document.getElementById(this._modalId) : null;
+        const hadFocus = this.contains(active) || !!(modalRoot && modalRoot.contains(active));
         if (this._isOpen) this._close();
         this._doRender();
         if (hadFocus && this._trigger()) this._trigger().focus();
@@ -428,7 +433,8 @@ export class TdDatetimePicker extends TdFormElement {
   /** @private build the dialog body with DOM APIs (no HTML string, no trusted hatch) */
   _buildPanel() {
     const L = TdDatetimePicker.labels;
-    const prefix = `${this.id}-dtp`;
+    TdDatetimePicker._openSeq = (TdDatetimePicker._openSeq || 0) + 1;
+    const prefix = `${this.id}-dtp${TdDatetimePicker._openSeq}`; // unique per open: a closing dialog may linger
     const years = this._yearRange();
     const make = (tag, cls, attrs = {}, text) => {
       const n = document.createElement(tag);
@@ -484,7 +490,7 @@ export class TdDatetimePicker extends TdFormElement {
     panel.addEventListener('change', (e) => {
       const input = e.target;
       if (!(input instanceof HTMLInputElement) || !input.classList.contains('td-dtp-panel__input')) return;
-      const n = /^\d+$/.test(input.value) ? parseInt(input.value, 10) : NaN;
+      const n = input.valueAsNumber;
       if (Number.isInteger(n)) input.value = String(clamp(n, Number(input.min), Number(input.max)));
       this._readField(input);
       this._refresh();
@@ -606,8 +612,8 @@ export class TdDatetimePicker extends TdFormElement {
   /** @private */
   _readField(input) {
     if (!this._pending) return;
-    const v = input.value;
-    this._pending[input.getAttribute('data-part')] = /^\d+$/.test(v) ? parseInt(v, 10) : NaN;
+    const n = input.valueAsNumber; // finite integers (incl. negatives) are kept so range validation names the field
+    this._pending[input.getAttribute('data-part')] = Number.isInteger(n) ? n : NaN;
   }
 
   /**
@@ -675,16 +681,16 @@ export class TdDatetimePicker extends TdFormElement {
 
   // --- Public API ---
 
-  /** Display value `dd/mm/yyyy - hh:mm`, or '' when empty / malformed / impossible (D8). */
+  /** Display value `dd/mm/yyyy - hh:mm`, or '' when empty / malformed / impossible / out of min–max (D8). */
   getValue() {
     const s = this._state();
-    return s.usable ? formatDisplay(s.parts) : '';
+    return s.usable && !s.error ? formatDisplay(s.parts) : ''; // out of min/max is invalid too (D8)
   }
 
-  /** DB value `yyyy-mm-dd hh:mm:00`, or '' when empty / malformed / impossible (D8). */
+  /** DB value `yyyy-mm-dd hh:mm:00`, or '' when empty / malformed / impossible / out of min–max (D8). */
   getDBValue() {
     const s = this._state();
-    return s.usable ? formatDb(s.parts) : '';
+    return s.usable && !s.error ? formatDb(s.parts) : '';
   }
 
   /** Set the value from the display format ('' / null clears it; a malformed string is kept and flagged). */

@@ -251,7 +251,7 @@ Displays `dd/mm/yyyy - hh:mm`; submits **ISO 8601** by default. Token-native sin
 minute wheels and the buttons; wheels: ↑ ↓ Home End PageUp PageDown (6 h / 15 min), click to pick; Escape, X and
 "Đóng" discard the edit; "Chọn" commits (one `change`) and focus returns to the trigger.
 **Events:** `change` → `{ value, dbValue }`
-**Methods:** `getValue()` / `getDBValue()` (`''` when empty or invalid), `setValue(displayStr)`, `setDBValue(dbOrIsoStr)`
+**Methods:** `getValue()` / `getDBValue()` (`''` when empty, invalid or outside `min`/`max`), `setValue(displayStr)`, `setDBValue(dbOrIsoStr)`
 (ignores garbage), `setError()`, `clearError()`. Static, site-overridable `TdDatetimePicker.labels` and `.messages`
 (Vietnamese). With no value it submits nothing (`valueMissing` when `required`); an invalid value submits its raw text
 and reports `badInput`.

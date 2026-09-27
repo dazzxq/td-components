@@ -6,6 +6,7 @@ import { TdLoadingSpinner } from '/src/feedback/td-loading.js';
 import { TdModal } from '/src/feedback/td-modal.js';
 import { TdToast } from '/src/feedback/td-toast.js';
 import '/src/display/td-table.js';
+import '/src/form/td-datetime-picker.js';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 window.__componentsRun = (async () => {
@@ -49,6 +50,21 @@ window.__componentsRun = (async () => {
   await wait(50);
   const stickyDark = { position: cs(th).position, bg: cs(th).backgroundColor };
   document.documentElement.removeAttribute('data-td-theme');
+  // Picker wheel (v0.10.0): keyboard selection jumps instantly under reduced motion, animates otherwise.
+  const dtp = document.createElement('td-datetime-picker');
+  dtp.id = 'dtp';
+  dtp.setAttribute('aria-label', 'Thời gian');
+  dtp.setAttribute('value', '15/06/2026 - 10:30');
+  root.appendChild(dtp);
+  dtp.querySelector('.td-dtp__trigger').click();
+  await wait(500);
+  const hourList = document.querySelector('.td-dtp-wheel__list[data-part="hour"]');
+  const s0 = hourList.scrollTop;
+  hourList.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+  const wheelJumped = hourList.scrollTop !== s0; // read synchronously: an instant scroll has already moved
+  const wheelSelected = hourList.querySelector('[aria-selected="true"]').getAttribute('data-value');
+  TdModal.closeAll();
+  await wait(400);
   TdToast._showSingle('Đã lưu', 'success', 0);
   await wait(400);
   const toastEl = document.querySelector('#td-toast-container .td-toast');
@@ -66,7 +82,7 @@ window.__componentsRun = (async () => {
   const toastOff = glass(toastEl);
   document.documentElement.removeAttribute('data-td-glass');
   return {
-    sticky, stickyDark,
+    sticky, stickyDark, wheelJumped, wheelSelected,
     toastAlone, modalGlass, toastOverModal, modalOff, toastOff,
     highlight: cs(ref).backgroundColor,
     thumbTransform: cs(thumb).transform,

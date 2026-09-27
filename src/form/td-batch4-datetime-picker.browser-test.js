@@ -61,7 +61,8 @@ const KEEP = ['type', 'role', 'aria-hidden', 'hidden', 'data-td-icon', 'data-ico
   'aria-haspopup', 'aria-expanded', 'aria-activedescendant', 'data-state', 'data-placeholder', 'data-value',
   'data-part', 'for', 'id', 'tabindex', 'min', 'max', 'inputmode'];
 function shape(el) {
-  const attrs = KEEP.filter((a) => el.hasAttribute(a)).map((a) => `${a}=${el.getAttribute(a)}`);
+  // panel ids carry a per-open sequence ({host}-dtp{n}-…, review ISSUE-7): compare them without it
+  const attrs = KEEP.filter((a) => el.hasAttribute(a)).map((a) => `${a}=${el.getAttribute(a).replace(/-dtp\d+(?=-)/g, '-dtp')}`);
   const cls = [...el.classList].sort().join('.');
   const kids = el.localName === 'svg' && el.getAttribute('data-icon') ? [] : [...el.children].map(shape);
   return { tag: el.localName, cls, attrs, kids };
@@ -554,7 +555,7 @@ describe('batch 4 — td-datetime-picker values + validity', () => {
     el.setValue('15/06/2026 - 10:29');
     expect(el.validity.rangeUnderflow).to.equal(true);
     expect(el.validationMessage).to.equal('Không được trước 15/06/2026 - 10:30');
-    expect(el.getValue()).to.equal('15/06/2026 - 10:29'); // a real value, only out of range
+    expect(el.getValue()).to.equal(''); // out of min/max is invalid: getters return '' (D8, review ISSUE-1)
     el.setValue('20/06/2026 - 18:00');
     expect(el.checkValidity()).to.equal(true);
     el.setValue('20/06/2026 - 18:01');
