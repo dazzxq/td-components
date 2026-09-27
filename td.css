@@ -3649,6 +3649,7 @@
 	.td-table *::before,
 	.td-table *::after {
 		box-sizing: border-box;
+		border-color: var(--td-color-border); /* own it: UA `table { border-color: gray }` vs host resets differ */
 	}
 
 	/* Header bar: title + top pagination */
