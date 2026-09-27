@@ -390,27 +390,32 @@ describe('v0.12 TdMenu — selection, checkable items, links', () => {
     expect(TdMenu.isOpen(b)).to.equal(true);
     expect(its[0].getAttribute('aria-checked')).to.equal('true');
     expect(same(active(), its[0])).to.equal(true);
-    expect(list[0].checked).to.equal(true);
+    expect(list[0].checked).to.equal(false); // caller items are never mutated (review ISSUE-6); state via ctx.checked
     await sendKeys({ press: 'ArrowDown' });
     await sendKeys({ press: 'ArrowDown' });
     await sendKeys({ press: 'Enter' }); // "Cũ nhất"
     expect(TdMenu.isOpen()).to.equal(false);
     expect(same(active(), b)).to.equal(true);
     expect(log).to.deep.equal([['dark', true], ['old', true]]);
-    expect([list[2].checked, list[3].checked, list[4].checked]).to.deep.equal([false, true, true]); // other group untouched
-    b.click(); // reopen reflects the new state
+    expect([list[2].checked, list[3].checked, list[4].checked]).to.deep.equal([true, false, true]); // caller items untouched
+    b.click(); // reopen renders the CALLER's model (unchanged — a caller persists ctx.checked itself)
     its = items();
-    expect(its.map((n) => n.getAttribute('aria-checked'))).to.deep.equal(['true', 'false', 'true', 'true']);
-    expect(getComputedStyle(its[0].querySelector('.td-menu__check')).visibility).to.equal('visible');
-    expect(getComputedStyle(its[1].querySelector('.td-menu__check')).visibility).to.equal('hidden');
+    expect(its.map((n) => n.getAttribute('aria-checked'))).to.deep.equal(['false', 'true', 'false', 'true']);
+    expect(getComputedStyle(its[0].querySelector('.td-menu__check')).visibility).to.equal('hidden');
+    expect(getComputedStyle(its[1].querySelector('.td-menu__check')).visibility).to.equal('visible');
+    TdMenu.close();
+    const frozen = [Object.freeze({ label: 'Đóng băng', type: 'checkbox', checked: false })];
+    TdMenu.open(b, frozen, { focus: 'first' });
+    await sendKeys({ press: 'Space' }); // must not throw on a frozen item
+    expect(items()[0].getAttribute('aria-checked')).to.equal('true');
   });
 
-  it('href whitelist: http/https/mailto/tel/relative → <a>; javascript:/data:/garbage → disabled button + warn', async () => {
+  it('href whitelist: http/https/relative → <a>; mailto:/tel:/javascript:/data:/garbage → disabled button + warn', async () => {
     expect(safeMenuHref('https://a.vn/x')).to.equal('https://a.vn/x');
     expect(safeMenuHref('/tin-tuc?id=1')).to.equal('/tin-tuc?id=1');
     expect(safeMenuHref('#top')).to.equal('#top');
-    expect(safeMenuHref('mailto:a@b.vn')).to.equal('mailto:a@b.vn');
-    expect(safeMenuHref('tel:+8490')).to.equal('tel:+8490');
+    expect(safeMenuHref('mailto:a@b.vn')).to.equal(null); // http/https only (inventory §1.5)
+    expect(safeMenuHref('tel:+8490')).to.equal(null);
     for (const bad of ['javascript:alert(1)', ' JaVaScRiPt:alert(1)', 'java\tscript:alert(1)', '\u0001javascript:x',
       'data:text/html,x', 'vbscript:x', 'http://[', '', null, 42]) {
       expect(safeMenuHref(bad), String(bad)).to.equal(null);

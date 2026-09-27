@@ -173,6 +173,8 @@ export class TdChipInput extends TdFormElement {
     this._loadingTimer = 0;
     this._resultsTimer = 0;
     this._creating = false;
+    /** @private bumped by setValue/reset/disconnect: an in-flight create() result is dropped */
+    this._createGen = 0;
     this._scrollRafId = null;
     this._warnedValue = false;
 
@@ -644,6 +646,7 @@ export class TdChipInput extends TdFormElement {
   }
 
   disconnectedCallback() {
+    this._createGen += 1;
     this._cancelSearch();
     this._clearResultsTimer();
     if (this._isOpen) {
@@ -1113,7 +1116,7 @@ export class TdChipInput extends TdFormElement {
    * @private user add: dedupe, max-items, clear text, close, announce, form, ONE `change`
    * @returns {boolean}
    */
-  _addUser(raw) {
+  _addUser(raw, opts) {
     if (this._isDisabled()) return false;
     const item = this._norm(raw);
     if (!item) return false;
@@ -1130,7 +1133,7 @@ export class TdChipInput extends TdFormElement {
     if (ul) ul.appendChild(this._buildChip(item, this._items.length - 1));
     this._renumberChips();
     const input = this._input();
-    if (input) input.value = '';
+    if (input && !(opts && opts.keepInput)) input.value = '';
     this._navQuery = null;
     this.close();
     this._applyFull();
@@ -1154,8 +1157,11 @@ export class TdChipInput extends TdFormElement {
       return;
     }
     let item;
+    const inputEl = this._input();
+    const typed = inputEl ? inputEl.value : '';
     if (this._create) {
       this._creating = true;
+      const gen = this._createGen; // reset / setValue / disconnect while awaiting invalidate this result
       try {
         item = await this._create(text);
       } catch (err) {
@@ -1164,12 +1170,14 @@ export class TdChipInput extends TdFormElement {
       } finally {
         this._creating = false;
       }
-      if (!this.isConnected) return;
+      if (!this.isConnected || gen !== this._createGen) return;
     } else {
       item = { [this._vk()]: text, [this._lk()]: text };
     }
     if (item == null) return; // the hook declined (it may call setError)
-    this._addUser(item);
+    const now = this._input();
+    // the user kept typing while create() ran: add the item but never wipe the newer text
+    this._addUser(item, { keepInput: !!now && now.value !== typed });
   }
 
   /** @private user removal: only this `li` goes; focus → next chip, else previous, else the input */
@@ -1211,7 +1219,8 @@ export class TdChipInput extends TdFormElement {
       this._setActive(activate === 'first' ? 0 : activate === 'last' ? this._nav.length - 1 : -1);
       return;
     }
-    this._runSearch(q.length >= this._minChars() ? q : '', activate);
+    if (q && q.length < this._minChars()) return; // typed text too short: no search (only an EMPTY input may search '')
+    this._runSearch(q, activate);
   }
 
   /** Show the suggestions for the current text (runs a search when needed). */
@@ -1339,6 +1348,7 @@ export class TdChipInput extends TdFormElement {
    * @param {Array} items
    */
   setValue(items) {
+    this._createGen += 1;
     this._itemsFromProp = true;
     this._items = this._normList(items);
     this._navQuery = null;

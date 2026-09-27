@@ -120,19 +120,29 @@ function hostOf(el, root) {
   return el === root && isHost(el) ? el : null;
 }
 
-/** Radio group representative: the first radio with the same name inside root (no selector built from names). */
+/**
+ * Radio group representative: the first same-name radio inside root that takes part in validation (`willValidate`:
+ * a disabled first radio must not hide an invalid enabled group); falls back to the first radio of the group.
+ * No selector is built from names.
+ */
 function representative(el, root) {
   if (!(el instanceof HTMLInputElement) || el.type !== 'radio' || !el.name) return el;
   const scope = root.contains(el) ? root : el.getRootNode();
+  let first = null;
   for (const r of scope.querySelectorAll('input[type="radio"]')) {
-    if (r.name === el.name && !hostOf(r, root)) return r;
+    if (r.name !== el.name || hostOf(r, root)) continue;
+    if (r.willValidate) return r;
+    if (!first) first = r;
   }
-  return el;
+  return first || el;
 }
 
+/** Radios of el's group that take part in validation (they get the error ARIA); all of them if none does. */
 function radioGroup(el, root) {
   if (!(el instanceof HTMLInputElement) || el.type !== 'radio' || !el.name) return [el];
-  return [...root.querySelectorAll('input[type="radio"]')].filter((r) => r.name === el.name);
+  const all = [...root.querySelectorAll('input[type="radio"]')].filter((r) => r.name === el.name);
+  const eligible = all.filter((r) => r.willValidate);
+  return eligible.length ? eligible : all;
 }
 
 /**
@@ -488,14 +498,11 @@ export class TdFormValidation {
   /** @private Show one error on one control (dispatch per D18). */
   static _show(root, st, el, message, source) {
     const prev = st.shown.get(el);
-    if (el instanceof TdFormElement && el.constructor.errorContract) {
+    if ((el instanceof TdFormElement && el.constructor.errorContract)
+      || (!(el instanceof TdFormElement) && typeof el.setError === 'function')) {
       el.setError(message);
       st.shown.set(el, { source });
-      return;
-    }
-    if (!(el instanceof TdFormElement) && typeof el.setError === 'function') {
-      el.setError(message);
-      st.shown.set(el, { source });
+      TdFormValidation._syncSummary(root, st, el, message);
       return;
     }
     // Native fallback (also a TdFormElement without the error contract: note after the host, aria on the host).
@@ -525,6 +532,50 @@ export class TdFormValidation {
       t.setAttribute('aria-describedby', ids.join(' '));
     }
     st.shown.set(el, rec);
+    TdFormValidation._syncSummary(root, st, el, message);
+  }
+
+  /**
+   * @private Keep an ACTIVE summary in step with a (re)shown field error (review ISSUE-7): update the entry's text, or
+   * insert a reappearing field in document order (unmapped server messages stay last). No summary → nothing.
+   */
+  static _syncSummary(root, st, el, message) {
+    const sum = st.summary;
+    if (!sum) return;
+    const existing = sum.items.get(el);
+    if (existing) {
+      const btn = existing.querySelector('.td-form-summary__link');
+      if (btn) btn.textContent = TdFormValidation._summaryText(el, message);
+      return;
+    }
+    const li = TdFormValidation._summaryItem(root.ownerDocument, el, message);
+    let before = null;
+    for (const [other, otherLi] of sum.items) {
+      if (el.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_FOLLOWING
+        && (!before || otherLi.compareDocumentPosition(before) & Node.DOCUMENT_POSITION_FOLLOWING)) before = otherLi;
+    }
+    if (!before) before = [...sum.list.children].find((c) => ![...sum.items.values()].includes(c)) || null;
+    sum.list.insertBefore(li, before);
+    sum.items.set(el, li);
+  }
+
+  /** @private */
+  static _summaryText(el, message) {
+    const label = labelOf(el);
+    return label ? `${label}: ${message}` : message;
+  }
+
+  /** @private one summary entry: a button that focuses the field (text only) */
+  static _summaryItem(doc, element, message) {
+    const li = doc.createElement('li');
+    li.className = 'td-form-summary__item';
+    const btn = doc.createElement('button');
+    btn.type = 'button';
+    btn.className = 'td-form-summary__link';
+    btn.textContent = TdFormValidation._summaryText(element, message);
+    btn.addEventListener('click', () => TdFormValidation._focus(element));
+    li.appendChild(btn);
+    return li;
   }
 
   /** @private Undo _show() for one control + drop its summary item. */
@@ -585,15 +636,7 @@ export class TdFormValidation {
     list.className = 'td-form-summary__list';
     const items = new Map();
     for (const { element, message } of fieldErrors) {
-      const li = doc.createElement('li');
-      li.className = 'td-form-summary__item';
-      const btn = doc.createElement('button');
-      btn.type = 'button';
-      btn.className = 'td-form-summary__link';
-      const label = labelOf(element);
-      btn.textContent = label ? `${label}: ${message}` : message;
-      btn.addEventListener('click', () => TdFormValidation._focus(element));
-      li.appendChild(btn);
+      const li = TdFormValidation._summaryItem(doc, element, message);
       list.appendChild(li);
       items.set(element, li);
     }

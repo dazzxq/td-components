@@ -418,9 +418,11 @@ const unbind = TdMenu.bind(myButton, () => items, { align: 'end' }); // or bind 
 TdMenu.open(anchor, items); TdMenu.close(); TdMenu.isOpen(anchor);
 ```
 
-**Items:** `label`, `onSelect` (alias `onClick`), `href` (+ `newTab`; only http/https/mailto/tel/relative — anything
-else renders a disabled item and warns), `icon` (registry name) / `iconNode` (trusted Node, cloned), `hint`, `danger`,
-`disabled`, `type: 'checkbox' | 'radio'` + `checked` + `group`, `{ separator: true }`. **Options:** `align`
+**Items:** `label`, `onSelect` (alias `onClick`), `href` (+ `newTab`; only http/https/relative — anything else,
+including `mailto:`/`tel:`, renders a disabled item and warns; use `onSelect` for those), `icon` (registry name) /
+`iconNode` (trusted `SVGElement`, cloned), `hint`, `danger`, `disabled`, `type: 'checkbox' | 'radio'` + `checked` +
+`group`, `{ separator: true }`. The menu never mutates your items: a checkable item's new state arrives as
+`onSelect(ctx)` → `ctx.checked`; update your model to persist it. **Options:** `align`
 (`end` default, `start`, `center`), `side`, `focus: 'first' | 'last'`. `TdMenu.labels` (Vietnamese, site-overridable).
 **Keyboard:** trigger Enter/Space/↓ open on the first item, ↑ on the last; ↑ ↓ wrap, Home/End, type-ahead
 (diacritic-insensitive), Enter/Space activate, Escape closes and returns focus to the trigger, Tab closes and moves on.

@@ -55,7 +55,7 @@ import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
 const TYPEAHEAD_MS = 500;
 const LIST_MAX = 448; // px, 28rem at 16px: the menu itself scrolls beyond this (or the room on the chosen side)
 const ALIGNS = ['start', 'center', 'end'];
-const SAFE_SCHEMES = ['http:', 'https:', 'mailto:', 'tel:'];
+const SAFE_SCHEMES = ['http:', 'https:']; // inventory §1.5: http/https only (mail/phone → onSelect)
 
 let menuSeq = 0;
 let triggerSeq = 0;
@@ -66,7 +66,7 @@ const bound = new WeakMap();
 
 /**
  * Validate a link target (security.md: URL whitelist). Relative URLs resolve against the page; an explicit scheme
- * must be http/https/mailto/tel. The string is normalised the way the URL parser does before the check.
+ * must be http/https. The string is normalised the way the URL parser does before the check.
  * @param {unknown} href
  * @returns {string|null} the href to use, or null when unsafe
  */
@@ -114,7 +114,7 @@ function normalise(list) {
       href: null,
       newTab: !!it.newTab,
       icon: typeof it.icon === 'string' ? it.icon : '',
-      iconNode: typeof Node !== 'undefined' && it.iconNode instanceof Node ? it.iconNode : null,
+      iconNode: typeof SVGElement !== 'undefined' && it.iconNode instanceof SVGElement ? it.iconNode : null, // trusted SVG only
       id: it.id == null ? '' : String(it.id),
     };
     if (it.href != null && type === 'item') {
@@ -283,8 +283,7 @@ function activate(s, idx) {
   if (entry.disabled) return;
   const ctx = { item: entry.src, anchor: s.anchor, checked: entry.checked };
   if (entry.type === 'checkbox') {
-    entry.checked = !entry.checked;
-    entry.src.checked = entry.checked;
+    entry.checked = !entry.checked; // session state only — caller items are never mutated (they may be frozen)
     node.setAttribute('aria-checked', String(entry.checked));
     ctx.checked = entry.checked;
     safeCall(entry.onSelect, ctx);
@@ -295,7 +294,6 @@ function activate(s, idx) {
       if (r.entry.type !== 'radio' || r.entry.group !== entry.group) continue;
       const on = r === rec;
       r.entry.checked = on;
-      r.entry.src.checked = on;
       r.node.setAttribute('aria-checked', String(on));
     }
     ctx.checked = true;
@@ -386,13 +384,13 @@ export class TdMenu {
       return null;
     }
     if (!anchor.isConnected) return null;
+    if (current) closeSession(current, 'api'); // a new anchor always closes the old menu, even if its items are empty
     let list = items;
     if (isFn(list)) {
       try { list = list(); } catch (err) { console.error('TdMenu items', err); return null; }
     }
     const entries = normalise(list);
     if (!entries.some((e) => !e.separator)) return null;
-    if (current) closeSession(current, 'api');
 
     const menuId = `td-menu-${++menuSeq}`;
     const { menu, items: recs } = build(entries, menuId);
@@ -482,6 +480,9 @@ export class TdMenu {
   static bind(trigger, items, opts = {}) {
     if (!(trigger instanceof HTMLElement)) return () => {};
     bound.get(trigger)?.();
+    // snapshot what binding changes, so unbind() restores the trigger's own semantics
+    const SNAP = ['id', 'aria-haspopup', 'aria-expanded', 'aria-controls'];
+    const before = new Map(SNAP.map((a) => [a, trigger.getAttribute(a)]));
     ensureId(trigger);
     trigger.setAttribute('aria-haspopup', 'menu');
     if (!TdMenu.isOpen(trigger)) trigger.setAttribute('aria-expanded', 'false');
@@ -504,6 +505,10 @@ export class TdMenu {
       trigger.removeEventListener('click', onClick);
       trigger.removeEventListener('keydown', onKeydown);
       if (TdMenu.isOpen(trigger)) closeSession(current, 'api');
+      for (const [a, v] of before) {
+        if (v === null) trigger.removeAttribute(a);
+        else trigger.setAttribute(a, v);
+      }
     };
     bound.set(trigger, unbind);
     return unbind;
