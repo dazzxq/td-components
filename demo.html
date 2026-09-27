@@ -9,6 +9,16 @@
   <link rel="stylesheet" href="./demo.css">
 </head>
 <body class="demo-page">
+  <!-- ES modules cannot load from file:// (browsers block them: CORS, origin "null"). Explain instead of a blank page. -->
+  <div id="demo-file-warning" class="demo-file-warning" hidden>
+    <strong>Trang demo cần chạy qua một web server.</strong>
+    Mở bằng <code>file://</code> thì trình duyệt chặn ES module nên component không hiện. Chạy
+    <code>npm run demo</code> trong thư mục dự án (Vite tự mở trang), hoặc <code>npx vite</code> rồi vào
+    <code>http://localhost:5173/demo.html</code>.
+  </div>
+  <script>
+    if (location.protocol === 'file:') document.getElementById('demo-file-warning').hidden = false;
+  </script>
 
   <h1 class="demo-title">td-components Demo</h1>
   <p class="demo-lead">Test tất cả components trực tiếp. Mở DevTools Console để xem events.</p>

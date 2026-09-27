@@ -8,6 +8,11 @@ Each component is **independent** (import only what you need) and **customized t
 
 **Docs:** [docs/README.md](docs/README.md) — vision, roadmap, architecture, conventions, decisions.
 
+## Demo
+
+`npm run demo` — opens `demo.html` through Vite. Opening the file directly (`file://`) shows nothing: browsers
+block ES modules from `file://`.
+
 ## Install
 
 ```bash

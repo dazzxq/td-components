@@ -41,3 +41,5 @@
 hr { margin: 32px 0; border: none; border-top: 1px solid var(--td-color-border); }
 .demo-form { display: grid; gap: 16px; }
 .demo-output { min-height: 1.5em; margin: 12px 0 0; padding: 12px; font: 13px/1.5 ui-monospace, monospace; white-space: pre-wrap; background: var(--td-color-surface-muted); border-radius: var(--td-radius-md); }
+.demo-file-warning { margin-bottom: 24px; padding: 16px 20px; line-height: 1.6; color: var(--td-color-text); background: #fff4e5; border: 1px solid #f0b35b; border-radius: 12px; }
+.demo-file-warning code { padding: 1px 5px; background: rgb(0 0 0 / 6%); border-radius: 4px; }
