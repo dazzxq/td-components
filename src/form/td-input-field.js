@@ -2,14 +2,14 @@ import { TdFormElement } from '../base/td-form-element.js';
 
 /**
  * Multi-type input field — token-native (needs td.css; no Tailwind). Styles: src/styles/components/field.css.
- * Plan: docs/plans/v0.8.0-batch2.md (step 2, D2/D3/D5/D8/D9/D17).
+ * Plan: docs/internal/plans/v0.8.0-batch2.md (step 2, D2/D3/D5/D8/D9/D17).
  *
  * **Form-associated (ElementInternals):** the HOST submits its value in any `<form>` and owns ALL constraint
  * validation. The inner control carries NO `name` and NO native constraints — `email`/`url`/`number` render as
  * `type="text"` (+ `inputmode`); the host recomputes `typeMismatch`/`rangeUnderflow`/`rangeOverflow`/
  * `stepMismatch`/`tooLong`/`valueMissing` off a detached probe input. `password` and `date` keep their type.
  *
- * DOM contract (class map: docs/migration/class-map.md):
+ * DOM contract (class map: docs/upgrading/class-map.md):
  *   <div class="td-field td-field--{sm|md|lg}[ td-field--textarea| td-field--editable]">
  *     [<label class="td-field__label" id="{host}-label" for="{controlId}">…[<span class="td-field__required" aria-hidden="true"> *</span>]</label>]
  *     <input|textarea class="td-field__control" id="{controlId}" [aria-required] [aria-describedby] [aria-invalid aria-errormessage]>

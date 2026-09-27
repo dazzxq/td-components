@@ -1,5 +1,5 @@
 /*
- * Liquid Glass recipes — rules: docs/design/liquid-glass.md.
+ * Liquid Glass recipes — rules: docs/internal/design/liquid-glass.md.
  *
  * Use glass ONLY on the floating control layer (bars, menus, popovers, sheets, toasts, modals).
  * Never glass on glass: anything placed ON a glass surface uses plain fills.

@@ -4,7 +4,7 @@ import { TdHovercard, hovercardUrl } from './td-hovercard.js';
 import { TdModal } from './td-modal.js';
 import { LAYERS, hasActiveAbove } from '../utils/layers.js';
 
-// v0.14.0 G10 — TdHovercard (plan docs/plans/v0.14.0-liquid-glass.md). td.css only.
+// v0.14.0 G10 — TdHovercard (plan docs/internal/plans/v0.14.0-liquid-glass.md). td.css only.
 const link = document.createElement('link');
 link.rel = 'stylesheet';
 link.href = '/td.css';

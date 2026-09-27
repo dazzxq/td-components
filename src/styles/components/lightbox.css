@@ -1,7 +1,7 @@
 /*
  * td-lightbox — image/video viewer (src/feedback/td-lightbox.js). Adapted from the 135 kit.
  * Always dark: its background is the photograph, not the site theme → local tokens, no dark remap.
- * Glass (docs/design/liquid-glass.md): toolbar + counter are CLEAR glass over the photo
+ * Glass (docs/internal/design/liquid-glass.md): toolbar + counter are CLEAR glass over the photo
  * (`td-glass-surface td-glass-surface--clear`, fallbacks from glass.css) with a LOCAL dim layer;
  * the info panel / sheet is solid. State comes from attributes set by JS, never visual classes:
  *   overlay [data-state="open"] [data-dragging] [data-closing-down] [data-zoomed] [data-panel]
@@ -14,6 +14,7 @@
 		cursor: zoom-in;
 	}
 
+	/* same specificity as the rule above and later in the file → a video trigger is always a pointer */
 	:is([data-td-lightbox-type="video"], [data-dwp-lightbox-type="video"]) {
 		cursor: pointer;
 	}
@@ -453,7 +454,7 @@
 		}
 	}
 
-	/* Touch: 44 px hit targets (docs/design/liquid-glass.md geometry rule). */
+	/* Touch: 44 px hit targets (docs/internal/design/liquid-glass.md geometry rule). */
 	@media (pointer: coarse) {
 		.td-lightbox {
 			--td-lb-btn: var(--td-touch-min);
@@ -474,12 +475,6 @@
 		.td-lightbox__caption {
 			padding-bottom: max(18px, env(safe-area-inset-bottom));
 		}
-	}
-
-	/* Trigger affordance for bind(). */
-	[data-td-lightbox],
-	[data-td-lightbox-group] [data-td-lightbox-item] {
-		cursor: zoom-in;
 	}
 
 	@media (prefers-contrast: more) {

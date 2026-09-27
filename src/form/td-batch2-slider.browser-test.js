@@ -3,7 +3,7 @@ import './td-slider.js';
 import { TdButton } from './td-button.js';
 import { sendKeys, sendMouse, resetMouse, emulateMedia } from '@web/test-runner-commands';
 
-// Batch 2 — td-slider (plan docs/plans/v0.8.0-batch2.md step 3: D11/D12/D14/D16). td.css only, no Tailwind.
+// Batch 2 — td-slider (plan docs/internal/plans/v0.8.0-batch2.md step 3: D11/D12/D14/D16). td.css only, no Tailwind.
 const link = document.createElement('link');
 link.rel = 'stylesheet';
 link.href = '/td.css';

@@ -1,0 +1,256 @@
+[Tài liệu](../README.md) › [Components](README.md) › Checkbox
+
+# Checkbox — `<td-checkbox>`
+
+Ô đánh dấu (tròn theo mặc định, kiểu Apple) dựa trên `<input type="checkbox">` native, tham gia `<form>` như checkbox
+thường. Dùng khi người dùng chọn/bỏ chọn một mục hoặc đồng ý điều khoản. Với cài đặt bật/tắt có hiệu lực ngay (ví dụ
+"Nhận thông báo"), dùng [toggle](toggle.md). Chọn một trong nhiều lựa chọn thì dùng [dropdown](dropdown.md) hoặc
+radio native.
+
+| | |
+|---|---|
+| Import | `import '@dazzxq/td-components/checkbox';` (class: `import { TdCheckbox } from '@dazzxq/td-components';`) |
+| Loại | Custom element |
+| Form-associated | có |
+| Từ phiên bản | 0.1.0 (form-associated từ 0.2.0, token-native + một event `change` từ 0.7.0, tròn từ 0.14.0) |
+
+Cần `td.css` trên trang (xem [Cài đặt](../getting-started/installation.md)).
+
+## Ví dụ nhanh
+
+```html
+<td-checkbox name="agree" required label="Tôi đồng ý với điều khoản"></td-checkbox>
+<td-checkbox name="plan" value="pro" checked label="Gói Pro"></td-checkbox>
+
+<script type="module">
+  import '@dazzxq/td-components/checkbox';
+</script>
+```
+
+## Cách dùng
+
+### Checkbox có nhãn, không nhãn
+
+```html
+<!-- Nhãn hiện cạnh ô, bấm vào nhãn cũng đổi trạng thái -->
+<td-checkbox label="Ghi nhớ đăng nhập"></td-checkbox>
+
+<!-- Không nhãn hiển thị (ví dụ ô chọn dòng trong bảng): bắt buộc có aria-label -->
+<td-checkbox aria-label="Chọn dòng 12"></td-checkbox>
+
+<!-- Nhãn ở ngoài, trỏ vào id của host -->
+<label for="newsletter">Nhận bản tin</label>
+<td-checkbox id="newsletter"></td-checkbox>
+```
+
+Bấm vào `<label for>` ở ngoài sẽ focus và đổi trạng thái checkbox, giống checkbox native.
+
+### Đọc và đổi trạng thái
+
+```js
+const cb = document.querySelector('td-checkbox[name="agree"]');
+
+cb.checked;          // true / false
+cb.checked = true;   // = cb.setAttribute('checked', '')
+cb.checked = false;  // = cb.removeAttribute('checked')
+```
+
+Attribute `checked` luôn khớp với trạng thái hiện tại: khi người dùng bấm, kit tự thêm/xoá attribute. Đổi `checked`
+bằng code cập nhật tại chỗ (không render lại, không mất focus) và **không** phát `change`.
+
+### Nghe thay đổi
+
+```js
+cb.addEventListener('change', (e) => {
+  console.log('checked =', e.detail.checked);
+});
+```
+
+Mỗi lần người dùng đổi trạng thái (chuột, chạm, phím Space, bấm nhãn) có đúng **một** event `change`.
+
+### Trong form
+
+```html
+<form id="order">
+  <td-checkbox name="gift" label="Gói quà"></td-checkbox>                  <!-- gửi "on" khi được chọn -->
+  <td-checkbox name="plan" value="pro" label="Gói Pro"></td-checkbox>       <!-- gửi "pro" khi được chọn -->
+  <td-checkbox name="terms" required label="Đồng ý điều khoản"></td-checkbox>
+  <td-button type="submit">Đặt hàng</td-button>
+</form>
+```
+
+- Được chọn: gửi `name=value` (`value` mặc định là `on`). Không được chọn: không gửi gì (giống checkbox native).
+- `required` + chưa chọn → `valueMissing` với thông báo `Vui lòng chọn ô này.`, chặn submit.
+- Reset form: trả `checked` và `value` về như lúc phần tử gắn vào trang, đồng thời xoá lỗi đang hiện.
+- `<fieldset disabled>` bao ngoài làm checkbox disabled (không gửi), attribute `disabled` của nó không bị đổi.
+- Khôi phục trạng thái khi autofill / back-forward cache: **không** khôi phục `checked` (xem
+  [Lưu ý](#lưu-ý--lỗi-thường-gặp)).
+
+Nhiều checkbox cùng `name` được gửi thành nhiều cặp, đọc bằng `formData.getAll('name')`.
+
+### Màu và kích thước
+
+```html
+<td-checkbox size="sm" label="Nhỏ"></td-checkbox>
+<td-checkbox size="lg" label="Lớn" color="#10b981" checked></td-checkbox>
+```
+
+`color` đổi màu nền khi được chọn cho riêng phần tử đó. Giá trị đi qua `safeColor`; không hợp lệ thì dùng màu mặc định
+(`--td-checkbox-color`, tức màu accent).
+
+### Checkbox vuông
+
+Mặc định tròn (từ 0.14.0). Muốn vuông, đổi token bo góc:
+
+```css
+:root { --td-checkbox-radius: 6px; }
+```
+
+### Hiện lỗi (error contract)
+
+```js
+cb.setError('Bạn cần đồng ý để tiếp tục');
+cb.clearError();     // hoặc cb.setError('')
+cb.errorMessage;     // lỗi đang hiện, '' nếu không có
+```
+
+```html
+<td-checkbox name="terms" label="Đồng ý" error-text="Bạn cần đồng ý để tiếp tục"></td-checkbox>
+```
+
+Hiện lỗi = viền ô màu lỗi + `aria-invalid="true"` + `aria-errormessage` trên input + một dòng
+`<span class="td-field-error">` bên dưới. `setError()` và `error-text`: cái nào đặt sau cùng thì thắng. Error contract
+**không chặn submit**; muốn chặn, dùng thêm `setCustomValidity(msg)`. Xem [Forms](../guides/forms.md).
+
+## Attribute
+
+| Attribute | Kiểu | Mặc định | Mô tả |
+|---|---|---|---|
+| `checked` | boolean | không | Trạng thái được chọn. Tự cập nhật khi người dùng bấm. Lúc gắn vào trang là trạng thái mặc định khi reset. |
+| `value` | string | `on` (khi không có attribute) | Giá trị gửi đi khi được chọn. |
+| `name` | string | — | Tên trường trong form. |
+| `required` | boolean | không | Bắt buộc chọn (`valueMissing`). |
+| `disabled` | boolean | không | Tắt (cũng qua `<fieldset disabled>`). |
+| `label` | string | — | Nhãn hiển thị cạnh ô. |
+| `aria-label` | string | — | Tên truy cập khi không có `label` (chép xuống input). |
+| `size` | string | `md` | `sm` \| `md` \| `lg` (ô 16 / 20 / 24 px). Khác → `md`. |
+| `color` | string (màu CSS) | `--td-checkbox-color` | Màu nền khi được chọn, riêng phần tử này. |
+| `error-text` | string | — | Dòng lỗi (error contract). |
+| `id` | string | tự sinh `td-td-checkbox-{n}` | Tự gán nếu thiếu, để `<label for>` và id lỗi hoạt động. |
+
+## Property & method
+
+Property phản chiếu attribute: `checked` (boolean), `value`, `name`, `required`, `disabled`, `label`, `ariaLabel`,
+`size`, `color`, `errorText`. Lưu ý `value` trả về `''` khi không có attribute, dù giá trị gửi đi khi đó là `on`.
+
+> Property được tạo khi phần tử gắn vào trang lần đầu. Trước đó dùng `setAttribute()`.
+
+| Method / property | Trả về | Mô tả |
+|---|---|---|
+| `setError(message: string)` | `void` | Hiện lỗi; `''` để xoá. |
+| `clearError()` | `void` | Xoá lỗi. |
+| `errorMessage` | `string` (chỉ đọc) | Lỗi đang hiện. |
+| `focus(options?)` | `void` | Focus input bên trong. |
+| `setCustomValidity(message)` | `void` | Lỗi custom chặn submit; `''` để gỡ. |
+| `checkValidity()` / `reportValidity()` | `boolean` | Như native. |
+| `form`, `validity`, `validationMessage`, `willValidate`, `labels` | — | Như native (chỉ đọc). |
+
+Checkbox không có trạng thái `indeterminate`.
+
+## Event
+
+| Event | detail | Khi nào | bubbles? |
+|---|---|---|---|
+| `change` | `{ checked: boolean }` | Người dùng đổi trạng thái. Đúng một event mỗi lần. Không phát khi đổi bằng code. | có (composed) |
+
+`change` và `input` native của input bên trong bị chặn tại host.
+
+## Tuỳ biến giao diện
+
+| Token | Mặc định (sáng) | Tác dụng |
+|---|---|---|
+| `--td-checkbox-color` | `var(--td-accent)` (#2563eb) | Màu nền + viền khi được chọn. Attribute `color` đặt biến này trên host bằng CSSOM. |
+| `--td-checkbox-border` | `var(--td-control-border-soft)` (#d1d1d6) | Viền lúc chưa chọn (mềm, v0.14.1). |
+| `--td-checkbox-radius` | `50%` | Bo góc ô (tròn). Đặt `6px` cho ô vuông. |
+| `--td-control-border-hover` | `#aeaeb2` | Viền khi hover ô chưa chọn (v0.14.2). Token chung của control. |
+| `--td-checkbox-box` | `1.25rem` (sm `1rem`, lg `1.5rem`) | Kích thước ô, đặt trên `.td-checkbox` theo size. Override bằng selector class (ví dụ `.my-list .td-checkbox { --td-checkbox-box: 1.1rem; }`). |
+
+Màu dấu tích là `--td-accent-contrast` (#fff). Nền ô chưa chọn là `--td-control-bg`. Lỗi dùng `--td-field-error`.
+Focus dùng `--td-focus-ring`. Theme tối lấy theo token control chung (`--td-control-border-soft` #3a3a3c,
+`--td-control-border-hover` #636366, accent #3b82f6).
+
+**Viền mềm và WCAG:** viền ô chưa chọn lúc nghỉ ~1.5:1, khi hover ~2.2:1, thấp hơn 3:1 của WCAG 1.4.11 (có chủ đích).
+Site cần tuân thủ nghiêm:
+
+```css
+:root {
+  --td-control-border-soft: var(--td-control-border-strong);
+  --td-control-border-hover: var(--td-control-border-strong);
+}
+```
+
+Checkbox là control tầng nội dung: đặc, không bao giờ là kính. Xem [Theming](../customization/theming.md).
+
+## Cấu trúc DOM & class
+
+```html
+<td-checkbox label="Đồng ý" size="sm">
+  <label class="td-checkbox td-checkbox--sm">
+    <input type="checkbox" class="td-checkbox__input">
+    <span class="td-checkbox__mark" aria-hidden="true">
+      <span class="td-checkbox__icon" data-td-icon="check"><svg class="td-icon td-icon--m td-checkbox__svg" …></svg></span>
+    </span>
+    <span class="td-checkbox__label">Đồng ý</span>
+  </label>
+  <!-- khi có lỗi: <span class="td-field-error" id="{host-id}-error" data-for="{host-id}">…</span> -->
+</td-checkbox>
+```
+
+| Class / trạng thái | Ý nghĩa |
+|---|---|
+| `.td-checkbox` + `.td-checkbox--{sm\|md\|lg}` | Block (là `<label>` bao ngoài) và size. |
+| `.td-checkbox__input` | Input native, ẩn bằng kỹ thuật visually-hidden (vẫn focus được). |
+| `.td-checkbox__mark` | Ô hiển thị. |
+| `.td-checkbox__icon` / `.td-checkbox__svg` | Dấu tích (icon registry `check`). |
+| `.td-checkbox__label` | Nhãn (chỉ có khi có `label`). |
+| `.td-checkbox__input:checked` / `:disabled` / `:focus-visible` / `[aria-invalid="true"]` | Trạng thái; CSS style `.td-checkbox__mark` phía sau bằng combinator `~`. |
+| `.td-field-error` | Dòng lỗi, nằm sau `<label>`, trong host. |
+
+Render phía server: in sẵn khối `<label class="td-checkbox …">` ở trên (trong `<td-checkbox>` hoặc đứng riêng với
+`td.css`). Hợp đồng markup: `test/contracts/checkbox.html`. Xem [WordPress & PHP](../guides/wordpress-php.md) và
+[bảng class cũ](../upgrading/class-map.md) (host property `--td-cb-color` đổi thành `--td-checkbox-color` ở 0.7.0).
+
+## Bàn phím & trợ năng
+
+- Input là checkbox native: Tab để tới, Space để đổi trạng thái. Focus bàn phím hiện vòng `--td-focus-ring` quanh ô.
+- Đổi trạng thái bằng bàn phím hoặc bằng code đều giữ focus (không render lại).
+- Tên truy cập theo thứ tự ưu tiên: `label` → `aria-label` trên host → `<label for="host-id">` ở ngoài (thành
+  `aria-labelledby` của input).
+- Vùng bấm tối thiểu 24×24 px ở mọi size (WCAG 2.5.8), 44 px trên màn cảm ứng.
+- Disabled: input disabled native, cả khối mờ `opacity: 0.5` và con trỏ `not-allowed`.
+- `forced-colors`: viền `ButtonText`, khi chọn nền `Highlight`. `prefers-reduced-motion`: tắt chuyển động.
+
+## Bảo mật
+
+`label`, `error-text` hiện dưới dạng text (escape / `textContent`). `color` qua `safeColor`, giá trị không phải màu
+bị bỏ.
+
+## Lưu ý & lỗi thường gặp
+
+- **Nghe `click` thay vì `change`**: dùng `change`, `e.detail.checked` là trạng thái mới.
+- **Đặt `checked` bằng code rồi chờ `change`**: đổi bằng code không phát event.
+- **`value` đọc ra `''`** khi không đặt attribute, dù form gửi `on`.
+- **Checkbox không có `label` và `aria-label`**: trình đọc màn hình không đọc được tên.
+- **Khôi phục trạng thái (back-forward cache / autofill) không khôi phục `checked`**: khi trình duyệt khôi phục, lớp
+  cơ sở chỉ đặt lại attribute `value` bằng giá trị đã gửi (ví dụ `on`), trạng thái chọn không đổi. Nếu cần, tự đồng bộ
+  lại từ server khi trang được hiện lại (`pageshow`).
+- **Muốn disabled mờ theo kiểu khác**: `opacity` nằm ở `.td-checkbox:has(.td-checkbox__input:disabled)`, override
+  bằng CSS của site.
+
+## Xem thêm
+
+- [Toggle](toggle.md) — công tắc bật/tắt, dùng chung lớp cơ sở với checkbox
+- [Forms](../guides/forms.md)
+- [Theming](../customization/theming.md) — viền mềm, override WCAG
+- [Base element](base-element.md) — `TdFormElement`, error contract
+- [Trợ năng](../guides/accessibility.md)

@@ -755,8 +755,13 @@ describe('td-lightbox — v0.15.0 dwp parity', () => {
 
   it('L6: trigger cursors for td and dwp prefixes', () => {
     host.innerHTML = `<span id="c1" data-td-lightbox="${IMG(1)}">a</span><span id="c2" data-dwp-lightbox-item>b</span>
-      <span id="c3" data-td-lightbox-item data-td-lightbox-type="video">c</span><span id="c4" data-dwp-lightbox data-dwp-lightbox-type="video">d</span>`;
+      <span id="c3" data-td-lightbox-item data-td-lightbox-type="video">c</span><span id="c4" data-dwp-lightbox data-dwp-lightbox-type="video">d</span>
+      <div data-td-lightbox-group><span id="c5" data-td-lightbox-item>e</span><span id="c6" data-td-lightbox-item data-td-lightbox-type="video">f</span></div>
+      <span id="c7" data-td-lightbox="${IMG(2)}" data-td-lightbox-type="video">g</span>
+      <div data-dwp-lightbox-group><span id="c8" data-dwp-lightbox-item data-dwp-lightbox-type="video">h</span></div>`;
     const cur = (id) => getComputedStyle(document.getElementById(id)).cursor;
-    expect([cur('c1'), cur('c2'), cur('c3'), cur('c4')]).to.deep.equal(['zoom-in', 'zoom-in', 'pointer', 'pointer']);
+    // grouped + single video triggers too (a later/more specific legacy rule used to force zoom-in on td triggers)
+    expect(['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8'].map(cur)).to.deep.equal(
+      ['zoom-in', 'zoom-in', 'pointer', 'pointer', 'zoom-in', 'pointer', 'pointer', 'pointer']);
   });
 });

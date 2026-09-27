@@ -6,7 +6,7 @@ import { TdCheckableElement } from '../base/td-checkable-element.js';
  * (valueMissing), reset, `<fieldset disabled>`. Shared behaviour (in-place `checked`, one `change`
  * event, accessible name, error contract): {@link TdCheckableElement}.
  *
- * DOM contract (class map: docs/migration/class-map.md):
+ * DOM contract (class map: docs/upgrading/class-map.md):
  *   <label class="td-checkbox td-checkbox--{sm|md|lg}">
  *     <input type="checkbox" class="td-checkbox__input">
  *     <span class="td-checkbox__mark"><span class="td-checkbox__icon" data-td-icon="check">svg</span></span>

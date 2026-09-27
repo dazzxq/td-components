@@ -11,7 +11,7 @@ const _parseCache = new Map();
 
 /**
  * Button — token-native (needs td.css; no Tailwind). Styles: src/styles/components/button.css.
- * Glass control (docs/design/liquid-glass.md v2 G3): secondary = neutral glass (.glass), primary / status variants =
+ * Glass control (docs/internal/design/liquid-glass.md v2 G3): secondary = neutral glass (.glass), primary / status variants =
  * tinted prominent glass (.glassProminent, fixed tints ≥ 4.7:1 with their label over any backdrop — rendered contrast
  * gate). Custom `color` = OPAQUE fill without backdrop blur; disabled = opaque neutral fill. Dense contexts (tables,
  * [data-td-density="dense"], inside another glass surface) drop the blur (no nested backdrop-filter).

@@ -1,5 +1,5 @@
 /**
- * TdLightbox — image/video viewer (token-native, ADR 0009). Plan: docs/plans/v0.6.0-lightbox.md.
+ * TdLightbox — image/video viewer (token-native, ADR 0009). Plan: docs/internal/plans/v0.6.0-lightbox.md.
  *
  *   const lb = TdLightbox.open(items, options);       // → handle | null
  *   const unbind = TdLightbox.bind(root, options);    // opt-in click delegation
@@ -986,7 +986,7 @@ function makeHandle(token) {
 /**
  * Open the viewer.
  * @param {Array<TdLightboxItem|string>} items
- * @param {object} [options] see docs/components.md#td-lightbox
+ * @param {object} [options] see docs/components/lightbox.md
  * @returns {ReturnType<typeof makeHandle>|null}
  */
 function openViewer(items, options = {}) {

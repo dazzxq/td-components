@@ -3,7 +3,7 @@ import { sendKeys, sendMouse, resetMouse } from '@web/test-runner-commands';
 import { TdChipInput, parseChipItems } from './td-chip-input.js';
 import { LAYERS, register, hasActiveAbove, trapTab } from '../utils/layers.js';
 
-// v0.12.0 — td-chip-input (plan docs/plans/v0.12.0-new-components.md step 3: D8–D14; inventory §2, §7.2, §8.2).
+// v0.12.0 — td-chip-input (plan docs/internal/plans/v0.12.0-new-components.md step 3: D8–D14; inventory §2, §7.2, §8.2).
 const link = document.createElement('link');
 link.rel = 'stylesheet';
 link.href = '/td.css';

@@ -3,7 +3,7 @@ import { sendKeys, emulateMedia } from '@web/test-runner-commands';
 import { TdTable } from './td-table.js';
 import { TdButton } from '../form/td-button.js';
 
-// Batch 4 — td-table token-native (plan docs/plans/v0.10.0-batch4.md step 2: D11–D22). td.css only.
+// Batch 4 — td-table token-native (plan docs/internal/plans/v0.10.0-batch4.md step 2: D11–D22). td.css only.
 const link = document.createElement('link');
 link.rel = 'stylesheet';
 link.href = '/td.css';

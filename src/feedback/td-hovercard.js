@@ -55,8 +55,8 @@
  * - Pointer: hover-intent — shows after 350 ms on the trigger, hides after a 250 ms grace; it stays open while the
  *   pointer OR focus is on the trigger or the card. Pointer hover only on `(hover: hover) and (pointer: fine)`
  *   (checked per event; touch pointers are ignored — a tap follows the trigger's own href/click).
- * - Keyboard (works on every device): focusing the trigger opens the card at once (a focus caused by a touch press
- *   does not). The card is a floating keyboard boundary at LAYERS.popover (utils/layers.js): Tab on the trigger →
+ * - Keyboard (works on every device): KEYBOARD focus (:focus-visible) on the trigger opens the card at once; a mouse
+ *   click's focus waits for the 350 ms hover intent and a touch press's focus does not open it. The card is a floating keyboard boundary at LAYERS.popover (utils/layers.js): Tab on the trigger →
  *   the first focusable in the card ('handled'), or 'pass' when it has none (e.g. still loading); Shift+Tab from the
  *   first card focusable → the trigger; Tab from the last → close, focus the trigger and 'pass' (the native order —
  *   or a TdModal's focus trap — continues after the trigger); Escape → close, and focus goes back to the trigger when

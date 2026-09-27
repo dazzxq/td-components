@@ -1,28 +1,82 @@
-# td-components docs
+# Tài liệu td-components
 
-td-components là **bộ UI kit duy nhất (single source of truth)** cho mọi site của mình: dwp (WordPress),
-135 (PHP thuần) và các site sau này. Web Components không Shadow DOM, CSP-strict, lõi nhỏ; site tuỳ biến qua
-token, hook và tham số, không sửa lõi. Hướng hiện tại: bỏ Tailwind khỏi bên trong component, chuyển sang CSS
-token phân lớp (`td.css`) và ngôn ngữ thiết kế Liquid Glass.
+td-components là **bộ UI kit duy nhất** cho mọi site: dwp (WordPress), 135 (PHP thuần) và các site sau này. Mỗi
+component là một Web Component (Custom Element) render vào **light DOM** — không Shadow DOM — nên CSS của trang và
+token `--td-*` chạm được tới nó. Toàn bộ giao diện nằm trong **một file `td.css`**. Kit chạy dưới **CSP nghiêm ngặt**
+(không `style="…"`, không chèn `<style>`), nhãn mặc định **tiếng Việt**, giao diện theo **Liquid Glass**.
 
-**Trạng thái (2026-09-27):** v0.14.0 (Liquid Glass thật: button kính, toast tint màu, tooltip dwp, menu registry, hovercard) đã ship.
-Chi tiết ở [roadmap.md](roadmap.md), lịch sử thay đổi ở [CHANGELOG.md](../CHANGELOG.md).
+Triết lý: **lõi nhỏ + hook**. Site tuỳ biến bằng token CSS, attribute/property và hook (callback) — không bao giờ sửa
+code của kit.
 
-## Tài liệu
+Phiên bản hiện tại: **0.15.1** · Lịch sử thay đổi: [CHANGELOG.md](../CHANGELOG.md)
 
-| File | Nội dung |
+---
+
+## Đọc theo thứ tự nào?
+
+| Bạn muốn… | Đọc |
 |---|---|
-| [roadmap.md](roadmap.md) | Now / Next / Later / External. **Cập nhật cùng mọi thay đổi.** |
-| [vision.md](vision.md) | Mục tiêu, giá trị cốt lõi, ràng buộc, những gì không làm |
-| [architecture.md](architecture.md) | Base class, mô hình style CSP, render/cleanup, sơ đồ phụ thuộc, kiến trúc style mục tiêu |
-| [conventions.md](conventions.md) | Cấu trúc file, đặt tên, escaping, test, quy trình release |
-| [components.md](components.md) | Catalog component: attribute, property, event, method |
-| [security.md](security.md) | Mô hình XSS theo ngữ cảnh, cam kết CSP, raw-HTML hatch |
-| [design/liquid-glass.md](design/liquid-glass.md) | Bộ luật Liquid Glass (bắt buộc cho UI mới) · [glass-tokens.css](design/glass-tokens.css) · [nguồn Apple](design/sources/apple/README.md) |
-| [decisions/](decisions/README.md) | ADR: các quyết định kiến trúc |
-| [plans/](plans/) | Plan từng release (đã qua Codex plan-review) |
-| [migration/class-map.md](migration/class-map.md) | Bảng đổi class legacy → BEM token-native (điền theo batch) |
-| [history/](history/README.md) | Lịch sử milestone, so sánh dcms, đợt sync dcms/dwp 2026-09 |
+| Biết máy/trình duyệt/site cần gì | [Yêu cầu](getting-started/requirements.md) |
+| Cài vào project (Vite, PHP thuần, WordPress) | [Cài đặt](getting-started/installation.md) |
+| Có một trang chạy được trong 5 phút | [Bắt đầu nhanh](getting-started/quick-start.md) |
+| Hiểu kit hoạt động ra sao (attribute, property, event, form, lớp nổi) | [Cách hoạt động](concepts/how-it-works.md) |
+| Tra cứu một component | [Danh sách component](components/README.md) |
+| Đổi màu, font, bo góc, dark mode, tắt kính | [Theming](customization/theming.md) |
+| Viết CSS đè lên component | [Styling](customization/styling.md) |
+| Cắm logic riêng của site (hook, callback) | [Danh mục hook](customization/hooks.md) |
+| Tự viết component mới, thêm icon, dịch nhãn | [Mở rộng](customization/extending.md) |
+| Nâng cấp lên bản mới | [Nâng cấp](upgrading/README.md) |
 
-Cách làm việc: không dùng GSD. Một thay đổi = sửa code + cập nhật `roadmap.md` + `CHANGELOG.md`
-(+ ADR nếu là quyết định kiến trúc).
+---
+
+## Bắt đầu
+
+- [Yêu cầu hệ thống](getting-started/requirements.md) — trình duyệt hỗ trợ, cần gì / không cần gì, CSP.
+- [Cài đặt](getting-started/installation.md) — npm/GitHub, Vite, PHP thuần + import map, WordPress.
+- [Bắt đầu nhanh](getting-started/quick-start.md) — form + dropdown + toggle + nút + toast + modal.
+- [Cách hoạt động](concepts/how-it-works.md) — light DOM, attribute vs property, event, vòng đời, form, lớp nổi, CSP.
+
+## Component
+
+Xem [danh sách đầy đủ](components/README.md). Tóm tắt:
+
+| Nhóm | Component |
+|---|---|
+| Form | [Button](components/button.md) · [Input field](components/input-field.md) · [Checkbox](components/checkbox.md) · [Toggle](components/toggle.md) · [Slider](components/slider.md) · [Dropdown](components/dropdown.md) · [Datetime picker](components/datetime-picker.md) · [Chip input](components/chip-input.md) · [Form validation](components/form-validation.md) |
+| Lớp nổi & phản hồi | [Modal](components/modal.md) · [Toast](components/toast.md) · [Tooltip](components/tooltip.md) · [Loading](components/loading.md) · [Menu](components/menu.md) · [Hovercard](components/hovercard.md) · [Lightbox](components/lightbox.md) |
+| Hiển thị | [Table](components/table.md) · [Tabs](components/tabs.md) · [Pagination](components/pagination.md) · [Empty state](components/empty-state.md) · [Icons](components/icons.md) |
+| Nền tảng | [Base element (tự viết component)](components/base-element.md) · [Tiện ích](components/utilities.md) |
+
+## Tuỳ biến
+
+- [Theming](customization/theming.md) — token `--td-*`, dark theme, kính (Liquid Glass), viền, chuẩn tương phản.
+- [Styling](customization/styling.md) — `@layer`, cách đè CSS an toàn, class BEM ổn định, giá trị per-instance.
+- [Hook](customization/hooks.md) — danh mục mọi hook/callback/option theo component + công thức mẫu.
+- [Mở rộng](customization/extending.md) — viết component mới, đăng ký icon, registry menu, đổi ngôn ngữ nhãn.
+
+## Hướng dẫn
+
+- [Form](guides/forms.md) — form-associated, FormData, validation, lỗi từ server, submit AJAX.
+- [Trợ năng (a11y)](guides/accessibility.md) — bàn phím, ARIA, focus, các đánh đổi có chủ đích.
+- [Bảo mật](guides/security.md) — text vs HTML, các "cửa" HTML tin cậy, URL, checklist cho site.
+- [CSP](guides/csp.md) — header nên dùng, nonce, những gì kit không bao giờ làm.
+- [WordPress & PHP](guides/wordpress-php.md) — tích hợp vào dwp và 135.
+
+## Nâng cấp
+
+- [Quy trình nâng cấp](upgrading/README.md) — chính sách version, từng bước, checklist sau nâng cấp.
+- [Thay đổi phá vỡ theo phiên bản](upgrading/breaking-changes.md) — 0.4 → 0.15, cần sửa gì.
+- [Bảng đổi class](upgrading/class-map.md) — class cũ (Tailwind/DCMS) → class mới.
+
+---
+
+## Xem trực tiếp
+
+- **Demo:** `npm run demo` (mở `demo.html` qua Vite — mở file trực tiếp bằng `file://` sẽ trống vì trình duyệt chặn
+  ES module).
+- **Storybook:** `npm run storybook` → http://localhost:6006 (mọi component, mọi trạng thái; mục
+  *Foundations/Glass › Showcase* để xem kính).
+
+## Cho người phát triển kit
+
+ADR, plan từng release, bộ luật Liquid Glass, kiến trúc, quy ước, roadmap: [docs/internal/](internal/README.md).
