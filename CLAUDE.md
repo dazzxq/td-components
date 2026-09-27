@@ -8,7 +8,9 @@ site tuỳ biến qua token `--td-*`, hook và attribute/property, không sửa 
 
 **Core Value:** Drop vào bất kỳ project nào, import component cần dùng, chạy ngay — không cần config, không cần copy code, không global namespace pollution.
 
-**Docs hub: [docs/README.md](docs/README.md)** (vision, roadmap, architecture, conventions, ADR).
+**Docs hub: [docs/README.md](docs/README.md)** (tài liệu người dùng hub-spoke: cài đặt, component, tuỳ biến, hook,
+nâng cấp). Tài liệu nội bộ (vision, roadmap, architecture, conventions, ADR, plan, luật glass):
+[docs/internal/](docs/internal/README.md). Đổi API/hành vi → cập nhật trang `docs/components/*.md` liên quan.
 
 ### Constraints
 

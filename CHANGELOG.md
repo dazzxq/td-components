@@ -2,6 +2,28 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.15.1
+
+### Docs — viết lại từ đầu dạng hub-spoke (owner request)
+
+- `docs/README.md` là hub; spoke: `getting-started/` (yêu cầu, cài đặt Vite · PHP + import map · WordPress, bắt đầu
+  nhanh), `concepts/how-it-works.md`, `components/` (mỗi component một trang theo cùng khuôn: ví dụ, attribute,
+  property/method, event, hook, token, DOM contract, bàn phím/a11y, bảo mật, lưu ý), `customization/` (theming, styling,
+  danh mục hook, mở rộng), `guides/` (form, a11y, bảo mật, CSP, WordPress & PHP), `upgrading/` (quy trình, thay đổi phá
+  vỡ theo phiên bản 0.4 → 0.15, bảng đổi class). Mọi API trong docs được đối chiếu với source.
+- Tài liệu nội bộ (ADR, plan, luật Liquid Glass, kiến trúc, quy ước, roadmap, mô hình bảo mật, lịch sử) chuyển vào
+  `docs/internal/`, giữ nguyên nội dung; mọi tham chiếu trong repo đã trỏ lại. `docs/components.md` và
+  `docs/migration/class-map.md` cũ được thay bằng `docs/components/*.md` và `docs/upgrading/class-map.md`.
+- README gốc rút gọn, trỏ vào hub. Các lỗi/khoảng trống phát hiện khi viết docs ghi ở `docs/internal/roadmap.md` (Next).
+
+### Fixed
+
+- Lightbox: trigger video dùng prefix `td` (đơn lẻ hoặc trong group) vẫn hiện con trỏ `zoom-in` — một rule cũ đứng sau
+  đè lên rule `pointer` của 0.15.0. Test phủ thêm trigger trong group và trigger đơn.
+- Comment/tài liệu nội bộ lỗi thời: token nút ("SOLID, never glass"), luật G3 (giá trị 0.14.3), ADR 0009 (chữ ký
+  `bind`/`download`/`isAllowedUrl`), comment focus của hovercard, mô hình bảo mật (chính sách URL), architecture
+  (render lại khi gắn lại).
+
 ## 0.15.0
 
 **TdLightbox — dwp parity.** A read-only comparison with the current dwp lightbox showed every dwp change predates the

@@ -1,0 +1,195 @@
+[Tài liệu](../README.md) › [Components](README.md) › Empty state
+
+# Trạng thái rỗng — `<td-empty-state>`
+
+Khối "chưa có gì ở đây": icon trang trí, tiêu đề, một câu giải thích và (tuỳ chọn) các nút hành động như "Tạo mới".
+Dùng khi một danh sách, kết quả tìm kiếm hay khu vực nội dung không có dữ liệu. Bảng [`td-table`](table.md) đã tự hiện
+empty state khi không có hàng, bạn không cần tự đặt. Không dùng cho lỗi cần người dùng chú ý ngay (dùng
+[toast](toast.md) hoặc [modal](modal.md)).
+
+| | |
+|---|---|
+| Import | `import '@dazzxq/td-components/empty-state'` (class: `import { TdEmptyState } from '@dazzxq/td-components'`) |
+| Loại | Custom element |
+| Form-associated | không |
+| Từ phiên bản | 0.1.0 (token-native từ 0.8.0: cần `td.css`) |
+
+## Ví dụ nhanh
+
+```html
+<td-empty-state title="Chưa có hoá đơn" message="Tạo hoá đơn đầu tiên để bắt đầu."></td-empty-state>
+
+<script type="module">
+  import '@dazzxq/td-components/empty-state';
+</script>
+```
+
+Không đặt gì cũng được: mặc định icon `inbox`, tiêu đề "Không có dữ liệu", nội dung "Chưa có mục nào được tạo.".
+
+## Cách dùng
+
+### 1. Thêm nút hành động
+
+```js
+const empty = document.querySelector('td-empty-state');
+empty.actions = [
+  { label: 'Tạo hoá đơn', variant: 'primary', onClick: () => openCreateForm() },
+  { label: 'Nhập từ file', onClick: () => openImport() },
+];
+```
+
+- Nút được render bằng class `.td-btn` (cỡ `sm`), **không** cần import `td-button`.
+- `variant`: `'primary'`, `'secondary'` hoặc `'danger'`; giá trị khác → `'secondary'`.
+- `onClick` nhận event `click` gốc (listener gắn trực tiếp lên `<button>`).
+- Gán lại `actions` sẽ gỡ listener cũ trước khi tạo nút mới, **không bị cộng dồn** handler. Mảng rỗng → khung nút ẩn.
+- Mục không phải object bị bỏ qua; `label` rỗng hiện chữ `Action`.
+
+### 2. Icon khác từ registry
+
+```html
+<td-empty-state icon="search" title="Không có kết quả" message="Thử thay đổi bộ lọc."></td-empty-state>
+```
+
+`icon` là tên icon trong registry (core hoặc site đã `registerIcons()`); xem danh sách ở [Icons](icons.md). Tên không
+tồn tại → hiện `inbox` + một cảnh báo console.
+
+### 3. Icon SVG riêng của site (`iconNode`)
+
+```js
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const svg = document.createElementNS(SVG_NS, 'svg');
+svg.setAttribute('viewBox', '0 0 24 24');
+svg.setAttribute('fill', 'none');
+svg.setAttribute('stroke', 'currentColor');
+svg.setAttribute('stroke-width', '2');
+const path = document.createElementNS(SVG_NS, 'path');
+path.setAttribute('d', 'M4 4h16v16H4z');
+svg.appendChild(path);
+
+document.querySelector('td-empty-state').iconNode = svg;
+```
+
+`iconNode` nhận một `SVGElement` **do site tự dựng (tin cậy)**. Component **clone** nó (node gốc của bạn không bị di
+chuyển), đặt `aria-hidden="true"`, `focusable="false"` và `width`/`height` theo `size`. `iconNode` thắng `icon`. Giá trị
+không phải `SVGElement` → `null` (quay về `icon`). Nếu icon dùng lại nhiều nơi, đăng ký nó bằng `registerIcons()` rồi
+dùng `icon="tên"` sẽ gọn hơn.
+
+### 4. Kích thước và độ gọn
+
+```html
+<td-empty-state size="sm" compact title="Trống"></td-empty-state>
+<td-empty-state size="lg" title="Chưa có dự án" message="Dự án bạn tạo sẽ hiện ở đây."></td-empty-state>
+```
+
+| `size` | Icon | Padding (thường / `compact`) |
+|---|---|---|
+| `sm` | 28 px | 16px / 8px |
+| `md` | 40 px | 22px / 11px |
+| `lg` | 56 px | 28px / 14px |
+
+### 5. Đúng cấp heading trong trang
+
+```html
+<h2>Đơn hàng</h2>
+<td-empty-state heading-level="3" title="Chưa có đơn hàng"></td-empty-state>
+```
+
+`heading-level` 2–6 (mặc định 3, ngoài khoảng → 3). Chọn cấp nối tiếp heading bao quanh để cây heading của trang đúng.
+
+## Attribute
+
+| Attribute | Kiểu | Mặc định | Mô tả |
+|---|---|---|---|
+| `icon` | string | `inbox` | Tên icon registry. Chuỗi `<svg …>` thô **deprecated** (xem [Bảo mật](#bảo-mật)). |
+| `title` | string | `Không có dữ liệu` | Tiêu đề (escape). Vì `title` cũng là attribute HTML toàn cục, trình duyệt hiện nó thành tooltip khi hover lên component. |
+| `message` | string | `Chưa có mục nào được tạo.` | Câu giải thích (escape). |
+| `size` | `'sm'` \| `'md'` \| `'lg'` | `md` | Cỡ icon, chữ, padding. |
+| `compact` | boolean | vắng | Giảm padding (dùng trong bảng, thẻ nhỏ). |
+| `heading-level` | number | `3` | Cấp heading của tiêu đề, 2–6. |
+
+Chuỗi rỗng ở `title` / `message` được coi như không đặt (dùng mặc định). Đổi bất kỳ attribute nào → render lại khối
+(các nút hành động được dựng lại, listener gắn lại đúng một lần).
+
+## Property & method
+
+| Property | Kiểu | Mô tả |
+|---|---|---|
+| `actions` | `Array<{ label: string, variant?: 'primary' \| 'secondary' \| 'danger', onClick?: (e: MouseEvent) => void }>` | Nút hành động. Không phải mảng → `[]`. |
+| `iconNode` | `SVGElement \| null` | Icon SVG tin cậy do site dựng; được clone, trang trí; thắng `icon`. |
+
+Không có method công khai riêng; không phát event riêng (nghe `onClick` của từng action).
+
+## Tuỳ biến giao diện
+
+| Token | Mặc định | Tác dụng |
+|---|---|---|
+| `--td-empty-state-bg` | `var(--td-color-surface)` | Nền khối |
+| `--td-empty-state-border` | `var(--td-color-border-strong)` | Viền nét đứt |
+| `--td-empty-state-icon` | `var(--td-color-text-subtle)` | Màu icon |
+
+Hai biến `--td-empty-state-pad` và `--td-empty-state-gap` được đặt theo `size`/`compact` ngay trên `.td-empty-state`; có
+thể override với selector cụ thể hơn nếu cần.
+
+```css
+:root { --td-empty-state-icon: var(--td-accent); }
+.sidebar .td-empty-state { border-style: solid; }
+```
+
+Khối là bề mặt đặc (lớp nội dung), không có glass. Nút hành động theo token của `.td-btn` (xem [Button](button.md)).
+
+## Cấu trúc DOM & class
+
+```html
+<td-empty-state>
+  <div class="td-empty-state td-empty-state--md [td-empty-state--compact]">
+    <div class="td-empty-state__icon" aria-hidden="true">
+      <span data-td-icon="inbox" data-td-icon-size="40"><svg class="td-icon" data-icon="inbox" width="40" height="40">…</svg></span>
+    </div>
+    <h3 class="td-empty-state__title">Không có dữ liệu</h3>
+    <p class="td-empty-state__message">Chưa có mục nào được tạo.</p>
+    <div class="td-empty-state__actions" [hidden]>
+      <button type="button" class="td-btn td-btn--primary td-btn--sm">Tạo mới</button>
+    </div>
+  </div>
+</td-empty-state>
+```
+
+Với `iconNode` hoặc SVG chuỗi hợp lệ, `<svg>` nằm thẳng trong `.td-empty-state__icon` (không có `<span>` bọc). Mẫu markup
+chuẩn cho server render: `test/contracts/empty-state.html` (có thể render khối `.td-empty-state` độc lập, chỉ cần
+`td.css`).
+
+## Bàn phím & trợ năng
+
+- Icon luôn trang trí (`aria-hidden` trên khung icon) — ý nghĩa nằm ở tiêu đề và câu giải thích.
+- Tiêu đề là heading thật (`h2`–`h6`) để người dùng trình đọc màn hình nhảy tới.
+- Nút hành động là `<button type="button">` native: Tab, Enter/Space.
+- Tiêu đề và nội dung đạt ≥ 4.5:1 trên nền khối (sáng và tối). Forced colors: viền và icon dùng `CanvasText`.
+
+## Bảo mật
+
+- `title`, `message`, `label` của action đều là **text** (escape / `textContent`).
+- `iconNode` là cửa cho SVG tin cậy: chỉ đưa SVG do code của bạn dựng, không đưa SVG lấy từ người dùng.
+- **Chuỗi `<svg …>` trong `icon` (deprecated)**: không bao giờ được gán `innerHTML`. Chuỗi được parse như
+  `image/svg+xml`, và chỉ được vẽ lại (bằng `createElementNS`) khi là "hình học thuần":
+  - gốc là `<svg>` có `viewBox` hợp lệ, attribute gốc chỉ trong danh sách cho phép (`xmlns`, `viewBox`, `fill`, `stroke`,
+    `stroke-width`, `width`, `height`, `class`…), không có `url(`/`javascript:`;
+  - mỗi phần tử con là một trong `path`, `circle`, `rect`, `line`, `polyline`, `polygon`, `ellipse` với attribute hình
+    học hợp lệ (không nhóm `<g>`, không `<use>`, `<script>`, `<foreignObject>`, `style`, `on*`, `href`);
+  - tối đa 64 hình, chuỗi ≤ 32 000 ký tự, không DTD/ENTITY.
+
+  Đạt thì vẽ + một cảnh báo deprecated; không đạt thì hiện `inbox` + một cảnh báo. Thay bằng `iconNode` hoặc
+  `registerIcons()`. Quy tắc đầy đủ: [Icons](icons.md#bảo-mật).
+
+## Lưu ý & lỗi thường gặp
+
+- **Hover thấy tooltip trùng tiêu đề**: tiêu đề được đọc từ attribute `title`, mà trình duyệt luôn hiện attribute này
+  thành tooltip. Đây là đánh đổi đã biết của API; không có attribute tiêu đề thay thế.
+- **Chữ `Action` tiếng Anh** xuất hiện khi action thiếu `label`; luôn truyền `label`.
+- **Icon không đổi màu**: icon dùng `currentColor`, lấy từ `--td-empty-state-icon`; `iconNode` tự đặt `fill`/`stroke`
+  cứng sẽ không theo token — dùng `currentColor` trong SVG của bạn.
+- Di chuyển element trong DOM: listener của nút được gỡ khi rời trang và gắn lại khi vào lại, nút vẫn hoạt động.
+
+## Xem thêm
+
+- [Icons](icons.md) · [Table](table.md) · [Button](button.md) (contract `.td-btn`)
+- [Theming](../customization/theming.md) · [Bảo mật](../guides/security.md) · [Mở rộng](../customization/extending.md)

@@ -14,6 +14,7 @@
 		cursor: zoom-in;
 	}
 
+	/* same specificity as the rule above and later in the file → a video trigger is always a pointer */
 	:is([data-td-lightbox-type="video"], [data-dwp-lightbox-type="video"]) {
 		cursor: pointer;
 	}
@@ -474,12 +475,6 @@
 		.td-lightbox__caption {
 			padding-bottom: max(18px, env(safe-area-inset-bottom));
 		}
-	}
-
-	/* Trigger affordance for bind(). */
-	[data-td-lightbox],
-	[data-td-lightbox-group] [data-td-lightbox-item] {
-		cursor: zoom-in;
 	}
 
 	@media (prefers-contrast: more) {

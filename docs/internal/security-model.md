@@ -87,5 +87,6 @@ style với baseline, animation của spinner thực sự chạy. Danh mục con
 - [ ] Style per-instance qua CSSOM; màu từ attribute qua `safeColor`.
 - [ ] Selector id/attribute ghép từ dữ liệu phải qua `CSS.escape()`.
 - [ ] Icon là SVG tĩnh trong source hoặc tạo bằng DOM API, không `innerHTML` từ dữ liệu ngoài.
-- [ ] URL từ dữ liệu ngoài qua whitelist scheme (mặc định `http:`/`https:`).
+- [ ] URL từ dữ liệu ngoài qua whitelist scheme (menu/lightbox mặc định: `https:`; `http:` chỉ khi chính trang là
+  `http:`; hovercard: chỉ http(s) cùng origin).
 - [ ] Có test XSS trong `*.browser-test.js` và state mới trong CSP matrix.

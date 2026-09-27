@@ -986,7 +986,7 @@ function makeHandle(token) {
 /**
  * Open the viewer.
  * @param {Array<TdLightboxItem|string>} items
- * @param {object} [options] see docs/components/README.md#td-lightbox
+ * @param {object} [options] see docs/components/lightbox.md
  * @returns {ReturnType<typeof makeHandle>|null}
  */
 function openViewer(items, options = {}) {

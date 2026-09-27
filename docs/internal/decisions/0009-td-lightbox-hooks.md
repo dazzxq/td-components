@@ -13,12 +13,12 @@ component token-native đầu tiên (pilot cho [0008](0008-drop-tailwind-token-c
 - **Port clean-room** lõi lightbox của dwp. dwp **không bị động tới** và vẫn là nguồn chuẩn cho dwp cho tới khi đạt parity.
 - **API:**
   - `TdLightbox.open(items, opts)` → handle.
-  - `TdLightbox.bind(root, { group, item })` → hàm `unbind`.
+  - `TdLightbox.bind(root, options)` → hàm `unbind` (thực tế: open options + `attrPrefix`/`filter` từ v0.15.0).
   - Event: `td-lightbox-open`, `td-lightbox-change`, `td-lightbox-close`.
   - Import không có side effect.
 - **Hook** (`opts`):
-  - `download(item)` → url | null
-  - `isAllowedUrl(url)`: mặc định chỉ `http:`/`https:`
+  - `download(item, ctx)` → url | null
+  - `isAllowedUrl(url, item)`: mặc định `https:`; `http:` chỉ khi trang là `http:`
   - `video(item, mountEl, { signal })`: mặc định `<video>` native; Plyr qua adapter, không bundle
   - `history`: mặc định **tắt**; `true` = `pushState`/`popstate`; hoặc adapter `{ push, back, onPop }`
   - `panel(ctx)` → Element

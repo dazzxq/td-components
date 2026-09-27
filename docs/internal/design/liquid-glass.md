@@ -33,8 +33,10 @@ chính thức) + **plan-review** 3 vòng, và mọi con số được **gate tư
   Trên nền trắng, kính đọc được nhờ: **viền hai tông** (mép trên 82 % trắng, mép trái 22 %, mép dưới 8 % đen), **sheen
   135°** mảnh (24 → 7 → 0 → 8 % trắng), **hairline tối ngoài** `0 0 0 1px rgb(0 0 0 / 8%)` và **bóng nâng** đậm hơn.
   Clear: fill 6 %, dim 46 % (icon) / 60 % (chữ). Solid dự phòng `#f7f7f8` / `#17181c`.
-- **G3 — button:** prominent = tint (`--td-btn-{v}-tint/-alpha/-film/-fg`, ~90 % + phim tối 16–18 %, sheen nhẹ riêng
-  `--td-btn-sheen`); warning = hổ phách sáng `#f59e0b` + chữ tối. Secondary = kính strong trung tính + phim 4 % đen.
+- **G3 — button:** prominent = tint (`--td-btn-{v}-tint/-alpha/-film/-fg`, 94 % + phim tối 6–13 % từ v0.14.3 — trước đó
+  ~90 % + 16–18 %; sheen nhẹ riêng `--td-btn-sheen`); warning = hổ phách sáng `#f59e0b` + chữ tối. Secondary (v0.14.3) =
+  kính trắng `--td-btn-secondary-glass` 80 % (tối 84 %) + viền mềm `--td-control-border-soft`, không phim.
+  Disabled (v0.14.3) cố ý xám mờ, chữ/icon ≥ 2.2:1. Bóng nâng nhẹ `--td-btn-lift`.
   Bảng / `[data-td-density="dense"]` / button trong bề mặt kính: giữ vẻ kính, **không** `backdrop-filter`. Disabled:
   màu trạng thái đặc riêng (không `opacity` cả phần tử). Màu `color` tuỳ biến: fill đặc.
 - **G4 — toast:** nền riêng 66 % (dark 70 %) + lớp màu theo loại (light 22 % / 26 %; dark 12 %) + icon tông đậm (light)
@@ -322,7 +324,7 @@ the content directly behind it." (HIG-C)
 | **td-menu** (135) | **Regular, strong** | Như trên | Nở ra từ nút "···" (R11). Solid khi nằm trên modal (đã có). |
 | **td-datetime-picker** popover | **Regular, strong** | Popover nhiều chữ | Ô ngày là fill, ngày được chọn dùng accent fill đặc (nằm trong kính, R3). Picker inline (không phải popover): **none**. |
 | **td-tabs** (tabs trong nội dung) | **None**, dùng fill segmented | Tầng nội dung | Container dùng `--td-color-hover`, indicator là fill sáng. Chỉ khi là **app tab bar/nav nổi** mới dùng **Regular capsule**. |
-| **td-button** primary/success/danger/info/warning | v2 (G1/G3): **Prominent tinted glass** | `.glassProminent` | Tint ~90 % + phim tối + sheen nhẹ; warning hổ phách + chữ tối; trong bảng / dense / trong bề mặt kính: vẻ kính, không blur. |
+| **td-button** primary/success/danger/info/warning | v2 (G1/G3): **Prominent tinted glass** | `.glassProminent` | Tint 94 % + phim tối 6–13 % + sheen nhẹ (v0.14.3); warning hổ phách + chữ tối; trong bảng / dense / trong bề mặt kính: vẻ kính, không blur. |
 | **td-button** secondary | v2: kính trắng 80 % (tối: 84 %) + viền mềm `--td-control-border-soft`, không phim xám (v0.14.3) | `.glass` | Trên thanh nổi vẫn là item trong nhóm kính của thanh (một parent kính). |
 | **td-toggle** thumb | **None** lúc nghỉ, chỉ thành **Clear-ish lens** khi đang kéo | HIG-M ngoại lệ cho toggle | `[data-dragging]` thì scale theo `--_td-glass-lift-knob`, nền `--td-glass-clear-bg`, blur(2px) + rim. Reduced motion: không scale. |
 | **td-slider** thumb | Như toggle | HIG-M, ADOPT: "the knob transforms into Liquid Glass during interaction" | Track là fill. Hiện dùng box-shadow màu `${color}40` cho glow, đổi sang token. |

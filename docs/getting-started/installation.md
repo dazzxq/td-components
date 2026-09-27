@@ -1,0 +1,449 @@
+[Tài liệu](../README.md) › Bắt đầu › Cài đặt
+
+# Cài đặt
+
+Kit gồm hai phần, lúc nào cũng phải nạp **cả hai**:
+
+1. **`td.css`**: một file CSS duy nhất chứa token `--td-*` và style của mọi component. Nạp một lần cho cả trang.
+2. **File JS của component**: mỗi component là một ES module riêng. Import component nào thì thẻ/lớp đó được đăng ký.
+
+Thiếu `td.css` thì component vẫn chạy nhưng không có giao diện (chữ trần, không khung). Thiếu JS thì thẻ `<td-button>`
+chỉ là một thẻ lạ, trình duyệt hiển thị nội dung text bên trong.
+
+Mục lục:
+
+- [1. Tải kit về máy (npm từ GitHub)](#1-tải-kit-về-máy-npm-từ-github)
+- [2. Dùng với Vite / bundler](#2-dùng-với-vite--bundler)
+- [3. PHP thuần / HTML (không bundler)](#3-php-thuần--html-không-bundler)
+- [4. WordPress](#4-wordpress)
+- [5. Kiểm tra đã cài đúng chưa](#5-kiểm-tra-đã-cài-đúng-chưa)
+- [Danh sách subpath được export](#danh-sách-subpath-được-export)
+
+Trước khi cài, xem [Yêu cầu hệ thống](requirements.md).
+
+## 1. Tải kit về máy (npm từ GitHub)
+
+Kit **không** publish lên npm registry. Bạn cài thẳng từ repo GitHub `dazzxq/td-components`, tên package là
+`@dazzxq/td-components`.
+
+```bash
+# Bản mới nhất trên nhánh mặc định (không khuyên dùng cho production: mỗi lần cài lại có thể ra bản khác)
+npm install github:dazzxq/td-components
+
+# Khuyên dùng: ghim theo tag phiên bản
+npm install github:dazzxq/td-components#v0.15.1
+```
+
+Sau lệnh trên, `package.json` của site có dòng dạng:
+
+```json
+{
+  "dependencies": {
+    "@dazzxq/td-components": "github:dazzxq/td-components#v0.15.1"
+  }
+}
+```
+
+Ghi chú:
+
+- **Luôn ghim tag** (`#v0.15.1`). Kit đang ở giai đoạn `0.x`: bản minor mới (0.14 → 0.15) có thể đổi hành vi. Nâng cấp
+  là việc có chủ đích, xem [Nâng cấp](../upgrading/README.md).
+- Tag chỉ dùng được khi nó đã được **push lên GitHub**. Nếu `npm install …#v0.15.1` báo không tìm thấy ref, kiểm tra
+  `git ls-remote --tags https://github.com/dazzxq/td-components.git`.
+- Package **không có dependency runtime** nào. npm chỉ tải đúng các file khai báo trong `package.json#files`:
+  `src/`, `index.js`, `td.css`, `THIRD_PARTY_NOTICES.md`.
+- Nâng cấp sau này: đổi tag rồi chạy lại `npm install github:dazzxq/td-components#v<bản-mới>`.
+
+Sau khi cài, kit nằm ở `node_modules/@dazzxq/td-components/`:
+
+```
+node_modules/@dazzxq/td-components/
+├── td.css            ← stylesheet duy nhất (đã build sẵn, không cần build lại)
+├── index.js          ← barrel: re-export mọi class
+├── src/
+│   ├── base/         TdBaseElement, TdFormElement, td-sample
+│   ├── form/         button, checkbox, toggle, input-field, slider, dropdown, chip-input, datetime-picker
+│   ├── feedback/     modal, modal-stack, toast, tooltip, loading, menu, hovercard, lightbox
+│   ├── display/      table, tabs, pagination, empty-state
+│   ├── icons/        registry icon + <td-icon>
+│   ├── utils/        dom-utils, datetime, form-validation, layers, …
+│   └── styles/       CSS nguồn (đã gộp vào td.css, không cần nạp riêng)
+└── THIRD_PARTY_NOTICES.md
+```
+
+## 2. Dùng với Vite / bundler
+
+Vite (và bundler hiểu `package.json#exports`) cho phép import bằng tên package. Không cần cấu hình gì thêm.
+
+### Nạp CSS một lần
+
+Trong file JS gốc của site (ví dụ `src/main.js`):
+
+```js
+import '@dazzxq/td-components/td.css';
+```
+
+Hoặc, nếu muốn CSS nằm ngoài JS (dễ kiểm soát thứ tự với CSS của site), import trong file CSS của bạn:
+
+```css
+/* src/app.css */
+@import '@dazzxq/td-components/td.css';
+
+/* CSS của site, KHÔNG bọc trong @layer → luôn thắng style của kit */
+:root { --td-accent: #b3261e; }
+```
+
+### Import từng component (khuyên dùng)
+
+```js
+// Custom element: import để ĐĂNG KÝ thẻ, không cần lấy biến nào
+import '@dazzxq/td-components/button';        // <td-button>
+import '@dazzxq/td-components/input-field';   // <td-input-field>
+import '@dazzxq/td-components/dropdown';      // <td-dropdown>
+
+// API tĩnh (không phải thẻ): lấy class ra dùng
+import { TdToast } from '@dazzxq/td-components/toast';
+import { TdModal } from '@dazzxq/td-components/modal';
+
+TdToast.success('Đã lưu');
+```
+
+Chỉ import qua các **subpath có trong bảng export** (xem [cuối trang](#danh-sách-subpath-được-export)). Đường dẫn sâu
+như `@dazzxq/td-components/src/utils/layers.js` bị `exports` chặn trong bundler: đó là file nội bộ, có thể đổi bất kỳ
+lúc nào.
+
+### Import tất cả qua barrel
+
+```js
+import '@dazzxq/td-components';                         // đăng ký mọi custom element
+import { TdToast, TdModal } from '@dazzxq/td-components'; // hoặc lấy class từ barrel
+```
+
+Cảnh báo về tree-shaking: mỗi file component có **side effect** khi import (gọi `customElements.define(...)`;
+`td-tooltip.js` còn tự khởi tạo một singleton lắng nghe `data-tooltip` toàn trang) và `package.json` không khai báo
+`"sideEffects": false`. Vì vậy import **bất kỳ thứ gì** từ barrel `@dazzxq/td-components` sẽ kéo theo **toàn bộ** kit
+vào bundle và đăng ký mọi thẻ, kể cả khi bạn chỉ dùng `TdToast`. Nếu quan tâm dung lượng, import theo subpath.
+
+Barrel không gồm `<td-icon>` và `<td-sample>`: muốn dùng thì import riêng `@dazzxq/td-components/icon-element` và
+`@dazzxq/td-components/sample`.
+
+### Lưu ý khi dùng Vite
+
+- **Dev server chèn CSS bằng thẻ `<style>`.** Nếu trang dev có CSP strict, CSS import từ JS sẽ bị chặn. Bản build
+  (`vite build`) xuất CSS thành file `<link>` nên không bị. Muốn thử CSP, dùng `vite build && vite preview`.
+- Vite có thể pre-bundle dependency ở chế độ dev. Mọi subpath được gộp trong một lần nên các singleton dùng chung
+  (registry lớp nổi, stack modal) vẫn là một bản. Nếu thấy hiện tượng lạ sau khi đổi phiên bản (ví dụ Escape không đóng
+  menu trong modal), xoá cache `node_modules/.vite` rồi chạy lại.
+
+## 3. PHP thuần / HTML (không bundler)
+
+Đây là cách dùng cho site PHP như 135: không có build step, trình duyệt tự nạp source ES module.
+
+### Bước 1: copy kit vào thư mục public
+
+Tải kit bằng npm trên máy dev (mục 1), rồi copy vào thư mục web server phục vụ được. **Nên đặt số phiên bản vào tên
+thư mục** (lý do ở bước 4):
+
+```bash
+# từ thư mục gốc project
+DEST=public/vendor/td-components-0.15.1
+mkdir -p "$DEST"
+cp node_modules/@dazzxq/td-components/td.css node_modules/@dazzxq/td-components/index.js "$DEST"/
+rsync -a --exclude='*.test.js' --exclude='*.browser-test.js' --exclude='*.stories.js' \
+  node_modules/@dazzxq/td-components/src "$DEST"/
+```
+
+`rsync --exclude` chỉ để bỏ file test/story (khoảng một nửa số file trong package); copy nguyên `src/` cũng chạy được.
+Giữ nguyên cấu trúc thư mục `src/…`: các file import nhau bằng đường dẫn tương đối (`../base/td-base-element.js`),
+đổi cấu trúc là hỏng.
+
+### Bước 2: nạp CSS
+
+```html
+<link rel="stylesheet" href="/vendor/td-components-0.15.1/td.css">
+```
+
+Đặt `<link>` này **trước** CSS của site, để CSS site (không `@layer`) override token dễ dàng. Thực ra thứ tự không quá
+quan trọng: style của kit nằm trong `@layer td.*`, CSS không layer của site luôn thắng dù đứng trước hay sau.
+
+### Bước 3: nạp JS
+
+**Cách A: trỏ thẳng đường dẫn file** (đơn giản nhất, không cần import map)
+
+```html
+<script type="module" src="/vendor/td-components-0.15.1/src/form/td-button.js"></script>
+<script type="module" src="/vendor/td-components-0.15.1/src/form/td-input-field.js"></script>
+<script type="module" src="/assets/js/app.js"></script>
+```
+
+```js
+// /assets/js/app.js — import theo đường dẫn URL
+import { TdToast } from '/vendor/td-components-0.15.1/src/feedback/td-toast.js';
+
+document.querySelector('#save').addEventListener('click', () => TdToast.success('Đã lưu'));
+```
+
+**Cách B: import map** (để code của site viết `@dazzxq/td-components/...` giống hệt khi dùng Vite)
+
+Import map cho trình duyệt biết tên package trỏ tới URL nào. Trình duyệt **không đọc** `package.json#exports`, nên một
+dòng kiểu `"@dazzxq/td-components/": "/vendor/td-components-0.15.1/"` **không đủ**: tên `@dazzxq/td-components/button`
+sẽ bị dịch thành `/vendor/td-components-0.15.1/button` (không tồn tại). Phải liệt kê từng subpath. Map đầy đủ cho
+0.15.1:
+
+```html
+<script type="importmap">
+{
+  "imports": {
+    "@dazzxq/td-components": "/vendor/td-components-0.15.1/index.js",
+    "@dazzxq/td-components/icons": "/vendor/td-components-0.15.1/src/icons/td-icon.js",
+    "@dazzxq/td-components/icon-element": "/vendor/td-components-0.15.1/src/icons/td-icon-element.js",
+    "@dazzxq/td-components/base": "/vendor/td-components-0.15.1/src/base/td-base-element.js",
+    "@dazzxq/td-components/form-element": "/vendor/td-components-0.15.1/src/base/td-form-element.js",
+    "@dazzxq/td-components/sample": "/vendor/td-components-0.15.1/src/base/sample/td-sample.js",
+    "@dazzxq/td-components/toggle": "/vendor/td-components-0.15.1/src/form/td-toggle.js",
+    "@dazzxq/td-components/checkbox": "/vendor/td-components-0.15.1/src/form/td-checkbox.js",
+    "@dazzxq/td-components/button": "/vendor/td-components-0.15.1/src/form/td-button.js",
+    "@dazzxq/td-components/input-field": "/vendor/td-components-0.15.1/src/form/td-input-field.js",
+    "@dazzxq/td-components/slider": "/vendor/td-components-0.15.1/src/form/td-slider.js",
+    "@dazzxq/td-components/dropdown": "/vendor/td-components-0.15.1/src/form/td-dropdown.js",
+    "@dazzxq/td-components/chip-input": "/vendor/td-components-0.15.1/src/form/td-chip-input.js",
+    "@dazzxq/td-components/datetime": "/vendor/td-components-0.15.1/src/utils/datetime.js",
+    "@dazzxq/td-components/datetime-picker": "/vendor/td-components-0.15.1/src/form/td-datetime-picker.js",
+    "@dazzxq/td-components/modal": "/vendor/td-components-0.15.1/src/feedback/td-modal.js",
+    "@dazzxq/td-components/modal-stack": "/vendor/td-components-0.15.1/src/feedback/td-modal-stack.js",
+    "@dazzxq/td-components/lightbox": "/vendor/td-components-0.15.1/src/feedback/td-lightbox.js",
+    "@dazzxq/td-components/toast": "/vendor/td-components-0.15.1/src/feedback/td-toast.js",
+    "@dazzxq/td-components/tooltip": "/vendor/td-components-0.15.1/src/feedback/td-tooltip.js",
+    "@dazzxq/td-components/loading": "/vendor/td-components-0.15.1/src/feedback/td-loading.js",
+    "@dazzxq/td-components/menu": "/vendor/td-components-0.15.1/src/feedback/td-menu.js",
+    "@dazzxq/td-components/hovercard": "/vendor/td-components-0.15.1/src/feedback/td-hovercard.js",
+    "@dazzxq/td-components/table": "/vendor/td-components-0.15.1/src/display/td-table.js",
+    "@dazzxq/td-components/tabs": "/vendor/td-components-0.15.1/src/display/td-tabs.js",
+    "@dazzxq/td-components/pagination": "/vendor/td-components-0.15.1/src/display/td-pagination.js",
+    "@dazzxq/td-components/empty-state": "/vendor/td-components-0.15.1/src/display/td-empty-state.js",
+    "@dazzxq/td-components/dom-utils": "/vendor/td-components-0.15.1/src/utils/dom-utils.js",
+    "@dazzxq/td-components/form-validation": "/vendor/td-components-0.15.1/src/utils/form-validation.js"
+  }
+}
+</script>
+<script type="module" src="/assets/js/app.js"></script>
+```
+
+```js
+// /assets/js/app.js — viết y như bản Vite
+import '@dazzxq/td-components/button';
+import { TdToast } from '@dazzxq/td-components/toast';
+```
+
+Quy tắc import map:
+
+- Thẻ `<script type="importmap">` phải đứng **trước** mọi `<script type="module">` dùng tên package.
+- Mỗi trang chỉ nên có một import map (trình duyệt cũ không gộp nhiều map).
+- Chỉ cần giữ những dòng bạn thực sự import; để đủ cũng không sao (import map không tự tải file).
+
+Trong PHP, bạn có thể sinh map từ một mảng để chỉ phải đổi số phiên bản ở một chỗ:
+
+```php
+<?php
+$tdBase = '/vendor/td-components-0.15.1';
+$tdMap = [
+    '@dazzxq/td-components'             => "$tdBase/index.js",
+    '@dazzxq/td-components/button'      => "$tdBase/src/form/td-button.js",
+    '@dazzxq/td-components/input-field' => "$tdBase/src/form/td-input-field.js",
+    '@dazzxq/td-components/dropdown'    => "$tdBase/src/form/td-dropdown.js",
+    '@dazzxq/td-components/toast'       => "$tdBase/src/feedback/td-toast.js",
+    '@dazzxq/td-components/modal'       => "$tdBase/src/feedback/td-modal.js",
+    // … thêm subpath khác khi cần (xem bảng cuối trang)
+];
+?>
+<link rel="stylesheet" href="<?= htmlspecialchars("$tdBase/td.css") ?>">
+<script type="importmap"><?= json_encode(['imports' => $tdMap], JSON_UNESCAPED_SLASHES) ?></script>
+<script type="module" src="/assets/js/app.js"></script>
+```
+
+### Bước 4: cache và nâng cấp
+
+Trình duyệt tự tải các file import tương đối **mà không mang query string** của file gốc. Nếu bạn chỉ thêm `?v=0.15.1`
+vào file đầu tiên, các file bên trong vẫn có thể lấy từ cache cũ, và trang chạy lẫn hai phiên bản. Vì vậy:
+
+- Đặt kit trong thư mục **có số phiên bản** (`/vendor/td-components-0.15.1/`). Nâng cấp = copy sang thư mục mới
+  (`td-components-0.15.1/`) và đổi đường dẫn gốc (một biến `$tdBase`). Có thể cho cache rất lâu vì URL đổi theo bản.
+- Mọi chỗ trong trang phải nạp kit qua **cùng một URL**. Hai URL khác nhau (ví dụ một chỗ `/vendor/td-components-0.15.1/…`
+  và một chỗ `/vendor/td-components-0.15.1/…`) tạo ra hai bản module: hai registry lớp nổi, hai stack modal, và thẻ chỉ
+  được đăng ký bởi bản nạp trước. Kết quả là bàn phím/focus giữa các lớp nổi chạy sai.
+
+### CSP với nonce
+
+Nếu site dùng CSP theo nonce (`style-src 'nonce-…'`), gắn cùng một nonce cho `<link>`, import map và script inline:
+
+```php
+<?php $nonce = base64_encode(random_bytes(16)); ?>
+<?php header("Content-Security-Policy: default-src 'self'; style-src 'nonce-$nonce'; style-src-attr 'none'; script-src 'self' 'nonce-$nonce'"); ?>
+<link rel="stylesheet" href="/vendor/td-components-0.15.1/td.css" nonce="<?= $nonce ?>">
+<script type="importmap" nonce="<?= $nonce ?>"><?= json_encode(['imports' => $tdMap], JSON_UNESCAPED_SLASHES) ?></script>
+<script type="module" src="/assets/js/app.js" nonce="<?= $nonce ?>"></script>
+```
+
+- `td.css` không cần `'unsafe-inline'`; kit chỉ ghi style qua CSSOM, CSP cho phép.
+- File module ngoài cùng origin chạy với `script-src 'self'`; nonce trên thẻ `<script src>` chỉ cần nếu `script-src` của
+  bạn không có `'self'`. Import map (luôn là inline) thì **luôn** cần nonce hoặc hash.
+- Chi tiết: [Hướng dẫn CSP](../guides/csp.md).
+
+## 4. WordPress
+
+Nguyên tắc giống PHP thuần: copy kit vào theme/plugin, enqueue `td.css` và nạp JS dạng module. Ví dụ dưới đặt kit ở
+`wp-content/themes/<theme>/assets/vendor/td-components-0.15.1/`.
+
+### CSS
+
+```php
+// functions.php
+add_action('wp_enqueue_scripts', function () {
+    $ver  = '0.15.1';
+    $base = get_theme_file_uri("assets/vendor/td-components-$ver");
+    wp_enqueue_style('td-components', "$base/td.css", [], $ver);
+});
+```
+
+### JS: WordPress 6.5+ (Script Modules API, khuyên dùng)
+
+WordPress 6.5 có `wp_register_script_module` / `wp_enqueue_script_module`. WordPress tự in import map cho các module
+được khai báo làm dependency, nên code của theme viết được `import '@dazzxq/td-components/button'`.
+
+```php
+add_action('wp_enqueue_scripts', function () {
+    $ver  = '0.15.1';
+    $base = get_theme_file_uri("assets/vendor/td-components-$ver");
+
+    // Đăng ký các subpath của kit dưới đúng tên package (id = tên trong import map).
+    $td = [
+        '@dazzxq/td-components/button'      => 'src/form/td-button.js',
+        '@dazzxq/td-components/input-field' => 'src/form/td-input-field.js',
+        '@dazzxq/td-components/dropdown'    => 'src/form/td-dropdown.js',
+        '@dazzxq/td-components/toast'       => 'src/feedback/td-toast.js',
+        '@dazzxq/td-components/modal'       => 'src/feedback/td-modal.js',
+    ];
+    foreach ($td as $id => $path) {
+        // version null: KHÔNG thêm ?ver= (thư mục đã có số phiên bản, xem "cache và nâng cấp" ở trên)
+        wp_register_script_module($id, "$base/$path", [], null);
+    }
+
+    // Module của theme, phụ thuộc các module trên → WP in import map + modulepreload.
+    wp_enqueue_script_module(
+        'theme-app',
+        get_theme_file_uri('assets/js/app.js'),
+        array_keys($td),
+        wp_get_theme()->get('Version')
+    );
+});
+```
+
+```js
+// assets/js/app.js
+import '@dazzxq/td-components/button';
+import { TdToast } from '@dazzxq/td-components/toast';
+```
+
+### JS: WordPress cũ hơn 6.5 (`wp_enqueue_script` + `type="module"`)
+
+`wp_enqueue_script` in `<script>` thường; đổi thành module bằng filter `script_loader_tag`. Cách này không có import map,
+nên `app.js` import theo đường dẫn URL (Cách A ở phần PHP) hoặc bạn tự in import map.
+
+```php
+add_action('wp_enqueue_scripts', function () {
+    $ver  = '0.15.1';
+    $base = get_theme_file_uri("assets/vendor/td-components-$ver");
+    wp_enqueue_script('td-button', "$base/src/form/td-button.js", [], null, true);
+    wp_enqueue_script('theme-app', get_theme_file_uri('assets/js/app.js'), ['td-button'], null, true);
+});
+
+add_filter('script_loader_tag', function ($tag, $handle) {
+    if (in_array($handle, ['td-button', 'theme-app'], true)) {
+        $tag = str_replace('<script ', '<script type="module" ', $tag);
+    }
+    return $tag;
+}, 10, 2);
+```
+
+### Nonce trên WordPress
+
+Nếu site in CSP với nonce, thêm nonce cho thẻ do WordPress sinh bằng các filter `wp_script_attributes` (thẻ
+`<script src>`), `wp_inline_script_attributes` (import map và script inline) và `style_loader_tag` (thẻ `<link>`).
+
+Tích hợp sâu hơn (render markup phía server, helper PHP, cả 135 lẫn dwp): [Hướng dẫn WordPress & PHP](../guides/wordpress-php.md).
+
+## 5. Kiểm tra đã cài đúng chưa
+
+Mở trang qua `http(s)://` (không phải `file://`), mở DevTools Console và chạy:
+
+```js
+// 1. Thẻ đã được đăng ký? (tên thẻ của component bạn đã import)
+customElements.get('td-button');          // → class TdButton, không phải undefined
+
+// 2. td.css đã nạp? Token phải có giá trị.
+getComputedStyle(document.documentElement).getPropertyValue('--td-accent');   // → "#2563eb"
+
+// 3. Thử một API tĩnh (chỉ khi trang đã import toast)
+const { TdToast } = await import('@dazzxq/td-components/toast'); // cần import map; hoặc dùng URL đầy đủ
+TdToast.success('Cài đặt thành công');
+```
+
+Dấu hiệu lỗi thường gặp:
+
+| Triệu chứng | Nguyên nhân | Cách sửa |
+|---|---|---|
+| Trang trắng, Console báo CORS / `origin 'null'` | Mở bằng `file://` | Chạy qua web server (`npx vite`, `php -S localhost:8000`) |
+| Thẻ hiện chữ trần, không có khung | Thiếu `td.css` hoặc đường dẫn sai (404) | Kiểm tra tab Network, dòng `td.css` |
+| Có khung nhưng không bấm/không mở được | Chưa import JS của component đó | `customElements.get('td-…')` trả `undefined` → thêm import |
+| `Failed to resolve module specifier "@dazzxq/td-components/…"` | Trình duyệt không có import map (hoặc map thiếu dòng đó) | Thêm import map (mục 3, Cách B) hoặc import bằng URL |
+| `Failed to load module script … MIME type "text/html"` | URL sai, server trả trang 404 HTML | Sửa đường dẫn; giữ nguyên cấu trúc `src/` khi copy |
+| Console báo `Refused to apply style … Content Security Policy` | CSP chặn `<link>` (thiếu nonce) hoặc Vite dev chèn `<style>` | Thêm nonce cho `<link>`; thử CSP trên bản build |
+| Escape/Tab trong modal chạy sai, menu mở dưới modal bị khoá | Nạp kit từ hai URL khác nhau (hai bản module) | Mọi import dùng cùng một đường dẫn gốc |
+
+Muốn xem mọi component chạy thử: trong thư mục repo kit, `npm run demo` mở `demo.html` qua Vite.
+
+## Danh sách subpath được export
+
+Nguồn: `package.json#exports` của 0.15.1.
+
+| Import | File | Cung cấp |
+|---|---|---|
+| `@dazzxq/td-components` | `index.js` | Barrel: mọi class dưới đây (trừ `td-icon`, `td-sample`, icon helpers) |
+| `@dazzxq/td-components/td.css` | `td.css` | Stylesheet |
+| `@dazzxq/td-components/button` | `src/form/td-button.js` | `<td-button>`, `TdButton` |
+| `@dazzxq/td-components/input-field` | `src/form/td-input-field.js` | `<td-input-field>`, `TdInputField` |
+| `@dazzxq/td-components/checkbox` | `src/form/td-checkbox.js` | `<td-checkbox>`, `TdCheckbox` |
+| `@dazzxq/td-components/toggle` | `src/form/td-toggle.js` | `<td-toggle>`, `TdToggle` |
+| `@dazzxq/td-components/slider` | `src/form/td-slider.js` | `<td-slider>`, `TdSlider` |
+| `@dazzxq/td-components/dropdown` | `src/form/td-dropdown.js` | `<td-dropdown>`, `TdDropdown` |
+| `@dazzxq/td-components/chip-input` | `src/form/td-chip-input.js` | `<td-chip-input>`, `TdChipInput` |
+| `@dazzxq/td-components/datetime-picker` | `src/form/td-datetime-picker.js` | `<td-datetime-picker>`, `TdDatetimePicker` |
+| `@dazzxq/td-components/datetime` | `src/utils/datetime.js` | `TdDateTime` (tiện ích ngày giờ) |
+| `@dazzxq/td-components/form-validation` | `src/utils/form-validation.js` | `TdFormValidation` |
+| `@dazzxq/td-components/modal` | `src/feedback/td-modal.js` | `TdModal` (API tĩnh) |
+| `@dazzxq/td-components/modal-stack` | `src/feedback/td-modal-stack.js` | `TdModalStackManager` |
+| `@dazzxq/td-components/toast` | `src/feedback/td-toast.js` | `TdToast` (API tĩnh) |
+| `@dazzxq/td-components/tooltip` | `src/feedback/td-tooltip.js` | `TdTooltip`, `tdTooltip` (tự khởi tạo khi import) |
+| `@dazzxq/td-components/loading` | `src/feedback/td-loading.js` | `TdLoading`, `TdLoadingSpinner` |
+| `@dazzxq/td-components/menu` | `src/feedback/td-menu.js` | `TdMenu` |
+| `@dazzxq/td-components/hovercard` | `src/feedback/td-hovercard.js` | `TdHovercard` |
+| `@dazzxq/td-components/lightbox` | `src/feedback/td-lightbox.js` | `TdLightbox` |
+| `@dazzxq/td-components/table` | `src/display/td-table.js` | `<td-table>`, `TdTable` |
+| `@dazzxq/td-components/tabs` | `src/display/td-tabs.js` | `<td-tabs>`, `TdTabs` |
+| `@dazzxq/td-components/pagination` | `src/display/td-pagination.js` | `<td-pagination>`, `TdPagination` |
+| `@dazzxq/td-components/empty-state` | `src/display/td-empty-state.js` | `<td-empty-state>`, `TdEmptyState` |
+| `@dazzxq/td-components/icons` | `src/icons/td-icon.js` | Hàm icon (`tdIcon`, `registerIcons`, …) |
+| `@dazzxq/td-components/icon-element` | `src/icons/td-icon-element.js` | `<td-icon>` |
+| `@dazzxq/td-components/icons.json` | `src/icons/icons.json` | Dữ liệu icon (JSON) |
+| `@dazzxq/td-components/dom-utils` | `src/utils/dom-utils.js` | Tiện ích DOM |
+| `@dazzxq/td-components/base` | `src/base/td-base-element.js` | `TdBaseElement` (tự viết component) |
+| `@dazzxq/td-components/form-element` | `src/base/td-form-element.js` | `TdFormElement` |
+| `@dazzxq/td-components/sample` | `src/base/sample/td-sample.js` | `<td-sample>` (component mẫu) |
+
+## Xem thêm
+
+- [Trang đầu tiên trong 5 phút](quick-start.md)
+- [Cách kit hoạt động](../concepts/how-it-works.md)
+- [Danh mục component](../components/README.md)
+- [Hướng dẫn CSP](../guides/csp.md) · [WordPress & PHP](../guides/wordpress-php.md)
+- [Nâng cấp phiên bản](../upgrading/README.md)

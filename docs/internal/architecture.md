@@ -22,7 +22,8 @@ Mỗi subpath trong `package.json#exports` trỏ thẳng vào một file source 
 
 **`TdBaseElement extends HTMLElement`** (`src/base/td-base-element.js`)
 
-- `connectedCallback` render **một lần** (`_initialized` chặn render lại khi element bị di chuyển trong DOM).
+- `connectedCallback` render lần đầu (`_initialized`); khi element bị gỡ rồi gắn lại (di chuyển trong DOM),
+  `disconnectedCallback` đã chạy hết cleanup nên nó **render lại** (`_needsRebind`) để gắn lại listener/timer.
 - `disconnectedCallback` chạy hết `_cleanups`.
 - Attribute ↔ property tự sinh từ `observedAttributes`; `booleanAttributes` dùng `hasAttribute`.
 - `attributeChangedCallback` → `_doRender()`: `innerHTML = render()` → `afterRender()` → `_applyStyles?.()`.

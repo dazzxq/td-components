@@ -76,6 +76,31 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` Hardening sau security review: `TdHovercard.sanitize` + `TrustedHTML`, fetch giới hạn (LRU 50, 256 KB, 10 s,
   `no-store`, huỷ khi đóng), `clearCache()` bắt buộc khi đổi phiên đăng nhập
 
+## Next — lỗi/khoảng trống phát hiện khi viết lại docs (v0.15.1, đã ghi vào docs như "lưu ý")
+
+- `todo` Dark theme gán cứng `--td-btn-primary-bg` / `--td-pagination-active` = #2563eb → đổi `--td-accent` không ăn ở dark
+- `todo` Nhãn tiếng Việt chưa dịch được: toast "Đóng", dropdown (Tìm kiếm / Không chọn / Không tìm thấy…), pagination,
+  loading "Đang tải...", tiêu đề mặc định modal confirm/success/error/info, thông báo validation của input/slider/checkbox/toggle
+- `todo` `td-input-field.value` trả giá trị attribute cũ (chỉ `getValue()` đúng); property set trước khi connect bị mất
+  (`TdBaseElement._setupProperties`); `td-dropdown.options` set trước define bị mất
+- `todo` checkbox/toggle không khôi phục `checked` khi trình duyệt restore form (TdCheckableElement thiếu `_restoreState`)
+- `todo` dropdown: tìm kiếm không bỏ dấu (dùng `fold`), set lại `options` kéo về value ban đầu, `onChange` chặn `onSelect`
+- `todo` Callback không bọc try/catch: dropdown onChange/onSelect, tabs onChange, table render/onSort/onPageChange,
+  TdFormValidation onValid (throw → event sau không phát)
+- `todo` Không có API đóng toast từ code; `TdLoading.wrap()` luôn dùng maxDuration 30 s
+- `todo` `TdModal.confirm`: `onConfirm` đồng bộ trả false/throw vẫn đóng (khác `actions`)
+- `todo` `TdDateTime.toAbsolute` thay token trong cả từ ("Ngay" → "Ngpmy"), timestamp 0 = rỗng, tương lai = "Vừa xong"
+- `todo` table: `width` chỉ ăn khi `widthType:'fixed'`; `onSort`/`onPageChange` chỉ server-mode (ghi rõ JSDoc)
+- `todo` slider: `required` không có tác dụng, `setValue` không snap theo `step`, `min>0` không value → underflow
+- `todo` TdFormValidation: reset form không xoá summary/note, live re-check không tắt
+- `todo` input-field bỏ qua `pattern` / `minlength`
+- `todo` Trusted Types: chỉ hovercard an toàn; các component khác render bằng chuỗi innerHTML → ghi rõ giới hạn / cân nhắc
+- `todo` Đóng gói: `files` ship cả test/stories; thiếu `sideEffects`; barrel thiếu `<td-icon>`; `./icons` lộ `_validateIconDefinition`;
+  `vite` chưa là devDependency; thiếu `engines`; `exports` thiếu `./package.json`
+- `todo` z-index token `--td-z-dropdown/-sticky/-overlay` không dùng; comment "dropdown 100" sai (thực tế popover 450)
+- `todo` Một số token khai báo trên element (không đè được từ :root): `--td-lb-*`, kích thước switch/checkbox, spinner…
+- `todo` Component xoá CSS var inline của site khi re-render (button/checkbox/toggle/slider/pagination)
+
 ## Later — backlog
 
 - `todo` Khúc xạ SVG (Chromium-only, opt-in thử nghiệm) — WebKit bug 245510
