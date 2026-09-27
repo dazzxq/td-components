@@ -1,0 +1,322 @@
+/*
+ * TdMenu (src/feedback/td-menu.js) — plan v0.12.0 step 2 (D1–D7), inventory §1 + §7.1, 135 kit td-ui.css:88-236,
+ * :859-888 (§10) translated to td tokens.
+ * Menu = body-portaled popover: Regular strong glass (.td-glass-surface--strong recipe; fallbacks come from the
+ * recipe), pad --td-glass-pad, radius --td-glass-radius, items concentric (--td-glass-radius-inner) plain fills —
+ * never glass on glass. Menu button = content-layer icon button (no glass).
+ * State: data-state / data-placement / data-align on the menu, [aria-checked] / [aria-disabled] on items,
+ * [aria-expanded] on the trigger. Only geometry (top/left, max-height) is written by JS through CSSOM.
+ */
+@layer td.tokens {
+	:root {
+		--td-menu-min-w: 13rem;
+		--td-menu-max-w: 22rem;
+		--td-menu-item-py: 0.6rem;
+		--td-menu-item-px: 0.75rem;
+		--td-menu-item-hover: var(--td-color-hover);
+		--td-menu-item-active: var(--td-color-hover-strong);
+		--td-menu-danger-fg: var(--td-color-error);
+		--td-menu-hint-fg: var(--td-color-text-muted);
+		--td-menu-icon-fg: var(--td-color-text-muted);
+		--td-menu-separator: var(--td-color-border);
+		--td-menu-btn-fg: var(--td-color-text-muted);
+		--td-menu-btn-fg-hover: var(--td-color-text);
+		--td-menu-btn-hover: var(--td-color-hover);
+		--td-menu-btn-size: 32px;
+	}
+
+	:root[data-td-theme="dark"] {
+		--td-menu-separator: rgb(255 255 255 / 12%);
+	}
+}
+
+@layer td.component {
+	/* ---- Portaled menu (a <body> child) ---- */
+	.td-menu {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: var(--td-z-popover);
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		min-width: min(var(--td-menu-min-w), calc(100vw - 16px));
+		max-width: min(var(--td-menu-max-w), calc(100vw - 16px));
+		padding: var(--td-glass-pad);
+		margin: 0;
+		overflow-x: hidden;
+		overflow-y: auto; /* capped by JS (max-height); scrolling inside the menu does NOT close it */
+		overscroll-behavior: contain;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		border-radius: var(--td-glass-radius);
+		outline: 2px solid transparent;
+		transform-origin: top right;
+	}
+
+	.td-menu *,
+	.td-menu *::before,
+	.td-menu *::after {
+		box-sizing: border-box;
+	}
+
+	.td-menu[data-align="start"] { transform-origin: top left; }
+	.td-menu[data-align="center"] { transform-origin: top center; }
+	.td-menu[data-placement="top"] { transform-origin: bottom right; }
+	.td-menu[data-placement="top"][data-align="start"] { transform-origin: bottom left; }
+	.td-menu[data-placement="top"][data-align="center"] { transform-origin: bottom center; }
+
+	.td-menu[data-state="open"] {
+		opacity: 1;
+		transform: none;
+		transition:
+			opacity var(--td-glass-dur) var(--td-glass-ease),
+			transform var(--td-glass-dur) var(--td-glass-ease);
+	}
+
+	@starting-style {
+		.td-menu[data-state="open"] {
+			opacity: 0;
+			transform: scale(var(--td-glass-enter-scale));
+		}
+	}
+
+	/* No glass on glass: over an open modal the menu goes solid. Private tokens, so a11y fallbacks still win. */
+	:root:has(.td-modal[data-state="open"]) .td-menu {
+		--_td-glass-fill: var(--td-glass-solid);
+		--_td-glass-filter: none;
+	}
+
+	.td-menu__item {
+		display: flex;
+		flex: none;
+		flex-wrap: wrap;
+		gap: 0 var(--td-space-sm);
+		align-items: center;
+		width: 100%;
+		min-height: 40px;
+		padding: var(--td-menu-item-py) var(--td-menu-item-px);
+		margin: 0;
+		font: inherit;
+		font-size: 0.9375rem;
+		font-weight: var(--td-fw-medium);
+		line-height: 1.3;
+		color: inherit;
+		text-align: left;
+		text-decoration: none;
+		cursor: pointer;
+		user-select: none;
+		background: none;
+		border: 0;
+		border-radius: var(--td-glass-radius-inner); /* concentric with the menu */
+		outline: 2px solid transparent;
+		outline-offset: -2px;
+		appearance: none;
+	}
+
+	.td-menu__item:hover {
+		background: var(--td-menu-item-hover);
+	}
+
+	.td-menu__item:focus {
+		outline: 2px solid transparent;
+	}
+
+	/* Inset ring: an outer ring would be clipped by the scrolling menu. */
+	.td-menu__item:focus-visible {
+		background: var(--td-menu-item-active);
+		outline: 2px solid transparent;
+		outline-offset: -2px;
+		box-shadow: inset 0 0 0 2px var(--td-focus);
+	}
+
+	.td-menu__item--danger {
+		color: var(--td-menu-danger-fg);
+	}
+
+	.td-menu__item[aria-disabled="true"] {
+		cursor: not-allowed;
+		opacity: 0.55;
+	}
+
+	.td-menu__item[aria-disabled="true"]:hover {
+		background: none;
+	}
+
+	.td-menu__label {
+		flex: 1 1 0;
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+
+	.td-menu__icon {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		color: var(--td-menu-icon-fg);
+	}
+
+	.td-menu__icon svg {
+		width: 18px;
+		height: 18px;
+	}
+
+	.td-menu__item--danger .td-menu__icon {
+		color: currentcolor;
+	}
+
+	.td-menu__check {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		color: currentcolor;
+		visibility: hidden;
+	}
+
+	.td-menu__check svg {
+		width: 18px;
+		height: 18px;
+		stroke-width: 2.25;
+	}
+
+	.td-menu__item[aria-checked="true"] .td-menu__check {
+		visibility: visible;
+	}
+
+	/* Secondary line on any item (wraps below the label). */
+	.td-menu__hint {
+		flex-basis: 100%;
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-normal);
+		line-height: var(--td-leading-normal);
+		color: var(--td-menu-hint-fg);
+	}
+
+	.td-menu__item--danger .td-menu__hint {
+		color: var(--td-menu-hint-fg);
+	}
+
+	.td-menu__separator {
+		flex: none;
+		height: 1px;
+		margin: 4px var(--td-menu-item-px);
+		background: var(--td-menu-separator);
+	}
+
+	/* ---- Menu button ("···") — content layer ---- */
+	.td-menu-btn {
+		box-sizing: border-box;
+		display: inline-flex;
+		gap: var(--td-space-2xs);
+		align-items: center;
+		justify-content: center;
+		min-width: var(--td-menu-btn-size);
+		min-height: var(--td-menu-btn-size);
+		padding: 0.25rem;
+		margin: 0;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-medium);
+		line-height: var(--td-leading-tight);
+		color: var(--td-menu-btn-fg);
+		cursor: pointer;
+		background: none;
+		border: 0;
+		border-radius: var(--td-radius-full);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		appearance: none;
+		transition:
+			background-color var(--td-dur-fast) var(--td-ease),
+			color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-menu-btn:has(.td-menu-btn__label) {
+		padding-inline: var(--td-space-xs);
+	}
+
+	.td-menu-btn:hover,
+	.td-menu-btn[aria-expanded="true"] {
+		color: var(--td-menu-btn-fg-hover);
+		background: var(--td-menu-btn-hover);
+	}
+
+	.td-menu-btn:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-menu-btn:disabled {
+		cursor: not-allowed;
+		opacity: 0.55;
+	}
+
+	.td-menu-btn__icon {
+		display: inline-flex;
+		align-items: center;
+	}
+
+	@media (pointer: coarse) {
+		.td-menu__item {
+			min-height: var(--td-touch-min);
+		}
+
+		.td-menu-btn {
+			min-width: var(--td-touch-min);
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-menu-btn {
+			transition: none;
+		}
+
+		/* opacity only, no scale */
+		.td-menu[data-state="open"] {
+			transition: opacity var(--td-glass-dur) linear;
+		}
+
+		@starting-style {
+			.td-menu[data-state="open"] {
+				opacity: 0;
+				transform: none;
+			}
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-menu {
+			border: 1px solid CanvasText;
+		}
+
+		.td-menu__item:focus-visible {
+			outline: 2px solid Highlight;
+			outline-offset: -2px;
+		}
+
+		.td-menu__item[aria-disabled="true"] {
+			color: GrayText;
+			opacity: 1;
+		}
+
+		.td-menu__check {
+			color: CanvasText;
+		}
+
+		.td-menu__separator {
+			background: CanvasText;
+		}
+
+		.td-menu-btn:focus-visible {
+			outline: 2px solid Highlight;
+		}
+
+		.td-menu-btn[aria-expanded="true"] {
+			outline: 1px solid CanvasText;
+		}
+	}
+}
