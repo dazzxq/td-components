@@ -136,6 +136,19 @@
         ".td-switch__label"
       ],
       "settle": 300
+    },
+    {
+      "state": "pending",
+      "setup": "const t=document.createElement('td-toggle'); t.id='probe'; t.setAttribute('label','Công khai'); window.__mount.appendChild(t); t.commit(() => new Promise(() => {}), true);",
+      "selectors": [
+        ".td-switch",
+        ".td-switch__thumb"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "opacity"
+      ],
+      "excludeNote": "the pending thumb pulses (animation) — opacity is time-dependent"
     }
   ],
   "td-checkbox": [
@@ -444,6 +457,16 @@
       "state": "editable-placeholder",
       "markup": "<td-input-field type=\"contenteditable\" label=\"Note\" placeholder=\"Viết gì đó\"></td-input-field>",
       "selectors": [
+        ".td-field__control"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "textarea-autoresize",
+      "markup": "<td-input-field type=\"textarea\" autoresize label=\"Bio\" rows=\"4\"></td-input-field>",
+      "selectors": [
+        ".td-field",
+        ".td-field__label",
         ".td-field__control"
       ],
       "settle": 300

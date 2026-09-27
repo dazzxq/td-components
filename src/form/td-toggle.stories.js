@@ -66,3 +66,28 @@ export const WithError = {
 export const AriaLabelOnly = {
   render: () => `<div class="sb-row"><td-toggle size="sm" aria-label="Chọn"></td-toggle><td-toggle aria-label="Chọn"></td-toggle><td-toggle size="lg" aria-label="Chọn" checked></td-toggle></div>`,
 };
+
+/** v0.13.0 `commit(asyncFn)`: optimistic + pending; every second "bật" fails and the switch reverts. */
+export const CommitOptimistic = {
+  render: () => {
+    const wrap = document.createElement('div');
+    wrap.className = 'sb-stack';
+    const t = document.createElement('td-toggle');
+    t.setAttribute('label', 'Công khai bài viết');
+    t.setAttribute('controlled', '');
+    const out = document.createElement('p');
+    out.className = 'sb-note';
+    let saves = 0;
+    t.addEventListener('change', (e) => {
+      t.commit(async (next) => {
+        await new Promise((r) => setTimeout(r, 1000));
+        saves += 1;
+        if (next && saves % 2 === 0) throw new Error('Lỗi mạng (giả lập)');
+        out.textContent = next ? 'Đã công khai' : 'Đã ẩn';
+      }, e.detail.checked);
+    });
+    t.addEventListener('commit-error', (e) => { out.textContent = `Không lưu được: ${e.detail.error ? e.detail.error.message : ''}`; });
+    wrap.append(t, out);
+    return wrap;
+  },
+};

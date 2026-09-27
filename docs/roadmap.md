@@ -51,16 +51,17 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 
 ## Later — backlog
 
-- `todo` input-field: floating label (additive) + textarea autoresize bằng CSS `field-sizing` (D4 hoãn)
+- `done` textarea `autoresize` bằng CSS `field-sizing` (v0.13.0)
+- `todo` input-field: floating label (additive) — cần user duyệt giao diện
 
 - `todo` Dev deps: nâng `@web/test-runner` 1.x (bỏ `extract-zip` qua puppeteer) và Storybook 9 (bỏ `uuid` cũ) — breaking, chỉ ảnh hưởng tooling
 
 - dark theme: tinh chỉnh giá trị (hiện chỉ tính toán, chưa render thử)
-- toggle `commit()` / trạng thái pending (optimistic)
-- button `run(asyncFn)`
-- story cho datetime-picker
-- `demo.html`: thêm section `<form>` thật
-- GitHub CI
+- `done` toggle `commit()` / trạng thái pending (optimistic) (v0.13.0)
+- `done` button `run(asyncFn)` (v0.13.0)
+- `done` story cho datetime-picker (v0.10.0)
+- `done` `demo.html`: section `<form>` thật (v0.13.0)
+- `done` GitHub CI — `.github/workflows/test.yml` (v0.13.0; **chưa chạy thử trên GitHub** vì chưa push)
 - InputField helper `getById`
 - table: kéo thả sắp xếp hàng
 - datetime: picker dạng lưới lịch
@@ -84,4 +85,4 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 
 ## Done
 
-Xem [CHANGELOG.md](../CHANGELOG.md). Gần nhất: v0.4.0 (dcms ports + a11y + modal không đóng khi click backdrop).
+Xem [CHANGELOG.md](../CHANGELOG.md) và [nhật ký chạy qua đêm](history/2026-09-27-overnight.md). Gần nhất: v0.13.0.

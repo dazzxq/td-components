@@ -2,6 +2,23 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.13.0
+
+Backlog quick wins (all additive, opt-in). Plan: `docs/plans/v0.13.0-backlog.md` (Codex plan-review APPROVE, 2 rounds).
+
+### Added
+
+- `TdButton.run(asyncFn)`: busy (`loading`) while the action runs, cleared in `finally`; re-entrant calls share the
+  in-flight promise (no double submit).
+- `td-toggle` `commit(asyncFn, next?)`: optimistic persistence with a pending state (`aria-busy`,
+  `.td-switch[data-pending]`, activation ignored); resolved `false` / rejection reverts and fires `commit-error`.
+- `td-input-field` `autoresize` (textarea): grows with its content via CSS `field-sizing`, `rows` stays the minimum
+  (`--td-field-rows`, CSSOM), capped by `--td-field-autoresize-max`, then scrolls.
+- `demo.html`: a real form (validation gates `run()`, `commit()` toggle, FormData printed as text).
+- GitHub CI workflow `.github/workflows/test.yml` (**not run on GitHub yet** — nothing is pushed during the overnight
+  run).
+- CSP states `td-toggle.pending`, `td-input-field.textarea-autoresize`; stories for the three APIs.
+
 ## 0.12.0
 
 **New components** (token-native, Vietnamese defaults): `TdMenu`, `<td-chip-input>`, `TdFormValidation`. Plan:

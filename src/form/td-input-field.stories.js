@@ -214,3 +214,10 @@ export const AllSizes = {
     </div>
   `,
 };
+
+/** v0.13.0 `autoresize`: the textarea grows with its content (never below `rows`, capped, then scrolls). */
+export const TextareaAutoresize = {
+  render: () => '<div class="sb-stack"><td-input-field type="textarea" label="Tóm tắt" rows="2" autoresize '
+    + 'placeholder="Gõ nhiều dòng…"></td-input-field><p class="sb-note">CSS field-sizing (Chromium/Safari mới); '
+    + 'trình duyệt khác giữ chiều cao theo rows.</p></div>',
+};

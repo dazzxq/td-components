@@ -17,6 +17,7 @@ Quyết định thiết kế mơ hồ → debate Codex (`/codex-think-about` ho�
 | `v0.10.0` | Batch 4 (component legacy cuối): datetime-picker (combobox + dialog, bánh xe dạng listbox dùng bàn phím, `min`/`max`, parser dùng chung trong `utils/datetime.js`), table (cập nhật tại chỗ giữ focus, sort chuẩn APG, sticky header, `cellPaddingClass`) — **mọi component đã token-native**, `adopt-styles` đã xoá | plan (3), impl (3), security (1, 0 lỗi) |
 | `v0.11.0` | **Bỏ peer Tailwind** — site chỉ cần `td.css`: `td-sample` token-native, Storybook/PostCSS/demo không Tailwind, guard test chặn class Tailwind quay lại, docs viết lại | plan (2), impl (3; không đụng input → không cần security) |
 | `v0.12.0` | **3 component mới**: `TdMenu` (menu button APG), `<td-chip-input>` (combobox + search provider có abort), `TdFormValidation` (constraint gốc + rules + lỗi server, focus lỗi đầu, summary) — 3 agent song song; + gate XSS story (node + trình duyệt thật), test Tab 3 engine | plan (2), impl (3), security (3: rule throw → fail closed, không hạ HTTPS→HTTP) |
+| `v0.13.0` | Backlog nhanh: `TdButton.run()`, `td-toggle` `commit()` (optimistic + pending), textarea `autoresize`, form thật trong `demo.html`, GitHub CI (**chưa chạy trên GitHub**) | plan (2), impl (2) |
 
 ## Phát hiện đáng chú ý
 
@@ -40,6 +41,12 @@ Quyết định thiết kế mơ hồ → debate Codex (`/codex-think-about` ho�
   `clear()` xoá ARIA của trang, menu ghi ngược vào item của caller → crash với item frozen…) — đã sửa + test. Gate XSS
   story trước đó bỏ sót 15 story dựng bằng DOM → nay có thêm bản chạy trong trình duyệt thật (đã thử với story cố ý lỗi).
 
+## Còn lại trong backlog (cố ý chờ user)
+
+- Tinh chỉnh màu dark theme (cần xem render thật), floating label cho input-field (đổi giao diện), nâng major dev-deps
+  (`@web/test-runner` 1.x, Storybook 9 — dễ vỡ tooling), `InputField.getById`, kéo thả hàng bảng, lịch dạng lưới,
+  `td-refract`, preset Tailwind. External: tích hợp vào 135/dwp (không đụng theo yêu cầu).
+
 ## Cần user xem / quyết
 
 - **Tên release:** bản bỏ Tailwind đang là `v0.11.0`. Nếu muốn nó là `v1.0.0`: `git tag v1.0.0 v0.11.0` (và sửa
@@ -53,7 +60,8 @@ Quyết định thiết kế mơ hồ → debate Codex (`/codex-think-about` ho�
   Form/Dropdown).
 - Batch 3 lệch nhẹ so với inventory (Codex đã chấp nhận): mọi toast đều có nút "Đóng" (không chỉ sticky), hover/focus
   tạm dừng cả chồng toast; tooltip chỉ mở khi focus bằng bàn phím (`:focus-visible`), không mở khi click. Màu/bo góc là token — đổi dễ nếu không ưng (`--td-btn-radius`, `--td-accent`, `--td-switch-on`).
-- Push lên GitHub khi đã kiểm tra (`git push --follow-tags`).
+- Push lên GitHub khi đã kiểm tra (`git push --follow-tags`) — lần push đầu sẽ chạy CI mới (`.github/workflows/test.yml`),
+  xem nó xanh chưa (chưa thể chạy thử trên máy).
 - 135/dwp chưa đụng tới; hướng dẫn tích hợp trong `docs/roadmap.md` mục External.
 
 (Các batch tiếp theo được ghi thêm bên dưới khi xong.)

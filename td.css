@@ -546,6 +546,7 @@
 		--_td-field-h: var(--td-field-h-md);
 		--_td-field-radius: var(--td-field-radius-md);
 		--_td-field-pad: 8px 14px;
+		--_td-field-pad-y: 8px; /* vertical part of --_td-field-pad (autoresize min height) */
 
 		box-sizing: border-box;
 		display: flex;
@@ -561,12 +562,14 @@
 		--_td-field-h: var(--td-field-h-sm);
 		--_td-field-radius: var(--td-field-radius-sm);
 		--_td-field-pad: 6px 12px;
+		--_td-field-pad-y: 6px; /* vertical part of --_td-field-pad (autoresize min height) */
 	}
 
 	.td-field--lg {
 		--_td-field-h: var(--td-field-h-lg);
 		--_td-field-radius: var(--td-field-radius-lg);
 		--_td-field-pad: 10px 16px;
+		--_td-field-pad-y: 10px; /* vertical part of --_td-field-pad (autoresize min height) */
 
 		font-size: var(--td-text-base);
 	}
@@ -619,6 +622,16 @@
 		height: auto;
 		min-height: var(--_td-field-h);
 		resize: vertical;
+	}
+
+	/* v0.13.0 `autoresize`: grow with the content (progressive: `field-sizing`), never below `rows` (written to
+	   --td-field-rows through CSSOM — field-sizing ignores the rows attribute) and never above the max, then scroll. */
+	.td-field--textarea .td-field__control[data-autoresize] {
+		field-sizing: content;
+		min-block-size: calc(var(--td-field-rows, 4) * 1lh + 2 * var(--_td-field-pad-y) + 2px);
+		max-block-size: var(--td-field-autoresize-max, calc(16lh + 2 * var(--_td-field-pad-y) + 2px));
+		overflow-y: auto;
+		resize: none;
 	}
 
 	.td-field--editable .td-field__control {
@@ -1245,6 +1258,20 @@
 	.td-switch__input:checked + .td-switch__track .td-switch__icon--off { opacity: 0; }
 
 	/* Knob lift while pressed (glass only during interaction). */
+	/* commit() pending (v0.13.0): the new state is shown but not yet saved */
+	.td-switch[data-pending] {
+		cursor: progress;
+	}
+
+	.td-switch[data-pending] .td-switch__thumb {
+		opacity: 0.6;
+		animation: td-switch-pending 900ms ease-in-out infinite alternate;
+	}
+
+	@keyframes td-switch-pending {
+		to { opacity: 0.35; }
+	}
+
 	.td-switch[data-dragging] .td-switch__thumb {
 		transform: translate(calc(var(--td-switch-pad) - 1px), -50%) scale(var(--_td-glass-lift-knob, var(--td-glass-lift-scale)));
 	}
@@ -1278,6 +1305,10 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
+		.td-switch[data-pending] .td-switch__thumb {
+			animation: none;
+		}
+
 		.td-switch__track,
 		.td-switch__thumb,
 		.td-switch__icon {

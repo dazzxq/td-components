@@ -48,6 +48,7 @@ import { TdFormElement } from '../base/td-form-element.js';
  * @attr {string} field-id - id of the inner control (default `{host-id}-control`)
  * @attr {string} name - Form field name (submitted via the host)
  * @attr {number} rows - Rows for textarea (default 4)
+ * @attr {boolean} autoresize - textarea grows with its content (CSS `field-sizing`; `rows` stays the minimum), v0.13.0
  * @attr {string} validate-on - Auto-show the constraint message as the error: blur|change|input
  * @fires input - detail: { value } — once per user edit
  * @fires change - detail: { value } — on blur, only when the value changed since focus
@@ -59,12 +60,12 @@ export class TdInputField extends TdFormElement {
       'type', 'size', 'value', 'placeholder', 'readonly',
       'max-length', 'limit-type', 'min', 'max', 'step',
       'label', 'helper-text', 'error-text',
-      'field-id', 'rows', 'validate-on', 'aria-label',
+      'field-id', 'rows', 'validate-on', 'aria-label', 'autoresize',
     ];
   }
 
   static get booleanAttributes() {
-    return [...super.booleanAttributes, 'readonly'];
+    return [...super.booleanAttributes, 'readonly', 'autoresize'];
   }
 
   static get errorContract() { return true; }
@@ -76,7 +77,7 @@ export class TdInputField extends TdFormElement {
   static _inputModeMap = { email: 'email', url: 'url', number: 'decimal', tel: 'tel', search: 'search' };
 
   /** @private Attributes that change the DOM structure → full re-render. Everything else updates in place. */
-  static _structural = new Set(['type', 'size', 'label', 'max-length', 'limit-type', 'rows', 'field-id']);
+  static _structural = new Set(['type', 'size', 'label', 'max-length', 'limit-type', 'rows', 'field-id', 'autoresize']);
 
   /** @private Known public types. */
   static _types = ['text', 'password', 'email', 'tel', 'number', 'url', 'search', 'date', 'textarea', 'contenteditable'];
@@ -149,7 +150,8 @@ export class TdInputField extends TdFormElement {
 
     let control;
     if (type === 'textarea') {
-      control = `<textarea class="td-field__control" id="${esc(controlId)}" rows="${safeRows}"${maxAttr}>${esc(value)}</textarea>`;
+      const auto = this.hasAttribute('autoresize') ? ' data-autoresize' : '';
+      control = `<textarea class="td-field__control" id="${esc(controlId)}" rows="${safeRows}"${maxAttr}${auto}>${esc(value)}</textarea>`;
     } else if (type === 'contenteditable') {
       // A <div> cannot be targeted by <label for>: name it through aria-labelledby.
       const named = label ? ` aria-labelledby="${esc(this.id)}-label"` : '';
@@ -174,6 +176,7 @@ export class TdInputField extends TdFormElement {
   afterRender() {
     const field = this._getFieldElement();
     if (!field) return;
+    if (field.hasAttribute('data-autoresize')) field.style.setProperty('--td-field-rows', field.getAttribute('rows') || '4');
 
     this.listen(field, 'focus', () => { this._valueAtFocus = this._getValue(); });
     this.listen(field, 'input', (e) => {

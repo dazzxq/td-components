@@ -100,3 +100,26 @@ export const IconOnly = {
     </div>
   `,
 };
+
+/** v0.13.0 `run(asyncFn)`: busy while the action runs; a second click during it does not run it again. */
+export const RunAsync = {
+  render: () => {
+    const wrap = document.createElement('div');
+    wrap.className = 'sb-stack';
+    const btn = document.createElement('td-button');
+    btn.setAttribute('variant', 'primary');
+    btn.textContent = 'Lưu (1,5 giây)';
+    const out = document.createElement('p');
+    out.className = 'sb-note';
+    let n = 0;
+    btn.addEventListener('click', () => {
+      btn.run(async () => {
+        await new Promise((r) => setTimeout(r, 1500));
+        n += 1;
+        out.textContent = `Đã lưu ${n} lần`;
+      });
+    });
+    wrap.append(btn, out);
+    return wrap;
+  },
+};
