@@ -177,6 +177,32 @@ describe('B4 TdDropdown.labels', () => {
   });
 });
 
+describe('early options + early value / valueKey / labelKey (review v0.16.0 ISSUE-5)', () => {
+  const PEOPLE = () => [{ id: 'a', name: 'An' }, { id: 'b', name: 'Bình' }];
+  it('before connect: options first, then valueKey/labelKey/value → selection resolved on first render', () => {
+    const el = document.createElement('td-dropdown');
+    el.options = PEOPLE();
+    el.valueKey = 'id';
+    el.labelKey = 'name';
+    el.value = 'b';
+    host.appendChild(el);
+    expect(el.getValue()).to.equal('b');
+    expect(el.querySelector('.td-dropdown__value').textContent).to.equal('Bình');
+  });
+
+  it('before definition: same, on a late-defined subclass', () => {
+    class LateDropdown2 extends TdDropdown {}
+    const el = mount('<td-late-dropdown2></td-late-dropdown2>');
+    el.options = PEOPLE();
+    el.valueKey = 'id';
+    el.labelKey = 'name';
+    el.value = 'a';
+    customElements.define('td-late-dropdown2', LateDropdown2);
+    expect(el.getValue()).to.equal('a');
+    expect(el.querySelector('.td-dropdown__value').textContent).to.equal('An');
+  });
+});
+
 describe('B5 properties set before the element is defined', () => {
   it('options / onChange / onSelect set before define are picked up at upgrade', () => {
     class LateDropdown extends TdDropdown {}

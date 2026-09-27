@@ -186,6 +186,16 @@ export class TdDropdown extends TdFormElement {
     });
     own('searchable', 'searchable', () => this._isSearchable());
     own('allowClear', 'allow-clear', () => this._isAllowClear());
+    // Early `options` were resolved BEFORE the base replayed early `value` / `valueKey` / `labelKey` properties
+    // (review v0.16.0 ISSUE-5): resolve the initial selection again with the final attributes, before first render.
+    if (this._optionsInit && !this._selectedItem) {
+      const want = this._pendingValue ?? this._getInitialValue();
+      if (want != null && want !== '') {
+        const vk = this._getValueKey();
+        const item = this._options.find((i) => String(i[vk]) === String(want));
+        if (item) { this._selectedItem = item; this._pendingValue = null; } else this._pendingValue = String(want);
+      }
+    }
   }
 
   // --- Property accessors ---
