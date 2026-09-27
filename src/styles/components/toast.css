@@ -22,13 +22,13 @@
 		--td-toast-fg: var(--td-color-text);
 		--td-toast-close-fg: var(--td-toast-fg); /* muted greys fail 3:1 on translucent glass over a dark page */
 		/* status icons: deep tones in light, light tones in dark → ≥ 3:1 on the tinted glass over any backdrop */
-		--td-toast-info-icon: #1e3a8a;
-		--td-toast-success-icon: #14532d;
-		--td-toast-warning-icon: #78350f;
-		--td-toast-error-icon: #7f1d1d;
+		--td-toast-info-icon: #172f73;
+		--td-toast-success-icon: #0f3d21;
+		--td-toast-warning-icon: #5a2a0a;
+		--td-toast-error-icon: #5c1515;
 		--td-toast-close-hover: var(--td-color-hover-strong);
 		--td-toast-error-border: color-mix(in srgb, var(--td-color-error) 45%, transparent);
-		--td-toast-glass-bg: rgb(255 255 255 / 60%);   /* #111 ≥ 4.7:1 with the wash, even over a black backdrop */
+		--td-toast-glass-bg: rgb(255 255 255 / 66%);   /* #111 ≥ 4.7:1 with the wash, even over a black backdrop (gate-tuned) */
 		--td-toast-success-wash: rgb(21 128 61 / 22%);
 		--td-toast-info-wash: rgb(29 78 216 / 22%);
 		--td-toast-warning-wash: rgb(180 83 9 / 26%);
@@ -37,17 +37,17 @@
 	}
 
 	:root[data-td-theme="dark"] {
-		--td-toast-glass-bg: rgb(8 10 14 / 60%);
+		--td-toast-glass-bg: rgb(8 10 14 / 70%);
 		--td-toast-fg: var(--td-glass-fg);
 		--td-toast-close-fg: var(--td-glass-fg);
 		--td-toast-info-icon: #dbeafe;
 		--td-toast-success-icon: #dcfce7;
 		--td-toast-warning-icon: #fef3c7;
 		--td-toast-error-icon: #fee2e2;
-		--td-toast-success-wash: rgb(34 197 94 / 16%);
-		--td-toast-info-wash: rgb(96 165 250 / 16%);
-		--td-toast-warning-wash: rgb(245 158 11 / 18%);
-		--td-toast-error-wash: rgb(248 113 113 / 18%);
+		--td-toast-success-wash: rgb(34 197 94 / 12%);
+		--td-toast-info-wash: rgb(96 165 250 / 12%);
+		--td-toast-warning-wash: rgb(245 158 11 / 12%);
+		--td-toast-error-wash: rgb(248 113 113 / 12%);
 	}
 }
 

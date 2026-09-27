@@ -48,7 +48,7 @@
 		background-color: var(--td-btn-bg-v); /* opaque fallback (no color-mix) */
 		background-image:
 			linear-gradient(var(--td-btn-film-v), var(--td-btn-film-v)),
-			var(--_td-btn-sheen, var(--td-glass-sheen));
+			var(--_td-btn-sheen, var(--td-btn-sheen-v, var(--td-btn-sheen)));
 		border: 1px solid var(--td-btn-border-v);
 		border-radius: var(--td-btn-radius);
 		box-shadow:
@@ -85,6 +85,7 @@
 		--td-btn-fg-v: var(--td-glass-fg);
 		--td-btn-film-v: var(--td-glass-secondary-film);
 		--td-btn-border-v: var(--td-glass-border);
+		--td-btn-sheen-v: var(--td-glass-sheen); /* neutral glass keeps the surface sheen */
 	}
 
 	.td-btn--success { --td-btn-bg-v: var(--td-btn-success-tint); --td-btn-tint-v: var(--td-btn-success-tint); --td-btn-alpha-v: var(--td-btn-success-alpha); --td-btn-film-v: var(--td-btn-success-film); --td-btn-fg-v: var(--td-btn-success-fg); --td-btn-border-v: rgb(255 255 255 / 24%); }
@@ -124,7 +125,7 @@
 		background-image:
 			linear-gradient(var(--td-btn-hover, rgb(0 0 0 / 12%)), var(--td-btn-hover, rgb(0 0 0 / 12%))),
 			linear-gradient(var(--td-btn-film-v), var(--td-btn-film-v)),
-			var(--_td-btn-sheen, var(--td-glass-sheen));
+			var(--_td-btn-sheen, var(--td-btn-sheen-v, var(--td-btn-sheen)));
 	}
 
 	.td-btn--secondary:hover:not(:disabled, [aria-busy="true"]) {

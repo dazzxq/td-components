@@ -143,20 +143,22 @@
 		/* v0.14.0 glass buttons (liquid-glass G3): prominent = tinted glass (tint at alpha + contrast film + sheen + rim).
 		   Starting values; the token gate measures every pair over black / white / checker / photo in 3 engines. */
 		--td-btn-primary-tint: var(--td-btn-primary-bg);
-		--td-btn-primary-alpha: 84%;
-		--td-btn-primary-film: rgb(0 0 0 / 12%);
+		--td-btn-primary-alpha: 90%;
+		--td-btn-primary-film: rgb(0 0 0 / 16%);
 		--td-btn-success-tint: #15803d;                 /* fixed: dark theme brightens --td-color-* for TEXT use */
-		--td-btn-success-alpha: 86%;
-		--td-btn-success-film: rgb(0 0 0 / 13%);
+		--td-btn-success-alpha: 90%;
+		--td-btn-success-film: rgb(0 0 0 / 18%);
 		--td-btn-success-fg: #fff;
 		--td-btn-danger-tint: #b91c1c;
-		--td-btn-danger-alpha: 84%;
-		--td-btn-danger-film: rgb(0 0 0 / 12%);
+		--td-btn-danger-alpha: 90%;
+		--td-btn-danger-film: rgb(0 0 0 / 16%);
 		--td-btn-danger-fg: #fff;
 		--td-btn-info-tint: #1d4ed8;
-		--td-btn-info-alpha: 84%;
-		--td-btn-info-film: rgb(0 0 0 / 12%);
+		--td-btn-info-alpha: 90%;
+		--td-btn-info-film: rgb(0 0 0 / 16%);
 		--td-btn-info-fg: #fff;
+		/* prominent buttons: a lighter sheen than surfaces (a white sheen over a tint lowers white-label contrast) */
+		--td-btn-sheen: linear-gradient(135deg, rgb(255 255 255 / 12%) 0%, rgb(255 255 255 / 3%) 30%, transparent 55%);
 		--td-btn-warning-tint: #f59e0b;                 /* bright amber + dark text (the #b45309 text colour fails) */
 		--td-btn-warning-alpha: 86%;
 		--td-btn-warning-film: rgb(255 255 255 / 10%);
@@ -972,7 +974,7 @@
 		background-color: var(--td-btn-bg-v); /* opaque fallback (no color-mix) */
 		background-image:
 			linear-gradient(var(--td-btn-film-v), var(--td-btn-film-v)),
-			var(--_td-btn-sheen, var(--td-glass-sheen));
+			var(--_td-btn-sheen, var(--td-btn-sheen-v, var(--td-btn-sheen)));
 		border: 1px solid var(--td-btn-border-v);
 		border-radius: var(--td-btn-radius);
 		box-shadow:
@@ -1009,6 +1011,7 @@
 		--td-btn-fg-v: var(--td-glass-fg);
 		--td-btn-film-v: var(--td-glass-secondary-film);
 		--td-btn-border-v: var(--td-glass-border);
+		--td-btn-sheen-v: var(--td-glass-sheen); /* neutral glass keeps the surface sheen */
 	}
 
 	.td-btn--success { --td-btn-bg-v: var(--td-btn-success-tint); --td-btn-tint-v: var(--td-btn-success-tint); --td-btn-alpha-v: var(--td-btn-success-alpha); --td-btn-film-v: var(--td-btn-success-film); --td-btn-fg-v: var(--td-btn-success-fg); --td-btn-border-v: rgb(255 255 255 / 24%); }
@@ -1048,7 +1051,7 @@
 		background-image:
 			linear-gradient(var(--td-btn-hover, rgb(0 0 0 / 12%)), var(--td-btn-hover, rgb(0 0 0 / 12%))),
 			linear-gradient(var(--td-btn-film-v), var(--td-btn-film-v)),
-			var(--_td-btn-sheen, var(--td-glass-sheen));
+			var(--_td-btn-sheen, var(--td-btn-sheen-v, var(--td-btn-sheen)));
 	}
 
 	.td-btn--secondary:hover:not(:disabled, [aria-busy="true"]) {
@@ -2834,13 +2837,13 @@
 		--td-toast-fg: var(--td-color-text);
 		--td-toast-close-fg: var(--td-toast-fg); /* muted greys fail 3:1 on translucent glass over a dark page */
 		/* status icons: deep tones in light, light tones in dark → ≥ 3:1 on the tinted glass over any backdrop */
-		--td-toast-info-icon: #1e3a8a;
-		--td-toast-success-icon: #14532d;
-		--td-toast-warning-icon: #78350f;
-		--td-toast-error-icon: #7f1d1d;
+		--td-toast-info-icon: #172f73;
+		--td-toast-success-icon: #0f3d21;
+		--td-toast-warning-icon: #5a2a0a;
+		--td-toast-error-icon: #5c1515;
 		--td-toast-close-hover: var(--td-color-hover-strong);
 		--td-toast-error-border: color-mix(in srgb, var(--td-color-error) 45%, transparent);
-		--td-toast-glass-bg: rgb(255 255 255 / 60%);   /* #111 ≥ 4.7:1 with the wash, even over a black backdrop */
+		--td-toast-glass-bg: rgb(255 255 255 / 66%);   /* #111 ≥ 4.7:1 with the wash, even over a black backdrop (gate-tuned) */
 		--td-toast-success-wash: rgb(21 128 61 / 22%);
 		--td-toast-info-wash: rgb(29 78 216 / 22%);
 		--td-toast-warning-wash: rgb(180 83 9 / 26%);
@@ -2849,17 +2852,17 @@
 	}
 
 	:root[data-td-theme="dark"] {
-		--td-toast-glass-bg: rgb(8 10 14 / 60%);
+		--td-toast-glass-bg: rgb(8 10 14 / 70%);
 		--td-toast-fg: var(--td-glass-fg);
 		--td-toast-close-fg: var(--td-glass-fg);
 		--td-toast-info-icon: #dbeafe;
 		--td-toast-success-icon: #dcfce7;
 		--td-toast-warning-icon: #fef3c7;
 		--td-toast-error-icon: #fee2e2;
-		--td-toast-success-wash: rgb(34 197 94 / 16%);
-		--td-toast-info-wash: rgb(96 165 250 / 16%);
-		--td-toast-warning-wash: rgb(245 158 11 / 18%);
-		--td-toast-error-wash: rgb(248 113 113 / 18%);
+		--td-toast-success-wash: rgb(34 197 94 / 12%);
+		--td-toast-info-wash: rgb(96 165 250 / 12%);
+		--td-toast-warning-wash: rgb(245 158 11 / 12%);
+		--td-toast-error-wash: rgb(248 113 113 / 12%);
 	}
 }
 

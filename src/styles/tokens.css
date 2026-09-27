@@ -133,20 +133,22 @@
 		/* v0.14.0 glass buttons (liquid-glass G3): prominent = tinted glass (tint at alpha + contrast film + sheen + rim).
 		   Starting values; the token gate measures every pair over black / white / checker / photo in 3 engines. */
 		--td-btn-primary-tint: var(--td-btn-primary-bg);
-		--td-btn-primary-alpha: 84%;
-		--td-btn-primary-film: rgb(0 0 0 / 12%);
+		--td-btn-primary-alpha: 90%;
+		--td-btn-primary-film: rgb(0 0 0 / 16%);
 		--td-btn-success-tint: #15803d;                 /* fixed: dark theme brightens --td-color-* for TEXT use */
-		--td-btn-success-alpha: 86%;
-		--td-btn-success-film: rgb(0 0 0 / 13%);
+		--td-btn-success-alpha: 90%;
+		--td-btn-success-film: rgb(0 0 0 / 18%);
 		--td-btn-success-fg: #fff;
 		--td-btn-danger-tint: #b91c1c;
-		--td-btn-danger-alpha: 84%;
-		--td-btn-danger-film: rgb(0 0 0 / 12%);
+		--td-btn-danger-alpha: 90%;
+		--td-btn-danger-film: rgb(0 0 0 / 16%);
 		--td-btn-danger-fg: #fff;
 		--td-btn-info-tint: #1d4ed8;
-		--td-btn-info-alpha: 84%;
-		--td-btn-info-film: rgb(0 0 0 / 12%);
+		--td-btn-info-alpha: 90%;
+		--td-btn-info-film: rgb(0 0 0 / 16%);
 		--td-btn-info-fg: #fff;
+		/* prominent buttons: a lighter sheen than surfaces (a white sheen over a tint lowers white-label contrast) */
+		--td-btn-sheen: linear-gradient(135deg, rgb(255 255 255 / 12%) 0%, rgb(255 255 255 / 3%) 30%, transparent 55%);
 		--td-btn-warning-tint: #f59e0b;                 /* bright amber + dark text (the #b45309 text colour fails) */
 		--td-btn-warning-alpha: 86%;
 		--td-btn-warning-film: rgb(255 255 255 / 10%);
