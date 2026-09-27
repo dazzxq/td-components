@@ -21,9 +21,10 @@ Three principles hold for the whole library:
 
 > Catalog state: **v0.11.0**. Every component is token-native: load `td.css` once (no Tailwind needed). Internal classes changed per release — see the [class map](migration/class-map.md).
 
-> **Borders (0.14.1):** fields, dropdown, datetime-picker, chip-input, toggle and checkbox rest on the soft
-> `--td-control-border-soft` (Apple systemGray4, ~1.5:1) and darken to `--td-control-border-strong` (≥ 3:1) on hover;
-> keyboard focus shows the ring. For strict WCAG 1.4.11 at rest: `:root { --td-control-border-soft: var(--td-control-border-strong); }`.
+> **Borders (0.14.1 / 0.14.2):** fields, dropdown, datetime-picker, chip-input, toggle and checkbox rest on the soft
+> `--td-control-border-soft` (Apple systemGray4, ~1.5:1) and step up to `--td-control-border-hover` (systemGray2, ~2.2:1)
+> on hover — also the active-option outline in dropdown / chip-input lists; keyboard focus shows the ring. For strict
+> WCAG 1.4.11: `:root { --td-control-border-soft: var(--td-control-border-strong); --td-control-border-hover: var(--td-control-border-strong); }`.
 
 Six controls below — `td-input-field`, `td-checkbox`, `td-toggle`, `td-slider`, `td-dropdown`, `td-datetime-picker` — are **form-associated** (via `ElementInternals`): give one a `name` and drop it in a `<form>`, and it submits in `FormData`/POST, participates in `required`/constraint validation, resets with the form, and is excluded by an ancestor `<fieldset disabled>` — like a native control. No hidden `<input>` mirroring needed.
 

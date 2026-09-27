@@ -4,8 +4,9 @@ import './td-input-field.js';
 import { TdInputField } from './td-input-field.js';
 import { TdButton } from './td-button.js';
 
-/** v0.14.1: resting control borders are soft (--td-control-border-soft, visible ≥ 1.3:1); the hover / strong border
- *  (--td-control-border-strong) keeps ≥ 3:1. Resolves a token to a computed colour. */
+/** v0.14.1/0.14.2: resting control borders are soft (--td-control-border-soft, visible ≥ 1.3:1); hover uses the
+ *  softer step --td-control-border-hover (≥ 1.8:1, darker than rest); focus keeps the ring; strict sites map both to
+ *  --td-control-border-strong (≥ 3:1). Resolves a token to a computed colour. */
 function tokenColor(name) {
   const p = document.createElement('span');
   p.style.setProperty('color', `var(${name})`);
@@ -351,7 +352,7 @@ describe('batch 2 — td-input-field styles (td.css)', () => {
   });
 
   for (const theme of ['light', 'dark']) {
-    it(`AA contrast: border ≥ 3, placeholder/label/note ≥ 4.5 (${theme})`, () => {
+    it(`contrast: soft border (rest ≥ 1.3, hover ≥ 1.8), placeholder/label/note ≥ 4.5 (${theme})`, () => {
       if (theme === 'dark') document.documentElement.setAttribute('data-td-theme', 'dark');
       document.body.style.setProperty('background', 'var(--td-color-bg)');
       const el = mount('<td-input-field label="Tên" placeholder="Gợi ý nhập" helper-text="Ghi chú"></td-input-field>');
@@ -360,11 +361,12 @@ describe('batch 2 — td-input-field styles (td.css)', () => {
       const cs = getComputedStyle(input);
       const fieldBg = cs.backgroundColor;
       const pageBg = getComputedStyle(document.body).backgroundColor;
-      // v0.14.1: soft border at rest (visible), the hover border keeps ≥ 3:1; focus shows the ring
+      // v0.14.1/0.14.2: soft border at rest (visible), a soft but clearly darker hover step; focus shows the ring
       expect(ratio(cs.borderTopColor, fieldBg)).to.be.at.least(1.3);
       expect(ratio(cs.borderTopColor, pageBg)).to.be.at.least(1.3);
-      expect(ratio(tokenColor('--td-field-border-hover'), fieldBg)).to.be.at.least(3);
-      expect(ratio(tokenColor('--td-field-border-hover'), pageBg)).to.be.at.least(3);
+      expect(ratio(tokenColor('--td-field-border-hover'), fieldBg)).to.be.at.least(1.8);
+      expect(ratio(tokenColor('--td-field-border-hover'), pageBg)).to.be.at.least(1.8);
+      expect(ratio(tokenColor('--td-field-border-hover'), fieldBg)).to.be.above(ratio(cs.borderTopColor, fieldBg) * 1.2);
       expect(ratio(getComputedStyle(input, '::placeholder').color, fieldBg)).to.be.at.least(4.5);
       expect(ratio(cs.color, fieldBg)).to.be.at.least(4.5);
       expect(ratio(getComputedStyle(el.querySelector('.td-field__label')).color, pageBg)).to.be.at.least(4.5);

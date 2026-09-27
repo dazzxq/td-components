@@ -4,8 +4,9 @@ import { TdDropdown } from './td-dropdown.js';
 import { TdButton } from './td-button.js';
 import { LAYERS, register, trapTab } from '../utils/layers.js';
 
-/** v0.14.1: resting control borders are soft (--td-control-border-soft, visible ≥ 1.3:1); the hover / strong border
- *  (--td-control-border-strong) keeps ≥ 3:1. Resolves a token to a computed colour. */
+/** v0.14.1/0.14.2: resting control borders are soft (--td-control-border-soft, visible ≥ 1.3:1); hover uses the
+ *  softer step --td-control-border-hover (≥ 1.8:1, darker than rest); focus keeps the ring; strict sites map both to
+ *  --td-control-border-strong (≥ 3:1). Resolves a token to a computed colour. */
 function tokenColor(name) {
   const p = document.createElement('span');
   p.style.setProperty('color', `var(${name})`);
@@ -515,7 +516,7 @@ describe('batch 3 — td-dropdown visuals', () => {
       const ph = getComputedStyle(idle.querySelector('.td-dropdown__value'));
       expect(ratio(ph.color, b.backgroundColor), `${theme} placeholder`).to.be.at.least(4.5);
       expect(ratio(b.borderTopColor, b.backgroundColor), `${theme} border (soft)`).to.be.at.least(1.3);
-      expect(ratio(tokenColor('--td-field-border-hover'), b.backgroundColor), `${theme} hover border`).to.be.at.least(3);
+      expect(ratio(tokenColor('--td-field-border-hover'), b.backgroundColor), `${theme} hover border`).to.be.at.least(1.8);
     }
   });
 

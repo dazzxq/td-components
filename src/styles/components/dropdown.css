@@ -12,7 +12,7 @@
 		--td-dropdown-option-h: 40px; /* JS mirrors it: max-height = visible options × 40 px */
 		--td-dropdown-option-hover: var(--td-color-hover);
 		--td-dropdown-option-active: var(--td-color-hover-strong);
-		--td-dropdown-option-active-line: var(--td-control-border-strong); /* ≥ 3:1 active outline (1.4.11) */
+		--td-dropdown-option-active-line: var(--td-control-border-hover); /* v0.14.2: soft outline; the fill marks it too */
 		--td-dropdown-option-selected: var(--td-color-hover-strong);
 		--td-dropdown-search-bg: var(--td-color-hover);
 		--td-dropdown-search-border: var(--td-control-border-soft);      /* soft like the fields (v0.14.1) */
@@ -20,7 +20,7 @@
 	}
 
 	:root[data-td-theme="dark"] {
-		--td-dropdown-option-active-line: var(--td-control-border-strong);
+		--td-dropdown-option-active-line: var(--td-control-border-hover);
 		--td-dropdown-search-bg: rgb(255 255 255 / 6%);
 	}
 }

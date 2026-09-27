@@ -131,9 +131,12 @@
 		--td-control-radius: var(--td-radius-md);
 		--td-control-border-strong: var(--td-gray-500); /* ≥ 3:1 non-text contrast on white (3.42:1) */
 		/* v0.14.1 (owner request): resting border of fields / dropdown / toggle / checkbox — soft like Apple systemGray4
-		   (1.5:1). It darkens to --td-control-border-strong on hover and focus shows the ring; sites that need strict
-		   WCAG 1.4.11 at rest set --td-control-border-soft: var(--td-control-border-strong). */
+		   (1.5:1). It steps up to --td-control-border-hover on hover (v0.14.2) and focus shows the ring; sites that need
+		   strict WCAG 1.4.11 map BOTH --td-control-border-soft and --td-control-border-hover to
+		   var(--td-control-border-strong). */
 		--td-control-border-soft: #d1d1d6;
+		/* v0.14.2 (owner request): hover border / active option outline — a softer step up (Apple systemGray2). */
+		--td-control-border-hover: #aeaeb2;
 		--td-touch-min: 44px; /* minimum hit target for touch controls */
 
 		/* ===== Buttons (content layer: SOLID, never glass — liquid-glass R1/R7) ===== */
@@ -172,7 +175,7 @@
 		--td-btn-disabled-border: rgb(0 0 0 / 10%);
 
 		/* ===== Checkbox / switch — v0.14.1: resting borders use the soft token (~1.5:1, below WCAG 1.4.11 by owner
-		   choice); hover uses --td-control-border-strong (≥ 3:1); switch on-colours still ≥ 3:1 ===== */
+		   choice); hover uses --td-control-border-hover (~2.2:1, v0.14.2); switch on-colours still ≥ 3:1 ===== */
 		--td-checkbox-color: var(--td-accent);
 		--td-checkbox-border: var(--td-control-border-soft);
 		--td-switch-on: #16a34a;       /* 3.3:1 vs white page; white thumb on it 3.3:1 */
@@ -306,6 +309,7 @@
 		--td-control-border: #45454b;
 		--td-control-border-strong: #8a8a93;
 		--td-control-border-soft: #3a3a3c; /* Apple systemGray4 (dark) */
+		--td-control-border-hover: #636366; /* Apple systemGray2 (dark) */
 
 		--td-btn-primary-bg: #2563eb; /* white text 5.17:1 (the dark accent #3b82f6 would be 3.68:1) */
 		--td-btn-secondary-bg: #2c2c30;
@@ -594,8 +598,8 @@
 		--td-field-bg-readonly: var(--td-color-surface-muted);
 		--td-field-fg: var(--td-control-fg);
 		--td-field-fg-disabled: var(--td-color-text-muted);
-		--td-field-border: var(--td-control-border-soft);     /* soft at rest (v0.14.1); hover / focus are strong */
-		--td-field-border-hover: var(--td-control-border-strong);
+		--td-field-border: var(--td-control-border-soft);     /* soft at rest (v0.14.1), soft hover (v0.14.2), focus ring */
+		--td-field-border-hover: var(--td-control-border-hover);
 		--td-field-focus: var(--td-focus);
 		--td-field-focus-ring: var(--td-focus-ring);
 		--td-field-placeholder: var(--td-gray-600);            /* 5.28:1 on white */
@@ -1227,9 +1231,9 @@
 			transform var(--td-dur-base) var(--td-ease-spring);
 	}
 
-	/* soft border at rest (v0.14.1), strong under the pointer */
+	/* soft border at rest (v0.14.1), one soft step darker under the pointer (v0.14.2) */
 	.td-checkbox:hover .td-checkbox__input:not(:checked, :disabled) ~ .td-checkbox__mark {
-		border-color: var(--td-control-border-strong);
+		border-color: var(--td-control-border-hover);
 	}
 
 	.td-checkbox__input:checked ~ .td-checkbox__mark {
@@ -1293,7 +1297,7 @@
  * td-toggle → .td-switch (src/form/td-toggle.js; the 135 kit contract). Content-layer control: solid track;
  * the knob only "lifts" while pressed ([data-dragging]), disabled under reduced motion.
  * WCAG 1.4.11: on track --td-switch-on (#16a34a, 3.3:1 on white; white thumb on it 3.3:1); off track light
- * fill + --td-switch-edge border (v0.14.1: soft at rest, strong on hover); the thumb carries the same edge while off.
+ * fill + --td-switch-edge border (v0.14.1: soft at rest; v0.14.2: soft hover step); the thumb carries the same edge while off.
  * Host custom property --td-switch-on (from the `color` attribute) overrides the token.
  */
 @layer td.component {
@@ -1403,7 +1407,7 @@
 
 	.td-switch:hover .td-switch__input:not(:checked, :disabled) + .td-switch__track,
 	.td-switch:hover .td-switch__input:not(:checked, :disabled) + .td-switch__track .td-switch__thumb {
-		border-color: var(--td-control-border-strong);
+		border-color: var(--td-control-border-hover);
 	}
 
 	.td-switch__input:checked + .td-switch__track {
@@ -3519,7 +3523,7 @@
 		--td-dropdown-option-h: 40px; /* JS mirrors it: max-height = visible options × 40 px */
 		--td-dropdown-option-hover: var(--td-color-hover);
 		--td-dropdown-option-active: var(--td-color-hover-strong);
-		--td-dropdown-option-active-line: var(--td-control-border-strong); /* ≥ 3:1 active outline (1.4.11) */
+		--td-dropdown-option-active-line: var(--td-control-border-hover); /* v0.14.2: soft outline; the fill marks it too */
 		--td-dropdown-option-selected: var(--td-color-hover-strong);
 		--td-dropdown-search-bg: var(--td-color-hover);
 		--td-dropdown-search-border: var(--td-control-border-soft);      /* soft like the fields (v0.14.1) */
@@ -3527,7 +3531,7 @@
 	}
 
 	:root[data-td-theme="dark"] {
-		--td-dropdown-option-active-line: var(--td-control-border-strong);
+		--td-dropdown-option-active-line: var(--td-control-border-hover);
 		--td-dropdown-search-bg: rgb(255 255 255 / 6%);
 	}
 }

@@ -2,7 +2,7 @@
  * td-toggle → .td-switch (src/form/td-toggle.js; the 135 kit contract). Content-layer control: solid track;
  * the knob only "lifts" while pressed ([data-dragging]), disabled under reduced motion.
  * WCAG 1.4.11: on track --td-switch-on (#16a34a, 3.3:1 on white; white thumb on it 3.3:1); off track light
- * fill + --td-switch-edge border (v0.14.1: soft at rest, strong on hover); the thumb carries the same edge while off.
+ * fill + --td-switch-edge border (v0.14.1: soft at rest; v0.14.2: soft hover step); the thumb carries the same edge while off.
  * Host custom property --td-switch-on (from the `color` attribute) overrides the token.
  */
 @layer td.component {
@@ -112,7 +112,7 @@
 
 	.td-switch:hover .td-switch__input:not(:checked, :disabled) + .td-switch__track,
 	.td-switch:hover .td-switch__input:not(:checked, :disabled) + .td-switch__track .td-switch__thumb {
-		border-color: var(--td-control-border-strong);
+		border-color: var(--td-control-border-hover);
 	}
 
 	.td-switch__input:checked + .td-switch__track {
