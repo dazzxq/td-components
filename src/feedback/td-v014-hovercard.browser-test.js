@@ -70,6 +70,9 @@ afterEach(async () => {
   window.fetch = realFetch;
   host.innerHTML = '';
   await resetMouse();
+  // back to keyboard modality: programmatic focus() in the next test is :focus-visible again (a previous test's
+  // mouse click would otherwise route it through the hover intent — review ISSUE-3)
+  await sendKeys({ press: 'Shift' });
   await wait(0);
 });
 
@@ -113,6 +116,14 @@ describe('v0.14 TdHovercard — structure, ARIA, glass', () => {
     unbind();
     expect(t.getAttribute('aria-haspopup')).to.equal('true'); // the trigger's own value is restored
     expect(t.hasAttribute('aria-expanded')).to.equal(false);
+  });
+
+  it('a tabindex="-1" trigger is made Tab-reachable while bound; its -1 comes back on unbind (review ISSUE-4)', () => {
+    const b = add('<button type="button" tabindex="-1">Lan</button>');
+    const unbind = bind(b, { content: () => 'x' });
+    expect(b.getAttribute('tabindex')).to.equal('0');
+    unbind();
+    expect(b.getAttribute('tabindex')).to.equal('-1');
   });
 
   it('a non-focusable trigger gets tabindex=0 while bound (restored on unbind)', () => {
@@ -255,6 +266,16 @@ describe('v0.14 TdHovercard — hover intent', () => {
     await sendMouse({ type: 'move', position: [2, window.innerHeight - 2] });
     await wait(400);
     expect(isOpen()).to.equal(true);
+  });
+
+  it('a mouse click focuses without bypassing the 350 ms hover intent (review ISSUE-3)', async () => {
+    const t = add('<button type="button">Lan</button>');
+    bind(t, { content: () => 'Thẻ' });
+    await sendMouse({ type: 'click', position: center(t) });
+    expect(same(active(), t)).to.equal(true);
+    expect(isOpen(), 'no instant open on pointer focus').to.equal(false);
+    await wait(420);
+    expect(isOpen(), 'the hover path still opens it').to.equal(true);
   });
 
   it('outside pointerdown closes', async () => {
@@ -754,6 +775,46 @@ describe('v0.14 TdHovercard — bindAll, unbind, reconnect', () => {
     late.blur();
     late.focus();
     expect(isOpen()).to.equal(false);
+  });
+
+  it('overlapping owners (review ISSUE-5): explicit bind over bindAll, either teardown order, keeps live ARIA', () => {
+    const root = add('<div><span data-td-hovercard-template="x" aria-haspopup="listbox">Lan</span></div>');
+    const s0 = root.firstElementChild;
+    // bindAll first, explicit bind later; bindAll released first → the explicit binding keeps its ARIA
+    const ua = TdHovercard.bindAll(root);
+    const ub = TdHovercard.bind(s0, { content: () => 'x' });
+    ua();
+    expect(s0.getAttribute('aria-haspopup')).to.equal('dialog');
+    expect(s0.getAttribute('tabindex')).to.equal('0');
+    ub();
+    expect(s0.getAttribute('aria-haspopup')).to.equal('listbox');
+    expect(s0.hasAttribute('tabindex')).to.equal(false);
+    expect(s0.hasAttribute('aria-expanded')).to.equal(false);
+    // explicit bind released first → bindAll still owns it
+    const ua2 = TdHovercard.bindAll(root);
+    const ub2 = TdHovercard.bind(s0, { content: () => 'x' });
+    ub2();
+    expect(s0.getAttribute('aria-haspopup')).to.equal('dialog');
+    ua2();
+    expect(s0.getAttribute('aria-haspopup')).to.equal('listbox');
+    expect(s0.hasAttribute('tabindex')).to.equal(false);
+  });
+
+  it('nested bindAll roots: releasing either root first never restores stale ARIA under the other', () => {
+    const outer = add('<div><div><span data-td-hovercard-template="x">Lan</span></div></div>');
+    const inner = outer.firstElementChild;
+    const s0 = inner.firstElementChild;
+    for (const order of ['inner-first', 'outer-first']) {
+      const uo = TdHovercard.bindAll(outer);
+      const ui = TdHovercard.bindAll(inner);
+      const [first, second] = order === 'inner-first' ? [ui, uo] : [uo, ui];
+      first();
+      expect(s0.getAttribute('aria-haspopup'), order).to.equal('dialog');
+      expect(s0.getAttribute('tabindex'), order).to.equal('0');
+      second();
+      expect(s0.hasAttribute('aria-haspopup'), order).to.equal(false);
+      expect(s0.hasAttribute('tabindex'), order).to.equal(false);
+    }
   });
 
   it('bindAll ignores triggers inside the card (no nested hovercards)', async () => {

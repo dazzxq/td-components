@@ -11,8 +11,9 @@ for (const t of TOASTS) CASES.push({ kind: 'toast', v: t, state: 'rest' });
 const stage = document.getElementById('stage');
 const bd = document.getElementById('backdrop');
 
-/** Backdrop: black | white | checker | photo (CSSOM only — the page runs under a strict CSP). */
-function setBackdrop(kind) {
+/** Backdrop: black | white | checker | photo (CSSOM only — the page runs under a strict CSP). Resolves once the photo
+ *  is decoded (a missing / undecodable photo throws, so the gate can never sample an empty backdrop). */
+async function setBackdrop(kind) {
   bd.style.removeProperty('background');
   bd.replaceChildren();
   if (kind === 'black') bd.style.setProperty('background', '#000');
@@ -24,6 +25,7 @@ function setBackdrop(kind) {
     img.alt = '';
     img.className = 'photo';
     bd.appendChild(img);
+    await img.decode();
   }
 }
 
@@ -32,7 +34,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
   const c = CASES[i];
   document.documentElement.toggleAttribute('data-td-theme', false);
   if (theme === 'dark') document.documentElement.setAttribute('data-td-theme', 'dark');
-  setBackdrop(backdrop);
+  await setBackdrop(backdrop);
   stage.replaceChildren();
   document.querySelectorAll('#td-toast-container').forEach((n) => n.remove());
   TdToast._activeToasts = [];

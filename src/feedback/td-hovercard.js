@@ -498,6 +498,10 @@ function onOut(e, trigger) {
 function onFocusIn(trigger, binding) {
   if (suppressFocus) return;
   if (lastTouch.trigger === trigger && Date.now() - lastTouch.at < TOUCH_FOCUS_MS) return; // a tap's focus
+  // Only KEYBOARD-visible focus opens at once; a mouse click's focus goes through the 350 ms hover intent (ISSUE-3).
+  let visible = true;
+  try { visible = trigger.matches(':focus-visible'); } catch { /* engines without :focus-visible: keep opening */ }
+  if (!visible) return;
   if (cur && cur.trigger === trigger) { clearTimeout(hideTimer); return; }
   open(trigger, binding);
 }
@@ -506,17 +510,36 @@ function onPress(e, trigger) {
   if (e.pointerType && e.pointerType !== 'mouse') lastTouch = { trigger, at: Date.now() };
 }
 
-/** Set the trigger's ARIA (+ tabindex when not focusable), remembering the previous values once. */
+/**
+ * Trigger attribute ownership (impl-review v0.14.0 ISSUE-5): ONE original snapshot per trigger and the set of bindings
+ * that currently own it; the originals come back only when the LAST owner releases the trigger (overlapping bind() /
+ * bindAll() / nested roots never restore stale ARIA under a live binding).
+ * @type {WeakMap<HTMLElement, { snap: Array<[string, string|null]>, owners: Set<Map> }>}
+ */
+const OWNERS = new WeakMap();
+
+/** Set the trigger's ARIA (+ tabindex when not sequentially focusable), registering `touched` as an owner. */
 function prepTrigger(t, touched) {
-  if (!touched.has(t)) touched.set(t, SNAP.map((a) => [a, t.getAttribute(a)]));
+  let rec = OWNERS.get(t);
+  if (!rec) {
+    rec = { snap: SNAP.map((a) => [a, t.getAttribute(a)]), owners: new Set() };
+    OWNERS.set(t, rec);
+  }
+  rec.owners.add(touched);
+  touched.set(t, true);
   t.setAttribute('aria-haspopup', 'dialog');
   if (!(cur && cur.trigger === t)) t.setAttribute('aria-expanded', 'false');
-  if (!t.matches(NATIVE_FOCUSABLE)) t.setAttribute('tabindex', '0');
+  if (t.tabIndex < 0) t.setAttribute('tabindex', '0'); // not reachable by Tab (incl. tabindex="-1", review ISSUE-4)
 }
 
 function restoreTriggers(touched) {
-  for (const [t, snap] of touched) {
-    for (const [a, v] of snap) {
+  for (const t of touched.keys()) {
+    const rec = OWNERS.get(t);
+    if (!rec) continue;
+    rec.owners.delete(touched);
+    if (rec.owners.size) continue; // another binding still owns this trigger
+    OWNERS.delete(t);
+    for (const [a, v] of rec.snap) {
       if (v === null) t.removeAttribute(a);
       else t.setAttribute(a, v);
     }

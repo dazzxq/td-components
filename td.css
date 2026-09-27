@@ -1045,21 +1045,26 @@
 		backdrop-filter: none;
 	}
 
-	/* Hover never lowers text contrast: an overlay that darkens under light text (default) or lightens under
-	   dark text (custom colours set --td-btn-hover accordingly). Secondary uses its own lighter/darker fill. */
-	.td-btn:hover:not(:disabled, [aria-busy="true"]) {
+	/* Glass hover = GLOW, not a new material (G3: interaction animates only transform / glow). The glow is an outer
+	   halo, so the fill behind the label — and its rendered contrast — never changes. */
+	.td-btn:hover:not(:disabled, [aria-busy="true"], .td-btn--custom) {
+		box-shadow:
+			var(--_td-btn-rim, inset 0 1px 0 0 rgb(255 255 255 / 38%)),
+			var(--_td-btn-outline, 0 0 0 1px var(--td-glass-outline)),
+			var(--_td-btn-lift, 0 8px 20px -8px rgb(0 0 0 / 34%), 0 1px 3px -1px rgb(0 0 0 / 14%)),
+			0 0 18px 1px var(--_td-glass-glow, var(--td-glass-glow));
+	}
+
+	/* Custom colours are opaque (not glass): an overlay that darkens under light text or lightens under dark text
+	   (td-button sets --td-btn-hover accordingly), so hover never lowers text contrast. */
+	.td-btn--custom:hover:not(:disabled, [aria-busy="true"]) {
 		background-image:
 			linear-gradient(var(--td-btn-hover, rgb(0 0 0 / 12%)), var(--td-btn-hover, rgb(0 0 0 / 12%))),
-			linear-gradient(var(--td-btn-film-v), var(--td-btn-film-v)),
 			var(--_td-btn-sheen, var(--td-btn-sheen-v, var(--td-btn-sheen)));
 	}
 
-	.td-btn--secondary:hover:not(:disabled, [aria-busy="true"]) {
-		--td-btn-hover: rgb(0 0 0 / 6%);
-	}
-
 	.td-btn:active:not(:disabled, [aria-busy="true"]) {
-		transform: scale(var(--_td-glass-press, 0.98));
+		transform: scale(var(--_td-glass-press, var(--td-glass-press-scale)));
 	}
 
 	.td-btn:focus-visible {

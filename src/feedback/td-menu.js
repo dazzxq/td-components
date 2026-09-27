@@ -470,6 +470,34 @@ function ensureId(anchor) {
   return anchor.id;
 }
 
+/** Attributes bind() / bindAll() may change on a trigger (restored when the last owner lets go). */
+const TRIGGER_SNAP = ['id', 'aria-haspopup', 'aria-expanded', 'aria-controls'];
+/**
+ * Per-trigger ownership: ONE snapshot of the original attributes + the live owners (bind() calls, bindAll() roots).
+ * Overlapping owners never restore stale ARIA under each other; the originals return when the last owner releases.
+ * @type {WeakMap<HTMLElement, { snap: Array<[string, string|null]>, owners: Set<object> }>}
+ */
+const TRIGGER_OWNERS = new WeakMap();
+
+function acquireTrigger(t, owner) {
+  let rec = TRIGGER_OWNERS.get(t);
+  if (!rec) {
+    rec = { snap: TRIGGER_SNAP.map((a) => [a, t.getAttribute(a)]), owners: new Set() };
+    TRIGGER_OWNERS.set(t, rec);
+  }
+  rec.owners.add(owner);
+}
+
+function releaseTrigger(t, owner) {
+  const rec = TRIGGER_OWNERS.get(t);
+  if (!rec || !rec.owners.delete(owner) || rec.owners.size) return;
+  TRIGGER_OWNERS.delete(t);
+  for (const [a, v] of rec.snap) {
+    if (v === null) t.removeAttribute(a);
+    else t.setAttribute(a, v);
+  }
+}
+
 export class TdMenu {
   /** Default labels (Vietnamese); override per site: `TdMenu.labels.trigger = 'Options'`. */
   static labels = { trigger: 'Tùy chọn' };
@@ -598,9 +626,8 @@ export class TdMenu {
   static bind(trigger, items, opts = {}) {
     if (!(trigger instanceof HTMLElement)) return () => {};
     bound.get(trigger)?.();
-    // snapshot what binding changes, so unbind() restores the trigger's own semantics
-    const SNAP = ['id', 'aria-haspopup', 'aria-expanded', 'aria-controls'];
-    const before = new Map(SNAP.map((a) => [a, trigger.getAttribute(a)]));
+    const owner = {};
+    acquireTrigger(trigger, owner); // one original snapshot shared with bindAll() (impl-review v0.14.0 ISSUE-5)
     ensureId(trigger);
     trigger.setAttribute('aria-haspopup', 'menu');
     if (!TdMenu.isOpen(trigger)) trigger.setAttribute('aria-expanded', 'false');
@@ -623,10 +650,7 @@ export class TdMenu {
       trigger.removeEventListener('click', onClick);
       trigger.removeEventListener('keydown', onKeydown);
       if (TdMenu.isOpen(trigger)) closeSession(current, 'api');
-      for (const [a, v] of before) {
-        if (v === null) trigger.removeAttribute(a);
-        else trigger.setAttribute(a, v);
-      }
+      releaseTrigger(trigger, owner);
     };
     bound.set(trigger, unbind);
     return unbind;
@@ -710,9 +734,9 @@ export class TdMenu {
     if (!root || !isFn(root.addEventListener) || !isFn(root.querySelectorAll)) return () => {};
     const existing = boundRoots.get(root);
     if (existing) return existing;
-    const SNAP = ['id', 'aria-haspopup', 'aria-expanded', 'aria-controls'];
-    /** @type {Map<HTMLElement, Map<string, string|null>>} trigger → attributes before bindAll touched it */
-    const touched = new Map();
+    /** @type {Set<HTMLElement>} triggers this root owns (originals live in the shared TRIGGER_OWNERS record) */
+    const touched = new Set();
+    const owner = {};
     const triggerOf = (t) => {
       const n = t instanceof Element ? t.closest('[data-td-menu]') : null;
       if (!(n instanceof HTMLElement) || !root.contains(n) || bound.has(n)) return null;
@@ -720,7 +744,8 @@ export class TdMenu {
     };
     const prime = (n) => {
       if (touched.has(n)) return;
-      touched.set(n, new Map(SNAP.map((a) => [a, n.getAttribute(a)])));
+      touched.add(n);
+      acquireTrigger(n, owner);
       if (!n.hasAttribute('aria-haspopup')) n.setAttribute('aria-haspopup', 'menu');
       if (!TdMenu.isOpen(n)) n.setAttribute('aria-expanded', 'false');
     };
@@ -763,13 +788,8 @@ export class TdMenu {
       root.removeEventListener('keydown', onKeydown);
       root.removeEventListener('focusin', onPrime);
       root.removeEventListener('mouseover', onPrime);
-      if (current && touched.has(current.anchor)) closeSession(current, 'api');
-      for (const [n, before] of touched) {
-        for (const [a, v] of before) {
-          if (v === null) n.removeAttribute(a);
-          else n.setAttribute(a, v);
-        }
-      }
+      if (current && touched.has(current.anchor) && !bound.has(current.anchor)) closeSession(current, 'api');
+      for (const n of touched) releaseTrigger(n, owner);
       touched.clear();
     };
     boundRoots.set(root, unbind);

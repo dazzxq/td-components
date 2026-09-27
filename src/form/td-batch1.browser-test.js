@@ -236,6 +236,17 @@ describe('batch 1 — td-button', () => {
     expect(el.querySelector('button').classList.contains('td-btn--custom')).to.equal(true);
   });
 
+  it('translucent custom colours become an OPAQUE fill (composited over white), fg chosen against it — G3', () => {
+    for (const [c, bg, fg] of [['rgba(0, 0, 128, 0.5)', 'rgb(128, 128, 192)', '#000000'],
+      ['#00008080', 'rgb(127, 127, 191)', '#000000'], ['transparent', 'rgb(255, 255, 255)', '#000000']]) {
+      const el = mount(`<td-button color="${c}">x</td-button>`);
+      expect(el.style.getPropertyValue('--td-btn-bg'), c).to.equal(bg);
+      expect(el.style.getPropertyValue('--td-btn-fg'), c).to.equal(fg);
+      const b = el.querySelector('button');
+      expect(getComputedStyle(b).backgroundColor, c).to.equal(bg);
+    }
+  });
+
   it('forwards aria-label to the inner button', () => {
     const el = mount('<td-button icon="close" aria-label="Đóng"></td-button>');
     expect(el.querySelector('button').getAttribute('aria-label')).to.equal('Đóng');

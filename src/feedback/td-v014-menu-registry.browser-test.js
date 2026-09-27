@@ -302,6 +302,45 @@ describe('v0.14 TdMenu.bindAll — declarative triggers', () => {
     expect(own.getAttribute('aria-haspopup')).to.equal('menu'); // bind()'s ARIA untouched
   });
 
+  it('overlapping owners (review ISSUE-5): bind() after bindAll(), either teardown order, keeps live ARIA', () => {
+    const name = uniq();
+    track(TdMenu.define(name, [{ label: 'A' }]));
+    host.insertAdjacentHTML('beforeend', `<div><button type="button" data-td-menu="${name}">Mở</button></div>`);
+    const root = host.lastElementChild;
+    const b = root.firstElementChild;
+    for (const order of ['bindAll-first', 'bind-first']) {
+      const ua = TdMenu.bindAll(root);
+      const ub = TdMenu.bind(b, [{ label: 'X' }]);
+      const [first, second] = order === 'bindAll-first' ? [ua, ub] : [ub, ua];
+      first();
+      expect(b.getAttribute('aria-haspopup'), order).to.equal('menu');
+      expect(b.getAttribute('aria-expanded'), order).to.equal('false');
+      second();
+      expect(b.hasAttribute('aria-haspopup'), order).to.equal(false);
+      expect(b.hasAttribute('aria-expanded'), order).to.equal(false);
+      expect(b.hasAttribute('id'), order).to.equal(false);
+    }
+  });
+
+  it('nested bindAll roots: releasing either root first never strips the other root\'s ARIA', () => {
+    const name = uniq();
+    track(TdMenu.define(name, [{ label: 'A' }]));
+    host.insertAdjacentHTML('beforeend', `<div><div><button type="button" data-td-menu="${name}">Mở</button></div></div>`);
+    const outer = host.lastElementChild;
+    const inner = outer.firstElementChild;
+    const b = inner.firstElementChild;
+    for (const order of ['inner-first', 'outer-first']) {
+      const uo = TdMenu.bindAll(outer);
+      const ui = TdMenu.bindAll(inner);
+      const [first, second] = order === 'inner-first' ? [ui, uo] : [uo, ui];
+      first();
+      expect(b.getAttribute('aria-haspopup'), order).to.equal('menu');
+      second();
+      expect(b.hasAttribute('aria-haspopup'), order).to.equal(false);
+      expect(b.hasAttribute('aria-expanded'), order).to.equal(false);
+    }
+  });
+
   it('disabled triggers and triggers outside root do not open; unknown name warns', async () => {
     const n = uniq();
     track(TdMenu.define(n, [{ label: 'A' }]));

@@ -11,8 +11,10 @@ const _parseCache = new Map();
 
 /**
  * Button — token-native (needs td.css; no Tailwind). Styles: src/styles/components/button.css.
- * Content-layer control: SOLID fills, never glass (docs/design/liquid-glass.md R1/R7); status variants
- * use the semantic colour tokens (all ≥ 4.5:1 with their text).
+ * Glass control (docs/design/liquid-glass.md v2 G3): secondary = neutral glass (.glass), primary / status variants =
+ * tinted prominent glass (.glassProminent, fixed tints ≥ 4.7:1 with their label over any backdrop — rendered contrast
+ * gate). Custom `color` = OPAQUE fill without backdrop blur; disabled = opaque neutral fill. Dense contexts (tables,
+ * [data-td-density="dense"], inside another glass surface) drop the blur (no nested backdrop-filter).
  *
  * DOM contract:
  *   <button class="td-btn td-btn--{variant} td-btn--{size}[ td-btn--full][ td-btn--custom]" type="…">
@@ -140,13 +142,16 @@ export class TdButton extends TdBaseElement {
   }
 
   /**
-   * @private The custom colour NORMALISED to rgb()/rgba() (contextual values such as currentColor are
-   * resolved once, not re-evaluated inside the button). '' when absent/unsafe/unresolvable.
+   * @private The custom colour NORMALISED to an OPAQUE rgb() (contextual values such as currentColor are resolved
+   * once; a translucent colour is composited over white, the same surface _getContrastColor() assumes — G3: custom
+   * fills are opaque). '' when absent/unsafe/unresolvable.
    */
   _customColor() {
     const c = this.safeColor(this.getAttribute('color'), '');
-    const parsed = c ? TdButton._parseColor(c) : null;
-    return parsed ? parsed.css : '';
+    const p = c ? TdButton._parseColor(c) : null;
+    if (!p) return '';
+    const over = (v) => Math.round(v * p.a + 255 * (1 - p.a));
+    return `rgb(${over(p.r)}, ${over(p.g)}, ${over(p.b)})`;
   }
 
   connectedCallback() {

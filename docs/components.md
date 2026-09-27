@@ -30,7 +30,8 @@ Six controls below — `td-input-field`, `td-checkbox`, `td-toggle`, `td-slider`
 ### `td-button` — `@dazzxq/td-components/button`
 
 
-Solid content-layer button (never glass — the one primary action on a floating bar uses `.td-glass-tint`).
+Liquid Glass control button (0.14.0, liquid-glass v2 G3): secondary = neutral glass, primary / status variants =
+tinted prominent glass; a custom `color` is an opaque fill without blur.
 
 ```html
 <td-button variant="primary" label="Save"></td-button>
@@ -40,22 +41,23 @@ Solid content-layer button (never glass — the one primary action on a floating
 
 | Attribute | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `variant` | string | `primary` | `primary` \| `secondary` \| `success` \| `danger` \| `info` \| `warning` (status colours ≥ 4.5:1) |
+| `variant` | string | `primary` | `primary` \| `secondary` \| `success` \| `danger` \| `info` \| `warning` (label ≥ 4.7:1 over any backdrop — rendered contrast gate) |
 | `size` | string | `md` | `sm` \| `md` \| `lg` (32 / 40 / 48 px; 44 px + capsule on touch) |
 | `icon` | string | — | Icon **registry name** (e.g. `download`). Deprecated: any other value is treated as a legacy class list (e.g. `fas fa-edit`) |
 | `icon-position` | string | `left` | `left` \| `right` |
 | `loading` | boolean | `false` | `aria-busy` + `aria-disabled`, spinner, clicks swallowed, **focus kept** |
 | `disabled` | boolean | `false` | Native disabled |
 | `full-width` | boolean | `false` | Stretch to container width |
-| `color` | string | — | Custom background (overrides `variant`) |
-| `text-color` | string | auto | Custom text colour (auto: black/white by WCAG contrast; translucent colours composited over white) |
+| `color` | string | — | Custom background (overrides `variant`); always applied **opaque** (a translucent colour is composited over white first) |
+| `text-color` | string | auto | Custom text colour (auto: black/white by WCAG contrast against the opaque fill) |
 | `label` | string | — | Button text (alternative to `textContent`) |
 | `type` | string | `button` | `button` \| `submit` \| `reset` (whitelisted) |
 | `aria-label` | string | — | Forwarded to the inner button (icon-only buttons) |
 
 **Liquid Glass (0.14.0):** primary / success / danger / info / warning = tinted glass (`.glassProminent`), secondary =
 neutral strong glass; inside tables, `[data-td-density="dense"]` or a glass surface the look stays but without its own
-`backdrop-filter`; disabled uses opaque state colours; a custom `color` is an opaque fill. Contrast of every variant is
+`backdrop-filter`; disabled uses opaque state colours; a custom `color` is an opaque fill. Hover = outer glow (the fill
+behind the label never changes; custom colours keep a contrast-safe overlay), press = `--td-glass-press-scale`. Contrast of every variant is
 gated over black / white / checker / photo in 3 engines (`npm run test:contrast`). Tokens: `--td-btn-radius`,
 `--td-btn-{variant}-tint/-alpha/-film/-fg`, `--td-btn-sheen`, `--td-btn-disabled-bg/-fg/-border`, `--td-btn-secondary-*`. Methods: `setLoading(bool)`, `setDisabled(bool)`, **`run(asyncFn)`** (0.13.0): busy while `asyncFn` runs, cleared in
 `finally`, returns its result / rethrows; a call while running returns the same promise (no double submit).

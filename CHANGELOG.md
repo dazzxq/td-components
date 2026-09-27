@@ -16,6 +16,8 @@ rules: `docs/design/liquid-glass.md` v2.
 - **Buttons are glass:** prominent variants = tinted glass (90 % tint + contrast film), secondary = neutral glass;
   warning is now bright amber with dark text; disabled uses opaque state colours instead of `opacity: .55`; buttons in
   tables / dense areas / glass surfaces keep the look without their own blur.
+- **Button hover = outer glow** (the fill behind the label never changes), press uses `--td-glass-press-scale`; a
+  custom `color` is always applied opaque (translucent colours composited over white first).
 - **Checkbox is round** by default (`--td-checkbox-radius`).
 - **Toasts are tinted glass** (per-type wash, deeper icons; dark variants lighter).
 - **Frontmost glass wins:** a dropdown / menu / suggestions / tooltip / hovercard over an open modal keeps its glass and
@@ -23,6 +25,9 @@ rules: `docs/design/liquid-glass.md` v2.
 - **Tooltip = dwp look & behaviour:** arrow, 14px text, shows on touch and on any focus, hides on scroll / resize / tap
   elsewhere, opacity fade; aliases `data-dwp-tooltip`, `data-tooltip-pos`, `data-dwp-tooltip-pos`.
 - Modal close X and toast close use the glass foreground (muted greys failed 3:1 on translucent glass).
+- Hovercard opens at once only on keyboard focus (`:focus-visible`); a mouse click goes through the hover intent.
+  `tabindex="-1"` triggers are made Tab-reachable while bound. Overlapping `bind()` / `bindAll()` owners (menu and
+  hovercard) share one attribute snapshot, restored only when the last owner releases the trigger.
 
 ### Added
 
