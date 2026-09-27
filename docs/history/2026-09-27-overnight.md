@@ -13,7 +13,7 @@ Quyết định thiết kế mơ hồ → debate Codex (`/codex-think-about` ho�
 | `v0.6.0` | `td-lightbox` (port sạch lõi dwp, hook `download/video/history/panel/toolbar/isAllowedUrl`) + **icon registry** (Lucide, `tdIcon`, `<td-icon>`, ADR 0010 — ý tưởng của user) | plan (3), think-about icon (đồng thuận), impl (3), security (3) |
 | `v0.7.0` | Batch 1 token-native: button, checkbox, toggle (switch native), loading + error contract, accessible name, spinner dùng chung, inert lease dùng chung | plan (3), impl (5), security (2) |
 | `v0.8.0` | Batch 2 token-native: input-field, slider, pagination, tabs (APG, manual activation), empty-state (đóng lỗ SVG thô) — 4 agent song song trong worktree riêng, tích hợp + sửa 2 lỗi base (label ngoài, di chuyển DOM) | plan (3), impl (3), security (3) |
-| `v0.9.0` | Batch 3 lớp nổi: modal/modal-stack, toast, tooltip, dropdown (combobox APG) + `utils/layers.js` (một bộ điều phối Escape/Tab, inert lease có floating, trả focus qua hand-off) — 4 agent song song | plan (4), impl (4), security (xem dưới) |
+| `v0.9.0` | Batch 3 lớp nổi: modal/modal-stack, toast, tooltip, dropdown (combobox APG) + `utils/layers.js` (một bộ điều phối Escape/Tab, inert lease có floating, trả focus qua hand-off) — 4 agent song song | plan (4), impl (4), security (3) |
 
 ## Phát hiện đáng chú ý
 
