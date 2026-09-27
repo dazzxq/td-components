@@ -7,7 +7,7 @@ import { TdButton } from './td-button.js';
 import { TdLoading, TdLoadingSpinner } from '../feedback/td-loading.js';
 import { TdToast } from '../feedback/td-toast.js';
 import { isScrollLocked } from '../utils/scroll-lock.js';
-import { sendKeys } from '@web/test-runner-commands';
+import { sendKeys, sendMouse, resetMouse } from '@web/test-runner-commands';
 
 const link = document.createElement('link');
 link.rel = 'stylesheet';
@@ -31,6 +31,27 @@ function rgb(str) {
 const lum = (c) => TdButton._luminance(c);
 const ratio = (a, b) => { const [x, y] = [lum(rgb(a)), lum(rgb(b))].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
 const bgOf = (el) => getComputedStyle(el).backgroundColor;
+
+/** v0.14.0: a glass button's effective background over a flat page: page ← translucent tint ← contrast film. */
+function glassBg(b, page) {
+  const probe = document.createElement('span');
+  document.body.appendChild(probe);
+  // Computed colours may serialise as rgb()/rgba() (0–255) or color(srgb r g b / a) (0–1, e.g. from color-mix()).
+  const toRgba = (c) => {
+    probe.style.setProperty('color', c);
+    const str = getComputedStyle(probe).color;
+    const m = str.match(/-?[\d.]+/g).map(Number);
+    const k = str.startsWith('color(') ? 255 : 1;
+    return { r: m[0] * k, g: m[1] * k, b: m[2] * k, a: m.length > 3 ? m[3] : 1 };
+  };
+  const over = (top, under) => ({ r: top.r * top.a + under.r * (1 - top.a), g: top.g * top.a + under.g * (1 - top.a), b: top.b * top.a + under.b * (1 - top.a), a: 1 });
+  const cs = getComputedStyle(b);
+  let c = over(toRgba(cs.backgroundColor), toRgba(page));
+  const film = cs.getPropertyValue('--td-btn-film-v').trim();
+  if (film && film !== 'transparent') c = over(toRgba(film), c);
+  probe.remove();
+  return `rgb(${Math.round(c.r)}, ${Math.round(c.g)}, ${Math.round(c.b)})`;
+}
 
 describe('batch 1 — td-checkbox', () => {
   it('renders the BEM contract with a registry check icon', () => {
@@ -161,14 +182,16 @@ describe('batch 1 — td-toggle (.td-switch)', () => {
 });
 
 describe('batch 1 — td-button', () => {
-  it('solid variants (no backdrop-filter) with AA text contrast', () => {
-    for (const v of ['primary', 'success', 'danger', 'warning', 'info']) {
+  it('v0.14.0 glass variants (tinted glass + blur) with AA text contrast over white AND black pages', () => {
+    for (const v of ['primary', 'success', 'danger', 'warning', 'info', 'secondary']) {
       const el = mount(`<td-button variant="${v}">Lưu</td-button>`);
       const b = el.querySelector('button');
       const cs = getComputedStyle(b);
       expect(b.classList.contains(`td-btn--${v}`)).to.equal(true);
-      expect(cs.backdropFilter === 'none' || cs.backdropFilter === '').to.equal(true);
-      expect(ratio(cs.color, cs.backgroundColor), v).to.be.at.least(4.5);
+      expect(cs.backdropFilter !== 'none' && cs.backdropFilter !== '', `${v} blur`).to.equal(true);
+      for (const page of ['#fff', '#000']) {
+        expect(ratio(cs.color, glassBg(b, page)), `${v} on ${page}`).to.be.at.least(4.5);
+      }
     }
   });
 
@@ -211,6 +234,33 @@ describe('batch 1 — td-button', () => {
     expect(el.style.getPropertyValue('--td-btn-bg')).to.equal('rgb(255, 255, 0)');
     expect(el.style.getPropertyValue('--td-btn-fg')).to.equal('#000000');
     expect(el.querySelector('button').classList.contains('td-btn--custom')).to.equal(true);
+  });
+
+  it('translucent custom colours become an OPAQUE fill (composited over white), fg chosen against it — G3', () => {
+    for (const [c, bg, fg] of [['rgba(0, 0, 128, 0.5)', 'rgb(128, 128, 192)', '#000000'],
+      ['#00008080', 'rgb(127, 127, 191)', '#000000'], ['transparent', 'rgb(255, 255, 255)', '#000000']]) {
+      const el = mount(`<td-button color="${c}">x</td-button>`);
+      expect(el.style.getPropertyValue('--td-btn-bg'), c).to.equal(bg);
+      expect(el.style.getPropertyValue('--td-btn-fg'), c).to.equal(fg);
+      const b = el.querySelector('button');
+      expect(getComputedStyle(b).backgroundColor, c).to.equal(bg);
+    }
+  });
+
+  it('hover glow never replaces the keyboard focus ring (review ISSUE-8)', async () => {
+    const el = mount('<td-button variant="primary">Lưu</td-button>');
+    const b = el.querySelector('button');
+    await sendKeys({ press: 'Shift' }); // keyboard modality → programmatic focus is :focus-visible
+    b.focus();
+    expect(b.matches(':focus-visible')).to.equal(true);
+    await new Promise((r) => setTimeout(r, 250));
+    const ring = getComputedStyle(b).boxShadow;
+    const r = b.getBoundingClientRect();
+    await sendMouse({ type: 'move', position: [Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2)] });
+    await new Promise((res) => setTimeout(res, 250));
+    expect(b.matches(':hover')).to.equal(true);
+    expect(getComputedStyle(b).boxShadow).to.equal(ring);
+    await resetMouse();
   });
 
   it('forwards aria-label to the inner button', () => {
@@ -324,13 +374,15 @@ describe('batch 1 — review follow-ups', () => {
       if (theme === 'dark') document.documentElement.setAttribute('data-td-theme', 'dark');
       for (const v of ['primary', 'success', 'danger', 'warning', 'info']) {
         const b = mount(`<td-button variant="${v}">x</td-button>`).querySelector('button');
-        const cs = getComputedStyle(b);
-        const bg = rgb(cs.backgroundColor);
-        const fg = cs.color;
-        expect(ratio(fg, cs.backgroundColor), `${v} rest`).to.be.at.least(4.5);
-        // hover = rgb(0 0 0 / 12%) overlay composited over the fill
-        const over = (c) => Math.round(c * 0.88);
-        expect(ratio(fg, `rgb(${over(bg.r)}, ${over(bg.g)}, ${over(bg.b)})`), `${v} hover`).to.be.at.least(4.5);
+        const fg = getComputedStyle(b).color;
+        for (const page of ['#fff', '#000']) {
+          const bgc = glassBg(b, page);
+          expect(ratio(fg, bgc), `${v} rest on ${page}`).to.be.at.least(4.5);
+          // hover = rgb(0 0 0 / 12%) overlay composited over the glass
+          const bg = rgb(bgc);
+          const over = (c) => Math.round(c * 0.88);
+          expect(ratio(fg, `rgb(${over(bg.r)}, ${over(bg.g)}, ${over(bg.b)})`), `${v} hover on ${page}`).to.be.at.least(4.5);
+        }
       }
     });
   }

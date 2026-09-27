@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <!-- Contrast-gate "photo": saturated, high-frequency content (sky, foliage, sun, dark shadows). -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b3d91"/><stop offset="0.55" stop-color="#7cc4ff"/><stop offset="1" stop-color="#ffd27a"/></linearGradient>
+    <radialGradient id="sun" cx="0.72" cy="0.3" r="0.18"><stop offset="0" stop-color="#fffbe6"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#sky)"/>
+  <rect width="1200" height="800" fill="url(#sun)"/>
+  <path d="M0 520 L180 380 L320 470 L520 300 L720 460 L900 340 L1200 500 L1200 800 L0 800 Z" fill="#1f5e2e"/>
+  <path d="M0 620 L240 520 L480 600 L760 520 L1200 640 L1200 800 L0 800 Z" fill="#0d2b14"/>
+  <g fill="#e63946"><circle cx="160" cy="700" r="40"/><circle cx="420" cy="680" r="28"/><circle cx="980" cy="710" r="36"/></g>
+  <g fill="#fdf0d5"><rect x="600" y="600" width="80" height="120"/><rect x="820" y="560" width="50" height="160"/></g>
+</svg>

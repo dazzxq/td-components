@@ -17,3 +17,12 @@
 .fd-dim { position: absolute; left: 0; right: 0; height: 120px; }
 .fd-dim--top { top: 0; } .fd-dim--bottom { bottom: 0; }
 .fd-group { display: flex; gap: 4px; padding: var(--td-glass-pad); border-radius: var(--td-glass-radius); }
+/* v0.14.0 showcase: glass controls over a busy, colourful backdrop */
+.fd-show { position: relative; min-height: 460px; padding: 28px; border-radius: 16px; overflow: hidden;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; align-content: start; }
+.fd-show__col { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.fd-show__title { margin: 0; font: 600 13px/1.4 var(--td-font-sans); letter-spacing: .02em; text-transform: uppercase; color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / 50%); }
+.fd-show__menu { width: 240px; padding: var(--td-glass-pad); border-radius: var(--td-glass-radius); font: 14px/1.4 var(--td-font-sans); }
+.fd-show__item { padding: 10px 12px; border-radius: var(--td-glass-radius-inner); }
+.fd-show__item:hover { background: var(--td-color-hover); }
+.fd-show__toast { position: static !important; transform: none !important; opacity: 1 !important; }

@@ -2,7 +2,14 @@
  * td-checkbox (src/form/td-checkbox.js). Content-layer control: solid, never glass.
  * State: :checked / :disabled / :focus-visible on .td-checkbox__input, [aria-invalid] for the error contract.
  * Host custom property --td-checkbox-color (from the `color` attribute) overrides the token.
+ * v0.14.0 (liquid-glass G7): round by default — override --td-checkbox-radius (e.g. 6px) for a square box.
  */
+@layer td.tokens {
+	:root {
+		--td-checkbox-radius: 50%;
+	}
+}
+
 @layer td.component {
 	td-checkbox {
 		display: inline-block;
@@ -54,7 +61,7 @@
 		color: var(--td-accent-contrast);
 		background: var(--td-control-bg);
 		border: 1.5px solid var(--td-checkbox-border);
-		border-radius: 6px;
+		border-radius: var(--td-checkbox-radius); /* v0.14.0: round by default */
 		line-height: 1;
 		transition:
 			background var(--td-dur-fast) var(--td-ease),

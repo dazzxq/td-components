@@ -19,7 +19,8 @@
       "td-tooltip": "/src/feedback/td-tooltip.js",
       "td-menu": "/src/feedback/td-menu.js",
       "td-chip-input": "/src/form/td-chip-input.js",
-      "td-form-validation": "/src/utils/form-validation.js"
+      "td-form-validation": "/src/utils/form-validation.js",
+      "td-hovercard": "/src/feedback/td-hovercard.js"
     },
     "tokenNative": [
       "td-button",
@@ -39,7 +40,8 @@
       "td-datetime-picker",
       "td-menu",
       "td-chip-input",
-      "td-form-validation"
+      "td-form-validation",
+      "td-hovercard"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -1157,6 +1159,23 @@
         "right",
         "bottom"
       ]
+    },
+    {
+      "state": "arrow-clamped",
+      "setup": "const b=document.createElement('button'); b.textContent='?'; b.style.setProperty('position','fixed'); b.style.setProperty('left','10px'); b.style.setProperty('top','200px'); b.style.setProperty('margin','0'); b.setAttribute('data-tooltip','Một chú thích khá dài để chip bị ép sát mép trái màn hình'); window.__mount.appendChild(b); tdTooltip.init(); tdTooltip.show(b);",
+      "selectors": [
+        ".td-tooltip"
+      ],
+      "portal": [
+        ".td-tooltip"
+      ],
+      "settle": 250,
+      "excludeProps": [
+        "left",
+        "top",
+        "right",
+        "bottom"
+      ]
     }
   ],
   "td-menu": [
@@ -1316,6 +1335,63 @@
         ".td-form-summary__title",
         ".td-form-summary__list",
         ".td-form-summary__link"
+      ]
+    }
+  ],
+  "td-hovercard": [
+    {
+      "state": "open-node",
+      "setup": "const t=document.createElement('button'); t.textContent='Nguyễn Văn An'; t.style.setProperty('margin','60px'); window.__mount.appendChild(t); TdHovercard.bind(t,{content:() => { const d=document.createElement('div'); d.textContent='Biên tập viên · 128 bài viết'; return d; }}); t.focus();",
+      "selectors": [
+        ".td-hovercard"
+      ],
+      "portal": [
+        ".td-hovercard"
+      ],
+      "settle": 700,
+      "excludeProps": [
+        "left",
+        "top",
+        "right",
+        "bottom"
+      ]
+    },
+    {
+      "state": "loading",
+      "setup": "const t=document.createElement('button'); t.textContent='Nguyễn Văn An'; t.style.setProperty('margin','60px'); window.__mount.appendChild(t); TdHovercard.bind(t,{content:() => new Promise(() => {})}); t.focus();",
+      "selectors": [
+        ".td-hovercard",
+        ".td-hovercard__status"
+      ],
+      "portal": [
+        ".td-hovercard",
+        ".td-hovercard__status"
+      ],
+      "settle": 700,
+      "excludeProps": [
+        "left",
+        "top",
+        "right",
+        "bottom"
+      ]
+    },
+    {
+      "state": "error",
+      "setup": "const t=document.createElement('button'); t.textContent='Nguyễn Văn An'; t.style.setProperty('margin','60px'); window.__mount.appendChild(t); TdHovercard.bind(t,{content:() => Promise.reject(new Error('x'))}); t.focus();",
+      "selectors": [
+        ".td-hovercard",
+        ".td-hovercard__status"
+      ],
+      "portal": [
+        ".td-hovercard",
+        ".td-hovercard__status"
+      ],
+      "settle": 700,
+      "excludeProps": [
+        "left",
+        "top",
+        "right",
+        "bottom"
       ]
     }
   ]

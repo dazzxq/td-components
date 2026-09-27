@@ -23,6 +23,27 @@
   <h1 class="demo-title">td-components Demo</h1>
   <p class="demo-lead">Test tất cả components trực tiếp. Mở DevTools Console để xem events.</p>
 
+  <!-- ═══════════════════ LIQUID GLASS (v0.14.0) ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Liquid Glass <span class="demo-code">nền nhiều màu để thấy kính</span></h2>
+    <div class="demo-glass-stage">
+      <div class="demo-row">
+        <td-button variant="primary">Lưu</td-button>
+        <td-button variant="secondary">Huỷ</td-button>
+        <td-button variant="success">Xuất bản</td-button>
+        <td-button variant="danger">Xoá</td-button>
+        <td-button variant="info">Chi tiết</td-button>
+        <td-button variant="warning">Cảnh báo</td-button>
+      </div>
+      <div class="demo-row">
+        <td-button variant="secondary" data-tooltip="Tooltip kính có mũi tên" data-tooltip-pos="bottom">Tooltip</td-button>
+        <td-button variant="secondary" id="demo-glass-menu" icon="more">Menu</td-button>
+        <td-button variant="secondary" id="demo-glass-hovercard">Rê chuột: hovercard</td-button>
+        <td-button variant="primary" id="demo-glass-toast">Hiện toast</td-button>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══════════════════ TOGGLE ═══════════════════ -->
   <div class="demo-section">
     <h2>Toggle <span class="demo-code">&lt;td-toggle&gt;</span></h2>
@@ -265,6 +286,8 @@
     import './src/display/td-empty-state.js';
     import './src/form/td-chip-input.js';
     import { TdFormValidation } from './src/utils/form-validation.js';
+    import { TdMenu } from './src/feedback/td-menu.js';
+    import { TdHovercard } from './src/feedback/td-hovercard.js';
 
     import { TdModal } from './src/feedback/td-modal.js';
     import { TdToast } from './src/feedback/td-toast.js';
@@ -410,6 +433,34 @@
       }, e.detail.checked);
     });
     demoPublic.addEventListener('commit-error', (e) => TdToast.error(e.detail.error ? e.detail.error.message : 'Không lưu được'));
+
+    // ── Liquid Glass section (v0.14.0) ──
+    TdMenu.define('demo-post', [
+      { label: 'Sửa bài viết', icon: 'plus', hint: 'E', onSelect: () => TdToast.info('Sửa') },
+      { label: 'Chia sẻ', onSelect: () => TdToast.info('Chia sẻ') },
+      { separator: true },
+      { label: 'Xoá', danger: true, onSelect: () => TdToast.error('Đã xoá (giả lập)') },
+    ]);
+    TdMenu.register('demo-post', { label: 'Lưu để đọc sau (plugin)', order: 15, onSelect: () => TdToast.success('Đã lưu') });
+    // a glass td-button as the trigger (the ghost .td-menu-btn is meant for plain surfaces, not photos)
+    TdMenu.bind(document.querySelector('#demo-glass-menu button'), 'demo-post');
+    TdHovercard.bind(document.querySelector('#demo-glass-hovercard'), {
+      label: 'Hồ sơ tác giả',
+      content: () => {
+        const box = document.createElement('div');
+        const name = document.createElement('strong');
+        name.textContent = 'Nguyễn Văn An';
+        const role = document.createElement('p');
+        role.textContent = 'Biên tập viên · 128 bài viết';
+        box.append(name, role);
+        return box;
+      },
+    });
+    document.querySelector('#demo-glass-toast').addEventListener('click', () => {
+      TdToast.success('Đã lưu thay đổi');
+      setTimeout(() => TdToast.warning('Bản nháp chưa lưu'), 300);
+      setTimeout(() => TdToast.error('Không kết nối được máy chủ'), 600);
+    });
 
     // ── Log all component events ──
     document.addEventListener('change', (e) => {

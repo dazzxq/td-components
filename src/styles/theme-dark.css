@@ -44,18 +44,26 @@
 		--td-btn-secondary-fg: #f5f5f7;
 		--td-btn-secondary-border: rgb(255 255 255 / 12%);
 		--td-btn-secondary-hover: #3a3a3e;
+		--td-btn-disabled-bg: #2a2a2f;
+		--td-btn-disabled-fg: #a1a1aa;                 /* 6.2:1 on the disabled fill */
+		--td-btn-disabled-border: rgb(255 255 255 / 10%);
 		--td-switch-off: #2c2c30;
 
-		--td-glass-bg: rgb(30 30 32 / 70%);            /* 64 % measured 4.61:1 → 70 % */
-		--td-glass-bg-strong: rgb(30 30 32 / 84%);
-		--td-glass-edge: rgb(255 255 255 / 22%);
-		--td-glass-bottom: rgb(255 255 255 / 5%);
-		--td-glass-border: rgb(255 255 255 / 12%);
-		--td-glass-blur: blur(18px) saturate(150%);
-		--td-glass-blur-lg: blur(20px) saturate(150%);
-		--td-glass-shadow: 0 10px 30px -8px rgb(0 0 0 / 55%), 0 2px 6px -2px rgb(0 0 0 / 35%);
-		--td-glass-shadow-lg: 0 24px 60px -12px rgb(0 0 0 / 60%), 0 4px 12px -4px rgb(0 0 0 / 40%);
-		--td-glass-solid: #1c1c1e;
+		--td-glass-bg: rgb(12 14 18 / 44%);
+		--td-glass-bg-strong: rgb(8 10 14 / 60%);      /* #f7f7f8 text ≥ 4.5:1 even over a white backdrop */
+		--td-glass-fg: #f7f7f8;
+		--td-glass-edge: rgb(255 255 255 / 30%);
+		--td-glass-side-edge: rgb(255 255 255 / 10%);
+		--td-glass-bottom: rgb(0 0 0 / 26%);
+		--td-glass-border: rgb(255 255 255 / 18%);
+		--td-glass-outline: rgb(0 0 0 / 32%);
+		--td-glass-sheen: linear-gradient(135deg, rgb(255 255 255 / 14%) 0%, rgb(255 255 255 / 3%) 36%, transparent 64%, rgb(255 255 255 / 5%) 100%);
+		--td-glass-blur: blur(16px) saturate(135%) brightness(0.92);
+		--td-glass-blur-lg: blur(20px) saturate(135%) brightness(0.92);
+		--td-glass-shadow: 0 12px 34px -10px rgb(0 0 0 / 68%), 0 3px 10px -4px rgb(0 0 0 / 46%);
+		--td-glass-shadow-lg: 0 26px 64px -18px rgb(0 0 0 / 76%), 0 8px 22px -10px rgb(0 0 0 / 52%);
+		--td-glass-solid: #17181c;
+		--td-glass-secondary-film: rgb(255 255 255 / 0%);
 		--td-glass-glow: rgb(255 255 255 / 18%);
 	}
 }

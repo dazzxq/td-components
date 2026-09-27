@@ -1,0 +1,71 @@
+{
+  "_component": "td-tooltip",
+  "_state": "arrow-clamped",
+  "_profile": "td",
+  "_reducedMotion": false,
+  "_excludedProps": [
+    "left",
+    "top",
+    "right",
+    "bottom"
+  ],
+  "_sentinels": [
+    {
+      "class": ":root (td.css)",
+      "prop": "--td-glass-radius",
+      "value": "20px"
+    }
+  ],
+  "styles": {
+    ".td-tooltip": {
+      "width": "288px",
+      "height": "53.9688px",
+      "min-height": "0px",
+      "max-height": "none",
+      "padding-top": "6.4px",
+      "padding-bottom": "6.4px",
+      "padding-left": "9.6px",
+      "padding-right": "9.6px",
+      "margin-top": "0px",
+      "margin-bottom": "0px",
+      "margin-left": "0px",
+      "display": "block",
+      "position": "fixed",
+      "z-index": "510",
+      "opacity": "1",
+      "color": "rgb(17, 17, 19)",
+      "background-color": "rgba(255, 255, 255, 0.52)",
+      "background-image": "linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0)), linear-gradient(135deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.07) 32%, rgba(0, 0, 0, 0) 58%, rgba(255, 255, 255, 0.08) 100%)",
+      "border-top-width": "1px",
+      "border-right-width": "1px",
+      "border-bottom-width": "1px",
+      "border-left-width": "1px",
+      "border-top-color": "rgba(255, 255, 255, 0.46)",
+      "border-right-color": "rgba(255, 255, 255, 0.46)",
+      "border-bottom-color": "rgba(255, 255, 255, 0.46)",
+      "border-left-color": "rgba(255, 255, 255, 0.46)",
+      "border-top-left-radius": "8px",
+      "border-top-right-radius": "8px",
+      "border-bottom-left-radius": "8px",
+      "border-bottom-right-radius": "8px",
+      "box-shadow": "rgba(255, 255, 255, 0.82) 0px 1px 0px 0px inset, rgba(255, 255, 255, 0.22) 1px 0px 0px 0px inset, rgba(0, 0, 0, 0.08) 0px -1px 0px 0px inset, rgba(0, 0, 0, 0.08) 0px 0px 0px 1px, rgba(0, 0, 0, 0.34) 0px 10px 30px -10px, rgba(0, 0, 0, 0.16) 0px 2px 8px -3px",
+      "transform": "none",
+      "transition": "opacity 0.12s cubic-bezier(0.4, 0, 0.2, 1)",
+      "backdrop-filter": "blur(16px) saturate(1.45) brightness(1.04)",
+      "-webkit-backdrop-filter": "",
+      "font-size": "14px",
+      "font-weight": "400",
+      "line-height": "19.6px",
+      "text-align": "start",
+      "resize": "none",
+      "overflow-y": "visible",
+      "cursor": "auto",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "stroke-width": "1px",
+      "stroke-dasharray": "none",
+      "stroke-dashoffset": "0px",
+      "stroke-linecap": "butt"
+    }
+  }
+}

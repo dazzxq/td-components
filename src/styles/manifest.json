@@ -27,6 +27,7 @@
     "components/form-validation.css",
     "components/menu.css",
     "components/chip-input.css",
+    "components/hovercard.css",
     "utilities.css"
   ]
 }

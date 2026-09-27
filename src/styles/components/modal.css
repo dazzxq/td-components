@@ -118,6 +118,9 @@
 		pointer-events: none;
 	}
 
+	/* v0.14.0 "frontmost glass wins" (liquid-glass G1): a popover / menu / hovercard / tooltip open ABOVE an open modal
+	   keeps its glass; the covered dialog goes solid instead (no glass on glass). */
+	:root:has(.td-dropdown__menu:not([hidden]), .td-menu, .td-chip-input__menu:not([hidden]), .td-tooltip:not([hidden]), .td-hovercard:not([hidden])) .td-modal[data-state="open"] .td-modal__dialog,
 	.td-modal[data-covered] .td-modal__dialog {
 		--_td-glass-fill: var(--td-glass-solid);
 		--_td-glass-filter: none;
@@ -155,7 +158,7 @@
 		padding: 0;
 		margin: 0 calc(-1 * var(--td-space-xs)) 0 auto;
 		font: inherit;
-		color: var(--td-color-text-muted);
+		color: var(--_td-glass-fg, var(--td-glass-fg)); /* v0.14.0: muted greys fail 3:1 on translucent glass over a dark page */
 		cursor: pointer;
 		background: transparent;
 		border: 1px solid transparent;

@@ -49,7 +49,17 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` `TdFormValidation` (từ `dcms-form-validation.js`; constraint gốc + `rules` + lỗi server) (v0.12.0)
 - `done` Release cuối của đợt migrate: bỏ peer Tailwind (v0.11.0; `td-sample` token-native, Storybook/demo không Tailwind, guard test)
 
+## Done — v0.14.0 Liquid Glass thật
+
+- `done` Viết lại luật Liquid Glass (v2, Codex think-about), token mới, button kính, checkbox tròn, toast tint màu,
+  tooltip kiểu dwp có mũi tên, menu đăng ký option (`define/register/bindAll`), `TdHovercard`, gate tương phản render thật
+- `done` Hardening sau security review: `TdHovercard.sanitize` + `TrustedHTML`, fetch giới hạn (LRU 50, 256 KB, 10 s,
+  `no-store`, huỷ khi đóng), `clearCache()` bắt buộc khi đổi phiên đăng nhập
+
 ## Later — backlog
+
+- `todo` Khúc xạ SVG (Chromium-only, opt-in thử nghiệm) — WebKit bug 245510
+- `todo` Component còn lại từ dwp/135 chưa quyết: password meter, scroll-top, select-enhance, skeleton dùng chung, style `<select>` gốc, cup-loader
 
 - `done` textarea `autoresize` bằng CSS `field-sizing` (v0.13.0)
 - `todo` input-field: floating label (additive) — cần user duyệt giao diện
