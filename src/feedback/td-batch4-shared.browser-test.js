@@ -70,3 +70,24 @@ describe('td-pagination quiet', () => {
     el.remove();
   });
 });
+
+describe('shared CSS fixes found in batch 4', () => {
+  it('an idle (hidden) button spinner is not displayed', () => {
+    const s = document.createElement('span');
+    s.className = 'td-spinner td-btn__spinner';
+    s.hidden = true;
+    document.body.appendChild(s);
+    expect(getComputedStyle(s).display).to.equal('none');
+    s.remove();
+  });
+
+  it('the error note uses the kit font, not the host font', () => {
+    document.body.style.setProperty('font-family', 'serif');
+    const n = document.createElement('span');
+    n.className = 'td-field-error';
+    document.body.appendChild(n);
+    expect(getComputedStyle(n).fontFamily.includes('serif') && !getComputedStyle(n).fontFamily.includes('sans')).to.equal(false);
+    n.remove();
+    document.body.style.removeProperty('font-family');
+  });
+});

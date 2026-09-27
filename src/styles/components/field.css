@@ -41,6 +41,7 @@
 	.td-field-error {
 		display: block;
 		margin-top: var(--td-space-2xs);
+		font-family: var(--td-font-sans); /* the note sits outside the control's root block: never inherit the host font */
 		font-size: var(--td-text-xs);
 		line-height: var(--td-leading-normal);
 		color: var(--td-field-error);

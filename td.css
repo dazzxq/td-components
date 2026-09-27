@@ -532,6 +532,7 @@
 	.td-field-error {
 		display: block;
 		margin-top: var(--td-space-2xs);
+		font-family: var(--td-font-sans); /* the note sits outside the control's root block: never inherit the host font */
 		font-size: var(--td-text-xs);
 		line-height: var(--td-leading-normal);
 		color: var(--td-field-error);
@@ -747,6 +748,10 @@
  * Reduced motion: no rotation, arc pinned (still shows "busy"). Forced colours: CanvasText.
  */
 @layer td.component {
+	.td-spinner[hidden] {
+		display: none; /* `display: inline-block` below would otherwise defeat [hidden] (idle button spinners) */
+	}
+
 	.td-spinner {
 		--td-spinner-size: 2rem;
 
