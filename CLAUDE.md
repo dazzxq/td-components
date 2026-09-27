@@ -12,7 +12,7 @@ site tuỳ biến qua token `--td-*`, hook và attribute/property, không sửa 
 
 ### Constraints
 
-- **No Shadow DOM**: CSS của host (token CSS; Tailwind với component legacy) phải chạm được component
+- **No Shadow DOM**: CSS của host (token CSS `--td-*`) phải chạm được component
 - **CSP strict**: không `style="…"`, không chèn `<style>`; chỉ file CSS ship kèm + CSSOM
 - **No build step phía consumer**: Vite import source; PHP dùng `<link>` tới `td.css`
 - **Backward compatible concept**: cover cùng functionality như DCMS gốc
@@ -23,8 +23,7 @@ site tuỳ biến qua token `--td-*`, hook và attribute/property, không sửa 
 | Layer | Choice | Ghi chú |
 |-------|--------|---------|
 | Components | Web Components (Custom Elements v1) + ElementInternals | Browser native |
-| Styling (mục tiêu) | CSS token `--td-*` + `@layer td.tokens, td.component, td.utilities`, một file `td.css`; CSSOM cho giá trị per-instance | [ADR 0008](docs/decisions/0008-drop-tailwind-token-css.md) |
-| Styling (legacy) | Tailwind v4 từ host (peerDependency) + CSSOM + `adoptStyles` | Còn cần cho tới khi component cuối migrate xong |
+| Styling | CSS token `--td-*` + `@layer td.tokens, td.component, td.utilities`, một file `td.css`; CSSOM cho giá trị per-instance | [ADR 0008](docs/decisions/0008-drop-tailwind-token-css.md) |
 | Module system | ES Modules, ship source | Không bundle |
 | Dev | Vite, Storybook 8.6 (`@storybook/web-components-vite`, story bằng chuỗi HTML thường) | |
 | Test | `node --test` + DOM shim, `@web/test-runner` + Playwright, CSP gate Playwright | |

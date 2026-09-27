@@ -2,6 +2,31 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.11.0
+
+**Tailwind is no longer needed.** Every component has been token-native since 0.10.0; this release removes what was
+left. A site needs only `td.css` (plus a bundler for the ES modules). Plan: `docs/plans/v0.11.0-drop-tailwind.md`
+(Codex plan-review APPROVE, 2 rounds). ADR 0008 is done; ADR 0002 stays superseded.
+
+### Breaking
+
+- The `tailwindcss` **peer dependency is removed**. Tailwind hosts keep working (td.css is layered and components own
+  their font/line-height/box-sizing/borders — the `legacy+td` CSP profile checks it); non-Tailwind hosts no longer get a
+  peer warning.
+- `td-sample` (export `./sample`) renders `.td-sample` BEM markup with a `.td-btn` button instead of Tailwind classes
+  (same attributes and `count-change` event).
+
+### Changed
+
+- Storybook and `demo.html` run on `td.css` only (Tailwind CDN, `src/styles/tailwind.css`, `postcss.config.js` and the
+  `@tailwindcss/postcss` devDependency removed; `@tailwindcss/cli` stays for the CSP host-interference fixture).
+- Docs: README setup is `td.css` only; components/architecture/conventions/vision/CLAUDE.md updated.
+
+### Added
+
+- Guard test `src/styles/no-tailwind.test.js`: fails when a non-`td-*` class token appears in component markup or a
+  module imports Tailwind. `td-sample` browser suite (td.css only).
+
 ## 0.10.0
 
 Migration **batch 4 — the last legacy components**: `td-datetime-picker` and `td-table` are now **token-native**

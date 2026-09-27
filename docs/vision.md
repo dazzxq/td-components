@@ -26,13 +26,13 @@ làm bẩn global namespace.
 
 ## Ràng buộc
 
-- **Không Shadow DOM**: CSS của host (token, và Tailwind với component legacy) phải chạm được component.
+- **Không Shadow DOM**: CSS của host (token `--td-*`) phải chạm được component.
 - **CSP strict**: không `style="…"`, không chèn `<style>`. Chỉ dùng file CSS ship kèm và CSSOM. Xem [security.md](security.md).
 - **Không bắt buộc build step ở phía consumer**: Vite import thẳng source; PHP dùng `<link>` tới `td.css`.
 - **Tương thích về khái niệm** với DCMS gốc: cover cùng chức năng, không cần cùng API.
 - **Solo dev**: không over-engineer, không framework, không TypeScript.
-- **Styling đang chuyển** ([ADR 0008](decisions/0008-drop-tailwind-token-css.md)): component legacy vẫn cần
-  host Tailwind v4 cho tới khi migrate xong; component mới là token-native.
+- **Styling** ([ADR 0008](decisions/0008-drop-tailwind-token-css.md)): mọi component token-native, chỉ cần `td.css`
+  (không cần Tailwind từ 0.11.0).
 
 ## Ngoài phạm vi
 

@@ -1,6 +1,6 @@
 # 0008. Bỏ Tailwind khỏi component → CSS token phân lớp (`td.css`)
 
-- **Status:** Accepted
+- **Status:** Accepted 2026-09-27 — **Done**: mọi component token-native ở 0.10.0, peer Tailwind bỏ ở 0.11.0
 - **Date:** 2026-09-27
 - **Supersedes:** [0002](0002-tailwind-v4-peer.md). Thu hẹp [0005](0005-csp-strict-cssom-adopted-sheets.md) (adopted sheet chỉ còn cho component legacy).
 - Chốt sau debate Claude ↔ Codex 2026-09-27.

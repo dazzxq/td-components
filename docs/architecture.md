@@ -1,6 +1,6 @@
 # Architecture
 
-Trạng thái mô tả: **v0.4.0** (Tailwind + CSSOM). Phần cuối mô tả kiến trúc style mục tiêu đang chuyển sang.
+Trạng thái mô tả: **v0.11.0** — mọi component token-native (`td.css` + CSSOM), không còn Tailwind (ADR 0008).
 
 ## Cấu trúc
 
@@ -11,7 +11,6 @@ src/form/                button, checkbox, toggle, input-field, slider, dropdown
 src/feedback/            modal, modal-stack, toast, tooltip, loading   (API imperative, không phải tag)
 src/display/             table, tabs, pagination, empty-state
 src/utils/               escape, css-safe, adopt-styles, datetime, dom-utils
-src/styles/tailwind.css  chỉ cho Storybook
 test/csp/                CSP parity gate (Playwright)
 ```
 
@@ -49,7 +48,7 @@ Xem [ADR 0005](decisions/0005-csp-strict-cssom-adopted-sheets.md).
 
 | Loại style | Cách áp |
 |---|---|
-| Layout/màu thường | class Tailwind (host compile qua `@source`) |
+| Layout/màu thường | class BEM trong `src/styles/components/*.css` (build vào `td.css`) |
 | Giá trị per-instance (màu, %, px) | CSSOM trong `_applyStyles()`: `applyStyles(el, map)` / `el.style.setProperty` |
 | Selector, pseudo-class, `::before`, `@keyframes`, `@media` | một constructable sheet mỗi component, `adoptStyles(css, key)`: lazy, idempotent, feature-detect, không throw ở node/SSR |
 | SVG | presentation attribute (`fill`, `opacity`…) |
@@ -111,8 +110,8 @@ từ v0.5; component legacy giữ mô hình trên cho tới khi migrate.
 - **Glass**: component đọc `var(--_td-glass-X, var(--td-glass-X))`. Không khai báo alias private trên `:root`.
   Fallback a11y gán biến private kèm `!important` trên marker `.td-glass-surface`. Không lồng kính.
   Chi tiết: [design/liquid-glass.md](design/liquid-glass.md).
-- **Giai đoạn trộn**: `td.css` không reset; mỗi export gắn nhãn token-native hoặc legacy (Tailwind); CSP harness
-  chạy hai profile. Bỏ peer Tailwind khi component cuối cùng migrate xong.
+- **Đã xong (0.10.0/0.11.0)**: mọi component token-native, peer Tailwind đã bỏ. `td.css` vẫn không reset; CSP harness
+  giữ profile `legacy+td` (Tailwind của host + td.css) làm kiểm tra "host không làm hỏng component".
 
 ### Nền tảng đã có (v0.5.0)
 
