@@ -88,7 +88,49 @@ export const Links = {
   },
 };
 
-/** Inside a TdModal: the menu is solid (no glass on glass); Escape closes only the menu; Tab stays in the dialog. */
+/**
+ * Option registry (G9): the core defines "post-actions"; a "plugin" registers an extra option (its own group) without
+ * touching the core. Triggers are declarative (`data-td-menu` + `data-td-menu-*` context), wired by TdMenu.bindAll().
+ */
+let pluginUnregister = null; // module scope: a story re-render must not register the plugin twice
+export const Registry = {
+  name: 'Đăng ký tuỳ chọn (plugin)',
+  render: () => `<div class="sb-stack" id="mn-reg">
+    <div class="sb-row">
+      <button type="button" class="td-menu-btn" data-td-menu="sb-post-actions" data-td-menu-post-id="101" data-td-menu-owner="toi">
+        <span class="td-menu-btn__label">Bài 101 (của tôi)</span></button>
+      <button type="button" class="td-menu-btn" data-td-menu="sb-post-actions" data-td-menu-post-id="202" data-td-menu-owner="khac">
+        <span class="td-menu-btn__label">Bài 202 (người khác)</span></button>
+    </div>
+    <label class="sb-row"><input type="checkbox" id="mn-reg-plugin" checked> Bật plugin "Lưu để đọc sau"</label>
+    <p class="sb-note" id="mn-reg-out">"Sửa" / "Xoá" chỉ hiện với bài của tôi (when). Plugin thêm một mục ở nhóm riêng.</p></div>`,
+  play: ({ canvasElement }) => {
+    const root = out(canvasElement, 'mn-reg');
+    const log = (text) => say(canvasElement, 'mn-reg-out', text);
+    const mine = (ctx) => ctx.owner === 'toi';
+    // core (e.g. the post module)
+    TdMenu.define('sb-post-actions', [
+      { label: 'Sao chép liên kết', icon: 'link', onSelect: (ctx) => log(`Đã chép liên kết bài ${ctx.postId}.`) },
+      { label: 'Sửa', when: mine, onSelect: (ctx) => log(`Sửa bài ${ctx.postId}.`) },
+      { separator: true },
+      { label: 'Xoá', danger: true, when: mine, onSelect: (ctx) => log(`Xoá bài ${ctx.postId} (giả lập).`) },
+    ]);
+    // plugin (another module / the site)
+    const plug = (on) => {
+      pluginUnregister?.();
+      pluginUnregister = on
+        ? TdMenu.register('sb-post-actions', {
+          label: 'Lưu để đọc sau', icon: 'star', onSelect: (ctx) => log(`Đã lưu bài ${ctx.postId}.`),
+        }, { group: 'reading-list' })
+        : null;
+    };
+    plug(true);
+    out(canvasElement, 'mn-reg-plugin').addEventListener('change', (e) => plug(e.target.checked));
+    TdMenu.bindAll(root);
+  },
+};
+
+/** Inside a TdModal: Escape closes only the menu; Tab stays in the dialog. */
 export const InModal = {
   name: 'Trong modal',
   render: () => `<div class="sb-stack"><button type="button" class="td-btn td-btn--primary" id="mn-modal">
