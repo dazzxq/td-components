@@ -96,6 +96,7 @@
 		--td-color-text-muted: var(--td-gray-600);
 		--td-color-text-subtle: var(--td-gray-500);
 		--td-color-border: var(--td-gray-200);
+		--td-color-sheen: rgb(255 255 255 / 60%); /* skeleton shimmer highlight */
 		--td-color-border-strong: var(--td-gray-300);
 		--td-color-hover: rgb(0 0 0 / 5%);
 		--td-color-hover-strong: rgb(0 0 0 / 8%);
