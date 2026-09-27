@@ -2346,6 +2346,16 @@
  *   panel [data-sheet="open"] · img [data-loading] · [hidden] for binary visibility.
  */
 @layer td.component {
+	/* Trigger cursors (v0.15.0, dwp parity). Static selectors for the two built-in attrPrefix values — td and dwp;
+	   another prefix styles its own triggers. Video triggers are a pointer (they play), images zoom in. */
+	:is([data-td-lightbox], [data-td-lightbox-item], [data-dwp-lightbox], [data-dwp-lightbox-item]) {
+		cursor: zoom-in;
+	}
+
+	:is([data-td-lightbox-type="video"], [data-dwp-lightbox-type="video"]) {
+		cursor: pointer;
+	}
+
 	.td-lightbox {
 		--td-lb-dur: 0.24s;
 		--td-lb-dur-fast: 0.15s;

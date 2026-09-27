@@ -2,6 +2,29 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.15.0
+
+**TdLightbox — dwp parity.** A read-only comparison with the current dwp lightbox showed every dwp change predates the
+port (two-column panel, bottom sheet, grab, swipes were already there); the gaps were API. Plan
+`docs/plans/v0.15.0-lightbox-parity.md` (Codex plan-review APPROVE, 2 rounds).
+
+### Added
+
+- Handle while open: `setPanel(false | true | renderer)` (switch panel mode / content without reopening — dwp
+  `setViewerMode` + `setSidePanel`), `refreshPanel()`, `addToolbarButton(spec)` → `remove()` (same id replaces — dwp
+  `addToolbarButton`), `removeToolbarButton(id)`.
+- `itemEl` / `groupEl` in ctx (panel, toolbar, download) and in `td-lightbox-open|change|close` details;
+  `open(items, { groupEl })`.
+- `bind(root, { attrPrefix: 'dwp' })` reads `data-dwp-lightbox-*` markup (whitelisted prefix); `filter(el, event)`
+  skips clicks (dwp `ownedByVideoModule`).
+- Trigger cursors: zoom-in for image triggers, pointer for video triggers (`td` + `dwp` prefixes).
+- Demo: the panel-mode lightbox has a toolbar button that toggles the info panel while open.
+
+### Fixed
+
+- Mobile bottom-sheet swipe used Pointer Events on a scrollable panel, so the browser's pan cancelled it
+  (`pointercancel`) — now touch events like dwp; a panel that goes away closes the sheet and drops a swipe in progress.
+
 ## 0.14.4
 
 ### Fixed (visual)

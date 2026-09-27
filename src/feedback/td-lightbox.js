@@ -322,7 +322,20 @@ function ctxOf() {
     item: session.items[session.index] || null,
     token: session.token,
     handle: session.handle,
+    itemEl: itemElOf(session.items[session.index]),
+    groupEl: session.groupEl,
   };
+}
+
+/** The item's source element (bind() stores it in item.data), else null. */
+function itemElOf(item) {
+  return item && typeof Element !== 'undefined' && item.data instanceof Element ? item.data : null;
+}
+
+/** Event detail (td-lightbox-open|change|close): index, count, token, item + itemEl / groupEl (v0.15.0). */
+function detailOf() {
+  const item = session.items[session.index];
+  return { index: session.index, count: session.items.length, token: session.token, item, itemEl: itemElOf(item), groupEl: session.groupEl };
 }
 
 function emit(name, detail) {
@@ -407,34 +420,48 @@ function mountToolbar(specs) {
   unmountToolbar();
   if (!Array.isArray(specs)) return;
   for (const spec of specs) {
-    if (!spec || typeof spec.id !== 'string' || !spec.id || typeof spec.onClick !== 'function') continue;
-    if (extras.has(spec.id)) continue;
-    const label = typeof spec.label === 'string' && spec.label ? spec.label : spec.id;
-    const b = h('button', { type: 'button', class: 'td-lightbox__btn', 'data-extra': spec.id, 'aria-label': label });
-    b.title = label;
-    // `icon`: a registry name (core or registerIcons()). `iconNode`: a TRUSTED SVGElement the site
-    // built itself (cloned). Never markup strings. No icon → the label is shown as text.
-    const named = typeof spec.icon === 'string' ? icon(spec.icon) : null;
-    if (named) {
-      b.appendChild(named);
-    } else if (typeof SVGElement !== 'undefined' && spec.iconNode instanceof SVGElement) {
-      const svg = spec.iconNode.cloneNode(true);
-      svg.setAttribute('aria-hidden', 'true');
-      svg.setAttribute('focusable', 'false');
-      b.appendChild(svg);
-    } else {
-      b.textContent = label;
-      b.setAttribute('data-text', '');
-    }
-    const token = session.token;
-    b.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (!session || session.token !== token) return;
-      try { spec.onClick(ctxOf(), b); } catch (err) { console.error('td-lightbox toolbar onClick', err); }
-    });
-    ui.toolbar.insertBefore(b, ui.closeBtn); // close stays last
-    extras.set(spec.id, { spec, button: b });
+    if (spec && extras.has(spec.id)) continue; // first wins inside one options.toolbar list
+    addExtra(spec);
   }
+}
+
+/** Build one extra toolbar button (spec validated); returns its button or null. Replaces nothing. */
+function addExtra(spec) {
+  if (!spec || typeof spec.id !== 'string' || !spec.id || typeof spec.onClick !== 'function') return null;
+  const label = typeof spec.label === 'string' && spec.label ? spec.label : spec.id;
+  const b = h('button', { type: 'button', class: 'td-lightbox__btn', 'data-extra': spec.id, 'aria-label': label });
+  b.title = label;
+  // `icon`: a registry name (core or registerIcons()). `iconNode`: a TRUSTED SVGElement the site
+  // built itself (cloned). Never markup strings. No icon → the label is shown as text.
+  const named = typeof spec.icon === 'string' ? icon(spec.icon) : null;
+  if (named) {
+    b.appendChild(named);
+  } else if (typeof SVGElement !== 'undefined' && spec.iconNode instanceof SVGElement) {
+    const svg = spec.iconNode.cloneNode(true);
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+    b.appendChild(svg);
+  } else {
+    b.textContent = label;
+    b.setAttribute('data-text', '');
+  }
+  const token = session.token;
+  b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!session || session.token !== token) return;
+    try { spec.onClick(ctxOf(), b); } catch (err) { console.error('td-lightbox toolbar onClick', err); }
+  });
+  ui.toolbar.insertBefore(b, ui.closeBtn); // close stays last
+  extras.set(spec.id, { spec, button: b });
+  return b;
+}
+
+/** Remove one extra button by id (only `button` when given — a stale remover never drops a replacement). */
+function removeExtra(id, button) {
+  const e = extras.get(id);
+  if (!e || (button && e.button !== button)) return;
+  e.button.remove();
+  extras.delete(id);
 }
 
 function syncExtras(ctx) {
@@ -474,6 +501,10 @@ function syncPanel(ctx) {
     }
   }
   const on = !!node;
+  if (!on) { // no panel → the mobile sheet is closed and any swipe in progress is dropped (v0.15.0)
+    setSheet(false);
+    resetPanelSwipe();
+  }
   ui.overlay.toggleAttribute('data-panel', on);
   ui.panel.hidden = !on;
   ui.backBtn.hidden = !on;
@@ -482,22 +513,25 @@ function syncPanel(ctx) {
 }
 
 function bindPanelSwipe(panel) {
+  // Touch events (as in dwp), not Pointer Events: the panel scrolls (overflow-y:auto, default touch-action), so the
+  // browser claims the gesture and fires pointercancel — a pointer-based swipe would die silently (v0.15.0).
   let y0 = null;
   let atTop = true;
   resetPanelSwipe = () => { y0 = null; atTop = true; };
-  panel.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse') return;
-    y0 = e.clientY;
+  panel.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) { y0 = null; return; }
+    y0 = e.touches[0].clientY;
     atTop = panel.scrollTop <= 0;
-  });
-  panel.addEventListener('pointerup', (e) => {
+  }, { passive: true });
+  panel.addEventListener('touchend', (e) => {
     if (y0 === null) return;
-    const dy = e.clientY - y0;
+    const t = e.changedTouches[0];
+    const dy = t ? t.clientY - y0 : 0;
     y0 = null;
     if (dy < -32) setSheet(true);
     else if (dy > 32 && atTop) setSheet(false);
-  });
-  panel.addEventListener('pointercancel', () => { y0 = null; });
+  }, { passive: true });
+  panel.addEventListener('touchcancel', () => { y0 = null; }, { passive: true });
 }
 
 /* ------------------------------------------------------------------ zoom */
@@ -902,7 +936,7 @@ function show(idx) {
 
   syncPanel(ctx);
   syncExtras(ctx);
-  emit('td-lightbox-change', { index: session.index, count: n, token: session.token, item });
+  emit('td-lightbox-change', detailOf());
 }
 
 function navigate(dir) {
@@ -925,6 +959,27 @@ function makeHandle(token) {
       if (alive() && Number.isFinite(i)) show(Math.max(0, Math.min(session.items.length - 1, Math.floor(i))));
     },
     close() { if (alive()) closeViewer(); },
+    /** Switch the panel while open (dwp setViewerMode + setSidePanel): false | true | (ctx) => Element|null. */
+    setPanel(panel) {
+      if (!alive()) return;
+      const wasOn = !ui.panel.hidden;
+      session.opts = { ...session.opts, panel };
+      syncPanel(ctxOf());
+      if (!wasOn) setSheet(false); // re-enabled → starts closed
+    },
+    /** Re-run the current panel renderer (its data changed). */
+    refreshPanel() { if (alive()) syncPanel(ctxOf()); },
+    /** Add a toolbar button while open (same id → replaces it). Returns remove(). */
+    addToolbarButton(spec) {
+      if (!alive() || !spec || typeof spec.id !== 'string' || !spec.id) return () => {};
+      removeExtra(spec.id);
+      const b = addExtra(spec);
+      if (!b) return () => {};
+      syncExtras(ctxOf());
+      const id = spec.id;
+      return () => { if (alive()) removeExtra(id, b); };
+    },
+    removeToolbarButton(id) { if (alive() && typeof id === 'string') removeExtra(id); },
   };
 }
 
@@ -961,6 +1016,7 @@ function openViewer(items, options = {}) {
     videoAbort: null,
     isVideo: false,
     handle: null,
+    groupEl: typeof Element !== 'undefined' && opts.groupEl instanceof Element ? opts.groupEl : null,
   };
   session.handle = makeHandle(token);
   applyLabels(session.labels);
@@ -996,7 +1052,7 @@ function openViewer(items, options = {}) {
     ui.overlay.setAttribute('data-state', 'open');
     if (!ui.overlay.contains(document.activeElement)) ui.overlay.focus({ preventScroll: true });
   }));
-  emit('td-lightbox-open', { index: session.index, count: list.length, token, item: list[session.index] });
+  emit('td-lightbox-open', detailOf());
   return session.handle;
 }
 
@@ -1033,7 +1089,7 @@ function closeViewer() {
   }
   histMaybeUnsub();
 
-  const detail = { index: session.index, count: session.items.length, token: session.token, item: session.items[session.index] };
+  const detail = detailOf();
   if (focusWasHere) restoreFocus(v.savedFocus); // never steal focus from a higher layer
   viewer = null;
   session = null;
@@ -1042,22 +1098,23 @@ function closeViewer() {
 
 /* ------------------------------------------------------------------ delegation */
 
-function readItem(el) {
+function readItem(el, p = 'td') {
+  const a = (k) => el.getAttribute(`data-${p}-lightbox${k}`);
   const img = el.matches('img') ? el : el.querySelector('img');
-  const type = el.getAttribute('data-td-lightbox-type') === 'video' ? 'video' : 'image';
-  let src = el.getAttribute('data-td-lightbox-src') || '';
-  const trig = el.getAttribute('data-td-lightbox');
+  const type = a('-type') === 'video' ? 'video' : 'image';
+  let src = a('-src') || '';
+  const trig = a('');
   if (!src && trig && trig !== 'true' && trig !== '1') src = trig;
   if (!src) {
-    const a = el.closest('a[href]') || (el.querySelector && el.querySelector('a[href]'));
-    if (a) {
+    const link = el.closest('a[href]') || (el.querySelector && el.querySelector('a[href]'));
+    if (link) {
       try {
-        if (IMAGE_EXT.test(new URL(a.href, location.href).pathname)) src = a.getAttribute('href');
+        if (IMAGE_EXT.test(new URL(link.href, location.href).pathname)) src = link.getAttribute('href');
       } catch { /* ignore */ }
     }
   }
   if (!src && img) src = img.currentSrc || img.getAttribute('src') || '';
-  let caption = el.getAttribute('data-td-lightbox-caption') || '';
+  let caption = a('-caption') || '';
   if (!caption) {
     const fig = (img || el).closest('figure');
     const fc = fig && fig.querySelector('figcaption');
@@ -1066,49 +1123,72 @@ function readItem(el) {
   return {
     type,
     src,
-    poster: el.getAttribute('data-td-lightbox-poster') || '',
-    provider: el.getAttribute('data-td-lightbox-provider') || 'html5',
+    poster: a('-poster') || '',
+    provider: a('-provider') || 'html5',
     caption: caption.trim(),
     alt: (img && img.getAttribute('alt')) || '',
     data: el,
   };
 }
 
+/** Attribute prefixes are whitelisted: they end up inside CSS selectors (never an arbitrary string). */
+const PREFIX_RE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+
 /**
  * Opt-in click delegation.
  * @param {Document|Element} [root=document]
- * @param {object} [options] open() options applied to every opened gallery
+ * @param {object} [options] open() options applied to every opened gallery, plus
+ *   `attrPrefix` ('td' default; e.g. 'dwp' reads data-dwp-lightbox-*) and
+ *   `filter(el, event) → boolean` (false → the click is left alone; a throw counts as false)
  * @returns {() => void} unbind
  */
 function bind(root = document, options = {}) {
   if (!root || typeof root.addEventListener !== 'function') return () => {};
-  const isAllowedUrl = typeof options.isAllowedUrl === 'function' ? options.isAllowedUrl : defaultIsAllowedUrl;
+  const opts = options && typeof options === 'object' ? options : {};
+  const isAllowedUrl = typeof opts.isAllowedUrl === 'function' ? opts.isAllowedUrl : defaultIsAllowedUrl;
+  let p = 'td';
+  if (opts.attrPrefix != null) {
+    if (typeof opts.attrPrefix === 'string' && PREFIX_RE.test(opts.attrPrefix)) p = opts.attrPrefix;
+    else console.warn('td-lightbox: invalid attrPrefix, using "td"', opts.attrPrefix);
+  }
+  const ITEM = `[data-${p}-lightbox-item]`;
+  const GROUP = `[data-${p}-lightbox-group]`;
+  const SINGLE = `[data-${p}-lightbox]`;
+  const filter = typeof opts.filter === 'function' ? opts.filter : null;
+  const openOpts = { ...opts }; // bind-only options never reach open()
+  delete openOpts.attrPrefix;
+  delete openOpts.filter;
+  const accepts = (el, e) => {
+    if (!filter) return true;
+    try { return filter(el, e) !== false; } catch (err) { console.warn('td-lightbox: filter threw — click ignored', err); return false; }
+  };
   const handler = (e) => {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     const target = e.target instanceof Element ? e.target : null;
     if (!target) return;
 
-    const itemEl = target.closest('[data-td-lightbox-item]');
-    const group = itemEl && itemEl.closest('[data-td-lightbox-group]');
+    const itemEl = target.closest(ITEM);
+    const group = itemEl && itemEl.closest(GROUP);
     if (itemEl && group && (root === document || root.contains(group))) {
-      const nodes = (group.matches('[data-td-lightbox-item]') ? [group] : [])
-        .concat([...group.querySelectorAll('[data-td-lightbox-item]')]);
+      if (!accepts(itemEl, e)) return;
+      const nodes = (group.matches(ITEM) ? [group] : []).concat([...group.querySelectorAll(ITEM)]);
       const pairs = nodes
-        .map((el) => ({ el, item: normalizeItem(readItem(el), isAllowedUrl) }))
-        .filter((p) => p.item);
-      const index = pairs.findIndex((p) => p.el === itemEl);
+        .map((el) => ({ el, item: normalizeItem(readItem(el, p), isAllowedUrl) }))
+        .filter((x) => x.item);
+      const index = pairs.findIndex((x) => x.el === itemEl);
       if (index < 0) return; // the clicked item itself is not viewable
       e.preventDefault();
-      openViewer(pairs.map((p) => p.item), { ...options, index });
+      openViewer(pairs.map((x) => x.item), { ...openOpts, index, groupEl: group });
       return;
     }
 
-    const trigger = target.closest('[data-td-lightbox]');
+    const trigger = target.closest(SINGLE);
     if (trigger && (root === document || root.contains(trigger))) {
-      const item = normalizeItem(readItem(trigger), isAllowedUrl);
+      if (!accepts(trigger, e)) return;
+      const item = normalizeItem(readItem(trigger, p), isAllowedUrl);
       if (!item) return;
       e.preventDefault();
-      openViewer([item], { ...options, index: 0 });
+      openViewer([item], { ...openOpts, index: 0, groupEl: null });
     }
   };
   root.addEventListener('click', handler);
