@@ -22,11 +22,13 @@ import { fillIconSlots } from '../icons/td-icon.js';
  *   last pages are always shown, gaps as an ellipsis.
  * @attr {string} aria-label - Landmark name of the `<nav>` (default 'Phân trang'); give each instance on a page
  *   a distinct label.
+ * @attr {boolean} quiet - Info text is not a live region (a second pagination for the same list, e.g. td-table's
+ *   top one, so a page change is announced once).
  * @fires page-change - When page changes, detail: { page }
  */
 export class TdPagination extends TdBaseElement {
   static get observedAttributes() {
-    return ['total-items', 'items-per-page', 'current-page', 'active-color', 'item-label', 'max-pages', 'aria-label'];
+    return ['total-items', 'items-per-page', 'current-page', 'active-color', 'item-label', 'max-pages', 'aria-label', 'quiet'];
   }
 
   constructor() {
@@ -71,7 +73,7 @@ export class TdPagination extends TdBaseElement {
 
   render() {
     return `<nav class="td-pagination" aria-label="${this.escapeHtml(this._getNavLabel())}">`
-      + `<p class="td-pagination__info" aria-live="polite">${this.escapeHtml(this._infoText())}</p>`
+      + `<p class="td-pagination__info"${this.hasAttribute('quiet') ? '' : ' aria-live="polite"'}>${this.escapeHtml(this._infoText())}</p>`
       + `<div class="td-pagination__controls">${this._controlsHtml()}</div>`
       + '</nav>';
   }
@@ -110,6 +112,10 @@ export class TdPagination extends TdBaseElement {
     const focusKey = this._focusKey();
     nav.setAttribute('aria-label', this._getNavLabel());
     const info = nav.querySelector('.td-pagination__info');
+    if (info) {
+      if (this.hasAttribute('quiet')) info.removeAttribute('aria-live');
+      else info.setAttribute('aria-live', 'polite');
+    }
     const text = this._infoText();
     if (info && info.textContent !== text) info.textContent = text;
     const controls = nav.querySelector('.td-pagination__controls');
