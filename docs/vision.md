@@ -44,6 +44,6 @@ làm bẩn global namespace.
 | Atomic Design đầy đủ | Nhóm phẳng form/feedback/display là đủ |
 | Component CMS-riêng: post-card, media-picker, notification, action-buttons, richtext, draft-preview, banner, color-picker | Gắn chặt với dcms |
 | `td-breadcrumb` | Không có nhu cầu |
-| i18n built-in | Consumer truyền `labels`; mặc định tiếng Anh cho component mới |
-| Thư viện validation đầy đủ | Component chỉ hiển thị trạng thái lỗi; `FormValidation` nhẹ nằm ở backlog |
+| i18n built-in | Mặc định tiếng Việt; site ghi đè qua `static labels` / `messages` (không có hệ i18n riêng) |
+| Thư viện validation đầy đủ | Không có: luật = constraint gốc của trình duyệt; `TdFormValidation` (0.12) chỉ là helper nhẹ gắn lỗi/focus |
 | Bundle Plyr / thư viện liquid-glass bên thứ ba | Nặng, vi phạm CSP/không Shadow DOM (xem [history](history/2026-09-sync-dcms-dwp.md)) |

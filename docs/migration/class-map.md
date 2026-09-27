@@ -69,5 +69,10 @@ update their selectors using this table when upgrading. No legacy aliases are sh
 | td-table | `th` (Tailwind) / `.td-table-sort-btn` + svg | `th.td-table__th[scope=col]` / `.td-table__sort` + `.td-table__sort-icon` | `[aria-sort]` | 0.10.0 |
 | td-table | `.td-table-row[.td-table-zebra]` / `td` / `.td-table-render-cell` | `.td-table__row` / `.td-table__cell[--ellipsis\|--px-N]` / (marker removed) | `:hover` | 0.10.0 |
 | td-table | empty `td.px-6.py-16` / `.td-table-skel-row` + `.td-table-skel-bar` | `.td-table__empty-row > .td-table__empty` / `.td-table__row--skeleton` + `.td-table__skeleton` | `data-state` | 0.10.0 |
+| td-menu | `.dwp-menu` / 135 `.td-menu` (hand-written glass) | `.td-menu.td-glass-surface--strong[role=menu]` | `data-state`, `data-placement`, `data-align` | 0.12.0 |
+| td-menu | `.dwp-menu__item` (+ `--danger`, `is-checked`, `is-disabled`), `__hint` | `.td-menu__item[--danger]`, `__label`, `__icon`, `__check`, `__hint`, `__separator` | `[aria-checked]`, `[aria-disabled]` | 0.12.0 |
+| td-menu | `.dwp-menu-btn` | `.td-menu-btn` (+ `__icon`, `__label`) | `[aria-expanded]` | 0.12.0 |
+| td-chip-input | `.dcms-chip-search-field` (Tailwind) / `__chips` / `__input` / `__dropdown` | `.td-chip-input` / `__box` / `__chips` / `__chip` / `__remove` / `__input` / `__menu` / `__options` / `__option[--create]` / `__empty` | `data-state`, `[aria-selected]`, `[hidden]` | 0.12.0 |
+| TdFormValidation | `.dcms-form-error-note` / `.dcms-form-validation-summary` | `.td-field-error[data-td-fv]` / `.td-form-summary` (+ `__title`, `__list`, `__item`, `__link`) | `[aria-invalid]` | 0.12.0 |
 
 State rule: JS never toggles visual classes; state lives in `aria-*`, `[hidden]`, `:checked`, `data-state`.

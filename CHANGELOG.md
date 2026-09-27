@@ -2,6 +2,38 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.12.0
+
+**New components** (token-native, Vietnamese defaults): `TdMenu`, `<td-chip-input>`, `TdFormValidation`. Plan:
+`docs/plans/v0.12.0-new-components.md` (Codex plan-review APPROVE, 2 rounds; inventory + decisions D1–D25 in
+`v0.12.0-new-components-inventory.md`). Built by three agents in isolated worktrees on a shared base, integrated here.
+
+### Added
+
+- **`TdMenu`** (`./menu`): APG menu button as a static helper (`open`, `close`, `isOpen`, `bind`, `button`) —
+  strong-glass popover at `--td-z-popover`, roving focus, type-ahead, checkable items (`menuitemcheckbox` /
+  `menuitemradio`), `hint` on any item, `href` whitelist https (http only on an http page; others render disabled), `iconNode` SVG only, caller items
+  never mutated (`ctx.checked`), focus back to the
+  trigger after a selection. Differences from dwp/135: no outside-press swallowing, no custom-node / secondary-action
+  items, scrolling no longer closes the menu.
+- **`<td-chip-input>`** (`./chip-input`): editable combobox (APG) collecting chips; local `options` or async
+  `search(query, { signal })` (debounce, abort + stale-response guard), `show-on-focus`, `allow-create` + `create()`,
+  `max-items`, roving chip keyboard, one status region, FormData value (one entry per item), error contract,
+  `search-error` event, `renderOption` / `renderChip` (Node or text).
+- **`TdFormValidation`** (`./form-validation`): `validate` / `apply` / `clear` / `attach`; native constraints + JS
+  `rules`; server errors scoped to the root (fieldMap, name, dotted → bracket, `[data-field]` wrapper → real control);
+  a throwing rule fails closed; focus the first invalid control; optional `role=alert` summary; live revalidation after the first failed submit.
+- Shared: `utils/typeahead.js` (`fold`, `nextTypeaheadIndex`; td-dropdown uses it), `placeFloating` `align` option,
+  `npm run check:stories` + `src/stories-dom.browser-test.js` (story XSS gate: node for string stories, real browser for
+  every story; in `npm test`), `npm run test:engines` (menu Tab in Chromium, Firefox,
+  WebKit; in `npm test`), index.js exports, CSP states (menu 6, chip-input 6, form-validation 2), token gate popover
+  glass fallbacks.
+
+### Changed
+
+- Constraint messages of td-checkbox, td-toggle and td-slider are Vietnamese (were English).
+- `.gitignore` ignores a `node_modules` symlink too.
+
 ## 0.11.0
 
 **Tailwind is no longer needed.** Every component has been token-native since 0.10.0; this release removes what was

@@ -1,0 +1,32 @@
+<!-- td-chip-input markup contract (plan v0.12.0 step 3, inventory §7.2). `data-setup` runs with `el` = the host (items and
+     options are JS properties). Explicit host ids → deterministic {host}-input / -label / -listbox / -opt-{i} ids.
+     Template 1 = the host tree (label + 2 chips + input, required, error-text). Template 2 (`data-portal`) = the
+     body-portaled suggestions popup of an OPEN chip input (typed "la": one option with a description + the create row):
+     compare `el._menuElement` (not el.firstElementChild); the `hidden` attribute is absent while open.
+     Checked by src/form/td-v012-chip-input.browser-test.js. -->
+<template data-component="td-chip-input"
+          data-markup='<td-chip-input id="ci-c" name="tags[]" label="Từ khóa" placeholder="Nhập từ khóa…" required error-text="Bắt buộc"></td-chip-input>'
+          data-setup='el.value = [{ value: "php", label: "PHP" }, "laravel"];'>
+  <div class="td-chip-input" data-state="closed">
+    <label class="td-field__label" id="ci-c-label" for="ci-c-input">Từ khóa<span class="td-field__required" aria-hidden="true"> *</span></label>
+    <div class="td-chip-input__box">
+      <ul class="td-chip-input__chips" aria-labelledby="ci-c-label">
+        <li class="td-chip-input__chip" data-index="0"><span class="td-chip-input__chip-label">PHP</span><button type="button" class="td-chip-input__remove" tabindex="-1" aria-label="Xóa PHP"><span data-td-icon="close" data-td-icon-size="s" aria-hidden="true"><svg aria-hidden="true" class="td-icon td-icon--s" data-icon="close"></svg></span></button></li>
+        <li class="td-chip-input__chip" data-index="1"><span class="td-chip-input__chip-label">laravel</span><button type="button" class="td-chip-input__remove" tabindex="-1" aria-label="Xóa laravel"><span data-td-icon="close" data-td-icon-size="s" aria-hidden="true"><svg aria-hidden="true" class="td-icon td-icon--s" data-icon="close"></svg></span></button></li>
+      </ul>
+      <input type="text" class="td-chip-input__input" id="ci-c-input" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ci-c-listbox" autocomplete="off" spellcheck="false" maxlength="200" placeholder="Nhập từ khóa…" aria-required="true" aria-invalid="true" aria-errormessage="ci-c-error" aria-describedby="ci-c-error">
+    </div>
+    <p class="td-sr-only" id="ci-c-status" role="status"></p>
+  </div>
+</template>
+<template data-component="td-chip-input" data-portal
+          data-markup='<td-chip-input id="ci-m" label="Từ khóa" allow-create></td-chip-input>'
+          data-setup='el.options = [{ value: "php", label: "PHP" }, { value: "laravel", label: "Laravel", description: "Framework PHP" }]; el.querySelector("input").value = "la"; el.open();'>
+  <div class="td-chip-input__menu td-glass-surface td-glass-surface--strong" id="ci-m-menu" data-state="open" data-placement="bottom">
+    <div class="td-chip-input__options" role="listbox" id="ci-m-listbox" aria-labelledby="ci-m-label">
+      <div class="td-chip-input__option" role="option" id="ci-m-opt-0" aria-selected="false" data-index="0"><span class="td-chip-input__option-label">Laravel</span><span class="td-chip-input__option-desc">Framework PHP</span></div>
+      <div class="td-chip-input__option td-chip-input__option--create" role="option" id="ci-m-opt-create" aria-selected="false">Thêm “la”</div>
+    </div>
+    <p class="td-chip-input__empty"></p>
+  </div>
+</template>

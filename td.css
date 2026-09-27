@@ -4353,6 +4353,852 @@
 	}
 }
 
+/* ---- src/styles/components/form-validation.css ---- */
+/*
+ * TdFormValidation (src/utils/form-validation.js). Content layer → SOLID, never glass (liquid-glass: validation).
+ * Per-field notes reuse `.td-field-error` (field.css; the helper adds [data-td-fv] to the ones it writes next to
+ * native controls). Native controls are NOT styled here: sites style `[aria-invalid="true"]` themselves.
+ * Block `.td-form-summary[role=alert]` > `__title` + `__list` > `__item` > `button.__link`.
+ * State: :hover / :focus-visible on the link buttons (no JS-toggled classes).
+ */
+@layer td.tokens {
+	:root {
+		/* var() references resolve per theme (theme-dark.css redefines --td-color-error/-surface on :root). */
+		--td-form-summary-bg: color-mix(in srgb, var(--td-color-error) 8%, var(--td-color-surface));
+		--td-form-summary-border: color-mix(in srgb, var(--td-color-error) 75%, var(--td-color-surface)); /* ≥ 3:1 */
+		--td-form-summary-fg: var(--td-color-error);
+		--td-form-summary-radius: var(--td-radius-md);
+	}
+
+	:root[data-td-theme="dark"] {
+		--td-form-summary-bg: color-mix(in srgb, var(--td-color-error) 12%, var(--td-color-surface));
+	}
+}
+
+@layer td.component {
+	.td-form-summary {
+		box-sizing: border-box;
+		width: 100%;
+		padding: var(--td-space-sm) var(--td-space-md);
+		margin: 0 0 var(--td-space-md);
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-form-summary-fg);
+		background: var(--td-form-summary-bg);
+		border: 1px solid var(--td-form-summary-border);
+		border-radius: var(--td-form-summary-radius);
+	}
+
+	.td-form-summary *,
+	.td-form-summary *::before,
+	.td-form-summary *::after {
+		box-sizing: border-box;
+	}
+
+	.td-form-summary__title {
+		margin: 0 0 var(--td-space-2xs);
+		font-weight: var(--td-fw-semibold);
+	}
+
+	.td-form-summary__list {
+		padding: 0 0 0 var(--td-space-md);
+		margin: 0;
+		list-style: disc;
+	}
+
+	.td-form-summary__item {
+		margin: 0;
+	}
+
+	.td-form-summary__item + .td-form-summary__item {
+		margin-top: var(--td-space-2xs);
+	}
+
+	.td-form-summary__link {
+		display: inline;
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		color: inherit;
+		text-align: start;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+		cursor: pointer;
+		background: none;
+		border: 0;
+		border-radius: 2px;
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+	}
+
+	.td-form-summary__link:hover {
+		text-decoration-thickness: 2px;
+	}
+
+	.td-form-summary__link:focus-visible {
+		box-shadow: var(--td-focus-ring);
+	}
+
+	@media (pointer: coarse) {
+		.td-form-summary__link {
+			display: inline-flex;
+			align-items: center;
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-form-summary__link {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-form-summary {
+			color: CanvasText;
+			background: Canvas;
+			border-color: CanvasText;
+		}
+
+		.td-form-summary__link {
+			color: LinkText;
+		}
+
+		.td-form-summary__link:focus-visible {
+			outline-color: Highlight;
+		}
+	}
+}
+
+/* ---- src/styles/components/menu.css ---- */
+/*
+ * TdMenu (src/feedback/td-menu.js) — plan v0.12.0 step 2 (D1–D7), inventory §1 + §7.1, 135 kit td-ui.css:88-236,
+ * :859-888 (§10) translated to td tokens.
+ * Menu = body-portaled popover: Regular strong glass (.td-glass-surface--strong recipe; fallbacks come from the
+ * recipe), pad --td-glass-pad, radius --td-glass-radius, items concentric (--td-glass-radius-inner) plain fills —
+ * never glass on glass. Menu button = content-layer icon button (no glass).
+ * State: data-state / data-placement / data-align on the menu, [aria-checked] / [aria-disabled] on items,
+ * [aria-expanded] on the trigger. Only geometry (top/left, max-height) is written by JS through CSSOM.
+ */
+@layer td.tokens {
+	:root {
+		--td-menu-min-w: 13rem;
+		--td-menu-max-w: 22rem;
+		--td-menu-item-py: 0.6rem;
+		--td-menu-item-px: 0.75rem;
+		--td-menu-item-hover: var(--td-color-hover);
+		--td-menu-item-active: var(--td-color-hover-strong);
+		--td-menu-danger-fg: var(--td-color-error);
+		--td-menu-hint-fg: var(--td-color-text-muted);
+		--td-menu-icon-fg: var(--td-color-text-muted);
+		--td-menu-separator: var(--td-color-border);
+		--td-menu-btn-fg: var(--td-color-text-muted);
+		--td-menu-btn-fg-hover: var(--td-color-text);
+		--td-menu-btn-hover: var(--td-color-hover);
+		--td-menu-btn-size: 32px;
+	}
+
+	:root[data-td-theme="dark"] {
+		--td-menu-separator: rgb(255 255 255 / 12%);
+	}
+}
+
+@layer td.component {
+	/* ---- Portaled menu (a <body> child) ---- */
+	.td-menu {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: var(--td-z-popover);
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		min-width: min(var(--td-menu-min-w), calc(100vw - 16px));
+		max-width: min(var(--td-menu-max-w), calc(100vw - 16px));
+		padding: var(--td-glass-pad);
+		margin: 0;
+		overflow-x: hidden;
+		overflow-y: auto; /* capped by JS (max-height); scrolling inside the menu does NOT close it */
+		overscroll-behavior: contain;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		border-radius: var(--td-glass-radius);
+		outline: 2px solid transparent;
+		transform-origin: top right;
+	}
+
+	.td-menu *,
+	.td-menu *::before,
+	.td-menu *::after {
+		box-sizing: border-box;
+	}
+
+	.td-menu[data-align="start"] { transform-origin: top left; }
+	.td-menu[data-align="center"] { transform-origin: top center; }
+	.td-menu[data-placement="top"] { transform-origin: bottom right; }
+	.td-menu[data-placement="top"][data-align="start"] { transform-origin: bottom left; }
+	.td-menu[data-placement="top"][data-align="center"] { transform-origin: bottom center; }
+
+	.td-menu[data-state="open"] {
+		opacity: 1;
+		transform: none;
+		transition:
+			opacity var(--td-glass-dur) var(--td-glass-ease),
+			transform var(--td-glass-dur) var(--td-glass-ease);
+	}
+
+	@starting-style {
+		.td-menu[data-state="open"] {
+			opacity: 0;
+			transform: scale(var(--td-glass-enter-scale));
+		}
+	}
+
+	/* No glass on glass: over an open modal the menu goes solid. Private tokens, so a11y fallbacks still win. */
+	:root:has(.td-modal[data-state="open"]) .td-menu {
+		--_td-glass-fill: var(--td-glass-solid);
+		--_td-glass-filter: none;
+	}
+
+	.td-menu__item {
+		display: flex;
+		flex: none;
+		flex-wrap: wrap;
+		gap: 0 var(--td-space-sm);
+		align-items: center;
+		width: 100%;
+		min-height: 40px;
+		padding: var(--td-menu-item-py) var(--td-menu-item-px);
+		margin: 0;
+		font: inherit;
+		font-size: 0.9375rem;
+		font-weight: var(--td-fw-medium);
+		line-height: 1.3;
+		color: inherit;
+		text-align: left;
+		text-decoration: none;
+		cursor: pointer;
+		user-select: none;
+		background: none;
+		border: 0;
+		border-radius: var(--td-glass-radius-inner); /* concentric with the menu */
+		outline: 2px solid transparent;
+		outline-offset: -2px;
+		appearance: none;
+	}
+
+	.td-menu__item:hover {
+		background: var(--td-menu-item-hover);
+	}
+
+	.td-menu__item:focus {
+		outline: 2px solid transparent;
+	}
+
+	/* Inset ring: an outer ring would be clipped by the scrolling menu. */
+	.td-menu__item:focus-visible {
+		background: var(--td-menu-item-active);
+		outline: 2px solid transparent;
+		outline-offset: -2px;
+		box-shadow: inset 0 0 0 2px var(--td-focus);
+	}
+
+	.td-menu__item--danger {
+		color: var(--td-menu-danger-fg);
+	}
+
+	.td-menu__item[aria-disabled="true"] {
+		cursor: not-allowed;
+		opacity: 0.55;
+	}
+
+	.td-menu__item[aria-disabled="true"]:hover {
+		background: none;
+	}
+
+	.td-menu__label {
+		flex: 1 1 0;
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+
+	.td-menu__icon {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		color: var(--td-menu-icon-fg);
+	}
+
+	.td-menu__icon svg {
+		width: 18px;
+		height: 18px;
+	}
+
+	.td-menu__item--danger .td-menu__icon {
+		color: currentcolor;
+	}
+
+	.td-menu__check {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		color: currentcolor;
+		visibility: hidden;
+	}
+
+	.td-menu__check svg {
+		width: 18px;
+		height: 18px;
+		stroke-width: 2.25;
+	}
+
+	.td-menu__item[aria-checked="true"] .td-menu__check {
+		visibility: visible;
+	}
+
+	/* Secondary line on any item (wraps below the label). */
+	.td-menu__hint {
+		flex-basis: 100%;
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-normal);
+		line-height: var(--td-leading-normal);
+		color: var(--td-menu-hint-fg);
+	}
+
+	.td-menu__item--danger .td-menu__hint {
+		color: var(--td-menu-hint-fg);
+	}
+
+	.td-menu__separator {
+		flex: none;
+		height: 1px;
+		margin: 4px var(--td-menu-item-px);
+		background: var(--td-menu-separator);
+	}
+
+	/* ---- Menu button ("···") — content layer ---- */
+	.td-menu-btn {
+		box-sizing: border-box;
+		display: inline-flex;
+		gap: var(--td-space-2xs);
+		align-items: center;
+		justify-content: center;
+		min-width: var(--td-menu-btn-size);
+		min-height: var(--td-menu-btn-size);
+		padding: 0.25rem;
+		margin: 0;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-medium);
+		line-height: var(--td-leading-tight);
+		color: var(--td-menu-btn-fg);
+		cursor: pointer;
+		background: none;
+		border: 0;
+		border-radius: var(--td-radius-full);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		appearance: none;
+		transition:
+			background-color var(--td-dur-fast) var(--td-ease),
+			color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-menu-btn:has(.td-menu-btn__label) {
+		padding-inline: var(--td-space-xs);
+	}
+
+	.td-menu-btn:hover,
+	.td-menu-btn[aria-expanded="true"] {
+		color: var(--td-menu-btn-fg-hover);
+		background: var(--td-menu-btn-hover);
+	}
+
+	.td-menu-btn:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-menu-btn:disabled {
+		cursor: not-allowed;
+		opacity: 0.55;
+	}
+
+	.td-menu-btn__icon {
+		display: inline-flex;
+		align-items: center;
+	}
+
+	@media (pointer: coarse) {
+		.td-menu__item {
+			min-height: var(--td-touch-min);
+		}
+
+		.td-menu-btn {
+			min-width: var(--td-touch-min);
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-menu-btn {
+			transition: none;
+		}
+
+		/* opacity only, no scale */
+		.td-menu[data-state="open"] {
+			transition: opacity var(--td-glass-dur) linear;
+		}
+
+		@starting-style {
+			.td-menu[data-state="open"] {
+				opacity: 0;
+				transform: none;
+			}
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-menu {
+			border: 1px solid CanvasText;
+		}
+
+		.td-menu__item:focus-visible {
+			outline: 2px solid Highlight;
+			outline-offset: -2px;
+		}
+
+		.td-menu__item[aria-disabled="true"] {
+			color: GrayText;
+			opacity: 1;
+		}
+
+		.td-menu__check {
+			color: CanvasText;
+		}
+
+		.td-menu__separator {
+			background: CanvasText;
+		}
+
+		.td-menu-btn:focus-visible {
+			outline: 2px solid Highlight;
+		}
+
+		.td-menu-btn[aria-expanded="true"] {
+			outline: 1px solid CanvasText;
+		}
+	}
+}
+
+/* ---- src/styles/components/chip-input.css ---- */
+/*
+ * td-chip-input (src/form/td-chip-input.js) — plan v0.12.0 step 3 (D8–D14), inventory §2 + §7.2.
+ * Field box = content layer (never glass): reuses the --td-field-* tokens from field.css; chips are plain fills
+ * (capsules). Suggestions = body-portaled popover: Regular strong glass (.td-glass-surface--strong recipe), pad
+ * --td-glass-pad, radius --td-glass-radius, options concentric (--td-glass-radius-inner) fills — never glass on glass.
+ * State: data-state / [data-full] / [data-empty] on the root, :has(input:focus-visible / :disabled / [aria-invalid])
+ * on the box, [hidden] on the chip list, [hidden] / data-state / data-placement on the popup, [aria-selected="true"]
+ * (= active) on options, [data-kind] on the empty row. Only popup geometry is written by JS through CSSOM.
+ */
+@layer td.tokens {
+	:root {
+		--td-chip-bg: var(--td-color-hover-strong);
+		--td-chip-fg: var(--td-color-text);
+		--td-chip-radius: var(--td-radius-full);
+		--td-chip-h: 28px;
+		--td-chip-gap: 6px;
+		--td-chip-remove-size: 22px;
+		--td-chip-remove-hover: var(--td-color-hover-strong);
+		--td-chip-input-min-w: 8rem;
+	}
+
+	:root[data-td-theme="dark"] {
+		--td-chip-bg: rgb(255 255 255 / 14%);
+		--td-chip-remove-hover: rgb(255 255 255 / 16%);
+	}
+}
+
+@layer td.component {
+	td-chip-input {
+		display: block;
+		font-family: var(--td-font-sans); /* the error-contract note sits outside .td-chip-input */
+	}
+
+	.td-chip-input {
+		box-sizing: border-box;
+		display: block;
+		width: 100%;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-fg);
+	}
+
+	.td-chip-input *,
+	.td-chip-input *::before {
+		box-sizing: border-box;
+	}
+
+	/* ---- Field box ---- */
+	.td-chip-input__box {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-chip-gap);
+		align-items: center;
+		width: 100%;
+		min-height: var(--td-field-h-md);
+		padding: 5px 8px;
+		cursor: text;
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		transition:
+			border-color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-chip-input__box:hover:not(:has(.td-chip-input__input:disabled, .td-chip-input__input:focus)) {
+		border-color: var(--td-field-border-hover);
+	}
+
+	.td-chip-input__box:has(.td-chip-input__input:focus) {
+		border-color: var(--td-field-focus);
+	}
+
+	.td-chip-input__box:has(.td-chip-input__input:focus-visible) {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-chip-input__box:has(.td-chip-input__input:disabled) {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-field-bg-disabled);
+	}
+
+	.td-chip-input__box:has(.td-chip-input__input[aria-invalid="true"]) {
+		border-color: var(--td-field-error);
+	}
+
+	/* ---- Chips ---- */
+	.td-chip-input__chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-chip-gap);
+		min-width: 0;
+		max-width: 100%;
+		padding: 0;
+		margin: 0;
+		list-style: none;
+	}
+
+	.td-chip-input__chips[hidden] {
+		display: none;
+	}
+
+	.td-chip-input__chip {
+		display: inline-flex;
+		gap: 2px;
+		align-items: center;
+		min-width: 0;
+		max-width: 100%;
+		min-height: var(--td-chip-h);
+		padding: 0 3px 0 10px;
+		color: var(--td-chip-fg);
+		cursor: default;
+		background: var(--td-chip-bg);
+		border-radius: var(--td-chip-radius);
+	}
+
+	.td-chip-input__chip-label {
+		display: inline-flex;
+		gap: 4px;
+		align-items: center;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.td-chip-input__remove {
+		display: inline-flex;
+		flex-shrink: 0;
+		align-items: center;
+		justify-content: center;
+		width: var(--td-chip-remove-size);
+		height: var(--td-chip-remove-size);
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		color: inherit;
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: var(--td-radius-full);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		appearance: none;
+		transition: background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-chip-input__remove:hover:not(:disabled) {
+		background: var(--td-chip-remove-hover);
+	}
+
+	.td-chip-input__remove:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-chip-input__remove:disabled {
+		cursor: not-allowed;
+	}
+
+	.td-chip-input__box:has(.td-chip-input__input:disabled) .td-chip-input__chip {
+		color: var(--td-field-fg-disabled);
+	}
+
+	/* ---- Text input (the one tab stop) ---- */
+	.td-chip-input__input {
+		flex: 1 1 var(--td-chip-input-min-w);
+		min-width: min(var(--td-chip-input-min-w), 100%);
+		height: var(--td-chip-h);
+		padding: 0 4px;
+		margin: 0;
+		font: inherit;
+		color: var(--td-field-fg);
+		background: transparent;
+		border: 0;
+		outline: 0; /* the box shows focus (:has(:focus-visible)) */
+		box-shadow: none;
+		appearance: none;
+	}
+
+	.td-chip-input__input::placeholder {
+		color: var(--td-field-placeholder);
+		opacity: 1;
+	}
+
+	.td-chip-input[data-full] .td-chip-input__input::placeholder {
+		color: transparent;
+	}
+
+	.td-chip-input__input:disabled {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+	}
+
+	/* ---- Portaled suggestions (a <body> child) ---- */
+	.td-chip-input__menu {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: var(--td-z-popover);
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		padding: var(--td-glass-pad);
+		overflow: hidden;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		border-radius: var(--td-glass-radius);
+		transform-origin: top center;
+	}
+
+	.td-chip-input__menu *,
+	.td-chip-input__menu *::before {
+		box-sizing: border-box;
+	}
+
+	.td-chip-input__menu[hidden] {
+		display: none;
+	}
+
+	.td-chip-input__menu[data-placement="top"] {
+		transform-origin: bottom center;
+	}
+
+	.td-chip-input__menu[data-state="open"] {
+		opacity: 1;
+		transform: none;
+		transition:
+			opacity var(--td-glass-dur) var(--td-glass-ease),
+			transform var(--td-glass-dur) var(--td-glass-ease);
+	}
+
+	@starting-style {
+		.td-chip-input__menu[data-state="open"] {
+			opacity: 0;
+			transform: scale(var(--td-glass-enter-scale));
+		}
+	}
+
+	/* No glass on glass (inventory §6.4): over an open modal the popup goes solid. Private tokens → a11y fallbacks win. */
+	:root:has(.td-modal[data-state="open"]) .td-chip-input__menu {
+		--_td-glass-fill: var(--td-glass-solid);
+		--_td-glass-filter: none;
+	}
+
+	.td-chip-input__options {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		min-height: 0;
+		overflow-y: auto; /* scrolling inside the popup does NOT close it */
+		overscroll-behavior: contain;
+	}
+
+	.td-chip-input__option {
+		display: flex;
+		flex: none;
+		flex-direction: column;
+		justify-content: center;
+		min-height: var(--td-dropdown-option-h);
+		padding: 6px 10px;
+		color: inherit;
+		cursor: pointer;
+		user-select: none;
+		border-radius: var(--td-glass-radius-inner);
+	}
+
+	.td-chip-input__option:hover {
+		background: var(--td-dropdown-option-hover);
+	}
+
+	.td-chip-input__option[aria-selected="true"] {
+		background: var(--td-dropdown-option-active);
+		box-shadow: inset 0 0 0 1px var(--td-dropdown-option-active-line);
+	}
+
+	.td-chip-input__option--create {
+		font-weight: var(--td-fw-medium);
+	}
+
+	.td-chip-input__option-label {
+		display: flex;
+		gap: 6px;
+		align-items: center;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.td-chip-input__option-desc {
+		min-width: 0;
+		overflow: hidden;
+		font-size: var(--td-text-xs);
+		color: var(--td-color-text-muted);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.td-chip-input__empty {
+		padding: 8px 10px;
+		margin: 0;
+		font-style: italic;
+		color: var(--td-field-note);
+	}
+
+	.td-chip-input__empty[data-kind="error"] {
+		font-style: normal;
+		color: var(--td-field-error);
+	}
+
+	.td-chip-input__empty:empty {
+		display: none;
+	}
+
+	@media (pointer: coarse) {
+		.td-chip-input__box {
+			min-height: var(--td-touch-min);
+		}
+
+		.td-chip-input__chip {
+			min-height: var(--td-touch-min);
+		}
+
+		.td-chip-input__remove {
+			width: var(--td-touch-min);
+			height: var(--td-touch-min);
+		}
+
+		.td-chip-input__input {
+			min-height: var(--td-touch-min);
+			font-size: max(1rem, 1em); /* ≥ 16px: iOS does not zoom on focus */
+		}
+
+		.td-chip-input__option {
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-chip-input__box,
+		.td-chip-input__remove {
+			transition: none;
+		}
+
+		/* opacity only, no scale */
+		.td-chip-input__menu[data-state="open"] {
+			transition: opacity var(--td-glass-dur) linear;
+		}
+
+		@starting-style {
+			.td-chip-input__menu[data-state="open"] {
+				opacity: 0;
+				transform: none;
+			}
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-chip-input__box {
+			border-color: CanvasText;
+		}
+
+		.td-chip-input__box:has(.td-chip-input__input:focus-visible) {
+			outline-color: Highlight;
+		}
+
+		.td-chip-input__box:has(.td-chip-input__input[aria-invalid="true"]) {
+			border-style: dashed;
+			border-width: 2px;
+		}
+
+		.td-chip-input__chip {
+			border: 1px solid CanvasText;
+		}
+
+		.td-chip-input__remove:focus-visible {
+			outline-color: Highlight;
+		}
+
+		.td-chip-input__input::placeholder {
+			color: GrayText;
+		}
+
+		.td-chip-input__menu {
+			border: 1px solid CanvasText;
+		}
+
+		.td-chip-input__option[aria-selected="true"] {
+			outline: 2px solid Highlight;
+			outline-offset: -2px;
+		}
+	}
+}
+
 /* ---- src/styles/utilities.css ---- */
 /* Utilities — kept minimal: td.css must stay reset-free (legacy Tailwind components share the page). */
 @layer td.utilities {

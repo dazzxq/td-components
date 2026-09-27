@@ -268,11 +268,11 @@ export class TdSlider extends TdFormElement {
     const max = this._getMax();
     const step = this._getStep();
     if (value < min) {
-      this._setValidity({ rangeUnderflow: true }, `Value must be ≥ ${min}.`, this._focusTarget());
+      this._setValidity({ rangeUnderflow: true }, `Giá trị tối thiểu là ${min}.`, this._focusTarget());
     } else if (value > max) {
-      this._setValidity({ rangeOverflow: true }, `Value must be ≤ ${max}.`, this._focusTarget());
+      this._setValidity({ rangeOverflow: true }, `Giá trị tối đa là ${max}.`, this._focusTarget());
     } else if (step > 0 && Math.abs(((value - min) / step) - Math.round((value - min) / step)) > 1e-9) {
-      this._setValidity({ stepMismatch: true }, `Value must be a multiple of ${step}.`, this._focusTarget());
+      this._setValidity({ stepMismatch: true }, `Giá trị phải là bội số của ${step}.`, this._focusTarget());
     } else {
       this._setValidity({});
     }

@@ -3,3 +3,5 @@
 .sb-col { display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .sb-stack { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; font-family: var(--td-font-sans); }
 .sb-note { margin: 8px 0 0; font: 13px/1.5 var(--td-font-sans); color: var(--td-color-text-muted); }
+/* Form controls that fill their container (chip input) get a sensible story width instead of shrinking to content. */
+.sb-stack > td-chip-input { width: min(100%, 28rem); }

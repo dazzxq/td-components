@@ -38,7 +38,7 @@ export class TdToggle extends TdCheckableElement {
 
   _colorProperty() { return '--td-switch-on'; }
 
-  _requiredMessage() { return 'Please turn this on.'; }
+  _requiredMessage() { return 'Vui lòng bật tùy chọn này.'; }
 
   /** @private @returns {'sm'|'md'|'lg'} */
   _size() {

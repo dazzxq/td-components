@@ -1,0 +1,40 @@
+<!-- TdFormValidation markup contract (inventory §7.3). `data-setup` is a JS function body run with `el` = the mounted
+     root and `TdFormValidation` in scope. The helper writes ONLY: aria-invalid / aria-errormessage / merged
+     aria-describedby on a native control, a `span.td-field-error[data-td-fv]` note right after it (or after its
+     wrapping <label>), and the optional `div.td-form-summary[role=alert]` (prepended in the root, or appended to
+     `summaryTarget`). td controls render their own note through setError (their own contracts). SSR adapters that
+     render server errors without JS emit the same markup. Checked by src/utils/td-v012-form-validation.browser-test.js. -->
+<template data-component="td-form-validation"
+          data-markup='<form id="fs"><label for="fs-a">Họ tên</label><input id="fs-a" name="a" required aria-describedby="fs-hint"><span id="fs-hint">Gợi ý</span><input id="fs-b" name="b" required></form>'
+          data-setup='TdFormValidation.validate(el, { focus: false });'>
+  <form id="fs">
+    <div class="td-form-summary" role="alert" data-td-fv="">
+      <p class="td-form-summary__title">Vui lòng kiểm tra lại các trường sau:</p>
+      <ul class="td-form-summary__list">
+        <li class="td-form-summary__item"><button type="button" class="td-form-summary__link">Họ tên: Trường này là bắt buộc</button></li>
+        <li class="td-form-summary__item"><button type="button" class="td-form-summary__link">Trường này là bắt buộc</button></li>
+      </ul>
+    </div>
+    <label for="fs-a">Họ tên</label>
+    <input id="fs-a" name="a" required aria-describedby="fs-hint fs-a-error" aria-invalid="true" aria-errormessage="fs-a-error">
+    <span class="td-field-error" id="fs-a-error" data-for="fs-a" data-td-fv="">Trường này là bắt buộc</span>
+    <span id="fs-hint">Gợi ý</span>
+    <input id="fs-b" name="b" required aria-invalid="true" aria-errormessage="fs-b-error" aria-describedby="fs-b-error">
+    <span class="td-field-error" id="fs-b-error" data-for="fs-b" data-td-fv="">Trường này là bắt buộc</span>
+  </form>
+</template>
+<template data-component="td-form-validation"
+          data-markup='<form id="fs2"><label>Tiêu đề <input id="fs2-t" name="title"></label></form>'
+          data-setup='TdFormValidation.apply(el, { title: ["Tiêu đề đã tồn tại"], general: "Máy chủ bận" }, { focus: false });'>
+  <form id="fs2">
+    <div class="td-form-summary" role="alert" data-td-fv="">
+      <p class="td-form-summary__title">Vui lòng kiểm tra lại các trường sau:</p>
+      <ul class="td-form-summary__list">
+        <li class="td-form-summary__item"><button type="button" class="td-form-summary__link">Tiêu đề: Tiêu đề đã tồn tại</button></li>
+        <li class="td-form-summary__item">Máy chủ bận</li>
+      </ul>
+    </div>
+    <label>Tiêu đề <input id="fs2-t" name="title" aria-invalid="true" aria-errormessage="fs2-t-error" aria-describedby="fs2-t-error"></label>
+    <span class="td-field-error" id="fs2-t-error" data-for="fs2-t" data-td-fv="">Tiêu đề đã tồn tại</span>
+  </form>
+</template>

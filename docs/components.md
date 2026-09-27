@@ -219,6 +219,46 @@ Tab stops; the focused control carries `aria-activedescendant`. Clicking outside
 **Events:** exactly one `change` per selection → `{ value, item }`
 **Methods:** `getValue()`, `setValue(v)`, `getSelectedItem()`, `updateData(arr)`, `open()`, `close()`, `setError()`, `clearError()`. A value set before its option exists is remembered and resolved when `options`/`updateData()` arrives (async-safe).
 
+### `td-chip-input` — `@dazzxq/td-components/chip-input`
+
+New in 0.12.0. Collects several items as removable chips from an editable combobox (APG) with local `options` or an
+async `search` provider. Form-associated: one FormData entry **per item** under `name` (use `name="tags[]"` for PHP).
+
+```html
+<td-chip-input name="authors[]" label="Tác giả" allow-create max-items="5" show-on-focus></td-chip-input>
+```
+```js
+import '@dazzxq/td-components/chip-input';
+const el = document.querySelector('td-chip-input');
+el.search = async (query, { signal }) => (await fetch(`/api/authors?q=${encodeURIComponent(query)}`, { signal })).json();
+el.addEventListener('change', (e) => console.log(e.detail.items, e.detail.added, e.detail.removed));
+```
+
+| Attribute | Default | Description |
+|-----------|---------|-------------|
+| `name`, `required`, `disabled` | — | Form field (`valueMissing` when empty and required; `<fieldset disabled>` works) |
+| `label` / `aria-label` | — | Visible label / accessible name (external `<label for>` works too) |
+| `placeholder` | — | Input placeholder |
+| `value` | — | Initial items as a JSON array (strings/numbers or objects); form reset restores it |
+| `value-key` / `label-key` | `value` / `label` | Item object keys |
+| `min-chars` | `1` | Typed characters before searching (`show-on-focus` still searches the empty query on focus) |
+| `search-delay` | `250` | Debounce (ms) for the `search` provider (local `options` filter immediately) |
+| `show-on-focus` | off | Show suggestions when the input gets focus |
+| `allow-create` | off | Enter on typed text creates an item (`create(text)` hook, default `{ value: text, label: text }`) |
+| `max-items` | — | Limit; the input is disabled-looking and adds are refused when full (`[data-full]`) |
+| `max-length` | — | Typed text length cap |
+| `error-text` | — | Error contract (`setError()` / `clearError()`) |
+
+**Properties:** `options` (local list), `search(query, { signal })` → items / Promise (a newer query aborts the older
+one; a stale response is ignored), `create(text)` → item / null / Promise, `renderOption(item, { query })` and
+`renderChip(item)` → **Node or text** (never HTML), `messages` (per-instance overrides of `TdChipInput.labels`), `value`.
+**Methods:** `getValue()`, `setValue(items)`, `addItem(item)`, `removeItem(value)`, `clear()`, `open()`, `close()` —
+programmatic changes are silent. **Events:** `change` (user add/remove) → `{ value, items, added? , removed? }`,
+`search-error` → `{ query, error }`.
+**Keyboard:** one Tab stop (the input). ↓/↑ move through suggestions, Enter picks (or creates), Escape closes;
+Backspace/← at the start of the text moves to the last chip's remove button, ←/→ between chips, Delete/Backspace removes
+(focus moves to the neighbour or back to the input). Additions/removals/results are announced in one status region.
+
 ### `td-datetime-picker` — `@dazzxq/td-components/datetime-picker`
 
 Date/time picker: a combobox trigger opens a dialog (TdModal) with day/month/year fields and hour/minute wheels.
@@ -358,6 +398,35 @@ const el = TdLoadingSpinner.create({ size: 'md', color: '#3b82f6', label: 'Đang
   is restored exactly once on `hide()`, auto-hide or the last `wrap()` settling (fulfilled or rejected).
 - `TdLoadingSpinner.create({ size, color, trackColor, className, label })` → `.td-spinner`; `label` makes it a
   `role="status"`, otherwise it is decorative (`aria-hidden`). Reduced motion stops the rotation.
+
+### `TdMenu` — `@dazzxq/td-components/menu`
+
+New in 0.12.0. Action menu (APG Menu Button) — a static helper, no tag. The panel is a strong-glass popover portaled to
+`<body>` (usable over modals); labels and hints are text.
+
+```js
+import { TdMenu } from '@dazzxq/td-components/menu';
+const items = [
+  { label: 'Sửa', icon: 'plus', hint: 'Ctrl+E', onSelect: () => edit() },
+  { label: 'Mở trang', href: '/posts/1', newTab: true },
+  { separator: true },
+  { label: 'Ghim', type: 'checkbox', checked: true, onSelect: (item) => pin(item.checked) },
+  { label: 'Xoá', danger: true, onSelect: () => remove() },
+];
+const btn = TdMenu.button({ label: 'Thao tác', items });          // a bound .td-menu-btn trigger
+const unbind = TdMenu.bind(myButton, () => items, { align: 'end' }); // or bind your own button
+TdMenu.open(anchor, items); TdMenu.close(); TdMenu.isOpen(anchor);
+```
+
+**Items:** `label`, `onSelect` (alias `onClick`), `href` (+ `newTab`; https, or http only on an http page, relative URLs by their resolved protocol —
+anything else, including `mailto:`/`tel:`, renders a disabled item and warns; use `onSelect` for those), `icon` (registry name) /
+`iconNode` (trusted `SVGElement`, cloned), `hint`, `danger`, `disabled`, `type: 'checkbox' | 'radio'` + `checked` +
+`group`, `{ separator: true }`. The menu never mutates your items: a checkable item's new state arrives as
+`onSelect(ctx)` → `ctx.checked`; update your model to persist it. **Options:** `align`
+(`end` default, `start`, `center`), `side`, `focus: 'first' | 'last'`. `TdMenu.labels` (Vietnamese, site-overridable).
+**Keyboard:** trigger Enter/Space/↓ open on the first item, ↑ on the last; ↑ ↓ wrap, Home/End, type-ahead
+(diacritic-insensitive), Enter/Space activate, Escape closes and returns focus to the trigger, Tab closes and moves on.
+Focus returns to the trigger after a selection. Outside `pointerdown` closes.
 
 ### `TdTooltip` — `@dazzxq/td-components/tooltip`
 
@@ -510,6 +579,46 @@ registerIcons({ 'site-camera': { viewBox: '0 0 24 24', paint: 'stroke', nodes: [
 - `<td-icon name size label>`: `import '@dazzxq/td-components/icon-element'` (keeps an SSR-rendered child).
 - `registerIcons` accepts data only (allowlisted shape tags + geometry attributes), rejects name collisions and
   is all-or-nothing.
+
+### `TdFormValidation` — `@dazzxq/td-components/form-validation`
+
+New in 0.12.0. A light helper, not a rule library: the **native constraint attributes are the rules** (`required`,
+`min`/`max`, `max-length`/`maxlength`, `pattern`, `type`…) for native controls and td controls alike, plus optional JS
+`rules` for anything else.
+
+```js
+import { TdFormValidation } from '@dazzxq/td-components/form-validation';
+const rules = { password_confirmation: (v, control, root) => v === root.elements.password.value ? '' : 'Mật khẩu không khớp' };
+const { valid } = TdFormValidation.validate(form, { rules, summary: 'auto' }); // focuses the first invalid field
+TdFormValidation.apply(form, laravelErrors);  // { 'email': ['…'], 'items.0.name': ['…'] } → fields in `form` only
+TdFormValidation.clear(form);
+const detach = TdFormValidation.attach(form, { rules, onValid: (e) => save() }); // submit + live revalidation
+```
+
+- **Where errors go:** td controls use their error contract (`setError`); native controls get `aria-invalid`,
+  `aria-describedby` and a `.td-field-error` note (td.css does not style native inputs — style `[aria-invalid="true"]`
+  in your CSS). A `[data-field="key"]` wrapper resolves to the real control inside it. Server errors (`apply`) never
+  change constraint validity; client `rules` use `setCustomValidity`.
+- **Focus + summary:** the first invalid control in document order is focused; `summary: 'auto'` shows a
+  `role="alert"` `.td-form-summary` with links for 2+ errors (or an error that matches no field).
+- **Live revalidation** (`attach`): after the first failed submit, typing clears/updates a shown error, `change` /
+  `focusout` show the current one; a server error on a field clears when the user edits it. Sites using `attach()`
+  should drop `td-input-field[validate-on]` for the same fields.
+- A custom rule that **throws** makes the field invalid (`messages.ruleError`) — validation fails closed.
+- `TdFormValidation.labels` / `.messages` (Vietnamese, site-overridable).
+
+**With `TdModal` async actions** (no TdModal change needed):
+
+```js
+TdModal.show({ title: 'Sửa bài', body, actions: [
+  { label: 'Hủy', value: false },
+  { label: 'Lưu', variant: 'primary', value: true, onClick: async () => {
+      if (!TdFormValidation.validate(body, { rules }).valid) return false;   // stays open, first field focused
+      try { await save(); }
+      catch (e) { if (!e.errors) throw e; TdFormValidation.apply(body, e.errors); return false; }
+  } },
+] });
+```
 
 ### `TdDateTime` — `@dazzxq/td-components/datetime`
 

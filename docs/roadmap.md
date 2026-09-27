@@ -44,9 +44,9 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 
 ## Later — component mới (token-native)
 
-- `todo` `td-menu` (từ dwp `menu.js`)
-- `todo` `td-chip-input` (từ `dcms-chip-search-field.js`)
-- `todo` `FormValidation` (từ `dcms-form-validation.js`, sau error contract)
+- `done` `TdMenu` (từ dwp `menu.js` / `ui-menu-button.js`, APG menu button) (v0.12.0)
+- `done` `td-chip-input` (từ `dcms-chip-search-field.js`, combobox APG + search provider có abort) (v0.12.0)
+- `done` `TdFormValidation` (từ `dcms-form-validation.js`; constraint gốc + `rules` + lỗi server) (v0.12.0)
 - `done` Release cuối của đợt migrate: bỏ peer Tailwind (v0.11.0; `td-sample` token-native, Storybook/demo không Tailwind, guard test)
 
 ## Later — backlog

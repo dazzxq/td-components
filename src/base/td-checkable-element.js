@@ -27,7 +27,7 @@ export class TdCheckableElement extends TdFormElement {
   _colorProperty() { return '--td-checkbox-color'; }
 
   /** @protected @returns {string} valueMissing message */
-  _requiredMessage() { return 'Please check this box.'; }
+  _requiredMessage() { return 'Vui lòng chọn ô này.'; }
 
   /** @protected The inner native input. */
   _focusTarget() {

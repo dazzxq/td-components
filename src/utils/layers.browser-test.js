@@ -214,3 +214,22 @@ describe('review round 1 (v0.9.0 impl)', () => {
     expect(calls).to.equal(1);
   });
 });
+
+describe('placeFloating align (v0.12.0 step 0)', () => {
+  function pair() {
+    const trigger = portal('');
+    for (const [k, v] of [['position', 'fixed'], ['top', '100px'], ['left', '300px'], ['width', '120px'], ['height', '30px']]) trigger.style.setProperty(k, v);
+    const panel = portal('<p>menu panel wider than trigger</p>');
+    for (const [k, v] of [['position', 'fixed'], ['width', '240px']]) panel.style.setProperty(k, v);
+    return { trigger, panel };
+  }
+  it("align 'end' lines up right edges, 'start' left edges, default centres", () => {
+    let { trigger, panel } = pair();
+    placeFloating(trigger, panel, { width: 'auto', align: 'end' });
+    expect(Math.round(panel.getBoundingClientRect().right)).to.equal(Math.round(trigger.getBoundingClientRect().right));
+    placeFloating(trigger, panel, { width: 'auto', align: 'start' });
+    expect(Math.round(panel.getBoundingClientRect().left)).to.equal(300);
+    placeFloating(trigger, panel, { width: 'auto' });
+    expect(Math.round(panel.getBoundingClientRect().left)).to.equal(300 + 60 - 120);
+  });
+});
