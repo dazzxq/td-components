@@ -48,7 +48,8 @@ const FOCUSABLE = [
  *
  * @property {Array<{id: string, label: string, icon?: string, panel?: string}>} tabs - Tab definitions.
  *   `icon`: registry name; DEPRECATED: any other value is a class list rendered as `<i class aria-hidden>`.
- * @property {Function} onChange - Callback receiving tabId
+ * @property {Function} onChange - Callback receiving tabId (runs before `tab-change`; a throw is logged with
+ *   `console.error` and the event still fires)
  */
 export class TdTabs extends TdBaseElement {
   static get observedAttributes() {
@@ -353,7 +354,13 @@ export class TdTabs extends TdBaseElement {
     this._syncPanels();
     this._updateIndicator();
     if (fireEvents) {
-      if (this._onChange) this._onChange(id);
+      if (this._onChange) {
+        try {
+          this._onChange(id);
+        } catch (err) {
+          console.error('td-tabs: onChange threw', err);
+        }
+      }
       this.emit('tab-change', { tabId: id });
     }
     return true;

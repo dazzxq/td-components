@@ -42,7 +42,7 @@ empty.actions = [
 - `variant`: `'primary'`, `'secondary'` hoặc `'danger'`; giá trị khác → `'secondary'`.
 - `onClick` nhận event `click` gốc (listener gắn trực tiếp lên `<button>`).
 - Gán lại `actions` sẽ gỡ listener cũ trước khi tạo nút mới, **không bị cộng dồn** handler. Mảng rỗng → khung nút ẩn.
-- Mục không phải object bị bỏ qua; `label` rỗng hiện chữ `Action`.
+- Mục không phải object bị bỏ qua; `label` rỗng hiện `TdEmptyState.labels.action` (mặc định `Thực hiện`).
 
 ### 2. Icon khác từ registry
 
@@ -116,6 +116,7 @@ Chuỗi rỗng ở `title` / `message` được coi như không đặt (dùng m�
 |---|---|---|
 | `actions` | `Array<{ label: string, variant?: 'primary' \| 'secondary' \| 'danger', onClick?: (e: MouseEvent) => void }>` | Nút hành động. Không phải mảng → `[]`. |
 | `iconNode` | `SVGElement \| null` | Icon SVG tin cậy do site dựng; được clone, trang trí; thắng `icon`. |
+| `TdEmptyState.labels` | static object | `{ action: 'Thực hiện' }` — chữ của nút hành động thiếu `label` (cả trang): `TdEmptyState.labels.action = 'Do it'`. |
 
 Không có method công khai riêng; không phát event riêng (nghe `onClick` của từng action).
 
@@ -184,7 +185,8 @@ chuẩn cho server render: `test/contracts/empty-state.html` (có thể render k
 
 - **Hover thấy tooltip trùng tiêu đề**: tiêu đề được đọc từ attribute `title`, mà trình duyệt luôn hiện attribute này
   thành tooltip. Đây là đánh đổi đã biết của API; không có attribute tiêu đề thay thế.
-- **Chữ `Action` tiếng Anh** xuất hiện khi action thiếu `label`; luôn truyền `label`.
+- **Action thiếu `label`** hiện `TdEmptyState.labels.action` ("Thực hiện"; trước 0.16.0 là "Action") — chữ chung
+  chung, nên luôn truyền `label`.
 - **Icon không đổi màu**: icon dùng `currentColor`, lấy từ `--td-empty-state-icon`; `iconNode` tự đặt `fill`/`stroke`
   cứng sẽ không theo token — dùng `currentColor` trong SVG của bạn.
 - Di chuyển element trong DOM: listener của nút được gỡ khi rời trang và gắn lại khi vào lại, nút vẫn hoạt động.

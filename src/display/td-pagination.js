@@ -2,6 +2,9 @@ import { TdBaseElement } from '../base/td-base-element.js';
 import { TdButton } from '../form/td-button.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 
+/** `{name}` placeholders from `vars`; unknown ones are kept as written. */
+const format = (tpl, vars = {}) => String(tpl ?? '').replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
+
 /**
  * Pagination — token-native (v0.8.0). Styles: td.css (`components/pagination.css`, block `.td-pagination`).
  *
@@ -17,7 +20,7 @@ import { fillIconSlots } from '../icons/td-icon.js';
  * @attr {string} active-color - Current-page pill colour (safeColor; default token `--td-pagination-active`
  *   = accent). The text colour is chosen by WCAG contrast against the colour as rendered (translucent colours
  *   are composited over the nearest opaque ancestor background, fallback the page `--td-color-bg`).
- * @attr {string} item-label - Label shown in info text (default 'mục')
+ * @attr {string} item-label - Item noun in the info text (`{item}`; default `TdPagination.labels.item` = 'mục')
  * @attr {number} max-pages - Size of the sliding window of consecutive page buttons (default 5); the first and
  *   last pages are always shown, gaps as an ellipsis.
  * @attr {string} aria-label - Landmark name of the `<nav>` (default 'Phân trang'); give each instance on a page
@@ -25,8 +28,20 @@ import { fillIconSlots } from '../icons/td-icon.js';
  * @attr {boolean} quiet - Info text is not a live region (a second pagination for the same list, e.g. td-table's
  *   top one, so a page change is announced once).
  * @fires page-change - When page changes, detail: { page }
+ *
+ * Texts: `TdPagination.labels` — `prev`, `next`, `page` (`{n}`), `info` (`{from}`, `{to}`, `{total}`, `{item}`),
+ * `item`. Override per site; they apply on the next render.
  */
 export class TdPagination extends TdBaseElement {
+  /** Default texts (Vietnamese); override per site: `TdPagination.labels.info = 'Showing {from}-{to} of {total}'`. */
+  static labels = {
+    prev: 'Trang trước',
+    next: 'Trang sau',
+    page: 'Trang {n}',
+    info: 'Hiển thị {from}-{to} / {total} {item}',
+    item: 'mục',
+  };
+
   static get booleanAttributes() { return ['quiet']; }
 
   static get observedAttributes() {
@@ -35,6 +50,8 @@ export class TdPagination extends TdBaseElement {
 
   constructor() {
     super();
+    /** @private custom properties THIS component set on the host (a site's own inline vars are never removed) */
+    this._ownVars = new Set();
     // One delegated listener on the host for the element's lifetime (no per-render listeners to leak,
     // survives disconnect/reconnect).
     this.addEventListener('click', (e) => this._onClick(e));
@@ -53,7 +70,7 @@ export class TdPagination extends TdBaseElement {
   _getItemsPerPage() { return Math.max(1, this._int('items-per-page', 10)); }
   /** Current page clamped to [1, totalPages] (the attribute may be out of range). */
   _getCurrentPage() { return Math.min(this._getTotalPages(), Math.max(1, this._int('current-page', 1))); }
-  _getItemLabel() { return this.getAttribute('item-label') || 'mục'; }
+  _getItemLabel() { return this.getAttribute('item-label') || String(TdPagination.labels.item ?? ''); }
   /** Window size, clamped to 1…25 (security review: bounded DOM regardless of attribute values). */
   _getMaxPages() { return Math.max(1, Math.min(25, this._int('max-pages', 5))); }
   _getNavLabel() { return (this.getAttribute('aria-label') || '').trim() || 'Phân trang'; }
@@ -68,7 +85,7 @@ export class TdPagination extends TdBaseElement {
     const page = this._getCurrentPage();
     const start = total === 0 ? 0 : (page - 1) * per + 1;
     const end = Math.min(page * per, total);
-    return `Hiển thị ${start}-${end} / ${total} ${this._getItemLabel()}`;
+    return format(TdPagination.labels.info, { from: start, to: end, total, item: this._getItemLabel() });
   }
 
   // --- Rendering ---
@@ -83,17 +100,19 @@ export class TdPagination extends TdBaseElement {
   _controlsHtml() {
     const current = this._getCurrentPage();
     const totalPages = this._getTotalPages();
+    const L = TdPagination.labels;
+    const esc = (s) => this.escapeHtml(String(s ?? ''));
     const nav = (dir, label, disabled) => `<button type="button" class="td-pagination__nav td-pagination__nav--${dir}"`
-      + ` data-nav="${dir}" aria-label="${label}"${disabled ? ' aria-disabled="true"' : ''}>`
+      + ` data-nav="${dir}" aria-label="${esc(label)}"${disabled ? ' aria-disabled="true"' : ''}>`
       + `<span class="td-pagination__icon" data-td-icon="${dir}"></span></button>`;
     const items = this._buildPageItems(totalPages, current, this._getMaxPages()).map((item) => {
       if (item === '...') return '<li class="td-pagination__ellipsis" aria-hidden="true">…</li>';
       const cur = item === current ? ' aria-current="page"' : '';
-      return `<li><button type="button" class="td-pagination__page" data-page="${item}" aria-label="Trang ${item}"${cur}>${item}</button></li>`;
+      return `<li><button type="button" class="td-pagination__page" data-page="${item}" aria-label="${esc(format(L.page, { n: item }))}"${cur}>${item}</button></li>`;
     }).join('');
-    return nav('prev', 'Trang trước', current <= 1)
+    return nav('prev', L.prev, current <= 1)
       + `<ul class="td-pagination__pages">${items}</ul>`
-      + nav('next', 'Trang sau', current >= totalPages);
+      + nav('next', L.next, current >= totalPages);
   }
 
   /**
@@ -164,21 +183,34 @@ export class TdPagination extends TdBaseElement {
 
   /**
    * D10: `active-color` → host `--td-pagination-active` (safeColor) + `--td-pagination-active-fg` chosen by
-   * WCAG contrast against the colour as rendered. Without a (valid) colour both are removed and the tokens apply.
+   * WCAG contrast against the colour as rendered. Without a (valid) colour the ones this component set are removed
+   * (a site's own inline values are left alone) and the tokens apply.
    * @private
    */
   _applyStyles() {
     const color = this.safeColor(this.getAttribute('active-color'), '');
     const parsed = color ? TdButton._parseColor(color) : null;
     if (!parsed) {
-      this.style.removeProperty('--td-pagination-active');
-      this.style.removeProperty('--td-pagination-active-fg');
+      this._removeOwnVar('--td-pagination-active');
+      this._removeOwnVar('--td-pagination-active-fg');
       return;
     }
     // The NORMALISED literal (contextual values such as currentColor resolved once) — exactly the colour the
     // contrast was computed for.
-    this.style.setProperty('--td-pagination-active', parsed.css);
-    this.style.setProperty('--td-pagination-active-fg', TdPagination._contrastFg(parsed, this._backdrop()));
+    this._setOwnVar('--td-pagination-active', parsed.css);
+    this._setOwnVar('--td-pagination-active-fg', TdPagination._contrastFg(parsed, this._backdrop()));
+  }
+
+  /** @private Set a host custom property and remember that this component owns it. */
+  _setOwnVar(name, value) {
+    this.style.setProperty(name, value);
+    this._ownVars.add(name);
+  }
+
+  /** @private Remove a host custom property only if this component set it. */
+  _removeOwnVar(name) {
+    if (!this._ownVars.delete(name)) return;
+    this.style.removeProperty(name);
   }
 
   /** @private The opaque colour behind this element: translucent ancestor backgrounds composited over the

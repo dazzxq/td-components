@@ -24,9 +24,15 @@ const DEFAULT_MESSAGE = 'Chưa có mục nào được tạo.';
  * @attr {number} heading-level - Heading level of the title, 2–6 (default 3)
  *
  * @property {SVGElement|null} iconNode - TRUSTED custom icon built by the site (cloned, decorative). Wins over `icon`.
- * @property {Array<{label: string, variant?: 'primary'|'secondary'|'danger', onClick?: Function}>} actions
+ * @property {Array<{label: string, variant?: 'primary'|'secondary'|'danger', onClick?: Function}>} actions - An
+ *   action without `label` shows `TdEmptyState.labels.action` (default 'Thực hiện').
  */
 export class TdEmptyState extends TdBaseElement {
+  /** Default texts (Vietnamese); override per site: `TdEmptyState.labels.action = 'Do it'`. */
+  static labels = {
+    action: 'Thực hiện',
+  };
+
   static get observedAttributes() {
     return ['icon', 'title', 'message', 'size', 'compact', 'heading-level'];
   }
@@ -181,7 +187,9 @@ export class TdEmptyState extends TdBaseElement {
       btn.type = 'button';
       const variant = VARIANTS.has(action.variant) ? action.variant : 'secondary';
       btn.className = `td-btn td-btn--${variant} td-btn--sm`;
-      btn.textContent = action.label == null || action.label === '' ? 'Action' : String(action.label);
+      btn.textContent = action.label == null || action.label === ''
+        ? String(TdEmptyState.labels.action ?? '')
+        : String(action.label);
       if (typeof action.onClick === 'function') {
         const handler = action.onClick;
         btn.addEventListener('click', handler);

@@ -1,4 +1,4 @@
-import { nextTypeaheadIndex } from '../utils/typeahead.js';
+import { fold, nextTypeaheadIndex } from '../utils/typeahead.js';
 import { placeFloating, isReferenceHidden } from '../utils/floating.js';
 import { LAYERS, register as registerLayer } from '../utils/layers.js';
 import { TdFormElement } from '../base/td-form-element.js';
@@ -7,6 +7,17 @@ import { fillIconSlots } from '../icons/td-icon.js';
 const CLEAR = '__CLEAR__';
 const OPTION_PX = 40; // --td-dropdown-option-h: `max-height` = visible options × 40 px
 const TYPEAHEAD_MS = 500;
+/** Properties that may be set on the element before it upgrades (they would shadow the class accessors). */
+const UPGRADE_PROPS = ['options', 'onChange', 'onSelect'];
+
+/** @private Run a site callback; a throw is logged and never breaks the component flow. */
+function safeCall(fn, arg, what) {
+  try {
+    fn(arg);
+  } catch (err) {
+    console.error(`td-dropdown: ${what} threw`, err);
+  }
+}
 
 
 /**
@@ -29,13 +40,13 @@ const TYPEAHEAD_MS = 500;
  *   </td-dropdown>
  *   <body> portal (persistent while connected):
  *   <div class="td-dropdown__menu td-glass-surface td-glass-surface--strong" id="{host}-menu" hidden data-state data-placement>
- *     [<div class="td-dropdown__search-wrap"><input class="td-dropdown__search" aria-label="Tìm kiếm" aria-autocomplete="list"
+ *     [<div class="td-dropdown__search-wrap"><input class="td-dropdown__search" aria-label="{labels.search}" aria-autocomplete="list"
  *        aria-controls="{host}-listbox" [aria-activedescendant]></div>]
  *     <div class="td-dropdown__options" role="listbox" id="{host}-listbox">
  *       [<div class="td-dropdown__option td-dropdown__option--clear" role="option" id="{host}-opt-clear" data-value="__CLEAR__">…]
  *       <div class="td-dropdown__option" role="option" id="{host}-opt-{i}" aria-selected data-value data-index [data-active]>…
  *     </div>
- *     <p class="td-dropdown__empty" role="status">[Không tìm thấy kết quả]</p>
+ *     <p class="td-dropdown__empty" role="status">[{labels.noResults}]</p>
  *   </div>
  *
  * Keyboard (APG select-only combobox): options are never focusable; the focused control (trigger, or the search input
@@ -67,9 +78,14 @@ const TYPEAHEAD_MS = 500;
  * @attr {string} error-text - Error message (aria-invalid + note; 0.9.0)
  * @fires change - When selection changes, detail: { value, item }
  *
- * @property {Array<Object>} options - Array of option objects set via JS property
- * @property {Function} onChange - Callback receiving value only
- * @property {Function} onSelect - Callback receiving full item object
+ * Texts: `TdDropdown.labels` (`search`, `none`, `noResults`, `required`) — override per site.
+ *
+ * @property {Array<Object>} options - Array of option objects set via JS property (may be set before the element is
+ *   defined). Re-assigning keeps the current selection when its value is still listed (else it is dropped); the
+ *   `value` attribute only picks the initial selection.
+ * @property {Function} onChange - Callback receiving the value (or null) on a user selection
+ * @property {Function} onSelect - Callback receiving the full item (or null) on a user selection; runs before
+ *   `onChange` (both run when both are set). A throwing callback is logged (`console.error`); `change` still fires.
  */
 export class TdDropdown extends TdFormElement {
   static get observedAttributes() {
@@ -87,6 +103,14 @@ export class TdDropdown extends TdFormElement {
     return [...super.booleanAttributes];
   }
 
+  /** Default texts (Vietnamese); override per site: `TdDropdown.labels.noResults = 'No results'`. */
+  static labels = {
+    search: 'Tìm kiếm',
+    none: 'Không chọn',
+    noResults: 'Không tìm thấy kết quả',
+    required: 'Vui lòng chọn một tùy chọn',
+  };
+
   /** @type {TdDropdown[]} Track all open dropdowns for closeAllExcept */
   static _openDropdowns = [];
 
@@ -96,6 +120,8 @@ export class TdDropdown extends TdFormElement {
     this._selectedItem = null;
     /** @private A value set before its option existed; resolved when options arrive. */
     this._pendingValue = null;
+    /** @private the first `options` assignment applies the `value` attribute; later ones keep the selection */
+    this._optionsInit = false;
     this._filteredData = [];
     /** @private navigation model of the rendered listbox: [{ clear: true } | { item }] */
     this._nav = [];
@@ -129,6 +155,18 @@ export class TdDropdown extends TdFormElement {
     this._boundOnResize = () => this._updatePosition();
   }
 
+  connectedCallback() {
+    // Properties set on the element before it upgraded shadow the class accessors: re-apply them.
+    for (const p of UPGRADE_PROPS) {
+      if (Object.prototype.hasOwnProperty.call(this, p)) {
+        const v = this[p];
+        delete this[p];
+        this[p] = v;
+      }
+    }
+    super.connectedCallback();
+  }
+
   /**
    * Own the JS properties for the default-ON tri-state flags. The base wires every observed
    * attribute to a naive property; for `allow-clear` it can't even be skipped (the skip guard
@@ -156,7 +194,12 @@ export class TdDropdown extends TdFormElement {
   set options(data) {
     this._options = Array.isArray(data) ? data : [];
     this._filteredData = [...this._options];
-    this._setInitialValue();
+    if (!this._optionsInit) {
+      this._optionsInit = true;
+      this._setInitialValue();
+    } else {
+      this._reconcileSelection();
+    }
     // Resolve a value that was set (e.g. via setValue/state-restore) before options arrived.
     // A pending value is the most recent explicit selection, so it overrides any stale one.
     if (this._pendingValue != null) {
@@ -366,7 +409,7 @@ export class TdDropdown extends TdFormElement {
     const val = this.getValue();
     this._setFormValue(val == null || val === '' ? null : String(val));
     if (this.hasAttribute('required') && (val == null || val === '')) {
-      this._setValidity({ valueMissing: true }, 'Vui lòng chọn một tùy chọn', this._focusTarget());
+      this._setValidity({ valueMissing: true }, TdDropdown.labels.required, this._focusTarget());
     } else {
       this._setValidity({});
     }
@@ -426,9 +469,10 @@ export class TdDropdown extends TdFormElement {
     const menu = this._menuElement;
     if (!menu) return;
     const id = this.escapeHtml(this.id);
+    const searchLabel = this.escapeHtml(String(TdDropdown.labels.search ?? ''));
     const search = this._isSearchable()
-      ? '<div class="td-dropdown__search-wrap"><input type="text" class="td-dropdown__search" aria-label="Tìm kiếm"'
-        + ` placeholder="Tìm kiếm..." autocomplete="off" spellcheck="false" aria-autocomplete="list" aria-controls="${id}-listbox"></div>`
+      ? `<div class="td-dropdown__search-wrap"><input type="text" class="td-dropdown__search" aria-label="${searchLabel}"`
+        + ` placeholder="${searchLabel}..." autocomplete="off" spellcheck="false" aria-autocomplete="list" aria-controls="${id}-listbox"></div>`
       : '';
     menu.innerHTML = `${search}<div class="td-dropdown__options" role="listbox" id="${id}-listbox"></div>`
       + '<p class="td-dropdown__empty" role="status"></p>';
@@ -448,7 +492,7 @@ export class TdDropdown extends TdFormElement {
     if (this._isAllowClear() && this._selectedItem) {
       nav.push({ clear: true });
       html += `<div class="td-dropdown__option td-dropdown__option--clear" role="option" id="${id}-opt-clear"`
-        + ` aria-selected="false" data-value="${CLEAR}"><span class="td-dropdown__option-label">Không chọn</span></div>`;
+        + ` aria-selected="false" data-value="${CLEAR}"><span class="td-dropdown__option-label">${esc(TdDropdown.labels.none ?? '')}</span></div>`;
     }
     this._filteredData.forEach((item, index) => {
       const selected = this._isSelected(item);
@@ -464,7 +508,7 @@ export class TdDropdown extends TdFormElement {
     this._nav = nav;
     const empty = this._menuElement.querySelector('.td-dropdown__empty');
     if (empty) {
-      const msg = this._filteredData.length ? '' : 'Không tìm thấy kết quả';
+      const msg = this._filteredData.length ? '' : String(TdDropdown.labels.noResults ?? '');
       if (empty.textContent !== msg) empty.textContent = msg;
     }
     if (this._activeIndex >= nav.length) this._activeIndex = -1;
@@ -719,11 +763,12 @@ export class TdDropdown extends TdFormElement {
   // --- Search ---
 
   _handleSearch(query) {
-    const q = String(query).toLowerCase().trim();
+    // Case- and diacritic-insensitive ("ha noi" finds "Hà Nội"), like the type-ahead.
+    const q = fold(query).trim();
     const labelKey = this._getLabelKey();
     this._filteredData = !q
       ? [...this._options]
-      : this._options.filter((item) => String(item[labelKey]).toLowerCase().includes(q));
+      : this._options.filter((item) => fold(item[labelKey]).includes(q));
     this._renderMenuOptions();
     // Active = first matching option (the clear option is skipped).
     const first = this._nav.findIndex((n) => n.item);
@@ -761,22 +806,40 @@ export class TdDropdown extends TdFormElement {
     this.emit('change', { value: null, item: null });
   }
 
+  /** @private onSelect(item) first, then onChange(value); each guarded (a throw is logged, the flow goes on). */
   _fireCallback(item) {
-    if (this._onChange) {
-      this._onChange(item ? item[this._getValueKey()] : null);
-    } else if (this._onSelect) {
-      this._onSelect(item);
-    }
+    if (this._onSelect) safeCall(this._onSelect, item, 'onSelect');
+    if (this._onChange) safeCall(this._onChange, item ? item[this._getValueKey()] : null, 'onChange');
   }
 
+  /** @private First `options` assignment: select the `value` attribute (resolved later if not listed yet). */
   _setInitialValue() {
     const initialValue = this._getInitialValue();
-    if (!initialValue) return;
+    if (!initialValue || this._selectedItem || this._pendingValue != null) return;
     const item = this._options.find((i) => String(i[this._getValueKey()]) === String(initialValue));
     if (item) {
       this._selectedItem = item;
       this._updateValueText();
       // Reflect the resolved initial selection into the form.
+      if (this._initialized) this._syncForm();
+    } else {
+      // e.g. an empty "loading" list first: resolve the initial value when the real options arrive.
+      this._pendingValue = String(initialValue);
+    }
+  }
+
+  /**
+   * @private New option list: keep the current selection (re-pointed at the new item object) when its value is still
+   * listed, otherwise drop it — the form never submits a value the list no longer has.
+   */
+  _reconcileSelection() {
+    if (!this._selectedItem) return;
+    const vk = this._getValueKey();
+    const cur = String(this._selectedItem[vk]);
+    const item = this._options.find((i) => String(i[vk]) === cur) || null;
+    this._selectedItem = item;
+    if (!item) {
+      this._updateValueText();
       if (this._initialized) this._syncForm();
     }
   }
@@ -976,9 +1039,15 @@ export class TdDropdown extends TdFormElement {
     return this._selectedItem;
   }
 
+  /**
+   * Replace the option list (an open menu is repositioned). A selection whose value is no longer listed is dropped.
+   * @param {Array<Object>} newData
+   */
   updateData(newData) {
     this._options = Array.isArray(newData) ? newData : [];
     this._filteredData = [...this._options];
+    this._optionsInit = true;
+    this._reconcileSelection();
     // Resolve a value set before these options arrived (same as the `options` setter).
     if (this._pendingValue != null) {
       this.setValue(this._pendingValue);

@@ -63,8 +63,8 @@ event đầy đủ ở mục **Event** của từng trang component.
 - **URL** mà hook trả về (lightbox download, href của menu) luôn đi qua bộ lọc: `https:` luôn được; `http:` chỉ khi
   chính trang là `http:`; scheme khác bị từ chối (lightbox cho phép mở rộng qua `isAllowedUrl`).
 - **Lỗi trong hook**: phần lớn hook được bọc `try/catch` và "fail closed" (ẩn nút, bỏ nội dung, hiện trạng thái lỗi).
-  Một số callback của element (dropdown, tabs, table) **không** được bọc: lỗi lan ra và có thể chặn event phát sau đó.
-  Cột "Lỗi thì sao" cho biết chính xác.
+  Callback của element dropdown, tabs, table (từ 0.16.0) được bọc: lỗi ghi `console.error`, luồng và event phía sau
+  vẫn chạy. Cột "Lỗi thì sao" cho biết chính xác.
 - **Hook bất đồng bộ**: chỉ những hook ghi rõ "Promise" mới được `await`. Promise trả về từ hook khác bị bỏ qua.
 
 ---
@@ -345,12 +345,22 @@ trường hợp đặc biệt.
 | Property | Chữ ký / kiểu | Khi nào gọi | Lỗi thì sao |
 |---|---|---|---|
 | `options` | `Array<object>` (khoá theo `value-key` / `label-key`, mặc định `value` / `label`) | — | Không phải mảng → rỗng |
-| `onChange` | `(value) => void` (`null` khi bỏ chọn) | Người dùng chọn / bỏ chọn, **trước** event `change` | **Không bắt lỗi**: lỗi lan ra và event `change` không được phát |
-| `onSelect` | `(item) => void` (`null` khi bỏ chọn) | Như trên, **chỉ khi không có `onChange`** | Như trên |
+| `onSelect` | `(item) => void` (`null` khi bỏ chọn) | Người dùng chọn / bỏ chọn, **trước** `onChange` và event `change` | Bắt lỗi: `console.error`, `onChange` và event `change` vẫn chạy |
+| `onChange` | `(value) => void` (`null` khi bỏ chọn) | Sau `onSelect`, **trước** event `change` | Như trên |
 
-Chỉ **một** trong hai callback chạy: có `onChange` thì `onSelect` bị bỏ qua. Để nhận cả value lẫn item, nghe event
-`change` (`detail = { value, item }`). Không có object nhãn: chữ "Tìm kiếm", "Không tìm thấy kết quả", "Không chọn",
-"Vui lòng chọn một tùy chọn" cố định (placeholder đổi được bằng attribute `placeholder`).
+Từ 0.16.0 **cả hai** callback đều chạy khi cùng đặt (trước đó có `onChange` thì `onSelect` bị bỏ qua). Có thể gán
+`options` / `onChange` / `onSelect` trước khi element được nâng cấp.
+
+`TdDropdown.labels` (toàn trang):
+
+| Khoá | Mặc định |
+|---|---|
+| `search` | `Tìm kiếm` (`aria-label` ô tìm; placeholder = chữ này + `...`) |
+| `none` | `Không chọn` |
+| `noResults` | `Không tìm thấy kết quả` |
+| `required` | `Vui lòng chọn một tùy chọn` |
+
+Placeholder của trigger đổi bằng attribute `placeholder`.
 
 ---
 
@@ -476,9 +486,9 @@ trừ khi có `messages` theo từng lần gọi. `patternMismatch` ưu tiên `t
 
 | Property / option | Chữ ký | Khi nào gọi | Lỗi thì sao |
 |---|---|---|---|
-| `columns[].render` | `(row, rowIdxInPage) => Node \| string \| any` | Mỗi lần vẽ hàng | Node → append; **chuỗi → HTML tin cậy (`innerHTML`)**; khác → text. **Không bắt lỗi**: lỗi lan ra, việc vẽ các ô còn lại dừng |
-| `onSort` | `({ key, direction }) => void` (`direction`: `'asc' \| 'desc' \| null`) | Sau event `sort-change`, **chỉ ở `server-mode`** | Không bắt lỗi |
-| `onPageChange` | `(page) => void` | Khi đổi trang, **chỉ ở `server-mode`** | Không bắt lỗi |
+| `columns[].render` | `(row, rowIdxInPage) => Node \| string \| any` | Mỗi lần vẽ hàng | Node → append; **chuỗi → HTML tin cậy (`innerHTML`)**; khác → text. Ném lỗi → ô đó trống + `console.error`, các ô khác vẫn vẽ |
+| `onSort` | `({ key, direction }) => void` (`direction`: `'asc' \| 'desc' \| null`) | Sau event `sort-change`, **chỉ ở `server-mode`** | Bắt lỗi: `console.error` |
+| `onPageChange` | `(page) => void` | Khi đổi trang, **chỉ ở `server-mode`** | Bắt lỗi: `console.error` (hai thanh phân trang vẫn đồng bộ) |
 | `update({ columns, data, page, onSort, onPageChange })` | | Gộp nhiều thay đổi một lần | Mảng không hợp lệ bị bỏ qua |
 
 Ở chế độ client, sắp xếp / phân trang làm tại chỗ; muốn biết người dùng sắp xếp gì, nghe event `sort-change`.
@@ -502,7 +512,7 @@ trừ khi có `messages` theo từng lần gọi. `patternMismatch` ưu tiên `t
 | Property | Chữ ký | Khi nào gọi | Lỗi thì sao |
 |---|---|---|---|
 | `tabs` | `Array<{ id, label, icon?, panel? }>` | — | Mục thiếu `id` bị bỏ |
-| `onChange` | `(tabId) => void` | Người dùng (hoặc `setActiveTab`) đổi tab, **trước** event `tab-change` | Không bắt lỗi: lỗi lan ra và `tab-change` không phát |
+| `onChange` | `(tabId) => void` | Người dùng (hoặc `setActiveTab`) đổi tab, **trước** event `tab-change` | Bắt lỗi: `console.error`, `tab-change` vẫn phát |
 
 Tên tablist mặc định `Các thẻ`; đổi bằng attribute `aria-label` / `aria-labelledby`.
 
@@ -516,6 +526,7 @@ Tên tablist mặc định `Các thẻ`; đổi bằng attribute `aria-label` / 
 |---|---|---|
 | `actions` | `Array<{ label, variant?: 'primary' \| 'secondary' \| 'danger', onClick?: (event) => void }>` | Mỗi action thành một `.td-btn--sm`; `onClick` là listener `click` thường. Gán lại → listener cũ được gỡ |
 | `iconNode` | `SVGElement \| null` | Icon tuỳ biến tin cậy (clone), thắng attribute `icon` |
+| `TdEmptyState.labels` | `{ action: 'Thực hiện' }` | Chữ nút của action thiếu `label` (toàn trang) |
 
 ---
 
@@ -523,8 +534,9 @@ Tên tablist mặc định `Các thẻ`; đổi bằng attribute `aria-label` / 
 
 td-button, td-input-field, td-checkbox, td-toggle, td-slider, td-pagination: tuỳ biến bằng attribute, token và event
 (`click`, `input`, `change`, `page-change`). Các control form có [hợp đồng lỗi](#hợp-đồng-lỗi-của-mọi-form-control).
-Chữ cố định của td-pagination (`Trang trước`, `Trang sau`, `Trang {n}`, `Hiển thị …`) không đổi được; phần đổi được là
-attribute `item-label` và `aria-label`.
+Chữ của td-pagination đổi qua `TdPagination.labels` (toàn trang): `prev` (`Trang trước`), `next` (`Trang sau`),
+`page` (`Trang {n}`), `info` (`Hiển thị {from}-{to} / {total} {item}`), `item` (`mục`); attribute `item-label` thắng
+`labels.item`, tên landmark đổi bằng `aria-label`.
 
 ## Icon
 
@@ -766,6 +778,9 @@ import { TdMenu } from '@dazzxq/td-components/menu';
 import { TdModal } from '@dazzxq/td-components/modal';
 import { TdHovercard } from '@dazzxq/td-components/hovercard';
 import { TdTable } from '@dazzxq/td-components/table';
+import { TdDropdown } from '@dazzxq/td-components/dropdown';
+import { TdPagination } from '@dazzxq/td-components/pagination';
+import { TdEmptyState } from '@dazzxq/td-components/empty-state';
 
 Object.assign(TdMenu.labels, { trigger: 'Options' });
 Object.assign(TdModal.labels, { close: 'Close', confirm: 'Confirm', cancel: 'Cancel', ok: 'OK' });
@@ -773,6 +788,11 @@ Object.assign(TdHovercard.labels, { loading: 'Loading…', error: 'Could not loa
 Object.assign(TdTable.labels, { table: 'Data table', loading: 'Loading data…', itemLabel: 'items',
   paginationTop: 'Pagination (top)', paginationBottom: 'Pagination (bottom)',
   emptyTitle: 'No data', emptyText: 'Nothing to show yet.' });
+Object.assign(TdDropdown.labels, { search: 'Search', none: 'None', noResults: 'No results',
+  required: 'Please choose an option' });
+Object.assign(TdPagination.labels, { prev: 'Previous page', next: 'Next page', page: 'Page {n}',
+  info: 'Showing {from}-{to} of {total} {item}', item: 'items' });
+TdEmptyState.labels.action = 'Do it';
 ```
 
 Danh sách đầy đủ mọi object nhãn (và những chữ **không** dịch được) ở

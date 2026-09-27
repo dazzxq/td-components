@@ -323,6 +323,9 @@ ghi đè. Cách làm chuẩn: một module `i18n-<ngôn ngữ>.js` nạp **một
 | `TdDatetimePicker.messages` | như trên | `required format incomplete day month year hour minute date min max` (`{min}` `{max}`) | Khi kiểm tra giá trị |
 | `TdChipInput.labels` | `@dazzxq/td-components/chip-input` | `remove create chips added removed duplicate results noResults loading error max required` (`{label}` `{text}` `{n}` `{max}`) | Mỗi lần dùng; `el.messages` ghi đè cho một instance |
 | `TdTable.labels` | `@dazzxq/td-components/table` | `table loading paginationTop paginationBottom itemLabel emptyTitle emptyText` | Khi render (cấu trúc) / cập nhật |
+| `TdDropdown.labels` | `@dazzxq/td-components/dropdown` | `search none noResults required` | Khi render menu / danh sách / kiểm tra `required` |
+| `TdPagination.labels` | `@dazzxq/td-components/pagination` | `prev next page info item` (`{n}`; `{from}` `{to}` `{total}` `{item}`) | Mỗi lần render (`item-label` thắng `item`) |
+| `TdEmptyState.labels` | `@dazzxq/td-components/empty-state` | `action` | Khi dựng nút hành động thiếu `label` |
 | `TdFormValidation.labels` | `@dazzxq/td-components/form-validation` | `summaryTitle` | Khi hiện summary |
 | `TdFormValidation.messages` | như trên | `ruleError valueMissing typeMismatch typeMismatchEmail typeMismatchUrl badInput patternMismatch tooShort tooLong rangeUnderflow rangeOverflow stepMismatch` (`{min}` `{max}` `{minLength}` `{maxLength}` `{step}`) | Khi validate (control **native**) |
 
@@ -332,9 +335,9 @@ Giá trị mặc định từng khoá: [hooks.md](hooks.md) (mục của từng 
 
 | Component | Cách đổi |
 |---|---|
-| td-dropdown | `placeholder` |
+| td-dropdown | `placeholder` (chữ trên trigger khi chưa chọn) |
 | td-chip-input, td-input-field, td-datetime-picker… | `label`, `placeholder`, `helper-text`, `error-text` |
-| td-pagination | `item-label` (mặc định `mục`), `aria-label` (mặc định `Phân trang`) |
+| td-pagination | `item-label` (mặc định `TdPagination.labels.item`), `aria-label` (mặc định `Phân trang`) |
 | td-tabs | `aria-label` (mặc định `Các thẻ`) |
 | td-table | `empty-title`, `empty-text`, `aria-label` |
 | td-empty-state | `title`, `message` |
@@ -350,8 +353,6 @@ Biết trước để không mất công tìm:
 | Component | Chữ cố định |
 |---|---|
 | TdToast | `aria-label` nút đóng `Đóng` |
-| td-dropdown | `Tìm kiếm` (nhãn + placeholder ô tìm), `Không tìm thấy kết quả`, option bỏ chọn `Không chọn`, thông điệp `Vui lòng chọn một tùy chọn` |
-| td-pagination | `Trang trước`, `Trang sau`, `Trang {n}`, `Hiển thị {a}-{b} / {tổng} {item-label}` |
 | td-input-field | Thông điệp validation (`Trường này là bắt buộc`, `Email không hợp lệ`, `Vượt quá giới hạn … ký tự/từ`…) |
 | td-slider | `Giá trị tối thiểu là …`, `Giá trị tối đa là …`, `Giá trị phải là bội số của …` |
 | td-checkbox / td-toggle | `Vui lòng chọn ô này.` / `Vui lòng bật tùy chọn này.` |
@@ -370,6 +371,9 @@ import { TdModal } from '@dazzxq/td-components/modal';
 import { TdDatetimePicker } from '@dazzxq/td-components/datetime-picker';
 import { TdChipInput } from '@dazzxq/td-components/chip-input';
 import { TdTable } from '@dazzxq/td-components/table';
+import { TdDropdown } from '@dazzxq/td-components/dropdown';
+import { TdPagination } from '@dazzxq/td-components/pagination';
+import { TdEmptyState } from '@dazzxq/td-components/empty-state';
 import { TdFormValidation } from '@dazzxq/td-components/form-validation';
 
 export const lightboxLabels = {
@@ -404,6 +408,14 @@ Object.assign(TdTable.labels, {
   table: 'Data table', loading: 'Loading data…', paginationTop: 'Pagination (top)',
   paginationBottom: 'Pagination (bottom)', itemLabel: 'items', emptyTitle: 'No data', emptyText: 'Nothing to show yet.',
 });
+
+Object.assign(TdDropdown.labels, {
+  search: 'Search', none: 'None', noResults: 'No results', required: 'Please choose an option',
+});
+Object.assign(TdPagination.labels, {
+  prev: 'Previous page', next: 'Next page', page: 'Page {n}', info: 'Showing {from}-{to} of {total} {item}', item: 'items',
+});
+TdEmptyState.labels.action = 'Do it';
 
 TdFormValidation.labels.summaryTitle = 'Please check the following fields:';
 Object.assign(TdFormValidation.messages, {
