@@ -204,7 +204,8 @@ export class TdDropdown extends TdFormElement {
     if (!this._optionsInit) {
       this._optionsInit = true;
       // Before the first connect, early properties (value, value-key…) may still be replayed: defer (see _setupProperties).
-      if (this._initialized) this._setInitialValue();
+      if (this._initialSuperseded) { /* an explicit setValue() came first: the value attribute no longer applies */ }
+      else if (this._initialized) this._setInitialValue();
       else this._initialDeferred = true;
     } else {
       this._reconcileSelection();
@@ -1021,7 +1022,9 @@ export class TdDropdown extends TdFormElement {
   }
 
   setValue(value) {
-    this._initialDeferred = false; // an explicit selection / clear supersedes the pending initial `value`
+    // an explicit selection / clear supersedes the initial `value` attribute — for good (review v0.16.0 ISSUE-6/7)
+    this._initialDeferred = false;
+    this._initialSuperseded = true;
     if (value === null || value === undefined || value === '') {
       this._selectedItem = null;
       this._pendingValue = null;

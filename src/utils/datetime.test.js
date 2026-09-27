@@ -153,6 +153,17 @@ describe('TdDateTime.toRelative', () => {
     assert.equal(TdDateTime.toRelative(date), 'Vừa xong');
   });
 
+  it('the clock-skew tolerance is strictly below 60 s (exactly 60 s ahead is future)', () => {
+    const fixed = Date.UTC(2026, 0, 1, 12, 0, 0);
+    mock.timers.enable({ apis: ['Date'], now: fixed });
+    try {
+      assert.equal(TdDateTime.toRelative(new Date(fixed + 59999)), 'Vừa xong');
+      assert.equal(TdDateTime.toRelative(new Date(fixed + 60000)), 'Trong 1 phút');
+    } finally {
+      mock.timers.reset();
+    }
+  });
+
   it('describes future moments instead of "Vừa xong" (v0.16.0 D1)', () => {
     const now = Date.now();
     assert.equal(TdDateTime.toRelative(new Date(now + 20 * 1000)), 'Vừa xong', 'clock skew tolerance < 60 s');

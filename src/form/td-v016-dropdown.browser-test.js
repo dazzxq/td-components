@@ -213,6 +213,22 @@ describe('deferred initial selection never overrides newer intent (review v0.16.
     expect(el.getValue()).to.equal(null);
   });
 
+  it('an explicit clear BEFORE the first options assignment still wins (detached) (review ISSUE-7)', () => {
+    const el = document.createElement('td-dropdown');
+    el.setAttribute('value', 'hn');
+    el.setValue(null);
+    el.options = cities();
+    host.appendChild(el);
+    expect(el.getValue()).to.equal(null);
+  });
+
+  it('an explicit clear on a connected dropdown without options still wins when options arrive (review ISSUE-7)', () => {
+    const el = mount('<td-dropdown value="hn"></td-dropdown>');
+    el.setValue(null);
+    el.options = cities();
+    expect(el.getValue()).to.equal(null);
+  });
+
   it('an explicit selection before connect wins over the value attribute', () => {
     const el = document.createElement('td-dropdown');
     el.setAttribute('value', 'hn');

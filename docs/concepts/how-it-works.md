@@ -91,15 +91,15 @@ Quy ước chung:
   `variant="abc"` → `primary`, `color="red;}"` → bỏ qua).
 - Đổi attribute lúc đang chạy là cách chính để cập nhật component; component tự vẽ lại phần cần thiết.
 
-Hai bẫy hay gặp với property:
+Gán property sớm (trước khi module được nạp, hoặc trước khi gắn thẻ vào trang) — từ 0.16.0 đều an toàn:
 
 ```js
-// SAI: gán property cho thẻ khi module của nó CHƯA được nạp/đăng ký.
-// Lúc đó <td-dropdown> còn là thẻ lạ, `options` thành thuộc tính thường và bị bỏ qua sau khi nâng cấp.
-document.querySelector('td-dropdown').options = [...];
-import('@dazzxq/td-components/dropdown');
+// Từ 0.16.0: gán property cho thẻ khi module của nó CHƯA được nạp/đăng ký vẫn được — `options`, `onChange`,
+// `onSelect` (và mọi property ứng với attribute) được áp lại khi thẻ được nâng cấp.
+document.querySelector('td-dropdown').options = [{ value: 'a', label: 'A' }];
+await import('@dazzxq/td-components/dropdown'); // lúc này dropdown nhận đúng options đã gán
 
-// ĐÚNG: import (tĩnh) ở đầu module chạy trước, hoặc chờ thẻ được định nghĩa.
+// Code cần tương thích bản cũ hơn 0.16.0: chờ thẻ được định nghĩa rồi mới gán.
 await customElements.whenDefined('td-dropdown');
 document.querySelector('td-dropdown').options = [{ value: 'a', label: 'A' }];
 ```

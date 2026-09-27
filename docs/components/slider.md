@@ -124,8 +124,8 @@ new FormData(document.getElementById('f')).get('volume'); // "30"
 
   Ví dụ `<td-slider value="200" max="100">`: thanh hiển thị ở 100 nhưng form gửi `200` và field ở trạng thái
   `rangeOverflow` (chặn submit).
-- Reset form: trả `value` về attribute lúc gắn vào trang. Nếu lúc đó không có attribute `value`, giá trị về mặc định
-  `0` (không phải `min`).
+- Reset form: trả `value` về attribute lúc gắn vào trang. Nếu lúc đó không có attribute `value`, giá trị về `min`
+  (0.16.0; trước đó là `0`).
 - `<fieldset disabled>` bao ngoài làm slider disabled (không gửi), attribute `disabled` không đổi.
 - Autofill / back-forward cache: giá trị được khôi phục qua attribute `value`.
 - Không có `required` (từ 0.16.0 không còn là attribute được theo dõi, không có property `required`): slider luôn có
@@ -277,8 +277,6 @@ và [bảng class cũ](../upgrading/class-map.md) (`.td-slider-*` → `.td-slide
 
 ## Lưu ý & lỗi thường gặp
 
-- **`min` > 0 mà không đặt `value`**: giá trị component là `0` (mặc định), nhỏ hơn `min`, nên field ở trạng thái
-  `rangeUnderflow` và chặn submit, dù thanh hiển thị ở `min`. Luôn đặt `value` khi `min` khác 0.
 - **`getValue()` khác giá trị gửi trong form**: `getValue()` là giá trị hiển thị (đã kẹp/làm tròn); form gửi attribute
   `value` nguyên văn. Hai giá trị lệch nhau khi `value` nằm ngoài khoảng hoặc lệch bước — lúc đó field cũng không hợp
   lệ.
