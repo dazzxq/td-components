@@ -70,7 +70,7 @@ export const Checkable = {
   },
 };
 
-/** Real links: middle-click / new tab work. Only http(s)/mailto/tel/relative; `javascript:` becomes a disabled item. */
+/** Real links: middle-click / new tab work. Only http(s)/relative; anything else (e.g. `javascript:`) becomes a disabled item. */
 export const Links = {
   name: 'Liên kết',
   render: () => `<div class="sb-row" id="mn-links"></div>`,
@@ -81,7 +81,7 @@ export const Links = {
       items: [
         { label: 'Trang chủ', href: '#' },
         { label: 'Mở tài liệu (tab mới)', href: 'https://developer.mozilla.org/', newTab: true, icon: 'external' },
-        { label: 'Gửi thư', href: 'mailto:hotro@example.com' },
+        { label: 'Gửi thư hỗ trợ', icon: 'link', onSelect: () => { window.location.href = 'mailto:hotro@example.com'; } },
         { label: 'Liên kết không an toàn', href: 'javascript:alert(1)' },
       ],
     }));

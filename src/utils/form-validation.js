@@ -121,28 +121,41 @@ function hostOf(el, root) {
 }
 
 /**
- * Radio group representative: the first same-name radio inside root that takes part in validation (`willValidate`:
- * a disabled first radio must not hide an invalid enabled group); falls back to the first radio of the group.
- * No selector is built from names.
+ * All radios of el's group (one helper for representative, rule values and ARIA targets — review ISSUE-10): same
+ * `name` AND same form owner (`r.form === el.form`), drawn from `root.elements` when root is a form (so radios
+ * associated with `form="…"` outside it count) or from root's descendants otherwise (independent forms inside a
+ * non-form root never merge). Always contains el. No selector is built from names.
+ * @param {HTMLInputElement} el
+ * @param {Element} root
+ * @returns {HTMLInputElement[]}
  */
-function representative(el, root) {
-  if (!(el instanceof HTMLInputElement) || el.type !== 'radio' || !el.name) return el;
-  const scope = root.contains(el) ? root : el.getRootNode();
-  let first = null;
-  for (const r of scope.querySelectorAll('input[type="radio"]')) {
-    if (r.name !== el.name || hostOf(r, root)) continue;
-    if (r.willValidate) return r;
-    if (!first) first = r;
-  }
-  return first || el;
+function radioMembers(el, root) {
+  const scope = root instanceof HTMLFormElement ? [...root.elements]
+    : [...(root.contains(el) ? root : el.getRootNode()).querySelectorAll('input[type="radio"]')];
+  const list = scope.filter((r) => r instanceof HTMLInputElement && r.type === 'radio' && r.name === el.name
+    && r.form === el.form && !hostOf(r, root));
+  if (!list.includes(el)) list.push(el);
+  return sortByDocument(list);
 }
 
-/** Radios of el's group that take part in validation (they get the error ARIA); all of them if none does. */
+const isGroupedRadio = (el) => el instanceof HTMLInputElement && el.type === 'radio' && !!el.name;
+
+/**
+ * Radio group representative: the first member that takes part in validation (`willValidate`: a disabled first
+ * radio must not hide an invalid enabled group); falls back to the first member.
+ */
+function representative(el, root) {
+  if (!isGroupedRadio(el)) return el;
+  const members = radioMembers(el, root);
+  return members.find((r) => r.willValidate) || members[0] || el;
+}
+
+/** Members that take part in validation (they get the error ARIA); all members if none does; never empty. */
 function radioGroup(el, root) {
-  if (!(el instanceof HTMLInputElement) || el.type !== 'radio' || !el.name) return [el];
-  const all = [...root.querySelectorAll('input[type="radio"]')].filter((r) => r.name === el.name);
-  const eligible = all.filter((r) => r.willValidate);
-  return eligible.length ? eligible : all;
+  if (!isGroupedRadio(el)) return [el];
+  const members = radioMembers(el, root);
+  const eligible = members.filter((r) => r.willValidate);
+  return eligible.length ? eligible : members;
 }
 
 /**
@@ -520,7 +533,11 @@ export class TdFormValidation {
       const label = last.parentElement && last.parentElement.closest('label');
       const anchor = label && label.contains(last) && !label.contains(root) ? label : last;
       anchor.after(note);
-      rec = { note, errId, targets: group };
+      // page-owned ARIA is restored on _hide() (review ISSUE-11); only our id is ever removed from describedby
+      const saved = new Map(group.map((t) => [t, {
+        invalid: t.getAttribute('aria-invalid'), errormessage: t.getAttribute('aria-errormessage'),
+      }]));
+      rec = { note, errId, targets: group, saved };
     }
     rec.source = source;
     rec.note.textContent = message;
@@ -585,9 +602,11 @@ export class TdFormValidation {
     st.shown.delete(el);
     if (rec.note) {
       rec.note.remove();
+      const restore = (t, attr, v) => { if (v == null) t.removeAttribute(attr); else t.setAttribute(attr, v); };
       for (const t of rec.targets) {
-        t.removeAttribute('aria-invalid');
-        if (t.getAttribute('aria-errormessage') === rec.errId) t.removeAttribute('aria-errormessage');
+        const was = rec.saved && rec.saved.get(t);
+        restore(t, 'aria-invalid', was ? was.invalid : null);
+        if (t.getAttribute('aria-errormessage') === rec.errId) restore(t, 'aria-errormessage', was ? was.errormessage : null);
         const ids = (t.getAttribute('aria-describedby') || '').split(/\s+/).filter((x) => x && x !== rec.errId);
         if (ids.length) t.setAttribute('aria-describedby', ids.join(' '));
         else t.removeAttribute('aria-describedby');

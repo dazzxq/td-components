@@ -128,3 +128,39 @@ describe('TdFormValidation (ISSUE-2, ISSUE-7)', () => {
     detach();
   });
 });
+
+describe('TdFormValidation round 2 (ISSUE-10, ISSUE-11)', () => {
+  it('radio groups respect the form owner: same name in two forms under one root never merge', () => {
+    const wrap = mount(`<div><form id="f1"><input type="radio" name="g" value="a" required></form>
+      <form id="f2"><input type="radio" name="g" value="b" required checked></form></div>`);
+    const r = TdFormValidation.validate(wrap, { summary: false, focus: false });
+    const [a, b] = wrap.querySelectorAll('input');
+    expect(r.valid).to.equal(false);
+    expect(a.getAttribute('aria-invalid')).to.equal('true');
+    expect(b.hasAttribute('aria-invalid')).to.equal(false); // f2's group is satisfied
+  });
+
+  it('a radio associated with form="…" outside the form joins its group', () => {
+    const wrap = mount(`<div><form id="fx"><input type="radio" name="h" value="1" required></form>
+      <input type="radio" name="h" value="2" form="fx"></div>`);
+    const form = wrap.querySelector('form');
+    const r = TdFormValidation.validate(form, { summary: false, focus: false });
+    expect(r.valid).to.equal(false);
+    const [in1, out2] = wrap.querySelectorAll('input');
+    expect(in1.getAttribute('aria-invalid')).to.equal('true');
+    expect(out2.getAttribute('aria-invalid')).to.equal('true');
+    TdFormValidation.clear(form);
+    expect(out2.hasAttribute('aria-invalid')).to.equal(false);
+  });
+
+  it('clear() restores page-owned aria-invalid / aria-errormessage', () => {
+    const f = mount('<form><span id="own">x</span><input name="n" required aria-invalid="false" aria-errormessage="own" aria-describedby="own"></form>');
+    const input = f.querySelector('input');
+    TdFormValidation.validate(f, { summary: false, focus: false });
+    expect(input.getAttribute('aria-invalid')).to.equal('true');
+    TdFormValidation.clear(f);
+    expect(input.getAttribute('aria-invalid')).to.equal('false');
+    expect(input.getAttribute('aria-errormessage')).to.equal('own');
+    expect(input.getAttribute('aria-describedby')).to.equal('own');
+  });
+});

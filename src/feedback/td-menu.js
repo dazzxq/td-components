@@ -9,12 +9,13 @@
  *   const btn = TdMenu.button({ icon: 'more', label: '', ariaLabel, items | getItems, ...opts }); // bound .td-menu-btn
  *   TdMenu.labels.trigger = 'Options';                                  // site override (Vietnamese defaults)
  *
- * Items (D6): { label, onSelect (alias onClick), href, newTab, icon (registry name), iconNode (trusted Node, cloned),
+ * Items (D6): { label, onSelect (alias onClick), href, newTab, icon (registry name), iconNode (trusted SVGElement, cloned),
  *   hint (any item), danger, disabled, type: 'item'|'radio'|'checkbox', checked, group (radio group key), id }
  *   | { separator: true }. `checked` without `type` → radio (dwp compat). Labels/hints are TEXT (textContent only).
- *   `href`: http/https/mailto/tel or relative; anything else (javascript:, data:, unparsable) → the item is rendered
- *   as a disabled button + console.warn. Checkable items are plain buttons with role menuitemcheckbox/menuitemradio +
- *   aria-checked; the helper writes the new `checked` back to the item objects (reopening shows the current state).
+ *   `href`: http/https or relative; anything else (mailto:, tel:, javascript:, data:, unparsable) → the item is
+ *   rendered as a disabled button + console.warn (use onSelect for mail/phone actions). Checkable items are plain
+ *   buttons with role menuitemcheckbox/menuitemradio + aria-checked; caller items are NEVER mutated — the new state
+ *   arrives as onSelect(ctx) → ctx.checked (update your model to persist it across opens).
  *
  * DOM contract (created on open, removed on close — one menu at a time; {m} = td-menu-{n}):
  *   <div class="td-menu td-glass-surface td-glass-surface--strong" id="{m}" role="menu"
