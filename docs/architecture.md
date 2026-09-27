@@ -10,7 +10,9 @@ src/base/                TdBaseElement, TdFormElement, sample/
 src/form/                button, checkbox, toggle, input-field, slider, dropdown, datetime-picker
 src/feedback/            modal, modal-stack, toast, tooltip, loading   (API imperative, không phải tag)
 src/display/             table, tabs, pagination, empty-state
-src/utils/               escape, css-safe, adopt-styles, datetime, dom-utils
+src/utils/               escape, css-safe, datetime, dom-utils, layers, inert-lock, scroll-lock, floating
+src/styles/              tokens + component CSS → build td.css (manifest.json)
+src/icons/               icon registry (Lucide)
 test/csp/                CSP parity gate (Playwright)
 ```
 
