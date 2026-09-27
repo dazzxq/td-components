@@ -64,6 +64,15 @@ if (!['legacy', 'legacy+td'].includes(PROFILE)) throw new Error(`unknown CSP_PRO
 const EXTRA_CSS = PROFILE === 'legacy+td' ? `<link rel="stylesheet" href="${'http://csp.local'}/td.css">` : '';
 const CSP_HEADER = "default-src 'self'; style-src 'self'; script-src 'self'";
 const PX_TOLERANCE = 0.5;
+/**
+ * Baselines are captured on the maintainer's machine (macOS). Horizontal geometry of text-bearing boxes depends on the
+ * OS font rasteriser / system font metrics, so on another platform (CI on Linux) those props are not compared —
+ * every other computed style, the zero-violation check and the render checks still run. Override with
+ * CSP_BASELINE_PLATFORM=<process.platform of the capture machine>.
+ */
+const BASELINE_PLATFORM = process.env.CSP_BASELINE_PLATFORM || 'darwin';
+const TEXT_METRIC_PROPS = new Set(['width', 'right', 'left', 'transform', 'inline-size']);
+const SKIP_TEXT_METRICS = process.platform !== BASELINE_PLATFORM;
 const MIME = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.json': 'application/json' };
 
 /** Map an http://csp.local/<path> URL to a file on disk (identical to capture). */
@@ -202,6 +211,7 @@ function compareStyles(component, stateName, baselineStyles, snapshot, props) {
     }
     for (const p of props) {
       if (!(p in baseProps)) continue; // baseline excluded this prop for this state
+      if (SKIP_TEXT_METRICS && TEXT_METRIC_PROPS.has(p)) continue; // font metrics differ across platforms
       const exp = baseProps[p];
       const act = got[p];
       if (exp === act) continue;
@@ -530,6 +540,10 @@ async function main() {
   try {
     console.log(`\nCSP GATE — strict header: content-security-policy: ${CSP_HEADER}`);
     console.log(`Origin: ${ORIGIN}  | px tolerance: ±${PX_TOLERANCE}px`);
+    if (SKIP_TEXT_METRICS) {
+      console.log(`Platform ${process.platform} ≠ baseline platform ${BASELINE_PLATFORM}: text-metric props `
+        + `(${[...TEXT_METRIC_PROPS].join(', ')}) not compared; all other props + CSP violations are.`);
+    }
     if (FILTER.length) console.log(`Filter: ${FILTER.join(', ')}`);
     console.log('');
 
