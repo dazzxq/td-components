@@ -104,9 +104,8 @@ export class SiteRating extends TdFormElement {
   }
 
   _applyStyles() {                                     // gọi sau mỗi render
-    const color = this.safeColor(this.getAttribute('color'), '');
-    if (color) this.style.setProperty('--site-rating-color', color);
-    else this.style.removeProperty('--site-rating-color');
+    // Chỉ gỡ giá trị do chính component đặt: biến site tự đặt inline trên host được giữ (0.16.0).
+    this._setOwnedStyle('--site-rating-color', this.safeColor(this.getAttribute('color'), ''));
   }
 
   _syncForm() {
@@ -321,6 +320,9 @@ ghi đè. Cách làm chuẩn: một module `i18n-<ngôn ngữ>.js` nạp **một
 | `TdModal.labels` | `@dazzxq/td-components/modal` | `close confirm cancel ok` | Khi tạo dialog |
 | `TdDatetimePicker.labels` | `@dazzxq/td-components/datetime-picker` | `title placeholder date day month year time hour minute close now confirm` | Khi render / mở picker |
 | `TdDatetimePicker.messages` | như trên | `required format incomplete day month year hour minute date min max` (`{min}` `{max}`) | Khi kiểm tra giá trị |
+| `TdInputField.messages` | `@dazzxq/td-components/input-field` | `valueMissing tooLong tooShort patternMismatch badInput typeMismatchEmail typeMismatchUrl rangeUnderflow rangeOverflow stepMismatch dateInvalid dateUnderflow dateOverflow unitChar unitWord` (`{min}` `{max}` `{minLength}` `{maxLength}` `{unit}`) | Khi tính validity / bộ đếm (0.16.0) |
+| `TdSlider.messages` | `@dazzxq/td-components/slider` | `rangeUnderflow rangeOverflow stepMismatch` (`{min}` `{max}` `{step}`) | Khi tính validity (0.16.0) |
+| `TdCheckbox.messages` / `TdToggle.messages` | `@dazzxq/td-components/checkbox` / `…/toggle` | `valueMissing` | Khi tính validity (0.16.0) |
 | `TdChipInput.labels` | `@dazzxq/td-components/chip-input` | `remove create chips added removed duplicate results noResults loading error max required` (`{label}` `{text}` `{n}` `{max}`) | Mỗi lần dùng; `el.messages` ghi đè cho một instance |
 | `TdTable.labels` | `@dazzxq/td-components/table` | `table loading paginationTop paginationBottom itemLabel emptyTitle emptyText` | Khi render (cấu trúc) / cập nhật |
 | `TdFormValidation.labels` | `@dazzxq/td-components/form-validation` | `summaryTitle` | Khi hiện summary |
@@ -352,9 +354,6 @@ Biết trước để không mất công tìm:
 | TdToast | `aria-label` nút đóng `Đóng` |
 | td-dropdown | `Tìm kiếm` (nhãn + placeholder ô tìm), `Không tìm thấy kết quả`, option bỏ chọn `Không chọn`, thông điệp `Vui lòng chọn một tùy chọn` |
 | td-pagination | `Trang trước`, `Trang sau`, `Trang {n}`, `Hiển thị {a}-{b} / {tổng} {item-label}` |
-| td-input-field | Thông điệp validation (`Trường này là bắt buộc`, `Email không hợp lệ`, `Vượt quá giới hạn … ký tự/từ`…) |
-| td-slider | `Giá trị tối thiểu là …`, `Giá trị tối đa là …`, `Giá trị phải là bội số của …` |
-| td-checkbox / td-toggle | `Vui lòng chọn ô này.` / `Vui lòng bật tùy chọn này.` |
 | td-datetime-picker | Định dạng hiển thị `dd/mm/yyyy - hh:mm` (chữ nhãn thì dịch được) |
 
 Thông điệp validation của control td được dùng khi trình duyệt hiện bong bóng lỗi (`reportValidity`) hoặc khi
@@ -369,6 +368,10 @@ import { TdMenu } from '@dazzxq/td-components/menu';
 import { TdModal } from '@dazzxq/td-components/modal';
 import { TdDatetimePicker } from '@dazzxq/td-components/datetime-picker';
 import { TdChipInput } from '@dazzxq/td-components/chip-input';
+import { TdInputField } from '@dazzxq/td-components/input-field';
+import { TdSlider } from '@dazzxq/td-components/slider';
+import { TdCheckbox } from '@dazzxq/td-components/checkbox';
+import { TdToggle } from '@dazzxq/td-components/toggle';
 import { TdTable } from '@dazzxq/td-components/table';
 import { TdFormValidation } from '@dazzxq/td-components/form-validation';
 
@@ -399,6 +402,19 @@ Object.assign(TdChipInput.labels, {
   noResults: 'No suggestions', loading: 'Searching…', error: 'Could not load suggestions',
   max: 'Limit of {max} items reached', required: 'Please add at least one item',
 });
+
+Object.assign(TdInputField.messages, {
+  valueMissing: 'This field is required', tooLong: 'Over the {maxLength} {unit} limit',
+  tooShort: 'At least {minLength} characters', patternMismatch: 'Invalid format', badInput: 'Invalid value',
+  typeMismatchEmail: 'Invalid email address', typeMismatchUrl: 'Invalid URL', rangeUnderflow: 'Minimum is {min}',
+  rangeOverflow: 'Maximum is {max}', stepMismatch: 'Invalid step', dateInvalid: 'Invalid date',
+  dateUnderflow: 'Earliest date is {min}', dateOverflow: 'Latest date is {max}', unitChar: 'characters', unitWord: 'words',
+});
+Object.assign(TdSlider.messages, {
+  rangeUnderflow: 'Minimum is {min}.', rangeOverflow: 'Maximum is {max}.', stepMismatch: 'Must be a multiple of {step}.',
+});
+TdCheckbox.messages.valueMissing = 'Please tick this box.';
+TdToggle.messages.valueMissing = 'Please turn this on.';
 
 Object.assign(TdTable.labels, {
   table: 'Data table', loading: 'Loading data…', paginationTop: 'Pagination (top)',

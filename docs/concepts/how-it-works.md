@@ -105,9 +105,10 @@ document.querySelector('td-dropdown').options = [{ value: 'a', label: 'A' }];
 ```
 
 ```js
-// Với thẻ tạo bằng JS: đặt attribute trước khi gắn vào trang (property dạng attribute chỉ sẵn sàng sau khi gắn).
+// Với thẻ tạo bằng JS: gán property hoặc attribute trước khi gắn vào trang đều được (0.16.0+). Giá trị gán sớm
+// (kể cả trước khi module được import) được áp khi phần tử kết nối lần đầu, và phần tử chỉ render MỘT lần.
 const field = document.createElement('td-input-field');
-field.setAttribute('label', 'Email');
+field.label = 'Email';
 field.setAttribute('type', 'email');
 form.append(field);
 field.helperText = 'Dùng email công việc'; // sau khi đã gắn: property dùng bình thường

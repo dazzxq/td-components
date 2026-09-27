@@ -206,6 +206,20 @@ export class TdFormElement extends TdBaseElement {
     return this._focusTarget() ?? undefined;
   }
 
+  /**
+   * Validation text from the subclass's static `messages` object (site-translatable, e.g.
+   * `TdSlider.messages.rangeUnderflow = 'Minimum is {min}.'`), `{name}` placeholders filled from `vars`
+   * (an unknown placeholder is left as is).
+   * @param {string} key
+   * @param {Object<string, *>} [vars]
+   * @returns {string}
+   * @protected
+   */
+  _msg(key, vars = {}) {
+    const tpl = this.constructor.messages?.[key];
+    return String(tpl ?? '').replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
+  }
+
   // --- Error contract (visual + a11y; constraint validity stays in setCustomValidity) ---
 
   /**

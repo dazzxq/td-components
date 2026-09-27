@@ -281,22 +281,24 @@ export class TdButton extends TdBaseElement {
     else btn.removeAttribute('aria-label');
   }
 
-  /** Per-instance custom colours via host CSSOM custom properties (CSP-safe). */
+  /**
+   * Per-instance custom colours via host CSSOM custom properties (CSP-safe). Owned vars only: without a custom
+   * colour just the values this button set are removed — a site's own `--td-btn-*` on the host survives.
+   */
   _applyStyles() {
     if (!this.style) return; // non-DOM environments (node render tests)
     const bg = this._customColor();
+    let fg = '';
+    let hover = '';
     if (bg) {
-      const fg = this.safeColor(this.getAttribute('text-color'), '') || TdButton._getContrastColor(bg);
-      this.style.setProperty('--td-btn-bg', bg);
-      this.style.setProperty('--td-btn-fg', fg);
+      fg = this.safeColor(this.getAttribute('text-color'), '') || TdButton._getContrastColor(bg);
       // Hover overlay that INCREASES contrast: darken under light text, lighten under dark text.
       const light = TdButton._getContrastColor(fg) === '#000000';
-      this.style.setProperty('--td-btn-hover', light ? 'rgb(0 0 0 / 12%)' : 'rgb(255 255 255 / 30%)');
-    } else {
-      this.style.removeProperty('--td-btn-bg');
-      this.style.removeProperty('--td-btn-fg');
-      this.style.removeProperty('--td-btn-hover');
+      hover = light ? 'rgb(0 0 0 / 12%)' : 'rgb(255 255 255 / 30%)';
     }
+    this._setOwnedStyle('--td-btn-bg', bg);
+    this._setOwnedStyle('--td-btn-fg', fg);
+    this._setOwnedStyle('--td-btn-hover', hover);
   }
 }
 
