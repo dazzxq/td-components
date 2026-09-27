@@ -266,6 +266,20 @@ describe('batch 1 — td-button', () => {
     }
   });
 
+  it('v0.14.3: secondary is white glass with a visible border (not the old grey fill); disabled is greyed out', () => {
+    const sec = mount('<td-button variant="secondary">Huỷ</td-button>').querySelector('button');
+    const dis = mount('<td-button variant="secondary" disabled>Tắt</td-button>').querySelector('button');
+    const cs = getComputedStyle(sec);
+    // specificity regression: .td-btn:not(.td-btn--custom) used to beat .td-btn--secondary → opaque grey #f0f0f2
+    expect(cs.backgroundColor).to.equal(tokenColor('--td-btn-secondary-glass'));
+    expect(cs.borderTopColor).to.equal(tokenColor('--td-control-border-soft'));
+    const dcs = getComputedStyle(dis);
+    expect(dcs.backgroundColor).to.not.equal(cs.backgroundColor);
+    expect(ratio(dcs.color, dcs.backgroundColor), 'disabled label is muted').to.be.below(3);
+    expect(ratio(dcs.color, dcs.backgroundColor), 'but legible').to.be.at.least(2.2);
+    expect(ratio(cs.color, 'rgb(255, 255, 255)'), 'enabled label').to.be.at.least(4.7);
+  });
+
   it('hover glow never replaces the keyboard focus ring (review ISSUE-8)', async () => {
     const el = mount('<td-button variant="primary">Lưu</td-button>');
     const b = el.querySelector('button');

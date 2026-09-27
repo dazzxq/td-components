@@ -41,7 +41,8 @@ chính thức) + **plan-review** 3 vòng, và mọi con số được **gate tư
   / nhạt (dark); màu không phải tín hiệu duy nhất (icon).
 - **G5 — gate tương phản (nghiệm thu, không phải hằng số):** `npm run test:contrast` render button (mọi variant ×
   rest/disabled/loading) và toast trên nền **đen, trắng, caro, ảnh**, light + dark, **Chromium/Firefox/WebKit**, đo
-  pixel thật (sau blur, sheen, tint, wash), lấy tương phản **nhỏ nhất**: chữ ≥ 4.7:1, icon/spinner/nút đóng ≥ 3.2:1,
+  pixel thật (sau blur, sheen, tint, wash), lấy tương phản **nhỏ nhất**: chữ ≥ 4.7:1, icon/spinner/nút đóng ≥ 3.2:1; nút
+  **disabled** (chữ và icon) ≥ 2.2:1 — cố ý xám mờ, WCAG 1.4.3 / 1.4.11 miễn cho control bị vô hiệu (v0.14.3),
   và assert `opacity: 1` suốt chuỗi cha. Cặp nào trượt thì chỉnh token của riêng nó, không chỉnh công thức chung.
 - **G6 — khúc xạ:** không ship (Safari 26: WebKit bug 245510; Firefox không hỗ trợ SVG trong `backdrop-filter`);
   backlog thử nghiệm Chromium-only.
@@ -322,7 +323,7 @@ the content directly behind it." (HIG-C)
 | **td-datetime-picker** popover | **Regular, strong** | Popover nhiều chữ | Ô ngày là fill, ngày được chọn dùng accent fill đặc (nằm trong kính, R3). Picker inline (không phải popover): **none**. |
 | **td-tabs** (tabs trong nội dung) | **None**, dùng fill segmented | Tầng nội dung | Container dùng `--td-color-hover`, indicator là fill sáng. Chỉ khi là **app tab bar/nav nổi** mới dùng **Regular capsule**. |
 | **td-button** primary/success/danger/info/warning | v2 (G1/G3): **Prominent tinted glass** | `.glassProminent` | Tint ~90 % + phim tối + sheen nhẹ; warning hổ phách + chữ tối; trong bảng / dense / trong bề mặt kính: vẻ kính, không blur. |
-| **td-button** secondary | v2: **Regular strong glass** + phim 4 % | `.glass` | Trên thanh nổi vẫn là item trong nhóm kính của thanh (một parent kính). |
+| **td-button** secondary | v2: kính trắng 80 % (tối: 84 %) + viền mềm `--td-control-border-soft`, không phim xám (v0.14.3) | `.glass` | Trên thanh nổi vẫn là item trong nhóm kính của thanh (một parent kính). |
 | **td-toggle** thumb | **None** lúc nghỉ, chỉ thành **Clear-ish lens** khi đang kéo | HIG-M ngoại lệ cho toggle | `[data-dragging]` thì scale theo `--_td-glass-lift-knob`, nền `--td-glass-clear-bg`, blur(2px) + rim. Reduced motion: không scale. |
 | **td-slider** thumb | Như toggle | HIG-M, ADOPT: "the knob transforms into Liquid Glass during interaction" | Track là fill. Hiện dùng box-shadow màu `${color}40` cho glow, đổi sang token. |
 | **td-checkbox** | **None** | Không có núm nào chuyển trạng thái tạm thời | Fill accent khi checked. v2 (G7): **tròn** mặc định (`--td-checkbox-radius`). |

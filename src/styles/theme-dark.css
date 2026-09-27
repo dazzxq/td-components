@@ -46,9 +46,12 @@
 		--td-btn-secondary-fg: #f5f5f7;
 		--td-btn-secondary-border: rgb(255 255 255 / 12%);
 		--td-btn-secondary-hover: #3a3a3e;
-		--td-btn-disabled-bg: #2a2a2f;
-		--td-btn-disabled-fg: #a1a1aa;                 /* 6.2:1 on the disabled fill */
-		--td-btn-disabled-border: rgb(255 255 255 / 10%);
+		--td-btn-disabled-bg: #202024;
+		--td-btn-disabled-fg: #6b6b73;                 /* greyed out, ≥ 2.2:1 (v0.14.3) */
+		--td-btn-disabled-border: rgb(255 255 255 / 6%);
+		--td-btn-secondary-glass: rgb(40 40 44 / 84%);
+		--td-btn-secondary-edge: rgb(255 255 255 / 14%);
+		--td-btn-lift: 0 1px 2px rgb(0 0 0 / 30%), 0 3px 8px -4px rgb(0 0 0 / 40%);
 		--td-switch-off: #2c2c30;
 
 		--td-glass-bg: rgb(12 14 18 / 44%);
@@ -65,7 +68,6 @@
 		--td-glass-shadow: 0 12px 34px -10px rgb(0 0 0 / 68%), 0 3px 10px -4px rgb(0 0 0 / 46%);
 		--td-glass-shadow-lg: 0 26px 64px -18px rgb(0 0 0 / 76%), 0 8px 22px -10px rgb(0 0 0 / 52%);
 		--td-glass-solid: #17181c;
-		--td-glass-secondary-film: rgb(255 255 255 / 0%);
 		--td-glass-glow: rgb(255 255 255 / 18%);
 	}
 }

@@ -53,8 +53,8 @@
 		border-radius: var(--td-btn-radius);
 		box-shadow:
 			var(--_td-btn-rim, inset 0 1px 0 0 rgb(255 255 255 / 38%)),
-			var(--_td-btn-outline, 0 0 0 1px var(--td-glass-outline)),
-			var(--_td-btn-lift, 0 6px 16px -8px rgb(0 0 0 / 30%), 0 1px 3px -1px rgb(0 0 0 / 14%));
+			var(--_td-btn-outline, var(--td-btn-outline-v, 0 0 0 1px var(--td-glass-outline))),
+			var(--_td-btn-lift, var(--td-btn-lift));
 		-webkit-backdrop-filter: var(--_td-btn-filter, var(--td-glass-blur));
 		backdrop-filter: var(--_td-btn-filter, var(--td-glass-blur));
 		transition:
@@ -79,12 +79,13 @@
 		--td-btn-border-v: rgb(255 255 255 / 24%);
 	}
 
-	/* Secondary = neutral strong glass + a faint film so it reads as a control on white pages */
+	/* Secondary = neutral white glass with a visible soft border (v0.14.3: no grey film — white on white pages) */
 	.td-btn--secondary {
 		--td-btn-bg-v: var(--td-btn-secondary-bg);
 		--td-btn-fg-v: var(--td-glass-fg);
-		--td-btn-film-v: var(--td-glass-secondary-film);
-		--td-btn-border-v: var(--td-glass-border);
+		--td-btn-film-v: transparent;
+		--td-btn-border-v: var(--td-btn-secondary-edge);
+		--td-btn-outline-v: 0 0 0 0 transparent; /* the border is the edge; no extra hairline */
 		--td-btn-sheen-v: var(--td-glass-sheen); /* neutral glass keeps the surface sheen */
 	}
 
@@ -99,8 +100,9 @@
 			background-color: var(--_td-btn-fill, color-mix(in srgb, var(--td-btn-tint-v) var(--td-btn-alpha-v), transparent));
 		}
 
-		.td-btn--secondary {
-			background-color: var(--_td-btn-fill, var(--td-glass-bg-strong));
+		/* :not(.td-btn--custom) matches the specificity of the rule above (it used to win → secondary was grey) */
+		.td-btn--secondary:not(.td-btn--custom) {
+			background-color: var(--_td-btn-fill, var(--td-btn-secondary-glass));
 		}
 	}
 
@@ -125,8 +127,8 @@
 	.td-btn:hover:not(:disabled, [aria-busy="true"], .td-btn--custom, :focus-visible) {
 		box-shadow:
 			var(--_td-btn-rim, inset 0 1px 0 0 rgb(255 255 255 / 38%)),
-			var(--_td-btn-outline, 0 0 0 1px var(--td-glass-outline)),
-			var(--_td-btn-lift, 0 8px 20px -8px rgb(0 0 0 / 34%), 0 1px 3px -1px rgb(0 0 0 / 14%)),
+			var(--_td-btn-outline, var(--td-btn-outline-v, 0 0 0 1px var(--td-glass-outline))),
+			var(--_td-btn-lift, var(--td-btn-lift)),
 			0 0 18px 1px var(--_td-glass-glow, var(--td-glass-glow));
 	}
 

@@ -6,6 +6,8 @@ const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning'
 const TOASTS = ['success', 'error', 'warning', 'info'];
 export const CASES = [];
 for (const v of VARIANTS) for (const state of ['rest', 'disabled', 'loading']) CASES.push({ kind: 'button', v, state });
+// icon + label buttons (v0.14.3 review): the icon ink is gated too — rest ≥ 3.2:1, disabled greyed out ≥ 2.2:1
+for (const v of ['primary', 'secondary']) for (const state of ['icon', 'disabled-icon']) CASES.push({ kind: 'button', v, state });
 for (const t of TOASTS) CASES.push({ kind: 'toast', v: t, state: 'rest' });
 
 const stage = document.getElementById('stage');
@@ -44,11 +46,12 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     const host = document.createElement('td-button');
     host.setAttribute('variant', c.v);
     host.textContent = 'Lưu thay đổi';
-    if (c.state === 'disabled') host.setAttribute('disabled', '');
+    if (c.state === 'disabled' || c.state === 'disabled-icon') host.setAttribute('disabled', '');
+    if (c.state.endsWith('icon')) host.setAttribute('icon', 'download');
     if (c.state === 'loading') host.setAttribute('loading', '');
     stage.appendChild(host);
     el = host.querySelector('button');
-    parts = { label: el.querySelector('.td-btn__label'), spinner: el.querySelector('.td-btn__spinner') };
+    parts = { label: el.querySelector('.td-btn__label'), spinner: el.querySelector('.td-btn__spinner'), icon: el.querySelector('.td-btn__icon') };
   } else {
     TdToast._showSingle('Đã lưu thay đổi của bạn', c.v, 0);
     await new Promise((r) => setTimeout(r, 450));

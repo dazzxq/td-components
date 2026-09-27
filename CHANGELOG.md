@@ -2,6 +2,21 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.14.3
+
+### Changed (visual) — "brighter, less grey" (owner feedback on the demo)
+
+- **Secondary button = white glass with a visible border:** `--td-btn-secondary-glass` (80 % white; dark 84 %) +
+  `--td-control-border-soft` edge; the 4 % grey film (`--td-glass-secondary-film`, removed) and the dark hairline are
+  gone. **Bug fix:** `.td-btn:not(.td-btn--custom)` out-ranked `.td-btn--secondary`, so the secondary glass fill never
+  applied and the button rendered opaque grey (#f0f0f2) — now `.td-btn--secondary:not(.td-btn--custom)`.
+- **Coloured buttons brighter:** tint alpha 90 → 94 %, darkening film 16–18 % → 6–13 % (still ≥ 4.7:1 over every
+  backdrop in the contrast gate).
+- **Lighter lift shadow** (`--td-btn-lift`), rest and hover.
+- **Disabled reads as greyed out:** #f4f4f5 fill, #a1a1aa label, #e4e4e7 border (dark #202024 / #6b6b73) — it used to
+  be almost the same grey as the old secondary. The contrast gate now requires ≥ 2.2:1 for disabled labels AND icons
+  (WCAG 1.4.3 / 1.4.11 exempt inactive controls) instead of 4.7 / 3.2:1, and renders icon buttons (rest + disabled). 12 CSP baselines recaptured (buttons, empty-state actions, picker footer).
+
 ## 0.14.2
 
 ### Changed (visual)
