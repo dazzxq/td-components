@@ -51,6 +51,7 @@ export const TableWithActions = {
         render: (row) => {
           const container = document.createElement('div');
           container.className = 'sb-row';
+          container.style.setProperty('justify-content', 'flex-end'); // a flex row ignores the column's text-align
 
           const viewBtn = button('Xem', 'secondary', row.name);
           viewBtn.addEventListener('click', () => {

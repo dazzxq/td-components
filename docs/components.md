@@ -8,7 +8,7 @@ Three principles hold for the whole library:
 
 1. **Each component is independent.** Import only the one you need (`import '@dazzxq/td-components/dropdown'`) — there is no shared runtime to set up, no provider to wrap your app in. One import registers one custom element (or one imperative API) and nothing else.
 2. **You customize through params, not CSS overrides.** Declarative components are configured with **HTML attributes** (e.g. `size="lg"`, `color="#10b981"`, `required`); list/object data and callbacks are set through **JS properties** (e.g. `el.options = [...]`, `el.columns = [...]`). Imperative components (modal/toast/loading) take an **options object**.
-3. **No Shadow DOM.** Components render into light DOM and use your host page's Tailwind classes, so they inherit your fonts/colors and you can always reach inside if you must. (See the [README](../README.md) for the required Tailwind v4 `@source` setup.)
+3. **No Shadow DOM.** Components render into light DOM and are styled by `td.css` (override `--td-*` tokens to theme them) and you can always reach inside if you must. Load `td.css` once — see the [README](../README.md#styles-tdcss-token-kit); no Tailwind or other setup is needed.
 
 **Reading the tables below:**
 - **Attribute** — set in HTML, e.g. `<td-toggle size="lg">`. Boolean attributes are on when present (`required`), off when absent.
@@ -19,7 +19,7 @@ Three principles hold for the whole library:
 
 ## Form controls
 
-> Catalog state: **v0.4.0**. Every export here is currently **legacy (Tailwind-styled)**; token-native components arrive from v0.5 ([ADR 0008](decisions/0008-drop-tailwind-token-css.md)).
+> Catalog state: **v0.11.0**. Every component is token-native: load `td.css` once (no Tailwind needed). Internal classes changed per release — see the [class map](migration/class-map.md).
 
 Six controls below — `td-input-field`, `td-checkbox`, `td-toggle`, `td-slider`, `td-dropdown`, `td-datetime-picker` — are **form-associated** (via `ElementInternals`): give one a `name` and drop it in a `<form>`, and it submits in `FormData`/POST, participates in `required`/constraint validation, resets with the form, and is excluded by an ancestor `<fieldset disabled>` — like a native control. No hidden `<input>` mirroring needed.
 
@@ -29,7 +29,6 @@ Six controls below — `td-input-field`, `td-checkbox`, `td-toggle`, `td-slider`
 
 ### `td-button` — `@dazzxq/td-components/button`
 
-> **Token-native (0.7.0):** needs `td.css`, no Tailwind. Internal classes changed — see [class map](migration/class-map.md).
 
 Solid content-layer button (never glass — the one primary action on a floating bar uses `.td-glass-tint`).
 
@@ -59,7 +58,6 @@ Events: the native `click` of the inner button.
 
 ### `td-input-field` — `@dazzxq/td-components/input-field`
 
-> **Token-native (0.8.0):** needs `td.css`, no Tailwind. Internal classes changed — see [class map](migration/class-map.md).
 
 
 A text/number/textarea/contenteditable field with label, helper/error text, and a char/word counter. The host owns validation; for `email`/`url`/`number` the host computes `typeMismatch`/range/step so the field never double-blocks a form.
@@ -104,7 +102,6 @@ kept). Counter shows `data-state="limit"` at the limit (no red border). Form res
 
 ### `td-checkbox` — `@dazzxq/td-components/checkbox`
 
-> **Token-native (0.7.0):** needs `td.css`, no Tailwind. Internal classes changed — see [class map](migration/class-map.md).
 
 ```html
 <td-checkbox name="agree" required label="I agree to the terms"></td-checkbox>
@@ -128,7 +125,6 @@ kept). Counter shows `data-state="limit"` at the limit (no red border). Form res
 
 ### `td-toggle` — `@dazzxq/td-components/toggle`
 
-> **Token-native (0.7.0):** needs `td.css`, no Tailwind. Internal classes changed — see [class map](migration/class-map.md).
 
 A switch (`.td-switch`, native `<input type="checkbox" role="switch">`). **Uncontrolled by default**; add
 `controlled` to emit `change` only (you flip `checked`).
@@ -156,7 +152,6 @@ A switch (`.td-switch`, native `<input type="checkbox" role="switch">`). **Uncon
 
 ### `td-slider` — `@dazzxq/td-components/slider`
 
-> **Token-native (0.8.0):** needs `td.css`, no Tailwind. Internal classes changed — see [class map](migration/class-map.md).
 
 
 ```html
@@ -318,7 +313,7 @@ so screen readers announce it. Placement is token-only: `--td-toast-top/-bottom/
 
 ### `TdLightbox` — `@dazzxq/td-components/lightbox`
 
-Token-native image/video viewer (needs `td.css`, **no Tailwind**). [ADR 0009](decisions/0009-td-lightbox-hooks.md).
+Image/video viewer. [ADR 0009](decisions/0009-td-lightbox-hooks.md).
 
 ```js
 import { TdLightbox } from '@dazzxq/td-components/lightbox';
@@ -349,7 +344,6 @@ const unbind = TdLightbox.bind(root = document, options); // click delegation
 
 ### `TdLoading` — `@dazzxq/td-components/loading`
 
-> **Token-native (0.7.0):** needs `td.css`, no Tailwind. Internal classes changed — see [class map](migration/class-map.md).
 
 ```js
 import { TdLoading, TdLoadingSpinner } from '@dazzxq/td-components/loading';
@@ -433,7 +427,6 @@ Wide tables scroll horizontally in a region that becomes focusable and named whi
 
 ### `td-tabs` — `@dazzxq/td-components/tabs`
 
-> **Token-native (0.8.0):** needs `td.css`, no Tailwind. Internal classes changed — see [class map](migration/class-map.md).
 
 
 ```js
@@ -457,7 +450,6 @@ stops managing it), `onChange(tabId)` · **Events:** `tab-change` → `{ tabId }
 
 ### `td-pagination` — `@dazzxq/td-components/pagination`
 
-> **Token-native (0.8.0):** needs `td.css`, no Tailwind. Internal classes changed — see [class map](migration/class-map.md).
 
 
 ```html
@@ -479,7 +471,6 @@ with `aria-disabled`; focus is kept across page changes; `current-page` is clamp
 
 ### `td-empty-state` — `@dazzxq/td-components/empty-state`
 
-> **Token-native (0.8.0):** needs `td.css`, no Tailwind. Internal classes changed — see [class map](migration/class-map.md).
 
 
 ```html
@@ -543,5 +534,5 @@ Values are sanitized **by context** (HTML text/attribute → `escapeHtml`, CSS �
 
 ## See also
 
-- [README](../README.md) — install, Tailwind v4 setup, and how to build your own component on `TdBaseElement`.
+- [README](../README.md) — install, `td.css` setup, and how to build your own component on `TdBaseElement`.
 - Run `npm run storybook` for a live, interactive gallery of every component and its params.

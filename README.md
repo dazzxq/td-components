@@ -2,7 +2,7 @@
 
 Shared UI Web Components library. Drop into any project, import what you need, it just works.
 
-No Shadow DOM -- components use Tailwind classes from your host page. No framework dependency -- vanilla JS Custom Elements that work everywhere.
+No Shadow DOM -- components render light DOM styled by one CSS file (`td.css`), so your page CSS and `--td-*` tokens reach them. No framework dependency -- vanilla JS Custom Elements that work everywhere.
 
 Each component is **independent** (import only what you need) and **customized through params** -- HTML attributes for scalars, JS properties for data/callbacks. See the **[Component Catalog](docs/components.md)** for every component, its params, and usage examples.
 
@@ -32,31 +32,10 @@ Theme it by overriding public `--td-*` tokens in your own **unlayered** CSS (see
 [docs/architecture.md](docs/architecture.md#site-tuỳ-biến-thế-nào)). Dark theme is opt-in:
 `<html data-td-theme="dark">`. Turn glass off manually: `<html data-td-glass="off">`.
 
-Components are migrating from Tailwind to this kit ([ADR 0008](docs/decisions/0008-drop-tailwind-token-css.md)).
-**Token-native (td.css only):** lightbox, icons, button, checkbox, toggle, loading, input-field, slider, pagination, tabs, empty-state. The others still need Tailwind (below).
-
-## Tailwind Configuration (v4) — legacy components
-
-This library requires **Tailwind CSS v4+**. Add the component source to your CSS so Tailwind scans component classes (v4 excludes `node_modules` by default).
-
-```css
-/* your main CSS file */
-@import "tailwindcss";
-@source "../node_modules/@dazzxq/td-components/src";
-```
-
-Your PostCSS config should use the v4 plugin:
-
-```js
-// postcss.config.js
-export default {
-  plugins: {
-    '@tailwindcss/postcss': {},
-  },
-};
-```
-
-> **Migrating from v3?** Replace your v3 config content array with the `@source` directive above. See the [Tailwind v4 upgrade guide](https://tailwindcss.com/docs/upgrade-guide) for details.
+Every component is **token-native** (td.css only) since 0.10.0; the Tailwind peer dependency was removed in 0.11.0
+([ADR 0008](docs/decisions/0008-drop-tailwind-token-css.md)). **Tailwind hosts** can keep Tailwind: td.css is
+layered (`@layer td.*`) and every component sets its own font, line-height, box-sizing and borders, so a host
+preflight does not alter it (checked by the `legacy+td` CSP profile).
 
 ## Usage
 

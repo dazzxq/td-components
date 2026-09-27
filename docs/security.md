@@ -53,12 +53,13 @@ Kết quả đo thực nghiệm (Playwright + header CSP thật, 2026-06-10):
 style với baseline, animation của spinner thực sự chạy. Danh mục construct đã gỡ: [test/csp/INVENTORY.md](../test/csp/INVENTORY.md).
 
 **Giới hạn hiện tại:**
-- Cần `adoptedStyleSheets` (Chromium 73+, Safari 16.4+, Firefox 101+). Trình duyệt cũ vẫn render cấu trúc, chỉ mất
-  hover/checked/animation.
+- Không còn phụ thuộc `adoptedStyleSheets`: mọi style nằm trong `td.css` (file ship kèm), giá trị per-instance đi qua
+  CSSOM (`el.style.setProperty`). `adopt-styles.js` đã xoá ở 0.10.0. (Lịch sử: 0.3–0.9 component legacy dùng
+  constructable sheet; bảng §3 giữ kết quả đo.)
 - **CSP nonce-only (v0.5.0, đo 2026-09-27)** — `default-src 'self'; style-src 'nonce-…'; style-src-attr 'none'`:
-  `td.css` qua `<link nonce>` chạy với 0 violation trên Chromium, Firefox 151 và WebKit (Safari 26.4). Probe cùng
-  gate cho thấy ghi CSSOM `el.style.setProperty` **và** `new CSSStyleSheet()` + `adoptedStyleSheets` đều được áp dụng
-  trên cả ba engine → component legacy dùng `adoptStyles` cũng chạy dưới nonce-only. Gate: `npm run test:tokens`.
+  `td.css` qua `<link nonce>` chạy với 0 violation trên Chromium, Firefox 151 và WebKit (Safari 26.4); ghi CSSOM
+  `el.style.setProperty` được áp dụng trên cả ba engine. Gate: `npm run test:tokens` (probe `adoptedStyleSheets` vẫn chạy
+  nhưng chỉ để ghi nhận, không component nào cần nó).
 
 ## 4. Checklist khi viết component
 

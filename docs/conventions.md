@@ -37,7 +37,7 @@ Chi tiết và danh sách raw-HTML hatch: [security.md](security.md).
 | `npm test` | cả ba | |
 
 - Đổi visual có chủ đích → chạy lại `npm run capture:baseline` và commit baseline mới kèm lý do.
-- Fixture Tailwind cho CSP gate: `npm run build:csp-fixture` (CLI Tailwind pin version).
+- Fixture Tailwind cho CSP gate (profile `legacy+td` = host Tailwind + td.css): `npm run build:csp-fixture` (CLI Tailwind pin version, devDependency).
 - Storybook: `npm run storybook` (dev), `npm run build-storybook` (hiện đang hỏng, xem B7 trong [roadmap](roadmap.md)).
 
 ## Release
@@ -64,4 +64,4 @@ Consumer cài bằng `npm install github:dazzxq/td-components#vX.Y.Z`.
 - `TdModal.loading()` đã bỏ, dùng `TdLoading.show()/hide()`.
 - `td-modal` không đóng khi click backdrop và không đóng bằng ESC ([ADR 0006](decisions/0006-modal-no-backdrop-close.md)).
 - Flag mặc định-bật (`searchable`, `allow-clear`) chỉ tắt bằng giá trị falsy tường minh (`"false"`/`"0"`/`"off"`); setter JS ghi `="false"` chứ không `removeAttribute`.
-- Tailwind v4: `@source` là cách consumer chỉ định file cần quét; đổi tên class khi lên v4: `shadow-sm→shadow-xs`, `rounded→rounded-sm`, `border` phải kèm màu tường minh.
+- Không dùng class Tailwind trong markup component (guard test `src/styles/no-tailwind.test.js`); chỉ `td-*`.

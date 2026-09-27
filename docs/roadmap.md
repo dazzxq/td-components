@@ -47,7 +47,7 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `todo` `td-menu` (từ dwp `menu.js`)
 - `todo` `td-chip-input` (từ `dcms-chip-search-field.js`)
 - `todo` `FormValidation` (từ `dcms-form-validation.js`, sau error contract)
-- `todo` Release cuối của đợt migrate: bỏ peer Tailwind
+- `done` Release cuối của đợt migrate: bỏ peer Tailwind (v0.11.0; `td-sample` token-native, Storybook/demo không Tailwind, guard test)
 
 ## Later — backlog
 

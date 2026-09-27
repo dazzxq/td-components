@@ -1,6 +1,6 @@
 # Architecture
 
-Trạng thái mô tả: **v0.4.0** (Tailwind + CSSOM). Phần cuối mô tả kiến trúc style mục tiêu đang chuyển sang.
+Trạng thái mô tả: **v0.11.0** — mọi component token-native (`td.css` + CSSOM), không còn Tailwind (ADR 0008).
 
 ## Cấu trúc
 
@@ -10,8 +10,9 @@ src/base/                TdBaseElement, TdFormElement, sample/
 src/form/                button, checkbox, toggle, input-field, slider, dropdown, datetime-picker
 src/feedback/            modal, modal-stack, toast, tooltip, loading   (API imperative, không phải tag)
 src/display/             table, tabs, pagination, empty-state
-src/utils/               escape, css-safe, adopt-styles, datetime, dom-utils
-src/styles/tailwind.css  chỉ cho Storybook
+src/utils/               escape, css-safe, datetime, dom-utils, layers, inert-lock, scroll-lock, floating
+src/styles/              tokens + component CSS → build td.css (manifest.json)
+src/icons/               icon registry (Lucide)
 test/csp/                CSP parity gate (Playwright)
 ```
 
@@ -43,15 +44,15 @@ Dùng `TdFormElement`: checkbox, toggle, input-field, slider, dropdown, datetime
 **Feedback** (modal, toast, loading, tooltip) là class tĩnh, không phải custom element: container singleton
 gắn vào `document.body` khi cần. Tooltip tự khởi tạo singleton khi import.
 
-## Mô hình style hiện tại (CSP, v0.3+)
+## Mô hình style (CSP strict, td.css + CSSOM)
 
-Xem [ADR 0005](decisions/0005-csp-strict-cssom-adopted-sheets.md).
+Xem [ADR 0008](decisions/0008-drop-tailwind-token-css.md) (CSSOM per-instance từ [ADR 0005](decisions/0005-csp-strict-cssom-adopted-sheets.md)).
 
 | Loại style | Cách áp |
 |---|---|
-| Layout/màu thường | class Tailwind (host compile qua `@source`) |
+| Layout/màu thường | class BEM trong `src/styles/components/*.css` (build vào `td.css`) |
 | Giá trị per-instance (màu, %, px) | CSSOM trong `_applyStyles()`: `applyStyles(el, map)` / `el.style.setProperty` |
-| Selector, pseudo-class, `::before`, `@keyframes`, `@media` | một constructable sheet mỗi component, `adoptStyles(css, key)`: lazy, idempotent, feature-detect, không throw ở node/SSR |
+| Selector, pseudo-class, `::before`, `@keyframes`, `@media` | cũng trong file CSS của component (`td.css`); không CSS-in-JS, không constructable sheet (`adopt-styles.js` đã xoá ở 0.10.0) |
 | SVG | presentation attribute (`fill`, `opacity`…) |
 
 Giá trị động bên trong selector rule đi qua CSS custom property set bằng CSSOM.
@@ -92,10 +93,10 @@ td-datetime-picker ──► utils/datetime
 dom-utils: độc lập, không component nào bắt buộc dùng
 ```
 
-## Kiến trúc style mục tiêu (đang chuyển; nền tảng ship ở v0.5.0)
+## Kiến trúc style (ADR 0008 — nền tảng từ v0.5.0, mọi component từ v0.10.0)
 
-Chốt ở [ADR 0008](decisions/0008-drop-tailwind-token-css.md) (2026-09-27). Áp dụng cho component token-native
-từ v0.5; component legacy giữ mô hình trên cho tới khi migrate.
+Chốt ở [ADR 0008](decisions/0008-drop-tailwind-token-css.md) (2026-09-27). Áp dụng cho **mọi component** (không còn
+component legacy; peer Tailwind bỏ ở 0.11.0).
 
 - **Token** `--td-*` + **layer** khai báo một lần, đứng đầu: `@layer td.tokens, td.component, td.utilities;`.
   Site override token bằng CSS **không layer** (thắng mọi layer), không sửa lõi.
@@ -111,8 +112,8 @@ từ v0.5; component legacy giữ mô hình trên cho tới khi migrate.
 - **Glass**: component đọc `var(--_td-glass-X, var(--td-glass-X))`. Không khai báo alias private trên `:root`.
   Fallback a11y gán biến private kèm `!important` trên marker `.td-glass-surface`. Không lồng kính.
   Chi tiết: [design/liquid-glass.md](design/liquid-glass.md).
-- **Giai đoạn trộn**: `td.css` không reset; mỗi export gắn nhãn token-native hoặc legacy (Tailwind); CSP harness
-  chạy hai profile. Bỏ peer Tailwind khi component cuối cùng migrate xong.
+- **Đã xong (0.10.0/0.11.0)**: mọi component token-native, peer Tailwind đã bỏ. `td.css` vẫn không reset; CSP harness
+  giữ profile `legacy+td` (Tailwind của host + td.css) làm kiểm tra "host không làm hỏng component".
 
 ### Nền tảng đã có (v0.5.0)
 
@@ -135,7 +136,7 @@ từ v0.5; component legacy giữ mô hình trên cho tới khi migrate.
 3. Class BEM `.td-x__el--mod`; trạng thái qua `aria-*` / `[hidden]` / `data-state`, không bật tắt class hiển thị.
 4. Bề mặt kính: thêm class recipe (`td-glass-surface …`) vào phần tử, **không** tự viết `backdrop-filter`.
    Mọi recipe mới có filter/tint phải nằm trong selector list của khối fallback trong `glass.css`.
-5. Không reset/normalize toàn cục (component legacy dùng chung trang). `npm run test:csp:combined` bảo đảm điều này.
+5. Không reset/normalize toàn cục (td.css nằm cạnh CSS của site, kể cả site có Tailwind). `npm run test:csp:combined` bảo đảm điều này.
 
 ### Site tuỳ biến thế nào
 
