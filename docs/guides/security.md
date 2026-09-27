@@ -238,8 +238,19 @@ Giá trị đi vào ngữ cảnh CSS **không** an toàn chỉ nhờ `escapeHtml
 Thêm một lớp nữa: kit ghi style bằng CSSOM (`el.style.setProperty(prop, value)`), vốn parse `value` như **một** giá trị,
 nên `;` hay `}` không thể chèn khai báo thứ hai.
 
-Với CSS riêng của site: đừng dựng chuỗi CSS từ dữ liệu người dùng; nếu cần màu theo dữ liệu, dùng `safeColor` (export từ
-`src/utils/css-safe.js`, xem [Tiện ích](../components/utilities.md)) rồi `el.style.setProperty('--my-color', value)`.
+Với CSS riêng của site: đừng dựng chuỗi CSS từ dữ liệu người dùng. Nếu cần màu theo dữ liệu, tự kiểm tra trước rồi mới
+ghi bằng CSSOM (`safeColor` của kit là module nội bộ, **không** nằm trong `package.json#exports` — chỉ dùng được như
+method của `TdBaseElement` khi bạn tự viết component, xem [Base element](../components/base-element.md)):
+
+```js
+function applyUserColor(el, value) {
+  const v = String(value ?? '').trim();
+  // chỉ nhận màu hợp lệ theo trình duyệt, chặn url()/var()/expression và mọi thứ có ; { }
+  if (!v || /[;{}]|url\(|var\(|expression/i.test(v) || !CSS.supports('color', v)) return false;
+  el.style.setProperty('--my-color', v); // CSSOM: một giá trị, không chèn được khai báo khác
+  return true;
+}
+```
 
 ## Escaping ở phía server (PHP)
 

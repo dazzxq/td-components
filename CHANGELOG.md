@@ -12,7 +12,8 @@ All notable changes to **td-components** are documented here.
   danh mục hook, mở rộng), `guides/` (form, a11y, bảo mật, CSP, WordPress & PHP), `upgrading/` (quy trình, thay đổi phá
   vỡ theo phiên bản 0.4 → 0.15, bảng đổi class). Mọi API trong docs được đối chiếu với source.
 - Tài liệu nội bộ (ADR, plan, luật Liquid Glass, kiến trúc, quy ước, roadmap, mô hình bảo mật, lịch sử) chuyển vào
-  `docs/internal/`, giữ nguyên nội dung; mọi tham chiếu trong repo đã trỏ lại. `docs/components.md` và
+  `docs/internal/` (không viết lại; chỉ chỉnh vài chỗ đã lệch với code — xem "Fixed" — và roadmap thêm backlog như quy
+  trình yêu cầu); mọi tham chiếu trong repo đã trỏ lại. `docs/components.md` và
   `docs/migration/class-map.md` cũ được thay bằng `docs/components/*.md` và `docs/upgrading/class-map.md`.
 - README gốc rút gọn, trỏ vào hub. Các lỗi/khoảng trống phát hiện khi viết docs ghi ở `docs/internal/roadmap.md` (Next).
 

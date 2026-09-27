@@ -130,7 +130,7 @@ comm -23 /tmp/site-tokens.txt /tmp/kit-tokens.txt
 ```
 
 (Đổi `assets/` thành thư mục CSS của site.) Dòng nào in ra ở bước 3 thì tra
-[breaking-changes.md](breaking-changes.md). Tính tới 0.15.0, token duy nhất từng bị gỡ khỏi `td.css` là
+[breaking-changes.md](breaking-changes.md). Tính tới 0.15.1, token duy nhất từng bị gỡ khỏi `td.css` là
 `--td-glass-secondary-film` (0.14.3); ngoài ra custom property `--td-cb-color` của checkbox (không nằm trong
 `td.css`) đã đổi tên thành `--td-checkbox-color` ở 0.7.0.
 

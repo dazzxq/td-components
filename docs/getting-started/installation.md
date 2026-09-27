@@ -266,10 +266,10 @@ $tdMap = [
 Trình duyệt tự tải các file import tương đối **mà không mang query string** của file gốc. Nếu bạn chỉ thêm `?v=0.15.1`
 vào file đầu tiên, các file bên trong vẫn có thể lấy từ cache cũ, và trang chạy lẫn hai phiên bản. Vì vậy:
 
-- Đặt kit trong thư mục **có số phiên bản** (`/vendor/td-components-0.15.1/`). Nâng cấp = copy sang thư mục mới
-  (`td-components-0.15.1/`) và đổi đường dẫn gốc (một biến `$tdBase`). Có thể cho cache rất lâu vì URL đổi theo bản.
+- Đặt kit trong thư mục **có số phiên bản** (`/vendor/td-components-0.15.1/`). Nâng cấp = copy bản mới sang thư mục mới
+  (ví dụ `td-components-0.16.0/`) và đổi đường dẫn gốc (một biến `$tdBase`). Có thể cho cache rất lâu vì URL đổi theo bản.
 - Mọi chỗ trong trang phải nạp kit qua **cùng một URL**. Hai URL khác nhau (ví dụ một chỗ `/vendor/td-components-0.15.1/…`
-  và một chỗ `/vendor/td-components-0.15.1/…`) tạo ra hai bản module: hai registry lớp nổi, hai stack modal, và thẻ chỉ
+  và một chỗ còn sót `/vendor/td-components-0.15.0/…`) tạo ra hai bản module: hai registry lớp nổi, hai stack modal, và thẻ chỉ
   được đăng ký bởi bản nạp trước. Kết quả là bàn phím/focus giữa các lớp nổi chạy sai.
 
 ### CSP với nonce

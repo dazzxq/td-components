@@ -2,7 +2,7 @@
 
 # Thay đổi phá vỡ theo phiên bản (0.4 → 0.15)
 
-Trang này liệt kê, cho từng bản từ **0.15.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
+Trang này liệt kê, cho từng bản từ **0.15.1** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
 [CHANGELOG.md](../../CHANGELOG.md); trang này chỉ gom lại theo góc nhìn "tôi phải làm gì" và thêm ví dụ trước/sau.
 Quy trình nâng cấp chung nằm ở [README.md](README.md).
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.15.1](#0151) | Không có thay đổi phá vỡ | Không. Tài liệu viết lại; sửa con trỏ trigger video lightbox. |
 | [0.15.0](#0150) | Không có thay đổi phá vỡ | Không bắt buộc. Con trỏ trên trigger lightbox đổi. |
 | [0.14.4](#0144) | Đổi giao diện (nhỏ) | Không bắt buộc. |
 | [0.14.3](#0143) | Đổi giao diện + gỡ 1 token | Bỏ override `--td-glass-secondary-film`; kiểm tra nút secondary / disabled. |
@@ -38,6 +39,21 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.15.1
+
+**Không có thay đổi phá vỡ.** Bản tài liệu + một sửa lỗi nhỏ.
+
+- Tài liệu người dùng viết lại dạng hub-spoke (`docs/README.md`); tài liệu nội bộ chuyển vào `docs/internal/`. Link
+  cũ `docs/components.md` → `docs/components/README.md` (mỗi component một trang), `docs/migration/class-map.md` →
+  [class-map.md](class-map.md).
+- Sửa: trigger video của lightbox dùng prefix `td` (đơn lẻ hoặc trong `[data-td-lightbox-group]`) giờ hiện con trỏ
+  `pointer` như 0.15.0 đã định (trước đó một rule cũ vẫn ép `zoom-in`). Site nào đã tự thêm
+  `[data-td-lightbox-type="video"] { cursor: pointer; }` để né lỗi có thể bỏ dòng đó.
+
+Site phải sửa: không có.
 
 ---
 

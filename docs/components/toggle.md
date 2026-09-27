@@ -105,8 +105,9 @@ Quy tắc của `commit(fn, next?)`:
 - Kết quả **bất kỳ khác `false`** (kể cả `undefined`) = thành công: giữ `next`.
 - Kết quả đúng bằng `false` → quay về trạng thái cũ, phát `commit-error` với `{ checked: previous, error: null }`.
 - `fn` ném lỗi / Promise reject → quay về trạng thái cũ, phát `commit-error` với `{ checked: previous, error }`.
-- Promise trả về của `commit()` **luôn resolve** (không reject) với trạng thái cuối cùng (`true`/`false`). Lỗi được báo
-  qua event `commit-error`.
+- Với `fn` hợp lệ, Promise trả về của `commit()` **resolve** (không reject) với trạng thái cuối cùng (`true`/`false`)
+  kể cả khi `fn` thất bại — lỗi được báo qua event `commit-error`. Ngoại lệ duy nhất: `fn` không phải hàm → reject
+  (xem dưới).
 - Gọi `commit()` khi đang chờ (kể cả gọi lồng bên trong `fn`) trả về **đúng Promise đang chờ**, `fn` không chạy lần
   hai.
 - `commit()` không tự phát thêm `change`.
@@ -278,7 +279,8 @@ Block `.td-switch` giống hợp đồng markup kit 135 / dwp in phía server. H
 - **Dùng Enter để bật/tắt**: không còn hoạt động từ 0.7.0; dùng Space.
 - **Gọi `commit()` trong handler `change` của toggle không có `controlled`**: lỗi lưu sẽ không đưa công tắc về trạng thái trước khi bấm (xem
   [Lưu lên server ngay](#lưu-lên-server-ngay-commit)).
-- **`commit()` luôn resolve**: đừng dựa vào `catch` của nó, hãy nghe `commit-error` hoặc so sánh giá trị trả về.
+- **`commit(fn)` với `fn` hợp lệ không reject khi `fn` thất bại**: đừng dựa vào `catch` để bắt lỗi nghiệp vụ, hãy nghe
+  `commit-error` hoặc so sánh giá trị trả về (chỉ `fn` không phải hàm mới reject `TypeError`).
 - **Trả `false` trong `fn` = thất bại**. Trả `undefined` (quên `return`) = thành công.
 - **`commit()` với `next` sai kiểu** (ví dụ chuỗi `'true'`): bị bỏ qua, công tắc đảo trạng thái hiện tại.
 

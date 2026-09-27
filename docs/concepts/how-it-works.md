@@ -228,8 +228,8 @@ Mỗi loại lớp nổi có một tầng, trùng với token `z-index` trong `t
 
 | Tầng | Token | Giá trị | Ai dùng | Loại |
 |---|---|---|---|---|
-| dropdown | `--td-z-dropdown` | 100 | Không component nào dùng ở 0.15.0 (menu dropdown dùng tầng popover) | |
-| overlay | `--td-z-overlay` | 300 | Không component nào dùng ở 0.15.0 | |
+| dropdown | `--td-z-dropdown` | 100 | Không component nào dùng ở 0.15.x (menu dropdown dùng tầng popover) | |
+| overlay | `--td-z-overlay` | 300 | Không component nào dùng ở 0.15.x | |
 | lightbox | `--td-z-lightbox` | 350 | `TdLightbox` | chặn (blocking) |
 | modal | `--td-z-modal` | 400 | `TdModal` (mọi dialog) | chặn |
 | popover | `--td-z-popover` | 450 | menu của `td-dropdown`, gợi ý `td-chip-input`, `TdMenu`, `TdHovercard` | nổi (floating) |
