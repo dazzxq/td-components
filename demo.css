@@ -43,3 +43,6 @@ hr { margin: 32px 0; border: none; border-top: 1px solid var(--td-color-border);
 .demo-output { min-height: 1.5em; margin: 12px 0 0; padding: 12px; font: 13px/1.5 ui-monospace, monospace; white-space: pre-wrap; background: var(--td-color-surface-muted); border-radius: var(--td-radius-md); }
 .demo-file-warning { margin-bottom: 24px; padding: 16px 20px; line-height: 1.6; color: var(--td-color-text); background: #fff4e5; border: 1px solid #f0b35b; border-radius: 12px; }
 .demo-file-warning code { padding: 1px 5px; background: rgb(0 0 0 / 6%); border-radius: 4px; }
+.demo-glass-stage { position: relative; display: grid; gap: 16px; padding: 32px; border-radius: 16px;
+  background: radial-gradient(circle at 18% 30%, #ffd166 0 16%, transparent 17%), radial-gradient(circle at 78% 55%, #06d6a0 0 20%, transparent 21%),
+    radial-gradient(circle at 48% 90%, #ef476f 0 14%, transparent 15%), linear-gradient(135deg, #118ab2, #073b4c); }

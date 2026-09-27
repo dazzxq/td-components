@@ -1,5 +1,6 @@
 import './foundations.stories.css';
 import '../icons/td-icon-element.js';
+import '../form/td-button.js';
 
 /**
  * Foundations — Liquid Glass recipes from td.css (docs/design/liquid-glass.md).
@@ -83,4 +84,54 @@ export const ClearWithText = {
         <span class="fd-btn">3 / 12 · Đà Lạt, 2024</span>
       </div>
     </div>`,
+};
+
+/**
+ * v0.14.0 — the real Liquid Glass look: glass buttons (tinted prominent + neutral), a menu panel, tinted toasts
+ * and a tooltip chip over a busy, colourful backdrop (glass needs something behind it — liquid-glass R16).
+ */
+export const Showcase = {
+  render: () => {
+    const wrap = document.createElement('div');
+    wrap.className = 'fd-show fd-stage--photo';
+    const col = (title) => {
+      const c = document.createElement('div');
+      c.className = 'fd-show__col';
+      const h = document.createElement('p');
+      h.className = 'fd-show__title';
+      h.textContent = title;
+      c.appendChild(h);
+      wrap.appendChild(c);
+      return c;
+    };
+    const buttons = col('Button kính');
+    for (const [v, label] of [['primary', 'Lưu'], ['secondary', 'Huỷ'], ['success', 'Xuất bản'], ['danger', 'Xoá'], ['info', 'Chi tiết'], ['warning', 'Cảnh báo']]) {
+      const b = document.createElement('td-button');
+      b.setAttribute('variant', v);
+      b.textContent = label;
+      buttons.appendChild(b);
+    }
+    const menuCol = col('Menu / popover');
+    const menu = document.createElement('div');
+    menu.className = 'fd-show__menu td-glass-surface td-glass-surface--strong';
+    for (const t of ['Sửa bài viết', 'Chia sẻ', 'Lưu để đọc sau', 'Xoá']) {
+      const it = document.createElement('div');
+      it.className = 'fd-show__item';
+      it.textContent = t;
+      menu.appendChild(it);
+    }
+    menuCol.appendChild(menu);
+    const toastCol = col('Toast (kính tint màu)');
+    for (const [t, msg] of [['success', 'Đã lưu thay đổi'], ['info', 'Có 3 bình luận mới'], ['warning', 'Bản nháp chưa lưu'], ['error', 'Không kết nối được máy chủ']]) {
+      const el = document.createElement('div');
+      el.className = `td-toast td-toast--${t} td-glass-surface td-glass-surface--strong fd-show__toast`;
+      el.setAttribute('data-state', 'open');
+      const m = document.createElement('span');
+      m.className = 'td-toast__message';
+      m.textContent = msg;
+      el.appendChild(m);
+      toastCol.appendChild(el);
+    }
+    return wrap;
+  },
 };
