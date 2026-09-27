@@ -7,6 +7,8 @@ import { TdModal } from '/src/feedback/td-modal.js';
 import { TdToast } from '/src/feedback/td-toast.js';
 import '/src/display/td-table.js';
 import '/src/form/td-datetime-picker.js';
+import { TdMenu } from '/src/feedback/td-menu.js';
+import '/src/form/td-chip-input.js';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 window.__componentsRun = (async () => {
@@ -81,7 +83,34 @@ window.__componentsRun = (async () => {
   await wait(600); // modal gone → the toast is no longer "over a modal"; glass still off
   const toastOff = glass(toastEl);
   document.documentElement.removeAttribute('data-td-glass');
+  // v0.12.0 popovers: TdMenu panel + td-chip-input suggestions — glass by default, opaque with glass off.
+  const trig = document.createElement('button');
+  trig.textContent = 'Thao tác';
+  root.appendChild(trig);
+  TdMenu.open(trig, [{ label: 'Sửa', onSelect() {} }, { label: 'Xoá', danger: true, onSelect() {} }]);
+  const chip = document.createElement('td-chip-input');
+  chip.setAttribute('aria-label', 'Tác giả');
+  chip.setAttribute('show-on-focus', '');
+  root.appendChild(chip);
+  chip.options = [{ value: 'a', label: 'An' }, { value: 'b', label: 'Bình' }];
+  await wait(400);
+  const menuEl = document.querySelector('.td-menu');
+  const menuGlass = glass(menuEl);
+  document.documentElement.setAttribute('data-td-glass', 'off');
+  await wait(300);
+  const menuOff = glass(menuEl);
+  document.documentElement.removeAttribute('data-td-glass');
+  TdMenu.close();
+  chip.querySelector('.td-chip-input__input').focus();
+  await wait(500);
+  const sugEl = document.querySelector('.td-chip-input__menu');
+  const sugGlass = glass(sugEl);
+  document.documentElement.setAttribute('data-td-glass', 'off');
+  await wait(300);
+  const sugOff = glass(sugEl);
+  document.documentElement.removeAttribute('data-td-glass');
   return {
+    menuGlass, menuOff, sugGlass, sugOff,
     sticky, stickyDark, wheelJumped, wheelSelected,
     toastAlone, modalGlass, toastOverModal, modalOff, toastOff,
     highlight: cs(ref).backgroundColor,

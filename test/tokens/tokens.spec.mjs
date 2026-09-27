@@ -76,6 +76,10 @@ function floatingChecks(tag, r, mode) {
   for (const [k, v] of [['light', r.sticky], ['dark', r.stickyDark]]) {
     check(`${tag} ${mode} table sticky header (${k}) sticky + opaque`, v.position === 'sticky' && opaque(v.bg), JSON.stringify(v));
   }
+  for (const [k, g, off] of [['menu', r.menuGlass, r.menuOff], ['chip suggestions', r.sugGlass, r.sugOff]]) {
+    check(`${tag} ${mode} ${k} popover is glass (control)`, !noFilter(g.bf), JSON.stringify(g));
+    check(`${tag} ${mode} glass off → ${k} opaque, no filter`, noFilter(off.bf) && opaque(off.bg), JSON.stringify(off));
+  }
   check(`${tag} ${mode} modal dialog is glass (control)`, !noFilter(r.modalGlass.bf), r.modalGlass.bf);
   check(`${tag} ${mode} toast is glass (control)`, !noFilter(r.toastAlone.bf), r.toastAlone.bf);
   check(`${tag} ${mode} toast over modal is solid (D20)`, noFilter(r.toastOverModal.bf) && opaque(r.toastOverModal.bg), JSON.stringify(r.toastOverModal));
@@ -348,6 +352,8 @@ async function runEngine(name, launcher) {
         check(`${tag} forced-colors slider fill = Highlight`, r.sliderFillBg === r.highlight, `${r.sliderFillBg} vs ${r.highlight}`);
         check(`${tag} forced-colors modal no filter`, noFilter(r.modalGlass.bf), r.modalGlass.bf);
         check(`${tag} forced-colors toast no filter`, noFilter(r.toastAlone.bf), r.toastAlone.bf);
+        check(`${tag} forced-colors menu no filter`, noFilter(r.menuGlass.bf), r.menuGlass.bf);
+        check(`${tag} forced-colors chip suggestions no filter`, noFilter(r.sugGlass.bf), r.sugGlass.bf);
         await context.close();
       }
 
