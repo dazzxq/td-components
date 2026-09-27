@@ -245,6 +245,12 @@ export class TdDatetimePicker extends TdFormElement {
       case 'max':
         this._updateValueText();
         this._syncForm();
+        if (this._panel) { // open dialog: the year field's native bounds + the pending validation follow
+          const years = this._yearRange();
+          const y = this._panel.querySelector('.td-dtp-panel__input[data-part="year"]');
+          if (y) { y.min = String(years.min); y.max = String(years.max); }
+          this._refresh();
+        }
         return;
       case 'minute-step': // read on the next open
       case 'name':

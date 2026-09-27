@@ -93,3 +93,13 @@ describe('ISSUE-7 rapid reopen: unique control ids', () => {
     expect(new Set(ids).size).to.equal(ids.length);
   });
 });
+
+describe('impl-review round 2', () => {
+  it('ISSUE-9: changing max while open updates the year field bounds', async () => {
+    const el = pick('value="15/06/2026 - 10:30" max="2030-12-31"');
+    await open(el);
+    expect(field('year').max).to.equal('2030');
+    el.setAttribute('max', '2040-12-31');
+    expect(field('year').max).to.equal('2040');
+  });
+});

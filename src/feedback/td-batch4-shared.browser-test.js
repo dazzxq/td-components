@@ -91,3 +91,18 @@ describe('shared CSS fixes found in batch 4', () => {
     document.body.style.removeProperty('font-family');
   });
 });
+
+describe('td-pagination quiet as a boolean property (impl-review round 2 ISSUE-8)', () => {
+  it('quiet = true / false toggles the attribute and the live region', () => {
+    const el = document.createElement('td-pagination');
+    el.setAttribute('total-items', '50');
+    document.body.appendChild(el);
+    el.quiet = true;
+    expect(el.hasAttribute('quiet')).to.equal(true);
+    expect(el.querySelector('.td-pagination__info').hasAttribute('aria-live')).to.equal(false);
+    el.quiet = false;
+    expect(el.hasAttribute('quiet')).to.equal(false);
+    expect(el.querySelector('.td-pagination__info').getAttribute('aria-live')).to.equal('polite');
+    el.remove();
+  });
+});

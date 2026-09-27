@@ -323,7 +323,7 @@ export class TdTable extends TdBaseElement {
     if (server) {
       if (total === null) {
         showPag = false;
-        if (rows.length) this._warnOnce('td-table: server-mode needs `total-items` — pagination is hidden until it is set.');
+        if (!loading) this._warnOnce('td-table: server-mode needs `total-items` — pagination is hidden until it is set.');
       } else if (total === 0) showPag = false;
     } else if (total === 0) showPag = false;
     if (showPag) {

@@ -388,6 +388,16 @@ describe('batch 4 — td-table paging (D11, D17, D22)', () => {
     expect(srv.getState().page).to.equal(3);
   });
 
+  it('server mode without total-items warns for an empty result too (impl-review round 2 ISSUE-10)', () => {
+    table('server-mode', { data: [] });
+    expect(warnings.filter((w) => /total-items/.test(w)).length).to.equal(1);
+  });
+
+  it('server mode without total-items does not warn while the first load is running', () => {
+    table('server-mode loading', { data: [] });
+    expect(warnings.filter((w) => /total-items/.test(w)).length).to.equal(0);
+  });
+
   it('server mode without total-items (2.8.9): rows render, both paginations hidden, one console warning', () => {
     const el = table('server-mode', { data: ROWS.slice(0, 5) });
     expect(rows(el).length).to.equal(5);

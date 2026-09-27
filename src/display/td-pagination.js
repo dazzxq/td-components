@@ -27,6 +27,8 @@ import { fillIconSlots } from '../icons/td-icon.js';
  * @fires page-change - When page changes, detail: { page }
  */
 export class TdPagination extends TdBaseElement {
+  static get booleanAttributes() { return ['quiet']; }
+
   static get observedAttributes() {
     return ['total-items', 'items-per-page', 'current-page', 'active-color', 'item-label', 'max-pages', 'aria-label', 'quiet'];
   }
