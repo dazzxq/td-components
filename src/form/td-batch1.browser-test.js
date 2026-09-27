@@ -7,7 +7,7 @@ import { TdButton } from './td-button.js';
 import { TdLoading, TdLoadingSpinner } from '../feedback/td-loading.js';
 import { TdToast } from '../feedback/td-toast.js';
 import { isScrollLocked } from '../utils/scroll-lock.js';
-import { sendKeys } from '@web/test-runner-commands';
+import { sendKeys, sendMouse, resetMouse } from '@web/test-runner-commands';
 
 const link = document.createElement('link');
 link.rel = 'stylesheet';
@@ -245,6 +245,22 @@ describe('batch 1 — td-button', () => {
       const b = el.querySelector('button');
       expect(getComputedStyle(b).backgroundColor, c).to.equal(bg);
     }
+  });
+
+  it('hover glow never replaces the keyboard focus ring (review ISSUE-8)', async () => {
+    const el = mount('<td-button variant="primary">Lưu</td-button>');
+    const b = el.querySelector('button');
+    await sendKeys({ press: 'Shift' }); // keyboard modality → programmatic focus is :focus-visible
+    b.focus();
+    expect(b.matches(':focus-visible')).to.equal(true);
+    await new Promise((r) => setTimeout(r, 250));
+    const ring = getComputedStyle(b).boxShadow;
+    const r = b.getBoundingClientRect();
+    await sendMouse({ type: 'move', position: [Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2)] });
+    await new Promise((res) => setTimeout(res, 250));
+    expect(b.matches(':hover')).to.equal(true);
+    expect(getComputedStyle(b).boxShadow).to.equal(ring);
+    await resetMouse();
   });
 
   it('forwards aria-label to the inner button', () => {

@@ -322,6 +322,25 @@ describe('v0.14 TdMenu.bindAll — declarative triggers', () => {
     }
   });
 
+  it('bind() BEFORE bindAll(): releasing the explicit binding keeps the live delegated ARIA (review ISSUE-9)', () => {
+    const name = uniq();
+    track(TdMenu.define(name, [{ label: 'A' }]));
+    host.insertAdjacentHTML('beforeend', `<div><button type="button" data-td-menu="${name}">Mở</button></div>`);
+    const root = host.lastElementChild;
+    const b = root.firstElementChild;
+    const ub = TdMenu.bind(b, [{ label: 'X' }]);
+    const ua = TdMenu.bindAll(root);
+    ub();
+    expect(b.getAttribute('aria-haspopup')).to.equal('menu');
+    expect(b.getAttribute('aria-expanded')).to.equal('false');
+    b.click();
+    expect(labels()).to.deep.equal(['A']); // delegation took over
+    TdMenu.close();
+    ua();
+    expect(b.hasAttribute('aria-haspopup')).to.equal(false);
+    expect(b.hasAttribute('aria-expanded')).to.equal(false);
+  });
+
   it('nested bindAll roots: releasing either root first never strips the other root\'s ARIA', () => {
     const name = uniq();
     track(TdMenu.define(name, [{ label: 'A' }]));

@@ -779,7 +779,8 @@ export class TdMenu {
     root.addEventListener('focusin', onPrime);
     root.addEventListener('mouseover', onPrime);
     for (const n of root.querySelectorAll('[data-td-menu]')) {
-      if (n instanceof HTMLElement && !bound.has(n) && validName(n.getAttribute('data-td-menu'))) prime(n);
+      // bind()-owned triggers are acquired too (shared ownership, review ISSUE-9); only EVENT handling skips them
+      if (n instanceof HTMLElement && validName(n.getAttribute('data-td-menu'))) prime(n);
     }
     const unbind = () => {
       if (boundRoots.get(root) !== unbind) return;

@@ -1046,8 +1046,9 @@
 	}
 
 	/* Glass hover = GLOW, not a new material (G3: interaction animates only transform / glow). The glow is an outer
-	   halo, so the fill behind the label — and its rendered contrast — never changes. */
-	.td-btn:hover:not(:disabled, [aria-busy="true"], .td-btn--custom) {
+	   halo, so the fill behind the label — and its rendered contrast — never changes. Never while :focus-visible (the
+	   focus ring must stay visible under the pointer). */
+	.td-btn:hover:not(:disabled, [aria-busy="true"], .td-btn--custom, :focus-visible) {
 		box-shadow:
 			var(--_td-btn-rim, inset 0 1px 0 0 rgb(255 255 255 / 38%)),
 			var(--_td-btn-outline, 0 0 0 1px var(--td-glass-outline)),

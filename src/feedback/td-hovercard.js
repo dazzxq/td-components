@@ -639,7 +639,8 @@ export class TdHovercard {
       const list = [...root.querySelectorAll(DECL)];
       if (root instanceof Element && root.matches(DECL)) list.unshift(root);
       for (const t of list) {
-        if (t instanceof HTMLElement && !explicit.has(t) && !(card && card.contains(t))) prepTrigger(t, touched);
+        // explicitly bound triggers are acquired too (shared ownership, review ISSUE-9); only EVENT handling skips them
+        if (t instanceof HTMLElement && !(card && card.contains(t))) prepTrigger(t, touched);
       }
     };
     for (const [type, fn] of Object.entries(h)) root.addEventListener(type, fn);

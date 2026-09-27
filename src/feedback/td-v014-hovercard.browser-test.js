@@ -800,6 +800,20 @@ describe('v0.14 TdHovercard — bindAll, unbind, reconnect', () => {
     expect(s0.hasAttribute('tabindex')).to.equal(false);
   });
 
+  it('bind() BEFORE bindAll() on a non-focusable trigger: explicit unbind keeps delegated ARIA + tabindex (ISSUE-9)', () => {
+    const root = add('<div><span data-td-hovercard-template="x">Lan</span></div>');
+    const s0 = root.firstElementChild;
+    const ub = TdHovercard.bind(s0, { content: () => 'x' });
+    const ua = TdHovercard.bindAll(root);
+    ub();
+    expect(s0.getAttribute('aria-haspopup')).to.equal('dialog');
+    expect(s0.getAttribute('aria-expanded')).to.equal('false');
+    expect(s0.getAttribute('tabindex')).to.equal('0');
+    ua();
+    expect(s0.hasAttribute('aria-haspopup')).to.equal(false);
+    expect(s0.hasAttribute('tabindex')).to.equal(false);
+  });
+
   it('nested bindAll roots: releasing either root first never restores stale ARIA under the other', () => {
     const outer = add('<div><div><span data-td-hovercard-template="x">Lan</span></div></div>');
     const inner = outer.firstElementChild;
