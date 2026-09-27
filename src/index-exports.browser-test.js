@@ -9,4 +9,9 @@ describe('index.js exports', () => {
     }
     expect(customElements.get('td-chip-input')).to.equal(kit.TdChipInput);
   });
+
+  it('exports TdIconElement and registers <td-icon> (v0.16.0 D4)', () => {
+    expect(typeof kit.TdIconElement).to.equal('function');
+    expect(customElements.get('td-icon')).to.equal(kit.TdIconElement);
+  });
 });

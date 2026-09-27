@@ -7,6 +7,7 @@
 @layer td.tokens {
 	:root {
 		--td-checkbox-radius: 50%;
+		--td-checkbox-box: 1.25rem; /* v0.16.0: on :root (was .td-checkbox); --sm / --lg still set it on the element */
 	}
 }
 
@@ -16,8 +17,6 @@
 	}
 
 	.td-checkbox {
-		--td-checkbox-box: 1.25rem;
-
 		position: relative;
 		box-sizing: border-box;
 		display: inline-flex;

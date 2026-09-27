@@ -3,14 +3,20 @@
  * Colour: var(--td-spinner-color, currentColor); track: var(--td-spinner-track, 15% of the colour).
  * Reduced motion: no rotation, arc pinned (still shows "busy"). Forced colours: CanvasText.
  */
+/* v0.16.0: default (md) size on :root (was .td-spinner) — an unlayered site `:root { … }` reaches it;
+   --sm / --lg still set it on the element on purpose. */
+@layer td.tokens {
+	:root {
+		--td-spinner-size: 2rem;
+	}
+}
+
 @layer td.component {
 	.td-spinner[hidden] {
 		display: none; /* `display: inline-block` below would otherwise defeat [hidden] (idle button spinners) */
 	}
 
 	.td-spinner {
-		--td-spinner-size: 2rem;
-
 		display: inline-block;
 		flex: 0 0 auto;
 		width: var(--td-spinner-size);
@@ -20,7 +26,6 @@
 	}
 
 	.td-spinner--sm { --td-spinner-size: 1.25rem; }
-	.td-spinner--md { --td-spinner-size: 2rem; }
 	.td-spinner--lg { --td-spinner-size: 3rem; }
 
 	.td-spinner__svg {

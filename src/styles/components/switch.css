@@ -5,15 +5,23 @@
  * fill + --td-switch-edge border (v0.14.1: soft at rest; v0.14.2: soft hover step); the thumb carries the same edge while off.
  * Host custom property --td-switch-on (from the `color` attribute) overrides the token.
  */
+/* v0.16.0: default-size geometry on :root (was .td-switch) so an unlayered site `:root { … }` reaches every toggle;
+   --sm / --lg still set it on the element on purpose. */
+@layer td.tokens {
+	:root {
+		--td-switch-w: 2.75rem;
+		--td-switch-h: 1.5rem;
+		--td-switch-thumb-d: 1.125rem;
+	}
+}
+
 @layer td.component {
 	td-toggle {
 		display: inline-block;
 	}
 
 	.td-switch {
-		--td-switch-w: 2.75rem;
-		--td-switch-h: 1.5rem;
-		--td-switch-thumb-d: 1.125rem;
+		/* derived: computed per element so it follows the size modifier and any override of the three above */
 		--td-switch-pad: calc((var(--td-switch-h) - var(--td-switch-thumb-d)) / 2);
 
 		position: relative;

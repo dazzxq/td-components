@@ -128,8 +128,9 @@ Không có method công khai riêng; không phát event riêng (nghe `onClick` c
 | `--td-empty-state-border` | `var(--td-color-border-strong)` | Viền nét đứt |
 | `--td-empty-state-icon` | `var(--td-color-text-subtle)` | Màu icon |
 
-Hai biến `--td-empty-state-pad` và `--td-empty-state-gap` được đặt theo `size`/`compact` ngay trên `.td-empty-state`; có
-thể override với selector cụ thể hơn nếu cần.
+Hai biến `--td-empty-state-pad` (mặc định `22px`) và `--td-empty-state-gap` (`10px`) của cỡ md khai báo trên `:root`
+(từ 0.16.0), nên `:root { --td-empty-state-pad: 32px; }` có tác dụng. Cỡ `sm` / `lg` và `compact` đặt lại chúng trên
+`.td-empty-state` (class `--sm`, `--lg`, `--compact`); muốn đổi những cỡ đó thì nhắm class tương ứng.
 
 ```css
 :root { --td-empty-state-icon: var(--td-accent); }

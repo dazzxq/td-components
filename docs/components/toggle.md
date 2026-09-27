@@ -207,7 +207,7 @@ Property phản chiếu attribute: `checked`, `controlled` (boolean), `value`, `
 | `--td-switch-edge` | `var(--td-control-border-soft)` | Viền rãnh và núm khi tắt (mềm, v0.14.1). |
 | `--td-switch-thumb` | `#fff` | Màu núm. |
 | `--td-control-border-hover` | `#aeaeb2` | Viền khi hover công tắc đang tắt (v0.14.2). |
-| `--td-switch-w` / `--td-switch-h` / `--td-switch-thumb-d` | theo size | Kích thước rãnh và núm, đặt trên `.td-switch` theo size; override bằng selector class (ví dụ `.settings .td-switch--md { --td-switch-w: 3rem; }`). |
+| `--td-switch-w` / `--td-switch-h` / `--td-switch-thumb-d` | md: `2.75rem` / `1.5rem` / `1.125rem` | Kích thước rãnh và núm. Cỡ mặc định (md) khai báo trên `:root` (từ 0.16.0): `:root { --td-switch-w: 3rem; }`. Cỡ `sm` / `lg` đặt lại trên `.td-switch--sm` / `--lg`. Khoảng đệm núm `--td-switch-pad` tự tính trên `.td-switch` từ `-h` và `-thumb-d`. |
 
 Lỗi dùng `--td-field-error` (viền rãnh). Focus dùng `--td-focus-ring`. Hiệu ứng "nhấc núm" khi đang nhấn dùng
 `--td-glass-lift-scale` (tắt khi giảm chuyển động).

@@ -7,14 +7,19 @@
  */
 @layer td.tokens {
 	:root {
-		--td-pagination-active: var(--td-accent);
+		--td-pagination-active: var(--td-accent-fill);
 		--td-pagination-active-fg: var(--td-accent-contrast);
 		--td-pagination-item-size: 2rem;
 	}
 
+	/* v0.16.0: touch size on :root too (was .td-pagination), so a site `:root` override wins everywhere */
+	@media (pointer: coarse) {
+		:root { --td-pagination-item-size: var(--td-touch-min); }
+	}
+
 	:root[data-td-theme="dark"] {
-		/* white text on the dark accent #3b82f6 is 3.68:1 → use the button primary blue (5.17:1), like .td-btn--primary */
-		--td-pagination-active: #2563eb;
+		/* white text on the raw dark accent #3b82f6 is 3.68:1 → the darkened fill, like .td-btn--primary (v0.16.0) */
+		--td-pagination-active: var(--td-accent-fill);
 		--td-pagination-active-fg: #fff;
 	}
 }
@@ -134,10 +139,6 @@
 		min-width: 1.5rem;
 		color: var(--td-color-text-muted);
 		user-select: none;
-	}
-
-	@media (pointer: coarse) {
-		.td-pagination { --td-pagination-item-size: var(--td-touch-min); }
 	}
 
 	@media (prefers-reduced-motion: reduce) {

@@ -33,6 +33,7 @@
 
 		--td-accent: #3b82f6;
 		--td-accent-contrast: #fff;
+		--td-accent-fill: #2563eb; /* fallback without color-mix(); see @supports below */
 
 		--td-control-bg: #1c1c1e;
 		--td-control-fg: #f5f5f7;
@@ -41,7 +42,7 @@
 		--td-control-border-soft: #3a3a3c; /* Apple systemGray4 (dark) */
 		--td-control-border-hover: #636366; /* Apple systemGray2 (dark) */
 
-		--td-btn-primary-bg: #2563eb; /* white text 5.17:1 (the dark accent #3b82f6 would be 3.68:1) */
+		--td-btn-primary-bg: var(--td-accent-fill); /* white on the raw dark accent #3b82f6 would be 3.68:1 */
 		--td-btn-secondary-bg: #2c2c30;
 		--td-btn-secondary-fg: #f5f5f7;
 		--td-btn-secondary-border: rgb(255 255 255 / 12%);
@@ -69,5 +70,13 @@
 		--td-glass-shadow-lg: 0 26px 64px -18px rgb(0 0 0 / 76%), 0 8px 22px -10px rgb(0 0 0 / 52%);
 		--td-glass-solid: #17181c;
 		--td-glass-glow: rgb(255 255 255 / 18%);
+	}
+
+	/* v0.16.0: the dark fill FOLLOWS the site accent — 20% darker so white text stays readable
+	   (default #3b82f6 → ≈ #2f68c5, white ≈ 5.3:1). */
+	@supports (color: color-mix(in srgb, red 50%, blue)) {
+		:root[data-td-theme="dark"] {
+			--td-accent-fill: color-mix(in srgb, var(--td-accent) 80%, #000);
+		}
 	}
 }
