@@ -25,11 +25,12 @@ function decimalsOf(n) {
  *   `aria-valuetext` = the value formatted to the step's decimals.
  * - Error contract (setError / clearError / `error-text`), note appended inside `.td-slider`.
  * - Form-associated (ElementInternals): submits the numeric value, reset, range/step validity, `<fieldset disabled>`.
+ *   No `required` (a range always has a value — native `<input type=range>` has no valueMissing either).
  *
  * @element td-slider
  * @attr {number} min - Minimum value (default 0)
  * @attr {number} max - Maximum value (default 100)
- * @attr {number} value - Current value (default 0)
+ * @attr {number} value - Current value (default: `min`, like the thumb shows)
  * @attr {number} step - Step increment (default 1)
  * @attr {string} name - Form field name (submitted via the host)
  * @attr {string} size - Size preset: sm, md, lg (default md) — width token --td-slider-w (200/300/400 px, max 100%)
@@ -46,13 +47,24 @@ function decimalsOf(n) {
  * @fires change - When the value is committed (release / key), detail: { value: number }
  */
 export class TdSlider extends TdFormElement {
+  /**
+   * Validation texts (Vietnamese); override per site: `TdSlider.messages.rangeUnderflow = 'Minimum is {min}.'`.
+   * Placeholders: `{min}` `{max}` `{step}`.
+   */
+  static messages = {
+    rangeUnderflow: 'Giá trị tối thiểu là {min}.',
+    rangeOverflow: 'Giá trị tối đa là {max}.',
+    stepMismatch: 'Giá trị phải là bội số của {step}.',
+  };
+
   static get observedAttributes() {
-    return [...super.observedAttributes, 'min', 'max', 'value', 'step', 'size', 'color', 'track-color', 'label',
+    // `required` is meaningless for a range (always has a value) → not observed, no `required` property.
+    return [...super.observedAttributes.filter((a) => a !== 'required'), 'min', 'max', 'value', 'step', 'size', 'color', 'track-color', 'label',
       'show-label', 'label-position', 'show-step-labels', 'show-step-marks', 'aria-label', 'error-text'];
   }
 
   static get booleanAttributes() {
-    return [...super.booleanAttributes, 'show-label', 'show-step-labels', 'show-step-marks'];
+    return [...super.booleanAttributes.filter((a) => a !== 'required'), 'show-label', 'show-step-labels', 'show-step-marks'];
   }
 
   static get errorContract() { return true; }
@@ -76,7 +88,8 @@ export class TdSlider extends TdFormElement {
 
   _getMin() { return this._num('min', 0); }
   _getMax() { return this._num('max', 100); }
-  _getValue() { return this._num('value', 0); }
+  /** @returns {number} the `value` attribute; none (or not a number) → `min` (the thumb's position) */
+  _getValue() { return this._num('value', this._getMin()); }
   _getStep() { const s = this._num('step', 1); return s > 0 ? s : 1; }
   _getSize() { const s = this.getAttribute('size'); return s === 'sm' || s === 'lg' ? s : 'md'; }
   /** @returns {string} the sanitized `color` ('' = token default) */
@@ -227,7 +240,6 @@ export class TdSlider extends TdFormElement {
         this._applyName();
         return;
       case 'name':
-      case 'required':
         this._syncForm();
         return;
       default:
@@ -240,16 +252,16 @@ export class TdSlider extends TdFormElement {
   _updateUI() {
     const value = this._shownValue();
     const text = this._format(value);
-    this.style.setProperty('--td-slider-pct', String(this._fraction(value)));
+    this._setOwnedStyle('--td-slider-pct', String(this._fraction(value)));
     if (this._valueOut) this._valueOut.textContent = text;
     if (this._input) this._input.setAttribute('aria-valuetext', text);
   }
 
   /** Per-instance colours as host CSSOM custom properties (safeColor; invalid → token default). */
   _applyColors() {
-    const set = (prop, v) => (v ? this.style.setProperty(prop, v) : this.style.removeProperty(prop));
-    set('--td-slider-color', this._getColor());
-    set('--td-slider-track', this._getTrackColor());
+    // Owned: an invalid/absent colour removes only a value WE set (a site's own inline var survives).
+    this._setOwnedStyle('--td-slider-color', this._getColor());
+    this._setOwnedStyle('--td-slider-track', this._getTrackColor());
   }
 
   _applyName() {
@@ -268,11 +280,11 @@ export class TdSlider extends TdFormElement {
     const max = this._getMax();
     const step = this._getStep();
     if (value < min) {
-      this._setValidity({ rangeUnderflow: true }, `Giá trị tối thiểu là ${min}.`, this._focusTarget());
+      this._setValidity({ rangeUnderflow: true }, this._msg('rangeUnderflow', { min, max, step }), this._focusTarget());
     } else if (value > max) {
-      this._setValidity({ rangeOverflow: true }, `Giá trị tối đa là ${max}.`, this._focusTarget());
+      this._setValidity({ rangeOverflow: true }, this._msg('rangeOverflow', { min, max, step }), this._focusTarget());
     } else if (step > 0 && Math.abs(((value - min) / step) - Math.round((value - min) / step)) > 1e-9) {
-      this._setValidity({ stepMismatch: true }, `Giá trị phải là bội số của ${step}.`, this._focusTarget());
+      this._setValidity({ stepMismatch: true }, this._msg('stepMismatch', { min, max, step }), this._focusTarget());
     } else {
       this._setValidity({});
     }
@@ -280,8 +292,7 @@ export class TdSlider extends TdFormElement {
 
   _captureDefaults() {
     super._captureDefaults();
-    // Presence-aware: null = no initial `value` attr → _getValue() resolves to its 0 default.
-    // Falling back to `min` would change the post-reset value/validity (ISSUE-3).
+    // Presence-aware: null = no initial `value` attr → reset removes it again and _getValue() resolves to `min`.
     this._defaultValueAttr = this.getAttribute('value');
   }
 
@@ -311,12 +322,20 @@ export class TdSlider extends TdFormElement {
     return this._shownValue();
   }
 
-  /** Set the value (clamped to [min, max]); no event is fired. @param {number} val */
+  /**
+   * Set the value, clamped to [min, max] and snapped to the nearest `step` from `min` (like a native range);
+   * no event is fired.
+   * @param {number} val
+   */
   setValue(val) {
     const n = Number(val);
     if (!Number.isFinite(n)) return;
-    const clamped = Math.max(this._getMin(), Math.min(this._getMax(), n));
-    this.setAttribute('value', String(clamped));
+    const min = this._getMin();
+    const max = Math.max(min, this._getMax());
+    const step = this._getStep();
+    let v = min + Math.round((Math.max(min, Math.min(max, n)) - min) / step) * step;
+    if (v > max + 1e-9) v -= step; // snapping up past max → the last step inside the range
+    this.setAttribute('value', this._format(Math.max(min, v)));
   }
 
   /** @param {boolean} bool */

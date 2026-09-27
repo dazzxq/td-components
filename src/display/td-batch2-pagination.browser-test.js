@@ -17,9 +17,18 @@ afterEach(() => { host.innerHTML = ''; document.documentElement.removeAttribute(
 /* WCAG contrast from computed colours (the background composited over `under`). */
 function rgb(str) {
   const m = /rgba?\(([^)]+)\)/.exec(str);
+  if (!m) {
+    // color-mix() (dark --td-accent-fill, v0.16.0) serialises as oklab()/color(): let a canvas convert it to sRGB
+    const ctx = Object.assign(document.createElement('canvas'), { width: 1, height: 1 }).getContext('2d', { willReadFrequently: true });
+    ctx.fillStyle = str;
+    ctx.fillRect(0, 0, 1, 1);
+    const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+    return { r, g, b, a: a / 255 };
+  }
   const n = m[1].split(/[\s,/]+/).filter(Boolean).map(Number);
   return { r: n[0], g: n[1], b: n[2], a: n.length > 3 ? n[3] : 1 };
 }
+
 const over = (c, u) => ({ r: c.r * c.a + u.r * (1 - c.a), g: c.g * c.a + u.g * (1 - c.a), b: c.b * c.a + u.b * (1 - c.a) });
 const ratioRgb = (a, b) => {
   const [x, y] = [TdButton._luminance(a), TdButton._luminance(b)].sort((p, q) => q - p);
@@ -192,7 +201,7 @@ describe('batch 2 — td-pagination', () => {
 
   it('coarse pointer / forced colours rules are present in td.css', async () => {
     const css = await (await fetch('/td.css')).text();
-    expect(css).to.match(/@media \(pointer: coarse\)\s*{\s*\.td-pagination\s*{\s*--td-pagination-item-size: var\(--td-touch-min\)/);
+    expect(css).to.match(/@media \(pointer: coarse\)\s*{\s*:root\s*{\s*--td-pagination-item-size: var\(--td-touch-min\)/); // v0.16.0 D5
     expect(css).to.match(/\.td-pagination__page\[aria-current="page"\]\s*{\s*color: HighlightText;\s*background: Highlight;/);
   });
 

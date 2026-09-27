@@ -62,7 +62,7 @@ thế nào, và kit tự xử lý các chế độ trợ năng của hệ điề
 Một token tham chiếu token khác, ví dụ:
 
 ```css
---td-btn-primary-bg: var(--td-accent);
+--td-btn-primary-bg: var(--td-accent-fill);   /* --td-accent-fill: var(--td-accent) */
 --td-field-border: var(--td-control-border-soft);
 ```
 
@@ -119,18 +119,22 @@ thắng specificity). Nếu site có dark theme, hãy khai báo riêng cho dark,
 :root[data-td-theme="dark"]       { --td-color-bg: #14120f; }
 ```
 
-**2. Token được tính tại nơi khai báo.** `--td-btn-primary-bg: var(--td-accent)` được khai báo trên `:root`, nên
-`var(--td-accent)` được "giải" tại `:root` rồi mới kế thừa xuống. Hệ quả:
+**2. Token được tính tại nơi khai báo.** `--td-btn-primary-bg: var(--td-accent-fill)` (và `--td-accent-fill:
+var(--td-accent)`) được khai báo trên `:root`, nên `var(--td-accent)` được "giải" tại `:root` rồi mới kế thừa xuống. Hệ
+quả:
 
 - Ghi đè `--td-accent` trên `:root` → nút primary, checkbox, slider, pagination, tint kính… đổi theo. Đúng ý.
 - Ghi đè `--td-accent` trên **một vùng** (`.sidebar { --td-accent: red }`) → **không** làm nút primary trong vùng đó
   đổi, vì `--td-btn-primary-bg` đã được tính ở `:root`. Muốn đổi theo vùng, ghi đè thẳng token con
   (`.sidebar { --td-btn-primary-bg: red; --td-checkbox-color: red; }`). Xem [Theme theo vùng](#theme-theo-vùng).
 
-**3. Một số token được khai báo trên chính phần tử của component**, không phải trên `:root` (ví dụ `--td-lb-*` trên
-`.td-lightbox`, `--td-switch-w` trên `.td-switch`, `--td-spinner-size` trên `.td-spinner`). Khai báo trên phần tử luôn
-đè giá trị kế thừa từ `:root`, nên ghi đè những token này trên `:root` **không có tác dụng**; phải ghi đè trên class
-đó. Danh sách ở [Token riêng của từng component](#token-riêng-của-từng-component).
+**3. Modifier kích thước đặt token trên chính phần tử.** Từ 0.16.0 mọi token kích thước **mặc định** đều khai báo trên
+`:root` (trước đó `--td-lb-*`, `--td-checkbox-box`, `--td-switch-w/-h/-thumb-d`, `--td-spinner-size`,
+`--td-empty-state-pad/-gap` nằm trên phần tử và ghi đè ở `:root` không có tác dụng). Nhưng class cỡ (`--sm`, `--lg`,
+`--compact`, `.td-table__cell--px-*`) vẫn cố ý đặt lại token trên phần tử, nên `:root { --td-checkbox-box: 30px }` chỉ
+đổi checkbox cỡ mặc định; muốn đổi cỡ `sm` thì nhắm `.td-checkbox--sm`. Hai token **dẫn xuất** (`--td-switch-pad`,
+`--td-lb-bar-h`) được tính trên phần tử từ các token kia, nên chúng tự đi theo. Danh sách ở
+[Token riêng của từng component](#token-riêng-của-từng-component).
 
 ## Danh mục token công khai
 
@@ -223,9 +227,9 @@ Thang xám **không** đổi trong dark; dark đổi các token ngữ nghĩa bê
 
 | Token | Mặc định | Lớp |
 |---|---|---|
-| `--td-z-dropdown` | `100` | Dành cho site (không component nào của kit dùng ở 0.15.0) |
-| `--td-z-sticky` | `200` | Dành cho site (header dính của site) |
-| `--td-z-overlay` | `300` | Dành cho site |
+| `--td-z-dropdown` | `100` | **Dự trữ**: không component nào dùng (menu của td-dropdown dùng `--td-z-popover`); giữ vì là token public |
+| `--td-z-sticky` | `200` | **Dự trữ**, dành cho site (header dính của site) |
+| `--td-z-overlay` | `300` | **Dự trữ**, dành cho site |
 | `--td-z-lightbox` | `350` | TdLightbox (dưới modal: confirm/menu mở được trên lightbox) |
 | `--td-z-modal` | `400` | TdModal (kể cả picker của td-datetime-picker) |
 | `--td-z-popover` | `450` | TdMenu, TdHovercard, menu của td-dropdown, popup gợi ý của td-chip-input |
@@ -282,8 +286,13 @@ Người dùng bật "giảm chuyển động" (`prefers-reduced-motion: reduce`
 |---|---|---|---|
 | `--td-accent` | `#2563eb` | `#3b82f6` | Màu thương hiệu: nút primary, checkbox, slider, pagination, tint kính, link hovercard, spinner loading |
 | `--td-accent-contrast` | `#fff` | `#fff` | Chữ đặt trên accent |
+| `--td-accent-fill` | `var(--td-accent)` | `color-mix(in srgb, var(--td-accent) 80%, #000)` (trình duyệt không có `color-mix()`: `#2563eb`) | Nền **đặc** mang chữ trắng: nút primary, trang hiện tại của pagination (0.16.0) |
 | `--td-focus` | `#2563eb` | `#60a5fa` | Màu focus của ô nhập |
 | `--td-focus-ring` | `0 0 0 3px rgb(37 99 235 / 35%)` | `0 0 0 3px rgb(96 165 250 / 45%)` | Vòng focus (`box-shadow`) dùng chung mọi control |
+
+`--td-accent-fill` đi theo `--td-accent`: ở dark nó là accent tối đi 20% (mặc định `#3b82f6` → ≈ `#2f68c5`, chữ trắng
+≈ 5.3:1), nên đổi **một** token `--td-accent` là nút primary và trang active đổi theo ở cả light lẫn dark. Muốn chỉnh
+riêng màu nền đặc (ví dụ accent của bạn quá sáng để mang chữ trắng), ghi đè `--td-accent-fill`.
 
 Đổi `--td-accent` mà không đổi `--td-focus` / `--td-focus-ring` thì vòng focus vẫn xanh dương. Thường nên đổi cả ba,
 xem [ví dụ thương hiệu](#ví-dụ-đầu-cuối-đổi-màu-thương-hiệu-accent).
@@ -311,7 +320,7 @@ Button là **kính có tint** (Liquid Glass, v0.14.0): màu variant được pha
 | Token | Mặc định | Dark |
 |---|---|---|
 | `--td-btn-radius` | `var(--td-radius-lg)` | |
-| `--td-btn-primary-bg` | `var(--td-accent)` | `#2563eb` (cố định, xem ghi chú) |
+| `--td-btn-primary-bg` | `var(--td-accent-fill)` | |
 | `--td-btn-primary-fg` | `var(--td-accent-contrast)` | |
 | `--td-btn-primary-tint` | `var(--td-btn-primary-bg)` | |
 | `--td-btn-primary-alpha` | `94%` | |
@@ -334,8 +343,8 @@ Button là **kính có tint** (Liquid Glass, v0.14.0): màu variant được pha
 
 Ghi chú:
 
-- Trong dark, `--td-btn-primary-bg` bị gán cứng `#2563eb` (chữ trắng 5.17:1; accent dark `#3b82f6` chỉ 3.68:1). Hệ
-  quả: đổi `--td-accent` **không** đổi nút primary ở dark theme. Xem [ví dụ thương hiệu](#ví-dụ-đầu-cuối-đổi-màu-thương-hiệu-accent).
+- `--td-btn-primary-bg` đọc `--td-accent-fill`, nên ở dark nó là accent tối đi 20% (chữ trắng trên accent dark thô
+  `#3b82f6` chỉ 3.68:1). Trước 0.16.0 dark gán cứng `#2563eb` và đổi `--td-accent` không đổi nút primary ở dark.
 - `--td-btn-success-tint` / `-danger-tint` / `-info-tint` cố định (không theo `--td-color-*`) vì dark làm sáng
   `--td-color-*` cho mục đích **chữ**, không hợp làm nền nút.
 - Kit có một gate đo tương phản thật (`npm run test:contrast`) cho mọi cặp giá trị mặc định. Gate này **không** chạy trên
@@ -578,19 +587,21 @@ Giả sử site dùng đỏ `#b3261e` làm màu chính.
 }
 ```
 
-**Bước 2 — dark theme (nếu site dùng dark).** Dark đổi `--td-accent` và gán **cứng** nút primary + pagination về xanh
-dương `#2563eb`, nên phải khai báo lại:
+**Bước 2 — dark theme (nếu site dùng dark).** Từ 0.16.0 bước 1 là đủ: `:root` không layer của bạn thắng cả giá trị
+dark của kit, và nền nút primary + trang active (`--td-accent-fill`) ở dark tự lấy accent tối đi 20% (`#b3261e` →
+≈ `#8f1e18`). Chỉ khai báo thêm khi muốn accent dark khác light, ví dụ đỏ sáng hơn để làm chữ/viền trên nền tối:
 
 ```css
 :root[data-td-theme="dark"] {
-  --td-accent: #f2665c;                      /* đỏ sáng hơn để làm chữ/viền trên nền tối */
-  --td-btn-primary-bg: #b3261e;              /* nền nút: đỏ đậm để chữ trắng đủ tương phản */
-  --td-pagination-active: #b3261e;
-  --td-pagination-active-fg: #fff;
+  --td-accent: #f2665c;                      /* chữ/viền trên nền tối */
+  --td-accent-fill: #b3261e;                 /* nền đặc mang chữ trắng: tự chọn thay vì 80% của #f2665c */
   --td-focus: #f2665c;
   --td-focus-ring: 0 0 0 3px rgb(242 102 92 / 45%);
 }
 ```
+
+Không đặt `--td-accent-fill` thì nền sẽ là 80% của `#f2665c` (≈ `#c2524a`, chữ trắng chỉ ≈ 4.6:1, sát ngưỡng) — với
+accent sáng, nên tự chọn fill.
 
 **Bước 3 — kiểm tra những thứ không đi theo accent** (quyết định có đổi không):
 
@@ -599,7 +610,7 @@ dương `#2563eb`, nên phải khai báo lại:
 - Toast dùng màu trạng thái (`--td-toast-*-wash`), không dùng accent.
 
 **Bước 4 — kiểm tra tương phản.** Kit chỉ gate giá trị mặc định. Với màu mới, kiểm tra bằng DevTools (hoặc
-`contrastRatio()` trong [dom-utils](../components/utilities.md)): chữ trắng trên `--td-btn-primary-bg` ≥ 4.5:1, accent
+`contrastRatio()` trong [dom-utils](../components/utilities.md)): chữ trắng trên `--td-accent-fill` ≥ 4.5:1 (light và dark), accent
 làm chữ/viền trên nền trang ≥ 3:1.
 
 **Bước 5 — xem thử** trên các trang có nút primary, checkbox đã chọn, slider, pagination, toggle, và bật
@@ -620,7 +631,7 @@ Token là custom property nên kế thừa theo cây DOM: bạn có thể đổi
 Hai giới hạn:
 
 1. Chỉ token được component **đọc trực tiếp** mới đổi theo vùng. Token được tính trên `:root` từ token khác (như
-   `--td-btn-primary-bg: var(--td-accent)`) thì phải ghi đè token con, không phải token gốc (bẫy số 2 ở trên).
+   `--td-btn-primary-bg: var(--td-accent-fill)`) thì phải ghi đè token con, không phải token gốc (bẫy số 2 ở trên).
 2. Phần tử **được đưa ra `<body>`** (portal) không nằm trong vùng của bạn nên không nhận token vùng: menu của
    td-dropdown, popup gợi ý của td-chip-input, TdMenu, tooltip, hovercard, toast, modal, loading, lightbox. Muốn đổi
    riêng chúng, nhắm đúng phần tử đó (xem [styling.md › Nhắm một instance](styling.md#nhắm-một-instance-duy-nhất)).
@@ -634,9 +645,8 @@ diện** của trang component. Cột "Khai báo ở" cho biết ghi đè ở đ
 |---|---|---|---|
 | td-button | `--td-btn-*` (bảng trên), `--td-btn-bg` / `--td-btn-fg` (per-instance, do JS đặt) | `:root` | [button.md](../components/button.md) |
 | td-input-field (và nhãn/ghi chú của mọi field) | `--td-field-*` | `:root` | [input-field.md](../components/input-field.md) |
-| td-checkbox | `--td-checkbox-radius` | `:root` | [checkbox.md](../components/checkbox.md) |
-| | `--td-checkbox-box` | `.td-checkbox` (+ `--sm` / `--lg`) | |
-| td-toggle | `--td-switch-w`, `--td-switch-h`, `--td-switch-thumb-d`, `--td-switch-pad` | `.td-switch` (+ modifier cỡ) | [toggle.md](../components/toggle.md) |
+| td-checkbox | `--td-checkbox-radius`, `--td-checkbox-box` | `:root` (`--sm` / `--lg` đặt lại `-box` trên phần tử) | [checkbox.md](../components/checkbox.md) |
+| td-toggle | `--td-switch-w`, `--td-switch-h`, `--td-switch-thumb-d` | `:root` (`--sm` / `--lg` đặt lại trên phần tử); `--td-switch-pad` dẫn xuất, tính trên `.td-switch` | [toggle.md](../components/toggle.md) |
 | td-slider | `--td-slider-*` | `:root` (riêng `--td-slider-h` / `--td-slider-thumb` trên phần tử) | [slider.md](../components/slider.md) |
 | td-dropdown | `--td-dropdown-*` | `:root` | [dropdown.md](../components/dropdown.md) |
 | td-datetime-picker | `--td-dtp-*` | `:root` (có `@media (pointer: coarse)`) | [datetime-picker.md](../components/datetime-picker.md) |
@@ -645,29 +655,26 @@ diện** của trang component. Cột "Khai báo ở" cho biết ghi đè ở đ
 | TdModal | `--td-modal-*` | `:root` (per-instance `--td-modal-w` / `-h` / `-body-pad` / `-body-overflow` do JS đặt) | [modal.md](../components/modal.md) |
 | TdToast | `--td-toast-*` | `:root` | [toast.md](../components/toast.md) |
 | Tooltip | `--td-tooltip-*` | `:root` | [tooltip.md](../components/tooltip.md) |
-| TdLoading / spinner | `--td-spinner-size`, `--td-spinner-color`, `--td-spinner-track` | `.td-spinner` (+ modifier cỡ) | [loading.md](../components/loading.md) |
+| TdLoading / spinner | `--td-spinner-size` | `:root` (cỡ md; `--sm` / `--lg` đặt lại trên phần tử) | [loading.md](../components/loading.md) |
+| | `--td-spinner-color`, `--td-spinner-track` | không khai báo (fallback trong CSS; JS đặt per-instance) | |
 | TdMenu | `--td-menu-*` | `:root` | [menu.md](../components/menu.md) |
 | TdHovercard | `--td-hovercard-*` | `:root` | [hovercard.md](../components/hovercard.md) |
-| TdLightbox | `--td-lb-*` | `.td-lightbox` | [lightbox.md](../components/lightbox.md) |
+| TdLightbox | `--td-lb-*` | `:root` (có `@media (pointer: coarse)` và safe-area); `--td-lb-bar-h` dẫn xuất, tính trên `.td-lightbox` | [lightbox.md](../components/lightbox.md) |
 | td-table | `--td-table-*` | `:root` (riêng `--td-table-cell-px` bị modifier `.td-table__cell--px-*` đặt lại) | [table.md](../components/table.md) |
 | td-tabs | `--td-tabs-*` | `:root` | [tabs.md](../components/tabs.md) |
-| td-pagination | `--td-pagination-*` | `:root` (riêng `--td-pagination-item-size` bị `.td-pagination` đặt lại trên màn cảm ứng) | [pagination.md](../components/pagination.md) |
-| td-empty-state | `--td-empty-state-*` | `:root`, riêng `-pad` / `-gap` trên `.td-empty-state` (+ modifier) | [empty-state.md](../components/empty-state.md) |
+| td-pagination | `--td-pagination-*` | `:root` (có `@media (pointer: coarse)`) | [pagination.md](../components/pagination.md) |
+| td-empty-state | `--td-empty-state-*` | `:root` (`--sm` / `--lg` / `--compact` đặt lại `-pad` / `-gap` trên phần tử) | [empty-state.md](../components/empty-state.md) |
 | Icon | `--td-icon-*` (bảng trên) | `:root` | [icons.md](../components/icons.md) |
 
-Ví dụ với token khai báo trên phần tử:
+Ví dụ (từ 0.16.0 ghi đè trên `:root` là đủ; ghi trên class cũ vẫn chạy):
 
 ```css
-/* SAI: không có tác dụng, .td-lightbox tự khai báo --td-lb-panel-w */
 :root { --td-lb-panel-w: 26rem; }
-
-/* ĐÚNG */
-.td-lightbox { --td-lb-panel-w: 26rem; }
 ```
 
-Lưu ý: rule không layer `.td-lightbox { … }` của bạn thắng **mọi** rule trong layer, kể cả rule có `@media` hay modifier
-(ví dụ `@media (pointer: coarse) { .td-lightbox { --td-lb-btn: 44px } }`). Nếu bạn chỉ muốn đổi trên desktop, tự bọc
-override trong media query tương ứng.
+Lưu ý: rule không layer của bạn thắng **mọi** rule trong layer, kể cả rule có `@media` của kit (ví dụ `:root
+{ --td-lb-btn: 36px }` thắng cả giá trị 44px trên màn cảm ứng). Nếu bạn chỉ muốn đổi trên desktop, tự bọc override trong
+media query tương ứng.
 
 ## Không bao giờ đụng vào token private
 

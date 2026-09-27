@@ -77,7 +77,7 @@ Kính khúc xạ (refraction) không được ship, nên không có tính năng 
 
 | Công cụ | Khi nào cần | Ghi chú |
 |---|---|---|
-| Node.js + npm | Tải kit: `npm install github:dazzxq/td-components` | CI của repo chạy Node **22**. `package.json` không khai báo `engines`, nhưng các bản Node còn được hỗ trợ (20, 22+) là an toàn |
+| Node.js + npm | Tải kit: `npm install github:dazzxq/td-components` | `package.json#engines`: Node **≥ 20** (từ 0.16.0). CI của repo chạy Node 22 |
 | Git | npm cần git để cài từ GitHub | Cài từ `github:` là npm tự `git clone` |
 | Vite (hoặc bundler khác hiểu `package.json#exports`) | Chỉ khi site của bạn dùng bundler | Kit không bắt buộc bundler |
 | Một web server bất kỳ | Luôn luôn | Apache/nginx của site PHP, `php -S`, `npx vite`… |

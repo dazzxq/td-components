@@ -130,10 +130,12 @@ thì chạy đúng với cả hai chế độ.)
 ```
 
 - Bật: gửi `name=value` (`value` mặc định `on`). Tắt: không gửi gì.
-- `required` + đang tắt → `valueMissing`, thông báo `Vui lòng bật tùy chọn này.`, chặn submit.
+- `required` + đang tắt → `valueMissing`, thông báo `Vui lòng bật tùy chọn này.` (`TdToggle.messages.valueMissing`,
+  đổi được cho cả trang), chặn submit.
 - Reset form: trả `checked` và `value` về như lúc gắn vào trang, xoá lỗi.
 - `<fieldset disabled>` bao ngoài làm công tắc disabled (không gửi), không đổi attribute `disabled`.
-- Autofill / back-forward cache: **không** khôi phục trạng thái bật/tắt (giống [checkbox](checkbox.md)).
+- Trình duyệt khôi phục form (quay lại trang không qua bfcache): trạng thái bật/tắt được đặt lại đúng, attribute
+  `value` giữ nguyên (0.16.0).
 
 ### Màu, kích thước, lỗi
 
@@ -173,7 +175,8 @@ Chọn màu `color` tự kiểm tra tương phản: nền bật phải ≥ 3:1 v
 Property phản chiếu attribute: `checked`, `controlled` (boolean), `value`, `name`, `required`, `disabled`, `label`,
 `ariaLabel`, `size`, `color`, `errorText`. `value` trả `''` khi không có attribute.
 
-> Property được tạo khi phần tử gắn vào trang lần đầu. Trước đó dùng `setAttribute()`.
+> Gán property trước khi phần tử gắn vào trang (hoặc trước khi module được import) vẫn có tác dụng từ 0.16.0: giá
+> trị được áp khi phần tử kết nối lần đầu. Chi tiết: [Cách hoạt động](../concepts/how-it-works.md).
 
 | Method / property | Trả về | Mô tả |
 |---|---|---|
@@ -204,7 +207,7 @@ Property phản chiếu attribute: `checked`, `controlled` (boolean), `value`, `
 | `--td-switch-edge` | `var(--td-control-border-soft)` | Viền rãnh và núm khi tắt (mềm, v0.14.1). |
 | `--td-switch-thumb` | `#fff` | Màu núm. |
 | `--td-control-border-hover` | `#aeaeb2` | Viền khi hover công tắc đang tắt (v0.14.2). |
-| `--td-switch-w` / `--td-switch-h` / `--td-switch-thumb-d` | theo size | Kích thước rãnh và núm, đặt trên `.td-switch` theo size; override bằng selector class (ví dụ `.settings .td-switch--md { --td-switch-w: 3rem; }`). |
+| `--td-switch-w` / `--td-switch-h` / `--td-switch-thumb-d` | md: `2.75rem` / `1.5rem` / `1.125rem` | Kích thước rãnh và núm. Cỡ mặc định (md) khai báo trên `:root` (từ 0.16.0): `:root { --td-switch-w: 3rem; }`. Cỡ `sm` / `lg` đặt lại trên `.td-switch--sm` / `--lg`. Khoảng đệm núm `--td-switch-pad` tự tính trên `.td-switch` từ `-h` và `-thumb-d`. |
 
 Lỗi dùng `--td-field-error` (viền rãnh). Focus dùng `--td-focus-ring`. Hiệu ứng "nhấc núm" khi đang nhấn dùng
 `--td-glass-lift-scale` (tắt khi giảm chuyển động).

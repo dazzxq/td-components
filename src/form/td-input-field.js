@@ -7,7 +7,8 @@ import { TdFormElement } from '../base/td-form-element.js';
  * **Form-associated (ElementInternals):** the HOST submits its value in any `<form>` and owns ALL constraint
  * validation. The inner control carries NO `name` and NO native constraints — `email`/`url`/`number` render as
  * `type="text"` (+ `inputmode`); the host recomputes `typeMismatch`/`rangeUnderflow`/`rangeOverflow`/
- * `stepMismatch`/`tooLong`/`valueMissing` off a detached probe input. `password` and `date` keep their type.
+ * `stepMismatch`/`patternMismatch`/`tooShort`/`tooLong`/`valueMissing` (texts: `TdInputField.messages`), using a
+ * detached probe input where the browser's own rules apply. `password` and `date` keep their type.
  *
  * DOM contract (class map: docs/upgrading/class-map.md):
  *   <div class="td-field td-field--{sm|md|lg}[ td-field--textarea| td-field--editable]">
@@ -32,12 +33,15 @@ import { TdFormElement } from '../base/td-form-element.js';
  * @element td-input-field
  * @attr {string} type - text|password|email|tel|number|url|search|date|textarea|contenteditable (default: text)
  * @attr {string} size - sm|md|lg (default: md)
- * @attr {string} value - Current value
+ * @attr {string} value - Initial value (the `value` PROPERTY is the live value — get/set = getValue()/setValue())
  * @attr {string} placeholder - Placeholder text
  * @attr {boolean} disabled - Disables the input (also via ancestor <fieldset disabled>)
  * @attr {boolean} readonly - Makes input read-only
  * @attr {boolean} required - Required (asterisk on the label, `aria-required` on the control)
  * @attr {number} max-length - Character/word limit
+ * @attr {number} minlength - Minimum characters (`tooShort`, only after the user edited — like native), v0.16.0
+ * @attr {string} pattern - Regular expression the whole value must match (`patternMismatch`; types text, search,
+ *   tel, url, email, password — like native), v0.16.0
  * @attr {string} limit-type - char|word (default: char)
  * @attr {string} min - Minimum (number/date)
  * @attr {string} max - Maximum (number/date)
@@ -60,7 +64,7 @@ export class TdInputField extends TdFormElement {
       'type', 'size', 'value', 'placeholder', 'readonly',
       'max-length', 'limit-type', 'min', 'max', 'step',
       'label', 'helper-text', 'error-text',
-      'field-id', 'rows', 'validate-on', 'aria-label', 'autoresize',
+      'field-id', 'rows', 'validate-on', 'aria-label', 'autoresize', 'minlength', 'pattern',
     ];
   }
 
@@ -69,6 +73,32 @@ export class TdInputField extends TdFormElement {
   }
 
   static get errorContract() { return true; }
+
+  /**
+   * Validation + counter texts (Vietnamese); override per site, e.g.
+   * `Object.assign(TdInputField.messages, { valueMissing: 'This field is required' })`.
+   * Placeholders: `{min}` `{max}` `{minLength}` `{maxLength}` `{unit}` (= `unitChar` / `unitWord`).
+   */
+  static messages = {
+    valueMissing: 'Trường này là bắt buộc',
+    tooLong: 'Vượt quá giới hạn {maxLength} {unit}',
+    tooShort: 'Tối thiểu {minLength} ký tự',
+    patternMismatch: 'Giá trị không đúng định dạng',
+    badInput: 'Giá trị không hợp lệ',
+    typeMismatchEmail: 'Email không hợp lệ',
+    typeMismatchUrl: 'URL không hợp lệ',
+    rangeUnderflow: 'Giá trị tối thiểu là {min}',
+    rangeOverflow: 'Giá trị tối đa là {max}',
+    stepMismatch: 'Giá trị không đúng bước nhảy',
+    dateInvalid: 'Ngày không hợp lệ',
+    dateUnderflow: 'Ngày tối thiểu là {min}',
+    dateOverflow: 'Ngày tối đa là {max}',
+    unitChar: 'ký tự',
+    unitWord: 'từ',
+  };
+
+  /** @private Types where the native `pattern` attribute applies. */
+  static _patternTypes = ['text', 'search', 'tel', 'url', 'email', 'password'];
 
   /** @private value-dependent native constraints live on these types → neutralize the inner control. */
   static _neutralizeTypes = ['email', 'url', 'number'];
@@ -88,6 +118,8 @@ export class TdInputField extends TdFormElement {
     this._runtimeHelper = null;
     /** @private Value when the control gained focus (D8: change only if it differs on blur). */
     this._valueAtFocus = null;
+    /** @private The value was last changed by the user (native "dirty by user edit" — gates `tooShort`). */
+    this._userEdited = false;
   }
 
   // --- Resolved attributes ---
@@ -108,6 +140,17 @@ export class TdInputField extends TdFormElement {
   _maxLength() {
     const n = Number.parseInt(this.getAttribute('max-length'), 10);
     return Number.isFinite(n) && n > 0 ? n : 0;
+  }
+
+  /** @private @returns {number} `minlength` as a positive int, 0 = none */
+  _minLength() {
+    const n = Number.parseInt(this.getAttribute('minlength'), 10);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  }
+
+  /** @private @returns {string} counter / tooLong unit (`messages.unitChar` | `messages.unitWord`) */
+  _unit() {
+    return this._msg(this._limitType() === 'word' ? 'unitWord' : 'unitChar');
   }
 
   /** @private @returns {'char'|'word'} */
@@ -202,6 +245,7 @@ export class TdInputField extends TdFormElement {
 
   /** @private */
   _onInput() {
+    this._userEdited = true;
     const field = this._getFieldElement();
     if (this._type() === 'contenteditable') this._normalizeEditable(field, false);
     this._handleWordLimit();
@@ -283,6 +327,10 @@ export class TdInputField extends TdFormElement {
       case 'max':
       case 'step':
         this._applyRange();
+        this._syncForm();
+        return;
+      case 'minlength':
+      case 'pattern':
         this._syncForm();
         return;
       case 'aria-label':
@@ -442,16 +490,24 @@ export class TdInputField extends TdFormElement {
     const limitType = this._limitType();
     const isEmpty = value == null || String(value).trim() === '';
 
+    const M = (key, vars) => this._msg(key, vars);
+
     if (required && isEmpty) {
-      return { flags: { valueMissing: true }, message: 'Trường này là bắt buộc' };
+      return { flags: { valueMissing: true }, message: M('valueMissing') };
     }
 
     if (maxLength && value) {
       const count = this._countValue(value, limitType);
       if (count > maxLength) {
-        const unit = limitType === 'word' ? 'từ' : 'ký tự';
-        return { flags: { tooLong: true }, message: `Vượt quá giới hạn ${maxLength} ${unit}` };
+        return { flags: { tooLong: true }, message: M('tooLong', { maxLength, unit: this._unit() }) };
       }
+    }
+
+    // `minlength`: like native, only for a non-empty value the USER edited (programmatic values never trip it).
+    const minLength = this._minLength();
+    if (minLength && value && this._userEdited && type !== 'number' && type !== 'date'
+      && String(value).length < minLength) {
+      return { flags: { tooShort: true }, message: M('tooShort', { minLength }) };
     }
 
     if (!isEmpty && TdInputField._neutralizeTypes.includes(type)) {
@@ -460,7 +516,7 @@ export class TdInputField extends TdFormElement {
       if (type === 'number') {
         const trimmed = String(value).trim();
         if (!/^-?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?$/.test(trimmed)) {
-          return { flags: { badInput: true }, message: 'Giá trị không hợp lệ' };
+          return { flags: { badInput: true }, message: M('badInput') };
         }
       }
       const probe = document.createElement('input');
@@ -474,13 +530,14 @@ export class TdInputField extends TdFormElement {
       probe.value = String(value);
       const v = probe.validity;
       if (v.badInput || v.typeMismatch) {
-        const msg = type === 'number' ? 'Giá trị không hợp lệ'
-          : type === 'email' ? 'Email không hợp lệ' : 'URL không hợp lệ';
+        const msg = type === 'number' ? M('badInput')
+          : type === 'email' ? M('typeMismatchEmail') : M('typeMismatchUrl');
         return { flags: { typeMismatch: true }, message: msg };
       }
-      if (v.rangeUnderflow) return { flags: { rangeUnderflow: true }, message: `Giá trị tối thiểu là ${this.getAttribute('min')}` };
-      if (v.rangeOverflow) return { flags: { rangeOverflow: true }, message: `Giá trị tối đa là ${this.getAttribute('max')}` };
-      if (v.stepMismatch) return { flags: { stepMismatch: true }, message: 'Giá trị không đúng bước nhảy' };
+      const range = { min: this.getAttribute('min') ?? '', max: this.getAttribute('max') ?? '' };
+      if (v.rangeUnderflow) return { flags: { rangeUnderflow: true }, message: M('rangeUnderflow', range) };
+      if (v.rangeOverflow) return { flags: { rangeOverflow: true }, message: M('rangeOverflow', range) };
+      if (v.stepMismatch) return { flags: { stepMismatch: true }, message: M('stepMismatch') };
     }
 
     // `date`: the inner control keeps its real type, but the HOST still owns validity.
@@ -495,10 +552,22 @@ export class TdInputField extends TdFormElement {
       const v = probe.validity;
       // An invalid date string is sanitized to "" by the native control → detect it explicitly.
       if (probe.value === '' || v.badInput || v.typeMismatch) {
-        return { flags: { typeMismatch: true }, message: 'Ngày không hợp lệ' };
+        return { flags: { typeMismatch: true }, message: M('dateInvalid') };
       }
-      if (v.rangeUnderflow) return { flags: { rangeUnderflow: true }, message: `Ngày tối thiểu là ${this.getAttribute('min')}` };
-      if (v.rangeOverflow) return { flags: { rangeOverflow: true }, message: `Ngày tối đa là ${this.getAttribute('max')}` };
+      const range = { min: this.getAttribute('min') ?? '', max: this.getAttribute('max') ?? '' };
+      if (v.rangeUnderflow) return { flags: { rangeUnderflow: true }, message: M('dateUnderflow', range) };
+      if (v.rangeOverflow) return { flags: { rangeOverflow: true }, message: M('dateOverflow', range) };
+    }
+
+    // `pattern`: the browser's own rules (whole-value match, `v` flag, an invalid pattern is ignored) on a probe.
+    const pattern = this.getAttribute('pattern');
+    // pattern tests the RAW value (whitespace-only is not "empty" for it, as in native inputs)
+    if (value != null && String(value) !== '' && pattern != null && TdInputField._patternTypes.includes(type)) {
+      const probe = document.createElement('input');
+      probe.type = 'text';
+      probe.setAttribute('pattern', pattern);
+      probe.value = String(value);
+      if (probe.validity.patternMismatch) return { flags: { patternMismatch: true }, message: M('patternMismatch') };
     }
 
     return { flags: {}, message: '' };
@@ -519,6 +588,7 @@ export class TdInputField extends TdFormElement {
   }
 
   _restoreDefaults() {
+    this._userEdited = false;
     if (this._defaultValueAttr === null) this.removeAttribute('value');
     else this.setAttribute('value', this._defaultValueAttr);
     // The attribute may be unchanged (no callback) while the live value differs: force it.
@@ -551,9 +621,7 @@ export class TdInputField extends TdFormElement {
 
   /** @private @returns {string} "n/max unit" */
   _counterText(value) {
-    const limitType = this._limitType();
-    const unit = limitType === 'word' ? 'từ' : 'ký tự';
-    return `${this._countValue(value, limitType)}/${this._maxLength()} ${unit}`;
+    return `${this._countValue(value, this._limitType())}/${this._maxLength()} ${this._unit()}`;
   }
 
   /** @private Counter text + `data-state="limit"` at count >= max (colour only, no red border — D9). */
@@ -649,9 +717,17 @@ export class TdInputField extends TdFormElement {
 
   // --- Public API (prototype methods: available before the first connect) ---
 
-  /** @returns {string} the current value */
+  /**
+   * The LIVE value (what the user typed), like a native input's `value` property — v0.16.0; before that it
+   * returned the (stale) attribute. Setting it = setValue() (the `value` attribute stays the initial value).
+   * @type {string}
+   */
+  get value() { return this.getValue(); }
+  set value(v) { this.setValue(v); }
+
+  /** @returns {string} the current value (before the first render: the `value` attribute) */
   getValue() {
-    return this._getValue();
+    return this._getFieldElement() ? this._getValue() : (this.getAttribute('value') ?? '');
   }
 
   /**
@@ -665,6 +741,7 @@ export class TdInputField extends TdFormElement {
       else this.setAttribute('value', String(val)); // rendered on connect
       return;
     }
+    this._userEdited = false; // programmatic value: native clears the "user edit" flag (no tooShort)
     let next = val == null ? '' : String(val);
     const maxLength = this._maxLength();
     if (maxLength && next) next = this._truncateToLimit(next, maxLength, this._limitType());

@@ -1,6 +1,7 @@
 import { expect } from '@esm-bundle/chai';
 import { tdIcon, registerIcons, hasIcon, listIcons } from './td-icon.js';
 import './td-icon-element.js';
+import * as iconsModule from './td-icon.js';
 
 describe('tdIcon', () => {
   it('renders a decorative stroke icon with the markup contract', () => {
@@ -109,5 +110,12 @@ describe('<td-icon>', () => {
     expect(el.querySelectorAll('svg').length).to.equal(1);
     expect(el.querySelector('svg')).to.equal(ssr);
     wrap.remove();
+  });
+});
+
+describe('./icons public surface (v0.16.0 D4)', () => {
+  it('no longer exports the internal _validateIconDefinition', () => {
+    expect('_validateIconDefinition' in iconsModule).to.equal(false);
+    expect(typeof iconsModule.registerIcons).to.equal('function');
   });
 });

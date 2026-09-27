@@ -63,17 +63,23 @@ function safeMaxHeight(value) {
  *
  * @property {Array<Object>} columns - Column definitions: `{ key, label, sortable?, width?, widthType?:
  *   'fixed'|'flexible', minWidth?, maxWidth?, align?: 'left'|'center'|'right'|'justify', ellipsis?, render? }`.
+ *   `width` is applied ONLY with `widthType: 'fixed'` (width = min = max); the default `'flexible'` ignores it and
+ *   uses `minWidth`/`maxWidth` (width `auto`).
  *   `label` and plain values are always escaped; `width`/`minWidth`/`maxWidth` pass `safeCssDimension`, `align` a
  *   whitelist, all applied via CSSOM. Columns are resolved by INDEX (keys may repeat, be numeric or missing).
  *   `ellipsis: true` → one line, truncated, full text in `title`. Any `width` or `ellipsis` → `table-layout: fixed`.
  *   `render(row, rowIdxInPage)` — TRUSTED HATCH: return a Node (preferred, appended), a string (**trusted HTML**,
  *   developer markup only, injected with innerHTML — escape any end-user data inside it yourself; its CSP
  *   compliance is the consumer's responsibility) or anything else (text). A render column sorts by `row[key]`.
+ *   A `render` that throws leaves that cell empty (`console.error`); the rest of the table still renders.
  * @property {Array<Object>} data - Rows. Client mode: resets to page 1. Server mode: keeps the current page.
  * @property {string} cellPaddingClass - Cell horizontal padding, one of `px-0`…`px-6` (dcms vocabulary) → the
  *   `td-table__cell--px-{n}` modifier on header, data and skeleton cells; anything else is ignored (one warning).
- * @property {Function} onSort - `({key, direction})` after a sort change (server mode: sort on the server)
- * @property {Function} onPageChange - `(page)` in server mode (fetch that page, then set `data`)
+ * @property {Function} onSort - `({key, direction})` after a sort change — SERVER MODE ONLY (sort on the server);
+ *   in client mode the table sorts itself and only `sort-change` fires
+ * @property {Function} onPageChange - `(page)` — SERVER MODE ONLY (fetch that page, then set `data`); in client mode
+ *   the table pages itself (listen to `page-change` if needed). A throwing `onSort`/`onPageChange` is logged
+ *   (`console.error`) and the table state stays consistent.
  * @fires sort-change - `{ key, direction }` (direction `'asc'|'desc'|null`), bubbling, before `onSort`
  * @fires page-change - from the inner td-pagination elements, `{ page }` (bubbles through the host)
  */
@@ -398,7 +404,13 @@ export class TdTable extends TdBaseElement {
       if (!col || typeof col.render !== 'function') return;
       rows.forEach((row, ri) => {
         const td = trs[ri].children[ci];
-        const out = col.render(row, ri);
+        let out;
+        try {
+          out = col.render(row, ri);
+        } catch (err) {
+          console.error('td-table: column render threw', err); // the cell stays empty
+          return;
+        }
         let target = td;
         if (col.ellipsis) {
           target = document.createElement('div');
@@ -473,7 +485,7 @@ export class TdTable extends TdBaseElement {
     this._syncSortUi();
     this.emit('sort-change', detail);
     if (this._isServerMode()) {
-      this._onSort?.({ ...detail });
+      this._safeCall(this._onSort, { ...detail }, 'onSort');
       return;
     }
     this._currentPage = 1;
@@ -497,10 +509,20 @@ export class TdTable extends TdBaseElement {
     if (this._isServerMode()) {
       const other = p === this._pagTop ? this._pagBottom : this._pagTop;
       other.setAttribute('current-page', String(page));
-      this._onPageChange?.(page);
+      this._safeCall(this._onPageChange, page, 'onPageChange');
       return;
     }
     this._update();
+  }
+
+  /** @private Run a site callback (if set); a throw is logged and never breaks the table. */
+  _safeCall(fn, arg, what) {
+    if (!fn) return;
+    try {
+      fn(arg);
+    } catch (err) {
+      console.error(`td-table: ${what} threw`, err);
+    }
   }
 
   // --- Overflow region (D16) ---

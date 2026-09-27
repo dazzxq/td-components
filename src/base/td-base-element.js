@@ -36,8 +36,10 @@ export class TdBaseElement extends HTMLElement {
 
   connectedCallback() {
     if (!this._initialized) {
-      this._initialized = true;
+      // Accessors + replay of properties assigned before connect/define happen BEFORE `_initialized`, with renders
+      // suppressed, so the element renders exactly once below with its final state.
       this._setupProperties();
+      this._initialized = true;
       this._doRender();
     } else if (this._needsRebind) {
       // Moved/re-inserted: disconnect ran every cleanup (listeners, timers) → render again to re-bind.
@@ -59,6 +61,9 @@ export class TdBaseElement extends HTMLElement {
 
   /** @private */
   _doRender() {
+    // Shared choke point: subclasses that re-render straight from their own attributeChangedCallback also land here,
+    // so the property replay in _setupProperties() never renders a half-set state.
+    if (this._suppressRender) return;
     this.innerHTML = this.render();
     this.afterRender();
     // CSP-strict hardening hook: apply per-element SCALAR styles via CSSOM after each
@@ -89,13 +94,24 @@ export class TdBaseElement extends HTMLElement {
 
   // --- Attribute/Property Sync ---
 
-  /** @private */
+  /**
+   * Install the attribute-backed property accessors (camelCase of each observed attribute) and replay any value
+   * assigned BEFORE connect / before `customElements.define` (such a value lives in an own data property that
+   * would otherwise shadow the accessor and never reach the attribute). Names that already have an accessor on
+   * the prototype chain (e.g. a subclass `value` getter/setter) keep it; an early value is replayed through it.
+   * @private
+   */
   _setupProperties() {
     const booleans = new Set(this.constructor.booleanAttributes);
+    const early = [];
     for (const attr of this.constructor.observedAttributes) {
-      if (attr in this) continue;
-      const isBool = booleans.has(attr);
       const prop = attr.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+      if (Object.prototype.hasOwnProperty.call(this, prop)) {
+        early.push([prop, this[prop]]);
+        delete this[prop];
+      }
+      if (prop in this) continue; // a subclass accessor (incl. camelCase of a dashed attribute) is kept
+      const isBool = booleans.has(attr);
       Object.defineProperty(this, prop, {
         get: () => isBool ? this.hasAttribute(attr) : (this.getAttribute(attr) ?? ''),
         set: (val) => {
@@ -108,11 +124,40 @@ export class TdBaseElement extends HTMLElement {
         configurable: true,
       });
     }
+    if (!early.length) return;
+    this._suppressRender = true;
+    try {
+      for (const [prop, val] of early) this[prop] = val;
+    } finally {
+      this._suppressRender = false;
+    }
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
     if (oldVal !== newVal && this._initialized) {
       this._doRender();
+    }
+  }
+
+  // --- Owned inline custom properties ---
+
+  /**
+   * Set (or clear) a CSS custom property on the host that the COMPONENT owns. A non-empty `value` sets it and
+   * remembers the name; an empty/null `value` removes it ONLY if this component set it earlier — a variable the
+   * site put on the host itself (`el.style.setProperty('--td-…', x)`) is never wiped by a re-render.
+   * @param {string} name - e.g. `'--td-btn-bg'`
+   * @param {string|null|undefined} value
+   * @protected
+   */
+  _setOwnedStyle(name, value) {
+    if (!this.style) return; // non-DOM environments (node render tests)
+    const owned = this._ownedStyles || (this._ownedStyles = new Set());
+    if (value != null && value !== '') {
+      this.style.setProperty(name, String(value));
+      owned.add(name);
+    } else if (owned.has(name)) {
+      this.style.removeProperty(name);
+      owned.delete(name);
     }
   }
 

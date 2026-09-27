@@ -96,7 +96,8 @@ await TdModal.info({ message: 'Phiên làm việc sắp hết hạn.', okText: '
 ### 3. Xác nhận có thao tác async
 
 `onConfirm` trả về Promise → nút xác nhận bận cho tới khi Promise xong. Resolve `false` hoặc reject → hộp thoại vẫn mở;
-giá trị khác → đóng và `confirm()` resolve `true`.
+giá trị khác → đóng và `confirm()` resolve `true`. Từ 0.16.0 `onConfirm` **đồng bộ** cũng giống `actions`: trả `false`
+hoặc ném lỗi → hộp thoại vẫn mở (lỗi được ghi `console.error`).
 
 ```js
 const deleted = await TdModal.confirm({
@@ -182,7 +183,7 @@ TdModal.closeAll();   // đóng từ trên xuống; mỗi modal chạy onClose �
 | `TdModal.close()` | `void` | Đóng modal trên cùng. |
 | `TdModal.closeById(id)` | `void` | Đóng modal theo id (ở bất kỳ vị trí nào trong chồng). Id không tồn tại → không làm gì. |
 | `TdModal.closeAll()` | `void` | Đóng mọi modal, trên cùng trước. |
-| `TdModal.labels` | `object` | Nhãn mặc định, sửa được: `{ close: 'Đóng', confirm: 'Xác nhận', cancel: 'Hủy', ok: 'OK' }`. |
+| `TdModal.labels` | `object` | Nhãn mặc định, sửa được: `{ close: 'Đóng', confirm: 'Xác nhận', cancel: 'Hủy', ok: 'OK', confirmTitle: 'Xác nhận', confirmMessage: 'Bạn có chắc chắn?', successTitle: 'Thành công', errorTitle: 'Lỗi', infoTitle: 'Thông tin' }` (năm khoá cuối từ 0.16.0). |
 
 Không có `TdModal.loading()` — đã bỏ, dùng [`TdLoading`](loading.md).
 
@@ -268,13 +269,13 @@ Trong lúc bận, bấm lại nút đó hay nút khác đều bị bỏ qua, và
 
 | Tuỳ chọn | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
-| `title` | `string` | `'Xác nhận'` | Tiêu đề (text). |
-| `message` | `string` | `'Bạn có chắc chắn?'` | Nội dung (text). |
+| `title` | `string` | `TdModal.labels.confirmTitle` (`'Xác nhận'`) | Tiêu đề (text). |
+| `message` | `string` | `TdModal.labels.confirmMessage` (`'Bạn có chắc chắn?'`) | Nội dung (text). |
 | `messageHtml` | `string` | — | Nội dung HTML **tin cậy** (chỉ markup của developer); thắng `message`. |
 | `confirmText` | `string` | `TdModal.labels.confirm` (`'Xác nhận'`) | Nhãn nút xác nhận. |
 | `cancelText` | `string` | `TdModal.labels.cancel` (`'Hủy'`) | Nhãn nút huỷ. |
 | `confirmVariant` | `'primary' \| 'danger' \| 'success' \| 'warning'` | `'primary'` | Màu nút xác nhận. Giá trị khác → `primary`. |
-| `onConfirm` | `() => any` | — | Gọi khi bấm xác nhận. Đồng bộ (kể cả ném lỗi, kể cả trả `false`) → resolve `true` và đóng. Trả Promise → nút bận; resolve `false` hoặc reject → giữ mở; giá trị khác → `true` và đóng. |
+| `onConfirm` | `() => any` | — | Gọi khi bấm xác nhận. Đồng bộ: trả `false` hoặc ném lỗi (ghi `console.error`) → giữ mở (**đổi hành vi 0.16.0**, trước đó resolve `true` và đóng); giá trị khác → `true` và đóng. Trả Promise → nút bận; resolve `false` hoặc reject → giữ mở; giá trị khác → `true` và đóng. |
 | `onCancel` | `() => void` | — | Gọi đúng một lần khi bị huỷ (nút Hủy, X, `closeAll`). Lỗi bị nuốt. |
 
 Focus ban đầu của `confirm` nằm ở nút **Hủy** (an toàn cho thao tác nguy hiểm: nhấn Enter nhầm không xoá gì).
@@ -283,7 +284,7 @@ Focus ban đầu của `confirm` nằm ở nút **Hủy** (an toàn cho thao tá
 
 | Tuỳ chọn | Mặc định (`success` / `error` / `info`) | Mô tả |
 |---|---|---|
-| `title` | `'Thành công'` / `'Lỗi'` / `'Thông tin'` | Tiêu đề (text). |
+| `title` | `TdModal.labels.successTitle` / `errorTitle` / `infoTitle` (`'Thành công'` / `'Lỗi'` / `'Thông tin'`) | Tiêu đề (text). |
 | `message` | `'Thao tác đã hoàn tất'` / `'Đã xảy ra lỗi'` / `''` | Nội dung (text). |
 | `messageHtml` | — | HTML **tin cậy**; thắng `message`. |
 | `okText` | `TdModal.labels.ok` (`'OK'`) | Nhãn nút OK. |
@@ -297,10 +298,16 @@ TdModal.labels.close = 'Close';     // aria-label nút X (đọc khi mỗi modal
 TdModal.labels.confirm = 'Confirm';
 TdModal.labels.cancel = 'Cancel';
 TdModal.labels.ok = 'OK';
+// từ 0.16.0: tiêu đề / nội dung mặc định của các hộp thoại Promise
+TdModal.labels.confirmTitle = 'Confirm';
+TdModal.labels.confirmMessage = 'Are you sure?';
+TdModal.labels.successTitle = 'Success';
+TdModal.labels.errorTitle = 'Error';
+TdModal.labels.infoTitle = 'Information';
 ```
 
-Tiêu đề và nội dung mặc định của `confirm` / `success` / `error` / `info` (`'Xác nhận'`, `'Bạn có chắc chắn?'`,
-`'Thành công'`, …) **không** nằm trong `labels`; site dùng ngôn ngữ khác nên luôn truyền `title` và `message`.
+Nội dung mặc định của `success` / `error` (`'Thao tác đã hoàn tất'`, `'Đã xảy ra lỗi'`) **không** nằm trong `labels`;
+site dùng ngôn ngữ khác nên luôn truyền `message` cho hai hộp thoại này.
 
 ## Tuỳ biến giao diện
 
@@ -425,11 +432,9 @@ escape theo ngữ cảnh trước (xem [hướng dẫn bảo mật](../guides/se
 - **Node truyền vào `body` bị "chuyển" vào modal và bị xoá cùng modal khi đóng.** Nếu bạn lấy một phần tử đang có trên
   trang (`document.querySelector('#form')`), nó sẽ biến mất khỏi trang sau khi đóng. Hãy tạo node mới hoặc clone từ
   `<template>`.
-- **`confirm` khác `actions` ở trường hợp đồng bộ:** trong `actions`, `onClick` trả về `false` giữ modal mở; trong
-  `confirm`, `onConfirm` đồng bộ trả `false` vẫn resolve `true` và đóng. Muốn "giữ mở" trong `confirm` thì trả về một
-  Promise resolve `false`.
-- **`onConfirm` ném lỗi đồng bộ vẫn resolve `true`** (để Promise không bao giờ treo). Nếu thao tác có thể thất bại,
-  bọc nó trong hàm `async` để lỗi thành Promise bị reject — khi đó hộp thoại giữ mở.
+- **Đổi hành vi 0.16.0 — `onConfirm` đồng bộ trả `false` hoặc ném lỗi giữ hộp thoại mở** (giống `onClick` của
+  `actions`; lỗi được ghi `console.error`). Trước 0.16.0 hai trường hợp này resolve `true` và đóng. `confirm()` chỉ
+  resolve khi người dùng xác nhận thành công hoặc huỷ / đóng, nên code dựa vào "ném lỗi vẫn đóng" cần sửa lại.
 - **`closable: false` không làm modal "không đóng được"** — nó chỉ ẩn nút X. Hãy luôn cho người dùng ít nhất một nút
   footer để thoát.
 - **`bodyPadding: 16` (số) bị từ chối** với `console.warn`; viết `'16px'` hoặc `'1rem'`.

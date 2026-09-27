@@ -134,6 +134,7 @@ trong toàn bộ `data`). Giá trị trả về:
 | `Node` (Element, Text, DocumentFragment…) | `appendChild` vào ô. **Khuyến nghị**: dữ liệu hàng không bao giờ thành markup. |
 | `string` | Gán `innerHTML` — coi là **HTML tin cậy do developer viết** (xem [Bảo mật](#bảo-mật)). |
 | giá trị khác (`number`, `null`…) | Hiển thị dạng text (`textContent`), `null`/`undefined` → ô trống. |
+| (ném lỗi) | Ô đó để trống, lỗi ghi `console.error`; các ô và hàng khác vẫn render (từ 0.16.0). |
 
 Nếu chỉ cần hiện text đã định dạng, trả về chuỗi qua một Text node để tránh HTML:
 `render: (row) => document.createTextNode(formatMoney(row.total))`.
@@ -287,7 +288,7 @@ Object.assign(TdTable.labels, {
 | `emptyText` | `Chưa có dữ liệu để hiển thị.` | Nội dung rỗng khi không có `empty-text` |
 
 Đổi `labels` trước khi bảng render (ngay sau import). Các nhãn bên trong `td-pagination` ("Trang trước", "Trang N",
-"Hiển thị …") nằm cứng trong `td-pagination`, xem [pagination.md](pagination.md#lưu-ý--lỗi-thường-gặp).
+"Hiển thị …") đổi qua `TdPagination.labels`, xem [pagination.md](pagination.md#tdpaginationlabels).
 
 ## Event
 
@@ -308,8 +309,9 @@ table.addEventListener('page-change', (e) => console.log(e.detail.page));
 | `onSort` | `({ key, direction }) => void` | **Chỉ trong `server-mode`**, sau mỗi lần đổi sort (sau event `sort-change`). Ở chế độ client bảng tự sort và **không** gọi `onSort`; muốn biết sort đổi thì nghe `sort-change`. |
 | `onPageChange` | `(page) => void` | **Chỉ trong `server-mode`**, khi người dùng đổi trang. Bảng đồng bộ số trang cho thanh còn lại rồi chờ bạn gán `data` mới. Ở chế độ client, nghe event `page-change`. |
 
-Gán giá trị không phải function → hook bị xoá (`null`). Giá trị trả về bị bỏ qua. Lỗi ném ra trong hook không bị bảng
-bắt (sẽ nổi lên như lỗi thường). Cũng có thể đặt cả hai qua `update({ onSort, onPageChange })`.
+Gán giá trị không phải function → hook bị xoá (`null`). Giá trị trả về bị bỏ qua. Hook ném lỗi → lỗi được ghi
+`console.error`, bảng vẫn giữ trạng thái đúng (sort đã đổi, hai thanh phân trang đồng bộ) (từ 0.16.0). Cũng có thể đặt
+cả hai qua `update({ onSort, onPageChange })`.
 
 ## Tuỳ biến giao diện
 

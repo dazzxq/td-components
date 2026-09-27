@@ -115,14 +115,14 @@ Không muốn nhãn hiện ra? Dùng `aria-label`, hoặc một `<label for>` �
 ```js
 const field = document.querySelector('td-input-field[name="email"]');
 
-field.getValue();              // giá trị hiện tại (người dùng đang gõ gì thì trả về đó)
-field.setValue('an@vd.com');   // đặt giá trị, KHÔNG phát input/change
-field.setAttribute('value', 'an@vd.com'); // tương đương setValue
+field.value;                   // giá trị hiện tại (người dùng đang gõ gì thì trả về đó) — như input native
+field.getValue();              // như trên
+field.value = 'an@vd.com';     // = setValue(): đặt giá trị, KHÔNG phát input/change
+field.setAttribute('value', 'an@vd.com'); // cũng cập nhật ô nhập (attribute = giá trị ban đầu / khi reset)
 ```
 
-> Quan trọng: property `field.value` phản chiếu **attribute** `value` (giá trị ban đầu / giá trị bạn đặt bằng
-> attribute), **không** phải giá trị người dùng đang gõ. Luôn đọc bằng `getValue()` (hoặc qua `FormData`). Gán
-> `field.value = 'x'` thì vẫn đúng (nó đặt attribute, ô nhập cập nhật tại chỗ).
+> Từ 0.16.0 property `field.value` là **giá trị sống** (get = `getValue()`, set = `setValue()`), giống `<input>`
+> native. Trước 0.16.0 nó trả về attribute `value` (giá trị cũ). Gán `field.value` **không** đổi attribute `value`.
 
 `getValue()` / `setValue()` là method trên prototype nên gọi được cả trước khi phần tử gắn vào trang: `setValue()` lúc
 đó lưu vào attribute `value` và được render khi gắn vào.
@@ -145,13 +145,19 @@ Host tự tính trạng thái hợp lệ như control native, dựa trên giá t
 | Điều kiện | Cờ `validity` | Thông báo (mặc định, tiếng Việt) |
 |---|---|---|
 | `required` và giá trị rỗng (hoặc chỉ khoảng trắng) | `valueMissing` | `Trường này là bắt buộc` |
-| Vượt `max-length` | `tooLong` | `Vượt quá giới hạn {max} ký tự` / `… {max} từ` |
+| Vượt `max-length` | `tooLong` | `Vượt quá giới hạn {maxLength} ký tự` / `… {maxLength} từ` |
+| Ngắn hơn `minlength` (chỉ sau khi **người dùng** sửa, như native; rỗng thì không tính) | `tooShort` | `Tối thiểu {minLength} ký tự` |
+| Không khớp `pattern` (khớp **cả** giá trị; `text`/`search`/`tel`/`url`/`email`/`password`; rỗng thì không tính) | `patternMismatch` | `Giá trị không đúng định dạng` |
 | `number`: không phải số | `badInput` | `Giá trị không hợp lệ` |
 | `email` / `url` sai định dạng | `typeMismatch` | `Email không hợp lệ` / `URL không hợp lệ` |
 | `number` < `min` / > `max` | `rangeUnderflow` / `rangeOverflow` | `Giá trị tối thiểu là {min}` / `Giá trị tối đa là {max}` |
 | `number` không khớp `step` | `stepMismatch` | `Giá trị không đúng bước nhảy` |
 | `date` không phải ngày hợp lệ | `typeMismatch` | `Ngày không hợp lệ` |
 | `date` < `min` / > `max` | `rangeUnderflow` / `rangeOverflow` | `Ngày tối thiểu là {min}` / `Ngày tối đa là {max}` |
+
+Mọi thông báo ở bảng trên (và đơn vị `ký tự` / `từ` của bộ đếm) nằm trong `TdInputField.messages` — đổi cho cả
+trang, ví dụ `TdInputField.messages.valueMissing = 'This field is required'` (khoá và placeholder: xem
+[Dịch nhãn](../customization/extending.md#dịch-nhãn-sang-ngôn-ngữ-khác)).
 
 Field không hợp lệ sẽ chặn submit form (trình duyệt hiện bong bóng thông báo gắn vào ô nhập), giống control native.
 `checkValidity()`, `reportValidity()`, `validity`, `validationMessage` dùng được như bình thường.
@@ -230,7 +236,7 @@ document.getElementById('fs').disabled = true;          // field bị disabled, 
 |---|---|---|---|
 | `type` | string | `text` | `text` \| `password` \| `email` \| `tel` \| `number` \| `url` \| `search` \| `date` \| `textarea` \| `contenteditable`. Khác → `text`. Đổi `type` = render lại. |
 | `size` | string | `md` | `sm` \| `md` \| `lg` (cao 32 / 40 / 48 px). |
-| `value` | string | `''` | Giá trị. Đổi attribute cập nhật tại chỗ (giữ focus, con trỏ). Giá trị lúc gắn vào là mặc định khi reset. |
+| `value` | string | `''` | Giá trị ban đầu (property `value` là giá trị sống). Đổi attribute cập nhật tại chỗ (giữ focus, con trỏ). Giá trị lúc gắn vào là mặc định khi reset. |
 | `placeholder` | string | — | Chữ gợi ý trong ô. Với `contenteditable` hiện bằng CSS (`data-placeholder`), không bao giờ nằm trong giá trị. |
 | `label` | string | — | Nhãn hiển thị. |
 | `helper-text` | string | — | Dòng gợi ý dưới ô (vẫn hiện khi có lỗi). |
@@ -240,6 +246,8 @@ document.getElementById('fs').disabled = true;          // field bị disabled, 
 | `readonly` | boolean | không | Chỉ đọc (vẫn focus được, vẫn gửi trong form). |
 | `max-length` | number | — | Giới hạn ký tự/từ, hiện bộ đếm. Phải là số nguyên dương, khác thì bỏ qua. |
 | `limit-type` | string | `char` | `char` \| `word`. |
+| `minlength` | number | — | Số ký tự tối thiểu → `tooShort` (chỉ sau khi người dùng sửa). Không áp cho `number` / `date`. 0.16.0. |
+| `pattern` | string | — | Biểu thức chính quy cho **cả** giá trị → `patternMismatch` (luật của trình duyệt; pattern sai cú pháp thì bỏ qua). Chỉ `text`/`search`/`tel`/`url`/`email`/`password`. 0.16.0. **Pattern do dev viết là code tin cậy**: tránh lượng từ lồng nhau kiểu `(a+)+` — như `<input pattern>` gốc, regex tệ + chuỗi dài do người dùng nhập có thể làm treo trang (ReDoS). Đặt thêm `max-length` cho ô có pattern. |
 | `min` / `max` | string | — | Khoảng giá trị cho `number` và `date` (`date` dạng `YYYY-MM-DD`). |
 | `step` | string | — | Bước nhảy cho `number`. |
 | `rows` | number | `4` | Số dòng của `textarea` (tối thiểu khi `autoresize`). |
@@ -252,14 +260,18 @@ document.getElementById('fs').disabled = true;          // field bị disabled, 
 
 ## Property & method
 
-Property phản chiếu attribute (tên camelCase): `type`, `size`, `value`, `placeholder`, `label`, `helperText`,
+Property phản chiếu attribute (tên camelCase): `type`, `size`, `placeholder`, `label`, `helperText`,
 `errorText`, `required`, `disabled`, `readonly` (chú ý: `readonly`, không phải `readOnly`), `maxLength`, `limitType`,
-`min`, `max`, `step`, `rows`, `autoresize`, `validateOn`, `fieldId`, `name`, `ariaLabel`. Property chuỗi trả `''` khi
-không có attribute; boolean trả `true/false`.
+`min`, `max`, `step`, `minlength`, `pattern`, `rows`, `autoresize`, `validateOn`, `fieldId`, `name`, `ariaLabel`.
+Property chuỗi trả `''` khi không có attribute; boolean trả `true/false`. Riêng `value` **không** phản chiếu attribute: nó
+là giá trị sống (xem trên). Gán property trước khi phần tử vào trang (hoặc trước khi module được import) vẫn có tác
+dụng từ 0.16.0.
 
 | Method / property | Trả về | Mô tả |
 |---|---|---|
-| `getValue()` | `string` | Giá trị hiện tại (live). `''` trước lần render đầu. |
+| `value` | `string` | Giá trị sống (get = `getValue()`, set = `setValue()`). Đổi hành vi 0.16.0: trước đây là attribute. |
+| `getValue()` | `string` | Giá trị hiện tại (live). Trước lần render đầu: attribute `value` (hoặc `''`). |
+| `TdInputField.messages` (static) | `object` | Thông báo validation + đơn vị bộ đếm, tiếng Việt mặc định; ghi đè cho cả trang. 0.16.0. |
 | `setValue(val)` | `void` | Đặt giá trị (cắt theo `max-length`), cập nhật bộ đếm + form. **Không** phát `input`/`change`. `null` → rỗng. |
 | `setError(message: string)` | `void` | Hiện lỗi. `''` để xoá. |
 | `clearError()` | `void` | Xoá lỗi (từ `setError` hoặc `error-text`). |
@@ -394,8 +406,8 @@ Input field là tầng nội dung: luôn nền đặc, không bao giờ là kín
 
 ## Lưu ý & lỗi thường gặp
 
-- **Đọc `el.value` ra giá trị cũ**: `value` là attribute, dùng `getValue()`.
-- **Gán property trước khi phần tử vào trang không có tác dụng**: dùng `setAttribute()` hoặc `setValue()`.
+- **Đọc `el.getAttribute('value')` để lấy giá trị đang gõ**: attribute là giá trị ban đầu; dùng `el.value` /
+  `getValue()`.
 - **Đặt `setError()` nhưng form vẫn submit**: error contract không chặn submit; thêm `setCustomValidity()`.
 - **Lỗi validation không hiện dưới ô**: thêm `validate-on` hoặc dùng [TdFormValidation](form-validation.md).
 - **Kiểm tra định dạng email/url/number bằng CSS `:invalid` trên control bên trong không chạy**: control bên trong là

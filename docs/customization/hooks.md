@@ -63,8 +63,8 @@ event đầy đủ ở mục **Event** của từng trang component.
 - **URL** mà hook trả về (lightbox download, href của menu) luôn đi qua bộ lọc: `https:` luôn được; `http:` chỉ khi
   chính trang là `http:`; scheme khác bị từ chối (lightbox cho phép mở rộng qua `isAllowedUrl`).
 - **Lỗi trong hook**: phần lớn hook được bọc `try/catch` và "fail closed" (ẩn nút, bỏ nội dung, hiện trạng thái lỗi).
-  Một số callback của element (dropdown, tabs, table) **không** được bọc: lỗi lan ra và có thể chặn event phát sau đó.
-  Cột "Lỗi thì sao" cho biết chính xác.
+  Callback của element dropdown, tabs, table (từ 0.16.0) được bọc: lỗi ghi `console.error`, luồng và event phía sau
+  vẫn chạy. Cột "Lỗi thì sao" cho biết chính xác.
 - **Hook bất đồng bộ**: chỉ những hook ghi rõ "Promise" mới được `await`. Promise trả về từ hook khác bị bỏ qua.
 
 ---
@@ -281,17 +281,18 @@ Hàm tiện ích export kèm: `safeMenuHref(href) → string | null` (bộ lọc
 
 | Hàm | Option | Resolve |
 |---|---|---|
-| `TdModal.confirm(opts)` | `title` (`'Xác nhận'`), `message` (`'Bạn có chắc chắn?'`), `messageHtml` (HTML tin cậy, thắng `message`), `confirmText`, `cancelText`, `confirmVariant` (`primary danger success warning`), `onConfirm`, `onCancel` | `true` khi xác nhận; `false` khi huỷ / X / `closeAll` |
-| `TdModal.success(opts)` / `.error(opts)` / `.info(opts)` | `title`, `message`, `messageHtml`, `okText` | `true` khi bấm OK, `false` khi đóng cách khác |
+| `TdModal.confirm(opts)` | `title` (`labels.confirmTitle`), `message` (`labels.confirmMessage`), `messageHtml` (HTML tin cậy, thắng `message`), `confirmText`, `cancelText`, `confirmVariant` (`primary danger success warning`), `onConfirm`, `onCancel` | `true` khi xác nhận; `false` khi huỷ / X / `closeAll` |
+| `TdModal.success(opts)` / `.error(opts)` / `.info(opts)` | `title` (`labels.successTitle` / `errorTitle` / `infoTitle`), `message`, `messageHtml`, `okText` | `true` khi bấm OK, `false` khi đóng cách khác |
 
-`onConfirm()`: đồng bộ (kể cả ném lỗi) → resolve `true` và đóng. Trả Promise → nút xác nhận bận; settle khác `false` →
-`true` + đóng; resolve `false` hoặc reject → giữ mở (reject có `console.warn`). `onCancel()` ném lỗi bị nuốt.
+`onConfirm()`: đồng bộ trả `false` hoặc ném lỗi (`console.error`) → giữ mở (**đổi hành vi 0.16.0**, giống `actions`);
+giá trị đồng bộ khác → resolve `true` và đóng. Trả Promise → nút xác nhận bận; settle khác `false` → `true` + đóng;
+resolve `false` hoặc reject → giữ mở (reject có `console.warn`). `onCancel()` ném lỗi bị nuốt.
 
 ### Cấu hình tĩnh
 
 | Thành viên | Mặc định | Ghi chú |
 |---|---|---|
-| `TdModal.labels` | `{ close: 'Đóng', confirm: 'Xác nhận', cancel: 'Hủy', ok: 'OK' }` | `close` = `aria-label` nút X (đọc khi tạo dialog); `confirm` / `cancel` / `ok` = chữ nút mặc định. **Tiêu đề mặc định** của `confirm` / `success` / `error` / `info` không lấy từ đây, hãy truyền `title` |
+| `TdModal.labels` | `{ close: 'Đóng', confirm: 'Xác nhận', cancel: 'Hủy', ok: 'OK', confirmTitle: 'Xác nhận', confirmMessage: 'Bạn có chắc chắn?', successTitle: 'Thành công', errorTitle: 'Lỗi', infoTitle: 'Thông tin' }` | `close` = `aria-label` nút X (đọc khi tạo dialog); `confirm` / `cancel` / `ok` = chữ nút mặc định; `*Title` / `confirmMessage` (0.16.0) = tiêu đề / nội dung mặc định của các hộp thoại Promise. `message` mặc định của `success` / `error` không lấy từ đây |
 | `TdModalStackManager.BASE_Z_INDEX` | `null` | **Deprecated**. Gán số → mỗi modal nhận z-index inline `BASE + i × Z_INDEX_INCREMENT` (+ một cảnh báo). Nên dịch bộ `--td-z-*` thay vì dùng |
 | `TdModalStackManager.Z_INDEX_INCREMENT` | `100` | Chỉ dùng khi có `BASE_Z_INDEX` |
 
@@ -303,13 +304,16 @@ Hàm tiện ích export kèm: `safeMenuHref(href) → string | null` (bộ lọc
 
 | API / cấu hình | Chữ ký | Ghi chú |
 |---|---|---|
-| `TdToast.show(message, type = 'info', duration = 4000)` | `type` ∈ `success error warning info` (khác → info) | `message` luôn là **text**. `duration` ms; `0` = dính (chỉ đóng bằng nút X hoặc click). `message` rỗng → không hiện |
+| `TdToast.show(message, type = 'info', duration = 4000)` | `type` ∈ `success error warning info` (khác → info) | `message` luôn là **text**. `duration` ms; `0` = dính (đóng bằng nút X, click hoặc `handle.close()`). `message` rỗng → không hiện. Trả handle `{ close() }` (0.16.0; mọi hàm dưới cũng vậy) |
+| `handle.close()` | | (0.16.0) Đóng **yêu cầu**: còn trong hàng đợi 50 ms → bỏ; chờ lượt 80 ms → huỷ; đã hiện → đóng như nút X. Gọi lại → no-op |
+| `TdToast.clear()` | | (0.16.0) Xoá hàng đợi, huỷ lượt chờ, đóng mọi toast đang hiện |
+| `TdToast.labels` | `{ close: 'Đóng' }` | (0.16.0) `aria-label` nút đóng, đọc khi tạo mỗi toast |
 | `TdToast.success(msg, duration = 4000)` | | |
 | `TdToast.error(msg, duration = 5000)` | | Lỗi có `role="alert"` |
 | `TdToast.warning(msg, duration = 4000)` / `.info(msg, duration = 4000)` | | |
 | `TdToast.MAX_VISIBLE` | `5` | Vượt quá → toast cũ nhất bị đẩy ra (FIFO) |
 
-Không có callback đóng, không có action button, và **không** có object nhãn: `aria-label` nút đóng cố định `'Đóng'`.
+Không có callback đóng và không có action button.
 Vị trí / màu qua token `--td-toast-*` (xem [công thức 4](#4-toast-thời-lượng-riêng-toast-dính-vị-trí)).
 
 ---
@@ -320,8 +324,8 @@ Vị trí / màu qua token `--td-toast-*` (xem [công thức 4](#4-toast-thời-
 
 | API | Chữ ký | Ghi chú |
 |---|---|---|
-| `TdLoading.show(messageOrOptions)` | `string` hoặc `{ message?, maxDuration? }` | `message` mặc định `'Đang tải...'`. Truyền thẳng chuỗi `''` = không chữ; trong dạng object, `message` rỗng → dùng mặc định. `maxDuration` mặc định `30000` ms: quá hạn tự ẩn + `console.warn`; `false` / `0` tắt |
-| `TdLoading.wrap(asyncFn, message)` | `() => Promise<T>` | Trả về kết quả của `asyncFn` (reject lan ra ngoài). Đếm tham chiếu: nhiều `wrap` song song giữ overlay tới khi cái cuối settle |
+| `TdLoading.show(messageOrOptions)` | `string` hoặc `{ message?, maxDuration? }` | `message` mặc định `TdLoading.labels.loading` (`'Đang tải...'`, cấu hình được từ 0.16.0). Truyền thẳng chuỗi `''` = không chữ; trong dạng object, `message` rỗng → dùng mặc định. `maxDuration` mặc định `30000` ms: quá hạn tự ẩn + `console.warn`; `false` / `0` tắt |
+| `TdLoading.wrap(asyncFn, messageOrOptions)` | `() => Promise<T>`; tham số 2 như `show()` (object từ 0.16.0) | Trả về kết quả của `asyncFn` (reject lan ra ngoài). Đếm tham chiếu: nhiều `wrap` song song giữ overlay tới khi cái cuối settle |
 | `TdLoading.hide()` | | Kết thúc mọi `wrap` đang chờ |
 | `TdLoadingSpinner.create({ size, color, trackColor, className, label })` | `size`: `sm md lg` | `color` / `trackColor` qua `safeColor` rồi CSSOM. `label` có → `role="status"`; không → trang trí (`aria-hidden`) |
 
@@ -345,12 +349,22 @@ trường hợp đặc biệt.
 | Property | Chữ ký / kiểu | Khi nào gọi | Lỗi thì sao |
 |---|---|---|---|
 | `options` | `Array<object>` (khoá theo `value-key` / `label-key`, mặc định `value` / `label`) | — | Không phải mảng → rỗng |
-| `onChange` | `(value) => void` (`null` khi bỏ chọn) | Người dùng chọn / bỏ chọn, **trước** event `change` | **Không bắt lỗi**: lỗi lan ra và event `change` không được phát |
-| `onSelect` | `(item) => void` (`null` khi bỏ chọn) | Như trên, **chỉ khi không có `onChange`** | Như trên |
+| `onSelect` | `(item) => void` (`null` khi bỏ chọn) | Người dùng chọn / bỏ chọn, **trước** `onChange` và event `change` | Bắt lỗi: `console.error`, `onChange` và event `change` vẫn chạy |
+| `onChange` | `(value) => void` (`null` khi bỏ chọn) | Sau `onSelect`, **trước** event `change` | Như trên |
 
-Chỉ **một** trong hai callback chạy: có `onChange` thì `onSelect` bị bỏ qua. Để nhận cả value lẫn item, nghe event
-`change` (`detail = { value, item }`). Không có object nhãn: chữ "Tìm kiếm", "Không tìm thấy kết quả", "Không chọn",
-"Vui lòng chọn một tùy chọn" cố định (placeholder đổi được bằng attribute `placeholder`).
+Từ 0.16.0 **cả hai** callback đều chạy khi cùng đặt (trước đó có `onChange` thì `onSelect` bị bỏ qua). Có thể gán
+`options` / `onChange` / `onSelect` trước khi element được nâng cấp.
+
+`TdDropdown.labels` (toàn trang):
+
+| Khoá | Mặc định |
+|---|---|
+| `search` | `Tìm kiếm` (`aria-label` ô tìm; placeholder = chữ này + `...`) |
+| `none` | `Không chọn` |
+| `noResults` | `Không tìm thấy kết quả` |
+| `required` | `Vui lòng chọn một tùy chọn` |
+
+Placeholder của trigger đổi bằng attribute `placeholder`.
 
 ---
 
@@ -432,9 +446,34 @@ td-input-field, td-dropdown, td-chip-input, td-datetime-picker, td-slider, td-ch
 | `setCustomValidity(message)` | Như input native: thêm / xoá `customError` (chặn submit) |
 | `checkValidity()`, `reportValidity()`, `validity`, `validationMessage` | Như input native |
 
-td-button **không** có hợp đồng lỗi (không form-associated). Thông báo validation mặc định của các control này (ví dụ
-`Trường này là bắt buộc`) cố định tiếng Việt; thay bằng `messages` của TdFormValidation hoặc `setError`. Chi tiết:
-[../guides/forms.md](../guides/forms.md).
+td-button **không** có hợp đồng lỗi (không form-associated). Thông báo validation mặc định (tiếng Việt) của
+td-input-field, td-slider, td-checkbox, td-toggle nằm trong object tĩnh `messages` của từng class (0.16.0, bảng dưới);
+đổi cho cả trang bằng `Object.assign(TdInputField.messages, { … })`. Theo từng field: `messages` của TdFormValidation
+hoặc `setError`. Chi tiết: [../guides/forms.md](../guides/forms.md).
+
+`TdInputField.messages` (`@dazzxq/td-components/input-field`):
+
+| Khoá | Mặc định |
+|---|---|
+| `valueMissing` | `Trường này là bắt buộc` |
+| `tooLong` | `Vượt quá giới hạn {maxLength} {unit}` |
+| `tooShort` | `Tối thiểu {minLength} ký tự` |
+| `patternMismatch` | `Giá trị không đúng định dạng` |
+| `badInput` | `Giá trị không hợp lệ` (cũng dùng cho `number` sai cú pháp) |
+| `typeMismatchEmail`, `typeMismatchUrl` | `Email không hợp lệ`, `URL không hợp lệ` |
+| `rangeUnderflow`, `rangeOverflow` | `Giá trị tối thiểu là {min}`, `Giá trị tối đa là {max}` |
+| `stepMismatch` | `Giá trị không đúng bước nhảy` |
+| `dateInvalid`, `dateUnderflow`, `dateOverflow` | `Ngày không hợp lệ`, `Ngày tối thiểu là {min}`, `Ngày tối đa là {max}` |
+| `unitChar`, `unitWord` | `ký tự`, `từ` — `{unit}` của `tooLong` và chữ của bộ đếm |
+
+`TdSlider.messages` (`{min}` `{max}` `{step}`): `rangeUnderflow` = `Giá trị tối thiểu là {min}.`, `rangeOverflow` =
+`Giá trị tối đa là {max}.`, `stepMismatch` = `Giá trị phải là bội số của {step}.`
+
+`TdCheckbox.messages.valueMissing` = `Vui lòng chọn ô này.`; `TdToggle.messages.valueMissing` =
+`Vui lòng bật tùy chọn này.`
+
+Được đọc mỗi lần control tính lại validity (đổi giá trị / attribute); control đã render giữ thông báo cũ tới lần tính
+lại kế tiếp — nên nạp bản dịch trước khi component render.
 
 ---
 
@@ -453,10 +492,11 @@ td-button **không** có hợp đồng lỗi (không form-associated). Thông b�
 | `focus` | như trên | `boolean` (mặc định `true`) | Focus control lỗi đầu tiên theo thứ tự DOM |
 | `fieldMap` | `apply` | `{ [key]: id \| Element }` | Map khoá lỗi server → control (id tìm **trong** root) |
 | `live` | `attach` | `boolean` (mặc định `true`) | Sau lần submit lỗi đầu, kiểm tra lại khi người dùng sửa |
-| `onValid` | `attach` | `(event, form) => void` | Có → submit **luôn** bị `preventDefault`, gọi `onValid` khi hợp lệ (SPA / modal). **Không bắt lỗi**: tự `try/catch` trong đó |
+| `onValid` | `attach` | `(event, form) => void` | Có → submit **luôn** bị `preventDefault`, gọi `onValid` khi hợp lệ (SPA / modal). Ném lỗi đồng bộ → bắt + `console.error` (0.16.0); Promise reject thì bạn tự xử lý |
 
 `attach(form)` ném `TypeError` nếu `form` không phải `<form>`. `validate()` ném lỗi bên trong `attach` → submit bị chặn
-(fail closed) + `console.error`.
+(fail closed) + `console.error`. Form `reset` → như `clear(form)` + tắt kiểm tra lại khi sửa tới lần submit lỗi kế tiếp
+(0.16.0).
 
 ### Cấu hình tĩnh
 
@@ -476,9 +516,9 @@ trừ khi có `messages` theo từng lần gọi. `patternMismatch` ưu tiên `t
 
 | Property / option | Chữ ký | Khi nào gọi | Lỗi thì sao |
 |---|---|---|---|
-| `columns[].render` | `(row, rowIdxInPage) => Node \| string \| any` | Mỗi lần vẽ hàng | Node → append; **chuỗi → HTML tin cậy (`innerHTML`)**; khác → text. **Không bắt lỗi**: lỗi lan ra, việc vẽ các ô còn lại dừng |
-| `onSort` | `({ key, direction }) => void` (`direction`: `'asc' \| 'desc' \| null`) | Sau event `sort-change`, **chỉ ở `server-mode`** | Không bắt lỗi |
-| `onPageChange` | `(page) => void` | Khi đổi trang, **chỉ ở `server-mode`** | Không bắt lỗi |
+| `columns[].render` | `(row, rowIdxInPage) => Node \| string \| any` | Mỗi lần vẽ hàng | Node → append; **chuỗi → HTML tin cậy (`innerHTML`)**; khác → text. Ném lỗi → ô đó trống + `console.error`, các ô khác vẫn vẽ |
+| `onSort` | `({ key, direction }) => void` (`direction`: `'asc' \| 'desc' \| null`) | Sau event `sort-change`, **chỉ ở `server-mode`** | Bắt lỗi: `console.error` |
+| `onPageChange` | `(page) => void` | Khi đổi trang, **chỉ ở `server-mode`** | Bắt lỗi: `console.error` (hai thanh phân trang vẫn đồng bộ) |
 | `update({ columns, data, page, onSort, onPageChange })` | | Gộp nhiều thay đổi một lần | Mảng không hợp lệ bị bỏ qua |
 
 Ở chế độ client, sắp xếp / phân trang làm tại chỗ; muốn biết người dùng sắp xếp gì, nghe event `sort-change`.
@@ -502,7 +542,7 @@ trừ khi có `messages` theo từng lần gọi. `patternMismatch` ưu tiên `t
 | Property | Chữ ký | Khi nào gọi | Lỗi thì sao |
 |---|---|---|---|
 | `tabs` | `Array<{ id, label, icon?, panel? }>` | — | Mục thiếu `id` bị bỏ |
-| `onChange` | `(tabId) => void` | Người dùng (hoặc `setActiveTab`) đổi tab, **trước** event `tab-change` | Không bắt lỗi: lỗi lan ra và `tab-change` không phát |
+| `onChange` | `(tabId) => void` | Người dùng (hoặc `setActiveTab`) đổi tab, **trước** event `tab-change` | Bắt lỗi: `console.error`, `tab-change` vẫn phát |
 
 Tên tablist mặc định `Các thẻ`; đổi bằng attribute `aria-label` / `aria-labelledby`.
 
@@ -516,15 +556,18 @@ Tên tablist mặc định `Các thẻ`; đổi bằng attribute `aria-label` / 
 |---|---|---|
 | `actions` | `Array<{ label, variant?: 'primary' \| 'secondary' \| 'danger', onClick?: (event) => void }>` | Mỗi action thành một `.td-btn--sm`; `onClick` là listener `click` thường. Gán lại → listener cũ được gỡ |
 | `iconNode` | `SVGElement \| null` | Icon tuỳ biến tin cậy (clone), thắng attribute `icon` |
+| `TdEmptyState.labels` | `{ action: 'Thực hiện' }` | Chữ nút của action thiếu `label` (toàn trang) |
 
 ---
 
 ## Component không có hook JS
 
 td-button, td-input-field, td-checkbox, td-toggle, td-slider, td-pagination: tuỳ biến bằng attribute, token và event
-(`click`, `input`, `change`, `page-change`). Các control form có [hợp đồng lỗi](#hợp-đồng-lỗi-của-mọi-form-control).
-Chữ cố định của td-pagination (`Trang trước`, `Trang sau`, `Trang {n}`, `Hiển thị …`) không đổi được; phần đổi được là
-attribute `item-label` và `aria-label`.
+(`click`, `input`, `change`, `page-change`). Các control form có [hợp đồng lỗi](#hợp-đồng-lỗi-của-mọi-form-control)
+và object tĩnh `messages` cho thông báo validation.
+Chữ của td-pagination đổi qua `TdPagination.labels` (toàn trang): `prev` (`Trang trước`), `next` (`Trang sau`),
+`page` (`Trang {n}`), `info` (`Hiển thị {from}-{to} / {total} {item}`), `item` (`mục`); attribute `item-label` thắng
+`labels.item`, tên landmark đổi bằng `aria-label`.
 
 ## Icon
 
@@ -766,13 +809,23 @@ import { TdMenu } from '@dazzxq/td-components/menu';
 import { TdModal } from '@dazzxq/td-components/modal';
 import { TdHovercard } from '@dazzxq/td-components/hovercard';
 import { TdTable } from '@dazzxq/td-components/table';
+import { TdDropdown } from '@dazzxq/td-components/dropdown';
+import { TdPagination } from '@dazzxq/td-components/pagination';
+import { TdEmptyState } from '@dazzxq/td-components/empty-state';
 
 Object.assign(TdMenu.labels, { trigger: 'Options' });
-Object.assign(TdModal.labels, { close: 'Close', confirm: 'Confirm', cancel: 'Cancel', ok: 'OK' });
+Object.assign(TdModal.labels, { close: 'Close', confirm: 'Confirm', cancel: 'Cancel', ok: 'OK',
+  confirmTitle: 'Confirm', confirmMessage: 'Are you sure?', successTitle: 'Success', errorTitle: 'Error',
+  infoTitle: 'Information' });
 Object.assign(TdHovercard.labels, { loading: 'Loading…', error: 'Could not load content.', dialog: 'More info' });
 Object.assign(TdTable.labels, { table: 'Data table', loading: 'Loading data…', itemLabel: 'items',
   paginationTop: 'Pagination (top)', paginationBottom: 'Pagination (bottom)',
   emptyTitle: 'No data', emptyText: 'Nothing to show yet.' });
+Object.assign(TdDropdown.labels, { search: 'Search', none: 'None', noResults: 'No results',
+  required: 'Please choose an option' });
+Object.assign(TdPagination.labels, { prev: 'Previous page', next: 'Next page', page: 'Page {n}',
+  info: 'Showing {from}-{to} of {total} {item}', item: 'items' });
+TdEmptyState.labels.action = 'Do it';
 ```
 
 Danh sách đầy đủ mọi object nhãn (và những chữ **không** dịch được) ở

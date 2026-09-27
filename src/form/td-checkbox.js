@@ -27,6 +27,11 @@ import { TdCheckableElement } from '../base/td-checkable-element.js';
  * @fires change - detail: { checked: boolean } (exactly one per user toggle)
  */
 export class TdCheckbox extends TdCheckableElement {
+  /** Validation texts (Vietnamese); override per site: `TdCheckbox.messages.valueMissing = 'Please tick this box.'`. */
+  static messages = {
+    valueMissing: 'Vui lòng chọn ô này.',
+  };
+
   /** @private @returns {'sm'|'md'|'lg'} */
   _size() {
     const s = this.getAttribute('size');

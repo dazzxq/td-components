@@ -90,6 +90,10 @@ Màu chữ trên nút trang hiện tại được **tự chọn đen hoặc tr�
 (`rgb(… / 50%)`), component tính màu thực hiển thị bằng cách chồng lên nền đặc gần nhất của các phần tử cha (nếu không
 có thì dùng `--td-color-bg` của trang, cuối cùng là trắng).
 
+`active-color` được ghi thành biến inline `--td-pagination-active` / `--td-pagination-active-fg` trên phần tử. Bỏ
+attribute thì component chỉ gỡ những biến **nó** đã đặt; biến inline site tự đặt (`el.style.setProperty('--td-…', …)`)
+không bị xoá khi render lại (từ 0.16.0).
+
 ### 5. Cửa sổ số trang
 
 ```html
@@ -108,7 +112,7 @@ trong khoảng hợp lệ), cộng trang 1 và trang cuối; khoảng trống đ
 | `items-per-page` | number | `10` | Số mục mỗi trang, tối thiểu 1. |
 | `current-page` | number | `1` | Trang hiện tại, bắt đầu từ 1. Khi hiển thị được kẹp vào `[1, totalPages]`. |
 | `active-color` | string (màu) | token `--td-pagination-active` | Màu nền nút trang hiện tại. Qua `safeColor`; không hợp lệ → dùng token. |
-| `item-label` | string | `mục` | Danh từ trong dòng thông tin ("Hiển thị 1-10 / 240 **mục**"). |
+| `item-label` | string | `TdPagination.labels.item` (`mục`) | Danh từ trong dòng thông tin ("Hiển thị 1-10 / 240 **mục**"), điền vào `{item}`. |
 | `max-pages` | number | `5` | Kích thước cửa sổ số trang liên tiếp, kẹp 1–25. |
 | `aria-label` | string | `Phân trang` | Tên landmark `<nav>`. |
 | `quiet` | boolean | vắng | Dòng thông tin không phải vùng `aria-live` (dùng cho thanh thứ hai của cùng danh sách). |
@@ -123,6 +127,30 @@ giữ.
 |---|---|---|
 | `setPage(page)` | `(number) => void` | Chuyển tới trang (kẹp vào `[1, totalPages]`); nếu khác trang hiện tại thì cập nhật `current-page` **và phát `page-change`**. |
 | `getState()` | `() => { totalItems, itemsPerPage, currentPage, totalPages }` | Trạng thái đã kẹp. `totalPages` tối thiểu là 1. |
+| `TdPagination.labels` | static object | Chữ giao diện, site ghi đè được (xem dưới). |
+
+### `TdPagination.labels`
+
+Chữ mặc định cho cả trang (tiếng Việt, từ 0.16.0). Đổi ngay sau import; áp dụng từ lần render tiếp theo:
+
+```js
+import { TdPagination } from '@dazzxq/td-components/pagination';
+Object.assign(TdPagination.labels, {
+  prev: 'Previous page', next: 'Next page', page: 'Page {n}',
+  info: 'Showing {from}–{to} of {total} {item}', item: 'items',
+});
+```
+
+| Khoá | Mặc định | Dùng ở |
+|---|---|---|
+| `prev` | `Trang trước` | `aria-label` nút trước |
+| `next` | `Trang sau` | `aria-label` nút sau |
+| `page` | `Trang {n}` | `aria-label` từng nút số trang (`{n}` = số trang) |
+| `info` | `Hiển thị {from}-{to} / {total} {item}` | Dòng thông tin |
+| `item` | `mục` | `{item}` khi phần tử không có attribute `item-label` |
+
+`item-label` trên phần tử luôn thắng `labels.item`. Tên landmark (`Phân trang`) đổi bằng attribute `aria-label`.
+Mọi nhãn được escape.
 
 Vì kế thừa `TdBaseElement`, các attribute cũng có property tương ứng dạng camelCase (`el.totalItems`, `el.currentPage`,
 `el.itemsPerPage`, `el.maxPages`, `el.itemLabel`, `el.activeColor`, `el.quiet`) sau khi element đã vào trang; chúng đọc/ghi
@@ -138,9 +166,9 @@ attribute dạng **chuỗi** (ví dụ `el.currentPage` trả `'3'`, không ph�
 
 | Token | Mặc định | Tác dụng |
 |---|---|---|
-| `--td-pagination-active` | `var(--td-accent)` (dark: `#2563eb`) | Nền + viền nút trang hiện tại |
+| `--td-pagination-active` | `var(--td-accent-fill)` (light = accent; dark = accent tối đi 20%) | Nền + viền nút trang hiện tại. Từ 0.16.0 đi theo `--td-accent` ở cả dark (trước đó dark cố định `#2563eb`). |
 | `--td-pagination-active-fg` | `var(--td-accent-contrast)` (dark: `#fff`) | Chữ nút trang hiện tại |
-| `--td-pagination-item-size` | `2rem` (cảm ứng: `var(--td-touch-min)`) | Kích thước nút trang / trước / sau |
+| `--td-pagination-item-size` | `2rem` (cảm ứng: `var(--td-touch-min)`) | Kích thước nút trang / trước / sau. Cả hai giá trị khai báo trên `:root` (từ 0.16.0), nên override ở `:root` thắng cả trên màn cảm ứng. |
 
 Khi có `active-color`, JS ghi hai custom property trên chính host (`--td-pagination-active`, `--td-pagination-active-fg`)
 bằng CSSOM; xoá attribute thì chúng bị gỡ và token toàn cục áp lại.
@@ -192,13 +220,11 @@ chỉ `active-color` mới tự tính màu chữ.
 
 ## Bảo mật
 
-`item-label` và `aria-label` được escape; `active-color` qua `safeColor` (giá trị như `red;}` bị bỏ). Số trang tối đa trong
+`item-label`, `aria-label` và `TdPagination.labels` được escape; `active-color` qua `safeColor` (giá trị như `red;}` bị bỏ). Số trang tối đa trong
 DOM bị chặn bởi `max-pages ≤ 25`, nên giá trị lớn từ API/CMS không làm phình DOM.
 
 ## Lưu ý & lỗi thường gặp
 
-- **Nhãn tiếng Việt cố định**: "Trang trước", "Trang sau", "Trang N", "Hiển thị {a}-{b} / {tổng} {item-label}" nằm cứng
-  trong code, **không** có `labels` để ghi đè (khác với `TdTable.labels`). Chỉ `item-label` và `aria-label` đổi được.
 - **`setPage()` phát event**, còn `td-table.setPage()` thì không — đừng nhầm hai hành vi.
 - `total-items="0"` vẫn hiện trang 1 và hai nút bị vô hiệu; muốn ẩn hẳn thì tự thêm `hidden` cho `<td-pagination>`.
 - Nhiều thanh trên một trang cần `aria-label` khác nhau (mỗi thanh là một landmark).

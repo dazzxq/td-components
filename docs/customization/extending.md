@@ -104,9 +104,8 @@ export class SiteRating extends TdFormElement {
   }
 
   _applyStyles() {                                     // gọi sau mỗi render
-    const color = this.safeColor(this.getAttribute('color'), '');
-    if (color) this.style.setProperty('--site-rating-color', color);
-    else this.style.removeProperty('--site-rating-color');
+    // Chỉ gỡ giá trị do chính component đặt: biến site tự đặt inline trên host được giữ (0.16.0).
+    this._setOwnedStyle('--site-rating-color', this.safeColor(this.getAttribute('color'), ''));
   }
 
   _syncForm() {
@@ -318,11 +317,19 @@ ghi đè. Cách làm chuẩn: một module `i18n-<ngôn ngữ>.js` nạp **một
 | `options.labels` (theo từng lần gọi) | `@dazzxq/td-components/lightbox` | `dialog prev next close back fullscreen download info` (chuỗi), `counter(i, n)` (hàm) | Mỗi `TdLightbox.open()` / `bind()` — không có object tĩnh |
 | `TdHovercard.labels` | `@dazzxq/td-components/hovercard` | `loading error dialog` | Mỗi lần mở thẻ |
 | `TdMenu.labels` | `@dazzxq/td-components/menu` | `trigger` | Khi tạo `TdMenu.button()` |
-| `TdModal.labels` | `@dazzxq/td-components/modal` | `close confirm cancel ok` | Khi tạo dialog |
+| `TdModal.labels` | `@dazzxq/td-components/modal` | `close confirm cancel ok confirmTitle confirmMessage successTitle errorTitle infoTitle` (5 khoá cuối từ 0.16.0) | Khi tạo dialog |
+| `TdToast.labels` | `@dazzxq/td-components/toast` | `close` (0.16.0) | Khi tạo mỗi toast |
+| `TdLoading.labels` | `@dazzxq/td-components/loading` | `loading` (0.16.0) | Mỗi `show()` / `wrap()` không truyền `message` |
 | `TdDatetimePicker.labels` | `@dazzxq/td-components/datetime-picker` | `title placeholder date day month year time hour minute close now confirm` | Khi render / mở picker |
 | `TdDatetimePicker.messages` | như trên | `required format incomplete day month year hour minute date min max` (`{min}` `{max}`) | Khi kiểm tra giá trị |
+| `TdInputField.messages` | `@dazzxq/td-components/input-field` | `valueMissing tooLong tooShort patternMismatch badInput typeMismatchEmail typeMismatchUrl rangeUnderflow rangeOverflow stepMismatch dateInvalid dateUnderflow dateOverflow unitChar unitWord` (`{min}` `{max}` `{minLength}` `{maxLength}` `{unit}`) | Khi tính validity / bộ đếm (0.16.0) |
+| `TdSlider.messages` | `@dazzxq/td-components/slider` | `rangeUnderflow rangeOverflow stepMismatch` (`{min}` `{max}` `{step}`) | Khi tính validity (0.16.0) |
+| `TdCheckbox.messages` / `TdToggle.messages` | `@dazzxq/td-components/checkbox` / `…/toggle` | `valueMissing` | Khi tính validity (0.16.0) |
 | `TdChipInput.labels` | `@dazzxq/td-components/chip-input` | `remove create chips added removed duplicate results noResults loading error max required` (`{label}` `{text}` `{n}` `{max}`) | Mỗi lần dùng; `el.messages` ghi đè cho một instance |
 | `TdTable.labels` | `@dazzxq/td-components/table` | `table loading paginationTop paginationBottom itemLabel emptyTitle emptyText` | Khi render (cấu trúc) / cập nhật |
+| `TdDropdown.labels` | `@dazzxq/td-components/dropdown` | `search none noResults required` | Khi render menu / danh sách / kiểm tra `required` |
+| `TdPagination.labels` | `@dazzxq/td-components/pagination` | `prev next page info item` (`{n}`; `{from}` `{to}` `{total}` `{item}`) | Mỗi lần render (`item-label` thắng `item`) |
+| `TdEmptyState.labels` | `@dazzxq/td-components/empty-state` | `action` | Khi dựng nút hành động thiếu `label` |
 | `TdFormValidation.labels` | `@dazzxq/td-components/form-validation` | `summaryTitle` | Khi hiện summary |
 | `TdFormValidation.messages` | như trên | `ruleError valueMissing typeMismatch typeMismatchEmail typeMismatchUrl badInput patternMismatch tooShort tooLong rangeUnderflow rangeOverflow stepMismatch` (`{min}` `{max}` `{minLength}` `{maxLength}` `{step}`) | Khi validate (control **native**) |
 
@@ -332,29 +339,23 @@ Giá trị mặc định từng khoá: [hooks.md](hooks.md) (mục của từng 
 
 | Component | Cách đổi |
 |---|---|
-| td-dropdown | `placeholder` |
+| td-dropdown | `placeholder` (chữ trên trigger khi chưa chọn) |
 | td-chip-input, td-input-field, td-datetime-picker… | `label`, `placeholder`, `helper-text`, `error-text` |
-| td-pagination | `item-label` (mặc định `mục`), `aria-label` (mặc định `Phân trang`) |
+| td-pagination | `item-label` (mặc định `TdPagination.labels.item`), `aria-label` (mặc định `Phân trang`) |
 | td-tabs | `aria-label` (mặc định `Các thẻ`) |
 | td-table | `empty-title`, `empty-text`, `aria-label` |
 | td-empty-state | `title`, `message` |
-| TdLoading | `TdLoading.show('Loading…')`, `TdLoading.wrap(fn, 'Loading…')` |
-| TdModal | `title`, `message`, `confirmText`, `cancelText`, `okText` — **tiêu đề mặc định** của `confirm` (`Xác nhận`), `success` (`Thành công`), `error` (`Lỗi`), `info` (`Thông tin`) và `message` mặc định của `confirm` không lấy từ `TdModal.labels`, phải truyền mỗi lần |
+| TdLoading | `TdLoading.show('Loading…')`, `TdLoading.wrap(fn, 'Loading…')` — ghi đè `TdLoading.labels.loading` cho một lần |
+| TdModal | `title`, `message`, `confirmText`, `cancelText`, `okText` — `message` mặc định của `success` (`Thao tác đã hoàn tất`) và `error` (`Đã xảy ra lỗi`) không lấy từ `TdModal.labels`, phải truyền mỗi lần |
 | TdFormValidation | Option `messages` theo từng field (áp cả cho control td) |
 | Control form td | `setError(message)` thay thông điệp hiển thị |
 
-### Chữ **chưa** dịch được (cố định trong source 0.15.0)
+### Chữ **chưa** dịch được (cố định trong source 0.16.0)
 
 Biết trước để không mất công tìm:
 
 | Component | Chữ cố định |
 |---|---|
-| TdToast | `aria-label` nút đóng `Đóng` |
-| td-dropdown | `Tìm kiếm` (nhãn + placeholder ô tìm), `Không tìm thấy kết quả`, option bỏ chọn `Không chọn`, thông điệp `Vui lòng chọn một tùy chọn` |
-| td-pagination | `Trang trước`, `Trang sau`, `Trang {n}`, `Hiển thị {a}-{b} / {tổng} {item-label}` |
-| td-input-field | Thông điệp validation (`Trường này là bắt buộc`, `Email không hợp lệ`, `Vượt quá giới hạn … ký tự/từ`…) |
-| td-slider | `Giá trị tối thiểu là …`, `Giá trị tối đa là …`, `Giá trị phải là bội số của …` |
-| td-checkbox / td-toggle | `Vui lòng chọn ô này.` / `Vui lòng bật tùy chọn này.` |
 | td-datetime-picker | Định dạng hiển thị `dd/mm/yyyy - hh:mm` (chữ nhãn thì dịch được) |
 
 Thông điệp validation của control td được dùng khi trình duyệt hiện bong bóng lỗi (`reportValidity`) hoặc khi
@@ -367,9 +368,18 @@ TdFormValidation không có `messages` cho field đó. Muốn đa ngôn ngữ ho
 import { TdHovercard } from '@dazzxq/td-components/hovercard';
 import { TdMenu } from '@dazzxq/td-components/menu';
 import { TdModal } from '@dazzxq/td-components/modal';
+import { TdToast } from '@dazzxq/td-components/toast';
+import { TdLoading } from '@dazzxq/td-components/loading';
 import { TdDatetimePicker } from '@dazzxq/td-components/datetime-picker';
 import { TdChipInput } from '@dazzxq/td-components/chip-input';
+import { TdInputField } from '@dazzxq/td-components/input-field';
+import { TdSlider } from '@dazzxq/td-components/slider';
+import { TdCheckbox } from '@dazzxq/td-components/checkbox';
+import { TdToggle } from '@dazzxq/td-components/toggle';
 import { TdTable } from '@dazzxq/td-components/table';
+import { TdDropdown } from '@dazzxq/td-components/dropdown';
+import { TdPagination } from '@dazzxq/td-components/pagination';
+import { TdEmptyState } from '@dazzxq/td-components/empty-state';
 import { TdFormValidation } from '@dazzxq/td-components/form-validation';
 
 export const lightboxLabels = {
@@ -380,7 +390,11 @@ export const lightboxLabels = {
 
 Object.assign(TdHovercard.labels, { loading: 'Loading…', error: 'Could not load content.', dialog: 'More info' });
 Object.assign(TdMenu.labels, { trigger: 'Options' });
-Object.assign(TdModal.labels, { close: 'Close', confirm: 'Confirm', cancel: 'Cancel', ok: 'OK' });
+Object.assign(TdModal.labels, { close: 'Close', confirm: 'Confirm', cancel: 'Cancel', ok: 'OK',
+  confirmTitle: 'Confirm', confirmMessage: 'Are you sure?', successTitle: 'Success', errorTitle: 'Error',
+  infoTitle: 'Information' });
+TdToast.labels.close = 'Close';
+TdLoading.labels.loading = 'Loading...';
 
 Object.assign(TdDatetimePicker.labels, {
   title: 'Pick date and time', date: 'Date', day: 'Day', month: 'Month', year: 'Year',
@@ -400,10 +414,31 @@ Object.assign(TdChipInput.labels, {
   max: 'Limit of {max} items reached', required: 'Please add at least one item',
 });
 
+Object.assign(TdInputField.messages, {
+  valueMissing: 'This field is required', tooLong: 'Over the {maxLength} {unit} limit',
+  tooShort: 'At least {minLength} characters', patternMismatch: 'Invalid format', badInput: 'Invalid value',
+  typeMismatchEmail: 'Invalid email address', typeMismatchUrl: 'Invalid URL', rangeUnderflow: 'Minimum is {min}',
+  rangeOverflow: 'Maximum is {max}', stepMismatch: 'Invalid step', dateInvalid: 'Invalid date',
+  dateUnderflow: 'Earliest date is {min}', dateOverflow: 'Latest date is {max}', unitChar: 'characters', unitWord: 'words',
+});
+Object.assign(TdSlider.messages, {
+  rangeUnderflow: 'Minimum is {min}.', rangeOverflow: 'Maximum is {max}.', stepMismatch: 'Must be a multiple of {step}.',
+});
+TdCheckbox.messages.valueMissing = 'Please tick this box.';
+TdToggle.messages.valueMissing = 'Please turn this on.';
+
 Object.assign(TdTable.labels, {
   table: 'Data table', loading: 'Loading data…', paginationTop: 'Pagination (top)',
   paginationBottom: 'Pagination (bottom)', itemLabel: 'items', emptyTitle: 'No data', emptyText: 'Nothing to show yet.',
 });
+
+Object.assign(TdDropdown.labels, {
+  search: 'Search', none: 'None', noResults: 'No results', required: 'Please choose an option',
+});
+Object.assign(TdPagination.labels, {
+  prev: 'Previous page', next: 'Next page', page: 'Page {n}', info: 'Showing {from}-{to} of {total} {item}', item: 'items',
+});
+TdEmptyState.labels.action = 'Do it';
 
 TdFormValidation.labels.summaryTitle = 'Please check the following fields:';
 Object.assign(TdFormValidation.messages, {

@@ -590,3 +590,62 @@ describe('TdFormValidation — golden contract (test/contracts/form-summary.html
     }
   });
 });
+
+describe('v0.16.0 C5 — attach(): form reset + onValid guard', () => {
+  it('form reset clears summary, notes and aria-invalid, and turns live revalidation off again', () => {
+    const form = mount('<form><input name="a" required><input name="b" required></form>');
+    TdFormValidation.attach(form, { summary: true });
+    const [a, b] = form.querySelectorAll('input');
+    form.requestSubmit();
+    expect(form.querySelector('.td-form-summary')).to.not.equal(null);
+    expect(form.querySelectorAll('.td-field-error').length).to.equal(2);
+    expect(a.getAttribute('aria-invalid')).to.equal('true');
+    form.reset();
+    expect(form.querySelector('.td-form-summary')).to.equal(null);
+    expect(form.querySelector('.td-field-error')).to.equal(null);
+    expect(a.hasAttribute('aria-invalid')).to.equal(false);
+    expect(b.hasAttribute('aria-invalid')).to.equal(false);
+    expect(ids(a, 'aria-describedby').length).to.equal(0);
+    // live re-check is off again: change/focusout on an empty required field shows nothing until the next submit
+    fire(a, 'change'); fire(a, 'focusout');
+    expect(form.querySelector('.td-field-error')).to.equal(null);
+    form.requestSubmit();
+    expect(form.querySelectorAll('.td-field-error').length).to.equal(2);
+  });
+
+  it('form reset also resets the custom validity pushed by rules', () => {
+    const form = mount('<form><input name="slug" value="A B"></form>');
+    TdFormValidation.attach(form, { rules: { slug: (v) => (/^[a-z]+$/.test(v) ? '' : 'Sai') } });
+    const input = form.querySelector('input');
+    form.requestSubmit();
+    expect(input.validity.customError).to.equal(true);
+    form.reset();
+    expect(input.validity.customError).to.equal(false);
+  });
+
+  it('detach() removes the reset listener', () => {
+    const form = mount('<form><input name="a" required></form>');
+    const detach = TdFormValidation.attach(form);
+    form.requestSubmit();
+    detach();
+    form.reset();
+    expect(form.querySelector('.td-field-error')).to.not.equal(null);
+  });
+
+  it('a throwing onValid is caught (console.error) and the submit stays prevented', () => {
+    const form = mount('<form><input name="a" value="x"></form>');
+    TdFormValidation.attach(form, { onValid: () => { throw new Error('boom'); } });
+    let prevented = null;
+    form.addEventListener('submit', (e) => { prevented = e.defaultPrevented; e.preventDefault(); });
+    const orig = console.error;
+    const logged = [];
+    console.error = (...args) => { logged.push(args); };
+    try {
+      form.requestSubmit();
+    } finally {
+      console.error = orig;
+    }
+    expect(prevented).to.equal(true);
+    expect(logged.length).to.equal(1);
+  });
+});

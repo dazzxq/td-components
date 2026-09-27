@@ -50,9 +50,11 @@ Ghi chú:
   là việc có chủ đích, xem [Nâng cấp](../upgrading/README.md).
 - Tag chỉ dùng được khi nó đã được **push lên GitHub**. Nếu `npm install …#v0.15.1` báo không tìm thấy ref, kiểm tra
   `git ls-remote --tags https://github.com/dazzxq/td-components.git`.
-- Package **không có dependency runtime** nào. `package.json#files` giới hạn phần nội dung được tải: `src/`,
-  `index.js`, `td.css`, `THIRD_PARTY_NOTICES.md`; ngoài ra npm luôn tự kèm file metadata như `package.json`,
-  `README.md` (và `LICENSE` nếu có).
+- Package **không có dependency runtime** nào. `package.json#files` giới hạn phần nội dung được tải: `src/` (từ
+  0.16.0 **không** còn file test `*.test.js` / `*.browser-test.js` và file story `*.stories.*`), `index.js`, `td.css`,
+  `THIRD_PARTY_NOTICES.md`; ngoài ra npm luôn tự kèm file metadata như `package.json`, `README.md` (và `LICENSE` nếu
+  có). `package.json` khai báo `engines.node >= 20` và export cả `@dazzxq/td-components/package.json` (công cụ đọc
+  phiên bản kit dùng được).
 - Nâng cấp sau này: đổi tag rồi chạy lại `npm install github:dazzxq/td-components#v<bản-mới>`.
 
 Sau khi cài, kit nằm ở `node_modules/@dazzxq/td-components/`:
@@ -122,13 +124,14 @@ import '@dazzxq/td-components';                         // đăng ký mọi cust
 import { TdToast, TdModal } from '@dazzxq/td-components'; // hoặc lấy class từ barrel
 ```
 
-Cảnh báo về tree-shaking: mỗi file component có **side effect** khi import (gọi `customElements.define(...)`;
-`td-tooltip.js` còn tự khởi tạo một singleton lắng nghe `data-tooltip` toàn trang) và `package.json` không khai báo
-`"sideEffects": false`. Vì vậy import **bất kỳ thứ gì** từ barrel `@dazzxq/td-components` sẽ kéo theo **toàn bộ** kit
-vào bundle và đăng ký mọi thẻ, kể cả khi bạn chỉ dùng `TdToast`. Nếu quan tâm dung lượng, import theo subpath.
+Tree-shaking: từ 0.16.0 `package.json#sideEffects` liệt kê đúng các module có side effect khi import — mọi file đăng
+ký custom element (`customElements.define(...)`), `td-tooltip.js` (tự khởi tạo singleton lắng nghe `data-tooltip` toàn
+trang) và mọi file `*.css`. Module còn lại (`TdToast`, `TdModal`, `TdMenu`, tiện ích…) bundler được phép bỏ nếu không
+dùng. Tuy vậy import từ barrel vẫn **đăng ký mọi thẻ** (các file đăng ký luôn được giữ); nếu quan tâm dung lượng, import
+theo subpath.
 
-Barrel không gồm `<td-icon>` và `<td-sample>`: muốn dùng thì import riêng `@dazzxq/td-components/icon-element` và
-`@dazzxq/td-components/sample`.
+Barrel export thêm `TdIconElement` từ 0.16.0 (nên import barrel cũng đăng ký `<td-icon>`). `<td-sample>` không có trong
+barrel: import riêng `@dazzxq/td-components/sample`.
 
 ### Lưu ý khi dùng Vite
 
@@ -156,7 +159,8 @@ rsync -a --exclude='*.test.js' --exclude='*.browser-test.js' --exclude='*.storie
   node_modules/@dazzxq/td-components/src "$DEST"/
 ```
 
-`rsync --exclude` chỉ để bỏ file test/story (khoảng một nửa số file trong package); copy nguyên `src/` cũng chạy được.
+Từ 0.16.0 package không còn file test/story nên `rsync --exclude` không bắt buộc (giữ cũng không sao, và vẫn có ích nếu
+bạn copy từ một bản clone repo thay vì từ `node_modules`); copy nguyên `src/` cũng chạy được.
 Giữ nguyên cấu trúc thư mục `src/…`: các file import nhau bằng đường dẫn tương đối (`../base/td-base-element.js`),
 đổi cấu trúc là hỏng.
 
@@ -411,7 +415,7 @@ Nguồn: `package.json#exports` của 0.15.1.
 
 | Import | File | Cung cấp |
 |---|---|---|
-| `@dazzxq/td-components` | `index.js` | Barrel: mọi class dưới đây (trừ `td-icon`, `td-sample`, icon helpers) |
+| `@dazzxq/td-components` | `index.js` | Barrel: mọi class dưới đây, kể cả `TdIconElement` từ 0.16.0 (trừ `td-sample`, icon helpers) |
 | `@dazzxq/td-components/td.css` | `td.css` | Stylesheet |
 | `@dazzxq/td-components/button` | `src/form/td-button.js` | `<td-button>`, `TdButton` |
 | `@dazzxq/td-components/input-field` | `src/form/td-input-field.js` | `<td-input-field>`, `TdInputField` |
@@ -442,6 +446,7 @@ Nguồn: `package.json#exports` của 0.15.1.
 | `@dazzxq/td-components/base` | `src/base/td-base-element.js` | `TdBaseElement` (tự viết component) |
 | `@dazzxq/td-components/form-element` | `src/base/td-form-element.js` | `TdFormElement` |
 | `@dazzxq/td-components/sample` | `src/base/sample/td-sample.js` | `<td-sample>` (component mẫu) |
+| `@dazzxq/td-components/package.json` | `package.json` | Metadata (phiên bản…), từ 0.16.0 |
 
 ## Xem thêm
 

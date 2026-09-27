@@ -35,7 +35,8 @@ Cần `td.css` trên trang (xem [Cài đặt](../getting-started/installation.md
 <td-slider label="Nhiệt độ" min="-10" max="40" step="0.5" value="22.5" show-label></td-slider>
 ```
 
-- Mặc định `min=0`, `max=100`, `step=1`, `value=0`. Giá trị không phải số thì dùng mặc định; `step` ≤ 0 thì thành 1.
+- Mặc định `min=0`, `max=100`, `step=1`; không có `value` thì giá trị là `min` (0.16.0; trước đó là `0`, nên
+  `min="10"` không có `value` báo `rangeUnderflow` giả). Giá trị không phải số thì dùng mặc định; `step` ≤ 0 thì thành 1.
 - Số hiển thị được làm tròn theo số chữ số thập phân của `step` (và `min`), nên không bao giờ thấy
   `0.30000000000000004`.
 
@@ -123,11 +124,12 @@ new FormData(document.getElementById('f')).get('volume'); // "30"
 
   Ví dụ `<td-slider value="200" max="100">`: thanh hiển thị ở 100 nhưng form gửi `200` và field ở trạng thái
   `rangeOverflow` (chặn submit).
-- Reset form: trả `value` về attribute lúc gắn vào trang. Nếu lúc đó không có attribute `value`, giá trị về mặc định
-  `0` (không phải `min`).
+- Reset form: trả `value` về attribute lúc gắn vào trang. Nếu lúc đó không có attribute `value`, giá trị về `min`
+  (0.16.0; trước đó là `0`).
 - `<fieldset disabled>` bao ngoài làm slider disabled (không gửi), attribute `disabled` không đổi.
 - Autofill / back-forward cache: giá trị được khôi phục qua attribute `value`.
-- `required` không có tác dụng thực tế (slider luôn có giá trị).
+- Không có `required` (từ 0.16.0 không còn là attribute được theo dõi, không có property `required`): slider luôn có
+  giá trị, `<input type="range">` native cũng không có `valueMissing`.
 
 ### Hiện lỗi (error contract)
 
@@ -150,7 +152,7 @@ Lỗi = viền núm màu lỗi + `aria-invalid`/`aria-errormessage`/`aria-descri
 |---|---|---|---|
 | `min` | number | `0` | Giá trị nhỏ nhất. |
 | `max` | number | `100` | Giá trị lớn nhất. |
-| `value` | number | `0` | Giá trị hiện tại. Tự cập nhật khi người dùng kéo. Lúc gắn vào trang là mặc định khi reset. |
+| `value` | number | `min` | Giá trị hiện tại (vắng → `min`, 0.16.0; trước đó `0`). Tự cập nhật khi người dùng kéo. Lúc gắn vào trang là mặc định khi reset. |
 | `step` | number | `1` | Bước nhảy (≤ 0 hoặc không phải số → 1). |
 | `name` | string | — | Tên trường trong form. |
 | `size` | string | `md` | `sm` \| `md` \| `lg`: rộng 200 / 300 / 400 px, rãnh cao 4 / 6 / 8 px, núm 14 / 18 / 22 px. |
@@ -170,14 +172,16 @@ Lỗi = viền núm màu lỗi + `aria-invalid`/`aria-errormessage`/`aria-descri
 
 Property phản chiếu attribute (đều là **chuỗi**, trừ boolean): `min`, `max`, `value`, `step`, `name`, `size`, `color`,
 `trackColor`, `label`, `ariaLabel`, `labelPosition`, `errorText`, và boolean `showLabel`, `showStepLabels`,
-`showStepMarks`, `disabled`, `required`. Muốn số, dùng `getValue()`.
+`showStepMarks`, `disabled`. Muốn số, dùng `getValue()`.
 
-> Property được tạo khi phần tử gắn vào trang lần đầu. Trước đó dùng `setAttribute()`.
+> Gán property trước khi phần tử gắn vào trang (hoặc trước khi module được import) vẫn có tác dụng từ 0.16.0: giá
+> trị được áp khi phần tử kết nối lần đầu. Chi tiết: [Cách hoạt động](../concepts/how-it-works.md).
 
 | Method / property | Trả về | Mô tả |
 |---|---|---|
 | `getValue()` | `number` | Giá trị đang hiển thị (đã được input native kẹp vào khoảng và làm tròn theo bước). Trước lần render đầu: số từ attribute. |
-| `setValue(val)` | `void` | Đặt `value`, kẹp vào `[min, max]`. Không làm tròn theo `step`. Không phải số hữu hạn → bỏ qua. Không phát event. |
+| `setValue(val)` | `void` | Đặt `value`, kẹp vào `[min, max]` và làm tròn về bước gần nhất tính từ `min` (như range native, 0.16.0). Không phải số hữu hạn → bỏ qua. Không phát event. |
+| `TdSlider.messages` (static) | `object` | Thông báo validation `rangeUnderflow` / `rangeOverflow` / `stepMismatch` (`{min}` `{max}` `{step}`), tiếng Việt mặc định; ghi đè cho cả trang. 0.16.0. |
 | `setDisabled(bool)` | `void` | Bật/tắt `disabled`. |
 | `isDragging` | `boolean` | `true` khi đang nhấn giữ trên thanh. |
 | `setError(msg)` / `clearError()` / `errorMessage` | — | Error contract. |
@@ -273,12 +277,9 @@ và [bảng class cũ](../upgrading/class-map.md) (`.td-slider-*` → `.td-slide
 
 ## Lưu ý & lỗi thường gặp
 
-- **`min` > 0 mà không đặt `value`**: giá trị component là `0` (mặc định), nhỏ hơn `min`, nên field ở trạng thái
-  `rangeUnderflow` và chặn submit, dù thanh hiển thị ở `min`. Luôn đặt `value` khi `min` khác 0.
 - **`getValue()` khác giá trị gửi trong form**: `getValue()` là giá trị hiển thị (đã kẹp/làm tròn); form gửi attribute
   `value` nguyên văn. Hai giá trị lệch nhau khi `value` nằm ngoài khoảng hoặc lệch bước — lúc đó field cũng không hợp
   lệ.
-- **`setValue(33.3)` với `step=1`**: bị kẹp nhưng không làm tròn theo bước, field thành `stepMismatch`.
 - **`el.value` là chuỗi**: `el.value + 1` ra `"301"`. Dùng `getValue()`.
 - **Vạch chia không hiện**: kiểm tra số bước (`(max - min) / step`) có vượt 50 không.
 - **Cần nhập số chính xác**: dùng [input field](input-field.md) `type="number"`.

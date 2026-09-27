@@ -91,23 +91,24 @@ Quy ước chung:
   `variant="abc"` → `primary`, `color="red;}"` → bỏ qua).
 - Đổi attribute lúc đang chạy là cách chính để cập nhật component; component tự vẽ lại phần cần thiết.
 
-Hai bẫy hay gặp với property:
+Gán property sớm (trước khi module được nạp, hoặc trước khi gắn thẻ vào trang) — từ 0.16.0 đều an toàn:
 
 ```js
-// SAI: gán property cho thẻ khi module của nó CHƯA được nạp/đăng ký.
-// Lúc đó <td-dropdown> còn là thẻ lạ, `options` thành thuộc tính thường và bị bỏ qua sau khi nâng cấp.
-document.querySelector('td-dropdown').options = [...];
-import('@dazzxq/td-components/dropdown');
+// Từ 0.16.0: gán property cho thẻ khi module của nó CHƯA được nạp/đăng ký vẫn được — `options`, `onChange`,
+// `onSelect` (và mọi property ứng với attribute) được áp lại khi thẻ được nâng cấp.
+document.querySelector('td-dropdown').options = [{ value: 'a', label: 'A' }];
+await import('@dazzxq/td-components/dropdown'); // lúc này dropdown nhận đúng options đã gán
 
-// ĐÚNG: import (tĩnh) ở đầu module chạy trước, hoặc chờ thẻ được định nghĩa.
+// Code cần tương thích bản cũ hơn 0.16.0: chờ thẻ được định nghĩa rồi mới gán.
 await customElements.whenDefined('td-dropdown');
 document.querySelector('td-dropdown').options = [{ value: 'a', label: 'A' }];
 ```
 
 ```js
-// Với thẻ tạo bằng JS: đặt attribute trước khi gắn vào trang (property dạng attribute chỉ sẵn sàng sau khi gắn).
+// Với thẻ tạo bằng JS: gán property hoặc attribute trước khi gắn vào trang đều được (0.16.0+). Giá trị gán sớm
+// (kể cả trước khi module được import) được áp khi phần tử kết nối lần đầu, và phần tử chỉ render MỘT lần.
 const field = document.createElement('td-input-field');
-field.setAttribute('label', 'Email');
+field.label = 'Email';
 field.setAttribute('type', 'email');
 form.append(field);
 field.helperText = 'Dùng email công việc'; // sau khi đã gắn: property dùng bình thường
@@ -352,13 +353,14 @@ riêng**. Muốn đổi chữ có ba đường:
    TdDatetimePicker.labels.confirm = 'OK';
    ```
 
-   Có ở: `TdModal`, `TdDatetimePicker` (`labels`, `messages`), `TdChipInput` (`labels`, cộng property `messages` theo
-   từng thẻ), `TdFormValidation` (`labels`, `messages`), `TdTable`, `TdMenu`, `TdHovercard`.
+   Có ở: `TdModal`, `TdToast`, `TdLoading`, `TdDropdown`, `TdPagination`, `TdEmptyState`, `TdDatetimePicker`
+   (`labels`, `messages`), `TdChipInput` (`labels`, cộng property `messages` theo từng thẻ), `TdFormValidation`
+   (`labels`, `messages`), `TdTable`, `TdMenu`, `TdHovercard`; thông báo validation: `TdInputField.messages`,
+   `TdSlider.messages`, `TdCheckbox.messages`, `TdToggle.messages` (0.16.0).
 3. **Tuỳ chọn khi mở**: `TdLightbox.open(items, { labels: {…} })` / `TdLightbox.bind(root, { labels: {…} })`.
 
-Một số chuỗi hiện **chưa** đổi được qua `labels` (ví dụ `aria-label` "Đóng" của nút đóng toast, thông báo lỗi ràng buộc
-mặc định của `td-input-field`). Với thông báo ràng buộc, dùng `setCustomValidity()` / `setError()` hoặc `messages` của
-`TdFormValidation`. Chi tiết chuyển sang ngôn ngữ khác: [Mở rộng kit](../customization/extending.md).
+Từ 0.16.0 gần như mọi chuỗi đều đổi được qua `labels` / `messages` (còn lại: định dạng hiển thị của datetime-picker).
+Thông báo lỗi riêng cho từng field: `setError()` hoặc `messages` của `TdFormValidation`. Chi tiết chuyển sang ngôn ngữ khác: [Mở rộng kit](../customization/extending.md).
 
 ## Ngôn ngữ thiết kế Liquid Glass (tóm tắt)
 

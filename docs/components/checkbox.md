@@ -80,11 +80,12 @@ Mỗi lần người dùng đổi trạng thái (chuột, chạm, phím Space, b
 ```
 
 - Được chọn: gửi `name=value` (`value` mặc định là `on`). Không được chọn: không gửi gì (giống checkbox native).
-- `required` + chưa chọn → `valueMissing` với thông báo `Vui lòng chọn ô này.`, chặn submit.
+- `required` + chưa chọn → `valueMissing` với thông báo `Vui lòng chọn ô này.` (`TdCheckbox.messages.valueMissing`,
+  đổi được cho cả trang), chặn submit.
 - Reset form: trả `checked` và `value` về như lúc phần tử gắn vào trang, đồng thời xoá lỗi đang hiện.
 - `<fieldset disabled>` bao ngoài làm checkbox disabled (không gửi), attribute `disabled` của nó không bị đổi.
-- Khôi phục trạng thái khi autofill / back-forward cache: **không** khôi phục `checked` (xem
-  [Lưu ý](#lưu-ý--lỗi-thường-gặp)).
+- Khôi phục trạng thái khi trình duyệt khôi phục form (quay lại trang không qua bfcache): `checked` được đặt lại đúng,
+  attribute `value` giữ nguyên (0.16.0).
 
 Nhiều checkbox cùng `name` được gửi thành nhiều cặp, đọc bằng `formData.getAll('name')`.
 
@@ -143,7 +144,8 @@ Hiện lỗi = viền ô màu lỗi + `aria-invalid="true"` + `aria-errormessage
 Property phản chiếu attribute: `checked` (boolean), `value`, `name`, `required`, `disabled`, `label`, `ariaLabel`,
 `size`, `color`, `errorText`. Lưu ý `value` trả về `''` khi không có attribute, dù giá trị gửi đi khi đó là `on`.
 
-> Property được tạo khi phần tử gắn vào trang lần đầu. Trước đó dùng `setAttribute()`.
+> Gán property trước khi phần tử gắn vào trang (hoặc trước khi module được import) vẫn có tác dụng từ 0.16.0: giá
+> trị được áp khi phần tử kết nối lần đầu. Chi tiết: [Cách hoạt động](../concepts/how-it-works.md).
 
 | Method / property | Trả về | Mô tả |
 |---|---|---|
@@ -173,7 +175,7 @@ Checkbox không có trạng thái `indeterminate`.
 | `--td-checkbox-border` | `var(--td-control-border-soft)` (#d1d1d6) | Viền lúc chưa chọn (mềm, v0.14.1). |
 | `--td-checkbox-radius` | `50%` | Bo góc ô (tròn). Đặt `6px` cho ô vuông. |
 | `--td-control-border-hover` | `#aeaeb2` | Viền khi hover ô chưa chọn (v0.14.2). Token chung của control. |
-| `--td-checkbox-box` | `1.25rem` (sm `1rem`, lg `1.5rem`) | Kích thước ô, đặt trên `.td-checkbox` theo size. Override bằng selector class (ví dụ `.my-list .td-checkbox { --td-checkbox-box: 1.1rem; }`). |
+| `--td-checkbox-box` | `1.25rem` (sm `1rem`, lg `1.5rem`) | Kích thước ô. Cỡ mặc định khai báo trên `:root` (từ 0.16.0): `:root { --td-checkbox-box: 1.1rem; }`. Cỡ `sm` / `lg` đặt lại biến trên `.td-checkbox--sm` / `--lg`; muốn đổi thì nhắm class đó. |
 
 Màu dấu tích là `--td-accent-contrast` (#fff). Nền ô chưa chọn là `--td-control-bg`. Lỗi dùng `--td-field-error`.
 Focus dùng `--td-focus-ring`. Theme tối lấy theo token control chung (`--td-control-border-soft` #3a3a3c,
@@ -241,9 +243,6 @@ bị bỏ.
 - **Đặt `checked` bằng code rồi chờ `change`**: đổi bằng code không phát event.
 - **`value` đọc ra `''`** khi không đặt attribute, dù form gửi `on`.
 - **Checkbox không có `label` và `aria-label`**: trình đọc màn hình không đọc được tên.
-- **Khôi phục trạng thái (back-forward cache / autofill) không khôi phục `checked`**: khi trình duyệt khôi phục, lớp
-  cơ sở chỉ đặt lại attribute `value` bằng giá trị đã gửi (ví dụ `on`), trạng thái chọn không đổi. Nếu cần, tự đồng bộ
-  lại từ server khi trang được hiện lại (`pageshow`).
 - **Muốn disabled mờ theo kiểu khác**: `opacity` nằm ở `.td-checkbox:has(.td-checkbox__input:disabled)`, override
   bằng CSS của site.
 

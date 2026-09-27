@@ -39,10 +39,12 @@ try {
 ### `wrap()` — cách an toàn nhất
 
 `wrap(asyncFn, message)` hiện overlay, chạy hàm, và **luôn** ẩn overlay khi hàm xong (kể cả khi lỗi). Giá trị trả về
-và lỗi được chuyển nguyên cho bạn.
+và lỗi được chuyển nguyên cho bạn. Tham số thứ hai nhận chuỗi, hoặc (từ 0.16.0) object `{ message, maxDuration }` giống
+`show()`.
 
 ```js
 const post = await TdLoading.wrap(() => fetch('/api/post/1').then((r) => r.json()), 'Đang tải bài viết...');
+const report = await TdLoading.wrap(() => exportReport(), { message: 'Đang xuất báo cáo...', maxDuration: 120000 });
 ```
 
 Nhiều `wrap()` chạy song song được **đếm tham chiếu**: overlay chỉ tắt khi cái **cuối cùng** xong.
@@ -73,6 +75,12 @@ Mặc định overlay **tự ẩn sau 30 giây** (và ghi `console.warn`) để 
 ```js
 TdLoading.show({ message: 'Đang xuất báo cáo...', maxDuration: 120000 }); // 2 phút
 TdLoading.show({ message: 'Đang đồng bộ...', maxDuration: false });       // tắt hẹn giờ (nhớ tự hide!)
+```
+
+### Đổi chữ mặc định cho cả site
+
+```js
+TdLoading.labels.loading = 'Loading...';   // mặc định 'Đang tải...' (0.16.0); đặt một lần khi khởi động
 ```
 
 ### Spinner inline
@@ -107,10 +115,11 @@ Spinner chỉ là CSS, nên PHP có thể in thẳng markup:
 
 | Chữ ký | Mô tả |
 |---|---|
-| `TdLoading.show(message?)` | `message` là chuỗi: hiển thị **nguyên văn** (`''` → không có chữ). Mặc định `'Đang tải...'`. |
-| `TdLoading.show({ message?, maxDuration? })` | `message` rỗng / thiếu → `'Đang tải...'`. `maxDuration`: mili-giây trước khi tự ẩn, mặc định `30000`; `false` hoặc `0` → không tự ẩn. |
+| `TdLoading.show(message?)` | `message` là chuỗi: hiển thị **nguyên văn** (`''` → không có chữ). Thiếu → `TdLoading.labels.loading`. |
+| `TdLoading.show({ message?, maxDuration? })` | `message` rỗng / thiếu → `TdLoading.labels.loading`. `maxDuration`: mili-giây trước khi tự ẩn, mặc định `30000`; `false` hoặc `0` → không tự ẩn. |
 | `TdLoading.hide()` | Ẩn overlay ngay, **và** huỷ mọi bộ đếm `wrap()` đang chờ (các `wrap()` đó xong sau này sẽ không đụng tới overlay nữa). Gọi khi overlay không hiện → không làm gì. |
-| `TdLoading.wrap(asyncFn, message = 'Đang tải...')` | `Promise<T>` — chạy `asyncFn()` dưới overlay; resolve / reject đúng như `asyncFn`. Overlay tắt khi `wrap()` cuối cùng xong. |
+| `TdLoading.wrap(asyncFn, messageOrOptions?)` | `Promise<T>` — chạy `asyncFn()` dưới overlay; resolve / reject đúng như `asyncFn`. Overlay tắt khi `wrap()` cuối cùng xong. Tham số thứ hai giống `show()`: chuỗi hoặc `{ message, maxDuration }` (object từ 0.16.0). |
+| `TdLoading.labels` | (0.16.0) `{ loading: 'Đang tải...' }` — chữ mặc định khi không truyền `message`. |
 | `TdLoading.init()` | Tạo phần tử overlay (tự gọi trong `show()`). |
 | `TdLoading.element` | Phần tử `#td-loading` hoặc `null`. Chỉ đọc. |
 
@@ -162,7 +171,7 @@ Token của spinner:
 |---|---|---|
 | `--td-spinner-color` | `currentColor` | Màu cung quay (ghi theo từng spinner khi dùng `color`). |
 | `--td-spinner-track` | màu chính, độ mờ 0.18 | Màu vòng nền (ghi khi dùng `trackColor`, kèm `[data-track]`). |
-| `--td-spinner-size` | theo class `--sm/--md/--lg` | Kích thước; class size đặt lại biến này, nên override bằng class của bạn. |
+| `--td-spinner-size` | md `2rem` (sm `1.25rem`, lg `3rem`) | Kích thước. Cỡ md khai báo trên `:root` (từ 0.16.0), nên `:root { --td-spinner-size: 1.5rem; }` đổi mọi spinner cỡ md; `.td-spinner--sm` / `--lg` đặt lại biến trên phần tử (overlay TdLoading dùng `--lg`). |
 
 ```css
 /* Spinner trong overlay dùng màu thương hiệu riêng */
@@ -224,14 +233,12 @@ CSSOM — không dùng `style="…"`, chạy được dưới CSP nghiêm ngặt
 ## Lưu ý & lỗi thường gặp
 
 - **Luôn tắt overlay trong `finally`** (hoặc dùng `wrap()`). Nếu quên, trang bị khoá tới khi hết `maxDuration` (30s).
-- **`wrap()` luôn dùng hẹn giờ an toàn mặc định 30 giây**; việc chạy lâu hơn sẽ bị tắt overlay giữa chừng (Promise của
-  `wrap()` vẫn chạy tiếp bình thường). Với việc dài, dùng `show({ message, maxDuration })` + `hide()` trong `finally`.
+- **`wrap()` mặc định dùng hẹn giờ an toàn 30 giây**; việc chạy lâu hơn sẽ bị tắt overlay giữa chừng (Promise của
+  `wrap()` vẫn chạy tiếp bình thường). Với việc dài, truyền `wrap(fn, { message, maxDuration })` (từ 0.16.0).
 - **`hide()` tắt cả các `wrap()` đang chạy.** Nếu một phần code gọi `hide()` trong khi phần khác đang `wrap()`, overlay
   tắt ngay.
 - **`show('')` và `show({ message: '' })` khác nhau:** chuỗi rỗng trực tiếp → không có chữ; object với `message` rỗng →
-  chữ mặc định `'Đang tải...'`.
-- **Chữ mặc định `'Đang tải...'` chưa cấu hình toàn cục được** (không có `TdLoading.labels`); site dùng ngôn ngữ khác nên
-  luôn truyền `message`.
+  chữ mặc định (`TdLoading.labels.loading`).
 - Overlay nằm **trên** modal: mở loading khi đang có modal là hợp lệ (modal bị `inert` trong lúc chờ, focus trả lại
   đúng chỗ khi xong).
 

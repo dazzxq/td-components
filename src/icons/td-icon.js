@@ -58,7 +58,7 @@ function validate(name, def) {
  * The ONE geometry validator (registerIcons + svgStringToDefinition). Throws on anything outside the allowlist.
  * @internal
  */
-export function _validateIconDefinition(name, def) {
+function _validateIconDefinition(name, def) {
   if (!def || typeof def !== 'object' || Array.isArray(def)) throw new TypeError(`icon "${name}": definition must be an object`);
   const viewBox = def.viewBox == null ? '0 0 24 24' : String(def.viewBox);
   if (!VIEWBOX.test(viewBox)) throw new TypeError(`icon "${name}": invalid viewBox`);

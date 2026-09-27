@@ -135,7 +135,8 @@ Khoá của một mục `tabs`:
 |---|---|---|---|
 | `tab-change` | `{ tabId }` | Người dùng chọn thẻ **khác** thẻ hiện tại (click, Enter/Space, hoặc mũi tên khi `activation="auto"`), hoặc gọi `setActiveTab()`. Đúng một lần mỗi lần chọn. Click lại thẻ đang chọn và đổi attribute `active-tab` **không** phát. | có (composed) |
 
-`onChange(tabId)` được gọi **trước** khi event phát.
+`onChange(tabId)` được gọi **trước** khi event phát. `onChange` ném lỗi → lỗi được ghi `console.error`, thẻ vẫn đổi và
+`tab-change` vẫn phát (từ 0.16.0).
 
 ## Panel được quản lý (`panel`)
 

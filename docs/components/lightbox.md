@@ -521,8 +521,9 @@ TdLightbox.bind(document, {
 
 ## Tuỳ biến giao diện
 
-Lightbox **luôn tối** (nền là ảnh, không theo theme sáng/tối của site) nên token của nó là **token cục bộ** khai trên
-`.td-lightbox`, không nằm trên `:root`:
+Lightbox **luôn tối** (nền là ảnh, không theo theme sáng/tối của site) nên token của nó không có giá trị dark riêng. Từ
+0.16.0 chúng khai báo trên `:root` (trước đó trên `.td-lightbox`, ghi đè ở `:root` không có tác dụng); riêng
+`--td-lb-bar-h` là token dẫn xuất, tính trên `.td-lightbox` nên tự theo `--td-lb-btn` / `--td-lb-bar-pad`:
 
 | Token | Mặc định | Tác dụng |
 |---|---|---|
@@ -541,8 +542,8 @@ Lightbox **luôn tối** (nền là ảnh, không theo theme sáng/tối của s
 | `--td-lb-drag` | (JS ghi qua CSSOM) | Khoảng vuốt xuống hiện tại — không tự đặt |
 
 ```css
-/* site.css (ngoài @layer → thắng td.component) */
-.td-lightbox {
+/* site.css (ngoài @layer → thắng td.tokens). Ghi trên .td-lightbox như trước 0.16.0 vẫn chạy. */
+:root {
   --td-lb-panel-w: 26rem;
   --td-lb-backdrop: rgb(0 0 0 / 97%);
 }

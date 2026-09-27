@@ -152,9 +152,11 @@ s.count;              // '5' (chuỗi)
 
 - Property **không** được tạo nếu tên attribute đã có sẵn trên element (ví dụ `title`, `id`, `hidden`) hoặc class của bạn
   đã khai báo getter/setter cùng tên — bạn toàn quyền định nghĩa property đó.
-- Property chỉ xuất hiện **sau** lần connect đầu. Nếu gán `el.count = 5` trên element chưa vào trang, đó chỉ là một
-  property JS thường che mất accessor (attribute không đổi). Với element mới tạo bằng `createElement`, hãy dùng
-  `setAttribute()` trước khi append, hoặc gán property sau khi append.
+- Accessor được cài ở lần connect đầu. Giá trị gán **trước** đó (element vừa `createElement`, hoặc thẻ đã trong trang
+  nhưng class chưa `customElements.define`) nằm tạm trong một property JS thường; lúc connect lớp cơ sở lấy nó ra, xoá
+  đi rồi gán lại qua accessor (hoặc qua getter/setter của class bạn, ví dụ `value`), trong khi **chặn render** — nên
+  element render đúng **một** lần với giá trị cuối (0.16.0; trước đó giá trị gán sớm bị mất). Việc chặn nằm ở
+  `_doRender()`, nên lớp con tự gọi `_doRender()` trong `attributeChangedCallback` cũng an toàn.
 
 ## Dọn dẹp: `listen`, `setTimeout`, `setInterval`
 
@@ -234,11 +236,14 @@ Kit không dùng Shadow DOM và CSP-strict: output **không** có `style="…"`,
 
    ```js
    _applyStyles() {
-     const color = this.safeColor(this.getAttribute('accent'), '');
-     if (color) this.style.setProperty('--site-card-accent', color);
-     else this.style.removeProperty('--site-card-accent');
+     // Đặt khi có màu; khi không có chỉ gỡ giá trị CHÍNH component đã đặt — biến site tự đặt trên host được giữ.
+     this._setOwnedStyle('--site-card-accent', this.safeColor(this.getAttribute('accent'), ''));
    }
    ```
+
+   `_setOwnedStyle(name, value)` (0.16.0, trên `TdBaseElement`): `value` khác rỗng → `style.setProperty` và ghi nhớ
+   tên; rỗng/`null` → `removeProperty` **chỉ khi** component đã đặt nó trước đó. Dùng nó thay cho cặp
+   `setProperty`/`removeProperty` để re-render không xoá biến CSS inline của site.
 
    `el.style.setProperty()` được CSP cho phép (khác với attribute `style="…"`). Với kích thước tự do, kiểm tra bằng
    `CSS.supports('width', v)` và từ chối `url(`/`var(`. (Helper `applyStyles` / `safeCssDimension` mà component kit
@@ -287,7 +292,8 @@ Hoặc dựng thẳng: `btn.appendChild(tdIcon('close', { size: 's' }))`. Xem [I
 | `focus(options)` | chuyển focus vào `_focusTarget()` | |
 | Reset | `formResetCallback()` → `_restoreDefaults()` (+ xoá lỗi hiển thị) | Mặc định: nếu `value` là observed attribute thì `this.value = this._defaultValue`. |
 | Giá trị mặc định | `_captureDefaults()` chụp **một lần** lúc connect: `_defaultValue` (attribute `value`), `_defaultChecked` (attribute `checked`) | |
-| Khôi phục | `formStateRestoreCallback(state, mode)` → `_restoreState(state, mode)` | Autofill / bfcache. Mặc định gán `this.value = state` nếu là chuỗi. |
+| Khôi phục | `formStateRestoreCallback(state, mode)` → `_restoreState(state, mode)` | Autofill / bfcache. Mặc định gán `this.value = state` nếu là chuỗi (checkbox/toggle: đặt lại `checked`). |
+| Thông báo | `_msg(key, vars?)` | Đọc `this.constructor.messages[key]`, điền `{tên}` từ `vars` (0.16.0). Cho lớp con có object `static messages` dịch được. |
 | Tên truy cập | `_applyAccessibleName(control, hasVisibleLabel)` | Có nhãn hiển thị bên trong → không thêm gì; không thì copy `aria-label` host vào control; không nữa thì dùng id của `<label for="host-id">` làm `aria-labelledby`. |
 
 Hook protected để override:

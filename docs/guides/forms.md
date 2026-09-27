@@ -47,7 +47,7 @@ Mọi control form-associated kế thừa [`TdFormElement`](../components/base-e
 
 | Thành viên | Loại | Ý nghĩa |
 |---|---|---|
-| `name`, `disabled`, `required` | attribute + property phản chiếu | như thẻ native |
+| `name`, `disabled`, `required` | attribute + property phản chiếu | như thẻ native (`td-slider` không có `required` — range luôn có giá trị) |
 | `form` | getter | `<form>` sở hữu control, hoặc `null` |
 | `validity` | getter | `ValidityState` |
 | `validationMessage` | getter | thông báo lỗi hiện tại (tiếng Việt với control td) |
@@ -120,15 +120,15 @@ form.addEventListener('submit', (e) => {
 
 ## Đọc và ghi giá trị bằng JS
 
-Dùng **`getValue()` / `setValue()`** (hoặc `FormData`) để đọc giá trị sống. Không dựa vào property `value` của mọi
-control: với `td-input-field`, property `value` phản chiếu **attribute** `value` (giá trị ban đầu), không phải chữ
-người dùng đang gõ.
+Dùng **`getValue()` / `setValue()`** (hoặc `FormData`) để đọc giá trị sống. Với `td-input-field`, property `value`
+cũng là giá trị sống từ 0.16.0 (trước đó nó trả attribute `value` — giá trị ban đầu). Với các control khác, property
+`value` vẫn phản chiếu attribute (slider: chuỗi; dùng `getValue()` để có số).
 
 | Thẻ | Đọc | Ghi (không bắn event) |
 |---|---|---|
-| `td-input-field` | `getValue()` → string | `setValue(str)` (cắt theo `max-length`) |
+| `td-input-field` | `getValue()` / `el.value` → string | `setValue(str)` / `el.value = str` (cắt theo `max-length`) |
 | `td-checkbox`, `td-toggle` | `el.checked` (boolean) | `el.checked = true` |
-| `td-slider` | `getValue()` → number | `setValue(n)` |
+| `td-slider` | `getValue()` → number | `setValue(n)` (kẹp vào `[min, max]`, làm tròn theo `step`) |
 | `td-dropdown` | `getValue()` → value hoặc `null`; `getSelectedItem()` | `setValue(v)` (chờ nếu options chưa có) |
 | `td-chip-input` | `getValue()` / `el.value` → mảng item (bản sao) | `setValue(items)`, `addItem()`, `removeItem(value)`, `clear()` |
 | `td-datetime-picker` | `getValue()` → `dd/mm/yyyy - hh:mm` hoặc `''`; `getDBValue()` | `setValue(display)`, `setDBValue(db)` |
@@ -165,6 +165,8 @@ Mỗi control td tự đặt `validity` qua ElementInternals, nên `form.checkVa
 |---|---|---|---|
 | `td-input-field` | `required` | `valueMissing` | "Trường này là bắt buộc" |
 | | `max-length` (+ `limit-type="char|word"`) | `tooLong` | "Vượt quá giới hạn {n} ký tự/từ" |
+| | `minlength` (chỉ sau khi người dùng sửa) | `tooShort` | "Tối thiểu {n} ký tự" |
+| | `pattern` | `patternMismatch` | "Giá trị không đúng định dạng" |
 | | `type="email"` / `"url"` | `typeMismatch` | "Email không hợp lệ" / "URL không hợp lệ" |
 | | `type="number"` (sai cú pháp) | `badInput` | "Giá trị không hợp lệ" |
 | | `type="number"` + `min`/`max`/`step` | `rangeUnderflow` / `rangeOverflow` / `stepMismatch` | "Giá trị tối thiểu là {min}"… |
@@ -179,11 +181,14 @@ Mỗi control td tự đặt `validity` qua ElementInternals, nên `form.checkVa
 Vài điểm khác thẻ native cần biết:
 
 - **`td-input-field` tự tính validity** trên giá trị của host (dùng một `<input>` "probe" tách rời). Ô bên trong với
-  `email`/`url`/`number` được render thành `type="text"` + `inputmode` phù hợp, nên nó không tự chặn form. Hệ quả:
-  `pattern`, `minlength` **không** được hỗ trợ trên `td-input-field` — dùng `rules` của
+  `email`/`url`/`number` được render thành `type="text"` + `inputmode` phù hợp, nên nó không tự chặn form. `pattern`
+  và `minlength` được host tự tính theo luật native (từ 0.16.0). Ràng buộc khác: dùng `rules` của
   [TdFormValidation](#tdformvalidation-từ-đầu-đến-cuối) hoặc `setCustomValidity()`.
+- **Thông báo mặc định dịch được** (0.16.0): `TdInputField.messages`, `TdCheckbox.messages`, `TdToggle.messages`,
+  `TdSlider.messages` — xem [Dịch nhãn](../customization/extending.md#dịch-nhãn-sang-ngôn-ngữ-khác).
 - **`td-slider` validate giá trị của host** (attribute `value`), không phải `<input type="range">` bên trong (vốn tự
-  kẹp giá trị), nên `value="150" max="100"` báo `rangeOverflow` thay vì âm thầm gửi `100`.
+  kẹp giá trị), nên `value="150" max="100"` báo `rangeOverflow` thay vì âm thầm gửi `100`. Không có `value` thì giá
+  trị là `min` (0.16.0; trước đó là `0`, nên `min="10"` báo `rangeUnderflow` giả).
 - Control **readonly** hoặc **disabled** không tham gia validation (`willValidate === false`), như native.
 - Không có `TdFormValidation.attach()` và form không có `novalidate`, trình duyệt hiện **bong bóng lỗi native** gắn vào
   control bên trong (thông báo tiếng Việt của td).
@@ -434,7 +439,9 @@ Trong modal: đặt `<form>` làm `body` (Node) của `TdModal.show()`, rồi d�
   datetime-picker, checkbox/toggle (`checked` và `value`) đều xử lý.
 - Lỗi của error contract (`setError` / `error-text`) được xoá.
 
-Summary và note của **control native** mà TdFormValidation tạo **không** tự xoá khi reset. Thêm:
+Form đã gắn `TdFormValidation.attach()` (từ 0.16.0): `reset` tự xoá summary, note lỗi và `aria-invalid` mà helper tạo,
+và tắt kiểm tra lại khi sửa cho tới lần submit lỗi kế tiếp. Chỉ dùng `validate()` / `apply()` (không `attach()`) thì
+tự thêm:
 
 ```js
 form.addEventListener('reset', () => TdFormValidation.clear(form));
@@ -475,14 +482,12 @@ Khi trình duyệt khôi phục form (quay lại trang không qua bfcache, mode 
 | `td-dropdown` | value | `setValue(state)` (chờ options nếu chưa có) |
 | `td-chip-input` | JSON `[{ value, label }]` | `setValue(…)` — nhãn chip hiện đúng mà không cần gọi lại `search` |
 | `td-datetime-picker` | chuỗi hiển thị thô | `setValue(state)` |
-| `td-checkbox`, `td-toggle` | — | **không khôi phục `checked`** (xem lưu ý) |
+| `td-checkbox`, `td-toggle` | `value` khi đang chọn, không có khi bỏ chọn | đặt lại `checked` (0.16.0); attribute `value` giữ nguyên |
 
 Lưu ý:
 
 - Trang nằm trong **bfcache** giữ nguyên toàn bộ DOM, không cần callback này.
 - Autofill cho custom element (mode `'autocomplete'`) hiện gần như chưa trình duyệt nào hỗ trợ; đừng dựa vào nó.
-- Checkbox/toggle chỉ gửi `value` khi được tick và không có nhánh khôi phục `checked` riêng — sau khi quay lại trang
-  (không bfcache) ô có thể về trạng thái ban đầu của HTML. Nếu quan trọng, render `checked` từ server.
 
 ## Label và tên truy cập
 
@@ -510,11 +515,10 @@ Ba cách đặt tên cho control, theo thứ tự ưu tiên:
 | Key không có trong FormData | thiếu `name`, control disabled, hoặc control "rỗng" (checkbox chưa tick, dropdown chưa chọn…) | kiểm tra `name`; server xử lý key vắng mặt |
 | PHP chỉ nhận một thẻ của chip-input | `name="tags"` | đổi thành `name="tags[]"` |
 | Dropdown `required` báo lỗi dù có `value="…"` | `options` chưa được gán, value đang "chờ" | gán `el.options = […]` sớm (sau khi import module) |
-| `el.value` của input-field không đổi khi gõ | property `value` phản chiếu attribute ban đầu | dùng `getValue()` hoặc FormData |
 | `setError()` hiện lỗi nhưng form vẫn submit | error contract không đổi validity | dùng `setCustomValidity()` / `rules` |
-| `pattern`/`minlength` trên `td-input-field` không có tác dụng | host tự tính validity, không hỗ trợ hai ràng buộc này | dùng `rules` hoặc `setCustomValidity()` |
+| `el.value` của input-field trả giá trị cũ | site còn chạy bản trước 0.16.0 | nâng cấp, hoặc dùng `getValue()` |
 | Lỗi server không hiện ở ô nào | key server khác `name` | `fieldMap`, hoặc `data-field="key"` trên wrapper; xem `r.unmapped` |
-| Reset xong vẫn còn summary lỗi | `reset` không gọi TdFormValidation | `form.addEventListener('reset', () => TdFormValidation.clear(form))` |
+| Reset xong vẫn còn summary lỗi | form không dùng `attach()` (hoặc bản trước 0.16.0) | `form.addEventListener('reset', () => TdFormValidation.clear(form))` |
 
 ## Xem thêm
 
