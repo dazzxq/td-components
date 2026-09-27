@@ -42,7 +42,8 @@ dd.addEventListener('change', (e) => {
 ```
 
 Danh sách lựa chọn **luôn** được gán bằng JS (property `options` hoặc `updateData()`), không có cú pháp `<option>` bên
-trong thẻ.
+trong thẻ. Gán `options` (và `onChange` / `onSelect`) **trước** khi script component được nạp cũng được: giá trị được
+nhận khi phần tử nâng cấp.
 
 ## Cách dùng
 
@@ -91,6 +92,10 @@ document.getElementById('status').options = await loadStatuses();
 Tương tự, `setValue(v)` gọi trước khi có options sẽ được giữ lại (pending) và áp dụng khi `options` được gán hoặc
 `updateData()` được gọi.
 
+Attribute `value` chỉ là **lựa chọn ban đầu**: nó được áp ở lần gán `options` đầu tiên (danh sách đầu rỗng, ví dụ đang
+tải, thì chờ danh sách sau). Gán lại `options` về sau **giữ** lựa chọn hiện tại của người dùng nếu giá trị đó vẫn có trong
+danh sách mới, không kéo về `value`.
+
 Render phía server (PHP): chỉ cần in `value` và nạp options bằng JS:
 
 ```php
@@ -121,7 +126,8 @@ Chú ý: `<td-dropdown searchable>` hoặc `searchable=""` vẫn là BẬT (khá
 ### 5. Đổi danh sách khi đang dùng
 
 ```js
-dd.updateData(newList);      // thay danh sách, giữ lựa chọn hiện tại, tự đặt lại vị trí nếu menu đang mở
+dd.updateData(newList);      // thay danh sách; giữ lựa chọn nếu còn trong danh sách, không còn thì bỏ chọn;
+                             // tự đặt lại vị trí nếu menu đang mở
 dd.setValue('dn');           // chọn theo giá trị (không phát event change)
 dd.setValue(null);           // bỏ chọn
 ```
@@ -141,11 +147,11 @@ province.addEventListener('change', async (e) => {
 
 ```js
 dd.onChange = (value) => console.log('giá trị', value);   // chỉ nhận value
-// hoặc
 dd.onSelect = (item) => console.log('item', item);         // nhận cả object (null khi bỏ chọn)
 ```
 
-Nếu đặt **cả hai**, chỉ `onChange` được gọi (`onSelect` bị bỏ qua). Event `change` vẫn luôn được phát.
+Đặt cả hai thì **cả hai** đều chạy: `onSelect` trước, rồi `onChange`, rồi event `change` (từ 0.16.0; trước đó chỉ
+`onChange` chạy). Callback ném lỗi → lỗi được ghi `console.error`, callback còn lại và event `change` vẫn chạy.
 
 ### 8. Báo lỗi (lỗi server, lỗi tự kiểm)
 
@@ -181,15 +187,16 @@ focus). Đổi `label`, `searchable`, `allow-clear`, `max-height`, `value-key`, 
 
 | Thành viên | Chữ ký | Mô tả |
 |---|---|---|
-| `options` | `Array<Object>` (get/set) | Danh sách option. Gán mới → lọc lại, áp giá trị pending và attribute `value` (xem [Lưu ý](#lưu-ý--lỗi-thường-gặp)). |
-| `onChange` | `(value) => void` \| `null` | Callback khi người dùng chọn/bỏ chọn; nhận value (`null` khi bỏ chọn). |
-| `onSelect` | `(item) => void` \| `null` | Callback nhận cả object (`null` khi bỏ chọn). Chỉ chạy khi **không** đặt `onChange`. |
+| `options` | `Array<Object>` (get/set) | Danh sách option. Lần gán đầu áp attribute `value`; các lần sau giữ lựa chọn hiện tại nếu còn trong danh sách (không còn → bỏ chọn). Luôn áp giá trị pending. Gán trước khi component được define vẫn nhận. |
+| `onChange` | `(value) => void` \| `null` | Callback khi người dùng chọn/bỏ chọn; nhận value (`null` khi bỏ chọn). Chạy sau `onSelect`. |
+| `onSelect` | `(item) => void` \| `null` | Callback nhận cả object (`null` khi bỏ chọn). Chạy trước `onChange` (cả hai đều chạy nếu cùng đặt). |
+| `TdDropdown.labels` | static object | Chữ giao diện, site ghi đè được (xem [dưới](#tddropdownlabels)). |
 | `searchable` | `boolean` (get/set) | Trạng thái thật của cờ. `false` → `searchable="false"`; `true` → xoá attribute. |
 | `allowClear` | `boolean` (get/set) | Tương tự cho `allow-clear`. |
 | `getValue()` | `() => any \| null` | Giá trị của mục đang chọn (kiểu gốc trong object, không ép chuỗi), `null` nếu chưa chọn. |
 | `setValue(value)` | `(value) => void` | Chọn theo giá trị. `null` / `undefined` / `''` → bỏ chọn. Giá trị chưa có trong options → bỏ lựa chọn cũ, nhớ lại để áp dụng khi options đến. **Không** phát `change`. |
 | `getSelectedItem()` | `() => Object \| null` | Object option đang chọn. |
-| `updateData(list)` | `(Array) => void` | Thay danh sách (giữ lựa chọn hiện tại, áp giá trị pending). |
+| `updateData(list)` | `(Array) => void` | Thay danh sách: giữ lựa chọn hiện tại nếu còn trong danh sách, không còn thì bỏ chọn (không phát `change`); áp giá trị pending. |
 | `open()` | `() => void` | Mở menu (không làm gì khi disabled; đang mở thì chỉ đặt lại vị trí). Đóng mọi dropdown khác đang mở. |
 | `close()` | `() => void` | Đóng menu, xoá chữ tìm kiếm, trả focus về trigger nếu focus đang trong menu. |
 | `toggle()` | `() => void` | Mở/đóng. |
@@ -200,6 +207,27 @@ focus). Đổi `label`, `searchable`, `allow-clear`, `max-height`, `value-key`, 
 | `checkValidity()`, `reportValidity()`, `setCustomValidity(msg)` | | Như control gốc. |
 | `focus()` | | Chuyển focus vào nút trigger. |
 
+### `TdDropdown.labels`
+
+Chữ mặc định cho cả trang (tiếng Việt). Đổi ngay sau import, trước khi dropdown render:
+
+```js
+import { TdDropdown } from '@dazzxq/td-components/dropdown';
+Object.assign(TdDropdown.labels, {
+  search: 'Search', none: 'None', noResults: 'No results', required: 'Please choose an option',
+});
+```
+
+| Khoá | Mặc định | Dùng ở |
+|---|---|---|
+| `search` | `Tìm kiếm` | `aria-label` của ô tìm kiếm; placeholder là chữ này + `...` |
+| `none` | `Không chọn` | Dòng bỏ chọn (`allow-clear`) |
+| `noResults` | `Không tìm thấy kết quả` | Dòng trạng thái khi tìm không ra |
+| `required` | `Vui lòng chọn một tùy chọn` | Thông điệp `valueMissing` khi `required` |
+
+Tất cả được escape / đưa vào bằng `textContent`. Placeholder của trigger ("Chọn một tùy chọn") đổi bằng attribute
+`placeholder`.
+
 ## Event
 
 | Event | detail | Khi nào | bubbles? |
@@ -209,7 +237,7 @@ focus). Đổi `label`, `searchable`, `allow-clear`, `max-height`, `value-key`, 
 ## Form
 
 - **Giá trị gửi**: `String(value)` của mục đang chọn dưới `name`. Chưa chọn → không có entry trong `FormData`.
-- **`required`**: chưa chọn → `validity.valueMissing`, thông báo `Vui lòng chọn một tùy chọn`.
+- **`required`**: chưa chọn → `validity.valueMissing`, thông báo `TdDropdown.labels.required` (`Vui lòng chọn một tùy chọn`).
 - **Reset** (`form.reset()` / `<button type="reset">`): khôi phục attribute `value` ban đầu (lúc kết nối DOM), xoá lỗi
   `setError`.
 - **`<fieldset disabled>`**: tự vô hiệu, không đổi attribute `disabled` của bạn, không bị gửi.
@@ -276,7 +304,7 @@ Xem thêm: [Theming](../customization/theming.md), [Styling](../customization/st
 <div class="td-dropdown__menu td-glass-surface td-glass-surface--strong" id="{host}-menu" hidden
      data-state="closed|open" data-placement="bottom|top">
   <div class="td-dropdown__search-wrap">
-    <input type="text" class="td-dropdown__search" aria-label="Tìm kiếm" placeholder="Tìm kiếm..."
+    <input type="text" class="td-dropdown__search" aria-label="{labels.search}" placeholder="{labels.search}..."
            aria-autocomplete="list" aria-controls="{host}-listbox">
   </div>
   <div class="td-dropdown__options" role="listbox" id="{host}-listbox" aria-labelledby="{host}-label">
@@ -361,18 +389,11 @@ Xem [Bảo mật](../guides/security.md).
 - **Chỉ gán `options` bằng JS.** Viết `<td-dropdown options='[…]'>` không có tác dụng.
 - **`el.value` không phải lựa chọn hiện tại.** Nó là attribute `value` (giá trị ban đầu). Người dùng chọn không cập nhật
   attribute. Đọc lựa chọn bằng `getValue()` hoặc `e.detail.value`.
-- **Gán lại `options` sẽ áp lại attribute `value`.** Nếu thẻ có `value="hn"`, người dùng chọn "sg", rồi bạn gán
-  `dd.options = …` lần nữa, lựa chọn quay về "hn". Muốn thay dữ liệu mà giữ lựa chọn của người dùng, dùng
-  `updateData(list)`.
-- **`updateData()` không tự bỏ lựa chọn cũ** nếu mục đó không còn trong danh sách mới (trigger vẫn hiện chữ cũ, form vẫn
-  gửi giá trị cũ). Gọi `setValue(null)` trước nếu cần (xem ví dụ Tỉnh → Quận).
-- **Tìm kiếm trong menu phân biệt dấu**: lọc là "chứa chuỗi" không phân biệt hoa thường nhưng **có** phân biệt dấu
-  ("ha noi" không khớp "Hà Nội"). Type-ahead trên trigger thì bỏ qua dấu.
-- **`onChange` và `onSelect` không chạy cùng lúc**: đặt cả hai thì chỉ `onChange` chạy. Dùng event `change` nếu cần
-  nhiều nơi nghe.
-- **Chữ giao diện là tiếng Việt cố định** ("Chọn một tùy chọn", "Tìm kiếm", "Không chọn", "Không tìm thấy kết quả",
-  thông báo `required`). Chỉ `placeholder` đổi được qua attribute; dropdown không có bảng `labels` tĩnh như chip-input
-  hay datetime-picker.
+- **Gán lại `options` / `updateData()` bỏ lựa chọn không còn trong danh sách mới** (từ 0.16.0; trước đó gán lại
+  `options` kéo lựa chọn về attribute `value`, còn `updateData()` giữ và vẫn gửi giá trị "ma"). Không phát `change`;
+  nếu cần biết, so `getValue()` trước và sau.
+- **Tìm kiếm trong menu không phân biệt hoa thường và dấu** ("ha noi" khớp "Hà Nội", "da" khớp "Đà Nẵng"), giống
+  type-ahead trên trigger.
 - **Menu nằm ở `<body>`**, không nằm trong host: selector kiểu `#city .td-dropdown__option` sẽ không khớp; dùng
   `#city-menu .td-dropdown__option`.
 - Không có sự kiện `open`/`close`; theo dõi `data-state` hoặc `aria-expanded` nếu cần.
