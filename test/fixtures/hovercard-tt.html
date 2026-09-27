@@ -1,0 +1,8 @@
+<!doctype html>
+<!-- v0.14.0 security review: TdHovercard under Trusted Types enforcement (loaded in an iframe by
+     src/feedback/td-v014-hovercard.browser-test.js). -->
+<html lang="vi"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="require-trusted-types-for 'script'; trusted-types td-test">
+<link rel="stylesheet" href="/td.css">
+<script type="module" src="./hovercard-tt.js"></script>
+</head><body></body></html>

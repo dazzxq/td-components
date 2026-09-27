@@ -680,6 +680,104 @@ describe('v0.14 TdHovercard — security review (sanitize hook, bounded fetch)',
   });
 });
 
+describe('v0.14 TdHovercard — security review round 2 (size cancel, auth-scoped cache, Trusted Types)', () => {
+  const quiet = async (fn) => { const w = console.warn; console.warn = () => {}; try { await fn(); } finally { console.warn = w; } };
+
+  it('a declared Content-Length over the cap is refused without reading; the body stream is cancelled', async () => {
+    let cancelled = false;
+    let pulls = 0;
+    stubFetch(() => new Response(new ReadableStream({
+      pull(c) { pulls++; c.enqueue(new Uint8Array(1024)); },
+      cancel() { cancelled = true; },
+    }), { headers: { 'content-type': 'text/html', 'content-length': String(8 * 1024 * 1024) } }));
+    const t = add('<button type="button">Lan</button>');
+    bind(t, { url: '/__hc/declared-big' });
+    await quiet(async () => { t.focus(); await flush(); await wait(20); });
+    expect(cardEl().getAttribute('data-state')).to.equal('error');
+    expect(cancelled).to.equal(true);
+    expect(pulls <= 2, `pulled ${pulls} chunks`).to.equal(true);
+  });
+
+  it('Cache-Control: no-store, cache:false and data-td-hovercard-cache="false" always refetch', async () => {
+    const calls = stubFetch((url) => new Response('<b>p</b>', { headers: {
+      'content-type': 'text/html', ...(url.endsWith('/nostore') ? { 'cache-control': 'private, no-store' } : {}),
+    } }));
+    const a = add('<button type="button">A</button>');
+    const b = add('<button type="button">B</button>');
+    const c = add('<button type="button" data-td-hovercard="/__hc/attr" data-td-hovercard-cache="false">C</button>');
+    bind(a, { url: '/__hc/nostore' });
+    bind(b, { url: '/__hc/opt', cache: false });
+    bind(c);
+    for (const t of [a, b, c, a, b, c]) {
+      t.focus();
+      await flush();
+      expect(cardEl().querySelector('b').textContent).to.equal('p');
+      TdHovercard.close();
+      t.blur();
+    }
+    for (const u of ['/nostore', '/opt', '/attr']) expect(calls.filter((x) => x.url.endsWith(u)).length, u).to.equal(2);
+  });
+
+  it('clearCache() also closes the open card (it may show the previous user\'s data)', async () => {
+    stubFetch(() => json({ html: '<b>me</b>' }));
+    const t = add('<button type="button">Lan</button>');
+    bind(t, { url: '/__hc/me' });
+    t.focus();
+    await flush();
+    expect(isOpen()).to.equal(true);
+    TdHovercard.clearCache();
+    expect(isOpen()).to.equal(false);
+    expect(cardEl().childNodes.length).to.equal(0);
+  });
+
+  it('under require-trusted-types-for: TrustedHTML renders (sync, async, URL via sanitize), a plain string fails closed', async () => {
+    if (!window.trustedTypes) return; // engine without Trusted Types
+    const frame = document.createElement('iframe');
+    frame.src = '/test/fixtures/hovercard-tt.html';
+    document.body.appendChild(frame);
+    try {
+      for (let i = 0; i < 100 && !frame.contentWindow.__ready; i++) await wait(20);
+      const w = frame.contentWindow;
+      const d = frame.contentDocument;
+      expect(!!w.__ready, 'module loaded in the TT frame').to.equal(true);
+      const policy = w.trustedTypes.createPolicy('td-test', { createHTML: (h) => h });
+      const H = w.TdHovercard;
+      const errors = [];
+      w.addEventListener('error', (e) => errors.push(e.message));
+      w.console.warn = () => {};
+      w.fetch = () => Promise.resolve(new w.Response('<b class="u">url</b>', { headers: { 'content-type': 'text/html' } }));
+      const mk = (label) => { const b = d.createElement('button'); b.type = 'button'; b.textContent = label; d.body.appendChild(b); return b; };
+      const card = () => d.getElementById('td-hovercard');
+      const cases = [
+        ['sync', { content: () => policy.createHTML('<b class="sync">s</b>') }, '.sync', null],
+        ['async', { content: () => new Promise((r) => setTimeout(() => r(policy.createHTML('<b class="async">a</b>')), 10)) }, '.async', null],
+        ['url', { url: '/__hc/tt' }, '.u', (h) => policy.createHTML(h)],
+        ['plain', { content: () => '<b class="plain">p</b>' }, null, null],
+      ];
+      for (const [name, opts, sel, san] of cases) {
+        H.sanitize = san;
+        const t = mk(name);
+        const un = H.bind(t, opts);
+        t.focus();
+        await flush();
+        await wait(40);
+        if (sel) {
+          expect(card().getAttribute('data-state'), name).to.equal('open');
+          expect(card().querySelector(sel), name).to.not.equal(null);
+        } else {
+          expect(card().getAttribute('data-state'), name).to.equal('error');
+          expect(card().querySelector('.plain'), name).to.equal(null);
+        }
+        H.close();
+        un();
+      }
+      expect(errors, 'no uncaught Trusted Types violation').to.deep.equal([]);
+    } finally {
+      frame.remove();
+    }
+  });
+});
+
 describe('v0.14 TdHovercard — stale async (one render token)', () => {
   it('A resolves after B: B wins (content and fetch alike)', async () => {
     const a = add('<button type="button">A</button>');

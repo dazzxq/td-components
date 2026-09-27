@@ -28,13 +28,16 @@
  *       `{ "html": "…" }` (application/json) or a text/html fragment; any other type / a non-2xx status → error state.
  *       Successful fragments are cached per absolute URL without #fragment (LRU, 50 entries; failures are not cached,
  *       so the next hover retries); bodies over 256 KB, requests over 10 s → error; one request at a time, aborted when
- *       the card closes or switches. `TdHovercard.clearCache()` empties it.
+ *       the card closes or switches. Responses with `Cache-Control: no-store` are never cached; `cache: false` /
+ *       data-td-hovercard-cache="false" disables the cache per trigger. `TdHovercard.clearCache()` empties it and
+ *       closes the card — call it on logout / login / tenant or permission changes.
  *
  * TRUSTED-HTML HATCH (security.md): a STRING from content() and every URL fragment is rendered with innerHTML. Only
  * developer markup or same-origin, server-escaped fragments belong there — NEVER raw user input. Node / <template>
  * sources are preferred. Under a strict CSP, `style=""` in that markup is blocked — use classes. Fragments that may
  * carry user-generated markup: set `TdHovercard.sanitize` (DOMPurify / Sanitizer API / Trusted Types policy); a
- * TrustedHTML value is accepted as is.
+ * TrustedHTML value is accepted as is. Under Trusted Types enforcement a plain string fails closed (error state):
+ * return TrustedHTML from sanitize, e.g. `DOMPurify.sanitize(h, { RETURN_TRUSTED_TYPE: true })`.
  *
  * DOM contract (one singleton card, a <body> child, created on first open, kept hidden while closed):
  *   <div class="td-hovercard td-glass-surface td-glass-surface--strong" id="td-hovercard" role="dialog"
@@ -79,9 +82,24 @@ const HOVER_QUERY = '(hover: hover) and (pointer: fine)';
 const NATIVE_FOCUSABLE = 'a[href], area[href], button, input:not([type="hidden"]), select, textarea, summary, '
   + 'iframe, [tabindex], [contenteditable]:not([contenteditable="false"])';
 const SNAP = ['aria-haspopup', 'aria-expanded', 'aria-controls', 'tabindex'];
-const SPINNER = '<svg class="td-spinner__svg" viewBox="0 0 50 50" aria-hidden="true" focusable="false">'
-  + '<circle class="td-spinner__track" cx="25" cy="25" r="20"></circle>'
-  + '<circle class="td-spinner__arc" cx="25" cy="25" r="20"></circle></svg>';
+const SVG_NS = 'http://www.w3.org/2000/svg';
+/** The spinner built with DOM APIs (no innerHTML → works under Trusted Types enforcement). */
+function spinnerSvg() {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('class', 'td-spinner__svg');
+  svg.setAttribute('viewBox', '0 0 50 50');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  for (const cls of ['td-spinner__track', 'td-spinner__arc']) {
+    const c = document.createElementNS(SVG_NS, 'circle');
+    c.setAttribute('class', cls);
+    c.setAttribute('cx', '25');
+    c.setAttribute('cy', '25');
+    c.setAttribute('r', '20');
+    svg.appendChild(c);
+  }
+  return svg;
+}
 
 /** @type {Map<string, Promise<string>>} absolute URL (no #fragment) → fragment; LRU, successful fetches only */
 const cache = new Map();
@@ -145,12 +163,13 @@ export function hovercardUrl(raw) {
 /** Body text, refused beyond MAX_BYTES (streamed when possible, so a huge body is never buffered whole). */
 async function readCapped(res) {
   const len = Number(res.headers.get('content-length'));
-  if (len > MAX_BYTES) throw new Error(`TdHovercard: response larger than ${MAX_BYTES} bytes`);
-  if (!res.body || typeof res.body.getReader !== 'function') {
-    const t = await res.text();
-    if (t.length > MAX_BYTES) throw new Error(`TdHovercard: response larger than ${MAX_BYTES} bytes`);
-    return t;
+  const streamable = !!res.body && typeof res.body.getReader === 'function';
+  if (len > MAX_BYTES || (!streamable && !(len >= 0 && res.headers.has('content-length')))) {
+    // declared too big, or no stream to count bytes and no declared in-limit length: refuse WITHOUT reading it
+    if (res.body && typeof res.body.cancel === 'function') res.body.cancel().catch(() => {});
+    throw new Error(`TdHovercard: response larger than ${MAX_BYTES} bytes (or of unknown size)`);
   }
+  if (!streamable) return res.text(); // declared length ≤ MAX_BYTES
   const reader = res.body.getReader();
   const dec = new TextDecoder();
   let out = '';
@@ -176,11 +195,11 @@ function abortInflight() {
   inflight = null;
 }
 
-function fetchFragment(raw) {
+function fetchFragment(raw, useCache = true) {
   const u = new URL(raw);
   u.hash = ''; // "#1", "#2"… are one request — never separate cache entries
   const href = u.href;
-  const hit = cache.get(href);
+  const hit = useCache ? cache.get(href) : null;
   if (hit) {
     cache.delete(href); // LRU: most recent last
     cache.set(href, hit);
@@ -189,7 +208,7 @@ function fetchFragment(raw) {
   abortInflight(); // at most one request at a time
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
-  const rec = { href, ctrl, done: false, p: null };
+  const rec = { href, ctrl, done: false, noStore: false, p: null };
   const p = fetch(href, {
     credentials: 'same-origin',
     mode: 'same-origin', // a cross-origin redirect fails too
@@ -198,6 +217,8 @@ function fetchFragment(raw) {
   })
     .then(async (res) => {
       if (!res.ok) throw new Error(`TdHovercard: HTTP ${res.status}`);
+      // the server said "never store" (e.g. per-user data): honour it for this in-memory cache too
+      if (/\bno-store\b/i.test(res.headers.get('cache-control') || '')) rec.noStore = true;
       const type = (res.headers.get('content-type') || '').toLowerCase();
       if (/[/+]json\b/.test(type)) {
         let data;
@@ -216,9 +237,11 @@ function fetchFragment(raw) {
       clearTimeout(timer);
       rec.done = true;
       if (inflight === rec) inflight = null;
+      if (rec.noStore && cache.get(href) === p) cache.delete(href);
     });
   rec.p = p;
   inflight = rec;
+  if (!useCache) return p;
   cache.set(href, p);
   while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
   return p;
@@ -241,11 +264,11 @@ function sourceOf(trigger, opts) {
   const o = opts || {};
   if (typeof o.content === 'function') return { kind: 'content', fn: o.content };
   if (o.template != null && o.template !== '') return { kind: 'template', ref: o.template };
-  if (o.url != null && o.url !== '') return { kind: 'url', url: String(o.url) };
+  if (o.url != null && o.url !== '') return { kind: 'url', url: String(o.url), cache: o.cache !== false };
   const t = trigger.getAttribute('data-td-hovercard-template');
   if (t && t.trim()) return { kind: 'template', ref: t };
   const u = trigger.getAttribute('data-td-hovercard');
-  if (u && u.trim()) return { kind: 'url', url: u };
+  if (u && u.trim()) return { kind: 'url', url: u, cache: trigger.getAttribute('data-td-hovercard-cache') !== 'false' };
   return null;
 }
 
@@ -324,7 +347,7 @@ function status(text, busy) {
     const sp = document.createElement('span');
     sp.className = 'td-hovercard__spinner td-spinner td-spinner--sm';
     sp.setAttribute('aria-hidden', 'true');
-    sp.innerHTML = SPINNER; // constant markup, no interpolation
+    sp.appendChild(spinnerSvg());
     p.appendChild(sp);
   }
   const t = document.createElement('span');
@@ -354,11 +377,11 @@ function renderContent(my, value) {
     // site hook (security review v0.14.0): e.g. DOMPurify / Sanitizer API / a Trusted Types policy
     try { value = TdHovercard.sanitize(value); } catch (err) { renderError(my, err); return; }
   }
-  if (isTrustedHTML(value)) {
-    card.innerHTML = value; // a Trusted Types TrustedHTML (the site's policy vouched for it)
-  } else if (typeof value === 'string') {
-    if (!value.trim()) { closeSession('empty'); return; }
-    card.innerHTML = value; // TRUSTED hatch (developer / same-origin server-escaped markup) — see header
+  if (isTrustedHTML(value) || typeof value === 'string') {
+    if (typeof value === 'string' && !value.trim()) { closeSession('empty'); return; }
+    // TrustedHTML: the site's policy vouched for it. String: the TRUSTED hatch (developer / same-origin
+    // server-escaped markup) — see header. Under Trusted Types enforcement a plain string throws → error state.
+    try { card.innerHTML = value; } catch (err) { renderError(my, err); return; }
   } else if (typeof Node !== 'undefined' && value instanceof Node) {
     if (value.nodeType === 11 && !value.childNodes.length) { closeSession('empty'); return; }
     card.replaceChildren(value);
@@ -538,7 +561,7 @@ function open(trigger, binding) {
   }
   if (src.kind === 'url') {
     renderLoading(my);
-    fetchFragment(href).then((html) => renderContent(my, html), (err) => renderError(my, err));
+    fetchFragment(href, src.cache).then((html) => renderContent(my, html), (err) => renderError(my, err));
     return;
   }
   let r;
@@ -651,8 +674,12 @@ export class TdHovercard {
    */
   static sanitize = null;
 
-  /** Drop every cached URL fragment and abort the request in flight (e.g. after logout or a data change). */
+  /**
+   * Drop every cached URL fragment, abort the request in flight and close the open card (its content may belong to
+   * the previous user). Call it on logout / login / tenant or permission changes (security.md).
+   */
   static clearCache() {
+    if (cur) closeSession('api');
     abortInflight();
     cache.clear();
   }
@@ -661,7 +688,7 @@ export class TdHovercard {
    * Bind one trigger. Binding the same trigger again replaces the previous binding.
    * @param {HTMLElement} trigger preferably a link or a button
    * @param {{ content?: (trigger: HTMLElement) => (Node|string|null|Promise<Node|string|null>),
-   *           template?: HTMLTemplateElement|string, url?: string, label?: string }} [opts]
+   *           template?: HTMLTemplateElement|string, url?: string, cache?: boolean, label?: string }} [opts]
    *        one source (content → template → url; none → the trigger's data attributes). A STRING result of
    *        `content` and URL fragments are TRUSTED HTML (innerHTML) — developer / same-origin server-escaped markup
    *        only, never raw user input; prefer a Node or a <template>. `label` = the card's accessible name.
@@ -673,7 +700,7 @@ export class TdHovercard {
     const o = opts && typeof opts === 'object' ? opts : {};
     const touched = new Map();
     const binding = {
-      opts: { content: o.content, template: o.template, url: o.url, label: o.label },
+      opts: { content: o.content, template: o.template, url: o.url, cache: o.cache, label: o.label },
       unbind: null,
     };
     if (cur && cur.trigger === trigger) closeSession('switch'); // was opened by another binding

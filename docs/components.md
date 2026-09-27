@@ -488,10 +488,12 @@ TdHovercard.bindAll(); // declarative: data-td-hovercard="/api/author/7/card" (s
 
 Sources: `content(trigger) → Node | string | Promise<…>`, a `<template id>` (cloned) or a **same-origin** URL (JSON
 `{ html }` or `text/html`; LRU cache of 50 URLs without `#hash`, ≤ 256 KB, 10 s timeout, aborted when the card closes;
-`TdHovercard.clearCache()`). One render token guards every async source (a stale result never lands).
+`TdHovercard.clearCache()` — also closes the card; call it on logout / login / tenant change. `Cache-Control: no-store`
+responses are not cached; `cache: false` / `data-td-hovercard-cache="false"` per trigger). One render token guards every async source (a stale result never lands).
 **A string is TRUSTED HTML** (developer markup or same-origin, server-escaped fragments — never raw user input); prefer a
 Node or `<template>`. Fragments that may contain user-generated markup: set `TdHovercard.sanitize = (html) =>
-DOMPurify.sanitize(html)` (or the Sanitizer API / a Trusted Types policy; `TrustedHTML` values are accepted). Under
+DOMPurify.sanitize(html)` (or the Sanitizer API / a Trusted Types policy; `TrustedHTML` values are accepted — under Trusted Types enforcement use
+`DOMPurify.sanitize(h, { RETURN_TRUSTED_TYPE: true })`, a plain string then fails closed to the error state). Under
 strict CSP, `style=""` inside fragments is blocked — use classes. Mouse focus waits for the 350 ms hover intent; keyboard
 focus opens at once. Keyboard: Tab from the
 trigger enters the card, Shift+Tab returns, Tab past the last item closes it and moves on (inside a modal the trap

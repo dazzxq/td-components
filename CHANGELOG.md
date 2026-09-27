@@ -38,7 +38,8 @@ rules: `docs/design/liquid-glass.md` v2.
   trusted HTML), loading / error states, render-token guard, keyboard contract that works inside a modal.
   Security review: optional `TdHovercard.sanitize` hook (+ `TrustedHTML` accepted) for fragments with user content;
   URL fetches bounded (LRU 50 without `#hash`, 256 KB streamed cap, 10 s timeout, one in flight, aborted on close,
-  `TdHovercard.clearCache()`).
+  `TdHovercard.clearCache()`, which also closes the card; `Cache-Control: no-store` honoured; `cache: false` /
+  `data-td-hovercard-cache="false"`); Trusted Types safe (DOM-built spinner, innerHTML failures → error state).
 - **Rendered contrast gate** `npm run test:contrast` (buttons × states, toasts; light/dark; black/white/checker/photo;
   Chromium/Firefox/WebKit; minimum contrast; opacity assertion) — part of `npm test`.
 - Foundations/Glass › Showcase story and a Liquid Glass section in `demo.html`; CSP states for hovercard and the
