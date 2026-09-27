@@ -1,0 +1,116 @@
+/*
+ * TdFormValidation (src/utils/form-validation.js). Content layer → SOLID, never glass (liquid-glass: validation).
+ * Per-field notes reuse `.td-field-error` (field.css; the helper adds [data-td-fv] to the ones it writes next to
+ * native controls). Native controls are NOT styled here: sites style `[aria-invalid="true"]` themselves.
+ * Block `.td-form-summary[role=alert]` > `__title` + `__list` > `__item` > `button.__link`.
+ * State: :hover / :focus-visible on the link buttons (no JS-toggled classes).
+ */
+@layer td.tokens {
+	:root {
+		/* var() references resolve per theme (theme-dark.css redefines --td-color-error/-surface on :root). */
+		--td-form-summary-bg: color-mix(in srgb, var(--td-color-error) 8%, var(--td-color-surface));
+		--td-form-summary-border: color-mix(in srgb, var(--td-color-error) 75%, var(--td-color-surface)); /* ≥ 3:1 */
+		--td-form-summary-fg: var(--td-color-error);
+		--td-form-summary-radius: var(--td-radius-md);
+	}
+
+	:root[data-td-theme="dark"] {
+		--td-form-summary-bg: color-mix(in srgb, var(--td-color-error) 12%, var(--td-color-surface));
+	}
+}
+
+@layer td.component {
+	.td-form-summary {
+		box-sizing: border-box;
+		width: 100%;
+		padding: var(--td-space-sm) var(--td-space-md);
+		margin: 0 0 var(--td-space-md);
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-form-summary-fg);
+		background: var(--td-form-summary-bg);
+		border: 1px solid var(--td-form-summary-border);
+		border-radius: var(--td-form-summary-radius);
+	}
+
+	.td-form-summary *,
+	.td-form-summary *::before,
+	.td-form-summary *::after {
+		box-sizing: border-box;
+	}
+
+	.td-form-summary__title {
+		margin: 0 0 var(--td-space-2xs);
+		font-weight: var(--td-fw-semibold);
+	}
+
+	.td-form-summary__list {
+		padding: 0 0 0 var(--td-space-md);
+		margin: 0;
+		list-style: disc;
+	}
+
+	.td-form-summary__item {
+		margin: 0;
+	}
+
+	.td-form-summary__item + .td-form-summary__item {
+		margin-top: var(--td-space-2xs);
+	}
+
+	.td-form-summary__link {
+		display: inline;
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		color: inherit;
+		text-align: start;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+		cursor: pointer;
+		background: none;
+		border: 0;
+		border-radius: 2px;
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+	}
+
+	.td-form-summary__link:hover {
+		text-decoration-thickness: 2px;
+	}
+
+	.td-form-summary__link:focus-visible {
+		box-shadow: var(--td-focus-ring);
+	}
+
+	@media (pointer: coarse) {
+		.td-form-summary__link {
+			display: inline-flex;
+			align-items: center;
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-form-summary__link {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-form-summary {
+			color: CanvasText;
+			background: Canvas;
+			border-color: CanvasText;
+		}
+
+		.td-form-summary__link {
+			color: LinkText;
+		}
+
+		.td-form-summary__link:focus-visible {
+			outline-color: Highlight;
+		}
+	}
+}

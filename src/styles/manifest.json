@@ -24,6 +24,7 @@
     "components/table.css",
     "components/datetime-picker.css",
     "components/sample.css",
+    "components/form-validation.css",
     "utilities.css"
   ]
 }
