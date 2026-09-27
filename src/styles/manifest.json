@@ -26,6 +26,7 @@
     "components/sample.css",
     "components/form-validation.css",
     "components/menu.css",
+    "components/chip-input.css",
     "utilities.css"
   ]
 }
