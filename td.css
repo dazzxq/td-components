@@ -5427,6 +5427,163 @@
 	}
 }
 
+/* ---- src/styles/components/hovercard.css ---- */
+/*
+ * TdHovercard (src/feedback/td-hovercard.js) — plan v0.14.0 G10; 135 kit td-ui.css `.td-hovercard` translated to td
+ * tokens. Body-portaled non-modal card: strong glass (.td-glass-surface--strong recipe — fallbacks come from the
+ * recipe), radius --td-glass-radius. Frontmost glass (G1): it stays glass over an open modal (no solid override here).
+ * State: [hidden], data-state="loading|open|error|closed", data-placement="bottom|top". Only geometry (top / left /
+ * max-height) is written by JS through CSSOM. Content is free-form: only margins at the edges, links and focus rings
+ * are normalised.
+ */
+@layer td.tokens {
+	:root {
+		--td-hovercard-max-w: 20rem;
+		--td-hovercard-pad-y: 0.75rem;
+		--td-hovercard-pad-x: 0.9rem;
+		--td-hovercard-status-fg: var(--td-color-text-muted);
+		--td-hovercard-error-fg: var(--td-color-error);
+		--td-hovercard-link-fg: var(--td-accent);
+	}
+
+	:root[data-td-theme="dark"] {
+		--td-hovercard-error-fg: #fca5a5;
+		--td-hovercard-link-fg: #93c5fd;
+	}
+}
+
+@layer td.component {
+	.td-hovercard {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: var(--td-z-popover);
+		box-sizing: border-box;
+		width: max-content;
+		min-width: min(10rem, calc(100vw - 16px));
+		max-width: min(var(--td-hovercard-max-w), calc(100vw - 16px));
+		padding: var(--td-hovercard-pad-y) var(--td-hovercard-pad-x);
+		margin: 0;
+		overflow: auto; /* max-height is capped by JS to the room on the chosen side */
+		overscroll-behavior: contain;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: 1.45;
+		text-align: left;
+		overflow-wrap: anywhere;
+		isolation: isolate;
+		border-radius: var(--td-glass-radius);
+		outline: 2px solid transparent;
+		transform-origin: top left;
+	}
+
+	.td-hovercard[hidden] {
+		display: none;
+	}
+
+	.td-hovercard *,
+	.td-hovercard *::before,
+	.td-hovercard *::after {
+		box-sizing: border-box;
+	}
+
+	.td-hovercard[data-placement="top"] {
+		transform-origin: bottom left;
+	}
+
+	.td-hovercard:not([hidden]) {
+		opacity: 1;
+		transform: none;
+		transition:
+			opacity var(--td-glass-dur) var(--td-glass-ease),
+			transform var(--td-glass-dur) var(--td-glass-ease);
+	}
+
+	@starting-style {
+		.td-hovercard:not([hidden]) {
+			opacity: 0;
+			transform: scale(var(--td-glass-enter-scale));
+		}
+	}
+
+	/* The card takes focus (tabindex=-1) only on a click on its text: no ring for that. */
+	.td-hovercard:focus {
+		outline: 2px solid transparent;
+	}
+
+	.td-hovercard > :first-child {
+		margin-top: 0;
+	}
+
+	.td-hovercard > :last-child {
+		margin-bottom: 0;
+	}
+
+	.td-hovercard a[href] {
+		color: var(--td-hovercard-link-fg);
+		text-underline-offset: 2px;
+	}
+
+	.td-hovercard :focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	/* Loading / error line */
+	.td-hovercard__status {
+		display: flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		margin: 0;
+		color: var(--td-hovercard-status-fg);
+	}
+
+	.td-hovercard[data-state="error"] .td-hovercard__status {
+		color: var(--td-hovercard-error-fg);
+	}
+
+	.td-hovercard__spinner {
+		--td-spinner-size: 1rem;
+	}
+
+	@media (pointer: coarse) {
+		.td-hovercard :is(button, [role="button"], input, select) {
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		/* opacity only, no scale */
+		.td-hovercard:not([hidden]) {
+			transition: opacity var(--td-glass-dur) linear;
+		}
+
+		@starting-style {
+			.td-hovercard:not([hidden]) {
+				opacity: 0;
+				transform: none;
+			}
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-hovercard {
+			border: 1px solid CanvasText;
+		}
+
+		.td-hovercard :focus-visible {
+			outline: 2px solid Highlight;
+			outline-offset: 2px;
+		}
+
+		.td-hovercard__status,
+		.td-hovercard[data-state="error"] .td-hovercard__status {
+			color: CanvasText;
+		}
+	}
+}
+
 /* ---- src/styles/utilities.css ---- */
 /* Utilities — kept minimal: td.css must stay reset-free (legacy Tailwind components share the page). */
 @layer td.utilities {
