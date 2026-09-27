@@ -21,6 +21,7 @@
     "components/tooltip.css",
     "components/modal.css",
     "components/dropdown.css",
+    "components/datetime-picker.css",
     "utilities.css"
   ]
 }
