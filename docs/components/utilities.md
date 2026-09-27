@@ -241,7 +241,7 @@ Thời điểm **trong tương lai** (từ 0.16.0; trước đó luôn là `Vừ
 
 | Khoảng cách tới | Kết quả |
 |---|---|
-| < 1 phút | `Sắp tới` |
+| < 1 phút | `Vừa xong` (coi là lệch đồng hồ máy khách/server) |
 | < 60 phút | `Trong N phút` |
 | < 24 giờ | `Trong N giờ` |
 | < 30 ngày | `Trong N ngày` |
@@ -253,8 +253,8 @@ TdDateTime.toRelative(Date.now() - 5 * 60 * 1000); // '5 phút trước'
 TdDateTime.toRelative(Date.now() + 5 * 60 * 1000); // 'Trong 5 phút'
 ```
 
-Giờ máy khách chạy chậm hơn server vài giây thì bài vừa đăng có thể hiện `Sắp tới`. Chuỗi không tự cập nhật; muốn "sống"
-thì tự gọi lại theo chu kỳ.
+Thời điểm tương lai dưới 1 phút được coi là lệch đồng hồ (giờ máy khách chậm hơn server vài giây) nên vẫn là
+`Vừa xong` — bài vừa đăng không bị hiện "sắp tới". Chuỗi không tự cập nhật; muốn "sống" thì tự gọi lại theo chu kỳ.
 
 ### `TdDateTime.convert(dateInput, { mode = 'absolute', format = 'DD/MM/YYYY - HH:mm' } = {})`
 

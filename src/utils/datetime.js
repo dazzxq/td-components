@@ -138,7 +138,9 @@ export class TdDateTime {
 
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
-    if (diffMs < 0) return TdDateTime._toRelativeFuture(-diffMs);
+    // < 60 s in the future = client/server clock skew on a just-created item → "Vừa xong", not "Sắp tới"
+    if (diffMs < -60000) return TdDateTime._toRelativeFuture(-diffMs);
+    if (diffMs < 0) return 'Vừa xong';
     const diffSeconds = Math.floor(diffMs / 1000);
     const diffMinutes = Math.floor(diffSeconds / 60);
     const diffHours = Math.floor(diffMinutes / 60);

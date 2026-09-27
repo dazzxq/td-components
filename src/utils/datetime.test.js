@@ -155,7 +155,8 @@ describe('TdDateTime.toRelative', () => {
 
   it('describes future moments instead of "Vừa xong" (v0.16.0 D1)', () => {
     const now = Date.now();
-    assert.equal(TdDateTime.toRelative(new Date(now + 20 * 1000)), 'Sắp tới');
+    assert.equal(TdDateTime.toRelative(new Date(now + 20 * 1000)), 'Vừa xong', 'clock skew tolerance < 60 s');
+    assert.equal(TdDateTime.toRelative(new Date(now + 90 * 1000)), 'Trong 1 phút');
     assert.equal(TdDateTime.toRelative(new Date(now + (5 * 60 + 30) * 1000)), 'Trong 5 phút');
     assert.equal(TdDateTime.toRelative(new Date(now + (3 * 60 + 10) * 60 * 1000)), 'Trong 3 giờ');
     assert.equal(TdDateTime.toRelative(new Date(now + (2 * 24 + 1) * 3600 * 1000)), 'Trong 2 ngày');

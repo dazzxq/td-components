@@ -2,6 +2,57 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.16.0
+
+Sửa toàn bộ backlog phát hiện khi viết docs 0.15.1 (plan `docs/internal/plans/v0.16.0-backlog.md`, Codex plan-review
+APPROVE 3 vòng). Trusted Types cho toàn kit vẫn ở backlog (owner đồng ý).
+
+### Changed (đổi hành vi — xem `docs/upgrading/breaking-changes.md` 0.16.0)
+
+- `td-input-field.value` trả giá trị **đang nhập** (trước: attribute ban đầu); gán `.value` = `setValue()`.
+- `td-slider`: bỏ `required` (không có nghĩa với range, như native); `setValue()` snap theo `step`; không có `value`
+  → giá trị = `min` (hết lỗi underflow giả).
+- `td-dropdown`: gán lại `options` giữ lựa chọn hiện tại nếu còn trong danh sách mới (không kéo về attribute `value`);
+  lựa chọn không còn trong danh sách bị bỏ (cả `updateData()`) — không còn submit giá trị ma; `onSelect` **và**
+  `onChange` cùng chạy (onSelect trước).
+- `TdModal.confirm`: `onConfirm` đồng bộ trả `false` hoặc throw → **giữ** hộp thoại mở (như `actions`).
+- `TdDateTime.toAbsolute` chỉ thay các cụm chữ gồm toàn token (không thay trong từ; `[…]` là chữ nguyên văn);
+  timestamp `0` hợp lệ; `toRelative` với tương lai → `Trong N phút|giờ|…` (dưới 1 phút = lệch đồng hồ → `Vừa xong`).
+- Token mặc định chuyển lên `:root` (lightbox `--td-lb-*`, `--td-checkbox-box`, kích thước switch mặc định,
+  `--td-spinner-size`, `--td-empty-state-pad/-gap`, `--td-pagination-item-size`): override `:root` của site giờ có tác
+  dụng (kể cả trên màn cảm ứng, nơi kit trước đây ép 44px).
+- Dark theme: nút primary + trang active của pagination theo `--td-accent` qua token mới `--td-accent-fill`
+  (dark = accent pha 20 % đen, fallback #2563eb) — trước gán cứng #2563eb.
+
+### Added
+
+- Property gán trước khi element được gắn vào trang / trước `customElements.define` không còn bị mất (mọi component
+  dựa trên `TdBaseElement`; dropdown nhận cả `options`/`onChange`/`onSelect` gán sớm); chỉ render một lần.
+- `td-input-field`: `pattern`, `minlength` trong validity.
+- Nhãn / thông báo dịch được: `TdInputField.messages`, `TdSlider.messages`, `TdCheckbox.messages`, `TdToggle.messages`,
+  `TdDropdown.labels`, `TdPagination.labels`, `TdEmptyState.labels`, `TdToast.labels`, `TdLoading.labels`, `TdModal.labels`
+  (thêm tiêu đề/nội dung mặc định).
+- `TdToast.show/success/…` trả handle `{ close() }` (huỷ cả khi còn trong hàng đợi); `TdToast.clear()`.
+- `TdLoading.wrap(fn, { message, maxDuration })`.
+- `TdBaseElement._setOwnedStyle()` — component chỉ gỡ biến CSS inline do chính nó đặt.
+- `TdIconElement` trong barrel `index.js`.
+
+### Fixed
+
+- checkbox/toggle khôi phục `checked` khi trình duyệt restore form.
+- Biến CSS inline site đặt trên button/checkbox/toggle/slider/pagination không còn bị xoá khi re-render.
+- dropdown tìm kiếm không phân biệt dấu (`fold`).
+- Callback lỗi không còn chặn event sau: dropdown onSelect/onChange, tabs onChange, table render/onSort/onPageChange,
+  TdFormValidation onValid (bọc try/catch + `console.error`; ô table lỗi → rỗng).
+- TdFormValidation: reset form xoá summary/note/`aria-invalid` và tắt kiểm tra trực tiếp.
+- Comment z-index (dropdown thực tế ở tầng popover 450); `--td-z-dropdown/-sticky/-overlay` ghi rõ "dự trữ".
+
+### Packaging
+
+- `files` không còn ship test/stories; `sideEffects` liệt kê module đăng ký element + CSS; `engines.node >= 20`;
+  `exports["./package.json"]`; `vite` là devDependency tường minh (đã có trong lockfile); `./icons` không còn export
+  `_validateIconDefinition`.
+
 ## 0.15.1
 
 ### Docs — viết lại từ đầu dạng hub-spoke (owner request)

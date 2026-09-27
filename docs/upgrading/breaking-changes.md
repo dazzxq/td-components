@@ -1,8 +1,8 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.15)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.16)
 
-Trang này liệt kê, cho từng bản từ **0.15.1** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
+Trang này liệt kê, cho từng bản từ **0.16.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
 [CHANGELOG.md](../../CHANGELOG.md); trang này chỉ gom lại theo góc nhìn "tôi phải làm gì" và thêm ví dụ trước/sau.
 Quy trình nâng cấp chung nằm ở [README.md](README.md).
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.16.0](#0160) | Đổi hành vi | `input-field.value`, slider `required`/`step`/mặc định, dropdown giữ/bỏ lựa chọn + `onSelect`+`onChange`, `confirm` giữ mở khi `onConfirm` trả `false`, định dạng `toAbsolute`, token `:root`, dark accent. |
 | [0.15.1](#0151) | Không có thay đổi phá vỡ | Không. Tài liệu viết lại; sửa con trỏ trigger video lightbox. |
 | [0.15.0](#0150) | Không có thay đổi phá vỡ | Không bắt buộc. Con trỏ trên trigger lightbox đổi. |
 | [0.14.4](#0144) | Đổi giao diện (nhỏ) | Không bắt buộc. |
@@ -39,6 +40,49 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.16.0
+
+**Đổi hành vi** (không đổi tên API nào). Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.16.0.
+
+1. **`td-input-field.value` trả giá trị đang nhập.** Trước đây trả attribute `value` ban đầu (chỉ `getValue()` đúng).
+   Code nào dựa vào `.value` = giá trị ban đầu phải đọc `getAttribute('value')`.
+
+   ```js
+   // trước (sai nhưng có người dựa vào): field.value === giá trị server render
+   const initial = field.getAttribute('value'); // sau: đọc attribute nếu cần giá trị ban đầu
+   const current = field.value;                // = field.getValue()
+   ```
+
+2. **`td-slider`**: `required` bị bỏ (range không bao giờ "trống"); `setValue(7)` với `step="5"` → `5` (snap như
+   `<input type=range>`); không có `value` → giá trị là `min` (trước là `0` và báo lỗi underflow khi `min > 0`).
+3. **`td-dropdown`**:
+   - Gán lại `options` **giữ** lựa chọn hiện tại nếu giá trị còn trong danh sách mới; nếu không còn thì **bỏ**
+     (trước: kéo về attribute `value`, hoặc — với `updateData()` — giữ và vẫn submit giá trị không còn tồn tại).
+   - Có cả `onSelect` và `onChange` → **cả hai** chạy (`onSelect` trước). Trước đây `onChange` chặn `onSelect`; nếu
+     bạn đặt cả hai mà chỉ muốn một, gỡ cái kia.
+4. **`TdModal.confirm`**: `onConfirm` đồng bộ trả `false` hoặc throw → hộp thoại **giữ nguyên** (như `actions`).
+   Trước đây vẫn đóng và resolve `true`.
+5. **`TdDateTime.toAbsolute`**: chỉ thay cụm chữ **toàn token** (`DD/MM/YYYY`, `YYYYMMDD`…), không thay trong từ
+   (`'Ngay DD thang MM'` giữ "Ngay", "thang"); `[…]` in nguyên văn. Timestamp `0` giờ là 01/01/1970 (trước: chuỗi rỗng).
+   `toRelative` tương lai: `Trong N phút|giờ|ngày|tháng|năm` (dưới 1 phút vẫn `Vừa xong`).
+6. **Token mặc định lên `:root`**: `--td-lb-*`, `--td-checkbox-box`, kích thước switch mặc định, `--td-spinner-size`,
+   `--td-empty-state-pad/-gap`, `--td-pagination-item-size`. Override `:root` của site trước đây **không** ăn, giờ ăn —
+   nếu site từng để sẵn các override này (vô tác dụng), kiểm tra lại hình. Trên màn cảm ứng, override
+   `--td-pagination-item-size` / `--td-lb-btn` giờ thắng mức 44px kit ép trước đây.
+7. **Dark theme**: nút primary + trang active theo `--td-accent` (qua `--td-accent-fill`). Site dark đã đổi
+   `--td-accent` sẽ thấy nút primary đổi màu theo; muốn giữ #2563eb: `:root[data-td-theme="dark"] { --td-accent-fill: #2563eb; }`.
+
+Bổ sung (không phá vỡ): nhãn/thông báo dịch được (`messages`/`labels` của input-field, slider, checkbox, toggle,
+dropdown, pagination, empty-state, toast, loading, modal), `TdToast` handle `close()` + `TdToast.clear()`,
+`TdLoading.wrap(fn, { message, maxDuration })`, `pattern`/`minlength` cho input-field, property gán sớm không mất.
+
+Đóng gói: package không còn chứa test/stories; `engines.node >= 20`; `./icons` không còn export
+`_validateIconDefinition` (hàm nội bộ).
+
+Site phải sửa: chỉ khi dựa vào các hành vi cũ ở mục 1–7.
 
 ---
 
