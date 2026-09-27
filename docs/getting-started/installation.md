@@ -50,8 +50,9 @@ Ghi chú:
   là việc có chủ đích, xem [Nâng cấp](../upgrading/README.md).
 - Tag chỉ dùng được khi nó đã được **push lên GitHub**. Nếu `npm install …#v0.15.1` báo không tìm thấy ref, kiểm tra
   `git ls-remote --tags https://github.com/dazzxq/td-components.git`.
-- Package **không có dependency runtime** nào. npm chỉ tải đúng các file khai báo trong `package.json#files`:
-  `src/`, `index.js`, `td.css`, `THIRD_PARTY_NOTICES.md`.
+- Package **không có dependency runtime** nào. `package.json#files` giới hạn phần nội dung được tải: `src/`,
+  `index.js`, `td.css`, `THIRD_PARTY_NOTICES.md`; ngoài ra npm luôn tự kèm file metadata như `package.json`,
+  `README.md` (và `LICENSE` nếu có).
 - Nâng cấp sau này: đổi tag rồi chạy lại `npm install github:dazzxq/td-components#v<bản-mới>`.
 
 Sau khi cài, kit nằm ở `node_modules/@dazzxq/td-components/`:
@@ -68,7 +69,9 @@ node_modules/@dazzxq/td-components/
 │   ├── icons/        registry icon + <td-icon>
 │   ├── utils/        dom-utils, datetime, form-validation, layers, …
 │   └── styles/       CSS nguồn (đã gộp vào td.css, không cần nạp riêng)
-└── THIRD_PARTY_NOTICES.md
+├── THIRD_PARTY_NOTICES.md
+├── package.json      ← npm luôn kèm (metadata, exports)
+└── README.md         ← npm luôn kèm
 ```
 
 ## 2. Dùng với Vite / bundler
@@ -416,7 +419,7 @@ Nguồn: `package.json#exports` của 0.15.1.
 | `@dazzxq/td-components/toggle` | `src/form/td-toggle.js` | `<td-toggle>`, `TdToggle` |
 | `@dazzxq/td-components/slider` | `src/form/td-slider.js` | `<td-slider>`, `TdSlider` |
 | `@dazzxq/td-components/dropdown` | `src/form/td-dropdown.js` | `<td-dropdown>`, `TdDropdown` |
-| `@dazzxq/td-components/chip-input` | `src/form/td-chip-input.js` | `<td-chip-input>`, `TdChipInput` |
+| `@dazzxq/td-components/chip-input` | `src/form/td-chip-input.js` | `<td-chip-input>`, `TdChipInput`, `parseChipItems` |
 | `@dazzxq/td-components/datetime-picker` | `src/form/td-datetime-picker.js` | `<td-datetime-picker>`, `TdDatetimePicker` |
 | `@dazzxq/td-components/datetime` | `src/utils/datetime.js` | `TdDateTime` (tiện ích ngày giờ) |
 | `@dazzxq/td-components/form-validation` | `src/utils/form-validation.js` | `TdFormValidation` |
@@ -433,7 +436,7 @@ Nguồn: `package.json#exports` của 0.15.1.
 | `@dazzxq/td-components/pagination` | `src/display/td-pagination.js` | `<td-pagination>`, `TdPagination` |
 | `@dazzxq/td-components/empty-state` | `src/display/td-empty-state.js` | `<td-empty-state>`, `TdEmptyState` |
 | `@dazzxq/td-components/icons` | `src/icons/td-icon.js` | Hàm icon (`tdIcon`, `registerIcons`, …) |
-| `@dazzxq/td-components/icon-element` | `src/icons/td-icon-element.js` | `<td-icon>` |
+| `@dazzxq/td-components/icon-element` | `src/icons/td-icon-element.js` | `<td-icon>`, `TdIconElement` |
 | `@dazzxq/td-components/icons.json` | `src/icons/icons.json` | Dữ liệu icon (JSON) |
 | `@dazzxq/td-components/dom-utils` | `src/utils/dom-utils.js` | Tiện ích DOM |
 | `@dazzxq/td-components/base` | `src/base/td-base-element.js` | `TdBaseElement` (tự viết component) |

@@ -62,7 +62,7 @@ Những tính năng dưới đây chỉ làm đẹp hoặc tinh chỉnh. Trình 
 |---|---|---|
 | `backdrop-filter` (có kèm `-webkit-backdrop-filter`) | Bề mặt Liquid Glass (menu, modal, toast, button kính…) | Khối `@supports not (backdrop-filter…)` tự chuyển sang nền đặc `--td-glass-solid` |
 | `:has()` (Firefox từ 121) | Vài trạng thái phụ: checkbox/switch/slider bị disabled, focus của chip-input, button `full-width`, dialog dưới menu chuyển solid | Mất một số hiệu ứng trạng thái; control bên trong vẫn disabled/focus đúng |
-| `color-mix()` | Một vài sắc độ pha màu (bọc trong `@supports`) | Dùng màu dự phòng khai báo trước đó |
+| `color-mix()` | Sắc độ pha màu: nút kính, kính tint, bóng slider (bọc trong `@supports` → rơi về màu dự phòng khai báo trước đó); **không** bọc: nền/viền khung tóm tắt lỗi của TdFormValidation và viền toast lỗi | Chỗ có `@supports`: màu dự phòng. Chỗ không bọc: token thành giá trị không hợp lệ → thuộc tính dùng nó rơi về giá trị mặc định của CSS, nên khung tóm tắt lỗi và viền toast lỗi mất màu tô dự kiến (chữ + icon vẫn hiện) |
 | `@starting-style` (Chrome 117, Firefox 129, Safari 17.5) | Hiệu ứng xuất hiện của menu dropdown, `TdMenu`, gợi ý chip-input, hovercard | Phần tử hiện ra ngay, không có animation vào |
 | Đơn vị `dvh` | Chiều cao tối đa modal, lightbox, bottom sheet trên mobile | Kích thước có thể lệch khi thanh địa chỉ mobile co giãn |
 | Đơn vị `lh` | Chiều cao `td-input-field type="textarea" autoresize` | Chiều cao tối thiểu/tối đa tính sai |

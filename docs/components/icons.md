@@ -9,7 +9,7 @@ cũng không dùng font icon (Font Awesome…) cho UI mới.
 
 | | |
 |---|---|
-| Import | `import { tdIcon, registerIcons, hasIcon, listIcons } from '@dazzxq/td-components/icons'` · façade: `import '@dazzxq/td-components/icon-element'` · dữ liệu: `@dazzxq/td-components/icons.json` |
+| Import | `import { tdIcon, registerIcons, hasIcon, listIcons } from '@dazzxq/td-components/icons'` · façade: `import '@dazzxq/td-components/icon-element'` (class: `import { TdIconElement } from '@dazzxq/td-components/icon-element'`) · dữ liệu: `@dazzxq/td-components/icons.json` |
 | Loại | API JS (hàm) + custom element tuỳ chọn `<td-icon>` |
 | Form-associated | không |
 | Từ phiên bản | 0.6.0 ([ADR 0010](../internal/decisions/0010-icon-registry.md)) |

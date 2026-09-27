@@ -11,10 +11,21 @@ Không dùng khi: chỉ chọn **một** giá trị từ danh sách cố định
 
 | | |
 |---|---|
-| Import | `import '@dazzxq/td-components/chip-input'` (class: `import { TdChipInput } from '@dazzxq/td-components/chip-input'`) |
+| Import | `import '@dazzxq/td-components/chip-input'` (class: `import { TdChipInput } from '@dazzxq/td-components/chip-input'`; hàm tiện ích: `import { parseChipItems } from '@dazzxq/td-components/chip-input'`) |
 | Loại | Custom element |
 | Form-associated | có (`ElementInternals`), gửi **nhiều** entry cùng tên |
 | Từ phiên bản | 0.12.0 |
+
+**`parseChipItems(str)`** (named export): parse chuỗi giống attribute `value` — trả `[]` khi `str` là `null`/`''`,
+**mảng** khi `str` là JSON array (phần tử giữ nguyên: string, number hoặc object `{ value, label }`, chưa được chuẩn
+hoá), `null` khi không phải JSON hợp lệ hoặc không phải mảng (component dùng `null` để bỏ qua + cảnh báo). Hữu ích để
+kiểm tra chuỗi từ server trước khi gán:
+
+```js
+import { parseChipItems } from '@dazzxq/td-components/chip-input';
+const items = parseChipItems(serverValue);
+if (items === null) console.warn('value không phải JSON array');
+```
 
 ## Ví dụ nhanh
 
