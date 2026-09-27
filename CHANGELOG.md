@@ -2,6 +2,40 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.14.0
+
+**Real Liquid Glass.** The owner found the kit "not liquid glass at all"; the rules were re-derived in a Codex
+think-about debate (Apple sources: WWDC25 219/323/356, HIG Materials/Color, SwiftUI Glass APIs) and every value is now
+accepted by a rendered contrast gate. Plan: `docs/plans/v0.14.0-liquid-glass.md` (Codex plan-review APPROVE, 3 rounds);
+rules: `docs/design/liquid-glass.md` v2.
+
+### Changed (visual / behaviour)
+
+- **Glass material:** 40 % / 52 % light (44 % / 60 % dark) instead of 72 % / 86 %, blur 16px + saturate + brightness,
+  135° sheen, two-tone rim, dark outer hairline, deeper lift; Clear 6 % + dim 46 %.
+- **Buttons are glass:** prominent variants = tinted glass (90 % tint + contrast film), secondary = neutral glass;
+  warning is now bright amber with dark text; disabled uses opaque state colours instead of `opacity: .55`; buttons in
+  tables / dense areas / glass surfaces keep the look without their own blur.
+- **Checkbox is round** by default (`--td-checkbox-radius`).
+- **Toasts are tinted glass** (per-type wash, deeper icons; dark variants lighter).
+- **Frontmost glass wins:** a dropdown / menu / suggestions / tooltip / hovercard over an open modal keeps its glass and
+  the covered dialog goes solid (was: the popover went solid).
+- **Tooltip = dwp look & behaviour:** arrow, 14px text, shows on touch and on any focus, hides on scroll / resize / tap
+  elsewhere, opacity fade; aliases `data-dwp-tooltip`, `data-tooltip-pos`, `data-dwp-tooltip-pos`.
+- Modal close X and toast close use the glass foreground (muted greys failed 3:1 on translucent glass).
+
+### Added
+
+- **Menu option registry:** `TdMenu.define()`, `TdMenu.register()` (plugins add options with `order` / `group`),
+  `when(ctx)`, `TdMenu.open(anchor, 'name')`, `TdMenu.has()`, declarative `data-td-menu="name"` + `data-td-menu-*`
+  context via `TdMenu.bindAll(root)`; `onSelect` / builders receive ctx.
+- **`TdHovercard`** (`./hovercard`): glass hover/focus card with Node, `<template>` or same-origin URL content (string =
+  trusted HTML), loading / error states, render-token guard, keyboard contract that works inside a modal.
+- **Rendered contrast gate** `npm run test:contrast` (buttons × states, toasts; light/dark; black/white/checker/photo;
+  Chromium/Firefox/WebKit; minimum contrast; opacity assertion) — part of `npm test`.
+- Foundations/Glass › Showcase story and a Liquid Glass section in `demo.html`; CSP states for hovercard and the
+  clamped tooltip arrow; all CSP baselines recaptured.
+
 ## 0.13.0
 
 Backlog quick wins (all additive, opt-in). Plan: `docs/plans/v0.13.0-backlog.md` (Codex plan-review APPROVE, 2 rounds).

@@ -1,4 +1,4 @@
-# Liquid Glass: bộ luật cho td-components (v1)
+# Liquid Glass: bộ luật cho td-components (v2 — 0.14.0)
 
 > **Bắt buộc cho mọi UI mới.** Component token-native (từ v0.5) phải theo bộ luật này.
 >
@@ -14,6 +14,45 @@
 > `.td-glass-surface`. Chỗ nào bên dưới nói "private token trên `:root`" thì hiểu theo cơ chế này.
 > **Ràng buộc kit:** không Shadow DOM · CSP strict (không có `style="…"`, không chèn `<style>`; chỉ dùng
 > file `td.css` đi kèm hoặc CSSOM `el.style.setProperty`) · không kéo dependency nặng.
+
+## v2 (0.14.0) — thay đổi bắt buộc, THẮNG mọi chỗ mâu thuẫn bên dưới
+
+Bản v1 (0.5.0) do một mình Claude viết, chưa từng được phản biện; kết quả trên demo "không ra kính" (button đặc,
+menu như hộp trắng). v2 chốt qua một cuộc **Codex think-about** (2 vòng, đồng thuận, `gpt-5.6-sol`, nguồn Apple
+chính thức) + **plan-review** 3 vòng, và mọi con số được **gate tương phản render thật** kiểm (§G5).
+
+- **G1 — tầng áp dụng (thay R1):** kính = tầng điều khiển chức năng. **Button đứng riêng được là kính**: Regular
+  (`.glass`) hoặc Prominent có tint (`.glassProminent`) — SwiftUI `GlassProminentButtonStyle`, WWDC25 session 323
+  ("brings Liquid Glass to any button"). Card, hàng, bảng, ô nhập, checkbox, nền trang: **không bao giờ**. Control nằm
+  **trong** một bề mặt kính (modal, menu, popover, nhóm toolbar) dùng fill, không `backdrop-filter` lồng. Nhóm button
+  toolbar chung **một** parent kính. **Kính trên cùng thắng:** menu / popover / hovercard / tooltip mở trên modal giữ
+  kính, dialog bên dưới chuyển solid.
+- **G2 — vật liệu (thay R17 + token cũ 72 %/86 %):** không làm kính "hiện" bằng cách tăng độ đục. Light: regular
+  `rgb(255 255 255 / 40%)`, strong `52%` (chữ `#111113` ≥ 4.5:1 kể cả trên nền đen); dark: `rgb(12 14 18 / 44%)` /
+  `rgb(8 10 14 / 60%)`, chữ `#f7f7f8`. Blur `blur(16px) saturate(145%) brightness(1.04)` (lg 20px; dark 135 % / 0.92).
+  Trên nền trắng, kính đọc được nhờ: **viền hai tông** (mép trên 82 % trắng, mép trái 22 %, mép dưới 8 % đen), **sheen
+  135°** mảnh (24 → 7 → 0 → 8 % trắng), **hairline tối ngoài** `0 0 0 1px rgb(0 0 0 / 8%)` và **bóng nâng** đậm hơn.
+  Clear: fill 6 %, dim 46 % (icon) / 60 % (chữ). Solid dự phòng `#f7f7f8` / `#17181c`.
+- **G3 — button:** prominent = tint (`--td-btn-{v}-tint/-alpha/-film/-fg`, ~90 % + phim tối 16–18 %, sheen nhẹ riêng
+  `--td-btn-sheen`); warning = hổ phách sáng `#f59e0b` + chữ tối. Secondary = kính strong trung tính + phim 4 % đen.
+  Bảng / `[data-td-density="dense"]` / button trong bề mặt kính: giữ vẻ kính, **không** `backdrop-filter`. Disabled:
+  màu trạng thái đặc riêng (không `opacity` cả phần tử). Màu `color` tuỳ biến: fill đặc.
+- **G4 — toast:** nền riêng 66 % (dark 70 %) + lớp màu theo loại (light 22 % / 26 %; dark 12 %) + icon tông đậm (light)
+  / nhạt (dark); màu không phải tín hiệu duy nhất (icon).
+- **G5 — gate tương phản (nghiệm thu, không phải hằng số):** `npm run test:contrast` render button (mọi variant ×
+  rest/disabled/loading) và toast trên nền **đen, trắng, caro, ảnh**, light + dark, **Chromium/Firefox/WebKit**, đo
+  pixel thật (sau blur, sheen, tint, wash), lấy tương phản **nhỏ nhất**: chữ ≥ 4.7:1, icon/spinner/nút đóng ≥ 3.2:1,
+  và assert `opacity: 1` suốt chuỗi cha. Cặp nào trượt thì chỉnh token của riêng nó, không chỉnh công thức chung.
+- **G6 — khúc xạ:** không ship (Safari 26: WebKit bug 245510; Firefox không hỗ trợ SVG trong `backdrop-filter`);
+  backlog thử nghiệm Chromium-only.
+- **G7** checkbox tròn mặc định (`--td-checkbox-radius: 50%`). **G8** tooltip = giao diện + hành vi dwp (có mũi tên
+  `::after` cùng fill, không blur riêng). **G10** hovercard kính strong.
+
+Nguồn thêm cho v2: [WWDC25 323](https://developer.apple.com/videos/play/wwdc2025/323/) ·
+[GlassProminentButtonStyle](https://developer.apple.com/documentation/swiftui/glassprominentbuttonstyle) ·
+[MDN backdrop-filter](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/backdrop-filter) ·
+[WebKit bug 245510](https://bugs.webkit.org/show_bug.cgi?id=245510) ·
+[WCAG 2.2 contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html).
 
 ## 0. Nguồn và cách trích dẫn
 
@@ -33,7 +72,7 @@ Trích dẫn giữ nguyên tiếng Anh. Luật nào **không** có nguồn Apple
 
 ## 1. Các nguyên tắc
 
-### R1. Kính chỉ dành cho tầng điều khiển nổi, không bao giờ cho tầng nội dung
+### R1. Kính chỉ dành cho tầng điều khiển nổi, không bao giờ cho tầng nội dung (v2: button đứng riêng ĐƯỢC là kính — xem G1)
 
 > "Liquid Glass forms a distinct functional layer for controls and navigation elements — like tab bars and
 > sidebars — that floats above the content layer" (HIG-M)
@@ -257,7 +296,7 @@ Kính đặt trên nền phẳng một màu trông chỉ như một hộp mờ. 
 vọng "chất kính". Điều này đúng với Apple: "Liquid Glass has no inherent color, and instead takes on colors from
 the content directly behind it." (HIG-C)
 
-### R17. Độ đục theo kích thước và theo lượng chữ
+### R17. Độ đục theo kích thước và theo lượng chữ (v2: con số mới ở G2 — 40 % / 52 %, không còn 72 % / 86 %)
 
 > "Liquid Glass appears more opaque in larger elements like sidebars to preserve legibility over complex
 > backgrounds" (HIG-C) · "When a half sheet expands to full height, it transitions to a more opaque appearance"
@@ -275,17 +314,18 @@ the content directly behind it." (HIG-C)
 |---|---|---|---|
 | **td-modal** (dialog) | **Regular, strong** + shadow-lg | Nổi lên, ngắt luồng làm việc, nhiều chữ (HIG-M: "alerts … popovers") | Bỏ `bg-white/[0.9] border-white/50` và blur 24px. Nút trong footer là fill, primary là accent đặc (R3). Radius 20px, capsule/bo 12px cho nút ở góc (R8). |
 | **td-modal-stack backdrop** | **None**, chỉ scrim tối | R12: scrim không phải kính, không blur | Chuyển opacity 0.5 và bước +0.05 từ JS sang token `--td-glass-scrim`. Dialog bị che thì chuyển solid (R3). |
-| **td-toast** | **Regular, strong**, capsule | Nổi lên, song song, có chữ | Solid khi `html.td-modal-open` và toast đè lên dialog (R3). Hiện blur 10px, cần đổi sang token. |
-| **td-tooltip** | **Regular, strong** | Popover nhỏ có chữ | Không có mũi tên (hình vuông xoay lấy mẫu backdrop khác). Solid khi nằm trong modal. Không set `style.backdropFilter` từ JS (dòng 275), để CSS lo. |
+| **td-toast** | **Regular strong + lớp màu theo loại** (G4), capsule | Nổi lên, song song, có chữ | Nền riêng 66 % + wash 22–26 %; solid khi đè lên dialog đang mở. |
+| **TdHovercard** (0.14) | **Regular, strong** | Popover nội dung phong phú | Kính trên cùng thắng khi mở trên modal (G1). |
+| **td-tooltip** | **Regular, strong** | Popover nhỏ có chữ | v2 (G8): giao diện dwp, **có mũi tên** = `::after` cùng phần tử, cùng fill/viền, không `backdrop-filter` riêng. Giữ kính khi nằm trên modal (G1). |
 | **td-dropdown** (panel) | **Regular, strong**, pad 6px, radius 20px | Popover/menu (ADOPT: "Menus … adopt Liquid Glass") | Option dùng fill + `radius-inner`. Ô search bên trong dùng fill, không dùng kính. Trigger là field (content layer): **none**. |
 | **td-menu** (135) | **Regular, strong** | Như trên | Nở ra từ nút "···" (R11). Solid khi nằm trên modal (đã có). |
 | **td-datetime-picker** popover | **Regular, strong** | Popover nhiều chữ | Ô ngày là fill, ngày được chọn dùng accent fill đặc (nằm trong kính, R3). Picker inline (không phải popover): **none**. |
 | **td-tabs** (tabs trong nội dung) | **None**, dùng fill segmented | Tầng nội dung | Container dùng `--td-color-hover`, indicator là fill sáng. Chỉ khi là **app tab bar/nav nổi** mới dùng **Regular capsule**. |
-| **td-button** primary | **None** (fill accent) trong nội dung và trong modal. **Tinted glass** chỉ khi nằm trên thanh nổi. | R1, R3, R7 | ⚠ Hiện cả 6 variant đều là kính `blur(8px)`, vi phạm R1 và R7 ("Refrain from adding color to the background of multiple controls"). |
-| **td-button** secondary/ghost | **None** (fill/viền). Trên thanh nổi thì là **item trong nhóm kính của thanh**, không có kính riêng. | R3: kính áp lên container, không áp lên từng view con | W356: "items grouped … share a background". |
+| **td-button** primary/success/danger/info/warning | v2 (G1/G3): **Prominent tinted glass** | `.glassProminent` | Tint ~90 % + phim tối + sheen nhẹ; warning hổ phách + chữ tối; trong bảng / dense / trong bề mặt kính: vẻ kính, không blur. |
+| **td-button** secondary | v2: **Regular strong glass** + phim 4 % | `.glass` | Trên thanh nổi vẫn là item trong nhóm kính của thanh (một parent kính). |
 | **td-toggle** thumb | **None** lúc nghỉ, chỉ thành **Clear-ish lens** khi đang kéo | HIG-M ngoại lệ cho toggle | `[data-dragging]` thì scale theo `--_td-glass-lift-knob`, nền `--td-glass-clear-bg`, blur(2px) + rim. Reduced motion: không scale. |
 | **td-slider** thumb | Như toggle | HIG-M, ADOPT: "the knob transforms into Liquid Glass during interaction" | Track là fill. Hiện dùng box-shadow màu `${color}40` cho glow, đổi sang token. |
-| **td-checkbox** | **None** | Không có núm nào chuyển trạng thái tạm thời | Fill accent khi checked. |
+| **td-checkbox** | **None** | Không có núm nào chuyển trạng thái tạm thời | Fill accent khi checked. v2 (G7): **tròn** mặc định (`--td-checkbox-radius`). |
 | **td-input-field** | **None** | Tầng nội dung | `--td-field-*`. Nếu nằm trong kính thì là fill, không làm kính thứ hai. |
 | **chip-input** | **None** | Tầng nội dung, chip là fill | Popover gợi ý (nếu có) dùng Regular strong. |
 | **td-table** | **None**. Header sticky dùng **scroll edge hard** | W356: "pinned table headers" | Không bao giờ làm kính cho hàng hoặc ô (W219 ví dụ tableview). |
@@ -306,6 +346,9 @@ bản dưới viết gọn). Class nằm trong `@layer td.component` hoặc `td.
 (không dùng `adoptStyles()` cho CSS token-native, xem ADR 0008).
 
 ### 3.1 Regular
+
+> v2 (0.14.0): công thức thật nằm ở `src/styles/glass.css` — `background-color` + `background-image: <wash>, <sheen>`,
+> viền hai tông (trên + trái + dưới), hairline tối ngoài, bóng nâng; khối dưới đây là bản gốc v1 để tham khảo lịch sử.
 
 ```css
 .td-glass {

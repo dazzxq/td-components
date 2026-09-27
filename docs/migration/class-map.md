@@ -74,5 +74,10 @@ update their selectors using this table when upgrading. No legacy aliases are sh
 | td-menu | `.dwp-menu-btn` | `.td-menu-btn` (+ `__icon`, `__label`) | `[aria-expanded]` | 0.12.0 |
 | td-chip-input | `.dcms-chip-search-field` (Tailwind) / `__chips` / `__input` / `__dropdown` | `.td-chip-input` / `__box` / `__chips` / `__chip` / `__remove` / `__input` / `__menu` / `__options` / `__option[--create]` / `__empty` | `data-state`, `[aria-selected]`, `[hidden]` | 0.12.0 |
 | TdFormValidation | `.dcms-form-error-note` / `.dcms-form-validation-summary` | `.td-field-error[data-td-fv]` / `.td-form-summary` (+ `__title`, `__list`, `__item`, `__link`) | `[aria-invalid]` | 0.12.0 |
+| td-button | solid fills (`.td-btn--{variant}`) | same classes, now **tinted glass** (tokens `--td-btn-{v}-tint/-alpha/-film/-fg`, `--td-btn-sheen`) | `:disabled` = opaque state colours (no opacity) | 0.14.0 |
+| td-checkbox | square box | same classes, **round** by default (`--td-checkbox-radius`) | — | 0.14.0 |
+| td-toast | neutral glass + coloured border | same classes, **tinted glass** (`--td-toast-glass-bg`, `--td-toast-{type}-wash`, `--td-toast-{type}-icon`) | — | 0.14.0 |
+| td-tooltip | chip without arrow | `.td-tooltip` + arrow `::after` (CSSOM `--td-tooltip-arrow-x/-y`; `--td-tooltip-arrow-size`) | `data-placement` | 0.14.0 |
+| TdHovercard (new) | dwp `#dwp-hovercard` / 135 `.td-hovercard` | `#td-hovercard.td-hovercard.td-glass-surface--strong` (+ `__status`, `__spinner`, `__text`) | `[hidden]`, `data-state` (loading/open/error/closed), `data-placement` | 0.14.0 |
 
 State rule: JS never toggles visual classes; state lives in `aria-*`, `[hidden]`, `:checked`, `data-state`.

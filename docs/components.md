@@ -53,7 +53,11 @@ Solid content-layer button (never glass — the one primary action on a floating
 | `type` | string | `button` | `button` \| `submit` \| `reset` (whitelisted) |
 | `aria-label` | string | — | Forwarded to the inner button (icon-only buttons) |
 
-Tokens: `--td-btn-radius`, `--td-btn-primary-bg/-fg`, `--td-btn-secondary-*`. Methods: `setLoading(bool)`, `setDisabled(bool)`, **`run(asyncFn)`** (0.13.0): busy while `asyncFn` runs, cleared in
+**Liquid Glass (0.14.0):** primary / success / danger / info / warning = tinted glass (`.glassProminent`), secondary =
+neutral strong glass; inside tables, `[data-td-density="dense"]` or a glass surface the look stays but without its own
+`backdrop-filter`; disabled uses opaque state colours; a custom `color` is an opaque fill. Contrast of every variant is
+gated over black / white / checker / photo in 3 engines (`npm run test:contrast`). Tokens: `--td-btn-radius`,
+`--td-btn-{variant}-tint/-alpha/-film/-fg`, `--td-btn-sheen`, `--td-btn-disabled-bg/-fg/-border`, `--td-btn-secondary-*`. Methods: `setLoading(bool)`, `setDisabled(bool)`, **`run(asyncFn)`** (0.13.0): busy while `asyncFn` runs, cleared in
 `finally`, returns its result / rethrows; a call while running returns the same promise (no double submit).
 Events: the native `click` of the inner button.
 
@@ -103,6 +107,8 @@ kept). Counter shows `data-state="limit"` at the limit (no red border). Form res
 > **0.2.0 BREAKING:** the inner `<input>`/`<textarea>` no longer carries a `name`; submission goes through the host's `name`.
 
 ### `td-checkbox` — `@dazzxq/td-components/checkbox`
+
+Round by default since 0.14.0 — set `--td-checkbox-radius` (e.g. `6px`) for a square box.
 
 
 ```html
@@ -350,7 +356,8 @@ TdToast.show('Tuỳ chỉnh', 'info', 4000);  // (message, type, duration)
 `show(message, type, duration)` — `type`: `success` \| `error` \| `warning` \| `info`; `duration` ms (`0` = sticky).
 Shortcuts: `success` / `error` / `warning` / `info`. The message is **text only**.
 
-**Token-native (0.9.0):** strong-glass toasts with a registry status icon (no coloured fills), top-right at
+**0.14.0:** tinted glass — each type gets its own coloured wash over a 66 % glass base (dark 70 %), contrast-gated over
+any backdrop; the status icon stays. **Token-native (0.9.0):** strong-glass toasts with a registry status icon, top-right at
 `--td-z-toast` (500). Every toast has a close button "Đóng"; timers pause while the stack is hovered or focused (and
 while the page is hidden). `role="status"` (polite), errors `role="alert"`. The text is set one frame after insertion
 so screen readers announce it. Placement is token-only: `--td-toast-top/-bottom/-inline-start/-inline-end/-align`
@@ -433,24 +440,58 @@ anything else, including `mailto:`/`tel:`, renders a disabled item and warns; us
 (diacritic-insensitive), Enter/Space activate, Escape closes and returns focus to the trigger, Tab closes and moves on.
 Focus returns to the trigger after a selection. Outside `pointerdown` closes.
 
+**Option registry (0.14.0):** `TdMenu.define(name, items | (ctx) => items)` declares a named menu (returns `undefine`);
+`TdMenu.register(name, item | item[], { order, group })` lets other modules / sites **add options without touching core**
+(works before or after `define`; returns `unregister`). Order: base items `index × 10`, registered `1000` unless `order`
+is given; a different `group` inserts a separator. `when(ctx) → boolean` hides an item (a throwing `when` hides it + warns).
+`TdMenu.open(anchor, 'name', { ctx })` opens a registered menu; `TdMenu.has(name)`. Declarative:
+`<button data-td-menu="post-actions" data-td-menu-post-id="7">` + one `TdMenu.bindAll(root)` (delegation, idempotent,
+no auto-run; `unbind` restores ARIA). `ctx = { ...opts.ctx, ...data-td-menu-* (camelCase strings), anchor, name }` reaches
+item builders, `when` and `onSelect({ ...ctx, item, checked })`.
+
 ### `TdTooltip` — `@dazzxq/td-components/tooltip`
 
 Zero-API: importing the module auto-initializes a global singleton. Any element with `data-tooltip` shows a tooltip.
 
 ```html
 <button data-tooltip="Xoá" data-tooltip-position="bottom">…</button>
+<button data-dwp-tooltip="Sửa" data-dwp-tooltip-pos="top">…</button>  <!-- dwp markup works unchanged -->
 <script type="module">import '@dazzxq/td-components/tooltip';</script>
 ```
-Per element: `data-tooltip` (text), `data-tooltip-position` (`top` \| `bottom` \| `left` \| `right`),
-`data-tooltip-color` (+ optional `data-tooltip-text-color`; custom colours render a solid chip).
+Per element: `data-tooltip` (text; aliases `data-dwp-tooltip`), `data-tooltip-position` (`top` \| `bottom` \| `left`
+\| `right`; aliases `data-tooltip-pos`, `data-dwp-tooltip-pos`; the td spelling wins), `data-tooltip-color` (+ optional
+`data-tooltip-text-color`; custom colours render a solid chip).
 
-**Token-native (0.9.0):** `role="tooltip"` strong-glass chip (no arrow) at `--td-z-tooltip` (510), linked with
-`aria-describedby` while shown. Opens on mouse/pen hover and on keyboard focus, never on touch; stays while the pointer
-is on the trigger or the tooltip (100 ms grace) — no auto-hide; Escape dismisses. Long text wraps.
+**0.14.0 — dwp look & behaviour, in glass:** strong-glass chip with an **arrow** (`::after` of the same element, same
+fill/edge; it keeps pointing at the trigger when the chip is clamped to the viewport), 14px text, max 18rem, opacity
+fade 120ms. Shows on pointer enter for **every pointer type (touch too)** and on **any focus**; hides on pointer leave
+(100 ms grace — the chip itself is hoverable), focus out, any scroll, resize, a tap elsewhere and Escape; a trigger with
+keyboard focus keeps its tooltip through a scroll (repositioned). Preferred side → flip → viewport clamp.
+`role="tooltip"` + `aria-describedby` while shown, `--td-z-tooltip` (510), stays glass over an open modal.
 **Naming (conservative):** only for `<button>`, `<a href>`, `input[type=button|submit|reset|image]` and explicit
 `role=button|link|tab|menuitem`: a trigger that already has a name loses its `title` (the tooltip is its
 description); an unnamed one gets its `title` (else `data-tooltip`, with a console warning) as `aria-label`. Other
 elements keep their names and `title` untouched.
+
+### `TdHovercard` — `@dazzxq/td-components/hovercard`
+
+New in 0.14.0 (port of dwp `hovercard.js`, strong glass). A rich card on hover-intent (show 350 ms, hide 250 ms) and
+keyboard focus — **free-form content**:
+
+```js
+import { TdHovercard } from '@dazzxq/td-components/hovercard';
+const unbind = TdHovercard.bind(authorLink, { label: 'Hồ sơ tác giả', content: (trigger) => buildCardNode(trigger) });
+TdHovercard.bindAll(); // declarative: data-td-hovercard="/api/author/7/card" (same-origin) · data-td-hovercard-template="tpl-id"
+```
+
+Sources: `content(trigger) → Node | string | Promise<…>`, a `<template id>` (cloned) or a **same-origin** URL (JSON
+`{ html }` or `text/html`, cached per URL). One render token guards every async source (a stale result never lands).
+**A string is TRUSTED HTML** (developer markup or same-origin, server-escaped fragments — never raw user input); prefer a
+Node or `<template>`. Under strict CSP, `style=""` inside fragments is blocked — use classes. Keyboard: Tab from the
+trigger enters the card, Shift+Tab returns, Tab past the last item closes it and moves on (inside a modal the trap
+continues), Escape closes and returns focus. `role="dialog"` named by `label` → `data-td-hovercard-label` → the
+trigger's `aria-label` → its text. Hover binding only on hover-capable pointers; `TdHovercard.close()`,
+`TdHovercard.labels` (Vietnamese).
 
 ---
 
