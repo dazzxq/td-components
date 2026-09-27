@@ -173,7 +173,7 @@ Checkbox không có trạng thái `indeterminate`.
 | `--td-checkbox-border` | `var(--td-control-border-soft)` (#d1d1d6) | Viền lúc chưa chọn (mềm, v0.14.1). |
 | `--td-checkbox-radius` | `50%` | Bo góc ô (tròn). Đặt `6px` cho ô vuông. |
 | `--td-control-border-hover` | `#aeaeb2` | Viền khi hover ô chưa chọn (v0.14.2). Token chung của control. |
-| `--td-checkbox-box` | `1.25rem` (sm `1rem`, lg `1.5rem`) | Kích thước ô, đặt trên `.td-checkbox` theo size. Override bằng selector class (ví dụ `.my-list .td-checkbox { --td-checkbox-box: 1.1rem; }`). |
+| `--td-checkbox-box` | `1.25rem` (sm `1rem`, lg `1.5rem`) | Kích thước ô. Cỡ mặc định khai báo trên `:root` (từ 0.16.0): `:root { --td-checkbox-box: 1.1rem; }`. Cỡ `sm` / `lg` đặt lại biến trên `.td-checkbox--sm` / `--lg`; muốn đổi thì nhắm class đó. |
 
 Màu dấu tích là `--td-accent-contrast` (#fff). Nền ô chưa chọn là `--td-control-bg`. Lỗi dùng `--td-field-error`.
 Focus dùng `--td-focus-ring`. Theme tối lấy theo token control chung (`--td-control-border-soft` #3a3a3c,

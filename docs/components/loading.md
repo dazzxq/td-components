@@ -162,7 +162,7 @@ Token của spinner:
 |---|---|---|
 | `--td-spinner-color` | `currentColor` | Màu cung quay (ghi theo từng spinner khi dùng `color`). |
 | `--td-spinner-track` | màu chính, độ mờ 0.18 | Màu vòng nền (ghi khi dùng `trackColor`, kèm `[data-track]`). |
-| `--td-spinner-size` | theo class `--sm/--md/--lg` | Kích thước; class size đặt lại biến này, nên override bằng class của bạn. |
+| `--td-spinner-size` | md `2rem` (sm `1.25rem`, lg `3rem`) | Kích thước. Cỡ md khai báo trên `:root` (từ 0.16.0), nên `:root { --td-spinner-size: 1.5rem; }` đổi mọi spinner cỡ md; `.td-spinner--sm` / `--lg` đặt lại biến trên phần tử (overlay TdLoading dùng `--lg`). |
 
 ```css
 /* Spinner trong overlay dùng màu thương hiệu riêng */

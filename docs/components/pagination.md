@@ -138,9 +138,9 @@ attribute dạng **chuỗi** (ví dụ `el.currentPage` trả `'3'`, không ph�
 
 | Token | Mặc định | Tác dụng |
 |---|---|---|
-| `--td-pagination-active` | `var(--td-accent)` (dark: `#2563eb`) | Nền + viền nút trang hiện tại |
+| `--td-pagination-active` | `var(--td-accent-fill)` (light = accent; dark = accent tối đi 20%) | Nền + viền nút trang hiện tại. Từ 0.16.0 đi theo `--td-accent` ở cả dark (trước đó dark cố định `#2563eb`). |
 | `--td-pagination-active-fg` | `var(--td-accent-contrast)` (dark: `#fff`) | Chữ nút trang hiện tại |
-| `--td-pagination-item-size` | `2rem` (cảm ứng: `var(--td-touch-min)`) | Kích thước nút trang / trước / sau |
+| `--td-pagination-item-size` | `2rem` (cảm ứng: `var(--td-touch-min)`) | Kích thước nút trang / trước / sau. Cả hai giá trị khai báo trên `:root` (từ 0.16.0), nên override ở `:root` thắng cả trên màn cảm ứng. |
 
 Khi có `active-color`, JS ghi hai custom property trên chính host (`--td-pagination-active`, `--td-pagination-active-fg`)
 bằng CSSOM; xoá attribute thì chúng bị gỡ và token toàn cục áp lại.

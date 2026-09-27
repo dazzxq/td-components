@@ -7,6 +7,38 @@
  *   overlay [data-state="open"] [data-dragging] [data-closing-down] [data-zoomed] [data-panel]
  *   panel [data-sheet="open"] · img [data-loading] · [hidden] for binary visibility.
  */
+/* v0.16.0: the viewer tokens live on :root (were on .td-lightbox) so an unlayered site `:root { --td-lb-… }` reaches
+   them. Only the DERIVED --td-lb-bar-h stays on .td-lightbox so it follows overrides made on either level. */
+@layer td.tokens {
+	:root {
+		--td-lb-dur: 0.24s;
+		--td-lb-dur-fast: 0.15s;
+		--td-lb-ease: var(--td-ease-out);
+		--td-lb-btn: 40px;
+		--td-lb-bar-pad: var(--td-glass-pad);
+		--td-lb-bar-top: 14px;
+		--td-lb-bar-side: 14px;
+		--td-lb-sheet-peek: 2.25rem;
+		--td-lb-panel-w: 22rem;
+		--td-lb-backdrop: rgb(8 8 9 / 94%);
+		--td-lb-panel-bg: rgb(20 20 22 / 96%);
+		--td-lb-fg: #fff;
+	}
+
+	/* Touch: 44 px hit targets (docs/internal/design/liquid-glass.md geometry rule). */
+	@media (pointer: coarse) {
+		:root { --td-lb-btn: var(--td-touch-min); }
+	}
+
+	/* Safe areas (notch / home indicator). env() = 0 without viewport-fit=cover. */
+	@supports (padding: max(0px)) {
+		:root {
+			--td-lb-bar-top: max(14px, env(safe-area-inset-top));
+			--td-lb-bar-side: max(14px, env(safe-area-inset-right));
+		}
+	}
+}
+
 @layer td.component {
 	/* Trigger cursors (v0.15.0, dwp parity). Static selectors for the two built-in attrPrefix values — td and dwp;
 	   another prefix styles its own triggers. Video triggers are a pointer (they play), images zoom in. */
@@ -20,19 +52,7 @@
 	}
 
 	.td-lightbox {
-		--td-lb-dur: 0.24s;
-		--td-lb-dur-fast: 0.15s;
-		--td-lb-ease: var(--td-ease-out);
-		--td-lb-btn: 40px;
-		--td-lb-bar-pad: var(--td-glass-pad);
-		--td-lb-bar-h: calc(var(--td-lb-btn) + 2 * var(--td-lb-bar-pad) + 2px);
-		--td-lb-bar-top: 14px;
-		--td-lb-bar-side: 14px;
-		--td-lb-sheet-peek: 2.25rem;
-		--td-lb-panel-w: 22rem;
-		--td-lb-backdrop: rgb(8 8 9 / 94%);
-		--td-lb-panel-bg: rgb(20 20 22 / 96%);
-		--td-lb-fg: #fff;
+		--td-lb-bar-h: calc(var(--td-lb-btn) + 2 * var(--td-lb-bar-pad) + 2px); /* derived → per element */
 
 		position: fixed;
 		inset: 0;
@@ -454,20 +474,8 @@
 		}
 	}
 
-	/* Touch: 44 px hit targets (docs/internal/design/liquid-glass.md geometry rule). */
-	@media (pointer: coarse) {
-		.td-lightbox {
-			--td-lb-btn: var(--td-touch-min);
-		}
-	}
-
-	/* Safe areas (notch / home indicator). env() = 0 without viewport-fit=cover. */
+	/* Safe areas (notch / home indicator). env() = 0 without viewport-fit=cover. Bar tokens: see @layer td.tokens. */
 	@supports (padding: max(0px)) {
-		.td-lightbox {
-			--td-lb-bar-top: max(14px, env(safe-area-inset-top));
-			--td-lb-bar-side: max(14px, env(safe-area-inset-right));
-		}
-
 		.td-lightbox__lead {
 			left: max(14px, env(safe-area-inset-left));
 		}

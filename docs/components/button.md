@@ -277,7 +277,7 @@ thắng các lớp `td.*`. Xem thêm [Theming](../customization/theming.md) và 
 | Token | Mặc định (sáng) | Tác dụng |
 |---|---|---|
 | `--td-btn-radius` | `var(--td-radius-lg)` | Bo góc (trên màn cảm ứng luôn là viên thuốc `--td-radius-full`). |
-| `--td-btn-primary-bg` | `var(--td-accent)` (#2563eb) | Màu gốc của primary (dùng làm tint và nền đặc khi tắt kính). |
+| `--td-btn-primary-bg` | `var(--td-accent-fill)` (light #2563eb; dark = accent tối đi 20%) | Màu gốc của primary (dùng làm tint và nền đặc khi tắt kính). Đổi `--td-accent` là đổi theo, cả dark (0.16.0). |
 | `--td-btn-primary-fg` | `var(--td-accent-contrast)` (#fff) | Màu chữ primary. |
 | `--td-btn-primary-tint` | `var(--td-btn-primary-bg)` | Màu nhuộm kính primary. |
 | `--td-btn-primary-alpha` | `94%` | Độ đậm của tint. |
@@ -296,7 +296,8 @@ thắng các lớp `td.*`. Xem thêm [Theming](../customization/theming.md) và 
 Chữ của secondary dùng `--td-glass-fg` (#111113). Hover dùng `--td-glass-glow`, nhấn dùng `--td-glass-press-scale`
 (0.97), blur dùng `--td-glass-blur` — đây là token kính chung, xem [Theming](../customization/theming.md).
 
-Theme tối (`<html data-td-theme="dark">`) đổi: `--td-btn-primary-bg` #2563eb, `--td-btn-secondary-glass`
+Theme tối (`<html data-td-theme="dark">`) đổi: `--td-btn-primary-bg` (qua `--td-accent-fill`, accent tối đi 20%, mặc định
+≈ #2f68c5), `--td-btn-secondary-glass`
 `rgb(40 40 44 / 84%)`, `--td-btn-secondary-edge` `rgb(255 255 255 / 14%)`, `--td-btn-secondary-bg` #2c2c30,
 `--td-btn-disabled-bg/-fg/-border` #202024 / #6b6b73 / `rgb(255 255 255 / 6%)`, `--td-btn-lift` đậm hơn. Tint của
 success/danger/info/warning giữ nguyên ở cả hai theme.

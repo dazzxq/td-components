@@ -69,10 +69,13 @@
 		--td-shadow-3: 0 8px 24px rgb(0 0 0 / 12%);
 		--td-hairline: rgb(0 0 0 / 7%);
 
-		/* ===== Z-index scale ===== */
-		--td-z-dropdown: 100;
-		--td-z-sticky: 200;
-		--td-z-overlay: 300;
+		/* ===== Z-index scale =====
+		   Open dropdown / menu / chip-input / hovercard panels use --td-z-popover (450), not --td-z-dropdown.
+		   --td-z-dropdown / --td-z-sticky / --td-z-overlay are RESERVED: public (kept for sites that already read
+		   them) but no component uses them. */
+		--td-z-dropdown: 100; /* reserved */
+		--td-z-sticky: 200;   /* reserved */
+		--td-z-overlay: 300;  /* reserved */
 		--td-z-lightbox: 350; /* below modal/popover/toast: confirms + menus open ON TOP of the viewer */
 		--td-z-modal: 400;
 		--td-z-popover: 450;
@@ -113,6 +116,9 @@
 		/* ===== Accent (one primary action per view) ===== */
 		--td-accent: #2563eb;
 		--td-accent-contrast: #fff;
+		/* v0.16.0: solid fill that carries white text (primary button, current page). Derived from --td-accent, so a
+		   site changes ONE token; override --td-accent-fill itself to tune the fill separately. */
+		--td-accent-fill: var(--td-accent);
 
 		/* ===== Controls ===== */
 		--td-control-bg: #fff;
@@ -131,7 +137,7 @@
 
 		/* ===== Buttons (glass since v0.14.0 — liquid-glass G3; tints / films / disabled retuned in v0.14.3) ===== */
 		--td-btn-radius: var(--td-radius-lg); /* capsule on coarse pointers (button.css) */
-		--td-btn-primary-bg: var(--td-accent);
+		--td-btn-primary-bg: var(--td-accent-fill);
 		--td-btn-primary-fg: var(--td-accent-contrast);
 		--td-btn-secondary-bg: var(--td-gray-100);
 		--td-btn-secondary-fg: var(--td-gray-900);
