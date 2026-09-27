@@ -1,7 +1,7 @@
 /*
- * td-toast (src/feedback/td-toast.js). Floating + text-bearing → Regular STRONG glass (liquid-glass td-toast row),
- * no saturated fills (D13): the variant is the registry status icon (--td-color-{type}, AA colours) + an error
- * border tint. Top-right by default (D11) — a site moves the stack with tokens only, e.g. 135/dwp bottom-centre:
+ * td-toast (src/feedback/td-toast.js). Floating + text-bearing → glass with a per-type TINT (v0.14.0 liquid-glass G4,
+ * replaces D13): its own 60 % neutral base + a semantic wash (22 % success/info, 26 % warning/error) painted by the
+ * glass recipe above the base; the registry status icon stays (colour is never the only cue). Top-right by default (D11) — a site moves the stack with tokens only, e.g. 135/dwp bottom-centre:
  *   :root { --td-toast-top: auto; --td-toast-bottom: 1.5rem; --td-toast-inline-end: auto;
  *           --td-toast-inline-start: 50%; --td-toast-shift: -50%; --td-toast-align: center; }
  * State: data-state="entering|open|closing" (fade + slide; reduced motion → opacity only) · [data-paused].
@@ -20,10 +20,34 @@
 		/* one-line toast = 44px tall → 22px radius is a capsule (R9); wrapped text keeps a soft rounded box */
 		--td-toast-radius: 22px;
 		--td-toast-fg: var(--td-color-text);
-		--td-toast-close-fg: var(--td-color-text-muted);
+		--td-toast-close-fg: var(--td-toast-fg); /* muted greys fail 3:1 on translucent glass over a dark page */
+		/* status icons: deep tones in light, light tones in dark → ≥ 3:1 on the tinted glass over any backdrop */
+		--td-toast-info-icon: #1e3a8a;
+		--td-toast-success-icon: #14532d;
+		--td-toast-warning-icon: #78350f;
+		--td-toast-error-icon: #7f1d1d;
 		--td-toast-close-hover: var(--td-color-hover-strong);
 		--td-toast-error-border: color-mix(in srgb, var(--td-color-error) 45%, transparent);
+		--td-toast-glass-bg: rgb(255 255 255 / 60%);   /* #111 ≥ 4.7:1 with the wash, even over a black backdrop */
+		--td-toast-success-wash: rgb(21 128 61 / 22%);
+		--td-toast-info-wash: rgb(29 78 216 / 22%);
+		--td-toast-warning-wash: rgb(180 83 9 / 26%);
+		--td-toast-error-wash: rgb(185 28 28 / 26%);
 		--td-toast-enter-shift: 0.5rem;
+	}
+
+	:root[data-td-theme="dark"] {
+		--td-toast-glass-bg: rgb(8 10 14 / 60%);
+		--td-toast-fg: var(--td-glass-fg);
+		--td-toast-close-fg: var(--td-glass-fg);
+		--td-toast-info-icon: #dbeafe;
+		--td-toast-success-icon: #dcfce7;
+		--td-toast-warning-icon: #fef3c7;
+		--td-toast-error-icon: #fee2e2;
+		--td-toast-success-wash: rgb(34 197 94 / 16%);
+		--td-toast-info-wash: rgb(96 165 250 / 16%);
+		--td-toast-warning-wash: rgb(245 158 11 / 18%);
+		--td-toast-error-wash: rgb(248 113 113 / 18%);
 	}
 }
 
@@ -86,12 +110,23 @@
 		display: inline-flex;
 		flex: none;
 		line-height: 0;
-		color: var(--td-color-info);
+		color: var(--td-toast-info-icon);
 	}
 
-	.td-toast--success .td-toast__icon { color: var(--td-color-success); }
-	.td-toast--warning .td-toast__icon { color: var(--td-color-warning); }
-	.td-toast--error .td-toast__icon { color: var(--td-color-error); }
+	/* Tinted glass: the toast's own neutral base (the recipe's fallbacks still force solid via --_td-glass-fill) +
+	   the semantic wash painted above it by the recipe (--td-glass-wash). */
+	.td-toast {
+		background-color: var(--_td-glass-fill, var(--td-toast-glass-bg));
+		--td-glass-wash: linear-gradient(var(--td-toast-info-wash), var(--td-toast-info-wash));
+	}
+
+	.td-toast--success { --td-glass-wash: linear-gradient(var(--td-toast-success-wash), var(--td-toast-success-wash)); }
+	.td-toast--warning { --td-glass-wash: linear-gradient(var(--td-toast-warning-wash), var(--td-toast-warning-wash)); }
+	.td-toast--error { --td-glass-wash: linear-gradient(var(--td-toast-error-wash), var(--td-toast-error-wash)); }
+
+	.td-toast--success .td-toast__icon { color: var(--td-toast-success-icon); }
+	.td-toast--warning .td-toast__icon { color: var(--td-toast-warning-icon); }
+	.td-toast--error .td-toast__icon { color: var(--td-toast-error-icon); }
 
 	.td-toast--error {
 		border-color: var(--_td-glass-line, var(--td-toast-error-border));

@@ -140,6 +140,30 @@
 		--td-btn-secondary-fg: var(--td-gray-900);
 		--td-btn-secondary-border: rgb(0 0 0 / 12%);
 		--td-btn-secondary-hover: var(--td-gray-200);
+		/* v0.14.0 glass buttons (liquid-glass G3): prominent = tinted glass (tint at alpha + contrast film + sheen + rim).
+		   Starting values; the token gate measures every pair over black / white / checker / photo in 3 engines. */
+		--td-btn-primary-tint: var(--td-btn-primary-bg);
+		--td-btn-primary-alpha: 84%;
+		--td-btn-primary-film: rgb(0 0 0 / 12%);
+		--td-btn-success-tint: #15803d;                 /* fixed: dark theme brightens --td-color-* for TEXT use */
+		--td-btn-success-alpha: 86%;
+		--td-btn-success-film: rgb(0 0 0 / 13%);
+		--td-btn-success-fg: #fff;
+		--td-btn-danger-tint: #b91c1c;
+		--td-btn-danger-alpha: 84%;
+		--td-btn-danger-film: rgb(0 0 0 / 12%);
+		--td-btn-danger-fg: #fff;
+		--td-btn-info-tint: #1d4ed8;
+		--td-btn-info-alpha: 84%;
+		--td-btn-info-film: rgb(0 0 0 / 12%);
+		--td-btn-info-fg: #fff;
+		--td-btn-warning-tint: #f59e0b;                 /* bright amber + dark text (the #b45309 text colour fails) */
+		--td-btn-warning-alpha: 86%;
+		--td-btn-warning-film: rgb(255 255 255 / 10%);
+		--td-btn-warning-fg: #111113;
+		--td-btn-disabled-bg: #e7e7ea;                  /* opaque: disabled is a state colour, never element opacity */
+		--td-btn-disabled-fg: #52525b;                  /* 6.4:1 on the disabled fill */
+		--td-btn-disabled-border: rgb(0 0 0 / 10%);
 
 		/* ===== Checkbox / switch (WCAG 1.4.11: boundaries ≥ 3:1) ===== */
 		--td-checkbox-color: var(--td-accent);
@@ -159,29 +183,35 @@
 		--td-icon-stroke: 2;
 
 		/* ================= Liquid Glass — Regular (light) =================
+		   v0.14.0 values (Codex think-about consensus; docs/design/liquid-glass.md §G2). Glass reads through LOW opacity +
+		   a two-tone rim, a faint 135° sheen, a dark outer hairline and a lift shadow — never by raising opacity.
 		   --td-glass-edge is the INSET top highlight; --td-glass-border the OUTER line. Never swap them. */
-		--td-glass-bg: rgb(250 250 251 / 72%);        /* icon / short-label controls: bars, pills */
-		--td-glass-bg-strong: rgb(250 250 251 / 86%); /* text-bearing or large: modal, menu, toast */
-		--td-glass-fg: var(--td-color-text);
-		--td-glass-edge: rgb(255 255 255 / 75%);
-		--td-glass-bottom: rgb(255 255 255 / 10%);
-		--td-glass-border: rgb(0 0 0 / 12%);
-		--td-glass-blur: blur(18px) saturate(170%);    /* ≤ 20px radius: smooth scroll on phones */
-		--td-glass-blur-lg: blur(20px) saturate(170%);
-		--td-glass-shadow: 0 10px 30px -8px rgb(0 0 0 / 22%), 0 2px 6px -2px rgb(0 0 0 / 10%);
-		--td-glass-shadow-lg: 0 24px 60px -12px rgb(0 0 0 / 28%), 0 4px 12px -4px rgb(0 0 0 / 12%);
-		--td-glass-solid: #fbfbfc;                     /* opaque stand-in for every fallback */
+		--td-glass-bg: rgb(255 255 255 / 40%);        /* regular: icon / short-label controls, known light context */
+		--td-glass-bg-strong: rgb(255 255 255 / 52%); /* text-bearing: #111 stays ≥ 4.5:1 even over a black backdrop */
+		--td-glass-fg: #111113;
+		--td-glass-edge: rgb(255 255 255 / 82%);      /* top rim */
+		--td-glass-side-edge: rgb(255 255 255 / 22%); /* left rim */
+		--td-glass-bottom: rgb(0 0 0 / 8%);           /* bottom rim (dark) */
+		--td-glass-border: rgb(255 255 255 / 46%);    /* outer line (light) … */
+		--td-glass-outline: rgb(0 0 0 / 8%);          /* … plus a dark hairline so glass reads on white */
+		--td-glass-sheen: linear-gradient(135deg, rgb(255 255 255 / 24%) 0%, rgb(255 255 255 / 7%) 32%, transparent 58%, rgb(255 255 255 / 8%) 100%);
+		--td-glass-blur: blur(16px) saturate(145%) brightness(1.04);
+		--td-glass-blur-lg: blur(20px) saturate(145%) brightness(1.04);
+		--td-glass-shadow: 0 10px 30px -10px rgb(0 0 0 / 34%), 0 2px 8px -3px rgb(0 0 0 / 16%);
+		--td-glass-shadow-lg: 0 24px 60px -18px rgb(0 0 0 / 38%), 0 6px 18px -8px rgb(0 0 0 / 18%);
+		--td-glass-solid: #f7f7f8;                     /* opaque stand-in for every fallback */
+		--td-glass-secondary-film: rgb(0 0 0 / 4%);   /* neutral glass buttons read as controls on white */
 
 		/* ================= Liquid Glass — Clear (only over photos / video) ================= */
-		--td-glass-clear-bg: rgb(255 255 255 / 8%);
-		--td-glass-clear-edge: rgb(255 255 255 / 35%);
-		--td-glass-clear-border: rgb(255 255 255 / 18%);
+		--td-glass-clear-bg: rgb(255 255 255 / 6%);
+		--td-glass-clear-edge: rgb(255 255 255 / 48%);
+		--td-glass-clear-border: rgb(255 255 255 / 28%);
 		--td-glass-clear-fg: #fff;
 		--td-glass-clear-shadow: 0 8px 24px -8px rgb(0 0 0 / 50%);
 		--td-glass-clear-solid: rgb(20 20 22 / 92%);
 		--td-glass-clear-glyph-shadow: drop-shadow(0 1px 1.5px rgb(0 0 0 / 55%));
-		/* Dim behind Clear: 35 % (Apple) only behind bold icons; TEXT on Clear needs 60 % (4.79:1 worst case). */
-		--td-glass-dim: rgb(0 0 0 / 35%);
+		/* Dim behind Clear: 46 % behind bold icons (3:1 over white media); TEXT on Clear needs 60 % (4.79:1 worst case). */
+		--td-glass-dim: rgb(0 0 0 / 46%);
 		--td-glass-dim-text: rgb(0 0 0 / 60%);
 
 		/* ================= Tint — ONE primary action per floating bar ================= */
@@ -274,18 +304,26 @@
 		--td-btn-secondary-fg: #f5f5f7;
 		--td-btn-secondary-border: rgb(255 255 255 / 12%);
 		--td-btn-secondary-hover: #3a3a3e;
+		--td-btn-disabled-bg: #2a2a2f;
+		--td-btn-disabled-fg: #a1a1aa;                 /* 6.2:1 on the disabled fill */
+		--td-btn-disabled-border: rgb(255 255 255 / 10%);
 		--td-switch-off: #2c2c30;
 
-		--td-glass-bg: rgb(30 30 32 / 70%);            /* 64 % measured 4.61:1 → 70 % */
-		--td-glass-bg-strong: rgb(30 30 32 / 84%);
-		--td-glass-edge: rgb(255 255 255 / 22%);
-		--td-glass-bottom: rgb(255 255 255 / 5%);
-		--td-glass-border: rgb(255 255 255 / 12%);
-		--td-glass-blur: blur(18px) saturate(150%);
-		--td-glass-blur-lg: blur(20px) saturate(150%);
-		--td-glass-shadow: 0 10px 30px -8px rgb(0 0 0 / 55%), 0 2px 6px -2px rgb(0 0 0 / 35%);
-		--td-glass-shadow-lg: 0 24px 60px -12px rgb(0 0 0 / 60%), 0 4px 12px -4px rgb(0 0 0 / 40%);
-		--td-glass-solid: #1c1c1e;
+		--td-glass-bg: rgb(12 14 18 / 44%);
+		--td-glass-bg-strong: rgb(8 10 14 / 60%);      /* #f7f7f8 text ≥ 4.5:1 even over a white backdrop */
+		--td-glass-fg: #f7f7f8;
+		--td-glass-edge: rgb(255 255 255 / 30%);
+		--td-glass-side-edge: rgb(255 255 255 / 10%);
+		--td-glass-bottom: rgb(0 0 0 / 26%);
+		--td-glass-border: rgb(255 255 255 / 18%);
+		--td-glass-outline: rgb(0 0 0 / 32%);
+		--td-glass-sheen: linear-gradient(135deg, rgb(255 255 255 / 14%) 0%, rgb(255 255 255 / 3%) 36%, transparent 64%, rgb(255 255 255 / 5%) 100%);
+		--td-glass-blur: blur(16px) saturate(135%) brightness(0.92);
+		--td-glass-blur-lg: blur(20px) saturate(135%) brightness(0.92);
+		--td-glass-shadow: 0 12px 34px -10px rgb(0 0 0 / 68%), 0 3px 10px -4px rgb(0 0 0 / 46%);
+		--td-glass-shadow-lg: 0 26px 64px -18px rgb(0 0 0 / 76%), 0 8px 22px -10px rgb(0 0 0 / 52%);
+		--td-glass-solid: #17181c;
+		--td-glass-secondary-film: rgb(255 255 255 / 0%);
 		--td-glass-glow: rgb(255 255 255 / 18%);
 	}
 }
@@ -311,31 +349,37 @@
  * site's token overrides can never defeat reduced-transparency / glass-off / contrast / forced-colors.
  */
 @layer td.component {
+	/* v0.14.0 recipe: translucent fill + [status wash] + 135° sheen, two-tone rim, dark outer hairline, lift shadow. A
+	   component may set --td-glass-wash (a gradient, e.g. a toast's semantic colour) — painted above the fill. */
 	.td-glass-surface {
-		background: var(--_td-glass-fill, var(--td-glass-bg));
+		background-color: var(--_td-glass-fill, var(--td-glass-bg));
+		background-image: var(--td-glass-wash, linear-gradient(transparent, transparent)), var(--_td-glass-sheen, var(--td-glass-sheen));
 		color: var(--_td-glass-fg, var(--td-glass-fg));
 		border: 1px solid var(--_td-glass-line, var(--td-glass-border));
 		box-shadow:
-			var(--_td-glass-rim, inset 0 1.5px 0 0 var(--td-glass-edge), inset 0 -1px 0 0 var(--td-glass-bottom)),
+			var(--_td-glass-rim, inset 0 1px 0 0 var(--td-glass-edge), inset 1px 0 0 0 var(--td-glass-side-edge), inset 0 -1px 0 0 var(--td-glass-bottom)),
+			var(--_td-glass-outline, 0 0 0 1px var(--td-glass-outline)),
 			var(--_td-glass-lift, var(--td-glass-shadow));
 		-webkit-backdrop-filter: var(--_td-glass-filter, var(--td-glass-blur));
 		backdrop-filter: var(--_td-glass-filter, var(--td-glass-blur));
 	}
 
 	.td-glass-surface--strong {
-		background: var(--_td-glass-fill, var(--td-glass-bg-strong));
+		background-color: var(--_td-glass-fill, var(--td-glass-bg-strong));
 	}
 
 	.td-glass-surface--lg {
 		box-shadow:
-			var(--_td-glass-rim, inset 0 1.5px 0 0 var(--td-glass-edge), inset 0 -1px 0 0 var(--td-glass-bottom)),
+			var(--_td-glass-rim, inset 0 1px 0 0 var(--td-glass-edge), inset 1px 0 0 0 var(--td-glass-side-edge), inset 0 -1px 0 0 var(--td-glass-bottom)),
+			var(--_td-glass-outline, 0 0 0 1px var(--td-glass-outline)),
 			var(--_td-glass-lift, var(--td-glass-shadow-lg));
 		-webkit-backdrop-filter: var(--_td-glass-filter, var(--td-glass-blur-lg));
 		backdrop-filter: var(--_td-glass-filter, var(--td-glass-blur-lg));
 	}
 
 	.td-glass-surface--clear {
-		background: var(--_td-glass-clear-fill, var(--td-glass-clear-bg));
+		background-color: var(--_td-glass-clear-fill, var(--td-glass-clear-bg));
+		background-image: none;
 		color: var(--_td-glass-clear-fg, var(--td-glass-clear-fg));
 		border-color: var(--_td-glass-clear-line, var(--td-glass-clear-border));
 		box-shadow:
@@ -383,8 +427,40 @@
 	}
 }
 
+/* No gradients at all (sheen, status wash) under forced colours or increased contrast: plain system / solid surfaces. */
+@layer td.component {
+	@media (forced-colors: active), (prefers-contrast: more) {
+		.td-glass-surface {
+			background-image: none;
+		}
+	}
+}
+
 /* ================= FALLBACKS — private tokens, on every recipe element ================= */
 @layer td.tokens {
+	/* Glass buttons (button.css) follow every fallback: opaque fill, no sheen, no blur. */
+	@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+		.td-btn { --_td-btn-fill: var(--td-btn-bg-v) !important; --_td-btn-sheen: none !important; }
+	}
+
+	@media (prefers-reduced-transparency: reduce) {
+		.td-btn { --_td-btn-fill: var(--td-btn-bg-v) !important; --_td-btn-sheen: none !important; --_td-btn-filter: none !important; }
+	}
+
+	:root[data-td-glass="off"] .td-btn {
+		--_td-btn-fill: var(--td-btn-bg-v) !important;
+		--_td-btn-sheen: none !important;
+		--_td-btn-filter: none !important;
+	}
+
+	@media (prefers-contrast: more) {
+		.td-btn { --_td-btn-fill: var(--td-btn-bg-v) !important; --_td-btn-sheen: none !important; --_td-btn-filter: none !important; --_td-btn-rim: 0 0 0 0 transparent !important; }
+	}
+
+	@media (forced-colors: active) {
+		.td-btn { --_td-btn-sheen: none !important; --_td-btn-filter: none !important; --_td-btn-rim: 0 0 0 0 transparent !important; --_td-btn-outline: 0 0 0 0 transparent !important; --_td-btn-lift: 0 0 0 0 transparent !important; }
+	}
+
 	/* 1. No backdrop-filter: a translucent box would be see-through text over content → opaque. */
 	@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
 		.td-glass-surface,
@@ -394,6 +470,7 @@
 			--_td-glass-clear-fill: var(--td-glass-clear-solid) !important;
 			--_td-glass-dim: transparent !important;
 			--_td-glass-tint-fill: var(--td-glass-tint) !important;
+			--_td-glass-sheen: none !important;
 		}
 	}
 
@@ -409,6 +486,7 @@
 			--_td-glass-glyph-shadow: none !important;
 			--_td-glass-dim: transparent !important;
 			--_td-glass-tint-fill: var(--td-glass-tint) !important;
+			--_td-glass-sheen: none !important;
 		}
 	}
 
@@ -419,6 +497,7 @@
 		--_td-glass-glyph-shadow: none !important;
 		--_td-glass-dim: transparent !important;
 		--_td-glass-tint-fill: var(--td-glass-tint) !important;
+		--_td-glass-sheen: none !important;
 	}
 
 	/* 3. Increase Contrast: near black/white surfaces with a contrasting border, no blur, no rim. */
@@ -439,6 +518,7 @@
 			--_td-glass-dim: transparent !important;
 			--_td-glass-tint-fill: var(--td-glass-tint) !important;
 			--_td-glass-tint-line: currentcolor !important;
+			--_td-glass-sheen: none !important;
 		}
 	}
 
@@ -462,6 +542,8 @@
 			--_td-glass-tint-fill: ButtonFace !important;
 			--_td-glass-tint-fg: ButtonText !important;
 			--_td-glass-tint-line: ButtonText !important;
+			--_td-glass-sheen: none !important;
+			--_td-glass-outline: 0 0 0 0 transparent !important;
 		}
 	}
 }
@@ -841,8 +923,12 @@
 
 /* ---- src/styles/components/button.css ---- */
 /*
- * td-button (src/form/td-button.js). Content layer → SOLID, never glass (liquid-glass R1/R7).
- * The ONE primary action on a floating bar uses .td-glass-tint instead.
+ * td-button (src/form/td-button.js). v0.14.0 LIQUID GLASS buttons (liquid-glass G1/G3, Apple `.glassProminent` /
+ * `.glass`): prominent variants = tinted glass (tint at --td-btn-{v}-alpha + contrast film + sheen + rim + blur);
+ * secondary = neutral strong glass + film. Dense contexts (tables, [data-td-density="dense"]) and buttons INSIDE a
+ * glass surface keep the glass look without their own backdrop-filter. Custom colours stay an opaque fill.
+ * Disabled = explicit opaque state colours (never element opacity). Private --_td-btn-* are forced by the glass
+ * fallbacks (glass.css) so reduced transparency / glass off / contrast / forced colours get solid buttons.
  * State: :disabled (native) · [aria-busy="true"] (loading, focus kept) · :focus-visible.
  * Per-instance colours: host custom properties --td-btn-bg / --td-btn-fg (+ .td-btn--custom).
  */
@@ -863,6 +949,9 @@
 		--td-btn-bg-v: var(--td-control-bg);
 		--td-btn-fg-v: var(--td-control-fg);
 		--td-btn-border-v: var(--td-control-border);
+		--td-btn-tint-v: var(--td-btn-bg-v);
+		--td-btn-alpha-v: 100%;
+		--td-btn-film-v: transparent;
 
 		position: relative;
 		box-sizing: border-box;
@@ -880,9 +969,18 @@
 		color: var(--td-btn-fg-v);
 		white-space: nowrap;
 		cursor: pointer;
-		background: var(--td-btn-bg-v);
+		background-color: var(--td-btn-bg-v); /* opaque fallback (no color-mix) */
+		background-image:
+			linear-gradient(var(--td-btn-film-v), var(--td-btn-film-v)),
+			var(--_td-btn-sheen, var(--td-glass-sheen));
 		border: 1px solid var(--td-btn-border-v);
 		border-radius: var(--td-btn-radius);
+		box-shadow:
+			var(--_td-btn-rim, inset 0 1px 0 0 rgb(255 255 255 / 38%)),
+			var(--_td-btn-outline, 0 0 0 1px var(--td-glass-outline)),
+			var(--_td-btn-lift, 0 6px 16px -8px rgb(0 0 0 / 30%), 0 1px 3px -1px rgb(0 0 0 / 14%));
+		-webkit-backdrop-filter: var(--_td-btn-filter, var(--td-glass-blur));
+		backdrop-filter: var(--_td-btn-filter, var(--td-glass-blur));
 		transition:
 			background var(--td-dur-fast) var(--td-ease),
 			border-color var(--td-dur-fast) var(--td-ease),
@@ -895,38 +993,66 @@
 	.td-btn--lg { min-height: 3rem; padding: 0 1.6rem; font-size: var(--td-text-base); }
 	.td-btn--full { display: flex; width: 100%; }
 
+	/* Prominent (tinted glass) variants */
 	.td-btn--primary {
 		--td-btn-bg-v: var(--td-btn-primary-bg);
 		--td-btn-fg-v: var(--td-btn-primary-fg);
-		--td-btn-border-v: var(--td-btn-primary-bg);
+		--td-btn-tint-v: var(--td-btn-primary-tint);
+		--td-btn-alpha-v: var(--td-btn-primary-alpha);
+		--td-btn-film-v: var(--td-btn-primary-film);
+		--td-btn-border-v: rgb(255 255 255 / 24%);
 	}
 
+	/* Secondary = neutral strong glass + a faint film so it reads as a control on white pages */
 	.td-btn--secondary {
 		--td-btn-bg-v: var(--td-btn-secondary-bg);
-		--td-btn-fg-v: var(--td-btn-secondary-fg);
-		--td-btn-border-v: var(--td-btn-secondary-border);
+		--td-btn-fg-v: var(--td-glass-fg);
+		--td-btn-film-v: var(--td-glass-secondary-film);
+		--td-btn-border-v: var(--td-glass-border);
 	}
 
-	.td-btn--success { --td-btn-bg-v: var(--td-color-success); --td-btn-fg-v: var(--td-color-on-status); --td-btn-border-v: var(--td-color-success); }
-	.td-btn--danger { --td-btn-bg-v: var(--td-color-error); --td-btn-fg-v: var(--td-color-on-status); --td-btn-border-v: var(--td-color-error); }
-	.td-btn--warning { --td-btn-bg-v: var(--td-color-warning); --td-btn-fg-v: var(--td-color-on-status); --td-btn-border-v: var(--td-color-warning); }
-	.td-btn--info { --td-btn-bg-v: var(--td-color-info); --td-btn-fg-v: var(--td-color-on-status); --td-btn-border-v: var(--td-color-info); }
+	.td-btn--success { --td-btn-bg-v: var(--td-btn-success-tint); --td-btn-tint-v: var(--td-btn-success-tint); --td-btn-alpha-v: var(--td-btn-success-alpha); --td-btn-film-v: var(--td-btn-success-film); --td-btn-fg-v: var(--td-btn-success-fg); --td-btn-border-v: rgb(255 255 255 / 24%); }
+	.td-btn--danger { --td-btn-bg-v: var(--td-btn-danger-tint); --td-btn-tint-v: var(--td-btn-danger-tint); --td-btn-alpha-v: var(--td-btn-danger-alpha); --td-btn-film-v: var(--td-btn-danger-film); --td-btn-fg-v: var(--td-btn-danger-fg); --td-btn-border-v: rgb(255 255 255 / 24%); }
+	.td-btn--warning { --td-btn-bg-v: var(--td-btn-warning-tint); --td-btn-tint-v: var(--td-btn-warning-tint); --td-btn-alpha-v: var(--td-btn-warning-alpha); --td-btn-film-v: var(--td-btn-warning-film); --td-btn-fg-v: var(--td-btn-warning-fg); --td-btn-border-v: rgb(255 255 255 / 30%); }
+	.td-btn--info { --td-btn-bg-v: var(--td-btn-info-tint); --td-btn-tint-v: var(--td-btn-info-tint); --td-btn-alpha-v: var(--td-btn-info-alpha); --td-btn-film-v: var(--td-btn-info-film); --td-btn-fg-v: var(--td-btn-info-fg); --td-btn-border-v: rgb(255 255 255 / 24%); }
+
+	/* Translucent tint where color-mix() exists (else the opaque fallback above stays). */
+	@supports (color: color-mix(in srgb, red 50%, transparent)) {
+		.td-btn:not(.td-btn--custom) {
+			background-color: var(--_td-btn-fill, color-mix(in srgb, var(--td-btn-tint-v) var(--td-btn-alpha-v), transparent));
+		}
+
+		.td-btn--secondary {
+			background-color: var(--_td-btn-fill, var(--td-glass-bg-strong));
+		}
+	}
+
+	/* Dense contexts and buttons inside a glass surface: glass LOOK, no own backdrop-filter (perf / no glass on glass). */
+	:is(.td-table, [data-td-density="dense"], .td-glass-surface) .td-btn {
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
 
 	.td-btn--custom {
 		--td-btn-bg-v: var(--td-btn-bg);
 		--td-btn-fg-v: var(--td-btn-fg);
 		--td-btn-border-v: var(--td-btn-bg);
+		--td-btn-film-v: transparent;
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
 	}
 
 	/* Hover never lowers text contrast: an overlay that darkens under light text (default) or lightens under
 	   dark text (custom colours set --td-btn-hover accordingly). Secondary uses its own lighter/darker fill. */
 	.td-btn:hover:not(:disabled, [aria-busy="true"]) {
-		background-image: linear-gradient(var(--td-btn-hover, rgb(0 0 0 / 12%)), var(--td-btn-hover, rgb(0 0 0 / 12%)));
+		background-image:
+			linear-gradient(var(--td-btn-hover, rgb(0 0 0 / 12%)), var(--td-btn-hover, rgb(0 0 0 / 12%))),
+			linear-gradient(var(--td-btn-film-v), var(--td-btn-film-v)),
+			var(--_td-btn-sheen, var(--td-glass-sheen));
 	}
 
 	.td-btn--secondary:hover:not(:disabled, [aria-busy="true"]) {
-		background: var(--td-btn-secondary-hover);
-		background-image: none;
+		--td-btn-hover: rgb(0 0 0 / 6%);
 	}
 
 	.td-btn:active:not(:disabled, [aria-busy="true"]) {
@@ -939,9 +1065,16 @@
 		box-shadow: var(--td-focus-ring);
 	}
 
+	/* Disabled: explicit opaque state colours (a faded glass button would be unreadable over a dark backdrop). */
 	.td-btn:disabled {
 		cursor: not-allowed;
-		opacity: 0.55;
+		color: var(--td-btn-disabled-fg);
+		background-color: var(--td-btn-disabled-bg);
+		background-image: none;
+		border-color: var(--td-btn-disabled-border);
+		box-shadow: none;
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
 	}
 
 	.td-btn__icon {
@@ -989,7 +1122,7 @@
 	}
 
 	@media (forced-colors: active) {
-		.td-btn { border-color: ButtonText; }
+		.td-btn { border-color: ButtonText; background-image: none; }
 	}
 }
 
@@ -998,7 +1131,14 @@
  * td-checkbox (src/form/td-checkbox.js). Content-layer control: solid, never glass.
  * State: :checked / :disabled / :focus-visible on .td-checkbox__input, [aria-invalid] for the error contract.
  * Host custom property --td-checkbox-color (from the `color` attribute) overrides the token.
+ * v0.14.0 (liquid-glass G7): round by default — override --td-checkbox-radius (e.g. 6px) for a square box.
  */
+@layer td.tokens {
+	:root {
+		--td-checkbox-radius: 50%;
+	}
+}
+
 @layer td.component {
 	td-checkbox {
 		display: inline-block;
@@ -1050,7 +1190,7 @@
 		color: var(--td-accent-contrast);
 		background: var(--td-control-bg);
 		border: 1.5px solid var(--td-checkbox-border);
-		border-radius: 6px;
+		border-radius: var(--td-checkbox-radius); /* v0.14.0: round by default */
 		line-height: 1;
 		transition:
 			background var(--td-dur-fast) var(--td-ease),
@@ -2671,9 +2811,9 @@
 
 /* ---- src/styles/components/toast.css ---- */
 /*
- * td-toast (src/feedback/td-toast.js). Floating + text-bearing → Regular STRONG glass (liquid-glass td-toast row),
- * no saturated fills (D13): the variant is the registry status icon (--td-color-{type}, AA colours) + an error
- * border tint. Top-right by default (D11) — a site moves the stack with tokens only, e.g. 135/dwp bottom-centre:
+ * td-toast (src/feedback/td-toast.js). Floating + text-bearing → glass with a per-type TINT (v0.14.0 liquid-glass G4,
+ * replaces D13): its own 60 % neutral base + a semantic wash (22 % success/info, 26 % warning/error) painted by the
+ * glass recipe above the base; the registry status icon stays (colour is never the only cue). Top-right by default (D11) — a site moves the stack with tokens only, e.g. 135/dwp bottom-centre:
  *   :root { --td-toast-top: auto; --td-toast-bottom: 1.5rem; --td-toast-inline-end: auto;
  *           --td-toast-inline-start: 50%; --td-toast-shift: -50%; --td-toast-align: center; }
  * State: data-state="entering|open|closing" (fade + slide; reduced motion → opacity only) · [data-paused].
@@ -2692,10 +2832,34 @@
 		/* one-line toast = 44px tall → 22px radius is a capsule (R9); wrapped text keeps a soft rounded box */
 		--td-toast-radius: 22px;
 		--td-toast-fg: var(--td-color-text);
-		--td-toast-close-fg: var(--td-color-text-muted);
+		--td-toast-close-fg: var(--td-toast-fg); /* muted greys fail 3:1 on translucent glass over a dark page */
+		/* status icons: deep tones in light, light tones in dark → ≥ 3:1 on the tinted glass over any backdrop */
+		--td-toast-info-icon: #1e3a8a;
+		--td-toast-success-icon: #14532d;
+		--td-toast-warning-icon: #78350f;
+		--td-toast-error-icon: #7f1d1d;
 		--td-toast-close-hover: var(--td-color-hover-strong);
 		--td-toast-error-border: color-mix(in srgb, var(--td-color-error) 45%, transparent);
+		--td-toast-glass-bg: rgb(255 255 255 / 60%);   /* #111 ≥ 4.7:1 with the wash, even over a black backdrop */
+		--td-toast-success-wash: rgb(21 128 61 / 22%);
+		--td-toast-info-wash: rgb(29 78 216 / 22%);
+		--td-toast-warning-wash: rgb(180 83 9 / 26%);
+		--td-toast-error-wash: rgb(185 28 28 / 26%);
 		--td-toast-enter-shift: 0.5rem;
+	}
+
+	:root[data-td-theme="dark"] {
+		--td-toast-glass-bg: rgb(8 10 14 / 60%);
+		--td-toast-fg: var(--td-glass-fg);
+		--td-toast-close-fg: var(--td-glass-fg);
+		--td-toast-info-icon: #dbeafe;
+		--td-toast-success-icon: #dcfce7;
+		--td-toast-warning-icon: #fef3c7;
+		--td-toast-error-icon: #fee2e2;
+		--td-toast-success-wash: rgb(34 197 94 / 16%);
+		--td-toast-info-wash: rgb(96 165 250 / 16%);
+		--td-toast-warning-wash: rgb(245 158 11 / 18%);
+		--td-toast-error-wash: rgb(248 113 113 / 18%);
 	}
 }
 
@@ -2758,12 +2922,23 @@
 		display: inline-flex;
 		flex: none;
 		line-height: 0;
-		color: var(--td-color-info);
+		color: var(--td-toast-info-icon);
 	}
 
-	.td-toast--success .td-toast__icon { color: var(--td-color-success); }
-	.td-toast--warning .td-toast__icon { color: var(--td-color-warning); }
-	.td-toast--error .td-toast__icon { color: var(--td-color-error); }
+	/* Tinted glass: the toast's own neutral base (the recipe's fallbacks still force solid via --_td-glass-fill) +
+	   the semantic wash painted above it by the recipe (--td-glass-wash). */
+	.td-toast {
+		background-color: var(--_td-glass-fill, var(--td-toast-glass-bg));
+		--td-glass-wash: linear-gradient(var(--td-toast-info-wash), var(--td-toast-info-wash));
+	}
+
+	.td-toast--success { --td-glass-wash: linear-gradient(var(--td-toast-success-wash), var(--td-toast-success-wash)); }
+	.td-toast--warning { --td-glass-wash: linear-gradient(var(--td-toast-warning-wash), var(--td-toast-warning-wash)); }
+	.td-toast--error { --td-glass-wash: linear-gradient(var(--td-toast-error-wash), var(--td-toast-error-wash)); }
+
+	.td-toast--success .td-toast__icon { color: var(--td-toast-success-icon); }
+	.td-toast--warning .td-toast__icon { color: var(--td-toast-warning-icon); }
+	.td-toast--error .td-toast__icon { color: var(--td-toast-error-icon); }
 
 	.td-toast--error {
 		border-color: var(--_td-glass-line, var(--td-toast-error-border));
@@ -3060,6 +3235,9 @@
 		pointer-events: none;
 	}
 
+	/* v0.14.0 "frontmost glass wins" (liquid-glass G1): a popover / menu / hovercard / tooltip open ABOVE an open modal
+	   keeps its glass; the covered dialog goes solid instead (no glass on glass). */
+	:root:has(.td-dropdown__menu:not([hidden]), .td-menu, .td-chip-input__menu:not([hidden]), .td-tooltip:not([hidden]), .td-hovercard:not([hidden])) .td-modal[data-state="open"] .td-modal__dialog,
 	.td-modal[data-covered] .td-modal__dialog {
 		--_td-glass-fill: var(--td-glass-solid);
 		--_td-glass-filter: none;
@@ -3097,7 +3275,7 @@
 		padding: 0;
 		margin: 0 calc(-1 * var(--td-space-xs)) 0 auto;
 		font: inherit;
-		color: var(--td-color-text-muted);
+		color: var(--_td-glass-fg, var(--td-glass-fg)); /* v0.14.0: muted greys fail 3:1 on translucent glass over a dark page */
 		cursor: pointer;
 		background: transparent;
 		border: 1px solid transparent;
@@ -3446,11 +3624,6 @@
 		}
 	}
 
-	/* No glass on glass (D20): over an open modal the menu goes solid. Private tokens, so a11y fallbacks still win. */
-	:root:has(.td-modal[data-state="open"]) .td-dropdown__menu {
-		--_td-glass-fill: var(--td-glass-solid);
-		--_td-glass-filter: none;
-	}
 
 	.td-dropdown__search-wrap {
 		flex: none;
@@ -4588,11 +4761,6 @@
 		}
 	}
 
-	/* No glass on glass: over an open modal the menu goes solid. Private tokens, so a11y fallbacks still win. */
-	:root:has(.td-modal[data-state="open"]) .td-menu {
-		--_td-glass-fill: var(--td-glass-solid);
-		--_td-glass-filter: none;
-	}
 
 	.td-menu__item {
 		display: flex;
@@ -5074,11 +5242,6 @@
 		}
 	}
 
-	/* No glass on glass (inventory §6.4): over an open modal the popup goes solid. Private tokens → a11y fallbacks win. */
-	:root:has(.td-modal[data-state="open"]) .td-chip-input__menu {
-		--_td-glass-fill: var(--td-glass-solid);
-		--_td-glass-filter: none;
-	}
 
 	.td-chip-input__options {
 		display: flex;

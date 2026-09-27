@@ -1,6 +1,10 @@
 /*
- * td-button (src/form/td-button.js). Content layer → SOLID, never glass (liquid-glass R1/R7).
- * The ONE primary action on a floating bar uses .td-glass-tint instead.
+ * td-button (src/form/td-button.js). v0.14.0 LIQUID GLASS buttons (liquid-glass G1/G3, Apple `.glassProminent` /
+ * `.glass`): prominent variants = tinted glass (tint at --td-btn-{v}-alpha + contrast film + sheen + rim + blur);
+ * secondary = neutral strong glass + film. Dense contexts (tables, [data-td-density="dense"]) and buttons INSIDE a
+ * glass surface keep the glass look without their own backdrop-filter. Custom colours stay an opaque fill.
+ * Disabled = explicit opaque state colours (never element opacity). Private --_td-btn-* are forced by the glass
+ * fallbacks (glass.css) so reduced transparency / glass off / contrast / forced colours get solid buttons.
  * State: :disabled (native) · [aria-busy="true"] (loading, focus kept) · :focus-visible.
  * Per-instance colours: host custom properties --td-btn-bg / --td-btn-fg (+ .td-btn--custom).
  */
@@ -21,6 +25,9 @@
 		--td-btn-bg-v: var(--td-control-bg);
 		--td-btn-fg-v: var(--td-control-fg);
 		--td-btn-border-v: var(--td-control-border);
+		--td-btn-tint-v: var(--td-btn-bg-v);
+		--td-btn-alpha-v: 100%;
+		--td-btn-film-v: transparent;
 
 		position: relative;
 		box-sizing: border-box;
@@ -38,9 +45,18 @@
 		color: var(--td-btn-fg-v);
 		white-space: nowrap;
 		cursor: pointer;
-		background: var(--td-btn-bg-v);
+		background-color: var(--td-btn-bg-v); /* opaque fallback (no color-mix) */
+		background-image:
+			linear-gradient(var(--td-btn-film-v), var(--td-btn-film-v)),
+			var(--_td-btn-sheen, var(--td-glass-sheen));
 		border: 1px solid var(--td-btn-border-v);
 		border-radius: var(--td-btn-radius);
+		box-shadow:
+			var(--_td-btn-rim, inset 0 1px 0 0 rgb(255 255 255 / 38%)),
+			var(--_td-btn-outline, 0 0 0 1px var(--td-glass-outline)),
+			var(--_td-btn-lift, 0 6px 16px -8px rgb(0 0 0 / 30%), 0 1px 3px -1px rgb(0 0 0 / 14%));
+		-webkit-backdrop-filter: var(--_td-btn-filter, var(--td-glass-blur));
+		backdrop-filter: var(--_td-btn-filter, var(--td-glass-blur));
 		transition:
 			background var(--td-dur-fast) var(--td-ease),
 			border-color var(--td-dur-fast) var(--td-ease),
@@ -53,38 +69,66 @@
 	.td-btn--lg { min-height: 3rem; padding: 0 1.6rem; font-size: var(--td-text-base); }
 	.td-btn--full { display: flex; width: 100%; }
 
+	/* Prominent (tinted glass) variants */
 	.td-btn--primary {
 		--td-btn-bg-v: var(--td-btn-primary-bg);
 		--td-btn-fg-v: var(--td-btn-primary-fg);
-		--td-btn-border-v: var(--td-btn-primary-bg);
+		--td-btn-tint-v: var(--td-btn-primary-tint);
+		--td-btn-alpha-v: var(--td-btn-primary-alpha);
+		--td-btn-film-v: var(--td-btn-primary-film);
+		--td-btn-border-v: rgb(255 255 255 / 24%);
 	}
 
+	/* Secondary = neutral strong glass + a faint film so it reads as a control on white pages */
 	.td-btn--secondary {
 		--td-btn-bg-v: var(--td-btn-secondary-bg);
-		--td-btn-fg-v: var(--td-btn-secondary-fg);
-		--td-btn-border-v: var(--td-btn-secondary-border);
+		--td-btn-fg-v: var(--td-glass-fg);
+		--td-btn-film-v: var(--td-glass-secondary-film);
+		--td-btn-border-v: var(--td-glass-border);
 	}
 
-	.td-btn--success { --td-btn-bg-v: var(--td-color-success); --td-btn-fg-v: var(--td-color-on-status); --td-btn-border-v: var(--td-color-success); }
-	.td-btn--danger { --td-btn-bg-v: var(--td-color-error); --td-btn-fg-v: var(--td-color-on-status); --td-btn-border-v: var(--td-color-error); }
-	.td-btn--warning { --td-btn-bg-v: var(--td-color-warning); --td-btn-fg-v: var(--td-color-on-status); --td-btn-border-v: var(--td-color-warning); }
-	.td-btn--info { --td-btn-bg-v: var(--td-color-info); --td-btn-fg-v: var(--td-color-on-status); --td-btn-border-v: var(--td-color-info); }
+	.td-btn--success { --td-btn-bg-v: var(--td-btn-success-tint); --td-btn-tint-v: var(--td-btn-success-tint); --td-btn-alpha-v: var(--td-btn-success-alpha); --td-btn-film-v: var(--td-btn-success-film); --td-btn-fg-v: var(--td-btn-success-fg); --td-btn-border-v: rgb(255 255 255 / 24%); }
+	.td-btn--danger { --td-btn-bg-v: var(--td-btn-danger-tint); --td-btn-tint-v: var(--td-btn-danger-tint); --td-btn-alpha-v: var(--td-btn-danger-alpha); --td-btn-film-v: var(--td-btn-danger-film); --td-btn-fg-v: var(--td-btn-danger-fg); --td-btn-border-v: rgb(255 255 255 / 24%); }
+	.td-btn--warning { --td-btn-bg-v: var(--td-btn-warning-tint); --td-btn-tint-v: var(--td-btn-warning-tint); --td-btn-alpha-v: var(--td-btn-warning-alpha); --td-btn-film-v: var(--td-btn-warning-film); --td-btn-fg-v: var(--td-btn-warning-fg); --td-btn-border-v: rgb(255 255 255 / 30%); }
+	.td-btn--info { --td-btn-bg-v: var(--td-btn-info-tint); --td-btn-tint-v: var(--td-btn-info-tint); --td-btn-alpha-v: var(--td-btn-info-alpha); --td-btn-film-v: var(--td-btn-info-film); --td-btn-fg-v: var(--td-btn-info-fg); --td-btn-border-v: rgb(255 255 255 / 24%); }
+
+	/* Translucent tint where color-mix() exists (else the opaque fallback above stays). */
+	@supports (color: color-mix(in srgb, red 50%, transparent)) {
+		.td-btn:not(.td-btn--custom) {
+			background-color: var(--_td-btn-fill, color-mix(in srgb, var(--td-btn-tint-v) var(--td-btn-alpha-v), transparent));
+		}
+
+		.td-btn--secondary {
+			background-color: var(--_td-btn-fill, var(--td-glass-bg-strong));
+		}
+	}
+
+	/* Dense contexts and buttons inside a glass surface: glass LOOK, no own backdrop-filter (perf / no glass on glass). */
+	:is(.td-table, [data-td-density="dense"], .td-glass-surface) .td-btn {
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
 
 	.td-btn--custom {
 		--td-btn-bg-v: var(--td-btn-bg);
 		--td-btn-fg-v: var(--td-btn-fg);
 		--td-btn-border-v: var(--td-btn-bg);
+		--td-btn-film-v: transparent;
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
 	}
 
 	/* Hover never lowers text contrast: an overlay that darkens under light text (default) or lightens under
 	   dark text (custom colours set --td-btn-hover accordingly). Secondary uses its own lighter/darker fill. */
 	.td-btn:hover:not(:disabled, [aria-busy="true"]) {
-		background-image: linear-gradient(var(--td-btn-hover, rgb(0 0 0 / 12%)), var(--td-btn-hover, rgb(0 0 0 / 12%)));
+		background-image:
+			linear-gradient(var(--td-btn-hover, rgb(0 0 0 / 12%)), var(--td-btn-hover, rgb(0 0 0 / 12%))),
+			linear-gradient(var(--td-btn-film-v), var(--td-btn-film-v)),
+			var(--_td-btn-sheen, var(--td-glass-sheen));
 	}
 
 	.td-btn--secondary:hover:not(:disabled, [aria-busy="true"]) {
-		background: var(--td-btn-secondary-hover);
-		background-image: none;
+		--td-btn-hover: rgb(0 0 0 / 6%);
 	}
 
 	.td-btn:active:not(:disabled, [aria-busy="true"]) {
@@ -97,9 +141,16 @@
 		box-shadow: var(--td-focus-ring);
 	}
 
+	/* Disabled: explicit opaque state colours (a faded glass button would be unreadable over a dark backdrop). */
 	.td-btn:disabled {
 		cursor: not-allowed;
-		opacity: 0.55;
+		color: var(--td-btn-disabled-fg);
+		background-color: var(--td-btn-disabled-bg);
+		background-image: none;
+		border-color: var(--td-btn-disabled-border);
+		box-shadow: none;
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
 	}
 
 	.td-btn__icon {
@@ -147,6 +198,6 @@
 	}
 
 	@media (forced-colors: active) {
-		.td-btn { border-color: ButtonText; }
+		.td-btn { border-color: ButtonText; background-image: none; }
 	}
 }

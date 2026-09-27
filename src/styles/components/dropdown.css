@@ -172,11 +172,6 @@
 		}
 	}
 
-	/* No glass on glass (D20): over an open modal the menu goes solid. Private tokens, so a11y fallbacks still win. */
-	:root:has(.td-modal[data-state="open"]) .td-dropdown__menu {
-		--_td-glass-fill: var(--td-glass-solid);
-		--_td-glass-filter: none;
-	}
 
 	.td-dropdown__search-wrap {
 		flex: none;

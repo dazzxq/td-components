@@ -32,6 +32,27 @@ const lum = (c) => TdButton._luminance(c);
 const ratio = (a, b) => { const [x, y] = [lum(rgb(a)), lum(rgb(b))].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
 const bgOf = (el) => getComputedStyle(el).backgroundColor;
 
+/** v0.14.0: a glass button's effective background over a flat page: page ← translucent tint ← contrast film. */
+function glassBg(b, page) {
+  const probe = document.createElement('span');
+  document.body.appendChild(probe);
+  // Computed colours may serialise as rgb()/rgba() (0–255) or color(srgb r g b / a) (0–1, e.g. from color-mix()).
+  const toRgba = (c) => {
+    probe.style.setProperty('color', c);
+    const str = getComputedStyle(probe).color;
+    const m = str.match(/-?[\d.]+/g).map(Number);
+    const k = str.startsWith('color(') ? 255 : 1;
+    return { r: m[0] * k, g: m[1] * k, b: m[2] * k, a: m.length > 3 ? m[3] : 1 };
+  };
+  const over = (top, under) => ({ r: top.r * top.a + under.r * (1 - top.a), g: top.g * top.a + under.g * (1 - top.a), b: top.b * top.a + under.b * (1 - top.a), a: 1 });
+  const cs = getComputedStyle(b);
+  let c = over(toRgba(cs.backgroundColor), toRgba(page));
+  const film = cs.getPropertyValue('--td-btn-film-v').trim();
+  if (film && film !== 'transparent') c = over(toRgba(film), c);
+  probe.remove();
+  return `rgb(${Math.round(c.r)}, ${Math.round(c.g)}, ${Math.round(c.b)})`;
+}
+
 describe('batch 1 — td-checkbox', () => {
   it('renders the BEM contract with a registry check icon', () => {
     const el = mount('<td-checkbox label="Đồng ý"></td-checkbox>');
@@ -161,14 +182,16 @@ describe('batch 1 — td-toggle (.td-switch)', () => {
 });
 
 describe('batch 1 — td-button', () => {
-  it('solid variants (no backdrop-filter) with AA text contrast', () => {
-    for (const v of ['primary', 'success', 'danger', 'warning', 'info']) {
+  it('v0.14.0 glass variants (tinted glass + blur) with AA text contrast over white AND black pages', () => {
+    for (const v of ['primary', 'success', 'danger', 'warning', 'info', 'secondary']) {
       const el = mount(`<td-button variant="${v}">Lưu</td-button>`);
       const b = el.querySelector('button');
       const cs = getComputedStyle(b);
       expect(b.classList.contains(`td-btn--${v}`)).to.equal(true);
-      expect(cs.backdropFilter === 'none' || cs.backdropFilter === '').to.equal(true);
-      expect(ratio(cs.color, cs.backgroundColor), v).to.be.at.least(4.5);
+      expect(cs.backdropFilter !== 'none' && cs.backdropFilter !== '', `${v} blur`).to.equal(true);
+      for (const page of ['#fff', '#000']) {
+        expect(ratio(cs.color, glassBg(b, page)), `${v} on ${page}`).to.be.at.least(4.5);
+      }
     }
   });
 
@@ -324,13 +347,15 @@ describe('batch 1 — review follow-ups', () => {
       if (theme === 'dark') document.documentElement.setAttribute('data-td-theme', 'dark');
       for (const v of ['primary', 'success', 'danger', 'warning', 'info']) {
         const b = mount(`<td-button variant="${v}">x</td-button>`).querySelector('button');
-        const cs = getComputedStyle(b);
-        const bg = rgb(cs.backgroundColor);
-        const fg = cs.color;
-        expect(ratio(fg, cs.backgroundColor), `${v} rest`).to.be.at.least(4.5);
-        // hover = rgb(0 0 0 / 12%) overlay composited over the fill
-        const over = (c) => Math.round(c * 0.88);
-        expect(ratio(fg, `rgb(${over(bg.r)}, ${over(bg.g)}, ${over(bg.b)})`), `${v} hover`).to.be.at.least(4.5);
+        const fg = getComputedStyle(b).color;
+        for (const page of ['#fff', '#000']) {
+          const bgc = glassBg(b, page);
+          expect(ratio(fg, bgc), `${v} rest on ${page}`).to.be.at.least(4.5);
+          // hover = rgb(0 0 0 / 12%) overlay composited over the glass
+          const bg = rgb(bgc);
+          const over = (c) => Math.round(c * 0.88);
+          expect(ratio(fg, `rgb(${over(bg.r)}, ${over(bg.g)}, ${over(bg.b)})`), `${v} hover on ${page}`).to.be.at.least(4.5);
+        }
       }
     });
   }

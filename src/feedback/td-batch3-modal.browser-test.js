@@ -263,7 +263,7 @@ describe('batch 3 — td-modal stack + states', () => {
     const csA = getComputedStyle(dialogOf(ra));
     const csB = getComputedStyle(dialogOf(rb));
     expect(csA.backdropFilter).to.equal('none');
-    expect(csA.backgroundColor).to.equal('rgb(251, 251, 252)'); // --td-glass-solid
+    expect(csA.backgroundColor).to.equal('rgb(247, 247, 248)'); // --td-glass-solid (v0.14.0 #f7f7f8)
     expect(csB.backdropFilter).to.not.equal('none');
     TdModal.closeById(b);
     expect(ra.hasAttribute('data-covered')).to.equal(false);
@@ -365,7 +365,7 @@ describe('batch 3 — td-modal stack + states', () => {
     await opened();
     const cs = getComputedStyle(dialogOf(document.getElementById(id)));
     expect(cs.backdropFilter).to.equal('none');
-    expect(cs.backgroundColor).to.equal('rgb(251, 251, 252)');
+    expect(cs.backgroundColor).to.equal('rgb(247, 247, 248)'); // --td-glass-solid (v0.14.0)
   });
 });
 

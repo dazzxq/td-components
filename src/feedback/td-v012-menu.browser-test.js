@@ -600,7 +600,7 @@ describe('v0.12 TdMenu — dismissal, lifecycle, layers', () => {
 });
 
 describe('v0.12 TdMenu — styles', () => {
-  it('glass by default; solid over an open modal (no glass on glass); focus ring on items', async () => {
+  it('glass by default; over an open modal the MENU keeps glass and the covered dialog goes solid (v0.14.0 frontmost glass); focus ring on items', async () => {
     const b = btn();
     TdMenu.open(b, basic());
     await frames(2);
@@ -619,8 +619,10 @@ describe('v0.12 TdMenu — styles', () => {
     await frames(3);
     TdMenu.open(document.getElementById('mo-trig'), basic());
     const cs2 = getComputedStyle(menuEl());
-    expect(cs2.backdropFilter || cs2.webkitBackdropFilter).to.equal('none');
-    expect(cs2.backgroundColor).to.match(/^rgb\(/); // opaque solid
+    expect(cs2.backdropFilter || cs2.webkitBackdropFilter).to.not.equal('none'); // frontmost glass wins
+    const dlg = getComputedStyle(document.querySelector('.td-modal[data-state="open"] .td-modal__dialog'));
+    expect(dlg.backdropFilter || dlg.webkitBackdropFilter).to.equal('none'); // covered dialog → solid
+    expect(dlg.backgroundColor).to.match(/^rgb\(/);
   });
 
   it('hint/danger text contrast ≥ 4.5:1 on the solid surface (light + dark)', async () => {

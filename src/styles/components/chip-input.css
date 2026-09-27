@@ -245,11 +245,6 @@
 		}
 	}
 
-	/* No glass on glass (inventory §6.4): over an open modal the popup goes solid. Private tokens → a11y fallbacks win. */
-	:root:has(.td-modal[data-state="open"]) .td-chip-input__menu {
-		--_td-glass-fill: var(--td-glass-solid);
-		--_td-glass-filter: none;
-	}
 
 	.td-chip-input__options {
 		display: flex;
