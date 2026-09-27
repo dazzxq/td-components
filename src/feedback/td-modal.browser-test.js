@@ -66,12 +66,27 @@ describe('TdModal.confirm (resolve-on-dismiss)', () => {
     expect(resolveCount).to.equal(1);
   });
 
-  it('still resolves even if onConfirm throws', async () => {
-    const p = TdModal.confirm({ onConfirm: () => { throw new Error('boom'); } });
-    const modal = topModal();
-    const buttons = modal.querySelectorAll('.td-modal__footer button');
-    buttons[buttons.length - 1].click();
-    expect(await p).to.equal(true); // resolve happened before the throwing callback
+  it('a throwing onConfirm keeps the dialog open (v0.16.0, like actions) and logs console.error', async () => {
+    const orig = console.error;
+    const logged = [];
+    console.error = (...args) => { logged.push(args); };
+    let settled = false;
+    let modal;
+    let p;
+    try {
+      p = TdModal.confirm({ onConfirm: () => { throw new Error('boom'); } }).then((v) => { settled = true; return v; });
+      modal = topModal();
+      const buttons = modal.querySelectorAll('.td-modal__footer button');
+      buttons[buttons.length - 1].click();
+    } finally {
+      console.error = orig;
+    }
+    await new Promise((r) => setTimeout(r, 0));
+    expect(settled).to.equal(false);
+    expect(modal.getAttribute('data-state')).to.not.equal('closing');
+    expect(logged.length).to.equal(1);
+    modal.querySelector('.td-modal__close').click();
+    expect(await p).to.equal(false);
   });
 
   it('runs onCancel exactly once on dismiss', async () => {

@@ -439,7 +439,9 @@ Trong modal: đặt `<form>` làm `body` (Node) của `TdModal.show()`, rồi d�
   datetime-picker, checkbox/toggle (`checked` và `value`) đều xử lý.
 - Lỗi của error contract (`setError` / `error-text`) được xoá.
 
-Summary và note của **control native** mà TdFormValidation tạo **không** tự xoá khi reset. Thêm:
+Form đã gắn `TdFormValidation.attach()` (từ 0.16.0): `reset` tự xoá summary, note lỗi và `aria-invalid` mà helper tạo,
+và tắt kiểm tra lại khi sửa cho tới lần submit lỗi kế tiếp. Chỉ dùng `validate()` / `apply()` (không `attach()`) thì
+tự thêm:
 
 ```js
 form.addEventListener('reset', () => TdFormValidation.clear(form));
@@ -517,7 +519,7 @@ Ba cách đặt tên cho control, theo thứ tự ưu tiên:
 | `setError()` hiện lỗi nhưng form vẫn submit | error contract không đổi validity | dùng `setCustomValidity()` / `rules` |
 | `pattern`/`minlength` trên `td-input-field` không có tác dụng | host tự tính validity, không hỗ trợ hai ràng buộc này | dùng `rules` hoặc `setCustomValidity()` |
 | Lỗi server không hiện ở ô nào | key server khác `name` | `fieldMap`, hoặc `data-field="key"` trên wrapper; xem `r.unmapped` |
-| Reset xong vẫn còn summary lỗi | `reset` không gọi TdFormValidation | `form.addEventListener('reset', () => TdFormValidation.clear(form))` |
+| Reset xong vẫn còn summary lỗi | form không dùng `attach()` (hoặc bản trước 0.16.0) | `form.addEventListener('reset', () => TdFormValidation.clear(form))` |
 
 ## Xem thêm
 

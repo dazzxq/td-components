@@ -112,8 +112,21 @@ function setButtonBusy(btn, busy) {
 }
 
 export class TdModal {
-  /** Default labels (Vietnamese); override per site: `TdModal.labels.close = 'Close'`. */
-  static labels = { close: 'Đóng', confirm: 'Xác nhận', cancel: 'Hủy', ok: 'OK' };
+  /**
+   * Default labels (Vietnamese); override per site: `TdModal.labels.close = 'Close'`. `*Title` / `confirmMessage`
+   * are the defaults of the Promise dialogs when the call passes no `title` / `message`.
+   */
+  static labels = {
+    close: 'Đóng',
+    confirm: 'Xác nhận',
+    cancel: 'Hủy',
+    ok: 'OK',
+    confirmTitle: 'Xác nhận',
+    confirmMessage: 'Bạn có chắc chắn?',
+    successTitle: 'Thành công',
+    errorTitle: 'Lỗi',
+    infoTitle: 'Thông tin',
+  };
 
   /**
    * Compatibility map: modal id → `{ el, layer }` while the dialog's keyboard/inert registration is active.
@@ -411,10 +424,11 @@ export class TdModal {
    * Confirm dialog — resolves exactly once: confirm → true; cancel / X / closeAll → false.
    * `onConfirm` returning a thenable keeps the dialog open with the confirm button busy; it resolves true and
    * closes when that settles to anything but `false`; `false` or a rejection keeps it open (D6). Sync callbacks
-   * (and throwing ones) resolve true and close.
+   * behave like `actions` (v0.16.0): returning `false` or throwing (logged with console.error) keeps it open;
+   * anything else resolves true and closes.
    * @param {Object} options
-   * @param {string} [options.title='Xác nhận']
-   * @param {string} [options.message='Bạn có chắc chắn?'] - Text.
+   * @param {string} [options.title=TdModal.labels.confirmTitle]
+   * @param {string} [options.message=TdModal.labels.confirmMessage] - Text.
    * @param {string} [options.messageHtml] - TRUSTED HTML message (developer content only); wins over `message`.
    * @param {string} [options.confirmText='Xác nhận']
    * @param {string} [options.cancelText='Hủy']
@@ -426,8 +440,8 @@ export class TdModal {
   static confirm(options = {}) {
     return new Promise((resolve) => {
       const {
-        title = 'Xác nhận',
-        message = 'Bạn có chắc chắn?',
+        title = TdModal.labels.confirmTitle || 'Xác nhận',
+        message = TdModal.labels.confirmMessage || 'Bạn có chắc chắn?',
         messageHtml,
         confirmText = TdModal.labels.confirm || 'Xác nhận',
         cancelText = TdModal.labels.cancel || 'Hủy',
@@ -466,10 +480,18 @@ export class TdModal {
         if (settled || confirmButton.getAttribute('aria-busy') === 'true') return;
         let result;
         confirming = true;
-        try { result = typeof onConfirm === 'function' ? onConfirm() : undefined; } catch { result = undefined; }
+        let threw = false;
+        try {
+          result = typeof onConfirm === 'function' ? onConfirm() : undefined;
+        } catch (err) {
+          threw = true;
+          console.error(err);
+        }
         confirming = false;
         if (settled) return; // onConfirm closed the dialog itself (resolved true via onClose)
+        if (threw) return; // like actions: a throwing handler keeps the dialog open
         if (!isThenable(result)) {
+          if (result === false) return; // keep open
           if (!settle(true)) return;
           try { TdModal.closeById(modalId); } catch { /* ignore */ }
           return;
@@ -547,7 +569,7 @@ export class TdModal {
    * @returns {Promise<boolean>}
    */
   static success(options = {}) {
-    return TdModal._notice('success', options, { title: 'Thành công', message: 'Thao tác đã hoàn tất', variant: 'success' });
+    return TdModal._notice('success', options, { title: TdModal.labels.successTitle || 'Thành công', message: 'Thao tác đã hoàn tất', variant: 'success' });
   }
 
   /**
@@ -557,7 +579,7 @@ export class TdModal {
    * @returns {Promise<boolean>}
    */
   static error(options = {}) {
-    return TdModal._notice('error', options, { title: 'Lỗi', message: 'Đã xảy ra lỗi', variant: 'danger' });
+    return TdModal._notice('error', options, { title: TdModal.labels.errorTitle || 'Lỗi', message: 'Đã xảy ra lỗi', variant: 'danger' });
   }
 
   /**
@@ -567,7 +589,7 @@ export class TdModal {
    * @returns {Promise<boolean>}
    */
   static info(options = {}) {
-    return TdModal._notice('info', options, { title: 'Thông tin', message: '', variant: 'primary' });
+    return TdModal._notice('info', options, { title: TdModal.labels.infoTitle || 'Thông tin', message: '', variant: 'primary' });
   }
 
   // TdModal.loading() removed — use TdLoading.show() / TdLoading.hide() instead

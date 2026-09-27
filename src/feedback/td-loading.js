@@ -28,6 +28,8 @@ const SVG = '<svg class="td-spinner__svg" viewBox="0 0 50 50" aria-hidden="true"
 const DEFAULT_MESSAGE = 'Đang tải...';
 
 export class TdLoading {
+  /** Site-overridable UI strings (Vietnamese defaults): the message shown when a call passes none. */
+  static labels = { loading: DEFAULT_MESSAGE };
   /** @type {HTMLElement|null} */
   static element = null;
   static _maxDurationTimer = null;
@@ -58,16 +60,18 @@ export class TdLoading {
   /**
    * Show the overlay.
    * @param {string|{message?: string, maxDuration?: number|false}} [messageOrOptions]
-   *   maxDuration defaults to 30000 ms (auto-hide safety net; false/0 disables).
+   *   Default message: `TdLoading.labels.loading`. maxDuration defaults to 30000 ms (auto-hide safety net;
+   *   false/0 disables).
    */
-  static show(messageOrOptions = DEFAULT_MESSAGE) {
+  static show(messageOrOptions) {
     TdLoading.init();
-    let message = DEFAULT_MESSAGE;
+    const fallback = TdLoading._defaultMessage();
+    let message = fallback;
     let maxDuration = 30000;
     if (typeof messageOrOptions === 'string') {
       message = messageOrOptions; // verbatim (an explicit '' shows no text)
     } else if (messageOrOptions && typeof messageOrOptions === 'object') {
-      message = messageOrOptions.message || DEFAULT_MESSAGE;
+      message = messageOrOptions.message || fallback;
       if ('maxDuration' in messageOrOptions) maxDuration = messageOrOptions.maxDuration;
     }
     const el = TdLoading.element;
@@ -110,6 +114,12 @@ export class TdLoading {
     }
   }
 
+  /** @private current default message (site label, else the built-in one) */
+  static _defaultMessage() {
+    const l = TdLoading.labels;
+    return (l && typeof l === 'object' && typeof l.loading === 'string' && l.loading) || DEFAULT_MESSAGE;
+  }
+
   /** Hide the overlay (also ends every pending wrap() count). */
   static hide() {
     TdLoading._wrapCount = 0;
@@ -142,13 +152,13 @@ export class TdLoading {
    * settles (fulfilled or rejected). A direct hide() ends them all.
    * @template T
    * @param {() => Promise<T>} asyncFn
-   * @param {string} [message]
+   * @param {string|{message?: string, maxDuration?: number|false}} [messageOrOptions] - same as show()
    * @returns {Promise<T>}
    */
-  static async wrap(asyncFn, message = DEFAULT_MESSAGE) {
+  static async wrap(asyncFn, messageOrOptions) {
     const gen = TdLoading._generation;
     TdLoading._wrapCount += 1;
-    TdLoading.show(message);
+    TdLoading.show(messageOrOptions);
     try {
       return await asyncFn();
     } finally {

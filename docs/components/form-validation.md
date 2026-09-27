@@ -114,7 +114,8 @@ const detach = TdFormValidation.attach(form, {
 - đặt `form.noValidate = true` (tắt bong bóng lỗi của trình duyệt; lỗi inline của td là cách hiển thị duy nhất);
 - khi `submit`: chạy `validate(form, opts)`; lỗi → `preventDefault()`;
 - có `onValid` → submit **luôn** bị chặn và `onValid(event, form)` được gọi khi hợp lệ (SPA / AJAX / modal); không có →
-  form hợp lệ submit bình thường;
+  form hợp lệ submit bình thường. `onValid` ném lỗi đồng bộ → lỗi được bắt và `console.error` (từ 0.16.0), submit vẫn
+  bị chặn;
 - nếu chính `validate()` bị crash → submit bị chặn (fail closed) và lỗi được `console.error`;
 - **sau lần submit lỗi đầu tiên** (không trước đó), kiểm tra lại field đang sửa theo nguyên tắc "khen sớm, phạt muộn":
   - `input` (đang gõ): field hết lỗi → lỗi biến mất; field đang hiện lỗi mà vẫn sai → cập nhật chữ; **không** tạo lỗi
@@ -122,6 +123,8 @@ const detach = TdFormValidation.attach(form, {
   - `change` / `focusout`: hiện lỗi hiện tại của field;
   - tắt bằng `live: false`;
 - lỗi **server** trên một field bị gỡ ngay lần đầu người dùng sửa field đó (`input`/`change`).
+- form `reset` (từ 0.16.0) → xoá hết như `clear(form)` (summary, note lỗi, `aria-invalid`, custom validity của `rules`)
+  và tắt kiểm tra lại khi sửa cho tới lần submit lỗi kế tiếp. `detach()` gỡ cả listener này.
 - `form` không phải `<form>` → ném `TypeError`.
 
 ### 4. `apply()` — hiển thị lỗi server (Laravel)
@@ -251,7 +254,7 @@ Tất cả là method tĩnh; không cần tạo instance.
 | `focus` | validate, apply, attach | `boolean` | `true` | Focus field lỗi đầu tiên (chỉ `focus()`, trình duyệt tự cuộn tới; không cuộn mượt). |
 | `fieldMap` | apply | `{ [key]: string \| Element }` | — | Key → id hoặc phần tử trong root. |
 | `live` | attach | `boolean` | `true` | Kiểm tra lại khi sửa sau lần submit lỗi đầu. |
-| `onValid` | attach | `(event, form) => void` | — | Có → luôn chặn submit, gọi hàm khi hợp lệ. |
+| `onValid` | attach | `(event, form) => void` | — | Có → luôn chặn submit, gọi hàm khi hợp lệ. Ném lỗi đồng bộ → `console.error` (0.16.0). |
 
 **Hàm thuần xuất kèm** (cùng module, dùng được riêng):
 

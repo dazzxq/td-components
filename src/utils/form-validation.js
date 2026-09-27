@@ -379,7 +379,9 @@ export class TdFormValidation {
    * (invalid → `preventDefault`), and after the FIRST failed submit revalidates the edited control live
    * (`input` clears once valid / updates a shown message; `change`/`focusout` show the current error). A server
    * error on a control is dropped at the user's first edit of it. `onValid(event, form)` given → the submit is
-   * always prevented and `onValid` is called (SPA/modal); otherwise a valid form submits natively.
+   * always prevented and `onValid` is called (SPA/modal; a throwing `onValid` is caught and logged with
+   * console.error); otherwise a valid form submits natively. A form `reset` clears everything shown (like clear())
+   * and turns live revalidation off again until the next failed submit.
    * @param {HTMLFormElement} form
    * @param {Object} [opts] - validate() options + `live` (default true) + `onValid`
    * @returns {() => void} detach (restores `novalidate`; leaves shown errors in place — call clear() for those)
@@ -408,8 +410,16 @@ export class TdFormValidation {
       }
       if (typeof o.onValid === 'function') {
         e.preventDefault();
-        o.onValid(e, form);
+        try {
+          o.onValid(e, form);
+        } catch (err) {
+          console.error('TdFormValidation: onValid threw', err);
+        }
       }
+    };
+    const onReset = () => {
+      failed = false;
+      TdFormValidation.clear(form);
     };
     const onEdit = (e) => {
       const el = ownerOf(e.target, form);
@@ -434,11 +444,13 @@ export class TdFormValidation {
     form.addEventListener('input', onEdit);
     form.addEventListener('change', onEdit);
     form.addEventListener('focusout', onEdit);
+    form.addEventListener('reset', onReset);
     return () => {
       form.removeEventListener('submit', onSubmit);
       form.removeEventListener('input', onEdit);
       form.removeEventListener('change', onEdit);
       form.removeEventListener('focusout', onEdit);
+      form.removeEventListener('reset', onReset);
       form.noValidate = hadNoValidate;
     };
   }

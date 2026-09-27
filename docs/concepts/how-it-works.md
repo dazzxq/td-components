@@ -353,13 +353,14 @@ riêng**. Muốn đổi chữ có ba đường:
    TdDatetimePicker.labels.confirm = 'OK';
    ```
 
-   Có ở: `TdModal`, `TdDatetimePicker` (`labels`, `messages`), `TdChipInput` (`labels`, cộng property `messages` theo
-   từng thẻ), `TdFormValidation` (`labels`, `messages`), `TdTable`, `TdMenu`, `TdHovercard`.
+   Có ở: `TdModal`, `TdToast`, `TdLoading`, `TdDropdown`, `TdPagination`, `TdEmptyState`, `TdDatetimePicker`
+   (`labels`, `messages`), `TdChipInput` (`labels`, cộng property `messages` theo từng thẻ), `TdFormValidation`
+   (`labels`, `messages`), `TdTable`, `TdMenu`, `TdHovercard`; thông báo validation: `TdInputField.messages`,
+   `TdSlider.messages`, `TdCheckbox.messages`, `TdToggle.messages` (0.16.0).
 3. **Tuỳ chọn khi mở**: `TdLightbox.open(items, { labels: {…} })` / `TdLightbox.bind(root, { labels: {…} })`.
 
-Một số chuỗi hiện **chưa** đổi được qua `labels` (ví dụ `aria-label` "Đóng" của nút đóng toast, thông báo lỗi ràng buộc
-mặc định của `td-input-field`). Với thông báo ràng buộc, dùng `setCustomValidity()` / `setError()` hoặc `messages` của
-`TdFormValidation`. Chi tiết chuyển sang ngôn ngữ khác: [Mở rộng kit](../customization/extending.md).
+Từ 0.16.0 gần như mọi chuỗi đều đổi được qua `labels` / `messages` (còn lại: định dạng hiển thị của datetime-picker).
+Thông báo lỗi riêng cho từng field: `setError()` hoặc `messages` của `TdFormValidation`. Chi tiết chuyển sang ngôn ngữ khác: [Mở rộng kit](../customization/extending.md).
 
 ## Ngôn ngữ thiết kế Liquid Glass (tóm tắt)
 
