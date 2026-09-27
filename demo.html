@@ -4,21 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>td-components Demo</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-  <style>
-    body { font-family: system-ui, -apple-system, sans-serif; }
-    .demo-section { border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 24px; }
-    .demo-section h2 { font-size: 1.25rem; font-weight: 700; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; }
-    .demo-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; }
-    .demo-label { font-size: 0.875rem; color: #6b7280; min-width: 100px; }
-    .demo-code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.8rem; }
-    hr { border: none; border-top: 1px solid #e5e7eb; margin: 32px 0; }
-  </style>
+  <!-- The kit is td.css only (no Tailwind since 0.11.0); demo.css styles this page's chrome. -->
+  <link rel="stylesheet" href="./td.css">
+  <link rel="stylesheet" href="./demo.css">
 </head>
-<body class="bg-gray-50 text-gray-900 p-8 max-w-5xl mx-auto">
+<body class="demo-page">
 
-  <h1 class="text-3xl font-bold mb-2">td-components Demo</h1>
-  <p class="text-gray-500 mb-8">Test tất cả components trực tiếp. Mở DevTools Console để xem events.</p>
+  <h1 class="demo-title">td-components Demo</h1>
+  <p class="demo-lead">Test tất cả components trực tiếp. Mở DevTools Console để xem events.</p>
 
   <!-- ═══════════════════ TOGGLE ═══════════════════ -->
   <div class="demo-section">
@@ -94,24 +87,24 @@
   <!-- ═══════════════════ INPUT FIELD ═══════════════════ -->
   <div class="demo-section">
     <h2>Input Field <span class="demo-code">&lt;td-input-field&gt;</span></h2>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div class="demo-grid">
       <td-input-field label="Họ tên" placeholder="Nhập họ tên..." required></td-input-field>
       <td-input-field label="Email" type="email" placeholder="email@example.com"></td-input-field>
       <td-input-field label="Mật khẩu" type="password" placeholder="••••••••"></td-input-field>
       <td-input-field label="Tiêu đề bài viết" max-length="100" placeholder="Tối đa 100 ký tự"></td-input-field>
-      <td-input-field label="Mô tả" type="textarea" placeholder="Nhập mô tả..." helper-text="Tối thiểu 50 từ" style="grid-column: span 2;"></td-input-field>
+      <td-input-field label="Mô tả" type="textarea" placeholder="Nhập mô tả..." helper-text="Tối thiểu 50 từ" class="demo-span-2"></td-input-field>
     </div>
   </div>
 
   <!-- ═══════════════════ SLIDER ═══════════════════ -->
   <div class="demo-section">
     <h2>Slider <span class="demo-code">&lt;td-slider&gt;</span></h2>
-    <div style="max-width: 400px;">
+    <div class="demo-narrow">
       <div class="demo-row">
-        <td-slider label="Âm lượng" min="0" max="100" value="60" style="width:100%"></td-slider>
+        <td-slider label="Âm lượng" min="0" max="100" value="60"></td-slider>
       </div>
       <div class="demo-row">
-        <td-slider label="Bước 10" min="0" max="100" value="30" step="10" style="width:100%"></td-slider>
+        <td-slider label="Bước 10" min="0" max="100" value="30" step="10"></td-slider>
       </div>
     </div>
   </div>
@@ -119,7 +112,7 @@
   <!-- ═══════════════════ DROPDOWN ═══════════════════ -->
   <div class="demo-section">
     <h2>Dropdown <span class="demo-code">&lt;td-dropdown&gt;</span></h2>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div class="demo-grid">
       <td-dropdown id="dropdown-basic" label="Chọn danh mục" placeholder="-- Chọn --"></td-dropdown>
       <td-dropdown id="dropdown-search" label="Có tìm kiếm" placeholder="Tìm..." searchable></td-dropdown>
     </div>
@@ -128,13 +121,13 @@
   <!-- ═══════════════════ DATETIME PICKER ═══════════════════ -->
   <div class="demo-section">
     <h2>DateTime Picker <span class="demo-code">&lt;td-datetime-picker&gt;</span></h2>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div class="demo-grid">
       <td-datetime-picker label="Ngày đăng bài" placeholder="Chọn ngày giờ..."></td-datetime-picker>
       <td-datetime-picker label="Có giá trị sẵn" value="15/06/2025 - 14:30"></td-datetime-picker>
       <td-datetime-picker label="Bước 5 phút" minute-step="5"></td-datetime-picker>
       <td-datetime-picker label="Bước 15 phút" minute-step="15"></td-datetime-picker>
     </div>
-    <p class="text-sm text-gray-500 mt-2">Click vào input để mở picker. Xem Console khi chọn.</p>
+    <p class="demo-note">Click vào input để mở picker. Xem Console khi chọn.</p>
   </div>
 
   <hr>
@@ -143,24 +136,24 @@
   <div class="demo-section">
     <h2>Modal <span class="demo-code">TdModal.confirm()</span></h2>
     <div class="demo-row">
-      <button onclick="testModalConfirm()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Confirm Dialog</button>
-      <button onclick="testModalInfo()" class="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700">Info Modal</button>
-      <button onclick="testModalSuccess()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Success Modal</button>
-      <button onclick="testModalError()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Error Modal</button>
-      <button onclick="testModalLoading()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">Loading (3s)</button>
-      <button onclick="testModalStacked()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Stacked Modals</button>
+      <button type="button" onclick="testModalConfirm()" class="td-btn td-btn--primary"><span class="td-btn__label">Confirm Dialog</span></button>
+      <button type="button" onclick="testModalInfo()" class="td-btn td-btn--info"><span class="td-btn__label">Info Modal</span></button>
+      <button type="button" onclick="testModalSuccess()" class="td-btn td-btn--success"><span class="td-btn__label">Success Modal</span></button>
+      <button type="button" onclick="testModalError()" class="td-btn td-btn--danger"><span class="td-btn__label">Error Modal</span></button>
+      <button type="button" onclick="testModalLoading()" class="td-btn td-btn--secondary"><span class="td-btn__label">Loading (3s)</span></button>
+      <button type="button" onclick="testModalStacked()" class="td-btn td-btn--secondary"><span class="td-btn__label">Stacked Modals</span></button>
     </div>
-    <p class="text-sm text-gray-500 mt-2">Kết quả confirm hiển thị trong Console.</p>
+    <p class="demo-note">Kết quả confirm hiển thị trong Console.</p>
   </div>
 
   <!-- ═══════════════════ TOAST ═══════════════════ -->
   <div class="demo-section">
     <h2>Toast <span class="demo-code">TdToast.success()</span></h2>
     <div class="demo-row">
-      <button onclick="TdToast.success('Đã lưu thành công!')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Success</button>
-      <button onclick="TdToast.error('Lỗi kết nối server!')" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Error</button>
-      <button onclick="TdToast.warning('Dữ liệu chưa lưu!')" class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700">Warning</button>
-      <button onclick="TdToast.info('Có 2 bài viết mới')" class="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700">Info</button>
+      <button type="button" onclick="TdToast.success('Đã lưu thành công!')" class="td-btn td-btn--success"><span class="td-btn__label">Success</span></button>
+      <button type="button" onclick="TdToast.error('Lỗi kết nối server!')" class="td-btn td-btn--danger"><span class="td-btn__label">Error</span></button>
+      <button type="button" onclick="TdToast.warning('Dữ liệu chưa lưu!')" class="td-btn td-btn--warning"><span class="td-btn__label">Warning</span></button>
+      <button type="button" onclick="TdToast.info('Có 2 bài viết mới')" class="td-btn td-btn--info"><span class="td-btn__label">Info</span></button>
     </div>
   </div>
 
@@ -168,10 +161,10 @@
   <div class="demo-section">
     <h2>Tooltip <span class="demo-code">data-tooltip</span></h2>
     <div class="demo-row">
-      <button data-tooltip="Đây là tooltip mặc định" class="px-4 py-2 bg-gray-200 rounded-lg">Hover tôi</button>
-      <button data-tooltip="Tooltip màu đỏ" data-tooltip-color="red" class="px-4 py-2 bg-gray-200 rounded-lg">Màu đỏ</button>
-      <button data-tooltip="Tooltip màu xanh" data-tooltip-color="green" class="px-4 py-2 bg-gray-200 rounded-lg">Màu xanh</button>
-      <button data-tooltip="Tooltip dài hơn một chút để test wrap text khi nội dung nhiều" class="px-4 py-2 bg-gray-200 rounded-lg">Tooltip dài</button>
+      <button type="button" data-tooltip="Đây là tooltip mặc định" class="td-btn td-btn--secondary"><span class="td-btn__label">Hover tôi</span></button>
+      <button type="button" data-tooltip="Tooltip màu đỏ" data-tooltip-color="red" class="td-btn td-btn--secondary"><span class="td-btn__label">Màu đỏ</span></button>
+      <button type="button" data-tooltip="Tooltip màu xanh" data-tooltip-color="green" class="td-btn td-btn--secondary"><span class="td-btn__label">Màu xanh</span></button>
+      <button type="button" data-tooltip="Tooltip dài hơn một chút để test wrap text khi nội dung nhiều" class="td-btn td-btn--secondary"><span class="td-btn__label">Tooltip dài</span></button>
     </div>
   </div>
 
@@ -179,8 +172,8 @@
   <div class="demo-section">
     <h2>Loading <span class="demo-code">TdLoading.show()</span></h2>
     <div class="demo-row">
-      <button onclick="TdLoading.show('Đang tải...'); setTimeout(() => TdLoading.hide(), 2000)" class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800">Fullscreen Loading (2s)</button>
-      <button onclick="TdLoading.show('Đang xử lý...'); setTimeout(() => TdLoading.hide(), 3000)" class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800">Loading 3s</button>
+      <button type="button" onclick="TdLoading.show('Đang tải...'); setTimeout(() => TdLoading.hide(), 2000)" class="td-btn td-btn--secondary"><span class="td-btn__label">Fullscreen Loading (2s)</span></button>
+      <button type="button" onclick="TdLoading.show('Đang xử lý...'); setTimeout(() => TdLoading.hide(), 3000)" class="td-btn td-btn--secondary"><span class="td-btn__label">Loading 3s</span></button>
       <span class="demo-label">Inline spinner:</span>
       <span id="inline-spinner-container"></span>
     </div>
@@ -198,7 +191,7 @@
   <div class="demo-section">
     <h2>Tabs <span class="demo-code">&lt;td-tabs&gt;</span></h2>
     <td-tabs id="demo-tabs"></td-tabs>
-    <div id="tab-content" class="mt-4 p-4 bg-white rounded-lg border">
+    <div id="tab-content" class="demo-panel">
       Chọn tab ở trên để thay đổi nội dung.
     </div>
   </div>
@@ -207,13 +200,13 @@
   <div class="demo-section">
     <h2>Pagination <span class="demo-code">&lt;td-pagination&gt;</span></h2>
     <td-pagination total-items="150" items-per-page="10" current-page="3"></td-pagination>
-    <p class="text-sm text-gray-500 mt-2">Xem Console khi click page.</p>
+    <p class="demo-note">Xem Console khi click page.</p>
   </div>
 
   <!-- ═══════════════════ EMPTY STATE ═══════════════════ -->
   <div class="demo-section">
     <h2>Empty State <span class="demo-code">&lt;td-empty-state&gt;</span></h2>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div class="demo-grid">
       <td-empty-state title="Chưa có bài viết" message="Bắt đầu viết bài đầu tiên của bạn" id="empty-with-action"></td-empty-state>
       <td-empty-state title="Không tìm thấy" message="Thử tìm với từ khóa khác" size="sm" compact></td-empty-state>
     </div>
@@ -345,7 +338,7 @@
       setTimeout(() => { TdLoading.hide(); TdToast.success('Xong!'); }, 3000);
     };
     window.testModalStacked = async () => {
-      TdModal.show({ title: 'Modal 1', body: '<p>Đây là modal đầu tiên. Click button bên dưới để mở modal thứ 2.</p><button onclick="TdModal.show({title:\'Modal 2\', body:\'<p>Modal thứ 2 chồng lên modal 1!</p>\'})" class="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg">Mở Modal 2</button>' });
+      TdModal.show({ title: 'Modal 1', body: '<p>Đây là modal đầu tiên. Click button bên dưới để mở modal thứ 2.</p><button type="button" onclick="TdModal.show({title:\'Modal 2\', body:\'<p>Modal thứ 2 chồng lên modal 1!</p>\'})" class="td-btn td-btn--secondary"><span class="td-btn__label">Mở Modal 2</span></button>' });
     };
     window.spamToasts = () => {
       for (let i = 1; i <= 8; i++) {

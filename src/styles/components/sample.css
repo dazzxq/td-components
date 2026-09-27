@@ -1,0 +1,32 @@
+/*
+ * td-sample (src/base/sample/td-sample.js) — the demo component for TdBaseElement (attribute sync, listen(), emit(),
+ * escapeHtml()). Content layer → solid card; the button reuses the .td-btn contract (button.css).
+ */
+@layer td.component {
+	td-sample {
+		display: block;
+	}
+
+	.td-sample {
+		box-sizing: border-box;
+		padding: var(--td-space-md);
+		font-family: var(--td-font-sans);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text);
+		background: var(--td-color-surface);
+		border: 1px solid var(--td-color-border);
+		border-radius: var(--td-radius-lg);
+		box-shadow: var(--td-shadow-1);
+	}
+
+	.td-sample__title {
+		margin: 0;
+		font-size: var(--td-text-lg);
+		font-weight: var(--td-fw-semibold);
+	}
+
+	.td-sample__count {
+		margin: var(--td-space-2xs) 0 var(--td-space-sm);
+		color: var(--td-color-text-muted);
+	}
+}

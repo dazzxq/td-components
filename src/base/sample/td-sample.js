@@ -2,7 +2,8 @@ import { TdBaseElement } from '../td-base-element.js';
 
 /**
  * Sample component demonstrating TdBaseElement features.
- * Shows attribute sync, event cleanup, emit(), and escapeHtml().
+ * Shows attribute sync, event cleanup, emit(), and escapeHtml(). Token-native (`.td-sample` in td.css, button =
+ * the `.td-btn` contract).
  *
  * @element td-sample
  * @attr {string} label - Display label text
@@ -19,16 +20,12 @@ export class TdSample extends TdBaseElement {
     const count = parseInt(this.getAttribute('count') || '0', 10);
     const isDisabled = this.hasAttribute('disabled');
 
-    return `
-      <div class="p-4 border border-gray-200 rounded-lg shadow-xs">
-        <h3 class="text-lg font-bold">${label}</h3>
-        <p class="mt-1 text-gray-600">Count: ${count}</p>
-        <button
-          class="mt-2 px-3 py-1 bg-blue-500 text-white rounded-sm hover:bg-blue-600 disabled:opacity-50"
-          ${isDisabled ? 'disabled' : ''}
-        >Increment</button>
-      </div>
-    `;
+    return `<div class="td-sample">`
+      + `<h3 class="td-sample__title">${label}</h3>`
+      + `<p class="td-sample__count">Count: ${count}</p>`
+      + `<button type="button" class="td-btn td-btn--primary td-btn--sm"${isDisabled ? ' disabled' : ''}>`
+      + '<span class="td-btn__label">Increment</span></button>'
+      + '</div>';
   }
 
   afterRender() {
