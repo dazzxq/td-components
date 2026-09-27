@@ -40,7 +40,13 @@ describe('TdDateTime._parseDate', () => {
     assert.equal(TdDateTime._parseDate(null), null);
     assert.equal(TdDateTime._parseDate(undefined), null);
     assert.equal(TdDateTime._parseDate(''), null);
-    assert.equal(TdDateTime._parseDate(0), null);
+  });
+
+  it('accepts timestamp 0 as 1970-01-01 (v0.16.0 D1)', () => {
+    const result = TdDateTime._parseDate(0);
+    assert.ok(result instanceof Date);
+    assert.equal(result.getTime(), 0);
+    assert.equal(TdDateTime.toAbsolute(0, 'YYYY'), String(new Date(0).getFullYear()));
   });
 
   it('returns null for invalid string', () => {
@@ -101,6 +107,31 @@ describe('TdDateTime.toAbsolute', () => {
     assert.equal(TdDateTime.toAbsolute(undefined), '');
   });
 
+  it('leaves ordinary words alone (v0.16.0 D1)', () => {
+    const date = new Date(2025, 7, 12, 15, 30, 0);
+    assert.equal(TdDateTime.toAbsolute(date, 'Ngay DD thang MM'), 'Ngay 12 thang 08');
+    assert.equal(TdDateTime.toAbsolute(date, 'Ngày DD tháng MM năm YYYY'), 'Ngày 12 tháng 08 năm 2025');
+    assert.equal(TdDateTime.toAbsolute(date, 'Class mass DD'), 'Class mass 12');
+  });
+
+  it('replaces runs made only of tokens (v0.16.0 D1)', () => {
+    const date = new Date(2025, 7, 12, 15, 30, 5);
+    assert.equal(TdDateTime.toAbsolute(date, 'YYYYMMDD'), '20250812');
+    assert.equal(TdDateTime.toAbsolute(date, 'HHmmss'), '153005');
+    assert.equal(TdDateTime.toAbsolute(date, 'DD/MM/YYYY HH:mm'), '12/08/2025 15:30');
+  });
+
+  it('emits [bracketed] text verbatim (v0.16.0 D1)', () => {
+    const date = new Date(2025, 7, 12, 15, 30, 0);
+    assert.equal(TdDateTime.toAbsolute(date, '[Ngày] DD [lúc] HH:mm [DD]'), 'Ngày 12 lúc 15:30 DD');
+    assert.equal(TdDateTime.toAbsolute(date, '[a] a'), 'a pm');
+  });
+
+  it('does not re-scan substituted values', () => {
+    const date = new Date(2025, 7, 12, 9, 0, 0);
+    assert.equal(TdDateTime.toAbsolute(date, 'A a'), 'AM am');
+  });
+
   it('handles midnight (00:00) correctly for 12-hour format', () => {
     const date = new Date(2025, 0, 1, 0, 0, 0); // midnight
     const result = TdDateTime.toAbsolute(date, 'hh:mm A');
@@ -120,6 +151,16 @@ describe('TdDateTime.toRelative', () => {
     const now = new Date();
     const date = new Date(now.getTime() - 30 * 1000); // 30 seconds ago
     assert.equal(TdDateTime.toRelative(date), 'Vừa xong');
+  });
+
+  it('describes future moments instead of "Vừa xong" (v0.16.0 D1)', () => {
+    const now = Date.now();
+    assert.equal(TdDateTime.toRelative(new Date(now + 20 * 1000)), 'Sắp tới');
+    assert.equal(TdDateTime.toRelative(new Date(now + (5 * 60 + 30) * 1000)), 'Trong 5 phút');
+    assert.equal(TdDateTime.toRelative(new Date(now + (3 * 60 + 10) * 60 * 1000)), 'Trong 3 giờ');
+    assert.equal(TdDateTime.toRelative(new Date(now + (2 * 24 + 1) * 3600 * 1000)), 'Trong 2 ngày');
+    assert.equal(TdDateTime.toRelative(new Date(now + 65 * 24 * 3600 * 1000)), 'Trong 2 tháng');
+    assert.equal(TdDateTime.toRelative(new Date(now + 800 * 24 * 3600 * 1000)), 'Trong 2 năm');
   });
 
   it('returns "X phút trước" for minutes ago', () => {

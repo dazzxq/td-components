@@ -186,8 +186,8 @@ Mọi method nhận `dateInput` là một trong:
 | `number` | Unix timestamp: **< 1e12 → giây**, ngược lại → mili giây. |
 | `string` | Thử `new Date(str)` (ISO 8601…) trước; không được thì nếu là chuỗi số → timestamp như trên. |
 
-Đầu vào "falsy" (`''`, `0`, `null`, `undefined`) hoặc không hợp lệ → method trả `''`. Chú ý: timestamp `0` (1/1/1970) cũng
-bị coi là không có.
+`''`, `null`, `undefined` hoặc đầu vào không hợp lệ → method trả `''`. Timestamp `0` là hợp lệ (1/1/1970, từ 0.16.0;
+trước đó bị coi là không có).
 
 ### `TdDateTime.toAbsolute(dateInput, format = 'DD/MM/YYYY - HH:mm')`
 
@@ -212,11 +212,17 @@ TdDateTime.toAbsolute(new Date(2025, 7, 12, 14, 5), 'hh:mm A'); // '02:05 PM'
 TdDateTime.toAbsolute(1755000000, 'DD/MM/YYYY');                // timestamp giây
 ```
 
-**Cẩn thận với chữ trong `format`**: token được thay bằng tìm-và-thay toàn chuỗi, kể cả **bên trong chữ thường**. Mọi
-chữ `a` / `A` ở bất kỳ đâu trong format đều thành am/pm, ví dụ `'Ngay DD thang MM'` cho ra `'Ngpmy 12 thpmng 08'`; các
-cặp như `ss`, `mm`, `DD` nằm trong một từ cũng bị thay. Chỉ đặt
-token và ký tự phân cách (`/ - : . ,` khoảng trắng) trong `format`; ghép chữ bên ngoài:
-`` `Ngày ${TdDateTime.toAbsolute(d, 'DD/MM/YYYY')}` ``. (Chữ có dấu như `à` không bị ảnh hưởng vì là ký tự khác `a`.)
+**Chữ trong `format`** (từ 0.16.0): `format` được quét một lượt theo từng cụm chữ cái liền nhau. Một cụm chỉ được thay
+khi nó **gồm toàn token** (`DD`, `YYYYMMDD`, `HHmm`, `A`…); cụm có chữ khác (`Ngay`, `thang`, `Class`) giữ nguyên. Văn
+bản trong `[...]` được in nguyên văn (bỏ ngoặc) — dùng khi một từ trùng token, ví dụ chữ `a` đứng riêng.
+
+```js
+TdDateTime.toAbsolute(d, 'Ngay DD thang MM');           // 'Ngay 12 thang 08'
+TdDateTime.toAbsolute(d, '[Ngày] DD [lúc] HH:mm');      // 'Ngày 12 lúc 14:05'
+TdDateTime.toAbsolute(d, 'YYYYMMDD');                   // '20250812'
+```
+
+Trước 0.16.0 token được tìm-và-thay toàn chuỗi, kể cả bên trong từ (`'Ngay DD thang MM'` → `'Ngpmy 12 thpmng 08'`).
 
 ### `TdDateTime.toRelative(dateInput)`
 
@@ -231,11 +237,24 @@ token và ký tự phân cách (`/ - : . ,` khoảng trắng) trong `format`; gh
 | < 12 tháng (tháng = 30 ngày) | `N tháng trước` / `Hơn N tháng trước` (phần lẻ ≥ 15 ngày) |
 | còn lại (năm = 365 ngày) | `N năm trước` / `Hơn N năm trước` (phần lẻ ≥ 6 tháng) |
 
+Thời điểm **trong tương lai** (từ 0.16.0; trước đó luôn là `Vừa xong`):
+
+| Khoảng cách tới | Kết quả |
+|---|---|
+| < 1 phút | `Sắp tới` |
+| < 60 phút | `Trong N phút` |
+| < 24 giờ | `Trong N giờ` |
+| < 30 ngày | `Trong N ngày` |
+| < 365 ngày | `Trong N tháng` (tháng = 30 ngày) |
+| còn lại | `Trong N năm` |
+
 ```js
 TdDateTime.toRelative(Date.now() - 5 * 60 * 1000); // '5 phút trước'
+TdDateTime.toRelative(Date.now() + 5 * 60 * 1000); // 'Trong 5 phút'
 ```
 
-Thời điểm **trong tương lai** luôn trả `Vừa xong`. Chuỗi không tự cập nhật; muốn "sống" thì tự gọi lại theo chu kỳ.
+Giờ máy khách chạy chậm hơn server vài giây thì bài vừa đăng có thể hiện `Sắp tới`. Chuỗi không tự cập nhật; muốn "sống"
+thì tự gọi lại theo chu kỳ.
 
 ### `TdDateTime.convert(dateInput, { mode = 'absolute', format = 'DD/MM/YYYY - HH:mm' } = {})`
 

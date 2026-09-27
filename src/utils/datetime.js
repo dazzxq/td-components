@@ -4,7 +4,7 @@
  *
  * Features:
  * - Absolute time formatting with custom tokens (DD/MM/YYYY/HH/mm/ss/A/a/hh/YY)
- * - Relative time in Vietnamese ("Vừa xong", "X phút trước", "Hơn X giờ trước")
+ * - Relative time in Vietnamese ("Vừa xong", "X phút trước", "Hơn X giờ trước"; future: "Sắp tới", "Trong X phút")
  * - ISO conversion from formatted date strings
  *
  * @example
@@ -12,6 +12,9 @@
  * TdDateTime.toRelative('2025-08-12T04:36:00Z') // "3 tháng trước"
  * TdDateTime.toISO('12/08/2025 - 11:36', 'DD/MM/YYYY - HH:mm')
  */
+// Longest first so `YYYY` wins over `YY`.
+const DATE_TOKENS = ['YYYY', 'YY', 'MM', 'DD', 'HH', 'hh', 'mm', 'ss', 'A', 'a'];
+
 export class TdDateTime {
   /**
    * Parse input date (ISO string, Unix timestamp, or Date object) to Date object.
@@ -19,7 +22,8 @@ export class TdDateTime {
    * @returns {Date|null} Parsed Date object or null if invalid
    */
   static _parseDate(input) {
-    if (!input) return null;
+    // 0 is a valid timestamp (1970-01-01); only "no value" inputs are rejected.
+    if (input === null || input === undefined || input === '') return null;
 
     // Already a Date object
     if (input instanceof Date) {
@@ -78,6 +82,7 @@ export class TdDateTime {
    *   - ss: Seconds (00-59)
    *   - A: AM/PM (uppercase)
    *   - a: am/pm (lowercase)
+   *   A letter run is replaced only when it consists entirely of tokens; wrap literal text in `[...]` to force it.
    * @returns {string} Formatted date string or empty string if invalid
    */
   static toAbsolute(dateInput, format = 'DD/MM/YYYY - HH:mm') {
@@ -94,20 +99,32 @@ export class TdDateTime {
     const ampm = hours24 >= 12 ? 'PM' : 'AM';
     const ampmLower = ampm.toLowerCase();
 
-    // Replace tokens in order (longest first to avoid partial matches)
-    let result = format;
-    result = result.replace(/YYYY/g, String(year));
-    result = result.replace(/YY/g, String(year).slice(-2));
-    result = result.replace(/MM/g, TdDateTime._pad(month));
-    result = result.replace(/DD/g, TdDateTime._pad(day));
-    result = result.replace(/HH/g, TdDateTime._pad(hours24));
-    result = result.replace(/hh/g, TdDateTime._pad(hours12));
-    result = result.replace(/mm/g, TdDateTime._pad(minutes));
-    result = result.replace(/ss/g, TdDateTime._pad(seconds));
-    result = result.replace(/A/g, ampm);
-    result = result.replace(/a/g, ampmLower);
+    const values = {
+      YYYY: String(year),
+      YY: String(year).slice(-2),
+      MM: TdDateTime._pad(month),
+      DD: TdDateTime._pad(day),
+      HH: TdDateTime._pad(hours24),
+      hh: TdDateTime._pad(hours12),
+      mm: TdDateTime._pad(minutes),
+      ss: TdDateTime._pad(seconds),
+      A: ampm,
+      a: ampmLower,
+    };
 
-    return result;
+    // One pass: `[literal]` is emitted verbatim (brackets dropped); a run of letters is replaced only when it is made
+    // ENTIRELY of tokens (`YYYY`, `HHmm`, `A`…), so ordinary words (`Ngay`, `thang`) are left untouched.
+    return String(format).replace(/\[([^\]]*)\]|\p{L}+/gu, (match, literal) => {
+      if (literal !== undefined) return literal;
+      let out = '';
+      for (let i = 0; i < match.length;) {
+        const token = DATE_TOKENS.find((t) => match.startsWith(t, i));
+        if (!token) return match;
+        out += values[token];
+        i += token.length;
+      }
+      return out;
+    });
   }
 
   /**
@@ -121,6 +138,7 @@ export class TdDateTime {
 
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
+    if (diffMs < 0) return TdDateTime._toRelativeFuture(-diffMs);
     const diffSeconds = Math.floor(diffMs / 1000);
     const diffMinutes = Math.floor(diffSeconds / 60);
     const diffHours = Math.floor(diffMinutes / 60);
@@ -175,6 +193,23 @@ export class TdDateTime {
       return `Hơn ${years} năm trước`;
     }
     return `${years} năm trước`;
+  }
+
+  /**
+   * Relative phrase for a moment `ms` milliseconds in the FUTURE ("Sắp tới", "Trong 5 phút"…).
+   * @param {number} ms
+   * @returns {string}
+   */
+  static _toRelativeFuture(ms) {
+    const minutes = Math.floor(ms / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    if (minutes < 1) return 'Sắp tới';
+    if (minutes < 60) return `Trong ${minutes} phút`;
+    if (hours < 24) return `Trong ${hours} giờ`;
+    if (days < 30) return `Trong ${days} ngày`;
+    if (days < 365) return `Trong ${Math.floor(days / 30)} tháng`;
+    return `Trong ${Math.floor(days / 365)} năm`;
   }
 
   /**
