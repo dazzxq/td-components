@@ -4,6 +4,17 @@ import { TdDropdown } from './td-dropdown.js';
 import { TdButton } from './td-button.js';
 import { LAYERS, register, trapTab } from '../utils/layers.js';
 
+/** v0.14.1: resting control borders are soft (--td-control-border-soft, visible ≥ 1.3:1); the hover / strong border
+ *  (--td-control-border-strong) keeps ≥ 3:1. Resolves a token to a computed colour. */
+function tokenColor(name) {
+  const p = document.createElement('span');
+  p.style.setProperty('color', `var(${name})`);
+  document.body.appendChild(p);
+  const c = getComputedStyle(p).color;
+  p.remove();
+  return c;
+}
+
 // Batch 3 — td-dropdown token-native (plan docs/plans/v0.9.0-batch3.md step 4: D17/D18/D19). td.css only.
 const link = document.createElement('link');
 link.rel = 'stylesheet';
@@ -503,7 +514,8 @@ describe('batch 3 — td-dropdown visuals', () => {
       const b = getComputedStyle(trig(idle));
       const ph = getComputedStyle(idle.querySelector('.td-dropdown__value'));
       expect(ratio(ph.color, b.backgroundColor), `${theme} placeholder`).to.be.at.least(4.5);
-      expect(ratio(b.borderTopColor, b.backgroundColor), `${theme} border`).to.be.at.least(3);
+      expect(ratio(b.borderTopColor, b.backgroundColor), `${theme} border (soft)`).to.be.at.least(1.3);
+      expect(ratio(tokenColor('--td-field-border-hover'), b.backgroundColor), `${theme} hover border`).to.be.at.least(3);
     }
   });
 

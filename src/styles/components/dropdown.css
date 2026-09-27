@@ -15,7 +15,7 @@
 		--td-dropdown-option-active-line: var(--td-control-border-strong); /* ≥ 3:1 active outline (1.4.11) */
 		--td-dropdown-option-selected: var(--td-color-hover-strong);
 		--td-dropdown-search-bg: var(--td-color-hover);
-		--td-dropdown-search-border: var(--td-control-border-strong);    /* 3.42:1 light, 4.8:1 dark */
+		--td-dropdown-search-border: var(--td-control-border-soft);      /* soft like the fields (v0.14.1) */
 		--td-dropdown-hairline: var(--td-color-border);
 	}
 
