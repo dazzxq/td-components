@@ -1,3 +1,4 @@
+import { escapeHtml } from '../../utils/escape.js';
 import './td-sample.js';
 
 export default {
@@ -13,8 +14,8 @@ export default {
 export const Default = {
   render: (args) => `
     <td-sample
-      label="${args.label || ''}"
-      count="${args.count || 0}"
+      label="${escapeHtml(String(args.label || ''))}"
+      count="${escapeHtml(String(args.count || 0))}"
       ${args.disabled ? 'disabled' : ''}
     ></td-sample>
   `,
