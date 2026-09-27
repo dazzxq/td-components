@@ -84,9 +84,9 @@
 			transform var(--td-dur-base) var(--td-ease-spring);
 	}
 
-	/* soft border at rest (v0.14.1), strong under the pointer */
+	/* soft border at rest (v0.14.1), one soft step darker under the pointer (v0.14.2) */
 	.td-checkbox:hover .td-checkbox__input:not(:checked, :disabled) ~ .td-checkbox__mark {
-		border-color: var(--td-control-border-strong);
+		border-color: var(--td-control-border-hover);
 	}
 
 	.td-checkbox__input:checked ~ .td-checkbox__mark {

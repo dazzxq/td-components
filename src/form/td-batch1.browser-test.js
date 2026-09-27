@@ -9,8 +9,9 @@ import { TdToast } from '../feedback/td-toast.js';
 import { isScrollLocked } from '../utils/scroll-lock.js';
 import { sendKeys, sendMouse, resetMouse } from '@web/test-runner-commands';
 
-/** v0.14.1: resting control borders are soft (--td-control-border-soft, visible ≥ 1.3:1); the hover / strong border
- *  (--td-control-border-strong) keeps ≥ 3:1. Resolves a token to a computed colour. */
+/** v0.14.1/0.14.2: resting control borders are soft (--td-control-border-soft, visible ≥ 1.3:1); hover uses the
+ *  softer step --td-control-border-hover (≥ 1.8:1, darker than rest); focus keeps the ring; strict sites map both to
+ *  --td-control-border-strong (≥ 3:1). Resolves a token to a computed colour. */
 function tokenColor(name) {
   const p = document.createElement('span');
   p.style.setProperty('color', `var(${name})`);
@@ -128,12 +129,12 @@ describe('batch 1 — td-checkbox', () => {
     expect(r.height).to.be.at.least(24);
   });
 
-  it('unchecked border: soft at rest (visible), strong hover border meets 3:1 (v0.14.1)', () => {
+  it('unchecked border: soft at rest (visible), soft hover step (v0.14.1/0.14.2)', () => {
     const el = mount('<td-checkbox aria-label="x"></td-checkbox>');
     const mark = el.querySelector('.td-checkbox__mark');
     expect(getComputedStyle(mark).borderTopColor).to.equal(tokenColor('--td-control-border-soft'));
     expect(ratio(getComputedStyle(mark).borderTopColor, 'rgb(255, 255, 255)')).to.be.at.least(1.3);
-    expect(ratio(tokenColor('--td-control-border-strong'), 'rgb(255, 255, 255)')).to.be.at.least(3);
+    expect(ratio(tokenColor('--td-control-border-hover'), 'rgb(255, 255, 255)')).to.be.at.least(1.8); // v0.14.2 hover step
   });
 });
 
@@ -187,7 +188,7 @@ describe('batch 1 — td-toggle (.td-switch)', () => {
       const onTrack = on.querySelector('.td-switch__track');
       const onThumb = on.querySelector('.td-switch__thumb');
       expect(ratio(getComputedStyle(offTrack).borderTopColor, pageBg), 'off edge (soft) vs page').to.be.at.least(1.3);
-      expect(ratio(tokenColor('--td-control-border-strong'), pageBg), 'hover edge vs page').to.be.at.least(3);
+      expect(ratio(tokenColor('--td-control-border-hover'), pageBg), 'hover edge vs page').to.be.at.least(1.8);
       expect(ratio(bgOf(onTrack), pageBg), 'on track vs page').to.be.at.least(3);
       expect(ratio(bgOf(onThumb), bgOf(onTrack)), 'thumb vs on track').to.be.at.least(3);
       // v0.14.1: the off knob stays identifiable — by its fill (dark) or its soft edge (light), plus its drop shadow

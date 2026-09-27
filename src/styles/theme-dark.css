@@ -39,6 +39,7 @@
 		--td-control-border: #45454b;
 		--td-control-border-strong: #8a8a93;
 		--td-control-border-soft: #3a3a3c; /* Apple systemGray4 (dark) */
+		--td-control-border-hover: #636366; /* Apple systemGray2 (dark) */
 
 		--td-btn-primary-bg: #2563eb; /* white text 5.17:1 (the dark accent #3b82f6 would be 3.68:1) */
 		--td-btn-secondary-bg: #2c2c30;

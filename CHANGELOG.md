@@ -2,6 +2,16 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.14.2
+
+### Changed (visual)
+
+- **Softer hover borders** (owner request): hovering a field / dropdown / datetime / chip-input, an unchecked checkbox or
+  an off toggle, and the active option outline in dropdown / chip-input suggestions now use
+  `--td-control-border-hover` (#aeaeb2 light / #636366 dark, Apple systemGray2) instead of gray-500 / gray-600. The
+  option's highlight fill is unchanged. Strict-contrast sites: map `--td-control-border-soft` and
+  `--td-control-border-hover` to `var(--td-control-border-strong)`. 1 CSP baseline recaptured.
+
 ## 0.14.1
 
 ### Changed (visual)

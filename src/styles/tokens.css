@@ -121,9 +121,12 @@
 		--td-control-radius: var(--td-radius-md);
 		--td-control-border-strong: var(--td-gray-500); /* ≥ 3:1 non-text contrast on white (3.42:1) */
 		/* v0.14.1 (owner request): resting border of fields / dropdown / toggle / checkbox — soft like Apple systemGray4
-		   (1.5:1). It darkens to --td-control-border-strong on hover and focus shows the ring; sites that need strict
-		   WCAG 1.4.11 at rest set --td-control-border-soft: var(--td-control-border-strong). */
+		   (1.5:1). It steps up to --td-control-border-hover on hover (v0.14.2) and focus shows the ring; sites that need
+		   strict WCAG 1.4.11 map BOTH --td-control-border-soft and --td-control-border-hover to
+		   var(--td-control-border-strong). */
 		--td-control-border-soft: #d1d1d6;
+		/* v0.14.2 (owner request): hover border / active option outline — a softer step up (Apple systemGray2). */
+		--td-control-border-hover: #aeaeb2;
 		--td-touch-min: 44px; /* minimum hit target for touch controls */
 
 		/* ===== Buttons (content layer: SOLID, never glass — liquid-glass R1/R7) ===== */
@@ -162,7 +165,7 @@
 		--td-btn-disabled-border: rgb(0 0 0 / 10%);
 
 		/* ===== Checkbox / switch — v0.14.1: resting borders use the soft token (~1.5:1, below WCAG 1.4.11 by owner
-		   choice); hover uses --td-control-border-strong (≥ 3:1); switch on-colours still ≥ 3:1 ===== */
+		   choice); hover uses --td-control-border-hover (~2.2:1, v0.14.2); switch on-colours still ≥ 3:1 ===== */
 		--td-checkbox-color: var(--td-accent);
 		--td-checkbox-border: var(--td-control-border-soft);
 		--td-switch-on: #16a34a;       /* 3.3:1 vs white page; white thumb on it 3.3:1 */
