@@ -103,6 +103,8 @@ let dismissedHover = null;
 let pendingBinding = null;
 let hoverBinding = null;
 let dismissedBinding = null;
+/** Events already handled by an (inner) delegated root: nested bindAll() roots never both claim one event (ISSUE-11). */
+const handledEvents = new WeakSet();
 let overCard = false;
 let suppressFocus = false;
 /** @type {{ trigger: HTMLElement|null, at: number }} */
@@ -230,6 +232,7 @@ function clearTimers() {
   clearTimeout(showTimer);
   clearTimeout(hideTimer);
   pending = null;
+  pendingBinding = null;
 }
 
 function place() {
@@ -488,6 +491,7 @@ function onOver(e, trigger, binding) {
   pendingBinding = binding;
   showTimer = setTimeout(() => {
     pending = null;
+    pendingBinding = null;
     if (hoverTrigger === trigger) open(trigger, binding);
   }, SHOW_DELAY);
 }
@@ -495,9 +499,9 @@ function onOver(e, trigger, binding) {
 function onOut(e, trigger) {
   if (e.pointerType === 'touch') return;
   if (e.relatedTarget instanceof Node && trigger.contains(e.relatedTarget)) return; // moving within the trigger
-  if (hoverTrigger === trigger) hoverTrigger = null;
-  if (dismissedHover === trigger) dismissedHover = null;
-  if (pending === trigger) { clearTimeout(showTimer); pending = null; }
+  if (hoverTrigger === trigger) { hoverTrigger = null; hoverBinding = null; }
+  if (dismissedHover === trigger) { dismissedHover = null; dismissedBinding = null; }
+  if (pending === trigger) { clearTimeout(showTimer); pending = null; pendingBinding = null; }
   if (cur) scheduleHide();
 }
 
@@ -632,6 +636,8 @@ export class TdHovercard {
       if (!(t instanceof HTMLElement) || explicit.has(t) || !inRoot(t)) return null;
       if (card && card.contains(t)) return null; // no nested hovercards inside the card
       if (!touched.has(t)) prepTrigger(t, touched);
+      if (handledEvents.has(e)) return null; // an inner root already handled it (nested roots, ISSUE-11)
+      handledEvents.add(e);
       return t;
     };
     const h = {

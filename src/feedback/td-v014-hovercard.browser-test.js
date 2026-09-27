@@ -828,6 +828,21 @@ describe('v0.14 TdHovercard — bindAll, unbind, reconnect', () => {
     expect(cardEl().querySelector('.ov-explicit')).to.not.equal(null);
   });
 
+  it('nested bindAll roots: unbinding the outer root during the delay keeps the inner root\'s intent (ISSUE-11)', async () => {
+    host.insertAdjacentHTML('beforeend', '<template id="nr-tpl"><p class="nr">Mẫu</p></template>');
+    const outer = add('<div><div><button type="button" data-td-hovercard-template="nr-tpl">Lan</button></div></div>');
+    const inner = outer.firstElementChild;
+    const t = inner.firstElementChild;
+    const uo = TdHovercard.bindAll(outer);
+    bindAll(inner);
+    await sendMouse({ type: 'move', position: center(t) });
+    await wait(100);
+    uo();
+    await wait(350);
+    expect(isOpen()).to.equal(true);
+    expect(cardEl().querySelector('p.nr')).to.not.equal(null);
+  });
+
   it('nested bindAll roots: releasing either root first never restores stale ARIA under the other', () => {
     const outer = add('<div><div><span data-td-hovercard-template="x">Lan</span></div></div>');
     const inner = outer.firstElementChild;
