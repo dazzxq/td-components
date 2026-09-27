@@ -16,7 +16,10 @@
       "td-toast": "/src/feedback/td-toast.js",
       "td-loading": "/src/feedback/td-loading.js",
       "td-datetime-picker": "/src/form/td-datetime-picker.js",
-      "td-tooltip": "/src/feedback/td-tooltip.js"
+      "td-tooltip": "/src/feedback/td-tooltip.js",
+      "td-menu": "/src/feedback/td-menu.js",
+      "td-chip-input": "/src/form/td-chip-input.js",
+      "td-form-validation": "/src/utils/form-validation.js"
     },
     "tokenNative": [
       "td-button",
@@ -33,7 +36,10 @@
       "td-tooltip",
       "td-dropdown",
       "td-table",
-      "td-datetime-picker"
+      "td-datetime-picker",
+      "td-menu",
+      "td-chip-input",
+      "td-form-validation"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -1127,6 +1133,166 @@
         "top",
         "right",
         "bottom"
+      ]
+    }
+  ],
+  "td-menu": [
+    {
+      "state": "trigger",
+      "setup": "const b=TdMenu.button({label:'Thao tác',items:[{label:'Sửa',icon:'plus',hint:'Ctrl+E',onSelect(){}},{label:'Chia sẻ',onSelect(){}},{separator:true},{label:'Ghim',type:'checkbox',checked:true},{label:'Khoá',disabled:true,hint:'Không có quyền'},{label:'Xoá',danger:true,onSelect(){}}]}); b.id='probe'; b.style.setProperty('margin','40px'); window.__mount.appendChild(b);",
+      "selectors": [
+        ".td-menu-btn",
+        ".td-menu-btn__label"
+      ]
+    },
+    {
+      "state": "open",
+      "setup": "const b=TdMenu.button({label:'Thao tác',items:[{label:'Sửa',icon:'plus',hint:'Ctrl+E',onSelect(){}},{label:'Chia sẻ',onSelect(){}},{separator:true},{label:'Ghim',type:'checkbox',checked:true},{label:'Khoá',disabled:true,hint:'Không có quyền'},{label:'Xoá',danger:true,onSelect(){}}]}); b.id='probe'; b.style.setProperty('margin','40px'); window.__mount.appendChild(b); b.click();",
+      "selectors": [
+        ".td-menu",
+        ".td-menu__item",
+        ".td-menu__label"
+      ],
+      "portal": [
+        ".td-menu",
+        ".td-menu__item",
+        ".td-menu__label"
+      ],
+      "settle": 400,
+      "excludeProps": [
+        "top",
+        "left",
+        "right",
+        "bottom"
+      ]
+    },
+    {
+      "state": "danger",
+      "setup": "const b=TdMenu.button({label:'Thao tác',items:[{label:'Sửa',icon:'plus',hint:'Ctrl+E',onSelect(){}},{label:'Chia sẻ',onSelect(){}},{separator:true},{label:'Ghim',type:'checkbox',checked:true},{label:'Khoá',disabled:true,hint:'Không có quyền'},{label:'Xoá',danger:true,onSelect(){}}]}); b.id='probe'; b.style.setProperty('margin','40px'); window.__mount.appendChild(b); b.click();",
+      "selectors": [
+        ".td-menu__item--danger"
+      ],
+      "portal": [
+        ".td-menu__item--danger"
+      ],
+      "settle": 400
+    },
+    {
+      "state": "disabled-hint",
+      "setup": "const b=TdMenu.button({label:'Thao tác',items:[{label:'Sửa',icon:'plus',hint:'Ctrl+E',onSelect(){}},{label:'Chia sẻ',onSelect(){}},{separator:true},{label:'Ghim',type:'checkbox',checked:true},{label:'Khoá',disabled:true,hint:'Không có quyền'},{label:'Xoá',danger:true,onSelect(){}}]}); b.id='probe'; b.style.setProperty('margin','40px'); window.__mount.appendChild(b); b.click();",
+      "selectors": [
+        ".td-menu__item[aria-disabled=\"true\"]",
+        ".td-menu__hint"
+      ],
+      "portal": [
+        ".td-menu__item[aria-disabled=\"true\"]",
+        ".td-menu__hint"
+      ],
+      "settle": 400
+    },
+    {
+      "state": "checked",
+      "setup": "const b=TdMenu.button({label:'Thao tác',items:[{label:'Sửa',icon:'plus',hint:'Ctrl+E',onSelect(){}},{label:'Chia sẻ',onSelect(){}},{separator:true},{label:'Ghim',type:'checkbox',checked:true},{label:'Khoá',disabled:true,hint:'Không có quyền'},{label:'Xoá',danger:true,onSelect(){}}]}); b.id='probe'; b.style.setProperty('margin','40px'); window.__mount.appendChild(b); b.click();",
+      "selectors": [
+        "[aria-checked=\"true\"] .td-menu__check"
+      ],
+      "portal": [
+        "[aria-checked=\"true\"] .td-menu__check"
+      ],
+      "settle": 400
+    },
+    {
+      "state": "separator",
+      "setup": "const b=TdMenu.button({label:'Thao tác',items:[{label:'Sửa',icon:'plus',hint:'Ctrl+E',onSelect(){}},{label:'Chia sẻ',onSelect(){}},{separator:true},{label:'Ghim',type:'checkbox',checked:true},{label:'Khoá',disabled:true,hint:'Không có quyền'},{label:'Xoá',danger:true,onSelect(){}}]}); b.id='probe'; b.style.setProperty('margin','40px'); window.__mount.appendChild(b); b.click();",
+      "selectors": [
+        ".td-menu__separator"
+      ],
+      "portal": [
+        ".td-menu__separator"
+      ],
+      "settle": 400
+    }
+  ],
+  "td-chip-input": [
+    {
+      "state": "empty",
+      "setup": "const c=document.createElement('td-chip-input'); c.id='probe'; c.setAttribute('aria-label','Tác giả');  window.__mount.appendChild(c); c.options=[{value:'an',label:'An'},{value:'binh',label:'Bình'},{value:'cuong',label:'Cường'}]; ",
+      "selectors": [
+        ".td-chip-input__box",
+        ".td-chip-input__input"
+      ]
+    },
+    {
+      "state": "chips",
+      "setup": "const c=document.createElement('td-chip-input'); c.id='probe'; c.setAttribute('aria-label','Tác giả');  window.__mount.appendChild(c); c.options=[{value:'an',label:'An'},{value:'binh',label:'Bình'},{value:'cuong',label:'Cường'}]; c.value=['an','binh'];",
+      "selectors": [
+        ".td-chip-input__chip",
+        ".td-chip-input__remove"
+      ]
+    },
+    {
+      "state": "open",
+      "setup": "const c=document.createElement('td-chip-input'); c.id='probe'; c.setAttribute('aria-label','Tác giả'); c.setAttribute('show-on-focus',''); window.__mount.appendChild(c); c.options=[{value:'an',label:'An'},{value:'binh',label:'Bình'},{value:'cuong',label:'Cường'}]; c.querySelector('.td-chip-input__input').focus();",
+      "selectors": [
+        ".td-chip-input__menu",
+        ".td-chip-input__option"
+      ],
+      "portal": [
+        ".td-chip-input__menu",
+        ".td-chip-input__option"
+      ],
+      "settle": 450,
+      "excludeProps": [
+        "top",
+        "left",
+        "right",
+        "bottom"
+      ]
+    },
+    {
+      "state": "create-option",
+      "setup": "const c=document.createElement('td-chip-input'); c.id='probe'; c.setAttribute('aria-label','Tác giả'); c.setAttribute('allow-create',''); window.__mount.appendChild(c); c.options=[{value:'an',label:'An'},{value:'binh',label:'Bình'},{value:'cuong',label:'Cường'}]; const i=c.querySelector('.td-chip-input__input'); i.focus(); i.value='Dũng'; i.dispatchEvent(new Event('input',{bubbles:true}));",
+      "selectors": [
+        ".td-chip-input__option--create"
+      ],
+      "portal": [
+        ".td-chip-input__option--create"
+      ],
+      "settle": 450
+    },
+    {
+      "state": "error",
+      "setup": "const c=document.createElement('td-chip-input'); c.id='probe'; c.setAttribute('aria-label','Tác giả'); c.setAttribute('error-text','Cần ít nhất một tác giả'); window.__mount.appendChild(c); c.options=[{value:'an',label:'An'},{value:'binh',label:'Bình'},{value:'cuong',label:'Cường'}]; ",
+      "selectors": [
+        ".td-chip-input__box",
+        ".td-field-error"
+      ]
+    },
+    {
+      "state": "disabled",
+      "setup": "const c=document.createElement('td-chip-input'); c.id='probe'; c.setAttribute('aria-label','Tác giả'); c.setAttribute('disabled',''); window.__mount.appendChild(c); c.options=[{value:'an',label:'An'},{value:'binh',label:'Bình'},{value:'cuong',label:'Cường'}]; c.value=['an'];",
+      "selectors": [
+        ".td-chip-input__box"
+      ]
+    }
+  ],
+  "td-form-validation": [
+    {
+      "state": "native-error",
+      "setup": "const f=document.createElement('form'); f.id='probe'; f.innerHTML='<label for=\"fv-email\">Email</label><input id=\"fv-email\" name=\"email\" type=\"email\" required><label for=\"fv-name\">Tên</label><input id=\"fv-name\" name=\"name\" required>'; window.__mount.appendChild(f); TdFormValidation.validate(f,{summary:false,focus:false});",
+      "selectors": [
+        ".td-field-error[data-td-fv]"
+      ],
+      "selectorNote": "the native <input> itself is host-styled (td.css does not style native controls); only the td note is ours"
+    },
+    {
+      "state": "summary",
+      "setup": "const f=document.createElement('form'); f.id='probe'; f.innerHTML='<label for=\"fv-email\">Email</label><input id=\"fv-email\" name=\"email\" type=\"email\" required><label for=\"fv-name\">Tên</label><input id=\"fv-name\" name=\"name\" required>'; window.__mount.appendChild(f); TdFormValidation.validate(f,{summary:true,focus:false});",
+      "selectors": [
+        ".td-form-summary",
+        ".td-form-summary__title",
+        ".td-form-summary__list",
+        ".td-form-summary__link"
       ]
     }
   ]
