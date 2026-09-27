@@ -1,18 +1,26 @@
 /*
- * td-tooltip (src/feedback/td-tooltip.js). Small text-bearing floating chip → Regular STRONG glass
- * (.td-glass-surface--strong on the element; no arrow — D14). Custom colour chips ([data-custom]) are SOLID.
- * position: fixed, geometry (top/left) written by JS through CSSOM. Hoverable (pointer-events: auto, WCAG 1.4.13).
- * State: [hidden] · [data-state="open"] (fade + scale from the trigger side) · data-placement · [data-custom].
+ * td-tooltip (src/feedback/td-tooltip.js). v0.14.0 (plan G8): the dwp tooltip look in glass — small text chip on
+ * Regular STRONG glass (.td-glass-surface--strong on the element) with an arrow. Custom colour chips ([data-custom])
+ * are SOLID. position: fixed, geometry (top/left) written by JS through CSSOM. Hoverable while open
+ * (pointer-events: auto, WCAG 1.4.13).
+ * Arrow = `::after` of the SAME element: a rotated square clipped to its outer half, painting the chip's own
+ * background-color and border-color (inherit), no backdrop-filter of its own. JS writes `--td-tooltip-arrow-x`
+ * (top/bottom) / `--td-tooltip-arrow-y` (left/right) = the trigger centre in the padding box, so it keeps pointing
+ * at the trigger when the chip is clamped to the viewport (50 % when unset).
+ * State: [hidden] · [data-state="open"] (opacity-only fade) · data-placement · [data-custom].
  * No interactive targets inside → no focus ring / coarse-pointer sizing needed.
  */
 @layer td.tokens {
 	:root {
 		--td-tooltip-max-w: 18rem;
-		--td-tooltip-pad-y: 0.375rem;
-		--td-tooltip-pad-x: 0.625rem;
+		--td-tooltip-pad-y: 0.4rem;
+		--td-tooltip-pad-x: 0.6rem;
 		--td-tooltip-radius: var(--td-radius-md);
 		--td-tooltip-gap: 8px;
-		--td-tooltip-font-size: var(--td-text-xs);
+		--td-tooltip-font-size: var(--td-text-sm);
+		--td-tooltip-leading: 1.4;
+		--td-tooltip-arrow-size: 8px;
+		--td-tooltip-dur: 120ms;
 	}
 }
 
@@ -28,19 +36,15 @@
 		padding: var(--td-tooltip-pad-y) var(--td-tooltip-pad-x);
 		font-family: var(--td-font-sans);
 		font-size: var(--td-tooltip-font-size);
-		font-weight: var(--td-fw-medium);
-		line-height: var(--td-leading-normal);
-		text-align: center;
+		font-weight: var(--td-fw-normal);
+		line-height: var(--td-tooltip-leading);
+		text-align: start;
 		white-space: normal;
-		overflow-wrap: anywhere;
+		overflow-wrap: break-word;
 		border-radius: var(--td-tooltip-radius);
-		pointer-events: auto;
+		pointer-events: none;
 		opacity: 0;
-		transform: scale(var(--_td-glass-enter, var(--td-glass-enter-scale)));
-		transform-origin: 50% 100%;
-		transition:
-			opacity var(--_td-glass-dur, var(--td-dur-fast)) var(--td-ease),
-			transform var(--_td-glass-dur, var(--td-glass-dur)) var(--td-glass-ease);
+		transition: opacity var(--td-tooltip-dur) var(--td-ease);
 	}
 
 	.td-tooltip[hidden] {
@@ -49,19 +53,53 @@
 
 	.td-tooltip[data-state="open"] {
 		opacity: 1;
-		transform: none;
+		pointer-events: auto;
 	}
-
-	.td-tooltip[data-placement="bottom"] { transform-origin: 50% 0; }
-	.td-tooltip[data-placement="left"] { transform-origin: 100% 50%; }
-	.td-tooltip[data-placement="right"] { transform-origin: 0 50%; }
 
 	.td-tooltip__content {
 		display: block;
 	}
 
+	/* Arrow: default (and data-placement="top") points down from the bottom edge. */
+	.td-tooltip::after {
+		content: "";
+		position: absolute;
+		top: calc(100% - var(--td-tooltip-arrow-size) / 2);
+		left: calc(var(--td-tooltip-arrow-x, 50%) - var(--td-tooltip-arrow-size) / 2);
+		box-sizing: border-box;
+		width: var(--td-tooltip-arrow-size);
+		height: var(--td-tooltip-arrow-size);
+		background-color: inherit;
+		border: 1px solid;
+		border-color: inherit;
+		transform: rotate(45deg);
+		clip-path: polygon(100% 0, 100% 100%, 0 100%);
+		pointer-events: none;
+	}
+
+	.td-tooltip[data-placement="bottom"]::after {
+		top: calc(var(--td-tooltip-arrow-size) / -2);
+		clip-path: polygon(0 0, 100% 0, 0 100%);
+	}
+
+	.td-tooltip[data-placement="left"]::after,
+	.td-tooltip[data-placement="right"]::after {
+		top: calc(var(--td-tooltip-arrow-y, 50%) - var(--td-tooltip-arrow-size) / 2);
+	}
+
+	.td-tooltip[data-placement="left"]::after {
+		left: calc(100% - var(--td-tooltip-arrow-size) / 2);
+		clip-path: polygon(0 0, 100% 0, 100% 100%);
+	}
+
+	.td-tooltip[data-placement="right"]::after {
+		left: calc(var(--td-tooltip-arrow-size) / -2);
+		clip-path: polygon(0 0, 100% 100%, 0 100%);
+	}
+
 	/* Custom colour chip (data-tooltip-color): solid, never glass. Colours come from CSSOM custom properties
-	   (validated with safeColor; fg = WCAG black/white unless data-tooltip-text-color is given). */
+	   (validated with safeColor; fg = WCAG black/white unless data-tooltip-text-color is given). The arrow inherits
+	   the solid fill. */
 	.td-tooltip[data-custom] {
 		background: var(--td-tooltip-bg);
 		color: var(--td-tooltip-fg);
@@ -70,16 +108,9 @@
 		backdrop-filter: none;
 	}
 
-	/* No glass on glass: over an open modal the chip goes solid (private tokens, so the a11y fallbacks still win). */
-	:root:has(.td-modal[data-state="open"]) .td-tooltip {
-		--_td-glass-fill: var(--td-glass-solid);
-		--_td-glass-filter: none;
-	}
-
 	@media (prefers-reduced-motion: reduce) {
 		.td-tooltip {
-			transform: none;
-			transition: opacity var(--td-dur-fast) linear;
+			transition: none;
 		}
 	}
 

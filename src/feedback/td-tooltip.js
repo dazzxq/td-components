@@ -4,24 +4,34 @@ import { safeColor } from '../utils/css-safe.js';
 
 /**
  * TdTooltip — global tooltip singleton with auto-init. Token-native (needs td.css; styles:
- * src/styles/components/tooltip.css). Any element with `data-tooltip="text"` gets a tooltip.
+ * src/styles/components/tooltip.css). Any element with `data-tooltip="text"` gets a tooltip. v0.14.0 (plan G8):
+ * dwp look + behaviour in glass, td a11y kept.
  *
- * Declarative API (unchanged): `data-tooltip`, `data-tooltip-position="top|bottom|left|right"` (default top; flips to
- * the opposite side when it does not fit), `data-tooltip-color` (solid custom chip; validated with safeColor),
- * `data-tooltip-text-color` (only with `data-tooltip-color`; default = black/white by WCAG contrast).
+ * Declarative API: `data-tooltip`, `data-tooltip-position="top|bottom|left|right"` (default top; flips to the
+ * opposite side when it does not fit, then clamps into the viewport), `data-tooltip-color` (solid custom chip;
+ * validated with safeColor), `data-tooltip-text-color` (only with `data-tooltip-color`; default = black/white by WCAG
+ * contrast). dwp aliases (dwp markup works unchanged): `data-dwp-tooltip` (text), `data-tooltip-pos` /
+ * `data-dwp-tooltip-pos` (side). When both spellings are present the td one (`data-tooltip`,
+ * `data-tooltip-position`) wins — a present but empty `data-tooltip` therefore disables a `data-dwp-tooltip`.
  *
  * DOM contract (one element, portaled to <body>):
  *   <div id="td-tooltip" class="td-tooltip td-glass-surface td-glass-surface--strong" role="tooltip" hidden
  *        [data-state="open"] data-placement="top|bottom|left|right" [data-custom]>
  *     <span class="td-tooltip__content">{text}</span>
  *   </div>
+ *   The arrow is `.td-tooltip::after` (same element → same fill/edge, no own backdrop-filter). Geometry via CSSOM:
+ *   top/left, `--td-tooltip-arrow-x` (top/bottom) or `--td-tooltip-arrow-y` (left/right) = the trigger centre in the
+ *   chip's padding box, so the arrow keeps pointing at the trigger when the chip is clamped to the viewport.
  *   trigger while shown: aria-describedby="{existing ids} td-tooltip" (own id only; removed on hide)
  *
- * Behaviour (WCAG 1.4.13): shows on pointerenter (mouse/pen; touch ignored) and on keyboard focus (focusin when the
- * target is :focus-visible); hides on pointerleave/focusout after a short grace so the pointer can move ONTO the
- * tooltip (hoverable); no auto-hide; Escape dismisses it through the layer registry (tooltip layer 510, keyboard
- * boundary without Tab handling), so Escape over a modal hides only the tooltip. Hidden when the trigger scrolls out
- * of view, on resize-out, window blur, or when the trigger leaves the DOM.
+ * Behaviour (dwp): shows on pointerenter for every pointer type (touch included) and on ANY focus; hides on
+ * pointerleave of the trigger after a short grace so the pointer can move ONTO the chip (hoverable, WCAG 1.4.13),
+ * on focusout, any scroll (capture), resize, window blur, Escape (layer registry: tooltip layer 510, keyboard boundary
+ * without Tab handling, so Escape over a modal hides only the tooltip) or when the trigger leaves the DOM. No
+ * auto-hide timer. td a11y refinements: while the trigger holds KEYBOARD focus (:focus-visible) pointerleave does
+ * not hide it and a scroll (e.g. the browser scrolling the focused trigger into view) repositions instead of hiding;
+ * a lifted finger is not a hover-out, so a touch-shown chip stays until focus leaves, the next tap elsewhere, a
+ * scroll or Escape.
  *
  * Accessible-name policy (D15, deterministic and conservative) — names are touched ONLY for supported triggers:
  * native <button>, <a href>, input[type=button|submit|reset|image], and elements whose explicit role is
@@ -29,12 +39,15 @@ import { safeColor } from '../utils/css-safe.js';
  * and linked as a description).
  *  - named (see `_accessibleName`) → `title` removed; tooltip = description while shown (skipped when equal to the name)
  *  - unnamed + non-empty `title` → `title` moved to `aria-label` (`data-td-tooltip-named="title"`)
- *  - unnamed, no `title` → `data-tooltip` becomes `aria-label` (`data-td-tooltip-named="tooltip"`) + console.warn
+ *  - unnamed, no `title` → tooltip text becomes `aria-label` (`data-td-tooltip-named="tooltip"`) + console.warn
  */
 
 const TIP_ID = 'td-tooltip';
 const HIDE_GRACE_MS = 100;
 const EDGE = 8;
+/** Trigger selector: td attribute + dwp alias. */
+const TRIGGER = '[data-tooltip], [data-dwp-tooltip]';
+const SIDES = new Set(['top', 'bottom', 'left', 'right']);
 const SUPPORTED_ROLES = new Set(['button', 'link', 'tab', 'menuitem']);
 const INPUT_BUTTON_TYPES = new Set(['button', 'submit', 'reset']);
 /** UA wording for value-less submit/reset inputs (their accessible name). */
@@ -91,6 +104,12 @@ function isKeyboardFocus(el) {
   try { return el.matches(':focus-visible'); } catch { return true; }
 }
 
+/** Whether `el` is a tooltip trigger (td or dwp attribute). */
+const isTrigger = (el) => el.hasAttribute('data-tooltip') || el.hasAttribute('data-dwp-tooltip');
+
+/** Clamp `v` into [min, max]; the midpoint when the range is empty. */
+const clamp = (v, min, max) => (min > max ? (min + max) / 2 : Math.max(min, Math.min(v, max)));
+
 /** Relative luminance (WCAG 2.x) of an {r,g,b} 0–255 colour. */
 function luminance({ r, g, b }) {
   const f = (v) => {
@@ -106,7 +125,7 @@ export class TdTooltip {
         this.tooltip = null;
         /** @type {HTMLElement|null} */
         this.tooltipContent = null;
-        /** @type {null} kept for shape compatibility — the arrow was removed in 0.9 (D14) */
+        /** @type {null} kept for shape compatibility — the arrow is the CSS pseudo-element `.td-tooltip::after` */
         this.tooltipArrow = null;
         /** @type {HTMLElement|null} */
         this.currentElement = null;
@@ -128,6 +147,8 @@ export class TdTooltip {
         this._pointerIn = false;
         this._focusIn = false;
         this._rafReposition = 0;
+        /** @type {ReturnType<typeof setTimeout>|null} fade-out → [hidden] */
+        this._fadeTimeout = null;
         /** @type {WeakSet<Element>} triggers already warned about (unnamed) */
         this._warned = new WeakSet();
     }
@@ -165,7 +186,6 @@ export class TdTooltip {
         const opts = { capture: true, signal: this._abort.signal };
 
         document.addEventListener('pointerenter', (e) => {
-            if (e.pointerType === 'touch') return; // taps never pop tooltips (D16)
             this.lastMouseEvent = e;
             const t = e.target;
             if (!(t instanceof Element)) return;
@@ -173,7 +193,7 @@ export class TdTooltip {
                 if (this.isVisible) { this._pointerIn = true; this._cancelHide(); }
                 return;
             }
-            const trigger = /** @type {HTMLElement|null} */ (t.closest('[data-tooltip]'));
+            const trigger = /** @type {HTMLElement|null} */ (t.closest(TRIGGER));
             if (!trigger || !this.getTooltipContent(trigger)) return;
             if (trigger === this.currentElement && this.isVisible) {
                 this._pointerIn = true;
@@ -185,22 +205,30 @@ export class TdTooltip {
         }, opts);
 
         document.addEventListener('pointerleave', (e) => {
-            if (e.pointerType === 'touch' || !this.isVisible) return;
+            if (!this.isVisible) return;
             this.lastMouseEvent = e;
-            // `matches`-style: only leaving the trigger itself or the tooltip counts (icon ↔ text moves inside a
-            // button fire pointerleave on the child, which is ignored).
+            // `matches`-style (dwp fix): only leaving the trigger itself or the tooltip counts (icon ↔ text moves
+            // inside a button fire pointerleave on the child, which is ignored).
             if (e.target !== this.currentElement && e.target !== this.tooltip) return;
             this._pointerIn = false;
+            // A lifted finger always "leaves": a touch-shown chip stays until focusout / tap elsewhere / scroll.
+            if (e.pointerType === 'touch') return;
             this._scheduleHide();
+        }, opts);
+
+        document.addEventListener('pointerdown', (e) => {
+            if (!this.isVisible || !(e.target instanceof Node)) return;
+            const cur = this.currentElement;
+            if ((cur && cur.contains(e.target)) || (this.tooltip && this.tooltip.contains(e.target))) return;
+            this.hide(); // a tap / click elsewhere
         }, opts);
 
         document.addEventListener('focusin', (e) => {
             const t = e.target;
             if (!(t instanceof Element)) return;
-            const trigger = /** @type {HTMLElement|null} */ (t.closest('[data-tooltip]'));
+            const trigger = /** @type {HTMLElement|null} */ (t.closest(TRIGGER));
             if (!trigger || !this.getTooltipContent(trigger)) return;
-            if (!isKeyboardFocus(t)) return; // mouse/touch focus: pointer events own those
-            if (trigger !== this.currentElement || !this.isVisible) this.show(trigger);
+            if (trigger !== this.currentElement || !this.isVisible) this.show(trigger); // ANY focus (dwp)
             this._focusIn = true;
             this._cancelHide();
         }, opts);
@@ -214,15 +242,16 @@ export class TdTooltip {
             this._scheduleHide();
         }, opts);
 
-        const reposition = () => {
-            if (!this.isVisible || this._rafReposition) return;
+        document.addEventListener('scroll', () => {
+            if (!this.isVisible) return;
+            if (!this._keyboardFocused()) { this.hide(); return; }
+            if (this._rafReposition) return; // keyboard focus: follow the trigger (focus scrolls it into view)
             this._rafReposition = requestAnimationFrame(() => {
                 this._rafReposition = 0;
                 if (this.isVisible && this.currentElement) this.position(this.currentElement);
             });
-        };
-        document.addEventListener('scroll', reposition, opts);
-        window.addEventListener('resize', reposition, { signal: this._abort.signal });
+        }, opts);
+        window.addEventListener('resize', () => { if (this.isVisible) this.hide(); }, { signal: this._abort.signal });
         window.addEventListener('blur', () => { if (this.isVisible) this.hide(); }, { signal: this._abort.signal });
     }
 
@@ -231,13 +260,13 @@ export class TdTooltip {
      * data-tooltip changes (replaces the old blind `title` stripping).
      */
     preventNativeTooltipConflicts() {
-        document.querySelectorAll('[data-tooltip]').forEach((el) => this._prepare(/** @type {HTMLElement} */ (el)));
+        document.querySelectorAll(TRIGGER).forEach((el) => this._prepare(/** @type {HTMLElement} */ (el)));
         if (typeof MutationObserver === 'undefined' || !document.body) return;
         this._observer = new MutationObserver((records) => {
             for (const m of records) {
                 if (m.type === 'attributes') {
                     const el = /** @type {HTMLElement} */ (m.target);
-                    if (!el.isConnected || !el.hasAttribute('data-tooltip')) continue;
+                    if (!el.isConnected || !isTrigger(el)) continue;
                     this._prepare(el);
                     if (el === this.currentElement && this.isVisible) this._refreshContent(el);
                     continue;
@@ -245,14 +274,14 @@ export class TdTooltip {
                 m.addedNodes.forEach((node) => {
                     if (node.nodeType !== 1 || !node.isConnected) return; // removed again in the same batch
                     const el = /** @type {Element} */ (node);
-                    if (el.hasAttribute('data-tooltip')) this._prepare(/** @type {HTMLElement} */ (el));
-                    el.querySelectorAll('[data-tooltip]').forEach((c) => this._prepare(/** @type {HTMLElement} */ (c)));
+                    if (isTrigger(el)) this._prepare(/** @type {HTMLElement} */ (el));
+                    el.querySelectorAll(TRIGGER).forEach((c) => this._prepare(/** @type {HTMLElement} */ (c)));
                 });
             }
             if (this.currentElement && !this.currentElement.isConnected) this.hide();
         });
         this._observer.observe(document.body, {
-            childList: true, subtree: true, attributes: true, attributeFilter: ['title', 'data-tooltip'],
+            childList: true, subtree: true, attributes: true, attributeFilter: ['title', 'data-tooltip', 'data-dwp-tooltip'],
         });
     }
 
@@ -262,6 +291,7 @@ export class TdTooltip {
         if (this._abort) { this._abort.abort(); this._abort = null; }
         if (this._observer) { this._observer.disconnect(); this._observer = null; }
         if (this._rafReposition) { cancelAnimationFrame(this._rafReposition); this._rafReposition = 0; }
+        this._cancelFade();
         if (this.tooltip) this.tooltip.remove();
         this.tooltip = null;
         this.tooltipContent = null;
@@ -277,12 +307,13 @@ export class TdTooltip {
         if (!content) return;
         if (!this.tooltip || !this.tooltip.isConnected) this.createTooltipElement();
         this._cancelHide();
+        this._cancelFade();
 
         if (this.currentElement && this.currentElement !== element) this._unlink();
         this.currentElement = element;
         this._pointerIn = false;
         const active = document.activeElement;
-        this._focusIn = !!active && element.contains(active) && isKeyboardFocus(active);
+        this._focusIn = !!active && element.contains(active);
         this._prepare(element);
 
         const tip = /** @type {HTMLElement} */ (this.tooltip);
@@ -306,12 +337,25 @@ export class TdTooltip {
         });
     }
 
-    /** Hide the tooltip and reset state (releases the layer registration and the description link). */
+    /**
+     * Hide the tooltip and reset state (releases the layer registration and the description link). The chip fades out
+     * (opacity, `--td-tooltip-dur`; pointer-inert meanwhile) and gets [hidden] when the fade ends.
+     */
     hide() {
         this._cancelHide();
-        if (this.tooltip) {
-            this.tooltip.hidden = true;
-            this.tooltip.removeAttribute('data-state');
+        const tip = this.tooltip;
+        if (tip && !tip.hidden) {
+            const dur = tip.getAttribute('data-state') === 'open' ? this._fadeMs(tip) : 0;
+            tip.removeAttribute('data-state');
+            this._cancelFade();
+            if (dur > 0) {
+                this._fadeTimeout = setTimeout(() => {
+                    this._fadeTimeout = null;
+                    if (!this.isVisible && this.tooltip) this.tooltip.hidden = true;
+                }, dur);
+            } else {
+                tip.hidden = true;
+            }
         }
         this._unlink();
         if (this._layer) { this._layer.release(); this._layer = null; }
@@ -322,9 +366,11 @@ export class TdTooltip {
     }
 
     /**
-     * Place the tooltip against `element` (position: fixed, CSSOM geometry). top/bottom → placeFloating (flip + clamp);
-     * left/right → beside the trigger when that side (or the opposite one) fits, else placeFloating on top.
-     * Hides when the trigger is not rendered / scrolled out of view.
+     * Place the tooltip against `element` (position: fixed, CSSOM geometry): the preferred side (td/dwp position
+     * attribute, default top), flipped to the opposite side when it does not fit, clamped into the viewport (8 px).
+     * top/bottom → placeFloating; left/right → beside the trigger when that side (or the opposite one) fits, else
+     * placeFloating on top. Then points the arrow at the trigger centre. Hides when the trigger is not rendered /
+     * scrolled out of view.
      * @param {HTMLElement} element
      */
     position(element) {
@@ -336,7 +382,8 @@ export class TdTooltip {
         s.setProperty('left', '0px'); // measure at natural width (fixed + left:0 → full shrink-to-fit room)
         s.setProperty('top', '0px');
         const gap = parseFloat(getComputedStyle(tip).getPropertyValue('--td-tooltip-gap')) || 8;
-        const pos = (element.dataset.tooltipPosition || 'top').trim().toLowerCase();
+        const pos = this.getTooltipPosition(element);
+        let side = null;
 
         if (pos === 'left' || pos === 'right') {
             const vw = window.innerWidth;
@@ -345,18 +392,44 @@ export class TdTooltip {
             const h = tip.offsetHeight;
             const room = { left: rect.left - gap - EDGE, right: vw - rect.right - gap - EDGE };
             const other = pos === 'left' ? 'right' : 'left';
-            const side = w <= room[pos] ? pos : (w <= room[other] ? other : null);
+            side = w <= room[pos] ? pos : (w <= room[other] ? other : null);
             if (side) {
                 const left = side === 'left' ? rect.left - gap - w : rect.right + gap;
                 const top = Math.max(EDGE, Math.min(rect.top + rect.height / 2 - h / 2, vh - h - EDGE));
                 s.setProperty('left', `${Math.round(left)}px`);
                 s.setProperty('top', `${Math.round(top)}px`);
-                tip.setAttribute('data-placement', side);
-                return;
             }
         }
-        const r = placeFloating(element, tip, { side: pos === 'bottom' ? 'bottom' : 'top', width: 'auto', gap });
-        tip.setAttribute('data-placement', r.side);
+        if (!side) {
+            side = placeFloating(element, tip, { side: pos === 'bottom' ? 'bottom' : 'top', width: 'auto', gap }).side;
+        }
+        tip.setAttribute('data-placement', side);
+        this._placeArrow(rect, side);
+    }
+
+    /**
+     * Point the arrow at the trigger centre (CSSOM `--td-tooltip-arrow-x|y`, padding-box px), kept clear of the
+     * rounded corners — also when the chip was clamped to the viewport.
+     * @private
+     * @param {DOMRect} rect trigger rect
+     * @param {string} side placement
+     */
+    _placeArrow(rect, side) {
+        const tip = /** @type {HTMLElement} */ (this.tooltip);
+        const t = tip.getBoundingClientRect();
+        const cs = getComputedStyle(tip);
+        const size = parseFloat(cs.getPropertyValue('--td-tooltip-arrow-size')) || 8;
+        const inset = (parseFloat(cs.borderTopLeftRadius) || 0) + size * 0.75;
+        const px = (v) => `${Math.round(v * 10) / 10}px`;
+        if (side === 'left' || side === 'right') {
+            const y = clamp(rect.top + rect.height / 2 - t.top, inset, t.height - inset) - tip.clientTop;
+            tip.style.setProperty('--td-tooltip-arrow-y', px(y));
+            tip.style.removeProperty('--td-tooltip-arrow-x');
+        } else {
+            const x = clamp(rect.left + rect.width / 2 - t.left, inset, t.width - inset) - tip.clientLeft;
+            tip.style.setProperty('--td-tooltip-arrow-x', px(x));
+            tip.style.removeProperty('--td-tooltip-arrow-y');
+        }
     }
 
     /** @returns {boolean} whether the pointer is over the current trigger or the tooltip */
@@ -378,12 +451,30 @@ export class TdTooltip {
     }
 
     /**
-     * Tooltip text from data-tooltip.
+     * Tooltip text: `data-tooltip`, else the dwp alias `data-dwp-tooltip` (a present `data-tooltip` always wins).
      * @param {HTMLElement} element
      * @returns {string|null}
      */
     getTooltipContent(element) {
-        return (element && element.dataset && element.dataset.tooltip) || null;
+        if (!element || typeof element.getAttribute !== 'function') return null;
+        const text = element.hasAttribute('data-tooltip')
+            ? element.getAttribute('data-tooltip')
+            : element.getAttribute('data-dwp-tooltip');
+        return text || null;
+    }
+
+    /**
+     * Preferred side: `data-tooltip-position`, else the aliases `data-tooltip-pos` / `data-dwp-tooltip-pos`; default
+     * top. The first attribute holding a valid side wins.
+     * @param {HTMLElement} element
+     * @returns {'top'|'bottom'|'left'|'right'}
+     */
+    getTooltipPosition(element) {
+        for (const a of ['data-tooltip-position', 'data-tooltip-pos', 'data-dwp-tooltip-pos']) {
+            const v = (element.getAttribute(a) || '').trim().toLowerCase();
+            if (SIDES.has(v)) return /** @type {'top'|'bottom'|'left'|'right'} */ (v);
+        }
+        return 'top';
     }
 
     /**
@@ -502,13 +593,38 @@ export class TdTooltip {
         else el.removeAttribute('aria-describedby');
     }
 
-    /** @private */
+    /** @private hide after the grace unless the pointer is back or the trigger keeps KEYBOARD focus. */
     _scheduleHide() {
         this._cancelHide();
         this.hideTimeout = setTimeout(() => {
             this.hideTimeout = null;
-            if (!this._pointerIn && !this._focusIn) this.hide();
+            if (!this._pointerIn && !(this._focusIn && this._keyboardFocused())) this.hide();
         }, HIDE_GRACE_MS);
+    }
+
+    /** @private whether the current trigger holds :focus-visible (keyboard) focus */
+    _keyboardFocused() {
+        const cur = this.currentElement;
+        const active = document.activeElement;
+        return !!cur && !!active && cur.contains(active) && isKeyboardFocus(active);
+    }
+
+    /** @private */
+    _cancelFade() {
+        if (this._fadeTimeout) { clearTimeout(this._fadeTimeout); this._fadeTimeout = null; }
+    }
+
+    /**
+     * @private computed opacity transition length (ms) of the chip; 0 under reduced motion.
+     * @param {HTMLElement} tip
+     * @returns {number}
+     */
+    _fadeMs(tip) {
+        const cs = getComputedStyle(tip);
+        const props = cs.transitionProperty.split(',').map((p) => p.trim());
+        const durs = cs.transitionDuration.split(',').map((d) => parseFloat(d) * (d.trim().endsWith('ms') ? 1 : 1000));
+        const i = props.findIndex((p) => p === 'opacity' || p === 'all');
+        return i < 0 ? 0 : (durs[i % durs.length] || 0);
     }
 
     /** @private */
