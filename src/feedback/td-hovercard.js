@@ -107,8 +107,8 @@ let dismissedBinding = null;
 const handledEvents = new WeakSet();
 let overCard = false;
 let suppressFocus = false;
-/** @type {{ trigger: HTMLElement|null, at: number }} */
-let lastTouch = { trigger: null, at: 0 };
+/** trigger → time of its last touch / pen press. Weak: never keeps a removed trigger alive (review ISSUE-13). */
+const lastTouch = new WeakMap();
 
 const isThenable = (v) => !!v && (typeof v === 'object' || typeof v === 'function') && typeof v.then === 'function';
 
@@ -507,7 +507,7 @@ function onOut(e, trigger) {
 
 function onFocusIn(trigger, binding) {
   if (suppressFocus) return;
-  if (lastTouch.trigger === trigger && Date.now() - lastTouch.at < TOUCH_FOCUS_MS) return; // a tap's focus
+  if (Date.now() - (lastTouch.get(trigger) ?? -Infinity) < TOUCH_FOCUS_MS) return; // a tap's focus
   // Only KEYBOARD-visible focus opens at once; a mouse click's focus goes through the 350 ms hover intent (ISSUE-3).
   let visible = true;
   try { visible = trigger.matches(':focus-visible'); } catch { /* engines without :focus-visible: keep opening */ }
@@ -517,7 +517,7 @@ function onFocusIn(trigger, binding) {
 }
 
 function onPress(e, trigger) {
-  if (e.pointerType && e.pointerType !== 'mouse') lastTouch = { trigger, at: Date.now() };
+  if (e.pointerType && e.pointerType !== 'mouse') lastTouch.set(trigger, Date.now());
 }
 
 /**
