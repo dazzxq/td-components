@@ -1,0 +1,38 @@
+<!-- TdHovercard markup contract (src/feedback/td-hovercard.js, plan v0.14.0 G10). `data-setup` is a JS function body
+     run with `el` = the mounted markup's root, `TdHovercard` and `unbinds` (push the returned unbind) in scope.
+     Trigger templates compare `el.firstElementChild` after binding; `data-portal` templates compare the open
+     body-portaled `#td-hovercard` card (open / loading / error). SSR adapters emit the TRIGGER markup (a link or a
+     button with data-td-hovercard="url" or data-td-hovercard-template="id") plus the <template>; the card itself is
+     always created by JS. Checked by src/feedback/td-v014-hovercard.browser-test.js. -->
+<template data-component="td-hovercard-trigger"
+          data-markup='<div><a href="/u/7" data-td-hovercard-template="hc-user-7">Nguyễn Lan</a></div>'
+          data-setup='unbinds.push(TdHovercard.bindAll(el));'>
+  <a href="/u/7" data-td-hovercard-template="hc-user-7" aria-haspopup="dialog" aria-expanded="false">Nguyễn Lan</a>
+</template>
+<template data-component="td-hovercard-trigger"
+          data-markup='<div><span data-td-hovercard="/api/users/8/card">Trần Minh</span></div>'
+          data-setup='unbinds.push(TdHovercard.bindAll(el));'>
+  <span data-td-hovercard="/api/users/8/card" tabindex="0" aria-haspopup="dialog" aria-expanded="false">Trần Minh</span>
+</template>
+<template data-component="td-hovercard" data-portal
+          data-markup='<div><button type="button" id="hc-open">Nguyễn Lan</button></div>'
+          data-setup='const t = el.firstElementChild; unbinds.push(TdHovercard.bind(t, { content: () => {
+            const p = document.createElement("p"); p.textContent = "Biên tập viên"; return p; } })); t.focus();'>
+  <div class="td-hovercard td-glass-surface td-glass-surface--strong" id="td-hovercard" role="dialog" tabindex="-1" aria-label="Nguyễn Lan" data-state="open" data-placement="bottom">
+    <p>Biên tập viên</p>
+  </div>
+</template>
+<template data-component="td-hovercard" data-portal
+          data-markup='<div><button type="button" id="hc-load" data-td-hovercard-label="Hồ sơ Lan">Lan</button></div>'
+          data-setup='const t = el.firstElementChild; unbinds.push(TdHovercard.bind(t, { content: () => new Promise(() => {}) })); t.focus();'>
+  <div class="td-hovercard td-glass-surface td-glass-surface--strong" id="td-hovercard" role="dialog" tabindex="-1" aria-label="Hồ sơ Lan" data-state="loading" data-placement="bottom">
+    <p class="td-hovercard__status" role="status"><span class="td-hovercard__spinner td-spinner td-spinner--sm" aria-hidden="true"><svg class="td-spinner__svg" aria-hidden="true"></svg></span><span class="td-hovercard__text">Đang tải…</span></p>
+  </div>
+</template>
+<template data-component="td-hovercard" data-portal data-await="30"
+          data-markup='<div><button type="button" id="hc-err">Lan</button></div>'
+          data-setup='const t = el.firstElementChild; unbinds.push(TdHovercard.bind(t, { content: () => Promise.reject(new Error("x")) })); t.focus();'>
+  <div class="td-hovercard td-glass-surface td-glass-surface--strong" id="td-hovercard" role="dialog" tabindex="-1" aria-label="Lan" data-state="error" data-placement="bottom">
+    <p class="td-hovercard__status" role="status"><span class="td-hovercard__text">Không tải được nội dung.</span></p>
+  </div>
+</template>
