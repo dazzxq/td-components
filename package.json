@@ -19,6 +19,7 @@
     "capture:baseline": "node test/csp/capture-baseline.mjs",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
+    "demo": "vite --open /demo.html",
     "check:stories": "node --import ./scripts/check-stories/register.mjs scripts/check-stories.mjs",
     "test:engines": "node test/engines/menu-tab.spec.mjs"
   },
