@@ -9,13 +9,14 @@ cũng không dùng font icon (Font Awesome…) cho UI mới.
 
 | | |
 |---|---|
-| Import | `import { tdIcon, registerIcons, hasIcon, listIcons } from '@dazzxq/td-components/icons'` · façade: `import '@dazzxq/td-components/icon-element'` (class: `import { TdIconElement } from '@dazzxq/td-components/icon-element'`) · dữ liệu: `@dazzxq/td-components/icons.json` |
+| Import | `import { tdIcon, registerIcons, hasIcon, listIcons } from '@dazzxq/td-components/icons'` · façade: `import '@dazzxq/td-components/icon-element'` (class: `import { TdIconElement } from '@dazzxq/td-components/icon-element'`, hoặc từ entry gốc `@dazzxq/td-components` từ 0.16.0) · dữ liệu: `@dazzxq/td-components/icons.json` |
 | Loại | API JS (hàm) + custom element tuỳ chọn `<td-icon>` |
 | Form-associated | không |
 | Từ phiên bản | 0.6.0 ([ADR 0010](../internal/decisions/0010-icon-registry.md)) |
 
 Module `./icons` **không có side effect** khi import (không định nghĩa element nào). Chỉ `./icon-element` mới định
-nghĩa `<td-icon>`.
+nghĩa `<td-icon>` — và từ 0.16.0 entry gốc `@dazzxq/td-components` (barrel) cũng import nó, nên import barrel là có
+`<td-icon>`.
 
 ## Ví dụ nhanh
 
@@ -149,7 +150,8 @@ icon="search"`, thanh công cụ của lightbox, mục của menu… Icon bạn 
 | `svgStringToDefinition` | `(str: string) => IconDef \| null` | Chuyển chuỗi SVG thành định nghĩa đã kiểm tra, hoặc `null`. Dùng cho dữ liệu cũ (ví dụ `td-empty-state icon="<svg…>"`). |
 | `renderIconDefinition` | `(def: IconDef, opts?: { size?, class? }) => SVGSVGElement \| null` | Vẽ một định nghĩa mà không đăng ký (`data-icon="custom"`). Định nghĩa được kiểm tra lại, không hợp lệ → `null`. |
 
-(`_validateIconDefinition` cũng được export nhưng là nội bộ, dấu `_` nghĩa là không cam kết ổn định.)
+(Trước 0.16.0 module còn export `_validateIconDefinition`; từ 0.16.0 hàm này là nội bộ, không còn export. Kiểm tra
+một định nghĩa bằng `svgStringToDefinition` / `renderIconDefinition` hoặc bắt lỗi của `registerIcons`.)
 
 ## Đăng ký icon của site — `registerIcons()`
 
