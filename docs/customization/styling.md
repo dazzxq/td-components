@@ -169,24 +169,20 @@ Hai lưu ý quan trọng:
 
 1. **Inline thắng mọi stylesheet.** Nếu một nút có `color="…"`, rule CSS của bạn đặt `--td-btn-bg` trên host đó sẽ
    thua giá trị inline. Muốn CSS của site quyết định, đừng dùng attribute màu trên phần tử đó.
-2. **Component xoá lại custom property của chính nó khi attribute vắng mặt.** td-button, td-checkbox, td-toggle,
-   td-slider, td-pagination gọi `removeProperty` cho các property ở bảng trên mỗi lần render nếu không có attribute
-   tương ứng. Vì vậy **đừng** tự `host.style.setProperty('--td-slider-color', …)` trên host: nó sẽ bị xoá ở lần render
-   sau. Hãy dùng attribute (`color="…"`) hoặc đặt token trên **một phần tử cha** / class:
+2. **Component chỉ gỡ custom property do chính nó đặt** (0.16.0). td-button, td-checkbox, td-toggle, td-slider,
+   td-pagination ghi nhớ các property ở bảng trên mà chúng đã đặt từ attribute; khi attribute vắng mặt chỉ những giá
+   trị đó bị `removeProperty`. Biến site tự đặt inline trên host (`host.style.setProperty('--td-slider-color', …)`)
+   được giữ qua mọi lần render lại. (Trước 0.16.0 nó bị xoá ở lần render kế tiếp.) Nếu **cả** site lẫn attribute cùng
+   đặt một biến, attribute thắng, và khi attribute bị gỡ biến đó bị xoá luôn — đặt lại nếu cần.
 
 ```js
-// Sai: bị xoá khi slider render lại
-slider.style.setProperty('--td-slider-color', brand);
-
-// Đúng: dùng attribute của component (được kiểm tra an toàn)
-slider.setAttribute('color', brand);
-
-// Hoặc đặt trên phần tử cha (token kế thừa xuống)
-slider.parentElement.style.setProperty('--td-slider-color', brand);
+slider.style.setProperty('--td-slider-color', brand); // giữ nguyên khi slider render lại (0.16.0+)
+slider.setAttribute('color', brand);                   // hoặc attribute của component (được kiểm tra an toàn)
+slider.parentElement.style.setProperty('--td-slider-color', brand); // hoặc trên phần tử cha (token kế thừa xuống)
 ```
 
-Khi viết component riêng, theo cùng quy tắc: giá trị động đi qua `_applyStyles()` + `el.style.setProperty`, xem
-[extending.md](extending.md#tự-viết-component).
+Khi viết component riêng, theo cùng quy tắc: giá trị động đi qua `_applyStyles()` + `this._setOwnedStyle(name, value)`
+(đặt khi có giá trị, chỉ gỡ cái mình đã đặt), xem [extending.md](extending.md#tự-viết-component).
 
 ## Nhắm một instance duy nhất
 

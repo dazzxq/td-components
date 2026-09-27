@@ -432,9 +432,34 @@ td-input-field, td-dropdown, td-chip-input, td-datetime-picker, td-slider, td-ch
 | `setCustomValidity(message)` | Như input native: thêm / xoá `customError` (chặn submit) |
 | `checkValidity()`, `reportValidity()`, `validity`, `validationMessage` | Như input native |
 
-td-button **không** có hợp đồng lỗi (không form-associated). Thông báo validation mặc định của các control này (ví dụ
-`Trường này là bắt buộc`) cố định tiếng Việt; thay bằng `messages` của TdFormValidation hoặc `setError`. Chi tiết:
-[../guides/forms.md](../guides/forms.md).
+td-button **không** có hợp đồng lỗi (không form-associated). Thông báo validation mặc định (tiếng Việt) của
+td-input-field, td-slider, td-checkbox, td-toggle nằm trong object tĩnh `messages` của từng class (0.16.0, bảng dưới);
+đổi cho cả trang bằng `Object.assign(TdInputField.messages, { … })`. Theo từng field: `messages` của TdFormValidation
+hoặc `setError`. Chi tiết: [../guides/forms.md](../guides/forms.md).
+
+`TdInputField.messages` (`@dazzxq/td-components/input-field`):
+
+| Khoá | Mặc định |
+|---|---|
+| `valueMissing` | `Trường này là bắt buộc` |
+| `tooLong` | `Vượt quá giới hạn {maxLength} {unit}` |
+| `tooShort` | `Tối thiểu {minLength} ký tự` |
+| `patternMismatch` | `Giá trị không đúng định dạng` |
+| `badInput` | `Giá trị không hợp lệ` (cũng dùng cho `number` sai cú pháp) |
+| `typeMismatchEmail`, `typeMismatchUrl` | `Email không hợp lệ`, `URL không hợp lệ` |
+| `rangeUnderflow`, `rangeOverflow` | `Giá trị tối thiểu là {min}`, `Giá trị tối đa là {max}` |
+| `stepMismatch` | `Giá trị không đúng bước nhảy` |
+| `dateInvalid`, `dateUnderflow`, `dateOverflow` | `Ngày không hợp lệ`, `Ngày tối thiểu là {min}`, `Ngày tối đa là {max}` |
+| `unitChar`, `unitWord` | `ký tự`, `từ` — `{unit}` của `tooLong` và chữ của bộ đếm |
+
+`TdSlider.messages` (`{min}` `{max}` `{step}`): `rangeUnderflow` = `Giá trị tối thiểu là {min}.`, `rangeOverflow` =
+`Giá trị tối đa là {max}.`, `stepMismatch` = `Giá trị phải là bội số của {step}.`
+
+`TdCheckbox.messages.valueMissing` = `Vui lòng chọn ô này.`; `TdToggle.messages.valueMissing` =
+`Vui lòng bật tùy chọn này.`
+
+Được đọc mỗi lần control tính lại validity (đổi giá trị / attribute); control đã render giữ thông báo cũ tới lần tính
+lại kế tiếp — nên nạp bản dịch trước khi component render.
 
 ---
 
@@ -522,7 +547,8 @@ Tên tablist mặc định `Các thẻ`; đổi bằng attribute `aria-label` / 
 ## Component không có hook JS
 
 td-button, td-input-field, td-checkbox, td-toggle, td-slider, td-pagination: tuỳ biến bằng attribute, token và event
-(`click`, `input`, `change`, `page-change`). Các control form có [hợp đồng lỗi](#hợp-đồng-lỗi-của-mọi-form-control).
+(`click`, `input`, `change`, `page-change`). Các control form có [hợp đồng lỗi](#hợp-đồng-lỗi-của-mọi-form-control)
+và object tĩnh `messages` cho thông báo validation.
 Chữ cố định của td-pagination (`Trang trước`, `Trang sau`, `Trang {n}`, `Hiển thị …`) không đổi được; phần đổi được là
 attribute `item-label` và `aria-label`.
 

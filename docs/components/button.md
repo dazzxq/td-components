@@ -242,8 +242,8 @@ Mỗi attribute ở trên đều có property tương ứng (tên camelCase) ph�
 `icon`, `iconPosition`, `loading`, `disabled`, `fullWidth`, `color`, `textColor`, `type`, `ariaLabel`. Property kiểu
 boolean trả về `true/false`; property chuỗi trả về `''` khi không có attribute. Gán property = đặt attribute.
 
-> Property chỉ được tạo khi phần tử gắn vào trang lần đầu. Trước đó (phần tử vừa `createElement`, chưa append), hãy
-> dùng `setAttribute(...)`. Chi tiết: [Cách hoạt động](../concepts/how-it-works.md).
+> Gán property trước khi phần tử gắn vào trang (vừa `createElement`, chưa append — hoặc trước khi module được import)
+> vẫn có tác dụng từ 0.16.0. Chi tiết: [Cách hoạt động](../concepts/how-it-works.md).
 
 | Method | Trả về | Mô tả |
 |---|---|---|

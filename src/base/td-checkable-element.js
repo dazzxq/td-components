@@ -26,8 +26,8 @@ export class TdCheckableElement extends TdFormElement {
   /** @protected @returns {string} CSS custom property set on the host from the `color` attribute */
   _colorProperty() { return '--td-checkbox-color'; }
 
-  /** @protected @returns {string} valueMissing message */
-  _requiredMessage() { return 'Vui lòng chọn ô này.'; }
+  /** @protected @returns {string} valueMissing message (`<Class>.messages.valueMissing`) */
+  _requiredMessage() { return this._msg('valueMissing'); }
 
   /** @protected The inner native input. */
   _focusTarget() {
@@ -87,10 +87,8 @@ export class TdCheckableElement extends TdFormElement {
 
   /** @protected */
   _applyColor() {
-    const prop = this._colorProperty();
-    const color = this.safeColor(this.getAttribute('color'), '');
-    if (color) this.style.setProperty(prop, color);
-    else this.style.removeProperty(prop);
+    // Owned: without a colour only a value WE set is removed (a site's own inline var survives).
+    this._setOwnedStyle(this._colorProperty(), this.safeColor(this.getAttribute('color'), ''));
   }
 
   /** @protected Accessible name precedence (see class doc; shared helper in TdFormElement). */
@@ -121,6 +119,17 @@ export class TdCheckableElement extends TdFormElement {
     else this.removeAttribute('checked');
     if (this._defaultValueAttr === null) this.removeAttribute('value');
     else this.setAttribute('value', this._defaultValueAttr);
+    this._syncForm();
+  }
+
+  /**
+   * Browser form-state restore (bfcache / session history): the state is the submitted value while checked,
+   * `null` while unchecked (see `_syncForm`). Restores `checked` only — the `value` attribute is left alone.
+   * @protected
+   */
+  _restoreState(state, _mode) {
+    if (state != null) this.setAttribute('checked', '');
+    else this.removeAttribute('checked');
     this._syncForm();
   }
 }

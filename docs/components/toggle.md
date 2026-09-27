@@ -130,10 +130,12 @@ thì chạy đúng với cả hai chế độ.)
 ```
 
 - Bật: gửi `name=value` (`value` mặc định `on`). Tắt: không gửi gì.
-- `required` + đang tắt → `valueMissing`, thông báo `Vui lòng bật tùy chọn này.`, chặn submit.
+- `required` + đang tắt → `valueMissing`, thông báo `Vui lòng bật tùy chọn này.` (`TdToggle.messages.valueMissing`,
+  đổi được cho cả trang), chặn submit.
 - Reset form: trả `checked` và `value` về như lúc gắn vào trang, xoá lỗi.
 - `<fieldset disabled>` bao ngoài làm công tắc disabled (không gửi), không đổi attribute `disabled`.
-- Autofill / back-forward cache: **không** khôi phục trạng thái bật/tắt (giống [checkbox](checkbox.md)).
+- Trình duyệt khôi phục form (quay lại trang không qua bfcache): trạng thái bật/tắt được đặt lại đúng, attribute
+  `value` giữ nguyên (0.16.0).
 
 ### Màu, kích thước, lỗi
 
@@ -173,7 +175,8 @@ Chọn màu `color` tự kiểm tra tương phản: nền bật phải ≥ 3:1 v
 Property phản chiếu attribute: `checked`, `controlled` (boolean), `value`, `name`, `required`, `disabled`, `label`,
 `ariaLabel`, `size`, `color`, `errorText`. `value` trả `''` khi không có attribute.
 
-> Property được tạo khi phần tử gắn vào trang lần đầu. Trước đó dùng `setAttribute()`.
+> Gán property trước khi phần tử gắn vào trang (hoặc trước khi module được import) vẫn có tác dụng từ 0.16.0: giá
+> trị được áp khi phần tử kết nối lần đầu. Chi tiết: [Cách hoạt động](../concepts/how-it-works.md).
 
 | Method / property | Trả về | Mô tả |
 |---|---|---|

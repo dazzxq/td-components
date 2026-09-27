@@ -39,7 +39,10 @@ export class TdToggle extends TdCheckableElement {
 
   _colorProperty() { return '--td-switch-on'; }
 
-  _requiredMessage() { return 'Vui lòng bật tùy chọn này.'; }
+  /** Validation texts (Vietnamese); override per site: `TdToggle.messages.valueMissing = 'Please turn this on.'`. */
+  static messages = {
+    valueMissing: 'Vui lòng bật tùy chọn này.',
+  };
 
   /** @private @returns {'sm'|'md'|'lg'} */
   _size() {
