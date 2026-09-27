@@ -453,7 +453,21 @@
     // ── Liquid Glass section (v0.14.0) ──
     TdLightbox.bind(document.querySelector('.demo-lb-gallery'));
     document.getElementById('demo-lb-panel').addEventListener('click', () => {
-      TdLightbox.open([1, 2, 3, 4].map((n) => ({ src: `/test/fixtures/${n}.svg`, caption: `Ảnh mẫu ${n} — panel chú thích bên phải (≥ 900px) hoặc sheet dưới (mobile)` })), { panel: true });
+      // dwp parity (v0.15.0): a toolbar button toggles the info panel WHILE open (handle.setPanel)
+      let on = true;
+      const info = (ctx) => {
+        const box = document.createElement('div');
+        const h = document.createElement('h3');
+        h.textContent = `Ảnh ${ctx.index + 1} / ${ctx.count}`;
+        const p = document.createElement('p');
+        p.textContent = ctx.item.caption;
+        box.append(h, p);
+        return box;
+      };
+      TdLightbox.open([1, 2, 3, 4].map((n) => ({ src: `/test/fixtures/${n}.svg`, caption: `Ảnh mẫu ${n} — panel bên phải (≥ 900px) hoặc sheet dưới (mobile)` })), {
+        panel: info,
+        toolbar: [{ id: 'info', label: 'Bật/tắt thông tin', icon: 'info', onClick: (ctx) => { on = !on; ctx.handle.setPanel(on ? info : false); } }],
+      });
     });
 
     TdMenu.define('demo-post', [

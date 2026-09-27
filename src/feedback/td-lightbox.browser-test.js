@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { setViewport } from '@web/test-runner-commands';
 import { TdLightbox, defaultIsAllowedUrl } from './td-lightbox.js';
 import { TdModal } from './td-modal.js';
 import { isScrollLocked } from '../utils/scroll-lock.js';
@@ -576,5 +577,186 @@ describe('td-lightbox — focus on open', () => {
     await frames();
     await frames();
     expect(overlay().contains(document.activeElement)).to.equal(true);
+  });
+});
+
+describe('td-lightbox — v0.15.0 dwp parity', () => {
+  const pnode = (t) => { const p = document.createElement('p'); p.className = 'pp'; p.textContent = t; return p; };
+  const touch = (el, type, y) => {
+    const t = new Touch({ identifier: 1, target: el, clientX: 10, clientY: y });
+    el.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true,
+      touches: type === 'touchend' ? [] : [t], changedTouches: [t] }));
+  };
+  const swipe = (el, from, to) => { touch(el, 'touchstart', from); touch(el, 'touchend', to); };
+
+  it('L1: setPanel switches false ↔ renderer ↔ caption while open; refreshPanel re-renders; strings ignored', () => {
+    let n = 0;
+    const lb = TdLightbox.open([{ src: IMG(1), caption: 'Chú thích' }]);
+    expect(overlay().hasAttribute('data-panel')).to.equal(false);
+    lb.setPanel(() => pnode(`r${++n}`));
+    expect(overlay().hasAttribute('data-panel')).to.equal(true);
+    expect($('.td-lightbox__panel-body').textContent).to.equal('r1');
+    expect($('.td-lightbox__back').hidden).to.equal(false);
+    lb.refreshPanel();
+    expect($('.td-lightbox__panel-body').textContent).to.equal('r2');
+    lb.setPanel(true);
+    expect($('.td-lightbox__panel-body').textContent).to.equal('Chú thích');
+    lb.setPanel(() => '<b>x</b>');
+    expect(overlay().hasAttribute('data-panel')).to.equal(false);
+    lb.setPanel(false);
+    expect($('.td-lightbox__panel').hidden).to.equal(true);
+    expect($('.td-lightbox__back').hidden).to.equal(true);
+  });
+
+  it('L1: a dead handle is a no-op', () => {
+    const a = TdLightbox.open([IMG(1)]);
+    TdLightbox.close();
+    TdLightbox.open([IMG(2)]);
+    a.setPanel(() => pnode('stale'));
+    a.refreshPanel();
+    expect(a.addToolbarButton({ id: 'z', label: 'Z', onClick() {} })).to.be.a('function');
+    expect(overlay().hasAttribute('data-panel')).to.equal(false);
+    expect(overlay().querySelectorAll('[data-extra]').length).to.equal(0);
+  });
+
+  it('L1+L4 (mobile): sheet swipes open/close with touch; panel off → sheet closed, grab aria-expanded=false', async () => {
+    await setViewport({ width: 600, height: 800 });
+    try {
+      const lb = TdLightbox.open([IMG(1)], { panel: () => pnode('info') });
+      const panel = $('.td-lightbox__panel');
+      const grab = $('.td-lightbox__grab');
+      swipe(panel, 400, 360);
+      expect(panel.getAttribute('data-sheet')).to.equal('open');
+      expect(grab.getAttribute('aria-expanded')).to.equal('true');
+      swipe(panel, 360, 400);
+      expect(panel.hasAttribute('data-sheet')).to.equal(false);
+      swipe(panel, 400, 360); // open again, then a swipe starts…
+      touch(panel, 'touchstart', 300);
+      lb.setPanel(false); // …and the panel goes away mid-swipe
+      expect(panel.hasAttribute('data-sheet')).to.equal(false);
+      expect(grab.getAttribute('aria-expanded')).to.equal('false');
+      lb.setPanel(() => pnode('back'));
+      expect(panel.hasAttribute('data-sheet'), 're-enabled panel starts closed').to.equal(false);
+      touch(panel, 'touchend', 200); // the dropped swipe must not open it
+      expect(panel.hasAttribute('data-sheet')).to.equal(false);
+    } finally {
+      await setViewport({ width: 800, height: 600 });
+    }
+  });
+
+  it('L4: a swipe down on a scrolled panel does not close the sheet', async () => {
+    await setViewport({ width: 600, height: 800 });
+    try {
+      TdLightbox.open([IMG(1)], { panel: () => { const d = pnode(''); d.textContent = 'dòng chữ dài '.repeat(1500); return d; } });
+      const panel = $('.td-lightbox__panel');
+      swipe(panel, 400, 360);
+      expect(panel.getAttribute('data-sheet')).to.equal('open');
+      await frames();
+      panel.scrollTop = 50;
+      expect(panel.scrollTop > 0, 'panel scrolls').to.equal(true);
+      swipe(panel, 300, 360);
+      expect(panel.getAttribute('data-sheet'), 'scrolled: swipe down scrolls, sheet stays').to.equal('open');
+    } finally {
+      await setViewport({ width: 800, height: 600 });
+    }
+  });
+
+  it('L2: itemEl / groupEl in ctx (panel, toolbar) and in all three events; open({ groupEl })', () => {
+    host.innerHTML = `<div data-td-lightbox-group id="g"><a data-td-lightbox-item id="i1" href="${IMG(1)}"><img src="${IMG(1)}" alt="1"></a>
+      <a data-td-lightbox-item id="i2" href="${IMG(2)}"><img src="${IMG(2)}" alt="2"></a></div>`;
+    const seen = [];
+    const un = TdLightbox.bind(host, {
+      panel: (ctx) => { seen.push(['panel', ctx.itemEl && ctx.itemEl.id, ctx.groupEl && ctx.groupEl.id]); return null; },
+      toolbar: [{ id: 't', label: 'T', onClick: (ctx) => seen.push(['tool', ctx.itemEl.id, ctx.groupEl.id]) }],
+    });
+    try {
+      document.getElementById('i2').click();
+      overlay().querySelector('[data-extra="t"]').click();
+      TdLightbox.close();
+    } finally { un(); }
+    expect(seen).to.deep.equal([['panel', 'i2', 'g'], ['tool', 'i2', 'g']]);
+    const names = events.map((e) => `${e.n}:${e.d.itemEl && e.d.itemEl.id}:${e.d.groupEl && e.d.groupEl.id}`);
+    expect(names).to.include('td-lightbox-open:i2:g');
+    expect(names).to.include('td-lightbox-close:i2:g');
+    events.length = 0;
+    const g = document.getElementById('g');
+    const lb = TdLightbox.open([IMG(1), IMG(2)], { groupEl: g });
+    lb.next();
+    expect(events.length).to.equal(3); // change (first show) + open + change (next)
+    expect(events.every((e) => e.d.groupEl === g)).to.equal(true);
+    TdLightbox.close();
+    TdLightbox.open([IMG(1)], { groupEl: '#g' });
+    expect(events.at(-1).d.groupEl).to.equal(null);
+  });
+
+  it('L3: attrPrefix "dwp" reads data-dwp-lightbox-* markup; a bad prefix warns and falls back to td', () => {
+    host.innerHTML = `<div data-dwp-lightbox-group><span data-dwp-lightbox-item data-dwp-lightbox-src="${IMG(3)}" data-dwp-lightbox-caption="Dwp">x</span></div>
+      <span id="tdone" data-td-lightbox="${IMG(1)}">td</span>`;
+    const un = TdLightbox.bind(host, { attrPrefix: 'dwp' });
+    host.querySelector('[data-dwp-lightbox-item]').click();
+    expect(TdLightbox.isOpen).to.equal(true);
+    expect($('.td-lightbox__caption').textContent).to.equal('Dwp');
+    TdLightbox.close();
+    document.getElementById('tdone').click();
+    expect(TdLightbox.isOpen, 'td markup is not read with the dwp prefix').to.equal(false);
+    un();
+    const warns = [];
+    const w = console.warn;
+    console.warn = (...a) => warns.push(a.join(' '));
+    let un2;
+    try { un2 = TdLightbox.bind(host, { attrPrefix: 'x] , *' }); } finally { console.warn = w; }
+    expect(warns.some((m) => m.includes('attrPrefix'))).to.equal(true);
+    document.getElementById('tdone').click();
+    expect(TdLightbox.isOpen).to.equal(true);
+    un2();
+  });
+
+  it('L3: filter false leaves the click alone (no preventDefault); a throwing filter never opens', () => {
+    host.innerHTML = `<a id="f1" href="#keep" data-td-lightbox="${IMG(1)}">a</a>`;
+    const a = document.getElementById('f1');
+    let prevented = null;
+    const probe = (e) => { prevented = e.defaultPrevented; e.preventDefault(); };
+    const un = TdLightbox.bind(host, { filter: (el) => el.id !== 'f1' });
+    document.addEventListener('click', probe);
+    try {
+      a.click();
+      expect(TdLightbox.isOpen).to.equal(false);
+      expect(prevented).to.equal(false);
+    } finally { un(); }
+    const w = console.warn;
+    console.warn = () => {};
+    const un2 = TdLightbox.bind(host, { filter: () => { throw new Error('x'); } });
+    try { a.click(); } finally { un2(); console.warn = w; document.removeEventListener('click', probe); }
+    expect(TdLightbox.isOpen).to.equal(false);
+  });
+
+  it('L5: addToolbarButton while open (before close; same id replaces; remove()); removeToolbarButton', () => {
+    const lb = TdLightbox.open([IMG(1), IMG(2)]);
+    const r1 = lb.addToolbarButton({ id: 'info', label: 'Thông tin', icon: 'info', onClick() {}, visible: (c) => c.index === 1 });
+    let b = overlay().querySelector('[data-extra="info"]');
+    same(b.nextElementSibling, $('.td-lightbox__close'));
+    expect(b.hidden, 'visible() applied at once').to.equal(true);
+    lb.next();
+    expect(b.hidden).to.equal(false);
+    const r2 = lb.addToolbarButton({ id: 'info', label: 'Thông tin 2', onClick() {} });
+    expect(overlay().querySelectorAll('[data-extra="info"]').length).to.equal(1);
+    b = overlay().querySelector('[data-extra="info"]');
+    expect(b.getAttribute('aria-label')).to.equal('Thông tin 2');
+    r1(); // stale remover must not drop the replacement
+    expect(overlay().querySelectorAll('[data-extra="info"]').length).to.equal(1);
+    r2();
+    expect(overlay().querySelectorAll('[data-extra="info"]').length).to.equal(0);
+    lb.addToolbarButton({ id: 'x', label: 'X', onClick() {} });
+    lb.removeToolbarButton('x');
+    expect(overlay().querySelectorAll('[data-extra]').length).to.equal(0);
+    expect(lb.addToolbarButton({ id: 'bad' })).to.be.a('function'); // invalid spec → no button
+    expect(overlay().querySelectorAll('[data-extra]').length).to.equal(0);
+  });
+
+  it('L6: trigger cursors for td and dwp prefixes', () => {
+    host.innerHTML = `<span id="c1" data-td-lightbox="${IMG(1)}">a</span><span id="c2" data-dwp-lightbox-item>b</span>
+      <span id="c3" data-td-lightbox-item data-td-lightbox-type="video">c</span><span id="c4" data-dwp-lightbox data-dwp-lightbox-type="video">d</span>`;
+    const cur = (id) => getComputedStyle(document.getElementById(id)).cursor;
+    expect([cur('c1'), cur('c2'), cur('c3'), cur('c4')]).to.deep.equal(['zoom-in', 'zoom-in', 'pointer', 'pointer']);
   });
 });

@@ -37,3 +37,13 @@ component token-native đầu tiên (pilot cho [0008](0008-drop-tailwind-token-c
 - Chạy thật trên 135 trước, dwp chuyển sau v1.0 qua adapter.
 - Cần scroll-lock chung (việc v0.5.0) trước khi pilot.
 - Mọi khác biệt theo site nằm trong hook, lõi không có code riêng cho dwp/135.
+
+## Addendum — v0.15.0 (dwp API parity)
+
+Re-checked against the current dwp lightbox (all its commits predate the port): layout / two-column panel / bottom
+sheet already matched. Added the missing GENERIC API, keeping hooks-not-globals: per-handle `setPanel` /
+`refreshPanel` / `addToolbarButton` / `removeToolbarButton` (dwp uses module globals `setViewerMode`, `setSidePanel`,
+`addToolbarButton` — td keeps state per session so two sites/pages never share it), `itemEl` / `groupEl` in ctx and
+events, `bind()` `attrPrefix` (whitelisted, for `data-dwp-*` markup) and `filter`, touch-based sheet swipe. Still dwp
+hooks: Navigation API history adapter, download proxy / gateway rules, Plyr + video gate, auto-binding post images.
+Plan: `docs/plans/v0.15.0-lightbox-parity.md`.

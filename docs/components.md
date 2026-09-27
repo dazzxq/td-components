@@ -392,8 +392,18 @@ const unbind = TdLightbox.bind(root = document, options); // click delegation
   `panel: false|true|(ctx) → Element|null` (`true` = caption panel; 2 columns ≥ 900px, bottom sheet below),
   `toolbar: [{ id, label, icon?, iconNode?, onClick(ctx, button), visible?(ctx) }]` (`icon` = registry name),
   `closeOnBackdrop` (default `true`), `isForeignLayerOpen()` (default: a td-modal is open → keys deferred).
-- **ctx** `{ index, count, item, token, handle }`. **Events** on `document`: `td-lightbox-open|change|close`,
-  `detail { index, count, token, item }`.
+- **ctx** `{ index, count, item, token, handle, itemEl, groupEl }` (0.15.0: `itemEl` = the item's element from
+  `bind()`, `groupEl` = its `[data-*-lightbox-group]`, or `open(…, { groupEl })`). **Events** on `document`:
+  `td-lightbox-open|change|close`, `detail { index, count, token, item, itemEl, groupEl }`.
+- **Handle while open (0.15.0, dwp parity):** `setPanel(false | true | (ctx) => Element|null)` switches the panel
+  without reopening (like dwp `setViewerMode` + `setSidePanel`; no panel → the mobile sheet closes),
+  `refreshPanel()` re-renders it, `addToolbarButton(spec)` (same `id` replaces; returns `remove()`),
+  `removeToolbarButton(id)`. A handle of a closed / replaced viewer is a no-op.
+- **`bind(root, { attrPrefix, filter, …open options })` (0.15.0):** `attrPrefix: 'dwp'` reads `data-dwp-lightbox-*`
+  markup (whitelisted `[a-z0-9-]`; invalid → warning + `td`); `filter(el, event) → false` leaves that click alone
+  (e.g. an inline video handled elsewhere; a throw also skips). Trigger cursors (zoom-in / pointer for video) ship for
+  the `td` and `dwp` prefixes; other prefixes style their own. The panel sheet swipes with touch events (a scrollable
+  panel cancels pointer gestures).
 - **Keyboard** Esc · ← → · F · Tab trapped. **Gestures** (Pointer Events): pinch 1–4×, pan, double-tap /
   mouse click zoom 2×, swipe ← → navigate, swipe ↓ close, swipe ↑ info sheet.
 - **Markup contract** for `bind()` / SSR (golden fixture `test/contracts/lightbox.html`):
