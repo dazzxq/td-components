@@ -9,6 +9,21 @@
  *   const btn = TdMenu.button({ icon: 'more', label: '', ariaLabel, items | getItems, ...opts }); // bound .td-menu-btn
  *   TdMenu.labels.trigger = 'Options';                                  // site override (Vietnamese defaults)
  *
+ * Option registry (v0.14.0 G9 — core + hooks: modules/sites add options without editing core):
+ *   const undefine = TdMenu.define('post-actions', items | (ctx) => items);  // base list (redefine replaces it)
+ *   const unregister = TdMenu.register('post-actions', item | item[], { order, group }); // add options (before or
+ *                                                                        // after define)
+ *   TdMenu.open(anchor, 'post-actions', { ctx: { postId: 7 } });          // a string resolves the registry
+ *   const unbindAll = TdMenu.bindAll(root = document);                  // declarative <button data-td-menu="post-actions"
+ *                                                                        //   data-td-menu-post-id="7"> (delegation)
+ *   - `order` (number): base items default to index × 10, registered items to opts.order ?? 1000 (appended); ties
+ *     keep definition/registration order. `when(ctx) → boolean` hides an item when false (a throwing `when` hides it
+ *     + console.warn) — honoured for any item list. A registration `group` puts a separator between groups (base
+ *     items and group-less registrations share the default group); separators are then collapsed as usual.
+ *   - ctx = { ...opts.ctx, ...data-td-menu-* of the anchor (camelCased, strings; `data-td-menu` itself is the name),
+ *     anchor, name } — handed to `(ctx) => items`, `when(ctx)` and onSelect({ ...ctx, item, checked }).
+ *   - Unknown name (nothing defined or registered) → console.warn + open() returns null.
+ *
  * Items (D6): { label, onSelect (alias onClick), href, newTab, icon (registry name), iconNode (trusted SVGElement, cloned),
  *   hint (any item), danger, disabled, type: 'item'|'radio'|'checkbox', checked, group (radio group key), id }
  *   | { separator: true }. `checked` without `type` → radio (dwp compat). Labels/hints are TEXT (textContent only).
@@ -63,6 +78,14 @@ let triggerSeq = 0;
 let current = null;
 /** @type {WeakMap<HTMLElement, () => void>} bound triggers → unbind */
 const bound = new WeakMap();
+/** @type {Map<string, { base: object|null, adds: Array<object> }>} named menus (G9) */
+const registry = new Map();
+/** @type {Map<object, () => void>} bindAll roots → unbind (idempotent per root) */
+const boundRoots = new Map();
+/** @type {WeakSet<Event>} events already handled by a bindAll root (nested roots never double-toggle) */
+const handledEvents = new WeakSet();
+const DEFAULT_ADD_ORDER = 1000;
+const RESERVED_CTX = new Set(['__proto__', 'constructor', 'prototype', 'anchor', 'name', 'item', 'checked']);
 
 /**
  * Validate a link target (security.md: URL whitelist). Relative URLs resolve against the page; an explicit scheme
@@ -86,6 +109,87 @@ export function safeMenuHref(href, page = typeof location !== 'undefined' ? loca
 }
 
 const isFn = (f) => typeof f === 'function';
+const validName = (n) => typeof n === 'string' && n.trim() !== '';
+const finiteOr = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+
+/**
+ * Build the menu context: opts.ctx, then the anchor's data-td-menu-* attributes (strings), then anchor + name.
+ * @param {HTMLElement} anchor
+ * @param {string} name
+ * @param {unknown} extra opts.ctx
+ */
+function buildCtx(anchor, name, extra) {
+  const ctx = {};
+  if (extra && typeof extra === 'object') {
+    for (const k of Object.keys(extra)) if (!RESERVED_CTX.has(k)) ctx[k] = extra[k];
+  }
+  const ds = anchor.dataset || {};
+  for (const k of Object.keys(ds)) {
+    if (!k.startsWith('tdMenu') || k.length <= 6) continue; // `data-td-menu` itself is the name
+    const key = k.charAt(6).toLowerCase() + k.slice(7);
+    if (!key || RESERVED_CTX.has(key)) continue;
+    ctx[key] = String(ds[k]);
+  }
+  ctx.anchor = anchor;
+  ctx.name = name;
+  return ctx;
+}
+
+/** `when(ctx)`: false / throwing → hidden. Separators and items without `when` pass. */
+function visible(it, ctx) {
+  if (!it || typeof it !== 'object' || !isFn(it.when)) return true;
+  try {
+    return !!it.when(ctx);
+  } catch (err) {
+    console.warn(`TdMenu: when() threw on "${it.label}" — item hidden`, err);
+    return false;
+  }
+}
+
+/** Call a lazy item builder; errors → null (logged). */
+function callItems(fn, ctx) {
+  try { return fn(ctx); } catch (err) { console.error('TdMenu items', err); return null; }
+}
+
+/**
+ * Resolve a named menu into a flat item list (order, when, group separators). Returns null when the name is unknown.
+ * @param {string} name
+ * @param {object} ctx
+ */
+function resolveNamed(name, ctx) {
+  const rec = registry.get(name);
+  if (!rec || (!rec.base && !rec.adds.length)) return null;
+  const rows = [];
+  let seq = 0;
+  if (rec.base) {
+    const list = isFn(rec.base.items) ? callItems(rec.base.items, ctx) : rec.base.items;
+    if (Array.isArray(list)) {
+      list.forEach((it, i) => {
+        if (it && typeof it === 'object') rows.push({ it, order: finiteOr(it.order, i * 10), group: null, seq: seq++ });
+      });
+    }
+  }
+  for (const add of rec.adds) {
+    for (const it of add.items) {
+      if (it && typeof it === 'object') {
+        rows.push({ it, order: finiteOr(it.order, add.order), group: add.group, seq: seq++ });
+      }
+    }
+  }
+  const kept = rows.filter((r) => r.it.separator || visible(r.it, ctx));
+  kept.sort((a, b) => a.order - b.order || a.seq - b.seq);
+  const out = [];
+  let lastGroup;
+  let seen = false;
+  for (const r of kept) {
+    if (r.it.separator) { out.push(r.it); continue; }
+    if (seen && r.group !== lastGroup) out.push({ separator: true });
+    seen = true;
+    lastGroup = r.group;
+    out.push(r.it);
+  }
+  return out;
+}
 
 /**
  * @param {unknown} list
@@ -284,7 +388,7 @@ function activate(s, idx) {
   if (!rec) return;
   const { entry, node } = rec;
   if (entry.disabled) return;
-  const ctx = { item: entry.src, anchor: s.anchor, checked: entry.checked };
+  const ctx = { ...s.ctx, item: entry.src, anchor: s.anchor, checked: entry.checked };
   if (entry.type === 'checkbox') {
     entry.checked = !entry.checked; // session state only — caller items are never mutated (they may be frozen)
     node.setAttribute('aria-checked', String(entry.checked));
@@ -354,7 +458,7 @@ function onMenuClick(s, e) {
     const { entry } = rec;
     setTimeout(() => {
       closeSession(s, 'select');
-      safeCall(entry.onSelect, { item: entry.src, anchor: s.anchor, checked: false });
+      safeCall(entry.onSelect, { ...s.ctx, item: entry.src, anchor: s.anchor, checked: false });
     }, 0);
     return;
   }
@@ -374,9 +478,10 @@ export class TdMenu {
    * Open a menu at `anchor`. Toggles: the same anchor already open → closes it and returns null. Opening closes any
    * other open menu (one at a time).
    * @param {HTMLElement} anchor any element (a button you own, a lightbox toolbar button, an SSR button)
-   * @param {Array<object>|(() => Array<object>)} items item list or a lazy builder (called at open)
+   * @param {string|Array<object>|((ctx: object) => Array<object>)} items a registered menu name (G9), an item list or
+   *   a lazy builder (called at open with ctx)
    * @param {{ align?: 'start'|'center'|'end', side?: 'bottom'|'top', label?: string, focus?: 'first'|'last',
-   *           onClose?: (reason: string) => void }} [opts]
+   *           onClose?: (reason: string) => void, ctx?: object }} [opts] `ctx`: extra context data (see header)
    * @returns {{ element: HTMLElement, close(): void, readonly isOpen: boolean }|null}
    */
   static open(anchor, items, opts = {}) {
@@ -387,12 +492,21 @@ export class TdMenu {
       return null;
     }
     if (!anchor.isConnected) return null;
-    if (current) closeSession(current, 'api'); // a new anchor always closes the old menu, even if its items are empty
-    let list = items;
-    if (isFn(list)) {
-      try { list = list(); } catch (err) { console.error('TdMenu items', err); return null; }
+    const named = typeof items === 'string';
+    if (named && !TdMenu.has(items)) {
+      console.warn(`TdMenu: unknown menu "${items}"`);
+      return null;
     }
-    const entries = normalise(list);
+    if (current) closeSession(current, 'api'); // a new anchor always closes the old menu, even if its items are empty
+    const ctx = buildCtx(anchor, named ? items : '', o.ctx);
+    let list = items;
+    if (named) {
+      list = resolveNamed(items, ctx);
+    } else if (isFn(list)) {
+      list = callItems(list, ctx);
+      if (list == null) return null;
+    }
+    const entries = normalise(Array.isArray(list) ? list.filter((it) => visible(it, ctx)) : list);
     if (!entries.some((e) => !e.separator)) return null;
 
     const menuId = `td-menu-${++menuSeq}`;
@@ -410,6 +524,7 @@ export class TdMenu {
       align,
       side: o.side === 'top' ? 'top' : 'bottom',
       onClose: o.onClose,
+      ctx,
       closed: false,
       typeBuffer: '',
       typeTimer: 0,
@@ -476,7 +591,7 @@ export class TdMenu {
    * Wire a trigger you own: aria-haspopup="menu", aria-expanded, click toggles (focus → first item), ArrowDown /
    * ArrowUp open with focus on the first / last item. Binding the same trigger again replaces the previous binding.
    * @param {HTMLElement} trigger
-   * @param {Array<object>|(() => Array<object>)} items
+   * @param {string|Array<object>|((ctx: object) => Array<object>)} items a registered name, a list or a builder
    * @param {object} [opts] same as open()
    * @returns {() => void} unbind (closes its menu when open)
    */
@@ -514,6 +629,150 @@ export class TdMenu {
       }
     };
     bound.set(trigger, unbind);
+    return unbind;
+  }
+
+  /**
+   * Register (or replace) the base option list of a named menu (G9).
+   * @param {string} name
+   * @param {Array<object>|((ctx: object) => Array<object>)} items items may carry `order` and `when(ctx)`
+   * @returns {() => void} undefine — removes this base list (no-op once it has been replaced)
+   */
+  static define(name, items) {
+    if (!validName(name) || !(Array.isArray(items) || isFn(items))) {
+      console.warn('TdMenu.define: expected (name: string, items: Array | (ctx) => Array)');
+      return () => {};
+    }
+    let rec = registry.get(name);
+    if (!rec) registry.set(name, (rec = { base: null, adds: [] }));
+    const base = { items: Array.isArray(items) ? items.slice() : items };
+    rec.base = base;
+    return () => {
+      const r = registry.get(name);
+      if (!r || r.base !== base) return;
+      r.base = null;
+      if (!r.adds.length) registry.delete(name);
+    };
+  }
+
+  /**
+   * Add options to a named menu (plugin hook) — before or after define().
+   * @param {string} name
+   * @param {object|Array<object>} items
+   * @param {{ order?: number, group?: string }} [opts] default `order` for these items (1000 → appended); `group`
+   *   separates them from the items of other groups
+   * @returns {() => void} unregister
+   */
+  static register(name, items, opts = {}) {
+    const list = Array.isArray(items) ? items.slice() : items && typeof items === 'object' ? [items] : null;
+    if (!validName(name) || !list) {
+      console.warn('TdMenu.register: expected (name: string, item | item[], { order?, group? })');
+      return () => {};
+    }
+    const o = opts || {};
+    let rec = registry.get(name);
+    if (!rec) registry.set(name, (rec = { base: null, adds: [] }));
+    const add = {
+      items: list,
+      order: finiteOr(o.order, DEFAULT_ADD_ORDER),
+      group: o.group == null || o.group === '' ? null : String(o.group),
+    };
+    rec.adds.push(add);
+    return () => {
+      const r = registry.get(name);
+      if (!r) return;
+      const i = r.adds.indexOf(add);
+      if (i < 0) return;
+      r.adds.splice(i, 1);
+      if (!r.base && !r.adds.length) registry.delete(name);
+    };
+  }
+
+  /**
+   * @param {string} name
+   * @returns {boolean} true when the name has a base list or registered options
+   */
+  static has(name) {
+    const r = typeof name === 'string' ? registry.get(name) : undefined;
+    return !!r && (!!r.base || r.adds.length > 0);
+  }
+
+  /**
+   * Declarative triggers: `[data-td-menu="name"]` inside `root` open that registered menu (click; ArrowDown/ArrowUp
+   * like bind()). Event delegation, so triggers added later work too. ARIA (aria-haspopup="menu",
+   * aria-expanded="false") is set on the triggers present now and lazily on later ones (focus / hover / use).
+   * Idempotent per root (the same unbind is returned); nothing runs on import. Triggers wired with bind() are
+   * skipped; disabled triggers do not open.
+   * @param {Document|Element|DocumentFragment} [root=document]
+   * @returns {() => void} unbind — removes the listeners, closes a menu opened from its triggers and restores ARIA
+   */
+  static bindAll(root = typeof document !== 'undefined' ? document : null) {
+    if (!root || !isFn(root.addEventListener) || !isFn(root.querySelectorAll)) return () => {};
+    const existing = boundRoots.get(root);
+    if (existing) return existing;
+    const SNAP = ['id', 'aria-haspopup', 'aria-expanded', 'aria-controls'];
+    /** @type {Map<HTMLElement, Map<string, string|null>>} trigger → attributes before bindAll touched it */
+    const touched = new Map();
+    const triggerOf = (t) => {
+      const n = t instanceof Element ? t.closest('[data-td-menu]') : null;
+      if (!(n instanceof HTMLElement) || !root.contains(n) || bound.has(n)) return null;
+      return validName(n.getAttribute('data-td-menu')) ? n : null;
+    };
+    const prime = (n) => {
+      if (touched.has(n)) return;
+      touched.set(n, new Map(SNAP.map((a) => [a, n.getAttribute(a)])));
+      if (!n.hasAttribute('aria-haspopup')) n.setAttribute('aria-haspopup', 'menu');
+      if (!TdMenu.isOpen(n)) n.setAttribute('aria-expanded', 'false');
+    };
+    const inert = (n) => n.matches(':disabled') || n.getAttribute('aria-disabled') === 'true';
+    const openFrom = (n, focus) => TdMenu.open(n, n.getAttribute('data-td-menu').trim(), { focus });
+    const onClick = (e) => {
+      if (handledEvents.has(e)) return;
+      const n = triggerOf(e.target);
+      if (!n) return;
+      handledEvents.add(e);
+      e.preventDefault(); // a trigger inside a link card must not navigate
+      prime(n);
+      if (!inert(n)) openFrom(n, 'first');
+    };
+    const onKeydown = (e) => {
+      if ((e.key !== 'ArrowDown' && e.key !== 'ArrowUp') || handledEvents.has(e)) return;
+      const n = triggerOf(e.target);
+      if (!n || n !== e.target) return;
+      handledEvents.add(e);
+      e.preventDefault();
+      prime(n);
+      if (inert(n) || TdMenu.isOpen(n)) return;
+      openFrom(n, e.key === 'ArrowUp' ? 'last' : 'first');
+    };
+    const onPrime = (e) => {
+      const n = triggerOf(e.target);
+      if (n) prime(n);
+    };
+    root.addEventListener('click', onClick);
+    root.addEventListener('keydown', onKeydown);
+    root.addEventListener('focusin', onPrime);
+    root.addEventListener('mouseover', onPrime);
+    for (const n of root.querySelectorAll('[data-td-menu]')) {
+      if (n instanceof HTMLElement && !bound.has(n) && validName(n.getAttribute('data-td-menu'))) prime(n);
+    }
+    const unbind = () => {
+      if (boundRoots.get(root) !== unbind) return;
+      boundRoots.delete(root);
+      root.removeEventListener('click', onClick);
+      root.removeEventListener('keydown', onKeydown);
+      root.removeEventListener('focusin', onPrime);
+      root.removeEventListener('mouseover', onPrime);
+      if (current && touched.has(current.anchor)) closeSession(current, 'api');
+      for (const [n, before] of touched) {
+        for (const [a, v] of before) {
+          if (v === null) n.removeAttribute(a);
+          else n.setAttribute(a, v);
+        }
+      }
+      touched.clear();
+    };
+    boundRoots.set(root, unbind);
     return unbind;
   }
 
