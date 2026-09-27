@@ -16,7 +16,7 @@ function tokenColor(name) {
   return c;
 }
 
-// v0.8.0 batch 2 — td-input-field token-native (plan docs/plans/v0.8.0-batch2.md step 2). td.css only.
+// v0.8.0 batch 2 — td-input-field token-native (plan docs/internal/plans/v0.8.0-batch2.md step 2). td.css only.
 const link = document.createElement('link');
 link.rel = 'stylesheet';
 link.href = '/td.css';

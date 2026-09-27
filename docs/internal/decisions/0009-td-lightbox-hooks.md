@@ -46,4 +46,4 @@ sheet already matched. Added the missing GENERIC API, keeping hooks-not-globals:
 `addToolbarButton` — td keeps state per session so two sites/pages never share it), `itemEl` / `groupEl` in ctx and
 events, `bind()` `attrPrefix` (whitelisted, for `data-dwp-*` markup) and `filter`, touch-based sheet swipe. Still dwp
 hooks: Navigation API history adapter, download proxy / gateway rules, Plyr + video gate, auto-binding post images.
-Plan: `docs/plans/v0.15.0-lightbox-parity.md`.
+Plan: `docs/internal/plans/v0.15.0-lightbox-parity.md`.

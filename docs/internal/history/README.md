@@ -1,6 +1,6 @@
 # History
 
-Tóm tắt từng milestone. Chi tiết thay đổi: [CHANGELOG.md](../../CHANGELOG.md). Kế hoạch gốc (GSD `.planning/`)
+Tóm tắt từng milestone. Chi tiết thay đổi: [CHANGELOG.md](../../../CHANGELOG.md). Kế hoạch gốc (GSD `.planning/`)
 đã bỏ ngày 2026-09-27; xem lại bằng `git log -- .planning` nếu cần.
 
 ## v0.1 — Port DCMS (2026-03-31 → 2026-04-04, phase 1–5)

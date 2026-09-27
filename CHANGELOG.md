@@ -6,7 +6,7 @@ All notable changes to **td-components** are documented here.
 
 **TdLightbox — dwp parity.** A read-only comparison with the current dwp lightbox showed every dwp change predates the
 port (two-column panel, bottom sheet, grab, swipes were already there); the gaps were API. Plan
-`docs/plans/v0.15.0-lightbox-parity.md` (Codex plan-review APPROVE, 2 rounds).
+`docs/internal/plans/v0.15.0-lightbox-parity.md` (Codex plan-review APPROVE, 2 rounds).
 
 ### Added
 
@@ -78,8 +78,8 @@ port (two-column panel, bottom sheet, grab, swipes were already there); the gaps
 
 **Real Liquid Glass.** The owner found the kit "not liquid glass at all"; the rules were re-derived in a Codex
 think-about debate (Apple sources: WWDC25 219/323/356, HIG Materials/Color, SwiftUI Glass APIs) and every value is now
-accepted by a rendered contrast gate. Plan: `docs/plans/v0.14.0-liquid-glass.md` (Codex plan-review APPROVE, 3 rounds);
-rules: `docs/design/liquid-glass.md` v2.
+accepted by a rendered contrast gate. Plan: `docs/internal/plans/v0.14.0-liquid-glass.md` (Codex plan-review APPROVE, 3 rounds);
+rules: `docs/internal/design/liquid-glass.md` v2.
 
 ### Changed (visual / behaviour)
 
@@ -119,7 +119,7 @@ rules: `docs/design/liquid-glass.md` v2.
 
 ## 0.13.0
 
-Backlog quick wins (all additive, opt-in). Plan: `docs/plans/v0.13.0-backlog.md` (Codex plan-review APPROVE, 2 rounds).
+Backlog quick wins (all additive, opt-in). Plan: `docs/internal/plans/v0.13.0-backlog.md` (Codex plan-review APPROVE, 2 rounds).
 
 ### Added
 
@@ -137,7 +137,7 @@ Backlog quick wins (all additive, opt-in). Plan: `docs/plans/v0.13.0-backlog.md`
 ## 0.12.0
 
 **New components** (token-native, Vietnamese defaults): `TdMenu`, `<td-chip-input>`, `TdFormValidation`. Plan:
-`docs/plans/v0.12.0-new-components.md` (Codex plan-review APPROVE, 2 rounds; inventory + decisions D1–D25 in
+`docs/internal/plans/v0.12.0-new-components.md` (Codex plan-review APPROVE, 2 rounds; inventory + decisions D1–D25 in
 `v0.12.0-new-components-inventory.md`). Built by three agents in isolated worktrees on a shared base, integrated here.
 
 ### Added
@@ -169,7 +169,7 @@ Backlog quick wins (all additive, opt-in). Plan: `docs/plans/v0.13.0-backlog.md`
 ## 0.11.0
 
 **Tailwind is no longer needed.** Every component has been token-native since 0.10.0; this release removes what was
-left. A site needs only `td.css` (plus a bundler for the ES modules). Plan: `docs/plans/v0.11.0-drop-tailwind.md`
+left. A site needs only `td.css` (plus a bundler for the ES modules). Plan: `docs/internal/plans/v0.11.0-drop-tailwind.md`
 (Codex plan-review APPROVE, 2 rounds). ADR 0008 is done; ADR 0002 stays superseded.
 
 ### Breaking
@@ -195,12 +195,12 @@ left. A site needs only `td.css` (plus a bundler for the ES modules). Plan: `doc
 
 Migration **batch 4 — the last legacy components**: `td-datetime-picker` and `td-table` are now **token-native**
 (td.css only). Every component is now token-native; the Tailwind peer dependency is dropped in 1.0.0. Plan:
-`docs/plans/v0.10.0-batch4.md` (Codex plan-review APPROVE, 3 rounds; inventory + decisions D1–D25 in
+`docs/internal/plans/v0.10.0-batch4.md` (Codex plan-review APPROVE, 3 rounds; inventory + decisions D1–D25 in
 `v0.10.0-batch4-inventory.md`). Built by two agents in isolated worktrees on a shared base, integrated here.
 
 ### Breaking (internal DOM / classes)
 
-- Internal classes renamed to BEM — `docs/migration/class-map.md` (`.td-dtp-wheel-*` → `.td-dtp-wheel__*`, the modal
+- Internal classes renamed to BEM — `docs/upgrading/class-map.md` (`.td-dtp-wheel-*` → `.td-dtp-wheel__*`, the modal
   body → `.td-dtp-panel__*`; `.td-table-*` → `.td-table__*`). Both components require `td.css`.
 - `src/utils/adopt-styles.js` removed (no component uses CSS-in-JS any more; it was never a package export).
 
@@ -245,13 +245,13 @@ Migration **batch 4 — the last legacy components**: `td-datetime-picker` and `
 ## 0.9.0
 
 Migration **batch 3 — the floating layer**: `TdModal` / `TdModalStackManager`, `TdToast`, `TdTooltip`, `td-dropdown`
-are now **token-native** (td.css only) and Liquid Glass. Plan: `docs/plans/v0.9.0-batch3.md` (Codex plan-review
+are now **token-native** (td.css only) and Liquid Glass. Plan: `docs/internal/plans/v0.9.0-batch3.md` (Codex plan-review
 APPROVE, 4 rounds; inventory + decisions D1–D24 in `v0.9.0-batch3-inventory.md`). Built by four agents in isolated
 worktrees on a shared base (`utils/layers.js`, `utils/floating.js`), integrated here.
 
 ### Breaking (internal DOM / classes / stacking)
 
-- Internal classes renamed to BEM — `docs/migration/class-map.md` (`.td-modal-*` → `.td-modal__*`, `.toast-item` →
+- Internal classes renamed to BEM — `docs/upgrading/class-map.md` (`.td-modal-*` → `.td-modal__*`, `.toast-item` →
   `.td-toast`, `.td-tooltip-content` → `.td-tooltip__content` (arrow removed), `.td-dropdown-*` → `.td-dropdown__*`).
   These components require `td.css`.
 - **z-index from tokens:** modal `--td-z-modal` 400, dropdown menu `--td-z-popover` 450 (was 10010), toast
@@ -308,12 +308,12 @@ worktrees on a shared base (`utils/layers.js`, `utils/floating.js`), integrated 
 ## 0.8.0
 
 Migration **batch 2**: `td-input-field`, `td-slider`, `td-pagination`, `td-tabs`, `td-empty-state` are now
-**token-native** (td.css only). Plan: `docs/plans/v0.8.0-batch2.md` (Codex plan-review APPROVE, 3 rounds; inventory +
+**token-native** (td.css only). Plan: `docs/internal/plans/v0.8.0-batch2.md` (Codex plan-review APPROVE, 3 rounds; inventory +
 decisions D1–D19 in `v0.8.0-batch2-inventory.md`). Built in parallel by four agents in isolated worktrees, integrated here.
 
 ### Breaking (internal DOM / classes)
 
-- Internal classes renamed to BEM — `docs/migration/class-map.md` (`.td-input*` → `.td-field*`, `.td-slider-*` →
+- Internal classes renamed to BEM — `docs/upgrading/class-map.md` (`.td-input*` → `.td-field*`, `.td-slider-*` →
   `.td-slider__*`, `.td-pagination-*` → `.td-pagination__*`, `.td-tab-btn` → `.td-tabs__tab`, `.td-empty-*` →
   `.td-empty-state__*`). These components require `td.css`.
 
@@ -365,11 +365,11 @@ decisions D1–D19 in `v0.8.0-batch2-inventory.md`). Built in parallel by four a
 ## 0.7.0
 
 Migration **batch 1**: `td-button`, `td-checkbox`, `td-toggle`, `TdLoading` are now **token-native** (td.css only,
-no Tailwind, no adopted stylesheets). Plan: `docs/plans/v0.7.0-batch1.md` (Codex plan-review APPROVE, decisions D1–D10).
+no Tailwind, no adopted stylesheets). Plan: `docs/internal/plans/v0.7.0-batch1.md` (Codex plan-review APPROVE, decisions D1–D10).
 
 ### Breaking (internal DOM / classes)
 
-- Internal classes renamed to BEM — see `docs/migration/class-map.md`. Public tags, attributes, properties, methods
+- Internal classes renamed to BEM — see `docs/upgrading/class-map.md`. Public tags, attributes, properties, methods
   and events are unchanged except the behaviour changes below.
 - These four components **require `td.css`** (`import '@dazzxq/td-components/td.css'` or `<link>`).
 - `td-checkbox` host custom property `--td-cb-color` → `--td-checkbox-color`.
@@ -414,7 +414,7 @@ no Tailwind, no adopted stylesheets). Plan: `docs/plans/v0.7.0-batch1.md` (Codex
 
 ## 0.6.0
 
-First **token-native** component and the shared icon registry. Plan: `docs/plans/v0.6.0-lightbox.md`
+First **token-native** component and the shared icon registry. Plan: `docs/internal/plans/v0.6.0-lightbox.md`
 (Codex plan-review APPROVE). No change to existing components.
 
 ### Security
@@ -427,7 +427,7 @@ First **token-native** component and the shared icon registry. Plan: `docs/plans
 
 ### Added
 
-- **`TdLightbox`** (`@dazzxq/td-components/lightbox`, [ADR 0009](docs/decisions/0009-td-lightbox-hooks.md)) —
+- **`TdLightbox`** (`@dazzxq/td-components/lightbox`, [ADR 0009](docs/internal/decisions/0009-td-lightbox-hooks.md)) —
   clean-room port of the dwp lightbox core, styled by `td.css` (Clear glass chrome + local dim, solid panel):
   - `open(items, options)` → handle, `bind(root, options)` → unbind, events `td-lightbox-open|change|close`;
     no side effects on import, no window globals, no inline styles.
@@ -439,7 +439,7 @@ First **token-native** component and the shared icon registry. Plan: `docs/plans
     (Esc, arrows, F, Tab trap that always holds), fullscreen, preload + spinner, render-token stale guards.
   - Fixes vs the dwp original: restores only the `inert` it set, shares the ref-counted scroll lock with the
     modal stack, no selector built from toolbar ids, no `innerHTML` icons, gallery index by element (not src).
-- **Icon registry** (`@dazzxq/td-components/icons`, [ADR 0010](docs/decisions/0010-icon-registry.md)) —
+- **Icon registry** (`@dazzxq/td-components/icons`, [ADR 0010](docs/internal/decisions/0010-icon-registry.md)) —
   `tdIcon(name, { size, label, class })`, `registerIcons()` (allowlisted data only), `hasIcon`, `listIcons`,
   opt-in `<td-icon>` (`./icon-element`); 24 core icons (Lucide geometry, td names) authored in
   `src/icons/icons.json` (also exported for PHP) → generated `registry.js` (`build:icons` / `check:icons`);
@@ -451,8 +451,8 @@ First **token-native** component and the shared icon registry. Plan: `docs/plans
 
 ## 0.5.0
 
-Foundation for the token-driven kit ([ADR 0008](docs/decisions/0008-drop-tailwind-token-css.md),
-plan: `docs/plans/v0.5.0-foundation.md`). **No existing component changes appearance**: the legacy
+Foundation for the token-driven kit ([ADR 0008](docs/internal/decisions/0008-drop-tailwind-token-css.md),
+plan: `docs/internal/plans/v0.5.0-foundation.md`). **No existing component changes appearance**: the legacy
 Tailwind components are untouched and the new stylesheet is reset-free (proven by a combined parity run).
 
 ### Added
@@ -476,8 +476,8 @@ Tailwind components are untouched and the new stylesheet is reset-free (proven b
   the Tailwind fixture must match the same 73 baselines.
 - Storybook: `td.css` loaded globally; new **Foundations/Glass** stories (Regular, Strong + Large,
   Clear over media, Clear + text) with `glass` on/off and `theme` light/dark controls.
-- Docs: CSS authoring + site override guide (`docs/architecture.md`), class-map skeleton
-  (`docs/migration/class-map.md`).
+- Docs: CSS authoring + site override guide (`docs/internal/architecture.md`), class-map skeleton
+  (`docs/upgrading/class-map.md`).
 
 ### Verified
 
@@ -487,7 +487,7 @@ Tailwind components are untouched and the new stylesheet is reset-free (proven b
 ## 0.4.1
 
 Bugfix release on the current (Tailwind) architecture. Sources: dcms2 + dwp fixes since 2026-06
-(see `docs/history/2026-09-sync-dcms-dwp.md`). No API removals.
+(see `docs/internal/history/2026-09-sync-dcms-dwp.md`). No API removals.
 
 ### Fixed
 
@@ -662,7 +662,7 @@ element** (via `ElementInternals`), and a context-based XSS model hardens the wh
 - CSS-context sanitizers (`src/utils/css-safe.js`): `safeColor`, `safeHexColor`,
   `safeCssDimension`, `clampNumber`; `TdBaseElement.safeColor()`.
 - Real-browser test suite (`@web/test-runner` + Playwright) for form behavior and XSS.
-- Docs: a full [component catalog](docs/components.md) with a security model / context table.
+- Docs: a full [component catalog](docs/components/README.md) with a security model / context table.
 
 ### Security
 

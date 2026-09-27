@@ -2,7 +2,7 @@ import { TdFormElement } from './td-form-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 
 /**
- * Shared base for checkbox-like controls (td-checkbox, td-toggle). Plan: docs/plans/v0.7.0-batch1.md.
+ * Shared base for checkbox-like controls (td-checkbox, td-toggle). Plan: docs/internal/plans/v0.7.0-batch1.md.
  *
  * - The inner control is a native `<input type="checkbox">` (subclass `_focusTarget()`), so focus, Space,
  *   disabled and form semantics are native.

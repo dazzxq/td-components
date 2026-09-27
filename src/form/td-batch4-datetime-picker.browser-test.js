@@ -3,7 +3,7 @@ import { sendKeys, emulateMedia } from '@web/test-runner-commands';
 import { TdDatetimePicker } from './td-datetime-picker.js';
 import { TdModal } from '../feedback/td-modal.js';
 
-// Batch 4 — td-datetime-picker token-native (plan docs/plans/v0.10.0-batch4.md item 1: D1–D10). td.css only.
+// Batch 4 — td-datetime-picker token-native (plan docs/internal/plans/v0.10.0-batch4.md item 1: D1–D10). td.css only.
 const link = document.createElement('link');
 link.rel = 'stylesheet';
 link.href = '/td.css';

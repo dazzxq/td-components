@@ -1,7 +1,7 @@
 # Roadmap
 
 Roadmap sống. Mỗi item một dòng, kèm trạng thái: `todo` · `doing` · `done` · `blocked`.
-Khi xong: đánh `done`, ghi vào [CHANGELOG.md](../CHANGELOG.md), rồi xoá dòng ở lần release sau.
+Khi xong: đánh `done`, ghi vào [CHANGELOG.md](../../CHANGELOG.md), rồi xoá dòng ở lần release sau.
 Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-09-sync-dcms-dwp.md).
 
 ## Done — v0.4.1 bugfix (2026-09-27, xem CHANGELOG)
@@ -115,4 +115,4 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 
 ## Done
 
-Xem [CHANGELOG.md](../CHANGELOG.md) và [nhật ký chạy qua đêm](history/2026-09-27-overnight.md). Gần nhất: v0.13.0.
+Xem [CHANGELOG.md](../../CHANGELOG.md) và [nhật ký chạy qua đêm](history/2026-09-27-overnight.md). Gần nhất: v0.13.0.

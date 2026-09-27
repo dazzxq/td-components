@@ -12,7 +12,7 @@ function decimalsOf(n) {
 }
 
 /**
- * Slider (token-native, 0.8.0 — plan docs/plans/v0.8.0-batch2.md D11/D12/D14/D16). Needs td.css.
+ * Slider (token-native, 0.8.0 — plan docs/internal/plans/v0.8.0-batch2.md D11/D12/D14/D16). Needs td.css.
  *
  * Structure: a native `<input type="range">` (opacity 0) covers the whole ≥ 24 px `.td-slider__control`, so
  * keyboard, pointer, disabled and form semantics are native; its thumb width equals `--td-slider-thumb` so the

@@ -15,7 +15,7 @@
  *   :root { --td-glass-bg: oklch(96% 0.014 80 / 0.72); --td-accent: #b3261e; }
  *
  * Never override `--_td-*` (private, resolved by the kit's accessibility fallbacks).
- * Base scale adopted from the 135 `td-` kit; glass values from docs/design/liquid-glass.md.
+ * Base scale adopted from the 135 `td-` kit; glass values from docs/internal/design/liquid-glass.md.
  * Light by default. Dark is opt-in: <html data-td-theme="dark"> (theme-dark.css).
  */
 @layer td.tokens {
@@ -199,7 +199,7 @@
 		--td-icon-stroke: 2;
 
 		/* ================= Liquid Glass — Regular (light) =================
-		   v0.14.0 values (Codex think-about consensus; docs/design/liquid-glass.md §G2). Glass reads through LOW opacity +
+		   v0.14.0 values (Codex think-about consensus; docs/internal/design/liquid-glass.md §G2). Glass reads through LOW opacity +
 		   a two-tone rim, a faint 135° sheen, a dark outer hairline and a lift shadow — never by raising opacity.
 		   --td-glass-edge is the INSET top highlight; --td-glass-border the OUTER line. Never swap them. */
 		--td-glass-bg: rgb(255 255 255 / 40%);        /* regular: icon / short-label controls, known light context */
@@ -349,7 +349,7 @@
 
 /* ---- src/styles/glass.css ---- */
 /*
- * Liquid Glass recipes — rules: docs/design/liquid-glass.md.
+ * Liquid Glass recipes — rules: docs/internal/design/liquid-glass.md.
  *
  * Use glass ONLY on the floating control layer (bars, menus, popovers, sheets, toasts, modals).
  * Never glass on glass: anything placed ON a glass surface uses plain fills.
@@ -2339,7 +2339,7 @@
 /*
  * td-lightbox — image/video viewer (src/feedback/td-lightbox.js). Adapted from the 135 kit.
  * Always dark: its background is the photograph, not the site theme → local tokens, no dark remap.
- * Glass (docs/design/liquid-glass.md): toolbar + counter are CLEAR glass over the photo
+ * Glass (docs/internal/design/liquid-glass.md): toolbar + counter are CLEAR glass over the photo
  * (`td-glass-surface td-glass-surface--clear`, fallbacks from glass.css) with a LOCAL dim layer;
  * the info panel / sheet is solid. State comes from attributes set by JS, never visual classes:
  *   overlay [data-state="open"] [data-dragging] [data-closing-down] [data-zoomed] [data-panel]
@@ -2791,7 +2791,7 @@
 		}
 	}
 
-	/* Touch: 44 px hit targets (docs/design/liquid-glass.md geometry rule). */
+	/* Touch: 44 px hit targets (docs/internal/design/liquid-glass.md geometry rule). */
 	@media (pointer: coarse) {
 		.td-lightbox {
 			--td-lb-btn: var(--td-touch-min);

@@ -4,7 +4,7 @@ Shared UI Web Components library. Drop into any project, import what you need, i
 
 No Shadow DOM -- components render light DOM styled by one CSS file (`td.css`), so your page CSS and `--td-*` tokens reach them. No framework dependency -- vanilla JS Custom Elements that work everywhere.
 
-Each component is **independent** (import only what you need) and **customized through params** -- HTML attributes for scalars, JS properties for data/callbacks. See the **[Component Catalog](docs/components.md)** for every component, its params, and usage examples.
+Each component is **independent** (import only what you need) and **customized through params** -- HTML attributes for scalars, JS properties for data/callbacks. See the **[Component Catalog](docs/components/README.md)** for every component, its params, and usage examples.
 
 **Docs:** [docs/README.md](docs/README.md) — vision, roadmap, architecture, conventions, decisions.
 
@@ -34,11 +34,11 @@ import '@dazzxq/td-components/td.css';
 ```
 
 Theme it by overriding public `--td-*` tokens in your own **unlayered** CSS (see
-[docs/architecture.md](docs/architecture.md#site-tuỳ-biến-thế-nào)). Dark theme is opt-in:
+[docs/internal/architecture.md](docs/internal/architecture.md#site-tuỳ-biến-thế-nào)). Dark theme is opt-in:
 `<html data-td-theme="dark">`. Turn glass off manually: `<html data-td-glass="off">`.
 
 Every component is **token-native** (td.css only) since 0.10.0; the Tailwind peer dependency was removed in 0.11.0
-([ADR 0008](docs/decisions/0008-drop-tailwind-token-css.md)). **Tailwind hosts** can keep Tailwind: td.css is
+([ADR 0008](docs/internal/decisions/0008-drop-tailwind-token-css.md)). **Tailwind hosts** can keep Tailwind: td.css is
 layered (`@layer td.*`) and every component sets its own font, line-height, box-sizing and borders, so a host
 preflight does not alter it (checked by the `legacy+td` CSP profile).
 
@@ -110,7 +110,7 @@ in all current evergreen browsers (Chrome/Edge 77+, Firefox 98+, Safari 16.4+). 
 engines, load a [form-associated CE polyfill](https://www.npmjs.com/package/element-internals-polyfill)
 before importing the components.
 
-See the **[Component Catalog](docs/components.md)** for every component's params, and
+See the **[Component Catalog](docs/components/README.md)** for every component's params, and
 **[CHANGELOG.md](CHANGELOG.md)** for the 0.2.0 breaking changes.
 
 ## Creating Components

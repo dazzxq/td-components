@@ -25,7 +25,7 @@
 | Số | `Number()` / `clampNumber()`, không dùng chuỗi thô |
 | Style per-instance | CSSOM (`applyStyles`, `setProperty`), không bao giờ `style="…"` |
 
-Chi tiết và danh sách raw-HTML hatch: [security.md](security.md).
+Chi tiết và danh sách raw-HTML hatch: [security.md](security-model.md).
 
 ## Test
 

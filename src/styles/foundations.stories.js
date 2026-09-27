@@ -3,7 +3,7 @@ import '../icons/td-icon-element.js';
 import '../form/td-button.js';
 
 /**
- * Foundations — Liquid Glass recipes from td.css (docs/design/liquid-glass.md).
+ * Foundations — Liquid Glass recipes from td.css (docs/internal/design/liquid-glass.md).
  * Controls: `glass` toggles <html data-td-glass="off"> (the manual reduce-transparency switch);
  * `theme` toggles <html data-td-theme="dark"> (dark is opt-in only).
  */

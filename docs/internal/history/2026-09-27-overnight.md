@@ -63,11 +63,11 @@ Quyết định thiết kế mơ hồ → debate Codex (`/codex-think-about` ho�
   tạm dừng cả chồng toast; tooltip chỉ mở khi focus bằng bàn phím (`:focus-visible`), không mở khi click. Màu/bo góc là token — đổi dễ nếu không ưng (`--td-btn-radius`, `--td-accent`, `--td-switch-on`).
 - Push lên GitHub khi đã kiểm tra (`git push --follow-tags`) — lần push đầu sẽ chạy CI mới (`.github/workflows/test.yml`),
   xem nó xanh chưa (chưa thể chạy thử trên máy).
-- 135/dwp chưa đụng tới; hướng dẫn tích hợp trong `docs/roadmap.md` mục External.
+- 135/dwp chưa đụng tới; hướng dẫn tích hợp trong `docs/internal/roadmap.md` mục External.
 
 - **v0.14.0 hovercard:** chuỗi HTML (từ `content()` hoặc URL) được tin như markup của dev — đúng yêu cầu "tự do thiết
   kế". Nếu fragment có nội dung người dùng tạo (bio, bình luận…) thì site PHẢI gắn `TdHovercard.sanitize`
-  (vd. DOMPurify); trong SPA phải gọi `TdHovercard.clearCache()` khi logout/login. Xem `docs/security.md`.
+  (vd. DOMPurify); trong SPA phải gọi `TdHovercard.clearCache()` khi logout/login. Xem `docs/internal/security-model.md`.
 - Xem glass mới: Storybook **Foundations/Glass › Showcase**, hoặc `npm run demo` → mục Liquid Glass.
 
 (Các batch tiếp theo được ghi thêm bên dưới khi xong.)

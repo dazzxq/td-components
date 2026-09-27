@@ -3,7 +3,7 @@ import { sendKeys, sendMouse, emulateMedia } from '@web/test-runner-commands';
 import { TdToast } from './td-toast.js';
 import { LAYERS, register, trapContainers, trapTab } from '../utils/layers.js';
 
-// v0.9.0 batch 3 — td-toast token-native (plan docs/plans/v0.9.0-batch3.md item 2). td.css only.
+// v0.9.0 batch 3 — td-toast token-native (plan docs/internal/plans/v0.9.0-batch3.md item 2). td.css only.
 const link = document.createElement('link');
 link.rel = 'stylesheet';
 link.href = '/td.css';

@@ -4,7 +4,7 @@ import { TdMenu, safeMenuHref } from './td-menu.js';
 import { TdModal } from './td-modal.js';
 import { LAYERS, hasActiveAbove } from '../utils/layers.js';
 
-// v0.12.0 step 2 — TdMenu (plan docs/plans/v0.12.0-new-components.md D1–D7). td.css only.
+// v0.12.0 step 2 — TdMenu (plan docs/internal/plans/v0.12.0-new-components.md D1–D7). td.css only.
 const link = document.createElement('link');
 link.rel = 'stylesheet';
 link.href = '/td.css';

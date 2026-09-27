@@ -27,7 +27,7 @@ làm bẩn global namespace.
 ## Ràng buộc
 
 - **Không Shadow DOM**: CSS của host (token `--td-*`) phải chạm được component.
-- **CSP strict**: không `style="…"`, không chèn `<style>`. Chỉ dùng file CSS ship kèm và CSSOM. Xem [security.md](security.md).
+- **CSP strict**: không `style="…"`, không chèn `<style>`. Chỉ dùng file CSS ship kèm và CSSOM. Xem [security.md](security-model.md).
 - **Không bắt buộc build step ở phía consumer**: Vite import thẳng source; PHP dùng `<link>` tới `td.css`.
 - **Tương thích về khái niệm** với DCMS gốc: cover cùng chức năng, không cần cùng API.
 - **Solo dev**: không over-engineer, không framework, không TypeScript.

@@ -16,7 +16,7 @@ function tokenColor(name) {
   return c;
 }
 
-// Batch 3 — td-dropdown token-native (plan docs/plans/v0.9.0-batch3.md step 4: D17/D18/D19). td.css only.
+// Batch 3 — td-dropdown token-native (plan docs/internal/plans/v0.9.0-batch3.md step 4: D17/D18/D19). td.css only.
 const link = document.createElement('link');
 link.rel = 'stylesheet';
 link.href = '/td.css';

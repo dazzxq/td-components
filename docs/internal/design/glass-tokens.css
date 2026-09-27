@@ -10,7 +10,7 @@
  * !!   - Dark values are computed, not yet rendered/tuned (roadmap backlog).
  *
  * td-components — Liquid Glass token set (PROPOSAL, v1)
- * Rules + Apple citations: liquid-glass.md (same folder). Mechanism for private vars: see docs/decisions/0008-drop-tailwind-token-css.md.
+ * Rules + Apple citations: liquid-glass.md (same folder). Mechanism for private vars: see docs/internal/decisions/0008-drop-tailwind-token-css.md.
  *
  * CSP: this is a plain shipped CSS file (style-src 'self'). No inline style attrs, no injected <style>.
  * Per-element runtime values (pointer glow position) are set by JS via CSSOM

@@ -3,7 +3,7 @@
 > **Bắt buộc cho mọi UI mới.** Component token-native (từ v0.5) phải theo bộ luật này.
 >
 > **Phạm vi:** mọi component `td-*` và mọi site dùng kit (135, dwp, …). Tài liệu này thay cho
-> `dwp/docs/design/LIQUID-GLASS.md` và phần chú thích đầu `135/.../td-glass.css`.
+> `dwp/docs/internal/design/LIQUID-GLASS.md` và phần chú thích đầu `135/.../td-glass.css`.
 > **Token:** [glass-tokens.css](glass-tokens.css) (bản nháp tham chiếu, chưa nối vào `src/`).
 >
 > **Cơ chế token private đã chốt ở [ADR 0008](../decisions/0008-drop-tailwind-token-css.md), thay cho

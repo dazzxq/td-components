@@ -1,7 +1,7 @@
 /*
  * td-lightbox — image/video viewer (src/feedback/td-lightbox.js). Adapted from the 135 kit.
  * Always dark: its background is the photograph, not the site theme → local tokens, no dark remap.
- * Glass (docs/design/liquid-glass.md): toolbar + counter are CLEAR glass over the photo
+ * Glass (docs/internal/design/liquid-glass.md): toolbar + counter are CLEAR glass over the photo
  * (`td-glass-surface td-glass-surface--clear`, fallbacks from glass.css) with a LOCAL dim layer;
  * the info panel / sheet is solid. State comes from attributes set by JS, never visual classes:
  *   overlay [data-state="open"] [data-dragging] [data-closing-down] [data-zoomed] [data-panel]
@@ -453,7 +453,7 @@
 		}
 	}
 
-	/* Touch: 44 px hit targets (docs/design/liquid-glass.md geometry rule). */
+	/* Touch: 44 px hit targets (docs/internal/design/liquid-glass.md geometry rule). */
 	@media (pointer: coarse) {
 		.td-lightbox {
 			--td-lb-btn: var(--td-touch-min);

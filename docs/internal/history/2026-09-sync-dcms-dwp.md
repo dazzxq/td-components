@@ -36,7 +36,7 @@ Quét để tìm fix/tính năng đáng đưa vào td sau v0.4.0. td **không** 
 | `ui-button.js` | `aria-busy` khi loading | batch 1 |
 | `menu.js` | menu | `td-menu` |
 | `lightbox.js` | lightbox | `td-lightbox` ([ADR 0009](../decisions/0009-td-lightbox-hooks.md)) |
-| `34d3fa9a` | đo CSP: attribute `style` bị chặn bởi `style-src-attr 'none'`, nhưng ghi CSSOM `el.style` vẫn được phép | xác nhận mô hình CSSOM ([security.md](../security.md)) |
+| `34d3fa9a` | đo CSP: attribute `style` bị chặn bởi `style-src-attr 'none'`, nhưng ghi CSSOM `el.style` vẫn được phép | xác nhận mô hình CSSOM ([security.md](../security-model.md)) |
 
 ## 135
 

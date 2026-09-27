@@ -60,7 +60,7 @@ Không có `style="…"` và không chèn `<style>` trong output của lib.
 
 ## Render & cleanup
 
-- Render bằng `innerHTML` chuỗi template; mọi giá trị đi qua sanitizer theo ngữ cảnh ([security.md](security.md)).
+- Render bằng `innerHTML` chuỗi template; mọi giá trị đi qua sanitizer theo ngữ cảnh ([security.md](security-model.md)).
 - Bind event trong `afterRender()` bằng `this.listen()` để tự gỡ khi disconnect.
 - Component có animation state (toggle, tabs) cập nhật DOM nhẹ thay vì render lại toàn bộ để transition chạy.
 - Phần tử portal ra `body` (menu dropdown, toast, tooltip, modal) phải tự dọn khi disconnect/đóng.
