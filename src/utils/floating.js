@@ -23,12 +23,12 @@ export function isReferenceHidden(rect) {
  * - opens on the preferred side when it fits, else on the side with more room — never overlapping the trigger;
  * - when neither side fits, caps `opts.list` (the scrollable part) to the room instead of clamping `top`;
  * - horizontally: `width: 'match'` = same width as the trigger (viewport-capped), aligned to its left edge;
- *   `width: 'auto'` = natural width, centred on the trigger; both clamped into the viewport with an 8 px margin
- *   when there is room for it.
+ *   `width: 'auto'` = natural width, aligned by `align` (`'center'` default, `'start'` = left edges, `'end'` = right
+ *   edges); both clamped into the viewport with an 8 px margin when there is room for it.
  * @param {Element|DOMRect} trigger element or its rect
  * @param {HTMLElement} panel position: fixed element
  * @param {{ side?: 'bottom'|'top', gap?: number, margin?: number, width?: 'match'|'auto',
- *           list?: HTMLElement|null, listMax?: number }} [opts]
+ *           align?: 'start'|'center'|'end', list?: HTMLElement|null, listMax?: number }} [opts]
  * @returns {{ side: 'bottom'|'top', top: number, left: number }}
  */
 export function placeFloating(trigger, panel, opts = {}) {
@@ -55,7 +55,10 @@ export function placeFloating(trigger, panel, opts = {}) {
 
   if (width === undefined) width = Math.min(panel.offsetWidth, vw);
   const margin = vw - width >= 2 * MARGIN ? MARGIN : 0;
-  const wantLeft = opts.width === 'match' ? rect.left : rect.left + rect.width / 2 - width / 2;
+  let wantLeft;
+  if (opts.width === 'match' || opts.align === 'start') wantLeft = rect.left;
+  else if (opts.align === 'end') wantLeft = rect.right - width;
+  else wantLeft = rect.left + rect.width / 2 - width / 2;
   const left = Math.max(margin, Math.min(wantLeft, vw - width - margin));
   s.setProperty('left', `${left}px`);
 

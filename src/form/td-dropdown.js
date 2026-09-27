@@ -1,3 +1,4 @@
+import { nextTypeaheadIndex } from '../utils/typeahead.js';
 import { placeFloating, isReferenceHidden } from '../utils/floating.js';
 import { LAYERS, register as registerLayer } from '../utils/layers.js';
 import { TdFormElement } from '../base/td-form-element.js';
@@ -7,8 +8,6 @@ const CLEAR = '__CLEAR__';
 const OPTION_PX = 40; // --td-dropdown-option-h: `max-height` = visible options × 40 px
 const TYPEAHEAD_MS = 500;
 
-/** Case- and diacritic-insensitive key for type-ahead ("hà" ~ "ha"). */
-const fold = (s) => String(s).normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase().replace(/đ/g, 'd');
 
 /**
  * Dropdown (select-only combobox) with a searchable popup, keyboard navigation and auto-positioning.
@@ -675,20 +674,10 @@ export class TdDropdown extends TdFormElement {
     this._clearTypeahead();
     this._typeBuffer += char;
     this._typeTimer = window.setTimeout(() => { this._typeTimer = null; this._typeBuffer = ''; }, TYPEAHEAD_MS);
-    const buf = fold(this._typeBuffer);
-    const same = [...buf].every((c) => c === buf[0]);
-    const prefix = same ? buf[0] : buf; // "aaa" cycles through the "a…" options
     const labelKey = this._getLabelKey();
-    const n = this._nav.length;
-    const start = this._activeIndex < 0 ? 0 : this._activeIndex + (same || buf.length === 1 ? 1 : 0);
-    for (let k = 0; k < n; k++) {
-      const i = (start + k) % n;
-      const entry = this._nav[i];
-      if (entry.item && fold(entry.item[labelKey]).startsWith(prefix)) {
-        this._setActive(i);
-        return;
-      }
-    }
+    const labels = this._nav.map((entry) => (entry.item ? entry.item[labelKey] : null));
+    const i = nextTypeaheadIndex(labels, this._activeIndex, this._typeBuffer);
+    if (i >= 0) this._setActive(i);
   }
 
   /** @private */
