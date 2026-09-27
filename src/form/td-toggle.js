@@ -71,6 +71,7 @@ export class TdToggle extends TdCheckableElement {
 
   afterRender() {
     super.afterRender();
+    if (this._pendingCommit) this._setPending(true); // a re-render (label/size/reconnect) keeps the pending state
     const thumbHost = this.querySelector('.td-switch');
     if (thumbHost) {
       // Knob "lifts" while pressed (liquid-glass: glass only during interaction; CSS disables under
@@ -103,7 +104,8 @@ export class TdToggle extends TdCheckableElement {
     const setChecked = (on) => { if (on) this.setAttribute('checked', ''); else this.removeAttribute('checked'); };
     setChecked(target);
     this._setPending(true);
-    const p = (async () => fn(target))().then(
+    // The guard exists BEFORE fn runs (a synchronous nested commit() gets the same promise); fn starts a microtask later.
+    const p = Promise.resolve().then(() => fn(target)).then(
       (res) => {
         if (res === false) {
           setChecked(previous);

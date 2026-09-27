@@ -164,7 +164,7 @@ export class TdButton extends TdBaseElement {
   }
 
   /**
-   * Run an async action with the button busy (v0.13.0): `loading` is set for the duration and cleared in `finally`;
+   * Run an async action with the button busy (v0.13.0): `loading` is set for the duration and always cleared in `finally`;
    * the function's result is returned / its error rethrown. A call while one is running returns the SAME in-flight
    * promise (no double submit).
    * @template T
@@ -174,11 +174,11 @@ export class TdButton extends TdBaseElement {
   run(fn) {
     if (typeof fn !== 'function') return Promise.reject(new TypeError('TdButton.run: a function is required'));
     if (this._running) return this._running;
-    const wasLoading = this.hasAttribute('loading');
     this.setLoading(true);
-    const p = (async () => fn())().finally(() => {
+    // The guard exists BEFORE fn runs (a synchronous nested run() gets the same promise); fn starts a microtask later.
+    const p = Promise.resolve().then(() => fn()).finally(() => {
       this._running = null;
-      if (!wasLoading) this.setLoading(false);
+      this.setLoading(false);
     });
     this._running = p;
     return p;

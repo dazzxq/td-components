@@ -51,10 +51,10 @@ describe('TdButton.run()', () => {
     expect(calls).to.equal(1);
   });
 
-  it('a pre-existing loading state is kept; non-function rejects with TypeError', async () => {
+  it('loading is always cleared after run (even if set before); non-function rejects with TypeError', async () => {
     const b = mount('<td-button loading>Lưu</td-button>');
     await b.run(async () => 1);
-    expect(b.hasAttribute('loading')).to.equal(true);
+    expect(b.hasAttribute('loading')).to.equal(false);
     let err = null;
     try { await b.run(null); } catch (e) { err = e; }
     expect(err instanceof TypeError).to.equal(true);
@@ -68,6 +68,41 @@ describe('TdButton.run()', () => {
     d.resolve();
     await p;
     expect(b.hasAttribute('loading')).to.equal(false);
+  });
+});
+
+describe('impl-review round 1: re-entrancy + pending across re-render', () => {
+  it('a synchronous nested run() from inside fn returns the same promise (fn runs once)', async () => {
+    const b = mount('<td-button>Lưu</td-button>');
+    let calls = 0; let inner = null;
+    const fn = () => { calls++; if (!inner) inner = b.run(fn); return 'x'; };
+    const outer = b.run(fn);
+    await outer;
+    expect(inner === outer).to.equal(true);
+    expect(calls).to.equal(1);
+  });
+
+  it('a synchronous nested commit() from inside fn returns the same promise', async () => {
+    const t = mount('<td-toggle label="x"></td-toggle>');
+    let calls = 0; let inner = null;
+    const fn = () => { calls++; if (!inner) inner = t.commit(fn); return true; };
+    const outer = t.commit(fn);
+    await outer;
+    expect(inner === outer).to.equal(true);
+    expect(calls).to.equal(1);
+  });
+
+  it('pending ARIA/CSS survive a re-render during commit', async () => {
+    const t = mount('<td-toggle label="x"></td-toggle>');
+    const d = deferred();
+    const p = t.commit(() => d.promise);
+    await tick();
+    t.setAttribute('label', 'Nhãn mới'); // structural re-render
+    expect(t.querySelector('input').getAttribute('aria-busy')).to.equal('true');
+    expect(t.querySelector('.td-switch').hasAttribute('data-pending')).to.equal(true);
+    d.resolve(true);
+    await p;
+    expect(t.querySelector('.td-switch').hasAttribute('data-pending')).to.equal(false);
   });
 });
 
