@@ -259,6 +259,31 @@ describe('deferred initial selection never overrides newer intent (review v0.16.
   });
 });
 
+describe('early false default-ON flags survive upgrade (review v0.16.0 ISSUE-11)', () => {
+  it('before connect: searchable = false, allowClear = false', () => {
+    const el = document.createElement('td-dropdown');
+    el.searchable = false;
+    el.allowClear = false;
+    host.appendChild(el);
+    el.options = cities();
+    expect(el.searchable).to.equal(false);
+    expect(el.allowClear).to.equal(false);
+    expect(el.getAttribute('searchable')).to.equal('false');
+    expect(el.getAttribute('allow-clear')).to.equal('false');
+  });
+
+  it('before definition (late subclass): searchable = false, allowClear = false', () => {
+    class LateDropdown3 extends TdDropdown {}
+    const el = mount('<td-late-dropdown3></td-late-dropdown3>');
+    el.searchable = false;
+    el.allowClear = false;
+    customElements.define('td-late-dropdown3', LateDropdown3);
+    expect(el.searchable).to.equal(false);
+    expect(el.allowClear).to.equal(false);
+    expect(Object.prototype.hasOwnProperty.call(el, 'searchable')).to.equal(false);
+  });
+});
+
 describe('B5 properties set before the element is defined', () => {
   it('options / onChange / onSelect set before define are picked up at upgrade', () => {
     class LateDropdown extends TdDropdown {}

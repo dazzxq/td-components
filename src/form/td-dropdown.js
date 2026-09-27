@@ -97,8 +97,8 @@ export class TdDropdown extends TdFormElement {
 
   // NOTE: `searchable`/`allow-clear` are intentionally NOT booleanAttributes. They are
   // default-ON tri-state flags (absent → ON; `="false"`/`"0"`/`"off"` → OFF), which the base
-  // naive boolean property mapping (absent === false) cannot express. We own their JS
-  // properties in `_setupProperties()` below so `el.searchable = false` actually disables them.
+  // naive boolean property mapping (absent === false) cannot express. They have their own
+  // prototype accessors (`searchable` / `allowClear`) so `el.searchable = false` actually disables them.
   static get booleanAttributes() {
     return [...super.booleanAttributes];
   }
@@ -168,24 +168,13 @@ export class TdDropdown extends TdFormElement {
   }
 
   /**
-   * Own the JS properties for the default-ON tri-state flags. The base wires every observed
-   * attribute to a naive property; for `allow-clear` it can't even be skipped (the skip guard
-   * keys off the hyphenated attr name), and its setter would `removeAttribute` on `false`,
-   * leaving the flag ON. We redefine AFTER super so `el.searchable`/`el.allowClear`:
-   *   - get → the real boolean (`_isSearchable()`/`_isAllowClear()`)
-   *   - set false → `attr="false"` (OFF); set true → remove attr (back to default ON)
-   * keeping the JS property and the attribute consistent.
+   * Base property setup (early-property replay), then resolve a deferred initial selection.
    * @private
    */
   _setupProperties() {
+    // `searchable` / `allowClear` are PROTOTYPE accessors (below), so the base keeps them and replays early values
+    // (incl. `false`) through them (review v0.16.0 ISSUE-11).
     super._setupProperties();
-    const own = (prop, attr, isOn) => Object.defineProperty(this, prop, {
-      get: () => isOn(),
-      set: (v) => { v === false ? this.setAttribute(attr, 'false') : this.removeAttribute(attr); },
-      configurable: true,
-    });
-    own('searchable', 'searchable', () => this._isSearchable());
-    own('allowClear', 'allow-clear', () => this._isAllowClear());
     // `options` assigned before the first connect deferred the initial selection until early `value` / `valueKey` /
     // `labelKey` properties are replayed (review v0.16.0 ISSUE-5/6): resolve it now with the FINAL attributes —
     // unless an explicit setValue() (select or clear) already superseded it.
@@ -196,6 +185,14 @@ export class TdDropdown extends TdFormElement {
   }
 
   // --- Property accessors ---
+
+  /** Default-ON flag: `false` → `searchable="false"` (OFF); anything else → attribute removed (back to ON). */
+  get searchable() { return this._isSearchable(); }
+  set searchable(v) { v === false ? this.setAttribute('searchable', 'false') : this.removeAttribute('searchable'); }
+
+  /** Default-ON flag: `false` → `allow-clear="false"` (OFF); anything else → attribute removed (back to ON). */
+  get allowClear() { return this._isAllowClear(); }
+  set allowClear(v) { v === false ? this.setAttribute('allow-clear', 'false') : this.removeAttribute('allow-clear'); }
 
   get options() { return this._options; }
   set options(data) {
