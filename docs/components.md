@@ -8,7 +8,7 @@ Three principles hold for the whole library:
 
 1. **Each component is independent.** Import only the one you need (`import '@dazzxq/td-components/dropdown'`) — there is no shared runtime to set up, no provider to wrap your app in. One import registers one custom element (or one imperative API) and nothing else.
 2. **You customize through params, not CSS overrides.** Declarative components are configured with **HTML attributes** (e.g. `size="lg"`, `color="#10b981"`, `required`); list/object data and callbacks are set through **JS properties** (e.g. `el.options = [...]`, `el.columns = [...]`). Imperative components (modal/toast/loading) take an **options object**.
-3. **No Shadow DOM.** Components render into light DOM and are styled by `td.css` (override `--td-*` tokens to theme them) and you can always reach inside if you must. (See the [README](../README.md) for the required Tailwind v4 `@source` setup.)
+3. **No Shadow DOM.** Components render into light DOM and are styled by `td.css` (override `--td-*` tokens to theme them) and you can always reach inside if you must. Load `td.css` once — see the [README](../README.md#styles-tdcss-token-kit); no Tailwind or other setup is needed.
 
 **Reading the tables below:**
 - **Attribute** — set in HTML, e.g. `<td-toggle size="lg">`. Boolean attributes are on when present (`required`), off when absent.
