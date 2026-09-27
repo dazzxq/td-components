@@ -4223,7 +4223,7 @@
 		--td-dtp-visible: 5;                                      /* visible rows → wheel height = row × 5 (odd) */
 		--td-dtp-wheel-w: 5rem;
 		--td-dtp-band-bg: var(--td-color-hover-strong);
-		--td-dtp-band-border: var(--td-control-border-strong);    /* ≥ 3:1: the band marks the selection */
+		--td-dtp-band-border: var(--td-control-border-hover);     /* v0.14.4: soft like the other control edges; fill + bold mark it too */
 		--td-dtp-option-fg: var(--td-color-text-muted);           /* ≥ 4.5:1 (was gray-400, 2.54:1) */
 		--td-dtp-option-selected-fg: var(--td-color-text);
 		--td-dtp-preview-bg: var(--td-color-hover);
@@ -4467,7 +4467,7 @@
 		pointer-events: none;
 		content: "";
 		background: var(--td-dtp-band-bg);
-		border-block: 1px solid var(--td-dtp-band-border);
+		border: 1px solid var(--td-dtp-band-border); /* v0.14.4: all four sides (top/bottom only looked clipped at the rounded ends) */
 		border-radius: var(--td-radius-md);
 	}
 

@@ -49,6 +49,10 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` `TdFormValidation` (từ `dcms-form-validation.js`; constraint gốc + `rules` + lỗi server) (v0.12.0)
 - `done` Release cuối của đợt migrate: bỏ peer Tailwind (v0.11.0; `td-sample` token-native, Storybook/demo không Tailwind, guard test)
 
+## Done — v0.14.4 wheel band + demo lightbox
+
+- `done` Dải chọn của bánh xe datetime-picker có đủ viền 4 phía (tông nhạt); demo có mục Lightbox
+
 ## Done — v0.14.3 nút sáng hơn
 
 - `done` Secondary trắng + viền rõ (sửa lỗi specificity khiến nó xám), nút màu tươi hơn, bóng nhẹ hơn, disabled xám mờ rõ

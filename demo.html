@@ -199,6 +199,21 @@
     </div>
   </div>
 
+  <!-- ═══════════════════ LIGHTBOX ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Lightbox <span class="demo-code">TdLightbox.bind()</span></h2>
+    <p class="demo-note">Bấm ảnh để mở · ← → chuyển ảnh · Esc đóng · F toàn màn hình · cuộn/pinch để zoom.</p>
+    <div class="demo-row demo-lb-gallery" data-td-lightbox-group>
+      <figure data-td-lightbox-item data-td-lightbox-src="/test/fixtures/1.svg"><img src="/test/fixtures/1.svg" alt="Ảnh mẫu 1" class="demo-lb-thumb"><figcaption>Biển sâu</figcaption></figure>
+      <figure data-td-lightbox-item data-td-lightbox-src="/test/fixtures/2.svg"><img src="/test/fixtures/2.svg" alt="Ảnh mẫu 2" class="demo-lb-thumb"><figcaption>Hoàng hôn</figcaption></figure>
+      <figure data-td-lightbox-item data-td-lightbox-src="/test/fixtures/3.svg"><img src="/test/fixtures/3.svg" alt="Ảnh mẫu 3" class="demo-lb-thumb"><figcaption>Rừng</figcaption></figure>
+      <figure data-td-lightbox-item data-td-lightbox-src="/test/fixtures/4.svg"><img src="/test/fixtures/4.svg" alt="Ảnh mẫu 4" class="demo-lb-thumb"><figcaption>Sa mạc</figcaption></figure>
+    </div>
+    <div class="demo-row">
+      <button type="button" id="demo-lb-panel" class="td-btn td-btn--secondary"><span class="td-btn__label">Mở có panel chú thích</span></button>
+    </div>
+  </div>
+
   <!-- ═══════════════════ LOADING ═══════════════════ -->
   <div class="demo-section">
     <h2>Loading <span class="demo-code">TdLoading.show()</span></h2>
@@ -292,6 +307,7 @@
     import { TdModal } from './src/feedback/td-modal.js';
     import { TdToast } from './src/feedback/td-toast.js';
     import { TdLoading, TdLoadingSpinner } from './src/feedback/td-loading.js';
+    import { TdLightbox } from './src/feedback/td-lightbox.js';
 
     // Expose cho onclick handlers
     window.TdModal = TdModal;
@@ -435,6 +451,11 @@
     demoPublic.addEventListener('commit-error', (e) => TdToast.error(e.detail.error ? e.detail.error.message : 'Không lưu được'));
 
     // ── Liquid Glass section (v0.14.0) ──
+    TdLightbox.bind(document.querySelector('.demo-lb-gallery'));
+    document.getElementById('demo-lb-panel').addEventListener('click', () => {
+      TdLightbox.open([1, 2, 3, 4].map((n) => ({ src: `/test/fixtures/${n}.svg`, caption: `Ảnh mẫu ${n} — panel chú thích bên phải (≥ 900px) hoặc sheet dưới (mobile)` })), { panel: true });
+    });
+
     TdMenu.define('demo-post', [
       { label: 'Sửa bài viết', icon: 'plus', hint: 'E', onSelect: () => TdToast.info('Sửa') },
       { label: 'Chia sẻ', onSelect: () => TdToast.info('Chia sẻ') },
