@@ -80,6 +80,15 @@ describe('A3 td-input-field pattern / minlength', () => {
     expect(el.validity.valid).to.equal(true);
   });
 
+  it('a whitespace-only value is still tested against pattern (review v0.16.0 ISSUE-3)', () => {
+    const el = mount('<td-input-field pattern="[0-9]+"></td-input-field>');
+    type(el, '   ');
+    expect(el.validity.patternMismatch).to.equal(true);
+    const req = mount('<td-input-field required pattern="\\s*"></td-input-field>');
+    type(req, '  ');
+    expect(req.validity.valueMissing, 'required still trims').to.equal(true);
+  });
+
   it('pattern is ignored for number (like native)', () => {
     const el = mount('<td-input-field type="number" pattern="x"></td-input-field>');
     type(el, '5');

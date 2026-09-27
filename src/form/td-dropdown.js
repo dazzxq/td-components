@@ -838,10 +838,8 @@ export class TdDropdown extends TdFormElement {
     const cur = String(this._selectedItem[vk]);
     const item = this._options.find((i) => String(i[vk]) === cur) || null;
     this._selectedItem = item;
-    if (!item) {
-      this._updateValueText();
-      if (this._initialized) this._syncForm();
-    }
+    this._updateValueText(); // a kept value may come with a new label in the new list
+    if (!item && this._initialized) this._syncForm();
   }
 
   // --- Open/Close ---

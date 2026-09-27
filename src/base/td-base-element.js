@@ -110,7 +110,7 @@ export class TdBaseElement extends HTMLElement {
         early.push([prop, this[prop]]);
         delete this[prop];
       }
-      if (attr in this) continue;
+      if (prop in this) continue; // a subclass accessor (incl. camelCase of a dashed attribute) is kept
       const isBool = booleans.has(attr);
       Object.defineProperty(this, prop, {
         get: () => isBool ? this.hasAttribute(attr) : (this.getAttribute(attr) ?? ''),

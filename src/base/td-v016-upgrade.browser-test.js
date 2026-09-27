@@ -20,6 +20,24 @@ afterEach(() => { document.querySelectorAll('[data-v016]').forEach((n) => n.remo
 
 const mountHost = (el) => { el.setAttribute('data-v016', ''); document.body.appendChild(el); return el; };
 
+describe('v0.16.0 A1 — a dashed attribute never replaces a subclass camelCase accessor (review ISSUE-1)', () => {
+  it('fooBar accessor on the subclass is kept for observed "foo-bar"', () => {
+    const tag = `td-v016-dash-${++seq}`;
+    class Dash extends TdSample {
+      static get observedAttributes() { return [...super.observedAttributes, 'foo-bar']; }
+      get fooBar() { return `custom:${this.getAttribute('foo-bar') ?? ''}`; }
+      set fooBar(v) { this.setAttribute('foo-bar', `set-${v}`); }
+    }
+    customElements.define(tag, Dash);
+    const el = document.createElement(tag);
+    mountHost(el);
+    el.fooBar = 'x';
+    expect(el.getAttribute('foo-bar')).to.equal('set-x');
+    expect(el.fooBar).to.equal('custom:set-x');
+    expect(Object.prototype.hasOwnProperty.call(el, 'fooBar')).to.equal(false);
+  });
+});
+
 describe('v0.16.0 A1 — early properties (td-sample)', () => {
   it('before append: 3 properties land, reflect, one render', () => {
     const { tag, define } = counting(TdSample);

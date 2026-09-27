@@ -247,7 +247,7 @@ document.getElementById('fs').disabled = true;          // field bị disabled, 
 | `max-length` | number | — | Giới hạn ký tự/từ, hiện bộ đếm. Phải là số nguyên dương, khác thì bỏ qua. |
 | `limit-type` | string | `char` | `char` \| `word`. |
 | `minlength` | number | — | Số ký tự tối thiểu → `tooShort` (chỉ sau khi người dùng sửa). Không áp cho `number` / `date`. 0.16.0. |
-| `pattern` | string | — | Biểu thức chính quy cho **cả** giá trị → `patternMismatch` (luật của trình duyệt; pattern sai cú pháp thì bỏ qua). Chỉ `text`/`search`/`tel`/`url`/`email`/`password`. 0.16.0. |
+| `pattern` | string | — | Biểu thức chính quy cho **cả** giá trị → `patternMismatch` (luật của trình duyệt; pattern sai cú pháp thì bỏ qua). Chỉ `text`/`search`/`tel`/`url`/`email`/`password`. 0.16.0. **Pattern do dev viết là code tin cậy**: tránh lượng từ lồng nhau kiểu `(a+)+` — như `<input pattern>` gốc, regex tệ + chuỗi dài do người dùng nhập có thể làm treo trang (ReDoS). Đặt thêm `max-length` cho ô có pattern. |
 | `min` / `max` | string | — | Khoảng giá trị cho `number` và `date` (`date` dạng `YYYY-MM-DD`). |
 | `step` | string | — | Bước nhảy cho `number`. |
 | `rows` | number | `4` | Số dòng của `textarea` (tối thiểu khi `autoresize`). |

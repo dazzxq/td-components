@@ -561,7 +561,8 @@ export class TdInputField extends TdFormElement {
 
     // `pattern`: the browser's own rules (whole-value match, `v` flag, an invalid pattern is ignored) on a probe.
     const pattern = this.getAttribute('pattern');
-    if (!isEmpty && pattern != null && TdInputField._patternTypes.includes(type)) {
+    // pattern tests the RAW value (whitespace-only is not "empty" for it, as in native inputs)
+    if (value != null && String(value) !== '' && pattern != null && TdInputField._patternTypes.includes(type)) {
       const probe = document.createElement('input');
       probe.type = 'text';
       probe.setAttribute('pattern', pattern);

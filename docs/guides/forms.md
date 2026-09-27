@@ -515,9 +515,8 @@ Ba cách đặt tên cho control, theo thứ tự ưu tiên:
 | Key không có trong FormData | thiếu `name`, control disabled, hoặc control "rỗng" (checkbox chưa tick, dropdown chưa chọn…) | kiểm tra `name`; server xử lý key vắng mặt |
 | PHP chỉ nhận một thẻ của chip-input | `name="tags"` | đổi thành `name="tags[]"` |
 | Dropdown `required` báo lỗi dù có `value="…"` | `options` chưa được gán, value đang "chờ" | gán `el.options = […]` sớm (sau khi import module) |
-| `el.value` của input-field không đổi khi gõ | property `value` phản chiếu attribute ban đầu | dùng `getValue()` hoặc FormData |
 | `setError()` hiện lỗi nhưng form vẫn submit | error contract không đổi validity | dùng `setCustomValidity()` / `rules` |
-| `pattern`/`minlength` trên `td-input-field` không có tác dụng | host tự tính validity, không hỗ trợ hai ràng buộc này | dùng `rules` hoặc `setCustomValidity()` |
+| `el.value` của input-field trả giá trị cũ | site còn chạy bản trước 0.16.0 | nâng cấp, hoặc dùng `getValue()` |
 | Lỗi server không hiện ở ô nào | key server khác `name` | `fieldMap`, hoặc `data-field="key"` trên wrapper; xem `r.unmapped` |
 | Reset xong vẫn còn summary lỗi | form không dùng `attach()` (hoặc bản trước 0.16.0) | `form.addEventListener('reset', () => TdFormValidation.clear(form))` |
 

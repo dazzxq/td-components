@@ -73,6 +73,13 @@ describe('B2 options re-assignment / updateData', () => {
     expect(el.getSelectedItem() === el.options[1]).to.equal(true);
   });
 
+  it('a kept value with a NEW label updates the trigger text (review v0.16.0 ISSUE-2)', () => {
+    const el = dd('value="hn" name="city"');
+    el.options = cities().map((c) => (c.value === 'hn' ? { ...c, label: 'Thủ đô Hà Nội' } : c));
+    expect(el.getValue()).to.equal('hn');
+    expect(el.querySelector('.td-dropdown__value').textContent).to.equal('Thủ đô Hà Nội');
+  });
+
   it('re-assigning options without the selected value drops the selection', () => {
     const el = dd('value="hn"');
     el.options = cities().filter((c) => c.value !== 'hn');
