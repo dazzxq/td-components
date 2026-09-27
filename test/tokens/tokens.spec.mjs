@@ -216,10 +216,10 @@ async function runEngine(name, launcher) {
         const s = await read(page);
         check(`${tag} zero CSP violations`, s.violations.length === 0, JSON.stringify(s.violations));
         check(`${tag} regular bg = site :root override`, sameColor(s.reg.bg, [200, 100, 50, 0.4]), s.reg.bg);
-        check(`${tag} regular has backdrop blur`, /blur\(18px\)/.test(s.reg.bf), s.reg.bf);
-        check(`${tag} strong bg = --td-glass-bg-strong`, sameColor(s.strong.bg, [250, 250, 251, 0.86]), s.strong.bg);
-        check(`${tag} clear bg = --td-glass-clear-bg`, sameColor(s.clear.bg, [255, 255, 255, 0.08]), s.clear.bg);
-        check(`${tag} dim bg = 35%`, sameColor(s.dim.bg, [0, 0, 0, 0.35]), s.dim.bg);
+        check(`${tag} regular has backdrop blur`, /blur\(16px\)/.test(s.reg.bf), s.reg.bf); // v0.14.0 (G2)
+        check(`${tag} strong bg = --td-glass-bg-strong`, sameColor(s.strong.bg, [255, 255, 255, 0.52]), s.strong.bg);
+        check(`${tag} clear bg = --td-glass-clear-bg`, sameColor(s.clear.bg, [255, 255, 255, 0.06]), s.clear.bg);
+        check(`${tag} dim bg = 46%`, sameColor(s.dim.bg, [0, 0, 0, 0.46]), s.dim.bg);
         check(`${tag} subtree override reaches surface`, sameColor(s.sub.bg, [1, 2, 3, 0.5]), s.sub.bg);
 
         // (C) glass off — beats the site's unlayered --td-glass-bg override
@@ -240,7 +240,7 @@ async function runEngine(name, launcher) {
         // (D) dark opt-in
         await page.evaluate(() => document.documentElement.setAttribute('data-td-theme', 'dark'));
         const d = await read(page);
-        check(`${tag} dark strong bg`, sameColor(d.strong.bg, [30, 30, 32, 0.84]), d.strong.bg);
+        check(`${tag} dark strong bg`, sameColor(d.strong.bg, [8, 10, 14, 0.6]), d.strong.bg);
         await context.close();
       }
 
@@ -248,7 +248,7 @@ async function runEngine(name, launcher) {
       {
         const { page, context } = await freshPage(browser, profile, { colorScheme: 'dark' });
         const s = await read(page);
-        check(`${tag} no auto dark flip`, sameColor(s.strong.bg, [250, 250, 251, 0.86]), s.strong.bg);
+        check(`${tag} no auto dark flip`, sameColor(s.strong.bg, [255, 255, 255, 0.52]), s.strong.bg);
         await context.close();
       }
 
