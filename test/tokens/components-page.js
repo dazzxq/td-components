@@ -72,10 +72,13 @@ window.__componentsRun = (async () => {
   const toastEl = document.querySelector('#td-toast-container .td-toast');
   const toastAlone = glass(toastEl);
   TdModal.show({ title: 'M', body: '<div>x</div>' });
-  await wait(500);
+  // wait for the modal to be really OPEN (two rAFs — slow on headless CI) instead of a fixed delay
+  for (let t = 0; t < 3000 && !document.querySelector('.td-modal[data-state="open"]'); t += 50) await wait(50);
+  await wait(100);
   const dialog = document.querySelector('.td-modal__dialog');
   const modalGlass = glass(dialog);
-  const toastOverModal = glass(toastEl);
+  // modalState is diagnostic only (printed if the D20 check fails): "open" = the :has() rule should match
+  const toastOverModal = { ...glass(toastEl), modalState: document.querySelector('.td-modal')?.getAttribute('data-state') };
   document.documentElement.setAttribute('data-td-glass', 'off');
   await wait(400);
   const modalOff = glass(dialog);
