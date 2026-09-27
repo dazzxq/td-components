@@ -3929,6 +3929,391 @@
 	}
 }
 
+/* ---- src/styles/components/datetime-picker.css ---- */
+/*
+ * td-datetime-picker (src/form/td-datetime-picker.js) — plan v0.10.0-batch4 item 1 (D1–D10), inventory §7.1.
+ * Blocks: .td-dtp (host: field-look trigger, content layer, never glass — reuses the --td-field-* tokens like the
+ * dropdown trigger), .td-dtp-panel (dialog body inside TdModal, which is already the glass layer: inner controls are
+ * plain fills — no glass on glass, R3), .td-dtp-wheel (hour/minute listbox wheels, CSS scroll-snap; the fade is a
+ * mask so it works on any backdrop and in dark; the selected row is a solid band + weight/size, never scale()).
+ * State: [aria-expanded] / :disabled / [aria-invalid] on the trigger, [data-placeholder] on the value, data-state on
+ * .td-dtp, [aria-invalid] on panel inputs, [hidden] on the error line, [aria-selected] on wheel options.
+ * JS writes no styles here (the wheels scroll through scrollTo; geometry comes from the tokens below).
+ */
+@layer td.tokens {
+	:root {
+		--td-dtp-option-h: 40px;                                  /* wheel row height (44px on coarse pointers) */
+		--td-dtp-visible: 5;                                      /* visible rows → wheel height = row × 5 (odd) */
+		--td-dtp-wheel-w: 5rem;
+		--td-dtp-band-bg: var(--td-color-hover-strong);
+		--td-dtp-band-border: var(--td-control-border-strong);    /* ≥ 3:1: the band marks the selection */
+		--td-dtp-option-fg: var(--td-color-text-muted);           /* ≥ 4.5:1 (was gray-400, 2.54:1) */
+		--td-dtp-option-selected-fg: var(--td-color-text);
+		--td-dtp-preview-bg: var(--td-color-hover);
+	}
+
+	@media (pointer: coarse) {
+		:root {
+			--td-dtp-option-h: var(--td-touch-min);
+		}
+	}
+}
+
+@layer td.component {
+	td-datetime-picker {
+		display: block;
+		font-family: var(--td-font-sans); /* the error-contract note sits outside .td-dtp */
+	}
+
+	/* ---- Host: trigger ---- */
+	.td-dtp {
+		box-sizing: border-box;
+		display: block;
+		width: 100%;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-fg);
+	}
+
+	.td-dtp *,
+	.td-dtp *::before {
+		box-sizing: border-box;
+	}
+
+	.td-dtp__trigger {
+		display: flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
+		min-width: 0;
+		height: var(--td-field-h-md);
+		padding: 8px 14px;
+		margin: 0;
+		font: inherit;
+		font-variant-numeric: tabular-nums;
+		color: var(--td-field-fg);
+		text-align: left;
+		cursor: pointer;
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: none;
+		appearance: none;
+		transition:
+			border-color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease),
+			background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-dtp__trigger:hover:not(:disabled, :focus-visible, [aria-expanded="true"]) {
+		border-color: var(--td-field-border-hover);
+	}
+
+	.td-dtp__trigger[aria-expanded="true"] {
+		border-color: var(--td-field-focus);
+	}
+
+	.td-dtp__trigger:focus-visible {
+		border-color: var(--td-field-focus);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-dtp__trigger:disabled {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-field-bg-disabled);
+	}
+
+	.td-dtp__trigger[aria-invalid="true"],
+	.td-dtp__trigger[aria-invalid="true"]:focus-visible,
+	.td-dtp__trigger[aria-invalid="true"][aria-expanded="true"] {
+		border-color: var(--td-field-error);
+	}
+
+	.td-dtp__value {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.td-dtp__value[data-placeholder] {
+		color: var(--td-field-placeholder);
+	}
+
+	.td-dtp__trigger:disabled .td-dtp__value {
+		color: var(--td-field-fg-disabled);
+	}
+
+	.td-dtp__icon {
+		display: inline-flex;
+		flex-shrink: 0;
+		color: var(--td-field-placeholder);
+	}
+
+	/* ---- Dialog body ---- */
+	.td-dtp-panel {
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-md);
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text);
+	}
+
+	.td-dtp-panel *,
+	.td-dtp-panel *::before {
+		box-sizing: border-box;
+	}
+
+	.td-dtp-panel__group {
+		min-width: 0;
+		padding: 0;
+		margin: 0;
+		border: 0;
+	}
+
+	.td-dtp-panel__legend {
+		padding: 0;
+		margin: 0 0 var(--td-space-xs);
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-field-label);
+	}
+
+	.td-dtp-panel__fields {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr);
+		gap: var(--td-space-sm);
+	}
+
+	.td-dtp-panel__field {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+	}
+
+	.td-dtp-panel__label {
+		margin: 0 0 var(--td-space-2xs);
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-medium);
+		color: var(--td-field-note);
+	}
+
+	.td-dtp-panel__input {
+		display: block;
+		width: 100%;
+		height: var(--td-field-h-md);
+		padding: 8px 10px;
+		margin: 0;
+		font: inherit;
+		font-variant-numeric: tabular-nums;
+		color: var(--td-field-fg);
+		text-align: center;
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: none;
+		transition:
+			border-color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-dtp-panel__input:focus {
+		border-color: var(--td-field-focus);
+	}
+
+	.td-dtp-panel__input:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-dtp-panel__input[aria-invalid="true"],
+	.td-dtp-panel__input[aria-invalid="true"]:focus {
+		border-color: var(--td-field-error);
+	}
+
+	.td-dtp-panel__wheels {
+		display: flex;
+		gap: var(--td-space-sm);
+		align-items: center;
+		justify-content: center;
+	}
+
+	.td-dtp-panel__preview {
+		padding: 8px 12px;
+		margin: 0;
+		font-weight: var(--td-fw-semibold);
+		font-variant-numeric: tabular-nums;
+		color: var(--td-color-text);
+		text-align: center;
+		background: var(--td-dtp-preview-bg);
+		border-radius: var(--td-glass-radius-inner);
+	}
+
+	.td-dtp-panel__error {
+		margin: 0;
+		font-size: var(--td-text-xs);
+		color: var(--td-field-error);
+	}
+
+	.td-dtp-panel__error[hidden] {
+		display: none;
+	}
+
+	/* ---- Wheel (listbox) ---- */
+	.td-dtp-wheel {
+		position: relative;
+		flex: none;
+		width: var(--td-dtp-wheel-w);
+		border-radius: var(--td-glass-radius-inner);
+	}
+
+	/* Selection band behind the centred row (the list paints above it: later positioned sibling). */
+	.td-dtp-wheel::before {
+		position: absolute;
+		inset-inline: 0;
+		top: calc(50% - var(--td-dtp-option-h) / 2);
+		height: var(--td-dtp-option-h);
+		pointer-events: none;
+		content: "";
+		background: var(--td-dtp-band-bg);
+		border-block: 1px solid var(--td-dtp-band-border);
+		border-radius: var(--td-radius-md);
+	}
+
+	.td-dtp-wheel:has(.td-dtp-wheel__list:focus-visible) {
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-dtp-wheel__list {
+		position: relative; /* options' offsetParent: centring needs no ancestor positioning */
+		height: calc(var(--td-dtp-option-h) * var(--td-dtp-visible));
+		padding-block: calc(var(--td-dtp-option-h) * (var(--td-dtp-visible) - 1) / 2);
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		scroll-behavior: auto; /* programmatic smooth scrolling is chosen per call (never under reduced motion) */
+		scroll-snap-type: y mandatory;
+		scrollbar-width: none;
+		outline: 2px solid transparent; /* focus ring on the wheel (the mask would clip it here) */
+		outline-offset: 2px;
+		mask-image: linear-gradient(to bottom, rgb(0 0 0 / 35%), #000 30%, #000 70%, rgb(0 0 0 / 35%));
+	}
+
+	.td-dtp-wheel__list::-webkit-scrollbar {
+		display: none;
+	}
+
+	.td-dtp-wheel__list:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: none;
+	}
+
+	.td-dtp-wheel__option {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: var(--td-dtp-option-h);
+		font-size: var(--td-text-base);
+		font-variant-numeric: tabular-nums;
+		color: var(--td-dtp-option-fg);
+		cursor: pointer;
+		user-select: none;
+		scroll-snap-align: center;
+	}
+
+	.td-dtp-wheel__option:hover {
+		color: var(--td-dtp-option-selected-fg);
+	}
+
+	.td-dtp-wheel__option[aria-selected="true"] {
+		font-size: var(--td-text-lg);
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-dtp-option-selected-fg);
+	}
+
+	.td-dtp-wheel__sep {
+		font-size: var(--td-text-lg);
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-color-text);
+	}
+
+	@media (pointer: coarse) {
+		.td-dtp__trigger {
+			height: auto;
+			min-height: var(--td-touch-min);
+		}
+
+		.td-dtp-panel__input {
+			height: auto;
+			min-height: var(--td-touch-min);
+			font-size: max(1rem, 1em); /* ≥ 16px: iOS does not zoom on focus */
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-dtp__trigger,
+		.td-dtp-panel__input {
+			transition: none;
+		}
+
+		.td-dtp-wheel__list {
+			scroll-behavior: auto;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-dtp__trigger,
+		.td-dtp-panel__input {
+			border-color: CanvasText;
+		}
+
+		.td-dtp__trigger:focus-visible,
+		.td-dtp-panel__input:focus-visible,
+		.td-dtp-wheel:has(.td-dtp-wheel__list:focus-visible) {
+			outline: 2px solid Highlight;
+		}
+
+		.td-dtp__trigger[aria-invalid="true"],
+		.td-dtp-panel__input[aria-invalid="true"] {
+			border-style: dashed;
+			border-width: 2px;
+		}
+
+		.td-dtp__value[data-placeholder] {
+			color: GrayText;
+		}
+
+		.td-dtp-wheel__list {
+			mask-image: none;
+		}
+
+		.td-dtp-wheel::before {
+			background: Canvas;
+			border-color: CanvasText;
+		}
+
+		.td-dtp-wheel__option[aria-selected="true"] {
+			color: HighlightText;
+			background: Highlight;
+			forced-color-adjust: none;
+		}
+	}
+}
+
 /* ---- src/styles/utilities.css ---- */
 /* Utilities — kept minimal: td.css must stay reset-free (legacy Tailwind components share the page). */
 @layer td.utilities {

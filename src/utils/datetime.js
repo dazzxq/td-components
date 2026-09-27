@@ -337,3 +337,166 @@ export class TdDateTime {
     }
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// Pure date-time PARTS helpers (plan v0.10.0-batch4 D6) — used by td-datetime-picker. No Date-string parsing (engine-
+// dependent), no time zone: a "parts" object is a local wall-clock value `{ day, month, year, hour, minute }`.
+// Parsers are SYNTACTIC (strict regexes, numbers only); range/calendar checks live in `invalidReason`/`isValidParts`.
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * @typedef {{ day: number, month: number, year: number, hour: number, minute: number }} DateTimeParts
+ */
+
+const RE_DISPLAY = /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s*-\s*(\d{1,2}):(\d{1,2})$/;
+const RE_DISPLAY_DATE = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+const RE_DB = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})(?::(\d{2}))?$/;
+const RE_ISO_LOCAL = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
+const RE_ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+const toInt = (s) => parseInt(s, 10);
+const pad2 = (n) => String(n).padStart(2, '0');
+const pad4 = (n) => String(n).padStart(4, '0');
+const mkParts = (year, month, day, hour, minute) => ({
+  day: toInt(day), month: toInt(month), year: toInt(year), hour: toInt(hour), minute: toInt(minute),
+});
+
+/**
+ * Parse the display format `dd/mm/yyyy - hh:mm` (1–2 digit day/month/hour/minute, 4-digit year). Syntactic only.
+ * @param {unknown} str
+ * @returns {DateTimeParts|null}
+ */
+export function parseDisplay(str) {
+  const m = typeof str === 'string' ? RE_DISPLAY.exec(str) : null;
+  return m ? mkParts(m[3], m[2], m[1], m[4], m[5]) : null;
+}
+
+/**
+ * Parse the DB format `yyyy-mm-dd hh:mm[:ss]` (seconds accepted when 00–59, then dropped). Syntactic only.
+ * @param {unknown} str
+ * @returns {DateTimeParts|null}
+ */
+export function parseDb(str) {
+  const m = typeof str === 'string' ? RE_DB.exec(str) : null;
+  if (!m || (m[6] !== undefined && toInt(m[6]) > 59)) return null;
+  return mkParts(m[1], m[2], m[3], m[4], m[5]);
+}
+
+/**
+ * Parse a local ISO 8601 date-time without zone `yyyy-mm-ddThh:mm[:ss]` (what the picker submits). Syntactic only.
+ * @param {unknown} str
+ * @returns {DateTimeParts|null}
+ */
+export function parseIsoLocal(str) {
+  const m = typeof str === 'string' ? RE_ISO_LOCAL.exec(str) : null;
+  if (!m || (m[6] !== undefined && toInt(m[6]) > 59)) return null;
+  return mkParts(m[1], m[2], m[3], m[4], m[5]);
+}
+
+/** Days in `month` (1–12) of `year` (proleptic Gregorian). */
+export function daysInMonth(year, month) {
+  if (month === 2) return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 29 : 28;
+  return [4, 6, 9, 11].includes(month) ? 30 : 31;
+}
+
+/**
+ * Why `p` is not a real wall-clock value, or null when it is valid.
+ * @param {Partial<DateTimeParts>|null|undefined} p
+ * @returns {null|'incomplete'|'day'|'month'|'year'|'hour'|'minute'|'date'}
+ */
+export function invalidReason(p) {
+  if (!p) return 'incomplete';
+  const { day, month, year, hour, minute } = p;
+  if (![day, month, year, hour, minute].every(Number.isInteger)) return 'incomplete';
+  if (day < 1 || day > 31) return 'day';
+  if (month < 1 || month > 12) return 'month';
+  if (year < 1 || year > 9999) return 'year';
+  if (hour < 0 || hour > 23) return 'hour';
+  if (minute < 0 || minute > 59) return 'minute';
+  if (day > daysInMonth(year, month)) return 'date';
+  return null;
+}
+
+/**
+ * True when `p` is a real calendar date (leap years included) with hour 0–23 and minute 0–59.
+ * @param {Partial<DateTimeParts>|null|undefined} p
+ */
+export function isValidParts(p) {
+  return invalidReason(p) === null;
+}
+
+/** `dd/mm/yyyy - hh:mm` @param {DateTimeParts} p */
+export function formatDisplay(p) {
+  return `${pad2(p.day)}/${pad2(p.month)}/${pad4(p.year)} - ${pad2(p.hour)}:${pad2(p.minute)}`;
+}
+
+/** `yyyy-mm-dd hh:mm:00` @param {DateTimeParts} p */
+export function formatDb(p) {
+  return `${pad4(p.year)}-${pad2(p.month)}-${pad2(p.day)} ${pad2(p.hour)}:${pad2(p.minute)}:00`;
+}
+
+/** `yyyy-mm-ddThh:mm:00` (local, no zone) @param {DateTimeParts} p */
+export function formatIsoLocal(p) {
+  return `${pad4(p.year)}-${pad2(p.month)}-${pad2(p.day)}T${pad2(p.hour)}:${pad2(p.minute)}:00`;
+}
+
+/**
+ * Order two valid parts objects: negative when `a` is earlier, 0 when equal, positive when later.
+ * @param {DateTimeParts} a
+ * @param {DateTimeParts} b
+ */
+export function compareParts(a, b) {
+  const key = (p) => (((p.year * 100 + p.month) * 100 + p.day) * 100 + p.hour) * 100 + p.minute;
+  return key(a) - key(b);
+}
+
+/**
+ * Parse a `min`/`max` bound: the display format or ISO-local, each with or without a time. A DATE-ONLY bound expands
+ * to the whole day — `00:00` for `min`, `23:59` for `max` (D5); an explicit time is exact. Invalid → null.
+ * @param {unknown} str
+ * @param {'min'|'max'} kind
+ * @returns {DateTimeParts|null}
+ */
+export function parseBound(str, kind) {
+  if (typeof str !== 'string') return null;
+  const s = str.trim();
+  let p = parseDisplay(s) || parseIsoLocal(s);
+  if (!p) {
+    const d = RE_DISPLAY_DATE.exec(s);
+    const i = d ? null : RE_ISO_DATE.exec(s);
+    const ymd = d ? [d[3], d[2], d[1]] : i ? [i[1], i[2], i[3]] : null;
+    if (ymd) p = kind === 'max' ? mkParts(...ymd, 23, 59) : mkParts(...ymd, 0, 0);
+  }
+  return p && isValidParts(p) ? p : null;
+}
+
+/**
+ * Normalise a `minute-step` value: an integer 1–30 that divides 60, else 1.
+ * @param {unknown} value
+ */
+export function normalizeMinuteStep(value) {
+  const n = typeof value === 'number' ? value : parseInt(String(value ?? ''), 10);
+  return Number.isInteger(n) && n > 0 && n <= 30 && 60 % n === 0 ? n : 1;
+}
+
+/**
+ * Snap a minute DOWN to the step (D7): never carries into the next hour (10:58, step 5 → 10:55).
+ * @param {number} minute
+ * @param {unknown} step
+ */
+export function snapMinuteDown(minute, step) {
+  const s = normalizeMinuteStep(step);
+  return Math.floor(minute / s) * s;
+}
+
+/**
+ * Local wall-clock parts of a Date.
+ * @param {Date} date
+ * @returns {DateTimeParts}
+ */
+export function partsFromDate(date) {
+  return {
+    day: date.getDate(), month: date.getMonth() + 1, year: date.getFullYear(),
+    hour: date.getHours(), minute: date.getMinutes(),
+  };
+}
