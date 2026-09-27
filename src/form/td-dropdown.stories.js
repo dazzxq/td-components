@@ -1,3 +1,4 @@
+import { escapeHtml } from '../utils/escape.js';
 import './td-dropdown.js';
 import '../styles/story-layout.css';
 
@@ -10,7 +11,7 @@ const CITIES = [
   { value: 'hue', label: 'Huế' },
 ];
 
-const attr = (name, v) => (v === undefined || v === null || v === '' ? '' : ` ${name}="${v}"`);
+const attr = (name, v) => (v === undefined || v === null || v === '' ? '' : ` ${name}="${escapeHtml(String(v))}"`);
 const flag = (name, v) => (v ? ` ${name}` : '');
 
 let seq = 0;

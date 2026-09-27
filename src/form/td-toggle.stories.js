@@ -1,3 +1,4 @@
+import { escapeHtml } from '../utils/escape.js';
 import '../styles/story-layout.css';
 import './td-toggle.js';
 
@@ -18,9 +19,9 @@ export const Default = {
     <td-toggle
       ${args.checked ? 'checked' : ''}
       ${args.disabled ? 'disabled' : ''}
-      label="${args.label || ''}"
-      size="${args.size || 'md'}"
-      ${args.color ? `color="${args.color}"` : ''}
+      label="${escapeHtml(String(args.label || ''))}"
+      size="${escapeHtml(String(args.size || 'md'))}"
+      ${args.color ? `color="${escapeHtml(String(args.color))}"` : ''}
     ></td-toggle>
   `,
   args: {
