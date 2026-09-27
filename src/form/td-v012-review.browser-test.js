@@ -164,3 +164,36 @@ describe('TdFormValidation round 2 (ISSUE-10, ISSUE-11)', () => {
     expect(input.getAttribute('aria-describedby')).to.equal('own');
   });
 });
+
+describe('TdFormValidation security round 2: throwing rules fail closed whatever messages say', () => {
+  for (const [label, setup] of [
+    ['ruleError missing', (saved) => { const { ruleError, ...rest } = saved; TdFormValidation.messages = rest; }],
+    ['ruleError empty', (saved) => { TdFormValidation.messages = { ...saved, ruleError: '' }; }],
+    ['messages null', () => { TdFormValidation.messages = null; }],
+  ]) {
+    it(`${label}: invalid, and attach() blocks submit + onValid`, () => {
+      const saved = TdFormValidation.messages;
+      const warn = console.warn; const error = console.error;
+      console.warn = () => {}; console.error = () => {};
+      try {
+        setup(saved);
+        const f = mount('<form><input name="a" value="1"><button>go</button></form>');
+        const rules = { a: () => { throw new Error('boom'); } };
+        const r = TdFormValidation.validate(f, { rules, summary: false, focus: false });
+        expect(r.valid).to.equal(false);
+        expect(f.checkValidity()).to.equal(false);
+        let submitted = 0; let valid = 0;
+        const detach = TdFormValidation.attach(f, { rules, summary: false, onValid: () => { valid++; } });
+        // registered AFTER attach(): sees whether attach() prevented the submit (then stops a real navigation)
+        f.addEventListener('submit', (e) => { if (!e.defaultPrevented) submitted++; e.preventDefault(); });
+        f.requestSubmit();
+        expect(valid).to.equal(0);
+        expect(submitted).to.equal(0);
+        detach();
+      } finally {
+        TdFormValidation.messages = saved;
+        console.warn = warn; console.error = error;
+      }
+    });
+  }
+});

@@ -43,6 +43,8 @@ const SKIP_TYPES = new Set(['hidden', 'submit', 'reset', 'button', 'image']);
 
 /** root → per-root bookkeeping (only what this helper set is ever undone). */
 const STATES = new WeakMap();
+/** Non-configurable message used when a throwing rule has no usable `messages.ruleError` (fail closed). */
+const RULE_ERROR_FALLBACK = 'Không thể kiểm tra giá trị này';
 let _idCounter = 0;
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -390,7 +392,15 @@ export class TdFormValidation {
     let failed = false;
 
     const onSubmit = (e) => {
-      const r = TdFormValidation.validate(form, o);
+      let r;
+      try {
+        r = TdFormValidation.validate(form, o);
+      } catch (err) {
+        e.preventDefault(); // fail closed: a validation crash never lets a `novalidate` form submit
+        failed = true;
+        console.error('TdFormValidation: validation failed', err);
+        return;
+      }
       if (!r.valid) {
         e.preventDefault();
         failed = true;
@@ -443,11 +453,18 @@ export class TdFormValidation {
     // Run the rule FIRST; custom validity only changes once it has a result. A throwing rule FAILS CLOSED (security
     // review v0.12.0: crafted input that makes a rule throw must not bypass it) with a generic message.
     let msg = '';
+    let threw = false;
     try {
       msg = rule(valueOf(el, root), el, root);
     } catch (err) {
+      threw = true;
       console.warn(`TdFormValidation: rule "${name}" threw — the field is treated as invalid`, err);
-      msg = TdFormValidation.messages.ruleError;
+    }
+    if (threw) {
+      // The validity mechanism never depends on (mutable, site-overridable) presentation text: an empty / missing
+      // `ruleError`, or `messages = null`, still leaves the field invalid.
+      const m = TdFormValidation.messages;
+      msg = String((m && typeof m === 'object' && m.ruleError) || RULE_ERROR_FALLBACK);
     }
     el.setCustomValidity(msg ? String(msg) : '');
     if (msg) st.custom.add(el);
@@ -466,18 +483,19 @@ export class TdFormValidation {
   static _messageFor(el, perCall) {
     const v = el.validity;
     const flag = FLAGS.find((f) => v[f]) || 'customError';
-    if (flag === 'customError') return el.validationMessage || TdFormValidation.messages.badInput;
+    const M = TdFormValidation.messages && typeof TdFormValidation.messages === 'object' ? TdFormValidation.messages : {};
+    const generic = M.badInput || el.validationMessage || RULE_ERROR_FALLBACK;
+    if (flag === 'customError') return el.validationMessage || generic;
     const name = controlName(el);
     const over = perCall && name && Object.prototype.hasOwnProperty.call(perCall, name) ? perCall[name] : null;
     if (typeof over === 'string' && over) return over;
     if (over && typeof over === 'object' && typeof over[flag] === 'string' && over[flag]) return over[flag];
-    if (isHost(el)) return el.validationMessage || TdFormValidation.messages[flag] || TdFormValidation.messages.badInput;
-    const M = TdFormValidation.messages;
+    if (isHost(el)) return el.validationMessage || M[flag] || generic;
     let tpl = M[flag];
     if (flag === 'typeMismatch' && el.type === 'email' && M.typeMismatchEmail) tpl = M.typeMismatchEmail;
     if (flag === 'typeMismatch' && el.type === 'url' && M.typeMismatchUrl) tpl = M.typeMismatchUrl;
     if (flag === 'patternMismatch' && el.title) tpl = el.title;
-    if (!tpl) return el.validationMessage || M.badInput;
+    if (!tpl) return el.validationMessage || generic;
     return formatMessage(tpl, {
       min: el.getAttribute('min'), max: el.getAttribute('max'), step: el.getAttribute('step'),
       minLength: el.getAttribute('minlength'), maxLength: el.getAttribute('maxlength'),
