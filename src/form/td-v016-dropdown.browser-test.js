@@ -203,6 +203,46 @@ describe('early options + early value / valueKey / labelKey (review v0.16.0 ISSU
   });
 });
 
+describe('deferred initial selection never overrides newer intent (review v0.16.0 ISSUE-6)', () => {
+  it('an explicit clear before connect wins over the value attribute', () => {
+    const el = document.createElement('td-dropdown');
+    el.setAttribute('value', 'hn');
+    el.options = cities();
+    el.setValue(null);
+    host.appendChild(el);
+    expect(el.getValue()).to.equal(null);
+  });
+
+  it('an explicit selection before connect wins over the value attribute', () => {
+    const el = document.createElement('td-dropdown');
+    el.setAttribute('value', 'hn');
+    el.options = cities();
+    el.setValue('dn');
+    host.appendChild(el);
+    expect(el.getValue()).to.equal('dn');
+  });
+
+  it('the FINAL value key decides, even when the default key would have matched another item', () => {
+    const el = document.createElement('td-dropdown');
+    el.setAttribute('value', 'b'); // server-rendered attribute: the DEFAULT key "value" would match item "Sai"
+    el.options = [{ id: 'a', value: 'b', name: 'Sai' }, { id: 'b', value: 'z', name: 'Đúng' }];
+    el.valueKey = 'id';
+    el.labelKey = 'name';
+    host.appendChild(el);
+    expect(el.getValue()).to.equal('b');
+    expect(el.querySelector('.td-dropdown__value').textContent).to.equal('Đúng');
+  });
+
+  it('options re-assigned before connect without the attribute value → nothing selected (pending until listed)', () => {
+    const el = document.createElement('td-dropdown');
+    el.setAttribute('value', 'hn');
+    el.options = cities();
+    el.options = cities().filter((c) => c.value !== 'hn');
+    host.appendChild(el);
+    expect(el.getValue()).to.equal(null);
+  });
+});
+
 describe('B5 properties set before the element is defined', () => {
   it('options / onChange / onSelect set before define are picked up at upgrade', () => {
     class LateDropdown extends TdDropdown {}

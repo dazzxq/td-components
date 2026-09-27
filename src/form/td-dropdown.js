@@ -186,15 +186,12 @@ export class TdDropdown extends TdFormElement {
     });
     own('searchable', 'searchable', () => this._isSearchable());
     own('allowClear', 'allow-clear', () => this._isAllowClear());
-    // Early `options` were resolved BEFORE the base replayed early `value` / `valueKey` / `labelKey` properties
-    // (review v0.16.0 ISSUE-5): resolve the initial selection again with the final attributes, before first render.
-    if (this._optionsInit && !this._selectedItem) {
-      const want = this._pendingValue ?? this._getInitialValue();
-      if (want != null && want !== '') {
-        const vk = this._getValueKey();
-        const item = this._options.find((i) => String(i[vk]) === String(want));
-        if (item) { this._selectedItem = item; this._pendingValue = null; } else this._pendingValue = String(want);
-      }
+    // `options` assigned before the first connect deferred the initial selection until early `value` / `valueKey` /
+    // `labelKey` properties are replayed (review v0.16.0 ISSUE-5/6): resolve it now with the FINAL attributes —
+    // unless an explicit setValue() (select or clear) already superseded it.
+    if (this._initialDeferred) {
+      this._initialDeferred = false;
+      this._setInitialValue();
     }
   }
 
@@ -206,7 +203,9 @@ export class TdDropdown extends TdFormElement {
     this._filteredData = [...this._options];
     if (!this._optionsInit) {
       this._optionsInit = true;
-      this._setInitialValue();
+      // Before the first connect, early properties (value, value-key…) may still be replayed: defer (see _setupProperties).
+      if (this._initialized) this._setInitialValue();
+      else this._initialDeferred = true;
     } else {
       this._reconcileSelection();
     }
@@ -1022,6 +1021,7 @@ export class TdDropdown extends TdFormElement {
   }
 
   setValue(value) {
+    this._initialDeferred = false; // an explicit selection / clear supersedes the pending initial `value`
     if (value === null || value === undefined || value === '') {
       this._selectedItem = null;
       this._pendingValue = null;
