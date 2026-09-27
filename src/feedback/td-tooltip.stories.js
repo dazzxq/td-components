@@ -6,12 +6,15 @@ export default {
   tags: ['autodocs'],
 };
 
-/** Strong glass chip, no arrow. Shows on hover (mouse/pen) and keyboard focus; Escape hides it; hoverable. */
+/**
+ * dwp look in strong glass: 14px text, arrow pointing at the trigger. Shows on hover (every pointer type, touch
+ * included) and on any focus; hides on leave / blur / scroll / resize / Esc; hoverable (short grace).
+ */
 export const Default = {
   render: () => `
     <div class="sb-stack">
       <button type="button" class="td-btn td-btn--primary" data-tooltip="Lưu các thay đổi của tài liệu">Lưu</button>
-      <p class="sb-note">Di chuột hoặc Tab tới nút. Esc để ẩn; có thể di chuột lên tooltip.</p>
+      <p class="sb-note">Di chuột, chạm hoặc Tab tới nút. Esc, cuộn trang hay đổi cỡ cửa sổ để ẩn; có thể di chuột lên tooltip.</p>
     </div>
   `,
 };
@@ -78,6 +81,32 @@ export const DarkTheme = {
     <div class="sb-stack">
       <button type="button" class="td-btn td-btn--secondary" data-tooltip="Tooltip ở giao diện tối">Tối</button>
       <p class="sb-note">Bật &lt;html data-td-theme="dark"&gt; để xem chip kính tối.</p>
+    </div>
+  `,
+};
+
+/** dwp markup works unchanged: data-dwp-tooltip / data-dwp-tooltip-pos, plus the td alias data-tooltip-pos. */
+export const DwpAttributes = {
+  render: () => `
+    <div class="sb-stack">
+      <div class="sb-row">
+        <button type="button" class="td-btn td-btn--secondary" data-dwp-tooltip="Thuộc tính dwp">dwp</button>
+        <button type="button" class="td-btn td-btn--secondary" data-dwp-tooltip="dwp phía dưới" data-dwp-tooltip-pos="bottom">dwp dưới</button>
+        <button type="button" class="td-btn td-btn--secondary" data-tooltip="Viết tắt data-tooltip-pos" data-tooltip-pos="right">pos phải</button>
+      </div>
+      <p class="sb-note">Khi có cả hai, data-tooltip / data-tooltip-position thắng.</p>
+    </div>
+  `,
+};
+
+/** Near the viewport edge the chip is clamped (8px) and the arrow still points at the trigger centre. */
+export const ClampedArrow = {
+  render: () => `
+    <div class="sb-stack">
+      <div class="sb-row">
+        <button type="button" class="td-btn td-btn--secondary" data-tooltip="Chú thích khá dài cho nút nằm sát mép trái màn hình">⇤</button>
+      </div>
+      <p class="sb-note">Thu hẹp khung xem: chip bị chặn ở mép, mũi tên vẫn chỉ vào giữa nút.</p>
     </div>
   `,
 };

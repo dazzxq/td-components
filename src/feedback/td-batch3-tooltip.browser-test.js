@@ -193,7 +193,7 @@ describe('batch 3 — td-tooltip naming policy (D15)', () => {
 });
 
 describe('batch 3 — td-tooltip DOM, linking, singleton', () => {
-  it('role=tooltip singleton with the content span; no arrow; strong glass classes', () => {
+  it('role=tooltip singleton with the content span; arrow is a pseudo-element (no child); strong glass classes', () => {
     const a = mount('<button type="button" data-tooltip="A">a</button>');
     const b = mount('<button type="button" data-tooltip="B">b</button>');
     tdTooltip.show(a);
@@ -203,7 +203,8 @@ describe('batch 3 — td-tooltip DOM, linking, singleton', () => {
     const t = tip();
     expect(t.getAttribute('role')).to.equal('tooltip');
     expect([...t.classList].sort()).to.deep.equal(['td-glass-surface', 'td-glass-surface--strong', 'td-tooltip']);
-    expect(t.querySelector('.td-tooltip-arrow, [class*="arrow"]')).to.equal(null);
+    expect(t.querySelector('.td-tooltip-arrow, [class*="arrow"]')).to.equal(null); // no arrow element (v0.14: ::after)
+    expect(getComputedStyle(t, '::after').content).to.equal('""');
     expect(t.querySelector('.td-tooltip__content').textContent).to.equal('B');
     expect(same(tdTooltip.currentElement, b)).to.equal(true);
     expect(a.hasAttribute('aria-describedby')).to.equal(false); // unlinked from the previous trigger
@@ -269,10 +270,11 @@ describe('batch 3 — td-tooltip interaction (1.4.13)', () => {
     expect(shown()).to.equal(true);
   });
 
-  it('touch pointers are ignored', () => {
+  it('touch and pen pointers show it too (v0.14 dwp behaviour)', () => {
     const b = mount('<button type="button" data-tooltip="Chạm">tap</button>');
     b.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'touch', bubbles: false }));
-    expect(shown()).to.equal(false);
+    expect(shown()).to.equal(true);
+    tdTooltip.hide();
     b.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'pen', bubbles: false }));
     expect(shown()).to.equal(true);
   });
@@ -282,6 +284,7 @@ describe('batch 3 — td-tooltip interaction (1.4.13)', () => {
     b.style.setProperty('margin', '120px 0 0 200px');
     await sendMouse({ type: 'move', position: center(b) });
     expect(shown()).to.equal(true);
+    await frames();
     expect(getComputedStyle(tip()).pointerEvents).to.equal('auto');
     await sendMouse({ type: 'move', position: center(tip()) });
     await wait(250);
@@ -349,14 +352,13 @@ describe('batch 3 — td-tooltip interaction (1.4.13)', () => {
     expect(shown()).to.equal(true);
   });
 
-  it('hides when the trigger scrolls out of view / leaves the DOM; not shown for a hidden reference', async () => {
+  it('hides on any scroll (v0.14) / when the trigger leaves the DOM; not shown for a hidden reference', async () => {
     const b = mount('<button type="button" data-tooltip="Cuộn">x</button>');
     tdTooltip.show(b);
+    document.dispatchEvent(new Event('scroll'));
+    expect(shown()).to.equal(false);
     b.style.setProperty('position', 'fixed');
     b.style.setProperty('top', '-200px');
-    document.dispatchEvent(new Event('scroll'));
-    await frames();
-    expect(shown()).to.equal(false);
     tdTooltip.show(b);
     expect(shown()).to.equal(false);
     b.style.removeProperty('position');
@@ -478,19 +480,25 @@ describe('batch 3 — td-tooltip placement + visuals', () => {
     expect(tip().style.getPropertyValue('--td-tooltip-bg')).to.equal('');
   });
 
-  it('solid over an open modal (no glass on glass)', () => {
+  it('stays glass over an open modal (v0.14 G1: frontmost glass wins)', () => {
     const m = mount('<div class="td-modal" data-state="open"></div>');
     const b = mount('<button type="button" data-tooltip="Trên modal">x</button>');
     tdTooltip.show(b);
-    expect(getComputedStyle(tip()).backdropFilter).to.equal('none');
+    expect(getComputedStyle(tip()).backdropFilter).to.contain('blur');
     m.remove();
   });
 
-  it('reduced motion: no scale transform', async () => {
-    await emulateMedia({ reducedMotion: 'reduce' });
+  it('opacity-only fade (no transform); reduced motion: no transition', async () => {
     const b = mount('<button type="button" data-tooltip="Giảm chuyển động">x</button>');
     tdTooltip.show(b);
-    expect(getComputedStyle(tip()).transform).to.equal('none');
+    let cs = getComputedStyle(tip());
+    expect(cs.transform).to.equal('none');
+    expect(cs.transitionProperty).to.equal('opacity');
+    await emulateMedia({ reducedMotion: 'reduce' });
+    tdTooltip.show(b);
+    cs = getComputedStyle(tip());
+    expect(cs.transform).to.equal('none');
+    expect(parseFloat(cs.transitionDuration)).to.equal(0);
   });
 
   it('TdTooltip class is exported and _getAccessibleTextColor uses WCAG contrast', () => {

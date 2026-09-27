@@ -1,5 +1,6 @@
-<!-- td-tooltip contract: the singleton while shown (portaled to <body>; geometry via CSSOM top/left, custom colours
-     via --td-tooltip-bg/-fg). The trigger carries aria-describedby="… td-tooltip" while shown (unless the text equals
+<!-- td-tooltip contract: the singleton while shown (portaled to <body>; geometry via CSSOM top/left and
+     --td-tooltip-arrow-x/-y, custom colours via --td-tooltip-bg/-fg). The arrow is the ::after pseudo-element (no
+     child node). dwp aliases data-dwp-tooltip / data-tooltip-pos / data-dwp-tooltip-pos render the same shape. The trigger carries aria-describedby="… td-tooltip" while shown (unless the text equals
      its name). Checked by src/feedback/td-batch3-tooltip.browser-test.js. -->
 <template data-component="td-tooltip"
           data-markup='<button type="button" data-tooltip="Lưu tài liệu">Lưu</button>'>
