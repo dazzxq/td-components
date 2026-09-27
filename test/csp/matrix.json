@@ -32,12 +32,11 @@
       "td-toast",
       "td-tooltip",
       "td-dropdown",
-      "td-table"
-    ],
-    "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
-    "mixed": [
+      "td-table",
       "td-datetime-picker"
     ],
+    "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
+    "mixed": [],
     "mixedNote": "Legacy components that render token-native children (td-table → td-pagination, td-empty-state) are served Tailwind + td.css in BOTH runs; their baselines are captured the same way."
   },
   "td-toggle": [
@@ -1002,18 +1001,80 @@
   ],
   "td-datetime-picker": [
     {
-      "state": "open",
-      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('value','15/06/2026 - 09:30'); window.__mount.appendChild(p); p._open();",
+      "state": "closed",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('value','15/06/2026 - 09:30'); window.__mount.appendChild(p); ",
       "selectors": [
-        ".td-dtp-wheel-container",
-        ".td-dtp-wheel-option.selected"
+        ".td-dtp__trigger",
+        ".td-dtp__value"
+      ]
+    },
+    {
+      "state": "placeholder",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian');  window.__mount.appendChild(p); ",
+      "selectors": [
+        ".td-dtp__trigger",
+        ".td-dtp__value[data-placeholder]"
+      ]
+    },
+    {
+      "state": "disabled",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('value','15/06/2026 - 09:30');p.setAttribute('disabled',''); window.__mount.appendChild(p); ",
+      "selectors": [
+        ".td-dtp__trigger"
+      ]
+    },
+    {
+      "state": "error",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('error-text','Bắt buộc'); window.__mount.appendChild(p); ",
+      "selectors": [
+        ".td-dtp__trigger[aria-invalid]",
+        ".td-field-error"
+      ]
+    },
+    {
+      "state": "open",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('value','15/06/2026 - 09:30'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
+      "selectors": [
+        ".td-dtp-panel__input",
+        ".td-dtp-wheel",
+        ".td-dtp-wheel__option[aria-selected=\"true\"]",
+        ".td-modal__footer .td-btn--primary"
       ],
       "portal": [
-        ".td-dtp-wheel-container",
-        ".td-dtp-wheel-option.selected"
+        ".td-dtp-panel__input",
+        ".td-dtp-wheel",
+        ".td-dtp-wheel__option[aria-selected=\"true\"]",
+        ".td-modal__footer .td-btn--primary"
       ],
-      "settle": 400,
-      "constructNote": "td-datetime-picker's ONLY blocking construct is the injected <style id=td-datetime-picker-styles> (gradient .td-dtp-wheel-container background-image, .selected font/color/transform, ::before band). Opens inside a TdModal portaled to body via _open(). This captures the directly-styled rules; the ::before pseudo-band parity is a Task-1 adopted-sheet concern (getComputedStyle can't key it by class alone here)."
+      "settle": 450
+    },
+    {
+      "state": "open-invalid",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('value','31/02/2026 - 09:30'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
+      "selectors": [
+        ".td-dtp-panel__error",
+        ".td-dtp-panel__input[aria-invalid]"
+      ],
+      "portal": [
+        ".td-dtp-panel__error",
+        ".td-dtp-panel__input[aria-invalid]"
+      ],
+      "settle": 450
+    },
+    {
+      "state": "wheel-active",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('value','15/06/2026 - 09:30'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
+      "selectors": [
+        ".td-dtp-wheel",
+        ".td-dtp-wheel__option[aria-selected=\"true\"]"
+      ],
+      "portal": [
+        ".td-dtp-wheel",
+        ".td-dtp-wheel__option[aria-selected=\"true\"]"
+      ],
+      "settle": 450,
+      "pseudo": "focus",
+      "focusSelector": ".td-dtp-wheel__list"
     }
   ],
   "td-tooltip": [
