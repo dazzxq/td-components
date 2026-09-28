@@ -293,8 +293,10 @@ Markup:
   (kể cả khi người dùng đã đổi trước khi JS tới), lấy `name`/`required`/`disabled` từ select, rồi gỡ select (component
   form-associated thay nó — không submit trùng). Giá trị khi reset form = option `selected` trong HTML. `name` và
   `required` nằm trên select, **không** trên host, nên không có gì trùng. Chi tiết: [Dropdown](../components/dropdown.md).
-- Option placeholder `value=""` cũng thành một mục sau upgrade (chọn nó = giá trị rỗng); nút "Không chọn" của
-  component (`allow-clear`) xoá hẳn lựa chọn.
+- Option `value=""` **đứng đầu** (placeholder của `td_dropdown`) **không** thành mục sau upgrade: nó thành
+  `placeholder` của component và trạng thái "chưa chọn" (không gửi giá trị, `required` báo thiếu). Chỉ option
+  `value=""` **không đứng đầu** mới là một mục chọn được (gửi `''`, thoả `required` — như `<select>` native). Nút
+  "Không chọn" (`allow-clear`) xoá hẳn lựa chọn.
 - Không cần khối JSON `options` + script gán `el.options` như cách cũ.
 
 ## td_toggle và td_checkbox

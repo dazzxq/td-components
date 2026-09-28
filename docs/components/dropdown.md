@@ -101,7 +101,7 @@ document.getElementById('status').options = await loadStatuses();
 ```
 
 Tương tự, `setValue(v)` gọi trước khi có options sẽ được giữ lại (pending) và áp dụng khi `options` được gán hoặc
-`updateData()` được gọi.
+`updateData()` được gọi — trừ `''`: không có option giá trị rỗng thì `''` nghĩa là bỏ chọn ngay, không pending.
 
 Attribute `value` chỉ là **lựa chọn ban đầu**: nó được áp ở lần gán `options` đầu tiên (danh sách đầu rỗng, ví dụ đang
 tải, thì chờ danh sách sau). Gán lại `options` về sau **giữ** lựa chọn hiện tại của người dùng nếu giá trị đó vẫn có trong
@@ -255,7 +255,7 @@ focus). Đổi `label`, `searchable`, `allow-clear`, `max-height`, `value-key`, 
 | `allowClear` | `boolean` (get/set) | Tương tự cho `allow-clear`. |
 | `value` | get/set | **Sống** (từ 0.17.0): đọc = `getValue()`, ghi = `setValue()` (không đổi attribute `value`). Trước khi gắn vào DOM, ghi = đặt attribute `value` ban đầu. Trước 0.17.0 property này trả attribute. |
 | `getValue()` | `() => any \| null` | Giá trị của mục đang chọn (kiểu gốc trong object, không ép chuỗi), `null` nếu chưa chọn. |
-| `setValue(value)` | `(value) => void` | Chọn theo giá trị. `null` / `undefined` / `''` → bỏ chọn. Giá trị chưa có trong options → bỏ lựa chọn cũ, nhớ lại để áp dụng khi options đến. **Không** phát `change`. |
+| `setValue(value)` | `(value) => void` | Chọn theo giá trị. `null` / `undefined` → luôn bỏ chọn. `''` → chọn option **có giá trị rỗng thật** nếu có (0.17.0), không có thì bỏ chọn (không pending). Giá trị khác chưa có trong options → bỏ lựa chọn cũ, nhớ lại để áp dụng khi options đến. **Không** phát `change`. |
 | `getSelectedItem()` | `() => Object \| null` | Object option đang chọn. |
 | `updateData(list)` | `(Array) => void` | Thay danh sách: giữ lựa chọn hiện tại nếu còn trong danh sách, không còn thì bỏ chọn (không phát `change`); áp giá trị pending. |
 | `open()` | `() => void` | Mở menu (không làm gì khi disabled; đang mở thì chỉ đặt lại vị trí). Đóng mọi dropdown khác đang mở. |
