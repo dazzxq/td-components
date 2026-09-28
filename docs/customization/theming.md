@@ -340,9 +340,15 @@ Button là **kính có tint** (Liquid Glass, v0.14.0): màu variant được pha
 | `--td-btn-disabled-fg` | `#a1a1aa` | `#6b6b73` |
 | `--td-btn-disabled-border` | `#e4e4e7` | `rgb(255 255 255 / 6%)` |
 | `--td-btn-lift` | `0 1px 2px rgb(0 0 0 / 8%), 0 3px 8px -4px rgb(0 0 0 / 14%)` | `0 1px 2px rgb(0 0 0 / 30%), 0 3px 8px -4px rgb(0 0 0 / 40%)` |
+| `--td-btn-ghost-fg` | `var(--td-accent)` (#2563eb) | theo `--td-accent` dark (#3b82f6) |
+| `--td-btn-ghost-hover-bg` | `var(--td-color-hover)` (`rgb(0 0 0 / 5%)`) | theo `--td-color-hover` dark (`rgb(255 255 255 / 6%)`) |
 
 Ghi chú:
 
+- Nút **ghost** (0.17.0, `variant="ghost"`) không có nền/kính/viền: chữ `--td-btn-ghost-fg` nằm thẳng trên nền trang,
+  hover phủ `--td-btn-ghost-hover-bg`. Cổng tương phản đo chữ ghost ≥ 4.7:1 trên nền trắng (light) và đen (dark) —
+  ghost không dành cho nền ảnh. Đổi `--td-btn-ghost-fg` sang màu khác thì tự kiểm tra tương phản trên nền trang của
+  bạn. Hai token này tính ở `:root` (bẫy 2 ở trên): muốn đổi theo vùng, ghi đè thẳng `--td-btn-ghost-fg`.
 - `--td-btn-primary-bg` đọc `--td-accent-fill`, nên ở dark nó là accent tối đi 20% (chữ trắng trên accent dark thô
   `#3b82f6` chỉ 3.68:1). Trước 0.16.0 dark gán cứng `#2563eb` và đổi `--td-accent` không đổi nút primary ở dark.
 - `--td-btn-success-tint` / `-danger-tint` / `-info-tint` cố định (không theo `--td-color-*`) vì dark làm sáng

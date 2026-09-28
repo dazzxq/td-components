@@ -3,15 +3,16 @@
 # Button — `<td-button>`
 
 Nút bấm kiểu Liquid Glass: các variant có màu (primary, success, danger, info, warning) là "kính nhuộm màu", secondary là
-kính trắng trung tính. Dùng cho mọi hành động (lưu, gửi form, mở modal…). Nếu bạn cần một **đường dẫn** (chuyển trang)
-thì dùng thẻ `<a>` thường, không dùng `td-button`. Nếu cần nút có menu con, dùng [menu](menu.md) gắn vào một `td-button`.
+kính trắng trung tính, ghost là nút chữ không nền. Dùng cho mọi hành động (lưu, gửi form, mở modal…). Cần một
+**đường dẫn trông như nút** (chuyển trang, tải file) thì thêm `href`: `td-button` render `<a>` thật (xem
+[Nút dạng link](#nút-dạng-link-href)). Nếu cần nút có menu con, dùng [menu](menu.md) gắn vào một `td-button`.
 
 | | |
 |---|---|
 | Import | `import '@dazzxq/td-components/button';` (class: `import { TdButton } from '@dazzxq/td-components';`) |
 | Loại | Custom element |
 | Form-associated | không (nhưng nút `<button>` bên trong vẫn submit/reset được form bao quanh, xem [Dùng trong form](#dùng-trong-form)) |
-| Từ phiên bản | 0.1.0 (token-native từ 0.7.0, Liquid Glass từ 0.14.0, `run()` từ 0.13.0) |
+| Từ phiên bản | 0.1.0 (token-native từ 0.7.0, Liquid Glass từ 0.14.0, `run()` từ 0.13.0, `ghost` + `href` từ 0.17.0) |
 
 Cần nạp `td.css` một lần trên trang (xem [Cài đặt](../getting-started/installation.md)). Không có `td.css` thì nút
 vẫn chạy nhưng không có giao diện.
@@ -40,6 +41,7 @@ vẫn chạy nhưng không có giao diện.
 <td-button variant="danger">Danger</td-button>
 <td-button variant="info">Info</td-button>
 <td-button variant="warning">Warning</td-button>
+<td-button variant="ghost">Ghost</td-button>
 
 <td-button size="sm">Nhỏ (32px)</td-button>
 <td-button size="md">Vừa (40px)</td-button>
@@ -47,6 +49,55 @@ vẫn chạy nhưng không có giao diện.
 ```
 
 Giá trị không hợp lệ không báo lỗi mà rơi về mặc định: `variant` lạ → `primary`, `size` lạ → `md`.
+
+### Nút ghost
+
+```html
+<td-button variant="ghost">Huỷ</td-button>
+<td-button variant="ghost" icon="download" href="/bao-cao.pdf" download>Tải báo cáo</td-button>
+```
+
+Từ 0.17.0, `ghost` = nền trong suốt, **không kính, không blur, không viền, không bóng**, chữ màu accent (`--td-btn-ghost-fg`,
+mặc định `var(--td-accent)`). Hover phủ một lớp nền mờ (`--td-btn-ghost-hover-bg`, mặc định `--td-color-hover`), không
+glow. Focus bàn phím có vòng focus như mọi nút. Disabled: vẫn trong suốt, chữ xám (`--td-btn-disabled-fg`).
+Dùng cho hành động phụ đặt trên **nền trang** (Huỷ, Xem thêm, liên kết trong toolbar). Không đặt ghost trên ảnh/nền
+nhiều màu: chữ accent không có nền riêng nên không bảo đảm tương phản ở đó (cổng tương phản chỉ đo ghost trên nền
+trắng/đen của theme).
+
+### Nút dạng link (`href`)
+
+```html
+<td-button href="/tai-khoan" variant="secondary">Tài khoản</td-button>
+<td-button href="https://example.com/huong-dan" target="_blank" icon="external" icon-position="right">Hướng dẫn</td-button>
+<td-button href="/files/bao-cao-2026.pdf" download="bao-cao.pdf" variant="ghost" icon="download">Tải báo cáo</td-button>
+```
+
+Từ 0.17.0, có `href` → nút bên trong là `<a class="td-btn td-btn--{variant} td-btn--{size}" href="…">` (cùng các phần con
+`.td-btn__icon` / `.td-btn__label` / `.td-btn__spinner`), nên middle-click, mở tab mới, copy link… hoạt động như link
+thật. Mọi variant, size, `icon`, `full-width`, `color` dùng được như nút thường.
+
+- **`href`** theo danh sách trắng: `http:`/`https:`, đường dẫn tương đối (`/a`, `a/b`, `../x`, `?q=1`), `#…`,
+  `mailto:`, `tel:`. Giá trị khác (`javascript:`, `data:`, `file:`…) bị **bỏ** kèm `console.warn`, và link khi đó hành
+  xử như disabled.
+- **`target`** chỉ nhận `_blank` | `_self` | `_parent` | `_top` (khác → bỏ). `_blank` tự thêm
+  `rel="noopener noreferrer"`.
+- **`download`** được chuyển xuống `<a>`. Có tên file thì tên được lọc (bỏ `/ \ : * ? " < > |`, ký tự điều khiển và
+  dấu chấm đầu tên); `download` rỗng = tên mặc định của trình duyệt.
+- `type` và form **không** áp cho link (link không submit form).
+- Đổi giá trị `href` cập nhật tại chỗ (giữ focus). Thêm/bỏ hẳn `href` → render lại giữa `<button>` và `<a>`.
+
+Trạng thái của link khác nhau, giống ý nghĩa ở `<button>`:
+
+| | `disabled` | `loading` |
+|---|---|---|
+| `href` trên `<a>` | gỡ (lưu trên host, bỏ `disabled` là khôi phục) | gỡ tạm (không mở tab mới / middle-click được), hết loading là khôi phục |
+| Thứ tự Tab | `tabindex="-1"`: ra khỏi thứ tự Tab (như button disabled) | `tabindex="0"`: **giữ focus**, vẫn trong thứ tự Tab |
+| ARIA | `role="link"` + `aria-disabled="true"` | `role="link"` + `aria-busy="true"` + `aria-disabled="true"` |
+| Click | bị chặn | bị chặn |
+| Giao diện | như nút disabled (cùng token `--td-btn-disabled-*`) | spinner, như nút loading |
+
+Có cả `disabled` và `loading` thì disabled thắng (`tabindex="-1"`, giao diện disabled). `run()` dùng được trên link
+(bật loading trong lúc chạy).
 
 ### Chữ trên nút: nội dung thẻ hoặc `label`
 
@@ -184,7 +235,8 @@ nút), spinner hiện ở giữa, con trỏ là `progress`, và **mọi click b�
 btn.setDisabled(true);  // = setAttribute('disabled', '')
 ```
 
-`disabled` là disabled native của `<button>`: không click, không focus, ra khỏi thứ tự Tab. Giao diện: nền nhạt đặc,
+`disabled` là disabled native của `<button>` (với link: xem [Nút dạng link](#nút-dạng-link-href)): không click,
+không focus, ra khỏi thứ tự Tab. Giao diện: nền nhạt đặc,
 chữ xám, viền nhạt, không kính, không bóng (xem [Tương phản](#tương-phản-và-các-đánh-đổi-có-chủ-đích)).
 
 ### Dùng trong form
@@ -223,7 +275,7 @@ hiệu năng khi có nhiều nút):
 
 | Attribute | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
-| `variant` | string | `primary` | `primary` \| `secondary` \| `success` \| `danger` \| `info` \| `warning`. Giá trị khác → `primary`. |
+| `variant` | string | `primary` | `primary` \| `secondary` \| `success` \| `danger` \| `info` \| `warning` \| `ghost` (0.17.0). Giá trị khác → `primary`. |
 | `size` | string | `md` | `sm` \| `md` \| `lg` (cao tối thiểu 32 / 40 / 48 px; trên màn cảm ứng tối thiểu 44 px và bo tròn dạng viên thuốc). Giá trị khác → `md`. |
 | `label` | string | chữ trong thẻ | Chữ trên nút. Ưu tiên hơn nội dung thẻ. Đổi `label` cập nhật tại chỗ (không mất focus). |
 | `icon` | string | — | Tên icon registry (ví dụ `download`). **Deprecated:** giá trị không có trong registry được hiểu là danh sách class (ví dụ `fas fa-edit`) và render `<i>`. |
@@ -234,12 +286,16 @@ hiệu năng khi có nhiều nút):
 | `color` | string (màu CSS) | — | Nền tuỳ chỉnh, đặc (không kính), ghi đè variant. Qua `safeColor`; không hợp lệ thì bỏ qua. |
 | `text-color` | string (màu CSS) | tự động đen/trắng | Màu chữ khi có `color`. Không có `color` thì bị bỏ qua. |
 | `type` | string | `button` | `button` \| `submit` \| `reset` (danh sách trắng). |
-| `aria-label` | string | — | Chuyển xuống `<button>` bên trong. Bắt buộc với nút chỉ có icon. |
+| `aria-label` | string | — | Chuyển xuống `<button>` / `<a>` bên trong. Bắt buộc với nút chỉ có icon. |
+| `href` | string (URL) | — | Có → render `<a>` (nút dạng link). Danh sách trắng: http(s), tương đối, `#`, `mailto:`, `tel:`. 0.17.0. |
+| `target` | string | — | Chỉ với `href`: `_blank` \| `_self` \| `_parent` \| `_top`; `_blank` thêm `rel="noopener noreferrer"`. 0.17.0. |
+| `download` | string | — | Chỉ với `href`: chuyển xuống `<a download>`; tên file được lọc ký tự đường dẫn. 0.17.0. |
 
 ## Property & method
 
 Mỗi attribute ở trên đều có property tương ứng (tên camelCase) phản chiếu attribute: `variant`, `size`, `label`,
-`icon`, `iconPosition`, `loading`, `disabled`, `fullWidth`, `color`, `textColor`, `type`, `ariaLabel`. Property kiểu
+`icon`, `iconPosition`, `loading`, `disabled`, `fullWidth`, `color`, `textColor`, `type`, `ariaLabel`, `href`,
+`target`, `download`. Property kiểu
 boolean trả về `true/false`; property chuỗi trả về `''` khi không có attribute. Gán property = đặt attribute.
 
 > Gán property trước khi phần tử gắn vào trang (vừa `createElement`, chưa append — hoặc trước khi module được import)
@@ -251,8 +307,8 @@ boolean trả về `true/false`; property chuỗi trả về `''` khi không có
 | `setLoading(isLoading: boolean)` | `void` | Bật/tắt attribute `loading`. |
 | `setDisabled(isDisabled: boolean)` | `void` | Bật/tắt attribute `disabled`. |
 
-Muốn focus nút bằng code, focus phần tử `<button>` bên trong: `el.querySelector('button').focus()` (thẻ
-`td-button` tự nó không focus được).
+Muốn focus nút bằng code, focus phần tử `.td-btn` bên trong: `el.querySelector('.td-btn').focus()` (thẻ
+`td-button` tự nó không focus được; với `href` phần tử đó là `<a>`).
 
 ## Event
 
@@ -292,6 +348,8 @@ thắng các lớp `td.*`. Xem thêm [Theming](../customization/theming.md) và 
 | `--td-btn-secondary-bg` | `var(--td-gray-100)` | Nền **đặc** của secondary khi kính bị tắt (trình duyệt không có `color-mix`, reduced transparency, `data-td-glass="off"`, tương phản cao). |
 | `--td-btn-disabled-bg` / `-fg` / `-border` | `#f4f4f5` / `#a1a1aa` / `#e4e4e7` | Trạng thái disabled (xám, đặc). |
 | `--td-btn-lift` | bóng nhẹ 2 lớp | Bóng nổi của nút. |
+| `--td-btn-ghost-fg` | `var(--td-accent)` (#2563eb; dark #3b82f6) | Màu chữ/icon của ghost (0.17.0). |
+| `--td-btn-ghost-hover-bg` | `var(--td-color-hover)` (`rgb(0 0 0 / 5%)`; dark `rgb(255 255 255 / 6%)`) | Nền khi hover của ghost (0.17.0). |
 
 Chữ của secondary dùng `--td-glass-fg` (#111113). Hover dùng `--td-glass-glow`, nhấn dùng `--td-glass-press-scale`
 (0.97), blur dùng `--td-glass-blur` — đây là token kính chung, xem [Theming](../customization/theming.md).
@@ -329,6 +387,9 @@ Sau khi đổi tint, tự kiểm tra tương phản chữ (kit chỉ đo các gi
 
 - Chữ của mọi variant ở trạng thái bình thường đạt **≥ 4.7:1** so với nền hiển thị thật, đo trên nền đen, trắng, ô
   caro và ảnh, ở 3 engine (Chromium, Firefox, WebKit) — cổng kiểm tra `npm run test:contrast`.
+- **Ghost** không có nền riêng nên chỉ được đo trên nền trang của theme: trắng (light, ≈ 5.2:1) và đen (dark,
+  ≈ 5.7:1). Khi hover, lớp `--td-color-hover` làm tương phản giảm nhẹ (light ≈ 4.6:1 trên trắng, ≈ 4.5:1 trên nền
+  `--td-color-bg` #fbfbfa); site cần dư hơn thì đặt `--td-btn-ghost-fg` đậm hơn (ví dụ `#1d4ed8`).
 - **Disabled cố ý mờ** (v0.14.3): chữ disabled chỉ cần **≥ 2.2:1** (và dưới 3:1) để trông "xám đi" rõ ràng.
   WCAG 1.4.3 / 1.4.11 miễn yêu cầu tương phản cho control không hoạt động. Disabled dùng màu trạng thái đặc, không
   bao giờ dùng `opacity` của cả phần tử (nút mờ trên nền tối sẽ không đọc được).
@@ -367,18 +428,32 @@ Sau khi đổi tint, tự kiểm tra tương phản chữ (kit chỉ đo các gi
 | Class / attribute | Ý nghĩa |
 |---|---|
 | `.td-btn` | Block nút. |
-| `.td-btn--{primary\|secondary\|success\|danger\|info\|warning}` | Variant. |
+| `.td-btn--{primary\|secondary\|success\|danger\|info\|warning\|ghost}` | Variant. |
 | `.td-btn--{sm\|md\|lg}` | Size. |
 | `.td-btn--full` | `full-width`. |
 | `.td-btn--custom` | Đang dùng `color` tuỳ chỉnh (nền đặc từ `--td-btn-bg` / `--td-btn-fg` trên host). |
 | `.td-btn__icon` | Ô icon (SVG registry, hoặc `<i>` class cũ). Với `icon-position="right"` nằm sau label. |
 | `.td-btn__label` | Chữ. Không có với nút chỉ có icon. |
 | `.td-btn__spinner` | Spinner (dùng chung block `.td-spinner`), `hidden` khi không loading. |
-| `:disabled` | Trạng thái disabled. |
+| `:disabled` | Trạng thái disabled (`<button>`). |
+| `[aria-disabled="true"]` không kèm `aria-busy` | Trạng thái disabled của link `<a class="td-btn">` (0.17.0). |
 | `[aria-busy="true"]` | Trạng thái loading. |
 | `:focus-visible` | Vòng focus `--td-focus-ring`. |
 
 Biến CSS trên host do JS đặt (CSSOM) khi có `color`: `--td-btn-bg`, `--td-btn-fg`, `--td-btn-hover`.
+
+Nút dạng link (`href`, 0.17.0) có cùng cấu trúc con, chỉ khác thẻ ngoài:
+
+```html
+<td-button href="/tai-khoan" target="_blank">
+  <a class="td-btn td-btn--primary td-btn--md" target="_blank" rel="noopener noreferrer" href="/tai-khoan">
+    <span class="td-btn__label">Tài khoản</span>
+    <span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden>…spinner như trên…</span>
+  </a>
+</td-button>
+<!-- disabled: <a class="td-btn …" role="link" aria-disabled="true" tabindex="-1"> (không href) -->
+<!-- loading:  <a class="td-btn …" role="link" aria-disabled="true" aria-busy="true" tabindex="0"> (không href) -->
+```
 
 **Render phía server (PHP/WordPress):** `td.css` style trực tiếp `<button class="td-btn td-btn--primary td-btn--md"
 type="button">…</button>`, không cần JS, miễn giữ đúng cấu trúc trên (hợp đồng markup được test ở
@@ -387,7 +462,9 @@ type="button">…</button>`, không cần JS, miễn giữ đúng cấu trúc tr
 
 ## Bàn phím & trợ năng
 
-- Là `<button>` native: Tab để tới, Enter hoặc Space để bấm.
+- Là `<button>` native: Tab để tới, Enter hoặc Space để bấm. Có `href` thì là `<a>` native: Tab để tới, Enter để
+  mở (Space cuộn trang như mọi link).
+- Link disabled / loading: `href` bị gỡ nên thêm `role="link"` để vẫn được đọc là link (kèm `aria-disabled`).
 - Loading: `aria-busy="true"` + `aria-disabled="true"`, focus giữ nguyên, trình đọc màn hình báo nút đang bận/không
   dùng được. Spinner có `aria-hidden`.
 - Disabled: disabled native, ra khỏi thứ tự Tab.
@@ -403,6 +480,9 @@ Xem [Trợ năng](../guides/accessibility.md).
 - Chữ (`label` hoặc nội dung thẻ) luôn được escape, chỉ hiện dưới dạng text.
 - `color` / `text-color` đi qua `safeColor` rồi được trình duyệt chuẩn hoá; giá trị không phải màu bị bỏ.
 - `type` theo danh sách trắng, `icon` class cũ được lọc từng class, nên không chèn được attribute hay HTML.
+- `href` theo danh sách trắng giao thức (http(s), tương đối, `#`, `mailto:`, `tel:`), chuẩn hoá như trình duyệt trước
+  khi kiểm (bỏ ký tự điều khiển/khoảng trắng hai đầu, tab/xuống dòng ở giữa: `" java\tscript:"` vẫn bị chặn).
+  `target` theo danh sách trắng, `_blank` luôn có `rel="noopener noreferrer"`; tên file `download` được lọc.
 
 ## Lưu ý & lỗi thường gặp
 
