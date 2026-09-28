@@ -41,9 +41,10 @@ dd.addEventListener('change', (e) => {
 });
 ```
 
-Danh sách lựa chọn **luôn** được gán bằng JS (property `options` hoặc `updateData()`), không có cú pháp `<option>` bên
-trong thẻ. Gán `options` (và `onChange` / `onSelect`) **trước** khi script component được nạp cũng được: giá trị được
-nhận khi phần tử nâng cấp.
+Danh sách lựa chọn gán bằng JS (property `options` hoặc `updateData()`), **hoặc** (từ 0.17.0) đặt một `<select>`
+native làm con trực tiếp — component đọc nó khi gắn vào trang (xem [mục 9](#9-nâng-cấp-từ-select-native-ssr--không-js)).
+Gán `options` (và `onChange` / `onSelect`) **trước** khi script component được nạp cũng được: giá trị được nhận khi
+phần tử nâng cấp.
 
 ## Cách dùng
 
@@ -63,7 +64,17 @@ dd.options = [
   cùng một mục.
 - Giá trị gửi lên form là `String(value)`.
 - Mảng không hợp lệ (không phải array) được coi là `[]`.
-- Không hỗ trợ: nhóm option (`optgroup`), option bị vô hiệu hoá, HTML trong label, chọn nhiều.
+- `disabled: true` (từ 0.17.0; đúng giá trị boolean `true`) → option vẫn hiện (mờ, `aria-disabled="true"`) nhưng
+  người dùng **không chọn được** bằng chuột/phím, và bị bỏ qua khi di chuyển bằng ↑↓ / Home / End / PageUp / PageDown /
+  type-ahead / tìm kiếm. `setValue()` vẫn chọn được nó (như `<select>` native).
+- Không hỗ trợ: nhóm option (`optgroup` — khi nâng cấp từ `<select>` thì bị làm phẳng), HTML trong label, chọn nhiều.
+
+```js
+dd.options = [
+  { value: 'hn', label: 'Hà Nội' },
+  { value: 'sg', label: 'Sài Gòn', disabled: true }, // hết hàng: thấy nhưng không chọn được
+];
+```
 
 ### 2. Dữ liệu từ API có key khác (`value-key` / `label-key`)
 
@@ -162,12 +173,57 @@ dd.clearError();
 
 Hoặc bằng attribute: `<td-dropdown error-text="…">`. Xem [TdFormValidation](form-validation.md) để map lỗi server hàng loạt.
 
+### 9. Nâng cấp từ `<select>` native (SSR / không JS)
+
+Từ 0.17.0, in một `<select>` bình thường **bên trong** `<td-dropdown>`. Chưa có JS (hoặc JS lỗi): select native hoạt
+động và submit như thường. Khi component được nạp, nó **thay** select:
+
+```html
+<label for="city-sel">Thành phố</label>
+<td-dropdown>
+  <select id="city-sel" name="city" required>
+    <option value="">Chọn…</option>
+    <optgroup label="Miền Bắc">
+      <option value="hn" selected>Hà Nội</option>
+      <option value="hp">Hải Phòng</option>
+    </optgroup>
+    <optgroup label="Miền Nam" disabled>
+      <option value="sg">Sài Gòn</option>
+    </optgroup>
+  </select>
+</td-dropdown>
+```
+
+Khi gắn vào trang **lần đầu**, nếu host có con trực tiếp `<select>` và chưa có `options` gán bằng JS:
+
+- **options**: mỗi `<option>` → `{ value, label }` (`label` = chữ hiển thị đã trim, hoặc attribute `label` của option
+  nếu có), theo đúng thứ tự. `<optgroup>` được **làm phẳng**, nhãn nhóm bị bỏ. Option `disabled` hoặc nằm trong
+  `<optgroup disabled>` → `disabled: true`. Key theo `value-key` / `label-key` nếu host có đặt.
+- **lựa chọn**: (1) attribute `value` của host nếu có; (2) nếu không, giá trị **đang chọn** của select — gồm cả lựa chọn
+  người dùng đã đổi trước khi JS chạy, và option đầu tiên (không bị vô hiệu) khi không option nào `selected`, như native.
+- **reset form**: về mặc định theo luật `<select>` — option `selected` cuối cùng, không có thì option đầu tiên không bị
+  vô hiệu hoá.
+- `name`, `required`, `disabled`, `aria-label` lấy từ select nếu host chưa có.
+- `<label for="{id của select}">` được đổi `for` sang id của `<td-dropdown>` (host tự được gán id nếu chưa có) — nhãn
+  vẫn đặt tên và bấm vẫn focus dropdown.
+- Select bị **gỡ** khỏi DOM, nên không có giá trị gửi trùng.
+- `<select multiple>` **không** được nâng cấp (dropdown chỉ chọn một): select giữ nguyên, hoạt động native, có
+  `console.warn`. Dùng [`<td-chip-input>`](chip-input.md) nếu cần chọn nhiều có giao diện td.
+- Chỉ đọc **một lần**: đổi select sau đó (hoặc gắn lại host) không có tác dụng; dùng `options` / `updateData()`.
+
+Nạp component bằng `<script type="module">` (mặc định chạy sau khi HTML parse xong). Nếu module được định nghĩa
+**trước** khi parser đọc tới `<select>` bên trong (ví dụ `async` chạy sớm trên trang dài), component sẽ render trước khi
+select tồn tại và không nâng cấp được.
+
+Option `value=""` (dạng "Chọn…") được giữ làm một option bình thường: chọn nó = chưa có giá trị (không gửi, `required`
+báo thiếu) như native.
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
 | `name` | string | — | Tên field khi gửi form. Không có `name` → không gửi. |
-| `value` | string | — | Giá trị chọn ban đầu (so theo chuỗi). Đổi attribute sau khi render = gọi `setValue()`. Cũng là giá trị khôi phục khi form reset. |
+| `value` | string | — | Giá trị chọn ban đầu (so theo chuỗi). Đổi attribute sau khi render = gọi `setValue()`. Cũng là giá trị khôi phục khi form reset (trừ khi nâng cấp từ `<select>` — xem mục 9). Attribute **không** sống theo lựa chọn; đọc lựa chọn bằng property `value`. |
 | `label` | string | — | Nhãn hiển thị (`<label class="td-field__label">`), đặt tên cho combobox và listbox. |
 | `aria-label` | string | — | Tên truy cập khi không có `label` hiển thị (được chép vào nút trigger và listbox). |
 | `placeholder` | string | `Chọn một tùy chọn` | Chữ hiện khi chưa chọn gì. |
@@ -193,6 +249,7 @@ focus). Đổi `label`, `searchable`, `allow-clear`, `max-height`, `value-key`, 
 | `TdDropdown.labels` | static object | Chữ giao diện, site ghi đè được (xem [dưới](#tddropdownlabels)). |
 | `searchable` | `boolean` (get/set) | Trạng thái thật của cờ. `false` → `searchable="false"`; `true` → xoá attribute. |
 | `allowClear` | `boolean` (get/set) | Tương tự cho `allow-clear`. |
+| `value` | get/set | **Sống** (từ 0.17.0): đọc = `getValue()`, ghi = `setValue()` (không đổi attribute `value`). Trước khi gắn vào DOM, ghi = đặt attribute `value` ban đầu. Trước 0.17.0 property này trả attribute. |
 | `getValue()` | `() => any \| null` | Giá trị của mục đang chọn (kiểu gốc trong object, không ép chuỗi), `null` nếu chưa chọn. |
 | `setValue(value)` | `(value) => void` | Chọn theo giá trị. `null` / `undefined` / `''` → bỏ chọn. Giá trị chưa có trong options → bỏ lựa chọn cũ, nhớ lại để áp dụng khi options đến. **Không** phát `change`. |
 | `getSelectedItem()` | `() => Object \| null` | Object option đang chọn. |
@@ -202,7 +259,7 @@ focus). Đổi `label`, `searchable`, `allow-clear`, `max-height`, `value-key`, 
 | `toggle()` | `() => void` | Mở/đóng. |
 | `destroy()` | `() => void` | Gỡ hẳn: huỷ listener, xoá menu portal và nội dung phần tử. |
 | `setError(msg)` / `clearError()` | | Error contract (xem [Form](#form)). `errorMessage` (getter) trả lỗi đang hiện. |
-| `name`, `disabled`, `required`, `value`, `label`, `placeholder`, `maxHeight`, `valueKey`, `labelKey`, `errorText` | property phản chiếu attribute | Đọc/ghi attribute tương ứng (chuỗi; `disabled`/`required` là boolean). Lưu ý `el.value` là **attribute** `value` (giá trị ban đầu), không phải lựa chọn hiện tại — dùng `getValue()`. |
+| `name`, `disabled`, `required`, `label`, `placeholder`, `maxHeight`, `valueKey`, `labelKey`, `errorText` | property phản chiếu attribute | Đọc/ghi attribute tương ứng (chuỗi; `disabled`/`required` là boolean). |
 | `form`, `validity`, `validationMessage`, `willValidate`, `labels` | read-only | Như control gốc. |
 | `checkValidity()`, `reportValidity()`, `setCustomValidity(msg)` | | Như control gốc. |
 | `focus()` | | Chuyển focus vào nút trigger. |
@@ -239,10 +296,11 @@ Tất cả được escape / đưa vào bằng `textContent`. Placeholder của 
 - **Giá trị gửi**: `String(value)` của mục đang chọn dưới `name`. Chưa chọn → không có entry trong `FormData`.
 - **`required`**: chưa chọn → `validity.valueMissing`, thông báo `TdDropdown.labels.required` (`Vui lòng chọn một tùy chọn`).
 - **Reset** (`form.reset()` / `<button type="reset">`): khôi phục attribute `value` ban đầu (lúc kết nối DOM), xoá lỗi
-  `setError`.
+  `setError`. Nâng cấp từ `<select>`: về mặc định theo luật `<select>` (xem [mục 9](#9-nâng-cấp-từ-select-native-ssr--không-js)).
 - **`<fieldset disabled>`**: tự vô hiệu, không đổi attribute `disabled` của bạn, không bị gửi.
 - **Khôi phục trạng thái** (bfcache/autofill): chọn lại theo giá trị.
-- **Label ngoài**: `<label for="city">` (id của host) hoạt động; bấm label → focus trigger.
+- **Label ngoài**: `<label for="city">` (id của host) hoạt động; bấm label → focus trigger. `<label for>` trỏ vào
+  `<select>` con được đổi sang id host khi nâng cấp.
 - **Error contract**: `error-text` / `setError(msg)` → `aria-invalid="true"`, `aria-errormessage`, `aria-describedby` trên
   trigger + `<span class="td-field-error">` sau khối dropdown. Lỗi hiển thị **không** thay đổi `validity`; muốn chặn
   submit hãy dùng `setCustomValidity()` hoặc [TdFormValidation](form-validation.md).
@@ -328,7 +386,7 @@ Trạng thái dùng để style (không có class JS bật/tắt):
 | `.td-dropdown__trigger` | `aria-expanded`, `:disabled`, `aria-invalid="true"` |
 | `.td-dropdown__value` | `data-placeholder` khi chưa chọn |
 | `.td-dropdown__menu` | `[hidden]`, `data-state`, `data-placement="top|bottom"` |
-| `.td-dropdown__option` | `aria-selected="true"` (đã chọn), `data-active` (đang trỏ bằng phím/chuột) |
+| `.td-dropdown__option` | `aria-selected="true"` (đã chọn), `data-active` (đang trỏ bằng phím/chuột), `aria-disabled="true"` (option vô hiệu hoá, 0.17.0) |
 
 JS chỉ ghi toạ độ/độ rộng menu và `max-height` danh sách qua CSSOM. Host không có `id` sẽ được gán tự động
 (`td-td-dropdown-N`).
@@ -350,7 +408,7 @@ nó có focus) mang `aria-activedescendant` trỏ tới option active.
 
 | Phím | Hành động |
 |---|---|
-| `ArrowDown` / `ArrowUp` | Di chuyển active (vòng quanh; dòng "Không chọn" nằm trong vòng). |
+| `ArrowDown` / `ArrowUp` | Di chuyển active (vòng quanh; dòng "Không chọn" nằm trong vòng; option vô hiệu hoá bị bỏ qua — áp cho mọi phím di chuyển và type-ahead). |
 | `Home` / `End` | Mục đầu / cuối (chỉ khi focus ở trigger; trong ô tìm kiếm là di con trỏ chữ). |
 | `PageDown` / `PageUp` | Nhảy `max-height` mục. |
 | `Enter` | Chọn mục active (cả khi đang gõ trong ô tìm kiếm). |
@@ -387,8 +445,9 @@ Xem [Bảo mật](../guides/security.md).
 ## Lưu ý & lỗi thường gặp
 
 - **Chỉ gán `options` bằng JS.** Viết `<td-dropdown options='[…]'>` không có tác dụng.
-- **`el.value` không phải lựa chọn hiện tại.** Nó là attribute `value` (giá trị ban đầu). Người dùng chọn không cập nhật
-  attribute. Đọc lựa chọn bằng `getValue()` hoặc `e.detail.value`.
+- **`el.value` là lựa chọn hiện tại từ 0.17.0** (trước đó là attribute `value` ban đầu). Attribute `value` vẫn chỉ là
+  giá trị ban đầu, người dùng chọn không cập nhật attribute; code cũ đọc `el.value` để lấy giá trị ban đầu → dùng
+  `getAttribute('value')`.
 - **Gán lại `options` / `updateData()` bỏ lựa chọn không còn trong danh sách mới** (từ 0.16.0; trước đó gán lại
   `options` kéo lựa chọn về attribute `value`, còn `updateData()` giữ và vẫn gửi giá trị "ma"). Không phát `change`;
   nếu cần biết, so `getValue()` trước và sau.
