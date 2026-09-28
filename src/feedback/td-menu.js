@@ -28,7 +28,12 @@
  *   hint (any item), danger, disabled, type: 'item'|'radio'|'checkbox', checked, group (radio group key), id }
  *   | { separator: true }. `checked` without `type` → radio (dwp compat). Labels/hints are TEXT (textContent only).
  *   `href`: http/https or relative; anything else (mailto:, tel:, javascript:, data:, unparsable) → the item is
- *   rendered as a disabled button + console.warn (use onSelect for mail/phone actions). Checkable items are plain
+ *   rendered as a disabled button + console.warn (use onSelect for mail/phone actions). v0.17.0 E5a: `download:
+ *   true | 'file-name'` on an href item → `<a download>` (the name is sanitised: / \ : * ? " < > | and control
+ *   characters dropped, length capped; true or an empty result → bare `download`, the browser names the file).
+ *   open/bind option `isAllowedUrl(url) → boolean` REPLACES the default href filter for that menu (the caller owns
+ *   the policy — e.g. the lightbox passes its own so a site-allowed `blob:` works); a throwing policy blocks the
+ *   URL, and `javascript:` is always blocked. Checkable items are plain
  *   buttons with role menuitemcheckbox/menuitemradio + aria-checked; caller items are NEVER mutated — the new state
  *   arrives as onSelect(ctx) → ctx.checked (update your model to persist it across opens).
  *
@@ -44,7 +49,8 @@
  *       [<span class="td-menu__check" data-td-icon="check" aria-hidden="true">…</span>]   (checkable items)
  *       [<span class="td-menu__hint" id="{m}-hint-{i}">{hint}</span>]
  *     </button>
- *     <a class="td-menu__item" role="menuitem" tabindex="-1" href="…" [target="_blank" rel="noopener noreferrer"]>…</a>
+ *     <a class="td-menu__item" role="menuitem" tabindex="-1" href="…" [target="_blank" rel="noopener noreferrer"]
+ *        [download="{file name}"]>…</a>
  *     <div class="td-menu__separator" role="separator"></div>
  *   </div>
  *
@@ -106,6 +112,34 @@ export function safeMenuHref(href, page = typeof location !== 'undefined' ? loca
   if (url.protocol === 'https:') return norm;
   if (url.protocol === 'http:' && page && page.protocol === 'http:') return norm;
   return null;
+}
+
+const DOWNLOAD_NAME_MAX = 200;
+
+/**
+ * Sanitise a download file name (v0.17.0 E5a): drops path separators / reserved characters (/ \ : * ? " < > |)
+ * and control characters, trims spaces/dots at the ends, caps the length. '' when nothing usable remains.
+ * @param {unknown} name
+ * @returns {string}
+ */
+export function sanitizeDownloadName(name) {
+  if (typeof name !== 'string') return '';
+  const clean = name.replace(/[/\\:*?"<>|\u0000-\u001f\u007f-\u009f]/g, '').replace(/^[\s.]+|[\s.]+$/g, '');
+  return Array.from(clean).slice(0, DOWNLOAD_NAME_MAX).join('').trim();
+}
+
+/**
+ * Caller URL policy (E5a): the policy decides; a throw blocks; `javascript:` is always blocked (hard floor — it can
+ * never be a navigation target or a download).
+ * @param {unknown} href
+ * @param {(url: string) => boolean} policy
+ * @returns {string|null}
+ */
+function policyHref(href, policy) {
+  if (typeof href !== 'string') return null;
+  const norm = href.replace(/^[\u0000- ]+|[\u0000- ]+$/g, '').replace(/[\t\n\r]/g, '');
+  if (!norm || /^javascript:/i.test(norm)) return null;
+  try { return policy(norm) ? norm : null; } catch { return null; }
 }
 
 const isFn = (f) => typeof f === 'function';
@@ -195,7 +229,7 @@ function resolveNamed(name, ctx) {
  * @param {unknown} list
  * @returns {Array<object>} normalised entries; separators collapsed (no leading/trailing/double)
  */
-function normalise(list) {
+function normalise(list, isAllowedUrl) {
   const out = [];
   if (!Array.isArray(list)) return out;
   for (const it of list) {
@@ -223,14 +257,17 @@ function normalise(list) {
       icon: typeof it.icon === 'string' ? it.icon : '',
       iconNode: typeof SVGElement !== 'undefined' && it.iconNode instanceof SVGElement ? it.iconNode : null, // trusted SVG only
       id: it.id == null ? '' : String(it.id),
+      download: null,
     };
     if (it.href != null && type === 'item') {
-      const safe = safeMenuHref(it.href);
+      const safe = isFn(isAllowedUrl) ? policyHref(it.href, isAllowedUrl) : safeMenuHref(it.href);
       if (safe == null) {
         console.warn(`TdMenu: unsafe or invalid href on "${label}" — item rendered disabled`);
         entry.disabled = true;
       } else {
         entry.href = safe;
+        if (it.download === true) entry.download = '';
+        else if (typeof it.download === 'string') entry.download = sanitizeDownloadName(it.download);
       }
     }
     out.push(entry);
@@ -267,6 +304,7 @@ function build(entries, menuId) {
         node.setAttribute('target', '_blank');
         node.setAttribute('rel', 'noopener noreferrer');
       }
+      if (e.download != null) node.setAttribute('download', e.download);
     } else {
       node.setAttribute('type', 'button');
     }
@@ -509,7 +547,8 @@ export class TdMenu {
    * @param {string|Array<object>|((ctx: object) => Array<object>)} items a registered menu name (G9), an item list or
    *   a lazy builder (called at open with ctx)
    * @param {{ align?: 'start'|'center'|'end', side?: 'bottom'|'top', label?: string, focus?: 'first'|'last',
-   *           onClose?: (reason: string) => void, ctx?: object }} [opts] `ctx`: extra context data (see header)
+   *           onClose?: (reason: string) => void, ctx?: object, isAllowedUrl?: (url: string) => boolean }} [opts]
+   *   `ctx`: extra context data (see header); `isAllowedUrl`: replaces the default href filter (E5a)
    * @returns {{ element: HTMLElement, close(): void, readonly isOpen: boolean }|null}
    */
   static open(anchor, items, opts = {}) {
@@ -534,7 +573,7 @@ export class TdMenu {
       list = callItems(list, ctx);
       if (list == null) return null;
     }
-    const entries = normalise(Array.isArray(list) ? list.filter((it) => visible(it, ctx)) : list);
+    const entries = normalise(Array.isArray(list) ? list.filter((it) => visible(it, ctx)) : list, o.isAllowedUrl);
     if (!entries.some((e) => !e.separator)) return null;
 
     const menuId = `td-menu-${++menuSeq}`;

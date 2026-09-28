@@ -4,7 +4,7 @@
  *   const lb = TdLightbox.open(items, options);       // → handle | null
  *   const unbind = TdLightbox.bind(root, options);    // opt-in click delegation
  *
- * Small core; every site-specific concern is a hook (`download`, `video`, `history`, `panel`, `toolbar`,
+ * Small core; every site-specific concern is a hook (`download`, `downloads`, `video`, `history`, `panel`, `toolbar`,
  * `isAllowedUrl`, `isForeignLayerOpen`, `labels`). No side effects on import, no window globals, no
  * inline `style=""`/injected `<style>` (CSSOM only for continuous values) — styles live in td.css
  * (`src/styles/components/lightbox.css`).
@@ -18,6 +18,7 @@ import {
   LAYERS, register as registerLayer, hasActiveAbove, trapTab, setFocusHandoff, clearFocusHandoff, restoreFocus, followFocusHandoff,
 } from '../utils/layers.js';
 import { TdModalStackManager } from './td-modal-stack.js';
+import { TdMenu, sanitizeDownloadName } from './td-menu.js';
 
 const LIGHTBOX_LAYER = LAYERS.lightbox; // --td-z-lightbox
 import { tdIcon } from '../icons/td-icon.js';
@@ -372,9 +373,11 @@ function build() {
   const fsBtn = btn('', 'fullscreen', { 'data-action': 'fullscreen' });
   const dlBtn = h('a', { class: 'td-lightbox__btn', 'data-action': 'download', hidden: true });
   dlBtn.appendChild(icon('download'));
+  // ≥ 2 download variants (E6): the same icon, but a menu button opening a TdMenu of `<a download>` items.
+  const dlMenuBtn = btn('', 'download', { 'data-action': 'downloads', hidden: true });
   const closeBtn = btn('td-lightbox__close', 'close', { 'data-action': 'close' });
   const toolbar = h('div', { class: 'td-lightbox__toolbar td-glass-surface td-glass-surface--clear' }, [
-    prevBtn, nextBtn, fsBtn, dlBtn, closeBtn,
+    prevBtn, nextBtn, fsBtn, dlBtn, dlMenuBtn, closeBtn,
   ]);
   const overlay = h('div', { class: 'td-lightbox', role: 'dialog', 'aria-modal': 'true', tabindex: '-1' }, [
     backdrop, lead, col, caption, panel, toolbar,
@@ -382,7 +385,7 @@ function build() {
 
   document.body.appendChild(overlay);
   ui = { overlay, backdrop, lead, backBtn, counter, col, stage, spinner, img, videoMount, caption, panel, grab,
-    panelBody, toolbar, prevBtn, nextBtn, fsBtn, dlBtn, closeBtn };
+    panelBody, toolbar, prevBtn, nextBtn, fsBtn, dlBtn, dlMenuBtn, closeBtn };
 
   backdrop.addEventListener('click', onBackdropClick);
   col.addEventListener('click', (e) => { if (e.target === col) onBackdropClick(); });
@@ -391,6 +394,9 @@ function build() {
   prevBtn.addEventListener('click', () => navigate(-1));
   nextBtn.addEventListener('click', () => navigate(1));
   fsBtn.addEventListener('click', toggleFullscreen);
+  // Lazy items (the current slide's variants) + the lightbox's own URL policy with the item being viewed (the menu
+  // closes on every slide change, so the item at open time is the one on screen).
+  TdMenu.bind(dlMenuBtn, downloadMenuItems, { align: 'end', isAllowedUrl: downloadMenuPolicy });
   grab.addEventListener('click', (e) => { e.stopPropagation(); setSheet(ui.panel.getAttribute('data-sheet') !== 'open'); });
   bindPanelSwipe(panel);
   bindPointer(stage);
@@ -405,6 +411,7 @@ function applyLabels(labels) {
   set(ui.nextBtn, labels.next);
   set(ui.fsBtn, labels.fullscreen);
   set(ui.dlBtn, labels.download);
+  set(ui.dlMenuBtn, labels.download);
   set(ui.closeBtn, labels.close);
   ui.grab.setAttribute('aria-label', labels.info);
 }
@@ -898,6 +905,7 @@ function show(idx) {
   const n = session.items.length;
   session.index = ((idx % n) + n) % n;
   const item = session.items[session.index];
+  closeDownloadMenu(); // its items/policy belong to the previous slide
   resetTransient();
   destroyPlayer();
   resetZoom();
@@ -918,6 +926,63 @@ function show(idx) {
   }
 
   const ctx = ctxOf();
+  syncDownloads(item, ctx);
+  syncPanel(ctx);
+  syncExtras(ctx);
+  emit('td-lightbox-change', detailOf());
+}
+
+/** Hide both download controls and forget the variants. */
+function hideDownloads() {
+  ui.dlBtn.removeAttribute('href');
+  ui.dlBtn.removeAttribute('download');
+  ui.dlBtn.hidden = true;
+  ui.dlMenuBtn.hidden = true;
+  session.downloads = [];
+}
+
+/** One plain download link. `name` ('' → from the URL) is sanitised. */
+function showDownloadLink(url, name) {
+  ui.dlBtn.href = url;
+  ui.dlBtn.setAttribute('download', sanitizeDownloadName(name) || sanitizeDownloadName(fileNameOf(url)) || 'image');
+  ui.dlBtn.hidden = false;
+}
+
+/**
+ * Validate the `downloads(item, ctx)` result (E6): a throwing hook / non-array → []; entries need a string `url` that
+ * passes the lightbox policy with the item being viewed. Returns [{ label, url, filename }] (filename '' = none).
+ */
+function downloadVariants(item, ctx) {
+  let raw;
+  try { raw = session.opts.downloads({ ...item }, ctx); } catch { raw = null; }
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const v of raw) {
+    if (!v || typeof v !== 'object') continue;
+    const url = allowed(v.url, item, session.isAllowedUrl);
+    if (!url) continue;
+    const filename = typeof v.filename === 'string' ? sanitizeDownloadName(v.filename) : '';
+    const label = typeof v.label === 'string' && v.label.trim() ? v.label : filename || fileNameOf(url);
+    out.push({ label, url, filename });
+  }
+  return out;
+}
+
+/**
+ * Download controls for the current slide: `downloads` (wins) → 0 hidden / 1 link / ≥ 2 menu; else `download` (one
+ * URL) or the same-origin image default.
+ */
+function syncDownloads(item, ctx) {
+  hideDownloads();
+  if (typeof session.opts.downloads === 'function') {
+    const list = downloadVariants(item, ctx);
+    if (list.length === 1) showDownloadLink(list[0].url, list[0].filename);
+    else if (list.length > 1) {
+      session.downloads = list;
+      ui.dlMenuBtn.hidden = false;
+    }
+    return;
+  }
   let dl = '';
   if (typeof session.opts.download === 'function') {
     try { dl = session.opts.download({ ...item }, ctx) || ''; } catch { dl = ''; }
@@ -929,14 +994,24 @@ function show(idx) {
     ui.dlBtn.href = dl;
     ui.dlBtn.setAttribute('download', fileNameOf(dl));
     ui.dlBtn.hidden = false;
-  } else {
-    ui.dlBtn.removeAttribute('href');
-    ui.dlBtn.hidden = true;
   }
+}
 
-  syncPanel(ctx);
-  syncExtras(ctx);
-  emit('td-lightbox-change', detailOf());
+/** TdMenu items for the download menu button (lazy: read at open). */
+function downloadMenuItems() {
+  if (!session || lifecycle !== 'open' || !session.downloads.length) return null;
+  return session.downloads.map((d) => ({ label: d.label, href: d.url, download: d.filename || true }));
+}
+
+/** The menu's URL policy = the lightbox's `isAllowedUrl(url, item)` with the item being viewed. */
+function downloadMenuPolicy(url) {
+  if (!session || lifecycle !== 'open') return false;
+  return !!allowed(url, session.items[session.index], session.isAllowedUrl);
+}
+
+/** Close the download menu when it is open (slide change / lightbox close). */
+function closeDownloadMenu() {
+  if (ui && TdMenu.isOpen(ui.dlMenuBtn)) TdMenu.close();
 }
 
 function navigate(dir) {
@@ -1011,6 +1086,7 @@ function openViewer(items, options = {}) {
       isForeignLayerOpen: typeof opts.isForeignLayerOpen === 'function' ? opts.isForeignLayerOpen : isForeignLayerOpenDefault,
     },
     isAllowedUrl,
+    downloads: [],
     labels: mergeLabels(opts.labels),
     player: null,
     videoAbort: null,
@@ -1058,6 +1134,7 @@ function openViewer(items, options = {}) {
 
 function closeViewer() {
   if (!ui || lifecycle !== 'open' || !session || !viewer) return; // idempotent
+  closeDownloadMenu(); // first: focus held by the menu returns to its button (inside the dialog) → restored below
   lifecycle = 'closed';
   const v = viewer;
   v.closed = true;
