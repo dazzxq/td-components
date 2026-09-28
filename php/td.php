@@ -52,10 +52,16 @@ namespace TdComponents {
             'pen' => 'pencil',
         ];
 
-        /** Attribute names never accepted from `attrs` (event handlers are blocked by prefix). */
-        private const BLOCKED_ATTRS = [
-            'style', 'srcdoc', 'formaction', 'action', 'href', 'src', 'srcset', 'xmlns', 'xlink:href', 'ping',
-            'background', 'poster', 'data', 'codebase', 'is',
+        /**
+         * POSITIVE allowlist for caller `attrs` / `input_attrs` (security review v0.17.0): `aria-*`, `data-*` and these
+         * native attributes. Anything else — event handlers, style, URL-bearing names, and form-owner / submitter
+         * overrides (`form`, `formmethod`, `formenctype`, `formtarget`, `formnovalidate`, `formaction`, `dirname`,
+         * `popovertarget`, `commandfor`…) — is dropped.
+         */
+        private const ALLOWED_ATTRS = [
+            'id', 'title', 'lang', 'dir', 'role', 'tabindex', 'hidden', 'translate', 'accesskey', 'autofocus',
+            'autocomplete', 'inputmode', 'enterkeyhint', 'autocapitalize', 'spellcheck', 'placeholder', 'readonly',
+            'required', 'disabled', 'maxlength', 'minlength', 'min', 'max', 'step', 'pattern', 'size', 'rows', 'cols',
         ];
 
         /** Icon geometry allowlist (same rules as src/icons/td-icon.js). */
@@ -81,6 +87,16 @@ namespace TdComponents {
         private static ?array $kitIcons = null;
         /** @var array<string,array> */
         private static array $siteIcons = [];
+        private static bool $allowHttp = false;
+
+        /**
+         * Allow absolute `http:` URLs in td_button/td_link (default: off — an HTTPS site never links down to HTTP).
+         * Only for sites that must link to legacy HTTP-only hosts.
+         */
+        public static function allowHttpLinks(bool $allow = true): void
+        {
+            self::$allowHttp = $allow;
+        }
         private static int $uid = 0;
 
         /**
@@ -191,14 +207,14 @@ namespace TdComponents {
             return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
         }
 
-        /** Attribute names allowed from `attrs` options: no on*, style, URL-bearing or document-level names. */
+        /** Attribute names allowed from `attrs` options: `aria-*`, `data-*` or ALLOWED_ATTRS (positive allowlist). */
         public static function safeAttrName(string $name): bool
         {
-            if (!preg_match('/^[A-Za-z][A-Za-z0-9:._-]*$/', $name)) {
-                return false;
-            }
             $l = strtolower($name);
-            return !str_starts_with($l, 'on') && !in_array($l, self::BLOCKED_ATTRS, true);
+            if (preg_match('/^(aria|data)-[a-z0-9][a-z0-9._-]*$/', $l)) {
+                return true;
+            }
+            return in_array($l, self::ALLOWED_ATTRS, true);
         }
 
         /**
@@ -255,7 +271,10 @@ namespace TdComponents {
                 return '';
             }
             if (preg_match('/^([A-Za-z][A-Za-z0-9+.\-]*):/', $url, $m)) {
-                return in_array(strtolower($m[1]), ['http', 'https', 'mailto', 'tel'], true) ? $url : '';
+                $scheme = strtolower($m[1]);
+                // http: only when the site opts in (Td::allowHttpLinks) — no HTTPS→HTTP downgrade by default
+                $ok = in_array($scheme, ['https', 'mailto', 'tel'], true) || ($scheme === 'http' && self::$allowHttp);
+                return $ok ? $url : '';
             }
             // No scheme: relative, root-relative, protocol-relative, query or fragment. A ':' before any '/', '?'
             // or '#' would be read as a scheme by the browser — refuse it.
@@ -529,7 +548,9 @@ namespace {
                 $download = Td::safeFilename($o['download']);
                 $download = $download === '' ? true : $download;
             }
-            $inert = $disabled || $loading; // E3: disabled/loading links have no href
+            // E3: disabled/loading links have no href; a REJECTED href makes the link disabled too (like <td-button href>)
+            $rejected = $href === '';
+            $inert = $disabled || $loading || $rejected;
             $attrs = [
                 'class' => $class,
                 'href' => !$inert && $href !== '' ? $href : null,
@@ -537,9 +558,10 @@ namespace {
                 'rel' => $target === '_blank' ? 'noopener noreferrer' : null,
                 'download' => $download,
                 'id' => $o['id'] ?? null,
+                'role' => $inert ? 'link' : null, // an <a> without href has no link role of its own
                 'aria-disabled' => $inert ? 'true' : null,
                 'aria-busy' => $loading ? 'true' : null,
-                'tabindex' => $disabled ? '-1' : ($loading ? '0' : null),
+                'tabindex' => ($disabled || $rejected) ? '-1' : ($loading ? '0' : null),
                 'aria-label' => $aria,
                 'data-tooltip' => $tooltip,
             ];

@@ -71,6 +71,41 @@ describe('v0.17.0 E2 — <select> upgrade', () => {
     expect(el.getValue()).to.equal(null);
   });
 
+  it('a NON-leading value="" option is a real option: selected, submitted as "", satisfies required, reset (review ISSUE-1)', () => {
+    const form = mount('<form><td-dropdown><select name="tag" required><option value="a">A</option>'
+      + '<option value="" selected>Không gắn</option><option value="b">B</option></select></td-dropdown></form>');
+    const el = form.querySelector('td-dropdown');
+    expect(plain(el.options).map((o) => o.value)).to.deep.equal(['a', '', 'b']);
+    expect(el.getValue()).to.equal('');
+    expect(el.querySelector('.td-dropdown__value').textContent).to.equal('Không gắn');
+    expect([...new FormData(form).entries()]).to.deep.equal([['tag', '']]);
+    expect(el.checkValidity()).to.equal(true);
+    el.value = 'b';
+    expect([...new FormData(form).entries()]).to.deep.equal([['tag', 'b']]);
+    el.value = '';
+    expect(el.getValue()).to.equal('');
+    el.setValue(null);
+    expect(el.getValue()).to.equal(null);
+    expect([...new FormData(form).entries()]).to.deep.equal([]);
+    expect(el.validity.valueMissing).to.equal(true);
+    form.reset();
+    expect(el.getValue()).to.equal('');
+  });
+
+  it('pre-upgrade user choice of the empty-valued option is kept', () => {
+    host.insertAdjacentHTML('beforeend', '<form><div id="later"></div></form>');
+    const form = host.lastElementChild;
+    const sel = document.createElement('select');
+    sel.name = 'tag';
+    sel.innerHTML = '<option value="a">A</option><option value="">Không gắn</option>';
+    sel.value = '';
+    const dd = document.createElement('td-dropdown');
+    dd.appendChild(sel);
+    form.querySelector('#later').replaceWith(dd);
+    expect(dd.getValue()).to.equal('');
+    expect([...new FormData(form).entries()]).to.deep.equal([['tag', '']]);
+  });
+
   it('placeholder + a selected option: that option is chosen and reset returns to it', () => {
     const form = mount('<form><td-dropdown><select name="city"><option value="">Chọn</option>'
       + '<option value="hn">Hà Nội</option><option value="sg" selected>Sài Gòn</option></select></td-dropdown></form>');

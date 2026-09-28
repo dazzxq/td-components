@@ -192,8 +192,10 @@ Markup (cấu trúc con giống `<td-button>`):
 
 **Nút dạng link** (`href`, cùng hợp đồng với `<td-button href>`):
 
-- URL qua whitelist: `http:`, `https:`, `mailto:`, `tel:`, đường dẫn tương đối, `#…`. Scheme khác (`javascript:`,
-  `data:`, `vbscript:`, `blob:`, `file:`…) → **không in `href`** (link còn đó nhưng không điều hướng).
+- URL qua whitelist: `https:`, `mailto:`, `tel:`, đường dẫn tương đối, `#…`; `http:` **chỉ khi** site gọi
+  `Td::allowHttpLinks(true)` (mặc định không cho hạ HTTPS → HTTP). Scheme khác (`javascript:`, `data:`, `vbscript:`,
+  `blob:`, `file:`…) → **không in `href`**, link thành **disabled** (`role="link"`, `aria-disabled="true"`,
+  `tabindex="-1"`).
 - `disabled` → không có `href`, `aria-disabled="true"`, `tabindex="-1"` (ra khỏi thứ tự Tab); td.css tô như nút
   disabled.
 - `loading` → không có `href`, `aria-busy="true"`, `aria-disabled="true"`, `tabindex="0"` (vẫn focus được), spinner hiện.
@@ -368,11 +370,15 @@ registerIcons(JSON.parse(document.getElementById('site-icons').textContent));
 - **Mọi giá trị** (nhãn, value, id, placeholder, tooltip, URL, nonce…) qua
   `htmlspecialchars(ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')` và luôn nằm trong nháy kép. Truyền chuỗi **thô**, đừng
   escape trước (sẽ bị escape hai lần: `&amp;amp;`).
-- **Tên attribute** trong `attrs` / `input_attrs`: phải khớp `[A-Za-z][A-Za-z0-9:._-]*` và **không** được là `on*`
-  (mọi event handler), `style`, `href`, `src`, `srcset`, `action`, `formaction`, `srcdoc`, `xmlns`, `xlink:href`,
-  `ping`, `background`, `poster`, `data`, `codebase`, `is`. Tên bị chặn bị bỏ im lặng. URL chỉ vào qua option có
-  kiểm tra (`href` của `td_button`/`td_link`).
-- **URL** (`href`): whitelist `http:` `https:` `mailto:` `tel:` + tương đối + `#`; tab/xuống dòng bị bỏ và khoảng trắng
+- **Tên attribute** trong `attrs` / `input_attrs` — **danh sách cho phép** (0.17.0): `aria-*`, `data-*`, và `id`,
+  `title`, `lang`, `dir`, `role`, `tabindex`, `hidden`, `translate`, `accesskey`, `autofocus`, `autocomplete`,
+  `inputmode`, `enterkeyhint`, `autocapitalize`, `spellcheck`, `placeholder`, `readonly`, `required`, `disabled`,
+  `maxlength`, `minlength`, `min`, `max`, `step`, `pattern`, `size`, `rows`, `cols`. Mọi tên khác bị bỏ im lặng —
+  gồm event handler `on*`, `style`, thuộc tính mang URL, và thuộc tính **đổi hành vi form** (`form`, `formmethod`,
+  `formenctype`, `formtarget`, `formnovalidate`, `formaction`, `dirname`, `popovertarget`, `commandfor`) vì chúng có
+  thể làm lộ mật khẩu qua URL (`formmethod="get"`) hay gắn nút vào form khác. Cần một thuộc tính ngoài danh sách thì
+  in markup riêng. URL chỉ vào qua option có kiểm tra (`href` của `td_button`/`td_link`).
+- **URL** (`href`): whitelist `https:` `mailto:` `tel:` + tương đối + `#` (`http:` chỉ với `Td::allowHttpLinks(true)`); tab/xuống dòng bị bỏ và khoảng trắng
   đầu/cuối bị cắt trước khi kiểm tra (như trình duyệt), nên `java\tscript:` hay ` javascript:` cũng bị chặn.
 - **Class**: chỉ token `[A-Za-z_][A-Za-z0-9_-]*`.
 - **JSON** (import map, icon cho JS): cờ `JSON_HEX_*`.
@@ -420,7 +426,7 @@ Khác biệt hành vi so với `markup.php` của 135 (cố ý):
 | `LogicException: Td::configure…` | gọi `td_import_map*` / `td_stylesheet_tag` trước `configure()` | gọi `configure()` trong bootstrap |
 | `InvalidArgumentException … kit specifier` | `$extra` có key trùng module của kit | đổi tên key của site, hoặc bỏ entry đó |
 | `href` biến mất trên nút link | URL bị whitelist chặn (`javascript:`, `data:`, `blob:`…), hoặc nút `disabled`/`loading` | dùng URL http(s)/tương đối |
-| attribute trong `attrs` không được in | tên bị chặn (`on*`, `style`, `href`…) hoặc trùng attribute helper đã in | dùng option tương ứng; event handler gắn trong module JS |
+| attribute trong `attrs` không được in | tên không có trong danh sách cho phép (`on*`, `style`, `href`, `form*`…) hoặc trùng attribute helper đã in | dùng option tương ứng; event handler gắn trong module JS |
 | Icon không hiện | tên sai / icon site chưa `registerIcons` | kiểm `TdComponents\Td::hasIcon('…')` |
 | `Failed to load module script … MIME type "application/octet-stream"` (hoặc rỗng) | server không map đuôi `.mjs` (nginx cũ) / `.js` sang JavaScript; `X-Content-Type-Options: nosniff` khiến trình duyệt chặn | nginx: `types { text/javascript mjs; }` trong `http { }` ngay sau `include mime.types;` — Apache: `AddType text/javascript .js .mjs` ([chi tiết](wordpress-php.md#mime-của-module-js)) |
 | Dropdown không đổi thành component | chưa import `@dazzxq/td-components/dropdown`, hoặc select có `multiple` (không upgrade) | import module; `multiple` giữ select native |

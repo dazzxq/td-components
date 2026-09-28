@@ -76,7 +76,7 @@ Từ 0.17.0, có `href` → nút bên trong là `<a class="td-btn td-btn--{varia
 `.td-btn__icon` / `.td-btn__label` / `.td-btn__spinner`), nên middle-click, mở tab mới, copy link… hoạt động như link
 thật. Mọi variant, size, `icon`, `full-width`, `color` dùng được như nút thường.
 
-- **`href`** theo danh sách trắng: `http:`/`https:`, đường dẫn tương đối (`/a`, `a/b`, `../x`, `?q=1`), `#…`,
+- **`href`** theo danh sách trắng: `https:` (`http:` chỉ khi chính trang là http — không hạ cấp từ HTTPS), đường dẫn tương đối (`/a`, `a/b`, `../x`, `?q=1`), `#…`,
   `mailto:`, `tel:`. Giá trị khác (`javascript:`, `data:`, `file:`…) bị **bỏ** kèm `console.warn`, và link khi đó hành
   xử như disabled.
 - **`target`** chỉ nhận `_blank` | `_self` | `_parent` | `_top` (khác → bỏ). `_blank` tự thêm
@@ -448,7 +448,7 @@ Nút dạng link (`href`, 0.17.0) có cùng cấu trúc con, chỉ khác thẻ n
 <td-button href="/tai-khoan" target="_blank">
   <a class="td-btn td-btn--primary td-btn--md" target="_blank" rel="noopener noreferrer" href="/tai-khoan">
     <span class="td-btn__label">Tài khoản</span>
-    <span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden>…spinner như trên…</span>
+    <span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden><svg class="td-spinner__svg" viewBox="0 0 50 50" aria-hidden="true" focusable="false"><circle class="td-spinner__track" cx="25" cy="25" r="20"></circle><circle class="td-spinner__arc" cx="25" cy="25" r="20"></circle></svg></span>
   </a>
 </td-button>
 <!-- disabled: <a class="td-btn …" role="link" aria-disabled="true" tabindex="-1"> (không href) -->

@@ -134,13 +134,42 @@ describe('php/td.php', opts, () => {
     const calls = [];
     const bad = ['javascript:alert(1)', 'JaVaScRiPt:alert(1)', ' javascript:alert(1)', 'java\tscript:alert(1)',
       'java\nscript:x', '\x01javascript:x', 'data:text/html,<script>alert(1)</script>', 'vbscript:x', 'blob:https://a/b',
-      'file:///etc/passwd', 'a:b/c'];
-    const good = ['https://a.vn/x', 'http://a.vn', '/p?q=1#h', 'p/q', '../x', '#top', '?a=1', 'mailto:a@b.vn', 'tel:+8412',
+      'file:///etc/passwd', 'a:b/c', 'http://a.vn' /* no HTTPS→HTTP downgrade by default */];
+    const good = ['https://a.vn/x', '/p?q=1#h', 'p/q', '../x', '#top', '?a=1', 'mailto:a@b.vn', 'tel:+8412',
       '//cdn.vn/a.js', '/a:b'];
     for (const u of [...bad, ...good]) calls.push({ fn: 'td_button', args: ['x', { href: u }] });
     const res = runPhp(calls);
     bad.forEach((u, i) => assert.ok(!res[i].out.includes('href='), `blocked: ${JSON.stringify(u)}`));
     good.forEach((u, i) => assert.ok(res[bad.length + i].out.includes('href="'), `allowed: ${u}`));
+  });
+
+  test('http: links only after Td::allowHttpLinks(); a rejected href renders a disabled link (review v0.17.0)', () => {
+    const [def, , allowed] = runPhp([
+      { fn: 'td_button', args: ['x', { href: 'http://legacy.vn/a' }] },
+      { fn: 'Td::allowHttpLinks', args: [true] },
+      { fn: 'td_button', args: ['x', { href: 'http://legacy.vn/a' }] },
+    ]).map((r) => r.out);
+    assert.ok(!def.includes('href='), def);
+    assert.match(def, /role="link" aria-disabled="true" tabindex="-1"/);
+    assert.match(allowed, /href="http:\/\/legacy\.vn\/a"/);
+    const bad = php1('td_button', 'x', { href: 'javascript:alert(1)' });
+    assert.ok(!bad.includes('href='));
+    assert.match(bad, /role="link" aria-disabled="true" tabindex="-1"/);
+  });
+
+  test('attrs: positive allowlist — form-owner / submitter overrides are dropped (security review v0.17.0)', () => {
+    const out = php1('td_button', 'Đăng nhập', { type: 'submit', attrs: {
+      formmethod: 'get', formnovalidate: true, form: 'victim', formenctype: 'text/plain', formtarget: '_blank',
+      dirname: 'x', popovertarget: 'p', commandfor: 'c', 'aria-label': 'ok', 'data-x': '1', tabindex: '-1', title: 't',
+    } });
+    const names = tokenize(out)[0].attrs.map(([n]) => n);
+    for (const bad of ['formmethod', 'formnovalidate', 'form', 'formenctype', 'formtarget', 'dirname', 'popovertarget', 'commandfor']) {
+      assert.ok(!names.includes(bad), `${bad} must be dropped: ${out}`);
+    }
+    for (const ok of ['aria-label', 'data-x', 'tabindex', 'title']) assert.ok(names.includes(ok), `${ok} kept: ${out}`);
+    const field = php1('td_field', 'q', '', { attrs: { pattern: '\\d*', inputmode: 'numeric', minlength: '8', min: '1', max: '9', autofocus: 'autofocus', formaction: '/x' } });
+    assert.ok(!field.includes('formaction'));
+    for (const ok of ['pattern=', 'inputmode=', 'minlength=', 'min=', 'max=', 'autofocus']) assert.ok(field.includes(ok), `${ok} kept (135 uses it): ${field}`);
   });
 
   test('XSS payloads are escaped everywhere', () => {

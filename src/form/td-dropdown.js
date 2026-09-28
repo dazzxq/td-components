@@ -243,7 +243,8 @@ export class TdDropdown extends TdFormElement {
 
     this.options = items;
     // (1) the host `value` attribute resolves through the deferred initial selection; (2) else the live select value.
-    if (!this.hasAttribute('value') && live !== '') {
+    // (the placeholder was removed from `items`, so a live '' only matches a REAL empty-valued option)
+    if (!this.hasAttribute('value')) {
       this._selectedItem = items.find((i) => String(i[vk]) === live) || null;
     }
   }
@@ -510,9 +511,11 @@ export class TdDropdown extends TdFormElement {
   /** @private Push the selected value + validity to the form. */
   _syncForm() {
     if (this._passthrough) return; // the kept native <select multiple> submits itself
-    const val = this.getValue();
-    this._setFormValue(val == null || val === '' ? null : String(val));
-    if (this.hasAttribute('required') && (val == null || val === '')) {
+    // `null` = no selection. A selected option whose value is '' (not the placeholder — that one is never an option)
+    // submits '' and satisfies `required`, like a native <select> (review v0.17.0 ISSUE-1).
+    const val = this._selectedItem ? this.getValue() : null;
+    this._setFormValue(val == null ? null : String(val));
+    if (this.hasAttribute('required') && val == null) {
       this._setValidity({ valueMissing: true }, TdDropdown.labels.required, this._focusTarget());
     } else {
       this._setValidity({});
@@ -1160,8 +1163,13 @@ export class TdDropdown extends TdFormElement {
     // an explicit selection / clear supersedes the initial `value` attribute — for good (review v0.16.0 ISSUE-6/7)
     this._initialDeferred = false;
     this._initialSuperseded = true;
-    if (value === null || value === undefined || value === '') {
+    const vkEmpty = this._getValueKey();
+    const emptyItem = value === '' ? this._options.find((i) => String(i[vkEmpty] ?? '') === '' && i[vkEmpty] != null) : null;
+    if (value === null || value === undefined || (value === '' && !emptyItem)) {
       this._selectedItem = null;
+      this._pendingValue = null;
+    } else if (emptyItem) {
+      this._selectedItem = emptyItem; // a real option whose value is '' (review v0.17.0 ISSUE-1)
       this._pendingValue = null;
     } else {
       const vk = this._getValueKey();

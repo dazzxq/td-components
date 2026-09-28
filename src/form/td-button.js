@@ -25,7 +25,10 @@ export function safeButtonHref(href) {
   if (!norm) return null;
   const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(norm);
   if (!scheme) return norm; // relative / fragment / query / protocol-relative
-  return LINK_PROTOCOLS.includes(`${scheme[1].toLowerCase()}:`) ? norm : null;
+  const proto = `${scheme[1].toLowerCase()}:`;
+  // http: only on an http page — no HTTPS→HTTP downgrade (security review v0.17.0; same rule as TdMenu)
+  if (proto === 'http:') return typeof location !== 'undefined' && location.protocol === 'http:' ? norm : null;
+  return LINK_PROTOCOLS.includes(proto) ? norm : null;
 }
 
 /** @param {string|null} name `download` value → a bare file name (path / reserved characters removed) */

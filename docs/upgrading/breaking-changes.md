@@ -570,7 +570,7 @@ Cần làm:
 
    ```js
    // Trước
-   empty.setAttribute('icon', '<svg viewBox="0 0 24 24">…</svg>');
+   empty.setAttribute('icon', svgMarkupString);  // chuỗi SVG thô (kiểu cũ, không còn được khuyến khích)
 
    // Sau
    empty.setAttribute('icon', 'inbox');          // tên trong registry
