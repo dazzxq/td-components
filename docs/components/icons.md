@@ -16,7 +16,9 @@ cũng không dùng font icon (Font Awesome…) cho UI mới.
 
 Module `./icons` **không có side effect** khi import (không định nghĩa element nào). Chỉ `./icon-element` mới định
 nghĩa `<td-icon>` — và từ 0.16.0 entry gốc `@dazzxq/td-components` (barrel) cũng import nó, nên import barrel là có
-`<td-icon>`.
+`<td-icon>`. Từ 0.17.0 entry gốc cũng re-export `tdIcon`, `registerIcons`, `hasIcon`, `listIcons`, `fillIconSlots`
+(`import { tdIcon } from '@dazzxq/td-components'`); `svgStringToDefinition` / `renderIconDefinition` vẫn chỉ có ở
+`./icons`.
 
 ## Ví dụ nhanh
 
@@ -40,24 +42,36 @@ note.prepend(tdIcon('info', { size: 'l', label: 'Thông tin' })); // icon có ng
 
 ## Danh sách icon core
 
-28 icon (bản 0.15.0). Tên là tên **ngữ nghĩa** của td; cột phải là tên gốc bên Lucide.
+35 icon. Tên là tên **ngữ nghĩa** của td; cột phải là tên gốc bên Lucide.
 
 | Tên td | Lucide | | Tên td | Lucide |
 |---|---|---|---|---|
-| `close` | x | | `external` | external-link |
-| `check` | check | | `info` | info |
-| `prev` | chevron-left | | `success` | circle-check-big |
-| `next` | chevron-right | | `error` | circle-alert |
-| `up` | chevron-up | | `warning` | triangle-alert |
-| `down` | chevron-down | | `eye` | eye |
-| `back` | chevron-left | | `eye-off` | eye-off |
-| `plus` | plus | | `zoom-in` | zoom-in |
+| `close` | x | | `info` | info |
+| `check` | check | | `success` | circle-check-big |
+| `prev` | chevron-left | | `error` | circle-alert |
+| `next` | chevron-right | | `warning` | triangle-alert |
+| `up` | chevron-up | | `eye` | eye |
+| `down` | chevron-down | | `eye-off` | eye-off |
+| `back` | chevron-left | | `zoom-in` | zoom-in |
+| `plus` | plus | | `zoom-out` | zoom-out |
 | `minus` | minus | | `inbox` | inbox |
 | `more` | ellipsis | | `star` | star |
 | `search` | search | | `upload` | upload |
 | `calendar` | calendar | | `link` | link |
 | `fullscreen` | maximize | | `image` | image |
 | `download` | download | | `sort` | chevrons-up-down |
+| `external` | external-link | | `trash` | trash-2 |
+| `pencil` | pencil | | `copy` | copy |
+| `log-out` | log-out | | `menu` | menu |
+| `rotate-cw` | rotate-cw | | | |
+
+Nhóm icon cho màn quản trị (CMS) — `trash`, `pencil`, `copy`, `log-out`, `menu`, `rotate-cw`, `zoom-out` — có từ
+0.17.0 (hình học đối chiếu Lucide `lucide-static` 1.48.0). Ví dụ nút chỉ có icon trong bảng quản trị:
+
+```html
+<td-button variant="secondary" size="sm" icon="pencil" aria-label="Sửa"></td-button>
+<td-button variant="danger" size="sm" icon="trash" aria-label="Xoá"></td-button>
+```
 
 Danh sách luôn đúng nhất là lấy từ code, vì site có thể đã đăng ký thêm:
 

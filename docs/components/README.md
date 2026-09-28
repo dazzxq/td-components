@@ -29,6 +29,7 @@ nạp `td.css` một lần cho cả trang.
 | [Dropdown](dropdown.md) | `<td-dropdown>` | `/dropdown` | có | Chọn một/nhiều giá trị, tìm kiếm (combobox) |
 | [Datetime picker](datetime-picker.md) | `<td-datetime-picker>` | `/datetime-picker` | có | Chọn ngày/giờ với bánh xe, `min`/`max` |
 | [Chip input](chip-input.md) | `<td-chip-input>` | `/chip-input` | có | Nhập nhiều thẻ (tag), gợi ý từ server, tạo mới |
+| [Password meter](password-meter.md) | `<td-password-meter>` | `/password-meter` | không | Đo độ mạnh mật khẩu tại chỗ: thanh 4 mức, nhãn đọc được, checklist điều kiện, hook `score` |
 | [Form validation](form-validation.md) | `TdFormValidation` | `/form-validation` | — | Kiểm tra form: ràng buộc gốc + rule riêng + lỗi từ server, tóm tắt lỗi |
 
 ## Lớp nổi & phản hồi
@@ -42,6 +43,7 @@ nạp `td.css` một lần cho cả trang.
 | [Menu](menu.md) | `TdMenu` | `/menu` | Menu thả xuống (menu button), registry option cho plugin |
 | [Hovercard](hovercard.md) | `TdHovercard` | `/hovercard` | Thẻ thông tin khi rê/focus (HTML tự do, template, URL cùng origin) |
 | [Lightbox](lightbox.md) | `TdLightbox` | `/lightbox` | Xem ảnh/video toàn màn hình, gallery, panel thông tin, cử chỉ |
+| [Scroll to top](scroll-top.md) | `<td-scroll-top>` | `/scroll-top` | Nút kính tròn "lên đầu trang" cố định góc, hiện khi cuộn quá ngưỡng, trả focus về nội dung chính |
 
 ## Hiển thị
 
