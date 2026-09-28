@@ -18,3 +18,12 @@ export const Gallery = {
         </div>`).join('')}
     </div>`,
 };
+
+/** 0.17.0 — admin/CMS action set (trash, pencil, copy, log-out, menu, rotate-cw, zoom-out). */
+export const CmsActions = {
+  render: ({ size }) => `
+    <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;font:13px var(--td-font-sans);color:var(--td-color-text)">
+      ${['trash', 'pencil', 'copy', 'log-out', 'menu', 'rotate-cw', 'zoom-out'].map((n) => `
+        <span style="display:inline-flex;align-items:center;gap:6px"><td-icon name="${n}" size="${escapeHtml(String(size))}"></td-icon><code>${n}</code></span>`).join('')}
+    </div>`,
+};

@@ -3,7 +3,9 @@
 ## Lucide (icon geometry in `src/icons/icons.json` → `src/icons/registry.js`)
 
 A curated subset of path data from Lucide (https://lucide.dev), mapped to td-owned names
-(the upstream name is recorded per icon in `icons.json` → `lucide`).
+(the upstream name is recorded per icon in `icons.json` → `lucide`). Icons added in 0.17.0 (`trash` ← trash-2,
+`pencil`, `copy`, `log-out`, `menu`, `rotate-cw`, `zoom-out`) were checked against lucide-static 1.48.0; `<line>`
+elements are stored as the equivalent `path` data (as for `zoom-in`).
 
 ISC License
 
