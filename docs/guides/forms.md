@@ -129,7 +129,7 @@ cũng là giá trị sống từ 0.16.0 (trước đó nó trả attribute `valu
 | `td-input-field` | `getValue()` / `el.value` → string | `setValue(str)` / `el.value = str` (cắt theo `max-length`) |
 | `td-checkbox`, `td-toggle` | `el.checked` (boolean) | `el.checked = true` |
 | `td-slider` | `getValue()` → number | `setValue(n)` (kẹp vào `[min, max]`, làm tròn theo `step`) |
-| `td-dropdown` | `getValue()` → value hoặc `null`; `getSelectedItem()` | `setValue(v)` (chờ nếu options chưa có) |
+| `td-dropdown` | `getValue()` / `el.value` → value hoặc `null` (sống từ 0.17.0); `getSelectedItem()` | `setValue(v)` / `el.value = v` (chờ nếu options chưa có) |
 | `td-chip-input` | `getValue()` / `el.value` → mảng item (bản sao) | `setValue(items)`, `addItem()`, `removeItem(value)`, `clear()` |
 | `td-datetime-picker` | `getValue()` → `dd/mm/yyyy - hh:mm` hoặc `''`; `getDBValue()` | `setValue(display)`, `setDBValue(db)` |
 
@@ -437,6 +437,8 @@ Trong modal: đặt `<form>` làm `body` (Node) của `TdModal.show()`, rồi d�
 - Giá trị trở về giá trị **ban đầu** — attribute `value`/`checked` được **chụp một lần lúc control được gắn vào DOM**
   (không phải giá trị bạn `setValue()` sau đó). Input-field, slider, dropdown, chip-input (`value` JSON),
   datetime-picker, checkbox/toggle (`checked` và `value`) đều xử lý.
+- Dropdown nâng cấp từ `<select>` con (0.17.0): về mặc định **theo luật của `<select>`** — option `selected` cuối cùng,
+  không có thì option đầu tiên không bị vô hiệu hoá.
 - Lỗi của error contract (`setError` / `error-text`) được xoá.
 
 Form đã gắn `TdFormValidation.attach()` (từ 0.16.0): `reset` tự xoá summary, note lỗi và `aria-invalid` mà helper tạo,
@@ -517,6 +519,7 @@ Ba cách đặt tên cho control, theo thứ tự ưu tiên:
 | Dropdown `required` báo lỗi dù có `value="…"` | `options` chưa được gán, value đang "chờ" | gán `el.options = […]` sớm (sau khi import module) |
 | `setError()` hiện lỗi nhưng form vẫn submit | error contract không đổi validity | dùng `setCustomValidity()` / `rules` |
 | `el.value` của input-field trả giá trị cũ | site còn chạy bản trước 0.16.0 | nâng cấp, hoặc dùng `getValue()` |
+| `el.value` của dropdown trả attribute cũ | site còn chạy bản trước 0.17.0 | nâng cấp, hoặc dùng `getValue()` |
 | Lỗi server không hiện ở ô nào | key server khác `name` | `fieldMap`, hoặc `data-field="key"` trên wrapper; xem `r.unmapped` |
 | Reset xong vẫn còn summary lỗi | form không dùng `attach()` (hoặc bản trước 0.16.0) | `form.addEventListener('reset', () => TdFormValidation.clear(form))` |
 

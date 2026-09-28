@@ -254,8 +254,9 @@ Liquid Glass: rãnh và núm đặc lúc nghỉ; chỉ khi đang kéo (`[data-dr
 | `.td-slider__input:disabled` / `:focus-visible` / `[aria-invalid="true"]` | Trạng thái. |
 
 Render phía server: in sẵn khối trên; vị trí lấy từ `--td-slider-pct` trên host (không có JS thì đặt bằng rule CSS
-của site hoặc để 0). Hợp đồng markup: `test/contracts/slider.html`. Xem [WordPress & PHP](../guides/wordpress-php.md)
-và [bảng class cũ](../upgrading/class-map.md) (`.td-slider-*` → `.td-slider__*` ở 0.8.0).
+của site hoặc để 0). Slider chưa có helper trong [adapter PHP](../guides/php-adapter.md): markup chuẩn là khối ở
+trên (fixture `test/contracts/slider.html` của repo chỉ dùng cho test, không nằm trong gói npm). Xem
+[WordPress & PHP](../guides/wordpress-php.md) và [bảng class cũ](../upgrading/class-map.md) (`.td-slider-*` → `.td-slider__*` ở 0.8.0).
 
 ## Bàn phím & trợ năng
 

@@ -76,6 +76,11 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` Hardening sau security review: `TdHovercard.sanitize` + `TrustedHTML`, fetch giới hạn (LRU 50, 256 KB, 10 s,
   `no-store`, huỷ khi đóng), `clearCache()` bắt buộc khi đổi phiên đăng nhập
 
+## Done — v0.17.0 đề xuất từ tích hợp 135
+
+- `done` Adapter PHP chính thức, input-field autocomplete…, ghost/link button, dropdown nâng cấp `<select>`, menu/lightbox
+  tải nhiều biến thể, password meter, scroll-top, 7 icon CMS, docs drift
+
 ## Done — v0.16.0 sửa backlog phát hiện khi viết docs
 
 - `done` A1–A7 (property gán sớm, input-field value/pattern/minlength, messages, checkable restore, slider, biến CSS của site),

@@ -196,7 +196,7 @@ Overlay (một phần tử duy nhất, gắn vào `<body>`):
 ```html
 <div id="td-loading" class="td-loading" role="status" aria-live="polite" aria-busy="true" data-state="open">
   <div class="td-loading__card td-glass-surface td-glass-surface--strong" tabindex="-1">
-    <span class="td-loading__spinner td-spinner td-spinner--lg" aria-hidden="true"><svg class="td-spinner__svg">…</svg></span>
+    <span class="td-loading__spinner td-spinner td-spinner--lg" aria-hidden="true"><svg class="td-spinner__svg" viewBox="0 0 50 50" aria-hidden="true" focusable="false"><circle class="td-spinner__track" cx="25" cy="25" r="20"></circle><circle class="td-spinner__arc" cx="25" cy="25" r="20"></circle></svg></span>
     <p id="td-loading-message" class="td-loading__message">Đang tải...</p>
   </div>
 </div>

@@ -359,7 +359,7 @@ Mỗi modal đang mở là một phần tử gắn thẳng vào `<body>`:
     <div class="td-modal__header">
       <h2 class="td-modal__title" id="td-modal-…-title">Tiêu đề</h2>
       <button type="button" class="td-modal__close" aria-label="Đóng">
-        <span class="td-modal__close-icon" data-td-icon="close" aria-hidden="true"><svg …></svg></span>
+        <span class="td-modal__close-icon" data-td-icon="close" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
       </button>
     </div>
     <div class="td-modal__body">…</div>

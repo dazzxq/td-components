@@ -63,6 +63,19 @@ function safeCall(fn, arg, what) {
  * `required` (→ `valueMissing` until something is picked), reset (restores the initial `value`), `<fieldset disabled>`,
  * and state restore (bfcache/autofill re-selects by value). Error contract: `error-text`, `setError()`, `clearError()`.
  *
+ * **Progressive enhancement from a native `<select>` (0.17.0 E2):** on the FIRST connect, a direct child `<select>` (and
+ * no `options` assigned from JS) is read into `options` — `<optgroup>` flattened (group labels dropped), an option is
+ * disabled when it or its `<optgroup>` is. Selection: the host `value` attribute if present, else the select's LIVE
+ * `value` (a choice the user made before JS ran, or the first option when none is `selected`). Reset returns to the
+ * native default (last `selected` option, else the first enabled one). `name` / `required` / `disabled` / `aria-label`
+ * are taken from the select when the host lacks them; `<label for="{select id}">` is re-pointed at the host. The select
+ * is then removed (the component submits instead). A `<select multiple>` is NOT upgraded (single choice only): it is
+ * left in place, working natively, with a `console.warn`.
+ *
+ * **Disabled options (0.17.0 E2):** an option with `disabled: true` renders `aria-disabled="true"`, stays visible
+ * (dimmed), cannot be picked with the mouse or keyboard and is skipped by ↑↓ / Home / End / PageUp / PageDown /
+ * type-ahead. `setValue()` may still select it programmatically (as a native select).
+ *
  * @element td-dropdown
  * @attr {string} label - Visible label (names the combobox; 0.9.0)
  * @attr {string} placeholder - Placeholder text (default "Chọn một tùy chọn")
@@ -74,7 +87,7 @@ function safeCall(fn, arg, what) {
  * @attr {number} max-height - Max visible options count (default 5)
  * @attr {string} value-key - Key for option value (default "value")
  * @attr {string} label-key - Key for option label (default "label")
- * @attr {string} value - Initial selected value
+ * @attr {string} value - Initial selected value (the attribute is NOT live — read/write the `value` property)
  * @attr {string} error-text - Error message (aria-invalid + note; 0.9.0)
  * @fires change - When selection changes, detail: { value, item }
  *
@@ -83,6 +96,8 @@ function safeCall(fn, arg, what) {
  * @property {Array<Object>} options - Array of option objects set via JS property (may be set before the element is
  *   defined). Re-assigning keeps the current selection when its value is still listed (else it is dropped); the
  *   `value` attribute only picks the initial selection.
+ * @property {string|null} value - The selected value, live (= `getValue()`; set = `setValue()`) — 0.17.0; before that
+ *   it returned the `value` attribute. Before the first connect, setting it sets the initial `value` attribute.
  * @property {Function} onChange - Callback receiving the value (or null) on a user selection
  * @property {Function} onSelect - Callback receiving the full item (or null) on a user selection; runs before
  *   `onChange` (both run when both are set). A throwing callback is logged (`console.error`); `change` still fires.
@@ -164,7 +179,76 @@ export class TdDropdown extends TdFormElement {
         this[p] = v;
       }
     }
+    // 0.17.0 E2: first connect → progressive enhancement of a child <select> (JS-assigned `options` win).
+    if (!this._initialized && !this._selectChecked) {
+      this._selectChecked = true;
+      const select = [...this.children].find((c) => c.localName === 'select');
+      if (select && !this._optionsInit) {
+        if (select.multiple) {
+          console.warn('td-dropdown: <select multiple> is not upgraded (td-dropdown picks one value); it stays native.', this);
+          this._passthrough = true;
+        } else {
+          this._upgradeSelect(select);
+        }
+      }
+    }
+    // A kept native <select multiple>: never render over it, never submit anything (the select does).
+    if (this._passthrough) return;
     super.connectedCallback();
+  }
+
+  /**
+   * @private Read a child `<select>` into options / selection / reset default / attributes, re-point its
+   * `<label for>` at the host, then remove it (0.17.0 E2).
+   * @param {HTMLSelectElement} select
+   */
+  _upgradeSelect(select) {
+    this._ensureId();
+    const vk = this._getValueKey();
+    const lk = this._getLabelKey();
+    const isOff = (opt) => opt.disabled || !!(opt.parentElement && opt.parentElement.localName === 'optgroup'
+      && opt.parentElement.disabled);
+    const all = [...select.options]; // tree order, optgroup children included
+    // A leading value="" option is the native PLACEHOLDER ("— Chọn —"): it becomes the host placeholder (and "no value"),
+    // not a selectable option (0.17.0 — matches the PHP adapter's td_dropdown placeholder).
+    const ph = all[0] && all[0].value === '' ? all[0] : null;
+    if (ph && !this.hasAttribute('placeholder') && ph.label.trim()) this.setAttribute('placeholder', ph.label.trim());
+    const opts = ph ? all.slice(1) : all;
+    const items = opts.map((opt) => {
+      const item = { [vk]: opt.value, [lk]: opt.label.trim() };
+      if (isOff(opt)) item.disabled = true;
+      return item;
+    });
+    // Native reset rule: the last `selected` option, else the first enabled one.
+    let def = null;
+    for (const opt of all) if (opt.defaultSelected) def = opt;
+    if (!def) def = all.find((opt) => !isOff(opt)) || null;
+    this._resetValue = def && def !== ph ? def.value : null; // placeholder default → reset to "no value"
+    this._upgraded = true;
+    // the EXACT selected option (select.value can't tell the leading placeholder from a later value="" option)
+    const selOpt = select.selectedOptions ? select.selectedOptions[0] || null : null;
+
+    for (const attr of ['name', 'aria-label']) {
+      const v = select.getAttribute(attr);
+      if (v != null && !this.hasAttribute(attr)) this.setAttribute(attr, v);
+    }
+    for (const attr of ['required', 'disabled']) {
+      if (select.hasAttribute(attr) && !this.hasAttribute(attr)) this.setAttribute(attr, '');
+    }
+    if (select.id) {
+      for (const label of [...(select.labels || [])]) {
+        if (label.htmlFor === select.id) label.htmlFor = this.id;
+      }
+    }
+    select.remove();
+
+    this.options = items;
+    // (1) the host `value` attribute resolves through the deferred initial selection; (2) else the live select value.
+    // map the exact selected <option> to its item (a selected leading placeholder = no selection)
+    if (!this.hasAttribute('value')) {
+      const idx = selOpt && selOpt !== ph ? opts.indexOf(selOpt) : -1;
+      this._selectedItem = idx >= 0 ? items[idx] : null;
+    }
   }
 
   /**
@@ -193,6 +277,21 @@ export class TdDropdown extends TdFormElement {
   /** Default-ON flag: `false` → `allow-clear="false"` (OFF); anything else → attribute removed (back to ON). */
   get allowClear() { return this._isAllowClear(); }
   set allowClear(v) { v === false ? this.setAttribute('allow-clear', 'false') : this.removeAttribute('allow-clear'); }
+
+  /**
+   * The LIVE selected value (= `getValue()`; set = `setValue()`) — 0.17.0 E2; before that it returned the `value`
+   * attribute. Before the first connect, setting it sets the initial `value` attribute (resolved with the options).
+   * @type {*}
+   */
+  get value() { return this.getValue(); }
+  set value(v) {
+    if (!this._initialized) {
+      if (v == null) this.removeAttribute('value');
+      else this.setAttribute('value', String(v));
+      return;
+    }
+    this.setValue(v);
+  }
 
   get options() { return this._options; }
   set options(data) {
@@ -252,7 +351,8 @@ export class TdDropdown extends TdFormElement {
   }
   _getValueKey() { return this.getAttribute('value-key') || 'value'; }
   _getLabelKey() { return this.getAttribute('label-key') || 'label'; }
-  _getInitialValue() { return this.getAttribute('value') || null; }
+  /** `null` = no `value` attribute; `''` is an explicit value (a real empty-valued option — review v0.17.0 ISSUE-5). */
+  _getInitialValue() { return this.hasAttribute('value') ? this.getAttribute('value') : null; }
 
   // --- Rendering ---
 
@@ -413,9 +513,12 @@ export class TdDropdown extends TdFormElement {
 
   /** @private Push the selected value + validity to the form. */
   _syncForm() {
-    const val = this.getValue();
-    this._setFormValue(val == null || val === '' ? null : String(val));
-    if (this.hasAttribute('required') && (val == null || val === '')) {
+    if (this._passthrough) return; // the kept native <select multiple> submits itself
+    // `null` = no selection. A selected option whose value is '' (not the placeholder — that one is never an option)
+    // submits '' and satisfies `required`, like a native <select> (review v0.17.0 ISSUE-1).
+    const val = this._selectedItem ? this.getValue() : null;
+    this._setFormValue(val == null ? null : String(val));
+    if (this.hasAttribute('required') && val == null) {
       this._setValidity({ valueMissing: true }, TdDropdown.labels.required, this._focusTarget());
     } else {
       this._setValidity({});
@@ -429,14 +532,17 @@ export class TdDropdown extends TdFormElement {
   }
 
   _restoreDefaults() {
+    if (this._passthrough) return;
     const dv = this._defaultValueAttr;
     if (dv == null) this.removeAttribute('value');
     else this.setAttribute('value', dv);
-    this.setValue(dv ?? null);
+    // Upgraded from a <select>: reset follows the native rule (captured at upgrade), like the select it replaced.
+    this.setValue(this._upgraded ? this._resetValue : (dv ?? null));
     this._syncForm();
   }
 
   _restoreState(state, _mode) {
+    if (this._passthrough) return;
     if (typeof state === 'string') {
       this.setValue(state);
       this._syncForm();
@@ -505,6 +611,7 @@ export class TdDropdown extends TdFormElement {
       const selected = this._isSelected(item);
       nav.push({ item });
       html += `<div class="td-dropdown__option" role="option" id="${id}-opt-${index}" aria-selected="${selected}"`
+        + `${this._isItemDisabled(item) ? ' aria-disabled="true"' : ''}`
         + ` data-value="${esc(item[valueKey])}" data-index="${index}">`
         + `<span class="td-dropdown__option-label">${esc(item[labelKey])}</span>`
         + (selected ? '<span class="td-dropdown__check" data-td-icon="check" aria-hidden="true"></span>' : '')
@@ -526,6 +633,30 @@ export class TdDropdown extends TdFormElement {
     if (!this._selectedItem) return false;
     const vk = this._getValueKey();
     return String(this._selectedItem[vk]) === String(item[vk]);
+  }
+
+  /** @private An option with `disabled: true` is shown but never picked by the user (0.17.0 E2). */
+  _isItemDisabled(item) {
+    return !!item && item.disabled === true;
+  }
+
+  /** @private Can `_nav[i]` become active / be committed? (the clear option always can) */
+  _isNavEnabled(i) {
+    const entry = this._nav[i];
+    return !!entry && !(entry.item && this._isItemDisabled(entry.item));
+  }
+
+  /**
+   * @private First enabled `_nav` index from `from` (clamped) walking in `dir` (no wrap); -1 = none.
+   * @param {number} from
+   * @param {1|-1} dir
+   */
+  _enabledFrom(from, dir) {
+    const n = this._nav.length;
+    for (let i = Math.max(0, Math.min(from, n - 1)); n && i >= 0 && i < n; i += dir) {
+      if (this._isNavEnabled(i)) return i;
+    }
+    return -1;
   }
 
   /** @private index in `_nav` of the selected item (-1 = none) */
@@ -574,15 +705,21 @@ export class TdDropdown extends TdFormElement {
   _move(step) {
     const n = this._nav.length;
     if (!n) return;
-    const cur = this._activeIndex;
-    const next = cur < 0 ? (step > 0 ? 0 : n - 1) : (cur + step + n) % n;
-    this._setActive(next);
+    // Wrap-around, skipping disabled options (0.17.0 E2); nothing enabled → stay.
+    let i = this._activeIndex < 0 ? (step > 0 ? n - 1 : 0) : this._activeIndex;
+    for (let k = 0; k < n; k++) {
+      i = (i + step + n) % n;
+      if (this._isNavEnabled(i)) {
+        this._setActive(i);
+        return;
+      }
+    }
   }
 
   /** @private commit the active option (clear or item) */
   _commitActive() {
     const entry = this._nav[this._activeIndex];
-    if (!entry) return false;
+    if (!entry || !this._isNavEnabled(this._activeIndex)) return false;
     if (entry.clear) this._clearSelection();
     else this._selectItem(entry.item);
     return true;
@@ -622,13 +759,14 @@ export class TdDropdown extends TdFormElement {
     menu.addEventListener('click', (e) => {
       const option = e.target instanceof Element ? e.target.closest('.td-dropdown__option') : null;
       if (!option || !menu.contains(option)) return;
+      if (option.getAttribute('aria-disabled') === 'true') return; // not selectable; the menu stays open
       const i = [...option.parentNode.children].indexOf(option);
       this._activeIndex = i;
       this._commitActive();
     });
     menu.addEventListener('mousemove', (e) => {
       const option = e.target instanceof Element ? e.target.closest('.td-dropdown__option') : null;
-      if (!option) return;
+      if (!option || option.getAttribute('aria-disabled') === 'true') return;
       const i = [...option.parentNode.children].indexOf(option);
       if (i !== this._activeIndex) {
         this._activeIndex = i;
@@ -690,16 +828,20 @@ export class TdDropdown extends TdFormElement {
       case 'End':
         if (source !== 'trigger') return; // search box: caret movement
         e.preventDefault();
-        this._setActive(key === 'Home' ? 0 : this._nav.length - 1);
+        this._setActive(key === 'Home' ? this._enabledFrom(0, 1) : this._enabledFrom(this._nav.length - 1, -1));
         return;
       case 'PageDown':
+      case 'PageUp': {
         e.preventDefault();
-        this._setActive(this._activeIndex < 0 ? Math.min(page - 1, this._nav.length - 1) : this._activeIndex + page);
+        // ± one page (max-height), landing on the nearest enabled option (towards the move first).
+        const dir = key === 'PageDown' ? 1 : -1;
+        const t = key === 'PageDown'
+          ? (this._activeIndex < 0 ? page - 1 : this._activeIndex + page)
+          : Math.max(0, this._activeIndex - page);
+        const i = this._enabledFrom(t, dir) >= 0 ? this._enabledFrom(t, dir) : this._enabledFrom(t, -dir);
+        if (i >= 0) this._setActive(i);
         return;
-      case 'PageUp':
-        e.preventDefault();
-        this._setActive(Math.max(0, this._activeIndex - page));
-        return;
+      }
       case 'Enter':
         e.preventDefault();
         if (source === 'trigger') this._suppressClick = performance.now();
@@ -726,7 +868,8 @@ export class TdDropdown extends TdFormElement {
     this._typeBuffer += char;
     this._typeTimer = window.setTimeout(() => { this._typeTimer = null; this._typeBuffer = ''; }, TYPEAHEAD_MS);
     const labelKey = this._getLabelKey();
-    const labels = this._nav.map((entry) => (entry.item ? entry.item[labelKey] : null));
+    // Disabled options are not matchable (skipped).
+    const labels = this._nav.map((entry) => (entry.item && !this._isItemDisabled(entry.item) ? entry.item[labelKey] : null));
     const i = nextTypeaheadIndex(labels, this._activeIndex, this._typeBuffer);
     if (i >= 0) this._setActive(i);
   }
@@ -778,7 +921,7 @@ export class TdDropdown extends TdFormElement {
       : this._options.filter((item) => fold(item[labelKey]).includes(q));
     this._renderMenuOptions();
     // Active = first matching option (the clear option is skipped).
-    const first = this._nav.findIndex((n) => n.item);
+    const first = this._nav.findIndex((n) => n.item && !this._isItemDisabled(n.item));
     this._setActive(first);
   }
 
@@ -791,7 +934,7 @@ export class TdDropdown extends TdFormElement {
 
   /** @private user selection: exactly ONE `change` event (+ onChange/onSelect). */
   _selectItem(item) {
-    if (this._isDisabled() || !item) return;
+    if (this._isDisabled() || !item || this._isItemDisabled(item)) return;
     this._selectedItem = item;
     this._pendingValue = null;
     this._updateValueText();
@@ -822,8 +965,9 @@ export class TdDropdown extends TdFormElement {
   /** @private First `options` assignment: select the `value` attribute (resolved later if not listed yet). */
   _setInitialValue() {
     const initialValue = this._getInitialValue();
-    if (!initialValue || this._selectedItem || this._pendingValue != null) return;
+    if (initialValue == null || this._selectedItem || this._pendingValue != null) return;
     const item = this._options.find((i) => String(i[this._getValueKey()]) === String(initialValue));
+    if (!item && initialValue === '') return; // value="" with no empty-valued option = "no selection", nothing pending
     if (item) {
       this._selectedItem = item;
       this._updateValueText();
@@ -890,11 +1034,12 @@ export class TdDropdown extends TdFormElement {
     });
 
     const mode = opts.active || 'selected';
-    const sel = this._selectedNavIndex();
+    let sel = this._selectedNavIndex();
+    if (sel >= 0 && !this._isNavEnabled(sel)) sel = -1; // a (programmatically) selected disabled option is never active
     let active = sel;
-    if (mode === 'first') active = 0;
-    else if (mode === 'last') active = this._nav.length - 1;
-    else if (mode === 'selected-or-first' && sel < 0) active = this._nav.length ? 0 : -1;
+    if (mode === 'first') active = this._enabledFrom(0, 1);
+    else if (mode === 'last') active = this._enabledFrom(this._nav.length - 1, -1);
+    else if (mode === 'selected-or-first' && sel < 0) active = this._enabledFrom(0, 1);
     this._activeIndex = -1;
     this._setActive(active);
 
@@ -1022,8 +1167,13 @@ export class TdDropdown extends TdFormElement {
     // an explicit selection / clear supersedes the initial `value` attribute — for good (review v0.16.0 ISSUE-6/7)
     this._initialDeferred = false;
     this._initialSuperseded = true;
-    if (value === null || value === undefined || value === '') {
+    const vkEmpty = this._getValueKey();
+    const emptyItem = value === '' ? this._options.find((i) => String(i[vkEmpty] ?? '') === '' && i[vkEmpty] != null) : null;
+    if (value === null || value === undefined || (value === '' && !emptyItem)) {
       this._selectedItem = null;
+      this._pendingValue = null;
+    } else if (emptyItem) {
+      this._selectedItem = emptyItem; // a real option whose value is '' (review v0.17.0 ISSUE-1)
       this._pendingValue = null;
     } else {
       const vk = this._getValueKey();

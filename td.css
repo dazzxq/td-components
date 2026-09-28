@@ -81,10 +81,10 @@
 
 		/* ===== Z-index scale =====
 		   Open dropdown / menu / chip-input / hovercard panels use --td-z-popover (450), not --td-z-dropdown.
-		   --td-z-dropdown / --td-z-sticky / --td-z-overlay are RESERVED: public (kept for sites that already read
-		   them) but no component uses them. */
+		   --td-z-sticky is used by <td-scroll-top> (v0.17.0). --td-z-dropdown / --td-z-overlay are RESERVED: public
+		   (kept for sites that already read them) but no component uses them. */
 		--td-z-dropdown: 100; /* reserved */
-		--td-z-sticky: 200;   /* reserved */
+		--td-z-sticky: 200;   /* td-scroll-top */
 		--td-z-overlay: 300;  /* reserved */
 		--td-z-lightbox: 350; /* below modal/popover/toast: confirms + menus open ON TOP of the viewer */
 		--td-z-modal: 400;
@@ -185,6 +185,13 @@
 		--td-btn-secondary-glass: rgb(255 255 255 / 80%);
 		--td-btn-secondary-edge: var(--td-control-border-soft);
 		--td-btn-lift: 0 1px 2px rgb(0 0 0 / 8%), 0 3px 8px -4px rgb(0 0 0 / 14%);   /* lighter lift (was 30 %) */
+		/* v0.17.0 ghost button: accent label straight on the page background (contrast gate: ≥ 4.7:1 on white in light,
+		   black in dark), a soft hover fill. Both follow the theme (dark remaps --td-accent / --td-color-hover). */
+		--td-btn-ghost-fg: var(--td-accent);
+		--td-btn-ghost-hover-bg: var(--td-color-hover);
+		/* hover label one step darker than the accent so it keeps ≥ 4.5:1 on the hover fill (the accent alone is ~4.5
+		   there); follows a site's --td-accent. Fallback without color-mix(): the fixed step in button.css. */
+		--td-btn-ghost-hover-fg: color-mix(in srgb, var(--td-btn-ghost-fg) 82%, #000);
 
 		/* ===== Checkbox / switch — v0.14.1: resting borders use the soft token (~1.5:1, below WCAG 1.4.11 by owner
 		   choice); hover uses --td-control-border-hover (~2.2:1, v0.14.2); switch on-colours still ≥ 3:1 ===== */
@@ -328,6 +335,7 @@
 		--td-btn-secondary-fg: #f5f5f7;
 		--td-btn-secondary-border: rgb(255 255 255 / 12%);
 		--td-btn-secondary-hover: #3a3a3e;
+		--td-btn-ghost-hover-fg: color-mix(in srgb, var(--td-btn-ghost-fg) 70%, #fff); /* lighter step on the dark fill */
 		--td-btn-disabled-bg: #202024;
 		--td-btn-disabled-fg: #6b6b73;                 /* greyed out, ≥ 2.2:1 (v0.14.3) */
 		--td-btn-disabled-border: rgb(255 255 255 / 6%);
@@ -968,6 +976,8 @@
  * Disabled = explicit opaque state colours (never element opacity). Private --_td-btn-* are forced by the glass
  * fallbacks (glass.css) so reduced transparency / glass off / contrast / forced colours get solid buttons.
  * State: :disabled (native) · [aria-busy="true"] (loading, focus kept) · :focus-visible.
+ * Link buttons (v0.17.0, <a class="td-btn">): disabled = [aria-disabled="true"] without aria-busy (or with
+ * tabindex="-1" when also busy) — same disabled tokens. Ghost (v0.17.0): transparent, no glass, accent label.
  * Per-instance colours: host custom properties --td-btn-bg / --td-btn-fg (+ .td-btn--custom).
  */
 @layer td.component {
@@ -1005,6 +1015,7 @@
 		font-weight: var(--td-fw-semibold);
 		line-height: 1.25;
 		color: var(--td-btn-fg-v);
+		text-decoration: none; /* link buttons */
 		white-space: nowrap;
 		cursor: pointer;
 		background-color: var(--td-btn-bg-v); /* opaque fallback (no color-mix) */
@@ -1056,6 +1067,23 @@
 	.td-btn--warning { --td-btn-bg-v: var(--td-btn-warning-tint); --td-btn-tint-v: var(--td-btn-warning-tint); --td-btn-alpha-v: var(--td-btn-warning-alpha); --td-btn-film-v: var(--td-btn-warning-film); --td-btn-fg-v: var(--td-btn-warning-fg); --td-btn-border-v: rgb(255 255 255 / 30%); }
 	.td-btn--info { --td-btn-bg-v: var(--td-btn-info-tint); --td-btn-tint-v: var(--td-btn-info-tint); --td-btn-alpha-v: var(--td-btn-info-alpha); --td-btn-film-v: var(--td-btn-info-film); --td-btn-fg-v: var(--td-btn-info-fg); --td-btn-border-v: rgb(255 255 255 / 24%); }
 
+	/* v0.17.0 ghost: no fill, no glass, no border / rim / lift — just the accent label on the page background.
+	   Hover = a soft fill (--td-btn-ghost-hover-bg); focus ring as every button. */
+	.td-btn--ghost {
+		--td-btn-bg-v: transparent;
+		--td-btn-tint-v: transparent;
+		--td-btn-fg-v: var(--td-btn-ghost-fg);
+		--td-btn-border-v: transparent;
+		--td-btn-film-v: transparent;
+		--td-btn-outline-v: 0 0 0 0 transparent;
+		--_td-btn-fill: transparent; /* exact transparent, not color-mix(transparent) */
+
+		background-image: none;
+		box-shadow: none;
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
+
 	/* Translucent tint where color-mix() exists (else the opaque fallback above stays). */
 	@supports (color: color-mix(in srgb, red 50%, transparent)) {
 		.td-btn:not(.td-btn--custom) {
@@ -1086,7 +1114,7 @@
 	/* Glass hover = GLOW, not a new material (G3: interaction animates only transform / glow). The glow is an outer
 	   halo, so the fill behind the label — and its rendered contrast — never changes. Never while :focus-visible (the
 	   focus ring must stay visible under the pointer). */
-	.td-btn:hover:not(:disabled, [aria-busy="true"], .td-btn--custom, :focus-visible) {
+	.td-btn:hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"], .td-btn--custom, .td-btn--ghost, :focus-visible) {
 		box-shadow:
 			var(--_td-btn-rim, inset 0 1px 0 0 rgb(255 255 255 / 38%)),
 			var(--_td-btn-outline, var(--td-btn-outline-v, 0 0 0 1px var(--td-glass-outline))),
@@ -1096,13 +1124,25 @@
 
 	/* Custom colours are opaque (not glass): an overlay that darkens under light text or lightens under dark text
 	   (td-button sets --td-btn-hover accordingly), so hover never lowers text contrast. */
-	.td-btn--custom:hover:not(:disabled, [aria-busy="true"]) {
+	.td-btn--custom:hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
 		background-image:
 			linear-gradient(var(--td-btn-hover, rgb(0 0 0 / 12%)), var(--td-btn-hover, rgb(0 0 0 / 12%))),
 			var(--_td-btn-sheen, var(--td-btn-sheen-v, var(--td-btn-sheen)));
 	}
 
-	.td-btn:active:not(:disabled, [aria-busy="true"]) {
+	/* ghost hover: the fill only (no glow). :not(.td-btn--custom) keeps the specificity above the color-mix() rule. */
+	.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+		background-color: var(--td-btn-ghost-hover-bg);
+		color: #1d4ed8; /* engines without color-mix(): fixed darker step */
+	}
+
+	@supports (color: color-mix(in srgb, red 50%, transparent)) {
+		.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+			color: var(--td-btn-ghost-hover-fg);
+		}
+	}
+
+	.td-btn:active:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
 		transform: scale(var(--_td-glass-press, var(--td-glass-press-scale)));
 	}
 
@@ -1112,8 +1152,10 @@
 		box-shadow: var(--td-focus-ring);
 	}
 
-	/* Disabled: explicit opaque state colours (a faded glass button would be unreadable over a dark backdrop). */
-	.td-btn:disabled {
+	/* Disabled: explicit opaque state colours (a faded glass button would be unreadable over a dark backdrop).
+	   A disabled LINK button has aria-disabled without aria-busy — or tabindex="-1" when it is busy too (a busy link
+	   keeps tabindex="0"). */
+	.td-btn:is(:disabled, [aria-disabled="true"]:not([aria-busy="true"]), a[aria-disabled="true"][tabindex="-1"]) {
 		cursor: not-allowed;
 		color: var(--td-btn-disabled-fg);
 		background-color: var(--td-btn-disabled-bg);
@@ -1122,6 +1164,12 @@
 		box-shadow: none;
 		-webkit-backdrop-filter: none;
 		backdrop-filter: none;
+	}
+
+	/* A disabled ghost stays a ghost: no fill / border, greyed label. */
+	.td-btn--ghost:is(:disabled, [aria-disabled="true"]:not([aria-busy="true"]), a[aria-disabled="true"][tabindex="-1"]) {
+		background-color: transparent;
+		border-color: transparent;
 	}
 
 	.td-btn__icon {
@@ -1165,7 +1213,7 @@
 
 	@media (prefers-reduced-motion: reduce) {
 		.td-btn { transition: none; }
-		.td-btn:active:not(:disabled, [aria-busy="true"]) { transform: none; }
+		.td-btn:active:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) { transform: none; }
 	}
 
 	@media (forced-colors: active) {
@@ -3565,7 +3613,7 @@
  * Menu = body-portaled popover: Regular strong glass (.td-glass-surface--strong recipe), pad --td-glass-pad,
  * radius --td-glass-radius, options concentric (--td-glass-radius-inner) plain fills — never glass on glass.
  * State: [aria-expanded] / :disabled / [aria-invalid] on the trigger, [data-placeholder] on the value,
- * [hidden] / data-state / data-placement on the menu, [aria-selected] / [data-active] on options.
+ * [hidden] / data-state / data-placement on the menu, [aria-selected] / [data-active] / [aria-disabled] on options.
  * Only geometry (top/left/width, list max-height) is written by JS through CSSOM.
  */
 @layer td.tokens {
@@ -3810,6 +3858,16 @@
 		box-shadow: inset 0 0 0 1px var(--td-dropdown-option-active-line);
 	}
 
+	/* v0.17.0 E2: disabled option — shown dimmed, never selectable nor active (JS skips it) */
+	.td-dropdown__option[aria-disabled="true"] {
+		cursor: not-allowed;
+		opacity: 0.55;
+	}
+
+	.td-dropdown__option[aria-disabled="true"]:hover {
+		background: none;
+	}
+
 	.td-dropdown__option--clear {
 		color: var(--td-field-note);
 	}
@@ -3905,6 +3963,11 @@
 
 		.td-dropdown__option[aria-selected="true"] .td-dropdown__check {
 			color: Highlight;
+		}
+
+		.td-dropdown__option[aria-disabled="true"] {
+			color: GrayText;
+			opacity: 1;
 		}
 	}
 }
@@ -5655,6 +5718,240 @@
 		.td-hovercard__status,
 		.td-hovercard[data-state="error"] .td-hovercard__status {
 			color: CanvasText;
+		}
+	}
+}
+
+/* ---- src/styles/components/password-meter.css ---- */
+/*
+ * td-password-meter (src/form/td-password-meter.js) — v0.17.0. Content layer (next to a form field) → SOLID fills,
+ * never glass. 4-segment bar + status line + optional checklist.
+ * State (on .td-password-meter): data-level="empty|weak|fair|strong", data-lit="0-4" (segments lit),
+ * data-score="0-4|" · rule: data-met="true|false".
+ */
+@layer td.tokens {
+	:root {
+		--td-password-meter-gap: 0.4rem;           /* space between field and meter, bar and text */
+		--td-password-meter-seg-h: 4px;
+		--td-password-meter-seg-gap: 4px;
+		--td-password-meter-track: var(--td-color-border);
+		--td-password-meter-weak: var(--td-color-error);
+		--td-password-meter-fair: var(--td-color-warning);
+		--td-password-meter-strong: var(--td-color-success);
+		--td-password-meter-fg: var(--td-color-text-muted);
+		--td-password-meter-met: var(--td-color-success);
+		--td-password-meter-font-size: var(--td-text-xs);
+	}
+}
+
+@layer td.component {
+	td-password-meter {
+		display: block;
+	}
+
+	.td-password-meter {
+		--_td-pwm-color: var(--td-password-meter-track);
+
+		box-sizing: border-box;
+		margin-top: var(--td-password-meter-gap);
+		font-family: var(--td-font-sans);
+		font-size: var(--td-password-meter-font-size);
+		line-height: var(--td-leading-normal);
+		color: var(--td-password-meter-fg);
+	}
+
+	.td-password-meter[data-level="weak"] { --_td-pwm-color: var(--td-password-meter-weak); }
+	.td-password-meter[data-level="fair"] { --_td-pwm-color: var(--td-password-meter-fair); }
+	.td-password-meter[data-level="strong"] { --_td-pwm-color: var(--td-password-meter-strong); }
+
+	.td-password-meter__bar {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: var(--td-password-meter-seg-gap);
+	}
+
+	.td-password-meter__seg {
+		display: block;
+		height: var(--td-password-meter-seg-h);
+		background: var(--td-password-meter-track);
+		border-radius: var(--td-radius-full);
+		transition: background-color var(--td-dur-base) var(--td-ease);
+	}
+
+	.td-password-meter[data-lit="1"] .td-password-meter__seg:nth-child(-n + 1),
+	.td-password-meter[data-lit="2"] .td-password-meter__seg:nth-child(-n + 2),
+	.td-password-meter[data-lit="3"] .td-password-meter__seg:nth-child(-n + 3),
+	.td-password-meter[data-lit="4"] .td-password-meter__seg {
+		background: var(--_td-pwm-color);
+	}
+
+	.td-password-meter__status {
+		min-height: calc(1em * var(--td-leading-normal)); /* no layout jump when the first level appears */
+		margin: var(--td-password-meter-gap) 0 0;
+	}
+
+	.td-password-meter__checklist {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+		gap: 0.15rem 0.75rem;
+		padding: 0;
+		margin: 0.25rem 0 0;
+		list-style: none;
+	}
+
+	.td-password-meter__checklist[hidden] {
+		display: none;
+	}
+
+	.td-password-meter__rule {
+		display: flex;
+		gap: 0.4rem;
+		align-items: center;
+		margin: 0;
+	}
+
+	.td-password-meter__mark {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		width: 1rem;
+		height: 1rem;
+		line-height: 0;
+		color: transparent;
+		border: 1.5px solid var(--td-color-border-strong);
+		border-radius: 50%;
+		transition:
+			background-color var(--td-dur-base) var(--td-ease),
+			border-color var(--td-dur-base) var(--td-ease);
+	}
+
+	.td-password-meter__mark .td-icon {
+		--td-icon-stroke: 3;
+
+		width: 0.7rem;
+		height: 0.7rem;
+	}
+
+	.td-password-meter__rule[data-met="true"] {
+		color: var(--td-password-meter-met);
+	}
+
+	.td-password-meter__rule[data-met="true"] .td-password-meter__mark {
+		color: var(--td-color-on-status, #fff);
+		background: var(--td-password-meter-met);
+		border-color: var(--td-password-meter-met);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-password-meter__seg,
+		.td-password-meter__mark {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-password-meter__seg {
+			background: Canvas;
+			outline: 1px solid CanvasText;
+		}
+
+		.td-password-meter[data-lit="1"] .td-password-meter__seg:nth-child(-n + 1),
+		.td-password-meter[data-lit="2"] .td-password-meter__seg:nth-child(-n + 2),
+		.td-password-meter[data-lit="3"] .td-password-meter__seg:nth-child(-n + 3),
+		.td-password-meter[data-lit="4"] .td-password-meter__seg {
+			background: Highlight;
+		}
+
+		.td-password-meter__rule[data-met="true"] .td-password-meter__mark {
+			color: HighlightText;
+			background: Highlight;
+			border-color: Highlight;
+		}
+	}
+}
+
+/* ---- src/styles/components/scroll-top.css ---- */
+/*
+ * td-scroll-top (src/feedback/td-scroll-top.js) — v0.17.0; 135 kit `.td-scroll-top` translated to td tokens.
+ * Floating control layer → strong glass (.td-glass-surface--strong recipe: every fallback — reduced transparency,
+ * glass off, contrast, forced colours, no backdrop-filter — comes from the recipe). Round, fixed to the inline-end
+ * bottom corner, safe-area aware, z-index BELOW lightbox / modal / popover / toast.
+ * State: data-visible="true|false" (hidden = visibility: hidden → out of the Tab order and the a11y tree).
+ */
+@layer td.tokens {
+	:root {
+		--td-scroll-top-size: 48px;            /* ≥ --td-touch-min */
+		--td-scroll-top-bottom: 1.5rem;        /* distance from the bottom edge (plus the safe area) */
+		--td-scroll-top-end: 1.5rem;           /* distance from the inline-end edge (plus the safe area) */
+		--td-scroll-top-z: var(--td-z-sticky); /* below lightbox (350) / modal / popover / toast */
+		--td-scroll-top-offset: 10px;          /* slide distance of the enter/leave transition */
+	}
+}
+
+@layer td.component {
+	td-scroll-top {
+		display: block;
+	}
+
+	.td-scroll-top {
+		position: fixed;
+		inset-block-end: calc(var(--td-scroll-top-bottom) + env(safe-area-inset-bottom, 0px));
+		inset-inline-end: calc(var(--td-scroll-top-end) + env(safe-area-inset-right, 0px));
+		z-index: var(--td-scroll-top-z);
+		box-sizing: border-box;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: var(--td-scroll-top-size);
+		height: var(--td-scroll-top-size);
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		line-height: 0;
+		cursor: pointer;
+		visibility: hidden;
+		border-radius: 50%;
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		opacity: 0;
+		transform: translateY(var(--td-scroll-top-offset));
+		transition:
+			opacity var(--td-glass-dur) var(--td-glass-ease),
+			transform var(--td-glass-dur) var(--td-glass-ease),
+			visibility 0s linear var(--td-glass-dur);
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-scroll-top[data-visible="true"] {
+		visibility: visible;
+		opacity: 1;
+		transform: none;
+		transition:
+			opacity var(--td-glass-dur) var(--td-glass-ease),
+			transform var(--td-glass-dur) var(--td-glass-ease),
+			visibility 0s;
+	}
+
+	.td-scroll-top[data-visible="true"]:active {
+		transform: scale(var(--td-glass-press-scale));
+	}
+
+	.td-scroll-top:focus-visible {
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-scroll-top__icon {
+		display: inline-flex;
+		line-height: 0;
+		pointer-events: none;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-scroll-top,
+		.td-scroll-top[data-visible="true"] {
+			transform: none;
+			transition: none;
 		}
 	}
 }

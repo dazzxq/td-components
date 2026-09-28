@@ -208,6 +208,29 @@ field.setReadOnly(true);            // = setAttribute('readonly', '')
 
 Như lỗi, `setHelper()` và attribute `helper-text` theo luật "đặt sau cùng thắng".
 
+### Thuộc tính native: autocomplete, bàn phím điện thoại, autofocus (0.17.0)
+
+```html
+<td-input-field type="text" name="username" label="Tài khoản" autocomplete="username" autocapitalize="off"
+                spellcheck="false" autofocus></td-input-field>
+<td-input-field type="password" name="password" label="Mật khẩu" autocomplete="current-password"
+                enterkeyhint="go"></td-input-field>
+<td-input-field name="otp" label="Mã OTP" inputmode="numeric" autocomplete="one-time-code"></td-input-field>
+```
+
+`autocomplete`, `inputmode`, `enterkeyhint`, `autocapitalize`, `spellcheck` đặt trên host được chuyển xuống control
+bên trong (`.td-field__control`), nên trình quản lý mật khẩu và bàn phím điện thoại nhận đúng như với `<input>` thường.
+
+- Giá trị theo danh sách trắng của HTML (xem bảng [Attribute](#attribute)); giá trị lạ bị **bỏ** (không chuyển xuống),
+  không báo lỗi. Giá trị được chuyển sang chữ thường.
+- Đổi / xoá attribute trên host cập nhật control **tại chỗ** (giữ focus, con trỏ); vẫn giữ sau khi render lại.
+- `inputmode` tường minh thắng `inputmode` tự suy từ `type` (`email`/`url`/`number` → `email`/`url`/`decimal`); bỏ
+  nó thì quay về giá trị tự suy.
+- `type="contenteditable"`: nhận `inputmode`, `enterkeyhint`, `autocapitalize`, `spellcheck`; **không** nhận
+  `autocomplete` (không phải ô tự điền).
+- `autofocus` chỉ chạy **một lần** khi field gắn vào trang lần đầu; không cướp focus nếu đã có phần tử khác (ngoài
+  `<body>`) đang được focus, không focus field disabled. Thêm `autofocus` sau đó hoặc render lại không focus lần nữa.
+
 ### Trong form
 
 ```html
@@ -256,6 +279,12 @@ document.getElementById('fs').disabled = true;          // field bị disabled, 
 | `field-id` | string | `{host-id}-control` | `id` của control bên trong, dùng nguyên văn. Tự đảm bảo không trùng. |
 | `name` | string | — | Tên trường gửi trong form (trên host). |
 | `aria-label` | string | — | Tên truy cập khi không có `label`. |
+| `autocomplete` | string | — | Chuyển xuống `<input>`/`<textarea>` (ví dụ `current-password`, `new-password`, `email`, `username`, `off`). Danh sách token `[a-z0-9 -]`; khác thì bỏ. 0.17.0. |
+| `inputmode` | string | theo `type` | `none` \| `text` \| `decimal` \| `numeric` \| `tel` \| `search` \| `email` \| `url` → control; ghi đè `inputmode` tự suy từ `type`. 0.17.0. |
+| `enterkeyhint` | string | — | `enter` \| `done` \| `go` \| `next` \| `previous` \| `search` \| `send` → control. 0.17.0. |
+| `autocapitalize` | string | — | `off` \| `none` \| `on` \| `sentences` \| `words` \| `characters` → control. 0.17.0. |
+| `spellcheck` | string | — | `true` \| `false` → control. 0.17.0. |
+| `autofocus` | boolean | không | Focus control **một lần** khi field gắn vào trang lần đầu, trừ khi đã có phần tử khác đang giữ focus, hoặc field disabled. 0.17.0. |
 | `id` | string | tự sinh `td-td-input-field-{n}` | Nếu không đặt, kit tự gán để `<label for>` và các id con hoạt động. |
 
 ## Property & method
@@ -377,9 +406,12 @@ Input field là tầng nội dung: luôn nền đặc, không bao giờ là kín
   `{host}-error`.
 - `aria-describedby` của control = các id **bạn** tự thêm vào (được giữ lại) + note (khi có gợi ý) + counter + error
   (khi có lỗi).
-- Render phía server: có thể in sẵn khối trên (bên trong `<td-input-field id="…">` hoặc đứng riêng chỉ với `td.css`).
-  Hợp đồng markup: `test/contracts/input-field.html`. Xem [WordPress & PHP](../guides/wordpress-php.md) và
-  [bảng class cũ](../upgrading/class-map.md) (đổi `.td-input*` → `.td-field*` ở 0.8.0).
+- Render phía server: `td_field('email', '', ['label' => 'Email', 'type' => 'email'])` của
+  [adapter PHP](../guides/php-adapter.md#td_field) in đúng khối `.td-field` trên với control native (chạy với chỉ
+  `td.css`, password manager nhận được). Không dùng PHP thì in tay khối trên (bên trong `<td-input-field id="…">` hoặc
+  đứng riêng). Các file `test/contracts/*.html` trong repo kit chỉ là fixture test (không nằm trong gói npm). Xem
+  [WordPress & PHP](../guides/wordpress-php.md) và [bảng class cũ](../upgrading/class-map.md) (đổi `.td-input*` →
+  `.td-field*` ở 0.8.0).
 
 ## Bàn phím & trợ năng
 

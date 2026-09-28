@@ -1,0 +1,23 @@
+# php/td.php — official PHP SSR adapter
+
+One plain PHP file (PHP ≥ 8.1, no framework, no composer). Declares only `TdComponents\Td` and `td_*` functions.
+
+```php
+require_once $kitDir . '/php/td.php';
+TdComponents\Td::configure('/assets/vendor/td-components/0.17.0', $kitDir); // versioned URL + filesystem path
+
+echo td_stylesheet_tag($nonce);
+echo td_import_map_tag(['dompurify' => '/assets/vendor/dompurify/purify.es.js'], $nonce); // ONE import map per page
+echo td_field('email', '', ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
+echo td_dropdown('role', ['user' => 'Người dùng', 'admin' => 'Quản trị'], 'user', ['label' => 'Vai trò']);
+echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
+```
+
+- `td_button` / `td_link` / `td_field` / `td_checkbox` / `td_toggle` print **standalone native controls** with the
+  component's DOM contract (td.css styles them; native submit + validation; no JS, no upgrade).
+- `td_dropdown` prints `<td-dropdown>` wrapping a native `<select>` — upgraded when the dropdown module loads.
+- `td_icon` prints the full `svg.td-icon` geometry; site icons via `Td::registerIcons()`.
+- Everything is escaped; attribute names, URLs and class tokens are allowlisted.
+
+Full reference (Vietnamese): [docs/guides/php-adapter.md](../docs/guides/php-adapter.md).
+Tests: `node --test "test/php/*.test.js"` (needs the php CLI) + `src/form/td-v017-ssr.browser-test.js`.

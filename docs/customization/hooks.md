@@ -7,7 +7,7 @@ plugin, gọi API tìm kiếm, dịch nhãn…) thì kit không đoán, mà mở
 **mọi** hook / callback / option / object nhãn của từng component, kèm chữ ký, giá trị trả về, thời điểm được gọi và
 **điều gì xảy ra khi hook ném lỗi** — rồi đến 8 công thức dùng thực tế.
 
-Nguồn sự thật là source code (`src/**`); mỗi dòng dưới đây đã được đối chiếu với file JS tương ứng ở bản 0.15.1.
+Nguồn sự thật là source code (`src/**`); mỗi dòng dưới đây đối chiếu với file JS tương ứng; nếu tài liệu và source lệch nhau, tin source.
 
 ## Mục lục
 
@@ -61,7 +61,7 @@ event đầy đủ ở mục **Event** của từng trang component.
   `messageHtml`, cột `render` của `td-table`. Chuỗi HTML tin cậy **chỉ** dành cho markup do developer viết, không bao
   giờ chứa dữ liệu người dùng chưa escape. Chi tiết: [../guides/security.md](../guides/security.md).
 - **URL** mà hook trả về (lightbox download, href của menu) luôn đi qua bộ lọc: `https:` luôn được; `http:` chỉ khi
-  chính trang là `http:`; scheme khác bị từ chối (lightbox cho phép mở rộng qua `isAllowedUrl`).
+  chính trang là `http:`; scheme khác bị từ chối (lightbox và menu — option `isAllowedUrl` — cho phép mở rộng).
 - **Lỗi trong hook**: phần lớn hook được bọc `try/catch` và "fail closed" (ẩn nút, bỏ nội dung, hiện trạng thái lỗi).
   Callback của element dropdown, tabs, table (từ 0.16.0) được bọc: lỗi ghi `console.error`, luồng và event phía sau
   vẫn chạy. Cột "Lỗi thì sao" cho biết chính xác.
@@ -76,7 +76,7 @@ event đầy đủ ở mục **Event** của từng trang component.
 API: `TdLightbox.open(items, options) → handle | null`, `TdLightbox.bind(root = document, options) → unbind`,
 `TdLightbox.close()`, `TdLightbox.isOpen`.
 
-`ctx` dùng chung cho `panel`, `download`, nút toolbar:
+`ctx` dùng chung cho `panel`, `download`, `downloads`, nút toolbar:
 `{ index, count, item, token, handle, itemEl, groupEl }` (`itemEl` = phần tử nguồn khi mở bằng `bind()`, `groupEl` =
 phần tử nhóm `[data-td-lightbox-group]` hoặc `options.groupEl`; cả hai `null` khi không có).
 
@@ -86,6 +86,7 @@ phần tử nhóm `[data-td-lightbox-group]` hoặc `options.groupEl`; cả hai 
 |---|---|---|---|---|
 | `index` | `number` | — | Lúc mở: ảnh bắt đầu (kẹp vào khoảng hợp lệ, mặc định 0) | — |
 | `download` | `(item, ctx) => string` | URL tải, hoặc `''` để ẩn nút | Mỗi lần đổi slide | Ném lỗi → coi như `''` (ẩn nút). URL trả về còn phải qua `isAllowedUrl` |
+| `downloads` | `(item, ctx) => Array<{ label, url, filename? }>` | Các biến thể tải | Mỗi lần đổi slide (0.17.0). Có cả `download` → `downloads` thắng | Ném lỗi / không phải mảng → rỗng. Từng `url` lọc qua `isAllowedUrl(url, item)` **trước**, rồi: 0 → ẩn nút; 1 → link tải thường; ≥ 2 → nút mở `TdMenu` các `<a download>` (`filename` đã lọc, thiếu → `download` không tên). Menu đóng khi đổi ảnh / đóng lightbox |
 | `video` | `(item, mount, { signal }) => player \| null \| Promise<player \| null>` với `player = { destroy() }` | Đối tượng player có `destroy()` | Slide `type: 'video'` | Ném / reject → `console.error`, hiện `poster` như ảnh. Trả `null` hoặc thiếu `destroy` → cũng về poster. `signal` bị abort khi đổi slide / đóng |
 | `panel` | `true` \| `false` \| `(ctx) => Element \| null` | Element hiển thị ở panel thông tin | Mỗi lần đổi slide và khi `handle.refreshPanel()` | Ném lỗi hoặc trả chuỗi → không có panel. `true` = hiện `caption` làm text |
 | `toolbar` | `Array<ToolbarSpec>` | — | Lúc mở (thay toàn bộ nút thêm của lần mở trước) | Spec thiếu `id` / `onClick` bị bỏ qua. Trùng `id` trong cùng danh sách: cái đầu thắng |
@@ -196,6 +197,7 @@ Dưới Trusted Types enforcement, một chuỗi thường sẽ bị trình duy�
 | `focus` | `'first' \| 'last'` | `'first'` | Mục được focus khi mở |
 | `onClose` | `(reason) => void` | — | `reason` ∈ `'select' \| 'escape' \| 'tab' \| 'outside' \| 'hidden' \| 'api'`. Ném lỗi → `console.error` |
 | `ctx` | `object` | — | Dữ liệu thêm cho `ctx` (khoá dành riêng `anchor`, `name`, `item`, `checked`, `__proto__`… bị bỏ) |
+| `isAllowedUrl` | `(url) => boolean` | — | Chính sách `href` của menu này (0.17.0): **thay** bộ lọc mặc định `safeMenuHref`. `false` / ném lỗi → mục disabled + `console.warn`. `javascript:` luôn bị chặn |
 
 `open()` trả `{ element, close(), isOpen }` hoặc `null` (anchor đang mở → đóng nó; tên chưa đăng ký → `console.warn`;
 không còn mục hiển thị nào; builder ném lỗi → `console.error`).
@@ -209,8 +211,9 @@ không còn mục hiển thị nào; builder ném lỗi → `console.error`).
 |---|---|---|
 | `label` | `string` | Bắt buộc (item không có label bị bỏ). Hiển thị dạng **text** |
 | `onSelect` (bí danh `onClick`) | `(ctx) => void \| Promise` | `ctx = { ...ctx menu, item, anchor, checked }`. Gọi **sau** khi menu đóng (item / radio) hoặc tại chỗ (checkbox). Ném / reject → `console.error`; Promise không được await |
-| `href` | `string` | Chỉ http(s) hoặc tương đối. URL khác (`mailto:`, `javascript:`…) → item bị vô hiệu + `console.warn` |
+| `href` | `string` | Chỉ http(s) hoặc tương đối (hoặc theo option `isAllowedUrl`). URL khác (`mailto:`, `javascript:`…) → item bị vô hiệu + `console.warn` |
 | `newTab` | `boolean` | Mở tab mới (`rel="noopener noreferrer"`) |
+| `download` | `true \| string` | Chỉ với `href` được chấp nhận: `<a download>`; chuỗi = tên file (lọc `/ \ : * ? " < > \|` + ký tự điều khiển, tối đa 200 ký tự) |
 | `icon` | `string` | Tên icon registry |
 | `iconNode` | `SVGElement` | SVG tin cậy (clone) |
 | `hint` | `string` | Chữ phụ bên phải (text) |

@@ -273,7 +273,7 @@ Hộp thoại được gắn ở `<body>` nên biến đặt trên host picker *
     <button type="button" class="td-dtp__trigger" id="{host}-trigger" role="combobox" aria-haspopup="dialog"
             aria-expanded="false" [aria-controls="{modal-id}" khi mở] [aria-required] [aria-invalid]>
       <span class="td-dtp__value" [data-placeholder]>15/06/2026 - 10:30</span>
-      <span class="td-dtp__icon" data-td-icon="calendar" aria-hidden="true"><svg …></svg></span>
+      <span class="td-dtp__icon" data-td-icon="calendar" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/></svg></span>
     </button>
   </div>
   <span class="td-field-error" id="{host}-error" data-for="{host}">…</span>   <!-- chỉ khi có lỗi -->

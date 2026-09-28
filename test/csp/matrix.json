@@ -20,7 +20,9 @@
       "td-menu": "/src/feedback/td-menu.js",
       "td-chip-input": "/src/form/td-chip-input.js",
       "td-form-validation": "/src/utils/form-validation.js",
-      "td-hovercard": "/src/feedback/td-hovercard.js"
+      "td-hovercard": "/src/feedback/td-hovercard.js",
+      "td-password-meter": "/src/form/td-password-meter.js",
+      "td-scroll-top": "/src/feedback/td-scroll-top.js"
     },
     "tokenNative": [
       "td-button",
@@ -41,7 +43,9 @@
       "td-menu",
       "td-chip-input",
       "td-form-validation",
-      "td-hovercard"
+      "td-hovercard",
+      "td-password-meter",
+      "td-scroll-top"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -632,6 +636,30 @@
       "selectors": [
         "button",
         ".td-btn__icon svg"
+      ]
+    },
+    {
+      "state": "ghost",
+      "markup": "<td-button variant=\"ghost\">Huỷ</td-button>",
+      "selectors": [
+        "button",
+        ".td-btn__label"
+      ]
+    },
+    {
+      "state": "link",
+      "markup": "<td-button href=\"/docs\" variant=\"primary\">Tài liệu</td-button>",
+      "selectors": [
+        "a",
+        ".td-btn__label"
+      ]
+    },
+    {
+      "state": "link-disabled",
+      "markup": "<td-button href=\"/docs\" disabled>Tài liệu</td-button>",
+      "selectors": [
+        "a",
+        ".td-btn__label"
       ]
     }
   ],
@@ -1393,6 +1421,71 @@
         "right",
         "bottom"
       ]
+    }
+  ],
+  "td-password-meter": [
+    {
+      "state": "empty-checklist",
+      "markup": "<td-password-meter checklist><input type=\"password\" aria-label=\"Mật khẩu\"></td-password-meter>",
+      "selectors": [
+        ".td-password-meter",
+        ".td-password-meter__bar",
+        ".td-password-meter__seg",
+        ".td-password-meter__status",
+        ".td-password-meter__checklist",
+        ".td-password-meter__rule",
+        ".td-password-meter__mark",
+        ".td-password-meter__mark svg"
+      ]
+    },
+    {
+      "state": "weak",
+      "setup": "window.__mount.innerHTML='<td-password-meter><input type=\"password\" aria-label=\"Mật khẩu\"></td-password-meter>'; const i=window.__mount.querySelector('input'); i.value=\"abc\"; i.dispatchEvent(new Event('input',{bubbles:true}));",
+      "selectors": [
+        ".td-password-meter__seg:nth-child(1)",
+        ".td-password-meter__seg:nth-child(2)",
+        ".td-password-meter__status"
+      ],
+      "settle": 400
+    },
+    {
+      "state": "fair",
+      "setup": "window.__mount.innerHTML='<td-password-meter><input type=\"password\" aria-label=\"Mật khẩu\"></td-password-meter>'; const i=window.__mount.querySelector('input'); i.value=\"Mqz7wLp4vT\"; i.dispatchEvent(new Event('input',{bubbles:true}));",
+      "selectors": [
+        ".td-password-meter__seg:nth-child(2)",
+        ".td-password-meter__seg:nth-child(3)"
+      ],
+      "settle": 400
+    },
+    {
+      "state": "strong-checklist",
+      "setup": "window.__mount.innerHTML='<td-password-meter checklist><input type=\"password\" aria-label=\"Mật khẩu\"></td-password-meter>'; const i=window.__mount.querySelector('input'); i.value=\"Xk9#mQ2$vL7!pZ\"; i.dispatchEvent(new Event('input',{bubbles:true}));",
+      "selectors": [
+        ".td-password-meter__seg:nth-child(4)",
+        ".td-password-meter__rule[data-met=\"true\"]",
+        ".td-password-meter__rule[data-met=\"true\"] .td-password-meter__mark",
+        ".td-password-meter__rule[data-met=\"true\"] .td-password-meter__mark svg"
+      ],
+      "settle": 400
+    }
+  ],
+  "td-scroll-top": [
+    {
+      "state": "hidden",
+      "markup": "<td-scroll-top></td-scroll-top>",
+      "selectors": [
+        ".td-scroll-top",
+        ".td-scroll-top__icon svg"
+      ]
+    },
+    {
+      "state": "visible",
+      "setup": "const s=document.createElement('div'); s.style.setProperty('height','3000px'); window.__mount.appendChild(s); window.__mount.appendChild(document.createElement('td-scroll-top')); window.scrollTo(0, 1000);",
+      "selectors": [
+        ".td-scroll-top",
+        ".td-scroll-top__icon svg"
+      ],
+      "settle": 500
     }
   ]
 }

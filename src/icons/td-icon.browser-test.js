@@ -50,6 +50,19 @@ describe('tdIcon', () => {
     }
     expect(listIcons().length).to.be.at.least(20);
   });
+
+  it('0.17.0 CMS icons render (Lucide geometry, stroke paint)', () => {
+    const expected = { trash: 5, pencil: 2, copy: 2, 'log-out': 3, menu: 3, 'rotate-cw': 2, 'zoom-out': 3 };
+    for (const [n, count] of Object.entries(expected)) {
+      expect(hasIcon(n), n).to.equal(true);
+      const svg = tdIcon(n);
+      expect(svg.getAttribute('data-icon')).to.equal(n);
+      expect(svg.getAttribute('viewBox')).to.equal('0 0 24 24');
+      expect(svg.getAttribute('stroke')).to.equal('currentColor');
+      expect(svg.children.length, n).to.equal(count);
+    }
+    expect(tdIcon('copy').querySelector('rect').getAttribute('rx')).to.equal('2');
+  });
 });
 
 describe('registerIcons', () => {

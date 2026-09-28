@@ -84,9 +84,11 @@ Class của kit theo quy ước BEM của kit 135: `.td-{block}__{element}--{mod
 - Modifier: `.td-btn--primary`, `.td-btn--sm`, `.td-modal--lg`, `.td-toast--error`…
 
 Cấu trúc DOM + class của từng component là **markup contract**: ghi trong mục "Cấu trúc DOM & class" của trang
-component, được khoá bằng fixture `test/contracts/*.html` (mỗi fixture là bản HTML mà component render ra, và cũng là
-HTML mà adapter PHP của dwp / 135 được phép render phía server). Test `td-contracts.browser-test.js` so component thật
-với fixture. Vì vậy:
+component. Markup render phía server chính thức là [adapter PHP](../guides/php-adapter.md) `php/td.php` ship kèm gói
+(`td_button`, `td_link`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`); component không có helper PHP
+thì dùng markup ghi ngay trong trang của nó. Trong repo kit, contract được khoá bằng test: fixture `test/contracts/*.html`
+(bản HTML component render ra, so với component thật trong `td-contracts.browser-test.js`) — fixture chỉ để test, không
+nằm trong gói npm và icon trong đó viết tắt, đừng copy từ đó. Vì vậy:
 
 - Class / element có trong contract là **ổn định**: đổi chúng là thay đổi phá vỡ và sẽ được ghi trong
   [breaking-changes.md](../upgrading/breaking-changes.md).

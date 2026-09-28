@@ -54,6 +54,15 @@ import { TdFormElement } from '../base/td-form-element.js';
  * @attr {number} rows - Rows for textarea (default 4)
  * @attr {boolean} autoresize - textarea grows with its content (CSS `field-sizing`; `rows` stays the minimum), v0.13.0
  * @attr {string} validate-on - Auto-show the constraint message as the error: blur|change|input
+ * @attr {string} autocomplete - Forwarded to the inner `<input>`/`<textarea>` (token list `[a-z0-9 -]`, e.g.
+ *   `current-password`, `email`, `section-a shipping street-address`; anything else is dropped), v0.17.0
+ * @attr {string} inputmode - none|text|decimal|numeric|tel|search|email|url → the control (overrides the hint
+ *   derived from `type`), v0.17.0
+ * @attr {string} enterkeyhint - enter|done|go|next|previous|search|send → the control, v0.17.0
+ * @attr {string} autocapitalize - off|none|on|sentences|words|characters → the control, v0.17.0
+ * @attr {string} spellcheck - true|false → the control, v0.17.0
+ * @attr {boolean} autofocus - Focus the control once when the field is first attached (only when nothing else
+ *   outside `<body>` already holds focus), v0.17.0
  * @fires input - detail: { value } — once per user edit
  * @fires change - detail: { value } — on blur, only when the value changed since focus
  */
@@ -65,6 +74,7 @@ export class TdInputField extends TdFormElement {
       'max-length', 'limit-type', 'min', 'max', 'step',
       'label', 'helper-text', 'error-text',
       'field-id', 'rows', 'validate-on', 'aria-label', 'autoresize', 'minlength', 'pattern',
+      ...TdInputField._nativeAttrs,
     ];
   }
 
@@ -105,6 +115,39 @@ export class TdInputField extends TdFormElement {
 
   /** @private inputmode hints kept when the real type is downgraded to text. */
   static _inputModeMap = { email: 'email', url: 'url', number: 'decimal', tel: 'tel', search: 'search' };
+
+  /**
+   * @private Native attributes forwarded to the inner control (v0.17.0, E1): name → value whitelist. A value outside
+   * the whitelist is not forwarded (the attribute is removed from the control). `autocomplete` only applies to
+   * `<input>`/`<textarea>`; the others are global attributes and also reach the contenteditable box.
+   */
+  static _nativeAttrs = ['autocomplete', 'inputmode', 'enterkeyhint', 'autocapitalize', 'spellcheck'];
+
+  /** @private @type {Record<string, string[]>} enumerated values (lower-cased before the check) */
+  static _nativeEnums = {
+    inputmode: ['none', 'text', 'decimal', 'numeric', 'tel', 'search', 'email', 'url'],
+    enterkeyhint: ['enter', 'done', 'go', 'next', 'previous', 'search', 'send'],
+    autocapitalize: ['off', 'none', 'on', 'sentences', 'words', 'characters'],
+    spellcheck: ['true', 'false'],
+  };
+
+  /**
+   * @private The whitelisted value of a forwarded attribute, or null (absent / not allowed).
+   * @param {string} name
+   * @param {string|null} raw
+   * @returns {string|null}
+   */
+  static _nativeValue(name, raw) {
+    if (raw == null) return null;
+    const v = String(raw).trim().toLowerCase();
+    if (name === 'autocomplete') {
+      // HTML autofill detail tokens: lower-case letters, digits, hyphen, separated by spaces.
+      const tokens = v.split(/\s+/).filter(Boolean);
+      return tokens.length && tokens.every((t) => /^[a-z0-9-]+$/.test(t)) ? tokens.join(' ') : null;
+    }
+    if (name === 'spellcheck' && v === '') return 'true'; // `spellcheck` alone = true (HTML)
+    return TdInputField._nativeEnums[name]?.includes(v) ? v : null;
+  }
 
   /** @private Attributes that change the DOM structure → full re-render. Everything else updates in place. */
   static _structural = new Set(['type', 'size', 'label', 'max-length', 'limit-type', 'rows', 'field-id', 'autoresize']);
@@ -232,6 +275,7 @@ export class TdInputField extends TdFormElement {
 
     this._applyPlaceholder();
     this._applyInteractivity();
+    this._applyNativeAttrs();
     this._applyRequired();
     this._applyRange();
     this._applyName();
@@ -239,6 +283,38 @@ export class TdInputField extends TdFormElement {
     this._updateCounter();
     this._syncForm(); // an untouched required field already blocks submit
     this._applyErrorState(); // also syncs aria-describedby + footer
+    this._autofocusOnce();
+  }
+
+  /** @private Forward the whitelisted native attributes (autocomplete, inputmode, …) to the control, in place. */
+  _applyNativeAttrs() {
+    const field = this._getFieldElement();
+    if (!field) return;
+    const editable = TdInputField._isEditable(field);
+    for (const name of TdInputField._nativeAttrs) {
+      let v = TdInputField._nativeValue(name, this.getAttribute(name));
+      if (name === 'autocomplete' && editable) v = null; // not an autofill field
+      if (name === 'inputmode' && v == null && !editable && field.getAttribute('type') === 'text') {
+        v = TdInputField._inputModeMap[this._type()] || null; // hint for a downgraded email/url/number/…
+      }
+      if (v == null) field.removeAttribute(name);
+      else field.setAttribute(name, v);
+    }
+  }
+
+  /**
+   * @private `autofocus`: focus the control ONCE per element, on its first render while connected — never stealing
+   * focus from another element that already holds it (only when focus is on body / nothing), never a disabled field.
+   */
+  _autofocusOnce() {
+    if (this._autofocused || !this.isConnected) return;
+    this._autofocused = true; // decided on the FIRST connected render only (a later attribute / re-render never focuses)
+    if (!this.hasAttribute('autofocus')) return;
+    const field = this._getFieldElement();
+    if (!field || this._effectiveDisabled) return;
+    const active = document.activeElement;
+    if (active && active !== document.body && active !== document.documentElement) return;
+    field.focus();
   }
 
   // --- User interaction ---
@@ -335,6 +411,13 @@ export class TdInputField extends TdFormElement {
         return;
       case 'aria-label':
         this._applyName();
+        return;
+      case 'autocomplete':
+      case 'inputmode':
+      case 'enterkeyhint':
+      case 'autocapitalize':
+      case 'spellcheck':
+        this._applyNativeAttrs();
         return;
       default: // name, validate-on: read on demand, nothing to redraw
     }

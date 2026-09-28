@@ -83,6 +83,9 @@ Quy ước chung:
 
 - **Attribute được theo dõi có property tương ứng**, tên camelCase (trừ khi lớp tự định nghĩa property cùng tên): `max-length` ↔ `el.maxLength`,
   `helper-text` ↔ `el.helperText`. Gán property sẽ ghi lại attribute (và ngược lại đọc property là đọc attribute).
+  Ngoại lệ quan trọng: `value` của control nhập liệu là giá trị **sống** — `td-input-field.value` (từ 0.16.0) và
+  `td-dropdown.value` (từ 0.17.0) trả giá trị đang nhập / đang chọn (= `getValue()`), gán = `setValue()` và **không**
+  ghi attribute `value`; attribute `value` chỉ là giá trị ban đầu (cũng là giá trị khôi phục khi reset form).
 - **Attribute boolean** (`disabled`, `required`, `checked`, `loading`…) tính theo **có mặt hay không**: có là bật, kể
   cả `disabled="false"` vẫn là bật. Tắt thì gỡ attribute: `el.removeAttribute('disabled')` hoặc `el.disabled = false`.
 - Ngoại lệ có chủ đích: một vài cờ "mặc định bật" của `td-dropdown` (`searchable`, `allow-clear`) chỉ tắt khi ghi
@@ -182,8 +185,10 @@ Mọi custom element kế thừa `TdBaseElement` ([Tự viết component](../com
    trị, lựa chọn) được giữ.
 
 Với site render phía server (PHP), điều này nghĩa là: in thẻ `td-*` kèm attribute trong HTML, component tự "sống dậy"
-khi module JS nạp xong. Trước lúc đó, trình duyệt hiển thị thẻ lạ (chữ trần). Xem
-[WordPress & PHP](../guides/wordpress-php.md) về cách giảm hiện tượng nháy này.
+khi module JS nạp xong. Trước lúc đó, trình duyệt hiển thị thẻ lạ (chữ trần). Với nút, ô nhập, dropdown, switch,
+checkbox, [adapter PHP](../guides/php-adapter.md) (`php/td.php`) in sẵn control **native** mang class của kit — chạy và
+submit được ngay cả khi JS chưa tải (dropdown là `<select>` được nâng cấp khi module nạp). Xem thêm
+[WordPress & PHP](../guides/wordpress-php.md).
 
 ## Control nằm trong form (form-associated)
 
@@ -229,8 +234,9 @@ Mỗi loại lớp nổi có một tầng, trùng với token `z-index` trong `t
 
 | Tầng | Token | Giá trị | Ai dùng | Loại |
 |---|---|---|---|---|
-| dropdown | `--td-z-dropdown` | 100 | Không component nào dùng ở 0.15.x (menu dropdown dùng tầng popover) | |
-| overlay | `--td-z-overlay` | 300 | Không component nào dùng ở 0.15.x | |
+| dropdown | `--td-z-dropdown` | 100 | Dự phòng — không component nào dùng (menu dropdown dùng tầng popover) | |
+| sticky | `--td-z-sticky` | 200 | `<td-scroll-top>` (nút cố định góc màn hình, không vào registry lớp nổi) | |
+| overlay | `--td-z-overlay` | 300 | Dự phòng — không component nào dùng | |
 | lightbox | `--td-z-lightbox` | 350 | `TdLightbox` | chặn (blocking) |
 | modal | `--td-z-modal` | 400 | `TdModal` (mọi dialog) | chặn |
 | popover | `--td-z-popover` | 450 | menu của `td-dropdown`, gợi ý `td-chip-input`, `TdMenu`, `TdHovercard` | nổi (floating) |

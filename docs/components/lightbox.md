@@ -145,7 +145,9 @@ const unbind = TdLightbox.bind(document.querySelector('#article'), {
 });
 ```
 
-Hợp đồng markup (golden fixture cho adapter SSR của 135 / dwp): `test/contracts/lightbox.html`.
+Markup trigger chuẩn cho server render là các ví dụ ở trên (bảng attribute đầy đủ:
+[WordPress & PHP › Lightbox](../guides/wordpress-php.md#lightbox-tdlightboxbindroot--attrprefix--mặc-định-prefix-td)). Lightbox không
+có helper PHP; fixture `test/contracts/lightbox.html` trong repo kit chỉ dùng cho test (không nằm trong gói npm).
 
 ### 4. Đọc markup của dwp — `attrPrefix` và `filter` (0.15.0)
 
@@ -316,6 +318,7 @@ Mọi tuỳ chọn đều không bắt buộc.
 | `labels` | `object` | tiếng Việt | Xem [Nhãn](#nhãn-labels) |
 | `isAllowedUrl` | `(url, item) => boolean` | `defaultIsAllowedUrl` | Chính sách URL cho `src`, `poster`, link tải |
 | `download` | `(item, ctx) => string \| null` | ảnh cùng origin | URL của nút tải xuống |
+| `downloads` | `(item, ctx) => Array<{ label, url, filename? }>` | — | Nhiều biến thể tải (0.17.0); có cả `download` → `downloads` thắng. Xem [Hook downloads](#hook-downloads-nhiều-biến-thể) |
 | `video` | `(item, mount, { signal }) => player \| Promise<player> \| null` | `<video>` native | Cắm player |
 | `history` | `false \| true \| adapter` | `false` | Nút Back của trình duyệt đóng lightbox |
 | `panel` | `false \| true \| (ctx) => Element \| null` | `false` | Panel thông tin |
@@ -328,7 +331,7 @@ Mọi tuỳ chọn đều không bắt buộc.
 
 ### `ctx`
 
-Các hook `panel`, `download`, `toolbar[].onClick` / `visible` nhận:
+Các hook `panel`, `download`, `downloads`, `toolbar[].onClick` / `visible` nhận:
 
 ```text
 ctx = { index, count, item, token, handle, itemEl, groupEl }
@@ -397,6 +400,38 @@ Nới lỏng là trách nhiệm của site — đừng bao giờ cho qua `javasc
 download: (item) => item.type === 'image'
   ? `/media/download?src=${encodeURIComponent(item.src)}`
   : null,
+```
+
+### Hook downloads (nhiều biến thể)
+
+`downloads(item, ctx)` trả danh sách `{ label, url, filename? }` (ví dụ ảnh gốc / ảnh nhỏ / WebP). Mỗi lần đổi slide:
+
+1. Gọi hook (ném lỗi hoặc trả không phải mảng → coi như rỗng).
+2. **Lọc** từng `url` qua `isAllowedUrl(url, item)` của lightbox (item đang xem).
+3. Rẽ nhánh theo số mục **còn lại**: `0` → ẩn nút tải; `1` → nút tải thường `<a download>`; `≥ 2` → nút tải mở một
+   [`TdMenu`](menu.md#mục-tải-xuống-download) gồm các `<a download>`.
+
+- `filename` (tuỳ chọn) được lọc ký tự nguy hiểm (`/ \ : * ? " < > |`, ký tự điều khiển); thiếu → vẫn là link tải,
+  trình duyệt đặt tên theo URL. `label` thiếu → dùng `filename` hoặc tên file trong URL.
+- Menu dùng đúng chính sách của lightbox (`isAllowedUrl(url, item)` với item đang xem), nên scheme site đã cho phép như
+  `blob:` vẫn tải được từ menu.
+- Có cả `download` và `downloads` → `downloads` thắng (kể cả khi nó trả rỗng: không rơi về `download`).
+- Menu tự đóng khi đổi ảnh hoặc đóng lightbox. Bàn phím: `Enter` / `Space` / `↓` / `↑` trên nút mở menu, mũi tên di
+  chuyển, `Enter` chọn, `Escape` đóng menu (lightbox vẫn mở, focus về nút tải).
+
+```js
+TdLightbox.bind(document, {
+  downloads: (item) => item.type === 'image' ? [
+    { label: 'Ảnh gốc', url: `/media/download?src=${encodeURIComponent(item.src)}&size=orig`, filename: 'anh-goc.jpg' },
+    { label: 'Ảnh 1200px', url: `/media/download?src=${encodeURIComponent(item.src)}&size=1200` },
+  ] : [],
+});
+```
+
+Chính sách phụ thuộc dữ liệu item (ví dụ ảnh riêng tư chỉ cho tải bản nhỏ):
+
+```js
+isAllowedUrl: (url, item) => defaultIsAllowedUrl(url) && !(item?.data?.private && url.includes('size=orig')),
 ```
 
 ### Hook video
@@ -584,6 +619,9 @@ overlay: ảnh `zoom-in` / `zoom-out` khi đang zoom (chuột), nền `zoom-out`
     <button class="td-lightbox__btn" data-action="next">…</button>
     <button class="td-lightbox__btn" data-action="fullscreen">…</button>
     <a class="td-lightbox__btn" data-action="download" href="…" download="…">…</a>
+    <button class="td-lightbox__btn" data-action="downloads" aria-haspopup="menu" aria-expanded="false" hidden>…</button>
+    <!-- ≥ 2 biến thể từ hook downloads: nút này hiện (link tải ẩn), mở TdMenu -->
+
     <button class="td-lightbox__btn" data-extra="cover">…</button>              <!-- nút toolbar riêng -->
     <button class="td-lightbox__btn td-lightbox__close" data-action="close">…</button>
   </div>
@@ -640,7 +678,8 @@ Những giả định tin cậy mà site phải biết:
   phải được bảo vệ ở server.
 - **Media cross-origin HTTPS được phép mặc định** → rò IP/Referer tới host ngoài; dùng allowlist origin khi nội dung
   do người dùng nhập.
-- Link tải cũng qua `isAllowedUrl`; `attrPrefix` được whitelist trước khi vào selector.
+- Link tải (cả từng biến thể của `downloads` và mục trong menu tải) cũng qua `isAllowedUrl`; tên file `filename` được
+  lọc ký tự đường dẫn / điều khiển; `attrPrefix` được whitelist trước khi vào selector.
 
 Xem [Hướng dẫn bảo mật](../guides/security.md).
 

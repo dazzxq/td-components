@@ -2,6 +2,44 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.17.0
+
+Đề xuất của site 135 sau khi chuyển sang v0.16.0 (plan `docs/internal/plans/v0.17.0-135-feedback.md`, Codex plan-review
+APPROVE 3 vòng).
+
+### Added
+
+- **Adapter PHP chính thức** `php/td.php` (ship trong gói): `TdComponents\Td::configure/importMap/registerIcons`,
+  `td_import_map`, `td_import_map_tag`, `td_stylesheet_tag`, `td_icon`, `td_button` (cả ghost + `href`), `td_link`,
+  `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox` — tên/option tương thích adapter 135. Button/field/checkbox/toggle
+  in control native (không cần JS); `td_dropdown` in `<td-dropdown><select>` được nâng cấp. Hướng dẫn:
+  `docs/guides/php-adapter.md`.
+- `td-input-field`: `autocomplete`, `inputmode`, `enterkeyhint`, `autocapitalize`, `spellcheck`, `autofocus` truyền xuống
+  control (password manager hoạt động).
+- `td-button`: `variant="ghost"` (không nền/kính, chữ accent, hover đậm hơn giữ ≥ 4.5:1 — theo `--td-accent` của site) và
+  `href` → nút dạng link `<a class="td-btn">` (URL whitelist, `target`, `download`, trạng thái disabled/loading riêng).
+- `td-dropdown`: nâng cấp tại chỗ `<select>` con (progressive enhancement — không JS vẫn submit; option `value=""` đầu
+  tiên là placeholder); option/optgroup `disabled`.
+- `TdMenu`: mục tải xuống (`download: true | 'tên-file'`) và option `isAllowedUrl`. `TdLightbox`: `downloads(item, ctx)`
+  → nhiều biến thể tải qua menu.
+- Component mới: `<td-password-meter>` (chấm điểm cục bộ, hook `score`, checklist, không lộ mật khẩu) và
+  `<td-scroll-top>`.
+- Icon: `trash`, `pencil`, `copy`, `log-out`, `menu`, `rotate-cw`, `zoom-out`.
+- Barrel `index.js` export thêm `tdIcon`, `registerIcons`, `hasIcon`, `listIcons`, `fillIconSlots`, các hàm `dom-utils`,
+  `TdPasswordMeter`, `TdScrollTop`.
+
+### Changed (đổi hành vi)
+
+- `td-dropdown.value` (property) trả giá trị **đang chọn** (= `getValue()`), gán = `setValue()`; trước là attribute
+  ban đầu.
+- `<td-dropdown>` có `<select>` con giờ được nâng cấp (select bị gỡ, component submit thay) — trước đây select bị bỏ
+  qua.
+
+### Docs
+
+- Bỏ stamp phiên bản rải rác; dropdown là chọn một; `TdModal.open` → `show`; markup SSR chính thức = adapter PHP (fixture
+  `test/contracts/*.html` chỉ là fixture test); ví dụ SVG dùng được; MIME `text/javascript` cho `.mjs`.
+
 ## 0.16.0
 
 Sửa toàn bộ backlog phát hiện khi viết docs 0.15.1 (plan `docs/internal/plans/v0.16.0-backlog.md`, Codex plan-review

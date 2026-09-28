@@ -49,7 +49,7 @@ Bạn **không cần** escape trước (escape trước sẽ hiện `&amp;lt;` l
 | `td-table` column `render(row, i)` trả về Node | Node (tin cậy) | khuyên dùng |
 | `td-table` column `render(row, i)` trả về chuỗi | **HTML thô** | hatch |
 | `td-tabs` `label`, `td-empty-state` `title`/`message`, `td-pagination` | text | |
-| `td-empty-state` `icon="<svg…>"` (deprecated) | chuỗi SVG **được lọc** | chỉ giữ hình học trong allowlist; `script`, `foreignObject`, `use`, `on*`, `style`, `url()` → bị từ chối, hiện icon `inbox` |
+| `td-empty-state` `icon` là chuỗi SVG (deprecated) | chuỗi SVG **được lọc** | chỉ giữ hình học trong allowlist; `script`, `foreignObject`, `use`, `on*`, `style`, `url()` → bị từ chối, hiện icon `inbox` |
 | `td-empty-state` `iconNode` | SVGElement tin cậy | |
 | `registerIcons()` | dữ liệu (tag + thuộc tính hình học trong allowlist) | chuỗi markup SVG bị từ chối |
 | `TdHovercard` `content()` trả về Node / `template` | Node / `<template>` (clone) | khuyên dùng |
@@ -172,7 +172,8 @@ người trước. (Trang tải lại hoàn toàn thì cache mất theo, không 
 |---|---|---|
 | `TdLightbox` `src`, `poster`, link tải (`download`) | `https:` luôn được; `http:` **chỉ khi trang cũng là http** (không hạ cấp từ HTTPS); scheme khác (`data:`, `blob:`, `file:`, `javascript:`…) bị từ chối. Item không còn `src` hợp lệ bị bỏ | option `isAllowedUrl(url, item) => boolean` (throw = từ chối) |
 | `TdLightbox` nút tải mặc định | chỉ hiện cho **ảnh cùng origin** | hook `download(item, ctx) => url` (URL trả về vẫn qua `isAllowedUrl`) |
-| `TdMenu` item `href` | `https:` luôn được; `http:` chỉ trên trang http; link tương đối xét theo protocol **sau khi resolve**; `mailto:`, `tel:`, `javascript:`, `data:`, chuỗi không parse được → item thành **nút disabled** + `console.warn` | không đổi được; dùng `onSelect` cho mail/điện thoại |
+| `TdMenu` item `href` | `https:` luôn được; `http:` chỉ trên trang http; link tương đối xét theo protocol **sau khi resolve**; `mailto:`, `tel:`, `javascript:`, `data:`, chuỗi không parse được → item thành **nút disabled** + `console.warn` | option `isAllowedUrl(url) => boolean` của `open`/`bind` (0.17.0) **thay hoàn toàn** chính sách mặc định (chỉ `javascript:` luôn bị chặn) — mọi bảo vệ khác (`data:`, `blob:`, `file:`, hạ cấp HTTP) do hàm của bạn quyết. Nên **ghép** với chính sách mặc định và chỉ mở thêm đúng scheme cần (ví dụ `blob:` của chính trang); dùng `onSelect` cho mail/điện thoại nếu không muốn mở rộng |
+| `<td-button href>` / PHP `td_button`, `td_link` | `https:`, `mailto:`, `tel:`, tương đối, `#`; `http:` chỉ trên trang http (JS) / khi site bật `Td::allowHttpLinks()` (PHP); khác → link thành **disabled** (không `href`) | JS: không đổi được; PHP: `Td::allowHttpLinks(true)` cho host HTTP cũ |
 | `TdMenu` item `newTab: true` | `target="_blank" rel="noopener noreferrer"` | — |
 | `TdHovercard` `url` / `data-td-hovercard` | chỉ http(s) **cùng origin** | không đổi được (thiết kế) |
 

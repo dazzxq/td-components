@@ -233,8 +233,8 @@ Công tắc là control tầng nội dung: rãnh đặc; chỉ núm "nhấc lên
     <input type="checkbox" role="switch" class="td-switch__input">
     <span class="td-switch__track" aria-hidden="true">
       <span class="td-switch__thumb">
-        <span class="td-switch__icon td-switch__icon--off" data-td-icon="close"><svg …></svg></span>
-        <span class="td-switch__icon td-switch__icon--on" data-td-icon="check"><svg …></svg></span>
+        <span class="td-switch__icon td-switch__icon--off" data-td-icon="close"><svg class="td-icon td-icon--m" data-icon="close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
+        <span class="td-switch__icon td-switch__icon--on" data-td-icon="check"><svg class="td-icon td-icon--m" data-icon="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg></span>
       </span>
     </span>
     <span class="td-switch__label">Wifi</span>
@@ -254,8 +254,10 @@ Công tắc là control tầng nội dung: rãnh đặc; chỉ núm "nhấc lên
 | `.td-switch[data-pending]` + input `[aria-busy="true"]` | Đang chờ `commit()`. |
 | `.td-switch__input:checked` / `:disabled` / `:focus-visible` / `[aria-invalid="true"]` | Trạng thái. |
 
-Block `.td-switch` giống hợp đồng markup kit 135 / dwp in phía server. Hợp đồng: `test/contracts/switch.html`. Xem
-[WordPress & PHP](../guides/wordpress-php.md) và [bảng class cũ](../upgrading/class-map.md).
+Render phía server: `td_toggle('wifi', true, 'Wifi')` của [adapter PHP](../guides/php-adapter.md#td_toggle-và-td_checkbox)
+in đúng block `.td-switch` ở trên (checkbox native `role="switch"`, icon vẽ sẵn, chạy với chỉ `td.css`). Không dùng PHP
+thì in tay block trên; icon theo [Icons › markup render sẵn](icons.md#icon-trong-markup-render-sẵn). Các file `test/contracts/*.html` trong repo kit chỉ là **fixture test** (không nằm trong gói npm, icon trong đó viết tắt) — đừng copy từ đó.
+Xem [WordPress & PHP](../guides/wordpress-php.md) và [bảng class cũ](../upgrading/class-map.md).
 
 ## Bàn phím & trợ năng
 

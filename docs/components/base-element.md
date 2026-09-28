@@ -263,7 +263,7 @@ render() {
     + `<span data-td-icon="close" data-td-icon-size="s"></span></button>`;
 }
 afterRender() {
-  fillIconSlots(this); // thay mỗi [data-td-icon] bằng <svg> từ registry
+  fillIconSlots(this); // thay mỗi [data-td-icon] bằng icon SVG từ registry
 }
 ```
 

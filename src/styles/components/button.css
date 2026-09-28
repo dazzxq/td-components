@@ -6,6 +6,8 @@
  * Disabled = explicit opaque state colours (never element opacity). Private --_td-btn-* are forced by the glass
  * fallbacks (glass.css) so reduced transparency / glass off / contrast / forced colours get solid buttons.
  * State: :disabled (native) · [aria-busy="true"] (loading, focus kept) · :focus-visible.
+ * Link buttons (v0.17.0, <a class="td-btn">): disabled = [aria-disabled="true"] without aria-busy (or with
+ * tabindex="-1" when also busy) — same disabled tokens. Ghost (v0.17.0): transparent, no glass, accent label.
  * Per-instance colours: host custom properties --td-btn-bg / --td-btn-fg (+ .td-btn--custom).
  */
 @layer td.component {
@@ -43,6 +45,7 @@
 		font-weight: var(--td-fw-semibold);
 		line-height: 1.25;
 		color: var(--td-btn-fg-v);
+		text-decoration: none; /* link buttons */
 		white-space: nowrap;
 		cursor: pointer;
 		background-color: var(--td-btn-bg-v); /* opaque fallback (no color-mix) */
@@ -94,6 +97,23 @@
 	.td-btn--warning { --td-btn-bg-v: var(--td-btn-warning-tint); --td-btn-tint-v: var(--td-btn-warning-tint); --td-btn-alpha-v: var(--td-btn-warning-alpha); --td-btn-film-v: var(--td-btn-warning-film); --td-btn-fg-v: var(--td-btn-warning-fg); --td-btn-border-v: rgb(255 255 255 / 30%); }
 	.td-btn--info { --td-btn-bg-v: var(--td-btn-info-tint); --td-btn-tint-v: var(--td-btn-info-tint); --td-btn-alpha-v: var(--td-btn-info-alpha); --td-btn-film-v: var(--td-btn-info-film); --td-btn-fg-v: var(--td-btn-info-fg); --td-btn-border-v: rgb(255 255 255 / 24%); }
 
+	/* v0.17.0 ghost: no fill, no glass, no border / rim / lift — just the accent label on the page background.
+	   Hover = a soft fill (--td-btn-ghost-hover-bg); focus ring as every button. */
+	.td-btn--ghost {
+		--td-btn-bg-v: transparent;
+		--td-btn-tint-v: transparent;
+		--td-btn-fg-v: var(--td-btn-ghost-fg);
+		--td-btn-border-v: transparent;
+		--td-btn-film-v: transparent;
+		--td-btn-outline-v: 0 0 0 0 transparent;
+		--_td-btn-fill: transparent; /* exact transparent, not color-mix(transparent) */
+
+		background-image: none;
+		box-shadow: none;
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
+
 	/* Translucent tint where color-mix() exists (else the opaque fallback above stays). */
 	@supports (color: color-mix(in srgb, red 50%, transparent)) {
 		.td-btn:not(.td-btn--custom) {
@@ -124,7 +144,7 @@
 	/* Glass hover = GLOW, not a new material (G3: interaction animates only transform / glow). The glow is an outer
 	   halo, so the fill behind the label — and its rendered contrast — never changes. Never while :focus-visible (the
 	   focus ring must stay visible under the pointer). */
-	.td-btn:hover:not(:disabled, [aria-busy="true"], .td-btn--custom, :focus-visible) {
+	.td-btn:hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"], .td-btn--custom, .td-btn--ghost, :focus-visible) {
 		box-shadow:
 			var(--_td-btn-rim, inset 0 1px 0 0 rgb(255 255 255 / 38%)),
 			var(--_td-btn-outline, var(--td-btn-outline-v, 0 0 0 1px var(--td-glass-outline))),
@@ -134,13 +154,25 @@
 
 	/* Custom colours are opaque (not glass): an overlay that darkens under light text or lightens under dark text
 	   (td-button sets --td-btn-hover accordingly), so hover never lowers text contrast. */
-	.td-btn--custom:hover:not(:disabled, [aria-busy="true"]) {
+	.td-btn--custom:hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
 		background-image:
 			linear-gradient(var(--td-btn-hover, rgb(0 0 0 / 12%)), var(--td-btn-hover, rgb(0 0 0 / 12%))),
 			var(--_td-btn-sheen, var(--td-btn-sheen-v, var(--td-btn-sheen)));
 	}
 
-	.td-btn:active:not(:disabled, [aria-busy="true"]) {
+	/* ghost hover: the fill only (no glow). :not(.td-btn--custom) keeps the specificity above the color-mix() rule. */
+	.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+		background-color: var(--td-btn-ghost-hover-bg);
+		color: #1d4ed8; /* engines without color-mix(): fixed darker step */
+	}
+
+	@supports (color: color-mix(in srgb, red 50%, transparent)) {
+		.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+			color: var(--td-btn-ghost-hover-fg);
+		}
+	}
+
+	.td-btn:active:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
 		transform: scale(var(--_td-glass-press, var(--td-glass-press-scale)));
 	}
 
@@ -150,8 +182,10 @@
 		box-shadow: var(--td-focus-ring);
 	}
 
-	/* Disabled: explicit opaque state colours (a faded glass button would be unreadable over a dark backdrop). */
-	.td-btn:disabled {
+	/* Disabled: explicit opaque state colours (a faded glass button would be unreadable over a dark backdrop).
+	   A disabled LINK button has aria-disabled without aria-busy — or tabindex="-1" when it is busy too (a busy link
+	   keeps tabindex="0"). */
+	.td-btn:is(:disabled, [aria-disabled="true"]:not([aria-busy="true"]), a[aria-disabled="true"][tabindex="-1"]) {
 		cursor: not-allowed;
 		color: var(--td-btn-disabled-fg);
 		background-color: var(--td-btn-disabled-bg);
@@ -160,6 +194,12 @@
 		box-shadow: none;
 		-webkit-backdrop-filter: none;
 		backdrop-filter: none;
+	}
+
+	/* A disabled ghost stays a ghost: no fill / border, greyed label. */
+	.td-btn--ghost:is(:disabled, [aria-disabled="true"]:not([aria-busy="true"]), a[aria-disabled="true"][tabindex="-1"]) {
+		background-color: transparent;
+		border-color: transparent;
 	}
 
 	.td-btn__icon {
@@ -203,7 +243,7 @@
 
 	@media (prefers-reduced-motion: reduce) {
 		.td-btn { transition: none; }
-		.td-btn:active:not(:disabled, [aria-busy="true"]) { transform: none; }
+		.td-btn:active:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) { transform: none; }
 	}
 
 	@media (forced-colors: active) {

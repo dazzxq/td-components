@@ -7,7 +7,7 @@ bởi `td.css`. Nếu site có CSS (hoặc JS, test) nhắm vào phần **bên t
 đổi selector. Kit **không ship alias** cho class cũ ([ADR 0008](../internal/decisions/0008-drop-tailwind-token-css.md)):
 selector cũ chỉ im lặng không còn khớp gì.
 
-Mọi dòng trong bảng đã được đối chiếu với source hiện tại (0.15.0): markup trong `src/**/*.js` và CSS trong
+Mọi dòng trong bảng đối chiếu với source (nếu lệch, tin source): markup trong `src/**/*.js` và CSS trong
 `src/styles/components/*.css`. Cột "Nguồn legacy" cho biết class cũ đến từ đâu:
 
 - **td ≤ 0.x** — markup cũ của chính td-components thời dùng Tailwind (trước bản ghi ở cột "Từ bản").
@@ -289,7 +289,7 @@ Dải chọn của bánh xe dùng token `--td-dtp-band-border` (đổi tông ở
 | dwp | `is-checked` + icon sprite | `[role=menuitemradio\|menuitemcheckbox][aria-checked]` + `span.td-menu__check` | `[aria-checked="true"]` | 0.12.0 |
 | dwp | `disabled` + `is-disabled` | `[aria-disabled="true"]` (vẫn focus được) | `[aria-disabled="true"]` | 0.12.0 |
 | dwp | `small.dwp-menu__hint` (chỉ khi disabled) | `span.td-menu__hint[id]` (mọi item, qua `aria-describedby`) | — | 0.12.0 |
-| dwp / 135 | `<i class="dwp-icon …">` / `<svg><use>` | `span.td-menu__icon` (icon registry) | — | 0.12.0 |
+| dwp / 135 | `<i class="dwp-icon …">` / svg dùng `use` (sprite) | `span.td-menu__icon` (icon registry) | — | 0.12.0 |
 | dwp | `.dwp-menu__row` / `.dwp-menu__action` / `.dwp-menu__custom` | bỏ (không hỗ trợ item custom node / action phụ) | — | 0.12.0 |
 | — | (không có) | `div.td-menu__separator[role=separator]` | — | 0.12.0 |
 | dwp | `button.dwp-menu-btn` (+ `span.dwp-menu-btn__label`) | `button.td-menu-btn` (+ `span.td-menu-btn__icon`, `span.td-menu-btn__label`) | `[aria-expanded]` | 0.12.0 |
@@ -328,7 +328,9 @@ Với control native (không phải component td), site tự style `[aria-invali
 | dwp | markup `data-dwp-lightbox*` | giữ nguyên, bind bằng `TdLightbox.bind(root, { attrPrefix: 'dwp' })`; hoặc đổi sang `data-td-lightbox`, `data-td-lightbox-group`, `data-td-lightbox-item`, `data-td-lightbox-src`, `data-td-lightbox-type`, `data-td-lightbox-caption`, `data-td-lightbox-poster` | — | 0.15.0 |
 
 Phần tử bên trong viewer dùng khối `.td-lightbox__*` (`__backdrop`, `__stage`, `__img`, `__video`, `__toolbar`,
-`__btn`, `__counter`, `__panel`, `__caption`, …). Markup chuẩn cho trigger: `test/contracts/lightbox.html`.
+`__btn`, `__counter`, `__panel`, `__caption`, …). Markup chuẩn cho trigger: [Lightbox](../components/lightbox.md) và
+[WordPress & PHP › Lightbox](../guides/wordpress-php.md#lightbox-tdlightboxbindroot--attrprefix--mặc-định-prefix-td)
+(fixture `test/contracts/lightbox.html` của repo kit chỉ dùng cho test, không nằm trong gói npm).
 
 ## Component không có class legacy
 
