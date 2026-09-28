@@ -225,7 +225,8 @@ export class TdDropdown extends TdFormElement {
     if (!def) def = all.find((opt) => !isOff(opt)) || null;
     this._resetValue = def && def !== ph ? def.value : null; // placeholder default → reset to "no value"
     this._upgraded = true;
-    const live = select.value;
+    // the EXACT selected option (select.value can't tell the leading placeholder from a later value="" option)
+    const selOpt = select.selectedOptions ? select.selectedOptions[0] || null : null;
 
     for (const attr of ['name', 'aria-label']) {
       const v = select.getAttribute(attr);
@@ -243,9 +244,10 @@ export class TdDropdown extends TdFormElement {
 
     this.options = items;
     // (1) the host `value` attribute resolves through the deferred initial selection; (2) else the live select value.
-    // (the placeholder was removed from `items`, so a live '' only matches a REAL empty-valued option)
+    // map the exact selected <option> to its item (a selected leading placeholder = no selection)
     if (!this.hasAttribute('value')) {
-      this._selectedItem = items.find((i) => String(i[vk]) === live) || null;
+      const idx = selOpt && selOpt !== ph ? opts.indexOf(selOpt) : -1;
+      this._selectedItem = idx >= 0 ? items[idx] : null;
     }
   }
 
@@ -349,7 +351,8 @@ export class TdDropdown extends TdFormElement {
   }
   _getValueKey() { return this.getAttribute('value-key') || 'value'; }
   _getLabelKey() { return this.getAttribute('label-key') || 'label'; }
-  _getInitialValue() { return this.getAttribute('value') || null; }
+  /** `null` = no `value` attribute; `''` is an explicit value (a real empty-valued option — review v0.17.0 ISSUE-5). */
+  _getInitialValue() { return this.hasAttribute('value') ? this.getAttribute('value') : null; }
 
   // --- Rendering ---
 
@@ -962,8 +965,9 @@ export class TdDropdown extends TdFormElement {
   /** @private First `options` assignment: select the `value` attribute (resolved later if not listed yet). */
   _setInitialValue() {
     const initialValue = this._getInitialValue();
-    if (!initialValue || this._selectedItem || this._pendingValue != null) return;
+    if (initialValue == null || this._selectedItem || this._pendingValue != null) return;
     const item = this._options.find((i) => String(i[this._getValueKey()]) === String(initialValue));
+    if (!item && initialValue === '') return; // value="" with no empty-valued option = "no selection", nothing pending
     if (item) {
       this._selectedItem = item;
       this._updateValueText();

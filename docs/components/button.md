@@ -287,7 +287,7 @@ hiệu năng khi có nhiều nút):
 | `text-color` | string (màu CSS) | tự động đen/trắng | Màu chữ khi có `color`. Không có `color` thì bị bỏ qua. |
 | `type` | string | `button` | `button` \| `submit` \| `reset` (danh sách trắng). |
 | `aria-label` | string | — | Chuyển xuống `<button>` / `<a>` bên trong. Bắt buộc với nút chỉ có icon. |
-| `href` | string (URL) | — | Có → render `<a>` (nút dạng link). Danh sách trắng: http(s), tương đối, `#`, `mailto:`, `tel:`. 0.17.0. |
+| `href` | string (URL) | — | Có → render `<a>` (nút dạng link). Danh sách trắng: `https:` (`http:` chỉ khi trang là http), tương đối, `#`, `mailto:`, `tel:`. 0.17.0. |
 | `target` | string | — | Chỉ với `href`: `_blank` \| `_self` \| `_parent` \| `_top`; `_blank` thêm `rel="noopener noreferrer"`. 0.17.0. |
 | `download` | string | — | Chỉ với `href`: chuyển xuống `<a download>`; tên file được lọc ký tự đường dẫn. 0.17.0. |
 
@@ -489,7 +489,7 @@ Xem [Trợ năng](../guides/accessibility.md).
 - Chữ (`label` hoặc nội dung thẻ) luôn được escape, chỉ hiện dưới dạng text.
 - `color` / `text-color` đi qua `safeColor` rồi được trình duyệt chuẩn hoá; giá trị không phải màu bị bỏ.
 - `type` theo danh sách trắng, `icon` class cũ được lọc từng class, nên không chèn được attribute hay HTML.
-- `href` theo danh sách trắng giao thức (http(s), tương đối, `#`, `mailto:`, `tel:`), chuẩn hoá như trình duyệt trước
+- `href` theo danh sách trắng giao thức (`https:`; `http:` chỉ khi trang là http; tương đối, `#`, `mailto:`, `tel:`), chuẩn hoá như trình duyệt trước
   khi kiểm (bỏ ký tự điều khiển/khoảng trắng hai đầu, tab/xuống dòng ở giữa: `" java\tscript:"` vẫn bị chặn).
   `target` theo danh sách trắng, `_blank` luôn có `rel="noopener noreferrer"`; tên file `download` được lọc.
 

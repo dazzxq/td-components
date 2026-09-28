@@ -106,7 +106,8 @@ namespace TdComponents {
          */
         public static function configure(string $baseUrl, string $kitDir): void
         {
-            $url = self::safeUrl($baseUrl);
+            // asset base: http(s) or relative — independent of the LINK policy (allowHttpLinks only gates td_button/td_link)
+            $url = self::safeUrl($baseUrl, true);
             if ($url === '' || $url[0] === '#' || preg_match('/^(mailto|tel):/i', $url)) {
                 throw new InvalidArgumentException('Td::configure: baseUrl must be an http(s) or relative URL');
             }
@@ -263,7 +264,7 @@ namespace TdComponents {
          * URL allowlist (same policy as <td-button href>): http:, https:, mailto:, tel:, relative paths and `#…`.
          * Tab/CR/LF and edge whitespace are stripped first (`java\tscript:`). Anything else → ''.
          */
-        public static function safeUrl(string $url): string
+        public static function safeUrl(string $url, bool $allowHttp = false): string
         {
             // Like the browser URL parser: tab/CR/LF removed anywhere, C0 controls + space trimmed at both ends.
             $url = trim((string) preg_replace('/[\t\r\n]+/', '', $url), "\x00..\x20\x7f");
@@ -273,7 +274,7 @@ namespace TdComponents {
             if (preg_match('/^([A-Za-z][A-Za-z0-9+.\-]*):/', $url, $m)) {
                 $scheme = strtolower($m[1]);
                 // http: only when the site opts in (Td::allowHttpLinks) — no HTTPS→HTTP downgrade by default
-                $ok = in_array($scheme, ['https', 'mailto', 'tel'], true) || ($scheme === 'http' && self::$allowHttp);
+                $ok = in_array($scheme, ['https', 'mailto', 'tel'], true) || ($scheme === 'http' && ($allowHttp || self::$allowHttp));
                 return $ok ? $url : '';
             }
             // No scheme: relative, root-relative, protocol-relative, query or fragment. A ':' before any '/', '?'

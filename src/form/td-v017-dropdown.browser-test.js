@@ -92,6 +92,35 @@ describe('v0.17.0 E2 — <select> upgrade', () => {
     expect(el.getValue()).to.equal('');
   });
 
+  it('selected leading placeholder vs selected later empty option are told apart (review ISSUE-4)', () => {
+    const f1 = mount('<form><td-dropdown><select name="t"><option value="" selected>Chọn</option><option value="a">A</option>'
+      + '<option value="">Không gắn</option></select></td-dropdown></form>');
+    expect(f1.querySelector('td-dropdown').getValue()).to.equal(null);
+    expect([...new FormData(f1).entries()]).to.deep.equal([]);
+    const f2 = mount('<form><td-dropdown><select name="t"><option value="">Chọn</option><option value="a">A</option>'
+      + '<option value="" selected>Không gắn</option></select></td-dropdown></form>');
+    const d2 = f2.querySelector('td-dropdown');
+    expect(d2.getValue()).to.equal('');
+    expect(d2.querySelector('.td-dropdown__value').textContent).to.equal('Không gắn');
+    expect([...new FormData(f2).entries()]).to.deep.equal([['t', '']]);
+  });
+
+  it('explicit value="" / pre-connect .value = "" select a real empty-valued option; without one → no selection (review ISSUE-5)', () => {
+    const opts = () => [{ value: 'a', label: 'A' }, { value: '', label: 'Không gắn' }];
+    const a = mount('<td-dropdown name="t" value=""></td-dropdown>');
+    a.options = opts();
+    expect(a.getValue()).to.equal('');
+    const b = document.createElement('td-dropdown');
+    b.options = opts();
+    b.value = '';
+    host.appendChild(b);
+    expect(b.getValue()).to.equal('');
+    const c = mount('<td-dropdown value=""></td-dropdown>');
+    c.options = [{ value: 'a', label: 'A' }];
+    expect(c.getValue()).to.equal(null);
+    expect(c._pendingValue).to.equal(null);
+  });
+
   it('pre-upgrade user choice of the empty-valued option is kept', () => {
     host.insertAdjacentHTML('beforeend', '<form><div id="later"></div></form>');
     const form = host.lastElementChild;

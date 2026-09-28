@@ -157,6 +157,12 @@ describe('php/td.php', opts, () => {
     assert.match(bad, /role="link" aria-disabled="true" tabindex="-1"/);
   });
 
+  test('Td::configure accepts an absolute http: asset base without allowHttpLinks (review v0.17.0 ISSUE-6)', () => {
+    const [res] = runPhp([{ fn: 'td_stylesheet_tag', args: [] }], { baseUrl: 'http://cdn.local/td/0.17.0' });
+    assert.ok(!res.error, `${res.error}: ${res.message}`);
+    assert.match(res.out, /href="http:\/\/cdn\.local\/td\/0\.17\.0\/td\.css"/);
+  });
+
   test('attrs: positive allowlist — form-owner / submitter overrides are dropped (security review v0.17.0)', () => {
     const out = php1('td_button', 'Đăng nhập', { type: 'submit', attrs: {
       formmethod: 'get', formnovalidate: true, form: 'victim', formenctype: 'text/plain', formtarget: '_blank',
