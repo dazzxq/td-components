@@ -179,6 +179,9 @@
 		   black in dark), a soft hover fill. Both follow the theme (dark remaps --td-accent / --td-color-hover). */
 		--td-btn-ghost-fg: var(--td-accent);
 		--td-btn-ghost-hover-bg: var(--td-color-hover);
+		/* hover label one step darker than the accent so it keeps ≥ 4.5:1 on the hover fill (the accent alone is ~4.5
+		   there); follows a site's --td-accent. Fallback without color-mix(): the fixed step in button.css. */
+		--td-btn-ghost-hover-fg: color-mix(in srgb, var(--td-btn-ghost-fg) 82%, #000);
 
 		/* ===== Checkbox / switch — v0.14.1: resting borders use the soft token (~1.5:1, below WCAG 1.4.11 by owner
 		   choice); hover uses --td-control-border-hover (~2.2:1, v0.14.2); switch on-colours still ≥ 3:1 ===== */

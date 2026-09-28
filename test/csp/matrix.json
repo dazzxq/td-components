@@ -637,6 +637,30 @@
         "button",
         ".td-btn__icon svg"
       ]
+    },
+    {
+      "state": "ghost",
+      "markup": "<td-button variant=\"ghost\">Huỷ</td-button>",
+      "selectors": [
+        "button",
+        ".td-btn__label"
+      ]
+    },
+    {
+      "state": "link",
+      "markup": "<td-button href=\"/docs\" variant=\"primary\">Tài liệu</td-button>",
+      "selectors": [
+        "a",
+        ".td-btn__label"
+      ]
+    },
+    {
+      "state": "link-disabled",
+      "markup": "<td-button href=\"/docs\" disabled>Tài liệu</td-button>",
+      "selectors": [
+        "a",
+        ".td-btn__label"
+      ]
     }
   ],
   "td-tabs": [

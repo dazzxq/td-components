@@ -406,9 +406,12 @@ Input field là tầng nội dung: luôn nền đặc, không bao giờ là kín
   `{host}-error`.
 - `aria-describedby` của control = các id **bạn** tự thêm vào (được giữ lại) + note (khi có gợi ý) + counter + error
   (khi có lỗi).
-- Render phía server: có thể in sẵn khối trên (bên trong `<td-input-field id="…">` hoặc đứng riêng chỉ với `td.css`).
-  Hợp đồng markup: `test/contracts/input-field.html`. Xem [WordPress & PHP](../guides/wordpress-php.md) và
-  [bảng class cũ](../upgrading/class-map.md) (đổi `.td-input*` → `.td-field*` ở 0.8.0).
+- Render phía server: `td_field('email', '', ['label' => 'Email', 'type' => 'email'])` của
+  [adapter PHP](../guides/php-adapter.md#td_field) in đúng khối `.td-field` trên với control native (chạy với chỉ
+  `td.css`, password manager nhận được). Không dùng PHP thì in tay khối trên (bên trong `<td-input-field id="…">` hoặc
+  đứng riêng). Các file `test/contracts/*.html` trong repo kit chỉ là fixture test (không nằm trong gói npm). Xem
+  [WordPress & PHP](../guides/wordpress-php.md) và [bảng class cũ](../upgrading/class-map.md) (đổi `.td-input*` →
+  `.td-field*` ở 0.8.0).
 
 ## Bàn phím & trợ năng
 

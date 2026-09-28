@@ -190,7 +190,7 @@ chỉ `active-color` mới tự tính màu chữ.
     <div class="td-pagination__controls">
       <button type="button" class="td-pagination__nav td-pagination__nav--prev" data-nav="prev"
               aria-label="Trang trước" aria-disabled="true">
-        <span class="td-pagination__icon" data-td-icon="prev"><svg class="td-icon td-icon--m">…</svg></span>
+        <span class="td-pagination__icon" data-td-icon="prev"><svg class="td-icon td-icon--m" data-icon="prev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m15 18-6-6 6-6"/></svg></span>
       </button>
       <ul class="td-pagination__pages">
         <li><button type="button" class="td-pagination__page" data-page="1" aria-label="Trang 1" aria-current="page">1</button></li>
@@ -205,8 +205,11 @@ chỉ `active-color` mới tự tính màu chữ.
 
 - Trang hiện tại: `.td-pagination__page[aria-current="page"]`.
 - Nút trước/sau ở đầu/cuối: `[aria-disabled="true"]` (vẫn focus được, click bị chặn).
-- Mẫu markup chuẩn: `test/contracts/pagination.html`. Server có thể render sẵn đúng cấu trúc này bên trong
-  `<td-pagination>`: khi JS chạy, component giữ `<nav>` có sẵn và chỉ cập nhật dòng thông tin + phần nút.
+- Render phía server: in sẵn đúng khối `<nav class="td-pagination">` ở trên bên trong `<td-pagination>` (icon
+  trước/sau: `<?= td_icon('prev') ?>` / `<?= td_icon('next') ?>` của [adapter PHP](../guides/php-adapter.md), hoặc slot
+  `data-td-icon` để JS điền — xem [Icons](icons.md#icon-trong-markup-render-sẵn)). Khi JS chạy, component giữ `<nav>` có
+  sẵn và chỉ cập nhật dòng thông tin + phần nút. Pagination không có helper PHP; fixture `test/contracts/pagination.html`
+  trong repo kit chỉ dùng cho test (không nằm trong gói npm).
 
 ## Bàn phím & trợ năng
 

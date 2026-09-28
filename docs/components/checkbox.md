@@ -200,7 +200,7 @@ Checkbox là control tầng nội dung: đặc, không bao giờ là kính. Xem 
   <label class="td-checkbox td-checkbox--sm">
     <input type="checkbox" class="td-checkbox__input">
     <span class="td-checkbox__mark" aria-hidden="true">
-      <span class="td-checkbox__icon" data-td-icon="check"><svg class="td-icon td-icon--m td-checkbox__svg" …></svg></span>
+      <span class="td-checkbox__icon" data-td-icon="check"><svg class="td-icon td-icon--m td-checkbox__svg" data-icon="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg></span>
     </span>
     <span class="td-checkbox__label">Đồng ý</span>
   </label>
@@ -218,8 +218,10 @@ Checkbox là control tầng nội dung: đặc, không bao giờ là kính. Xem 
 | `.td-checkbox__input:checked` / `:disabled` / `:focus-visible` / `[aria-invalid="true"]` | Trạng thái; CSS style `.td-checkbox__mark` phía sau bằng combinator `~`. |
 | `.td-field-error` | Dòng lỗi, nằm sau `<label>`, trong host. |
 
-Render phía server: in sẵn khối `<label class="td-checkbox …">` ở trên (trong `<td-checkbox>` hoặc đứng riêng với
-`td.css`). Hợp đồng markup: `test/contracts/checkbox.html`. Xem [WordPress & PHP](../guides/wordpress-php.md) và
+Render phía server: `td_checkbox('agree', false, 'Đồng ý')` của [adapter PHP](../guides/php-adapter.md#td_toggle-và-td_checkbox)
+in đúng khối `<label class="td-checkbox …">` ở trên (checkbox native, dấu tích vẽ sẵn, chạy với chỉ `td.css`). Không dùng
+PHP thì in tay khối trên (trong `<td-checkbox>` hoặc đứng riêng); dấu tích lấy theo
+[Icons › markup render sẵn](icons.md#icon-trong-markup-render-sẵn). Các file `test/contracts/*.html` trong repo kit chỉ là **fixture test** (không nằm trong gói npm, icon trong đó viết tắt) — đừng copy từ đó. Xem [WordPress & PHP](../guides/wordpress-php.md) và
 [bảng class cũ](../upgrading/class-map.md) (host property `--td-cb-color` đổi thành `--td-checkbox-color` ở 0.7.0).
 
 ## Bàn phím & trợ năng

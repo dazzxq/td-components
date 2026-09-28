@@ -100,7 +100,7 @@ dùng `icon="tên"` sẽ gọn hơn.
 
 | Attribute | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
-| `icon` | string | `inbox` | Tên icon registry. Chuỗi `<svg …>` thô **deprecated** (xem [Bảo mật](#bảo-mật)). |
+| `icon` | string | `inbox` | Tên icon registry. Chuỗi SVG thô **deprecated** (xem [Bảo mật](#bảo-mật)). |
 | `title` | string | `Không có dữ liệu` | Tiêu đề (escape). Vì `title` cũng là attribute HTML toàn cục, trình duyệt hiện nó thành tooltip khi hover lên component. |
 | `message` | string | `Chưa có mục nào được tạo.` | Câu giải thích (escape). |
 | `size` | `'sm'` \| `'md'` \| `'lg'` | `md` | Cỡ icon, chữ, padding. |
@@ -145,7 +145,7 @@ Khối là bề mặt đặc (lớp nội dung), không có glass. Nút hành đ
 <td-empty-state>
   <div class="td-empty-state td-empty-state--md [td-empty-state--compact]">
     <div class="td-empty-state__icon" aria-hidden="true">
-      <span data-td-icon="inbox" data-td-icon-size="40"><svg class="td-icon" data-icon="inbox" width="40" height="40">…</svg></span>
+      <span data-td-icon="inbox" data-td-icon-size="40"><svg width="40" height="40" class="td-icon" data-icon="inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span>
     </div>
     <h3 class="td-empty-state__title">Không có dữ liệu</h3>
     <p class="td-empty-state__message">Chưa có mục nào được tạo.</p>
@@ -156,9 +156,12 @@ Khối là bề mặt đặc (lớp nội dung), không có glass. Nút hành đ
 </td-empty-state>
 ```
 
-Với `iconNode` hoặc SVG chuỗi hợp lệ, `<svg>` nằm thẳng trong `.td-empty-state__icon` (không có `<span>` bọc). Mẫu markup
-chuẩn cho server render: `test/contracts/empty-state.html` (có thể render khối `.td-empty-state` độc lập, chỉ cần
-`td.css`).
+Với `iconNode` hoặc SVG chuỗi hợp lệ, phần tử svg nằm thẳng trong `.td-empty-state__icon` (không có `<span>` bọc). Mẫu markup
+chuẩn cho server render là khối ở trên (có thể render khối `.td-empty-state` độc lập, chỉ cần `td.css`). Icon: in slot
+`<span data-td-icon="inbox" data-td-icon-size="40"></span>` rồi gọi `fillIconSlots(root)`, hoặc in svg đầy đủ như
+trên (geometry từ `icons.json`). `td_icon()` của [adapter PHP](../guides/php-adapter.md) chỉ có cỡ `s`/`m`/`l`, không in
+được cỡ 40px. Empty state không có helper PHP; fixture `test/contracts/empty-state.html` trong repo kit chỉ dùng cho test
+(không nằm trong gói npm).
 
 ## Bàn phím & trợ năng
 
@@ -171,9 +174,9 @@ chuẩn cho server render: `test/contracts/empty-state.html` (có thể render k
 
 - `title`, `message`, `label` của action đều là **text** (escape / `textContent`).
 - `iconNode` là cửa cho SVG tin cậy: chỉ đưa SVG do code của bạn dựng, không đưa SVG lấy từ người dùng.
-- **Chuỗi `<svg …>` trong `icon` (deprecated)**: không bao giờ được gán `innerHTML`. Chuỗi được parse như
+- **Chuỗi SVG trong `icon` (deprecated)**: không bao giờ được gán `innerHTML`. Chuỗi được parse như
   `image/svg+xml`, và chỉ được vẽ lại (bằng `createElementNS`) khi là "hình học thuần":
-  - gốc là `<svg>` có `viewBox` hợp lệ, attribute gốc chỉ trong danh sách cho phép (`xmlns`, `viewBox`, `fill`, `stroke`,
+  - phần tử gốc là svg có `viewBox` hợp lệ, attribute gốc chỉ trong danh sách cho phép (`xmlns`, `viewBox`, `fill`, `stroke`,
     `stroke-width`, `width`, `height`, `class`…), không có `url(`/`javascript:`;
   - mỗi phần tử con là một trong `path`, `circle`, `rect`, `line`, `polyline`, `polygon`, `ellipse` với attribute hình
     học hợp lệ (không nhóm `<g>`, không `<use>`, `<script>`, `<foreignObject>`, `style`, `on*`, `href`);

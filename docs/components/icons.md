@@ -3,8 +3,8 @@
 # Icon — `tdIcon()` và `<td-icon>`
 
 Mọi icon của kit được vẽ **theo tên** từ một registry duy nhất (hình học Lucide, tên do td đặt). Bạn gọi
-`tdIcon('close')` để nhận về một `<svg>` dựng sẵn, hoặc đặt thẻ `<td-icon name="close">` trong HTML. Site thêm icon
-riêng bằng `registerIcons()` với **dữ liệu** (không phải chuỗi SVG). Không hardcode chuỗi `<svg>` trong code site nữa;
+`tdIcon('close')` để nhận về một phần tử SVG dựng sẵn, hoặc đặt thẻ `<td-icon name="close">` trong HTML. Site thêm icon
+riêng bằng `registerIcons()` với **dữ liệu** (không phải chuỗi SVG). Không hardcode chuỗi SVG trong code site nữa;
 cũng không dùng font icon (Font Awesome…) cho UI mới.
 
 | | |
@@ -101,7 +101,7 @@ Nút đã có chữ → để icon trang trí (mặc định, `aria-hidden="true
 cell.appendChild(tdIcon('success', { label: 'Đã duyệt' }));
 ```
 
-`label` khác rỗng → `<svg role="img" aria-label="Đã duyệt">` kèm `<title>Đã duyệt</title>` (hover thấy tooltip). `label`
+`label` khác rỗng → svg có `role="img" aria-label="Đã duyệt"` kèm `<title>Đã duyệt</title>` (hover thấy tooltip). `label`
 được đặt bằng `textContent`/attribute, không bao giờ thành HTML.
 
 ### 3. Kích thước
@@ -143,7 +143,7 @@ const ok = tdIcon('success', { class: 'my-icon--ok' }); // thêm class của sit
 | `size` | `s` \| `m` \| `l` \| số nguyên | `m` | Chuỗi toàn chữ số (`"24"`) được hiểu là px. |
 | `label` | string | — | Có → icon mang nghĩa (`role="img"`). |
 
-Đổi attribute → vẽ lại. Nếu server đã render sẵn `<svg class="td-icon" data-icon="…">` đúng tên bên trong thẻ, lần gắn
+Đổi attribute → vẽ lại. Nếu server đã render sẵn `svg.td-icon[data-icon]` đúng tên bên trong thẻ, lần gắn
 đầu tiên **giữ nguyên** SVG đó (không vẽ trùng). `<td-icon>` có `display: inline-flex; line-height: 0`, không ảnh hưởng bố
 cục.
 
@@ -156,12 +156,12 @@ icon="search"`, thanh công cụ của lightbox, mục của menu… Icon bạn 
 
 | Hàm | Chữ ký | Mô tả |
 |---|---|---|
-| `tdIcon` | `(name: string, opts?: { size?: 's'\|'m'\|'l'\|number, label?: string, class?: string }) => SVGSVGElement \| null` | Dựng `<svg>` bằng `createElementNS`. Tên không tồn tại → `null` + `console.warn('tdIcon: unknown icon "…"')`. Mỗi lần gọi trả về một node **mới**. |
+| `tdIcon` | `(name: string, opts?: { size?: 's'\|'m'\|'l'\|number, label?: string, class?: string }) => SVGSVGElement \| null` | Dựng phần tử SVG bằng `createElementNS`. Tên không tồn tại → `null` + `console.warn('tdIcon: unknown icon "…"')`. Mỗi lần gọi trả về một node **mới**. |
 | `registerIcons` | `(defs: Record<string, IconDef>) => void` | Đăng ký icon của site. Ném lỗi nếu có mục không hợp lệ (xem dưới). |
 | `hasIcon` | `(name: string) => boolean` | Tên đã có trong registry chưa. |
 | `listIcons` | `() => string[]` | Mọi tên hiện có (core + đã đăng ký), theo thứ tự thêm. |
 | `fillIconSlots` | `(root: ParentNode) => void` | Tìm mọi `[data-td-icon="tên"]` trong `root` và thay nội dung bằng icon (tuỳ chọn `data-td-icon-size`, `data-td-icon-class`). Dùng khi bạn render HTML chuỗi (xem [base-element](base-element.md)). Gọi lại nhiều lần vẫn đúng. |
-| `svgStringToDefinition` | `(str: string) => IconDef \| null` | Chuyển chuỗi SVG thành định nghĩa đã kiểm tra, hoặc `null`. Dùng cho dữ liệu cũ (ví dụ `td-empty-state icon="<svg…>"`). |
+| `svgStringToDefinition` | `(str: string) => IconDef \| null` | Chuyển chuỗi SVG thành định nghĩa đã kiểm tra, hoặc `null`. Dùng cho dữ liệu cũ (ví dụ `icon` của `td-empty-state` là chuỗi SVG). |
 | `renderIconDefinition` | `(def: IconDef, opts?: { size?, class? }) => SVGSVGElement \| null` | Vẽ một định nghĩa mà không đăng ký (`data-icon="custom"`). Định nghĩa được kiểm tra lại, không hợp lệ → `null`. |
 
 (Trước 0.16.0 module còn export `_validateIconDefinition`; từ 0.16.0 hàm này là nội bộ, không còn export. Kiểm tra
@@ -196,7 +196,7 @@ Gọi `registerIcons()` **một lần**, sớm (trong file khởi động của 
 | Tên | Khớp `^[a-z][a-z0-9-]{0,63}$` (chữ thường, số, gạch nối, bắt đầu bằng chữ). |
 | Không ghi đè | Tên đã tồn tại (kể cả core) → `Error: registerIcons: "x" already exists`. Nên đặt tiền tố site: `site-…`, `dwp-…`. |
 | Tất cả hoặc không gì | Một mục sai → **không mục nào** trong lần gọi đó được đăng ký. |
-| Định nghĩa | Phải là object (chuỗi `'<svg…>'` → lỗi "must be an object"). |
+| Định nghĩa | Phải là object (chuỗi SVG → lỗi "must be an object"). |
 | `viewBox` | 4 số cách nhau một khoảng trắng, ví dụ `0 0 24 24`. |
 | `paint` | `'stroke'` hoặc `'fill'`. |
 | `nodes` | Mảng không rỗng, tối đa **64** phần tử, mỗi phần tử `[tag, attrs]`. |
@@ -208,13 +208,14 @@ Lỗi là `TypeError` (hoặc `Error` với tên trùng) có thông điệp nêu
 `icon "site-b": tag "use" not allowed`. Định nghĩa được **sao chép và đóng băng** khi đăng ký, sửa object gốc sau đó
 không ảnh hưởng.
 
-Chuyển một icon Lucide/SVG có sẵn sang định nghĩa: lấy các phần tử con của `<svg>` (thường là `path`/`circle`/`rect`),
+Chuyển một icon Lucide/SVG có sẵn sang định nghĩa: lấy các phần tử con của thẻ svg (thường là `path`/`circle`/`rect`),
 chép attribute hình học vào `nodes`; bỏ `class`, `stroke`, `fill` của từng hình. Hoặc dùng `svgStringToDefinition(chuỗi)`
 trong console để thử — trả `null` nghĩa là SVG có thành phần không được phép.
 
 ## Markup (hợp đồng SSR)
 
-`tdIcon('close')` sinh ra đúng markup sau; adapter PHP (dwp, 135) render cùng markup từ `icons.json`:
+`tdIcon('close')` sinh ra đúng markup sau; `td_icon('close')` của [adapter PHP](../guides/php-adapter.md#td_icon-và-icon-riêng-của-site)
+(`php/td.php`) render cùng markup từ `icons.json`:
 
 ```html
 <svg class="td-icon td-icon--m" data-icon="close" viewBox="0 0 24 24" fill="none"
@@ -226,9 +227,31 @@ trong console để thử — trả `null` nghĩa là SVG có thành phần khô
 - Có `label` → thay `aria-hidden` bằng `role="img" aria-label="…"` và thêm `<title>` làm con đầu tiên.
 - Cỡ số → `width`/`height`, không có class `td-icon--*`.
 
-PHP đọc dữ liệu từ `node_modules/@dazzxq/td-components/src/icons/icons.json` (export `./icons.json`). Cấu trúc:
+Adapter PHP đọc dữ liệu từ `src/icons/icons.json` của thư mục kit đã vendor (export `./icons.json`). Cấu trúc:
 `{ "icons": { "<tên>": { "lucide": "…", "viewBox": "…", "paint": "stroke|fill", "nodes": [["path", {"d": "…"}], …] } } }`.
-Xem [WordPress & PHP](../guides/wordpress-php.md).
+Xem [Adapter PHP](../guides/php-adapter.md) và [WordPress & PHP](../guides/wordpress-php.md).
+
+### Icon trong markup render sẵn
+
+Trong các mẫu markup của tài liệu (nút, switch, menu, dropdown…), chỗ nào có icon thì **đừng** tự gõ SVG: chọn một
+trong ba cách dưới, cả ba ra cùng một `svg.td-icon[data-icon]` đầy đủ `viewBox` + hình.
+
+1. **PHP (khuyên dùng khi render phía server):** `<?= td_icon('check', 's') ?>` — cỡ `s`/`m`/`l` (giá trị khác → `m`),
+   tham số thứ ba là nhãn (icon mang nghĩa). Tên không tồn tại → chuỗi rỗng.
+2. **Slot + JS:** in slot rỗng `<span data-td-icon="check" data-td-icon-size="s" aria-hidden="true"></span>` rồi gọi
+   `fillIconSlots(root)` sau khi DOM sẵn sàng. `data-td-icon-size` nhận `s`/`m`/`l` hoặc số px (`"40"`);
+   `data-td-icon-class` thêm class cho svg. Gọi lại nhiều lần vẫn đúng (nội dung slot được thay).
+
+   ```js
+   import { fillIconSlots } from '@dazzxq/td-components/icons'; // hoặc từ '@dazzxq/td-components'
+   fillIconSlots(document.querySelector('#toolbar'));
+   ```
+
+3. **HTML tĩnh không PHP, không JS:** chép nguyên geometry từ `src/icons/icons.json` theo đúng khuôn ở trên (ví dụ
+   `check` là `<path d="M20 6 9 17l-5-5"/>`, `down` là `<path d="m6 9 6 6 6-6"/>`). Cách này không tự cập nhật khi kit
+   đổi icon — chỉ dùng khi không còn lựa chọn khác.
+
+Component tự render (thẻ `<td-*>`, `TdMenu`, `TdModal`…) tự điền icon của nó — ba cách trên chỉ cho markup **bạn** in ra.
 
 ## Tuỳ biến giao diện
 

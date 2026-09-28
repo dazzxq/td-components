@@ -413,7 +413,7 @@ Sau khi đổi tint, tự kiểm tra tương phản chữ (kit chỉ đo các gi
 ```html
 <td-button variant="primary" icon="download">
   <button class="td-btn td-btn--primary td-btn--md" type="button">
-    <span class="td-btn__icon" data-td-icon="download" data-td-icon-size="s" aria-hidden="true"><svg …></svg></span>
+    <span class="td-btn__icon" data-td-icon="download" data-td-icon-size="s" aria-hidden="true"><svg class="td-icon td-icon--s" data-icon="download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg></span>
     <span class="td-btn__label">Tải</span>
     <span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden>
       <svg class="td-spinner__svg" viewBox="0 0 50 50" aria-hidden="true" focusable="false">
@@ -455,10 +455,19 @@ Nút dạng link (`href`, 0.17.0) có cùng cấu trúc con, chỉ khác thẻ n
 <!-- loading:  <a class="td-btn …" role="link" aria-disabled="true" aria-busy="true" tabindex="0"> (không href) -->
 ```
 
-**Render phía server (PHP/WordPress):** `td.css` style trực tiếp `<button class="td-btn td-btn--primary td-btn--md"
-type="button">…</button>`, không cần JS, miễn giữ đúng cấu trúc trên (hợp đồng markup được test ở
-`test/contracts/button.html`). Khi đó các tính năng JS (`run()`, loading tự động, icon registry tự điền) không có. Xem
-[WordPress & PHP](../guides/wordpress-php.md) và [bảng class cũ](../upgrading/class-map.md).
+**Render phía server (PHP/WordPress):** dùng `td_button()` / `td_link()` của [adapter PHP](../guides/php-adapter.md#td_button-và-td_link)
+(`php/td.php`) — in `<button class="td-btn …">` / `<a class="td-btn …">` native đúng cấu trúc bên trong ở trên, icon đã
+vẽ sẵn, `td.css` style trực tiếp, không cần JS:
+
+```php
+<?= td_button('Tải', ['variant' => 'primary', 'icon' => 'download']) ?>
+<?= td_link('Tài khoản', '/tai-khoan', ['variant' => 'primary']) ?>
+```
+
+Không dùng PHP thì in tay đúng khối `<button class="td-btn …">` ở trên (icon: `td_icon()`, slot `data-td-icon` +
+`fillIconSlots()`, hoặc geometry từ `icons.json` — xem [Icons](icons.md#icon-trong-markup-render-sẵn)). Markup tĩnh không
+có các tính năng JS (`run()`, loading tự động). Các file `test/contracts/*.html` trong repo kit chỉ là **fixture test** (không nằm trong gói npm, icon trong đó viết tắt) — đừng copy từ đó. Xem thêm [WordPress & PHP](../guides/wordpress-php.md) và
+[bảng class cũ](../upgrading/class-map.md).
 
 ## Bàn phím & trợ năng
 

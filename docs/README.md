@@ -8,7 +8,7 @@ token `--td-*` chạm được tới nó. Toàn bộ giao diện nằm trong **m
 Triết lý: **lõi nhỏ + hook**. Site tuỳ biến bằng token CSS, attribute/property và hook (callback) — không bao giờ sửa
 code của kit.
 
-Phiên bản hiện tại: **0.15.1** · Lịch sử thay đổi: [CHANGELOG.md](../CHANGELOG.md)
+Phiên bản hiện tại: **0.17.0** (tag git `v0.17.0`) · Lịch sử thay đổi: [CHANGELOG.md](../CHANGELOG.md)
 
 ---
 
@@ -18,6 +18,7 @@ Phiên bản hiện tại: **0.15.1** · Lịch sử thay đổi: [CHANGELOG.md]
 |---|---|
 | Biết máy/trình duyệt/site cần gì | [Yêu cầu](getting-started/requirements.md) |
 | Cài vào project (Vite, PHP thuần, WordPress) | [Cài đặt](getting-started/installation.md) |
+| Render markup component từ PHP (SSR) | [Adapter PHP](guides/php-adapter.md) |
 | Có một trang chạy được trong 5 phút | [Bắt đầu nhanh](getting-started/quick-start.md) |
 | Hiểu kit hoạt động ra sao (attribute, property, event, form, lớp nổi) | [Cách hoạt động](concepts/how-it-works.md) |
 | Tra cứu một component | [Danh sách component](components/README.md) |
@@ -61,11 +62,13 @@ Xem [danh sách đầy đủ](components/README.md). Tóm tắt:
 - [Bảo mật](guides/security.md) — text vs HTML, các "cửa" HTML tin cậy, URL, checklist cho site.
 - [CSP](guides/csp.md) — header nên dùng, nonce, những gì kit không bao giờ làm.
 - [WordPress & PHP](guides/wordpress-php.md) — tích hợp vào dwp và 135.
+- [Adapter PHP](guides/php-adapter.md) — `php/td.php`: import map, `td.css`, markup render phía server (nút, ô nhập,
+  dropdown, switch, checkbox, icon).
 
 ## Nâng cấp
 
 - [Quy trình nâng cấp](upgrading/README.md) — chính sách version, từng bước, checklist sau nâng cấp.
-- [Thay đổi phá vỡ theo phiên bản](upgrading/breaking-changes.md) — 0.4 → 0.15, cần sửa gì.
+- [Thay đổi phá vỡ theo phiên bản](upgrading/breaking-changes.md) — 0.4 → 0.17, cần sửa gì.
 - [Bảng đổi class](upgrading/class-map.md) — class cũ (Tailwind/DCMS) → class mới.
 
 ---

@@ -44,7 +44,7 @@ Mọi `import` **bên trong** kit là đường dẫn tương đối (`../base/t
 Các file cần copy lên server (đúng mục `files` của `package.json`):
 
 ```text
-td-components/0.15.1/
+td-components/0.17.0/
   td.css
   index.js
   package.json            (adapter PHP đọc danh sách exports từ đây)
@@ -57,10 +57,10 @@ Lấy từ tag git hoặc `npm pack`:
 
 ```bash
 # trong repo td-components, đúng tag cần dùng
-git checkout v0.15.1
-npm pack                              # tạo dazzxq-td-components-0.15.1.tgz
-tar -xzf dazzxq-td-components-0.15.1.tgz
-mv package /đường/dẫn/site/assets/vendor/td-components/0.15.1
+git checkout v0.17.0
+npm pack                              # tạo dazzxq-td-components-0.17.0.tgz
+tar -xzf dazzxq-td-components-0.17.0.tgz
+mv package /đường/dẫn/site/assets/vendor/td-components/0.17.0
 ```
 
 ### Đặt phiên bản vào đường dẫn, không dùng `?ver=` cho module
@@ -72,21 +72,42 @@ mv package /đường/dẫn/site/assets/vendor/td-components/0.15.1
 - `?ver=` chỉ gắn vào file entry; các import tương đối bên trong **không** mang theo `?ver=`, nên khi nâng cấp trình
   duyệt vẫn dùng file con cũ trong cache → trộn hai phiên bản.
 
-Cách đúng: **mỗi phiên bản một thư mục** (`…/td-components/0.15.1/`), URL module không có query string, và cho thư mục
+Cách đúng: **mỗi phiên bản một thư mục** (`…/td-components/0.17.0/`), URL module không có query string, và cho thư mục
 đó cache dài hạn. Nâng cấp = thư mục mới = URL mới cho mọi file.
 
 ```nginx
 # nginx: file có version trong đường dẫn → cache 1 năm, immutable
 location ^~ /assets/vendor/td-components/ {
     add_header Cache-Control "public, max-age=31536000, immutable";
-    types { text/javascript js; text/css css; application/json json; }
+    types { text/javascript js mjs; text/css css; application/json json; }
 }
 ```
 
 `td.css` không bị vấn đề nhận dạng module, nhưng để thống nhất cứ lấy nó từ cùng thư mục có version.
 
-Server phải trả `.js` với `Content-Type: text/javascript` (nginx/Apache mặc định đã đúng); sai MIME thì trình duyệt từ
-chối chạy module.
+### MIME của module JS
+
+Server phải trả mọi module JS — `.js`, và cả `.mjs` nếu site có dùng — với `Content-Type: text/javascript`. Trình
+duyệt **từ chối** chạy `<script type="module">` / `import` khi MIME không phải JavaScript (lỗi `Failed to load module
+script … MIME type "…"`). Kit chỉ ship `.js` (nginx/Apache map sẵn), nhưng file `mime.types` của **nginx cũ không có
+`.mjs`**: file bị trả `application/octet-stream`, và nếu site gửi `X-Content-Type-Options: nosniff` thì trình duyệt chặn
+luôn module đó (thường gặp với module riêng của site hoặc thư viện thứ ba như `purify.es.mjs`). Thêm map:
+
+```nginx
+# nginx: trong http { }, ngay SAU dòng `include mime.types;` (các khối types cùng cấp được cộng dồn)
+types { text/javascript mjs; }
+```
+
+Đừng đặt khối `types { … }` này một mình trong `server { }` / `location { }`: ở cấp dưới, `types` **thay hẳn** bảng
+kế thừa (mọi đuôi khác mất MIME). Khối `location` ở trên liệt kê đủ `js mjs css json` là vì lý do đó.
+
+```apache
+# Apache: .htaccess hoặc vhost
+AddType text/javascript .js .mjs
+```
+
+Kiểm tra: `curl -sI https://site/…/td-button.js | grep -i content-type` → `text/javascript` (hoặc
+`application/javascript`, cũng được chấp nhận).
 
 ### Hằng số phiên bản
 
@@ -95,7 +116,7 @@ Khai báo một chỗ duy nhất:
 ```php
 <?php
 // dwp: trong dwp-core; 135: trong config/bootstrap
-const TD_VERSION = '0.15.1';
+const TD_VERSION = '0.17.0';
 ```
 
 ## Import map cho PHP thuần
@@ -145,7 +166,7 @@ dữ liệu `script_module_data_{$id}` cần **6.7+**. dwp đang chạy 7.0.2.
 Kit là hạ tầng dùng chung cho mọi site dwp → đặt trong plugin engine, **không** trong theme:
 
 ```text
-engine/dwp-core/assets/vendor/td-components/0.15.1/   ← kit (không sửa file bên trong)
+engine/dwp-core/assets/vendor/td-components/0.17.0/   ← kit (không sửa file bên trong)
 sites/aetv/aehh-theme/assets/css/td-overrides.css     ← skin: chỉ ghi đè token --td-* (unlayered)
 ```
 
@@ -159,7 +180,7 @@ sites/aetv/aehh-theme/assets/css/td-overrides.css     ← skin: chỉ ghi đè t
 ```php
 <?php
 // engine/dwp-core — đăng ký một lần cho front và admin
-const TD_VERSION = '0.15.1';
+const TD_VERSION = '0.17.0';
 
 function dwp_td_base_url(): string {
     return DWP_CORE_URL . 'assets/vendor/td-components/' . TD_VERSION . '/';
@@ -620,7 +641,7 @@ Tên field dạng mảng PHP (`tags[]`, `meta[title]`) khớp với key dạng c
 ## Nâng cấp phiên bản
 
 1. Đọc [Nâng cấp](../upgrading/README.md) và [Breaking changes](../upgrading/breaking-changes.md) cho các bản ở giữa.
-2. Copy bản mới vào thư mục **mới** (`…/td-components/0.16.0/`); giữ thư mục cũ tới khi xong.
+2. Copy bản mới vào thư mục **mới** (ví dụ `…/td-components/0.18.0/`); giữ thư mục cũ tới khi xong.
 3. Đổi `TD_VERSION`. Mọi URL (CSS + module) đổi theo, cache cũ không còn được dùng.
 4. Kiểm tra trên staging: form (submit, validation, lỗi server), modal, lightbox, menu, hovercard, trang có CSP (console
    không có `Refused to …`).
@@ -634,7 +655,7 @@ Tên field dạng mảng PHP (`tags[]`, `meta[title]`) khớp với key dạng c
 | Sau nâng cấp, component chạy nửa cũ nửa mới | dùng `?ver=` thay vì thư mục theo phiên bản | đặt phiên bản vào đường dẫn |
 | `Failed to resolve module specifier "@dazzxq/td-components/…"` (WordPress) | module của site không khai báo kit là dependency, nên WP không đưa vào import map | thêm id vào mảng `$deps` khi `wp_register_script_module` |
 | Như trên (PHP thuần) | import map in sau module đầu tiên, thiếu nonce, hoặc thiếu mục | in import map sớm trong `<head>`, có nonce, sinh từ `package.json` |
-| Module không chạy, console báo MIME type | server trả `.js` sai `Content-Type` | cấu hình `text/javascript` |
+| Module không chạy, console báo MIME type | server trả `.js`/`.mjs` sai `Content-Type` (nginx cũ không map `.mjs`; kèm `nosniff` là bị chặn) | map `text/javascript` cho `js`/`mjs` ([MIME của module JS](#mime-của-module-js)) |
 | Click ảnh mở hai viewer / không mở | `@dwp/lightbox` và `TdLightbox.bind({ attrPrefix: 'dwp' })` cùng chạy | chỉ bật một |
 | Hovercard trả nội dung của người chưa đăng nhập (WP) | REST với cookie nhưng không có `X-WP-Nonce` | route riêng / admin-ajax / hook `content()` tự gửi nonce |
 | Giao diện 135 lệch sau khi nạp `td.css` | CSS `td-*` cũ của 135 cùng layer và token | không nạp cả hai trên cùng trang |

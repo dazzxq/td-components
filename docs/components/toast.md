@@ -179,9 +179,9 @@ mờ. Tắt kính (`<html data-td-glass="off">`, reduced transparency, tương p
 <div id="td-toast-container" class="td-toasts">
   <div class="td-toast td-toast--success td-glass-surface td-glass-surface--strong"
        role="status" aria-live="polite" data-state="open">
-    <span class="td-toast__icon" aria-hidden="true"><svg class="td-icon …" data-icon="success"></svg></span>
+    <span class="td-toast__icon" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg></span>
     <span class="td-toast__message">Đã lưu</span>
-    <button type="button" class="td-toast__close" aria-label="Đóng"><svg … data-icon="close"></svg></button>
+    <button type="button" class="td-toast__close" aria-label="Đóng"><svg class="td-icon td-icon--s" data-icon="close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
   </div>
 </div>
 ```

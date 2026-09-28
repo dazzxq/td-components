@@ -7,7 +7,7 @@ plugin, gọi API tìm kiếm, dịch nhãn…) thì kit không đoán, mà mở
 **mọi** hook / callback / option / object nhãn của từng component, kèm chữ ký, giá trị trả về, thời điểm được gọi và
 **điều gì xảy ra khi hook ném lỗi** — rồi đến 8 công thức dùng thực tế.
 
-Nguồn sự thật là source code (`src/**`); mỗi dòng dưới đây đã được đối chiếu với file JS tương ứng ở bản 0.15.1.
+Nguồn sự thật là source code (`src/**`); mỗi dòng dưới đây đối chiếu với file JS tương ứng; nếu tài liệu và source lệch nhau, tin source.
 
 ## Mục lục
 

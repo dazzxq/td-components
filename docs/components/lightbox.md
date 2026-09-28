@@ -145,7 +145,9 @@ const unbind = TdLightbox.bind(document.querySelector('#article'), {
 });
 ```
 
-Hợp đồng markup (golden fixture cho adapter SSR của 135 / dwp): `test/contracts/lightbox.html`.
+Markup trigger chuẩn cho server render là các ví dụ ở trên (bảng attribute đầy đủ:
+[WordPress & PHP › Lightbox](../guides/wordpress-php.md#lightbox-tdlightboxbindroot--attrprefix--mặc-định-prefix-td)). Lightbox không
+có helper PHP; fixture `test/contracts/lightbox.html` trong repo kit chỉ dùng cho test (không nằm trong gói npm).
 
 ### 4. Đọc markup của dwp — `attrPrefix` và `filter` (0.15.0)
 

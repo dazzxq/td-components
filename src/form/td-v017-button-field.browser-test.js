@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { sendMouse, resetMouse } from '@web/test-runner-commands';
 import './td-input-field.js';
 import { safeButtonHref } from './td-button.js';
 
@@ -276,6 +277,38 @@ describe('E3 td-button: link button (href)', () => {
     expect(b.getAttribute('aria-busy')).to.equal('true');
     expect(b.hasAttribute('tabindex')).to.equal(false);
   });
+});
+
+describe('E3 ghost hover keeps AA contrast (integration fix)', () => {
+  const rgb = (c) => {
+    const cv = document.createElement('canvas').getContext('2d');
+    cv.fillStyle = '#000'; cv.fillStyle = c; cv.fillRect(0, 0, 1, 1);
+    const d = cv.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2], d[3] / 255];
+  };
+  const lum = ([r, g, b]) => [r, g, b].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; })
+    .reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
+  const over = (top, base) => top.slice(0, 3).map((v, i) => v * top[3] + base[i] * (1 - top[3]));
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  for (const theme of ['light', 'dark']) {
+    it(`${theme}: hovered ghost label vs hover fill on the page background ≥ 4.5`, async () => {
+      if (theme === 'dark') document.documentElement.setAttribute('data-td-theme', 'dark');
+      try {
+        const page = rgb(getComputedStyle(document.documentElement).getPropertyValue('--td-color-bg').trim());
+        const el = mount('<td-button variant="ghost">Huỷ bỏ</td-button>');
+        const b = el.querySelector('.td-btn');
+        const r = b.getBoundingClientRect();
+        await sendMouse({ type: 'move', position: [Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2)] });
+        await new Promise((res) => setTimeout(res, 200));
+        const cs = getComputedStyle(b);
+        const bg = over(rgb(cs.backgroundColor), page);
+        const fg = over(rgb(cs.color), bg);
+        expect(ratio(fg, bg)).to.be.at.least(4.5);
+      } finally {
+        await resetMouse();
+        document.documentElement.removeAttribute('data-td-theme');
+      }
+    });
+  }
 });
 
 describe('E3 td-button: ghost variant', () => {

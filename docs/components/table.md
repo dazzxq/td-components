@@ -373,7 +373,7 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
           <th class="td-table__th" scope="col" data-col="0" data-col-key="name" [aria-sort="ascending|descending"]>
             <button type="button" class="td-table__sort" data-sort-col="0">
               <span class="td-table__sort-label">Tên</span>
-              <span class="td-table__sort-icon" aria-hidden="true" data-sort-icon="up|down|sort"><svg class="td-icon">…</svg></span>
+              <span class="td-table__sort-icon" aria-hidden="true" data-sort-icon="sort"><svg width="14" height="14" class="td-icon" data-icon="sort" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg></span>  <!-- up / down khi đang sort -->
             </button>
           </th>
         </tr></thead>
@@ -398,7 +398,8 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
 - Hàng rỗng: `tr.td-table__empty-row > td.td-table__empty[colspan] > td-empty-state`.
 - Ô ellipsis: `td.td-table__cell--ellipsis > div.td-table__truncate[title]`.
 - Id tiêu đề: `{id của host}-title`, host không có id thì `td-table-{n}-title`.
-- Mẫu markup chuẩn (golden fixture): `test/contracts/table.html`.
+- Markup chuẩn là khối ở trên (bảng luôn do JS render từ `columns` / `data`; không có helper PHP). Fixture
+  `test/contracts/table.html` trong repo kit chỉ dùng cho test (không nằm trong gói npm).
 
 ## Bàn phím & trợ năng
 

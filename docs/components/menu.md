@@ -332,14 +332,14 @@ Menu (tạo khi mở, gỡ khi đóng; `{m}` = `td-menu-{n}`):
   <button type="button" class="td-menu__item" role="menuitem" tabindex="-1"
           aria-labelledby="{m}-label-0" aria-describedby="{m}-hint-0" data-item="share">
     <span class="td-menu__label" id="{m}-label-0">Chia sẻ</span>
-    <span class="td-menu__icon" data-td-icon="link" aria-hidden="true"><svg…></svg></span>
+    <span class="td-menu__icon" data-td-icon="link" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
     <span class="td-menu__hint" id="{m}-hint-0">Sao chép liên kết</span>
   </button>
   <button type="button" class="td-menu__item td-menu__item--danger" role="menuitem" tabindex="-1">…</button>
   <div class="td-menu__separator" role="separator"></div>
   <button type="button" class="td-menu__item" role="menuitemcheckbox" tabindex="-1" aria-checked="true">
     <span class="td-menu__label">Chế độ tối</span>
-    <span class="td-menu__check" data-td-icon="check" aria-hidden="true"><svg…></svg></span>
+    <span class="td-menu__check" data-td-icon="check" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg></span>
   </button>
   <a class="td-menu__item" role="menuitem" tabindex="-1" href="https://example.com/"
      target="_blank" rel="noopener noreferrer"><span class="td-menu__label">Mở trang</span></a>
@@ -361,12 +361,18 @@ Nút do `TdMenu.button()` tạo (site render server-side có thể in đúng mar
 
 ```html
 <button type="button" class="td-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-label="Tùy chọn">
-  <span class="td-menu-btn__icon" data-td-icon="more" aria-hidden="true"><svg…></svg></span>
+  <span class="td-menu-btn__icon" data-td-icon="more" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="more" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></span>
   <span class="td-menu-btn__label">Thêm</span>  <!-- chỉ khi có label -->
 </button>
 ```
 
-Hợp đồng markup đầy đủ (golden fixture): `test/contracts/menu.html`.
+Trên server (nút mở menu có sẵn trong HTML, dùng với `bind()` hoặc `data-td-menu`), in nút như trên nhưng để **slot
+rỗng** `<span class="td-menu-btn__icon" data-td-icon="more" aria-hidden="true"></span>` rồi gọi `fillIconSlots(root)`
+(từ `@dazzxq/td-components/icons` hoặc barrel) khi DOM sẵn sàng; hoặc in thẳng icon bằng `<?= td_icon('more') ?>` của
+[adapter PHP](../guides/php-adapter.md) bên trong `.td-menu-btn__icon` (xem
+[Icons › markup render sẵn](icons.md#icon-trong-markup-render-sẵn)). Phần `.td-menu` luôn do JS tạo khi mở — server không
+in nó. Menu không có helper PHP; markup chuẩn là các khối ở trên. Fixture `test/contracts/menu.html` trong repo kit chỉ
+dùng cho test (không nằm trong gói npm, icon trong đó viết tắt).
 
 ### Trigger dùng chung (ownership)
 

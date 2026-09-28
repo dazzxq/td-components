@@ -320,7 +320,7 @@ Một card **duy nhất** (singleton) cho cả trang, là con của `<body>`, t�
 <!-- trạng thái tải / lỗi -->
 <div class="td-hovercard …" data-state="loading">
   <p class="td-hovercard__status" role="status">
-    <span class="td-hovercard__spinner td-spinner td-spinner--sm" aria-hidden="true"><svg class="td-spinner__svg">…</svg></span>
+    <span class="td-hovercard__spinner td-spinner td-spinner--sm" aria-hidden="true"><svg class="td-spinner__svg" viewBox="0 0 50 50" aria-hidden="true" focusable="false"><circle class="td-spinner__track" cx="25" cy="25" r="20"></circle><circle class="td-spinner__arc" cx="25" cy="25" r="20"></circle></svg></span>
     <span class="td-hovercard__text">Đang tải…</span>
   </p>
 </div>
@@ -333,7 +333,9 @@ Một card **duy nhất** (singleton) cho cả trang, là con của `<body>`, t�
 | `hidden` | Có khi card đóng |
 
 Site render server-side (dwp/135) chỉ cần in **trigger** (`<a>`/`<button>` với `data-td-hovercard` hoặc
-`data-td-hovercard-template`) và `<template>`; card luôn do JS tạo. Hợp đồng markup: `test/contracts/hovercard.html`.
+`data-td-hovercard-template`) và `<template>`; card luôn do JS tạo. Markup trigger: xem ví dụ ở đầu trang và
+[WordPress & PHP › Hovercard](../guides/wordpress-php.md#hovercard-tdhovercardbindallroot) (không có helper PHP; fixture
+`test/contracts/hovercard.html` trong repo kit chỉ dùng cho test, không nằm trong gói npm).
 
 ## Bàn phím & trợ năng
 

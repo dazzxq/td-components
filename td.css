@@ -189,6 +189,9 @@
 		   black in dark), a soft hover fill. Both follow the theme (dark remaps --td-accent / --td-color-hover). */
 		--td-btn-ghost-fg: var(--td-accent);
 		--td-btn-ghost-hover-bg: var(--td-color-hover);
+		/* hover label one step darker than the accent so it keeps ≥ 4.5:1 on the hover fill (the accent alone is ~4.5
+		   there); follows a site's --td-accent. Fallback without color-mix(): the fixed step in button.css. */
+		--td-btn-ghost-hover-fg: color-mix(in srgb, var(--td-btn-ghost-fg) 82%, #000);
 
 		/* ===== Checkbox / switch — v0.14.1: resting borders use the soft token (~1.5:1, below WCAG 1.4.11 by owner
 		   choice); hover uses --td-control-border-hover (~2.2:1, v0.14.2); switch on-colours still ≥ 3:1 ===== */
@@ -332,6 +335,7 @@
 		--td-btn-secondary-fg: #f5f5f7;
 		--td-btn-secondary-border: rgb(255 255 255 / 12%);
 		--td-btn-secondary-hover: #3a3a3e;
+		--td-btn-ghost-hover-fg: color-mix(in srgb, var(--td-btn-ghost-fg) 70%, #fff); /* lighter step on the dark fill */
 		--td-btn-disabled-bg: #202024;
 		--td-btn-disabled-fg: #6b6b73;                 /* greyed out, ≥ 2.2:1 (v0.14.3) */
 		--td-btn-disabled-border: rgb(255 255 255 / 6%);
@@ -1129,6 +1133,13 @@
 	/* ghost hover: the fill only (no glow). :not(.td-btn--custom) keeps the specificity above the color-mix() rule. */
 	.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
 		background-color: var(--td-btn-ghost-hover-bg);
+		color: #1d4ed8; /* engines without color-mix(): fixed darker step */
+	}
+
+	@supports (color: color-mix(in srgb, red 50%, transparent)) {
+		.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+			color: var(--td-btn-ghost-hover-fg);
+		}
 	}
 
 	.td-btn:active:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {

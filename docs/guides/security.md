@@ -49,7 +49,7 @@ Bạn **không cần** escape trước (escape trước sẽ hiện `&amp;lt;` l
 | `td-table` column `render(row, i)` trả về Node | Node (tin cậy) | khuyên dùng |
 | `td-table` column `render(row, i)` trả về chuỗi | **HTML thô** | hatch |
 | `td-tabs` `label`, `td-empty-state` `title`/`message`, `td-pagination` | text | |
-| `td-empty-state` `icon="<svg…>"` (deprecated) | chuỗi SVG **được lọc** | chỉ giữ hình học trong allowlist; `script`, `foreignObject`, `use`, `on*`, `style`, `url()` → bị từ chối, hiện icon `inbox` |
+| `td-empty-state` `icon` là chuỗi SVG (deprecated) | chuỗi SVG **được lọc** | chỉ giữ hình học trong allowlist; `script`, `foreignObject`, `use`, `on*`, `style`, `url()` → bị từ chối, hiện icon `inbox` |
 | `td-empty-state` `iconNode` | SVGElement tin cậy | |
 | `registerIcons()` | dữ liệu (tag + thuộc tính hình học trong allowlist) | chuỗi markup SVG bị từ chối |
 | `TdHovercard` `content()` trả về Node / `template` | Node / `<template>` (clone) | khuyên dùng |

@@ -6,7 +6,7 @@ Trang này trả lời bốn câu hỏi: kit đánh số phiên bản thế nào
 khi có sự cố, và cần kiểm tra gì sau khi nâng cấp. Chi tiết "bản nào đổi gì, site phải sửa gì" nằm ở
 [breaking-changes.md](breaking-changes.md); bảng đổi tên class cũ → class mới nằm ở [class-map.md](class-map.md).
 
-Phiên bản hiện tại: **0.15.1** (`package.json` → `"version": "0.15.1"`, tag git `v0.15.1`).
+Phiên bản hiện tại: **0.17.0** (`package.json` → `"version": "0.17.0"`, tag git `v0.17.0`).
 
 ## Chính sách phiên bản
 
@@ -23,7 +23,7 @@ Những điều cần nhớ:
 
 - **Patch vẫn có thể đổi giao diện.** Ví dụ 0.14.1 → 0.14.3 đổi viền control, nút secondary, màu nút disabled —
   không đổi API nhưng site nhìn khác. "Patch = an toàn tuyệt đối" là giả định sai với kit này.
-- **Mỗi bản phát hành là một tag git `vX.Y.Z`** trên nhánh `main` (ví dụ `v0.15.0`). Kit không publish lên npm
+- **Mỗi bản phát hành là một tag git `vX.Y.Z`** trên nhánh `main` (ví dụ `v0.17.0`). Kit không publish lên npm
   registry; site cài trực tiếp từ GitHub theo tag.
 - **[CHANGELOG.md](../../CHANGELOG.md) là nguồn sự thật.** Mỗi bản có mục `## x.y.z` chia thành `Breaking`,
   `Behaviour changes`, `Changed (visual)`, `Added`, `Fixed`, `Security`. Tài liệu upgrading chỉ diễn giải lại và
@@ -38,10 +38,10 @@ Những điều cần nhớ:
 ```bash
 # Dòng khai báo trong package.json của site
 grep td-components package.json
-# "@dazzxq/td-components": "github:dazzxq/td-components#v0.14.4"
+# "@dazzxq/td-components": "github:dazzxq/td-components#v0.16.0"
 
 # Phiên bản thực sự đang nằm trong node_modules
-# (đọc thẳng file: package.json của kit không nằm trong "exports" nên không require() được)
+# (đọc thẳng file — chạy được với mọi bản; từ 0.16.0 cũng có thể require('@dazzxq/td-components/package.json'))
 node -p "JSON.parse(require('fs').readFileSync('node_modules/@dazzxq/td-components/package.json','utf8')).version"
 ```
 
@@ -50,7 +50,7 @@ Site PHP / WordPress không dùng npm: xem số phiên bản trong tên thư m�
 
 ## Quy trình nâng cấp từng bước
 
-Ví dụ dưới đây nâng từ `v0.14.4` lên `v0.15.0`. Nhảy nhiều bản một lúc (ví dụ 0.8.0 → 0.15.0) vẫn theo đúng các bước
+Ví dụ dưới đây nâng từ `v0.16.0` lên `v0.17.0`. Nhảy nhiều bản một lúc (ví dụ 0.8.0 → 0.17.0) vẫn theo đúng các bước
 này, chỉ là bước 1 phải đọc **mọi** bản nằm giữa.
 
 ### 1. Đọc trước khi đổi
@@ -60,13 +60,14 @@ này, chỉ là bước 1 phải đọc **mọi** bản nằm giữa.
 3. Nếu site có CSS tự viết nhắm vào class bên trong component (ví dụ `.td-modal-header`, `.td-input`), tra
    [class-map.md](class-map.md).
 4. Tuỳ chọn: xem diff giữa hai tag trên GitHub, ví dụ
-   `https://github.com/dazzxq/td-components/compare/v0.14.4...v0.15.0`. Chú ý các thư mục `src/styles/` (giao
-   diện), `test/contracts/` (markup chuẩn mà adapter server-side phải xuất ra) và `td.css`.
+   `https://github.com/dazzxq/td-components/compare/v0.16.0...v0.17.0`. Chú ý các thư mục `src/styles/` (giao
+   diện), `php/` (adapter PHP chính thức — markup render phía server), `test/contracts/` (fixture test của repo: đổi ở
+   đây nghĩa là markup component render ra đã đổi) và `td.css`.
 
 ### 2. Tạo nhánh riêng cho việc nâng cấp
 
 ```bash
-git switch -c chore/td-components-0.15.0
+git switch -c chore/td-components-0.17.0
 ```
 
 Làm vậy để rollback chỉ là bỏ nhánh.
@@ -76,7 +77,7 @@ Làm vậy để rollback chỉ là bỏ nhánh.
 Cách nhanh nhất là để npm tự sửa `package.json` và `package-lock.json`:
 
 ```bash
-npm install github:dazzxq/td-components#v0.15.0
+npm install github:dazzxq/td-components#v0.17.0
 ```
 
 Hoặc sửa tay dòng dependency rồi chạy `npm install`:
@@ -84,7 +85,7 @@ Hoặc sửa tay dòng dependency rồi chạy `npm install`:
 ```json
 {
   "dependencies": {
-    "@dazzxq/td-components": "github:dazzxq/td-components#v0.15.0"
+    "@dazzxq/td-components": "github:dazzxq/td-components#v0.17.0"
   }
 }
 ```
@@ -130,7 +131,7 @@ comm -23 /tmp/site-tokens.txt /tmp/kit-tokens.txt
 ```
 
 (Đổi `assets/` thành thư mục CSS của site.) Dòng nào in ra ở bước 3 thì tra
-[breaking-changes.md](breaking-changes.md). Tính tới 0.15.1, token duy nhất từng bị gỡ khỏi `td.css` là
+[breaking-changes.md](breaking-changes.md). Tính tới 0.17.0, token duy nhất từng bị gỡ khỏi `td.css` là
 `--td-glass-secondary-film` (0.14.3); ngoài ra custom property `--td-cb-color` của checkbox (không nằm trong
 `td.css`) đã đổi tên thành `--td-checkbox-color` ở 0.7.0.
 
@@ -149,7 +150,7 @@ Mỗi thay đổi kiểu này được ghi trong mục của bản tương ứng
 ### 8. Kiểm tra bằng mắt
 
 - Mở các trang thật của site: form, bảng, modal, toast, menu, trang có ảnh (lightbox).
-- So với bản kit mới trong demo của chính kit: clone repo kit, `git checkout v0.15.0`, `npm install`, rồi
+- So với bản kit mới trong demo của chính kit: clone repo kit, `git checkout v0.17.0`, `npm install`, rồi
   `npm run demo` (trang `demo.html`) hoặc `npm run storybook`. Nếu site nhìn khác demo, nhiều khả năng CSS của site
   đang ghi đè — xem [Khi thấy giao diện khác lạ](#khi-thấy-giao-diện-khác-lạ).
 - Thử cả chế độ tối nếu site bật `<html data-td-theme="dark">`, và chế độ tắt glass `<html data-td-glass="off">`
@@ -173,20 +174,20 @@ file đầu tiên **không** phá cache cho các file mà nó import. Cách ch�
 dẫn thư mục:
 
 ```bash
-# Trong repo của site: lấy đúng tag và copy những gì kit publish (src, index.js, td.css)
-git clone --depth 1 --branch v0.15.0 https://github.com/dazzxq/td-components.git /tmp/td
-mkdir -p public/vendor/td-components-0.15.0
-cp -R /tmp/td/src /tmp/td/index.js /tmp/td/td.css /tmp/td/package.json public/vendor/td-components-0.15.0/
+# Trong repo của site: lấy đúng tag và copy những gì kit publish (src, index.js, td.css, php/, package.json)
+git clone --depth 1 --branch v0.17.0 https://github.com/dazzxq/td-components.git /tmp/td
+mkdir -p public/vendor/td-components-0.17.0
+cp -R /tmp/td/src /tmp/td/index.js /tmp/td/td.css /tmp/td/php /tmp/td/package.json public/vendor/td-components-0.17.0/
 ```
 
-Giữ nguyên thư mục bản cũ (ví dụ `public/vendor/td-components-0.14.4/`) cho tới khi chắc chắn không cần rollback.
+Giữ nguyên thư mục bản cũ (ví dụ `public/vendor/td-components-0.16.0/`) cho tới khi chắc chắn không cần rollback.
 
 ### Đổi đường dẫn `td.css` và import map ở một chỗ
 
 ```php
 <?php
 // config.php — một hằng số duy nhất, rollback = đổi lại dòng này
-const TD_VERSION = '0.15.0';
+const TD_VERSION = '0.17.0';
 const TD_BASE = '/vendor/td-components-' . TD_VERSION;
 ```
 
@@ -208,6 +209,10 @@ Nếu site bật CSP với nonce, thẻ `<link>` và `<script type="importmap">`
 [csp.md](../guides/csp.md). Mỗi mục trong import map phải trỏ đúng file theo bảng `exports` trong `package.json` của
 kit; khi bản mới thêm component mà site muốn dùng, thêm mục tương ứng.
 
+Từ 0.17.0 không cần gõ tay: adapter `php/td.php` sinh `<link>` và import map từ `package.json` của thư mục đã vendor
+(`td_stylesheet_tag($nonce)`, `td_import_map_tag($extra, $nonce)`) — đổi `TD_VERSION` là mọi URL đổi theo, component mới
+tự có trong map. Xem [Adapter PHP](../guides/php-adapter.md#css-và-import-map).
+
 ### WordPress: truyền version khi enqueue
 
 WordPress tự thêm `?ver=` vào URL. Với `td.css` như vậy là đủ (CSS không import file khác của kit); với module vẫn
@@ -215,7 +220,7 @@ nên dùng thư mục có số phiên bản như trên.
 
 ```php
 <?php
-$td_ver  = '0.15.0';
+$td_ver  = '0.17.0';
 $td_base = get_stylesheet_directory_uri() . '/vendor/td-components-' . $td_ver;
 
 wp_enqueue_style( 'td-components', $td_base . '/td.css', array(), $td_ver );
@@ -223,16 +228,24 @@ wp_enqueue_style( 'td-components', $td_base . '/td.css', array(), $td_ver );
 
 ### Markup render phía server
 
-Nếu PHP tự in markup cho component (ví dụ markup `data-td-lightbox*` cho `TdLightbox.bind()`, hoặc adapter
-`td_ui_*` in class BEM), so markup của bạn với file chuẩn trong `test/contracts/*.html` của bản mới. Những file đó
-là hợp đồng markup; khi chúng đổi giữa hai tag, adapter phải đổi theo.
+Đường SSR chính thức từ 0.17.0 là **adapter PHP của kit** (`php/td.php`: `td_button`, `td_link`, `td_field`,
+`td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon` — xem [Adapter PHP](../guides/php-adapter.md)). Adapter nằm trong
+chính thư mục kit đã vendor, nên nâng cấp kit là nâng cấp luôn markup — không phải tự đồng bộ. Nếu site còn adapter
+riêng (ví dụ `src/Ui/markup.php` cũ của 135), chuyển sang adapter của kit theo
+[Chuyển từ adapter riêng của 135](../guides/php-adapter.md#chuyển-từ-adapter-riêng-của-135).
+
+Với component không có helper PHP (menu, table, tabs, pagination, empty-state, trigger lightbox, hovercard…), markup
+chuẩn được ghi **ngay trong trang tài liệu** của component đó (mục markup / SSR); khi nâng cấp, so markup site in ra
+với trang đó của bản mới và đọc [breaking-changes.md](breaking-changes.md). Các file `test/contracts/*.html` trong repo
+kit chỉ là **fixture test** (không nằm trong gói npm, icon trong đó viết tắt) — xem diff của chúng giữa hai tag để biết
+markup có đổi hay không, nhưng đừng copy nguyên văn.
 
 ## Ghim phiên bản và rollback
 
 ### Luôn ghim theo tag
 
 ```json
-"@dazzxq/td-components": "github:dazzxq/td-components#v0.15.0"
+"@dazzxq/td-components": "github:dazzxq/td-components#v0.17.0"
 ```
 
 Không dùng `github:dazzxq/td-components` trần (không có `#tag`): npm sẽ lấy commit mới nhất của nhánh mặc định lúc
@@ -243,13 +256,13 @@ cài, mỗi máy có thể ra một bản khác nhau, và bản đó có thể l
 Site dùng npm:
 
 ```bash
-npm install github:dazzxq/td-components#v0.14.4
+npm install github:dazzxq/td-components#v0.16.0
 ```
 
 rồi hoàn tác các sửa đổi CSS/JS bạn đã làm cho bản mới (vì vậy nên nâng cấp trên nhánh riêng — rollback chỉ là
 `git revert` commit nâng cấp hoặc bỏ nhánh).
 
-Site PHP / WordPress: đổi lại hằng số phiên bản (`TD_VERSION = '0.14.4'`) — thư mục bản cũ vẫn còn trên server.
+Site PHP / WordPress: đổi lại hằng số phiên bản (`TD_VERSION = '0.16.0'`) — thư mục bản cũ vẫn còn trên server.
 
 Lưu ý khi rollback qua bản có đổi class (0.7–0.10) hoặc đổi dependency (0.11): CSS và code của site đã sửa cho bản
 mới sẽ không khớp bản cũ. Rollback phải đi cùng việc hoàn tác những sửa đổi đó.
@@ -305,7 +318,7 @@ Nếu vẫn chưa rõ:
 
 ## Xem thêm
 
-- [breaking-changes.md](breaking-changes.md) — từng bản 0.4 → 0.15: cái gì đổi, site phải sửa gì.
+- [breaking-changes.md](breaking-changes.md) — từng bản 0.4 → 0.17: cái gì đổi, site phải sửa gì.
 - [class-map.md](class-map.md) — class legacy → class BEM hiện tại.
 - [CHANGELOG.md](../../CHANGELOG.md) — nguồn sự thật cho mọi thay đổi.
 - [theming.md](../customization/theming.md) — token `--td-*`, glass, dark theme.

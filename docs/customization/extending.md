@@ -172,7 +172,8 @@ Nếu component hữu ích cho mọi site, nó thuộc về repo kit chứ khôn
 `docs/internal/conventions.md` và `docs/internal/architecture.md`): JS trong `src/<nhóm>/td-<tên>.js`; CSS trong
 `src/styles/components/<tên>.css` bọc `@layer td.component { … }` (token trong `@layer td.tokens { :root { … } }`),
 thêm vào `src/styles/manifest.json` giữa `glass.css` và `utilities.css`, chạy `npm run build:css`; thêm subpath vào
-`exports` của `package.json`, fixture markup `test/contracts/<tên>.html`, test, story, và cập nhật CHANGELOG.
+`exports` của `package.json`, fixture test `test/contracts/<tên>.html` (chỉ trong repo, không ship), markup mẫu trong
+trang tài liệu của component, test, story, và cập nhật CHANGELOG.
 
 ## Đăng ký icon
 
@@ -257,9 +258,11 @@ Không muốn đăng ký tên? Các chỗ sau nhận `SVGElement` tin cậy do s
 
 ### Render phía server (PHP)
 
-Adapter PHP đọc `@dazzxq/td-components/icons.json` (file nguồn của icon core) để in ra cùng markup
-`<svg class="td-icon td-icon--m" data-icon="…">`. Icon đăng ký bằng JS **không** có trong file đó; nếu cần SSR, site tự
-giữ định nghĩa của mình ở dạng dữ liệu dùng chung cho cả PHP và JS. Xem [../guides/wordpress-php.md](../guides/wordpress-php.md).
+`td_icon('close')` của [adapter PHP](../guides/php-adapter.md#td_icon-và-icon-riêng-của-site) (`php/td.php`) đọc
+`src/icons/icons.json` (export `./icons.json`, file nguồn của icon core) và in đúng markup `tdIcon()` của JS (xem
+[Icons › Markup](../components/icons.md#markup-hợp-đồng-ssr)). Icon đăng ký bằng `registerIcons()` của JS **không** có
+trong file đó: giữ định nghĩa của site ở một file JSON dữ liệu dùng chung, đăng ký nó cho PHP bằng
+`TdComponents\Td::registerIcons(…)` và cho JS bằng `registerIcons(…)`. Xem thêm [WordPress & PHP](../guides/wordpress-php.md).
 
 ## Registry menu cho plugin
 
@@ -350,7 +353,7 @@ Giá trị mặc định từng khoá: [hooks.md](hooks.md) (mục của từng 
 | TdFormValidation | Option `messages` theo từng field (áp cả cho control td) |
 | Control form td | `setError(message)` thay thông điệp hiển thị |
 
-### Chữ **chưa** dịch được (cố định trong source 0.16.0)
+### Chữ **chưa** dịch được (cố định trong source)
 
 Biết trước để không mất công tìm:
 

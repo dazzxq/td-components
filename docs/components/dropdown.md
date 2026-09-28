@@ -107,7 +107,9 @@ Attribute `value` chỉ là **lựa chọn ban đầu**: nó được áp ở l�
 tải, thì chờ danh sách sau). Gán lại `options` về sau **giữ** lựa chọn hiện tại của người dùng nếu giá trị đó vẫn có trong
 danh sách mới, không kéo về `value`.
 
-Render phía server (PHP): chỉ cần in `value` và nạp options bằng JS:
+Render phía server (PHP) — cách đơn giản nhất là `td_dropdown()` của [adapter PHP](../guides/php-adapter.md#td_dropdown):
+in `<td-dropdown>` bọc `<select>` native (chạy khi chưa có JS, được nâng cấp khi module nạp — xem
+[mục 9](#9-nâng-cấp-từ-select-native-ssr--không-js)). Nếu danh sách lớn/động, in `value` và nạp options bằng JS:
 
 ```php
 <td-dropdown id="category" name="category_id" label="Danh mục"
@@ -215,8 +217,10 @@ Nạp component bằng `<script type="module">` (mặc định chạy sau khi HT
 **trước** khi parser đọc tới `<select>` bên trong (ví dụ `async` chạy sớm trên trang dài), component sẽ render trước khi
 select tồn tại và không nâng cấp được.
 
-Option `value=""` (dạng "Chọn…") được giữ làm một option bình thường: chọn nó = chưa có giá trị (không gửi, `required`
-báo thiếu) như native.
+Option `value=""` **đứng đầu** (dạng "Chọn…") là **placeholder**, giống quy ước của `td_dropdown()` trong
+[adapter PHP](../guides/php-adapter.md#td_dropdown): nó không thành một mục chọn được; chữ của nó thành attribute
+`placeholder` của host (nếu host chưa đặt); nếu nó là lựa chọn mặc định thì dropdown = chưa có giá trị (không gửi,
+`required` báo thiếu, reset về chưa chọn). Option `value=""` ở vị trí khác vẫn là một mục bình thường.
 
 ## Attribute
 
@@ -352,7 +356,7 @@ Xem thêm: [Theming](../customization/theming.md), [Styling](../customization/st
     <button type="button" class="td-dropdown__trigger" id="{host}-trigger" role="combobox" aria-haspopup="listbox"
             aria-expanded="false" aria-controls="{host}-listbox" [aria-activedescendant] [aria-required] [aria-invalid]>
       <span class="td-dropdown__value" [data-placeholder]>Hà Nội</span>
-      <span class="td-dropdown__arrow" data-td-icon="down" aria-hidden="true"><svg …></svg></span>
+      <span class="td-dropdown__arrow" data-td-icon="down" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg></span>
     </button>
   </div>
   <span class="td-field-error" id="{host}-error" data-for="{host}">…</span>   <!-- chỉ khi có lỗi -->

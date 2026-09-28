@@ -8,7 +8,7 @@ duyệt; không component nào bắt bạn phải dùng chúng.
 
 | | |
 |---|---|
-| Import | `@dazzxq/td-components/dom-utils` · `@dazzxq/td-components/datetime` (hoặc `TdDateTime` từ entry gốc) |
+| Import | `@dazzxq/td-components/dom-utils` · `@dazzxq/td-components/datetime` (hoặc từ entry gốc `@dazzxq/td-components`: `TdDateTime` và — từ 0.17.0 — các hàm dom-utils) |
 | Loại | Tiện ích (hàm / lớp tĩnh) |
 | Form-associated | không |
 | Từ phiên bản | `TdDateTime` 0.1.0 · `dom-utils` 0.4.0 · helper "parts" ngày giờ 0.10.0 |
@@ -27,6 +27,25 @@ changes khi đổi):
 | `./icons.json` | dữ liệu icon (cho PHP / SSR) | [Icons](icons.md#markup-hợp-đồng-ssr) |
 | `./form-validation` | `TdFormValidation` | [Form validation](form-validation.md) |
 | `./base`, `./form-element`, `./sample` | `TdBaseElement` (có `escapeHtml()`, `safeColor()`), `TdFormElement`, `<td-sample>` | [Base element](base-element.md) |
+
+### Import từ barrel
+
+Entry gốc `@dazzxq/td-components` (`index.js`) re-export **đích danh** (không `export *`) các hàm công khai sau, từ
+0.17.0:
+
+| Nguồn | Tên re-export từ `index.js` |
+|---|---|
+| `./icons` | `tdIcon`, `registerIcons`, `hasIcon`, `listIcons`, `fillIconSlots` |
+| `./dom-utils` | `slugify`, `formatFileSize`, `formatNumber`, `debounce`, `throttle`, `parseColorToRgb`, `relativeLuminance`, `contrastRatio`, `getAccessibleTextColor` |
+| `./datetime` | `TdDateTime` (từ trước 0.17.0) |
+
+```js
+import { tdIcon, fillIconSlots, slugify, debounce, TdDateTime } from '@dazzxq/td-components';
+```
+
+Không có trong barrel (import theo subpath): `svgStringToDefinition`, `renderIconDefinition` (`./icons`), các helper
+"parts" ngày giờ (`./datetime`), `parseChipItems` (`./chip-input`). Import barrel cũng **đăng ký mọi custom element**
+(side effect); chỉ cần hàm tiện ích thì import subpath (`./dom-utils`, `./icons`) để không kéo cả kit.
 
 ### Tiện ích nội bộ (không export)
 

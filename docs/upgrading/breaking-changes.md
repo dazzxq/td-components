@@ -1,8 +1,8 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.16)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.17)
 
-Trang này liệt kê, cho từng bản từ **0.16.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
+Trang này liệt kê, cho từng bản từ **0.17.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
 [CHANGELOG.md](../../CHANGELOG.md); trang này chỉ gom lại theo góc nhìn "tôi phải làm gì" và thêm ví dụ trước/sau.
 Quy trình nâng cấp chung nằm ở [README.md](README.md).
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.17.0](#0170) | Đổi hành vi (nhỏ) | `dropdown.value` trả giá trị đang chọn; `<td-dropdown>` chứa `<select>` giờ được nâng cấp. |
 | [0.16.0](#0160) | Đổi hành vi | `input-field.value`, slider `required`/`step`/mặc định, dropdown giữ/bỏ lựa chọn + `onSelect`+`onChange`, `confirm` giữ mở khi `onConfirm` trả `false`, định dạng `toAbsolute`, token `:root`, dark accent. |
 | [0.15.1](#0151) | Không có thay đổi phá vỡ | Không. Tài liệu viết lại; sửa con trỏ trigger video lightbox. |
 | [0.15.0](#0150) | Không có thay đổi phá vỡ | Không bắt buộc. Con trỏ trên trigger lightbox đổi. |
@@ -40,6 +41,25 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.17.0
+
+**Đổi hành vi nhỏ + nhiều bổ sung** (adapter PHP chính thức, ghost/link button, password meter, scroll-top…). Nguồn:
+[CHANGELOG.md](../../CHANGELOG.md) 0.17.0.
+
+1. **`td-dropdown.value` trả giá trị đang chọn** (giống `td-input-field.value` từ 0.16.0); gán `.value` = `setValue()`.
+   Code đọc `.value` để lấy giá trị ban đầu phải đọc `getAttribute('value')`.
+2. **`<td-dropdown>` chứa `<select>` con giờ được nâng cấp:** kit đọc các `<option>` thành `options`, lấy `name` /
+   `required` / `disabled` từ select, rồi **gỡ** select (component submit thay). Trước 0.17.0 select con bị bỏ qua. Site
+   từng tự đặt `<select>` bên trong làm fallback và tự gán `options` bằng JS: `options` gán bằng JS trước khi gắn vẫn
+   thắng; nếu không muốn nâng cấp, đưa select ra ngoài host. `<select multiple>` không được nâng cấp (giữ native).
+3. **Site đã tự viết adapter PHP** (ví dụ `135/src/Ui/*`): thay bằng `php/td.php` của kit — tên hàm và option tương
+   thích; xem [Adapter PHP](../guides/php-adapter.md) mục chuyển từ adapter riêng. Khác biệt: `td_link` in `a.td-btn`
+   dạng ghost (giữ kiểu cũ bằng `'class' => '…'`), `td_toggle` không có `value` mặc định (gửi `on`).
+
+Site phải sửa: chỉ khi dựa vào các hành vi cũ ở mục 1–3.
 
 ---
 

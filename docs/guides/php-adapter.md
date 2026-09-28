@@ -18,7 +18,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 
 ## Mục lục
 
-- [Khi nào dùng helper, khi nào dùng `<td-*>`](#khi-nào-dùng-helper-khi-nào-dùng-td)
+- [Khi nào dùng helper, khi nào dùng `<td-*>`](#khi-nào-dùng-helper-khi-nào-dùng-td-)
 - [Cài đặt và cấu hình](#cài-đặt-và-cấu-hình)
 - [CSS và import map](#css-và-import-map)
 - [Bảng hàm](#bảng-hàm)
@@ -42,7 +42,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_checkbox` | `label.td-checkbox` + `input.td-checkbox__input` **native** | Không | Không |
 | `td_toggle` | `label.td-switch` + `input[role=switch]` **native** | Không | Không |
 | `td_dropdown` | host `<td-dropdown>` bọc `<select>` **native** | Không (chạy như select) | **Có** — khi nạp module dropdown |
-| `td_icon` | `<svg class="td-icon">` đủ hình | Không | — |
+| `td_icon` | `svg.td-icon` đủ hình (có `viewBox`) | Không | — |
 
 - Bốn helper đầu in **control native đứng riêng** mang đúng class BEM của component. `td.css` tạo dáng giống hệt
   component (có test so computed style), còn submit, `required`, `pattern`, `min`/`max`, `type=month`,
@@ -118,7 +118,8 @@ Luật:
   xem [WordPress & PHP](wordpress-php.md#đăng-ký-css-và-module).
 
 Server phải trả `.js` (và `.mjs` nếu site dùng) với `Content-Type: text/javascript`; nginx cũ không map `.mjs`, kèm
-`X-Content-Type-Options: nosniff` thì module bị chặn.
+`X-Content-Type-Options: nosniff` thì module bị chặn. Cấu hình nginx/Apache:
+[WordPress & PHP › MIME của module JS](wordpress-php.md#mime-của-module-js).
 
 ## Bảng hàm
 
@@ -183,9 +184,9 @@ Markup (cấu trúc con giống `<td-button>`):
 
 ```html
 <button class="td-btn td-btn--primary td-btn--md" type="submit">
-  <span class="td-btn__icon" aria-hidden="true"><svg class="td-icon td-icon--s" data-icon="check" …>…</svg></span>
+  <span class="td-btn__icon" aria-hidden="true"><svg class="td-icon td-icon--s" data-icon="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg></span>
   <span class="td-btn__label">Lưu</span>
-  <span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden><svg class="td-spinner__svg" …>…</svg></span>
+  <span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden><svg class="td-spinner__svg" viewBox="0 0 50 50" aria-hidden="true" focusable="false"><circle class="td-spinner__track" cx="25" cy="25" r="20"></circle><circle class="td-spinner__arc" cx="25" cy="25" r="20"></circle></svg></span>
 </button>
 ```
 
@@ -320,8 +321,8 @@ Markup switch (`input` native ẩn thị giác, nhận focus/Space/label):
 <label class="td-switch td-switch--md">
   <input type="checkbox" role="switch" class="td-switch__input" name="wifi" checked>
   <span class="td-switch__track" aria-hidden="true"><span class="td-switch__thumb">
-    <span class="td-switch__icon td-switch__icon--off"><svg class="td-icon td-icon--m" data-icon="close" …>…</svg></span>
-    <span class="td-switch__icon td-switch__icon--on"><svg class="td-icon td-icon--m" data-icon="check" …>…</svg></span>
+    <span class="td-switch__icon td-switch__icon--off"><svg class="td-icon td-icon--m" data-icon="close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
+    <span class="td-switch__icon td-switch__icon--on"><svg class="td-icon td-icon--m" data-icon="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg></span>
   </span></span>
   <span class="td-switch__label">Wifi</span>
 </label>
@@ -421,6 +422,7 @@ Khác biệt hành vi so với `markup.php` của 135 (cố ý):
 | `href` biến mất trên nút link | URL bị whitelist chặn (`javascript:`, `data:`, `blob:`…), hoặc nút `disabled`/`loading` | dùng URL http(s)/tương đối |
 | attribute trong `attrs` không được in | tên bị chặn (`on*`, `style`, `href`…) hoặc trùng attribute helper đã in | dùng option tương ứng; event handler gắn trong module JS |
 | Icon không hiện | tên sai / icon site chưa `registerIcons` | kiểm `TdComponents\Td::hasIcon('…')` |
+| `Failed to load module script … MIME type "application/octet-stream"` (hoặc rỗng) | server không map đuôi `.mjs` (nginx cũ) / `.js` sang JavaScript; `X-Content-Type-Options: nosniff` khiến trình duyệt chặn | nginx: `types { text/javascript mjs; }` trong `http { }` ngay sau `include mime.types;` — Apache: `AddType text/javascript .js .mjs` ([chi tiết](wordpress-php.md#mime-của-module-js)) |
 | Dropdown không đổi thành component | chưa import `@dazzxq/td-components/dropdown`, hoặc select có `multiple` (không upgrade) | import module; `multiple` giữ select native |
 
 ## Xem thêm

@@ -190,7 +190,7 @@ Các thẻ chia đều chiều rộng (`flex: 1 1 0`). td-tabs không có glass 
     <span class="td-tabs__indicator" aria-hidden="true"></span>
     <button type="button" role="tab" class="td-tabs__tab" id="t-tab-0" data-tab-id="profile"
             aria-selected="true" tabindex="0" aria-controls="panel-profile">
-      <span class="td-tabs__icon" data-td-icon="upload" data-td-icon-size="s" aria-hidden="true"><svg class="td-icon td-icon--s">…</svg></span>
+      <span class="td-tabs__icon" data-td-icon="upload" data-td-icon-size="s" aria-hidden="true"><svg class="td-icon td-icon--s" data-icon="upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg></span>
       <span class="td-tabs__label">Hồ sơ</span>
     </button>
     …
@@ -202,8 +202,10 @@ Các thẻ chia đều chiều rộng (`flex: 1 1 0`). td-tabs không có glass 
 - `data-state="ready"` được đặt sau khi đo xong vị trí viên thuốc; trước đó viên thuốc ẩn (không trượt từ x = 0).
 - Id của nút thẻ: `{id host}-tab-{i}`; host không có id thì được gán `td-tabs-{n}`.
 - Trạng thái chọn: `[aria-selected="true"]` trên `.td-tabs__tab`.
-- Mẫu markup chuẩn cho SSR: `test/contracts/tabs.html`. Server có thể render sẵn `.td-tabs` (td.css style được, viên
-  thuốc ẩn tới khi JS đặt `data-state="ready"`); khi JS chạy, td-tabs render lại từ `tabs`.
+- Render phía server: in sẵn khối `.td-tabs` ở trên (td.css style được, viên thuốc ẩn tới khi JS đặt
+  `data-state="ready"`; icon bằng `td_icon('upload', 's')` của [adapter PHP](../guides/php-adapter.md) hoặc slot
+  `data-td-icon` — xem [Icons](icons.md#icon-trong-markup-render-sẵn)); khi JS chạy, td-tabs render lại từ `tabs`. Tabs
+  không có helper PHP; fixture `test/contracts/tabs.html` trong repo kit chỉ dùng cho test (không nằm trong gói npm).
 
 ## Bàn phím & trợ năng
 
