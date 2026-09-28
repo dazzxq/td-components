@@ -1,5 +1,5 @@
-# CI for td-components (v0.13.0). NOT verified on GitHub yet: the repo is never pushed during the overnight run —
-# run it on the first push and adjust if a step differs from the local setup.
+# CI for td-components (added v0.13.0, first green on GitHub at v0.16.0). Linux runner: the CSP parity gate skips
+# text-metric geometry there (baselines are captured on macOS — see test/csp/csp.spec.mjs BASELINE_PLATFORM).
 name: test
 
 on:
@@ -15,8 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
