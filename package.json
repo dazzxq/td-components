@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "test": "npm run check:css && npm run check:icons && npm run check:stories && npm run test:node && npm run test:browser && npm run test:csp && npm run test:csp:combined && npm run test:tokens && npm run test:contrast && npm run test:engines",
-    "test:node": "node --test --test-force-exit \"src/**/*.test.js\"",
+    "test:node": "node --test --test-force-exit \"src/**/*.test.js\" \"test/php/*.test.js\"",
     "test:browser": "web-test-runner",
     "test:csp": "node test/csp/csp.spec.mjs",
     "test:csp:combined": "CSP_PROFILE=legacy+td node test/csp/csp.spec.mjs",

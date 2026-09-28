@@ -208,7 +208,12 @@ export class TdDropdown extends TdFormElement {
     const lk = this._getLabelKey();
     const isOff = (opt) => opt.disabled || !!(opt.parentElement && opt.parentElement.localName === 'optgroup'
       && opt.parentElement.disabled);
-    const opts = [...select.options]; // tree order, optgroup children included
+    const all = [...select.options]; // tree order, optgroup children included
+    // A leading value="" option is the native PLACEHOLDER ("— Chọn —"): it becomes the host placeholder (and "no value"),
+    // not a selectable option (0.17.0 — matches the PHP adapter's td_dropdown placeholder).
+    const ph = all[0] && all[0].value === '' ? all[0] : null;
+    if (ph && !this.hasAttribute('placeholder') && ph.label.trim()) this.setAttribute('placeholder', ph.label.trim());
+    const opts = ph ? all.slice(1) : all;
     const items = opts.map((opt) => {
       const item = { [vk]: opt.value, [lk]: opt.label.trim() };
       if (isOff(opt)) item.disabled = true;
@@ -216,9 +221,9 @@ export class TdDropdown extends TdFormElement {
     });
     // Native reset rule: the last `selected` option, else the first enabled one.
     let def = null;
-    for (const opt of opts) if (opt.defaultSelected) def = opt;
-    if (!def) def = opts.find((opt) => !isOff(opt)) || null;
-    this._resetValue = def ? def.value : null;
+    for (const opt of all) if (opt.defaultSelected) def = opt;
+    if (!def) def = all.find((opt) => !isOff(opt)) || null;
+    this._resetValue = def && def !== ph ? def.value : null; // placeholder default → reset to "no value"
     this._upgraded = true;
     const live = select.value;
 

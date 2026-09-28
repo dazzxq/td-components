@@ -58,6 +58,29 @@ describe('v0.17.0 E2 — <select> upgrade', () => {
     expect([...new FormData(form).entries()]).to.deep.equal([]);
   });
 
+  it('a leading value="" option is the placeholder: host placeholder, not an option, reset → no value', () => {
+    const form = mount('<form><td-dropdown><select name="city"><option value="">— Chọn tỉnh —</option>'
+      + '<option value="hn">Hà Nội</option><option value="sg">Sài Gòn</option></select></td-dropdown></form>');
+    const el = form.querySelector('td-dropdown');
+    expect(el.getAttribute('placeholder')).to.equal('— Chọn tỉnh —');
+    expect(plain(el.options).map((o) => o.value)).to.deep.equal(['hn', 'sg']);
+    expect(el.getValue()).to.equal(null);
+    expect([...new FormData(form).entries()]).to.deep.equal([]);
+    el.setValue('sg');
+    form.reset();
+    expect(el.getValue()).to.equal(null);
+  });
+
+  it('placeholder + a selected option: that option is chosen and reset returns to it', () => {
+    const form = mount('<form><td-dropdown><select name="city"><option value="">Chọn</option>'
+      + '<option value="hn">Hà Nội</option><option value="sg" selected>Sài Gòn</option></select></td-dropdown></form>');
+    const el = form.querySelector('td-dropdown');
+    expect(el.getValue()).to.equal('sg');
+    el.setValue('hn');
+    form.reset();
+    expect(el.getValue()).to.equal('sg');
+  });
+
   it('no option selected → first option (native), and reset returns to it', () => {
     const form = mount('<form><td-dropdown><select name="c"><option value="a">A</option><option value="b">B</option></select></td-dropdown></form>');
     const el = form.querySelector('td-dropdown');
