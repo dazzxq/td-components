@@ -28,6 +28,8 @@
     "components/menu.css",
     "components/chip-input.css",
     "components/hovercard.css",
+    "components/password-meter.css",
+    "components/scroll-top.css",
     "utilities.css"
   ]
 }

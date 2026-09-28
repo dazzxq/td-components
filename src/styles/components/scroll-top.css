@@ -1,0 +1,83 @@
+/*
+ * td-scroll-top (src/feedback/td-scroll-top.js) — v0.17.0; 135 kit `.td-scroll-top` translated to td tokens.
+ * Floating control layer → strong glass (.td-glass-surface--strong recipe: every fallback — reduced transparency,
+ * glass off, contrast, forced colours, no backdrop-filter — comes from the recipe). Round, fixed to the inline-end
+ * bottom corner, safe-area aware, z-index BELOW lightbox / modal / popover / toast.
+ * State: data-visible="true|false" (hidden = visibility: hidden → out of the Tab order and the a11y tree).
+ */
+@layer td.tokens {
+	:root {
+		--td-scroll-top-size: 48px;            /* ≥ --td-touch-min */
+		--td-scroll-top-bottom: 1.5rem;        /* distance from the bottom edge (plus the safe area) */
+		--td-scroll-top-end: 1.5rem;           /* distance from the inline-end edge (plus the safe area) */
+		--td-scroll-top-z: var(--td-z-sticky); /* below lightbox (350) / modal / popover / toast */
+		--td-scroll-top-offset: 10px;          /* slide distance of the enter/leave transition */
+	}
+}
+
+@layer td.component {
+	td-scroll-top {
+		display: block;
+	}
+
+	.td-scroll-top {
+		position: fixed;
+		inset-block-end: calc(var(--td-scroll-top-bottom) + env(safe-area-inset-bottom, 0px));
+		inset-inline-end: calc(var(--td-scroll-top-end) + env(safe-area-inset-right, 0px));
+		z-index: var(--td-scroll-top-z);
+		box-sizing: border-box;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: var(--td-scroll-top-size);
+		height: var(--td-scroll-top-size);
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		line-height: 0;
+		cursor: pointer;
+		visibility: hidden;
+		border-radius: 50%;
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		opacity: 0;
+		transform: translateY(var(--td-scroll-top-offset));
+		transition:
+			opacity var(--td-glass-dur) var(--td-glass-ease),
+			transform var(--td-glass-dur) var(--td-glass-ease),
+			visibility 0s linear var(--td-glass-dur);
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-scroll-top[data-visible="true"] {
+		visibility: visible;
+		opacity: 1;
+		transform: none;
+		transition:
+			opacity var(--td-glass-dur) var(--td-glass-ease),
+			transform var(--td-glass-dur) var(--td-glass-ease),
+			visibility 0s;
+	}
+
+	.td-scroll-top[data-visible="true"]:active {
+		transform: scale(var(--td-glass-press-scale));
+	}
+
+	.td-scroll-top:focus-visible {
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-scroll-top__icon {
+		display: inline-flex;
+		line-height: 0;
+		pointer-events: none;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-scroll-top,
+		.td-scroll-top[data-visible="true"] {
+			transform: none;
+			transition: none;
+		}
+	}
+}

@@ -5659,6 +5659,240 @@
 	}
 }
 
+/* ---- src/styles/components/password-meter.css ---- */
+/*
+ * td-password-meter (src/form/td-password-meter.js) — v0.17.0. Content layer (next to a form field) → SOLID fills,
+ * never glass. 4-segment bar + status line + optional checklist.
+ * State (on .td-password-meter): data-level="empty|weak|fair|strong", data-lit="0-4" (segments lit),
+ * data-score="0-4|" · rule: data-met="true|false".
+ */
+@layer td.tokens {
+	:root {
+		--td-password-meter-gap: 0.4rem;           /* space between field and meter, bar and text */
+		--td-password-meter-seg-h: 4px;
+		--td-password-meter-seg-gap: 4px;
+		--td-password-meter-track: var(--td-color-border);
+		--td-password-meter-weak: var(--td-color-error);
+		--td-password-meter-fair: var(--td-color-warning);
+		--td-password-meter-strong: var(--td-color-success);
+		--td-password-meter-fg: var(--td-color-text-muted);
+		--td-password-meter-met: var(--td-color-success);
+		--td-password-meter-font-size: var(--td-text-xs);
+	}
+}
+
+@layer td.component {
+	td-password-meter {
+		display: block;
+	}
+
+	.td-password-meter {
+		--_td-pwm-color: var(--td-password-meter-track);
+
+		box-sizing: border-box;
+		margin-top: var(--td-password-meter-gap);
+		font-family: var(--td-font-sans);
+		font-size: var(--td-password-meter-font-size);
+		line-height: var(--td-leading-normal);
+		color: var(--td-password-meter-fg);
+	}
+
+	.td-password-meter[data-level="weak"] { --_td-pwm-color: var(--td-password-meter-weak); }
+	.td-password-meter[data-level="fair"] { --_td-pwm-color: var(--td-password-meter-fair); }
+	.td-password-meter[data-level="strong"] { --_td-pwm-color: var(--td-password-meter-strong); }
+
+	.td-password-meter__bar {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: var(--td-password-meter-seg-gap);
+	}
+
+	.td-password-meter__seg {
+		display: block;
+		height: var(--td-password-meter-seg-h);
+		background: var(--td-password-meter-track);
+		border-radius: var(--td-radius-full);
+		transition: background-color var(--td-dur-base) var(--td-ease);
+	}
+
+	.td-password-meter[data-lit="1"] .td-password-meter__seg:nth-child(-n + 1),
+	.td-password-meter[data-lit="2"] .td-password-meter__seg:nth-child(-n + 2),
+	.td-password-meter[data-lit="3"] .td-password-meter__seg:nth-child(-n + 3),
+	.td-password-meter[data-lit="4"] .td-password-meter__seg {
+		background: var(--_td-pwm-color);
+	}
+
+	.td-password-meter__status {
+		min-height: calc(1em * var(--td-leading-normal)); /* no layout jump when the first level appears */
+		margin: var(--td-password-meter-gap) 0 0;
+	}
+
+	.td-password-meter__checklist {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+		gap: 0.15rem 0.75rem;
+		padding: 0;
+		margin: 0.25rem 0 0;
+		list-style: none;
+	}
+
+	.td-password-meter__checklist[hidden] {
+		display: none;
+	}
+
+	.td-password-meter__rule {
+		display: flex;
+		gap: 0.4rem;
+		align-items: center;
+		margin: 0;
+	}
+
+	.td-password-meter__mark {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		width: 1rem;
+		height: 1rem;
+		line-height: 0;
+		color: transparent;
+		border: 1.5px solid var(--td-color-border-strong);
+		border-radius: 50%;
+		transition:
+			background-color var(--td-dur-base) var(--td-ease),
+			border-color var(--td-dur-base) var(--td-ease);
+	}
+
+	.td-password-meter__mark .td-icon {
+		--td-icon-stroke: 3;
+
+		width: 0.7rem;
+		height: 0.7rem;
+	}
+
+	.td-password-meter__rule[data-met="true"] {
+		color: var(--td-password-meter-met);
+	}
+
+	.td-password-meter__rule[data-met="true"] .td-password-meter__mark {
+		color: var(--td-color-on-status, #fff);
+		background: var(--td-password-meter-met);
+		border-color: var(--td-password-meter-met);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-password-meter__seg,
+		.td-password-meter__mark {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-password-meter__seg {
+			background: Canvas;
+			outline: 1px solid CanvasText;
+		}
+
+		.td-password-meter[data-lit="1"] .td-password-meter__seg:nth-child(-n + 1),
+		.td-password-meter[data-lit="2"] .td-password-meter__seg:nth-child(-n + 2),
+		.td-password-meter[data-lit="3"] .td-password-meter__seg:nth-child(-n + 3),
+		.td-password-meter[data-lit="4"] .td-password-meter__seg {
+			background: Highlight;
+		}
+
+		.td-password-meter__rule[data-met="true"] .td-password-meter__mark {
+			color: HighlightText;
+			background: Highlight;
+			border-color: Highlight;
+		}
+	}
+}
+
+/* ---- src/styles/components/scroll-top.css ---- */
+/*
+ * td-scroll-top (src/feedback/td-scroll-top.js) — v0.17.0; 135 kit `.td-scroll-top` translated to td tokens.
+ * Floating control layer → strong glass (.td-glass-surface--strong recipe: every fallback — reduced transparency,
+ * glass off, contrast, forced colours, no backdrop-filter — comes from the recipe). Round, fixed to the inline-end
+ * bottom corner, safe-area aware, z-index BELOW lightbox / modal / popover / toast.
+ * State: data-visible="true|false" (hidden = visibility: hidden → out of the Tab order and the a11y tree).
+ */
+@layer td.tokens {
+	:root {
+		--td-scroll-top-size: 48px;            /* ≥ --td-touch-min */
+		--td-scroll-top-bottom: 1.5rem;        /* distance from the bottom edge (plus the safe area) */
+		--td-scroll-top-end: 1.5rem;           /* distance from the inline-end edge (plus the safe area) */
+		--td-scroll-top-z: var(--td-z-sticky); /* below lightbox (350) / modal / popover / toast */
+		--td-scroll-top-offset: 10px;          /* slide distance of the enter/leave transition */
+	}
+}
+
+@layer td.component {
+	td-scroll-top {
+		display: block;
+	}
+
+	.td-scroll-top {
+		position: fixed;
+		inset-block-end: calc(var(--td-scroll-top-bottom) + env(safe-area-inset-bottom, 0px));
+		inset-inline-end: calc(var(--td-scroll-top-end) + env(safe-area-inset-right, 0px));
+		z-index: var(--td-scroll-top-z);
+		box-sizing: border-box;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: var(--td-scroll-top-size);
+		height: var(--td-scroll-top-size);
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		line-height: 0;
+		cursor: pointer;
+		visibility: hidden;
+		border-radius: 50%;
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		opacity: 0;
+		transform: translateY(var(--td-scroll-top-offset));
+		transition:
+			opacity var(--td-glass-dur) var(--td-glass-ease),
+			transform var(--td-glass-dur) var(--td-glass-ease),
+			visibility 0s linear var(--td-glass-dur);
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-scroll-top[data-visible="true"] {
+		visibility: visible;
+		opacity: 1;
+		transform: none;
+		transition:
+			opacity var(--td-glass-dur) var(--td-glass-ease),
+			transform var(--td-glass-dur) var(--td-glass-ease),
+			visibility 0s;
+	}
+
+	.td-scroll-top[data-visible="true"]:active {
+		transform: scale(var(--td-glass-press-scale));
+	}
+
+	.td-scroll-top:focus-visible {
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-scroll-top__icon {
+		display: inline-flex;
+		line-height: 0;
+		pointer-events: none;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-scroll-top,
+		.td-scroll-top[data-visible="true"] {
+			transform: none;
+			transition: none;
+		}
+	}
+}
+
 /* ---- src/styles/utilities.css ---- */
 /* Utilities — kept minimal: td.css must stay reset-free (legacy Tailwind components share the page). */
 @layer td.utilities {
