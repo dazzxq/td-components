@@ -81,10 +81,10 @@
 
 		/* ===== Z-index scale =====
 		   Open dropdown / menu / chip-input / hovercard panels use --td-z-popover (450), not --td-z-dropdown.
-		   --td-z-dropdown / --td-z-sticky / --td-z-overlay are RESERVED: public (kept for sites that already read
-		   them) but no component uses them. */
+		   --td-z-sticky is used by <td-scroll-top> (v0.17.0). --td-z-dropdown / --td-z-overlay are RESERVED: public
+		   (kept for sites that already read them) but no component uses them. */
 		--td-z-dropdown: 100; /* reserved */
-		--td-z-sticky: 200;   /* reserved */
+		--td-z-sticky: 200;   /* td-scroll-top */
 		--td-z-overlay: 300;  /* reserved */
 		--td-z-lightbox: 350; /* below modal/popover/toast: confirms + menus open ON TOP of the viewer */
 		--td-z-modal: 400;
