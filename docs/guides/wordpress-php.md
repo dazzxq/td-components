@@ -9,7 +9,9 @@ Trang này là hướng dẫn **cụ thể** cho hai site của owner:
   `src/Core/Csp.php`).
 
 Phần [chung cho mọi site PHP](#chung-cho-mọi-site-php) áp dụng cho cả hai; đọc nó trước. Cài đặt tổng quát (npm,
-Vite, không bundler) nằm ở [Cài đặt](../getting-started/installation.md).
+Vite, không bundler) nằm ở [Cài đặt](../getting-started/installation.md). Hàm PHP của kit (import map, `td.css`,
+markup SSR của nút/ô/dropdown/switch/checkbox/icon) nằm trong **adapter chính thức** `php/td.php` — tham chiếu đầy đủ ở
+[Adapter PHP](php-adapter.md).
 
 > Trạng thái hiện tại: cả dwp lẫn 135 **chưa** nạp td-components; mỗi site đang có bộ UI riêng (dwp: `@dwp/ui-*`,
 > 135: bộ `td-` cũ với specifier `@td/*`). Trang này mô tả cách tích hợp; việc chuyển đổi làm dần từng component.
@@ -17,7 +19,7 @@ Vite, không bundler) nằm ở [Cài đặt](../getting-started/installation.md
 ## Mục lục
 
 - [Chung cho mọi site PHP](#chung-cho-mọi-site-php)
-- [Import map cho PHP thuần](#import-map-cho-php-thuần)
+- [Import map cho PHP thuần](#import-map-cho-php-thuần) (adapter `php/td.php`)
 - [WordPress (dwp)](#wordpress-dwp)
 - [PHP thuần (135)](#php-thuần-135)
 - [Hợp đồng markup render phía server](#hợp-đồng-markup-render-phía-server)
@@ -45,8 +47,9 @@ Các file cần copy lên server (đúng mục `files` của `package.json`):
 td-components/0.15.1/
   td.css
   index.js
-  package.json            (để PHP đọc danh sách exports — tuỳ chọn)
-  src/                    (toàn bộ)
+  package.json            (adapter PHP đọc danh sách exports từ đây)
+  php/td.php              (adapter PHP chính thức — import map, td.css, markup SSR)
+  src/                    (toàn bộ; adapter đọc src/icons/icons.json)
   THIRD_PARTY_NOTICES.md  (giấy phép icon Lucide)
 ```
 
@@ -98,37 +101,30 @@ const TD_VERSION = '0.15.1';
 ## Import map cho PHP thuần
 
 Tên subpath của gói (`@dazzxq/td-components/button`) **không** trùng cấu trúc thư mục (nó trỏ tới
-`src/form/td-button.js`), nên sinh import map từ `exports` của `package.json` để không phải gõ tay:
+`src/form/td-button.js`), nên import map được sinh từ `exports` của `package.json` — không gõ tay. Kit ship sẵn hàm
+này trong adapter chính thức `php/td.php` (không cần tự viết):
 
 ```php
 <?php
-/**
- * Import map entries cho td-components, sinh từ package.json "exports".
- * @return array<string, string> specifier => URL
- */
-function td_import_map(string $pkgDir, string $baseUrl): array
-{
-    static $cache = [];
-    $key = $pkgDir . '|' . $baseUrl;
-    if (isset($cache[$key])) {
-        return $cache[$key];
-    }
-    $pkg = json_decode((string) file_get_contents($pkgDir . '/package.json'), true, 512, JSON_THROW_ON_ERROR);
-    $imports = [];
-    foreach ($pkg['exports'] as $sub => $file) {
-        if (!str_ends_with($file, '.js')) {
-            continue; // bỏ ./td.css và ./icons.json
-        }
-        $name = $sub === '.' ? '@dazzxq/td-components' : '@dazzxq/td-components/' . substr($sub, 2);
-        $imports[$name] = rtrim($baseUrl, '/') . '/' . substr($file, 2);
-    }
-    return $cache[$key] = $imports;
-}
+require_once $tdDir . '/php/td.php';                 // $tdDir = thư mục kit đã vendor (có phiên bản)
+TdComponents\Td::configure('/assets/vendor/td-components/' . TD_VERSION, $tdDir);
 
-// td_import_map(__DIR__ . '/public/assets/vendor/td-components/0.15.1', '/assets/vendor/td-components/0.15.1')
-// → ['@dazzxq/td-components' => '/assets/vendor/td-components/0.15.1/index.js',
-//    '@dazzxq/td-components/button' => '/assets/vendor/td-components/0.15.1/src/form/td-button.js', …]
+td_import_map();
+// → ['@dazzxq/td-components' => '/assets/vendor/td-components/0.17.0/index.js',
+//    '@dazzxq/td-components/button' => '/assets/vendor/td-components/0.17.0/src/form/td-button.js', …]
+
+td_import_map(['dompurify' => '/assets/vendor/dompurify/3.4.16/purify.es.js']); // + entry riêng của site (sau kit)
+echo td_import_map_tag(['app/' => '/assets/app/'], $nonce);                     // in luôn <script type="importmap">
+echo td_stylesheet_tag($nonce);                                                   // <link rel="stylesheet" href="…/td.css">
 ```
+
+- Mọi entry `.js` của `exports` (kit trước, theo thứ tự `exports`), rồi `$extra`. `td.css`/`icons.json`/`package.json`
+  không vào import map.
+- Key trong `$extra` trùng module của kit → `InvalidArgumentException` (không vô tình ghi đè module kit).
+- `td_import_map_tag()` in JSON với `JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT |
+  JSON_UNESCAPED_SLASHES` và escape nonce.
+
+Chi tiết + markup helper: [Adapter PHP](php-adapter.md).
 
 Luật import map (đã gặp thật ở dwp):
 
@@ -136,7 +132,8 @@ Luật import map (đã gặp thật ở dwp):
   đầu tiên bị bỏ qua hoàn toàn.
 - Giá trị là URL bắt đầu bằng `/`, `./`, `../` hoặc tuyệt đối `https://…`.
 - Dưới CSP có nonce, import map cần `nonce` (nó là script inline). Xem [CSP](csp.md#gắn-nonce-cho-link-import-map-và-script).
-- Encode bằng `json_encode(…, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP)`.
+- Mọi entry riêng của site (DOMPurify, module app) truyền qua `$extra` của `td_import_map_tag()` — đừng in import map
+  thứ hai. Tự encode thì dùng `json_encode(…, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP)`.
 
 ## WordPress (dwp)
 
@@ -172,6 +169,9 @@ function dwp_td_base_path(): string {
     return DWP_CORE_PATH . 'assets/vendor/td-components/' . TD_VERSION;
 }
 
+require_once dwp_td_base_path() . '/php/td.php'; // adapter chính thức của kit
+TdComponents\Td::configure(rtrim(dwp_td_base_url(), '/'), dwp_td_base_path());
+
 add_action('init', function (): void {
     // CSS: ?ver= vô hại với stylesheet; dùng TD_VERSION cho gọn
     wp_register_style('td', dwp_td_base_url() . 'td.css', [], TD_VERSION);
@@ -181,7 +181,7 @@ add_action('init', function (): void {
     }
     // Mỗi subpath của package.json thành một script module. version = null → KHÔNG thêm ?ver=
     // (phiên bản đã nằm trong đường dẫn; xem "Đặt phiên bản vào đường dẫn").
-    foreach (td_import_map(dwp_td_base_path(), dwp_td_base_url()) as $id => $url) {
+    foreach (td_import_map() as $id => $url) {
         wp_register_script_module($id, $url, [], null);
     }
 });
@@ -193,7 +193,8 @@ add_action('wp_enqueue_scripts', function (): void {
 });
 ```
 
-`td_import_map()` là hàm ở [mục trên](#import-map-cho-php-thuần). Chỉ đăng ký thì chưa nạp gì — WordPress chỉ in những
+`td_import_map()` là hàm của adapter `php/td.php` ([mục trên](#import-map-cho-php-thuần)). WordPress tự in import map
+nên ở đây chỉ dùng mảng, không dùng `td_import_map_tag()`. Chỉ đăng ký thì chưa nạp gì — WordPress chỉ in những
 module nằm trong đồ thị phụ thuộc của module **được enqueue**.
 
 ### Dùng trong module của site
@@ -369,31 +370,46 @@ Specifier cũng tách biệt: kit mới dùng `@dazzxq/td-components/*`, không 
 ### Đặt kit và partial
 
 ```text
-public/assets/vendor/td-components/0.15.1/   ← kit
-templates/partials/td.php                      ← partial nạp kit
+public/assets/vendor/td-components/0.17.0/   ← kit (có php/td.php)
 ```
+
+Bootstrap (một lần cho mọi request):
 
 ```php
 <?php
-// templates/partials/td.php — include TRONG <head>, TRƯỚC mọi <script type="module">.
-// Gộp entry của kit vào import map DUY NHẤT của trang (135 đã có $importMap trong head.php).
-/** @var array{imports: array<string, string>} $importMap */
-$tdBase = '/assets/vendor/td-components/' . TD_VERSION;
-$importMap['imports'] += td_import_map(dirname(__DIR__, 2) . '/public' . $tdBase, $tdBase);
-?>
-<link rel="stylesheet" href="<?= h($tdBase . '/td.css') ?>">
+// config/bootstrap.php
+$tdDir = T135_ROOT . '/public/assets/vendor/td-components/' . TD_VERSION;
+require_once $tdDir . '/php/td.php';
+TdComponents\Td::configure('/assets/vendor/td-components/' . TD_VERSION, $tdDir);
+// Icon riêng của site (dữ liệu, không phải chuỗi SVG) — tên không được trùng icon core:
+TdComponents\Td::registerIcons(json_decode(file_get_contents(T135_ROOT . '/data/icons-135.json'), true, 32, JSON_THROW_ON_ERROR)['icons']);
 ```
 
 Trong `templates/partials/head.php`, thứ tự nên là:
 
 ```php
-<?php
-// 1) td.css của kit  2) token/CSS riêng của site (ghi đè --td-*)  3) import map  4) module
-include __DIR__ . '/td.php';                              // thêm <link td.css> + entry import map
-?>
+<?php // 1) td.css của kit  2) token/CSS riêng của site (ghi đè --td-*)  3) import map DUY NHẤT  4) module ?>
+<?= td_stylesheet_tag() ?>
 <link rel="stylesheet" href="<?= h(asset('app/tokens.css')) ?>">
-<script type="importmap" nonce="<?= h($nonce) ?>"><?= json_encode($importMap, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+<?= td_import_map_tag([
+    'dompurify' => '/assets/vendor/dompurify/3.4.16/purify.es.js',
+    // …các module riêng của 135 (thay cho $importMap tự dựng)
+], $nonce) ?>
 ```
+
+Markup form thì dùng helper của adapter thay vì viết tay (`td_field`, `td_button`, `td_dropdown`, `td_toggle`,
+`td_checkbox`, `td_icon` — cùng tên/option với `src/Ui/markup.php` cũ của 135; bỏ file đó khi chuyển):
+
+```php
+<form method="post" action="/admin/login">
+  <?= td_field('username', '', ['label' => 'Tên đăng nhập', 'autocomplete' => 'username', 'required' => true, 'autofocus' => true]) ?>
+  <?= td_field('password', '', ['label' => 'Mật khẩu', 'type' => 'password', 'autocomplete' => 'current-password', 'required' => true]) ?>
+  <?= td_button('Đăng nhập', ['type' => 'submit', 'variant' => 'primary', 'full_width' => true]) ?>
+</form>
+```
+
+Các control này là control **native** mang class của kit — chạy không cần JS. Xem [Adapter PHP](php-adapter.md)
+(bảng option, khác biệt so với adapter cũ của 135).
 
 Và nạp component trên trang cần:
 
@@ -507,6 +523,10 @@ Tên `anchor`, `name`, `item`, `checked`, `__proto__`, `constructor`, `prototype
 
 ### Control form
 
+Cách nhanh nhất là helper của [adapter PHP](php-adapter.md): `td_button`/`td_link`/`td_field`/`td_checkbox`/`td_toggle`
+in control native đúng hợp đồng DOM (không cần JS), `td_dropdown` in `<td-dropdown>` bọc `<select>` (upgrade khi nạp
+module). Khi cần hành vi JS thì viết custom element:
+
 Mọi attribute trong trang component (`value`, `label`, `required`, `error-text`, `min`, `max`…) render được từ server.
 Đặc biệt:
 
@@ -539,6 +559,9 @@ dd.options = JSON.parse(document.getElementById('city-options').textContent);
 
 `JSON_HEX_TAG` bắt buộc: không có nó, chuỗi `</script>` trong dữ liệu sẽ đóng thẻ sớm. Gán `options` **sau** khi import
 module (element đã được define); `value="…"` có trước sẽ được chọn khi options tới.
+
+Với dropdown, cách đơn giản hơn là `td_dropdown()` của [adapter PHP](php-adapter.md#td_dropdown): in `<select>` native
+bên trong `<td-dropdown>`, component tự đọc `<option>` khi nạp — không cần khối JSON, và chạy cả khi JS chưa tải.
 
 WordPress 6.7+ có sẵn cơ chế tương tự cho script module:
 
@@ -615,11 +638,13 @@ Tên field dạng mảng PHP (`tags[]`, `meta[title]`) khớp với key dạng c
 | Click ảnh mở hai viewer / không mở | `@dwp/lightbox` và `TdLightbox.bind({ attrPrefix: 'dwp' })` cùng chạy | chỉ bật một |
 | Hovercard trả nội dung của người chưa đăng nhập (WP) | REST với cookie nhưng không có `X-WP-Nonce` | route riêng / admin-ajax / hook `content()` tự gửi nonce |
 | Giao diện 135 lệch sau khi nạp `td.css` | CSS `td-*` cũ của 135 cùng layer và token | không nạp cả hai trên cùng trang |
-| `td-dropdown` rỗng | `options` là property, chưa gán | đọc JSON block rồi gán `el.options` |
+| `td-dropdown` rỗng | `options` là property, chưa gán | đọc JSON block rồi gán `el.options`, hoặc dùng `td_dropdown()` (select bên trong) |
+| `Cannot redeclare td_button()` (135) | còn nạp `src/Ui/markup.php` cũ cùng `php/td.php` | bỏ file cũ, chỉ `require_once` adapter của kit |
 
 ## Xem thêm
 
 - [Cài đặt](../getting-started/installation.md) · [Yêu cầu hệ thống](../getting-started/requirements.md)
+- [Adapter PHP](php-adapter.md) — `php/td.php`: import map, `td.css`, markup SSR, icon
 - [CSP](csp.md) · [Bảo mật](security.md) · [Form](forms.md)
 - [Lightbox](../components/lightbox.md) · [Menu](../components/menu.md) · [Hovercard](../components/hovercard.md) ·
   [Tooltip](../components/tooltip.md)

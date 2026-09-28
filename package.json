@@ -68,6 +68,7 @@
     "!src/**/*.stories.css",
     "!src/styles/story-layout.css",
     "index.js",
+    "php",
     "td.css",
     "THIRD_PARTY_NOTICES.md"
   ],
