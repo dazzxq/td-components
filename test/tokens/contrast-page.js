@@ -9,6 +9,9 @@ for (const v of VARIANTS) for (const state of ['rest', 'disabled', 'loading']) C
 // icon + label buttons (v0.14.3 review): the icon ink is gated too — rest ≥ 3.2:1, disabled greyed out ≥ 2.2:1
 for (const v of ['primary', 'secondary']) for (const state of ['icon', 'disabled-icon']) CASES.push({ kind: 'button', v, state });
 for (const t of TOASTS) CASES.push({ kind: 'toast', v: t, state: 'rest' });
+// v0.17.0 ghost buttons sit on the PAGE background, never on a photo: measured only over the theme's page colour
+// (white in light, black in dark) — `pageOnly` (contrast.spec.mjs skips the other backdrops).
+for (const state of ['rest', 'disabled', 'loading', 'icon']) CASES.push({ kind: 'button', v: 'ghost', state, pageOnly: true });
 
 const stage = document.getElementById('stage');
 const bd = document.getElementById('backdrop');
@@ -77,3 +80,4 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
   return { rect: { x: r.x, y: r.y, width: r.width, height: r.height }, ink, opacity: op, name: `${c.kind}:${c.v}:${c.state}` };
 };
 window.__contrastCount = CASES.length;
+window.__contrastPageOnly = CASES.map((c) => !!c.pageOnly);

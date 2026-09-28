@@ -175,6 +175,10 @@
 		--td-btn-secondary-glass: rgb(255 255 255 / 80%);
 		--td-btn-secondary-edge: var(--td-control-border-soft);
 		--td-btn-lift: 0 1px 2px rgb(0 0 0 / 8%), 0 3px 8px -4px rgb(0 0 0 / 14%);   /* lighter lift (was 30 %) */
+		/* v0.17.0 ghost button: accent label straight on the page background (contrast gate: ≥ 4.7:1 on white in light,
+		   black in dark), a soft hover fill. Both follow the theme (dark remaps --td-accent / --td-color-hover). */
+		--td-btn-ghost-fg: var(--td-accent);
+		--td-btn-ghost-hover-bg: var(--td-color-hover);
 
 		/* ===== Checkbox / switch — v0.14.1: resting borders use the soft token (~1.5:1, below WCAG 1.4.11 by owner
 		   choice); hover uses --td-control-border-hover (~2.2:1, v0.14.2); switch on-colours still ≥ 3:1 ===== */

@@ -1,13 +1,37 @@
 import { TdBaseElement } from '../base/td-base-element.js';
 import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
 
-const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning'];
+const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning', 'ghost'];
 const SIZES = ['sm', 'md', 'lg'];
 const TYPES = ['submit', 'reset', 'button'];
+const TARGETS = ['_blank', '_self', '_parent', '_top'];
+/** Link schemes allowed on `href` (anything without a scheme — relative, `#…`, `?…`, `//host` — is allowed too). */
+const LINK_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:'];
 const CLASS_TOKEN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
 const _contrastCache = new Map();
 /** input string → parsed colour | null (one engine probe per distinct colour, invalid ones included) */
 const _parseCache = new Map();
+
+/**
+ * Validate a link `href` (security-model: URL whitelist): http(s), mailto:, tel:, or a scheme-less (relative) URL.
+ * Normalised the way the URL parser does first (leading/trailing C0 controls + spaces stripped, tab/newline removed
+ * anywhere), so `" java\tscript:…"` is judged as `javascript:`.
+ * @param {string|null} href
+ * @returns {string|null} the href to use, or null when unsafe
+ */
+export function safeButtonHref(href) {
+  if (typeof href !== 'string') return null;
+  const norm = href.replace(/^[\u0000- ]+|[\u0000- ]+$/g, '').replace(/[\t\n\r]/g, '');
+  if (!norm) return null;
+  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(norm);
+  if (!scheme) return norm; // relative / fragment / query / protocol-relative
+  return LINK_PROTOCOLS.includes(`${scheme[1].toLowerCase()}:`) ? norm : null;
+}
+
+/** @param {string|null} name `download` value → a bare file name (path / reserved characters removed) */
+function safeDownloadName(name) {
+  return String(name ?? '').replace(/[\u0000-\u001f\u007f/\\:*?"<>|]/g, '').replace(/^[.\s]+/, '').trim();
+}
 
 /**
  * Button — token-native (needs td.css; no Tailwind). Styles: src/styles/components/button.css.
@@ -24,8 +48,19 @@ const _parseCache = new Map();
  * Loading = `aria-busy="true"` + `aria-disabled="true"` on the button (focus kept, clicks swallowed);
  * `disabled` = native disabled. Both update in place (no re-render → focus is not lost).
  *
+ * Link button (v0.17.0, `href` present): the same structure in an `<a class="td-btn …" href [target] [rel]
+ * [download]>` (no `type`). `href` must be http(s) / relative / `#…` / `mailto:` / `tel:` (else dropped + a
+ * console warning; the link then behaves as disabled); `target` ∈ _blank|_self|_parent|_top (`_blank` adds
+ * `rel="noopener noreferrer"`).
+ *   - disabled: `href` removed (restored later), `role="link"`, `aria-disabled="true"`, `tabindex="-1"`, clicks
+ *     swallowed; styled as the disabled button.
+ *   - loading: `href` removed (no new tab / middle-click), `role="link"`, `aria-busy` + `aria-disabled`,
+ *     `tabindex="0"` (focus kept), clicks swallowed, spinner.
+ * Ghost (v0.17.0): `variant="ghost"` — transparent, no glass / blur / border, accent label
+ * (`--td-btn-ghost-fg`), a soft hover fill (`--td-btn-ghost-hover-bg`).
+ *
  * @element td-button
- * @attr {string} variant - primary | secondary | success | danger | info | warning (default: primary)
+ * @attr {string} variant - primary | secondary | success | danger | info | warning | ghost (default: primary)
  * @attr {string} size - sm | md | lg (default: md)
  * @attr {string} icon - Icon registry name (e.g. "download"). DEPRECATED: any other value is treated as a
  *   legacy class list (e.g. Font Awesome "fas fa-edit") rendered as `<i aria-hidden="true">`.
@@ -38,10 +73,13 @@ const _parseCache = new Map();
  * @attr {string} label - Button text (else the element's initial text)
  * @attr {string} type - button | submit | reset (default: button, whitelisted)
  * @attr {string} aria-label - Forwarded to the inner button (icon-only buttons)
+ * @attr {string} href - Render a link button (`<a>`), v0.17.0 — see above
+ * @attr {string} target - Link target (_blank | _self | _parent | _top), v0.17.0
+ * @attr {string} download - Link download (optional file name; path characters removed), v0.17.0
  */
 export class TdButton extends TdBaseElement {
   static get observedAttributes() {
-    return ['variant', 'size', 'icon', 'icon-position', 'loading', 'disabled', 'full-width', 'color', 'text-color', 'label', 'type', 'aria-label'];
+    return ['variant', 'size', 'icon', 'icon-position', 'loading', 'disabled', 'full-width', 'color', 'text-color', 'label', 'type', 'aria-label', 'href', 'target', 'download'];
   }
 
   static get booleanAttributes() { return ['loading', 'disabled', 'full-width']; }
@@ -206,6 +244,27 @@ export class TdButton extends TdBaseElement {
     return `<span class="td-btn__icon" aria-hidden="true"><i class="${this.escapeHtml(classes)}" aria-hidden="true"></i></span>`;
   }
 
+  /** @private @returns {boolean} link mode (`href` attribute present) */
+  _isLink() {
+    return this.hasAttribute('href');
+  }
+
+  /** @private @returns {string|null} the whitelisted href (warns once per rejected value) */
+  _linkHref() {
+    const raw = this.getAttribute('href');
+    const href = safeButtonHref(raw);
+    if (href === null && raw !== null && this._warnedHref !== raw) {
+      this._warnedHref = raw;
+      console.warn('td-button: href dropped (allowed: http(s), relative, #, mailto:, tel:)', raw);
+    }
+    return href;
+  }
+
+  /** @private The rendered `.td-btn` (button or link). */
+  _control() {
+    return this.querySelector(':scope > .td-btn');
+  }
+
   render() {
     const variant = VARIANTS.includes(this.getAttribute('variant')) ? this.getAttribute('variant') : 'primary';
     const size = SIZES.includes(this.getAttribute('size')) ? this.getAttribute('size') : 'md';
@@ -219,18 +278,33 @@ export class TdButton extends TdBaseElement {
     const right = this.getAttribute('icon-position') === 'right';
     const text = this._getButtonText();
     const label = text ? `<span class="td-btn__label">${this.escapeHtml(text)}</span>` : '';
-    return `<button class="${classes.join(' ')}" type="${type}">`
-      + (right ? label + icon : icon + label)
+    const inner = (right ? label + icon : icon + label)
       + '<span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden>'
       + '<svg class="td-spinner__svg" viewBox="0 0 50 50" aria-hidden="true" focusable="false">'
       + '<circle class="td-spinner__track" cx="25" cy="25" r="20"></circle>'
-      + '<circle class="td-spinner__arc" cx="25" cy="25" r="20"></circle></svg></span>'
-      + '</button>';
+      + '<circle class="td-spinner__arc" cx="25" cy="25" r="20"></circle></svg></span>';
+    if (this._isLink()) {
+      // href itself is set by _syncState() (it depends on disabled / loading); target/rel/download are static.
+      let attrs = '';
+      const target = this.getAttribute('target');
+      if (TARGETS.includes(target)) {
+        attrs += ` target="${target}"`;
+        if (target === '_blank') attrs += ' rel="noopener noreferrer"';
+      }
+      if (this.hasAttribute('download')) {
+        const file = safeDownloadName(this.getAttribute('download'));
+        attrs += file ? ` download="${this.escapeHtml(file)}"` : ' download';
+      }
+      return `<a class="${classes.join(' ')}"${attrs}>${inner}</a>`;
+    }
+    return `<button class="${classes.join(' ')}" type="${type}">${inner}</button>`;
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
     if (oldVal === newVal || !this._initialized) return;
     if (name === 'loading' || name === 'disabled') { this._syncState(); return; }
+    // href: a new value in place (focus kept); adding / removing it switches button <-> link (re-render).
+    if (name === 'href' && oldVal !== null && newVal !== null) { this._syncState(); return; }
     if (name === 'label') {
       const l = this.querySelector('.td-btn__label');
       const text = this._getButtonText();
@@ -249,11 +323,12 @@ export class TdButton extends TdBaseElement {
 
   afterRender() {
     fillIconSlots(this);
-    const btn = this.querySelector('button');
+    const btn = this._control();
     if (!btn) return;
-    // Busy: swallow activation (the button stays focusable; aria-disabled announces it).
+    // Busy (and a disabled / href-less link): swallow activation (a busy element stays focusable; aria-disabled
+    // announces it).
     this.listen(btn, 'click', (e) => {
-      if (this.hasAttribute('loading')) {
+      if (this.hasAttribute('loading') || (btn.localName === 'a' && !btn.hasAttribute('href'))) {
         e.preventDefault();
         e.stopImmediatePropagation();
       }
@@ -261,18 +336,39 @@ export class TdButton extends TdBaseElement {
     this._syncState();
   }
 
-  /** @private In-place state: disabled, busy, forwarded aria-label. */
+  /** @private In-place state: disabled, busy, forwarded aria-label (and href / tabindex / role for a link). */
   _syncState() {
-    const btn = this.querySelector('button');
+    const btn = this._control();
     if (!btn) return;
     const loading = this.hasAttribute('loading');
-    btn.disabled = this.hasAttribute('disabled');
-    if (loading) {
-      btn.setAttribute('aria-busy', 'true');
-      btn.setAttribute('aria-disabled', 'true');
+    const disabled = this.hasAttribute('disabled');
+    if (btn.localName === 'a') {
+      const href = this._linkHref();
+      const inert = disabled || !href; // disabled, or nothing safe to navigate to
+      // Order matters: a focused link must never be unfocusable for an instant (the browser would blur it) —
+      // tabindex is set BEFORE href is removed, and href is restored BEFORE tabindex is removed.
+      if (inert || loading) {
+        btn.setAttribute('tabindex', inert ? '-1' : '0');
+        btn.removeAttribute('href'); // the attribute stays on the host -> restored when the state clears
+        btn.setAttribute('role', 'link'); // an <a> without href is no longer a link for AT
+        btn.setAttribute('aria-disabled', 'true');
+      } else {
+        btn.setAttribute('href', href);
+        btn.removeAttribute('tabindex');
+        btn.removeAttribute('role');
+        btn.removeAttribute('aria-disabled');
+      }
+      if (loading) btn.setAttribute('aria-busy', 'true');
+      else btn.removeAttribute('aria-busy');
     } else {
-      btn.removeAttribute('aria-busy');
-      btn.removeAttribute('aria-disabled');
+      btn.disabled = disabled;
+      if (loading) {
+        btn.setAttribute('aria-busy', 'true');
+        btn.setAttribute('aria-disabled', 'true');
+      } else {
+        btn.removeAttribute('aria-busy');
+        btn.removeAttribute('aria-disabled');
+      }
     }
     const spinner = this.querySelector('.td-btn__spinner');
     if (spinner) spinner.hidden = !loading;

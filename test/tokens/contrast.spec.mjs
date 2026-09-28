@@ -10,6 +10,8 @@
  *   3. require ≥ 4.7:1 for labels, ≥ 3.2:1 for icons / close glyphs / the loading spinner; a DISABLED button's label
  *      and icon need ≥ 2.2:1 (greyed out on purpose — WCAG 1.4.3 / 1.4.11 exempt inactive controls, v0.14.3);
  *   4. assert opacity 1 on the element and its ancestors (a faded element cannot hide a failure).
+ * Ghost buttons (v0.17.0) have no fill of their own and sit on the page background, so they are measured only over
+ * the theme's page colour: white (light) / black (dark).
  * No dependencies: PNGs are decoded with node:zlib.
  *
  *   node test/tokens/contrast.spec.mjs            (npm run test:contrast)
@@ -130,9 +132,11 @@ async function runEngine(name, launcher) {
   await page.goto(`${ORIGIN}/`);
   await page.waitForFunction(() => typeof window.__contrastSetup === 'function');
   const count = await page.evaluate(() => window.__contrastCount);
+  const pageOnly = await page.evaluate(() => window.__contrastPageOnly || []);
   for (const theme of THEMES) {
     for (const backdrop of BACKDROPS) {
       for (let i = 0; i < count; i++) {
+        if (pageOnly[i] && backdrop !== (theme === 'dark' ? 'black' : 'white')) continue;
         const info = await page.evaluate(([n, t, b]) => window.__contrastSetup(n, t, b, true), [i, theme, backdrop]);
         const tag = `${name} ${theme} ${backdrop} ${info.name}`;
         checks++;
