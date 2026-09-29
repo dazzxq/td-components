@@ -2,6 +2,32 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.19.0
+
+Đề xuất đợt 3 của site 135 sau khi áp v0.18.0 (plan `docs/internal/plans/v0.19.0-135-feedback-3.md`, Codex plan-review
+APPROVE 2 vòng).
+
+### Added
+
+- `<td-button>`: `aria-pressed` (`true|false|mixed`), `aria-expanded` (`true|false`), `aria-haspopup`
+  (`true|false|menu|listbox|tree|grid|dialog`) và `aria-controls` trên host được chuyển xuống `<button>` / `<a>` bên trong,
+  cập nhật tại chỗ (không render lại); giá trị ngoài danh sách bị bỏ + `console.warn` một lần.
+- `<td-dropzone>`: hook `upload` reject với giá trị có `message` chuỗi không rỗng (ví dụ `Error`) → dòng file hiện lý do (text thuần, tối đa 200 ký tự);
+  không có → `labels.uploadError`; huỷ không hiện lỗi. File chưa nhận `onProgress` lần nào → thanh indeterminate +
+  `labels.uploadWaiting` ("Đang chờ…").
+- `<td-dropzone accept-label="…">`: nhãn định dạng thân thiện thay chuỗi `accept`; `accept-label=""` ẩn riêng phần định
+  dạng. Lọc file vẫn theo `accept`.
+- Token `--td-badge-font-family` và `--td-badge-stamp-font-family`.
+- `<td-datetime-picker>` `setDBValue('' | null | undefined)` xoá giá trị (như `setValue(null)`).
+
+### Changed
+
+- `<td-datetime-picker>` không có `open-at` → luôn mở tại **hôm nay** (kẹp vào `[min, max]`); bỏ quy tắc 0.18.0 "năm của
+  `min` < 2000 → mở tại `min`". Muốn mở ở đầu khoảng: `open-at="min"`.
+- Badge `stamp` mặc định dùng font mono (`--td-font-mono`); trả về sans: `--td-badge-stamp-font-family: var(--td-font-sans)`.
+- `<td-dropzone>`: file mới thêm không còn `aria-valuenow="0"` (đang chờ = indeterminate); `reject(new Error('500'))` giờ
+  hiện "500" thay nhãn chung.
+
 ## 0.18.0
 
 Đề xuất đợt 2 của site 135 sau khi áp v0.17.0 (plan `docs/internal/plans/v0.18.0-135-feedback-2.md`, Codex plan-review

@@ -1,8 +1,8 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.18)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.19)
 
-Trang này liệt kê, cho từng bản từ **0.18.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
+Trang này liệt kê, cho từng bản từ **0.19.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
 [CHANGELOG.md](../../CHANGELOG.md); trang này chỉ gom lại theo góc nhìn "tôi phải làm gì" và thêm ví dụ trước/sau.
 Quy trình nâng cấp chung nằm ở [README.md](README.md).
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.19.0](#0190) | Đổi hành vi (nhỏ) + đổi giao diện (nhỏ) | datetime-picker mặc định mở tại hôm nay (cần đầu khoảng → `open-at="min"`); stamp dùng font mono; `td-button` chuyển ARIA trạng thái xuống; dropzone hiện `err.message`. |
 | [0.18.0](#0180) | Đổi hành vi (nhỏ) | `searchable="false"` (PHP) giờ tắt thật; `hasIcon()` hiểu alias; datetime-picker nhận ISO; `td-button` truyền `name`/`value`. |
 | [0.17.0](#0170) | Đổi hành vi (nhỏ) | `dropdown.value` trả giá trị đang chọn; `<td-dropdown>` chứa `<select>` giờ được nâng cấp. |
 | [0.16.0](#0160) | Đổi hành vi | `input-field.value`, slider `required`/`step`/mặc định, dropdown giữ/bỏ lựa chọn + `onSelect`+`onChange`, `confirm` giữ mở khi `onConfirm` trả `false`, định dạng `toAbsolute`, token `:root`, dark accent. |
@@ -42,6 +43,35 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.19.0
+
+**Đổi hành vi nhỏ + đổi giao diện nhỏ + bổ sung** (ARIA của nút, lý do lỗi / trạng thái chờ của dropzone, `accept-label`,
+token font badge, `setDBValue('')`). Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.19.0.
+
+1. **`<td-datetime-picker>` mặc định mở tại hôm nay** (kẹp vào `[min, max]`). 0.18.0 mở tại `min` khi năm của `min`
+   trước 2000. Site cần mở ở đầu khoảng thì thêm `open-at="min"`:
+
+   ```html
+   <!-- trước (0.18.0): tự mở năm 1950 -->
+   <td-datetime-picker min="1950-01-01"></td-datetime-picker>
+   <!-- sau (0.19.0): giữ hành vi cũ -->
+   <td-datetime-picker min="1950-01-01" open-at="min"></td-datetime-picker>
+   ```
+
+2. **`setDBValue('' | null | undefined)` giờ xoá giá trị** (trước bị bỏ qua). Code nào gọi `setDBValue('')` để "không
+   làm gì" thì bỏ lời gọi đó.
+3. **Badge `stamp` dùng font mono** (đổi giao diện, dấu hẹp hơn). Giữ sans:
+   `:root { --td-badge-stamp-font-family: var(--td-font-sans); }`. Ghi đè màu `--td-badge-*-fg` / `-bg` → site tự kiểm
+   tương phản.
+4. **`<td-button>` chuyển `aria-pressed` / `aria-expanded` / `aria-haspopup` / `aria-controls` xuống control bên
+   trong.** Site từng tự đặt các attribute này lên `querySelector('button')` bên trong thì bỏ code đó, đặt trên
+   `<td-button>`.
+5. **`<td-dropzone>` hiện `err.message` khi hook `upload` reject** — message phải an toàn để người dùng đọc (không lộ
+   stack / chi tiết nội bộ). Không muốn hiện: reject với giá trị không có `message` chuỗi (ví dụ `reject()` hoặc `reject('lỗi')`) → nhãn chung. File chưa có tiến độ không còn
+   `aria-valuenow="0"`.
 
 ---
 
