@@ -54,7 +54,8 @@ const prefersReducedMotion = () => {
  * **Modes (v0.18.0):** `mode="datetime"` (default, above) | `date` (day/month/year fields only) | `month` (month + year)
  * | `year` (year only). Each mode has its own display / DB / ISO format (table in docs/components/datetime-picker.md);
  * components outside the mode do not exist in the value. `open-at` (today | min | max | a date) positions an EMPTY
- * picker when it opens; without it a `min` before 2000 opens at `min`, else today (clamped to min–max).
+ * picker when it opens; without it the picker opens at today, clamped to min–max (v0.19.0 — the 0.18.0 "min before
+ * 2000 → min" rule is gone; set `open-at="min"` to open at the start of the range).
  *
  * **Form-associated:** submits ISO-local `YYYY-MM-DDTHH:mm:00` by default, `form-value-format="display"`
  * (dd/mm/yyyy - hh:mm) or `"db"` (yyyy-mm-dd hh:mm:ss) — other modes: `YYYY-MM-DD` | `YYYY-MM` | `YYYY` (iso = db).
@@ -527,8 +528,7 @@ export class TdDatetimePicker extends TdFormElement {
 
   /**
    * @private Where an EMPTY picker opens: `open-at` today | min | max | a date (same formats as `min`) — explicit
-   * always wins; without it (or naming a missing bound / an invalid date) a `min` before 2000 → `min` (old photos,
-   * 135), else today. Clamped to min–max.
+   * always wins; without it (or naming a missing bound / an invalid date) → today (v0.19.0 G6). Clamped to min–max.
    * @returns {import('../utils/datetime.js').DateTimeParts}
    */
   _openAtParts() {
@@ -539,7 +539,7 @@ export class TdDatetimePicker extends TdFormElement {
     else if (at === 'min') p = min;
     else if (at === 'max') p = max;
     else if (at) p = parseBound(at, 'min');
-    if (!p) p = min && min.year < DEFAULT_MIN_YEAR ? min : partsFromDate(new Date());
+    if (!p) p = partsFromDate(new Date());
     return this._clampToBounds(p);
   }
 
@@ -844,9 +844,11 @@ export class TdDatetimePicker extends TdFormElement {
 
   /**
    * Set the value from the mode's DB format (`yyyy-mm-dd hh:mm[:ss]` | `yyyy-mm-dd` | `yyyy-mm` | `yyyy`; the mode's
-   * ISO is accepted too); anything else is ignored.
+   * ISO is accepted too); '' / null / undefined clears it like `setValue(null)` (v0.19.0, no `change`); any other
+   * malformed string is ignored.
    */
   setDBValue(dbValue) {
+    if (dbValue == null || dbValue === '') { this.setValue(null); return; }
     const mode = this._mode();
     const p = parseModeDb(dbValue, mode);
     if (!p || invalidReason(p)) return;

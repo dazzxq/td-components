@@ -456,8 +456,10 @@ describe('v0.18.0 F3 — changing mode with a value', () => {
 describe('v0.18.0 F3 — open-at + year range', () => {
   const today = new Date();
 
-  it('min="1950-01-01" without open-at opens at 1950 (min year < 2000)', async () => {
-    const p = mount('<td-datetime-picker id="p" mode="date" min="1950-01-01"></td-datetime-picker>');
+  // v0.19.0 G6: without open-at the picker opens at today (the 0.18.0 "min < 2000 → min" rule is gone) — this case
+  // now needs open-at="min"; the default is covered in td-v019-datetime-picker.browser-test.js.
+  it('min="1950-01-01" + open-at="min" opens at 1950', async () => {
+    const p = mount('<td-datetime-picker id="p" mode="date" min="1950-01-01" open-at="min"></td-datetime-picker>');
     await open(p);
     expect(field('year').value).to.equal('1950');
     expect(field('month').value).to.equal('1');
@@ -482,7 +484,7 @@ describe('v0.18.0 F3 — open-at + year range', () => {
     expect(field('day').value).to.equal('30');
   });
 
-  it('open-at="min" / "max" / a date; explicit open-at wins over the < 2000 default', async () => {
+  it('open-at="min" / "max" / a date; explicit open-at wins over the default (today)', async () => {
     const cases = [
       ['open-at="max" min="1950-01-01" max="1960-12-31"', { year: '1960', month: '12', day: '31' }],
       ['open-at="min" min="2010-05-20"', { year: '2010', month: '5', day: '20' }],
@@ -490,7 +492,7 @@ describe('v0.18.0 F3 — open-at + year range', () => {
       ['open-at="09/08/1975" min="1950-01-01"', { year: '1975', month: '8', day: '9' }],
       ['open-at="1940-01-01" min="1950-01-01"', { year: '1950', month: '1', day: '1' }], // clamped
       [`open-at="today" min="1950-01-01"`, { year: String(today.getFullYear()), month: String(today.getMonth() + 1), day: String(today.getDate()) }],
-      ['open-at="garbage" min="1950-06-01"', { year: '1950', month: '6', day: '1' }], // invalid → default rule
+      ['open-at="garbage" min="1950-06-01" max="1960-12-31"', { year: '1960', month: '12', day: '31' }], // invalid → today, clamped (v0.19.0)
     ];
     for (const [attrs, want] of cases) {
       host.innerHTML = '';
@@ -516,14 +518,14 @@ describe('v0.18.0 F3 — open-at + year range', () => {
     TdModal.closeAll();
     await wait(0);
     host.innerHTML = '';
-    const m = mount('<td-datetime-picker id="m" mode="month" min="1930-04"></td-datetime-picker>');
+    const m = mount('<td-datetime-picker id="m" mode="month" min="1930-04" open-at="min"></td-datetime-picker>');
     await open(m);
     expect(field('month').value).to.equal('4');
     expect(field('year').value).to.equal('1930');
   });
 
-  it('datetime mode: min before 2000 opens at min incl. its time', async () => {
-    const p = mount('<td-datetime-picker id="p" min="1960-03-04T07:15"></td-datetime-picker>');
+  it('datetime mode: open-at="min" opens at min incl. its time', async () => {
+    const p = mount('<td-datetime-picker id="p" min="1960-03-04T07:15" open-at="min"></td-datetime-picker>');
     await open(p);
     expect(field('year').value).to.equal('1960');
     button('Chọn').click();

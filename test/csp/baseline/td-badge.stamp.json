@@ -13,7 +13,7 @@
   ],
   "styles": {
     ".td-badge--neutral.td-badge--stamp": {
-      "width": "86.7188px",
+      "width": "79.2969px",
       "height": "26.7969px",
       "min-height": "0px",
       "max-height": "none",
@@ -67,7 +67,7 @@
       "stroke-linecap": "butt"
     },
     ".td-badge--accent.td-badge--stamp": {
-      "width": "78.5625px",
+      "width": "71.1094px",
       "height": "26.7969px",
       "min-height": "0px",
       "max-height": "none",
@@ -121,7 +121,7 @@
       "stroke-linecap": "butt"
     },
     ".td-badge--success.td-badge--stamp": {
-      "width": "87.4219px",
+      "width": "79.2969px",
       "height": "26.7969px",
       "min-height": "0px",
       "max-height": "none",
@@ -175,7 +175,7 @@
       "stroke-linecap": "butt"
     },
     ".td-badge--warning.td-badge--stamp": {
-      "width": "88.6406px",
+      "width": "79.2969px",
       "height": "26.7969px",
       "min-height": "0px",
       "max-height": "none",
@@ -229,7 +229,7 @@
       "stroke-linecap": "butt"
     },
     ".td-badge--danger.td-badge--stamp": {
-      "width": "79.2812px",
+      "width": "71.1094px",
       "height": "26.7969px",
       "min-height": "0px",
       "max-height": "none",
@@ -283,7 +283,7 @@
       "stroke-linecap": "butt"
     },
     ".td-badge--info.td-badge--stamp": {
-      "width": "55.5px",
+      "width": "54.75px",
       "height": "26.7969px",
       "min-height": "0px",
       "max-height": "none",

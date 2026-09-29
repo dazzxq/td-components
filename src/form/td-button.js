@@ -12,6 +12,18 @@ const CLASS_TOKEN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
 const ICON_NAME = /^[a-z][a-z0-9-]{0,63}$/;
 /** Unknown registry-style icon names already warned about (once per name per page). */
 const _warnedIcons = new Set();
+/**
+ * ARIA state forwarded to the inner control (v0.19.0 G1): attribute → allowed values (null = IDREF list, copied
+ * verbatim unless empty / whitespace-only).
+ */
+const FORWARDED_ARIA = {
+  'aria-pressed': ['true', 'false', 'mixed'],
+  'aria-expanded': ['true', 'false'],
+  'aria-controls': null,
+  'aria-haspopup': ['true', 'false', 'menu', 'listbox', 'tree', 'grid', 'dialog'],
+};
+/** `attr=value` pairs already warned about (once per pair per page). */
+const _warnedAria = new Set();
 const _contrastCache = new Map();
 /** input string → parsed colour | null (one engine probe per distinct colour, invalid ones included) */
 const _parseCache = new Map();
@@ -88,10 +100,17 @@ function safeDownloadName(name) {
  * @attr {string} name - Forwarded to the inner `<button>` (v0.18.0): the button is the real submitter, so
  *   `FormData(form, submitter)` / native submit carry `name=value`. Not on a link button. (`form` is NOT forwarded.)
  * @attr {string} value - Forwarded to the inner `<button>` with `name` (v0.18.0)
+ * @attr {string} aria-pressed - Forwarded to the inner control (v0.19.0): true | false | mixed (toggle button)
+ * @attr {string} aria-expanded - Forwarded to the inner control (v0.19.0): true | false (disclosure / menu button)
+ * @attr {string} aria-controls - Forwarded verbatim (IDREF list) to the inner control (v0.19.0); empty → dropped
+ * @attr {string} aria-haspopup - Forwarded to the inner control (v0.19.0): true | false | menu | listbox | tree |
+ *   grid | dialog. A value outside these whitelists is not forwarded (console warning once). Updated in place; removing
+ *   the host attribute removes it below. The host keeps the site's attributes (a custom element has no role).
  */
 export class TdButton extends TdBaseElement {
   static get observedAttributes() {
-    return ['variant', 'size', 'icon', 'icon-position', 'loading', 'disabled', 'full-width', 'color', 'text-color', 'label', 'type', 'aria-label', 'href', 'target', 'download', 'name', 'value'];
+    return ['variant', 'size', 'icon', 'icon-position', 'loading', 'disabled', 'full-width', 'color', 'text-color', 'label', 'type', 'aria-label', 'href', 'target', 'download', 'name', 'value',
+      ...Object.keys(FORWARDED_ARIA)];
   }
 
   static get booleanAttributes() { return ['loading', 'disabled', 'full-width']; }
@@ -319,7 +338,10 @@ export class TdButton extends TdBaseElement {
 
   attributeChangedCallback(name, oldVal, newVal) {
     if (oldVal === newVal || !this._initialized) return;
-    if (name === 'loading' || name === 'disabled' || name === 'name' || name === 'value') { this._syncState(); return; }
+    if (name === 'loading' || name === 'disabled' || name === 'name' || name === 'value' || name in FORWARDED_ARIA) {
+      this._syncState();
+      return;
+    }
     // href: a new value in place (focus kept); adding / removing it switches button <-> link (re-render).
     if (name === 'href' && oldVal !== null && newVal !== null) { this._syncState(); return; }
     if (name === 'label') {
@@ -401,6 +423,33 @@ export class TdButton extends TdBaseElement {
     const aria = this.getAttribute('aria-label');
     if (aria) btn.setAttribute('aria-label', aria);
     else btn.removeAttribute('aria-label');
+    for (const attr of Object.keys(FORWARDED_ARIA)) {
+      const v = this._forwardedAria(attr);
+      if (v !== null) btn.setAttribute(attr, v);
+      else btn.removeAttribute(attr);
+    }
+  }
+
+  /**
+   * @private The host's `aria-pressed|expanded|controls|haspopup` value to forward (v0.19.0 G1), or null (absent /
+   * empty / not whitelisted — the last warns once per attribute+value).
+   * @param {string} attr
+   * @returns {string|null}
+   */
+  _forwardedAria(attr) {
+    const raw = this.getAttribute(attr);
+    if (raw === null) return null;
+    const allowed = FORWARDED_ARIA[attr];
+    if (allowed === null) return raw.trim() ? raw : null; // IDREF list: verbatim (setAttribute → no injection)
+    const v = raw.trim().toLowerCase();
+    if (allowed.includes(v)) return v;
+    const key = `${attr}=${raw}`;
+    if (!_warnedAria.has(key)) {
+      if (_warnedAria.size > 200) _warnedAria.clear(); // bounded
+      _warnedAria.add(key);
+      console.warn(`td-button: ${attr} not forwarded (allowed: ${allowed.join(' | ')})`, raw);
+    }
+    return null;
   }
 
   /**

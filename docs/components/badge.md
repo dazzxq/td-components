@@ -42,6 +42,8 @@ chữ in hoa, viền đôi, nghiêng nhẹ — như `td-stamp` của 135). **Thu
 | Token | Mặc định | Tác dụng |
 |---|---|---|
 | `--td-badge-radius` | `var(--td-radius-full)` | Bo góc (viên thuốc) |
+| `--td-badge-font-family` | `var(--td-font-sans)` | Font của badge (0.19.0) |
+| `--td-badge-stamp-font-family` | `var(--td-font-mono)` | Font của con dấu `--stamp` (0.19.0; trước đó dùng font sans) |
 | `--td-badge-font-size` | `var(--td-text-xs)` | Cỡ chữ |
 | `--td-badge-{variant}-bg` | tông nhạt của màu | Nền (kiểu thường) |
 | `--td-badge-{variant}-fg` | tông đậm của màu | Chữ + viền (outline / stamp) |
@@ -52,10 +54,16 @@ chữ in hoa, viền đôi, nghiêng nhẹ — như `td-stamp` của 135). **Thu
 ```css
 :root { --td-badge-stamp-rotate: 0deg; }            /* con dấu thẳng */
 .invoice .td-badge--stamp { --td-badge-stamp-rotate: -8deg; } /* nghiêng hơn trong một vùng */
+:root { --td-badge-stamp-font-family: var(--td-font-sans); } /* con dấu dùng lại font sans như 0.18.0 */
 ```
 
 Theme tối có bộ màu riêng. Chữ ≥ 4.7:1 trên nền của chính nó **và** trên nền trang (outline / stamp) ở light + dark
 (gate `npm run test:contrast`). Badge thuộc tầng nội dung → nền đặc, không kính.
+
+> **Ghi đè màu thì tự kiểm tương phản.** Gate của kit chỉ đo **giá trị mặc định**. Khi site ghi đè
+> `--td-badge-*-fg` / `--td-badge-*-bg` (ví dụ trỏ vào màu thương hiệu), site phải tự kiểm chữ ≥ 4.5:1 trên nền của
+> badge **và** trên nền trang (outline / stamp nền trong suốt) — ví dụ một màu cảnh báo `--c-warn` 3.07:1 là không
+> đạt. Đổi font (`--td-badge-font-family` / `--td-badge-stamp-font-family`) cũng nên xem lại độ đậm/cỡ chữ.
 
 ## Trợ năng
 
