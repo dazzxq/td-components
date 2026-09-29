@@ -5,7 +5,7 @@ import { dirname } from 'node:path';
 import { HAS_PHP, renderFixture, FIXTURE_FILE } from './php.mjs';
 
 if (!HAS_PHP) {
-  console.error('build-fixture: php >= 8.1 CLI not found');
+  console.error('build-fixture: php >= 8.0 CLI not found');
   process.exit(1);
 }
 mkdirSync(dirname(FIXTURE_FILE), { recursive: true });

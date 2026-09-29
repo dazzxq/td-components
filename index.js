@@ -21,6 +21,7 @@ export { TdLoading, TdLoadingSpinner } from './src/feedback/td-loading.js';
 export { TdMenu } from './src/feedback/td-menu.js';
 export { TdHovercard } from './src/feedback/td-hovercard.js';
 export { TdScrollTop } from './src/feedback/td-scroll-top.js';
+export { TdAlert } from './src/feedback/td-alert.js';
 export { TdTable } from './src/display/td-table.js';
 export { TdTabs } from './src/display/td-tabs.js';
 export { TdPagination } from './src/display/td-pagination.js';

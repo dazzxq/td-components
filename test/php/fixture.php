@@ -57,3 +57,15 @@ $parity = [
 <div class="ssr-p" data-p="<?= Td::e($key) ?>"><?= $html ?></div>
 <?php endforeach; ?>
 </div>
+<div id="ssr-feedback">
+<?= td_alert('Đã lưu <b>thay đổi</b>.', ['variant' => 'success', 'heading' => 'Thành công', 'dismissible' => true, 'id' => 'al-success']) ?>
+
+<?= td_alert('Không kết nối được máy chủ.', ['variant' => 'danger', 'id' => 'al-danger']) ?>
+
+<?= td_badge('Mới', ['variant' => 'accent', 'id' => 'bd-new']) ?>
+
+<?= td_badge('Đã duyệt', ['variant' => 'success', 'stamp' => true, 'id' => 'bd-stamp']) ?>
+
+<?= td_link('Tài liệu', '/docs', ['bare' => true, 'class' => 'site-link', 'id' => 'ln-bare']) ?>
+
+</div>
