@@ -523,7 +523,7 @@ export class TdDatetimePicker extends TdFormElement {
     const p = s.parts ? { ...s.parts } : this._openAtParts();
     p.hour = clamp(p.hour, 0, 23);
     p.minute = snapMinuteDown(clamp(p.minute, 0, 59), this._minuteStep());
-    if (!s.parts) this._snapIntoBounds(p);
+    if (!s.parts && this._mode() === 'datetime') this._snapIntoBounds(p); // only datetime has a minute wheel
     return toModeParts(p, this._mode());
   }
 

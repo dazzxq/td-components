@@ -141,4 +141,16 @@ describe('v0.19.0 G6 — default open position = today clamped to min–max', ()
     await open(q);
     expect({ d: field('day').value, h: wheel('hour'), mi: wheel('minute') }).to.deep.equal({ d: '4', h: '11', mi: '0' });
   });
+
+  it('date / month modes ignore the minute snap (a bound near midnight / month end stays on its day / month)', async () => {
+    const next = today.getFullYear() + 1;
+    const p = mount(`<td-datetime-picker id="p" mode="date" min="${next}-03-31T23:58" minute-step="5"></td-datetime-picker>`);
+    await open(p);
+    expect({ m: field('month').value, d: field('day').value }).to.deep.equal({ m: '3', d: '31' });
+    await close();
+    host.innerHTML = '';
+    const q = mount(`<td-datetime-picker id="q" mode="month" min="${next}-12-31T23:58" minute-step="5"></td-datetime-picker>`);
+    await open(q);
+    expect({ y: field('year').value, m: field('month').value }).to.deep.equal({ y: String(next), m: '12' });
+  });
 });
