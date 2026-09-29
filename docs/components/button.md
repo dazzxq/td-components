@@ -12,7 +12,7 @@ kính trắng trung tính, ghost là nút chữ không nền. Dùng cho mọi h�
 | Import | `import '@dazzxq/td-components/button';` (class: `import { TdButton } from '@dazzxq/td-components';`) |
 | Loại | Custom element |
 | Form-associated | không (nhưng nút `<button>` bên trong vẫn submit/reset được form bao quanh, xem [Dùng trong form](#dùng-trong-form)) |
-| Từ phiên bản | 0.1.0 (token-native từ 0.7.0, Liquid Glass từ 0.14.0, `run()` từ 0.13.0, `ghost` + `href` từ 0.17.0, `name`/`value` + alias icon từ 0.18.0) |
+| Từ phiên bản | 0.1.0 (token-native từ 0.7.0, Liquid Glass từ 0.14.0, `run()` từ 0.13.0, `ghost` + `href` từ 0.17.0, `name`/`value` + alias icon từ 0.18.0, ARIA trạng thái chuyển xuống từ 0.19.0) |
 
 Cần nạp `td.css` một lần trên trang (xem [Cài đặt](../getting-started/installation.md)). Không có `td.css` thì nút
 vẫn chạy nhưng không có giao diện.
@@ -275,6 +275,34 @@ chữ xám, viền nhạt, không kính, không bóng (xem [Tương phản](#tư
 
 - Nút `disabled` với `type="submit"` không submit.
 
+### Nút bật/tắt, nút mở menu (ARIA trạng thái, 0.19.0)
+
+`aria-pressed`, `aria-expanded`, `aria-controls`, `aria-haspopup` đặt trên `<td-button>` được **chuyển xuống**
+`<button>` / `<a>` bên trong (phần tử có role mà trình đọc màn hình đọc). Đổi attribute → cập nhật tại chỗ (không
+render lại, không mất focus); gỡ attribute → gỡ ở dưới. Host vẫn giữ attribute của bạn.
+
+```html
+<!-- nút bật/tắt -->
+<td-button variant="secondary" aria-pressed="false" id="bold">Đậm</td-button>
+<!-- nút mở menu -->
+<td-button variant="secondary" aria-haspopup="menu" aria-expanded="false" aria-controls="user-menu">Tài khoản</td-button>
+```
+
+```js
+const b = document.getElementById('bold');
+b.addEventListener('click', () => b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true')));
+```
+
+| Attribute | Giá trị được chuyển |
+|---|---|
+| `aria-pressed` | `true` \| `false` \| `mixed` |
+| `aria-expanded` | `true` \| `false` |
+| `aria-haspopup` | `true` \| `false` \| `menu` \| `listbox` \| `tree` \| `grid` \| `dialog` |
+| `aria-controls` | nguyên văn (danh sách id cách nhau bởi dấu cách); rỗng / toàn khoảng trắng → không chuyển |
+
+Giá trị ngoài danh sách (ví dụ `aria-pressed="yes"`) **không** được chuyển xuống và có `console.warn` một lần. Chỉ
+đúng 4 attribute này (và `aria-label`) được chuyển; các `aria-*` khác nằm lại trên host.
+
 ### Nút trong bảng, vùng dày đặc hoặc trên bề mặt kính
 
 Trong `.td-table`, trong phần tử có `data-td-density="dense"`, hoặc bên trong một bề mặt kính (`.td-glass-surface`,
@@ -309,6 +337,10 @@ hiệu năng khi có nhiều nút):
 | `download` | string | — | Chỉ với `href`: chuyển xuống `<a download>`; tên file được lọc ký tự đường dẫn. 0.17.0. |
 | `name` | string | — | Chuyển xuống `<button>` bên trong (submitter thật, gửi `name=value` khi submit). Không áp cho link. 0.18.0. |
 | `value` | string | — | Đi kèm `name`, chuyển xuống `<button>` bên trong. Không áp cho link. 0.18.0. |
+| `aria-pressed` | string | — | `true` \| `false` \| `mixed` → chuyển xuống `<button>` / `<a>`. 0.19.0. |
+| `aria-expanded` | string | — | `true` \| `false` → chuyển xuống. 0.19.0. |
+| `aria-controls` | string (IDREF) | — | Chuyển xuống nguyên văn (rỗng → bỏ). 0.19.0. |
+| `aria-haspopup` | string | — | `true` \| `false` \| `menu` \| `listbox` \| `tree` \| `grid` \| `dialog` → chuyển xuống. 0.19.0. |
 
 ## Property & method
 
@@ -497,6 +529,9 @@ có các tính năng JS (`run()`, loading tự động). Các file `test/contrac
   dùng được. Spinner có `aria-hidden`.
 - Disabled: disabled native, ra khỏi thứ tự Tab.
 - Icon luôn `aria-hidden`. Nút chỉ có icon phải có `aria-label` (được chuyển xuống `<button>`).
+- Nút bật/tắt / nút mở menu: đặt `aria-pressed` / `aria-expanded` / `aria-controls` / `aria-haspopup` trên host, kit
+  chuyển xuống control bên trong (0.19.0, xem [mục trên](#nút-bậttắt-nút-mở-menu-aria-trạng-thái-0190)). Site tự
+  cập nhật giá trị khi trạng thái đổi.
 - Vùng bấm trên màn cảm ứng tối thiểu 44 px (`--td-touch-min`).
 - Tôn trọng `prefers-reduced-motion` (tắt transition và hiệu ứng nhấn), `prefers-reduced-transparency`,
   `prefers-contrast: more` và `forced-colors` (viền `ButtonText`, bỏ gradient).
@@ -508,6 +543,8 @@ Xem [Trợ năng](../guides/accessibility.md).
 - Chữ (`label` hoặc nội dung thẻ) luôn được escape, chỉ hiện dưới dạng text.
 - `color` / `text-color` đi qua `safeColor` rồi được trình duyệt chuẩn hoá; giá trị không phải màu bị bỏ.
 - `type` theo danh sách trắng, `icon` class cũ được lọc từng class, nên không chèn được attribute hay HTML.
+- ARIA trạng thái (0.19.0): giá trị theo danh sách trắng; `aria-controls` ghi bằng `setAttribute` (chỉ là text của
+  attribute, không thành HTML).
 - `href` theo danh sách trắng giao thức (`https:`; `http:` chỉ khi trang là http; tương đối, `#`, `mailto:`, `tel:`), chuẩn hoá như trình duyệt trước
   khi kiểm (bỏ ký tự điều khiển/khoảng trắng hai đầu, tab/xuống dòng ở giữa: `" java\tscript:"` vẫn bị chặn).
   `target` theo danh sách trắng, `_blank` luôn có `rel="noopener noreferrer"`; tên file `download` được lọc.

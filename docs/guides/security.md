@@ -59,7 +59,8 @@ Bạn **không cần** escape trước (escape trước sẽ hiện `&amp;lt;` l
 | `TdLightbox` `panel(ctx)` | Element (tin cậy) | chuỗi bị **bỏ qua** |
 | `TdLightbox` toolbar `label` / `icon` / `iconNode` | text / tên / SVGElement tin cậy | |
 | `TdFormValidation` mọi thông báo, `labels.summaryTitle` | text | |
-| `td-dropzone` tên file (danh sách, dòng bị loại, `aria-label` nút xoá), `TdDropzone.labels.*` | text | tên file do người dùng đặt — chỉ gán bằng `textContent` / `setAttribute` |
+| `td-dropzone` tên file (danh sách, dòng bị loại, `aria-label` nút xoá), `TdDropzone.labels.*`, `accept-label` | text | tên file do người dùng đặt — chỉ gán bằng `textContent` / `setAttribute` |
+| `td-dropzone` lý do lỗi upload (`message` của giá trị hook `upload` reject) | text, chỉ chuỗi, ≤ 200 ký tự | kiểu khác → nhãn chung; nội dung phải an toàn cho người dùng (xem [td-dropzone](#td-dropzone-upload-file)) |
 | `td-progress` `label` | text | |
 
 ## Các cửa HTML thô (raw-HTML hatch)
@@ -187,6 +188,14 @@ trên trình duyệt**. Việc lọc này chỉ là **gợi ý UX**, không ph�
 Kit không đọc nội dung file. Chỉ khi site bật `preview`, kit tạo object URL (`blob:`) cho **ảnh** để hiện thumbnail
 (thu hồi khi xoá / reset / rời trang) → CSP cần `img-src 'self' blob:`. Hook `upload(file, { onProgress, signal })`
 là **code của site**: endpoint upload phải có CSRF token / kiểm tra phiên như mọi request thay đổi dữ liệu.
+
+**Thông báo lỗi của hook (0.19.0).** Hook reject bằng `Error` có `message` chuỗi → kit hiện chuỗi đó ở dòng file
+(chỉ `textContent`, cắt 200 ký tự; `message` không phải chuỗi hoặc không có → nhãn chung "Tải lên thất bại"). Không có
+nguy cơ XSS, nhưng người dùng **đọc nguyên văn**: đừng chuyển thẳng body lỗi của server (stack trace, đường dẫn file,
+câu SQL, tên bảng, mã nội bộ). Server trả một trường **riêng** đã soạn cho người dùng (ví dụ
+`{"userMessage": "File quá 5 MB"}`) và hook chỉ chuyển trường đó; chi tiết kỹ thuật ghi vào log phía server. Hook cũ
+từng `reject(err)` với lỗi nội bộ (ví dụ lỗi thư viện, `Error` chứa body server) → kiểm lại khi nâng cấp lên 0.19.0: bọc
+thành `new Error('')` (nhãn chung) hoặc thông báo đã soạn.
 
 ## Chính sách URL
 
@@ -343,6 +352,8 @@ Trusted Types (`Content-Security-Policy: require-trusted-types-for 'script'`) ch
 
 - [ ] Server kiểm lại loại (theo nội dung), kích thước và số file của mọi upload — không tin `accept` / `max-size` /
       `max-files` của `td-dropzone`; file lưu với tên do server sinh, ngoài web root.
+- [ ] Lỗi mà hook `upload` của dropzone reject (hiện nguyên văn cho người dùng) là thông báo đã soạn cho người dùng —
+      không stack trace, đường dẫn, SQL hay mã nội bộ.
 
 **Phân quyền**
 

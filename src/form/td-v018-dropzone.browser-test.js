@@ -316,7 +316,7 @@ describe('v0.18.0 F4 — td-dropzone', () => {
     const bar = item.querySelector('td-progress');
     expect(item.getAttribute('data-status')).to.equal('uploading');
     expect(bar.hidden).to.equal(false);
-    expect(bar.getAttribute('aria-valuenow')).to.equal('0');
+    expect(bar.hasAttribute('aria-valuenow')).to.equal(false); // v0.19.0 G2: waiting (indeterminate) until onProgress
     expect(bar.getAttribute('aria-label')).to.equal('Tải lên a.txt');
     calls[0].ctx.onProgress(42);
     expect(bar.getAttribute('aria-valuenow')).to.equal('42');
@@ -348,7 +348,7 @@ describe('v0.18.0 F4 — td-dropzone', () => {
     const item = dz.querySelector('.td-dropzone__item');
     expect(item.getAttribute('data-status')).to.equal('error');
     expect(item.querySelector('td-progress').getAttribute('variant')).to.equal('danger');
-    expect(item.querySelector('.td-dropzone__status').textContent).to.equal('Tải lên thất bại');
+    expect(item.querySelector('.td-dropzone__status').textContent).to.equal('500'); // v0.19.0 G2: err.message shown
     expect(dz.uploading).to.equal(false);
   });
 

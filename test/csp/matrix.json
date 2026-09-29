@@ -1625,6 +1625,19 @@
       "settle": 300
     },
     {
+      "state": "uploading-waiting",
+      "reducedMotion": true,
+      "setup": "const d=document.createElement('td-dropzone'); d.setAttribute('label','Tệp'); d.setAttribute('multiple',''); window.__mount.appendChild(d); d.upload=()=>new Promise(()=>{}); d.addFiles([new File(['abc'],'video.mp4',{type:'video/mp4'})]);",
+      "selectors": [
+        ".td-dropzone__item",
+        ".td-dropzone__status",
+        ".td-dropzone__progress",
+        ".td-dropzone__progress .td-progress",
+        ".td-dropzone__progress .td-progress__bar"
+      ],
+      "settle": 300
+    },
+    {
       "state": "disabled",
       "setup": "const d=document.createElement('td-dropzone'); d.setAttribute('label','Tệp'); d.setAttribute('multiple',''); window.__mount.appendChild(d); d.addFiles([new File(['abc'],'a.pdf',{type:'application/pdf'})]); d.setAttribute('disabled','');",
       "selectors": [

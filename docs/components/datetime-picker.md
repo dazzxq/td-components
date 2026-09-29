@@ -15,7 +15,7 @@ Chỉ cần **định dạng / hiển thị** thời gian (không nhập) → d�
 | Import | `import '@dazzxq/td-components/datetime-picker'` (class: `import { TdDatetimePicker } from '@dazzxq/td-components/datetime-picker'`) |
 | Loại | Custom element (mở hộp thoại TdModal — được import tự động) |
 | Form-associated | có (`ElementInternals`) |
-| Từ phiên bản | 0.1.0 (token-native + bàn phím đầy đủ + `min`/`max` từ 0.10.0; `mode` + `open-at` từ 0.18.0) |
+| Từ phiên bản | 0.1.0 (token-native + bàn phím đầy đủ + `min`/`max` từ 0.10.0; `mode` + `open-at` từ 0.18.0; mặc định mở tại hôm nay + `setDBValue('')` xoá từ 0.19.0) |
 
 ## Ví dụ nhanh
 
@@ -180,16 +180,23 @@ Khi mở hộp thoại mà **chưa có giá trị**, các ô bắt đầu ở:
 
 | `open-at` | Mở tại |
 |---|---|
-| (không đặt) | `min` nếu năm của `min` **trước 2000** (ví dụ ảnh/film cũ), ngược lại **hôm nay** |
+| (không đặt) | **hôm nay** (kẹp vào `[min, max]`) |
 | `today` | hôm nay |
 | `min` / `max` | mốc `min` / `max` (không đặt mốc đó → như không có `open-at`) |
 | một ngày (`1975-08-09`, `09/08/1975`, `1975-08`, `1975`…, cùng định dạng `min`) | ngày đó |
 
-Luôn kẹp vào `[min, max]`; `open-at` tường minh luôn thắng quy tắc mặc định; đã có giá trị thì mở tại giá trị.
+Luôn kẹp vào `[min, max]`; `open-at` tường minh luôn thắng mặc định; `open-at` sai → như không đặt; đã có giá trị
+thì mở tại giá trị.
+
+> **Đổi hành vi ở 0.19.0:** 0.18.0 mở tại `min` khi năm của `min` trước 2000. Quy tắc đó sai khi `min` chỉ là biên
+> hợp lệ (ví dụ `min="1900-01-01"` cho ảnh chụp năm nay) nên đã bỏ: không có `open-at` luôn mở tại **hôm nay**. Muốn
+> mở ở đầu khoảng thì đặt `open-at="min"`.
 
 ```html
-<!-- ảnh cũ: mở ngay ở 1950, không cần open-at -->
-<td-datetime-picker name="taken" mode="date" min="1950-01-01"></td-datetime-picker>
+<!-- min chỉ là biên hợp lệ: mở tại hôm nay -->
+<td-datetime-picker name="taken" mode="date" min="1900-01-01"></td-datetime-picker>
+<!-- dữ liệu cũ: mở ngay ở 1950 -->
+<td-datetime-picker name="born" mode="date" min="1950-01-01" open-at="min"></td-datetime-picker>
 <!-- mở ở năm muộn nhất -->
 <td-datetime-picker name="year" mode="year" min="1900" max="2026" open-at="max"></td-datetime-picker>
 ```
@@ -224,7 +231,7 @@ lại, focus chuyển sang trigger mới. `minute-step` đọc lại ở lần m
 | `getValue()` | `() => string` | Giá trị display của mode đã chuẩn hoá, hoặc `''` khi trống / sai định dạng / ngày không tồn tại / ngoài `min`–`max`. |
 | `getDBValue()` | `() => string` | db của mode (`yyyy-mm-dd hh:mm:00` \| `yyyy-mm-dd` \| `yyyy-mm` \| `yyyy`), hoặc `''` trong các trường hợp như trên. |
 | `setValue(display)` | `(string \| null) => void` | Đặt giá trị dạng display (hoặc ISO) của mode. `''` / `null` → xoá. Chuỗi sai **vẫn được giữ** và bị đánh dấu `badInput`. Không phát `change`. |
-| `setDBValue(db)` | `(string) => void` | Đặt từ dạng db (hoặc ISO) của mode. Chuỗi rác / ngày không tồn tại → **bỏ qua** (giá trị cũ giữ nguyên). Không phát `change`. |
+| `setDBValue(db)` | `(string) => void` | Đặt từ dạng db (hoặc ISO) của mode. `''` / `null` / `undefined` → **xoá** như `setValue(null)` (0.19.0, mọi mode). Chuỗi rác khác / ngày không tồn tại → **bỏ qua** (giá trị cũ giữ nguyên). Không phát `change`. |
 | `setError(msg)` / `clearError()` | | Error contract. `errorMessage` (getter) trả lỗi đang hiện. |
 | `value`, `label`, `placeholder`, `min`, `max`, `minuteStep`, `formValueFormat`, `mode`, `openAt`, `name`, `errorText` | property phản chiếu attribute | Đọc/ghi attribute (chuỗi). `el.value` là chuỗi display thô (có thể sai định dạng) — dùng `getValue()` để lấy giá trị đã kiểm tra. |
 | `disabled`, `required` | boolean | Phản chiếu attribute. |
@@ -431,7 +438,9 @@ Trợ năng:
 - **`getValue()` trả `''`** không có nghĩa là trống: có thể giá trị sai hoặc ngoài `min`/`max`. Kiểm tra `picker.validity`
   hoặc `picker.value` (chuỗi thô) để phân biệt.
 - **Năm ngoài 2000–2099 bị từ chối** khi không đặt `min`/`max`. Nhập ngày sinh / dữ liệu cũ → đặt `min` (ví dụ
-  `min="1900-01-01"`); `min` trước 2000 còn làm hộp thoại mở ngay ở `min` (xem `open-at`).
+  `min="1900-01-01"`). Hộp thoại vẫn mở tại hôm nay; muốn mở ngay ở `min` thì thêm `open-at="min"` (0.19.0).
+- **Xoá giá trị từ dữ liệu server rỗng**: `setDBValue(row.date ?? '')` xoá picker khi DB trả rỗng / `null` (0.19.0);
+  trước 0.19.0 lệnh này bị bỏ qua và giá trị cũ còn lại.
 - **`setValue()` im lặng**: không phát `change`. Nếu code khác phụ thuộc `change`, tự dispatch hoặc gọi hàm xử lý.
 - **Hộp thoại là TdModal**: mở từ bên trong một modal khác sẽ xếp chồng lên trên; các nút trong hộp thoại dùng
   `.td-btn` của [button](button.md).

@@ -2,7 +2,7 @@ import { TdFormElement } from '../base/td-form-element.js';
 import { TdModal } from '../feedback/td-modal.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import {
-  parseBound, invalidReason, normalizeMinuteStep, snapMinuteDown, partsFromDate,
+  parseBound, invalidReason, normalizeMinuteStep, snapMinuteDown, partsFromDate, compareParts,
   normalizeMode, toModeParts, parseModeValue, parseModeDb, formatModeDisplay, formatModeDb, formatModeIso,
   compareModeParts, MODE_PARTS,
 } from '../utils/datetime.js';
@@ -54,7 +54,8 @@ const prefersReducedMotion = () => {
  * **Modes (v0.18.0):** `mode="datetime"` (default, above) | `date` (day/month/year fields only) | `month` (month + year)
  * | `year` (year only). Each mode has its own display / DB / ISO format (table in docs/components/datetime-picker.md);
  * components outside the mode do not exist in the value. `open-at` (today | min | max | a date) positions an EMPTY
- * picker when it opens; without it a `min` before 2000 opens at `min`, else today (clamped to min–max).
+ * picker when it opens; without it the picker opens at today, clamped to min–max (v0.19.0 — the 0.18.0 "min before
+ * 2000 → min" rule is gone; set `open-at="min"` to open at the start of the range).
  *
  * **Form-associated:** submits ISO-local `YYYY-MM-DDTHH:mm:00` by default, `form-value-format="display"`
  * (dd/mm/yyyy - hh:mm) or `"db"` (yyyy-mm-dd hh:mm:ss) — other modes: `YYYY-MM-DD` | `YYYY-MM` | `YYYY` (iso = db).
@@ -522,13 +523,30 @@ export class TdDatetimePicker extends TdFormElement {
     const p = s.parts ? { ...s.parts } : this._openAtParts();
     p.hour = clamp(p.hour, 0, 23);
     p.minute = snapMinuteDown(clamp(p.minute, 0, 59), this._minuteStep());
+    if (!s.parts && this._mode() === 'datetime') this._snapIntoBounds(p); // only datetime has a minute wheel
     return toModeParts(p, this._mode());
   }
 
   /**
+   * @private The down-snap can land before `min` (min 10:07, step 5 → 10:05): move to the first step-aligned slot at
+   * or after `min` (carrying into the next hour/day), unless that slot is past `max` — then keep the down-snap.
+   * @param {import('../utils/datetime.js').DateTimeParts} p mutated in place
+   */
+  _snapIntoBounds(p) {
+    const { min, max } = this._bounds();
+    if (!min || compareParts(p, min) >= 0) return;
+    const step = this._minuteStep();
+    const d = new Date(2000, 0, 1);
+    d.setFullYear(min.year, min.month - 1, min.day); // setFullYear: years 0–99 stay literal
+    d.setHours(min.hour, min.minute + ((step - (min.minute % step)) % step), 0, 0);
+    const up = partsFromDate(d);
+    if (max && compareParts(up, max) > 0) return;
+    Object.assign(p, up);
+  }
+
+  /**
    * @private Where an EMPTY picker opens: `open-at` today | min | max | a date (same formats as `min`) — explicit
-   * always wins; without it (or naming a missing bound / an invalid date) a `min` before 2000 → `min` (old photos,
-   * 135), else today. Clamped to min–max.
+   * always wins; without it (or naming a missing bound / an invalid date) → today (v0.19.0 G6). Clamped to min–max.
    * @returns {import('../utils/datetime.js').DateTimeParts}
    */
   _openAtParts() {
@@ -539,7 +557,7 @@ export class TdDatetimePicker extends TdFormElement {
     else if (at === 'min') p = min;
     else if (at === 'max') p = max;
     else if (at) p = parseBound(at, 'min');
-    if (!p) p = min && min.year < DEFAULT_MIN_YEAR ? min : partsFromDate(new Date());
+    if (!p) p = partsFromDate(new Date());
     return this._clampToBounds(p);
   }
 
@@ -844,9 +862,11 @@ export class TdDatetimePicker extends TdFormElement {
 
   /**
    * Set the value from the mode's DB format (`yyyy-mm-dd hh:mm[:ss]` | `yyyy-mm-dd` | `yyyy-mm` | `yyyy`; the mode's
-   * ISO is accepted too); anything else is ignored.
+   * ISO is accepted too); '' / null / undefined clears it like `setValue(null)` (v0.19.0, no `change`); any other
+   * malformed string is ignored.
    */
   setDBValue(dbValue) {
+    if (dbValue == null || dbValue === '') { this.setValue(null); return; }
     const mode = this._mode();
     const p = parseModeDb(dbValue, mode);
     if (!p || invalidReason(p)) return;
