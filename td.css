@@ -6071,7 +6071,7 @@
  * §2: input/field rows). Dashed zone on the field tokens; the "choose" button is the kit's standalone secondary
  * button (.td-btn--secondary, G1/G3); file rows are plain fills; per-file progress = <td-progress size="sm">.
  * State: data-state="idle|dragover" + [data-disabled] on .td-dropzone · data-status on .td-dropzone__item
- * (selected|uploading|done|error) · data-reason on .td-dropzone__reject · [hidden] on hint / lists / status / progress.
+ * (selected|uploading|done|error) + [data-waiting] (v0.19.0: uploading, no progress yet → indeterminate bar) · data-reason on .td-dropzone__reject · [hidden] on hint / lists / status / progress.
  */
 @layer td.tokens {
 	:root {
@@ -6274,6 +6274,12 @@
 
 	.td-dropzone__item[data-status="done"] .td-dropzone__status { color: var(--td-color-success); }
 	.td-dropzone__item[data-status="error"] .td-dropzone__status { color: var(--td-color-error); }
+
+	/* v0.19.0: the status may carry the hook's error message (≤ 200 chars) — wrap it, never overflow the row. */
+	.td-dropzone__status {
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
 
 	.td-dropzone__progress {
 		grid-area: progress;
