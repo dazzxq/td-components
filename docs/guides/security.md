@@ -16,6 +16,7 @@ Tài liệu nội bộ cho người viết component: [security-model](../intern
 - [Text hay HTML: bảng theo API](#text-hay-html-bảng-theo-api)
 - [Các cửa HTML thô (raw-HTML hatch)](#các-cửa-html-thô-raw-html-hatch)
 - [TdHovercard: sanitize, cache và đổi phiên](#tdhovercard-sanitize-cache-và-đổi-phiên)
+- [td-dropzone: upload file](#td-dropzone-upload-file)
 - [Chính sách URL](#chính-sách-url)
 - [Những thứ kit tin tưởng (trust assumptions)](#những-thứ-kit-tin-tưởng-trust-assumptions)
 - [CSS injection](#css-injection)
@@ -58,6 +59,8 @@ Bạn **không cần** escape trước (escape trước sẽ hiện `&amp;lt;` l
 | `TdLightbox` `panel(ctx)` | Element (tin cậy) | chuỗi bị **bỏ qua** |
 | `TdLightbox` toolbar `label` / `icon` / `iconNode` | text / tên / SVGElement tin cậy | |
 | `TdFormValidation` mọi thông báo, `labels.summaryTitle` | text | |
+| `td-dropzone` tên file (danh sách, dòng bị loại, `aria-label` nút xoá), `TdDropzone.labels.*` | text | tên file do người dùng đặt — chỉ gán bằng `textContent` / `setAttribute` |
+| `td-progress` `label` | text | |
 
 ## Các cửa HTML thô (raw-HTML hatch)
 
@@ -165,6 +168,25 @@ người trước. (Trang tải lại hoàn toàn thì cache mất theo, không 
 - Chỉ `GET`, **không đổi trạng thái** (hover là tự động — không được có "tác dụng phụ").
 - Tự kiểm tra quyền như mọi endpoint khác; đừng giả định "chỉ card mới gọi".
 - Nên trả `X-Content-Type-Options: nosniff` và `Content-Type` chính xác.
+
+## td-dropzone: upload file
+
+`<td-dropzone>` ([trang component](../components/dropzone.md)) lọc file theo `accept`, `max-size`, `max-files` **ngay
+trên trình duyệt**. Việc lọc này chỉ là **gợi ý UX**, không phải lớp bảo vệ:
+
+- Người dùng bỏ qua được dễ dàng: đổi đuôi file (`virus.exe` → `anh.png`), sửa `accept` bằng DevTools, gửi request
+  thẳng không qua form. `File.type` là do trình duyệt **đoán theo đuôi**, không đọc nội dung.
+- **Server phải kiểm lại** mọi thứ: loại file theo **nội dung** (magic bytes / `finfo_file()` của PHP, không tin
+  `$_FILES[…]['type']` hay đuôi), kích thước (cấu hình `upload_max_filesize` / `post_max_size` + kiểm tra riêng), số
+  file, quyền của người dùng.
+- Lưu file ngoài web root (hoặc thư mục không cho thực thi script), đặt **tên mới** do server sinh; không dùng tên
+  gốc làm đường dẫn (path traversal `../`), chỉ hiển thị lại tên gốc sau khi escape.
+- Ảnh do người dùng tải lên: trả về kèm `Content-Type` đúng + `X-Content-Type-Options: nosniff`; SVG người dùng tải
+  lên có thể chứa script — không phục vụ SVG đó cùng origin, hoặc chuyển sang ảnh raster.
+
+Kit không đọc nội dung file. Chỉ khi site bật `preview`, kit tạo object URL (`blob:`) cho **ảnh** để hiện thumbnail
+(thu hồi khi xoá / reset / rời trang) → CSP cần `img-src 'self' blob:`. Hook `upload(file, { onProgress, signal })`
+là **code của site**: endpoint upload phải có CSRF token / kiểm tra phiên như mọi request thay đổi dữ liệu.
 
 ## Chính sách URL
 
@@ -317,10 +339,15 @@ Trusted Types (`Content-Security-Policy: require-trusted-types-for 'script'`) ch
 - [ ] CSP `img-src` / `media-src` khớp danh sách host đó.
 - [ ] Link thường của trang (không qua kit) được lọc scheme ở server.
 
+**Upload file**
+
+- [ ] Server kiểm lại loại (theo nội dung), kích thước và số file của mọi upload — không tin `accept` / `max-size` /
+      `max-files` của `td-dropzone`; file lưu với tên do server sinh, ngoài web root.
+
 **Phân quyền**
 
-- [ ] Mọi hành động từ `TdMenu onSelect`, toolbar lightbox, form AJAX đều được server kiểm tra quyền; không dựa vào
-      `when(ctx)`, `filter()`, `disabled`, validation client.
+- [ ] Mọi hành động từ `TdMenu onSelect`, toolbar lightbox, form AJAX, hook `upload` của dropzone đều được server
+      kiểm tra quyền; không dựa vào `when(ctx)`, `filter()`, `disabled`, validation client.
 - [ ] Giá trị `ctx` từ `data-td-menu-*` được server xác minh.
 
 **CSP**
@@ -332,7 +359,7 @@ Trusted Types (`Content-Security-Policy: require-trusted-types-for 'script'`) ch
 
 - [CSP](csp.md) — header khuyên dùng, nonce, xử lý sự cố
 - [Hovercard](../components/hovercard.md), [Lightbox](../components/lightbox.md), [Menu](../components/menu.md),
-  [Modal](../components/modal.md), [Table](../components/table.md)
+  [Modal](../components/modal.md), [Table](../components/table.md), [Dropzone](../components/dropzone.md)
 - [Hook & tuỳ chọn](../customization/hooks.md) — danh mục mọi hook
 - [WordPress & PHP](wordpress-php.md) — escaping trong template
 - Tài liệu nội bộ: [security-model](../internal/security-model.md), [ADR 0009 lightbox hooks](../internal/decisions/0009-td-lightbox-hooks.md)
