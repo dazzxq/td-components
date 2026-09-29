@@ -71,6 +71,16 @@ describe('v0.19.0 G2 — td-dropzone upload error reason', () => {
     expect(long.endsWith('…')).to.equal(true);
   });
 
+  it('a huge message is capped without breaking (bounded work)', async () => {
+    const { dz, calls } = withHook();
+    dz.addFiles([file('a.txt')]);
+    calls[0].reject(new Error('   ' + 'ä'.repeat(2_000_000)));
+    await tick();
+    const text = statusOf(dz.querySelector('.td-dropzone__item')).textContent;
+    expect([...text]).to.have.length(200);
+    expect(text.startsWith('ä')).to.equal(true);
+  });
+
   it('no usable message → the generic (translatable) label', async () => {
     TdDropzone.labels.uploadError = 'Upload failed';
     const { dz, calls } = withHook();

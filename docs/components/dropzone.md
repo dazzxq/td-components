@@ -87,10 +87,10 @@ dz.upload = (file, { onProgress, signal }) => new Promise((resolve, reject) => {
   xhr.upload.onprogress = (e) => onProgress(e.loaded, e.total);
   xhr.onload = () => {
     if (xhr.status < 300) return resolve(JSON.parse(xhr.responseText));
-    // Server trả {"message": "File quá 5 MB"} (chuỗi đã soạn cho người dùng) → hiện ở dòng file.
-    // Không có message → Error rỗng → kit dùng nhãn chung "Tải lên thất bại".
+    // Chỉ lấy trường server CỐ Ý soạn cho người dùng ({"userMessage": "File quá 5 MB"}) — KHÔNG lấy `message` /
+    // body lỗi thô (có thể lộ SQL, đường dẫn, stack). Không có → Error rỗng → nhãn chung "Tải lên thất bại".
     let msg = '';
-    try { msg = JSON.parse(xhr.responseText).message; } catch { /* body không phải JSON */ }
+    try { msg = JSON.parse(xhr.responseText).userMessage; } catch { /* body không phải JSON */ }
     reject(new Error(typeof msg === 'string' ? msg : ''));
   };
   xhr.onerror = () => reject(new Error('Mất kết nối, thử lại sau'));

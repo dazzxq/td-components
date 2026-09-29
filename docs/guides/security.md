@@ -192,8 +192,10 @@ là **code của site**: endpoint upload phải có CSRF token / kiểm tra phi�
 **Thông báo lỗi của hook (0.19.0).** Hook reject bằng `Error` có `message` chuỗi → kit hiện chuỗi đó ở dòng file
 (chỉ `textContent`, cắt 200 ký tự; `message` không phải chuỗi hoặc không có → nhãn chung "Tải lên thất bại"). Không có
 nguy cơ XSS, nhưng người dùng **đọc nguyên văn**: đừng chuyển thẳng body lỗi của server (stack trace, đường dẫn file,
-câu SQL, tên bảng, mã nội bộ). Server trả một chuỗi đã soạn cho người dùng (ví dụ `{"message": "File quá 5 MB"}`), còn
-chi tiết kỹ thuật ghi vào log phía server.
+câu SQL, tên bảng, mã nội bộ). Server trả một trường **riêng** đã soạn cho người dùng (ví dụ
+`{"userMessage": "File quá 5 MB"}`) và hook chỉ chuyển trường đó; chi tiết kỹ thuật ghi vào log phía server. Hook cũ
+từng `reject(err)` với lỗi nội bộ (ví dụ lỗi thư viện, `Error` chứa body server) → kiểm lại khi nâng cấp lên 0.19.0: bọc
+thành `new Error('')` (nhãn chung) hoặc thông báo đã soạn.
 
 ## Chính sách URL
 

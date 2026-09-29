@@ -19,6 +19,7 @@ const settle = async () => { await frame(); await frame(); await frame(); };
 const trig = (el) => el.querySelector('.td-dtp__trigger');
 const openModal = () => [...document.querySelectorAll('.td-modal')].find((m) => m.getAttribute('data-state') !== 'closing') || null;
 const panel = () => { const m = openModal(); return m ? m.querySelector('.td-dtp-panel') : null; };
+const wheel = (part) => panel().querySelector(`.td-dtp-wheel__list[data-part="${part}"] [aria-selected="true"]`).getAttribute('data-value');
 const field = (part) => panel().querySelector(`.td-dtp-panel__input[data-part="${part}"]`);
 async function open(el) {
   trig(el).click();
@@ -127,5 +128,17 @@ describe('v0.19.0 G6 — default open position = today clamped to min–max', ()
     const p = mount('<td-datetime-picker id="p" mode="date" min="1950-06-01" open-at="garbage"></td-datetime-picker>');
     await open(p);
     expect(field('year').value).to.equal(Y);
+  });
+
+  it('minute-step: the default open never lands before min (snaps up, carrying into the next hour)', async () => {
+    const next = today.getFullYear() + 1;
+    const p = mount(`<td-datetime-picker id="p" min="${next}-03-04T10:07" minute-step="5"></td-datetime-picker>`);
+    await open(p);
+    expect({ h: wheel('hour'), mi: wheel('minute') }).to.deep.equal({ h: '10', mi: '10' });
+    await close();
+    host.innerHTML = '';
+    const q = mount(`<td-datetime-picker id="q" min="${next}-03-04T10:58" minute-step="5"></td-datetime-picker>`);
+    await open(q);
+    expect({ d: field('day').value, h: wheel('hour'), mi: wheel('minute') }).to.deep.equal({ d: '4', h: '11', mi: '0' });
   });
 });

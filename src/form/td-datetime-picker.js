@@ -2,7 +2,7 @@ import { TdFormElement } from '../base/td-form-element.js';
 import { TdModal } from '../feedback/td-modal.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import {
-  parseBound, invalidReason, normalizeMinuteStep, snapMinuteDown, partsFromDate,
+  parseBound, invalidReason, normalizeMinuteStep, snapMinuteDown, partsFromDate, compareParts,
   normalizeMode, toModeParts, parseModeValue, parseModeDb, formatModeDisplay, formatModeDb, formatModeIso,
   compareModeParts, MODE_PARTS,
 } from '../utils/datetime.js';
@@ -523,7 +523,25 @@ export class TdDatetimePicker extends TdFormElement {
     const p = s.parts ? { ...s.parts } : this._openAtParts();
     p.hour = clamp(p.hour, 0, 23);
     p.minute = snapMinuteDown(clamp(p.minute, 0, 59), this._minuteStep());
+    if (!s.parts) this._snapIntoBounds(p);
     return toModeParts(p, this._mode());
+  }
+
+  /**
+   * @private The down-snap can land before `min` (min 10:07, step 5 → 10:05): move to the first step-aligned slot at
+   * or after `min` (carrying into the next hour/day), unless that slot is past `max` — then keep the down-snap.
+   * @param {import('../utils/datetime.js').DateTimeParts} p mutated in place
+   */
+  _snapIntoBounds(p) {
+    const { min, max } = this._bounds();
+    if (!min || compareParts(p, min) >= 0) return;
+    const step = this._minuteStep();
+    const d = new Date(2000, 0, 1);
+    d.setFullYear(min.year, min.month - 1, min.day); // setFullYear: years 0–99 stay literal
+    d.setHours(min.hour, min.minute + ((step - (min.minute % step)) % step), 0, 0);
+    const up = partsFromDate(d);
+    if (max && compareParts(up, max) > 0) return;
+    Object.assign(p, up);
   }
 
   /**

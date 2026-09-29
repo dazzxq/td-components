@@ -29,12 +29,18 @@ const ERROR_MAX = 200;
 function uploadErrorMessage(err) {
   let msg = '';
   try {
-    msg = err != null && typeof err.message === 'string' ? err.message.trim() : '';
+    // Bound the work before trimming / splitting: a huge server body must not be scanned or copied whole.
+    msg = err != null && typeof err.message === 'string' ? err.message.slice(0, ERROR_MAX * 8).trim() : '';
   } catch {
     msg = ''; // a throwing getter must not break the error state
   }
-  const chars = [...msg];
-  return chars.length > ERROR_MAX ? `${chars.slice(0, ERROR_MAX - 1).join('')}…` : msg;
+  let out = '';
+  let n = 0;
+  for (const ch of msg) { // code points, stops after ERROR_MAX + 1
+    if (++n > ERROR_MAX) return `${[...out].slice(0, ERROR_MAX - 1).join('')}…`;
+    out += ch;
+  }
+  return out;
 }
 
 let seq = 0;
