@@ -1,0 +1,98 @@
+/*
+ * td-progress (src/feedback/td-progress.js) — v0.18.0. Content layer → SOLID track + fill, never glass (liquid-glass
+ * §2: content controls). The host carries role="progressbar" + aria; the bar width is set via CSSOM.
+ * State (on .td-progress): data-state="determinate|indeterminate" · .td-progress--{sm|md} · .td-progress--{variant}.
+ */
+@layer td.tokens {
+	:root {
+		--td-progress-h-sm: 4px;
+		--td-progress-h-md: 8px;
+		--td-progress-radius: var(--td-radius-full);
+		--td-progress-track: var(--td-color-border);
+		--td-progress-primary: var(--td-accent);
+		--td-progress-success: var(--td-color-success);
+		--td-progress-danger: var(--td-color-error);
+		--td-progress-warning: var(--td-color-warning);
+		--td-progress-indeterminate-w: 40%;      /* moving segment width */
+		--td-progress-indeterminate-dur: 1.4s;
+	}
+}
+
+@layer td.component {
+	td-progress {
+		display: block;
+	}
+
+	td-progress[hidden] {
+		display: none;
+	}
+
+	.td-progress {
+		--_td-progress-h: var(--td-progress-h-md);
+		--_td-progress-color: var(--td-progress-primary);
+
+		position: relative;
+		box-sizing: border-box;
+		width: 100%;
+		height: var(--_td-progress-h);
+		overflow: hidden;
+		line-height: 0; /* own it: never inherit the host page's */
+		background: var(--td-progress-track);
+		border-radius: var(--td-progress-radius);
+	}
+
+	.td-progress--sm { --_td-progress-h: var(--td-progress-h-sm); }
+	.td-progress--success { --_td-progress-color: var(--td-progress-success); }
+	.td-progress--danger { --_td-progress-color: var(--td-progress-danger); }
+	.td-progress--warning { --_td-progress-color: var(--td-progress-warning); }
+
+	.td-progress__bar {
+		display: block;
+		width: 0;
+		max-width: 100%;
+		height: 100%;
+		background: var(--_td-progress-color);
+		border-radius: inherit;
+		transition: width var(--td-dur-base) var(--td-ease);
+	}
+
+	.td-progress[data-state="indeterminate"] .td-progress__bar {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: var(--td-progress-indeterminate-w);
+		transition: none;
+		animation: td-progress-slide var(--td-progress-indeterminate-dur) ease-in-out infinite;
+	}
+
+	/* `left` is relative to the track, so any --td-progress-indeterminate-w sweeps fully across */
+	@keyframes td-progress-slide {
+		0% { left: calc(-1 * var(--td-progress-indeterminate-w)); }
+		100% { left: 100%; }
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-progress__bar {
+			transition: none;
+		}
+
+		/* no sliding: a static, half-strength full bar still reads as "busy" (aria-busy carries it for AT) */
+		.td-progress[data-state="indeterminate"] .td-progress__bar {
+			left: 0;
+			width: 100%;
+			opacity: 0.45;
+			animation: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-progress {
+			background: Canvas;
+			outline: 1px solid CanvasText;
+		}
+
+		.td-progress__bar {
+			background: Highlight;
+		}
+	}
+}

@@ -22,7 +22,9 @@
       "td-form-validation": "/src/utils/form-validation.js",
       "td-hovercard": "/src/feedback/td-hovercard.js",
       "td-password-meter": "/src/form/td-password-meter.js",
-      "td-scroll-top": "/src/feedback/td-scroll-top.js"
+      "td-scroll-top": "/src/feedback/td-scroll-top.js",
+      "td-progress": "/src/feedback/td-progress.js",
+      "td-dropzone": "/src/form/td-dropzone.js"
     },
     "tokenNative": [
       "td-button",
@@ -45,7 +47,9 @@
       "td-form-validation",
       "td-hovercard",
       "td-password-meter",
-      "td-scroll-top"
+      "td-scroll-top",
+      "td-progress",
+      "td-dropzone"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -1531,6 +1535,99 @@
         ".td-scroll-top__icon svg"
       ],
       "settle": 500
+    }
+  ],
+  "td-progress": [
+    {
+      "state": "determinate",
+      "markup": "<td-progress value=\"40\" label=\"Đang tải lên\"></td-progress>",
+      "selectors": [
+        ".td-progress",
+        ".td-progress__bar"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "danger-sm",
+      "markup": "<td-progress value=\"75\" variant=\"danger\" size=\"sm\" label=\"Lỗi\"></td-progress>",
+      "selectors": [
+        ".td-progress",
+        ".td-progress__bar"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "indeterminate-reduced",
+      "reducedMotion": true,
+      "markup": "<td-progress label=\"Đang xử lý\"></td-progress>",
+      "selectors": [
+        ".td-progress",
+        ".td-progress__bar"
+      ]
+    }
+  ],
+  "td-dropzone": [
+    {
+      "state": "empty",
+      "markup": "<td-dropzone name=\"f\" label=\"Tệp đính kèm\" accept=\".pdf,image/*\" max-size=\"5MB\" multiple max-files=\"3\" required></td-dropzone>",
+      "selectors": [
+        ".td-dropzone",
+        ".td-dropzone__label",
+        ".td-dropzone__zone",
+        ".td-dropzone__icon svg",
+        ".td-dropzone__prompt",
+        ".td-dropzone__browse",
+        ".td-dropzone__hint"
+      ]
+    },
+    {
+      "state": "files",
+      "setup": "const d=document.createElement('td-dropzone'); d.setAttribute('label','Tệp'); d.setAttribute('multiple',''); window.__mount.appendChild(d); d.addFiles([new File(['abc'],'bao-cao.pdf',{type:'application/pdf'}), new File(['x'],'anh.png',{type:'image/png'})]);",
+      "selectors": [
+        ".td-dropzone__list",
+        ".td-dropzone__item",
+        ".td-dropzone__name",
+        ".td-dropzone__size",
+        ".td-dropzone__remove",
+        ".td-dropzone__remove svg"
+      ]
+    },
+    {
+      "state": "rejected",
+      "setup": "const d=document.createElement('td-dropzone'); d.setAttribute('label','Tệp'); d.setAttribute('multiple',''); window.__mount.appendChild(d); d.setAttribute('accept','.pdf'); d.addFiles([new File(['x'],'anh.png',{type:'image/png'})]);",
+      "selectors": [
+        ".td-dropzone__rejected",
+        ".td-dropzone__reject"
+      ]
+    },
+    {
+      "state": "dragover",
+      "setup": "const d=document.createElement('td-dropzone'); d.setAttribute('label','Tệp'); d.setAttribute('multiple',''); window.__mount.appendChild(d); const dt=new DataTransfer(); dt.items.add(new File(['x'],'a.txt')); d.querySelector('.td-dropzone__zone').dispatchEvent(new DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:dt}));",
+      "selectors": [
+        ".td-dropzone__zone"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "uploading",
+      "setup": "const d=document.createElement('td-dropzone'); d.setAttribute('label','Tệp'); d.setAttribute('multiple',''); window.__mount.appendChild(d); d.upload=(f,{onProgress})=>{onProgress(60); return new Promise(()=>{});}; d.addFiles([new File(['abc'],'video.mp4',{type:'video/mp4'})]);",
+      "selectors": [
+        ".td-dropzone__item",
+        ".td-dropzone__status",
+        ".td-dropzone__progress",
+        ".td-dropzone__progress .td-progress",
+        ".td-dropzone__progress .td-progress__bar"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "disabled",
+      "setup": "const d=document.createElement('td-dropzone'); d.setAttribute('label','Tệp'); d.setAttribute('multiple',''); window.__mount.appendChild(d); d.addFiles([new File(['abc'],'a.pdf',{type:'application/pdf'})]); d.setAttribute('disabled','');",
+      "selectors": [
+        ".td-dropzone__zone",
+        ".td-dropzone__browse",
+        ".td-dropzone__remove"
+      ]
     }
   ]
 }

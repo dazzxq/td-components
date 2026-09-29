@@ -39,10 +39,16 @@ test('package.json#exports: v0.17.0 subpaths resolve to the component modules', 
   assert.equal(pkg.exports['./scroll-top'], './src/feedback/td-scroll-top.js');
 });
 
+test('package.json#exports + sideEffects: v0.18.0 td-progress / td-dropzone', () => {
+  assert.equal(pkg.exports['./progress'], './src/feedback/td-progress.js');
+  assert.equal(pkg.exports['./dropzone'], './src/form/td-dropzone.js');
+  for (const f of ['./src/feedback/td-progress.js', './src/form/td-dropzone.js']) assert.ok(pkg.sideEffects.includes(f), f);
+});
+
 test('index.js re-exports the icon API and dom-utils by explicit name (no export *)', async () => {
   const src = await readFile(join(ROOT, 'index.js'), 'utf8');
   assert.ok(!/export\s*\*/.test(src), 'no export *');
-  for (const name of ['TdPasswordMeter', 'TdScrollTop', 'tdIcon', 'registerIcons', 'hasIcon', 'listIcons', 'fillIconSlots',
+  for (const name of ['TdPasswordMeter', 'TdScrollTop', 'TdProgress', 'TdDropzone', 'tdIcon', 'registerIcons', 'hasIcon', 'listIcons', 'fillIconSlots',
     'slugify', 'formatFileSize', 'formatNumber', 'debounce', 'throttle', 'parseColorToRgb', 'relativeLuminance',
     'contrastRatio', 'getAccessibleTextColor']) {
     assert.match(src, new RegExp(`\\b${name}\\b`), name);
