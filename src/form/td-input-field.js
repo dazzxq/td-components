@@ -589,6 +589,13 @@ export class TdInputField extends TdFormElement {
 
     const M = (key, vars) => this._msg(key, vars);
 
+    // An incomplete / unconvertible user entry in a native date/time control has `.value === ''` but
+    // `validity.badInput` — never treat it as empty (review v0.18.0).
+    if (TdInputField._dateTypes.includes(type)) {
+      const f = this._getFieldElement();
+      if (f && f.validity && f.validity.badInput) return { flags: { badInput: true }, message: M('badInput') };
+    }
+
     if (required && isEmpty) {
       return { flags: { valueMissing: true }, message: M('valueMissing') };
     }

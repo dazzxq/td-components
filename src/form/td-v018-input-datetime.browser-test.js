@@ -1,4 +1,5 @@
 import { expect } from '@esm-bundle/chai';
+import { sendKeys } from '@web/test-runner-commands';
 import { TdModal } from '../feedback/td-modal.js';
 import './td-input-field.js';
 import { TdDatetimePicker } from './td-datetime-picker.js';
@@ -278,6 +279,33 @@ describe('v0.18.0 F3 — td-datetime-picker modes: value contract', () => {
     expect(y.validity.badInput).to.equal(true);
     y.setValue('2026');
     expect(y.checkValidity()).to.equal(true);
+  });
+
+  it('reset after a runtime mode change converts the default into the current mode (review v0.18.0)', () => {
+    const form = inForm('<td-datetime-picker id="m" name="m" mode="date" value="15/06/2025"></td-datetime-picker>');
+    const el = form.querySelector('td-datetime-picker');
+    el.setAttribute('mode', 'month');
+    el.setValue('01/2000');
+    form.reset();
+    expect(el.getValue()).to.equal('06/2025');
+    expect(el.validity.badInput).to.equal(false);
+    expect(new FormData(form).get('m')).to.equal('2025-06');
+    el.setAttribute('mode', 'datetime');
+    form.reset();
+    expect(el.getValue()).to.equal('15/06/2025 - 00:00');
+  });
+
+  it('an incomplete keyboard entry in a native date control is badInput, not empty (review v0.18.0)', async () => {
+    const el = mount('<td-input-field type="date" name="d"></td-input-field>');
+    const input = el.querySelector('input');
+    input.focus();
+    await sendKeys({ type: '12' }); // only the first segment
+    input.blur();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(input.value).to.equal('');
+    if (!input.validity.badInput) return; // engine keeps partial dates valid-empty: nothing to propagate
+    expect(el.validity.badInput).to.equal(true);
+    expect(el.checkValidity()).to.equal(false);
   });
 
   it('reset restores the default value in each mode', () => {

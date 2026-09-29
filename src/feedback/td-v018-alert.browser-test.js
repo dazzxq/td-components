@@ -199,3 +199,27 @@ describe('<td-alert> after the module loads', () => {
     expect(el.querySelectorAll('.td-alert__close').length).to.equal(1);
   });
 });
+
+describe('v0.18.0 review — toggling dismissible reuses one close button', () => {
+  it('no extra buttons, listeners or cleanups after repeated toggles', async () => {
+    await import('./td-alert.js');
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    host.innerHTML = '<td-alert variant="info" dismissible>Tin nhắn</td-alert>';
+    const el = host.firstElementChild;
+    await frame();
+    const cleanups0 = el._cleanups.length;
+    for (let i = 0; i < 5; i++) {
+      el.removeAttribute('dismissible');
+      el.setAttribute('dismissible', '');
+    }
+    await frame();
+    expect(el.querySelectorAll('.td-alert__close').length).to.equal(1);
+    expect(el._cleanups.length).to.equal(cleanups0);
+    let fired = 0;
+    el.addEventListener('dismiss', (e) => { fired++; e.preventDefault(); });
+    el.querySelector('.td-alert__close').click();
+    expect(fired).to.equal(1);
+    host.remove();
+  });
+});

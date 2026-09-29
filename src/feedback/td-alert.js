@@ -134,18 +134,23 @@ export class TdAlert extends TdBaseElement {
   _syncClose(box) {
     let btn = box.querySelector(':scope > .td-alert__close');
     if (!this.hasAttribute('dismissible')) {
+      // detach only: the SAME button (and its one listener) is re-attached if `dismissible` comes back (review v0.18.0)
       btn?.remove();
-      this._boundClose = null;
       return;
     }
     if (!btn) {
-      btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'td-alert__close';
-      const x = tdIcon('close', { size: 's' });
-      if (x) btn.appendChild(x);
+      btn = this._closeBtn;
+      if (!btn) {
+        btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'td-alert__close';
+        const x = tdIcon('close', { size: 's' });
+        if (x) btn.appendChild(x);
+        this._closeBtn = btn;
+      }
       box.appendChild(btn);
     }
+    this._closeBtn = btn;
     btn.setAttribute('aria-label', String(TdAlert.labels.close ?? ''));
     // One listener per button; disconnect drops it (base cleanups) and the reconnect render binds it again.
     if (this._boundClose !== btn) {

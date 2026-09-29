@@ -421,10 +421,18 @@ export class TdDatetimePicker extends TdFormElement {
     super._captureDefaults();
     /** @private null = no initial `value` attr; a string = explicit. */
     this._defaultValueAttr = this.getAttribute('value');
+    /** @private the mode the default value was written for (reset converts it if `mode` changed since — review v0.18.0) */
+    this._defaultMode = this._mode();
   }
 
   _restoreDefaults() {
-    this.setValue(this._defaultValueAttr);
+    const v = this._defaultValueAttr;
+    const from = this._defaultMode || this._mode();
+    if (v == null || from === this._mode()) { this.setValue(v); return; }
+    // `mode` changed after load: convert the original default into the current mode (same rules as a live mode change)
+    const parts = parseModeValue(v, from);
+    if (!parts || invalidReason(parts)) { this.setValue(v); return; }
+    this.setValue(formatModeDisplay(this._clampToBounds(toModeParts(parts, from)), this._mode()));
   }
 
   _restoreState(state, _mode) {
