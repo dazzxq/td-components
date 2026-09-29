@@ -12,7 +12,7 @@ kính trắng trung tính, ghost là nút chữ không nền. Dùng cho mọi h�
 | Import | `import '@dazzxq/td-components/button';` (class: `import { TdButton } from '@dazzxq/td-components';`) |
 | Loại | Custom element |
 | Form-associated | không (nhưng nút `<button>` bên trong vẫn submit/reset được form bao quanh, xem [Dùng trong form](#dùng-trong-form)) |
-| Từ phiên bản | 0.1.0 (token-native từ 0.7.0, Liquid Glass từ 0.14.0, `run()` từ 0.13.0, `ghost` + `href` từ 0.17.0) |
+| Từ phiên bản | 0.1.0 (token-native từ 0.7.0, Liquid Glass từ 0.14.0, `run()` từ 0.13.0, `ghost` + `href` từ 0.17.0, `name`/`value` + alias icon từ 0.18.0) |
 
 Cần nạp `td.css` một lần trên trang (xem [Cài đặt](../getting-started/installation.md)). Không có `td.css` thì nút
 vẫn chạy nhưng không có giao diện.
@@ -83,7 +83,7 @@ thật. Mọi variant, size, `icon`, `full-width`, `color` dùng được như n
   `rel="noopener noreferrer"`.
 - **`download`** được chuyển xuống `<a>`. Có tên file thì tên được lọc (bỏ `/ \ : * ? " < > |`, ký tự điều khiển và
   dấu chấm đầu tên); `download` rỗng = tên mặc định của trình duyệt.
-- `type` và form **không** áp cho link (link không submit form).
+- `type`, `name`, `value` và form **không** áp cho link (link không submit form).
 - Đổi giá trị `href` cập nhật tại chỗ (giữ focus). Thêm/bỏ hẳn `href` → render lại giữa `<button>` và `<a>`.
 
 Trạng thái của link khác nhau, giống ý nghĩa ở `<button>`:
@@ -127,7 +127,9 @@ Nếu không có `label` và cũng không có chữ, nút hiện chữ mặc đ�
 
 `icon` nhận **tên icon trong registry** của kit. Các tên có sẵn: `close check prev next up down back plus minus more
 search calendar fullscreen download external info success error warning eye eye-off zoom-in inbox star upload link
-image sort`. Bạn có thể đăng ký thêm icon riêng, xem [Icons](icons.md).
+image sort`. Từ 0.18.0 nhận cả **tên alias** (giống PHP): `x` → close, `chevron-left/right/up/down` → prev/next/up/down,
+`ellipsis` → more, `external-link` → external, `expand` → fullscreen, `pen` → pencil. Bạn có thể đăng ký thêm icon riêng,
+xem [Icons](icons.md).
 
 Nút chỉ có icon chỉ bỏ phần chữ khi có **đủ** ba điều kiện: có `icon`, có `aria-label`, và không có chữ/`label`.
 
@@ -148,8 +150,11 @@ Chi tiết cần biết:
 - Kit **không** nạp Font Awesome hay bộ icon nào. Site tự nạp CSS của bộ icon đó thì `<i>` mới hiện hình.
 - Mỗi class được lọc theo mẫu `^[A-Za-z_][A-Za-z0-9_-]*$`; class nào không khớp (có ký tự lạ, dấu ngoặc…) bị bỏ.
   Nếu không còn class nào hợp lệ, không render icon. Nhờ vậy giá trị kiểu `"><img src=x>` không chèn được HTML.
-- Bẫy hay gặp: gõ nhầm một tên chưa có trong registry (ví dụ `icon="edit"`) sẽ **không báo lỗi** mà thành
-  `<i class="edit">` rỗng, không thấy gì. Kiểm tra bằng `hasIcon('edit')` từ `@dazzxq/td-components/icons`.
+- Gõ nhầm tên (ví dụ `icon="edit"`, `icon="donwload"`): từ 0.18.0, giá trị là **một từ kebab-case chữ thường** mà
+  không có trong registry (kể cả sau alias) sẽ `console.warn` **một lần cho mỗi tên** (`td-button: unknown icon
+  "edit" …`) rồi vẫn đi đường cũ (`<i class="edit">`, rỗng nếu site không có CSS cho class đó). Danh sách class kiểu
+  Font Awesome (`fas fa-edit`, có khoảng trắng) không bị cảnh báo. Kiểm tra trước bằng `hasIcon('edit')` từ
+  `@dazzxq/td-components/icons`.
 
 ### Nút rộng hết khung
 
@@ -255,7 +260,19 @@ chữ xám, viền nhạt, không kính, không bóng (xem [Tương phản](#tư
 
 - `type` mặc định là `button` (bấm **không** submit form). Chỉ nhận `button` | `submit` | `reset`; giá trị khác rơi
   về `button`.
-- Nút không có `name`/`value`, nên không gửi dữ liệu gì trong `FormData`.
+- `name` / `value` (0.18.0) được chuyển xuống `<button>` bên trong — đó là **submitter thật**, nên submit native và
+  `new FormData(form, e.submitter)` có cặp `name=value` của **đúng nút được bấm**. Đổi / gỡ attribute cập nhật tại chỗ
+  (gỡ `name` → không gửi gì). Property `el.name` / `el.value` đọc/ghi attribute. Không có `name` thì nút không gửi dữ
+  liệu gì. `form` **không** được chuyển xuống (nút luôn thuộc `<form>` bao quanh).
+
+```html
+<form method="post" action="/don-hang/12">
+  <td-button type="submit" name="action" value="approve" variant="success">Duyệt</td-button>
+  <td-button type="submit" name="action" value="reject" variant="danger">Từ chối</td-button>
+</form>
+<!-- bấm "Từ chối" → POST action=reject -->
+```
+
 - Nút `disabled` với `type="submit"` không submit.
 
 ### Nút trong bảng, vùng dày đặc hoặc trên bề mặt kính
@@ -278,7 +295,7 @@ hiệu năng khi có nhiều nút):
 | `variant` | string | `primary` | `primary` \| `secondary` \| `success` \| `danger` \| `info` \| `warning` \| `ghost` (0.17.0). Giá trị khác → `primary`. |
 | `size` | string | `md` | `sm` \| `md` \| `lg` (cao tối thiểu 32 / 40 / 48 px; trên màn cảm ứng tối thiểu 44 px và bo tròn dạng viên thuốc). Giá trị khác → `md`. |
 | `label` | string | chữ trong thẻ | Chữ trên nút. Ưu tiên hơn nội dung thẻ. Đổi `label` cập nhật tại chỗ (không mất focus). |
-| `icon` | string | — | Tên icon registry (ví dụ `download`). **Deprecated:** giá trị không có trong registry được hiểu là danh sách class (ví dụ `fas fa-edit`) và render `<i>`. |
+| `icon` | string | — | Tên icon registry hoặc alias (ví dụ `download`, `external-link` — 0.18.0). **Deprecated:** giá trị không có trong registry được hiểu là danh sách class (ví dụ `fas fa-edit`) và render `<i>`; một từ kebab-case không có trong registry → `console.warn` một lần (0.18.0). |
 | `icon-position` | string | `left` | `left` \| `right`. Chỉ `right` có tác dụng; giá trị khác coi như `left`. |
 | `loading` | boolean | không | Trạng thái bận: `aria-busy` + `aria-disabled`, spinner, chặn click, **giữ focus**. |
 | `disabled` | boolean | không | Disabled native của `<button>`. |
@@ -290,12 +307,14 @@ hiệu năng khi có nhiều nút):
 | `href` | string (URL) | — | Có → render `<a>` (nút dạng link). Danh sách trắng: `https:` (`http:` chỉ khi trang là http), tương đối, `#`, `mailto:`, `tel:`. 0.17.0. |
 | `target` | string | — | Chỉ với `href`: `_blank` \| `_self` \| `_parent` \| `_top`; `_blank` thêm `rel="noopener noreferrer"`. 0.17.0. |
 | `download` | string | — | Chỉ với `href`: chuyển xuống `<a download>`; tên file được lọc ký tự đường dẫn. 0.17.0. |
+| `name` | string | — | Chuyển xuống `<button>` bên trong (submitter thật, gửi `name=value` khi submit). Không áp cho link. 0.18.0. |
+| `value` | string | — | Đi kèm `name`, chuyển xuống `<button>` bên trong. Không áp cho link. 0.18.0. |
 
 ## Property & method
 
 Mỗi attribute ở trên đều có property tương ứng (tên camelCase) phản chiếu attribute: `variant`, `size`, `label`,
 `icon`, `iconPosition`, `loading`, `disabled`, `fullWidth`, `color`, `textColor`, `type`, `ariaLabel`, `href`,
-`target`, `download`. Property kiểu
+`target`, `download`, `name`, `value` (0.18.0). Property kiểu
 boolean trả về `true/false`; property chuỗi trả về `''` khi không có attribute. Gán property = đặt attribute.
 
 > Gán property trước khi phần tử gắn vào trang (vừa `createElement`, chưa append — hoặc trước khi module được import)

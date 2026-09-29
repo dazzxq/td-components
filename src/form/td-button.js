@@ -8,6 +8,10 @@ const TARGETS = ['_blank', '_self', '_parent', '_top'];
 /** Link schemes allowed on `href` (anything without a scheme — relative, `#…`, `?…`, `//host` — is allowed too). */
 const LINK_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:'];
 const CLASS_TOKEN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
+/** A registry-style icon name (one lower-case kebab token) — unknown ones warn (v0.18.0), class lists do not. */
+const ICON_NAME = /^[a-z][a-z0-9-]{0,63}$/;
+/** Unknown registry-style icon names already warned about (once per name per page). */
+const _warnedIcons = new Set();
 const _contrastCache = new Map();
 /** input string → parsed colour | null (one engine probe per distinct colour, invalid ones included) */
 const _parseCache = new Map();
@@ -65,8 +69,10 @@ function safeDownloadName(name) {
  * @element td-button
  * @attr {string} variant - primary | secondary | success | danger | info | warning | ghost (default: primary)
  * @attr {string} size - sm | md | lg (default: md)
- * @attr {string} icon - Icon registry name (e.g. "download"). DEPRECATED: any other value is treated as a
- *   legacy class list (e.g. Font Awesome "fas fa-edit") rendered as `<i aria-hidden="true">`.
+ * @attr {string} icon - Icon registry name or alias (e.g. "download", "external-link"). DEPRECATED: any other value is
+ *   treated as a legacy class list (e.g. Font Awesome "fas fa-edit") rendered as `<i aria-hidden="true">`. A single
+ *   kebab-case token that is not in the registry (after aliases) warns once per name (v0.18.0) — probably a typo — and
+ *   still takes the legacy path.
  * @attr {string} icon-position - left | right (default: left)
  * @attr {boolean} loading - Busy state (aria-busy), keeps focus
  * @attr {boolean} disabled - Native disabled
@@ -79,10 +85,13 @@ function safeDownloadName(name) {
  * @attr {string} href - Render a link button (`<a>`), v0.17.0 — see above
  * @attr {string} target - Link target (_blank | _self | _parent | _top), v0.17.0
  * @attr {string} download - Link download (optional file name; path characters removed), v0.17.0
+ * @attr {string} name - Forwarded to the inner `<button>` (v0.18.0): the button is the real submitter, so
+ *   `FormData(form, submitter)` / native submit carry `name=value`. Not on a link button. (`form` is NOT forwarded.)
+ * @attr {string} value - Forwarded to the inner `<button>` with `name` (v0.18.0)
  */
 export class TdButton extends TdBaseElement {
   static get observedAttributes() {
-    return ['variant', 'size', 'icon', 'icon-position', 'loading', 'disabled', 'full-width', 'color', 'text-color', 'label', 'type', 'aria-label', 'href', 'target', 'download'];
+    return ['variant', 'size', 'icon', 'icon-position', 'loading', 'disabled', 'full-width', 'color', 'text-color', 'label', 'type', 'aria-label', 'href', 'target', 'download', 'name', 'value'];
   }
 
   static get booleanAttributes() { return ['loading', 'disabled', 'full-width']; }
@@ -242,6 +251,11 @@ export class TdButton extends TdBaseElement {
     if (hasIcon(icon)) {
       return `<span class="td-btn__icon" data-td-icon="${this.escapeHtml(icon)}" data-td-icon-size="s" aria-hidden="true"></span>`;
     }
+    if (ICON_NAME.test(icon) && !_warnedIcons.has(icon)) {
+      _warnedIcons.add(icon);
+      console.warn(`td-button: unknown icon "${icon}" (not in the icon registry; rendered as a legacy class — `
+        + 'check the name, or registerIcons() it)');
+    }
     const classes = icon.split(/\s+/).filter((c) => CLASS_TOKEN.test(c)).join(' ');
     if (!classes) return '';
     return `<span class="td-btn__icon" aria-hidden="true"><i class="${this.escapeHtml(classes)}" aria-hidden="true"></i></span>`;
@@ -305,7 +319,7 @@ export class TdButton extends TdBaseElement {
 
   attributeChangedCallback(name, oldVal, newVal) {
     if (oldVal === newVal || !this._initialized) return;
-    if (name === 'loading' || name === 'disabled') { this._syncState(); return; }
+    if (name === 'loading' || name === 'disabled' || name === 'name' || name === 'value') { this._syncState(); return; }
     // href: a new value in place (focus kept); adding / removing it switches button <-> link (re-render).
     if (name === 'href' && oldVal !== null && newVal !== null) { this._syncState(); return; }
     if (name === 'label') {
@@ -339,7 +353,10 @@ export class TdButton extends TdBaseElement {
     this._syncState();
   }
 
-  /** @private In-place state: disabled, busy, forwarded aria-label (and href / tabindex / role for a link). */
+  /**
+   * @private In-place state: disabled, busy, forwarded aria-label (and href / tabindex / role for a link; name / value
+   * for a button).
+   */
   _syncState() {
     const btn = this._control();
     if (!btn) return;
@@ -365,6 +382,12 @@ export class TdButton extends TdBaseElement {
       else btn.removeAttribute('aria-busy');
     } else {
       btn.disabled = disabled;
+      // Submitter data (v0.18.0): the light-DOM <button> is the real submitter → name/value mirror the host.
+      for (const attr of ['name', 'value']) {
+        const v = this.getAttribute(attr);
+        if (v !== null) btn.setAttribute(attr, v);
+        else btn.removeAttribute(attr);
+      }
       if (loading) {
         btn.setAttribute('aria-busy', 'true');
         btn.setAttribute('aria-disabled', 'true');
