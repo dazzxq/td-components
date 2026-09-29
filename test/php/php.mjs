@@ -7,10 +7,11 @@ export const HERE = dirname(fileURLToPath(import.meta.url));
 export const ROOT = join(HERE, '..', '..');
 export const PHP_BIN = process.env.PHP_BIN || 'php';
 
-/** true when a PHP >= 8.1 CLI is on PATH (else the PHP tests are skipped with a warning). */
+/** true when a PHP >= 8.0 CLI is on PATH (else the PHP tests are skipped with a warning). v0.18.0 F9: php/td.php needs
+ * PHP 8.0 only — CI job `php80` runs this suite on PHP 8.0. */
 export const HAS_PHP = (() => {
   const r = spawnSync(PHP_BIN, ['-r', 'echo PHP_VERSION_ID;'], { encoding: 'utf8' });
-  return r.status === 0 && Number(r.stdout) >= 80100;
+  return r.status === 0 && Number(r.stdout) >= 80000;
 })();
 
 /**

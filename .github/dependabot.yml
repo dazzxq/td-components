@@ -1,0 +1,7 @@
+# Actions are pinned to full commit SHAs (security review v0.18.0); Dependabot opens PRs to bump them.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

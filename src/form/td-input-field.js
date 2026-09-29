@@ -8,7 +8,8 @@ import { TdFormElement } from '../base/td-form-element.js';
  * validation. The inner control carries NO `name` and NO native constraints — `email`/`url`/`number` render as
  * `type="text"` (+ `inputmode`); the host recomputes `typeMismatch`/`rangeUnderflow`/`rangeOverflow`/
  * `stepMismatch`/`patternMismatch`/`tooShort`/`tooLong`/`valueMissing` (texts: `TdInputField.messages`), using a
- * detached probe input where the browser's own rules apply. `password` and `date` keep their type.
+ * detached probe input where the browser's own rules apply. `password`, `date`, `month`, `datetime-local` and `time`
+ * keep their type (native picker); the form value of those is the control's own normalised `.value` (v0.18.0).
  *
  * DOM contract (class map: docs/upgrading/class-map.md):
  *   <div class="td-field td-field--{sm|md|lg}[ td-field--textarea| td-field--editable]">
@@ -31,7 +32,8 @@ import { TdFormElement } from '../base/td-form-element.js';
  *   the value changed since focus (D8).
  *
  * @element td-input-field
- * @attr {string} type - text|password|email|tel|number|url|search|date|textarea|contenteditable (default: text)
+ * @attr {string} type - text|password|email|tel|number|url|search|date|month|datetime-local|time|textarea|contenteditable
+ *   (default: text; month / datetime-local / time since v0.18.0)
  * @attr {string} size - sm|md|lg (default: md)
  * @attr {string} value - Initial value (the `value` PROPERTY is the live value — get/set = getValue()/setValue())
  * @attr {string} placeholder - Placeholder text
@@ -43,9 +45,10 @@ import { TdFormElement } from '../base/td-form-element.js';
  * @attr {string} pattern - Regular expression the whole value must match (`patternMismatch`; types text, search,
  *   tel, url, email, password — like native), v0.16.0
  * @attr {string} limit-type - char|word (default: char)
- * @attr {string} min - Minimum (number/date)
- * @attr {string} max - Maximum (number/date)
- * @attr {string} step - Step (number)
+ * @attr {string} min - Minimum (number/date/month/datetime-local/time — same format as the value)
+ * @attr {string} max - Maximum (number/date/month/datetime-local/time)
+ * @attr {string} step - Step (number/month/datetime-local/time — native units: months, seconds; `step="1"` allows
+ *   seconds, `step="0.001"` fractions)
  * @attr {string} label - Label text
  * @attr {string} helper-text - Helper text below the input (kept while an error shows)
  * @attr {string} error-text - Error text below the input (see setError())
@@ -153,7 +156,13 @@ export class TdInputField extends TdFormElement {
   static _structural = new Set(['type', 'size', 'label', 'max-length', 'limit-type', 'rows', 'field-id', 'autoresize']);
 
   /** @private Known public types. */
-  static _types = ['text', 'password', 'email', 'tel', 'number', 'url', 'search', 'date', 'textarea', 'contenteditable'];
+  static _types = [
+    'text', 'password', 'email', 'tel', 'number', 'url', 'search', 'date', 'month', 'datetime-local', 'time',
+    'textarea', 'contenteditable',
+  ];
+
+  /** @private Date/time types that keep their real (native picker) type — v0.18.0 adds month/datetime-local/time. */
+  static _dateTypes = ['date', 'month', 'datetime-local', 'time'];
 
   constructor() {
     super();
@@ -210,8 +219,9 @@ export class TdInputField extends TdFormElement {
   _resolveInputType(rawType) {
     if (rawType === 'textarea' || rawType === 'contenteditable') return rawType;
     if (TdInputField._neutralizeTypes.includes(rawType)) return 'text';
-    // `date` keeps its real type → native picker; the host still recomputes range validity.
-    return ['text', 'password', 'tel', 'search', 'date'].includes(rawType) ? rawType : 'text';
+    // date/month/datetime-local/time keep their real type → native picker; the host still recomputes validity.
+    if (TdInputField._dateTypes.includes(rawType)) return rawType;
+    return ['text', 'password', 'tel', 'search'].includes(rawType) ? rawType : 'text';
   }
 
   // --- Render ---
@@ -488,11 +498,15 @@ export class TdInputField extends TdFormElement {
     } else if (!required && star) star.remove();
   }
 
-  /** @private Forward min/max to a native date control (picker bounds); the host still owns validity. */
+  /**
+   * @private Forward min/max (+ step for month/datetime-local/time: picker granularity, e.g. a seconds field with
+   * `step="1"`) to a native date/time control; the host still owns validity.
+   */
   _applyRange() {
     const field = this._getFieldElement();
-    if (!field || field.getAttribute('type') !== 'date') return;
-    for (const a of ['min', 'max']) {
+    const t = field?.getAttribute('type');
+    if (!field || !TdInputField._dateTypes.includes(t)) return;
+    for (const a of t === 'date' ? ['min', 'max'] : ['min', 'max', 'step']) {
       const v = this.getAttribute(a);
       if (v != null) field.setAttribute(a, v);
       else field.removeAttribute(a);
@@ -575,6 +589,13 @@ export class TdInputField extends TdFormElement {
 
     const M = (key, vars) => this._msg(key, vars);
 
+    // An incomplete / unconvertible user entry in a native date/time control has `.value === ''` but
+    // `validity.badInput` — never treat it as empty (review v0.18.0).
+    if (TdInputField._dateTypes.includes(type)) {
+      const f = this._getFieldElement();
+      if (f && f.validity && f.validity.badInput) return { flags: { badInput: true }, message: M('badInput') };
+    }
+
     if (required && isEmpty) {
       return { flags: { valueMissing: true }, message: M('valueMissing') };
     }
@@ -588,7 +609,7 @@ export class TdInputField extends TdFormElement {
 
     // `minlength`: like native, only for a non-empty value the USER edited (programmatic values never trip it).
     const minLength = this._minLength();
-    if (minLength && value && this._userEdited && type !== 'number' && type !== 'date'
+    if (minLength && value && this._userEdited && type !== 'number' && !TdInputField._dateTypes.includes(type)
       && String(value).length < minLength) {
       return { flags: { tooShort: true }, message: M('tooShort', { minLength }) };
     }
@@ -640,6 +661,25 @@ export class TdInputField extends TdFormElement {
       const range = { min: this.getAttribute('min') ?? '', max: this.getAttribute('max') ?? '' };
       if (v.rangeUnderflow) return { flags: { rangeUnderflow: true }, message: M('dateUnderflow', range) };
       if (v.rangeOverflow) return { flags: { rangeOverflow: true }, message: M('dateOverflow', range) };
+    }
+
+    // month / datetime-local / time (v0.18.0): same probe, with `step` (months / seconds) like the native control.
+    if (!isEmpty && TdInputField._dateTypes.includes(type) && type !== 'date') {
+      const probe = document.createElement('input');
+      probe.type = type;
+      for (const a of ['min', 'max', 'step']) {
+        const av = this.getAttribute(a);
+        if (av != null) probe.setAttribute(a, av);
+      }
+      probe.value = String(value);
+      const v = probe.validity;
+      if (probe.value === '' || v.badInput || v.typeMismatch) {
+        return { flags: { badInput: true }, message: M('badInput') };
+      }
+      const range = { min: this.getAttribute('min') ?? '', max: this.getAttribute('max') ?? '' };
+      if (v.rangeUnderflow) return { flags: { rangeUnderflow: true }, message: M('rangeUnderflow', range) };
+      if (v.rangeOverflow) return { flags: { rangeOverflow: true }, message: M('rangeOverflow', range) };
+      if (v.stepMismatch) return { flags: { stepMismatch: true }, message: M('stepMismatch') };
     }
 
     // `pattern`: the browser's own rules (whole-value match, `v` flag, an invalid pattern is ignored) on a probe.

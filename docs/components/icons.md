@@ -9,10 +9,10 @@ cũng không dùng font icon (Font Awesome…) cho UI mới.
 
 | | |
 |---|---|
-| Import | `import { tdIcon, registerIcons, hasIcon, listIcons } from '@dazzxq/td-components/icons'` · façade: `import '@dazzxq/td-components/icon-element'` (class: `import { TdIconElement } from '@dazzxq/td-components/icon-element'`, hoặc từ entry gốc `@dazzxq/td-components` từ 0.16.0) · dữ liệu: `@dazzxq/td-components/icons.json` |
+| Import | `import { tdIcon, registerIcons, hasIcon, listIcons, resolveIconName } from '@dazzxq/td-components/icons'` · façade: `import '@dazzxq/td-components/icon-element'` (class: `import { TdIconElement } from '@dazzxq/td-components/icon-element'`, hoặc từ entry gốc `@dazzxq/td-components` từ 0.16.0) · dữ liệu: `@dazzxq/td-components/icons.json` |
 | Loại | API JS (hàm) + custom element tuỳ chọn `<td-icon>` |
 | Form-associated | không |
-| Từ phiên bản | 0.6.0 ([ADR 0010](../internal/decisions/0010-icon-registry.md)) |
+| Từ phiên bản | 0.6.0 ([ADR 0010](../internal/decisions/0010-icon-registry.md)); alias từ 0.18.0 |
 
 Module `./icons` **không có side effect** khi import (không định nghĩa element nào). Chỉ `./icon-element` mới định
 nghĩa `<td-icon>` — và từ 0.16.0 entry gốc `@dazzxq/td-components` (barrel) cũng import nó, nên import barrel là có
@@ -81,6 +81,27 @@ console.log(listIcons()); // ['close', 'check', …, + icon site đã đăng ký
 ```
 
 Hoặc chạy `npm run storybook` và mở **Foundations/Icons** (lưới mọi icon, đổi cỡ được).
+
+### Tên alias (0.18.0)
+
+Một số tên quen thuộc (tên Lucide / Font Awesome) được nhận như **alias** của icon core — cùng một bảng cho JS
+(`tdIcon`, `hasIcon`, `<td-icon>`, `td-button icon`, menu, tabs…) và PHP (`td_icon`), lưu ở mục `aliases` của
+`src/icons/icons.json`:
+
+| Alias | → Icon core |
+|---|---|
+| `x` | `close` |
+| `chevron-left` / `chevron-right` / `chevron-up` / `chevron-down` | `prev` / `next` / `up` / `down` |
+| `ellipsis` | `more` |
+| `external-link` | `external` |
+| `expand` | `fullscreen` |
+| `pen` | `pencil` |
+
+- SVG vẽ ra giống hệt icon đích, và `data-icon` là **tên core** (`tdIcon('x')` → `data-icon="close"`).
+- Alias chỉ áp khi tên đó **không** phải icon core và chưa được site đăng ký: site `registerIcons({ pen: … })` thì
+  icon của site thắng (giống PHP).
+- `listIcons()` chỉ liệt kê tên thật, không có alias. Muốn biết tên thật của một tên bất kỳ: `resolveIconName(name)`
+  (trả tên đã đăng ký, tên đích của alias, hoặc `null`).
 
 ## Cách dùng
 
@@ -158,8 +179,9 @@ icon="search"`, thanh công cụ của lightbox, mục của menu… Icon bạn 
 |---|---|---|
 | `tdIcon` | `(name: string, opts?: { size?: 's'\|'m'\|'l'\|number, label?: string, class?: string }) => SVGSVGElement \| null` | Dựng phần tử SVG bằng `createElementNS`. Tên không tồn tại → `null` + `console.warn('tdIcon: unknown icon "…"')`. Mỗi lần gọi trả về một node **mới**. |
 | `registerIcons` | `(defs: Record<string, IconDef>) => void` | Đăng ký icon của site. Ném lỗi nếu có mục không hợp lệ (xem dưới). |
-| `hasIcon` | `(name: string) => boolean` | Tên đã có trong registry chưa. |
-| `listIcons` | `() => string[]` | Mọi tên hiện có (core + đã đăng ký), theo thứ tự thêm. |
+| `hasIcon` | `(name: string) => boolean` | Tên đã có trong registry chưa (tính cả alias từ 0.18.0). |
+| `resolveIconName` | `(name: string) => string \| null` | Tên đã đăng ký → chính nó; alias → tên core đích; không có → `null`. (0.18.0) |
+| `listIcons` | `() => string[]` | Mọi tên hiện có (core + đã đăng ký), theo thứ tự thêm. Không gồm alias. |
 | `fillIconSlots` | `(root: ParentNode) => void` | Tìm mọi `[data-td-icon="tên"]` trong `root` và thay nội dung bằng icon (tuỳ chọn `data-td-icon-size`, `data-td-icon-class`). Dùng khi bạn render HTML chuỗi (xem [base-element](base-element.md)). Gọi lại nhiều lần vẫn đúng. |
 | `svgStringToDefinition` | `(str: string) => IconDef \| null` | Chuyển chuỗi SVG thành định nghĩa đã kiểm tra, hoặc `null`. Dùng cho dữ liệu cũ (ví dụ `icon` của `td-empty-state` là chuỗi SVG). |
 | `renderIconDefinition` | `(def: IconDef, opts?: { size?, class? }) => SVGSVGElement \| null` | Vẽ một định nghĩa mà không đăng ký (`data-icon="custom"`). Định nghĩa được kiểm tra lại, không hợp lệ → `null`. |
@@ -295,6 +317,9 @@ Class: `.td-icon` (khối), `.td-icon--s|m|l`; thuộc tính nhận diện `data
 2. `npm run build:icons` → sinh lại `src/icons/registry.js` (file sinh ra, không sửa tay).
 3. `npm run check:icons` (có trong `npm test`) báo lỗi nếu `registry.js` lệch với `icons.json`.
 
+Thêm alias: thêm `"<alias>": "<tên core>"` vào mục `aliases` rồi `npm run build:icons`. Build báo lỗi nếu alias trùng
+tên một icon core, sai dạng tên, hoặc trỏ tới icon không tồn tại.
+
 Giấy phép: hình học từ [Lucide](https://lucide.dev) (ISC; phần kế thừa Feather: MIT), xem `THIRD_PARTY_NOTICES.md` trong
 gói. Tập icon cố ý nhỏ: registry theo tên không tree-shake từng icon, nên dung lượng được giữ bằng cách chỉ thêm icon
 kit thực sự dùng.
@@ -303,7 +328,8 @@ kit thực sự dùng.
 
 - **`tdIcon()` trả `null`** khi sai tên → `appendChild(null)` sẽ ném lỗi. Kiểm tra `hasIcon(name)` nếu tên đến từ dữ liệu.
 - **Đăng ký trùng tên ném lỗi** (kể cả đăng ký lại cùng định nghĩa, ví dụ module chạy hai lần). Bọc bằng
-  `if (!hasIcon('site-x')) registerIcons({...})` khi không chắc.
+  `if (!hasIcon('site-x')) registerIcons({...})` khi không chắc. (Lưu ý: `hasIcon('pen')` là `true` vì `pen` là alias,
+  dù `registerIcons({ pen: … })` vẫn được phép — nên đặt tên icon site có tiền tố, ví dụ `site-pen`.)
 - **Một node chỉ ở một chỗ**: muốn cùng icon ở hai nơi thì gọi `tdIcon()` hai lần.
 - `size: '24'` (chuỗi) trong `tdIcon()` **không** được hiểu là px (→ `m`); truyền số `24`. (Riêng `<td-icon size="24">` và
   `data-td-icon-size="24"` thì chuỗi số được chuyển sang số.)

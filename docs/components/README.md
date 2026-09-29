@@ -18,7 +18,7 @@ Mọi import đều theo dạng `@dazzxq/td-components/<tên>` (xem [Cài đặt
 nạp `td.css` một lần cho cả trang.
 
 **Render phía server (SSR) từ PHP:** dùng [adapter PHP](../guides/php-adapter.md) `php/td.php` ship kèm gói —
-`td_button`, `td_link`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon` in đúng markup của component
+`td_button`, `td_link`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert` in đúng markup của component
 (control native, chạy không cần JS). Component không có helper PHP (menu, table, tabs, pagination, empty-state, trigger
 lightbox, hovercard…) có mẫu markup ngay trong trang của nó (mục cấu trúc DOM / SSR).
 
@@ -35,6 +35,7 @@ lightbox, hovercard…) có mẫu markup ngay trong trang của nó (mục cấu
 | [Datetime picker](datetime-picker.md) | `<td-datetime-picker>` | `/datetime-picker` | có | Chọn ngày/giờ với bánh xe, `min`/`max` |
 | [Chip input](chip-input.md) | `<td-chip-input>` | `/chip-input` | có | Nhập nhiều thẻ (tag), gợi ý từ server, tạo mới |
 | [Password meter](password-meter.md) | `<td-password-meter>` | `/password-meter` | không | Đo độ mạnh mật khẩu tại chỗ: thanh 4 mức, nhãn đọc được, checklist điều kiện, hook `score` |
+| [Dropzone](dropzone.md) | `<td-dropzone>` | `/dropzone` | có (gửi file qua `FormData`) | Chọn / kéo thả file: lọc `accept` / `max-size` / `max-files`, danh sách + xoá, hook `upload` có tiến độ từng file, thumbnail ảnh |
 | [Form validation](form-validation.md) | `TdFormValidation` | `/form-validation` | — | Kiểm tra form: ràng buộc gốc + rule riêng + lỗi từ server, tóm tắt lỗi |
 
 ## Lớp nổi & phản hồi
@@ -48,7 +49,9 @@ lightbox, hovercard…) có mẫu markup ngay trong trang của nó (mục cấu
 | [Menu](menu.md) | `TdMenu` | `/menu` | Menu thả xuống (menu button), registry option cho plugin |
 | [Hovercard](hovercard.md) | `TdHovercard` | `/hovercard` | Thẻ thông tin khi rê/focus (HTML tự do, template, URL cùng origin) |
 | [Lightbox](lightbox.md) | `TdLightbox` | `/lightbox` | Xem ảnh/video toàn màn hình, gallery, panel thông tin, cử chỉ |
+| [Progress](progress.md) | `<td-progress>` | `/progress` | Thanh tiến độ (có/không xác định), 4 màu, 2 cỡ, `role="progressbar"` |
 | [Scroll to top](scroll-top.md) | `<td-scroll-top>` | `/scroll-top` | Nút kính tròn "lên đầu trang" cố định góc, hiện khi cuộn quá ngưỡng, trả focus về nội dung chính |
+| [Alert](alert.md) | `<td-alert>` + khối CSS `.td-alert` | `/alert` | Khối thông báo tĩnh trong trang (info/success/warning/danger), tiêu đề, nút đóng; markup SSR (`td_alert`) có dáng không cần JS, JS nâng cấp tại chỗ |
 
 ## Hiển thị
 
@@ -58,6 +61,7 @@ lightbox, hovercard…) có mẫu markup ngay trong trang của nó (mục cấu
 | [Tabs](tabs.md) | `<td-tabs>` | `/tabs` | Tab (chuẩn APG, kích hoạt thủ công) |
 | [Pagination](pagination.md) | `<td-pagination>` | `/pagination` | Phân trang |
 | [Empty state](empty-state.md) | `<td-empty-state>` | `/empty-state` | Màn "chưa có dữ liệu" có hành động |
+| [Badge](badge.md) | class CSS `.td-badge` | — (chỉ `td.css`) | Nhãn trạng thái dạng viên thuốc, viền, con dấu (`--stamp`); thuần CSS, PHP `td_badge` |
 | [Icons](icons.md) | `<td-icon>`, `tdIcon()`, `fillIconSlots()` | `/icons`, `/icon-element` (hoặc barrel) | Bộ icon (Lucide) + đăng ký icon riêng; PHP: `td_icon()` |
 
 ## Nền tảng

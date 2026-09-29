@@ -4477,6 +4477,15 @@
 		gap: var(--td-space-sm);
 	}
 
+	/* v0.18.0 modes: month = month + year, year = year only (date keeps the three columns) */
+	.td-dtp-panel[data-mode="month"] .td-dtp-panel__fields {
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+	}
+
+	.td-dtp-panel[data-mode="year"] .td-dtp-panel__fields {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
 	.td-dtp-panel__field {
 		display: flex;
 		flex-direction: column;
@@ -5952,6 +5961,679 @@
 		.td-scroll-top[data-visible="true"] {
 			transform: none;
 			transition: none;
+		}
+	}
+}
+
+/* ---- src/styles/components/progress.css ---- */
+/*
+ * td-progress (src/feedback/td-progress.js) — v0.18.0. Content layer → SOLID track + fill, never glass (liquid-glass
+ * §2: content controls). The host carries role="progressbar" + aria; the bar width is set via CSSOM.
+ * State (on .td-progress): data-state="determinate|indeterminate" · .td-progress--{sm|md} · .td-progress--{variant}.
+ */
+@layer td.tokens {
+	:root {
+		--td-progress-h-sm: 4px;
+		--td-progress-h-md: 8px;
+		--td-progress-radius: var(--td-radius-full);
+		--td-progress-track: var(--td-color-border);
+		--td-progress-primary: var(--td-accent);
+		--td-progress-success: var(--td-color-success);
+		--td-progress-danger: var(--td-color-error);
+		--td-progress-warning: var(--td-color-warning);
+		--td-progress-indeterminate-w: 40%;      /* moving segment width */
+		--td-progress-indeterminate-dur: 1.4s;
+	}
+}
+
+@layer td.component {
+	td-progress {
+		display: block;
+	}
+
+	td-progress[hidden] {
+		display: none;
+	}
+
+	.td-progress {
+		--_td-progress-h: var(--td-progress-h-md);
+		--_td-progress-color: var(--td-progress-primary);
+
+		position: relative;
+		box-sizing: border-box;
+		width: 100%;
+		height: var(--_td-progress-h);
+		overflow: hidden;
+		line-height: 0; /* own it: never inherit the host page's */
+		background: var(--td-progress-track);
+		border-radius: var(--td-progress-radius);
+	}
+
+	.td-progress--sm { --_td-progress-h: var(--td-progress-h-sm); }
+	.td-progress--success { --_td-progress-color: var(--td-progress-success); }
+	.td-progress--danger { --_td-progress-color: var(--td-progress-danger); }
+	.td-progress--warning { --_td-progress-color: var(--td-progress-warning); }
+
+	.td-progress__bar {
+		display: block;
+		width: 0;
+		max-width: 100%;
+		height: 100%;
+		background: var(--_td-progress-color);
+		border-radius: inherit;
+		transition: width var(--td-dur-base) var(--td-ease);
+	}
+
+	.td-progress[data-state="indeterminate"] .td-progress__bar {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: var(--td-progress-indeterminate-w);
+		transition: none;
+		animation: td-progress-slide var(--td-progress-indeterminate-dur) ease-in-out infinite;
+	}
+
+	/* `left` is relative to the track, so any --td-progress-indeterminate-w sweeps fully across */
+	@keyframes td-progress-slide {
+		0% { left: calc(-1 * var(--td-progress-indeterminate-w)); }
+		100% { left: 100%; }
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-progress__bar {
+			transition: none;
+		}
+
+		/* no sliding: a static, half-strength full bar still reads as "busy" (aria-busy carries it for AT) */
+		.td-progress[data-state="indeterminate"] .td-progress__bar {
+			left: 0;
+			width: 100%;
+			opacity: 0.45;
+			animation: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-progress {
+			background: Canvas;
+			outline: 1px solid CanvasText;
+		}
+
+		.td-progress__bar {
+			background: Highlight;
+		}
+	}
+}
+
+/* ---- src/styles/components/dropzone.css ---- */
+/*
+ * td-dropzone (src/form/td-dropzone.js) — v0.18.0. Content layer (a form field) → SOLID, never glass (liquid-glass
+ * §2: input/field rows). Dashed zone on the field tokens; the "choose" button is the kit's standalone secondary
+ * button (.td-btn--secondary, G1/G3); file rows are plain fills; per-file progress = <td-progress size="sm">.
+ * State: data-state="idle|dragover" + [data-disabled] on .td-dropzone · data-status on .td-dropzone__item
+ * (selected|uploading|done|error) · data-reason on .td-dropzone__reject · [hidden] on hint / lists / status / progress.
+ */
+@layer td.tokens {
+	:root {
+		--td-dropzone-bg: var(--td-field-bg);
+		--td-dropzone-bg-active: color-mix(in srgb, var(--td-accent) 6%, var(--td-field-bg));
+		--td-dropzone-bg-disabled: var(--td-field-bg-disabled);
+		--td-dropzone-border: var(--td-control-border-strong); /* dashed edge ≥ 3:1 on white */
+		--td-dropzone-border-active: var(--td-accent);
+		--td-dropzone-radius: var(--td-radius-lg);
+		--td-dropzone-pad: var(--td-space-lg) var(--td-space-md);
+		--td-dropzone-icon: var(--td-color-text-muted);
+		--td-dropzone-hint: var(--td-color-text-muted);
+		--td-dropzone-item-bg: var(--td-color-surface-muted);
+		--td-dropzone-item-radius: var(--td-radius-md);
+		--td-dropzone-thumb: 40px;
+		--td-dropzone-reject: var(--td-color-error);
+	}
+}
+
+@layer td.component {
+	td-dropzone {
+		display: block;
+		font-family: var(--td-font-sans); /* the error-contract note sits inside .td-dropzone, but be explicit */
+	}
+
+	.td-dropzone {
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-xs);
+		width: 100%;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-fg);
+	}
+
+	.td-dropzone *,
+	.td-dropzone *::before {
+		box-sizing: border-box;
+	}
+
+	.td-dropzone__label {
+		display: block;
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-medium);
+		color: var(--td-field-label);
+	}
+
+	/* The real file input: kept in the DOM (the picker), never visible nor tabbable. */
+	.td-dropzone__input {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+		opacity: 0;
+	}
+
+	.td-dropzone__zone {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-2xs);
+		align-items: center;
+		justify-content: center;
+		padding: var(--td-dropzone-pad);
+		text-align: center;
+		cursor: pointer;
+		background: var(--td-dropzone-bg);
+		border: 1.5px dashed var(--td-dropzone-border);
+		border-radius: var(--td-dropzone-radius);
+		transition:
+			background-color var(--td-dur-base) var(--td-ease),
+			border-color var(--td-dur-base) var(--td-ease);
+	}
+
+	.td-dropzone__zone:hover,
+	.td-dropzone[data-state="dragover"] .td-dropzone__zone {
+		border-color: var(--td-dropzone-border-active);
+	}
+
+	.td-dropzone[data-state="dragover"] .td-dropzone__zone {
+		background: var(--td-dropzone-bg-active);
+		border-style: solid;
+	}
+
+	.td-dropzone__zone:has(.td-dropzone__browse[aria-invalid="true"]) {
+		border-color: var(--td-field-error);
+	}
+
+	.td-dropzone[data-disabled] .td-dropzone__zone {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-dropzone-bg-disabled);
+		border-color: var(--td-control-border-soft);
+	}
+
+	.td-dropzone__icon {
+		display: inline-flex;
+		line-height: 0;
+		color: var(--td-dropzone-icon);
+	}
+
+	.td-dropzone__prompt {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+		align-items: center;
+		justify-content: center;
+		margin: 0;
+	}
+
+	.td-dropzone__hint {
+		margin: 0;
+		font-size: var(--td-text-xs);
+		color: var(--td-dropzone-hint);
+	}
+
+	.td-dropzone__hint[hidden],
+	.td-dropzone__list[hidden],
+	.td-dropzone__rejected[hidden],
+	.td-dropzone__status[hidden] {
+		display: none;
+	}
+
+	.td-dropzone__rejected {
+		padding: 0;
+		margin: 0;
+		font-size: var(--td-text-xs);
+		color: var(--td-dropzone-reject);
+		list-style: none;
+	}
+
+	.td-dropzone__reject {
+		margin: 0;
+		overflow-wrap: anywhere;
+	}
+
+	.td-dropzone__list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-2xs);
+		padding: 0;
+		margin: 0;
+		list-style: none;
+	}
+
+	.td-dropzone__item {
+		display: grid;
+		grid-template-areas: "meta remove" "progress remove";
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: 0.25rem var(--td-space-sm);
+		align-items: center;
+		padding: var(--td-space-xs) var(--td-space-xs) var(--td-space-xs) var(--td-space-sm);
+		margin: 0;
+		background: var(--td-dropzone-item-bg);
+		border-radius: var(--td-dropzone-item-radius);
+	}
+
+	.td-dropzone__item:has(> .td-dropzone__thumb) {
+		grid-template-areas: "thumb meta remove" "thumb progress remove";
+		grid-template-columns: auto minmax(0, 1fr) auto;
+	}
+
+	.td-dropzone__thumb {
+		grid-area: thumb;
+		width: var(--td-dropzone-thumb);
+		height: var(--td-dropzone-thumb);
+		object-fit: cover;
+		border-radius: var(--td-radius-sm);
+	}
+
+	.td-dropzone__meta {
+		display: flex;
+		flex-wrap: wrap;
+		grid-area: meta;
+		gap: 0 var(--td-space-xs);
+		align-items: baseline;
+		min-width: 0;
+	}
+
+	.td-dropzone__name {
+		min-width: 0;
+		max-width: 100%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		font-weight: var(--td-fw-medium);
+		white-space: nowrap;
+	}
+
+	.td-dropzone__size,
+	.td-dropzone__status {
+		font-size: var(--td-text-xs);
+		color: var(--td-dropzone-hint);
+	}
+
+	.td-dropzone__item[data-status="done"] .td-dropzone__status { color: var(--td-color-success); }
+	.td-dropzone__item[data-status="error"] .td-dropzone__status { color: var(--td-color-error); }
+
+	.td-dropzone__progress {
+		grid-area: progress;
+	}
+
+	.td-dropzone__remove {
+		display: inline-flex;
+		grid-area: remove;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		line-height: 0;
+		color: var(--td-color-text-muted);
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: var(--td-radius-full);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		appearance: none;
+		transition: background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-dropzone__remove:hover:not(:disabled) {
+		color: var(--td-color-text);
+		background: var(--td-color-hover-strong);
+	}
+
+	.td-dropzone__remove:focus-visible {
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-dropzone__remove:disabled {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+	}
+
+	@media (pointer: coarse) {
+		.td-dropzone__remove {
+			width: 2.75rem;
+			height: 2.75rem;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-dropzone__zone,
+		.td-dropzone__remove {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-dropzone__zone {
+			border-color: CanvasText;
+		}
+
+		.td-dropzone[data-state="dragover"] .td-dropzone__zone {
+			border-color: Highlight;
+		}
+
+		.td-dropzone[data-disabled] .td-dropzone__zone {
+			color: GrayText;
+			border-color: GrayText;
+		}
+	}
+}
+
+/* ---- src/styles/components/badge.css ---- */
+/*
+ * .td-badge — CSS-only badge / rubber stamp (v0.18.0 F5; PHP td_badge()). No JS, no custom element.
+ * Content layer → SOLID tinted fill, never glass (liquid-glass R1).
+ *   <span class="td-badge td-badge--success">Đã duyệt</span>
+ * Variants: --neutral (default) | --accent | --success | --warning | --danger | --info.
+ * Modifiers: --outline (transparent, currentColor border) · --stamp (uppercase, double border, slight tilt like the
+ * 135 `td-stamp`; tilt token `--td-badge-stamp-rotate: 0deg` turns it off, colours follow the variant tokens).
+ * The ink (--td-badge-{v}-fg) is ≥ 4.7:1 on its own fill AND on the page (outline / stamp), light + dark
+ * (test/tokens/contrast.spec.mjs).
+ */
+@layer td.tokens {
+	:root {
+		--td-badge-radius: var(--td-radius-full);
+		--td-badge-font-size: var(--td-text-xs);
+		--td-badge-neutral-bg: var(--td-gray-100);
+		--td-badge-neutral-fg: #3f3f46;
+		/* accent: static fallback (= info) without color-mix(); @supports below follows the site accent */
+		--td-badge-accent-bg: #dbeafe;
+		--td-badge-accent-fg: #1e40af;
+		--td-badge-success-bg: #dcfce7;
+		--td-badge-success-fg: #166534;
+		--td-badge-warning-bg: #fef3c7;
+		--td-badge-warning-fg: #92400e;
+		--td-badge-danger-bg: #fee2e2;
+		--td-badge-danger-fg: #991b1b;
+		--td-badge-info-bg: #dbeafe;
+		--td-badge-info-fg: #1e40af;
+		--td-badge-stamp-rotate: -4deg;
+		--td-badge-stamp-border: 3px;
+		--td-badge-stamp-radius: var(--td-radius-sm);
+	}
+
+	:root[data-td-theme="dark"] {
+		--td-badge-neutral-bg: #2c2c30;
+		--td-badge-neutral-fg: #e4e4e7;
+		--td-badge-accent-bg: #172554;
+		--td-badge-accent-fg: #bfdbfe;
+		--td-badge-success-bg: #0f2e1b;
+		--td-badge-success-fg: #86efac;
+		--td-badge-warning-bg: #33240a;
+		--td-badge-warning-fg: #fcd34d;
+		--td-badge-danger-bg: #3a1414;
+		--td-badge-danger-fg: #fca5a5;
+		--td-badge-info-bg: #172554;
+		--td-badge-info-fg: #bfdbfe;
+	}
+
+	@supports (color: color-mix(in srgb, red 50%, blue)) {
+		:root {
+			--td-badge-accent-bg: color-mix(in srgb, var(--td-accent) 14%, #fff);
+			--td-badge-accent-fg: color-mix(in srgb, var(--td-accent) 62%, #000);
+		}
+
+		:root[data-td-theme="dark"] {
+			--td-badge-accent-bg: color-mix(in srgb, var(--td-accent) 26%, #111113);
+			--td-badge-accent-fg: color-mix(in srgb, var(--td-accent) 40%, #fff);
+		}
+	}
+}
+
+@layer td.component {
+	.td-badge {
+		box-sizing: border-box;
+		display: inline-flex;
+		gap: 0.25em;
+		align-items: center;
+		max-width: 100%;
+		padding: 0.125rem 0.5rem;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-badge-font-size);
+		font-weight: var(--td-fw-semibold);
+		line-height: 1.4;
+		color: var(--td-badge-neutral-fg);
+		white-space: nowrap;
+		vertical-align: middle;
+		background-color: var(--td-badge-neutral-bg);
+		border: 1px solid transparent;
+		border-radius: var(--td-badge-radius);
+	}
+
+	.td-badge--accent { color: var(--td-badge-accent-fg); background-color: var(--td-badge-accent-bg); }
+	.td-badge--success { color: var(--td-badge-success-fg); background-color: var(--td-badge-success-bg); }
+	.td-badge--warning { color: var(--td-badge-warning-fg); background-color: var(--td-badge-warning-bg); }
+	.td-badge--danger { color: var(--td-badge-danger-fg); background-color: var(--td-badge-danger-bg); }
+	.td-badge--info { color: var(--td-badge-info-fg); background-color: var(--td-badge-info-bg); }
+
+	.td-badge--outline {
+		background-color: transparent;
+		border-color: currentcolor;
+	}
+
+	.td-badge--stamp {
+		padding: 0.125rem 0.5rem;
+		font-weight: var(--td-fw-bold);
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		background-color: transparent;
+		border: var(--td-badge-stamp-border) double currentcolor;
+		border-radius: var(--td-badge-stamp-radius);
+		transform: rotate(var(--td-badge-stamp-rotate));
+	}
+
+	@media (forced-colors: active) {
+		.td-badge {
+			color: CanvasText;
+			border-color: CanvasText;
+		}
+	}
+}
+
+/* ---- src/styles/components/alert.css ---- */
+/*
+ * td-alert (src/feedback/td-alert.js) + the CSS-only `.td-alert` block (v0.18.0 F5; PHP td_alert()). Static notice in
+ * the content layer → SOLID tinted fill + hairline, never glass (liquid-glass R1). Styled WITHOUT JS: the PHP helper
+ * prints the full markup inside the <td-alert> host, the module only upgrades it in place (close button).
+ *   <td-alert variant="success" heading="…">
+ *     <div class="td-alert td-alert--success" role="status">
+ *       <span class="td-alert__icon" aria-hidden="true"><svg class="td-icon …" data-icon="success">…</svg></span>
+ *       <div class="td-alert__body"><p class="td-alert__heading">…</p><div class="td-alert__message">…</div></div>
+ *       <button type="button" class="td-alert__close" aria-label="Đóng">…</button>   (JS + dismissible only)
+ *     </div>
+ *   </td-alert>
+ * Variants: .td-alert--info (default) | --success | --warning | --danger. The registry status icon keeps colour from
+ * being the only cue. Text ≥ 4.7:1 and icon / close ≥ 3.2:1 on the fill, light + dark (test/tokens/contrast.spec.mjs).
+ */
+@layer td.tokens {
+	:root {
+		--td-alert-radius: var(--td-radius-lg);
+		--td-alert-fg: var(--td-color-text);
+		--td-alert-close-fg: var(--td-color-text);
+		--td-alert-close-hover: var(--td-color-hover-strong);
+		--td-alert-info-bg: #eff6ff;
+		--td-alert-info-border: #bfdbfe;
+		--td-alert-info-heading: #1e3a8a;
+		--td-alert-info-icon: #1d4ed8;
+		--td-alert-success-bg: #f0fdf4;
+		--td-alert-success-border: #bbf7d0;
+		--td-alert-success-heading: #14532d;
+		--td-alert-success-icon: #15803d;
+		--td-alert-warning-bg: #fffbeb;
+		--td-alert-warning-border: #fde68a;
+		--td-alert-warning-heading: #78350f;
+		--td-alert-warning-icon: #b45309;
+		--td-alert-danger-bg: #fef2f2;
+		--td-alert-danger-border: #fecaca;
+		--td-alert-danger-heading: #7f1d1d;
+		--td-alert-danger-icon: #b91c1c;
+	}
+
+	:root[data-td-theme="dark"] {
+		--td-alert-info-bg: #111c33;
+		--td-alert-info-border: #1e3a8a;
+		--td-alert-info-heading: #bfdbfe;
+		--td-alert-info-icon: #93c5fd;
+		--td-alert-success-bg: #0d2418;
+		--td-alert-success-border: #14532d;
+		--td-alert-success-heading: #bbf7d0;
+		--td-alert-success-icon: #86efac;
+		--td-alert-warning-bg: #261b08;
+		--td-alert-warning-border: #78350f;
+		--td-alert-warning-heading: #fde68a;
+		--td-alert-warning-icon: #fcd34d;
+		--td-alert-danger-bg: #2a1111;
+		--td-alert-danger-border: #7f1d1d;
+		--td-alert-danger-heading: #fecaca;
+		--td-alert-danger-icon: #fca5a5;
+	}
+}
+
+@layer td.component {
+	td-alert {
+		display: block;
+	}
+
+	.td-alert {
+		box-sizing: border-box;
+		display: flex;
+		gap: var(--td-space-sm);
+		align-items: flex-start;
+		width: 100%;
+		padding: var(--td-space-sm) var(--td-space-md);
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-alert-fg);
+		background-color: var(--td-alert-info-bg);
+		border: 1px solid var(--td-alert-info-border);
+		border-radius: var(--td-alert-radius);
+	}
+
+	.td-alert *,
+	.td-alert *::before,
+	.td-alert *::after {
+		box-sizing: border-box;
+	}
+
+	.td-alert__icon {
+		display: inline-flex;
+		flex: none;
+		line-height: 0;
+		color: var(--td-alert-info-icon);
+	}
+
+	.td-alert__body {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow-wrap: anywhere;
+	}
+
+	.td-alert__heading {
+		margin: 0 0 var(--td-space-2xs);
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-alert-info-heading);
+	}
+
+	.td-alert__message {
+		margin: 0;
+	}
+
+	.td-alert__message > :first-child { margin-top: 0; }
+	.td-alert__message > :last-child { margin-bottom: 0; }
+
+	.td-alert--success { background-color: var(--td-alert-success-bg); border-color: var(--td-alert-success-border); }
+	.td-alert--warning { background-color: var(--td-alert-warning-bg); border-color: var(--td-alert-warning-border); }
+	.td-alert--danger { background-color: var(--td-alert-danger-bg); border-color: var(--td-alert-danger-border); }
+
+	.td-alert--success .td-alert__icon { color: var(--td-alert-success-icon); }
+	.td-alert--warning .td-alert__icon { color: var(--td-alert-warning-icon); }
+	.td-alert--danger .td-alert__icon { color: var(--td-alert-danger-icon); }
+
+	.td-alert--success .td-alert__heading { color: var(--td-alert-success-heading); }
+	.td-alert--warning .td-alert__heading { color: var(--td-alert-warning-heading); }
+	.td-alert--danger .td-alert__heading { color: var(--td-alert-danger-heading); }
+
+	.td-alert__close {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		padding: 0;
+		margin: -0.25rem -0.5rem -0.25rem 0;
+		font: inherit;
+		line-height: 0;
+		color: var(--td-alert-close-fg);
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: var(--td-radius-full);
+		transition: background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-alert__close:hover {
+		background: var(--td-alert-close-hover);
+	}
+
+	.td-alert__close:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	@media (pointer: coarse) {
+		.td-alert__close {
+			width: var(--td-touch-min);
+			height: var(--td-touch-min);
+			margin-block: -0.625rem;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-alert__close { transition: none; }
+	}
+
+	@media (forced-colors: active) {
+		.td-alert {
+			border-color: CanvasText;
+		}
+
+		.td-alert__icon,
+		.td-alert__heading,
+		.td-alert__close {
+			color: CanvasText;
+		}
+
+		.td-alert__close:focus-visible {
+			outline: 2px solid Highlight;
 		}
 	}
 }

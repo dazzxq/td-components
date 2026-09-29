@@ -22,7 +22,11 @@
       "td-form-validation": "/src/utils/form-validation.js",
       "td-hovercard": "/src/feedback/td-hovercard.js",
       "td-password-meter": "/src/form/td-password-meter.js",
-      "td-scroll-top": "/src/feedback/td-scroll-top.js"
+      "td-scroll-top": "/src/feedback/td-scroll-top.js",
+      "td-progress": "/src/feedback/td-progress.js",
+      "td-dropzone": "/src/form/td-dropzone.js",
+      "td-alert": "/src/feedback/td-alert.js",
+      "td-badge": "/src/icons/td-icon.js"
     },
     "tokenNative": [
       "td-button",
@@ -45,7 +49,11 @@
       "td-form-validation",
       "td-hovercard",
       "td-password-meter",
-      "td-scroll-top"
+      "td-scroll-top",
+      "td-progress",
+      "td-dropzone",
+      "td-alert",
+      "td-badge"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -1121,6 +1129,51 @@
       "settle": 450
     },
     {
+      "state": "open-date",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Ngày'); p.setAttribute('mode','date'); p.setAttribute('value','15/06/2026'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
+      "selectors": [
+        ".td-dtp-panel__fields",
+        ".td-dtp-panel__input",
+        ".td-dtp-panel__preview"
+      ],
+      "portal": [
+        ".td-dtp-panel__fields",
+        ".td-dtp-panel__input",
+        ".td-dtp-panel__preview"
+      ],
+      "settle": 450
+    },
+    {
+      "state": "open-month",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Tháng'); p.setAttribute('mode','month'); p.setAttribute('value','06/2026'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
+      "selectors": [
+        ".td-dtp-panel__fields",
+        ".td-dtp-panel__input",
+        ".td-dtp-panel__preview"
+      ],
+      "portal": [
+        ".td-dtp-panel__fields",
+        ".td-dtp-panel__input",
+        ".td-dtp-panel__preview"
+      ],
+      "settle": 450
+    },
+    {
+      "state": "open-year",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Năm'); p.setAttribute('mode','year'); p.setAttribute('min','1950'); p.setAttribute('max','2026'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
+      "selectors": [
+        ".td-dtp-panel__fields",
+        ".td-dtp-panel__input",
+        ".td-dtp-panel__preview"
+      ],
+      "portal": [
+        ".td-dtp-panel__fields",
+        ".td-dtp-panel__input",
+        ".td-dtp-panel__preview"
+      ],
+      "settle": 450
+    },
+    {
       "state": "wheel-active",
       "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('value','15/06/2026 - 09:30'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
       "selectors": [
@@ -1486,6 +1539,201 @@
         ".td-scroll-top__icon svg"
       ],
       "settle": 500
+    }
+  ],
+  "td-progress": [
+    {
+      "state": "determinate",
+      "markup": "<td-progress value=\"40\" label=\"Đang tải lên\"></td-progress>",
+      "selectors": [
+        ".td-progress",
+        ".td-progress__bar"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "danger-sm",
+      "markup": "<td-progress value=\"75\" variant=\"danger\" size=\"sm\" label=\"Lỗi\"></td-progress>",
+      "selectors": [
+        ".td-progress",
+        ".td-progress__bar"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "indeterminate-reduced",
+      "reducedMotion": true,
+      "markup": "<td-progress label=\"Đang xử lý\"></td-progress>",
+      "selectors": [
+        ".td-progress",
+        ".td-progress__bar"
+      ]
+    }
+  ],
+  "td-dropzone": [
+    {
+      "state": "empty",
+      "markup": "<td-dropzone name=\"f\" label=\"Tệp đính kèm\" accept=\".pdf,image/*\" max-size=\"5MB\" multiple max-files=\"3\" required></td-dropzone>",
+      "selectors": [
+        ".td-dropzone",
+        ".td-dropzone__label",
+        ".td-dropzone__zone",
+        ".td-dropzone__icon svg",
+        ".td-dropzone__prompt",
+        ".td-dropzone__browse",
+        ".td-dropzone__hint"
+      ]
+    },
+    {
+      "state": "files",
+      "setup": "const d=document.createElement('td-dropzone'); d.setAttribute('label','Tệp'); d.setAttribute('multiple',''); window.__mount.appendChild(d); d.addFiles([new File(['abc'],'bao-cao.pdf',{type:'application/pdf'}), new File(['x'],'anh.png',{type:'image/png'})]);",
+      "selectors": [
+        ".td-dropzone__list",
+        ".td-dropzone__item",
+        ".td-dropzone__name",
+        ".td-dropzone__size",
+        ".td-dropzone__remove",
+        ".td-dropzone__remove svg"
+      ]
+    },
+    {
+      "state": "rejected",
+      "setup": "const d=document.createElement('td-dropzone'); d.setAttribute('label','Tệp'); d.setAttribute('multiple',''); window.__mount.appendChild(d); d.setAttribute('accept','.pdf'); d.addFiles([new File(['x'],'anh.png',{type:'image/png'})]);",
+      "selectors": [
+        ".td-dropzone__rejected",
+        ".td-dropzone__reject"
+      ]
+    },
+    {
+      "state": "dragover",
+      "setup": "const d=document.createElement('td-dropzone'); d.setAttribute('label','Tệp'); d.setAttribute('multiple',''); window.__mount.appendChild(d); const dt=new DataTransfer(); dt.items.add(new File(['x'],'a.txt')); d.querySelector('.td-dropzone__zone').dispatchEvent(new DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:dt}));",
+      "selectors": [
+        ".td-dropzone__zone"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "uploading",
+      "setup": "const d=document.createElement('td-dropzone'); d.setAttribute('label','Tệp'); d.setAttribute('multiple',''); window.__mount.appendChild(d); d.upload=(f,{onProgress})=>{onProgress(60); return new Promise(()=>{});}; d.addFiles([new File(['abc'],'video.mp4',{type:'video/mp4'})]);",
+      "selectors": [
+        ".td-dropzone__item",
+        ".td-dropzone__status",
+        ".td-dropzone__progress",
+        ".td-dropzone__progress .td-progress",
+        ".td-dropzone__progress .td-progress__bar"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "disabled",
+      "setup": "const d=document.createElement('td-dropzone'); d.setAttribute('label','Tệp'); d.setAttribute('multiple',''); window.__mount.appendChild(d); d.addFiles([new File(['abc'],'a.pdf',{type:'application/pdf'})]); d.setAttribute('disabled','');",
+      "selectors": [
+        ".td-dropzone__zone",
+        ".td-dropzone__browse",
+        ".td-dropzone__remove"
+      ]
+    }
+  ],
+  "td-alert": [
+    {
+      "state": "info-heading",
+      "markup": "<td-alert heading=\"Lưu ý\">Phiên đăng nhập sắp hết hạn.</td-alert>",
+      "selectors": [
+        ".td-alert",
+        ".td-alert__icon",
+        ".td-alert__icon svg",
+        ".td-alert__body",
+        ".td-alert__heading",
+        ".td-alert__message"
+      ]
+    },
+    {
+      "state": "success-dismissible",
+      "markup": "<td-alert variant=\"success\" heading=\"Thành công\" dismissible>Đã lưu thay đổi.</td-alert>",
+      "selectors": [
+        ".td-alert",
+        ".td-alert__icon",
+        ".td-alert__icon svg",
+        ".td-alert__body",
+        ".td-alert__heading",
+        ".td-alert__message",
+        ".td-alert__close",
+        ".td-alert__close svg"
+      ]
+    },
+    {
+      "state": "warning-ssr",
+      "markup": "<td-alert variant=\"warning\" heading=\"Sắp hết hạn\"><div class=\"td-alert td-alert--warning\" role=\"status\"><span class=\"td-alert__icon\" aria-hidden=\"true\"></span><div class=\"td-alert__body\"><p class=\"td-alert__heading\">Sắp hết hạn</p><div class=\"td-alert__message\">Nội dung thông báo.</div></div></div></td-alert>",
+      "selectors": [
+        ".td-alert",
+        ".td-alert__icon",
+        ".td-alert__icon svg",
+        ".td-alert__body",
+        ".td-alert__heading",
+        ".td-alert__message"
+      ],
+      "selectorNote": "PHP td_alert() markup upgraded in place"
+    },
+    {
+      "state": "danger",
+      "markup": "<td-alert variant=\"danger\">Không lưu được.</td-alert>",
+      "selectors": [
+        ".td-alert",
+        ".td-alert__icon",
+        ".td-alert__icon svg",
+        ".td-alert__message"
+      ]
+    },
+    {
+      "state": "css-only",
+      "markup": "<div class=\"td-alert td-alert--success\" role=\"status\"><div class=\"td-alert__body\"><p class=\"td-alert__heading\">Flash</p><div class=\"td-alert__message\">Không JS.</div></div></div>",
+      "selectors": [
+        ".td-alert",
+        ".td-alert__heading",
+        ".td-alert__message"
+      ],
+      "selectorNote": "the CSS-only block (no custom element)"
+    }
+  ],
+  "td-badge": [
+    {
+      "state": "soft",
+      "markup": "<span class=\"td-badge td-badge--neutral\">neutral</span> <span class=\"td-badge td-badge--accent\">accent</span> <span class=\"td-badge td-badge--success\">success</span> <span class=\"td-badge td-badge--warning\">warning</span> <span class=\"td-badge td-badge--danger\">danger</span> <span class=\"td-badge td-badge--info\">info</span>",
+      "selectors": [
+        ".td-badge--neutral",
+        ".td-badge--accent",
+        ".td-badge--success",
+        ".td-badge--warning",
+        ".td-badge--danger",
+        ".td-badge--info"
+      ],
+      "selectorNote": "CSS-only (.td-badge has no JS)"
+    },
+    {
+      "state": "outline",
+      "markup": "<span class=\"td-badge td-badge--neutral td-badge--outline\">neutral</span> <span class=\"td-badge td-badge--accent td-badge--outline\">accent</span> <span class=\"td-badge td-badge--success td-badge--outline\">success</span> <span class=\"td-badge td-badge--warning td-badge--outline\">warning</span> <span class=\"td-badge td-badge--danger td-badge--outline\">danger</span> <span class=\"td-badge td-badge--info td-badge--outline\">info</span>",
+      "selectors": [
+        ".td-badge--neutral.td-badge--outline",
+        ".td-badge--accent.td-badge--outline",
+        ".td-badge--success.td-badge--outline",
+        ".td-badge--warning.td-badge--outline",
+        ".td-badge--danger.td-badge--outline",
+        ".td-badge--info.td-badge--outline"
+      ],
+      "selectorNote": "CSS-only"
+    },
+    {
+      "state": "stamp",
+      "markup": "<span class=\"td-badge td-badge--neutral td-badge--stamp\">neutral</span> <span class=\"td-badge td-badge--accent td-badge--stamp\">accent</span> <span class=\"td-badge td-badge--success td-badge--stamp\">success</span> <span class=\"td-badge td-badge--warning td-badge--stamp\">warning</span> <span class=\"td-badge td-badge--danger td-badge--stamp\">danger</span> <span class=\"td-badge td-badge--info td-badge--stamp\">info</span>",
+      "selectors": [
+        ".td-badge--neutral.td-badge--stamp",
+        ".td-badge--accent.td-badge--stamp",
+        ".td-badge--success.td-badge--stamp",
+        ".td-badge--warning.td-badge--stamp",
+        ".td-badge--danger.td-badge--stamp",
+        ".td-badge--info.td-badge--stamp"
+      ],
+      "selectorNote": "CSS-only; transform = the tilt token"
     }
   ]
 }

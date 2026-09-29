@@ -1,10 +1,11 @@
 <?php
 /**
- * td-components — official PHP SSR adapter (plan v0.17.0 E5). PHP >= 8.1, no framework, no composer dependency.
+ * td-components — official PHP SSR adapter (plan v0.17.0 E5). PHP >= 8.0 (CI job `php80`), no framework, no composer
+ * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.17.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.17.0', __DIR__ . '/public/assets/vendor/td-components/0.17.0');
+ *   require_once '/path/to/vendor/td-components/0.18.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.18.0', __DIR__ . '/public/assets/vendor/td-components/0.18.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -16,6 +17,10 @@
  *   - td_dropdown prints a <td-dropdown> host wrapping a native <select>: works without JS, upgrades when
  *     `@dazzxq/td-components/dropdown` is imported (the ONLY helper that upgrades).
  *   - td_icon prints `svg.td-icon` with the full geometry of src/icons/icons.json (+ Td::registerIcons()).
+ *   - td_badge prints a CSS-only `span.td-badge…` (no JS, no custom element).
+ *   - td_alert prints a `<td-alert>` host that ALREADY contains the full styled markup `div.td-alert` (icon, heading,
+ *     message): td.css styles it without JS; `@dazzxq/td-components/alert` upgrades it IN PLACE (text kept) and adds
+ *     the close button when `dismissible` (no close button without JS — no dead control).
  * Names and options are compatible with the 135 reference adapter (src/Ui/markup.php), plus a real `ghost` variant
  * and `href` → <a> buttons.
  *
@@ -45,7 +50,11 @@ namespace TdComponents {
         public const SIZES = ['sm', 'md', 'lg'];
         public const TARGETS = ['_blank', '_self', '_parent', '_top'];
 
-        /** Old sprite names (135 kit) → registry names; applied only when the name itself is unknown. */
+        /**
+         * Old sprite names (135 kit) → registry names; applied only when the name itself is unknown. The shared source
+         * is the `aliases` object of src/icons/icons.json (v0.18.0 F6, read by td-icon.js too); this constant is the
+         * FALLBACK for a vendored icons.json that predates it.
+         */
         private const ALIASES = [
             'x' => 'close', 'chevron-left' => 'prev', 'chevron-right' => 'next', 'chevron-up' => 'up',
             'chevron-down' => 'down', 'ellipsis' => 'more', 'external-link' => 'external', 'expand' => 'fullscreen',
@@ -85,6 +94,8 @@ namespace TdComponents {
         private static ?string $kitDir = null;
         private static ?array $pkg = null;
         private static ?array $kitIcons = null;
+        /** @var array<string,string>|null `aliases` of icons.json (null = the file has none → ALIASES) */
+        private static ?array $kitAliases = null;
         /** @var array<string,array> */
         private static array $siteIcons = [];
         private static bool $allowHttp = false;
@@ -100,7 +111,7 @@ namespace TdComponents {
         private static int $uid = 0;
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.17.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.18.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          */
@@ -118,6 +129,7 @@ namespace TdComponents {
             self::$kitDir = rtrim($kitDir, '/\\');
             self::$pkg = null;
             self::$kitIcons = null;
+            self::$kitAliases = null;
         }
 
         public static function baseUrl(): string
@@ -324,8 +336,24 @@ namespace TdComponents {
                 }
                 $json = json_decode($raw, true, 64, JSON_THROW_ON_ERROR);
                 self::$kitIcons = is_array($json['icons'] ?? null) ? $json['icons'] : [];
+                self::$kitAliases = null;
+                if (is_array($json['aliases'] ?? null)) {
+                    self::$kitAliases = [];
+                    foreach ($json['aliases'] as $from => $to) {
+                        if (is_string($to) && preg_match(self::ICON_NAME, (string) $from) && preg_match(self::ICON_NAME, $to)) {
+                            self::$kitAliases[(string) $from] = $to;
+                        }
+                    }
+                }
             }
             return self::$kitIcons;
+        }
+
+        /** @return array<string,string> alias => registry name (icons.json `aliases`, else the ALIASES fallback) */
+        public static function iconAliases(): array
+        {
+            self::kitIcons();
+            return self::$kitAliases ?? self::ALIASES;
         }
 
         /**
@@ -404,8 +432,9 @@ namespace TdComponents {
         private static function iconDef(string $name): ?array
         {
             $all = self::kitIcons();
-            if (!isset($all[$name]) && !isset(self::$siteIcons[$name]) && isset(self::ALIASES[$name])) {
-                $name = self::ALIASES[$name];
+            $aliases = self::iconAliases();
+            if (!isset($all[$name]) && !isset(self::$siteIcons[$name]) && isset($aliases[$name])) {
+                $name = $aliases[$name];
             }
             $def = $all[$name] ?? self::$siteIcons[$name] ?? null;
             return is_array($def) ? $def + ['_name' => $name] : null;
@@ -529,13 +558,26 @@ namespace {
      */
     function td_button(string $label, array $o = []): string
     {
+        return td__button($label, $o, false);
+    }
+
+    /**
+     * @internal td_button / td_link. $bare (td_link `bare => true` only, v0.18.0 F7): a plain `<a>` — no `td-btn…`
+     * classes and no button children (icon / label span / spinner), only the site's `class`; same URL allowlist,
+     * target, rel, download, disabled (→ no href) as the button link. variant/size/full_width/icon/loading are ignored.
+     */
+    function td__button(string $label, array $o, bool $bare): string
+    {
         $variant = in_array($o['variant'] ?? null, Td::VARIANTS, true) ? $o['variant'] : 'secondary';
         $size = ($o['size'] ?? 'md') === 'xs' ? 'sm' : (in_array($o['size'] ?? null, Td::SIZES, true) ? $o['size'] : 'md');
-        $loading = !empty($o['loading']);
-        $disabled = !empty($o['disabled']);
         $isLink = array_key_exists('href', $o) && $o['href'] !== null;
-        $class = 'td-btn td-btn--' . $variant . ' td-btn--' . $size . (!empty($o['full_width']) ? ' td-btn--full' : '')
-            . Td::classTokens($o['class'] ?? null);
+        $bare = $bare && $isLink;
+        $loading = !$bare && !empty($o['loading']);
+        $disabled = !empty($o['disabled']);
+        $class = $bare
+            ? (ltrim(Td::classTokens($o['class'] ?? null)) ?: null)
+            : 'td-btn td-btn--' . $variant . ' td-btn--' . $size . (!empty($o['full_width']) ? ' td-btn--full' : '')
+                . Td::classTokens($o['class'] ?? null);
         $tooltip = isset($o['tooltip']) && is_scalar($o['tooltip']) && (string) $o['tooltip'] !== '' ? (string) $o['tooltip'] : null;
         $aria = isset($o['aria_label']) && is_scalar($o['aria_label']) && (string) $o['aria_label'] !== '' ? (string) $o['aria_label'] : null;
 
@@ -587,6 +629,9 @@ namespace {
         }
         $taken = [];
         $html = '<' . $tag . Td::ownAttrs($attrs, $taken) . Td::attrs(is_array($o['attrs'] ?? null) ? $o['attrs'] : [], $taken) . '>';
+        if ($bare) {
+            return $html . Td::e($label) . '</a>';
+        }
         $icon = '';
         if (!empty($o['icon']) && is_string($o['icon'])) {
             $svg = Td::icon($o['icon'], 's');
@@ -603,13 +648,14 @@ namespace {
 
     /**
      * Link styled as a button: td_button() with `href` (variant default ghost). Options as td_button + target,
-     * download. 135 compatible signature.
+     * download. 135 compatible signature. `bare => true` (v0.18.0 F7): a plain `<a>` with only the site's `class`
+     * (no `td-btn…` classes, no button children) — same URL allowlist / target / rel / download / disabled.
      */
     function td_link(string $label, string $href, array $o = []): string
     {
         $o['href'] = $href;
         $o['variant'] = in_array($o['variant'] ?? null, Td::VARIANTS, true) ? $o['variant'] : 'ghost';
-        return td_button($label, $o);
+        return td__button($label, $o, !empty($o['bare']));
     }
 
     /**
@@ -690,7 +736,8 @@ namespace {
      * `<td-dropdown>` host wrapping a native `<select>` (works without JS; upgraded by the dropdown module — E2).
      * $options: value => label, or a list of ['value' => …, 'label' => …, 'disabled' => bool].
      * Options: label, placeholder (⇒ an empty first option + the component's clear option), searchable
-     * (bool|null = auto when > 8 options), required, disabled, aria_label, id (host; select = {id}-select), class,
+     * (absent / null = auto when > 8 options; false, 0 and the strings 'false' / '0' / 'off' / 'no' / '' — trimmed,
+     * any case — turn it off; anything else keeps PHP truthiness: true, 1, '1', 'true', 'yes', 'on'… → on), required, disabled, aria_label, id (host; select = {id}-select), class,
      * attrs (host).
      */
     function td_dropdown(string $name, array $options, string|int|null $value = '', array $o = []): string
@@ -708,7 +755,7 @@ namespace {
         }
         $id = isset($o['id']) && is_scalar($o['id']) && (string) $o['id'] !== '' ? (string) $o['id'] : Td::uid('dd-' . $name);
         $placeholder = isset($o['placeholder']) && (string) $o['placeholder'] !== '' ? (string) $o['placeholder'] : null;
-        $searchable = $o['searchable'] ?? (count($list) > 8);
+        $searchable = td__searchable($o['searchable'] ?? null, count($list));
         $label = isset($o['label']) && (string) $o['label'] !== '' ? (string) $o['label'] : null;
         $required = !empty($o['required']);
         $host = [
@@ -779,6 +826,68 @@ namespace {
             . '<span class="td-checkbox__mark" aria-hidden="true"><span class="td-checkbox__icon">'
             . Td::icon('check', 'm', '', 'td-checkbox__svg') . '</span></span>'
             . ($label !== '' ? '<span class="td-checkbox__label">' . Td::e($label) . '</span>' : '') . '</label>';
+    }
+
+    /**
+     * @internal td_dropdown `searchable` (v0.18.0 F8). Absent / null → auto (> 8 options). false, 0 and the strings
+     * 'false' / '0' / 'off' / 'no' / '' (trimmed, case-insensitive) → off. Anything else keeps PHP truthiness.
+     */
+    function td__searchable(mixed $v, int $count): bool
+    {
+        if ($v === null) {
+            return $count > 8;
+        }
+        if (is_string($v) && in_array(strtolower(trim($v)), ['false', '0', 'off', 'no', ''], true)) {
+            return false;
+        }
+        return (bool) $v;
+    }
+
+    /**
+     * CSS-only badge `span.td-badge.td-badge--{variant}` (v0.18.0 F5; no JS, no custom element).
+     * Options: variant neutral|accent|success|warning|danger|info (default neutral), outline (bool), stamp (bool — the
+     * uppercase double-border rubber stamp), id, class, attrs (span).
+     */
+    function td_badge(string $text, array $o = []): string
+    {
+        $variants = ['neutral', 'accent', 'success', 'warning', 'danger', 'info'];
+        $variant = in_array($o['variant'] ?? null, $variants, true) ? $o['variant'] : 'neutral';
+        $class = 'td-badge td-badge--' . $variant . (!empty($o['outline']) ? ' td-badge--outline' : '')
+            . (!empty($o['stamp']) ? ' td-badge--stamp' : '') . Td::classTokens($o['class'] ?? null);
+        $taken = [];
+        return '<span' . Td::ownAttrs([
+            'class' => $class,
+            'id' => isset($o['id']) && is_scalar($o['id']) && (string) $o['id'] !== '' ? (string) $o['id'] : null,
+        ], $taken) . Td::attrs(is_array($o['attrs'] ?? null) ? $o['attrs'] : [], $taken) . '>' . Td::e($text) . '</span>';
+    }
+
+    /**
+     * Static alert (v0.18.0 F5) — the ONE SSR contract: a `<td-alert variant … [dismissible] [heading]>` host that
+     * already contains the full styled markup `div.td-alert.td-alert--{variant}[role]` (icon, heading, message), so
+     * td.css shows it without JS (flash messages). With `@dazzxq/td-components/alert` loaded, <td-alert> upgrades IN
+     * PLACE (text kept) and adds the close button when `dismissible`; without JS there is no close button.
+     * $message is TEXT (escaped). Options: variant info|success|warning|danger (default info; danger → role="alert",
+     * else role="status"), heading, dismissible (bool), id, class, attrs (host).
+     */
+    function td_alert(string $message, array $o = []): string
+    {
+        $icons = ['info' => 'info', 'success' => 'success', 'warning' => 'warning', 'danger' => 'error'];
+        $variant = is_string($o['variant'] ?? null) && isset($icons[$o['variant']]) ? $o['variant'] : 'info';
+        $heading = isset($o['heading']) && is_scalar($o['heading']) && trim((string) $o['heading']) !== '' ? (string) $o['heading'] : null;
+        $taken = [];
+        $html = '<td-alert' . Td::ownAttrs([
+            'id' => isset($o['id']) && is_scalar($o['id']) && (string) $o['id'] !== '' ? (string) $o['id'] : null,
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'variant' => $variant,
+            'dismissible' => !empty($o['dismissible']),
+            'heading' => $heading,
+        ], $taken) . Td::attrs(is_array($o['attrs'] ?? null) ? $o['attrs'] : [], $taken) . '>';
+        $html .= '<div class="td-alert td-alert--' . $variant . '" role="' . ($variant === 'danger' ? 'alert' : 'status') . '">'
+            . '<span class="td-alert__icon" aria-hidden="true">' . Td::icon($icons[$variant]) . '</span>'
+            . '<div class="td-alert__body">'
+            . ($heading !== null ? '<p class="td-alert__heading">' . Td::e($heading) . '</p>' : '')
+            . '<div class="td-alert__message">' . Td::e($message) . '</div></div></div>';
+        return $html . '</td-alert>';
     }
 
     /** @internal Shared `<input type=checkbox>` of td_toggle / td_checkbox. */

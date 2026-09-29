@@ -750,3 +750,16 @@ export default {
     ]
   }
 };
+
+/** Alternative name → core icon name (icons.json "aliases"). */
+export const aliases = {
+  "x": "close",
+  "chevron-left": "prev",
+  "chevron-right": "next",
+  "chevron-up": "up",
+  "chevron-down": "down",
+  "ellipsis": "more",
+  "external-link": "external",
+  "expand": "fullscreen",
+  "pen": "pencil"
+};

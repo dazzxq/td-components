@@ -30,6 +30,10 @@
     "components/hovercard.css",
     "components/password-meter.css",
     "components/scroll-top.css",
+    "components/progress.css",
+    "components/dropzone.css",
+    "components/badge.css",
+    "components/alert.css",
     "utilities.css"
   ]
 }

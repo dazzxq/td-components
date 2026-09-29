@@ -15,8 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: npm
@@ -26,3 +26,27 @@ jobs:
       - run: npx playwright-core install --with-deps chromium firefox webkit
       # The Tailwind CSP fixture (test/csp/fixture/tailwind.css) is committed, so the legacy+td profile needs no build.
       - run: npm test
+
+  # v0.18.0 F9: php/td.php promises PHP >= 8.0 — lint it and run the whole PHP adapter suite on a REAL PHP 8.0
+  # (the `test` job uses the runner's newer PHP). setup-php is CI tooling only, not a kit dependency.
+  php80:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.0'
+          coverage: none
+          tools: none
+      - run: |
+          php -v
+          php -r 'exit(PHP_MAJOR_VERSION === 8 && PHP_MINOR_VERSION === 0 ? 0 : 1);'
+      - run: php -l php/td.php
+      # no npm ci: the PHP suite only needs node built-ins. TD_REQUIRE_PHP=1 → fail (never skip) without php.
+      - run: node --test "test/php/*.test.js"
+        env:
+          TD_REQUIRE_PHP: '1'
