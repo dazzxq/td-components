@@ -6,16 +6,16 @@
 2 bánh xe cuộn giờ / phút. Hiển thị dạng `dd/mm/yyyy - hh:mm`, gửi form dạng ISO (mặc định) hoặc dạng DB. Dùng cho hẹn
 giờ đăng bài, lịch hẹn, hạn chót…
 
-Không dùng khi: chỉ cần ngày (không cần giờ) hoặc chỉ cần giờ — component luôn làm việc với đủ ngày + giờ + phút; khi đó
-`<input type="date">` / `<input type="time">` gốc (có thể bọc bằng [td-input-field](input-field.md)) đơn giản hơn. Chỉ
-cần **định dạng / hiển thị** thời gian (không nhập) → dùng `TdDateTime` trong [Tiện ích](utilities.md).
+Từ 0.18.0 có thêm `mode="date"` (chỉ ngày), `mode="month"` (tháng + năm) và `mode="year"` (chỉ năm) — xem
+[mục 7](#7-chế-độ-mode-date--month--year). Chỉ cần **giờ** → `<td-input-field type="time">` ([input-field](input-field.md)).
+Chỉ cần **định dạng / hiển thị** thời gian (không nhập) → dùng `TdDateTime` trong [Tiện ích](utilities.md).
 
 | | |
 |---|---|
 | Import | `import '@dazzxq/td-components/datetime-picker'` (class: `import { TdDatetimePicker } from '@dazzxq/td-components/datetime-picker'`) |
 | Loại | Custom element (mở hộp thoại TdModal — được import tự động) |
 | Form-associated | có (`ElementInternals`) |
-| Từ phiên bản | 0.1.0 (token-native + bàn phím đầy đủ + `min`/`max` từ 0.10.0) |
+| Từ phiên bản | 0.1.0 (token-native + bàn phím đầy đủ + `min`/`max` từ 0.10.0; `mode` + `open-at` từ 0.18.0) |
 
 ## Ví dụ nhanh
 
@@ -64,7 +64,8 @@ Giá trị phải là ngày thật (có tính năm nhuận: `29/02/2025` sai, `2
 
 ### 2. Giá trị ban đầu từ server (PHP)
 
-Attribute `value` **chỉ nhận định dạng display**. Nếu DB lưu `2026-06-15 10:30:00`, hãy đổi trước khi in:
+Attribute `value` nhận định dạng display, hoặc ISO của mode (từ 0.18.0: `2026-06-15T10:30` ở mode datetime). Chuỗi
+**DB** (`2026-06-15 10:30:00`, có dấu cách) thì không — hãy đổi trước khi in:
 
 ```php
 <td-datetime-picker name="publish_at" label="Thời gian đăng"
@@ -107,8 +108,11 @@ PHP: `$_POST['b']` dùng thẳng được cho cột `DATETIME`; với ISO có th
 - Ngoài khoảng: `validity.rangeUnderflow` / `rangeOverflow` với thông báo `Không được trước {min}` / `Không được sau {max}`;
   nút "Chọn" trong hộp thoại từ chối và giữ hộp thoại mở. Giá trị ngoài khoảng vẫn được gửi form (giống input gốc),
   nhưng `getValue()` / `getDBValue()` trả `''`.
+- Từ 0.18.0 còn nhận tháng (`mm/yyyy`, `yyyy-mm`: `min` = ngày 1, `max` = ngày cuối tháng) và năm (`yyyy`: `min` = 01/01,
+  `max` = 31/12). So sánh theo **độ chi tiết của mode**: mode `month` chỉ so tháng (min `2024-03-15` vẫn cho chọn
+  `03/2024`), mode `year` chỉ so năm, mode `date` bỏ giờ.
 - Không có `min` và `max`: năm phải trong **2000–2099** (ngoài khoảng → `badInput`). Có ít nhất một bound: ô năm dùng
-  năm của bound, phía còn lại mở tới 1 hoặc 9999.
+  năm của bound (kể cả trước 2000), phía còn lại mở tới 1 hoặc 9999.
 
 Đặt `min` động bằng JS (ví dụ không cho chọn quá khứ):
 
@@ -141,15 +145,66 @@ TdDatetimePicker.messages.min = 'Phải sau {min}';
 
 Xem bảng đầy đủ ở [Hook & tuỳ chọn](#hook--tuỳ-chọn).
 
+### 7. Chế độ (`mode`): date / month / year
+
+```html
+<td-datetime-picker name="shot_date" mode="date" label="Ngày chụp" min="1900-01-01"></td-datetime-picker>
+<td-datetime-picker name="period" mode="month" label="Kỳ"></td-datetime-picker>
+<td-datetime-picker name="film_year" mode="year" label="Năm" min="1900" max="2026"></td-datetime-picker>
+```
+
+Mỗi mode chỉ hiện ô / bánh xe của mình (`date`: ngày–tháng–năm, không có bánh xe giờ; `month`: tháng–năm; `year`: năm)
+và có định dạng riêng. Phần không thuộc mode (giờ ở `date`, ngày ở `month`…) **không tồn tại** trong giá trị.
+
+| | datetime (mặc định, như cũ) | date | month | year |
+|---|---|---|---|---|
+| display / attribute `value` / `getValue()` / `setValue()` / `e.detail.value` | `dd/mm/yyyy - hh:mm` | `dd/mm/yyyy` | `mm/yyyy` | `yyyy` |
+| `getDBValue()` / `setDBValue()` / `e.detail.dbValue` / `form-value-format="db"` | `yyyy-mm-dd hh:mm:00` | `yyyy-mm-dd` | `yyyy-mm` | `yyyy` |
+| gửi form `iso` (mặc định) | `yyyy-mm-ddThh:mm:00` (**không đổi so với 0.17.0**) | `yyyy-mm-dd` | `yyyy-mm` | `yyyy` |
+| placeholder mặc định | `dd/mm/yyyy - hh:mm` | `dd/mm/yyyy` | `mm/yyyy` | `yyyy` |
+
+- `setValue()` / attribute `value` nhận display **hoặc** ISO của mode (`15/06/1985` hoặc `1985-06-15` ở `date`);
+  `setDBValue()` nhận db của mode (ISO cũng được). Chuỗi của mode khác (ví dụ `15/06/1985 - 10:00` ở `date`) → `badInput`.
+- **Đổi `mode` khi đã có giá trị**: giữ các thành phần còn ý nghĩa (datetime → date bỏ giờ; date → month bỏ ngày),
+  thành phần **mới xuất hiện** có giá trị cố định: tháng = 01, ngày = 01, giờ = 00, phút = 00 (date `15/06/1985` →
+  datetime `15/06/1985 - 00:00`; year `1985` → datetime `01/01/1985 - 00:00`). Giá trị được chuẩn hoá lại, kẹp vào
+  `[min, max]`, form value cập nhật, **không** phát `change`. Hộp thoại đang mở thì đóng lại. Giá trị sai định dạng giữ
+  nguyên văn.
+- Nhãn / thông báo riêng từng mode: `labels.titleDate|titleMonth|titleYear`, `placeholderDate|…`, `nowDate|…`
+  ("Hôm nay" / "Tháng này" / "Năm nay"), `messages.requiredDate|…`, `formatDate|…`, `incompleteMonth|incompleteYear`;
+  key không có hậu tố → dùng key của datetime.
+
+### 8. Điểm mở lịch (`open-at`)
+
+Khi mở hộp thoại mà **chưa có giá trị**, các ô bắt đầu ở:
+
+| `open-at` | Mở tại |
+|---|---|
+| (không đặt) | `min` nếu năm của `min` **trước 2000** (ví dụ ảnh/film cũ), ngược lại **hôm nay** |
+| `today` | hôm nay |
+| `min` / `max` | mốc `min` / `max` (không đặt mốc đó → như không có `open-at`) |
+| một ngày (`1975-08-09`, `09/08/1975`, `1975-08`, `1975`…, cùng định dạng `min`) | ngày đó |
+
+Luôn kẹp vào `[min, max]`; `open-at` tường minh luôn thắng quy tắc mặc định; đã có giá trị thì mở tại giá trị.
+
+```html
+<!-- ảnh cũ: mở ngay ở 1950, không cần open-at -->
+<td-datetime-picker name="taken" mode="date" min="1950-01-01"></td-datetime-picker>
+<!-- mở ở năm muộn nhất -->
+<td-datetime-picker name="year" mode="year" min="1900" max="2026" open-at="max"></td-datetime-picker>
+```
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
 | `name` | string | — | Tên field khi gửi form. |
-| `value` | string (display) | — | Giá trị hiện tại dạng `dd/mm/yyyy - hh:mm`. Là nguồn sự thật: "Chọn" ghi lại attribute này. Giá trị lúc kết nối DOM là giá trị khôi phục khi reset. |
+| `mode` | `datetime` \| `date` \| `month` \| `year` | `datetime` | Độ chi tiết (xem [mục 7](#7-chế-độ-mode-date--month--year)). Giá trị lạ → `datetime`. 0.18.0. |
+| `open-at` | `today` \| `min` \| `max` \| một ngày | — | Vị trí khi mở mà chưa có giá trị (xem [mục 8](#8-điểm-mở-lịch-open-at)). 0.18.0. |
+| `value` | string (display) | — | Giá trị hiện tại dạng display của mode (`dd/mm/yyyy - hh:mm` mặc định; ISO của mode cũng nhận). Là nguồn sự thật: "Chọn" ghi lại attribute này. Giá trị lúc kết nối DOM là giá trị khôi phục khi reset. |
 | `label` | string | — | Nhãn hiển thị, đặt tên cho nút trigger. |
 | `aria-label` | string | — | Tên truy cập khi không có `label`. |
-| `placeholder` | string | `dd/mm/yyyy - hh:mm` (`labels.placeholder`) | Chữ khi chưa có giá trị. |
+| `placeholder` | string | theo mode (`labels.placeholder`, `placeholderDate`…) | Chữ khi chưa có giá trị. |
 | `min` | string | — | Mốc sớm nhất (xem [mục 4](#4-giới-hạn-min--max)). |
 | `max` | string | — | Mốc muộn nhất. |
 | `minute-step` | number | `1` | Bước phút của bánh xe (1–30, chia hết 60). |
@@ -166,12 +221,12 @@ lại, focus chuyển sang trigger mới. `minute-step` đọc lại ở lần m
 
 | Thành viên | Chữ ký | Mô tả |
 |---|---|---|
-| `getValue()` | `() => string` | Giá trị display đã chuẩn hoá, hoặc `''` khi trống / sai định dạng / ngày không tồn tại / ngoài `min`–`max`. |
-| `getDBValue()` | `() => string` | `yyyy-mm-dd hh:mm:00`, hoặc `''` trong các trường hợp như trên. |
-| `setValue(display)` | `(string \| null) => void` | Đặt giá trị dạng display. `''` / `null` → xoá. Chuỗi sai **vẫn được giữ** và bị đánh dấu `badInput`. Không phát `change`. |
-| `setDBValue(db)` | `(string) => void` | Đặt từ dạng db hoặc ISO-local. Chuỗi rác / ngày không tồn tại → **bỏ qua** (giá trị cũ giữ nguyên). Không phát `change`. |
+| `getValue()` | `() => string` | Giá trị display của mode đã chuẩn hoá, hoặc `''` khi trống / sai định dạng / ngày không tồn tại / ngoài `min`–`max`. |
+| `getDBValue()` | `() => string` | db của mode (`yyyy-mm-dd hh:mm:00` \| `yyyy-mm-dd` \| `yyyy-mm` \| `yyyy`), hoặc `''` trong các trường hợp như trên. |
+| `setValue(display)` | `(string \| null) => void` | Đặt giá trị dạng display (hoặc ISO) của mode. `''` / `null` → xoá. Chuỗi sai **vẫn được giữ** và bị đánh dấu `badInput`. Không phát `change`. |
+| `setDBValue(db)` | `(string) => void` | Đặt từ dạng db (hoặc ISO) của mode. Chuỗi rác / ngày không tồn tại → **bỏ qua** (giá trị cũ giữ nguyên). Không phát `change`. |
 | `setError(msg)` / `clearError()` | | Error contract. `errorMessage` (getter) trả lỗi đang hiện. |
-| `value`, `label`, `placeholder`, `min`, `max`, `minuteStep`, `formValueFormat`, `name`, `errorText` | property phản chiếu attribute | Đọc/ghi attribute (chuỗi). `el.value` là chuỗi display thô (có thể sai định dạng) — dùng `getValue()` để lấy giá trị đã kiểm tra. |
+| `value`, `label`, `placeholder`, `min`, `max`, `minuteStep`, `formValueFormat`, `mode`, `openAt`, `name`, `errorText` | property phản chiếu attribute | Đọc/ghi attribute (chuỗi). `el.value` là chuỗi display thô (có thể sai định dạng) — dùng `getValue()` để lấy giá trị đã kiểm tra. |
 | `disabled`, `required` | boolean | Phản chiếu attribute. |
 | `form`, `validity`, `validationMessage`, `willValidate`, `labels` | read-only | Như control gốc. |
 | `checkValidity()`, `reportValidity()`, `setCustomValidity(msg)` | | Như control gốc. |
@@ -184,7 +239,7 @@ Không có method `open()` công khai. Muốn mở bằng code, bấm nút trigg
 
 | Event | detail | Khi nào | bubbles? |
 |---|---|---|---|
-| `change` | `{ value, dbValue }` — `value` dạng display, `dbValue` dạng `yyyy-mm-dd hh:mm:00` | Người dùng bấm "Chọn" với giá trị hợp lệ. Một event mỗi lần xác nhận. Đóng bằng Escape / X / "Đóng", `setValue()`, `setDBValue()`, reset **không** phát. | có (`composed: true`) |
+| `change` | `{ value, dbValue }` — `value` dạng display, `dbValue` dạng db, theo mode (datetime: `yyyy-mm-dd hh:mm:00`) | Người dùng bấm "Chọn" với giá trị hợp lệ. Một event mỗi lần xác nhận. Đóng bằng Escape / X / "Đóng", `setValue()`, `setDBValue()`, reset **không** phát. | có (`composed: true`) |
 
 ## Hook & tuỳ chọn
 
@@ -201,6 +256,10 @@ Không có method `open()` công khai. Muốn mở bằng code, bấm nút trigg
 | `close` | `Đóng` | Nút huỷ |
 | `now` | `Bây giờ` | Nút đặt về thời điểm hiện tại |
 | `confirm` | `Chọn` | Nút xác nhận |
+| `titleDate` / `titleMonth` / `titleYear` | `Chọn ngày` / `Chọn tháng` / `Chọn năm` | Tiêu đề theo mode (0.18.0) |
+| `placeholderDate` / `placeholderMonth` / `placeholderYear` | `dd/mm/yyyy` / `mm/yyyy` / `yyyy` | Placeholder theo mode |
+| `nowDate` / `nowMonth` / `nowYear` | `Hôm nay` / `Tháng này` / `Năm nay` | Nút "bây giờ" theo mode |
+| `dateMonth` / `dateYear` | `Tháng` / `Năm` | Legend nhóm ô ở mode month / year |
 
 `TdDatetimePicker.messages` — thông báo kiểm tra (`{min}` / `{max}` được điền):
 
@@ -209,6 +268,9 @@ Không có method `open()` công khai. Muốn mở bằng code, bấm nút trigg
 | `required` | `Vui lòng chọn ngày giờ` | `required` mà trống (`valueMissing`) |
 | `format` | `Định dạng ngày giờ không hợp lệ` | `value` sai cú pháp (`badInput`) |
 | `incomplete` | `Vui lòng nhập đầy đủ ngày, tháng, năm` | Ô ngày/tháng/năm bỏ trống trong hộp thoại |
+| `requiredDate` / `requiredMonth` / `requiredYear` | `Vui lòng chọn ngày` / `… tháng` / `… năm` | `required` theo mode (0.18.0) |
+| `formatDate` / `formatMonth` / `formatYear` | `Định dạng ngày không hợp lệ` / `… tháng …` / `… năm …` | Sai cú pháp theo mode |
+| `incompleteMonth` / `incompleteYear` | `Vui lòng nhập đầy đủ tháng, năm` / `Vui lòng nhập năm` | Ô trống theo mode (mode `date` dùng `incomplete`) |
 | `day` | `Ngày phải từ 1 đến 31` | |
 | `month` | `Tháng phải từ 1 đến 12` | |
 | `year` | `Năm phải từ {min} đến {max}` | Năm ngoài khoảng cho phép |
@@ -283,7 +345,7 @@ Hộp thoại được gắn ở `<body>` nên biến đặt trên host picker *
 Thân hộp thoại (bên trong TdModal; `{p}` = `{host}-dtp{n}`, `n` tăng mỗi lần mở):
 
 ```html
-<div class="td-dtp-panel">
+<div class="td-dtp-panel" data-mode="datetime|date|month|year">
   <fieldset class="td-dtp-panel__group">
     <legend class="td-dtp-panel__legend">Ngày</legend>
     <div class="td-dtp-panel__fields">
@@ -294,6 +356,7 @@ Thân hộp thoại (bên trong TdModal; `{p}` = `{host}-dtp{n}`, `n` tăng mỗ
       <!-- month (1–12), year (khoảng năm) tương tự -->
     </div>
   </fieldset>
+  <!-- nhóm giờ chỉ có ở mode datetime; mode month bỏ ô day, mode year chỉ còn ô year -->
   <div class="td-dtp-panel__group" role="group" aria-labelledby="{p}-time">
     <p class="td-dtp-panel__legend" id="{p}-time">Giờ</p>
     <div class="td-dtp-panel__wheels">
@@ -361,14 +424,14 @@ Trợ năng:
 
 ## Lưu ý & lỗi thường gặp
 
-- **In chuỗi DB/ISO vào `value`** → `badInput`. `value` chỉ nhận `dd/mm/yyyy - hh:mm`; dùng `setDBValue()` hoặc đổi định
-  dạng ở server.
+- **In chuỗi DB vào `value`** → `badInput` (ở mode datetime). `value` nhận display hoặc ISO của mode; dùng
+  `setDBValue()` hoặc đổi định dạng ở server.
 - **Không có múi giờ.** Mọi giá trị là giờ tường (wall-clock) của người dùng. Nếu server lưu UTC, tự quy đổi trước khi
   hiển thị và sau khi nhận.
 - **`getValue()` trả `''`** không có nghĩa là trống: có thể giá trị sai hoặc ngoài `min`/`max`. Kiểm tra `picker.validity`
   hoặc `picker.value` (chuỗi thô) để phân biệt.
 - **Năm ngoài 2000–2099 bị từ chối** khi không đặt `min`/`max`. Nhập ngày sinh / dữ liệu cũ → đặt `min` (ví dụ
-  `min="1900-01-01"`).
+  `min="1900-01-01"`); `min` trước 2000 còn làm hộp thoại mở ngay ở `min` (xem `open-at`).
 - **`setValue()` im lặng**: không phát `change`. Nếu code khác phụ thuộc `change`, tự dispatch hoặc gọi hàm xử lý.
 - **Hộp thoại là TdModal**: mở từ bên trong một modal khác sẽ xếp chồng lên trên; các nút trong hộp thoại dùng
   `.td-btn` của [button](button.md).

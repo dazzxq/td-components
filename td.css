@@ -4477,6 +4477,15 @@
 		gap: var(--td-space-sm);
 	}
 
+	/* v0.18.0 modes: month = month + year, year = year only (date keeps the three columns) */
+	.td-dtp-panel[data-mode="month"] .td-dtp-panel__fields {
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+	}
+
+	.td-dtp-panel[data-mode="year"] .td-dtp-panel__fields {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
 	.td-dtp-panel__field {
 		display: flex;
 		flex-direction: column;

@@ -412,6 +412,71 @@ describe('compareParts / parseBound (D5)', () => {
   });
 });
 
+describe('picker modes (v0.18.0 F3)', () => {
+  it('normalizeMode: unknown → datetime', () => {
+    for (const m of ['datetime', 'date', 'month', 'year']) assert.equal(dt.normalizeMode(m), m);
+    for (const m of [null, undefined, '', 'Date', 'week']) assert.equal(dt.normalizeMode(m), 'datetime');
+  });
+  it('parseBound: month and year bounds cover their whole period', () => {
+    assert.deepEqual(dt.parseBound('2024-02', 'min'), P(1, 2, 2024, 0, 0));
+    assert.deepEqual(dt.parseBound('02/2024', 'max'), P(29, 2, 2024, 23, 59));
+    assert.deepEqual(dt.parseBound('1950', 'min'), P(1, 1, 1950, 0, 0));
+    assert.deepEqual(dt.parseBound('1950', 'max'), P(31, 12, 1950, 23, 59));
+    for (const s of ['2024-13', '13/2024', '0000', '195']) assert.equal(dt.parseBound(s, 'min'), null, s);
+  });
+  it('the value contract table (display / db / iso) per mode', () => {
+    const p = P(15, 6, 1985, 10, 45);
+    const want = {
+      datetime: ['15/06/1985 - 10:45', '1985-06-15 10:45:00', '1985-06-15T10:45:00'],
+      date: ['15/06/1985', '1985-06-15', '1985-06-15'],
+      month: ['06/1985', '1985-06', '1985-06'],
+      year: ['1985', '1985', '1985'],
+    };
+    for (const [mode, [display, db, iso]] of Object.entries(want)) {
+      assert.equal(dt.formatModeDisplay(p, mode), display, mode);
+      assert.equal(dt.formatModeDb(p, mode), db, mode);
+      assert.equal(dt.formatModeIso(p, mode), iso, mode);
+    }
+    // datetime iso stays EXACTLY the v0.17.0 string
+    assert.equal(dt.formatModeIso(p, 'datetime'), dt.formatIsoLocal(p));
+  });
+  it('parseModeValue: display or ISO of the mode; other shapes → null', () => {
+    assert.deepEqual(dt.parseModeValue('15/06/1985 - 10:45', 'datetime'), P(15, 6, 1985, 10, 45));
+    assert.deepEqual(dt.parseModeValue('1985-06-15T10:45', 'datetime'), P(15, 6, 1985, 10, 45));
+    assert.deepEqual(dt.parseModeValue('15/06/1985', 'date'), P(15, 6, 1985, 0, 0));
+    assert.deepEqual(dt.parseModeValue('1985-06-15', 'date'), P(15, 6, 1985, 0, 0));
+    assert.deepEqual(dt.parseModeValue('06/1985', 'month'), P(1, 6, 1985, 0, 0));
+    assert.deepEqual(dt.parseModeValue('1985-06', 'month'), P(1, 6, 1985, 0, 0));
+    assert.deepEqual(dt.parseModeValue('1985', 'year'), P(1, 1, 1985, 0, 0));
+    assert.equal(dt.parseModeValue('15/06/1985', 'datetime'), null);
+    assert.equal(dt.parseModeValue('15/06/1985 - 10:45', 'date'), null);
+    assert.equal(dt.parseModeValue('1985-06-15', 'month'), null);
+    assert.equal(dt.parseModeValue('06/1985', 'year'), null);
+    assert.equal(dt.parseModeValue(1985, 'year'), null);
+  });
+  it('parseModeDb: db (= iso) of the mode', () => {
+    assert.deepEqual(dt.parseModeDb('1985-06-15 10:45:00', 'datetime'), P(15, 6, 1985, 10, 45));
+    assert.deepEqual(dt.parseModeDb('1985-06-15', 'date'), P(15, 6, 1985, 0, 0));
+    assert.deepEqual(dt.parseModeDb('1985-06', 'month'), P(1, 6, 1985, 0, 0));
+    assert.deepEqual(dt.parseModeDb('1985', 'year'), P(1, 1, 1985, 0, 0));
+    assert.equal(dt.parseModeDb('15/06/1985', 'date'), null);
+  });
+  it('toModeParts: components outside the mode get month 1 / day 1 / 00:00', () => {
+    const p = P(15, 6, 1985, 10, 45);
+    assert.deepEqual(dt.toModeParts(p, 'datetime'), p);
+    assert.deepEqual(dt.toModeParts(p, 'date'), P(15, 6, 1985, 0, 0));
+    assert.deepEqual(dt.toModeParts(p, 'month'), P(1, 6, 1985, 0, 0));
+    assert.deepEqual(dt.toModeParts(p, 'year'), P(1, 1, 1985, 0, 0));
+  });
+  it('compareModeParts ignores components finer than the mode', () => {
+    assert.equal(dt.compareModeParts(P(1, 6, 2024, 0, 0), P(15, 6, 2024, 0, 0), 'month'), 0);
+    assert.ok(dt.compareModeParts(P(1, 5, 2024, 0, 0), P(15, 6, 2024, 0, 0), 'month') < 0);
+    assert.equal(dt.compareModeParts(P(15, 6, 2024, 0, 0), P(15, 6, 2024, 23, 59), 'date'), 0);
+    assert.equal(dt.compareModeParts(P(1, 1, 2024, 0, 0), P(31, 12, 2024, 23, 59), 'year'), 0);
+    assert.ok(dt.compareModeParts(P(15, 6, 2024, 0, 0), P(15, 6, 2024, 23, 59), 'datetime') < 0);
+  });
+});
+
 describe('minute step (D7)', () => {
   it('normalises the step', () => {
     assert.equal(dt.normalizeMinuteStep('5'), 5);
