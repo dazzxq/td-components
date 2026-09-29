@@ -1,10 +1,21 @@
 {
   "$schema": "td-icons/1",
-  "$comment": "AUTHORED SOURCE of the core icon registry. td-owned semantic names → Lucide geometry (upstream name in 'lucide'). Edit here, then `npm run build:icons` (generates src/icons/registry.js). PHP adapters read this file directly. Licence: THIRD_PARTY_NOTICES.md (Lucide ISC, Feather MIT).",
+  "$comment": "AUTHORED SOURCE of the core icon registry. td-owned semantic names → Lucide geometry (upstream name in 'lucide'). Edit here, then `npm run build:icons` (generates src/icons/registry.js). PHP adapters read this file directly. 'aliases' (v0.18.0): alternative name → core icon name, shared by tdIcon() (JS) and Td::icon() (PHP); used only when the name is neither a core nor a site icon. Licence: THIRD_PARTY_NOTICES.md (Lucide ISC, Feather MIT).",
   "source": {
     "library": "lucide",
     "license": "ISC (Feather-derived icons: MIT)",
     "url": "https://lucide.dev"
+  },
+  "aliases": {
+    "x": "close",
+    "chevron-left": "prev",
+    "chevron-right": "next",
+    "chevron-up": "up",
+    "chevron-down": "down",
+    "ellipsis": "more",
+    "external-link": "external",
+    "expand": "fullscreen",
+    "pen": "pencil"
   },
   "icons": {
     "close": {

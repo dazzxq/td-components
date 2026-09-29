@@ -12,9 +12,12 @@
  *   <svg class="td-icon td-icon--m" data-icon="close" viewBox="0 0 24 24" fill="none"
  *        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
  *        aria-hidden="true" focusable="false"><path d="…"/>…</svg>
+ * Aliases (v0.18.0, icons.json "aliases" — the same table PHP reads): `x` → close, `chevron-left` → prev,
+ * `external-link` → external… An alias applies only when the name is not itself a registered (core or site) icon;
+ * the rendered `data-icon` is the resolved core name.
  */
 
-import CORE from './registry.js';
+import CORE, { aliases as CORE_ALIASES } from './registry.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const NAME_RE = /^[a-z][a-z0-9-]{0,63}$/;
@@ -87,6 +90,21 @@ function _validateIconDefinition(name, def) {
 
 for (const [name, def] of Object.entries(CORE)) registry.set(name, validate(name, def));
 
+/** @type {Map<string, string>} alias → core name (own keys only; never the prototype) */
+const ALIASES = new Map(Object.entries(CORE_ALIASES || {}));
+
+/**
+ * Resolve a name to a registered icon name: the name itself when registered, else its alias target, else null.
+ * @param {string} name
+ * @returns {string|null}
+ */
+export function resolveIconName(name) {
+  if (typeof name !== 'string') return null;
+  if (registry.has(name)) return name;
+  const target = ALIASES.get(name);
+  return target !== undefined && registry.has(target) ? target : null;
+}
+
 /**
  * Register additional icons (site extensions). Data only; collisions with existing names throw
  * (core names are reserved — prefix site icons, e.g. `site-camera`).
@@ -103,30 +121,32 @@ export function registerIcons(defs) {
   for (const [name, def] of staged) registry.set(name, def); // all-or-nothing
 }
 
-/** @param {string} name */
+/** @param {string} name @returns {boolean} registered (core / site) or an alias of a core icon */
 export function hasIcon(name) {
-  return registry.has(name);
+  return resolveIconName(name) !== null;
 }
 
-/** @returns {string[]} */
+/** @returns {string[]} registered names (aliases not included — see resolveIconName) */
 export function listIcons() {
   return [...registry.keys()];
 }
 
 /**
  * Render an icon.
- * @param {string} name
+ * @param {string} name registered name or alias (rendered with the resolved name in `data-icon`)
  * @param {{ size?: 's'|'m'|'l'|number, label?: string, class?: string }} [opts]
  *   size: named token size (default 'm') or an integer 8–128 (px, via width/height attributes).
  *   label: empty = decorative (aria-hidden); non-empty = role="img" + <title>.
  * @returns {SVGSVGElement|null} null for an unknown name
  */
 export function tdIcon(name, opts = {}) {
-  const def = registry.get(name);
-  if (!def) {
+  const resolved = resolveIconName(name);
+  if (resolved === null) {
     if (typeof console !== 'undefined') console.warn(`tdIcon: unknown icon "${name}"`);
     return null;
   }
+  name = resolved;
+  const def = registry.get(name);
   const { size = 'm', label = '', class: extra = '' } = opts || {};
   const svg = document.createElementNS(SVG_NS, 'svg');
   const classes = ['td-icon'];
