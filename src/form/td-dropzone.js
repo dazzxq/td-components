@@ -19,6 +19,24 @@ export function parseFileSize(str) {
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
 }
 
+const ERROR_MAX = 200;
+
+/**
+ * The text shown for a rejected upload: `err.message` when it is a non-empty string (capped at ERROR_MAX characters,
+ * rendered as text by the caller), else '' (→ the generic label). Anything else (objects, numbers…) is never shown.
+ * @param {*} err @returns {string}
+ */
+function uploadErrorMessage(err) {
+  let msg = '';
+  try {
+    msg = err != null && typeof err.message === 'string' ? err.message.trim() : '';
+  } catch {
+    msg = ''; // a throwing getter must not break the error state
+  }
+  const chars = [...msg];
+  return chars.length > ERROR_MAX ? `${chars.slice(0, ERROR_MAX - 1).join('')}…` : msg;
+}
+
 let seq = 0;
 
 /**
@@ -43,8 +61,12 @@ let seq = 0;
  * submitted (native behaviour of disabled form-associated elements).
  *
  * Upload hook (optional property): `el.upload = (file, { onProgress, signal }) => Promise` — called for every added
- * file; `onProgress(percent)` or `onProgress(loaded, total)` drives a per-file `<td-progress>`; removing the file (or a
- * form reset) aborts `signal`. Rejection = the file shows an error state. Nothing is uploaded without a hook.
+ * file; `onProgress(percent 0–100)` or `onProgress(loaded, total)` drives a per-file `<td-progress>`; removing the file
+ * (or a form reset) aborts `signal`. Until the hook's first `onProgress` call the row is WAITING (indeterminate bar +
+ * `labels.uploadWaiting`) — e.g. a file queued behind a site-side concurrency limit. Rejection = the file shows an
+ * error state: the rejection's `message` when it is a non-empty string (rendered with `textContent`, capped at 200
+ * characters — keep server messages user-safe), else `labels.uploadError`. An abort (remove / reset) shows no error.
+ * Nothing is uploaded without a hook.
  *
  * Markup:
  *   <div class="td-dropzone" role="group" aria-labelledby="{id}-label" data-state="idle|dragover" [data-disabled]>
@@ -54,15 +76,15 @@ let seq = 0;
  *       <span class="td-dropzone__icon" aria-hidden="true"><svg class="td-icon" data-icon="upload"></span>
  *       <p class="td-dropzone__prompt"><span class="td-dropzone__text">Kéo thả file vào đây hoặc</span>
  *         <button type="button" class="td-dropzone__browse td-btn td-btn--secondary td-btn--sm">Chọn file</button></p>
- *       <p class="td-dropzone__hint" id="{id}-hint" [hidden]>Định dạng: … · Tối đa 5 MB mỗi file · Tối đa 3 file</p>
+ *       <p class="td-dropzone__hint" id="{id}-hint" [hidden]>Định dạng: {accept | accept-label} · Tối đa 5 MB mỗi file · Tối đa 3 file</p>
  *     </div>
  *     <ul class="td-dropzone__rejected" [hidden]><li class="td-dropzone__reject" data-reason="type|size|count">…</li></ul>
  *     <ul class="td-dropzone__list" aria-label="File đã chọn" [hidden]>
- *       <li class="td-dropzone__item" data-status="selected|uploading|done|error">
+ *       <li class="td-dropzone__item" data-status="selected|uploading|done|error" [data-waiting]>
  *         [<img class="td-dropzone__thumb" alt="" src="blob:…">]
  *         <span class="td-dropzone__meta"><span class="td-dropzone__name">…</span><span class="td-dropzone__size">…</span>
  *           [<span class="td-dropzone__status">…</span>]</span>
- *         [<td-progress class="td-dropzone__progress" size="sm" value label>]
+ *         [<td-progress class="td-dropzone__progress" size="sm" [value] label>]   (no value while waiting)
  *         <button type="button" class="td-dropzone__remove" aria-label="Xoá {name}"><svg data-icon="close"></button></li>
  *     </ul>
  *     <span class="td-sr-only" aria-live="polite"></span>
@@ -72,6 +94,9 @@ let seq = 0;
  * @attr {string} name - Form field name (each file appended under it)
  * @attr {string} label - Visible label (names the group)
  * @attr {string} accept - Allowed types: comma list of `type/sub`, `type/*`, `.ext` (as the native attribute)
+ * @attr {string} accept-label - Hint text for the formats: absent → the `accept` list as written; non-empty (e.g.
+ *   "Ảnh JPEG") → replaces `{accept}` in `labels.hintAccept`; empty → the format part is dropped (size / count stay).
+ *   Display only: filtering always follows `accept`.
  * @attr {boolean} multiple - Allow several files (without it a new file replaces the current one)
  * @attr {string} max-size - Max size per file: bytes or `500KB` / `5MB` / `1GB` (1024-based)
  * @attr {number} max-files - Max number of files (with `multiple`)
@@ -99,12 +124,13 @@ export class TdDropzone extends TdFormElement {
     uploading: 'Đang tải lên…',
     uploaded: 'Đã tải lên',
     uploadError: 'Tải lên thất bại',
+    uploadWaiting: 'Đang chờ…',
     progress: 'Tải lên {name}',
     required: 'Vui lòng chọn file.',
   };
 
   static get observedAttributes() {
-    return [...super.observedAttributes, 'label', 'accept', 'multiple', 'max-size', 'max-files', 'preview', 'error-text'];
+    return [...super.observedAttributes, 'label', 'accept', 'accept-label', 'multiple', 'max-size', 'max-files', 'preview', 'error-text'];
   }
 
   static get booleanAttributes() {
@@ -116,7 +142,7 @@ export class TdDropzone extends TdFormElement {
   constructor() {
     super();
     this._uid = ++seq;
-    /** @private @type {Array<{ id: number, file: File, url: string|null, status: string, progress: number|null, controller: AbortController|null, result?: * }>} */
+    /** @private @type {Array<{ id: number, file: File, url: string|null, status: string, progress: number|null, controller: AbortController|null, error?: string, result?: * }>} */
     this._items = [];
     /** @private rejected files of the latest add */
     this._rejected = [];
@@ -352,7 +378,12 @@ export class TdDropzone extends TdFormElement {
     const L = TdDropzone.labels;
     const parts = [];
     const tokens = (this.getAttribute('accept') || '').split(',').map((t) => t.trim()).filter(Boolean);
-    if (tokens.length) parts.push(format(L.hintAccept, { accept: tokens.join(', ') }));
+    if (tokens.length) {
+      // accept-label: absent → the raw list; non-empty → friendly text; empty → no format part at all.
+      const friendly = this.hasAttribute('accept-label') ? (this.getAttribute('accept-label') || '').trim() : null;
+      if (friendly == null) parts.push(format(L.hintAccept, { accept: tokens.join(', ') }));
+      else if (friendly) parts.push(format(L.hintAccept, { accept: friendly }));
+    }
     const max = parseFileSize(this.getAttribute('max-size'));
     if (max) parts.push(format(L.hintSize, { size: formatFileSize(max) }));
     const limit = this._limit();
@@ -542,9 +573,12 @@ export class TdDropzone extends TdFormElement {
     if (!li) return;
     const L = TdDropzone.labels;
     li.setAttribute('data-status', item.status);
+    // Waiting = the hook has not reported any progress yet (queued / not started): indeterminate bar.
+    const waiting = item.status === 'uploading' && item.progress == null;
+    li.toggleAttribute('data-waiting', waiting);
     const status = li.querySelector('.td-dropzone__status');
-    const text = item.status === 'uploading' ? L.uploading : item.status === 'done' ? L.uploaded
-      : item.status === 'error' ? L.uploadError : '';
+    const text = waiting ? L.uploadWaiting : item.status === 'uploading' ? L.uploading : item.status === 'done' ? L.uploaded
+      : item.status === 'error' ? (item.error || L.uploadError) : '';
     status.textContent = String(text ?? '');
     status.hidden = !text;
     const progress = li.querySelector('.td-dropzone__progress');
@@ -562,7 +596,8 @@ export class TdDropzone extends TdFormElement {
     const controller = new AbortController();
     item.controller = controller;
     item.status = 'uploading';
-    item.progress = 0;
+    item.progress = null; // waiting until the first onProgress
+    item.error = '';
     this._paintItem(item);
     const live = () => !controller.signal.aborted && this._items.includes(item);
     const onProgress = (loaded, total) => {
@@ -588,10 +623,11 @@ export class TdDropzone extends TdFormElement {
         item.result = result;
         this._paintItem(item);
       },
-      () => {
+      (err) => {
         if (!live()) return; // aborted by remove / reset: no error state
         item.controller = null;
         item.status = 'error';
+        item.error = uploadErrorMessage(err);
         this._paintItem(item);
       },
     );

@@ -29,6 +29,7 @@ Nguồn sự thật là source code (`src/**`); mỗi dòng dưới đây đối
   - [td-table](#td-table)
   - [td-tabs](#td-tabs)
   - [td-empty-state](#td-empty-state)
+  - [td-dropzone](#td-dropzone)
   - [Component không có hook JS](#component-không-có-hook-js)
   - [Icon](#icon)
 - [Công thức (recipes)](#công-thức-recipes)
@@ -560,6 +561,22 @@ Tên tablist mặc định `Các thẻ`; đổi bằng attribute `aria-label` / 
 | `actions` | `Array<{ label, variant?: 'primary' \| 'secondary' \| 'danger', onClick?: (event) => void }>` | Mỗi action thành một `.td-btn--sm`; `onClick` là listener `click` thường. Gán lại → listener cũ được gỡ |
 | `iconNode` | `SVGElement \| null` | Icon tuỳ biến tin cậy (clone), thắng attribute `icon` |
 | `TdEmptyState.labels` | `{ action: 'Thực hiện' }` | Chữ nút của action thiếu `label` (toàn trang) |
+
+---
+
+## td-dropzone
+
+`import '@dazzxq/td-components/dropzone';` · Trang: [dropzone.md](../components/dropzone.md#4-upload-ngay-hook-upload)
+
+| Property | Chữ ký / kiểu | Khi nào gọi | Lỗi thì sao |
+|---|---|---|---|
+| `upload` | `(file, { onProgress, signal }) => Promise` \| `null` | Mỗi file được thêm (sau khi lọc) | Reject / throw → dòng file đỏ: hiện `err.message` nếu là chuỗi không rỗng (text, cắt 200 ký tự), không thì `labels.uploadError`. Abort (xoá file / reset form) → không hiện lỗi |
+| `onProgress` (tham số) | `(percent 0–100)` hoặc `(loaded, total)` | Hook gọi khi có tiến độ | Giá trị không hợp lệ (NaN, `total` ≤ 0) bị bỏ qua. **Chưa gọi lần nào** → dòng ở trạng thái chờ: thanh indeterminate + `labels.uploadWaiting` ("Đang chờ…") |
+| `signal` (tham số) | `AbortSignal` | Abort khi xoá file / reset form | Hook nên huỷ request; kết quả trễ bị bỏ qua |
+
+Chuỗi `message` người dùng đọc nguyên văn → chỉ reject bằng thông báo **an toàn cho người dùng** (xem
+[Bảo mật › td-dropzone](../guides/security.md#td-dropzone-upload-file)). Nhãn đổi qua `TdDropzone.labels` (toàn trang);
+phần định dạng của dòng gợi ý đổi bằng attribute `accept-label`.
 
 ---
 
