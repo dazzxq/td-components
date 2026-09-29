@@ -174,6 +174,9 @@ Giá trị mặc định lấy từ `src/styles/tokens.css` (light). Cột "Dark
 
 Component tự đặt `font-family: var(--td-font-sans)` trên khối gốc của nó, nên font của site **không** tự lan vào kit.
 Muốn kit dùng font của site: đổi `--td-font-sans` (xem [styling.md › Font](styling.md#font)).
+Badge có token font riêng (0.19.0): `--td-badge-font-family` (mặc định `var(--td-font-sans)`) và
+`--td-badge-stamp-font-family` (mặc định `var(--td-font-mono)` — con dấu `.td-badge--stamp` dùng font mono), xem
+[badge.md](../components/badge.md#tuỳ-biến-giao-diện).
 
 ### Khoảng cách
 
@@ -671,6 +674,7 @@ diện** của trang component. Cột "Khai báo ở" cho biết ghi đè ở đ
 | td-pagination | `--td-pagination-*` | `:root` (có `@media (pointer: coarse)`) | [pagination.md](../components/pagination.md) |
 | td-empty-state | `--td-empty-state-*` | `:root` (`--sm` / `--lg` / `--compact` đặt lại `-pad` / `-gap` trên phần tử) | [empty-state.md](../components/empty-state.md) |
 | Icon | `--td-icon-*` (bảng trên) | `:root` | [icons.md](../components/icons.md) |
+| Badge (`.td-badge`) | `--td-badge-*` — gồm font `--td-badge-font-family` (mặc định `var(--td-font-sans)`) và `--td-badge-stamp-font-family` (mặc định `var(--td-font-mono)`, 0.19.0). Ghi đè `--td-badge-*-fg` / `-bg` thì site tự kiểm tương phản (gate chỉ đo mặc định) | `:root` | [badge.md](../components/badge.md) |
 
 Ví dụ (từ 0.16.0 ghi đè trên `:root` là đủ; ghi trên class cũ vẫn chạy):
 

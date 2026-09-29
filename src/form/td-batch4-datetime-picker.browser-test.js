@@ -517,10 +517,13 @@ describe('batch 4 — td-datetime-picker values + validity', () => {
     expect(el.getAttribute('value')).to.equal('15/06/2026 - 10:30');
     el.setDBValue('2026-07-01T08:05:00');
     expect(el.getAttribute('value')).to.equal('01/07/2026 - 08:05');
-    for (const junk of ['garbage', '2026-02-30 10:00:00', '', null, undefined, '2026-06-15 24:00:00']) {
+    for (const junk of ['garbage', '2026-02-30 10:00:00', '2026-06-15 24:00:00']) {
       el.setDBValue(junk);
       expect(el.getAttribute('value')).to.equal('01/07/2026 - 08:05');
     }
+    // v0.19.0 G5: '' / null / undefined clear (like setValue(null)) instead of being ignored
+    el.setDBValue('');
+    expect(el.getAttribute('value')).to.equal(null);
   });
 
   it('vi validity messages: valueMissing, badInput format / date / default year range', () => {

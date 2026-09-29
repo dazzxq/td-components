@@ -6355,10 +6355,13 @@
  * 135 `td-stamp`; tilt token `--td-badge-stamp-rotate: 0deg` turns it off, colours follow the variant tokens).
  * The ink (--td-badge-{v}-fg) is ≥ 4.7:1 on its own fill AND on the page (outline / stamp), light + dark
  * (test/tokens/contrast.spec.mjs).
+ * Fonts (v0.19.0 G4): --td-badge-font-family (default the sans stack) and --td-badge-stamp-font-family (default the
+ * mono stack). A site overriding --td-badge-*-fg / -bg must check the contrast itself (the gate measures defaults).
  */
 @layer td.tokens {
 	:root {
 		--td-badge-radius: var(--td-radius-full);
+		--td-badge-font-family: var(--td-font-sans);
 		--td-badge-font-size: var(--td-text-xs);
 		--td-badge-neutral-bg: var(--td-gray-100);
 		--td-badge-neutral-fg: #3f3f46;
@@ -6373,6 +6376,7 @@
 		--td-badge-danger-fg: #991b1b;
 		--td-badge-info-bg: #dbeafe;
 		--td-badge-info-fg: #1e40af;
+		--td-badge-stamp-font-family: var(--td-font-mono);
 		--td-badge-stamp-rotate: -4deg;
 		--td-badge-stamp-border: 3px;
 		--td-badge-stamp-radius: var(--td-radius-sm);
@@ -6414,7 +6418,7 @@
 		align-items: center;
 		max-width: 100%;
 		padding: 0.125rem 0.5rem;
-		font-family: var(--td-font-sans);
+		font-family: var(--td-badge-font-family);
 		font-size: var(--td-badge-font-size);
 		font-weight: var(--td-fw-semibold);
 		line-height: 1.4;
@@ -6439,6 +6443,7 @@
 
 	.td-badge--stamp {
 		padding: 0.125rem 0.5rem;
+		font-family: var(--td-badge-stamp-font-family);
 		font-weight: var(--td-fw-bold);
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
