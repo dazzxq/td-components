@@ -1,15 +1,18 @@
 // PHP SSR adapter php/td.php (plan v0.17.0 E5): snapshots, escaping (XSS payloads), whitelists, import map, icons,
-// fixture freshness. Runs the php CLI; skipped WITH A WARNING when php >= 8.1 is missing.
+// fixture freshness. Runs the php CLI; skipped WITH A WARNING when php >= 8.0 is missing.
 //   node --test test/php/            (TD_UPDATE_SNAPSHOTS=1 rewrites test/php/snapshots.json)
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdtempSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { HAS_PHP, HERE, ROOT, PHP_BIN, runPhp, php1, renderFixture, FIXTURE_FILE } from './php.mjs';
 
-if (!HAS_PHP) console.warn('\n⚠ td-php tests SKIPPED: php >= 8.1 CLI not found on PATH (set PHP_BIN to point at one).\n');
-const opts = { skip: !HAS_PHP && 'php >= 8.1 CLI not found' };
+// CI job php80 (v0.18.0 F9) sets TD_REQUIRE_PHP=1: a missing / too old php must FAIL there, not skip.
+if (!HAS_PHP && process.env.TD_REQUIRE_PHP) throw new Error('TD_REQUIRE_PHP=1 but no php >= 8.0 CLI on PATH');
+if (!HAS_PHP) console.warn('\n⚠ td-php tests SKIPPED: php >= 8.0 CLI not found on PATH (set PHP_BIN to point at one).\n');
+const opts = { skip: !HAS_PHP && 'php >= 8.0 CLI not found' };
 
 // --- A tiny tokenizer for the adapter's output: it must be ONLY well-formed tags with double-quoted, fully escaped
 // attribute values + text without raw < > (so no payload can open a tag or an attribute). ---
@@ -48,7 +51,7 @@ const ALLOWED_ATTRS = new Set(['class', 'type', 'id', 'name', 'value', 'disabled
   'required', 'aria-required', 'readonly', 'maxlength', 'minlength', 'pattern', 'min', 'max', 'step', 'autocomplete',
   'inputmode', 'enterkeyhint', 'autocapitalize', 'spellcheck', 'autofocus', 'aria-describedby', 'aria-invalid',
   'aria-errormessage', 'rows', 'data-for', 'hidden', 'label', 'searchable', 'allow-clear', 'selected', 'checked',
-  'data-x', 'aria-pressed', 'nonce', 'data-safe']);
+  'data-x', 'aria-pressed', 'nonce', 'data-safe', 'variant', 'dismissible', 'heading', 'title', 'data-flash']);
 function assertSafe(html) {
   for (const t of tokenize(html)) {
     assert.ok(!['script', 'style', 'iframe', 'img', 'object', 'embed'].includes(t.name), `forbidden tag <${t.name}>`);
@@ -87,6 +90,18 @@ const CASES = {
   'icon l labelled': ['td_icon', 'info', 'l', 'Thông tin'],
   'icon alias x → close': ['td_icon', 'x', 's'],
   'icon unknown → empty': ['td_icon', 'no-such-icon'],
+  'icon alias external-link → external': ['td_icon', 'external-link'],
+  'link bare (F7)': ['td_link', 'Xem site', '/docs?a=1&b=2', { bare: true, class: 'nav-link active', target: '_blank', icon: 'external-link', variant: 'primary', size: 'lg', loading: true }],
+  'link bare download + id + attrs': ['td_link', 'Tải', '/f/a.pdf', { bare: true, download: 'báo cáo.pdf', id: 'dl', attrs: { 'data-x': '1' } }],
+  'link bare rejected href': ['td_link', 'Xấu', 'javascript:alert(1)', { bare: true }],
+  'badge default neutral': ['td_badge', 'Mới'],
+  'badge success outline + id/class/attrs': ['td_badge', 'Đã duyệt', { variant: 'success', outline: true, id: 'b1', class: 'app-x', attrs: { title: 'Duyệt' } }],
+  'badge danger stamp': ['td_badge', 'Huỷ', { variant: 'danger', stamp: true }],
+  'badge bad variant → neutral': ['td_badge', 'x', { variant: 'evil"' }],
+  'alert default info': ['td_alert', 'Đã gửi yêu cầu.'],
+  'alert success heading dismissible': ['td_alert', 'Đã lưu thay đổi.', { variant: 'success', heading: 'Thành công', dismissible: true, id: 'flash', class: 'app-flash' }],
+  'alert warning': ['td_alert', 'Sắp hết hạn.', { variant: 'warning', attrs: { 'data-flash': '1' } }],
+  'alert danger → role alert': ['td_alert', 'Không lưu được.', { variant: 'danger' }],
   'stylesheet tag + nonce': ['td_stylesheet_tag', 'abc123'],
 };
 
@@ -194,6 +209,9 @@ describe('php/td.php', opts, () => {
       ['td_icon', P, P, P],
       ['td_icon', 'info', 'm', P],
       ['td_stylesheet_tag', P],
+      ['td_link', P, P, { bare: true, class: P, id: P, target: P, download: P, attrs: { onclick: 'x', 'data-safe': P } }],
+      ['td_badge', P, { variant: P, class: P, id: P, attrs: { onmouseover: 'x', style: 'x', 'data-safe': P } }],
+      ['td_alert', P, { variant: P, heading: P, class: P, id: P, dismissible: P, attrs: { onclick: 'x', role: P, 'data-safe': P } }],
     ];
     const res = runPhp(calls.map(([fn, ...args]) => ({ fn, args })));
     res.forEach((r, i) => {
@@ -244,6 +262,108 @@ describe('php/td.php', opts, () => {
     const many = php1('td_dropdown', 'x', Object.fromEntries([...Array(9)].map((_, i) => [`k${i}`, `v${i}`])), 'k1');
     assert.ok(!many.includes('searchable='), '> 8 options → searchable (default on)');
     assert.ok(php1('td_dropdown', 'x', { a: 'A' }, 'a', { searchable: true }).indexOf('searchable=') < 0);
+  });
+
+  test('td_link bare => true: plain <a>, no td-btn classes / button children, same URL rules (F7)', () => {
+    const a = php1('td_link', 'Tài liệu', 'https://x.vn/a?b=1&c=2', { bare: true, class: 'nav-link', target: '_blank', icon: 'download', loading: true, full_width: true });
+    assert.equal(a, '<a class="nav-link" href="https://x.vn/a?b=1&amp;c=2" target="_blank" rel="noopener noreferrer">Tài liệu</a>');
+    const plain = php1('td_link', 'x', '/a', { bare: true });
+    assert.equal(plain, '<a href="/a">x</a>', 'no class at all without a site class');
+    for (const bad of ['javascript:alert(1)', 'data:text/html,x', 'http://legacy.vn']) {
+      const out = php1('td_link', 'x', bad, { bare: true });
+      assert.ok(!out.includes('href='), bad);
+      assert.match(out, /role="link" aria-disabled="true" tabindex="-1"/);
+    }
+    const dis = php1('td_link', 'x', '/a', { bare: true, disabled: true });
+    assert.ok(!dis.includes('href='));
+    assert.match(php1('td_link', 'x', '/f', { bare: true, download: '../a:b.pdf' }), /^<a href="\/f" download="ab\.pdf">x<\/a>$/);
+    // td_button ignores `bare` (td_link only); bare false keeps the button link
+    assert.match(php1('td_button', 'x', { href: '/a', bare: true }), /^<a class="td-btn td-btn--secondary td-btn--md" href="\/a"><span class="td-btn__label">/);
+    assert.match(php1('td_link', 'x', '/a', { bare: false }), /^<a class="td-btn td-btn--ghost td-btn--md" href="\/a">/);
+  });
+
+  test('td_dropdown searchable normalisation (F8)', () => {
+    const few = { a: 'A', b: 'B' };
+    const many = Object.fromEntries([...Array(9)].map((_, i) => [`k${i}`, `v${i}`]));
+    const on = (html) => !html.includes('searchable=');
+    const call = (opts, list = few) => ({ fn: 'td_dropdown', args: ['x', list, '', opts] });
+    // absent / null → auto (> 8 options)
+    const auto = runPhp([call({}), call({}, many), call({ searchable: null }), call({ searchable: null }, many)]).map((r) => r.out);
+    assert.deepEqual(auto.map(on), [false, true, false, true]);
+    // off: false, 0 and the "false" strings (trimmed, any case) — even with > 8 options
+    const offVals = [false, 0, 'false', 'FALSE', ' False ', '0', ' 0 ', 'off', 'OFF', 'no', 'No', '', '  '];
+    runPhp(offVals.map((v) => call({ searchable: v }, many))).forEach((r, i) => {
+      assert.ok(!r.error, r.message);
+      assert.match(r.out, / searchable="false"/, `off: ${JSON.stringify(offVals[i])}`);
+    });
+    // everything else keeps PHP truthiness (unchanged behaviour): on even with few options
+    const onVals = [true, 1, 2, '1', 'true', 'TRUE', 'yes', 'on', 'auto', 'y', [1]];
+    runPhp(onVals.map((v) => call({ searchable: v }))).forEach((r, i) => assert.ok(on(r.out), `on: ${JSON.stringify(onVals[i])}`));
+    // a PHP-falsy value outside the list ([]) stays off — truthiness kept
+    assert.ok(!on(php1('td_dropdown', 'x', many, '', { searchable: [] })));
+  });
+
+  test('icon aliases come from icons.json `aliases` (F6), the ALIASES constant is only the fallback', () => {
+    const json = JSON.parse(readFileSync(join(ROOT, 'src/icons/icons.json'), 'utf8'));
+    assert.deepEqual(json.aliases, {
+      x: 'close', 'chevron-left': 'prev', 'chevron-right': 'next', 'chevron-up': 'up', 'chevron-down': 'down',
+      ellipsis: 'more', 'external-link': 'external', expand: 'fullscreen', pen: 'pencil',
+    });
+    const names = Object.keys(json.aliases);
+    const res = runPhp([...names.map((n) => ({ fn: 'td_icon', args: [n] })), { fn: 'Td::iconAliases', args: [] }]);
+    names.forEach((n, i) => assert.match(res[i].out, new RegExp(`^<svg class="td-icon td-icon--m" data-icon="${json.aliases[n]}"`), n));
+    assert.deepEqual(res[names.length].out, json.aliases);
+    // a kit dir whose icons.json has its OWN aliases: those are used (the constant is not merged in)
+    const dir = mkdtempSync(join(tmpdir(), 'td-php-icons-'));
+    try {
+      mkdirSync(join(dir, 'src', 'icons'), { recursive: true });
+      writeFileSync(join(dir, 'package.json'), '{"name":"@dazzxq/td-components","exports":{}}');
+      writeFileSync(join(dir, 'src', 'icons', 'icons.json'), JSON.stringify({ icons: json.icons, aliases: { 'old-tick': 'check', 'Bad Name': 'check', 'x-evil': 1 } }));
+      const own = runPhp([
+        { fn: 'td_icon', args: ['old-tick'] }, { fn: 'td_icon', args: ['x'] }, { fn: 'Td::iconAliases', args: [] },
+      ], { baseUrl: '/v', kitDir: dir });
+      assert.match(own[0].out, /data-icon="check"/);
+      assert.equal(own[1].out, '', 'icons.json aliases replace the constant');
+      assert.deepEqual(own[2].out, { 'old-tick': 'check' }, 'invalid entries dropped');
+      // an OLD icons.json without `aliases` → the ALIASES constant
+      writeFileSync(join(dir, 'src', 'icons', 'icons.json'), JSON.stringify({ icons: json.icons }));
+      const old = runPhp([{ fn: 'td_icon', args: ['x'] }, { fn: 'td_icon', args: ['pen'] }], { baseUrl: '/v', kitDir: dir });
+      assert.match(old[0].out, /data-icon="close"/);
+      assert.match(old[1].out, /data-icon="pencil"/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('td_badge: CSS-only span, variants / outline / stamp, text escaped (F5)', () => {
+    const variants = ['neutral', 'accent', 'success', 'warning', 'danger', 'info'];
+    const res = runPhp([
+      { fn: 'td_badge', args: ['Mới'] },
+      ...variants.map((v) => ({ fn: 'td_badge', args: ['x', { variant: v }] })),
+      { fn: 'td_badge', args: ['<b>1</b> & 2', { variant: 'info', outline: true, stamp: true }] },
+    ]).map((r) => r.out);
+    assert.equal(res[0], '<span class="td-badge td-badge--neutral">Mới</span>');
+    variants.forEach((v, i) => assert.equal(res[i + 1], `<span class="td-badge td-badge--${v}">x</span>`));
+    assert.equal(res[7], '<span class="td-badge td-badge--info td-badge--outline td-badge--stamp">&lt;b&gt;1&lt;/b&gt; &amp; 2</span>');
+  });
+
+  test('td_alert: ONE SSR contract — host + full styled markup, role by variant, no close button (F5)', () => {
+    const variants = { info: ['status', 'info'], success: ['status', 'success'], warning: ['status', 'warning'], danger: ['alert', 'error'] };
+    const res = runPhp(Object.keys(variants).map((v) => ({ fn: 'td_alert', args: ['Nội dung', { variant: v, heading: 'Tiêu đề', dismissible: true }] })));
+    Object.entries(variants).forEach(([v, [role, icon]], i) => {
+      const html = res[i].out;
+      assert.match(html, new RegExp(`^<td-alert variant="${v}" dismissible heading="Tiêu đề"><div class="td-alert td-alert--${v}" role="${role}">`
+        + `<span class="td-alert__icon" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="${icon}" `));
+      assert.match(html, /<\/svg><\/span><div class="td-alert__body"><p class="td-alert__heading">Tiêu đề<\/p><div class="td-alert__message">Nội dung<\/div><\/div><\/div><\/td-alert>$/);
+      assert.ok(!html.includes('<button'), 'no close button without JS');
+    });
+    const plain = php1('td_alert', 'a < b & "c"', { variant: 'nope', heading: '   ' });
+    assert.match(plain, /^<td-alert variant="info"><div class="td-alert td-alert--info" role="status">/);
+    assert.ok(!plain.includes('td-alert__heading'), 'blank heading → none');
+    assert.match(plain, /<div class="td-alert__message">a &lt; b &amp; &quot;c&quot;<\/div>/);
+    const xss = php1('td_alert', '<script>alert(1)</script>', { heading: '"><img src=x onerror=alert(1)>', attrs: { onclick: 'x', 'data-flash': '1' } });
+    assert.ok(!/<script|<img/.test(xss), xss);
+    assert.match(xss, /^<td-alert variant="info" heading="&quot;&gt;&lt;img src=x onerror=alert\(1\)&gt;" data-flash="1">/);
   });
 
   test('toggle / checkbox contract', () => {
@@ -359,7 +479,7 @@ describe('php/td.php', opts, () => {
     assert.deepEqual(c, ['TdComponents\\Td']);
   });
 
-  test('PHP 8.1 syntax (php -l) and fixture test/php/fixtures/ssr.html is up to date', () => {
+  test('PHP syntax (php -l; CI job php80 runs it on PHP 8.0) and fixture test/php/fixtures/ssr.html is up to date', () => {
     const lint = spawnPhpArgs(['-l', join(ROOT, 'php/td.php')]);
     assert.match(lint, /No syntax errors/);
     assert.equal(readFileSync(FIXTURE_FILE, 'utf8'), renderFixture(), 'stale fixture: run `node test/php/build-fixture.mjs`');

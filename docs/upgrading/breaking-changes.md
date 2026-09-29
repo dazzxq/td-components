@@ -1,8 +1,8 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.17)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.18)
 
-Trang này liệt kê, cho từng bản từ **0.17.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
+Trang này liệt kê, cho từng bản từ **0.18.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
 [CHANGELOG.md](../../CHANGELOG.md); trang này chỉ gom lại theo góc nhìn "tôi phải làm gì" và thêm ví dụ trước/sau.
 Quy trình nâng cấp chung nằm ở [README.md](README.md).
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.18.0](#0180) | Đổi hành vi (nhỏ) | `searchable="false"` (PHP) giờ tắt thật; `hasIcon()` hiểu alias; datetime-picker nhận ISO; `td-button` truyền `name`/`value`. |
 | [0.17.0](#0170) | Đổi hành vi (nhỏ) | `dropdown.value` trả giá trị đang chọn; `<td-dropdown>` chứa `<select>` giờ được nâng cấp. |
 | [0.16.0](#0160) | Đổi hành vi | `input-field.value`, slider `required`/`step`/mặc định, dropdown giữ/bỏ lựa chọn + `onSelect`+`onChange`, `confirm` giữ mở khi `onConfirm` trả `false`, định dạng `toAbsolute`, token `:root`, dark accent. |
 | [0.15.1](#0151) | Không có thay đổi phá vỡ | Không. Tài liệu viết lại; sửa con trỏ trigger video lightbox. |
@@ -41,6 +42,26 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.18.0
+
+**Đổi hành vi nhỏ + bổ sung** (progress, dropzone, alert, badge, chế độ ngày/tháng/năm, type month/datetime-local/time,
+submitter name/value). Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.18.0.
+
+1. **PHP `td_dropdown` `searchable`**: chuỗi `'false'` / `'0'` / `'off'` / `'no'` / `''` giờ **tắt** tìm kiếm (trước là
+   bật do PHP coi chuỗi khác rỗng là true). Không truyền / `null` vẫn tự động (> 8 mục).
+2. **`hasIcon()` / `tdIcon()` hiểu alias**: `hasIcon('pen')`, `hasIcon('external-link')`… giờ trả `true`. Code kiểu
+   `if (!hasIcon(x)) registerIcons({ [x]: … })` với tên trùng alias sẽ không đăng ký nữa (icon đích được dùng); icon
+   site đã đăng ký trùng tên alias vẫn thắng alias.
+3. **`<td-button>` có `name` / `value`**: giờ được chuyển xuống `<button>` bên trong → nút submit gửi cặp `name=value`.
+   Site từng đặt `name` trên `<td-button>` mà không muốn gửi thì gỡ attribute.
+4. **`<td-datetime-picker>`**: attribute `value` / `setValue()` nhận thêm ISO (`2026-06-15T10:30`), trước bị `badInput`.
+   Mode mặc định `datetime` và giá trị form `yyyy-mm-ddThh:mm:00` **không đổi**.
+5. **`php/td.php`** chạy được trên PHP 8.0 (trước ghi ≥ 8.1).
+
+Site phải sửa: chỉ khi dựa vào các hành vi cũ ở mục 1–4.
 
 ---
 

@@ -29,6 +29,11 @@ describe('index.js exports', () => {
     expect(customElements.get('td-dropzone')).to.equal(kit.TdDropzone);
   });
 
+  it('registers <td-alert> from the root entry (v0.18.0 F5)', () => {
+    expect(typeof kit.TdAlert).to.equal('function');
+    expect(customElements.get('td-alert')).to.equal(kit.TdAlert);
+  });
+
   it('re-exports the icon API and the dom-utils functions (v0.17.0 E8)', async () => {
     const icons = await import('./icons/td-icon.js');
     const utils = await import('./utils/dom-utils.js');

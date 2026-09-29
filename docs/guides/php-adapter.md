@@ -7,10 +7,10 @@
 
 1. In `<link>` tới `td.css` và **import map** sinh từ `exports` của `package.json` đã vendor.
 2. In **markup phía server** (SSR) đúng hợp đồng DOM của component: nút, nút dạng link, ô nhập, dropdown, switch,
-   checkbox, icon.
+   checkbox, icon, badge, khối thông báo (alert).
 3. Escape mọi giá trị và lọc tên attribute / URL / class — site không phải tự nhớ.
 
-Yêu cầu: **PHP ≥ 8.1**, không framework, không composer. File chỉ khai báo class `TdComponents\Td` và các hàm toàn cục
+Yêu cầu: **PHP ≥ 8.0** (0.18.0; kiểm chứng trên PHP 8.0 thật bằng job CI `php80`), không framework, không composer. File chỉ khai báo class `TdComponents\Td` và các hàm toàn cục
 có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không autoload.
 
 > Trang này là tài liệu tham chiếu của adapter. Cách đặt kit lên server, import map trong WordPress, CSP… xem
@@ -27,6 +27,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_dropdown](#td_dropdown)
 - [td_toggle và td_checkbox](#td_toggle-và-td_checkbox)
 - [td_icon và icon riêng của site](#td_icon-và-icon-riêng-của-site)
+- [td_badge và td_alert](#td_badge-và-td_alert)
 - [An toàn: escape và whitelist](#an-toàn-escape-và-whitelist)
 - [Chuyển từ adapter riêng của 135](#chuyển-từ-adapter-riêng-của-135)
 - [Lỗi thường gặp](#lỗi-thường-gặp)
@@ -43,6 +44,8 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_toggle` | `label.td-switch` + `input[role=switch]` **native** | Không | Không |
 | `td_dropdown` | host `<td-dropdown>` bọc `<select>` **native** | Không (chạy như select) | **Có** — khi nạp module dropdown |
 | `td_icon` | `svg.td-icon` đủ hình (có `viewBox`) | Không | — |
+| `td_badge` | `span.td-badge…` (thuần CSS) | Không | — |
+| `td_alert` | host `<td-alert>` chứa sẵn khối `div.td-alert` đầy đủ | Không (có dáng ngay) | **Có** — nạp module `alert`: nâng cấp tại chỗ + nút đóng |
 
 - Bốn helper đầu in **control native đứng riêng** mang đúng class BEM của component. `td.css` tạo dáng giống hệt
   component (có test so computed style), còn submit, `required`, `pattern`, `min`/`max`, `type=month`,
@@ -58,7 +61,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.17.0/
+public/assets/vendor/td-components/0.18.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -66,7 +69,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.17.0';
+const TD_VERSION = '0.18.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -133,13 +136,15 @@ td_field(string $name, string $value = '', array $opts = []): string
 td_dropdown(string $name, array $options, string|int|null $value = '', array $opts = []): string
 td_toggle(string $name, bool $checked = false, string $label = '', array $opts = []): string
 td_checkbox(string $name, bool $checked = false, string $label = '', array $opts = []): string
+td_badge(string $text, array $opts = []): string          // 0.18.0
+td_alert(string $message, array $opts = []): string       // 0.18.0
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
 td_stylesheet_tag(?string $nonce = null): string
 ```
 
 Class `TdComponents\Td` (static): `configure`, `baseUrl`, `kitDir`, `importMap`, `importMapTag`, `stylesheetTag`,
-`registerIcons`, `siteIcons`, `hasIcon`, `icon($name, $size, $label, $class)`, và các tiện ích an toàn dùng lại được
+`registerIcons`, `siteIcons`, `hasIcon`, `iconAliases()`, `icon($name, $size, $label, $class)`, và các tiện ích an toàn dùng lại được
 trong template của site: `e()` (escape), `attrs()` (in attribute đã lọc), `safeUrl()`, `classTokens()`, `uid()`,
 `safeFilename()`. Hằng `Td::JSON_FLAGS` cho JSON in vào HTML.
 
@@ -179,6 +184,7 @@ Option chung cho các control:
 | `href` | có key này → in `<a class="td-btn …">` thay `<button>` | — |
 | `target` | `_blank` `_self` `_parent` `_top` (khác → bỏ). `_blank` tự thêm `rel="noopener noreferrer"` | — |
 | `download` | `true` → `download`; chuỗi → tên file (bỏ `/ \ : * ? " < > \|` và ký tự điều khiển, tối đa 200 ký tự) | — |
+| `bare` | **chỉ `td_link`** (0.18.0): `true` → `<a>` thường, không class `td-btn…`, không span con của nút | — |
 
 Markup (cấu trúc con giống `<td-button>`):
 
@@ -203,7 +209,17 @@ Markup (cấu trúc con giống `<td-button>`):
 
 `td_link($label, $href, $opts)` = `td_button($label, $opts + href)` với `variant` mặc định **`ghost`** (link trông như
 nút trong suốt chữ màu accent). Muốn link trông như nút đặc: `td_link('Cuộn mới', '/admin/rolls/new',
-['variant' => 'primary', 'icon' => 'plus'])`. Link văn bản thường trong nội dung thì cứ viết `<a>` của site.
+['variant' => 'primary', 'icon' => 'plus'])`.
+
+**Link không mang kiểu nút** (`'bare' => true`, 0.18.0 — chỉ cho `td_link`): in `<a>` với **chỉ** class của site,
+nội dung là nhãn đã escape, không `td-btn…`, không icon/spinner. Vẫn qua cùng whitelist URL, `target` (+ `rel`),
+`download`, `disabled` (URL bị chặn / `disabled` → không `href`, `aria-disabled`); `variant`, `size`, `full_width`,
+`icon`, `loading` bị bỏ qua.
+
+```php
+<?= td_link('Tài liệu', '/docs', ['bare' => true, 'class' => 'nav-link']) ?>
+<!-- <a class="nav-link" href="/docs">Tài liệu</a> -->
+```
 
 ## td_field
 
@@ -272,7 +288,7 @@ dạng chuỗi với value của option; khớp → `selected`.
 |---|---|
 | `label` | nhãn: in `<label for="{id}-select">` cho bản không JS **và** attribute `label` trên host (component tự vẽ nhãn khi upgrade) |
 | `placeholder` | thêm `<option value="">placeholder</option>` đầu tiên (được phép để trống) + attribute `placeholder` trên host; không có placeholder → `allow-clear="false"` |
-| `searchable` | `true` / `false`; không truyền → tự bật khi > 8 option |
+| `searchable` | không truyền / `null` → tự bật khi > 8 option. **Tắt**: `false`, `0` và chuỗi `'false'` `'0'` `'off'` `'no'` `''` (bỏ khoảng trắng, không phân biệt hoa thường — 0.18.0, tiện khi giá trị đến từ config/DB). Mọi giá trị khác theo truthiness của PHP (`true`, `1`, `'1'`, `'true'`, `'yes'`, `'on'`… → bật) |
 | `required`, `disabled`, `aria_label` | đặt trên `<select>` (component lấy lại khi upgrade) |
 | `id` | id host; select = `{id}-select` |
 | `class`, `attrs` | trên host `<td-dropdown>` |
@@ -344,7 +360,9 @@ Markup switch (`input` native ẩn thị giác, nhận focus/Space/label):
 - Hình lấy **đầy đủ** từ `src/icons/icons.json` — cùng markup với `tdIcon()` của JS (không phải slot rỗng
   `data-td-icon`). Vì thế icon trong markup SSR **không** bị `fillIconSlots()` ghi đè.
 - Tên cũ của kit 135 được map khi tên đó không tồn tại: `x`→`close`, `chevron-left/right/up/down`→`prev/next/up/down`,
-  `ellipsis`→`more`, `external-link`→`external`, `expand`→`fullscreen`, `pen`→`pencil`.
+  `ellipsis`→`more`, `external-link`→`external`, `expand`→`fullscreen`, `pen`→`pencil`. Bảng alias nằm trong object
+  `aliases` của `src/icons/icons.json` (0.18.0 — JS `tdIcon()` đọc cùng bảng); icons.json cũ chưa có `aliases` thì
+  adapter dùng bảng dự phòng trong `td.php`. `Td::iconAliases()` trả bảng đang dùng.
 
 Icon riêng của site: đăng ký **dữ liệu** (không phải chuỗi SVG), cùng luật với `registerIcons()` của JS:
 
@@ -365,6 +383,46 @@ TdComponents\Td::registerIcons(json_decode(file_get_contents(ROOT . '/data/icons
 ```js
 import { registerIcons } from '@dazzxq/td-components/icons';
 registerIcons(JSON.parse(document.getElementById('site-icons').textContent));
+```
+
+## td_badge và td_alert
+
+```php
+<?= td_badge('Đã duyệt', ['variant' => 'success']) ?>
+<?= td_badge('Nháp', ['variant' => 'warning', 'stamp' => true]) ?>
+<?= td_alert($flash['message'], ['variant' => $flash['type'], 'heading' => $flash['title'] ?? null, 'dismissible' => true]) ?>
+```
+
+`td_badge($text, $opts)` — `span.td-badge` **thuần CSS** ([Badge](../components/badge.md)):
+
+| Option | Ý nghĩa |
+|---|---|
+| `variant` | `neutral` `accent` `success` `warning` `danger` `info` (mặc định `neutral`) |
+| `outline` | `true` → `td-badge--outline` |
+| `stamp` | `true` → `td-badge--stamp` (con dấu: in hoa, viền đôi, nghiêng) |
+| `id`, `class`, `attrs` | trên `<span>` |
+
+`td_alert($message, $opts)` — **một hợp đồng SSR duy nhất** ([Alert](../components/alert.md)): luôn in host
+`<td-alert>` chứa sẵn khối `div.td-alert` đầy đủ. `td.css` tạo dáng ngay (flash hiện được khi chưa có / không có JS);
+nạp `@dazzxq/td-components/alert` thì phần tử **nâng cấp tại chỗ** (giữ nguyên chữ) và gắn nút đóng nếu `dismissible`.
+Không JS thì không có nút đóng.
+
+| Option | Ý nghĩa |
+|---|---|
+| `variant` | `info` `success` `warning` `danger` (mặc định `info`; `danger` → `role="alert"`, còn lại `role="status"`) |
+| `heading` | tiêu đề (chữ; rỗng → không có) |
+| `dismissible` | `true` → attribute `dismissible` (nút đóng khi có JS) |
+| `id`, `class`, `attrs` | trên host `<td-alert>` |
+
+`$message` là **chữ** (escape). Cần link trong thông báo thì viết `<td-alert>` bằng tay với markup của trang.
+
+```html
+<td-alert variant="success" dismissible heading="Thành công">
+  <div class="td-alert td-alert--success" role="status">
+    <span class="td-alert__icon" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="success" …>…</svg></span>
+    <div class="td-alert__body"><p class="td-alert__heading">Thành công</p><div class="td-alert__message">Đã lưu thay đổi.</div></div>
+  </div>
+</td-alert>
 ```
 
 ## An toàn: escape và whitelist
@@ -409,7 +467,7 @@ Khác biệt hành vi so với `markup.php` của 135 (cố ý):
 | 135 | Adapter chính thức |
 |---|---|
 | `variant => 'ghost'` bị map sang `secondary` | `ghost` thật (`td-btn--ghost`) |
-| `td_link` in `a.td-link-action` (class của 135) | `td_link` = nút link `a.td-btn` (mặc định ghost). Giữ giao diện cũ: `['class' => 'td-link-action']` rồi CSS của 135 |
+| `td_link` in `a.td-link-action` (class của 135) | `td_link` = nút link `a.td-btn` (mặc định ghost). Giữ giao diện cũ: `['bare' => true, 'class' => 'td-link-action']` (0.18.0) → `<a>` chỉ có class của 135, không kiểu nút |
 | `td_button` không có `href` | `href` → `<a class="td-btn">` (whitelist URL, `target`, `download`, trạng thái disabled/loading) |
 | `td_toggle` mặc định `value="1"` | không có `value` → gửi `on` như `<td-toggle>`. Server kiểm `!empty($_POST['x'])` vẫn đúng; code so `=== '1'` thì truyền `'value' => '1'` |
 | `td_toggle` không có class `td-switch--md` | luôn có class kích thước như component |
@@ -431,6 +489,7 @@ Khác biệt hành vi so với `markup.php` của 135 (cố ý):
 | attribute trong `attrs` không được in | tên không có trong danh sách cho phép (`on*`, `style`, `href`, `form*`…) hoặc trùng attribute helper đã in | dùng option tương ứng; event handler gắn trong module JS |
 | Icon không hiện | tên sai / icon site chưa `registerIcons` | kiểm `TdComponents\Td::hasIcon('…')` |
 | `Failed to load module script … MIME type "application/octet-stream"` (hoặc rỗng) | server không map đuôi `.mjs` (nginx cũ) / `.js` sang JavaScript; `X-Content-Type-Options: nosniff` khiến trình duyệt chặn | nginx: `types { text/javascript mjs; }` trong `http { }` ngay sau `include mime.types;` — Apache: `AddType text/javascript .js .mjs` ([chi tiết](wordpress-php.md#mime-của-module-js)) |
+| Flash `td_alert` không có nút đóng | chưa nạp `@dazzxq/td-components/alert` (cố ý: không JS thì không có nút chết) | import module `alert` |
 | Dropdown không đổi thành component | chưa import `@dazzxq/td-components/dropdown`, hoặc select có `multiple` (không upgrade) | import module; `multiple` giữ select native |
 
 ## Xem thêm
@@ -438,5 +497,5 @@ Khác biệt hành vi so với `markup.php` của 135 (cố ý):
 - [WordPress & PHP](wordpress-php.md) — vendor kit, phiên bản trong đường dẫn, WordPress Script Modules, CSP.
 - [Button](../components/button.md) · [Input field](../components/input-field.md) ·
   [Dropdown](../components/dropdown.md) · [Checkbox](../components/checkbox.md) · [Toggle](../components/toggle.md) ·
-  [Icons](../components/icons.md)
+  [Icons](../components/icons.md) · [Badge](../components/badge.md) · [Alert](../components/alert.md)
 - [Bảo mật](security.md) · [CSP](csp.md) · [Form](forms.md)

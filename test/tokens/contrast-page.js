@@ -1,6 +1,7 @@
 // Loaded by contrast.spec.mjs (v0.14.0 liquid-glass G5): glass buttons + tinted toasts rendered over a backdrop.
 import '/src/form/td-button.js';
 import { TdToast } from '/src/feedback/td-toast.js';
+import '/src/feedback/td-alert.js';
 
 const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning'];
 const TOASTS = ['success', 'error', 'warning', 'info'];
@@ -12,6 +13,13 @@ for (const t of TOASTS) CASES.push({ kind: 'toast', v: t, state: 'rest' });
 // v0.17.0 ghost buttons sit on the PAGE background, never on a photo: measured only over the theme's page colour
 // (white in light, black in dark) — `pageOnly` (contrast.spec.mjs skips the other backdrops).
 for (const state of ['rest', 'disabled', 'loading', 'icon']) CASES.push({ kind: 'button', v: 'ghost', state, pageOnly: true });
+// v0.18.0 F5: alerts and badges live in the content layer (solid fills on the page) → page colour only, like ghost.
+// Alert: message + heading text ≥ 4.7, icon + close ≥ 3.2 on the variant fill. Badge: text ≥ 4.7 on its soft fill,
+// and on the page for --outline / --stamp (transparent).
+for (const v of ['info', 'success', 'warning', 'danger']) CASES.push({ kind: 'alert', v, state: 'rest', pageOnly: true });
+for (const v of ['neutral', 'accent', 'success', 'warning', 'danger', 'info']) {
+  for (const state of ['soft', 'outline', 'stamp']) CASES.push({ kind: 'badge', v, state, pageOnly: true });
+}
 
 const stage = document.getElementById('stage');
 const bd = document.getElementById('backdrop');
@@ -55,6 +63,21 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     stage.appendChild(host);
     el = host.querySelector('button');
     parts = { label: el.querySelector('.td-btn__label'), spinner: el.querySelector('.td-btn__spinner'), icon: el.querySelector('.td-btn__icon') };
+  } else if (c.kind === 'alert') {
+    const host = document.createElement('td-alert');
+    host.setAttribute('variant', c.v);
+    host.setAttribute('heading', 'Tiêu đề thông báo');
+    host.setAttribute('dismissible', '');
+    host.textContent = 'Đã lưu thay đổi của bạn';
+    stage.appendChild(host);
+    el = host.querySelector('.td-alert');
+    parts = { label: el.querySelector('.td-alert__message'), heading: el.querySelector('.td-alert__heading'), icon: el.querySelector('.td-alert__icon'), close: el.querySelector('.td-alert__close') };
+  } else if (c.kind === 'badge') {
+    el = document.createElement('span');
+    el.className = `td-badge td-badge--${c.v}${c.state === 'soft' ? '' : ` td-badge--${c.state}`}`;
+    el.textContent = 'Đã duyệt';
+    stage.appendChild(el);
+    parts = { label: el };
   } else {
     TdToast._showSingle('Đã lưu thay đổi của bạn', c.v, 0);
     await new Promise((r) => setTimeout(r, 450));
@@ -67,6 +90,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
   const cs = (n) => (n ? getComputedStyle(n) : null);
   const ink = {
     label: cs(parts.label)?.color || cs(el).color,
+    heading: parts.heading ? cs(parts.heading).color : null,
     icon: parts.icon ? cs(parts.icon).color : null,
     close: parts.close ? cs(parts.close).color : null,
     spinner: parts.spinner && !parts.spinner.hidden ? cs(parts.spinner).color : null,

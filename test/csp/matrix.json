@@ -24,7 +24,9 @@
       "td-password-meter": "/src/form/td-password-meter.js",
       "td-scroll-top": "/src/feedback/td-scroll-top.js",
       "td-progress": "/src/feedback/td-progress.js",
-      "td-dropzone": "/src/form/td-dropzone.js"
+      "td-dropzone": "/src/form/td-dropzone.js",
+      "td-alert": "/src/feedback/td-alert.js",
+      "td-badge": "/src/icons/td-icon.js"
     },
     "tokenNative": [
       "td-button",
@@ -49,7 +51,9 @@
       "td-password-meter",
       "td-scroll-top",
       "td-progress",
-      "td-dropzone"
+      "td-dropzone",
+      "td-alert",
+      "td-badge"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -1628,6 +1632,108 @@
         ".td-dropzone__browse",
         ".td-dropzone__remove"
       ]
+    }
+  ],
+  "td-alert": [
+    {
+      "state": "info-heading",
+      "markup": "<td-alert heading=\"Lưu ý\">Phiên đăng nhập sắp hết hạn.</td-alert>",
+      "selectors": [
+        ".td-alert",
+        ".td-alert__icon",
+        ".td-alert__icon svg",
+        ".td-alert__body",
+        ".td-alert__heading",
+        ".td-alert__message"
+      ]
+    },
+    {
+      "state": "success-dismissible",
+      "markup": "<td-alert variant=\"success\" heading=\"Thành công\" dismissible>Đã lưu thay đổi.</td-alert>",
+      "selectors": [
+        ".td-alert",
+        ".td-alert__icon",
+        ".td-alert__icon svg",
+        ".td-alert__body",
+        ".td-alert__heading",
+        ".td-alert__message",
+        ".td-alert__close",
+        ".td-alert__close svg"
+      ]
+    },
+    {
+      "state": "warning-ssr",
+      "markup": "<td-alert variant=\"warning\" heading=\"Sắp hết hạn\"><div class=\"td-alert td-alert--warning\" role=\"status\"><span class=\"td-alert__icon\" aria-hidden=\"true\"></span><div class=\"td-alert__body\"><p class=\"td-alert__heading\">Sắp hết hạn</p><div class=\"td-alert__message\">Nội dung thông báo.</div></div></div></td-alert>",
+      "selectors": [
+        ".td-alert",
+        ".td-alert__icon",
+        ".td-alert__icon svg",
+        ".td-alert__body",
+        ".td-alert__heading",
+        ".td-alert__message"
+      ],
+      "selectorNote": "PHP td_alert() markup upgraded in place"
+    },
+    {
+      "state": "danger",
+      "markup": "<td-alert variant=\"danger\">Không lưu được.</td-alert>",
+      "selectors": [
+        ".td-alert",
+        ".td-alert__icon",
+        ".td-alert__icon svg",
+        ".td-alert__message"
+      ]
+    },
+    {
+      "state": "css-only",
+      "markup": "<div class=\"td-alert td-alert--success\" role=\"status\"><div class=\"td-alert__body\"><p class=\"td-alert__heading\">Flash</p><div class=\"td-alert__message\">Không JS.</div></div></div>",
+      "selectors": [
+        ".td-alert",
+        ".td-alert__heading",
+        ".td-alert__message"
+      ],
+      "selectorNote": "the CSS-only block (no custom element)"
+    }
+  ],
+  "td-badge": [
+    {
+      "state": "soft",
+      "markup": "<span class=\"td-badge td-badge--neutral\">neutral</span> <span class=\"td-badge td-badge--accent\">accent</span> <span class=\"td-badge td-badge--success\">success</span> <span class=\"td-badge td-badge--warning\">warning</span> <span class=\"td-badge td-badge--danger\">danger</span> <span class=\"td-badge td-badge--info\">info</span>",
+      "selectors": [
+        ".td-badge--neutral",
+        ".td-badge--accent",
+        ".td-badge--success",
+        ".td-badge--warning",
+        ".td-badge--danger",
+        ".td-badge--info"
+      ],
+      "selectorNote": "CSS-only (.td-badge has no JS)"
+    },
+    {
+      "state": "outline",
+      "markup": "<span class=\"td-badge td-badge--neutral td-badge--outline\">neutral</span> <span class=\"td-badge td-badge--accent td-badge--outline\">accent</span> <span class=\"td-badge td-badge--success td-badge--outline\">success</span> <span class=\"td-badge td-badge--warning td-badge--outline\">warning</span> <span class=\"td-badge td-badge--danger td-badge--outline\">danger</span> <span class=\"td-badge td-badge--info td-badge--outline\">info</span>",
+      "selectors": [
+        ".td-badge--neutral.td-badge--outline",
+        ".td-badge--accent.td-badge--outline",
+        ".td-badge--success.td-badge--outline",
+        ".td-badge--warning.td-badge--outline",
+        ".td-badge--danger.td-badge--outline",
+        ".td-badge--info.td-badge--outline"
+      ],
+      "selectorNote": "CSS-only"
+    },
+    {
+      "state": "stamp",
+      "markup": "<span class=\"td-badge td-badge--neutral td-badge--stamp\">neutral</span> <span class=\"td-badge td-badge--accent td-badge--stamp\">accent</span> <span class=\"td-badge td-badge--success td-badge--stamp\">success</span> <span class=\"td-badge td-badge--warning td-badge--stamp\">warning</span> <span class=\"td-badge td-badge--danger td-badge--stamp\">danger</span> <span class=\"td-badge td-badge--info td-badge--stamp\">info</span>",
+      "selectors": [
+        ".td-badge--neutral.td-badge--stamp",
+        ".td-badge--accent.td-badge--stamp",
+        ".td-badge--success.td-badge--stamp",
+        ".td-badge--warning.td-badge--stamp",
+        ".td-badge--danger.td-badge--stamp",
+        ".td-badge--info.td-badge--stamp"
+      ],
+      "selectorNote": "CSS-only; transform = the tilt token"
     }
   ]
 }

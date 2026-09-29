@@ -1,6 +1,6 @@
 {
   "name": "@dazzxq/td-components",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "description": "Shared UI Web Components library — single source of truth UI kit (token CSS + Liquid Glass)",
   "type": "module",
   "main": "index.js",
@@ -54,6 +54,7 @@
     "./hovercard": "./src/feedback/td-hovercard.js",
     "./scroll-top": "./src/feedback/td-scroll-top.js",
     "./progress": "./src/feedback/td-progress.js",
+    "./alert": "./src/feedback/td-alert.js",
     "./table": "./src/display/td-table.js",
     "./tabs": "./src/display/td-tabs.js",
     "./pagination": "./src/display/td-pagination.js",
@@ -79,6 +80,7 @@
     "./src/base/sample/td-sample.js",
     "./src/icons/td-icon-element.js",
     "./src/feedback/td-progress.js",
+    "./src/feedback/td-alert.js",
     "./src/feedback/td-scroll-top.js",
     "./src/feedback/td-tooltip.js",
     "./src/form/td-button.js",

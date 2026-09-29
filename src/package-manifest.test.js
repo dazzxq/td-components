@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const pkg = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8'));
@@ -53,4 +54,28 @@ test('index.js re-exports the icon API and dom-utils by explicit name (no export
     'contrastRatio', 'getAccessibleTextColor']) {
     assert.match(src, new RegExp(`\\b${name}\\b`), name);
   }
+});
+
+test('v0.18.0 F5: ./alert export, sideEffects, barrel TdAlert, badge + alert CSS in the td.css manifest', async () => {
+  assert.equal(pkg.exports['./alert'], './src/feedback/td-alert.js');
+  assert.ok(pkg.sideEffects.includes('./src/feedback/td-alert.js'));
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdAlert \} from '\.\/src\/feedback\/td-alert\.js';/);
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  for (const f of ['components/badge.css', 'components/alert.css']) {
+    assert.ok(files.includes(f), f);
+    assert.ok(files.indexOf(f) < files.indexOf('utilities.css'), `${f} before utilities.css`);
+  }
+  const css = await readFile(join(ROOT, 'td.css'), 'utf8');
+  for (const sel of ['.td-badge--stamp', '.td-badge--outline', '.td-alert--danger', '.td-alert__close']) assert.ok(css.includes(sel), sel);
+});
+
+test('v0.18.0 F5: npm pack ships td-alert.js, badge.css and alert.css (not its tests / stories)', { timeout: 60000 }, () => {
+  const r = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], { cwd: ROOT, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  const paths = JSON.parse(r.stdout)[0].files.map((f) => f.path);
+  for (const f of ['src/feedback/td-alert.js', 'src/styles/components/badge.css', 'src/styles/components/alert.css', 'php/td.php', 'td.css']) {
+    assert.ok(paths.includes(f), f);
+  }
+  assert.ok(!paths.some((p) => /td-v018-alert|td-alert\.stories/.test(p)), 'tests / stories not shipped');
 });

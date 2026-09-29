@@ -1,0 +1,109 @@
+/*
+ * .td-badge — CSS-only badge / rubber stamp (v0.18.0 F5; PHP td_badge()). No JS, no custom element.
+ * Content layer → SOLID tinted fill, never glass (liquid-glass R1).
+ *   <span class="td-badge td-badge--success">Đã duyệt</span>
+ * Variants: --neutral (default) | --accent | --success | --warning | --danger | --info.
+ * Modifiers: --outline (transparent, currentColor border) · --stamp (uppercase, double border, slight tilt like the
+ * 135 `td-stamp`; tilt token `--td-badge-stamp-rotate: 0deg` turns it off, colours follow the variant tokens).
+ * The ink (--td-badge-{v}-fg) is ≥ 4.7:1 on its own fill AND on the page (outline / stamp), light + dark
+ * (test/tokens/contrast.spec.mjs).
+ */
+@layer td.tokens {
+	:root {
+		--td-badge-radius: var(--td-radius-full);
+		--td-badge-font-size: var(--td-text-xs);
+		--td-badge-neutral-bg: var(--td-gray-100);
+		--td-badge-neutral-fg: #3f3f46;
+		/* accent: static fallback (= info) without color-mix(); @supports below follows the site accent */
+		--td-badge-accent-bg: #dbeafe;
+		--td-badge-accent-fg: #1e40af;
+		--td-badge-success-bg: #dcfce7;
+		--td-badge-success-fg: #166534;
+		--td-badge-warning-bg: #fef3c7;
+		--td-badge-warning-fg: #92400e;
+		--td-badge-danger-bg: #fee2e2;
+		--td-badge-danger-fg: #991b1b;
+		--td-badge-info-bg: #dbeafe;
+		--td-badge-info-fg: #1e40af;
+		--td-badge-stamp-rotate: -4deg;
+		--td-badge-stamp-border: 3px;
+		--td-badge-stamp-radius: var(--td-radius-sm);
+	}
+
+	:root[data-td-theme="dark"] {
+		--td-badge-neutral-bg: #2c2c30;
+		--td-badge-neutral-fg: #e4e4e7;
+		--td-badge-accent-bg: #172554;
+		--td-badge-accent-fg: #bfdbfe;
+		--td-badge-success-bg: #0f2e1b;
+		--td-badge-success-fg: #86efac;
+		--td-badge-warning-bg: #33240a;
+		--td-badge-warning-fg: #fcd34d;
+		--td-badge-danger-bg: #3a1414;
+		--td-badge-danger-fg: #fca5a5;
+		--td-badge-info-bg: #172554;
+		--td-badge-info-fg: #bfdbfe;
+	}
+
+	@supports (color: color-mix(in srgb, red 50%, blue)) {
+		:root {
+			--td-badge-accent-bg: color-mix(in srgb, var(--td-accent) 14%, #fff);
+			--td-badge-accent-fg: color-mix(in srgb, var(--td-accent) 62%, #000);
+		}
+
+		:root[data-td-theme="dark"] {
+			--td-badge-accent-bg: color-mix(in srgb, var(--td-accent) 26%, #111113);
+			--td-badge-accent-fg: color-mix(in srgb, var(--td-accent) 40%, #fff);
+		}
+	}
+}
+
+@layer td.component {
+	.td-badge {
+		box-sizing: border-box;
+		display: inline-flex;
+		gap: 0.25em;
+		align-items: center;
+		max-width: 100%;
+		padding: 0.125rem 0.5rem;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-badge-font-size);
+		font-weight: var(--td-fw-semibold);
+		line-height: 1.4;
+		color: var(--td-badge-neutral-fg);
+		white-space: nowrap;
+		vertical-align: middle;
+		background-color: var(--td-badge-neutral-bg);
+		border: 1px solid transparent;
+		border-radius: var(--td-badge-radius);
+	}
+
+	.td-badge--accent { color: var(--td-badge-accent-fg); background-color: var(--td-badge-accent-bg); }
+	.td-badge--success { color: var(--td-badge-success-fg); background-color: var(--td-badge-success-bg); }
+	.td-badge--warning { color: var(--td-badge-warning-fg); background-color: var(--td-badge-warning-bg); }
+	.td-badge--danger { color: var(--td-badge-danger-fg); background-color: var(--td-badge-danger-bg); }
+	.td-badge--info { color: var(--td-badge-info-fg); background-color: var(--td-badge-info-bg); }
+
+	.td-badge--outline {
+		background-color: transparent;
+		border-color: currentcolor;
+	}
+
+	.td-badge--stamp {
+		padding: 0.125rem 0.5rem;
+		font-weight: var(--td-fw-bold);
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		background-color: transparent;
+		border: var(--td-badge-stamp-border) double currentcolor;
+		border-radius: var(--td-badge-stamp-radius);
+		transform: rotate(var(--td-badge-stamp-rotate));
+	}
+
+	@media (forced-colors: active) {
+		.td-badge {
+			color: CanvasText;
+			border-color: CanvasText;
+		}
+	}
+}

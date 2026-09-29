@@ -2,6 +2,34 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.18.0
+
+Đề xuất đợt 2 của site 135 sau khi áp v0.17.0 (plan `docs/internal/plans/v0.18.0-135-feedback-2.md`, Codex plan-review
+APPROVE 4 vòng).
+
+### Added
+
+- `<td-button name value>`: `name`/`value` chuyển xuống `<button>` bên trong → là submitter thật (FormData có cặp).
+- `<td-input-field>` type `month`, `datetime-local`, `time` (giá trị = `.value` native, giữ giây/phần lẻ).
+- `<td-datetime-picker mode="datetime|date|month|year">` (định dạng hiển thị / db / iso theo mode; datetime giữ
+  nguyên `yyyy-mm-ddThh:mm:00`) và `open-at="today|min|max|<ngày>"`; mặc định mở tại `min` khi năm của `min` < 2000;
+  `min`/`max` nhận cả `mm/yyyy`, `yyyy-mm`, `yyyy`.
+- Component mới: `<td-progress>` (thanh tiến độ, indeterminate), `<td-dropzone>` (kéo-thả upload, form-associated,
+  lọc accept/size/count, hook `upload` có tiến độ + huỷ, preview ảnh), `<td-alert>` (thông báo tĩnh, SSR không cần JS,
+  nút đóng khi JS nạp) và CSS `.td-badge` (soft / outline / stamp).
+- PHP: `td_badge()`, `td_alert()`, `td_link(…, ['bare' => true])` (link thường, không kiểu nút), `Td::iconAliases()`.
+- Alias icon dùng chung JS/PHP (`icons.json` → `aliases`): `external-link`, `x`, `chevron-*`, `ellipsis`, `expand`,
+  `pen`; `resolveIconName()`; `td-button` cảnh báo (một lần) tên icon kiểu registry không tồn tại.
+- CI: job `php80` chạy lint + test adapter PHP trên PHP 8.0.
+
+### Changed
+
+- `php/td.php` yêu cầu PHP ≥ 8.0 (trước ghi 8.1). `td_dropdown` `searchable`: chuỗi `'false'`/`'0'`/`'off'`/`'no'`/`''`
+  giờ tắt tìm kiếm (trước bị coi là bật); `null`/vắng = tự động như cũ.
+- `hasIcon()` / `tdIcon()` hiểu alias (`hasIcon('pen')` → `true`).
+- `<td-datetime-picker>` attribute `value` / `setValue()` nhận thêm ISO của mode (`2026-06-15T10:30`) — trước bị báo
+  `badInput`.
+
 ## 0.17.0
 
 Đề xuất của site 135 sau khi chuyển sang v0.16.0 (plan `docs/internal/plans/v0.17.0-135-feedback.md`, Codex plan-review
