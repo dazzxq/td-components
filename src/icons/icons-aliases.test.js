@@ -48,7 +48,7 @@ test('td-icon.js resolves aliases (hasIcon / resolveIconName), listIcons stays c
   for (const alias of Object.keys(EXPECTED)) assert.ok(!names.includes(alias), alias);
 });
 
-test('PHP: every alias renders the same SVG as its target', { skip: !HAS_PHP && 'php >= 8.1 CLI not found' }, () => {
+test('PHP: every alias renders the same SVG as its target', { skip: !HAS_PHP && 'php >= 8.0 CLI not found' }, () => {
   const entries = Object.entries(json.aliases);
   const res = runPhp(entries.flatMap(([alias, target]) => [
     { fn: 'td_icon', args: [alias] },
