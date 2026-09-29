@@ -2,7 +2,7 @@
 
 # Input field — `<td-input-field>`
 
-Ô nhập liệu đa dạng: text, mật khẩu, email, số, URL, ngày, textarea (có thể tự giãn) và vùng soạn thảo
+Ô nhập liệu đa dạng: text, mật khẩu, email, số, URL, ngày, tháng, ngày-giờ, giờ, textarea (có thể tự giãn) và vùng soạn thảo
 `contenteditable`, kèm nhãn, dòng gợi ý, thông báo lỗi và bộ đếm ký tự/từ. Nó tham gia `<form>` như một control
 native. Dùng [dropdown](dropdown.md) khi người dùng chọn từ danh sách, [datetime-picker](datetime-picker.md) khi cần
 chọn ngày giờ theo định dạng Việt Nam, [chip-input](chip-input.md) khi nhập nhiều thẻ (tag).
@@ -43,6 +43,9 @@ Cần `td.css` trên trang (xem [Cài đặt](../getting-started/installation.md
 <td-input-field type="url" label="Website"></td-input-field>
 <td-input-field type="search" label="Tìm kiếm"></td-input-field>
 <td-input-field type="date" label="Ngày sinh" min="1900-01-01"></td-input-field>
+<td-input-field type="month" label="Kỳ báo cáo"></td-input-field>
+<td-input-field type="datetime-local" label="Chụp lúc" step="1"></td-input-field>
+<td-input-field type="time" label="Giờ mở cửa" min="08:00" max="17:00"></td-input-field>
 <td-input-field type="textarea" label="Ghi chú" rows="4"></td-input-field>
 <td-input-field type="contenteditable" label="Nội dung" placeholder="Viết gì đó…"></td-input-field>
 ```
@@ -54,6 +57,7 @@ Cách từng `type` được render bên trong (quan trọng khi bạn style ho�
 | `text`, `password`, `tel`, `search` | `<input type="…">` cùng loại | Giữ nguyên type native (bàn phím điện thoại tự đúng). |
 | `email`, `url`, `number` | `<input type="text">` + `inputmode` (`email` / `url` / `decimal`) | Bàn phím điện thoại vẫn đúng loại. Việc kiểm tra định dạng/khoảng do **host** làm (xem [Validation](#validation)). |
 | `date` | `<input type="date">` native | Có lịch chọn ngày của trình duyệt; `min`/`max` được chuyển xuống control. Giá trị dạng `YYYY-MM-DD`. |
+| `month`, `datetime-local`, `time` | `<input type="…">` native cùng loại | 0.18.0. Bộ chọn của trình duyệt; `min`/`max`/`step` được chuyển xuống control. Giá trị = **đúng `.value` đã chuẩn hoá của control native**, kit không cắt bớt: `YYYY-MM`; `YYYY-MM-DDTHH:mm` (có giây / phần lẻ giây khi `step` cho phép, ví dụ `2024-06-15T10:30:15` hay `…T10:30:15.5`); `HH:mm[:ss[.sss]]`. |
 | `textarea` | `<textarea rows="…">` | `rows` mặc định 4. |
 | `contenteditable` | `<div contenteditable role="textbox" aria-multiline="true">` | Giá trị là **text thuần** (`innerText`). |
 
@@ -154,6 +158,8 @@ Host tự tính trạng thái hợp lệ như control native, dựa trên giá t
 | `number` không khớp `step` | `stepMismatch` | `Giá trị không đúng bước nhảy` |
 | `date` không phải ngày hợp lệ | `typeMismatch` | `Ngày không hợp lệ` |
 | `date` < `min` / > `max` | `rangeUnderflow` / `rangeOverflow` | `Ngày tối thiểu là {min}` / `Ngày tối đa là {max}` |
+| `month` / `datetime-local` / `time` < `min` / > `max` | `rangeUnderflow` / `rangeOverflow` | `Giá trị tối thiểu là {min}` / `Giá trị tối đa là {max}` |
+| `month` / `datetime-local` / `time` không khớp `step` (mặc định `time`/`datetime-local` bước 60 giây → giá trị có giây là lệch bước; đặt `step="1"` để cho phép giây) | `stepMismatch` | `Giá trị không đúng bước nhảy` |
 
 Mọi thông báo ở bảng trên (và đơn vị `ký tự` / `từ` của bộ đếm) nằm trong `TdInputField.messages` — đổi cho cả
 trang, ví dụ `TdInputField.messages.valueMissing = 'This field is required'` (khoá và placeholder: xem
@@ -257,7 +263,7 @@ document.getElementById('fs').disabled = true;          // field bị disabled, 
 
 | Attribute | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
-| `type` | string | `text` | `text` \| `password` \| `email` \| `tel` \| `number` \| `url` \| `search` \| `date` \| `textarea` \| `contenteditable`. Khác → `text`. Đổi `type` = render lại. |
+| `type` | string | `text` | `text` \| `password` \| `email` \| `tel` \| `number` \| `url` \| `search` \| `date` \| `month` \| `datetime-local` \| `time` \| `textarea` \| `contenteditable` (`month`/`datetime-local`/`time` từ 0.18.0). Khác → `text`. Đổi `type` = render lại. |
 | `size` | string | `md` | `sm` \| `md` \| `lg` (cao 32 / 40 / 48 px). |
 | `value` | string | `''` | Giá trị ban đầu (property `value` là giá trị sống). Đổi attribute cập nhật tại chỗ (giữ focus, con trỏ). Giá trị lúc gắn vào là mặc định khi reset. |
 | `placeholder` | string | — | Chữ gợi ý trong ô. Với `contenteditable` hiện bằng CSS (`data-placeholder`), không bao giờ nằm trong giá trị. |
@@ -269,10 +275,10 @@ document.getElementById('fs').disabled = true;          // field bị disabled, 
 | `readonly` | boolean | không | Chỉ đọc (vẫn focus được, vẫn gửi trong form). |
 | `max-length` | number | — | Giới hạn ký tự/từ, hiện bộ đếm. Phải là số nguyên dương, khác thì bỏ qua. |
 | `limit-type` | string | `char` | `char` \| `word`. |
-| `minlength` | number | — | Số ký tự tối thiểu → `tooShort` (chỉ sau khi người dùng sửa). Không áp cho `number` / `date`. 0.16.0. |
+| `minlength` | number | — | Số ký tự tối thiểu → `tooShort` (chỉ sau khi người dùng sửa). Không áp cho `number` / `date` / `month` / `datetime-local` / `time`. 0.16.0. |
 | `pattern` | string | — | Biểu thức chính quy cho **cả** giá trị → `patternMismatch` (luật của trình duyệt; pattern sai cú pháp thì bỏ qua). Chỉ `text`/`search`/`tel`/`url`/`email`/`password`. 0.16.0. **Pattern do dev viết là code tin cậy**: tránh lượng từ lồng nhau kiểu `(a+)+` — như `<input pattern>` gốc, regex tệ + chuỗi dài do người dùng nhập có thể làm treo trang (ReDoS). Đặt thêm `max-length` cho ô có pattern. |
-| `min` / `max` | string | — | Khoảng giá trị cho `number` và `date` (`date` dạng `YYYY-MM-DD`). |
-| `step` | string | — | Bước nhảy cho `number`. |
+| `min` / `max` | string | — | Khoảng giá trị cho `number`, `date`, `month`, `datetime-local`, `time` (cùng định dạng với giá trị: `YYYY-MM-DD`, `YYYY-MM`, `YYYY-MM-DDTHH:mm`, `HH:mm`). |
+| `step` | string | — | Bước nhảy cho `number`, `month` (tháng), `datetime-local` / `time` (giây: `1` = cho phép giây, `0.001` = phần nghìn giây). |
 | `rows` | number | `4` | Số dòng của `textarea` (tối thiểu khi `autoresize`). |
 | `autoresize` | boolean | không | `textarea` giãn theo nội dung (0.13.0). |
 | `validate-on` | string | — | `blur` \| `change` \| `input`: tự hiện thông báo validation thành lỗi. |

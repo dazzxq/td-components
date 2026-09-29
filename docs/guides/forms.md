@@ -69,12 +69,12 @@ cũng không gửi.
 
 | Thẻ | Giá trị trong FormData | Khi nào **không** có key |
 |---|---|---|
-| `td-input-field` | chuỗi đang gõ (kể cả `''`) | chỉ khi không có `name` / disabled |
+| `td-input-field` | chuỗi đang gõ (kể cả `''`); `month` / `datetime-local` / `time`: đúng `.value` đã chuẩn hoá của control native (`2026-09`, `2026-09-28T14:30` hoặc `…T14:30:15` khi `step="1"`, `14:30`) | chỉ khi không có `name` / disabled |
 | `td-checkbox`, `td-toggle` | attribute `value`, mặc định `"on"` | khi chưa tick / tắt |
 | `td-slider` | số dạng chuỗi, ví dụ `"40"` | — |
 | `td-dropdown` | `String(item[value-key])` của option đã chọn | khi chưa chọn gì (không gửi `''`) |
 | `td-chip-input` | **mỗi item một entry** cùng `name` (`item[value-key]`) | khi không có item nào |
-| `td-datetime-picker` | `form-value-format="iso"` (mặc định) `2026-09-28T14:30:00`; `"display"` `28/09/2026 - 14:30`; `"db"` `2026-09-28 14:30:00` | khi trống |
+| `td-datetime-picker` | `form-value-format="iso"` (mặc định) `2026-09-28T14:30:00`; `"display"` `28/09/2026 - 14:30`; `"db"` `2026-09-28 14:30:00`. `mode="date"` / `"month"` / `"year"` (0.18.0): iso = db = `2026-09-28` / `2026-09` / `2026`, display `28/09/2026` / `09/2026` / `2026` | khi trống |
 
 Lưu ý server-side:
 
@@ -131,7 +131,7 @@ cũng là giá trị sống từ 0.16.0 (trước đó nó trả attribute `valu
 | `td-slider` | `getValue()` → number | `setValue(n)` (kẹp vào `[min, max]`, làm tròn theo `step`) |
 | `td-dropdown` | `getValue()` / `el.value` → value hoặc `null` (sống từ 0.17.0); `getSelectedItem()` | `setValue(v)` / `el.value = v` (chờ nếu options chưa có) |
 | `td-chip-input` | `getValue()` / `el.value` → mảng item (bản sao) | `setValue(items)`, `addItem()`, `removeItem(value)`, `clear()` |
-| `td-datetime-picker` | `getValue()` → `dd/mm/yyyy - hh:mm` hoặc `''`; `getDBValue()` | `setValue(display)`, `setDBValue(db)` |
+| `td-datetime-picker` | `getValue()` → display của `mode` (`dd/mm/yyyy - hh:mm` mặc định) hoặc `''`; `getDBValue()` | `setValue(display hoặc ISO của mode)`, `setDBValue(db)` |
 
 Ghi bằng API **không bắn `change`** — `change` chỉ dành cho thao tác của người dùng. Nếu cần phản ứng, gọi code của bạn
 ngay sau khi `setValue()`.
@@ -171,6 +171,7 @@ Mỗi control td tự đặt `validity` qua ElementInternals, nên `form.checkVa
 | | `type="number"` (sai cú pháp) | `badInput` | "Giá trị không hợp lệ" |
 | | `type="number"` + `min`/`max`/`step` | `rangeUnderflow` / `rangeOverflow` / `stepMismatch` | "Giá trị tối thiểu là {min}"… |
 | | `type="date"` + `min`/`max` | `typeMismatch` / `rangeUnderflow` / `rangeOverflow` | "Ngày không hợp lệ", "Ngày tối thiểu là {min}"… |
+| | `type="month"` / `"datetime-local"` / `"time"` + `min`/`max`/`step` | `rangeUnderflow` / `rangeOverflow` / `stepMismatch` | "Giá trị tối thiểu là {min}"… |
 | `td-checkbox` | `required` | `valueMissing` | "Vui lòng chọn ô này." |
 | `td-toggle` | `required` | `valueMissing` | "Vui lòng bật tùy chọn này." |
 | `td-slider` | `min`/`max`/`step` | `rangeUnderflow` / `rangeOverflow` / `stepMismatch` | "Giá trị tối thiểu là {min}." … |

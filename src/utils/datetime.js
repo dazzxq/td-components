@@ -504,7 +504,151 @@ export function parseBound(str, kind) {
     const ymd = d ? [d[3], d[2], d[1]] : i ? [i[1], i[2], i[3]] : null;
     if (ymd) p = kind === 'max' ? mkParts(...ymd, 23, 59) : mkParts(...ymd, 0, 0);
   }
+  if (!p) { // v0.18.0: a month (`mm/yyyy` | `yyyy-mm`) or a year (`yyyy`) covers its whole period
+    const m = RE_DISPLAY_MONTH.exec(s) || RE_ISO_MONTH.exec(s);
+    const ym = m ? (m[0].includes('/') ? [m[2], m[1]] : [m[1], m[2]]) : null;
+    const y = ym ? null : RE_YEAR.exec(s);
+    const year = ym ? toInt(ym[0]) : y ? toInt(y[1]) : NaN;
+    const month = ym ? toInt(ym[1]) : NaN;
+    if (ym && month >= 1 && month <= 12 && year >= 1) {
+      p = kind === 'max' ? mkParts(year, month, daysInMonth(year, month), 23, 59) : mkParts(year, month, 1, 0, 0);
+    } else if (y) {
+      p = kind === 'max' ? mkParts(year, 12, 31, 23, 59) : mkParts(year, 1, 1, 0, 0);
+    }
+  }
   return p && isValidParts(p) ? p : null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// Picker MODES (plan v0.18.0 F3): datetime (default) | date | month | year. A mode's value only carries its own
+// components; the parts object stays complete — components outside the mode hold fixed defaults (month 1, day 1,
+// 00:00) so validation / comparison work unchanged. `datetime` delegates to the functions above (v0.17.0 output).
+// ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+const RE_DISPLAY_MONTH = /^(\d{1,2})\/(\d{4})$/;
+const RE_ISO_MONTH = /^(\d{4})-(\d{2})$/;
+const RE_YEAR = /^(\d{4})$/;
+
+/** @typedef {'datetime'|'date'|'month'|'year'} PickerMode */
+
+export const PICKER_MODES = ['datetime', 'date', 'month', 'year'];
+
+/** Components each mode carries, coarsest last. */
+export const MODE_PARTS = {
+  datetime: ['day', 'month', 'year', 'hour', 'minute'],
+  date: ['day', 'month', 'year'],
+  month: ['month', 'year'],
+  year: ['year'],
+};
+
+/** @param {unknown} v @returns {PickerMode} unknown / missing → 'datetime' */
+export function normalizeMode(v) {
+  return PICKER_MODES.includes(v) ? /** @type {PickerMode} */ (v) : 'datetime';
+}
+
+/**
+ * Keep the components of `mode`; the others get the fixed defaults (day 1, month 1, 00:00).
+ * @param {DateTimeParts} p
+ * @param {unknown} mode
+ * @returns {DateTimeParts}
+ */
+export function toModeParts(p, mode) {
+  const keep = MODE_PARTS[normalizeMode(mode)];
+  const def = { day: 1, month: 1, year: p.year, hour: 0, minute: 0 };
+  const out = {};
+  for (const k of ['day', 'month', 'year', 'hour', 'minute']) out[k] = keep.includes(k) ? p[k] : def[k];
+  return /** @type {DateTimeParts} */ (out);
+}
+
+/**
+ * Parse a value of `mode`: its display format or its ISO format (syntactic only).
+ * datetime `dd/mm/yyyy - hh:mm` | `yyyy-mm-ddThh:mm[:ss]`; date `dd/mm/yyyy` | `yyyy-mm-dd`;
+ * month `mm/yyyy` | `yyyy-mm`; year `yyyy`.
+ * @param {unknown} str
+ * @param {unknown} mode
+ * @returns {DateTimeParts|null}
+ */
+export function parseModeValue(str, mode) {
+  if (typeof str !== 'string') return null;
+  const s = str.trim();
+  switch (normalizeMode(mode)) {
+    case 'date': {
+      const d = RE_DISPLAY_DATE.exec(s);
+      if (d) return mkParts(d[3], d[2], d[1], 0, 0);
+      const i = RE_ISO_DATE.exec(s);
+      return i ? mkParts(i[1], i[2], i[3], 0, 0) : null;
+    }
+    case 'month': {
+      const d = RE_DISPLAY_MONTH.exec(s);
+      if (d) return mkParts(d[2], d[1], 1, 0, 0);
+      const i = RE_ISO_MONTH.exec(s);
+      return i ? mkParts(i[1], i[2], 1, 0, 0) : null;
+    }
+    case 'year': {
+      const y = RE_YEAR.exec(s);
+      return y ? mkParts(y[1], 1, 1, 0, 0) : null;
+    }
+    default:
+      return parseDisplay(s) || parseIsoLocal(s);
+  }
+}
+
+/**
+ * Parse a DB value of `mode` (`yyyy-mm-dd hh:mm[:ss]` | `yyyy-mm-dd` | `yyyy-mm` | `yyyy`); the mode's ISO is accepted too.
+ * @param {unknown} str
+ * @param {unknown} mode
+ * @returns {DateTimeParts|null}
+ */
+export function parseModeDb(str, mode) {
+  const m = normalizeMode(mode);
+  if (m === 'datetime') return parseDb(str) || parseIsoLocal(str);
+  if (typeof str !== 'string') return null;
+  const s = str.trim();
+  if (m === 'date') {
+    const i = RE_ISO_DATE.exec(s);
+    return i ? mkParts(i[1], i[2], i[3], 0, 0) : null;
+  }
+  if (m === 'month') {
+    const i = RE_ISO_MONTH.exec(s);
+    return i ? mkParts(i[1], i[2], 1, 0, 0) : null;
+  }
+  const y = RE_YEAR.exec(s);
+  return y ? mkParts(y[1], 1, 1, 0, 0) : null;
+}
+
+/** Display format of `mode`: `dd/mm/yyyy - hh:mm` | `dd/mm/yyyy` | `mm/yyyy` | `yyyy`. */
+export function formatModeDisplay(p, mode) {
+  switch (normalizeMode(mode)) {
+    case 'date': return `${pad2(p.day)}/${pad2(p.month)}/${pad4(p.year)}`;
+    case 'month': return `${pad2(p.month)}/${pad4(p.year)}`;
+    case 'year': return pad4(p.year);
+    default: return formatDisplay(p);
+  }
+}
+
+/** DB format of `mode`: `yyyy-mm-dd hh:mm:00` | `yyyy-mm-dd` | `yyyy-mm` | `yyyy`. */
+export function formatModeDb(p, mode) {
+  const m = normalizeMode(mode);
+  return m === 'datetime' ? formatDb(p) : formatModeIso(p, m);
+}
+
+/** ISO format of `mode`: `yyyy-mm-ddThh:mm:00` (v0.17.0, unchanged) | `yyyy-mm-dd` | `yyyy-mm` | `yyyy`. */
+export function formatModeIso(p, mode) {
+  switch (normalizeMode(mode)) {
+    case 'date': return `${pad4(p.year)}-${pad2(p.month)}-${pad2(p.day)}`;
+    case 'month': return `${pad4(p.year)}-${pad2(p.month)}`;
+    case 'year': return pad4(p.year);
+    default: return formatIsoLocal(p);
+  }
+}
+
+/**
+ * Order two valid parts at the granularity of `mode` (finer components are ignored — `month`: a bound anywhere in
+ * June allows June).
+ */
+export function compareModeParts(a, b, mode) {
+  const m = normalizeMode(mode);
+  return compareParts(toModeParts(a, m), toModeParts(b, m));
 }
 
 /**

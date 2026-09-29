@@ -1121,6 +1121,51 @@
       "settle": 450
     },
     {
+      "state": "open-date",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Ngày'); p.setAttribute('mode','date'); p.setAttribute('value','15/06/2026'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
+      "selectors": [
+        ".td-dtp-panel__fields",
+        ".td-dtp-panel__input",
+        ".td-dtp-panel__preview"
+      ],
+      "portal": [
+        ".td-dtp-panel__fields",
+        ".td-dtp-panel__input",
+        ".td-dtp-panel__preview"
+      ],
+      "settle": 450
+    },
+    {
+      "state": "open-month",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Tháng'); p.setAttribute('mode','month'); p.setAttribute('value','06/2026'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
+      "selectors": [
+        ".td-dtp-panel__fields",
+        ".td-dtp-panel__input",
+        ".td-dtp-panel__preview"
+      ],
+      "portal": [
+        ".td-dtp-panel__fields",
+        ".td-dtp-panel__input",
+        ".td-dtp-panel__preview"
+      ],
+      "settle": 450
+    },
+    {
+      "state": "open-year",
+      "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Năm'); p.setAttribute('mode','year'); p.setAttribute('min','1950'); p.setAttribute('max','2026'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
+      "selectors": [
+        ".td-dtp-panel__fields",
+        ".td-dtp-panel__input",
+        ".td-dtp-panel__preview"
+      ],
+      "portal": [
+        ".td-dtp-panel__fields",
+        ".td-dtp-panel__input",
+        ".td-dtp-panel__preview"
+      ],
+      "settle": 450
+    },
+    {
       "state": "wheel-active",
       "setup": "const p=document.createElement('td-datetime-picker'); p.id='probe'; p.setAttribute('aria-label','Thời gian'); p.setAttribute('value','15/06/2026 - 09:30'); window.__mount.appendChild(p); p.querySelector('.td-dtp__trigger').click();",
       "selectors": [
