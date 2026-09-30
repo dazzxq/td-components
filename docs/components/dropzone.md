@@ -101,6 +101,9 @@ dz.upload = (file, { onProgress, signal }) => new Promise((resolve, reject) => {
 });
 ```
 
+- **Che lỗi ở cả API, không chỉ ở dòng hiện ra:** nếu site có endpoint trạng thái / polling cho upload (xử lý nền,
+  worker), JSON trả về cũng chỉ được chứa câu chung hoặc câu đã soạn — không trả lỗi thô của worker (đường dẫn tạm,
+  tên chương trình, lỗi dịch vụ lưu trữ). Xem [Bảo mật](../guides/security.md#td-dropzone-upload-file).
 - Gọi một lần cho **mỗi file được thêm** (sau khi lọc). Không có hook → kit không upload gì.
 - `onProgress(percent)` (**phần trăm** 0–100, một đối số) hoặc `onProgress(loaded, total)` → thanh `<td-progress
   size="sm">` của file đó.

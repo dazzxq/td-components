@@ -197,6 +197,11 @@ câu SQL, tên bảng, mã nội bộ). Server trả một trường **riêng** 
 từng `reject(err)` với lỗi nội bộ (ví dụ lỗi thư viện, `Error` chứa body server) → kiểm lại khi nâng cấp lên 0.19.0: bọc
 thành `new Error('')` (nhãn chung) hoặc thông báo đã soạn.
 
+Che lỗi ở **mọi đầu ra phía client**, không chỉ ở dòng thông báo: API trạng thái / polling (JSON), `data-*` attribute, log
+console, trang lỗi. Lỗi nội bộ của worker hay dịch vụ lưu trữ (đường dẫn tạm, tên chương trình, tên bucket, mã lỗi hạ
+tầng) chỉ nằm trong log phía server; client chỉ nhận câu chung hoặc câu đã soạn. Kit chỉ kiểm soát chỗ nó hiển thị —
+dữ liệu site gửi xuống trình duyệt ở chỗ khác thì người dùng vẫn đọc được qua DevTools.
+
 ## Chính sách URL
 
 | Nơi | Chính sách mặc định | Đổi thế nào |
