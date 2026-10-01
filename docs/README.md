@@ -3,7 +3,7 @@
 td-components là **bộ UI kit duy nhất** cho mọi site: dwp (WordPress), 135 (PHP thuần) và các site sau này. Mỗi
 component là một Web Component (Custom Element) render vào **light DOM** — không Shadow DOM — nên CSS của trang và
 token `--td-*` chạm được tới nó. Toàn bộ giao diện nằm trong **một file `td.css`**. Kit chạy dưới **CSP nghiêm ngặt**
-(không `style="…"`, không chèn `<style>`), nhãn mặc định **tiếng Việt**, giao diện theo **Liquid Glass**.
+(không `style="…"`, không chèn `<style>`), nhãn mặc định **tiếng Việt**, giao diện **minimal surfaces** (nền + viền mảnh + bóng mềm, blur nhẹ cho popup; từ 0.20.0 thay Liquid Glass).
 
 Triết lý: **lõi nhỏ + hook**. Site tuỳ biến bằng token CSS, attribute/property và hook (callback) — không bao giờ sửa
 code của kit.
@@ -22,7 +22,7 @@ Phiên bản hiện tại: **0.19.0** (tag git `v0.19.0`) · Lịch sử thay đ
 | Có một trang chạy được trong 5 phút | [Bắt đầu nhanh](getting-started/quick-start.md) |
 | Hiểu kit hoạt động ra sao (attribute, property, event, form, lớp nổi) | [Cách hoạt động](concepts/how-it-works.md) |
 | Tra cứu một component | [Danh sách component](components/README.md) |
-| Đổi màu, font, bo góc, dark mode, tắt kính | [Theming](customization/theming.md) |
+| Đổi màu, font, bo góc, dark mode, bỏ blur | [Theming](customization/theming.md) |
 | Viết CSS đè lên component | [Styling](customization/styling.md) |
 | Cắm logic riêng của site (hook, callback) | [Danh mục hook](customization/hooks.md) |
 | Tự viết component mới, thêm icon, dịch nhãn | [Mở rộng](customization/extending.md) |
@@ -50,7 +50,7 @@ Xem [danh sách đầy đủ](components/README.md). Tóm tắt:
 
 ## Tuỳ biến
 
-- [Theming](customization/theming.md) — token `--td-*`, dark theme, kính (Liquid Glass), viền, chuẩn tương phản.
+- [Theming](customization/theming.md) — token `--td-*`, dark theme, bề mặt nổi (`--td-glass-*`), viền, chuẩn tương phản.
 - [Styling](customization/styling.md) — `@layer`, cách đè CSS an toàn, class BEM ổn định, giá trị per-instance.
 - [Hook](customization/hooks.md) — danh mục mọi hook/callback/option theo component + công thức mẫu.
 - [Mở rộng](customization/extending.md) — viết component mới, đăng ký icon, registry menu, đổi ngôn ngữ nhãn.
@@ -78,8 +78,8 @@ Xem [danh sách đầy đủ](components/README.md). Tóm tắt:
 - **Demo:** `npm run demo` (mở `demo.html` qua Vite — mở file trực tiếp bằng `file://` sẽ trống vì trình duyệt chặn
   ES module).
 - **Storybook:** `npm run storybook` → http://localhost:6006 (mọi component, mọi trạng thái; mục
-  *Foundations/Glass › Showcase* để xem kính).
+  *Foundations/Surfaces › Showcase* để xem các bề mặt).
 
 ## Cho người phát triển kit
 
-ADR, plan từng release, bộ luật Liquid Glass, kiến trúc, quy ước, roadmap: [docs/internal/](internal/README.md).
+ADR, plan từng release, bộ luật minimal surfaces, kiến trúc, quy ước, roadmap: [docs/internal/](internal/README.md).

@@ -54,10 +54,9 @@ function safeDownloadName(name) {
 
 /**
  * Button — token-native (needs td.css; no Tailwind). Styles: src/styles/components/button.css.
- * Glass control (docs/internal/design/liquid-glass.md v2 G3): secondary = neutral glass (.glass), primary / status variants =
- * tinted prominent glass (.glassProminent, fixed tints ≥ 4.7:1 with their label over any backdrop — rendered contrast
- * gate). Custom `color` = OPAQUE fill without backdrop blur; disabled = opaque neutral fill. Dense contexts (tables,
- * [data-td-density="dense"], inside another glass surface) drop the blur (no nested backdrop-filter).
+ * Minimal surfaces (docs/internal/design/liquid-glass.md, v0.20.0): every variant is a SOLID fill (--td-btn-{v}-bg,
+ * ≥ 4.7:1 with its label — rendered contrast gate) + one soft shadow; hover = a darker solid fill; no blur. Custom
+ * `color` follows the same contract; disabled = opaque neutral fill.
  *
  * DOM contract:
  *   <button class="td-btn td-btn--{variant} td-btn--{size}[ td-btn--full][ td-btn--custom]" type="…">
@@ -75,7 +74,7 @@ function safeDownloadName(name) {
  *     swallowed; styled as the disabled button.
  *   - loading: `href` removed (no new tab / middle-click), `role="link"`, `aria-busy` + `aria-disabled`,
  *     `tabindex="0"` (focus kept), clicks swallowed, spinner.
- * Ghost (v0.17.0): `variant="ghost"` — transparent, no glass / blur / border, accent label
+ * Ghost (v0.17.0): `variant="ghost"` — transparent, no shadow / border, accent label
  * (`--td-btn-ghost-fg`), a soft hover fill (`--td-btn-ghost-hover-bg`).
  *
  * @element td-button

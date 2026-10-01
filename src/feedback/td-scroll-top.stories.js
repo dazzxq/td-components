@@ -14,7 +14,7 @@ export default {
 
 const paragraphs = (n) => Array.from({ length: n }, (_, i) => `<p>Đoạn nội dung ${i + 1}. Cuộn xuống để thấy nút lên đầu trang ở góc dưới.</p>`).join('');
 
-/** Scroll the canvas past `threshold` px: the glass button fades in bottom-right; click → top + focus #main. */
+/** Scroll the canvas past `threshold` px: the solid round button fades in bottom-right; click → top + focus #main. */
 export const Default = {
   render: (args) => `
     <main id="main" class="sb-stack">

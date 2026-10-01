@@ -12,10 +12,10 @@
  * td tokens — PUBLIC design primitives. Components reference ONLY custom properties.
  * Sites override any `--td-*` below in their own UNLAYERED CSS (beats @layer td.tokens):
  *
- *   :root { --td-glass-bg: oklch(96% 0.014 80 / 0.72); --td-accent: #b3261e; }
+ *   :root { --td-glass-solid: oklch(98% 0.01 80); --td-accent: #b3261e; }
  *
  * Never override `--_td-*` (private, resolved by the kit's accessibility fallbacks).
- * Base scale adopted from the 135 `td-` kit; glass values from docs/internal/design/liquid-glass.md.
+ * Base scale adopted from the 135 `td-` kit; surface values from docs/internal/design/liquid-glass.md (minimal surfaces).
  * Light by default. Dark is opt-in: <html data-td-theme="dark"> (theme-dark.css).
  */
 @layer td.tokens {
@@ -145,46 +145,45 @@
 		--td-control-border-hover: #aeaeb2;
 		--td-touch-min: 44px; /* minimum hit target for touch controls */
 
-		/* ===== Buttons (glass since v0.14.0 — liquid-glass G3; tints / films / disabled retuned in v0.14.3) ===== */
+		/* ===== Buttons — v0.20.0 minimal surfaces: SOLID fill + one soft shadow (--td-btn-lift), hover = darker solid
+		   fill (button.css), no blur / film / sheen / rim / glow / scale. Compatibility alias for one cycle: a site that
+		   still sets --td-btn-{primary,success,danger,info,warning}-tint gets that colour as the button fill (button.css
+		   reads var(--td-btn-{v}-tint, var(--td-btn-{v}-bg))) — the kit no longer declares the -tint tokens. ===== */
 		--td-btn-radius: var(--td-radius-lg); /* capsule on coarse pointers (button.css) */
-		--td-btn-primary-bg: var(--td-accent-fill);
+		--td-btn-primary-bg: var(--td-accent-fill); /* follows the site accent */
 		--td-btn-primary-fg: var(--td-accent-contrast);
 		--td-btn-secondary-bg: var(--td-gray-100);
 		--td-btn-secondary-fg: var(--td-gray-900);
 		--td-btn-secondary-border: rgb(0 0 0 / 12%);
 		--td-btn-secondary-hover: var(--td-gray-200);
-		/* v0.14.0 glass buttons (liquid-glass G3): prominent = tinted glass (tint at alpha + contrast film + sheen + rim).
-		   Starting values; the token gate measures every pair over black / white / checker / photo in 3 engines. */
-		--td-btn-primary-tint: var(--td-btn-primary-bg);
-		--td-btn-primary-alpha: 94%;                    /* v0.14.3: brighter — less alpha loss, lighter film */
-		--td-btn-primary-film: rgb(0 0 0 / 10%);
-		--td-btn-success-tint: #15803d;                 /* fixed: dark theme brightens --td-color-* for TEXT use */
-		--td-btn-success-alpha: 94%;
-		--td-btn-success-film: rgb(0 0 0 / 13%);
+		--td-btn-success-bg: #15803d;                   /* fixed: dark theme brightens --td-color-* for TEXT use */
 		--td-btn-success-fg: #fff;
-		--td-btn-danger-tint: #b91c1c;
-		--td-btn-danger-alpha: 94%;
-		--td-btn-danger-film: rgb(0 0 0 / 6%);
+		--td-btn-danger-bg: #b91c1c;
 		--td-btn-danger-fg: #fff;
-		--td-btn-info-tint: #1d4ed8;
-		--td-btn-info-alpha: 94%;
-		--td-btn-info-film: rgb(0 0 0 / 6%);
+		--td-btn-info-bg: #1d4ed8;
 		--td-btn-info-fg: #fff;
-		/* prominent buttons: a lighter sheen than surfaces (a white sheen over a tint lowers white-label contrast) */
-		--td-btn-sheen: linear-gradient(135deg, rgb(255 255 255 / 12%) 0%, rgb(255 255 255 / 3%) 30%, transparent 55%);
-		--td-btn-warning-tint: #f59e0b;                 /* bright amber + dark text (the #b45309 text colour fails) */
-		--td-btn-warning-alpha: 86%;
-		--td-btn-warning-film: rgb(255 255 255 / 10%);
+		--td-btn-warning-bg: #f59e0b;                   /* bright amber + dark text (the #b45309 text colour fails) */
 		--td-btn-warning-fg: #111113;
 		/* v0.14.3: disabled reads as greyed out — pale fill, muted label (WCAG 1.4.3 exempts disabled controls; the
 		   contrast gate keeps it ≥ 2.2:1 so it stays legible). Opaque: a state colour, never element opacity. */
 		--td-btn-disabled-bg: #f4f4f5;
 		--td-btn-disabled-fg: #a1a1aa;
 		--td-btn-disabled-border: #e4e4e7;
-		/* v0.14.3: neutral (secondary) glass button — white glass + a visible soft border, no grey film */
-		--td-btn-secondary-glass: rgb(255 255 255 / 80%);
-		--td-btn-secondary-edge: var(--td-control-border-soft);
-		--td-btn-lift: 0 1px 2px rgb(0 0 0 / 8%), 0 3px 8px -4px rgb(0 0 0 / 14%);   /* lighter lift (was 30 %) */
+		--td-btn-lift: 0 1px 2px rgb(0 0 0 / 6%), 0 2px 6px -2px rgb(0 0 0 / 8%); /* the ONE button shadow */
+		/* deprecated v0.20.0 — still declared, no effect (removed in a later major): glass-button films / sheen / alpha */
+		--td-btn-primary-alpha: 94%;
+		--td-btn-primary-film: rgb(0 0 0 / 10%);
+		--td-btn-success-alpha: 94%;
+		--td-btn-success-film: rgb(0 0 0 / 13%);
+		--td-btn-danger-alpha: 94%;
+		--td-btn-danger-film: rgb(0 0 0 / 6%);
+		--td-btn-info-alpha: 94%;
+		--td-btn-info-film: rgb(0 0 0 / 6%);
+		--td-btn-warning-alpha: 86%;
+		--td-btn-warning-film: rgb(255 255 255 / 10%);
+		--td-btn-sheen: none;                           /* deprecated v0.20.0 */
+		--td-btn-secondary-glass: var(--td-btn-secondary-bg);     /* deprecated v0.20.0 → --td-btn-secondary-bg */
+		--td-btn-secondary-edge: var(--td-btn-secondary-border);  /* deprecated v0.20.0 → --td-btn-secondary-border */
 		/* v0.17.0 ghost button: accent label straight on the page background (contrast gate: ≥ 4.7:1 on white in light,
 		   black in dark), a soft hover fill. Both follow the theme (dark remaps --td-accent / --td-color-hover). */
 		--td-btn-ghost-fg: var(--td-accent);
@@ -211,49 +210,47 @@
 		--td-icon-l: 1.5rem;
 		--td-icon-stroke: 2;
 
-		/* ================= Liquid Glass — Regular (light) =================
-		   v0.14.0 values (Codex think-about consensus; docs/internal/design/liquid-glass.md §G2). Glass reads through LOW opacity +
-		   a two-tone rim, a faint 135° sheen, a dark outer hairline and a lift shadow — never by raising opacity.
-		   --td-glass-edge is the INSET top highlight; --td-glass-border the OUTER line. Never swap them. */
-		--td-glass-bg: rgb(255 255 255 / 40%);        /* regular: icon / short-label controls, known light context */
-		--td-glass-bg-strong: rgb(255 255 255 / 52%); /* text-bearing: #111 stays ≥ 4.5:1 even over a black backdrop */
-		--td-glass-fg: #111113;
-		--td-glass-edge: rgb(255 255 255 / 82%);      /* top rim */
-		--td-glass-side-edge: rgb(255 255 255 / 22%); /* left rim */
-		--td-glass-bottom: rgb(0 0 0 / 8%);           /* bottom rim (dark) */
-		--td-glass-border: rgb(255 255 255 / 46%);    /* outer line (light) … */
-		--td-glass-outline: rgb(0 0 0 / 8%);          /* … plus a dark hairline so glass reads on white */
-		--td-glass-sheen: linear-gradient(135deg, rgb(255 255 255 / 24%) 0%, rgb(255 255 255 / 7%) 32%, transparent 58%, rgb(255 255 255 / 8%) 100%);
-		--td-glass-blur: blur(16px) saturate(145%) brightness(1.04);
-		--td-glass-blur-lg: blur(20px) saturate(145%) brightness(1.04);
-		--td-glass-shadow: 0 10px 30px -10px rgb(0 0 0 / 34%), 0 2px 8px -3px rgb(0 0 0 / 16%);
-		--td-glass-shadow-lg: 0 24px 60px -18px rgb(0 0 0 / 38%), 0 6px 18px -8px rgb(0 0 0 / 18%);
-		--td-glass-solid: #f7f7f8;                     /* opaque stand-in for every fallback */
+		/* ================= Minimal surfaces (v0.20.0 — replaces Liquid Glass v2) =================
+		   docs/internal/design/liquid-glass.md. Every floating surface = background + ONE thin border + ONE soft shadow,
+		   plus blur(12px) only on small popups (menu, dropdown, chip-input suggestions, hovercard, toast). Modal, loading
+		   card, tooltip and scroll-top are opaque (--td-glass-solid). The token names keep "glass" (public API). */
+		--td-glass-bg: rgb(255 255 255 / 90%);
+		--td-glass-bg-strong: rgb(255 255 255 / 94%);  /* small popups (blurred) */
+		--td-glass-solid: #fff;                        /* opaque surfaces + every fallback */
+		--td-glass-fg: #18181b;
+		--td-glass-border: rgb(0 0 0 / 7%);
+		--td-glass-blur: blur(12px);
+		--td-glass-blur-lg: blur(12px);
+		--td-glass-shadow: 0 4px 16px rgb(0 0 0 / 6%);
+		--td-glass-shadow-lg: 0 8px 24px rgb(0 0 0 / 9%);
 
-		/* ================= Liquid Glass — Clear (only over photos / video) ================= */
-		--td-glass-clear-bg: rgb(255 255 255 / 6%);
-		--td-glass-clear-edge: rgb(255 255 255 / 48%);
-		--td-glass-clear-border: rgb(255 255 255 / 28%);
+		/* Lightbox bars (toolbar / counter, `--clear`): dark, never themed (the backdrop is the photo). */
+		--td-glass-clear-bg: rgb(20 20 22 / 88%);
+		--td-glass-clear-solid: #141416;
 		--td-glass-clear-fg: #fff;
-		--td-glass-clear-shadow: 0 8px 24px -8px rgb(0 0 0 / 50%);
-		--td-glass-clear-solid: rgb(20 20 22 / 92%);
-		--td-glass-clear-glyph-shadow: drop-shadow(0 1px 1.5px rgb(0 0 0 / 55%));
-		/* Dim behind Clear: 46 % behind bold icons (3:1 over white media); TEXT on Clear needs 60 % (4.79:1 worst case). */
-		--td-glass-dim: rgb(0 0 0 / 46%);
-		--td-glass-dim-text: rgb(0 0 0 / 60%);
+		--td-glass-clear-border: rgb(255 255 255 / 12%);
+		--td-glass-clear-shadow: 0 4px 16px rgb(0 0 0 / 24%);
 
-		/* ================= Tint — ONE primary action per floating bar ================= */
+		/* deprecated v0.20.0 — still declared, no effect (removed in a later major): rims, hairline, sheen, local dim,
+		   glyph shadow, translucent tint, hover glow, decorative scales */
+		--td-glass-edge: rgb(255 255 255 / 82%);
+		--td-glass-side-edge: rgb(255 255 255 / 22%);
+		--td-glass-bottom: rgb(0 0 0 / 8%);
+		--td-glass-outline: rgb(0 0 0 / 8%);
+		--td-glass-sheen: none;
+		--td-glass-dim: transparent;
+		--td-glass-dim-text: transparent;
+		--td-glass-clear-edge: rgb(255 255 255 / 48%);
+		--td-glass-clear-glyph-shadow: none;
 		--td-glass-tint: var(--td-accent);
-		--td-glass-tint-alpha: 90%;                    /* 82 % fails AA on white; 90 % ≥ 4.6:1 */
+		--td-glass-tint-alpha: 100%;
 		--td-glass-tint-fg: var(--td-accent-contrast);
-		--td-glass-tint-edge: rgb(255 255 255 / 30%);
-
-		/* ================= Interaction ================= */
-		--td-glass-glow: rgb(255 255 255 / 40%);
-		--td-glass-glow-size: 140px;
-		--td-glass-press-scale: 0.97;
-		--td-glass-lift-scale: 1.15;
-		--td-glass-enter-scale: 0.96;
+		--td-glass-tint-edge: transparent;
+		--td-glass-glow: transparent;
+		--td-glass-glow-size: 0px;
+		--td-glass-press-scale: 1;
+		--td-glass-lift-scale: 1;
+		--td-glass-enter-scale: 1;
 
 		/* ================= Scrim / scroll edge / geometry ================= */
 		--td-glass-scrim: var(--td-color-overlay);     /* behind modals; NOT blurred */
@@ -275,12 +272,8 @@
 	   :root; nothing to freeze). Components read `var(--_td-glass-X, var(--td-glass-X…))`. */
 	@media (prefers-reduced-motion: reduce) {
 		:root {
-			--_td-glass-press: 1 !important;          /* no press squash */
-			--_td-glass-lift-knob: 1 !important;      /* knob does not lift */
-			--_td-glass-enter: 1 !important;          /* no pop-in scale */
 			--_td-glass-dur: 120ms !important;        /* opacity crossfade only */
 			--_td-glass-ease-flex: linear !important; /* no overshoot */
-			--_td-glass-glow: rgb(255 255 255 / 20%) !important; /* feedback kept, halved, no tracking */
 		}
 	}
 }
@@ -339,26 +332,17 @@
 		--td-btn-disabled-bg: #202024;
 		--td-btn-disabled-fg: #6b6b73;                 /* greyed out, ≥ 2.2:1 (v0.14.3) */
 		--td-btn-disabled-border: rgb(255 255 255 / 6%);
-		--td-btn-secondary-glass: rgb(40 40 44 / 84%);
-		--td-btn-secondary-edge: rgb(255 255 255 / 14%);
-		--td-btn-lift: 0 1px 2px rgb(0 0 0 / 30%), 0 3px 8px -4px rgb(0 0 0 / 40%);
+		--td-btn-lift: 0 1px 2px rgb(0 0 0 / 18%), 0 2px 6px -2px rgb(0 0 0 / 20%);
 		--td-switch-off: #2c2c30;
 
-		--td-glass-bg: rgb(12 14 18 / 44%);
-		--td-glass-bg-strong: rgb(8 10 14 / 60%);      /* #f7f7f8 text ≥ 4.5:1 even over a white backdrop */
-		--td-glass-fg: #f7f7f8;
-		--td-glass-edge: rgb(255 255 255 / 30%);
-		--td-glass-side-edge: rgb(255 255 255 / 10%);
-		--td-glass-bottom: rgb(0 0 0 / 26%);
-		--td-glass-border: rgb(255 255 255 / 18%);
-		--td-glass-outline: rgb(0 0 0 / 32%);
-		--td-glass-sheen: linear-gradient(135deg, rgb(255 255 255 / 14%) 0%, rgb(255 255 255 / 3%) 36%, transparent 64%, rgb(255 255 255 / 5%) 100%);
-		--td-glass-blur: blur(16px) saturate(135%) brightness(0.92);
-		--td-glass-blur-lg: blur(20px) saturate(135%) brightness(0.92);
-		--td-glass-shadow: 0 12px 34px -10px rgb(0 0 0 / 68%), 0 3px 10px -4px rgb(0 0 0 / 46%);
-		--td-glass-shadow-lg: 0 26px 64px -18px rgb(0 0 0 / 76%), 0 8px 22px -10px rgb(0 0 0 / 52%);
-		--td-glass-solid: #17181c;
-		--td-glass-glow: rgb(255 255 255 / 18%);
+		/* v0.20.0 minimal surfaces (blur / clear tokens are theme-independent: tokens.css) */
+		--td-glass-bg: rgb(28 28 30 / 90%);
+		--td-glass-bg-strong: rgb(28 28 30 / 94%);
+		--td-glass-solid: #1c1c1e;
+		--td-glass-fg: #f5f5f7;
+		--td-glass-border: rgb(255 255 255 / 10%);
+		--td-glass-shadow: 0 4px 16px rgb(0 0 0 / 18%);
+		--td-glass-shadow-lg: 0 8px 24px rgb(0 0 0 / 24%);
 	}
 
 	/* v0.16.0: the dark fill FOLLOWS the site accent — 20% darker so white text stays readable
@@ -372,17 +356,19 @@
 
 /* ---- src/styles/glass.css ---- */
 /*
- * Liquid Glass recipes — rules: docs/internal/design/liquid-glass.md.
+ * Minimal surfaces (v0.20.0, replaces the Liquid Glass v2 recipes) — rules: docs/internal/design/liquid-glass.md.
  *
- * Use glass ONLY on the floating control layer (bars, menus, popovers, sheets, toasts, modals).
- * Never glass on glass: anything placed ON a glass surface uses plain fills.
+ * Every floating surface = background + ONE thin border + ONE soft shadow (+ blur(12px) only on small popups).
+ * No sheen gradient, no inset rim, no outer hairline, no glow, no decorative scale. The class names keep "glass"
+ * (markup and public API unchanged):
  *
- *   .td-glass-surface            Regular (default; adapts, text-safe)
- *   .td-glass-surface--strong    text-bearing surface (modal, menu, toast, tooltip)
- *   .td-glass-surface--lg        large surface: thicker blur + deeper shadow
- *   .td-glass-surface--clear     Clear: ONLY over rich media, with a dim layer behind
- *   .td-glass-dim(--text)        dimming layer for Clear (35 % icons / 60 % text)
- *   .td-glass-tint               the ONE primary action on a floating bar
+ *   .td-glass-surface            translucent 90 % + blur (default recipe)
+ *   .td-glass-surface--strong    small popups: 94 % + blur (menu, dropdown, chip-input suggestions, hovercard, toast)
+ *   .td-glass-surface--lg        deeper shadow only (--td-glass-shadow-lg)
+ *   .td-glass-surface--clear     lightbox bars: dark 88 % + blur, never themed
+ *   OPAQUE group (no blur): .td-modal__dialog, .td-loading__card, .td-tooltip, .td-scroll-top → --td-glass-solid
+ *   .td-glass-tint               solid capsule button (the one primary action on a floating bar)
+ *   .td-glass-dim(--text)        deprecated v0.20.0: no effect (class kept so markup does not break)
  *
  * Every recipe reads `var(--_td-glass-X, <public token>)`. The PRIVATE `--_td-glass-*` values are
  * set ONLY by the fallback block below — on the recipe element itself (never :root, where var()
@@ -391,17 +377,11 @@
  * site's token overrides can never defeat reduced-transparency / glass-off / contrast / forced-colors.
  */
 @layer td.component {
-	/* v0.14.0 recipe: translucent fill + [status wash] + 135° sheen, two-tone rim, dark outer hairline, lift shadow. A
-	   component may set --td-glass-wash (a gradient, e.g. a toast's semantic colour) — painted above the fill. */
 	.td-glass-surface {
 		background-color: var(--_td-glass-fill, var(--td-glass-bg));
-		background-image: var(--td-glass-wash, linear-gradient(transparent, transparent)), var(--_td-glass-sheen, var(--td-glass-sheen));
 		color: var(--_td-glass-fg, var(--td-glass-fg));
 		border: 1px solid var(--_td-glass-line, var(--td-glass-border));
-		box-shadow:
-			var(--_td-glass-rim, inset 0 1px 0 0 var(--td-glass-edge), inset 1px 0 0 0 var(--td-glass-side-edge), inset 0 -1px 0 0 var(--td-glass-bottom)),
-			var(--_td-glass-outline, 0 0 0 1px var(--td-glass-outline)),
-			var(--_td-glass-lift, var(--td-glass-shadow));
+		box-shadow: var(--_td-glass-lift, var(--td-glass-shadow));
 		-webkit-backdrop-filter: var(--_td-glass-filter, var(--td-glass-blur));
 		backdrop-filter: var(--_td-glass-filter, var(--td-glass-blur));
 	}
@@ -411,39 +391,26 @@
 	}
 
 	.td-glass-surface--lg {
-		box-shadow:
-			var(--_td-glass-rim, inset 0 1px 0 0 var(--td-glass-edge), inset 1px 0 0 0 var(--td-glass-side-edge), inset 0 -1px 0 0 var(--td-glass-bottom)),
-			var(--_td-glass-outline, 0 0 0 1px var(--td-glass-outline)),
-			var(--_td-glass-lift, var(--td-glass-shadow-lg));
-		-webkit-backdrop-filter: var(--_td-glass-filter, var(--td-glass-blur-lg));
-		backdrop-filter: var(--_td-glass-filter, var(--td-glass-blur-lg));
+		box-shadow: var(--_td-glass-lift, var(--td-glass-shadow-lg));
+	}
+
+	/* Opaque surfaces: large or text-dense, or a control that floats over content — no blur at all. The fallbacks
+	   still override --_td-glass-fill (contrast → surface colour, forced colours → Canvas). */
+	:is(.td-modal__dialog, .td-loading__card, .td-tooltip, .td-scroll-top).td-glass-surface {
+		background-color: var(--_td-glass-fill, var(--td-glass-solid));
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
 	}
 
 	.td-glass-surface--clear {
 		background-color: var(--_td-glass-clear-fill, var(--td-glass-clear-bg));
-		background-image: none;
 		color: var(--_td-glass-clear-fg, var(--td-glass-clear-fg));
 		border-color: var(--_td-glass-clear-line, var(--td-glass-clear-border));
-		box-shadow:
-			var(--_td-glass-clear-rim, inset 0 1px 0 0 var(--td-glass-clear-edge)),
-			var(--_td-glass-lift, var(--td-glass-clear-shadow));
-	}
-
-	/* Icons on Clear glass carry their own shadow (localized contrast over bright media). */
-	.td-glass-surface--clear :is(svg, .td-glass-glyph) {
-		filter: var(--_td-glass-glyph-shadow, var(--td-glass-clear-glyph-shadow));
-	}
-
-	.td-glass-dim {
-		background: var(--_td-glass-dim, var(--td-glass-dim));
-	}
-
-	.td-glass-dim--text {
-		background: var(--_td-glass-dim, var(--td-glass-dim-text));
+		box-shadow: var(--_td-glass-lift, var(--td-glass-clear-shadow));
 	}
 
 	.td-glass-tint {
-		/* A capsule touch target (the one primary action on a floating bar). */
+		/* A solid capsule touch target (the one primary action on a floating bar). */
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
@@ -451,141 +418,81 @@
 		padding: 0 var(--td-space-lg);
 		border-radius: var(--td-glass-capsule);
 		font-weight: var(--td-fw-semibold);
-		/* Opaque tint first: browsers without color-mix() keep a solid, readable fill. */
-		background: var(--_td-glass-tint-fill, var(--td-glass-tint));
-		color: var(--_td-glass-tint-fg, var(--td-glass-tint-fg));
+		background: var(--_td-glass-tint-fill, var(--td-btn-primary-bg));
+		color: var(--_td-glass-tint-fg, var(--td-btn-primary-fg));
 		border: 1px solid var(--_td-glass-tint-line, transparent);
-		box-shadow:
-			var(--_td-glass-rim, inset 0 1px 0 0 var(--td-glass-tint-edge)),
-			var(--_td-glass-lift, var(--td-glass-shadow));
-		-webkit-backdrop-filter: var(--_td-glass-filter, var(--td-glass-blur));
-		backdrop-filter: var(--_td-glass-filter, var(--td-glass-blur));
-	}
-
-	@supports (color: color-mix(in oklab, red 50%, transparent)) {
-		.td-glass-tint {
-			background: var(--_td-glass-tint-fill, color-mix(in oklab, var(--td-glass-tint) var(--td-glass-tint-alpha), transparent));
-		}
-	}
-}
-
-/* No gradients at all (sheen, status wash) under forced colours or increased contrast: plain system / solid surfaces. */
-@layer td.component {
-	@media (forced-colors: active), (prefers-contrast: more) {
-		.td-glass-surface {
-			background-image: none;
-		}
+		box-shadow: var(--_td-glass-lift, var(--td-btn-lift));
 	}
 }
 
 /* ================= FALLBACKS — private tokens, on every recipe element ================= */
 @layer td.tokens {
-	/* Glass buttons (button.css) follow every fallback: opaque fill, no sheen, no blur. */
-	@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-		.td-btn { --_td-btn-fill: var(--td-btn-bg-v) !important; --_td-btn-sheen: none !important; }
-	}
-
-	@media (prefers-reduced-transparency: reduce) {
-		.td-btn { --_td-btn-fill: var(--td-btn-bg-v) !important; --_td-btn-sheen: none !important; --_td-btn-filter: none !important; }
-	}
-
-	:root[data-td-glass="off"] .td-btn {
-		--_td-btn-fill: var(--td-btn-bg-v) !important;
-		--_td-btn-sheen: none !important;
-		--_td-btn-filter: none !important;
-	}
-
+	/* Buttons are always solid (button.css): only increased contrast and forced colours touch them. */
 	@media (prefers-contrast: more) {
-		.td-btn { --_td-btn-fill: var(--td-btn-bg-v) !important; --_td-btn-sheen: none !important; --_td-btn-filter: none !important; --_td-btn-rim: 0 0 0 0 transparent !important; }
+		.td-btn { --_td-btn-lift: 0 0 0 0 transparent !important; }
 	}
 
 	@media (forced-colors: active) {
-		.td-btn { --_td-btn-sheen: none !important; --_td-btn-filter: none !important; --_td-btn-rim: 0 0 0 0 transparent !important; --_td-btn-outline: 0 0 0 0 transparent !important; --_td-btn-lift: 0 0 0 0 transparent !important; }
+		.td-btn { --_td-btn-lift: 0 0 0 0 transparent !important; }
 	}
 
 	/* 1. No backdrop-filter: a translucent box would be see-through text over content → opaque. */
 	@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
 		.td-glass-surface,
-		.td-glass-tint,
-		.td-glass-dim {
+		.td-glass-tint {
 			--_td-glass-fill: var(--td-glass-solid) !important;
 			--_td-glass-clear-fill: var(--td-glass-clear-solid) !important;
-			--_td-glass-dim: transparent !important;
-			--_td-glass-tint-fill: var(--td-glass-tint) !important;
-			--_td-glass-sheen: none !important;
 		}
 	}
 
 	/* 2. Reduce Transparency (Chromium only today) + 2b. explicit opt-out <html data-td-glass="off">
-	      (Safari/iOS have no reduced-transparency query). Frostier = opaque, no blur. */
+	      (Safari/iOS have no reduced-transparency query). Opaque, no blur. */
 	@media (prefers-reduced-transparency: reduce) {
 		.td-glass-surface,
-		.td-glass-tint,
-		.td-glass-dim {
+		.td-glass-tint {
 			--_td-glass-fill: var(--td-glass-solid) !important;
 			--_td-glass-clear-fill: var(--td-glass-clear-solid) !important;
 			--_td-glass-filter: none !important;
-			--_td-glass-glyph-shadow: none !important;
-			--_td-glass-dim: transparent !important;
-			--_td-glass-tint-fill: var(--td-glass-tint) !important;
-			--_td-glass-sheen: none !important;
 		}
 	}
 
-	:root[data-td-glass="off"] :is(.td-glass-surface, .td-glass-tint, .td-glass-dim) {
+	:root[data-td-glass="off"] :is(.td-glass-surface, .td-glass-tint) {
 		--_td-glass-fill: var(--td-glass-solid) !important;
 		--_td-glass-clear-fill: var(--td-glass-clear-solid) !important;
 		--_td-glass-filter: none !important;
-		--_td-glass-glyph-shadow: none !important;
-		--_td-glass-dim: transparent !important;
-		--_td-glass-tint-fill: var(--td-glass-tint) !important;
-		--_td-glass-sheen: none !important;
 	}
 
-	/* 3. Increase Contrast: near black/white surfaces with a contrasting border, no blur, no rim. */
+	/* 3. Increase Contrast: near black/white surfaces with a contrasting border, no blur, no shadow. */
 	@media (prefers-contrast: more) {
 		.td-glass-surface,
-		.td-glass-tint,
-		.td-glass-dim {
+		.td-glass-tint {
 			--_td-glass-fill: var(--td-color-surface) !important;
 			--_td-glass-fg: var(--td-color-text) !important;
 			--_td-glass-line: currentcolor !important;
-			--_td-glass-rim: 0 0 0 0 transparent !important;
+			--_td-glass-lift: 0 0 0 0 transparent !important;
 			--_td-glass-filter: none !important;
-			--_td-glass-glyph-shadow: none !important;
 			--_td-glass-clear-fill: #000 !important;
 			--_td-glass-clear-fg: #fff !important;
 			--_td-glass-clear-line: #fff !important;
-			--_td-glass-clear-rim: 0 0 0 0 transparent !important;
-			--_td-glass-dim: transparent !important;
-			--_td-glass-tint-fill: var(--td-glass-tint) !important;
 			--_td-glass-tint-line: currentcolor !important;
-			--_td-glass-sheen: none !important;
 		}
 	}
 
 	/* 4. Forced colours — LAST: system colour pairs, no shadow, no filter. */
 	@media (forced-colors: active) {
 		.td-glass-surface,
-		.td-glass-tint,
-		.td-glass-dim {
+		.td-glass-tint {
 			--_td-glass-fill: Canvas !important;
 			--_td-glass-fg: CanvasText !important;
 			--_td-glass-line: CanvasText !important;
-			--_td-glass-rim: 0 0 0 0 transparent !important;
 			--_td-glass-lift: 0 0 0 0 transparent !important;
 			--_td-glass-filter: none !important;
-			--_td-glass-glyph-shadow: none !important;
 			--_td-glass-clear-fill: Canvas !important;
 			--_td-glass-clear-fg: CanvasText !important;
 			--_td-glass-clear-line: CanvasText !important;
-			--_td-glass-clear-rim: 0 0 0 0 transparent !important;
-			--_td-glass-dim: transparent !important;
 			--_td-glass-tint-fill: ButtonFace !important;
 			--_td-glass-tint-fg: ButtonText !important;
 			--_td-glass-tint-line: ButtonText !important;
-			--_td-glass-sheen: none !important;
-			--_td-glass-outline: 0 0 0 0 transparent !important;
 		}
 	}
 }
@@ -969,16 +876,17 @@
 
 /* ---- src/styles/components/button.css ---- */
 /*
- * td-button (src/form/td-button.js). v0.14.0 LIQUID GLASS buttons (liquid-glass G1/G3, Apple `.glassProminent` /
- * `.glass`): prominent variants = tinted glass (tint at --td-btn-{v}-alpha + contrast film + sheen + rim + blur);
- * secondary = neutral strong glass + film. Dense contexts (tables, [data-td-density="dense"]) and buttons INSIDE a
- * glass surface keep the glass look without their own backdrop-filter. Custom colours stay an opaque fill.
- * Disabled = explicit opaque state colours (never element opacity). Private --_td-btn-* are forced by the glass
- * fallbacks (glass.css) so reduced transparency / glass off / contrast / forced colours get solid buttons.
+ * td-button (src/form/td-button.js). v0.20.0 MINIMAL SURFACES (docs/internal/design/liquid-glass.md): every variant
+ * with a fill is a SOLID colour (--td-btn-{v}-bg) + one soft shadow (--td-btn-lift); hover = a darker SOLID fill
+ * (secondary: --td-btn-secondary-hover; others: color-mix() with 8 % black — engines without color-mix() keep the
+ * resting fill). No blur, film, sheen, rim, hairline, glow or press scale. Ghost and disabled have no shadow.
+ * Compatibility alias (one cycle): a site's --td-btn-{primary,success,danger,info,warning}-tint still becomes the fill.
+ * Disabled = explicit opaque state colours (never element opacity). Increased contrast / forced colours drop the
+ * shadow through the private --_td-btn-lift (glass.css fallbacks).
  * State: :disabled (native) · [aria-busy="true"] (loading, focus kept) · :focus-visible.
  * Link buttons (v0.17.0, <a class="td-btn">): disabled = [aria-disabled="true"] without aria-busy (or with
- * tabindex="-1" when also busy) — same disabled tokens. Ghost (v0.17.0): transparent, no glass, accent label.
- * Per-instance colours: host custom properties --td-btn-bg / --td-btn-fg (+ .td-btn--custom).
+ * tabindex="-1" when also busy) — same disabled tokens. Ghost (v0.17.0): transparent, no shadow, accent label.
+ * Per-instance colours: host custom properties --td-btn-bg / --td-btn-fg (+ .td-btn--custom) — same solid contract.
  */
 @layer td.component {
 	td-button {
@@ -997,9 +905,6 @@
 		--td-btn-bg-v: var(--td-control-bg);
 		--td-btn-fg-v: var(--td-control-fg);
 		--td-btn-border-v: var(--td-control-border);
-		--td-btn-tint-v: var(--td-btn-bg-v);
-		--td-btn-alpha-v: 100%;
-		--td-btn-film-v: transparent;
 
 		position: relative;
 		box-sizing: border-box;
@@ -1018,23 +923,16 @@
 		text-decoration: none; /* link buttons */
 		white-space: nowrap;
 		cursor: pointer;
-		background-color: var(--td-btn-bg-v); /* opaque fallback (no color-mix) */
-		background-image:
-			linear-gradient(var(--td-btn-film-v), var(--td-btn-film-v)),
-			var(--_td-btn-sheen, var(--td-btn-sheen-v, var(--td-btn-sheen)));
+		background-color: var(--td-btn-bg-v);
+		background-image: none;
 		border: 1px solid var(--td-btn-border-v);
 		border-radius: var(--td-btn-radius);
-		box-shadow:
-			var(--_td-btn-rim, inset 0 1px 0 0 rgb(255 255 255 / 38%)),
-			var(--_td-btn-outline, var(--td-btn-outline-v, 0 0 0 1px var(--td-glass-outline))),
-			var(--_td-btn-lift, var(--td-btn-lift));
-		-webkit-backdrop-filter: var(--_td-btn-filter, var(--td-glass-blur));
-		backdrop-filter: var(--_td-btn-filter, var(--td-glass-blur));
+		box-shadow: var(--_td-btn-lift, var(--td-btn-lift));
 		transition:
-			background var(--td-dur-fast) var(--td-ease),
+			background-color var(--td-dur-fast) var(--td-ease),
 			border-color var(--td-dur-fast) var(--td-ease),
 			box-shadow var(--td-dur-fast) var(--td-ease),
-			transform 100ms var(--td-ease);
+			color var(--td-dur-fast) var(--td-ease);
 		appearance: none;
 	}
 
@@ -1042,95 +940,58 @@
 	.td-btn--lg { min-height: 3rem; padding: 0 1.6rem; font-size: var(--td-text-base); }
 	.td-btn--full { display: flex; width: 100%; }
 
-	/* Prominent (tinted glass) variants */
+	/* Solid variants. The -tint fallback is the v0.20.0 compatibility alias (sites that themed the glass tint). */
 	.td-btn--primary {
-		--td-btn-bg-v: var(--td-btn-primary-bg);
+		--td-btn-bg-v: var(--td-btn-primary-tint, var(--td-btn-primary-bg));
 		--td-btn-fg-v: var(--td-btn-primary-fg);
-		--td-btn-tint-v: var(--td-btn-primary-tint);
-		--td-btn-alpha-v: var(--td-btn-primary-alpha);
-		--td-btn-film-v: var(--td-btn-primary-film);
-		--td-btn-border-v: rgb(255 255 255 / 24%);
+		--td-btn-border-v: transparent;
 	}
 
-	/* Secondary = neutral white glass with a visible soft border (v0.14.3: no grey film — white on white pages) */
 	.td-btn--secondary {
 		--td-btn-bg-v: var(--td-btn-secondary-bg);
-		--td-btn-fg-v: var(--td-glass-fg);
-		--td-btn-film-v: transparent;
-		--td-btn-border-v: var(--td-btn-secondary-edge);
-		--td-btn-outline-v: 0 0 0 0 transparent; /* the border is the edge; no extra hairline */
-		--td-btn-sheen-v: var(--td-glass-sheen); /* neutral glass keeps the surface sheen */
+		--td-btn-fg-v: var(--td-btn-secondary-fg);
+		--td-btn-border-v: var(--td-btn-secondary-border);
 	}
 
-	.td-btn--success { --td-btn-bg-v: var(--td-btn-success-tint); --td-btn-tint-v: var(--td-btn-success-tint); --td-btn-alpha-v: var(--td-btn-success-alpha); --td-btn-film-v: var(--td-btn-success-film); --td-btn-fg-v: var(--td-btn-success-fg); --td-btn-border-v: rgb(255 255 255 / 24%); }
-	.td-btn--danger { --td-btn-bg-v: var(--td-btn-danger-tint); --td-btn-tint-v: var(--td-btn-danger-tint); --td-btn-alpha-v: var(--td-btn-danger-alpha); --td-btn-film-v: var(--td-btn-danger-film); --td-btn-fg-v: var(--td-btn-danger-fg); --td-btn-border-v: rgb(255 255 255 / 24%); }
-	.td-btn--warning { --td-btn-bg-v: var(--td-btn-warning-tint); --td-btn-tint-v: var(--td-btn-warning-tint); --td-btn-alpha-v: var(--td-btn-warning-alpha); --td-btn-film-v: var(--td-btn-warning-film); --td-btn-fg-v: var(--td-btn-warning-fg); --td-btn-border-v: rgb(255 255 255 / 30%); }
-	.td-btn--info { --td-btn-bg-v: var(--td-btn-info-tint); --td-btn-tint-v: var(--td-btn-info-tint); --td-btn-alpha-v: var(--td-btn-info-alpha); --td-btn-film-v: var(--td-btn-info-film); --td-btn-fg-v: var(--td-btn-info-fg); --td-btn-border-v: rgb(255 255 255 / 24%); }
+	.td-btn--success { --td-btn-bg-v: var(--td-btn-success-tint, var(--td-btn-success-bg)); --td-btn-fg-v: var(--td-btn-success-fg); --td-btn-border-v: transparent; }
+	.td-btn--danger { --td-btn-bg-v: var(--td-btn-danger-tint, var(--td-btn-danger-bg)); --td-btn-fg-v: var(--td-btn-danger-fg); --td-btn-border-v: transparent; }
+	.td-btn--warning { --td-btn-bg-v: var(--td-btn-warning-tint, var(--td-btn-warning-bg)); --td-btn-fg-v: var(--td-btn-warning-fg); --td-btn-border-v: transparent; }
+	.td-btn--info { --td-btn-bg-v: var(--td-btn-info-tint, var(--td-btn-info-bg)); --td-btn-fg-v: var(--td-btn-info-fg); --td-btn-border-v: transparent; }
 
-	/* v0.17.0 ghost: no fill, no glass, no border / rim / lift — just the accent label on the page background.
+	/* v0.17.0 ghost: no fill, no border, no shadow — just the accent label on the page background.
 	   Hover = a soft fill (--td-btn-ghost-hover-bg); focus ring as every button. */
 	.td-btn--ghost {
 		--td-btn-bg-v: transparent;
-		--td-btn-tint-v: transparent;
 		--td-btn-fg-v: var(--td-btn-ghost-fg);
 		--td-btn-border-v: transparent;
-		--td-btn-film-v: transparent;
-		--td-btn-outline-v: 0 0 0 0 transparent;
-		--_td-btn-fill: transparent; /* exact transparent, not color-mix(transparent) */
 
-		background-image: none;
 		box-shadow: none;
-		-webkit-backdrop-filter: none;
-		backdrop-filter: none;
 	}
 
-	/* Translucent tint where color-mix() exists (else the opaque fallback above stays). */
-	@supports (color: color-mix(in srgb, red 50%, transparent)) {
-		.td-btn:not(.td-btn--custom) {
-			background-color: var(--_td-btn-fill, color-mix(in srgb, var(--td-btn-tint-v) var(--td-btn-alpha-v), transparent));
-		}
-
-		/* :not(.td-btn--custom) matches the specificity of the rule above (it used to win → secondary was grey) */
-		.td-btn--secondary:not(.td-btn--custom) {
-			background-color: var(--_td-btn-fill, var(--td-btn-secondary-glass));
-		}
-	}
-
-	/* Dense contexts and buttons inside a glass surface: glass LOOK, no own backdrop-filter (perf / no glass on glass). */
-	:is(.td-table, [data-td-density="dense"], .td-glass-surface) .td-btn {
-		-webkit-backdrop-filter: none;
-		backdrop-filter: none;
-	}
-
+	/* Custom colours (color / text-color attributes → host --td-btn-bg / --td-btn-fg): the same solid contract. */
 	.td-btn--custom {
 		--td-btn-bg-v: var(--td-btn-bg);
 		--td-btn-fg-v: var(--td-btn-fg);
 		--td-btn-border-v: var(--td-btn-bg);
-		--td-btn-film-v: transparent;
-		-webkit-backdrop-filter: none;
-		backdrop-filter: none;
 	}
 
-	/* Glass hover = GLOW, not a new material (G3: interaction animates only transform / glow). The glow is an outer
-	   halo, so the fill behind the label — and its rendered contrast — never changes. Never while :focus-visible (the
-	   focus ring must stay visible under the pointer). */
-	.td-btn:hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"], .td-btn--custom, .td-btn--ghost, :focus-visible) {
-		box-shadow:
-			var(--_td-btn-rim, inset 0 1px 0 0 rgb(255 255 255 / 38%)),
-			var(--_td-btn-outline, var(--td-btn-outline-v, 0 0 0 1px var(--td-glass-outline))),
-			var(--_td-btn-lift, var(--td-btn-lift)),
-			0 0 18px 1px var(--_td-glass-glow, var(--td-glass-glow));
+	/* Hover = a darker SOLID fill, resolved per element (it follows the variant, the -tint alias and a custom colour).
+	   Without color-mix() the resting fill stays. Never while busy / disabled. */
+	@supports (color: color-mix(in srgb, red 50%, blue)) {
+		.td-btn {
+			--td-btn-hover-v: color-mix(in srgb, var(--td-btn-bg-v) 92%, #000);
+		}
 	}
 
-	/* Custom colours are opaque (not glass): an overlay that darkens under light text or lightens under dark text
-	   (td-button sets --td-btn-hover accordingly), so hover never lowers text contrast. */
-	.td-btn--custom:hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
-		background-image:
-			linear-gradient(var(--td-btn-hover, rgb(0 0 0 / 12%)), var(--td-btn-hover, rgb(0 0 0 / 12%))),
-			var(--_td-btn-sheen, var(--td-btn-sheen-v, var(--td-btn-sheen)));
+	.td-btn--secondary:not(.td-btn--custom) {
+		--td-btn-hover-v: var(--td-btn-secondary-hover);
 	}
 
-	/* ghost hover: the fill only (no glow). :not(.td-btn--custom) keeps the specificity above the color-mix() rule. */
+	.td-btn:hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"], .td-btn--ghost) {
+		background-color: var(--td-btn-hover-v, var(--td-btn-bg-v));
+	}
+
+	/* ghost hover: the fill only. :not(.td-btn--custom) keeps the specificity above the base hover rule. */
 	.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
 		background-color: var(--td-btn-ghost-hover-bg);
 		color: #1d4ed8; /* engines without color-mix(): fixed darker step */
@@ -1142,28 +1003,21 @@
 		}
 	}
 
-	.td-btn:active:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
-		transform: scale(var(--_td-glass-press, var(--td-glass-press-scale)));
-	}
-
 	.td-btn:focus-visible {
 		outline: 2px solid transparent; /* visible in forced colours */
 		outline-offset: 2px;
 		box-shadow: var(--td-focus-ring);
 	}
 
-	/* Disabled: explicit opaque state colours (a faded glass button would be unreadable over a dark backdrop).
+	/* Disabled: explicit opaque state colours, no shadow.
 	   A disabled LINK button has aria-disabled without aria-busy — or tabindex="-1" when it is busy too (a busy link
 	   keeps tabindex="0"). */
 	.td-btn:is(:disabled, [aria-disabled="true"]:not([aria-busy="true"]), a[aria-disabled="true"][tabindex="-1"]) {
 		cursor: not-allowed;
 		color: var(--td-btn-disabled-fg);
 		background-color: var(--td-btn-disabled-bg);
-		background-image: none;
 		border-color: var(--td-btn-disabled-border);
 		box-shadow: none;
-		-webkit-backdrop-filter: none;
-		backdrop-filter: none;
 	}
 
 	/* A disabled ghost stays a ghost: no fill / border, greyed label. */
@@ -1213,11 +1067,15 @@
 
 	@media (prefers-reduced-motion: reduce) {
 		.td-btn { transition: none; }
-		.td-btn:active:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) { transform: none; }
+	}
+
+	/* Increased contrast: a visible edge on every filled button (glass.css drops the shadow). */
+	@media (prefers-contrast: more) {
+		.td-btn:not(.td-btn--ghost) { border-color: currentcolor; }
 	}
 
 	@media (forced-colors: active) {
-		.td-btn { border-color: ButtonText; background-image: none; }
+		.td-btn { border-color: ButtonText; }
 	}
 }
 
@@ -1370,8 +1228,8 @@
 
 /* ---- src/styles/components/switch.css ---- */
 /*
- * td-toggle → .td-switch (src/form/td-toggle.js; the 135 kit contract). Content-layer control: solid track;
- * the knob only "lifts" while pressed ([data-dragging]), disabled under reduced motion.
+ * td-toggle → .td-switch (src/form/td-toggle.js; the 135 kit contract). Content-layer control: solid track, solid
+ * knob with one soft shadow; the knob only slides (v0.20.0 minimal surfaces: no lift scale while pressed).
  * WCAG 1.4.11: on track --td-switch-on (#16a34a, 3.3:1 on white; white thumb on it 3.3:1); off track light
  * fill + --td-switch-edge border (v0.14.1: soft at rest; v0.14.2: soft hover step); the thumb carries the same edge while off.
  * Host custom property --td-switch-on (from the `color` attribute) overrides the token.
@@ -1465,7 +1323,7 @@
 		border: 1px solid var(--td-switch-edge);
 		border-radius: var(--td-radius-full);
 		box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
-		transform: translate(calc(var(--td-switch-pad) - 1px), -50%) scale(1);
+		transform: translate(calc(var(--td-switch-pad) - 1px), -50%);
 		transition:
 			transform var(--td-dur-base) var(--_td-glass-ease-flex, var(--td-glass-ease-flex)),
 			border-color var(--td-dur-base) var(--td-ease);
@@ -1501,15 +1359,12 @@
 
 	.td-switch__input:checked + .td-switch__track .td-switch__thumb {
 		border-color: transparent;
-		transform:
-			translate(calc(var(--td-switch-w) - var(--td-switch-thumb-d) - var(--td-switch-pad) - 1px), -50%)
-			scale(1);
+		transform: translate(calc(var(--td-switch-w) - var(--td-switch-thumb-d) - var(--td-switch-pad) - 1px), -50%);
 	}
 
 	.td-switch__input:checked + .td-switch__track .td-switch__icon--on { opacity: 1; }
 	.td-switch__input:checked + .td-switch__track .td-switch__icon--off { opacity: 0; }
 
-	/* Knob lift while pressed (glass only during interaction). */
 	/* commit() pending (v0.13.0): the new state is shown but not yet saved */
 	.td-switch[data-pending] {
 		cursor: progress;
@@ -1522,16 +1377,6 @@
 
 	@keyframes td-switch-pending {
 		to { opacity: 0.35; }
-	}
-
-	.td-switch[data-dragging] .td-switch__thumb {
-		transform: translate(calc(var(--td-switch-pad) - 1px), -50%) scale(var(--_td-glass-lift-knob, var(--td-glass-lift-scale)));
-	}
-
-	.td-switch[data-dragging] .td-switch__input:checked + .td-switch__track .td-switch__thumb {
-		transform:
-			translate(calc(var(--td-switch-w) - var(--td-switch-thumb-d) - var(--td-switch-pad) - 1px), -50%)
-			scale(var(--_td-glass-lift-knob, var(--td-glass-lift-scale)));
 	}
 
 	.td-switch__input:focus-visible + .td-switch__track {
@@ -1587,8 +1432,9 @@
 
 /* ---- src/styles/components/loading.css ---- */
 /*
- * TdLoading overlay (src/feedback/td-loading.js). Floating + text-bearing → Regular STRONG glass card over a
- * plain scrim (liquid-glass R12; scrim not blurred). State: [hidden] · [data-state="open"] (fade).
+ * TdLoading overlay (src/feedback/td-loading.js). v0.20.0 minimal surfaces: OPAQUE card (glass.css opaque group —
+ * --td-glass-solid, thin border, soft shadow, no blur) over a plain scrim (not blurred).
+ * State: [hidden] · [data-state="open"] (fade).
  */
 @layer td.component {
 	.td-loading {
@@ -1648,8 +1494,8 @@
 /* ---- src/styles/components/slider.css ---- */
 /*
  * td-slider (src/form/td-slider.js) — plan v0.8.0-batch2 D11/D12/D14. Content-layer control: the track is a fill,
- * the thumb is SOLID at rest and lifts into a clear glass lens only while dragged ([data-dragging], liquid-glass
- * §3.5; no scale under reduced motion via --_td-glass-lift-knob).
+ * the thumb is SOLID with one soft shadow — also while dragged ([data-dragging]): v0.20.0 minimal surfaces, no lens,
+ * no blur, no glow, no lift scale. Only its position moves.
  * Geometry: the native range (opacity 0) covers the whole .td-slider__control (≥ 24 px, 44 px on touch) and its
  * thumb is exactly --td-slider-thumb wide, so the native thumb travels [0, 100% - thumb] — the decorative thumb
  * uses the same travel: left = pct × (100% - thumb). Value: host custom property --td-slider-pct (0…1).
@@ -1865,33 +1711,8 @@
 		border: 2px solid var(--td-slider-color);
 		border-radius: var(--td-radius-full);
 		box-shadow: var(--td-shadow-2);
-		transform: translateY(-50%) scale(1);
-		transition:
-			transform var(--_td-glass-dur, var(--td-glass-dur)) var(--_td-glass-ease-flex, var(--td-glass-ease-flex)),
-			background-color var(--_td-glass-dur, var(--td-glass-dur)) var(--td-ease),
-			box-shadow var(--td-dur-fast) var(--td-ease);
-	}
-
-	/* Knob lifts into a clear glass lens only while dragged. */
-	.td-slider[data-dragging] .td-slider__thumb {
-		background: var(--td-glass-clear-bg);
-		-webkit-backdrop-filter: blur(2px) saturate(160%);
-		backdrop-filter: blur(2px) saturate(160%);
-		box-shadow: inset 0 1px 0 var(--td-glass-clear-edge), 0 0 0 4px var(--td-slider-color), var(--td-shadow-3);
-		transform: translateY(-50%) scale(var(--_td-glass-lift-knob, var(--td-glass-lift-scale)));
-	}
-
-	@supports (color: color-mix(in srgb, red 50%, transparent)) {
-		.td-slider__thumb {
-			box-shadow: var(--td-shadow-2), 0 2px 8px color-mix(in srgb, var(--td-slider-color) 30%, transparent);
-		}
-
-		.td-slider[data-dragging] .td-slider__thumb {
-			box-shadow:
-				inset 0 1px 0 var(--td-glass-clear-edge),
-				0 0 0 4px color-mix(in srgb, var(--td-slider-color) 25%, transparent),
-				var(--td-shadow-3);
-		}
+		transform: translateY(-50%);
+		transition: box-shadow var(--td-dur-fast) var(--td-ease);
 	}
 
 	.td-slider__input:focus-visible ~ .td-slider__thumb {
@@ -1939,10 +1760,6 @@
 		.td-slider__thumb {
 			transition: none;
 		}
-
-		.td-slider[data-dragging] .td-slider__thumb {
-			transform: translateY(-50%) scale(1);
-		}
 	}
 
 	@media (forced-colors: active) {
@@ -1964,8 +1781,7 @@
 			background: CanvasText;
 		}
 
-		.td-slider__thumb,
-		.td-slider[data-dragging] .td-slider__thumb {
+		.td-slider__thumb {
 			background: Canvas;
 			border-color: Highlight;
 			box-shadow: none;
@@ -2415,9 +2231,10 @@
 /*
  * td-lightbox — image/video viewer (src/feedback/td-lightbox.js). Adapted from the 135 kit.
  * Always dark: its background is the photograph, not the site theme → local tokens, no dark remap.
- * Glass (docs/internal/design/liquid-glass.md): toolbar + counter are CLEAR glass over the photo
- * (`td-glass-surface td-glass-surface--clear`, fallbacks from glass.css) with a LOCAL dim layer;
- * the info panel / sheet is solid. State comes from attributes set by JS, never visual classes:
+ * Surfaces (docs/internal/design/liquid-glass.md, v0.20.0 minimal surfaces): toolbar + counter are dark bars
+ * (`td-glass-surface td-glass-surface--clear`: 88 % + blur(12px) + thin border + soft shadow, fallbacks from glass.css),
+ * no local dim, no glyph shadow; the info panel / sheet is opaque (--td-glass-clear-solid).
+ * State comes from attributes set by JS, never visual classes:
  *   overlay [data-state="open"] [data-dragging] [data-closing-down] [data-zoomed] [data-panel]
  *   panel [data-sheet="open"] · img [data-loading] · [hidden] for binary visibility.
  */
@@ -2435,7 +2252,7 @@
 		--td-lb-sheet-peek: 2.25rem;
 		--td-lb-panel-w: 22rem;
 		--td-lb-backdrop: rgb(8 8 9 / 94%);
-		--td-lb-panel-bg: rgb(20 20 22 / 96%);
+		--td-lb-panel-bg: var(--td-glass-clear-solid); /* opaque (v0.20.0) */
 		--td-lb-fg: #fff;
 	}
 
@@ -2621,7 +2438,7 @@
 		min-height: var(--td-lb-bar-h);
 	}
 
-	/* Counter: Clear glass capsule (recipe from glass.css) + local dim. */
+	/* Counter: dark capsule (--clear recipe from glass.css). */
 	.td-lightbox__counter {
 		position: relative;
 		isolation: isolate;
@@ -2635,17 +2452,6 @@
 		letter-spacing: 0.01em;
 		user-select: none;
 		border-radius: var(--td-glass-capsule);
-	}
-
-	.td-lightbox__counter::before,
-	.td-lightbox__toolbar::before {
-		position: absolute;
-		inset: 0;
-		z-index: -1;
-		pointer-events: none;
-		content: "";
-		background: var(--_td-glass-dim, var(--td-glass-dim));
-		border-radius: inherit;
 	}
 
 	.td-lightbox__caption {
@@ -2663,7 +2469,7 @@
 		background: linear-gradient(to top, rgb(0 0 0 / 70%), transparent);
 	}
 
-	/* Toolbar: Clear glass + local dim, concentric with its buttons (inner = outer − padding). */
+	/* Toolbar: dark bar (--clear recipe), concentric with its buttons (inner = outer − padding). */
 	.td-lightbox__toolbar {
 		position: absolute;
 		top: var(--td-lb-bar-top);
@@ -2694,10 +2500,10 @@
 			background var(--td-lb-dur-fast) var(--td-lb-ease);
 	}
 
-	/* The back button sits outside the toolbar → its own dim disc (no glass on glass). */
+	/* The back button sits outside the toolbar → its own dark disc (same fill and edge as the bars, no blur). */
 	.td-lightbox__back {
-		background: rgb(0 0 0 / 45%);
-		border: 1px solid rgb(255 255 255 / 20%);
+		background: var(--td-glass-clear-bg);
+		border: 1px solid var(--td-glass-clear-border);
 	}
 
 	.td-lightbox__btn:hover {
@@ -2937,13 +2743,13 @@
 
 /* ---- src/styles/components/toast.css ---- */
 /*
- * td-toast (src/feedback/td-toast.js). Floating + text-bearing → glass with a per-type TINT (v0.14.0 liquid-glass G4,
- * replaces D13): its own 60 % neutral base + a semantic wash (22 % success/info, 26 % warning/error) painted by the
- * glass recipe above the base; the registry status icon stays (colour is never the only cue). Top-right by default (D11) — a site moves the stack with tokens only, e.g. 135/dwp bottom-centre:
+ * td-toast (src/feedback/td-toast.js). v0.20.0 minimal surfaces: a NEUTRAL small popup (.td-glass-surface--strong:
+ * 94 % + blur(12px) + thin border + soft shadow); the semantic colour is carried by the registry status ICON only
+ * (an icon, so colour is never the only cue) — no wash, no tinted border. Top-right by default (D11) — a site moves
+ * the stack with tokens only, e.g. 135/dwp bottom-centre:
  *   :root { --td-toast-top: auto; --td-toast-bottom: 1.5rem; --td-toast-inline-end: auto;
  *           --td-toast-inline-start: 50%; --td-toast-shift: -50%; --td-toast-align: center; }
  * State: data-state="entering|open|closing" (fade + slide; reduced motion → opacity only) · [data-paused].
- * Over an open modal the toast goes solid (R3 "no glass on glass", D20 private tokens, fallbacks still win).
  */
 @layer td.tokens {
 	:root {
@@ -2958,34 +2764,27 @@
 		/* one-line toast = 44px tall → 22px radius is a capsule (R9); wrapped text keeps a soft rounded box */
 		--td-toast-radius: 22px;
 		--td-toast-fg: var(--td-color-text);
-		--td-toast-close-fg: var(--td-toast-fg); /* muted greys fail 3:1 on translucent glass over a dark page */
-		/* status icons: deep tones in light, light tones in dark → ≥ 3:1 on the tinted glass over any backdrop */
-		--td-toast-info-icon: #172f73;
-		--td-toast-success-icon: #0f3d21;
-		--td-toast-warning-icon: #5a2a0a;
-		--td-toast-error-icon: #5c1515;
+		--td-toast-close-fg: var(--td-toast-fg);
+		/* status icons = the semantic colour (≥ 3:1 on the neutral surface over any backdrop; dark theme remaps the
+		   --td-color-* status colours to light tones) */
+		--td-toast-info-icon: var(--td-color-info);
+		--td-toast-success-icon: var(--td-color-success);
+		--td-toast-warning-icon: var(--td-color-warning);
+		--td-toast-error-icon: var(--td-color-error);
 		--td-toast-close-hover: var(--td-color-hover-strong);
-		--td-toast-error-border: color-mix(in srgb, var(--td-color-error) 45%, transparent);
-		--td-toast-glass-bg: rgb(255 255 255 / 66%);   /* #111 ≥ 4.7:1 with the wash, even over a black backdrop (gate-tuned) */
-		--td-toast-success-wash: rgb(21 128 61 / 22%);
-		--td-toast-info-wash: rgb(29 78 216 / 22%);
-		--td-toast-warning-wash: rgb(180 83 9 / 26%);
-		--td-toast-error-wash: rgb(185 28 28 / 26%);
+		--td-toast-glass-bg: var(--td-glass-bg-strong); /* the toast fill (a site may still tune it) */
+		/* deprecated v0.20.0 — still declared, no effect: the status wash and the tinted error border */
+		--td-toast-error-border: transparent;
+		--td-toast-success-wash: transparent;
+		--td-toast-info-wash: transparent;
+		--td-toast-warning-wash: transparent;
+		--td-toast-error-wash: transparent;
 		--td-toast-enter-shift: 0.5rem;
 	}
 
 	:root[data-td-theme="dark"] {
-		--td-toast-glass-bg: rgb(8 10 14 / 70%);
 		--td-toast-fg: var(--td-glass-fg);
 		--td-toast-close-fg: var(--td-glass-fg);
-		--td-toast-info-icon: #dbeafe;
-		--td-toast-success-icon: #dcfce7;
-		--td-toast-warning-icon: #fef3c7;
-		--td-toast-error-icon: #fee2e2;
-		--td-toast-success-wash: rgb(34 197 94 / 12%);
-		--td-toast-info-wash: rgb(96 165 250 / 12%);
-		--td-toast-warning-wash: rgb(245 158 11 / 12%);
-		--td-toast-error-wash: rgb(248 113 113 / 12%);
 	}
 }
 
@@ -3051,24 +2850,14 @@
 		color: var(--td-toast-info-icon);
 	}
 
-	/* Tinted glass: the toast's own neutral base (the recipe's fallbacks still force solid via --_td-glass-fill) +
-	   the semantic wash painted above it by the recipe (--td-glass-wash). */
+	/* Neutral fill (the recipe's fallbacks still force solid via --_td-glass-fill). */
 	.td-toast {
 		background-color: var(--_td-glass-fill, var(--td-toast-glass-bg));
-		--td-glass-wash: linear-gradient(var(--td-toast-info-wash), var(--td-toast-info-wash));
 	}
-
-	.td-toast--success { --td-glass-wash: linear-gradient(var(--td-toast-success-wash), var(--td-toast-success-wash)); }
-	.td-toast--warning { --td-glass-wash: linear-gradient(var(--td-toast-warning-wash), var(--td-toast-warning-wash)); }
-	.td-toast--error { --td-glass-wash: linear-gradient(var(--td-toast-error-wash), var(--td-toast-error-wash)); }
 
 	.td-toast--success .td-toast__icon { color: var(--td-toast-success-icon); }
 	.td-toast--warning .td-toast__icon { color: var(--td-toast-warning-icon); }
 	.td-toast--error .td-toast__icon { color: var(--td-toast-error-icon); }
-
-	.td-toast--error {
-		border-color: var(--_td-glass-line, var(--td-toast-error-border));
-	}
 
 	.td-toast__message {
 		flex: 1 1 auto;
@@ -3091,7 +2880,7 @@
 		line-height: 0;
 		color: var(--td-toast-close-fg);
 		cursor: pointer;
-		background: transparent; /* a fill on glass, never glass (R3) */
+		background: transparent;
 		border: 0;
 		border-radius: var(--td-glass-capsule);
 		transition: background-color var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
@@ -3106,12 +2895,6 @@
 		outline: 2px solid transparent;
 		outline-offset: 2px;
 		box-shadow: var(--td-focus-ring);
-	}
-
-	/* R3 / D20: over an open modal the toast is solid (not !important → the a11y fallbacks in td.tokens win). */
-	:root:has(.td-modal[data-state="open"]) .td-toast {
-		--_td-glass-fill: var(--td-glass-solid);
-		--_td-glass-filter: none;
 	}
 
 	@media (pointer: coarse) {
@@ -3149,10 +2932,10 @@
 
 /* ---- src/styles/components/tooltip.css ---- */
 /*
- * td-tooltip (src/feedback/td-tooltip.js). v0.14.0 (plan G8): the dwp tooltip look in glass — small text chip on
- * Regular STRONG glass (.td-glass-surface--strong on the element) with an arrow. Custom colour chips ([data-custom])
- * are SOLID. position: fixed, geometry (top/left) written by JS through CSSOM. Hoverable while open
- * (pointer-events: auto, WCAG 1.4.13).
+ * td-tooltip (src/feedback/td-tooltip.js). v0.14.0 (plan G8) dwp tooltip look; v0.20.0 minimal surfaces: a small
+ * text chip on an OPAQUE surface (glass.css opaque group — --td-glass-solid, thin border, soft shadow, no blur) with
+ * an arrow. Custom colour chips ([data-custom]) are solid in their own colour. position: fixed, geometry (top/left)
+ * written by JS through CSSOM. Hoverable while open (pointer-events: auto, WCAG 1.4.13).
  * Arrow = `::after` of the SAME element: a rotated square clipped to its outer half, painting the chip's own
  * background-color and border-color (inherit), no backdrop-filter of its own. JS writes `--td-tooltip-arrow-x`
  * (top/bottom) / `--td-tooltip-arrow-y` (left/right) = the trigger centre in the padding box, so it keeps pointing
@@ -3247,7 +3030,7 @@
 		clip-path: polygon(0 0, 100% 100%, 0 100%);
 	}
 
-	/* Custom colour chip (data-tooltip-color): solid, never glass. Colours come from CSSOM custom properties
+	/* Custom colour chip (data-tooltip-color): solid in its own colour. Colours come from CSSOM custom properties
 	   (validated with safeColor; fg = WCAG black/white unless data-tooltip-text-color is given). The arrow inherits
 	   the solid fill. */
 	.td-tooltip[data-custom] {
@@ -3274,10 +3057,11 @@
 /* ---- src/styles/components/modal.css ---- */
 /*
  * td-modal + td-modal-stack (src/feedback/td-modal.js). Adapted from the 135 kit (td-ui.css .td-modal).
- * Floating + text-bearing → Regular STRONG + LG glass dialog over a plain scrim (liquid-glass R12: never blurred).
+ * v0.20.0 minimal surfaces: OPAQUE dialog (--td-glass-solid, glass.css opaque group) + thin border + --td-glass-shadow-lg,
+ * no blur, over a plain scrim (never blurred).
  * Layer: var(--td-z-modal) for every dialog; later dialogs stack by DOM order.
  * State (set by JS, never visual classes):
- *   root [hidden] · [data-state="opening|open|closing"] · [data-covered] (a dialog is stacked above → solid)
+ *   root [hidden] · [data-state="opening|open|closing"] · [data-covered] (a dialog is stacked above)
  *   header / close / footer [hidden]
  * Per-instance CSSOM custom properties on .td-modal__dialog (validated in JS):
  *   --td-modal-w, --td-modal-h, --td-modal-body-pad, --td-modal-body-overflow
@@ -3358,7 +3142,8 @@
 		opacity: 1;
 	}
 
-	/* Dialog: glass recipe classes give fill/border/rim/shadow/blur; this block owns geometry + motion. */
+	/* Dialog: the surface recipe (glass.css) gives fill/border/shadow; this block owns geometry + motion (fade; the
+	   phone sheet slides up — no decorative scale). */
 	.td-modal__dialog {
 		position: relative;
 		display: flex;
@@ -3371,7 +3156,6 @@
 		outline: none;
 		isolation: isolate;
 		opacity: 0;
-		transform: scale(var(--td-glass-enter-scale));
 		transition:
 			opacity var(--td-dur-base) var(--td-ease),
 			transform var(--td-dur-base) var(--td-ease);
@@ -3385,19 +3169,9 @@
 			transform var(--td-dur-slow) var(--td-glass-ease-flex);
 	}
 
-	/* No glass on glass (liquid-glass R3, D20): a dialog covered by another one goes solid (menus, tooltips and
-	   toasts over an open modal: their own files). Private tokens, NOT !important → a11y fallbacks still win. */
 	/* An exiting modal is never interactive (its dialog is also inert). */
 	.td-modal[data-state="closing"] {
 		pointer-events: none;
-	}
-
-	/* v0.14.0 "frontmost glass wins" (liquid-glass G1): a popover / menu / hovercard / tooltip open ABOVE an open modal
-	   keeps its glass; the covered dialog goes solid instead (no glass on glass). */
-	:root:has(.td-dropdown__menu:not([hidden]), .td-menu, .td-chip-input__menu:not([hidden]), .td-tooltip:not([hidden]), .td-hovercard:not([hidden])) .td-modal[data-state="open"] .td-modal__dialog,
-	.td-modal[data-covered] .td-modal__dialog {
-		--_td-glass-fill: var(--td-glass-solid);
-		--_td-glass-filter: none;
 	}
 
 	.td-modal__header {
@@ -3432,7 +3206,7 @@
 		padding: 0;
 		margin: 0 calc(-1 * var(--td-space-xs)) 0 auto;
 		font: inherit;
-		color: var(--_td-glass-fg, var(--td-glass-fg)); /* v0.14.0: muted greys fail 3:1 on translucent glass over a dark page */
+		color: var(--_td-glass-fg, var(--td-glass-fg)); /* the surface ink (contrast / forced-colour fallbacks win) */
 		cursor: pointer;
 		background: transparent;
 		border: 1px solid transparent;
@@ -3564,7 +3338,7 @@
 		}
 	}
 
-	/* Reduced motion: opacity only (no scale / slide). */
+	/* Reduced motion: opacity only (no slide). */
 	@media (prefers-reduced-motion: reduce) {
 		.td-modal .td-modal__dialog,
 		.td-modal[data-state="open"] .td-modal__dialog,
@@ -3609,9 +3383,10 @@
 /* ---- src/styles/components/dropdown.css ---- */
 /*
  * td-dropdown (src/form/td-dropdown.js) — plan v0.9.0-batch3 step 4 (D17–D19), inventory §7.4, 135 kit §10.5.
- * Trigger = field look (content layer, never glass): reuses the --td-field-* tokens from field.css.
- * Menu = body-portaled popover: Regular strong glass (.td-glass-surface--strong recipe), pad --td-glass-pad,
- * radius --td-glass-radius, options concentric (--td-glass-radius-inner) plain fills — never glass on glass.
+ * Trigger = field look (content layer, solid): reuses the --td-field-* tokens from field.css.
+ * Menu = body-portaled small popup (v0.20.0 minimal surfaces: .td-glass-surface--strong = 94 % + blur(12px) + thin
+ * border + soft shadow), pad --td-glass-pad, radius --td-glass-radius, options concentric (--td-glass-radius-inner)
+ * plain fills. Fades in (no pop scale).
  * State: [aria-expanded] / :disabled / [aria-invalid] on the trigger, [data-placeholder] on the value,
  * [hidden] / data-state / data-placement on the menu, [aria-selected] / [data-active] / [aria-disabled] on options.
  * Only geometry (top/left/width, list max-height) is written by JS through CSSOM.
@@ -3766,18 +3541,15 @@
 		transform-origin: bottom center;
 	}
 
+	/* v0.20.0: fade in only (no decorative pop scale). */
 	.td-dropdown__menu[data-state="open"] {
 		opacity: 1;
-		transform: none;
-		transition:
-			opacity var(--td-glass-dur) var(--td-glass-ease),
-			transform var(--td-glass-dur) var(--td-glass-ease);
+		transition: opacity var(--td-glass-dur) var(--td-glass-ease);
 	}
 
 	@starting-style {
 		.td-dropdown__menu[data-state="open"] {
 			opacity: 0;
-			transform: scale(var(--td-glass-enter-scale));
 		}
 	}
 
@@ -3918,16 +3690,8 @@
 			transition: none;
 		}
 
-		/* opacity only, no scale */
 		.td-dropdown__menu[data-state="open"] {
 			transition: opacity var(--td-glass-dur) linear;
-		}
-
-		@starting-style {
-			.td-dropdown__menu[data-state="open"] {
-				opacity: 0;
-				transform: none;
-			}
 		}
 	}
 
@@ -4314,8 +4078,8 @@
 /*
  * td-datetime-picker (src/form/td-datetime-picker.js) — plan v0.10.0-batch4 item 1 (D1–D10), inventory §7.1.
  * Blocks: .td-dtp (host: field-look trigger, content layer, never glass — reuses the --td-field-* tokens like the
- * dropdown trigger), .td-dtp-panel (dialog body inside TdModal, which is already the glass layer: inner controls are
- * plain fills — no glass on glass, R3), .td-dtp-wheel (hour/minute listbox wheels, CSS scroll-snap; the fade is a
+ * dropdown trigger), .td-dtp-panel (dialog body inside TdModal — an opaque surface since v0.20.0: inner controls are
+ * plain fills), .td-dtp-wheel (hour/minute listbox wheels, CSS scroll-snap; the fade is a
  * mask so it works on any backdrop and in dark; the selected row is a solid band + weight/size, never scale()).
  * State: [aria-expanded] / :disabled / [aria-invalid] on the trigger, [data-placeholder] on the value, data-state on
  * .td-dtp, [aria-invalid] on panel inputs, [hidden] on the error line, [aria-selected] on wheel options.
@@ -4860,9 +4624,9 @@
 /*
  * TdMenu (src/feedback/td-menu.js) — plan v0.12.0 step 2 (D1–D7), inventory §1 + §7.1, 135 kit td-ui.css:88-236,
  * :859-888 (§10) translated to td tokens.
- * Menu = body-portaled popover: Regular strong glass (.td-glass-surface--strong recipe; fallbacks come from the
- * recipe), pad --td-glass-pad, radius --td-glass-radius, items concentric (--td-glass-radius-inner) plain fills —
- * never glass on glass. Menu button = content-layer icon button (no glass).
+ * Menu = body-portaled small popup (v0.20.0 minimal surfaces: .td-glass-surface--strong recipe = 94 % + blur(12px) +
+ * thin border + soft shadow; fallbacks come from the recipe), pad --td-glass-pad, radius --td-glass-radius, items
+ * concentric (--td-glass-radius-inner) plain fills. Fades in (no pop scale). Menu button = content-layer icon button.
  * State: data-state / data-placement / data-align on the menu, [aria-checked] / [aria-disabled] on items,
  * [aria-expanded] on the trigger. Only geometry (top/left, max-height) is written by JS through CSSOM.
  */
@@ -4927,18 +4691,15 @@
 	.td-menu[data-placement="top"][data-align="start"] { transform-origin: bottom left; }
 	.td-menu[data-placement="top"][data-align="center"] { transform-origin: bottom center; }
 
+	/* v0.20.0: fade in only (no decorative pop scale). */
 	.td-menu[data-state="open"] {
 		opacity: 1;
-		transform: none;
-		transition:
-			opacity var(--td-glass-dur) var(--td-glass-ease),
-			transform var(--td-glass-dur) var(--td-glass-ease);
+		transition: opacity var(--td-glass-dur) var(--td-glass-ease);
 	}
 
 	@starting-style {
 		.td-menu[data-state="open"] {
 			opacity: 0;
-			transform: scale(var(--td-glass-enter-scale));
 		}
 	}
 
@@ -5129,16 +4890,8 @@
 			transition: none;
 		}
 
-		/* opacity only, no scale */
 		.td-menu[data-state="open"] {
 			transition: opacity var(--td-glass-dur) linear;
-		}
-
-		@starting-style {
-			.td-menu[data-state="open"] {
-				opacity: 0;
-				transform: none;
-			}
 		}
 	}
 
@@ -5178,9 +4931,10 @@
 /* ---- src/styles/components/chip-input.css ---- */
 /*
  * td-chip-input (src/form/td-chip-input.js) — plan v0.12.0 step 3 (D8–D14), inventory §2 + §7.2.
- * Field box = content layer (never glass): reuses the --td-field-* tokens from field.css; chips are plain fills
- * (capsules). Suggestions = body-portaled popover: Regular strong glass (.td-glass-surface--strong recipe), pad
- * --td-glass-pad, radius --td-glass-radius, options concentric (--td-glass-radius-inner) fills — never glass on glass.
+ * Field box = content layer (solid): reuses the --td-field-* tokens from field.css; chips are plain fills
+ * (capsules). Suggestions = body-portaled small popup (v0.20.0 minimal surfaces: .td-glass-surface--strong = 94 % +
+ * blur(12px) + thin border + soft shadow), pad --td-glass-pad, radius --td-glass-radius, options concentric
+ * (--td-glass-radius-inner) fills. Fades in (no pop scale).
  * State: data-state / [data-full] / [data-empty] on the root, :has(input:focus-visible / :disabled / [aria-invalid])
  * on the box, [hidden] on the chip list, [hidden] / data-state / data-placement on the popup, [aria-selected="true"]
  * (= active) on options, [data-kind] on the empty row. Only popup geometry is written by JS through CSSOM.
@@ -5408,18 +5162,15 @@
 		transform-origin: bottom center;
 	}
 
+	/* v0.20.0: fade in only (no decorative pop scale). */
 	.td-chip-input__menu[data-state="open"] {
 		opacity: 1;
-		transform: none;
-		transition:
-			opacity var(--td-glass-dur) var(--td-glass-ease),
-			transform var(--td-glass-dur) var(--td-glass-ease);
+		transition: opacity var(--td-glass-dur) var(--td-glass-ease);
 	}
 
 	@starting-style {
 		.td-chip-input__menu[data-state="open"] {
 			opacity: 0;
-			transform: scale(var(--td-glass-enter-scale));
 		}
 	}
 
@@ -5524,16 +5275,8 @@
 			transition: none;
 		}
 
-		/* opacity only, no scale */
 		.td-chip-input__menu[data-state="open"] {
 			transition: opacity var(--td-glass-dur) linear;
-		}
-
-		@starting-style {
-			.td-chip-input__menu[data-state="open"] {
-				opacity: 0;
-				transform: none;
-			}
 		}
 	}
 
@@ -5577,8 +5320,8 @@
 /* ---- src/styles/components/hovercard.css ---- */
 /*
  * TdHovercard (src/feedback/td-hovercard.js) — plan v0.14.0 G10; 135 kit td-ui.css `.td-hovercard` translated to td
- * tokens. Body-portaled non-modal card: strong glass (.td-glass-surface--strong recipe — fallbacks come from the
- * recipe), radius --td-glass-radius. Frontmost glass (G1): it stays glass over an open modal (no solid override here).
+ * tokens. Body-portaled non-modal small popup (v0.20.0 minimal surfaces: .td-glass-surface--strong = 94 % +
+ * blur(12px) + thin border + soft shadow — fallbacks come from the recipe), radius --td-glass-radius. Fades in.
  * State: [hidden], data-state="loading|open|error|closed", data-placement="bottom|top". Only geometry (top / left /
  * max-height) is written by JS through CSSOM. Content is free-form: only margins at the edges, links and focus rings
  * are normalised.
@@ -5638,18 +5381,15 @@
 		transform-origin: bottom left;
 	}
 
+	/* v0.20.0: fade in only (no decorative pop scale). */
 	.td-hovercard:not([hidden]) {
 		opacity: 1;
-		transform: none;
-		transition:
-			opacity var(--td-glass-dur) var(--td-glass-ease),
-			transform var(--td-glass-dur) var(--td-glass-ease);
+		transition: opacity var(--td-glass-dur) var(--td-glass-ease);
 	}
 
 	@starting-style {
 		.td-hovercard:not([hidden]) {
 			opacity: 0;
-			transform: scale(var(--td-glass-enter-scale));
 		}
 	}
 
@@ -5701,16 +5441,8 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		/* opacity only, no scale */
 		.td-hovercard:not([hidden]) {
 			transition: opacity var(--td-glass-dur) linear;
-		}
-
-		@starting-style {
-			.td-hovercard:not([hidden]) {
-				opacity: 0;
-				transform: none;
-			}
 		}
 	}
 
@@ -5883,8 +5615,8 @@
 /* ---- src/styles/components/scroll-top.css ---- */
 /*
  * td-scroll-top (src/feedback/td-scroll-top.js) — v0.17.0; 135 kit `.td-scroll-top` translated to td tokens.
- * Floating control layer → strong glass (.td-glass-surface--strong recipe: every fallback — reduced transparency,
- * glass off, contrast, forced colours, no backdrop-filter — comes from the recipe). Round, fixed to the inline-end
+ * Floating control → OPAQUE surface (v0.20.0 minimal surfaces: glass.css opaque group — --td-glass-solid, thin border,
+ * one soft shadow, no blur; contrast / forced-colour fallbacks come from the recipe). Round, fixed to the inline-end
  * bottom corner, safe-area aware, z-index BELOW lightbox / modal / popover / toast.
  * State: data-visible="true|false" (hidden = visibility: hidden → out of the Tab order and the a11y tree).
  */
@@ -5940,10 +5672,6 @@
 			opacity var(--td-glass-dur) var(--td-glass-ease),
 			transform var(--td-glass-dur) var(--td-glass-ease),
 			visibility 0s;
-	}
-
-	.td-scroll-top[data-visible="true"]:active {
-		transform: scale(var(--td-glass-press-scale));
 	}
 
 	.td-scroll-top:focus-visible {

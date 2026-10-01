@@ -4,7 +4,8 @@
 
 Tooltip là nhãn chữ nhỏ có mũi tên hiện cạnh một phần tử khi rê chuột, chạm hoặc focus vào nó. Chỉ cần import module
 một lần: mọi phần tử có `data-tooltip="…"` trên trang (kể cả phần tử thêm sau này) đều có tooltip. Giao diện và hành vi
-giống tooltip của dwp, làm bằng kính (glass), vẫn giữ các cải tiến trợ năng của td.
+giống tooltip của dwp, trên bề mặt **nền đặc** (minimal surfaces 0.20.0: viền mảnh + một bóng mềm, không blur), vẫn giữ
+các cải tiến trợ năng của td.
 
 Dùng tooltip cho **chữ ngắn, bổ sung** (giải thích nút chỉ có icon, tên đầy đủ của chữ viết tắt). Không đặt thông tin
 bắt buộc hay nội dung tương tác (link, nút) trong tooltip — dùng [hovercard](hovercard.md) cho nội dung phong phú,
@@ -67,7 +68,7 @@ tooltip làm `aria-label` và in cảnh báo ra console (xem [Chính sách tên]
 <span tabindex="0" data-tooltip="Beta" data-tooltip-color="#fde047" data-tooltip-text-color="#1f2937">Beta</span>
 ```
 
-Có `data-tooltip-color` → chip **nền đặc** (không kính) màu đó, mũi tên cùng màu. Màu chữ tự chọn đen hoặc trắng theo
+Có `data-tooltip-color` → chip nền đặc màu đó, mũi tên cùng màu. Màu chữ tự chọn đen hoặc trắng theo
 độ tương phản WCAG, trừ khi bạn chỉ định `data-tooltip-text-color`.
 
 ### Markup của dwp dùng nguyên
@@ -105,7 +106,7 @@ Xoá attribute, hoặc đặt `data-tooltip=""` (rỗng). Một `data-tooltip` c
 | `data-tooltip-position` | `top` \| `bottom` \| `left` \| `right` | `top` | Phía ưu tiên. |
 | `data-tooltip-pos` | như trên | — | Alias. Thứ tự đọc: `data-tooltip-position` → `data-tooltip-pos` → `data-dwp-tooltip-pos`; attribute đầu tiên có **giá trị hợp lệ** thắng. |
 | `data-dwp-tooltip-pos` | như trên | — | Alias dwp. |
-| `data-tooltip-color` | màu CSS | — | Nền đặc tuỳ chỉnh. Chỉ nhận: hex (`#rgb`, `#rrggbb`, …), `rgb()/rgba()/hsl()/hsla()` với tham số số, hoặc tên màu chỉ gồm chữ cái. Màu phải **đục hoàn toàn** và trình duyệt nhận ra; màu trong suốt / có alpha / không hợp lệ → quay về chip kính mặc định. |
+| `data-tooltip-color` | màu CSS | — | Nền đặc tuỳ chỉnh. Chỉ nhận: hex (`#rgb`, `#rrggbb`, …), `rgb()/rgba()/hsl()/hsla()` với tham số số, hoặc tên màu chỉ gồm chữ cái. Màu phải **đục hoàn toàn** và trình duyệt nhận ra; màu trong suốt / có alpha / không hợp lệ → quay về chip mặc định. |
 | `data-tooltip-text-color` | màu CSS | đen/trắng tự động | Màu chữ; chỉ có tác dụng khi có `data-tooltip-color`. Cùng luật kiểm tra như trên; không hợp lệ → tự động. |
 
 Attribute kit tự đặt lên phần tử kích hoạt (đừng tự đặt):
@@ -175,7 +176,7 @@ Tooltip không phát event nào.
 - Focus bằng chuột (không phải `:focus-visible`) không giữ tooltip khi con trỏ đã rời trigger.
 
 **Trên các lớp khác:** tooltip ở `--td-z-tooltip` (510), trên cả toast, loading và modal. Tooltip bên trong modal hoạt
-động bình thường và **vẫn giữ kính** (khi đó dialog phía dưới chuyển nền đặc). Escape khi có tooltip trên modal chỉ ẩn
+động bình thường (tooltip và dialog đều nền đặc). Escape khi có tooltip trên modal chỉ ẩn
 tooltip, không ảnh hưởng modal.
 
 ## Chính sách tên truy cập
@@ -223,7 +224,7 @@ Custom property do JS ghi (CSSOM) lên `#td-tooltip` — không tự đặt:
 }
 ```
 
-`prefers-reduced-motion: reduce` → không có hiệu ứng mờ, ẩn ngay lập tức. Tắt kính / tương phản cao → chip nền đặc.
+`prefers-reduced-motion: reduce` → không có hiệu ứng mờ, ẩn ngay lập tức. Tương phản cao → nền `--td-color-surface`, viền rõ, không bóng.
 
 ## Cấu trúc DOM & class
 

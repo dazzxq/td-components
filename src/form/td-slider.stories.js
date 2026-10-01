@@ -99,6 +99,6 @@ export const Naming = {
 export const KeyboardAndDrag = {
   render: () => `
     <td-slider label="Thử bàn phím / kéo" value="50" show-label></td-slider>
-    <p class="sb-note">Tab to focus (ring on the thumb) · ←/→ step · Home/End · drag: the knob lifts into glass while
-      pressed (no scale with reduced motion). One <code>input</code> and one <code>change</code> per interaction.</p>`,
+    <p class="sb-note">Tab to focus (ring on the thumb) · ←/→ step · Home/End · drag: the solid knob just follows the
+      pointer (v0.20.0: no lens, no lift). One <code>input</code> and one <code>change</code> per interaction.</p>`,
 };

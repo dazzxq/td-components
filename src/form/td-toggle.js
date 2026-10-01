@@ -77,8 +77,8 @@ export class TdToggle extends TdCheckableElement {
     if (this._pendingCommit) this._setPending(true); // a re-render (label/size/reconnect) keeps the pending state
     const thumbHost = this.querySelector('.td-switch');
     if (thumbHost) {
-      // Knob "lifts" while pressed (liquid-glass: glass only during interaction; CSS disables under
-      // reduced motion). State by attribute, never a visual class.
+      // [data-dragging] while pressed (a styling hook; since v0.20.0 the default CSS does not change the knob).
+      // State by attribute, never a visual class.
       const up = () => thumbHost.removeAttribute('data-dragging');
       this.listen(thumbHost, 'pointerdown', () => {
         if (!this._effectiveDisabled) thumbHost.setAttribute('data-dragging', '');

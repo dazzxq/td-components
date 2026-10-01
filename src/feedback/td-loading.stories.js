@@ -9,7 +9,7 @@ export default {
 
 const on = (root, sel, fn) => root.querySelector(sel).addEventListener('click', fn);
 
-/** Blocking overlay: strong glass card over a plain scrim; page inert, focus held, restored after. */
+/** Blocking overlay: opaque card (minimal surfaces) over a plain scrim; page inert, focus held, restored after. */
 export const FullscreenOverlay = {
   render: () => {
     const root = document.createElement('div');

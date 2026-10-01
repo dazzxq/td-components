@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Rendered contrast gate (v0.14.0, liquid-glass G5). For every glass button variant × state (rest / disabled /
+ * Rendered contrast gate (v0.14.0; v0.20.0 minimal surfaces). For every button variant × state (rest / disabled /
  * loading) and every toast type, in light + dark, over four backdrops (flat black, flat white, a fine checkerboard, a
  * saturated "photo"), in Chromium / Firefox / WebKit:
  *   1. render the element with its ink hidden (text/icons transparent) and screenshot it — the REAL background after
- *      blur, saturate, sheen, film, tint and wash;
+ *      blur and fill (v0.20.0: solid buttons, neutral 94 % toasts);
  *   2. sample the interior (inset away from the rims/radius) and take the MINIMUM contrast against the declared ink
  *      (computed colour; alpha composited over each sampled pixel);
  *   3. require ≥ 4.7:1 for labels, ≥ 3.2:1 for icons / close glyphs / the loading spinner; a DISABLED button's label

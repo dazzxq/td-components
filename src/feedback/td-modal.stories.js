@@ -125,7 +125,7 @@ export const LoadingOverModal = {
 
 export const StackedModals = {
   render: () => `<div class="sb-stack">${trigger('m-stack', 'Mở 2 modal chồng nhau')}
-    <p class="sb-note">Dialog bên dưới chuyển sang nền đặc (không kính chồng kính).</p></div>`,
+    <p class="sb-note">Dialog nào cũng nền đặc; dialog bên dưới bị phủ và inert.</p></div>`,
   play: ({ canvasElement }) => {
     bind(canvasElement, 'm-stack', () => {
       TdModal.show({ title: 'Modal 1 — nền', body: text('Modal đầu tiên. Modal thứ hai sẽ mở phía trên.'), size: 'lg' });

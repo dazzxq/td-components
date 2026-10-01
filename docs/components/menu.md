@@ -307,8 +307,9 @@ Token khai báo trong `@layer td.tokens` trên `:root`:
 | `--td-menu-btn-hover` | `var(--td-color-hover)` | Nền nút khi hover / đang mở |
 | `--td-menu-btn-size` | `32px` | Kích thước tối thiểu của nút (thiết bị cảm ứng: `--td-touch-min`) |
 
-Menu dùng công thức kính chung (`.td-glass-surface--strong`): padding `--td-glass-pad`, bo góc `--td-glass-radius`,
-mục bo góc đồng tâm `--td-glass-radius-inner`. Tắt kính toàn site bằng `<html data-td-glass="off">` (xem
+Menu là popup nhỏ (`.td-glass-surface--strong`, 0.20.0): nền 94 % + `blur(12px)` + viền mảnh + một bóng mềm; padding
+`--td-glass-pad`, bo góc `--td-glass-radius`, mục bo góc đồng tâm `--td-glass-radius-inner`. Mở ra bằng fade (không
+phóng to). Bỏ blur toàn site bằng `<html data-td-glass="off">` (xem
 [Theming](../customization/theming.md)).
 
 ```css
@@ -402,9 +403,9 @@ rê chuột / được bấm.
 - Tên truy cập của mục = label; `hint` là mô tả (`aria-describedby`), không bị đọc lặp.
 - Bấm chuột ra ngoài (`pointerdown`) đóng menu và **cú bấm vẫn có tác dụng** (không bị nuốt).
 - Anchor bị cuộn khuất hoặc bị gỡ khỏi DOM → menu đóng (lý do `'hidden'`). Cuộn **bên trong** menu dài không đóng menu.
-- Menu nằm ở lớp `--td-z-popover` (450): dùng được **trên** `TdModal` và trên lightbox. Menu mở trên modal vẫn giữ
-  kính, còn modal bị phủ chuyển sang nền đặc (luật "kính trên cùng thắng").
-- `prefers-reduced-motion`: chỉ fade, không scale. `forced-colors`: viền và focus theo màu hệ thống. Thiết bị cảm ứng:
+- Menu nằm ở lớp `--td-z-popover` (450): dùng được **trên** `TdModal` và trên lightbox. Menu mở trên modal giữ
+  bề mặt của nó; dialog luôn nền đặc.
+- `prefers-reduced-motion`: fade nhanh tuyến tính. `forced-colors`: viền và focus theo màu hệ thống. Thiết bị cảm ứng:
   mục cao tối thiểu `--td-touch-min` (44px).
 
 ## Bảo mật

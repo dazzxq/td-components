@@ -212,7 +212,7 @@ Kit không thể đoán nội dung của bạn. Checklist cho mỗi trang:
       trong lúc bind, nhưng thẻ đúng ngữ nghĩa vẫn tốt hơn.
 - [ ] Vùng chạm tối thiểu 44px cho control tự làm (`--td-touch-min`).
 - [ ] Không chặn zoom (`user-scalable=no`).
-- [ ] Nếu site tắt kính cho người dùng (cài đặt "giảm trong suốt"), đặt `<html data-td-glass="off">`.
+- [ ] Nếu site có cài đặt "giảm trong suốt" cho người dùng, đặt `<html data-td-glass="off">` (bỏ blur, nền đặc).
 
 **Kiểm tra**
 
@@ -226,4 +226,4 @@ Kit không thể đoán nội dung của bạn. Checklist cho mỗi trang:
 - [Theming](../customization/theming.md) — token, dark theme, glass on/off, viền mềm
 - [Styling](../customization/styling.md) — `@layer`, override CSS
 - [Cách hoạt động](../concepts/how-it-works.md) — lớp nổi (layers)
-- Tài liệu nội bộ: [Luật Liquid Glass](../internal/design/liquid-glass.md)
+- Tài liệu nội bộ: [Luật minimal surfaces](../internal/design/liquid-glass.md)

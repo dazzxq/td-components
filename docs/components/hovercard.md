@@ -2,7 +2,7 @@
 
 # Hovercard — `TdHovercard`
 
-`TdHovercard` là thẻ thông tin nổi (kính, không modal) hiện khi **rê chuột có chủ đích** hoặc khi **focus bằng bàn
+`TdHovercard` là thẻ thông tin nổi (popup nhỏ, không modal) hiện khi **rê chuột có chủ đích** hoặc khi **focus bằng bàn
 phím** vào một trigger: ví dụ rê lên tên tác giả thì hiện avatar, chức danh, số bài viết, link hồ sơ. Nội dung tự do
 (ảnh, link, nút). Dùng khi cần xem nhanh thông tin phụ mà không rời trang. **Không** dùng cho chú thích một dòng
 (dùng [`TdTooltip`](tooltip.md)), cho danh sách hành động (dùng [`TdMenu`](menu.md)), hay cho nội dung bắt buộc phải
@@ -304,7 +304,8 @@ TdHovercard.sanitize = (html) => policy.createHTML(html);
 }
 ```
 
-Card là kính mạnh (`.td-glass-surface--strong`), bo góc `--td-glass-radius`, cao tối đa `min(viewport − 16px, 480px)`
+Card là popup nhỏ (`.td-glass-surface--strong`, 0.20.0: nền 94 % + `blur(12px)` + viền mảnh + một bóng mềm, mở bằng
+fade), bo góc `--td-glass-radius`, cao tối đa `min(viewport − 16px, 480px)`
 rồi tự cuộn. Kit chỉ chuẩn hoá lề đầu/cuối, màu link và vòng focus bên trong card; phần còn lại là CSS của bạn.
 
 ## Cấu trúc DOM & class
@@ -358,7 +359,7 @@ Lướt qua nhanh hơn 350 ms không mở. Click chuột (focus do chuột) vẫ
 | Chỉ rê chuột | `Escape` | Đóng **không cướp focus**; card không mở lại cho tới khi chuột rời trigger (WCAG 1.4.13) |
 
 Khác: card là `role="dialog"` có tên (`aria-label`); bấm ra ngoài đóng card; trigger cuộn khuất hoặc bị gỡ → đóng;
-cuộn / resize → định vị lại (tự lật, kẹp trong viewport). Card trên modal vẫn giữ kính ("kính trên cùng thắng").
+cuộn / resize → định vị lại (tự lật, kẹp trong viewport). Card trên modal giữ bề mặt của nó.
 `prefers-reduced-motion`: chỉ fade. `forced-colors`: có viền. Trên thiết bị cảm ứng, nút/input trong card cao tối
 thiểu `--td-touch-min`.
 

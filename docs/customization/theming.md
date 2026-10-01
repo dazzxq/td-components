@@ -2,12 +2,16 @@
 
 # Theming bằng token `--td-*`
 
-Toàn bộ màu, cỡ chữ, bo góc, khoảng cách, chuyển động và chất liệu kính (Liquid Glass) của td-components đều đi qua
+Toàn bộ màu, cỡ chữ, bo góc, khoảng cách, chuyển động và bề mặt nổi (minimal surfaces, từ 0.20.0) của td-components đều đi qua
 **CSS custom property** tên `--td-*` (gọi là *token*). Component không bao giờ "cứng" một giá trị màu: chúng chỉ đọc
 `var(--td-…)`. Vì vậy muốn đổi giao diện cho một site, bạn **không sửa lõi**, chỉ ghi đè token trong CSS của site.
 
 Trang này trả lời: token là gì, có những token công khai nào, ghi đè ở đâu cho chắc thắng, bật dark theme / tắt kính
 thế nào, và kit tự xử lý các chế độ trợ năng của hệ điều hành ra sao.
+
+> **0.20.0 — minimal surfaces:** bỏ hiệu ứng Liquid Glass giả lập (sheen, rim, film, glow, scale). Mỗi bề mặt chỉ còn
+> nền + một viền mảnh + một shadow mềm; blur 12px chỉ cho popup nhỏ; nút là màu đặc. Tên token `--td-glass-*` giữ
+> nguyên; token không còn tác dụng được đánh dấu **deprecated** bên dưới (vẫn khai báo, xoá ở bản lớn sau).
 
 > Trang liên quan: [styling.md](styling.md) (cascade layer, override class BEM, CSSOM per-instance) ·
 > [hooks.md](hooks.md) (tuỳ biến bằng JS) · [../guides/accessibility.md](../guides/accessibility.md).
@@ -33,14 +37,15 @@ thế nào, và kit tự xử lý các chế độ trợ năng của hệ điề
   - [Checkbox / switch](#checkbox--switch)
   - [Lỗi form](#lỗi-form)
   - [Icon](#icon)
-  - [Liquid Glass: vật liệu Regular](#liquid-glass-vật-liệu-regular)
-  - [Liquid Glass: Clear, dim, tint](#liquid-glass-clear-dim-tint)
-  - [Liquid Glass: tương tác, scrim, hình học, chuyển động](#liquid-glass-tương-tác-scrim-hình-học-chuyển-động)
+  - [Bề mặt nổi (`--td-glass-*`)](#bề-mặt-nổi---td-glass-)
+  - [Thanh lightbox (`--td-glass-clear-*`)](#thanh-lightbox---td-glass-clear-)
+  - [Scrim, hình học, chuyển động](#scrim-hình-học-chuyển-động)
+  - [Token deprecated (0.20.0)](#token-deprecated-0200)
 - [Viền control mềm và override chuẩn WCAG nghiêm ngặt](#viền-control-mềm-và-override-chuẩn-wcag-nghiêm-ngặt)
 - [Dark theme (opt-in)](#dark-theme-opt-in)
 - [Tắt kính: `data-td-glass="off"`](#tắt-kính-data-td-glassoff)
 - [Kit tự thích ứng với cài đặt trợ năng](#kit-tự-thích-ứng-với-cài-đặt-trợ-năng)
-- [Tinh chỉnh kính cho hợp site](#tinh-chỉnh-kính-cho-hợp-site)
+- [Tinh chỉnh bề mặt cho hợp site](#tinh-chỉnh-bề-mặt-cho-hợp-site)
 - [Ví dụ đầu-cuối: đổi màu thương hiệu (accent)](#ví-dụ-đầu-cuối-đổi-màu-thương-hiệu-accent)
 - [Theme theo vùng](#theme-theo-vùng)
 - [Token riêng của từng component](#token-riêng-của-từng-component)
@@ -123,7 +128,7 @@ thắng specificity). Nếu site có dark theme, hãy khai báo riêng cho dark,
 var(--td-accent)`) được khai báo trên `:root`, nên `var(--td-accent)` được "giải" tại `:root` rồi mới kế thừa xuống. Hệ
 quả:
 
-- Ghi đè `--td-accent` trên `:root` → nút primary, checkbox, slider, pagination, tint kính… đổi theo. Đúng ý.
+- Ghi đè `--td-accent` trên `:root` → nút primary, checkbox, slider, pagination, `.td-glass-tint`… đổi theo. Đúng ý.
 - Ghi đè `--td-accent` trên **một vùng** (`.sidebar { --td-accent: red }`) → **không** làm nút primary trong vùng đó
   đổi, vì `--td-btn-primary-bg` đã được tính ở `:root`. Muốn đổi theo vùng, ghi đè thẳng token con
   (`.sidebar { --td-btn-primary-bg: red; --td-checkbox-color: red; }`). Xem [Theme theo vùng](#theme-theo-vùng).
@@ -287,7 +292,7 @@ Người dùng bật "giảm chuyển động" (`prefers-reduced-motion: reduce`
 
 | Token | Mặc định | Dark | Dùng cho |
 |---|---|---|---|
-| `--td-accent` | `#2563eb` | `#3b82f6` | Màu thương hiệu: nút primary, checkbox, slider, pagination, tint kính, link hovercard, spinner loading |
+| `--td-accent` | `#2563eb` | `#3b82f6` | Màu thương hiệu: nút primary, checkbox, slider, pagination, `.td-glass-tint`, link hovercard, spinner loading |
 | `--td-accent-contrast` | `#fff` | `#fff` | Chữ đặt trên accent |
 | `--td-accent-fill` | `var(--td-accent)` | `color-mix(in srgb, var(--td-accent) 80%, #000)` (trình duyệt không có `color-mix()`: `#2563eb`) | Nền **đặc** mang chữ trắng: nút primary, trang hiện tại của pagination (0.16.0) |
 | `--td-focus` | `#2563eb` | `#60a5fa` | Màu focus của ô nhập |
@@ -317,47 +322,46 @@ Xem [Viền control mềm và override chuẩn WCAG nghiêm ngặt](#viền-cont
 
 ### Button
 
-Button là **kính có tint** (Liquid Glass, v0.14.0): màu variant được pha ở độ đục `-alpha`, thêm một lớp "phim"
-(`-film`) để giữ tương phản chữ, sheen và viền sáng. Nút có thuộc tính `color` tuỳ biến thì luôn là nền đặc.
+Button là **màu đặc** (0.20.0): nền `--td-btn-{variant}-bg` + **một** shadow `--td-btn-lift`, không blur / film /
+sheen / viền sáng / glow / co khi nhấn. Hover = nền đậm hơn, vẫn đặc: secondary dùng `--td-btn-secondary-hover`, các
+variant khác (và nút có thuộc tính `color`) pha 8 % đen bằng `color-mix()` (trình duyệt không có `color-mix()` giữ
+nguyên nền). Ghost và disabled không có shadow.
 
 | Token | Mặc định | Dark |
 |---|---|---|
 | `--td-btn-radius` | `var(--td-radius-lg)` | |
 | `--td-btn-primary-bg` | `var(--td-accent-fill)` | |
 | `--td-btn-primary-fg` | `var(--td-accent-contrast)` | |
-| `--td-btn-primary-tint` | `var(--td-btn-primary-bg)` | |
-| `--td-btn-primary-alpha` | `94%` | |
-| `--td-btn-primary-film` | `rgb(0 0 0 / 10%)` | |
 | `--td-btn-secondary-bg` | `var(--td-gray-100)` | `#2c2c30` |
 | `--td-btn-secondary-fg` | `var(--td-gray-900)` | `#f5f5f7` |
 | `--td-btn-secondary-border` | `rgb(0 0 0 / 12%)` | `rgb(255 255 255 / 12%)` |
 | `--td-btn-secondary-hover` | `var(--td-gray-200)` | `#3a3a3e` |
-| `--td-btn-secondary-glass` | `rgb(255 255 255 / 80%)` | `rgb(40 40 44 / 84%)` |
-| `--td-btn-secondary-edge` | `var(--td-control-border-soft)` | `rgb(255 255 255 / 14%)` |
-| `--td-btn-success-tint` / `-alpha` / `-film` / `-fg` | `#15803d` / `94%` / `rgb(0 0 0 / 13%)` / `#fff` | |
-| `--td-btn-danger-tint` / `-alpha` / `-film` / `-fg` | `#b91c1c` / `94%` / `rgb(0 0 0 / 6%)` / `#fff` | |
-| `--td-btn-info-tint` / `-alpha` / `-film` / `-fg` | `#1d4ed8` / `94%` / `rgb(0 0 0 / 6%)` / `#fff` | |
-| `--td-btn-warning-tint` / `-alpha` / `-film` / `-fg` | `#f59e0b` / `86%` / `rgb(255 255 255 / 10%)` / `#111113` | |
-| `--td-btn-sheen` | `linear-gradient(135deg, rgb(255 255 255 / 12%) 0%, rgb(255 255 255 / 3%) 30%, transparent 55%)` | |
+| `--td-btn-success-bg` / `-fg` | `#15803d` / `#fff` | |
+| `--td-btn-danger-bg` / `-fg` | `#b91c1c` / `#fff` | |
+| `--td-btn-info-bg` / `-fg` | `#1d4ed8` / `#fff` | |
+| `--td-btn-warning-bg` / `-fg` | `#f59e0b` / `#111113` | |
 | `--td-btn-disabled-bg` | `#f4f4f5` | `#202024` |
 | `--td-btn-disabled-fg` | `#a1a1aa` | `#6b6b73` |
 | `--td-btn-disabled-border` | `#e4e4e7` | `rgb(255 255 255 / 6%)` |
-| `--td-btn-lift` | `0 1px 2px rgb(0 0 0 / 8%), 0 3px 8px -4px rgb(0 0 0 / 14%)` | `0 1px 2px rgb(0 0 0 / 30%), 0 3px 8px -4px rgb(0 0 0 / 40%)` |
+| `--td-btn-lift` | `0 1px 2px rgb(0 0 0 / 6%), 0 2px 6px -2px rgb(0 0 0 / 8%)` | `0 1px 2px rgb(0 0 0 / 18%), 0 2px 6px -2px rgb(0 0 0 / 20%)` |
 | `--td-btn-ghost-fg` | `var(--td-accent)` (#2563eb) | theo `--td-accent` dark (#3b82f6) |
 | `--td-btn-ghost-hover-bg` | `var(--td-color-hover)` (`rgb(0 0 0 / 5%)`) | theo `--td-color-hover` dark (`rgb(255 255 255 / 6%)`) |
 
 Ghi chú:
 
-- Nút **ghost** (0.17.0, `variant="ghost"`) không có nền/kính/viền: chữ `--td-btn-ghost-fg` nằm thẳng trên nền trang,
-  hover phủ `--td-btn-ghost-hover-bg`. Cổng tương phản đo chữ ghost ≥ 4.7:1 trên nền trắng (light) và đen (dark) —
-  ghost không dành cho nền ảnh. Đổi `--td-btn-ghost-fg` sang màu khác thì tự kiểm tra tương phản trên nền trang của
-  bạn. Hai token này tính ở `:root` (bẫy 2 ở trên): muốn đổi theo vùng, ghi đè thẳng `--td-btn-ghost-fg`.
+- **Alias tương thích (một chu kỳ, 0.20.0):** `--td-btn-{primary,success,danger,info,warning}-tint` — site nào còn đặt
+  (ví dụ `--td-btn-danger-tint`) thì màu đó vẫn thành **nền đặc** của nút. Kit không còn khai báo các token `-tint`;
+  hãy chuyển sang `--td-btn-{v}-bg`.
+- Nút **ghost** (0.17.0, `variant="ghost"`) không có nền / viền / shadow: chữ `--td-btn-ghost-fg` nằm thẳng trên nền
+  trang, hover phủ `--td-btn-ghost-hover-bg`. Cổng tương phản đo chữ ghost ≥ 4.7:1 trên nền trắng (light) và đen
+  (dark) — ghost không dành cho nền ảnh. Đổi `--td-btn-ghost-fg` sang màu khác thì tự kiểm tra tương phản trên nền
+  trang của bạn. Hai token này tính ở `:root` (bẫy 2 ở trên): muốn đổi theo vùng, ghi đè thẳng `--td-btn-ghost-fg`.
 - `--td-btn-primary-bg` đọc `--td-accent-fill`, nên ở dark nó là accent tối đi 20% (chữ trắng trên accent dark thô
   `#3b82f6` chỉ 3.68:1). Trước 0.16.0 dark gán cứng `#2563eb` và đổi `--td-accent` không đổi nút primary ở dark.
-- `--td-btn-success-tint` / `-danger-tint` / `-info-tint` cố định (không theo `--td-color-*`) vì dark làm sáng
+- `--td-btn-success-bg` / `-danger-bg` / `-info-bg` cố định (không theo `--td-color-*`) vì dark làm sáng
   `--td-color-*` cho mục đích **chữ**, không hợp làm nền nút.
 - Kit có một gate đo tương phản thật (`npm run test:contrast`) cho mọi cặp giá trị mặc định. Gate này **không** chạy trên
-  site của bạn: nếu bạn đổi `-tint` / `-alpha` / `-film`, tự kiểm tra chữ trên nút vẫn ≥ 4.5:1.
+  site của bạn: nếu bạn đổi `-bg` / `-fg`, tự kiểm tra chữ trên nút vẫn ≥ 4.5:1.
 
 ### Checkbox / switch
 
@@ -388,71 +392,68 @@ Ngoài ra `--td-checkbox-radius` (mặc định `50%`, checkbox tròn) nằm tro
 | `--td-icon-l` | `1.5rem` |
 | `--td-icon-stroke` | `2` |
 
-### Liquid Glass: vật liệu Regular
+### Bề mặt nổi (`--td-glass-*`)
 
-Kính chỉ dùng cho **tầng điều khiển nổi** (menu, popover, toast, modal, tooltip, thanh công cụ) và button. Nó "hiện ra"
-nhờ độ đục thấp + viền hai tông + sheen + hairline tối + bóng nâng, **không** nhờ tăng độ đục.
+Mỗi bề mặt nổi = **nền + một viền mảnh + một shadow mềm**. Popup nhỏ (menu, dropdown, gợi ý chip-input, hovercard,
+toast) dùng nền 94 % + `blur(12px)`; modal, thẻ loading, tooltip và nút scroll-top là **đặc** (`--td-glass-solid`,
+không blur). Toast có nền trung tính; màu trạng thái chỉ nằm ở icon.
 
 | Token | Mặc định (light) | Dark | Ý nghĩa |
 |---|---|---|---|
-| `--td-glass-bg` | `rgb(255 255 255 / 40%)` | `rgb(12 14 18 / 44%)` | Nền kính cho control ít chữ (icon, nhãn ngắn) |
-| `--td-glass-bg-strong` | `rgb(255 255 255 / 52%)` | `rgb(8 10 14 / 60%)` | Nền kính có chữ (modal, menu, toast, tooltip) — chữ vẫn ≥ 4.5:1 cả trên nền đen |
-| `--td-glass-fg` | `#111113` | `#f7f7f8` | Chữ trên kính |
-| `--td-glass-edge` | `rgb(255 255 255 / 82%)` | `rgb(255 255 255 / 30%)` | Viền sáng **bên trong** mép trên |
-| `--td-glass-side-edge` | `rgb(255 255 255 / 22%)` | `rgb(255 255 255 / 10%)` | Viền trong mép trái |
-| `--td-glass-bottom` | `rgb(0 0 0 / 8%)` | `rgb(0 0 0 / 26%)` | Viền trong mép dưới (tối) |
-| `--td-glass-border` | `rgb(255 255 255 / 46%)` | `rgb(255 255 255 / 18%)` | Đường viền **ngoài** (`border`) |
-| `--td-glass-outline` | `rgb(0 0 0 / 8%)` | `rgb(0 0 0 / 32%)` | Hairline tối bên ngoài, giúp kính đọc được trên nền trắng |
-| `--td-glass-sheen` | gradient 135° (24 % → 7 % → 0 → 8 % trắng) | gradient nhẹ hơn | Ánh sáng lướt trên bề mặt |
-| `--td-glass-blur` | `blur(16px) saturate(145%) brightness(1.04)` | `blur(16px) saturate(135%) brightness(0.92)` | `backdrop-filter` |
-| `--td-glass-blur-lg` | `blur(20px) saturate(145%) brightness(1.04)` | `blur(20px) saturate(135%) brightness(0.92)` | Bề mặt lớn (modal) |
-| `--td-glass-shadow` | `0 10px 30px -10px rgb(0 0 0 / 34%), 0 2px 8px -3px rgb(0 0 0 / 16%)` | đậm hơn | Bóng nâng |
-| `--td-glass-shadow-lg` | `0 24px 60px -18px rgb(0 0 0 / 38%), 0 6px 18px -8px rgb(0 0 0 / 18%)` | đậm hơn | Bóng bề mặt lớn |
-| `--td-glass-solid` | `#f7f7f8` | `#17181c` | **Nền đặc thay thế** khi kính bị tắt / không hỗ trợ / giảm trong suốt |
+| `--td-glass-bg` | `rgb(255 255 255 / 90%)` | `rgb(28 28 30 / 90%)` | Nền mặc định của `.td-glass-surface` |
+| `--td-glass-bg-strong` | `rgb(255 255 255 / 94%)` | `rgb(28 28 30 / 94%)` | Nền popup nhỏ (có blur) |
+| `--td-glass-solid` | `#fff` | `#1c1c1e` | Nền **đặc** (modal, loading, tooltip, scroll-top) và nền thay thế khi blur bị tắt / không hỗ trợ / giảm trong suốt |
+| `--td-glass-fg` | `#18181b` | `#f5f5f7` | Chữ trên bề mặt |
+| `--td-glass-border` | `rgb(0 0 0 / 7%)` | `rgb(255 255 255 / 10%)` | Viền mảnh (`border`) |
+| `--td-glass-blur` | `blur(12px)` | | `backdrop-filter` của popup nhỏ |
+| `--td-glass-blur-lg` | `blur(12px)` | | Giữ cho tương thích (không còn bề mặt nào blur dày hơn) |
+| `--td-glass-shadow` | `0 4px 16px rgb(0 0 0 / 6%)` | `0 4px 16px rgb(0 0 0 / 18%)` | Shadow mềm |
+| `--td-glass-shadow-lg` | `0 8px 24px rgb(0 0 0 / 9%)` | `0 8px 24px rgb(0 0 0 / 24%)` | Shadow của modal (`.td-glass-surface--lg`) |
 
-Đừng đảo `--td-glass-edge` (viền trong) và `--td-glass-border` (viền ngoài).
+### Thanh lightbox (`--td-glass-clear-*`)
 
-### Liquid Glass: Clear, dim, tint
-
-"Clear" là kính gần như trong suốt, **chỉ** dùng trên ảnh/video (thanh công cụ và bộ đếm của lightbox), luôn kèm một
-lớp làm tối (dim).
+Thanh công cụ và bộ đếm của lightbox (`.td-glass-surface--clear`) luôn tối, không theo theme (nền là ảnh). Không còn
+lớp dim cục bộ hay bóng riêng cho icon.
 
 | Token | Mặc định | Ý nghĩa |
 |---|---|---|
-| `--td-glass-clear-bg` | `rgb(255 255 255 / 6%)` | Nền Clear |
-| `--td-glass-clear-edge` | `rgb(255 255 255 / 48%)` | Viền trong mép trên |
-| `--td-glass-clear-border` | `rgb(255 255 255 / 28%)` | Viền ngoài |
-| `--td-glass-clear-fg` | `#fff` | Chữ / icon trên Clear |
-| `--td-glass-clear-shadow` | `0 8px 24px -8px rgb(0 0 0 / 50%)` | Bóng |
-| `--td-glass-clear-solid` | `rgb(20 20 22 / 92%)` | Nền đặc thay thế của Clear |
-| `--td-glass-clear-glyph-shadow` | `drop-shadow(0 1px 1.5px rgb(0 0 0 / 55%))` | Bóng riêng cho icon trên Clear |
-| `--td-glass-dim` | `rgb(0 0 0 / 46%)` | Lớp tối sau icon đậm (3:1 trên ảnh trắng) |
-| `--td-glass-dim-text` | `rgb(0 0 0 / 60%)` | Lớp tối sau **chữ** (4.79:1 trường hợp xấu nhất) |
-| `--td-glass-tint` | `var(--td-accent)` | Màu của **một** hành động chính trên thanh nổi (`.td-glass-tint`) |
-| `--td-glass-tint-alpha` | `90%` | Độ đục tint (82 % trượt AA trên nền trắng) |
-| `--td-glass-tint-fg` | `var(--td-accent-contrast)` | Chữ trên tint |
-| `--td-glass-tint-edge` | `rgb(255 255 255 / 30%)` | Viền sáng của tint |
+| `--td-glass-clear-bg` | `rgb(20 20 22 / 88%)` | Nền thanh (kèm `blur(12px)`) |
+| `--td-glass-clear-solid` | `#141416` | Nền đặc: panel / sheet thông tin và fallback |
+| `--td-glass-clear-fg` | `#fff` | Chữ / icon |
+| `--td-glass-clear-border` | `rgb(255 255 255 / 12%)` | Viền mảnh |
+| `--td-glass-clear-shadow` | `0 4px 16px rgb(0 0 0 / 24%)` | Shadow |
 
-### Liquid Glass: tương tác, scrim, hình học, chuyển động
+### Scrim, hình học, chuyển động
 
 | Token | Mặc định | Ý nghĩa |
 |---|---|---|
-| `--td-glass-glow` | `rgb(255 255 255 / 40%)` (dark `rgb(255 255 255 / 18%)`) | Quầng sáng khi hover button kính |
-| `--td-glass-glow-size` | `140px` | Kích thước quầng sáng |
-| `--td-glass-press-scale` | `0.97` | Tỉ lệ co khi nhấn |
-| `--td-glass-lift-scale` | `1.15` | Tỉ lệ phóng núm toggle/slider khi kéo |
-| `--td-glass-enter-scale` | `0.96` | Tỉ lệ bắt đầu khi nở ra |
-| `--td-glass-scrim` | `var(--td-color-overlay)` | Scrim sau modal (không blur) |
+| `--td-glass-scrim` | `var(--td-color-overlay)` | Scrim sau modal / loading (không blur) |
 | `--td-scroll-edge-size` | `40px` | Vùng mờ dưới thanh nổi |
 | `--td-scroll-edge-hard-bg` | `var(--td-glass-bg-strong)` | Nền kiểu "hard" (header bảng ghim) |
-| `--td-glass-dur` | `var(--td-dur-base)` | Thời lượng chuyển động kính |
+| `--td-glass-dur` | `var(--td-dur-base)` | Thời lượng fade của popup |
 | `--td-glass-ease` | `var(--td-ease-out)` | Easing |
-| `--td-glass-ease-flex` | `var(--td-ease-spring)` | Easing "nhún" |
-| `--td-glass-radius` | `20px` | Bo góc bề mặt kính (modal, menu) |
-| `--td-glass-pad` | `6px` | Padding trong bề mặt kính |
+| `--td-glass-ease-flex` | `var(--td-ease-spring)` | Easing "nhún" (trượt núm toggle, sheet modal) |
+| `--td-glass-radius` | `20px` | Bo góc bề mặt nổi (modal, menu) |
+| `--td-glass-pad` | `6px` | Padding trong bề mặt nổi |
 | `--td-glass-radius-min` | `4px` | Bo góc tối thiểu phần tử con |
 | `--td-glass-radius-inner` | `max(--td-glass-radius-min, --td-glass-radius − --td-glass-pad)` | Bo góc đồng tâm cho phần tử con (tự tính) |
 | `--td-glass-capsule` | `9999px` | Bo tròn dạng viên thuốc |
+
+### Token deprecated (0.20.0)
+
+Vẫn được khai báo (đặt không lỗi) nhưng **không còn tác dụng**; sẽ xoá ở bản lớn sau. Thay bằng:
+
+| Token deprecated | Thay bằng |
+|---|---|
+| `--td-glass-edge`, `-side-edge`, `-bottom`, `-outline`, `-sheen`, `-clear-edge`, `-clear-glyph-shadow` | — (bỏ rim, hairline, sheen, bóng icon) |
+| `--td-glass-dim`, `-dim-text` (class `.td-glass-dim(--text)` giữ tên, không vẽ gì) | — (thanh lightbox đã tối sẵn) |
+| `--td-glass-tint`, `-tint-alpha`, `-tint-fg`, `-tint-edge` | `.td-glass-tint` là nút đặc theo `--td-btn-primary-bg` / `-fg` |
+| `--td-glass-glow`, `-glow-size`, `-press-scale`, `-lift-scale`, `-enter-scale` | — (không glow, không scale trang trí) |
+| `--td-btn-{v}-alpha`, `--td-btn-{v}-film`, `--td-btn-sheen` | — (nút đặc) |
+| `--td-btn-secondary-glass` | `--td-btn-secondary-bg` |
+| `--td-btn-secondary-edge` | `--td-btn-secondary-border` |
+| `--td-btn-{v}-tint` (không còn khai báo; **alias một chu kỳ**) | `--td-btn-{v}-bg` |
+| `--td-toast-{success,info,warning,error}-wash`, `--td-toast-error-border` | — (toast trung tính, màu ở icon `--td-toast-*-icon`) |
 
 ## Viền control mềm và override chuẩn WCAG nghiêm ngặt
 
@@ -475,8 +476,8 @@ map **cả hai** token về viền đậm:
 
 - Chỉ cần một khối này: `--td-control-border-strong` tự có giá trị riêng cho dark (`#8a8a93`), và vì override nằm
   trên cùng phần tử `:root` nên dark cũng dùng đúng giá trị dark.
-- Token con dùng viền mềm (như `--td-field-border`, `--td-checkbox-border`, `--td-switch-edge`,
-  `--td-btn-secondary-edge`) đều đi theo, nên viền nút secondary cũng đậm lên.
+- Token con dùng viền mềm (như `--td-field-border`, `--td-checkbox-border`, `--td-switch-edge`) đều đi theo. Từ 0.20.0
+  viền nút secondary là `--td-btn-secondary-border` riêng (không theo viền mềm): muốn đậm hơn thì đặt thêm token đó.
 - Ghi chú lịch sử: CHANGELOG 0.14.1 chỉ nhắc `--td-control-border-soft`; từ 0.14.2 phải map **cả hai** như trên.
 
 ## Dark theme (opt-in)
@@ -522,9 +523,8 @@ Tinh chỉnh riêng cho dark bằng rule không layer của site:
 <html lang="vi" data-td-glass="off">
 ```
 
-Khi có attribute này, mọi bề mặt kính (`.td-glass-surface`, `.td-glass-tint`, `.td-glass-dim`) và mọi button kính
-chuyển sang **nền đặc**: không blur, không sheen, nền lấy từ `--td-glass-solid` (Clear lấy `--td-glass-clear-solid`,
-tint lấy `--td-glass-tint` đặc, dim biến mất).
+Khi có attribute này, mọi bề mặt (`.td-glass-surface`, `.td-glass-tint`) chuyển sang **nền đặc**, không blur: nền lấy
+từ `--td-glass-solid` (thanh lightbox lấy `--td-glass-clear-solid`). Nút vốn đã đặc nên không đổi.
 
 Lý do cần attribute: Safari / iOS **chưa có** media query `prefers-reduced-transparency`, nên site nên có một tuỳ chọn
 cho người dùng ("Giảm hiệu ứng trong suốt") và bật attribute này. Nó cũng hữu ích khi máy yếu (blur tốn GPU).
@@ -542,43 +542,39 @@ Giá trị khác `"off"` không có tác dụng.
 Bạn không cần viết gì. Các fallback nằm trong `glass.css` và `tokens.css`, được áp **với `!important` trong layer đầu
 tiên**, nên override token của site (kể cả có `!important`) **không thể** phá chúng.
 
-| Điều kiện | Kính / button kính trở thành |
+| Điều kiện | Bề mặt / nút trở thành |
 |---|---|
-| Trình duyệt không hỗ trợ `backdrop-filter` | Nền đặc `--td-glass-solid`, không sheen (tránh chữ đè thẳng lên nội dung phía sau) |
-| `prefers-reduced-transparency: reduce` (hiện chỉ Chromium) | Nền đặc, không blur, không sheen, icon Clear bỏ bóng |
+| Trình duyệt không hỗ trợ `backdrop-filter` | Nền đặc `--td-glass-solid` (tránh chữ đè thẳng lên nội dung phía sau) |
+| `prefers-reduced-transparency: reduce` (hiện chỉ Chromium) | Nền đặc, không blur |
 | `html[data-td-glass="off"]` | Như dòng trên |
-| `prefers-contrast: more` | Nền `--td-color-surface`, chữ `--td-color-text`, viền `currentcolor`, bỏ viền sáng, bỏ blur, bỏ gradient; Clear thành đen + viền trắng |
-| `forced-colors: active` (Windows High Contrast) | Màu hệ thống `Canvas` / `CanvasText` / `ButtonFace` / `ButtonText`, không bóng, không filter |
-| `prefers-reduced-motion: reduce` | Không co khi nhấn, núm không phóng to, không pop-in, không nhún; chuyển động chỉ còn crossfade 120ms; quầng hover giảm một nửa |
+| `prefers-contrast: more` | Nền `--td-color-surface`, chữ `--td-color-text`, viền `currentcolor`, không blur, không shadow (cả nút); thanh lightbox thành đen + viền trắng |
+| `forced-colors: active` (Windows High Contrast) | Màu hệ thống `Canvas` / `CanvasText` / `ButtonFace` / `ButtonText`, không shadow, không filter |
+| `prefers-reduced-motion: reduce` | Chuyển động chỉ còn crossfade 120ms, không nhún; sheet modal / toast không trượt |
 
-Vì fallback dùng `--td-glass-solid`, nếu site đổi nền kính (`--td-glass-bg`) sang tông giấy riêng thì **nhớ đổi cả**
-`--td-glass-solid` cho khớp, không thì người dùng bật "giảm trong suốt" sẽ thấy một tông xám lạc lõng.
+Vì fallback dùng `--td-glass-solid`, nếu site đổi nền bề mặt (`--td-glass-bg` / `-bg-strong`) sang tông giấy riêng thì
+**nhớ đổi cả** `--td-glass-solid` cho khớp.
 
-## Tinh chỉnh kính cho hợp site
-
-Các núm nên chỉnh (và giới hạn nên giữ):
+## Tinh chỉnh bề mặt cho hợp site
 
 | Muốn | Chỉnh | Lưu ý |
 |---|---|---|
-| Kính ngả màu giấy của site | `--td-glass-bg`, `--td-glass-bg-strong`, `--td-glass-solid` | Giữ độ đục thấp; `-strong` phải đủ để chữ ≥ 4.5:1 trên nền tối nhất có thể nằm sau |
-| Mờ hơn / ít mờ hơn | `--td-glass-blur`, `--td-glass-blur-lg` | Không vượt `20px` (luật hiệu năng R14) |
-| Bóng nhẹ hơn | `--td-glass-shadow`, `--td-glass-shadow-lg`, `--td-btn-lift` | |
+| Bề mặt ngả màu giấy của site | `--td-glass-bg`, `--td-glass-bg-strong`, `--td-glass-solid` | `-bg-strong` đủ đục để chữ ≥ 4.5:1 trên nền tối nhất có thể nằm sau |
+| Mờ hơn / ít mờ hơn | `--td-glass-blur` | Giữ nhẹ (≤ 20px) — blur tốn GPU |
+| Bóng nhẹ / đậm hơn | `--td-glass-shadow`, `--td-glass-shadow-lg`, `--td-btn-lift` | Một lớp shadow mềm là đủ |
+| Viền rõ hơn | `--td-glass-border` | |
 | Bo góc | `--td-glass-radius`, `--td-glass-pad` | `--td-glass-radius-inner` tự tính lại |
-| Bỏ sheen | `--td-glass-sheen: none;` (và `--td-btn-sheen: none;`) | |
-| Tắt kính hoàn toàn | `data-td-glass="off"` trên `<html>` | Tốt hơn là đặt độ đục 100 % |
+| Bỏ blur | `--td-glass-blur: none;` (chỉ bỏ blur) hoặc `data-td-glass="off"` trên `<html>` (bỏ blur + nền đặc) | Fallback trợ năng vẫn đúng |
 
 ```css
 :root {
-  --td-glass-bg: oklch(96% 0.014 80 / 0.44);
-  --td-glass-bg-strong: oklch(96% 0.014 80 / 0.58);
-  --td-glass-solid: #f3efe6;               /* nền đặc khi fallback: khớp giấy của site */
+  --td-glass-bg: oklch(98% 0.01 80 / 0.9);
+  --td-glass-bg-strong: oklch(98% 0.01 80 / 0.94);
+  --td-glass-solid: #f7f3ea;               /* modal / tooltip + nền đặc khi fallback: khớp giấy của site */
 }
 :root[data-td-theme="dark"] {
   --td-glass-solid: #1a1714;
 }
 ```
-
-Kính trên nền phẳng một màu chỉ trông như một hộp mờ (không có gì phía sau để "bẻ"); đó là đặc tính, không phải lỗi.
 
 ## Ví dụ đầu-cuối: đổi màu thương hiệu (accent)
 
@@ -589,7 +585,7 @@ Giả sử site dùng đỏ `#b3261e` làm màu chính.
 ```css
 /* site-theme.css — không layer */
 :root {
-  --td-accent: #b3261e;           /* nút primary, checkbox, slider, pagination, tint kính, link hovercard */
+  --td-accent: #b3261e;           /* nút primary, checkbox, slider, pagination, .td-glass-tint, link hovercard */
   --td-accent-contrast: #fff;     /* chữ trên nền đỏ: 6.5:1 */
   --td-focus: #b3261e;            /* viền focus ô nhập */
   --td-focus-ring: 0 0 0 3px rgb(179 38 30 / 35%);
@@ -615,8 +611,8 @@ accent sáng, nên tự chọn fill.
 **Bước 3 — kiểm tra những thứ không đi theo accent** (quyết định có đổi không):
 
 - `--td-switch-on` (toggle bật) mặc định xanh lá `#16a34a`, không theo accent.
-- Nút `success` / `danger` / `info` / `warning` có tint riêng.
-- Toast dùng màu trạng thái (`--td-toast-*-wash`), không dùng accent.
+- Nút `success` / `danger` / `info` / `warning` có nền riêng (`--td-btn-{v}-bg`).
+- Toast dùng màu trạng thái trên icon (`--td-toast-*-icon` = `--td-color-*`), không dùng accent.
 
 **Bước 4 — kiểm tra tương phản.** Kit chỉ gate giá trị mặc định. Với màu mới, kiểm tra bằng DevTools (hoặc
 `contrastRatio()` trong [dom-utils](../components/utilities.md)): chữ trắng trên `--td-accent-fill` ≥ 4.5:1 (light và dark), accent
@@ -688,7 +684,7 @@ media query tương ứng.
 
 ## Không bao giờ đụng vào token private
 
-Token có gạch dưới (`--_td-glass-fill`, `--_td-btn-sheen`, `--_td-glass-press`…) là **private**: kit gán chúng trong
+Token có gạch dưới (`--_td-glass-fill`, `--_td-glass-filter`, `--_td-btn-lift`…) là **private**: kit gán chúng trong
 các khối fallback trợ năng ở trên. Component đọc theo mẫu `var(--_td-glass-X, var(--td-glass-X))`: khi không có
 fallback nào kích hoạt, biến private không tồn tại và token public được dùng.
 

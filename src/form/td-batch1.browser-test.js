@@ -43,8 +43,16 @@ function rgb(str) {
 const lum = (c) => TdButton._luminance(c);
 const ratio = (a, b) => { const [x, y] = [lum(rgb(a)), lum(rgb(b))].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
 const bgOf = (el) => getComputedStyle(el).backgroundColor;
+/** [r, g, b, a] (0–255 channels) from rgb()/rgba() or color(srgb r g b / a) (what color-mix() may serialise to). */
+function rgbaOf(str) {
+  const m = String(str).match(/-?[\d.]+/g).map(Number);
+  const k = String(str).startsWith('color(') ? 255 : 1;
+  return [m[0] * k, m[1] * k, m[2] * k, m.length > 3 ? m[3] : 1];
+}
+const lumOf = (str) => { const [r, g, b] = rgbaOf(str); return lum({ r, g, b }); };
 
-/** v0.14.0: a glass button's effective background over a flat page: page ← translucent tint ← contrast film. */
+/** A button's effective background over a flat page (v0.20.0: the fill is solid, so this is just the fill; the film
+ *  branch only matters if a site still sets the deprecated film). */
 function glassBg(b, page) {
   const probe = document.createElement('span');
   document.body.appendChild(probe);
@@ -201,13 +209,17 @@ describe('batch 1 — td-toggle (.td-switch)', () => {
 });
 
 describe('batch 1 — td-button', () => {
-  it('v0.14.0 glass variants (tinted glass + blur) with AA text contrast over white AND black pages', () => {
+  it('v0.20.0 solid variants (no blur / sheen / rim, one shadow) with AA text contrast over white AND black pages', () => {
     for (const v of ['primary', 'success', 'danger', 'warning', 'info', 'secondary']) {
       const el = mount(`<td-button variant="${v}">Lưu</td-button>`);
       const b = el.querySelector('button');
       const cs = getComputedStyle(b);
       expect(b.classList.contains(`td-btn--${v}`)).to.equal(true);
-      expect(cs.backdropFilter !== 'none' && cs.backdropFilter !== '', `${v} blur`).to.equal(true);
+      expect(cs.backdropFilter === 'none' || cs.backdropFilter === '', `${v} no blur`).to.equal(true);
+      expect(cs.backgroundImage, `${v} no sheen / film`).to.equal('none');
+      expect(cs.boxShadow, `${v} no inset rim`).to.not.contain('inset');
+      expect(rgbaOf(cs.backgroundColor)[3], `${v} solid`).to.equal(1);
+      expect(cs.backgroundColor, `${v} = --td-btn-${v}-bg`).to.equal(tokenColor(`--td-btn-${v}-bg`));
       for (const page of ['#fff', '#000']) {
         expect(ratio(cs.color, glassBg(b, page)), `${v} on ${page}`).to.be.at.least(4.5);
       }
@@ -266,13 +278,13 @@ describe('batch 1 — td-button', () => {
     }
   });
 
-  it('v0.14.3: secondary is white glass with a visible border (not the old grey fill); disabled is greyed out', () => {
+  it('v0.20.0: secondary = solid --td-btn-secondary-bg + --td-btn-secondary-border; disabled is greyed out, no shadow', () => {
     const sec = mount('<td-button variant="secondary">Huỷ</td-button>').querySelector('button');
     const dis = mount('<td-button variant="secondary" disabled>Tắt</td-button>').querySelector('button');
     const cs = getComputedStyle(sec);
-    // specificity regression: .td-btn:not(.td-btn--custom) used to beat .td-btn--secondary → opaque grey #f0f0f2
-    expect(cs.backgroundColor).to.equal(tokenColor('--td-btn-secondary-glass'));
-    expect(cs.borderTopColor).to.equal(tokenColor('--td-control-border-soft'));
+    expect(cs.backgroundColor).to.equal(tokenColor('--td-btn-secondary-bg'));
+    expect(cs.borderTopColor).to.equal(tokenColor('--td-btn-secondary-border'));
+    expect(getComputedStyle(dis).boxShadow).to.equal('none');
     const dcs = getComputedStyle(dis);
     expect(dcs.backgroundColor).to.not.equal(cs.backgroundColor);
     expect(ratio(dcs.color, dcs.backgroundColor), 'disabled label is muted').to.be.below(3);
@@ -280,7 +292,57 @@ describe('batch 1 — td-button', () => {
     expect(ratio(cs.color, 'rgb(255, 255, 255)'), 'enabled label').to.be.at.least(4.7);
   });
 
-  it('hover glow never replaces the keyboard focus ring (review ISSUE-8)', async () => {
+  it('v0.20.0: hover = a darker SOLID fill (no glow, no scale); secondary uses --td-btn-secondary-hover', async () => {
+    for (const [v, want] of [['primary', null], ['danger', null], ['secondary', tokenColor('--td-btn-secondary-hover')]]) {
+      const b = mount(`<td-button variant="${v}">Lưu</td-button>`).querySelector('button');
+      const rest = getComputedStyle(b).backgroundColor;
+      const restShadow = getComputedStyle(b).boxShadow;
+      const r = b.getBoundingClientRect();
+      await sendMouse({ type: 'move', position: [Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2)] });
+      await new Promise((res) => setTimeout(res, 250));
+      const cs = getComputedStyle(b);
+      expect(b.matches(':hover')).to.equal(true);
+      expect(rgbaOf(cs.backgroundColor)[3], `${v} hover solid`).to.equal(1);
+      if (want) expect(cs.backgroundColor, `${v} hover token`).to.equal(want);
+      else expect(lumOf(cs.backgroundColor), `${v} hover darker`).to.be.below(lumOf(rest));
+      expect(cs.boxShadow, `${v} no glow`).to.equal(restShadow);
+      expect(cs.transform, `${v} no scale`).to.equal('none');
+      expect(cs.backgroundImage).to.equal('none');
+      await resetMouse();
+    }
+  });
+
+  it('v0.20.0: .td-btn--custom joins the solid contract — hover = color-mix(bg 92 %, #000), no background-image', async () => {
+    const el = mount('<td-button color="#2e7d32">Tuỳ chỉnh</td-button>');
+    const b = el.querySelector('button');
+    expect(b.classList.contains('td-btn--custom')).to.equal(true);
+    expect(getComputedStyle(b).backgroundColor).to.equal('rgb(46, 125, 50)');
+    expect(getComputedStyle(b).boxShadow).to.not.equal('none'); // one --td-btn-lift shadow
+    const r = b.getBoundingClientRect();
+    await sendMouse({ type: 'move', position: [Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2)] });
+    await new Promise((res) => setTimeout(res, 250));
+    const cs = getComputedStyle(b);
+    expect(cs.backgroundImage).to.equal('none');
+    const [hr, hg, hb, ha] = rgbaOf(cs.backgroundColor);
+    expect(ha).to.equal(1);
+    // 92 % of rgb(46, 125, 50) mixed with black → ≈ rgb(42, 115, 46)
+    expect(Math.abs(hr - 46 * 0.92) <= 1 && Math.abs(hg - 125 * 0.92) <= 1 && Math.abs(hb - 50 * 0.92) <= 1, cs.backgroundColor).to.equal(true);
+    await resetMouse();
+  });
+
+  it('v0.20.0 compatibility alias: a site --td-btn-{v}-tint still becomes the button fill', async () => {
+    const wrap = mount('<div><td-button variant="danger">Xoá</td-button><td-button variant="primary">Lưu</td-button></div>');
+    wrap.style.setProperty('--td-btn-danger-tint', 'rgb(10, 20, 30)');
+    wrap.style.setProperty('--td-btn-primary-tint', 'rgb(40, 50, 60)');
+    const [danger, primary] = wrap.querySelectorAll('button');
+    expect(getComputedStyle(danger).backgroundColor).to.equal('rgb(10, 20, 30)');
+    expect(getComputedStyle(primary).backgroundColor).to.equal('rgb(40, 50, 60)');
+    wrap.style.removeProperty('--td-btn-danger-tint');
+    await wait(250); // background-color transition
+    expect(getComputedStyle(danger).backgroundColor).to.equal(tokenColor('--td-btn-danger-bg'));
+  });
+
+  it('hover never replaces the keyboard focus ring (review ISSUE-8)', async () => {
     const el = mount('<td-button variant="primary">Lưu</td-button>');
     const b = el.querySelector('button');
     await sendKeys({ press: 'Shift' }); // keyboard modality → programmatic focus is :focus-visible

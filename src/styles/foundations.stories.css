@@ -14,10 +14,8 @@
 .fd-btn { min-width: var(--td-touch-min); min-height: var(--td-touch-min); padding: 0 16px; border-radius: var(--td-glass-radius-inner);
   border: 0; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
 .fd-card { width: min(420px, 100%); padding: 20px; border-radius: var(--td-glass-radius); margin: 48px auto 0; }
-.fd-dim { position: absolute; left: 0; right: 0; height: 120px; }
-.fd-dim--top { top: 0; } .fd-dim--bottom { bottom: 0; }
 .fd-group { display: flex; gap: 4px; padding: var(--td-glass-pad); border-radius: var(--td-glass-radius); }
-/* v0.14.0 showcase: glass controls over a busy, colourful backdrop */
+/* showcase: surfaces over a busy, colourful backdrop */
 .fd-show { position: relative; min-height: 460px; padding: 28px; border-radius: 16px; overflow: hidden;
   display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; align-content: start; }
 .fd-show__col { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }

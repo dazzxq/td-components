@@ -19,7 +19,7 @@ Mục lục:
 - [Mô hình CSP](#mô-hình-csp)
 - [Mô hình bảo mật (tóm tắt)](#mô-hình-bảo-mật-tóm-tắt)
 - [Nhãn và ngôn ngữ](#nhãn-và-ngôn-ngữ)
-- [Ngôn ngữ thiết kế Liquid Glass (tóm tắt)](#ngôn-ngữ-thiết-kế-liquid-glass-tóm-tắt)
+- [Ngôn ngữ thiết kế: minimal surfaces (tóm tắt)](#ngôn-ngữ-thiết-kế-minimal-surfaces-tóm-tắt)
 
 ## Hai loại API: thẻ và lớp tĩnh
 
@@ -368,26 +368,26 @@ riêng**. Muốn đổi chữ có ba đường:
 Từ 0.16.0 gần như mọi chuỗi đều đổi được qua `labels` / `messages` (còn lại: định dạng hiển thị của datetime-picker).
 Thông báo lỗi riêng cho từng field: `setError()` hoặc `messages` của `TdFormValidation`. Chi tiết chuyển sang ngôn ngữ khác: [Mở rộng kit](../customization/extending.md).
 
-## Ngôn ngữ thiết kế Liquid Glass (tóm tắt)
+## Ngôn ngữ thiết kế: minimal surfaces (tóm tắt)
 
-Giao diện kit theo bộ luật **Liquid Glass** (lấy cảm hứng từ Apple, phiên bản v2 từ 0.14.0). Những điều nên biết khi
-dùng:
+Từ 0.20.0 giao diện kit theo bộ luật **minimal surfaces** (thay Liquid Glass của 0.5.0–0.19.x; tham khảo dcms2). Những
+điều nên biết khi dùng:
 
-- **Kính chỉ dành cho tầng điều khiển nổi**: menu, modal, toast, tooltip, hovercard, button đứng riêng. Card, bảng, ô
-  nhập, checkbox, nền trang **không bao giờ** là kính.
-- **Không lồng kính**: control nằm trong một bề mặt kính (ví dụ button trong modal) dùng nền thường, không làm mờ lần
-  hai. Lớp kính trên cùng thắng: menu mở trên modal giữ kính, modal bên dưới chuyển nền đặc.
-- **Vật liệu tinh chỉnh bằng token**: `--td-glass-bg`, `--td-glass-solid`… Site đổi token trong CSS không `@layer`.
-  Không bao giờ ghi đè biến riêng tư `--_td-*`.
+- **Mỗi bề mặt nổi = nền + một viền mảnh + một bóng mềm.** Không gradient bóng, không viền sáng, không glow, không
+  phóng to / thu nhỏ trang trí.
+- **Blur chỉ cho popup nhỏ** (menu, dropdown, gợi ý chip-input, hovercard, toast: nền 94 % + `blur(12px)`). Modal,
+  thẻ loading, tooltip, nút scroll-top là **nền đặc**.
+- **Control luôn đặc:** nút là màu đặc + một bóng, hover đậm hơn; card, bảng, ô nhập, checkbox, nền trang cũng đặc.
+- **Tinh chỉnh bằng token**: `--td-glass-bg`, `--td-glass-solid`, `--td-glass-shadow`… (tên cũ giữ nguyên). Site đổi
+  token trong CSS không `@layer`. Không bao giờ ghi đè biến riêng tư `--_td-*`.
 - **Tự xuống cấp an toàn**: trình duyệt không có `backdrop-filter`, người dùng bật "giảm trong suốt"
   (`prefers-reduced-transparency`), "tăng tương phản" (`prefers-contrast: more`) hoặc chế độ màu cưỡng bức
-  (`forced-colors`) → kính chuyển nền đặc, viền rõ. Safari/Firefox chưa báo "giảm trong suốt", nên site có thể tắt kính
-  thủ công: `<html data-td-glass="off">`.
+  (`forced-colors`) → bề mặt chuyển nền đặc, viền rõ. Safari/Firefox chưa báo "giảm trong suốt", nên site có thể bỏ
+  blur thủ công: `<html data-td-glass="off">`.
 - **Dark theme chỉ bật khi site yêu cầu**: `<html data-td-theme="dark">`. Kit **không** tự theo chế độ tối của hệ điều
   hành.
 - **Tương phản được đo thật**: `npm run test:contrast` chụp button và toast trên nền đen, trắng, caro, ảnh, trên ba
   engine, đòi chữ ≥ 4.7:1, icon ≥ 3.2:1.
-- Vùng dày đặc (bảng, `[data-td-density="dense"]`) bỏ hiệu ứng làm mờ của button để đỡ tốn tài nguyên.
 
 Tuỳ biến: [Theming](../customization/theming.md). Luật đầy đủ (cho người viết component):
 [liquid-glass.md](../internal/design/liquid-glass.md).

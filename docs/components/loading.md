@@ -4,7 +4,7 @@
 
 Module loading có hai phần:
 
-- **`TdLoading`**: lớp phủ **toàn màn hình, chặn thao tác** (scrim + thẻ kính có spinner và dòng chữ) khi cả trang phải
+- **`TdLoading`**: lớp phủ **toàn màn hình, chặn thao tác** (scrim + thẻ nền đặc có spinner và dòng chữ) khi cả trang phải
   chờ một việc xong (lưu, chuyển bước, tải lại dữ liệu).
 - **`TdLoadingSpinner`**: tạo một spinner **inline** nhỏ đặt ở bất kỳ đâu (trong ô bảng, cạnh chữ, trong khung đang
   tải).
@@ -163,7 +163,7 @@ Overlay không có token riêng; nó dùng token chung:
 | `--td-accent` | Màu spinner trong overlay. |
 | `--td-color-text` | Màu chữ thông báo. |
 | `--td-z-loading` | Z-index (mặc định `480`). |
-| `--td-glass-*` | Kính của thẻ. |
+| `--td-glass-*` | Bề mặt của thẻ: nền đặc `--td-glass-solid`, viền `--td-glass-border`, bóng `--td-glass-shadow` (0.20.0, không blur). |
 
 Token của spinner:
 

@@ -7,7 +7,7 @@ export default {
 };
 
 /**
- * dwp look in strong glass: 14px text, arrow pointing at the trigger. Shows on hover (every pointer type, touch
+ * dwp look on an opaque surface (minimal surfaces): 14px text, arrow pointing at the trigger. Shows on hover (every pointer type, touch
  * included) and on any focus; hides on leave / blur / scroll / resize / Esc; hoverable (short grace).
  */
 export const Default = {
@@ -80,7 +80,7 @@ export const DarkTheme = {
   render: () => `
     <div class="sb-stack">
       <button type="button" class="td-btn td-btn--secondary" data-tooltip="Tooltip ở giao diện tối">Tối</button>
-      <p class="sb-note">Bật &lt;html data-td-theme="dark"&gt; để xem chip kính tối.</p>
+      <p class="sb-note">Bật &lt;html data-td-theme="dark"&gt; để xem chip tối.</p>
     </div>
   `,
 };

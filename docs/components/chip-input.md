@@ -336,7 +336,7 @@ Tất cả chữ là **văn bản thuần**.
 Khung dùng token field (`--td-field-bg`, `--td-field-border`, `--td-field-border-hover`, `--td-field-focus`,
 `--td-field-error`, `--td-field-radius-md`, `--td-field-h-md`…). Popup gợi ý dùng chung token option của dropdown:
 `--td-dropdown-option-h`, `--td-dropdown-option-hover`, `--td-dropdown-option-active`,
-`--td-dropdown-option-active-line` (xem [Dropdown](dropdown.md#tuỳ-biến-giao-diện)), là glass mạnh ở `--td-z-popover`.
+`--td-dropdown-option-active-line` (xem [Dropdown](dropdown.md#tuỳ-biến-giao-diện)), là popup nhỏ (nền 94 % + `blur(12px)` + viền mảnh + một bóng mềm, 0.20.0) ở `--td-z-popover`.
 
 ```css
 :root {

@@ -1,7 +1,7 @@
 /*
  * TdHovercard (src/feedback/td-hovercard.js) — plan v0.14.0 G10; 135 kit td-ui.css `.td-hovercard` translated to td
- * tokens. Body-portaled non-modal card: strong glass (.td-glass-surface--strong recipe — fallbacks come from the
- * recipe), radius --td-glass-radius. Frontmost glass (G1): it stays glass over an open modal (no solid override here).
+ * tokens. Body-portaled non-modal small popup (v0.20.0 minimal surfaces: .td-glass-surface--strong = 94 % +
+ * blur(12px) + thin border + soft shadow — fallbacks come from the recipe), radius --td-glass-radius. Fades in.
  * State: [hidden], data-state="loading|open|error|closed", data-placement="bottom|top". Only geometry (top / left /
  * max-height) is written by JS through CSSOM. Content is free-form: only margins at the edges, links and focus rings
  * are normalised.
@@ -61,18 +61,15 @@
 		transform-origin: bottom left;
 	}
 
+	/* v0.20.0: fade in only (no decorative pop scale). */
 	.td-hovercard:not([hidden]) {
 		opacity: 1;
-		transform: none;
-		transition:
-			opacity var(--td-glass-dur) var(--td-glass-ease),
-			transform var(--td-glass-dur) var(--td-glass-ease);
+		transition: opacity var(--td-glass-dur) var(--td-glass-ease);
 	}
 
 	@starting-style {
 		.td-hovercard:not([hidden]) {
 			opacity: 0;
-			transform: scale(var(--td-glass-enter-scale));
 		}
 	}
 
@@ -124,16 +121,8 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		/* opacity only, no scale */
 		.td-hovercard:not([hidden]) {
 			transition: opacity var(--td-glass-dur) linear;
-		}
-
-		@starting-style {
-			.td-hovercard:not([hidden]) {
-				opacity: 0;
-				transform: none;
-			}
 		}
 	}
 

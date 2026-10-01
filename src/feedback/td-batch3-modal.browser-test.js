@@ -251,7 +251,7 @@ describe('batch 3 — td-modal focus restore (D10)', () => {
 
 /* ---------- stack / state ---------- */
 describe('batch 3 — td-modal stack + states', () => {
-  it('stacked: lower dialog [data-covered], solid and inert; top keeps glass', async () => {
+  it('stacked: lower dialog [data-covered] and inert; both dialogs opaque (v0.20.0 minimal surfaces)', async () => {
     const a = TdModal.show({ title: 'A' });
     const b = TdModal.show({ title: 'B' });
     await opened();
@@ -263,8 +263,9 @@ describe('batch 3 — td-modal stack + states', () => {
     const csA = getComputedStyle(dialogOf(ra));
     const csB = getComputedStyle(dialogOf(rb));
     expect(csA.backdropFilter).to.equal('none');
-    expect(csA.backgroundColor).to.equal('rgb(247, 247, 248)'); // --td-glass-solid (v0.14.0 #f7f7f8)
-    expect(csB.backdropFilter).to.not.equal('none');
+    expect(csA.backgroundColor).to.equal('rgb(255, 255, 255)'); // --td-glass-solid (v0.20.0 #fff)
+    expect(csB.backdropFilter).to.equal('none'); // v0.20.0: the dialog is always opaque, never blurred
+    expect(csB.backgroundColor).to.equal('rgb(255, 255, 255)');
     TdModal.closeById(b);
     expect(ra.hasAttribute('data-covered')).to.equal(false);
     expect(ra.hasAttribute('inert')).to.equal(false);
@@ -365,7 +366,7 @@ describe('batch 3 — td-modal stack + states', () => {
     await opened();
     const cs = getComputedStyle(dialogOf(document.getElementById(id)));
     expect(cs.backdropFilter).to.equal('none');
-    expect(cs.backgroundColor).to.equal('rgb(247, 247, 248)'); // --td-glass-solid (v0.14.0)
+    expect(cs.backgroundColor).to.equal('rgb(255, 255, 255)'); // --td-glass-solid (v0.20.0)
   });
 });
 

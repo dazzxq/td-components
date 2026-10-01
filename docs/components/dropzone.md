@@ -214,8 +214,8 @@ dz.addEventListener('files-change', (e) => {
 | `--td-dropzone-thumb` | `40px` | Cỡ thumbnail |
 | `--td-dropzone-reject` | `var(--td-color-error)` | Màu dòng file bị loại |
 
-Vùng chọn là field (lớp nội dung) → nền đặc, không kính; nút "Chọn file" là nút `secondary` của kit (kính trắng,
-như `<td-button variant="secondary">`). Thanh tiến độ: token của [Progress](progress.md).
+Vùng chọn là field (lớp nội dung) → nền đặc, không kính; nút "Chọn file" là nút `secondary` của kit (nền đặc
+xám nhạt + viền mảnh, như `<td-button variant="secondary">`). Thanh tiến độ: token của [Progress](progress.md).
 
 ## Cấu trúc DOM & class
 

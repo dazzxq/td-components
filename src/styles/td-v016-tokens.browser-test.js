@@ -81,7 +81,6 @@ describe('D2 --td-accent-fill', () => {
     siteCss(':root { --td-accent: #dc2626; }');
     const expected = [220 * 0.8, 38 * 0.8, 38 * 0.8];
     expect(near(tokenColor('--td-btn-primary-bg'), expected)).to.equal(true);
-    expect(near(tokenColor('--td-btn-primary-tint'), expected)).to.equal(true);
     expect(near(rgb(getComputedStyle(activePage()).backgroundColor), expected)).to.equal(true);
   });
 

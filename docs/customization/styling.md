@@ -2,7 +2,7 @@
 
 # Styling: viết CSS của site cho td-components
 
-[theming.md](theming.md) nói về **token** (đổi màu, cỡ, kính cho cả site). Trang này nói về phần còn lại: khi token
+[theming.md](theming.md) nói về **token** (đổi màu, cỡ, bề mặt nổi cho cả site). Trang này nói về phần còn lại: khi token
 không đủ và bạn cần viết selector CSS chạm vào component. Bạn sẽ biết thứ tự cascade layer, class nào là "hợp đồng"
 ổn định để nhắm vào, trạng thái được thể hiện bằng attribute nào, cách đặt giá trị riêng cho một phần tử mà không dùng
 `style="…"`, và những override nào an toàn / dễ vỡ.
@@ -17,7 +17,7 @@ không đủ và bạn cần viết selector CSS chạm vào component. Bạn s�
 - [Nhắm một instance duy nhất](#nhắm-một-instance-duy-nhất)
 - [Override an toàn và override dễ vỡ](#override-an-toàn-và-override-dễ-vỡ)
 - [Font](#font)
-- [Dùng lại công thức kính cho phần tử của site](#dùng-lại-công-thức-kính-cho-phần-tử-của-site)
+- [Dùng lại công thức bề mặt cho phần tử của site](#dùng-lại-công-thức-bề-mặt-cho-phần-tử-của-site)
 - [Sống chung với CSS sẵn có của site (kể cả Tailwind)](#sống-chung-với-css-sẵn-có-của-site-kể-cả-tailwind)
 
 ## Không có Shadow DOM: CSS của bạn chạm được mọi thứ
@@ -131,7 +131,6 @@ JS của kit **không** bật tắt class để hiển thị trạng thái. Tr�
 | `[aria-busy="true"]` | Đang bận (nút loading, bảng loading) | `.td-btn`, `.td-table__table` |
 | `[aria-invalid="true"]` | Có lỗi | control của field / dropdown / datetime / chip-input |
 | `[aria-expanded]`, `[aria-selected]`, `[aria-checked]`, `[aria-current="page"]`, `[aria-sort]` | Trạng thái ARIA chuẩn | trigger, option, item menu, trang hiện tại, cột sắp xếp |
-| `[data-td-density="dense"]` (site đặt) | Vùng dày đặc: button giữ vẻ kính nhưng bỏ `backdrop-filter` riêng | bất kỳ phần tử cha nào |
 
 ```css
 /* Toast lỗi đang tạm dừng: viền dày hơn để người dùng biết nó không tự tắt */
@@ -238,14 +237,15 @@ TdModal.show({
 | Nhắm trạng thái qua `aria-*` / `data-state` / `[hidden]` | Nhắm id tự sinh (`#td-menu-3`, `#…-opt-4`) |
 | Class / id đặt trên host | Class thêm bằng JS vào phần tử bên trong (mất khi render lại) |
 | Đặt màu qua attribute (`color`, `active-color`) | `host.style.setProperty(...)` cho property component tự quản |
-| `data-td-glass="off"` để bỏ kính | Tự viết `backdrop-filter: none` / `background` đặc lên `.td-glass-surface` (phá fallback tương phản) |
+| `data-td-glass="off"` (hoặc token `--td-glass-blur`) để bỏ blur | Tự viết `backdrop-filter: none` / `background` đặc lên `.td-glass-surface` (phá fallback tương phản) |
 | Đổi `display` của host (`td-button { display: block }`) | Đổi `position` / `z-index` của lớp nổi (modal, menu, toast) — dùng bộ `--td-z-*` thay vào |
 
 Một số điều **không nên** làm dù CSS cho phép:
 
 - Đặt `opacity` lên nút / control để "làm mờ": kit dùng màu trạng thái đặc cho disabled; `opacity` làm tụt tương phản
   của chữ.
-- Thêm `backdrop-filter` cho phần tử **nằm trong** bề mặt kính (menu, modal): "kính trên kính" vừa xấu vừa tốn GPU.
+- Thêm `backdrop-filter` cho phần tử **nằm trong** bề mặt nổi (menu, modal) hoặc cho control: blur chỉ dành cho popup
+  nhỏ, chồng blur vừa xấu vừa tốn GPU.
 - Ẩn vòng focus (`outline: none` / `box-shadow: none` trên `:focus-visible`).
 
 ## Font
@@ -266,18 +266,19 @@ font trong `font-src` (và `style-src` nếu dùng stylesheet của Google Fonts
 
 Nên giữ font có đủ dấu tiếng Việt (nhãn mặc định của kit là tiếng Việt).
 
-## Dùng lại công thức kính cho phần tử của site
+## Dùng lại công thức bề mặt cho phần tử của site
 
-Các class công thức kính trong `td.css` là public, dùng được cho phần tử nổi của site (thanh công cụ, nút scroll-top):
+Các class công thức bề mặt trong `td.css` là public (tên còn chữ `glass` vì là API cũ; từ 0.20.0 là **minimal
+surfaces**: nền + viền mảnh + một shadow mềm, blur 12px nhẹ), dùng được cho phần tử nổi của site (thanh công cụ, dock):
 
 | Class | Dùng khi |
 |---|---|
-| `.td-glass-surface` | Kính Regular (mặc định) |
-| `.td-glass-surface--strong` | Bề mặt có chữ |
-| `.td-glass-surface--lg` | Bề mặt lớn: blur dày hơn, bóng sâu hơn |
-| `.td-glass-surface--clear` | Clear: **chỉ** trên ảnh / video, kèm lớp dim |
-| `.td-glass-dim` / `.td-glass-dim--text` | Lớp làm tối sau Clear (icon / chữ) |
-| `.td-glass-tint` | **Một** hành động chính trên thanh nổi (capsule, cao ≥ `--td-touch-min`) |
+| `.td-glass-surface` | Bề mặt nổi mặc định (nền 90 % + blur 12px) |
+| `.td-glass-surface--strong` | Popup nhỏ có chữ (nền 94 %) |
+| `.td-glass-surface--lg` | Bóng sâu hơn (`--td-glass-shadow-lg`) |
+| `.td-glass-surface--clear` | Thanh tối trên ảnh / video (như lightbox) |
+| `.td-glass-dim` / `.td-glass-dim--text` | Deprecated 0.20.0: không còn vẽ gì |
+| `.td-glass-tint` | **Một** hành động chính trên thanh nổi (capsule đặc, cao ≥ `--td-touch-min`) |
 
 ```html
 <nav class="site-dock td-glass-surface td-glass-surface--strong" aria-label="Công cụ">
@@ -286,11 +287,11 @@ Các class công thức kính trong `td.css` là public, dùng được cho ph�
 </nav>
 ```
 
-- Không tự viết `backdrop-filter` / nền cho phần tử kính: thêm class công thức, để kit lo fallback trợ năng.
-- Button nằm trong `.td-glass-surface` tự bỏ `backdrop-filter` riêng (không kính trên kính).
-- Một bề mặt có thể đặt `--td-glass-wash` (một gradient) để phủ màu lên nền kính (toast dùng cách này cho màu theo loại).
-- Luật đầy đủ (khi nào được dùng kính) nằm trong tài liệu nội bộ `docs/internal/design/liquid-glass.md`; tóm tắt: kính
-  chỉ cho tầng điều khiển nổi, không cho thẻ / hàng bảng / ô nhập / nền trang.
+- Không tự viết `backdrop-filter` / nền cho phần tử nổi: thêm class công thức, để kit lo fallback trợ năng.
+- Button luôn là màu đặc, không blur (ở đâu cũng vậy).
+- `--td-glass-wash` đã bỏ ở 0.20.0 (toast trung tính, màu trạng thái ở icon).
+- Luật đầy đủ nằm trong tài liệu nội bộ `docs/internal/design/liquid-glass.md` ("Minimal surfaces"); tóm tắt: control
+  đặc, blur chỉ cho popup nhỏ, không gradient / viền sáng / glow / scale trang trí.
 
 ## Sống chung với CSS sẵn có của site (kể cả Tailwind)
 

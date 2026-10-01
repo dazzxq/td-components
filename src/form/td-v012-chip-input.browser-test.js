@@ -286,7 +286,10 @@ describe('v0.12 td-chip-input — combobox keyboard (APG editable, list autocomp
     const el = ci();
     const changes = [];
     el.addEventListener('change', (e) => changes.push(e));
+    // ABOVE the field (the suggestions open below it and would cover a button placed after it — v0.20.0 dropped the
+    // pop-in scale that used to leave the button's left edge uncovered during the first frames)
     const outside = mount('<button type="button" class="test-outside">ngoài</button>', document.body);
+    document.body.prepend(outside);
     inp(el).focus();
     await sendKeys({ type: 'p' });
     expect(isOpen(el)).to.equal(true);

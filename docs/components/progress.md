@@ -87,7 +87,7 @@ Không có event.
 | `--td-progress-indeterminate-w` | `40%` | Độ dài đoạn chạy (indeterminate) |
 | `--td-progress-indeterminate-dur` | `1.4s` | Thời gian một lượt chạy |
 
-Thanh thuộc lớp nội dung → nền và màu đặc, không kính (luật Liquid Glass).
+Thanh thuộc lớp nội dung → nền và màu đặc, không blur ([minimal surfaces](../internal/design/liquid-glass.md)).
 
 ## Cấu trúc DOM & class
 

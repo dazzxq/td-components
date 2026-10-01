@@ -1,6 +1,7 @@
 /*
- * TdLoading overlay (src/feedback/td-loading.js). Floating + text-bearing → Regular STRONG glass card over a
- * plain scrim (liquid-glass R12; scrim not blurred). State: [hidden] · [data-state="open"] (fade).
+ * TdLoading overlay (src/feedback/td-loading.js). v0.20.0 minimal surfaces: OPAQUE card (glass.css opaque group —
+ * --td-glass-solid, thin border, soft shadow, no blur) over a plain scrim (not blurred).
+ * State: [hidden] · [data-state="open"] (fade).
  */
 @layer td.component {
 	.td-loading {
