@@ -204,7 +204,7 @@ describe('v0.14 tooltip — behaviour (dwp)', () => {
 });
 
 describe('v0.14 tooltip — visuals', () => {
-  it('dwp metrics: 14px text, line-height 1.4, padding .4rem .6rem, left-aligned, max 18rem, normal weight', () => {
+  it('dwp metrics: 14px text, line-height 1.4, padding .4rem .6rem, centred (v0.21.0), max 18rem, normal weight', () => {
     const b = at(mount('<button type="button" data-tooltip="Chữ">x</button>'), 300, 200);
     tdTooltip.show(b);
     const cs = getComputedStyle(tip());
@@ -212,7 +212,7 @@ describe('v0.14 tooltip — visuals', () => {
     expect(parseFloat(cs.lineHeight)).to.be.closeTo(19.6, 0.1);
     expect(cs.paddingTop).to.equal('6.4px');
     expect(cs.paddingLeft).to.equal('9.6px');
-    expect(['start', 'left']).to.include(cs.textAlign);
+    expect(cs.textAlign).to.equal('center'); // v0.21.0: --td-tooltip-text-align default
     expect(cs.maxWidth).to.equal('288px');
     expect(cs.fontWeight).to.equal('400');
     expect(cs.overflowWrap).to.equal('break-word');

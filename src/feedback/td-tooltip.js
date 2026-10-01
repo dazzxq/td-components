@@ -10,13 +10,14 @@ import { safeColor } from '../utils/css-safe.js';
  * Declarative API: `data-tooltip`, `data-tooltip-position="top|bottom|left|right"` (default top; flips to the
  * opposite side when it does not fit, then clamps into the viewport), `data-tooltip-color` (solid custom chip;
  * validated with safeColor), `data-tooltip-text-color` (only with `data-tooltip-color`; default = black/white by WCAG
- * contrast). dwp aliases (dwp markup works unchanged): `data-dwp-tooltip` (text), `data-tooltip-pos` /
+ * contrast), `data-tooltip-align="start|center|end"` (v0.21.0: alignment of wrapped text; default
+ * `--td-tooltip-text-align: center`; unknown values ignored). dwp aliases (dwp markup works unchanged): `data-dwp-tooltip` (text), `data-tooltip-pos` /
  * `data-dwp-tooltip-pos` (side). When both spellings are present the td one (`data-tooltip`,
  * `data-tooltip-position`) wins — a present but empty `data-tooltip` therefore disables a `data-dwp-tooltip`.
  *
  * DOM contract (one element, portaled to <body>):
  *   <div id="td-tooltip" class="td-tooltip td-glass-surface td-glass-surface--strong" role="tooltip" hidden
- *        [data-state="open"] data-placement="top|bottom|left|right" [data-custom]>
+ *        [data-state="open"] data-placement="top|bottom|left|right" [data-custom] [data-align="start|center|end"]>
  *     <span class="td-tooltip__content">{text}</span>
  *   </div>
  *   The arrow is `.td-tooltip::after` (same element → same fill/edge, no own backdrop-filter). Geometry via CSSOM:
@@ -44,6 +45,8 @@ import { safeColor } from '../utils/css-safe.js';
 
 const TIP_ID = 'td-tooltip';
 const HIDE_GRACE_MS = 100;
+/** v0.21.0: `data-tooltip-align` values mirrored onto the chip as `data-align` (anything else → token default). */
+const ALIGNS = ['start', 'center', 'end'];
 const EDGE = 8;
 /** Trigger selector: td attribute + dwp alias. */
 const TRIGGER = '[data-tooltip], [data-dwp-tooltip]';
@@ -567,6 +570,9 @@ export class TdTooltip {
             tip.style.removeProperty('--td-tooltip-fg');
             tip.removeAttribute('data-custom');
         }
+        const align = el.getAttribute('data-tooltip-align');
+        if (ALIGNS.includes(align)) tip.setAttribute('data-align', align);
+        else tip.removeAttribute('data-align');
         if (el === this.currentElement && this._describedEl === el) {
             this._unlink();
             this._link(el, text);

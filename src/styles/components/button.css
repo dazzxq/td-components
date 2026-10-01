@@ -1,8 +1,10 @@
 /*
  * td-button (src/form/td-button.js). v0.20.0 MINIMAL SURFACES (docs/internal/design/liquid-glass.md): every variant
- * with a fill is a SOLID colour (--td-btn-{v}-bg) + one soft shadow (--td-btn-lift); hover = a darker SOLID fill
- * (secondary: --td-btn-secondary-hover; others: color-mix() with 8 % black — engines without color-mix() keep the
+ * with a fill is a SOLID colour (--td-btn-{v}-bg) + one soft shadow (--td-btn-lift); hover = another SOLID fill
+ * (--td-btn-{v}-hover; -tint alias / custom colours: color-mix() with 8 % black — engines without color-mix() keep the
  * resting fill). No blur, film, sheen, rim, hairline, glow or press scale. Ghost and disabled have no shadow.
+ * v0.21.0: primary = black (dark theme: inverted), success / danger / warning / info = pastel fill + same-hue ink +
+ * -border; every filled variant hovers to its --td-btn-{v}-hover token.
  * Compatibility alias (one cycle): a site's --td-btn-{primary,success,danger,info,warning}-tint still becomes the fill.
  * Disabled = explicit opaque state colours (never element opacity). Increased contrast / forced colours drop the
  * shadow through the private --_td-btn-lift (glass.css fallbacks).
@@ -63,11 +65,15 @@
 	.td-btn--lg { min-height: 3rem; padding: 0 1.6rem; font-size: var(--td-text-base); }
 	.td-btn--full { display: flex; width: 100%; }
 
-	/* Solid variants. The -tint fallback is the v0.20.0 compatibility alias (sites that themed the glass tint). */
+	/* Solid variants: fill -bg, ink -fg, edge -border, hover -hover (v0.21.0: primary black, semantic pastel).
+	   -tint = the v0.20.0 compatibility alias: when a site sets it, it becomes the fill AND the edge (--_td-btn-tint is
+	   guaranteed-invalid when the alias is unset, so var() falls through to the kit token) and the hover is 8 % darker. */
 	.td-btn--primary {
+		--_td-btn-tint: var(--td-btn-primary-tint);
 		--td-btn-bg-v: var(--td-btn-primary-tint, var(--td-btn-primary-bg));
 		--td-btn-fg-v: var(--td-btn-primary-fg);
-		--td-btn-border-v: transparent;
+		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-primary-border));
+		--_td-btn-variant-hover: var(--td-btn-primary-hover);
 	}
 
 	.td-btn--secondary {
@@ -76,10 +82,37 @@
 		--td-btn-border-v: var(--td-btn-secondary-border);
 	}
 
-	.td-btn--success { --td-btn-bg-v: var(--td-btn-success-tint, var(--td-btn-success-bg)); --td-btn-fg-v: var(--td-btn-success-fg); --td-btn-border-v: transparent; }
-	.td-btn--danger { --td-btn-bg-v: var(--td-btn-danger-tint, var(--td-btn-danger-bg)); --td-btn-fg-v: var(--td-btn-danger-fg); --td-btn-border-v: transparent; }
-	.td-btn--warning { --td-btn-bg-v: var(--td-btn-warning-tint, var(--td-btn-warning-bg)); --td-btn-fg-v: var(--td-btn-warning-fg); --td-btn-border-v: transparent; }
-	.td-btn--info { --td-btn-bg-v: var(--td-btn-info-tint, var(--td-btn-info-bg)); --td-btn-fg-v: var(--td-btn-info-fg); --td-btn-border-v: transparent; }
+	.td-btn--success {
+		--_td-btn-tint: var(--td-btn-success-tint);
+		--td-btn-bg-v: var(--td-btn-success-tint, var(--td-btn-success-bg));
+		--td-btn-fg-v: var(--td-btn-success-fg);
+		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-success-border));
+		--_td-btn-variant-hover: var(--td-btn-success-hover);
+	}
+
+	.td-btn--danger {
+		--_td-btn-tint: var(--td-btn-danger-tint);
+		--td-btn-bg-v: var(--td-btn-danger-tint, var(--td-btn-danger-bg));
+		--td-btn-fg-v: var(--td-btn-danger-fg);
+		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-danger-border));
+		--_td-btn-variant-hover: var(--td-btn-danger-hover);
+	}
+
+	.td-btn--warning {
+		--_td-btn-tint: var(--td-btn-warning-tint);
+		--td-btn-bg-v: var(--td-btn-warning-tint, var(--td-btn-warning-bg));
+		--td-btn-fg-v: var(--td-btn-warning-fg);
+		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-warning-border));
+		--_td-btn-variant-hover: var(--td-btn-warning-hover);
+	}
+
+	.td-btn--info {
+		--_td-btn-tint: var(--td-btn-info-tint);
+		--td-btn-bg-v: var(--td-btn-info-tint, var(--td-btn-info-bg));
+		--td-btn-fg-v: var(--td-btn-info-fg);
+		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-info-border));
+		--_td-btn-variant-hover: var(--td-btn-info-hover);
+	}
 
 	/* v0.17.0 ghost: no fill, no border, no shadow — just the accent label on the page background.
 	   Hover = a soft fill (--td-btn-ghost-hover-bg); focus ring as every button. */
@@ -98,12 +131,21 @@
 		--td-btn-border-v: var(--td-btn-bg);
 	}
 
-	/* Hover = a darker SOLID fill, resolved per element (it follows the variant, the -tint alias and a custom colour).
-	   Without color-mix() the resting fill stays. Never while busy / disabled. */
+	/* Hover = a SOLID fill resolved per element. Variants with a fill read their -hover token (v0.21.0); the -tint
+	   alias and custom colours get the fill 8 % darker (color-mix). Without color-mix(): a custom button keeps its
+	   resting fill, a tinted one falls back to the variant -hover token. Never while busy / disabled. */
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
 		.td-btn {
 			--td-btn-hover-v: color-mix(in srgb, var(--td-btn-bg-v) 92%, #000);
 		}
+
+		.td-btn:is(.td-btn--primary, .td-btn--success, .td-btn--danger, .td-btn--warning, .td-btn--info):not(.td-btn--custom) {
+			--_td-btn-tint-hover: color-mix(in srgb, var(--_td-btn-tint) 92%, #000); /* invalid when no -tint */
+		}
+	}
+
+	.td-btn:is(.td-btn--primary, .td-btn--success, .td-btn--danger, .td-btn--warning, .td-btn--info):not(.td-btn--custom) {
+		--td-btn-hover-v: var(--_td-btn-tint-hover, var(--_td-btn-variant-hover));
 	}
 
 	.td-btn--secondary:not(.td-btn--custom) {
