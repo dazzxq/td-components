@@ -12,7 +12,9 @@
  *       surface (private aliases are never declared on :root);
  *   (B2) v0.20.0 minimal surfaces, per selector of the plan's mapping table: opaque group (modal dialog, loading
  *       card, tooltip, scroll-top) and every button (incl. --custom) have no backdrop-filter and a solid fill; the
- *       small popups (menu, dropdown, chip-input suggestions, hovercard, toast) blur(12px) on 94 %; lightbox
+ *       small popups (menu, dropdown, chip-input suggestions, hovercard) blur(12px) on 94 %; v0.21.0 the toast is a
+ *       SOLID pastel pill (no backdrop-filter, no icon); the modal dialog's motion tokens (260 ms ease-in-out entry
+ *       from translateY(12px) scale(0.98); reduced motion → 120 ms opacity only); lightbox
  *       toolbar / counter blur(12px) on dark 88 %; no surface or button paints a background-image (sheen / wash);
  *       the -tint alias still colours its button; every fallback still forces them solid / unfiltered;
  *   (C) fallbacks: html[data-td-glass="off"] → opaque --td-glass-solid, no backdrop-filter, on
@@ -66,7 +68,7 @@ const BODY = `
   <div class="td-dropdown__menu td-glass-surface td-glass-surface--strong" id="s-dropdown">d</div>
   <div class="td-chip-input__menu td-glass-surface td-glass-surface--strong" id="s-chip">c</div>
   <div class="td-hovercard td-glass-surface td-glass-surface--strong" id="s-hovercard">h</div>
-  <div class="td-toast td-toast--success td-glass-surface td-glass-surface--strong" id="s-toast">t</div>
+  <div class="td-toast td-toast--success" data-state="open" id="s-toast"><span class="td-toast__type td-sr-only">Thành công: </span><span class="td-toast__message">t</span></div>
   <div class="td-lightbox__toolbar td-glass-surface td-glass-surface--clear" id="s-lbtoolbar">b</div>
   <div class="td-lightbox__counter td-glass-surface td-glass-surface--clear" id="s-lbcounter">1/2</div>
   <button class="td-btn td-btn--primary" id="b-primary" type="button">b</button>
@@ -80,10 +82,11 @@ const BODY = `
 </div>`;
 
 const OPAQUE = ['s-modal', 's-loading', 's-tooltip', 's-scrolltop'];
-const BLURRED = ['s-menu', 's-dropdown', 's-chip', 's-hovercard', 's-toast'];
+const BLURRED = ['s-menu', 's-dropdown', 's-chip', 's-hovercard'];
+const TOASTS = ['s-toast']; // v0.21.0: solid pastel, own fallbacks (no glass recipe)
 const CLEAR = ['s-lbtoolbar', 's-lbcounter'];
 const BUTTONS = ['b-primary', 'b-secondary', 'b-success', 'b-danger', 'b-info', 'b-warning', 'b-custom', 'b-alias'];
-const SURFACES = [...OPAQUE, ...BLURRED, ...CLEAR];
+const SURFACES = [...OPAQUE, ...BLURRED, ...TOASTS, ...CLEAR];
 
 const PROFILES = {
   self: { csp: "default-src 'self'; style-src 'self'; script-src 'self'", nonce: '' },
@@ -104,8 +107,8 @@ function lightboxHtml(profile) {
     `</head><body><p>page</p></body></html>`;
 }
 
-/** Floating layer (v0.20.0 minimal surfaces): popups blurred, modal opaque, the toast keeps its surface over a modal
- *  (no "covered" solid override any more), everything opaque with glass off. */
+/** Floating layer (v0.20.0 minimal surfaces): popups blurred, modal opaque, the toast (v0.21.0 solid pastel, no blur)
+ *  keeps its surface over a modal (no "covered" solid override any more), everything opaque with glass off. */
 function floatingChecks(tag, r, mode) {
   const opaque = (bg) => (rgba(bg) || [0, 0, 0, 0])[3] === 1;
   for (const [k, v] of [['light', r.sticky], ['dark', r.stickyDark]]) {
@@ -116,7 +119,8 @@ function floatingChecks(tag, r, mode) {
     check(`${tag} ${mode} glass off → ${k} opaque, no filter`, noFilter(off.bf) && opaque(off.bg), JSON.stringify(off));
   }
   check(`${tag} ${mode} modal dialog is opaque, no blur`, noFilter(r.modalGlass.bf) && opaque(r.modalGlass.bg), JSON.stringify(r.modalGlass));
-  check(`${tag} ${mode} toast is blurred (control)`, !noFilter(r.toastAlone.bf), r.toastAlone.bf);
+  check(`${tag} ${mode} toast is solid, no blur (v0.21.0)`, noFilter(r.toastAlone.bf) && opaque(r.toastAlone.bg), JSON.stringify(r.toastAlone));
+  check(`${tag} ${mode} toast renders no icon node`, r.toastIcon === false, String(r.toastIcon));
   check(`${tag} ${mode} toast over modal keeps its surface`, r.toastOverModal.bf === r.toastAlone.bf && r.toastOverModal.bg === r.toastAlone.bg, JSON.stringify(r.toastOverModal));
   check(`${tag} ${mode} glass off → modal opaque, no filter`, noFilter(r.modalOff.bf) && opaque(r.modalOff.bg), JSON.stringify(r.modalOff));
   check(`${tag} ${mode} glass off → toast opaque, no filter`, noFilter(r.toastOff.bf) && opaque(r.toastOff.bg), JSON.stringify(r.toastOff));
@@ -179,6 +183,9 @@ async function read(page) {
         color: cs.color,
         image: cs.backgroundImage,
         border: cs.borderTopColor,
+        transform: cs.transform,
+        tdur: cs.transitionDuration,
+        tease: cs.transitionTimingFunction,
       };
     }
     const rs = getComputedStyle(document.documentElement);
@@ -220,6 +227,17 @@ function materialChecks(tag, s) {
     check(`${tag} ${id} blur(12px)`, BLUR12.test(s[id].bf), s[id].bf);
     check(`${tag} ${id} bg 94 %`, sameColor(s[id].bg, [255, 255, 255, 0.94]), s[id].bg);
   }
+  for (const id of TOASTS) {
+    check(`${tag} ${id} no backdrop-filter (v0.21.0)`, noFilter(s[id].bf), s[id].bf);
+    check(`${tag} ${id} pastel success fill`, sameColor(s[id].bg, [220, 252, 231, 1]), s[id].bg);
+    check(`${tag} ${id} pastel success ink`, sameColor(s[id].color, [20, 83, 45, 1]), s[id].color);
+    check(`${tag} ${id} pastel success border`, sameColor(s[id].border, [187, 247, 208, 1]), s[id].border);
+  }
+  // v0.21.0 P5: modal motion tokens (the fixture dialog sits in the "opening" pose: no data-state="open" ancestor)
+  const m = s['s-modal'];
+  check(`${tag} modal enter duration = --td-modal-enter-dur`, m.tdur === '0.26s, 0.26s', m.tdur);
+  check(`${tag} modal ease = --td-modal-ease`, m.tease === 'cubic-bezier(0.4, 0, 0.2, 1), cubic-bezier(0.4, 0, 0.2, 1)', m.tease);
+  check(`${tag} modal entry pose translateY(12px) scale(0.98)`, m.transform === 'matrix(0.98, 0, 0, 0.98, 0, 12)', m.transform);
   for (const id of CLEAR) {
     check(`${tag} ${id} blur(12px)`, BLUR12.test(s[id].bf), s[id].bf);
     check(`${tag} ${id} dark 88 %`, sameColor(s[id].bg, [20, 20, 22, 0.88]), s[id].bg);
@@ -322,7 +340,8 @@ async function runEngine(name, launcher) {
         await page.evaluate(() => document.documentElement.setAttribute('data-td-theme', 'dark'));
         const d = await read(page);
         check(`${tag} dark strong bg`, sameColor(d.strong.bg, [28, 28, 30, 0.94]), d.strong.bg);
-        check(`${tag} dark toast bg`, sameColor(d['s-toast'].bg, [28, 28, 30, 0.94]), d['s-toast'].bg);
+        check(`${tag} dark toast solid pastel (not the light fill)`, opaqueBg(d['s-toast'].bg) && !sameColor(d['s-toast'].bg, [220, 252, 231, 1]), d['s-toast'].bg);
+        check(`${tag} dark toast no filter`, noFilter(d['s-toast'].bf), d['s-toast'].bf);
         check(`${tag} dark opaque surfaces keep the site solid`, sameColor(d['s-modal'].bg, [9, 9, 9, 1]), d['s-modal'].bg);
         await context.close();
       }
@@ -343,6 +362,7 @@ async function runEngine(name, launcher) {
         check(`${tag} reduced-motion ease = linear`, s.root.ease === 'linear', s.root.ease);
         // The shadow token must stay a real shadow (regression: it was once overwritten with `1`).
         check(`${tag} reduced-motion surface keeps its shadow`, /rgb/.test(s.reg.shadow), s.reg.shadow);
+        check(`${tag} reduced-motion modal fade only (120 ms, no transform)`, s['s-modal'].tdur === '0.12s' && s['s-modal'].transform === 'none', JSON.stringify([s['s-modal'].tdur, s['s-modal'].transform]));
         await context.close();
       }
 
@@ -354,7 +374,7 @@ async function runEngine(name, launcher) {
           check(`${tag} forced-colors ${id} no filter`, noFilter(s[id].bf), s[id].bf);
           check(`${tag} forced-colors ${id} no shadow`, s[id].shadow === 'none', s[id].shadow);
         }
-        for (const id of [...OPAQUE, ...BLURRED, 's-tooltip-custom']) {
+        for (const id of [...OPAQUE, ...BLURRED, ...TOASTS, 's-tooltip-custom']) {
           check(`${tag} forced-colors ${id} bg = Canvas`, s[id].bg === s.refCanvas.bg, `${s[id].bg} vs ${s.refCanvas.bg}`);
         }
         check(`${tag} forced-colors custom tooltip fg = CanvasText`, s['s-tooltip-custom'].color === s.refCanvas.color, `${s['s-tooltip-custom'].color} vs ${s.refCanvas.color}`);
@@ -389,6 +409,7 @@ async function runEngine(name, launcher) {
               check(`${tag} contrast-more ${id} no shadow`, noShadow(s[id].shadow), s[id].shadow);
             }
             for (const id of BUTTONS) check(`${tag} contrast-more ${id} no shadow`, noShadow(s[id].shadow), s[id].shadow);
+            check(`${tag} contrast-more toast border = ink`, s['s-toast'].border === s['s-toast'].color, `${s['s-toast'].border} vs ${s['s-toast'].color}`);
             // v0.20.0 review: the custom-colour tooltip follows increased contrast too (surface, text ink, visible edge)
             const ct = s['s-tooltip-custom'];
             check(`${tag} contrast-more custom tooltip surface`, sameColor(ct.bg, [255, 255, 255, 1]), ct.bg);

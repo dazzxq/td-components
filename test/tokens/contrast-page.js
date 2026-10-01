@@ -1,4 +1,4 @@
-// Loaded by contrast.spec.mjs: buttons + toasts rendered over a backdrop (v0.20.0: solid buttons, neutral toasts).
+// Loaded by contrast.spec.mjs: buttons + toasts rendered over a backdrop (v0.20.0 solid buttons; v0.21.0 pastel toasts).
 import '/src/form/td-button.js';
 import { TdToast } from '/src/feedback/td-toast.js';
 import '/src/feedback/td-alert.js';
@@ -91,7 +91,8 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     await new Promise((r) => setTimeout(r, 450));
     el = document.querySelector('#td-toast-container .td-toast');
     // pin the toast over the stage area so it sits on the backdrop
-    parts = { label: el.querySelector('.td-toast__message'), icon: el.querySelector('.td-toast__icon'), close: el.querySelector('.td-toast__close') };
+    // v0.21.0: no icon; the close glyph is only shown on keyboard focus but is measured anyway (same ink, same fill)
+    parts = { label: el.querySelector('.td-toast__message'), close: el.querySelector('.td-toast__close') };
   }
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   await new Promise((r) => setTimeout(r, 250)); // transitions settle

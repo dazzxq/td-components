@@ -118,10 +118,10 @@ export const Showcase = {
       menu.appendChild(it);
     }
     menuCol.appendChild(menu);
-    const toastCol = col('Toast (nền trung tính)');
+    const toastCol = col('Toast (pastel theo loại)');
     for (const [t, msg] of [['success', 'Đã lưu thay đổi'], ['info', 'Có 3 bình luận mới'], ['warning', 'Bản nháp chưa lưu'], ['error', 'Không kết nối được máy chủ']]) {
       const el = document.createElement('div');
-      el.className = `td-toast td-toast--${t} td-glass-surface td-glass-surface--strong fd-show__toast`;
+      el.className = `td-toast td-toast--${t} fd-show__toast`;
       el.setAttribute('data-state', 'open');
       const m = document.createElement('span');
       m.className = 'td-toast__message';

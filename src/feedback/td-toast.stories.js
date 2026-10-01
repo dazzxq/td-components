@@ -30,14 +30,14 @@ function buttons(items, note = '') {
   return root;
 }
 
-/** Neutral small-popup toasts (94 % + blur), top-right; the variant is the coloured status icon (no coloured fills). */
+/** v0.21.0 dcms-style pills: pastel fill per type, no icon, no visible close button (keyboard: Tab reveals it). */
 export const AllVariants = {
   render: () => buttons([
     ['Thành công', 'secondary', () => TdToast.success('Lưu thành công!')],
     ['Lỗi', 'secondary', () => TdToast.error('Có lỗi xảy ra, vui lòng thử lại.')],
     ['Cảnh báo', 'secondary', () => TdToast.warning('Cảnh báo: dữ liệu chưa được lưu!')],
     ['Thông tin', 'secondary', () => TdToast.info('Bạn có 3 thông báo mới.')],
-  ], 'Di chuột hoặc Tab vào thông báo để tạm dừng hẹn giờ. Mỗi thông báo có nút “Đóng”.'),
+  ], 'Bấm vào thông báo để đóng. Di chuột hoặc Tab vào thông báo để tạm dừng hẹn giờ; nút “Đóng” chỉ hiện khi Tab tới.'),
 };
 
 export const AutoDismiss = {

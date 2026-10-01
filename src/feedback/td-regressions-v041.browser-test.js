@@ -32,7 +32,7 @@ describe('B1 — toast FIFO eviction', () => {
     }
     expect(TdToast._activeToasts.length).to.equal(TdToast.MAX_VISIBLE);
     await new Promise((r) => requestAnimationFrame(r)); // text is set one frame after insertion (D12)
-    expect(TdToast._activeToasts[0].textContent.trim()).to.equal('t3');
+    expect(TdToast._activeToasts[0].querySelector('.td-toast__message').textContent).to.equal('t3'); // v0.21.0: SR prefix precedes it
     TdToast._activeToasts.slice().forEach((t) => t._removeToast());
     expect(TdToast._activeToasts.length).to.equal(0);
   });

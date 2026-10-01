@@ -363,7 +363,7 @@
  * (markup and public API unchanged):
  *
  *   .td-glass-surface            translucent 90 % + blur (default recipe)
- *   .td-glass-surface--strong    small popups: 94 % + blur (menu, dropdown, chip-input suggestions, hovercard, toast)
+ *   .td-glass-surface--strong    small popups: 94 % + blur (menu, dropdown, chip-input suggestions, hovercard; the toast left in v0.21.0)
  *   .td-glass-surface--lg        deeper shadow only (--td-glass-shadow-lg)
  *   .td-glass-surface--clear     lightbox bars: dark 88 % + blur, never themed
  *   OPAQUE group (no blur): .td-modal__dialog, .td-loading__card, .td-tooltip, .td-scroll-top → --td-glass-solid
@@ -2748,13 +2748,20 @@
 
 /* ---- src/styles/components/toast.css ---- */
 /*
- * td-toast (src/feedback/td-toast.js). v0.20.0 minimal surfaces: a NEUTRAL small popup (.td-glass-surface--strong:
- * 94 % + blur(12px) + thin border + soft shadow); the semantic colour is carried by the registry status ICON only
- * (an icon, so colour is never the only cue) — no wash, no tinted border. Top-right by default (D11) — a site moves
- * the stack with tokens only, e.g. 135/dwp bottom-centre:
+ * td-toast (src/feedback/td-toast.js). v0.21.0 dcms style: a compact pill (12px radius, 12×16 padding, 14px text) with
+ * a PASTEL fill per type + dark ink of the same hue + a `-border` hairline + one soft shadow (--td-glass-shadow).
+ * Solid: no blur, no glass recipe (the toast no longer carries .td-glass-surface). No visible icon and no visible close
+ * button: the type is announced through a screen-reader-only prefix (.td-toast__type.td-sr-only, TdToast.labels.types)
+ * and the close button stays in the DOM, visually hidden until it receives KEYBOARD focus (:focus-visible) — so a
+ * sticky toast (duration 0) is still dismissable from the keyboard. Click anywhere on a toast dismisses it.
+ * Colours: --td-toast-{success,error,warning,info}-{bg,fg,border} read the shared pastel tokens
+ * --td-pastel-{success,danger,warning,info}-{bg,fg,border} (tokens.css / theme-dark.css), with the same literals as
+ * fallbacks. A site wanting dcms' saturated look sets e.g. --td-toast-success-bg: #22c55e; --td-toast-success-fg: #fff.
+ * Top-right by default (D11) — a site moves the stack with tokens only, e.g. 135/dwp bottom-centre:
  *   :root { --td-toast-top: auto; --td-toast-bottom: 1.5rem; --td-toast-inline-end: auto;
  *           --td-toast-inline-start: 50%; --td-toast-shift: -50%; --td-toast-align: center; }
- * State: data-state="entering|open|closing" (fade + slide; reduced motion → opacity only) · [data-paused].
+ * Motion: enter slides in from the inline end (translateX(1rem) → 0) + fade 200 ms ease-out; exit reverses in 180 ms.
+ * State: data-state="entering|open|closing" · [data-paused]. Reduced motion → opacity only.
  */
 @layer td.tokens {
 	:root {
@@ -2766,28 +2773,57 @@
 		--td-toast-align: flex-end;
 		--td-toast-gap: var(--td-space-xs);
 		--td-toast-max-w: 28rem;
-		/* one-line toast = 44px tall → 22px radius is a capsule (R9); wrapped text keeps a soft rounded box */
-		--td-toast-radius: 22px;
+		--td-toast-radius: 12px;
+		--td-toast-pad-y: 0.75rem;
+		--td-toast-pad-x: 1rem;
+		--td-toast-font-size: var(--td-text-sm);
+		--td-toast-shadow: var(--td-glass-shadow);
+		--td-toast-enter-shift: 1rem;
+		--td-toast-enter-dur: 200ms;
+		--td-toast-exit-dur: 180ms;
+		/* pastel per type (P1 tokens; literals = the light pastel values, used until/unless the shared tokens exist) */
+		--td-toast-success-bg: var(--td-pastel-success-bg, #dcfce7);
+		--td-toast-success-fg: var(--td-pastel-success-fg, #14532d);
+		--td-toast-success-border: var(--td-pastel-success-border, #bbf7d0);
+		--td-toast-error-bg: var(--td-pastel-danger-bg, #fee2e2);
+		--td-toast-error-fg: var(--td-pastel-danger-fg, #7f1d1d);
+		--td-toast-error-border: var(--td-pastel-danger-border, #fecaca);
+		--td-toast-warning-bg: var(--td-pastel-warning-bg, #fef3c7);
+		--td-toast-warning-fg: var(--td-pastel-warning-fg, #78350f);
+		--td-toast-warning-border: var(--td-pastel-warning-border, #fde68a);
+		--td-toast-info-bg: var(--td-pastel-info-bg, #dbeafe);
+		--td-toast-info-fg: var(--td-pastel-info-fg, #1e3a8a);
+		--td-toast-info-border: var(--td-pastel-info-border, #bfdbfe);
+		--td-toast-close-hover: rgb(0 0 0 / 8%);
+		/* deprecated (no effect): v0.20.0 neutral surface + status icons, v0.19 washes */
 		--td-toast-fg: var(--td-color-text);
 		--td-toast-close-fg: var(--td-toast-fg);
-		/* status icons = the semantic colour (≥ 3:1 on the neutral surface over any backdrop; dark theme remaps the
-		   --td-color-* status colours to light tones) */
+		--td-toast-glass-bg: var(--td-glass-bg-strong);
 		--td-toast-info-icon: var(--td-color-info);
 		--td-toast-success-icon: var(--td-color-success);
 		--td-toast-warning-icon: var(--td-color-warning);
 		--td-toast-error-icon: var(--td-color-error);
-		--td-toast-close-hover: var(--td-color-hover-strong);
-		--td-toast-glass-bg: var(--td-glass-bg-strong); /* the toast fill (a site may still tune it) */
-		/* deprecated v0.20.0 — still declared, no effect: the status wash and the tinted error border */
-		--td-toast-error-border: transparent;
 		--td-toast-success-wash: transparent;
 		--td-toast-info-wash: transparent;
 		--td-toast-warning-wash: transparent;
 		--td-toast-error-wash: transparent;
-		--td-toast-enter-shift: 0.5rem;
 	}
 
+	/* Dark: solid pastel = the status hue ~18 % over the dark surface, border ~30 %, ink ~200 (fallback literals). */
 	:root[data-td-theme="dark"] {
+		--td-toast-success-bg: var(--td-pastel-success-bg, #1d3a2a);
+		--td-toast-success-fg: var(--td-pastel-success-fg, #bbf7d0);
+		--td-toast-success-border: var(--td-pastel-success-border, #1e4f31);
+		--td-toast-error-bg: var(--td-pastel-danger-bg, #422325);
+		--td-toast-error-fg: var(--td-pastel-danger-fg, #fecaca);
+		--td-toast-error-border: var(--td-pastel-danger-border, #5b2829);
+		--td-toast-warning-bg: var(--td-pastel-warning-bg, #43331b);
+		--td-toast-warning-fg: var(--td-pastel-warning-fg, #fde68a);
+		--td-toast-warning-border: var(--td-pastel-warning-border, #5d4318);
+		--td-toast-info-bg: var(--td-pastel-info-bg, #222e45);
+		--td-toast-info-fg: var(--td-pastel-info-fg, #bfdbfe);
+		--td-toast-info-border: var(--td-pastel-info-border, #253b5f);
+		--td-toast-close-hover: rgb(255 255 255 / 12%);
 		--td-toast-fg: var(--td-glass-fg);
 		--td-toast-close-fg: var(--td-glass-fg);
 	}
@@ -2815,26 +2851,52 @@
 	}
 
 	.td-toast {
+		/* per-type colours (info = default, also for unknown types) */
+		--_td-toast-bg: var(--td-toast-info-bg);
+		--_td-toast-fg: var(--td-toast-info-fg);
+		--_td-toast-border: var(--td-toast-info-border);
+
+		position: relative;
 		box-sizing: border-box;
 		display: flex;
 		gap: var(--td-space-xs);
 		align-items: center;
 		max-width: min(var(--td-toast-max-w), 100%);
-		min-height: var(--td-touch-min);
-		padding: var(--td-space-2xs) var(--td-space-2xs) var(--td-space-2xs) var(--td-space-sm);
+		padding: var(--td-toast-pad-y) var(--td-toast-pad-x);
 		font-family: var(--td-font-sans);
-		font-size: var(--td-text-sm);
+		font-size: var(--td-toast-font-size);
 		font-weight: var(--td-fw-medium);
-		line-height: 1.4;
-		color: var(--_td-glass-fg, var(--td-toast-fg)); /* the recipe's fallbacks (contrast/forced) still win */
+		line-height: 1.45;
+		color: var(--_td-toast-fg);
+		background-color: var(--_td-toast-bg);
+		border: 1px solid var(--_td-toast-border);
 		border-radius: var(--td-toast-radius);
+		box-shadow: var(--td-toast-shadow);
 		pointer-events: auto;
-		cursor: pointer; /* click anywhere dismisses (keyboard: the close button) */
+		cursor: pointer; /* click anywhere dismisses (keyboard: the focus-visible close button) */
 		opacity: 0;
-		transform: translateY(calc(-1 * var(--td-toast-enter-shift)));
+		transform: translateX(var(--td-toast-enter-shift));
 		transition:
-			opacity var(--td-dur-base) var(--td-ease),
-			transform var(--td-dur-base) var(--td-ease-out);
+			opacity var(--td-toast-enter-dur) var(--td-ease-out),
+			transform var(--td-toast-enter-dur) var(--td-ease-out);
+	}
+
+	.td-toast--success {
+		--_td-toast-bg: var(--td-toast-success-bg);
+		--_td-toast-fg: var(--td-toast-success-fg);
+		--_td-toast-border: var(--td-toast-success-border);
+	}
+
+	.td-toast--warning {
+		--_td-toast-bg: var(--td-toast-warning-bg);
+		--_td-toast-fg: var(--td-toast-warning-fg);
+		--_td-toast-border: var(--td-toast-warning-border);
+	}
+
+	.td-toast--error {
+		--_td-toast-bg: var(--td-toast-error-bg);
+		--_td-toast-fg: var(--td-toast-error-fg);
+		--_td-toast-border: var(--td-toast-error-border);
 	}
 
 	.td-toast[data-state="open"] {
@@ -2846,53 +2908,49 @@
 		pointer-events: none;
 		opacity: 0;
 		transform: translateX(var(--td-toast-enter-shift));
+		transition:
+			opacity var(--td-toast-exit-dur) var(--td-ease),
+			transform var(--td-toast-exit-dur) var(--td-ease);
 	}
-
-	.td-toast__icon {
-		display: inline-flex;
-		flex: none;
-		line-height: 0;
-		color: var(--td-toast-info-icon);
-	}
-
-	/* Neutral fill (the recipe's fallbacks still force solid via --_td-glass-fill). */
-	.td-toast {
-		background-color: var(--_td-glass-fill, var(--td-toast-glass-bg));
-	}
-
-	.td-toast--success .td-toast__icon { color: var(--td-toast-success-icon); }
-	.td-toast--warning .td-toast__icon { color: var(--td-toast-warning-icon); }
-	.td-toast--error .td-toast__icon { color: var(--td-toast-error-icon); }
 
 	.td-toast__message {
 		flex: 1 1 auto;
 		min-width: 0;
-		padding-block: var(--td-space-2xs);
 		overflow-wrap: anywhere;
 	}
 
+	/* Close: in the DOM and focusable, visually hidden until KEYBOARD focus (sticky toasts stay keyboard-dismissable). */
 	.td-toast__close {
 		box-sizing: border-box;
 		display: inline-flex;
 		flex: none;
 		align-items: center;
 		justify-content: center;
-		width: 2rem;
-		height: 2rem;
+		width: 1.75rem;
+		height: 1.75rem;
 		padding: 0;
-		margin: 0;
+		margin: -0.25rem calc(-0.5 * var(--td-toast-pad-x) + 0.125rem) -0.25rem 0;
 		font: inherit;
 		line-height: 0;
-		color: var(--td-toast-close-fg);
+		color: inherit;
 		cursor: pointer;
 		background: transparent;
 		border: 0;
-		border-radius: var(--td-glass-capsule);
-		transition: background-color var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+		border-radius: var(--td-radius-full);
+	}
+
+	.td-toast__close:not(:focus-visible) {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
 	}
 
 	.td-toast__close:hover {
-		color: var(--td-toast-fg);
 		background: var(--td-toast-close-hover);
 	}
 
@@ -2903,7 +2961,7 @@
 	}
 
 	@media (pointer: coarse) {
-		.td-toast__close {
+		.td-toast__close:focus-visible {
 			width: var(--td-touch-min);
 			height: var(--td-touch-min);
 		}
@@ -2915,17 +2973,27 @@
 			transform: none;
 			transition: opacity var(--td-dur-fast) linear;
 		}
-
-		.td-toast__close { transition: none; }
 	}
 
+	/* More contrast: the border takes the ink colour, no shadow. */
+	@media (prefers-contrast: more) {
+		.td-toast {
+			border-color: currentcolor;
+			box-shadow: none;
+		}
+	}
+
+	/* Forced colours (last): system colours, a real border, no shadow. */
 	@media (forced-colors: active) {
-		.td-toast__icon,
-		.td-toast__close {
+		.td-toast {
 			color: CanvasText;
+			background-color: Canvas;
+			border-color: CanvasText;
+			box-shadow: none;
 		}
 
 		.td-toast__close {
+			color: ButtonText;
 			border: 1px solid ButtonText;
 		}
 
@@ -3074,6 +3142,11 @@
  * Per-instance CSSOM custom properties on .td-modal__dialog (validated in JS):
  *   --td-modal-w, --td-modal-h, --td-modal-body-pad, --td-modal-body-overflow
  * Only .td-modal__body scrolls (header/footer pinned, D21). ≤ 640 px: bottom sheet (except --viewport).
+ * Motion (v0.21.0, ease-in-out): opening → scrim fades in (--td-modal-scrim-dur, ease-in-out) and the dialog fades +
+ * rises from translateY(12px) scale(0.98) (--td-modal-enter-dur, --td-modal-ease); closing reverses faster
+ * (--td-modal-exit-dur, --td-modal-exit-ease). The phone sheet slides from the bottom with the same timing.
+ * Reduced motion → opacity only, --td-dur-fast. (The scale is a deliberate, modal-only exception to the
+ * minimal-surfaces "no decorative scale" rule — owner request.)
  */
 @layer td.tokens {
 	:root {
@@ -3092,6 +3165,14 @@
 		--td-modal-sheet-radius: 24px;
 		--td-modal-pad-x: var(--td-space-lg);
 		--td-modal-pad-y: var(--td-space-md);
+		/* motion (v0.21.0) */
+		--td-modal-enter-dur: 260ms;
+		--td-modal-exit-dur: 180ms;
+		--td-modal-ease: cubic-bezier(0.4, 0, 0.2, 1);
+		--td-modal-exit-ease: cubic-bezier(0.4, 0, 1, 1); /* ease-in */
+		--td-modal-scrim-dur: 240ms;
+		--td-modal-scrim-ease: ease-in-out;
+		--td-modal-enter-from: translateY(12px) scale(0.98);
 	}
 }
 
@@ -3143,15 +3224,19 @@
 		inset: 0;
 		background: var(--td-glass-scrim);
 		opacity: 0;
-		transition: opacity var(--td-dur-base) var(--td-ease);
+		transition: opacity var(--td-modal-scrim-dur) var(--td-modal-scrim-ease);
 	}
 
 	.td-modal[data-state="open"] .td-modal__backdrop {
 		opacity: 1;
 	}
 
-	/* Dialog: the surface recipe (glass.css) gives fill/border/shadow; this block owns geometry + motion (fade; the
-	   phone sheet slides up — no decorative scale). */
+	.td-modal[data-state="closing"] .td-modal__backdrop {
+		transition: opacity var(--td-modal-exit-dur) var(--td-modal-exit-ease);
+	}
+
+	/* Dialog: the surface recipe (glass.css) gives fill/border/shadow; this block owns geometry + motion (fade + a
+	   small rise/scale on desktop; the phone sheet slides up). */
 	.td-modal__dialog {
 		position: relative;
 		display: flex;
@@ -3164,17 +3249,21 @@
 		outline: none;
 		isolation: isolate;
 		opacity: 0;
+		transform: var(--td-modal-enter-from);
 		transition:
-			opacity var(--td-dur-base) var(--td-ease),
-			transform var(--td-dur-base) var(--td-ease);
+			opacity var(--td-modal-enter-dur) var(--td-modal-ease),
+			transform var(--td-modal-enter-dur) var(--td-modal-ease);
 	}
 
 	.td-modal[data-state="open"] .td-modal__dialog {
 		opacity: 1;
 		transform: none;
+	}
+
+	.td-modal[data-state="closing"] .td-modal__dialog {
 		transition:
-			opacity var(--td-dur-base) var(--td-ease),
-			transform var(--td-dur-slow) var(--td-glass-ease-flex);
+			opacity var(--td-modal-exit-dur) var(--td-modal-exit-ease),
+			transform var(--td-modal-exit-dur) var(--td-modal-exit-ease);
 	}
 
 	/* An exiting modal is never interactive (its dialog is also inert). */
@@ -3304,6 +3393,7 @@
 	}
 
 	.td-modal--viewport .td-modal__dialog {
+		--td-modal-enter-from: none; /* a full-viewport surface only fades */
 		width: 100%;
 		height: 100dvh;
 		max-height: none;
@@ -3346,16 +3436,19 @@
 		}
 	}
 
-	/* Reduced motion: opacity only (no slide). */
+	/* Reduced motion: opacity only (no slide / scale), 120 ms. */
 	@media (prefers-reduced-motion: reduce) {
+		.td-modal__dialog,
 		.td-modal .td-modal__dialog,
 		.td-modal[data-state="open"] .td-modal__dialog,
+		.td-modal[data-state="closing"] .td-modal__dialog,
 		.td-modal:not(.td-modal--viewport)[data-state="open"] .td-modal__dialog {
 			transform: none;
 			transition: opacity var(--td-dur-fast) linear;
 		}
 
-		.td-modal__backdrop {
+		.td-modal__backdrop,
+		.td-modal[data-state="closing"] .td-modal__backdrop {
 			transition: opacity var(--td-dur-fast) linear;
 		}
 

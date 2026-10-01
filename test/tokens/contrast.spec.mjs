@@ -4,7 +4,7 @@
  * loading) and every toast type, in light + dark, over four backdrops (flat black, flat white, a fine checkerboard, a
  * saturated "photo"), in Chromium / Firefox / WebKit:
  *   1. render the element with its ink hidden (text/icons transparent) and screenshot it — the REAL background after
- *      blur and fill (v0.20.0: solid buttons, neutral 94 % toasts);
+ *      blur and fill (v0.20.0: solid buttons; v0.21.0: solid pastel toasts);
  *   2. sample the interior (inset away from the rims/radius) and take the MINIMUM contrast against the declared ink
  *      (computed colour; alpha composited over each sampled pixel);
  *   3. require ≥ 4.7:1 for labels, ≥ 3.2:1 for icons / close glyphs / the loading spinner; a DISABLED button's label
