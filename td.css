@@ -2498,15 +2498,21 @@
 			background var(--td-lb-dur-fast) var(--td-lb-ease);
 	}
 
-	/* The back button sits outside the toolbar → its own dark disc (same fill and edge as the bars, no blur). */
+	/* The back button sits outside the toolbar → a standalone control: solid dark disc (no blur, no see-through, so it
+	   needs no transparency fallback), the bars' edge. Opaque at rest and on hover (element opacity 1). */
 	.td-lightbox__back {
-		background: var(--td-glass-clear-bg);
+		background: var(--td-glass-clear-solid);
 		border: 1px solid var(--td-glass-clear-border);
+		opacity: 1;
 	}
 
 	.td-lightbox__btn:hover {
 		background: rgb(255 255 255 / 14%);
 		opacity: 1;
+	}
+
+	.td-lightbox__back:hover {
+		background: var(--td-glass-clear-solid);
 	}
 
 	.td-lightbox__btn:focus-visible {
