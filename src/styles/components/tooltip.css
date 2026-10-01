@@ -1,13 +1,14 @@
 /*
  * td-tooltip (src/feedback/td-tooltip.js). v0.14.0 (plan G8) dwp tooltip look; v0.20.0 minimal surfaces: a small
- * text chip on an OPAQUE surface (glass.css opaque group — --td-glass-solid, thin border, soft shadow, no blur) with
- * an arrow. Custom colour chips ([data-custom]) are solid in their own colour. position: fixed, geometry (top/left)
- * written by JS through CSSOM. Hoverable while open (pointer-events: auto, WCAG 1.4.13).
+ * text chip on an OPAQUE surface (thin border, soft shadow, no blur) with an arrow. v0.21.0: the chip is BLACK by
+ * default in both themes (--td-tooltip-bg / -fg / -border) and wrapped text is centred (--td-tooltip-text-align;
+ * per tooltip: data-tooltip-align="start|center|end" on the trigger → [data-align] on the chip). Custom colour chips
+ * ([data-custom]) are solid in their own colour. position: fixed, geometry (top/left) written by JS through CSSOM. Hoverable while open (pointer-events: auto, WCAG 1.4.13).
  * Arrow = `::after` of the SAME element: a rotated square clipped to its outer half, painting the chip's own
  * background-color and border-color (inherit), no backdrop-filter of its own. JS writes `--td-tooltip-arrow-x`
  * (top/bottom) / `--td-tooltip-arrow-y` (left/right) = the trigger centre in the padding box, so it keeps pointing
  * at the trigger when the chip is clamped to the viewport (50 % when unset).
- * State: [hidden] · [data-state="open"] (opacity-only fade) · data-placement · [data-custom].
+ * State: [hidden] · [data-state="open"] (opacity-only fade) · data-placement · [data-custom] · [data-align].
  * No interactive targets inside → no focus ring / coarse-pointer sizing needed.
  */
 @layer td.tokens {
@@ -21,6 +22,16 @@
 		--td-tooltip-leading: 1.4;
 		--td-tooltip-arrow-size: 8px;
 		--td-tooltip-dur: 120ms;
+		/* v0.21.0: black chip (both themes), solid, no blur; wrapped text centred by default (data-tooltip-align on the
+		   trigger → data-align on the chip overrides per tooltip). */
+		--td-tooltip-bg: #18181b;
+		--td-tooltip-fg: #fff;
+		--td-tooltip-border: transparent;
+		--td-tooltip-text-align: center;
+	}
+
+	:root[data-td-theme="dark"] {
+		--td-tooltip-border: rgb(255 255 255 / 12%); /* keeps the black chip off the dark page */
 	}
 }
 
@@ -38,7 +49,7 @@
 		font-size: var(--td-tooltip-font-size);
 		font-weight: var(--td-fw-normal);
 		line-height: var(--td-tooltip-leading);
-		text-align: start;
+		text-align: var(--td-tooltip-text-align);
 		white-space: normal;
 		overflow-wrap: break-word;
 		border-radius: var(--td-tooltip-radius);
@@ -50,6 +61,24 @@
 	.td-tooltip[hidden] {
 		display: none;
 	}
+
+	/* v0.21.0 black chip: --td-tooltip-bg / -fg / -border. Increased contrast and forced colours still win through
+	   --_td-glass-fill-a11y / --_td-glass-fg / --_td-glass-line (glass.css); glass-off / reduced transparency keep the
+	   black chip (it is already solid). */
+	.td-tooltip.td-glass-surface,
+	.td-tooltip {
+		background-color: var(--_td-glass-fill-a11y, var(--td-tooltip-bg));
+		background-image: none;
+		color: var(--_td-glass-fg, var(--td-tooltip-fg));
+		border-color: var(--_td-glass-line, var(--td-tooltip-border));
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
+
+	/* v0.21.0 text alignment of wrapped text (trigger data-tooltip-align → chip data-align; unknown values ignored). */
+	.td-tooltip[data-align="start"] { text-align: start; }
+	.td-tooltip[data-align="center"] { text-align: center; }
+	.td-tooltip[data-align="end"] { text-align: end; }
 
 	.td-tooltip[data-state="open"] {
 		opacity: 1;
@@ -103,12 +132,7 @@
 	   colours still win (glass.css). The fill reads --_td-glass-fill-a11y (set ONLY by those two fallbacks), not
 	   --_td-glass-fill — glass-off / reduced transparency must keep the custom colour, not swap in the surface solid. */
 	.td-tooltip[data-custom] {
-		background-color: var(--_td-glass-fill-a11y, var(--td-tooltip-bg));
-		background-image: none;
-		color: var(--_td-glass-fg, var(--td-tooltip-fg));
 		border-color: var(--_td-glass-line, transparent);
-		-webkit-backdrop-filter: none;
-		backdrop-filter: none;
 	}
 
 	@media (prefers-reduced-motion: reduce) {
@@ -118,6 +142,7 @@
 	}
 
 	@media (forced-colors: active) {
+		.td-tooltip,
 		.td-tooltip[data-custom] {
 			border-color: CanvasText;
 		}

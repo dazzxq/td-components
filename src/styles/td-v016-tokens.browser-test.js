@@ -57,9 +57,11 @@ const activePage = () => mount('<td-pagination total-items="50" current-page="1"
   .querySelector('.td-pagination__page[aria-current="page"]');
 
 describe('D2 --td-accent-fill', () => {
-  it('light: fill = accent; primary button + current page use it; white text ≥ 4.5:1', () => {
+  // v0.21.0: the primary button is black (dark: inverted) and no longer follows the accent by default; a site maps it
+  // back with --td-btn-primary-bg: var(--td-accent-fill) (last test). The current page still uses the accent fill.
+  it('light: fill = accent; current page uses it (primary is black since 0.21.0); white text ≥ 4.5:1', () => {
     expect(near(tokenColor('--td-accent-fill'), [37, 99, 235])).to.equal(true);
-    expect(near(tokenColor('--td-btn-primary-bg'), [37, 99, 235])).to.equal(true);
+    expect(near(tokenColor('--td-btn-primary-bg'), [24, 24, 27])).to.equal(true);
     const page = activePage();
     const cs = getComputedStyle(page);
     expect(near(rgb(cs.backgroundColor), [37, 99, 235])).to.equal(true);
@@ -70,27 +72,32 @@ describe('D2 --td-accent-fill', () => {
     html.setAttribute('data-td-theme', 'dark');
     const fill = tokenColor('--td-accent-fill');
     expect(near(fill, [47, 104, 197])).to.equal(true);
-    expect(near(tokenColor('--td-btn-primary-bg'), fill)).to.equal(true);
+    expect(near(tokenColor('--td-btn-primary-bg'), [244, 244, 245])).to.equal(true); // v0.21.0 inverted
     const cs = getComputedStyle(activePage());
     expect(near(rgb(cs.backgroundColor), fill)).to.equal(true);
     expect(ratio(rgb(cs.color), rgb(cs.backgroundColor))).to.be.at.least(4.5);
   });
 
-  it('dark: changing ONE token (--td-accent) moves the primary button + current page', () => {
+  it('dark: changing ONE token (--td-accent) moves the current page (and a primary mapped back to the accent)', () => {
     html.setAttribute('data-td-theme', 'dark');
-    siteCss(':root { --td-accent: #dc2626; }');
+    siteCss(':root { --td-accent: #dc2626; --td-btn-primary-bg: var(--td-accent-fill); }');
     const expected = [220 * 0.8, 38 * 0.8, 38 * 0.8];
     expect(near(tokenColor('--td-btn-primary-bg'), expected)).to.equal(true);
     expect(near(rgb(getComputedStyle(activePage()).backgroundColor), expected)).to.equal(true);
   });
 
-  it('light: changing --td-accent moves both too; --td-accent-fill alone tunes the fill', () => {
+  it('light: changing --td-accent moves the current page; primary stays black unless mapped back', () => {
     siteCss(':root { --td-accent: #dc2626; }');
+    expect(near(tokenColor('--td-btn-primary-bg'), [24, 24, 27])).to.equal(true);
+    expect(near(rgb(getComputedStyle(activePage()).backgroundColor), [220, 38, 38])).to.equal(true);
+    host.innerHTML = '';
+    document.adoptedStyleSheets = [];
+    siteCss(':root { --td-accent: #dc2626; --td-btn-primary-bg: var(--td-accent-fill); }');
     expect(near(tokenColor('--td-btn-primary-bg'), [220, 38, 38])).to.equal(true);
     expect(near(rgb(getComputedStyle(activePage()).backgroundColor), [220, 38, 38])).to.equal(true);
     host.innerHTML = '';
     siteCss(':root { --td-accent-fill: #7c3aed; }');
-    expect(near(tokenColor('--td-btn-primary-bg'), [124, 58, 237])).to.equal(true);
+    expect(near(tokenColor('--td-btn-primary-bg'), [124, 58, 237])).to.equal(true); // still mapped back (sheet above)
     expect(near(rgb(getComputedStyle(activePage()).backgroundColor), [124, 58, 237])).to.equal(true);
   });
 });

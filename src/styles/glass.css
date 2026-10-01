@@ -10,6 +10,7 @@
  *   .td-glass-surface--lg        deeper shadow only (--td-glass-shadow-lg)
  *   .td-glass-surface--clear     lightbox bars: dark 88 % + blur, never themed
  *   OPAQUE group (no blur): .td-modal__dialog, .td-loading__card, .td-tooltip, .td-scroll-top → --td-glass-solid
+ *                                (v0.21.0: tooltip.css repaints the tooltip black via --td-tooltip-bg)
  *   .td-glass-tint               solid capsule button (the one primary action on a floating bar)
  *   .td-glass-dim(--text)        deprecated v0.20.0: no effect (class kept so markup does not break)
  *

@@ -85,7 +85,7 @@
 		border-color: var(--td-field-focus);
 		outline: 2px solid transparent;
 		outline-offset: 2px;
-		box-shadow: var(--td-focus-ring);
+		box-shadow: var(--td-field-focus-ring);
 	}
 
 	.td-dropdown__trigger:disabled {
@@ -207,7 +207,7 @@
 	.td-dropdown__search:focus-visible {
 		outline: 2px solid transparent;
 		outline-offset: 2px;
-		box-shadow: var(--td-focus-ring);
+		box-shadow: var(--td-field-focus-ring);
 	}
 
 	.td-dropdown__options {

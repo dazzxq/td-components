@@ -17,13 +17,33 @@ Mỗi bề mặt nổi = **nền + một viền mảnh + một shadow mềm** (+
 
 | Lớp | Selector (class JS phát ra, không đổi) | Công thức |
 |---|---|---|
-| Đặc | `.td-modal__dialog`, `.td-loading__card`, `.td-tooltip`, `.td-scroll-top` | `--td-glass-solid`, không blur; viền `--td-glass-border` + `--td-glass-shadow` (modal: `--td-glass-shadow-lg`) |
+| Đặc | `.td-modal__dialog`, `.td-loading__card`, `.td-scroll-top` | `--td-glass-solid`, không blur; viền `--td-glass-border` + `--td-glass-shadow` (modal: `--td-glass-shadow-lg`) |
+| Tooltip (0.21.0) | `.td-tooltip` | **Đen** `--td-tooltip-bg` `#18181b` + chữ `#fff` ở cả hai theme (dark thêm viền `rgb(255 255 255 / 12%)`), đặc, không blur, `--td-glass-shadow`; tương phản cao / forced colours vẫn thắng (`--_td-glass-fill-a11y`) |
 | Popup nhỏ | `.td-menu`, `.td-dropdown__menu`, `.td-chip-input__menu`, `.td-hovercard`, `.td-toast` | `--td-glass-bg-strong` (94 %) + `--td-glass-blur` (12px) + viền + `--td-glass-shadow` |
 | Toast | `.td-toast--{type}` | Nền trung tính như popup nhỏ; **chỉ icon** mang màu trạng thái; không wash, không viền màu |
 | Lightbox bar | `.td-lightbox__toolbar`, `.td-lightbox__counter` (`--clear`) | Tối `--td-glass-clear-bg` (88 %) + blur 12px + viền + shadow; không dim cục bộ, không glyph shadow. Panel / sheet: đặc `--td-glass-clear-solid`. Caption gradient (để đọc chữ trên ảnh) giữ |
-| Nút có nền | `.td-btn--{primary,secondary,success,danger,info,warning}`, `.td-btn--custom` | **Màu đặc** `--td-btn-{v}-bg` + **một** shadow `--td-btn-lift`; hover = nền đậm hơn (đặc); focus ring giữ |
+| Nút có nền | `.td-btn--{primary,secondary,success,danger,info,warning}`, `.td-btn--custom` | **Màu đặc** `--td-btn-{v}-bg` + viền `-border` + **một** shadow `--td-btn-lift`; hover = nền đặc `--td-btn-{v}-hover`; focus ring giữ. 0.21.0: primary **đen** `#18181b` / chữ trắng / hover `#3f3f46` (dark đảo: `#f4f4f5` / `#18181b` / `#d4d4d8`); success / danger / warning / info **pastel** (bảng dưới) |
 | Nút ghost / disabled | `.td-btn--ghost`, `:disabled` | Không shadow |
 | Control nội dung | switch, slider, checkbox, chip, field, bảng, tab | Đặc; thumb / nút một shadow nhẹ |
+
+### Bảng màu (0.21.0)
+
+| Nhóm | Light | Dark |
+|---|---|---|
+| Primary (nền / chữ / hover) | `#18181b` / `#fff` / `#3f3f46` | `#f4f4f5` / `#18181b` / `#d4d4d8` |
+| Tooltip (nền / chữ / viền) | `#18181b` / `#fff` / trong suốt | `#18181b` / `#fff` / `rgb(255 255 255 / 12%)` |
+| Pastel success (nền / viền = hover / chữ) | `#dcfce7` / `#bbf7d0` / `#14532d` | `#143121` / `#16472a` / `#bbf7d0` |
+| Pastel danger | `#fee2e2` / `#fecaca` / `#7f1d1d` | `#391a1c` / `#542022` / `#fecaca` |
+| Pastel warning | `#fef3c7` / `#fde68a` / `#78350f` | `#3a2a12` / `#553b11` / `#fde68a` |
+| Pastel info | `#dbeafe` / `#bfdbfe` / `#1e3a8a` | `#19253c` / `#1e3357` / `#bfdbfe` |
+| Shadow `--td-glass-shadow` | `0 2px 6px /6%, 0 8px 24px /12%` | alpha × 2 (12 % / 24 %) |
+| Shadow `--td-glass-shadow-lg` | `0 4px 12px /8%, 0 20px 48px /18%` | 16 % / 36 % |
+| Shadow `--td-btn-lift` | `0 1px 3px /10%, 0 4px 10px -2px /12%` | 20 % / 24 % |
+| Focus ô nhập (viền / quầng) | `color-mix(accent 85%, #fff)` / `0 0 0 3px` accent 12 % | cùng công thức / quầng 22 % |
+
+Pastel (`--td-pastel-{v}-bg/-border/-fg`) dùng chung cho nút ngữ nghĩa, badge mềm và toast. Dark = màu ngữ nghĩa ~18 %
+trộn sẵn trên `#111113` (đặc), viền ~30 %, chữ bậc ~200. Mọi cặp chữ / nền nằm trong contrast gate (luật 9); viền focus
+ô nhập ≥ 3:1 với nền ô và nền trang (gate đo từ màu computed). `--td-accent` (checkbox, ghost, slider…) không đổi.
 
 Cài đặt: [`src/styles/glass.css`](../../../src/styles/glass.css) (recipe + fallback), token trong
 [`tokens.css`](../../../src/styles/tokens.css) / [`theme-dark.css`](../../../src/styles/theme-dark.css), nút trong
@@ -40,11 +60,13 @@ Cài đặt: [`src/styles/glass.css`](../../../src/styles/glass.css) (recipe + f
 4. **Không scale trang trí** (press / lift / pop / enter). Popup và modal chỉ **fade**. Giữ transform **chức năng**:
    vị trí thumb slider, trượt thumb switch, zoom / kéo lightbox, xoay mũi tên dropdown, sheet modal trượt lên trên
    điện thoại, slide nhẹ của toast / scroll-top.
-5. **Một shadow.** Mỗi bề mặt một `box-shadow` mềm (nút: `--td-btn-lift` hai lớp mảnh vẫn tính là một token).
-6. **Hover = nền đậm hơn, đặc.** Secondary dùng `--td-btn-secondary-hover`; các variant khác (và `--custom`)
-   `color-mix(in srgb, <nền> 92%, #000)`; trình duyệt không có `color-mix()` giữ nền cũ.
-7. **Màu nút theo token.** Primary = `--td-accent-fill` (theo accent của site). Alias một chu kỳ:
-   `--td-btn-{primary,success,danger,info,warning}-tint` site còn đặt vẫn thành nền nút.
+5. **Một shadow.** Mỗi bề mặt một token `box-shadow` (0.21.0: hai lớp — tiếp xúc + toả — vẫn tính là một token; nút:
+   `--td-btn-lift`).
+6. **Hover = nền đặc khác.** Mỗi variant có nền đọc `--td-btn-{v}-hover` (0.21.0; primary đen thì hover sáng lên);
+   `--custom` và alias `-tint` dùng `color-mix(in srgb, <nền> 92%, #000)`; trình duyệt không có `color-mix()` giữ nền cũ.
+7. **Màu nút theo token.** Primary = đen (0.21.0; site muốn theo accent: `--td-btn-primary-bg: var(--td-accent-fill)` +
+   `--td-btn-primary-hover`). Nút ngữ nghĩa = pastel. Alias một chu kỳ:
+   `--td-btn-{primary,success,danger,info,warning}-tint` site còn đặt vẫn thành nền + viền nút.
 8. **Scrim không blur** (modal, loading). **Bo góc đồng tâm** (inner = outer − padding, `--td-glass-radius-inner`)
    và **capsule ≥ 44px trên cảm ứng** giữ như cũ. Header bảng ghim: nền đặc.
 9. **Tương phản đo thật:** gate `test/tokens/contrast.spec.mjs` (chữ ≥ 4.7:1, icon ≥ 3.2:1, disabled ≥ 2.2:1;
@@ -67,7 +89,8 @@ Nút luôn đặc nên chỉ còn contrast (viền rõ, bỏ shadow) và forced 
 
 **Giữ (công khai):** `--td-glass-bg`, `-bg-strong`, `-solid`, `-fg`, `-border`, `-blur`, `-blur-lg`, `-shadow`,
 `-shadow-lg`, `-scrim`, `-clear-bg/-solid/-fg/-border/-shadow`, token hình học / thời lượng (`-radius`, `-pad`,
-`-radius-inner`, `-capsule`, `-dur`, `-ease`, `-ease-flex`), `--td-btn-*-bg/-fg/-border/-hover`, `--td-btn-lift`.
+`-radius-inner`, `-capsule`, `-dur`, `-ease`, `-ease-flex`), `--td-btn-*-bg/-fg/-border/-hover`, `--td-btn-lift`;
+0.21.0: `--td-pastel-{success,danger,warning,info}-bg/-border/-fg`, `--td-tooltip-bg/-fg/-border/-text-align`.
 
 **Deprecated v0.20.0** (vẫn khai báo, không tác dụng; xoá ở bản lớn sau): `--td-glass-edge`, `-side-edge`,
 `-bottom`, `-outline`, `-sheen`, `-dim`, `-dim-text`, `-clear-edge`, `-clear-glyph-shadow`, `-tint`, `-tint-alpha`,
