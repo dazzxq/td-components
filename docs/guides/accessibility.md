@@ -148,6 +148,7 @@ yêu cầu WCAG AA), thêm **một khối CSS unlayered**:
 :root {
   --td-control-border-soft: var(--td-control-border-strong);
   --td-control-border-hover: var(--td-control-border-strong);
+  --td-btn-secondary-border: var(--td-control-border-strong); /* nút secondary: token riêng từ 0.20.0 */
 }
 ```
 

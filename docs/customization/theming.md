@@ -314,7 +314,7 @@ xem [ví dụ thương hiệu](#ví-dụ-đầu-cuối-đổi-màu-thương-hi�
 | `--td-control-border` | `var(--td-gray-300)` | `#45454b` | Viền control chung (nút không variant) |
 | `--td-control-radius` | `var(--td-radius-md)` | | Bo góc control |
 | `--td-control-border-strong` | `var(--td-gray-500)` | `#8a8a93` | Viền đạt ≥ 3:1 trên nền trắng (3.42:1) |
-| `--td-control-border-soft` | `#d1d1d6` | `#3a3a3c` | **Viền lúc nghỉ** của field, dropdown, datetime, chip-input, toggle, checkbox, viền nút secondary (~1.5:1, v0.14.1) |
+| `--td-control-border-soft` | `#d1d1d6` | `#3a3a3c` | **Viền lúc nghỉ** của field, dropdown, datetime, chip-input, toggle, checkbox (~1.5:1, v0.14.1) |
 | `--td-control-border-hover` | `#aeaeb2` | `#636366` | Viền khi hover, viền option đang active (~2.2:1, v0.14.2) |
 | `--td-touch-min` | `44px` | | Vùng chạm tối thiểu trên màn hình cảm ứng |
 
@@ -471,13 +471,16 @@ map **cả hai** token về viền đậm:
 :root {
   --td-control-border-soft: var(--td-control-border-strong);
   --td-control-border-hover: var(--td-control-border-strong);
+  --td-btn-secondary-border: var(--td-control-border-strong); /* nút secondary: token riêng (0.20.0) */
 }
 ```
 
-- Chỉ cần một khối này: `--td-control-border-strong` tự có giá trị riêng cho dark (`#8a8a93`), và vì override nằm
-  trên cùng phần tử `:root` nên dark cũng dùng đúng giá trị dark.
-- Token con dùng viền mềm (như `--td-field-border`, `--td-checkbox-border`, `--td-switch-edge`) đều đi theo. Từ 0.20.0
-  viền nút secondary là `--td-btn-secondary-border` riêng (không theo viền mềm): muốn đậm hơn thì đặt thêm token đó.
+- Chỉ cần một khối này cho **cả hai theme**: `--td-control-border-strong` tự có giá trị riêng cho dark (`#8a8a93`),
+  và vì override nằm trên cùng phần tử `:root` (không layer, thắng cả giá trị dark của kit) nên dark cũng dùng đúng
+  giá trị dark.
+- Token con dùng viền mềm (như `--td-field-border`, `--td-checkbox-border`, `--td-switch-edge`) đều đi theo. Nút
+  secondary **không** nằm trong danh sách này: từ 0.20.0 viền của nó là `--td-btn-secondary-border` riêng, nên khối
+  trên đặt thẳng token đó.
 - Ghi chú lịch sử: CHANGELOG 0.14.1 chỉ nhắc `--td-control-border-soft`; từ 0.14.2 phải map **cả hai** như trên.
 
 ## Dark theme (opt-in)

@@ -99,11 +99,14 @@
 
 	/* Custom colour chip (data-tooltip-color): solid in its own colour. Colours come from CSSOM custom properties
 	   (validated with safeColor; fg = WCAG black/white unless data-tooltip-text-color is given). The arrow inherits
-	   the solid fill. */
+	   the solid fill. v0.20.0 review: every value goes through a private token so increased contrast and forced
+	   colours still win (glass.css). The fill reads --_td-glass-fill-a11y (set ONLY by those two fallbacks), not
+	   --_td-glass-fill — glass-off / reduced transparency must keep the custom colour, not swap in the surface solid. */
 	.td-tooltip[data-custom] {
-		background: var(--td-tooltip-bg);
-		color: var(--td-tooltip-fg);
-		border-color: transparent;
+		background-color: var(--_td-glass-fill-a11y, var(--td-tooltip-bg));
+		background-image: none;
+		color: var(--_td-glass-fg, var(--td-tooltip-fg));
+		border-color: var(--_td-glass-line, transparent);
 		-webkit-backdrop-filter: none;
 		backdrop-filter: none;
 	}

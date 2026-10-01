@@ -10,6 +10,8 @@
  *   3. require ≥ 4.7:1 for labels, ≥ 3.2:1 for icons / close glyphs / the loading spinner; a DISABLED button's label
  *      and icon need ≥ 2.2:1 (greyed out on purpose — WCAG 1.4.3 / 1.4.11 exempt inactive controls, v0.14.3);
  *   4. assert opacity 1 on the element and its ancestors (a faded element cannot hide a failure).
+ * v0.20.0: every filled variant and two `.td-btn--custom` colours (dark + white text, light + dark text) are also
+ * measured in the REAL hover state (the pointer is moved onto the button; the fill is the computed darker solid).
  * Ghost buttons (v0.17.0) have no fill of their own and sit on the page background, so they are measured only over
  * the theme's page colour: white (light) / black (dark). Same for the content-layer alerts (message + heading ≥ 4.7,
  * icon / close ≥ 3.2 on the variant fill) and badges (soft fill, outline, stamp) of v0.18.0 F5.
@@ -143,9 +145,17 @@ async function runEngine(name, launcher) {
         checks++;
         if (info.opacity !== 1) failures.push(`${tag}: opacity ${info.opacity} (faded elements are not allowed to hide contrast)`);
         const { x, y, width, height } = info.rect;
+        if (info.hover) {
+          // real :hover — move the pointer onto the button, let the background-color transition settle
+          await page.mouse.move(Math.round(x + width / 2), Math.round(y + height / 2));
+          await page.waitForTimeout(300);
+          const hovered = await page.evaluate(() => !!document.querySelector('#stage .td-btn:hover'));
+          if (!hovered) failures.push(`${tag}: pointer is not over the button (hover case not measured)`);
+        }
         const png = decodePng(await page.screenshot({ clip: { x: Math.floor(x), y: Math.floor(y), width: Math.ceil(width), height: Math.ceil(height) } }));
         // interior: inset away from the rim / rounded corners
         const ix = Math.max(3, Math.round(png.width * 0.12)); const iy = Math.max(3, Math.round(png.height * 0.22));
+        if (info.hover) await page.mouse.move(1, 1); // leave: the next case starts without hover
         const samples = [];
         for (let yy = iy; yy < png.height - iy; yy += 2) for (let xx = ix; xx < png.width - ix; xx += 2) samples.push(png.px(xx, yy));
         const minFor = (inkStr) => {
@@ -189,6 +199,9 @@ for (const [name, launcher] of [['chromium', chromium], ['firefox', firefox], ['
 for (const n of notes) console.log(`  ${n}`);
 const report = [...worst.entries()].sort((a, b) => a[1] - b[1]).slice(0, 8).map(([k, v]) => `${k} ${v.toFixed(2)}`);
 console.log(`  lowest label ratios: ${report.join(' · ')}`);
+const hoverReport = [...worst.entries()].filter(([k]) => /:hover|custom/.test(k)).sort((a, b) => a[1] - b[1]).slice(0, 6)
+  .map(([k, v]) => `${k} ${v.toFixed(2)}`);
+console.log(`  lowest hover / custom label ratios: ${hoverReport.join(' · ')}`);
 if (failures.length) {
   console.log(`Contrast gate: ${failures.length} failure(s) of ${checks} checks`);
   for (const f of failures.slice(0, 60)) console.log(`  ✗ ${f}`);
