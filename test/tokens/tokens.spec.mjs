@@ -363,8 +363,13 @@ async function runEngine(name, launcher) {
 
         // (D) dark opt-in
         await page.evaluate(() => document.documentElement.setAttribute('data-td-theme', 'dark'));
-        await page.waitForTimeout(300); // buttons transition colour / shadow (120ms)
-        const d = await read(page);
+        // Buttons transition colour / shadow (120ms); a slow CI engine can still be mid-transition after a fixed wait
+        // (v0.21.0 CI flake: WebKit read the light / half-way primary). Poll until the primary settles on the dark value.
+        let d = await read(page);
+        for (let i = 0; i < 40 && !(sameColor(d['b-primary'].bg, [244, 244, 245, 1]) && sameAlphas(d['b-primary'].shadow, [0.2, 0.24])); i++) {
+          await page.waitForTimeout(100);
+          d = await read(page);
+        }
         check(`${tag} dark strong bg`, sameColor(d.strong.bg, [28, 28, 30, 0.94]), d.strong.bg);
         check(`${tag} dark toast solid pastel (not the light fill)`, opaqueBg(d['s-toast'].bg) && !sameColor(d['s-toast'].bg, [220, 252, 231, 1]), d['s-toast'].bg);
         check(`${tag} dark toast no filter`, noFilter(d['s-toast'].bf), d['s-toast'].bf);
