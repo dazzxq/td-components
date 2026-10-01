@@ -1,7 +1,7 @@
 {
   "name": "@dazzxq/td-components",
-  "version": "0.19.0",
-  "description": "Shared UI Web Components library — single source of truth UI kit (token CSS + Liquid Glass)",
+  "version": "0.20.0",
+  "description": "Shared UI Web Components library — single source of truth UI kit (token CSS + minimal surfaces)",
   "type": "module",
   "main": "index.js",
   "scripts": {
