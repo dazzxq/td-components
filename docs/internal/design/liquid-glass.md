@@ -19,8 +19,8 @@ Mỗi bề mặt nổi = **nền + một viền mảnh + một shadow mềm** (+
 |---|---|---|
 | Đặc | `.td-modal__dialog`, `.td-loading__card`, `.td-scroll-top` | `--td-glass-solid`, không blur; viền `--td-glass-border` + `--td-glass-shadow` (modal: `--td-glass-shadow-lg`) |
 | Tooltip (0.21.0) | `.td-tooltip` | **Đen** `--td-tooltip-bg` `#18181b` + chữ `#fff` ở cả hai theme (dark thêm viền `rgb(255 255 255 / 12%)`), đặc, không blur, `--td-glass-shadow`; tương phản cao / forced colours vẫn thắng (`--_td-glass-fill-a11y`) |
-| Popup nhỏ | `.td-menu`, `.td-dropdown__menu`, `.td-chip-input__menu`, `.td-hovercard`, `.td-toast` | `--td-glass-bg-strong` (94 %) + `--td-glass-blur` (12px) + viền + `--td-glass-shadow` |
-| Toast | `.td-toast--{type}` | Nền trung tính như popup nhỏ; **chỉ icon** mang màu trạng thái; không wash, không viền màu |
+| Popup nhỏ | `.td-menu`, `.td-dropdown__menu`, `.td-chip-input__menu`, `.td-hovercard` | `--td-glass-bg-strong` (94 %) + `--td-glass-blur` (12px) + viền + `--td-glass-shadow` |
+| Toast (0.21.0) | `.td-toast--{type}` | Viên kiểu dcms, **đặc** pastel theo loại (`--td-pastel-{type}-*`) + viền cùng tông + `--td-glass-shadow`; không blur, không icon hiển thị (tiền tố loại cho trình đọc màn hình) |
 | Lightbox bar | `.td-lightbox__toolbar`, `.td-lightbox__counter` (`--clear`) | Tối `--td-glass-clear-bg` (88 %) + blur 12px + viền + shadow; không dim cục bộ, không glyph shadow. Panel / sheet: đặc `--td-glass-clear-solid`. Caption gradient (để đọc chữ trên ảnh) giữ |
 | Nút có nền | `.td-btn--{primary,secondary,success,danger,info,warning}`, `.td-btn--custom` | **Màu đặc** `--td-btn-{v}-bg` + viền `-border` + **một** shadow `--td-btn-lift`; hover = nền đặc `--td-btn-{v}-hover`; focus ring giữ. 0.21.0: primary **đen** `#18181b` / chữ trắng / hover `#3f3f46` (dark đảo: `#f4f4f5` / `#18181b` / `#d4d4d8`); success / danger / warning / info **pastel** (bảng dưới) |
 | Nút ghost / disabled | `.td-btn--ghost`, `:disabled` | Không shadow |
@@ -52,12 +52,14 @@ Cài đặt: [`src/styles/glass.css`](../../../src/styles/glass.css) (recipe + f
 ## Luật
 
 1. **Control luôn đặc.** Nút, switch, slider, chip, field: không `backdrop-filter`, không nền trong suốt.
-2. **Blur chỉ cho popup nhỏ** (menu, dropdown, gợi ý chip-input, hovercard, toast) và thanh lightbox — `blur(12px)`
+2. **Blur chỉ cho popup nhỏ** (menu, dropdown, gợi ý chip-input, hovercard) và thanh lightbox — `blur(12px)`
    thuần, không `saturate()` / `brightness()`. Bề mặt lớn hoặc nhiều chữ (modal, loading, tooltip) và nút nổi
-   (scroll-top) là **đặc**.
+   (scroll-top) và toast là **đặc**.
 3. **Không trang trí giả kính:** không gradient sheen, không rim inset, không hairline ngoài thứ hai, không film /
    tint trong suốt, không status wash, không glow khi hover, không glyph shadow.
-4. **Không scale trang trí** (press / lift / pop / enter). Popup và modal chỉ **fade**. Giữ transform **chức năng**:
+4. **Không scale trang trí** (press / lift / pop / enter). Popup chỉ **fade**. **Ngoại lệ duy nhất (0.21.0, owner
+   yêu cầu):** modal vào `translateY(12px) scale(0.98) → none` ease-in-out 260ms, ra ease-in 180ms (token
+   `--td-modal-*`; reduced motion → chỉ fade). Wheel datetime cuộn mượt tới giá trị khi mở là chuyển động chức năng. Giữ transform **chức năng**:
    vị trí thumb slider, trượt thumb switch, zoom / kéo lightbox, xoay mũi tên dropdown, sheet modal trượt lên trên
    điện thoại, slide nhẹ của toast / scroll-top.
 5. **Một shadow.** Mỗi bề mặt một token `box-shadow` (0.21.0: hai lớp — tiếp xúc + toả — vẫn tính là một token; nút:
