@@ -1,9 +1,10 @@
 /*
  * td-lightbox — image/video viewer (src/feedback/td-lightbox.js). Adapted from the 135 kit.
  * Always dark: its background is the photograph, not the site theme → local tokens, no dark remap.
- * Glass (docs/internal/design/liquid-glass.md): toolbar + counter are CLEAR glass over the photo
- * (`td-glass-surface td-glass-surface--clear`, fallbacks from glass.css) with a LOCAL dim layer;
- * the info panel / sheet is solid. State comes from attributes set by JS, never visual classes:
+ * Surfaces (docs/internal/design/liquid-glass.md, v0.20.0 minimal surfaces): toolbar + counter are dark bars
+ * (`td-glass-surface td-glass-surface--clear`: 88 % + blur(12px) + thin border + soft shadow, fallbacks from glass.css),
+ * no local dim, no glyph shadow; the info panel / sheet is opaque (--td-glass-clear-solid).
+ * State comes from attributes set by JS, never visual classes:
  *   overlay [data-state="open"] [data-dragging] [data-closing-down] [data-zoomed] [data-panel]
  *   panel [data-sheet="open"] · img [data-loading] · [hidden] for binary visibility.
  */
@@ -21,7 +22,7 @@
 		--td-lb-sheet-peek: 2.25rem;
 		--td-lb-panel-w: 22rem;
 		--td-lb-backdrop: rgb(8 8 9 / 94%);
-		--td-lb-panel-bg: rgb(20 20 22 / 96%);
+		--td-lb-panel-bg: var(--td-glass-clear-solid); /* opaque (v0.20.0) */
 		--td-lb-fg: #fff;
 	}
 
@@ -207,7 +208,7 @@
 		min-height: var(--td-lb-bar-h);
 	}
 
-	/* Counter: Clear glass capsule (recipe from glass.css) + local dim. */
+	/* Counter: dark capsule (--clear recipe from glass.css). */
 	.td-lightbox__counter {
 		position: relative;
 		isolation: isolate;
@@ -221,17 +222,6 @@
 		letter-spacing: 0.01em;
 		user-select: none;
 		border-radius: var(--td-glass-capsule);
-	}
-
-	.td-lightbox__counter::before,
-	.td-lightbox__toolbar::before {
-		position: absolute;
-		inset: 0;
-		z-index: -1;
-		pointer-events: none;
-		content: "";
-		background: var(--_td-glass-dim, var(--td-glass-dim));
-		border-radius: inherit;
 	}
 
 	.td-lightbox__caption {
@@ -249,7 +239,7 @@
 		background: linear-gradient(to top, rgb(0 0 0 / 70%), transparent);
 	}
 
-	/* Toolbar: Clear glass + local dim, concentric with its buttons (inner = outer − padding). */
+	/* Toolbar: dark bar (--clear recipe), concentric with its buttons (inner = outer − padding). */
 	.td-lightbox__toolbar {
 		position: absolute;
 		top: var(--td-lb-bar-top);
@@ -280,10 +270,12 @@
 			background var(--td-lb-dur-fast) var(--td-lb-ease);
 	}
 
-	/* The back button sits outside the toolbar → its own dim disc (no glass on glass). */
+	/* The back button sits outside the toolbar → a standalone control: solid dark disc (no blur, no see-through, so it
+	   needs no transparency fallback), the bars' edge. Opaque at rest and on hover (element opacity 1). */
 	.td-lightbox__back {
-		background: rgb(0 0 0 / 45%);
-		border: 1px solid rgb(255 255 255 / 20%);
+		background: var(--td-glass-clear-solid);
+		border: 1px solid var(--td-glass-clear-border);
+		opacity: 1;
 	}
 
 	.td-lightbox__btn:hover {
@@ -296,6 +288,11 @@
 		outline: 2px solid #fff;
 		outline-offset: 1px;
 		opacity: 1;
+	}
+
+	/* after the generic hover / focus rules: the back button stays solid in every state */
+	.td-lightbox__back:is(:hover, :focus-visible) {
+		background: var(--td-glass-clear-solid);
 	}
 
 	.td-lightbox__btn[aria-pressed="true"],

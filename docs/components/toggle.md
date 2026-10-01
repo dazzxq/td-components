@@ -209,8 +209,8 @@ Property phản chiếu attribute: `checked`, `controlled` (boolean), `value`, `
 | `--td-control-border-hover` | `#aeaeb2` | Viền khi hover công tắc đang tắt (v0.14.2). |
 | `--td-switch-w` / `--td-switch-h` / `--td-switch-thumb-d` | md: `2.75rem` / `1.5rem` / `1.125rem` | Kích thước rãnh và núm. Cỡ mặc định (md) khai báo trên `:root` (từ 0.16.0): `:root { --td-switch-w: 3rem; }`. Cỡ `sm` / `lg` đặt lại trên `.td-switch--sm` / `--lg`. Khoảng đệm núm `--td-switch-pad` tự tính trên `.td-switch` từ `-h` và `-thumb-d`. |
 
-Lỗi dùng `--td-field-error` (viền rãnh). Focus dùng `--td-focus-ring`. Hiệu ứng "nhấc núm" khi đang nhấn dùng
-`--td-glass-lift-scale` (tắt khi giảm chuyển động).
+Lỗi dùng `--td-field-error` (viền rãnh). Focus dùng `--td-focus-ring`. Từ 0.20.0 núm không còn "nhấc lên" (phóng to)
+khi đang nhấn — chỉ trượt.
 
 **Viền mềm và WCAG:** rãnh tắt có viền mềm ~1.5:1 (hover ~2.2:1), thấp hơn 3:1 của WCAG 1.4.11 (có chủ đích); màu
 bật mặc định vẫn ≥ 3:1. Site cần tuân thủ nghiêm:
@@ -222,7 +222,7 @@ bật mặc định vẫn ≥ 3:1. Site cần tuân thủ nghiêm:
 }
 ```
 
-Công tắc là control tầng nội dung: rãnh đặc; chỉ núm "nhấc lên" khi đang nhấn. Xem
+Công tắc là control tầng nội dung: rãnh đặc, núm đặc có một bóng mềm. Xem
 [Theming](../customization/theming.md).
 
 ## Cấu trúc DOM & class
@@ -250,7 +250,7 @@ Công tắc là control tầng nội dung: rãnh đặc; chỉ núm "nhấc lên
 | `.td-switch__track`, `.td-switch__thumb` | Rãnh và núm. |
 | `.td-switch__icon--off` / `--on` | Icon trên núm (dấu X khi tắt, dấu tích khi bật). |
 | `.td-switch__label` | Nhãn (chỉ khi có `label`). |
-| `.td-switch[data-dragging]` | Đang nhấn giữ (núm nhấc lên). |
+| `.td-switch[data-dragging]` | Đang nhấn giữ (hook để site tự style; mặc định không đổi giao diện từ 0.20.0). |
 | `.td-switch[data-pending]` + input `[aria-busy="true"]` | Đang chờ `commit()`. |
 | `.td-switch__input:checked` / `:disabled` / `:focus-visible` / `[aria-invalid="true"]` | Trạng thái. |
 

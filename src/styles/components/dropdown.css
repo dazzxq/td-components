@@ -1,8 +1,9 @@
 /*
  * td-dropdown (src/form/td-dropdown.js) — plan v0.9.0-batch3 step 4 (D17–D19), inventory §7.4, 135 kit §10.5.
- * Trigger = field look (content layer, never glass): reuses the --td-field-* tokens from field.css.
- * Menu = body-portaled popover: Regular strong glass (.td-glass-surface--strong recipe), pad --td-glass-pad,
- * radius --td-glass-radius, options concentric (--td-glass-radius-inner) plain fills — never glass on glass.
+ * Trigger = field look (content layer, solid): reuses the --td-field-* tokens from field.css.
+ * Menu = body-portaled small popup (v0.20.0 minimal surfaces: .td-glass-surface--strong = 94 % + blur(12px) + thin
+ * border + soft shadow), pad --td-glass-pad, radius --td-glass-radius, options concentric (--td-glass-radius-inner)
+ * plain fills. Fades in (no pop scale).
  * State: [aria-expanded] / :disabled / [aria-invalid] on the trigger, [data-placeholder] on the value,
  * [hidden] / data-state / data-placement on the menu, [aria-selected] / [data-active] / [aria-disabled] on options.
  * Only geometry (top/left/width, list max-height) is written by JS through CSSOM.
@@ -157,18 +158,15 @@
 		transform-origin: bottom center;
 	}
 
+	/* v0.20.0: fade in only (no decorative pop scale). */
 	.td-dropdown__menu[data-state="open"] {
 		opacity: 1;
-		transform: none;
-		transition:
-			opacity var(--td-glass-dur) var(--td-glass-ease),
-			transform var(--td-glass-dur) var(--td-glass-ease);
+		transition: opacity var(--td-glass-dur) var(--td-glass-ease);
 	}
 
 	@starting-style {
 		.td-dropdown__menu[data-state="open"] {
 			opacity: 0;
-			transform: scale(var(--td-glass-enter-scale));
 		}
 	}
 
@@ -309,16 +307,8 @@
 			transition: none;
 		}
 
-		/* opacity only, no scale */
 		.td-dropdown__menu[data-state="open"] {
 			transition: opacity var(--td-glass-dur) linear;
-		}
-
-		@starting-style {
-			.td-dropdown__menu[data-state="open"] {
-				opacity: 0;
-				transform: none;
-			}
 		}
 	}
 

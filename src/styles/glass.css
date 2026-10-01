@@ -1,15 +1,17 @@
 /*
- * Liquid Glass recipes — rules: docs/internal/design/liquid-glass.md.
+ * Minimal surfaces (v0.20.0, replaces the Liquid Glass v2 recipes) — rules: docs/internal/design/liquid-glass.md.
  *
- * Use glass ONLY on the floating control layer (bars, menus, popovers, sheets, toasts, modals).
- * Never glass on glass: anything placed ON a glass surface uses plain fills.
+ * Every floating surface = background + ONE thin border + ONE soft shadow (+ blur(12px) only on small popups).
+ * No sheen gradient, no inset rim, no outer hairline, no glow, no decorative scale. The class names keep "glass"
+ * (markup and public API unchanged):
  *
- *   .td-glass-surface            Regular (default; adapts, text-safe)
- *   .td-glass-surface--strong    text-bearing surface (modal, menu, toast, tooltip)
- *   .td-glass-surface--lg        large surface: thicker blur + deeper shadow
- *   .td-glass-surface--clear     Clear: ONLY over rich media, with a dim layer behind
- *   .td-glass-dim(--text)        dimming layer for Clear (35 % icons / 60 % text)
- *   .td-glass-tint               the ONE primary action on a floating bar
+ *   .td-glass-surface            translucent 90 % + blur (default recipe)
+ *   .td-glass-surface--strong    small popups: 94 % + blur (menu, dropdown, chip-input suggestions, hovercard, toast)
+ *   .td-glass-surface--lg        deeper shadow only (--td-glass-shadow-lg)
+ *   .td-glass-surface--clear     lightbox bars: dark 88 % + blur, never themed
+ *   OPAQUE group (no blur): .td-modal__dialog, .td-loading__card, .td-tooltip, .td-scroll-top → --td-glass-solid
+ *   .td-glass-tint               solid capsule button (the one primary action on a floating bar)
+ *   .td-glass-dim(--text)        deprecated v0.20.0: no effect (class kept so markup does not break)
  *
  * Every recipe reads `var(--_td-glass-X, <public token>)`. The PRIVATE `--_td-glass-*` values are
  * set ONLY by the fallback block below — on the recipe element itself (never :root, where var()
@@ -18,17 +20,11 @@
  * site's token overrides can never defeat reduced-transparency / glass-off / contrast / forced-colors.
  */
 @layer td.component {
-	/* v0.14.0 recipe: translucent fill + [status wash] + 135° sheen, two-tone rim, dark outer hairline, lift shadow. A
-	   component may set --td-glass-wash (a gradient, e.g. a toast's semantic colour) — painted above the fill. */
 	.td-glass-surface {
 		background-color: var(--_td-glass-fill, var(--td-glass-bg));
-		background-image: var(--td-glass-wash, linear-gradient(transparent, transparent)), var(--_td-glass-sheen, var(--td-glass-sheen));
 		color: var(--_td-glass-fg, var(--td-glass-fg));
 		border: 1px solid var(--_td-glass-line, var(--td-glass-border));
-		box-shadow:
-			var(--_td-glass-rim, inset 0 1px 0 0 var(--td-glass-edge), inset 1px 0 0 0 var(--td-glass-side-edge), inset 0 -1px 0 0 var(--td-glass-bottom)),
-			var(--_td-glass-outline, 0 0 0 1px var(--td-glass-outline)),
-			var(--_td-glass-lift, var(--td-glass-shadow));
+		box-shadow: var(--_td-glass-lift, var(--td-glass-shadow));
 		-webkit-backdrop-filter: var(--_td-glass-filter, var(--td-glass-blur));
 		backdrop-filter: var(--_td-glass-filter, var(--td-glass-blur));
 	}
@@ -38,39 +34,26 @@
 	}
 
 	.td-glass-surface--lg {
-		box-shadow:
-			var(--_td-glass-rim, inset 0 1px 0 0 var(--td-glass-edge), inset 1px 0 0 0 var(--td-glass-side-edge), inset 0 -1px 0 0 var(--td-glass-bottom)),
-			var(--_td-glass-outline, 0 0 0 1px var(--td-glass-outline)),
-			var(--_td-glass-lift, var(--td-glass-shadow-lg));
-		-webkit-backdrop-filter: var(--_td-glass-filter, var(--td-glass-blur-lg));
-		backdrop-filter: var(--_td-glass-filter, var(--td-glass-blur-lg));
+		box-shadow: var(--_td-glass-lift, var(--td-glass-shadow-lg));
+	}
+
+	/* Opaque surfaces: large or text-dense, or a control that floats over content — no blur at all. The fallbacks
+	   still override --_td-glass-fill (contrast → surface colour, forced colours → Canvas). */
+	:is(.td-modal__dialog, .td-loading__card, .td-tooltip, .td-scroll-top).td-glass-surface {
+		background-color: var(--_td-glass-fill, var(--td-glass-solid));
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
 	}
 
 	.td-glass-surface--clear {
 		background-color: var(--_td-glass-clear-fill, var(--td-glass-clear-bg));
-		background-image: none;
 		color: var(--_td-glass-clear-fg, var(--td-glass-clear-fg));
 		border-color: var(--_td-glass-clear-line, var(--td-glass-clear-border));
-		box-shadow:
-			var(--_td-glass-clear-rim, inset 0 1px 0 0 var(--td-glass-clear-edge)),
-			var(--_td-glass-lift, var(--td-glass-clear-shadow));
-	}
-
-	/* Icons on Clear glass carry their own shadow (localized contrast over bright media). */
-	.td-glass-surface--clear :is(svg, .td-glass-glyph) {
-		filter: var(--_td-glass-glyph-shadow, var(--td-glass-clear-glyph-shadow));
-	}
-
-	.td-glass-dim {
-		background: var(--_td-glass-dim, var(--td-glass-dim));
-	}
-
-	.td-glass-dim--text {
-		background: var(--_td-glass-dim, var(--td-glass-dim-text));
+		box-shadow: var(--_td-glass-lift, var(--td-glass-clear-shadow));
 	}
 
 	.td-glass-tint {
-		/* A capsule touch target (the one primary action on a floating bar). */
+		/* A solid capsule touch target (the one primary action on a floating bar). */
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
@@ -78,141 +61,83 @@
 		padding: 0 var(--td-space-lg);
 		border-radius: var(--td-glass-capsule);
 		font-weight: var(--td-fw-semibold);
-		/* Opaque tint first: browsers without color-mix() keep a solid, readable fill. */
-		background: var(--_td-glass-tint-fill, var(--td-glass-tint));
-		color: var(--_td-glass-tint-fg, var(--td-glass-tint-fg));
+		background: var(--_td-glass-tint-fill, var(--td-btn-primary-bg));
+		color: var(--_td-glass-tint-fg, var(--td-btn-primary-fg));
 		border: 1px solid var(--_td-glass-tint-line, transparent);
-		box-shadow:
-			var(--_td-glass-rim, inset 0 1px 0 0 var(--td-glass-tint-edge)),
-			var(--_td-glass-lift, var(--td-glass-shadow));
-		-webkit-backdrop-filter: var(--_td-glass-filter, var(--td-glass-blur));
-		backdrop-filter: var(--_td-glass-filter, var(--td-glass-blur));
-	}
-
-	@supports (color: color-mix(in oklab, red 50%, transparent)) {
-		.td-glass-tint {
-			background: var(--_td-glass-tint-fill, color-mix(in oklab, var(--td-glass-tint) var(--td-glass-tint-alpha), transparent));
-		}
-	}
-}
-
-/* No gradients at all (sheen, status wash) under forced colours or increased contrast: plain system / solid surfaces. */
-@layer td.component {
-	@media (forced-colors: active), (prefers-contrast: more) {
-		.td-glass-surface {
-			background-image: none;
-		}
+		box-shadow: var(--_td-glass-lift, var(--td-btn-lift));
 	}
 }
 
 /* ================= FALLBACKS — private tokens, on every recipe element ================= */
 @layer td.tokens {
-	/* Glass buttons (button.css) follow every fallback: opaque fill, no sheen, no blur. */
-	@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-		.td-btn { --_td-btn-fill: var(--td-btn-bg-v) !important; --_td-btn-sheen: none !important; }
-	}
-
-	@media (prefers-reduced-transparency: reduce) {
-		.td-btn { --_td-btn-fill: var(--td-btn-bg-v) !important; --_td-btn-sheen: none !important; --_td-btn-filter: none !important; }
-	}
-
-	:root[data-td-glass="off"] .td-btn {
-		--_td-btn-fill: var(--td-btn-bg-v) !important;
-		--_td-btn-sheen: none !important;
-		--_td-btn-filter: none !important;
-	}
-
+	/* Buttons are always solid (button.css): only increased contrast and forced colours touch them. */
 	@media (prefers-contrast: more) {
-		.td-btn { --_td-btn-fill: var(--td-btn-bg-v) !important; --_td-btn-sheen: none !important; --_td-btn-filter: none !important; --_td-btn-rim: 0 0 0 0 transparent !important; }
+		.td-btn { --_td-btn-lift: 0 0 0 0 transparent !important; }
 	}
 
 	@media (forced-colors: active) {
-		.td-btn { --_td-btn-sheen: none !important; --_td-btn-filter: none !important; --_td-btn-rim: 0 0 0 0 transparent !important; --_td-btn-outline: 0 0 0 0 transparent !important; --_td-btn-lift: 0 0 0 0 transparent !important; }
+		.td-btn { --_td-btn-lift: 0 0 0 0 transparent !important; }
 	}
 
 	/* 1. No backdrop-filter: a translucent box would be see-through text over content → opaque. */
 	@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
 		.td-glass-surface,
-		.td-glass-tint,
-		.td-glass-dim {
+		.td-glass-tint {
 			--_td-glass-fill: var(--td-glass-solid) !important;
 			--_td-glass-clear-fill: var(--td-glass-clear-solid) !important;
-			--_td-glass-dim: transparent !important;
-			--_td-glass-tint-fill: var(--td-glass-tint) !important;
-			--_td-glass-sheen: none !important;
 		}
 	}
 
 	/* 2. Reduce Transparency (Chromium only today) + 2b. explicit opt-out <html data-td-glass="off">
-	      (Safari/iOS have no reduced-transparency query). Frostier = opaque, no blur. */
+	      (Safari/iOS have no reduced-transparency query). Opaque, no blur. */
 	@media (prefers-reduced-transparency: reduce) {
 		.td-glass-surface,
-		.td-glass-tint,
-		.td-glass-dim {
+		.td-glass-tint {
 			--_td-glass-fill: var(--td-glass-solid) !important;
 			--_td-glass-clear-fill: var(--td-glass-clear-solid) !important;
 			--_td-glass-filter: none !important;
-			--_td-glass-glyph-shadow: none !important;
-			--_td-glass-dim: transparent !important;
-			--_td-glass-tint-fill: var(--td-glass-tint) !important;
-			--_td-glass-sheen: none !important;
 		}
 	}
 
-	:root[data-td-glass="off"] :is(.td-glass-surface, .td-glass-tint, .td-glass-dim) {
+	:root[data-td-glass="off"] :is(.td-glass-surface, .td-glass-tint) {
 		--_td-glass-fill: var(--td-glass-solid) !important;
 		--_td-glass-clear-fill: var(--td-glass-clear-solid) !important;
 		--_td-glass-filter: none !important;
-		--_td-glass-glyph-shadow: none !important;
-		--_td-glass-dim: transparent !important;
-		--_td-glass-tint-fill: var(--td-glass-tint) !important;
-		--_td-glass-sheen: none !important;
 	}
 
-	/* 3. Increase Contrast: near black/white surfaces with a contrasting border, no blur, no rim. */
+	/* 3. Increase Contrast: near black/white surfaces with a contrasting border, no blur, no shadow. */
 	@media (prefers-contrast: more) {
 		.td-glass-surface,
-		.td-glass-tint,
-		.td-glass-dim {
+		.td-glass-tint {
 			--_td-glass-fill: var(--td-color-surface) !important;
+			--_td-glass-fill-a11y: var(--td-color-surface) !important; /* custom-colour chips (tooltip) */
 			--_td-glass-fg: var(--td-color-text) !important;
 			--_td-glass-line: currentcolor !important;
-			--_td-glass-rim: 0 0 0 0 transparent !important;
+			--_td-glass-lift: 0 0 0 0 transparent !important;
 			--_td-glass-filter: none !important;
-			--_td-glass-glyph-shadow: none !important;
 			--_td-glass-clear-fill: #000 !important;
 			--_td-glass-clear-fg: #fff !important;
 			--_td-glass-clear-line: #fff !important;
-			--_td-glass-clear-rim: 0 0 0 0 transparent !important;
-			--_td-glass-dim: transparent !important;
-			--_td-glass-tint-fill: var(--td-glass-tint) !important;
 			--_td-glass-tint-line: currentcolor !important;
-			--_td-glass-sheen: none !important;
 		}
 	}
 
 	/* 4. Forced colours — LAST: system colour pairs, no shadow, no filter. */
 	@media (forced-colors: active) {
 		.td-glass-surface,
-		.td-glass-tint,
-		.td-glass-dim {
+		.td-glass-tint {
 			--_td-glass-fill: Canvas !important;
+			--_td-glass-fill-a11y: Canvas !important;
 			--_td-glass-fg: CanvasText !important;
 			--_td-glass-line: CanvasText !important;
-			--_td-glass-rim: 0 0 0 0 transparent !important;
 			--_td-glass-lift: 0 0 0 0 transparent !important;
 			--_td-glass-filter: none !important;
-			--_td-glass-glyph-shadow: none !important;
 			--_td-glass-clear-fill: Canvas !important;
 			--_td-glass-clear-fg: CanvasText !important;
 			--_td-glass-clear-line: CanvasText !important;
-			--_td-glass-clear-rim: 0 0 0 0 transparent !important;
-			--_td-glass-dim: transparent !important;
 			--_td-glass-tint-fill: ButtonFace !important;
 			--_td-glass-tint-fg: ButtonText !important;
 			--_td-glass-tint-line: ButtonText !important;
-			--_td-glass-sheen: none !important;
-			--_td-glass-outline: 0 0 0 0 transparent !important;
 		}
 	}
 }

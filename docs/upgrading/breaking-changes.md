@@ -1,8 +1,8 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.19)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.20)
 
-Trang này liệt kê, cho từng bản từ **0.19.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
+Trang này liệt kê, cho từng bản từ **0.20.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
 [CHANGELOG.md](../../CHANGELOG.md); trang này chỉ gom lại theo góc nhìn "tôi phải làm gì" và thêm ví dụ trước/sau.
 Quy trình nâng cấp chung nằm ở [README.md](README.md).
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.20.0](#0200) | Đổi giao diện lớn | Kiểm bằng mắt nút / popup / toast / modal; override token kính cũ hết tác dụng → đổi sang token mới (bảng dưới). |
 | [0.19.0](#0190) | Đổi hành vi (nhỏ) + đổi giao diện (nhỏ) | datetime-picker mặc định mở tại hôm nay (cần đầu khoảng → `open-at="min"`); stamp dùng font mono; `td-button` chuyển ARIA trạng thái xuống; dropzone hiện `err.message`. |
 | [0.18.0](#0180) | Đổi hành vi (nhỏ) | `searchable="false"` (PHP) giờ tắt thật; `hasIcon()` hiểu alias; datetime-picker nhận ISO; `td-button` truyền `name`/`value`. |
 | [0.17.0](#0170) | Đổi hành vi (nhỏ) | `dropdown.value` trả giá trị đang chọn; `<td-dropdown>` chứa `<select>` giờ được nâng cấp. |
@@ -43,6 +44,34 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.20.0
+
+**Đổi giao diện lớn — không đổi markup / class / API JS.** Liquid Glass giả bằng CSS được thay bằng "Minimal surfaces":
+nền + một viền mảnh + một shadow mềm; chỉ popup nhỏ (menu, dropdown, gợi ý chip-input, hovercard, toast) còn blur 12px
+trên nền 94%. Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.20.0.
+
+1. **Nút đặc.** Không còn kính, bóng loáng, phát sáng, lún khi bấm. Màu primary vẫn theo `--td-accent`.
+2. **Modal, tooltip, loading, scroll-top đặc** (không blur). Site từng tự ép modal / menu đặc (ví dụ override
+   `--td-glass-bg-strong` thành gần 100%) có thể bỏ override cho modal; popup nhỏ muốn đặc hẳn thì đặt
+   `--td-glass-bg-strong: var(--td-glass-solid)`.
+3. **Toast trung tính**, màu trạng thái ở icon. `--td-toast-*-wash` / `--td-toast-error-border` hết tác dụng.
+4. **Token kính cũ hết tác dụng** (vẫn khai báo, không lỗi). Đổi sang:
+
+   | Token cũ | Thay bằng |
+   |---|---|
+   | `--td-btn-{primary,success,danger,info,warning}-tint` | `--td-btn-{…}-bg` (tên cũ vẫn chạy như alias tới bản lớn sau) |
+   | `--td-btn-secondary-glass` | `--td-btn-secondary-bg` |
+   | `--td-btn-secondary-edge` | `--td-btn-secondary-border` |
+   | `--td-btn-*-alpha`, `--td-btn-*-film`, `--td-btn-sheen` | — (nút đặc) |
+   | `--td-glass-edge`, `-side-edge`, `-bottom`, `-outline`, `-sheen`, `-glow*`, `-*-scale`, `-dim*`, `-tint*`, `-clear-edge`, `-clear-glyph-shadow` | — (bỏ hiệu ứng) |
+
+5. **Site cần viền 3:1 cho nút secondary** (từng map `--td-control-border-soft` sang viền đậm): giờ đặt thêm
+   `--td-btn-secondary-border`.
+6. **Nút `color` tuỳ biến** hover luôn **đậm** hơn (trước có lúc sáng hơn khi chữ tối) — màu rất sáng + chữ tối thì
+   kiểm lại tương phản khi hover.
 
 ---
 

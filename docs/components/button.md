@@ -2,8 +2,8 @@
 
 # Button — `<td-button>`
 
-Nút bấm kiểu Liquid Glass: các variant có màu (primary, success, danger, info, warning) là "kính nhuộm màu", secondary là
-kính trắng trung tính, ghost là nút chữ không nền. Dùng cho mọi hành động (lưu, gửi form, mở modal…). Cần một
+Nút bấm màu đặc (minimal surfaces, 0.20.0): các variant có màu (primary, success, danger, info, warning) là nền đặc
+theo màu variant, secondary là nền xám nhạt có viền mảnh, ghost là nút chữ không nền. Mỗi nút có một bóng mềm. Dùng cho mọi hành động (lưu, gửi form, mở modal…). Cần một
 **đường dẫn trông như nút** (chuyển trang, tải file) thì thêm `href`: `td-button` render `<a>` thật (xem
 [Nút dạng link](#nút-dạng-link-href)). Nếu cần nút có menu con, dùng [menu](menu.md) gắn vào một `td-button`.
 
@@ -12,7 +12,7 @@ kính trắng trung tính, ghost là nút chữ không nền. Dùng cho mọi h�
 | Import | `import '@dazzxq/td-components/button';` (class: `import { TdButton } from '@dazzxq/td-components';`) |
 | Loại | Custom element |
 | Form-associated | không (nhưng nút `<button>` bên trong vẫn submit/reset được form bao quanh, xem [Dùng trong form](#dùng-trong-form)) |
-| Từ phiên bản | 0.1.0 (token-native từ 0.7.0, Liquid Glass từ 0.14.0, `run()` từ 0.13.0, `ghost` + `href` từ 0.17.0, `name`/`value` + alias icon từ 0.18.0, ARIA trạng thái chuyển xuống từ 0.19.0) |
+| Từ phiên bản | 0.1.0 (token-native từ 0.7.0, Liquid Glass 0.14.0 → nút đặc từ 0.20.0, `run()` từ 0.13.0, `ghost` + `href` từ 0.17.0, `name`/`value` + alias icon từ 0.18.0, ARIA trạng thái chuyển xuống từ 0.19.0) |
 
 Cần nạp `td.css` một lần trên trang (xem [Cài đặt](../getting-started/installation.md)). Không có `td.css` thì nút
 vẫn chạy nhưng không có giao diện.
@@ -57,7 +57,7 @@ Giá trị không hợp lệ không báo lỗi mà rơi về mặc định: `var
 <td-button variant="ghost" icon="download" href="/bao-cao.pdf" download>Tải báo cáo</td-button>
 ```
 
-Từ 0.17.0, `ghost` = nền trong suốt, **không kính, không blur, không viền, không bóng**, chữ màu accent (`--td-btn-ghost-fg`,
+Từ 0.17.0, `ghost` = nền trong suốt, **không blur, không viền, không bóng**, chữ màu accent (`--td-btn-ghost-fg`,
 mặc định `var(--td-accent)`). Hover phủ một lớp nền mờ (`--td-btn-ghost-hover-bg`, mặc định `--td-color-hover`), không
 glow. Focus bàn phím có vòng focus như mọi nút. Disabled: vẫn trong suốt, chữ xám (`--td-btn-disabled-fg`).
 Dùng cho hành động phụ đặt trên **nền trang** (Huỷ, Xem thêm, liên kết trong toolbar). Không đặt ghost trên ảnh/nền
@@ -174,13 +174,14 @@ Khi có `full-width`, cả thẻ `td-button` chuyển thành `display: block` v�
 
 - `color` ghi đè màu của variant. Nhận mọi màu CSS hợp lệ (hex, `rgb()`, `hsl()`, tên màu…), được kiểm tra qua
   `safeColor` rồi trình duyệt chuẩn hoá. Màu không hợp lệ bị bỏ qua, nút giữ màu variant.
-- Màu tuỳ chỉnh luôn là **nền đặc, không phải kính** (không blur). Màu trong suốt (ví dụ `rgba(0,0,128,.5)`) được
+- Màu tuỳ chỉnh là **nền đặc** như mọi variant (không blur), cùng một bóng `--td-btn-lift`. Màu trong suốt (ví dụ `rgba(0,0,128,.5)`) được
   trộn lên nền trắng thành màu đặc trước khi dùng.
 - Nếu không có `text-color`, chữ tự chọn **đen hoặc trắng** theo tỉ lệ tương phản WCAG cao hơn so với nền đó.
 - `text-color` **chỉ có tác dụng khi có `color`**. Đặt `text-color` một mình trên nút variant thường sẽ không có gì
   xảy ra (muốn đổi màu chữ của variant, override token, xem [Tuỳ biến giao diện](#tuỳ-biến-giao-diện)).
-- Hover của nút màu tuỳ chỉnh phủ một lớp làm tối (khi chữ sáng) hoặc làm sáng (khi chữ tối), để hover không bao giờ
-  làm giảm tương phản.
+- Hover của nút màu tuỳ chỉnh (0.20.0) = nền **đặc** đậm hơn: `color-mix(in srgb, <màu> 92%, #000)`, như mọi variant
+  (trình duyệt không có `color-mix()` giữ nguyên nền). Với màu nền rất sáng + chữ tối, hover làm tương phản giảm rất
+  nhẹ — chọn `color` đủ tương phản dư.
 
 Giá trị áp vào bằng CSSOM (`el.style.setProperty('--td-btn-bg', …)`) trên thẻ host, không dùng `style="…"`, nên hợp
 lệ với CSP strict.
@@ -242,7 +243,7 @@ btn.setDisabled(true);  // = setAttribute('disabled', '')
 
 `disabled` là disabled native của `<button>` (với link: xem [Nút dạng link](#nút-dạng-link-href)): không click,
 không focus, ra khỏi thứ tự Tab. Giao diện: nền nhạt đặc,
-chữ xám, viền nhạt, không kính, không bóng (xem [Tương phản](#tương-phản-và-các-đánh-đổi-có-chủ-đích)).
+chữ xám, viền nhạt, không bóng (xem [Tương phản](#tương-phản-và-các-đánh-đổi-có-chủ-đích)).
 
 ### Dùng trong form
 
@@ -303,11 +304,10 @@ b.addEventListener('click', () => b.setAttribute('aria-pressed', String(b.getAtt
 Giá trị ngoài danh sách (ví dụ `aria-pressed="yes"`) **không** được chuyển xuống và có `console.warn` một lần. Chỉ
 đúng 4 attribute này (và `aria-label`) được chuyển; các `aria-*` khác nằm lại trên host.
 
-### Nút trong bảng, vùng dày đặc hoặc trên bề mặt kính
+### Nút trong bảng, vùng dày đặc hoặc trên bề mặt nổi
 
-Trong `.td-table`, trong phần tử có `data-td-density="dense"`, hoặc bên trong một bề mặt kính (`.td-glass-surface`,
-ví dụ modal, menu), nút giữ vẻ kính nhưng **bỏ `backdrop-filter` của chính nó** (không lồng kính trong kính, đỡ tốn
-hiệu năng khi có nhiều nút):
+Từ 0.20.0 nút không bao giờ có `backdrop-filter`, nên đặt trong `.td-table`, trong `data-td-density="dense"` hay bên trong
+modal / menu đều giống nhau, không cần xử lý riêng (`data-td-density` vẫn đặt được, không còn tác dụng với nút):
 
 ```html
 <div data-td-density="dense">
@@ -328,7 +328,7 @@ hiệu năng khi có nhiều nút):
 | `loading` | boolean | không | Trạng thái bận: `aria-busy` + `aria-disabled`, spinner, chặn click, **giữ focus**. |
 | `disabled` | boolean | không | Disabled native của `<button>`. |
 | `full-width` | boolean | không | Nút rộng 100% khung chứa (host thành `display: block`). |
-| `color` | string (màu CSS) | — | Nền tuỳ chỉnh, đặc (không kính), ghi đè variant. Qua `safeColor`; không hợp lệ thì bỏ qua. |
+| `color` | string (màu CSS) | — | Nền tuỳ chỉnh, đặc, ghi đè variant. Qua `safeColor`; không hợp lệ thì bỏ qua. |
 | `text-color` | string (màu CSS) | tự động đen/trắng | Màu chữ khi có `color`. Không có `color` thì bị bỏ qua. |
 | `type` | string | `button` | `button` \| `submit` \| `reset` (danh sách trắng). |
 | `aria-label` | string | — | Chuyển xuống `<button>` / `<a>` bên trong. Bắt buộc với nút chỉ có icon. |
@@ -384,32 +384,26 @@ thắng các lớp `td.*`. Xem thêm [Theming](../customization/theming.md) và 
 | Token | Mặc định (sáng) | Tác dụng |
 |---|---|---|
 | `--td-btn-radius` | `var(--td-radius-lg)` | Bo góc (trên màn cảm ứng luôn là viên thuốc `--td-radius-full`). |
-| `--td-btn-primary-bg` | `var(--td-accent-fill)` (light #2563eb; dark = accent tối đi 20%) | Màu gốc của primary (dùng làm tint và nền đặc khi tắt kính). Đổi `--td-accent` là đổi theo, cả dark (0.16.0). |
+| `--td-btn-primary-bg` | `var(--td-accent-fill)` (light #2563eb; dark = accent tối đi 20%) | Nền đặc của primary. Đổi `--td-accent` là đổi theo, cả dark (0.16.0). |
 | `--td-btn-primary-fg` | `var(--td-accent-contrast)` (#fff) | Màu chữ primary. |
-| `--td-btn-primary-tint` | `var(--td-btn-primary-bg)` | Màu nhuộm kính primary. |
-| `--td-btn-primary-alpha` | `94%` | Độ đậm của tint. |
-| `--td-btn-primary-film` | `rgb(0 0 0 / 10%)` | Lớp phim làm tối để giữ tương phản chữ. |
-| `--td-btn-success-tint` / `-alpha` / `-film` / `-fg` | `#15803d` / `94%` / `rgb(0 0 0 / 13%)` / `#fff` | Success. |
-| `--td-btn-danger-tint` / `-alpha` / `-film` / `-fg` | `#b91c1c` / `94%` / `rgb(0 0 0 / 6%)` / `#fff` | Danger. |
-| `--td-btn-info-tint` / `-alpha` / `-film` / `-fg` | `#1d4ed8` / `94%` / `rgb(0 0 0 / 6%)` / `#fff` | Info. |
-| `--td-btn-warning-tint` / `-alpha` / `-film` / `-fg` | `#f59e0b` / `86%` / `rgb(255 255 255 / 10%)` / `#111113` | Warning: hổ phách sáng + chữ tối. |
-| `--td-btn-sheen` | gradient trắng 12% → 3% | Vệt sáng trên nút có màu. |
-| `--td-btn-secondary-glass` | `rgb(255 255 255 / 80%)` | Nền kính trắng của secondary (v0.14.3). |
-| `--td-btn-secondary-edge` | `var(--td-control-border-soft)` (#d1d1d6) | Viền của secondary. |
-| `--td-btn-secondary-bg` | `var(--td-gray-100)` | Nền **đặc** của secondary khi kính bị tắt (trình duyệt không có `color-mix`, reduced transparency, `data-td-glass="off"`, tương phản cao). |
-| `--td-btn-disabled-bg` / `-fg` / `-border` | `#f4f4f5` / `#a1a1aa` / `#e4e4e7` | Trạng thái disabled (xám, đặc). |
-| `--td-btn-lift` | bóng nhẹ 2 lớp | Bóng nổi của nút. |
+| `--td-btn-success-bg` / `-fg` | `#15803d` / `#fff` | Success. |
+| `--td-btn-danger-bg` / `-fg` | `#b91c1c` / `#fff` | Danger. |
+| `--td-btn-info-bg` / `-fg` | `#1d4ed8` / `#fff` | Info. |
+| `--td-btn-warning-bg` / `-fg` | `#f59e0b` / `#111113` | Warning: hổ phách sáng + chữ tối. |
+| `--td-btn-secondary-bg` / `-fg` | `var(--td-gray-100)` / `var(--td-gray-900)` | Nền đặc + chữ của secondary. |
+| `--td-btn-secondary-border` | `rgb(0 0 0 / 12%)` | Viền mảnh của secondary. |
+| `--td-btn-secondary-hover` | `var(--td-gray-200)` | Nền secondary khi hover. |
+| `--td-btn-disabled-bg` / `-fg` / `-border` | `#f4f4f5` / `#a1a1aa` / `#e4e4e7` | Trạng thái disabled (xám, đặc, không bóng). |
+| `--td-btn-lift` | `0 1px 2px rgb(0 0 0 / 6%), 0 2px 6px -2px rgb(0 0 0 / 8%)` | **Bóng duy nhất** của nút (ghost / disabled không có). |
 | `--td-btn-ghost-fg` | `var(--td-accent)` (#2563eb; dark #3b82f6) | Màu chữ/icon của ghost (0.17.0). |
 | `--td-btn-ghost-hover-bg` | `var(--td-color-hover)` (`rgb(0 0 0 / 5%)`; dark `rgb(255 255 255 / 6%)`) | Nền khi hover của ghost (0.17.0). |
 
-Chữ của secondary dùng `--td-glass-fg` (#111113). Hover dùng `--td-glass-glow`, nhấn dùng `--td-glass-press-scale`
-(0.97), blur dùng `--td-glass-blur` — đây là token kính chung, xem [Theming](../customization/theming.md).
+Hover các variant có màu = `color-mix(in srgb, <nền> 92%, #000)` (tự theo màu nền, kể cả khi bạn đổi `-bg`).
 
 Theme tối (`<html data-td-theme="dark">`) đổi: `--td-btn-primary-bg` (qua `--td-accent-fill`, accent tối đi 20%, mặc định
-≈ #2f68c5), `--td-btn-secondary-glass`
-`rgb(40 40 44 / 84%)`, `--td-btn-secondary-edge` `rgb(255 255 255 / 14%)`, `--td-btn-secondary-bg` #2c2c30,
-`--td-btn-disabled-bg/-fg/-border` #202024 / #6b6b73 / `rgb(255 255 255 / 6%)`, `--td-btn-lift` đậm hơn. Tint của
-success/danger/info/warning giữ nguyên ở cả hai theme.
+≈ #2f68c5), `--td-btn-secondary-bg` / `-fg` / `-border` / `-hover` #2c2c30 / #f5f5f7 / `rgb(255 255 255 / 12%)` /
+#3a3a3e, `--td-btn-disabled-bg/-fg/-border` #202024 / #6b6b73 / `rgb(255 255 255 / 6%)`, `--td-btn-lift` đậm hơn
+(18 % / 20 %). Nền success/danger/info/warning giữ nguyên ở cả hai theme.
 
 Ví dụ đổi màu primary theo thương hiệu:
 
@@ -419,20 +413,24 @@ Ví dụ đổi màu primary theo thương hiệu:
 }
 ```
 
-Sau khi đổi tint, tự kiểm tra tương phản chữ (kit chỉ đo các giá trị mặc định).
+Sau khi đổi màu nền, tự kiểm tra tương phản chữ (kit chỉ đo các giá trị mặc định).
 
-### Liquid Glass của button (v0.14.x)
+**Token deprecated (0.20.0)** — vẫn khai báo nhưng không tác dụng: `--td-btn-{v}-alpha`, `--td-btn-{v}-film`,
+`--td-btn-sheen`, `--td-btn-secondary-glass` (→ `--td-btn-secondary-bg`), `--td-btn-secondary-edge` (→
+`--td-btn-secondary-border`). **Alias một chu kỳ:** `--td-btn-{primary,success,danger,info,warning}-tint` nếu site còn
+đặt thì vẫn thành nền nút; nên đổi sang `--td-btn-{v}-bg`.
 
-- **Primary / success / danger / info / warning** = kính nhuộm màu (kiểu `.glassProminent` của Apple): tint ở độ đậm
-  `--td-btn-*-alpha` + phim tương phản + vệt sáng + viền sáng phía trên + `backdrop-filter` blur.
-- **Secondary** = kính trắng 80% với viền mềm `--td-btn-secondary-edge`, không phim xám (v0.14.3 — trước đó
-  secondary bị render xám đặc do lỗi độ ưu tiên CSS).
-- **Hover** = quầng sáng bên ngoài (glow), không đổi nền phía sau chữ, nên tương phản không đổi. Không hiện glow khi
-  nút đang có focus bàn phím (vòng focus luôn nhìn thấy).
-- **Nhấn** = thu nhỏ nhẹ (`--td-glass-press-scale`); tắt khi người dùng bật giảm chuyển động.
-- **Tự rơi về nền đặc** (không kính, không sheen) khi: `prefers-reduced-transparency: reduce`,
-  `<html data-td-glass="off">`, `prefers-contrast: more`, `forced-colors: active`, hoặc trình duyệt không hỗ trợ
-  `color-mix()`. Các fallback này dùng biến riêng có `!important`, nên token của site không vô hiệu hoá được chúng.
+### Giao diện của button (0.20.0 — minimal surfaces)
+
+- **Mọi variant có nền** = màu **đặc** `--td-btn-{v}-bg` + viền (secondary: `--td-btn-secondary-border`; variant màu:
+  trong suốt) + **một** bóng `--td-btn-lift`. Không blur, không phim, không vệt sáng, không viền sáng.
+- **Hover** = nền đậm hơn, vẫn đặc (secondary: `--td-btn-secondary-hover`). Không glow, không phóng to.
+- **Nhấn** = không thu nhỏ (bỏ press scale).
+- **Focus bàn phím** = vòng `--td-focus-ring` (giữ).
+- **Ghost / disabled** = không bóng.
+- `prefers-contrast: more`: viền `currentcolor`, bỏ bóng. `forced-colors: active`: viền `ButtonText`, bỏ bóng. Các
+  fallback này dùng biến riêng có `!important`, nên token của site không vô hiệu hoá được chúng.
+- Trước 0.20.0 (0.14.0–0.19.x) nút là "kính nhuộm màu" (tint trong suốt + phim + sheen + blur, glow khi hover).
 
 ### Tương phản và các đánh đổi có chủ đích
 
@@ -444,18 +442,19 @@ Sau khi đổi tint, tự kiểm tra tương phản chữ (kit chỉ đo các gi
 - **Disabled cố ý mờ** (v0.14.3): chữ disabled chỉ cần **≥ 2.2:1** (và dưới 3:1) để trông "xám đi" rõ ràng.
   WCAG 1.4.3 / 1.4.11 miễn yêu cầu tương phản cho control không hoạt động. Disabled dùng màu trạng thái đặc, không
   bao giờ dùng `opacity` của cả phần tử (nút mờ trên nền tối sẽ không đọc được).
-- **Viền secondary mềm** (~1.5:1) theo `--td-control-border-soft`. Site cần tuân thủ WCAG 1.4.11 nghiêm ngặt (viền
-  control ≥ 3:1) đặt:
+- **Viền secondary mảnh** (0.20.0): `--td-btn-secondary-border` (`rgb(0 0 0 / 12%)`, dark `rgb(255 255 255 / 12%)`),
+  token riêng của button — **không** theo `--td-control-border-soft`. Site cần tuân thủ WCAG 1.4.11 nghiêm ngặt (viền
+  control ≥ 3:1) đặt thẳng token này (một khối `:root` không layer là đủ cho cả hai theme, vì
+  `--td-control-border-strong` tự có giá trị dark):
 
   ```css
   :root {
-    --td-control-border-soft: var(--td-control-border-strong);
-    --td-control-border-hover: var(--td-control-border-strong);
+    --td-btn-secondary-border: var(--td-control-border-strong);
   }
   ```
 
-  Lệnh này đổi luôn viền của input, checkbox, toggle, dropdown… và viền secondary button ở theme sáng (theme tối,
-  secondary dùng `--td-btn-secondary-edge` riêng; override thêm token đó nếu cần).
+  Viền của input, checkbox, toggle, dropdown… thì map `--td-control-border-soft` / `-hover` (xem
+  [Theming › Viền control mềm](../customization/theming.md#viền-control-mềm-và-override-chuẩn-wcag-nghiêm-ngặt)).
 
 ## Cấu trúc DOM & class
 
@@ -561,7 +560,7 @@ Xem [Trợ năng](../guides/accessibility.md).
 
 ## Xem thêm
 
-- [Theming](../customization/theming.md) — token, theme tối, bật/tắt kính, viền mềm và override WCAG
+- [Theming](../customization/theming.md) — token, theme tối, bật/tắt blur, viền mềm và override WCAG
 - [Styling](../customization/styling.md) — `@layer`, override CSS, CSSOM
 - [Icons](icons.md) — registry, đăng ký icon riêng
 - [Loading](loading.md) — spinner `.td-spinner`, overlay toàn trang

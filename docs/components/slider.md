@@ -216,8 +216,8 @@ Biến do JS đặt trên host (CSSOM, không override): `--td-slider-pct` (vị
 `--td-slider-mark`. Vạch chia dùng `--td-control-border-strong`; lỗi dùng `--td-field-error`; focus dùng
 `--td-focus-ring`.
 
-Liquid Glass: rãnh và núm đặc lúc nghỉ; chỉ khi đang kéo (`[data-dragging]`) núm mới "nhấc lên" thành thấu kính trong
-(`--td-glass-clear-bg`, phóng to theo `--td-glass-lift-scale`). Giảm chuyển động thì không phóng to. Xem
+Minimal surfaces (0.20.0): rãnh và núm luôn đặc, núm có một bóng mềm; khi đang kéo (`[data-dragging]`) núm giữ nguyên
+(không còn thấu kính trong, không phóng to). `[data-dragging]` vẫn được đặt để site tự style nếu muốn. Xem
 [Theming](../customization/theming.md).
 
 ## Cấu trúc DOM & class

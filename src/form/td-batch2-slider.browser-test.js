@@ -233,7 +233,7 @@ describe('batch 2 — td-slider focus, dragging, contrast', () => {
     expect(dis.querySelector('.td-slider').hasAttribute('data-dragging')).to.equal(false);
   });
 
-  it('trusted drag: knob lifts while pressed, one change on release', async () => {
+  it('trusted drag: knob keeps its size while pressed (v0.20.0: no lift), one change on release', async () => {
     const el = mount('<td-slider aria-label="x" value="0"></td-slider>');
     const changes = [];
     host.addEventListener('change', (e) => changes.push(e.detail.value));
@@ -243,8 +243,10 @@ describe('batch 2 — td-slider focus, dragging, contrast', () => {
     await sendMouse({ type: 'down' });
     const root = el.querySelector('.td-slider');
     expect(root.hasAttribute('data-dragging')).to.equal(true);
-    await wait(350); // transition settles
-    expect(scaleOf(el.querySelector('.td-slider__thumb'))).to.be.closeTo(1.15, 0.01);
+    await wait(350); // any transition would have settled
+    const thumb = el.querySelector('.td-slider__thumb');
+    expect(scaleOf(thumb)).to.equal(1);
+    expect(getComputedStyle(thumb).backdropFilter).to.equal('none'); // no clear lens
     await sendMouse({ type: 'move', position: [Math.round(c.left + c.width / 2), y] });
     await sendMouse({ type: 'up' });
     expect(root.hasAttribute('data-dragging')).to.equal(false);

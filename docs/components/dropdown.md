@@ -329,7 +329,7 @@ Token riêng của dropdown (khai báo trong `@layer td.tokens`, file `component
 Nút trigger dùng chung token field (`field.css`): `--td-field-bg`, `--td-field-fg`, `--td-field-border`,
 `--td-field-border-hover`, `--td-field-focus`, `--td-field-error`, `--td-field-placeholder`, `--td-field-radius-md`,
 `--td-field-h-md`, `--td-field-bg-disabled`, `--td-field-fg-disabled`, `--td-field-label`, `--td-field-note`. Menu là
-glass mạnh (`.td-glass-surface--strong`) dùng `--td-glass-pad`, `--td-glass-radius`, `--td-glass-radius-inner`, và nằm
+popup nhỏ (`.td-glass-surface--strong`: nền 94 % + `blur(12px)` + viền mảnh + một bóng mềm, 0.20.0) dùng `--td-glass-pad`, `--td-glass-radius`, `--td-glass-radius-inner`, và nằm
 ở lớp `--td-z-popover` (450).
 
 ```css
@@ -434,7 +434,7 @@ Khác:
 - Ô "Không tìm thấy kết quả" là `role="status"` nằm ngoài listbox.
 - Touch (`pointer: coarse`): trigger, ô tìm kiếm và option cao tối thiểu `--td-touch-min` (44px); ô tìm kiếm ≥ 16px chữ
   để iOS không zoom.
-- `prefers-reduced-motion`: menu chỉ mờ dần, không phóng to. `forced-colors`: có viền/outline hệ thống.
+- Menu mở bằng fade (không phóng to, 0.20.0); `prefers-reduced-motion`: fade nhanh tuyến tính. `forced-colors`: có viền/outline hệ thống.
 
 Chi tiết: [Trợ năng](../guides/accessibility.md).
 

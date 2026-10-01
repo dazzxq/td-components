@@ -1,8 +1,8 @@
 /*
  * td-datetime-picker (src/form/td-datetime-picker.js) — plan v0.10.0-batch4 item 1 (D1–D10), inventory §7.1.
  * Blocks: .td-dtp (host: field-look trigger, content layer, never glass — reuses the --td-field-* tokens like the
- * dropdown trigger), .td-dtp-panel (dialog body inside TdModal, which is already the glass layer: inner controls are
- * plain fills — no glass on glass, R3), .td-dtp-wheel (hour/minute listbox wheels, CSS scroll-snap; the fade is a
+ * dropdown trigger), .td-dtp-panel (dialog body inside TdModal — an opaque surface since v0.20.0: inner controls are
+ * plain fills), .td-dtp-wheel (hour/minute listbox wheels, CSS scroll-snap; the fade is a
  * mask so it works on any backdrop and in dark; the selected row is a solid band + weight/size, never scale()).
  * State: [aria-expanded] / :disabled / [aria-invalid] on the trigger, [data-placeholder] on the value, data-state on
  * .td-dtp, [aria-invalid] on panel inputs, [hidden] on the error line, [aria-selected] on wheel options.

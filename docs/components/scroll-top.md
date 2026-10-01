@@ -2,7 +2,7 @@
 
 # Nút lên đầu trang — `<td-scroll-top>`
 
-Nút kính tròn cố định ở góc dưới (phía cuối dòng — bên phải với trang trái-sang-phải), hiện ra khi trang đã cuộn quá
+Nút tròn nền đặc cố định ở góc dưới (phía cuối dòng — bên phải với trang trái-sang-phải), hiện ra khi trang đã cuộn quá
 `threshold`, bấm là cuộn mượt về đầu trang và chuyển focus bàn phím về nội dung chính. Dùng cho trang dài (bài viết,
 danh sách). Một trang chỉ nên có một nút.
 
@@ -100,9 +100,10 @@ home.
 | `--td-scroll-top-z` | `var(--td-z-sticky)` (200) | Lớp chồng — **dưới** lightbox (350), modal (400), popover (450), toast |
 | `--td-scroll-top-offset` | `10px` | Quãng trượt khi hiện/ẩn |
 
-Nút là **kính strong** (lớp điều khiển nổi — [luật Liquid Glass](../internal/design/liquid-glass.md)): công thức
-`.td-glass-surface--strong`, nên mọi fallback (giảm trong suốt, `data-td-glass="off"`, tương phản cao, forced colors,
-trình duyệt không có `backdrop-filter`) tự áp dụng. Token kính chung (`--td-glass-*`) đổi được như mọi bề mặt kính khác.
+Nút là bề mặt **đặc** (0.20.0 — [minimal surfaces](../internal/design/liquid-glass.md)): `--td-glass-solid` + viền
+mảnh `--td-glass-border` + một bóng mềm `--td-glass-shadow`, không blur, không thu nhỏ khi bấm. Vẫn mang class
+`.td-glass-surface--strong` nên fallback tương phản cao / forced colors tự áp dụng; token bề mặt chung (`--td-glass-*`)
+đổi được như mọi bề mặt khác.
 
 ## Cấu trúc DOM & class
 

@@ -30,7 +30,7 @@ function buttons(items, note = '') {
   return root;
 }
 
-/** Strong glass toasts, top-right; the variant is the status icon (no coloured fills). */
+/** Neutral small-popup toasts (94 % + blur), top-right; the variant is the coloured status icon (no coloured fills). */
 export const AllVariants = {
   render: () => buttons([
     ['Thành công', 'secondary', () => TdToast.success('Lưu thành công!')],

@@ -7,7 +7,7 @@
  *   the `--td-z-*` token set (override the set, not one layer).
  * - `instance.zIndex / backdropOpacity / stackIndex` are still computed (read-only compatibility); the backdrop
  *   opacity is no longer written (the scrim is `--td-glass-scrim`).
- * - Every non-top root carries `[data-covered]` (CSS turns its glass dialog solid — "no glass on glass", D20).
+ * - Every non-top root carries `[data-covered]` (a state hook; since v0.20.0 every dialog is opaque anyway).
  * - One page scroll lease (utils/scroll-lock.js) while the stack is non-empty.
  * - `closeAll()` delegates to each instance's `close()` (TdModal instances), so focus, layer leases and `onClose`
  *   run exactly once per dialog.

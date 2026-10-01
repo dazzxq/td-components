@@ -42,7 +42,7 @@ Quét để tìm fix/tính năng đáng đưa vào td sau v0.4.0. td **không** 
 
 135 có một kit `td-` **không Tailwind** tự fork (`td-tokens.css`, `td-ui.css`, `td-glass.css`, `td-lightbox.css`),
 gốc từ dwp. Đây là **điểm xuất phát cho v0.5** (token, BEM, glass). Lệch chuẩn cần sửa ở phía 135: xem
-[liquid-glass.md §5](../design/liquid-glass.md#5-những-chỗ-135dwp-đang-lệch-apple-hoặc-tự-mâu-thuẫn).
+liquid-glass.md §5 (bản Liquid Glass v2, trước 0.20.0 — xem lịch sử git; nay là [minimal surfaces](../design/liquid-glass.md)).
 
 ## Thư viện Liquid Glass bên thứ ba
 
@@ -52,4 +52,4 @@ gốc từ dwp. Đây là **điểm xuất phát cho v0.5** (token, BEM, glass).
 | `ybouane/liquidglass` | **REJECT** | Chụp DOM bằng html-to-image + WebGL, không phủ được layer gắn vào `body` (modal/menu/toast), chèn `<style>` |
 
 Chỉ mượn: công thức khúc xạ (gốc từ bài viết của kube.io, phải ghi công) cho module `td-refract` tuỳ chọn, và ý tưởng
-tham số hoá fresnel/rim. Chi tiết: [liquid-glass.md §4](../design/liquid-glass.md#4-thư-viện-bên-thứ-ba).
+tham số hoá fresnel/rim. Chi tiết: liquid-glass.md §4 (bản v2, trước 0.20.0 — lịch sử git).

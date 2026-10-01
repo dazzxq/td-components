@@ -2,6 +2,37 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.20.0
+
+**Minimal surfaces** — bỏ hiệu ứng Liquid Glass giả bằng CSS, chỉ giữ nền + một viền mảnh + một shadow mềm (+ blur 12px
+cho popup nhỏ), tham khảo dcms (plan `docs/internal/plans/v0.20.0-minimal-surfaces.md`, Codex think-about CONSENSUS,
+plan-review APPROVE 2 vòng; ADR 0011). Markup, class công khai và API JS **không đổi**.
+
+### Changed (đổi giao diện lớn)
+
+- Nút mọi variant (kể cả `.td-btn--custom`): **màu đặc**, một shadow `--td-btn-lift`, hover = nền đậm hơn; bỏ blur,
+  film, sheen, rim, hairline, glow và hiệu ứng lún khi bấm. Primary vẫn theo `--td-accent`.
+- Modal, loading, tooltip, scroll-top: nền **đặc**, không blur. Menu, dropdown, gợi ý chip-input, hovercard, toast: nền
+  94% + `blur(12px)`. Lightbox toolbar / counter: tối 88% + blur; panel đặc; bỏ lớp dim cục bộ và bóng icon.
+- Toast: nền trung tính, màu trạng thái chỉ ở icon (bỏ wash + viền đỏ của error).
+- Bỏ mọi scale trang trí (pop-in của popup, lift của switch / slider, press của scroll-top); popup chỉ fade.
+- Giá trị token mới: `--td-glass-bg` 90% / `-bg-strong` 94%, `-solid` `#fff`, `-border` `rgb(0 0 0 / 7%)`, `-blur` =
+  `-blur-lg` = `blur(12px)`, shadow mềm hơn; dark tương ứng.
+- `prefers-contrast: more`: bỏ cả shadow; nút có nền thêm viền `currentcolor`.
+
+### Added
+
+- `--td-btn-{success,danger,info,warning}-bg`.
+
+### Deprecated (vẫn khai báo, không còn tác dụng; xoá ở bản lớn sau)
+
+- `--td-glass-edge`, `-side-edge`, `-bottom`, `-outline`, `-sheen`, `-dim`, `-dim-text`, `-clear-edge`,
+  `-clear-glyph-shadow`, `-tint*`, `-glow`, `-glow-size`, `-press-scale`, `-lift-scale`, `-enter-scale`;
+  `--td-btn-*-alpha`, `--td-btn-*-film`, `--td-btn-sheen`, `--td-btn-secondary-glass`, `--td-btn-secondary-edge`;
+  `--td-toast-*-wash`, `--td-toast-error-border`.
+- `--td-btn-{primary,success,danger,info,warning}-tint`: **alias** một chu kỳ — site đặt thì vẫn là màu nền nút; dùng
+  `-bg` thay.
+
 ## 0.19.0
 
 Đề xuất đợt 3 của site 135 sau khi áp v0.18.0 (plan `docs/internal/plans/v0.19.0-135-feedback-3.md`, Codex plan-review

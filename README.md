@@ -1,11 +1,11 @@
 # td-components
 
 Bộ UI kit Web Components dùng chung cho mọi site (dwp — WordPress, 135 — PHP thuần, và site sau này).
-Không Shadow DOM, CSP-strict, vanilla ES modules, một file CSS `td.css`, ngôn ngữ thiết kế Liquid Glass, nhãn tiếng
+Không Shadow DOM, CSP-strict, vanilla ES modules, một file CSS `td.css`, giao diện minimal surfaces (nền + viền mảnh + bóng mềm), nhãn tiếng
 Việt. Lõi nhỏ; site tuỳ biến qua token `--td-*`, hook và attribute/property — không sửa lõi.
 
 ```bash
-npm install github:dazzxq/td-components#v0.15.1
+npm install github:dazzxq/td-components#v0.20.0
 ```
 
 (Cài từ GitHub cần nhánh + tag đã được push lên remote.)

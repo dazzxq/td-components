@@ -572,7 +572,7 @@ Lightbox **luôn tối** (nền là ảnh, không theo theme sáng/tối của s
 | `--td-lb-sheet-peek` | `2.25rem` | Phần lộ ra của bottom sheet khi đóng |
 | `--td-lb-panel-w` | `22rem` | Độ rộng panel (desktop) |
 | `--td-lb-backdrop` | `rgb(8 8 9 / 94%)` | Nền |
-| `--td-lb-panel-bg` | `rgb(20 20 22 / 96%)` | Nền panel / sheet (đặc, không kính) |
+| `--td-lb-panel-bg` | `var(--td-glass-clear-solid)` (`#141416`) | Nền panel / sheet (đặc) |
 | `--td-lb-fg` | `#fff` | Màu chữ/icon |
 | `--td-lb-drag` | (JS ghi qua CSSOM) | Khoảng vuốt xuống hiện tại — không tự đặt |
 
@@ -584,7 +584,8 @@ Lightbox **luôn tối** (nền là ảnh, không theo theme sáng/tối của s
 }
 ```
 
-Toolbar và bộ đếm là kính trong (`td-glass-surface--clear`) có lớp tối cục bộ; panel là nền đặc. JS chỉ ghi
+Toolbar và bộ đếm là thanh tối (`td-glass-surface--clear`, 0.20.0: nền `--td-glass-clear-bg` 88 % + `blur(12px)` +
+viền mảnh + một bóng mềm; không còn lớp tối cục bộ hay bóng riêng cho icon); panel / sheet là nền đặc. JS chỉ ghi
 `transform` của ảnh (zoom) và `--td-lb-drag` qua CSSOM — hợp CSP strict.
 
 Con trỏ trigger (0.15.0): `cursor: zoom-in` cho `[data-{p}-lightbox]` / `[data-{p}-lightbox-item]`, `cursor: pointer`

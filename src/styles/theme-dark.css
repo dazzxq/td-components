@@ -51,26 +51,17 @@
 		--td-btn-disabled-bg: #202024;
 		--td-btn-disabled-fg: #6b6b73;                 /* greyed out, ≥ 2.2:1 (v0.14.3) */
 		--td-btn-disabled-border: rgb(255 255 255 / 6%);
-		--td-btn-secondary-glass: rgb(40 40 44 / 84%);
-		--td-btn-secondary-edge: rgb(255 255 255 / 14%);
-		--td-btn-lift: 0 1px 2px rgb(0 0 0 / 30%), 0 3px 8px -4px rgb(0 0 0 / 40%);
+		--td-btn-lift: 0 1px 2px rgb(0 0 0 / 18%), 0 2px 6px -2px rgb(0 0 0 / 20%);
 		--td-switch-off: #2c2c30;
 
-		--td-glass-bg: rgb(12 14 18 / 44%);
-		--td-glass-bg-strong: rgb(8 10 14 / 60%);      /* #f7f7f8 text ≥ 4.5:1 even over a white backdrop */
-		--td-glass-fg: #f7f7f8;
-		--td-glass-edge: rgb(255 255 255 / 30%);
-		--td-glass-side-edge: rgb(255 255 255 / 10%);
-		--td-glass-bottom: rgb(0 0 0 / 26%);
-		--td-glass-border: rgb(255 255 255 / 18%);
-		--td-glass-outline: rgb(0 0 0 / 32%);
-		--td-glass-sheen: linear-gradient(135deg, rgb(255 255 255 / 14%) 0%, rgb(255 255 255 / 3%) 36%, transparent 64%, rgb(255 255 255 / 5%) 100%);
-		--td-glass-blur: blur(16px) saturate(135%) brightness(0.92);
-		--td-glass-blur-lg: blur(20px) saturate(135%) brightness(0.92);
-		--td-glass-shadow: 0 12px 34px -10px rgb(0 0 0 / 68%), 0 3px 10px -4px rgb(0 0 0 / 46%);
-		--td-glass-shadow-lg: 0 26px 64px -18px rgb(0 0 0 / 76%), 0 8px 22px -10px rgb(0 0 0 / 52%);
-		--td-glass-solid: #17181c;
-		--td-glass-glow: rgb(255 255 255 / 18%);
+		/* v0.20.0 minimal surfaces (blur / clear tokens are theme-independent: tokens.css) */
+		--td-glass-bg: rgb(28 28 30 / 90%);
+		--td-glass-bg-strong: rgb(28 28 30 / 94%);
+		--td-glass-solid: #1c1c1e;
+		--td-glass-fg: #f5f5f7;
+		--td-glass-border: rgb(255 255 255 / 10%);
+		--td-glass-shadow: 0 4px 16px rgb(0 0 0 / 18%);
+		--td-glass-shadow-lg: 0 8px 24px rgb(0 0 0 / 24%);
 	}
 
 	/* v0.16.0: the dark fill FOLLOWS the site accent — 20% darker so white text stays readable

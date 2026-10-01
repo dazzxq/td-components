@@ -155,7 +155,7 @@ describe('v0.14 TdHovercard — structure, ARIA, glass', () => {
     expect(r.left >= 8 - 0.5).to.equal(true);
   });
 
-  it('frontmost glass: stays glass over an open TdModal; solid with data-td-glass="off"', async () => {
+  it('small popup: stays blurred over an open TdModal; solid with data-td-glass="off"', async () => {
     const body = document.createElement('div');
     body.innerHTML = '<button type="button" id="gm-t">Lan</button>';
     const t = body.firstElementChild;

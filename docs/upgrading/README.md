@@ -6,7 +6,7 @@ Trang này trả lời bốn câu hỏi: kit đánh số phiên bản thế nào
 khi có sự cố, và cần kiểm tra gì sau khi nâng cấp. Chi tiết "bản nào đổi gì, site phải sửa gì" nằm ở
 [breaking-changes.md](breaking-changes.md); bảng đổi tên class cũ → class mới nằm ở [class-map.md](class-map.md).
 
-Phiên bản hiện tại: **0.19.0** (`package.json` → `"version": "0.19.0"`, tag git `v0.19.0`).
+Phiên bản hiện tại: **0.20.0** (`package.json` → `"version": "0.20.0"`, tag git `v0.20.0`).
 
 ## Chính sách phiên bản
 
@@ -131,7 +131,7 @@ comm -23 /tmp/site-tokens.txt /tmp/kit-tokens.txt
 ```
 
 (Đổi `assets/` thành thư mục CSS của site.) Dòng nào in ra ở bước 3 thì tra
-[breaking-changes.md](breaking-changes.md). Tính tới 0.19.0, token duy nhất từng bị gỡ khỏi `td.css` là
+[breaking-changes.md](breaking-changes.md). Tính tới 0.20.0, token duy nhất từng bị gỡ khỏi `td.css` là
 `--td-glass-secondary-film` (0.14.3); ngoài ra custom property `--td-cb-color` của checkbox (không nằm trong
 `td.css`) đã đổi tên thành `--td-checkbox-color` ở 0.7.0.
 
@@ -293,9 +293,9 @@ Phần lớn "sau khi nâng cấp nhìn lạ" rơi vào một trong các trườ
 |---|---|---|---|
 | Component mất hết style, chỉ còn chữ trần | 0.7.0 – 0.10.0 | Component đã chuyển sang `td.css`, site chưa tải `td.css` | Tải `td.css` (xem [installation.md](../getting-started/installation.md)) |
 | CSS tự viết cho phần bên trong component không còn tác dụng | 0.7.0 – 0.10.0 | Class nội bộ đổi tên sang BEM | Đổi selector theo [class-map.md](class-map.md) |
-| Nút, modal, toast, menu trong suốt / mờ nền phía sau | 0.14.0 | Liquid Glass v2: kính mỏng hơn, nút là kính | Muốn tắt kính toàn site: `<html data-td-glass="off">`; tinh chỉnh độ trong: [theming.md](../customization/theming.md) |
+| Nút / modal / tooltip đặc, popup mờ nhẹ, hết hiệu ứng kính | 0.20.0 | Minimal surfaces thay Liquid Glass | Popup đặc hẳn: `--td-glass-bg-strong: var(--td-glass-solid)`; tắt blur toàn site: `<html data-td-glass="off">`; xem [theming.md](../customization/theming.md) |
 | Checkbox tròn | 0.14.0 | `--td-checkbox-radius: 50%` mặc định | `:root { --td-checkbox-radius: 6px; }` |
-| Toast có màu nền theo loại | 0.14.0 | Toast là kính tint theo loại | Chỉnh `--td-toast-{loại}-wash` / `--td-toast-glass-bg` |
+| Toast nền trung tính, màu chỉ ở icon | 0.20.0 | Bỏ wash theo loại | Chỉnh `--td-toast-glass-bg` / `--td-toast-*-icon` |
 | Tooltip hiện khi chạm trên điện thoại, có mũi tên, ẩn khi cuộn | 0.14.0 | Tooltip theo hành vi dwp | Hành vi có chủ đích; xem [tooltip.md](../components/tooltip.md) |
 | Viền ô nhập, dropdown, checkbox, toggle nhạt hơn | 0.14.1, 0.14.2 | Viền lúc nghỉ và lúc hover dùng tông mềm | Cần tương phản 3:1 lúc nghỉ: xem mục 0.14.1 trong [breaking-changes.md](breaking-changes.md#0141) |
 | Nút secondary trắng có viền (trước là xám đặc) | 0.14.3 | Sửa lỗi specificity + thiết kế mới | Muốn nền xám lại: `:root { --td-btn-secondary-glass: #f0f0f2; }` |

@@ -14,7 +14,7 @@ hiểm) hãy dùng [modal](modal.md) (`TdModal.error`, `TdModal.confirm`). Lỗi
 | Import | `import { TdToast } from '@dazzxq/td-components/toast'` |
 | Loại | API JS tĩnh (không phải custom element) |
 | Form-associated | không |
-| Từ phiên bản | 0.1.0 (token-native từ 0.9.0, kính tô màu theo loại từ 0.14.0) |
+| Từ phiên bản | 0.1.0 (token-native từ 0.9.0, kính tô màu theo loại 0.14.0 → nền trung tính + icon màu từ 0.20.0) |
 
 Cần `td.css`. Không cần khởi tạo: vùng chứa toast được tạo ở lần gọi đầu tiên.
 
@@ -129,14 +129,14 @@ Mặc định toast ở góc **trên bên phải**. Ví dụ đưa xuống **gi�
 - **Hàng đợi:** lần gọi đầu được gom trong 50ms, sau đó mỗi toast hiện cách nhau 80ms. Vì vậy toast không xuất hiện
   "ngay trong cùng dòng code" — đừng truy vấn DOM toast ngay sau khi gọi `show()`.
 - **Trên modal / loading:** vùng toast không bao giờ bị `inert` bởi [modal](modal.md) hay [loading](loading.md); nút X
-  của toast nằm trong vòng Tab của modal. Khi có modal đang mở, toast chuyển nền đặc (không "kính trên kính").
+  của toast nằm trong vòng Tab của modal. Toast giữ nguyên bề mặt của nó khi có modal đang mở (0.20.0).
 - **Lớp:** `--td-z-toast` (500) — trên modal (400) và loading (480), dưới [tooltip](tooltip.md) (510).
 
 ## Tuỳ biến giao diện
 
-Kính **tô màu theo loại**: nền kính trung tính (66% trắng ở giao diện sáng, 70% tối ở dark) cộng một lớp màu mỏng theo
-loại, cùng icon trạng thái (màu không bao giờ là tín hiệu duy nhất). Tương phản chữ ≥ 4.5:1 và icon ≥ 3:1 đã được kiểm
-tra trên nền trắng lẫn đen.
+Từ 0.20.0 (minimal surfaces): nền **trung tính** 94 % (`--td-glass-bg-strong`) + `blur(12px)` + viền mảnh + một bóng
+mềm; **chỉ icon** mang màu trạng thái (icon nên màu không bao giờ là tín hiệu duy nhất). Không còn lớp màu (wash) hay
+viền đỏ cho toast lỗi. Tương phản chữ ≥ 4.7:1 và icon ≥ 3.2:1 được gate kiểm trên nền trắng, đen, caro và ảnh.
 
 | Token | Mặc định (sáng) | Tác dụng |
 |---|---|---|
@@ -152,15 +152,13 @@ tra trên nền trắng lẫn đen.
 | `--td-toast-fg` | `var(--td-color-text)` | Màu chữ. |
 | `--td-toast-close-fg` | `var(--td-toast-fg)` | Màu nút X. |
 | `--td-toast-close-hover` | `var(--td-color-hover-strong)` | Nền nút X khi hover. |
-| `--td-toast-glass-bg` | `rgb(255 255 255 / 66%)` | Nền kính trung tính của toast. |
-| `--td-toast-success-wash` / `-info-wash` | `rgb(21 128 61 / 22%)` / `rgb(29 78 216 / 22%)` | Lớp màu theo loại. |
-| `--td-toast-warning-wash` / `-error-wash` | `rgb(180 83 9 / 26%)` / `rgb(185 28 28 / 26%)` | Lớp màu theo loại. |
-| `--td-toast-info-icon` / `-success-icon` / `-warning-icon` / `-error-icon` | `#172f73` / `#0f3d21` / `#5a2a0a` / `#5c1515` | Màu icon trạng thái. |
-| `--td-toast-error-border` | `color-mix(in srgb, var(--td-color-error) 45%, transparent)` | Viền của toast lỗi. |
+| `--td-toast-glass-bg` | `var(--td-glass-bg-strong)` (`rgb(255 255 255 / 94%)`) | Nền trung tính của toast. |
+| `--td-toast-info-icon` / `-success-icon` / `-warning-icon` / `-error-icon` | `var(--td-color-info)` / `-success` / `-warning` / `-error` | Màu icon trạng thái (theo màu ngữ nghĩa, dark tự sáng lên). |
+| `--td-toast-*-wash`, `--td-toast-error-border` | `transparent` | **Deprecated 0.20.0**, không còn tác dụng. |
 | `--td-toast-enter-shift` | `0.5rem` | Độ trượt khi hiện / ẩn. |
 
-Ở dark theme (`<html data-td-theme="dark">`) kit tự đổi `--td-toast-glass-bg`, `--td-toast-fg`, `--td-toast-close-fg`,
-màu icon và các `*-wash` sang giá trị tối. Nếu bạn override màu, hãy override cho cả hai theme và tự kiểm tra tương phản.
+Ở dark theme (`<html data-td-theme="dark">`) kit tự đổi nền (qua `--td-glass-bg-strong`), `--td-toast-fg`,
+`--td-toast-close-fg` và màu icon (qua `--td-color-*`) sang giá trị tối. Nếu bạn override màu, hãy override cho cả hai theme và tự kiểm tra tương phản.
 
 ```css
 /* Toast gọn hơn, xa mép hơn */
@@ -171,7 +169,7 @@ màu icon và các `*-wash` sang giá trị tối. Nếu bạn override màu, h�
 ```
 
 Chuyển động: hiện = mờ dần + trượt xuống; ẩn = mờ dần + trượt ngang. `prefers-reduced-motion: reduce` → chỉ đổi độ
-mờ. Tắt kính (`<html data-td-glass="off">`, reduced transparency, tương phản cao) → nền đặc.
+mờ. Tắt blur (`<html data-td-glass="off">`, reduced transparency, tương phản cao) → nền đặc.
 
 ## Cấu trúc DOM & class
 

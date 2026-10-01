@@ -76,6 +76,11 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` Hardening sau security review: `TdHovercard.sanitize` + `TrustedHTML`, fetch giới hạn (LRU 50, 256 KB, 10 s,
   `no-store`, huỷ khi đóng), `clearCache()` bắt buộc khi đổi phiên đăng nhập
 
+## Done — v0.20.0 Minimal surfaces
+
+- `done` Bỏ Liquid Glass giả bằng CSS: nút / modal / tooltip đặc, popup nhỏ 94% + blur 12px, một shadow mềm; token kính
+  cũ deprecated (alias `-tint` → `-bg`), ADR 0011
+
 ## Done — v0.19.0 đề xuất đợt 3 từ 135
 
 - `done` td-button chuyển ARIA trạng thái xuống, dropzone lý do lỗi + trạng thái chờ + `accept-label`, token font badge

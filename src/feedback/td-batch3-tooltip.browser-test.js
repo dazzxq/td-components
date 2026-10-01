@@ -438,14 +438,16 @@ describe('batch 3 — td-tooltip placement + visuals', () => {
     expect(t.right).to.be.at.most(220);
   });
 
-  it('glass chip: backdrop blur, text ≥ 4.5:1 in light and dark', async () => {
+  it('opaque chip (v0.20.0 minimal surfaces): no blur, solid fill, text ≥ 4.5:1 in light and dark', async () => {
     const b = mount('<button type="button" data-tooltip="Tương phản">x</button>');
     b.style.setProperty('margin', '200px 0 0 200px');
     for (const theme of [null, 'dark']) {
       if (theme) document.documentElement.setAttribute('data-td-theme', theme);
       tdTooltip.show(b);
       const cs = getComputedStyle(tip());
-      expect(cs.backdropFilter).to.contain('blur');
+      expect(cs.backdropFilter).to.equal('none');
+      expect(rgba(cs.backgroundColor).a).to.equal(1);
+      expect(cs.backgroundImage).to.equal('none');
       const bg = over(rgba(cs.backgroundColor), pageBg());
       expect(ratio(rgba(cs.color), bg)).to.be.at.least(4.5);
       tdTooltip.hide();
@@ -480,11 +482,12 @@ describe('batch 3 — td-tooltip placement + visuals', () => {
     expect(tip().style.getPropertyValue('--td-tooltip-bg')).to.equal('');
   });
 
-  it('stays glass over an open modal (v0.14 G1: frontmost glass wins)', () => {
+  it('keeps its opaque surface over an open modal (v0.20.0: no covered-surface override)', () => {
     const m = mount('<div class="td-modal" data-state="open"></div>');
     const b = mount('<button type="button" data-tooltip="Trên modal">x</button>');
     tdTooltip.show(b);
-    expect(getComputedStyle(tip()).backdropFilter).to.contain('blur');
+    expect(getComputedStyle(tip()).backdropFilter).to.equal('none');
+    expect(rgba(getComputedStyle(tip()).backgroundColor).a).to.equal(1);
     m.remove();
   });
 

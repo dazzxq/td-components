@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { setViewport } from '@web/test-runner-commands';
+import { setViewport, sendKeys } from '@web/test-runner-commands';
 import { TdLightbox, defaultIsAllowedUrl } from './td-lightbox.js';
 import { TdModal } from './td-modal.js';
 import { isScrollLocked } from '../utils/scroll-lock.js';
@@ -242,6 +242,28 @@ describe('td-lightbox — toolbar + panel hooks', () => {
     expect(overlay().hasAttribute('data-panel')).to.equal(true);
     expect($('.td-lightbox__panel-body').textContent).to.equal('#0');
     expect($('.td-lightbox__back').hidden).to.equal(false);
+  });
+
+  it('back button is a solid control (alpha 1, element opacity 1) with glass on and off (v0.20.0)', async () => {
+    const alpha = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); const p = m ? m[1].split(/[ ,/]+/).filter(Boolean) : []; return p.length > 3 ? Number(p[3]) : 1; };
+    TdLightbox.open([IMG(1)], { panel: () => document.createElement('p') });
+    const back = $('.td-lightbox__back');
+    for (let i = 0; i < 100 && getComputedStyle(overlay()).visibility !== 'visible'; i++) await wait(10); // opening
+    for (const off of [false, true]) {
+      if (off) document.documentElement.setAttribute('data-td-glass', 'off');
+      const cs = getComputedStyle(back);
+      expect(alpha(cs.backgroundColor), `bg ${cs.backgroundColor} glass-off=${off}`).to.equal(1);
+      expect(cs.opacity).to.equal('1');
+      await sendKeys({ press: 'Shift' }); // real key → keyboard modality, so programmatic focus is :focus-visible
+      back.focus({ focusVisible: true });
+      expect(document.activeElement === back, 'back button took focus').to.equal(true);
+      expect(back.matches(':focus-visible'), 'focus-visible applies').to.equal(true);
+      await wait(400); // past the background transition
+      const fs = getComputedStyle(back);
+      expect(alpha(fs.backgroundColor), `focus bg ${fs.backgroundColor} glass-off=${off}`).to.equal(1);
+      back.blur();
+    }
+    document.documentElement.removeAttribute('data-td-glass');
   });
 });
 

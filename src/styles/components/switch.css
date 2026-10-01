@@ -1,6 +1,6 @@
 /*
- * td-toggle → .td-switch (src/form/td-toggle.js; the 135 kit contract). Content-layer control: solid track;
- * the knob only "lifts" while pressed ([data-dragging]), disabled under reduced motion.
+ * td-toggle → .td-switch (src/form/td-toggle.js; the 135 kit contract). Content-layer control: solid track, solid
+ * knob with one soft shadow; the knob only slides (v0.20.0 minimal surfaces: no lift scale while pressed).
  * WCAG 1.4.11: on track --td-switch-on (#16a34a, 3.3:1 on white; white thumb on it 3.3:1); off track light
  * fill + --td-switch-edge border (v0.14.1: soft at rest; v0.14.2: soft hover step); the thumb carries the same edge while off.
  * Host custom property --td-switch-on (from the `color` attribute) overrides the token.
@@ -94,7 +94,7 @@
 		border: 1px solid var(--td-switch-edge);
 		border-radius: var(--td-radius-full);
 		box-shadow: 0 1px 3px rgb(0 0 0 / 18%);
-		transform: translate(calc(var(--td-switch-pad) - 1px), -50%) scale(1);
+		transform: translate(calc(var(--td-switch-pad) - 1px), -50%);
 		transition:
 			transform var(--td-dur-base) var(--_td-glass-ease-flex, var(--td-glass-ease-flex)),
 			border-color var(--td-dur-base) var(--td-ease);
@@ -130,15 +130,12 @@
 
 	.td-switch__input:checked + .td-switch__track .td-switch__thumb {
 		border-color: transparent;
-		transform:
-			translate(calc(var(--td-switch-w) - var(--td-switch-thumb-d) - var(--td-switch-pad) - 1px), -50%)
-			scale(1);
+		transform: translate(calc(var(--td-switch-w) - var(--td-switch-thumb-d) - var(--td-switch-pad) - 1px), -50%);
 	}
 
 	.td-switch__input:checked + .td-switch__track .td-switch__icon--on { opacity: 1; }
 	.td-switch__input:checked + .td-switch__track .td-switch__icon--off { opacity: 0; }
 
-	/* Knob lift while pressed (glass only during interaction). */
 	/* commit() pending (v0.13.0): the new state is shown but not yet saved */
 	.td-switch[data-pending] {
 		cursor: progress;
@@ -151,16 +148,6 @@
 
 	@keyframes td-switch-pending {
 		to { opacity: 0.35; }
-	}
-
-	.td-switch[data-dragging] .td-switch__thumb {
-		transform: translate(calc(var(--td-switch-pad) - 1px), -50%) scale(var(--_td-glass-lift-knob, var(--td-glass-lift-scale)));
-	}
-
-	.td-switch[data-dragging] .td-switch__input:checked + .td-switch__track .td-switch__thumb {
-		transform:
-			translate(calc(var(--td-switch-w) - var(--td-switch-thumb-d) - var(--td-switch-pad) - 1px), -50%)
-			scale(var(--_td-glass-lift-knob, var(--td-glass-lift-scale)));
 	}
 
 	.td-switch__input:focus-visible + .td-switch__track {

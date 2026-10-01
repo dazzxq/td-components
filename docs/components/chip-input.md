@@ -324,7 +324,7 @@ Tất cả chữ là **văn bản thuần**.
 
 | Token | Mặc định | Tác dụng |
 |---|---|---|
-| `--td-chip-bg` | `var(--td-color-hover-strong)` (dark: `rgb(255 255 255 / 14%)`) | Nền chip |
+| `--td-chip-bg` | `#ebebeb` (dark: `#3c3c3e`) | Nền chip — **đặc** từ 0.20.0 (trước đó là lớp phủ trong suốt `--td-color-hover-strong` / `rgb(255 255 255 / 14%)`; màu mới = đúng màu đó trên nền field) |
 | `--td-chip-fg` | `var(--td-color-text)` | Chữ chip |
 | `--td-chip-radius` | `var(--td-radius-full)` | Bo góc chip (viên thuốc) |
 | `--td-chip-h` | `28px` | Chiều cao chip và ô nhập |
@@ -336,7 +336,7 @@ Tất cả chữ là **văn bản thuần**.
 Khung dùng token field (`--td-field-bg`, `--td-field-border`, `--td-field-border-hover`, `--td-field-focus`,
 `--td-field-error`, `--td-field-radius-md`, `--td-field-h-md`…). Popup gợi ý dùng chung token option của dropdown:
 `--td-dropdown-option-h`, `--td-dropdown-option-hover`, `--td-dropdown-option-active`,
-`--td-dropdown-option-active-line` (xem [Dropdown](dropdown.md#tuỳ-biến-giao-diện)), là glass mạnh ở `--td-z-popover`.
+`--td-dropdown-option-active-line` (xem [Dropdown](dropdown.md#tuỳ-biến-giao-diện)), là popup nhỏ (nền 94 % + `blur(12px)` + viền mảnh + một bóng mềm, 0.20.0) ở `--td-z-popover`.
 
 ```css
 :root {
