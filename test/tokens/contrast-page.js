@@ -10,6 +10,13 @@ for (const v of VARIANTS) for (const state of ['rest', 'disabled', 'loading']) C
 // icon + label buttons (v0.14.3 review): the icon ink is gated too — rest ≥ 3.2:1, disabled greyed out ≥ 2.2:1
 for (const v of ['primary', 'secondary']) for (const state of ['icon', 'disabled-icon']) CASES.push({ kind: 'button', v, state });
 for (const t of TOASTS) CASES.push({ kind: 'toast', v: t, state: 'rest' });
+// v0.20.0 review: the REAL hover (darker solid fill, color-mix 92 % with #000) — the spec moves the mouse onto the
+// button before the screenshot, so the sample is the computed hover output, not a model of it.
+for (const v of VARIANTS) CASES.push({ kind: 'button', v, state: 'hover' });
+// .td-btn--custom (color / text-color): a dark colour (auto white text) and a light one (auto dark text), rest + hover.
+for (const color of ['#1e3a8a', '#fde047']) {
+  for (const state of ['rest', 'hover']) CASES.push({ kind: 'button', v: 'custom', color, state });
+}
 // v0.17.0 ghost buttons sit on the PAGE background, never on a photo: measured only over the theme's page colour
 // (white in light, black in dark) — `pageOnly` (contrast.spec.mjs skips the other backdrops).
 for (const state of ['rest', 'disabled', 'loading', 'icon']) CASES.push({ kind: 'button', v: 'ghost', state, pageOnly: true });
@@ -55,7 +62,8 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
   let parts = {};
   if (c.kind === 'button') {
     const host = document.createElement('td-button');
-    host.setAttribute('variant', c.v);
+    if (c.color) host.setAttribute('color', c.color);
+    else host.setAttribute('variant', c.v);
     host.textContent = 'Lưu thay đổi';
     if (c.state === 'disabled' || c.state === 'disabled-icon') host.setAttribute('disabled', '');
     if (c.state.endsWith('icon')) host.setAttribute('icon', 'download');
@@ -101,7 +109,13 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
   else el.classList.remove('td-contrast-probe-noink');
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   const r = el.getBoundingClientRect();
-  return { rect: { x: r.x, y: r.y, width: r.width, height: r.height }, ink, opacity: op, name: `${c.kind}:${c.v}:${c.state}` };
+  return {
+    rect: { x: r.x, y: r.y, width: r.width, height: r.height },
+    ink,
+    opacity: op,
+    hover: c.state === 'hover',
+    name: `${c.kind}:${c.v}${c.color ? `(${c.color})` : ''}:${c.state}`,
+  };
 };
 window.__contrastCount = CASES.length;
 window.__contrastPageOnly = CASES.map((c) => !!c.pageOnly);

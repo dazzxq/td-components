@@ -85,6 +85,20 @@ function shape(el) {
 }
 
 describe('v0.12 td-chip-input — structure', () => {
+  it('v0.20.0: chips are opaque (alpha 1) in light and dark', async () => {
+    for (const theme of [null, 'dark']) {
+      if (theme) document.documentElement.setAttribute('data-td-theme', theme);
+      const el = ci('value=\'["a"]\'');
+      await new Promise((r) => requestAnimationFrame(r));
+      const bg = getComputedStyle(chips(el)[0]).backgroundColor;
+      const m = bg.match(/-?[\d.]+/g).map(Number);
+      expect(m.length > 3 ? m[3] : 1, `${theme || 'light'} ${bg}`).to.equal(1);
+      expect(bg).to.equal(theme ? 'rgb(60, 60, 62)' : 'rgb(235, 235, 235)');
+      el.remove();
+      document.documentElement.removeAttribute('data-td-theme');
+    }
+  });
+
   it('matches the golden contract (host tree + open portal popup)', async () => {
     const html = await (await fetch('/test/contracts/chip-input.html')).text();
     const doc = new DOMParser().parseFromString(html, 'text/html');

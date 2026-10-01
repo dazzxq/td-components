@@ -51,8 +51,8 @@ function rgbaOf(str) {
 }
 const lumOf = (str) => { const [r, g, b] = rgbaOf(str); return lum({ r, g, b }); };
 
-/** A button's effective background over a flat page (v0.20.0: the fill is solid, so this is just the fill; the film
- *  branch only matters if a site still sets the deprecated film). */
+/** A button's effective background over a flat page (v0.20.0: the fill is solid, so the page never shows through —
+ *  compositing is kept so a translucent regression would be measured, not hidden). */
 function glassBg(b, page) {
   const probe = document.createElement('span');
   document.body.appendChild(probe);
@@ -66,14 +66,23 @@ function glassBg(b, page) {
   };
   const over = (top, under) => ({ r: top.r * top.a + under.r * (1 - top.a), g: top.g * top.a + under.g * (1 - top.a), b: top.b * top.a + under.b * (1 - top.a), a: 1 });
   const cs = getComputedStyle(b);
-  let c = over(toRgba(cs.backgroundColor), toRgba(page));
-  const film = cs.getPropertyValue('--td-btn-film-v').trim();
-  if (film && film !== 'transparent') c = over(toRgba(film), c);
+  const c = over(toRgba(cs.backgroundColor), toRgba(page));
   probe.remove();
   return `rgb(${Math.round(c.r)}, ${Math.round(c.g)}, ${Math.round(c.b)})`;
 }
 
 describe('batch 1 — td-checkbox', () => {
+  it('v0.20.0: the checkmark only fades — no scale transform, no transform transition', async () => {
+    const el = mount('<td-checkbox label="x" checked></td-checkbox>');
+    await wait(400);
+    const svg = el.querySelector('.td-checkbox__svg');
+    const cs = getComputedStyle(svg);
+    expect(cs.transform).to.equal('none');
+    expect(cs.transitionProperty).to.equal('opacity');
+    el.querySelector('.td-checkbox__input').click();
+    expect(getComputedStyle(svg).transform).to.equal('none');
+  });
+
   it('renders the BEM contract with a registry check icon', () => {
     const el = mount('<td-checkbox label="Đồng ý"></td-checkbox>');
     expect(el.querySelector('label.td-checkbox.td-checkbox--md') !== null).to.equal(true);
@@ -465,19 +474,22 @@ describe('batch 1 — review follow-ups', () => {
   });
 
   for (const theme of ['light', 'dark']) {
-    it(`button text contrast ≥ 4.5 at rest and on hover (${theme})`, () => {
+    it(`button text contrast ≥ 4.5 at rest and on the REAL hover (computed, solid) (${theme})`, async () => {
       if (theme === 'dark') document.documentElement.setAttribute('data-td-theme', 'dark');
-      for (const v of ['primary', 'success', 'danger', 'warning', 'info']) {
+      const asRgb = (str) => { const [r, g, b] = rgbaOf(str); return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`; };
+      for (const v of ['primary', 'secondary', 'success', 'danger', 'warning', 'info']) {
         const b = mount(`<td-button variant="${v}">x</td-button>`).querySelector('button');
         const fg = getComputedStyle(b).color;
-        for (const page of ['#fff', '#000']) {
-          const bgc = glassBg(b, page);
-          expect(ratio(fg, bgc), `${v} rest on ${page}`).to.be.at.least(4.5);
-          // hover = rgb(0 0 0 / 12%) overlay composited over the glass
-          const bg = rgb(bgc);
-          const over = (c) => Math.round(c * 0.88);
-          expect(ratio(fg, `rgb(${over(bg.r)}, ${over(bg.g)}, ${over(bg.b)})`), `${v} hover on ${page}`).to.be.at.least(4.5);
-        }
+        expect(rgbaOf(getComputedStyle(b).backgroundColor)[3], `${v} solid`).to.equal(1); // page never shows through
+        expect(ratio(fg, asRgb(getComputedStyle(b).backgroundColor)), `${v} rest`).to.be.at.least(4.5);
+        const r = b.getBoundingClientRect();
+        await sendMouse({ type: 'move', position: [Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2)] });
+        await wait(250); // background-color transition settles
+        expect(b.matches(':hover')).to.equal(true);
+        const hover = getComputedStyle(b).backgroundColor;
+        expect(rgbaOf(hover)[3], `${v} hover solid`).to.equal(1);
+        expect(ratio(getComputedStyle(b).color, asRgb(hover)), `${v} hover`).to.be.at.least(4.5);
+        await resetMouse();
       }
     });
   }

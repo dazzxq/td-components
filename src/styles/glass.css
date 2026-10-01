@@ -110,6 +110,7 @@
 		.td-glass-surface,
 		.td-glass-tint {
 			--_td-glass-fill: var(--td-color-surface) !important;
+			--_td-glass-fill-a11y: var(--td-color-surface) !important; /* custom-colour chips (tooltip) */
 			--_td-glass-fg: var(--td-color-text) !important;
 			--_td-glass-line: currentcolor !important;
 			--_td-glass-lift: 0 0 0 0 transparent !important;
@@ -126,6 +127,7 @@
 		.td-glass-surface,
 		.td-glass-tint {
 			--_td-glass-fill: Canvas !important;
+			--_td-glass-fill-a11y: Canvas !important;
 			--_td-glass-fg: CanvasText !important;
 			--_td-glass-line: CanvasText !important;
 			--_td-glass-lift: 0 0 0 0 transparent !important;

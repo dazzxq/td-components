@@ -43,6 +43,7 @@ const SITE_CSS = `
 .ref-canvas { background: Canvas; color: CanvasText; }
 .alias-tint { --td-btn-danger-tint: rgb(10 20 30); }
 .custom-colour { --td-btn-bg: rgb(200 10 10); --td-btn-fg: rgb(255 255 255); }
+#s-tooltip-custom { --td-tooltip-bg: rgb(30 60 90); --td-tooltip-fg: rgb(255 255 255); }
 .ref-button { background: ButtonFace; color: ButtonText; }
 `;
 
@@ -59,6 +60,7 @@ const BODY = `
   <div class="td-modal__dialog td-glass-surface td-glass-surface--strong td-glass-surface--lg" id="s-modal">m</div>
   <div class="td-loading__card td-glass-surface td-glass-surface--strong" id="s-loading">l</div>
   <div class="td-tooltip td-glass-surface td-glass-surface--strong" id="s-tooltip">t</div>
+  <div class="td-tooltip td-glass-surface td-glass-surface--strong" data-custom id="s-tooltip-custom">c</div>
   <button class="td-scroll-top td-glass-surface td-glass-surface--strong" id="s-scrolltop" type="button">^</button>
   <div class="td-menu td-glass-surface td-glass-surface--strong" id="s-menu">m</div>
   <div class="td-dropdown__menu td-glass-surface td-glass-surface--strong" id="s-dropdown">d</div>
@@ -176,6 +178,7 @@ async function read(page) {
         shadow: cs.boxShadow,
         color: cs.color,
         image: cs.backgroundImage,
+        border: cs.borderTopColor,
       };
     }
     const rs = getComputedStyle(document.documentElement);
@@ -237,6 +240,8 @@ function materialChecks(tag, s) {
   check(`${tag} danger button = --td-btn-danger-bg`, sameColor(s['b-danger'].bg, [185, 28, 28, 1]), s['b-danger'].bg);
   check(`${tag} -tint alias colours the button`, sameColor(s['b-alias'].bg, [10, 20, 30, 1]), s['b-alias'].bg);
   check(`${tag} custom colour button solid`, sameColor(s['b-custom'].bg, [200, 10, 10, 1]), s['b-custom'].bg);
+  check(`${tag} custom tooltip keeps its colour`, sameColor(s['s-tooltip-custom'].bg, [30, 60, 90, 1]) && sameColor(s['s-tooltip-custom'].color, [255, 255, 255, 1]), JSON.stringify(s['s-tooltip-custom']));
+  check(`${tag} custom tooltip no filter`, noFilter(s['s-tooltip-custom'].bf), s['s-tooltip-custom'].bf);
 }
 
 const failures = [];
@@ -301,6 +306,7 @@ async function runEngine(name, launcher) {
           check(`${tag} glass-off ${id} no backdrop-filter`, noFilter(o[id].bf), o[id].bf);
         }
         check(`${tag} glass-off clear opaque`, sameColor(o.clear.bg, [20, 20, 22, 1]), o.clear.bg);
+        check(`${tag} glass-off custom tooltip keeps its colour`, sameColor(o['s-tooltip-custom'].bg, [30, 60, 90, 1]), o['s-tooltip-custom'].bg);
         for (const id of [...SURFACES, ...BUTTONS]) {
           check(`${tag} glass-off ${id} opaque`, opaqueBg(o[id].bg), o[id].bg);
           check(`${tag} glass-off ${id} no backdrop-filter`, noFilter(o[id].bf), o[id].bf);
@@ -348,9 +354,11 @@ async function runEngine(name, launcher) {
           check(`${tag} forced-colors ${id} no filter`, noFilter(s[id].bf), s[id].bf);
           check(`${tag} forced-colors ${id} no shadow`, s[id].shadow === 'none', s[id].shadow);
         }
-        for (const id of [...OPAQUE, ...BLURRED]) {
+        for (const id of [...OPAQUE, ...BLURRED, 's-tooltip-custom']) {
           check(`${tag} forced-colors ${id} bg = Canvas`, s[id].bg === s.refCanvas.bg, `${s[id].bg} vs ${s.refCanvas.bg}`);
         }
+        check(`${tag} forced-colors custom tooltip fg = CanvasText`, s['s-tooltip-custom'].color === s.refCanvas.color, `${s['s-tooltip-custom'].color} vs ${s.refCanvas.color}`);
+        check(`${tag} forced-colors custom tooltip border = CanvasText`, s['s-tooltip-custom'].border === s.refCanvas.color, `${s['s-tooltip-custom'].border} vs ${s.refCanvas.color}`);
         for (const id of ['reg', 'strong', 'clear']) {
           check(`${tag} forced-colors ${id} bg = Canvas`, s[id].bg === s.refCanvas.bg, `${s[id].bg} vs ${s.refCanvas.bg}`);
           check(`${tag} forced-colors ${id} fg = CanvasText`, s[id].color === s.refCanvas.color, `${s[id].color} vs ${s.refCanvas.color}`);
@@ -381,6 +389,11 @@ async function runEngine(name, launcher) {
               check(`${tag} contrast-more ${id} no shadow`, noShadow(s[id].shadow), s[id].shadow);
             }
             for (const id of BUTTONS) check(`${tag} contrast-more ${id} no shadow`, noShadow(s[id].shadow), s[id].shadow);
+            // v0.20.0 review: the custom-colour tooltip follows increased contrast too (surface, text ink, visible edge)
+            const ct = s['s-tooltip-custom'];
+            check(`${tag} contrast-more custom tooltip surface`, sameColor(ct.bg, [255, 255, 255, 1]), ct.bg);
+            check(`${tag} contrast-more custom tooltip text ink`, sameColor(ct.color, [28, 28, 30, 1]), ct.color);
+            check(`${tag} contrast-more custom tooltip visible border`, ct.border === ct.color, `${ct.border} vs ${ct.color}`);
           } else {
             notes.push(`${tag}: prefers-contrast emulation not honoured by engine`);
           }

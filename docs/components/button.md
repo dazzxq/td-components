@@ -442,18 +442,19 @@ Sau khi đổi màu nền, tự kiểm tra tương phản chữ (kit chỉ đo c
 - **Disabled cố ý mờ** (v0.14.3): chữ disabled chỉ cần **≥ 2.2:1** (và dưới 3:1) để trông "xám đi" rõ ràng.
   WCAG 1.4.3 / 1.4.11 miễn yêu cầu tương phản cho control không hoạt động. Disabled dùng màu trạng thái đặc, không
   bao giờ dùng `opacity` của cả phần tử (nút mờ trên nền tối sẽ không đọc được).
-- **Viền secondary mềm** (~1.5:1) theo `--td-control-border-soft`. Site cần tuân thủ WCAG 1.4.11 nghiêm ngặt (viền
-  control ≥ 3:1) đặt:
+- **Viền secondary mảnh** (0.20.0): `--td-btn-secondary-border` (`rgb(0 0 0 / 12%)`, dark `rgb(255 255 255 / 12%)`),
+  token riêng của button — **không** theo `--td-control-border-soft`. Site cần tuân thủ WCAG 1.4.11 nghiêm ngặt (viền
+  control ≥ 3:1) đặt thẳng token này (một khối `:root` không layer là đủ cho cả hai theme, vì
+  `--td-control-border-strong` tự có giá trị dark):
 
   ```css
   :root {
-    --td-control-border-soft: var(--td-control-border-strong);
-    --td-control-border-hover: var(--td-control-border-strong);
+    --td-btn-secondary-border: var(--td-control-border-strong);
   }
   ```
 
-  Lệnh này đổi luôn viền của input, checkbox, toggle, dropdown… và viền secondary button ở theme sáng (theme tối,
-  secondary dùng `--td-btn-secondary-edge` riêng; override thêm token đó nếu cần).
+  Viền của input, checkbox, toggle, dropdown… thì map `--td-control-border-soft` / `-hover` (xem
+  [Theming › Viền control mềm](../customization/theming.md#viền-control-mềm-và-override-chuẩn-wcag-nghiêm-ngặt)).
 
 ## Cấu trúc DOM & class
 
