@@ -71,6 +71,7 @@ window.__componentsRun = (async () => {
   await wait(400);
   const toastEl = document.querySelector('#td-toast-container .td-toast');
   const toastAlone = glass(toastEl);
+  const toastIcon = !!toastEl.querySelector('.td-toast__icon');
   TdModal.show({ title: 'M', body: '<div>x</div>' });
   // wait for the modal to be really OPEN (two rAFs — slow on headless CI) instead of a fixed delay
   for (let t = 0; t < 3000 && !document.querySelector('.td-modal[data-state="open"]'); t += 50) await wait(50);
@@ -115,7 +116,7 @@ window.__componentsRun = (async () => {
   return {
     menuGlass, menuOff, sugGlass, sugOff,
     sticky, stickyDark, wheelJumped, wheelSelected,
-    toastAlone, modalGlass, toastOverModal, modalOff, toastOff,
+    toastAlone, toastIcon, modalGlass, toastOverModal, modalOff, toastOff,
     highlight: cs(ref).backgroundColor,
     thumbTransform: cs(thumb).transform,
     thumbWidth: thumb.getBoundingClientRect().width,

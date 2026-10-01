@@ -421,7 +421,14 @@ Trợ năng:
 - Lỗi hiện trong `p[role=alert]`; ô gây lỗi có `aria-invalid="true"` và `aria-describedby` trỏ tới dòng lỗi (chỉ khi lỗi
   đang hiện).
 - Tên truy cập của trigger: `label` → `aria-label` của host → `<label for="{host-id}">` ngoài.
-- `prefers-reduced-motion`: bánh xe nhảy ngay, không cuộn mượt. `forced-colors`: dòng chọn dùng màu `Highlight`.
+- **Hiệu ứng khi mở (0.21.0, như dcms):** bánh xe giờ / phút bắt đầu ở **đầu danh sách** (00), rồi — khi hộp thoại đã
+  hiện xong (hết transition vào của modal, có hẹn giờ dự phòng = `--td-modal-enter-dur` + 50ms) — cả hai cùng **cuộn
+  mượt một lần** tới giá trị đang chọn. Trong lúc cuộn, lựa chọn **không đổi**: `aria-selected`, `aria-activedescendant`
+  và giá trị tạm đã là giá trị đích ngay từ đầu, không có `change`; trình đọc màn hình không nghe các số lướt qua. Người
+  dùng chạm / cuộn / bấm phím / click vào bánh xe trong lúc đó → hiệu ứng của bánh xe đó dừng, thao tác của người dùng
+  được xử lý như bình thường (ví dụ `ArrowDown` giữa chừng → giá trị đích + 1). Đóng hộp thoại giữa chừng → huỷ hết.
+- `prefers-reduced-motion`: bánh xe căn ngay vào giá trị khi mở (không có hiệu ứng trên) và nhảy ngay khi bấm phím,
+  không cuộn mượt. `forced-colors`: dòng chọn dùng màu `Highlight`.
 - Touch: dòng bánh xe và các ô cao ≥ 44px; ô số ≥ 16px chữ (iOS không zoom).
 
 ## Bảo mật

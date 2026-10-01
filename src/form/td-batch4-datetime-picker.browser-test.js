@@ -39,6 +39,12 @@ async function open(el) {
   await settle();
   return panel();
 }
+/** v0.21.0: the opening wheel scroll (modal entry + one smooth scroll) has finished */
+async function introDone(el, ms = 3000) {
+  const end = Date.now() + ms;
+  while (el._intro && Date.now() < end) await wait(20);
+  await wait(30);
+}
 /** type into a panel number field (clears it first) */
 async function typeInto(input, text) {
   input.focus();
@@ -431,7 +437,7 @@ describe('batch 4 — td-datetime-picker wheels (listbox model)', () => {
   it('the selected option is centred in the band; scrolling selects the option that settles there', async () => {
     const el = pick('id="w5" value="15/06/2026 - 10:30"');
     await open(el);
-    await wait(50);
+    await introDone(el); // v0.21.0: the wheels scroll in from the top once the dialog has entered
     const h = wheel('hour');
     const centreOf = (o) => o.offsetTop + o.offsetHeight / 2 - h.scrollTop;
     expect(Math.abs(centreOf(selected(h)) - h.clientHeight / 2)).to.be.below(2);
