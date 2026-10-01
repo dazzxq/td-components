@@ -2511,15 +2511,16 @@
 		opacity: 1;
 	}
 
-	.td-lightbox__back:hover {
-		background: var(--td-glass-clear-solid);
-	}
-
 	.td-lightbox__btn:focus-visible {
 		background: rgb(255 255 255 / 14%);
 		outline: 2px solid #fff;
 		outline-offset: 1px;
 		opacity: 1;
+	}
+
+	/* after the generic hover / focus rules: the back button stays solid in every state */
+	.td-lightbox__back:is(:hover, :focus-visible) {
+		background: var(--td-glass-clear-solid);
 	}
 
 	.td-lightbox__btn[aria-pressed="true"],
