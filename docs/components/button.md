@@ -418,7 +418,7 @@ Bảng màu pastel dùng chung (`--td-pastel-{success,danger,warning,info}-bg/-b
 
 #### Đưa primary về màu accent
 
-Trước 0.21.0 primary theo `--td-accent`. Muốn quay lại (đặt cả nền **và** hover):
+Trước 0.21.0 primary theo `--td-accent`. Muốn quay lại (đặt đủ nền, chữ **và** hover — chữ mặc định ở dark là `#18181b`):
 
 ```css
 :root {

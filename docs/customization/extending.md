@@ -177,7 +177,7 @@ trang tài liệu của component, test, story, và cập nhật CHANGELOG.
 
 ## Đăng ký icon
 
-Mọi icon của kit (nút, menu, toolbar lightbox, tabs, empty-state, toast) được vẽ **theo tên** từ một registry dùng
+Mọi icon của kit (nút, menu, toolbar lightbox, tabs, empty-state, alert) được vẽ **theo tên** từ một registry dùng
 chung. Icon core: `close check prev next up down back plus minus more search calendar fullscreen download external
 info success error warning eye eye-off zoom-in inbox star upload link image sort` (hình học Lucide). Danh sách luôn
 đúng: `listIcons()`.
@@ -321,7 +321,7 @@ ghi đè. Cách làm chuẩn: một module `i18n-<ngôn ngữ>.js` nạp **một
 | `TdHovercard.labels` | `@dazzxq/td-components/hovercard` | `loading error dialog` | Mỗi lần mở thẻ |
 | `TdMenu.labels` | `@dazzxq/td-components/menu` | `trigger` | Khi tạo `TdMenu.button()` |
 | `TdModal.labels` | `@dazzxq/td-components/modal` | `close confirm cancel ok confirmTitle confirmMessage successTitle errorTitle infoTitle` (5 khoá cuối từ 0.16.0) | Khi tạo dialog |
-| `TdToast.labels` | `@dazzxq/td-components/toast` | `close` (0.16.0) | Khi tạo mỗi toast |
+| `TdToast.labels` | `@dazzxq/td-components/toast` | `close` (0.16.0), `types` (0.21.0: object `success error warning info` — tiền tố loại cho trình đọc màn hình) | Khi tạo mỗi toast |
 | `TdLoading.labels` | `@dazzxq/td-components/loading` | `loading` (0.16.0) | Mỗi `show()` / `wrap()` không truyền `message` |
 | `TdDatetimePicker.labels` | `@dazzxq/td-components/datetime-picker` | `title placeholder date day month year time hour minute close now confirm` | Khi render / mở picker |
 | `TdDatetimePicker.messages` | như trên | `required format incomplete day month year hour minute date min max` (`{min}` `{max}`) | Khi kiểm tra giá trị |
@@ -397,6 +397,7 @@ Object.assign(TdModal.labels, { close: 'Close', confirm: 'Confirm', cancel: 'Can
   confirmTitle: 'Confirm', confirmMessage: 'Are you sure?', successTitle: 'Success', errorTitle: 'Error',
   infoTitle: 'Information' });
 TdToast.labels.close = 'Close';
+TdToast.labels.types = { success: 'Success:', error: 'Error:', warning: 'Warning:', info: 'Info:' };
 TdLoading.labels.loading = 'Loading...';
 
 Object.assign(TdDatetimePicker.labels, {

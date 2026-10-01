@@ -153,6 +153,25 @@ describe('v0.21.0 P4 — toast (dcms style)', () => {
     expect(t.isConnected).to.equal(false);
   });
 
+  it('a longer --td-toast-exit-dur (600 ms) keeps the closing toast connected for the whole exit', async () => {
+    const style = document.createElement('style');
+    style.textContent = ':root { --td-toast-exit-dur: 600ms; }';
+    document.head.appendChild(style);
+    try {
+      const t = TdToast._showSingle('chậm', 'info', 0);
+      await frames(3);
+      t.click();
+      expect(t.getAttribute('data-state')).to.equal('closing');
+      expect(getComputedStyle(t).transitionDuration).to.equal('0.6s, 0.6s');
+      await wait(400);
+      expect(t.isConnected).to.equal(true); // the old fixed 200 ms removal would have cut the fade
+      await wait(400);
+      expect(t.isConnected).to.equal(false);
+    } finally {
+      style.remove();
+    }
+  });
+
   it('dark theme: text ≥ 4.7:1 on the solid fill', async () => {
     document.documentElement.setAttribute('data-td-theme', 'dark');
     for (const type of ['success', 'error', 'warning', 'info']) TdToast._showSingle(type, type, 0);
@@ -231,5 +250,20 @@ describe('v0.21.0 P5 — modal ease-in-out', () => {
     cs = getComputedStyle(dialog);
     expect(cs.transform).to.equal('none');
     expect(cs.transitionDuration).to.equal('0.12s');
+  });
+
+  it('reduced motion: the closing modal stays connected through the 120 ms fade, then is removed', async () => {
+    await emulateMedia({ reducedMotion: 'reduce' });
+    const id = TdModal.show({ title: 'Chào', body: '<p>x</p>' });
+    const root = document.getElementById(id);
+    await frames(3);
+    await wait(200);
+    TdModal.closeById(id);
+    expect(root.getAttribute('data-state')).to.equal('closing');
+    await wait(60);
+    expect(root.isConnected).to.equal(true);
+    expect(Number(getComputedStyle(root.querySelector('.td-modal__dialog')).opacity)).to.be.below(1);
+    await wait(250);
+    expect(root.isConnected).to.equal(false);
   });
 });

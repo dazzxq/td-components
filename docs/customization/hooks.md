@@ -308,17 +308,18 @@ resolve `false` hoặc reject → giữ mở (reject có `console.warn`). `onCan
 
 | API / cấu hình | Chữ ký | Ghi chú |
 |---|---|---|
-| `TdToast.show(message, type = 'info', duration = 4000)` | `type` ∈ `success error warning info` (khác → info) | `message` luôn là **text**. `duration` ms; `0` = dính (đóng bằng nút X, click hoặc `handle.close()`). `message` rỗng → không hiện. Trả handle `{ close() }` (0.16.0; mọi hàm dưới cũng vậy) |
-| `handle.close()` | | (0.16.0) Đóng **yêu cầu**: còn trong hàng đợi 50 ms → bỏ; chờ lượt 80 ms → huỷ; đã hiện → đóng như nút X. Gọi lại → no-op |
+| `TdToast.show(message, type = 'info', duration = 4000)` | `type` ∈ `success error warning info` (khác → info) | `message` luôn là **text**. `duration` ms; `0` = dính (đóng bằng click vào toast, nút Đóng — ẩn, hiện khi Tab tới — hoặc `handle.close()`). `message` rỗng → không hiện. Trả handle `{ close() }` (0.16.0; mọi hàm dưới cũng vậy) |
+| `handle.close()` | | (0.16.0) Đóng **yêu cầu**: còn trong hàng đợi 50 ms → bỏ; chờ lượt 80 ms → huỷ; đã hiện → đóng như nút Đóng. Gọi lại → no-op |
 | `TdToast.clear()` | | (0.16.0) Xoá hàng đợi, huỷ lượt chờ, đóng mọi toast đang hiện |
-| `TdToast.labels` | `{ close: 'Đóng' }` | (0.16.0) `aria-label` nút đóng, đọc khi tạo mỗi toast |
+| `TdToast.labels` | `{ close: 'Đóng', types: { success: 'Thành công:', error: 'Lỗi:', warning: 'Cảnh báo:', info: 'Thông tin:' } }` | Đọc khi tạo mỗi toast. `close` (0.16.0): `aria-label` của nút Đóng (ẩn bằng mắt, hiện khi focus bàn phím). `types` (0.21.0): tiền tố loại **chỉ cho trình đọc màn hình** (toast không còn icon); gán cả object hoặc từng khoá (`TdToast.labels.types.info = 'Info:'`), loại không khai báo → mặc định tiếng Việt, `''` = bỏ tiền tố loại đó |
 | `TdToast.success(msg, duration = 4000)` | | |
 | `TdToast.error(msg, duration = 5000)` | | Lỗi có `role="alert"` |
 | `TdToast.warning(msg, duration = 4000)` / `.info(msg, duration = 4000)` | | |
 | `TdToast.MAX_VISIBLE` | `5` | Vượt quá → toast cũ nhất bị đẩy ra (FIFO) |
 
 Không có callback đóng và không có action button.
-Vị trí / màu qua token `--td-toast-*` (xem [công thức 4](#4-toast-thời-lượng-riêng-toast-dính-vị-trí)).
+Vị trí / màu qua token `--td-toast-*` (0.21.0: nền pastel đặc theo loại `--td-toast-{type}-bg/-fg/-border`, không
+icon; xem [công thức 4](#4-toast-thời-lượng-riêng-toast-dính-vị-trí) và [toast.md](../components/toast.md)).
 
 ---
 
@@ -684,7 +685,7 @@ TdMenu.bindAll();                                  // một lần cho cả trang
 import { TdToast } from '@dazzxq/td-components/toast';
 
 TdToast.success('Đã lưu bản nháp', 2000);                  // 2 giây
-TdToast.error('Mất kết nối. Đang thử lại…', 0);           // dính: chỉ đóng bằng X hoặc click
+TdToast.error('Mất kết nối. Đang thử lại…', 0);           // dính: đóng bằng click, hoặc Tab tới nút Đóng + Enter
 TdToast.MAX_VISIBLE = 3;                                   // tối đa 3 toast cùng lúc
 ```
 

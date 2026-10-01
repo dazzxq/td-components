@@ -351,6 +351,8 @@ thể cần xem lại. Chi tiết và token để chỉnh lại ở [breaking-ch
 | `.td-btn--secondary` | Kính trắng + viền `--td-btn-secondary-edge` (`--td-btn-secondary-glass`) | 0.14.3 |
 | `.td-checkbox__mark` | Tròn mặc định (`--td-checkbox-radius`) | 0.14.0 |
 | `.td-toast--{type}` | Kính tint theo loại (`--td-toast-glass-bg`, `--td-toast-{type}-wash`, `--td-toast-{type}-icon`) | 0.14.0 |
+| `.td-toast--{type}` | Viên đặc pastel theo loại (`--td-toast-{type}-bg/-fg/-border`), không blur, không icon (DOM đổi — xem bảng trên) | 0.21.0 |
+| `.td-btn--primary` | Nền đen `--td-btn-primary-bg` (dark: đảo sáng), không theo `--td-accent` | 0.21.0 |
 | `.td-tooltip` | Có mũi tên `::after` | 0.14.0 |
 | `.td-field__control`, `.td-dropdown__trigger`, `.td-dtp__trigger`, `.td-chip-input__box`, `.td-checkbox__mark`, `.td-switch__track` | Viền mềm lúc nghỉ / hover (`--td-control-border-soft`, `--td-control-border-hover`) | 0.14.1, 0.14.2 |
 

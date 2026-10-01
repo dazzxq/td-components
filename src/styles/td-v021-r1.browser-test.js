@@ -3,6 +3,8 @@ import { sendKeys, sendMouse, resetMouse } from '@web/test-runner-commands';
 import '../form/td-button.js';
 import '../form/td-input-field.js';
 import '../form/td-dropdown.js';
+import '../form/td-datetime-picker.js';
+import { TdModal } from '../feedback/td-modal.js';
 import { tdTooltip } from '../feedback/td-tooltip.js';
 
 // v0.21.0 (plan v0.21.0-pastel-toast-modal, part R1): P1 pastel semantic palette, P2 black primary + tooltip,
@@ -282,6 +284,29 @@ describe('v0.21.0 P8 — lighter field focus', () => {
     const sh = getComputedStyle(trigger).boxShadow;
     expect(sh).to.match(/0px 0px 0px 3px/);
     expect(sh).to.not.match(/0\.35\)/); // not the strong --td-focus-ring
+  });
+
+  it('datetime picker panel number inputs use the same lighter ring', async () => {
+    const dtp = mount('<td-datetime-picker aria-label="Thời gian" value="15/06/2026 - 10:30"></td-datetime-picker>');
+    try {
+      dtp.querySelector('.td-dtp__trigger').click();
+      await frames();
+      await wait(350);
+      const modal = [...document.querySelectorAll('.td-modal')].find((m) => m.getAttribute('data-state') !== 'closing');
+      const inputs = [...modal.querySelectorAll('.td-dtp-panel__input')];
+      expect(inputs.length).to.equal(3);
+      for (const input of inputs) {
+        expect(await tabTo(input), input.dataset.part).to.equal(true);
+        expect(input.matches(':focus-visible')).to.equal(true);
+        const sh = getComputedStyle(input).boxShadow;
+        expect(sh, input.dataset.part).to.match(/0px 0px 0px 3px/);
+        expect(sh, input.dataset.part).to.not.match(/0\.35\)/); // not the strong --td-focus-ring
+        expect(Number(sh.match(/^(.*?\)) 0px 0px 0px 3px/)[1].match(/([\d.]+)\)$/)[1])).to.be.closeTo(0.12, 0.02);
+      }
+    } finally {
+      TdModal.closeAll();
+      await wait(300);
+    }
   });
 
   it('buttons keep the strong --td-focus-ring', async () => {
