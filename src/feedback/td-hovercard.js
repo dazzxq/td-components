@@ -65,7 +65,7 @@
  *   trigger switch, close and unbind; a resolution OR rejection carrying an old token never touches the card.
  * - Dismiss: outside pointerdown; the trigger scrolled out of view / removed; scroll + resize reposition
  *   (placeFloating: bottom preferred, flips, start-aligned, viewport-clamped, height capped to the room).
- * - Frontmost glass (G1): the card stays strong glass over an open modal.
+ * - Over an open modal the card keeps its small-popup surface (94 % + blur, v0.20.0 minimal surfaces).
  */
 import { LAYERS, register as registerLayer, focusablesIn } from '../utils/layers.js';
 import { placeFloating, isReferenceHidden } from '../utils/floating.js';

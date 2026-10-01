@@ -1,8 +1,9 @@
 /*
  * td-chip-input (src/form/td-chip-input.js) — plan v0.12.0 step 3 (D8–D14), inventory §2 + §7.2.
- * Field box = content layer (never glass): reuses the --td-field-* tokens from field.css; chips are plain fills
- * (capsules). Suggestions = body-portaled popover: Regular strong glass (.td-glass-surface--strong recipe), pad
- * --td-glass-pad, radius --td-glass-radius, options concentric (--td-glass-radius-inner) fills — never glass on glass.
+ * Field box = content layer (solid): reuses the --td-field-* tokens from field.css; chips are plain fills
+ * (capsules). Suggestions = body-portaled small popup (v0.20.0 minimal surfaces: .td-glass-surface--strong = 94 % +
+ * blur(12px) + thin border + soft shadow), pad --td-glass-pad, radius --td-glass-radius, options concentric
+ * (--td-glass-radius-inner) fills. Fades in (no pop scale).
  * State: data-state / [data-full] / [data-empty] on the root, :has(input:focus-visible / :disabled / [aria-invalid])
  * on the box, [hidden] on the chip list, [hidden] / data-state / data-placement on the popup, [aria-selected="true"]
  * (= active) on options, [data-kind] on the empty row. Only popup geometry is written by JS through CSSOM.
@@ -230,18 +231,15 @@
 		transform-origin: bottom center;
 	}
 
+	/* v0.20.0: fade in only (no decorative pop scale). */
 	.td-chip-input__menu[data-state="open"] {
 		opacity: 1;
-		transform: none;
-		transition:
-			opacity var(--td-glass-dur) var(--td-glass-ease),
-			transform var(--td-glass-dur) var(--td-glass-ease);
+		transition: opacity var(--td-glass-dur) var(--td-glass-ease);
 	}
 
 	@starting-style {
 		.td-chip-input__menu[data-state="open"] {
 			opacity: 0;
-			transform: scale(var(--td-glass-enter-scale));
 		}
 	}
 
@@ -346,16 +344,8 @@
 			transition: none;
 		}
 
-		/* opacity only, no scale */
 		.td-chip-input__menu[data-state="open"] {
 			transition: opacity var(--td-glass-dur) linear;
-		}
-
-		@starting-style {
-			.td-chip-input__menu[data-state="open"] {
-				opacity: 0;
-				transform: none;
-			}
 		}
 	}
 

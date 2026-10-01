@@ -1,9 +1,9 @@
 /*
  * TdMenu (src/feedback/td-menu.js) — plan v0.12.0 step 2 (D1–D7), inventory §1 + §7.1, 135 kit td-ui.css:88-236,
  * :859-888 (§10) translated to td tokens.
- * Menu = body-portaled popover: Regular strong glass (.td-glass-surface--strong recipe; fallbacks come from the
- * recipe), pad --td-glass-pad, radius --td-glass-radius, items concentric (--td-glass-radius-inner) plain fills —
- * never glass on glass. Menu button = content-layer icon button (no glass).
+ * Menu = body-portaled small popup (v0.20.0 minimal surfaces: .td-glass-surface--strong recipe = 94 % + blur(12px) +
+ * thin border + soft shadow; fallbacks come from the recipe), pad --td-glass-pad, radius --td-glass-radius, items
+ * concentric (--td-glass-radius-inner) plain fills. Fades in (no pop scale). Menu button = content-layer icon button.
  * State: data-state / data-placement / data-align on the menu, [aria-checked] / [aria-disabled] on items,
  * [aria-expanded] on the trigger. Only geometry (top/left, max-height) is written by JS through CSSOM.
  */
@@ -68,18 +68,15 @@
 	.td-menu[data-placement="top"][data-align="start"] { transform-origin: bottom left; }
 	.td-menu[data-placement="top"][data-align="center"] { transform-origin: bottom center; }
 
+	/* v0.20.0: fade in only (no decorative pop scale). */
 	.td-menu[data-state="open"] {
 		opacity: 1;
-		transform: none;
-		transition:
-			opacity var(--td-glass-dur) var(--td-glass-ease),
-			transform var(--td-glass-dur) var(--td-glass-ease);
+		transition: opacity var(--td-glass-dur) var(--td-glass-ease);
 	}
 
 	@starting-style {
 		.td-menu[data-state="open"] {
 			opacity: 0;
-			transform: scale(var(--td-glass-enter-scale));
 		}
 	}
 
@@ -270,16 +267,8 @@
 			transition: none;
 		}
 
-		/* opacity only, no scale */
 		.td-menu[data-state="open"] {
 			transition: opacity var(--td-glass-dur) linear;
-		}
-
-		@starting-style {
-			.td-menu[data-state="open"] {
-				opacity: 0;
-				transform: none;
-			}
 		}
 	}
 

@@ -110,8 +110,9 @@ component legacy; peer Tailwind bỏ ở 0.11.0).
   bật tắt class hiển thị. Một bộ từ vựng, có bảng mapping cũ → mới, không alias legacy.
 - **SSR**: td sở hữu markup contract trung lập ngôn ngữ + golden HTML fixture. PHP helper (`td_ui_*` ở 135,
   `dwp_ui_*` ở dwp) nằm ở repo site, là adapter mỏng.
-- **Glass**: component đọc `var(--_td-glass-X, var(--td-glass-X))`. Không khai báo alias private trên `:root`.
-  Fallback a11y gán biến private kèm `!important` trên marker `.td-glass-surface`. Không lồng kính.
+- **Bề mặt (minimal surfaces, 0.20.0 — ADR 0011)**: nền + một viền mảnh + một shadow mềm; blur 12px chỉ cho popup
+  nhỏ; control đặc. Component đọc `var(--_td-glass-X, var(--td-glass-X))`. Không khai báo alias private trên `:root`.
+  Fallback a11y gán biến private kèm `!important` trên marker `.td-glass-surface`.
   Chi tiết: [design/liquid-glass.md](design/liquid-glass.md).
 - **Đã xong (0.10.0/0.11.0)**: mọi component token-native, peer Tailwind đã bỏ. `td.css` vẫn không reset; CSP harness
   giữ profile `legacy+td` (Tailwind của host + td.css) làm kiểm tra "host không làm hỏng component".
@@ -121,9 +122,9 @@ component legacy; peer Tailwind bỏ ở 0.11.0).
 | File | Layer | Nội dung |
 |---|---|---|
 | `src/styles/layers.css` | — | Câu khai báo thứ tự layer duy nhất (phải đứng đầu manifest) |
-| `src/styles/tokens.css` | `td.tokens` | Token public: type, spacing, gray, radius, shadow, z-index, motion, màu semantic, accent, control, glass (Regular/Clear/tint/interaction/geometry) |
+| `src/styles/tokens.css` | `td.tokens` | Token public: type, spacing, gray, radius, shadow, z-index, motion, màu semantic, accent, control, button, bề mặt `--td-glass-*` (nền / viền / blur / shadow / lightbox / geometry; token deprecated 0.20.0) |
 | `src/styles/theme-dark.css` | `td.tokens` | `:root[data-td-theme="dark"]` — dark **chỉ bật khi site đặt attribute**, không tự theo OS |
-| `src/styles/glass.css` | `td.component` + `td.tokens` | Recipe `.td-glass-surface(--strong/--lg/--clear)`, `.td-glass-dim(--text)`, `.td-glass-tint` + khối fallback |
+| `src/styles/glass.css` | `td.component` + `td.tokens` | Recipe `.td-glass-surface(--strong/--lg/--clear)`, nhóm bề mặt đặc (modal / loading / tooltip / scroll-top), `.td-glass-tint` + khối fallback (`.td-glass-dim` deprecated) |
 | `src/styles/utilities.css` | `td.utilities` | `.td-sr-only` |
 | `src/styles/manifest.json` | — | Thứ tự build |
 | `td.css` (root) | — | File build (commit), `npm run build:css`; `npm run check:css` fail nếu cũ |
@@ -135,8 +136,9 @@ component legacy; peer Tailwind bỏ ở 0.11.0).
 2. Chỉ đọc token (`var(--td-*)`); giá trị per-instance (vị trí, kích thước động) ghi bằng CSSOM
    `el.style.setProperty('--td-x', …)` — CSP cho phép.
 3. Class BEM `.td-x__el--mod`; trạng thái qua `aria-*` / `[hidden]` / `data-state`, không bật tắt class hiển thị.
-4. Bề mặt kính: thêm class recipe (`td-glass-surface …`) vào phần tử, **không** tự viết `backdrop-filter`.
-   Mọi recipe mới có filter/tint phải nằm trong selector list của khối fallback trong `glass.css`.
+4. Bề mặt nổi: thêm class recipe (`td-glass-surface …`) vào phần tử, **không** tự viết `backdrop-filter`. Blur chỉ cho
+   popup nhỏ; bề mặt lớn / nhiều chữ thì thêm selector vào nhóm đặc trong `glass.css`. Mọi recipe mới có filter phải
+   nằm trong selector list của khối fallback trong `glass.css`. Control (nút…) luôn đặc.
 5. Không reset/normalize toàn cục (td.css nằm cạnh CSS của site, kể cả site có Tailwind). `npm run test:csp:combined` bảo đảm điều này.
 
 ### Site tuỳ biến thế nào
@@ -145,12 +147,12 @@ component legacy; peer Tailwind bỏ ở 0.11.0).
 /* CSS của site — KHÔNG đặt trong @layer → luôn thắng td.tokens */
 :root {
   --td-accent: #b3261e;
-  --td-glass-bg: oklch(96% 0.014 80 / 0.72);
-  --td-glass-solid: #f3efe6;          /* nền đặc khi fallback: nên khớp giấy của site */
+  --td-glass-bg-strong: oklch(98% 0.01 80 / 0.94);
+  --td-glass-solid: #f7f3ea;          /* modal / tooltip + nền đặc khi fallback: nên khớp giấy của site */
 }
 :root[data-td-theme="dark"] { --td-glass-solid: #1a1714; }   /* tinh chỉnh dark riêng */
 .sidebar { --td-glass-bg: rgb(0 0 0 / 40%); }                /* theme theo vùng: chạy được */
 ```
 
-Không bao giờ ghi đè `--_td-*`. Tắt kính thủ công (Safari/iOS chưa có `prefers-reduced-transparency`):
+Không bao giờ ghi đè `--_td-*`. Bỏ blur thủ công (Safari/iOS chưa có `prefers-reduced-transparency`):
 `<html data-td-glass="off">`. Gate kiểm chứng: `npm run test:tokens` (Chromium/Firefox/WebKit × CSP `'self'` và nonce-only).

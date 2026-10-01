@@ -317,16 +317,20 @@ describe('batch 3 — td-toast visuals', () => {
     expect(rgb(cs.backgroundColor).a).to.equal(1);
   });
 
-  it('solid over an open modal (R3 / D20)', async () => {
+  it('v0.20.0: neutral 94 % surface + blur(12px), no status wash; keeps it over an open modal', async () => {
+    const t = TdToast._showSingle('một mình', 'error', 0);
+    const alone = getComputedStyle(t);
+    expect(alone.backdropFilter).to.equal('blur(12px)');
+    expect(alone.backgroundImage).to.equal('none');
+    expect(rgb(alone.backgroundColor).a).to.be.closeTo(0.94, 0.01);
+    const before = [alone.backdropFilter, alone.backgroundColor];
     const modal = document.createElement('div');
     modal.className = 'td-modal';
     modal.setAttribute('data-state', 'open');
     document.body.appendChild(modal);
     cleanup.push(() => modal.remove());
-    const t = TdToast._showSingle('trên modal', 'info', 0);
     const cs = getComputedStyle(t);
-    expect(cs.backdropFilter).to.equal('none');
-    expect(rgb(cs.backgroundColor).a).to.equal(1);
+    expect([cs.backdropFilter, cs.backgroundColor]).to.deep.equal(before);
   });
 
   it('coarse pointer: close button ≥ 44px', async () => {

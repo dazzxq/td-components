@@ -545,8 +545,8 @@ lúc bấm: với dữ liệu luôn mới nhất, đọc `ctx.handle.index` khi 
 
 ### Dropdown, chip-input, tooltip, hovercard trong modal
 
-Chạy sẵn, không cần cấu hình: popup của chúng nằm ở lớp cao hơn modal, giữ kính, và dialog bên dưới chuyển nền đặc
-("kính trên cùng thắng"). Tab từ menu dropdown quay về trigger, rồi tiếp tục trong vòng Tab của modal.
+Chạy sẵn, không cần cấu hình: popup của chúng nằm ở lớp cao hơn modal (dialog luôn nền đặc, popup giữ bề mặt của
+nó). Tab từ menu dropdown quay về trigger, rồi tiếp tục trong vòng Tab của modal.
 
 ### Dùng component của kit trong component của site
 

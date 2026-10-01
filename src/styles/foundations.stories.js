@@ -3,12 +3,13 @@ import '../icons/td-icon-element.js';
 import '../form/td-button.js';
 
 /**
- * Foundations — Liquid Glass recipes from td.css (docs/internal/design/liquid-glass.md).
+ * Foundations — surface recipes from td.css (v0.20.0 minimal surfaces, docs/internal/design/liquid-glass.md):
+ * background + one thin border + one soft shadow, blur(12px) only on small popups; buttons solid.
  * Controls: `glass` toggles <html data-td-glass="off"> (the manual reduce-transparency switch);
  * `theme` toggles <html data-td-theme="dark"> (dark is opt-in only).
  */
 export default {
-  title: 'Foundations/Glass',
+  title: 'Foundations/Surfaces',
   argTypes: {
     glass: { control: 'inline-radio', options: ['on', 'off'] },
     theme: { control: 'inline-radio', options: ['light', 'dark'] },
@@ -27,12 +28,11 @@ export default {
 };
 
 const LOREM = `
-  <p>Liquid Glass chỉ dùng cho tầng điều khiển nổi trên nội dung: thanh công cụ, menu, popover,
-  sheet, toast. Nội dung (văn bản, lưới ảnh, bảng) luôn là giấy, không phải kính.</p>
-  <p>Bề mặt Regular tự điều chỉnh độ tương phản nên đọc chữ được trên mọi nền. Khi bật
-  Reduce Transparency, Increase Contrast hoặc trình duyệt không có backdrop-filter, kính chuyển sang
-  nền đặc qua token riêng tư — site không thể vô tình tắt các fallback này.</p>
-  <p>Cuộn nội dung bên dưới thanh nổi để thấy độ mờ và vệt sáng ở mép trên.</p>`;
+  <p>Minimal surfaces: mỗi bề mặt nổi chỉ gồm nền, một viền mảnh và một bóng mềm. Chỉ popup nhỏ (menu,
+  dropdown, gợi ý, hovercard, toast) có thêm blur 12px trên nền 94%. Modal, tooltip, thẻ loading và nút
+  cuộn lên đầu là nền đặc. Nút luôn là màu đặc.</p>
+  <p>Khi bật Reduce Transparency, Increase Contrast hoặc trình duyệt không có backdrop-filter, bề mặt
+  chuyển sang nền đặc qua token riêng tư — site không thể vô tình tắt các fallback này.</p>`;
 
 export const Regular = {
   render: () => `
@@ -43,7 +43,7 @@ export const Regular = {
           <button class="fd-btn" type="button" aria-label="Quay lại"><td-icon name="back"></td-icon></button>
           <button class="fd-btn" type="button">Chia sẻ</button>
         </div>
-        <!-- Tint = a SEPARATE capsule next to the bar (never glass on glass). -->
+        <!-- .td-glass-tint = a solid capsule next to the bar. -->
         <button class="td-glass-tint" type="button">Lưu</button>
       </div>
     </div>`,
@@ -56,17 +56,15 @@ export const StrongLarge = {
       ${LOREM}
       <div class="fd-card td-glass-surface td-glass-surface--strong td-glass-surface--lg" role="dialog" aria-label="Ví dụ">
         <strong>Bề mặt nhiều chữ</strong>
-        <p>Modal, menu, toast dùng biến thể Strong (86%) và Large (blur dày hơn, bóng sâu hơn).</p>
+        <p>Popup nhỏ dùng Strong (94% + blur 12px); Large chỉ đổi sang bóng sâu hơn.</p>
       </div>
     </div>`,
 };
 
 export const ClearOverMedia = {
-  name: 'Clear over media (with dim)',
+  name: 'Clear over media (lightbox bar)',
   render: () => `
     <div class="fd-stage fd-stage--photo">
-      <!-- Dim is LOCAL: a band behind the Clear control only, not the whole photo. -->
-      <div class="fd-dim fd-dim--top td-glass-dim"></div>
       <div class="fd-float fd-float--top td-glass-surface td-glass-surface--clear">
         <button class="fd-btn" type="button" aria-label="Đóng"><td-icon name="close"></td-icon></button>
         <button class="fd-btn" type="button" aria-label="Phóng to"><td-icon name="fullscreen"></td-icon></button>
@@ -76,10 +74,9 @@ export const ClearOverMedia = {
 };
 
 export const ClearWithText = {
-  name: 'Clear + text label (60% dim)',
+  name: 'Clear + text label',
   render: () => `
     <div class="fd-stage fd-stage--photo">
-      <div class="fd-dim fd-dim--bottom td-glass-dim td-glass-dim--text"></div>
       <div class="fd-float fd-float--bottom td-glass-surface td-glass-surface--clear">
         <span class="fd-btn">3 / 12 · Đà Lạt, 2024</span>
       </div>
@@ -87,8 +84,8 @@ export const ClearWithText = {
 };
 
 /**
- * v0.14.0 — the real Liquid Glass look: glass buttons (tinted prominent + neutral), a menu panel, tinted toasts
- * and a tooltip chip over a busy, colourful backdrop (glass needs something behind it — liquid-glass R16).
+ * v0.20.0 minimal surfaces over a busy, colourful backdrop: solid buttons, a blurred menu panel, neutral toasts
+ * (the semantic colour is on the icon in the real component).
  */
 export const Showcase = {
   render: () => {
@@ -104,7 +101,7 @@ export const Showcase = {
       wrap.appendChild(c);
       return c;
     };
-    const buttons = col('Button kính');
+    const buttons = col('Button đặc');
     for (const [v, label] of [['primary', 'Lưu'], ['secondary', 'Huỷ'], ['success', 'Xuất bản'], ['danger', 'Xoá'], ['info', 'Chi tiết'], ['warning', 'Cảnh báo']]) {
       const b = document.createElement('td-button');
       b.setAttribute('variant', v);
@@ -121,7 +118,7 @@ export const Showcase = {
       menu.appendChild(it);
     }
     menuCol.appendChild(menu);
-    const toastCol = col('Toast (kính tint màu)');
+    const toastCol = col('Toast (nền trung tính)');
     for (const [t, msg] of [['success', 'Đã lưu thay đổi'], ['info', 'Có 3 bình luận mới'], ['warning', 'Bản nháp chưa lưu'], ['error', 'Không kết nối được máy chủ']]) {
       const el = document.createElement('div');
       el.className = `td-toast td-toast--${t} td-glass-surface td-glass-surface--strong fd-show__toast`;

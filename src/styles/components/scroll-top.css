@@ -1,7 +1,7 @@
 /*
  * td-scroll-top (src/feedback/td-scroll-top.js) — v0.17.0; 135 kit `.td-scroll-top` translated to td tokens.
- * Floating control layer → strong glass (.td-glass-surface--strong recipe: every fallback — reduced transparency,
- * glass off, contrast, forced colours, no backdrop-filter — comes from the recipe). Round, fixed to the inline-end
+ * Floating control → OPAQUE surface (v0.20.0 minimal surfaces: glass.css opaque group — --td-glass-solid, thin border,
+ * one soft shadow, no blur; contrast / forced-colour fallbacks come from the recipe). Round, fixed to the inline-end
  * bottom corner, safe-area aware, z-index BELOW lightbox / modal / popover / toast.
  * State: data-visible="true|false" (hidden = visibility: hidden → out of the Tab order and the a11y tree).
  */
@@ -57,10 +57,6 @@
 			opacity var(--td-glass-dur) var(--td-glass-ease),
 			transform var(--td-glass-dur) var(--td-glass-ease),
 			visibility 0s;
-	}
-
-	.td-scroll-top[data-visible="true"]:active {
-		transform: scale(var(--td-glass-press-scale));
 	}
 
 	.td-scroll-top:focus-visible {

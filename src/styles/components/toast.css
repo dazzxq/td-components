@@ -1,11 +1,11 @@
 /*
- * td-toast (src/feedback/td-toast.js). Floating + text-bearing → glass with a per-type TINT (v0.14.0 liquid-glass G4,
- * replaces D13): its own 60 % neutral base + a semantic wash (22 % success/info, 26 % warning/error) painted by the
- * glass recipe above the base; the registry status icon stays (colour is never the only cue). Top-right by default (D11) — a site moves the stack with tokens only, e.g. 135/dwp bottom-centre:
+ * td-toast (src/feedback/td-toast.js). v0.20.0 minimal surfaces: a NEUTRAL small popup (.td-glass-surface--strong:
+ * 94 % + blur(12px) + thin border + soft shadow); the semantic colour is carried by the registry status ICON only
+ * (an icon, so colour is never the only cue) — no wash, no tinted border. Top-right by default (D11) — a site moves
+ * the stack with tokens only, e.g. 135/dwp bottom-centre:
  *   :root { --td-toast-top: auto; --td-toast-bottom: 1.5rem; --td-toast-inline-end: auto;
  *           --td-toast-inline-start: 50%; --td-toast-shift: -50%; --td-toast-align: center; }
  * State: data-state="entering|open|closing" (fade + slide; reduced motion → opacity only) · [data-paused].
- * Over an open modal the toast goes solid (R3 "no glass on glass", D20 private tokens, fallbacks still win).
  */
 @layer td.tokens {
 	:root {
@@ -20,34 +20,27 @@
 		/* one-line toast = 44px tall → 22px radius is a capsule (R9); wrapped text keeps a soft rounded box */
 		--td-toast-radius: 22px;
 		--td-toast-fg: var(--td-color-text);
-		--td-toast-close-fg: var(--td-toast-fg); /* muted greys fail 3:1 on translucent glass over a dark page */
-		/* status icons: deep tones in light, light tones in dark → ≥ 3:1 on the tinted glass over any backdrop */
-		--td-toast-info-icon: #172f73;
-		--td-toast-success-icon: #0f3d21;
-		--td-toast-warning-icon: #5a2a0a;
-		--td-toast-error-icon: #5c1515;
+		--td-toast-close-fg: var(--td-toast-fg);
+		/* status icons = the semantic colour (≥ 3:1 on the neutral surface over any backdrop; dark theme remaps the
+		   --td-color-* status colours to light tones) */
+		--td-toast-info-icon: var(--td-color-info);
+		--td-toast-success-icon: var(--td-color-success);
+		--td-toast-warning-icon: var(--td-color-warning);
+		--td-toast-error-icon: var(--td-color-error);
 		--td-toast-close-hover: var(--td-color-hover-strong);
-		--td-toast-error-border: color-mix(in srgb, var(--td-color-error) 45%, transparent);
-		--td-toast-glass-bg: rgb(255 255 255 / 66%);   /* #111 ≥ 4.7:1 with the wash, even over a black backdrop (gate-tuned) */
-		--td-toast-success-wash: rgb(21 128 61 / 22%);
-		--td-toast-info-wash: rgb(29 78 216 / 22%);
-		--td-toast-warning-wash: rgb(180 83 9 / 26%);
-		--td-toast-error-wash: rgb(185 28 28 / 26%);
+		--td-toast-glass-bg: var(--td-glass-bg-strong); /* the toast fill (a site may still tune it) */
+		/* deprecated v0.20.0 — still declared, no effect: the status wash and the tinted error border */
+		--td-toast-error-border: transparent;
+		--td-toast-success-wash: transparent;
+		--td-toast-info-wash: transparent;
+		--td-toast-warning-wash: transparent;
+		--td-toast-error-wash: transparent;
 		--td-toast-enter-shift: 0.5rem;
 	}
 
 	:root[data-td-theme="dark"] {
-		--td-toast-glass-bg: rgb(8 10 14 / 70%);
 		--td-toast-fg: var(--td-glass-fg);
 		--td-toast-close-fg: var(--td-glass-fg);
-		--td-toast-info-icon: #dbeafe;
-		--td-toast-success-icon: #dcfce7;
-		--td-toast-warning-icon: #fef3c7;
-		--td-toast-error-icon: #fee2e2;
-		--td-toast-success-wash: rgb(34 197 94 / 12%);
-		--td-toast-info-wash: rgb(96 165 250 / 12%);
-		--td-toast-warning-wash: rgb(245 158 11 / 12%);
-		--td-toast-error-wash: rgb(248 113 113 / 12%);
 	}
 }
 
@@ -113,24 +106,14 @@
 		color: var(--td-toast-info-icon);
 	}
 
-	/* Tinted glass: the toast's own neutral base (the recipe's fallbacks still force solid via --_td-glass-fill) +
-	   the semantic wash painted above it by the recipe (--td-glass-wash). */
+	/* Neutral fill (the recipe's fallbacks still force solid via --_td-glass-fill). */
 	.td-toast {
 		background-color: var(--_td-glass-fill, var(--td-toast-glass-bg));
-		--td-glass-wash: linear-gradient(var(--td-toast-info-wash), var(--td-toast-info-wash));
 	}
-
-	.td-toast--success { --td-glass-wash: linear-gradient(var(--td-toast-success-wash), var(--td-toast-success-wash)); }
-	.td-toast--warning { --td-glass-wash: linear-gradient(var(--td-toast-warning-wash), var(--td-toast-warning-wash)); }
-	.td-toast--error { --td-glass-wash: linear-gradient(var(--td-toast-error-wash), var(--td-toast-error-wash)); }
 
 	.td-toast--success .td-toast__icon { color: var(--td-toast-success-icon); }
 	.td-toast--warning .td-toast__icon { color: var(--td-toast-warning-icon); }
 	.td-toast--error .td-toast__icon { color: var(--td-toast-error-icon); }
-
-	.td-toast--error {
-		border-color: var(--_td-glass-line, var(--td-toast-error-border));
-	}
 
 	.td-toast__message {
 		flex: 1 1 auto;
@@ -153,7 +136,7 @@
 		line-height: 0;
 		color: var(--td-toast-close-fg);
 		cursor: pointer;
-		background: transparent; /* a fill on glass, never glass (R3) */
+		background: transparent;
 		border: 0;
 		border-radius: var(--td-glass-capsule);
 		transition: background-color var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
@@ -168,12 +151,6 @@
 		outline: 2px solid transparent;
 		outline-offset: 2px;
 		box-shadow: var(--td-focus-ring);
-	}
-
-	/* R3 / D20: over an open modal the toast is solid (not !important → the a11y fallbacks in td.tokens win). */
-	:root:has(.td-modal[data-state="open"]) .td-toast {
-		--_td-glass-fill: var(--td-glass-solid);
-		--_td-glass-filter: none;
 	}
 
 	@media (pointer: coarse) {

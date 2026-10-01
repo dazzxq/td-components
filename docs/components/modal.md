@@ -145,8 +145,8 @@ TdModal.show({
 
 ### 6. Chồng modal
 
-Mở modal trong modal hoàn toàn hợp lệ. Modal dưới bị phủ (`[data-covered]`), chuyển sang nền đặc (không "kính trên
-kính") và bị `inert`; modal trên cùng nhận bàn phím. Đóng modal trên thì focus về lại nút đã mở nó trong modal dưới.
+Mở modal trong modal hoàn toàn hợp lệ. Modal dưới bị phủ (`[data-covered]`) và bị `inert` (dialog nào cũng nền đặc
+từ 0.20.0); modal trên cùng nhận bàn phím. Đóng modal trên thì focus về lại nút đã mở nó trong modal dưới.
 
 ```js
 TdModal.show({
@@ -324,7 +324,7 @@ Token riêng của modal (đặt trong `:root` hoặc một selector hẹp hơn,
 | `--td-modal-pad-y` | `var(--td-space-md)` | Padding dọc của body. |
 
 Token dùng chung có ảnh hưởng: `--td-z-modal` (`400`), `--td-glass-scrim` (màu lớp phủ nền, không làm mờ),
-các token glass (`--td-glass-*`).
+các token bề mặt (`--td-glass-solid`, `--td-glass-border`, `--td-glass-shadow-lg`, `--td-glass-fg`).
 
 Custom property **theo từng modal** — kit ghi bằng CSSOM từ tuỳ chọn JS lên `.td-modal__dialog`; đừng tự đặt trong CSS
 chung trừ khi bạn muốn áp cho mọi modal:
@@ -344,8 +344,10 @@ chung trừ khi bạn muốn áp cho mọi modal:
 }
 ```
 
-Chuyển động: mở = mờ dần + phóng nhẹ; trên điện thoại = trượt từ dưới lên. `prefers-reduced-motion: reduce` → chỉ còn
-đổi độ mờ. Tắt kính (`<html data-td-glass="off">`, `prefers-reduced-transparency`, tương phản cao) → dialog nền đặc.
+Giao diện (0.20.0, minimal surfaces): dialog **nền đặc** `--td-glass-solid` (trắng / `#1c1c1e` ở dark), viền mảnh
+`--td-glass-border`, một bóng mềm `--td-glass-shadow-lg`, không blur; scrim phía sau không làm mờ. Chuyển động: mở = mờ
+dần (không phóng to); trên điện thoại = trượt từ dưới lên. `prefers-reduced-motion: reduce` → chỉ còn đổi độ mờ.
+Tương phản cao → nền `--td-color-surface`, viền rõ, không bóng.
 
 ## Cấu trúc DOM & class
 
@@ -449,6 +451,6 @@ escape theo ngữ cảnh trước (xem [hướng dẫn bảo mật](../guides/se
 
 - [Lớp nổi, inert và bàn phím](../concepts/how-it-works.md)
 - [Hook & callback theo component](../customization/hooks.md)
-- [Theming (token, glass, dark)](../customization/theming.md) · [Styling & override CSS](../customization/styling.md)
+- [Theming (token, bề mặt, dark)](../customization/theming.md) · [Styling & override CSS](../customization/styling.md)
 - [Trợ năng](../guides/accessibility.md) · [Bảo mật](../guides/security.md) · [CSP](../guides/csp.md)
 - [Button](button.md) (class `.td-btn` dùng cho footer tự dựng) · [Datetime picker](datetime-picker.md) (ví dụ `escapeCloses`)

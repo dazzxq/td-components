@@ -1,8 +1,8 @@
 /*
- * td-tooltip (src/feedback/td-tooltip.js). v0.14.0 (plan G8): the dwp tooltip look in glass — small text chip on
- * Regular STRONG glass (.td-glass-surface--strong on the element) with an arrow. Custom colour chips ([data-custom])
- * are SOLID. position: fixed, geometry (top/left) written by JS through CSSOM. Hoverable while open
- * (pointer-events: auto, WCAG 1.4.13).
+ * td-tooltip (src/feedback/td-tooltip.js). v0.14.0 (plan G8) dwp tooltip look; v0.20.0 minimal surfaces: a small
+ * text chip on an OPAQUE surface (glass.css opaque group — --td-glass-solid, thin border, soft shadow, no blur) with
+ * an arrow. Custom colour chips ([data-custom]) are solid in their own colour. position: fixed, geometry (top/left)
+ * written by JS through CSSOM. Hoverable while open (pointer-events: auto, WCAG 1.4.13).
  * Arrow = `::after` of the SAME element: a rotated square clipped to its outer half, painting the chip's own
  * background-color and border-color (inherit), no backdrop-filter of its own. JS writes `--td-tooltip-arrow-x`
  * (top/bottom) / `--td-tooltip-arrow-y` (left/right) = the trigger centre in the padding box, so it keeps pointing
@@ -97,7 +97,7 @@
 		clip-path: polygon(0 0, 100% 100%, 0 100%);
 	}
 
-	/* Custom colour chip (data-tooltip-color): solid, never glass. Colours come from CSSOM custom properties
+	/* Custom colour chip (data-tooltip-color): solid in its own colour. Colours come from CSSOM custom properties
 	   (validated with safeColor; fg = WCAG black/white unless data-tooltip-text-color is given). The arrow inherits
 	   the solid fill. */
 	.td-tooltip[data-custom] {

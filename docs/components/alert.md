@@ -103,7 +103,7 @@ document.addEventListener('dismiss', (e) => {
 | `--td-alert-{…}-icon` | tông của loại | Màu icon |
 
 Theme tối (`data-td-theme="dark"`) có bộ giá trị riêng. Alert thuộc **tầng nội dung** → nền đặc, không kính
-([luật Liquid Glass R1](../internal/design/liquid-glass.md)). Chữ ≥ 4.7:1, icon / nút đóng ≥ 3.2:1 trên nền của nó ở
+([minimal surfaces](../internal/design/liquid-glass.md)). Chữ ≥ 4.7:1, icon / nút đóng ≥ 3.2:1 trên nền của nó ở
 cả light và dark (gate `npm run test:contrast`). Đổi token thì tự kiểm lại tương phản.
 
 ## Cấu trúc DOM & class

@@ -20,7 +20,7 @@ function decimalsOf(n) {
  * drawn from the host custom property `--td-slider-pct` (0…1), updated in place (focus kept).
  *
  * - Exactly ONE `input` and ONE `change` CustomEvent `{ value }` per native event (native ones stopped at the host).
- * - `[data-dragging]` on `.td-slider` while a pointer is down (knob lifts into glass; no scale under reduced motion).
+ * - `[data-dragging]` on `.td-slider` while a pointer is down (a styling hook; v0.20.0: the knob keeps its solid look).
  * - Name: `label` (→ `aria-labelledby`) → host `aria-label` → external `<label for="host-id">`.
  *   `aria-valuetext` = the value formatted to the step's decimals.
  * - Error contract (setError / clearError / `error-text`), note appended inside `.td-slider`.

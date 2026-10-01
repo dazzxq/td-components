@@ -181,7 +181,7 @@ export const InAModal = {
       });
     });
     return `<div class="sb-stack"><button type="button" id="${id}">Mở hộp thoại</button>`
-      + '<p class="sb-note">Gợi ý nổi trên hộp thoại (LAYERS.popover, nền đặc — không kính chồng kính); '
+      + '<p class="sb-note">Gợi ý nổi trên hộp thoại (LAYERS.popover; popup giữ bề mặt của nó, dialog nền đặc); '
       + 'Esc chỉ đóng gợi ý trước.</p></div>';
   },
 };

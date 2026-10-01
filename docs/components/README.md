@@ -26,7 +26,7 @@ lightbox, hovercard…) có mẫu markup ngay trong trang của nó (mục cấu
 
 | Component | Dạng | Import | Form-associated | Dùng để |
 |---|---|---|---|---|
-| [Button](button.md) | `<td-button>` | `/button` | không (nhưng `type="submit"` gửi form cha) | Nút bấm: 6 biến thể kính, loading, icon, `run(asyncFn)` chống bấm đúp |
+| [Button](button.md) | `<td-button>` | `/button` | không (nhưng `type="submit"` gửi form cha) | Nút bấm: 6 biến thể màu đặc + ghost, loading, icon, `run(asyncFn)` chống bấm đúp |
 | [Input field](input-field.md) | `<td-input-field>` | `/input-field` | có | Ô nhập text/số/email/mật khẩu/textarea, label, ghi chú, lỗi, đếm ký tự, tự giãn |
 | [Checkbox](checkbox.md) | `<td-checkbox>` | `/checkbox` | có | Ô chọn (tròn), trạng thái lỗi |
 | [Toggle](toggle.md) | `<td-toggle>` | `/toggle` | có | Công tắc bật/tắt, `commit()` lạc quan có trạng thái chờ |
@@ -50,7 +50,7 @@ lightbox, hovercard…) có mẫu markup ngay trong trang của nó (mục cấu
 | [Hovercard](hovercard.md) | `TdHovercard` | `/hovercard` | Thẻ thông tin khi rê/focus (HTML tự do, template, URL cùng origin) |
 | [Lightbox](lightbox.md) | `TdLightbox` | `/lightbox` | Xem ảnh/video toàn màn hình, gallery, panel thông tin, cử chỉ |
 | [Progress](progress.md) | `<td-progress>` | `/progress` | Thanh tiến độ (có/không xác định), 4 màu, 2 cỡ, `role="progressbar"` |
-| [Scroll to top](scroll-top.md) | `<td-scroll-top>` | `/scroll-top` | Nút kính tròn "lên đầu trang" cố định góc, hiện khi cuộn quá ngưỡng, trả focus về nội dung chính |
+| [Scroll to top](scroll-top.md) | `<td-scroll-top>` | `/scroll-top` | Nút tròn nền đặc "lên đầu trang" cố định góc, hiện khi cuộn quá ngưỡng, trả focus về nội dung chính |
 | [Alert](alert.md) | `<td-alert>` + khối CSS `.td-alert` | `/alert` | Khối thông báo tĩnh trong trang (info/success/warning/danger), tiêu đề, nút đóng; markup SSR (`td_alert`) có dáng không cần JS, JS nâng cấp tại chỗ |
 
 ## Hiển thị

@@ -1,9 +1,10 @@
 /*
  * td-modal + td-modal-stack (src/feedback/td-modal.js). Adapted from the 135 kit (td-ui.css .td-modal).
- * Floating + text-bearing → Regular STRONG + LG glass dialog over a plain scrim (liquid-glass R12: never blurred).
+ * v0.20.0 minimal surfaces: OPAQUE dialog (--td-glass-solid, glass.css opaque group) + thin border + --td-glass-shadow-lg,
+ * no blur, over a plain scrim (never blurred).
  * Layer: var(--td-z-modal) for every dialog; later dialogs stack by DOM order.
  * State (set by JS, never visual classes):
- *   root [hidden] · [data-state="opening|open|closing"] · [data-covered] (a dialog is stacked above → solid)
+ *   root [hidden] · [data-state="opening|open|closing"] · [data-covered] (a dialog is stacked above)
  *   header / close / footer [hidden]
  * Per-instance CSSOM custom properties on .td-modal__dialog (validated in JS):
  *   --td-modal-w, --td-modal-h, --td-modal-body-pad, --td-modal-body-overflow
@@ -84,7 +85,8 @@
 		opacity: 1;
 	}
 
-	/* Dialog: glass recipe classes give fill/border/rim/shadow/blur; this block owns geometry + motion. */
+	/* Dialog: the surface recipe (glass.css) gives fill/border/shadow; this block owns geometry + motion (fade; the
+	   phone sheet slides up — no decorative scale). */
 	.td-modal__dialog {
 		position: relative;
 		display: flex;
@@ -97,7 +99,6 @@
 		outline: none;
 		isolation: isolate;
 		opacity: 0;
-		transform: scale(var(--td-glass-enter-scale));
 		transition:
 			opacity var(--td-dur-base) var(--td-ease),
 			transform var(--td-dur-base) var(--td-ease);
@@ -111,19 +112,9 @@
 			transform var(--td-dur-slow) var(--td-glass-ease-flex);
 	}
 
-	/* No glass on glass (liquid-glass R3, D20): a dialog covered by another one goes solid (menus, tooltips and
-	   toasts over an open modal: their own files). Private tokens, NOT !important → a11y fallbacks still win. */
 	/* An exiting modal is never interactive (its dialog is also inert). */
 	.td-modal[data-state="closing"] {
 		pointer-events: none;
-	}
-
-	/* v0.14.0 "frontmost glass wins" (liquid-glass G1): a popover / menu / hovercard / tooltip open ABOVE an open modal
-	   keeps its glass; the covered dialog goes solid instead (no glass on glass). */
-	:root:has(.td-dropdown__menu:not([hidden]), .td-menu, .td-chip-input__menu:not([hidden]), .td-tooltip:not([hidden]), .td-hovercard:not([hidden])) .td-modal[data-state="open"] .td-modal__dialog,
-	.td-modal[data-covered] .td-modal__dialog {
-		--_td-glass-fill: var(--td-glass-solid);
-		--_td-glass-filter: none;
 	}
 
 	.td-modal__header {
@@ -158,7 +149,7 @@
 		padding: 0;
 		margin: 0 calc(-1 * var(--td-space-xs)) 0 auto;
 		font: inherit;
-		color: var(--_td-glass-fg, var(--td-glass-fg)); /* v0.14.0: muted greys fail 3:1 on translucent glass over a dark page */
+		color: var(--_td-glass-fg, var(--td-glass-fg)); /* the surface ink (contrast / forced-colour fallbacks win) */
 		cursor: pointer;
 		background: transparent;
 		border: 1px solid transparent;
@@ -290,7 +281,7 @@
 		}
 	}
 
-	/* Reduced motion: opacity only (no scale / slide). */
+	/* Reduced motion: opacity only (no slide). */
 	@media (prefers-reduced-motion: reduce) {
 		.td-modal .td-modal__dialog,
 		.td-modal[data-state="open"] .td-modal__dialog,

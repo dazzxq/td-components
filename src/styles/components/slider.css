@@ -1,7 +1,7 @@
 /*
  * td-slider (src/form/td-slider.js) — plan v0.8.0-batch2 D11/D12/D14. Content-layer control: the track is a fill,
- * the thumb is SOLID at rest and lifts into a clear glass lens only while dragged ([data-dragging], liquid-glass
- * §3.5; no scale under reduced motion via --_td-glass-lift-knob).
+ * the thumb is SOLID with one soft shadow — also while dragged ([data-dragging]): v0.20.0 minimal surfaces, no lens,
+ * no blur, no glow, no lift scale. Only its position moves.
  * Geometry: the native range (opacity 0) covers the whole .td-slider__control (≥ 24 px, 44 px on touch) and its
  * thumb is exactly --td-slider-thumb wide, so the native thumb travels [0, 100% - thumb] — the decorative thumb
  * uses the same travel: left = pct × (100% - thumb). Value: host custom property --td-slider-pct (0…1).
@@ -217,33 +217,8 @@
 		border: 2px solid var(--td-slider-color);
 		border-radius: var(--td-radius-full);
 		box-shadow: var(--td-shadow-2);
-		transform: translateY(-50%) scale(1);
-		transition:
-			transform var(--_td-glass-dur, var(--td-glass-dur)) var(--_td-glass-ease-flex, var(--td-glass-ease-flex)),
-			background-color var(--_td-glass-dur, var(--td-glass-dur)) var(--td-ease),
-			box-shadow var(--td-dur-fast) var(--td-ease);
-	}
-
-	/* Knob lifts into a clear glass lens only while dragged. */
-	.td-slider[data-dragging] .td-slider__thumb {
-		background: var(--td-glass-clear-bg);
-		-webkit-backdrop-filter: blur(2px) saturate(160%);
-		backdrop-filter: blur(2px) saturate(160%);
-		box-shadow: inset 0 1px 0 var(--td-glass-clear-edge), 0 0 0 4px var(--td-slider-color), var(--td-shadow-3);
-		transform: translateY(-50%) scale(var(--_td-glass-lift-knob, var(--td-glass-lift-scale)));
-	}
-
-	@supports (color: color-mix(in srgb, red 50%, transparent)) {
-		.td-slider__thumb {
-			box-shadow: var(--td-shadow-2), 0 2px 8px color-mix(in srgb, var(--td-slider-color) 30%, transparent);
-		}
-
-		.td-slider[data-dragging] .td-slider__thumb {
-			box-shadow:
-				inset 0 1px 0 var(--td-glass-clear-edge),
-				0 0 0 4px color-mix(in srgb, var(--td-slider-color) 25%, transparent),
-				var(--td-shadow-3);
-		}
+		transform: translateY(-50%);
+		transition: box-shadow var(--td-dur-fast) var(--td-ease);
 	}
 
 	.td-slider__input:focus-visible ~ .td-slider__thumb {
@@ -291,10 +266,6 @@
 		.td-slider__thumb {
 			transition: none;
 		}
-
-		.td-slider[data-dragging] .td-slider__thumb {
-			transform: translateY(-50%) scale(1);
-		}
 	}
 
 	@media (forced-colors: active) {
@@ -316,8 +287,7 @@
 			background: CanvasText;
 		}
 
-		.td-slider__thumb,
-		.td-slider[data-dragging] .td-slider__thumb {
+		.td-slider__thumb {
 			background: Canvas;
 			border-color: Highlight;
 			box-shadow: none;

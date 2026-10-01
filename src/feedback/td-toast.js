@@ -15,8 +15,8 @@
  *   </div>
  *
  * Behaviour:
- * - Strong glass (no saturated fills); the variant is carried by a registry status icon (non-colour cue) and an
- *   error border tint (D13). Placement top-right via tokens `--td-toast-top/-inline-end` (D11). z-index is the
+ * - Neutral surface (v0.20.0 minimal surfaces: 94 % + blur, no wash); the variant is carried by the coloured
+ *   registry status icon (an icon, so colour is never the only cue). Placement top-right via tokens `--td-toast-top/-inline-end` (D11). z-index is the
  *   token `--td-z-toast` (CSS only).
  * - Announcements (D12): the toast is appended with its role and an EMPTY message node; the text is set one frame
  *   later so `role=status` live regions exist before their content changes. Errors: role=alert, others: status (B6).

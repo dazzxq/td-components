@@ -1,4 +1,4 @@
-// Loaded by contrast.spec.mjs (v0.14.0 liquid-glass G5): glass buttons + tinted toasts rendered over a backdrop.
+// Loaded by contrast.spec.mjs: buttons + toasts rendered over a backdrop (v0.20.0: solid buttons, neutral toasts).
 import '/src/form/td-button.js';
 import { TdToast } from '/src/feedback/td-toast.js';
 import '/src/feedback/td-alert.js';
