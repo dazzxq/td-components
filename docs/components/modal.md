@@ -361,7 +361,7 @@ Tương phản cao → nền `--td-color-surface`, viền rõ, không bóng.
 - **Đóng:** ngược lại, nhanh hơn: 180ms `ease-in` (cả dialog lẫn scrim).
 - **Điện thoại (≤ 640px):** bottom sheet vẫn trượt từ dưới lên / xuống, cùng thời lượng và đường cong.
 - **Toàn màn hình (`fullViewport`):** chỉ mờ dần.
-- **`prefers-reduced-motion: reduce`:** chỉ mờ dần 120ms (`linear`), không trượt, không scale; kit gỡ modal ngay khi đóng.
+- **`prefers-reduced-motion: reduce`:** chỉ mờ dần 120ms (`linear`), không trượt, không scale; khi đóng kit chờ hết lần mờ dần đó (đọc từ computed style) rồi mới gỡ modal.
 
 Đây là ngoại lệ có chủ ý với luật "không scale trang trí" của minimal surfaces — chỉ áp cho modal. Logic trạng thái
 (`data-state="opening|open|closing"`) không đổi; chỉ có CSS. Muốn modal chỉ mờ dần như 0.20:
@@ -395,7 +395,7 @@ Mỗi modal đang mở là một phần tử gắn thẳng vào `<body>`:
 |---|---|
 | `.td-modal--{xs…5xl\|full}` | Size. |
 | `.td-modal--viewport` | `fullViewport: true`. |
-| `[data-state="opening\|open\|closing"]` | Vòng đời. Modal `closing` không nhận click, dialog của nó có `inert`; phần tử bị gỡ sau ~220ms (ngay lập tức khi reduced motion). |
+| `[data-state="opening\|open\|closing"]` | Vòng đời. Modal `closing` không nhận click, dialog của nó có `inert`; phần tử bị gỡ sau ~220ms (reduced motion: sau lần mờ dần 120ms). |
 | `[data-covered]` | Có modal khác chồng lên trên → dialog chuyển nền đặc. |
 | `.td-modal__header[hidden]`, `.td-modal__close[hidden]`, `.td-modal__footer[hidden]` | Ẩn theo `showHeader`, `closable`, footer rỗng. |
 | `role="alertdialog"` + `aria-describedby="{id}-message"` | Trên các hộp thoại Promise (`confirm`, `success`, `error`, `info`). |

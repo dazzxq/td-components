@@ -36,13 +36,16 @@
 
 import { tdIcon } from '../icons/td-icon.js';
 import { LAYERS, register as registerLayer } from '../utils/layers.js';
+import { transitionEndMs } from '../utils/transition.js';
 
 const TYPES = ['success', 'error', 'warning', 'info'];
 const CLOSE_LABEL = 'Đóng';
 /** Screen-reader type prefixes (Vietnamese defaults; a site overrides TdToast.labels.types). */
 const TYPE_LABELS = { success: 'Thành công:', error: 'Lỗi:', warning: 'Cảnh báo:', info: 'Thông tin:' };
-/** Exit transition length (--td-toast-exit-dur, 180 ms) before the node leaves the DOM. */
+/** Minimum wait before a closing toast leaves the DOM (default exit 180 ms + margin); a longer computed exit
+ * transition (--td-toast-exit-dur, delays) extends it. */
 const REMOVE_DELAY = 200;
+const REMOVE_MARGIN = 20;
 
 const raf = (fn) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(fn) : setTimeout(fn, 16));
 
@@ -319,6 +322,8 @@ export class TdToast {
           active.blur();
         }
       }
+      // The exit transition in effect now that data-state="closing" applies (site may lengthen --td-toast-exit-dur).
+      const exitMs = transitionEndMs(toast);
       setTimeout(() => {
         toast.remove();
         const c = TdToast.container;
@@ -327,7 +332,7 @@ export class TdToast {
           TdToast._hover = false;
           TdToast._focusWithin = false;
         }
-      }, REMOVE_DELAY);
+      }, Math.max(REMOVE_DELAY, (exitMs || 0) + REMOVE_MARGIN));
     };
 
     toast._removeToast = removeToast;

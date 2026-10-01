@@ -175,7 +175,7 @@ toast thì đặt token `--td-toast-*` bên dưới.
 | `--td-toast-info-bg` / `-fg` / `-border` | `var(--td-pastel-info-…)` (`#dbeafe` / `#1e3a8a` / `#bfdbfe`) | Màu toast thông tin (cũng là loại lạ). |
 | `--td-toast-close-hover` | `rgb(0 0 0 / 8%)` | Nền nút Đóng khi hover (lúc nó đang hiện). |
 | `--td-toast-enter-shift` | `1rem` | Độ trượt ngang khi hiện / ẩn. |
-| `--td-toast-enter-dur` / `--td-toast-exit-dur` | `200ms` / `180ms` | Thời lượng hiện / ẩn. |
+| `--td-toast-enter-dur` / `--td-toast-exit-dur` | `200ms` / `180ms` | Thời lượng hiện / ẩn. Đặt `-exit-dur` dài hơn thì kit chờ hết chuyển động ẩn (đọc từ computed style) rồi mới gỡ toast. |
 | `--td-toast-fg`, `--td-toast-close-fg`, `--td-toast-glass-bg`, `--td-toast-{type}-icon`, `--td-toast-*-wash` | — | **Deprecated** (nền trung tính + icon của 0.20.0), vẫn khai báo nhưng không còn tác dụng. |
 
 Lưu ý: `--td-toast-error-border` từng bị đánh dấu deprecated ở 0.20.0; từ 0.21.0 nó **có tác dụng trở lại** (viền
@@ -218,7 +218,7 @@ bóng; forced colors → `Canvas` / `CanvasText`, viền thật. `data-td-glass=
 | `.td-toast__type.td-sr-only` | Tiền tố loại (`TdToast.labels.types`), chỉ trình đọc màn hình thấy; điền cùng lúc với nội dung. |
 | `.td-toast__message` | Nội dung (text). |
 | `.td-toast__close` | Nút Đóng: trong DOM, focus được, chỉ hiện khi `:focus-visible`. |
-| `[data-state="entering\|open\|closing"]` | Vòng đời; phần tử bị gỡ khoảng 200ms sau khi `closing`. |
+| `[data-state="entering\|open\|closing"]` | Vòng đời; phần tử bị gỡ sau khi chuyển động ẩn của `closing` chạy xong (tối thiểu 200ms; dài hơn nếu `--td-toast-exit-dur` dài hơn). |
 | `[data-paused]` | Hẹn giờ đang tạm dừng. |
 | `role="status"` + `aria-live="polite"` | Mọi loại trừ `error`. |
 | `role="alert"` + `aria-live="assertive"` | Chỉ `error`. |

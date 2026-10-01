@@ -45,6 +45,7 @@
 import { TdModalStackManager } from './td-modal-stack.js';
 import { LAYERS, register as registerLayer, trapTab, focusablesIn, setFocusHandoff, followFocusHandoff } from '../utils/layers.js';
 import { fillIconSlots } from '../icons/td-icon.js';
+import { transitionEndMs } from '../utils/transition.js';
 
 const MODAL_LAYER = LAYERS.modal; // --td-z-modal
 const SIZES = ['xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', 'full'];
@@ -52,6 +53,8 @@ const BTN_VARIANTS = ['primary', 'secondary', 'danger', 'success', 'warning', 'i
 const OVERFLOWS = ['visible', 'hidden', 'auto', 'scroll', 'clip'];
 const FIELD = 'input:not([disabled]):not([type="hidden"]), textarea:not([disabled]), select:not([disabled])';
 const EXIT_MS = 220; // minimum wait before the root is removed (≥ --td-modal-exit-dur + margin; longer tokens extend it)
+const REDUCED_EXIT_MS = 120; // reduced motion: the opacity-only fade (--td-dur-fast) when the computed style can't be read
+const EXIT_MARGIN = 40;
 const SPINNER = '<span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden>'
   + '<svg class="td-spinner__svg" viewBox="0 0 50 50" aria-hidden="true" focusable="false">'
   + '<circle class="td-spinner__track" cx="25" cy="25" r="20"></circle>'
@@ -380,8 +383,15 @@ export class TdModal {
       root.hidden = true;
       if (root.parentNode) root.remove();
     };
-    if (prefersReducedMotion()) setTimeout(remove, 0);
-    else setTimeout(remove, Math.max(EXIT_MS, TdModal._cssMs(root, '--td-modal-exit-dur', 0) + 40));
+    // Stay connected for the whole exit transition actually computed in the closing state (dialog + scrim) — under
+    // reduced motion that is the 120 ms opacity fade (P5), otherwise the --td-modal-exit-dur slide.
+    const measured = transitionEndMs(inst.dialog, root.querySelector('.td-modal__backdrop'));
+    if (prefersReducedMotion()) {
+      setTimeout(remove, (measured === null ? REDUCED_EXIT_MS : measured) + EXIT_MARGIN);
+    } else {
+      setTimeout(remove, Math.max(EXIT_MS, TdModal._cssMs(root, '--td-modal-exit-dur', 0) + EXIT_MARGIN,
+        (measured || 0) + EXIT_MARGIN));
+    }
   }
 
   /**

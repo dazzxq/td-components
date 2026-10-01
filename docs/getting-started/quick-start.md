@@ -214,6 +214,17 @@ Muốn đổi màu chủ đạo của cả kit, thêm vào `app.css` (không b�
 :root { --td-accent: #b3261e; }
 ```
 
+`--td-accent` đổi checkbox, slider, pagination, nút ghost, viền focus ô nhập… Nút **primary** mặc định **đen** (0.21.0)
+và **không** đi theo accent; muốn primary cùng màu thương hiệu, map thêm ba token:
+
+```css
+:root {
+  --td-btn-primary-bg: var(--td-accent-fill);
+  --td-btn-primary-fg: var(--td-accent-contrast);
+  --td-btn-primary-hover: color-mix(in srgb, var(--td-accent-fill) 92%, #000);
+}
+```
+
 Chi tiết: [Theming](../customization/theming.md).
 
 ## Bước 5: chạy
@@ -229,7 +240,7 @@ Thử lần lượt:
 
 1. Bấm **Lưu** khi form trống: trình duyệt báo lỗi ở ô bắt buộc đầu tiên.
 2. Gõ họ tên rồi rời ô (`validate-on="blur"`): lỗi dưới ô tự hiện / tự mất.
-3. Điền đủ, chọn gói, bấm **Lưu**: nút quay spinner khoảng 1 giây, sau đó toast loại `success` (có icon trạng thái) hiện ở góc trên bên phải.
+3. Điền đủ, chọn gói, bấm **Lưu**: nút quay spinner khoảng 1 giây, sau đó toast loại `success` (viên nền xanh lá pastel, không icon) hiện ở góc trên bên phải; bấm vào toast để đóng sớm.
 4. Nhập `da-ton-tai@example.com` rồi Lưu: ô email báo lỗi, toast lỗi hiện ra, focus nhảy về ô email.
 5. Bấm **Xoá dữ liệu đã nhập**: modal xác nhận hiện, trang phía sau bị khoá. Thử Tab: focus chỉ chạy trong modal. Bấm
    Xoá: form về trạng thái ban đầu (toggle bật lại vì có `checked` trong HTML).

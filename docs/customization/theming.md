@@ -68,7 +68,7 @@ thế nào, và kit tự xử lý các chế độ trợ năng của hệ điề
 Một token tham chiếu token khác, ví dụ:
 
 ```css
---td-btn-primary-bg: var(--td-accent-fill);   /* --td-accent-fill: var(--td-accent) */
+--td-checkbox-color: var(--td-accent);
 --td-field-border: var(--td-control-border-soft);
 ```
 
@@ -125,14 +125,16 @@ thắng specificity). Nếu site có dark theme, hãy khai báo riêng cho dark,
 :root[data-td-theme="dark"]       { --td-color-bg: #14120f; }
 ```
 
-**2. Token được tính tại nơi khai báo.** `--td-btn-primary-bg: var(--td-accent-fill)` (và `--td-accent-fill:
-var(--td-accent)`) được khai báo trên `:root`, nên `var(--td-accent)` được "giải" tại `:root` rồi mới kế thừa xuống. Hệ
-quả:
+**2. Token được tính tại nơi khai báo.** `--td-checkbox-color: var(--td-accent)` (cũng như `--td-btn-ghost-fg`,
+`--td-accent-fill`) được khai báo trên `:root`, nên `var(--td-accent)` được "giải" tại `:root` rồi mới kế thừa xuống.
+Hệ quả:
 
-- Ghi đè `--td-accent` trên `:root` → nút primary, checkbox, slider, pagination, `.td-glass-tint`… đổi theo. Đúng ý.
-- Ghi đè `--td-accent` trên **một vùng** (`.sidebar { --td-accent: red }`) → **không** làm nút primary trong vùng đó
-  đổi, vì `--td-btn-primary-bg` đã được tính ở `:root`. Muốn đổi theo vùng, ghi đè thẳng token con
-  (`.sidebar { --td-btn-primary-bg: red; --td-checkbox-color: red; }`). Xem [Theme theo vùng](#theme-theo-vùng).
+- Ghi đè `--td-accent` trên `:root` → checkbox, slider, pagination, nút ghost, viền focus ô nhập… đổi theo. Đúng ý.
+  Nút primary và `.td-glass-tint` thì **không** đổi: từ 0.21.0 chúng mặc định **đen** (`--td-btn-primary-bg: #18181b`),
+  chỉ theo accent khi site map lại (xem [Button](#button)).
+- Ghi đè `--td-accent` trên **một vùng** (`.sidebar { --td-accent: red }`) → **không** làm checkbox trong vùng đó
+  đổi, vì `--td-checkbox-color` đã được tính ở `:root`. Muốn đổi theo vùng, ghi đè thẳng token con
+  (`.sidebar { --td-checkbox-color: red; --td-btn-ghost-fg: red; }`). Xem [Theme theo vùng](#theme-theo-vùng).
 
 **3. Modifier kích thước đặt token trên chính phần tử.** Từ 0.16.0 mọi token kích thước **mặc định** đều khai báo trên
 `:root` (trước đó `--td-lb-*`, `--td-checkbox-box`, `--td-switch-w/-h/-thumb-d`, `--td-spinner-size`,
@@ -429,9 +431,11 @@ Ngoài ra `--td-checkbox-radius` (mặc định `50%`, checkbox tròn) nằm tro
 
 ### Bề mặt nổi (`--td-glass-*`)
 
-Mỗi bề mặt nổi = **nền + một viền mảnh + một shadow mềm**. Popup nhỏ (menu, dropdown, gợi ý chip-input, hovercard,
-toast) dùng nền 94 % + `blur(12px)`; modal, thẻ loading và nút scroll-top là **đặc** (`--td-glass-solid`, không blur);
-tooltip đặc **màu đen** (`--td-tooltip-bg`, 0.21.0 — xem [tooltip](../components/tooltip.md#tuỳ-biến-giao-diện)). Toast có nền trung tính; màu trạng thái chỉ nằm ở icon.
+Mỗi bề mặt nổi = **nền + một viền mảnh + một shadow mềm**. Popup nhỏ (menu, dropdown, gợi ý chip-input, hovercard)
+dùng nền 94 % + `blur(12px)`; modal, thẻ loading và nút scroll-top là **đặc** (`--td-glass-solid`, không blur);
+tooltip đặc **màu đen** (`--td-tooltip-bg`, 0.21.0 — xem [tooltip](../components/tooltip.md#tuỳ-biến-giao-diện)).
+Toast (0.21.0) là viên **đặc pastel** theo loại (`--td-toast-{type}-bg/-fg/-border`, trỏ vào [bộ pastel](#màu-pastel-0210)),
+không blur, không icon hiển thị — xem [toast](../components/toast.md).
 
 | Token | Mặc định (light) | Dark | Ý nghĩa |
 |---|---|---|---|
@@ -488,7 +492,10 @@ Vẫn được khai báo (đặt không lỗi) nhưng **không còn tác dụng*
 | `--td-btn-secondary-glass` | `--td-btn-secondary-bg` |
 | `--td-btn-secondary-edge` | `--td-btn-secondary-border` |
 | `--td-btn-{v}-tint` (không còn khai báo; **alias một chu kỳ**) | `--td-btn-{v}-bg` |
-| `--td-toast-{success,info,warning,error}-wash`, `--td-toast-error-border` | — (toast trung tính, màu ở icon `--td-toast-*-icon`) |
+| `--td-toast-{success,info,warning,error}-wash` (0.20.0); `--td-toast-fg`, `-close-fg`, `-glass-bg`, `--td-toast-{type}-icon` (0.21.0) | `--td-toast-{type}-bg` / `-fg` / `-border` (toast đặc pastel, không icon) |
+
+`--td-toast-error-border` từng nằm trong danh sách deprecated của 0.20.0; từ 0.21.0 nó **có tác dụng trở lại** (viền
+toast lỗi, mặc định `--td-pastel-danger-border`).
 
 ## Viền control mềm và override chuẩn WCAG nghiêm ngặt
 
@@ -628,14 +635,16 @@ Giả sử site dùng đỏ `#b3261e` làm màu chính.
   --td-accent-contrast: #fff;     /* chữ trên nền đỏ: 6.5:1 */
   --td-focus: #b3261e;
   --td-focus-ring: 0 0 0 3px rgb(179 38 30 / 35%); /* vòng focus của nút / checkbox / switch */
-  /* 0.21.0: primary mặc định đen — muốn primary đỏ theo thương hiệu: */
+  /* 0.21.0: primary mặc định đen — muốn primary đỏ theo thương hiệu, map đủ ba token: */
   --td-btn-primary-bg: var(--td-accent-fill);
+  --td-btn-primary-fg: var(--td-accent-contrast);
   --td-btn-primary-hover: color-mix(in srgb, var(--td-accent-fill) 92%, #000);
 }
 ```
 
 **Bước 2 — dark theme (nếu site dùng dark).** Từ 0.16.0 bước 1 là đủ: `:root` không layer của bạn thắng cả giá trị
-dark của kit, và nền nút primary + trang active (`--td-accent-fill`) ở dark tự lấy accent tối đi 20% (`#b3261e` →
+dark của kit (kể cả primary đảo sáng của dark), và nền trang active + nút primary đã map ở bước 1 (`--td-accent-fill`)
+ở dark tự lấy accent tối đi 20% (`#b3261e` →
 ≈ `#8f1e18`). Chỉ khai báo thêm khi muốn accent dark khác light, ví dụ đỏ sáng hơn để làm chữ/viền trên nền tối:
 
 ```css
@@ -655,7 +664,7 @@ accent sáng, nên tự chọn fill.
 - `--td-switch-on` (toggle bật) mặc định xanh lá `#16a34a`, không theo accent.
 - Nút primary mặc định **đen** (0.21.0) — chỉ theo accent khi bạn map như bước 1.
 - Nút `success` / `danger` / `info` / `warning` dùng bộ [pastel](#màu-pastel-0210) (`--td-btn-{v}-bg`).
-- Toast dùng màu trạng thái trên icon (`--td-toast-*-icon` = `--td-color-*`), không dùng accent.
+- Toast dùng bộ [pastel](#màu-pastel-0210) theo loại (`--td-toast-{type}-bg/-fg/-border`), không dùng accent.
 
 **Bước 4 — kiểm tra tương phản.** Kit chỉ gate giá trị mặc định. Với màu mới, kiểm tra bằng DevTools (hoặc
 `contrastRatio()` trong [dom-utils](../components/utilities.md)): chữ trắng trên `--td-accent-fill` ≥ 4.5:1 (light và dark), accent
@@ -679,7 +688,7 @@ Token là custom property nên kế thừa theo cây DOM: bạn có thể đổi
 Hai giới hạn:
 
 1. Chỉ token được component **đọc trực tiếp** mới đổi theo vùng. Token được tính trên `:root` từ token khác (như
-   `--td-btn-primary-bg: var(--td-accent-fill)`) thì phải ghi đè token con, không phải token gốc (bẫy số 2 ở trên).
+   `--td-checkbox-color: var(--td-accent)`) thì phải ghi đè token con, không phải token gốc (bẫy số 2 ở trên).
 2. Phần tử **được đưa ra `<body>`** (portal) không nằm trong vùng của bạn nên không nhận token vùng: menu của
    td-dropdown, popup gợi ý của td-chip-input, TdMenu, tooltip, hovercard, toast, modal, loading, lightbox. Muốn đổi
    riêng chúng, nhắm đúng phần tử đó (xem [styling.md › Nhắm một instance](styling.md#nhắm-một-instance-duy-nhất)).

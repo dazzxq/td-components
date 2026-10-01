@@ -13,7 +13,8 @@ APPROVE 3 vòng).
 - Nút `success` / `danger` / `warning` / `info`: **pastel** (nền nhạt + chữ đậm cùng tông + viền), hover đậm hơn một nấc.
   Token mới `--td-pastel-{success,danger,warning,info}-bg/-border/-fg` (dark: bản trầm, đặc); badge mềm dùng chung.
 - Nút **primary mặc định đen** (`#18181b`, hover `#3f3f46`; dark đảo trắng). Về màu accent:
-  `--td-btn-primary-bg: var(--td-accent-fill)` + `--td-btn-primary-hover`.
+  `--td-btn-primary-bg: var(--td-accent-fill)` + `--td-btn-primary-fg: var(--td-accent-contrast)` +
+  `--td-btn-primary-hover: color-mix(in srgb, var(--td-accent-fill) 92%, #000)`.
 - **Tooltip mặc định đen** chữ trắng (cả dark, thêm viền mảnh).
 - **Shadow rõ hơn**: `--td-glass-shadow` / `-shadow-lg` / `--td-btn-lift` thành hai lớp (tiếp xúc + toả), alpha cao hơn.
 - **Toast kiểu dcms**: viên gọn, **đặc pastel theo loại**, không blur, không icon, nút đóng chỉ hiện khi focus bằng bàn
@@ -34,6 +35,10 @@ APPROVE 3 vòng).
 ### Fixed
 
 - Datetime: bấm phím mũi tên khi wheel đang cuộn không còn chọn nhầm giá trị chỗ cuộn bị cắt.
+- Modal (reduced motion): khi đóng, chờ hết lần mờ dần 120ms rồi mới gỡ khỏi DOM (trước gỡ ngay).
+- Toast: gỡ khỏi DOM sau khi chuyển động ẩn thực tế chạy xong (đọc computed style, tối thiểu 200ms), nên
+  `--td-toast-exit-dur` dài hơn không còn bị cắt.
+- Datetime: ô số trong panel ngày dùng vòng focus nhạt `--td-field-focus-ring` như các ô nhập khác.
 
 ## 0.20.0
 

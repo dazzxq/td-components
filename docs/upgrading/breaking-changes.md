@@ -57,9 +57,13 @@ theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao
    ```css
    :root {
      --td-btn-primary-bg: var(--td-accent-fill);
-     --td-btn-primary-hover: color-mix(in srgb, var(--td-accent-fill) 88%, #000);
+     --td-btn-primary-fg: var(--td-accent-contrast);
+     --td-btn-primary-hover: color-mix(in srgb, var(--td-accent-fill) 92%, #000);
    }
    ```
+
+   Đặt đủ ba token (chữ `-fg` mặc định ở dark là `#18181b`, phải map về `--td-accent-contrast`). Đổi `--td-accent` một
+   mình **không** còn đổi nút primary hay `.td-glass-tint`.
 
 2. **Nút success / danger / warning / info thành pastel** (chữ đậm trên nền nhạt). Site đặt `--td-btn-{v}-bg` riêng thì
    đặt kèm `--td-btn-{v}-hover` (và `-fg` nếu nền đậm, ví dụ `#fff`). Alias `-tint` của 0.20 vẫn chạy (hover tự đậm hơn),
@@ -67,7 +71,8 @@ theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao
 3. **Tooltip đen.** Muốn chip sáng như 0.20: `--td-tooltip-bg` / `--td-tooltip-fg`.
 4. **Toast đổi DOM:** không còn `.td-toast__icon`, không còn class `td-glass-surface` trên toast; có
    `.td-sr-only` tiền tố loại. Code / test / CSS của site bám vào icon toast phải bỏ. Màu toast:
-   `--td-toast-{type}-bg/-fg/-border`.
+   `--td-toast-{type}-bg/-fg/-border` (pastel đặc, không blur). `--td-toast-error-border` có tác dụng trở lại;
+   `--td-toast-fg`, `-close-fg`, `-glass-bg`, `--td-toast-{type}-icon` hết tác dụng.
 5. **Modal có animation** (260ms vào). Test E2E của site chờ modal mở cần chờ `data-state="open"` hoặc tắt bằng
    `--td-modal-enter-from: none` + `--td-modal-enter-dur: 0s`.
 6. **Viền focus ô nhập nhạt hơn.** Site cần viền focus đậm như cũ: `--td-field-focus: var(--td-focus)`,

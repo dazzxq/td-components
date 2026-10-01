@@ -375,8 +375,9 @@ Từ 0.20.0 giao diện kit theo bộ luật **minimal surfaces** (thay Liquid G
 
 - **Mỗi bề mặt nổi = nền + một viền mảnh + một bóng mềm.** Không gradient bóng, không viền sáng, không glow, không
   phóng to / thu nhỏ trang trí.
-- **Blur chỉ cho popup nhỏ** (menu, dropdown, gợi ý chip-input, hovercard, toast: nền 94 % + `blur(12px)`). Modal,
-  thẻ loading, tooltip, nút scroll-top là **nền đặc**.
+- **Blur chỉ cho popup nhỏ** (menu, dropdown, gợi ý chip-input, hovercard: nền 94 % + `blur(12px)`). Modal,
+  thẻ loading, tooltip (đen, 0.21.0), nút scroll-top là **nền đặc**; toast (0.21.0) là viên **đặc pastel** theo loại,
+  không icon.
 - **Control luôn đặc:** nút là màu đặc + một bóng, hover đậm hơn; card, bảng, ô nhập, checkbox, nền trang cũng đặc.
 - **Tinh chỉnh bằng token**: `--td-glass-bg`, `--td-glass-solid`, `--td-glass-shadow`… (tên cũ giữ nguyên). Site đổi
   token trong CSS không `@layer`. Không bao giờ ghi đè biến riêng tư `--_td-*`.

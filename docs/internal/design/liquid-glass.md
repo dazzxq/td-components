@@ -67,7 +67,7 @@ Cài đặt: [`src/styles/glass.css`](../../../src/styles/glass.css) (recipe + f
 6. **Hover = nền đặc khác.** Mỗi variant có nền đọc `--td-btn-{v}-hover` (0.21.0; primary đen thì hover sáng lên);
    `--custom` và alias `-tint` dùng `color-mix(in srgb, <nền> 92%, #000)`; trình duyệt không có `color-mix()` giữ nền cũ.
 7. **Màu nút theo token.** Primary = đen (0.21.0; site muốn theo accent: `--td-btn-primary-bg: var(--td-accent-fill)` +
-   `--td-btn-primary-hover`). Nút ngữ nghĩa = pastel. Alias một chu kỳ:
+   `--td-btn-primary-fg: var(--td-accent-contrast)` + `--td-btn-primary-hover`). Nút ngữ nghĩa = pastel. Alias một chu kỳ:
    `--td-btn-{primary,success,danger,info,warning}-tint` site còn đặt vẫn thành nền + viền nút.
 8. **Scrim không blur** (modal, loading). **Bo góc đồng tâm** (inner = outer − padding, `--td-glass-radius-inner`)
    và **capsule ≥ 44px trên cảm ứng** giữ như cũ. Header bảng ghim: nền đặc.
@@ -98,7 +98,8 @@ Nút luôn đặc nên chỉ còn contrast (viền rõ, bỏ shadow) và forced 
 `-bottom`, `-outline`, `-sheen`, `-dim`, `-dim-text`, `-clear-edge`, `-clear-glyph-shadow`, `-tint`, `-tint-alpha`,
 `-tint-fg`, `-tint-edge`, `-glow`, `-glow-size`, `-press-scale`, `-lift-scale`, `-enter-scale`,
 `--td-btn-*-alpha`, `--td-btn-*-film`, `--td-btn-sheen`, `--td-btn-secondary-glass` (→ `-secondary-bg`),
-`--td-btn-secondary-edge` (→ `-secondary-border`), toast `--td-toast-*-wash`, `--td-toast-error-border`.
+`--td-btn-secondary-edge` (→ `-secondary-border`), toast `--td-toast-*-wash`, `--td-toast-error-border` (có tác dụng
+trở lại từ 0.21.0). **Deprecated v0.21.0:** toast `--td-toast-fg`, `-close-fg`, `-glass-bg`, `--td-toast-{type}-icon`.
 Class `.td-glass-dim(--text)` giữ tên nhưng không còn vẽ gì; `.td-glass-tint` = nút capsule đặc.
 
 Giá trị mặc định: xem [ADR 0011](../decisions/0011-minimal-surfaces.md) và trang

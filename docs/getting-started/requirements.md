@@ -60,9 +60,9 @@ Những tính năng dưới đây chỉ làm đẹp hoặc tinh chỉnh. Trình 
 
 | Tính năng | Dùng ở đâu | Khi trình duyệt không hỗ trợ |
 |---|---|---|
-| `backdrop-filter` (có kèm `-webkit-backdrop-filter`) | Blur 12px của popup nhỏ (menu, dropdown, hovercard, toast) và thanh lightbox | Khối `@supports not (backdrop-filter…)` tự chuyển sang nền đặc `--td-glass-solid` |
+| `backdrop-filter` (có kèm `-webkit-backdrop-filter`) | Blur 12px của popup nhỏ (menu, dropdown, gợi ý chip-input, hovercard) và thanh lightbox | Khối `@supports not (backdrop-filter…)` tự chuyển sang nền đặc `--td-glass-solid` |
 | `:has()` (Firefox từ 121) | Vài trạng thái phụ: checkbox/switch/slider bị disabled, focus của chip-input, button `full-width` | Mất một số hiệu ứng trạng thái; control bên trong vẫn disabled/focus đúng |
-| `color-mix()` | Sắc độ pha màu: nền hover của nút (đậm 8 %), chữ hover của nút ghost, nền primary ở dark (bọc trong `@supports` → giữ nền / màu dự phòng); **không** bọc: nền/viền khung tóm tắt lỗi của TdFormValidation | Chỗ có `@supports`: nền / màu dự phòng (hover nút không đổi nền). Chỗ không bọc: token thành giá trị không hợp lệ → thuộc tính dùng nó rơi về giá trị mặc định của CSS, nên khung tóm tắt lỗi mất màu tô dự kiến (chữ + icon vẫn hiện) |
+| `color-mix()` | Sắc độ pha màu: nền hover của nút có thuộc tính `color` / alias `-tint` (đậm 8 %), chữ hover của nút ghost, `--td-accent-fill` ở dark (trang active của pagination; nút primary nếu site map về accent), viền + quầng focus nhạt của ô nhập (bọc trong `@supports` → giữ nền / màu dự phòng); **không** bọc: nền/viền khung tóm tắt lỗi của TdFormValidation | Chỗ có `@supports`: nền / màu dự phòng (hover nút không đổi nền). Chỗ không bọc: token thành giá trị không hợp lệ → thuộc tính dùng nó rơi về giá trị mặc định của CSS, nên khung tóm tắt lỗi mất màu tô dự kiến (chữ + icon vẫn hiện) |
 | `@starting-style` (Chrome 117, Firefox 129, Safari 17.5) | Hiệu ứng fade khi xuất hiện của menu dropdown, `TdMenu`, gợi ý chip-input, hovercard | Phần tử hiện ra ngay, không có animation vào |
 | Đơn vị `dvh` | Chiều cao tối đa modal, lightbox, bottom sheet trên mobile | Kích thước có thể lệch khi thanh địa chỉ mobile co giãn |
 | Đơn vị `lh` | Chiều cao `td-input-field type="textarea" autoresize` | Chiều cao tối thiểu/tối đa tính sai |
