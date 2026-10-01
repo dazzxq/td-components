@@ -1,4 +1,4 @@
-// Loaded by contrast.spec.mjs: buttons + toasts rendered over a backdrop (v0.20.0: solid buttons, neutral toasts).
+// Loaded by contrast.spec.mjs: buttons + toasts rendered over a backdrop (v0.20.0 solid buttons; v0.21.0 pastel toasts).
 import '/src/form/td-button.js';
 import { TdToast } from '/src/feedback/td-toast.js';
 import '/src/feedback/td-alert.js';
@@ -27,6 +27,11 @@ for (const v of ['info', 'success', 'warning', 'danger']) CASES.push({ kind: 'al
 for (const v of ['neutral', 'accent', 'success', 'warning', 'danger', 'info']) {
   for (const state of ['soft', 'outline', 'stamp']) CASES.push({ kind: 'badge', v, state, pageOnly: true });
 }
+// v0.21.0: the black tooltip chip (default + start-aligned text) over every backdrop.
+for (const state of ['rest', 'start']) CASES.push({ kind: 'tooltip', v: 'default', state });
+// v0.21.0 P8: the lighter field focus border must stay ≥ 3:1 (WCAG 1.4.11) against the field fill and the page —
+// measured from computed colours (no screenshot): `pairs` in the returned info.
+for (const v of ['input-field', 'dropdown']) CASES.push({ kind: 'focus', v, state: 'focus', pageOnly: true });
 
 const stage = document.getElementById('stage');
 const bd = document.getElementById('backdrop');
@@ -86,12 +91,67 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     el.textContent = 'Đã duyệt';
     stage.appendChild(el);
     parts = { label: el };
+  } else if (c.kind === 'tooltip') {
+    el = document.createElement('div');
+    el.className = 'td-tooltip td-glass-surface td-glass-surface--strong';
+    el.setAttribute('role', 'tooltip');
+    el.setAttribute('data-state', 'open');
+    el.setAttribute('data-placement', 'top');
+    if (c.state === 'start') el.setAttribute('data-align', 'start');
+    const content = document.createElement('span');
+    content.className = 'td-tooltip__content';
+    content.textContent = 'Lưu thay đổi của bạn vào hồ sơ';
+    el.appendChild(content);
+    el.style.setProperty('top', '96px');
+    el.style.setProperty('left', '48px');
+    stage.appendChild(el);
+    parts = { label: content };
+  } else if (c.kind === 'focus') {
+    let control;
+    if (c.v === 'dropdown') {
+      control = document.createElement('button');
+      control.type = 'button';
+      control.className = 'td-dropdown__trigger';
+      control.setAttribute('aria-expanded', 'true'); // open trigger = focus border
+      control.textContent = 'Chọn';
+    } else {
+      control = document.createElement('input');
+      control.className = 'td-field__control';
+      control.value = 'Nội dung';
+    }
+    const wrap = document.createElement('div');
+    wrap.className = c.v === 'dropdown' ? 'td-dropdown' : 'td-field td-field--md';
+    wrap.appendChild(control);
+    stage.appendChild(wrap);
+    control.focus();
+    await new Promise((r) => setTimeout(r, 300)); // border transition
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const probe = document.createElement('span');
+    probe.style.setProperty('color', 'var(--td-color-bg)');
+    stage.appendChild(probe);
+    const themeBg = getComputedStyle(probe).color;
+    probe.remove();
+    const ccs = getComputedStyle(control);
+    const r0 = control.getBoundingClientRect();
+    return {
+      rect: { x: r0.x, y: r0.y, width: r0.width, height: r0.height },
+      ink: {},
+      opacity: 1,
+      hover: false,
+      name: `focus:${c.v}`,
+      pairs: [
+        { what: 'border vs field fill', fg: ccs.borderTopColor, bg: ccs.backgroundColor },
+        { what: 'border vs page backdrop', fg: ccs.borderTopColor, bg: page },
+        { what: 'border vs --td-color-bg', fg: ccs.borderTopColor, bg: themeBg },
+      ],
+    };
   } else {
     TdToast._showSingle('Đã lưu thay đổi của bạn', c.v, 0);
     await new Promise((r) => setTimeout(r, 450));
     el = document.querySelector('#td-toast-container .td-toast');
     // pin the toast over the stage area so it sits on the backdrop
-    parts = { label: el.querySelector('.td-toast__message'), icon: el.querySelector('.td-toast__icon'), close: el.querySelector('.td-toast__close') };
+    // v0.21.0: no icon; the close glyph is only shown on keyboard focus but is measured anyway (same ink, same fill)
+    parts = { label: el.querySelector('.td-toast__message'), close: el.querySelector('.td-toast__close') };
   }
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   await new Promise((r) => setTimeout(r, 250)); // transitions settle

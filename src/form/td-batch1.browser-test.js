@@ -301,8 +301,8 @@ describe('batch 1 — td-button', () => {
     expect(ratio(cs.color, 'rgb(255, 255, 255)'), 'enabled label').to.be.at.least(4.7);
   });
 
-  it('v0.20.0: hover = a darker SOLID fill (no glow, no scale); secondary uses --td-btn-secondary-hover', async () => {
-    for (const [v, want] of [['primary', null], ['danger', null], ['secondary', tokenColor('--td-btn-secondary-hover')]]) {
+  it('v0.20.0: hover = a SOLID fill (no glow, no scale); v0.21.0: every filled variant reads --td-btn-{v}-hover', async () => {
+    for (const [v, want] of [...['primary', 'success', 'danger', 'warning', 'info', 'secondary'].map((x) => [x, tokenColor(`--td-btn-${x}-hover`)])]) {
       const b = mount(`<td-button variant="${v}">Lưu</td-button>`).querySelector('button');
       const rest = getComputedStyle(b).backgroundColor;
       const restShadow = getComputedStyle(b).boxShadow;

@@ -18,7 +18,7 @@ Bạn cần Node.js + npm (chỉ để tải kit và chạy server dev). Xem [Y�
 ```bash
 mkdir td-quickstart && cd td-quickstart
 npm init -y
-npm install github:dazzxq/td-components#v0.20.0
+npm install github:dazzxq/td-components#v0.21.0
 npm install -D vite
 ```
 
@@ -214,6 +214,17 @@ Muốn đổi màu chủ đạo của cả kit, thêm vào `app.css` (không b�
 :root { --td-accent: #b3261e; }
 ```
 
+`--td-accent` đổi checkbox, slider, pagination, nút ghost, viền focus ô nhập… Nút **primary** mặc định **đen** (0.21.0)
+và **không** đi theo accent; muốn primary cùng màu thương hiệu, map thêm ba token:
+
+```css
+:root {
+  --td-btn-primary-bg: var(--td-accent-fill);
+  --td-btn-primary-fg: var(--td-accent-contrast);
+  --td-btn-primary-hover: color-mix(in srgb, var(--td-accent-fill) 92%, #000);
+}
+```
+
 Chi tiết: [Theming](../customization/theming.md).
 
 ## Bước 5: chạy
@@ -229,7 +240,7 @@ Thử lần lượt:
 
 1. Bấm **Lưu** khi form trống: trình duyệt báo lỗi ở ô bắt buộc đầu tiên.
 2. Gõ họ tên rồi rời ô (`validate-on="blur"`): lỗi dưới ô tự hiện / tự mất.
-3. Điền đủ, chọn gói, bấm **Lưu**: nút quay spinner khoảng 1 giây, sau đó toast loại `success` (có icon trạng thái) hiện ở góc trên bên phải.
+3. Điền đủ, chọn gói, bấm **Lưu**: nút quay spinner khoảng 1 giây, sau đó toast loại `success` (viên nền xanh lá pastel, không icon) hiện ở góc trên bên phải; bấm vào toast để đóng sớm.
 4. Nhập `da-ton-tai@example.com` rồi Lưu: ô email báo lỗi, toast lỗi hiện ra, focus nhảy về ô email.
 5. Bấm **Xoá dữ liệu đã nhập**: modal xác nhận hiện, trang phía sau bị khoá. Thử Tab: focus chỉ chạy trong modal. Bấm
    Xoá: form về trạng thái ban đầu (toggle bật lại vì có `checked` trong HTML).
@@ -238,7 +249,7 @@ Thử lần lượt:
 ## Không dùng Vite? (PHP / HTML thuần)
 
 Cùng `index.html` và `app.js` (đổi tên từ `main.js`), chỉ khác phần `<head>`: nạp CSS bằng `<link>` và khai báo import map
-để trình duyệt hiểu tên `@dazzxq/td-components/...`. Giả sử bạn đã copy kit vào `/vendor/td-components-0.20.0/` theo
+để trình duyệt hiểu tên `@dazzxq/td-components/...`. Giả sử bạn đã copy kit vào `/vendor/td-components-0.21.0/` theo
 [Cài đặt, mục 3](installation.md#3-php-thuần--html-không-bundler):
 
 ```html
@@ -246,17 +257,17 @@ Cùng `index.html` và `app.js` (đổi tên từ `main.js`), chỉ khác phần
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>td-components: form đầu tiên</title>
-  <link rel="stylesheet" href="/vendor/td-components-0.20.0/td.css">
+  <link rel="stylesheet" href="/vendor/td-components-0.21.0/td.css">
   <link rel="stylesheet" href="/app.css">
   <script type="importmap">
   {
     "imports": {
-      "@dazzxq/td-components/input-field": "/vendor/td-components-0.20.0/src/form/td-input-field.js",
-      "@dazzxq/td-components/dropdown": "/vendor/td-components-0.20.0/src/form/td-dropdown.js",
-      "@dazzxq/td-components/toggle": "/vendor/td-components-0.20.0/src/form/td-toggle.js",
-      "@dazzxq/td-components/button": "/vendor/td-components-0.20.0/src/form/td-button.js",
-      "@dazzxq/td-components/toast": "/vendor/td-components-0.20.0/src/feedback/td-toast.js",
-      "@dazzxq/td-components/modal": "/vendor/td-components-0.20.0/src/feedback/td-modal.js"
+      "@dazzxq/td-components/input-field": "/vendor/td-components-0.21.0/src/form/td-input-field.js",
+      "@dazzxq/td-components/dropdown": "/vendor/td-components-0.21.0/src/form/td-dropdown.js",
+      "@dazzxq/td-components/toggle": "/vendor/td-components-0.21.0/src/form/td-toggle.js",
+      "@dazzxq/td-components/button": "/vendor/td-components-0.21.0/src/form/td-button.js",
+      "@dazzxq/td-components/toast": "/vendor/td-components-0.21.0/src/feedback/td-toast.js",
+      "@dazzxq/td-components/modal": "/vendor/td-components-0.21.0/src/feedback/td-modal.js"
     }
   }
   </script>

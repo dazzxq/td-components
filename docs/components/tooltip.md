@@ -5,7 +5,8 @@
 Tooltip là nhãn chữ nhỏ có mũi tên hiện cạnh một phần tử khi rê chuột, chạm hoặc focus vào nó. Chỉ cần import module
 một lần: mọi phần tử có `data-tooltip="…"` trên trang (kể cả phần tử thêm sau này) đều có tooltip. Giao diện và hành vi
 giống tooltip của dwp, trên bề mặt **nền đặc** (minimal surfaces 0.20.0: viền mảnh + một bóng mềm, không blur), vẫn giữ
-các cải tiến trợ năng của td.
+các cải tiến trợ năng của td. Từ 0.21.0 chip mặc định **màu đen chữ trắng** ở cả hai theme, chữ xuống dòng được
+**căn giữa** (đổi bằng `data-tooltip-align`).
 
 Dùng tooltip cho **chữ ngắn, bổ sung** (giải thích nút chỉ có icon, tên đầy đủ của chữ viết tắt). Không đặt thông tin
 bắt buộc hay nội dung tương tác (link, nút) trong tooltip — dùng [hovercard](hovercard.md) cho nội dung phong phú,
@@ -71,6 +72,19 @@ tooltip làm `aria-label` và in cảnh báo ra console (xem [Chính sách tên]
 Có `data-tooltip-color` → chip nền đặc màu đó, mũi tên cùng màu. Màu chữ tự chọn đen hoặc trắng theo
 độ tương phản WCAG, trừ khi bạn chỉ định `data-tooltip-text-color`.
 
+### Căn chữ (0.21.0)
+
+Chữ dài xuống nhiều dòng mặc định **căn giữa** (token `--td-tooltip-text-align: center`). Đổi cho từng tooltip bằng
+`data-tooltip-align` trên phần tử kích hoạt:
+
+```html
+<button type="button" aria-label="Xuất báo cáo" data-tooltip="Xuất báo cáo tháng này ra file Excel, gồm cả các đơn đã huỷ"
+        data-tooltip-align="start">…</button>
+```
+
+Giá trị: `start` (trái với chữ trái-sang-phải), `center`, `end`. Giá trị khác bị bỏ qua (dùng mặc định). Kit chép giá
+trị sang chip thành `data-align` (không dùng inline style). Muốn cả site căn trái: `:root { --td-tooltip-text-align: start; }`.
+
 ### Markup của dwp dùng nguyên
 
 ```html
@@ -108,6 +122,7 @@ Xoá attribute, hoặc đặt `data-tooltip=""` (rỗng). Một `data-tooltip` c
 | `data-dwp-tooltip-pos` | như trên | — | Alias dwp. |
 | `data-tooltip-color` | màu CSS | — | Nền đặc tuỳ chỉnh. Chỉ nhận: hex (`#rgb`, `#rrggbb`, …), `rgb()/rgba()/hsl()/hsla()` với tham số số, hoặc tên màu chỉ gồm chữ cái. Màu phải **đục hoàn toàn** và trình duyệt nhận ra; màu trong suốt / có alpha / không hợp lệ → quay về chip mặc định. |
 | `data-tooltip-text-color` | màu CSS | đen/trắng tự động | Màu chữ; chỉ có tác dụng khi có `data-tooltip-color`. Cùng luật kiểm tra như trên; không hợp lệ → tự động. |
+| `data-tooltip-align` | `start` \| `center` \| `end` | `--td-tooltip-text-align` (`center`) | Căn chữ khi xuống dòng (0.21.0). Giá trị khác → mặc định. |
 
 Attribute kit tự đặt lên phần tử kích hoạt (đừng tự đặt):
 
@@ -208,12 +223,26 @@ tooltip vẫn hiện và vẫn được liên kết làm mô tả.
 | `--td-tooltip-leading` | `1.4` | Line-height. |
 | `--td-tooltip-arrow-size` | `8px` | Kích thước mũi tên. |
 | `--td-tooltip-dur` | `120ms` | Thời gian mờ dần khi hiện / ẩn. |
+| `--td-tooltip-bg` | `#18181b` (cả hai theme) | Nền chip mặc định (0.21.0: đen, đặc, không blur). |
+| `--td-tooltip-fg` | `#fff` | Chữ chip mặc định. |
+| `--td-tooltip-border` | `transparent` (dark `rgb(255 255 255 / 12%)`) | Viền chip; theme tối có viền sáng mờ để chip đen không chìm vào nền tối. |
+| `--td-tooltip-text-align` | `center` | Căn chữ mặc định (0.21.0); `data-tooltip-align` ghi đè cho từng tooltip. |
+
+Muốn chip sáng như 0.20 (nền bề mặt, chữ tối):
+
+```css
+:root {
+  --td-tooltip-bg: var(--td-glass-solid);
+  --td-tooltip-fg: var(--td-glass-fg);
+  --td-tooltip-border: var(--td-glass-border);
+}
+```
 
 Custom property do JS ghi (CSSOM) lên `#td-tooltip` — không tự đặt:
 
 | Property | Ý nghĩa |
 |---|---|
-| `--td-tooltip-bg`, `--td-tooltip-fg` | Màu nền / chữ khi dùng `data-tooltip-color`. |
+| `--td-tooltip-bg`, `--td-tooltip-fg` | Khi dùng `data-tooltip-color`: ghi đè token cùng tên **trên chính chip** bằng màu tuỳ chỉnh. |
 | `--td-tooltip-arrow-x` / `--td-tooltip-arrow-y` | Vị trí mũi tên (trên/dưới dùng `x`, trái/phải dùng `y`). |
 
 ```css
@@ -225,6 +254,8 @@ Custom property do JS ghi (CSSOM) lên `#td-tooltip` — không tự đặt:
 ```
 
 `prefers-reduced-motion: reduce` → không có hiệu ứng mờ, ẩn ngay lập tức. Tương phản cao → nền `--td-color-surface`, viền rõ, không bóng.
+`forced-colors: active` → `Canvas` / `CanvasText`, viền `CanvasText`. `data-td-glass="off"` / giảm trong suốt → chip vẫn
+đen (vốn đã đặc).
 
 ## Cấu trúc DOM & class
 
@@ -243,6 +274,7 @@ Một phần tử duy nhất dùng chung, gắn vào `<body>`:
 | `[data-state="open"]` | Đã hiện xong (độ mờ 1, nhận con trỏ). Khi ẩn, attribute bị gỡ trước rồi `[hidden]` được đặt sau khi mờ xong. |
 | `[data-placement="top\|bottom\|left\|right"]` | Phía thực tế sau khi lật. |
 | `[data-custom]` | Đang dùng màu tuỳ chỉnh (nền đặc). |
+| `[data-align="start\|center\|end"]` | Căn chữ lấy từ `data-tooltip-align` của trigger (0.21.0); không có → token mặc định. |
 | `.td-tooltip::after` | Mũi tên (pseudo-element, cùng nền và viền với chip). |
 
 Nếu trang đã có sẵn `<div id="td-tooltip" class="td-tooltip">` (ví dụ render server-side), kit dùng lại phần tử đó.
@@ -278,7 +310,7 @@ vào `data-tooltip` là an toàn (miễn là bạn escape đúng ngữ cảnh **
 - **`title` biến mất khỏi nút của tôi:** đó là chính sách tên (tránh tooltip gốc trình duyệt hiện chồng). Tên của nút
   vẫn được giữ.
 - **Cảnh báo `[td-tooltip] trigger has no accessible name`:** thêm `aria-label` hoặc chữ hiển thị cho nút / link.
-- **Đổi `data-tooltip-color` / phía khi tooltip đang hiện** chỉ áp dụng ở lần hiện kế tiếp (chỉ chữ được cập nhật trực
+- **Đổi `data-tooltip-color` / `data-tooltip-align` / phía khi tooltip đang hiện** chỉ áp dụng ở lần hiện kế tiếp (chỉ chữ được cập nhật trực
   tiếp).
 - **Màu có alpha** (`#0008`, `rgba(…, .5)`, `transparent`) bị bỏ qua để chip không bị khó đọc.
 - Cuộn trang làm tooltip ẩn là hành vi có chủ đích (giống dwp).

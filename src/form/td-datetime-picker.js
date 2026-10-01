@@ -10,6 +10,8 @@ import {
 const DEFAULT_MIN_YEAR = 2000; // dcms parity (D5): the range used when `min` / `max` are not set
 const DEFAULT_MAX_YEAR = 2099;
 const SCROLL_SETTLE_MS = 150; // fallback when `scrollend` is not supported
+const INTRO_FALLBACK_MS = 260; // --td-modal-enter-dur default (used when the token cannot be read)
+const INTRO_SAFETY_MS = 1500; // the intro scroll never suppresses scroll-settle selection longer than this
 const MODE_SUFFIX = { datetime: '', date: 'Date', month: 'Month', year: 'Year' };
 
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -50,6 +52,8 @@ const prefersReducedMotion = () => {
  * stop — ArrowUp/ArrowDown ±1, PageUp/PageDown ±6 h / ±15 min, Home/End; the active option IS the selection
  * (`aria-activedescendant` + `aria-selected` in sync); click and scroll (CSS scroll-snap) select too. "Chọn" commits
  * the pending state (one `change`), focus returns to the trigger; Escape / X / "Đóng" discard it.
+ * Opening (v0.21.0, like dcms): the wheels start at the top of their lists and smoothly scroll to the selected value
+ * once the dialog has finished entering (reduced motion → centred instantly); the selection never changes on the way.
  *
  * **Modes (v0.18.0):** `mode="datetime"` (default, above) | `date` (day/month/year fields only) | `month` (month + year)
  * | `year` (year only). Each mode has its own display / DB / ISO format (table in docs/components/datetime-picker.md);
@@ -137,6 +141,11 @@ export class TdDatetimePicker extends TdFormElement {
     this._panel = null;
     /** @private scroll-settle fallback timers (cancelled on close — bug 1.8.6) */
     this._scrollTimers = new Set();
+    /** @private opening wheel animation (v0.21.0) while it waits / runs; null otherwise */
+    this._intro = null;
+    /** @private wheel → scrollTop its latest programmatic SMOOTH scroll is heading to (a superseded scroll's
+     *  `scrollend` must not select the option it stopped on) */
+    this._scrollTargets = new Map();
   }
 
   // --- Value model (derived from the `value` attribute on demand: nothing to go stale) ---
@@ -478,14 +487,13 @@ export class TdDatetimePicker extends TdFormElement {
         { label: this._text(L, 'now'), variant: 'secondary', close: false, onClick: () => { this._setNow(); } },
         { label: L.confirm, variant: 'primary', value: 'confirm', onClick: () => this._confirm() },
       ],
-      onShow: () => this._centreWheels(false),
       onClose: () => this._onDialogClosed(panel),
     });
     trigger.setAttribute('aria-expanded', 'true');
     trigger.setAttribute('aria-controls', this._modalId);
     const box = this.querySelector('.td-dtp');
     if (box) box.setAttribute('data-state', 'open');
-    this._centreWheels(false);
+    this._startWheelIntro(panel);
   }
 
   /** Close the dialog, discarding the pending state. */
@@ -499,6 +507,8 @@ export class TdDatetimePicker extends TdFormElement {
   /** @private every close path ends here (TdModal onClose) */
   _onDialogClosed(panel) {
     if (!this._isOpen || this._panel !== panel) return;
+    this._endWheelIntro();
+    this._scrollTargets.clear();
     this._scrollTimers.forEach((t) => window.clearTimeout(t));
     this._scrollTimers.clear();
     this._isOpen = false;
@@ -655,6 +665,14 @@ export class TdDatetimePicker extends TdFormElement {
     }
     wrap.appendChild(list);
 
+    // Direct manipulation cancels the opening animation of this wheel (keys / clicks cancel via _selectWheel).
+    const userScroll = () => {
+      this._scrollTargets.delete(list); // the user's own scroll settles normally
+      this._cancelWheelIntro(list);
+    };
+    list.addEventListener('pointerdown', userScroll);
+    list.addEventListener('wheel', userScroll, { passive: true });
+    list.addEventListener('touchstart', userScroll, { passive: true });
     list.addEventListener('keydown', (e) => this._onWheelKey(e, list));
     list.addEventListener('click', (e) => {
       const opt = e.target instanceof Element ? e.target.closest('.td-dtp-wheel__option') : null;
@@ -663,6 +681,17 @@ export class TdDatetimePicker extends TdFormElement {
     // Scrolling (wheel / touch fling, CSS scroll-snap) selects the option that settles in the band.
     const settle = () => {
       if (!this._isOpen || this._panel !== panel) return;
+      // The opening scroll passes over other options: it never changes the selection (it ends here).
+      const heading = this._scrollTargets.get(list);
+      if (heading !== undefined) {
+        // a smooth scroll that was superseded (e.g. an arrow key mid-scroll) ended: the newer one is still running
+        if (Math.abs(list.scrollTop - heading) > 2) return;
+        this._scrollTargets.delete(list);
+      }
+      if (this._intro && this._intro.scrolling.has(list)) {
+        this._cancelWheelIntro(list);
+        return;
+      }
       const opt = this._optionAtCentre(list);
       if (opt && opt.getAttribute('aria-selected') !== 'true') this._selectWheel(list, Number(opt.getAttribute('data-value')), false);
     };
@@ -712,7 +741,10 @@ export class TdDatetimePicker extends TdFormElement {
     if (!target) return;
     list.setAttribute('aria-activedescendant', target.id);
     if (this._pending) this._pending[part] = value;
-    if (scroll) this._centre(list, target, smooth);
+    if (scroll) {
+      this._cancelWheelIntro(list); // a key / click / "Bây giờ" wins over the opening animation
+      this._centre(list, target, smooth);
+    }
     this._refresh();
   }
 
@@ -721,11 +753,96 @@ export class TdDatetimePicker extends TdFormElement {
     return opt.offsetTop - (opt.offsetParent === list ? 0 : list.offsetTop);
   }
 
+  /** @private scrollTop that centres `opt` in the band (clamped to the scroll range) */
+  _centreTop(list, opt) {
+    const top = this._optionTop(list, opt) - (list.clientHeight - opt.offsetHeight) / 2;
+    return clamp(top, 0, Math.max(0, list.scrollHeight - list.clientHeight));
+  }
+
   /** @private */
   _centre(list, opt, smooth) {
-    const top = this._optionTop(list, opt) - (list.clientHeight - opt.offsetHeight) / 2;
     // Reduced motion: an instant jump (R11). CSS keeps `scroll-behavior: auto`, so 'auto' is instant.
-    list.scrollTo({ top: Math.max(0, top), behavior: smooth && !prefersReducedMotion() ? 'smooth' : 'auto' });
+    const top = this._centreTop(list, opt);
+    const behavior = smooth && !prefersReducedMotion() ? 'smooth' : 'auto';
+    if (behavior === 'smooth') this._scrollTargets.set(list, top);
+    else this._scrollTargets.delete(list);
+    list.scrollTo({ top, behavior });
+  }
+
+  /**
+   * @private Opening animation (v0.21.0, like dcms): every wheel starts at the top of its list (scrollTop 0), then —
+   * once the modal's entry transition has finished (`transitionend` of opacity / transform on .td-modal__dialog, or
+   * a fallback timeout of --td-modal-enter-dur + 50 ms) — ONE smooth scroll per wheel (all at once) brings the
+   * selected option into the band. The selection / pending value / aria-activedescendant hold the target from the
+   * start; the scroll-settle handler ignores the intro scroll. Pointer / wheel / touch / key / click on a wheel
+   * cancels that wheel's intro. Reduced motion → centred instantly. Closing cancels everything (_endWheelIntro).
+   * @param {HTMLElement} panel
+   */
+  _startWheelIntro(panel) {
+    this._endWheelIntro();
+    const lists = [...panel.querySelectorAll('.td-dtp-wheel__list')];
+    if (!lists.length) return;
+    if (prefersReducedMotion()) {
+      this._centreWheels(false);
+      return;
+    }
+    for (const list of lists) list.scrollTop = 0;
+    const dialog = panel.closest('.td-modal__dialog');
+    const intro = { waiting: new Set(lists), scrolling: new Set(), timer: 0, safety: 0, onEnd: null, dialog };
+    this._intro = intro;
+    const run = () => {
+      if (this._intro !== intro) return;
+      this._stopIntroWait(intro);
+      if (!this._isOpen || this._panel !== panel) { this._endWheelIntro(); return; }
+      for (const list of intro.waiting) {
+        const opt = list.querySelector('[aria-selected="true"]');
+        if (!opt) continue;
+        const top = this._centreTop(list, opt);
+        if (Math.abs(top - list.scrollTop) < 1) continue; // already in the band: no scroll, no scrollend
+        intro.scrolling.add(list);
+        this._scrollTargets.set(list, top);
+        list.scrollTo({ top, behavior: 'smooth' });
+      }
+      intro.waiting.clear();
+      if (!intro.scrolling.size) { this._endWheelIntro(); return; }
+      // never leave the settle handler muted (an engine that drops scrollend for an interrupted scroll)
+      intro.safety = window.setTimeout(() => { if (this._intro === intro) this._endWheelIntro(); }, INTRO_SAFETY_MS);
+    };
+    if (dialog) {
+      intro.onEnd = (e) => {
+        if (e.target === dialog && (e.propertyName === 'opacity' || e.propertyName === 'transform')) run();
+      };
+      dialog.addEventListener('transitionend', intro.onEnd);
+    }
+    const wait = (dialog ? TdModal._cssMs(dialog, '--td-modal-enter-dur', INTRO_FALLBACK_MS) : 0) + 50;
+    intro.timer = window.setTimeout(run, wait);
+  }
+
+  /** @private stop waiting for the modal entry (listener + fallback timer) */
+  _stopIntroWait(intro) {
+    if (intro.timer) window.clearTimeout(intro.timer);
+    intro.timer = 0;
+    if (intro.onEnd && intro.dialog) intro.dialog.removeEventListener('transitionend', intro.onEnd);
+    intro.onEnd = null;
+  }
+
+  /** @private the user took over one wheel: no intro scroll for it, its settle selection works normally again */
+  _cancelWheelIntro(list) {
+    const intro = this._intro;
+    if (!intro) return;
+    intro.waiting.delete(list);
+    intro.scrolling.delete(list);
+    if (!intro.waiting.size && !intro.scrolling.size) this._endWheelIntro();
+  }
+
+  /** @private drop the opening animation entirely (close / re-open / done) */
+  _endWheelIntro() {
+    const intro = this._intro;
+    if (!intro) return;
+    this._intro = null;
+    this._stopIntroWait(intro);
+    if (intro.safety) window.clearTimeout(intro.safety);
+    intro.safety = 0;
   }
 
   /** @private */

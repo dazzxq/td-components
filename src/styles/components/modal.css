@@ -9,6 +9,11 @@
  * Per-instance CSSOM custom properties on .td-modal__dialog (validated in JS):
  *   --td-modal-w, --td-modal-h, --td-modal-body-pad, --td-modal-body-overflow
  * Only .td-modal__body scrolls (header/footer pinned, D21). ≤ 640 px: bottom sheet (except --viewport).
+ * Motion (v0.21.0, ease-in-out): opening → scrim fades in (--td-modal-scrim-dur, ease-in-out) and the dialog fades +
+ * rises from translateY(12px) scale(0.98) (--td-modal-enter-dur, --td-modal-ease); closing reverses faster
+ * (--td-modal-exit-dur, --td-modal-exit-ease). The phone sheet slides from the bottom with the same timing.
+ * Reduced motion → opacity only, --td-dur-fast. (The scale is a deliberate, modal-only exception to the
+ * minimal-surfaces "no decorative scale" rule — owner request.)
  */
 @layer td.tokens {
 	:root {
@@ -27,6 +32,14 @@
 		--td-modal-sheet-radius: 24px;
 		--td-modal-pad-x: var(--td-space-lg);
 		--td-modal-pad-y: var(--td-space-md);
+		/* motion (v0.21.0) */
+		--td-modal-enter-dur: 260ms;
+		--td-modal-exit-dur: 180ms;
+		--td-modal-ease: cubic-bezier(0.4, 0, 0.2, 1);
+		--td-modal-exit-ease: cubic-bezier(0.4, 0, 1, 1); /* ease-in */
+		--td-modal-scrim-dur: 240ms;
+		--td-modal-scrim-ease: ease-in-out;
+		--td-modal-enter-from: translateY(12px) scale(0.98);
 	}
 }
 
@@ -78,15 +91,19 @@
 		inset: 0;
 		background: var(--td-glass-scrim);
 		opacity: 0;
-		transition: opacity var(--td-dur-base) var(--td-ease);
+		transition: opacity var(--td-modal-scrim-dur) var(--td-modal-scrim-ease);
 	}
 
 	.td-modal[data-state="open"] .td-modal__backdrop {
 		opacity: 1;
 	}
 
-	/* Dialog: the surface recipe (glass.css) gives fill/border/shadow; this block owns geometry + motion (fade; the
-	   phone sheet slides up — no decorative scale). */
+	.td-modal[data-state="closing"] .td-modal__backdrop {
+		transition: opacity var(--td-modal-exit-dur) var(--td-modal-exit-ease);
+	}
+
+	/* Dialog: the surface recipe (glass.css) gives fill/border/shadow; this block owns geometry + motion (fade + a
+	   small rise/scale on desktop; the phone sheet slides up). */
 	.td-modal__dialog {
 		position: relative;
 		display: flex;
@@ -99,17 +116,21 @@
 		outline: none;
 		isolation: isolate;
 		opacity: 0;
+		transform: var(--td-modal-enter-from);
 		transition:
-			opacity var(--td-dur-base) var(--td-ease),
-			transform var(--td-dur-base) var(--td-ease);
+			opacity var(--td-modal-enter-dur) var(--td-modal-ease),
+			transform var(--td-modal-enter-dur) var(--td-modal-ease);
 	}
 
 	.td-modal[data-state="open"] .td-modal__dialog {
 		opacity: 1;
 		transform: none;
+	}
+
+	.td-modal[data-state="closing"] .td-modal__dialog {
 		transition:
-			opacity var(--td-dur-base) var(--td-ease),
-			transform var(--td-dur-slow) var(--td-glass-ease-flex);
+			opacity var(--td-modal-exit-dur) var(--td-modal-exit-ease),
+			transform var(--td-modal-exit-dur) var(--td-modal-exit-ease);
 	}
 
 	/* An exiting modal is never interactive (its dialog is also inert). */
@@ -239,6 +260,7 @@
 	}
 
 	.td-modal--viewport .td-modal__dialog {
+		--td-modal-enter-from: none; /* a full-viewport surface only fades */
 		width: 100%;
 		height: 100dvh;
 		max-height: none;
@@ -281,16 +303,19 @@
 		}
 	}
 
-	/* Reduced motion: opacity only (no slide). */
+	/* Reduced motion: opacity only (no slide / scale), 120 ms. */
 	@media (prefers-reduced-motion: reduce) {
+		.td-modal__dialog,
 		.td-modal .td-modal__dialog,
 		.td-modal[data-state="open"] .td-modal__dialog,
+		.td-modal[data-state="closing"] .td-modal__dialog,
 		.td-modal:not(.td-modal--viewport)[data-state="open"] .td-modal__dialog {
 			transform: none;
 			transition: opacity var(--td-dur-fast) linear;
 		}
 
-		.td-modal__backdrop {
+		.td-modal__backdrop,
+		.td-modal[data-state="closing"] .td-modal__backdrop {
 			transition: opacity var(--td-dur-fast) linear;
 		}
 

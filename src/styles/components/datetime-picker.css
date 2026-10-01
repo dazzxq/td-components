@@ -89,7 +89,7 @@
 		border-color: var(--td-field-focus);
 		outline: 2px solid transparent;
 		outline-offset: 2px;
-		box-shadow: var(--td-focus-ring);
+		box-shadow: var(--td-field-focus-ring); /* v0.21.0 P8: same light ring as the other fields */
 	}
 
 	.td-dtp__trigger:disabled {
@@ -214,7 +214,7 @@
 	.td-dtp-panel__input:focus-visible {
 		outline: 2px solid transparent;
 		outline-offset: 2px;
-		box-shadow: var(--td-focus-ring);
+		box-shadow: var(--td-field-focus-ring); /* v0.21.0 P8: the light field ring, like the trigger */
 	}
 
 	.td-dtp-panel__input[aria-invalid="true"],

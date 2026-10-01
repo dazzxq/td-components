@@ -2,6 +2,44 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.21.0
+
+Màu pastel, primary + tooltip đen, shadow rõ hơn, toast kiểu dcms, modal có animation, wheel datetime cuộn khi mở,
+tooltip căn chữ, viền focus ô nhập nhạt hơn (plan `docs/internal/plans/v0.21.0-pastel-toast-modal.md`, Codex plan-review
+APPROVE 3 vòng).
+
+### Changed (đổi giao diện)
+
+- Nút `success` / `danger` / `warning` / `info`: **pastel** (nền nhạt + chữ đậm cùng tông + viền), hover đậm hơn một nấc.
+  Token mới `--td-pastel-{success,danger,warning,info}-bg/-border/-fg` (dark: bản trầm, đặc); badge mềm dùng chung.
+- Nút **primary mặc định đen** (`#18181b`, hover `#3f3f46`; dark đảo trắng). Về màu accent:
+  `--td-btn-primary-bg: var(--td-accent-fill)` + `--td-btn-primary-fg: var(--td-accent-contrast)` +
+  `--td-btn-primary-hover: color-mix(in srgb, var(--td-accent-fill) 92%, #000)`.
+- **Tooltip mặc định đen** chữ trắng (cả dark, thêm viền mảnh).
+- **Shadow rõ hơn**: `--td-glass-shadow` / `-shadow-lg` / `--td-btn-lift` thành hai lớp (tiếp xúc + toả), alpha cao hơn.
+- **Toast kiểu dcms**: viên gọn, **đặc pastel theo loại**, không blur, không icon, nút đóng chỉ hiện khi focus bằng bàn
+  phím; bấm để đóng; trượt vào từ phải. Trình đọc màn hình nghe tiền tố loại (`TdToast.labels.types`).
+- **Modal** mở ease-in-out 260ms (nhích lên + phóng nhẹ từ 0.98), đóng 180ms; token `--td-modal-enter-dur`,
+  `-exit-dur`, `-ease`, `-exit-ease`, `-scrim-dur`, `-scrim-ease`, `-enter-from` (`none` = chỉ fade). Reduced motion →
+  chỉ fade.
+- **Ô nhập focus nhạt hơn** (như dcms): viền accent nhạt + vòng 12% (`--td-field-focus`, `--td-field-focus-ring`), áp
+  cho input, dropdown, chip-input, datetime.
+
+### Added
+
+- `<td-datetime-picker>`: khi mở, wheel giờ / phút cuộn mượt từ đầu tới giá trị (như dcms); lựa chọn không đổi giữa
+  chừng; thao tác của người dùng huỷ cuộn; reduced motion → căn tức thì.
+- Tooltip `data-tooltip-align="start|center|end"`; mặc định chữ xuống dòng **căn giữa** (`--td-tooltip-text-align`).
+- Token `--td-btn-{v}-border`, `--td-btn-{v}-hover`, `--td-btn-primary-hover`, `--td-btn-primary-border`.
+
+### Fixed
+
+- Datetime: bấm phím mũi tên khi wheel đang cuộn không còn chọn nhầm giá trị chỗ cuộn bị cắt.
+- Modal (reduced motion): khi đóng, chờ hết lần mờ dần 120ms rồi mới gỡ khỏi DOM (trước gỡ ngay).
+- Toast: gỡ khỏi DOM sau khi chuyển động ẩn thực tế chạy xong (đọc computed style, tối thiểu 200ms), nên
+  `--td-toast-exit-dur` dài hơn không còn bị cắt.
+- Datetime: ô số trong panel ngày dùng vòng focus nhạt `--td-field-focus-ring` như các ô nhập khác.
+
 ## 0.20.0
 
 **Minimal surfaces** — bỏ hiệu ứng Liquid Glass giả bằng CSS, chỉ giữ nền + một viền mảnh + một shadow mềm (+ blur 12px

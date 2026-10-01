@@ -1,8 +1,8 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.20)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.21)
 
-Trang này liệt kê, cho từng bản từ **0.20.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
+Trang này liệt kê, cho từng bản từ **0.21.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
 [CHANGELOG.md](../../CHANGELOG.md); trang này chỉ gom lại theo góc nhìn "tôi phải làm gì" và thêm ví dụ trước/sau.
 Quy trình nâng cấp chung nằm ở [README.md](README.md).
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.21.0](#0210) | Đổi giao diện + đổi DOM toast | Primary đen (về accent bằng token); nút ngữ nghĩa pastel; tooltip đen; toast bỏ icon (code query `.td-toast__icon` phải bỏ); modal có animation. |
 | [0.20.0](#0200) | Đổi giao diện lớn | Kiểm bằng mắt nút / popup / toast / modal; override token kính cũ hết tác dụng → đổi sang token mới (bảng dưới). |
 | [0.19.0](#0190) | Đổi hành vi (nhỏ) + đổi giao diện (nhỏ) | datetime-picker mặc định mở tại hôm nay (cần đầu khoảng → `open-at="min"`); stamp dùng font mono; `td-button` chuyển ARIA trạng thái xuống; dropzone hiện `err.message`. |
 | [0.18.0](#0180) | Đổi hành vi (nhỏ) | `searchable="false"` (PHP) giờ tắt thật; `hasIcon()` hiểu alias; datetime-picker nhận ISO; `td-button` truyền `name`/`value`. |
@@ -44,6 +45,38 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.21.0
+
+**Đổi giao diện + đổi DOM toast.** Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.21.0.
+
+1. **Nút primary mặc định đen.** Site muốn primary theo màu thương hiệu:
+
+   ```css
+   :root {
+     --td-btn-primary-bg: var(--td-accent-fill);
+     --td-btn-primary-fg: var(--td-accent-contrast);
+     --td-btn-primary-hover: color-mix(in srgb, var(--td-accent-fill) 92%, #000);
+   }
+   ```
+
+   Đặt đủ ba token (chữ `-fg` mặc định ở dark là `#18181b`, phải map về `--td-accent-contrast`). Đổi `--td-accent` một
+   mình **không** còn đổi nút primary hay `.td-glass-tint`.
+
+2. **Nút success / danger / warning / info thành pastel** (chữ đậm trên nền nhạt). Site đặt `--td-btn-{v}-bg` riêng thì
+   đặt kèm `--td-btn-{v}-hover` (và `-fg` nếu nền đậm, ví dụ `#fff`). Alias `-tint` của 0.20 vẫn chạy (hover tự đậm hơn),
+   nhưng chữ giờ là màu đậm pastel → nền tint đậm thì đặt thêm `--td-btn-{v}-fg: #fff`.
+3. **Tooltip đen.** Muốn chip sáng như 0.20: `--td-tooltip-bg` / `--td-tooltip-fg`.
+4. **Toast đổi DOM:** không còn `.td-toast__icon`, không còn class `td-glass-surface` trên toast; có
+   `.td-sr-only` tiền tố loại. Code / test / CSS của site bám vào icon toast phải bỏ. Màu toast:
+   `--td-toast-{type}-bg/-fg/-border` (pastel đặc, không blur). `--td-toast-error-border` có tác dụng trở lại;
+   `--td-toast-fg`, `-close-fg`, `-glass-bg`, `--td-toast-{type}-icon` hết tác dụng.
+5. **Modal có animation** (260ms vào). Test E2E của site chờ modal mở cần chờ `data-state="open"` hoặc tắt bằng
+   `--td-modal-enter-from: none` + `--td-modal-enter-dur: 0s`.
+6. **Viền focus ô nhập nhạt hơn.** Site cần viền focus đậm như cũ: `--td-field-focus: var(--td-focus)`,
+   `--td-field-focus-ring: var(--td-focus-ring)`.
 
 ---
 

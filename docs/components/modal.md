@@ -322,6 +322,12 @@ Token riêng của modal (đặt trong `:root` hoặc một selector hẹp hơn,
 | `--td-modal-sheet-radius` | `24px` | Bo góc trên của bottom sheet (≤ 640px). |
 | `--td-modal-pad-x` | `var(--td-space-lg)` | Padding ngang header / body / footer. |
 | `--td-modal-pad-y` | `var(--td-space-md)` | Padding dọc của body. |
+| `--td-modal-enter-dur` | `260ms` | (0.21.0) Thời lượng dialog hiện (mờ dần + nhích lên). |
+| `--td-modal-exit-dur` | `180ms` | (0.21.0) Thời lượng dialog + scrim ẩn. Đặt dài hơn thì kit chờ đủ rồi mới gỡ khỏi DOM. |
+| `--td-modal-ease` | `cubic-bezier(0.4, 0, 0.2, 1)` | (0.21.0) Đường cong khi hiện (ease-in-out). |
+| `--td-modal-exit-ease` | `cubic-bezier(0.4, 0, 1, 1)` (ease-in) | (0.21.0) Đường cong khi ẩn. |
+| `--td-modal-scrim-dur` / `--td-modal-scrim-ease` | `240ms` / `ease-in-out` | (0.21.0) Scrim mờ dần khi hiện. |
+| `--td-modal-enter-from` | `translateY(12px) scale(0.98)` | (0.21.0) Tư thế bắt đầu của dialog (desktop). `none` = chỉ mờ dần như 0.20. Modal toàn màn hình luôn là `none`. |
 
 Token dùng chung có ảnh hưởng: `--td-z-modal` (`400`), `--td-glass-scrim` (màu lớp phủ nền, không làm mờ),
 các token bề mặt (`--td-glass-solid`, `--td-glass-border`, `--td-glass-shadow-lg`, `--td-glass-fg`).
@@ -345,9 +351,24 @@ chung trừ khi bạn muốn áp cho mọi modal:
 ```
 
 Giao diện (0.20.0, minimal surfaces): dialog **nền đặc** `--td-glass-solid` (trắng / `#1c1c1e` ở dark), viền mảnh
-`--td-glass-border`, một bóng mềm `--td-glass-shadow-lg`, không blur; scrim phía sau không làm mờ. Chuyển động: mở = mờ
-dần (không phóng to); trên điện thoại = trượt từ dưới lên. `prefers-reduced-motion: reduce` → chỉ còn đổi độ mờ.
+`--td-glass-border`, một bóng mềm `--td-glass-shadow-lg`, không blur; scrim phía sau không làm mờ.
 Tương phản cao → nền `--td-color-surface`, viền rõ, không bóng.
+
+**Chuyển động (0.21.0, ease-in-out):**
+
+- **Mở:** scrim mờ dần 0 → 1 trong 240ms (`ease-in-out`); dialog mờ dần và nhích từ `translateY(12px) scale(0.98)` về
+  vị trí thật trong 260ms (`cubic-bezier(0.4, 0, 0.2, 1)`).
+- **Đóng:** ngược lại, nhanh hơn: 180ms `ease-in` (cả dialog lẫn scrim).
+- **Điện thoại (≤ 640px):** bottom sheet vẫn trượt từ dưới lên / xuống, cùng thời lượng và đường cong.
+- **Toàn màn hình (`fullViewport`):** chỉ mờ dần.
+- **`prefers-reduced-motion: reduce`:** chỉ mờ dần 120ms (`linear`), không trượt, không scale; khi đóng kit chờ hết lần mờ dần đó (đọc từ computed style) rồi mới gỡ modal.
+
+Đây là ngoại lệ có chủ ý với luật "không scale trang trí" của minimal surfaces — chỉ áp cho modal. Logic trạng thái
+(`data-state="opening|open|closing"`) không đổi; chỉ có CSS. Muốn modal chỉ mờ dần như 0.20:
+
+```css
+:root { --td-modal-enter-from: none; }
+```
 
 ## Cấu trúc DOM & class
 
@@ -374,7 +395,7 @@ Mỗi modal đang mở là một phần tử gắn thẳng vào `<body>`:
 |---|---|
 | `.td-modal--{xs…5xl\|full}` | Size. |
 | `.td-modal--viewport` | `fullViewport: true`. |
-| `[data-state="opening\|open\|closing"]` | Vòng đời. Modal `closing` không nhận click, dialog của nó có `inert`; phần tử bị gỡ sau ~220ms (ngay lập tức khi reduced motion). |
+| `[data-state="opening\|open\|closing"]` | Vòng đời. Modal `closing` không nhận click, dialog của nó có `inert`; phần tử bị gỡ sau ~220ms (reduced motion: sau lần mờ dần 120ms). |
 | `[data-covered]` | Có modal khác chồng lên trên → dialog chuyển nền đặc. |
 | `.td-modal__header[hidden]`, `.td-modal__close[hidden]`, `.td-modal__footer[hidden]` | Ẩn theo `showHeader`, `closable`, footer rỗng. |
 | `role="alertdialog"` + `aria-describedby="{id}-message"` | Trên các hộp thoại Promise (`confirm`, `success`, `error`, `info`). |

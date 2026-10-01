@@ -81,23 +81,24 @@ describe('batch 3 — td-toast DOM contract', () => {
     expect(cs.zIndex).to.equal('500');
     expect(TdToast.getToastZIndex()).to.equal(500);
     expect(cs.top).to.equal('80px'); // 5rem
+    await wait(260); // v0.21.0: the toast slides in horizontally — measure after the entry
     const r = toasts()[0].getBoundingClientRect();
     expect(Math.round(window.innerWidth - r.right)).to.equal(16); // 1rem from the inline end
   });
 
-  it('strong glass, no saturated fill; registry status icon per type', async () => {
+  it('v0.21.0: no glass classes, no icon node; an opaque pastel fill per type', async () => {
     for (const type of ['success', 'error', 'warning', 'info']) TdToast._showSingle(type, type, 0);
     await frames(3);
+    const fills = new Set();
     for (const t of toasts()) {
-      const type = /td-toast--(\w+)/.exec(t.className)[1];
-      expect(t.classList.contains('td-glass-surface')).to.equal(true);
-      expect(t.classList.contains('td-glass-surface--strong')).to.equal(true);
+      expect(t.classList.contains('td-glass-surface')).to.equal(false);
+      expect(t.querySelector('.td-toast__icon')).to.equal(null);
+      expect(t.querySelectorAll('svg').length).to.equal(1); // only the (hidden) close glyph
       const bg = rgb(getComputedStyle(t).backgroundColor);
-      expect(Math.max(bg.r, bg.g, bg.b) - Math.min(bg.r, bg.g, bg.b)).to.be.below(8); // neutral, not a status fill
-      const svg = t.querySelector('.td-toast__icon svg');
-      expect(svg.getAttribute('data-icon')).to.equal(type);
-      expect(svg.getAttribute('aria-hidden')).to.equal('true');
+      expect(bg.a).to.equal(1);
+      fills.add(getComputedStyle(t).backgroundColor);
     }
+    expect(fills.size).to.equal(4); // colour per type (plus the SR prefix, so never the only cue)
   });
 
   it('message is text (never HTML) and is set one frame after insertion (D12)', async () => {
@@ -278,20 +279,18 @@ describe('batch 3 — td-toast close button + pause', () => {
 
 describe('batch 3 — td-toast visuals', () => {
   for (const theme of ['light', 'dark']) {
-    it(`text ≥ 4.5:1 and icons ≥ 3:1 on the glass (${theme}, over white and black backdrops)`, async () => {
+    it(`text ≥ 4.7:1 on the pastel fill (${theme})`, async () => {
       if (theme === 'dark') document.documentElement.setAttribute('data-td-theme', 'dark');
       for (const type of ['success', 'error', 'warning', 'info']) TdToast._showSingle(`Nội dung ${type}`, type, 0);
       await frames(3);
       for (const t of toasts()) {
-        const glass = rgb(getComputedStyle(t).backgroundColor);
+        const fill = rgb(getComputedStyle(t).backgroundColor);
         const text = rgb(getComputedStyle(t.querySelector('.td-toast__message')).color);
-        const icon = rgb(getComputedStyle(t.querySelector('.td-toast__icon')).color);
         const close = rgb(getComputedStyle(t.querySelector('.td-toast__close')).color);
         for (const backdrop of [{ r: 255, g: 255, b: 255, a: 1 }, { r: 0, g: 0, b: 0, a: 1 }]) {
-          const bg = over(glass, backdrop);
-          expect(ratio(text, bg), `${theme} ${t.className} text`).to.be.at.least(4.5);
-          expect(ratio(icon, bg), `${theme} ${t.className} icon`).to.be.at.least(3);
-          expect(ratio(close, bg), `${theme} close`).to.be.at.least(3);
+          const bg = over(fill, backdrop);
+          expect(ratio(text, bg), `${theme} ${t.className} text`).to.be.at.least(4.7);
+          expect(ratio(close, bg), `${theme} close`).to.be.at.least(3.2);
         }
       }
     });
@@ -317,12 +316,12 @@ describe('batch 3 — td-toast visuals', () => {
     expect(rgb(cs.backgroundColor).a).to.equal(1);
   });
 
-  it('v0.20.0: neutral 94 % surface + blur(12px), no status wash; keeps it over an open modal', async () => {
+  it('v0.21.0: solid pastel, no blur, no gradient; keeps it over an open modal', async () => {
     const t = TdToast._showSingle('một mình', 'error', 0);
     const alone = getComputedStyle(t);
-    expect(alone.backdropFilter).to.equal('blur(12px)');
+    expect(alone.backdropFilter).to.equal('none');
     expect(alone.backgroundImage).to.equal('none');
-    expect(rgb(alone.backgroundColor).a).to.be.closeTo(0.94, 0.01);
+    expect(rgb(alone.backgroundColor).a).to.equal(1);
     const before = [alone.backdropFilter, alone.backgroundColor];
     const modal = document.createElement('div');
     modal.className = 'td-modal';
@@ -333,9 +332,9 @@ describe('batch 3 — td-toast visuals', () => {
     expect([cs.backdropFilter, cs.backgroundColor]).to.deep.equal(before);
   });
 
-  it('coarse pointer: close button ≥ 44px', async () => {
+  it('coarse pointer: the (keyboard-revealed) close button is ≥ 44px', async () => {
     // emulateMedia cannot fake (pointer: coarse); assert the rule ships in td.css instead
     const css = await (await fetch('/td.css')).text();
-    expect(/@media \(pointer: coarse\)\s*\{\s*\.td-toast__close\s*\{\s*width: var\(--td-touch-min\)/.test(css)).to.equal(true);
+    expect(/@media \(pointer: coarse\)\s*\{\s*\.td-toast__close:focus-visible\s*\{\s*width: var\(--td-touch-min\)/.test(css)).to.equal(true);
   });
 });

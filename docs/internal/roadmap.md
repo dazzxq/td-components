@@ -76,6 +76,11 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` Hardening sau security review: `TdHovercard.sanitize` + `TrustedHTML`, fetch giới hạn (LRU 50, 256 KB, 10 s,
   `no-store`, huỷ khi đóng), `clearCache()` bắt buộc khi đổi phiên đăng nhập
 
+## Done — v0.21.0 pastel + toast dcms + modal animation
+
+- `done` Pastel cho nút ngữ nghĩa / toast / badge, primary + tooltip đen, shadow hai lớp, toast kiểu dcms, modal
+  ease-in-out, wheel datetime cuộn khi mở, tooltip căn chữ, viền focus ô nhập nhạt
+
 ## Done — v0.20.0 Minimal surfaces
 
 - `done` Bỏ Liquid Glass giả bằng CSS: nút / modal / tooltip đặc, popup nhỏ 94% + blur 12px, một shadow mềm; token kính

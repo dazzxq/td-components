@@ -2,27 +2,29 @@
  * TdToast — toast notification utility. Token-native (needs td.css; no Tailwind). Styles:
  * src/styles/components/toast.css.
  * Static API: TdToast.show(msg, type, duration) · .success(msg) · .error(msg) · .warning(msg) · .info(msg) → a
- * handle `{ close() }` · TdToast.clear() · TdToast.labels.close (close-button aria-label).
+ * handle `{ close() }` · TdToast.clear() · TdToast.labels.close (close-button aria-label) · TdToast.labels.types
+ * (screen-reader type prefix per type).
  *
- * DOM contract:
+ * DOM contract (v0.21.0 — dcms style: no icon node, no glass classes):
  *   <div id="td-toast-container" class="td-toasts">                       ← lazily appended to <body>, id kept
- *     <div class="td-toast td-toast--{success|error|warning|info} td-glass-surface td-glass-surface--strong"
+ *     <div class="td-toast td-toast--{success|error|warning|info}"
  *          role="status|alert" aria-live="polite|assertive" data-state="entering|open|closing" [data-paused]>
- *       <span class="td-toast__icon" aria-hidden="true"><svg class="td-icon …" data-icon="{type}"></svg></span>
+ *       <span class="td-toast__type td-sr-only">{TdToast.labels.types[type] + ' ' — set with the message}</span>
  *       <span class="td-toast__message">{message — text set one frame after insertion}</span>
  *       <button type="button" class="td-toast__close" aria-label="{TdToast.labels.close}"><svg data-icon="close"></svg></button>
  *     </div>
  *   </div>
  *
  * Behaviour:
- * - Neutral surface (v0.20.0 minimal surfaces: 94 % + blur, no wash); the variant is carried by the coloured
- *   registry status icon (an icon, so colour is never the only cue). Placement top-right via tokens `--td-toast-top/-inline-end` (D11). z-index is the
- *   token `--td-z-toast` (CSS only).
- * - Announcements (D12): the toast is appended with its role and an EMPTY message node; the text is set one frame
- *   later so `role=status` live regions exist before their content changes. Errors: role=alert, others: status (B6).
+ * - Pastel fill + same-hue ink + border per type, solid (no blur), one soft shadow; no visible icon, no visible close
+ *   button (dcms). Colour is never the only cue: the type is announced by a screen-reader-only prefix
+ *   (`labels.types`), errors are role=alert. The close button stays in the DOM and becomes visible on keyboard focus
+ *   (:focus-visible), so sticky toasts are keyboard-dismissable. Click anywhere on a toast dismisses it.
+ *   Placement top-right via tokens `--td-toast-top/-inline-end` (D11). z-index is the token `--td-z-toast` (CSS only).
+ * - Announcements (D12): the toast is appended with its role and EMPTY prefix + message nodes; the text is set one
+ *   frame later so `role=status` live regions exist before their content changes. Errors: role=alert, others: status (B6).
  * - Timers pause while the pointer is over the stack, while focus is inside it, and while the page is hidden
- *   (WCAG 2.2.1); remaining time is kept. Every toast (sticky too) has a focusable close button; clicking a toast
- *   still dismisses it.
+ *   (WCAG 2.2.1); remaining time is kept.
  * - Layer: while at least one toast is shown the container is registered in the layer registry
  *   (LAYERS.toast, keyboard 'none', includeInTrap) → never inert under a modal/loading lease, and its close
  *   buttons join a blocking dialog's Tab cycle. Released after the last toast is removed.
@@ -34,11 +36,16 @@
 
 import { tdIcon } from '../icons/td-icon.js';
 import { LAYERS, register as registerLayer } from '../utils/layers.js';
+import { transitionEndMs } from '../utils/transition.js';
 
 const TYPES = ['success', 'error', 'warning', 'info'];
 const CLOSE_LABEL = 'Đóng';
-/** Exit transition length (--td-dur-base) before the node leaves the DOM. */
+/** Screen-reader type prefixes (Vietnamese defaults; a site overrides TdToast.labels.types). */
+const TYPE_LABELS = { success: 'Thành công:', error: 'Lỗi:', warning: 'Cảnh báo:', info: 'Thông tin:' };
+/** Minimum wait before a closing toast leaves the DOM (default exit 180 ms + margin); a longer computed exit
+ * transition (--td-toast-exit-dur, delays) extends it. */
 const REMOVE_DELAY = 200;
+const REMOVE_MARGIN = 20;
 
 const raf = (fn) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(fn) : setTimeout(fn, 16));
 
@@ -51,7 +58,7 @@ export class TdToast {
   /** @type {HTMLElement[]} */
   static _activeToasts = [];
   /** Site-overridable UI strings (Vietnamese defaults). */
-  static labels = { close: CLOSE_LABEL };
+  static labels = { close: CLOSE_LABEL, types: { ...TYPE_LABELS } };
   /** @private requests waiting for the 50 ms flush */
   static _pendingQueue = [];
   static _flushScheduled = false;
@@ -116,7 +123,8 @@ export class TdToast {
   }
 
   /**
-   * Variant metadata (icon = registry name). Colours live in toast.css.
+   * Variant metadata. Colours live in toast.css. `icon` (registry name) is kept for compatibility only — the toast no
+   * longer renders an icon (v0.21.0).
    * @param {string} type
    * @returns {{type: string, icon: string}}
    */
@@ -126,10 +134,21 @@ export class TdToast {
   }
 
   /**
+   * @private screen-reader prefix for a type: TdToast.labels.types[type], else the Vietnamese default; '' disables it.
+   * @param {string} type normalised type
+   * @returns {string}
+   */
+  static _typeLabel(type) {
+    const custom = TdToast.labels && TdToast.labels.types;
+    const v = custom && typeof custom === 'object' && type in custom ? custom[type] : TYPE_LABELS[type];
+    return v == null ? '' : String(v);
+  }
+
+  /**
    * Show a toast notification. Uses a staggered queue to prevent lag when many toasts fire at once.
    * @param {string} message - Toast message text (rendered as text, never HTML)
    * @param {'success'|'error'|'warning'|'info'} type - Toast variant (unknown → info)
-   * @param {number} duration - Auto-dismiss delay in ms (0 = sticky: dismissed by its close button or a click)
+   * @param {number} duration - Auto-dismiss delay in ms (≤ 0 = sticky: dismissed by a click or the keyboard close button)
    * @returns {{ close(): void }} handle of this request (queued, staggered or shown); close() is idempotent
    */
   static show(message, type = 'info', duration = 4000) {
@@ -236,21 +255,20 @@ export class TdToast {
     // Toasts removed behind our back (e.g. container.innerHTML = '') no longer count.
     TdToast._activeToasts = TdToast._activeToasts.filter((t) => t.isConnected && t.parentNode === container);
 
-    const { type: variant, icon } = TdToast.getTheme(type);
+    const { type: variant } = TdToast.getTheme(type);
     const text = message == null ? '' : String(message);
 
     const toast = document.createElement('div');
-    toast.className = `td-toast td-toast--${variant} td-glass-surface td-glass-surface--strong`;
+    toast.className = `td-toast td-toast--${variant}`;
     // Only errors interrupt (role=alert, assertive); everything else is an advisory status (polite).
     toast.setAttribute('role', variant === 'error' ? 'alert' : 'status');
     toast.setAttribute('aria-live', variant === 'error' ? 'assertive' : 'polite');
     toast.setAttribute('data-state', 'entering');
 
-    const iconSlot = document.createElement('span');
-    iconSlot.className = 'td-toast__icon';
-    iconSlot.setAttribute('aria-hidden', 'true');
-    const svg = tdIcon(icon, { size: 'm' });
-    if (svg) iconSlot.appendChild(svg);
+    // Type prefix for screen readers only (no visible icon): colour is never the only cue.
+    const prefix = document.createElement('span');
+    prefix.className = 'td-toast__type td-sr-only'; // EMPTY on insertion (D12), filled with the message
+    const typeLabel = TdToast._typeLabel(variant);
 
     const msg = document.createElement('span');
     msg.className = 'td-toast__message'; // EMPTY on insertion (D12)
@@ -262,7 +280,7 @@ export class TdToast {
     const x = tdIcon('close', { size: 's' });
     if (x) close.appendChild(x);
 
-    toast.append(iconSlot, msg, close);
+    toast.append(prefix, msg, close);
     container.appendChild(toast);
     TdToast._ensureLayer();
 
@@ -304,6 +322,8 @@ export class TdToast {
           active.blur();
         }
       }
+      // The exit transition in effect now that data-state="closing" applies (site may lengthen --td-toast-exit-dur).
+      const exitMs = transitionEndMs(toast);
       setTimeout(() => {
         toast.remove();
         const c = TdToast.container;
@@ -312,7 +332,7 @@ export class TdToast {
           TdToast._hover = false;
           TdToast._focusWithin = false;
         }
-      }, REMOVE_DELAY);
+      }, Math.max(REMOVE_DELAY, (exitMs || 0) + REMOVE_MARGIN));
     };
 
     toast._removeToast = removeToast;
@@ -326,6 +346,7 @@ export class TdToast {
 
     // D12: text one frame after insertion; the enter state one frame later (the entering style must be rendered).
     raf(() => {
+      if (typeLabel) prefix.textContent = `${typeLabel} `;
       msg.textContent = text;
       raf(() => {
         if (!toast._removed) toast.setAttribute('data-state', 'open');

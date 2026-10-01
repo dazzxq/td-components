@@ -47,7 +47,7 @@
       "border-top-right-radius": "50%",
       "border-bottom-left-radius": "50%",
       "border-bottom-right-radius": "50%",
-      "box-shadow": "rgba(0, 0, 0, 0.06) 0px 4px 16px 0px",
+      "box-shadow": "rgba(0, 0, 0, 0.06) 0px 2px 6px 0px, rgba(0, 0, 0, 0.12) 0px 8px 24px 0px",
       "transform": "matrix(1, 0, 0, 1, 0, 10)",
       "transition": "opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1), transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0.2s",
       "backdrop-filter": "none",

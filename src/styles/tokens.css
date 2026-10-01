@@ -135,31 +135,60 @@
 		--td-control-border-hover: #aeaeb2;
 		--td-touch-min: 44px; /* minimum hit target for touch controls */
 
-		/* ===== Buttons — v0.20.0 minimal surfaces: SOLID fill + one soft shadow (--td-btn-lift), hover = darker solid
-		   fill (button.css), no blur / film / sheen / rim / glow / scale. Compatibility alias for one cycle: a site that
-		   still sets --td-btn-{primary,success,danger,info,warning}-tint gets that colour as the button fill (button.css
-		   reads var(--td-btn-{v}-tint, var(--td-btn-{v}-bg))) — the kit no longer declares the -tint tokens. ===== */
+		/* ===== Pastel semantic palette (v0.21.0) — soft fill (~100) + border (~200) + deep ink (~800/900) of the same hue.
+		   Used by the semantic buttons, the soft badges and the toasts. Dark (theme-dark.css): the semantic colour ~18 %
+		   pre-mixed on the dark page (solid), border ~30 %, ink ~200. Ink ≥ 4.7:1 on fill and border (contrast gate). */
+		--td-pastel-success-bg: #dcfce7;
+		--td-pastel-success-border: #bbf7d0;
+		--td-pastel-success-fg: #14532d;
+		--td-pastel-danger-bg: #fee2e2;
+		--td-pastel-danger-border: #fecaca;
+		--td-pastel-danger-fg: #7f1d1d;
+		--td-pastel-warning-bg: #fef3c7;
+		--td-pastel-warning-border: #fde68a;
+		--td-pastel-warning-fg: #78350f;
+		--td-pastel-info-bg: #dbeafe;
+		--td-pastel-info-border: #bfdbfe;
+		--td-pastel-info-fg: #1e3a8a;
+
+		/* ===== Buttons — v0.20.0 minimal surfaces: SOLID fill + one soft shadow (--td-btn-lift), no blur / film / sheen /
+		   rim / glow / scale. v0.21.0: primary is BLACK (dark theme: inverted) with its own hover token; success / danger /
+		   warning / info are PASTEL (fill + same-hue ink + -border, hover = the ~200 step). Each filled variant reads
+		   -bg / -fg / -border / -hover. A site that changes -bg should set -hover too (otherwise hover keeps the default).
+		   Primary back on the site accent: --td-btn-primary-bg: var(--td-accent-fill) + --td-btn-primary-hover.
+		   Compatibility alias for one cycle: a site that still sets --td-btn-{primary,success,danger,info,warning}-tint
+		   gets that colour as the fill AND border, hover = 8 % darker (button.css) — the kit no longer declares -tint. */
 		--td-btn-radius: var(--td-radius-lg); /* capsule on coarse pointers (button.css) */
-		--td-btn-primary-bg: var(--td-accent-fill); /* follows the site accent */
-		--td-btn-primary-fg: var(--td-accent-contrast);
+		--td-btn-primary-bg: #18181b;
+		--td-btn-primary-fg: #fff;
+		--td-btn-primary-hover: #3f3f46;                /* black can't get darker: hover lightens */
+		--td-btn-primary-border: transparent;
 		--td-btn-secondary-bg: var(--td-gray-100);
 		--td-btn-secondary-fg: var(--td-gray-900);
 		--td-btn-secondary-border: rgb(0 0 0 / 12%);
 		--td-btn-secondary-hover: var(--td-gray-200);
-		--td-btn-success-bg: #15803d;                   /* fixed: dark theme brightens --td-color-* for TEXT use */
-		--td-btn-success-fg: #fff;
-		--td-btn-danger-bg: #b91c1c;
-		--td-btn-danger-fg: #fff;
-		--td-btn-info-bg: #1d4ed8;
-		--td-btn-info-fg: #fff;
-		--td-btn-warning-bg: #f59e0b;                   /* bright amber + dark text (the #b45309 text colour fails) */
-		--td-btn-warning-fg: #111113;
+		--td-btn-success-bg: var(--td-pastel-success-bg);
+		--td-btn-success-fg: var(--td-pastel-success-fg);
+		--td-btn-success-border: var(--td-pastel-success-border);
+		--td-btn-success-hover: var(--td-pastel-success-border);
+		--td-btn-danger-bg: var(--td-pastel-danger-bg);
+		--td-btn-danger-fg: var(--td-pastel-danger-fg);
+		--td-btn-danger-border: var(--td-pastel-danger-border);
+		--td-btn-danger-hover: var(--td-pastel-danger-border);
+		--td-btn-info-bg: var(--td-pastel-info-bg);
+		--td-btn-info-fg: var(--td-pastel-info-fg);
+		--td-btn-info-border: var(--td-pastel-info-border);
+		--td-btn-info-hover: var(--td-pastel-info-border);
+		--td-btn-warning-bg: var(--td-pastel-warning-bg);
+		--td-btn-warning-fg: var(--td-pastel-warning-fg);
+		--td-btn-warning-border: var(--td-pastel-warning-border);
+		--td-btn-warning-hover: var(--td-pastel-warning-border);
 		/* v0.14.3: disabled reads as greyed out — pale fill, muted label (WCAG 1.4.3 exempts disabled controls; the
 		   contrast gate keeps it ≥ 2.2:1 so it stays legible). Opaque: a state colour, never element opacity. */
 		--td-btn-disabled-bg: #f4f4f5;
 		--td-btn-disabled-fg: #a1a1aa;
 		--td-btn-disabled-border: #e4e4e7;
-		--td-btn-lift: 0 1px 2px rgb(0 0 0 / 6%), 0 2px 6px -2px rgb(0 0 0 / 8%); /* the ONE button shadow */
+		--td-btn-lift: 0 1px 3px rgb(0 0 0 / 10%), 0 4px 10px -2px rgb(0 0 0 / 12%); /* the ONE button shadow (v0.21.0: stronger) */
 		/* deprecated v0.20.0 — still declared, no effect (removed in a later major): glass-button films / sheen / alpha */
 		--td-btn-primary-alpha: 94%;
 		--td-btn-primary-film: rgb(0 0 0 / 10%);
@@ -211,8 +240,9 @@
 		--td-glass-border: rgb(0 0 0 / 7%);
 		--td-glass-blur: blur(12px);
 		--td-glass-blur-lg: blur(12px);
-		--td-glass-shadow: 0 4px 16px rgb(0 0 0 / 6%);
-		--td-glass-shadow-lg: 0 8px 24px rgb(0 0 0 / 9%);
+		/* v0.21.0: stronger — a tight contact layer + a soft ambient layer (one token = one shadow) */
+		--td-glass-shadow: 0 2px 6px rgb(0 0 0 / 6%), 0 8px 24px rgb(0 0 0 / 12%);
+		--td-glass-shadow-lg: 0 4px 12px rgb(0 0 0 / 8%), 0 20px 48px rgb(0 0 0 / 18%);
 
 		/* Lightbox bars (toolbar / counter, `--clear`): dark, never themed (the backdrop is the photo). */
 		--td-glass-clear-bg: rgb(20 20 22 / 88%);

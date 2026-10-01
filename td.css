@@ -145,31 +145,60 @@
 		--td-control-border-hover: #aeaeb2;
 		--td-touch-min: 44px; /* minimum hit target for touch controls */
 
-		/* ===== Buttons — v0.20.0 minimal surfaces: SOLID fill + one soft shadow (--td-btn-lift), hover = darker solid
-		   fill (button.css), no blur / film / sheen / rim / glow / scale. Compatibility alias for one cycle: a site that
-		   still sets --td-btn-{primary,success,danger,info,warning}-tint gets that colour as the button fill (button.css
-		   reads var(--td-btn-{v}-tint, var(--td-btn-{v}-bg))) — the kit no longer declares the -tint tokens. ===== */
+		/* ===== Pastel semantic palette (v0.21.0) — soft fill (~100) + border (~200) + deep ink (~800/900) of the same hue.
+		   Used by the semantic buttons, the soft badges and the toasts. Dark (theme-dark.css): the semantic colour ~18 %
+		   pre-mixed on the dark page (solid), border ~30 %, ink ~200. Ink ≥ 4.7:1 on fill and border (contrast gate). */
+		--td-pastel-success-bg: #dcfce7;
+		--td-pastel-success-border: #bbf7d0;
+		--td-pastel-success-fg: #14532d;
+		--td-pastel-danger-bg: #fee2e2;
+		--td-pastel-danger-border: #fecaca;
+		--td-pastel-danger-fg: #7f1d1d;
+		--td-pastel-warning-bg: #fef3c7;
+		--td-pastel-warning-border: #fde68a;
+		--td-pastel-warning-fg: #78350f;
+		--td-pastel-info-bg: #dbeafe;
+		--td-pastel-info-border: #bfdbfe;
+		--td-pastel-info-fg: #1e3a8a;
+
+		/* ===== Buttons — v0.20.0 minimal surfaces: SOLID fill + one soft shadow (--td-btn-lift), no blur / film / sheen /
+		   rim / glow / scale. v0.21.0: primary is BLACK (dark theme: inverted) with its own hover token; success / danger /
+		   warning / info are PASTEL (fill + same-hue ink + -border, hover = the ~200 step). Each filled variant reads
+		   -bg / -fg / -border / -hover. A site that changes -bg should set -hover too (otherwise hover keeps the default).
+		   Primary back on the site accent: --td-btn-primary-bg: var(--td-accent-fill) + --td-btn-primary-hover.
+		   Compatibility alias for one cycle: a site that still sets --td-btn-{primary,success,danger,info,warning}-tint
+		   gets that colour as the fill AND border, hover = 8 % darker (button.css) — the kit no longer declares -tint. */
 		--td-btn-radius: var(--td-radius-lg); /* capsule on coarse pointers (button.css) */
-		--td-btn-primary-bg: var(--td-accent-fill); /* follows the site accent */
-		--td-btn-primary-fg: var(--td-accent-contrast);
+		--td-btn-primary-bg: #18181b;
+		--td-btn-primary-fg: #fff;
+		--td-btn-primary-hover: #3f3f46;                /* black can't get darker: hover lightens */
+		--td-btn-primary-border: transparent;
 		--td-btn-secondary-bg: var(--td-gray-100);
 		--td-btn-secondary-fg: var(--td-gray-900);
 		--td-btn-secondary-border: rgb(0 0 0 / 12%);
 		--td-btn-secondary-hover: var(--td-gray-200);
-		--td-btn-success-bg: #15803d;                   /* fixed: dark theme brightens --td-color-* for TEXT use */
-		--td-btn-success-fg: #fff;
-		--td-btn-danger-bg: #b91c1c;
-		--td-btn-danger-fg: #fff;
-		--td-btn-info-bg: #1d4ed8;
-		--td-btn-info-fg: #fff;
-		--td-btn-warning-bg: #f59e0b;                   /* bright amber + dark text (the #b45309 text colour fails) */
-		--td-btn-warning-fg: #111113;
+		--td-btn-success-bg: var(--td-pastel-success-bg);
+		--td-btn-success-fg: var(--td-pastel-success-fg);
+		--td-btn-success-border: var(--td-pastel-success-border);
+		--td-btn-success-hover: var(--td-pastel-success-border);
+		--td-btn-danger-bg: var(--td-pastel-danger-bg);
+		--td-btn-danger-fg: var(--td-pastel-danger-fg);
+		--td-btn-danger-border: var(--td-pastel-danger-border);
+		--td-btn-danger-hover: var(--td-pastel-danger-border);
+		--td-btn-info-bg: var(--td-pastel-info-bg);
+		--td-btn-info-fg: var(--td-pastel-info-fg);
+		--td-btn-info-border: var(--td-pastel-info-border);
+		--td-btn-info-hover: var(--td-pastel-info-border);
+		--td-btn-warning-bg: var(--td-pastel-warning-bg);
+		--td-btn-warning-fg: var(--td-pastel-warning-fg);
+		--td-btn-warning-border: var(--td-pastel-warning-border);
+		--td-btn-warning-hover: var(--td-pastel-warning-border);
 		/* v0.14.3: disabled reads as greyed out — pale fill, muted label (WCAG 1.4.3 exempts disabled controls; the
 		   contrast gate keeps it ≥ 2.2:1 so it stays legible). Opaque: a state colour, never element opacity. */
 		--td-btn-disabled-bg: #f4f4f5;
 		--td-btn-disabled-fg: #a1a1aa;
 		--td-btn-disabled-border: #e4e4e7;
-		--td-btn-lift: 0 1px 2px rgb(0 0 0 / 6%), 0 2px 6px -2px rgb(0 0 0 / 8%); /* the ONE button shadow */
+		--td-btn-lift: 0 1px 3px rgb(0 0 0 / 10%), 0 4px 10px -2px rgb(0 0 0 / 12%); /* the ONE button shadow (v0.21.0: stronger) */
 		/* deprecated v0.20.0 — still declared, no effect (removed in a later major): glass-button films / sheen / alpha */
 		--td-btn-primary-alpha: 94%;
 		--td-btn-primary-film: rgb(0 0 0 / 10%);
@@ -221,8 +250,9 @@
 		--td-glass-border: rgb(0 0 0 / 7%);
 		--td-glass-blur: blur(12px);
 		--td-glass-blur-lg: blur(12px);
-		--td-glass-shadow: 0 4px 16px rgb(0 0 0 / 6%);
-		--td-glass-shadow-lg: 0 8px 24px rgb(0 0 0 / 9%);
+		/* v0.21.0: stronger — a tight contact layer + a soft ambient layer (one token = one shadow) */
+		--td-glass-shadow: 0 2px 6px rgb(0 0 0 / 6%), 0 8px 24px rgb(0 0 0 / 12%);
+		--td-glass-shadow-lg: 0 4px 12px rgb(0 0 0 / 8%), 0 20px 48px rgb(0 0 0 / 18%);
 
 		/* Lightbox bars (toolbar / counter, `--clear`): dark, never themed (the backdrop is the photo). */
 		--td-glass-clear-bg: rgb(20 20 22 / 88%);
@@ -323,7 +353,24 @@
 		--td-control-border-soft: #3a3a3c; /* Apple systemGray4 (dark) */
 		--td-control-border-hover: #636366; /* Apple systemGray2 (dark) */
 
-		--td-btn-primary-bg: var(--td-accent-fill); /* white on the raw dark accent #3b82f6 would be 3.68:1 */
+		/* v0.21.0 pastel semantic palette: semantic colour ~18 % pre-mixed on #111113 (solid), border ~30 %, ink ~200 */
+		--td-pastel-success-bg: #143121;
+		--td-pastel-success-border: #16472a;
+		--td-pastel-success-fg: #bbf7d0;
+		--td-pastel-danger-bg: #391a1c;
+		--td-pastel-danger-border: #542022;
+		--td-pastel-danger-fg: #fecaca;
+		--td-pastel-warning-bg: #3a2a12;
+		--td-pastel-warning-border: #553b11;
+		--td-pastel-warning-fg: #fde68a;
+		--td-pastel-info-bg: #19253c;
+		--td-pastel-info-border: #1e3357;
+		--td-pastel-info-fg: #bfdbfe;
+
+		/* v0.21.0: primary inverted (a black fill would sink into the dark page) */
+		--td-btn-primary-bg: #f4f4f5;
+		--td-btn-primary-fg: #18181b;
+		--td-btn-primary-hover: #d4d4d8;
 		--td-btn-secondary-bg: #2c2c30;
 		--td-btn-secondary-fg: #f5f5f7;
 		--td-btn-secondary-border: rgb(255 255 255 / 12%);
@@ -332,7 +379,7 @@
 		--td-btn-disabled-bg: #202024;
 		--td-btn-disabled-fg: #6b6b73;                 /* greyed out, ≥ 2.2:1 (v0.14.3) */
 		--td-btn-disabled-border: rgb(255 255 255 / 6%);
-		--td-btn-lift: 0 1px 2px rgb(0 0 0 / 18%), 0 2px 6px -2px rgb(0 0 0 / 20%);
+		--td-btn-lift: 0 1px 3px rgb(0 0 0 / 20%), 0 4px 10px -2px rgb(0 0 0 / 24%); /* v0.21.0: light alpha × 2 */
 		--td-switch-off: #2c2c30;
 
 		/* v0.20.0 minimal surfaces (blur / clear tokens are theme-independent: tokens.css) */
@@ -341,8 +388,8 @@
 		--td-glass-solid: #1c1c1e;
 		--td-glass-fg: #f5f5f7;
 		--td-glass-border: rgb(255 255 255 / 10%);
-		--td-glass-shadow: 0 4px 16px rgb(0 0 0 / 18%);
-		--td-glass-shadow-lg: 0 8px 24px rgb(0 0 0 / 24%);
+		--td-glass-shadow: 0 2px 6px rgb(0 0 0 / 12%), 0 8px 24px rgb(0 0 0 / 24%); /* v0.21.0: light alpha × 2 */
+		--td-glass-shadow-lg: 0 4px 12px rgb(0 0 0 / 16%), 0 20px 48px rgb(0 0 0 / 36%);
 	}
 
 	/* v0.16.0: the dark fill FOLLOWS the site accent — 20% darker so white text stays readable
@@ -363,10 +410,11 @@
  * (markup and public API unchanged):
  *
  *   .td-glass-surface            translucent 90 % + blur (default recipe)
- *   .td-glass-surface--strong    small popups: 94 % + blur (menu, dropdown, chip-input suggestions, hovercard, toast)
+ *   .td-glass-surface--strong    small popups: 94 % + blur (menu, dropdown, chip-input suggestions, hovercard; the toast left in v0.21.0)
  *   .td-glass-surface--lg        deeper shadow only (--td-glass-shadow-lg)
  *   .td-glass-surface--clear     lightbox bars: dark 88 % + blur, never themed
  *   OPAQUE group (no blur): .td-modal__dialog, .td-loading__card, .td-tooltip, .td-scroll-top → --td-glass-solid
+ *                                (v0.21.0: tooltip.css repaints the tooltip black via --td-tooltip-bg)
  *   .td-glass-tint               solid capsule button (the one primary action on a floating bar)
  *   .td-glass-dim(--text)        deprecated v0.20.0: no effect (class kept so markup does not break)
  *
@@ -539,8 +587,12 @@
 		--td-field-fg-disabled: var(--td-color-text-muted);
 		--td-field-border: var(--td-control-border-soft);     /* soft at rest (v0.14.1), soft hover (v0.14.2), focus ring */
 		--td-field-border-hover: var(--td-control-border-hover);
-		--td-field-focus: var(--td-focus);
-		--td-field-focus-ring: var(--td-focus-ring);
+		/* v0.21.0 (like dcms): a lighter focus — accent border softened 15 % toward white (≥ 3:1 on the field and the
+		   page, contrast gate) + a faint 3px accent halo. Fallbacks without color-mix(): #3b82f6 / 12 % halo. Shared by
+		   the field-like controls (input-field, dropdown trigger + search, chip-input). Buttons / checkbox / switch keep
+		   --td-focus-ring. */
+		--td-field-focus: #3b82f6;
+		--td-field-focus-ring: 0 0 0 3px rgb(59 130 246 / 12%);
 		--td-field-placeholder: var(--td-gray-600);            /* 5.28:1 on white */
 		--td-field-note: var(--td-color-text-muted);
 		--td-field-label: var(--td-gray-700);
@@ -557,6 +609,18 @@
 		--td-field-bg-readonly: var(--td-color-surface-muted);
 		--td-field-placeholder: var(--td-gray-400);            /* 6.6:1 on #1c1c1e (gray-600 would be 3.2:1) */
 		--td-field-label: var(--td-gray-300);
+		--td-field-focus-ring: 0 0 0 3px rgb(59 130 246 / 22%); /* a 12 % halo vanishes on the dark field */
+	}
+
+	@supports (color: color-mix(in srgb, red 50%, blue)) {
+		:root {
+			--td-field-focus: color-mix(in srgb, var(--td-accent) 85%, #fff);
+			--td-field-focus-ring: 0 0 0 3px color-mix(in srgb, var(--td-accent) 12%, transparent);
+		}
+
+		:root[data-td-theme="dark"] {
+			--td-field-focus-ring: 0 0 0 3px color-mix(in srgb, var(--td-accent) 22%, transparent);
+		}
 	}
 }
 
@@ -879,9 +943,11 @@
 /* ---- src/styles/components/button.css ---- */
 /*
  * td-button (src/form/td-button.js). v0.20.0 MINIMAL SURFACES (docs/internal/design/liquid-glass.md): every variant
- * with a fill is a SOLID colour (--td-btn-{v}-bg) + one soft shadow (--td-btn-lift); hover = a darker SOLID fill
- * (secondary: --td-btn-secondary-hover; others: color-mix() with 8 % black — engines without color-mix() keep the
+ * with a fill is a SOLID colour (--td-btn-{v}-bg) + one soft shadow (--td-btn-lift); hover = another SOLID fill
+ * (--td-btn-{v}-hover; -tint alias / custom colours: color-mix() with 8 % black — engines without color-mix() keep the
  * resting fill). No blur, film, sheen, rim, hairline, glow or press scale. Ghost and disabled have no shadow.
+ * v0.21.0: primary = black (dark theme: inverted), success / danger / warning / info = pastel fill + same-hue ink +
+ * -border; every filled variant hovers to its --td-btn-{v}-hover token.
  * Compatibility alias (one cycle): a site's --td-btn-{primary,success,danger,info,warning}-tint still becomes the fill.
  * Disabled = explicit opaque state colours (never element opacity). Increased contrast / forced colours drop the
  * shadow through the private --_td-btn-lift (glass.css fallbacks).
@@ -942,11 +1008,15 @@
 	.td-btn--lg { min-height: 3rem; padding: 0 1.6rem; font-size: var(--td-text-base); }
 	.td-btn--full { display: flex; width: 100%; }
 
-	/* Solid variants. The -tint fallback is the v0.20.0 compatibility alias (sites that themed the glass tint). */
+	/* Solid variants: fill -bg, ink -fg, edge -border, hover -hover (v0.21.0: primary black, semantic pastel).
+	   -tint = the v0.20.0 compatibility alias: when a site sets it, it becomes the fill AND the edge (--_td-btn-tint is
+	   guaranteed-invalid when the alias is unset, so var() falls through to the kit token) and the hover is 8 % darker. */
 	.td-btn--primary {
+		--_td-btn-tint: var(--td-btn-primary-tint);
 		--td-btn-bg-v: var(--td-btn-primary-tint, var(--td-btn-primary-bg));
 		--td-btn-fg-v: var(--td-btn-primary-fg);
-		--td-btn-border-v: transparent;
+		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-primary-border));
+		--_td-btn-variant-hover: var(--td-btn-primary-hover);
 	}
 
 	.td-btn--secondary {
@@ -955,10 +1025,37 @@
 		--td-btn-border-v: var(--td-btn-secondary-border);
 	}
 
-	.td-btn--success { --td-btn-bg-v: var(--td-btn-success-tint, var(--td-btn-success-bg)); --td-btn-fg-v: var(--td-btn-success-fg); --td-btn-border-v: transparent; }
-	.td-btn--danger { --td-btn-bg-v: var(--td-btn-danger-tint, var(--td-btn-danger-bg)); --td-btn-fg-v: var(--td-btn-danger-fg); --td-btn-border-v: transparent; }
-	.td-btn--warning { --td-btn-bg-v: var(--td-btn-warning-tint, var(--td-btn-warning-bg)); --td-btn-fg-v: var(--td-btn-warning-fg); --td-btn-border-v: transparent; }
-	.td-btn--info { --td-btn-bg-v: var(--td-btn-info-tint, var(--td-btn-info-bg)); --td-btn-fg-v: var(--td-btn-info-fg); --td-btn-border-v: transparent; }
+	.td-btn--success {
+		--_td-btn-tint: var(--td-btn-success-tint);
+		--td-btn-bg-v: var(--td-btn-success-tint, var(--td-btn-success-bg));
+		--td-btn-fg-v: var(--td-btn-success-fg);
+		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-success-border));
+		--_td-btn-variant-hover: var(--td-btn-success-hover);
+	}
+
+	.td-btn--danger {
+		--_td-btn-tint: var(--td-btn-danger-tint);
+		--td-btn-bg-v: var(--td-btn-danger-tint, var(--td-btn-danger-bg));
+		--td-btn-fg-v: var(--td-btn-danger-fg);
+		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-danger-border));
+		--_td-btn-variant-hover: var(--td-btn-danger-hover);
+	}
+
+	.td-btn--warning {
+		--_td-btn-tint: var(--td-btn-warning-tint);
+		--td-btn-bg-v: var(--td-btn-warning-tint, var(--td-btn-warning-bg));
+		--td-btn-fg-v: var(--td-btn-warning-fg);
+		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-warning-border));
+		--_td-btn-variant-hover: var(--td-btn-warning-hover);
+	}
+
+	.td-btn--info {
+		--_td-btn-tint: var(--td-btn-info-tint);
+		--td-btn-bg-v: var(--td-btn-info-tint, var(--td-btn-info-bg));
+		--td-btn-fg-v: var(--td-btn-info-fg);
+		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-info-border));
+		--_td-btn-variant-hover: var(--td-btn-info-hover);
+	}
 
 	/* v0.17.0 ghost: no fill, no border, no shadow — just the accent label on the page background.
 	   Hover = a soft fill (--td-btn-ghost-hover-bg); focus ring as every button. */
@@ -977,12 +1074,21 @@
 		--td-btn-border-v: var(--td-btn-bg);
 	}
 
-	/* Hover = a darker SOLID fill, resolved per element (it follows the variant, the -tint alias and a custom colour).
-	   Without color-mix() the resting fill stays. Never while busy / disabled. */
+	/* Hover = a SOLID fill resolved per element. Variants with a fill read their -hover token (v0.21.0); the -tint
+	   alias and custom colours get the fill 8 % darker (color-mix). Without color-mix(): a custom button keeps its
+	   resting fill, a tinted one falls back to the variant -hover token. Never while busy / disabled. */
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
 		.td-btn {
 			--td-btn-hover-v: color-mix(in srgb, var(--td-btn-bg-v) 92%, #000);
 		}
+
+		.td-btn:is(.td-btn--primary, .td-btn--success, .td-btn--danger, .td-btn--warning, .td-btn--info):not(.td-btn--custom) {
+			--_td-btn-tint-hover: color-mix(in srgb, var(--_td-btn-tint) 92%, #000); /* invalid when no -tint */
+		}
+	}
+
+	.td-btn:is(.td-btn--primary, .td-btn--success, .td-btn--danger, .td-btn--warning, .td-btn--info):not(.td-btn--custom) {
+		--td-btn-hover-v: var(--_td-btn-tint-hover, var(--_td-btn-variant-hover));
 	}
 
 	.td-btn--secondary:not(.td-btn--custom) {
@@ -2748,13 +2854,20 @@
 
 /* ---- src/styles/components/toast.css ---- */
 /*
- * td-toast (src/feedback/td-toast.js). v0.20.0 minimal surfaces: a NEUTRAL small popup (.td-glass-surface--strong:
- * 94 % + blur(12px) + thin border + soft shadow); the semantic colour is carried by the registry status ICON only
- * (an icon, so colour is never the only cue) — no wash, no tinted border. Top-right by default (D11) — a site moves
- * the stack with tokens only, e.g. 135/dwp bottom-centre:
+ * td-toast (src/feedback/td-toast.js). v0.21.0 dcms style: a compact pill (12px radius, 12×16 padding, 14px text) with
+ * a PASTEL fill per type + dark ink of the same hue + a `-border` hairline + one soft shadow (--td-glass-shadow).
+ * Solid: no blur, no glass recipe (the toast no longer carries .td-glass-surface). No visible icon and no visible close
+ * button: the type is announced through a screen-reader-only prefix (.td-toast__type.td-sr-only, TdToast.labels.types)
+ * and the close button stays in the DOM, visually hidden until it receives KEYBOARD focus (:focus-visible) — so a
+ * sticky toast (duration 0) is still dismissable from the keyboard. Click anywhere on a toast dismisses it.
+ * Colours: --td-toast-{success,error,warning,info}-{bg,fg,border} read the shared pastel tokens
+ * --td-pastel-{success,danger,warning,info}-{bg,fg,border} (tokens.css / theme-dark.css), with the same literals as
+ * fallbacks. A site wanting dcms' saturated look sets e.g. --td-toast-success-bg: #22c55e; --td-toast-success-fg: #fff.
+ * Top-right by default (D11) — a site moves the stack with tokens only, e.g. 135/dwp bottom-centre:
  *   :root { --td-toast-top: auto; --td-toast-bottom: 1.5rem; --td-toast-inline-end: auto;
  *           --td-toast-inline-start: 50%; --td-toast-shift: -50%; --td-toast-align: center; }
- * State: data-state="entering|open|closing" (fade + slide; reduced motion → opacity only) · [data-paused].
+ * Motion: enter slides in from the inline end (translateX(1rem) → 0) + fade 200 ms ease-out; exit reverses in 180 ms.
+ * State: data-state="entering|open|closing" · [data-paused]. Reduced motion → opacity only.
  */
 @layer td.tokens {
 	:root {
@@ -2766,28 +2879,57 @@
 		--td-toast-align: flex-end;
 		--td-toast-gap: var(--td-space-xs);
 		--td-toast-max-w: 28rem;
-		/* one-line toast = 44px tall → 22px radius is a capsule (R9); wrapped text keeps a soft rounded box */
-		--td-toast-radius: 22px;
+		--td-toast-radius: 12px;
+		--td-toast-pad-y: 0.75rem;
+		--td-toast-pad-x: 1rem;
+		--td-toast-font-size: var(--td-text-sm);
+		--td-toast-shadow: var(--td-glass-shadow);
+		--td-toast-enter-shift: 1rem;
+		--td-toast-enter-dur: 200ms;
+		--td-toast-exit-dur: 180ms;
+		/* pastel per type (P1 tokens; literals = the light pastel values, used until/unless the shared tokens exist) */
+		--td-toast-success-bg: var(--td-pastel-success-bg, #dcfce7);
+		--td-toast-success-fg: var(--td-pastel-success-fg, #14532d);
+		--td-toast-success-border: var(--td-pastel-success-border, #bbf7d0);
+		--td-toast-error-bg: var(--td-pastel-danger-bg, #fee2e2);
+		--td-toast-error-fg: var(--td-pastel-danger-fg, #7f1d1d);
+		--td-toast-error-border: var(--td-pastel-danger-border, #fecaca);
+		--td-toast-warning-bg: var(--td-pastel-warning-bg, #fef3c7);
+		--td-toast-warning-fg: var(--td-pastel-warning-fg, #78350f);
+		--td-toast-warning-border: var(--td-pastel-warning-border, #fde68a);
+		--td-toast-info-bg: var(--td-pastel-info-bg, #dbeafe);
+		--td-toast-info-fg: var(--td-pastel-info-fg, #1e3a8a);
+		--td-toast-info-border: var(--td-pastel-info-border, #bfdbfe);
+		--td-toast-close-hover: rgb(0 0 0 / 8%);
+		/* deprecated (no effect): v0.20.0 neutral surface + status icons, v0.19 washes */
 		--td-toast-fg: var(--td-color-text);
 		--td-toast-close-fg: var(--td-toast-fg);
-		/* status icons = the semantic colour (≥ 3:1 on the neutral surface over any backdrop; dark theme remaps the
-		   --td-color-* status colours to light tones) */
+		--td-toast-glass-bg: var(--td-glass-bg-strong);
 		--td-toast-info-icon: var(--td-color-info);
 		--td-toast-success-icon: var(--td-color-success);
 		--td-toast-warning-icon: var(--td-color-warning);
 		--td-toast-error-icon: var(--td-color-error);
-		--td-toast-close-hover: var(--td-color-hover-strong);
-		--td-toast-glass-bg: var(--td-glass-bg-strong); /* the toast fill (a site may still tune it) */
-		/* deprecated v0.20.0 — still declared, no effect: the status wash and the tinted error border */
-		--td-toast-error-border: transparent;
 		--td-toast-success-wash: transparent;
 		--td-toast-info-wash: transparent;
 		--td-toast-warning-wash: transparent;
 		--td-toast-error-wash: transparent;
-		--td-toast-enter-shift: 0.5rem;
 	}
 
+	/* Dark: solid pastel = the status hue ~18 % over the dark surface, border ~30 %, ink ~200 (fallback literals). */
 	:root[data-td-theme="dark"] {
+		--td-toast-success-bg: var(--td-pastel-success-bg, #1d3a2a);
+		--td-toast-success-fg: var(--td-pastel-success-fg, #bbf7d0);
+		--td-toast-success-border: var(--td-pastel-success-border, #1e4f31);
+		--td-toast-error-bg: var(--td-pastel-danger-bg, #422325);
+		--td-toast-error-fg: var(--td-pastel-danger-fg, #fecaca);
+		--td-toast-error-border: var(--td-pastel-danger-border, #5b2829);
+		--td-toast-warning-bg: var(--td-pastel-warning-bg, #43331b);
+		--td-toast-warning-fg: var(--td-pastel-warning-fg, #fde68a);
+		--td-toast-warning-border: var(--td-pastel-warning-border, #5d4318);
+		--td-toast-info-bg: var(--td-pastel-info-bg, #222e45);
+		--td-toast-info-fg: var(--td-pastel-info-fg, #bfdbfe);
+		--td-toast-info-border: var(--td-pastel-info-border, #253b5f);
+		--td-toast-close-hover: rgb(255 255 255 / 12%);
 		--td-toast-fg: var(--td-glass-fg);
 		--td-toast-close-fg: var(--td-glass-fg);
 	}
@@ -2815,26 +2957,52 @@
 	}
 
 	.td-toast {
+		/* per-type colours (info = default, also for unknown types) */
+		--_td-toast-bg: var(--td-toast-info-bg);
+		--_td-toast-fg: var(--td-toast-info-fg);
+		--_td-toast-border: var(--td-toast-info-border);
+
+		position: relative;
 		box-sizing: border-box;
 		display: flex;
 		gap: var(--td-space-xs);
 		align-items: center;
 		max-width: min(var(--td-toast-max-w), 100%);
-		min-height: var(--td-touch-min);
-		padding: var(--td-space-2xs) var(--td-space-2xs) var(--td-space-2xs) var(--td-space-sm);
+		padding: var(--td-toast-pad-y) var(--td-toast-pad-x);
 		font-family: var(--td-font-sans);
-		font-size: var(--td-text-sm);
+		font-size: var(--td-toast-font-size);
 		font-weight: var(--td-fw-medium);
-		line-height: 1.4;
-		color: var(--_td-glass-fg, var(--td-toast-fg)); /* the recipe's fallbacks (contrast/forced) still win */
+		line-height: 1.45;
+		color: var(--_td-toast-fg);
+		background-color: var(--_td-toast-bg);
+		border: 1px solid var(--_td-toast-border);
 		border-radius: var(--td-toast-radius);
+		box-shadow: var(--td-toast-shadow);
 		pointer-events: auto;
-		cursor: pointer; /* click anywhere dismisses (keyboard: the close button) */
+		cursor: pointer; /* click anywhere dismisses (keyboard: the focus-visible close button) */
 		opacity: 0;
-		transform: translateY(calc(-1 * var(--td-toast-enter-shift)));
+		transform: translateX(var(--td-toast-enter-shift));
 		transition:
-			opacity var(--td-dur-base) var(--td-ease),
-			transform var(--td-dur-base) var(--td-ease-out);
+			opacity var(--td-toast-enter-dur) var(--td-ease-out),
+			transform var(--td-toast-enter-dur) var(--td-ease-out);
+	}
+
+	.td-toast--success {
+		--_td-toast-bg: var(--td-toast-success-bg);
+		--_td-toast-fg: var(--td-toast-success-fg);
+		--_td-toast-border: var(--td-toast-success-border);
+	}
+
+	.td-toast--warning {
+		--_td-toast-bg: var(--td-toast-warning-bg);
+		--_td-toast-fg: var(--td-toast-warning-fg);
+		--_td-toast-border: var(--td-toast-warning-border);
+	}
+
+	.td-toast--error {
+		--_td-toast-bg: var(--td-toast-error-bg);
+		--_td-toast-fg: var(--td-toast-error-fg);
+		--_td-toast-border: var(--td-toast-error-border);
 	}
 
 	.td-toast[data-state="open"] {
@@ -2846,53 +3014,49 @@
 		pointer-events: none;
 		opacity: 0;
 		transform: translateX(var(--td-toast-enter-shift));
+		transition:
+			opacity var(--td-toast-exit-dur) var(--td-ease),
+			transform var(--td-toast-exit-dur) var(--td-ease);
 	}
-
-	.td-toast__icon {
-		display: inline-flex;
-		flex: none;
-		line-height: 0;
-		color: var(--td-toast-info-icon);
-	}
-
-	/* Neutral fill (the recipe's fallbacks still force solid via --_td-glass-fill). */
-	.td-toast {
-		background-color: var(--_td-glass-fill, var(--td-toast-glass-bg));
-	}
-
-	.td-toast--success .td-toast__icon { color: var(--td-toast-success-icon); }
-	.td-toast--warning .td-toast__icon { color: var(--td-toast-warning-icon); }
-	.td-toast--error .td-toast__icon { color: var(--td-toast-error-icon); }
 
 	.td-toast__message {
 		flex: 1 1 auto;
 		min-width: 0;
-		padding-block: var(--td-space-2xs);
 		overflow-wrap: anywhere;
 	}
 
+	/* Close: in the DOM and focusable, visually hidden until KEYBOARD focus (sticky toasts stay keyboard-dismissable). */
 	.td-toast__close {
 		box-sizing: border-box;
 		display: inline-flex;
 		flex: none;
 		align-items: center;
 		justify-content: center;
-		width: 2rem;
-		height: 2rem;
+		width: 1.75rem;
+		height: 1.75rem;
 		padding: 0;
-		margin: 0;
+		margin: -0.25rem calc(-0.5 * var(--td-toast-pad-x) + 0.125rem) -0.25rem 0;
 		font: inherit;
 		line-height: 0;
-		color: var(--td-toast-close-fg);
+		color: inherit;
 		cursor: pointer;
 		background: transparent;
 		border: 0;
-		border-radius: var(--td-glass-capsule);
-		transition: background-color var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+		border-radius: var(--td-radius-full);
+	}
+
+	.td-toast__close:not(:focus-visible) {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
 	}
 
 	.td-toast__close:hover {
-		color: var(--td-toast-fg);
 		background: var(--td-toast-close-hover);
 	}
 
@@ -2903,7 +3067,7 @@
 	}
 
 	@media (pointer: coarse) {
-		.td-toast__close {
+		.td-toast__close:focus-visible {
 			width: var(--td-touch-min);
 			height: var(--td-touch-min);
 		}
@@ -2915,17 +3079,27 @@
 			transform: none;
 			transition: opacity var(--td-dur-fast) linear;
 		}
-
-		.td-toast__close { transition: none; }
 	}
 
+	/* More contrast: the border takes the ink colour, no shadow. */
+	@media (prefers-contrast: more) {
+		.td-toast {
+			border-color: currentcolor;
+			box-shadow: none;
+		}
+	}
+
+	/* Forced colours (last): system colours, a real border, no shadow. */
 	@media (forced-colors: active) {
-		.td-toast__icon,
-		.td-toast__close {
+		.td-toast {
 			color: CanvasText;
+			background-color: Canvas;
+			border-color: CanvasText;
+			box-shadow: none;
 		}
 
 		.td-toast__close {
+			color: ButtonText;
 			border: 1px solid ButtonText;
 		}
 
@@ -2938,14 +3112,15 @@
 /* ---- src/styles/components/tooltip.css ---- */
 /*
  * td-tooltip (src/feedback/td-tooltip.js). v0.14.0 (plan G8) dwp tooltip look; v0.20.0 minimal surfaces: a small
- * text chip on an OPAQUE surface (glass.css opaque group — --td-glass-solid, thin border, soft shadow, no blur) with
- * an arrow. Custom colour chips ([data-custom]) are solid in their own colour. position: fixed, geometry (top/left)
- * written by JS through CSSOM. Hoverable while open (pointer-events: auto, WCAG 1.4.13).
+ * text chip on an OPAQUE surface (thin border, soft shadow, no blur) with an arrow. v0.21.0: the chip is BLACK by
+ * default in both themes (--td-tooltip-bg / -fg / -border) and wrapped text is centred (--td-tooltip-text-align;
+ * per tooltip: data-tooltip-align="start|center|end" on the trigger → [data-align] on the chip). Custom colour chips
+ * ([data-custom]) are solid in their own colour. position: fixed, geometry (top/left) written by JS through CSSOM. Hoverable while open (pointer-events: auto, WCAG 1.4.13).
  * Arrow = `::after` of the SAME element: a rotated square clipped to its outer half, painting the chip's own
  * background-color and border-color (inherit), no backdrop-filter of its own. JS writes `--td-tooltip-arrow-x`
  * (top/bottom) / `--td-tooltip-arrow-y` (left/right) = the trigger centre in the padding box, so it keeps pointing
  * at the trigger when the chip is clamped to the viewport (50 % when unset).
- * State: [hidden] · [data-state="open"] (opacity-only fade) · data-placement · [data-custom].
+ * State: [hidden] · [data-state="open"] (opacity-only fade) · data-placement · [data-custom] · [data-align].
  * No interactive targets inside → no focus ring / coarse-pointer sizing needed.
  */
 @layer td.tokens {
@@ -2959,6 +3134,16 @@
 		--td-tooltip-leading: 1.4;
 		--td-tooltip-arrow-size: 8px;
 		--td-tooltip-dur: 120ms;
+		/* v0.21.0: black chip (both themes), solid, no blur; wrapped text centred by default (data-tooltip-align on the
+		   trigger → data-align on the chip overrides per tooltip). */
+		--td-tooltip-bg: #18181b;
+		--td-tooltip-fg: #fff;
+		--td-tooltip-border: transparent;
+		--td-tooltip-text-align: center;
+	}
+
+	:root[data-td-theme="dark"] {
+		--td-tooltip-border: rgb(255 255 255 / 12%); /* keeps the black chip off the dark page */
 	}
 }
 
@@ -2976,7 +3161,7 @@
 		font-size: var(--td-tooltip-font-size);
 		font-weight: var(--td-fw-normal);
 		line-height: var(--td-tooltip-leading);
-		text-align: start;
+		text-align: var(--td-tooltip-text-align);
 		white-space: normal;
 		overflow-wrap: break-word;
 		border-radius: var(--td-tooltip-radius);
@@ -2988,6 +3173,24 @@
 	.td-tooltip[hidden] {
 		display: none;
 	}
+
+	/* v0.21.0 black chip: --td-tooltip-bg / -fg / -border. Increased contrast and forced colours still win through
+	   --_td-glass-fill-a11y / --_td-glass-fg / --_td-glass-line (glass.css); glass-off / reduced transparency keep the
+	   black chip (it is already solid). */
+	.td-tooltip.td-glass-surface,
+	.td-tooltip {
+		background-color: var(--_td-glass-fill-a11y, var(--td-tooltip-bg));
+		background-image: none;
+		color: var(--_td-glass-fg, var(--td-tooltip-fg));
+		border-color: var(--_td-glass-line, var(--td-tooltip-border));
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
+
+	/* v0.21.0 text alignment of wrapped text (trigger data-tooltip-align → chip data-align; unknown values ignored). */
+	.td-tooltip[data-align="start"] { text-align: start; }
+	.td-tooltip[data-align="center"] { text-align: center; }
+	.td-tooltip[data-align="end"] { text-align: end; }
 
 	.td-tooltip[data-state="open"] {
 		opacity: 1;
@@ -3041,12 +3244,7 @@
 	   colours still win (glass.css). The fill reads --_td-glass-fill-a11y (set ONLY by those two fallbacks), not
 	   --_td-glass-fill — glass-off / reduced transparency must keep the custom colour, not swap in the surface solid. */
 	.td-tooltip[data-custom] {
-		background-color: var(--_td-glass-fill-a11y, var(--td-tooltip-bg));
-		background-image: none;
-		color: var(--_td-glass-fg, var(--td-tooltip-fg));
 		border-color: var(--_td-glass-line, transparent);
-		-webkit-backdrop-filter: none;
-		backdrop-filter: none;
 	}
 
 	@media (prefers-reduced-motion: reduce) {
@@ -3056,6 +3254,7 @@
 	}
 
 	@media (forced-colors: active) {
+		.td-tooltip,
 		.td-tooltip[data-custom] {
 			border-color: CanvasText;
 		}
@@ -3074,6 +3273,11 @@
  * Per-instance CSSOM custom properties on .td-modal__dialog (validated in JS):
  *   --td-modal-w, --td-modal-h, --td-modal-body-pad, --td-modal-body-overflow
  * Only .td-modal__body scrolls (header/footer pinned, D21). ≤ 640 px: bottom sheet (except --viewport).
+ * Motion (v0.21.0, ease-in-out): opening → scrim fades in (--td-modal-scrim-dur, ease-in-out) and the dialog fades +
+ * rises from translateY(12px) scale(0.98) (--td-modal-enter-dur, --td-modal-ease); closing reverses faster
+ * (--td-modal-exit-dur, --td-modal-exit-ease). The phone sheet slides from the bottom with the same timing.
+ * Reduced motion → opacity only, --td-dur-fast. (The scale is a deliberate, modal-only exception to the
+ * minimal-surfaces "no decorative scale" rule — owner request.)
  */
 @layer td.tokens {
 	:root {
@@ -3092,6 +3296,14 @@
 		--td-modal-sheet-radius: 24px;
 		--td-modal-pad-x: var(--td-space-lg);
 		--td-modal-pad-y: var(--td-space-md);
+		/* motion (v0.21.0) */
+		--td-modal-enter-dur: 260ms;
+		--td-modal-exit-dur: 180ms;
+		--td-modal-ease: cubic-bezier(0.4, 0, 0.2, 1);
+		--td-modal-exit-ease: cubic-bezier(0.4, 0, 1, 1); /* ease-in */
+		--td-modal-scrim-dur: 240ms;
+		--td-modal-scrim-ease: ease-in-out;
+		--td-modal-enter-from: translateY(12px) scale(0.98);
 	}
 }
 
@@ -3143,15 +3355,19 @@
 		inset: 0;
 		background: var(--td-glass-scrim);
 		opacity: 0;
-		transition: opacity var(--td-dur-base) var(--td-ease);
+		transition: opacity var(--td-modal-scrim-dur) var(--td-modal-scrim-ease);
 	}
 
 	.td-modal[data-state="open"] .td-modal__backdrop {
 		opacity: 1;
 	}
 
-	/* Dialog: the surface recipe (glass.css) gives fill/border/shadow; this block owns geometry + motion (fade; the
-	   phone sheet slides up — no decorative scale). */
+	.td-modal[data-state="closing"] .td-modal__backdrop {
+		transition: opacity var(--td-modal-exit-dur) var(--td-modal-exit-ease);
+	}
+
+	/* Dialog: the surface recipe (glass.css) gives fill/border/shadow; this block owns geometry + motion (fade + a
+	   small rise/scale on desktop; the phone sheet slides up). */
 	.td-modal__dialog {
 		position: relative;
 		display: flex;
@@ -3164,17 +3380,21 @@
 		outline: none;
 		isolation: isolate;
 		opacity: 0;
+		transform: var(--td-modal-enter-from);
 		transition:
-			opacity var(--td-dur-base) var(--td-ease),
-			transform var(--td-dur-base) var(--td-ease);
+			opacity var(--td-modal-enter-dur) var(--td-modal-ease),
+			transform var(--td-modal-enter-dur) var(--td-modal-ease);
 	}
 
 	.td-modal[data-state="open"] .td-modal__dialog {
 		opacity: 1;
 		transform: none;
+	}
+
+	.td-modal[data-state="closing"] .td-modal__dialog {
 		transition:
-			opacity var(--td-dur-base) var(--td-ease),
-			transform var(--td-dur-slow) var(--td-glass-ease-flex);
+			opacity var(--td-modal-exit-dur) var(--td-modal-exit-ease),
+			transform var(--td-modal-exit-dur) var(--td-modal-exit-ease);
 	}
 
 	/* An exiting modal is never interactive (its dialog is also inert). */
@@ -3304,6 +3524,7 @@
 	}
 
 	.td-modal--viewport .td-modal__dialog {
+		--td-modal-enter-from: none; /* a full-viewport surface only fades */
 		width: 100%;
 		height: 100dvh;
 		max-height: none;
@@ -3346,16 +3567,19 @@
 		}
 	}
 
-	/* Reduced motion: opacity only (no slide). */
+	/* Reduced motion: opacity only (no slide / scale), 120 ms. */
 	@media (prefers-reduced-motion: reduce) {
+		.td-modal__dialog,
 		.td-modal .td-modal__dialog,
 		.td-modal[data-state="open"] .td-modal__dialog,
+		.td-modal[data-state="closing"] .td-modal__dialog,
 		.td-modal:not(.td-modal--viewport)[data-state="open"] .td-modal__dialog {
 			transform: none;
 			transition: opacity var(--td-dur-fast) linear;
 		}
 
-		.td-modal__backdrop {
+		.td-modal__backdrop,
+		.td-modal[data-state="closing"] .td-modal__backdrop {
 			transition: opacity var(--td-dur-fast) linear;
 		}
 
@@ -3476,7 +3700,7 @@
 		border-color: var(--td-field-focus);
 		outline: 2px solid transparent;
 		outline-offset: 2px;
-		box-shadow: var(--td-focus-ring);
+		box-shadow: var(--td-field-focus-ring);
 	}
 
 	.td-dropdown__trigger:disabled {
@@ -3598,7 +3822,7 @@
 	.td-dropdown__search:focus-visible {
 		outline: 2px solid transparent;
 		outline-offset: 2px;
-		box-shadow: var(--td-focus-ring);
+		box-shadow: var(--td-field-focus-ring);
 	}
 
 	.td-dropdown__options {
@@ -4174,7 +4398,7 @@
 		border-color: var(--td-field-focus);
 		outline: 2px solid transparent;
 		outline-offset: 2px;
-		box-shadow: var(--td-focus-ring);
+		box-shadow: var(--td-field-focus-ring); /* v0.21.0 P8: same light ring as the other fields */
 	}
 
 	.td-dtp__trigger:disabled {
@@ -4299,7 +4523,7 @@
 	.td-dtp-panel__input:focus-visible {
 		outline: 2px solid transparent;
 		outline-offset: 2px;
-		box-shadow: var(--td-focus-ring);
+		box-shadow: var(--td-field-focus-ring); /* v0.21.0 P8: the light field ring, like the trigger */
 	}
 
 	.td-dtp-panel__input[aria-invalid="true"],
@@ -5017,7 +5241,7 @@
 	.td-chip-input__box:has(.td-chip-input__input:focus-visible) {
 		outline: 2px solid transparent;
 		outline-offset: 2px;
-		box-shadow: var(--td-focus-ring);
+		box-shadow: var(--td-field-focus-ring);
 	}
 
 	.td-chip-input__box:has(.td-chip-input__input:disabled) {
@@ -6110,14 +6334,15 @@
 		/* accent: static fallback (= info) without color-mix(); @supports below follows the site accent */
 		--td-badge-accent-bg: #dbeafe;
 		--td-badge-accent-fg: #1e40af;
-		--td-badge-success-bg: #dcfce7;
-		--td-badge-success-fg: #166534;
-		--td-badge-warning-bg: #fef3c7;
-		--td-badge-warning-fg: #92400e;
-		--td-badge-danger-bg: #fee2e2;
-		--td-badge-danger-fg: #991b1b;
-		--td-badge-info-bg: #dbeafe;
-		--td-badge-info-fg: #1e40af;
+		/* v0.21.0: the semantic soft badges share the pastel palette (tokens.css / theme-dark.css) */
+		--td-badge-success-bg: var(--td-pastel-success-bg);
+		--td-badge-success-fg: var(--td-pastel-success-fg);
+		--td-badge-warning-bg: var(--td-pastel-warning-bg);
+		--td-badge-warning-fg: var(--td-pastel-warning-fg);
+		--td-badge-danger-bg: var(--td-pastel-danger-bg);
+		--td-badge-danger-fg: var(--td-pastel-danger-fg);
+		--td-badge-info-bg: var(--td-pastel-info-bg);
+		--td-badge-info-fg: var(--td-pastel-info-fg);
 		--td-badge-stamp-font-family: var(--td-font-mono);
 		--td-badge-stamp-rotate: -4deg;
 		--td-badge-stamp-border: 3px;
@@ -6129,14 +6354,6 @@
 		--td-badge-neutral-fg: #e4e4e7;
 		--td-badge-accent-bg: #172554;
 		--td-badge-accent-fg: #bfdbfe;
-		--td-badge-success-bg: #0f2e1b;
-		--td-badge-success-fg: #86efac;
-		--td-badge-warning-bg: #33240a;
-		--td-badge-warning-fg: #fcd34d;
-		--td-badge-danger-bg: #3a1414;
-		--td-badge-danger-fg: #fca5a5;
-		--td-badge-info-bg: #172554;
-		--td-badge-info-fg: #bfdbfe;
 	}
 
 	@supports (color: color-mix(in srgb, red 50%, blue)) {

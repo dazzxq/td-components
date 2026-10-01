@@ -4,7 +4,7 @@
  * loading) and every toast type, in light + dark, over four backdrops (flat black, flat white, a fine checkerboard, a
  * saturated "photo"), in Chromium / Firefox / WebKit:
  *   1. render the element with its ink hidden (text/icons transparent) and screenshot it — the REAL background after
- *      blur and fill (v0.20.0: solid buttons, neutral 94 % toasts);
+ *      blur and fill (v0.20.0: solid buttons; v0.21.0: solid pastel toasts);
  *   2. sample the interior (inset away from the rims/radius) and take the MINIMUM contrast against the declared ink
  *      (computed colour; alpha composited over each sampled pixel);
  *   3. require ≥ 4.7:1 for labels, ≥ 3.2:1 for icons / close glyphs / the loading spinner; a DISABLED button's label
@@ -15,6 +15,8 @@
  * Ghost buttons (v0.17.0) have no fill of their own and sit on the page background, so they are measured only over
  * the theme's page colour: white (light) / black (dark). Same for the content-layer alerts (message + heading ≥ 4.7,
  * icon / close ≥ 3.2 on the variant fill) and badges (soft fill, outline, stamp) of v0.18.0 F5.
+ * v0.21.0: the black tooltip chip (default + start-aligned) over every backdrop; the field focus border (input-field,
+ * open dropdown trigger) ≥ 3:1 against the field fill, the backdrop and --td-color-bg (computed colours, page only).
  * No dependencies: PNGs are decoded with node:zlib.
  *
  *   node test/tokens/contrast.spec.mjs            (npm run test:contrast)
@@ -33,6 +35,7 @@ const TD_CSS = await readFile(join(ROOT, 'td.css'), 'utf8');
 const LABEL_MIN = 4.7;
 const DISABLED_MIN = 2.2;
 const ICON_MIN = 3.2;
+const FOCUS_MIN = 3; // v0.21.0 P8: field focus border vs field fill / page (WCAG 1.4.11)
 const THEMES = ['light', 'dark'];
 const BACKDROPS = ['black', 'white', 'checker', 'photo'];
 
@@ -116,6 +119,7 @@ async function launchOptions(name, launcher) {
 const failures = [];
 let checks = 0;
 const worst = new Map(); // name → lowest label ratio seen (report)
+const focusWorst = new Map(); // v0.21.0: focus border ratios (report)
 
 async function runEngine(name, launcher) {
   const browser = await launcher.launch(await launchOptions(name, launcher));
@@ -142,6 +146,16 @@ async function runEngine(name, launcher) {
         if (pageOnly[i] && backdrop !== (theme === 'dark' ? 'black' : 'white')) continue;
         const info = await page.evaluate(([n, t, b]) => window.__contrastSetup(n, t, b, true), [i, theme, backdrop]);
         const tag = `${name} ${theme} ${backdrop} ${info.name}`;
+        if (info.pairs) { // v0.21.0 P8: non-text contrast from computed colours (focus border ≥ 3:1)
+          for (const pr of info.pairs) {
+            checks++;
+            const fg = parseColor(pr.fg); const bg = parseColor(pr.bg);
+            const r = fg && bg ? ratio(composite(fg, bg.rgb), bg.rgb) : 0;
+            focusWorst.set(`${theme} ${info.name} ${pr.what}`, Math.min(focusWorst.get(`${theme} ${info.name} ${pr.what}`) ?? Infinity, r));
+            if (r < FOCUS_MIN) failures.push(`${tag}: ${pr.what} ${r.toFixed(2)}:1 < ${FOCUS_MIN} (${pr.fg} on ${pr.bg})`);
+          }
+          continue;
+        }
         checks++;
         if (info.opacity !== 1) failures.push(`${tag}: opacity ${info.opacity} (faded elements are not allowed to hide contrast)`);
         const { x, y, width, height } = info.rect;
@@ -199,6 +213,7 @@ for (const [name, launcher] of [['chromium', chromium], ['firefox', firefox], ['
 for (const n of notes) console.log(`  ${n}`);
 const report = [...worst.entries()].sort((a, b) => a[1] - b[1]).slice(0, 8).map(([k, v]) => `${k} ${v.toFixed(2)}`);
 console.log(`  lowest label ratios: ${report.join(' · ')}`);
+console.log(`  lowest focus border ratios: ${[...focusWorst.entries()].sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 const hoverReport = [...worst.entries()].filter(([k]) => /:hover|custom/.test(k)).sort((a, b) => a[1] - b[1]).slice(0, 6)
   .map(([k, v]) => `${k} ${v.toFixed(2)}`);
 console.log(`  lowest hover / custom label ratios: ${hoverReport.join(' · ')}`);

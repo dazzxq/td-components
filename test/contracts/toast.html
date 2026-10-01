@@ -1,10 +1,12 @@
 <!-- TdToast contract: the container with ONE toast per template (TdToast._showSingle(message, data-type,
      data-duration) after two frames → data-state="open"). The container id is load-bearing. Every toast (sticky =
-     duration 0 too) carries the named close button. Checked by src/feedback/td-batch3-toast.browser-test.js. -->
+     duration 0 too) carries the named close button (visually hidden until keyboard focus). v0.21.0: no icon node, no
+     glass classes; the screen-reader type prefix .td-toast__type.td-sr-only comes first. Checked by
+     src/feedback/td-batch3-toast.browser-test.js. -->
 <template data-component="td-toast" data-type="info" data-duration="4000">
   <div id="td-toast-container" class="td-toasts">
-    <div class="td-toast td-toast--info td-glass-surface td-glass-surface--strong" role="status" aria-live="polite" data-state="open">
-      <span class="td-toast__icon" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="info" aria-hidden="true"></svg></span>
+    <div class="td-toast td-toast--info" role="status" aria-live="polite" data-state="open">
+      <span class="td-toast__type td-sr-only"></span>
       <span class="td-toast__message">Nội dung</span>
       <button type="button" class="td-toast__close" aria-label="Đóng"><svg class="td-icon td-icon--s" data-icon="close" aria-hidden="true"></svg></button>
     </div>
@@ -12,8 +14,8 @@
 </template>
 <template data-component="td-toast" data-type="success" data-duration="4000">
   <div id="td-toast-container" class="td-toasts">
-    <div class="td-toast td-toast--success td-glass-surface td-glass-surface--strong" role="status" aria-live="polite" data-state="open">
-      <span class="td-toast__icon" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="success" aria-hidden="true"></svg></span>
+    <div class="td-toast td-toast--success" role="status" aria-live="polite" data-state="open">
+      <span class="td-toast__type td-sr-only"></span>
       <span class="td-toast__message">Nội dung</span>
       <button type="button" class="td-toast__close" aria-label="Đóng"><svg class="td-icon td-icon--s" data-icon="close" aria-hidden="true"></svg></button>
     </div>
@@ -21,8 +23,8 @@
 </template>
 <template data-component="td-toast" data-type="warning" data-duration="4000">
   <div id="td-toast-container" class="td-toasts">
-    <div class="td-toast td-toast--warning td-glass-surface td-glass-surface--strong" role="status" aria-live="polite" data-state="open">
-      <span class="td-toast__icon" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="warning" aria-hidden="true"></svg></span>
+    <div class="td-toast td-toast--warning" role="status" aria-live="polite" data-state="open">
+      <span class="td-toast__type td-sr-only"></span>
       <span class="td-toast__message">Nội dung</span>
       <button type="button" class="td-toast__close" aria-label="Đóng"><svg class="td-icon td-icon--s" data-icon="close" aria-hidden="true"></svg></button>
     </div>
@@ -30,8 +32,8 @@
 </template>
 <template data-component="td-toast" data-type="error" data-duration="5000">
   <div id="td-toast-container" class="td-toasts">
-    <div class="td-toast td-toast--error td-glass-surface td-glass-surface--strong" role="alert" aria-live="assertive" data-state="open">
-      <span class="td-toast__icon" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="error" aria-hidden="true"></svg></span>
+    <div class="td-toast td-toast--error" role="alert" aria-live="assertive" data-state="open">
+      <span class="td-toast__type td-sr-only"></span>
       <span class="td-toast__message">Nội dung</span>
       <button type="button" class="td-toast__close" aria-label="Đóng"><svg class="td-icon td-icon--s" data-icon="close" aria-hidden="true"></svg></button>
     </div>
@@ -39,8 +41,8 @@
 </template>
 <template data-component="td-toast" data-type="info" data-duration="0">
   <div id="td-toast-container" class="td-toasts">
-    <div class="td-toast td-toast--info td-glass-surface td-glass-surface--strong" role="status" aria-live="polite" data-state="open">
-      <span class="td-toast__icon" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="info" aria-hidden="true"></svg></span>
+    <div class="td-toast td-toast--info" role="status" aria-live="polite" data-state="open">
+      <span class="td-toast__type td-sr-only"></span>
       <span class="td-toast__message">Nội dung</span>
       <button type="button" class="td-toast__close" aria-label="Đóng"><svg class="td-icon td-icon--s" data-icon="close" aria-hidden="true"></svg></button>
     </div>
