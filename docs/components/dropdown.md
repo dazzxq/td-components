@@ -398,7 +398,7 @@ Token riêng của dropdown (khai báo trong `@layer td.tokens`, file `component
 | `--td-dropdown-search-bg` | `var(--td-color-hover)` (dark: `rgb(255 255 255 / 6%)`) | Nền ô tìm kiếm. |
 | `--td-dropdown-search-border` | `var(--td-control-border-soft)` | Viền ô tìm kiếm. |
 | `--td-dropdown-hairline` | `var(--td-color-border)` | Đường kẻ dưới ô tìm kiếm và trên dòng "Thêm mới". |
-| `--td-dropdown-create-fg` | accent đậm hơn 18 % (dark: accent pha 45 % trắng) | Màu chữ + icon dòng "Thêm mới" (0.22.0; ≥ 4.7:1 trên nền menu, kể cả khi active). Trình duyệt không có `color-mix()`: `var(--td-accent)`. |
+| `--td-dropdown-create-fg` | accent đậm hơn 18 % (dark: accent pha 45 % trắng) | Màu chữ + icon dòng "Thêm mới" (0.22.0; ≥ 4.7:1 trên nền menu, kể cả khi active). Trình duyệt không có `color-mix()`: màu cố định `--td-dropdown-create-fg-fallback` = `#1d4ed8` (dark `#93c5fd`), cũng đạt ≥ 4.7:1. |
 
 Nút trigger dùng chung token field (`field.css`): `--td-field-bg`, `--td-field-fg`, `--td-field-border`,
 `--td-field-border-hover`, `--td-field-focus`, `--td-field-error`, `--td-field-placeholder`, `--td-field-radius-md`,
