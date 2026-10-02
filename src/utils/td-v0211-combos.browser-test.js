@@ -728,3 +728,61 @@ describe('v0.21.1 review round 1 — promotion state / focus / capped layers', (
     expect(counter.textContent, 'lightbox keys work again').to.not.equal(before);
   });
 });
+
+describe('v0.21.1 review round 2 — out-of-order modal / lightbox teardown', () => {
+  /** page button → modal A → lightbox (from a button in A) → modal B (from a lightbox button) */
+  async function chain() {
+    const page = document.createElement('button');
+    page.textContent = 'page opener';
+    document.body.appendChild(page);
+    extra.push(() => page.remove());
+    page.focus();
+    const b = document.createElement('button');
+    b.textContent = 'xem ảnh';
+    const idA = TdModal.show({ title: 'A', body: b });
+    await wait(400);
+    b.focus();
+    TdLightbox.open([IMG, IMG]);
+    await wait(500);
+    const ov = document.querySelector('.td-lightbox');
+    ov.querySelector('[data-action="next"]').focus();
+    const idB = TdModal.show({ title: 'B', body: '<input>' });
+    await wait(400);
+    const rootA = document.getElementById(idA);
+    const rootB = document.getElementById(idB);
+    expect(rootB.contains(document.activeElement)).to.equal(true);
+    return { page, idA, idB, rootA, rootB };
+  }
+
+  function expectSaneFocus(closedRoots, page) {
+    const a = document.activeElement;
+    expect(closedRoots.some((r) => r.contains(a)), 'not inside a closed dialog').to.equal(false);
+    expect(!!a && a.isConnected, 'connected').to.equal(true);
+    expect(!!a.closest('[inert]'), 'not inert').to.equal(false);
+    expect(a === page, 'back on the page opener (nothing else is left)').to.equal(true);
+  }
+
+  it('close A, then the lightbox, then B → focus on the page opener (no self hand-off)', async () => {
+    const { page, idA, idB, rootA, rootB } = await chain();
+    TdModal.closeById(idA);
+    await wait(50);
+    TdLightbox.close();
+    await wait(50);
+    expect(rootB.contains(document.activeElement), 'focus stayed in B').to.equal(true);
+    TdModal.closeById(idB);
+    await wait(50);
+    expectSaneFocus([rootA, rootB], page);
+  });
+
+  it('close the lightbox, then A, then B → focus on the page opener', async () => {
+    const { page, idA, idB, rootA, rootB } = await chain();
+    TdLightbox.close();
+    await wait(50);
+    TdModal.closeById(idA);
+    await wait(50);
+    expect(rootB.contains(document.activeElement), 'focus stayed in B').to.equal(true);
+    TdModal.closeById(idB);
+    await wait(50);
+    expectSaneFocus([rootA, rootB], page);
+  });
+});
