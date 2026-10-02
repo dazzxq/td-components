@@ -7,6 +7,9 @@
  *   the `--td-z-*` token set (override the set, not one layer).
  * - `instance.zIndex / backdropOpacity / stackIndex` are still computed (read-only compatibility); the backdrop
  *   opacity is no longer written (the scrim is `--td-glass-scrim`).
+ *   v0.21.1: a modal opened over a lightbox that was itself opened from a modal is promoted above it by the layer
+ *   registry (utils/layers.js restackBand: z = computed z of the lightbox + 1, CSSOM); _sync() re-applies that after
+ *   writing the BASE_Z_INDEX values.
  * - Every non-top root carries `[data-covered]` (a state hook; since v0.20.0 every dialog is opaque anyway).
  * - One page scroll lease (utils/scroll-lock.js) while the stack is non-empty.
  * - `closeAll()` delegates to each instance's `close()` (TdModal instances), so focus, layer leases and `onClose`
@@ -14,7 +17,7 @@
  */
 
 import { lockScroll } from '../utils/scroll-lock.js';
-import { LAYERS } from '../utils/layers.js';
+import { LAYERS, restackBand } from '../utils/layers.js';
 
 export class TdModalStackManager {
   static stack = [];
@@ -63,6 +66,9 @@ export class TdModalStackManager {
       if (i < last) el.setAttribute('data-covered', '');
       else el.removeAttribute('data-covered');
     });
+    // v0.21.1 F4: a modal promoted over a lightbox (itself opened from a modal) keeps max(stack z, that lightbox's
+    // z + 1) — the inline z written above must not drop it under the lightbox when a lower modal is removed.
+    if (base !== null) restackBand();
   }
 
   /**

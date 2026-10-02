@@ -6,16 +6,137 @@
 const EDGE = 8;
 
 /**
- * Whether a reference rect is effectively hidden: not rendered, or scrolled out of the viewport (8 px edge).
+ * The visible box of `el` inside its clipping ancestors (v0.21.1): the viewport intersected with the padding box of
+ * every ancestor whose `overflow` clips (hidden / auto / scroll / clip — e.g. a modal body that scrolls). Stops at a
+ * `position: fixed` ancestor (nothing above it clips it) and never uses <body> / <html> (scroll lock sets their
+ * overflow; the viewport already covers them).
+ * @param {Element} el
+ * @returns {{ top: number, bottom: number, left: number, right: number }}
+ */
+export function clippingRect(el) {
+  const clip = { top: 0, left: 0, bottom: window.innerHeight, right: window.innerWidth };
+  const root = document.documentElement;
+  for (let node = el.parentElement; node && node !== document.body && node !== root; node = node.parentElement) {
+    const cs = getComputedStyle(node);
+    if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') {
+      const r = node.getBoundingClientRect();
+      const top = r.top + node.clientTop;
+      const left = r.left + node.clientLeft;
+      if (cs.overflowY !== 'visible') {
+        clip.top = Math.max(clip.top, top);
+        clip.bottom = Math.min(clip.bottom, top + node.clientHeight);
+      }
+      if (cs.overflowX !== 'visible') {
+        clip.left = Math.max(clip.left, left);
+        clip.right = Math.min(clip.right, left + node.clientWidth);
+      }
+    }
+    if (cs.position === 'fixed') break;
+  }
+  return clip;
+}
+
+/**
+ * Whether a reference rect is effectively hidden: not rendered, or scrolled out of the viewport (8 px edge). With
+ * `el` (the reference element, v0.21.1) it is also hidden once its CENTRE leaves the visible box of its clipping
+ * ancestors — a trigger scrolled under a modal's header / footer inside the modal body: a panel anchored to it would
+ * otherwise float over that chrome.
  * @param {DOMRect|{top:number,bottom:number,left:number,right:number,width:number,height:number}} rect
+ * @param {Element} [el]
  * @returns {boolean}
  */
-export function isReferenceHidden(rect) {
+export function isReferenceHidden(rect, el) {
   if (!rect) return true;
   const notRendered = rect.width === 0 && rect.height === 0;
   const offVertical = rect.bottom < EDGE || rect.top > window.innerHeight - EDGE;
   const offHorizontal = rect.right < EDGE || rect.left > window.innerWidth - EDGE;
-  return notRendered || offVertical || offHorizontal;
+  if (notRendered || offVertical || offHorizontal) return true;
+  if (!el || typeof el.getBoundingClientRect !== 'function') return false;
+  const c = clippingRect(el);
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  return cy < c.top || cy > c.bottom || cx < c.left || cx > c.right;
+}
+
+/** @type {Map<Element, Set<() => void>>} watched references → callbacks (one shared observer for all open popups) */
+const disconnectWatchers = new Map();
+let disconnectObserver = null;
+
+function onDomMutation() {
+  for (const [el, fns] of [...disconnectWatchers]) {
+    if (el.isConnected) continue;
+    for (const fn of [...fns]) fn(); // a callback usually closes its popup → unregisters itself
+  }
+}
+
+/**
+ * Call `fn` when `el` leaves the DOM. One document-wide MutationObserver (childList + subtree) is shared by every
+ * watcher and disconnected when the last one stops.
+ * @param {Element} el
+ * @param {() => void} fn
+ * @returns {() => void} stop
+ */
+function watchDisconnect(el, fn) {
+  if (typeof MutationObserver === 'undefined') return () => {};
+  let fns = disconnectWatchers.get(el);
+  if (!fns) disconnectWatchers.set(el, (fns = new Set()));
+  fns.add(fn);
+  if (!disconnectObserver) {
+    disconnectObserver = new MutationObserver(onDomMutation);
+    disconnectObserver.observe(document, { childList: true, subtree: true });
+  }
+  return () => {
+    const set = disconnectWatchers.get(el);
+    if (set) {
+      set.delete(fn);
+      if (!set.size) disconnectWatchers.delete(el);
+    }
+    if (!disconnectWatchers.size && disconnectObserver) {
+      disconnectObserver.disconnect();
+      disconnectObserver = null;
+    }
+  };
+}
+
+/**
+ * Follow the lifetime of an open popup's reference element (v0.21.1) — things a scroll / resize listener never sees:
+ * - ResizeObserver on `el`: it was resized or stopped rendering (`display: none` → 0×0: tab switched, accordion
+ *   closed, an ancestor hidden);
+ * - MutationObserver (document, childList + subtree), only to notice `el` leaving the DOM (`!el.isConnected`);
+ * - `transitionend` / `animationend` of an ANCESTOR of `el` (capture, document): e.g. a modal whose entry transform
+ *   (translateY + scale) just finished — the popup was placed against the moving dialog.
+ * `onChange` is the popup's reposition (which already closes once isReferenceHidden() / the reference is gone).
+ * @param {Element} el
+ * @param {() => void} onChange
+ * @returns {() => void} stop (idempotent)
+ */
+export function watchReference(el, onChange) {
+  if (typeof document === 'undefined' || !el) return () => {};
+  let stopped = false;
+  const fire = () => {
+    if (stopped) return;
+    try { onChange(); } catch (err) { console.error(err); }
+  };
+  let ro = null;
+  if (typeof ResizeObserver !== 'undefined') {
+    ro = new ResizeObserver(fire); // the initial notification is one harmless reposition
+    ro.observe(el);
+  }
+  const detach = watchDisconnect(el, fire);
+  const onEnd = (e) => {
+    const t = e.target;
+    if (t instanceof Node && t !== el && t.contains(el)) fire();
+  };
+  document.addEventListener('transitionend', onEnd, true);
+  document.addEventListener('animationend', onEnd, true);
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    if (ro) ro.disconnect();
+    detach();
+    document.removeEventListener('transitionend', onEnd, true);
+    document.removeEventListener('animationend', onEnd, true);
+  };
 }
 
 /**

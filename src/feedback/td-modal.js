@@ -43,7 +43,10 @@
  */
 
 import { TdModalStackManager } from './td-modal-stack.js';
-import { LAYERS, register as registerLayer, trapTab, focusablesIn, setFocusHandoff, followFocusHandoff } from '../utils/layers.js';
+import {
+  LAYERS, register as registerLayer, trapTab, focusablesIn, setFocusHandoff, followFocusHandoff, floatingContains,
+  coverFloatingIn, restoreFocus,
+} from '../utils/layers.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import { transitionEndMs } from '../utils/transition.js';
 
@@ -251,6 +254,9 @@ export class TdModal {
         return true;
       },
       onTab: (e) => trapTab(e, dialog, MODAL_LAYER),
+      // v0.21.1 F4: opened over a lightbox that sits above the modals (lightbox opened from a modal) → promoted above
+      // it; under TdModalStackManager.BASE_Z_INDEX its normal z is the stack's (kept in sync by _sync()).
+      baseZ: () => (TdModalStackManager._zBase() !== null ? instance.zIndex : null),
     });
     TdModal._focusTrapHandlers.set(id, { el: root, layer: instance.layer });
     // Focus moves into the dialog immediately (the opener is inert now); the initial target is chosen once the
@@ -341,7 +347,12 @@ export class TdModal {
     const root = inst.element;
     const wasTop = TdModalStackManager.getTop() === inst;
     const active = document.activeElement;
-    const focusWasHere = !active || active === document.body || root.contains(active);
+    // v0.21.1 F2b: focus in a popup anchored in this dialog (the portaled search of its dropdown) counts as "here"
+    const focusWasHere = !active || active === document.body || root.contains(active) || floatingContains(root, active);
+    // …and those popups close now, not after the exit transition (no focus hand-back to their leaving triggers)
+    coverFloatingIn(root);
+    // the open layer this dialog was promoted above (a lightbox opened from a lower modal) — read before release
+    const over = inst.layer ? inst.layer.promotedOver : null;
 
     // Closing state first, and `inert` on the DIALOG (not the body child, whose inert inert-lock owns and may lift
     // when another lease is released) so the exiting modal is never interactive again.
@@ -353,27 +364,47 @@ export class TdModal {
 
     // Focus (D10): resolved when this dialog was on top; moved only if focus was in it (never steal it from a higher
     // layer — that layer follows the hand-off when it releases, e.g. the loading overlay).
+    // The outward opener: walk out of dialogs that are gone, then through closed overlays' hand-offs (an opener inside
+    // a closed lightbox → that lightbox's opener). Never a node of this closing dialog (v0.21.1 review round 2: an
+    // out-of-order teardown could otherwise hand focus back to ourselves).
+    let opener = inst.opener;
+    let owner = inst.openerOwner;
+    while (opener && owner && owner.closed) { // opener sat in a dialog that is gone → that dialog's opener
+      opener = owner.opener;
+      owner = owner.openerOwner;
+    }
+    let resolved = followFocusHandoff(opener);
+    if (resolved && root.contains(resolved)) resolved = null;
     if (wasTop) {
       const newTop = TdModalStackManager.getTop();
-      let opener = inst.opener;
-      let owner = inst.openerOwner;
-      while (opener && owner && owner.closed) { // opener sat in a dialog that is gone → that dialog's opener
-        opener = owner.opener;
-        owner = owner.openerOwner;
-      }
-      const resolved = followFocusHandoff(opener); // an opener inside a closed lightbox → that lightbox's opener
-      const openerOk = resolved && resolved.isConnected && (!newTop || newTop.element.contains(resolved));
-      const target = openerOk ? resolved : (newTop ? newTop.dialog : null);
-      setFocusHandoff(root, target);
+      // v0.21.1: promoted over a still-open layer (modal → lightbox → this modal) → that layer is the one below, not
+      // the previous modal (inert under it): the opener inside it, else that layer itself; then the new top dialog.
+      const below = over ? over : (newTop ? newTop.element : null);
+      const openerOk = !!resolved && resolved.isConnected && (!below || below.contains(resolved));
+      const overTarget = over
+        ? /** @type {HTMLElement|null} */ (over.querySelector('[role="dialog"], [role="alertdialog"]'))
+          || (over instanceof HTMLElement ? over : null)
+        : null;
+      const chain = [openerOk ? resolved : null, overTarget, newTop ? newTop.dialog : null]
+        .filter((t) => t instanceof HTMLElement && !root.contains(t));
+      setFocusHandoff(root, chain[0] || null);
       if (focusWasHere) {
-        if (target) {
-          try { target.focus({ preventScroll: true }); } catch { /* ignore */ }
-        } else if (root.contains(document.activeElement) && document.activeElement instanceof HTMLElement) {
+        let moved = false;
+        for (const t of chain) { // a target that cannot take focus (inert / hidden) → the next one down
+          try { t.focus({ preventScroll: true }); } catch { /* ignore */ }
+          if (document.activeElement === t) { moved = true; break; }
+        }
+        // Every explicit target failed (e.g. the opener was removed and an UNPROMOTED lightbox is below): the top
+        // registered boundary (its dialog / element) — restoreFocus never returns into this dialog (released above).
+        if (!moved) moved = restoreFocus(null) && !root.contains(document.activeElement);
+        if (!moved && root.contains(document.activeElement) && document.activeElement instanceof HTMLElement) {
           document.activeElement.blur();
         }
       }
     } else {
-      setFocusHandoff(root, TdModalStackManager.getTop() ? TdModalStackManager.getTop().dialog : null);
+      // Not on top (closed under a higher dialog / lightbox): whoever later resolves through this dialog follows its
+      // own outward opener chain, not the current top dialog (which may be the very dialog resolving it).
+      setFocusHandoff(root, resolved);
     }
 
     if (typeof inst.onClose === 'function') {

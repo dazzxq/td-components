@@ -2,6 +2,31 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.21.1
+
+Sửa lỗi khi kết hợp component (popup / modal / lightbox) — plan `docs/internal/plans/v0.21.1-combination-fixes.md`
+(Codex plan-review APPROVE 3 vòng; audit bằng probe test).
+
+### Fixed
+
+- Dropdown / chip-input / menu / tooltip / hovercard trong khung cuộn (thân modal cuộn, bảng…) **đóng khi trigger bị cuộn
+  khuất** khỏi khung, không còn nổi đè lên header / footer của modal.
+- Popup đang mở bị **modal mở sau phủ lên** (mở bằng code: timer, confirm async, hết phiên) → popup đóng, không còn bấm
+  được xuyên qua modal mới; focus vào modal mới; Escape thuộc modal mới. Tooltip đang hiện do hover ẩn khi bất kỳ lớp
+  chặn nào mở.
+- Modal / lightbox **đóng** → popup con (anchor nằm trong) đóng ngay, focus về opener (không rơi về `<body>`).
+- **Lightbox mở từ trong modal** nằm trên modal, dùng được (trước: nằm dưới, bị inert). Thứ tự chồng modal / lightbox theo
+  thứ tự mở, z-index thị giác theo token `--td-z-*` site đặt (và `TdModalStackManager.BASE_Z_INDEX`).
+- TdMenu **còn mở khi anchor bị gỡ / ẩn** → đóng; chọn mục không trả focus về anchor đã mất.
+- Menu mở từ nút **trong hovercard** không làm hovercard đóng / mất focus; hovercard đóng thì đóng menu con trước.
+- Popup **đóng khi trigger bị ẩn** không qua cuộn (đổi tab, accordion, `display:none`).
+- Popup mở lúc modal đang chạy hiệu ứng vào **không còn lệch chỗ** (đặt lại vị trí khi transition kết thúc).
+- Tooltip hiện do hover **không cướp Escape** của dropdown / menu đang mở.
+
+### Changed
+
+- `TdMenu` `onClose(reason)` có thêm giá trị `'covered'` (bị lớp chặn mở sau phủ).
+
 ## 0.21.0
 
 Màu pastel, primary + tooltip đen, shadow rõ hơn, toast kiểu dcms, modal có animation, wheel datetime cuộn khi mở,

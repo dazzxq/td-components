@@ -538,9 +538,10 @@ Nút được chèn **trước** nút đóng (nút đóng luôn cuối), mang `d
 
 Trả `true` → lightbox **không** xử lý phím (mũi tên, `F`, `Escape`, `Tab`) vì một lớp khác đang ở trên.
 
-Mặc định: `true` khi có một lớp bàn phím của kit nằm trên lightbox (modal, menu, hovercard, loading…) **hoặc** stack
-`TdModal` không rỗng. Site có overlay riêng (không phải của kit) thì truyền hàm của mình. Lưu ý: hàm của bạn **thay
-thế** mặc định (hàm mặc định không được export), nên hãy tự gộp các kiểm tra của kit:
+Mặc định: `true` khi có một lớp bàn phím của kit nằm **trên** lightbox (modal, menu, hovercard, loading…). Từ 0.21.1
+modal nằm **dưới** (lightbox được mở từ trong modal) không còn chặn phím của lightbox. Site có overlay riêng (không
+phải của kit) thì truyền hàm của mình. Lưu ý: hàm của bạn **thay thế** mặc định (hàm mặc định không được export), nên
+hãy tự gộp các kiểm tra của kit (ví dụ dưới chặn khi có bất kỳ modal nào — đừng dùng nếu bạn mở lightbox từ modal):
 
 ```js
 import { TdModalStackManager } from '@dazzxq/td-components/modal-stack';
@@ -686,6 +687,11 @@ Xem [Hướng dẫn bảo mật](../guides/security.md).
 
 ## Lưu ý & lỗi thường gặp
 
+- **Mở từ trong modal (0.21.1):** lightbox nằm trên modal (trước đây nằm dưới và bị inert), phím mũi tên / Escape
+  / Tab chạy bình thường; đóng → focus về nút đã mở nó trong modal. Modal mở từ lightbox nằm trên lightbox.
+  `isForeignLayerOpen` mặc định chỉ coi là "lớp lạ" các lớp nằm **trên** lightbox (không còn chặn chỉ vì có modal
+  đang mở bên dưới).
+- **Popup trong lightbox (0.21.1):** dropdown / menu mở từ panel hay toolbar đóng ngay khi lightbox đóng.
 - **`open()` trả `null`**: mọi `src` bị `isAllowedUrl` từ chối — hay gặp nhất là ảnh `http://` trên trang `https://`,
   hoặc `blob:` / `data:` chưa được cho phép.
 - **Không thấy nút tải**: ảnh khác origin (mặc định chỉ ảnh cùng origin). Dùng hook `download` trỏ tới proxy.

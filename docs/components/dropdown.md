@@ -448,6 +448,13 @@ Xem [Bảo mật](../guides/security.md).
 
 ## Lưu ý & lỗi thường gặp
 
+- **Menu đi theo "chủ" của nó (0.21.1).** Popup tự đóng khi trigger bị khung cuộn cắt, bị ẩn mà không cần
+  cuộn (chuyển tab, accordion đóng, `display: none`), bị gỡ khỏi DOM, hoặc khi một modal / lightbox **mới** mở đè lên
+  bằng code (timer, hết phiên…) — focus đi vào lớp mới, popup không còn bấm xuyên được. Modal / lightbox chứa trigger
+  đóng → popup đóng ngay (không đợi hiệu ứng thoát). Mở popup lúc modal đang chạy hiệu ứng vào (vd. trong `onShow`)
+  → vị trí được đặt lại khi hiệu ứng kết thúc.
+- **Escape thuộc về popup, không thuộc tooltip hover (0.21.1).** Đang trỏ chuột lên một nút có tooltip rồi mở popup
+  bằng bàn phím: Escape đầu tiên đóng popup, lần sau mới đóng tooltip.
 - **Chỉ gán `options` bằng JS.** Viết `<td-dropdown options='[…]'>` không có tác dụng.
 - **`el.value` là lựa chọn hiện tại từ 0.17.0** (trước đó là attribute `value` ban đầu). Attribute `value` vẫn chỉ là
   giá trị ban đầu, người dùng chọn không cập nhật attribute; code cũ đọc `el.value` để lấy giá trị ban đầu → dùng

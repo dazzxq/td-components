@@ -1,5 +1,5 @@
 import { fold } from '../utils/typeahead.js';
-import { placeFloating, isReferenceHidden } from '../utils/floating.js';
+import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
 import { LAYERS, register as registerLayer } from '../utils/layers.js';
 import { TdFormElement } from '../base/td-form-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
@@ -1267,6 +1267,9 @@ export class TdChipInput extends TdFormElement {
         this.close();
         return 'pass'; // focus never lives in the popup: the native Tab (or a lower trap) moves on
       },
+      // v0.21.1: a newer modal / lightbox (or the closing dialog this field lives in) covers it → close
+      anchor: this,
+      onCovered: () => this.close(),
     });
     this._addGlobalListeners();
   }
@@ -1306,6 +1309,10 @@ export class TdChipInput extends TdFormElement {
     document.addEventListener('pointerdown', this._boundPointerOutside, true);
     window.addEventListener('resize', this._boundOnResize);
     window.addEventListener('scroll', this._boundOnScroll, true);
+    // v0.21.1: field hidden without a scroll (tab switch), removed, or moved by an entry transition
+    const box = this.querySelector('.td-chip-input__box');
+    if (this._unwatchRef) this._unwatchRef();
+    this._unwatchRef = box ? watchReference(box, () => this._updatePosition()) : null;
   }
 
   /** @private */
@@ -1313,6 +1320,10 @@ export class TdChipInput extends TdFormElement {
     document.removeEventListener('pointerdown', this._boundPointerOutside, true);
     window.removeEventListener('resize', this._boundOnResize);
     window.removeEventListener('scroll', this._boundOnScroll, true);
+    if (this._unwatchRef) {
+      this._unwatchRef();
+      this._unwatchRef = null;
+    }
   }
 
   /** @private reposition; close once the field box is scrolled out of view / not rendered */
@@ -1320,7 +1331,7 @@ export class TdChipInput extends TdFormElement {
     if (!this._isOpen || !this._menuElement) return;
     const box = this.querySelector('.td-chip-input__box');
     if (!box) return;
-    if (isReferenceHidden(box.getBoundingClientRect())) {
+    if (isReferenceHidden(box.getBoundingClientRect(), box)) {
       this.close();
       return;
     }

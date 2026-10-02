@@ -1,5 +1,5 @@
 import { LAYERS, register as registerLayer } from '../utils/layers.js';
-import { placeFloating, isReferenceHidden } from '../utils/floating.js';
+import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
 import { safeColor } from '../utils/css-safe.js';
 
 /**
@@ -327,13 +327,32 @@ export class TdTooltip {
         if (this.currentElement !== element) return; // reference hidden → position() hid it
 
         this._link(element, content);
+        if (this._layer && this._layerAnchor !== element) { // switched trigger: re-register with the new anchor
+            this._layer.release();
+            this._layer = null;
+        }
         if (!this._layer) {
-            this._layer = registerLayer({
+            const layer = registerLayer({
                 layer: LAYERS.tooltip,
                 element: tip,
                 onEscape: () => { this.hide(); return true; },
+                // v0.21.1 Escape hand-off: a tooltip that merely shows on hover above an open dropdown / menu lets the
+                // popup take Escape; it takes it when it is the newest boundary or its trigger has focus (WCAG 1.4.13).
+                wantsEscape: () => layer.isNewest()
+                    || (!!this.currentElement && this.currentElement.contains(document.activeElement)),
+                // v0.21.1: hidden at once under ANY newer blocking layer (a hover tooltip has no blur / inert path)
+                anchor: element,
+                onCovered: () => this.hide(),
+                coverAlways: true,
             });
+            this._layer = layer;
+            this._layerAnchor = element;
         }
+        if (this._unwatchRef) this._unwatchRef();
+        // trigger hidden without a scroll (display:none, tab switch), removed, or moved by an entry transition
+        this._unwatchRef = watchReference(element, () => {
+            if (this.isVisible && this.currentElement === element) this.position(element);
+        });
         this.isVisible = true;
         requestAnimationFrame(() => {
             if (this.currentElement === element && this.isVisible) tip.setAttribute('data-state', 'open');
@@ -361,7 +380,8 @@ export class TdTooltip {
             }
         }
         this._unlink();
-        if (this._layer) { this._layer.release(); this._layer = null; }
+        if (this._layer) { this._layer.release(); this._layer = null; this._layerAnchor = null; }
+        if (this._unwatchRef) { this._unwatchRef(); this._unwatchRef = null; }
         this.isVisible = false;
         this.currentElement = null;
         this._pointerIn = false;
@@ -380,7 +400,7 @@ export class TdTooltip {
         const tip = this.tooltip;
         if (!tip) return;
         const rect = element.getBoundingClientRect();
-        if (!element.isConnected || isReferenceHidden(rect)) { this.hide(); return; }
+        if (!element.isConnected || isReferenceHidden(rect, element)) { this.hide(); return; }
         const s = tip.style;
         s.setProperty('left', '0px'); // measure at natural width (fixed + left:0 → full shrink-to-fit room)
         s.setProperty('top', '0px');

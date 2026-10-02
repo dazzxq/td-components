@@ -76,6 +76,11 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` Hardening sau security review: `TdHovercard.sanitize` + `TrustedHTML`, fetch giới hạn (LRU 50, 256 KB, 10 s,
   `no-store`, huỷ khi đóng), `clearCache()` bắt buộc khi đổi phiên đăng nhập
 
+## Done — v0.21.1 sửa lỗi kết hợp component
+
+- `done` Popup theo vòng đời + lớp của trigger (cuộn khuất trong khung, ẩn, gỡ, bị modal sau phủ, hovercard → menu con,
+  hiệu ứng vào của modal), lightbox mở từ modal nằm trên, chuyển Escape đúng popup
+
 ## Done — v0.21.0 pastel + toast dcms + modal animation
 
 - `done` Pastel cho nút ngữ nghĩa / toast / badge, primary + tooltip đen, shadow hai lớp, toast kiểu dcms, modal

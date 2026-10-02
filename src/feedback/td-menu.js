@@ -67,10 +67,12 @@
  *   checkbox → toggles in place, the menu stays open. Links navigate natively and close the menu.
  * - Dismiss: outside pointerdown closes (the press continues — D5); the trigger scrolled out of view / removed closes
  *   (isReferenceHidden); scroll/resize reposition (placeFloating, D7: width auto, align end, side bottom, flips).
- * - onClose(reason): 'select' | 'escape' | 'tab' | 'outside' | 'hidden' | 'api'.
+ * - onClose(reason): 'select' | 'escape' | 'tab' | 'outside' | 'hidden' | 'api' | 'covered' (v0.21.1: a newer modal /
+ *   lightbox opened over it, or the dialog / hovercard holding its anchor closed). The anchor hidden without a scroll
+ *   (tab switch, display:none) or removed from the DOM closes it too ('hidden', watchReference).
  */
-import { LAYERS, register as registerLayer } from '../utils/layers.js';
-import { placeFloating, isReferenceHidden } from '../utils/floating.js';
+import { LAYERS, register as registerLayer, restoreFocus } from '../utils/layers.js';
+import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
 import { nextTypeaheadIndex } from '../utils/typeahead.js';
 import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
 
@@ -389,16 +391,21 @@ function closeSession(s, reason) {
   document.removeEventListener('pointerdown', s.onPointerDown, true);
   window.removeEventListener('scroll', s.onScroll, true);
   window.removeEventListener('resize', s.onResize);
-  s.layer.release();
+  if (s.unwatch) s.unwatch();
+  if (s.layer) s.layer.release();
   if (anchor instanceof HTMLElement) {
     anchor.setAttribute('aria-expanded', 'false');
     if (anchor.getAttribute('aria-controls') === menu.id) anchor.removeAttribute('aria-controls');
   }
   // Focus goes back to the trigger for select / escape (and api/hidden when the menu held focus so it is never
   // stranded on <body>); 'tab' (menu held focus) focuses it only as the starting point of the native Tab, which then
-  // moves on (D4); 'outside' leaves focus to the press.
-  if (reason === 'select' || reason === 'escape' || (reason === 'tab' && hadFocus)) focusEl(anchor);
-  else if (hadFocus && (reason === 'api' || reason === 'hidden') && usableAnchor(anchor)) focusEl(anchor);
+  // moves on (D4); 'outside' leaves focus to the press; 'covered' (a newer modal / lightbox, or the closing dialog
+  // the anchor lives in) leaves it to that layer. An anchor that is gone / hidden / inert is never focused (v0.21.1):
+  // focus follows the hand-off of the layer that closed under it, else the top dialog.
+  const back = reason === 'select' || reason === 'escape' || (reason === 'tab' && hadFocus)
+    || (hadFocus && (reason === 'api' || reason === 'hidden'));
+  if (back && usableAnchor(anchor)) focusEl(anchor);
+  else if (back && hadFocus) restoreFocus(anchor);
   menu.remove();
   if (isFn(s.onClose)) {
     try { s.onClose(reason); } catch (err) { console.error('TdMenu onClose', err); }
@@ -414,7 +421,7 @@ function place(s) {
 
 function reposition(s) {
   if (s.closed) return;
-  if (!s.anchor.isConnected || isReferenceHidden(s.anchor.getBoundingClientRect())) {
+  if (!s.anchor.isConnected || isReferenceHidden(s.anchor.getBoundingClientRect(), s.anchor)) {
     closeSession(s, 'hidden');
     return;
   }
@@ -625,7 +632,10 @@ export class TdMenu {
       onEscape: () => { closeSession(s, 'escape'); return true; },
       // D4: close; the trigger (re-focused) is where the native Tab / a lower focus trap continues from.
       onTab: () => { closeSession(s, 'tab'); return 'pass'; },
+      anchor, // v0.21.1: covered by a newer modal / lightbox, or by the closing dialog / hovercard it lives in
+      onCovered: () => closeSession(s, 'covered'),
     });
+    s.unwatch = watchReference(anchor, () => reposition(s)); // hidden without a scroll, removed, entry transition
     document.addEventListener('pointerdown', s.onPointerDown, true);
     window.addEventListener('scroll', s.onScroll, true);
     window.addEventListener('resize', s.onResize);

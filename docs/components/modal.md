@@ -452,6 +452,13 @@ escape theo ngữ cảnh trước (xem [hướng dẫn bảo mật](../guides/se
 
 ## Lưu ý & lỗi thường gặp
 
+- **Popup trong modal (0.21.1):** modal mới mở bằng code (timer, hết phiên…) đóng mọi dropdown / menu / hovercard
+  / tooltip đang mở của lớp dưới — không còn popup nổi trên modal mới, focus và Escape thuộc modal mới. Modal đóng → các
+  popup trong nó đóng ngay; focus đang ở ô tìm kiếm của dropdown vẫn được trả về opener của modal.
+- **Lightbox mở từ trong modal (0.21.1)** nằm trên modal và dùng được (bàn phím, focus); đóng → modal dùng lại bình
+  thường. Modal mở từ lightbox đó lại nằm trên lightbox. Lớp mở sau thắng (z-index CSSOM = z-index thực của lớp dưới +
+  1, theo đúng token `--td-z-*` site đã đổi và `TdModalStackManager.BASE_Z_INDEX`); loading / toast / tooltip / popup
+  vẫn ở trên.
 - **Node truyền vào `body` bị "chuyển" vào modal và bị xoá cùng modal khi đóng.** Nếu bạn lấy một phần tử đang có trên
   trang (`document.querySelector('#form')`), nó sẽ biến mất khỏi trang sau khi đóng. Hãy tạo node mới hoặc clone từ
   `<template>`.

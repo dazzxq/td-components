@@ -1,5 +1,5 @@
 import { fold, nextTypeaheadIndex } from '../utils/typeahead.js';
-import { placeFloating, isReferenceHidden } from '../utils/floating.js';
+import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
 import { LAYERS, register as registerLayer } from '../utils/layers.js';
 import { TdFormElement } from '../base/td-form-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
@@ -1031,6 +1031,9 @@ export class TdDropdown extends TdFormElement {
       keyboard: 'boundary',
       onEscape: () => this._onLayerEscape(),
       onTab: (e) => this._onLayerTab(e),
+      // v0.21.1: a newer modal / lightbox (or the closing dialog this dropdown lives in) covers it → close, no focus
+      anchor: this,
+      onCovered: () => this._closeCovered(),
     });
 
     const mode = opts.active || 'selected';
@@ -1056,6 +1059,12 @@ export class TdDropdown extends TdFormElement {
     this._addGlobalListeners();
   }
 
+  /** @private covered by a newer blocking layer: close without handing focus to the (inert / leaving) trigger */
+  _closeCovered() {
+    this._noFocusReturn = true;
+    try { this.close(); } finally { this._noFocusReturn = false; }
+  }
+
   close() {
     const trigger = this._trigger();
     const menu = this._menuElement;
@@ -1073,7 +1082,7 @@ export class TdDropdown extends TdFormElement {
       menu.hidden = true;
       menu.setAttribute('data-state', 'closed');
     }
-    if (menuHadFocus && trigger) trigger.focus({ preventScroll: true });
+    if (menuHadFocus && trigger && !this._noFocusReturn) trigger.focus({ preventScroll: true });
     this.querySelector('.td-dropdown')?.setAttribute('data-state', 'closed');
     if (trigger) trigger.setAttribute('aria-expanded', 'false');
 
@@ -1106,12 +1115,20 @@ export class TdDropdown extends TdFormElement {
     document.addEventListener('pointerdown', this._boundPointerOutside, true);
     window.addEventListener('resize', this._boundOnResize);
     window.addEventListener('scroll', this._boundOnScroll, true);
+    // v0.21.1: trigger hidden without a scroll (tab switch), removed, or moved by an entry transition
+    const trigger = this._trigger();
+    if (this._unwatchRef) this._unwatchRef();
+    this._unwatchRef = trigger ? watchReference(trigger, () => this._updatePosition()) : null;
   }
 
   _removeGlobalListeners() {
     document.removeEventListener('pointerdown', this._boundPointerOutside, true);
     window.removeEventListener('resize', this._boundOnResize);
     window.removeEventListener('scroll', this._boundOnScroll, true);
+    if (this._unwatchRef) {
+      this._unwatchRef();
+      this._unwatchRef = null;
+    }
   }
 
   // --- Position update (RAF-throttled) ---
@@ -1123,7 +1140,7 @@ export class TdDropdown extends TdFormElement {
     const rect = trigger.getBoundingClientRect();
     // Close once the trigger is effectively hidden (scrolled out of the viewport, or
     // no longer rendered) — a menu floating over unrelated content is worse than closing.
-    if (isReferenceHidden(rect)) {
+    if (isReferenceHidden(rect, trigger)) {
       this.close();
       return;
     }

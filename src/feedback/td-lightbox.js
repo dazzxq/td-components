@@ -16,8 +16,8 @@
 import { lockScroll } from '../utils/scroll-lock.js';
 import {
   LAYERS, register as registerLayer, hasActiveAbove, trapTab, setFocusHandoff, clearFocusHandoff, restoreFocus, followFocusHandoff,
+  floatingContains, coverFloatingIn,
 } from '../utils/layers.js';
-import { TdModalStackManager } from './td-modal-stack.js';
 import { TdMenu, sanitizeDownloadName } from './td-menu.js';
 
 const LIGHTBOX_LAYER = LAYERS.lightbox; // --td-z-lightbox
@@ -311,8 +311,13 @@ let extras = new Map();
 let renderToken = 0;
 let zoom = { scale: 1, x: 0, y: 0 };
 
+/**
+ * A keyboard boundary above the viewer — a modal / popup / loading opened over it. v0.21.1: a modal BELOW (the viewer
+ * was opened from it and promoted above it) no longer counts. Decided by the registry order (layer, then opening
+ * order), so a modal opened later at the same capped band layer still counts as above.
+ */
 function isForeignLayerOpenDefault() {
-  return hasActiveAbove(LIGHTBOX_LAYER) || TdModalStackManager.stack.length > 0;
+  return viewer && viewer.layer ? !viewer.layer.isTop() : hasActiveAbove(LIGHTBOX_LAYER);
 }
 
 function ctxOf() {
@@ -1140,7 +1145,9 @@ function closeViewer() {
   v.closed = true;
   v.hist.closed = true;
   const focused = document.activeElement;
-  const focusWasHere = !focused || focused === document.body || ui.overlay.contains(focused);
+  const focusWasHere = !focused || focused === document.body || ui.overlay.contains(focused)
+    || floatingContains(ui.overlay, focused); // v0.21.1 F2b: focus in a popup opened from the viewer (panel dropdown)
+  coverFloatingIn(ui.overlay); // …those popups close now, with the viewer
   // Where focus goes back to, recorded for a higher layer that holds focus now (loading / a modal) — D10 hand-off.
   setFocusHandoff(ui.overlay, followFocusHandoff(v.savedFocus));
 
