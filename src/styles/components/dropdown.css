@@ -48,6 +48,12 @@
 		display: block;
 	}
 
+	/* v0.25.0 safety net (ADR 0012): hand-written host before define → reserve one trigger height (no fake styling) */
+	td-dropdown:not(:defined):not([data-td-ssr]) {
+		display: block;
+		min-height: 2.5rem;
+	}
+
 	.td-dropdown {
 		box-sizing: border-box;
 		display: block;

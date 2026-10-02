@@ -638,6 +638,12 @@
 		display: block;
 	}
 
+	/* v0.25.0 safety net (ADR 0012): hand-written host before define → reserve one field height (no fake styling) */
+	td-input-field:not(:defined):not([data-td-ssr]) {
+		display: block;
+		min-height: 2.5rem;
+	}
+
 	.td-field {
 		--_td-field-h: var(--td-field-h-md);
 		--_td-field-radius: var(--td-field-radius-md);
@@ -965,6 +971,19 @@
 		display: block;
 	}
 
+	/*
+	 * v0.25.0 safety net (ADR 0012): a HAND-WRITTEN host (no data-td-ssr) shows its bare text until the module loads —
+	 * reserve the button height so the upgrade does not push the page. No fake button styling. SSR hosts
+	 * (td_button element mode) already contain the styled control and are never matched.
+	 */
+	td-button:not(:defined):not([data-td-ssr]) {
+		display: inline-block;
+		min-height: 2.5rem;
+	}
+
+	td-button[size="sm"]:not(:defined):not([data-td-ssr]) { min-height: 2rem; }
+	td-button[size="lg"]:not(:defined):not([data-td-ssr]) { min-height: 3rem; }
+
 	.td-btn[hidden] {
 		display: none;
 	}
@@ -1206,6 +1225,12 @@
 		display: inline-block;
 	}
 
+	/* v0.25.0 safety net (ADR 0012): hand-written host before define → reserve the checkbox row height */
+	td-checkbox:not(:defined):not([data-td-ssr]) {
+		display: inline-block;
+		min-height: 1.5rem;
+	}
+
 	.td-checkbox {
 		position: relative;
 		box-sizing: border-box;
@@ -1351,6 +1376,12 @@
 @layer td.component {
 	td-toggle {
 		display: inline-block;
+	}
+
+	/* v0.25.0 safety net (ADR 0012): hand-written host before define → reserve the switch row height */
+	td-toggle:not(:defined):not([data-td-ssr]) {
+		display: inline-block;
+		min-height: 1.5rem;
 	}
 
 	.td-switch {
@@ -3681,6 +3712,12 @@
 @layer td.component {
 	td-dropdown {
 		display: block;
+	}
+
+	/* v0.25.0 safety net (ADR 0012): hand-written host before define → reserve one trigger height (no fake styling) */
+	td-dropdown:not(:defined):not([data-td-ssr]) {
+		display: block;
+		min-height: 2.5rem;
 	}
 
 	.td-dropdown {
@@ -6451,6 +6488,20 @@
 		background-color: var(--td-badge-neutral-bg);
 		border: 1px solid transparent;
 		border-radius: var(--td-badge-radius);
+	}
+
+	/* v0.25.0: optional decorative icon (PHP td_badge `icon`) — 1em, follows the badge ink (currentColor) */
+	.td-badge__icon {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		width: 1em;
+		height: 1em;
+	}
+
+	.td-badge__icon .td-icon {
+		width: 1em;
+		height: 1em;
 	}
 
 	.td-badge--accent { color: var(--td-badge-accent-fg); background-color: var(--td-badge-accent-bg); }

@@ -3,7 +3,7 @@ import '/src/form/td-button.js';
 import { TdToast } from '/src/feedback/td-toast.js';
 import '/src/feedback/td-alert.js';
 import '/src/display/td-media-grid.js';
-import { fillIconSlots } from '/src/icons/td-icon.js';
+import { fillIconSlots, tdIcon } from '/src/icons/td-icon.js';
 
 const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning'];
 const TOASTS = ['success', 'error', 'warning', 'info'];
@@ -28,6 +28,8 @@ for (const state of ['rest', 'disabled', 'loading', 'icon']) CASES.push({ kind: 
 for (const v of ['info', 'success', 'warning', 'danger']) CASES.push({ kind: 'alert', v, state: 'rest', pageOnly: true });
 for (const v of ['neutral', 'accent', 'success', 'warning', 'danger', 'info']) {
   for (const state of ['soft', 'outline', 'stamp']) CASES.push({ kind: 'badge', v, state, pageOnly: true });
+  // v0.25.0: PHP td_badge `icon` — the decorative icon (currentColor) ≥ 3.2:1 on the soft fill, label ≥ 4.7 as before
+  CASES.push({ kind: 'badge', v, state: 'icon', pageOnly: true });
 }
 // v0.21.0: the black tooltip chip (default + start-aligned text) over every backdrop.
 for (const state of ['rest', 'start']) CASES.push({ kind: 'tooltip', v: 'default', state });
@@ -98,10 +100,24 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     parts = { label: el.querySelector('.td-alert__message'), heading: el.querySelector('.td-alert__heading'), icon: el.querySelector('.td-alert__icon'), close: el.querySelector('.td-alert__close') };
   } else if (c.kind === 'badge') {
     el = document.createElement('span');
-    el.className = `td-badge td-badge--${c.v}${c.state === 'soft' ? '' : ` td-badge--${c.state}`}`;
-    el.textContent = 'Đã duyệt';
-    stage.appendChild(el);
-    parts = { label: el };
+    el.className = `td-badge td-badge--${c.v}${c.state === 'soft' || c.state === 'icon' ? '' : ` td-badge--${c.state}`}`;
+    if (c.state === 'icon') {
+      // the exact td_badge('Đã duyệt', ['icon' => 'check']) markup
+      const icon = document.createElement('span');
+      icon.className = 'td-badge__icon';
+      icon.setAttribute('aria-hidden', 'true');
+      icon.appendChild(tdIcon('check', { size: 's' }));
+      const label = document.createElement('span');
+      label.className = 'td-badge__label';
+      label.textContent = 'Đã duyệt';
+      el.append(icon, label);
+      stage.appendChild(el);
+      parts = { label, icon };
+    } else {
+      el.textContent = 'Đã duyệt';
+      stage.appendChild(el);
+      parts = { label: el };
+    }
   } else if (c.kind === 'tooltip') {
     el = document.createElement('div');
     el.className = 'td-tooltip td-glass-surface td-glass-surface--strong';

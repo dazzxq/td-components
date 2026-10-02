@@ -75,6 +75,20 @@
 		border-radius: var(--td-badge-radius);
 	}
 
+	/* v0.25.0: optional decorative icon (PHP td_badge `icon`) — 1em, follows the badge ink (currentColor) */
+	.td-badge__icon {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		width: 1em;
+		height: 1em;
+	}
+
+	.td-badge__icon .td-icon {
+		width: 1em;
+		height: 1em;
+	}
+
 	.td-badge--accent { color: var(--td-badge-accent-fg); background-color: var(--td-badge-accent-bg); }
 	.td-badge--success { color: var(--td-badge-success-fg); background-color: var(--td-badge-success-bg); }
 	.td-badge--warning { color: var(--td-badge-warning-fg); background-color: var(--td-badge-warning-bg); }

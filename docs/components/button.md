@@ -13,7 +13,7 @@ nền xám nhạt có viền mảnh, ghost là nút chữ không nền. Mỗi n�
 | Import | `import '@dazzxq/td-components/button';` (class: `import { TdButton } from '@dazzxq/td-components';`) |
 | Loại | Custom element |
 | Form-associated | không (nhưng nút `<button>` bên trong vẫn submit/reset được form bao quanh, xem [Dùng trong form](#dùng-trong-form)) |
-| Từ phiên bản | 0.1.0 (token-native từ 0.7.0, Liquid Glass 0.14.0 → nút đặc từ 0.20.0, `run()` từ 0.13.0, `ghost` + `href` từ 0.17.0, `name`/`value` + alias icon từ 0.18.0, ARIA trạng thái chuyển xuống từ 0.19.0) |
+| Từ phiên bản | 0.1.0 (token-native từ 0.7.0, Liquid Glass 0.14.0 → nút đặc từ 0.20.0, `run()` từ 0.13.0, `ghost` + `href` từ 0.17.0, `name`/`value` + alias icon từ 0.18.0, ARIA trạng thái chuyển xuống từ 0.19.0, hydrate SSR tại chỗ từ 0.25.0) |
 
 Cần nạp `td.css` một lần trên trang (xem [Cài đặt](../getting-started/installation.md)). Không có `td.css` thì nút
 vẫn chạy nhưng không có giao diện.
@@ -548,6 +548,40 @@ Không dùng PHP thì in tay đúng khối `<button class="td-btn …">` ở tr�
 có các tính năng JS (`run()`, loading tự động). Các file `test/contracts/*.html` trong repo kit chỉ là **fixture test** (không nằm trong gói npm, icon trong đó viết tắt) — đừng copy từ đó. Xem thêm [WordPress & PHP](../guides/wordpress-php.md) và
 [bảng class cũ](../upgrading/class-map.md).
 
+### Hợp đồng SSR `button@1` — hydrate tại chỗ (0.25.0)
+
+Muốn **cả** nút có dáng ngay khi chưa có JS **và** đủ tính năng component (`loading`, `run()`, đổi attribute…) mà
+không bị "nháy" chữ trần lúc module tải: dùng [chế độ element của adapter PHP](../guides/php-adapter.md#chế-độ-element-ssr--hydrate-tại-chỗ-0250)
+(`'element' => true` hoặc `Td::configure(…, ['ssr_elements' => true])`). PHP in host đánh dấu + đúng control mà
+`td-button` sẽ tự render:
+
+```html
+<td-button data-td-ssr="button@1" variant="primary" size="md" label="Lưu" type="submit" name="action" value="save">
+  <button class="td-btn td-btn--primary td-btn--md" type="submit" name="action" value="save"><span class="td-btn__label">Lưu</span><span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden>…</span></button>
+</td-button>
+```
+
+Khi module nạp, `td-button` **nhận** markup đó thay vì render lại:
+
+- **Điều kiện nhận** (`canHydrate()`): host có `data-td-ssr="button@1"`; con trực tiếp duy nhất là `.td-btn`; cấu trúc
+  bằng đúng cái `render()` sẽ sinh ra với attribute **hiện tại** của host (đọc sau khi đã áp property gán sớm, kể cả
+  attribute đổi trước khi define): thẻ (`<a>` ⇔ host có `href`), class variant / size / `full-width`, `type`,
+  `target` / `rel` / `download`, icon (tên registry + vị trí), text nhãn, spinner. Host có `color` / `text-color` →
+  không nhận.
+- **Trạng thái áp tại chỗ** (không render lại): `loading`, `disabled`, `name` / `value`, `aria-label`,
+  `aria-pressed` / `aria-expanded` / `aria-haspopup` / `aria-controls`, giá trị `href`, spinner `hidden`. Không phát
+  sự kiện nào.
+- **Giữ nguyên:** node `<button>` / `<a>` (ai đang giữ tham chiếu vẫn đúng), focus, kích thước (không xô layout).
+- **Không khớp** → render như cũ, không lỗi. `data-td-ssr` bị gỡ sau lần kết nối đầu (nhận hay không).
+- **Gỡ ra rồi gắn lại** (di chuyển node): từ 0.25.0 `td-button` **gắn lại listener tại chỗ**, không render lại (giữ
+  node, không nhân đôi listener) — áp cho mọi `td-button`, kể cả tạo bằng JS.
+- `<td-button>` tạo bằng JS hoặc viết tay **không** có dấu: không đổi gì (render như trước). Trước khi module nạp,
+  host viết tay được `td.css` giữ chỗ chiều cao (`min-height` 2.5rem; `size="sm"` 2rem, `size="lg"` 3rem) để đỡ xô
+  layout — nhưng chỉ SSR mới hết nháy hẳn.
+
+`TdButton.SSR_SCHEMA` (= `1`) là phiên bản **cấu trúc markup**, không phải phiên bản gói; chỉ tăng khi giả định
+hydrate đổi.
+
 ## Bàn phím & trợ năng
 
 - Là `<button>` native: Tab để tới, Enter hoặc Space để bấm. Có `href` thì là `<a>` native: Tab để tới, Enter để
@@ -584,6 +618,8 @@ Xem [Trợ năng](../guides/accessibility.md).
 - **Icon không hiện**: tên chưa có trong registry nên bị hiểu là class cũ (xem [phần trên](#icon-kiểu-class-cũ-font-awesome--đã-lỗi-thời)).
 - **`text-color` không ăn**: chỉ có tác dụng cùng `color`.
 - **Đổi nội dung thẻ sau khi render không cập nhật chữ**: dùng `label`.
+- **Trang PHP: nút hiện chữ trần rồi mới thành nút**: đang in `<td-button>Nhãn</td-button>` tay — dùng chế độ element
+  của `td_button()` ([hợp đồng SSR](#hợp-đồng-ssr-button1--hydrate-tại-chỗ-0250)).
 - **Quên `catch` khi dùng `run()`**: lỗi của hàm được ném lại, không bắt sẽ thành unhandled rejection.
 - **Cần nút mờ đi khi disabled**: đừng tự đặt `opacity`; đổi các token `--td-btn-disabled-*`.
 

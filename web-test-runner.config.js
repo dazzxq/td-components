@@ -1,6 +1,30 @@
-import { readdirSync, statSync } from 'node:fs';
+import { readdirSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { playwrightLauncher } from '@web/test-runner-playwright';
+import { homedir } from 'node:os';
+import { playwrightLauncher, playwright } from '@web/test-runner-playwright';
+
+/**
+ * Launch options for Firefox / WebKit (v0.25.0 SSR group): the build pinned by Playwright when installed (CI:
+ * `npx playwright-core install`), else TD_FIREFOX_PATH / TD_WEBKIT_PATH, else the newest cached build in
+ * ~/Library/Caches/ms-playwright (same fallback as test/tokens/tokens.spec.mjs).
+ */
+function engineLaunchOptions(name) {
+  try {
+    if (existsSync(playwright[name].executablePath())) return {};
+  } catch { /* unknown → fall back */ }
+  const env = { firefox: process.env.TD_FIREFOX_PATH, webkit: process.env.TD_WEBKIT_PATH }[name];
+  if (env) return { executablePath: env };
+  const cache = join(homedir(), 'Library', 'Caches', 'ms-playwright');
+  const rel = { firefox: 'firefox/Nightly.app/Contents/MacOS/firefox', webkit: 'pw_run.sh' }[name];
+  if (!rel || !existsSync(cache)) return {};
+  const dirs = readdirSync(cache).filter((d) => d.startsWith(`${name}-`))
+    .sort((a, b) => Number(b.split('-')[1]) - Number(a.split('-')[1]));
+  for (const d of dirs) {
+    const exe = join(cache, d, rel);
+    if (existsSync(exe)) return { executablePath: exe };
+  }
+  return {};
+}
 
 /** All src stories (for src/stories-dom.browser-test.js). */
 function storyFiles(dir = 'src', out = []) {
@@ -39,7 +63,7 @@ const storiesPlugin = {
  * `customElements` / `attachInternals` do not exist.
  */
 export default {
-  files: ['src/**/*.browser-test.js', '!src/**/*.scrollbar.browser-test.js'],
+  files: ['src/**/*.browser-test.js', '!src/**/*.scrollbar.browser-test.js', '!src/**/*.ssr.browser-test.js'],
   nodeResolve: true,
   plugins: [storiesPlugin],
   browsers: [playwrightLauncher({ product: 'chromium' })],
@@ -49,6 +73,15 @@ export default {
     name: 'scrollbars',
     files: ['src/**/*.scrollbar.browser-test.js'],
     browsers: [playwrightLauncher({ product: 'chromium', launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } })],
+  }, {
+    // v0.25.0 (ADR 0012): SSR hydrate in place must hold in every engine — Chromium, Firefox AND WebKit.
+    name: 'ssr',
+    files: ['src/**/*.ssr.browser-test.js'],
+    browsers: [
+      playwrightLauncher({ product: 'chromium' }),
+      playwrightLauncher({ product: 'firefox', launchOptions: engineLaunchOptions('firefox') }),
+      playwrightLauncher({ product: 'webkit', launchOptions: engineLaunchOptions('webkit') }),
+    ],
   }],
   testFramework: {
     config: { ui: 'bdd', timeout: '10000' },

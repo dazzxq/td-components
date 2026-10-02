@@ -22,6 +22,19 @@
 		display: block;
 	}
 
+	/*
+	 * v0.25.0 safety net (ADR 0012): a HAND-WRITTEN host (no data-td-ssr) shows its bare text until the module loads —
+	 * reserve the button height so the upgrade does not push the page. No fake button styling. SSR hosts
+	 * (td_button element mode) already contain the styled control and are never matched.
+	 */
+	td-button:not(:defined):not([data-td-ssr]) {
+		display: inline-block;
+		min-height: 2.5rem;
+	}
+
+	td-button[size="sm"]:not(:defined):not([data-td-ssr]) { min-height: 2rem; }
+	td-button[size="lg"]:not(:defined):not([data-td-ssr]) { min-height: 3rem; }
+
 	.td-btn[hidden] {
 		display: none;
 	}
