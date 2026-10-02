@@ -8,7 +8,7 @@ const CLEAR = '__CLEAR__';
 const OPTION_PX = 40; // --td-dropdown-option-h: `max-height` = visible options × 40 px
 const TYPEAHEAD_MS = 500;
 /** Properties that may be set on the element before it upgrades (they would shadow the class accessors). */
-const UPGRADE_PROPS = ['options', 'onChange', 'onSelect'];
+const UPGRADE_PROPS = ['options', 'onChange', 'onSelect', 'onCreate', 'createLabel'];
 
 /** @private Run a site callback; a throw is logged and never breaks the component flow. */
 function safeCall(fn, arg, what) {
@@ -42,12 +42,17 @@ function safeCall(fn, arg, what) {
  *   <div class="td-dropdown__menu td-glass-surface td-glass-surface--strong" id="{host}-menu" hidden data-state data-placement>
  *     [<div class="td-dropdown__search-wrap"><input class="td-dropdown__search" aria-label="{labels.search}" aria-autocomplete="list"
  *        aria-controls="{host}-listbox" [aria-activedescendant]></div>]
- *     <div class="td-dropdown__options" role="listbox" id="{host}-listbox">
- *       [<div class="td-dropdown__option td-dropdown__option--clear" role="option" id="{host}-opt-clear" data-value="__CLEAR__">…]
- *       <div class="td-dropdown__option" role="option" id="{host}-opt-{i}" aria-selected data-value data-index [data-active]>…
- *     </div>
  *     <p class="td-dropdown__empty" role="status">[{labels.noResults}]</p>
+ *     <div class="td-dropdown__options" role="listbox" id="{host}-listbox">          (not scrolling — v0.22.0)
+ *       <div class="td-dropdown__scroller" role="presentation">                       (the scroll area, gets max-height)
+ *         [<div class="td-dropdown__option td-dropdown__option--clear" role="option" id="{host}-opt-clear" data-value="__CLEAR__" data-nav>…]
+ *         <div class="td-dropdown__option" role="option" id="{host}-opt-{i}" aria-selected data-value data-index data-nav [data-active]>…
+ *       </div>
+ *       [<div class="td-dropdown__option td-dropdown__option--create" role="option" id="{host}-opt-create" aria-selected="false" data-nav>
+ *          <span class="td-dropdown__create-icon" data-td-icon="plus" aria-hidden="true"></span><span class="td-dropdown__option-label">…</span></div>]
+ *     </div>
  *   </div>
+ * Every row carries `data-nav` = its index in the navigation model (`_nav`); rows are found by it, never by position.
  *
  * Keyboard (APG select-only combobox): options are never focusable; the focused control (trigger, or the search input
  * when it has focus) carries `aria-activedescendant`. Closed trigger: ArrowDown/ArrowUp/Enter/Space open (active =
@@ -89,9 +94,13 @@ function safeCall(fn, arg, what) {
  * @attr {string} label-key - Key for option label (default "label")
  * @attr {string} value - Initial selected value (the attribute is NOT live — read/write the `value` property)
  * @attr {string} error-text - Error message (aria-invalid + note; 0.9.0)
+ * @attr {string} create-label - Shows a fixed "add new" action row at the bottom of the menu (v0.22.0; empty = off)
  * @fires change - When selection changes, detail: { value, item }
+ * @fires create - The create row was activated, detail: { query } (search text trimmed, '' without one). Never a value:
+ *   no selection change, no `change`, nothing submitted. Order: query snapshot → menu closed + focus on the trigger →
+ *   `onCreate(query)` → `create`.
  *
- * Texts: `TdDropdown.labels` (`search`, `none`, `noResults`, `required`) — override per site.
+ * Texts: `TdDropdown.labels` (`search`, `none`, `noResults`, `required`, `createWithQuery`) — override per site.
  *
  * @property {Array<Object>} options - Array of option objects set via JS property (may be set before the element is
  *   defined). Re-assigning keeps the current selection when its value is still listed (else it is dropped); the
@@ -101,11 +110,14 @@ function safeCall(fn, arg, what) {
  * @property {Function} onChange - Callback receiving the value (or null) on a user selection
  * @property {Function} onSelect - Callback receiving the full item (or null) on a user selection; runs before
  *   `onChange` (both run when both are set). A throwing callback is logged (`console.error`); `change` still fires.
+ * @property {string} createLabel - Mirrors `create-label` (v0.22.0)
+ * @property {Function} onCreate - Callback receiving the query when the create row is activated; runs before the
+ *   `create` event (a throw is logged, the event still fires) — v0.22.0
  */
 export class TdDropdown extends TdFormElement {
   static get observedAttributes() {
     return [...super.observedAttributes, 'placeholder', 'searchable', 'allow-clear', 'max-height', 'value-key',
-      'label-key', 'value', 'label', 'error-text', 'aria-label'];
+      'label-key', 'value', 'label', 'error-text', 'aria-label', 'create-label'];
   }
 
   static get errorContract() { return true; }
@@ -124,6 +136,8 @@ export class TdDropdown extends TdFormElement {
     none: 'Không chọn',
     noResults: 'Không tìm thấy kết quả',
     required: 'Vui lòng chọn một tùy chọn',
+    /** v0.22.0: the create row while a search text is typed (`{query}` = the trimmed text); else `create-label`. */
+    createWithQuery: 'Thêm “{query}”',
   };
 
   /** @type {TdDropdown[]} Track all open dropdowns for closeAllExcept */
@@ -138,7 +152,7 @@ export class TdDropdown extends TdFormElement {
     /** @private the first `options` assignment applies the `value` attribute; later ones keep the selection */
     this._optionsInit = false;
     this._filteredData = [];
-    /** @private navigation model of the rendered listbox: [{ clear: true } | { item }] */
+    /** @private navigation model of the rendered listbox: [{ clear: true } | { item } | { create: true }] */
     this._nav = [];
     /** @private index into `_nav` of the active (visually focused) option; -1 = none */
     this._activeIndex = -1;
@@ -155,6 +169,7 @@ export class TdDropdown extends TdFormElement {
     // Callbacks set via JS property
     this._onChange = null;
     this._onSelect = null;
+    this._onCreate = null;
 
     this._boundPointerOutside = (e) => {
       const t = e.target;
@@ -320,6 +335,17 @@ export class TdDropdown extends TdFormElement {
   get onSelect() { return this._onSelect; }
   set onSelect(fn) { this._onSelect = typeof fn === 'function' ? fn : null; }
 
+  /** v0.22.0: called with the query when the create row is activated (before the `create` event). */
+  get onCreate() { return this._onCreate; }
+  set onCreate(fn) { this._onCreate = typeof fn === 'function' ? fn : null; }
+
+  /** v0.22.0: mirrors `create-label` ('' = no create row). */
+  get createLabel() { return this._getCreateLabel(); }
+  set createLabel(v) {
+    if (v == null || v === false || String(v) === '') this.removeAttribute('create-label');
+    else this.setAttribute('create-label', String(v));
+  }
+
   // --- Attribute helpers ---
 
   _getPlaceholder() { return this.getAttribute('placeholder') || 'Chọn một tùy chọn'; }
@@ -351,6 +377,7 @@ export class TdDropdown extends TdFormElement {
   }
   _getValueKey() { return this.getAttribute('value-key') || 'value'; }
   _getLabelKey() { return this.getAttribute('label-key') || 'label'; }
+  _getCreateLabel() { return this.getAttribute('create-label') || ''; }
   /** `null` = no `value` attribute; `''` is an explicit value (a real empty-valued option — review v0.17.0 ISSUE-5). */
   _getInitialValue() { return this.hasAttribute('value') ? this.getAttribute('value') : null; }
 
@@ -439,6 +466,11 @@ export class TdDropdown extends TdFormElement {
         return;
       case 'error-text':
         super.attributeChangedCallback(name, oldVal, newVal); // base error contract, no re-render
+        return;
+      case 'create-label':
+        // in place: only the create row changes (an open menu stays open, re-measured)
+        this._renderMenuOptions();
+        if (this._isOpen) this._updatePosition();
         return;
       default:
         // label, searchable, allow-clear, max-height, value-key, label-key → structure changes.
@@ -557,6 +589,18 @@ export class TdDropdown extends TdFormElement {
   _trigger() { return this.querySelector('.td-dropdown__trigger'); }
   /** @private */
   _list() { return this._menuElement ? this._menuElement.querySelector('.td-dropdown__options') : null; }
+  /** @private the scroll area inside the listbox (v0.22.0): data rows + clear row; the create row stays outside */
+  _scroller() { return this._menuElement ? this._menuElement.querySelector('.td-dropdown__scroller') : null; }
+  /** @private the rendered row of `_nav[i]` (by `data-nav`, never by position) */
+  _rowAt(i) {
+    const list = this._list();
+    return list && i >= 0 ? list.querySelector(`[data-nav="${Number(i)}"]`) : null;
+  }
+  /** @private `_nav` index of a rendered row (-1 = not a row) */
+  _navIndexOf(row) {
+    const v = row && row.getAttribute('data-nav');
+    return v != null && /^\d+$/.test(v) ? Number(v) : -1;
+  }
   /** @private */
   _search() { return this._menuElement ? this._menuElement.querySelector('.td-dropdown__search') : null; }
 
@@ -587,15 +631,19 @@ export class TdDropdown extends TdFormElement {
       ? `<div class="td-dropdown__search-wrap"><input type="text" class="td-dropdown__search" aria-label="${searchLabel}"`
         + ` placeholder="${searchLabel}..." autocomplete="off" spellcheck="false" aria-autocomplete="list" aria-controls="${id}-listbox"></div>`
       : '';
-    menu.innerHTML = `${search}<div class="td-dropdown__options" role="listbox" id="${id}-listbox"></div>`
-      + '<p class="td-dropdown__empty" role="status"></p>';
+    // v0.22.0: the status sits BEFORE the listbox (the create row is always the last row of the menu); the listbox
+    // does not scroll — its inner scroller does (and gets max-height), the create row is pinned below it.
+    menu.innerHTML = `${search}<p class="td-dropdown__empty" role="status"></p>`
+      + `<div class="td-dropdown__options" role="listbox" id="${id}-listbox">`
+      + '<div class="td-dropdown__scroller" role="presentation"></div></div>';
     this._renderMenuOptions();
   }
 
-  /** Re-render the options (in place; the listbox, search box and empty-status region are kept). */
+  /** Re-render the options (in place; the listbox, scroller, search box and empty-status region are kept). */
   _renderMenuOptions() {
     const list = this._list();
-    if (!list) return;
+    const scroller = this._scroller();
+    if (!list || !scroller) return;
     const esc = (s) => this.escapeHtml(String(s));
     const id = esc(this.id);
     const valueKey = this._getValueKey();
@@ -605,19 +653,29 @@ export class TdDropdown extends TdFormElement {
     if (this._isAllowClear() && this._selectedItem) {
       nav.push({ clear: true });
       html += `<div class="td-dropdown__option td-dropdown__option--clear" role="option" id="${id}-opt-clear"`
-        + ` aria-selected="false" data-value="${CLEAR}"><span class="td-dropdown__option-label">${esc(TdDropdown.labels.none ?? '')}</span></div>`;
+        + ` aria-selected="false" data-value="${CLEAR}" data-nav="${nav.length - 1}"><span class="td-dropdown__option-label">${esc(TdDropdown.labels.none ?? '')}</span></div>`;
     }
     this._filteredData.forEach((item, index) => {
       const selected = this._isSelected(item);
       nav.push({ item });
       html += `<div class="td-dropdown__option" role="option" id="${id}-opt-${index}" aria-selected="${selected}"`
         + `${this._isItemDisabled(item) ? ' aria-disabled="true"' : ''}`
-        + ` data-value="${esc(item[valueKey])}" data-index="${index}">`
+        + ` data-value="${esc(item[valueKey])}" data-index="${index}" data-nav="${nav.length - 1}">`
         + `<span class="td-dropdown__option-label">${esc(item[labelKey])}</span>`
         + (selected ? '<span class="td-dropdown__check" data-td-icon="check" aria-hidden="true"></span>' : '')
         + '</div>';
     });
-    list.innerHTML = html;
+    scroller.innerHTML = html;
+    // v0.22.0: the create row — last direct child of the listbox, outside the scroller, never filtered, never a value.
+    for (const old of list.querySelectorAll(':scope > .td-dropdown__option--create')) old.remove();
+    const createLabel = this._getCreateLabel();
+    if (createLabel) {
+      nav.push({ create: true });
+      list.insertAdjacentHTML('beforeend', '<div class="td-dropdown__option td-dropdown__option--create" role="option"'
+        + ` id="${id}-opt-create" aria-selected="false" data-nav="${nav.length - 1}">`
+        + '<span class="td-dropdown__create-icon" data-td-icon="plus" aria-hidden="true"></span>'
+        + `<span class="td-dropdown__option-label">${esc(this._createText(createLabel))}</span></div>`);
+    }
     fillIconSlots(list);
     this._nav = nav;
     const empty = this._menuElement.querySelector('.td-dropdown__empty');
@@ -627,6 +685,17 @@ export class TdDropdown extends TdFormElement {
     }
     if (this._activeIndex >= nav.length) this._activeIndex = -1;
     this._syncActive(false);
+  }
+
+  /**
+   * @private Create row text: `labels.createWithQuery` with the trimmed search text, else `create-label`. Plain string
+   * substitution (no `$&` patterns); the caller escapes it.
+   */
+  _createText(createLabel) {
+    const search = this._search();
+    const q = search ? String(search.value).trim() : '';
+    if (!q) return createLabel;
+    return String(TdDropdown.labels.createWithQuery ?? '{query}').split('{query}').join(q);
   }
 
   _isSelected(item) {
@@ -669,17 +738,17 @@ export class TdDropdown extends TdFormElement {
   /** @private `data-active` on the active option + `aria-activedescendant` on the focused control. */
   _syncActive(scroll = true) {
     const list = this._list();
-    let activeEl = null;
+    const activeEl = this._isOpen ? this._rowAt(this._activeIndex) : null;
     if (list) {
-      [...list.children].forEach((el, i) => {
-        if (i === this._activeIndex && this._isOpen) {
-          el.setAttribute('data-active', '');
-          activeEl = el;
-        } else el.removeAttribute('data-active');
-      });
+      for (const el of list.querySelectorAll('[data-active]')) if (el !== activeEl) el.removeAttribute('data-active');
     }
+    if (activeEl) activeEl.setAttribute('data-active', '');
     this._syncActiveDescendant(activeEl);
-    if (activeEl && scroll && typeof activeEl.scrollIntoView === 'function') activeEl.scrollIntoView({ block: 'nearest' });
+    // only rows inside the scroller scroll into view (the pinned create row is always visible)
+    const scroller = this._scroller();
+    if (activeEl && scroll && scroller && scroller.contains(activeEl) && typeof activeEl.scrollIntoView === 'function') {
+      activeEl.scrollIntoView({ block: 'nearest' });
+    }
   }
 
   /** @private The attribute lives ONLY on the control that has DOM focus (search input, else the trigger). */
@@ -716,13 +785,30 @@ export class TdDropdown extends TdFormElement {
     }
   }
 
-  /** @private commit the active option (clear or item) */
+  /** @private commit the active option (clear, item or the create row) */
   _commitActive() {
     const entry = this._nav[this._activeIndex];
     if (!entry || !this._isNavEnabled(this._activeIndex)) return false;
-    if (entry.clear) this._clearSelection();
+    if (entry.create) this._activateCreate();
+    else if (entry.clear) this._clearSelection();
     else this._selectItem(entry.item);
     return true;
+  }
+
+  /**
+   * @private The create row (v0.22.0), in this order: (1) snapshot the query (search text, trimmed only — case and
+   * diacritics kept); (2) close the menu (its layer registration is released) + focus the trigger; (3) `onCreate(query)`
+   * then `create` { query }. Never touches the selection, the form value or validity.
+   */
+  _activateCreate() {
+    if (this._isDisabled()) return;
+    const search = this._search();
+    const query = search ? String(search.value).trim() : '';
+    const trigger = this._trigger();
+    this.close();
+    if (trigger && document.activeElement !== trigger) trigger.focus({ preventScroll: true });
+    if (this._onCreate) safeCall(this._onCreate, query, 'onCreate');
+    this.emit('create', { query });
   }
 
   // --- Event binding ---
@@ -760,15 +846,16 @@ export class TdDropdown extends TdFormElement {
       const option = e.target instanceof Element ? e.target.closest('.td-dropdown__option') : null;
       if (!option || !menu.contains(option)) return;
       if (option.getAttribute('aria-disabled') === 'true') return; // not selectable; the menu stays open
-      const i = [...option.parentNode.children].indexOf(option);
+      const i = this._navIndexOf(option);
+      if (i < 0) return;
       this._activeIndex = i;
       this._commitActive();
     });
     menu.addEventListener('mousemove', (e) => {
       const option = e.target instanceof Element ? e.target.closest('.td-dropdown__option') : null;
       if (!option || option.getAttribute('aria-disabled') === 'true') return;
-      const i = [...option.parentNode.children].indexOf(option);
-      if (i !== this._activeIndex) {
+      const i = this._navIndexOf(option);
+      if (i >= 0 && i !== this._activeIndex) {
         this._activeIndex = i;
         this._syncActive(false);
       }
@@ -1149,8 +1236,9 @@ export class TdDropdown extends TdFormElement {
 
   /**
    * Size + position the portaled menu against the trigger rect (shared placeFloating, 0.4.1 B5 rules): same width as
-   * the trigger (viewport-capped), below preferred, flips to the side with room, caps the LIST height instead of
-   * clamping `top`. Geometry only via CSSOM; the side is exposed as `data-placement` (transform origin).
+   * the trigger (viewport-capped), below preferred, flips to the side with room, caps the SCROLLER height instead of
+   * clamping `top` (v0.22.0: the scroller inside the listbox; the pinned create row counts as chrome). Geometry only
+   * via CSSOM; the side is exposed as `data-placement` (transform origin).
    * @private
    * @param {DOMRect} rect trigger rect
    */
@@ -1159,7 +1247,7 @@ export class TdDropdown extends TdFormElement {
     if (!menu) return;
     const { side } = placeFloating(rect, menu, {
       width: 'match',
-      list: this._list(),
+      list: this._scroller(),
       listMax: this._getMaxHeight() * OPTION_PX,
     });
     menu.setAttribute('data-placement', side);

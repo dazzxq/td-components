@@ -150,6 +150,7 @@ describe('B4 TdDropdown.labels', () => {
       none: 'Không chọn',
       noResults: 'Không tìm thấy kết quả',
       required: 'Vui lòng chọn một tùy chọn',
+      createWithQuery: 'Thêm “{query}”', // v0.22.0 create row
     });
     const el = dd('value="hn" required');
     const input = el._menuElement.querySelector('.td-dropdown__search');
