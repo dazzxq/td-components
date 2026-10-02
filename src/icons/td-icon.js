@@ -195,10 +195,11 @@ export function tdIcon(name, opts = {}) {
  * strings emit empty slots, then call this after render). Optional `data-td-icon-size` (s|m|l|px) and
  * `data-td-icon-class`. Idempotent: the slot's children are replaced.
  * @param {ParentNode} root
+ * @param {string} [selector] which descendants are slots (default `[data-td-icon]`; a component scopes it to its own slots)
  */
-export function fillIconSlots(root) {
+export function fillIconSlots(root, selector = '[data-td-icon]') {
   if (!root || typeof root.querySelectorAll !== 'function') return;
-  for (const slot of root.querySelectorAll('[data-td-icon]')) {
+  for (const slot of root.querySelectorAll(selector)) {
     const rawSize = slot.getAttribute('data-td-icon-size') || 'm';
     const size = /^\d+$/.test(rawSize) ? Number(rawSize) : rawSize;
     const svg = tdIcon(slot.getAttribute('data-td-icon'), { size, class: slot.getAttribute('data-td-icon-class') || '' });
