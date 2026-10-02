@@ -59,6 +59,7 @@
     "./tabs": "./src/display/td-tabs.js",
     "./pagination": "./src/display/td-pagination.js",
     "./empty-state": "./src/display/td-empty-state.js",
+    "./media-grid": "./src/display/td-media-grid.js",
     "./dom-utils": "./src/utils/dom-utils.js",
     "./form-validation": "./src/utils/form-validation.js",
     "./package.json": "./package.json"
@@ -94,6 +95,7 @@
     "./src/form/td-slider.js",
     "./src/form/td-toggle.js",
     "./src/display/td-empty-state.js",
+    "./src/display/td-media-grid.js",
     "./src/display/td-pagination.js",
     "./src/display/td-table.js",
     "./src/display/td-tabs.js"

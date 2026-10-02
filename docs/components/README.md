@@ -61,6 +61,7 @@ lightbox, hovercard…) có mẫu markup ngay trong trang của nó (mục cấu
 | [Tabs](tabs.md) | `<td-tabs>` | `/tabs` | Tab (chuẩn APG, kích hoạt thủ công) |
 | [Pagination](pagination.md) | `<td-pagination>` | `/pagination` | Phân trang |
 | [Empty state](empty-state.md) | `<td-empty-state>` | `/empty-state` | Màn "chưa có dữ liệu" có hành động |
+| [Media grid](media-grid.md) | `<td-media-grid>` | `/media-grid` | Lưới ảnh chọn được: nâng cấp markup site/PHP, tick khi rê/focus, chế độ chọn, Shift chọn dải, Space/Enter/Esc, `select-change` / `activate` |
 | [Badge](badge.md) | class CSS `.td-badge` | — (chỉ `td.css`) | Nhãn trạng thái dạng viên thuốc, viền, con dấu (`--stamp`); thuần CSS, PHP `td_badge` |
 | [Icons](icons.md) | `<td-icon>`, `tdIcon()`, `fillIconSlots()` | `/icons`, `/icon-element` (hoặc barrel) | Bộ icon (Lucide) + đăng ký icon riêng; PHP: `td_icon()` |
 

@@ -18,6 +18,8 @@
  * v0.21.0: the black tooltip chip (default + start-aligned) over every backdrop; the field focus border (input-field,
  * open dropdown trigger) ≥ 3:1 against the field fill, the backdrop and --td-color-bg (computed colours, page only).
  * v0.22.0: the dropdown create row (accent label ≥ 4.7, plus icon ≥ 3.2) on the menu surface, rest + active, every backdrop.
+ * v0.23.0: the td-media-grid tick (off / on) — edge ≥ 3:1 over a white and a black image, "on" glyph ≥ 3.2 on its fill
+ * (computed-colour `pairs`; a pair may carry its own `min`).
  * No dependencies: PNGs are decoded with node:zlib.
  *
  *   node test/tokens/contrast.spec.mjs            (npm run test:contrast)
@@ -153,7 +155,8 @@ async function runEngine(name, launcher) {
             const fg = parseColor(pr.fg); const bg = parseColor(pr.bg);
             const r = fg && bg ? ratio(composite(fg, bg.rgb), bg.rgb) : 0;
             focusWorst.set(`${theme} ${info.name} ${pr.what}`, Math.min(focusWorst.get(`${theme} ${info.name} ${pr.what}`) ?? Infinity, r));
-            if (r < FOCUS_MIN) failures.push(`${tag}: ${pr.what} ${r.toFixed(2)}:1 < ${FOCUS_MIN} (${pr.fg} on ${pr.bg})`);
+            const min = typeof pr.min === 'number' ? pr.min : FOCUS_MIN;
+            if (r < min) failures.push(`${tag}: ${pr.what} ${r.toFixed(2)}:1 < ${min} (${pr.fg} on ${pr.bg})`);
           }
           continue;
         }
@@ -214,7 +217,8 @@ for (const [name, launcher] of [['chromium', chromium], ['firefox', firefox], ['
 for (const n of notes) console.log(`  ${n}`);
 const report = [...worst.entries()].sort((a, b) => a[1] - b[1]).slice(0, 8).map(([k, v]) => `${k} ${v.toFixed(2)}`);
 console.log(`  lowest label ratios: ${report.join(' · ')}`);
-console.log(`  lowest focus border ratios: ${[...focusWorst.entries()].sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
+console.log(`  lowest focus border ratios: ${[...focusWorst.entries()].filter(([k]) => k.includes('focus:')).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
+console.log(`  lowest media-grid tick ratios: ${[...focusWorst.entries()].filter(([k]) => k.includes('media-tick:')).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 const hoverReport = [...worst.entries()].filter(([k]) => /:hover|custom/.test(k)).sort((a, b) => a[1] - b[1]).slice(0, 6)
   .map(([k, v]) => `${k} ${v.toFixed(2)}`);
 console.log(`  lowest hover / custom label ratios: ${hoverReport.join(' · ')}`);

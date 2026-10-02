@@ -28,6 +28,7 @@ export { TdTable } from './src/display/td-table.js';
 export { TdTabs } from './src/display/td-tabs.js';
 export { TdPagination } from './src/display/td-pagination.js';
 export { TdEmptyState } from './src/display/td-empty-state.js';
+export { TdMediaGrid } from './src/display/td-media-grid.js';
 export { TdFormValidation } from './src/utils/form-validation.js';
 export {
   slugify,

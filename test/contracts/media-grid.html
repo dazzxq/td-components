@@ -1,0 +1,21 @@
+<!-- td-media-grid markup contract (v0.23.0). The SITE prints the items (data-td-media-item + data-id + one
+     [data-td-media-open] opener, button or <a href>); the element upgrades them IN PLACE: host class / role / aria-label,
+     item class / role, opener class, a tick button right after the opener (never inside an <a>; a site
+     [data-td-media-tick] is kept instead) and one polite live region at the end. Site controls (⋯, badges) stay untouched.
+     State (not in the shape): item [data-selected], tick aria-pressed="true", host [data-selecting].
+     Checked by src/display/td-v023-media-grid.browser-test.js. -->
+<template data-component="td-media-grid"
+          data-markup='<td-media-grid label="Khung hình cuộn 12"><div data-td-media-item data-id="f1"><button type="button" data-td-media-open aria-label="Khung 1"><img src="/test/fixtures/1.svg" alt=""></button><button type="button" class="site-more" aria-label="Thao tác khung 1">⋯</button></div><div data-td-media-item data-id="f2"><a href="#f2" data-td-media-open><img src="/test/fixtures/2.svg" alt="Khung 2"></a></div></td-media-grid>'>
+  <td-media-grid class="td-media-grid" role="list" aria-label="Khung hình cuộn 12">
+    <div class="td-media-grid__item" role="listitem" data-td-media-item data-id="f1">
+      <button type="button" class="td-media-grid__open" data-td-media-open aria-label="Khung 1"><img src="/test/fixtures/1.svg" alt=""></button>
+      <button type="button" class="td-media-grid__tick" tabindex="-1" aria-pressed="false" aria-label="Chọn Khung 1"><svg class="td-icon td-icon--s" data-icon="check" aria-hidden="true"></svg></button>
+      <button type="button" class="site-more" aria-label="Thao tác khung 1">⋯</button>
+    </div>
+    <div class="td-media-grid__item" role="listitem" data-td-media-item data-id="f2">
+      <a href="#f2" class="td-media-grid__open" data-td-media-open><img src="/test/fixtures/2.svg" alt="Khung 2"></a>
+      <button type="button" class="td-media-grid__tick" tabindex="-1" aria-pressed="false" aria-label="Chọn Khung 2"><svg class="td-icon td-icon--s" data-icon="check" aria-hidden="true"></svg></button>
+    </div>
+    <span class="td-sr-only" aria-live="polite"></span>
+  </td-media-grid>
+</template>
