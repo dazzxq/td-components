@@ -9,8 +9,12 @@
  * inline `style=""`/injected `<style>` (CSSOM only for continuous values) — styles live in td.css
  * (`src/styles/components/lightbox.css`).
  *
- * @typedef {{ type?: 'image'|'video', src: string, poster?: string, caption?: string, alt?: string,
+ * @typedef {{ type?: 'image'|'video', src: string, poster?: string, thumb?: string, caption?: string, alt?: string,
  *             provider?: string, data?: * }} TdLightboxItem
+ *
+ * v0.24.0 (docs/internal/plans/v0.24.0-lightbox-nav.md): side navigation (the SAME prev / next buttons move between the
+ * toolbar and a nav mount in the column — `data-nav="side|side-compact|toolbar"`), adjacent preload, an error state with
+ * Retry / Next, an optional filmstrip (`filmstrip: false|true|'auto'`, `item.thumb`) and a direction-aware slide.
  */
 
 import { lockScroll } from '../utils/scroll-lock.js';
@@ -33,7 +37,12 @@ const DEFAULT_LABELS = {
   download: 'Tải xuống',
   info: 'Thông tin ảnh',
   counter: (i, n) => `${i} / ${n}`,
+  loadError: 'Không tải được ảnh',
+  retry: 'Thử lại',
+  thumb: (n) => `Ảnh ${n}`,
 };
+/** Labels that are functions (the rest are strings). */
+const FN_LABELS = new Set(['counter', 'thumb']);
 
 const IMAGE_EXT = /\.(jpe?g|png|webp|gif|avif|svg)$/i;
 const SWIPE_NAV = 50;      // px, horizontal → navigate
@@ -43,6 +52,10 @@ const DOUBLE_TAP_MS = 300;
 const MOVE_SLOP = 8;
 const MAX_ZOOM = 4;
 const CLOSE_DOWN_MS = 190; // fixed timer, not transitionend (never fires under reduced motion / hidden tab)
+const NAV_DISC = 48;       // px, side-nav disc (video / zoomed)
+const NAV_DISC_GAP = 16;   // px, disc inset from the column edge
+const FILMSTRIP_AUTO = 8;  // `filmstrip: 'auto'` → shown from this many items
+const FINE_POINTER = '(hover: hover) and (pointer: fine)';
 
 /* ------------------------------------------------------------------ helpers */
 
@@ -75,17 +88,32 @@ export function defaultIsAllowedUrl(url) {
   if (typeof url !== 'string' || !url.trim()) return false;
   let u;
   try {
-    u = new URL(url, location.href);
+    u = new URL(url, baseUrl()); // v0.24.0 SEC-02: resolved like the browser resolves it (honours <base href>)
   } catch {
     return false;
   }
   return u.protocol === 'https:' || (u.protocol === 'http:' && location.protocol === 'http:');
 }
 
+/** The base the browser resolves relative URLs against (`<base href>` aware). */
+function baseUrl() {
+  return typeof document !== 'undefined' && document.baseURI ? document.baseURI : location.href;
+}
+
+/**
+ * v0.24.0 SEC-02: canonicalise ONCE (`new URL(raw, document.baseURI).href`), run the policy on that canonical URL and
+ * return it — so the URL the policy approved is exactly the URL the browser loads (no `<base href>` disagreement).
+ */
 function allowed(url, item, isAllowedUrl) {
   if (typeof url !== 'string' || !url.trim()) return '';
+  let canonical;
   try {
-    return isAllowedUrl(url, item) ? url : '';
+    canonical = new URL(url, baseUrl()).href;
+  } catch {
+    return '';
+  }
+  try {
+    return isAllowedUrl(canonical, item) ? canonical : '';
   } catch {
     return '';
   }
@@ -112,6 +140,7 @@ function normalizeItem(raw, isAllowedUrl) {
   };
   item.src = allowed(input.src, input, isAllowedUrl);
   item.poster = allowed(input.poster, input, isAllowedUrl);
+  item.thumb = allowed(input.thumb, input, isAllowedUrl); // v0.24.0 filmstrip thumbnail (same policy as src)
   if (!item.src) return null; // every item needs an allowed src (video poster is only a fallback)
   return item;
 }
@@ -120,8 +149,8 @@ function mergeLabels(labels) {
   const out = { ...DEFAULT_LABELS };
   if (labels && typeof labels === 'object') {
     for (const k of Object.keys(DEFAULT_LABELS)) {
-      if (k === 'counter') {
-        if (typeof labels.counter === 'function') out.counter = labels.counter;
+      if (FN_LABELS.has(k)) {
+        if (typeof labels[k] === 'function') out[k] = labels[k];
       } else if (typeof labels[k] === 'string') {
         out[k] = labels[k];
       }
@@ -360,13 +389,28 @@ function build() {
 
   const backdrop = h('div', { class: 'td-lightbox__backdrop' });
   const backBtn = btn('td-lightbox__back', 'back', { hidden: true });
-  const counter = h('div', { class: 'td-lightbox__counter td-glass-surface td-glass-surface--clear' });
+  // v0.24.0: a polite live region → "2 / 5" is read on every slide change without moving focus.
+  const counter = h('div', {
+    class: 'td-lightbox__counter td-glass-surface td-glass-surface--clear', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'true',
+  });
   const lead = h('div', { class: 'td-lightbox__lead' }, [backBtn, counter]);
   const spinner = h('div', { class: 'td-lightbox__spinner', hidden: true });
   const img = h('img', { class: 'td-lightbox__img', alt: '', draggable: 'false' });
   const videoMount = h('div', { class: 'td-lightbox__video', hidden: true });
-  const stage = h('div', { class: 'td-lightbox__stage' }, [spinner, img, videoMount]);
-  const col = h('div', { class: 'td-lightbox__col' }, [stage]);
+  // v0.24.0 N3: image error state (text via textContent; Retry reloads the same src under a new token).
+  const errorText = h('p', { class: 'td-lightbox__error-text' });
+  const retryBtn = h('button', { type: 'button', class: 'td-lightbox__error-btn', 'data-action': 'retry' });
+  const errorNextBtn = h('button', { type: 'button', class: 'td-lightbox__error-btn', 'data-action': 'error-next' });
+  const errorIcon = icon('image');
+  const error = h('div', { class: 'td-lightbox__error', role: 'alert', hidden: true }, [
+    errorIcon, errorText, h('div', { class: 'td-lightbox__error-actions' }, [retryBtn, errorNextBtn]),
+  ]);
+  const stage = h('div', { class: 'td-lightbox__stage' }, [spinner, img, videoMount, error]);
+  // v0.24.0 N1: the nav mount (side strips) — prev / next are MOVED here on a fine pointer (never cloned).
+  const nav = h('div', { class: 'td-lightbox__nav' });
+  // v0.24.0 N4: optional filmstrip (second row of the column).
+  const filmstrip = h('div', { class: 'td-lightbox__filmstrip', hidden: true });
+  const col = h('div', { class: 'td-lightbox__col' }, [stage, nav, filmstrip]);
   const caption = h('div', { class: 'td-lightbox__caption', hidden: true });
   const grab = h('button', { type: 'button', class: 'td-lightbox__grab', 'aria-expanded': 'false' }, [
     h('span', { class: 'td-lightbox__grab-bar', 'aria-hidden': 'true' }),
@@ -390,21 +434,26 @@ function build() {
 
   document.body.appendChild(overlay);
   ui = { overlay, backdrop, lead, backBtn, counter, col, stage, spinner, img, videoMount, caption, panel, grab,
-    panelBody, toolbar, prevBtn, nextBtn, fsBtn, dlBtn, dlMenuBtn, closeBtn };
+    panelBody, toolbar, prevBtn, nextBtn, fsBtn, dlBtn, dlMenuBtn, closeBtn, nav, filmstrip, error, errorText, retryBtn,
+    errorNextBtn };
 
   backdrop.addEventListener('click', onBackdropClick);
-  col.addEventListener('click', (e) => { if (e.target === col) onBackdropClick(); });
   closeBtn.addEventListener('click', () => closeViewer());
   backBtn.addEventListener('click', () => closeViewer());
-  prevBtn.addEventListener('click', () => navigate(-1));
-  nextBtn.addEventListener('click', () => navigate(1));
+  prevBtn.addEventListener('click', (e) => onNavClick(e, -1));
+  nextBtn.addEventListener('click', (e) => onNavClick(e, 1));
+  retryBtn.addEventListener('click', retryImage);
+  errorNextBtn.addEventListener('click', () => navigate(1));
+  filmstrip.addEventListener('click', onThumbClick);
   fsBtn.addEventListener('click', toggleFullscreen);
   // Lazy items (the current slide's variants) + the lightbox's own URL policy with the item being viewed (the menu
   // closes on every slide change, so the item at open time is the one on screen).
   TdMenu.bind(dlMenuBtn, downloadMenuItems, { align: 'end', isAllowedUrl: downloadMenuPolicy });
   grab.addEventListener('click', (e) => { e.stopPropagation(); setSheet(ui.panel.getAttribute('data-sheet') !== 'open'); });
   bindPanelSwipe(panel);
-  bindPointer(stage);
+  bindPointer(col);
+  // Video players resize (async hooks, metadata) → re-decide the nav mode (v0.24.0 N1; observed while open).
+  if (typeof ResizeObserver === 'function') navResize = new ResizeObserver(scheduleNavSync);
   return ui;
 }
 
@@ -522,6 +571,7 @@ function syncPanel(ctx) {
   ui.backBtn.hidden = !on;
   ui.panelBody.replaceChildren(...(node ? [node] : []));
   ui.panel.scrollTop = 0;
+  syncNavMode(); // the column width changed
 }
 
 function bindPanelSwipe(panel) {
@@ -562,8 +612,12 @@ function resetZoom() {
   }
 }
 
-/** The visible area is the CLIPPING column, not the stage that hugs the unzoomed image. */
+/**
+ * The visible area is the CLIPPING column, not the stage that hugs the unzoomed image. With a filmstrip the stage is
+ * the (clipping) first row of the column.
+ */
 function viewRect() {
+  if (session && session.filmstrip) return ui.stage.getBoundingClientRect();
   return (ui.col.getBoundingClientRect().width ? ui.col : ui.stage).getBoundingClientRect();
 }
 
@@ -608,8 +662,25 @@ function toggleZoomAt(clientX, clientY) {
 
 /** Set by bindPointer(): drops every in-flight pointer/gesture (called on navigate + close). */
 let resetPointer = () => {};
+/** Pointer type of the latest pointerdown in the column (v0.24.0: touch / pen never activate a side strip). */
+let lastPointerType = '';
+/** A mouse press on a side strip: activates on its click unless it moved > MOVE_SLOP or was cancelled. */
+let navPress = null;
+/** Target of the latest pointerdown in the column (a click closes only when it also STARTED on the background). */
+let lastDownTarget = null;
 
-function bindPointer(stage) {
+const inSideNav = (t) => t instanceof Element && !!t.closest('.td-lightbox__nav') && !!t.closest('.td-lightbox__btn');
+/** Filmstrip (native horizontal scroll) and the error block (plain buttons) never take part in gestures. */
+const outsideGestures = (t) => t instanceof Element && !!t.closest('.td-lightbox__filmstrip, .td-lightbox__error');
+const isBackground = (t) => !!ui && (t === ui.col || t === ui.stage || t === ui.nav);
+
+/**
+ * One pointer surface for the whole column (stage + side strips), v0.24.0. Classified at pointerdown:
+ *  (a) mouse on a side strip → a navigation candidate (no pan / zoom; the button's click activates it);
+ *  (b) touch / pen anywhere (strips included) → the swipe / pinch / double-tap path; a strip never activates;
+ *  (c) mouse elsewhere → zoom / pan as before. Filmstrip / error events are left alone.
+ */
+function bindPointer(col) {
   const pointers = new Map();
   let g = null;           // current gesture
   let lastTap = { t: 0, x: 0, y: 0 };
@@ -618,10 +689,11 @@ function bindPointer(stage) {
   resetPointer = () => {
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     for (const id of pointers.keys()) {
-      try { stage.releasePointerCapture(id); } catch { /* not captured */ }
+      try { col.releasePointerCapture(id); } catch { /* not captured */ }
     }
     pointers.clear();
     g = null;
+    navPress = null;
     lastTap = { t: 0, x: 0, y: 0 };
     if (ui) {
       ui.overlay.removeAttribute('data-dragging');
@@ -642,11 +714,29 @@ function bindPointer(stage) {
     ui.overlay.style.removeProperty('--td-lb-drag');
   };
 
-  stage.addEventListener('pointerdown', (e) => {
-    if (!session || isVideoSlide()) return;
+  // A click on the background closes — only when the press also started there (pointer capture retargets the click
+  // of a press on the image to the column, which must not close).
+  col.addEventListener('click', (e) => {
+    const down = lastDownTarget;
+    lastDownTarget = null;
+    if (!isBackground(e.target)) return;
+    if (down && !isBackground(down)) return;
+    onBackdropClick();
+  });
+
+  col.addEventListener('pointerdown', (e) => {
+    if (!session) return;
+    lastDownTarget = e.target;
+    if (outsideGestures(e.target)) return;
+    lastPointerType = e.pointerType || '';
+    if (inSideNav(e.target) && e.pointerType === 'mouse') {
+      navPress = e.button === 0 ? { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false } : null;
+      return; // (a) never starts a pan / zoom
+    }
+    if (isVideoSlide()) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    try { stage.setPointerCapture(e.pointerId); } catch { /* synthetic events */ }
+    try { col.setPointerCapture(e.pointerId); } catch { /* synthetic events */ }
     if (pointers.size === 2) {
       g = { type: 'pinch', startDist: dist() || 1, startScale: zoom.scale };
       ui.img.style.willChange = 'transform';
@@ -657,8 +747,12 @@ function bindPointer(stage) {
     }
   });
 
-  stage.addEventListener('pointermove', (e) => {
-    if (!session || isVideoSlide()) return;
+  col.addEventListener('pointermove', (e) => {
+    if (!session) return;
+    if (navPress && e.pointerId === navPress.id
+      && Math.hypot(e.clientX - navPress.x, e.clientY - navPress.y) > MOVE_SLOP) navPress.moved = true;
+    if (isVideoSlide()) return;
+    if (!pointers.has(e.pointerId) && outsideGestures(e.target)) return;
     if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
     // Mouse hover-pan while zoomed (no button held).
@@ -713,6 +807,7 @@ function bindPointer(stage) {
   });
 
   const end = (e) => {
+    if (navPress && e.pointerId === navPress.id && e.type === 'pointercancel') navPress.moved = true;
     if (!pointers.has(e.pointerId)) return;
     pointers.delete(e.pointerId);
     if (!g || !session) { g = null; return; }
@@ -761,8 +856,23 @@ function bindPointer(stage) {
     }
     if (Math.abs(dx) > SWIPE_NAV && Math.abs(dx) > Math.abs(dy)) navigate(dx < 0 ? 1 : -1);
   };
-  stage.addEventListener('pointerup', end);
-  stage.addEventListener('pointercancel', end);
+  col.addEventListener('pointerup', end);
+  col.addEventListener('pointercancel', end);
+}
+
+/**
+ * prev / next click. In the side strips (v0.24.0) a pointer click activates only for a mouse press that did not move
+ * > MOVE_SLOP; a click produced by touch / pen is ignored (those use swipes). Keyboard clicks (detail 0) always work.
+ */
+function onNavClick(e, dir) {
+  const press = navPress;
+  navPress = null;
+  if (ui && e.currentTarget instanceof Element && e.currentTarget.parentElement === ui.nav && e.detail > 0) {
+    const type = typeof e.pointerType === 'string' && e.pointerType ? e.pointerType : lastPointerType;
+    if (type && type !== 'mouse') return;
+    if (press && press.moved) return;
+  }
+  navigate(dir);
 }
 
 function closeDown() {
@@ -817,8 +927,10 @@ function onKeydown(e) {
   if (e.defaultPrevented) return;
   if (e.target instanceof Node && ui.videoMount.contains(e.target)) return; // media keys belong to the player
   if (e.ctrlKey || e.metaKey || e.altKey) return;
-  if (e.key === 'ArrowLeft') { e.preventDefault(); navigate(-1); }
-  else if (e.key === 'ArrowRight') { e.preventDefault(); navigate(1); }
+  // RTL (v0.24.0): <- is "next" (the arrows follow the reading direction, like the side strips).
+  const rtl = getComputedStyle(ui.overlay).direction === 'rtl';
+  if (e.key === 'ArrowLeft') { e.preventDefault(); navigate(rtl ? 1 : -1); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); navigate(rtl ? -1 : 1); }
   else if (e.key === 'f' || e.key === 'F') {
     if (!ui.fsBtn.hidden) { e.preventDefault(); toggleFullscreen(); }
   }
@@ -851,22 +963,269 @@ function destroyPlayer() {
 
 function showImage(src, item, token) {
   const { img, spinner } = ui;
+  hideError();
   img.hidden = false;
   img.setAttribute('data-loading', '');
   spinner.hidden = true;
   const spinTimer = setTimeout(() => { if (token === renderToken) spinner.hidden = false; }, 1000);
   const pre = new Image();
-  const ready = () => {
+  pre.onload = () => {
     clearTimeout(spinTimer);
     if (token !== renderToken) return; // slide changed meanwhile
     img.src = src;
     img.alt = item.alt || '';
     spinner.hidden = true;
     img.removeAttribute('data-loading');
+    startSlide(token);       // N5: the new image is displayable now
+    preloadAdjacent(token);  // N2
   };
-  pre.onload = ready;
-  pre.onerror = ready;
+  pre.onerror = () => {
+    clearTimeout(spinTimer);
+    if (token !== renderToken) return;
+    spinner.hidden = true;
+    img.removeAttribute('data-loading');
+    img.removeAttribute('src');
+    img.hidden = true;
+    showError();             // N3 (was: an empty frame)
+    startSlide(token);
+  };
   pre.src = src;
+}
+
+/* ------------------------------------------------------------------ v0.24.0 N3: error state */
+
+function showError() {
+  const { error, errorText, retryBtn, errorNextBtn } = ui;
+  const labels = session.labels;
+  error.hidden = false;
+  errorText.textContent = labels.loadError; // set after un-hiding → announced by the alert region
+  retryBtn.textContent = labels.retry;
+  errorNextBtn.textContent = labels.next;
+  errorNextBtn.hidden = session.items.length < 2;
+  const a = document.activeElement;
+  if (!a || a === document.body || a === ui.overlay || ui.stage.contains(a)) retryBtn.focus({ preventScroll: true });
+}
+
+function hideError() {
+  if (!ui || ui.error.hidden) return;
+  const hadFocus = ui.error.contains(document.activeElement);
+  ui.error.hidden = true;
+  if (hadFocus && lifecycle === 'open') ui.overlay.focus({ preventScroll: true });
+}
+
+/** Retry: the same src under a new render token (no slide). */
+function retryImage() {
+  if (!session || lifecycle !== 'open') return;
+  const item = session.items[session.index];
+  const src = item.type === 'video' ? item.poster : item.src;
+  if (!src) return;
+  session.slideDir = 0;
+  showImage(src, item, ++renderToken);
+}
+
+/* ------------------------------------------------------------------ v0.24.0 N2: adjacent preload */
+
+/** Drop every speculative preload of the session (only on close / session replacement). */
+function cancelPreloads() {
+  if (!session || !session.preloads) return;
+  for (const { image } of session.preloads.values()) {
+    image.onload = null;
+    image.onerror = null;
+    image.src = '';
+  }
+  session.preloads.clear();
+}
+
+/** `preload` option (v0.24.0 SEC-01): false | 'same-origin' (default) | 'all'. */
+function preloadMode(opt) {
+  if (opt === false) return false;
+  return opt === 'all' ? 'all' : 'same-origin';
+}
+
+/**
+ * After the current image loaded: fetch the previous + next IMAGE (wrapping) so the next step is instant. Records are
+ * keyed by the stable (canonical) source string and kept for the whole session — each neighbour is requested at most
+ * once. Speculative requests carry no Referer; cross-origin ones only with `preload: 'all'`.
+ */
+function preloadAdjacent(token) {
+  if (!session || token !== renderToken) return;
+  const mode = preloadMode(session.opts.preload);
+  if (!mode) return;
+  let saveData = false;
+  try { saveData = !!(navigator.connection && navigator.connection.saveData); } catch { saveData = false; }
+  const n = session.items.length;
+  if (saveData || n < 2) return;
+  for (const d of [-1, 1]) {
+    const i = (session.index + d + n) % n;
+    const it = session.items[i];
+    if (i === session.index || !it || it.type !== 'image' || !it.src) continue;
+    const src = it.src;
+    if (session.preloads.has(src)) continue;
+    if (mode === 'same-origin' && !sameOrigin(src)) continue;
+    const image = new Image();
+    image.referrerPolicy = 'no-referrer';
+    image.src = src;
+    session.preloads.set(src, { src, image });
+  }
+}
+
+/* ------------------------------------------------------------------ v0.24.0 N5: slide */
+
+let slideRaf = 0;
+
+function clearSlide() {
+  if (slideRaf) { cancelAnimationFrame(slideRaf); slideRaf = 0; }
+  if (ui) ui.stage.removeAttribute('data-slide');
+}
+
+function reducedMotion() {
+  try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
+}
+
+/** Start the slide for the CURRENT token only (old tokens never animate; a new start drops the pending one). */
+function startSlide(token) {
+  clearSlide();
+  if (!session || token !== renderToken || !session.slideDir || reducedMotion()) return;
+  ui.stage.setAttribute('data-slide', session.slideDir > 0 ? 'next' : 'prev');
+  slideRaf = requestAnimationFrame(() => {
+    slideRaf = requestAnimationFrame(() => { slideRaf = 0; ui.stage.removeAttribute('data-slide'); });
+  });
+}
+
+/** Sign of the shortest step from `from` to `to` in a wrapping gallery of n (0 = same). */
+function shortestDir(from, to, n) {
+  let d = to - from;
+  if (!d) return 0;
+  if (Math.abs(d) > n / 2) d -= Math.sign(d) * n;
+  return Math.sign(d);
+}
+
+/* ------------------------------------------------------------------ v0.24.0 N1: nav mode */
+
+let navResize = null;
+let navMq = null;
+let navRaf = 0;
+
+function scheduleNavSync() {
+  if (navRaf) return;
+  navRaf = requestAnimationFrame(() => { navRaf = 0; syncNavMode(); });
+}
+
+function fineMq() {
+  if (!navMq && typeof matchMedia === 'function') navMq = matchMedia(FINE_POINTER);
+  return navMq;
+}
+
+function navModeFor() {
+  const mq = fineMq();
+  if (!session || session.items.length < 2 || !mq || !mq.matches) return 'toolbar';
+  if (!isVideoSlide()) return 'side';
+  const colW = ui.nav.getBoundingClientRect().width || ui.col.getBoundingClientRect().width;
+  const playerW = ui.videoMount.getBoundingClientRect().width;
+  return colW - playerW >= 2 * (NAV_DISC + NAV_DISC_GAP) ? 'side-compact' : 'toolbar';
+}
+
+/** side / side-compact → prev / next live in the nav mount; toolbar → back in the toolbar (before fullscreen). */
+function syncNavMode() {
+  if (!ui || !session || lifecycle !== 'open') return;
+  const mode = navModeFor();
+  if (ui.overlay.getAttribute('data-nav') !== mode) ui.overlay.setAttribute('data-nav', mode);
+  const inToolbar = ui.prevBtn.parentElement === ui.toolbar;
+  if ((mode === 'toolbar') === inToolbar) return;
+  const active = document.activeElement;
+  if (mode === 'toolbar') {
+    ui.toolbar.insertBefore(ui.prevBtn, ui.fsBtn);
+    ui.toolbar.insertBefore(ui.nextBtn, ui.fsBtn);
+  } else {
+    ui.nav.append(ui.prevBtn, ui.nextBtn);
+  }
+  if (active === ui.prevBtn || active === ui.nextBtn) active.focus({ preventScroll: true }); // a move drops focus
+}
+
+function startNavWatch() {
+  window.addEventListener('resize', scheduleNavSync);
+  const mq = fineMq();
+  if (mq && mq.addEventListener) mq.addEventListener('change', scheduleNavSync);
+  if (navResize) navResize.observe(ui.videoMount);
+}
+
+function stopNavWatch() {
+  window.removeEventListener('resize', scheduleNavSync);
+  if (navMq && navMq.removeEventListener) navMq.removeEventListener('change', scheduleNavSync);
+  if (navResize) navResize.disconnect();
+  if (navRaf) { cancelAnimationFrame(navRaf); navRaf = 0; }
+}
+
+/* ------------------------------------------------------------------ v0.24.0 N4: filmstrip */
+
+function wantsFilmstrip(opt, n) {
+  if (n < 2) return false;
+  if (opt === true) return true;
+  if (opt === 'auto') return n >= FILMSTRIP_AUTO;
+  return false;
+}
+
+function thumbLabel(i) {
+  let s = '';
+  try { s = session.labels.thumb(i + 1); } catch { s = ''; }
+  return typeof s === 'string' && s ? s : DEFAULT_LABELS.thumb(i + 1);
+}
+
+/** Build the strip for this session (or hide it). The caption becomes its own row of the column while it is shown. */
+function mountFilmstrip() {
+  const { filmstrip, overlay, caption, col, panel } = ui;
+  const on = session.filmstrip;
+  const thumbs = [];
+  if (on) {
+    session.items.forEach((item, i) => {
+      const b = h('button', { type: 'button', class: 'td-lightbox__thumb', 'data-index': String(i), 'aria-label': thumbLabel(i) });
+      const url = item.thumb || (item.type === 'video' ? item.poster : item.src);
+      const play = () => h('span', { class: 'td-lightbox__thumb-play', 'aria-hidden': 'true' });
+      if (url) {
+        const im = h('img', { alt: '', loading: 'lazy', decoding: 'async', draggable: 'false' });
+        im.src = url;
+        b.appendChild(im);
+        if (item.type === 'video') b.appendChild(play());
+      } else {
+        b.appendChild(h('span', { class: 'td-lightbox__thumb-ph' }, [play()]));
+      }
+      if (item.type === 'video') b.setAttribute('data-video', '');
+      thumbs.push(b);
+    });
+  }
+  filmstrip.replaceChildren(...thumbs);
+  filmstrip.hidden = !on;
+  overlay.toggleAttribute('data-filmstrip', on);
+  if (on) col.insertBefore(caption, filmstrip);
+  else if (caption.parentElement !== overlay) overlay.insertBefore(caption, panel);
+}
+
+function syncFilmstrip() {
+  if (!session.filmstrip) return;
+  let cur = null;
+  for (const b of ui.filmstrip.children) {
+    const on = Number(b.getAttribute('data-index')) === session.index;
+    if (on) { b.setAttribute('aria-current', 'true'); cur = b; } else b.removeAttribute('aria-current');
+  }
+  if (cur) {
+    try {
+      cur.scrollIntoView({ inline: 'center', block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });
+    } catch { /* old engines */ }
+  }
+}
+
+function onThumbClick(e) {
+  const b = e.target instanceof Element ? e.target.closest('.td-lightbox__thumb') : null;
+  if (!b || !session || lifecycle !== 'open') return;
+  goToIndex(Number(b.getAttribute('data-index')));
+}
+
+/** goTo / thumbnail: direction = the shortest wrapped path. */
+function goToIndex(i) {
+  if (!session || lifecycle !== 'open' || !Number.isFinite(i)) return;
+  const n = session.items.length;
+  const to = Math.max(0, Math.min(n - 1, Math.floor(i)));
+  show(to, shortestDir(session.index, to, n));
 }
 
 function showVideo(item, token) {
@@ -884,12 +1243,15 @@ function showVideo(item, token) {
     videoMount.replaceChildren();
     videoMount.hidden = true;
     session.isVideo = false;
+    syncNavMode();
     if (item.poster) showImage(item.poster, item, token);
   };
   const accept = (player) => {
     if (token !== renderToken || abort.signal.aborted) { safeDestroy(player); return; }
     if (!player || typeof player.destroy !== 'function') { safeDestroy(player); fallback(); return; }
     session.player = player;
+    syncNavMode(); // N1: the player's real width decides side-compact vs toolbar
+    startSlide(token); // N5: mounted
   };
   let res;
   try {
@@ -906,14 +1268,17 @@ function showVideo(item, token) {
   }
 }
 
-function show(idx) {
+function show(idx, dir = 0) {
   const n = session.items.length;
   session.index = ((idx % n) + n) % n;
+  session.slideDir = dir;
   const item = session.items[session.index];
   closeDownloadMenu(); // its items/policy belong to the previous slide
   resetTransient();
   destroyPlayer();
   resetZoom();
+  clearSlide();
+  hideError();
   const token = ++renderToken;
 
   ui.counter.textContent = n > 1 ? session.labels.counter(session.index + 1, n) : '';
@@ -934,6 +1299,8 @@ function show(idx) {
   syncDownloads(item, ctx);
   syncPanel(ctx);
   syncExtras(ctx);
+  syncFilmstrip();
+  syncNavMode();
   emit('td-lightbox-change', detailOf());
 }
 
@@ -1021,7 +1388,7 @@ function closeDownloadMenu() {
 
 function navigate(dir) {
   if (!session || lifecycle !== 'open' || session.items.length < 2) return;
-  show(session.index + dir);
+  show(session.index + dir, Math.sign(dir));
 }
 
 /* ------------------------------------------------------------------ open / close */
@@ -1036,7 +1403,7 @@ function makeHandle(token) {
     next() { if (alive()) navigate(1); },
     prev() { if (alive()) navigate(-1); },
     goTo(i) {
-      if (alive() && Number.isFinite(i)) show(Math.max(0, Math.min(session.items.length - 1, Math.floor(i))));
+      if (alive() && Number.isFinite(i)) goToIndex(i);
     },
     close() { if (alive()) closeViewer(); },
     /** Switch the panel while open (dwp setViewerMode + setSidePanel): false | true | (ctx) => Element|null. */
@@ -1079,7 +1446,7 @@ function openViewer(items, options = {}) {
   if (!list.length) return null;
 
   build();
-  if (session) destroyPlayer();
+  if (session) { destroyPlayer(); cancelPreloads(); }
   const token = ++tokenSeq;
   const idx = Number.isFinite(opts.index) ? Math.max(0, Math.min(list.length - 1, Math.floor(opts.index))) : 0;
   session = {
@@ -1096,6 +1463,9 @@ function openViewer(items, options = {}) {
     player: null,
     videoAbort: null,
     isVideo: false,
+    slideDir: 0,
+    preloads: new Map(), // src → { src, image } (v0.24.0: stable records for the whole session)
+    filmstrip: wantsFilmstrip(opts.filmstrip, list.length),
     handle: null,
     groupEl: typeof Element !== 'undefined' && opts.groupEl instanceof Element ? opts.groupEl : null,
   };
@@ -1109,6 +1479,7 @@ function openViewer(items, options = {}) {
   ui.nextBtn.hidden = !many;
   ui.counter.hidden = !many;
   ui.fsBtn.hidden = !document.fullscreenEnabled;
+  mountFilmstrip();
 
   if (lifecycle !== 'open') {
     clearFocusHandoff(ui.overlay);
@@ -1123,6 +1494,7 @@ function openViewer(items, options = {}) {
     };
     lifecycle = 'open';
     document.addEventListener('keydown', onKeydown);
+    startNavWatch();
     histPush(viewer.hist, resolveHistoryAdapter(opts.history), token);
   }
 
@@ -1131,7 +1503,8 @@ function openViewer(items, options = {}) {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     if (lifecycle !== 'open' || !session || session.token !== openToken) return;
     ui.overlay.setAttribute('data-state', 'open');
-    if (!ui.overlay.contains(document.activeElement)) ui.overlay.focus({ preventScroll: true });
+    // An image error before the viewer was visible could not focus Retry yet (v0.24.0 N3) → it takes focus now.
+    if (!ui.overlay.contains(document.activeElement)) (ui.error.hidden ? ui.overlay : ui.retryBtn).focus({ preventScroll: true });
   }));
   emit('td-lightbox-open', detailOf());
   return session.handle;
@@ -1161,6 +1534,12 @@ function closeViewer() {
   unmountToolbar();
   renderToken += 1; // invalidate pending preloads / video resolutions
   resetZoom();
+  clearSlide();
+  hideError();
+  cancelPreloads();
+  stopNavWatch();
+  lastPointerType = '';
+  lastDownTarget = null;
   document.removeEventListener('keydown', onKeydown);
 
   v.releaseScroll();

@@ -1,8 +1,8 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.23)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.24)
 
-Trang này liệt kê, cho từng bản từ **0.23.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
+Trang này liệt kê, cho từng bản từ **0.24.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
 [CHANGELOG.md](../../CHANGELOG.md); trang này chỉ gom lại theo góc nhìn "tôi phải làm gì" và thêm ví dụ trước/sau.
 Quy trình nâng cấp chung nằm ở [README.md](README.md).
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.24.0](#0240) | Đổi giao diện + đổi hành vi (nhỏ) | Lightbox: nút trước / sau ra hai bên trên máy chuột; URL item trả ra là tuyệt đối; tải sẵn ảnh kề chỉ cùng origin mặc định. |
 | [0.23.0](#0230) | Không có thay đổi phá vỡ | Không. Thêm `<td-media-grid>`. |
 | [0.22.1](#0221) | Không có thay đổi phá vỡ | Không. Modal đổi chuyển động (giống dcms); site đặt `--td-modal-ease` riêng: giờ là đường cong fade. |
 | [0.22.0](#0220) | Đổi DOM (nhỏ) | CSS / code site cuộn hoặc đo `.td-dropdown__options` → `.td-dropdown__scroller`; "Không có kết quả" nằm trên listbox. |
@@ -49,6 +50,21 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.24.0
+
+**Đổi giao diện nhỏ ở lightbox + bổ sung.** Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.24.0.
+
+1. Trên máy dùng chuột, nút **trước / sau** của lightbox chuyển từ toolbar ra **hai bên** ảnh (cùng phần tử, cùng
+   `data-action`). CSS / test của site định vị hoặc đếm nút trong `.td-lightbox__toolbar` cần cập nhật; trên cảm ứng
+   nút vẫn ở toolbar.
+2. Bấm nền để đóng chỉ khi cú bấm bắt đầu trên nền.
+3. Filmstrip mặc định **tắt** — bật bằng `filmstrip: true` hoặc `'auto'`.
+4. `item.src` / `poster` / `thumb` trong `ctx.item`, `detail` sự kiện, `href` tải xuống giờ là **URL tuyệt đối** (đã
+   chuẩn hoá theo `document.baseURI`). Code site so sánh với chuỗi tương đối cần so theo URL tuyệt đối.
+5. Tải sẵn ảnh kề mặc định chỉ cho ảnh **cùng origin**; ảnh trên CDN tin cậy khác origin: `preload: 'all'`.
 
 ---
 

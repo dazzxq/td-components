@@ -2,6 +2,35 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.24.0
+
+Lightbox: điều hướng bằng chuột ở hai bên ảnh + tải sẵn ảnh kề + màn báo lỗi + filmstrip tuỳ chọn + trượt khi chuyển
+(plan `docs/internal/plans/v0.24.0-lightbox-nav.md`; thiết kế: Codex think-about nghiên cứu iCloud / Google Photos /
+PhotoSwipe / Fancybox… CONSENSUS; plan-review APPROVE 3 vòng).
+
+### Added
+
+- **Vùng bấm hai bên** (máy dùng chuột): nút trước / sau chuyển ra hai dải `clamp(64px, 15%, 240px)` hai bên cột ảnh,
+  gần trọn chiều cao, đĩa mũi tên 48px luôn hiện — bấm chỗ nào trong dải cũng chuyển ảnh; bấm giữa ảnh vẫn phóng to.
+  Đang phóng to → chỉ còn đĩa; video → đĩa nhỏ hoặc về toolbar khi chật; cảm ứng / bút → không dải (vẫn vuốt, nút ở
+  toolbar); RTL; counter đọc "2 / 5" cho trình đọc màn hình. Vẫn một nút trước / một nút sau (không trùng).
+- **Tải sẵn ảnh kề** (trước + sau) sau khi ảnh hiện tại tải xong — option `preload: 'same-origin'` (mặc định: chỉ ảnh cùng
+  origin với trang, không gửi Referer) | `'all'` (site có CDN tin cậy) | `false`; bỏ qua khi bật tiết kiệm dữ liệu.
+- **Màn báo lỗi ảnh:** "Không tải được ảnh" + **Thử lại** + **Ảnh sau** (`labels.loadError`, `labels.retry`).
+- **Filmstrip tuỳ chọn:** `filmstrip: true | 'auto' (≥ 8 mục) | false` (mặc định tắt); trường mới `item.thumb` (qua
+  `isAllowedUrl`); `labels.thumb(n)`; video không ảnh → ô giữ chỗ.
+- **Trượt khi chuyển ảnh** 160ms theo hướng, chỉ chạy khi ảnh mới đã sẵn sàng; tắt khi giảm chuyển động.
+- Token `--td-lb-*` mới (dải, đĩa, thumb, filmstrip, trượt).
+
+### Changed
+
+- Trên máy dùng chuột, nút trước / sau **không còn nằm trong toolbar** (ra hai bên). Bấm nền để đóng chỉ khi cú bấm cũng
+  bắt đầu trên nền (bấm ảnh rồi kéo ra không còn đóng nhầm). Overlay đặt `line-height` riêng; toolbar / counter khai báo
+  `box-sizing` tường minh (hiển thị giống nhau dù site có reset hay không).
+- URL của item (`src`, `poster`, `thumb`) được **chuẩn hoá thành URL tuyệt đối** theo `document.baseURI` rồi mới kiểm
+  `isAllowedUrl` (và giá trị lưu / trả ra — `ctx.item`, `detail`, `href` tải xuống — là URL tuyệt đối đó). Trước đây có thể
+  lệch khi trang có `<base href>`.
+
 ## 0.23.0
 
 Component mới `<td-media-grid>` — lưới ảnh / media chọn được (đề xuất của site 135, kiểu dwp photos; plan
