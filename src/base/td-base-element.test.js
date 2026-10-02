@@ -309,3 +309,119 @@ describe('TdBaseElement', () => {
     });
   });
 });
+
+// --- v0.25.0 (ADR 0012): SSR hydrate hooks ---
+const { ssrMarker } = await import('./td-base-element.js');
+
+describe('TdBaseElement hydrate lifecycle (v0.25.0)', () => {
+  /** A subclass that records every lifecycle call. */
+  function make({ hydratable = false, can = false } = {}) {
+    const calls = [];
+    class El extends TdBaseElement {
+      static hydratable = hydratable;
+      canHydrate() { calls.push('canHydrate'); return can; }
+      hydrateExisting() { calls.push('hydrateExisting'); }
+      render() { calls.push('render'); return '<p>x</p>'; }
+      afterRender() { calls.push('afterRender'); }
+      _applyStyles() { calls.push('applyStyles'); }
+    }
+    return { el: new El(), calls };
+  }
+
+  it('defaults: canHydrate() → false, hydrateExisting() exists, static hydratable false', () => {
+    const el = new TdBaseElement();
+    assert.equal(el.canHydrate(), false);
+    assert.equal(typeof el.hydrateExisting, 'function');
+    assert.equal(TdBaseElement.hydratable, false);
+  });
+
+  it('canHydrate() true → hydrateExisting + afterRender + _applyStyles, NO render / innerHTML', () => {
+    const { el, calls } = make({ hydratable: true, can: true });
+    el.innerHTML = '<ssr></ssr>';
+    el.connectedCallback();
+    assert.deepEqual(calls, ['canHydrate', 'hydrateExisting', 'afterRender', 'applyStyles']);
+    assert.equal(el.innerHTML, '<ssr></ssr>');
+    assert.equal(el._hydrated, true);
+  });
+
+  it('canHydrate() false → render as before', () => {
+    const { el, calls } = make({ hydratable: true, can: false });
+    el.connectedCallback();
+    assert.deepEqual(calls, ['canHydrate', 'render', 'afterRender', 'applyStyles']);
+    assert.equal(el.innerHTML, '<p>x</p>');
+    assert.ok(!el._hydrated);
+  });
+
+  it('hydratable: reconnect re-binds (afterRender + _applyStyles) WITHOUT render', () => {
+    const { el, calls } = make({ hydratable: true, can: true });
+    el.connectedCallback();
+    calls.length = 0;
+    el.disconnectedCallback();
+    el.connectedCallback();
+    assert.deepEqual(calls, ['afterRender', 'applyStyles']);
+    el.connectedCallback(); // no disconnect in between → nothing
+    assert.deepEqual(calls, ['afterRender', 'applyStyles']);
+  });
+
+  it('hydratable but rendered (canHydrate false): reconnect still re-binds without render', () => {
+    const { el, calls } = make({ hydratable: true, can: false });
+    el.connectedCallback();
+    calls.length = 0;
+    el.disconnectedCallback();
+    el.connectedCallback();
+    assert.deepEqual(calls, ['afterRender', 'applyStyles']);
+  });
+
+  it('NOT hydratable: reconnect renders again (unchanged lifecycle), canHydrate still consulted on first connect', () => {
+    const { el, calls } = make({ hydratable: false, can: false });
+    el.connectedCallback();
+    assert.deepEqual(calls, ['canHydrate', 'render', 'afterRender', 'applyStyles']);
+    calls.length = 0;
+    el.disconnectedCallback();
+    el.connectedCallback();
+    assert.deepEqual(calls, ['render', 'afterRender', 'applyStyles']);
+  });
+
+  it('data-td-ssr is removed after the first connect of a hydratable element (hydrated or not); kept otherwise', () => {
+    const a = make({ hydratable: true, can: true }).el;
+    a.setAttribute('data-td-ssr', 'x@1');
+    a.connectedCallback();
+    assert.equal(a.hasAttribute('data-td-ssr'), false);
+    const b = make({ hydratable: true, can: false }).el;
+    b.setAttribute('data-td-ssr', 'x@2');
+    b.connectedCallback();
+    assert.equal(b.hasAttribute('data-td-ssr'), false);
+    const c = make({ hydratable: false }).el;
+    c.setAttribute('data-td-ssr', 'x@1');
+    c.connectedCallback();
+    assert.equal(c.getAttribute('data-td-ssr'), 'x@1');
+  });
+
+  it('canHydrate() sees early properties already replayed', () => {
+    let seen;
+    class El extends TdBaseElement {
+      static get observedAttributes() { return ['loading']; }
+      static get booleanAttributes() { return ['loading']; }
+      canHydrate() { seen = this.hasAttribute('loading'); return true; }
+    }
+    const el = new El();
+    el.loading = true; // before upgrade/connect: own data property
+    el.connectedCallback();
+    assert.equal(seen, true);
+  });
+
+  it('ssrMarker(el) parses data-td-ssr = "<name>@<schema>"; _ssrMatches(name, schema)', () => {
+    const el = new TdBaseElement();
+    assert.equal(ssrMarker(el), null);
+    el.setAttribute('data-td-ssr', 'button@1');
+    assert.deepEqual(ssrMarker(el), { name: 'button', schema: 1 });
+    assert.equal(el._ssrMatches('button', 1), true);
+    assert.equal(el._ssrMatches('button', 2), false);
+    assert.equal(el._ssrMatches('alert', 1), false);
+    for (const bad of ['button', 'button@', '@1', 'button@0', 'button@x', 'Button@1', 'button@1@2', ' button@1x']) {
+      el.setAttribute('data-td-ssr', bad);
+      assert.equal(ssrMarker(el), null, bad);
+    }
+    assert.equal(ssrMarker(null), null);
+  });
+});

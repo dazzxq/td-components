@@ -23,6 +23,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [CSS và import map](#css-và-import-map)
 - [Bảng hàm](#bảng-hàm)
 - [td_button và td_link](#td_button-và-td_link)
+  - [Chế độ element: SSR + hydrate tại chỗ (0.25.0)](#chế-độ-element-ssr--hydrate-tại-chỗ-0250)
 - [td_field](#td_field)
 - [td_dropdown](#td_dropdown)
 - [td_toggle và td_checkbox](#td_toggle-và-td_checkbox)
@@ -38,7 +39,8 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 
 | Helper | In ra | Cần JS? | Upgrade? |
 |---|---|---|---|
-| `td_button`, `td_link` | `<button class="td-btn …">` / `<a class="td-btn …">` **native** | Không | Không |
+| `td_button`, `td_link` | `<button class="td-btn …">` / `<a class="td-btn …">` **native** (mặc định) | Không | Không |
+| `td_button`, `td_link` — **chế độ element** (0.25.0, tự bật) | host `<td-button data-td-ssr="button@1">` chứa sẵn đúng control trên | Không (control native chạy ngay) | **Có** — nạp module `button`: nhận markup **tại chỗ**, không nháy |
 | `td_field` | `div.td-field` + `input` / `textarea.td-field__control` **native** | Không | Không |
 | `td_checkbox` | `label.td-checkbox` + `input.td-checkbox__input` **native** | Không | Không |
 | `td_toggle` | `label.td-switch` + `input[role=switch]` **native** | Không | Không |
@@ -52,7 +54,10 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
   `type=datetime-local`, nút submit có `name`/`value`… là **của trình duyệt**. Không cần JS, không có bước upgrade.
 - Cần hành vi JS (nút `loading`/`run()`, bộ đếm ký tự, lỗi validate cập nhật động, `setError()`, toggle
   `controlled`/`commit()`…) → viết thẳng custom element `<td-button>`, `<td-input-field>`, `<td-checkbox>`,
-  `<td-toggle>` trong template (xem trang từng component). Helper **không** in custom element cho các control này.
+  `<td-toggle>` trong template (xem trang từng component). Helper **không** in custom element cho các control này —
+  **trừ** `td_button` / `td_link` ở [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) (0.25.0): khi bật,
+  helper in host `<td-button>` kèm markup đầy đủ, nên vừa có nút native khi chưa có JS, vừa có `loading` / `run()`
+  khi module đã nạp — không còn "nháy" chữ trần như khi viết tay `<td-button>Nhãn</td-button>`.
 - `td_dropdown` là helper **duy nhất** upgrade: không có JS thì `<select>` hoạt động bình thường; nạp
   `@dazzxq/td-components/dropdown` thì component đọc `<option>` rồi thay select (xem [td_dropdown](#td_dropdown)).
 
@@ -82,8 +87,21 @@ TdComponents\Td::configure(
 - `baseUrl` phải là URL http(s) hoặc tương đối (`/…`); sai → `InvalidArgumentException`. Dấu `/` cuối bị bỏ.
 - **Phiên bản nằm trong đường dẫn**, không dùng `?v=` cho module (hai URL = hai module, xem
   [WordPress & PHP](wordpress-php.md#đặt-phiên-bản-vào-đường-dẫn-không-dùng-ver-cho-module)).
-- Không gọi `configure()` thì icon và markup vẫn chạy (kit mặc định là thư mục chứa `php/`), nhưng `td_import_map*`
-  và `td_stylesheet_tag` ném `LogicException` (chúng cần URL).
+- Không gọi `configure()` thì icon và markup vẫn chạy (kit mặc định là thư mục chứa `php/`), nhưng `td_import_map*`,
+  `td_stylesheet_tag` và `Td::modulePreloads` ném `LogicException` (chúng cần URL).
+- Tham số thứ ba (0.25.0, tuỳ chọn) — mảng option toàn cục:
+
+  ```php
+  TdComponents\Td::configure($baseUrl, $tdDir, ['ssr_elements' => true]);
+  ```
+
+  | Option | Kiểu | Mặc định | Ý nghĩa |
+  |---|---|---|---|
+  | `ssr_elements` | `bool` | `false` | `td_button` / `td_link` (không `bare`) in [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) cho **mọi** lần gọi; option `element` của từng lần gọi vẫn ghi đè |
+
+  Key lạ (gõ nhầm `ssr_element`…) hoặc giá trị không phải `bool` → `InvalidArgumentException` (không im lặng bỏ qua).
+  Mỗi lần gọi lại `configure()` đặt lại option theo tham số mới (không truyền → `false`). `Td::ssrElements()` trả giá
+  trị hiện tại.
 
 ## CSS và import map
 
@@ -106,6 +124,32 @@ Một hợp đồng, hai cách gọi:
 | `Td::importMap(array $extra = []): array` / `td_import_map(array $extra = [])` | mảng `specifier => URL`: mọi entry `.js` trong `exports` (kit trước, theo thứ tự `exports`), rồi `$extra` |
 | `td_import_map_tag(array $extra = [], ?string $nonce = null): string` | `<script type="importmap" nonce="…">{"imports":…}</script>` |
 | `td_stylesheet_tag(?string $nonce = null): string` | `<link rel="stylesheet" href="{baseUrl}/td.css" nonce="…">` |
+| `Td::modulePreloads(array $names, ?string $nonce = null): string` (0.25.0) | `<link rel="modulepreload" href="…">` cho từng module kit trong `$names` |
+
+### Thứ tự nạp và `Td::modulePreloads` (0.25.0)
+
+Thứ tự khuyến nghị trong `<head>` — **stylesheet → import map → modulepreload → entry module của site**:
+
+```php
+<head>
+  <?= td_stylesheet_tag($nonce) ?>                                  <!-- 1. CSS: control SSR có dáng ngay -->
+  <?= td_import_map_tag(['app/' => '/assets/app/'], $nonce) ?>      <!-- 2. một import map, trước mọi module -->
+  <?= TdComponents\Td::modulePreloads(['button', 'alert', 'dropdown'], $nonce) ?> <!-- 3. tải sớm module có trên trang -->
+  <script type="module" src="/assets/app/boot.js" nonce="<?= htmlspecialchars($nonce) ?>"></script> <!-- 4. entry -->
+</head>
+```
+
+- `$names`: tên export ngắn (`'button'`, `'icons'`, `'form-element'`…) **hoặc** specifier đầy đủ
+  (`'@dazzxq/td-components/button'`). Mỗi tên được phân giải qua **cùng** bản đồ của `Td::importMap()` (đúng phiên bản
+  đã `configure`), nên URL preload luôn trùng URL module thật (không tải hai lần).
+- Trùng tên → in một lần (giữ thứ tự gặp đầu). Mảng rỗng → chuỗi rỗng.
+- Tên không phải module JS của kit (`'td.css'`, `'app'`, gõ nhầm…), tên rỗng hoặc không phải chuỗi →
+  `InvalidArgumentException`.
+- `href` và nonce được escape. Với CSP nonce, truyền cùng `$nonce` như các thẻ khác.
+- Đây chỉ là **tối ưu** (module bắt đầu tải song song với HTML), **không** thay SSR: nút vẫn cần
+  [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) để không nháy khi module về muộn. Chỉ preload module
+  thật sự có trên trang — preload thừa tốn băng thông. Module phụ thuộc (`base`, `icons`…) trình duyệt tự phát hiện
+  khi tải entry; preload thêm chúng là tuỳ chọn.
 
 Luật:
 
@@ -143,7 +187,8 @@ td_import_map_tag(array $extra = [], ?string $nonce = null): string
 td_stylesheet_tag(?string $nonce = null): string
 ```
 
-Class `TdComponents\Td` (static): `configure`, `baseUrl`, `kitDir`, `importMap`, `importMapTag`, `stylesheetTag`,
+Class `TdComponents\Td` (static): `configure` (+ option `ssr_elements`, 0.25.0), `ssrElements()`, `baseUrl`, `kitDir`,
+`importMap`, `importMapTag`, `stylesheetTag`, `modulePreloads` (0.25.0),
 `registerIcons`, `siteIcons`, `hasIcon`, `iconAliases()`, `icon($name, $size, $label, $class)`, và các tiện ích an toàn dùng lại được
 trong template của site: `e()` (escape), `attrs()` (in attribute đã lọc), `safeUrl()`, `classTokens()`, `uid()`,
 `safeFilename()`. Hằng `Td::JSON_FLAGS` cho JSON in vào HTML.
@@ -220,6 +265,87 @@ nội dung là nhãn đã escape, không `td-btn…`, không icon/spinner. Vẫn
 <?= td_link('Tài liệu', '/docs', ['bare' => true, 'class' => 'nav-link']) ?>
 <!-- <a class="nav-link" href="/docs">Tài liệu</a> -->
 ```
+
+### Chế độ element: SSR + hydrate tại chỗ (0.25.0)
+
+**Vấn đề nó giải quyết.** Viết tay `<td-button>Lưu</td-button>` thì trước khi module JS tải xong trình duyệt chỉ thấy
+chữ "Lưu" trần, rồi đột ngột nhảy thành nút (nháy + xô layout). Chế độ element in **sẵn** cả host lẫn nút đã có dáng;
+khi module `@dazzxq/td-components/button` nạp, component **nhận markup tại chỗ** (không thay node con) — không nháy,
+không xô layout, nút đang focus vẫn focus. Quyết định kiến trúc: [ADR 0012](../internal/decisions/0012-ssr-hydration.md).
+
+**Bật thế nào — tự chọn (opt-in), mặc định vẫn native như cũ:**
+
+| Toàn cục `ssr_elements` (`Td::configure`) | Option `element` của lần gọi | Kết quả |
+|---|---|---|
+| `false` (mặc định) | không truyền | native (như trước 0.25.0, từng byte) |
+| `false` | `false` | native |
+| `false` | `true` | **element** |
+| `true` | không truyền | **element** |
+| `true` | `false` | native |
+| `true` | `true` | **element** |
+
+`td_link(…, ['bare' => true])` **không bao giờ** in element (không có hợp đồng component). Các helper khác
+(`td_field`, `td_toggle`, `td_checkbox`, `td_dropdown`) chưa có chế độ element ở 0.25.0 (`ssr_elements` không ảnh
+hưởng chúng) — lộ trình 0.26 / 0.27.
+
+```php
+<?= td_button('Lưu', ['type' => 'submit', 'name' => 'action', 'value' => 'save', 'variant' => 'primary', 'icon' => 'check', 'element' => true]) ?>
+```
+
+```html
+<td-button data-td-ssr="button@1" variant="primary" size="md" icon="check" label="Lưu" type="submit" name="action" value="save">
+  <button class="td-btn td-btn--primary td-btn--md" type="submit" name="action" value="save">
+    <span class="td-btn__icon" data-td-icon="check" data-td-icon-size="s" aria-hidden="true"><svg class="td-icon td-icon--s" data-icon="check" …>…</svg></span>
+    <span class="td-btn__label">Lưu</span>
+    <span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden>…</span>
+  </button>
+</td-button>
+```
+
+(Thực tế in liền một dòng, không khoảng trắng giữa thẻ.) Control bên trong **đúng từng thuộc tính** với cái
+`<td-button>` tự render — có test fixture chung PHP ↔ JS chạy trên Chromium, Firefox và WebKit.
+
+**Bảng chiếu option → host ↔ control:**
+
+| Option PHP | Host `<td-button>` | Control `<button>` / `<a>` (chạy khi chưa có JS) |
+|---|---|---|
+| `$label` | `label` (chỉ khi khác rỗng) | text của `.td-btn__label` |
+| `variant` / `size` / `full_width` | `variant` / `size` / `full-width` — **luôn in** `variant` và `size` (mặc định PHP `secondary` ≠ JS `primary`) | class `td-btn--{variant}` `td-btn--{size}` `td-btn--full` |
+| `icon` / `icon_position` | `icon` (chỉ khi icon có trong registry) / `icon-position="right"` | `span.td-btn__icon[data-td-icon][data-td-icon-size="s"]` có sẵn SVG |
+| `type` (nút) | `type` (luôn in) | `type` |
+| `name` / `value` (nút) | `name` / `value` | `name` / `value` (submitter) |
+| `disabled` | `disabled` | nút: `disabled` native · link: không `href` + `tabindex="-1"` + `role="link"` + `aria-disabled` |
+| `loading` | `loading` | như native: nút `disabled` + `aria-busy` + `aria-disabled`, link không `href`; spinner hiện |
+| `aria_label` | `aria-label` | `aria-label` |
+| `tooltip` | — | `data-tooltip` |
+| `href` / `target` / `download` (link) | `href` (đã lọc; URL bị chặn → `href=""`, link trơ) / `target` / `download` | `href` (đã lọc) / `target` + `rel` / `download` |
+| `id` | `id` (API của component) | — |
+| `class` | `class` (của site) | — (control chỉ mang class kit) |
+| `attrs` | — | lên control như native (cùng allowlist; key trùng option → option thắng) |
+| `attrs` có `aria-label` / `aria-pressed` / `aria-expanded` / `aria-haspopup` / `aria-controls` | **nâng lên host** (component chuyển xuống control khi có JS) | vẫn in trên control (cho lúc chưa có JS) |
+| — | `data-td-ssr="button@1"` (dấu hợp đồng; component gỡ sau khi nhận) | — |
+
+**Hành vi khi chưa có JS** (module chưa tải / bị chặn): control native chạy đầy đủ — nút submit gửi `name=value`,
+link điều hướng, nút `loading` bị `disabled` native (không submit lần hai). **Sau khi hydrate**, nút `loading`
+chuyển sang hợp đồng JS hiện có: `aria-busy` + `aria-disabled`, vẫn focus được, click bị chặn, **không** còn
+`disabled` native — giống hệt `<td-button loading>` viết tay.
+
+**Khi nào component từ chối nhận markup (và render lại như cũ):** dấu sai (`button@2`, tên khác), cấu trúc lạ (thiếu
+spinner, thêm con, chữ thừa), hoặc **thuộc tính cấu trúc** trên host không khớp control: loại control (`<a>` ⇔ host
+có `href`), class variant / size / full-width, icon + vị trí, nhãn, `type`, `target` / `download`, hoặc host có
+`color` / `text-color` (PHP không in). Ví dụ script của site đổi `variant` trước khi module tải → nút render lại đúng
+`variant` mới. Thuộc tính **trạng thái** (`loading`, `disabled`, `name`, `value`, `aria-*`, giá trị `href`) thì được
+áp tại chỗ, không render lại. Hai trường hợp biên đã biết render lại: nhãn rỗng mà không có icon + `aria_label`
+(JS hiện chữ mặc định "Button"), và icon không có trong registry kèm nhãn rỗng.
+
+**Lưu ý khi chuyển sang element mode:**
+
+- `id` và `class` nằm trên **host** chứ không trên `<button>` — CSS / JS của site đang nhắm `#id` / `.class` vào
+  thẳng nút cần đổi sang `#id > .td-btn` hoặc dùng API component (`document.getElementById('save').run(…)`).
+- `Td::allowHttpLinks(true)` cho phép `http:` ở PHP, nhưng component trên trang HTTPS vẫn bỏ `href` `http:` khi hydrate
+  (link thành trơ) — như `<td-button href>` viết tay.
+- Nạp `@dazzxq/td-components/button` (qua import map) mới có hydrate; nên thêm
+  [`Td::modulePreloads(['button'])`](#thứ-tự-nạp-và-tdmodulepreloads-0250).
 
 ## td_field
 
@@ -409,7 +535,16 @@ registerIcons(JSON.parse(document.getElementById('site-icons').textContent));
 | `variant` | `neutral` `accent` `success` `warning` `danger` `info` (mặc định `neutral`) |
 | `outline` | `true` → `td-badge--outline` |
 | `stamp` | `true` → `td-badge--stamp` (con dấu: in hoa, viền đôi, nghiêng) |
+| `icon` (0.25.0) | tên icon registry (core, alias như `x`, hoặc icon site `site-*` đã `registerIcons`) → icon trang trí cỡ `s` trước nhãn. Tên lạ → **bỏ icon, giữ nhãn** (không span rỗng; markup y như không có `icon`) |
 | `id`, `class`, `attrs` | trên `<span>` |
+
+```php
+<?= td_badge('Đã duyệt', ['variant' => 'success', 'icon' => 'check']) ?>
+<!-- <span class="td-badge td-badge--success"><span class="td-badge__icon" aria-hidden="true"><svg class="td-icon td-icon--s" data-icon="check" …>…</svg></span><span class="td-badge__label">Đã duyệt</span></span> -->
+```
+
+Icon `aria-hidden` (chỉ trang trí — nghĩa nằm ở nhãn), cao `1em` theo cỡ chữ badge, màu theo chữ (`currentColor`;
+gate tương phản đo icon ≥ 3.2:1 trên nền mọi variant).
 
 `td_alert($message, $opts)` — **một hợp đồng SSR duy nhất** ([Alert](../components/alert.md)): luôn in host
 `<td-alert>` chứa sẵn khối `div.td-alert` đầy đủ. `td.css` tạo dáng ngay (flash hiện được khi chưa có / không có JS);
@@ -500,6 +635,10 @@ Khác biệt hành vi so với `markup.php` của 135 (cố ý):
 | `Failed to load module script … MIME type "application/octet-stream"` (hoặc rỗng) | server không map đuôi `.mjs` (nginx cũ) / `.js` sang JavaScript; `X-Content-Type-Options: nosniff` khiến trình duyệt chặn | nginx: `types { text/javascript mjs; }` trong `http { }` ngay sau `include mime.types;` — Apache: `AddType text/javascript .js .mjs` ([chi tiết](wordpress-php.md#mime-của-module-js)) |
 | Flash `td_alert` không có nút đóng | chưa nạp `@dazzxq/td-components/alert` (cố ý: không JS thì không có nút chết) | import module `alert` |
 | Dropdown không đổi thành component | chưa import `@dazzxq/td-components/dropdown`, hoặc select có `multiple` (không upgrade) | import module; `multiple` giữ select native |
+| `InvalidArgumentException … unknown option` / `ssr_elements must be a bool` | option thứ ba của `configure()` gõ nhầm key, hoặc truyền `'1'` / `1` | chỉ `['ssr_elements' => true\|false]` |
+| `InvalidArgumentException … is not a JS module of the kit` | tên trong `Td::modulePreloads()` không phải export JS (`'td.css'`, gõ nhầm, module của site) | dùng tên export (`'button'`) — module của site tự in `<link rel="modulepreload">` |
+| Nút element mode vẫn nháy / render lại | chưa nạp module `button`; hoặc script đổi `variant` / `label` / `icon`… trước khi module tải (cố ý render lại cho đúng) | import module; đổi thuộc tính sau khi `customElements.whenDefined('td-button')` |
+| CSS / JS của site nhắm `#id` của nút không còn ăn | element mode đặt `id` / `class` trên host `<td-button>` | đổi selector sang `#id > .td-btn`, hoặc dùng API component |
 
 ## Xem thêm
 

@@ -20,6 +20,12 @@
 		display: inline-block;
 	}
 
+	/* v0.25.0 safety net (ADR 0012): hand-written host before define → reserve the switch row height */
+	td-toggle:not(:defined):not([data-td-ssr]) {
+		display: inline-block;
+		min-height: 1.5rem;
+	}
+
 	.td-switch {
 		/* derived: computed per element so it follows the size modifier and any override of the three above */
 		--td-switch-pad: calc((var(--td-switch-h) - var(--td-switch-thumb-d)) / 2);

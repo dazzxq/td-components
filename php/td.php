@@ -14,6 +14,9 @@
  *   - td_button / td_link / td_field / td_checkbox / td_toggle print STANDALONE NATIVE controls carrying the DOM
  *     contract (BEM classes) of the matching component: td.css styles them, submit + validation are native, no JS,
  *     no upgrade. Use the <td-*> custom elements when you need JS behaviour (loading/run, counter, live errors…).
+ *   - v0.25.0 ELEMENT mode (opt-in: option `element => true`, or Td::configure(..., ['ssr_elements' => true])):
+ *     td_button / td_link (not bare) print `<td-button data-td-ssr="button@1" …>` + the exact control the component
+ *     renders — native without JS, hydrated IN PLACE by `@dazzxq/td-components/button` (no flash, ADR 0012).
  *   - td_dropdown prints a <td-dropdown> host wrapping a native <select>: works without JS, upgrades when
  *     `@dazzxq/td-components/dropdown` is imported (the ONLY helper that upgrades).
  *   - td_icon prints `svg.td-icon` with the full geometry of src/icons/icons.json (+ Td::registerIcons()).
@@ -109,14 +112,31 @@ namespace TdComponents {
             self::$allowHttp = $allow;
         }
         private static int $uid = 0;
+        /** v0.25.0: element mode by default for helpers with an SSR contract (td_button / td_link, not bare). */
+        private static bool $ssrElements = false;
+
+        /** SSR contract markers (ADR 0012): `data-td-ssr` value printed by element-mode helpers. */
+        public const SSR_BUTTON = 'button@1';
 
         /**
          * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.23.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
+         * @param array{ssr_elements?: bool} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
+         *                        print the `<td-button>` host + its full SSR markup (hydrated in place by the JS
+         *                        module) instead of a native control; a per-call `element` option overrides it.
+         *                        Unknown keys throw (typos never pass silently).
          */
-        public static function configure(string $baseUrl, string $kitDir): void
+        public static function configure(string $baseUrl, string $kitDir, array $options = []): void
         {
+            foreach ($options as $k => $v) {
+                if ($k !== 'ssr_elements') {
+                    throw new InvalidArgumentException("Td::configure: unknown option \"$k\"");
+                }
+                if (!is_bool($v)) {
+                    throw new InvalidArgumentException('Td::configure: ssr_elements must be a bool');
+                }
+            }
             // asset base: http(s) or relative — independent of the LINK policy (allowHttpLinks only gates td_button/td_link)
             $url = self::safeUrl($baseUrl, true);
             if ($url === '' || $url[0] === '#' || preg_match('/^(mailto|tel):/i', $url)) {
@@ -130,6 +150,13 @@ namespace TdComponents {
             self::$pkg = null;
             self::$kitIcons = null;
             self::$kitAliases = null;
+            self::$ssrElements = $options['ssr_elements'] ?? false;
+        }
+
+        /** v0.25.0: whether element mode is the default (Td::configure(..., ['ssr_elements' => true])). */
+        public static function ssrElements(): bool
+        {
+            return self::$ssrElements;
         }
 
         public static function baseUrl(): string
@@ -199,6 +226,38 @@ namespace TdComponents {
         {
             $json = json_encode(['imports' => self::importMap($extra)], self::JSON_FLAGS);
             return '<script type="importmap"' . self::nonceAttr($nonce) . '>' . $json . '</script>';
+        }
+
+        /**
+         * v0.25.0: `<link rel="modulepreload" href="…">` for the kit modules used on the page — an OPTIMISATION (the
+         * modules start downloading with the HTML), never a replacement for SSR markup. Names: the export short name
+         * (`'button'`) or the full specifier (`'@dazzxq/td-components/button'`); resolved through importMap() (same
+         * configured version), de-duplicated in order. A name that is not a kit JS export throws
+         * InvalidArgumentException. Print after the import map, before the entry module:
+         * stylesheetTag() → importMapTag() → modulePreloads([...]) → `<script type="module" src="app.js">`.
+         * @param array<int,string> $names
+         */
+        public static function modulePreloads(array $names, ?string $nonce = null): string
+        {
+            $map = self::importMap();
+            $pkg = self::package();
+            $prefix = (is_string($pkg['name'] ?? null) ? $pkg['name'] : self::PACKAGE);
+            $urls = [];
+            foreach ($names as $name) {
+                if (!is_string($name) || $name === '') {
+                    throw new InvalidArgumentException('Td::modulePreloads: names must be non-empty strings');
+                }
+                $spec = isset($map[$name]) ? $name : $prefix . '/' . $name;
+                if (!isset($map[$spec])) {
+                    throw new InvalidArgumentException("Td::modulePreloads: \"$name\" is not a JS module of the kit");
+                }
+                $urls[$map[$spec]] = true;
+            }
+            $out = '';
+            foreach (array_keys($urls) as $url) {
+                $out .= '<link rel="modulepreload" href="' . self::e((string) $url) . '"' . self::nonceAttr($nonce) . '>';
+            }
+            return $out;
         }
 
         /** `<link rel="stylesheet" href="{base}/td.css">` + optional nonce. */
@@ -555,6 +614,10 @@ namespace {
      * Options: variant primary|secondary|success|danger|info|warning|ghost (default secondary — 135 compatible),
      * size sm|md|lg (xs → sm), icon, icon_position left|right, type button|submit|reset, name, value, disabled,
      * loading, full_width, aria_label, tooltip, id, class, attrs; link only: href, target, download.
+     * v0.25.0 `element` (bool, default Td::configure ssr_elements = false): print the `<td-button
+     * data-td-ssr="button@1">` host + the exact control <td-button> renders (works without JS; hydrated in place by
+     * `@dazzxq/td-components/button` — no flash). id / class then go on the host; see the projection table in
+     * docs/guides/php-adapter.md.
      */
     function td_button(string $label, array $o = []): string
     {
@@ -627,23 +690,84 @@ namespace {
             ];
             $tag = 'button';
         }
-        $taken = [];
-        $html = '<' . $tag . Td::ownAttrs($attrs, $taken) . Td::attrs(is_array($o['attrs'] ?? null) ? $o['attrs'] : [], $taken) . '>';
+        // v0.25.0 element mode (ADR 0012): per call `element` (true/false) overrides Td::configure ssr_elements.
+        // Never for a bare link (no component contract).
+        $element = !$bare && (array_key_exists('element', $o) && $o['element'] !== null ? (bool) $o['element'] : Td::ssrElements());
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $host = null;
+        if ($element) {
+            // The control carries only kit classes; id / site class belong to the host (component API).
+            $attrs['id'] = null;
+            $attrs['class'] = 'td-btn td-btn--' . $variant . ' td-btn--' . $size . (!empty($o['full_width']) ? ' td-btn--full' : '');
+        }
+        // an `id` option (moved to the host in element mode) still blocks `attrs['id']` on the control, as in native mode
+        $taken = $element && isset($o['id']) && is_scalar($o['id']) ? ['id' => true] : [];
+        $html = '<' . $tag . Td::ownAttrs($attrs, $taken) . Td::attrs($extra, $taken) . '>';
         if ($bare) {
             return $html . Td::e($label) . '</a>';
         }
         $icon = '';
+        $iconName = null;
         if (!empty($o['icon']) && is_string($o['icon'])) {
             $svg = Td::icon($o['icon'], 's');
-            $icon = $svg !== '' ? '<span class="td-btn__icon" aria-hidden="true">' . $svg . '</span>' : '';
+            if ($svg !== '') {
+                $iconName = $o['icon'];
+                // element mode: the exact slot <td-button> renders (data-td-icon + size), already filled
+                $icon = $element
+                    ? '<span class="td-btn__icon" data-td-icon="' . Td::e($iconName) . '" data-td-icon-size="s" aria-hidden="true">' . $svg . '</span>'
+                    : '<span class="td-btn__icon" aria-hidden="true">' . $svg . '</span>';
+            }
         }
+        $right = ($o['icon_position'] ?? 'left') === 'right';
         $text = $label !== '' ? '<span class="td-btn__label">' . Td::e($label) . '</span>' : '';
-        $html .= ($o['icon_position'] ?? 'left') === 'right' ? $text . $icon : $icon . $text;
+        $html .= $right ? $text . $icon : $icon . $text;
         $html .= '<span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true"' . ($loading ? '' : ' hidden') . '>'
             . '<svg class="td-spinner__svg" viewBox="0 0 50 50" aria-hidden="true" focusable="false">'
             . '<circle class="td-spinner__track" cx="25" cy="25" r="20"></circle>'
             . '<circle class="td-spinner__arc" cx="25" cy="25" r="20"></circle></svg></span>';
-        return $html . '</' . $tag . '>';
+        $html .= '</' . $tag . '>';
+        if (!$element) {
+            return $html;
+        }
+        // Host attributes (projection table, docs/guides/php-adapter.md): explicit values (PHP default variant
+        // `secondary` ≠ JS default `primary`), state the JS component reads on hydrate. aria-label / ARIA state passed
+        // through `attrs` is lifted to the host too (the component forwards it to the control).
+        $lift = [];
+        foreach ($extra as $k => $v) {
+            $l = strtolower((string) $k);
+            if (in_array($l, ['aria-label', 'aria-pressed', 'aria-expanded', 'aria-haspopup', 'aria-controls'], true)
+                && is_scalar($v) && !is_bool($v) && (string) $v !== '' && !isset($lift[$l])) {
+                $lift[$l] = (string) $v;
+            }
+        }
+        $hostAttrs = [
+            'id' => $o['id'] ?? null,
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'data-td-ssr' => Td::SSR_BUTTON,
+            'variant' => $variant,
+            'size' => $size,
+            'full-width' => !empty($o['full_width']),
+            'icon' => $iconName,
+            'icon-position' => $iconName !== null && $right ? 'right' : null,
+            'label' => $label !== '' ? $label : null,
+        ];
+        if ($isLink) {
+            // a rejected URL keeps link mode with an empty href (the component renders it inert, like the control)
+            $hostAttrs += ['href' => $href, 'target' => $target, 'download' => $download];
+        } else {
+            $hostAttrs += ['type' => $attrs['type'], 'name' => $attrs['name'], 'value' => $attrs['value']];
+        }
+        $hostAttrs += [
+            'disabled' => $disabled,
+            'loading' => $loading,
+            'aria-label' => $aria ?? ($lift['aria-label'] ?? null),
+            'aria-pressed' => $lift['aria-pressed'] ?? null,
+            'aria-expanded' => $lift['aria-expanded'] ?? null,
+            'aria-haspopup' => $lift['aria-haspopup'] ?? null,
+            'aria-controls' => $lift['aria-controls'] ?? null,
+        ];
+        $hostTaken = [];
+        return '<td-button' . Td::ownAttrs($hostAttrs, $hostTaken) . '>' . $html . '</td-button>';
     }
 
     /**
@@ -849,7 +973,8 @@ namespace {
     /**
      * CSS-only badge `span.td-badge.td-badge--{variant}` (v0.18.0 F5; no JS, no custom element).
      * Options: variant neutral|accent|success|warning|danger|info (default neutral), outline (bool), stamp (bool — the
-     * uppercase double-border rubber stamp), id, class, attrs (span).
+     * uppercase double-border rubber stamp), icon (v0.25.0: registry name → `span.td-badge__icon` + `span.td-badge__label`;
+     * unknown → no icon), id, class, attrs (span).
      */
     function td_badge(string $text, array $o = []): string
     {
@@ -857,11 +982,17 @@ namespace {
         $variant = in_array($o['variant'] ?? null, $variants, true) ? $o['variant'] : 'neutral';
         $class = 'td-badge td-badge--' . $variant . (!empty($o['outline']) ? ' td-badge--outline' : '')
             . (!empty($o['stamp']) ? ' td-badge--stamp' : '') . Td::classTokens($o['class'] ?? null);
+        // v0.25.0 `icon`: decorative registry icon (core, alias or registerIcons() site-*) before the label; an unknown
+        // name prints no icon (no empty span) — the badge is then exactly the icon-less markup.
+        $svg = isset($o['icon']) && is_string($o['icon']) && $o['icon'] !== '' ? Td::icon($o['icon'], 's') : '';
+        $body = $svg !== ''
+            ? '<span class="td-badge__icon" aria-hidden="true">' . $svg . '</span><span class="td-badge__label">' . Td::e($text) . '</span>'
+            : Td::e($text);
         $taken = [];
         return '<span' . Td::ownAttrs([
             'class' => $class,
             'id' => isset($o['id']) && is_scalar($o['id']) && (string) $o['id'] !== '' ? (string) $o['id'] : null,
-        ], $taken) . Td::attrs(is_array($o['attrs'] ?? null) ? $o['attrs'] : [], $taken) . '>' . Td::e($text) . '</span>';
+        ], $taken) . Td::attrs(is_array($o['attrs'] ?? null) ? $o['attrs'] : [], $taken) . '>' . $body . '</span>';
     }
 
     /**

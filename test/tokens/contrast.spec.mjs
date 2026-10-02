@@ -20,6 +20,7 @@
  * v0.22.0: the dropdown create row (accent label ≥ 4.7, plus icon ≥ 3.2) on the menu surface, rest + active, every backdrop.
  * v0.23.0: the td-media-grid tick (off / on) — edge ≥ 3:1 over a white and a black image, "on" glyph ≥ 3.2 on its fill
  * (computed-colour `pairs`; a pair may carry its own `min`).
+ * v0.25.0: the PHP td_badge `icon` (decorative, currentColor) ≥ 3.2:1 on every soft badge fill, label ≥ 4.7 as before.
  * No dependencies: PNGs are decoded with node:zlib.
  *
  *   node test/tokens/contrast.spec.mjs            (npm run test:contrast)
