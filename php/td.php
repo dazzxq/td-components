@@ -722,6 +722,12 @@ namespace {
         }
         $html = '<' . $tag . Td::ownAttrs($attrs, $taken);
         if ($element) {
+            // Review round 2: `data-td-*` is the kit's internal namespace (icon slots…) — never passed to the control.
+            foreach (array_keys($extra) as $k) {
+                if (strncmp((string) $k, 'data-td-', 8) === 0) {
+                    $taken[$k] = true;
+                }
+            }
             foreach (array_keys($attrs) as $k) {
                 if ($isLink && in_array($k, ['tabindex', 'role'], true) && $attrs[$k] === null) {
                     continue;

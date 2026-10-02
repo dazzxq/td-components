@@ -45,6 +45,8 @@ mismatch.innerHTML = [
   `<td-button id="mm-onlabel" data-td-ssr="button@1" variant="primary" label="Nhãn">${ctl('Nhãn').replace('<span class="td-btn__label">', '<span class="td-btn__label" onclick="window.__pwned = 1">')}</td-button>`,
   `<td-button id="mm-style" data-td-ssr="button@1" variant="primary" label="Kiểu">${ctl('Kiểu').replace('<button ', '<button style="color: red" ')}</td-button>`,
   `<td-button id="mm-spinner-on" data-td-ssr="button@1" variant="primary" label="Xoay">${ctl('Xoay').replace('<span class="td-btn__spinner', '<span onmouseover="x()" class="td-btn__spinner')}</td-button>`,
+  // review round 2: the kit's internal data-td-* namespace on the control (would turn the button into an icon slot)
+  `<td-button id="mm-tdicon" data-td-ssr="button@1" variant="primary" label="Chuyển" type="submit">${ctl('Chuyển', { type: 'submit' }).replace('type="submit"', 'type="submit" data-td-icon="check"')}</td-button>`,
 ].join('');
 
 // :not(:defined) safety net (S4): hand-written hosts WITHOUT data-td-ssr get a placeholder height before define.
@@ -433,6 +435,14 @@ describe('v0.25.0 SSR hydrate — td-button / link (button@1)', () => {
       }
       expect(document.getElementById('mm-formaction').querySelector('button').type).to.equal('submit');
       expect(window.__pwned).to.equal(undefined);
+    });
+
+    it('review round 2: data-td-icon on the control → not adopted; label + spinner intact (the control is never an icon slot)', () => {
+      const host = document.getElementById('mm-tdicon');
+      const btn = host.querySelector(':scope > .td-btn');
+      expect(btn.hasAttribute('data-td-icon')).to.equal(false);
+      expect(btn.querySelector('.td-btn__label') && btn.querySelector('.td-btn__label').textContent).to.equal('Chuyển');
+      expect(!!btn.querySelector('.td-btn__spinner')).to.equal(true);
     });
 
     it('IMPL-2: disconnect → structural change while detached → reconnect binds exactly once, renders correctly', () => {

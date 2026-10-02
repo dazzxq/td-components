@@ -64,7 +64,8 @@ const CONTROL_ATTRS = new Set(['class', 'type', 'name', 'value', 'disabled', 'ar
   'translate', 'accesskey', 'autofocus', 'autocomplete', 'inputmode', 'enterkeyhint', 'autocapitalize', 'spellcheck',
   'placeholder', 'readonly', 'required', 'maxlength', 'minlength', 'min', 'max', 'step', 'pattern', 'size', 'rows',
   'cols']);
-const ARIA_DATA_ATTR = /^(aria|data)-[a-z0-9][a-z0-9._-]*$/;
+// `data-td-*` is the kit's internal namespace (icon slots…) — never accepted on the control (review round 2).
+const ARIA_DATA_ATTR = /^(?:aria-[a-z0-9][a-z0-9._-]*|data-(?!td-)[a-z0-9][a-z0-9._-]*)$/;
 /** Inner nodes: label span, icon slot (registry / legacy) and spinner span carry only these. */
 const PART_ATTRS = {
   'td-btn__label': new Set(['class']),
@@ -472,7 +473,7 @@ export class TdButton extends TdBaseElement {
   }
 
   afterRender() {
-    fillIconSlots(this);
+    fillIconSlots(this, '.td-btn__icon[data-td-icon]'); // only the button's own icon slot (never the control itself)
     const btn = this._control();
     if (!btn) return;
     // Busy (and a disabled / href-less link): swallow activation (a busy element stays focusable; aria-disabled
