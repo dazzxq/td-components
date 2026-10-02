@@ -1,8 +1,8 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.21.1)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.22)
 
-Trang này liệt kê, cho từng bản từ **0.21.1** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
+Trang này liệt kê, cho từng bản từ **0.22.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
 [CHANGELOG.md](../../CHANGELOG.md); trang này chỉ gom lại theo góc nhìn "tôi phải làm gì" và thêm ví dụ trước/sau.
 Quy trình nâng cấp chung nằm ở [README.md](README.md).
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.22.0](#0220) | Đổi DOM (nhỏ) | CSS / code site cuộn hoặc đo `.td-dropdown__options` → `.td-dropdown__scroller`; "Không có kết quả" nằm trên listbox. |
 | [0.21.1](#0211) | Không có thay đổi phá vỡ | Không. Sửa lỗi popup / modal / lightbox khi kết hợp; `TdMenu` `onClose` thêm reason `'covered'`. |
 | [0.21.0](#0210) | Đổi giao diện + đổi DOM toast | Primary đen (về accent bằng token); nút ngữ nghĩa pastel; tooltip đen; toast bỏ icon (code query `.td-toast__icon` phải bỏ); modal có animation. |
 | [0.20.0](#0200) | Đổi giao diện lớn | Kiểm bằng mắt nút / popup / toast / modal; override token kính cũ hết tác dụng → đổi sang token mới (bảng dưới). |
@@ -46,6 +47,19 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.22.0
+
+**Bổ sung + đổi DOM nhỏ của menu dropdown.** Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.22.0.
+
+1. Vùng cuộn của menu là `.td-dropdown__scroller` (trong `.td-dropdown__options`, vẫn là `role="listbox"`). CSS / code
+   site từng đặt `max-height` / `overflow` / `scrollTop` trên `.td-dropdown__options` → chuyển sang
+   `.td-dropdown__scroller`.
+2. `.td-dropdown__empty` ("Không có kết quả") giờ đứng **trước** listbox.
+3. Site đang tự làm option giả kiểu `value="__new__"` để thêm mục: chuyển sang `create-label` + sự kiện `create`
+   (xem [dropdown](../components/dropdown.md)).
 
 ---
 
