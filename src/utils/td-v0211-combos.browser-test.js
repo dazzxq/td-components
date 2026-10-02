@@ -4,7 +4,7 @@ import {
   TdModal, TdMenu, TdHovercard, TdLightbox, TdLoading, TdModalStackManager, tdTooltip,
 } from '../../index.js';
 import { isScrollLocked } from './scroll-lock.js';
-import { hasActiveAbove } from './layers.js';
+import { hasActiveAbove, register, LAYERS } from './layers.js';
 
 // v0.21.1 — popups / modal / lightbox combinations (plan docs/internal/plans/v0.21.1-combination-fixes.md).
 // Each bug of the audit has a test that failed before the fix; the combinations the audit found OK are kept as
@@ -607,5 +607,124 @@ describe('v0.21.1 regressions — combinations the audit found OK', () => {
     expect(TdModalStackManager.stack.length).to.equal(1);
     expect(TdModal._isOpen(id)).to.equal(true);
     expect(document.activeElement === trig).to.equal(true);
+  });
+});
+
+describe('v0.21.1 review round 1 — promotion state / focus / capped layers', () => {
+  it('modal → lightbox → modal: closing the top modal gives focus back into the lightbox (not an inert modal)', async () => {
+    const b = document.createElement('button');
+    b.textContent = 'xem ảnh';
+    TdModal.show({ title: 'Gallery', body: b });
+    await wait(400);
+    b.focus();
+    TdLightbox.open([IMG, IMG]);
+    await wait(500);
+    const ov = document.querySelector('.td-lightbox');
+    const opener = ov.querySelector('[data-action="next"]');
+    opener.focus();
+    expect(document.activeElement === opener).to.equal(true);
+    const id = TdModal.show({ title: 'Over lightbox', body: '<input>' });
+    await wait(400);
+    TdModal.closeById(id);
+    await wait(50);
+    expect(document.activeElement === opener, 'focus back on the opener in the lightbox').to.equal(true);
+    expect(!!document.activeElement.closest('[inert]'), 'never inside an inert element').to.equal(false);
+  });
+
+  it('modal → lightbox → modal, opener gone: focus falls back to the lightbox itself', async () => {
+    const b = document.createElement('button');
+    TdModal.show({ title: 'Gallery', body: b });
+    await wait(400);
+    b.focus();
+    TdLightbox.open([IMG]);
+    await wait(500);
+    const ov = document.querySelector('.td-lightbox');
+    const tmp = document.createElement('button');
+    tmp.textContent = 'tmp';
+    ov.appendChild(tmp);
+    tmp.focus();
+    const id = TdModal.show({ title: 'Over lightbox', body: '<input>' });
+    await wait(400);
+    tmp.remove();
+    TdModal.closeById(id);
+    await wait(50);
+    expect(ov.contains(document.activeElement), 'focus in the lightbox').to.equal(true);
+    expect(!!document.activeElement.closest('[inert]')).to.equal(false);
+  });
+
+  it('promotion unwinds: lower layer closes → token z again; everything closed → no inline z', async () => {
+    const b = document.createElement('button');
+    const idA = TdModal.show({ title: 'A', body: b });
+    await wait(400);
+    b.focus();
+    TdLightbox.open([IMG]);
+    await wait(400);
+    const ov = document.querySelector('.td-lightbox');
+    expect(ov.style.getPropertyValue('z-index'), 'promoted inline z').to.not.equal('');
+    const idB = TdModal.show({ title: 'B', body: '<input>' });
+    await wait(300);
+    const rootB = document.getElementById(idB);
+    expect(rootB.style.getPropertyValue('z-index')).to.not.equal('');
+    TdModal.closeById(idA); // the layer the lightbox was promoted over
+    await wait(50);
+    expect(ov.style.getPropertyValue('z-index'), 'lightbox back to its token z').to.equal('');
+    expect(zOf(ov)).to.equal(350);
+    expect(zOf(rootB) > zOf(ov), 'B still above the lightbox').to.equal(true);
+    TdModal.closeById(idB);
+    expect(rootB.style.getPropertyValue('z-index'), 'released modal: inline z removed').to.equal('');
+    TdLightbox.close();
+    await wait(400);
+    expect(ov.style.getPropertyValue('z-index')).to.equal('');
+  });
+
+  it('registry: promotedOver dropped + inline z removed when the lower closes and on release', () => {
+    const mk = () => {
+      const el = document.createElement('div');
+      document.body.appendChild(el);
+      extra.push(() => el.remove());
+      return el;
+    };
+    const a = register({ layer: LAYERS.modal, element: mk(), blocking: true });
+    const lbEl = mk();
+    const lb = register({ layer: LAYERS.lightbox, element: lbEl, blocking: true });
+    extra.push(() => { lb.release(); a.release(); });
+    expect(lb.layer).to.equal(LAYERS.modal + 1);
+    expect(lb.promotedOver !== null).to.equal(true);
+    expect(lbEl.style.getPropertyValue('z-index')).to.not.equal('');
+    a.release();
+    expect(lb.promotedOver === null, 'reference dropped once the lower layer closed').to.equal(true);
+    expect(lbEl.style.getPropertyValue('z-index')).to.equal('');
+    const c = register({ layer: LAYERS.modal, element: mk(), blocking: true });
+    const lbEl2 = mk();
+    const lb2 = register({ layer: LAYERS.lightbox, element: lbEl2, blocking: true });
+    expect(lbEl2.style.getPropertyValue('z-index')).to.not.equal('');
+    lb2.release();
+    c.release();
+    expect(lb2.promotedOver === null).to.equal(true);
+    expect(lbEl2.style.getPropertyValue('z-index'), 'release removes the inline z').to.equal('');
+  });
+
+  it('capped band layer (449): a modal opened over the lightbox at the same layer still blocks its keys', async () => {
+    const high = document.createElement('div');
+    document.body.appendChild(high);
+    const fake = register({ layer: LAYERS.popover - 2, element: high, blocking: true }); // forces the cap
+    extra.push(() => { fake.release(); high.remove(); });
+    TdLightbox.open([IMG, IMG, IMG]);
+    await wait(400);
+    const ov = document.querySelector('.td-lightbox');
+    const counter = ov.querySelector('.td-lightbox__counter');
+    const id = TdModal.show({ title: 'Over lightbox', body: '<input>' });
+    await wait(400);
+    expect(document.getElementById(id).contains(document.activeElement)).to.equal(true);
+    const before = counter.textContent;
+    await sendKeys({ press: 'ArrowRight' });
+    await frames();
+    expect(counter.textContent, 'arrow keys belong to the modal on top').to.equal(before);
+    TdModal.closeById(id);
+    await wait(400);
+    ov.focus();
+    await sendKeys({ press: 'ArrowRight' });
+    await frames();
+    expect(counter.textContent, 'lightbox keys work again').to.not.equal(before);
   });
 });

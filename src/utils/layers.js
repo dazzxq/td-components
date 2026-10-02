@@ -97,11 +97,33 @@ const computedZ = (el) => {
   return Number.isFinite(z) ? z : 0;
 };
 
+const isActiveElement = (el) => !!el && active.some((o) => o.element === el);
+
+/** The normal z of a band registration: `baseZ()` (BASE_Z_INDEX, written inline by its owner) or null (token). */
+function baseZOf(r) {
+  if (!r.baseZ) return null;
+  const b = r.baseZ();
+  return typeof b === 'number' && Number.isFinite(b) ? b : null;
+}
+
+/**
+ * Undo the inline z-index the promotion wrote on `r.element`: back to the owner's BASE_Z_INDEX value, or to the token
+ * (inline removed).
+ */
+function unwindBandZ(r) {
+  const el = r.element;
+  if (typeof HTMLElement === 'undefined' || !(el instanceof HTMLElement) || !bandZ.has(el)) return;
+  bandZ.delete(el);
+  const base = baseZOf(r);
+  if (base !== null) el.style.setProperty('z-index', String(base));
+  else el.style.removeProperty('z-index');
+}
+
 /**
  * Visual z-index of the promoted band registrations (v0.21.1), in opening order: max(own normal z, computed z of the
- * element it was promoted over + 1) while that one is open; once it closed, the z it last had (never lowered while
- * open). Normal z = `baseZ()` (TdModalStackManager.BASE_Z_INDEX) or the computed token value without our inline z.
- * Called on register / release and by TdModalStackManager._sync() (which rewrites BASE_Z_INDEX z-indexes).
+ * element it was promoted over + 1). Once that element is no longer open the promotion ends: the reference is cleared
+ * and the element goes back to its normal z (token, or `baseZ()` = TdModalStackManager.BASE_Z_INDEX). Called on
+ * register / release and by TdModalStackManager._sync() (which rewrites BASE_Z_INDEX z-indexes).
  */
 export function restackBand() {
   if (typeof document === 'undefined') return;
@@ -109,23 +131,18 @@ export function restackBand() {
   for (const r of promoted) {
     const el = r.element;
     if (!(el instanceof HTMLElement)) continue;
-    let normal = null;
-    if (r.baseZ) {
-      const b = r.baseZ();
-      if (typeof b === 'number' && Number.isFinite(b)) normal = b;
+    unwindBandZ(r);
+    if (!isActiveElement(r.promotedOver)) {
+      r.promotedOver = null; // the layer below closed: normal z from now on (the logical layer keeps its order)
+      continue;
     }
-    const inlineBase = normal !== null; // the owner (BASE_Z_INDEX) writes the inline z itself
-    if (!inlineBase) {
-      if (bandZ.has(el)) el.style.removeProperty('z-index');
-      bandZ.delete(el);
-      normal = computedZ(el);
+    const base = baseZOf(r);
+    const normal = base !== null ? base : computedZ(el);
+    const z = Math.max(normal, computedZ(r.promotedOver) + 1);
+    if (z > normal) {
+      el.style.setProperty('z-index', String(z));
+      bandZ.add(el);
     }
-    const overOpen = active.some((o) => o.element === r.promotedOver);
-    const want = overOpen ? computedZ(r.promotedOver) + 1 : r.lastZ;
-    const z = Math.max(normal, want);
-    r.lastZ = z;
-    if (z > normal || inlineBase) el.style.setProperty('z-index', String(z));
-    if (z > normal) bandZ.add(el);
   }
 }
 
@@ -156,7 +173,6 @@ export function register(opts) {
     coverAlways: !!opts.coverAlways,
     baseZ: typeof opts.baseZ === 'function' ? opts.baseZ : null,
     promotedOver: null,
-    lastZ: 0,
     seq: ++seq,
     releaseInert: null,
   };
@@ -190,7 +206,8 @@ export function register(opts) {
   let released = false;
   return {
     get layer() { return reg.layer; },
-    get promotedOver() { return reg.promotedOver; },
+    /** the open blocking element this one was promoted above (null when not promoted, or once that one closed) */
+    get promotedOver() { return isActiveElement(reg.promotedOver) ? reg.promotedOver : null; },
     release() {
       if (released) return;
       released = true;
@@ -198,6 +215,10 @@ export function register(opts) {
       if (i >= 0) active.splice(i, 1);
       reg.releaseInert();
       ensureListener();
+      // promotion state never outlives the registration: inline z back to normal, reference dropped (a lightbox that
+      // closed over a modal fades out at its token z, under the modal)
+      unwindBandZ(reg);
+      reg.promotedOver = null;
       if (active.some((r) => r.promotedOver)) restackBand();
     },
     /** true while this is the highest active keyboard boundary */

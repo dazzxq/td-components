@@ -58,6 +58,46 @@ export function isReferenceHidden(rect, el) {
   return cy < c.top || cy > c.bottom || cx < c.left || cx > c.right;
 }
 
+/** @type {Map<Element, Set<() => void>>} watched references → callbacks (one shared observer for all open popups) */
+const disconnectWatchers = new Map();
+let disconnectObserver = null;
+
+function onDomMutation() {
+  for (const [el, fns] of [...disconnectWatchers]) {
+    if (el.isConnected) continue;
+    for (const fn of [...fns]) fn(); // a callback usually closes its popup → unregisters itself
+  }
+}
+
+/**
+ * Call `fn` when `el` leaves the DOM. One document-wide MutationObserver (childList + subtree) is shared by every
+ * watcher and disconnected when the last one stops.
+ * @param {Element} el
+ * @param {() => void} fn
+ * @returns {() => void} stop
+ */
+function watchDisconnect(el, fn) {
+  if (typeof MutationObserver === 'undefined') return () => {};
+  let fns = disconnectWatchers.get(el);
+  if (!fns) disconnectWatchers.set(el, (fns = new Set()));
+  fns.add(fn);
+  if (!disconnectObserver) {
+    disconnectObserver = new MutationObserver(onDomMutation);
+    disconnectObserver.observe(document, { childList: true, subtree: true });
+  }
+  return () => {
+    const set = disconnectWatchers.get(el);
+    if (set) {
+      set.delete(fn);
+      if (!set.size) disconnectWatchers.delete(el);
+    }
+    if (!disconnectWatchers.size && disconnectObserver) {
+      disconnectObserver.disconnect();
+      disconnectObserver = null;
+    }
+  };
+}
+
 /**
  * Follow the lifetime of an open popup's reference element (v0.21.1) — things a scroll / resize listener never sees:
  * - ResizeObserver on `el`: it was resized or stopped rendering (`display: none` → 0×0: tab switched, accordion
@@ -82,11 +122,7 @@ export function watchReference(el, onChange) {
     ro = new ResizeObserver(fire); // the initial notification is one harmless reposition
     ro.observe(el);
   }
-  let mo = null;
-  if (typeof MutationObserver !== 'undefined') {
-    mo = new MutationObserver(() => { if (!el.isConnected) fire(); });
-    mo.observe(document, { childList: true, subtree: true });
-  }
+  const detach = watchDisconnect(el, fire);
   const onEnd = (e) => {
     const t = e.target;
     if (t instanceof Node && t !== el && t.contains(el)) fire();
@@ -97,7 +133,7 @@ export function watchReference(el, onChange) {
     if (stopped) return;
     stopped = true;
     if (ro) ro.disconnect();
-    if (mo) mo.disconnect();
+    detach();
     document.removeEventListener('transitionend', onEnd, true);
     document.removeEventListener('animationend', onEnd, true);
   };
