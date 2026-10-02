@@ -35,7 +35,7 @@ const MATRIX = JSON.parse(await readFile(join(__dirname, 'matrix.json'), 'utf8')
 const BASELINE_DIR = join(__dirname, 'baseline');
 
 const ORIGIN = 'http://csp.local';
-const MIME = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.json': 'application/json' };
+const MIME = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.json': 'application/json', '.svg': 'image/svg+xml' };
 
 /** Map an http://csp.local/<path> URL to a file on disk. */
 function urlToFile(url) {
@@ -114,8 +114,12 @@ async function assertSentinels(page, profile = 'legacy') {
   return result;
 }
 
-async function freshPage(browser, reducedMotion, profile = 'legacy') {
-  const ctx = await browser.newContext(reducedMotion ? { reducedMotion: 'reduce' } : {});
+/** v0.23.0: a `touch` state runs in a touch context (coarse pointer, no hover) — the SAME options as csp.spec.mjs. */
+const TOUCH_CONTEXT = { hasTouch: true, isMobile: true, viewport: { width: 1280, height: 720 } };
+const TOUCH_QUERY = '(hover: none), (pointer: coarse)';
+
+async function freshPage(browser, reducedMotion, profile = 'legacy', touch = false) {
+  const ctx = await browser.newContext({ ...(reducedMotion ? { reducedMotion: 'reduce' } : {}), ...(touch ? TOUCH_CONTEXT : {}) });
   const page = await ctx.newPage();
   await page.route('**/*', (route, request) => fulfillFromDisk(route, request));
   await page.goto(`${ORIGIN}/mount.html${profile !== 'legacy' ? `?profile=${encodeURIComponent(profile)}` : ''}`, { waitUntil: 'load' });
@@ -127,8 +131,12 @@ async function captureState(browser, component, modulePath, state) {
   const reduced = !!state.reducedMotion;
   const profile = (MATRIX._meta.tokenNative || []).includes(component) ? 'td'
     : (MATRIX._meta.mixed || []).includes(component) ? 'legacy+td' : 'legacy';
-  const { ctx, page } = await freshPage(browser, reduced, profile);
+  const { ctx, page } = await freshPage(browser, reduced, profile, !!state.touch);
   try {
+    // A touch state must really be a touch page, or its baseline would silently be the desktop styling.
+    if (state.touch && !(await page.evaluate((q) => matchMedia(q).matches, TOUCH_QUERY))) {
+      throw new Error(`[${component}.${state.state}] touch context: matchMedia('${TOUCH_QUERY}') is false`);
+    }
     // Sentinel gate per fresh page — proves the fixture is live, not vacuous.
     await assertSentinels(page, profile);
 
@@ -188,6 +196,7 @@ async function captureState(browser, component, modulePath, state) {
       _state: state.state,
       _profile: profile,
       _reducedMotion: reduced,
+      ...(state.touch ? { _touch: true } : {}),
       _excludedProps: [...exclude],
       _sentinels: sentinelProof.map(s => ({ class: s.class, prop: s.prop, value: s.got })),
       styles: snapshot,

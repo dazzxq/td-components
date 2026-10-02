@@ -26,7 +26,8 @@
       "td-progress": "/src/feedback/td-progress.js",
       "td-dropzone": "/src/form/td-dropzone.js",
       "td-alert": "/src/feedback/td-alert.js",
-      "td-badge": "/src/icons/td-icon.js"
+      "td-badge": "/src/icons/td-icon.js",
+      "td-media-grid": "/src/display/td-media-grid.js"
     },
     "tokenNative": [
       "td-button",
@@ -53,7 +54,8 @@
       "td-progress",
       "td-dropzone",
       "td-alert",
-      "td-badge"
+      "td-badge",
+      "td-media-grid"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -1770,6 +1772,46 @@
         ".td-badge--info.td-badge--stamp"
       ],
       "selectorNote": "CSS-only; transform = the tilt token"
+    }
+  ],
+  "td-media-grid": [
+    {
+      "state": "default",
+      "markup": "<td-media-grid label=\"Khung hình cuộn 12\"><div data-td-media-item data-id=\"f1\"><button type=\"button\" data-td-media-open aria-label=\"Khung 1\"><img src=\"/test/fixtures/1.svg\" width=\"160\" height=\"120\" alt=\"\"></button></div><div data-td-media-item data-id=\"f2\"><button type=\"button\" data-td-media-open aria-label=\"Khung 2\"><img src=\"/test/fixtures/2.svg\" width=\"160\" height=\"120\" alt=\"\"></button></div></td-media-grid>",
+      "selectors": [
+        ".td-media-grid",
+        ".td-media-grid__item",
+        ".td-media-grid__open",
+        ".td-media-grid__open img",
+        ".td-media-grid__tick",
+        ".td-media-grid__tick svg"
+      ],
+      "settle": 300,
+      "selectorNote": "site markup upgraded in place; tick hidden (opacity 0) at rest on a fine pointer"
+    },
+    {
+      "state": "selecting",
+      "setup": "window.__mount.innerHTML = \"<td-media-grid label=\\\"Khung hình cuộn 12\\\"><div data-td-media-item data-id=\\\"f1\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"Khung 1\\\"><img src=\\\"/test/fixtures/1.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div><div data-td-media-item data-id=\\\"f2\\\"><button type=\\\"button\\\" data-td-media-open aria-label=\\\"Khung 2\\\"><img src=\\\"/test/fixtures/2.svg\\\" width=\\\"160\\\" height=\\\"120\\\" alt=\\\"\\\"></button></div></td-media-grid>\"; window.__mount.querySelector('td-media-grid').select(['f1']);",
+      "selectors": [
+        ".td-media-grid[data-selecting]",
+        ".td-media-grid__item[data-selected]",
+        ".td-media-grid__item[data-selected] .td-media-grid__open",
+        ".td-media-grid__item[data-selected] .td-media-grid__tick",
+        ".td-media-grid__item:not([data-selected]) .td-media-grid__tick"
+      ],
+      "settle": 450,
+      "selectorNote": "select(['f1']): surface fill, opener scaled, solid tick; every tick shown while selecting"
+    },
+    {
+      "state": "touch",
+      "touch": true,
+      "markup": "<td-media-grid label=\"Khung hình cuộn 12\"><div data-td-media-item data-id=\"f1\"><button type=\"button\" data-td-media-open aria-label=\"Khung 1\"><img src=\"/test/fixtures/1.svg\" width=\"160\" height=\"120\" alt=\"\"></button></div><div data-td-media-item data-id=\"f2\"><button type=\"button\" data-td-media-open aria-label=\"Khung 2\"><img src=\"/test/fixtures/2.svg\" width=\"160\" height=\"120\" alt=\"\"></button></div></td-media-grid>",
+      "selectors": [
+        ".td-media-grid__tick",
+        ".td-media-grid__tick svg"
+      ],
+      "settle": 300,
+      "selectorNote": "touch context (hasTouch + isMobile; matchMedia('(hover: none), (pointer: coarse)') asserted first): tick faded 0.55"
     }
   ]
 }
