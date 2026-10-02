@@ -2371,7 +2371,11 @@
  * no local dim, no glyph shadow; the info panel / sheet is opaque (--td-glass-clear-solid).
  * State comes from attributes set by JS, never visual classes:
  *   overlay [data-state="open"] [data-dragging] [data-closing-down] [data-zoomed] [data-panel]
- *   panel [data-sheet="open"] · img [data-loading] · [hidden] for binary visibility.
+ *           [data-nav="side|side-compact|toolbar"] [data-filmstrip] (v0.24.0)
+ *   panel [data-sheet="open"] · img [data-loading] · stage [data-slide="next|prev"] (v0.24.0)
+ *   thumb [aria-current="true"] · [hidden] for binary visibility.
+ * v0.24.0 (docs/internal/plans/v0.24.0-lightbox-nav.md): side strips (.td-lightbox__nav — the SAME prev / next buttons
+ * moved out of the toolbar on a fine pointer), error block, optional filmstrip (second row of the column), slide.
  */
 /* v0.16.0: the viewer tokens live on :root (were on .td-lightbox) so an unlayered site `:root { --td-lb-… }` reaches
    them. Only the DERIVED --td-lb-bar-h stays on .td-lightbox so it follows overrides made on either level. */
@@ -2389,11 +2393,32 @@
 		--td-lb-backdrop: rgb(8 8 9 / 94%);
 		--td-lb-panel-bg: var(--td-glass-clear-solid); /* opaque (v0.20.0) */
 		--td-lb-fg: #fff;
+		/* v0.24.0 side navigation: strip width (of the image column), disc, room kept free above the bottom (caption) */
+		--td-lb-nav-w: clamp(64px, 15%, 240px);
+		--td-lb-nav-bottom: 56px;
+		--td-lb-disc: 48px;
+		--td-lb-disc-bg: var(--td-glass-clear-bg); /* dark 88 % */
+		--td-lb-disc-bg-hover: rgb(44 44 48 / 92%);
+		--td-lb-disc-border: rgb(255 255 255 / 40%); /* ≥ 3:1 on a black photo (contrast gate) */
+		/* v0.24.0 filmstrip */
+		--td-lb-thumb-size: 56px;
+		--td-lb-thumb-gap: 6px;
+		--td-lb-thumb-radius: 6px;
+		--td-lb-thumb-ring: #fff;
+		--td-lb-filmstrip-pad: 10px;
+		--td-lb-filmstrip-h: calc(var(--td-lb-thumb-size) + 2 * var(--td-lb-filmstrip-pad));
+		--td-lb-filmstrip-bg: transparent;
+		/* v0.24.0 slide on navigation */
+		--td-lb-slide-dist: 24px;
+		--td-lb-slide-dur: 160ms;
 	}
 
 	/* Touch: 44 px hit targets (docs/internal/design/liquid-glass.md geometry rule). */
 	@media (pointer: coarse) {
-		:root { --td-lb-btn: var(--td-touch-min); }
+		:root {
+			--td-lb-btn: var(--td-touch-min);
+			--td-lb-thumb-size: 44px;
+		}
 	}
 
 	/* Safe areas (notch / home indicator). env() = 0 without viewport-fit=cover. */
@@ -2427,6 +2452,7 @@
 		align-items: center;
 		justify-content: center;
 		font-family: var(--td-font-sans);
+		line-height: 1.5; /* v0.24.0: self-contained (was inherited from the host page) */
 		color: var(--td-lb-fg);
 		visibility: hidden;
 		opacity: 0;
@@ -2461,9 +2487,24 @@
 		background: var(--td-lb-backdrop);
 	}
 
+	/* v0.24.0: the column fills the viewer (one pointer surface: stage + side strips); a one-cell grid centring the
+	   stage, the nav mount stretched over the same cell. A click on its background closes (as the backdrop). */
+	.td-lightbox__col {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		grid-template-rows: minmax(0, 1fr);
+		grid-template-columns: minmax(0, 1fr);
+		place-items: center;
+		min-width: 0;
+		min-height: 0;
+		cursor: zoom-out;
+	}
+
 	.td-lightbox__stage {
 		position: relative;
 		z-index: 1;
+		grid-area: 1 / 1;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -2473,7 +2514,174 @@
 		translate: 0 0;
 		transition:
 			translate var(--td-lb-dur) var(--td-lb-ease),
-			scale var(--td-lb-dur) var(--td-lb-ease);
+			scale var(--td-lb-dur) var(--td-lb-ease),
+			transform var(--td-lb-slide-dur) var(--td-ease-out),
+			opacity var(--td-lb-slide-dur) var(--td-ease-out);
+	}
+
+	/* v0.24.0 N5 slide: JS sets the start state once the new media is displayable, removes it a frame later. */
+	.td-lightbox__stage[data-slide] {
+		opacity: 0;
+		transition: none;
+	}
+
+	.td-lightbox__stage[data-slide="next"] {
+		transform: translateX(var(--td-lb-slide-dist));
+	}
+
+	.td-lightbox__stage[data-slide="prev"] {
+		transform: translateX(calc(-1 * var(--td-lb-slide-dist)));
+	}
+
+	.td-lightbox:dir(rtl) .td-lightbox__stage[data-slide="next"] {
+		transform: translateX(calc(-1 * var(--td-lb-slide-dist)));
+	}
+
+	.td-lightbox:dir(rtl) .td-lightbox__stage[data-slide="prev"] {
+		transform: translateX(var(--td-lb-slide-dist));
+	}
+
+	/* ── v0.24.0 N1: side strips (prev / next moved into the nav mount on a fine pointer) ─────────────── */
+	.td-lightbox__nav {
+		position: relative;
+		z-index: 2;
+		grid-area: 1 / 1;
+		place-self: stretch;
+		pointer-events: none;
+	}
+
+	.td-lightbox__nav > .td-lightbox__btn {
+		position: absolute;
+		top: calc(var(--td-lb-bar-top) + var(--td-lb-bar-h) + 8px);
+		bottom: calc(var(--td-lb-nav-bottom) + env(safe-area-inset-bottom, 0px));
+		isolation: isolate;
+		width: var(--td-lb-nav-w);
+		height: auto;
+		touch-action: none; /* like the stage: touch / pen swipe from here */
+		pointer-events: auto;
+		background: transparent;
+		border-radius: 0;
+		opacity: 1;
+	}
+
+	.td-lightbox__nav > [data-action="prev"] {
+		inset-inline-start: 0;
+	}
+
+	.td-lightbox__nav > [data-action="next"] {
+		inset-inline-end: 0;
+	}
+
+	/* The visible control: a 48px dark disc in the middle of the strip (always shown, no idle hide). */
+	.td-lightbox__nav > .td-lightbox__btn::before {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		z-index: -1;
+		box-sizing: border-box;
+		width: var(--td-lb-disc);
+		height: var(--td-lb-disc);
+		content: "";
+		background: var(--td-lb-disc-bg);
+		border: 1px solid var(--td-lb-disc-border);
+		border-radius: 50%;
+		translate: -50% -50%;
+		transition: background var(--td-lb-dur-fast) var(--td-lb-ease);
+	}
+
+	.td-lightbox__nav > .td-lightbox__btn:is(:hover, :focus-visible) {
+		background: transparent;
+		outline: none;
+	}
+
+	.td-lightbox__nav > .td-lightbox__btn:hover::before {
+		background: var(--td-lb-disc-bg-hover);
+	}
+
+	/* focus ring on the disc, not around the whole strip */
+	.td-lightbox__nav > .td-lightbox__btn:focus-visible::before {
+		outline: 2px solid #fff;
+		outline-offset: 2px;
+	}
+
+	/* Zoomed (the rest of the image keeps panning / zooming out) and video: just the 48px disc, centred vertically. */
+	:is(.td-lightbox[data-zoomed], .td-lightbox[data-nav="side-compact"]) .td-lightbox__nav > .td-lightbox__btn {
+		top: calc(50% - var(--td-lb-disc) / 2);
+		bottom: auto;
+		width: var(--td-lb-disc);
+		height: var(--td-lb-disc);
+		border-radius: 50%;
+	}
+
+	:is(.td-lightbox[data-zoomed], .td-lightbox[data-nav="side-compact"]) .td-lightbox__nav > [data-action="prev"] {
+		inset-inline-start: 16px;
+	}
+
+	:is(.td-lightbox[data-zoomed], .td-lightbox[data-nav="side-compact"]) .td-lightbox__nav > [data-action="next"] {
+		inset-inline-end: 16px;
+	}
+
+	/* RTL: prev = inline-start (right) → its chevron points right. */
+	.td-lightbox:dir(rtl) :is([data-action="prev"], [data-action="next"]) .td-lightbox__icon {
+		scale: -1 1;
+	}
+
+	/* ── v0.24.0 N3: image error ─────────────────────────────────────────────────────────────────────── */
+	.td-lightbox__error {
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		align-items: center;
+		padding: 24px;
+		color: var(--td-lb-fg);
+		text-align: center;
+		cursor: auto;
+	}
+
+	.td-lightbox__error > .td-lightbox__icon {
+		width: 40px;
+		height: 40px;
+		opacity: 0.7;
+	}
+
+	.td-lightbox__error-text {
+		margin: 0;
+		font-size: var(--td-text-sm);
+		line-height: 1.45;
+	}
+
+	.td-lightbox__error-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		justify-content: center;
+	}
+
+	.td-lightbox__error-btn {
+		all: unset;
+		box-sizing: border-box;
+		display: inline-flex;
+		align-items: center;
+		min-height: var(--td-lb-btn);
+		padding-inline: 16px;
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-lb-fg);
+		cursor: pointer;
+		background: var(--td-glass-clear-solid);
+		border: 1px solid var(--td-glass-clear-border);
+		border-radius: var(--td-glass-capsule);
+		transition: background var(--td-lb-dur-fast) var(--td-lb-ease);
+	}
+
+	.td-lightbox__error-btn:hover {
+		background: #26262a;
+	}
+
+	.td-lightbox__error-btn:focus-visible {
+		outline: 2px solid #fff;
+		outline-offset: 2px;
 	}
 
 	/* Swipe-down feedback: the stage follows the finger (translate — the zoom owns `transform` on the img). */
@@ -2534,6 +2742,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		cursor: auto;
 	}
 
 	.td-lightbox__video-el {
@@ -2577,6 +2786,7 @@
 	.td-lightbox__counter {
 		position: relative;
 		isolation: isolate;
+		box-sizing: content-box; /* explicit (v0.24.0): same box under a host border-box reset */
 		display: inline-flex;
 		align-items: center;
 		padding: 6px 12px;
@@ -2611,6 +2821,7 @@
 		right: var(--td-lb-bar-side);
 		z-index: 10;
 		isolation: isolate;
+		box-sizing: content-box; /* --td-lb-bar-h = btn + 2 × pad + 2 × border (content box) */
 		display: flex;
 		gap: 4px;
 		align-items: center;
@@ -2722,6 +2933,8 @@
 
 		/* The COLUMN clips the zoom (not the stage, which hugs the unzoomed image). */
 		.td-lightbox[data-panel] .td-lightbox__col {
+			position: relative;
+			inset: auto;
 			display: grid;
 			grid-row: 1;
 			grid-column: 1;
@@ -2836,6 +3049,184 @@
 		}
 	}
 
+	/* ── v0.24.0 N4: filmstrip — the column becomes rows: stage | caption | thumbnails ─────────────────── */
+	.td-lightbox[data-filmstrip] .td-lightbox__col {
+		grid-template-rows: minmax(0, 1fr) auto calc(var(--td-lb-filmstrip-h) + env(safe-area-inset-bottom, 0px));
+	}
+
+	@media (width > 900px) {
+		.td-lightbox[data-panel][data-filmstrip] .td-lightbox__col {
+			place-items: stretch;
+		}
+	}
+
+	@media (width <= 900px) {
+		/* the closed sheet peeks at the bottom → the strip sits above it */
+		.td-lightbox[data-panel][data-filmstrip] .td-lightbox__col {
+			bottom: var(--td-lb-sheet-peek);
+		}
+	}
+
+	/* the stage IS the first row (clips the zoom); media are bounded by it, not by the viewport */
+	.td-lightbox[data-filmstrip] .td-lightbox__stage {
+		place-self: stretch;
+		width: 100%;
+		height: 100%;
+		max-width: 100%;
+		max-height: 100%;
+		overflow: hidden;
+	}
+
+	.td-lightbox[data-filmstrip] .td-lightbox__img {
+		max-width: 100%;
+		max-height: 100%;
+	}
+
+	.td-lightbox[data-filmstrip] .td-lightbox__video {
+		max-width: 100%;
+		max-height: 100%;
+	}
+
+	.td-lightbox[data-filmstrip] .td-lightbox__video-el {
+		max-width: 100%;
+		max-height: calc(100dvh - var(--td-lb-filmstrip-h) - 6rem);
+	}
+
+	/* side strips end just above the first row's bottom (the caption has its own row) */
+	.td-lightbox[data-filmstrip] .td-lightbox__nav {
+		--td-lb-nav-bottom: 8px;
+
+		grid-area: 1 / 1;
+	}
+
+	.td-lightbox[data-filmstrip] .td-lightbox__nav > .td-lightbox__btn {
+		bottom: var(--td-lb-nav-bottom);
+	}
+
+	/* caption: its own row between the image and the strip (never over either), clamped to 3 lines */
+	.td-lightbox[data-filmstrip] .td-lightbox__caption {
+		position: relative;
+		inset: auto;
+		z-index: 2;
+		grid-area: 2 / 1;
+		place-self: stretch;
+		box-sizing: border-box;
+		display: -webkit-box;
+		padding: 8px 18px;
+		overflow: hidden;
+		background: none;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 3;
+		line-clamp: 3;
+	}
+
+	.td-lightbox[data-panel][data-filmstrip] .td-lightbox__caption {
+		display: none;
+	}
+
+	.td-lightbox__filmstrip {
+		position: relative;
+		z-index: 2;
+		box-sizing: border-box;
+		display: flex;
+		grid-area: 3 / 1;
+		place-self: stretch;
+		gap: var(--td-lb-thumb-gap);
+		align-items: center;
+		min-width: 0;
+		padding: var(--td-lb-filmstrip-pad) 16px calc(var(--td-lb-filmstrip-pad) + env(safe-area-inset-bottom, 0px));
+		overflow: auto hidden;
+		touch-action: pan-x; /* native horizontal scroll; never a gallery swipe */
+		cursor: auto;
+		scrollbar-width: none;
+		background: var(--td-lb-filmstrip-bg);
+		overscroll-behavior-x: contain;
+	}
+
+	.td-lightbox__thumb {
+		all: unset;
+		position: relative;
+		box-sizing: border-box;
+		flex: none;
+		width: var(--td-lb-thumb-size);
+		height: var(--td-lb-thumb-size);
+		overflow: hidden;
+		cursor: pointer;
+		background: #1c1c1f;
+		border: 2px solid transparent;
+		border-radius: var(--td-lb-thumb-radius);
+		opacity: 0.6;
+		transition:
+			opacity var(--td-lb-dur-fast) var(--td-lb-ease),
+			border-color var(--td-lb-dur-fast) var(--td-lb-ease);
+	}
+
+	/* centred while it fits, scrollable (from the first thumb) when it does not */
+	.td-lightbox__thumb:first-child {
+		margin-inline-start: auto;
+	}
+
+	.td-lightbox__thumb:last-child {
+		margin-inline-end: auto;
+	}
+
+	.td-lightbox__thumb > img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		user-select: none;
+		-webkit-user-drag: none;
+	}
+
+	.td-lightbox__thumb:hover {
+		opacity: 0.85;
+	}
+
+	.td-lightbox__thumb[aria-current="true"] {
+		border-color: var(--td-lb-thumb-ring);
+		opacity: 1;
+	}
+
+	.td-lightbox__thumb:focus-visible {
+		outline: 2px solid #fff;
+		outline-offset: 2px;
+		opacity: 1;
+	}
+
+	/* video without a thumbnail / poster: a dark tile */
+	.td-lightbox__thumb-ph {
+		display: block;
+		width: 100%;
+		height: 100%;
+		background: #26262a;
+	}
+
+	/* play mark (CSS triangle on a dark disc) for video thumbnails */
+	.td-lightbox__thumb-play {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 22px;
+		height: 22px;
+		background: rgb(0 0 0 / 60%);
+		border-radius: 50%;
+		translate: -50% -50%;
+	}
+
+	.td-lightbox__thumb-play::before {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 0;
+		height: 0;
+		content: "";
+		border-color: transparent transparent transparent #fff;
+		border-style: solid;
+		border-width: 5px 0 5px 8px;
+		translate: -35% -50%;
+	}
+
 	/* Safe areas (notch / home indicator). env() = 0 without viewport-fit=cover. Bar tokens: see @layer td.tokens. */
 	@supports (padding: max(0px)) {
 		.td-lightbox__lead {
@@ -2862,6 +3253,19 @@
 		.td-lightbox__btn {
 			color: ButtonText;
 		}
+
+		.td-lightbox__nav > .td-lightbox__btn::before {
+			background: ButtonFace;
+			border-color: ButtonText;
+		}
+
+		.td-lightbox__thumb[aria-current="true"] {
+			border-color: Highlight;
+		}
+
+		.td-lightbox__error-btn {
+			border-color: ButtonText;
+		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
@@ -2871,8 +3275,17 @@
 		.td-lightbox__panel,
 		.td-lightbox__stage,
 		.td-lightbox__grab-bar,
-		.td-lightbox__btn {
+		.td-lightbox__btn,
+		.td-lightbox__nav > .td-lightbox__btn::before,
+		.td-lightbox__thumb,
+		.td-lightbox__error-btn {
 			transition: none;
+		}
+
+		/* no slide (JS does not start one either) */
+		.td-lightbox__stage[data-slide] {
+			opacity: 1;
+			transform: none;
 		}
 
 		/* The swipe still closes — it just does not slide. */

@@ -3,6 +3,7 @@ import '/src/form/td-button.js';
 import { TdToast } from '/src/feedback/td-toast.js';
 import '/src/feedback/td-alert.js';
 import '/src/display/td-media-grid.js';
+import { TdLightbox } from '/src/feedback/td-lightbox.js';
 import { fillIconSlots, tdIcon } from '/src/icons/td-icon.js';
 
 const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning'];
@@ -45,6 +46,11 @@ for (const state of ['rest', 'active']) CASES.push({ kind: 'dropdown-create', v:
 // and pure black): its edge (white border over a dark image, thin dark ring over a light one) ≥ 3:1, and the glyph of the
 // solid "on" tick ≥ 3.2:1 on its fill — computed colours (`pairs`), light + dark theme.
 for (const v of ['off', 'on']) for (const state of ['light-image', 'dark-image']) CASES.push({ kind: 'media-tick', v, state, pageOnly: true });
+// v0.24.0: the lightbox side-nav disc over the worst-case photos (pure white / pure black): the disc stands out from a
+// white photo (fill ≥ 3:1), its light edge from a black one (≥ 3:1), the chevron ≥ 3.2:1 on the disc over either; and the
+// current filmstrip thumb's ring ≥ 3:1 against the strip (the viewer backdrop over a white page — the lighter case).
+for (const state of ['light-image', 'dark-image']) CASES.push({ kind: 'lb-disc', v: 'next', state, pageOnly: true });
+CASES.push({ kind: 'lb-thumb', v: 'current', state: 'ring', pageOnly: true });
 
 const stage = document.getElementById('stage');
 const bd = document.getElementById('backdrop');
@@ -204,6 +210,49 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       opacity: 1,
       hover: false,
       name: `media-tick:${c.v}:${c.state}`,
+      pairs,
+    };
+  } else if (c.kind === 'lb-disc' || c.kind === 'lb-thumb') {
+    const rgba = (str) => { const n = (String(str).match(/-?[\d.]+/g) || []).map(Number); return [n[0] || 0, n[1] || 0, n[2] || 0, n.length > 3 ? n[3] : 1]; };
+    const over = (fg, bg) => { const f = rgba(fg); const b = rgba(bg); return `rgb(${[0, 1, 2].map((i) => Math.round(f[i] * f[3] + b[i] * (1 - f[3]))).join(', ')})`; };
+    const IMGS = ['/test/fixtures/1.svg', '/test/fixtures/2.svg', '/test/fixtures/3.svg'];
+    TdLightbox.open(IMGS, { filmstrip: c.kind === 'lb-thumb' });
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    await new Promise((r) => setTimeout(r, 300)); // opacity / colour transitions
+    const ov = document.querySelector('.td-lightbox');
+    let pairs;
+    let box;
+    if (c.kind === 'lb-disc') {
+      const btn = ov.querySelector('.td-lightbox__nav > [data-action="next"]');
+      if (!btn) throw new Error('lightbox next button is not in the side nav (fine pointer expected)');
+      const disc = getComputedStyle(btn, '::before');
+      const chevron = getComputedStyle(btn.querySelector('.td-lightbox__icon')).color;
+      const image = c.state === 'light-image' ? 'rgb(255, 255, 255)' : 'rgb(0, 0, 0)';
+      const onImage = over(disc.backgroundColor, image);
+      pairs = [
+        c.state === 'light-image'
+          ? { what: 'disc fill vs white photo', fg: disc.backgroundColor, bg: image }
+          : { what: 'disc edge vs black photo', fg: disc.borderTopColor, bg: image },
+        { what: 'chevron vs disc', fg: chevron, bg: onImage, min: 3.2 },
+      ];
+      box = btn.getBoundingClientRect();
+    } else {
+      const thumb = ov.querySelector('.td-lightbox__thumb[aria-current="true"]');
+      const strip = ov.querySelector('.td-lightbox__filmstrip');
+      const backdrop = getComputedStyle(ov.querySelector('.td-lightbox__backdrop')).backgroundColor;
+      const stripBg = over(getComputedStyle(strip).backgroundColor, over(backdrop, 'rgb(255, 255, 255)'));
+      const tcs = getComputedStyle(thumb);
+      if (tcs.opacity !== '1') throw new Error(`current thumb opacity ${tcs.opacity}`);
+      pairs = [{ what: 'current thumb ring vs strip', fg: tcs.borderTopColor, bg: stripBg }];
+      box = thumb.getBoundingClientRect();
+    }
+    TdLightbox.close();
+    return {
+      rect: { x: box.x, y: box.y, width: box.width, height: box.height },
+      ink: {},
+      opacity: 1,
+      hover: false,
+      name: `${c.kind}:${c.v}:${c.state}`,
       pairs,
     };
   } else if (c.kind === 'focus') {
