@@ -322,12 +322,17 @@ Token riêng của modal (đặt trong `:root` hoặc một selector hẹp hơn,
 | `--td-modal-sheet-radius` | `24px` | Bo góc trên của bottom sheet (≤ 640px). |
 | `--td-modal-pad-x` | `var(--td-space-lg)` | Padding ngang header / body / footer. |
 | `--td-modal-pad-y` | `var(--td-space-md)` | Padding dọc của body. |
-| `--td-modal-enter-dur` | `260ms` | (0.21.0) Thời lượng dialog hiện (mờ dần + nhích lên). |
-| `--td-modal-exit-dur` | `180ms` | (0.21.0) Thời lượng dialog + scrim ẩn. Đặt dài hơn thì kit chờ đủ rồi mới gỡ khỏi DOM. |
-| `--td-modal-ease` | `cubic-bezier(0.4, 0, 0.2, 1)` | (0.21.0) Đường cong khi hiện (ease-in-out). |
-| `--td-modal-exit-ease` | `cubic-bezier(0.4, 0, 1, 1)` (ease-in) | (0.21.0) Đường cong khi ẩn. |
-| `--td-modal-scrim-dur` / `--td-modal-scrim-ease` | `240ms` / `ease-in-out` | (0.21.0) Scrim mờ dần khi hiện. |
-| `--td-modal-enter-from` | `translateY(12px) scale(0.98)` | (0.21.0) Tư thế bắt đầu của dialog (desktop). `none` = chỉ mờ dần như 0.20. Modal toàn màn hình luôn là `none`. |
+| `--td-modal-enter-dur` | `300ms` | (0.22.1, trước là `260ms`) Thời lượng **transform** khi hiện (phóng từ `scale(0.95)` / sheet trượt lên). |
+| `--td-modal-enter-ease` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | (0.22.1) Đường cong transform khi hiện — kiểu lò xo, vượt nhẹ quá 1 rồi về. |
+| `--td-modal-fade-dur` | `200ms` | (0.22.1) Thời lượng **mờ dần** (opacity) khi hiện. |
+| `--td-modal-fade-ease` | `var(--td-modal-ease)` | (0.22.1) Đường cong opacity khi hiện. |
+| `--td-modal-ease` | `cubic-bezier(0.25, 0.46, 0.45, 0.94)` | Tên cũ (0.21.0, khi đó là đường cong chung lúc hiện). Từ 0.22.1 là đường cong **mờ dần** (`--td-modal-fade-ease` lấy từ nó); site đã ghi đè vẫn có tác dụng lên phần opacity. Đường cong transform giờ là `--td-modal-enter-ease`. |
+| `--td-modal-exit-dur` | `200ms` | (0.22.1, trước là `180ms`) Thời lượng transform khi ẩn (thu về `scale(0.95)`). Đặt dài hơn thì kit chờ đủ rồi mới gỡ khỏi DOM. |
+| `--td-modal-exit-fade-dur` | `150ms` | (0.22.1) Thời lượng mờ dần khi ẩn — cả dialog lẫn scrim. |
+| `--td-modal-exit-ease` | `cubic-bezier(0.4, 0, 0.2, 1)` | (0.22.1, trước là ease-in) Đường cong khi ẩn (transform, opacity, scrim). |
+| `--td-modal-scrim-dur` / `--td-modal-scrim-ease` | `120ms` / `ease-out` | (0.22.1, trước là `240ms` / `ease-in-out`) Scrim mờ dần khi hiện. |
+| `--td-modal-sheet-ease` | `cubic-bezier(0.32, 0.72, 0, 1)` | (0.22.1) Đường cong sheet trượt lên trên điện thoại — không vượt (vượt sẽ hở khe dưới đáy). |
+| `--td-modal-enter-from` | `scale(0.95)` | (0.22.1, trước là `translateY(12px) scale(0.98)`) Tư thế bắt đầu của dialog (desktop). `none` = chỉ mờ dần. Modal toàn màn hình luôn là `none`. |
 
 Token dùng chung có ảnh hưởng: `--td-z-modal` (`400`), `--td-glass-scrim` (màu lớp phủ nền, không làm mờ),
 các token bề mặt (`--td-glass-solid`, `--td-glass-border`, `--td-glass-shadow-lg`, `--td-glass-fg`).
@@ -354,20 +359,31 @@ Giao diện (0.20.0, minimal surfaces): dialog **nền đặc** `--td-glass-soli
 `--td-glass-border`, một bóng mềm `--td-glass-shadow-lg`, không blur; scrim phía sau không làm mờ.
 Tương phản cao → nền `--td-color-surface`, viền rõ, không bóng.
 
-**Chuyển động (0.21.0, ease-in-out):**
+**Chuyển động (0.22.1, mang từ dcms-modal sang):**
 
-- **Mở:** scrim mờ dần 0 → 1 trong 240ms (`ease-in-out`); dialog mờ dần và nhích từ `translateY(12px) scale(0.98)` về
-  vị trí thật trong 260ms (`cubic-bezier(0.4, 0, 0.2, 1)`).
-- **Đóng:** ngược lại, nhanh hơn: 180ms `ease-in` (cả dialog lẫn scrim).
-- **Điện thoại (≤ 640px):** bottom sheet vẫn trượt từ dưới lên / xuống, cùng thời lượng và đường cong.
+- **Mở:** scrim mờ dần 0 → 1 trong 120ms (`ease-out`); dialog mờ dần trong 200ms
+  (`cubic-bezier(0.25, 0.46, 0.45, 0.94)`) và phóng từ `scale(0.95)` về kích thước thật trong 300ms với đường cong lò
+  xo `cubic-bezier(0.34, 1.56, 0.64, 1)` (vượt nhẹ ~1–2% rồi về — cảm giác "bật" như dcms).
+- **Đóng:** thu về `scale(0.95)` trong 200ms, mờ dần (dialog + scrim) trong 150ms, cùng đường cong
+  `cubic-bezier(0.4, 0, 0.2, 1)`. Kit đọc transition dài nhất trong computed style rồi mới gỡ modal khỏi DOM.
+- **Điện thoại (≤ 640px):** bottom sheet vẫn trượt từ dưới lên (300ms, `--td-modal-sheet-ease`, không vượt) và mờ dần
+  200ms; khi đóng trượt xuống 200ms / mờ 150ms.
 - **Toàn màn hình (`fullViewport`):** chỉ mờ dần.
 - **`prefers-reduced-motion: reduce`:** chỉ mờ dần 120ms (`linear`), không trượt, không scale; khi đóng kit chờ hết lần mờ dần đó (đọc từ computed style) rồi mới gỡ modal.
+- **Trang không bị giật ngang (0.22.1):** khi modal mở, trang bị khoá cuộn (`overflow: hidden` trên `<html>`). Với
+  thanh cuộn kiểu cổ điển (Windows, macOS bật "luôn hiện thanh cuộn") việc này từng làm mất thanh cuộn → cả trang và
+  modal nhảy ngang ~15px giữa animation. Giờ kit giữ chỗ cho thanh cuộn: `scrollbar-gutter: stable` trên `<html>`;
+  nếu trình duyệt không hỗ trợ hoặc không giữ được (ví dụ site tự style `::-webkit-scrollbar`) thì cộng bề rộng thanh
+  cuộn vào `padding-inline-end` của `<html>` và đặt `--td-scroll-lock-gap` (modal dùng nó để giữ nguyên vị trí).
+  Giá trị inline cũ của site trên `<html>` được trả lại y nguyên khi đóng modal cuối cùng.
 
 Đây là ngoại lệ có chủ ý với luật "không scale trang trí" của minimal surfaces — chỉ áp cho modal. Logic trạng thái
-(`data-state="opening|open|closing"`) không đổi; chỉ có CSS. Muốn modal chỉ mờ dần như 0.20:
+(`data-state="opening|open|closing"`) không đổi; chỉ có CSS. Muốn modal chỉ mờ dần (không phóng):
 
 ```css
 :root { --td-modal-enter-from: none; }
+/* Muốn phóng êm, không vượt (không "bật" lò xo): */
+:root { --td-modal-enter-ease: cubic-bezier(0.4, 0, 0.2, 1); }
 ```
 
 ## Cấu trúc DOM & class

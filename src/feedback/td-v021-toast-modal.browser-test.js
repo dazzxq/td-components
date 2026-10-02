@@ -1,5 +1,5 @@
 import { expect } from '@esm-bundle/chai';
-import { sendKeys, sendMouse, emulateMedia } from '@web/test-runner-commands';
+import { sendKeys, sendMouse, emulateMedia, setViewport } from '@web/test-runner-commands';
 import { TdToast } from './td-toast.js';
 import { TdModal } from './td-modal.js';
 
@@ -27,6 +27,8 @@ afterEach(async () => {
   document.querySelectorAll('body > .td-modal').forEach((m) => m.remove());
   document.documentElement.removeAttribute('data-td-theme');
   document.documentElement.style.removeProperty('--td-modal-enter-dur');
+  document.documentElement.style.removeProperty('--td-modal-enter-from');
+  document.documentElement.style.removeProperty('--td-modal-exit-dur');
   await emulateMedia({ reducedMotion: 'no-preference' });
 });
 
@@ -189,36 +191,39 @@ describe('v0.21.0 P4 — toast (dcms style)', () => {
   });
 });
 
-describe('v0.21.0 P5 — modal ease-in-out', () => {
-  it('enter: dialog 260 ms cubic-bezier(0.4, 0, 0.2, 1) from translateY(12px) scale(0.98); scrim 240 ms ease-in-out', async () => {
+describe('v0.21.0 P5 / v0.22.1 — modal motion (like dcms)', () => {
+  it('enter: fade 200 ms + spring scale(0.95) 300 ms; scrim 120 ms ease-out', async () => {
     const id = TdModal.show({ title: 'Chào', body: '<p>x</p>' });
     const root = document.getElementById(id);
     const dialog = root.querySelector('.td-modal__dialog');
     const scrim = root.querySelector('.td-modal__backdrop');
     expect(root.getAttribute('data-state')).to.equal('opening');
     const cs = getComputedStyle(dialog);
-    expect(cs.transform).to.equal('matrix(0.98, 0, 0, 0.98, 0, 12)');
+    expect(cs.transform).to.equal('matrix(0.95, 0, 0, 0.95, 0, 0)');
     expect(cs.transitionProperty).to.equal('opacity, transform');
-    expect(cs.transitionDuration).to.equal('0.26s, 0.26s');
-    expect(cs.transitionTimingFunction).to.equal('cubic-bezier(0.4, 0, 0.2, 1), cubic-bezier(0.4, 0, 0.2, 1)');
-    expect(getComputedStyle(scrim).transitionDuration).to.equal('0.24s');
-    expect(getComputedStyle(scrim).transitionTimingFunction).to.equal('ease-in-out');
+    expect(cs.transitionDuration).to.equal('0.2s, 0.3s');
+    expect(cs.transitionTimingFunction)
+      .to.equal('cubic-bezier(0.25, 0.46, 0.45, 0.94), cubic-bezier(0.34, 1.56, 0.64, 1)');
+    expect(getComputedStyle(scrim).transitionDuration).to.equal('0.12s');
+    expect(getComputedStyle(scrim).transitionTimingFunction).to.equal('ease-out');
     await frames(3);
     await wait(320);
     expect(getComputedStyle(dialog).transform).to.equal('none');
     expect(getComputedStyle(dialog).opacity).to.equal('1');
   });
 
-  it('exit: 180 ms ease-in back to the entry pose, then removed', async () => {
+  it('exit: scale 200 ms + fade/scrim 150 ms (standard curve) back to the entry pose, then removed', async () => {
     const id = TdModal.show({ title: 'Chào', body: '<p>x</p>' });
     const root = document.getElementById(id);
     await frames(3);
     TdModal.closeById(id);
     expect(root.getAttribute('data-state')).to.equal('closing');
     const cs = getComputedStyle(root.querySelector('.td-modal__dialog'));
-    expect(cs.transitionDuration).to.equal('0.18s, 0.18s');
-    expect(cs.transitionTimingFunction).to.equal('cubic-bezier(0.4, 0, 1, 1), cubic-bezier(0.4, 0, 1, 1)');
-    expect(getComputedStyle(root.querySelector('.td-modal__backdrop')).transitionDuration).to.equal('0.18s');
+    expect(cs.transitionDuration).to.equal('0.15s, 0.2s');
+    expect(cs.transitionTimingFunction).to.equal('cubic-bezier(0.4, 0, 0.2, 1), cubic-bezier(0.4, 0, 0.2, 1)');
+    expect(getComputedStyle(root.querySelector('.td-modal__backdrop')).transitionDuration).to.equal('0.15s');
+    expect(getComputedStyle(root.querySelector('.td-modal__backdrop')).transitionTimingFunction)
+      .to.equal('cubic-bezier(0.4, 0, 0.2, 1)');
     await wait(300);
     expect(root.isConnected).to.equal(false);
   });
@@ -227,7 +232,85 @@ describe('v0.21.0 P5 — modal ease-in-out', () => {
     document.documentElement.style.setProperty('--td-modal-enter-dur', '400ms');
     const id = TdModal.show({ title: 'Chào', body: '<p>x</p>' });
     const dialog = document.getElementById(id).querySelector('.td-modal__dialog');
-    expect(getComputedStyle(dialog).transitionDuration).to.equal('0.4s, 0.4s');
+    expect(getComputedStyle(dialog).transitionDuration).to.equal('0.2s, 0.4s');
+  });
+
+  it('--td-modal-enter-from: none → fade-only modal (v0.22.1)', async () => {
+    document.documentElement.style.setProperty('--td-modal-enter-from', 'none');
+    const id = TdModal.show({ title: 'Chào', body: '<p>x</p>' });
+    const dialog = document.getElementById(id).querySelector('.td-modal__dialog');
+    expect(getComputedStyle(dialog).transform).to.equal('none');
+    expect(getComputedStyle(dialog).opacity).to.equal('0');
+  });
+
+  it('the spring overshoots slightly past scale 1 mid-entry, settling at none (v0.22.1)', async () => {
+    const id = TdModal.show({ title: 'Chào', body: '<p>x</p>' });
+    const dialog = document.getElementById(id).querySelector('.td-modal__dialog');
+    await frames(2);
+    let max = 0;
+    const t0 = performance.now();
+    while (performance.now() - t0 < 380) {
+      const tf = getComputedStyle(dialog).transform;
+      const m = /^matrix\(([\d.]+)/.exec(tf);
+      if (m) max = Math.max(max, Number(m[1]));
+      await frame();
+    }
+    expect(max).to.be.above(1);
+    expect(max).to.be.below(1.03);
+    expect(getComputedStyle(dialog).transform).to.equal('none');
+  });
+
+  it('a longer --td-modal-exit-dur keeps the closing modal connected for the whole exit (v0.22.1)', async () => {
+    document.documentElement.style.setProperty('--td-modal-exit-dur', '500ms');
+    const id = TdModal.show({ title: 'Chào', body: '<p>x</p>' });
+    const root = document.getElementById(id);
+    await frames(3);
+    TdModal.closeById(id);
+    await wait(400);
+    expect(root.isConnected).to.equal(true);
+    await wait(250);
+    expect(root.isConnected).to.equal(false);
+  });
+
+  it('phone sheet: slides up 300 ms on the sheet curve (no overshoot), exits 200 ms / 150 ms (v0.22.1)', async () => {
+    await setViewport({ width: 480, height: 800 });
+    try {
+      const id = TdModal.show({ title: 'Sheet', body: '<p>x</p>' });
+      const root = document.getElementById(id);
+      const dialog = root.querySelector('.td-modal__dialog');
+      let cs = getComputedStyle(dialog);
+      expect(cs.transform).to.match(/^matrix\(1, 0, 0, 1, 0, [\d.]+\)$/); // translateY(100%)
+      expect(cs.transitionDuration).to.equal('0.2s, 0.3s');
+      expect(cs.transitionTimingFunction)
+        .to.equal('cubic-bezier(0.25, 0.46, 0.45, 0.94), cubic-bezier(0.32, 0.72, 0, 1)');
+      await frames(3);
+      await wait(350);
+      expect(getComputedStyle(dialog).transform).to.equal('none');
+      TdModal.closeById(id);
+      cs = getComputedStyle(dialog);
+      expect(cs.transitionDuration).to.equal('0.15s, 0.2s');
+      expect(cs.transitionTimingFunction).to.equal('cubic-bezier(0.4, 0, 0.2, 1), cubic-bezier(0.4, 0, 0.2, 1)');
+    } finally {
+      await setViewport({ width: 800, height: 600 });
+    }
+  });
+
+  it('reduced motion on the phone sheet: still 120 ms opacity only while closing (v0.22.1)', async () => {
+    await emulateMedia({ reducedMotion: 'reduce' });
+    await setViewport({ width: 480, height: 800 });
+    try {
+      const id = TdModal.show({ title: 'Sheet', body: '<p>x</p>' });
+      const dialog = document.getElementById(id).querySelector('.td-modal__dialog');
+      expect(getComputedStyle(dialog).transitionDuration).to.equal('0.12s');
+      await frames(3);
+      TdModal.closeById(id);
+      const cs = getComputedStyle(dialog);
+      expect(cs.transform).to.equal('none');
+      expect(cs.transitionProperty).to.equal('opacity');
+      expect(cs.transitionDuration).to.equal('0.12s');
+    } finally {
+      await setViewport({ width: 800, height: 600 });
+    }
   });
 
   it('full-viewport modal only fades (no rise / scale)', async () => {

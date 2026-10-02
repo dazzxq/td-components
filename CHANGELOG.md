@@ -2,6 +2,23 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.22.1
+
+### Fixed
+
+- **Mở / đóng modal không còn làm trang nhảy ngang.** Khoá cuộn (`scroll-lock`) giữ chỗ thanh cuộn: `scrollbar-gutter:
+  stable` trên `<html>`, nếu không giữ được (trình duyệt cũ, site tự style thanh cuộn) thì bù `padding-inline-end` +
+  biến `--td-scroll-lock-gap` cho modal. Giá trị inline cũ của site được trả lại nguyên vẹn. Trước đây trên Windows / macOS
+  "luôn hiện thanh cuộn", trang và modal nhảy ~15px giữa hiệu ứng → cảm giác giật.
+
+### Changed
+
+- **Chuyển động modal theo dcms:** mở = phóng từ `scale(0.95)` 300ms có nảy nhẹ (`cubic-bezier(0.34, 1.56, 0.64, 1)`) +
+  hiện mờ 200ms, nền tối 120ms; đóng = 200ms / mờ 150ms. Token mới `--td-modal-enter-ease`, `--td-modal-fade-dur`,
+  `--td-modal-fade-ease`, `--td-modal-exit-fade-dur`, `--td-modal-sheet-ease`; `--td-modal-enter-dur` giờ là thời lượng
+  transform (300ms), `--td-modal-ease` là đường cong fade. Sheet điện thoại vẫn trượt lên (không nảy). Reduced motion
+  không đổi.
+
 ## 0.22.0
 
 `<td-dropdown>` dòng hành động "＋ Thêm … mới…" ở đáy menu (đề xuất của site 135; plan

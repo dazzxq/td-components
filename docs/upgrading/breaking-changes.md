@@ -1,8 +1,8 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.22)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.22.1)
 
-Trang này liệt kê, cho từng bản từ **0.22.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
+Trang này liệt kê, cho từng bản từ **0.22.1** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
 [CHANGELOG.md](../../CHANGELOG.md); trang này chỉ gom lại theo góc nhìn "tôi phải làm gì" và thêm ví dụ trước/sau.
 Quy trình nâng cấp chung nằm ở [README.md](README.md).
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.22.1](#0221) | Không có thay đổi phá vỡ | Không. Modal đổi chuyển động (giống dcms); site đặt `--td-modal-ease` riêng: giờ là đường cong fade. |
 | [0.22.0](#0220) | Đổi DOM (nhỏ) | CSS / code site cuộn hoặc đo `.td-dropdown__options` → `.td-dropdown__scroller`; "Không có kết quả" nằm trên listbox. |
 | [0.21.1](#0211) | Không có thay đổi phá vỡ | Không. Sửa lỗi popup / modal / lightbox khi kết hợp; `TdMenu` `onClose` thêm reason `'covered'`. |
 | [0.21.0](#0210) | Đổi giao diện + đổi DOM toast | Primary đen (về accent bằng token); nút ngữ nghĩa pastel; tooltip đen; toast bỏ icon (code query `.td-toast__icon` phải bỏ); modal có animation. |
@@ -47,6 +48,14 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.22.1
+
+**Không có thay đổi phá vỡ.** Modal mở / đóng theo kiểu dcms; khoá cuộn không còn làm trang nhảy ngang. Site đã đặt
+`--td-modal-ease` riêng: từ bản này token đó là đường cong **fade** (đường cong phóng là `--td-modal-enter-ease`);
+`--td-modal-enter-dur` là thời lượng phóng (300ms). Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.22.1.
 
 ---
 
@@ -97,7 +106,8 @@ hoặc bị modal mở sau phủ; lightbox mở từ modal nằm trên. Code sit
    `--td-toast-{type}-bg/-fg/-border` (pastel đặc, không blur). `--td-toast-error-border` có tác dụng trở lại;
    `--td-toast-fg`, `-close-fg`, `-glass-bg`, `--td-toast-{type}-icon` hết tác dụng.
 5. **Modal có animation** (260ms vào). Test E2E của site chờ modal mở cần chờ `data-state="open"` hoặc tắt bằng
-   `--td-modal-enter-from: none` + `--td-modal-enter-dur: 0s`.
+   `--td-modal-enter-from: none` + `--td-modal-enter-dur: 0s` (từ 0.22.1 thêm `--td-modal-fade-dur: 0s`,
+   `--td-modal-scrim-dur: 0s`; enter giờ là 300ms).
 6. **Viền focus ô nhập nhạt hơn.** Site cần viền focus đậm như cũ: `--td-field-focus: var(--td-focus)`,
    `--td-field-focus-ring: var(--td-focus-ring)`.
 
