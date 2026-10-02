@@ -88,7 +88,8 @@ export function lockScroll() {
   if (typeof document === 'undefined') return () => {};
   const root = document.documentElement;
   if (_count === 0) {
-    _prevOverflow = root.style.overflow;
+    // value + priority: a site's inline `overflow: … !important` comes back exactly (v0.22.1 review)
+    _prevOverflow = { value: root.style.getPropertyValue('overflow'), priority: root.style.getPropertyPriority('overflow') };
     hideKeepingGutter(root);
   }
   _count += 1;
@@ -100,7 +101,8 @@ export function lockScroll() {
     _count -= 1;
     if (_count <= 0) {
       _count = 0;
-      root.style.overflow = _prevOverflow || '';
+      if (_prevOverflow && _prevOverflow.value) root.style.setProperty('overflow', _prevOverflow.value, _prevOverflow.priority);
+      else root.style.removeProperty('overflow');
       _prevOverflow = null;
       restoreGutter(root);
     }

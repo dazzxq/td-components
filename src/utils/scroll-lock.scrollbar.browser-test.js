@@ -80,6 +80,15 @@ describe('scroll lock keeps the scrollbar gutter (v0.22.1)', () => {
     expect(root.getAttribute('style')).to.equal(before);
   });
 
+  it('restores a site\'s inline `overflow: … !important` with its priority (v0.22.1 review)', () => {
+    root.style.setProperty('overflow', 'auto', 'important');
+    const release = lock();
+    expect(root.style.getPropertyValue('overflow')).to.equal('hidden');
+    release();
+    expect(root.style.getPropertyValue('overflow')).to.equal('auto');
+    expect(root.style.getPropertyPriority('overflow')).to.equal('important');
+  });
+
   it('padding fallback (no scrollbar-gutter support): same width, previous padding restored', () => {
     const supports = CSS.supports;
     CSS.supports = (...a) => (a[0] === 'scrollbar-gutter' || /^\s*\(?\s*scrollbar-gutter/.test(String(a[0]))
