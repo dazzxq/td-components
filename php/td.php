@@ -694,15 +694,42 @@ namespace {
         // Never for a bare link (no component contract).
         $element = !$bare && (array_key_exists('element', $o) && $o['element'] !== null ? (bool) $o['element'] : Td::ssrElements());
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
-        $host = null;
+        $taken = [];
+        $lift = [];
         if ($element) {
             // The control carries only kit classes; id / site class belong to the host (component API).
             $attrs['id'] = null;
             $attrs['class'] = 'td-btn td-btn--' . $variant . ' td-btn--' . $size . (!empty($o['full_width']) ? ' td-btn--full' : '');
+            // aria-label / ARIA state from `attrs` is lifted to the host (the component forwards it to the control);
+            // forwarded ARIA goes through the component's own whitelist so the control is the same before / after.
+            $lift = td__button_lift($extra);
+            $attrs['aria-label'] = $aria ?? ($lift['aria-label'] ?? null);
+            foreach ($extra as $k => $v) {
+                $l = strtolower((string) $k);
+                if (in_array($l, ['aria-label', 'aria-pressed', 'aria-expanded', 'aria-haspopup', 'aria-controls'], true)) {
+                    unset($extra[$k]);
+                }
+            }
+            foreach (['aria-pressed', 'aria-expanded', 'aria-haspopup', 'aria-controls'] as $a) {
+                if (isset($lift[$a])) {
+                    $extra[$a] = $lift[$a];
+                }
+            }
+            // Review round 1 (IMPL-1): EVERY name the component owns is reserved, even when its value is false / null —
+            // an `attrs` entry can never put state (disabled, aria-busy…) on the control that hydrate would then undo.
+            // Exception: tabindex / role on a link that is not inert stay genuine pass-through (restored by the
+            // component when its state clears).
         }
-        // an `id` option (moved to the host in element mode) still blocks `attrs['id']` on the control, as in native mode
-        $taken = $element && isset($o['id']) && is_scalar($o['id']) ? ['id' => true] : [];
-        $html = '<' . $tag . Td::ownAttrs($attrs, $taken) . Td::attrs($extra, $taken) . '>';
+        $html = '<' . $tag . Td::ownAttrs($attrs, $taken);
+        if ($element) {
+            foreach (array_keys($attrs) as $k) {
+                if ($isLink && in_array($k, ['tabindex', 'role'], true) && $attrs[$k] === null) {
+                    continue;
+                }
+                $taken[$k] = true;
+            }
+        }
+        $html .= Td::attrs($extra, $taken) . '>';
         if ($bare) {
             return $html . Td::e($label) . '</a>';
         }
@@ -730,16 +757,7 @@ namespace {
             return $html;
         }
         // Host attributes (projection table, docs/guides/php-adapter.md): explicit values (PHP default variant
-        // `secondary` ≠ JS default `primary`), state the JS component reads on hydrate. aria-label / ARIA state passed
-        // through `attrs` is lifted to the host too (the component forwards it to the control).
-        $lift = [];
-        foreach ($extra as $k => $v) {
-            $l = strtolower((string) $k);
-            if (in_array($l, ['aria-label', 'aria-pressed', 'aria-expanded', 'aria-haspopup', 'aria-controls'], true)
-                && is_scalar($v) && !is_bool($v) && (string) $v !== '' && !isset($lift[$l])) {
-                $lift[$l] = (string) $v;
-            }
-        }
+        // `secondary` ≠ JS default `primary`), state the JS component reads on hydrate.
         $hostAttrs = [
             'id' => $o['id'] ?? null,
             'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
@@ -760,7 +778,7 @@ namespace {
         $hostAttrs += [
             'disabled' => $disabled,
             'loading' => $loading,
-            'aria-label' => $aria ?? ($lift['aria-label'] ?? null),
+            'aria-label' => $attrs['aria-label'],
             'aria-pressed' => $lift['aria-pressed'] ?? null,
             'aria-expanded' => $lift['aria-expanded'] ?? null,
             'aria-haspopup' => $lift['aria-haspopup'] ?? null,
@@ -768,6 +786,37 @@ namespace {
         ];
         $hostTaken = [];
         return '<td-button' . Td::ownAttrs($hostAttrs, $hostTaken) . '>' . $html . '</td-button>';
+    }
+
+    /**
+     * @internal Element mode: aria-label / forwarded ARIA from `attrs` (first spelling wins, case-insensitive), with the
+     * whitelist of <td-button> (FORWARDED_ARIA in src/form/td-button.js): enumerated values trimmed + lower-cased, an
+     * IDREF list kept verbatim unless blank; anything else dropped.
+     * @return array<string,string>
+     */
+    function td__button_lift(array $extra): array
+    {
+        $enums = [
+            'aria-pressed' => ['true', 'false', 'mixed'],
+            'aria-expanded' => ['true', 'false'],
+            'aria-haspopup' => ['true', 'false', 'menu', 'listbox', 'tree', 'grid', 'dialog'],
+        ];
+        $out = [];
+        foreach ($extra as $k => $v) {
+            $l = strtolower((string) $k);
+            if (isset($out[$l]) || !is_scalar($v) || is_bool($v)) {
+                continue;
+            }
+            $v = (string) $v;
+            if ($l === 'aria-label' && $v !== '') {
+                $out[$l] = $v;
+            } elseif ($l === 'aria-controls' && trim($v) !== '') {
+                $out[$l] = $v;
+            } elseif (isset($enums[$l]) && in_array(strtolower(trim($v)), $enums[$l], true)) {
+                $out[$l] = strtolower(trim($v));
+            }
+        }
+        return $out;
     }
 
     /**
