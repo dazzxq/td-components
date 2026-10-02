@@ -76,6 +76,13 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` Hardening sau security review: `TdHovercard.sanitize` + `TrustedHTML`, fetch giới hạn (LRU 50, 256 KB, 10 s,
   `no-store`, huỷ khi đóng), `clearCache()` bắt buộc khi đổi phiên đăng nhập
 
+## Done — v0.25.0 SSR hydrate (bước 1)
+
+- `done` ADR 0012; base hydrate; `td-button` / link element mode; lưới CSS `:not(:defined)`; `Td::modulePreloads`; `td_badge`
+  icon
+- `todo` v0.26.0 input-field / toggle / checkbox (form-associated) · v0.27.0 dropdown shell / empty-state · sau đó
+  datetime, dropzone
+
 ## Done — v0.24.0 lightbox điều hướng hai bên
 
 - `done` Vùng bấm hai bên (15%), tải sẵn ảnh kề, màn lỗi ảnh, filmstrip tuỳ chọn, trượt khi chuyển
