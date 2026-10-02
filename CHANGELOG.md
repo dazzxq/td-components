@@ -2,6 +2,29 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.23.0
+
+Component mới `<td-media-grid>` — lưới ảnh / media chọn được (đề xuất của site 135, kiểu dwp photos; plan
+`docs/internal/plans/v0.23.0-media-grid.md`, Codex plan-review APPROVE 2 vòng).
+
+### Added
+
+- `<td-media-grid>` nâng cấp **markup của site** (item `data-td-media-item` + `data-id`, phần tử mở
+  `[data-td-media-open]` là `<button>` hoặc `<a>`): chèn nút tick (`aria-pressed`, `tabindex=-1`), không render lại ô;
+  item thêm / gỡ sau vẫn được nhận.
+- Tick ẩn → hiện khi rê chuột, khi focus vào ô, khi đang chọn; cảm ứng mờ 0.55 (vùng chạm 44px). Đã chọn: ảnh thu
+  88% trên nền surface, tick đặc (theo màu nút primary, tự đảo ở dark).
+- Hành vi: chưa chọn → bấm ảnh = `activate`, bấm tick = chọn; đang chọn → bấm = lật (lightbox / link không mở); Shift =
+  chọn dải (chỉ thêm, giữ điểm neo); Space = lật, Enter = `activate`, Esc = bỏ hết (khi không có modal / menu / dropdown
+  mở); `max` + sự kiện `select-limit`; `disabled`.
+- API: `selectedIds`, `select()`, `deselect()`, `toggle()`, `selectAll()`, `clear()`, `items`; sự kiện `select-change`
+  (`ids`, `added`, `removed`), `activate` (cancelable), `select-limit`; hook `onSelectChange`; `TdMediaGrid.labels`.
+- Export `@dazzxq/td-components/media-grid`; token `--td-media-grid-*`.
+
+### Fixed
+
+- Docs cài đặt: import map viết tay thiếu `dropzone`, `progress`, `alert` (có từ 0.18) — đã bổ sung cùng `media-grid`.
+
 ## 0.22.1
 
 ### Fixed
