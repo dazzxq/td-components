@@ -361,8 +361,15 @@ async function runEngine(name, launcher) {
         check(`${tag} glass-off zero violations`, o.violations.length === 0, JSON.stringify(o.violations));
         await page.evaluate(() => document.documentElement.removeAttribute('data-td-glass'));
 
-        // (D) dark opt-in
-        await page.evaluate(() => document.documentElement.setAttribute('data-td-theme', 'dark'));
+        // (D) dark opt-in. This gate measures token VALUES, not motion: switch transitions off first. Headless WebKit on
+        // CI may not advance a CSS transition at all (no frames painted), so a transitioning button kept reporting its
+        // light start values even after seconds of polling (v0.22.0 CI). An adopted sheet is CSP-safe (no inline style).
+        await page.evaluate(() => {
+          const off = new CSSStyleSheet();
+          off.replaceSync('*, *::before, *::after { transition: none !important; animation: none !important; }');
+          document.adoptedStyleSheets = [...document.adoptedStyleSheets, off];
+          document.documentElement.setAttribute('data-td-theme', 'dark');
+        });
         // Buttons transition colour / shadow (120ms); a slow CI engine can still be mid-transition after a fixed wait
         // (v0.21.0 CI flake: WebKit read the light / half-way primary). Poll until the primary (fill, label, shadow) and danger fill settle on the dark values; the check still asserts them exactly.
         let d = await read(page);
