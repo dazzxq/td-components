@@ -435,7 +435,7 @@ function onDocPointerDown(e) {
 
 function reposition() {
   if (!cur) return;
-  if (!cur.trigger.isConnected || isReferenceHidden(cur.trigger.getBoundingClientRect())) {
+  if (!cur.trigger.isConnected || isReferenceHidden(cur.trigger.getBoundingClientRect(), cur.trigger)) {
     closeSession('hidden');
     return;
   }

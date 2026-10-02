@@ -380,7 +380,7 @@ export class TdTooltip {
         const tip = this.tooltip;
         if (!tip) return;
         const rect = element.getBoundingClientRect();
-        if (!element.isConnected || isReferenceHidden(rect)) { this.hide(); return; }
+        if (!element.isConnected || isReferenceHidden(rect, element)) { this.hide(); return; }
         const s = tip.style;
         s.setProperty('left', '0px'); // measure at natural width (fixed + left:0 → full shrink-to-fit room)
         s.setProperty('top', '0px');

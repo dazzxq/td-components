@@ -1320,7 +1320,7 @@ export class TdChipInput extends TdFormElement {
     if (!this._isOpen || !this._menuElement) return;
     const box = this.querySelector('.td-chip-input__box');
     if (!box) return;
-    if (isReferenceHidden(box.getBoundingClientRect())) {
+    if (isReferenceHidden(box.getBoundingClientRect(), box)) {
       this.close();
       return;
     }

@@ -414,7 +414,7 @@ function place(s) {
 
 function reposition(s) {
   if (s.closed) return;
-  if (!s.anchor.isConnected || isReferenceHidden(s.anchor.getBoundingClientRect())) {
+  if (!s.anchor.isConnected || isReferenceHidden(s.anchor.getBoundingClientRect(), s.anchor)) {
     closeSession(s, 'hidden');
     return;
   }

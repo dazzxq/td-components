@@ -1123,7 +1123,7 @@ export class TdDropdown extends TdFormElement {
     const rect = trigger.getBoundingClientRect();
     // Close once the trigger is effectively hidden (scrolled out of the viewport, or
     // no longer rendered) — a menu floating over unrelated content is worse than closing.
-    if (isReferenceHidden(rect)) {
+    if (isReferenceHidden(rect, trigger)) {
       this.close();
       return;
     }
