@@ -36,6 +36,8 @@ for (const v of ['input-field', 'dropdown']) CASES.push({ kind: 'focus', v, stat
 // v0.22.0: the dropdown create row (accent label + plus icon) on the translucent menu surface, over every backdrop —
 // at rest and active (keyboard / hover fill).
 for (const state of ['rest', 'active']) CASES.push({ kind: 'dropdown-create', v: 'create', state });
+// …and the static fallback used where color-mix() is unsupported (forced onto the row through CSSOM).
+for (const state of ['rest', 'active']) CASES.push({ kind: 'dropdown-create', v: 'create-fallback', state });
 
 const stage = document.getElementById('stage');
 const bd = document.getElementById('backdrop');
@@ -130,6 +132,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     el.className = 'td-dropdown__option td-dropdown__option--create';
     el.setAttribute('role', 'option');
     if (c.state === 'active') el.setAttribute('data-active', '');
+    if (c.v === 'create-fallback') menu.style.setProperty('--td-dropdown-create-fg', 'var(--td-dropdown-create-fg-fallback)');
     const icon = document.createElement('span');
     icon.className = 'td-dropdown__create-icon';
     icon.setAttribute('data-td-icon', 'plus');

@@ -3636,11 +3636,13 @@
 		--td-dropdown-search-border: var(--td-control-border-soft);      /* soft like the fields (v0.14.1) */
 		--td-dropdown-hairline: var(--td-color-border);
 		/* v0.22.0 create row label: the accent, one step darker so it keeps ≥ 4.7:1 on the menu surface and its
-		   hover / active fills (contrast gate). Fallback without color-mix(): the accent itself. */
-		--td-dropdown-create-fg: var(--td-accent);
+		   hover / active fills (contrast gate). Without color-mix(): a fixed contrast-safe blue (measured too). */
+		--td-dropdown-create-fg-fallback: #1d4ed8;
+		--td-dropdown-create-fg: var(--td-dropdown-create-fg-fallback);
 	}
 
 	:root[data-td-theme="dark"] {
+		--td-dropdown-create-fg-fallback: #93c5fd;
 		--td-dropdown-option-active-line: var(--td-control-border-hover);
 		--td-dropdown-search-bg: rgb(255 255 255 / 6%);
 	}
