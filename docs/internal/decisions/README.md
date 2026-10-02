@@ -16,3 +16,4 @@ muốn đổi thì viết ADR mới và đánh dấu cái cũ `Superseded by`.
 | [0009](0009-td-lightbox-hooks.md) | td-lightbox: port clean-room + hook | Accepted 2026-09-27 |
 | [0010](0010-icon-registry.md) | Icon registry: render theo tên (Lucide), không hardcode SVG | Accepted 2026-09-27 |
 | [0011](0011-minimal-surfaces.md) | Minimal surfaces thay Liquid Glass (nền + viền + một shadow, blur chỉ popup nhỏ) | Accepted 2026-10-02 |
+| [0012 — SSR contract + hydrate tại chỗ](0012-ssr-hydration.md) | Minimal surfaces thay Liquid Glass (nền + viền + một shadow, blur chỉ popup nhỏ) | Accepted 2026-10-02 |
