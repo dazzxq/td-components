@@ -95,7 +95,10 @@ loading 480, toast 500, tooltip 510 — giữ đồng bộ với `tokens.css`).
   dải (lightbox mở từ modal) được nâng: layer logic = `min(popover − 1, layer trên + 1)` (registry + inert lease), z-index
   thị giác = z-index **computed** của phần tử bên dưới + 1 (CSSOM, theo token site đã đổi). `restackBand()` tính lại
   khi đăng ký / gỡ và sau `TdModalStackManager._sync()` (khi bật `BASE_Z_INDEX`). Cùng layer (modal trên modal) không
-  nâng — thứ tự đăng ký + thứ tự DOM đã đúng. Loading / toast / tooltip không bao giờ bị vượt.
+  nâng — thứ tự đăng ký + thứ tự DOM đã đúng. Loading / toast / tooltip không bao giờ bị vượt. Lớp bên dưới đóng →
+  bỏ tham chiếu `promotedOver`, z-index về giá trị thường; `release()` luôn gỡ z-index inline đã ghi. Modal được nâng
+  đóng → focus về opener nằm trong lớp bên dưới (lightbox), không về modal trước (đang inert). Lightbox coi "lớp lạ" theo
+  thứ tự registry (`!isTop()`), nên modal mở sau ở cùng layer trần (449) vẫn chặn phím của lightbox.
 
 ## Sơ đồ phụ thuộc
 

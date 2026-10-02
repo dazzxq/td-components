@@ -258,7 +258,6 @@ export class TdModal {
       // it; under TdModalStackManager.BASE_Z_INDEX its normal z is the stack's (kept in sync by _sync()).
       baseZ: () => (TdModalStackManager._zBase() !== null ? instance.zIndex : null),
     });
-    instance.promotedOver = instance.layer.promotedOver;
     TdModal._focusTrapHandlers.set(id, { el: root, layer: instance.layer });
     // Focus moves into the dialog immediately (the opener is inert now); the initial target is chosen once the
     // content is laid out (second frame).
@@ -352,6 +351,8 @@ export class TdModal {
     const focusWasHere = !active || active === document.body || root.contains(active) || floatingContains(root, active);
     // …and those popups close now, not after the exit transition (no focus hand-back to their leaving triggers)
     coverFloatingIn(root);
+    // the open layer this dialog was promoted above (a lightbox opened from a lower modal) — read before release
+    const over = inst.layer ? inst.layer.promotedOver : null;
 
     // Closing state first, and `inert` on the DIALOG (not the body child, whose inert inert-lock owns and may lift
     // when another lease is released) so the exiting modal is never interactive again.
@@ -372,8 +373,16 @@ export class TdModal {
         owner = owner.openerOwner;
       }
       const resolved = followFocusHandoff(opener); // an opener inside a closed lightbox → that lightbox's opener
-      const openerOk = resolved && resolved.isConnected && (!newTop || newTop.element.contains(resolved));
-      const target = openerOk ? resolved : (newTop ? newTop.dialog : null);
+      // v0.21.1: promoted over a still-open layer (modal → lightbox → this modal) → that layer is the one below, not
+      // the previous modal (inert under it): the opener inside it, else that layer itself.
+      const below = over ? over : (newTop ? newTop.element : null);
+      const openerOk = resolved && resolved.isConnected && (!below || below.contains(resolved));
+      let target = openerOk ? resolved : null;
+      if (!target && over) {
+        target = /** @type {HTMLElement|null} */ (over.querySelector('[role="dialog"], [role="alertdialog"]'))
+          || (over instanceof HTMLElement ? over : null);
+      }
+      if (!target && newTop) target = newTop.dialog;
       setFocusHandoff(root, target);
       if (focusWasHere) {
         if (target) {

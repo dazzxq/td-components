@@ -312,11 +312,12 @@ let renderToken = 0;
 let zoom = { scale: 1, x: 0, y: 0 };
 
 /**
- * A keyboard boundary above the viewer's own (logical) layer — a modal / popup / loading opened over it. v0.21.1: a
- * modal BELOW (the viewer was opened from it and promoted above it) no longer counts.
+ * A keyboard boundary above the viewer — a modal / popup / loading opened over it. v0.21.1: a modal BELOW (the viewer
+ * was opened from it and promoted above it) no longer counts. Decided by the registry order (layer, then opening
+ * order), so a modal opened later at the same capped band layer still counts as above.
  */
 function isForeignLayerOpenDefault() {
-  return hasActiveAbove(viewer && viewer.layer ? viewer.layer.layer : LIGHTBOX_LAYER);
+  return viewer && viewer.layer ? !viewer.layer.isTop() : hasActiveAbove(LIGHTBOX_LAYER);
 }
 
 function ctxOf() {
