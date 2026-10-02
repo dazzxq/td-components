@@ -27,7 +27,8 @@
       "td-dropzone": "/src/form/td-dropzone.js",
       "td-alert": "/src/feedback/td-alert.js",
       "td-badge": "/src/icons/td-icon.js",
-      "td-media-grid": "/src/display/td-media-grid.js"
+      "td-media-grid": "/src/display/td-media-grid.js",
+      "td-lightbox": "/src/feedback/td-lightbox.js"
     },
     "tokenNative": [
       "td-button",
@@ -55,7 +56,8 @@
       "td-dropzone",
       "td-alert",
       "td-badge",
-      "td-media-grid"
+      "td-media-grid",
+      "td-lightbox"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -1812,6 +1814,76 @@
       ],
       "settle": 300,
       "selectorNote": "touch context (hasTouch + isMobile; matchMedia('(hover: none), (pointer: coarse)') asserted first): tick faded 0.55"
+    }
+  ],
+  "td-lightbox": [
+    {
+      "state": "nav",
+      "setup": "TdLightbox.open(['/test/fixtures/1.svg','/test/fixtures/2.svg','/test/fixtures/3.svg']);",
+      "selectors": [
+        ".td-lightbox[data-nav=\"side\"]",
+        ".td-lightbox__col",
+        ".td-lightbox__nav",
+        ".td-lightbox__nav > [data-action=\"prev\"]",
+        ".td-lightbox__nav > [data-action=\"next\"]",
+        ".td-lightbox__nav .td-lightbox__icon",
+        ".td-lightbox__counter",
+        ".td-lightbox__toolbar"
+      ],
+      "portal": [
+        ".td-lightbox[data-nav=\"side\"]",
+        ".td-lightbox__col",
+        ".td-lightbox__nav",
+        ".td-lightbox__nav > [data-action=\"prev\"]",
+        ".td-lightbox__nav > [data-action=\"next\"]",
+        ".td-lightbox__nav .td-lightbox__icon",
+        ".td-lightbox__counter",
+        ".td-lightbox__toolbar"
+      ],
+      "settle": 700,
+      "selectorNote": "v0.24.0 N1: fine pointer (1280x720) -> prev / next moved into the side strips of the column (the disc is ::before, measured by the contrast gate)"
+    },
+    {
+      "state": "error",
+      "setup": "TdLightbox.open(['/test/fixtures/missing-csp.svg','/test/fixtures/2.svg']);",
+      "selectors": [
+        ".td-lightbox__error",
+        ".td-lightbox__error-text",
+        ".td-lightbox__error-actions",
+        ".td-lightbox__error-btn[data-action=\"retry\"]",
+        ".td-lightbox__error-btn[data-action=\"error-next\"]"
+      ],
+      "portal": [
+        ".td-lightbox__error",
+        ".td-lightbox__error-text",
+        ".td-lightbox__error-actions",
+        ".td-lightbox__error-btn[data-action=\"retry\"]",
+        ".td-lightbox__error-btn[data-action=\"error-next\"]"
+      ],
+      "settle": 700,
+      "selectorNote": "v0.24.0 N3: a 404 image -> error block with Retry (focused) / Next"
+    },
+    {
+      "state": "filmstrip",
+      "setup": "TdLightbox.open([{src:'/test/fixtures/1.svg',caption:'Chú thích'},'/test/fixtures/2.svg','/test/fixtures/3.svg','/test/fixtures/4.svg'], { filmstrip: true, index: 1 });",
+      "selectors": [
+        ".td-lightbox[data-filmstrip] .td-lightbox__col",
+        ".td-lightbox__stage",
+        ".td-lightbox__filmstrip",
+        ".td-lightbox__thumb[aria-current=\"true\"]",
+        ".td-lightbox__thumb:not([aria-current])",
+        ".td-lightbox__thumb > img"
+      ],
+      "portal": [
+        ".td-lightbox[data-filmstrip] .td-lightbox__col",
+        ".td-lightbox__stage",
+        ".td-lightbox__filmstrip",
+        ".td-lightbox__thumb[aria-current=\"true\"]",
+        ".td-lightbox__thumb:not([aria-current])",
+        ".td-lightbox__thumb > img"
+      ],
+      "settle": 700,
+      "selectorNote": "v0.24.0 N4: filmstrip: true -> second row of the column; current thumb ringed, the others dimmed"
     }
   ]
 }

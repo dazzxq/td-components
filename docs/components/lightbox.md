@@ -2,9 +2,10 @@
 
 # Lightbox — `TdLightbox`
 
-`TdLightbox` là trình xem ảnh/video toàn màn hình: gallery có nút trước/sau, bộ đếm, chú thích, zoom (pinch, double-tap,
-click), vuốt để chuyển/đóng, fullscreen, nút tải xuống, panel thông tin (hai cột trên desktop, bottom sheet trên mobile)
-và các hook để mỗi site tự cắm video player, lịch sử trình duyệt, nút toolbar riêng. Dùng cho ảnh trong bài viết,
+`TdLightbox` là trình xem ảnh/video toàn màn hình: gallery có vùng bấm trước/sau hai bên (chuột) hoặc nút trên toolbar
+(cảm ứng), bộ đếm, chú thích, zoom (pinch, double-tap, click), vuốt để chuyển/đóng, fullscreen, nút tải xuống, panel
+thông tin (hai cột trên desktop, bottom sheet trên mobile), dải ảnh nhỏ (filmstrip, tuỳ chọn), tải sẵn ảnh kề, màn báo
+lỗi ảnh và các hook để mỗi site tự cắm video player, lịch sử trình duyệt, nút toolbar riêng. Dùng cho ảnh trong bài viết,
 album, thư viện media. **Không** dùng để hiện form hay hộp thoại xác nhận (dùng [`TdModal`](modal.md)).
 
 | | |
@@ -12,7 +13,7 @@ album, thư viện media. **Không** dùng để hiện form hay hộp thoại x
 | Import | `import { TdLightbox } from '@dazzxq/td-components/lightbox'` |
 | Loại | API JS tĩnh (static class), không có tag |
 | Form-associated | không |
-| Từ phiên bản | 0.6.0 (handle `setPanel` / `addToolbarButton`, `itemEl` / `groupEl`, `attrPrefix` / `filter`: 0.15.0) |
+| Từ phiên bản | 0.6.0 (handle `setPanel` / `addToolbarButton`, `itemEl` / `groupEl`, `attrPrefix` / `filter`: 0.15.0; vùng bấm hai bên, `filmstrip`, `thumb`, tải sẵn, màn lỗi, hiệu ứng trượt: 0.24.0) |
 | CSS | cần `td.css` (`src/styles/components/lightbox.css`) |
 | Quyết định kiến trúc | [ADR 0009](../internal/decisions/0009-td-lightbox-hooks.md) |
 
@@ -64,6 +65,7 @@ if (lb) {
   type?: 'image' | 'video',   // mặc định 'image' (giá trị khác cũng thành 'image')
   src: string,                // bắt buộc; phải qua isAllowedUrl
   poster?: string,            // ảnh chờ của video; phải qua isAllowedUrl
+  thumb?: string,             // 0.24.0: ảnh nhỏ cho filmstrip; phải qua isAllowedUrl (không có → src / poster)
   caption?: string,           // chú thích (text)
   alt?: string,               // alt của <img> (text)
   provider?: string,          // mặc định 'html5'; tên tuỳ ý cho video hook ('youtube', 'vimeo'…)
@@ -72,7 +74,8 @@ if (lb) {
 ```
 
 - Một chuỗi được hiểu là `{ src: chuỗi }`.
-- Item có `src` không qua `isAllowedUrl` bị **loại** khỏi gallery; `poster` không hợp lệ thì chỉ bị bỏ poster.
+- Item có `src` không qua `isAllowedUrl` bị **loại** khỏi gallery; `poster` / `thumb` không hợp lệ thì chỉ bị bỏ
+  trường đó (thumbnail rơi về `src` với ảnh, `poster` với video).
 - Không còn item nào xem được → `open()` trả `null`, không mở gì.
 - Item video có `src` hợp lệ → chạy video hook; hook từ chối → hiện `poster` như ảnh.
 
@@ -252,9 +255,61 @@ native. Provider khác → hook mặc định từ chối → hiện `poster`. M
 `video` (xem [Hook video](#hook-video)).
 
 Trên slide video: cử chỉ zoom/vuốt tắt; phím mũi tên / `Escape` khi focus đang trong player thuộc về player (không
-chuyển slide, không đóng).
+chuyển slide, không đóng). Trên máy có chuột, nút trước / sau là hai đĩa nhỏ hai bên player, hoặc về toolbar khi cột
+quá hẹp (xem [Điều hướng](#8-điều-hướng-chuột-cảm-ứng-bàn-phím-0240)).
 
-### 8. Lắng nghe sự kiện
+### 8. Điều hướng: chuột, cảm ứng, bàn phím (0.24.0)
+
+Trước 0.24.0 nút trước / sau chỉ nằm trên toolbar góc phải. Từ 0.24.0, **trên máy có chuột** (`(hover: hover) and
+(pointer: fine)`) **chính hai nút đó** được chuyển ra hai bên cột ảnh (kiểu Facebook / Google Photos), không tạo nút
+trùng — vẫn một điểm Tab cho mỗi hành động, nhãn giữ "Ảnh trước" / "Ảnh sau":
+
+- Mỗi bên là một **dải bấm** rộng `clamp(64px, 15%, 240px)` của cột ảnh, cao từ dưới toolbar tới cách đáy 56px (chừa
+  chú thích). Bấm chỗ nào trong dải cũng chuyển ảnh (quay vòng); giữa dải có **đĩa tối 48px** với mũi tên trắng, luôn
+  hiện khi gallery > 1 ảnh. Con trỏ trong dải là `pointer`; giữa ảnh vẫn `zoom-in` / `zoom-out`.
+- Bấm **giữa ảnh** vẫn phóng to 2× tại điểm bấm (bấm lại để thu); bấm ngoài ảnh và ngoài dải vẫn đóng. Nhấn chuột trong
+  dải rồi kéo quá 8px → không chuyển.
+- **Đang phóng to:** dải thu lại chỉ còn đĩa 48px ở giữa mép (phần còn lại của ảnh vẫn rê để xem / bấm để thu); bấm
+  đĩa → chuyển ảnh và bỏ zoom.
+- **Video:** không có dải lớn; chỉ hai đĩa 48px giữa mép, không đè player. Cột quá hẹp (khoảng trống mỗi bên < 64px) →
+  hai nút về lại toolbar cho slide đó. Kit tự tính lại khi player dựng xong (kể cả hook bất đồng bộ) hoặc đổi kích thước.
+- **Cảm ứng / bút:** dải **không bao giờ** kích hoạt bằng chạm (tránh bấm nhầm khi vuốt) — vuốt ngang để chuyển, vuốt
+  xuống để đóng, kể cả khi bắt đầu vuốt trong dải. Trên thiết bị cảm ứng (không chuột) hai nút vẫn nằm trên toolbar (44px).
+- **Bàn phím:** `←` / `→` như cũ; Tab tới đúng một nút trước và một nút sau; focus ring vẽ quanh đĩa.
+- **RTL** (`dir="rtl"`): "trước" ở mép phải (inline-start), mũi tên lật; `←` = ảnh sau.
+- Bộ đếm là vùng `role="status" aria-live="polite"` → trình đọc màn hình đọc "2 / 5" khi chuyển, focus không đổi.
+
+Overlay mang `data-nav="side" | "side-compact" | "toolbar"` (chế độ hiện tại) để site đọc khi cần.
+
+### 9. Filmstrip — dải ảnh nhỏ (0.24.0, tuỳ chọn)
+
+```js
+TdLightbox.open(items, { filmstrip: true });     // luôn hiện (gallery ≥ 2 ảnh)
+TdLightbox.open(items, { filmstrip: 'auto' });   // chỉ khi ≥ 8 ảnh
+TdLightbox.bind(document, { filmstrip: 'auto' }); // bind() truyền tiếp như mọi option
+```
+
+- Mặc định `false` (bố cục cũ không đổi). Gallery 1 ảnh → không hiện.
+- Khi bật, cột ảnh thành các hàng: ảnh (hàng trên, ảnh / video co trong hàng này) → chú thích (hàng riêng, tối đa 3 dòng,
+  không đè ảnh) → dải thumbnail. Chế độ panel: dải chỉ nằm trong cột ảnh.
+- Mỗi thumbnail là `<button aria-label="Ảnh {n}">` chứa `<img alt="" loading="lazy">` từ `item.thumb` → `src` (ảnh) /
+  `poster` (video, kèm dấu play). Video không có `thumb` / `poster` hợp lệ → ô tối có dấu play (không `<img>`). Thumbnail
+  đang xem có `aria-current="true"` (viền trắng), tự cuộn vào giữa dải. Bấm thumbnail → chuyển tới ảnh đó.
+- Dải cuộn ngang bằng vuốt (cảm ứng) / bánh xe-trackpad; thao tác trong dải không bao giờ chuyển ảnh hay đóng lightbox.
+
+### 10. Tải sẵn, lỗi ảnh, hiệu ứng trượt (0.24.0)
+
+- **Tải sẵn ảnh kề:** ảnh đang xem tải xong → kit tải ngầm ảnh trước và ảnh sau (chỉ ảnh, bỏ video; có quay vòng), cùng
+  URL nên lần chuyển sau lấy từ cache. Bỏ qua khi người dùng bật tiết kiệm dữ liệu (`navigator.connection.saveData`);
+  huỷ khi đóng.
+- **Ảnh lỗi:** thay vì khung trống, hiện khối `role="alert"`: "Không tải được ảnh" + nút **Thử lại** (tải lại cùng URL)
+  và **Ảnh sau** (khi gallery > 1 ảnh). Thử lại nhận focus nếu focus đang ở trong lightbox mà không ở nút nào khác.
+  Nhãn: `labels.loadError`, `labels.retry`, `labels.next`.
+- **Trượt khi chuyển:** ảnh mới trượt nhẹ 24px + hiện dần 160ms theo hướng đi (nút, phím, vuốt, thumbnail,
+  `goTo()` — thumbnail / `goTo` đi đường ngắn nhất có quay vòng), chỉ bắt đầu khi ảnh mới đã sẵn sàng. Chuyển nhanh
+  liên tục → chỉ ảnh cuối trượt. `prefers-reduced-motion` → không trượt.
+
+### 11. Lắng nghe sự kiện
 
 ```js
 document.addEventListener('td-lightbox-change', (e) => {
@@ -285,7 +340,7 @@ Named export phụ: `defaultIsAllowedUrl(url)` — chính sách URL mặc địn
 | `index` (getter) | Vị trí hiện tại; `-1` khi chết |
 | `count` (getter) | Số item; `0` khi chết |
 | `next()` / `prev()` | Slide sau / trước (vòng quanh; gallery 1 ảnh → không làm gì) |
-| `goTo(i)` | Tới vị trí `i` (làm tròn xuống, kẹp vào khoảng hợp lệ) |
+| `goTo(i)` | Tới vị trí `i` (làm tròn xuống, kẹp vào khoảng hợp lệ); hướng trượt = đường ngắn nhất có quay vòng |
 | `close()` | Đóng |
 | `setPanel(panel)` | Đổi panel lúc đang mở: `false` \| `true` \| `(ctx) => Element \| null`. Bật lại → sheet bắt đầu đóng |
 | `refreshPanel()` | Chạy lại renderer panel hiện tại |
@@ -316,13 +371,14 @@ Mọi tuỳ chọn đều không bắt buộc.
 |---|---|---|---|
 | `index` | `number` | `0` | Slide mở đầu (làm tròn, kẹp) |
 | `labels` | `object` | tiếng Việt | Xem [Nhãn](#nhãn-labels) |
-| `isAllowedUrl` | `(url, item) => boolean` | `defaultIsAllowedUrl` | Chính sách URL cho `src`, `poster`, link tải |
+| `isAllowedUrl` | `(url, item) => boolean` | `defaultIsAllowedUrl` | Chính sách URL cho `src`, `poster`, `thumb`, link tải |
 | `download` | `(item, ctx) => string \| null` | ảnh cùng origin | URL của nút tải xuống |
 | `downloads` | `(item, ctx) => Array<{ label, url, filename? }>` | — | Nhiều biến thể tải (0.17.0); có cả `download` → `downloads` thắng. Xem [Hook downloads](#hook-downloads-nhiều-biến-thể) |
 | `video` | `(item, mount, { signal }) => player \| Promise<player> \| null` | `<video>` native | Cắm player |
 | `history` | `false \| true \| adapter` | `false` | Nút Back của trình duyệt đóng lightbox |
 | `panel` | `false \| true \| (ctx) => Element \| null` | `false` | Panel thông tin |
 | `toolbar` | `Array<spec>` | `[]` | Nút toolbar riêng |
+| `filmstrip` | `false \| true \| 'auto'` | `false` | Dải thumbnail dưới ảnh (0.24.0); `'auto'` = khi ≥ 8 ảnh. Xem [Filmstrip](#9-filmstrip--dải-ảnh-nhỏ-0240-tuỳ-chọn) |
 | `closeOnBackdrop` | `boolean` | `true` | Click nền (ngoài ảnh) để đóng. Khác `TdModal` (không đóng khi click nền): trình xem ảnh không có gì để mất |
 | `isForeignLayerOpen` | `() => boolean` | xem dưới | Có lớp khác đang nằm trên lightbox không |
 | `groupEl` | `Element` | `null` | Đưa vào `ctx.groupEl` / detail khi mở bằng `open()` |
@@ -352,8 +408,12 @@ ctx = { index, count, item, token, handle, itemEl, groupEl }
 | `download` | `Tải xuống` | Nút tải |
 | `info` | `Thông tin ảnh` | Tay nắm bottom sheet |
 | `counter` | ``(i, n) => `${i} / ${n}` `` | Bộ đếm (hàm; `i` bắt đầu từ 1) |
+| `loadError` | `Không tải được ảnh` | Chữ trong khối lỗi ảnh (0.24.0) |
+| `retry` | `Thử lại` | Nút thử lại trong khối lỗi (0.24.0); nút "Ảnh sau" của khối lỗi dùng `next` |
+| `thumb` | ``(n) => `Ảnh ${n}` `` | `aria-label` của thumbnail filmstrip (hàm; `n` bắt đầu từ 1; 0.24.0) |
 
-Chỉ khoá có trong bảng được nhận; giá trị sai kiểu bị bỏ qua (giữ mặc định). Nhãn gán vào `aria-label` và `title`.
+Chỉ khoá có trong bảng được nhận; giá trị sai kiểu bị bỏ qua (giữ mặc định; `counter` / `thumb` phải là hàm). Nhãn
+gán vào `aria-label` và `title` (nhãn của khối lỗi là chữ hiện trên nút), luôn bằng `textContent`.
 
 ```js
 TdLightbox.open(items, { labels: { prev: 'Previous', next: 'Next', counter: (i, n) => `${i} of ${n}` } });
@@ -576,6 +636,19 @@ Lightbox **luôn tối** (nền là ảnh, không theo theme sáng/tối của s
 | `--td-lb-panel-bg` | `var(--td-glass-clear-solid)` (`#141416`) | Nền panel / sheet (đặc) |
 | `--td-lb-fg` | `#fff` | Màu chữ/icon |
 | `--td-lb-drag` | (JS ghi qua CSSOM) | Khoảng vuốt xuống hiện tại — không tự đặt |
+| `--td-lb-nav-w` | `clamp(64px, 15%, 240px)` | Độ rộng dải bấm hai bên (% của cột ảnh; 0.24.0) |
+| `--td-lb-nav-bottom` | `56px` | Khoảng chừa dưới dải bấm (chú thích); có filmstrip: `8px` |
+| `--td-lb-disc` | `48px` | Đường kính đĩa mũi tên |
+| `--td-lb-disc-bg` / `--td-lb-disc-bg-hover` | `var(--td-glass-clear-bg)` (88 %) / `rgb(44 44 48 / 92%)` | Nền đĩa / khi rê chuột |
+| `--td-lb-disc-border` | `rgb(255 255 255 / 40%)` | Viền đĩa (≥ 3:1 trên ảnh đen — contrast gate) |
+| `--td-lb-thumb-size` | `56px` (cảm ứng: `44px`) | Cạnh thumbnail filmstrip |
+| `--td-lb-thumb-gap` | `6px` | Khoảng cách thumbnail |
+| `--td-lb-thumb-radius` | `6px` | Bo góc thumbnail |
+| `--td-lb-thumb-ring` | `#fff` | Viền thumbnail đang xem |
+| `--td-lb-filmstrip-pad` | `10px` | Padding dọc của dải |
+| `--td-lb-filmstrip-h` | `thumb-size + 2 × pad` | Chiều cao hàng filmstrip (cộng safe-area đáy) |
+| `--td-lb-filmstrip-bg` | `transparent` | Nền dải |
+| `--td-lb-slide-dist` / `--td-lb-slide-dur` | `24px` / `160ms` | Hiệu ứng trượt khi chuyển ảnh |
 
 ```css
 /* site.css (ngoài @layer → thắng td.tokens). Ghi trên .td-lightbox như trước 0.16.0 vẫn chạy. */
@@ -587,7 +660,9 @@ Lightbox **luôn tối** (nền là ảnh, không theo theme sáng/tối của s
 
 Toolbar và bộ đếm là thanh tối (`td-glass-surface--clear`, 0.20.0: nền `--td-glass-clear-bg` 88 % + `blur(12px)` +
 viền mảnh + một bóng mềm; không còn lớp tối cục bộ hay bóng riêng cho icon); panel / sheet là nền đặc. JS chỉ ghi
-`transform` của ảnh (zoom) và `--td-lb-drag` qua CSSOM — hợp CSP strict.
+`transform` của ảnh (zoom) và `--td-lb-drag` qua CSSOM — hợp CSP strict. Chế độ điều hướng, filmstrip, hiệu ứng trượt
+(0.24.0) đều là attribute (`data-nav`, `data-filmstrip`, `data-slide`), CSS đọc chúng. Từ 0.24.0 overlay tự đặt
+`line-height: 1.5` (trước đó kế thừa từ trang) và `.td-lightbox__col` phủ cả overlay (bấm vào nền của nó = bấm nền).
 
 Con trỏ trigger (0.15.0): `cursor: zoom-in` cho `[data-{p}-lightbox]` / `[data-{p}-lightbox-item]`, `cursor: pointer`
 cho `[data-{p}-lightbox-type="video"]` (kể cả item trong group), ship sẵn cho hai prefix `td` và `dwp` (0.15.1 sửa
@@ -598,17 +673,40 @@ overlay: ảnh `zoom-in` / `zoom-out` khi đang zoom (chuột), nền `zoom-out`
 
 ```html
 <div class="td-lightbox" role="dialog" aria-modal="true" tabindex="-1" aria-label="Trình xem ảnh"
-     data-state="open" [data-panel] [data-zoomed] [data-dragging] [data-closing-down]>
+     data-state="open" data-nav="side|side-compact|toolbar" [data-filmstrip]
+     [data-panel] [data-zoomed] [data-dragging] [data-closing-down]>
   <div class="td-lightbox__backdrop"></div>
   <div class="td-lightbox__lead">
     <button class="td-lightbox__btn td-lightbox__back" hidden>…</button>        <!-- chỉ khi có panel -->
-    <div class="td-lightbox__counter td-glass-surface td-glass-surface--clear">2 / 5</div>
+    <div class="td-lightbox__counter td-glass-surface td-glass-surface--clear"
+         role="status" aria-live="polite" aria-atomic="true">2 / 5</div>
   </div>
   <div class="td-lightbox__col">
-    <div class="td-lightbox__stage">
+    <div class="td-lightbox__stage" [data-slide="next|prev"]>
       <div class="td-lightbox__spinner" hidden></div>                          <!-- hiện nếu ảnh tải > 1 s -->
       <img class="td-lightbox__img" alt="" draggable="false" [data-loading] [data-zoom-anim]>
       <div class="td-lightbox__video" hidden><video class="td-lightbox__video-el">…</video></div>
+      <div class="td-lightbox__error" role="alert" hidden>                       <!-- 0.24.0: ảnh lỗi -->
+        <svg class="td-lightbox__icon">…</svg>
+        <p class="td-lightbox__error-text">Không tải được ảnh</p>
+        <div class="td-lightbox__error-actions">
+          <button class="td-lightbox__error-btn" data-action="retry">Thử lại</button>
+          <button class="td-lightbox__error-btn" data-action="error-next">Ảnh sau</button>
+        </div>
+      </div>
+    </div>
+    <div class="td-lightbox__nav">                                              <!-- 0.24.0: dải bấm hai bên -->
+      <button class="td-lightbox__btn" data-action="prev">…</button>           <!-- chuột: ở đây; cảm ứng: trong toolbar -->
+      <button class="td-lightbox__btn" data-action="next">…</button>
+    </div>
+    <!-- có filmstrip: .td-lightbox__caption chuyển vào đây (hàng riêng) -->
+    <div class="td-lightbox__filmstrip" hidden>                                 <!-- 0.24.0, filmstrip: true | 'auto' -->
+      <button class="td-lightbox__thumb" data-index="0" aria-label="Ảnh 1" aria-current="true">
+        <img alt="" loading="lazy" decoding="async">
+      </button>
+      <button class="td-lightbox__thumb" data-index="1" aria-label="Ảnh 2" data-video>
+        <span class="td-lightbox__thumb-ph"><span class="td-lightbox__thumb-play" aria-hidden="true"></span></span>
+      </button>
     </div>
   </div>
   <div class="td-lightbox__caption" hidden>…</div>
@@ -617,8 +715,7 @@ overlay: ảnh `zoom-in` / `zoom-out` khi đang zoom (chuột), nền `zoom-out`
     <div class="td-lightbox__panel-body">…</div>
   </aside>
   <div class="td-lightbox__toolbar td-glass-surface td-glass-surface--clear">
-    <button class="td-lightbox__btn" data-action="prev">…</button>
-    <button class="td-lightbox__btn" data-action="next">…</button>
+    <!-- data-nav="toolbar" (cảm ứng / video cột hẹp): prev + next nằm ở đây, trước fullscreen -->
     <button class="td-lightbox__btn" data-action="fullscreen">…</button>
     <a class="td-lightbox__btn" data-action="download" href="…" download="…">…</a>
     <button class="td-lightbox__btn" data-action="downloads" aria-haspopup="menu" aria-expanded="false" hidden>…</button>
@@ -631,15 +728,18 @@ overlay: ảnh `zoom-in` / `zoom-out` khi đang zoom (chuột), nền `zoom-out`
 ```
 
 Trạng thái luôn là attribute do JS đặt, không phải class: `data-state="open"`, `data-panel`, `data-zoomed`,
-`data-dragging`, `data-closing-down` trên overlay; `data-sheet="open"` trên panel; `data-loading` trên ảnh; `hidden`
-cho ẩn/hiện. Prev/next/bộ đếm ẩn khi gallery chỉ có 1 item; nút fullscreen ẩn khi trình duyệt không hỗ trợ.
+`data-dragging`, `data-closing-down`, `data-nav`, `data-filmstrip` trên overlay; `data-sheet="open"` trên panel;
+`data-loading` trên ảnh; `data-slide` trên stage; `aria-current` trên thumbnail; `hidden` cho ẩn/hiện. Prev/next/bộ đếm
+ẩn khi gallery chỉ có 1 item; nút fullscreen ẩn khi trình duyệt không hỗ trợ. **0.24.0:** prev / next là cùng hai phần
+tử, được JS **di chuyển** giữa `.td-lightbox__nav` và toolbar — CSS / test của site bám vào vị trí của chúng trong
+toolbar cần xem lại (trên máy chuột chúng không còn ở toolbar).
 
 ## Bàn phím & trợ năng
 
 | Phím | Hành vi |
 |---|---|
 | `Escape` | Đóng (trừ khi focus đang trong player video) |
-| `←` / `→` | Slide trước / sau (bỏ qua khi có phím bổ trợ hoặc focus trong player) |
+| `←` / `→` | Slide trước / sau (bỏ qua khi có phím bổ trợ hoặc focus trong player); RTL: `←` = sau |
 | `F` | Bật/tắt fullscreen (khi được hỗ trợ) |
 | `Tab` / `Shift+Tab` | **Luôn bị giữ trong lightbox** (cộng các toast đang hiện) |
 
@@ -648,8 +748,11 @@ cho ẩn/hiện. Prev/next/bộ đếm ẩn khi gallery chỉ có 1 item; nút f
 - Focus: lưu phần tử đang focus khi mở, chuyển focus vào overlay, trả về khi đóng (không cướp focus nếu một lớp khác
   như modal đang giữ nó).
 - Đóng lightbox cũng thoát fullscreen.
-- `prefers-reduced-motion`: tắt mọi transition; vuốt xuống vẫn đóng, chỉ không trượt. `prefers-contrast: more`: dải
-  caption gần đặc. `forced-colors`: panel dùng `Canvas`, viền `CanvasText`.
+- Bộ đếm là live region lịch sự (đọc "2 / 5" khi chuyển). Khối lỗi ảnh là `role="alert"`; thumbnail là nút thường có
+  `aria-label`, ảnh bên trong `alt=""`.
+- `prefers-reduced-motion`: tắt mọi transition (kể cả trượt khi chuyển ảnh); vuốt xuống vẫn đóng, chỉ không trượt.
+  `prefers-contrast: more`: dải caption gần đặc. `forced-colors`: panel dùng `Canvas`, viền `CanvasText`; đĩa mũi tên
+  `ButtonFace` / viền `ButtonText`; thumbnail đang xem viền `Highlight`.
 
 ### Cử chỉ (Pointer Events)
 
@@ -657,6 +760,8 @@ cho ẩn/hiện. Prev/next/bộ đếm ẩn khi gallery chỉ có 1 item; nút f
 |---|---|
 | Pinch hai ngón | Zoom 1× – 4×; thả dưới ~1.05× → về 1× |
 | Double-tap / click chuột lên ảnh | Zoom 2× tại điểm bấm, lần nữa để về 1× |
+| Click chuột trong dải hai bên (0.24.0) | Ảnh trước / sau (không zoom); kéo > 8px rồi thả → không chuyển |
+| Chạm / bút trong dải hai bên | Không kích hoạt dải — đi vào vuốt / pinch / double-tap như trên ảnh |
 | Kéo (touch/pen) khi đang zoom | Pan (kẹp trong khung) |
 | Rê chuột khi đang zoom | Pan theo vị trí chuột |
 | Vuốt ngang > 50px | Slide trước / sau |
@@ -664,7 +769,8 @@ cho ẩn/hiện. Prev/next/bộ đếm ẩn khi gallery chỉ có 1 item; nút f
 | Vuốt lên > 60px (có panel, sheet đang đóng) | Mở bottom sheet |
 
 Chuột không vuốt (chỉ touch/pen). Cử chỉ tắt trên slide video. Swipe của bottom sheet dùng Touch Events (panel cuộn
-được sẽ làm Pointer Events bị `pointercancel`).
+được sẽ làm Pointer Events bị `pointercancel`). 0.24.0: cử chỉ gắn trên cả `.td-lightbox__col` (stage + dải hai bên),
+nên vuốt bắt đầu ở nền ngoài ảnh cũng chuyển / đóng; thao tác trong filmstrip và khối lỗi không thuộc cử chỉ.
 
 ## Bảo mật
 
@@ -701,6 +807,9 @@ Xem [Hướng dẫn bảo mật](../guides/security.md).
 - **Phím mũi tên chuyển ảnh khi overlay riêng của site đang mở**: truyền `isForeignLayerOpen`.
 - **`td-lightbox-change` phát hai lần lúc mở?** Không — nó phát một lần cho slide đầu, **trước** `td-lightbox-open`.
 - Dưới CSP strict, markup gallery của site không được dùng `style="…"` (bị chặn) — bố cục thumbnail bằng class.
+- **Nút trước / sau "biến mất" khỏi toolbar (0.24.0):** đúng thiết kế trên máy có chuột — chúng nằm ở hai bên ảnh. Trên
+  cảm ứng chúng vẫn ở toolbar. Code cần biết vị trí hiện tại đọc `data-nav` trên overlay.
+- **Thumbnail filmstrip là ảnh gốc to:** truyền `thumb` (bản nhỏ) cho mỗi item; nó qua cùng `isAllowedUrl` như `src`.
 
 ## Chuyển từ dwp lightbox
 
