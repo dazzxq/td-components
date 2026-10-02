@@ -54,14 +54,38 @@ const classKey = (el) => [...el.classList].sort().join(' ');
 const contentNodes = (el) => [...el.childNodes].filter((n) => n.nodeType === 1 || (n.nodeType === 3 && n.data.trim()));
 
 /**
+ * Review round 1 (SEC-1): attributes a PRESERVED control may carry — exactly what td_button / td_link (php/td.php:
+ * owned names + the `attrs` allowlist Td::ALLOWED_ATTRS + aria-* / data-*) and render() / _syncState() can produce.
+ * Anything else (on*, style, form, formaction, formmethod, formenctype, formtarget, formnovalidate, srcdoc,
+ * popovertarget, commandfor…) → the markup is not adopted (normal render).
+ */
+const CONTROL_ATTRS = new Set(['class', 'type', 'name', 'value', 'disabled', 'aria-busy', 'aria-disabled', 'aria-label',
+  'data-tooltip', 'href', 'target', 'rel', 'download', 'role', 'tabindex', 'id', 'title', 'lang', 'dir', 'hidden',
+  'translate', 'accesskey', 'autofocus', 'autocomplete', 'inputmode', 'enterkeyhint', 'autocapitalize', 'spellcheck',
+  'placeholder', 'readonly', 'required', 'maxlength', 'minlength', 'min', 'max', 'step', 'pattern', 'size', 'rows',
+  'cols']);
+const ARIA_DATA_ATTR = /^(aria|data)-[a-z0-9][a-z0-9._-]*$/;
+/** Inner nodes: label span, icon slot (registry / legacy) and spinner span carry only these. */
+const PART_ATTRS = {
+  'td-btn__label': new Set(['class']),
+  'td-btn__icon': new Set(['class', 'aria-hidden', 'data-td-icon', 'data-td-icon-size']),
+  'td-btn__spinner': new Set(['class', 'aria-hidden', 'hidden']),
+};
+/** @param {Element} el @param {(name: string) => boolean} ok */
+const onlyAttrs = (el, ok) => [...el.attributes].every((a) => ok(a.name));
+
+/**
  * v0.25.0 (ADR 0012): does the server-rendered control `live` have the STRUCTURE render() would produce (`want`)?
  * Tag (button ⇔ no host href), class list (variant / size / full / custom), type / target / rel / download, and the
- * children in order: icon slot (same registry name + size), label (same text), spinner (same markup).
+ * children in order: icon slot (same registry name + size), label (same text), spinner (same markup). Review round 1
+ * (SEC-1): every preserved node also passes an attribute ALLOWLIST (CONTROL_ATTRS / PART_ATTRS); the spinner and a
+ * legacy icon must match render() byte for byte; a registry icon's content is re-created by fillIconSlots().
  * @param {Element} live
  * @param {Element|null} want
  */
 function sameControlStructure(live, want) {
   if (!want || live.localName !== want.localName || classKey(live) !== classKey(want)) return false;
+  if (!onlyAttrs(live, (n) => CONTROL_ATTRS.has(n) || ARIA_DATA_ATTR.test(n))) return false;
   for (const a of STRUCT_ATTRS) if (live.getAttribute(a) !== want.getAttribute(a)) return false;
   const have = contentNodes(live);
   const need = [...want.children];
@@ -69,6 +93,8 @@ function sameControlStructure(live, want) {
   return have.every((l, i) => {
     const w = need[i];
     if (l.nodeType !== 1 || l.localName !== w.localName || classKey(l) !== classKey(w)) return false;
+    const part = Object.keys(PART_ATTRS).find((c) => w.classList.contains(c));
+    if (!part || !onlyAttrs(l, (n) => PART_ATTRS[part].has(n))) return false;
     if (w.classList.contains('td-btn__label')) return l.children.length === 0 && l.textContent === w.textContent;
     if (w.classList.contains('td-btn__spinner')) return l.innerHTML === w.innerHTML;
     if (w.classList.contains('td-btn__icon')) {
@@ -390,6 +416,30 @@ export class TdButton extends TdBaseElement {
   canHydrate() {
     if (!this._ssrMatches('button', TdButton.SSR_SCHEMA)) return false;
     if (this.hasAttribute('color') || this.hasAttribute('text-color')) return false;
+    return this._markupMatches();
+  }
+
+  /**
+   * Review round 1 (SEC-1): on RE-connect the adopted / rendered markup is revalidated — changed while detached
+   * (structure or a non-allowlisted attribute such as `formaction`) → re-render instead of re-binding.
+   * @returns {boolean}
+   */
+  canRebind() {
+    return this._markupMatches();
+  }
+
+  /**
+   * Hydrate (v0.25.0): remember a GENUINE `tabindex` / `role` pass-through on an adopted link (`attrs` of td_link) — not
+   * produced by the current state — so _syncState() restores it instead of removing it when state clears (IMPL-1).
+   */
+  hydrateExisting() {
+    const a = this._control();
+    if (a?.localName !== 'a' || this.hasAttribute('loading') || this.hasAttribute('disabled') || !this._linkHref()) return;
+    this._linkPass = { el: a, tabindex: a.getAttribute('tabindex'), role: a.getAttribute('role') };
+  }
+
+  /** @private The single `.td-btn` child has exactly render()'s structure + only allowlisted attributes. */
+  _markupMatches() {
     const kids = contentNodes(this);
     if (kids.length !== 1 || kids[0].nodeType !== 1 || !kids[0].classList.contains('td-btn')) return false;
     const tpl = document.createElement('template');
@@ -457,8 +507,12 @@ export class TdButton extends TdBaseElement {
         btn.setAttribute('aria-disabled', 'true');
       } else {
         btn.setAttribute('href', href);
-        btn.removeAttribute('tabindex');
-        btn.removeAttribute('role');
+        // a pass-through tabindex / role of an adopted SSR link (td_link `attrs`) is restored, else removed
+        const pass = this._linkPass?.el === btn ? this._linkPass : null;
+        for (const attr of ['tabindex', 'role']) {
+          if (pass?.[attr] != null) btn.setAttribute(attr, pass[attr]);
+          else btn.removeAttribute(attr);
+        }
         btn.removeAttribute('aria-disabled');
       }
       if (loading) btn.setAttribute('aria-busy', 'true');

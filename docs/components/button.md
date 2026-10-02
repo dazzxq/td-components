@@ -567,14 +567,20 @@ Khi module nạp, `td-button` **nhận** markup đó thay vì render lại:
   bằng đúng cái `render()` sẽ sinh ra với attribute **hiện tại** của host (đọc sau khi đã áp property gán sớm, kể cả
   attribute đổi trước khi define): thẻ (`<a>` ⇔ host có `href`), class variant / size / `full-width`, `type`,
   `target` / `rel` / `download`, icon (tên registry + vị trí), text nhãn, spinner. Host có `color` / `text-color` →
-  không nhận.
+  không nhận. Mọi node được giữ (control, nhãn, ô icon, spinner) chỉ được mang attribute trong **allowlist** đúng với
+  những gì helper PHP / `render()` sinh ra — có `on*`, `style`, `formaction`, `form*`, `popovertarget`… → không nhận,
+  render lại sạch (hydrate chỉ tin markup của helper kit).
 - **Trạng thái áp tại chỗ** (không render lại): `loading`, `disabled`, `name` / `value`, `aria-label`,
   `aria-pressed` / `aria-expanded` / `aria-haspopup` / `aria-controls`, giá trị `href`, spinner `hidden`. Không phát
   sự kiện nào.
 - **Giữ nguyên:** node `<button>` / `<a>` (ai đang giữ tham chiếu vẫn đúng), focus, kích thước (không xô layout).
 - **Không khớp** → render như cũ, không lỗi. `data-td-ssr` bị gỡ sau lần kết nối đầu (nhận hay không).
 - **Gỡ ra rồi gắn lại** (di chuyển node): từ 0.25.0 `td-button` **gắn lại listener tại chỗ**, không render lại (giữ
-  node, không nhân đôi listener) — áp cho mọi `td-button`, kể cả tạo bằng JS.
+  node, không nhân đôi listener — kể cả khi attribute cấu trúc đổi trong lúc tách khỏi trang) — áp cho mọi
+  `td-button`, kể cả tạo bằng JS. Trước khi gắn lại, markup được **kiểm lại** (`canRebind()`): bị sửa lúc tách
+  (cấu trúc, hoặc attribute ngoài allowlist như `formaction`, `style`) → render lại.
+- Link SSR có `tabindex` / `role` riêng (qua `attrs` của `td_link`): giữ khi hydrate, `loading` / `disabled` tạm ghi
+  đè, tắt state thì **khôi phục** giá trị riêng đó.
 - `<td-button>` tạo bằng JS hoặc viết tay **không** có dấu: không đổi gì (render như trước). Trước khi module nạp,
   host viết tay được `td.css` giữ chỗ chiều cao (`min-height` 2.5rem; `size="sm"` 2rem, `size="lg"` 3rem) để đỡ xô
   layout — nhưng chỉ SSR mới hết nháy hẳn.

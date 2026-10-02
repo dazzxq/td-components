@@ -397,6 +397,47 @@ describe('TdBaseElement hydrate lifecycle (v0.25.0)', () => {
     assert.equal(c.getAttribute('data-td-ssr'), 'x@1');
   });
 
+  it('review round 1 IMPL-2: cleanups registered while detached run before the re-connect bind (one listener)', () => {
+    for (const hydratable of [true, false]) {
+      const target = new MockHTMLElement();
+      class El extends TdBaseElement {
+        static hydratable = hydratable;
+        afterRender() { this.listen(target, 'click', () => {}); }
+      }
+      const el = new El();
+      el.connectedCallback();
+      assert.equal(target._listeners.length, 1);
+      el.disconnectedCallback();
+      assert.equal(target._listeners.length, 0);
+      el._doRender(); // e.g. a structural attribute changed while detached
+      assert.equal(target._listeners.length, 1);
+      el.connectedCallback();
+      assert.equal(target._listeners.length, 1, `hydratable=${hydratable}`);
+      assert.equal(el._cleanups.length, 1);
+    }
+  });
+
+  it('review round 1 SEC-1: a hydratable element whose canRebind() fails re-renders on re-connect', () => {
+    const calls = [];
+    let ok = true;
+    class El extends TdBaseElement {
+      static hydratable = true;
+      canHydrate() { return true; }
+      canRebind() { calls.push('canRebind'); return ok; }
+      render() { calls.push('render'); return '<p>x</p>'; }
+    }
+    const el = new El();
+    el.connectedCallback();
+    el.disconnectedCallback();
+    el.connectedCallback();
+    assert.deepEqual(calls, ['canRebind']);
+    ok = false;
+    el.disconnectedCallback();
+    el.connectedCallback();
+    assert.deepEqual(calls, ['canRebind', 'canRebind', 'render']);
+    assert.equal(new TdBaseElement().canRebind(), true);
+  });
+
   it('canHydrate() sees early properties already replayed', () => {
     let seen;
     class El extends TdBaseElement {

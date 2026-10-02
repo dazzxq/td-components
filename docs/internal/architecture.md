@@ -41,10 +41,13 @@ connectedCallback (lần đầu)
   ├─ true  → _hydrated = true; hydrateExisting() (hook, không đụng innerHTML); _bindStep()
   └─ false → _doRender()        innerHTML = render(); _bindStep()   ← như cũ
 connectedCallback (gắn lại sau disconnect)
-  hydratable  → _bindStep()     giữ node + focus, listener gắn lại đúng một lần (disconnect đã dọn _cleanups)
-  còn lại     → _doRender()     như cũ
+  chạy + xoá _cleanups          listener gắn TRONG LÚC tách (render khi attribute đổi) không bị nhân đôi
+  hydratable && canRebind() → _bindStep()   giữ node + focus, listener gắn đúng một lần
+  còn lại (kể cả canRebind() false: markup bị sửa lúc tách) → _doRender()
 ```
 
+- `canRebind()` (mặc định `true`): component hydratable kiểm lại markup khi gắn lại; `TdButton` dùng cùng phép so
+  cấu trúc + **allowlist attribute** như `canHydrate()` (review round 1 SEC-1).
 - `static hydratable` (mặc định `false`): chỉ component **khai báo** mới đổi vòng đời gắn lại — v0.25 chỉ
   `TdButton`. `afterRender()` của component hydratable phải **idempotent** trên DOM sẵn có (đồng bộ state tại chỗ,
   `listen()` lại), vì nó chạy sau render, sau hydrate và mỗi lần gắn lại.

@@ -74,9 +74,13 @@ export class TdBaseElement extends HTMLElement {
       }
     } else if (this._needsRebind) {
       // Moved/re-inserted: disconnect ran every cleanup (listeners, timers). A hydratable component re-binds in place
-      // (same nodes, focus kept); the others render again to re-bind (unchanged lifecycle).
+      // (same nodes, focus kept) when its markup still passes canRebind(); the others render again to re-bind.
       this._needsRebind = false;
-      if (this.constructor.hydratable) this._bindStep();
+      // Review round 1 (IMPL-2): a render while DETACHED (e.g. a structural attribute changed) already bound listeners
+      // — drop them first so the bind below is the only one.
+      this._cleanups.forEach((fn) => fn());
+      this._cleanups = [];
+      if (this.constructor.hydratable && this.canRebind()) this._bindStep();
       else this._doRender();
     }
   }
@@ -123,6 +127,14 @@ export class TdBaseElement extends HTMLElement {
    * @returns {boolean}
    */
   canHydrate() { return false; }
+
+  /**
+   * Hook (hydratable components, review round 1 SEC-1): on RE-connect, is the current markup still the component's own
+   * (structure + attribute allowlist)? false → re-render instead of re-binding (markup tampered with while detached).
+   * Default: true.
+   * @returns {boolean}
+   */
+  canRebind() { return true; }
 
   /**
    * Hook: adopt the existing markup (only called when canHydrate() returned true). Must NOT replace the children

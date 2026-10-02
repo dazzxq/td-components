@@ -321,7 +321,7 @@ hưởng chúng) — lộ trình 0.26 / 0.27.
 | `href` / `target` / `download` (link) | `href` (đã lọc; URL bị chặn → `href=""`, link trơ) / `target` / `download` | `href` (đã lọc) / `target` + `rel` / `download` |
 | `id` | `id` (API của component) | — |
 | `class` | `class` (của site) | — (control chỉ mang class kit) |
-| `attrs` | — | lên control như native (cùng allowlist; key trùng option → option thắng) |
+| `attrs` | — | lên control (cùng allowlist). **Element mode giữ chỗ mọi tên component sở hữu** kể cả khi option tương ứng tắt: `class`, `type`, `id`, `name`, `value`, `disabled`, `aria-busy`, `aria-disabled`, `aria-label`, `data-tooltip`, `href`, `target`, `rel`, `download` (+ `role` / `tabindex` khi link đang trơ) → bị bỏ khỏi `attrs`, để trạng thái trước và sau hydrate luôn như nhau (ví dụ `attrs['disabled' => true]` không còn khoá nút). `tabindex` / `role` trên link đang bật là pass-through thật: giữ khi hydrate và được khôi phục khi `loading` / `disabled` tắt. Native mode không đổi |
 | `attrs` có `aria-label` / `aria-pressed` / `aria-expanded` / `aria-haspopup` / `aria-controls` | **nâng lên host** (component chuyển xuống control khi có JS) | vẫn in trên control (cho lúc chưa có JS) |
 | — | `data-td-ssr="button@1"` (dấu hợp đồng; component gỡ sau khi nhận) | — |
 
@@ -337,6 +337,16 @@ có `href`), class variant / size / full-width, icon + vị trí, nhãn, `type`,
 `variant` mới. Thuộc tính **trạng thái** (`loading`, `disabled`, `name`, `value`, `aria-*`, giá trị `href`) thì được
 áp tại chỗ, không render lại. Hai trường hợp biên đã biết render lại: nhãn rỗng mà không có icon + `aria_label`
 (JS hiện chữ mặc định "Button"), và icon không có trong registry kèm nhãn rỗng.
+
+**Hydrate chỉ tin markup do helper của kit sinh ra.** Component chỉ nhận control khi **mọi** node được giữ lại
+(control, nhãn, ô icon, spinner) chỉ mang attribute nằm trong allowlist khớp đúng những gì `td_button` / `td_link`
+và `render()` có thể in: tên component sở hữu, allowlist `attrs` (`aria-*`, `data-*`, `id`, `title`, `lang`,
+`tabindex`, `role`, `accesskey`…) và `data-tooltip`. Có bất kỳ attribute nào khác — `on*`, `style`, `form`,
+`formaction`, `formmethod`, `formenctype`, `formtarget`, `formnovalidate`, `srcdoc`, `popovertarget`, `commandfor`… —
+thì **không nhận**, render lại sạch từ attribute của host. Spinner (và icon class cũ) phải khớp `render()` từng byte;
+SVG của icon registry luôn được vẽ lại. Khi phần tử bị gỡ ra rồi gắn lại, markup được **kiểm lại**: bị sửa trong lúc
+tách khỏi trang (cấu trúc hoặc attribute ngoài allowlist) → render lại thay vì gắn listener lại. Đừng tự dựng markup
+`data-td-ssr` bằng tay hay từ dữ liệu người dùng — dùng helper.
 
 **Lưu ý khi chuyển sang element mode:**
 

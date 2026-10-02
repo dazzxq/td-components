@@ -151,7 +151,16 @@ describe('php/td.php — SSR element mode (v0.25.0, ADR 0012)', opts, () => {
         native = native.replace('<span class="td-btn__icon" aria-hidden="true">',
           `<span class="td-btn__icon" data-td-icon="${esc(o.icon)}" data-td-icon-size="s" aria-hidden="true">`);
       }
-      assert.equal(inner, native, `${c.id}: control`);
+      // the control's own start tag: same attribute SET (order may differ — owned names are printed first), minus
+      // the `attrs` entries that collide with names the component owns (review round 1 IMPL-1: reserved in element
+      // mode even when the owned value is false / null); everything after the start tag byte-identical
+      const tagRe = /^<(button|a)((?:\s+[a-z][a-z0-9:._-]*(?:="[^"]*")?)*)>/;
+      const [nTag, , nAttrs] = tagRe.exec(native);
+      const [eTag, , eAttrs] = tagRe.exec(inner);
+      const want = Object.fromEntries(attrsOf(nAttrs));
+      for (const k of c.dropOnControl || []) delete want[k];
+      assert.deepEqual(Object.fromEntries(attrsOf(eAttrs)), want, `${c.id}: control attributes`);
+      assert.equal(inner.slice(eTag.length), native.slice(nTag.length), `${c.id}: control content`);
       assert.ok(!/<script|<img/i.test(r.out), `${c.id}: payload leaked`);
     });
   });
@@ -163,6 +172,29 @@ describe('php/td.php — SSR element mode (v0.25.0, ADR 0012)', opts, () => {
     assert.ok(html.includes(' aria-label="&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;"'), html);
     assert.ok(html.includes(' name="n&quot;x"') && html.includes(' value="&lt;v&gt;"'), html);
     assert.ok(!/<script|<img/i.test(html));
+  });
+
+  test('review round 1 IMPL-1: owned control names are reserved in element mode even when their value is false / null', () => {
+    const res = runPhp([
+      { fn: 'td_button', args: ['A', { element: true, disabled: false, attrs: { disabled: true, 'aria-busy': 'true', 'aria-disabled': 'true', type: 'reset', class: 'x', 'data-tooltip': 'y' } }] },
+      { fn: 'td_button', args: ['A', { element: false, attrs: { disabled: true } }] }, // native mode unchanged
+      { fn: 'td_link', args: ['L', '/l', { element: true, attrs: { 'aria-busy': 'true', 'aria-disabled': 'true', href: '/evil', tabindex: '4', role: 'button' } }] },
+      { fn: 'td_link', args: ['L', '/l', { element: true, disabled: true, attrs: { tabindex: '4', role: 'button' } }] },
+      { fn: 'td_button', args: ['A', { element: true, attrs: { 'aria-pressed': 'bogus', 'aria-expanded': 'true', 'aria-controls': '  ' } }] },
+    ], { baseUrl: BASE }).map((x) => x.out);
+    const ctl = (html) => Object.fromEntries(attrsOf(/<(?:button|a)((?:\s+[a-z][a-z0-9:._-]*(?:="[^"]*")?)*)>/.exec(splitHost(html).inner)[1]));
+    assert.deepEqual(ctl(res[0]), { class: 'td-btn td-btn--secondary td-btn--md', type: 'button' }, res[0]);
+    assert.ok(!splitHost(res[0]).host.has('disabled'));
+    assert.match(res[1], /^<button class="td-btn td-btn--secondary td-btn--md" type="button" disabled>/);
+    // link: state names reserved; genuine tabindex / role pass-through kept while the link is not inert
+    assert.deepEqual(ctl(res[2]), { class: 'td-btn td-btn--ghost td-btn--md', href: '/l', tabindex: '4', role: 'button' }, res[2]);
+    assert.deepEqual(ctl(res[3]), { class: 'td-btn td-btn--ghost td-btn--md', role: 'link', 'aria-disabled': 'true', tabindex: '-1' }, res[3]);
+    // forwarded ARIA: only values the component would forward reach host and control (same whitelist as JS)
+    const { host } = splitHost(res[4]);
+    assert.equal(host.get('aria-pressed'), undefined);
+    assert.equal(host.get('aria-controls'), undefined);
+    assert.equal(host.get('aria-expanded'), 'true');
+    assert.deepEqual(ctl(res[4]), { class: 'td-btn td-btn--secondary td-btn--md', type: 'button', 'aria-expanded': 'true' }, res[4]);
   });
 
   test('a rejected href keeps link mode with an empty host href (inert link, like <td-button href>)', () => {
