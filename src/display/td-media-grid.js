@@ -247,6 +247,13 @@ export class TdMediaGrid extends TdBaseElement {
 
   /** @private reflect the selection on the DOM */
   _paint(items = this.items) {
+    // Owned items that are no longer valid (data-id removed / emptied / a losing duplicate) drop any stale state.
+    const valid = new Set(items);
+    for (const el of this.querySelectorAll(ITEM)) {
+      if (valid.has(el) || el.closest('td-media-grid') !== this) continue;
+      el.removeAttribute('data-selected');
+      this._tickOf(/** @type {HTMLElement} */ (el))?.setAttribute('aria-pressed', 'false');
+    }
     for (const item of items) {
       const on = this._selected.has(item.getAttribute('data-id'));
       item.toggleAttribute('data-selected', on);

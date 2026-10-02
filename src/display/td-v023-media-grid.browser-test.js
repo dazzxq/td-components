@@ -589,4 +589,23 @@ describe('td-media-grid — review round 1', () => {
     expect(changes.length).to.equal(1);
     expect(changes[0].detail.removed).to.deep.equal(['f2']);
   });
+
+  it('removing / emptying a selected item\'s data-id clears its selected state and tick (review round 2)', async () => {
+    const grid = mount(3);
+    click(tickOf(grid, 'f1'));
+    click(tickOf(grid, 'f2'));
+    const i1 = itemOf(grid, 'f1');
+    const i2 = itemOf(grid, 'f2');
+    const t1 = tickOf(grid, 'f1');
+    const t2 = tickOf(grid, 'f2');
+    i1.removeAttribute('data-id');
+    i2.setAttribute('data-id', '');
+    await tick();
+    expect(grid.selectedIds).to.deep.equal([]);
+    for (const [item, t] of [[i1, t1], [i2, t2]]) {
+      expect(item.hasAttribute('data-selected'), 'stale data-selected').to.equal(false);
+      expect(t.getAttribute('aria-pressed')).to.equal('false');
+    }
+    expect(grid.hasAttribute('data-selecting')).to.equal(false);
+  });
 });
