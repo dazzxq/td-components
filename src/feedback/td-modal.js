@@ -43,7 +43,10 @@
  */
 
 import { TdModalStackManager } from './td-modal-stack.js';
-import { LAYERS, register as registerLayer, trapTab, focusablesIn, setFocusHandoff, followFocusHandoff } from '../utils/layers.js';
+import {
+  LAYERS, register as registerLayer, trapTab, focusablesIn, setFocusHandoff, followFocusHandoff, floatingContains,
+  coverFloatingIn,
+} from '../utils/layers.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import { transitionEndMs } from '../utils/transition.js';
 
@@ -251,7 +254,11 @@ export class TdModal {
         return true;
       },
       onTab: (e) => trapTab(e, dialog, MODAL_LAYER),
+      // v0.21.1 F4: opened over a lightbox that sits above the modals (lightbox opened from a modal) → promoted above
+      // it; under TdModalStackManager.BASE_Z_INDEX its normal z is the stack's (kept in sync by _sync()).
+      baseZ: () => (TdModalStackManager._zBase() !== null ? instance.zIndex : null),
     });
+    instance.promotedOver = instance.layer.promotedOver;
     TdModal._focusTrapHandlers.set(id, { el: root, layer: instance.layer });
     // Focus moves into the dialog immediately (the opener is inert now); the initial target is chosen once the
     // content is laid out (second frame).
@@ -341,7 +348,10 @@ export class TdModal {
     const root = inst.element;
     const wasTop = TdModalStackManager.getTop() === inst;
     const active = document.activeElement;
-    const focusWasHere = !active || active === document.body || root.contains(active);
+    // v0.21.1 F2b: focus in a popup anchored in this dialog (the portaled search of its dropdown) counts as "here"
+    const focusWasHere = !active || active === document.body || root.contains(active) || floatingContains(root, active);
+    // …and those popups close now, not after the exit transition (no focus hand-back to their leaving triggers)
+    coverFloatingIn(root);
 
     // Closing state first, and `inert` on the DIALOG (not the body child, whose inert inert-lock owns and may lift
     // when another lease is released) so the exiting modal is never interactive again.

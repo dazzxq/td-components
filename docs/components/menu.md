@@ -433,6 +433,16 @@ Xem thêm [Hướng dẫn bảo mật](../guides/security.md).
 
 ## Lưu ý & lỗi thường gặp
 
+- **Menu đi theo "chủ" của nó (0.21.1).** Popup tự đóng khi trigger bị khung cuộn cắt, bị ẩn mà không cần
+  cuộn (chuyển tab, accordion đóng, `display: none`), bị gỡ khỏi DOM, hoặc khi một modal / lightbox **mới** mở đè lên
+  bằng code (timer, hết phiên…) — focus đi vào lớp mới, popup không còn bấm xuyên được. Modal / lightbox chứa trigger
+  đóng → popup đóng ngay (không đợi hiệu ứng thoát). Mở popup lúc modal đang chạy hiệu ứng vào (vd. trong `onShow`)
+  → vị trí được đặt lại khi hiệu ứng kết thúc.
+- **Escape thuộc về popup, không thuộc tooltip hover (0.21.1).** Đang trỏ chuột lên một nút có tooltip rồi mở popup
+  bằng bàn phím: Escape đầu tiên đóng popup, lần sau mới đóng tooltip.
+- **Mở từ nút trong hovercard (0.21.1):** hovercard giữ mở khi menu con đang mở; chọn mục → focus về nút trong
+  card. Hovercard đóng → menu con đóng trước. `onClose(reason)` có thêm `'covered'` (modal / lightbox mới phủ lên,
+  hoặc dialog / hovercard chứa anchor đóng); anchor bị gỡ / ẩn → `'hidden'`, focus không rơi về `<body>`.
 - **Checkbox "không nhớ" trạng thái**: đúng thiết kế — kit không sửa item của bạn. Lưu `ctx.checked` vào model và
   dựng lại item từ model (dùng `() => items`).
 - **`open()` trả `null`** khi: tên menu chưa đăng ký (xem console), mọi mục bị `when` ẩn, mục nào cũng thiếu `label`,

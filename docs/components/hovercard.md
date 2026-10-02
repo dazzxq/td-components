@@ -382,6 +382,13 @@ Xem [Hướng dẫn bảo mật](../guides/security.md) và [CSP](../guides/csp.
 
 ## Lưu ý & lỗi thường gặp
 
+- **Card đi theo "chủ" của nó (0.21.1).** Popup tự đóng khi trigger bị khung cuộn cắt, bị ẩn mà không cần
+  cuộn (chuyển tab, accordion đóng, `display: none`), bị gỡ khỏi DOM, hoặc khi một modal / lightbox **mới** mở đè lên
+  bằng code (timer, hết phiên…) — focus đi vào lớp mới, popup không còn bấm xuyên được. Modal / lightbox chứa trigger
+  đóng → popup đóng ngay (không đợi hiệu ứng thoát). Mở popup lúc modal đang chạy hiệu ứng vào (vd. trong `onShow`)
+  → vị trí được đặt lại khi hiệu ứng kết thúc.
+- **Menu mở từ nút trong card (0.21.1):** card giữ mở khi menu con (TdMenu) đang mở — kể cả khi chuột rời card
+  sang menu; bấm vào menu không tính là "bấm ra ngoài". Card đóng → menu con đóng trước.
 - **Không có gì xảy ra với `data-td-hovercard`**: chưa gọi `TdHovercard.bindAll()`.
 - **Card không mở với URL**: URL khác origin (xem console: `refused … only http(s) URLs of this origin`), hoặc server
   trả sai `Content-Type` (phải là JSON có `html` chuỗi, hoặc `text/html`).
