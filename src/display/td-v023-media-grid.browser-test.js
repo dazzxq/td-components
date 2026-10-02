@@ -520,3 +520,73 @@ describe('td-media-grid — markup contract (test/contracts/media-grid.html)', (
     expect(shape(grid)).to.deep.equal(shape(t.content.firstElementChild));
   });
 });
+
+describe('td-media-grid — review round 1', () => {
+  it('live region survives replacing every child (pagination) and still announces', async () => {
+    const grid = mount(3);
+    grid.innerHTML = item('p1') + item('p2');
+    await tick();
+    const regions = grid.querySelectorAll('.td-sr-only[aria-live="polite"]');
+    expect(regions.length).to.equal(1);
+    expect(regions[0].isConnected).to.equal(true);
+    click(tickOf(grid, 'p2'));
+    await wait(50);
+    expect(regions[0].textContent).to.equal('Đã chọn 1');
+  });
+
+  it('Escape closes a boundary opened BEFORE the selection; the selection stays', async () => {
+    const grid = mount(2);
+    const dd = document.createElement('td-dropdown');
+    root.appendChild(dd);
+    dd.options = [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }];
+    await frame();
+    dd.open();
+    await frame();
+    expect(dd._isOpen).to.equal(true);
+    grid.select(['f1']); // the grid's Escape listener is added after the layer's
+    await sendKeys({ press: 'Escape' });
+    expect(dd._isOpen).to.equal(false);
+    expect(grid.selectedIds).to.deep.equal(['f1']);
+  });
+
+  it('disabled: Escape does not clear the selection', async () => {
+    const grid = mount(2);
+    grid.select(['f1']);
+    grid.setAttribute('disabled', '');
+    openOf(grid, 'f1').focus();
+    await sendKeys({ press: 'Escape' });
+    expect(grid.selectedIds).to.deep.equal(['f1']);
+  });
+
+  it('a repeated limit message is announced again (fresh mutation each time)', async () => {
+    const grid = mount(3, 'max="1"');
+    click(tickOf(grid, 'f1'));
+    await wait(30);
+    const live = grid.querySelector('.td-sr-only[aria-live="polite"]');
+    let muts = 0;
+    const mo = new MutationObserver((recs) => { muts += recs.length; });
+    mo.observe(live, { childList: true, characterData: true, subtree: true });
+    click(tickOf(grid, 'f2'));
+    await wait(30);
+    const first = muts;
+    expect(first).to.be.greaterThan(0);
+    expect(live.textContent).to.equal('Tối đa 1 mục');
+    click(tickOf(grid, 'f3'));
+    await wait(30);
+    mo.disconnect();
+    expect(muts).to.be.greaterThan(first, 'second identical message mutates the region again');
+    expect(live.textContent).to.equal('Tối đa 1 mục');
+  });
+
+  it('changing a data-id drops the old id from the selection', async () => {
+    const grid = mount(3);
+    click(tickOf(grid, 'f1'));
+    click(tickOf(grid, 'f2'));
+    const changes = record(grid, 'select-change');
+    itemOf(grid, 'f2').setAttribute('data-id', 'z9');
+    await tick();
+    expect(grid.selectedIds).to.deep.equal(['f1']);
+    expect(changes.length).to.equal(1);
+    expect(changes[0].detail.removed).to.deep.equal(['f2']);
+  });
+});
