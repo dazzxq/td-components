@@ -2,6 +2,7 @@
 import '/src/form/td-button.js';
 import { TdToast } from '/src/feedback/td-toast.js';
 import '/src/feedback/td-alert.js';
+import '/src/display/td-media-grid.js';
 import { fillIconSlots } from '/src/icons/td-icon.js';
 
 const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning'];
@@ -38,6 +39,10 @@ for (const v of ['input-field', 'dropdown']) CASES.push({ kind: 'focus', v, stat
 for (const state of ['rest', 'active']) CASES.push({ kind: 'dropdown-create', v: 'create', state });
 // …and the static fallback used where color-mix() is unsupported (forced onto the row through CSSOM).
 for (const state of ['rest', 'active']) CASES.push({ kind: 'dropdown-create', v: 'create-fallback', state });
+// v0.23.0: the td-media-grid tick, off (shown while selecting) and on (selected), over the worst-case images (pure white
+// and pure black): its edge (white border over a dark image, thin dark ring over a light one) ≥ 3:1, and the glyph of the
+// solid "on" tick ≥ 3.2:1 on its fill — computed colours (`pairs`), light + dark theme.
+for (const v of ['off', 'on']) for (const state of ['light-image', 'dark-image']) CASES.push({ kind: 'media-tick', v, state, pageOnly: true });
 
 const stage = document.getElementById('stage');
 const bd = document.getElementById('backdrop');
@@ -145,6 +150,46 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     stage.appendChild(menu);
     fillIconSlots(el);
     parts = { label, icon };
+  } else if (c.kind === 'media-tick') {
+    const image = c.state === 'light-image' ? 'rgb(255, 255, 255)' : 'rgb(0, 0, 0)';
+    const grid = document.createElement('td-media-grid');
+    for (const id of ['a', 'b']) {
+      const item = document.createElement('div');
+      item.setAttribute('data-td-media-item', '');
+      item.setAttribute('data-id', id);
+      const open = document.createElement('button');
+      open.type = 'button';
+      open.setAttribute('data-td-media-open', '');
+      open.setAttribute('aria-label', `Khung ${id}`);
+      const pic = document.createElement('span');
+      pic.style.setProperty('display', 'block');
+      pic.style.setProperty('width', '160px');
+      pic.style.setProperty('height', '120px');
+      pic.style.setProperty('background', image);
+      open.appendChild(pic);
+      item.appendChild(open);
+      grid.appendChild(item);
+    }
+    stage.appendChild(grid);
+    grid.select(['a']); // host [data-selecting]: every tick shown; 'a' = on, 'b' = off
+    await new Promise((r) => setTimeout(r, 400)); // opacity / fill transitions
+    const tick = grid.querySelector(`[data-id="${c.v === 'on' ? 'a' : 'b'}"] .td-media-grid__tick`);
+    const tcs = getComputedStyle(tick);
+    if (tcs.opacity !== '1') throw new Error(`media tick ${c.v}: opacity ${tcs.opacity} (must be shown to be measured)`);
+    const ring = (tcs.boxShadow.match(/rgba?\([^)]*\)|color\([^)]*\)/) || [])[0] || 'rgba(0, 0, 0, 0)';
+    const pairs = [c.state === 'dark-image'
+      ? { what: 'tick border vs dark image', fg: tcs.borderTopColor, bg: image }
+      : { what: 'tick ring vs light image', fg: ring, bg: image }];
+    if (c.v === 'on') pairs.push({ what: 'tick glyph vs on fill', fg: tcs.color, bg: tcs.backgroundColor, min: 3.2 });
+    const r0 = tick.getBoundingClientRect();
+    return {
+      rect: { x: r0.x, y: r0.y, width: r0.width, height: r0.height },
+      ink: {},
+      opacity: 1,
+      hover: false,
+      name: `media-tick:${c.v}:${c.state}`,
+      pairs,
+    };
   } else if (c.kind === 'focus') {
     let control;
     if (c.v === 'dropdown') {

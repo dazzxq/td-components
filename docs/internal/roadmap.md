@@ -76,6 +76,11 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 - `done` Hardening sau security review: `TdHovercard.sanitize` + `TrustedHTML`, fetch giới hạn (LRU 50, 256 KB, 10 s,
   `no-store`, huỷ khi đóng), `clearCache()` bắt buộc khi đổi phiên đăng nhập
 
+## Done — v0.23.0 lưới ảnh chọn được
+
+- `done` `<td-media-grid>`: nâng cấp markup site, tick, chế độ chọn, Shift dải, Space / Enter / Esc, `select-change` /
+  `activate` (đề xuất 135)
+
 ## Done — v0.22.1 modal mượt hơn
 
 - `done` Chuyển động modal theo dcms, khoá cuộn giữ chỗ thanh cuộn (hết nhảy trang)

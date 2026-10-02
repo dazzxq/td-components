@@ -73,7 +73,7 @@ const PX_TOLERANCE = 0.5;
 const BASELINE_PLATFORM = process.env.CSP_BASELINE_PLATFORM || 'darwin';
 const TEXT_METRIC_PROPS = new Set(['width', 'right', 'left', 'transform', 'inline-size']);
 const SKIP_TEXT_METRICS = process.platform !== BASELINE_PLATFORM;
-const MIME = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.json': 'application/json' };
+const MIME = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.json': 'application/json', '.svg': 'image/svg+xml' };
 
 /** Map an http://csp.local/<path> URL to a file on disk (identical to capture). */
 function urlToFile(url) {
@@ -174,8 +174,12 @@ async function checkSentinels(page, pageProfile = PROFILE) {
  * BEFORE any document script runs (addInitScript), expose the __cspViolation binding,
  * and collect console / pageerror text that looks CSP-related.
  */
-async function freshPage(browser, reducedMotion, pageProfile = PROFILE) {
-  const ctx = await browser.newContext(reducedMotion ? { reducedMotion: 'reduce' } : {});
+/** v0.23.0: a `touch` state runs in a touch context (coarse pointer, no hover) — the SAME options as capture-baseline. */
+const TOUCH_CONTEXT = { hasTouch: true, isMobile: true, viewport: { width: 1280, height: 720 } };
+const TOUCH_QUERY = '(hover: none), (pointer: coarse)';
+
+async function freshPage(browser, reducedMotion, pageProfile = PROFILE, touch = false) {
+  const ctx = await browser.newContext({ ...(reducedMotion ? { reducedMotion: 'reduce' } : {}), ...(touch ? TOUCH_CONTEXT : {}) });
   const page = await ctx.newPage();
   const violations = [];
   const errors = [];
@@ -277,9 +281,15 @@ async function runState(browser, component, modulePath, state) {
   // gets Tailwind + td.css.
   const mixed = (MATRIX._meta.mixed || []).includes(component);
   const pageProfile = tokenNative ? (PROFILE === 'legacy' ? 'td' : 'legacy+td') : mixed ? 'legacy+td' : PROFILE;
-  const { ctx, page, violations, errors, consoleCsp } = await freshPage(browser, reduced, pageProfile);
+  const { ctx, page, violations, errors, consoleCsp } = await freshPage(browser, reduced, pageProfile, !!state.touch);
   const result = { component, state: state.state, pass: true, reasons: [] };
   try {
+    // A touch state must really be a touch page (asserted first), or parity would compare desktop styling.
+    if (state.touch && !(await page.evaluate((q) => matchMedia(q).matches, TOUCH_QUERY))) {
+      result.pass = false;
+      result.reasons.push({ kind: 'render', detail: `touch context: matchMedia('${TOUCH_QUERY}') is false` });
+      return result;
+    }
     // (5) Sentinel gate — fixture must be live under strict CSP, or the whole suite aborts.
     const sentinels = await checkSentinels(page, pageProfile);
     const badSentinels = sentinels.filter(s => !s.ok);

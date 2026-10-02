@@ -6666,6 +6666,190 @@
 	}
 }
 
+/* ---- src/styles/components/media-grid.css ---- */
+/*
+ * td-media-grid (src/display/td-media-grid.js, v0.23.0). Content layer: solid surfaces, no glass (minimal surfaces).
+ * The element ENHANCES site markup: .td-media-grid (host, CSS grid by token — a site with its own layout overrides
+ * display), .td-media-grid__item [data-selected], .td-media-grid__open (button / a), .td-media-grid__tick
+ * (aria-pressed). Host [data-selecting] = selection not empty.
+ * Tick: hidden (opacity 0) → shown on mouse hover (hover + fine pointer), :focus-within, while selecting and on a
+ * selected item; touch screens (hover none / coarse pointer) show it faded (0.55). Selected: item fill, opener scaled
+ * (selection cue — functional, not decorative), solid tick. Tick edge = white border + thin dark ring → ≥ 3:1 on dark
+ * AND light images; glyph ≥ 3.2:1 on the solid fill (test/tokens/contrast.spec.mjs, light + dark).
+ * CSP: classes / data attributes only.
+ */
+@layer td.tokens {
+	:root {
+		--td-media-grid-cols: repeat(auto-fill, minmax(160px, 1fr));
+		--td-media-grid-gap: var(--td-space-xs);
+		--td-media-grid-radius: var(--td-radius-md);
+		--td-media-grid-tick-size: 24px;
+		--td-media-grid-tick-inset: 6px;
+		--td-media-grid-tick-bg: rgb(0 0 0 / 35%);
+		--td-media-grid-tick-border: #fff;
+		--td-media-grid-tick-ring: rgb(0 0 0 / 50%);
+		--td-media-grid-tick-on-bg: var(--td-btn-primary-bg);
+		--td-media-grid-tick-on-fg: var(--td-btn-primary-fg);
+		--td-media-grid-selected-bg: var(--td-color-surface);
+		--td-media-grid-selected-scale: 0.88;
+	}
+}
+
+@layer td.component {
+	td-media-grid,
+	.td-media-grid {
+		display: grid;
+		grid-template-columns: var(--td-media-grid-cols);
+		gap: var(--td-media-grid-gap);
+		line-height: var(--td-leading-normal);
+	}
+
+	.td-media-grid__item {
+		position: relative;
+		min-width: 0;
+		border-radius: var(--td-media-grid-radius);
+		transition: background-color var(--td-dur-base) var(--td-ease-out);
+	}
+
+	.td-media-grid__item[data-selected] {
+		background-color: var(--td-media-grid-selected-bg);
+	}
+
+	.td-media-grid__open {
+		display: block;
+		box-sizing: border-box;
+		width: 100%;
+		margin: 0;
+		padding: 0;
+		border: 0;
+		border-radius: var(--td-media-grid-radius);
+		background: none;
+		color: inherit;
+		font: inherit;
+		text-align: inherit;
+		cursor: pointer;
+		overflow: hidden;
+		transition: transform var(--td-dur-base) var(--td-ease-out);
+	}
+
+	.td-media-grid__open img {
+		display: block;
+		width: 100%;
+		height: auto;
+		user-select: none;
+		-webkit-user-drag: none;
+	}
+
+	.td-media-grid__open:focus-visible {
+		outline: 2px solid var(--td-focus);
+		outline-offset: 2px;
+	}
+
+	.td-media-grid__item[data-selected] .td-media-grid__open {
+		transform: scale(var(--td-media-grid-selected-scale));
+	}
+
+	.td-media-grid__tick {
+		position: absolute;
+		top: var(--td-media-grid-tick-inset);
+		left: var(--td-media-grid-tick-inset);
+		z-index: 2;
+		box-sizing: border-box;
+		display: grid;
+		place-items: center;
+		width: var(--td-media-grid-tick-size);
+		height: var(--td-media-grid-tick-size);
+		margin: 0;
+		padding: 0;
+		border: 2px solid var(--td-media-grid-tick-border);
+		border-radius: 50%;
+		background: var(--td-media-grid-tick-bg);
+		box-shadow: 0 0 0 1px var(--td-media-grid-tick-ring);
+		color: transparent;
+		font: inherit;
+		line-height: 0;
+		cursor: pointer;
+		opacity: 0;
+		transition:
+			opacity var(--td-dur-base) var(--td-ease-out),
+			background-color var(--td-dur-base) var(--td-ease-out),
+			color var(--td-dur-base) var(--td-ease-out);
+	}
+
+	.td-media-grid__tick svg {
+		width: 14px;
+		height: 14px;
+		stroke-width: 3;
+	}
+
+	.td-media-grid__tick:focus-visible {
+		outline: 2px solid var(--td-focus);
+		outline-offset: 2px;
+	}
+
+	.td-media-grid__tick:disabled {
+		cursor: default;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-grid__item:hover .td-media-grid__tick {
+			opacity: 1;
+		}
+
+		.td-media-grid__tick:hover:not(:disabled) {
+			color: var(--td-media-grid-tick-border);
+		}
+	}
+
+	@media (hover: none), (pointer: coarse) {
+		.td-media-grid__tick {
+			opacity: 0.55;
+		}
+
+		/* 24px glyph, ≥ 44px hit area on touch */
+		.td-media-grid__tick::before {
+			content: "";
+			position: absolute;
+			inset: calc((var(--td-media-grid-tick-size) - var(--td-touch-min, 44px)) / 2);
+		}
+	}
+
+	.td-media-grid__item:focus-within .td-media-grid__tick,
+	.td-media-grid[data-selecting] .td-media-grid__tick,
+	.td-media-grid__item[data-selected] .td-media-grid__tick {
+		opacity: 1;
+	}
+
+	.td-media-grid__item[data-selected] .td-media-grid__tick {
+		background: var(--td-media-grid-tick-on-bg);
+		color: var(--td-media-grid-tick-on-fg);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-media-grid__open {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-media-grid__tick {
+			border-color: ButtonText;
+			background: ButtonFace;
+			box-shadow: none;
+		}
+
+		.td-media-grid__item[data-selected] {
+			outline: 2px solid Highlight;
+		}
+
+		.td-media-grid__item[data-selected] .td-media-grid__tick {
+			border-color: Highlight;
+			background: Highlight;
+			color: HighlightText;
+		}
+	}
+}
+
 /* ---- src/styles/utilities.css ---- */
 /* Utilities — kept minimal: td.css must stay reset-free (legacy Tailwind components share the page). */
 @layer td.utilities {

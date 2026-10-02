@@ -34,6 +34,11 @@ describe('index.js exports', () => {
     expect(customElements.get('td-alert')).to.equal(kit.TdAlert);
   });
 
+  it('registers <td-media-grid> from the root entry (v0.23.0)', () => {
+    expect(typeof kit.TdMediaGrid).to.equal('function');
+    expect(customElements.get('td-media-grid')).to.equal(kit.TdMediaGrid);
+  });
+
   it('re-exports the icon API and the dom-utils functions (v0.17.0 E8)', async () => {
     const icons = await import('./icons/td-icon.js');
     const utils = await import('./utils/dom-utils.js');

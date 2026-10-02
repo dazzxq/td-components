@@ -79,3 +79,23 @@ test('v0.18.0 F5: npm pack ships td-alert.js, badge.css and alert.css (not its t
   }
   assert.ok(!paths.some((p) => /td-v018-alert|td-alert\.stories/.test(p)), 'tests / stories not shipped');
 });
+
+test('v0.23.0: ./media-grid export, sideEffects, barrel TdMediaGrid, media-grid.css in the td.css manifest', async () => {
+  assert.equal(pkg.exports['./media-grid'], './src/display/td-media-grid.js');
+  assert.ok(pkg.sideEffects.includes('./src/display/td-media-grid.js'));
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdMediaGrid \} from '\.\/src\/display\/td-media-grid\.js';/);
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  assert.ok(files.includes('components/media-grid.css'));
+  assert.ok(files.indexOf('components/media-grid.css') < files.indexOf('utilities.css'), 'media-grid.css before utilities.css');
+  const css = await readFile(join(ROOT, 'td.css'), 'utf8');
+  for (const sel of ['.td-media-grid__tick', '.td-media-grid__item[data-selected]', '--td-media-grid-tick-on-bg']) assert.ok(css.includes(sel), sel);
+});
+
+test('v0.23.0: npm pack ships td-media-grid.js and media-grid.css (not its tests / stories)', { timeout: 60000 }, () => {
+  const r = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], { cwd: ROOT, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  const paths = JSON.parse(r.stdout)[0].files.map((f) => f.path);
+  for (const f of ['src/display/td-media-grid.js', 'src/styles/components/media-grid.css']) assert.ok(paths.includes(f), f);
+  assert.ok(!paths.some((p) => /td-v023-media-grid|td-media-grid\.stories/.test(p)), 'tests / stories not shipped');
+});
