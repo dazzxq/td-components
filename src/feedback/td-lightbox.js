@@ -88,17 +88,32 @@ export function defaultIsAllowedUrl(url) {
   if (typeof url !== 'string' || !url.trim()) return false;
   let u;
   try {
-    u = new URL(url, location.href);
+    u = new URL(url, baseUrl()); // v0.24.0 SEC-02: resolved like the browser resolves it (honours <base href>)
   } catch {
     return false;
   }
   return u.protocol === 'https:' || (u.protocol === 'http:' && location.protocol === 'http:');
 }
 
+/** The base the browser resolves relative URLs against (`<base href>` aware). */
+function baseUrl() {
+  return typeof document !== 'undefined' && document.baseURI ? document.baseURI : location.href;
+}
+
+/**
+ * v0.24.0 SEC-02: canonicalise ONCE (`new URL(raw, document.baseURI).href`), run the policy on that canonical URL and
+ * return it — so the URL the policy approved is exactly the URL the browser loads (no `<base href>` disagreement).
+ */
 function allowed(url, item, isAllowedUrl) {
   if (typeof url !== 'string' || !url.trim()) return '';
+  let canonical;
   try {
-    return isAllowedUrl(url, item) ? url : '';
+    canonical = new URL(url, baseUrl()).href;
+  } catch {
+    return '';
+  }
+  try {
+    return isAllowedUrl(canonical, item) ? canonical : '';
   } catch {
     return '';
   }
@@ -1010,37 +1025,47 @@ function retryImage() {
 
 /* ------------------------------------------------------------------ v0.24.0 N2: adjacent preload */
 
-function cancelPreloads(keep = new Set()) {
-  if (!session) return;
-  session.preloads = session.preloads.filter((im) => {
-    if (keep.has(im.src)) return true;
-    im.onload = null;
-    im.onerror = null;
-    im.src = '';
-    return false;
-  });
+/** Drop every speculative preload of the session (only on close / session replacement). */
+function cancelPreloads() {
+  if (!session || !session.preloads) return;
+  for (const { image } of session.preloads.values()) {
+    image.onload = null;
+    image.onerror = null;
+    image.src = '';
+  }
+  session.preloads.clear();
 }
 
-/** After the current image loaded: fetch the previous + next IMAGE (wrapping) so the next step is instant. */
+/** `preload` option (v0.24.0 SEC-01): false | 'same-origin' (default) | 'all'. */
+function preloadMode(opt) {
+  if (opt === false) return false;
+  return opt === 'all' ? 'all' : 'same-origin';
+}
+
+/**
+ * After the current image loaded: fetch the previous + next IMAGE (wrapping) so the next step is instant. Records are
+ * keyed by the stable (canonical) source string and kept for the whole session — each neighbour is requested at most
+ * once. Speculative requests carry no Referer; cross-origin ones only with `preload: 'all'`.
+ */
 function preloadAdjacent(token) {
   if (!session || token !== renderToken) return;
+  const mode = preloadMode(session.opts.preload);
+  if (!mode) return;
   let saveData = false;
   try { saveData = !!(navigator.connection && navigator.connection.saveData); } catch { saveData = false; }
   const n = session.items.length;
-  const want = new Set();
-  if (!saveData && n > 1) {
-    for (const d of [-1, 1]) {
-      const i = (session.index + d + n) % n;
-      const it = session.items[i];
-      if (i !== session.index && it && it.type === 'image' && it.src) want.add(it.src);
-    }
-  }
-  cancelPreloads(want);
-  for (const src of want) {
-    if (session.preloads.some((im) => im.src === src)) continue;
-    const im = new Image();
-    im.src = src;
-    session.preloads.push(im);
+  if (saveData || n < 2) return;
+  for (const d of [-1, 1]) {
+    const i = (session.index + d + n) % n;
+    const it = session.items[i];
+    if (i === session.index || !it || it.type !== 'image' || !it.src) continue;
+    const src = it.src;
+    if (session.preloads.has(src)) continue;
+    if (mode === 'same-origin' && !sameOrigin(src)) continue;
+    const image = new Image();
+    image.referrerPolicy = 'no-referrer';
+    image.src = src;
+    session.preloads.set(src, { src, image });
   }
 }
 
@@ -1439,7 +1464,7 @@ function openViewer(items, options = {}) {
     videoAbort: null,
     isVideo: false,
     slideDir: 0,
-    preloads: [],
+    preloads: new Map(), // src → { src, image } (v0.24.0: stable records for the whole session)
     filmstrip: wantsFilmstrip(opts.filmstrip, list.length),
     handle: null,
     groupEl: typeof Element !== 'undefined' && opts.groupEl instanceof Element ? opts.groupEl : null,

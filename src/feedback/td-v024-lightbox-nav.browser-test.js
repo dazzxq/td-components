@@ -11,6 +11,8 @@ document.head.appendChild(link);
 await new Promise((r) => { link.onload = r; link.onerror = r; });
 
 const IMG = (n) => `/test/fixtures/${n}.svg`;
+/** v0.24.0 SEC-02: the lightbox stores canonical (absolute, baseURI-resolved) URLs. */
+const A = (n) => new URL(IMG(n), document.baseURI).href;
 const MISSING = '/test/fixtures/missing-v024.svg';
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -41,7 +43,7 @@ const OrigImage = window.Image;
 function fakeImages({ manual = false, fail = () => false } = {}) {
   const made = [];
   window.Image = class {
-    constructor() { made.push(this); this._src = ''; this.onload = null; this.onerror = null; }
+    constructor() { made.push(this); this._src = ''; this.onload = null; this.onerror = null; this.referrerPolicy = ''; }
     set src(v) {
       this._src = v;
       if (!v || manual) return;
@@ -287,14 +289,14 @@ describe('v0.24.0 N2 — adjacent preload', () => {
     const made = fakeImages();
     await openReady([{ type: 'video', src: '/v.mp4', poster: IMG(4) }, IMG(1), IMG(2), IMG(3)], { index: 1, video: () => null });
     const srcs = made.map((i) => i.src);
-    expect(srcs).to.include(IMG(2));
-    expect(srcs.some((s) => s.includes('v.mp4') || s === IMG(4)), `no video request (${srcs})`).to.equal(false);
+    expect(srcs).to.include(A(2));
+    expect(srcs.some((s) => s.includes('v.mp4') || s === A(4)), `no video request (${srcs})`).to.equal(false);
     TdLightbox.close();
     made.length = 0;
     await openReady([IMG(1), IMG(2), IMG(3)], { index: 0 });
     const s2 = made.map((i) => i.src);
-    expect(s2).to.include(IMG(2));
-    expect(s2, 'wraps to the last').to.include(IMG(3));
+    expect(s2).to.include(A(2));
+    expect(s2, 'wraps to the last').to.include(A(3));
   });
 
   it('Save-Data → no preload; close drops the references', async () => {
@@ -302,13 +304,13 @@ describe('v0.24.0 N2 — adjacent preload', () => {
     try {
       const made = fakeImages();
       await openReady([IMG(1), IMG(2), IMG(3)], { index: 1 });
-      expect(made.map((i) => i.src)).to.deep.equal([IMG(2)]);
+      expect(made.map((i) => i.src)).to.deep.equal([A(2)]);
     } finally {
       delete navigator.connection;
     }
     const made = fakeImages();
     await openReady([IMG(1), IMG(2), IMG(3)], { index: 1 });
-    const pre = made.filter((i) => i.src === IMG(1) || i.src === IMG(3));
+    const pre = made.filter((i) => i.src === A(1) || i.src === A(3));
     expect(pre.length).to.equal(2);
     TdLightbox.close();
     expect(pre.every((i) => i.src === ''), 'cancelled on close').to.equal(true);
@@ -414,9 +416,9 @@ describe('v0.24.0 N4 — filmstrip', () => {
       { type: 'video', src: '/w.mp4' },
     ], { filmstrip: true, isAllowedUrl, video: () => null });
     const t = $$('.td-lightbox__thumb');
-    expect(t[0].querySelector('img').getAttribute('src')).to.equal(IMG(3));
-    expect(t[1].querySelector('img').getAttribute('src')).to.equal(IMG(2));
-    expect(t[2].querySelector('img').getAttribute('src')).to.equal(IMG(4));
+    expect(t[0].querySelector('img').getAttribute('src')).to.equal(A(3));
+    expect(t[1].querySelector('img').getAttribute('src')).to.equal(A(2));
+    expect(t[2].querySelector('img').getAttribute('src')).to.equal(A(4));
     expect(!!t[2].querySelector('.td-lightbox__thumb-play')).to.equal(true);
     expect(t[3].querySelector('img')).to.equal(null);
     expect(!!t[3].querySelector('.td-lightbox__thumb-ph .td-lightbox__thumb-play')).to.equal(true);
@@ -481,7 +483,7 @@ describe('v0.24.0 N5 — slide transition', () => {
     lb.next();
     await frames();
     expect(w.seen.length, 'not while loading').to.equal(0);
-    const pre = made.find((i) => i.src === IMG(2));
+    const pre = made.find((i) => i.src === A(2));
     pre.onload();
     await Promise.resolve(); // MutationObserver delivery
     expect(w.seen).to.deep.equal(['next']);
@@ -491,7 +493,7 @@ describe('v0.24.0 N5 — slide transition', () => {
     await Promise.resolve();
     w.stop();
     expect(w.seen).to.deep.equal(['next']);
-    expect($('.td-lightbox__img').getAttribute('src')).to.equal(IMG(1)); // index 4 → wraps to item 0
+    expect($('.td-lightbox__img').getAttribute('src')).to.equal(A(1)); // index 4 → wraps to item 0
   });
 
   it('a thumbnail / goTo backwards → prev (shortest wrapped path)', async () => {
@@ -514,5 +516,84 @@ describe('v0.24.0 N5 — slide transition', () => {
     w.stop();
     expect(w.seen.length).to.equal(0);
     expect(getComputedStyle($('.td-lightbox__stage')).transitionDuration.split(',').every((d) => parseFloat(d) === 0)).to.equal(true);
+  });
+});
+
+describe('v0.24.0 review round 1 — preload records, preload option, canonical URLs', () => {
+  const speculative = (made) => made.filter((i) => i.referrerPolicy === 'no-referrer').map((i) => i.src);
+  const CROSS = 'http://cross.example/far.svg';
+
+  it('relative URLs: navigating back and forth requests each neighbour at most once per session', async () => {
+    const made = fakeImages();
+    const lb = await openReady([IMG(1), IMG(2), IMG(3), IMG(4)]);
+    for (const step of ['next', 'next', 'prev', 'prev', 'next', 'prev', 'prev', 'next']) {
+      lb[step]();
+      await wait(30);
+    }
+    const spec = speculative(made);
+    const counts = spec.reduce((m, s) => m.set(s, (m.get(s) || 0) + 1), new Map());
+    for (const [src, c] of counts) expect(c, `${src} requested ${c}×`).to.equal(1);
+    expect(spec.length > 0).to.equal(true);
+    expect(spec.every((s) => s.startsWith(location.origin)), 'canonical absolute URLs').to.equal(true);
+    expect(made.filter((i) => i.referrerPolicy === 'no-referrer').every((i) => i.src !== ''), 'never cancelled while open').to.equal(true);
+  });
+
+  it("default 'same-origin': a cross-origin neighbour is not requested, a same-origin one is; no Referer", async () => {
+    const made = fakeImages();
+    await openReady([IMG(1), CROSS, IMG(3)]);
+    const spec = speculative(made);
+    expect(spec).to.include(A(3));
+    expect(spec).to.not.include(CROSS);
+  });
+
+  it("'all' requests both; false requests none; bind() accepts the option", async () => {
+    let made = fakeImages();
+    await openReady([IMG(1), CROSS, IMG(3)], { preload: 'all' });
+    expect(speculative(made)).to.include.members([A(3), CROSS]);
+    TdLightbox.close();
+    made = fakeImages();
+    await openReady([IMG(1), CROSS, IMG(3)], { preload: false });
+    expect(speculative(made)).to.deep.equal([]);
+    TdLightbox.close();
+    made = fakeImages();
+    const host = document.createElement('div');
+    host.innerHTML = `<div data-td-lightbox-group><a data-td-lightbox-item href="${IMG(1)}" id="v24p">a</a><a data-td-lightbox-item href="${IMG(2)}">b</a></div>`;
+    document.body.appendChild(host);
+    const un = TdLightbox.bind(host, { preload: false });
+    try {
+      document.getElementById('v24p').click();
+      await wait(120);
+      expect(speculative(made)).to.deep.equal([]);
+    } finally { un(); host.remove(); }
+  });
+
+  it('<base href> cross-origin: the policy sees the real target and the stored value is what the browser loads', async () => {
+    fakeImages();
+    const base = document.createElement('base');
+    base.href = 'https://cdn.other.example/media/';
+    document.head.prepend(base);
+    const seen = [];
+    try {
+      const lb = TdLightbox.open([{ src: 'pic.svg', thumb: 't.svg' }, { src: 'two.svg' }], {
+        filmstrip: true, isAllowedUrl: (u) => { seen.push(u); return true; },
+      });
+      expect(lb).to.not.equal(null);
+      expect(seen).to.include('https://cdn.other.example/media/pic.svg');
+      expect(seen).to.include('https://cdn.other.example/media/t.svg');
+      const thumb = overlay().querySelector('.td-lightbox__thumb img');
+      expect(thumb.getAttribute('src')).to.equal('https://cdn.other.example/media/t.svg');
+      expect(thumb.src).to.equal(thumb.getAttribute('src'));
+      const changes = [];
+      const onChange = (e) => changes.push(e.detail.item.src);
+      document.addEventListener('td-lightbox-change', onChange);
+      lb.next();
+      document.removeEventListener('td-lightbox-change', onChange);
+      expect(changes).to.deep.equal(['https://cdn.other.example/media/two.svg']);
+      // The default policy resolves against document.baseURI too: an https base makes a relative URL https.
+      TdLightbox.close();
+      expect(TdLightbox.open(['rel.svg'])).to.not.equal(null);
+    } finally {
+      base.remove();
+    }
   });
 });

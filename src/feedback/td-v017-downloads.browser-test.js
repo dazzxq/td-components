@@ -201,7 +201,7 @@ describe('v0.17 E6 — lightbox downloads', () => {
       downloads: (item) => [{ label: 'Chặn', url: 'javascript:x' }, { label: 'Gốc', url: `${item.src}?o=1`, filename: 'a/b:gốc.svg' }],
     });
     ok(!dlLink().hidden && dlMenuBtn().hidden, 'link shown, menu button hidden');
-    expect(dlLink().getAttribute('href')).to.equal(`${IMG(1)}?o=1`);
+    expect(dlLink().getAttribute('href')).to.equal(new URL(`${IMG(1)}?o=1`, document.baseURI).href); // v0.24.0: canonical URL
     expect(dlLink().getAttribute('download')).to.equal('abgốc.svg');
     TdLightbox.close();
     TdLightbox.open([IMG(2)], { downloads: () => [{ label: 'Gốc', url: '/files/orig-2.svg' }] });
@@ -338,7 +338,7 @@ describe('v0.17 E6 — lightbox downloads', () => {
     h.next();
     ok(!TdMenu.isOpen(), 'closed on slide change');
     dlMenuBtn().click();
-    expect(menuItems()[0].getAttribute('href')).to.equal(`${IMG(2)}?size=orig`);
+    expect(menuItems()[0].getAttribute('href')).to.equal(new URL(`${IMG(2)}?size=orig`, document.baseURI).href); // v0.24.0: canonical
   });
 
   it('closing the lightbox closes the menu (focus restored to the opener)', async () => {

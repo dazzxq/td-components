@@ -300,8 +300,15 @@ TdLightbox.bind(document, { filmstrip: 'auto' }); // bind() truyền tiếp như
 ### 10. Tải sẵn, lỗi ảnh, hiệu ứng trượt (0.24.0)
 
 - **Tải sẵn ảnh kề:** ảnh đang xem tải xong → kit tải ngầm ảnh trước và ảnh sau (chỉ ảnh, bỏ video; có quay vòng), cùng
-  URL nên lần chuyển sau lấy từ cache. Bỏ qua khi người dùng bật tiết kiệm dữ liệu (`navigator.connection.saveData`);
-  huỷ khi đóng.
+  URL nên lần chuyển sau lấy từ cache. Mỗi ảnh kề được tải **tối đa một lần** trong phiên; huỷ khi đóng / thay gallery.
+  Bỏ qua khi người dùng bật tiết kiệm dữ liệu (`navigator.connection.saveData`). Option `preload`:
+  - `'same-origin'` (**mặc định**): chỉ tải sẵn ảnh **cùng origin** với trang — không gửi request tới host ngoài cho ảnh
+    người dùng chưa xem (tránh rò IP / theo dõi qua ảnh do người khác nhập).
+  - `'all'`: tải sẵn cả ảnh khác origin — dùng khi media nằm trên **CDN tin cậy** của site
+    (`TdLightbox.bind(document, { preload: 'all' })`).
+  - `false`: tắt hẳn.
+
+  Request tải sẵn không gửi `Referer` (`referrerPolicy = 'no-referrer'`), không đặt `crossOrigin`.
 - **Ảnh lỗi:** thay vì khung trống, hiện khối `role="alert"`: "Không tải được ảnh" + nút **Thử lại** (tải lại cùng URL)
   và **Ảnh sau** (khi gallery > 1 ảnh). Thử lại nhận focus nếu focus đang ở trong lightbox mà không ở nút nào khác.
   Nhãn: `labels.loadError`, `labels.retry`, `labels.next`.
@@ -378,6 +385,7 @@ Mọi tuỳ chọn đều không bắt buộc.
 | `history` | `false \| true \| adapter` | `false` | Nút Back của trình duyệt đóng lightbox |
 | `panel` | `false \| true \| (ctx) => Element \| null` | `false` | Panel thông tin |
 | `toolbar` | `Array<spec>` | `[]` | Nút toolbar riêng |
+| `preload` | `false \| 'same-origin' \| 'all'` | `'same-origin'` | Tải sẵn ảnh kề (0.24.0); `'all'` khi media ở CDN tin cậy. Xem [mục 10](#10-tải-sẵn-lỗi-ảnh-hiệu-ứng-trượt-0240) |
 | `filmstrip` | `false \| true \| 'auto'` | `false` | Dải thumbnail dưới ảnh (0.24.0); `'auto'` = khi ≥ 8 ảnh. Xem [Filmstrip](#9-filmstrip--dải-ảnh-nhỏ-0240-tuỳ-chọn) |
 | `closeOnBackdrop` | `boolean` | `true` | Click nền (ngoài ảnh) để đóng. Khác `TdModal` (không đóng khi click nền): trình xem ảnh không có gì để mất |
 | `isForeignLayerOpen` | `() => boolean` | xem dưới | Có lớp khác đang nằm trên lightbox không |
@@ -422,8 +430,13 @@ TdLightbox.open(items, { labels: { prev: 'Previous', next: 'Next', counter: (i, 
 ### Hook isAllowedUrl (chính sách URL)
 
 `defaultIsAllowedUrl` (fail closed): `https:` luôn được; `http:` chỉ khi **trang** đang là `http:` (không hạ cấp từ
-HTTPS); mọi scheme khác (`data:`, `blob:`, `file:`, `javascript:`…) bị từ chối. URL tương đối được resolve theo trang.
-Hook throw → URL bị từ chối.
+HTTPS); mọi scheme khác (`data:`, `blob:`, `file:`, `javascript:`…) bị từ chối. Hook throw → URL bị từ chối.
+
+**URL chuẩn hoá (0.24.0):** trước khi gọi `isAllowedUrl`, kit resolve mỗi URL (`src`, `poster`, `thumb`, link tải) **một
+lần** theo `document.baseURI` — giống hệt cách trình duyệt resolve, kể cả khi trang có `<base href>` — rồi đưa **URL tuyệt
+đối** đó cho hook, và lưu / dùng đúng giá trị đó (`item.src`, `ctx.item`, detail của event, `href` link tải đều là URL
+tuyệt đối). Nhờ vậy chính sách luôn thấy origin thật mà trình duyệt sẽ tải. `defaultIsAllowedUrl` cũng resolve theo
+`document.baseURI`.
 
 **Ảnh cross-origin qua HTTPS được phép theo mặc định.** Mỗi ảnh ngoài làm trình duyệt gửi request (IP, User-Agent,
 Referer) tới host đó. Nếu nội dung do người dùng nhập (bài viết, bình luận), nên **thu hẹp** bằng allowlist:
