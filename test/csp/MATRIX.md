@@ -71,6 +71,8 @@ States: `text`, `text-focus` (focus pseudo), `textarea`, `number`, `size-sm`, `s
 Styled els: `.td-dropdown-button`, `.td-dropdown-arrow` (rotate when open), `.td-dropdown-selected`,
 and (portaled) `.td-dropdown-search`, `.td-dropdown-options` (max-height).
 States: `closed`, `closed-selected`, `open` (portal + settle), `disabled`. (4)
+v0.22.0: `.td-dropdown__options` (listbox) no longer scrolls — `.td-dropdown__scroller` inside it does (max-height);
+new state `create` (`create-label` + 12 options: listbox, scroller, pinned `.td-dropdown__option--create` + its icon).
 
 ### td-button (1 declarative — variant glass OR custom-color inline style)
 Styled el: inner `button` (bg/box-shadow/backdrop-filter from `_glassStyles[variant]`, or

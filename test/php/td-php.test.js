@@ -264,6 +264,21 @@ describe('php/td.php', opts, () => {
     assert.ok(php1('td_dropdown', 'x', { a: 'A' }, 'a', { searchable: true }).indexOf('searchable=') < 0);
   });
 
+  test('td_dropdown create_label → create-label on the host, escaped (v0.22.0)', () => {
+    const html = php1('td_dropdown', 'film', { k: 'Kodak' }, '', { id: 'f', create_label: 'Thêm film mới' });
+    assert.match(html, /^<td-dropdown id="f" searchable="false" allow-clear="false" create-label="Thêm film mới"><select id="f-select" name="film">/);
+    const P = '"><img src=x onerror=alert(1)>\'';
+    const evil = php1('td_dropdown', 'film', { k: 'Kodak' }, '', { id: 'f', create_label: P });
+    assert.ok(evil.includes(' create-label="&quot;&gt;&lt;img src=x onerror=alert(1)&gt;&#039;"'), evil);
+    assert.ok(!evil.includes('<img'));
+    for (const off of [undefined, '', null, ['x']]) {
+      const o = off === undefined ? { id: 'f' } : { id: 'f', create_label: off };
+      assert.ok(!php1('td_dropdown', 'film', { k: 'Kodak' }, '', o).includes('create-label'), JSON.stringify(off));
+    }
+    // a caller `attrs` entry can't smuggle it past the allowlist either (it is an own attribute only)
+    assert.ok(!php1('td_dropdown', 'film', { k: 'K' }, '', { attrs: { 'create-label': 'x' } }).includes('create-label'));
+  });
+
   test('td_link bare => true: plain <a>, no td-btn classes / button children, same URL rules (F7)', () => {
     const a = php1('td_link', 'Tài liệu', 'https://x.vn/a?b=1&c=2', { bare: true, class: 'nav-link', target: '_blank', icon: 'download', loading: true, full_width: true });
     assert.equal(a, '<a class="nav-link" href="https://x.vn/a?b=1&amp;c=2" target="_blank" rel="noopener noreferrer">Tài liệu</a>');

@@ -510,12 +510,14 @@
         ".td-dropdown__arrow",
         ".td-dropdown__menu",
         ".td-dropdown__search",
-        ".td-dropdown__options"
+        ".td-dropdown__options",
+        ".td-dropdown__scroller"
       ],
       "portal": [
         ".td-dropdown__menu",
         ".td-dropdown__search",
-        ".td-dropdown__options"
+        ".td-dropdown__options",
+        ".td-dropdown__scroller"
       ],
       "settle": 350
     },
@@ -524,11 +526,13 @@
       "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Chọn'); d.setAttribute('searchable','false'); window.__mount.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; d.open();",
       "selectors": [
         ".td-dropdown__menu",
-        ".td-dropdown__options"
+        ".td-dropdown__options",
+        ".td-dropdown__scroller"
       ],
       "portal": [
         ".td-dropdown__menu",
-        ".td-dropdown__options"
+        ".td-dropdown__options",
+        ".td-dropdown__scroller"
       ],
       "settle": 350
     },
@@ -540,6 +544,25 @@
       ],
       "portal": [
         ".td-dropdown__option[data-active]"
+      ],
+      "settle": 350
+    },
+    {
+      "state": "create",
+      "setup": "const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Chọn'); d.setAttribute('create-label','Thêm mục mới'); window.__mount.appendChild(d); d.options=Array.from({length:12},(_, i)=>({value:String(i),label:'Mục '+i})); d.open();",
+      "selectors": [
+        ".td-dropdown__menu",
+        ".td-dropdown__options",
+        ".td-dropdown__scroller",
+        ".td-dropdown__option--create",
+        ".td-dropdown__create-icon"
+      ],
+      "portal": [
+        ".td-dropdown__menu",
+        ".td-dropdown__options",
+        ".td-dropdown__scroller",
+        ".td-dropdown__option--create",
+        ".td-dropdown__create-icon"
       ],
       "settle": 350
     },

@@ -2,6 +2,7 @@
 import '/src/form/td-button.js';
 import { TdToast } from '/src/feedback/td-toast.js';
 import '/src/feedback/td-alert.js';
+import { fillIconSlots } from '/src/icons/td-icon.js';
 
 const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning'];
 const TOASTS = ['success', 'error', 'warning', 'info'];
@@ -32,6 +33,9 @@ for (const state of ['rest', 'start']) CASES.push({ kind: 'tooltip', v: 'default
 // v0.21.0 P8: the lighter field focus border must stay ≥ 3:1 (WCAG 1.4.11) against the field fill and the page —
 // measured from computed colours (no screenshot): `pairs` in the returned info.
 for (const v of ['input-field', 'dropdown']) CASES.push({ kind: 'focus', v, state: 'focus', pageOnly: true });
+// v0.22.0: the dropdown create row (accent label + plus icon) on the translucent menu surface, over every backdrop —
+// at rest and active (keyboard / hover fill).
+for (const state of ['rest', 'active']) CASES.push({ kind: 'dropdown-create', v: 'create', state });
 
 const stage = document.getElementById('stage');
 const bd = document.getElementById('backdrop');
@@ -106,6 +110,38 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     el.style.setProperty('left', '48px');
     stage.appendChild(el);
     parts = { label: content };
+  } else if (c.kind === 'dropdown-create') {
+    const menu = document.createElement('div');
+    menu.className = 'td-dropdown__menu td-glass-surface td-glass-surface--strong';
+    menu.setAttribute('data-state', 'open');
+    menu.style.setProperty('top', '96px');
+    menu.style.setProperty('left', '48px');
+    menu.style.setProperty('width', '280px');
+    const listbox = document.createElement('div');
+    listbox.className = 'td-dropdown__options';
+    listbox.setAttribute('role', 'listbox');
+    const scroller = document.createElement('div');
+    scroller.className = 'td-dropdown__scroller';
+    const opt = document.createElement('div');
+    opt.className = 'td-dropdown__option';
+    opt.textContent = 'Kodak Gold';
+    scroller.appendChild(opt);
+    el = document.createElement('div');
+    el.className = 'td-dropdown__option td-dropdown__option--create';
+    el.setAttribute('role', 'option');
+    if (c.state === 'active') el.setAttribute('data-active', '');
+    const icon = document.createElement('span');
+    icon.className = 'td-dropdown__create-icon';
+    icon.setAttribute('data-td-icon', 'plus');
+    const label = document.createElement('span');
+    label.className = 'td-dropdown__option-label';
+    label.textContent = 'Thêm film mới';
+    el.append(icon, label);
+    listbox.append(scroller, el);
+    menu.appendChild(listbox);
+    stage.appendChild(menu);
+    fillIconSlots(el);
+    parts = { label, icon };
   } else if (c.kind === 'focus') {
     let control;
     if (c.v === 'dropdown') {

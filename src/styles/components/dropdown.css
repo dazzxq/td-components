@@ -6,7 +6,9 @@
  * plain fills. Fades in (no pop scale).
  * State: [aria-expanded] / :disabled / [aria-invalid] on the trigger, [data-placeholder] on the value,
  * [hidden] / data-state / data-placement on the menu, [aria-selected] / [data-active] / [aria-disabled] on options.
- * Only geometry (top/left/width, list max-height) is written by JS through CSSOM.
+ * Only geometry (top/left/width, scroller max-height) is written by JS through CSSOM.
+ * v0.22.0: the listbox (.td-dropdown__options) no longer scrolls — its .td-dropdown__scroller does; the optional create
+ * row (.td-dropdown__option--create) is pinned below the scroller, always visible at the bottom of the menu.
  */
 @layer td.tokens {
 	:root {
@@ -18,11 +20,24 @@
 		--td-dropdown-search-bg: var(--td-color-hover);
 		--td-dropdown-search-border: var(--td-control-border-soft);      /* soft like the fields (v0.14.1) */
 		--td-dropdown-hairline: var(--td-color-border);
+		/* v0.22.0 create row label: the accent, one step darker so it keeps ≥ 4.7:1 on the menu surface and its
+		   hover / active fills (contrast gate). Fallback without color-mix(): the accent itself. */
+		--td-dropdown-create-fg: var(--td-accent);
 	}
 
 	:root[data-td-theme="dark"] {
 		--td-dropdown-option-active-line: var(--td-control-border-hover);
 		--td-dropdown-search-bg: rgb(255 255 255 / 6%);
+	}
+
+	@supports (color: color-mix(in srgb, red 50%, blue)) {
+		:root {
+			--td-dropdown-create-fg: color-mix(in srgb, var(--td-accent) 82%, #000);
+		}
+
+		:root[data-td-theme="dark"] {
+			--td-dropdown-create-fg: color-mix(in srgb, var(--td-accent) 55%, #fff); /* lighter step on the dark surface */
+		}
 	}
 }
 
@@ -210,7 +225,14 @@
 		box-shadow: var(--td-field-focus-ring);
 	}
 
+	/* v0.22.0: the listbox holds the scroller + the pinned create row; it does not scroll itself. */
 	.td-dropdown__options {
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+	}
+
+	.td-dropdown__scroller {
 		display: flex;
 		flex-direction: column;
 		gap: 1px;
@@ -259,6 +281,21 @@
 
 	.td-dropdown__option--clear {
 		color: var(--td-field-note);
+	}
+
+	/* v0.22.0: the "add new" action row — accent + semibold label, plus icon, a hairline above it. Never a value. */
+	.td-dropdown__option--create {
+		justify-content: flex-start;
+		margin-top: 4px;
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-dropdown-create-fg);
+		border-top: 1px solid var(--td-dropdown-hairline);
+		border-radius: 0 0 var(--td-glass-radius-inner) var(--td-glass-radius-inner);
+	}
+
+	.td-dropdown__create-icon {
+		display: inline-flex;
+		flex-shrink: 0;
 	}
 
 	.td-dropdown__option-label {
@@ -349,6 +386,11 @@
 		.td-dropdown__option[aria-disabled="true"] {
 			color: GrayText;
 			opacity: 1;
+		}
+
+		.td-dropdown__option--create {
+			color: LinkText;
+			border-top-color: CanvasText;
 		}
 	}
 }
