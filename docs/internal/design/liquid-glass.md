@@ -58,8 +58,9 @@ Cài đặt: [`src/styles/glass.css`](../../../src/styles/glass.css) (recipe + f
 3. **Không trang trí giả kính:** không gradient sheen, không rim inset, không hairline ngoài thứ hai, không film /
    tint trong suốt, không status wash, không glow khi hover, không glyph shadow.
 4. **Không scale trang trí** (press / lift / pop / enter). Popup chỉ **fade**. **Ngoại lệ duy nhất (0.21.0, owner
-   yêu cầu):** modal vào `translateY(12px) scale(0.98) → none` ease-in-out 260ms, ra ease-in 180ms (token
-   `--td-modal-*`; reduced motion → chỉ fade). Wheel datetime cuộn mượt tới giá trị khi mở là chuyển động chức năng. Giữ transform **chức năng**:
+   yêu cầu):** modal vào `scale(0.95) → none` 300ms đường cong lò xo
+   `cubic-bezier(0.34, 1.56, 0.64, 1)` (vượt nhẹ) + fade 200ms, ra `scale(0.95)` 200ms / fade 150ms
+   `cubic-bezier(0.4, 0, 0.2, 1)` (0.22.1, mang từ dcms-modal; token `--td-modal-*`; reduced motion → chỉ fade). Wheel datetime cuộn mượt tới giá trị khi mở là chuyển động chức năng. Giữ transform **chức năng**:
    vị trí thumb slider, trượt thumb switch, zoom / kéo lightbox, xoay mũi tên dropdown, sheet modal trượt lên trên
    điện thoại, slide nhẹ của toast / scroll-top.
 5. **Một shadow.** Mỗi bề mặt một token `box-shadow` (0.21.0: hai lớp — tiếp xúc + toả — vẫn tính là một token; nút:

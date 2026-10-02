@@ -97,7 +97,8 @@ hoặc bị modal mở sau phủ; lightbox mở từ modal nằm trên. Code sit
    `--td-toast-{type}-bg/-fg/-border` (pastel đặc, không blur). `--td-toast-error-border` có tác dụng trở lại;
    `--td-toast-fg`, `-close-fg`, `-glass-bg`, `--td-toast-{type}-icon` hết tác dụng.
 5. **Modal có animation** (260ms vào). Test E2E của site chờ modal mở cần chờ `data-state="open"` hoặc tắt bằng
-   `--td-modal-enter-from: none` + `--td-modal-enter-dur: 0s`.
+   `--td-modal-enter-from: none` + `--td-modal-enter-dur: 0s` (từ 0.22.1 thêm `--td-modal-fade-dur: 0s`,
+   `--td-modal-scrim-dur: 0s`; enter giờ là 300ms).
 6. **Viền focus ô nhập nhạt hơn.** Site cần viền focus đậm như cũ: `--td-field-focus: var(--td-focus)`,
    `--td-field-focus-ring: var(--td-focus-ring)`.
 

@@ -3273,11 +3273,12 @@
  * Per-instance CSSOM custom properties on .td-modal__dialog (validated in JS):
  *   --td-modal-w, --td-modal-h, --td-modal-body-pad, --td-modal-body-overflow
  * Only .td-modal__body scrolls (header/footer pinned, D21). ≤ 640 px: bottom sheet (except --viewport).
- * Motion (v0.21.0, ease-in-out): opening → scrim fades in (--td-modal-scrim-dur, ease-in-out) and the dialog fades +
- * rises from translateY(12px) scale(0.98) (--td-modal-enter-dur, --td-modal-ease); closing reverses faster
- * (--td-modal-exit-dur, --td-modal-exit-ease). The phone sheet slides from the bottom with the same timing.
- * Reduced motion → opacity only, --td-dur-fast. (The scale is a deliberate, modal-only exception to the
- * minimal-surfaces "no decorative scale" rule — owner request.)
+ * Motion (v0.22.1, ported from dcms-modal): opening → scrim fades in (--td-modal-scrim-dur 120ms ease-out), the dialog
+ * fades in (--td-modal-fade-dur 200ms, --td-modal-fade-ease) and scales from --td-modal-enter-from scale(0.95) with a
+ * slight spring overshoot (--td-modal-enter-dur 300ms, --td-modal-enter-ease); closing scales back (--td-modal-exit-dur
+ * 200ms) and fades with the scrim (--td-modal-exit-fade-dur 150ms), both --td-modal-exit-ease. The phone sheet slides
+ * from the bottom (same durations, --td-modal-sheet-ease: no overshoot). Reduced motion → opacity only, --td-dur-fast.
+ * (The scale is a deliberate, modal-only exception to the minimal-surfaces "no decorative scale" rule — owner request.)
  */
 @layer td.tokens {
 	:root {
@@ -3296,14 +3297,19 @@
 		--td-modal-sheet-radius: 24px;
 		--td-modal-pad-x: var(--td-space-lg);
 		--td-modal-pad-y: var(--td-space-md);
-		/* motion (v0.21.0) */
-		--td-modal-enter-dur: 260ms;
-		--td-modal-exit-dur: 180ms;
-		--td-modal-ease: cubic-bezier(0.4, 0, 0.2, 1);
-		--td-modal-exit-ease: cubic-bezier(0.4, 0, 1, 1); /* ease-in */
-		--td-modal-scrim-dur: 240ms;
-		--td-modal-scrim-ease: ease-in-out;
-		--td-modal-enter-from: translateY(12px) scale(0.98);
+		/* motion (v0.22.1, like dcms): open = fast fade + spring scale (slight overshoot); close = quicker reverse */
+		--td-modal-enter-dur: 300ms;                              /* open: transform (scale / sheet slide) */
+		--td-modal-enter-ease: cubic-bezier(0.34, 1.56, 0.64, 1); /* spring, slight overshoot */
+		--td-modal-ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);    /* legacy name (≤ 0.22.0: the open curve) = fade curve */
+		--td-modal-fade-dur: 200ms;                               /* open: opacity */
+		--td-modal-fade-ease: var(--td-modal-ease);
+		--td-modal-exit-dur: 200ms;                               /* close: transform */
+		--td-modal-exit-fade-dur: 150ms;                          /* close: opacity + scrim */
+		--td-modal-exit-ease: cubic-bezier(0.4, 0, 0.2, 1);
+		--td-modal-scrim-dur: 120ms;                              /* open: scrim */
+		--td-modal-scrim-ease: ease-out;
+		--td-modal-sheet-ease: cubic-bezier(0.32, 0.72, 0, 1);    /* phone sheet slide-up (no overshoot: no gap) */
+		--td-modal-enter-from: scale(0.95);                       /* `none` → fade-only */
 	}
 }
 
@@ -3313,6 +3319,9 @@
 
 		position: fixed;
 		inset: 0;
+		/* scroll lock's padding fallback (utils/scroll-lock.js): the viewport grew by the hidden scrollbar's width →
+		   keep the centred dialog where it was (0 when scrollbar-gutter held or there was no classic scrollbar) */
+		inset-inline-end: var(--td-scroll-lock-gap, 0px);
 		z-index: var(--td-z-modal);
 		box-sizing: border-box;
 		display: flex;
@@ -3363,7 +3372,7 @@
 	}
 
 	.td-modal[data-state="closing"] .td-modal__backdrop {
-		transition: opacity var(--td-modal-exit-dur) var(--td-modal-exit-ease);
+		transition: opacity var(--td-modal-exit-fade-dur) var(--td-modal-exit-ease);
 	}
 
 	/* Dialog: the surface recipe (glass.css) gives fill/border/shadow; this block owns geometry + motion (fade + a
@@ -3382,8 +3391,8 @@
 		opacity: 0;
 		transform: var(--td-modal-enter-from);
 		transition:
-			opacity var(--td-modal-enter-dur) var(--td-modal-ease),
-			transform var(--td-modal-enter-dur) var(--td-modal-ease);
+			opacity var(--td-modal-fade-dur) var(--td-modal-fade-ease),
+			transform var(--td-modal-enter-dur) var(--td-modal-enter-ease);
 	}
 
 	.td-modal[data-state="open"] .td-modal__dialog {
@@ -3393,7 +3402,7 @@
 
 	.td-modal[data-state="closing"] .td-modal__dialog {
 		transition:
-			opacity var(--td-modal-exit-dur) var(--td-modal-exit-ease),
+			opacity var(--td-modal-exit-fade-dur) var(--td-modal-exit-ease),
 			transform var(--td-modal-exit-dur) var(--td-modal-exit-ease);
 	}
 
@@ -3552,10 +3561,19 @@
 			border-bottom-width: 0;
 			border-radius: var(--td-modal-sheet-radius) var(--td-modal-sheet-radius) 0 0;
 			transform: translateY(100%);
+			transition:
+				opacity var(--td-modal-fade-dur) var(--td-modal-fade-ease),
+				transform var(--td-modal-enter-dur) var(--td-modal-sheet-ease);
 		}
 
 		.td-modal:not(.td-modal--viewport)[data-state="open"] .td-modal__dialog {
 			transform: none;
+		}
+
+		.td-modal:not(.td-modal--viewport)[data-state="closing"] .td-modal__dialog {
+			transition:
+				opacity var(--td-modal-exit-fade-dur) var(--td-modal-exit-ease),
+				transform var(--td-modal-exit-dur) var(--td-modal-exit-ease);
 		}
 	}
 
@@ -3573,7 +3591,9 @@
 		.td-modal .td-modal__dialog,
 		.td-modal[data-state="open"] .td-modal__dialog,
 		.td-modal[data-state="closing"] .td-modal__dialog,
-		.td-modal:not(.td-modal--viewport)[data-state="open"] .td-modal__dialog {
+		.td-modal:not(.td-modal--viewport) .td-modal__dialog,
+		.td-modal:not(.td-modal--viewport)[data-state="open"] .td-modal__dialog,
+		.td-modal:not(.td-modal--viewport)[data-state="closing"] .td-modal__dialog {
 			transform: none;
 			transition: opacity var(--td-dur-fast) linear;
 		}
