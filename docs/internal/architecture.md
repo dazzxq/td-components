@@ -79,6 +79,23 @@ loading 480, toast 500, tooltip 510 — giữ đồng bộ với `tokens.css`).
   `includeInTrap` nên nút đóng của nó nằm trong vòng Tab của modal. Component KHÔNG tự bắt Escape/Tab trên document.
 - `trapTab(e, container, layer)` là trap dùng chung; `utils/floating.js` (`placeFloating`, `isReferenceHidden`) định
   vị menu/tooltip.
+- **Vòng đời theo "chủ" (v0.21.1)** — option nội bộ của `register()`, không đổi API công khai:
+  - Đăng ký floating khai `anchor` (trigger) + `onCovered()`. Một đăng ký **blocking mới** có layer **thấp hơn** popup
+    đang mở (modal 400 / lightbox 350 < popover 450) gọi `onCovered()` của các popup mở trước nó → popup đóng, không trả
+    focus về trigger (đã inert). Loading (480) không phủ popup (giữ inert + khôi phục), trừ tooltip (`coverAlways`).
+  - `coverFloatingIn(root)` / `floatingContains(root, node)`: modal / lightbox đang đóng đóng luôn các popup có anchor
+    bên trong (ngay, không đợi transition thoát) và coi focus trong popup đó là "focus ở trong dialog".
+    `childFloatingIn(container)`: hovercard giữ mở khi có popup con (TdMenu mở từ nút trong card), đóng con trước.
+  - `watchReference(el, onChange)` (`floating.js`): ResizeObserver (trigger bị ẩn / đổi kích thước),
+    MutationObserver (trigger rời DOM), `transitionend` / `animationend` của tổ tiên (modal chạy hiệu ứng vào) →
+    reposition (đóng khi `isReferenceHidden`). Dùng cho dropdown, chip-input, TdMenu, hovercard, tooltip.
+  - Escape: boundary cao nhất có `wantsEscape(e) !== false`. Tooltip chỉ nhận Escape khi là đăng ký boundary mới nhất
+    (`isNewest()`) hoặc focus đang ở trigger của nó — tooltip hover không cướp Escape của dropdown / menu.
+- **Dải modal / lightbox (v0.21.1)** `[LAYERS.lightbox, LAYERS.popover)`: blocking mở trên một blocking **cao hơn** trong
+  dải (lightbox mở từ modal) được nâng: layer logic = `min(popover − 1, layer trên + 1)` (registry + inert lease), z-index
+  thị giác = z-index **computed** của phần tử bên dưới + 1 (CSSOM, theo token site đã đổi). `restackBand()` tính lại
+  khi đăng ký / gỡ và sau `TdModalStackManager._sync()` (khi bật `BASE_Z_INDEX`). Cùng layer (modal trên modal) không
+  nâng — thứ tự đăng ký + thứ tự DOM đã đúng. Loading / toast / tooltip không bao giờ bị vượt.
 
 ## Sơ đồ phụ thuộc
 
@@ -89,7 +106,7 @@ form/* (trừ button) ──► td-form-element ;  button ──► td-base-elem
 td-datetime-picker ──► feedback/td-modal ──► td-modal-stack
 td-table ──► td-pagination, td-empty-state
 modal, lightbox, loading, dropdown, tooltip, toast ──► utils/layers ──► utils/inert-lock
-dropdown, tooltip ──► utils/floating
+dropdown, chip-input, menu, hovercard, tooltip ──► utils/floating
 td-datetime-picker ──► utils/datetime
 dom-utils: độc lập, không component nào bắt buộc dùng
 ```

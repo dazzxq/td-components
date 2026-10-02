@@ -67,8 +67,10 @@
  *   (placeFloating: bottom preferred, flips, start-aligned, viewport-clamped, height capped to the room).
  * - Over an open modal the card keeps its small-popup surface (94 % + blur, v0.20.0 minimal surfaces).
  */
-import { LAYERS, register as registerLayer, focusablesIn } from '../utils/layers.js';
-import { placeFloating, isReferenceHidden } from '../utils/floating.js';
+import {
+  LAYERS, register as registerLayer, focusablesIn, childFloatingIn, coverFloatingIn,
+} from '../utils/layers.js';
+import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
 
 const SHOW_DELAY = 350;
 const HIDE_DELAY = 250;
@@ -403,12 +405,18 @@ function renderContent(my, value) {
   show('open');
 }
 
+/** Whether `node` is in a popup opened from inside the card (a TdMenu anchored on a card button — v0.21.1 F3). */
+function inChildPopup(node) {
+  return !!card && node instanceof Node && childFloatingIn(card).some((r) => r.element.contains(node));
+}
+
 function keepOpen() {
   if (!cur) return false;
   const t = cur.trigger;
   if (!t.isConnected) return false;
+  if (card && childFloatingIn(card).length) return true; // a child popup is open: its anchor must stay
   const a = document.activeElement;
-  const focusHere = a instanceof Node && a !== document.body && (t.contains(a) || card.contains(a));
+  const focusHere = a instanceof Node && a !== document.body && (t.contains(a) || card.contains(a) || inChildPopup(a));
   return hoverTrigger === t || overCard || focusHere;
 }
 
@@ -422,14 +430,14 @@ function scheduleHide() {
 function onFocusOut(e) {
   if (!cur) return;
   const next = e.relatedTarget;
-  if (next instanceof Node && (cur.trigger.contains(next) || card.contains(next))) return;
+  if (next instanceof Node && (cur.trigger.contains(next) || card.contains(next) || inChildPopup(next))) return;
   scheduleHide();
 }
 
 function onDocPointerDown(e) {
   if (!cur) return;
   const t = e.target;
-  if (t instanceof Node && (card.contains(t) || cur.trigger.contains(t))) return;
+  if (t instanceof Node && (card.contains(t) || cur.trigger.contains(t) || inChildPopup(t))) return;
   closeSession('outside');
 }
 
@@ -508,19 +516,26 @@ function closeSession(reason) {
   abortInflight(); // …and stop its network request
   const s = cur;
   if (!s) return;
+  // v0.21.1 F3: popups opened from inside the card (a TdMenu on a card button) close first, before their anchor goes
+  const a0 = document.activeElement;
+  const childHadFocus = inChildPopup(a0);
+  if (card) coverFloatingIn(card);
   cur = null;
   overCard = false;
   document.removeEventListener('pointerdown', onDocPointerDown, true);
   window.removeEventListener('scroll', onScroll, true);
   window.removeEventListener('resize', onResize);
   if (s.raf) cancelAnimationFrame(s.raf);
+  if (s.unwatch) s.unwatch();
   if (s.layer) s.layer.release();
   const t = s.trigger;
   const a = document.activeElement;
-  const hadFocus = !!card && a instanceof Node && card.contains(a);
+  const hadFocus = childHadFocus || (!!card && a instanceof Node && card.contains(a));
   if (t.hasAttribute('aria-expanded')) t.setAttribute('aria-expanded', 'false');
   if (t.getAttribute('aria-controls') === CARD_ID) t.removeAttribute('aria-controls');
-  if (reason === 'escape' || reason === 'tab' || (hadFocus && reason !== 'outside')) focusTrigger(t);
+  // 'covered' (a newer modal / lightbox, or the closing dialog the trigger lives in): focus belongs to that layer
+  if (reason !== 'covered'
+    && (reason === 'escape' || reason === 'tab' || (hadFocus && reason !== 'outside'))) focusTrigger(t);
   if (card) {
     card.hidden = true;
     card.setAttribute('data-state', 'closed');
@@ -561,7 +576,16 @@ function open(trigger, binding) {
   document.addEventListener('pointerdown', onDocPointerDown, true);
   window.addEventListener('scroll', onScroll, true);
   window.addEventListener('resize', onResize);
-  cur.layer = registerLayer({ layer: LAYERS.popover, element: c, keyboard: 'boundary', onEscape, onTab });
+  cur.layer = registerLayer({
+    layer: LAYERS.popover,
+    element: c,
+    keyboard: 'boundary',
+    onEscape,
+    onTab,
+    anchor: trigger, // v0.21.1: covered by a newer modal / lightbox, or by the closing dialog the trigger lives in
+    onCovered: () => closeSession('covered'),
+  });
+  cur.unwatch = watchReference(trigger, reposition); // hidden without a scroll, removed, entry transition
 
   if (src.kind === 'template') {
     renderContent(my, tpl.content.cloneNode(true));

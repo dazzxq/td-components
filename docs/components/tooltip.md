@@ -303,6 +303,11 @@ vào `data-tooltip` là an toàn (miễn là bạn escape đúng ngữ cảnh **
 
 ## Lưu ý & lỗi thường gặp
 
+- **Tooltip ẩn ngay khi một lớp chặn mới mở (0.21.1):** modal, lightbox hoặc loading mở bằng code khi tooltip đang
+  hiện do hover → tooltip ẩn ngay. Trigger bị ẩn (`display: none`, chuyển tab) / bị gỡ → ẩn; tooltip của phần tử được
+  focus khi modal mở được đặt lại vị trí khi hiệu ứng vào kết thúc.
+- **Escape (0.21.1):** tooltip chỉ nhận Escape khi nó là lớp mở gần nhất hoặc focus đang ở trigger của nó. Tooltip
+  hiện do hover mà sau đó có dropdown / menu mở → Escape đóng dropdown / menu trước, lần sau mới đóng tooltip.
 - **Tooltip không hiện:** module chưa được import, `td.css` chưa nạp, attribute rỗng, hoặc trigger đang bị cuộn ra
   ngoài / không hiển thị.
 - **Nút `disabled`:** phần tử bị disabled không nhận focus và (tuỳ trình duyệt) không phát sự kiện con trỏ, nên tooltip

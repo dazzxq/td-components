@@ -59,6 +59,51 @@ export function isReferenceHidden(rect, el) {
 }
 
 /**
+ * Follow the lifetime of an open popup's reference element (v0.21.1) — things a scroll / resize listener never sees:
+ * - ResizeObserver on `el`: it was resized or stopped rendering (`display: none` → 0×0: tab switched, accordion
+ *   closed, an ancestor hidden);
+ * - MutationObserver (document, childList + subtree), only to notice `el` leaving the DOM (`!el.isConnected`);
+ * - `transitionend` / `animationend` of an ANCESTOR of `el` (capture, document): e.g. a modal whose entry transform
+ *   (translateY + scale) just finished — the popup was placed against the moving dialog.
+ * `onChange` is the popup's reposition (which already closes once isReferenceHidden() / the reference is gone).
+ * @param {Element} el
+ * @param {() => void} onChange
+ * @returns {() => void} stop (idempotent)
+ */
+export function watchReference(el, onChange) {
+  if (typeof document === 'undefined' || !el) return () => {};
+  let stopped = false;
+  const fire = () => {
+    if (stopped) return;
+    try { onChange(); } catch (err) { console.error(err); }
+  };
+  let ro = null;
+  if (typeof ResizeObserver !== 'undefined') {
+    ro = new ResizeObserver(fire); // the initial notification is one harmless reposition
+    ro.observe(el);
+  }
+  let mo = null;
+  if (typeof MutationObserver !== 'undefined') {
+    mo = new MutationObserver(() => { if (!el.isConnected) fire(); });
+    mo.observe(document, { childList: true, subtree: true });
+  }
+  const onEnd = (e) => {
+    const t = e.target;
+    if (t instanceof Node && t !== el && t.contains(el)) fire();
+  };
+  document.addEventListener('transitionend', onEnd, true);
+  document.addEventListener('animationend', onEnd, true);
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    if (ro) ro.disconnect();
+    if (mo) mo.disconnect();
+    document.removeEventListener('transitionend', onEnd, true);
+    document.removeEventListener('animationend', onEnd, true);
+  };
+}
+
+/**
  * Place `panel` against `trigger`:
  * - opens on the preferred side when it fits, else on the side with more room — never overlapping the trigger;
  * - when neither side fits, caps `opts.list` (the scrollable part) to the room instead of clamping `top`;
