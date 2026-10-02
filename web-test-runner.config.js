@@ -39,10 +39,17 @@ const storiesPlugin = {
  * `customElements` / `attachInternals` do not exist.
  */
 export default {
-  files: ['src/**/*.browser-test.js'],
+  files: ['src/**/*.browser-test.js', '!src/**/*.scrollbar.browser-test.js'],
   nodeResolve: true,
   plugins: [storiesPlugin],
   browsers: [playwrightLauncher({ product: 'chromium' })],
+  // Headless Playwright hides scrollbars (--hide-scrollbars); the scroll-lock gutter suite (v0.22.1) needs a real
+  // classic scrollbar to prove the page does not jump sideways, so it runs in its own group with them shown.
+  groups: [{
+    name: 'scrollbars',
+    files: ['src/**/*.scrollbar.browser-test.js'],
+    browsers: [playwrightLauncher({ product: 'chromium', launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } })],
+  }],
   testFramework: {
     config: { ui: 'bdd', timeout: '10000' },
   },

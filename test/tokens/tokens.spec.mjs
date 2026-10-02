@@ -13,8 +13,8 @@
  *   (B2) v0.20.0 minimal surfaces, per selector of the plan's mapping table: opaque group (modal dialog, loading
  *       card, scroll-top; v0.21.0 tooltip = opaque BLACK chip) and every button (incl. --custom) have no backdrop-filter and a solid fill; the
  *       small popups (menu, dropdown, chip-input suggestions, hovercard) blur(12px) on 94 %; v0.21.0 the toast is a
- *       SOLID pastel pill (no backdrop-filter, no icon); the modal dialog's motion tokens (260 ms ease-in-out entry
- *       from translateY(12px) scale(0.98); reduced motion → 120 ms opacity only); lightbox
+ *       SOLID pastel pill (no backdrop-filter, no icon); the modal dialog's motion tokens (v0.22.1: 200 ms fade + 300 ms
+ *       spring entry from scale(0.95); reduced motion → 120 ms opacity only); lightbox
  *       toolbar / counter blur(12px) on dark 88 %; no surface or button paints a background-image (sheen / wash);
  *       the -tint alias still colours its button; every fallback still forces them solid / unfiltered;
  *   (C) fallbacks: html[data-td-glass="off"] → opaque --td-glass-solid, no backdrop-filter, on
@@ -239,9 +239,10 @@ function materialChecks(tag, s) {
   }
   // v0.21.0 P5: modal motion tokens (the fixture dialog sits in the "opening" pose: no data-state="open" ancestor)
   const m = s['s-modal'];
-  check(`${tag} modal enter duration = --td-modal-enter-dur`, m.tdur === '0.26s, 0.26s', m.tdur);
-  check(`${tag} modal ease = --td-modal-ease`, m.tease === 'cubic-bezier(0.4, 0, 0.2, 1), cubic-bezier(0.4, 0, 0.2, 1)', m.tease);
-  check(`${tag} modal entry pose translateY(12px) scale(0.98)`, m.transform === 'matrix(0.98, 0, 0, 0.98, 0, 12)', m.transform);
+  check(`${tag} modal durations = --td-modal-fade-dur, --td-modal-enter-dur`, m.tdur === '0.2s, 0.3s', m.tdur);
+  check(`${tag} modal curves = --td-modal-fade-ease, --td-modal-enter-ease (spring)`,
+    m.tease === 'cubic-bezier(0.25, 0.46, 0.45, 0.94), cubic-bezier(0.34, 1.56, 0.64, 1)', m.tease);
+  check(`${tag} modal entry pose scale(0.95)`, m.transform === 'matrix(0.95, 0, 0, 0.95, 0, 0)', m.transform);
   for (const id of CLEAR) {
     check(`${tag} ${id} blur(12px)`, BLUR12.test(s[id].bf), s[id].bf);
     check(`${tag} ${id} dark 88 %`, sameColor(s[id].bg, [20, 20, 22, 0.88]), s[id].bg);

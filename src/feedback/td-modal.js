@@ -55,7 +55,7 @@ const SIZES = ['xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', 'full']
 const BTN_VARIANTS = ['primary', 'secondary', 'danger', 'success', 'warning', 'info'];
 const OVERFLOWS = ['visible', 'hidden', 'auto', 'scroll', 'clip'];
 const FIELD = 'input:not([disabled]):not([type="hidden"]), textarea:not([disabled]), select:not([disabled])';
-const EXIT_MS = 220; // minimum wait before the root is removed (≥ --td-modal-exit-dur + margin; longer tokens extend it)
+const EXIT_MS = 240; // min wait before the root is removed (≥ --td-modal-exit-dur 200ms + margin; longer tokens extend it)
 const REDUCED_EXIT_MS = 120; // reduced motion: the opacity-only fade (--td-dur-fast) when the computed style can't be read
 const EXIT_MARGIN = 40;
 const SPINNER = '<span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden>'
@@ -415,7 +415,8 @@ export class TdModal {
       if (root.parentNode) root.remove();
     };
     // Stay connected for the whole exit transition actually computed in the closing state (dialog + scrim) — under
-    // reduced motion that is the 120 ms opacity fade (P5), otherwise the --td-modal-exit-dur slide.
+    // reduced motion that is the 120 ms opacity fade (P5), otherwise the longer of --td-modal-exit-dur (scale) and
+    // --td-modal-exit-fade-dur (opacity, scrim).
     const measured = transitionEndMs(inst.dialog, root.querySelector('.td-modal__backdrop'));
     if (prefersReducedMotion()) {
       setTimeout(remove, (measured === null ? REDUCED_EXIT_MS : measured) + EXIT_MARGIN);
@@ -426,7 +427,7 @@ export class TdModal {
   }
 
   /**
-   * @private a CSS time custom property of `el` in ms ("260ms" / "0.26s"); `fallback` when unset or unparsable.
+   * @private a CSS time custom property of `el` in ms ("300ms" / "0.3s"); `fallback` when unset or unparsable.
    * @param {Element} el
    * @param {string} prop
    * @param {number} fallback
