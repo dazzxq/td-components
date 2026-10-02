@@ -117,12 +117,6 @@ export class TdMediaGrid extends TdBaseElement {
     this.classList.add('td-media-grid');
     this.setAttribute('role', 'list');
     this._syncAttrs();
-    if (!this._live || this._live.parentNode !== this) {
-      this._live = this._live || document.createElement('span');
-      this._live.className = 'td-sr-only';
-      this._live.setAttribute('aria-live', 'polite');
-      this.appendChild(this._live);
-    }
     this._sync(true);
 
     this.listen(this, 'click', (e) => this._onClick(e), true);
@@ -133,7 +127,8 @@ export class TdMediaGrid extends TdBaseElement {
         if (records.every((r) => this._live && (r.target === this._live || this._live.contains(r.target)))) return;
         this._queueSync();
       });
-      this._mo.observe(this, { childList: true, subtree: true });
+      // data-id changes too: the selection is reconciled (an id that no longer exists leaves it)
+      this._mo.observe(this, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-id'] });
       this._cleanups.push(() => { this._mo?.disconnect(); this._mo = null; });
     }
     this._cleanups.push(() => this._setDocKey(false));
@@ -179,6 +174,7 @@ export class TdMediaGrid extends TdBaseElement {
    * @private
    */
   _sync(initial) {
+    this._ensureLiveRegion();
     const items = this.items;
     const present = new Set();
     for (const item of items) {
@@ -190,6 +186,19 @@ export class TdMediaGrid extends TdBaseElement {
     if (this._anchor != null && !present.has(this._anchor)) this._anchor = null;
     this._paint(items);
     if (removed.length && !initial) this._changed([], removed, true);
+  }
+
+  /**
+   * One polite live region, last child of the host — recreated / re-attached when the site replaced the children
+   * (pagination via innerHTML).
+   * @private
+   */
+  _ensureLiveRegion() {
+    if (this._live && this._live.parentNode === this) return;
+    this._live = this._live || document.createElement('span');
+    this._live.className = 'td-sr-only';
+    this._live.setAttribute('aria-live', 'polite');
+    this.appendChild(this._live);
   }
 
   /** @private */
@@ -328,8 +337,9 @@ export class TdMediaGrid extends TdBaseElement {
 
   /** @private Escape clears the selection, unless an overlay layer is open or an IME is composing */
   _onDocKeydown(e) {
-    if (e.key !== 'Escape' || e.isComposing || e.keyCode === 229) return;
-    if (!this._selected.size || hasActiveAbove(0)) return;
+    if (e.key !== 'Escape' || e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
+    // defaultPrevented: a layer registered earlier already consumed this Escape (and may have unregistered itself)
+    if (!this._selected.size || this.hasAttribute('disabled') || hasActiveAbove(0)) return;
     this._commit(new Set(), true);
     this._anchor = null;
   }
@@ -418,7 +428,10 @@ export class TdMediaGrid extends TdBaseElement {
     this._announceQueued = true;
     queueMicrotask(() => {
       this._announceQueued = false;
-      if (this._live && this._live.textContent !== this._pendingAnnounce) this._live.textContent = this._pendingAnnounce;
+      if (!this._live) return;
+      // the same text again (e.g. a second limit attempt): clear first so the region mutates and is read again
+      if (this._live.textContent === this._pendingAnnounce) this._live.textContent = '';
+      this._live.textContent = this._pendingAnnounce;
     });
   }
 

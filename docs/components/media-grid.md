@@ -105,6 +105,7 @@ grid.selectedIds;                   // ['p2', 'p3'] — theo thứ tự DOM
 
 Site append ô mới (tải thêm, phân trang) hoặc xoá ô: element tự nâng cấp ô mới (gom theo microtask) và bỏ ô đã gỡ khỏi
 lựa chọn — nếu tập chọn đổi thì phát `select-change` với `removed`.
+Thay toàn bộ con của host (`grid.innerHTML = …` khi phân trang) cũng được: live region được gắn lại tự động.
 
 ### 7. Contact sheet kiểu 135: lightbox + menu ⋯ + PHP
 
@@ -161,7 +162,7 @@ chọn, Esc đóng menu trước (không bỏ lựa chọn).
 |---|---|---|---|
 | `label` | string | — | Tên của danh sách (thành `aria-label` của host). Đổi tại chỗ. |
 | `max` | số nguyên ≥ 1 | — (không giới hạn) | Số ô tối đa người dùng chọn được. Giá trị khác → không giới hạn. |
-| `disabled` | boolean | — | Người dùng không chọn / lật được (tick bị `disabled`); `activate` vẫn chạy; lựa chọn hiện có giữ nguyên. |
+| `disabled` | boolean | — | Người dùng không chọn / lật được (tick bị `disabled`); `activate` vẫn chạy; lựa chọn hiện có giữ nguyên (Esc cũng không bỏ). |
 
 Đổi attribute **không** render lại: con của host (ảnh, nút của site) giữ nguyên node.
 
@@ -243,7 +244,7 @@ tick đã chọn.
 | Tab | Đi qua các phần tử mở (tick có `tabindex="-1"` — không thêm hàng trăm điểm Tab) và control khác của site |
 | Space | Lật ô (chặn cuộn trang). Shift + Space: chọn dải từ ô neo |
 | Enter | Luôn `activate` (kể cả khi đang chọn); không đổi lựa chọn |
-| Esc | Bỏ hết lựa chọn, giữ focus — trừ khi có lớp nổi đang mở (modal, lightbox, menu, dropdown…) hoặc đang gõ IME |
+| Esc | Bỏ hết lựa chọn, giữ focus — trừ khi có lớp nổi đang mở (modal, lightbox, menu, dropdown…; Esc đóng lớp đó trước), Esc đã bị listener khác `preventDefault()`, lưới `disabled`, hoặc đang gõ IME |
 
 - Phím chỉ được xử lý khi focus nằm trên phần tử mở; nút ⋯ / link khác trong ô tự xử lý phím của nó.
 - Host `role="list"`, ô `role="listitem"`; tick là nút bật/tắt (`aria-pressed`). Một live region `polite` đọc "Đã chọn
@@ -260,7 +261,8 @@ không `style="…"`.
 
 ## Lưu ý & lỗi thường gặp
 
-- **Quên `data-id`** hoặc `data-id` trùng: ô không chọn được (ô trùng sau bị bỏ qua).
+- **Quên `data-id`** hoặc `data-id` trùng: ô không chọn được (ô trùng sau bị bỏ qua). `data-id` nên cố định; nếu site
+  đổi `data-id` của một ô, id cũ bị bỏ khỏi lựa chọn (`select-change` với `removed`).
 - **Tick nằm sai chỗ**: tick định vị `absolute` theo ô (`.td-media-grid__item` là `position: relative`); nếu site bọc
   phần tử mở trong wrapper có `position`, tick bám theo wrapper đó.
 - **Click khi đang chọn**: td-media-grid bắt click trên phần tử mở / tick ở pha **capture** trên host rồi
