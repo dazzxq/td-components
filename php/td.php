@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.21.1/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.21.1', __DIR__ . '/public/assets/vendor/td-components/0.21.1');
+ *   require_once '/path/to/vendor/td-components/0.22.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.22.0', __DIR__ . '/public/assets/vendor/td-components/0.22.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -111,7 +111,7 @@ namespace TdComponents {
         private static int $uid = 0;
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.21.1') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.22.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          */
@@ -738,7 +738,7 @@ namespace {
      * Options: label, placeholder (⇒ an empty first option + the component's clear option), searchable
      * (absent / null = auto when > 8 options; false, 0 and the strings 'false' / '0' / 'off' / 'no' / '' — trimmed,
      * any case — turn it off; anything else keeps PHP truthiness: true, 1, '1', 'true', 'yes', 'on'… → on), required, disabled, aria_label, id (host; select = {id}-select), class,
-     * attrs (host).
+     * create_label (v0.22.0 → `create-label`: the "add new" action row, only with JS), attrs (host).
      */
     function td_dropdown(string $name, array $options, string|int|null $value = '', array $o = []): string
     {
@@ -766,6 +766,9 @@ namespace {
             'searchable' => $searchable ? null : 'false',
             // A placeholder means "may be left empty" → the component's clear option.
             'allow-clear' => $placeholder !== null ? null : 'false',
+            // v0.22.0: fixed "add new" action row at the bottom of the menu (fires `create` { query }).
+            'create-label' => isset($o['create_label']) && is_scalar($o['create_label']) && (string) $o['create_label'] !== ''
+                ? (string) $o['create_label'] : null,
         ];
         $taken = [];
         $html = '<td-dropdown' . Td::ownAttrs($host, $taken) . Td::attrs(is_array($o['attrs'] ?? null) ? $o['attrs'] : [], $taken) . '>';

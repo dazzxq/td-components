@@ -364,9 +364,9 @@ async function runEngine(name, launcher) {
         // (D) dark opt-in
         await page.evaluate(() => document.documentElement.setAttribute('data-td-theme', 'dark'));
         // Buttons transition colour / shadow (120ms); a slow CI engine can still be mid-transition after a fixed wait
-        // (v0.21.0 CI flake: WebKit read the light / half-way primary). Poll until the primary settles on the dark value.
+        // (v0.21.0 CI flake: WebKit read the light / half-way primary). Poll until the primary (fill, label, shadow) and danger fill settle on the dark values; the check still asserts them exactly.
         let d = await read(page);
-        for (let i = 0; i < 40 && !(sameColor(d['b-primary'].bg, [244, 244, 245, 1]) && sameAlphas(d['b-primary'].shadow, [0.2, 0.24])); i++) {
+        for (let i = 0; i < 40 && !(sameColor(d['b-primary'].bg, [244, 244, 245, 1]) && sameColor(d['b-primary'].color, [24, 24, 27, 1]) && sameAlphas(d['b-primary'].shadow, [0.2, 0.24]) && sameColor(d['b-danger'].bg, [57, 26, 28, 1])); i++) {
           await page.waitForTimeout(100);
           d = await read(page);
         }

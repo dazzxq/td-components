@@ -2,6 +2,7 @@
      (options are a JS property). Explicit host ids → deterministic {host}-trigger / -listbox / -opt-{i} ids.
      Template 1 = the host tree (closed). Template 2 (`data-portal`) = the body-portaled menu of an OPEN dropdown:
      compare `el._menuElement` (not el.firstElementChild); the `hidden` attribute is absent while open.
+     v0.22.0: the status precedes the listbox; the rows live in a role=presentation scroller inside it.
      Checked by src/form/td-batch3-dropdown.browser-test.js. -->
 <template data-component="td-dropdown"
           data-markup='<td-dropdown id="dd-c" label="Thành phố" required value="sg" searchable="false"></td-dropdown>'
@@ -16,11 +17,13 @@
           data-setup='el.options = [{ value: "hn", label: "Hà Nội" }, { value: "sg", label: "Sài Gòn" }]; el.open();'>
   <div class="td-dropdown__menu td-glass-surface td-glass-surface--strong" id="dd-m-menu" data-state="open" data-placement="bottom">
     <div class="td-dropdown__search-wrap"><input type="text" class="td-dropdown__search" aria-label="Tìm kiếm" placeholder="Tìm kiếm..." autocomplete="off" spellcheck="false" aria-autocomplete="list" aria-controls="dd-m-listbox"></div>
-    <div class="td-dropdown__options" role="listbox" id="dd-m-listbox" aria-labelledby="dd-m-label">
-      <div class="td-dropdown__option td-dropdown__option--clear" role="option" id="dd-m-opt-clear" aria-selected="false" data-value="__CLEAR__"><span class="td-dropdown__option-label">Không chọn</span></div>
-      <div class="td-dropdown__option" role="option" id="dd-m-opt-0" aria-selected="false" data-value="hn" data-index="0"><span class="td-dropdown__option-label">Hà Nội</span></div>
-      <div class="td-dropdown__option" role="option" id="dd-m-opt-1" aria-selected="true" data-value="sg" data-index="1" data-active=""><span class="td-dropdown__option-label">Sài Gòn</span><span class="td-dropdown__check" data-td-icon="check" aria-hidden="true"><svg aria-hidden="true" class="td-icon td-icon--m" data-icon="check"></svg></span></div>
-    </div>
     <p class="td-dropdown__empty" role="status"></p>
+    <div class="td-dropdown__options" role="listbox" id="dd-m-listbox" aria-labelledby="dd-m-label">
+      <div class="td-dropdown__scroller" role="presentation">
+        <div class="td-dropdown__option td-dropdown__option--clear" role="option" id="dd-m-opt-clear" aria-selected="false" data-value="__CLEAR__"><span class="td-dropdown__option-label">Không chọn</span></div>
+        <div class="td-dropdown__option" role="option" id="dd-m-opt-0" aria-selected="false" data-value="hn" data-index="0"><span class="td-dropdown__option-label">Hà Nội</span></div>
+        <div class="td-dropdown__option" role="option" id="dd-m-opt-1" aria-selected="true" data-value="sg" data-index="1" data-active=""><span class="td-dropdown__option-label">Sài Gòn</span><span class="td-dropdown__check" data-td-icon="check" aria-hidden="true"><svg aria-hidden="true" class="td-icon td-icon--m" data-icon="check"></svg></span></div>
+      </div>
+    </div>
   </div>
 </template>

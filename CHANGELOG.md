@@ -2,6 +2,26 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.22.0
+
+`<td-dropdown>` dòng hành động "＋ Thêm … mới…" ở đáy menu (đề xuất của site 135; plan
+`docs/internal/plans/v0.22.0-dropdown-create.md`, Codex plan-review APPROVE 3 vòng).
+
+### Added
+
+- `<td-dropdown create-label="Thêm film mới">` (property `createLabel`): một dòng hành động **cố định ở đáy** menu,
+  ngoài danh sách cuộn, không bị lọc khi tìm (đang gõ → `Thêm “{chữ đang gõ}”`, `TdDropdown.labels.createWithQuery`).
+  Bấm / Enter → menu đóng, focus về trigger, gọi `onCreate(query)` rồi phát sự kiện `create` (`detail: { query }` — chữ
+  đang gõ, chỉ trim hai đầu). Không bao giờ là giá trị: không đổi lựa chọn, không `change`, không vào form, không ảnh
+  hưởng `required`. Site mở modal của nó, lưu, rồi `options = [...]` + `setValue(id)`.
+- PHP: `td_dropdown(…, ['create_label' => '…'])`.
+- Token `--td-dropdown-create-fg`.
+
+### Changed
+
+- DOM menu dropdown: thông báo "Không có kết quả" nằm **trước** listbox; listbox chứa `.td-dropdown__scroller` (vùng
+  cuộn) — code / CSS site bám vào `.td-dropdown__options` như vùng cuộn cần chuyển sang `.td-dropdown__scroller`.
+
 ## 0.21.1
 
 Sửa lỗi khi kết hợp component (popup / modal / lightbox) — plan `docs/internal/plans/v0.21.1-combination-fixes.md`

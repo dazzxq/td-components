@@ -61,7 +61,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.21.1/
+public/assets/vendor/td-components/0.22.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -69,7 +69,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.21.1';
+const TD_VERSION = '0.22.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -291,6 +291,7 @@ dạng chuỗi với value của option; khớp → `selected`.
 | `searchable` | không truyền / `null` → tự bật khi > 8 option. **Tắt**: `false`, `0` và chuỗi `'false'` `'0'` `'off'` `'no'` `''` (bỏ khoảng trắng, không phân biệt hoa thường — 0.18.0, tiện khi giá trị đến từ config/DB). Mọi giá trị khác theo truthiness của PHP (`true`, `1`, `'1'`, `'true'`, `'yes'`, `'on'`… → bật) |
 | `required`, `disabled`, `aria_label` | đặt trên `<select>` (component lấy lại khi upgrade) |
 | `id` | id host; select = `{id}-select` |
+| `create_label` | (0.22.0) chuỗi → attribute `create-label` trên host (escape như mọi attribute): dòng "Thêm mới" cố định ở đáy menu, phát event `create` với `{ query }`. Chỉ có khi JS đã nạp. Rỗng / không truyền / không phải chuỗi-số → không in. Không đặt được qua `attrs` (không nằm trong allowlist) |
 | `class`, `attrs` | trên host `<td-dropdown>` |
 
 Markup:
@@ -314,6 +315,14 @@ Markup:
   `value=""` **không đứng đầu** mới là một mục chọn được (gửi `''`, thoả `required` — như `<select>` native). Nút
   "Không chọn" (`allow-clear`) xoá hẳn lựa chọn.
 - Không cần khối JSON `options` + script gán `el.options` như cách cũ.
+- **Thêm mục mới ngay trong dropdown** (0.22.0): `create_label` in `create-label` lên host; JS của trang nghe event
+  `create` (mở modal thêm mới, lưu, rồi `dd.options = [...]` + `dd.setValue(id)` — `setValue` không phát `change`).
+  Bỏ cách tạm option giả `__new__` + nghe `change`: dòng tạo không bao giờ là giá trị nên không lẫn vào submit /
+  `required`. Ví dụ đầy đủ: [Dropdown — mục 10](../components/dropdown.md#10-dòng--thêm-mới-ở-cuối-menu-create-label-0220).
+
+```php
+<?= td_dropdown('film_id', $films, $roll['film_id'] ?? '', ['label' => 'Film', 'create_label' => 'Thêm film mới']) ?>
+```
 
 ## td_toggle và td_checkbox
 

@@ -222,6 +222,74 @@ Option `value=""` **đứng đầu** (dạng "Chọn…") là **placeholder**, g
 `placeholder` của host (nếu host chưa đặt); nếu nó là lựa chọn mặc định thì dropdown = chưa có giá trị (không gửi,
 `required` báo thiếu, reset về chưa chọn). Option `value=""` ở vị trí khác vẫn là một mục bình thường.
 
+### 10. Dòng "＋ Thêm mới" ở cuối menu (`create-label`, 0.22.0)
+
+Cho người dùng thêm một mục **mới** ngay trong dropdown (ví dụ thêm film / máy / lab vào catalog rồi chọn luôn), thay
+cho nút riêng bên dưới hoặc option giả kiểu `__new__`:
+
+```html
+<td-dropdown id="film" name="film" label="Film" create-label="Thêm film mới"></td-dropdown>
+```
+
+Menu có thêm **một dòng hành động cố định ở đáy** (icon `plus`, chữ màu accent, đậm, có đường kẻ phía trên), nằm ngoài
+vùng cuộn nên danh sách dài cuộn tới đâu dòng này vẫn luôn thấy:
+
+- **Không bao giờ là một giá trị**: bấm vào không đổi lựa chọn, không phát `change`, không vào `FormData`, không ảnh
+  hưởng `required`.
+- **Không bị lọc** khi tìm, vẫn hiện khi danh sách rỗng / không có kết quả (thông báo "Không tìm thấy kết quả" nằm phía
+  trên danh sách, dòng tạo luôn ở cuối).
+- Chưa gõ gì → chữ là `create-label`. Đang gõ trong ô tìm kiếm → chữ là `TdDropdown.labels.createWithQuery` với
+  `{query}` = chữ đã gõ (trim hai đầu), mặc định `Thêm “Portra 400”`. Chữ luôn đưa vào dạng **text** (đã escape) — gõ
+  `<img onerror>` chỉ hiện ra đúng chuỗi đó.
+- Kích hoạt bằng chuột, hoặc `Enter` / `Space` khi dòng đang active (`↑` `↓` `Home` `End` `PageUp` `PageDown` đi tới
+  được như một mục cuối danh sách; type-ahead bỏ qua nó).
+
+Khi kích hoạt, **theo đúng thứ tự**:
+
+1. Chụp `query` = chữ trong ô tìm kiếm, **chỉ trim hai đầu**, giữ nguyên hoa / thường và dấu (`''` khi không có ô tìm
+   kiếm hoặc chưa gõ).
+2. Đóng menu (giải phóng lớp nổi của dropdown) và trả focus về trigger.
+3. Gọi `onCreate(query)` (nếu có) rồi phát event `create` với `detail: { query }` — **cùng** bản chụp ở bước 1.
+
+Vì menu đã đóng **trước** khi handler chạy, mở một modal chồng trong handler là an toàn (modal mới nằm trên cùng, nhận
+focus; đóng nó thì focus về lại trigger của dropdown). Luồng điển hình — dropdown nằm trong một modal phiếu, bấm
+"Thêm film mới" mở modal thứ hai, lưu xong thì mục mới được chọn:
+
+```js
+import { TdModal } from '@dazzxq/td-components/modal';
+
+const film = document.getElementById('film');
+film.addEventListener('create', (e) => {
+  const name = document.createElement('input');
+  name.value = e.detail.query;               // "Portra 400" nếu người dùng đã gõ trong ô tìm kiếm
+  TdModal.show({
+    title: 'Thêm film',
+    body: name,
+    actions: [
+      { label: 'Huỷ' },
+      {
+        label: 'Lưu',
+        variant: 'primary',
+        // trả Promise → nút "Lưu" bận tới khi xong, rồi modal tự đóng (ném lỗi / reject → modal giữ nguyên)
+        onClick: async () => {
+          const saved = await api.createFilm({ name: name.value });   // { id, name } từ server
+          film.options = [...film.options, { value: saved.id, label: saved.name }];
+          film.setValue(saved.id);                                    // chọn mục mới
+        },
+      },
+    ],
+  });
+});
+```
+
+**Lưu ý:** `setValue()` **không** phát `change` (cũng như `options = […]`). Nếu phần còn lại của form đang nghe
+`change` để cập nhật (giá, phụ thuộc…), hãy tự gọi lại logic đó sau `setValue()`, hoặc tự phát:
+`film.dispatchEvent(new CustomEvent('change', { bubbles: true, detail: { value: saved.id, item: film.getSelectedItem() } }))`.
+
+Gỡ attribute (`removeAttribute('create-label')` hoặc `createLabel = ''`) → dòng biến mất. Dropdown `disabled` không mở
+được nên dòng cũng không kích hoạt được. Adapter PHP: `td_dropdown(..., ['create_label' => 'Thêm film mới'])` (dòng chỉ
+có khi JS đã nạp — bản `<select>` native không có nó).
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
@@ -239,9 +307,10 @@ Option `value=""` **đứng đầu** (dạng "Chọn…") là **placeholder**, g
 | `required` | boolean | `false` | Bắt buộc chọn: `valueMissing` khi trống, `aria-required`, dấu `*` trang trí trong label. |
 | `disabled` | boolean | `false` | Vô hiệu hoá (cũng tự vô hiệu trong `<fieldset disabled>`). Đang mở mà bị disable → đóng. |
 | `error-text` | string | — | Thông báo lỗi hiển thị (error contract). |
+| `create-label` | string | — | Bật dòng hành động "Thêm mới" cố định ở đáy menu với chữ này (0.22.0). Rỗng / vắng = tắt. Xem [mục 10](#10-dòng--thêm-mới-ở-cuối-menu-create-label-0220). |
 
-Đổi `value`, `placeholder`, `disabled`, `required`, `name`, `aria-label`, `error-text` được cập nhật **tại chỗ** (giữ
-focus). Đổi `label`, `searchable`, `allow-clear`, `max-height`, `value-key`, `label-key` sẽ đóng menu và render lại.
+Đổi `value`, `placeholder`, `disabled`, `required`, `name`, `aria-label`, `error-text`, `create-label` được cập nhật
+**tại chỗ** (giữ focus; menu đang mở vẫn mở). Đổi `label`, `searchable`, `allow-clear`, `max-height`, `value-key`, `label-key` sẽ đóng menu và render lại.
 
 ## Property & method
 
@@ -250,6 +319,8 @@ focus). Đổi `label`, `searchable`, `allow-clear`, `max-height`, `value-key`, 
 | `options` | `Array<Object>` (get/set) | Danh sách option. Lần gán đầu áp attribute `value`; các lần sau giữ lựa chọn hiện tại nếu còn trong danh sách (không còn → bỏ chọn). Luôn áp giá trị pending. Gán trước khi component được define vẫn nhận. |
 | `onChange` | `(value) => void` \| `null` | Callback khi người dùng chọn/bỏ chọn; nhận value (`null` khi bỏ chọn). Chạy sau `onSelect`. |
 | `onSelect` | `(item) => void` \| `null` | Callback nhận cả object (`null` khi bỏ chọn). Chạy trước `onChange` (cả hai đều chạy nếu cùng đặt). |
+| `onCreate` | `(query) => void` \| `null` | Callback khi kích hoạt dòng "Thêm mới" (0.22.0); nhận `query` (chuỗi). Chạy trước event `create`; ném lỗi → ghi `console.error`, event vẫn phát. |
+| `createLabel` | `string` (get/set) | Phản chiếu attribute `create-label` (`''` = tắt). |
 | `TdDropdown.labels` | static object | Chữ giao diện, site ghi đè được (xem [dưới](#tddropdownlabels)). |
 | `searchable` | `boolean` (get/set) | Trạng thái thật của cờ. `false` → `searchable="false"`; `true` → xoá attribute. |
 | `allowClear` | `boolean` (get/set) | Tương tự cho `allow-clear`. |
@@ -285,6 +356,7 @@ Object.assign(TdDropdown.labels, {
 | `none` | `Không chọn` | Dòng bỏ chọn (`allow-clear`) |
 | `noResults` | `Không tìm thấy kết quả` | Dòng trạng thái khi tìm không ra |
 | `required` | `Vui lòng chọn một tùy chọn` | Thông điệp `valueMissing` khi `required` |
+| `createWithQuery` | `Thêm “{query}”` | Chữ dòng "Thêm mới" khi đang gõ tìm kiếm; `{query}` = chữ đã gõ (trim). Không gõ gì → dùng `create-label` (0.22.0) |
 
 Tất cả được escape / đưa vào bằng `textContent`. Placeholder của trigger ("Chọn một tùy chọn") đổi bằng attribute
 `placeholder`.
@@ -294,6 +366,7 @@ Tất cả được escape / đưa vào bằng `textContent`. Placeholder của 
 | Event | detail | Khi nào | bubbles? |
 |---|---|---|---|
 | `change` | `{ value, item }` — `value` là giá trị gốc (hoặc `null`), `item` là object (hoặc `null`) | Người dùng chọn một mục hoặc chọn "Không chọn". Đúng **một** event mỗi lần chọn. `setValue()`, `updateData()`, form reset **không** phát. | có (`composed: true`) |
+| `create` | `{ query }` — chữ trong ô tìm kiếm, trim hai đầu (`''` nếu không có) | Người dùng kích hoạt dòng "Thêm mới" (`create-label`, 0.22.0). Phát **sau** khi menu đã đóng và focus đã về trigger, sau `onCreate`. Không kèm `change`. | có (`composed: true`) |
 
 ## Form
 
@@ -324,7 +397,8 @@ Token riêng của dropdown (khai báo trong `@layer td.tokens`, file `component
 | `--td-dropdown-option-selected` | `var(--td-color-hover-strong)` | Nền option đã chọn. |
 | `--td-dropdown-search-bg` | `var(--td-color-hover)` (dark: `rgb(255 255 255 / 6%)`) | Nền ô tìm kiếm. |
 | `--td-dropdown-search-border` | `var(--td-control-border-soft)` | Viền ô tìm kiếm. |
-| `--td-dropdown-hairline` | `var(--td-color-border)` | Đường kẻ dưới ô tìm kiếm. |
+| `--td-dropdown-hairline` | `var(--td-color-border)` | Đường kẻ dưới ô tìm kiếm và trên dòng "Thêm mới". |
+| `--td-dropdown-create-fg` | accent đậm hơn 18 % (dark: accent pha 45 % trắng) | Màu chữ + icon dòng "Thêm mới" (0.22.0; ≥ 4.7:1 trên nền menu, kể cả khi active). Trình duyệt không có `color-mix()`: màu cố định `--td-dropdown-create-fg-fallback` = `#1d4ed8` (dark `#93c5fd`), cũng đạt ≥ 4.7:1. |
 
 Nút trigger dùng chung token field (`field.css`): `--td-field-bg`, `--td-field-fg`, `--td-field-border`,
 `--td-field-border-hover`, `--td-field-focus`, `--td-field-error`, `--td-field-placeholder`, `--td-field-radius-md`,
@@ -369,18 +443,31 @@ Xem thêm: [Theming](../customization/theming.md), [Styling](../customization/st
     <input type="text" class="td-dropdown__search" aria-label="{labels.search}" placeholder="{labels.search}..."
            aria-autocomplete="list" aria-controls="{host}-listbox">
   </div>
+  <p class="td-dropdown__empty" role="status">Không tìm thấy kết quả</p>
   <div class="td-dropdown__options" role="listbox" id="{host}-listbox" aria-labelledby="{host}-label">
-    <div class="td-dropdown__option td-dropdown__option--clear" role="option" id="{host}-opt-clear"
-         aria-selected="false" data-value="__CLEAR__"><span class="td-dropdown__option-label">Không chọn</span></div>
-    <div class="td-dropdown__option" role="option" id="{host}-opt-0" aria-selected="true" data-value="hn"
-         data-index="0" [data-active]>
-      <span class="td-dropdown__option-label">Hà Nội</span>
-      <span class="td-dropdown__check" data-td-icon="check" aria-hidden="true">…</span>
+    <div class="td-dropdown__scroller" role="presentation">           <!-- vùng cuộn (nhận max-height) -->
+      <div class="td-dropdown__option td-dropdown__option--clear" role="option" id="{host}-opt-clear"
+           aria-selected="false" data-value="__CLEAR__" data-nav="0"><span class="td-dropdown__option-label">Không chọn</span></div>
+      <div class="td-dropdown__option" role="option" id="{host}-opt-0" aria-selected="true" data-value="hn"
+           data-index="0" data-nav="1" [data-active]>
+        <span class="td-dropdown__option-label">Hà Nội</span>
+        <span class="td-dropdown__check" data-td-icon="check" aria-hidden="true">…</span>
+      </div>
+    </div>
+    <!-- chỉ khi có create-label: con cuối của listbox, ngoài vùng cuộn -->
+    <div class="td-dropdown__option td-dropdown__option--create" role="option" id="{host}-opt-create"
+         aria-selected="false" data-nav="2">
+      <span class="td-dropdown__create-icon" data-td-icon="plus" aria-hidden="true">…</span>
+      <span class="td-dropdown__option-label">Thêm film mới</span>
     </div>
   </div>
-  <p class="td-dropdown__empty" role="status">Không tìm thấy kết quả</p>
 </div>
 ```
+
+**0.22.0 đổi cấu trúc menu:** `.td-dropdown__options` (listbox) **không còn cuộn** — vùng cuộn và `max-height` chuyển
+sang `.td-dropdown__scroller` bên trong; dòng `.td-dropdown__empty` chuyển lên **trước** listbox. CSS của site nhắm
+`.td-dropdown__options` để đổi chiều cao / thanh cuộn → đổi sang `.td-dropdown__scroller`. Mỗi dòng mang `data-nav`
+(chỉ số trong mô hình điều hướng).
 
 Trạng thái dùng để style (không có class JS bật/tắt):
 
@@ -392,7 +479,7 @@ Trạng thái dùng để style (không có class JS bật/tắt):
 | `.td-dropdown__menu` | `[hidden]`, `data-state`, `data-placement="top|bottom"` |
 | `.td-dropdown__option` | `aria-selected="true"` (đã chọn), `data-active` (đang trỏ bằng phím/chuột), `aria-disabled="true"` (option vô hiệu hoá, 0.17.0) |
 
-JS chỉ ghi toạ độ/độ rộng menu và `max-height` danh sách qua CSSOM. Host không có `id` sẽ được gán tự động
+JS chỉ ghi toạ độ/độ rộng menu và `max-height` của vùng cuộn (`.td-dropdown__scroller`) qua CSSOM. Host không có `id` sẽ được gán tự động
 (`td-td-dropdown-N`).
 
 ## Bàn phím & trợ năng
@@ -412,10 +499,10 @@ nó có focus) mang `aria-activedescendant` trỏ tới option active.
 
 | Phím | Hành động |
 |---|---|
-| `ArrowDown` / `ArrowUp` | Di chuyển active (vòng quanh; dòng "Không chọn" nằm trong vòng; option vô hiệu hoá bị bỏ qua — áp cho mọi phím di chuyển và type-ahead). |
+| `ArrowDown` / `ArrowUp` | Di chuyển active (vòng quanh; dòng "Không chọn" và dòng "Thêm mới" nằm trong vòng; option vô hiệu hoá bị bỏ qua — áp cho mọi phím di chuyển và type-ahead). |
 | `Home` / `End` | Mục đầu / cuối (chỉ khi focus ở trigger; trong ô tìm kiếm là di con trỏ chữ). |
 | `PageDown` / `PageUp` | Nhảy `max-height` mục. |
-| `Enter` | Chọn mục active (cả khi đang gõ trong ô tìm kiếm). |
+| `Enter` | Chọn mục active (cả khi đang gõ trong ô tìm kiếm). Active là dòng "Thêm mới" → kích hoạt nó (event `create`). |
 | `Alt+ArrowUp` | Chọn mục active (không có thì đóng). |
 | `Space` | Trên trigger: chọn mục active (đang type-ahead thì là ký tự). Trong ô tìm kiếm: gõ dấu cách. |
 | Ký tự in được (trigger) | Type-ahead: không phân biệt hoa thường và **dấu** ("ha" khớp "Hà Nội"), gõ lặp một chữ để xoay vòng, bộ đệm xoá sau 500 ms. |
@@ -431,7 +518,10 @@ Khác:
 - Menu đăng ký lớp nổi `LAYERS.popover` nên dùng được bên trong [modal](modal.md) (không bị `inert` của modal chặn).
 - Tên truy cập theo thứ tự: `label` nội bộ → `aria-label` của host → `<label for="{host-id}">` bên ngoài. Listbox lấy
   cùng tên.
-- Ô "Không tìm thấy kết quả" là `role="status"` nằm ngoài listbox.
+- Ô "Không tìm thấy kết quả" là `role="status"` nằm ngoài listbox (phía trên nó).
+- Dòng "Thêm mới" là `role="option"` `aria-selected="false"` (không `aria-disabled`), id `{host}-opt-create`;
+  `aria-activedescendant` trỏ tới nó khi active. Chữ của nó bắt đầu bằng hành động ("Thêm …") nên đọc lên đủ nghĩa.
+  Type-ahead không bao giờ nhảy vào nó.
 - Touch (`pointer: coarse`): trigger, ô tìm kiếm và option cao tối thiểu `--td-touch-min` (44px); ô tìm kiếm ≥ 16px chữ
   để iOS không zoom.
 - Menu mở bằng fade (không phóng to, 0.20.0); `prefers-reduced-motion`: fade nhanh tuyến tính. `forced-colors`: có viền/outline hệ thống.
@@ -442,6 +532,9 @@ Chi tiết: [Trợ năng](../guides/accessibility.md).
 
 - `label`, `placeholder`, label và value của mọi option đều được **escape** trước khi render — chuỗi `<img onerror>`
   trong dữ liệu hiển thị thành chữ. Không có đường render HTML tuỳ ý trong option.
+- Chữ người dùng gõ vào ô tìm kiếm chỉ đi vào nhãn dòng "Thêm mới" dưới dạng text đã escape, và vào `detail.query`
+  dạng chuỗi thô — site **tự** escape khi đưa `query` vào HTML của mình (ví dụ dùng `value` / `textContent`, như ví dụ
+  ở [mục 10](#10-dòng--thêm-mới-ở-cuối-menu-create-label-0220)).
 - Id nội bộ (`{host}-opt-{i}`) sinh từ chỉ số, không từ dữ liệu.
 
 Xem [Bảo mật](../guides/security.md).
