@@ -10,7 +10,7 @@ import {
 const DEFAULT_MIN_YEAR = 2000; // dcms parity (D5): the range used when `min` / `max` are not set
 const DEFAULT_MAX_YEAR = 2099;
 const SCROLL_SETTLE_MS = 150; // fallback when `scrollend` is not supported
-const INTRO_FALLBACK_MS = 260; // --td-modal-enter-dur default (used when the token cannot be read)
+const INTRO_FALLBACK_MS = 300; // --td-modal-enter-dur default (used when the token cannot be read)
 const INTRO_SAFETY_MS = 1500; // the intro scroll never suppresses scroll-settle selection longer than this
 const MODE_SUFFIX = { datetime: '', date: 'Date', month: 'Month', year: 'Year' };
 
