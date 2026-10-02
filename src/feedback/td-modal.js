@@ -45,7 +45,7 @@
 import { TdModalStackManager } from './td-modal-stack.js';
 import {
   LAYERS, register as registerLayer, trapTab, focusablesIn, setFocusHandoff, followFocusHandoff, floatingContains,
-  coverFloatingIn,
+  coverFloatingIn, restoreFocus,
 } from '../utils/layers.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import { transitionEndMs } from '../utils/transition.js';
@@ -394,6 +394,9 @@ export class TdModal {
           try { t.focus({ preventScroll: true }); } catch { /* ignore */ }
           if (document.activeElement === t) { moved = true; break; }
         }
+        // Every explicit target failed (e.g. the opener was removed and an UNPROMOTED lightbox is below): the top
+        // registered boundary (its dialog / element) — restoreFocus never returns into this dialog (released above).
+        if (!moved) moved = restoreFocus(null) && !root.contains(document.activeElement);
         if (!moved && root.contains(document.activeElement) && document.activeElement instanceof HTMLElement) {
           document.activeElement.blur();
         }

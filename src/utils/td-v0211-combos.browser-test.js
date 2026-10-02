@@ -786,3 +786,25 @@ describe('v0.21.1 review round 2 — out-of-order modal / lightbox teardown', ()
     expectSaneFocus([rootA, rootB], page);
   });
 });
+
+describe('v0.21.1 review round 3 — modal over a standalone (unpromoted) lightbox', () => {
+  it('opener removed while the modal is open → closing it focuses the lightbox, not <body>', async () => {
+    TdLightbox.open([IMG, IMG]);
+    await wait(500);
+    const ov = document.querySelector('.td-lightbox');
+    const tmp = document.createElement('button');
+    tmp.textContent = 'tạm';
+    ov.querySelector('.td-lightbox__toolbar').appendChild(tmp);
+    tmp.focus();
+    const id = TdModal.show({ title: 'M', body: '<input>' });
+    await wait(400);
+    const root = document.getElementById(id);
+    expect(root.contains(document.activeElement)).to.equal(true);
+    tmp.remove(); // the opener is gone
+    TdModal.closeById(id);
+    await wait(50);
+    const a = document.activeElement;
+    expect(a !== document.body && !!a && ov.contains(a), `focus in the lightbox (got ${a && a.tagName})`).to.equal(true);
+    expect(!!a.closest('[inert]'), 'not inert').to.equal(false);
+  });
+});
