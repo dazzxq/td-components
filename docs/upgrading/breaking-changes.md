@@ -1,8 +1,8 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.21)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.21.1)
 
-Trang này liệt kê, cho từng bản từ **0.21.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
+Trang này liệt kê, cho từng bản từ **0.21.1** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
 [CHANGELOG.md](../../CHANGELOG.md); trang này chỉ gom lại theo góc nhìn "tôi phải làm gì" và thêm ví dụ trước/sau.
 Quy trình nâng cấp chung nằm ở [README.md](README.md).
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.21.1](#0211) | Không có thay đổi phá vỡ | Không. Sửa lỗi popup / modal / lightbox khi kết hợp; `TdMenu` `onClose` thêm reason `'covered'`. |
 | [0.21.0](#0210) | Đổi giao diện + đổi DOM toast | Primary đen (về accent bằng token); nút ngữ nghĩa pastel; tooltip đen; toast bỏ icon (code query `.td-toast__icon` phải bỏ); modal có animation. |
 | [0.20.0](#0200) | Đổi giao diện lớn | Kiểm bằng mắt nút / popup / toast / modal; override token kính cũ hết tác dụng → đổi sang token mới (bảng dưới). |
 | [0.19.0](#0190) | Đổi hành vi (nhỏ) + đổi giao diện (nhỏ) | datetime-picker mặc định mở tại hôm nay (cần đầu khoảng → `open-at="min"`); stamp dùng font mono; `td-button` chuyển ARIA trạng thái xuống; dropzone hiện `err.message`. |
@@ -45,6 +46,14 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.21.1
+
+**Không có thay đổi phá vỡ** — sửa lỗi khi kết hợp component. Popup giờ tự đóng khi trigger bị cuộn khuất / ẩn / gỡ
+hoặc bị modal mở sau phủ; lightbox mở từ modal nằm trên. Code site nào dựa vào việc popup **còn mở** trong các tình huống
+đó (hiếm) cần mở lại sau. `TdMenu` `onClose(reason)` có thể nhận `'covered'`. Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.21.1.
 
 ---
 
