@@ -123,7 +123,11 @@ tin cậy; adapter và descriptor do dev của site viết nhưng chạy trong t
   lại crop. State khôi phục form chỉ gồm `{"v":1,"id","alt","crop"}` — không URL xem trước (URL ký), không nhãn server;
   khôi phục → ảnh lấy lại bằng `adapter.get(id)` theo phiên hiện tại.
 - **Giới hạn payload adapter** (`LIMITS`): ≤ min(limit, 100) mục / trang, chuỗi hiển thị ≤ 500 code point, ≤ 10 badge,
-  ≤ 20 facet, ≤ 200 option, ≤ 50 field descriptor; phần thừa bỏ + một cảnh báo chỉ có số lượng.
+  ≤ 20 facet, ≤ 200 option, ≤ 50 field descriptor; phần thừa bỏ + một cảnh báo chỉ có số lượng. Xử lý cũng có giới
+  hạn: mỗi danh sách chỉ duyệt tối đa 4 × giới hạn. `metadata` chỉ giữ key của `assetFields`; giá trị vượt
+  `VALUE_LIMITS` (text 10 000, textarea 100 000, url 2 048, multiselect 200 mục) → trường bị khoá, không gán, không gửi.
+- **Preview lười của field**: đổi adapter / context → huỷ `get` đang chờ trước khi lấy lại; kết quả kiểm thế hệ request +
+  thế hệ nguồn + adapter + context (chống TOCTOU khi adapter cũ phớt lờ signal).
 - **Referrer**: mọi `<img>` có `referrerpolicy="no-referrer"` cố định — URL ký và đường dẫn trang quản trị không lộ qua
   `Referer` tới CDN / bucket. Hệ quả cho site: CDN chống hotlink phải chấp nhận referer rỗng; CSP `img-src` phải cho
   origin ảnh của adapter (`blob:` chỉ khi muốn thumbnail xem trước của dropzone).

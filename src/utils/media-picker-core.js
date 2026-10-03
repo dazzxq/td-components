@@ -165,6 +165,20 @@ export const PAGE_SIZE_DEFAULT = 40;
  * counts only — never the raw data). `text` = code points of a display string (asset name / alt / labels / help text).
  */
 export const LIMITS = Object.freeze({ pageItems: 100, text: 500, badges: 10, facets: 20, options: 200, fields: 50 });
+/**
+ * Review SEC-3 r2: how many raw entries are INSPECTED at most (4 × the cap) — scanning stops there whatever was accepted,
+ * so a 1e6-entry array costs the same as a small one.
+ */
+const BUDGET = 4;
+
+/**
+ * Per-control size limits of a metadata value before it is assigned to a form control (review SEC-3 r2): string length
+ * (text / textarea / url / select / date / readonly) or item count (multiselect). Over the limit → the field is locked in
+ * the edit form with a kit message: never truncated, never assigned, never saved.
+ */
+export const VALUE_LIMITS = Object.freeze({ text: 10000, textarea: 100000, url: 2048, select: 10000, date: 64, readonly: 10000,
+  multiselect: 200 });
+
 /** First `max` code points (no trim). @param {string} s @param {number} [max] */
 const capText = (s, max = LIMITS.text) => (s.length <= max ? s : [...s].slice(0, max).join(''));
 
@@ -187,7 +201,7 @@ export function cut(s, max = TEXT_MAX) {
  * @param {{ safeUrl: (u: unknown) => string }} opts
  * @returns {MediaAsset|null}
  */
-export function normalizeAsset(raw, { safeUrl }) {
+export function normalizeAsset(raw, { safeUrl, metadataKeys = null }) {
   try {
     if (!isObj(raw)) return null;
     const o = /** @type {Record<string, any>} */ (raw);
@@ -204,7 +218,7 @@ export function normalizeAsset(raw, { safeUrl }) {
       mimeType: capText(str(o.mimeType)),
       byteSize: typeof o.byteSize === 'number' && Number.isFinite(o.byteSize) && o.byteSize >= 0 ? o.byteSize : 0,
       urls: { thumbnail: safeUrl(urls.thumbnail), preview: safeUrl(urls.preview) },
-      metadata: isObj(o.metadata) ? { ...o.metadata } : {},
+      metadata: pickMetadata(o.metadata, metadataKeys),
     };
     if (typeof o.version === 'string' || (typeof o.version === 'number' && Number.isFinite(o.version))) a.version = o.version;
     const w = finitePos(o.width);
@@ -215,7 +229,8 @@ export function normalizeAsset(raw, { safeUrl }) {
     if (typeof o.uploadedByLabel === 'string' && o.uploadedByLabel) a.uploadedByLabel = capText(o.uploadedByLabel);
     if (typeof o.defaultAltText === 'string') a.defaultAltText = capText(o.defaultAltText);
     if (Array.isArray(o.badges)) {
-      a.badges = o.badges.filter((b) => isObj(b) && typeof b.label === 'string' && b.label).slice(0, LIMITS.badges)
+      a.badges = o.badges.slice(0, LIMITS.badges * BUDGET).filter((b) => isObj(b) && typeof b.label === 'string' && b.label)
+        .slice(0, LIMITS.badges)
         .map((b) => ({ key: capText(str(b.key)), label: capText(b.label), tone: TONES.includes(b.tone) ? b.tone : 'neutral' }));
     }
     if (isObj(o.capabilities)) {
@@ -227,6 +242,23 @@ export function normalizeAsset(raw, { safeUrl }) {
   } catch {
     return null;
   }
+}
+
+/**
+ * Review SEC-3 r2: copy ONLY the metadata keys of the normalised asset field descriptors (never the whole object; own
+ * properties only, `__proto__` / `constructor` / `prototype` never).
+ * @param {unknown} meta @param {Iterable<string>|null} keys @returns {Record<string, unknown>}
+ */
+function pickMetadata(meta, keys) {
+  const out = {};
+  if (!isObj(meta) || !keys) return out;
+  let n = 0;
+  for (const k of keys) {
+    if (++n > LIMITS.fields) break;
+    if (typeof k !== 'string' || BAD_KEYS.has(k) || !Object.prototype.hasOwnProperty.call(meta, k)) continue;
+    out[k] = meta[k];
+  }
+  return out;
 }
 
 /** An Error carrying a normalised `code` (thrown for malformed adapter results). */
@@ -243,7 +275,7 @@ export function contractError(code = 'server', message = 'media picker: malforme
  *   `limit` = the request's limit: at most min(limit, LIMITS.pageItems) items are read (review SEC-3)
  * @returns {{ items: MediaAsset[], nextCursor: string|null, total: number|undefined, hidden: number }}
  */
-export function normalizePage(raw, { safeUrl, kinds = null, limit, warn = console.warn }) {
+export function normalizePage(raw, { safeUrl, kinds = null, limit, metadataKeys = null, warn = console.warn }) {
   if (!isObj(raw) || !Array.isArray(/** @type {any} */ (raw).items)) throw contractError('server');
   const o = /** @type {any} */ (raw);
   const seen = new Set();
@@ -253,7 +285,7 @@ export function normalizePage(raw, { safeUrl, kinds = null, limit, warn = consol
   const cap = Math.min(Number.isInteger(limit) && limit >= 1 ? limit : LIMITS.pageItems, LIMITS.pageItems);
   if (o.items.length > cap) warn(`td-media-picker: the adapter page has ${o.items.length} items — only the first ${cap} are used.`);
   for (const r of o.items.slice(0, cap)) {
-    const a = normalizeAsset(r, { safeUrl });
+    const a = normalizeAsset(r, { safeUrl, metadataKeys });
     if (!a) { invalid += 1; continue; }
     if (seen.has(a.id)) continue;
     seen.add(a.id);
@@ -274,13 +306,17 @@ export function normalizePage(raw, { safeUrl, kinds = null, limit, warn = consol
 export function normalizeOptions(list, stat) {
   if (!Array.isArray(list)) return [];
   const out = [];
-  for (const op of list) {
+  const budget = Math.min(list.length, LIMITS.options * BUDGET);
+  for (let i = 0; i < budget && out.length < LIMITS.options; i++) {
+    const op = list[i];
     if (!isObj(op) || !isScalar(op.value) || typeof op.label !== 'string') continue;
-    if (out.length >= LIMITS.options) { if (stat) stat.dropped = (stat.dropped || 0) + 1; continue; }
     const o = { value: op.value, label: capText(op.label) };
     if (Number.isInteger(op.count) && op.count >= 0) o.count = op.count;
     o.disabled = op.disabled === true;
     out.push(o);
+  }
+  if (stat && list.length > out.length && (out.length >= LIMITS.options || budget < list.length)) {
+    stat.dropped = (stat.dropped || 0) + 1; // something past the cap / the inspection budget was ignored
   }
   return out;
 }
@@ -299,16 +335,19 @@ export function normalizeFacets(raw, { warn = console.warn } = {}) {
   let dropped = 0;
   let over = 0;
   const stat = { dropped: 0 };
-  for (const f of raw) {
+  const budget = Math.min(raw.length, LIMITS.facets * BUDGET);
+  if (raw.length > budget) over += raw.length - budget;
+  for (let i = 0; i < budget; i++) {
+    const f = raw[i];
     if (!isObj(f) || typeof f.key !== 'string' || !f.key || f.key.length > 200 || keys.has(f.key) || typeof f.label !== 'string'
       || !FACET_TYPES.includes(f.type)) { dropped += 1; continue; }
-    if (out.length >= LIMITS.facets) { over += 1; continue; }
+    if (out.length >= LIMITS.facets) { over += budget - i; break; }
     keys.add(f.key);
     out.push({ key: f.key, label: capText(f.label), type: f.type, options: normalizeOptions(f.options, stat) });
   }
   if (dropped) warn(`td-media-picker: ${dropped} invalid / duplicate facet descriptor(s) ignored.`);
   if (over || stat.dropped) {
-    warn(`td-media-picker: facets over the limits ignored (${over} facet(s) past ${LIMITS.facets}, ${stat.dropped} option(s) past ${LIMITS.options} per facet).`);
+    warn(`td-media-picker: facets over the limits ignored (${over} facet(s) past ${LIMITS.facets} / the inspection budget, ${stat.dropped} facet(s) with options past ${LIMITS.options}).`);
   }
   return out;
 }
@@ -326,10 +365,13 @@ export function normalizeFields(raw, { warn = console.warn } = {}) {
   let dropped = 0;
   let over = 0;
   const stat = { dropped: 0 };
-  for (const f of raw) {
+  const budget = Math.min(raw.length, LIMITS.fields * BUDGET);
+  if (raw.length > budget) over += raw.length - budget;
+  for (let i = 0; i < budget; i++) {
+    const f = raw[i];
     if (!isObj(f) || typeof f.key !== 'string' || !f.key || f.key.length > 200 || BAD_KEYS.has(f.key) || keys.has(f.key)
       || typeof f.label !== 'string' || !CONTROLS.includes(f.control)) { dropped += 1; continue; }
-    if (out.length >= LIMITS.fields) { over += 1; continue; }
+    if (out.length >= LIMITS.fields) { over += budget - i; break; }
     keys.add(f.key);
     /** @type {FieldDescriptor} */
     const d = { key: f.key, label: capText(f.label), control: f.control, required: f.required === true };
@@ -343,7 +385,7 @@ export function normalizeFields(raw, { warn = console.warn } = {}) {
   }
   if (dropped) warn(`td-media-picker: ${dropped} invalid / duplicate field descriptor(s) ignored.`);
   if (over || stat.dropped) {
-    warn(`td-media-picker: field descriptors over the limits ignored (${over} field(s) past ${LIMITS.fields}, ${stat.dropped} option(s) past ${LIMITS.options} per field).`);
+    warn(`td-media-picker: field descriptors over the limits ignored (${over} field(s) past ${LIMITS.fields} / the inspection budget, ${stat.dropped} field(s) with options past ${LIMITS.options}).`);
   }
   return out;
 }

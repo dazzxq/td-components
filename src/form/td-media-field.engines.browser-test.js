@@ -296,6 +296,53 @@ describe('td-media-field — form value', () => {
     }
   });
 
+  it('review SEC-1 r2: a pending default adapter A is invalidated by configureDefaults({ adapter: B, context }) — B wins, A (ignoring its signal) never applies', async () => {
+    const A = createMockAdapter({ manual: true, base: '/a/' });
+    A.ignoreSignal = true;
+    const B = createMockAdapter({ manual: true, base: '/b/' });
+    TdMediaPicker.configureDefaults({ adapter: A, context: 'A' });
+    try {
+      const { el } = mk({ name: 'hero' }, { adapter: null });
+      el.value = 'm1';
+      expect(A.calls.get.length).to.equal(1);
+      TdMediaPicker.configureDefaults({ adapter: B, context: 'B' });
+      expect(A.calls.get[0].signal.aborted, 'A aborted').to.equal(true);
+      expect(B.calls.get.length).to.equal(1);
+      expect(B.calls.get[0].args[1].context).to.equal('B');
+      A.calls.get[0].resolve();
+      for (let i = 0; i < 10; i++) await tick();
+      expect(!!q(el, 'img'), 'A never populates').to.equal(false);
+      B.calls.get[0].resolve();
+      for (let i = 0; i < 50 && !q(el, 'img'); i++) await tick();
+      expect(q(el, 'img').getAttribute('src').includes('/b/')).to.equal(true);
+    } finally {
+      TdMediaPicker.configureDefaults({});
+    }
+  });
+
+  it('review SEC-1 r2: pending explicit adapter removed with no fallback → aborted, its late result ignored (also for pickerOptions)', async () => {
+    const A = createMockAdapter({ manual: true });
+    A.ignoreSignal = true;
+    const { el } = mk({ name: 'hero' }, { adapter: A });
+    el.value = 'm1';
+    expect(A.calls.get.length).to.equal(1);
+    el.adapter = null;
+    expect(A.calls.get[0].signal.aborted).to.equal(true);
+    A.calls.get[0].resolve();
+    for (let i = 0; i < 10; i++) await tick();
+    expect(!!q(el, 'img')).to.equal(false);
+    const P = createMockAdapter({ manual: true });
+    P.ignoreSignal = true;
+    el.pickerOptions = { adapter: P, context: 'p' };
+    expect(P.calls.get.length).to.equal(1);
+    expect(P.calls.get[0].args[1].context).to.equal('p');
+    el.pickerOptions = null;
+    expect(P.calls.get[0].signal.aborted).to.equal(true);
+    P.calls.get[0].resolve();
+    for (let i = 0; i < 10; i++) await tick();
+    expect(!!q(el, 'img')).to.equal(false);
+  });
+
   it('review SEC-2: a failing lazy get never logs the raw error', async () => {
     const SECRET = 'tok_FIELD_SECRET';
     const a = createMockAdapter();

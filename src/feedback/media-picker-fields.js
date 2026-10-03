@@ -18,7 +18,7 @@
  *
  * @module feedback/media-picker-fields
  */
-import { ScalarTokens, normalizeError, normalizeOptions } from '../utils/media-picker-core.js';
+import { ScalarTokens, normalizeError, normalizeOptions, VALUE_LIMITS } from '../utils/media-picker-core.js';
 import '../form/td-input-field.js';
 import '../form/td-dropdown.js';
 import '../form/td-chip-input.js';
@@ -39,6 +39,8 @@ export const FIELD_LABELS = {
   generalErrors: 'Lỗi',
   /** `create-label` of a select with `createOption` (the row reads 'Thêm “{query}”' once text is typed) */
   create: 'Thêm mới',
+  /** review SEC-3 r2: a metadata value over VALUE_LIMITS — the field is locked (never truncated, never saved) */
+  tooLarge: 'Giá trị quá lớn để sửa ở đây — trường này được giữ nguyên.',
   /** createOption rejected without a `userMessage` */
   createError: 'Không thêm được lựa chọn.',
 };
@@ -68,6 +70,28 @@ const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
  */
 function cleanOptions(list) {
   return normalizeOptions(list); // review SEC-3: ≤ LIMITS.options, labels capped
+}
+
+/**
+ * Review SEC-3 r2: is `v` over the size limit of its control (VALUE_LIMITS)? Strings by length, multiselect by item count
+ * (and each string item), a plain object (readonly) by key count. Bounded work: no serialisation of the value.
+ * @param {string} control @param {unknown} v @returns {boolean}
+ */
+export function oversizedValue(control, v) {
+  if (v == null) return false;
+  const max = VALUE_LIMITS[control] ?? VALUE_LIMITS.text;
+  if (typeof v === 'string') return v.length > (control === 'multiselect' ? VALUE_LIMITS.text : max);
+  if (Array.isArray(v)) {
+    const items = control === 'multiselect' ? max : VALUE_LIMITS.multiselect;
+    if (v.length > items) return true;
+    return v.some((x) => (typeof x === 'string' && x.length > VALUE_LIMITS.text) || (x !== null && typeof x === 'object'));
+  }
+  if (typeof v === 'object') {
+    let n = 0;
+    for (const k in v) { if (Object.prototype.hasOwnProperty.call(v, k) && ++n > VALUE_LIMITS.multiselect) return true; }
+    return false;
+  }
+  return false;
 }
 
 /** Text of any value (readonly fields, provisional option labels). @param {unknown} v */
@@ -634,25 +658,43 @@ export class FieldForm {
     this.snapshot();
   }
 
-  /** @private silent set of every field from `obj` (missing key → empty) */
+  /**
+   * @private silent set of every field from `obj` (missing key → empty). Review SEC-3 r2: a value over VALUE_LIMITS is
+   * never assigned — the field is LOCKED (disabled + kit message) and left out of values() / dirty / missingRequired().
+   */
   _applyValues(obj) {
     const src = isObj(obj) ? obj : {};
+    if (!this._locked) this._locked = new Set();
     for (const [key, c] of this.controls) {
-      c.set(Object.prototype.hasOwnProperty.call(src, key) ? src[key] : undefined);
+      const v = Object.prototype.hasOwnProperty.call(src, key) ? src[key] : undefined;
+      const wasLocked = this._locked.has(key);
+      if (oversizedValue(c.descriptor.control, v)) {
+        this._locked.add(key);
+        c.set(undefined);
+        c.setDisabled(true);
+        c.setError(FIELD_LABELS.tooLarge);
+        continue;
+      }
+      if (wasLocked) {
+        this._locked.delete(key);
+        c.setDisabled(!!this._formDisabled);
+        c.setError('');
+      }
+      c.set(v);
     }
   }
 
-  /** @private typed values of every editable field (visible or not) */
+  /** @private typed values of every editable, unlocked field (visible or not) */
   _all() {
     const out = {};
-    for (const [key, c] of this.controls) if (c.control) out[key] = c.get();
+    for (const [key, c] of this.controls) if (c.control && !this._locked?.has(key)) out[key] = c.get();
     return out;
   }
 
-  /** @returns {Record<string, unknown>} the VISIBLE editable fields only: `{ key: typed value }` */
+  /** @returns {Record<string, unknown>} the VISIBLE editable fields only (locked oversized ones never): `{ key: typed value }` */
   values() {
     const out = {};
-    for (const [key, c] of this.controls) if (c.control && c.visible) out[key] = c.get();
+    for (const [key, c] of this.controls) if (c.control && c.visible && !this._locked?.has(key)) out[key] = c.get();
     return out;
   }
 
@@ -737,7 +779,7 @@ export class FieldForm {
 
   /** Clear every field error and the general list. */
   clearErrors() {
-    for (const c of this.controls.values()) c.setError('');
+    for (const c of this.controls.values()) c.setError(this._locked?.has(c.key) ? FIELD_LABELS.tooLarge : '');
     this._errors.replaceChildren();
     this._errors.hidden = true;
   }
@@ -745,7 +787,7 @@ export class FieldForm {
   /** @returns {boolean} a visible required field has no value ('' / null / []) */
   missingRequired() {
     for (const c of this.controls.values()) {
-      if (!c.control || !c.visible || !c.descriptor.required) continue;
+      if (!c.control || !c.visible || !c.descriptor.required || this._locked?.has(c.key)) continue;
       const v = c.get();
       if (v === '' || v == null || (Array.isArray(v) && !v.length)) return true;
     }
@@ -754,7 +796,8 @@ export class FieldForm {
 
   /** @param {boolean} on */
   setDisabled(on) {
-    for (const c of this.controls.values()) c.setDisabled(on);
+    this._formDisabled = !!on;
+    for (const c of this.controls.values()) c.setDisabled(on || !!this._locked?.has(c.key));
   }
 
   /** Abort the async work of every field (loadOptions / createOption). */

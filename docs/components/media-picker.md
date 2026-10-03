@@ -354,8 +354,20 @@ kèm **một** `console.warn` chỉ có số lượng (không có dữ liệu th
 | Option mỗi facet / mỗi field (kể cả kết quả `loadOptions`) | 200; nhãn option 500 code point |
 | Field descriptor (`assetFields`, `uploadFields`) | 50; `label` / `helpText` 500 code point |
 
-`metadata` **không** bị cắt: giá trị của nó là giá trị form (ô nhập) — cắt sẽ làm hỏng dữ liệu khi lưu. Server tự giới
-hạn độ dài các trường đó.
+Mảng lớn được **xử lý có giới hạn**: mỗi danh sách (badge, option, facet, field descriptor) chỉ được **duyệt** tối đa
+4 × giới hạn ở trên rồi dừng, dù đã nhận được bao nhiêu mục hợp lệ — mảng 1 triệu phần tử tốn như mảng nhỏ.
+
+`metadata`: asset chỉ giữ **các key trùng `assetFields`** (không sao chép cả object). Giá trị không bao giờ bị cắt (cắt sẽ
+làm hỏng dữ liệu khi lưu); thay vào đó, giá trị vượt giới hạn theo loại control khiến **trường đó bị khoá** trong form
+sửa (disabled + chữ `TdMediaPicker.fieldLabels.tooLarge`), không gán vào control và **không bao giờ gửi** trong `update()`:
+
+| Control | Giới hạn giá trị |
+|---|---|
+| `text` / `select` / `readonly` | 10 000 ký tự |
+| `textarea` | 100 000 ký tự |
+| `url` | 2 048 ký tự |
+| `date` | 64 ký tự |
+| `multiselect` | 200 mục (mỗi chuỗi ≤ 10 000) |
 
 ## Facet (bộ lọc)
 
@@ -369,7 +381,8 @@ hạn độ dài các trường đó.
 Đổi facet → tải lại list + facet **ngay** (không debounce). ≤ 640px facet gom sau nút "Bộ lọc ({n})".
 Chữ của control facet / descriptor nằm ở `TdMediaPicker.fieldLabels` (đổi theo site, đọc lúc dùng): `all` "Tất cả"
 (placeholder facet `single`), `create` "Thêm mới" (`create-label` khi có `createOption`), `generalErrors` "Lỗi" (tên danh
-sách lỗi chung của form), `createError` "Không thêm được lựa chọn." (`createOption` lỗi mà không có `userMessage`).
+sách lỗi chung của form), `createError` "Không thêm được lựa chọn." (`createOption` lỗi mà không có `userMessage`),
+`tooLarge` (trường bị khoá vì giá trị metadata vượt giới hạn).
 
 ```js
 Object.assign(TdMediaPicker.fieldLabels, { all: 'All', create: 'Add new', generalErrors: 'Errors', createError: 'Could not add.' });

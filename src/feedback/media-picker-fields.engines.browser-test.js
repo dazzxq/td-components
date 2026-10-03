@@ -620,3 +620,35 @@ describe('media-picker-fields — review SEC-3 bounds', () => {
     expect(opts.every((o) => [...o.label].length <= 500)).to.equal(true);
   });
 });
+
+describe('media-picker-fields — review SEC-3 r2: oversized values are never assigned or saved', () => {
+  it('text > 10 000, url > 2 048, multiselect > 200 items → field locked with the kit message, not in values() / dirty', async () => {
+    const descriptors = normalizeFields([
+      { key: 'title', label: 'Tiêu đề', control: 'text' },
+      { key: 'caption', label: 'Chú thích', control: 'textarea' },
+      { key: 'source', label: 'Nguồn', control: 'url' },
+      { key: 'tags', label: 'Thẻ', control: 'multiselect', options: [{ value: 'a', label: 'A' }] },
+    ], silent);
+    const big = 'x'.repeat(10001);
+    const form = new FieldForm(descriptors, {
+      values: { title: big, caption: 'ok', source: `https://x.test/${'a'.repeat(3000)}`, tags: Array.from({ length: 201 }, (_, i) => `t${i}`) },
+      warn() {},
+    });
+    host.appendChild(form.el);
+    await tick();
+    expect(Object.keys(form.values())).to.deep.equal(['caption']);
+    expect(form.dirty).to.equal(false);
+    for (const k of ['title', 'source', 'tags']) {
+      const c = form.controls.get(k);
+      expect(c.control.hasAttribute('disabled'), `${k} locked`).to.equal(true);
+      expect(c.el.textContent.includes(FIELD_LABELS.tooLarge), `${k} message`).to.equal(true);
+    }
+    const input = form.controls.get('title').control.querySelector('input');
+    expect(input.value.length).to.equal(0);
+    form.setDisabled(false); // a form-wide enable never unlocks a locked field
+    expect(form.controls.get('title').control.hasAttribute('disabled')).to.equal(true);
+    form.setValues({ title: 'ngắn', caption: 'ok', source: 'https://x.test/a', tags: ['a'] });
+    expect(form.controls.get('title').control.hasAttribute('disabled')).to.equal(false);
+    expect(Object.keys(form.values()).sort()).to.deep.equal(['caption', 'source', 'tags', 'title']);
+  });
+});

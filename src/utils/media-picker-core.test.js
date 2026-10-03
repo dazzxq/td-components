@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import {
   normalizeAsset, normalizePage, normalizeFacets, normalizeFields, normalizeError, resolveCapabilities, canDo,
   resolveOptions, DefaultsRegistry, buildListRequest, requestKey, LatestRequest, SelectionModel, InitialLoad, Debouncer,
-  SessionCache, ScalarTokens, buildOutcome, cancelledOutcome, formatLabel, LIMITS,
+  SessionCache, ScalarTokens, buildOutcome, cancelledOutcome, formatLabel, LIMITS, VALUE_LIMITS, normalizeOptions,
 } from './media-picker-core.js';
 import { safeMediaUrl } from './media-url.js';
 
@@ -29,7 +29,7 @@ describe('normalizeAsset', () => {
   it('valid asset → normalised copy', () => {
     const a = normalizeAsset(raw('a1', { width: 30, height: 20, defaultAltText: 'Alt', version: 3,
       badges: [{ key: 'k', label: 'Mới', tone: 'success' }, { key: 'x', label: 5 }, { key: 'y', label: 'Lạ', tone: 'pink' }],
-      capabilities: { editMetadata: false, bogus: 1 }, metadata: { a: 1 } }), { safeUrl });
+      capabilities: { editMetadata: false, bogus: 1 }, metadata: { a: 1, b: 2 } }), { safeUrl, metadataKeys: ['a', 'zz'] });
     assert.equal(a.id, 'a1');
     assert.equal(a.kind, 'image');
     assert.equal(a.width, 30);
@@ -669,5 +669,58 @@ describe('payload bounds (review SEC-3)', () => {
     load.start();
     await flush();
     assert.ok(warns.length && warns.every((a) => a.every((x) => typeof x === 'string' && !x.includes(SECRET))));
+  });
+});
+
+describe('bounded PROCESSING (review SEC-3 round 2)', () => {
+  /** A 1e6-entry array that counts index reads (what normalisation inspects). */
+  const counted = (fill) => {
+    const reads = { n: 0 };
+    const arr = new Array(1e6).fill(fill);
+    const p = new Proxy(arr, { get(t, k) { if (typeof k === 'string' && /^\d+$/.test(k)) reads.n += 1; return t[k]; } });
+    return { p, reads };
+  };
+  const fast = (fn) => { const t0 = Date.now(); fn(); return Date.now() - t0; };
+
+  it('1e6 invalid badges: at most 4 × LIMITS.badges inspected', () => {
+    const { p, reads } = counted({});
+    const ms = fast(() => assert.deepEqual(normalizeAsset(raw('a', { badges: p }), { safeUrl }).badges, []));
+    assert.ok(reads.n <= 4 * LIMITS.badges, `reads ${reads.n}`);
+    assert.ok(ms < 500, `${ms} ms`);
+  });
+
+  it('1e6 options: scanning stops after 4 × LIMITS.options even when none is valid', () => {
+    const { p, reads } = counted({ value: {}, label: 'bad' });
+    const ms = fast(() => assert.deepEqual(normalizeOptions(p), []));
+    assert.ok(reads.n <= 4 * LIMITS.options, `reads ${reads.n}`);
+    assert.ok(ms < 500, `${ms} ms`);
+    const v = counted({ value: 1, label: 'ok' });
+    assert.equal(normalizeOptions(v.p).length, LIMITS.options);
+    assert.ok(v.reads.n <= 4 * LIMITS.options);
+  });
+
+  it('1e6 facets / field descriptors: bounded inspection', () => {
+    const f = counted('junk');
+    assert.deepEqual(normalizeFacets(f.p, { warn: () => {} }), []);
+    assert.ok(f.reads.n <= 4 * LIMITS.facets, `facet reads ${f.reads.n}`);
+    const d = counted('junk');
+    assert.deepEqual(normalizeFields(d.p, { warn: () => {} }), []);
+    assert.ok(d.reads.n <= 4 * LIMITS.fields, `field reads ${d.reads.n}`);
+  });
+
+  it('metadata: only descriptor keys are copied (10 000 extra keys ignored); none given → {}', () => {
+    const meta = { title: 'T', license: 'cc' };
+    for (let i = 0; i < 10000; i++) meta[`x${i}`] = i;
+    const a = normalizeAsset(raw('a', { metadata: meta }), { safeUrl, metadataKeys: ['title', 'license', 'missing'] });
+    assert.deepEqual(a.metadata, { title: 'T', license: 'cc' });
+    assert.deepEqual(normalizeAsset(raw('b', { metadata: meta }), { safeUrl }).metadata, {});
+    const evil = JSON.parse('{"__proto__":{"polluted":1},"title":"T"}');
+    assert.deepEqual(normalizeAsset(raw('c', { metadata: evil }), { safeUrl, metadataKeys: ['__proto__', 'title'] }).metadata, { title: 'T' });
+    const page = normalizePage({ items: [raw('d', { metadata: meta })], nextCursor: null }, { safeUrl, metadataKeys: ['title'], warn: () => {} });
+    assert.deepEqual(page.items[0].metadata, { title: 'T' });
+  });
+
+  it('VALUE_LIMITS per control', () => {
+    assert.deepEqual({ ...VALUE_LIMITS }, { text: 10000, textarea: 100000, url: 2048, select: 10000, date: 64, readonly: 10000, multiselect: 200 });
   });
 });

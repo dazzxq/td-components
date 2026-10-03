@@ -149,9 +149,7 @@ export class TdMediaField extends TdFormElement {
     if (reconnect) this._refocusAfterMove();
     // review SEC-1: an id without a preview (restored state, `.value =`) waits for an adapter — configureDefaults() later
     if (this._unsubDefaults) this._unsubDefaults();
-    this._unsubDefaults = onDefaultsChange(() => {
-      if (this.isConnected && this._needsPreview() && !this._getReq.pending) this._lazyGet();
-    });
+    this._unsubDefaults = onDefaultsChange(() => this._sourceChanged());
     if (this._needsPreview()) this._lazyGet();
   }
 
@@ -186,7 +184,7 @@ export class TdMediaField extends TdFormElement {
 
   set adapter(a) {
     this._adapterProp = a ?? null;
-    if (this._initialized && this.isConnected && this._needsPreview()) this._lazyGet();
+    this._sourceChanged();
   }
 
   /** @returns {object|null} options merged over TdMediaPicker defaults when the picker opens */
@@ -194,7 +192,7 @@ export class TdMediaField extends TdFormElement {
 
   set pickerOptions(o) {
     this._pickerOptions = o && typeof o === 'object' ? o : null;
-    if (this._initialized && this.isConnected && this._needsPreview()) this._lazyGet();
+    this._sourceChanged();
   }
 
   /**
@@ -321,14 +319,36 @@ export class TdMediaField extends TdFormElement {
     return isAdapter(d) ? d : null;
   }
 
-  /** @private decision 27: fetch the preview of an id set by code (latest wins; a later change aborts it) */
+  /** @private the effective adapter / context */
+  _resolveContext() {
+    return this._pickerOptions?.context ?? TdMediaPicker.defaults?.context;
+  }
+
+  /**
+   * @private review SEC-1 r2 (TOCTOU): the adapter / context changed (configureDefaults, `adapter`, `pickerOptions`, incl.
+   * removal) → FIRST invalidate the pending get (abort + new source generation), THEN refetch when an adapter resolves.
+   */
+  _sourceChanged() {
+    this._srcGen = (this._srcGen || 0) + 1;
+    this._getReq.abort();
+    if (this._initialized && this.isConnected && this._needsPreview()) this._lazyGet();
+  }
+
+  /**
+   * @private decision 27: fetch the preview of an id set by code (latest wins; a later change aborts it). A result is
+   * applied only when the request generation (LatestRequest), the source generation, the adapter and the id all still
+   * match — an old adapter that ignores its AbortSignal can never populate the preview.
+   */
   _lazyGet() {
+    this._getReq.abort(); // even when no adapter resolves: an older request never survives
     const adapter = this._resolveAdapter();
     if (!adapter) return;
     const id = this._value;
-    const context = this._pickerOptions?.context ?? TdMediaPicker.defaults?.context;
+    const context = this._resolveContext();
+    const gen = this._srcGen || 0;
     this._getReq.run((signal) => adapter.get(id, { context, signal })).then((r) => {
-      if (r.stale || id !== this._value) return;
+      if (r.stale || id !== this._value || gen !== (this._srcGen || 0) || adapter !== this._resolveAdapter()
+        || !Object.is(context, this._resolveContext())) return;
       if (r.error) {
         normalizeError(r.error, null, { operation: 'td-media-field get' }); // logs operation + code only (review SEC-2)
         return;

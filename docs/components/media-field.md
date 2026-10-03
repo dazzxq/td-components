@@ -183,6 +183,10 @@ khi rời ô nếu đã đổi (event `input` / `change` native của ô bị ch
   nhãn từ server. Ảnh xem trước bắt đầu trống rồi được lấy lại bằng `adapter.get(id)` theo phiên hiện tại (latest-wins,
   abort khi đổi tiếp); chưa có adapter → chờ, tự lấy khi có (`field.adapter`, `pickerOptions` hoặc
   `TdMediaPicker.configureDefaults({ adapter })`).
+- Mỗi lần adapter / context hiệu lực đổi (`configureDefaults`, `field.adapter`, `pickerOptions`, kể cả gỡ) → request
+  `get` đang chờ bị **huỷ trước** (abort + tăng thế hệ nguồn), rồi mới lấy lại nếu còn adapter. Kết quả chỉ được áp khi
+  thế hệ request, thế hệ nguồn, adapter, context và id đều còn khớp — adapter cũ phớt lờ `AbortSignal` cũng không ghi
+  được ảnh xem trước.
 - `required` → phải có id (`valueMissing`, thông báo `labels.required` "Vui lòng chọn {kind}." — `{kind}` lấy từ
   `labels.kinds` theo loại đầu của `accept-kind`: "ảnh" / "video" / "file"); dùng chung
   [hợp đồng lỗi](../customization/hooks.md#hợp-đồng-lỗi-của-mọi-form-control) (`setError`, `error-text`).

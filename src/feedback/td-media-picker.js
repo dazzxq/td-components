@@ -322,6 +322,8 @@ export class TdMediaPicker extends HTMLElement {
       announceQueued: false,
       pendingAnnounce: '',
     };
+    // review SEC-3 r2: an asset keeps only the metadata keys of its field descriptors
+    s.metaKeys = s.assetFields.map((f) => f.key);
     this._s = s;
     const root = this._build();
     s.root = root;
@@ -345,7 +347,7 @@ export class TdMediaPicker extends HTMLElement {
         ids: opts.selection.initialIds,
         model: s.model,
         get: (assetId, signal) => Promise.resolve(s.adapter.get(assetId, { context: s.context, signal }))
-          .then((raw) => normalizeAsset(raw, { safeUrl: safeMediaUrl })),
+          .then((raw) => normalizeAsset(raw, { safeUrl: safeMediaUrl, metadataKeys: s.metaKeys })),
         onApply: (assets) => {
           if (this._s !== s) return;
           for (const a of assets) s.cache.putAsset(a);
@@ -623,7 +625,7 @@ export class TdMediaPicker extends HTMLElement {
     }
     return out.then((raw) => {
       if (this._s !== s || this._settled || signal.aborted) throw Object.assign(new Error('closed'), { name: 'AbortError' });
-      const asset = normalizeAsset(raw && raw.asset, { safeUrl: safeMediaUrl });
+      const asset = normalizeAsset(raw && raw.asset, { safeUrl: safeMediaUrl, metadataKeys: s.metaKeys });
       const d = raw && raw.deduplication;
       const dedup = d && d.outcome === 'exact-reused' && typeof d.matchedAssetId === 'string'
         ? { outcome: 'exact-reused', matchedAssetId: d.matchedAssetId } : { outcome: 'created' };
@@ -731,7 +733,7 @@ export class TdMediaPicker extends HTMLElement {
       }
       let page;
       try {
-        page = normalizePage(r.value, { safeUrl: safeMediaUrl, kinds: s.kinds, limit: s.pageSize, warn: (m) => warnOnce(`page:${m}`, m) });
+        page = normalizePage(r.value, { safeUrl: safeMediaUrl, kinds: s.kinds, limit: s.pageSize, metadataKeys: s.metaKeys, warn: (m) => warnOnce(`page:${m}`, m) });
       } catch (err) {
         this._listError(err, null);
         return;
@@ -758,7 +760,7 @@ export class TdMediaPicker extends HTMLElement {
       }
       let page;
       try {
-        page = normalizePage(r.value, { safeUrl: safeMediaUrl, kinds: s.kinds, limit: s.pageSize, warn: (m) => warnOnce(`page:${m}`, m) });
+        page = normalizePage(r.value, { safeUrl: safeMediaUrl, kinds: s.kinds, limit: s.pageSize, metadataKeys: s.metaKeys, warn: (m) => warnOnce(`page:${m}`, m) });
       } catch (err) {
         this._listError(err, null, true);
         return;
@@ -1239,7 +1241,7 @@ export class TdMediaPicker extends HTMLElement {
         if (n) this._emit('operation-error', { operation: 'get', code: n.code, retryable: n.retryable });
         return;
       }
-      const asset = normalizeAsset(r.value, { safeUrl: safeMediaUrl });
+      const asset = normalizeAsset(r.value, { safeUrl: safeMediaUrl, metadataKeys: s.metaKeys });
       if (!asset || asset.id !== id) return;
       this._applyFreshAsset(asset);
     });
@@ -1505,7 +1507,7 @@ export class TdMediaPicker extends HTMLElement {
         }
         return;
       }
-      const asset = normalizeAsset(r.value, { safeUrl: safeMediaUrl });
+      const asset = normalizeAsset(r.value, { safeUrl: safeMediaUrl, metadataKeys: s.metaKeys });
       if (!asset || asset.id !== id) {
         this._editNotice(this._t('error.server'), false);
         return;
@@ -1547,7 +1549,7 @@ export class TdMediaPicker extends HTMLElement {
             }
             return;
           }
-          const asset = normalizeAsset(r.value, { safeUrl: safeMediaUrl });
+          const asset = normalizeAsset(r.value, { safeUrl: safeMediaUrl, metadataKeys: s.metaKeys });
           if (!asset || asset.id !== ed.id) return;
           s.cache.putAsset(asset);
           ed.asset = asset;
