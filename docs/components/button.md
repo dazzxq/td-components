@@ -128,7 +128,7 @@ Nếu không có `label` và cũng không có chữ, nút hiện chữ mặc đ�
 
 `icon` nhận **tên icon trong registry** của kit. Các tên có sẵn: `close check prev next up down back plus minus more
 search calendar fullscreen download external info success error warning eye eye-off zoom-in inbox star upload link
-image sort`. Từ 0.18.0 nhận cả **tên alias** (giống PHP): `x` → close, `chevron-left/right/up/down` → prev/next/up/down,
+image sort grip`. Từ 0.18.0 nhận cả **tên alias** (giống PHP): `x` → close, `chevron-left/right/up/down` → prev/next/up/down,
 `ellipsis` → more, `external-link` → external, `expand` → fullscreen, `pen` → pencil. Bạn có thể đăng ký thêm icon riêng,
 xem [Icons](icons.md).
 
