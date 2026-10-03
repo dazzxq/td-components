@@ -2,6 +2,32 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.30.0
+
+dsuite P1 lô 2 — **dòng động + ô số / tiền** (yêu cầu dienthoaihay.vn #14, #11; plan
+`docs/internal/plans/v0.30.0-number-repeater.md`, Codex plan-review APPROVE 3 vòng).
+
+### Added
+
+- **`<td-repeater>`** — danh sách dòng động: nâng cấp tại chỗ các dòng app in sẵn, thêm dòng từ `<template>`, xoá, lên /
+  xuống (nút ở biên `aria-disabled`, nút vừa bấm giữ focus), `min-rows` / `max-rows`, `add-label`; id trong dòng nhân bản
+  có hậu tố riêng (`for` / `aria-*` / `field-id` cập nhật theo); sự kiện **`before-remove`** huỷ được (hỏi xác nhận) và
+  **`rows-change`** đồng bộ sau **mọi** thay đổi (người dùng, API, app sửa DOM trực tiếp). **Kit không đổi `name`** các
+  field trong dòng — app đặt lại index trong `rows-change` (docs có công thức `rename()` dùng `data-name`).
+- **`<td-number-input>`** — ô số / tiền: hiển thị nhóm nghìn (`12.990.000`), giá trị gửi form là chuỗi số sạch
+  (`12990000`), rỗng gửi `""` (không bao giờ `0`); tính chính xác bằng `BigInt` tới 30 chữ số; `decimals`, `prefix` /
+  `suffix` (₫, %), `unit-label`, `min` / `max` / `step` (↑ ↓ PageUp PageDown), vượt ngưỡng = lỗi validation (`clamp`
+  opt-in); dán `1.234.567` / `1,234,567` / `12 990 000 ₫` theo bảng quy tắc, chuỗi mơ hồ bị từ chối (không đoán, không
+  cắt); giữ vị trí con trỏ khi định dạng lại. Không có `min` → không nhận số âm.
+- **PHP `td_number_input($name, $value, $o)`** — mặc định `<input type="number">` native (chạy không JS, gửi giá trị
+  sạch, ngầm `min="0"`); element mode `number-input@1` hydrate tại chỗ, không xô lệch.
+- Export `@dazzxq/td-components/repeater`, `/number-input`.
+
+### Ghi chú
+
+- `prefix` là property DOM có sẵn — đặt bằng attribute, không qua `el.prefix`.
+- Trước khi JS nạp, ô element mode hiện giá trị sạch (`12990000`); JS nạp xong mới nhóm nghìn, con trỏ có thể về cuối.
+
 ## 0.29.0
 
 dsuite P1 lô 1 — **cây phân cấp** (yêu cầu dienthoaihay.vn #9; plan `docs/internal/plans/v0.29.0-tree.md`, Codex
