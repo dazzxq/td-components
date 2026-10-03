@@ -23,8 +23,11 @@ style và JS nâng cấp tại chỗ.
 4. **Form-associated (v0.26):** khởi tạo `ElementInternals` rồi mới gỡ `name` + ràng buộc trùng của control trong (FormData
    đúng một mục); reset về mặc định đã chụp; label ngoài trỏ control native được chuyển sang host. File input không bao
    giờ bị dựng lại.
-5. **Lệch / thiếu markup:** control không state (button, empty-state) → render lại ngay; có state → chụp state, đang focus
-   thì hoãn tới blur; dropzone đã chọn file giữ native.
+5. **Lệch / thiếu markup:** control không state (button, empty-state) → render lại ngay; có state → chụp state (value,
+   selection, checked, focus) rồi **render an toàn ngay** và khôi phục state + focus vào control mới; dropzone đã chọn
+   file giữ native. *(Sửa 2026-10-03, v0.26 review: bản đầu hoãn tới blur khi control đang focus; ba vòng review liên tiếp
+   tìm lỗi ở đường hoãn — control lạ còn sống, thuộc tính lệch, render hai lần — nên bỏ hoãn: ca hiếm "markup lệch + đang
+   gõ đúng lúc nâng cấp" đổi node nhưng giữ giá trị / selection / focus. Markup hợp lệ vẫn nhận tại chỗ, giữ identity.)*
 6. **Lưới an toàn:** CSS `:not(:defined)` hẹp theo từng host (display, kích thước giữ chỗ, hiện fallback) cho host in tay —
    không giả lập ngữ nghĩa.
 7. **Nạp sớm (tối ưu, không thay SSR):** stylesheet → import map → `<link rel="modulepreload">` cho component có trên trang
