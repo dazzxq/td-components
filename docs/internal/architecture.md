@@ -84,10 +84,38 @@ connectedCallback (gắn lại sau disconnect)
   chỉ `true` cho phần tử **đã hydrate** (và markup còn khớp, kiểm chặt: không còn `name` / ràng buộc của bản không-JS)
   → phần tử tạo bằng JS / viết tay vẫn render lại khi gắn lại như trước 0.26.
 
+**Bổ sung 0.26.0 phần 2 (plan v0.26.0-ssr-dropdown-empty):**
+
+- **Vỏ dropdown (`dropdown@1`)** — `TdDropdown` **không** hydratable: markup SSR là đúng markup native (`<select>`
+  nâng cấp 0.17) + dấu trên host + `select.td-dropdown__native`. Không-xô-lệch là việc của **CSS**: `td.css` tạo dáng
+  select đúng hộp trigger (giữ mũi tên native, không ảnh `data:`), host mang kiểu chữ `.td-dropdown` khi còn dấu. Hoãn
+  **riêng** của dropdown (không phải cơ chế base đã bỏ ở ADR 0012 mục 5 — control trước nâng cấp của nó chính là select
+  native, thay nó khi đang chọn sẽ cướp focus): `connectedCallback()` kiểm **trước mọi thay đổi DOM** — dấu khớp + select
+  con trực tiếp đang là `activeElement` → không `_upgradeSelect()`, không `super.connectedCallback()`, gắn **một**
+  listener `blur` (capture). Blur → gỡ listener, rồi (microtask — một lần gỡ host có thể blur select khi host còn
+  connected) chạy đường thường đúng một lần nếu host còn trên trang và chưa khởi tạo. `disconnectedCallback()` huỷ chờ;
+  gắn lại → xét lại từ đầu. Đường thường gỡ dấu (đã dùng).
+- **`TdEmptyState` (`empty-state@1`)** — `static hydratable = true`. `canHydrate()`: khung `render()` dựng vào
+  `<template>` (class thẻ, cấp heading, chữ tiêu đề / lời nhắn), ô icon đúng tên đã resolve (`inbox` khi không có / lạ) +
+  cỡ px, allowlist thuộc tính từng node, và trong `.td-empty-state__actions` chỉ **nút server hợp lệ** (`td_link` element
+  mode: host `td-button` có hoặc không còn dấu `button@1`, `<a class="td-btn td-btn--{v} td-btn--sm">` + nhãn + spinner,
+  href an toàn và trùng host) với `hidden` đúng khi rỗng. `hydrateExisting()` ghi nhận các node nút server
+  (`_ssrActionNodes`); `_renderActions()` giữ / gắn lại đúng các node đó (kể cả sau render lại do đổi attribute) cho tới
+  khi gán `actions` từ JS. `afterRender()` tạo lại icon từ registry JS (cùng hộp). `canRebind()` kiểm lại khung + nút
+  server; lệch → render lại, bỏ nút server (không state). Gắn lại không còn render lại (trước 0.26 có).
+  `actions` / `iconNode` gán trước khi upgrade được replay qua accessor (trước đây bị property riêng che mất).
+- PHP: `td_dropdown` element mode giữ native mode byte-identical (`test/ssr/dropdown.native.json` chụp từ code trước
+  thay đổi); `td_empty()` luôn element. `Td::icon()` nhận cỡ số nguyên 8–128 px (ô icon của empty state). Fixture:
+  `test/ssr/dropdown.fixtures.json` + `empty.fixtures.json` → `test/ssr/fixtures/dropdown.html` + `empty.html`
+  (`node test/ssr/build-dropdown-empty-fixture.mjs`; `test/php/td-ssr-dropdown-empty.test.js` báo khi cũ) →
+  `src/form/td-dropdown.ssr.browser-test.js` (hộp host / control trước = sau, select focus trong iframe) và
+  `src/display/td-empty-state.ssr.browser-test.js` (chỉ module `empty-state`; gốc package trong iframe).
+
 - `canRebind()` (mặc định `true`): component hydratable kiểm lại markup khi gắn lại; `TdButton` dùng cùng phép so
   cấu trúc + **allowlist attribute** như `canHydrate()` (review round 1 SEC-1).
 - `static hydratable` (mặc định `false`): chỉ component **khai báo** mới đổi vòng đời gắn lại — v0.25 chỉ
-  `TdButton`; v0.26 thêm `TdInputField`, `TdToggle`, `TdCheckbox` (gắn lại tại chỗ chỉ khi đã hydrate, xem trên). `afterRender()` của component hydratable phải **idempotent** trên DOM sẵn có (đồng bộ state tại chỗ,
+  `TdButton`; v0.26 thêm `TdInputField`, `TdToggle`, `TdCheckbox` (gắn lại tại chỗ chỉ khi đã hydrate, xem trên) và
+  `TdEmptyState` (gắn lại tại chỗ cho mọi phần tử còn khớp khung). `afterRender()` của component hydratable phải **idempotent** trên DOM sẵn có (đồng bộ state tại chỗ,
   `listen()` lại), vì nó chạy sau render, sau hydrate và mỗi lần gắn lại.
 - Dấu SSR `data-td-ssr="<tên>@<schema>"`: `ssrMarker(el)` (export của `td-base-element.js`) → `{ name, schema }` hoặc
   `null`; `_ssrMatches(name, schema)` so khớp chính xác. `schema` là phiên bản **cấu trúc markup** của component
@@ -98,6 +126,7 @@ connectedCallback (gắn lại sau disconnect)
   nhãn, spinner. Constructor không đọc con (đúng spec custom element).
 - Lưới an toàn CSS cho host viết tay chưa define: `<tag>:not(:defined):not([data-td-ssr])` → `display` + chiều cao
   giữ chỗ (button 2.5 / 2 / 3rem, input-field + dropdown 2.5rem, toggle + checkbox 1.5rem) — không giả style.
+  Riêng vỏ dropdown có dấu (`dropdown@1`) thì được tạo dáng thật (select đúng hộp trigger) — xem bổ sung 0.26.0 phần 2.
 - Test: fixture dùng chung `test/ssr/button.fixtures.json` → PHP sinh `test/ssr/fixtures/button.html`
   (`node test/ssr/build-button-fixture.mjs`; `test/php/td-ssr.test.js` báo khi file cũ) → nhóm web-test-runner `ssr`
   (`*.ssr.browser-test.js`, Chromium + Firefox + WebKit) define muộn và so DOM / hộp / focus / FormData. v0.26:

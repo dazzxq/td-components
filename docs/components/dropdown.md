@@ -222,6 +222,26 @@ Option `value=""` **đứng đầu** (dạng "Chọn…") là **placeholder**, g
 `placeholder` của host (nếu host chưa đặt); nếu nó là lựa chọn mặc định thì dropdown = chưa có giá trị (không gửi,
 `required` báo thiếu, reset về chưa chọn). Option `value=""` ở vị trí khác vẫn là một mục bình thường.
 
+**Vỏ SSR không xô lệch (0.26.0, hợp đồng `dropdown@1`).** Select native mặc định cao / viền / font khác trigger, nên khi
+module tải xong trang bị xô lệch. Đánh dấu host `data-td-ssr="dropdown@1"` và cho select class `td-dropdown__native`
+(đây chính là markup `td_dropdown(…, ['element' => true])` của [adapter PHP](../guides/php-adapter.md#td_dropdown-ở-chế-độ-element-vỏ-không-xô-lệch-0260)
+in ra):
+
+```html
+<td-dropdown data-td-ssr="dropdown@1" id="city" label="Thành phố" searchable="false" allow-clear="false">
+  <label class="td-field__label" for="city-select">Thành phố</label>
+  <select class="td-dropdown__native" id="city-select" name="city">…</select>
+</td-dropdown>
+```
+
+- `td.css` tạo dáng select **đúng hộp của trigger** (chiều cao, padding, viền, bo góc, font, màu theo token
+  `--td-field-*`, rộng 100 %) và giữ **mũi tên native** (không `appearance: none`, không ảnh `data:` — hợp CSP chặt).
+  Mũi tên có thể khác chevron của trigger, hộp thì trùng: thay select → trigger không dịch pixel nào (test 3 engine).
+- **Select đang focus khi module tới** (người dùng đang chọn): component không làm gì — không gỡ select, không render,
+  không gắn listener — cho tới khi select **blur**; lúc đó nâng cấp đúng **một lần** với lựa chọn tại thời điểm blur,
+  focus giữ ở chỗ người dùng vừa chuyển tới. Gỡ host khỏi trang trong lúc chờ → huỷ chờ; gắn lại → xét lại từ đầu.
+- Dấu bị gỡ khi nâng cấp. Không có dấu / dấu lệch (`dropdown@2`) → hành vi nâng cấp như trên, không hoãn.
+
 ### 10. Dòng "＋ Thêm mới" ở cuối menu (`create-label`, 0.22.0)
 
 Cho người dùng thêm một mục **mới** ngay trong dropdown (ví dụ thêm film / máy / lab vào catalog rồi chọn luôn), thay

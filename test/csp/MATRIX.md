@@ -76,6 +76,8 @@ and (portaled) `.td-dropdown-search`, `.td-dropdown-options` (max-height).
 States: `closed`, `closed-selected`, `open` (portal + settle), `disabled`. (4)
 v0.22.0: `.td-dropdown__options` (listbox) no longer scrolls — `.td-dropdown__scroller` inside it does (max-height);
 new state `create` (`create-label` + 12 options: listbox, scroller, pinned `.td-dropdown__option--create` + its icon).
+v0.26.0: `ssr` (PHP `td_dropdown(…, ['element' => true])` shell `dropdown@1` — label + required star + styled
+`select.td-dropdown__native` — upgraded to the trigger under the strict CSP).
 
 ### td-button (1 declarative — variant glass OR custom-color inline style)
 Styled el: inner `button` (bg/box-shadow/backdrop-filter from `_glassStyles[variant]`, or
@@ -97,7 +99,9 @@ States: `page1`, `page3`, `custom-color` (#0ea5e9). (3)
 ### td-empty-state (5 declarative incl. 1 SVG `style=`)
 Styled els: `.td-empty-state-card` (border/padding/bg/shadow), `.td-empty-icon` (SVG size/color),
 `.td-empty-title` (margin), `.td-empty-actions` (margin + display:none when no actions).
-States: `default`, `compact` (half padding), `size-sm`, `size-lg`. (4)
+States: `default`, `compact` (half padding), `size-sm`, `size-lg`. (4) — later additions: `actions`, and `ssr`
+(v0.26.0: PHP `td_empty()` markup `empty-state@1` with a registry icon + one server action `td_link` element mode,
+hydrated in place under the strict CSP).
 
 ### td-table (17 declarative; imports td-pagination + td-empty-state)
 Styled els: `.td-table-container` (card), `.td-table-row[data-row-idx]` (zebra bg + transition),

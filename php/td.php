@@ -22,7 +22,10 @@
  *     name / value / checked / constraints / autocomplete / id (submit + validation + password managers without JS);
  *     the component adopts it in place and takes over form participation.
  *   - td_dropdown prints a <td-dropdown> host wrapping a native <select>: works without JS, upgrades when
- *     `@dazzxq/td-components/dropdown` is imported (the ONLY helper that upgrades).
+ *     `@dazzxq/td-components/dropdown` is imported (the ONLY helper that upgrades). v0.26.0 element mode: the same
+ *     markup + `data-td-ssr="dropdown@1"` + `select.td-dropdown__native` styled to the trigger box (no layout shift).
+ *   - v0.26.0 td_empty prints `<td-empty-state data-td-ssr="empty-state@1">` + the full styled tree (always element),
+ *     hydrated in place by `@dazzxq/td-components/empty-state`.
  *   - td_icon prints `svg.td-icon` with the full geometry of src/icons/icons.json (+ Td::registerIcons()).
  *   - td_badge prints a CSS-only `span.td-badge…` (no JS, no custom element).
  *   - td_alert prints a `<td-alert>` host that ALREADY contains the full styled markup `div.td-alert` (icon, heading,
@@ -128,6 +131,9 @@ namespace TdComponents {
         public const SSR_FIELD = 'input-field@1';
         public const SSR_TOGGLE = 'toggle@1';
         public const SSR_CHECKBOX = 'checkbox@1';
+        /** v0.26.0 part 2: td_dropdown element mode (the native select shell) and td_empty (always). */
+        public const SSR_DROPDOWN = 'dropdown@1';
+        public const SSR_EMPTY = 'empty-state@1';
 
         /**
          * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.26.0') —
@@ -515,17 +521,21 @@ namespace TdComponents {
         /**
          * `svg.td-icon.td-icon--{s|m|l}[data-icon]` — same markup as tdIcon() in JS. Decorative (aria-hidden) unless
          * $label is given (role="img" + aria-label + <title>). Unknown name → ''.
+         * v0.26.0: $size may also be an integer 8–128 (px) → `svg.td-icon` + width / height, like tdIcon(name, { size: n })
+         * (td_empty's icon slot); any other integer → 'm'.
          */
-        public static function icon(string $name, string $size = 'm', string $label = '', string $class = ''): string
+        public static function icon(string $name, string|int $size = 'm', string $label = '', string $class = ''): string
         {
             $def = self::iconDef($name);
             if ($def === null) {
                 return '';
             }
+            $px = is_int($size) && $size >= 8 && $size <= 128 ? $size : null;
             $size = in_array($size, ['s', 'm', 'l'], true) ? $size : 'm';
             $label = trim($label);
-            $out = '<svg class="td-icon td-icon--' . $size . self::e(self::classTokens($class)) . '" data-icon="'
-                . self::e($def['_name']) . '" viewBox="' . self::e((string) ($def['viewBox'] ?? '0 0 24 24')) . '"';
+            $out = '<svg class="td-icon' . ($px === null ? ' td-icon--' . $size : '') . self::e(self::classTokens($class)) . '" data-icon="'
+                . self::e($def['_name']) . '" viewBox="' . self::e((string) ($def['viewBox'] ?? '0 0 24 24')) . '"'
+                . ($px === null ? '' : ' width="' . $px . '" height="' . $px . '"');
             $out .= ($def['paint'] ?? 'stroke') === 'fill'
                 ? ' fill="currentColor"'
                 : ' fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
@@ -942,6 +952,11 @@ namespace {
      * (absent / null = auto when > 8 options; false, 0 and the strings 'false' / '0' / 'off' / 'no' / '' — trimmed,
      * any case — turn it off; anything else keeps PHP truthiness: true, 1, '1', 'true', 'yes', 'on'… → on), required, disabled, aria_label, id (host; select = {id}-select), class,
      * create_label (v0.22.0 → `create-label`: the "add new" action row, only with JS), attrs (host).
+     * v0.26.0 `element` (bool, default Td::configure ssr_elements = false): the same markup + `data-td-ssr="dropdown@1"`
+     * on the host + `class="td-dropdown__native"` on the select — td.css styles the select to the exact trigger box (native
+     * arrow kept), so the upgrade to the trigger moves nothing (no layout shift); a select focused when the module loads
+     * is upgraded on its blur. `attrs` then never sets a name the component reads from the host (required, disabled,
+     * name, value, label, placeholder…; use the options) nor `data-td-*`; an `attrs` aria-label names the select.
      */
     function td_dropdown(string $name, array $options, string|int|null $value = '', array $o = []): string
     {
@@ -973,19 +988,40 @@ namespace {
             'create-label' => isset($o['create_label']) && is_scalar($o['create_label']) && (string) $o['create_label'] !== ''
                 ? (string) $o['create_label'] : null,
         ];
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $aria = isset($o['aria_label']) && (string) $o['aria_label'] !== '' ? (string) $o['aria_label'] : null;
+        // v0.26.0 element mode (contract dropdown@1): the SAME markup + the marker on the host + the shell class on the
+        // select (styled to the trigger box — no layout shift on upgrade). Names the component reads from the host are
+        // reserved in `attrs` (any case) with the kit's data-td-* namespace; an `attrs` aria-label names the select.
+        $element = td__element($o);
         $taken = [];
-        $html = '<td-dropdown' . Td::ownAttrs($host, $taken) . Td::attrs(is_array($o['attrs'] ?? null) ? $o['attrs'] : [], $taken) . '>';
+        if ($element) {
+            $host = ['data-td-ssr' => Td::SSR_DROPDOWN] + $host;
+        }
+        $html = '<td-dropdown' . Td::ownAttrs($host, $taken);
+        if ($element) {
+            foreach ($extra as $k => $v) {
+                if (strtolower((string) $k) === 'aria-label') {
+                    $aria ??= td__str($v);
+                }
+            }
+            $taken = td__reserve(['id', 'class', 'label', 'placeholder', 'searchable', 'allow-clear', 'create-label', 'name',
+                'value', 'required', 'disabled', 'aria-label', 'aria-labelledby', 'value-key', 'label-key', 'max-height',
+                'error-text'], $extra, $taken);
+        }
+        $html .= Td::attrs($extra, $taken) . '>';
         // Visible label for the no-JS select; the upgrade re-renders the host (its own label from `label`).
         if ($label !== null) {
             $html .= '<label class="td-field__label" for="' . Td::e($id) . '-select">' . Td::e($label)
                 . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') . '</label>';
         }
         $html .= '<select' . Td::ownAttrs([
+            'class' => $element ? 'td-dropdown__native' : null,
             'id' => "$id-select",
             'name' => $name !== '' ? $name : null,
             'required' => $required,
             'disabled' => !empty($o['disabled']),
-            'aria-label' => isset($o['aria_label']) && (string) $o['aria_label'] !== '' ? (string) $o['aria_label'] : null,
+            'aria-label' => $aria,
         ]) . '>';
         $current = $value === null ? '' : (string) $value;
         if ($placeholder !== null) {
@@ -1111,6 +1147,61 @@ namespace {
             . ($heading !== null ? '<p class="td-alert__heading">' . Td::e($heading) . '</p>' : '')
             . '<div class="td-alert__message">' . Td::e($message) . '</div></div></div>';
         return $html . '</td-alert>';
+    }
+
+    /**
+     * v0.26.0 empty state (contract empty-state@1, ADR 0012) — ALWAYS the element: `<td-empty-state
+     * data-td-ssr="empty-state@1" …>` + the exact tree <td-empty-state> renders (icon slot filled from the PHP registry,
+     * heading, message, actions), styled by td.css without JS and hydrated IN PLACE by `@dazzxq/td-components/empty-state`
+     * (no flash, no layout shift). $title / $message are TEXT (escaped); '' → the component's default texts.
+     * Options: icon (registry name / alias / registerIcons() site-*; absent or unknown → `inbox`, no `icon` attribute),
+     * size sm|md|lg (default md), compact (bool), heading (2–6 → `heading-level`; else the component's h3), actions (list
+     * of ['label' =>, 'href' =>, 'variant' => primary|secondary|danger (default secondary)] → td_link element mode, size
+     * sm; an action without a safe href is skipped — no dead control; label '' → 'Thực hiện'), id, class, attrs (host:
+     * allowlisted; owned names and data-td-* reserved). The server actions stay until the site sets the JS `actions`.
+     */
+    function td_empty(string $title, string $message = '', array $o = []): string
+    {
+        $sizes = ['sm' => 28, 'md' => 40, 'lg' => 56];
+        $size = is_string($o['size'] ?? null) && isset($sizes[$o['size']]) ? $o['size'] : 'md';
+        $px = $sizes[$size];
+        $compact = !empty($o['compact']);
+        $level = isset($o['heading']) && is_scalar($o['heading']) && preg_match('/^[2-6]$/', trim((string) $o['heading']))
+            ? (int) trim((string) $o['heading']) : null;
+        $iconName = isset($o['icon']) && is_string($o['icon']) && $o['icon'] !== '' && Td::hasIcon($o['icon']) ? $o['icon'] : null;
+        $svg = Td::icon($iconName ?? 'inbox', $px);
+        $actions = '';
+        foreach (is_array($o['actions'] ?? null) ? $o['actions'] : [] as $a) {
+            if (!is_array($a) || !isset($a['href']) || !is_string($a['href']) || Td::safeUrl($a['href']) === '') {
+                continue;
+            }
+            $label = isset($a['label']) && is_scalar($a['label']) && (string) $a['label'] !== '' ? (string) $a['label'] : 'Thực hiện';
+            $variant = in_array($a['variant'] ?? null, ['primary', 'secondary', 'danger'], true) ? $a['variant'] : 'secondary';
+            $actions .= td_link($label, $a['href'], ['variant' => $variant, 'size' => 'sm', 'element' => true]);
+        }
+        $taken = [];
+        $html = '<td-empty-state' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_EMPTY,
+            'id' => td__str($o['id'] ?? null),
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'title' => $title !== '' ? $title : null,
+            'message' => $message !== '' ? $message : null,
+            'size' => $size,
+            'compact' => $compact,
+            'heading-level' => $level !== null ? (string) $level : null,
+            'icon' => $iconName,
+        ], $taken);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $taken = td__reserve(['id', 'class', 'title', 'message', 'size', 'compact', 'heading-level', 'icon'], $extra, $taken);
+        $h = 'h' . ($level ?? 3);
+        return $html . Td::attrs($extra, $taken) . '>'
+            . '<div class="td-empty-state td-empty-state--' . $size . ($compact ? ' td-empty-state--compact' : '') . '">'
+            . '<div class="td-empty-state__icon" aria-hidden="true"><span data-td-icon="' . Td::e($iconName ?? 'inbox')
+            . '" data-td-icon-size="' . $px . '">' . $svg . '</span></div>'
+            . '<' . $h . ' class="td-empty-state__title">' . Td::e($title !== '' ? $title : 'Không có dữ liệu') . '</' . $h . '>'
+            . '<p class="td-empty-state__message">' . Td::e($message !== '' ? $message : 'Chưa có mục nào được tạo.') . '</p>'
+            . '<div class="td-empty-state__actions"' . ($actions === '' ? ' hidden' : '') . '>' . $actions . '</div>'
+            . '</div></td-empty-state>';
     }
 
     /** @internal v0.26.0: element mode of a form helper — per call `element` (true/false) overrides Td::configure. */
