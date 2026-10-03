@@ -241,6 +241,7 @@ sẽ bị dịch thành `/vendor/td-components-0.29.0/button` (không tồn tạ
     "@dazzxq/td-components/otp-input": "/vendor/td-components-0.29.0/src/form/td-otp-input.js",
     "@dazzxq/td-components/tree": "/vendor/td-components-0.29.0/src/form/td-tree.js",
     "@dazzxq/td-components/tree-select": "/vendor/td-components-0.29.0/src/form/td-tree-select.js",
+    "@dazzxq/td-components/number-input": "/vendor/td-components-0.29.0/src/form/td-number-input.js",
     "@dazzxq/td-components/repeater": "/vendor/td-components-0.29.0/src/form/td-repeater.js",
     "@dazzxq/td-components/drawer": "/vendor/td-components-0.29.0/src/feedback/td-drawer.js",
     "@dazzxq/td-components/copy": "/vendor/td-components-0.29.0/src/display/td-copy.js",
@@ -488,6 +489,7 @@ Nguồn: `package.json#exports`.
 | `@dazzxq/td-components/otp-input` | `src/form/td-otp-input.js` | `<td-otp-input>`, `TdOtpInput` |
 | `@dazzxq/td-components/tree` | `src/form/td-tree.js` | `<td-tree>`, `TdTree` |
 | `@dazzxq/td-components/tree-select` | `src/form/td-tree-select.js` | `<td-tree-select>`, `TdTreeSelect` (nạp kèm `td-tree`) |
+| `@dazzxq/td-components/number-input` | `src/form/td-number-input.js` | `<td-number-input>`, `TdNumberInput` |
 | `@dazzxq/td-components/repeater` | `src/form/td-repeater.js` | `<td-repeater>`, `TdRepeater` |
 | `@dazzxq/td-components/drawer` | `src/feedback/td-drawer.js` | `<td-drawer>`, `TdDrawer` |
 | `@dazzxq/td-components/copy` | `src/display/td-copy.js` | `<td-copy>`, `TdCopy` |
