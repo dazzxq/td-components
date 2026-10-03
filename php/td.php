@@ -147,6 +147,8 @@ namespace TdComponents {
         public const SSR_CHIP_INPUT = 'chip-input@1';
         /** v0.29.0: td_tree_select element mode (<td-tree-select> + the native <select>, styled to the trigger box). */
         public const SSR_TREE_SELECT = 'tree-select@1';
+        /** v0.30.0: td_number_input element mode (<td-number-input> + the native type=number control). */
+        public const SSR_NUMBER = 'number-input@1';
 
         /**
          * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.29.0') —
@@ -1626,6 +1628,168 @@ namespace {
             }
         }
         return substr((string) preg_replace('/[^0-9]/', '', strtr($v, $map)), 0, 6);
+    }
+
+    /**
+     * v0.30.0 number / money field (contract number-input@1, plan v0.30.0 M3). Default: a NATIVE field that works
+     * without JS — `div.td-field.td-number` > [label] + `div.td-number__box` > [prefix] `input.td-number__control`
+     * (type number: the browser checks range / step / characters and submits the clean number; no thousands grouping
+     * without JS) [suffix] [hidden unit text] + footer (error / hint) + status region. `element` (bool, default
+     * Td::configure ssr_elements = false): `<td-number-input data-td-ssr="number-input@1">` host + the same tree with the
+     * CANONICAL value (never pre-formatted: a no-JS submit of "12.990.000" would be read as 12), adopted IN PLACE by
+     * `@dazzxq/td-components/number-input`.
+     * $value / min / max / step go through td__number_canonical() (same gate as the component: canonical form, ≤ 30
+     * digits, no more fraction digits than `decimals` — never rounded / cut; invalid → dropped + one E_USER_WARNING);
+     * `step` must be > 0. Native: `min` = min ?? 0 (no negatives unless min < 0), `step` = step ?? 10^-decimals.
+     * Options: label, hint, error, placeholder, required, disabled, readonly, min, max, step, decimals (0–10),
+     * group_separator ('.' | ',' | ' ' | ''), decimal_separator (',' | '.'), prefix, suffix, unit_label, clamp, size
+     * (sm|md|lg), aria_label (when there is no label), id (the CONTROL id — `<label for>`; element mode: host =
+     * {id}-host), class (wrapper / host), attrs (the control: allowlisted; owned names and data-td-* reserved), element.
+     */
+    function td_number_input(string $name, string|int|null $value = null, array $o = []): string
+    {
+        $element = td__element($o);
+        $decimals = isset($o['decimals']) && is_numeric($o['decimals']) && (int) $o['decimals'] == $o['decimals']
+            && (int) $o['decimals'] >= 0 && (int) $o['decimals'] <= 10 ? (int) $o['decimals'] : 0;
+        $group = isset($o['group_separator']) && is_string($o['group_separator']) && in_array($o['group_separator'], ['.', ',', ' ', ''], true)
+            ? $o['group_separator'] : null;
+        $groupEff = $group ?? '.';
+        $decFallback = $groupEff === ',' ? '.' : ',';
+        $decimal = isset($o['decimal_separator']) && in_array($o['decimal_separator'], [',', '.'], true) && $o['decimal_separator'] !== $groupEff
+            ? $o['decimal_separator'] : null;
+        $canon = static function (string $what, mixed $v) use ($decimals): ?string {
+            if ($v === null || $v === '' || is_bool($v)) {
+                return null;
+            }
+            $c = is_int($v) || is_string($v) ? td__number_canonical((string) $v, $decimals) : null;
+            if ($c === null) {
+                trigger_error("td_number_input: $what " . json_encode(is_scalar($v) ? (string) $v : gettype($v))
+                    . " is not a canonical number with at most $decimals decimals / 30 digits — ignored", E_USER_WARNING);
+            }
+            return $c;
+        };
+        $val = $canon('value', $value) ?? '';
+        $min = $canon('min', $o['min'] ?? null);
+        $max = $canon('max', $o['max'] ?? null);
+        $step = $canon('step', $o['step'] ?? null);
+        if ($step !== null && ($step[0] === '-' || !preg_match('/[1-9]/', $step))) { // must be > 0
+            trigger_error("td_number_input: step \"$step\" must be > 0 — ignored", E_USER_WARNING);
+            $step = null;
+        }
+        $minEff = $min ?? '0';
+        $negative = $minEff[0] === '-';
+        $stepEff = $step ?? ($decimals > 0 ? '0.' . str_repeat('0', $decimals - 1) . '1' : '1');
+        $inputmode = $negative ? 'text' : ($decimals > 0 ? 'decimal' : 'numeric');
+        $size = in_array($o['size'] ?? null, Td::SIZES, true) ? $o['size'] : 'md';
+        $callerId = td__str($o['id'] ?? null);
+        $base = $element ? ($callerId !== null ? $callerId . '-host' : td__host_uid($name)) : ($callerId ?? td__host_uid($name));
+        $cid = $callerId ?? $base . '-control';
+        $str = static fn (string $k): ?string => isset($o[$k]) && is_scalar($o[$k]) && !is_bool($o[$k]) && (string) $o[$k] !== '' ? (string) $o[$k] : null;
+        $label = $str('label');
+        $hint = $str('hint');
+        $error = $str('error');
+        $placeholder = $str('placeholder');
+        $prefix = $str('prefix');
+        $suffix = $str('suffix');
+        $unitLabel = $str('unit_label');
+        $aria = $str('aria_label');
+        $unit = $unitLabel ?? $suffix ?? $prefix;
+        $required = !empty($o['required']);
+        $disabled = !empty($o['disabled']);
+        $readonly = !empty($o['readonly']);
+        $desc = trim(($unit !== null ? "$base-unit " : '') . ($hint !== null ? "$base-note " : '') . ($error !== null ? "$base-error" : ''));
+        $taken = [];
+        $control = '<input' . Td::ownAttrs([
+            'type' => 'number',
+            'class' => 'td-number__control',
+            'id' => $cid,
+            'inputmode' => $inputmode,
+            'autocomplete' => 'off',
+            'spellcheck' => 'false',
+            'name' => $name !== '' ? $name : null,
+            'value' => $val !== '' ? $val : null,
+            'min' => $minEff,
+            'max' => $max,
+            'step' => $stepEff,
+            'placeholder' => $placeholder,
+            'required' => $required,
+            'aria-required' => $required ? 'true' : null,
+            'disabled' => $disabled,
+            'readonly' => $readonly,
+            'aria-label' => $label === null ? $aria : null,
+            'aria-describedby' => $desc !== '' ? $desc : null,
+            'aria-invalid' => $error !== null ? 'true' : null,
+            'aria-errormessage' => $error !== null ? "$base-error" : null,
+        ], $taken);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $taken = td__reserve(['type', 'class', 'id', 'inputmode', 'autocomplete', 'spellcheck', 'name', 'value', 'min', 'max',
+            'step', 'placeholder', 'required', 'aria-required', 'disabled', 'readonly', 'aria-label', 'aria-labelledby',
+            'aria-describedby', 'aria-invalid', 'aria-errormessage', 'pattern', 'maxlength', 'minlength', 'list'], $extra, $taken);
+        $control .= Td::attrs($extra, $taken) . '>';
+        $b = Td::e($base);
+        $labelHtml = $label !== null
+            ? '<label class="td-field__label" id="' . $b . '-label" for="' . Td::e($cid) . '">' . Td::e($label)
+                . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') . '</label>'
+            : '';
+        $box = '<div class="td-number__box">'
+            . ($prefix !== null ? '<span class="td-number__affix td-number__affix--prefix" aria-hidden="true">' . Td::e($prefix) . '</span>' : '')
+            . $control
+            . ($suffix !== null ? '<span class="td-number__affix td-number__affix--suffix" aria-hidden="true">' . Td::e($suffix) . '</span>' : '')
+            . ($unit !== null ? '<span id="' . $b . '-unit" hidden>' . Td::e($unit) . '</span>' : '')
+            . '</div>';
+        $footer = $error !== null ? '<span class="td-field-error" id="' . $b . '-error" data-for="' . $b . '">' . Td::e($error) . '</span>' : '';
+        $footer .= '<div class="td-field__note" id="' . $b . '-note"' . ($hint === null ? ' hidden' : '') . '>' . Td::e($hint ?? '') . '</div>';
+        $inner = '<div class="td-field td-field--' . $size . ' td-number' . ($element ? '' : Td::e(Td::classTokens($o['class'] ?? null))) . '">'
+            . $labelHtml . $box
+            . '<div class="td-field__footer"' . ($hint === null && $error === null ? ' hidden' : '') . '>' . $footer . '</div>'
+            . '<span class="td-sr-only" id="' . $b . '-status" role="status"></span></div>';
+        if (!$element) {
+            return $inner;
+        }
+        $hostTaken = [];
+        return '<td-number-input' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_NUMBER,
+            'id' => $base,
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'name' => $name !== '' ? $name : null,
+            'value' => $val !== '' ? $val : null,
+            'label' => $label,
+            'placeholder' => $placeholder,
+            'helper-text' => $hint,
+            'error-text' => $error,
+            'size' => $size !== 'md' ? $size : null,
+            'required' => $required,
+            'disabled' => $disabled,
+            'readonly' => $readonly,
+            'min' => $min,
+            'max' => $max,
+            'step' => $step,
+            'decimals' => $decimals > 0 ? (string) $decimals : null,
+            'group-separator' => $group,
+            'decimal-separator' => $decimal,
+            'prefix' => $prefix,
+            'suffix' => $suffix,
+            'unit-label' => $unitLabel,
+            'clamp' => !empty($o['clamp']),
+            'aria-label' => $aria,
+        ], $hostTaken) . '>' . $inner . '</td-number-input>';
+    }
+
+    /**
+     * @internal v0.30.0 — the number gate shared with the component (src/utils/number-format.js parseCanonical):
+     * `-?(0|[1-9][0-9]*)(\.[0-9]+)?`, at most 30 digits, at most $decimals fraction digits (never rounded / cut); `-0`
+     * → `0`. Anything else → null.
+     */
+    function td__number_canonical(string $v, int $decimals): ?string
+    {
+        if (!preg_match('/^-?(0|[1-9][0-9]*)(?:\.([0-9]+))?$/D', $v, $m)) {
+            return null;
+        }
+        $frac = isset($m[2]) ? strlen($m[2]) : 0;
+        if ($frac > max(0, min($decimals, 10)) || strlen($m[1]) + $frac > 30) {
+            return null;
+        }
+        return preg_match('/^-0(\.0+)?$/D', $v) ? substr($v, 1) : $v;
     }
 
     /**
