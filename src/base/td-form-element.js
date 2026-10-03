@@ -584,11 +584,43 @@ export class TdFormElement extends TdBaseElement {
     // Review round 1 SEC-01: only BENIGN drift (label text, size…) may stay live under the user's fingers until blur.
     // Markup refused for a security reason (attribute outside the allowlists — on*, style, form… —, unexpected
     // element / node) is replaced AT ONCE; the state (value, selection, checked) and the focus move to the new control.
-    if (this._ssrUnsafe()) {
+    // Review round 2: defer only when the drift is PROVEN benign — the component's known skeleton with exactly one
+    // native control (`_ssrSkeletonOk()`); any unknown topology renders safely at once too.
+    if (this._ssrUnsafe() || !this._ssrSkeletonOk()) {
       state.refocus = true;
       return false;
     }
     return 'defer';
+  }
+
+  /**
+   * @protected Review round 2: the host holds the component's known skeleton (tags / classes / cardinality of every part,
+   * `this._ssrControl` in its place) — only then may a focused mismatch be deferred. Subclass; default: false (never
+   * defer).
+   * @returns {boolean}
+   */
+  _ssrSkeletonOk() { return false; }
+
+  /**
+   * @protected Review round 2: host attribute → attribute of the still-native control while a hydration is deferred
+   * (that control is the only form participant then). Subclass map; `null` = not mirrored.
+   * @param {string} _name
+   * @returns {string|null}
+   */
+  _ssrMirrorName(_name) { return null; }
+
+  /**
+   * @protected Review round 2: while deferred, keep the native control's form attributes in step with the host
+   * (`name`, `required`, `disabled`, constraints…) — no render, no bind. Called first by the subclasses'
+   * attributeChangedCallback.
+   * @param {string} name @param {string|null} value
+   */
+  _ssrMirror(name, value) {
+    const control = this._deferred ? this._ssrControl : null;
+    const target = control && this._ssrMirrorName(name);
+    if (!target) return;
+    if (value === null) control.removeAttribute(target);
+    else control.setAttribute(target, value);
   }
 
   /**
@@ -611,7 +643,11 @@ export class TdFormElement extends TdBaseElement {
       if (![...n.attributes].every((a) => ok(a.name))) return true;
       return walk(n);
     });
-    return walk(this);
+    if (walk(this)) return true;
+    // Review round 2: exactly ONE native control may survive — any other form-associated element (an injected hidden
+    // input / textarea would submit with the form while deferred) makes the markup unsafe.
+    const controls = this.querySelectorAll('input, textarea, select, button, fieldset, output, object');
+    return controls.length !== 1 || controls[0] !== this._ssrControl;
   }
 
   /**

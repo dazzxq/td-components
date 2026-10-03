@@ -402,6 +402,7 @@ export class TdInputField extends TdFormElement {
   // --- In-place attribute handling ---
 
   attributeChangedCallback(name, oldVal, newVal) {
+    this._ssrMirror(name, newVal); // review round 2: a deferred native control follows the host's form attributes
     if (oldVal === newVal || !this._initialized || !this._getFieldElement()) {
       super.attributeChangedCallback(name, oldVal, newVal);
       return;
@@ -820,6 +821,44 @@ export class TdInputField extends TdFormElement {
     this._ssrRetargetLabels(control);
     this._ssrControl = null; // review round 1 IMPL-3: adopted — no stale references
     this._ssrState = null;
+  }
+
+  /**
+   * @protected Review round 2: the known skeleton — one `div.td-field` > [optional label (text + at most the required
+   * star), THIS control, footer of text-only error note / helper note / counter, each at most once].
+   */
+  _ssrSkeletonOk() {
+    const kids = ssrContentNodes(this);
+    if (kids.length !== 1 || kids[0].nodeType !== 1 || kids[0].localName !== 'div' || !kids[0].classList.contains('td-field')) return false;
+    const parts = ssrContentNodes(kids[0]);
+    if (parts.some((n) => n.nodeType !== 1)) return false;
+    let i = 0;
+    if (parts[0]?.localName === 'label') {
+      const nodes = ssrContentNodes(parts[0]);
+      const els = nodes.filter((n) => n.nodeType === 1);
+      if (els.length > 1 || (els[0] && (els[0] !== nodes[nodes.length - 1] || !els[0].classList.contains('td-field__required')
+        || els[0].localName !== 'span' || els[0].children.length))) return false;
+      i = 1;
+    }
+    if (parts[i] !== this._ssrControl || parts.length !== i + 2) return false;
+    const footer = parts[i + 1];
+    if (footer.localName !== 'div' || !footer.classList.contains('td-field__footer')) return false;
+    const seen = new Set();
+    return ssrContentNodes(footer).every((n) => {
+      if (n.nodeType !== 1 || n.children.length) return false;
+      const kind = ssrIsErrorNote(n) ? 'error'
+        : n.localName === 'div' && n.classList.contains('td-field__note') ? 'note'
+          : n.localName === 'div' && n.classList.contains('td-field__counter') ? 'counter' : null;
+      if (!kind || seen.has(kind)) return false;
+      seen.add(kind);
+      return true;
+    });
+  }
+
+  /** @protected Review round 2: host → deferred control (the value itself is synced in place by `value`). */
+  _ssrMirrorName(name) {
+    if (name === 'max-length') return 'maxlength';
+    return ['name', 'required', 'disabled', 'readonly', 'pattern', 'minlength', 'min', 'max', 'step'].includes(name) ? name : null;
   }
 
   /** @protected */

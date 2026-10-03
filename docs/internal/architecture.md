@@ -67,6 +67,13 @@ connectedCallback (gắn lại sau disconnect)
   (IMPL-1). `canRebind()` từ chối → `_ssrRestore = _ssrCapture(control, true)` để render lại giữ state (IMPL-2).
   `_ssrControl` / `_ssrState` xoá sau khi nhận / khôi phục; listener blur gỡ cả mục cleanup của nó (IMPL-3). Matcher:
   dấu `*` ⇔ `required`, ghi chú lỗi ⇔ đang có lỗi (IMPL-4).
+  Review round 2: chỉ hoãn khi lệch được **chứng minh** vô hại — `_ssrSkeletonOk()` của component (đúng bộ khung đã
+  biết, đúng số lượng từng phần, `_ssrControl` đúng chỗ; mặc định `false`) và `_ssrUnsafe()` đòi **đúng một** phần tử
+  form-associated (`input, textarea, select, button, fieldset, output, object`) chính là `_ssrControl` — control lạ (kể
+  cả input ẩn có `name`) → render ngay. Trong lúc hoãn, `_ssrMirror(name, value)` (gọi đầu `attributeChangedCallback`
+  của component) chép thuộc tính form của host sang control native (`_ssrMirrorName`: field → `name` `required`
+  `disabled` `readonly` `pattern` `minlength` `max-length`→`maxlength` `min` `max` `step`; checkable → `name` `value`
+  `required` `disabled`; `value` / `checked` sống vẫn đồng bộ tại chỗ như trước) — không render, không bind.
   `TdFormElement.deferHydration`: đẩy state đã phân giải vào control native (`_ssrPrime`), xoá giá trị / validity của
   ElementInternals (control native tự submit + validate, FormData đúng một mục; `_setFormValue` / `_applyValidity`
   không chạy khi `_deferred`), gắn **một** listener `blur` (capture, qua `listen()` → disconnect gỡ) → khi blur: gỡ
