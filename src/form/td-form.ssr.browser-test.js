@@ -191,6 +191,36 @@ ctl('c-mm').checked = true;
 h('c-mm').setAttribute('size', 'lg');
 ctl('c-reset').checked = false;
 
+// Review round 1 (IMPL-1 / IMPL-2 / IMPL-4): extra hosts cloned from fixture cases with every id renamed.
+/** Inert clone of a case's host with `from` (its caller id / generated host id) renamed to `to` everywhere. */
+const cloneRenamed = (caseId, from, to) => {
+  const host = TPL.content.querySelector(`form[data-case="${caseId}"] > td-input-field, form[data-case="${caseId}"] > td-toggle, form[data-case="${caseId}"] > td-checkbox`);
+  return host.outerHTML.split(from || host.id).join(to);
+};
+const hostIdOf = (caseId) => TPL.content.querySelector(`form[data-case="${caseId}"] [data-td-ssr]`).id;
+const round1 = document.createElement('div');
+round1.innerHTML = [
+  // IMPL-1: same component, unsupported schema → state-safe fallback (checked + id kept)
+  cloneRenamed('c-basic', 'agree', 'sch-agree').replace('checkbox@1', 'checkbox@2'),
+  // IMPL-4: required star without `required` on the host / error note without an error → not adopted
+  cloneRenamed('f-text', 'fullname', 'rq-fullname'),
+  cloneRenamed('f-error', hostIdOf('f-error'), 'er-field'),
+  cloneRenamed('c-noid', hostIdOf('c-noid'), 'er-check').replace('</label></td-checkbox>',
+    '</label><span class="td-field-error" id="er-check-error" data-for="er-check">Lỗi</span></td-checkbox>'),
+  cloneRenamed('c-noid', hostIdOf('c-noid'), 'er-check-ok').replace('</label></td-checkbox>',
+    '</label><span class="td-field-error" id="er-check-ok-error" data-for="er-check-ok">Lỗi</span></td-checkbox>')
+    .replace('data-td-ssr="checkbox@1"', 'data-td-ssr="checkbox@1" error-text="Lỗi"'),
+  // IMPL-2: hydrated, then rejected on re-connect (state must survive the re-render)
+  cloneRenamed('f-hint', hostIdOf('f-hint'), 'rc-field'),
+  cloneRenamed('c-noid', hostIdOf('c-noid'), 'rc-check'),
+].join('');
+mutated.appendChild(round1);
+const R1 = {};
+for (const host of round1.children) R1[host.id] = { host, control: host.querySelector('input, textarea') };
+R1['sch-agree-host'].control.checked = false; // user unticked before define (PHP: checked)
+R1['rq-fullname-host'].host.removeAttribute('required'); // star printed, `required` gone before define
+R1['er-field'].host.removeAttribute('error-text'); // error note printed, error gone before define
+
 // focus + a selection before define (hydrate keeps the node, the focus and the selection)
 ctl('f-focus').focus();
 ctl('f-focus').setSelectionRange(2, 5, 'forward');
@@ -538,6 +568,71 @@ describe('v0.26.0 SSR hydrate — td-input-field / td-toggle / td-checkbox', () 
   });
 });
 
+describe('v0.26.0 SSR hydrate — review round 1', () => {
+  const ctlOf = (id) => R1[id].host.querySelector('input, textarea');
+
+  it('IMPL-1: same component + unsupported schema → render keeping the live state and the control id', () => {
+    const r = R1['sch-agree-host'];
+    const n = ctlOf('sch-agree-host');
+    expect(n !== r.control, 'rendered (schema @2 is never adopted)').to.equal(true);
+    expect(n.checked).to.equal(false);
+    expect(r.host.hasAttribute('checked')).to.equal(false);
+    expect(n.id).to.equal('sch-agree');
+    expect(n.hasAttribute('name')).to.equal(false);
+  });
+
+  it('IMPL-4: required star without `required`, error note without an error → not adopted (render)', () => {
+    const rq = R1['rq-fullname-host'];
+    expect(ctlOf('rq-fullname-host') !== rq.control, 'star drift → render').to.equal(true);
+    expect(!!rq.host.querySelector('.td-field__required')).to.equal(false);
+    expect(ctlOf('rq-fullname-host').value).to.equal('An Nguyễn');
+    const ef = R1['er-field'];
+    expect(ctlOf('er-field') !== ef.control, 'field error-note drift → render').to.equal(true);
+    expect(!!ef.host.querySelector('.td-field-error')).to.equal(false);
+    const ec = R1['er-check'];
+    expect(ctlOf('er-check') !== ec.control, 'checkbox error-note drift → render').to.equal(true);
+    expect(ec.host.querySelectorAll('.td-field-error').length).to.equal(0);
+    const ok = R1['er-check-ok'];
+    expect(ctlOf('er-check-ok') === ok.control, 'error note + error-text → adopted').to.equal(true);
+    expect(ok.host.querySelectorAll('.td-field-error').length).to.equal(1);
+  });
+
+  it('IMPL-3: no stale references after adoption', () => {
+    for (const id of ['f-text', 't-basic', 'c-basic']) {
+      expect(h(id)._ssrControl == null, `${id} _ssrControl`).to.equal(true);
+      expect(h(id)._ssrState == null, `${id} _ssrState`).to.equal(true);
+    }
+  });
+
+  it('IMPL-2: a hydrated field / checkbox rejected on re-connect keeps its state through the re-render', () => {
+    const f = R1['rc-field'];
+    expect(ctlOf('rc-field') === f.control, 'hydrated').to.equal(true);
+    f.control.value = 'giữ lại';
+    const fp = f.host.parentNode;
+    f.host.remove();
+    f.control.classList.remove('td-field__control');
+    fp.appendChild(f.host);
+    const fn = f.host.querySelector('.td-field__control');
+    expect(fn !== f.control, 'rendered').to.equal(true);
+    expect(fn.value).to.equal('giữ lại');
+    expect(f.host.value).to.equal('giữ lại');
+    const c = R1['rc-check'];
+    expect(ctlOf('rc-check') === c.control, 'hydrated').to.equal(true);
+    c.control.indeterminate = true;
+    c.control.checked = true;
+    c.control.dispatchEvent(new Event('change', { bubbles: true }));
+    const cp = c.host.parentNode;
+    c.host.remove();
+    c.control.setAttribute('style', 'outline: 0');
+    cp.appendChild(c.host);
+    const cn = ctlOf('rc-check');
+    expect(cn !== c.control, 'rendered').to.equal(true);
+    expect(cn.hasAttribute('style')).to.equal(false);
+    expect(cn.indeterminate).to.equal(true);
+    expect(cn.checked).to.equal(true);
+  });
+});
+
 // ---------------------------------------------------------------- iframes: one focused control per registry --------
 /**
  * Load fixture cases into a fresh same-origin iframe (own custom-element registry), run `before(doc)` (focus, typing…),
@@ -608,6 +703,12 @@ describe('v0.26.0 SSR hydrate — focus scenarios (own registry per iframe)', ()
     n.value = 'abcd';
     n.dispatchEvent(new win.Event('input', { bubbles: true }));
     expect(ev).to.deep.equal(['input']);
+    // review round 1 IMPL-3: the blur listener's cleanup entry is gone with it; no stale control reference
+    expect(host._ssrControl == null, '_ssrControl cleared').to.equal(true);
+    const twin = doc.createElement('td-input-field');
+    for (const a of ['label', 'max-length', 'name']) twin.setAttribute(a, host.getAttribute(a));
+    doc.body.appendChild(twin);
+    expect(host._cleanups.length).to.equal(twin._cleanups.length);
   });
 
   it('deferred then disconnected before blur → no leaked listener / render; re-inserted → re-evaluated (render + value)', async () => {
@@ -671,4 +772,83 @@ describe('v0.26.0 SSR hydrate — focus scenarios (own registry per iframe)', ()
       expect([...new win.FormData(form)]).to.deep.equal([]);
     });
   }
+});
+
+describe('v0.26.0 SSR hydrate — review round 1 (focused)', () => {
+  // SEC-01: markup refused for a SECURITY reason (attribute outside the allowlists, unexpected element) is never kept
+  // live while focused — it is replaced at once; the value, the selection and the focus move to the new control.
+  const unsafe = [
+    ['oninput on the control', (c) => c.setAttribute('oninput', 'window.__pwned = 1'), /oninput/],
+    ['form on the control', (c) => c.setAttribute('form', 'elsewhere'), /form="elsewhere"/],
+    ['style on the control', (c) => c.setAttribute('style', 'color: red'), /style=/],
+    ['unexpected nested element', (c, d) => d.querySelector('.td-field__label').appendChild(d.createElement('b')), /<b>/],
+  ];
+  for (const [what, mutate, leak] of unsafe) {
+    it(`SEC-01: focused field with ${what} → safe render AT ONCE, value + selection + focus kept`, async () => {
+      let c0;
+      const { doc, win } = await frameCase(['f-hint'], (d) => {
+        c0 = d.querySelector('.td-field__control');
+        mutate(c0, d);
+        c0.focus();
+        c0.value = 'abc def';
+        c0.setSelectionRange(1, 3);
+      });
+      const host = doc.querySelector('td-input-field');
+      const n = host.querySelector('.td-field__control');
+      expect(n !== c0, 'replaced right away (not deferred)').to.equal(true);
+      expect(leak.test(host.innerHTML), host.innerHTML.slice(0, 200)).to.equal(false);
+      expect(n.value).to.equal('abc def');
+      expect(doc.activeElement === n, 'focus moved to the new control').to.equal(true);
+      expect([n.selectionStart, n.selectionEnd]).to.deep.equal([1, 3]);
+      expect([...new win.FormData(doc.querySelector('form'))]).to.deep.equal([['city', 'abc def']]);
+      expect(win.__pwned).to.equal(undefined);
+    });
+  }
+
+  it('SEC-01: focused checkbox with onclick → safe render at once, checked + focus kept', async () => {
+    let c0;
+    const { doc, win } = await frameCase(['c-noid'], (d) => {
+      c0 = d.querySelector('input[type="checkbox"]');
+      c0.setAttribute('onclick', 'window.__pwned = 1');
+      c0.focus();
+      c0.checked = true;
+    });
+    const host = doc.querySelector('td-checkbox');
+    const n = host.querySelector('input[type="checkbox"]');
+    expect(n !== c0, 'replaced right away').to.equal(true);
+    expect(n.hasAttribute('onclick')).to.equal(false);
+    expect(n.checked).to.equal(true);
+    expect(doc.activeElement === n).to.equal(true);
+    expect([...new win.FormData(doc.querySelector('form'))]).to.deep.equal([['news', 'on']]);
+    expect(win.__pwned).to.equal(undefined);
+  });
+
+  it('benign drift while focused still defers (label changed)', async () => {
+    let c0;
+    const { doc } = await frameCase(['f-hint'], (d) => {
+      c0 = d.querySelector('.td-field__control');
+      c0.focus();
+      d.querySelector('td-input-field').setAttribute('label', 'Khác');
+    });
+    expect(doc.querySelector('.td-field__control') === c0, 'deferred').to.equal(true);
+    expect(doc.activeElement === c0).to.equal(true);
+  });
+
+  it('IMPL-1: focused field + unsupported schema → state-safe path (deferred, focus kept), render on blur with the value', async () => {
+    let c0;
+    const { doc } = await frameCase(['f-hint'], (d) => {
+      d.querySelector('td-input-field').setAttribute('data-td-ssr', 'input-field@2');
+      c0 = d.querySelector('.td-field__control');
+      c0.focus();
+      c0.value = 'zz';
+    });
+    const host = doc.querySelector('td-input-field');
+    expect(host.querySelector('.td-field__control') === c0, 'not replaced under the user').to.equal(true);
+    expect(doc.activeElement === c0).to.equal(true);
+    doc.getElementById('other').focus();
+    const n = host.querySelector('.td-field__control');
+    expect(n !== c0, 'rendered on blur').to.equal(true);
+    expect(n.value).to.equal('zz');
+    expect(host.value).to.equal('zz');
+  });
 });

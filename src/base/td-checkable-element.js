@@ -2,6 +2,7 @@ import {
   TdFormElement, ssrClassKey, ssrContentNodes, ssrSamePart, ssrIsErrorNote, SSR_ARIA_DATA, SSR_CONTROL_ATTRS,
 } from './td-form-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
+import { ssrMarker } from './td-base-element.js';
 
 /** v0.26.0: attributes of the server-rendered input that exist only for the no-JS form (removed on hydrate). */
 const SSR_ONLY = ['name', 'value', 'checked', 'required'];
@@ -152,18 +153,31 @@ export class TdCheckableElement extends TdFormElement {
    */
   canHydrate() {
     const live = !!this._ssrSeen;
-    if (!live && !this._ssrMatches(this.constructor.SSR_NAME, 1)) return false;
+    if (!live) {
+      // Review round 1 IMPL-1: a marker naming THIS component with an unsupported schema is never adopted, but its
+      // control state still goes through the state-safe path (no marker → legacy render, unchanged).
+      const m = ssrMarker(this);
+      if (!m || m.name !== this.constructor.SSR_NAME) return false;
+      this._ssrSchemaOk = m.schema === 1;
+    }
     this._ssrSeen = true;
     const control = this.querySelector('input[type="checkbox"]');
     if (!control) return false; // nothing stateful: plain render
     if (!this._ssrDefaults) this._ssrDefaults = { checked: control.defaultChecked, value: control.getAttribute('value') };
     if (this._ssrControlId === undefined) this._ssrControlId = control.id || null;
-    return this._ssrDecide(control, this._markupMatches(true), live);
+    return this._ssrDecide(control, this._ssrSchemaOk && this._markupMatches(true), live);
   }
 
-  /** Re-connect of a HYDRATED element: re-bind in place while the markup is still the component's own. */
+  /**
+   * Re-connect of a HYDRATED element: re-bind in place while the markup is still the component's own. Review round 1
+   * IMPL-2: rejected → the live state of the current input is captured and restored after the re-render.
+   */
   canRebind() {
-    return !!this._hydrated && this._markupMatches(false);
+    if (!this._hydrated) return false;
+    if (this._markupMatches(false)) return true;
+    const control = this.querySelector('input[type="checkbox"]');
+    if (control) this._ssrRestore = this._ssrCapture(control, true);
+    return false;
   }
 
   hydrateExisting() {
@@ -176,6 +190,8 @@ export class TdCheckableElement extends TdFormElement {
     const note = [...this.children].find(ssrIsErrorNote);
     if (note) this._errorNote = note;
     this._ssrRetargetLabels(control);
+    this._ssrControl = null; // review round 1 IMPL-3: adopted — no stale references
+    this._ssrState = null;
   }
 
   /** @protected */
@@ -206,6 +222,8 @@ export class TdCheckableElement extends TdFormElement {
       input.indeterminate = !!state.indeterminate;
     }
     this._syncForm();
+    // review round 1 SEC-01: unsafe markup replaced while focused → the focus moves to the new input
+    if (state.refocus && input) input.focus({ preventScroll: true });
   }
 
   /** @private `checked` / `value` host attributes = the captured state. */
@@ -224,6 +242,8 @@ export class TdCheckableElement extends TdFormElement {
   _markupMatches(first) {
     const kids = ssrContentNodes(this);
     if (!kids.length || kids.length > 2 || (kids.length === 2 && !ssrIsErrorNote(kids[1]))) return false;
+    // review round 1 IMPL-4: the error note is there exactly when the component shows an error
+    if ((kids.length === 2) !== !!this.errorMessage) return false;
     const live = kids[0];
     const tpl = document.createElement('template');
     tpl.innerHTML = this.render();

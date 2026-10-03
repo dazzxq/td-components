@@ -472,7 +472,10 @@ Khi module nạp, `td-input-field` **nhận** markup đó (`canHydrate()`):
 - **Reset** (`form.reset()`) → giá trị mặc định **native** (`value` PHP in ra), không về giá trị lúc nâng cấp.
 - **Không khớp** (script đổi `label` / `type` / `size`… trước khi module tải, markup bị sửa) → render lại nhưng **giữ
   giá trị**. Control đang **focus** lúc đó → **hoãn** tới `blur` (không giật ô đang gõ): trong lúc hoãn component chưa
-  gắn gì, control native vẫn submit + validate; rời ô → render **một** lần + trả giá trị, không phát event.
+  gắn gì, control native vẫn submit + validate; rời ô → render **một** lần + trả giá trị, không phát event. Chỉ hoãn
+  khi lệch **vô hại** (nhãn, size…): markup bị từ chối vì lý do **an toàn** (attribute ngoài allowlist như `oninput`,
+  `style`, `form`, phần tử / node lạ) bị thay **ngay** cả khi đang focus — giá trị, vùng chọn và focus chuyển sang
+  control mới. Dấu `input-field@<schema khác>` không bao giờ được nhận nhưng vẫn đi đường giữ state này.
 - **Gỡ ra rồi gắn lại** phần tử đã hydrate: gắn lại listener tại chỗ (giữ node) sau khi kiểm lại markup
   (`canRebind()`, chặt: không còn `name` / ràng buộc của bản không-JS); bị sửa lúc tách → render lại giữ giá trị.
   `<td-input-field>` tạo bằng JS / viết tay không dấu: hành vi như trước (render lại khi gắn lại).

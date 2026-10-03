@@ -1,6 +1,7 @@
 import {
   TdFormElement, ssrClassKey, ssrContentNodes, ssrSameAttrs, ssrIsErrorNote, SSR_ARIA_DATA, SSR_CONTROL_ATTRS,
 } from '../base/td-form-element.js';
+import { ssrMarker } from '../base/td-base-element.js';
 
 /**
  * v0.26.0 SSR (ADR 0012) — native constraint attributes a NORMALLY rendered + bound control carries, per public type
@@ -751,19 +752,37 @@ export class TdInputField extends TdFormElement {
    */
   canHydrate() {
     const live = !!this._ssrSeen;
-    if (!live && !this._ssrMatches('input-field', 1)) return false;
+    if (!live) {
+      // Review round 1 IMPL-1: `input-field@<other schema>` is never adopted, but its control state still goes through
+      // the state-safe path (no marker → legacy render, unchanged).
+      const m = ssrMarker(this);
+      if (!m || m.name !== 'input-field') return false;
+      this._ssrSchemaOk = m.schema === 1;
+    }
     this._ssrSeen = true;
-    const control = this.querySelector('input.td-field__control, textarea.td-field__control')
-      || this.querySelector('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea');
+    const control = this._ssrFindControl();
     if (!control) return false; // nothing stateful: plain render
     if (!this._ssrDefaults) this._ssrDefaults = { value: control.defaultValue };
-    const matches = this._type() !== 'contenteditable' && this._markupMatches(true);
+    const matches = this._ssrSchemaOk && this._type() !== 'contenteditable' && this._markupMatches(true);
     return this._ssrDecide(control, matches, live);
   }
 
-  /** Re-connect of a HYDRATED element: re-bind in place while the markup is still the component's own. */
+  /**
+   * Re-connect of a HYDRATED element: re-bind in place while the markup is still the component's own. Review round 1
+   * IMPL-2: rejected → the live value of the current control is captured and restored after the re-render.
+   */
   canRebind() {
-    return !!this._hydrated && this._markupMatches(false);
+    if (!this._hydrated) return false;
+    if (this._markupMatches(false)) return true;
+    const control = this._ssrFindControl();
+    if (control) this._ssrRestore = this._ssrCapture(control, true);
+    return false;
+  }
+
+  /** @private The stateful native control under the host (the kit's class first, else any text-like input). */
+  _ssrFindControl() {
+    return this.querySelector('input.td-field__control, textarea.td-field__control')
+      || this.querySelector('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea');
   }
 
   hydrateExisting() {
@@ -799,6 +818,8 @@ export class TdInputField extends TdFormElement {
     const keep = SSR_KEEP[type] || [];
     for (const a of [...SSR_ONLY, ...SSR_CONSTRAINTS.filter((c) => !keep.includes(c))]) control.removeAttribute(a); // …then
     this._ssrRetargetLabels(control);
+    this._ssrControl = null; // review round 1 IMPL-3: adopted — no stale references
+    this._ssrState = null;
   }
 
   /** @protected */
@@ -831,6 +852,15 @@ export class TdInputField extends TdFormElement {
     this._userEdited = !!state.edited;
     this._updateCounter();
     this._syncForm();
+    if (state.refocus) {
+      // review round 1 SEC-01: unsafe markup replaced while focused → focus + selection move to the new control;
+      // `change` on blur still compares with the value the page was served with
+      field.focus({ preventScroll: true });
+      if (state.selection) {
+        try { field.setSelectionRange(...state.selection); } catch { /* type without a selection API */ }
+      }
+      this._valueAtFocus = this._ssrDefaults?.value ?? this._valueAtFocus;
+    }
   }
 
   /**
@@ -865,6 +895,7 @@ export class TdInputField extends TdFormElement {
     const nodes = ssrContentNodes(l);
     const star = nodes.length && nodes[nodes.length - 1].nodeType === 1 ? nodes.pop() : null;
     if (nodes.some((n) => n.nodeType !== 3) || nodes.map((n) => n.data).join('') !== w.textContent) return false;
+    if (!!star !== this.hasAttribute('required')) return false; // review round 1 IMPL-4: star ⇔ required
     return !star || (star.localName === 'span' && ssrClassKey(star) === 'td-field__required' && star.attributes.length === 2
       && star.getAttribute('aria-hidden') === 'true' && star.children.length === 0 && star.textContent === ' *');
   }
@@ -892,7 +923,9 @@ export class TdInputField extends TdFormElement {
     if (f.localName !== 'div' || ssrClassKey(f) !== 'td-field__footer'
       || ![...f.attributes].every((a) => a.name === 'class' || a.name === 'hidden')) return false;
     const have = ssrContentNodes(f);
-    if (have.length && ssrIsErrorNote(have[0])) have.shift();
+    const note = have.length > 0 && ssrIsErrorNote(have[0]);
+    if (note !== !!this.errorMessage) return false; // review round 1 IMPL-4: error note ⇔ an error is shown
+    if (note) have.shift();
     const need = [...w.children];
     if (have.length !== need.length) return false;
     const allowed = { 'td-field__note': ['class', 'id', 'hidden'], 'td-field__counter': ['class', 'id', 'data-state'] };
