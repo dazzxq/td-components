@@ -617,8 +617,10 @@ export class TdTreeSelect extends TdFormElement {
         this._editText = null;
         // the edit's own text IS the fresh query (typing / paste / drop, every engine); no text (a deletion) → keep only
         // what the edit left inserted (editDelta, code points)
-        if (!this._isOpen && before && combo.value !== before) {
-          const q = typeof text === 'string' && text ? text : editDelta(before, combo.value);
+        if (!this._isOpen && before) {
+          const has = typeof text === 'string' && text !== '';
+          // with the edit's text: always that (even when WebKit's result equals the label — same char over itself)
+          const q = has ? text : combo.value !== before ? editDelta(before, combo.value) : combo.value;
           if (combo.value !== q) combo.value = q;
         }
         if (!this._isOpen) this.open({ typing: true });

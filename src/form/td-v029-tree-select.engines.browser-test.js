@@ -691,4 +691,15 @@ describe('td-tree-select — review round 3', () => {
     expect(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(c.value), 'no lone surrogate').to.equal(false);
     keyOn(c, 'Escape');
   });
+
+  it('ISSUE-12: replacing a selected label character with the same character still starts a fresh query', async () => {
+    const el = ts();
+    el.value = 'samsung';
+    const c = combo(el);
+    c.focus();
+    c.setSelectionRange(1, 2); // the "a" of "Samsung"
+    await sendKeys({ type: 'a' });
+    expect(c.value).to.equal('a');
+    keyOn(c, 'Escape');
+  });
 });
