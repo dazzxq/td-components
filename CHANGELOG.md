@@ -2,6 +2,30 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.25.0
+
+**Hết "flash" lúc tải trang SSR** — bước 1: nền tảng hydrate tại chỗ + `<td-button>` / link (đề xuất site 135; ADR 0012,
+Codex think-about CONSENSUS; plan `docs/internal/plans/v0.25.0-ssr-button.md`, plan-review APPROVE 3 vòng).
+
+### Added
+
+- **PHP element mode (opt-in, mặc định vẫn native):** `td_button($label, ['element' => true])` /
+  `td_link(…, ['element' => true])` hoặc bật toàn site `Td::configure($base, $dir, ['ssr_elements' => true])` → in
+  `<td-button data-td-ssr="button@1" …>` **kèm sẵn** `<button class="td-btn …">` / `<a class="td-btn …">` đã có style. Trang
+  hiện nút đúng ngay khung hình đầu, chạy được khi chưa có JS; JS nạp xong **nhận tại chỗ** (không dựng lại: không nhảy
+  layout, giữ focus, giữ dữ liệu form / submitter).
+- Nền tảng `TdBaseElement`: hook `canHydrate()` / `hydrateExisting()`, `static hydratable`, dấu `data-td-ssr` theo schema
+  của từng component; component hydratable gắn lại (di chuyển node) không render lại.
+- `Td::modulePreloads(['button', …], $nonce?)` → `<link rel="modulepreload">` đúng phiên bản (tối ưu nạp; thứ tự khuyên dùng:
+  stylesheet → import map → modulepreload → entry module).
+- `td_badge($label, ['icon' => 'tên'])` — icon trong badge (registry kể cả `site-*`; tên lạ → bỏ icon).
+- CSS lưới an toàn: host `<td-button>`, `<td-input-field>`, `<td-dropdown>`, `<td-toggle>`, `<td-checkbox>` in tay (không
+  có dấu SSR) được giữ chỗ chiều cao trước khi JS nạp.
+
+### Changed
+
+- `<td-button>` gắn lại vào DOM (di chuyển) giữ nguyên node bên trong thay vì render lại.
+
 ## 0.24.0
 
 Lightbox: điều hướng bằng chuột ở hai bên ảnh + tải sẵn ảnh kề + màn báo lỗi + filmstrip tuỳ chọn + trượt khi chuyển

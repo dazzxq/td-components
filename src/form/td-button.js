@@ -47,6 +47,66 @@ export function safeButtonHref(href) {
   return LINK_PROTOCOLS.includes(proto) ? norm : null;
 }
 
+/** Control attributes that are STRUCTURE for hydrate (state ones — disabled, href, aria-*… — are synced in place). */
+const STRUCT_ATTRS = ['type', 'target', 'rel', 'download'];
+const classKey = (el) => [...el.classList].sort().join(' ');
+/** Element children + non-blank text nodes (comments / whitespace ignored). */
+const contentNodes = (el) => [...el.childNodes].filter((n) => n.nodeType === 1 || (n.nodeType === 3 && n.data.trim()));
+
+/**
+ * Review round 1 (SEC-1): attributes a PRESERVED control may carry — exactly what td_button / td_link (php/td.php:
+ * owned names + the `attrs` allowlist Td::ALLOWED_ATTRS + aria-* / data-*) and render() / _syncState() can produce.
+ * Anything else (on*, style, form, formaction, formmethod, formenctype, formtarget, formnovalidate, srcdoc,
+ * popovertarget, commandfor…) → the markup is not adopted (normal render).
+ */
+const CONTROL_ATTRS = new Set(['class', 'type', 'name', 'value', 'disabled', 'aria-busy', 'aria-disabled', 'aria-label',
+  'data-tooltip', 'href', 'target', 'rel', 'download', 'role', 'tabindex', 'id', 'title', 'lang', 'dir', 'hidden',
+  'translate', 'accesskey', 'autofocus', 'autocomplete', 'inputmode', 'enterkeyhint', 'autocapitalize', 'spellcheck',
+  'placeholder', 'readonly', 'required', 'maxlength', 'minlength', 'min', 'max', 'step', 'pattern', 'size', 'rows',
+  'cols']);
+// `data-td-*` is the kit's internal namespace (icon slots…) — never accepted on the control (review round 2).
+const ARIA_DATA_ATTR = /^(?:aria-[a-z0-9][a-z0-9._-]*|data-(?!td-)[a-z0-9][a-z0-9._-]*)$/;
+/** Inner nodes: label span, icon slot (registry / legacy) and spinner span carry only these. */
+const PART_ATTRS = {
+  'td-btn__label': new Set(['class']),
+  'td-btn__icon': new Set(['class', 'aria-hidden', 'data-td-icon', 'data-td-icon-size']),
+  'td-btn__spinner': new Set(['class', 'aria-hidden', 'hidden']),
+};
+/** @param {Element} el @param {(name: string) => boolean} ok */
+const onlyAttrs = (el, ok) => [...el.attributes].every((a) => ok(a.name));
+
+/**
+ * v0.25.0 (ADR 0012): does the server-rendered control `live` have the STRUCTURE render() would produce (`want`)?
+ * Tag (button ⇔ no host href), class list (variant / size / full / custom), type / target / rel / download, and the
+ * children in order: icon slot (same registry name + size), label (same text), spinner (same markup). Review round 1
+ * (SEC-1): every preserved node also passes an attribute ALLOWLIST (CONTROL_ATTRS / PART_ATTRS); the spinner and a
+ * legacy icon must match render() byte for byte; a registry icon's content is re-created by fillIconSlots().
+ * @param {Element} live
+ * @param {Element|null} want
+ */
+function sameControlStructure(live, want) {
+  if (!want || live.localName !== want.localName || classKey(live) !== classKey(want)) return false;
+  if (!onlyAttrs(live, (n) => CONTROL_ATTRS.has(n) || ARIA_DATA_ATTR.test(n))) return false;
+  for (const a of STRUCT_ATTRS) if (live.getAttribute(a) !== want.getAttribute(a)) return false;
+  const have = contentNodes(live);
+  const need = [...want.children];
+  if (have.length !== need.length) return false;
+  return have.every((l, i) => {
+    const w = need[i];
+    if (l.nodeType !== 1 || l.localName !== w.localName || classKey(l) !== classKey(w)) return false;
+    const part = Object.keys(PART_ATTRS).find((c) => w.classList.contains(c));
+    if (!part || !onlyAttrs(l, (n) => PART_ATTRS[part].has(n))) return false;
+    if (w.classList.contains('td-btn__label')) return l.children.length === 0 && l.textContent === w.textContent;
+    if (w.classList.contains('td-btn__spinner')) return l.innerHTML === w.innerHTML;
+    if (w.classList.contains('td-btn__icon')) {
+      if (!w.hasAttribute('data-td-icon')) return l.innerHTML === w.innerHTML; // legacy class icon
+      return l.getAttribute('data-td-icon') === w.getAttribute('data-td-icon')
+        && l.getAttribute('data-td-icon-size') === w.getAttribute('data-td-icon-size');
+    }
+    return false;
+  });
+}
+
 /** @param {string|null} name `download` value → a bare file name (path / reserved characters removed) */
 function safeDownloadName(name) {
   return String(name ?? '').replace(/[\u0000-\u001f\u007f/\\:*?"<>|]/g, '').replace(/^[.\s]+/, '').trim();
@@ -74,6 +134,10 @@ function safeDownloadName(name) {
  *     swallowed; styled as the disabled button.
  *   - loading: `href` removed (no new tab / middle-click), `role="link"`, `aria-busy` + `aria-disabled`,
  *     `tabindex="0"` (focus kept), clicks swallowed, spinner.
+ * SSR (v0.25.0, ADR 0012): a host marked `data-td-ssr="button@1"` that already contains this exact control (PHP
+ *   td_button / td_link element mode) is adopted IN PLACE on upgrade — same `<button>` / `<a>` node (focus kept), no
+ *   flash, no layout shift; state attributes are synced onto it. A structural mismatch (see canHydrate) renders as
+ *   usual. The marker is removed once consumed. Moving the element re-binds without re-rendering (static hydratable).
  * Ghost (v0.17.0): `variant="ghost"` — transparent, no shadow / border, accent label
  * (`--td-btn-ghost-fg`), a soft hover fill (`--td-btn-ghost-hover-bg`).
  *
@@ -107,6 +171,12 @@ function safeDownloadName(name) {
  *   the host attribute removes it below. The host keeps the site's attributes (a custom element has no role).
  */
 export class TdButton extends TdBaseElement {
+  /** v0.25.0 (ADR 0012): adopts PHP element-mode markup in place; re-connect re-binds without re-rendering. */
+  static hydratable = true;
+
+  /** Version of the SSR markup contract (`data-td-ssr="button@1"`) — bumped only when the hydrate assumptions change. */
+  static SSR_SCHEMA = 1;
+
   static get observedAttributes() {
     return ['variant', 'size', 'icon', 'icon-position', 'loading', 'disabled', 'full-width', 'color', 'text-color', 'label', 'type', 'aria-label', 'href', 'target', 'download', 'name', 'value',
       ...Object.keys(FORWARDED_ARIA)];
@@ -335,6 +405,49 @@ export class TdButton extends TdBaseElement {
     return `<button class="${classes.join(' ')}" type="${type}">${inner}</button>`;
   }
 
+  /**
+   * v0.25.0 SSR hydrate (contract `button@1`, PHP td_button / td_link element mode). Adopt the server markup in place
+   * only when the marker matches and its STRUCTURE equals what render() would produce for the host's CURRENT
+   * attributes (read after the early-property replay, so attributes changed before define count): control tag,
+   * classes, type / target / download, icon (name + position), label text, spinner. A custom `color` /
+   * `text-color` (never printed by PHP) refuses. STATE (loading, disabled, name / value, aria-*, the href value) is
+   * not compared — afterRender() → _syncState() applies it to the adopted control. Anything else → normal render.
+   * @returns {boolean}
+   */
+  canHydrate() {
+    if (!this._ssrMatches('button', TdButton.SSR_SCHEMA)) return false;
+    if (this.hasAttribute('color') || this.hasAttribute('text-color')) return false;
+    return this._markupMatches();
+  }
+
+  /**
+   * Review round 1 (SEC-1): on RE-connect the adopted / rendered markup is revalidated — changed while detached
+   * (structure or a non-allowlisted attribute such as `formaction`) → re-render instead of re-binding.
+   * @returns {boolean}
+   */
+  canRebind() {
+    return this._markupMatches();
+  }
+
+  /**
+   * Hydrate (v0.25.0): remember a GENUINE `tabindex` / `role` pass-through on an adopted link (`attrs` of td_link) — not
+   * produced by the current state — so _syncState() restores it instead of removing it when state clears (IMPL-1).
+   */
+  hydrateExisting() {
+    const a = this._control();
+    if (a?.localName !== 'a' || this.hasAttribute('loading') || this.hasAttribute('disabled') || !this._linkHref()) return;
+    this._linkPass = { el: a, tabindex: a.getAttribute('tabindex'), role: a.getAttribute('role') };
+  }
+
+  /** @private The single `.td-btn` child has exactly render()'s structure + only allowlisted attributes. */
+  _markupMatches() {
+    const kids = contentNodes(this);
+    if (kids.length !== 1 || kids[0].nodeType !== 1 || !kids[0].classList.contains('td-btn')) return false;
+    const tpl = document.createElement('template');
+    tpl.innerHTML = this.render();
+    return sameControlStructure(kids[0], tpl.content.firstElementChild);
+  }
+
   attributeChangedCallback(name, oldVal, newVal) {
     if (oldVal === newVal || !this._initialized) return;
     if (name === 'loading' || name === 'disabled' || name === 'name' || name === 'value' || name in FORWARDED_ARIA) {
@@ -360,7 +473,7 @@ export class TdButton extends TdBaseElement {
   }
 
   afterRender() {
-    fillIconSlots(this);
+    fillIconSlots(this, '.td-btn__icon[data-td-icon]'); // only the button's own icon slot (never the control itself)
     const btn = this._control();
     if (!btn) return;
     // Busy (and a disabled / href-less link): swallow activation (a busy element stays focusable; aria-disabled
@@ -395,8 +508,12 @@ export class TdButton extends TdBaseElement {
         btn.setAttribute('aria-disabled', 'true');
       } else {
         btn.setAttribute('href', href);
-        btn.removeAttribute('tabindex');
-        btn.removeAttribute('role');
+        // a pass-through tabindex / role of an adopted SSR link (td_link `attrs`) is restored, else removed
+        const pass = this._linkPass?.el === btn ? this._linkPass : null;
+        for (const attr of ['tabindex', 'role']) {
+          if (pass?.[attr] != null) btn.setAttribute(attr, pass[attr]);
+          else btn.removeAttribute(attr);
+        }
         btn.removeAttribute('aria-disabled');
       }
       if (loading) btn.setAttribute('aria-busy', 'true');

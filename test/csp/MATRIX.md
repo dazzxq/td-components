@@ -78,7 +78,8 @@ new state `create` (`create-label` + 12 options: listbox, scroller, pinned `.td-
 Styled el: inner `button` (bg/box-shadow/backdrop-filter from `_glassStyles[variant]`, or
 bg/color/border from custom color).
 States: `primary`, `secondary`, `success`, `danger`, `warning`, `custom-color` (#6366f1),
-`disabled`, `loading`. (8)
+`disabled`, `loading`. (8) — later additions: `info`, `icon`, `ghost`, `link`, `link-disabled`, and `ssr` (v0.25.0:
+the PHP `td_button(…, ['element' => true])` markup `data-td-ssr="button@1"`, hydrated in place under the strict CSP).
 
 ### td-tabs (4 declarative)
 Styled els: `.td-tabs-container`, `.td-tabs-indicator` (excl. layout-derived left/width only;

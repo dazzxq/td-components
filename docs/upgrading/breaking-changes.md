@@ -1,8 +1,8 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.24)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.25)
 
-Trang này liệt kê, cho từng bản từ **0.24.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
+Trang này liệt kê, cho từng bản từ **0.25.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
 [CHANGELOG.md](../../CHANGELOG.md); trang này chỉ gom lại theo góc nhìn "tôi phải làm gì" và thêm ví dụ trước/sau.
 Quy trình nâng cấp chung nằm ở [README.md](README.md).
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.25.0](#0250) | Không có thay đổi phá vỡ | Không bắt buộc. Muốn hết flash: bật element mode PHP (`ssr_elements`); khi bật, `id` / `class` của `td_button` nằm trên host. |
 | [0.24.0](#0240) | Đổi giao diện + đổi hành vi (nhỏ) | Lightbox: nút trước / sau ra hai bên trên máy chuột; URL item trả ra là tuyệt đối; tải sẵn ảnh kề chỉ cùng origin mặc định. |
 | [0.23.0](#0230) | Không có thay đổi phá vỡ | Không. Thêm `<td-media-grid>`. |
 | [0.22.1](#0221) | Không có thay đổi phá vỡ | Không. Modal đổi chuyển động (giống dcms); site đặt `--td-modal-ease` riêng: giờ là đường cong fade. |
@@ -50,6 +51,20 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.25.0
+
+**Không có thay đổi phá vỡ** — element mode là **opt-in**, mặc định `td_button()` / `td_link()` vẫn in nút native như cũ.
+Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.25.0.
+
+Khi **bật** element mode (`['element' => true]` hoặc `Td::configure(…, ['ssr_elements' => true])`):
+
+1. `id` và `class` truyền vào helper nằm trên **host** `<td-button>`, không còn trên `<button>` bên trong. CSS / JS site
+   nhắm `#id` / `.class` vào nút bên trong → đổi sang `#id > .td-btn` hoặc dùng API component.
+2. `attrs` vẫn đi xuống nút native; `aria-*` trạng thái + `aria-label` được nâng lên host (JS chuyển xuống như 0.19).
+3. Nên thêm `Td::modulePreloads([...])` sau import map để JS nạp sớm hơn (không bắt buộc).
 
 ---
 

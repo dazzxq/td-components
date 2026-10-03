@@ -2,6 +2,19 @@ import { escapeHtml } from '../utils/escape.js';
 import { safeColor } from '../utils/css-safe.js';
 
 /**
+ * v0.25.0 (ADR 0012): parse the SSR marker `data-td-ssr="<name>@<schema>"` (name: lower-case kebab token; schema: a
+ * positive integer — the version of the component's MARKUP contract, not of the package).
+ * @param {Element|null|undefined} el
+ * @returns {{ name: string, schema: number } | null} null when absent or malformed
+ */
+export function ssrMarker(el) {
+  const raw = el?.getAttribute?.('data-td-ssr');
+  if (typeof raw !== 'string') return null;
+  const m = /^([a-z][a-z0-9-]*)@([1-9][0-9]{0,5})$/.exec(raw);
+  return m ? { name: m[1], schema: Number(m[2]) } : null;
+}
+
+/**
  * Base class for all td-components. Extends HTMLElement with:
  * - Lifecycle management (render on connect, cleanup on disconnect)
  * - Automatic attribute/property sync with boolean support
@@ -20,6 +33,14 @@ import { safeColor } from '../utils/css-safe.js';
  * if (!customElements.get('td-toggle')) customElements.define('td-toggle', TdToggle);
  */
 export class TdBaseElement extends HTMLElement {
+  /**
+   * v0.25.0 (ADR 0012): a component that can adopt server-rendered markup in place sets this to true. It changes the
+   * RE-CONNECT lifecycle: a moved / re-inserted element re-binds (`afterRender()` + `_applyStyles()`) without
+   * re-rendering (node identity + focus kept). Every other component keeps re-rendering on re-connect.
+   * @type {boolean}
+   */
+  static hydratable = false;
+
   /** @abstract @returns {string[]} Attributes to observe for changes */
   static get observedAttributes() { return []; }
 
@@ -40,11 +61,27 @@ export class TdBaseElement extends HTMLElement {
       // suppressed, so the element renders exactly once below with its final state.
       this._setupProperties();
       this._initialized = true;
-      this._doRender();
+      // v0.25.0 (ADR 0012): server-rendered markup that matches the contract is adopted IN PLACE (no innerHTML);
+      // anything else renders as before. canHydrate() reads the host AFTER the early-property replay above.
+      const hydrate = this.canHydrate();
+      if (this.constructor.hydratable) this.removeAttribute('data-td-ssr'); // consumed: a later render never re-reads it
+      if (hydrate) {
+        this._hydrated = true;
+        this.hydrateExisting();
+        this._bindStep();
+      } else {
+        this._doRender();
+      }
     } else if (this._needsRebind) {
-      // Moved/re-inserted: disconnect ran every cleanup (listeners, timers) → render again to re-bind.
+      // Moved/re-inserted: disconnect ran every cleanup (listeners, timers). A hydratable component re-binds in place
+      // (same nodes, focus kept) when its markup still passes canRebind(); the others render again to re-bind.
       this._needsRebind = false;
-      this._doRender();
+      // Review round 1 (IMPL-2): a render while DETACHED (e.g. a structural attribute changed) already bound listeners
+      // — drop them first so the bind below is the only one.
+      this._cleanups.forEach((fn) => fn());
+      this._cleanups = [];
+      if (this.constructor.hydratable && this.canRebind()) this._bindStep();
+      else this._doRender();
     }
   }
 
@@ -65,15 +102,57 @@ export class TdBaseElement extends HTMLElement {
     // so the property replay in _setupProperties() never renders a half-set state.
     if (this._suppressRender) return;
     this.innerHTML = this.render();
+    this._bindStep();
+  }
+
+  /**
+   * @private The bind step shared by render, hydrate and re-connect: `afterRender()` (listeners, in-place state), then
+   * the CSP-strict hardening hook — per-element SCALAR styles via CSSOM. Optional-chaining so subclasses that don't
+   * define `_applyStyles` are completely unaffected. See the `_applyStyles()` contract on the class JSDoc.
+   */
+  _bindStep() {
     this.afterRender();
-    // CSP-strict hardening hook: apply per-element SCALAR styles via CSSOM after each
-    // render. Optional-chaining so subclasses that don't define `_applyStyles` are
-    // completely unaffected. See the `_applyStyles()` contract on the class JSDoc.
     this._applyStyles?.();
   }
 
-  /** Hook for subclass to bind events after render. Called after every render. */
+  /** Hook for subclass to bind events after render. Called after every render (and after hydrate / re-bind). */
   afterRender() {}
+
+  // --- SSR hydrate (v0.25.0, ADR 0012) ---
+
+  /**
+   * Hook: can the CURRENT children (server-rendered, marked `data-td-ssr="<name>@<schema>"`) be adopted as they are?
+   * Called once, on the first connect, after the early-property replay. Must not modify the DOM. Default: false
+   * (render as before).
+   * @returns {boolean}
+   */
+  canHydrate() { return false; }
+
+  /**
+   * Hook (hydratable components, review round 1 SEC-1): on RE-connect, is the current markup still the component's own
+   * (structure + attribute allowlist)? false → re-render instead of re-binding (markup tampered with while detached).
+   * Default: true.
+   * @returns {boolean}
+   */
+  canRebind() { return true; }
+
+  /**
+   * Hook: adopt the existing markup (only called when canHydrate() returned true). Must NOT replace the children
+   * (node identity, focus, native state are kept). The shared bind step (`afterRender()` + `_applyStyles()`) runs
+   * right after it. Default: nothing.
+   */
+  hydrateExisting() {}
+
+  /**
+   * @protected Does the host carry the SSR marker `data-td-ssr="<name>@<schema>"` for exactly this contract?
+   * @param {string} name
+   * @param {number} schema
+   * @returns {boolean}
+   */
+  _ssrMatches(name, schema) {
+    const m = ssrMarker(this);
+    return !!m && m.name === name && m.schema === schema;
+  }
 
   /**
    * CSP-hardening contract for subclasses (no-op by default — define it to opt in):

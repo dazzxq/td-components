@@ -22,6 +22,7 @@
  * (computed-colour `pairs`; a pair may carry its own `min`).
  * v0.24.0: the lightbox side-nav disc (fill vs a white photo / edge vs a black photo ≥ 3:1, chevron ≥ 3.2 on the disc)
  * and the current filmstrip thumb ring vs the strip (≥ 3:1).
+ * v0.25.0: the PHP td_badge `icon` (decorative, currentColor) ≥ 3.2:1 on every soft badge fill, label ≥ 4.7 as before.
  * No dependencies: PNGs are decoded with node:zlib.
  *
  *   node test/tokens/contrast.spec.mjs            (npm run test:contrast)

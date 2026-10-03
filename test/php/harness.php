@@ -13,7 +13,11 @@ use TdComponents\Td;
 
 $in = json_decode((string) stream_get_contents(STDIN), true, 64, JSON_THROW_ON_ERROR);
 if (isset($in['baseUrl'])) {
-    Td::configure($in['baseUrl'], $in['kitDir'] ?? dirname(__DIR__, 2));
+    if (isset($in['options'])) { // v0.25.0: 3rd Td::configure argument (['ssr_elements' => bool])
+        Td::configure($in['baseUrl'], $in['kitDir'] ?? dirname(__DIR__, 2), $in['options']);
+    } else {
+        Td::configure($in['baseUrl'], $in['kitDir'] ?? dirname(__DIR__, 2));
+    }
 }
 $results = [];
 foreach ($in['calls'] as $call) {

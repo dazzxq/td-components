@@ -10,7 +10,7 @@ chữ in hoa, viền đôi, nghiêng nhẹ — như `td-stamp` của 135). **Thu
 | Import | không có module — chỉ cần `td.css` |
 | Loại | Khối CSS |
 | PHP | [`td_badge()`](../guides/php-adapter.md#td_badge-và-td_alert) |
-| Từ phiên bản | 0.18.0 |
+| Từ phiên bản | 0.18.0 (icon từ 0.25.0) |
 
 ## Ví dụ nhanh
 
@@ -23,7 +23,25 @@ chữ in hoa, viền đôi, nghiêng nhẹ — như `td-stamp` của 135). **Thu
 ```php
 <?= td_badge('Đã duyệt', ['variant' => 'success']) ?>
 <?= td_badge('Nháp', ['variant' => 'warning', 'stamp' => true]) ?>
+<?= td_badge('Đã duyệt', ['variant' => 'success', 'icon' => 'check']) ?>  <!-- 0.25.0: có icon -->
 ```
+
+### Badge có icon (0.25.0)
+
+```html
+<span class="td-badge td-badge--success">
+  <span class="td-badge__icon" aria-hidden="true"><svg class="td-icon td-icon--s" data-icon="check" …>…</svg></span>
+  <span class="td-badge__label">Đã duyệt</span>
+</span>
+```
+
+- PHP: option `icon` của [`td_badge()`](../guides/php-adapter.md#td_badge-và-td_alert) nhận tên icon registry — core,
+  alias (`x` → `close`) hoặc icon site `site-*` đã `Td::registerIcons()`. **Tên lạ → bỏ icon, giữ nhãn** (không có
+  span icon rỗng; markup y như không truyền `icon`).
+- HTML tay: tự in `span.td-badge__icon` (SVG từ `td_icon($name, 's')` hoặc `tdIcon(name, { size: 's' })` trong JS)
+  trước `span.td-badge__label`. Badge vẫn **thuần CSS**, không có module JS.
+- Icon chỉ trang trí (`aria-hidden="true"`) — nghĩa phải nằm ở nhãn. Cỡ `1em` (theo `--td-badge-font-size`),
+  `flex: none`, màu = màu chữ (`currentColor`); gate tương phản đo icon ≥ 3.2:1 trên nền mọi variant.
 
 ## Class
 
@@ -33,6 +51,8 @@ chữ in hoa, viền đôi, nghiêng nhẹ — như `td-stamp` của 135). **Thu
 | `.td-badge--neutral` · `--accent` · `--success` · `--warning` · `--danger` · `--info` | Màu. `accent` theo `--td-accent` của site (cần `color-mix()`, không có thì dùng màu của `info`). |
 | `.td-badge--outline` | Nền trong suốt, viền 1px cùng màu chữ |
 | `.td-badge--stamp` | Con dấu: chữ in hoa đậm, giãn chữ, viền đôi, nền trong suốt, nghiêng `--td-badge-stamp-rotate` |
+| `.td-badge__icon` | (0.25.0) Ô icon trang trí trước nhãn: `1em × 1em`, `flex: none`; SVG `.td-icon` bên trong cũng `1em` |
+| `.td-badge__label` | (0.25.0) Nhãn khi badge có icon (không icon thì chữ nằm thẳng trong `.td-badge`) |
 
 `--outline` và `--stamp` dùng được với mọi màu. Badge có sẵn `vertical-align: middle` và `white-space: nowrap` để
 đặt cạnh chữ / trong ô bảng.

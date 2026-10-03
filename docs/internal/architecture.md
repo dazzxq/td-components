@@ -23,10 +23,46 @@ Mỗi subpath trong `package.json#exports` trỏ thẳng vào một file source 
 **`TdBaseElement extends HTMLElement`** (`src/base/td-base-element.js`)
 
 - `connectedCallback` render lần đầu (`_initialized`); khi element bị gỡ rồi gắn lại (di chuyển trong DOM),
-  `disconnectedCallback` đã chạy hết cleanup nên nó **render lại** (`_needsRebind`) để gắn lại listener/timer.
+  `disconnectedCallback` đã chạy hết cleanup nên nó **render lại** (`_needsRebind`) để gắn lại listener/timer —
+  trừ component `static hydratable = true` (xem dưới).
 - `disconnectedCallback` chạy hết `_cleanups`.
 - Attribute ↔ property tự sinh từ `observedAttributes`; `booleanAttributes` dùng `hasAttribute`.
-- `attributeChangedCallback` → `_doRender()`: `innerHTML = render()` → `afterRender()` → `_applyStyles?.()`.
+- `attributeChangedCallback` → `_doRender()`: `innerHTML = render()` → bước gắn chung `_bindStep()` =
+  `afterRender()` → `_applyStyles?.()`.
+
+**Vòng đời hydrate SSR (0.25.0, [ADR 0012](decisions/0012-ssr-hydration.md))**
+
+```text
+connectedCallback (lần đầu)
+  _setupProperties()            accessor + replay property gán sớm (render bị chặn)
+  _initialized = true
+  canHydrate()                  hook, mặc định false — đọc host SAU replay; không được sửa DOM
+  hydratable → gỡ data-td-ssr   dấu đã dùng (nhận hay không), lần render sau không đọc nhầm
+  ├─ true  → _hydrated = true; hydrateExisting() (hook, không đụng innerHTML); _bindStep()
+  └─ false → _doRender()        innerHTML = render(); _bindStep()   ← như cũ
+connectedCallback (gắn lại sau disconnect)
+  chạy + xoá _cleanups          listener gắn TRONG LÚC tách (render khi attribute đổi) không bị nhân đôi
+  hydratable && canRebind() → _bindStep()   giữ node + focus, listener gắn đúng một lần
+  còn lại (kể cả canRebind() false: markup bị sửa lúc tách) → _doRender()
+```
+
+- `canRebind()` (mặc định `true`): component hydratable kiểm lại markup khi gắn lại; `TdButton` dùng cùng phép so
+  cấu trúc + **allowlist attribute** như `canHydrate()` (review round 1 SEC-1).
+- `static hydratable` (mặc định `false`): chỉ component **khai báo** mới đổi vòng đời gắn lại — v0.25 chỉ
+  `TdButton`. `afterRender()` của component hydratable phải **idempotent** trên DOM sẵn có (đồng bộ state tại chỗ,
+  `listen()` lại), vì nó chạy sau render, sau hydrate và mỗi lần gắn lại.
+- Dấu SSR `data-td-ssr="<tên>@<schema>"`: `ssrMarker(el)` (export của `td-base-element.js`) → `{ name, schema }` hoặc
+  `null`; `_ssrMatches(name, schema)` so khớp chính xác. `schema` là phiên bản **cấu trúc markup** của component
+  (`TdButton.SSR_SCHEMA = 1`), chỉ tăng khi giả định hydrate đổi.
+- `canHydrate()` của component quyết định theo **chính sách từng thuộc tính**: thuộc tính *cấu trúc* lệch → từ chối
+  (render lại), thuộc tính *trạng thái* → áp tại chỗ trong `afterRender()`. `TdButton` so cấu trúc control với
+  `render()` dựng vào `<template>` (không chạm DOM sống): thẻ, class, `type` / `target` / `rel` / `download`, icon,
+  nhãn, spinner. Constructor không đọc con (đúng spec custom element).
+- Lưới an toàn CSS cho host viết tay chưa define: `<tag>:not(:defined):not([data-td-ssr])` → `display` + chiều cao
+  giữ chỗ (button 2.5 / 2 / 3rem, input-field + dropdown 2.5rem, toggle + checkbox 1.5rem) — không giả style.
+- Test: fixture dùng chung `test/ssr/button.fixtures.json` → PHP sinh `test/ssr/fixtures/button.html`
+  (`node test/ssr/build-button-fixture.mjs`; `test/php/td-ssr.test.js` báo khi file cũ) → nhóm web-test-runner `ssr`
+  (`*.ssr.browser-test.js`, Chromium + Firefox + WebKit) define muộn và so DOM / hộp / focus / FormData.
 - Helper có cleanup tự động: `listen()`, `setTimeout()`, `setInterval()`. `emit(name, detail)` phát
   `CustomEvent` với `bubbles + composed`. `escapeHtml()`, `safeColor()`.
 
@@ -62,6 +98,8 @@ Không có `style="…"` và không chèn `<style>` trong output của lib.
 ## Render & cleanup
 
 - Render bằng `innerHTML` chuỗi template; mọi giá trị đi qua sanitizer theo ngữ cảnh ([security.md](security-model.md)).
+  Ngoại lệ: markup SSR khớp hợp đồng được nhận tại chỗ (`canHydrate()` / `hydrateExisting()`, 0.25.0 — xem trên) và
+  các component tự nâng cấp tại chỗ (`td-alert`).
 - Bind event trong `afterRender()` bằng `this.listen()` để tự gỡ khi disconnect.
 - Component có animation state (toggle, tabs) cập nhật DOM nhẹ thay vì render lại toàn bộ để transition chạy.
 - Phần tử portal ra `body` (menu dropdown, toast, tooltip, modal) phải tự dọn khi disconnect/đóng.

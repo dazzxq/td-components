@@ -16,6 +16,12 @@
 		display: inline-block;
 	}
 
+	/* v0.25.0 safety net (ADR 0012): hand-written host before define → reserve the checkbox row height */
+	td-checkbox:not(:defined):not([data-td-ssr]) {
+		display: inline-block;
+		min-height: 1.5rem;
+	}
+
 	.td-checkbox {
 		position: relative;
 		box-sizing: border-box;

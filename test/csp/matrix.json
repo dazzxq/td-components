@@ -696,6 +696,16 @@
         "a",
         ".td-btn__label"
       ]
+    },
+    {
+      "state": "ssr",
+      "markup": "<td-button data-td-ssr=\"button@1\" variant=\"primary\" size=\"md\" icon=\"download\" label=\"Lưu\" type=\"button\"><button class=\"td-btn td-btn--primary td-btn--md\" type=\"button\"><span class=\"td-btn__icon\" data-td-icon=\"download\" data-td-icon-size=\"s\" aria-hidden=\"true\"><svg class=\"td-icon td-icon--s\" data-icon=\"download\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M12 15V3\"/><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\"/><path d=\"m7 10 5 5 5-5\"/></svg></span><span class=\"td-btn__label\">Lưu</span><span class=\"td-btn__spinner td-spinner td-spinner--sm\" aria-hidden=\"true\" hidden><svg class=\"td-spinner__svg\" viewBox=\"0 0 50 50\" aria-hidden=\"true\" focusable=\"false\"><circle class=\"td-spinner__track\" cx=\"25\" cy=\"25\" r=\"20\"></circle><circle class=\"td-spinner__arc\" cx=\"25\" cy=\"25\" r=\"20\"></circle></svg></span></button></td-button>",
+      "selectors": [
+        "button",
+        ".td-btn__label",
+        ".td-btn__icon svg"
+      ],
+      "selectorNote": "PHP td_button() element-mode markup (button@1) hydrated in place (v0.25.0)"
     }
   ],
   "td-tabs": [
