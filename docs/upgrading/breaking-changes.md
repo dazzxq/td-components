@@ -1,8 +1,8 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.26.1)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.27)
 
-Trang này liệt kê, cho từng bản từ **0.26.1** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
+Trang này liệt kê, cho từng bản từ **0.27.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
 [CHANGELOG.md](../../CHANGELOG.md); trang này chỉ gom lại theo góc nhìn "tôi phải làm gì" và thêm ví dụ trước/sau.
 Quy trình nâng cấp chung nằm ở [README.md](README.md).
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.27.0](#0270) | Không có thay đổi phá vỡ | Không. Thêm otp-input, drawer, copy, skeleton CSS. Import map tự liệt kê: thêm `otp-input`, `drawer`, `copy`. |
 | [0.26.1](#0261) | Không có thay đổi phá vỡ | Không. Sửa password-meter `for` trỏ id ô của field. |
 | [0.26.0](#0260) | Không phá vỡ (opt-in) | Site đã bật `ssr_elements`: field / toggle / checkbox / dropdown cũng in element mode — kiểm CSS / JS bám ô native, id. Thêm `td_empty()`. |
 | [0.25.0](#0250) | Không có thay đổi phá vỡ | Không bắt buộc. Muốn hết flash: bật element mode PHP (`ssr_elements`); khi bật, `id` / `class` của `td_button` nằm trên host. |
@@ -53,6 +54,13 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.27.0
+
+**Không có thay đổi phá vỡ** — chỉ bổ sung. Site tự viết import map: thêm `@dazzxq/td-components/otp-input`,
+`/drawer`, `/copy`. Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.27.0.
 
 ---
 
