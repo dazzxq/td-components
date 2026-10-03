@@ -44,6 +44,7 @@
     "components/number-input.css",
     "components/repeater.css",
     "components/sortable.css",
+    "components/masked-value.css",
     "utilities.css"
   ]
 }
