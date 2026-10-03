@@ -728,6 +728,8 @@ diện** của trang component. Cột "Khai báo ở" cho biết ghi đè ở đ
 | td-dropdown | `--td-dropdown-*` | `:root` | [dropdown.md](../components/dropdown.md) |
 | td-datetime-picker | `--td-dtp-*` | `:root` (có `@media (pointer: coarse)`) | [datetime-picker.md](../components/datetime-picker.md) |
 | td-chip-input | `--td-chip-*` | `:root` | [chip-input.md](../components/chip-input.md) |
+| td-tree (và cây trong popup của td-tree-select) | `--td-tree-*` — `--td-tree-indent` (thụt mỗi cấp, `1.25rem`), `--td-tree-row-h` (chiều cao hàng, `2rem`), `--td-tree-row-hover` / `-selected` / `-active` / `-active-line`, `--td-tree-check-radius` (0.29.0) | `:root` | [tree.md](../components/tree.md) |
+| td-tree-select | dùng `--td-field-*` (ô) + `--td-dropdown-search-*` (ô tìm) + `--td-tree-*` (cây) | `:root` | [tree-select.md](../components/tree-select.md) |
 | TdFormValidation (summary) | `--td-form-summary-*` | `:root` | [form-validation.md](../components/form-validation.md) |
 | TdModal | `--td-modal-*` | `:root` (per-instance `--td-modal-w` / `-h` / `-body-pad` / `-body-overflow` do JS đặt) | [modal.md](../components/modal.md) |
 | TdToast | `--td-toast-*` | `:root` | [toast.md](../components/toast.md) |

@@ -1,8 +1,8 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.28)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.29)
 
-Trang này liệt kê, cho từng bản từ **0.28.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
+Trang này liệt kê, cho từng bản từ **0.29.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
 [CHANGELOG.md](../../CHANGELOG.md); trang này chỉ gom lại theo góc nhìn "tôi phải làm gì" và thêm ví dụ trước/sau.
 Quy trình nâng cấp chung nằm ở [README.md](README.md).
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.29.0](#0290) | Không có thay đổi phá vỡ | Không. Thêm `<td-tree>`, `<td-tree-select>`, `td_tree_select()`. Import map tự liệt kê: thêm `tree`, `tree-select`. |
 | [0.28.0](#0280) | Không có thay đổi phá vỡ | Không. `<td-chip-input>` thêm `selection-only` / `select-all` / nhóm / nâng cấp `<select multiple>`; PHP `td_multiselect()`. |
 | [0.27.0](#0270) | Không có thay đổi phá vỡ | Không. Thêm otp-input, drawer, copy, skeleton CSS. Import map tự liệt kê: thêm `otp-input`, `drawer`, `copy`. |
 | [0.26.1](#0261) | Không có thay đổi phá vỡ | Không. Sửa password-meter `for` trỏ id ô của field. |
@@ -55,6 +56,13 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.29.0
+
+**Không có thay đổi phá vỡ** — chỉ bổ sung. Site tự viết import map: thêm `@dazzxq/td-components/tree`,
+`/tree-select`. Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.29.0.
 
 ---
 

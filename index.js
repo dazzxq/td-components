@@ -10,6 +10,8 @@ export { TdChipInput } from './src/form/td-chip-input.js';
 export { TdPasswordMeter } from './src/form/td-password-meter.js';
 export { TdDropzone } from './src/form/td-dropzone.js';
 export { TdOtpInput } from './src/form/td-otp-input.js';
+export { TdTree } from './src/form/td-tree.js';
+export { TdTreeSelect } from './src/form/td-tree-select.js';
 export { TdIconElement } from './src/icons/td-icon-element.js';
 export { tdIcon, registerIcons, hasIcon, listIcons, fillIconSlots } from './src/icons/td-icon.js';
 export { TdDateTime } from './src/utils/datetime.js';

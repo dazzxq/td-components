@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.28.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.28.0', __DIR__ . '/public/assets/vendor/td-components/0.28.0');
+ *   require_once '/path/to/vendor/td-components/0.29.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.29.0', __DIR__ . '/public/assets/vendor/td-components/0.29.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -27,6 +27,9 @@
  *   - v0.28.0 td_multiselect prints a native `<select multiple>` (div.td-multiselect; every selected value submitted
  *     under the name, verbatim — `roles[]`); element mode: `<td-chip-input data-td-ssr="chip-input@1" selection-only>`
  *     + the same select (`select.td-chip-input__native`), upgraded by `@dazzxq/td-components/chip-input`.
+ *   - v0.29.0 td_tree_select prints `<td-tree-select>` + a native preorder `<select>` (NBSP indent, data-level, locks via
+ *     data-locked + hidden inputs), upgraded by `@dazzxq/td-components/tree-select`; element mode adds
+ *     `data-td-ssr="tree-select@1"` (the select styled to the trigger box — no layout shift, single and multiple).
  *   - v0.26.0 td_empty prints `<td-empty-state data-td-ssr="empty-state@1">` + the full styled tree (always element),
  *     hydrated in place by `@dazzxq/td-components/empty-state`.
  *   - td_icon prints `svg.td-icon` with the full geometry of src/icons/icons.json (+ Td::registerIcons()).
@@ -142,9 +145,11 @@ namespace TdComponents {
         public const SSR_COPY = 'copy@1';
         /** v0.28.0: td_multiselect element mode (<td-chip-input> + the native <select multiple>, upgraded via M3). */
         public const SSR_CHIP_INPUT = 'chip-input@1';
+        /** v0.29.0: td_tree_select element mode (<td-tree-select> + the native <select>, styled to the trigger box). */
+        public const SSR_TREE_SELECT = 'tree-select@1';
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.28.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.29.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -1151,6 +1156,213 @@ namespace {
             'disabled' => $disabled,
             'data-description' => $desc,
         ]) . '>' . Td::e($label) . '</option>';
+    }
+
+    /**
+     * v0.29.0 tree select (plan v0.29.0-tree M8). A native `<select>` that works without JS, inside `<td-tree-select>`
+     * (upgraded by `@dazzxq/td-components/tree-select`): options in PREORDER, the indent is NBSP at the start of the
+     * text (2 per level — never a dash in the label) + `data-level` + `data-label` (clean label) + `data-description`.
+     * $tree: nodes ['value' => string|int|float, 'label' => …, 'children' => [...], 'disabled' => bool, 'description' => …];
+     * walked iteratively, depth ≤ 16; a value that is '' / null / an array / a bool (or a node that is not an array)
+     * drops the node WITH its branch; a duplicate value drops the later node (one E_USER_WARNING per call for all of
+     * it). $selected: a value or a list of values (same rules; single keeps the first; cascade keeps leaves).
+     * Options: multiple, cascade (multiple only: parent options are `disabled data-native-only` — without JS only leaves
+     * are chosen), placeholder (single: a first value="" option + `allow-clear`, not with a locked selection; multiple:
+     * the empty trigger text only), label, required, disabled, disable_subtree (values → the node and its whole branch
+     * locked: the "choose a parent" anti-cycle rule), display ('path'), size (native multiple rows, default 8), id (host;
+     * select = {id}-select), class, aria_label (names the select), attrs (host; the names the component reads and
+     * data-td-* are reserved; an `attrs` aria-label names the select), element.
+     * Locks (M3: a locked selected value is still submitted, exactly once): every locked option carries `data-locked`;
+     * single with a locked selection → that option `selected` and ENABLED, every other option `disabled
+     * data-native-only`, no empty option; multiple → locked selected options are `disabled selected` + ONE
+     * `<input type="hidden" class="td-tree-select__locked">` per value, and the select loses `required` (the host keeps
+     * it); a `disabled` control disables those inputs too. The server must still enforce its own permissions.
+     * `element` (bool, default Td::configure ssr_elements = false): `data-td-ssr="tree-select@1"` on the host, no `size`
+     * (td.css gives the select the exact trigger box, single AND multiple — no layout shift on upgrade) and
+     * `value-label` / `value-labels` (labels of the selected values, shown until a lazy branch resolves them).
+     */
+    function td_tree_select(string $name, array $tree, string|int|array|null $selected = null, array $o = []): string
+    {
+        $multiple = !empty($o['multiple']);
+        $cascade = $multiple && !empty($o['cascade']);
+        $subtree = [];
+        foreach (is_array($o['disable_subtree'] ?? null) ? $o['disable_subtree'] : [] as $v) {
+            $sv = td__tree_value($v);
+            if ($sv !== null) {
+                $subtree[$sv] = true;
+            }
+        }
+        // Flatten (preorder, iterative): [value, label, level, locked, description]
+        $rows = [];
+        $seen = [];
+        $bad = 0;
+        // review round 1 (S-01): each frame holds its items as a LIST (array_values once, on push) + an index — no
+        // per-node array_keys() (that made a wide level quadratic)
+        $stack = [[array_values($tree), 0, 0, false]];
+        while ($stack) {
+            $top = count($stack) - 1;
+            $i = $stack[$top][1];
+            if ($i >= count($stack[$top][0])) {
+                array_pop($stack);
+                continue;
+            }
+            $stack[$top][1] = $i + 1;
+            $item = $stack[$top][0][$i];
+            $level = $stack[$top][2];
+            $plocked = $stack[$top][3];
+            $value = is_array($item) ? td__tree_value($item['value'] ?? null) : null;
+            if ($value === null || $level >= 16 || isset($seen[$value])) {
+                $bad++;
+                continue;
+            }
+            $seen[$value] = true;
+            $label = isset($item['label']) && is_scalar($item['label']) && !is_bool($item['label']) && (string) $item['label'] !== ''
+                ? (string) $item['label'] : $value;
+            $locked = $plocked || !empty($item['disabled']) || isset($subtree[$value]);
+            $rows[] = ['value' => $value, 'label' => $label, 'level' => $level, 'locked' => $locked,
+                'desc' => td__str($item['description'] ?? null)];
+            if (isset($item['children']) && is_array($item['children']) && $item['children']) {
+                $stack[] = [array_values($item['children']), 0, $level + 1, $locked];
+            }
+        }
+        if ($bad) {
+            trigger_error("td_tree_select: $bad node(s) dropped (value must be a non-empty string or a number, unique; depth ≤ 16)", E_USER_WARNING);
+        }
+        $n = count($rows);
+        $index = [];
+        foreach ($rows as $k => $r) {
+            $rows[$k]['leaf'] = $k + 1 >= $n || $rows[$k + 1]['level'] <= $r['level'];
+            $index[$r['value']] = $k;
+        }
+        // Selection: same value rules, only values of the tree; single = the first; cascade = leaves only.
+        $sel = [];
+        foreach (is_array($selected) ? $selected : [$selected] as $v) {
+            $sv = td__tree_value($v);
+            if ($sv === null || !isset($index[$sv]) || ($cascade && !$rows[$index[$sv]]['leaf'])) {
+                continue;
+            }
+            $sel[$sv] = true;
+            if (!$multiple) {
+                break;
+            }
+        }
+        $lockedSel = [];
+        foreach ($rows as $r) {
+            if ($r['locked'] && isset($sel[$r['value']])) {
+                $lockedSel[] = $r['value'];
+            }
+        }
+        $singleLocked = !$multiple && $lockedSel;
+        $element = td__element($o);
+        $id = td__str($o['id'] ?? null) ?? td__host_uid($name);
+        $label = td__str($o['label'] ?? null);
+        $placeholder = td__str($o['placeholder'] ?? null);
+        $required = !empty($o['required']);
+        $disabled = !empty($o['disabled']);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $aria = td__str($o['aria_label'] ?? null);
+        foreach ($extra as $k => $v) {
+            if (strtolower((string) $k) === 'aria-label') {
+                $aria ??= td__str($v);
+            }
+        }
+        $valueLabel = null;
+        $valueLabels = null;
+        if ($element && $sel) {
+            if ($multiple) {
+                $map = [];
+                foreach ($rows as $r) {
+                    if (isset($sel[$r['value']])) {
+                        $map[$r['value']] = $r['label'];
+                    }
+                }
+                $valueLabels = (string) json_encode($map, JSON_FORCE_OBJECT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+                    | JSON_INVALID_UTF8_SUBSTITUTE);
+            } else {
+                $valueLabel = $rows[$index[array_key_first($sel)]]['label'];
+            }
+        }
+        $taken = [];
+        $html = '<td-tree-select' . Td::ownAttrs([
+            'data-td-ssr' => $element ? Td::SSR_TREE_SELECT : null,
+            'id' => $id,
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'label' => $label,
+            'placeholder' => $placeholder,
+            'multiple' => $multiple,
+            'cascade' => $cascade,
+            'allow-clear' => !$multiple && $placeholder !== null && !$singleLocked,
+            'display' => ($o['display'] ?? null) === 'path' ? 'path' : null,
+            'value-label' => $valueLabel,
+            'value-labels' => $valueLabels,
+            'required' => $required,
+        ], $taken);
+        $taken = td__reserve(['id', 'class', 'label', 'placeholder', 'multiple', 'cascade', 'searchable', 'allow-clear',
+            'display', 'name', 'value', 'value-label', 'value-labels', 'required', 'disabled', 'aria-label',
+            'aria-labelledby', 'error-text'], $extra, $taken);
+        $html .= Td::attrs($extra, $taken) . '>';
+        if ($label !== null) {
+            $html .= '<label class="td-field__label" for="' . Td::e($id) . '-select">' . Td::e($label)
+                . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') . '</label>';
+        }
+        $html .= '<select' . Td::ownAttrs([
+            'class' => 'td-tree-select__native',
+            'id' => "$id-select",
+            'name' => $name !== '' ? $name : null,
+            'multiple' => $multiple,
+            'size' => $multiple && !$element ? (Td::intOpt($o['size'] ?? null, 1) ?? '8') : null,
+            // a locked selected value (hidden input) already makes a multiple field non-empty: no false valueMissing
+            'required' => $required && !($multiple && $lockedSel),
+            'disabled' => $disabled,
+            'aria-label' => $aria,
+        ]) . '>';
+        if (!$multiple && $placeholder !== null && !$singleLocked) {
+            $html .= '<option value="">' . Td::e($placeholder) . '</option>';
+        }
+        foreach ($rows as $r) {
+            $isSel = isset($sel[$r['value']]);
+            if ($singleLocked) {
+                $off = !$isSel;               // the locked selection is the only enabled option
+                $nativeOnly = $off && !$r['locked'];
+            } else {
+                $parent = $cascade && !$r['leaf'];
+                $off = $r['locked'] || $parent;
+                $nativeOnly = $parent && !$r['locked'];
+            }
+            $html .= '<option' . Td::ownAttrs([
+                'value' => $r['value'],
+                'data-level' => (string) $r['level'],
+                'data-label' => $r['label'],
+                'data-description' => $r['desc'],
+                'data-locked' => $r['locked'],
+                'selected' => $isSel,
+                'disabled' => $off,
+                'data-native-only' => $nativeOnly,
+            ]) . '>' . str_repeat("\u{00A0}", 2 * $r['level']) . Td::e($r['label']) . '</option>';
+        }
+        $html .= '</select>';
+        if ($multiple && $name !== '') {
+            foreach ($lockedSel as $v) {
+                $html .= '<input type="hidden" class="td-tree-select__locked"' . Td::ownAttrs([
+                    'name' => $name,
+                    'value' => $v,
+                    'disabled' => $disabled,
+                ]) . '>';
+            }
+        }
+        return $html . '</td-tree-select>';
+    }
+
+    /** @internal td_tree_select value rule (= the JS tree model): non-empty string, int or finite float → string; else null. */
+    function td__tree_value(mixed $v): ?string
+    {
+        if (is_string($v)) {
+            return $v !== '' ? $v : null;
+        }
+        if (is_int($v) || (is_float($v) && is_finite($v))) {
+            return (string) $v;
+        }
+        return null;
     }
 
     /**

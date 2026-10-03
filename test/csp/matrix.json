@@ -32,7 +32,9 @@
       "td-otp-input": "/src/form/td-otp-input.js",
       "td-drawer": "/src/feedback/td-drawer.js",
       "td-copy": "/src/display/td-copy.js",
-      "td-skeleton": "/src/icons/td-icon.js"
+      "td-skeleton": "/src/icons/td-icon.js",
+      "td-tree": "/src/form/td-tree.js",
+      "td-tree-select": "/src/form/td-tree-select.js"
     },
     "tokenNative": [
       "td-button",
@@ -65,7 +67,9 @@
       "td-otp-input",
       "td-drawer",
       "td-copy",
-      "td-skeleton"
+      "td-skeleton",
+      "td-tree",
+      "td-tree-select"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -2193,6 +2197,94 @@
         ".td-skeleton--circle",
         ".td-skeleton--rect"
       ]
+    }
+  ],
+  "td-tree": [
+    {
+      "state": "default",
+      "setup": "const t=document.createElement('td-tree'); t.id='probe'; t.setAttribute('aria-label','Danh mục'); t.setAttribute('selection','single'); t.setAttribute('value','apple'); window.__mount.appendChild(t); t.data=[{value:'phone',label:'Điện thoại',expanded:true,children:[{value:'apple',label:'Apple',description:'Táo',children:[{value:'ip15',label:'iPhone 15'}]},{value:'samsung',label:'Samsung',disabled:true}]},{value:'acc',label:'Phụ kiện'}];",
+      "selectors": [
+        ".td-tree",
+        ".td-tree__list",
+        ".td-tree__group",
+        ".td-tree__row",
+        ".td-tree__toggle",
+        ".td-tree__item[aria-expanded=\"true\"] > .td-tree__row > .td-tree__toggle",
+        ".td-tree__item[aria-selected=\"true\"] > .td-tree__row",
+        ".td-tree__label",
+        ".td-tree__desc",
+        ".td-tree__item[aria-disabled=\"true\"] > .td-tree__row"
+      ],
+      "settle": 200
+    },
+    {
+      "state": "checked-mixed",
+      "setup": "const t=document.createElement('td-tree'); t.id='probe'; t.setAttribute('aria-label','Quyền'); t.setAttribute('selection','multiple'); t.setAttribute('cascade',''); window.__mount.appendChild(t); t.data=[{value:'post',label:'Bài viết',expanded:true,children:[{value:'post.read',label:'Xem'},{value:'post.write',label:'Sửa'},{value:'post.del',label:'Xoá',disabled:true}]},{value:'user',label:'Người dùng',expanded:true,children:[{value:'user.read',label:'Xem'}]}]; t.value=['post.read','user.read'];",
+      "selectors": [
+        ".td-tree__check",
+        ".td-tree__item[aria-checked=\"mixed\"] > .td-tree__row > .td-tree__check",
+        ".td-tree__item[aria-checked=\"true\"] > .td-tree__row > .td-tree__check",
+        ".td-tree__check-on",
+        ".td-tree__check-mixed"
+      ],
+      "settle": 200
+    },
+    {
+      "state": "loading",
+      "setup": "const t=document.createElement('td-tree'); t.id='probe'; t.setAttribute('aria-label','Danh mục'); window.__mount.appendChild(t); t.loadChildren=()=>new Promise(()=>{}); t.data=[{value:'r',label:'Đang tải',hasChildren:true},{value:'x',label:'Khác'}]; t.querySelector('.td-tree__toggle').click();",
+      "selectors": [
+        ".td-tree__item[aria-busy=\"true\"] > .td-tree__row > .td-tree__toggle"
+      ],
+      "reducedMotion": true,
+      "settle": 200
+    },
+    {
+      "state": "filtered",
+      "setup": "const t=document.createElement('td-tree'); t.id='probe'; t.setAttribute('aria-label','Danh mục'); t.setAttribute('searchable',''); window.__mount.appendChild(t); t.data=[{value:'phone',label:'Điện thoại',expanded:true,children:[{value:'apple',label:'Apple',description:'Táo',children:[{value:'ip15',label:'iPhone 15'}]},{value:'samsung',label:'Samsung',disabled:true}]},{value:'acc',label:'Phụ kiện'}]; t.filter('iphone');",
+      "selectors": [
+        ".td-tree__search",
+        ".td-tree__group",
+        ".td-tree__label",
+        ".td-tree__empty"
+      ],
+      "settle": 200
+    }
+  ],
+  "td-tree-select": [
+    {
+      "state": "open",
+      "setup": "const s=document.createElement('td-tree-select'); s.id='probe'; s.setAttribute('label','Danh mục'); s.setAttribute('searchable','false'); s.setAttribute('allow-clear',''); window.__mount.appendChild(s); s.data=[{value:'phone',label:'Điện thoại',expanded:true,children:[{value:'apple',label:'Apple',description:'Táo',children:[{value:'ip15',label:'iPhone 15'}]},{value:'samsung',label:'Samsung',disabled:true}]},{value:'acc',label:'Phụ kiện'}]; s.value='apple'; s.open();",
+      "selectors": [
+        ".td-tree-select__control",
+        ".td-tree-select__trigger",
+        ".td-tree-select__value",
+        ".td-tree-select__clear",
+        ".td-tree-select__arrow",
+        ".td-tree-select__menu",
+        ".td-tree-select__scroller",
+        ".td-tree__item[data-active] > .td-tree__row"
+      ],
+      "portal": [
+        ".td-tree-select__menu",
+        ".td-tree-select__scroller",
+        ".td-tree__item[data-active] > .td-tree__row"
+      ],
+      "settle": 450,
+      "excludeProps": [
+        "top",
+        "left",
+        "right",
+        "bottom"
+      ]
+    },
+    {
+      "state": "native",
+      "markup": "<label class=\"td-field__label\" for=\"probe-select\">Danh mục</label><select class=\"td-tree-select__native\" id=\"probe-select\" name=\"cats[]\" multiple size=\"4\"><option value=\"phone\" data-level=\"0\" data-label=\"Điện thoại\">Điện thoại</option><option value=\"apple\" data-level=\"1\" data-label=\"Apple\" selected>  Apple</option><option value=\"acc\" data-level=\"0\" data-label=\"Phụ kiện\">Phụ kiện</option></select>",
+      "selectors": [
+        ".td-tree-select__native"
+      ],
+      "settle": 200,
+      "selectorNote": "php/td.php td_tree_select native mode select (class-styled; inside <td-tree-select> it upgrades when JS runs)"
     }
   ]
 }
