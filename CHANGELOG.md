@@ -2,6 +2,29 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.26.0
+
+**Hết "flash" lúc tải — bước 2:** `<td-input-field>`, `<td-toggle>`, `<td-checkbox>` in sẵn từ PHP và hydrate tại chỗ (ADR
+0012; plan `docs/internal/plans/v0.26.0-ssr-form.md`, Codex plan-review APPROVE 4 vòng).
+
+### Added
+
+- **PHP element mode** cho `td_field()`, `td_toggle()`, `td_checkbox()` (`['element' => true]` hoặc cờ toàn site
+  `ssr_elements`): in host + ô native đã có style (`data-td-ssr` `input-field@1` / `toggle@1` / `checkbox@1`). Chưa có JS
+  vẫn nhập, submit, validation native, password manager / autofill. `id` người gọi = id của ô native (`<label for>` ngoài
+  vẫn đúng); host có id riêng (`{id}-host` hoặc tự sinh).
+- **Hydrate form-associated:** JS nhận ô tại chỗ — giữ chữ đã gõ / autofill / trạng thái tích trước khi JS nạp, giữ
+  focus + vị trí con trỏ, không phát `input` / `change`; dữ liệu form đúng **một** mục mỗi tên; `reset` về mặc định
+  native; label ngoài chuyển sang host. Ô đang focus mà markup lệch → chờ rời ô rồi mới dựng lại (giữ state).
+- Base: ghi nhận property gán sớm (`_earlyProps`, ưu tiên hơn state native); `canHydrate()` trả `'defer'` +
+  `deferHydration(resume)`.
+
+### Changed
+
+- Site **đã bật `ssr_elements` từ 0.25** giờ cũng nhận element mode cho `td_field` / `td_toggle` / `td_checkbox` (đúng
+  ADR: cờ toàn site áp cho mọi helper đã có contract). Trong element mode: `td_toggle` / `td_checkbox` đưa `class` /
+  `attrs` lên host (native: lên `<label>`), `input_attrs` vẫn xuống ô.
+
 ## 0.25.0
 
 **Hết "flash" lúc tải trang SSR** — bước 1: nền tảng hydrate tại chỗ + `<td-button>` / link (đề xuất site 135; ADR 0012,
