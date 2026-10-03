@@ -14,6 +14,7 @@ export { TdTree } from './src/form/td-tree.js';
 export { TdTreeSelect } from './src/form/td-tree-select.js';
 export { TdNumberInput } from './src/form/td-number-input.js';
 export { TdRepeater } from './src/form/td-repeater.js';
+export { TdMediaField } from './src/form/td-media-field.js';
 export { TdIconElement } from './src/icons/td-icon-element.js';
 export { tdIcon, registerIcons, hasIcon, listIcons, fillIconSlots } from './src/icons/td-icon.js';
 export { TdDateTime } from './src/utils/datetime.js';
