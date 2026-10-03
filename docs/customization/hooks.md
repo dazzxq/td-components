@@ -485,12 +485,14 @@ upload, pageSize })`: registry cấp module, mỗi lần gọi **thay toàn bộ
 `(params) => string` (ném / không phải chuỗi → nhãn mặc định), luôn render bằng `textContent`.
 
 **`<td-media-field>`** ([media-field.md](../components/media-field.md)): property `adapter` (adapter riêng cho field) và
-`pickerOptions` (option riêng khi field mở picker, trừ `selection`). Event `input` / `change` (`{ value, selection }`).
+`pickerOptions` (option riêng khi field mở picker, trừ `selection`); gán khi field có `value` mà chưa có ảnh xem trước →
+field gọi `adapter.get` lười. Event `input` / `change` (`{ value, selection }`).
 
 `TdMediaPicker.labels` (bảng đủ ở [media-picker.md › Nhãn](../components/media-picker.md#nhãn--tdmediapickerlabels)) và
 `TdMediaField.labels`: `prompt.{image|video|file}` "Chọn ảnh / video / file" · `replace.{…}` "Đổi ảnh / video / file" ·
 `remove` "Gỡ" · `alt` "Mô tả ảnh (alt)" · `empty` "Chưa chọn" · `selected` "Đã chọn: {name}" · `noPreview` "Đã chọn
-(không có ảnh xem trước)" · `video` "Video" · `required` "Vui lòng chọn {kind}.".
+(không có ảnh xem trước)" · `video` "Video" · `required` "Vui lòng chọn {kind}." · `kinds.{image|video|file}` "ảnh / video / file" (điền
+`{kind}`). PHP `td_media_field()` in nhãn mặc định — đổi nhãn → field render lại an toàn lúc nâng cấp.
 
 ---
 
