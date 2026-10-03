@@ -262,8 +262,11 @@ export class TdInputField extends TdFormElement {
   render() {
     const esc = (v) => this.escapeHtml(v);
     const type = this._type();
-    // A structural re-render keeps what the user typed (the live value), not the stale attribute.
-    const value = this._getFieldElement() ? this._getValue() : (this.getAttribute('value') || '');
+    // A structural re-render keeps what the user typed (the live value), not the stale attribute. Review round 4: the
+    // render that replaces REFUSED SSR markup never reads it (an injected control could come first) — the host value
+    // is rendered and the trusted captured state is restored afterwards.
+    const fresh = !!this._ssrFreshRender;
+    const value = this._getFieldElement() && !fresh ? this._getValue() : (this.getAttribute('value') || '');
     const maxLength = this._maxLength();
     const limitType = this._limitType();
     const label = this.getAttribute('label') || '';
@@ -762,8 +765,9 @@ export class TdInputField extends TdFormElement {
     // the state-safe path (no marker → legacy render, unchanged).
     const m = ssrMarker(this);
     if (!m || m.name !== 'input-field') return false;
-    const control = this._ssrFindControl();
-    if (!control) return false; // nothing stateful: plain render
+    // review round 4 (ISSUE-8): state comes only from the expected skeleton slot (or the single control there is)
+    const control = this._ssrStateSource();
+    if (!control) return this._ssrClean(false); // none / ambiguous: clean render from the host, nothing transplanted
     this._ssrDefaults = { value: control.defaultValue };
     const matches = m.schema === 1 && this._type() !== 'contenteditable' && this._markupMatches(true)
       && this._ssrFormAttrsAgree(control, SSR_AGREE, ['required', 'disabled', 'readonly']);
@@ -772,13 +776,21 @@ export class TdInputField extends TdFormElement {
 
   /** Re-connect of a HYDRATED element: re-bind in place while the markup is still the component's own (else restore). */
   canRebind() {
-    return this._ssrRevalidate(this._ssrFindControl());
+    return this._ssrRevalidate(this._ssrStateSource());
   }
 
-  /** @private The stateful native control under the host (the kit's class first, else any text-like input). */
-  _ssrFindControl() {
-    return this.querySelector('input.td-field__control, textarea.td-field__control')
-      || this.querySelector('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea');
+  /** @protected Review round 4: `div.td-field` (unique host child) > `input|textarea.td-field__control` (unique child). */
+  _ssrSlotControl() {
+    const roots = [...this.children].filter((e) => e.localName === 'div' && e.classList.contains('td-field'));
+    if (roots.length !== 1) return null;
+    const c = [...roots[0].children].filter((e) => (e.localName === 'input' || e.localName === 'textarea')
+      && e.classList.contains('td-field__control'));
+    return c.length === 1 ? c[0] : null;
+  }
+
+  /** @protected */
+  _ssrPlausible() {
+    return 'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea';
   }
 
   hydrateExisting() {
@@ -870,7 +882,12 @@ export class TdInputField extends TdFormElement {
   /** @protected */
   _restoreSsrState(state) {
     const field = this._getFieldElement();
-    if (!field || TdInputField._isEditable(field)) return;
+    if (!field) return;
+    if (state.clean) { // review round 4: rendered from the host only — nothing to put back but the focus
+      if (state.refocus) field.focus({ preventScroll: true });
+      return;
+    }
+    if (TdInputField._isEditable(field)) return;
     if (field.value !== state.value) field.value = state.value;
     this._userEdited = !!state.edited;
     this._updateCounter();

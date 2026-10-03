@@ -889,3 +889,123 @@ describe('v0.26.0 SSR hydrate — review round 3: no deferral, a focused mismatc
     expect(host._cleanups.length).to.equal(twinCleanups(doc, host));
   });
 });
+
+describe('v0.26.0 SSR hydrate — review round 4 (ISSUE-8): state never comes from an injected control', () => {
+  /** A foreign control with its own value / checked / id / name, focused (it comes FIRST in query order). */
+  const foreign = (d, attrs) => {
+    const el = d.createElement('input');
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    return el;
+  };
+
+  it('checkbox: an injected .td-checkbox__input placed first in the label → clean render from the host (no foreign checked / value / id)', async () => {
+    const { doc, win } = await frameCase(['c-basic'], (d) => {
+      const label = d.querySelector('label.td-checkbox');
+      const evil = foreign(d, { type: 'checkbox', class: 'td-checkbox__input', id: 'evil-id', name: 'evil', value: 'evil' });
+      label.prepend(evil); // unchecked; the real input (checked, id "agree") follows
+      evil.focus();
+    });
+    const host = doc.querySelector('td-checkbox');
+    const n = host.querySelector('input[type="checkbox"]');
+    expect(host.querySelectorAll('input').length).to.equal(1);
+    expect(n.checked, 'the host `checked` (PHP), not the injected unchecked state').to.equal(true);
+    expect(n.id === 'evil-id', 'foreign id never taken').to.equal(false);
+    expect(doc.getElementById('evil-id') === null).to.equal(true);
+    expect([...new win.FormData(doc.querySelector('form'))]).to.deep.equal([['agree', 'on']]);
+    expect(/evil/.test(host.innerHTML)).to.equal(false);
+    expect(doc.activeElement === n, 'focus was inside the host → new control').to.equal(true);
+    host.closest('form').reset();
+    expect(n.checked, 'reset → the host default, not a foreign default').to.equal(true);
+    expect([...new win.FormData(doc.querySelector('form'))]).to.deep.equal([['agree', 'on']]);
+  });
+
+  it('checkbox: an injected class-less checkbox first in the label → no transplant either', async () => {
+    const { doc, win } = await frameCase(['c-noid'], (d) => {
+      const evil = foreign(d, { type: 'checkbox', id: 'evil-id', name: 'evil', value: 'evil', checked: '' });
+      d.querySelector('label.td-checkbox').prepend(evil); // checked; the real one is unchecked
+    });
+    const host = doc.querySelector('td-checkbox');
+    const n = host.querySelector('input[type="checkbox"]');
+    expect(n.checked).to.equal(false);
+    expect(n.id === 'evil-id').to.equal(false);
+    expect([...new win.FormData(doc.querySelector('form'))]).to.deep.equal([]);
+    expect(/evil/.test(host.innerHTML)).to.equal(false);
+  });
+
+  it('field: an injected .td-field__control before the real one → clean render from the host value (no foreign value / id)', async () => {
+    const { doc, win } = await frameCase(['f-text'], (d) => {
+      const root = d.querySelector('.td-field');
+      const evil = foreign(d, { type: 'text', class: 'td-field__control', id: 'evil-id', name: 'evil', value: 'foreign' });
+      root.prepend(evil);
+      d.querySelector('#fullname').value = 'mine';
+      evil.focus();
+    });
+    const host = doc.querySelector('td-input-field');
+    const n = host.querySelector('.td-field__control');
+    expect(host.querySelectorAll('input, textarea').length).to.equal(1);
+    expect(n.value, 'host value (PHP), neither the foreign nor an ambiguous live one').to.equal('An Nguyễn');
+    expect(n.id).to.equal('fullname');
+    expect(doc.getElementById('evil-id') === null).to.equal(true);
+    expect([...new win.FormData(doc.querySelector('form'))]).to.deep.equal([['fullname', 'An Nguyễn']]);
+    expect(/foreign|evil/.test(host.innerHTML), host.innerHTML.slice(0, 200)).to.equal(false);
+    expect(doc.activeElement === n, 'focus was inside the host → new control').to.equal(true);
+    host.closest('form').reset();
+    expect(n.value, 'reset → the host default').to.equal('An Nguyễn');
+  });
+
+  it('field: an injected .td-field__control OUTSIDE the skeleton → state from the slot control only, foreign value never rendered', async () => {
+    const { doc, win } = await frameCase(['f-text'], (d) => {
+      const evil = foreign(d, { type: 'text', class: 'td-field__control', id: 'evil-id', name: 'evil', value: 'foreign' });
+      d.querySelector('td-input-field').prepend(evil);
+      const real = d.querySelector('#fullname');
+      real.value = 'mine';
+      real.focus();
+    });
+    const host = doc.querySelector('td-input-field');
+    const n = host.querySelector('.td-field__control');
+    expect(host.querySelectorAll('input, textarea').length).to.equal(1);
+    expect(n.value).to.equal('mine');
+    expect(n.id).to.equal('fullname');
+    expect([...new win.FormData(doc.querySelector('form'))]).to.deep.equal([['fullname', 'mine']]);
+    expect(/foreign|evil/.test(host.innerHTML), host.innerHTML.slice(0, 200)).to.equal(false);
+    expect(doc.activeElement === n).to.equal(true);
+  });
+});
+
+describe('checkbox / toggle reset re-syncs the inner input with the host default (pre-existing bug)', () => {
+  const sync = (host, form, name) => {
+    const input = host.querySelector('input[type="checkbox"]');
+    expect(input.checked, `${host.localName} input.checked = host checked`).to.equal(host.hasAttribute('checked'));
+    expect([...new FormData(form)]).to.deep.equal(host.hasAttribute('checked') ? [[name, 'on']] : []);
+  };
+
+  for (const tag of ['td-checkbox', 'td-toggle']) {
+    it(`JS-created ${tag}: reset with the state unchanged / changed → input.checked = host default, FormData matches`, () => {
+      for (const [checked, click] of [[true, false], [true, true], [false, true], [false, false]]) {
+        const form = document.createElement('form');
+        const el = document.createElement(tag);
+        el.setAttribute('name', 'x');
+        if (checked) el.setAttribute('checked', '');
+        form.appendChild(el);
+        sandbox.appendChild(form);
+        if (click) el.querySelector('input').click();
+        form.reset();
+        expect(el.hasAttribute('checked'), `${tag} default ${checked} click ${click}`).to.equal(checked);
+        sync(el, form, 'x');
+        form.remove();
+      }
+    });
+  }
+
+  it('hydrated checkbox / toggle (PHP checked, untouched): reset → input stays checked', async () => {
+    const { doc } = await frameCase(['c-basic', 't-basic'], () => {});
+    for (const [tag, name] of [['td-checkbox', 'agree'], ['td-toggle', 'notify']]) {
+      const host = doc.querySelector(tag);
+      const form = host.closest('form');
+      const input = host.querySelector('input[type="checkbox"]');
+      form.reset();
+      expect(input.checked, `${tag} input.checked after reset`).to.equal(true);
+      expect([...new doc.defaultView.FormData(form)]).to.deep.equal([[name, 'on']]);
+    }
+  });
+});

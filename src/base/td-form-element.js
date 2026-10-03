@@ -26,6 +26,8 @@ const SSR_HTML_TAGS = new Set(['div', 'label', 'span', 'input', 'textarea']);
 const SSR_SVG_TAGS = new Set(['svg', 'title', 'path', 'circle', 'rect', 'line', 'polyline', 'polygon', 'ellipse']);
 const SSR_INPUT_TYPES = new Set(['text', 'password', 'email', 'number', 'url', 'search', 'tel', 'date', 'month',
   'datetime-local', 'time', 'checkbox']);
+/** Every form-associated element (review rounds 2 + 4: exactly one may exist under a hydrated host). */
+const SSR_FORM_ASSOCIATED = 'input, textarea, select, button, fieldset, output, object';
 /** Non-control parts: label `for`, error note `data-for`, the kit's icon slot attributes. */
 const SSR_PART_ATTRS = new Set(['for', 'data-td-icon', 'data-td-icon-class', 'data-td-icon-size']);
 const SSR_SVG_ATTRS = new Set(['class', 'data-icon', 'viewBox', 'xmlns', 'fill', 'stroke', 'stroke-width', 'stroke-linecap',
@@ -147,6 +149,7 @@ export class TdFormElement extends TdBaseElement {
     // `<label for="${this.id}">` gets a real target on the very first paint (ISSUE-1).
     this._ensureId();
     super.connectedCallback(); // _setupProperties + first _doRender (if not yet initialized)
+    this._ssrFreshRender = false; // review round 4: only the render replacing refused SSR markup ignores the old DOM
     // v0.26.0 (ADR 0012): server markup that could not be adopted was rendered → put the captured state back (silently).
     if (this._ssrRestore) {
       const state = this._ssrRestore;
@@ -548,6 +551,42 @@ export class TdFormElement extends TdBaseElement {
     }
     state.refocus = control === control.ownerDocument.activeElement;
     this._ssrRestore = state;
+    this._ssrFreshRender = true; // review round 4: the render reads the host, never the refused DOM
+    return false;
+  }
+
+  /**
+   * @protected Review round 4 (ISSUE-8): the ONLY trustworthy source of SSR state. The control at the exact skeleton
+   * slot of the current schema (`_ssrSlotControl()`, unique there) wins; without one, the generic fallback (unsupported
+   * schema / drift) is used only when the host holds exactly ONE form-associated element and it is a plausible control
+   * (`_ssrPlausible()`). Otherwise null: several candidates / ambiguous slot → no state, default, id or focus is ever
+   * taken from any of them (an injected control placed first would otherwise win by query order).
+   * @returns {HTMLElement|null}
+   */
+  _ssrStateSource() {
+    const slot = this._ssrSlotControl();
+    if (slot) return slot;
+    const all = this.querySelectorAll(SSR_FORM_ASSOCIATED);
+    return all.length === 1 && all[0].matches(this._ssrPlausible()) ? all[0] : null;
+  }
+
+  /** @protected The unique control at the expected skeleton slot, or null (subclass). @returns {HTMLElement|null} */
+  _ssrSlotControl() { return null; }
+
+  /** @protected Selector of a plausible stateful control for the fallback (subclass). @returns {string} */
+  _ssrPlausible() { return 'input, textarea'; }
+
+  /**
+   * @protected Review round 4: no trustworthy state source → render clean from the host attributes only; the focus
+   * goes to the new control only when it was inside the host (and the element is connected — `live` = re-connect).
+   * @param {boolean} live
+   * @returns {false}
+   */
+  _ssrClean(live) {
+    this._ssrControl = null;
+    const active = this.ownerDocument.activeElement;
+    this._ssrRestore = { clean: true, refocus: !live && !!active && active !== this && this.contains(active) };
+    this._ssrFreshRender = true;
     return false;
   }
 
@@ -578,8 +617,12 @@ export class TdFormElement extends TdBaseElement {
     this._ssrControl = control;
     const ok = !!control && this._markupMatches(false) && !this._ssrUnsafe() && this._ssrSkeletonOk();
     this._ssrControl = null;
-    if (!ok && control) this._ssrRestore = this._ssrCapture(control, true);
-    return ok;
+    if (ok) return true;
+    // review round 4: `control` comes from _ssrStateSource() — null (ambiguous) → clean render, nothing transplanted
+    if (!control) return this._ssrClean(true);
+    this._ssrRestore = this._ssrCapture(control, true);
+    this._ssrFreshRender = true;
+    return false;
   }
 
   /** @protected Strict structural match with render() (subclass). @param {boolean} _first */
@@ -615,7 +658,7 @@ export class TdFormElement extends TdBaseElement {
     if (walk(this)) return true;
     // Review round 2: exactly ONE native control — any other form-associated element (an injected hidden input /
     // textarea would submit with the form) makes the markup unsafe.
-    const controls = this.querySelectorAll('input, textarea, select, button, fieldset, output, object');
+    const controls = this.querySelectorAll(SSR_FORM_ASSOCIATED);
     return controls.length !== 1 || controls[0] !== this._ssrControl;
   }
 
