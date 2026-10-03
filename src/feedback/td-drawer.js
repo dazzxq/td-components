@@ -105,8 +105,8 @@ export class TdDrawer extends HTMLElement {
     // supplied body / footer — even '' — always wins over its *Html hatch, and the hatch accepts only a primitive
     // string or a genuine TrustedHTML.
     const own = (k) => Object.prototype.hasOwnProperty.call(o, k);
-    const isHtml = (v) => typeof v === 'string'
-      || (typeof globalThis.TrustedHTML === 'function' && v instanceof globalThis.TrustedHTML);
+    // A genuine policy-created TrustedHTML only: `instanceof` is forgeable (Object.create(TrustedHTML.prototype)).
+    const isHtml = (v) => typeof v === 'string' || globalThis.trustedTypes?.isHTML?.(v) === true;
     const hasBody = own('body') && o.body != null;
     if (hasBody) {
       const body = o.body;

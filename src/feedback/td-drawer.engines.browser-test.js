@@ -351,6 +351,25 @@ describe('td-drawer — hatch precedence (review round 2)', () => {
   });
 });
 
+describe('td-drawer — genuine TrustedHTML only (review round 3)', () => {
+  it('a policy-created TrustedHTML renders; a forged TrustedHTML-prototype object is ignored', async () => {
+    if (!globalThis.trustedTypes || typeof globalThis.TrustedHTML !== 'function') return; // engine without Trusted Types
+    const policy = trustedTypes.createPolicy(`td-drawer-test-${Math.random().toString(36).slice(2)}`, { createHTML: (s) => s });
+    const h = TdDrawer.open({ label: 'T', bodyHtml: policy.createHTML('<b class="genuine">ok</b>') });
+    let root = openRoot();
+    expect(!!root.querySelector('b.genuine')).to.equal(true);
+    h.close();
+    await h.closed;
+    const forged = Object.create(TrustedHTML.prototype);
+    forged.toString = () => '<b class="forged">x</b>';
+    const h2 = TdDrawer.open({ label: 'F', bodyHtml: forged });
+    root = openRoot();
+    expect(root.querySelectorAll('b.forged').length).to.equal(0);
+    h2.close();
+    await h2.closed;
+  });
+});
+
 describe('td-drawer — `open` after the entrance transition (review round 1 IMPL-1)', () => {
   it('not fired during the transition; fired once after it, with the open state and focus already set', async () => {
     const wrap = mount('<td-drawer label="T"><input class="ti"></td-drawer>');
