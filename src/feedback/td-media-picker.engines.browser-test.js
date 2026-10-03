@@ -1250,7 +1250,7 @@ describe('td-media-picker — XSS / safety', () => {
       expect(/^(javascript|data|file):/i.test(src), src).to.equal(false);
     }
     for (const el of [root, ...root.querySelectorAll('*')]) {
-      expect(el.hasAttribute('style') && el.closest('.td-media-picker__grid') !== null && el.getAttribute('style') !== '', `${el.localName} style`).to.equal(false);
+      expect(el.hasAttribute('style'), `${el.localName}.${el.className} style="${el.getAttribute('style')}"`).to.equal(false);
       for (const a of el.attributes) expect(/^on/i.test(a.name), `${el.localName} ${a.name}`).to.equal(false);
     }
     const added = Object.keys(window).filter((k) => !globals.has(k) && k !== '__mpXss');
