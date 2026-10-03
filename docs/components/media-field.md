@@ -36,7 +36,7 @@ nhiều ảnh / gallery có ở 0.38+.
 </script>
 ```
 
-Gửi form: `hero=a_9f2c`, `og[id]=…`, `og[alt]=…`, `og[crop]=null`.
+Gửi form: `hero=a_9f2c`, `og[id]=`, `og[alt]=`, `og[crop]=null`.
 
 ## Cách dùng
 
@@ -139,10 +139,15 @@ giá trị form ai cũng sửa được.
   `usage.altText` (alt mặc định của asset), crop = `null`; phát `input` rồi `change`. Chọn **lại đúng ảnh cũ** → chỉ làm
   mới ảnh xem trước, không event. Huỷ picker → không đổi gì.
 - "Gỡ" → `value = ''`, alt `''`, crop `null`, phát `input` + `change`, focus về nút mở.
+- Đóng picker → focus trở lại nút đã mở nó; nếu nút đó đã bị ẩn / gỡ → nút mở.
 - Field bị gỡ khỏi trang khi picker đang mở → kết quả bị bỏ.
-- Gán `field.value = 'a_123'` bằng code mà không có ảnh xem trước → nếu có adapter, field gọi `adapter.get(id)` (lười,
-  latest-wins) để lấy ảnh; không có adapter → trạng thái "Đã chọn (không có ảnh xem trước)". Trang SSR có sẵn
-  `preview-src` **không bao giờ** gọi adapter lúc tải.
+- Gán `field.value = 'a_123'` bằng code (im lặng, không event): ảnh xem trước và **crop bị xoá** (thuộc ảnh cũ), **alt
+  giữ nguyên**, `kind` về loại đầu của `accept-kind`. Rồi nếu có adapter, field gọi `adapter.get(id)` (lười, latest-wins,
+  gán tiếp thì request cũ bị abort) để lấy ảnh; không có adapter / `get` lỗi → trạng thái "Đã chọn (không có ảnh xem
+  trước)" (lỗi chỉ ra `console.warn`). Trang SSR có sẵn `preview-src` / `preview-alt` **không bao giờ** gọi adapter lúc
+  tải.
+- Cần gán đủ id + ảnh + alt + crop cùng lúc (ví dụ app tự mở picker) → `setSelection(selectedMedia)` (im lặng); `null`
+  hoặc `[]` → xoá hết.
 - Không có adapter nào (không `field.adapter`, không `pickerOptions.adapter`, không `configureDefaults`) → bấm khung chỉ
   cảnh báo console một lần, không mở.
 
@@ -160,16 +165,23 @@ field đặt (`mode: 'single'`, `initialIds`, `kinds` từ `accept-kind`) — `p
 ### 6. Alt (chế độ usage)
 
 Ô "Mô tả ảnh (alt)" (`maxlength="500"`) nằm dưới khung. Gõ → cập nhật FormData, host phát `input` mỗi lần gõ và `change`
-khi rời ô nếu đã đổi (event native của ô bị chặn tại host, không bị trùng). Chọn ảnh mới → alt reset về alt mặc định
-của asset.
+khi rời ô nếu đã đổi (event `input` / `change` native của ô bị chặn tại host, không bị trùng). Chọn ảnh mới trong picker
+→ alt = `usage.altText` (alt mặc định của asset); gán `.value =` bằng code → alt giữ nguyên.
 
-### 7. Reset, khôi phục, `required`
+### 7. Đổi thuộc tính sau khi nâng cấp, reset, khôi phục, `required`
+
+- Đổi thuộc tính `value`, `preview-src`, `preview-alt`, `kind`, `alt`, `crop` sau khi field đã chạy → **đổi luôn state
+  sống**, im lặng (không event). Đổi `value` → state lấy lại từ các thuộc tính hiện có (`preview-src`, `preview-alt`,
+  `kind`, `crop`) nhưng **giữ alt đang có**; không có gì để xem trước → `get` lười như `.value =`. Đổi `preview-*` /
+  `kind` chỉ đổi phần hiển thị; `alt` / `crop` đổi FormData. Đổi `value` cùng `preview-src` / `preview-alt` thì không
+  cần gọi adapter. `label`, `prompt`, `aspect-ratio`, `accept-kind`… vẽ lại, giữ focus.
 
 - `form.reset()` → về đúng trạng thái chụp từ thuộc tính (`value`, `preview-src`, `preview-alt`, `kind`, `alt`, `crop`),
   không event.
 - Trình duyệt khôi phục form (Back / bfcache, tự điền phiên) → field nhận lại `id`, alt, crop, ảnh xem trước (URL xem trước
   được **kiểm lại**, sai → bỏ).
-- `required` → phải có id (`valueMissing`, thông báo `labels.required` "Vui lòng chọn {kind}."); dùng chung
+- `required` → phải có id (`valueMissing`, thông báo `labels.required` "Vui lòng chọn {kind}." — `{kind}` lấy từ
+  `labels.kinds` theo loại đầu của `accept-kind`: "ảnh" / "video" / "file"); dùng chung
   [hợp đồng lỗi](../customization/hooks.md#hợp-đồng-lỗi-của-mọi-form-control) (`setError`, `error-text`).
 - **Không có JS** (markup từ `td_media_field()`), `required` **không** được trình duyệt kiểm (giá trị nằm trong hidden
   input) → server **phải** validate.
@@ -182,15 +194,19 @@ có JS, form vẫn gửi **đúng** hình dạng ở mục 1; nút mở / Đổi
 tải. Module tải → nhận markup **tại chỗ** (không nháy, không xô lệch), gỡ hidden input, FormData giống từng byte. Chi
 tiết: [Adapter PHP › td_media_field](../guides/php-adapter.md#td_media_field-0320).
 
+PHP in nhãn **tiếng Việt mặc định** (`Td::MEDIA_FIELD_LABELS`). Site đổi `TdMediaField.labels` (ví dụ tiếng Anh) → chữ
+in sẵn không khớp `render()` nên field **render lại an toàn** lúc nâng cấp thay vì nhận tại chỗ (không mất giá trị, alt
+đang gõ hay focus — chỉ mất lợi ích "không nháy").
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
 | `name` | string | — | Tên field. Usage + tên kết thúc `[]` → không gửi |
 | `label` | string | — | Nhãn (cũng là tiêu đề picker) |
-| `value` | string | `''` | `assetId` **mặc định** (reset về đây) |
+| `value` | string | `''` | `assetId` **mặc định** (reset về đây); đổi sau khi nâng cấp → đổi state sống (mục 7) |
 | `preview-src` | URL | — | Ảnh xem trước (`https:`, `http:` khi trang là `http:`, tương đối). Chỉ hiển thị |
-| `preview-alt` | string | — | Tên đọc cho ảnh đang chọn ("Đã chọn: {preview-alt}"); tên file khi `kind="file"` |
+| `preview-alt` | string | — | Tên đọc cho ảnh đang chọn ("Đã chọn: {preview-alt}"; vắng mà có ảnh → "Đã chọn: {assetId}"); tên file khi `kind="file"` |
 | `kind` | `image` \| `video` \| `file` | `image` | Loại của asset đang chọn |
 | `accept-kind` | danh sách | `image` | Loại được chọn trong picker |
 | `aspect-ratio` | `W/H` \| `W:H` \| số | — | Tỉ lệ khung |
@@ -206,9 +222,9 @@ tiết: [Adapter PHP › td_media_field](../guides/php-adapter.md#td_media_field
 
 | Thành viên | Kiểu / chữ ký | Mô tả |
 |---|---|---|
-| `value` | `string` | `assetId` hiện tại (`''` = rỗng). Gán bằng code: không event; không có preview → `get` lười |
-| `selection` | `[] \| [{ assetId, asset: MediaAsset \| null, usage }]` (chỉ đọc) | `asset = null` khi chỉ có dữ liệu SSR |
-| `setSelection(selected \| null)` | `(SelectedMedia \| null) => void` | Gán bằng code từ kết quả picker của app (im lặng) |
+| `value` | `string` | `assetId` hiện tại (`''` = rỗng). Gán bằng code: không event, xoá preview + crop, giữ alt, `get` lười |
+| `selection` | `[] \| [{ assetId, asset: MediaAsset \| null, usage: { altText, crop: { normalized: { x, y, width, height } } \| null, focalPoint: null } }]` (chỉ đọc) | `asset = null` khi chỉ có dữ liệu SSR / khôi phục / `.value =` chưa `get` xong |
+| `setSelection(selected \| null)` | `(SelectedMedia \| SelectedMedia[] \| null) => void` | Gán id + ảnh (`asset.urls.preview`) + alt (`usage.altText`, không có → `defaultAltText`) + crop (`usage.crop.normalized`) bằng code, im lặng. `null` / `[]` / thiếu `assetId` → xoá hết |
 | `adapter` | `MediaPickerAdapter \| null` | Adapter riêng cho field |
 | `pickerOptions` | `Partial<OpenMediaPickerOptions>` | Option riêng khi mở picker (trừ `selection`) |
 | `setError(msg)` / `clearError()` / `errorMessage` | | Hợp đồng lỗi |
@@ -237,6 +253,7 @@ Gán `value` / `setSelection()` / `form.reset()` / chọn lại đúng ảnh cũ
 | `noPreview` | "Đã chọn (không có ảnh xem trước)" |
 | `video` | "Video" (nhãn trên poster) |
 | `required` | "Vui lòng chọn {kind}." |
+| `kinds.image` / `kinds.video` / `kinds.file` | "ảnh" / "video" / "file" (điền `{kind}` của `required`) |
 
 ## Tuỳ biến giao diện
 
@@ -246,7 +263,8 @@ Gán `value` / `setSelection()` / `form.reset()` / chọn lại đúng ảnh cũ
 | `--td-media-field-empty-h` | `10rem` | Chiều cao khung rỗng khi **không** có `aspect-ratio` |
 | `--td-media-field-max-h` | `24rem` | Chiều cao tối đa của ảnh khi **không** có `aspect-ratio` |
 
-Khung rỗng: viền 1px dashed `--td-color-border-strong`, nền `--td-color-surface-2`; có ảnh: viền liền. Trên màn cảm ứng
+Khung rỗng: viền 1px dashed `--td-control-border-strong`, nền `--td-color-surface-muted`; có ảnh: viền liền
+`--td-color-border`, nền `--td-color-surface`; lỗi: viền `--td-field-error`. Trên màn cảm ứng
 các nút ≥ 44px.
 
 ## Cấu trúc DOM & class
@@ -272,6 +290,7 @@ các nút ≥ 44px.
   <!-- usage: <div class="td-field td-media-field__usage"><label class="td-field__label" for="{id}-alt">Mô tả ảnh (alt)</label>
                <input type="text" class="td-field__control td-media-field__alt" id="{id}-alt" maxlength="500"></div> -->
   <!-- <span class="td-media-field__help" id="{id}-help">…</span> -->
+  <!-- <span class="td-field-error" id="{id}-error" data-for="{id}">…</span>  (nút mở: aria-invalid + aria-errormessage) -->
 </td-media-field>
 ```
 
