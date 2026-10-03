@@ -9213,6 +9213,20 @@
 	}
 }
 
+/* ---- src/styles/components/media-picker.css ---- */
+/*
+ * td-media-picker (src/feedback/td-media-picker.js) — v0.32.0. Reuses modal.css for the shell (size, motion, bottom sheet).
+ */
+@layer td.component {
+}
+
+/* ---- src/styles/components/media-field.css ---- */
+/*
+ * td-media-field (src/form/td-media-field.js) — v0.32.0.
+ */
+@layer td.component {
+}
+
 /* ---- src/styles/utilities.css ---- */
 /* Utilities — kept minimal: td.css must stay reset-free (legacy Tailwind components share the page). */
 @layer td.utilities {

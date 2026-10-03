@@ -21,6 +21,7 @@ export { TdDatetimePicker } from './src/form/td-datetime-picker.js';
 export { TdModalStackManager } from './src/feedback/td-modal-stack.js';
 export { TdModal } from './src/feedback/td-modal.js';
 export { TdDrawer } from './src/feedback/td-drawer.js';
+export { TdMediaPicker } from './src/feedback/td-media-picker.js';
 export { TdToast } from './src/feedback/td-toast.js';
 export { TdLightbox } from './src/feedback/td-lightbox.js';
 export { TdTooltip, tdTooltip } from './src/feedback/td-tooltip.js';
