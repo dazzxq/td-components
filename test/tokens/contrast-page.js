@@ -11,6 +11,9 @@ import '/src/form/td-tree.js';
 import '/src/form/td-tree-select.js';
 import '/src/form/td-repeater.js';
 import '/src/form/td-number-input.js';
+import '/src/form/td-media-field.js';
+import { TdMediaPicker } from '/src/feedback/td-media-picker.js';
+import { createMockAdapter } from '/test/fixtures/media-adapter.js';
 
 const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning'];
 const TOASTS = ['success', 'error', 'warning', 'info'];
@@ -83,6 +86,12 @@ for (const state of ['rest', 'disabled', 'add-disabled']) CASES.push({ kind: 're
 // v0.30.0: td-number-input (content layer → page only): the prefix / suffix text ≥ 4.7 on the box fill, the focus border of
 // the box (`:focus-within`) ≥ 3:1 vs the box fill and the page — computed colours (`pairs`), light + dark.
 for (const state of ['affix', 'focus']) CASES.push({ kind: 'number', v: 'box', state, pageOnly: true });
+// v0.32.0: td-media-field (content layer → page only): prompt + ratio text ≥ 4.7 on the empty frame fill, the empty-frame
+// icon + dashed border ≥ 3.2 (border vs the page and vs the frame fill), the "Video" badge text ≥ 4.7 on its fill, the
+// field error text ≥ 4.7 on the page; td-media-picker (inside the solid dialog): tile name, detail meta label and tray
+// count ≥ 4.7 on the dialog surface, the selected tile border ≥ 3.2 vs the dialog surface — computed colours (`pairs`).
+for (const state of ['empty', 'video', 'error']) CASES.push({ kind: 'media-field', v: 'frame', state, pageOnly: true });
+CASES.push({ kind: 'media-picker', v: 'dialog', state: 'rest', pageOnly: true });
 
 const stage = document.getElementById('stage');
 const bd = document.getElementById('backdrop');
@@ -112,6 +121,8 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
   if (theme === 'dark') document.documentElement.setAttribute('data-td-theme', 'dark');
   await setBackdrop(backdrop);
   stage.replaceChildren();
+  for (const h of document.querySelectorAll('td-media-picker')) { if (h.isOpen) h.close(); h.remove(); }
+  document.querySelectorAll('body > .td-media-picker').forEach((n) => n.remove());
   document.querySelectorAll('#td-toast-container').forEach((n) => n.remove());
   TdToast._activeToasts = [];
   let el;
@@ -439,6 +450,80 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       opacity: 1,
       hover: false,
       name: `number:${c.v}:${c.state}`,
+      pairs,
+    };
+  } else if (c.kind === 'media-field') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const host = document.createElement('td-media-field');
+    host.setAttribute('name', 'hero');
+    host.setAttribute('label', 'Ảnh đại diện');
+    host.setAttribute('aspect-ratio', '3/2');
+    if (c.state === 'video') {
+      host.setAttribute('accept-kind', 'video');
+      host.setAttribute('kind', 'video');
+      host.setAttribute('value', 'm4');
+      host.setAttribute('preview-src', '/test/fixtures/4.svg');
+      host.setAttribute('preview-alt', 'video-4.mp4');
+    }
+    if (c.state === 'error') {
+      host.setAttribute('required', '');
+      host.setAttribute('error-text', 'Vui lòng chọn ảnh.');
+    }
+    stage.appendChild(host);
+    await new Promise((r) => setTimeout(r, 300));
+    const open = host.querySelector('.td-media-field__open');
+    const frame = host.querySelector('.td-media-field__frame');
+    const fill = getComputedStyle(open).backgroundColor !== 'rgba(0, 0, 0, 0)' ? getComputedStyle(open).backgroundColor : getComputedStyle(frame).backgroundColor;
+    let pairs;
+    if (c.state === 'video') {
+      const b = getComputedStyle(host.querySelector('.td-media-field__badge'));
+      pairs = [{ what: 'Video badge text vs its fill', fg: b.color, bg: b.backgroundColor, min: 4.7 }];
+    } else if (c.state === 'error') {
+      pairs = [{ what: 'error text vs page', fg: getComputedStyle(host.querySelector('.td-field-error')).color, bg: page, min: 4.7 }];
+    } else {
+      const bc = getComputedStyle(frame).borderTopColor !== 'rgba(0, 0, 0, 0)' && getComputedStyle(frame).borderTopStyle !== 'none'
+        ? getComputedStyle(frame).borderTopColor : getComputedStyle(open).borderTopColor;
+      pairs = [
+        { what: 'prompt text vs empty fill', fg: getComputedStyle(host.querySelector('.td-media-field__prompt')).color, bg: fill, min: 4.7 },
+        { what: 'ratio text vs empty fill', fg: getComputedStyle(host.querySelector('.td-media-field__ratio')).color, bg: fill, min: 4.7 },
+        { what: 'empty icon vs empty fill', fg: getComputedStyle(host.querySelector('.td-media-field__icon')).color, bg: fill, min: 3.2 },
+        { what: 'dashed border vs page', fg: bc, bg: page, min: 3.2 },
+        { what: 'dashed border vs empty fill', fg: bc, bg: fill, min: 3.2 },
+      ];
+    }
+    const b = frame.getBoundingClientRect();
+    return {
+      rect: { x: b.x, y: b.y, width: b.width, height: b.height },
+      ink: {},
+      opacity: 1,
+      hover: false,
+      name: `media-field:${c.v}:${c.state}`,
+      pairs,
+    };
+  } else if (c.kind === 'media-picker') {
+    const ad = createMockAdapter({ count: 12 });
+    TdMediaPicker.open({ adapter: ad, selection: { mode: 'multiple', maxItems: 5 } });
+    const R = () => document.querySelector('body > .td-media-picker');
+    for (let n = 0; n < 100 && !R()?.querySelector('[data-id="m12"] .td-media-grid__tick'); n++) await new Promise((r) => setTimeout(r, 20));
+    R().querySelector('[data-id="m12"] [data-td-media-open]').click(); // activate: select + detail
+    await new Promise((r) => setTimeout(r, 450)); // dialog entrance + colour transitions
+    const root = R();
+    const dialogBg = getComputedStyle(root.querySelector('.td-media-picker__dialog')).backgroundColor;
+    const sel = root.querySelector('.td-media-picker__item[data-selected] .td-media-picker__open');
+    if (!sel) throw new Error('media-picker: no selected tile');
+    const pairs = [
+      { what: 'tile name vs dialog', fg: getComputedStyle(root.querySelector('.td-media-picker__name')).color, bg: dialogBg, min: 4.7 },
+      { what: 'detail meta label vs dialog', fg: getComputedStyle(root.querySelector('.td-media-picker__meta dt')).color, bg: dialogBg, min: 4.7 },
+      { what: 'tray count vs dialog', fg: getComputedStyle(root.querySelector('.td-media-picker__tray-count')).color, bg: dialogBg, min: 4.7 },
+      { what: 'selected tile border vs dialog', fg: getComputedStyle(sel).borderTopColor, bg: dialogBg, min: 3.2 },
+    ];
+    const b = root.querySelector('.td-media-picker__dialog').getBoundingClientRect();
+    return {
+      rect: { x: b.x, y: b.y, width: b.width, height: b.height },
+      ink: {},
+      opacity: 1,
+      hover: false,
+      name: `media-picker:${c.v}:${c.state}`,
       pairs,
     };
   } else if (c.kind === 'repeater') {

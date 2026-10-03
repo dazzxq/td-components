@@ -36,7 +36,9 @@
       "td-tree": "/src/form/td-tree.js",
       "td-tree-select": "/src/form/td-tree-select.js",
       "td-number-input": "/src/form/td-number-input.js",
-      "td-repeater": "/src/form/td-repeater.js"
+      "td-repeater": "/src/form/td-repeater.js",
+      "td-media-picker": "/src/feedback/td-media-picker.js",
+      "td-media-field": "/src/form/td-media-field.js"
     },
     "tokenNative": [
       "td-button",
@@ -73,7 +75,9 @@
       "td-tree",
       "td-tree-select",
       "td-number-input",
-      "td-repeater"
+      "td-repeater",
+      "td-media-picker",
+      "td-media-field"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -2370,6 +2374,401 @@
         ".td-repeater__btn--remove[aria-disabled=\"true\"]"
       ],
       "settle": 200
+    }
+  ],
+  "td-media-picker": [
+    {
+      "state": "default",
+      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const ad = createMockAdapter({ count: 12 }); TdMediaPicker.open({ adapter: ad, assetFields: assetFields() }); await w(200); R().querySelector('[data-id=\"m12\"] [data-td-media-open]').click(); await w(200);",
+      "selectors": [
+        ".td-media-picker",
+        ".td-media-picker__dialog",
+        ".td-media-picker__toolbar",
+        ".td-media-picker__search",
+        ".td-media-picker__main",
+        ".td-media-picker__results",
+        ".td-media-picker__footer",
+        ".td-media-picker__cancel",
+        ".td-media-picker__confirm",
+        ".td-media-picker__item",
+        ".td-media-picker__open",
+        ".td-media-picker__thumb",
+        ".td-media-picker__name",
+        ".td-media-picker__detail",
+        ".td-media-picker__preview",
+        ".td-media-picker__detail-name",
+        ".td-media-picker__meta",
+        ".td-media-picker__edit",
+        ".td-media-picker__count"
+      ],
+      "portal": [
+        ".td-media-picker",
+        ".td-media-picker__dialog",
+        ".td-media-picker__toolbar",
+        ".td-media-picker__search",
+        ".td-media-picker__main",
+        ".td-media-picker__results",
+        ".td-media-picker__footer",
+        ".td-media-picker__cancel",
+        ".td-media-picker__confirm",
+        ".td-media-picker__item",
+        ".td-media-picker__open",
+        ".td-media-picker__thumb",
+        ".td-media-picker__name",
+        ".td-media-picker__detail",
+        ".td-media-picker__preview",
+        ".td-media-picker__detail-name",
+        ".td-media-picker__meta",
+        ".td-media-picker__edit",
+        ".td-media-picker__count"
+      ],
+      "settle": 600,
+      "selectorNote": "list + detail of a selected item (single)"
+    },
+    {
+      "state": "multiple",
+      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const ad = createMockAdapter({ count: 12 }); TdMediaPicker.open({ adapter: ad, selection: { mode: 'multiple', maxItems: 5 } }); await w(200); for (const id of ['m12', 'm10', 'm9']) R().querySelector(`[data-id=\"${id}\"] .td-media-grid__tick`).click(); await w(100);",
+      "selectors": [
+        ".td-media-picker",
+        ".td-media-picker__dialog",
+        ".td-media-picker__toolbar",
+        ".td-media-picker__search",
+        ".td-media-picker__main",
+        ".td-media-picker__results",
+        ".td-media-picker__footer",
+        ".td-media-picker__cancel",
+        ".td-media-picker__confirm",
+        ".td-media-picker__item",
+        ".td-media-picker__open",
+        ".td-media-picker__thumb",
+        ".td-media-picker__name",
+        ".td-media-picker__tray",
+        ".td-media-picker__tray-count",
+        ".td-media-picker__tray-list",
+        ".td-media-picker__tray-item",
+        ".td-media-picker__tray-clear"
+      ],
+      "portal": [
+        ".td-media-picker",
+        ".td-media-picker__dialog",
+        ".td-media-picker__toolbar",
+        ".td-media-picker__search",
+        ".td-media-picker__main",
+        ".td-media-picker__results",
+        ".td-media-picker__footer",
+        ".td-media-picker__cancel",
+        ".td-media-picker__confirm",
+        ".td-media-picker__item",
+        ".td-media-picker__open",
+        ".td-media-picker__thumb",
+        ".td-media-picker__name",
+        ".td-media-picker__tray",
+        ".td-media-picker__tray-count",
+        ".td-media-picker__tray-list",
+        ".td-media-picker__tray-item",
+        ".td-media-picker__tray-clear"
+      ],
+      "settle": 600,
+      "selectorNote": "tray with 3 items"
+    },
+    {
+      "state": "upload",
+      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const ad = createMockAdapter({ count: 12 }); ad.upload = (f, o) => { o.onProgress({ loaded: 40, total: 100 }); return new Promise(() => {}); }; TdMediaPicker.open({ adapter: ad, uploadFields: [{ key: 'note', label: 'Ghi chú', control: 'text', helpText: 'Lưu kèm file' }] }); await w(200); R().querySelector('.td-media-picker__upload-toggle').click(); R().querySelector('td-dropzone').addFiles([new File(['x'], 'anh-moi.png', { type: 'image/png' })]); await w(100);",
+      "selectors": [
+        ".td-media-picker",
+        ".td-media-picker__dialog",
+        ".td-media-picker__toolbar",
+        ".td-media-picker__search",
+        ".td-media-picker__main",
+        ".td-media-picker__results",
+        ".td-media-picker__footer",
+        ".td-media-picker__cancel",
+        ".td-media-picker__confirm",
+        ".td-media-picker__upload-toggle",
+        ".td-media-picker__upload",
+        ".td-media-picker__form",
+        ".td-media-picker__field",
+        ".td-dropzone__zone",
+        ".td-dropzone__item",
+        ".td-dropzone__progress"
+      ],
+      "portal": [
+        ".td-media-picker",
+        ".td-media-picker__dialog",
+        ".td-media-picker__toolbar",
+        ".td-media-picker__search",
+        ".td-media-picker__main",
+        ".td-media-picker__results",
+        ".td-media-picker__footer",
+        ".td-media-picker__cancel",
+        ".td-media-picker__confirm",
+        ".td-media-picker__upload-toggle",
+        ".td-media-picker__upload",
+        ".td-media-picker__form",
+        ".td-media-picker__field",
+        ".td-dropzone__zone",
+        ".td-dropzone__item",
+        ".td-dropzone__progress"
+      ],
+      "settle": 600,
+      "selectorNote": "upload panel: a descriptor field + a running upload with progress"
+    },
+    {
+      "state": "edit",
+      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const ad = createMockAdapter({ count: 12 }); ad.update = async () => { throw Object.assign(new Error('x'), { code: 'validation', userMessage: 'Kiểm tra lại các trường.', fieldErrors: { title: ['Tiêu đề quá dài'], other: ['Lỗi chung'] } }); }; TdMediaPicker.open({ adapter: ad, assetFields: assetFields() }); await w(200); R().querySelector('[data-id=\"m12\"] [data-td-media-open]').click(); await w(200); R().querySelector('.td-media-picker__edit').click(); await w(200); R().querySelector('.td-media-picker__save').click(); await w(200);",
+      "selectors": [
+        ".td-media-picker",
+        ".td-media-picker__dialog",
+        ".td-media-picker__toolbar",
+        ".td-media-picker__search",
+        ".td-media-picker__main",
+        ".td-media-picker__results",
+        ".td-media-picker__footer",
+        ".td-media-picker__cancel",
+        ".td-media-picker__confirm",
+        ".td-media-picker__detail",
+        ".td-media-picker__form",
+        ".td-media-picker__form-errors",
+        ".td-media-picker__field",
+        ".td-media-picker__notice",
+        ".td-media-picker__edit-actions",
+        ".td-media-picker__save",
+        ".td-field-error"
+      ],
+      "portal": [
+        ".td-media-picker",
+        ".td-media-picker__dialog",
+        ".td-media-picker__toolbar",
+        ".td-media-picker__search",
+        ".td-media-picker__main",
+        ".td-media-picker__results",
+        ".td-media-picker__footer",
+        ".td-media-picker__cancel",
+        ".td-media-picker__confirm",
+        ".td-media-picker__detail",
+        ".td-media-picker__form",
+        ".td-media-picker__form-errors",
+        ".td-media-picker__field",
+        ".td-media-picker__notice",
+        ".td-media-picker__edit-actions",
+        ".td-media-picker__save",
+        ".td-field-error"
+      ],
+      "settle": 600,
+      "selectorNote": "metadata form with server field errors (control + general list)"
+    },
+    {
+      "state": "empty",
+      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); TdMediaPicker.open({ adapter: createMockAdapter({ count: 0 }) }); await w(200);",
+      "selectors": [
+        ".td-media-picker",
+        ".td-media-picker__dialog",
+        ".td-media-picker__toolbar",
+        ".td-media-picker__search",
+        ".td-media-picker__main",
+        ".td-media-picker__results",
+        ".td-media-picker__footer",
+        ".td-media-picker__cancel",
+        ".td-media-picker__confirm",
+        ".td-media-picker__empty",
+        ".td-media-picker__detail",
+        ".td-media-picker__detail-empty"
+      ],
+      "portal": [
+        ".td-media-picker",
+        ".td-media-picker__dialog",
+        ".td-media-picker__toolbar",
+        ".td-media-picker__search",
+        ".td-media-picker__main",
+        ".td-media-picker__results",
+        ".td-media-picker__footer",
+        ".td-media-picker__cancel",
+        ".td-media-picker__confirm",
+        ".td-media-picker__empty",
+        ".td-media-picker__detail",
+        ".td-media-picker__detail-empty"
+      ],
+      "settle": 600,
+      "selectorNote": "empty library"
+    },
+    {
+      "state": "error",
+      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const ad = createMockAdapter({ count: 12 }); ad.list = async () => { throw Object.assign(new Error('raw'), { code: 'network' }); }; TdMediaPicker.open({ adapter: ad }); await w(200);",
+      "selectors": [
+        ".td-media-picker",
+        ".td-media-picker__dialog",
+        ".td-media-picker__toolbar",
+        ".td-media-picker__search",
+        ".td-media-picker__main",
+        ".td-media-picker__results",
+        ".td-media-picker__footer",
+        ".td-media-picker__cancel",
+        ".td-media-picker__confirm",
+        ".td-media-picker__error",
+        ".td-media-picker__error-text",
+        ".td-media-picker__retry"
+      ],
+      "portal": [
+        ".td-media-picker",
+        ".td-media-picker__dialog",
+        ".td-media-picker__toolbar",
+        ".td-media-picker__search",
+        ".td-media-picker__main",
+        ".td-media-picker__results",
+        ".td-media-picker__footer",
+        ".td-media-picker__cancel",
+        ".td-media-picker__confirm",
+        ".td-media-picker__error",
+        ".td-media-picker__error-text",
+        ".td-media-picker__retry"
+      ],
+      "settle": 600,
+      "selectorNote": "list error + retry"
+    }
+  ],
+  "td-media-field": [
+    {
+      "state": "empty",
+      "markup": "<td-media-field name=\"hero\" label=\"Ảnh đại diện\" aspect-ratio=\"3/2\" helper-text=\"Ảnh ngang 3:2\"></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__label",
+        ".td-media-field__frame",
+        ".td-media-field__open",
+        ".td-media-field__empty",
+        ".td-media-field__icon",
+        ".td-media-field__prompt",
+        ".td-media-field__ratio",
+        ".td-media-field__sizer",
+        ".td-media-field__help"
+      ],
+      "settle": 200
+    },
+    {
+      "state": "filled",
+      "markup": "<td-media-field name=\"hero\" label=\"Ảnh đại diện\" aspect-ratio=\"3/2\" value=\"m1\" preview-src=\"/test/fixtures/1.svg\" preview-alt=\"Ảnh 1\"></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__label",
+        ".td-media-field__frame",
+        ".td-media-field__open",
+        ".td-media-field__img",
+        ".td-media-field__actions",
+        ".td-media-field__replace",
+        ".td-media-field__remove",
+        ".td-media-field__sizer"
+      ],
+      "settle": 200
+    },
+    {
+      "state": "contain",
+      "markup": "<td-media-field name=\"hero\" label=\"Ảnh đại diện\" aspect-ratio=\"16/9\" preview-fit=\"contain\" value=\"m1\" preview-src=\"/test/fixtures/1.svg\" preview-alt=\"Ảnh 1\"></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__label",
+        ".td-media-field__frame",
+        ".td-media-field__open",
+        ".td-media-field__img",
+        ".td-media-field__actions",
+        ".td-media-field__replace",
+        ".td-media-field__remove"
+      ],
+      "settle": 200
+    },
+    {
+      "state": "free",
+      "markup": "<td-media-field name=\"hero\" label=\"Ảnh đại diện\" value=\"m1\" preview-src=\"/test/fixtures/1.svg\" preview-alt=\"Ảnh 1\"></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__label",
+        ".td-media-field__frame",
+        ".td-media-field__open",
+        ".td-media-field__img",
+        ".td-media-field__actions",
+        ".td-media-field__replace",
+        ".td-media-field__remove"
+      ],
+      "settle": 200
+    },
+    {
+      "state": "video",
+      "markup": "<td-media-field name=\"hero\" label=\"Ảnh đại diện\" accept-kind=\"video\" kind=\"video\" aspect-ratio=\"16/9\" value=\"m4\" preview-src=\"/test/fixtures/4.svg\" preview-alt=\"video-4.mp4\"></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__label",
+        ".td-media-field__frame",
+        ".td-media-field__open",
+        ".td-media-field__img",
+        ".td-media-field__actions",
+        ".td-media-field__replace",
+        ".td-media-field__remove",
+        ".td-media-field__badge"
+      ],
+      "settle": 200
+    },
+    {
+      "state": "usage",
+      "markup": "<td-media-field name=\"hero\" label=\"Ảnh đại diện\" usage alt=\"Mô tả ảnh\" aspect-ratio=\"3/2\" value=\"m1\" preview-src=\"/test/fixtures/1.svg\" preview-alt=\"Ảnh 1\"></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__label",
+        ".td-media-field__frame",
+        ".td-media-field__open",
+        ".td-media-field__img",
+        ".td-media-field__actions",
+        ".td-media-field__replace",
+        ".td-media-field__remove",
+        ".td-media-field__usage",
+        ".td-media-field__alt"
+      ],
+      "settle": 200
+    },
+    {
+      "state": "disabled",
+      "markup": "<td-media-field name=\"hero\" label=\"Ảnh đại diện\" disabled aspect-ratio=\"3/2\" value=\"m1\" preview-src=\"/test/fixtures/1.svg\" preview-alt=\"Ảnh 1\"></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__label",
+        ".td-media-field__frame",
+        ".td-media-field__open",
+        ".td-media-field__img",
+        ".td-media-field__actions",
+        ".td-media-field__replace",
+        ".td-media-field__remove"
+      ],
+      "settle": 200
+    },
+    {
+      "state": "error",
+      "markup": "<td-media-field name=\"hero\" label=\"Ảnh đại diện\" required error-text=\"Vui lòng chọn ảnh.\" aspect-ratio=\"3/2\"></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__label",
+        ".td-media-field__frame",
+        ".td-media-field__open",
+        ".td-media-field__empty",
+        ".td-media-field__icon",
+        ".td-media-field__prompt",
+        ".td-field-error",
+        ".td-field__required"
+      ],
+      "settle": 200
+    },
+    {
+      "state": "ssr",
+      "markup": "<td-media-field data-td-ssr=\"media-field@1\" id=\"td-cover-3\" class=\"td-media-field\" name=\"cover\" label=\"Ảnh bìa\" aspect-ratio=\"3/2\" value=\"m1\" preview-src=\"/test/fixtures/1.svg\" preview-alt=\"Ảnh 1\" helper-text=\"JPG, PNG, tối đa 5 MB\"><span class=\"td-media-field__label\" id=\"td-cover-3-label\">Ảnh bìa</span><div class=\"td-media-field__frame\" data-state=\"filled\" data-kind=\"image\"><svg class=\"td-media-field__sizer\" viewBox=\"0 0 3 2\" aria-hidden=\"true\" focusable=\"false\"></svg><button type=\"button\" class=\"td-media-field__open\" aria-haspopup=\"dialog\" aria-labelledby=\"td-cover-3-label td-cover-3-state\" aria-describedby=\"td-cover-3-help\"><img class=\"td-media-field__img\" src=\"/test/fixtures/1.svg\" alt=\"\" loading=\"lazy\" decoding=\"async\" referrerpolicy=\"no-referrer\"><span class=\"td-sr-only\" id=\"td-cover-3-state\">Đã chọn: Ảnh 1</span></button></div><div class=\"td-media-field__actions\"><button type=\"button\" class=\"td-btn td-btn--secondary td-btn--sm td-media-field__replace\" aria-haspopup=\"dialog\">Đổi ảnh</button><button type=\"button\" class=\"td-btn td-btn--ghost td-btn--sm td-media-field__remove\">Gỡ</button></div><input type=\"hidden\" class=\"td-media-field__value\" name=\"cover\" value=\"m1\"><span class=\"td-media-field__help\" id=\"td-cover-3-help\">JPG, PNG, tối đa 5 MB</span></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__label",
+        ".td-media-field__frame",
+        ".td-media-field__open",
+        ".td-media-field__img",
+        ".td-media-field__actions",
+        ".td-media-field__replace",
+        ".td-media-field__remove"
+      ],
+      "settle": 200,
+      "selectorNote": "php/td.php td_media_field (media-field@1), hydrated in place under the strict CSP"
     }
   ]
 }

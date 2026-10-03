@@ -6,7 +6,7 @@
  * `aspect-ratio`) = the free mode (dcms2 `freeStyle`): empty = --td-media-field-empty-h tall, filled = the image's
  * natural ratio capped at --td-media-field-max-h. `preview-fit="contain"` (with a ratio) fits the image in the frame.
  * State: [data-state="empty|filled"] / [data-kind] on the frame, [aria-invalid] / :disabled on the open button,
- * [hidden] on the actions. Empty frame = dashed border (≥ 3:1, --td-control-border-strong), filled = solid.
+ * [hidden] on the actions. Empty frame = dashed border (≥ 3.2:1 on the empty fill, --td-color-text-muted), filled = solid.
  * Before define (php/td.php td_media_field): the open / Đổi / Gỡ buttons are `visibility: hidden` (no dead control;
  * the box, sizer and preview stay → no layout shift).
  * Tokens: --td-media-field-w (host inline size), --td-media-field-empty-h, --td-media-field-max-h.
@@ -59,7 +59,7 @@
 
 	.td-media-field__frame[data-state="empty"] {
 		border-style: dashed;
-		border-color: var(--td-control-border-strong);
+		border-color: var(--td-color-text-muted);
 		background: var(--td-color-surface-muted);
 	}
 

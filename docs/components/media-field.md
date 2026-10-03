@@ -263,7 +263,7 @@ Gán `value` / `setSelection()` / `form.reset()` / chọn lại đúng ảnh cũ
 | `--td-media-field-empty-h` | `10rem` | Chiều cao khung rỗng khi **không** có `aspect-ratio` |
 | `--td-media-field-max-h` | `24rem` | Chiều cao tối đa của ảnh khi **không** có `aspect-ratio` |
 
-Khung rỗng: viền 1px dashed `--td-control-border-strong`, nền `--td-color-surface-muted`; có ảnh: viền liền
+Khung rỗng: viền 1px dashed `--td-color-text-muted` (≥ 3.2:1 trên nền khung rỗng), nền `--td-color-surface-muted`; có ảnh: viền liền
 `--td-color-border`, nền `--td-color-surface`; lỗi: viền `--td-field-error`. Trên màn cảm ứng
 các nút ≥ 44px.
 

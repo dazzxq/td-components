@@ -416,6 +416,8 @@
 		border-radius: var(--td-radius-sm);
 		background: var(--td-color-surface-muted);
 		color: var(--td-color-text-muted);
+		font: inherit;
+		line-height: 1;
 		cursor: pointer;
 		overflow: hidden;
 	}
