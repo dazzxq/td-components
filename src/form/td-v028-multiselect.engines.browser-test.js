@@ -595,14 +595,6 @@ describe('v0.28.0 M3 — <select multiple> adoption', () => {
     expect(el.getAttribute('name')).to.equal('own');
     expect(el.hasAttribute('disabled')).to.equal(true);
     expect(inp(el).getAttribute('aria-label')).to.equal('Nhãn');
-    // a selected but disabled option (itself / its optgroup) is not a value — exactly like the native submission
-    host.innerHTML = '<form><td-chip-input><select multiple name="z[]"><option value="a" selected disabled>A</option>'
-      + '<optgroup label="G" disabled><option value="b" selected>B</option></optgroup><option value="c" selected>C</option>'
-      + '</select></td-chip-input></form>';
-    const z = host.querySelector('td-chip-input');
-    expect(vals(z)).to.deep.equal(['c']);
-    host.querySelector('form').reset();
-    expect(vals(z)).to.deep.equal(['c']);
     host.innerHTML = '<td-chip-input><select name="one"><option value="a">A</option></select></td-chip-input>';
     const s = host.querySelector('td-chip-input');
     expect(s.hasAttribute('selection-only')).to.equal(false);
@@ -649,5 +641,90 @@ describe('v0.28.0 — static API', () => {
     expect(TdChipInput.SSR_SCHEMA).to.equal(1);
     expect(TdChipInput.labels.selectAll).to.equal('Chọn tất cả ({n})');
     expect(TdChipInput.labels.deselectAll).to.equal('Bỏ chọn tất cả ({n})');
+  });
+});
+
+// ---------------------------------------------------------------- review round 1 -------------------------------------
+describe('v0.28.0 — review round 1', () => {
+  it('ISSUE-1: selected locked options (disabled / in a disabled optgroup) stay selected + in the reset default, locked but deselectable', () => {
+    host.innerHTML = '<form><td-chip-input><select multiple name="z[]"><option value="a" selected disabled>A</option>'
+      + '<optgroup label="G" disabled><option value="b" selected>B</option></optgroup><option value="c" selected>C</option>'
+      + '<option value="d">D</option></select></td-chip-input></form>';
+    const z = host.querySelector('td-chip-input');
+    const form = host.querySelector('form');
+    expect(vals(z)).to.deep.equal(['a', 'b', 'c']);
+    expect(chipTexts(z)).to.deep.equal(['A', 'B', 'C']);
+    expect(z.options[0].disabled).to.equal(true);
+    expect(z.options[1].disabled).to.equal(true);
+    z.open();
+    expect(optByText(z, 'A').getAttribute('aria-selected')).to.equal('true');
+    // deselectable…
+    optByText(z, 'A').click();
+    optByText(z, 'B').click();
+    expect(vals(z)).to.deep.equal(['c']);
+    // …but never re-addable
+    optByText(z, 'A').click();
+    optByText(z, 'B').click();
+    expect(vals(z)).to.deep.equal(['c']);
+    z.close();
+    form.reset();
+    expect(vals(z)).to.deep.equal(['a', 'b', 'c']);
+  });
+
+  it('ISSUE-2: a focused direct-child <select multiple> WITHOUT the SSR shell is deferred until blur too', async () => {
+    host.innerHTML = '<form><td-ci-defer name="d[]"><select multiple><option value="a" selected>A</option>'
+      + '<option value="b">B</option></select></td-ci-defer></form>';
+    const h = host.querySelector('td-ci-defer');
+    const s = h.querySelector('select');
+    s.focus();
+    expect(document.activeElement === s, 'focused before define').to.equal(true);
+    customElements.define('td-ci-defer', class extends TdChipInput {});
+    expect(h.querySelector('select') === s, 'select kept').to.equal(true);
+    expect(h.querySelector('.td-chip-input__input')).to.equal(null);
+    expect(document.activeElement === s, 'focus kept').to.equal(true);
+    s.options[0].selected = false;
+    s.options[1].selected = true;
+    other.focus();
+    await tick();
+    expect(h.querySelector('select')).to.equal(null);
+    expect(!!h.querySelector('.td-chip-input__input'), 'rendered').to.equal(true);
+    expect(vals(h)).to.deep.equal(['b']);
+    expect(entries(host.querySelector('form'))).to.deep.equal([['d[]', 'b']]);
+  });
+
+  it('ISSUE-3: selection-only — Enter in the empty input (no active option) never submits the form', async () => {
+    host.innerHTML = '<form></form>';
+    const form = host.firstElementChild;
+    let submits = 0;
+    const onSubmit = (e) => { submits++; e.preventDefault(); };
+    form.addEventListener('submit', onSubmit);
+    const el = mk('selection-only name="s[]"', ROLES, form);
+    let prevented = null;
+    form.addEventListener('keydown', (e) => { if (e.key === 'Enter') prevented = e.defaultPrevented; });
+    inp(el).focus();
+    expect(el._activeIndex).to.equal(-1);
+    await sendKeys({ press: 'Enter' });
+    await tick();
+    expect(prevented).to.equal(true);
+    expect(submits).to.equal(0);
+    expect(vals(el)).to.deep.equal([]);
+    el.close();
+    await sendKeys({ press: 'Enter' });
+    await tick();
+    expect(submits).to.equal(0);
+    expect(vals(el)).to.deep.equal([]);
+  });
+
+  it('ISSUE-4: value AND options both assigned before define on a host wrapping a <select multiple> → option labels on the chips', () => {
+    host.innerHTML = '<td-ci-early><select multiple><option value="a" selected>A</option><option value="b">B</option></select></td-ci-early>';
+    const h = host.firstElementChild;
+    h.value = ['b', 'z'];
+    h.options = [{ value: 'b', label: 'Bê' }, { value: 'z', label: 'Dét' }];
+    customElements.define('td-ci-early', class extends TdChipInput {});
+    expect(h.querySelector('select')).to.equal(null);
+    expect(h.hasAttribute('selection-only')).to.equal(true);
+    expect(vals(h)).to.deep.equal(['b', 'z']);
+    expect(chipTexts(h)).to.deep.equal(['Bê', 'Dét']);
+    expect(h.getValue().map((i) => i.label)).to.deep.equal(['Bê', 'Dét']);
   });
 });

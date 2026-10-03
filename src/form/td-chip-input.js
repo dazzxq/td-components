@@ -95,10 +95,10 @@ export function parseChipItems(str) {
  * `.td-chip-input__option--all` "Chọn tất cả (N)" / "Bỏ chọn tất cả (N)" (N = shown enabled leaves): it adds every shown
  * unselected leaf (stops at `max-items`) or removes the shown selected ones — ONE `change` with `addedItems` /
  * `removedItems`. A direct child `<select multiple>` is adopted on the first connect (options, `<optgroup>` → groups,
- * `data-description`, live selection; `name` / `required` / `disabled` / `aria-label` when the host lacks them;
+ * `data-description`, live selection incl. selected locked options; `name` / `required` / `disabled` / `aria-label` when the host lacks them;
  * `<label for>` → host; `selection-only` set; select removed). Initial value: early `value` property > host `value`
- * attribute > the select's live selection; reset → the options' `defaultSelected`. SSR contract `chip-input@1` (PHP
- * td_multiselect element mode): a FOCUSED select defers the whole first connect to its blur.
+ * attribute > the select's live selection; reset → the options' `defaultSelected`. A FOCUSED select (with or without
+ * the PHP td_multiselect shell, SSR contract `chip-input@1`) defers the whole first connect to its blur.
  *
  * Security (D14): labels, descriptions, typed text, remote results and `labels.*` are rendered with `textContent` /
  * `setAttribute` only. `renderOption(item, { query })` / `renderChip(item)` return a Node (built by the page with DOM
@@ -245,10 +245,11 @@ export class TdChipInput extends TdFormElement {
     // v0.28.0 M3: first connect → adopt a direct child <select multiple> (JS-assigned `options` / `value` win).
     if (!this._initialized && !this._selectChecked) {
       const select = [...this.children].find((c) => c.localName === 'select' && c.multiple);
-      // Contract chip-input@1 (PHP td_multiselect element mode): a FOCUSED select (the user is choosing) is left alone
-      // — no upgrade, no render, no bind — until it blurs; then this path runs exactly once with the live choice.
+      // A FOCUSED select (the user is choosing) is left alone — no upgrade, no render, no bind — until it blurs; then
+      // this path runs exactly once with the live choice. Any direct-child select, with or without the chip-input@1
+      // shell (PHP td_multiselect element mode); only the shell marker removal depends on the shell.
       const shell = this._ssrMatches('chip-input', TdChipInput.SSR_SCHEMA);
-      if (shell && select && !this._ssrNoDefer && select.ownerDocument.activeElement === select) {
+      if (select && !this._ssrNoDefer && select.ownerDocument.activeElement === select) {
         this._deferUntilBlur(select);
         return;
       }
@@ -260,7 +261,7 @@ export class TdChipInput extends TdFormElement {
   }
 
   /**
-   * @private v0.28.0 (chip-input@1): wait for the focused shell select to blur — ONE capture listener (same mechanism as
+   * @private v0.28.0: wait for the focused child select to blur — ONE capture listener (same mechanism as
    * td-dropdown v0.26). Disconnecting meanwhile cancels it (re-evaluated on reconnect).
    * @param {HTMLSelectElement} select
    */
@@ -322,9 +323,9 @@ export class TdChipInput extends TdFormElement {
         tree.push(leaf(child));
       }
     }
-    // like the native submission: a selected option that is disabled (itself or its optgroup) is never a value
-    const off = (o) => o.disabled || (o.parentElement?.localName === 'optgroup' && o.parentElement.disabled);
-    const pick = (list) => list.filter((o) => !off(o)).map((o) => byOpt.get(o)).filter(Boolean);
+    // EVERY selected option is kept, locked ones too (disabled itself or in a disabled optgroup): it stays selected with
+    // its disabled metadata — locked for adding, deselectable like any selected locked row (plan M3)
+    const pick = (list) => list.map((o) => byOpt.get(o)).filter(Boolean);
     const live = pick([...(select.selectedOptions || [])]);
     this._selectDefaults = pick([...select.options].filter((o) => o.defaultSelected));
     for (const attr of ['name', 'aria-label']) {
@@ -342,6 +343,9 @@ export class TdChipInput extends TdFormElement {
     }
     select.remove();
     if (!this._optionsSet) this.options = tree;
+    // selection-only is on and the final options are known: items replayed before the upgrade (early `value` with early
+    // `options`) take their option labels now — the `options` replay ran before selection-only and skipped it
+    this._relabel();
     // precedence: early `value` property (already applied) > host `value` attribute (afterRender) > live selection
     if (!this._itemsFromProp && !this.hasAttribute('value')) this.setValue(live);
   }
@@ -1035,7 +1039,7 @@ export class TdChipInput extends TdFormElement {
       if (entry) {
         e.preventDefault();
         this._commit(entry);
-      } else if (this._currentQuery()) e.preventDefault();
+      } else e.preventDefault(); // even with an empty input: no implicit form submission, no mutation
       return;
     }
     if (this._isOpen && this._activeIndex >= 0 && this._nav[this._activeIndex]) {
