@@ -230,6 +230,7 @@ console.log(`  lowest chip-input multi-select label ratios (v0.28.0): ${[...wors
 console.log(`  lowest tree label ratios (v0.29.0): ${[...worst.entries()].filter(([k]) => /tree(-popup)?:/.test(k)).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 console.log(`  lowest tree check / focus ratios (v0.29.0): ${[...focusWorst.entries()].filter(([k]) => k.includes('tree-pairs:')).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 console.log(`  lowest repeater button ratios (v0.30.0): ${[...focusWorst.entries()].filter(([k]) => k.includes('repeater:')).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
+console.log(`  lowest number-input ratios (v0.30.0): ${[...focusWorst.entries()].filter(([k]) => k.includes('number:')).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 const hoverReport = [...worst.entries()].filter(([k]) => /:hover|custom/.test(k)).sort((a, b) => a[1] - b[1]).slice(0, 6)
   .map(([k, v]) => `${k} ${v.toFixed(2)}`);
 console.log(`  lowest hover / custom label ratios: ${hoverReport.join(' · ')}`);
