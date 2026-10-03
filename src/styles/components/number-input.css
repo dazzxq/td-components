@@ -1,0 +1,155 @@
+/*
+ * td-number-input (src/form/td-number-input.js, v0.30.0) — the field look (field.css: label, footer, note, error) with
+ * the CONTROL look moved to `.td-number__box` (fill, border, radius, size height, focus ring via :focus-within), so
+ * the prefix / suffix sit inside the box; the inner input is transparent and borderless. Content layer: solid.
+ * State (never visual classes): the control's :focus / :disabled / [readonly] / [aria-invalid="true"], read on the box
+ * with :has(). Numbers are left-aligned (typing habit kept) with tabular figures.
+ * No JS: php/td.php prints the same tree with a native `type=number` control (spin buttons hidden) → the box is the same
+ * before and after the upgrade.
+ */
+@layer td.tokens {
+	:root {
+		--td-number-affix-fg: var(--td-color-text-muted);
+		--td-number-affix-gap: var(--td-space-2xs);
+	}
+}
+
+@layer td.component {
+	td-number-input {
+		display: block;
+	}
+
+	/* ADR 0012 safety net: hand-written host before define → reserve one field height (no fake styling) */
+	td-number-input:not(:defined):not([data-td-ssr]) {
+		display: block;
+		min-height: 2.5rem;
+	}
+
+	.td-number__box {
+		display: flex;
+		gap: var(--td-number-affix-gap);
+		align-items: center;
+		width: 100%;
+		height: var(--_td-field-h);
+		padding: var(--_td-field-pad);
+		padding-block: 0;
+		margin: 0;
+		color: var(--td-field-fg);
+		cursor: text;
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--_td-field-radius);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: none;
+		transition:
+			border-color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease),
+			background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-number__box:hover:not(:focus-within, :has(> .td-number__control:disabled)) {
+		border-color: var(--td-field-border-hover);
+	}
+
+	.td-number__box:focus-within {
+		background: var(--td-field-bg-focus);
+		border-color: var(--td-field-focus);
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	.td-number__control {
+		flex: 1 1 auto;
+		width: 100%;
+		min-width: 0;
+		height: 100%;
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		font-variant-numeric: tabular-nums;
+		color: inherit;
+		text-align: start;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+		outline: none;
+		box-shadow: none;
+		appearance: none;
+	}
+
+	.td-number__control::placeholder {
+		color: var(--td-field-placeholder);
+		opacity: 1;
+	}
+
+	/* SSR / no-JS shell: the native number control looks like the upgraded text one (no spin buttons) */
+	.td-number__control[type="number"] {
+		appearance: textfield;
+	}
+
+	.td-number__control[type="number"]::-webkit-inner-spin-button,
+	.td-number__control[type="number"]::-webkit-outer-spin-button {
+		margin: 0;
+		appearance: none;
+	}
+
+	.td-number__affix {
+		flex: 0 0 auto;
+		color: var(--td-number-affix-fg);
+		white-space: nowrap;
+		user-select: none;
+	}
+
+	.td-number__box:has(> .td-number__control[readonly]) {
+		background: var(--td-field-bg-readonly);
+	}
+
+	.td-number__box:has(> .td-number__control:disabled) {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-field-bg-disabled);
+	}
+
+	.td-number__control:disabled {
+		cursor: not-allowed;
+	}
+
+	/* a visible error keeps the red border, focused or not */
+	.td-number__box:has(> .td-number__control[aria-invalid="true"]),
+	.td-number__box:has(> .td-number__control[aria-invalid="true"]):focus-within {
+		border-color: var(--td-field-error);
+	}
+
+	@media (pointer: coarse) {
+		.td-number__box {
+			min-height: var(--td-touch-min);
+			font-size: max(1rem, 1em); /* ≥ 16px: iOS does not zoom on focus */
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-number__box {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-number__box {
+			border-color: CanvasText;
+		}
+
+		.td-number__box:focus-within {
+			outline-color: Highlight;
+		}
+
+		.td-number__box:has(> .td-number__control[aria-invalid="true"]) {
+			border-style: dashed;
+			border-width: 2px;
+		}
+
+		.td-number__affix,
+		.td-number__control::placeholder {
+			color: GrayText;
+		}
+	}
+}

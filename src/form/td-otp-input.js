@@ -2,29 +2,22 @@ import {
   TdFormElement, ssrClassKey, ssrContentNodes, ssrSameAttrs, ssrSamePart, ssrIsErrorNote, SSR_ARIA_DATA, SSR_CONTROL_ATTRS,
 } from '../base/td-form-element.js';
 import { ssrMarker } from '../base/td-base-element.js';
+import { asciiDigit } from '../utils/number-format.js';
 
 const LENGTH = 6;
 /** Attributes of the server-rendered input that exist only for the no-JS form (removed on hydrate). */
 const SSR_ONLY = ['name', 'value', 'required', 'maxlength', 'pattern'];
 const CELL_ATTRS = ['class', 'data-state', 'data-active'];
-/** Digit blocks normalised to ASCII: full-width (U+FF10), Arabic-Indic (U+0660), extended Arabic-Indic (U+06F0). */
-const DIGIT_BASES = [0xFF10, 0x0660, 0x06F0];
-
 /**
  * The ASCII digits of `raw`: full-width / Arabic-Indic digits become ASCII, every other character is dropped (spaces,
- * hyphens, letters). Not truncated. Same rule as php/td.php `td__otp_digits()`.
+ * hyphens, letters). Not truncated. Same rule as php/td.php `td__otp_digits()`. v0.30.0: built on the shared
+ * `asciiDigit()` (src/utils/number-format.js) — one source of truth with td-number-input.
  * @param {unknown} raw
  * @returns {string}
  */
 export function otpDigits(raw) {
   let out = '';
-  for (const ch of String(raw ?? '')) {
-    const c = ch.codePointAt(0);
-    if (c >= 48 && c <= 57) { out += ch; continue; }
-    for (const base of DIGIT_BASES) {
-      if (c >= base && c <= base + 9) { out += String(c - base); break; }
-    }
-  }
+  for (const ch of String(raw ?? '')) out += asciiDigit(ch) ?? '';
   return out;
 }
 

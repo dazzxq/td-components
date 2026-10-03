@@ -41,6 +41,8 @@
     "components/copy.css",
     "components/tree.css",
     "components/tree-select.css",
+    "components/number-input.css",
+    "components/repeater.css",
     "utilities.css"
   ]
 }

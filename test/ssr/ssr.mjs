@@ -78,3 +78,12 @@ export const TREE_SELECT_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'tree-select.h
 export function renderTreeSelectFixture() {
   return renderPhp('tree-select-fixture.php');
 }
+
+// v0.30.0: td_number_input (native type=number field / element mode number-input@1).
+export const NUMBER_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'number.fixtures.json'), 'utf8'));
+export const NUMBER_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'number.html');
+
+/** Render test/ssr/number-fixture.php (the HTML loaded by the number-input SSR browser test). */
+export function renderNumberFixture() {
+  return renderPhp('number-fixture.php');
+}

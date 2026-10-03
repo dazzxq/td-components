@@ -67,4 +67,14 @@ describe('index.js exports', () => {
     expect(customElements.get('td-tree')).to.equal(kit.TdTree);
     expect(customElements.get('td-tree-select')).to.equal(kit.TdTreeSelect);
   });
+
+  it('registers <td-repeater> from the root entry (v0.30.0)', () => {
+    expect(typeof kit.TdRepeater).to.equal('function');
+    expect(customElements.get('td-repeater')).to.equal(kit.TdRepeater);
+  });
+
+  it('registers <td-number-input> from the root entry (v0.30.0)', () => {
+    expect(typeof kit.TdNumberInput).to.equal('function');
+    expect(customElements.get('td-number-input')).to.equal(kit.TdNumberInput);
+  });
 });

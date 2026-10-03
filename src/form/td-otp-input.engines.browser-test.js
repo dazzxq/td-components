@@ -229,3 +229,20 @@ describe('td-otp-input — form association', () => {
     expect(document.activeElement === inputOf(wrap.querySelector('td-otp-input'))).to.equal(true);
   });
 });
+
+describe('td-otp-input — layout inside a flex row (demo v0.30 finding)', () => {
+  it('keeps its full 6-cell width as a flex item (no cyclic % collapse), and still shrinks in a narrow box', async () => {
+    const wrap = mount('<td-otp-input label="Mã"></td-otp-input>');
+    wrap.style.display = 'flex'; // CSSOM (CSP-safe)
+    const el = wrap.querySelector('td-otp-input');
+    await wait(0);
+    const box = el.querySelector('.td-otp__box');
+    const cell = parseFloat(getComputedStyle(el.querySelector('.td-otp')).getPropertyValue('--td-otp-cell-w')) || 2.75;
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const full = 6 * cell * rem + 5 * 0.5 * rem;
+    expect(Math.abs(box.getBoundingClientRect().width - full) < 1, `box ${box.getBoundingClientRect().width} ≈ ${full}`).to.equal(true);
+    wrap.style.width = '160px';
+    wrap.style.display = 'block';
+    expect(box.getBoundingClientRect().width <= 160.5, 'narrow container → shrinks').to.equal(true);
+  });
+});
