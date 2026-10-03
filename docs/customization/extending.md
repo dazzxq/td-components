@@ -179,7 +179,7 @@ trang tài liệu của component, test, story, và cập nhật CHANGELOG.
 
 Mọi icon của kit (nút, menu, toolbar lightbox, tabs, empty-state, alert) được vẽ **theo tên** từ một registry dùng
 chung. Icon core: `close check prev next up down back plus minus more search calendar fullscreen download external
-info success error warning eye eye-off zoom-in inbox star upload link image sort` (hình học Lucide). Danh sách luôn
+info success error warning eye eye-off zoom-in inbox star upload link image sort grip` (hình học Lucide). Danh sách luôn
 đúng: `listIcons()`.
 
 ### Thêm icon của site

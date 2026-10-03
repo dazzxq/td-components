@@ -42,7 +42,7 @@ note.prepend(tdIcon('info', { size: 'l', label: 'Thông tin' })); // icon có ng
 
 ## Danh sách icon core
 
-38 icon. Tên là tên **ngữ nghĩa** của td; cột phải là tên gốc bên Lucide.
+39 icon. Tên là tên **ngữ nghĩa** của td; cột phải là tên gốc bên Lucide.
 
 | Tên td | Lucide | | Tên td | Lucide |
 |---|---|---|---|---|
@@ -63,8 +63,11 @@ note.prepend(tdIcon('info', { size: 'l', label: 'Thông tin' })); // icon có ng
 | `external` | external-link | | `trash` | trash-2 |
 | `pencil` | pencil | | `copy` | copy |
 | `log-out` | log-out | | `menu` | menu |
-| `rotate-cw` | rotate-cw | | `video` | video |
-| `file` | file | | `filter` | sliders-horizontal |
+| `rotate-cw` | rotate-cw | | `grip` | grip-vertical |
+| `video` | video | | `file` | file |
+| `filter` | sliders-horizontal | | | |
+
+`grip` (0.31.0): tay nắm kéo của [sortable](sortable.md) và repeater `sortable`.
 
 Nhóm icon cho màn quản trị (CMS) — `trash`, `pencil`, `copy`, `log-out`, `menu`, `rotate-cw`, `zoom-out` — có từ
 0.17.0 (hình học đối chiếu Lucide `lucide-static` 1.48.0). Ví dụ nút chỉ có icon trong bảng quản trị:

@@ -1,9 +1,11 @@
 import { TdBaseElement } from '../base/td-base-element.js';
 import { tdIcon } from '../icons/td-icon.js';
 import { OrderedCollectionModel } from '../utils/ordered-collection.js';
+import { SortableController, SORTABLE_LABELS, defaultItemName, formatLabel } from '../utils/sortable-controller.js';
 
 const ROW = 'data-td-row';
 const SLOT = '[data-td-row-actions]';
+const APP_HANDLE = 'button[data-td-sort-handle]';
 /** In-row references renamed together with the ids of a CLONED row (token lists). */
 const REF_ATTRS = ['for', 'aria-labelledby', 'aria-describedby', 'aria-controls', 'aria-errormessage', 'aria-owns', 'list', 'field-id'];
 /** What can take focus in a new row (first one in tree order, outside the actions). */
@@ -42,6 +44,11 @@ let _uid = 0;
  * - Outside changes (the app inserts / removes / reorders `[data-td-row]` children): a MutationObserver (childList, no
  *   subtree) rebuilds the order from the DOM (the source of truth), upgrades new rows, keeps rows above `max-rows`
  *   (one warning), appends template rows below `min-rows`, then ONE `rows-change` `reason: 'sync'`.
+ * - v0.31.0 `sortable` (opt-in, plan v0.31.0-sortable-masked M4): drag / keyboard lift through the shared
+ *   SortableController (src/utils/sortable-controller.js) — a handle `button.td-repeater__btn.td-sortable__handle` opens
+ *   each action group (an app `button[data-td-sort-handle]` in the row is upgraded instead); every keyboard step, drop
+ *   and Escape goes through `_move()` → one `rows-change` `reason: 'move'` `source: 'user'` each (no `order-change`).
+ *   Without `sortable` nothing of it exists (an app handle button gets `hidden`).
  *
  * @element td-repeater
  * @attr {string} label - visible group label (text)
@@ -49,6 +56,7 @@ let _uid = 0;
  *   rows (filled from the template)
  * @attr {number} max-rows - integer ≥ 0 (default none): no add past it (rows already there are kept)
  * @attr {string} add-label - text of the add button (default `TdRepeater.labels.add`)
+ * @attr {boolean} sortable - v0.31.0: drag handle + keyboard lift (texts: `TdSortable.labels`, shared)
  * @fires rows-change - detail: { reason: 'init'|'add'|'remove'|'move'|'sync', source: 'user'|'api', rows, row?, index?, from?, to? }
  * @fires before-remove - cancelable, user × only; detail: { row, index }
  */
@@ -64,7 +72,7 @@ export class TdRepeater extends TdBaseElement {
     moveDown: 'Chuyển dòng {n} xuống',
     added: 'Đã thêm dòng {n}. Có {count} dòng.',
     removed: 'Đã xoá dòng {n}. Còn {count} dòng.',
-    moved: 'Đã chuyển tới vị trí {n} / {count}.',
+    moved: 'Đã chuyển tới vị trí {n} trên {count}.',
     full: 'Tối đa {max} dòng.',
     atMin: 'Cần ít nhất {min} dòng.',
   };
@@ -76,7 +84,7 @@ export class TdRepeater extends TdBaseElement {
   static MAX_MIN_ROWS = OrderedCollectionModel.MAX_MIN;
 
   static get observedAttributes() {
-    return ['label', 'min-rows', 'max-rows', 'add-label'];
+    return ['label', 'min-rows', 'max-rows', 'add-label', 'sortable'];
   }
 
   constructor() {
@@ -99,6 +107,11 @@ export class TdRepeater extends TdBaseElement {
     this._live = null;
     this._ownLabelledBy = false;
     this._started = false;
+    /** @private v0.31.0 sortable: controller (only while `sortable` and connected), help text */
+    this._ctl = null;
+    this._help = null;
+    /** @type {WeakSet<Element>} handles whose aria-label the kit owns */
+    this._ownName = new WeakSet();
   }
 
   // --- public API ---
@@ -151,7 +164,10 @@ export class TdRepeater extends TdBaseElement {
     if (oldVal === newVal || !this._initialized || !this._started) return;
     if (name === 'label') this._syncLabel();
     else if (name === 'add-label') this._syncAddLabel();
-    else {
+    else if (name === 'sortable') {
+      this._syncSortable();
+      this._paint();
+    } else {
       this._applyLimits();
       // detached: the model may be stale (no observer) — reconnect rebuilds it from the DOM and fills min (round 3)
       if (!this.isConnected) return;
@@ -182,10 +198,17 @@ export class TdRepeater extends TdBaseElement {
     this._model.reset(rows);
     this._warnOver();
     const filled = this._fillMin();
+    this._syncSortable();
+    this._cleanups.push(() => this._stopSortable());
     this._paint();
     this.listen(this, 'click', (e) => this._onClick(e));
     if (typeof MutationObserver === 'function') {
-      this._mo = new MutationObserver(() => this._sync());
+      // records holding only the controller's own nodes (the drag placeholder) change nothing (plan v0.31 M2)
+      this._mo = new MutationObserver((records) => {
+        const own = (n) => !!this._ctl && this._ctl.isOwnNode(n);
+        if (records.every((r) => [...r.addedNodes, ...r.removedNodes].every(own))) return;
+        this._sync();
+      });
       this._mo.observe(this, { childList: true });
       this._cleanups.push(() => { this._mo?.disconnect(); this._mo = null; });
     }
@@ -300,6 +323,7 @@ export class TdRepeater extends TdBaseElement {
       row.appendChild(box);
     }
     box.classList.add('td-repeater__actions');
+    this._syncHandle(row, box);
     for (const [kind, icon] of [['up', 'up'], ['down', 'down'], ['remove', 'close']]) {
       if (box.querySelector(`:scope > .td-repeater__btn--${kind}`)) continue;
       const b = document.createElement('button');
@@ -338,6 +362,15 @@ export class TdRepeater extends TdBaseElement {
         if (off) b.setAttribute('aria-disabled', 'true');
         else b.removeAttribute('aria-disabled');
       };
+      const h = this._handleOf(row);
+      if (h) {
+        // the kit names its own button and an app button that came without a name
+        if (!h.hasAttribute('data-td-sort-handle') || !h.hasAttribute('aria-label') || this._ownName.has(h)) {
+          this._ownName.add(h);
+          h.setAttribute('aria-label', formatLabel(SORTABLE_LABELS.handle, { name: defaultItemName(row, i, SORTABLE_LABELS) }));
+        }
+        if (this._help) h.setAttribute('aria-describedby', this._help.id);
+      }
       set('up', 'moveUp', i === 0);
       set('down', 'moveDown', i === n - 1);
       set('remove', 'remove', !canRemove);
@@ -422,7 +455,7 @@ export class TdRepeater extends TdBaseElement {
   /**
    * @private Move the row at `from` to index `to` by moving the rows in between (the moved row stays attached).
    */
-  _move(from, to, source) {
+  _move(from, to, source, { quiet = false } = {}) {
     if (!this._model.canMove(from, to)) return false;
     const rows = this._model.keys();
     const row = rows[from];
@@ -430,7 +463,7 @@ export class TdRepeater extends TdBaseElement {
     else for (let k = from - 1; k >= to; k -= 1) row.after(rows[k]);
     this._model.move(from, to);
     this._changed({ reason: 'move', source, row, from, to });
-    if (source === 'user') this._announce('moved', { n: to + 1, count: this._model.size });
+    if (source === 'user' && !quiet) this._announce('moved', { n: to + 1, count: this._model.size });
     return true;
   }
 
@@ -454,14 +487,103 @@ export class TdRepeater extends TdBaseElement {
   /** @private outside change (MutationObserver): the DOM is the source of truth */
   _sync(force = false) {
     if (!this._started || (!force && !this.isConnected)) return;
-    if (this._footer && this.lastElementChild !== this._footer) this.appendChild(this._footer);
+    // the footer stays last — the drag placeholder (a controller node, inserted before the footer) does not count
+    let last = this.lastElementChild;
+    if (last && this._ctl && this._ctl.isOwnNode(last)) last = last.previousElementSibling;
+    if (this._footer && last !== this._footer) this.appendChild(this._footer);
     const rows = this._domRows();
     const keys = this._model.keys();
     if (keys.length === rows.length && keys.every((r, i) => r === rows[i])) return;
+    this._ctl?.cancel('external'); // the DOM is the source of truth: nothing is moved back
     this._model.reset(rows);
     this._warnOver();
     this._fillMin();
     this._changed({ reason: 'sync', source: 'api' });
+  }
+
+  // --- sortable (v0.31.0, opt-in) ---
+
+  /** @private start / stop the controller + help text to match the `sortable` attribute */
+  _syncSortable() {
+    const on = this.hasAttribute('sortable') && this.isConnected;
+    if (on && !this._ctl) {
+      if (!this._help) {
+        this._help = document.createElement('span');
+        this._help.hidden = true;
+        this._help.id = `td-repeater-${this._uid}-sort-help`;
+      }
+      this._help.textContent = String(SORTABLE_LABELS.help ?? '');
+      if (this._footer && this._help.parentNode !== this._footer) this._footer.appendChild(this._help);
+      this._ctl = new SortableController(this, {
+        items: () => this._model.keys(),
+        handleOf: (row) => this._handleOf(row),
+        move: (from, to) => { this._move(from, to, 'user', { quiet: true }); },
+        commit: () => {}, // rows-change already fired for every step
+        nameOf: (row, i) => defaultItemName(row, i, SORTABLE_LABELS),
+        live: this._live,
+        enabled: () => this.hasAttribute('sortable'),
+        labels: SORTABLE_LABELS,
+        reconcile: () => this._flush(), // review round 1 IMPL-1: pending outside changes → 'external' + sync first
+        placePlaceholder: (ph) => {
+          if (this._footer && this._footer.parentNode === this) this._footer.before(ph);
+          else this.appendChild(ph);
+        },
+      });
+    } else if (!this.hasAttribute('sortable')) {
+      this._stopSortable();
+      this._help?.remove();
+    }
+    for (const row of this._model.keys()) {
+      const box = this._actionsOf(row);
+      if (box) this._syncHandle(row, box);
+    }
+  }
+
+  /** @private */
+  _stopSortable() {
+    this._ctl?.destroy();
+    this._ctl = null;
+  }
+
+  /** @private the row's sort handle (the kit's or an upgraded app button), owned by this row */
+  _handleOf(row) {
+    for (const el of row.querySelectorAll('.td-sortable__handle')) {
+      if (el.closest(`[${ROW}]`) === row) return /** @type {HTMLElement} */ (el);
+    }
+    return null;
+  }
+
+  /**
+   * @private one row's handle to match `sortable`: on → the app `button[data-td-sort-handle]` upgraded, else a kit
+   * button first in the action group; off → the kit button removed, an app button hidden.
+   */
+  _syncHandle(row, box) {
+    let app = null;
+    for (const el of row.querySelectorAll(APP_HANDLE)) {
+      if (el.closest(`[${ROW}]`) === row) { app = /** @type {HTMLElement} */ (el); break; }
+    }
+    const on = this.hasAttribute('sortable');
+    if (app) {
+      if (on) {
+        app.classList.add('td-repeater__btn', 'td-sortable__handle');
+        app.hidden = false;
+      } else {
+        app.classList.remove('td-sortable__handle');
+        app.hidden = true; // no dead button once defined (before define: CSS keeps it invisible)
+      }
+      return;
+    }
+    const kit = box.querySelector(':scope > .td-repeater__btn--sort');
+    if (on && !kit) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'td-repeater__btn td-repeater__btn--sort td-sortable__handle';
+      const svg = tdIcon('grip', { size: 's' });
+      if (svg) b.appendChild(svg);
+      box.prepend(b);
+    } else if (!on && kit) {
+      kit.remove();
+    }
   }
 
   // --- events ---
@@ -525,7 +647,7 @@ export class TdRepeater extends TdBaseElement {
   _warnOnce(kind, msg) {
     if (this._warned.has(kind)) return;
     this._warned.add(kind);
-    console.warn(msg, this);
+    console.warn(msg);
   }
 }
 

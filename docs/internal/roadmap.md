@@ -10,7 +10,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.28.0 ~14/10 (A0 tới 20/10): `td-chip-input` chọn nhiều (closed-set, `<select multiple>`, chọn tất cả đang hiện, `td_multiselect`) — xong P0
 - `done` v0.29.0: `td-tree` + `td-tree-select`
 - `done` v0.30.0 ~28/10: `td-number-input` + `td-repeater` (đặt `OrderedCollectionModel`) — đảo theo lịch dsuite (A2.3 cần ~26/10)
-- `todo` v0.31.0 ~04/11: `td-sortable` (dùng lại OrderedCollectionModel) + `td-masked-value` (A1 cần từ 12/11)
+- `done` v0.31.0 ~04/11: `td-sortable` (dùng lại OrderedCollectionModel) + `td-masked-value` (A1 cần từ 12/11)
 - `done` v0.32.0: `<td-media-picker>` / `TdMediaPicker.open()` (list / get / tìm / facet / chọn đơn + nhiều, upload kèm
   `uploadFields` + dedup, sửa metadata tường minh theo descriptor) + `<td-media-field>` (đơn, reference / usage) + PHP
   `td_media_field()` — [ADR 0013](decisions/0013-media-picker-boundary.md), plan

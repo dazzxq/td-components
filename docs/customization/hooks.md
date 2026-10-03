@@ -26,6 +26,8 @@ Nguồn sự thật là source code (`src/**`); mỗi dòng dưới đây đối
   - [td-tree và td-tree-select](#td-tree-và-td-tree-select)
   - [td-number-input](#td-number-input)
   - [td-repeater](#td-repeater)
+  - [td-sortable](#td-sortable)
+  - [td-masked-value](#td-masked-value)
   - [TdMediaPicker và td-media-field](#tdmediapicker)
   - [td-datetime-picker](#td-datetime-picker)
   - [Hợp đồng lỗi của mọi form control](#hợp-đồng-lỗi-của-mọi-form-control)
@@ -450,8 +452,38 @@ không bao giờ đặt; [công thức](../components/repeater.md#2-đặt-tên-
 
 `TdRepeater.labels`: `add` `Thêm dòng` · `row` `Dòng {n}` · `remove` `Xoá dòng {n}` · `moveUp` `Chuyển dòng {n} lên` ·
 `moveDown` `Chuyển dòng {n} xuống` · `added` `Đã thêm dòng {n}. Có {count} dòng.` · `removed` `Đã xoá dòng {n}. Còn
-{count} dòng.` · `moved` `Đã chuyển tới vị trí {n} / {count}.` · `full` `Tối đa {max} dòng.` · `atMin` `Cần ít nhất {min}
-dòng.`
+{count} dòng.` · `moved` `Đã chuyển tới vị trí {n} trên {count}.` (0.31.0, trước đó `{n} / {count}`) · `full` `Tối đa
+{max} dòng.` · `atMin` `Cần ít nhất {min} dòng.`
+
+0.31.0 `sortable` (opt-in): kéo / nhấc dùng chung bộ điều khiển với [td-sortable](#td-sortable) — mỗi bước bàn phím, mỗi
+lần thả và huỷ bằng Escape phát một `rows-change` `reason: 'move'` `source: 'user'`; văn bản của tay nắm và thông báo lấy
+từ `TdSortable.labels`.
+
+---
+
+## td-sortable
+
+`import '@dazzxq/td-components/sortable';` · Trang: [sortable.md](../components/sortable.md) (0.31.0)
+
+Không có property hook: điểm móc là **event** `order-change` (`{ order, previous, id, from, to, source }`, chỉ khi thả và
+thứ tự đổi) — app lưu `order` lên server, lỗi thì `setOrder(previous)` (không phát event). `TdSortable.labels` (dùng
+chung với repeater `sortable`): `handle` `Sắp xếp {name}` · `item` `Mục {n}` · `help` · `lifted` · `moved` · `dropped` ·
+`cancelled` · `first` · `last` (mặc định ở [trang component](../components/sortable.md#property--method)).
+
+---
+
+## td-masked-value
+
+`import '@dazzxq/td-components/masked-value';` · Trang: [masked-value.md](../components/masked-value.md) (0.31.0)
+
+| Hook | Kiểu | Mô tả |
+|---|---|---|
+| `el.reveal` | `({ element, signal }) => Promise<string \| null>` | Lấy giá trị thật (app lo quyền / 2FA / audit). Chuỗi → hiện; `null` → im lặng; reject → `reveal-error { kind: 'rejected' }`. Chỉ nhận hàm; gán trước khi define vẫn được nhận. |
+| `TdMaskedValue.reveal` | như trên (static) | Dùng khi phần tử không có property — trang PHP gán một lần, đọc `element.dataset.id`. |
+
+Event không bao giờ mang giá trị: `revealed { duration }`, `remasked { reason }`, `reveal-error { kind }`.
+`TdMaskedValue.labels`: `value` `giá trị` · `show` `Hiện {label}` · `copy` `Copy {label}` · `loading` `Đang tải {label}…` ·
+`revealed` `Đã hiện {label}. Tự che lại sau {s} giây.` · `remasked` `Đã che {label}.` · `error` `Không hiện được {label}.`
 
 ---
 

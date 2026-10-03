@@ -26,6 +26,9 @@ function engineLaunchOptions(name) {
   return {};
 }
 
+/** v0.31.0: engines tests driving REAL mouse drags (one group each = own browser instances). */
+const POINTER_FILES = ['src/display/td-v031-sortable.engines.browser-test.js', 'src/form/td-v031-repeater-sortable.engines.browser-test.js'];
+
 /** All src stories (for src/stories-dom.browser-test.js). */
 function storyFiles(dir = 'src', out = []) {
   for (const name of readdirSync(dir)) {
@@ -86,13 +89,24 @@ export default {
   }, {
     // v0.27.0: behaviour of the dsuite batch-1 components (td-otp-input, td-drawer, td-copy) in every engine.
     name: 'engines',
-    files: ['src/**/*.engines.browser-test.js'],
+    files: ['src/**/*.engines.browser-test.js', ...POINTER_FILES.map((f) => `!${f}`)],
     browsers: [
       playwrightLauncher({ product: 'chromium' }),
       playwrightLauncher({ product: 'firefox', launchOptions: engineLaunchOptions('firefox') }),
       playwrightLauncher({ product: 'webkit', launchOptions: engineLaunchOptions('webkit') }),
     ],
-  }],
+  }, ...POINTER_FILES.map((file, i) => ({
+    // v0.31.0: real mouse drags (sendMouse + pointer capture). Firefox routes a mouse release of ANOTHER page of the same
+    // browser instance (e.g. its afterEach resetMouse) to the element holding the capture here, so each of these files
+    // runs alone in its own browser instances.
+    name: `pointer-${i + 1}`,
+    files: [file],
+    browsers: [
+      playwrightLauncher({ product: 'chromium' }),
+      playwrightLauncher({ product: 'firefox', launchOptions: engineLaunchOptions('firefox') }),
+      playwrightLauncher({ product: 'webkit', launchOptions: engineLaunchOptions('webkit') }),
+    ],
+  }))],
   testFramework: {
     config: { ui: 'bdd', timeout: '10000' },
   },

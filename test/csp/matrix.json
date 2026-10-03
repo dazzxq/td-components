@@ -37,6 +37,8 @@
       "td-tree-select": "/src/form/td-tree-select.js",
       "td-number-input": "/src/form/td-number-input.js",
       "td-repeater": "/src/form/td-repeater.js",
+      "td-sortable": "/src/display/td-sortable.js",
+      "td-masked-value": "/src/display/td-masked-value.js",
       "td-media-picker": "/src/feedback/td-media-picker.js",
       "td-media-field": "/src/form/td-media-field.js"
     },
@@ -76,6 +78,8 @@
       "td-tree-select",
       "td-number-input",
       "td-repeater",
+      "td-sortable",
+      "td-masked-value",
       "td-media-picker",
       "td-media-field"
     ],
@@ -2374,6 +2378,183 @@
         ".td-repeater__btn--remove[aria-disabled=\"true\"]"
       ],
       "settle": 200
+    },
+    {
+      "state": "sortable",
+      "markup": "<td-repeater label=\"Hộp gồm\" sortable><template><div data-td-row><input aria-label=\"Tên\"></div></template><div data-td-row><input aria-label=\"Tên\" value=\"Sạc\"></div><div data-td-row><input aria-label=\"Tên\" value=\"Cáp\"></div></td-repeater>",
+      "selectors": [
+        "td-repeater",
+        ".td-repeater__actions > .td-sortable__handle"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "line-height",
+        "margin-left"
+      ],
+      "selectorNote": "v0.31.0 opt-in sortable: the handle opens the action group (same ghost button as ↑ ↓ ×, touch-action none); the host is the placeholder's containing block"
+    }
+  ],
+  "td-sortable": [
+    {
+      "state": "default",
+      "setup": "const s=document.createElement('td-sortable'); s.setAttribute('label','Section'); s.innerHTML='<div data-td-sort-item data-id=\"s1\" data-td-sort-label=\"Mục 1\">Mục 1</div><div data-td-sort-item data-id=\"s2\" data-td-sort-label=\"Mục 2\">Mục 2</div><div data-td-sort-item data-id=\"s3\" data-td-sort-label=\"Mục 3\">Mục 3</div><div data-td-sort-item data-id=\"s4\" data-td-sort-label=\"Mục 4\">Mục 4</div>'; window.__mount.appendChild(s); for (const it of s.querySelectorAll('[data-td-sort-item]')) { it.style.setProperty('height','40px'); it.style.setProperty('box-sizing','border-box'); }",
+      "selectors": [
+        "td-sortable",
+        ".td-sortable__handle",
+        "[data-td-sort-item]",
+        ".td-sortable__handle .td-icon"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "line-height"
+      ],
+      "excludeNote": "items / host / placeholder inherit the page line-height (app content: the kit never forces it) — it follows the host page (Tailwind preflight)"
+    },
+    {
+      "state": "grid",
+      "setup": "const s=document.createElement('td-sortable'); s.setAttribute('label','Section'); s.innerHTML='<div data-td-sort-item data-id=\"s1\" data-td-sort-label=\"Mục 1\">Mục 1</div><div data-td-sort-item data-id=\"s2\" data-td-sort-label=\"Mục 2\">Mục 2</div><div data-td-sort-item data-id=\"s3\" data-td-sort-label=\"Mục 3\">Mục 3</div><div data-td-sort-item data-id=\"s4\" data-td-sort-label=\"Mục 4\">Mục 4</div>'; window.__mount.appendChild(s); for (const it of s.querySelectorAll('[data-td-sort-item]')) { it.style.setProperty('height','40px'); it.style.setProperty('box-sizing','border-box'); } for (const [k,v] of [['display','grid'],['grid-template-columns','repeat(2, 120px)'],['gap','8px']]) s.style.setProperty(k,v);",
+      "selectors": [
+        "td-sortable",
+        "[data-td-sort-item]:nth-child(2)",
+        "[data-td-sort-item]:nth-child(3)"
+      ],
+      "settle": 200,
+      "selectorNote": "an app grid (CSSOM in the setup — layout is the app's CSS); the kit only adds the handle",
+      "excludeProps": [
+        "line-height"
+      ],
+      "excludeNote": "items / host / placeholder inherit the page line-height (app content: the kit never forces it) — it follows the host page (Tailwind preflight)"
+    },
+    {
+      "state": "lifted",
+      "setup": "const s=document.createElement('td-sortable'); s.setAttribute('label','Section'); s.innerHTML='<div data-td-sort-item data-id=\"s1\" data-td-sort-label=\"Mục 1\">Mục 1</div><div data-td-sort-item data-id=\"s2\" data-td-sort-label=\"Mục 2\">Mục 2</div><div data-td-sort-item data-id=\"s3\" data-td-sort-label=\"Mục 3\">Mục 3</div><div data-td-sort-item data-id=\"s4\" data-td-sort-label=\"Mục 4\">Mục 4</div>'; window.__mount.appendChild(s); for (const it of s.querySelectorAll('[data-td-sort-item]')) { it.style.setProperty('height','40px'); it.style.setProperty('box-sizing','border-box'); } const h=s.querySelector('.td-sortable__handle'); h.click(); h.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true,cancelable:true}));",
+      "selectors": [
+        "[data-td-sort-state=\"lifted\"]",
+        "[data-td-sort-state=\"lifted\"] .td-sortable__handle"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "line-height"
+      ],
+      "excludeNote": "items / host / placeholder inherit the page line-height (app content: the kit never forces it) — it follows the host page (Tailwind preflight)"
+    },
+    {
+      "state": "dragging",
+      "setup": "const s=document.createElement('td-sortable'); s.setAttribute('label','Section'); s.innerHTML='<div data-td-sort-item data-id=\"s1\" data-td-sort-label=\"Mục 1\">Mục 1</div><div data-td-sort-item data-id=\"s2\" data-td-sort-label=\"Mục 2\">Mục 2</div><div data-td-sort-item data-id=\"s3\" data-td-sort-label=\"Mục 3\">Mục 3</div><div data-td-sort-item data-id=\"s4\" data-td-sort-label=\"Mục 4\">Mục 4</div>'; window.__mount.appendChild(s); for (const it of s.querySelectorAll('[data-td-sort-item]')) { it.style.setProperty('height','40px'); it.style.setProperty('box-sizing','border-box'); } const h=s.querySelector('.td-sortable__handle'); const r=h.getBoundingClientRect(); const x=Math.round(r.x+r.width/2), y=Math.round(r.y+r.height/2); const pe=(t,yy)=>h.dispatchEvent(new PointerEvent(t,{bubbles:true,cancelable:true,composed:true,clientX:x,clientY:yy,pointerId:5,pointerType:'mouse',isPrimary:true,button:t==='pointermove'?-1:0,buttons:1})); pe('pointerdown',y); pe('pointermove',y+30); await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))); pe('pointermove',y+90); await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));",
+      "selectors": [
+        "td-sortable[data-td-dragging]",
+        "[data-td-sort-state=\"dragging\"]",
+        "[data-td-sort-item]:nth-child(2)",
+        ".td-sortable__placeholder"
+      ],
+      "settle": 300,
+      "selectorNote": "synthetic pointer down + 2 moves, captured mid-drag: the dragged item (solid surface, one shadow, offset by CSSOM custom properties), a shifted neighbour (150ms transition, settled), the placeholder (dashed border, CSSOM box)",
+      "excludeProps": [
+        "line-height"
+      ],
+      "excludeNote": "items / host / placeholder inherit the page line-height (app content: the kit never forces it) — it follows the host page (Tailwind preflight)"
+    },
+    {
+      "state": "disabled",
+      "markup": "<td-sortable label=\"Section\" disabled><div data-td-sort-item data-id=\"s1\" data-td-sort-label=\"Mục 1\">Mục 1</div><div data-td-sort-item data-id=\"s2\" data-td-sort-label=\"Mục 2\">Mục 2</div></td-sortable>",
+      "selectors": [
+        ".td-sortable__handle[aria-disabled=\"true\"]"
+      ],
+      "settle": 200
+    },
+    {
+      "state": "media-grid",
+      "setup": "window.__mount.innerHTML='<td-media-grid label=\"Ảnh\"><td-sortable role=\"none\" label=\"Thứ tự ảnh\"><div data-td-media-item data-td-sort-item data-id=\"p1\"><button type=\"button\" data-td-media-open aria-label=\"Ảnh 1\">Ảnh 1</button></div><div data-td-media-item data-td-sort-item data-id=\"p2\"><button type=\"button\" data-td-media-open aria-label=\"Ảnh 2\">Ảnh 2</button></div><div data-td-media-item data-td-sort-item data-id=\"p3\"><button type=\"button\" data-td-media-open aria-label=\"Ảnh 3\">Ảnh 3</button></div><div data-td-media-item data-td-sort-item data-id=\"p4\"><button type=\"button\" data-td-media-open aria-label=\"Ảnh 4\">Ảnh 4</button></div><div data-td-media-item data-td-sort-item data-id=\"p5\"><button type=\"button\" data-td-media-open aria-label=\"Ảnh 5\">Ảnh 5</button></div><div data-td-media-item data-td-sort-item data-id=\"p6\"><button type=\"button\" data-td-media-open aria-label=\"Ảnh 6\">Ảnh 6</button></div></td-sortable></td-media-grid>'; window.__mount.querySelector('td-media-grid').style.setProperty('--td-media-grid-cols','repeat(3, 1fr)');",
+      "selectors": [
+        "td-media-grid > td-sortable",
+        "td-media-grid > td-sortable > [data-td-sort-item] > .td-sortable__handle"
+      ],
+      "settle": 200,
+      "selectorNote": "gallery recipe: td-sortable inside td-media-grid is the grid (display / grid-template-columns / gaps from the media-grid tokens, td.css only — no app CSS); the kit handle sits on the photo's top-end corner"
+    },
+    {
+      "state": "undefined-handle",
+      "module": "/src/icons/td-icon.js",
+      "markup": "<td-sortable><div data-td-sort-item data-id=\"a\"><button type=\"button\" data-td-sort-handle aria-label=\"Kéo A\">≡</button>A</div><div data-td-sort-item data-id=\"b\"><span data-td-sort-handle></span>B</div></td-sortable>",
+      "selectors": [
+        "button[data-td-sort-handle]",
+        "span[data-td-sort-handle]"
+      ],
+      "settle": 200,
+      "selectorNote": "the element is NOT defined (only the icon module is imported): an app-printed handle button is visibility:hidden with the final 32px box, an app placeholder span keeps 32px",
+      "excludeProps": [
+        "line-height"
+      ],
+      "excludeNote": "items / host / placeholder inherit the page line-height (app content: the kit never forces it) — it follows the host page (Tailwind preflight)"
+    }
+  ],
+  "td-masked-value": [
+    {
+      "state": "default",
+      "markup": "<td-masked-value label=\"SĐT khách\" masked=\"09xx xxx 123\"></td-masked-value>",
+      "selectors": [
+        "td-masked-value",
+        ".td-masked__text",
+        ".td-masked__toggle",
+        ".td-masked__icon .td-icon"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width"
+      ],
+      "excludeNote": "the masked / revealed text uses the page font (Tailwind preflight changes the family), so the text and host widths follow the host page; the toggle box is gated by height here and by width in the disabled state"
+    },
+    {
+      "state": "loading",
+      "setup": "const t=document.createElement('td-masked-value'); t.setAttribute('label','SĐT khách'); t.setAttribute('masked','09xx xxx 123'); t.reveal=()=>new Promise(()=>{}); window.__mount.appendChild(t); t.querySelector('button').click(); await new Promise(r=>setTimeout(r,20));",
+      "selectors": [
+        "td-masked-value",
+        ".td-masked__toggle[data-state=\"loading\"]",
+        ".td-masked__toggle .td-spinner"
+      ],
+      "settle": 200,
+      "selectorNote": "the hook never resolves: toggle aria-disabled + the shared small spinner in place of the icon",
+      "excludeProps": [
+        "width"
+      ],
+      "excludeNote": "the masked / revealed text uses the page font (Tailwind preflight changes the family), so the text and host widths follow the host page; the toggle box is gated by height here and by width in the disabled state"
+    },
+    {
+      "state": "revealed",
+      "setup": "const t=document.createElement('td-masked-value'); t.setAttribute('label','SĐT khách'); t.setAttribute('masked','09xx xxx 123'); t.reveal=()=>Promise.resolve('0912 345 123'); window.__mount.appendChild(t); t.querySelector('button').click(); await new Promise(r=>setTimeout(r,20));",
+      "selectors": [
+        ".td-masked__text[data-state=\"revealed\"]",
+        ".td-masked__toggle[aria-pressed=\"true\"]"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width"
+      ],
+      "excludeNote": "the masked / revealed text uses the page font (Tailwind preflight changes the family), so the text and host widths follow the host page; the toggle box is gated by height here and by width in the disabled state"
+    },
+    {
+      "state": "disabled",
+      "markup": "<td-masked-value label=\"SĐT khách\" masked=\"09xx xxx 123\" disabled></td-masked-value>",
+      "selectors": [
+        ".td-masked__toggle[aria-disabled=\"true\"]"
+      ],
+      "settle": 200
+    },
+    {
+      "state": "ssr",
+      "module": "/src/icons/td-icon.js",
+      "markup": "<td-masked-value data-td-ssr=\"masked-value@1\" class=\"td-masked\" masked=\"09xx xxx 123\" label=\"SĐT khách\"><span class=\"td-masked__text\" translate=\"no\">09xx xxx 123</span><button type=\"button\" class=\"td-masked__toggle\" aria-pressed=\"false\" aria-label=\"Hiện SĐT khách\" data-tooltip=\"Hiện SĐT khách\"><span class=\"td-masked__icon\" data-td-icon=\"eye\" aria-hidden=\"true\"><svg class=\"td-icon td-icon--m\" data-icon=\"eye\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg></span></button><span class=\"td-sr-only\" role=\"status\"></span></td-masked-value>",
+      "selectors": [
+        "td-masked-value",
+        ".td-masked__text",
+        ".td-masked__toggle"
+      ],
+      "settle": 200,
+      "selectorNote": "php/td.php td_masked_value (masked-value@1) BEFORE the component module loads (only the icon module is imported): the masked string shows, the toggle keeps its box with visibility hidden",
+      "excludeProps": [
+        "width"
+      ],
+      "excludeNote": "the masked / revealed text uses the page font (Tailwind preflight changes the family), so the text and host widths follow the host page; the toggle box is gated by height here and by width in the disabled state"
     }
   ],
   "td-media-picker": [

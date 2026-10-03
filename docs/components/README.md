@@ -18,9 +18,9 @@ Mọi import đều theo dạng `@dazzxq/td-components/<tên>` (xem [Cài đặt
 nạp `td.css` một lần cho cả trang.
 
 **Render phía server (SSR) từ PHP:** dùng [adapter PHP](../guides/php-adapter.md) `php/td.php` ship kèm gói —
-`td_button`, `td_link`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_media_field` in đúng markup của component
+`td_button`, `td_link`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_masked_value`, `td_media_field` in đúng markup của component
 (control native, chạy không cần JS). Component không có helper PHP (menu, table, tabs, pagination, empty-state, trigger
-lightbox, hovercard, drawer, repeater…) có mẫu markup ngay trong trang của nó (mục cấu trúc DOM / SSR).
+lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong trang của nó (mục cấu trúc DOM / SSR).
 
 ## Form
 
@@ -37,7 +37,7 @@ lightbox, hovercard, drawer, repeater…) có mẫu markup ngay trong trang củ
 | [Tree](tree.md) | `<td-tree>` | `/tree` | có | Cây phân cấp (WAI-ARIA tree): không chọn / chọn một / chọn nhiều (độc lập hoặc `cascade` ba trạng thái), nút khoá vẫn gửi, nhánh tải chậm, lọc |
 | [Tree select](tree-select.md) | `<td-tree-select>` | `/tree-select` | có | Chọn một / nhiều nút của cây trong ô gọn (combobox + popup cây): danh mục cha, chuyên mục; nâng cấp `<select>` con; PHP `td_tree_select` |
 | [Number input](number-input.md) | `<td-number-input>` | `/number-input` | có | Ô nhập số / tiền: hiện `12.990.000`, gửi số sạch (BigInt, 30 chữ số), hậu tố `₫` / `%`, `min` / `max` / `step`, dán số có dấu chấm phẩy, `clamp` tuỳ chọn; PHP `td_number_input` |
-| [Repeater](repeater.md) | `<td-repeater>` | `/repeater` | không (field trong dòng tự gửi) | Danh sách dòng động (thêm / xoá / sắp xếp bằng nút ↑ ↓ ×) từ `<template>` của app: "Hộp gồm", FAQ, quyền lợi; `min-rows` / `max-rows`; app tự đặt `name` qua `rows-change` |
+| [Repeater](repeater.md) | `<td-repeater>` | `/repeater` | không (field trong dòng tự gửi) | Danh sách dòng động (thêm / xoá / sắp xếp bằng nút ↑ ↓ ×, `sortable`: kéo thả + bàn phím) từ `<template>` của app: "Hộp gồm", FAQ, quyền lợi; `min-rows` / `max-rows`; app tự đặt `name` qua `rows-change` |
 | [Password meter](password-meter.md) | `<td-password-meter>` | `/password-meter` | không | Đo độ mạnh mật khẩu tại chỗ: thanh 4 mức, nhãn đọc được, checklist điều kiện, hook `score` |
 | [OTP input](otp-input.md) | `<td-otp-input>` | `/otp-input` | có | Nhập mã một lần 6 chữ số (2FA, xác thực lại): một input thật, dán / tự điền từ SMS; PHP `td_otp_input` |
 | [Media field](media-field.md) | `<td-media-field>` | `/media-field` | có (gửi `assetId`; dạng usage gửi `[id]` / `[alt]` / `[crop]`) | Ô chọn **một** ảnh / video / file từ thư viện media: khung theo tỉ lệ, xem trước, Đổi / Gỡ, mở media picker; PHP `td_media_field` |
@@ -71,6 +71,8 @@ lightbox, hovercard, drawer, repeater…) có mẫu markup ngay trong trang củ
 | [Empty state](empty-state.md) | `<td-empty-state>` | `/empty-state` | Màn "chưa có dữ liệu" có hành động |
 | [Media grid](media-grid.md) | `<td-media-grid>` | `/media-grid` | Lưới ảnh chọn được: nâng cấp markup site/PHP, tick khi rê/focus, chế độ chọn, Shift chọn dải, Space/Enter/Esc, `select-change` / `activate` |
 | [Badge](badge.md) | class CSS `.td-badge` | — (chỉ `td.css`) | Nhãn trạng thái dạng viên thuốc, viền, con dấu (`--stamp`); thuần CSS, PHP `td_badge` |
+| [Sortable](sortable.md) | `<td-sortable>` | `/sortable` | Sắp thứ tự danh sách / lưới của app bằng kéo tay nắm **và** bàn phím (Space nhấc, mũi tên, Space thả, Escape huỷ), chạm-để-chuyển, thông báo cho trình đọc màn hình, `order-change` khi thả; công thức lưới ảnh với media grid |
+| [Masked value](masked-value.md) | `<td-masked-value>` | `/masked-value` | Giá trị nhạy cảm bị che (`09xx xxx 123`) + nút "Hiện": gọi hook async của app (quyền / 2FA / audit), tự che lại sau N giây, không giữ giá trị trong DOM / event; PHP `td_masked_value` |
 | [Copy](copy.md) | `<td-copy>` | `/copy` | Nút icon chép một giá trị (mã, ID, đường dẫn) vào clipboard, phản hồi bằng icon + thông báo cho trình đọc màn hình; PHP `td_copy` |
 | [Skeleton](loading.md#skeleton-khối-giữ-chỗ-thuần-css) | class CSS `.td-skeleton` | — (chỉ `td.css`) | Khối giữ chỗ có ánh sáng lướt (dòng chữ, avatar, khung ảnh) trong lúc tải; thuần CSS |
 | [Icons](icons.md) | `<td-icon>`, `tdIcon()`, `fillIconSlots()` | `/icons`, `/icon-element` (hoặc barrel) | Bộ icon (Lucide) + đăng ký icon riêng; PHP: `td_icon()` |

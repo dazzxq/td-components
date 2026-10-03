@@ -2,6 +2,35 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.31.0
+
+dsuite P1 lô 3 — **sắp xếp + che giá trị nhạy cảm** (yêu cầu dienthoaihay.vn #8, #10; plan
+`docs/internal/plans/v0.31.0-sortable-masked.md`, Codex plan-review APPROVE 3 vòng).
+
+### Added
+
+- **`<td-sortable>`** — sắp xếp lại danh sách / lưới bằng **kéo thả** (chuột, cảm ứng, bút — chỉ từ nút tay nắm `grip`, không
+  giành click của field bên trong) **và bàn phím** (Enter / Space nhấc, mũi tên di chuyển — lưới ↑↓ nhảy cả hàng, Home /
+  End, Escape huỷ, Tab / rời tay nắm thả tại chỗ); chạm tay nắm A rồi tay nắm C cũng chuyển được (WCAG 2.5.7); trình đọc
+  màn hình nghe "vị trí x trên y" (không đọc nội dung mục); tự cuộn gần mép; giảm chuyển động khi
+  `prefers-reduced-motion`. Mỗi mục cần `data-id` duy nhất — thiếu / trùng thì tắt sắp xếp thay vì gửi thứ tự thiếu. Sự
+  kiện **`order-change`** `{ order, previous, id, from, to, source }` chỉ khi thả; `setOrder()` qua API không phát (app
+  hoàn tác được mà không lưu lại). Dùng được trong `<td-media-grid>` (gallery) không cần CSS riêng.
+- **`<td-repeater sortable>`** — opt-in kéo thả / bàn phím cho dòng repeater (mỗi bước phát `rows-change` `reason: 'move'`,
+  nút ↑ ↓ vẫn giữ). Không có `sortable` → hành vi v0.30 không đổi.
+- **`<td-masked-value>`** — hiện giá trị che (`masked`, chuỗi do server che sẵn) + nút "Hiện"; bấm → gọi **`reveal()`** do app
+  truyền (app lo quyền / 2FA / audit), hiện giá trị thật rồi **tự che lại** sau `duration` giây, khi tab ẩn, khi rời trang
+  (`pagehide` — không vào bfcache), khi gỡ khỏi trang. Giá trị thật **không** nằm trong attribute, sự kiện, thông báo hay
+  console; lỗi chỉ báo `{ kind }` do kit đặt. Bấm lại khi đang chờ bị bỏ qua (mỗi lần gọi là một sự kiện audit).
+  `copyable` dùng `<td-copy sensitive>`. Sự kiện `revealed`, `remasked`, `reveal-error`.
+- **PHP `td_masked_value($masked, $o)`** — chỉ nhận chuỗi đã che (không có tham số giá trị thật), element mode
+  `masked-value@1`.
+- Icon `grip`. Export `@dazzxq/td-components/sortable`, `/masked-value`.
+
+### Changed
+
+- `TdRepeater.labels.moved` → "Đã chuyển tới vị trí {n} trên {count}." (trước: "{n} / {count}").
+
 ## 0.30.0
 
 dsuite P1 lô 2 — **dòng động + ô số / tiền** (yêu cầu dienthoaihay.vn #14, #11; plan

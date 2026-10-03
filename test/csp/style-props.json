@@ -50,5 +50,14 @@
   "stroke-width",
   "stroke-dasharray",
   "stroke-dashoffset",
-  "stroke-linecap"
+  "stroke-linecap",
+  "visibility",
+  "outline-style",
+  "outline-width",
+  "outline-color",
+  "outline-offset",
+  "grid-template-columns",
+  "column-gap",
+  "row-gap",
+  "touch-action"
 ]

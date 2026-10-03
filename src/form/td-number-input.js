@@ -750,7 +750,7 @@ export class TdNumberInput extends TdFormElement {
   _warnOnce(key, msg) {
     if (this._warned.has(key)) return;
     this._warned.add(key);
-    console.warn(msg, this);
+    console.warn(msg);
   }
 
   // --- SSR hydrate (v0.30.0, ADR 0012, contract number-input@1) ---

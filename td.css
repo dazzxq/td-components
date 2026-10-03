@@ -9213,6 +9213,337 @@
 	}
 }
 
+/* ---- src/styles/components/sortable.css ---- */
+/*
+ * td-sortable (src/display/td-sortable.js, v0.31.0) + the drag handle of td-repeater[sortable] — the shared
+ * SortableController (src/utils/sortable-controller.js). Content layer (Minimal surfaces): the list / grid layout is the
+ * app's CSS; the kit draws the handle (ghost icon 32px, 44px on touch), the dragged item (solid surface + one shadow, no
+ * scale / lift), the lifted outline and the placeholder of the target slot.
+ * State (set by JS, never visual classes): host [data-td-dragging]; item [data-td-sort-state="dragging|lifted"];
+ * handle [aria-disabled="true"]. Positions come from CSSOM only (custom properties --_td-sort-x / --_td-sort-y on the
+ * items, left / top / width / height on the placeholder) — no style attribute in the markup, no injected <style>.
+ * No new public token (theming unchanged).
+ */
+@layer td.component {
+	td-sortable {
+		position: relative;
+		display: block;
+	}
+
+	/* the drag placeholder of a sortable repeater is positioned in the host */
+	td-repeater[sortable] {
+		position: relative;
+	}
+
+	/* the gallery recipe: <td-media-grid><td-sortable role="none">… — the sortable takes the whole row of the outer grid
+	   and is itself the grid, with the SAME column / gap tokens (a site changing --td-media-grid-cols on td-media-grid
+	   reaches it by inheritance). Specificity 0,0,2 beats `td-sortable { display: block }`. */
+	td-media-grid > td-sortable {
+		display: grid;
+		grid-template-columns: var(--td-media-grid-cols);
+		grid-column: 1 / -1;
+		gap: var(--td-media-grid-gap);
+	}
+
+	td-sortable[data-td-dragging],
+	td-repeater[data-td-dragging] {
+		cursor: grabbing;
+		user-select: none;
+		-webkit-user-select: none;
+	}
+
+	/* preview: the items move by the controller's offsets while a drag runs */
+	td-sortable[data-td-dragging] > [data-td-sort-item],
+	td-repeater[data-td-dragging] > [data-td-row] {
+		transform: translate(var(--_td-sort-x, 0px), var(--_td-sort-y, 0px));
+	}
+
+	@media (prefers-reduced-motion: no-preference) {
+		td-sortable[data-td-dragging] > [data-td-sort-item],
+		td-repeater[data-td-dragging] > [data-td-row] {
+			transition: transform 150ms var(--td-ease);
+		}
+	}
+
+	/* the dragged item follows the pointer: no transition, solid surface + one shadow, never scaled */
+	td-sortable[data-td-dragging] > [data-td-sort-state="dragging"],
+	td-repeater[data-td-dragging] > [data-td-sort-state="dragging"] {
+		position: relative;
+		z-index: 1;
+		background-color: var(--td-color-surface);
+		box-shadow: var(--td-glass-shadow);
+		transition: none;
+	}
+
+	[data-td-sort-state="lifted"] {
+		outline: 2px solid var(--td-accent);
+		outline-offset: 2px;
+	}
+
+	.td-sortable__placeholder {
+		position: absolute;
+		box-sizing: border-box;
+		pointer-events: none;
+		border: 1px dashed var(--td-control-border-strong);
+		border-radius: var(--td-radius-md);
+	}
+
+	/* an app-printed `button[data-td-sort-handle]` gets the same box BEFORE the element is defined (no layout shift) */
+	.td-sortable__handle,
+	td-sortable button[data-td-sort-handle],
+	td-repeater button[data-td-sort-handle] {
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		line-height: 0;
+		color: var(--td-color-text-muted);
+		cursor: grab;
+		touch-action: none;
+		-webkit-touch-callout: none;
+		user-select: none;
+		-webkit-user-select: none;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--td-radius-md);
+		box-shadow: none;
+		transition: background-color var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+	}
+
+	.td-sortable__handle:hover {
+		color: var(--td-color-text);
+		background: var(--td-color-hover-strong);
+	}
+
+	.td-sortable__handle:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-sortable__handle[aria-disabled="true"],
+	.td-sortable__handle[aria-disabled="true"]:hover {
+		color: var(--td-btn-disabled-fg);
+		cursor: not-allowed;
+		background: transparent;
+	}
+
+	td-repeater button[data-td-sort-handle][hidden] {
+		display: none; /* a non-sortable repeater hides the app handle (the box rule above would defeat [hidden]) */
+	}
+
+	.td-sortable__handle .td-icon {
+		pointer-events: none;
+	}
+
+	/* gallery recipe: the kit handle sits on the photo's top-end corner (the selection tick owns the top-start one),
+	   on a solid chip so the glyph keeps its contrast over any image */
+	td-media-grid > td-sortable > [data-td-sort-item] > .td-sortable__handle {
+		position: absolute;
+		top: var(--td-media-grid-tick-inset);
+		right: var(--td-media-grid-tick-inset);
+		z-index: 2;
+		background: var(--td-color-surface);
+		border-color: var(--td-color-border);
+	}
+
+	td-media-grid > td-sortable > [data-td-sort-item] > .td-sortable__handle:hover,
+	td-media-grid > td-sortable > [data-td-sort-item] > .td-sortable__handle[aria-disabled="true"] {
+		background: var(--td-color-surface);
+	}
+
+	/* an app placeholder for the kit handle keeps its 32px box before JS runs (no layout shift) */
+	[data-td-sort-handle]:empty:not(button) {
+		display: inline-flex;
+		flex: 0 0 auto;
+		min-width: 2rem;
+		min-height: 2rem;
+		vertical-align: middle;
+	}
+
+	/* an app-printed handle button is a dead control before the element is defined: hidden but keeping its box (not
+	   seen, not tabbable, not in the accessibility tree) */
+	td-sortable:not(:defined) button[data-td-sort-handle],
+	td-repeater:not(:defined) button[data-td-sort-handle] {
+		visibility: hidden;
+	}
+
+	@media (pointer: coarse) {
+		.td-sortable__handle,
+		td-sortable button[data-td-sort-handle],
+		td-repeater button[data-td-sort-handle] {
+			width: var(--td-touch-min);
+			height: var(--td-touch-min);
+		}
+
+		[data-td-sort-handle]:empty:not(button) {
+			min-width: var(--td-touch-min);
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-sortable__handle {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-sortable__handle {
+			color: ButtonText;
+		}
+
+		.td-sortable__handle[aria-disabled="true"] {
+			color: GrayText;
+		}
+
+		[data-td-sort-state="lifted"] {
+			outline-color: Highlight;
+		}
+
+		.td-sortable__placeholder {
+			border-color: CanvasText;
+		}
+	}
+}
+
+/* ---- src/styles/components/masked-value.css ---- */
+/*
+ * td-masked-value (src/display/td-masked-value.js, v0.31.0) — a server-masked string + one ghost icon toggle (the
+ * td-copy button style, 28px, 44px on touch). Content layer (Minimal surfaces): no surface / shadow.
+ * State (set by JS, never visual classes): text [data-state="revealed"] (full text colour, medium weight); toggle
+ * [aria-pressed], [aria-disabled="true"], [data-state="loading"] (the shared .td-spinner--sm replaces the icon; its
+ * reduced-motion rule applies). No JS: `td-masked-value:not(:defined)` keeps the toggle's box but hides it (no dead
+ * button) — only the masked string shows.
+ * No new public token (theming unchanged).
+ */
+@layer td.component {
+	td-masked-value {
+		display: inline-flex;
+		gap: 0.25rem;
+		align-items: center;
+		vertical-align: middle;
+		max-width: 100%;
+		line-height: normal; /* explicit: a site reset never changes the toggle */
+	}
+
+	.td-masked__text {
+		min-width: 0;
+		/* numeric, not `normal`: the text uses the page font, and `normal` follows the font's own metrics (a site font
+		   changed the height 18 → 19px under Tailwind preflight); a number keeps the box the same in every page font */
+		line-height: var(--td-leading-tight);
+		color: var(--td-color-text-muted);
+		font-variant-numeric: tabular-nums;
+		overflow-wrap: anywhere;
+	}
+
+	.td-masked__text[data-state="revealed"] {
+		color: var(--td-color-text);
+		font-weight: 500;
+	}
+
+	.td-masked__toggle {
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		width: 1.75rem;
+		height: 1.75rem;
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		line-height: 0;
+		color: var(--td-color-text-muted);
+		cursor: pointer;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--td-radius-md);
+		box-shadow: none;
+		transition: background-color var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+	}
+
+	.td-masked__toggle:hover {
+		color: var(--td-color-text);
+		background: var(--td-color-hover-strong);
+	}
+
+	.td-masked__toggle:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-masked__toggle[aria-disabled="true"],
+	.td-masked__toggle[aria-disabled="true"]:hover {
+		color: var(--td-btn-disabled-fg);
+		cursor: not-allowed;
+		background: transparent;
+	}
+
+	.td-masked__toggle[data-state="loading"],
+	.td-masked__toggle[data-state="loading"]:hover {
+		color: var(--td-color-text-muted);
+		cursor: progress;
+	}
+
+	.td-masked__icon {
+		display: inline-flex;
+		line-height: 0;
+		pointer-events: none;
+	}
+
+	.td-masked__icon[hidden] {
+		display: none;
+	}
+
+	.td-masked__icon .td-icon {
+		width: 1rem;
+		height: 1rem;
+	}
+
+	.td-masked__toggle .td-spinner {
+		--td-spinner-size: 1rem;
+		pointer-events: none;
+	}
+
+	/* No JS: the masked string only; the toggle keeps its box (no layout shift once defined) */
+	td-masked-value:not(:defined) .td-masked__toggle {
+		visibility: hidden;
+	}
+
+	@media (pointer: coarse) {
+		.td-masked__toggle {
+			width: var(--td-touch-min);
+			height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-masked__toggle {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-masked__toggle {
+			color: ButtonText;
+		}
+
+		.td-masked__toggle[aria-disabled="true"] {
+			color: GrayText;
+		}
+	}
+}
+
 /* ---- src/styles/components/media-picker.css ---- */
 /*
  * td-media-picker (src/feedback/td-media-picker.js, v0.32.0). The shell IS the td-modal DOM + modal.css (size, motion,

@@ -118,7 +118,7 @@ dòng → dùng công thức có index ở trên.
   nút × của dòng thế chỗ (hết dòng sau thì dòng trước, hết dòng → nút thêm) + "Đã xoá dòng 2. Còn 2 dòng."
 - **Sắp xếp** (↑ / ↓ — nút thật, Tab tới rồi Enter / Space): "lên" ở dòng 3 = dòng 2 chuyển xuống sau dòng 3. Kit luôn di
   chuyển dòng **hàng xóm**, nên dòng chứa nút đang focus không bị tách khỏi DOM: focus giữ ở nút vừa bấm, td-* trong dòng
-  đó không bị connect lại. + "Đã chuyển tới vị trí 2 / 3." Chưa có kéo thả / phím tắt riêng (đến ở v0.31 `td-sortable`).
+  đó không bị connect lại. + "Đã chuyển tới vị trí 2 trên 3." Kéo thả / nhấc bằng bàn phím: bật `sortable` (mục 6).
 - **Biên:** dòng đầu không lên, dòng cuối không xuống, ở `min-rows` không xoá, ở `max-rows` không thêm. Nút biên mang
   `aria-disabled="true"` (không `disabled`) → nút đang focus không mất focus khi vừa chạm biên; bấm thì không làm gì + thông
   báo ("Tối đa 20 dòng." / "Cần ít nhất 1 dòng.").
@@ -145,6 +145,30 @@ dựng lại thứ tự **từ DOM** (DOM là nguồn sự thật), gắn nút /
 `sync`. Vượt `max-rows` → **giữ hết** (không bao giờ xoá dữ liệu; nút thêm `aria-disabled`, một cảnh báo console); dưới
 `min-rows` → nối thêm dòng từ template cho đủ. Thay đổi do chính kit làm không phát `sync` trùng.
 
+### 6. Kéo thả và bàn phím: `sortable` (0.31.0)
+
+```html
+<td-repeater label="Hộp gồm" sortable>…</td-repeater>
+```
+
+Opt-in: **vắng `sortable` thì mọi hành vi của 0.30 giữ nguyên** (không tay nắm, không bộ điều khiển). Bật thì mỗi dòng có
+thêm tay nắm `button.td-repeater__btn.td-sortable__handle` **đầu** nhóm hành động (trước ↑ ↓ ×), cùng bộ điều khiển với
+[td-sortable](sortable.md): kéo tay nắm (chuột / cảm ứng / bút), hoặc focus tay nắm → Space / Enter nhấc, ↑ / ↓ / Home /
+End di chuyển, Space / Enter thả, Escape về chỗ cũ, chạm tay nắm dòng A rồi dòng C để chuyển (WCAG 2.5.7).
+
+- Tay nắm tên "Sắp xếp Dòng 2" (theo nhãn dòng), mô tả bằng đoạn hướng dẫn ẩn trong footer; văn bản ở
+  [`TdSortable.labels`](sortable.md#property--method) (dùng chung).
+- **Mỗi** bước bàn phím, **mỗi** lần thả và lần huỷ bằng Escape đi qua cùng đường di chuyển của ↑ / ↓ → **một**
+  `rows-change` `reason: 'move'` `source: 'user'` (đúng hợp đồng "sau mọi thay đổi cấu trúc") → công thức đặt tên chạy
+  sau mỗi bước, `FormData` luôn đúng thứ tự đang thấy. Repeater **không** phát `order-change`.
+- Trong lúc kéo DOM không đổi (không có `rows-change`); khung đích chèn **trước** footer và không bao giờ gây `sync`.
+- App tự chèn / gỡ dòng giữa lúc kéo / nhấc → thao tác bị huỷ (không di chuyển gì thêm) + một `rows-change` `sync` như
+  thường.
+- Dòng có sẵn `<button type="button" data-td-sort-handle>` của app (trong template / dòng server) → kit **nâng cấp** nút
+  đó thay vì chèn nút mới. Trước khi module chạy nút bị `td.css` ẩn (`visibility: hidden`, giữ chỗ); repeater **không**
+  `sortable` (hoặc tắt lúc chạy) → kit đặt `hidden` lên nút đó.
+- Nút ↑ / ↓ vẫn ở đó: đường chắc chắn nhất cho trình đọc màn hình ở browse mode.
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
@@ -153,6 +177,7 @@ dựng lại thứ tự **từ DOM** (DOM là nguồn sự thật), gắn nút /
 | `min-rows` | số nguyên 0–200 | `0` | Không bao giờ ít hơn: thiếu thì nối dòng từ template; × ở mức này `aria-disabled`. **Trần cứng 200** (`TdRepeater.MAX_MIN_ROWS`): giá trị lớn hơn (kể cả đổi attribute sau khi nâng cấp) bị **bỏ qua** (như `0`) + một cảnh báo — kit không bao giờ tự clone quá 200 dòng. |
 | `max-rows` | số nguyên ≥ 0 (được lớn hơn 200) | không giới hạn | Không thêm quá; dòng đã có (server in nhiều hơn) được giữ hết. `max-rows < min-rows` → `max = min` + cảnh báo. |
 | `add-label` | string | `TdRepeater.labels.add` | Chữ trên nút thêm. |
+| `sortable` | boolean | — | 0.31.0: tay nắm kéo thả + nhấc bằng bàn phím (mục 6). Bật / tắt lúc chạy được. |
 
 Đổi attribute sau khi nâng cấp → cập nhật tại chỗ (tăng `min-rows` → nối dòng + `rows-change` `sync`).
 
@@ -180,7 +205,7 @@ Object.assign(TdRepeater.labels, {
 
 Mặc định: `add` "Thêm dòng", `row` "Dòng {n}", `remove` "Xoá dòng {n}", `moveUp` "Chuyển dòng {n} lên", `moveDown`
 "Chuyển dòng {n} xuống", `added` "Đã thêm dòng {n}. Có {count} dòng.", `removed` "Đã xoá dòng {n}. Còn {count} dòng.",
-`moved` "Đã chuyển tới vị trí {n} / {count}.", `full` "Tối đa {max} dòng.", `atMin` "Cần ít nhất {min} dòng.".
+`moved` "Đã chuyển tới vị trí {n} trên {count}." (0.31.0; trước đó "{n} / {count}"), `full` "Tối đa {max} dòng.", `atMin` "Cần ít nhất {min} dòng.".
 
 ## Event
 
@@ -222,6 +247,7 @@ Không có animation.
   <div data-td-row class="box-row td-repeater__row" role="group" aria-label="Dòng 1" data-td-index="0">
     …field của app…
     <div class="td-repeater__actions">           <!-- hoặc [data-td-row-actions] của app (được thêm class này) -->
+      [<button type="button" class="td-repeater__btn td-repeater__btn--sort td-sortable__handle" aria-label="Sắp xếp Dòng 1" aria-describedby="td-repeater-1-sort-help">⠿</button>]   <!-- chỉ khi sortable -->
       <button type="button" class="td-repeater__btn td-repeater__btn--up" aria-label="Chuyển dòng 1 lên" aria-disabled="true">↑</button>
       <button type="button" class="td-repeater__btn td-repeater__btn--down" aria-label="Chuyển dòng 1 xuống">↓</button>
       <button type="button" class="td-repeater__btn td-repeater__btn--remove" aria-label="Xoá dòng 1">×</button>
@@ -244,6 +270,7 @@ Không có animation.
 |---|---|
 | Tab / Shift+Tab | Qua các field và nút của từng dòng theo thứ tự DOM, rồi nút thêm |
 | Enter / Space trên ↑ / ↓ / × / Thêm | Như bấm chuột |
+| Space / Enter, mũi tên, Home / End, Escape trên tay nắm (`sortable`) | Nhấc / di chuyển / thả / huỷ — xem [sortable](sortable.md#3-bàn-phím) |
 
 - Host và mỗi dòng là `role="group"` có tên ("Hộp gồm", "Dòng 2") → trình đọc màn hình báo đang ở dòng nào.
 - Nút có tên kèm số dòng ("Xoá dòng 2"); nút biên `aria-disabled` vẫn focus được và được đọc là "mờ".
@@ -281,5 +308,5 @@ Không có animation.
 
 ## Xem thêm
 
-- [Number input](number-input.md) · [Input field](input-field.md) · [Modal](modal.md) · [Media grid](media-grid.md)
+- [Number input](number-input.md) · [Input field](input-field.md) · [Modal](modal.md) · [Media grid](media-grid.md) · [Sortable](sortable.md)
 - [Form](../guides/forms.md) · [Trợ năng](../guides/accessibility.md) · [Theming](../customization/theming.md)
