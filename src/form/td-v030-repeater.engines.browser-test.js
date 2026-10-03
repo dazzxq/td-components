@@ -596,6 +596,44 @@ describe('td-repeater — limit change right after a direct DOM change (impl rev
   });
 });
 
+describe('td-repeater — limit change while detached (impl review round 3)', () => {
+  it('detach → insert a row → raise min-rows → reconnect: two rows, exactly one sync', async () => {
+    const w = mount(`<td-repeater min-rows="1">${ROW_TPL}${serverRow(0, 'a')}</td-repeater>`);
+    const rep = w.querySelector('td-repeater');
+    const rec = record(rep);
+    rep.remove();
+    const x = document.createElement('div');
+    x.setAttribute('data-td-row', '');
+    x.innerHTML = '<input value="x">';
+    rowsOf(rep)[0].after(x);
+    rep.setAttribute('min-rows', '2');
+    expect(rowsOf(rep).length).to.equal(2, 'nothing cloned while detached');
+    w.appendChild(rep);
+    await wait();
+    expect(rowsOf(rep).length).to.equal(2);
+    expect(rec.map((r) => r.reason)).to.deep.equal(['sync']);
+  });
+});
+
+describe('td-repeater — API while detached (impl review round 3)', () => {
+  it('detach → insert a row via DOM → rows / moveRow see it; reconnect emits no duplicate sync', async () => {
+    const w = mount(`<td-repeater>${ROW_TPL}${serverRow(0, 'a')}</td-repeater>`);
+    const rep = w.querySelector('td-repeater');
+    const rec = record(rep);
+    rep.remove();
+    const x = document.createElement('div');
+    x.setAttribute('data-td-row', '');
+    x.innerHTML = '<input value="x">';
+    rowsOf(rep)[0].after(x);
+    expect(rep.rows.length).to.equal(2);
+    expect(rep.moveRow(1, 0)).to.equal(true);
+    w.appendChild(rep);
+    await wait();
+    expect(names(rep)).to.deep.equal(['x', 'a']);
+    expect(rec.map((r) => r.reason)).to.deep.equal(['sync', 'move']);
+  });
+});
+
 describe('td-repeater — naming recipe from the docs (decision 7)', () => {
   const rename = (rows) => rows.forEach((row, i) => row.querySelectorAll('[data-name]')
     .forEach((el) => el.setAttribute('name', el.dataset.name.replaceAll('{i}', String(i)))));

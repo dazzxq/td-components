@@ -153,6 +153,8 @@ export class TdRepeater extends TdBaseElement {
     else if (name === 'add-label') this._syncAddLabel();
     else {
       this._applyLimits();
+      // detached: the model may be stale (no observer) — reconnect rebuilds it from the DOM and fills min (round 3)
+      if (!this.isConnected) return;
       this._flush(); // pending direct DOM changes first, under the new limits (impl review round 2)
       if (this._fillMin() > 0) this._changed({ reason: 'sync', source: 'api' });
       else this._paint();
@@ -444,14 +446,14 @@ export class TdRepeater extends TdBaseElement {
    * `sync` if the DOM and the model differ.
    */
   _flush() {
-    if (!this._mo || !this.isConnected) return;
-    this._mo.takeRecords();
-    this._sync();
+    if (!this._started) return;
+    this._mo?.takeRecords();
+    this._sync(true); // explicit (API / limits): also reconciles a started-but-detached repeater (impl review round 3)
   }
 
   /** @private outside change (MutationObserver): the DOM is the source of truth */
-  _sync() {
-    if (!this.isConnected || !this._started) return;
+  _sync(force = false) {
+    if (!this._started || (!force && !this.isConnected)) return;
     if (this._footer && this.lastElementChild !== this._footer) this.appendChild(this._footer);
     const rows = this._domRows();
     const keys = this._model.keys();
