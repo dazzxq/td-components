@@ -364,7 +364,7 @@ export function createFieldControl(descriptor, { idPrefix, signal, warn = consol
       control.addEventListener('change', userChange);
       get = () => {
         const v = opts.value(control.getValue());
-        return v === undefined || v === '' ? null : v;
+        return v === undefined ? null : v; // impl review #6: a listed '' option is a real value
       };
       set = (v) => {
         if (v === undefined || !isScalar(v) || ((v === null || v === '') && opts.tokens.tokenOf(v) === null)) {
@@ -508,10 +508,11 @@ export function createFieldControl(descriptor, { idPrefix, signal, warn = consol
 /**
  * @typedef {object} FacetControl
  * @property {string} key
+ * @property {'single'|'multiple'|'toggle'} type a descriptor of another type needs a new control
  * @property {HTMLElement} el `div.td-media-picker__facet[data-key][data-type]`
  * @property {() => (Scalar|Scalar[]|undefined)} get undefined = no filter
  * @property {(v: unknown) => void} set silent
- * @property {(facet: FacetDescriptor) => void} setDescriptor reload options, keep the value while still listed
+ * @property {(facet: FacetDescriptor) => void} setDescriptor reload options (same type), the current value always kept
  * @property {() => void} destroy
  */
 
@@ -566,6 +567,7 @@ export function createFacetControl(facet, { idPrefix, onChange } = {}) {
   /** @type {FacetControl} */
   const api = {
     key: f.key,
+    type,
     el,
     get() {
       if (type === 'single') return opts.value(control.getValue());
@@ -588,10 +590,13 @@ export function createFacetControl(facet, { idPrefix, onChange } = {}) {
         control.setValue(t);
       } else if (type === 'multiple') {
         const list = Array.isArray(v) ? v : (v === undefined ? [] : [v]);
-        control.setValue(list.filter(isScalar).map((x) => {
-          const t = opts.ensure(x, false);
+        const listed = opts.order.length;
+        const items = list.filter(isScalar).map((x) => {
+          const t = opts.ensure(x, true); // listed: a selection-only chip input keeps only listed values
           return { value: t, label: opts.label(t, true) };
-        }));
+        });
+        if (opts.order.length !== listed) control.options = opts.items(true);
+        control.setValue(items);
       } else {
         control.toggleAttribute('checked', v !== undefined && Object.is(v, onValue()));
       }
@@ -601,12 +606,13 @@ export function createFacetControl(facet, { idPrefix, onChange } = {}) {
       f = next;
       control.setAttribute('label', f.label);
       if (type === 'toggle') return;
+      // impl review #7: the COMPLETE typed current value survives a refresh — a value the new list omits keeps its token
+      // and its last label (listed again), so the control and the picker's filters never diverge
       const current = api.get();
       opts.reset(cleanOptions(f.options));
-      control.options = opts.items(true); // dropdown: a token no longer listed is dropped
-      if (type === 'multiple' && current) {
-        api.set(current.filter((v) => opts.order.includes(opts.tokens.tokenOf(v))));
-      }
+      if (current !== undefined) for (const v of Array.isArray(current) ? current : [current]) opts.ensure(v, true);
+      control.options = opts.items(true);
+      if (current !== undefined) api.set(current);
     },
     destroy() { destroyed = true; },
   };

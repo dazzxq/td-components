@@ -1867,10 +1867,17 @@ namespace {
      * and data-td-* reserved). `usage` + a name ending in `[]` → nothing is named (not submitted) + one E_USER_WARNING.
      * Never prints adapter endpoints, permissions or serialized assets.
      */
-    function td_media_field(string $name, string|int|null $assetId = null, array $o = []): string
+    function td_media_field(string $name, mixed $assetId = null, array $o = []): string
     {
         $L = Td::MEDIA_FIELD_LABELS;
-        $id = $assetId === null ? '' : (string) $assetId;
+        // impl review #5 (the v0.30 rule): ONLY string / int; anything else is rejected (never coerced) with a warning that
+        // names the PHP type only — never the value
+        if ($assetId === null || is_string($assetId) || is_int($assetId)) {
+            $id = $assetId === null ? '' : (string) $assetId;
+        } else {
+            trigger_error('td_media_field: $assetId (' . get_debug_type($assetId) . ') must be a string or an int — ignored', E_USER_WARNING);
+            $id = '';
+        }
         $hostId = td__str($o['id'] ?? null) ?? td__host_uid($name);
         $label = isset($o['label']) && is_scalar($o['label']) && !is_bool($o['label']) ? (string) $o['label'] : '';
         $help = td__str($o['helper_text'] ?? null);
@@ -1889,7 +1896,7 @@ namespace {
         $kindOpt = in_array($o['kind'] ?? null, ['image', 'video', 'file'], true) ? $o['kind'] : null;
         $src = td__media_url($o['preview_src'] ?? null);
         $pAlt = isset($o['preview_alt']) && is_scalar($o['preview_alt']) && !is_bool($o['preview_alt']) ? (string) $o['preview_alt'] : '';
-        $alt = isset($o['alt']) && is_scalar($o['alt']) && !is_bool($o['alt']) ? mb_substr((string) $o['alt'], 0, 500, 'UTF-8') : '';
+        $alt = isset($o['alt']) && is_scalar($o['alt']) && !is_bool($o['alt']) ? td__utf8_prefix((string) $o['alt'], 500) : '';
         $crop = td__media_crop($o['crop'] ?? null);
         $filled = $id !== '';
         $k = $filled ? ($kindOpt ?? 'image') : $kinds[0];
@@ -2160,6 +2167,14 @@ namespace {
             . '" data-tooltip="' . Td::e($name) . '"' . ($disabled ? ' aria-disabled="true"' : '') . '>'
             . '<span class="td-masked__icon" data-td-icon="eye" aria-hidden="true">' . Td::icon('eye') . '</span></button>'
             . '<span class="td-sr-only" role="status"></span></td-masked-value>';
+    }
+
+    /**
+     * @internal First $max code points of a UTF-8 string with PCRE (no mbstring: plain PHP ≥ 8.0); invalid UTF-8 → ''.
+     */
+    function td__utf8_prefix(string $s, int $max): string
+    {
+        return preg_match('/^.{0,' . $max . '}/su', $s, $m) === 1 ? $m[0] : '';
     }
 
     /** @internal v0.26.0: element mode of a form helper — per call `element` (true/false) overrides Td::configure. */

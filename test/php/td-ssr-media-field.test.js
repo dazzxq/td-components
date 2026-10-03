@@ -225,4 +225,28 @@ describe('php/td.php — td_media_field (v0.32.0, contract media-field@1)', opts
   test('test/ssr/fixtures/media-field.html (browser fixture) is up to date', () => {
     assert.equal(readFileSync(MEDIA_FIELD_FIXTURE_FILE, 'utf8'), renderMediaFieldFixture(), 'stale fixture: run `node test/ssr/build-media-field-fixture.mjs`');
   });
+
+  test('impl review #5: no mbstring / iconv calls anywhere in php/td.php (plain PHP ≥ 8.0)', () => {
+    const src = readFileSync(join(ROOT, 'php/td.php'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*(\/\/|#).*$/gm, '');
+    assert.equal(/\b(mb_[a-z_]+|iconv[a-z_]*)\s*\(/.test(src), false);
+  });
+
+  test('impl review #5: alt truncated to 500 code points with UTF-8 PCRE (astral chars intact)', () => {
+    const { html } = one('og', 'a1', { usage: true, alt: '😀'.repeat(600) });
+    const alt = /class="td-field__control td-media-field__alt"[^>]* value="([^"]*)"/.exec(html) || /td-media-field__alt[^>]*value="([^"]*)"/.exec(html);
+    assert.ok(alt, html);
+    assert.equal([...alt[1]].length, 500);
+  });
+
+  test('impl review #5: $assetId accepts only string / int; float / bool / array → ignored + one bounded warning, never coerced', () => {
+    const out = run([['h', 12, {}], ['h', 'x9', {}], ['h', 12.5, {}], ['h', true, {}], ['h', ['m1'], {}], ['h', null, {}]]);
+    assert.equal(hostAttr(out[0].html, 'value'), '12');
+    assert.equal(hostAttr(out[1].html, 'value'), 'x9');
+    for (const i of [2, 3, 4]) {
+      assert.equal(out[i].warns, 1, String(i));
+      assert.equal(hostAttr(out[i].html, 'value'), null, String(i));
+      assert.ok(/td-media-field__value" name="h" value=""/.test(out[i].html), String(i));
+    }
+    assert.equal(out[5].warns, 0);
+  });
 });

@@ -224,7 +224,7 @@ td_multiselect(string $name, array $options, array $selected = [], array $opts =
 td_tree_select(string $name, array $tree, string|int|array|null $selected = null, array $opts = []): string   // 0.29.0
 td_number_input(string $name, mixed $value = null, array $opts = []): string   // 0.30.0
 td_masked_value(string $masked, array $opts = []): string   // 0.31.0 (luôn element, không có tham số giá trị thật)
-td_media_field(string $name, string|int|null $assetId = null, array $o = []): string    // 0.32.0 (luôn element)
+td_media_field(string $name, mixed $assetId = null, array $o = []): string    // 0.32.0 (luôn element; $assetId chỉ string | int)
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
 td_stylesheet_tag(?string $nonce = null): string

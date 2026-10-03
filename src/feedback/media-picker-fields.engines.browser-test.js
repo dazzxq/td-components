@@ -440,7 +440,7 @@ describe('media-picker-fields — facets (decision 18)', () => {
     expect(changes).to.equal(2);
   });
 
-  it('setDescriptor reloads options (new counts) and KEEPS the value while still present', async () => {
+  it('setDescriptor reloads options (new counts) and KEEPS the value — even when the refresh omits it (impl review #7)', async () => {
     const f = mountFacet({ key: 'a', label: 'Album', type: 'single', options: [{ value: 1, label: 'A', count: 1 }, { value: 2, label: 'B', count: 3 }] });
     await tick();
     const dd = f.el.querySelector('td-dropdown');
@@ -449,13 +449,13 @@ describe('media-picker-fields — facets (decision 18)', () => {
     expect(f.get()).to.equal(2);
     expect(ddText(dd)).to.equal('B (5)');
     f.setDescriptor(normalizeFacets([{ key: 'a', label: 'Album', type: 'single', options: [{ value: 1, label: 'A', count: 0 }] }])[0]);
-    expect(f.get()).to.equal(undefined);
+    expect(f.get()).to.equal(2);
 
     const m = mountFacet({ key: 't', label: 'T', type: 'multiple', options: [{ value: 1, label: 'X' }, { value: '1', label: 'Y' }] });
     await tick();
     m.set([1, '1']);
     m.setDescriptor(normalizeFacets([{ key: 't', label: 'T', type: 'multiple', options: [{ value: '1', label: 'Y', count: 4 }] }])[0]);
-    expect(sameList(m.get(), ['1'])).to.equal(true);
+    expect(sameList(m.get(), [1, '1'])).to.equal(true);
   });
 });
 
@@ -707,5 +707,39 @@ describe('media-picker-fields — review SEC-3 r3: readonly accepts scalars only
     expect(f.el.querySelector('.td-media-picker__readonly-value').textContent).to.equal('');
     f.set('v');
     expect(f.el.querySelector('.td-media-picker__readonly-value').textContent).to.equal('v');
+  });
+});
+
+describe('media-picker-fields — impl review round 1', () => {
+  it('#6 select: a valid "" option round-trips as "" (not null)', async () => {
+    const f = mountField({ key: 's', label: 'S', control: 'select', options: [{ value: '', label: 'Trống' }, { value: 'a', label: 'A' }] });
+    await tick();
+    f.set('');
+    expect(f.get()).to.equal('');
+    f.set('a');
+    await ddPick(f.control, 'Trống');
+    expect(f.get()).to.equal('');
+  });
+
+  it('#7 facet refresh omitting the selected value keeps the typed value, token and label (single + multiple)', async () => {
+    const single = mountFacet({ key: 'a', label: 'A', type: 'single', options: [{ value: 1, label: 'Một' }, { value: 2, label: 'Hai' }] });
+    await tick();
+    single.set(2);
+    single.setDescriptor(normalizeFacets([{ key: 'a', label: 'A', type: 'single', options: [{ value: 1, label: 'Một' }] }], silent)[0]);
+    await tick();
+    expect(Object.is(single.get(), 2)).to.equal(true);
+    expect(ddText(single.el.querySelector('td-dropdown'))).to.equal('Hai');
+    const multi = mountFacet({ key: 'b', label: 'B', type: 'multiple', options: [{ value: 1, label: 'Một' }, { value: '2', label: 'Hai' }] });
+    await tick();
+    multi.set([1, '2']);
+    multi.setDescriptor(normalizeFacets([{ key: 'b', label: 'B', type: 'multiple', options: [{ value: 1, label: 'Một' }] }], silent)[0]);
+    await tick();
+    expect(sameList(multi.get(), [1, '2'])).to.equal(true);
+    expect(chipLabels(multi.el.querySelector('td-chip-input'))).to.deep.equal(['Một', 'Hai']);
+  });
+
+  it('#8 facet control exposes its type (the picker replaces a control whose type changed)', () => {
+    const t = mountFacet({ key: 'c', label: 'C', type: 'toggle', options: [] });
+    expect(t.type).to.equal('toggle');
   });
 });

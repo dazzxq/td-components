@@ -626,10 +626,14 @@ export class TdMediaPicker extends HTMLElement {
     return out.then((raw) => {
       if (this._s !== s || this._settled || signal.aborted) throw Object.assign(new Error('closed'), { name: 'AbortError' });
       const asset = normalizeAsset(raw && raw.asset, { safeUrl: safeMediaUrl, metadataKeys: s.metaKeys });
-      const d = raw && raw.deduplication;
-      const dedup = d && d.outcome === 'exact-reused' && typeof d.matchedAssetId === 'string'
-        ? { outcome: 'exact-reused', matchedAssetId: d.matchedAssetId } : { outcome: 'created' };
-      if (!asset) {
+      // impl review #4: only { outcome: 'created' } or { outcome: 'exact-reused', matchedAssetId === asset.id }
+      const d = raw && typeof raw === 'object' ? raw.deduplication : null;
+      let dedup = null;
+      if (asset && d && typeof d === 'object') {
+        if (d.outcome === 'created') dedup = { outcome: 'created' };
+        else if (d.outcome === 'exact-reused' && d.matchedAssetId === asset.id) dedup = { outcome: 'exact-reused', matchedAssetId: asset.id };
+      }
+      if (!asset || !dedup) {
         console.warn('td-media-picker: malformed upload result (ignored)'); // never the raw result (review SEC-2)
         throw new Error(this._t('uploadError'));
       }
@@ -904,9 +908,29 @@ export class TdMediaPicker extends HTMLElement {
       s.facets.delete(k);
       delete s.filters[k];
     }
+    let filtersChanged = false;
     for (const f of list) {
       let c = s.facets.get(f.key);
-      if (c) {
+      if (c && c.type !== f.type) {
+        // impl review #8: the type changed → a new control; the typed filter is re-applied when the new control accepts
+        // it (read back through the control), else cleared — control and filters stay consistent
+        c.destroy();
+        c.el.remove();
+        s.facets.delete(f.key);
+        c = null;
+        const before = s.filters[f.key];
+        const fresh = createFacetControl(f, { idPrefix: `${s.id}-f`, onChange: () => this._onFacetChange(f.key) });
+        s.facets.set(f.key, fresh);
+        if (before !== undefined) {
+          fresh.set(f.type === 'multiple' && !Array.isArray(before) ? [before] : before);
+          const after = fresh.get();
+          if (after === undefined || (Array.isArray(after) && !after.length)) delete s.filters[f.key];
+          else s.filters[f.key] = after;
+          filtersChanged = filtersChanged || JSON.stringify([before]) !== JSON.stringify([s.filters[f.key]])
+            || typeof before !== typeof s.filters[f.key];
+        }
+        c = fresh;
+      } else if (c) {
         c.setDescriptor(f);
       } else {
         c = createFacetControl(f, {
@@ -921,6 +945,7 @@ export class TdMediaPicker extends HTMLElement {
     box.hidden = list.length === 0;
     s.els.filtersToggle.hidden = list.length === 0;
     this._renderFiltersToggle();
+    if (filtersChanged) this._loadList(); // the shown list must match the filters now in force
   }
 
   /** @private */
@@ -1052,18 +1077,27 @@ export class TdMediaPicker extends HTMLElement {
       if (!t.closest || !t.closest('[data-td-media-open]')) return;
       preClear(ev, itemOf(t));
     }, true);
-    grid.addEventListener('activate', (ev) => {
+    grid.addEventListener('activate', async (ev) => {
       ev.preventDefault();
       const id = ev.detail.id;
       const asset = s.cache.getAsset(id);
-      if (!asset) return;
+      // the single-mode pre-clear may have emptied the grid: read it now, before any re-sync
       const hadSelection = (grid.selectedIds || []).length > 0;
+      if (!asset) { this._syncGrid(); return; }
+      // impl review #1: a dirty edit of another asset → consent FIRST; selection + grid stay as they are meanwhile
+      if (s.edit && s.detailId !== id && this._editBusy()) {
+        this._syncGrid();
+        if (!(await this._confirmDiscard())) return;
+        if (this._s !== s || this._settled) return;
+        this._closeEdit();
+      }
       if (!hadSelection && !s.model.has(id)) {
         if (!this._selectable(asset)) this._announce(this._t('notReady'));
         else if (s.mode === 'single') this._userChange(() => s.model.add(asset));
         else if (s.model.remaining <= 0) this._announce(this._t('limit', { max: s.model.max }));
         else this._userChange(() => s.model.add(asset));
       }
+      this._syncGrid(); // impl review #2: a rejected activation leaves grid = model
       this._showDetail(id);
     });
     grid.addEventListener('select-change', (ev) => this._onGridChange(ev.detail));
@@ -1553,7 +1587,7 @@ export class TdMediaPicker extends HTMLElement {
           if (!asset || asset.id !== ed.id) return;
           s.cache.putAsset(asset);
           ed.asset = asset;
-          ed.form.setValues(asset.metadata); // overwritten only now, after the user asked
+          ed.form.setValues(asset.metadata, asset); // overwritten only now; visibleWhen sees the new asset (impl review #3)
           ed.form.snapshot();
           ed.notice.hidden = true;
           ed.notice.replaceChildren();

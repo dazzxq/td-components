@@ -1346,3 +1346,134 @@ describe('td-media-picker — review SEC-2: raw adapter errors never reach the c
     }
   });
 });
+
+describe('td-media-picker — impl review round 1', () => {
+  const dirtyEdit = async (id = 'm60', o = {}) => {
+    const r = await openReady({ assetFields: assetFields(), ...o });
+    click(opener(id));
+    await until(() => q('.td-media-picker__edit'), 3000, 'edit button');
+    q('.td-media-picker__edit').click();
+    const title = await until(() => q('.td-media-picker__field[data-key="title"] input'), 3000, 'title');
+    title.focus();
+    await sendKeys({ type: 'x' });
+    return r;
+  };
+
+  it('#1 single + dirty form: activating another asset asks FIRST; selection + grid unchanged while asking; no → nothing changes; yes → switch', async () => {
+    const { promise } = await dirtyEdit();
+    const changes = [];
+    document.querySelector('td-media-picker').addEventListener('selection-change', (e) => changes.push(e.detail));
+    click(opener('m59'));
+    await until(() => discardDialog(), 3000, 'discard dialog');
+    expect(grid().selectedIds).to.deep.equal(['m60']);
+    expect(confirmBtn().textContent).to.equal('Chọn (1)');
+    expect(changes.length).to.equal(0);
+    clickDiscard(false);
+    await wait(80);
+    expect(grid().selectedIds).to.deep.equal(['m60']);
+    expect(changes.length).to.equal(0);
+    expect(q('.td-media-picker__save') !== null, 'still editing').to.equal(true);
+    click(opener('m59'));
+    await until(() => discardDialog(), 3000, 'discard dialog 2');
+    clickDiscard(true);
+    await until(() => q('.td-media-picker__detail-name')?.textContent === assetName('m59'), 3000, 'switched');
+    expect(grid().selectedIds).to.deep.equal(['m59']);
+    expect(changes.length).to.equal(1);
+    confirmBtn().click();
+    expect((await promise).selection.map((x) => x.assetId)).to.deep.equal(['m59']);
+  });
+
+  it('#2 single: a rejected activation (not ready) leaves grid = model', async () => {
+    const ad = createMockAdapter();
+    ad.db.get('m59').status = 'processing';
+    await openReady({ adapter: ad });
+    click(opener('m60'));
+    expect(grid().selectedIds).to.deep.equal(['m60']);
+    click(opener('m59'));
+    await wait(30);
+    expect(live()).to.equal(TdMediaPicker.labels.notReady);
+    expect(grid().selectedIds).to.deep.equal(['m60']);
+    expect(confirmBtn().textContent).to.equal('Chọn (1)');
+  });
+
+  it('#3 conflict reload gives the NEW asset to visibleWhen', async () => {
+    const ad = createMockAdapter();
+    const fields = [...assetFields(), { key: 'note', label: 'Ghi chú v2', control: 'text', visibleWhen: (v, asset) => !!asset && asset.version >= 2 }];
+    await openReady({ adapter: ad, assetFields: fields });
+    click(opener('m60'));
+    await until(() => q('.td-media-picker__edit'), 3000, 'edit');
+    q('.td-media-picker__edit').click();
+    await until(() => q('.td-media-picker__save'), 3000, 'save');
+    expect(q('.td-media-picker__field[data-key="note"]').hidden).to.equal(true);
+    ad.db.get('m60').version = 2; // changed elsewhere → the save conflicts
+    q('.td-media-picker__save').click();
+    await until(() => q('.td-media-picker__reload'), 3000, 'reload button');
+    q('.td-media-picker__reload').click();
+    await until(() => !q('.td-media-picker__field[data-key="note"]').hidden, 3000, 'note visible for v2');
+  });
+
+  it('#4 upload result: exact-reused with a mismatching matchedAssetId / an unknown outcome = malformed (error row, no asset-change)', async () => {
+    const ad = createMockAdapter();
+    let n = 0;
+    ad.upload = async () => {
+      n += 1;
+      const asset = JSON.parse(JSON.stringify(ad.db.get('m58')));
+      return n === 1 ? { asset, deduplication: { outcome: 'exact-reused', matchedAssetId: 'm1' } }
+        : n === 2 ? { asset, deduplication: { outcome: 'weird' } } : { asset, deduplication: null };
+    };
+    const changes = [];
+    await openReady({ adapter: ad });
+    document.querySelector('td-media-picker').addEventListener('asset-change', (e) => changes.push(e.detail));
+    q('.td-media-picker__upload-toggle').click();
+    dropzone().addFiles([file('a.png')]);
+    dropzone().addFiles([file('b.png')]);
+    dropzone().addFiles([file('c.png')]);
+    await until(() => dropzone().querySelectorAll('[data-status="error"]').length === 3, 3000, '3 error rows');
+    expect(changes.length).to.equal(0);
+    expect([...dropzone().querySelectorAll('.td-dropzone__status')].every((x) => x.textContent === TdMediaPicker.labels.uploadError)).to.equal(true);
+  });
+
+  it('#8 a facet whose type changes on reload gets a new control; the typed filter is re-applied when compatible, else cleared', async () => {
+    const ad = createMockAdapter();
+    let call = 0;
+    ad.facets = async () => {
+      call += 1;
+      if (call === 1) return [{ key: 'k', label: 'K', type: 'single', options: [{ value: 1, label: 'Một' }, { value: 2, label: 'Hai' }] },
+        { key: 'z', label: 'Z', type: 'single', options: [{ value: 'a', label: 'A' }] }];
+      return [{ key: 'k', label: 'K', type: 'multiple', options: [{ value: 1, label: 'Một' }, { value: 2, label: 'Hai' }] },
+        { key: 'z', label: 'Z', type: 'toggle', options: [{ value: 'mine', label: 'Của tôi' }] }];
+    };
+    const calls = [];
+    const list = ad.list;
+    ad.list = (req) => { calls.push(req); return list({ ...req, filters: {} }); };
+    await openReady({ adapter: ad });
+    await until(() => q('.td-media-picker__facet[data-key="k"] td-dropdown'), 3000, 'single facet');
+    // set z first (no reload of types yet: call 2 happens on the first change)
+    await ddPick(q('.td-media-picker__facet[data-key="z"] td-dropdown'), 'A');
+    await until(() => q('.td-media-picker__facet[data-key="k"] td-chip-input'), 3000, 'k replaced by a chip input');
+    expect(q('.td-media-picker__facet[data-key="k"] td-dropdown') === null).to.equal(true);
+    expect(q('.td-media-picker__facet[data-key="z"] td-toggle') !== null).to.equal(true);
+    // z = 'a' is not compatible with the toggle (on = 'mine') → cleared, and the list request follows
+    await until(() => calls.length && !('z' in calls.at(-1).filters), 3000, 'z cleared in the request');
+    expect(q('.td-media-picker__facet[data-key="z"] td-toggle').hasAttribute('checked')).to.equal(false);
+  });
+
+  it('#8 compatible: single value 2 → multiple [2] after the type change', async () => {
+    const ad = createMockAdapter();
+    let call = 0;
+    ad.facets = async () => {
+      call += 1;
+      const type = call === 1 ? 'single' : 'multiple';
+      return [{ key: 'k', label: 'K', type, options: [{ value: 1, label: 'Một' }, { value: 2, label: 'Hai' }] }];
+    };
+    const calls = [];
+    const list = ad.list;
+    ad.list = (req) => { calls.push(req); return list({ ...req, filters: {} }); };
+    await openReady({ adapter: ad });
+    await until(() => q('.td-media-picker__facet[data-key="k"] td-dropdown'), 3000, 'single facet');
+    await ddPick(q('.td-media-picker__facet[data-key="k"] td-dropdown'), 'Hai');
+    await until(() => q('.td-media-picker__facet[data-key="k"] td-chip-input'), 3000, 'chip input');
+    await until(() => calls.length && JSON.stringify(calls.at(-1).filters.k) === '[2]', 3000, 'k = [2]');
+    expect([...q('.td-media-picker__facet[data-key="k"] td-chip-input').querySelectorAll('.td-chip-input__chip-label')].map((x) => x.textContent.trim())).to.deep.equal(['Hai']);
+  });
+});

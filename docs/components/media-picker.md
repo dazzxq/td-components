@@ -381,7 +381,7 @@ duyệt sâu giá trị metadata của adapter.
 | `multiple` | [`td-chip-input`](chip-input.md) `selection-only` | `Scalar[]`; rỗng → không có key |
 | `toggle` | [`td-toggle`](toggle.md) | bật = `options[0].value` (không có → `true`); tắt → không có key |
 
-`count` hiện trong nhãn option ("Album A (12)"). Giá trị đang chọn giữ khi descriptor tải lại (option không còn → bỏ).
+`count` hiện trong nhãn option ("Album A (12)"). Giá trị đang chọn giữ **nguyên kiểu** khi descriptor tải lại — kể cả khi danh sách mới không còn option đó (giữ nhãn cũ). Facet đổi `type` khi tải lại → control mới; filter được áp lại nếu control mới nhận được (vd. `single` 2 → `multiple` [2]), không thì xoá khỏi filter và tải lại list.
 Đổi facet → tải lại list + facet **ngay** (không debounce). ≤ 640px facet gom sau nút "Bộ lọc ({n})".
 Chữ của control facet / descriptor nằm ở `TdMediaPicker.fieldLabels` (đổi theo site, đọc lúc dùng): `all` "Tất cả"
 (placeholder facet `single`), `create` "Thêm mới" (`create-label` khi có `createOption`), `generalErrors` "Lỗi" (tên danh
