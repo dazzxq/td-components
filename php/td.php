@@ -32,6 +32,8 @@
  *     `data-td-ssr="tree-select@1"` (the select styled to the trigger box — no layout shift, single and multiple).
  *   - v0.26.0 td_empty prints `<td-empty-state data-td-ssr="empty-state@1">` + the full styled tree (always element),
  *     hydrated in place by `@dazzxq/td-components/empty-state`.
+ *   - v0.32.0 td_media_field prints `<td-media-field data-td-ssr="media-field@1">` + the full tree (always element) +
+ *     the no-JS hidden inputs (assetId / crop) and the alt input name, adopted in place by `@dazzxq/td-components/media-field`.
  *   - td_icon prints `svg.td-icon` with the full geometry of src/icons/icons.json (+ Td::registerIcons()).
  *   - td_badge prints a CSS-only `span.td-badge…` (no JS, no custom element).
  *   - td_alert prints a `<td-alert>` host that ALREADY contains the full styled markup `div.td-alert` (icon, heading,
@@ -149,6 +151,21 @@ namespace TdComponents {
         public const SSR_TREE_SELECT = 'tree-select@1';
         /** v0.30.0: td_number_input element mode (<td-number-input> + the native type=number control). */
         public const SSR_NUMBER = 'number-input@1';
+        /** v0.32.0: td_media_field (always the element <td-media-field> + the no-JS hidden inputs). */
+        public const SSR_MEDIA_FIELD = 'media-field@1';
+        /** @internal JS `\s` (String.prototype.trim / RegExp \s) as a PCRE /u class body — parity with media-field-model.js. */
+        public const JS_WS = '\t\n\x{0B}\f\r \x{A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}';
+        /** v0.32.0: default texts of td_media_field = TdMediaField.labels (Vietnamese; a site overriding the JS labels gets a safe re-render). */
+        public const MEDIA_FIELD_LABELS = [
+            'prompt' => ['image' => 'Chọn ảnh', 'video' => 'Chọn video', 'file' => 'Chọn file'],
+            'replace' => ['image' => 'Đổi ảnh', 'video' => 'Đổi video', 'file' => 'Đổi file'],
+            'remove' => 'Gỡ',
+            'alt' => 'Mô tả ảnh (alt)',
+            'empty' => 'Chưa chọn',
+            'selected' => 'Đã chọn: {name}',
+            'noPreview' => 'Đã chọn (không có ảnh xem trước)',
+            'video' => 'Video',
+        ];
 
         /**
          * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.30.0') —
@@ -1827,6 +1844,278 @@ namespace {
             . '<button type="button" class="td-copy td-copy--' . $size . '" aria-label="' . Td::e($name) . '" data-tooltip="' . Td::e($name) . '">'
             . '<span class="td-copy__icon" data-td-icon="copy" aria-hidden="true">' . Td::icon('copy') . '</span></button>'
             . '<span class="td-copy__status" role="status"></span></td-copy>';
+    }
+
+    /**
+     * v0.32.0 media field (contract media-field@1, plan v0.32.0-media-picker decisions 24-25, 29) — ALWAYS the element:
+     * `<td-media-field data-td-ssr="media-field@1" …>` + the exact tree <td-media-field> renders (label, frame with the
+     * SVG ratio sizer + the open button showing the empty prompt / preview image / file name, Đổi / Gỡ buttons, the alt
+     * input in `usage` mode, helper + error notes) + the NO-JS form parts: a hidden `input.td-media-field__value`
+     * (`name` = assetId, or `name[id]` with `usage`), the alt input's `name[alt]` and a hidden `input.td-media-field__crop`
+     * (`name[crop]` = the JSON v1 crop or `null`) — exactly the FormData of the component (decision 24). The open / Đổi /
+     * Gỡ buttons are hidden by td.css until the module `@dazzxq/td-components/media-field` defines the element (no dead
+     * control); it adopts the markup IN PLACE. $assetId is the opaque id (identity + form value); the preview URL is
+     * display only. `required` cannot be checked by the browser without JS (hidden input): validate on the server.
+     * Options: label, helper_text, error_text, required, disabled, aspect_ratio (`W/H`, `W:H` or one number; invalid →
+     * dropped + one E_USER_WARNING), preview_fit (cover|contain), preview_src (Td::safeUrl, then only https: / allowed
+     * http: / relative — mailto: / tel: / data: refused → no image), preview_alt (file name / description shown), kind
+     * (image|video|file of $assetId), accept_kind (string list or array; default image), usage (bool), alt (max 500),
+     * crop (array x / y / width / height in 0..1, or the JSON v1 string → printed / submitted as JSON v1; invalid → null +
+     * one E_USER_WARNING), prompt, id (host id; inner ids derive from it), class, attrs (host: allowlisted; owned names
+     * and data-td-* reserved). `usage` + a name ending in `[]` → nothing is named (not submitted) + one E_USER_WARNING.
+     * Never prints adapter endpoints, permissions or serialized assets.
+     */
+    function td_media_field(string $name, string|int|null $assetId = null, array $o = []): string
+    {
+        $L = Td::MEDIA_FIELD_LABELS;
+        $id = $assetId === null ? '' : (string) $assetId;
+        $hostId = td__str($o['id'] ?? null) ?? td__host_uid($name);
+        $label = isset($o['label']) && is_scalar($o['label']) && !is_bool($o['label']) ? (string) $o['label'] : '';
+        $help = td__str($o['helper_text'] ?? null);
+        $error = td__str($o['error_text'] ?? null);
+        $prompt = td__str($o['prompt'] ?? null);
+        $required = !empty($o['required']);
+        $disabled = !empty($o['disabled']);
+        $usage = !empty($o['usage']);
+        $kinds = td__media_kinds($o['accept_kind'] ?? null);
+        $ratioRaw = isset($o['aspect_ratio']) && is_scalar($o['aspect_ratio']) && !is_bool($o['aspect_ratio']) ? (string) $o['aspect_ratio'] : null;
+        $ratio = $ratioRaw !== null && $ratioRaw !== '' ? td__media_ratio($ratioRaw) : null;
+        if ($ratio === null && $ratioRaw !== null && $ratioRaw !== '') {
+            trigger_error('td_media_field: aspect_ratio is not W/H, W:H or a positive number (≤ 10000, ≤ 4 decimals) — ignored', E_USER_WARNING);
+        }
+        $fit = in_array($o['preview_fit'] ?? null, ['cover', 'contain'], true) ? $o['preview_fit'] : null;
+        $kindOpt = in_array($o['kind'] ?? null, ['image', 'video', 'file'], true) ? $o['kind'] : null;
+        $src = td__media_url($o['preview_src'] ?? null);
+        $pAlt = isset($o['preview_alt']) && is_scalar($o['preview_alt']) && !is_bool($o['preview_alt']) ? (string) $o['preview_alt'] : '';
+        $alt = isset($o['alt']) && is_scalar($o['alt']) && !is_bool($o['alt']) ? mb_substr((string) $o['alt'], 0, 500, 'UTF-8') : '';
+        $crop = td__media_crop($o['crop'] ?? null);
+        $filled = $id !== '';
+        $k = $filled ? ($kindOpt ?? 'image') : $kinds[0];
+        $hid = Td::e($hostId);
+        $dis = $disabled ? ' disabled' : '';
+
+        // FormData of the component (decision 24): reference `name`, usage `name[id]` / `name[alt]` / `name[crop]`
+        $named = $name !== '';
+        if ($named && $usage && str_ends_with($name, '[]')) {
+            trigger_error('td_media_field: usage + a name ending in [] would mis-group name[id] / name[alt] / name[crop] — not submitted', E_USER_WARNING);
+            $named = false;
+        }
+        $hidden = static fn (string $class, string $n, string $v): string => '<input type="hidden" class="' . $class . '" name="'
+            . Td::e($n) . '" value="' . Td::e($v) . '"' . $dis . '>';
+        $valueInput = $named ? $hidden('td-media-field__value', $usage ? $name . '[id]' : $name, $id) : '';
+        $cropInput = $named && $usage ? $hidden('td-media-field__crop', $name . '[crop]', $crop ?? 'null') : '';
+
+        if (!$filled) {
+            $inner = '<span class="td-media-field__empty"><span class="td-media-field__icon" data-td-icon="' . $k . '" aria-hidden="true">'
+                . Td::icon($k) . '</span><span class="td-media-field__prompt">' . Td::e($prompt ?? $L['prompt'][$k]) . '</span>'
+                . ($ratio !== null ? '<span class="td-media-field__ratio">' . Td::e($ratio['text']) . '</span>' : '') . '</span>';
+        } elseif ($src !== null && $k !== 'file') {
+            $inner = '<img class="td-media-field__img" src="' . Td::e($src) . '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">'
+                . ($k === 'video' ? '<span class="td-media-field__badge">' . Td::e($L['video']) . '</span>' : '');
+        } else {
+            $inner = '<span class="td-media-field__file"><span class="td-media-field__icon" data-td-icon="' . $k . '" aria-hidden="true">'
+                . Td::icon($k) . '</span><span class="td-media-field__name">' . Td::e($pAlt !== '' ? $pAlt : $L['noPreview']) . '</span></span>';
+        }
+        $shown = $pAlt !== '' ? $pAlt : ($src !== null ? $id : '');
+        $state = !$filled ? $L['empty'] : ($shown !== '' ? str_replace('{name}', $shown, $L['selected']) : $L['noPreview']);
+        $described = implode(' ', array_filter([$help !== null ? $hostId . '-help' : '', $error !== null ? $hostId . '-error' : '']));
+
+        $taken = [];
+        $html = '<td-media-field' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_MEDIA_FIELD,
+            'id' => $hostId,
+            'class' => 'td-media-field' . Td::classTokens($o['class'] ?? null),
+            'name' => $name !== '' ? $name : null,
+            'label' => $label !== '' ? $label : null,
+            'aspect-ratio' => $ratio !== null ? $ratioRaw : null,
+            'preview-fit' => $fit,
+            'accept-kind' => array_key_exists('accept_kind', $o) && $o['accept_kind'] !== null ? implode(' ', $kinds) : null,
+            'usage' => $usage,
+            'required' => $required,
+            'disabled' => $disabled,
+            'value' => $filled ? $id : null,
+            'preview-src' => $src,
+            'preview-alt' => $pAlt !== '' ? $pAlt : null,
+            'kind' => $kindOpt,
+            'alt' => $alt !== '' ? $alt : null,
+            'crop' => $crop,
+            'prompt' => $prompt,
+            'helper-text' => $help,
+            'error-text' => $error,
+        ], $taken);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $taken = td__reserve(['id', 'class', 'name', 'label', 'aspect-ratio', 'preview-fit', 'accept-kind', 'usage', 'required',
+            'disabled', 'value', 'preview-src', 'preview-alt', 'kind', 'alt', 'crop', 'prompt', 'helper-text', 'error-text'], $extra, $taken);
+        return $html . Td::attrs($extra, $taken) . '>'
+            . '<span class="td-media-field__label" id="' . $hid . '-label">' . Td::e($label)
+            . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') . '</span>'
+            . '<div class="td-media-field__frame" data-state="' . ($filled ? 'filled' : 'empty') . '" data-kind="' . $k . '">'
+            . ($ratio !== null ? '<svg class="td-media-field__sizer" viewBox="0 0 ' . $ratio['w'] . ' ' . $ratio['h'] . '" aria-hidden="true" focusable="false"></svg>' : '')
+            . '<button type="button" class="td-media-field__open" aria-haspopup="dialog" aria-labelledby="' . $hid . '-label ' . $hid . '-state"'
+            . ($described !== '' ? ' aria-describedby="' . Td::e($described) . '"' : '')
+            . ($error !== null ? ' aria-invalid="true" aria-errormessage="' . $hid . '-error"' : '') . $dis . '>'
+            . $inner . '<span class="td-sr-only" id="' . $hid . '-state">' . Td::e($state) . '</span></button></div>'
+            . '<div class="td-media-field__actions"' . ($filled ? '' : ' hidden') . '>'
+            . '<button type="button" class="td-btn td-btn--secondary td-btn--sm td-media-field__replace" aria-haspopup="dialog"' . $dis . '>'
+            . Td::e($L['replace'][$k]) . '</button>'
+            . '<button type="button" class="td-btn td-btn--ghost td-btn--sm td-media-field__remove"' . $dis . '>' . Td::e($L['remove']) . '</button></div>'
+            . $valueInput
+            . ($usage
+                ? '<div class="td-field td-media-field__usage"><label class="td-field__label" for="' . $hid . '-alt">' . Td::e($L['alt']) . '</label>'
+                    . '<input type="text" class="td-field__control td-media-field__alt" id="' . $hid . '-alt" maxlength="500"'
+                    . ($named ? ' name="' . Td::e($name . '[alt]') . '"' : '') . ($alt !== '' ? ' value="' . Td::e($alt) . '"' : '') . $dis . '></div>'
+                : '')
+            . $cropInput
+            . ($help !== null ? '<span class="td-media-field__help" id="' . $hid . '-help">' . Td::e($help) . '</span>' : '')
+            . ($error !== null ? '<span class="td-field-error" id="' . $hid . '-error" data-for="' . $hid . '">' . Td::e($error) . '</span>' : '')
+            . '</td-media-field>';
+    }
+
+    /**
+     * @internal `aspect-ratio` → ['w', 'h', 'text'] (numbers as JS prints them: 4.50 → 4.5) or null; same rules as
+     * parseAspectRatio() of src/utils/media-field-model.js (ASPECT_CASES parity): W/H, W:H or one number, each > 0 and
+     * ≤ 10000, at most 5 integer + 4 decimal digits, no sign / exponent.
+     * @return array{w: string, h: string, text: string}|null
+     */
+    function td__media_ratio(string $v): ?array
+    {
+        $ws = Td::JS_WS;
+        $s = preg_replace('/^[' . $ws . ']+|[' . $ws . ']+$/uD', '', $v);
+        if (!is_string($s)) {
+            return null;
+        }
+        $num = '(\d{1,5}(?:\.\d{1,4})?)';
+        if (preg_match('/^' . $num . '[' . $ws . ']*[\/:][' . $ws . ']*' . $num . '$/uD', $s, $m)) {
+            [$w, $h] = [$m[1], $m[2]];
+        } elseif (preg_match('/^' . $num . '$/uD', $s, $m)) {
+            [$w, $h] = [$m[1], '1'];
+        } else {
+            return null;
+        }
+        $wf = (float) $w;
+        $hf = (float) $h;
+        if (!($wf > 0 && $hf > 0 && $wf <= 10000 && $hf <= 10000)) {
+            return null;
+        }
+        $norm = static function (string $n): string {
+            $parts = explode('.', $n, 2);
+            $i = ltrim($parts[0], '0');
+            $f = rtrim($parts[1] ?? '', '0');
+            return ($i === '' ? '0' : $i) . ($f === '' ? '' : '.' . $f);
+        };
+        $w = $norm($w);
+        $h = $norm($h);
+        return ['w' => $w, 'h' => $h, 'text' => $w . ':' . $h];
+    }
+
+    /**
+     * @internal `accept_kind` (string list split on whitespace / commas, or an array) → valid unique kinds in order;
+     * none → ['image'] (parseKinds() parity).
+     * @return list<string>
+     */
+    function td__media_kinds(mixed $v): array
+    {
+        $ws = Td::JS_WS;
+        $list = is_array($v) ? $v : (is_string($v) ? (preg_split('/[' . $ws . ',]+/u', $v) ?: []) : []);
+        $out = [];
+        foreach ($list as $k) {
+            $l = is_string($k) ? strtolower((string) preg_replace('/^[' . $ws . ']+|[' . $ws . ']+$/uD', '', $k)) : '';
+            if (in_array($l, ['image', 'video', 'file'], true) && !in_array($l, $out, true)) {
+                $out[] = $l;
+            }
+        }
+        return $out ?: ['image'];
+    }
+
+    /**
+     * @internal Preview URL (display only): Td::safeUrl() (tab / CR / LF stripped, http: only when allowed), then only
+     * https: / http: or a scheme-less URL — mailto: / tel: refused; ≤ 8192 characters. null when refused.
+     */
+    function td__media_url(mixed $v): ?string
+    {
+        if (!is_string($v)) {
+            return null;
+        }
+        $u = Td::safeUrl($v);
+        if ($u === '' || strlen($u) > 8192) {
+            return null;
+        }
+        if (preg_match('/^([A-Za-z][A-Za-z0-9+.\-]*):/', $u, $m) && !in_array(strtolower($m[1]), ['https', 'http'], true)) {
+            return null;
+        }
+        return $u;
+    }
+
+    /**
+     * @internal The `crop` option → the JSON v1 string printed + submitted as is (parseCrop() parity, CROP_CASES), or
+     * null. An array x / y / width / height (numbers) is encoded first; null / '' / 'null' → null silently; anything
+     * invalid → null + ONE E_USER_WARNING.
+     */
+    function td__media_crop(mixed $v): ?string
+    {
+        if ($v === null || $v === '' || $v === 'null') {
+            return null;
+        }
+        $json = null;
+        if (is_string($v)) {
+            $json = $v;
+        } elseif (is_array($v)) {
+            $keys = array_keys($v);
+            sort($keys);
+            $nums = true;
+            foreach (['x', 'y', 'width', 'height'] as $key) {
+                $n = $v[$key] ?? null;
+                $nums = $nums && (is_int($n) || is_float($n)) && is_finite((float) $n);
+            }
+            if ($keys === ['height', 'width', 'x', 'y'] && $nums) {
+                $json = '{"v":1';
+                foreach (['x', 'y', 'width', 'height'] as $key) {
+                    $json .= ',"' . $key . '":' . json_encode($v[$key], JSON_THROW_ON_ERROR);
+                }
+                $json .= '}';
+            }
+        }
+        $ok = $json !== null ? td__media_crop_parse($json) : null;
+        if ($ok === null) {
+            trigger_error('td_media_field: crop must be x / y / width / height in 0..1 (x + width ≤ 1, y + height ≤ 1) — submitted as null', E_USER_WARNING);
+        }
+        return $ok;
+    }
+
+    /** @internal parseCrop() of src/utils/media-field-model.js: exactly {"v":1,"x","y","width","height"}, finite, in 0..1 (± 1e-6). */
+    function td__media_crop_parse(string $s): ?string
+    {
+        if ($s === '' || strlen($s) > 512) {
+            return null;
+        }
+        try {
+            $o = json_decode($s, false, 8, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return null;
+        }
+        if (!$o instanceof \stdClass) {
+            return null;
+        }
+        $a = get_object_vars($o);
+        $keys = array_map('strval', array_keys($a));
+        sort($keys, SORT_STRING);
+        if ($keys !== ['height', 'v', 'width', 'x', 'y']) {
+            return null;
+        }
+        $isNum = static fn (mixed $n): bool => (is_int($n) || is_float($n)) && is_finite((float) $n);
+        if (!$isNum($a['v']) || (float) $a['v'] !== 1.0) {
+            return null;
+        }
+        foreach (['x', 'y', 'width', 'height'] as $key) {
+            if (!$isNum($a[$key])) {
+                return null;
+            }
+        }
+        [$x, $y, $w, $h] = [(float) $a['x'], (float) $a['y'], (float) $a['width'], (float) $a['height']];
+        if ($x < 0 || $y < 0 || $w <= 0 || $h <= 0 || $x + $w > 1 + 1e-6 || $y + $h > 1 + 1e-6) {
+            return null;
+        }
+        return $s;
     }
 
     /** @internal v0.26.0: element mode of a form helper — per call `element` (true/false) overrides Td::configure. */

@@ -433,7 +433,12 @@ export class TdMediaField extends TdFormElement {
       this._hostBound = true;
       this.listen(this, 'focusin', (ev) => { this._focusRole = this._roleOf(ev.target); });
       this.listen(this, 'focusout', (ev) => {
-        if (this.isConnected && ev.target.isConnected && !this.contains(/** @type {Node} */ (ev.relatedTarget))) this._focusRole = null;
+        if (this.contains(/** @type {Node} */ (ev.relatedTarget))) return;
+        // Chromium blurs a removed control BEFORE the removal (still connected): decide after it — a field still on the
+        // page without the focus forgets the role; a removed (or already re-inserted + refocused) one keeps it
+        queueMicrotask(() => {
+          if (this.isConnected && !this.contains(this.ownerDocument.activeElement)) this._focusRole = null;
+        });
       });
       this._cleanups.push(() => { this._hostBound = false; });
     }
