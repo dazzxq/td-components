@@ -852,3 +852,119 @@ describe('v0.26.0 SSR hydrate — review round 1 (focused)', () => {
     expect(host.value).to.equal('zz');
   });
 });
+
+describe('v0.26.0 SSR hydrate — review round 2', () => {
+  // (1) Only ONE native control may survive a deferral: an injected (allowlisted-looking) second control means unknown
+  // topology → safe render at once, the injected names never reach FormData.
+  const injected = [
+    ['hidden text input', (d) => Object.assign(d.createElement('input'), { type: 'text', name: 'is_admin', value: '1', hidden: true })],
+    ['hidden textarea', (d) => Object.assign(d.createElement('textarea'), { name: 'is_admin', value: '1', hidden: true })],
+  ];
+  for (const [what, make] of injected) {
+    it(`focused field + injected ${what} → replaced at once, injected name never submitted`, async () => {
+      let c0;
+      const { doc, win } = await frameCase(['f-hint'], (d) => {
+        c0 = d.querySelector('.td-field__control');
+        c0.after(make(d));
+        d.querySelector('td-input-field').setAttribute('label', 'Khác'); // + benign drift: would otherwise defer
+        c0.focus();
+        c0.value = 'ok';
+      });
+      const host = doc.querySelector('td-input-field');
+      const n = host.querySelector('.td-field__control');
+      expect(n !== c0, 'replaced right away').to.equal(true);
+      expect(host.querySelectorAll('input, textarea').length).to.equal(1);
+      expect(doc.activeElement === n).to.equal(true);
+      expect(n.value).to.equal('ok');
+      const fd = [...new win.FormData(doc.querySelector('form'))];
+      expect(fd.some(([k]) => k === 'is_admin'), JSON.stringify(fd)).to.equal(false);
+      expect(fd).to.deep.equal([['city', 'ok']]);
+    });
+
+    it(`focused checkbox + injected ${what} → replaced at once, injected name never submitted`, async () => {
+      let c0;
+      const { doc, win } = await frameCase(['c-noid'], (d) => {
+        c0 = d.querySelector('input[type="checkbox"]');
+        d.querySelector('.td-checkbox__label').before(make(d));
+        d.querySelector('td-checkbox').setAttribute('label', 'Khác');
+        c0.focus();
+        c0.checked = true;
+      });
+      const host = doc.querySelector('td-checkbox');
+      const n = host.querySelector('input[type="checkbox"]');
+      expect(n !== c0, 'replaced right away').to.equal(true);
+      expect(host.querySelectorAll('input, textarea').length).to.equal(1);
+      expect(n.checked).to.equal(true);
+      expect(doc.activeElement === n).to.equal(true);
+      const fd = [...new win.FormData(doc.querySelector('form'))];
+      expect(fd).to.deep.equal([['news', 'on']]);
+    });
+  }
+
+  // (2) While deferred the native control is the ONLY form participant: host form attributes are mirrored onto it.
+  it('deferred field: host name / value / required / pattern / minlength / maxlength / min / max / step / disabled mirrored', async () => {
+    let c0;
+    const { doc, win } = await frameCase(['f-hint'], (d) => {
+      c0 = d.querySelector('.td-field__control');
+      c0.focus();
+      d.querySelector('td-input-field').setAttribute('label', 'Khác');
+    });
+    const host = doc.querySelector('td-input-field');
+    const form = doc.querySelector('form');
+    expect(host.querySelector('.td-field__control') === c0, 'deferred').to.equal(true);
+    host.setAttribute('name', 'renamed');
+    host.setAttribute('value', 'ab');
+    expect([...new win.FormData(form)]).to.deep.equal([['renamed', 'ab']]);
+    host.setAttribute('pattern', '[0-9]+');
+    expect(form.checkValidity(), 'pattern').to.equal(false);
+    host.removeAttribute('pattern');
+    expect(form.checkValidity()).to.equal(true);
+    host.setAttribute('value', '');
+    host.setAttribute('required', '');
+    expect(form.checkValidity(), 'required').to.equal(false);
+    host.removeAttribute('required');
+    for (const [a, v, ctlAttr] of [['minlength', '3'], ['max-length', '9', 'maxlength'], ['min', '1'], ['max', '5'], ['step', '2']]) {
+      host.setAttribute(a, v);
+      expect(c0.getAttribute(ctlAttr || a), a).to.equal(v);
+      host.removeAttribute(a);
+      expect(c0.hasAttribute(ctlAttr || a), `${a} removed`).to.equal(false);
+    }
+    host.setAttribute('value', 'zz');
+    expect(host.querySelector('.td-field__control') === c0, 'still deferred (no render so far)').to.equal(true);
+    // disabling a focused control blurs it in Chromium → the deferral ends (render + restore); FormData stays right
+    host.setAttribute('disabled', '');
+    expect([...new win.FormData(form)], 'disabled → not sent').to.deep.equal([]);
+    host.removeAttribute('disabled');
+    expect([...new win.FormData(form)]).to.deep.equal([['renamed', 'zz']]);
+  });
+
+  it('deferred checkbox: host name / value / checked / required / disabled mirrored', async () => {
+    let c0;
+    const { doc, win } = await frameCase(['c-noid'], (d) => {
+      c0 = d.querySelector('input[type="checkbox"]');
+      c0.focus();
+      d.querySelector('td-checkbox').setAttribute('label', 'Khác');
+    });
+    const host = doc.querySelector('td-checkbox');
+    const form = doc.querySelector('form');
+    expect(host.querySelector('input') === c0, 'deferred').to.equal(true);
+    host.setAttribute('name', 'renamed');
+    host.setAttribute('value', 'yes');
+    host.setAttribute('checked', '');
+    expect([...new win.FormData(form)]).to.deep.equal([['renamed', 'yes']]);
+    host.removeAttribute('checked');
+    expect([...new win.FormData(form)]).to.deep.equal([]);
+    host.setAttribute('required', '');
+    expect(form.checkValidity(), 'required').to.equal(false);
+    host.removeAttribute('required');
+    expect(form.checkValidity()).to.equal(true);
+    host.setAttribute('checked', '');
+    expect(host.querySelector('input') === c0, 'still deferred (no render so far)').to.equal(true);
+    // disabling a focused control blurs it in Chromium → the deferral ends (render + restore); FormData stays right
+    host.setAttribute('disabled', '');
+    expect([...new win.FormData(form)], 'disabled').to.deep.equal([]);
+    host.removeAttribute('disabled');
+    host.removeAttribute('value');
+    expect([...new win.FormData(form)]).to.deep.equal([['renamed', 'on']]);
+  });
+});

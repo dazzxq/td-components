@@ -56,6 +56,7 @@ export class TdCheckableElement extends TdFormElement {
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
+    this._ssrMirror(name, newVal); // review round 2: a deferred native input follows the host's form attributes
     if (oldVal === newVal || !this._initialized) {
       super.attributeChangedCallback(name, oldVal, newVal);
       return;
@@ -192,6 +193,30 @@ export class TdCheckableElement extends TdFormElement {
     this._ssrRetargetLabels(control);
     this._ssrControl = null; // review round 1 IMPL-3: adopted — no stale references
     this._ssrState = null;
+  }
+
+  /**
+   * @protected Review round 2: the known skeleton — `label.{block}` > [this input, the track / mark span, optional
+   * text-only label span], then at most the base error note. Inner decoration is covered by the tag / attribute scan +
+   * the one-control rule of `_ssrUnsafe()`.
+   */
+  _ssrSkeletonOk() {
+    const block = this.constructor.SSR_NAME === 'toggle' ? 'td-switch' : 'td-checkbox';
+    const kids = ssrContentNodes(this);
+    if (!kids.length || kids.length > 2 || kids.some((n) => n.nodeType !== 1) || (kids[1] && !ssrIsErrorNote(kids[1]))) return false;
+    const label = kids[0];
+    if (label.localName !== 'label' || !label.classList.contains(block)) return false;
+    const parts = ssrContentNodes(label);
+    if (parts.length < 2 || parts.length > 3 || parts.some((n) => n.nodeType !== 1) || parts[0] !== this._ssrControl) return false;
+    const deco = parts[1];
+    if (deco.localName !== 'span' || !deco.classList.contains(block === 'td-switch' ? 'td-switch__track' : 'td-checkbox__mark')) return false;
+    const text = parts[2];
+    return !text || (text.localName === 'span' && text.classList.contains(`${block}__label`) && text.children.length === 0);
+  }
+
+  /** @protected Review round 2: host → deferred input (`checked` is synced in place by attributeChangedCallback). */
+  _ssrMirrorName(name) {
+    return ['name', 'value', 'required', 'disabled'].includes(name) ? name : null;
   }
 
   /** @protected */
