@@ -7,6 +7,8 @@ import { TdLightbox } from '/src/feedback/td-lightbox.js';
 import { fillIconSlots, tdIcon } from '/src/icons/td-icon.js';
 import '/src/form/td-otp-input.js';
 import '/src/display/td-copy.js';
+import '/src/form/td-tree.js';
+import '/src/form/td-tree-select.js';
 
 const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning'];
 const TOASTS = ['success', 'error', 'warning', 'info'];
@@ -64,6 +66,14 @@ CASES.push({ kind: 'skeleton', v: 'block', state: 'rest', pageOnly: true });
 // purpose, label ≥ 2.2 like a disabled button).
 for (const state of ['rest', 'active']) CASES.push({ kind: 'chip-multi', v: 'selected', state });
 CASES.push({ kind: 'chip-multi', v: 'locked', state: 'disabled' });
+// v0.29.0: td-tree rows (content layer → page only): the SELECTED row label ≥ 4.7 on its fill, a LOCKED row ≥ 2.2 (greyed
+// on purpose, like a disabled control); the td-tree-select popup rows on the translucent menu over every backdrop (the
+// ACTIVE row and a SELECTED one, label ≥ 4.7); the multiple check box (MIXED / checked: glyph ≥ 3.2 on its fill, fill
+// ≥ 3:1 vs the page) and the treeitem focus ring (≥ 3:1 vs the page) — computed colours (`pairs`), light + dark.
+CASES.push({ kind: 'tree', v: 'selected', state: 'rest', pageOnly: true });
+CASES.push({ kind: 'tree', v: 'locked', state: 'disabled', pageOnly: true });
+for (const v of ['active', 'selected']) CASES.push({ kind: 'tree-popup', v, state: 'rest' });
+for (const state of ['mixed', 'checked', 'focus']) CASES.push({ kind: 'tree-pairs', v: 'tree', state, pageOnly: true });
 
 const stage = document.getElementById('stage');
 const bd = document.getElementById('backdrop');
@@ -216,6 +226,85 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     stage.appendChild(menu);
     fillIconSlots(el);
     parts = c.v === 'selected' ? { label, icon: check } : { label };
+  } else if (c.kind === 'tree') {
+    const t = document.createElement('td-tree');
+    t.setAttribute('aria-label', 'Danh mục');
+    t.setAttribute('selection', 'single');
+    stage.appendChild(t);
+    t.data = [{ value: 'a', label: 'Điện thoại di động' }, { value: 'b', label: 'Phụ kiện đã khoá', disabled: true }];
+    t.value = 'a';
+    const li = t.querySelector(c.v === 'selected' ? '[aria-selected="true"]' : '[aria-disabled="true"]');
+    if (!li) throw new Error(`tree ${c.v}: row not found`);
+    el = li.querySelector('.td-tree__row');
+    parts = { label: el.querySelector('.td-tree__label') };
+  } else if (c.kind === 'tree-popup') {
+    const s = document.createElement('td-tree-select');
+    s.setAttribute('aria-label', 'Danh mục');
+    s.setAttribute('searchable', 'false');
+    stage.appendChild(s);
+    s.data = [{ value: 'a', label: 'Điện thoại di động' }, { value: 'b', label: 'Máy tính bảng' }];
+    if (c.v === 'selected') s.value = 'b';
+    s.open();
+    const combo = s.querySelector('[role="combobox"]');
+    combo.focus();
+    // selected: move the keyboard highlight away so the row only carries the selected fill
+    if (c.v === 'selected') combo.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true }));
+    const li = s._menuElement.querySelector(c.v === 'active' ? '[role="treeitem"][data-active]' : '[role="treeitem"][aria-selected="true"]');
+    if (!li || (c.v === 'selected' && li.hasAttribute('data-active'))) throw new Error(`tree-popup ${c.v}: row not found`);
+    el = li.querySelector('.td-tree__row');
+    parts = { label: el.querySelector('.td-tree__label') };
+  } else if (c.kind === 'tree-pairs') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const probe = document.createElement('span');
+    probe.style.setProperty('color', 'var(--td-color-bg)');
+    stage.appendChild(probe);
+    const themeBg = getComputedStyle(probe).color;
+    probe.remove();
+    const t = document.createElement('td-tree');
+    t.setAttribute('aria-label', 'Quyền');
+    let pairs;
+    let target;
+    if (c.state === 'focus') {
+      t.setAttribute('selection', 'single');
+      stage.appendChild(t);
+      t.data = [{ value: 'a', label: 'Bài viết' }, { value: 'b', label: 'Người dùng' }];
+      const li = t.querySelector('[role="treeitem"][tabindex="0"]');
+      li.focus();
+      await new Promise((r) => setTimeout(r, 50));
+      target = li.querySelector('.td-tree__row');
+      const shadow = getComputedStyle(target).boxShadow;
+      const ring = (/(rgba?\([^)]*\)|color\([^)]*\))/.exec(shadow) || [])[1];
+      if (!ring || !li.matches(':focus-visible')) throw new Error(`tree focus: no visible ring (${shadow})`);
+      pairs = [
+        { what: 'focus ring vs page', fg: ring, bg: page },
+        { what: 'focus ring vs --td-color-bg', fg: ring, bg: themeBg },
+      ];
+    } else {
+      t.setAttribute('selection', 'multiple');
+      t.setAttribute('cascade', '');
+      stage.appendChild(t);
+      t.data = [{ value: 'p', label: 'Bài viết', expanded: true, children: [{ value: 'r', label: 'Xem' }, { value: 'w', label: 'Sửa' }] }];
+      t.value = c.state === 'mixed' ? ['r'] : ['r', 'w'];
+      const li = t.querySelector(`[role="treeitem"][aria-checked="${c.state === 'mixed' ? 'mixed' : 'true'}"]`);
+      if (!li) throw new Error(`tree ${c.state}: row not found`);
+      target = li.querySelector('.td-tree__check');
+      const cs = getComputedStyle(target);
+      const glyph = getComputedStyle(target.querySelector(c.state === 'mixed' ? '.td-tree__check-mixed svg' : '.td-tree__check-on svg')).color;
+      pairs = [
+        { what: 'check glyph vs fill', fg: glyph, bg: cs.backgroundColor, min: 3.2 },
+        { what: 'check fill vs page', fg: cs.backgroundColor, bg: page },
+        { what: 'check fill vs --td-color-bg', fg: cs.backgroundColor, bg: themeBg },
+      ];
+    }
+    const b = target.getBoundingClientRect();
+    return {
+      rect: { x: b.x, y: b.y, width: b.width, height: b.height },
+      ink: {},
+      opacity: 1,
+      hover: false,
+      name: `tree-pairs:${c.state}`,
+      pairs,
+    };
   } else if (c.kind === 'media-tick') {
     const image = c.state === 'light-image' ? 'rgb(255, 255, 255)' : 'rgb(0, 0, 0)';
     const grid = document.createElement('td-media-grid');
