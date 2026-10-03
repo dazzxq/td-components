@@ -284,8 +284,8 @@ Khi muốn nghe event trên một element cố định (thay vì `await`):
 | Thành viên | Kiểu / chữ ký | Mô tả |
 |---|---|---|
 | `options` | `OpenMediaPickerOptions` (property) | Option cho lần `open()` kế tiếp (resolve với defaults như trên) |
-| `open()` | `() => Promise<PickerOutcome>` | Mở; `TypeError` đồng bộ khi không có adapter hợp lệ |
-| `close(reason = 'programmatic')` | | Đóng bằng code (đi qua cùng cổng xác nhận "bỏ thay đổi" như nút ×) |
+| `open()` | `() => Promise<PickerOutcome>` | Mở; `TypeError` đồng bộ khi không có adapter hợp lệ; thẻ chưa gắn vào trang → resolve ngay `cancelled / programmatic` |
+| `close(reason = 'programmatic')` | `('close' \| 'escape' \| 'programmatic') => void` | Đóng **ngay** bằng code, **không** hỏi "bỏ thay đổi" (app đã quyết): abort mọi việc đang chạy, resolve `cancelled` với `reason` |
 | `isOpen` | `boolean` (chỉ đọc) | |
 | `TdMediaPicker.labels` | static | Nhãn (bảng dưới) |
 | `TdMediaPicker.configureDefaults()` / `.defaults` | static | Xem trên |
@@ -353,7 +353,8 @@ Adapter reject bằng `MediaAdapterError` (hoặc bất cứ thứ gì — kit c
     tiết (nhiều file xong cùng lúc → file xong sau cùng thắng); chế độ nhiều → thêm nếu còn chỗ, đầy thì chỉ chèn +
     thông báo `labels.limit`. Chưa `ready` → chỉ chèn + `labels.notReady`.
   - Phát `asset-change { operation: 'upload', asset, deduplication }`; list + facet tải lại (đếm đổi).
-- Reject → dòng file đỏ với `userMessage` (hoặc `labels.uploadError`); `fieldErrors` → lỗi trên ô `uploadFields`.
+- Reject → dòng file đỏ với `userMessage` (không có thì `labels.error.{code}`, cuối cùng `labels.uploadError`);
+  `fieldErrors` → lỗi trên ô `uploadFields`.
 
 ## Sửa thông tin (metadata) — luôn tường minh
 
@@ -383,10 +384,11 @@ không lọt vào `<form>` của trang).
 
 ## Đóng khi còn việc dở
 
-Mọi đường kết thúc (×, "Huỷ", Escape, "Chọn (n)", `close()`) đi qua **một cổng**: nếu form sửa đang có thay đổi chưa
+Mọi đường kết thúc **của người dùng** (×, "Huỷ", Escape, "Chọn (n)") đi qua **một cổng**: nếu form sửa đang có thay đổi chưa
 lưu hoặc còn upload / lưu đang chạy → hộp xác nhận của picker ("Bỏ thay đổi" / "Tiếp tục sửa"). Đồng ý → abort mọi thứ
 rồi kết thúc **đúng loại đã yêu cầu** (từ "Chọn" vẫn resolve `selected` với lựa chọn lúc đồng ý — asset chưa lưu giữ
 bản cũ, file đang tải không vào lựa chọn). Không → picker giữ nguyên. Lựa chọn chưa xác nhận **không** tính là việc dở.
+`close()` bằng code và việc gỡ host khỏi DOM **không** qua cổng này: đóng ngay, mọi thay đổi chưa lưu / upload dở bị huỷ.
 
 ## Bàn phím & trợ năng
 
