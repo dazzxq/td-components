@@ -11,7 +11,8 @@ const DEFAULT_DURATION = 2000;
  * - The button shows ONE registry icon at a time: `copy`, then `check` + the success tone for `duration` ms after a
  *   copy (the base state is rebuilt from the configuration, never from a DOM snapshot — clicks in a row cannot stick
  *   on "copied"). The `label` names it (`aria-label` + `data-tooltip`, picked up by TdTooltip when the site loads it);
- *   a polite live region announces `labels.copied`. No text mode, no toast (the page may call TdToast on
+ *   while "copied" the button's `aria-label` is `labels.copied` (back to `label` after `duration`) and a polite live
+ *   region announces it. No text mode, no toast (the page may call TdToast on
  *   `copy-success`).
  * - Source, in order: the `value` property, the `value` attribute, `for="id"` (an input / textarea / select's value, any
  *   other element's text), the server-authored `<code class="td-copy__source">` (exactly ONE direct child; captured as
@@ -190,7 +191,7 @@ export class TdCopy extends TdBaseElement {
       this._fail(err, text);
       return;
     }
-    this._feedback('copied', 'check', TdCopy.labels.copied || 'Đã copy');
+    this._feedback('copied', 'check', TdCopy.labels.copied || 'Đã copy', true);
     this.emit('copy-success', this.hasAttribute('sensitive') ? {} : { value: text });
   }
 
@@ -204,11 +205,13 @@ export class TdCopy extends TdBaseElement {
   }
 
   /** @private state + icon + announcement, back to the configured base state after `duration` */
-  _feedback(state, icon, message) {
+  _feedback(state, icon, message, rename = false) {
     const btn = this._button();
     if (!btn) return;
     this._stopTimer();
     btn.setAttribute('data-state', state);
+    // review round 1 IMPL-2: the accessible name says "copied" too (restored from `label` by _resetFeedback)
+    btn.setAttribute('aria-label', rename ? message : this._label());
     this._setIcon(icon);
     const status = this.querySelector('.td-copy__status');
     if (status) status.textContent = message;
@@ -219,7 +222,10 @@ export class TdCopy extends TdBaseElement {
   _resetFeedback() {
     this._timer = 0;
     const btn = this._button();
-    if (btn) btn.removeAttribute('data-state');
+    if (btn) {
+      btn.removeAttribute('data-state');
+      btn.setAttribute('aria-label', this._label());
+    }
     this._setIcon('copy');
     const status = this.querySelector('.td-copy__status');
     if (status) status.textContent = '';

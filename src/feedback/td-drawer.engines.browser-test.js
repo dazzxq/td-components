@@ -117,7 +117,7 @@ describe('td-drawer — declarative lifecycle', () => {
     host.show();
     expect(roots().length).to.equal(1);
     expect(host.hasAttribute('open')).to.equal(true);
-    await wait(100);
+    await wait(450); // `open` fires after the entrance transition (review round 1 IMPL-1)
     host.open = false;
     expect(host.hasAttribute('open')).to.equal(false);
     host.close();
@@ -283,7 +283,7 @@ describe('TdDrawer.open (JS API)', () => {
   });
 
   it('a label-less JS drawer without title gets label → aria-label; dismissible:false honoured', async () => {
-    const h = TdDrawer.open({ label: 'Panel', body: 'chữ <b>tin cậy</b>', dismissible: false });
+    const h = TdDrawer.open({ label: 'Panel', body: 'chữ thường', dismissible: false });
     await wait(100);
     await sendKeys({ press: 'Escape' });
     await wait(100);
@@ -292,6 +292,77 @@ describe('TdDrawer.open (JS API)', () => {
     expect(h.element.open).to.equal(true);
     h.close('button');
     expect(await h.closed).to.equal('button');
+  });
+
+  // Review round 1 SEC-1 (CWE-79): a plain string is TEXT — never parsed; `bodyHtml` / `footerHtml` are the explicit
+  // trusted-HTML hatches (developer markup only).
+  it('body / footer / title strings render as text: no element is created from <img onerror>, <script>, onclick', async () => {
+    window.__drawerXss = 0;
+    const evil = '<img src=x onerror="window.__drawerXss=1"><script>window.__drawerXss=2</script><b onclick="window.__drawerXss=3">b</b>';
+    const h = TdDrawer.open({ title: evil, body: evil, footer: evil });
+    const root = openRoot();
+    const body = root.querySelector('.td-drawer__body');
+    const footer = root.querySelector('.td-drawer__footer');
+    expect(body.textContent).to.equal(evil);
+    expect(footer.textContent).to.equal(evil);
+    expect(root.querySelector('.td-drawer__title').textContent).to.equal(evil);
+    expect(root.querySelectorAll('img, script, b, [onclick], [onerror]').length).to.equal(0);
+    await wait(100);
+    expect(window.__drawerXss).to.equal(0);
+    h.close();
+    await h.closed;
+  });
+
+  it('bodyHtml / footerHtml render trusted developer markup', async () => {
+    const h = TdDrawer.open({ label: 'H', bodyHtml: '<p class="trusted">Nội <b>đậm</b></p>', footerHtml: '<button type="button" class="ft">OK</button>' });
+    const root = openRoot();
+    expect(!!root.querySelector('.td-drawer__body p.trusted b')).to.equal(true);
+    expect(!!root.querySelector('.td-drawer__footer button.ft')).to.equal(true);
+    expect(root.querySelector('.td-drawer__footer').hidden).to.equal(false);
+    h.close();
+    await h.closed;
+  });
+});
+
+describe('td-drawer — `open` after the entrance transition (review round 1 IMPL-1)', () => {
+  it('not fired during the transition; fired once after it, with the open state and focus already set', async () => {
+    const wrap = mount('<td-drawer label="T"><input class="ti"></td-drawer>');
+    const host = wrap.querySelector('td-drawer');
+    const seen = [];
+    host.addEventListener('open', () => seen.push({
+      state: openRoot().getAttribute('data-state'), focus: openRoot().contains(document.activeElement),
+    }));
+    host.show();
+    await wait(120); // two frames passed (open state + focus set), the 280 ms slide still running
+    expect(openRoot().getAttribute('data-state')).to.equal('open');
+    expect(seen.length, 'not during the transition').to.equal(0);
+    await wait(500);
+    expect(seen).to.deep.equal([{ state: 'open', focus: true }]);
+    await host.close();
+  });
+
+  it('a close during the entrance transition: `open` never fires', async () => {
+    const wrap = mount('<td-drawer label="T"><p>x</p></td-drawer>');
+    const host = wrap.querySelector('td-drawer');
+    let opens = 0;
+    host.addEventListener('open', () => { opens++; });
+    host.show();
+    await wait(80);
+    await host.close();
+    await wait(500);
+    expect(opens).to.equal(0);
+  });
+
+  it('reduced motion: fires after the short fade', async () => {
+    await emulateMedia({ reducedMotion: 'reduce' });
+    const wrap = mount('<td-drawer label="T"><p>x</p></td-drawer>');
+    const host = wrap.querySelector('td-drawer');
+    const t0 = performance.now();
+    const opened = new Promise((r) => host.addEventListener('open', () => r(performance.now() - t0), { once: true }));
+    host.show();
+    const dt = await opened;
+    expect(dt < 400, `${dt} ms`).to.equal(true);
+    await host.close();
   });
 });
 

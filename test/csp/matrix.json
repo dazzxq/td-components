@@ -2051,7 +2051,7 @@
     },
     {
       "state": "start-sm",
-      "setup": "TdDrawer.open({ label:'Panel', side:'start', size:'sm', body:'<p>Trái</p>' });",
+      "setup": "TdDrawer.open({ label:'Panel', side:'start', size:'sm', bodyHtml:'<p>Trái</p>' });",
       "selectors": [
         ".td-drawer__panel",
         ".td-drawer__backdrop",
@@ -2067,7 +2067,7 @@
     {
       "state": "reduced-motion",
       "reducedMotion": true,
-      "setup": "TdDrawer.open({ title:'Giảm chuyển động', body:'<p>x</p>' });",
+      "setup": "TdDrawer.open({ title:'Giảm chuyển động', bodyHtml:'<p>x</p>' });",
       "selectors": [
         ".td-drawer__panel",
         ".td-drawer__backdrop"

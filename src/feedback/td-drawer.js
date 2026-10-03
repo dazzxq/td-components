@@ -31,8 +31,8 @@
  * - Every close path dispatches `before-close` (cancelable, `detail.reason`: 'escape' | 'backdrop' | 'button' |
  *   'programmatic'); not cancelled → the panel slides out, the nodes go back to the host (or the JS host is removed),
  *   THEN `close` (`detail.reason`) fires and the `close()` Promise / `TdDrawer.open().closed` resolve.
- * - `open` (event) fires once the panel is open and the initial focus is set (first field of the body → first other
- *   focusable → the × → the panel).
+ * - `open` (event) fires once the entrance transition is over (the open state and the initial focus — first field of
+ *   the body → first other focusable → the × → the panel — are set when it starts); a close before that → no `open`.
  * - `dismissible` (default true): Escape and a backdrop click close; `dismissible="false"` → only the × / close().
  * - Name: `title` → an <h2> + aria-labelledby; else `label` → aria-label; else the host's own `aria-labelledby`; none →
  *   one console.warn per page + `TdDrawer.labels.drawer` as aria-label.
@@ -52,10 +52,12 @@
 import { openDialogLayer } from './dialog-layer.js';
 import { LAYERS, focusablesIn } from '../utils/layers.js';
 import { fillIconSlots } from '../icons/td-icon.js';
+import { transitionEndMs } from '../utils/transition.js';
 
 const SIDES = ['start', 'end'];
 const SIZES = ['sm', 'md', 'lg', 'xl'];
 const FIELD = 'input:not([disabled]):not([type="hidden"]), textarea:not([disabled]), select:not([disabled])';
+const OPEN_MARGIN = 20; // ms after the computed entrance transition before `open`
 let uid = 0;
 let warnedName = false;
 
@@ -73,8 +75,11 @@ export class TdDrawer extends HTMLElement {
    * @param {object} [options]
    * @param {string} [options.title] - visible heading (text) — names the dialog
    * @param {string} [options.label] - aria-label when there is no title
-   * @param {Node|Node[]|string} [options.body] - Node(s), or an HTML string: a TRUSTED-HTML hatch (developer markup only)
-   * @param {Node|Node[]} [options.footer] - footer element(s)
+   * @param {Node|Node[]|string} [options.body] - Node(s) / a DocumentFragment, or a string shown as TEXT (never parsed)
+   * @param {string|TrustedHTML} [options.bodyHtml] - TRUSTED developer-authored HTML (never user data); ignored when
+   *   `body` is given
+   * @param {Node|Node[]|string} [options.footer] - footer element(s), or a string shown as TEXT
+   * @param {string|TrustedHTML} [options.footerHtml] - TRUSTED developer-authored footer HTML (never user data)
    * @param {'start'|'end'} [options.side='end']
    * @param {'sm'|'md'|'lg'|'xl'} [options.size='md']
    * @param {boolean} [options.dismissible=true]
@@ -89,15 +94,25 @@ export class TdDrawer extends HTMLElement {
     if (SIDES.includes(o.side)) host.setAttribute('side', o.side);
     if (SIZES.includes(o.size)) host.setAttribute('size', o.size);
     if (o.dismissible === false) host.setAttribute('dismissible', 'false');
-    const body = o.body;
-    if (typeof body === 'string') {
+    // Review round 1 SEC-1 (CWE-79): a string is TEXT; HTML only through the explicitly named trusted hatches.
+    const trusted = (html) => {
       const tpl = document.createElement('template');
-      tpl.innerHTML = body; // TRUSTED hatch (documented)
-      host.appendChild(tpl.content);
-    } else {
-      for (const n of Array.isArray(body) ? body : [body]) if (n && typeof n.nodeType === 'number') host.appendChild(n);
+      tpl.innerHTML = /** @type {any} */ (html); // TRUSTED hatch (bodyHtml / footerHtml): a string or a TrustedHTML
+      return tpl.content;
+    };
+    const text = (v) => document.createTextNode(String(v));
+    const body = o.body;
+    if (body != null && body !== '') {
+      const list = typeof body === 'string' ? [text(body)] : (Array.isArray(body) ? body : [body]);
+      for (const n of list) if (n && typeof n.nodeType === 'number') host.appendChild(n);
+    } else if (o.bodyHtml != null) {
+      host.appendChild(trusted(o.bodyHtml));
     }
-    for (const n of Array.isArray(o.footer) ? o.footer : (o.footer ? [o.footer] : [])) {
+    let footer = o.footer;
+    if (typeof footer === 'string') footer = footer === '' ? null : text(footer);
+    else if ((footer == null || footer === '') && o.footerHtml != null) footer = trusted(o.footerHtml);
+    if (footer && footer.nodeType === 11) footer = [...footer.childNodes];
+    for (const n of Array.isArray(footer) ? footer : (footer ? [footer] : [])) {
       if (!n || typeof n.nodeType !== 'number') continue;
       if (n.nodeType === 1) {
         /** @type {Element} */ (n).setAttribute('slot', 'footer');
@@ -190,10 +205,16 @@ export class TdDrawer extends HTMLElement {
         return true; // consumed either way (never reaches a layer below)
       },
       onOpened: () => {
-        if (this._state !== 'open' || this._layer?.root !== root) return;
+        const live = () => this._state === 'open' && this._layer?.root === root;
+        if (!live()) return;
         root.setAttribute('data-state', 'open');
         this._initialFocus(panel);
-        this.dispatchEvent(new CustomEvent('open', { bubbles: true, composed: true }));
+        // Review round 1 IMPL-1: `open` once the entrance transition (slide / reduced-motion fade, panel + scrim) is
+        // over — never for a drawer that closed meanwhile.
+        const ms = transitionEndMs(panel, backdrop);
+        setTimeout(() => {
+          if (live()) this.dispatchEvent(new CustomEvent('open', { bubbles: true, composed: true }));
+        }, ms === null ? 0 : ms + OPEN_MARGIN);
       },
     });
   }
