@@ -234,3 +234,27 @@ describe('td-repeater[sortable] — app handle before define (iframe)', () => {
     expect(doc.querySelector('.h3').hidden).to.equal(true);
   });
 });
+
+describe('td-repeater[sortable] — review round 1', () => {
+  it('IMPL-1: a row inserted in a capture pointerup listener right before the drop → no move, one rows-change sync, model = DOM', async () => {
+    const rep = mount(rep4()).querySelector('td-repeater');
+    const rec = record(rep);
+    const h = handle(rowsOf(rep)[0]);
+    const [x, y] = center(h);
+    const [, y2] = center(rowsOf(rep)[2]);
+    const pe = (type, yy) => h.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, composed: true, clientX: x, clientY: yy, pointerId: 4, pointerType: 'touch', isPrimary: true, button: type === 'pointermove' ? -1 : 0, buttons: type === 'pointerup' ? 0 : 1 }));
+    pe('pointerdown', y);
+    for (let i = 1; i <= 5; i += 1) { pe('pointermove', y + ((y2 - y) * i) / 5); await frame(); }
+    expect(rep.hasAttribute('data-td-dragging')).to.equal(true);
+    const mutate = () => { rowsOf(rep)[0].insertAdjacentHTML('beforebegin', row(9, 'Z')); };
+    window.addEventListener('pointerup', mutate, { capture: true, once: true });
+    extra.push(() => window.removeEventListener('pointerup', mutate, true));
+    pe('pointerup', y2);
+    await wait();
+    expect(vals(rep)).to.deep.equal(['Z', 'A', 'B', 'C', 'D']);
+    expect(rec.map((r) => r.reason)).to.deep.equal(['sync']);
+    expect(rep.hasAttribute('data-td-dragging')).to.equal(false);
+    expect(!!rep.querySelector('.td-sortable__placeholder')).to.equal(false);
+  });
+});
+

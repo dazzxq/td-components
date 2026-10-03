@@ -481,3 +481,50 @@ describe('td-masked-value — copyable', () => {
     el.mask();
   });
 });
+
+describe('td-masked-value — review round 1 (security)', () => {
+  it('SEC-1: re-mask clears the td-copy value; a clipboard rejection settling AFTER re-mask creates no manual-copy field (even on the detached node)', async () => {
+    const el = mk(' copyable');
+    el.reveal = () => Promise.resolve(SECRET);
+    btn(el).click();
+    await wait();
+    const copy = el.querySelector('td-copy');
+    let reject;
+    const desc = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => new Promise((res, rej) => { reject = rej; }) } });
+    extra.push(() => { if (desc) Object.defineProperty(navigator, 'clipboard', desc); else delete navigator.clipboard; });
+    copy.querySelector('button').click();
+    await wait();
+    el.mask();
+    expect(copy.isConnected).to.equal(false);
+    expect(copy.value).to.equal('');
+    reject(new Error('denied'));
+    await wait(20);
+    expect(copy.value).to.equal('');
+    expect(!!copy.querySelector('.td-copy__manual')).to.equal(false, 'no manual field in the detached copy');
+    expect(!!document.querySelector('.td-copy__manual')).to.equal(false);
+    expect(copy.outerHTML.includes(SECRET)).to.equal(false);
+    noSecret(el);
+  });
+
+  it('SEC-1: a manual-copy field already shown is blanked and removed on re-mask', async () => {
+    const el = mk(' copyable');
+    el.reveal = () => Promise.resolve(SECRET);
+    btn(el).click();
+    await wait();
+    const copy = el.querySelector('td-copy');
+    const desc = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => Promise.reject(new Error('denied')) } });
+    extra.push(() => { if (desc) Object.defineProperty(navigator, 'clipboard', desc); else delete navigator.clipboard; });
+    copy.querySelector('button').click();
+    await wait(20);
+    const manual = copy.querySelector('.td-copy__manual');
+    expect(!!manual).to.equal(true);
+    el.mask();
+    expect(manual.value).to.equal('');
+    expect(manual.isConnected).to.equal(false);
+    expect(!!copy.querySelector('.td-copy__manual')).to.equal(false);
+    expect(copy.value).to.equal('');
+  });
+});
+

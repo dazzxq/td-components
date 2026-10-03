@@ -814,3 +814,102 @@ describe('td-sortable — gallery recipe (td-media-grid > td-sortable role="none
     expect(mg.selectedIds).to.deep.equal(['p1', 'p6']);
   });
 });
+
+describe('td-sortable — review round 1 (impl + security)', () => {
+  it('IMPL-1: the app mutating direct children in a capture pointerup listener right before the drop → no order-change, model = DOM', async () => {
+    const s = mount(list(4)).querySelector('td-sortable');
+    const rec = record(s);
+    await touchDrag(s, 0, 2, { end: null });
+    const mutate = () => { s.insertAdjacentHTML('afterbegin', item(9)); };
+    window.addEventListener('pointerup', mutate, { capture: true, once: true });
+    extra.push(() => window.removeEventListener('pointerup', mutate, true));
+    pe('pointerup', handle(s, 1), ...center(itemsOf(s)[3]));
+    expect(rec.length).to.equal(0);
+    expect(ids(s)).to.deep.equal(['s9', 's1', 's2', 's3', 's4'], 'nothing moved');
+    await wait();
+    expect(s.order).to.deep.equal(['s9', 's1', 's2', 's3', 's4']);
+    noTraces(s);
+    // the model follows the DOM: the next keyboard move works on the new order
+    handle(s, 0).focus();
+    await sendKeys({ press: 'Enter' });
+    await sendKeys({ press: 'ArrowDown' });
+    await sendKeys({ press: 'Enter' });
+    expect(rec.length).to.equal(1);
+    expect(rec[0].previous).to.deep.equal(['s9', 's1', 's2', 's3', 's4']);
+  });
+
+  it('IMPL-1: keyboard-drop variant — a capture click listener removing an item right before Space drops → no order-change', async () => {
+    const s = mount(list(4)).querySelector('td-sortable');
+    const rec = record(s);
+    handle(s, 0).focus();
+    await sendKeys({ press: 'Enter' });
+    await sendKeys({ press: 'ArrowDown' });
+    const mutate = () => { itemsOf(s)[3].remove(); };
+    window.addEventListener('click', mutate, { capture: true, once: true });
+    extra.push(() => window.removeEventListener('click', mutate, true));
+    await sendKeys({ press: 'Space' });
+    expect(rec.length).to.equal(0);
+    expect(ids(s)).to.deep.equal(['s2', 's1', 's3']);
+    await wait();
+    expect(s.order).to.deep.equal(['s2', 's1', 's3']);
+    noTraces(s);
+  });
+
+  it('IMPL-2: lifted with the keyboard, focus moving to ANOTHER handle (Tab) drops', async () => {
+    const s = mount(list(3)).querySelector('td-sortable');
+    const rec = record(s);
+    handle(s, 0).focus();
+    await sendKeys({ press: 'Enter' });
+    await sendKeys({ press: 'ArrowDown' });
+    handle(s, 2).focus();
+    expect(!!s.querySelector('[data-td-sort-state]')).to.equal(false, 'dropped');
+    expect(rec.length).to.equal(1);
+    expect(rec[0]).to.include({ id: 's1', from: 0, to: 1, source: 'keyboard' });
+    noTraces(s);
+  });
+
+  it('IMPL-3: pagehide / page hidden while a press is still pending (before the 4px threshold) → no drag afterwards', async () => {
+    const s = mount(list(3)).querySelector('td-sortable');
+    for (const fire of [
+      () => window.dispatchEvent(new Event('pagehide')),
+      () => {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+        document.dispatchEvent(new Event('visibilitychange'));
+        delete document.visibilityState;
+      },
+    ]) {
+      const h = handle(s, 0);
+      const [x, y] = center(h);
+      pe('pointerdown', h, x, y);
+      fire();
+      for (let i = 1; i <= 4; i += 1) { pe('pointermove', h, x, y + i * 20); await frame(); }
+      expect(s.hasAttribute('data-td-dragging')).to.equal(false);
+      pe('pointerup', h, x, y + 80);
+      noTraces(s);
+    }
+  });
+
+  it('IMPL-4: an invalid setOrder() during a gesture still cancels it first', async () => {
+    captureWarn();
+    const s = mount(list(3)).querySelector('td-sortable');
+    handle(s, 0).focus();
+    await sendKeys({ press: 'Enter' });
+    await sendKeys({ press: 'ArrowDown' });
+    expect(s.setOrder(['nope'])).to.equal(false);
+    expect(!!s.querySelector('[data-td-sort-state]')).to.equal(false);
+    expect(ids(s)).to.deep.equal(['s1', 's2', 's3'], 'the lift went back');
+    expect(hasActiveAbove(-1)).to.equal(false);
+  });
+
+  it('SEC-3: warnings never carry the host element (fixed text + counts only)', () => {
+    const args = [];
+    const orig = console.warn;
+    console.warn = (...a) => args.push(...a);
+    extra.push(() => { console.warn = orig; });
+    const s = mount('<td-sortable><div data-td-sort-item data-id="a">A</div><div data-td-sort-item data-id="a">B</div></td-sortable>').querySelector('td-sortable');
+    s.setOrder(['x']);
+    expect(args.length).to.be.greaterThan(1);
+    expect(args.every((a) => !(a instanceof Node))).to.equal(true);
+  });
+});
+

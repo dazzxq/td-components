@@ -281,7 +281,10 @@ export class TdMaskedValue extends TdBaseElement {
     const c = this._copyEl();
     if (!c) return;
     const hadFocus = c.contains(this.ownerDocument.activeElement);
-    c.remove();
+    // security review SEC-1: nothing of the value survives in the removed node (a reference may outlive it)
+    /** @type {any} */ (c).value = '';
+    for (const m of c.querySelectorAll('input')) m.value = '';
+    c.remove(); // td-copy's disconnect removes its manual-copy field and drops a pending clipboard result
     if (hadFocus) this._btn()?.focus({ preventScroll: true });
   }
 

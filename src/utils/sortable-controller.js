@@ -101,7 +101,10 @@ export class SortableController {
    *   enabled: () => boolean,
    *   labels?: object,
    *   placePlaceholder?: (ph: HTMLElement) => void,
+   *   reconcile?: () => void,
    * }} opts
+   *   `reconcile` (review round 1 IMPL-1): drain the consumer's pending MutationObserver records synchronously and apply
+   *   them (an outside change cancels the gesture as 'external'); called right before every drop.
    */
   constructor(host, opts) {
     this.host = host;
@@ -143,9 +146,11 @@ export class SortableController {
         if (cur >= 0 && cur !== g.origin && g.origin < this._items().length) this._safeMove(cur, g.origin);
       }
       if (reason === 'escape') this._announce('cancelled', g.item, g.origin);
-    } else if (g.mode === 'dragging') {
-      this._swallowClick(); // the button may still be down: its click must not lift
     }
+    // a click already on its way (the button may still be down, or the observer cancelled during the click's own
+    // dispatch — a microtask checkpoint runs between listeners) must not lift again; a fresh press (pointerdown,
+    // Enter / Space keydown) clears it
+    this._swallowClick();
     this._end();
   }
 
@@ -216,7 +221,7 @@ export class SortableController {
     try { this.o.move(from, to); } catch (err) { console.error(err); }
   }
 
-  /** @private register the gesture layer + page listeners */
+  /** @private a lift: gesture state + page guards + layer */
   _begin(mode, item, handle, origin) {
     const g = {
       mode, item, handle, origin, source: 'keyboard',
@@ -224,20 +229,51 @@ export class SortableController {
     };
     this._g = g;
     this.state = mode;
+    this._guardPage(g);
+    this._register(g);
+    return g;
+  }
+
+  /** @private the layer registration (Escape, covering) — once per gesture */
+  _register(g) {
+    if (g.layer) return;
     g.layer = register({
       layer: LAYERS.popover,
       element: this.host,
       keyboard: 'boundary',
       onEscape: () => { this.cancel('escape'); },
-      anchor: handle,
+      anchor: g.handle,
       onCovered: () => this.cancel('covered'),
       coverAlways: true,
     });
+  }
+
+  /** @private page hidden / pagehide cancel — installed once per gesture, from `pending` on (review round 1 IMPL-3) */
+  _guardPage(g) {
+    if (g.guarded) return;
+    g.guarded = true;
     const doc = this.host.ownerDocument;
     const win = doc.defaultView;
     this._on(doc, 'visibilitychange', () => { if (doc.visibilityState === 'hidden') this.cancel('hidden'); });
     this._on(win, 'pagehide', () => this.cancel('hidden'));
-    return g;
+  }
+
+  /**
+   * @private Review round 1 IMPL-1: right before a drop the consumer drains its pending MutationObserver records; an
+   * outside change cancels the gesture ('external'). Also checks the live DOM against the model itself.
+   * @returns {boolean} the gesture `g` is still active and its DOM is the model's
+   */
+  _reconciled(g) {
+    if (this.o.reconcile) {
+      try { this.o.reconcile(); } catch (err) { console.error(err); }
+    }
+    if (this._g !== g) return false;
+    const items = this._items();
+    if (!items.includes(g.item) || items.some((it) => it.parentNode !== this.host)) {
+      this.cancel('external');
+      return false;
+    }
+    return true;
   }
 
   /** @private temporary listener of the active gesture */
@@ -286,6 +322,7 @@ export class SortableController {
     this._downOnHandle = false;
     const g = this._g;
     if (g && g.mode === 'lifted') {
+      if (!this._reconciled(g)) return;
       if (hit.item === g.item) {
         this._drop(g.source);
         return;
@@ -316,7 +353,7 @@ export class SortableController {
   /** @private drop (lifted or dragging): commit when the index changed */
   _drop(source) {
     const g = this._g;
-    if (!g) return;
+    if (!g || !this._reconciled(g)) return;
     const item = g.item;
     const from = g.origin;
     this._end();
@@ -333,6 +370,8 @@ export class SortableController {
 
   /** @private */
   _keyDown(e) {
+    // a click produced by Enter / Space is never the tail of a pointer drag: it must not be swallowed
+    if ((e.key === 'Enter' || e.key === ' ') && this._itemOfHandle(e.target)) this._suppressClick = false;
     const g = this._g;
     if (!g || g.mode !== 'lifted' || e.target !== g.handle) return;
     if (!NAV_KEYS.has(e.key) || e.altKey || e.ctrlKey || e.metaKey) return;
@@ -363,8 +402,7 @@ export class SortableController {
   _focusOut(e) {
     const g = this._g;
     if (!g || g.mode !== 'lifted' || e.target !== g.handle) return;
-    if (this._downOnHandle) return;
-    if (this._itemOfHandle(/** @type {Element} */ (e.relatedTarget))) return;
+    if (this._downOnHandle) return; // a press on a handle of this host: tap-to-move decides (Safari focuses nothing)
     this._drop(g.source);
   }
 
@@ -392,6 +430,7 @@ export class SortableController {
     this._on(doc, 'pointermove', (ev) => this._pointerMove(ev), true);
     this._on(doc, 'pointerup', (ev) => this._pointerUp(ev), true);
     this._on(doc, 'pointercancel', (ev) => { if (ev.pointerId === g.pointerId) this.cancel('pointercancel'); }, true);
+    this._guardPage(g);
   }
 
   /** @private */
@@ -417,15 +456,12 @@ export class SortableController {
     const items = this._items();
     g.origin = items.indexOf(g.item);
     if (g.origin < 0) { this.cancel('external'); return; }
-    // the gesture registration (layer + page listeners) — keeps the pointer listeners already bound
-    const pointerListeners = g.listeners;
-    g.listeners = [];
-    this._g = null;
-    const reg = this._begin('dragging', g.item, g.handle, g.origin);
-    reg.listeners.push(...pointerListeners);
-    Object.assign(g, { mode: 'dragging', layer: reg.layer, listeners: reg.listeners });
-    this._g = g;
+    // the same gesture goes on: pointer listeners + page guards (from `pending`) kept, the layer added once
+    g.mode = 'dragging';
     this.state = 'dragging';
+    this._guardPage(g);
+    this._register(g);
+    if (this._g !== g) return; // covered at once
     try {
       g.handle.setPointerCapture(g.pointerId);
       g.captured = true;
@@ -538,12 +574,13 @@ export class SortableController {
       return;
     }
     if (g.mode !== 'dragging') return;
+    this._swallowClick();
+    if (!this._reconciled(g)) return; // an outside change right before the drop: cancelled, nothing moved
     g.cx = e.clientX;
     g.cy = e.clientY;
     this._update(g);
     const from = g.origin;
     const to = g.to;
-    this._swallowClick();
     const item = g.item;
     this._end();
     if (to < 0 || to === from || !this._enabled()) return;

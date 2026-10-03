@@ -81,15 +81,16 @@ export class TdSortable extends TdBaseElement {
    */
   setOrder(ids) {
     this._flush();
+    this._ctl?.cancel('api'); // review round 1 IMPL-4: before validating — a refused call still ends the gesture
     const items = this._domItems();
     const byId = new Map(items.map((it) => [it.getAttribute('data-id'), it]));
     const ok = Array.isArray(ids) && this._valid && ids.length === items.length && byId.size === items.length
       && new Set(ids).size === ids.length && ids.every((id) => typeof id === 'string' && byId.has(id));
     if (!ok) {
-      console.warn('td-sortable: setOrder() needs a permutation of the current item ids — refused.', this);
+      // review round 1 SEC-3: fixed text + counts only (never the element / ids)
+      console.warn(`td-sortable: setOrder() needs a permutation of the current item ids — refused (${Array.isArray(ids) ? ids.length : 0} given, ${items.length} items).`);
       return false;
     }
-    this._ctl?.cancel('api');
     this._model.reset(this._domItems());
     ids.forEach((id, i) => {
       const j = this._model.indexOf(byId.get(id));
@@ -134,6 +135,7 @@ export class TdSortable extends TdBaseElement {
       live: this._live,
       enabled: () => this._enabled(),
       labels: TdSortable.labels,
+      reconcile: () => this._flush(), // review round 1 IMPL-1: pending outside changes are applied before a drop
     });
     this._cleanups.push(() => { this._ctl?.destroy(); this._ctl = null; });
     if (typeof MutationObserver === 'function') {
@@ -190,7 +192,7 @@ export class TdSortable extends TdBaseElement {
     this._valid = ok;
     if (!ok && !this._warned.has('keys')) {
       this._warned.add('keys');
-      console.warn('td-sortable: every [data-td-sort-item] needs a non-empty, unique data-id — sorting is off.', this);
+      console.warn(`td-sortable: every [data-td-sort-item] needs a non-empty, unique data-id — sorting is off (${this._domItems().length} items).`);
     }
     return changed;
   }
@@ -269,7 +271,7 @@ export class TdSortable extends TdBaseElement {
       this._paint();
       if (!this._warned.has('commit')) {
         this._warned.add('commit');
-        console.warn('td-sortable: the item ids became invalid during the gesture — no order-change.', this);
+        console.warn('td-sortable: the item ids became invalid during the gesture — no order-change.');
       }
       return;
     }

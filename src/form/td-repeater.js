@@ -523,6 +523,7 @@ export class TdRepeater extends TdBaseElement {
         live: this._live,
         enabled: () => this.hasAttribute('sortable'),
         labels: SORTABLE_LABELS,
+        reconcile: () => this._flush(), // review round 1 IMPL-1: pending outside changes → 'external' + sync first
         placePlaceholder: (ph) => {
           if (this._footer && this._footer.parentNode === this) this._footer.before(ph);
           else this.appendChild(ph);
