@@ -2284,7 +2284,10 @@
         ".td-tree-select__native"
       ],
       "settle": 200,
-      "selectorNote": "php/td.php td_tree_select native mode select (class-styled; inside <td-tree-select> it upgrades when JS runs)"
+      "excludeProps": [
+        "height"
+      ],
+      "selectorNote": "php/td.php td_tree_select native mode select (class-styled; inside <td-tree-select> it upgrades when JS runs); height excluded like td-chip-input php-native: the UA list height of a select[multiple][size] depends on the option line metrics (Tailwind preflight in the legacy+td profile changes it by <1px on Linux CI)"
     }
   ]
 }
