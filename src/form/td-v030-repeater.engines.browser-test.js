@@ -579,6 +579,23 @@ describe('td-repeater — API right after a direct DOM change (impl review round
   });
 });
 
+describe('td-repeater — limit change right after a direct DOM change (impl review round 2)', () => {
+  it('append a row via DOM, then raise min-rows in the same task: no extra template row, one structural event', async () => {
+    const w = mount(`<td-repeater min-rows="1">${ROW_TPL}${serverRow(0, 'a')}</td-repeater>`);
+    const rep = w.querySelector('td-repeater');
+    const rec = record(rep);
+    const x = document.createElement('div');
+    x.setAttribute('data-td-row', '');
+    x.innerHTML = '<input value="x">';
+    rowsOf(rep)[0].after(x);
+    rep.setAttribute('min-rows', '2');
+    expect(rowsOf(rep).length).to.equal(2);
+    await wait();
+    expect(rowsOf(rep).length).to.equal(2);
+    expect(rec.map((r) => r.reason)).to.deep.equal(['sync']);
+  });
+});
+
 describe('td-repeater — naming recipe from the docs (decision 7)', () => {
   const rename = (rows) => rows.forEach((row, i) => row.querySelectorAll('[data-name]')
     .forEach((el) => el.setAttribute('name', el.dataset.name.replaceAll('{i}', String(i)))));

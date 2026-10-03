@@ -153,6 +153,7 @@ export class TdRepeater extends TdBaseElement {
     else if (name === 'add-label') this._syncAddLabel();
     else {
       this._applyLimits();
+      this._flush(); // pending direct DOM changes first, under the new limits (impl review round 2)
       if (this._fillMin() > 0) this._changed({ reason: 'sync', source: 'api' });
       else this._paint();
     }
