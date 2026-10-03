@@ -1186,46 +1186,50 @@ serialize: adapter là JS của site ([Media picker](../components/media-picker.
 
 | Option | Ý nghĩa |
 |---|---|
-| `$name` | tên field (rỗng → không gửi). Usage + tên kết thúc `[]` → không in `name` nào + một `E_USER_WARNING` (giống JS) |
-| `$assetId` | `assetId` hiện tại (`string` / `int`; `null` / `''` = rỗng) |
-| `label`, `helper_text`, `error_text` | nhãn (có `*` khi `required`), ghi chú, lỗi (text) |
-| `required`, `disabled` | trên host (disabled: nút + ô alt `disabled`, hidden input không gửi) |
-| `aspect_ratio` | `'3/2'` \| `'3:2'` \| `'1.91'` — cùng luật với JS (số dương ≤ 10000, ≤ 4 chữ số thập phân); sai → bỏ + cảnh báo |
-| `preview_fit` | `'cover'` (mặc định) \| `'contain'` |
-| `preview_src` | URL ảnh xem trước. Qua `Td::safeUrl()` rồi **từ chối thêm** `mailto:` / `tel:`: chỉ `https:`, `http:` khi `Td::allowHttpLinks(true)`, đường dẫn tương đối. Sai → không in `<img>` (trạng thái "đã chọn, không có ảnh xem trước") |
-| `preview_alt` | tên đọc của asset đang chọn (tên file khi `kind = 'file'`) |
-| `kind` | `'image'` (mặc định) \| `'video'` (poster + nhãn "Video") \| `'file'` |
-| `accept_kind` | chuỗi `'image,video'` hoặc mảng `['image', 'video']` (mặc định `image`) |
-| `usage` | `true` → dạng gửi `name[id]` / `name[alt]` / `name[crop]` + ô alt |
-| `alt` | alt mặc định (usage) |
-| `crop` | mảng `['x', 'y', 'width', 'height']` chuẩn hoá 0..1 → JSON `{"v":1,…}`; sai (ngoài 0..1, `x + width > 1`…) → `null` + một `E_USER_WARNING` |
-| `prompt` | chữ trong khung rỗng (mặc định theo `accept_kind`: "Chọn ảnh" / "Chọn video" / "Chọn file") |
-| `id` | id của host; id con suy ra (`{id}-label`, `{id}-state`, `{id}-alt`, `{id}-help`). Không có → id duy nhất trong request |
-| `class` | class thêm trên host |
-| `attrs` | attribute thêm trên host (allowlist `Td::ALLOWED_ATTRS` + `data-*`); tên mà component tự đọc (`value`, `kind`, `crop`, `usage`…) bị bỏ |
+| `$name` | tên field (rỗng → không in `name`, không gửi). `usage` + tên kết thúc `[]` → không in `name` nào (không hidden input, ô alt không `name`) + một `E_USER_WARNING` — giống JS |
+| `$assetId` | `assetId` hiện tại (`string` / `int`; `null` / `''` = rỗng → hidden `value=""`) |
+| `label`, `helper_text`, `error_text`, `prompt` | nhãn (có `*` khi `required`), ghi chú (`span.td-media-field__help`), lỗi (`span.td-field-error` + `aria-invalid` trên nút mở), chữ khung rỗng (mặc định theo loại đầu của `accept_kind`) — đều là text |
+| `required` | thuộc tính trên host (chỉ có tác dụng khi có JS — không-JS: server validate) |
+| `disabled` | host + nút mở / Đổi / Gỡ + ô alt **và các hidden input** đều `disabled` → không gửi gì (như control native) |
+| `aspect_ratio` | `'3/2'` \| `'3:2'` \| `'1.91'` — cùng luật với JS (`W/H`, `W:H` hoặc một số; mỗi phần > 0, ≤ 10000, ≤ 4 chữ số thập phân, không dấu / `e`). Sai → bỏ + một `E_USER_WARNING` |
+| `preview_fit` | `'cover'` (mặc định, không in) \| `'contain'` |
+| `preview_src` | URL ảnh xem trước (chỉ hiển thị). Qua `Td::safeUrl()` (bỏ tab / xuống dòng, cắt khoảng trắng; **`http:` chỉ khi site bật `Td::allowHttpLinks(true)`**), rồi chỉ giữ `https:` / `http:` hoặc URL **không scheme** (tương đối, `/…`, `//cdn…`); `mailto:` / `tel:` / `data:` / `javascript:`… và chuỗi > 8192 ký tự → không in `<img>` (khung hiện icon + `preview_alt`, hoặc "Đã chọn (không có ảnh xem trước)") |
+| `preview_alt` | tên đọc của asset đang chọn ("Đã chọn: {preview_alt}"; vắng mà có ảnh → "Đã chọn: {assetId}"); tên file khi `kind = 'file'` |
+| `kind` | `'image'` (mặc định) \| `'video'` (poster + nhãn "Video") \| `'file'` (icon + tên, không `<img>`) |
+| `accept_kind` | chuỗi `'image, video'` (cách bằng dấu phẩy / khoảng trắng) hoặc mảng; giá trị lạ bị bỏ, rỗng → `image`. In ra host dạng `accept-kind="image video"` |
+| `usage` | `true` → ô alt + hidden `name[id]` / `name[crop]` + `name[alt]` trên ô alt |
+| `alt` | alt mặc định (usage), cắt 500 ký tự |
+| `crop` | mảng `['x' => …, 'y' => …, 'width' => …, 'height' => …]` (số, chuẩn hoá 0..1) **hoặc** chuỗi JSON v1 (`{"v":1,…}` — nên in lại được nguyên `$_POST['og']['crop']` sau lỗi validate). `null` / `''` / `'null'` → `null` im lặng; sai (thiếu / thừa key, ngoài 0..1, `x + width > 1`…) → `null` + một `E_USER_WARNING` |
+| `id` | id của **host**; id con suy ra: `{id}-label`, `{id}-state`, `{id}-alt`, `{id}-help`, `{id}-error`. Không có → id duy nhất trong request (`td-{name}-{n}`) |
+| `class` | class thêm trên host (sau `td-media-field`) |
+| `attrs` | attribute thêm trên host (allowlist chung + `data-*`). Tên component tự đọc (`id` `class` `name` `label` `aspect-ratio` `preview-fit` `accept-kind` `usage` `required` `disabled` `value` `preview-src` `preview-alt` `kind` `alt` `crop` `prompt` `helper-text` `error-text`) và mọi `data-td-*` bị bỏ |
+
+Nhãn in sẵn là **tiếng Việt mặc định** (`Td::MEDIA_FIELD_LABELS`, giống `TdMediaField.labels`). Site đổi
+`TdMediaField.labels` trong JS → chữ in sẵn không khớp `render()` → lúc nâng cấp field **render lại an toàn** (không nhận
+tại chỗ; giá trị, alt đang gõ, focus vẫn giữ — chỉ mất lợi ích "không nháy").
+
+**`http:` ở PHP và JS khác điều kiện:** PHP nhận `http:` khi site bật `Td::allowHttpLinks(true)`; JS (`safeMediaUrl`)
+nhận `http:` chỉ khi **trang** là `http:`. Trang `https:` có ảnh xem trước `http:` → PHP in `<img>` nhưng JS từ chối URL đó
+→ render lại không có ảnh. Dùng URL `https:` hoặc tương đối.
 
 ```html
-<!-- td_media_field('hero', 'a_9f2c', ['label' => 'Ảnh đại diện', 'aspect_ratio' => '3/2',
-     'preview_src' => 'https://cdn.example.com/t/a_9f2c.jpg', 'preview_alt' => 'iphone-17.jpg']) — minh hoạ -->
-<td-media-field data-td-ssr="media-field@1" class="td-media-field" id="td-hero-1" name="hero" label="Ảnh đại diện"
-                aspect-ratio="3/2" value="a_9f2c" preview-src="https://cdn.example.com/t/a_9f2c.jpg" preview-alt="iphone-17.jpg">
-  <span class="td-media-field__label" id="td-hero-1-label">Ảnh đại diện</span>
-  <div class="td-media-field__frame" data-state="filled" data-kind="image">
-    <svg class="td-media-field__sizer" viewBox="0 0 3 2" aria-hidden="true" focusable="false"></svg>
-    <button type="button" class="td-media-field__open" aria-haspopup="dialog" aria-labelledby="td-hero-1-label td-hero-1-state">
-      <img class="td-media-field__img" src="https://cdn.example.com/t/a_9f2c.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">
-      <span class="td-sr-only" id="td-hero-1-state">Đã chọn: iphone-17.jpg</span>
-    </button>
-  </div>
-  <div class="td-media-field__actions">
-    <button type="button" class="td-btn td-btn--secondary td-btn--sm td-media-field__replace" aria-haspopup="dialog">Đổi ảnh</button>
-    <button type="button" class="td-btn td-btn--ghost td-btn--sm td-media-field__remove">Gỡ</button>
-  </div>
-  <input type="hidden" class="td-media-field__value" name="hero" value="a_9f2c">
+<!-- td_media_field('og', 'm2', ['label' => 'Ảnh OG', 'aspect_ratio' => '1.91', 'usage' => true, 'alt' => 'Mô tả có sẵn',
+     'crop' => ['x' => 0.1, 'y' => 0, 'width' => 0.5, 'height' => 1], 'preview_src' => '/test/fixtures/2.svg',
+     'preview_alt' => 'og.jpg'])  — nguyên văn từ fixture test/ssr/fixtures/media-field.html (case usage-full),
+     chỉ thêm xuống dòng giữa các phần -->
+<td-media-field data-td-ssr="media-field@1" id="td-og-4" class="td-media-field" name="og" label="Ảnh OG" aspect-ratio="1.91" usage value="m2" preview-src="/test/fixtures/2.svg" preview-alt="og.jpg" alt="Mô tả có sẵn" crop="{&quot;v&quot;:1,&quot;x&quot;:0.1,&quot;y&quot;:0,&quot;width&quot;:0.5,&quot;height&quot;:1}">
+<span class="td-media-field__label" id="td-og-4-label">Ảnh OG</span>
+<div class="td-media-field__frame" data-state="filled" data-kind="image"><svg class="td-media-field__sizer" viewBox="0 0 1.91 1" aria-hidden="true" focusable="false"></svg><button type="button" class="td-media-field__open" aria-haspopup="dialog" aria-labelledby="td-og-4-label td-og-4-state"><img class="td-media-field__img" src="/test/fixtures/2.svg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="td-sr-only" id="td-og-4-state">Đã chọn: og.jpg</span></button></div>
+<div class="td-media-field__actions"><button type="button" class="td-btn td-btn--secondary td-btn--sm td-media-field__replace" aria-haspopup="dialog">Đổi ảnh</button><button type="button" class="td-btn td-btn--ghost td-btn--sm td-media-field__remove">Gỡ</button></div>
+<input type="hidden" class="td-media-field__value" name="og[id]" value="m2">
+<div class="td-field td-media-field__usage"><label class="td-field__label" for="td-og-4-alt">Mô tả ảnh (alt)</label><input type="text" class="td-field__control td-media-field__alt" id="td-og-4-alt" maxlength="500" name="og[alt]" value="Mô tả có sẵn"></div>
+<input type="hidden" class="td-media-field__crop" name="og[crop]" value="{&quot;v&quot;:1,&quot;x&quot;:0.1,&quot;y&quot;:0,&quot;width&quot;:0.5,&quot;height&quot;:1}">
 </td-media-field>
 ```
 
-Nguồn chuẩn của markup là fixture `test/ssr/fixtures/media-field.html` (sinh từ PHP, test so với `render()` của JS).
+Nguồn chuẩn của markup là fixture `test/ssr/fixtures/media-field.html` (sinh từ PHP bằng
+`test/ssr/build-media-field-fixture.mjs`, test so với `render()` của JS — đủ các case: rỗng, có ảnh, usage, contain,
+video, file, disabled, lỗi, URL độc, `name[]`, `attrs`, XSS).
 Đọc giá trị ở server (Laravel / PHP thuần, `crop = 'null'`): [Media field › Hai dạng gửi form](../components/media-field.md#1-hai-dạng-gửi-form-api-công-khai-chốt-từ-032).
 Cảnh báo (`E_USER_WARNING`) chỉ ghi tên option và kiểu, không in giá trị thô.
 
