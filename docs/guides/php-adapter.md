@@ -488,7 +488,9 @@ nâng cấp.
 **Khi markup không khớp** (script đổi `label` / `type` / `size`… trước khi module tải, markup bị sửa, thêm attribute
 ngoài allowlist như `onclick`, `style`, `form`, `formaction`): component **render lại** nhưng **giữ chữ đã gõ**.
 Nếu lúc đó người dùng **đang gõ** trong ô (control đang focus), component **hoãn** tới khi rời ô (`blur`) mới render
-— không giật mất ô đang gõ; trong lúc hoãn, control native vẫn submit / validate như chưa có JS.
+— không giật mất ô đang gõ; trong lúc hoãn, control native vẫn submit / validate như chưa có JS. Hoãn **chỉ** áp cho
+lệch vô hại (nhãn, size…); markup bị từ chối vì lý do an toàn (`on*`, `style`, `form`, phần tử lạ) được render lại
+**ngay** cả khi đang focus, chữ đã gõ + vùng chọn + focus chuyển sang control mới (toggle / checkbox: giữ `checked`).
 
 ## td_dropdown
 

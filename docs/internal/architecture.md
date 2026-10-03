@@ -61,6 +61,12 @@ connectedCallback (gắn lại sau disconnect)
 - **`canHydrate()` → `'defer'`:** markup không nhận được nhưng control đang **focus** (người dùng đang gõ) → base
   không render, không bind, gọi hook `deferHydration(resume)` (mặc định: `resume()` ngay). Trong lúc hoãn, `_doRender()`
   bị chặn (attribute đổi thì `resume()` render một lần với giá trị cuối). `resume()` chỉ chạy một lần.
+  Review round 1: `_ssrDecide` chỉ trả `'defer'` cho lệch **vô hại**; `_ssrUnsafe()` (quét cả cây host: loại node,
+  thẻ HTML / SVG được phép, `type` input, allowlist attribute) → render ngay + `state.refocus` (`_restoreSsrState` đưa
+  focus + vùng chọn sang control mới) (SEC-01). Dấu đúng tên nhưng sai schema → không nhận, vẫn qua `_ssrDecide`
+  (IMPL-1). `canRebind()` từ chối → `_ssrRestore = _ssrCapture(control, true)` để render lại giữ state (IMPL-2).
+  `_ssrControl` / `_ssrState` xoá sau khi nhận / khôi phục; listener blur gỡ cả mục cleanup của nó (IMPL-3). Matcher:
+  dấu `*` ⇔ `required`, ghi chú lỗi ⇔ đang có lỗi (IMPL-4).
   `TdFormElement.deferHydration`: đẩy state đã phân giải vào control native (`_ssrPrime`), xoá giá trị / validity của
   ElementInternals (control native tự submit + validate, FormData đúng một mục; `_setFormValue` / `_applyValidity`
   không chạy khi `_deferred`), gắn **một** listener `blur` (capture, qua `listen()` → disconnect gỡ) → khi blur: gỡ

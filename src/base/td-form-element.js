@@ -21,6 +21,17 @@ export const SSR_CONTROL_ATTRS = new Set(['class', 'type', 'name', 'value', 'che
   'spellcheck', 'placeholder', 'readonly', 'required', 'disabled', 'maxlength', 'minlength', 'min', 'max', 'step', 'pattern',
   'size', 'rows', 'cols']);
 
+/** Review round 1 SEC-01 — what can legitimately sit under a form host (php/td.php element mode + render()). */
+const SSR_HTML_TAGS = new Set(['div', 'label', 'span', 'input', 'textarea']);
+const SSR_SVG_TAGS = new Set(['svg', 'title', 'path', 'circle', 'rect', 'line', 'polyline', 'polygon', 'ellipse']);
+const SSR_INPUT_TYPES = new Set(['text', 'password', 'email', 'number', 'url', 'search', 'tel', 'date', 'month',
+  'datetime-local', 'time', 'checkbox']);
+/** Non-control parts: label `for`, error note `data-for`, the kit's icon slot attributes. */
+const SSR_PART_ATTRS = new Set(['for', 'data-td-icon', 'data-td-icon-class', 'data-td-icon-size']);
+const SSR_SVG_ATTRS = new Set(['class', 'data-icon', 'viewBox', 'xmlns', 'fill', 'stroke', 'stroke-width', 'stroke-linecap',
+  'stroke-linejoin', 'aria-hidden', 'aria-label', 'role', 'focusable', 'd', 'points', 'cx', 'cy', 'r', 'rx', 'ry', 'x',
+  'y', 'x1', 'y1', 'x2', 'y2', 'width', 'height', 'fill-rule', 'clip-rule', 'opacity', 'fill-opacity', 'stroke-opacity']);
+
 /** Same attribute set + values (class order-insensitive). @param {Element} a @param {Element} b */
 export function ssrSameAttrs(a, b) {
   if (a.attributes.length !== b.attributes.length) return false;
@@ -140,6 +151,7 @@ export class TdFormElement extends TdBaseElement {
     if (this._ssrRestore && !this._deferred) {
       const state = this._ssrRestore;
       this._ssrRestore = null;
+      this._ssrControl = null; // review round 1 IMPL-3: the old control is gone — no stale reference
       this._restoreSsrState(state);
     }
     // External <label for="host-id">: the browser runs the label's activation on the HOST (form-associated
@@ -526,12 +538,17 @@ export class TdFormElement extends TdBaseElement {
     this._ssrPrime(control, state);
     this._internals.setFormValue(null);
     this._internals.setValidity({});
+    // Review round 1 IMPL-3: the listener and ITS cleanup entry go away together (blur) — a disconnect first runs it.
+    const off = () => control.removeEventListener('blur', onBlur, true);
     const onBlur = () => {
-      control.removeEventListener('blur', onBlur, true);
+      off();
+      this._cleanups = this._cleanups.filter((fn) => fn !== off);
       const live = this._ssrCapture(control, true);
+      this._ssrControl = null;
       if (resume()) this._restoreSsrState(live);
     };
-    this.listen(control, 'blur', onBlur, true);
+    control.addEventListener('blur', onBlur, true);
+    this._cleanups.push(off);
   }
 
   /**
@@ -563,7 +580,38 @@ export class TdFormElement extends TdBaseElement {
       return true;
     }
     this._ssrRestore = state;
-    return control === control.ownerDocument.activeElement ? 'defer' : false;
+    if (control !== control.ownerDocument.activeElement) return false;
+    // Review round 1 SEC-01: only BENIGN drift (label text, size…) may stay live under the user's fingers until blur.
+    // Markup refused for a security reason (attribute outside the allowlists — on*, style, form… —, unexpected
+    // element / node) is replaced AT ONCE; the state (value, selection, checked) and the focus move to the new control.
+    if (this._ssrUnsafe()) {
+      state.refocus = true;
+      return false;
+    }
+    return 'defer';
+  }
+
+  /**
+   * @protected Review round 1 SEC-01: does anything under the host fall outside what php/td.php / render() can produce,
+   * whatever the structure? Unexpected node types or elements (only the form-control parts + inline icon SVG are
+   * known), or an attribute outside the allowlists (control: SSR_CONTROL_ATTRS + aria-* / data-* without data-td-*;
+   * parts: + `for` / `data-for` / the icon slot's data-td-icon*; SVG: geometry + presentation attributes).
+   * @returns {boolean}
+   */
+  _ssrUnsafe() {
+    const walk = (node) => [...node.childNodes].some((n) => {
+      if (n.nodeType === 3 || n.nodeType === 8) return false;
+      if (n.nodeType !== 1) return true;
+      const svg = n.namespaceURI === 'http://www.w3.org/2000/svg';
+      if (svg ? !SSR_SVG_TAGS.has(n.localName) : (n.namespaceURI !== 'http://www.w3.org/1999/xhtml' || !SSR_HTML_TAGS.has(n.localName))) return true;
+      const control = n.localName === 'input' || n.localName === 'textarea';
+      if (n.localName === 'input' && !SSR_INPUT_TYPES.has((n.getAttribute('type') || 'text').toLowerCase())) return true;
+      const ok = (name) => (svg ? SSR_SVG_ATTRS.has(name)
+        : SSR_CONTROL_ATTRS.has(name) || SSR_ARIA_DATA.test(name) || (!control && SSR_PART_ATTRS.has(name)));
+      if (![...n.attributes].every((a) => ok(a.name))) return true;
+      return walk(n);
+    });
+    return walk(this);
   }
 
   /**
