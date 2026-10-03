@@ -18,7 +18,7 @@ Mọi import đều theo dạng `@dazzxq/td-components/<tên>` (xem [Cài đặt
 nạp `td.css` một lần cho cả trang.
 
 **Render phía server (SSR) từ PHP:** dùng [adapter PHP](../guides/php-adapter.md) `php/td.php` ship kèm gói —
-`td_button`, `td_link`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy` in đúng markup của component
+`td_button`, `td_link`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select` in đúng markup của component
 (control native, chạy không cần JS). Component không có helper PHP (menu, table, tabs, pagination, empty-state, trigger
 lightbox, hovercard, drawer…) có mẫu markup ngay trong trang của nó (mục cấu trúc DOM / SSR).
 
@@ -34,6 +34,8 @@ lightbox, hovercard, drawer…) có mẫu markup ngay trong trang của nó (m�
 | [Dropdown](dropdown.md) | `<td-dropdown>` | `/dropdown` | có | Chọn **một** giá trị, tìm kiếm (combobox); nâng cấp tại chỗ `<select>` con (progressive enhancement, `<select multiple>` giữ native) |
 | [Datetime picker](datetime-picker.md) | `<td-datetime-picker>` | `/datetime-picker` | có | Chọn ngày/giờ với bánh xe, `min`/`max` |
 | [Chip input](chip-input.md) | `<td-chip-input>` | `/chip-input` | có | Nhập nhiều thẻ (tag), gợi ý từ server, tạo mới |
+| [Tree](tree.md) | `<td-tree>` | `/tree` | có | Cây phân cấp (WAI-ARIA tree): không chọn / chọn một / chọn nhiều (độc lập hoặc `cascade` ba trạng thái), nút khoá vẫn gửi, nhánh tải chậm, lọc |
+| [Tree select](tree-select.md) | `<td-tree-select>` | `/tree-select` | có | Chọn một / nhiều nút của cây trong ô gọn (combobox + popup cây): danh mục cha, chuyên mục; nâng cấp `<select>` con; PHP `td_tree_select` |
 | [Password meter](password-meter.md) | `<td-password-meter>` | `/password-meter` | không | Đo độ mạnh mật khẩu tại chỗ: thanh 4 mức, nhãn đọc được, checklist điều kiện, hook `score` |
 | [OTP input](otp-input.md) | `<td-otp-input>` | `/otp-input` | có | Nhập mã một lần 6 chữ số (2FA, xác thực lại): một input thật, dán / tự điền từ SMS; PHP `td_otp_input` |
 | [Dropzone](dropzone.md) | `<td-dropzone>` | `/dropzone` | có (gửi file qua `FormData`) | Chọn / kéo thả file: lọc `accept` / `max-size` / `max-files`, danh sách + xoá, hook `upload` có tiến độ từng file, thumbnail ảnh |

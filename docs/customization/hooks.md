@@ -23,6 +23,7 @@ Nguồn sự thật là source code (`src/**`); mỗi dòng dưới đây đối
   - [Tooltip](#tooltip)
   - [td-dropdown](#td-dropdown)
   - [td-chip-input](#td-chip-input)
+  - [td-tree và td-tree-select](#td-tree-và-td-tree-select)
   - [td-datetime-picker](#td-datetime-picker)
   - [Hợp đồng lỗi của mọi form control](#hợp-đồng-lỗi-của-mọi-form-control)
   - [TdFormValidation](#tdformvalidation)
@@ -400,6 +401,25 @@ Có thể gán các property này **trước** khi element được nâng cấp 
 | `duplicate` | `Đã có {label}` | `required` | `Vui lòng thêm ít nhất một mục` |
 
 (Tên property là `messages`, không phải `labels`, vì `labels` của form control là danh sách `<label>` gắn với nó.)
+
+---
+
+## td-tree và td-tree-select
+
+`import '@dazzxq/td-components/tree';` / `'@dazzxq/td-components/tree-select'` · Trang: [tree.md](../components/tree.md),
+[tree-select.md](../components/tree-select.md) (0.29.0)
+
+Có thể gán `data` / `loadChildren` / `value` **trước** khi element được nâng cấp; chúng được áp lại qua setter.
+
+| Property | Chữ ký | Trả về | Khi nào gọi | Lỗi thì sao |
+|---|---|---|---|---|
+| `loadChildren` | `(node, { signal }) => Promise<Array> \| Array` | Mảng nút cùng hình dạng `data` (`[]` = lá) | Lần đầu mở một nút `hasChildren: true` (kể cả `*`), mở lại sau lỗi | Reject / không phải mảng → nút đóng lại, `data-load="error"`, event `load-error` `{ value, error }`, mở lại = thử lại. Kết quả của request đã huỷ (data mới, gỡ phần tử) bị bỏ kể cả khi hook phớt lờ `signal` |
+| `data` | `Array` | — | Gán = thế hệ mới (huỷ mọi request lazy) | Nút value không hợp lệ → bỏ cả nhánh + cảnh báo |
+
+`TdTree.labels`: `search` `Tìm trong cây` · `empty` `Không có mục nào` · `noResults` `Không tìm thấy kết quả` · `loading`
+`Đang tải…` · `loadError` `Không tải được nhánh này` · `results` `{n} kết quả` · `required` `Vui lòng chọn ít nhất một mục`.
+`TdTreeSelect.labels`: `search` `Tìm kiếm` · `tree` `Chọn mục` (tên dự phòng) · `clear` `Xoá lựa chọn` · `selectedCount`
+`+{n}` · `required` `Vui lòng chọn một mục`.
 
 ---
 

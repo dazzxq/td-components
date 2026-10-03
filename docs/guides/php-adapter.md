@@ -36,6 +36,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_otp_input (0.27.0)](#td_otp_input-0270)
 - [td_copy (0.27.0)](#td_copy-0270)
 - [td_multiselect (0.28.0)](#td_multiselect-0280)
+- [td_tree_select (0.29.0)](#td_tree_select-0290)
 - [An toàn: escape và whitelist](#an-toàn-escape-và-whitelist)
 - [Chuyển từ adapter riêng của 135](#chuyển-từ-adapter-riêng-của-135)
 - [Lỗi thường gặp](#lỗi-thường-gặp)
@@ -211,6 +212,7 @@ td_empty(string $title, string $message = '', array $opts = []): string   // 0.2
 td_otp_input(string $name, array $opts = []): string      // 0.27.0
 td_copy(string $value, array $opts = []): string          // 0.27.0 (luôn element)
 td_multiselect(string $name, array $options, array $selected = [], array $opts = []): string   // 0.28.0
+td_tree_select(string $name, array $tree, string|int|array|null $selected = null, array $opts = []): string   // 0.29.0
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
 td_stylesheet_tag(?string $nonce = null): string
@@ -975,6 +977,98 @@ Kết quả (element, thực tế in liền một dòng):
   </select>
 </td-chip-input>
 ```
+
+## td_tree_select (0.29.0)
+
+```php
+<?= td_tree_select('parent_id', $categoryTree, $category->parent_id, [
+    'label' => 'Danh mục cha', 'placeholder' => '— Không có (gốc) —', 'display' => 'path',
+    'disable_subtree' => [$category->id],
+    'element' => true,
+]) ?>
+
+<?= td_tree_select('categories[]', $categoryTree, $post->categoryIds, [
+    'label' => 'Chuyên mục', 'multiple' => true, 'required' => true,
+]) ?>
+```
+
+`td_tree_select($name, array $tree, string|int|array|null $selected = null, array $opts = [])` — chọn một / nhiều nút
+của một cây ([`<td-tree-select>`](../components/tree-select.md)). Một lời gọi cho ra `<select>` **dùng được khi không
+JS** (thay cho danh sách cha phẳng tự viết) và, ở chế độ element, nâng cấp **không xô lệch** (ADR 0012).
+
+**`$tree`** — mảng nút `['value' => …, 'label' => …, 'children' => [...], 'disabled' => bool, 'description' => …]`:
+
+- duyệt **lặp** (không đệ quy), sâu tối đa **16** cấp;
+- `value` chỉ nhận chuỗi khác rỗng / số; `''` / `null` / mảng / bool (hoặc nút không phải mảng) → **bỏ cả nhánh**;
+  value trùng → bỏ nút sau; mọi thứ bị bỏ trong một lần gọi → **một** `E_USER_WARNING`;
+- `disabled` khoá nút **và cả nhánh** (như `td-tree`).
+
+**`$selected`**: một value hoặc mảng value (cùng luật, bỏ `''`; một → giá trị đầu tiên hợp lệ; `cascade` → chỉ lá; value
+không có trong cây bị bỏ).
+
+**Select native** (`select.td-tree-select__native`, option theo **preorder**):
+
+```html
+<option value="apple" data-level="1" data-label="Apple">&nbsp;&nbsp;Apple</option>
+```
+
+Thụt lề = **NBSP ở đầu chữ** (2 mỗi cấp; popup native của Safari / iOS bỏ khoảng trắng thường) + `data-level` + `data-label`
+(nhãn sạch cho bộ nâng cấp). **Không** dùng ký tự "—" trong nhãn (bẩn ô tìm, trình đọc màn hình đọc "gạch gạch").
+
+| Option | Ý nghĩa |
+|---|---|
+| `multiple` | chọn nhiều (`<select multiple>`; native: `size` hàng) |
+| `cascade` | chỉ với `multiple`: option **cha** in `disabled data-native-only` (không JS chỉ chọn được lá — khớp luật cascade) |
+| `placeholder` | một: option `value=""` đầu tiên + `allow-clear` trên host (không in khi lựa chọn đang khoá); nhiều: chỉ là chữ khi trống |
+| `label` | `label.td-field__label[for={id}-select]` (+ `*` khi `required`) + attribute `label` trên host |
+| `required` | trên host **và** select (trừ trường hợp khoá ở dưới) |
+| `disabled` | select `disabled` (+ mọi input khoá) |
+| `disable_subtree` | mảng value → nút đó **và cả nhánh** bị khoá: công thức "chọn danh mục cha" chống vòng (truyền id của chính danh mục đang sửa) |
+| `display` | `'path'` → `display="path"` |
+| `size` | số hàng của `multiple` ở chế độ native (mặc định 8); element mode không in `size` |
+| `id` | id của host; select = `{id}-select`. Không có → `td-{name đã làm sạch}-{n}` |
+| `class` | class thêm trên host |
+| `aria_label` | `aria-label` của select (tên khi không có `label`); `attrs['aria-label']` cũng vậy |
+| `attrs` | attribute thêm trên host (allowlist). Giữ chỗ (không phân biệt hoa thường): `id` `class` `label` `placeholder` `multiple` `cascade` `searchable` `allow-clear` `display` `name` `value` `value-label` `value-labels` `required` `disabled` `aria-label` `aria-labelledby` `error-text` + mọi `data-td-*` |
+| `element` | `true` / `false` ghi đè `Td::configure(…, ['ssr_elements' => …])` |
+
+**Khoá đang chọn — gửi đúng một lần, `required` vẫn đúng:**
+
+- mọi option của nút khoá có **`data-locked`** (marker khoá cho bộ nâng cấp, độc lập với `disabled`);
+- **một** có lựa chọn khoá: option đó `selected data-locked` (**không** `disabled` → chính select gửi nó), **mọi option
+  khác** `disabled data-native-only`, không option rỗng → không đổi / xoá được, `required` thoả;
+- **nhiều**: option khoá đã chọn `disabled selected` (không gửi, không bỏ chọn được) + **một**
+  `<input type="hidden" class="td-tree-select__locked" name value>` mỗi giá trị. Có ≥ 1 giá trị khoá → select **không**
+  có `required` (trường đã khác rỗng — tránh `valueMissing` giả); host vẫn có `required`;
+- control `disabled` → input khoá cũng `disabled`: không gửi gì, như control native bị tắt.
+
+> Server vẫn phải tự kiểm quyền / khoá — HTML gửi lên có thể bị sửa.
+
+**Hai chế độ:**
+
+- **Native** (mặc định): `<td-tree-select …>` (không dấu) + [nhãn] + select (+ input khoá). Không JS: select thường
+  (kiểu field; `multiple` cao theo `size`). Nạp `@dazzxq/td-components/tree-select` → nâng cấp (có thể xô lệch chiều cao
+  với `multiple`).
+- **Element** (`'element' => true` / `ssr_elements`): thêm `data-td-ssr="tree-select@1"` + `value-label` (một) /
+  `value-labels` (nhiều, JSON) = nhãn của giá trị đã chọn; **không** `size`. `td.css` tạo dáng select **đúng hộp ô chọn**
+  (kích thước, padding, viền, bo góc, chữ) cho **cả một lẫn nhiều** (nhiều: cao một ô, cuộn được — vẫn dùng được khi
+  không JS) → nâng cấp không xô lệch. Select đang focus lúc module nạp → chờ blur.
+
+Kết quả (element, thực tế in liền một dòng):
+
+```html
+<td-tree-select data-td-ssr="tree-select@1" id="parent" label="Danh mục cha" placeholder="— Gốc —" allow-clear value-label="Apple">
+  <label class="td-field__label" for="parent-select">Danh mục cha</label>
+  <select class="td-tree-select__native" id="parent-select" name="parent_id">
+    <option value="">— Gốc —</option>
+    <option value="phone" data-level="0" data-label="Điện thoại">Điện thoại</option>
+    <option value="apple" data-level="1" data-label="Apple" selected>&nbsp;&nbsp;Apple</option>
+    <option value="samsung" data-level="1" data-label="Samsung" data-locked disabled>&nbsp;&nbsp;Samsung</option>
+  </select>
+</td-tree-select>
+```
+
+Không có helper cho `<td-tree>` dạng cây luôn hiện (cây quyền là trang admin có JS).
 
 ## An toàn: escape và whitelist
 
