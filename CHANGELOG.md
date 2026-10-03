@@ -23,8 +23,16 @@ dsuite P1 lô 2 — **dòng động + ô số / tiền** (yêu cầu dienthoaiha
   sạch, ngầm `min="0"`); element mode `number-input@1` hydrate tại chỗ, không xô lệch.
 - Export `@dazzxq/td-components/repeater`, `/number-input`.
 
+### Fixed
+
+- `<td-otp-input>` đặt trong một hàng flex (ví dụ `display: flex` của site) bị co còn ~150px — hộp 6 ô giờ giữ đủ chiều
+  rộng và vẫn co lại khi khung hẹp hơn.
+
 ### Ghi chú
 
+- `<td-repeater>`: `min-rows` tối đa 200 (lớn hơn bị bỏ qua kèm cảnh báo — chống treo trang khi cấu hình sai).
+- PHP `td_number_input`: `$value` / `min` / `max` / `step` chỉ nhận chuỗi hoặc số nguyên (số thực như `12.5` bị từ chối,
+  không bị ép kiểu thành `12`); cảnh báo không in lại giá trị thô.
 - `prefix` là property DOM có sẵn — đặt bằng attribute, không qua `el.prefix`.
 - Trước khi JS nạp, ô element mode hiện giá trị sạch (`12990000`); JS nạp xong mới nhóm nghìn, con trỏ có thể về cuối.
 

@@ -18,7 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
-| [0.30.0](#0300) | Không có thay đổi phá vỡ | Không. Thêm `<td-repeater>`, `<td-number-input>`, `td_number_input()`. Import map tự liệt kê: thêm `repeater`, `number-input`. |
+| [0.30.0](#0300) | Không có thay đổi phá vỡ | Không. Sửa `<td-otp-input>` co hẹp trong flex row. Thêm `<td-repeater>`, `<td-number-input>`, `td_number_input()`. Import map tự liệt kê: thêm `repeater`, `number-input`. |
 | [0.29.0](#0290) | Không có thay đổi phá vỡ | Không. Thêm `<td-tree>`, `<td-tree-select>`, `td_tree_select()`. Import map tự liệt kê: thêm `tree`, `tree-select`. |
 | [0.28.0](#0280) | Không có thay đổi phá vỡ | Không. `<td-chip-input>` thêm `selection-only` / `select-all` / nhóm / nâng cấp `<select multiple>`; PHP `td_multiselect()`. |
 | [0.27.0](#0270) | Không có thay đổi phá vỡ | Không. Thêm otp-input, drawer, copy, skeleton CSS. Import map tự liệt kê: thêm `otp-input`, `drawer`, `copy`. |
