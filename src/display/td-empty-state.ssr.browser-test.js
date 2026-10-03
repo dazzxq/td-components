@@ -55,6 +55,36 @@ const MM = {
 mismatch.innerHTML = Object.entries(MM).map(([id, html]) => html.replace('<td-empty-state ', `<td-empty-state id="${id}" `)).join('')
   + acts.replace('<td-empty-state ', '<td-empty-state id="late" '); // untouched copy: td-button defined at the very end
 document.body.appendChild(mismatch);
+
+// Review fix ISSUE-1: server-action markup td_empty() / a hydrated td-button can never produce (applied to the FIRST
+// action). Used here (nested <td-button> undefined) and in an iframe after td-button hydrated the actions.
+const ACTION_TAMPER = {
+  'tp-no-href': (h, a) => a.removeAttribute('href'),
+  'tp-no-host-href': (h) => h.removeAttribute('href'),
+  'tp-href-mismatch': (h, a) => a.setAttribute('href', '/khac'),
+  'tp-spinner-shown': (h, a) => a.querySelector('.td-btn__spinner').removeAttribute('hidden'),
+  'tp-spinner-aria': (h, a) => a.querySelector('.td-btn__spinner').setAttribute('aria-hidden', 'false'),
+  'tp-role': (h, a) => a.setAttribute('role', 'button'),
+  'tp-tabindex': (h, a) => a.setAttribute('tabindex', '-1'),
+  'tp-aria-disabled': (h, a) => a.setAttribute('aria-disabled', 'true'),
+  'tp-aria-busy': (h, a) => a.setAttribute('aria-busy', 'true'),
+  'tp-inert-tuple': (h, a) => { a.removeAttribute('href'); a.setAttribute('role', 'link'); a.setAttribute('aria-disabled', 'true'); a.setAttribute('tabindex', '-1'); },
+};
+/** Insert copies of the e-actions host (ids `{prefix}{key}`, one per ACTION_TAMPER key) → { key: host }. */
+function tamperedHosts(container, prefix) {
+  container.insertAdjacentHTML('beforeend', Object.keys(ACTION_TAMPER)
+    .map((k) => acts.replace('<td-empty-state ', `<td-empty-state id="${prefix}${k}" `)).join(''));
+  return Object.fromEntries(Object.keys(ACTION_TAMPER).map((k) => [k, container.querySelector(`[id="${prefix}${k}"]`)]));
+}
+const tamper = (hosts) => {
+  for (const [k, fn] of Object.entries(ACTION_TAMPER)) {
+    const b = hosts[k].querySelector('td-button');
+    fn(b, b.querySelector('a'));
+  }
+};
+const TP = tamperedHosts(mismatch, 'u-');
+tamper(TP);
+const TP0 = Object.fromEntries(Object.entries(TP).map(([k, h]) => [k, h.querySelector('.td-empty-state__title')]));
 const lateHost = document.getElementById('late');
 const LATE = {
   title: lateHost.querySelector('.td-empty-state__title'),
@@ -194,6 +224,14 @@ describe('v0.26.0 SSR — td_empty() / <td-empty-state> hydrate (empty-state@1),
     expect(window.__pwned).to.equal(undefined);
   });
 
+  it('review ISSUE-1: server actions outside the exact supported tuples (nested td-button UNDEFINED) → render, actions dropped', () => {
+    for (const [k, host] of Object.entries(TP)) {
+      expect(host.querySelector('.td-empty-state__title') !== TP0[k], `${k} rendered`).to.equal(true);
+      expect(host.querySelector('td-button') === null, `${k} server actions dropped`).to.equal(true);
+      expect(host.querySelector('.td-empty-state__actions').hidden, k).to.equal(true);
+    }
+  });
+
   it('a structural attribute change after hydrate re-renders but keeps the server actions (same nodes)', () => {
     const r = r0('e-actions');
     r.host.setAttribute('size', 'lg');
@@ -252,6 +290,44 @@ describe('v0.26.0 SSR — td_empty() / <td-empty-state> hydrate (empty-state@1),
 });
 
 // ---------------------------------------------------------------- root package (iframe) ----------------------------
+describe('review ISSUE-1 — tampered server actions after td-button HYDRATED them (own registry)', () => {
+  it('td-button defined + hydrated first, then tampered, then td-empty-state defined → render, actions dropped; untouched copy adopted', async () => {
+    const f = document.createElement('iframe');
+    f.srcdoc = '<!doctype html><html><head><link rel="stylesheet" href="/td.css"></head><body><div id="box"></div></body></html>';
+    document.body.appendChild(f);
+    await new Promise((r) => { f.onload = r; });
+    const doc = f.contentDocument;
+    const win = f.contentWindow;
+    const load = async (src, tag) => {
+      const s = doc.createElement('script');
+      s.type = 'module';
+      s.src = src;
+      doc.head.appendChild(s);
+      await win.customElements.whenDefined(tag);
+    };
+    await load('/src/form/td-button.js', 'td-button');
+    const box = doc.getElementById('box');
+    const hosts = tamperedHosts(box, 'h-');
+    box.insertAdjacentHTML('beforeend', acts.replace('<td-empty-state ', '<td-empty-state id="h-ok" '));
+    const all = [...box.querySelectorAll('td-button')];
+    expect(all.length > 0 && all.every((b) => !b.hasAttribute('data-td-ssr')), 'buttons hydrated before tampering').to.equal(true);
+    tamper(hosts);
+    const t0 = Object.fromEntries(Object.entries(hosts).map(([k, h]) => [k, h.querySelector('.td-empty-state__title')]));
+    const ok = doc.getElementById('h-ok');
+    const ok0 = { title: ok.querySelector('.td-empty-state__title'), btns: [...ok.querySelectorAll('td-button')] };
+    await load('/src/display/td-empty-state.js', 'td-empty-state');
+    for (const [k, host] of Object.entries(hosts)) {
+      expect(host.querySelector('.td-empty-state__title') !== t0[k], `${k} rendered`).to.equal(true);
+      expect(host.querySelector('td-button') === null, `${k} server actions dropped`).to.equal(true);
+      expect(host.querySelector('.td-empty-state__actions').hidden, k).to.equal(true);
+    }
+    expect(ok.querySelector('.td-empty-state__title') === ok0.title, 'untouched hydrated copy adopted').to.equal(true);
+    const now = [...ok.querySelectorAll('td-button')];
+    expect(now.length === ok0.btns.length && now.every((b, i) => b === ok0.btns[i]), 'its actions kept').to.equal(true);
+    f.remove();
+  });
+});
+
 describe('v0.26.0 SSR — td-empty-state with the root package (td-button defined first)', () => {
   it('buttons hydrate first, then the empty state accepts the hydrated actions (same nodes); links clickable', async () => {
     const f = document.createElement('iframe');

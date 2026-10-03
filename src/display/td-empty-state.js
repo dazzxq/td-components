@@ -18,8 +18,14 @@ const SPINNER_SVG = '<svg class="td-spinner__svg" viewBox="0 0 50 50" aria-hidde
   + '<circle class="td-spinner__arc" cx="25" cy="25" r="20"></circle></svg>';
 /** Attributes of a server action host (td_link element mode as td_empty() calls it) — before or after its hydrate. */
 const ACTION_HOST_ATTRS = ['data-td-ssr', 'variant', 'size', 'label', 'href'];
-/** Attributes its `<a>` may carry (td_link / TdButton _syncState for a link). */
-const ACTION_LINK_ATTRS = ['class', 'href', 'role', 'tabindex', 'aria-disabled'];
+/**
+ * Review fix ISSUE-1: the link STATE attributes TdButton._syncState() can put on its `<a>`, as exact tuples:
+ * enabled → none; disabled / unsafe href → role="link" aria-disabled="true" tabindex="-1" (no href); loading →
+ * role="link" aria-disabled="true" aria-busy="true" tabindex="0" (no href). A server action host may carry neither
+ * `disabled` nor `loading` (ACTION_HOST_ATTRS) and must have a safe href, so the ENABLED tuple is the only one it can
+ * produce: the `<a>` carries exactly `class` + `href` (= the host href).
+ */
+const ACTION_LINK_ATTRS = ['class', 'href'];
 
 /** Same URL policy as <td-button href> / Td::safeUrl: https, mailto, tel, scheme-less (http only on an http page). */
 function safeHref(href) {
@@ -36,7 +42,8 @@ function safeHref(href) {
  * `<td-button [data-td-ssr="button@1"] variant size="sm" label href><a class="td-btn td-btn--{v} td-btn--sm" href>
  * <span class="td-btn__label">…</span><span class="td-btn__spinner …" hidden>…</span></a></td-button>` — the marker is
  * present while <td-button> is not defined yet and gone once it hydrated; both states are accepted. Only allowlisted
- * attributes (on*, style, data-td-* … → refused).
+ * attributes (on*, style, data-td-* … → refused). Review fix ISSUE-1: safe host href required, the `<a>` href identical
+ * to it, link state = the enabled tuple only, spinner exactly `aria-hidden="true"` + `hidden`.
  * @param {Element} el
  */
 function validServerAction(el) {
@@ -44,17 +51,19 @@ function validServerAction(el) {
   if (el.hasAttribute('data-td-ssr') && el.getAttribute('data-td-ssr') !== 'button@1') return false;
   const variant = el.getAttribute('variant');
   const label = el.getAttribute('label');
-  if (!VARIANTS.has(variant) || el.getAttribute('size') !== 'sm' || !label || !el.hasAttribute('href')) return false;
+  const href = el.getAttribute('href');
+  if (!VARIANTS.has(variant) || el.getAttribute('size') !== 'sm' || !label || href === null || !safeHref(href)) return false;
   const kids = contentNodes(el);
   const a = kids[0];
   if (kids.length !== 1 || a.nodeType !== 1 || a.localName !== 'a' || !onlyAttrs(a, ACTION_LINK_ATTRS)) return false;
   if (classKey(a) !== ['td-btn', `td-btn--${variant}`, 'td-btn--sm'].sort().join(' ')) return false;
-  if (a.hasAttribute('href') && (a.getAttribute('href') !== el.getAttribute('href') || !safeHref(a.getAttribute('href')))) return false;
+  if (a.getAttribute('href') !== href) return false; // required, identical to the (safe) host href
   const parts = contentNodes(a);
   if (parts.length !== 2 || parts.some((p) => p.nodeType !== 1 || p.localName !== 'span')) return false;
   const [lab, spin] = parts;
   return classKey(lab) === 'td-btn__label' && onlyAttrs(lab, ['class']) && lab.children.length === 0 && lab.textContent === label
     && classKey(spin) === 'td-btn__spinner td-spinner td-spinner--sm' && onlyAttrs(spin, ['class', 'aria-hidden', 'hidden'])
+    && spin.getAttribute('aria-hidden') === 'true' && spin.hasAttribute('hidden') // not loading: hidden, decorative
     && spin.innerHTML === SPINNER_SVG;
 }
 
