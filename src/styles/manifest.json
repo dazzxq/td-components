@@ -43,6 +43,7 @@
     "components/tree-select.css",
     "components/number-input.css",
     "components/repeater.css",
+    "components/sortable.css",
     "utilities.css"
   ]
 }
