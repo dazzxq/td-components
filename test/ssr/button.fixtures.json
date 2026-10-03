@@ -44,6 +44,7 @@
     { "id": "attrs-reserved-link", "fn": "td_link", "args": ["Link giữ", "/r", { "attrs": { "aria-busy": "true", "aria-disabled": "true", "data-x": "3" } }], "dropOnControl": ["aria-busy", "aria-disabled"] },
     { "id": "link-passthrough", "fn": "td_link", "args": ["Đi qua", "/p", { "attrs": { "tabindex": "3", "role": "button", "title": "Mẹo" } }] },
     { "id": "attrs-internal-data", "fn": "td_button", "args": ["Nội bộ", { "variant": "primary", "type": "submit", "attrs": { "data-td-icon": "check", "data-td-icon-size": "l", "data-x": "4" } }], "dropOnControl": ["data-td-icon", "data-td-icon-size"] },
+    { "id": "attrs-internal-data-case", "fn": "td_button", "args": ["Hoa thường", { "variant": "primary", "attrs": { "DATA-TD-ICON": "check", "Data-Td-Icon-Size": "l", "data-TD-icon-class": "x", "DISABLED": true } }], "dropOnControl": ["data-td-icon", "data-td-icon-size", "data-td-icon-class", "disabled"] },
     { "id": "attrs-allowlisted", "fn": "td_button", "args": ["Cho phép", { "attrs": { "data-x": "1", "title": "Tiêu đề", "accesskey": "k", "lang": "vi", "aria-describedby": "d1", "tabindex": "0" } }] },
     { "id": "mut-variant", "fn": "td_button", "args": ["Đổi variant", { "variant": "primary" }], "browser": "mutate" },
     { "id": "mut-label", "fn": "td_button", "args": ["Nhãn cũ", { "variant": "primary" }], "browser": "mutate" },
