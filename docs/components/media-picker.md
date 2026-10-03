@@ -172,13 +172,17 @@ interface MediaPickerAdapter {
 
 Mỗi "khe" (`list`, `facets`, `get` chi tiết, `update`) chỉ có **một** request còn hiệu lực: gọi mới → abort `signal` cũ;
 kết quả về muộn bị **bỏ** kể cả khi adapter phớt lờ `signal` (latest-wins). Đóng picker → abort **mọi** request đang
-chạy, kể cả upload. Cache chỉ sống trong một lần mở (không localStorage); tìm lại query cũ luôn gọi lại adapter.
+chạy, kể cả upload.
+
+**Không cache trang list**: mỗi lần đổi query / filter, quay lại query cũ hay "Thử lại" đều là một lời gọi `list` mới.
+Chỉ **facet** (theo query + filter) và **asset theo id** được giữ trong một lần mở (để vẽ khay / chi tiết ngay); upload /
+update thành công xoá cache facet; đóng picker xoá hết. Không localStorage, không cache liên phiên.
 
 | Hàm | Kit gọi khi | Signal bị abort khi |
 |---|---|---|
 | `list` | Mở picker (`initialQuery` / `initialFilters`); gõ ô tìm (**debounce 250ms**; Enter trong ô tìm = gọi ngay); đổi facet; "Thử lại"; sau upload / update thành công (làm mới trang đầu, cùng query / filter) | Có `list` mới (đổi query / filter); đóng picker |
 | `list` + `cursor` | Bấm "Tải thêm" (`cursor = nextCursor`) — nối vào lưới | Đổi query / filter; đóng picker |
-| `facets` | Mở picker; cùng nhịp với mỗi lần `list` tải lại do đổi query / filter; sau upload / update thành công | Như `list` |
+| `facets` | Mở picker; cùng nhịp với mỗi lần `list` tải lại do đổi query / filter (cùng query + filter đã tải trong lần mở này → dùng lại, không gọi); sau upload / update thành công | Như `list` |
 | `get` (initial) | Mở picker có `selection.initialIds`: song song từng id, chung một signal, tối đa `maxItems`, bỏ id trùng | Người dùng đổi lựa chọn trước khi xong (huỷ ngay, đồng bộ); đóng picker |
 | `get` (chi tiết) | Mở chi tiết một mục (lấy bản mới; trong lúc chờ hiện bản từ lưới); bấm "Tải lại" sau lỗi `conflict` | Mở chi tiết mục khác; đóng picker |
 | `upload` | Mỗi file thả / chọn vào khu "Tải lên" (sau khi qua lọc `accept` / `maxSize`) | Người dùng bấm xoá dòng file; đóng picker |
@@ -335,6 +339,19 @@ Adapter reject bằng `MediaAdapterError` (hoặc bất cứ thứ gì — kit c
 - Lỗi gốc được `console.warn` (công cụ dev, không ra giao diện).
 - Lỗi `list` → khối lỗi `role="alert"` + "Thử lại". Lỗi thao tác (upload, lưu) → hiện tại chỗ.
 
+## Facet (bộ lọc)
+
+| `type` | Control | Giá trị trong `filters[key]` |
+|---|---|---|
+| `single` | [`td-dropdown`](dropdown.md), placeholder "Tất cả" khi chưa chọn (dòng bỏ chọn dùng `TdDropdown.labels.none`) | `Scalar` (giữ kiểu); chưa chọn → không có key |
+| `multiple` | [`td-chip-input`](chip-input.md) `selection-only` | `Scalar[]`; rỗng → không có key |
+| `toggle` | [`td-toggle`](toggle.md) | bật = `options[0].value` (không có → `true`); tắt → không có key |
+
+`count` hiện trong nhãn option ("Album A (12)"). Giá trị đang chọn giữ khi descriptor tải lại (option không còn → bỏ).
+Đổi facet → tải lại list + facet **ngay** (không debounce). ≤ 640px facet gom sau nút "Bộ lọc ({n})".
+Chữ "Tất cả", "Thêm mới", "Lỗi" (tên danh sách lỗi chung của form) và "Không thêm được lựa chọn." hiện **chưa** đổi được qua
+`TdMediaPicker.labels`.
+
 ## Upload
 
 - Khu "Tải lên" (nút trên thanh công cụ, `aria-expanded`; ≤ 640px là một view riêng) chứa các ô `uploadFields` phía
@@ -361,8 +378,10 @@ Adapter reject bằng `MediaAdapterError` (hoặc bất cứ thứ gì — kit c
 - Nút "Sửa thông tin" trong chi tiết (khi capability cho phép) → form dựng từ `assetFields`, giá trị đầu từ
   `asset.metadata[key]`. "Lưu" / "Huỷ"; Ctrl/⌘+Enter **trong form** = Lưu. Không autosave, xem mục khác không bao giờ
   gọi `update`.
-- Gửi `update(id, { fields: <mọi field đang hiện>, version: asset.version }, { context, signal })`. Field bị
-  `visibleWhen` ẩn: không gửi, không validate.
+- Gửi `update(id, { fields: <mọi field đang hiện, trừ `readonly`>, version: asset.version }, { context, signal })`.
+  Field bị `visibleWhen` ẩn: không gửi, không validate. Field `readonly` **không bao giờ** được gửi.
+- `visibleWhen(values, asset)` chạy lại sau mỗi thay đổi; `values` có **mọi** field (kể cả field đang ẩn), đúng kiểu.
+  Hàm ném lỗi → field hiện + một cảnh báo console.
 - Thành công → asset mới thay ở lưới / chi tiết / khay, `asset-change { operation: 'update', asset }`, thông báo "Đã lưu".
 - `validation` → map `fieldErrors` như trên. `conflict` (ai đó đã sửa trước) → thông báo + nút **"Tải lại"**: gọi `get`
   rồi ghi đè form **sau khi người dùng bấm** (không tự xoá chữ đang gõ).
@@ -374,11 +393,13 @@ Descriptor → control:
 |---|---|---|
 | `text` / `url` | [`td-input-field`](input-field.md) `type=text` / `url` | chuỗi |
 | `textarea` | `td-input-field type=textarea autoresize` | chuỗi |
-| `select` | [`td-dropdown`](dropdown.md) (`options`; `loadOptions('')` gọi một lần khi mở form; `createOption` → nút "Thêm mới") | `Scalar` giữ kiểu |
-| `multiselect` | [`td-chip-input`](chip-input.md) (`selection-only`, tìm bằng `loadOptions`; có `createOption` → cho tạo mới) | `Scalar[]` |
-| `date` | [`td-datetime-picker`](datetime-picker.md) `mode=date` | `'YYYY-MM-DD'` hoặc `null` (giá trị `metadata` hỏng → rỗng + cảnh báo) |
-| `readonly` | chữ trong `<dl>` | không gửi sửa được |
+| `select` | [`td-dropdown`](dropdown.md) (`options`; `loadOptions('')` gọi một lần khi mở form; `createOption` → dòng "Thêm mới" / "Thêm “{query}”", bỏ qua khi ô tìm rỗng) | `Scalar` giữ kiểu |
+| `multiselect` | [`td-chip-input`](chip-input.md) (không `createOption` → `selection-only`; tìm bằng `loadOptions`; có `createOption` → `allow-create`) | `Scalar[]` |
+| `date` | [`td-datetime-picker`](datetime-picker.md) `mode=date`, năm 1900–2199 | `'YYYY-MM-DD'` hoặc `null` (giá trị `metadata` hỏng / ngoài khoảng → rỗng + một cảnh báo) |
+| `readonly` | chữ trong `<dl>` | chỉ hiển thị — không bao giờ có trong `update().fields` |
 
+`helpText` → `helper-text` của `td-input-field`; với control khác là một đoạn `p.td-field__note` dưới control.
+`createOption` reject → lỗi trên control (`userMessage`, không có thì "Không thêm được lựa chọn.").
 `label`, `helpText`, nhãn option đều là **text** — descriptor không nhận HTML. Không control nào có `name` (form ảo,
 không lọt vào `<form>` của trang).
 

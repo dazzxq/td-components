@@ -125,7 +125,8 @@ tin cậy; adapter và descriptor do dev của site viết nhưng chạy trong t
   `Referer` tới CDN / bucket. Hệ quả cho site: CDN chống hotlink phải chấp nhận referer rỗng; CSP `img-src` phải cho
   origin ảnh của adapter (`blob:` chỉ khi muốn thumbnail xem trước của dropzone).
 - **Request**: mọi lời gọi adapter nhận `AbortSignal`; kết quả của request cũ bị bỏ kể cả khi adapter phớt lờ signal
-  (không có trạng thái "kết quả cũ thắng" hiện dữ liệu sai ngữ cảnh). Cache chỉ sống trong một lần mở, không
+  (không có trạng thái "kết quả cũ thắng" hiện dữ liệu sai ngữ cảnh). Trang list không bao giờ lấy từ cache; chỉ
+  facet + asset theo id được giữ trong một lần mở (xoá khi đóng), không
   localStorage (không lưu dữ liệu media của người dùng trước cho người dùng sau trên máy chung).
 - **Không toàn cục**: không biến trên `window`; `configureDefaults` là registry cấp module.
 
