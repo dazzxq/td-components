@@ -22,14 +22,18 @@
 		display: block;
 	}
 
+	/* same look as a field label (.td-field__label); explicit metrics: a host reset never changes them */
 	.td-repeater__label {
-		margin-bottom: var(--td-space-xs);
+		box-sizing: border-box;
+		margin: 0 0 var(--td-space-2xs);
 		font-size: var(--td-text-sm);
-		font-weight: 600;
-		color: var(--td-color-text);
+		font-weight: var(--td-fw-medium);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-label);
 	}
 
 	.td-repeater__row {
+		box-sizing: border-box;
 		display: flex;
 		flex-wrap: wrap;
 		gap: var(--td-repeater-gap);
@@ -95,6 +99,7 @@
 	}
 
 	.td-repeater__footer {
+		box-sizing: border-box;
 		display: flex;
 		align-items: center;
 		padding-top: var(--td-repeater-gap);

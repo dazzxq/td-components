@@ -34,7 +34,8 @@
       "td-copy": "/src/display/td-copy.js",
       "td-skeleton": "/src/icons/td-icon.js",
       "td-tree": "/src/form/td-tree.js",
-      "td-tree-select": "/src/form/td-tree-select.js"
+      "td-tree-select": "/src/form/td-tree-select.js",
+      "td-repeater": "/src/form/td-repeater.js"
     },
     "tokenNative": [
       "td-button",
@@ -69,7 +70,8 @@
       "td-copy",
       "td-skeleton",
       "td-tree",
-      "td-tree-select"
+      "td-tree-select",
+      "td-repeater"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -2288,6 +2290,38 @@
         "height"
       ],
       "selectorNote": "php/td.php td_tree_select native mode select (class-styled; inside <td-tree-select> it upgrades when JS runs); height excluded like td-chip-input php-native: the UA list height of a select[multiple][size] depends on the option line metrics (Tailwind preflight in the legacy+td profile changes it by <1px on Linux CI)"
+    }
+  ],
+  "td-repeater": [
+    {
+      "state": "default",
+      "markup": "<td-repeater label=\"Hộp gồm\"><template><div data-td-row><input aria-label=\"Tên\"></div></template><div data-td-row><input aria-label=\"Tên\" value=\"Sạc\"></div><div data-td-row><input aria-label=\"Tên\" value=\"Cáp\"></div></td-repeater>",
+      "selectors": [
+        ".td-repeater__label",
+        ".td-repeater__row",
+        ".td-repeater__row + .td-repeater__row",
+        ".td-repeater__actions",
+        ".td-repeater__row ~ .td-repeater__row .td-repeater__btn--up",
+        ".td-repeater__btn--remove",
+        ".td-repeater__btn[aria-disabled=\"true\"]",
+        ".td-repeater__footer",
+        ".td-repeater__add"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "line-height",
+        "margin-left"
+      ],
+      "selectorNote": "rows / actions / footer inherit the page line-height (app content: the kit never forces it) and the actions margin-left is the auto remainder of the row content width — both follow the host page (Tailwind preflight), so they are excluded"
+    },
+    {
+      "state": "full",
+      "markup": "<td-repeater label=\"Hộp gồm\" min-rows=\"1\" max-rows=\"1\" add-label=\"Thêm phụ kiện\"><template><div data-td-row><input aria-label=\"Tên\"></div></template><div data-td-row><input aria-label=\"Tên\" value=\"Sạc\"></div></td-repeater>",
+      "selectors": [
+        ".td-repeater__add[aria-disabled=\"true\"]",
+        ".td-repeater__btn--remove[aria-disabled=\"true\"]"
+      ],
+      "settle": 200
     }
   ]
 }

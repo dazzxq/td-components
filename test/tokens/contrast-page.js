@@ -9,6 +9,7 @@ import '/src/form/td-otp-input.js';
 import '/src/display/td-copy.js';
 import '/src/form/td-tree.js';
 import '/src/form/td-tree-select.js';
+import '/src/form/td-repeater.js';
 
 const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning'];
 const TOASTS = ['success', 'error', 'warning', 'info'];
@@ -74,6 +75,10 @@ CASES.push({ kind: 'tree', v: 'selected', state: 'rest', pageOnly: true });
 CASES.push({ kind: 'tree', v: 'locked', state: 'disabled', pageOnly: true });
 for (const v of ['active', 'selected']) CASES.push({ kind: 'tree-popup', v, state: 'rest' });
 for (const state of ['mixed', 'checked', 'focus']) CASES.push({ kind: 'tree-pairs', v: 'tree', state, pageOnly: true });
+// v0.30.0: td-repeater action buttons (ghost icons, content layer → page only): an enabled ↑ / ↓ / × icon ≥ 3.2 on the
+// page, an aria-disabled one (boundary) ≥ 2.2 like a disabled control, the aria-disabled add button label ≥ 2.2 on its
+// fill — computed colours (`pairs`), light + dark.
+for (const state of ['rest', 'disabled', 'add-disabled']) CASES.push({ kind: 'repeater', v: 'buttons', state, pageOnly: true });
 
 const stage = document.getElementById('stage');
 const bd = document.getElementById('backdrop');
@@ -386,6 +391,45 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       opacity: 1,
       hover: false,
       name: `${c.kind}:${c.v}:${c.state}`,
+      pairs,
+    };
+  } else if (c.kind === 'repeater') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const probe = document.createElement('span');
+    probe.style.setProperty('color', 'var(--td-color-bg)');
+    stage.appendChild(probe);
+    const themeBg = getComputedStyle(probe).color;
+    probe.remove();
+    const rep = document.createElement('td-repeater');
+    rep.setAttribute('max-rows', '2');
+    rep.innerHTML = '<template><div data-td-row><span>Dòng</span></div></template><div data-td-row><span>Sạc</span></div><div data-td-row><span>Cáp</span></div>';
+    stage.appendChild(rep);
+    await new Promise((r) => setTimeout(r, 300)); // colour transitions
+    let target;
+    let pairs;
+    if (c.state === 'add-disabled') {
+      target = rep.querySelector('.td-repeater__add');
+      if (target.getAttribute('aria-disabled') !== 'true') throw new Error('repeater: add not aria-disabled');
+      const cs = getComputedStyle(target);
+      pairs = [{ what: 'add label (aria-disabled) vs its fill', fg: cs.color, bg: cs.backgroundColor, min: 2.2 }];
+    } else {
+      const first = rep.querySelector('[data-td-row]');
+      target = first.querySelector(c.state === 'rest' ? '.td-repeater__btn--down' : '.td-repeater__btn--up');
+      if ((target.getAttribute('aria-disabled') === 'true') !== (c.state === 'disabled')) throw new Error(`repeater ${c.state}: wrong button`);
+      const ink = getComputedStyle(target.querySelector('svg')).color;
+      const min = c.state === 'rest' ? 3.2 : 2.2;
+      pairs = [
+        { what: 'icon vs page', fg: ink, bg: page, min },
+        { what: 'icon vs --td-color-bg', fg: ink, bg: themeBg, min },
+      ];
+    }
+    const b = target.getBoundingClientRect();
+    return {
+      rect: { x: b.x, y: b.y, width: b.width, height: b.height },
+      ink: {},
+      opacity: 1,
+      hover: false,
+      name: `repeater:${c.v}:${c.state}`,
       pairs,
     };
   } else if (c.kind === 'otp' || c.kind === 'copy' || c.kind === 'skeleton') {
