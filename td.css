@@ -9215,16 +9215,813 @@
 
 /* ---- src/styles/components/media-picker.css ---- */
 /*
- * td-media-picker (src/feedback/td-media-picker.js) — v0.32.0. Reuses modal.css for the shell (size, motion, bottom sheet).
+ * td-media-picker (src/feedback/td-media-picker.js, v0.32.0). The shell IS the td-modal DOM + modal.css (size, motion,
+ * bottom sheet ≤ 640px, reduced motion, forced colours); this file lays out the content. Content layer: solid surfaces,
+ * no glass, no new colour token. State only through attributes set by JS:
+ *   root [data-view="grid|detail|upload|edit"] [data-mode] [data-filters-open]
+ *   .td-media-picker__detail [data-state="empty|ready|edit"] [data-loading]
+ *   .td-media-picker__item [data-kind] [data-status] (+ td-media-grid's [data-selected])
+ * Only __results / __detail / __upload scroll; the body itself does not.
+ * CSP: classes / data attributes only.
  */
+@layer td.tokens {
+	:root {
+		--td-media-picker-h: min(90dvh, 52rem);
+		--td-media-picker-detail-w: 20rem;
+		--td-media-picker-tile-min: 9rem;
+		--td-media-picker-tile-min-sm: 6.5rem;
+		--td-media-picker-tray-thumb: 40px;
+	}
+}
+
 @layer td.component {
+	td-media-picker {
+		display: none;
+	}
+
+	.td-media-picker .td-media-picker__dialog {
+		height: var(--td-media-picker-h);
+	}
+
+	.td-media-picker .td-media-picker__body {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-sm);
+		overflow: hidden;
+		min-height: 0;
+	}
+
+	/* toolbar: search grows, buttons wrap */
+	.td-media-picker__toolbar {
+		display: flex;
+		flex: 0 0 auto;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+		align-items: center;
+	}
+
+	.td-media-picker__search {
+		flex: 1 1 14rem;
+		min-width: 0;
+	}
+
+	.td-media-picker__toolbar .td-btn .td-icon {
+		flex: none;
+	}
+
+	.td-media-picker__filters-toggle[hidden],
+	.td-media-picker__facets[hidden],
+	.td-media-picker__upload[hidden],
+	.td-media-picker__tray[hidden],
+	.td-media-picker [hidden] {
+		display: none;
+	}
+
+	.td-media-picker__filters-toggle {
+		display: none;
+	}
+
+	.td-media-picker__facets {
+		display: flex;
+		flex: 1 1 100%;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs) var(--td-space-sm);
+		align-items: flex-end;
+	}
+
+	.td-media-picker__facet {
+		flex: 0 1 14rem;
+		min-width: 10rem;
+	}
+
+	.td-media-picker__facet[data-type="toggle"] {
+		flex: 0 0 auto;
+		min-width: 0;
+	}
+
+	/* upload panel */
+	.td-media-picker__upload {
+		display: flex;
+		flex: 0 1 auto;
+		flex-direction: column;
+		gap: var(--td-space-sm);
+		max-height: 45%;
+		padding: var(--td-space-sm);
+		border: 1px solid var(--td-color-border);
+		border-radius: var(--td-radius-md);
+		background: var(--td-color-surface);
+		overflow: auto;
+		overscroll-behavior: contain;
+	}
+
+	.td-media-picker__upload-hint {
+		margin: 0;
+		font-size: var(--td-text-sm);
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-picker__upload-notes {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		font-size: var(--td-text-sm);
+		color: var(--td-color-text-muted);
+	}
+
+	/* main: results + detail */
+	.td-media-picker__main {
+		display: grid;
+		flex: 1 1 auto;
+		grid-template-columns: minmax(0, 1fr) var(--td-media-picker-detail-w);
+		gap: var(--td-space-md);
+		min-height: 0;
+	}
+
+	.td-media-picker__results,
+	.td-media-picker__detail {
+		min-height: 0;
+		overflow: auto;
+		overscroll-behavior: contain;
+	}
+
+	.td-media-picker__results {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-sm);
+	}
+
+	.td-media-picker__grid {
+		--td-media-grid-cols: repeat(auto-fill, minmax(var(--td-media-picker-tile-min), 1fr));
+	}
+
+	.td-media-picker__item {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-2xs);
+		padding-bottom: var(--td-space-2xs);
+	}
+
+	.td-media-picker__open {
+		position: relative;
+		display: block;
+		aspect-ratio: 1 / 1;
+		border: 1px solid var(--td-color-border);
+		background: var(--td-color-surface-muted);
+	}
+
+	.td-media-picker__open .td-media-picker__thumb {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.td-media-picker__thumb-icon {
+		display: flex;
+		width: 100%;
+		height: 100%;
+		align-items: center;
+		justify-content: center;
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-picker__item[data-selected] .td-media-picker__open {
+		border-color: var(--td-media-grid-tick-on-bg);
+	}
+
+	.td-media-picker__item:not([data-status="ready"]) .td-media-picker__thumb {
+		opacity: 0.55;
+	}
+
+	.td-media-picker__kind,
+	.td-media-picker__status {
+		position: absolute;
+		inset-block-end: var(--td-space-2xs);
+		inset-inline-start: var(--td-space-2xs);
+		padding: 0 var(--td-space-2xs);
+		border-radius: var(--td-radius-sm);
+		background: var(--td-btn-primary-bg);
+		color: var(--td-btn-primary-fg);
+		font-size: var(--td-text-xs);
+		line-height: 1.5;
+	}
+
+	.td-media-picker__status {
+		inset-inline-start: auto;
+		inset-inline-end: var(--td-space-2xs);
+	}
+
+	.td-media-picker__name {
+		overflow: hidden;
+		padding-inline: var(--td-space-2xs);
+		font-size: var(--td-text-xs);
+		color: var(--td-color-text-muted);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.td-media-picker__skeleton {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(var(--td-media-picker-tile-min), 1fr));
+		gap: var(--td-media-grid-gap);
+	}
+
+	.td-media-picker__skeleton-tile {
+		--td-skeleton-ratio: 1 / 1;
+	}
+
+	.td-media-picker__error {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-sm);
+		align-items: flex-start;
+		padding: var(--td-space-md);
+		border: 1px solid var(--td-color-border);
+		border-radius: var(--td-radius-md);
+	}
+
+	.td-media-picker__error-text {
+		margin: 0;
+		color: var(--td-color-text);
+	}
+
+	.td-media-picker__more-row {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-sm);
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.td-media-picker__count {
+		margin: 0;
+		font-size: var(--td-text-sm);
+		color: var(--td-color-text-muted);
+	}
+
+	/* detail */
+	.td-media-picker__detail {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-sm);
+		padding-inline-start: var(--td-space-md);
+		border-inline-start: 1px solid var(--td-color-border);
+	}
+
+	.td-media-picker__back {
+		display: none;
+		align-self: flex-start;
+	}
+
+	.td-media-picker__detail-empty {
+		margin: 0;
+		color: var(--td-color-text-muted);
+		font-size: var(--td-text-sm);
+	}
+
+	.td-media-picker__preview {
+		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 8rem;
+		border-radius: var(--td-radius-md);
+		background: var(--td-color-surface-muted);
+		color: var(--td-color-text-muted);
+		overflow: hidden;
+	}
+
+	.td-media-picker__preview img {
+		display: block;
+		max-width: 100%;
+		max-height: 16rem;
+		object-fit: contain;
+	}
+
+	.td-media-picker__detail-name {
+		margin: 0;
+		font-size: var(--td-text-base);
+		font-weight: 600;
+		overflow-wrap: anywhere;
+	}
+
+	.td-media-picker__meta {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr);
+		gap: var(--td-space-2xs) var(--td-space-sm);
+		margin: 0;
+		font-size: var(--td-text-sm);
+	}
+
+	.td-media-picker__meta dt {
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-picker__meta dd {
+		margin: 0;
+		overflow-wrap: anywhere;
+	}
+
+	.td-media-picker__badges {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-2xs);
+	}
+
+	.td-media-picker__edit,
+	.td-media-picker__edit-actions {
+		align-self: flex-start;
+	}
+
+	.td-media-picker__edit-actions {
+		display: flex;
+		gap: var(--td-space-xs);
+	}
+
+	.td-media-picker__notice {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-xs);
+		align-items: flex-start;
+		font-size: var(--td-text-sm);
+		color: var(--td-color-error);
+	}
+
+	.td-media-picker__notice p {
+		margin: 0;
+	}
+
+	/* descriptor form (media-picker-fields.js) */
+	.td-media-picker__form {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-sm);
+	}
+
+	.td-media-picker__form-errors {
+		margin: 0;
+		padding-inline-start: var(--td-space-md);
+		font-size: var(--td-text-sm);
+		color: var(--td-color-error);
+	}
+
+	.td-media-picker__field {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-2xs);
+		min-width: 0;
+	}
+
+	.td-media-picker__help {
+		margin: 0;
+	}
+
+	.td-media-picker__readonly {
+		display: grid;
+		gap: var(--td-space-2xs);
+		margin: 0;
+		font-size: var(--td-text-sm);
+	}
+
+	.td-media-picker__readonly-label {
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-picker__readonly-value {
+		margin: 0;
+		overflow-wrap: anywhere;
+	}
+
+	/* footer: tray + actions */
+	.td-media-picker .td-media-picker__footer {
+		justify-content: space-between;
+	}
+
+	.td-media-picker__tray {
+		display: flex;
+		flex: 1 1 12rem;
+		gap: var(--td-space-xs);
+		align-items: center;
+		min-width: 0;
+	}
+
+	.td-media-picker__tray-count,
+	.td-media-picker__tray-loading {
+		flex: none;
+		font-size: var(--td-text-sm);
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-picker__tray-list {
+		display: flex;
+		flex: 0 1 auto;
+		gap: var(--td-space-2xs);
+		min-width: 0;
+		overflow-x: auto;
+		overscroll-behavior: contain;
+	}
+
+	.td-media-picker__tray-item {
+		display: flex;
+		flex: none;
+		width: var(--td-media-picker-tray-thumb);
+		height: var(--td-media-picker-tray-thumb);
+		align-items: center;
+		justify-content: center;
+		padding: 0;
+		border: 1px solid var(--td-color-border-strong);
+		border-radius: var(--td-radius-sm);
+		background: var(--td-color-surface-muted);
+		color: var(--td-color-text-muted);
+		cursor: pointer;
+		overflow: hidden;
+	}
+
+	.td-media-picker__tray-item img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.td-media-picker__tray-item:focus-visible {
+		outline: 2px solid var(--td-focus);
+		outline-offset: 2px;
+	}
+
+	.td-media-picker__actions {
+		display: flex;
+		flex: none;
+		gap: var(--td-space-xs);
+		margin-inline-start: auto;
+	}
+
+	.td-media-picker__confirm[aria-disabled="true"] {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	.td-media-picker__confirm-text {
+		margin: 0;
+	}
+
+	@media (pointer: coarse) {
+		.td-media-picker__tray-item {
+			width: var(--td-touch-min);
+			height: var(--td-touch-min);
+		}
+	}
+
+	/* phones: the sheet shows ONE view at a time; facets folded behind "Bộ lọc" */
+	@media (max-width: 640px) {
+		.td-media-picker .td-media-picker__dialog {
+			height: min(var(--td-media-picker-h), 90dvh);
+		}
+
+		.td-media-picker__grid,
+		.td-media-picker__skeleton {
+			--td-media-grid-cols: repeat(auto-fill, minmax(var(--td-media-picker-tile-min-sm), 1fr));
+			grid-template-columns: repeat(auto-fill, minmax(var(--td-media-picker-tile-min-sm), 1fr));
+		}
+
+		.td-media-picker__filters-toggle:not([hidden]) {
+			display: inline-flex;
+		}
+
+		.td-media-picker__facets {
+			display: none;
+		}
+
+		.td-media-picker[data-filters-open] .td-media-picker__facets:not([hidden]) {
+			display: flex;
+		}
+
+		.td-media-picker__facet {
+			flex: 1 1 100%;
+		}
+
+		.td-media-picker__main {
+			display: flex;
+			flex-direction: column;
+		}
+
+		.td-media-picker__results,
+		.td-media-picker__detail {
+			flex: 1 1 auto;
+		}
+
+		.td-media-picker__detail {
+			display: none;
+			padding-inline-start: 0;
+			border-inline-start: 0;
+		}
+
+		.td-media-picker:is([data-view="detail"], [data-view="edit"]) .td-media-picker__detail {
+			display: flex;
+		}
+
+		.td-media-picker:is([data-view="detail"], [data-view="upload"], [data-view="edit"]) .td-media-picker__results {
+			display: none;
+		}
+
+		.td-media-picker[data-view="upload"] .td-media-picker__upload {
+			flex: 1 1 auto;
+			max-height: none;
+		}
+
+		.td-media-picker[data-view="upload"] .td-media-picker__main {
+			display: none;
+		}
+
+		.td-media-picker__back {
+			display: inline-flex;
+		}
+
+		.td-media-picker__tray-list,
+		.td-media-picker__tray-item {
+			display: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-media-picker__open,
+		.td-media-picker__tray-item,
+		.td-media-picker__upload,
+		.td-media-picker__error {
+			border-color: CanvasText;
+		}
+
+		.td-media-picker__item[data-selected] .td-media-picker__open {
+			border-color: Highlight;
+			border-width: 2px;
+		}
+
+		.td-media-picker__kind,
+		.td-media-picker__status {
+			border: 1px solid CanvasText;
+		}
+
+		.td-media-picker__detail {
+			border-color: CanvasText;
+		}
+	}
 }
 
 /* ---- src/styles/components/media-field.css ---- */
 /*
- * td-media-field (src/form/td-media-field.js) — v0.32.0.
+ * td-media-field (src/form/td-media-field.js) — v0.32.0, plan v0.32.0-media-picker M6 (field). Content layer: solid
+ * surfaces, never glass (minimal surfaces).
+ * Frame: `display: grid`, the SVG sizer (viewBox = the aspect ratio, same markup in PHP and JS — no CSSOM) and the open
+ * button share one cell, so the box keeps its ratio before AND after the upgrade. No sizer (no / invalid
+ * `aspect-ratio`) = the free mode (dcms2 `freeStyle`): empty = --td-media-field-empty-h tall, filled = the image's
+ * natural ratio capped at --td-media-field-max-h. `preview-fit="contain"` (with a ratio) fits the image in the frame.
+ * State: [data-state="empty|filled"] / [data-kind] on the frame, [aria-invalid] / :disabled on the open button,
+ * [hidden] on the actions. Empty frame = dashed border (≥ 3:1, --td-control-border-strong), filled = solid.
+ * Before define (php/td.php td_media_field): the open / Đổi / Gỡ buttons are `visibility: hidden` (no dead control;
+ * the box, sizer and preview stay → no layout shift).
+ * Tokens: --td-media-field-w (host inline size), --td-media-field-empty-h, --td-media-field-max-h.
+ * CSP: classes / data / aria attributes only.
  */
+@layer td.tokens {
+	:root {
+		--td-media-field-w: 100%;
+		--td-media-field-empty-h: 10rem;
+		--td-media-field-max-h: 24rem;
+	}
+}
+
 @layer td.component {
+	td-media-field {
+		display: block;
+		box-sizing: border-box;
+		inline-size: var(--td-media-field-w, 100%);
+		max-inline-size: 100%;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text);
+	}
+
+	td-media-field *,
+	td-media-field *::before {
+		box-sizing: border-box;
+	}
+
+	.td-media-field__label {
+		display: block;
+		margin: 0 0 var(--td-space-2xs);
+		font-weight: var(--td-fw-medium);
+		color: var(--td-field-label);
+	}
+
+	.td-media-field__label:empty {
+		display: none;
+	}
+
+	.td-media-field__frame {
+		position: relative;
+		display: grid;
+		inline-size: 100%;
+		border: 1px solid var(--td-color-border);
+		border-radius: var(--td-radius-md);
+		background: var(--td-color-surface);
+	}
+
+	.td-media-field__frame[data-state="empty"] {
+		border-style: dashed;
+		border-color: var(--td-control-border-strong);
+		background: var(--td-color-surface-muted);
+	}
+
+	.td-media-field__frame:has(> .td-media-field__open[aria-invalid="true"]) {
+		border-color: var(--td-field-error);
+	}
+
+	.td-media-field__sizer {
+		display: block;
+		grid-area: 1 / 1;
+		inline-size: 100%;
+		block-size: auto;
+		pointer-events: none;
+	}
+
+	.td-media-field__open {
+		position: relative;
+		display: flex;
+		grid-area: 1 / 1;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		inline-size: 100%;
+		min-block-size: var(--td-media-field-empty-h, 10rem);
+		margin: 0;
+		padding: 0;
+		border: 0;
+		border-radius: calc(var(--td-radius-md) - 1px);
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		text-align: center;
+		cursor: pointer;
+		overflow: hidden;
+		transition: background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	/* ratio mode: the sizer sets the height, the button fills the cell, the image covers it */
+	.td-media-field__sizer + .td-media-field__open {
+		min-block-size: 0;
+	}
+
+	.td-media-field__open:focus-visible {
+		outline: 2px solid var(--td-focus);
+		outline-offset: 2px;
+	}
+
+	.td-media-field__open:disabled {
+		cursor: not-allowed;
+	}
+
+	.td-media-field__frame[data-state="empty"] > .td-media-field__open:hover:not(:disabled) {
+		background: var(--td-color-hover);
+	}
+
+	.td-media-field__open:disabled > :not(.td-sr-only) {
+		opacity: 0.6;
+	}
+
+	.td-media-field__empty,
+	.td-media-field__file {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--td-space-2xs);
+		max-inline-size: 100%;
+		padding: var(--td-space-md);
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-field__file {
+		color: var(--td-color-text);
+	}
+
+	.td-media-field__icon {
+		display: inline-flex;
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-field__icon svg {
+		inline-size: 1.75rem;
+		block-size: 1.75rem;
+	}
+
+	.td-media-field__prompt {
+		font-weight: var(--td-fw-medium);
+	}
+
+	.td-media-field__ratio {
+		font-size: var(--td-text-xs);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.td-media-field__name {
+		max-inline-size: 100%;
+		overflow-wrap: anywhere;
+	}
+
+	.td-media-field__img {
+		display: block;
+		inline-size: 100%;
+		block-size: auto;
+		max-block-size: var(--td-media-field-max-h, 24rem);
+		object-fit: contain;
+		user-select: none;
+		-webkit-user-drag: none;
+	}
+
+	.td-media-field__sizer + .td-media-field__open > .td-media-field__img {
+		position: absolute;
+		inset: 0;
+		block-size: 100%;
+		max-block-size: none;
+		object-fit: cover;
+	}
+
+	td-media-field[preview-fit="contain" i] .td-media-field__sizer + .td-media-field__open > .td-media-field__img {
+		object-fit: contain;
+	}
+
+	/* free mode, filled: the image's natural ratio (no empty-frame minimum) */
+	.td-media-field__frame[data-state="filled"] > .td-media-field__open:first-child {
+		min-block-size: 0;
+	}
+
+	.td-media-field__badge {
+		position: absolute;
+		inset-block-start: var(--td-space-xs);
+		inset-inline-start: var(--td-space-xs);
+		padding: 0.125rem 0.5rem;
+		border-radius: var(--td-radius-full);
+		background: var(--td-color-text);
+		color: var(--td-color-surface);
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-medium);
+		line-height: var(--td-leading-normal);
+	}
+
+	.td-media-field__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+		margin-block-start: var(--td-space-xs);
+	}
+
+	.td-media-field__actions[hidden] {
+		display: none;
+	}
+
+	.td-media-field__usage {
+		margin-block-start: var(--td-space-sm);
+	}
+
+	.td-media-field__help {
+		display: block;
+		margin-block-start: var(--td-space-2xs);
+		font-size: var(--td-text-xs);
+		color: var(--td-field-note);
+	}
+
+	/* ADR 0012 §6: before define no dead control — the buttons keep their box, their content (preview) stays */
+	td-media-field:not(:defined) :is(.td-media-field__open, .td-media-field__actions button) {
+		visibility: hidden;
+	}
+
+	td-media-field:not(:defined) .td-media-field__open > :not(.td-sr-only) {
+		visibility: visible;
+	}
+
+	@media (pointer: coarse) {
+		.td-media-field__actions .td-btn {
+			min-block-size: var(--td-touch-min, 44px);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-media-field__open {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-media-field__frame {
+			border-color: CanvasText;
+		}
+
+		.td-media-field__badge {
+			border: 1px solid CanvasText;
+		}
+
+		.td-media-field__open:focus-visible {
+			outline-color: Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/utilities.css ---- */

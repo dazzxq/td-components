@@ -1,6 +1,7 @@
 /**
  * v0.32.0 — mock `MediaPickerAdapter` shared by the media picker / media field tests, stories and the demo (no network).
- * 60 assets (images from `${base}{1..4}.svg`, every 10th a video poster, every 15th a file, m7 `processing`), facets
+ * 60 assets (images from `${base}{1..4}.svg`; videos m4, m14, … (i % 10 = 4); files m11, m26, m41, m56 (i % 15 = 11); m7
+ * `processing`; m5 per-asset `editMetadata: false`; images are named `anh-{i}.jpg`), facets
  * album / scope / tags, dsuite-like asset + upload field descriptors (`visibleWhen`), upload with fake progress +
  * dedup by file name, update with `version` conflicts.
  *
@@ -31,7 +32,7 @@ export function createMockAdapter(o = {}) {
   /** @type {Map<string, any>} */
   const db = new Map();
   for (let i = 1; i <= count; i++) {
-    const kind = i % 15 === 0 ? 'file' : (i % 10 === 0 ? 'video' : 'image');
+    const kind = i % 15 === 11 ? 'file' : (i % 10 === 4 ? 'video' : 'image');
     const img = `${base}${((i - 1) % 4) + 1}.svg`;
     db.set(`m${i}`, {
       id: `m${i}`,
