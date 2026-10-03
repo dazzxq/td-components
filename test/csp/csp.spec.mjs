@@ -564,7 +564,9 @@ async function main() {
       const modulePath = MATRIX._meta.modules[component];
       if (!modulePath) throw new Error(`No module path for ${component} in matrix _meta.modules`);
       for (const state of states) {
-        const r = await runState(browser, component, modulePath, state);
+        // v0.31.0: a state may import another module (`module`) — e.g. a harmless one, so the host stays UNDEFINED
+        // (`:not(:defined)` rules: app handles / the SSR shell before the component module loads)
+        const r = await runState(browser, component, state.module || modulePath, state);
         results.push(r);
         console.log(fmt(r));
       }

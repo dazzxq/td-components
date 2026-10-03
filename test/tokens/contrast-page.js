@@ -11,6 +11,8 @@ import '/src/form/td-tree.js';
 import '/src/form/td-tree-select.js';
 import '/src/form/td-repeater.js';
 import '/src/form/td-number-input.js';
+import '/src/display/td-sortable.js';
+import '/src/display/td-masked-value.js';
 
 const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning'];
 const TOASTS = ['success', 'error', 'warning', 'info'];
@@ -83,6 +85,12 @@ for (const state of ['rest', 'disabled', 'add-disabled']) CASES.push({ kind: 're
 // v0.30.0: td-number-input (content layer → page only): the prefix / suffix text ≥ 4.7 on the box fill, the focus border of
 // the box (`:focus-within`) ≥ 3:1 vs the box fill and the page — computed colours (`pairs`), light + dark.
 for (const state of ['affix', 'focus']) CASES.push({ kind: 'number', v: 'box', state, pageOnly: true });
+// v0.31.0: td-sortable / td-repeater[sortable] drag handle (ghost icon, content layer → page only): icon ≥ 3.2 at rest and
+// hover (hover fill composited on the page), aria-disabled ≥ 2.2 like a disabled control, on its solid chip in the gallery
+// recipe; the placeholder border and the lifted outline ≥ 3:1 vs the page, --td-color-bg and --td-color-surface;
+// td-masked-value text ≥ 4.7 masked and revealed, toggle icon ≥ 3.2 — computed colours (`pairs`), light + dark.
+for (const state of ['rest', 'hover', 'disabled', 'gallery', 'placeholder', 'lifted']) CASES.push({ kind: 'sortable', v: 'handle', state, pageOnly: true });
+for (const state of ['masked', 'revealed', 'toggle']) CASES.push({ kind: 'masked', v: 'value', state, pageOnly: true });
 
 const stage = document.getElementById('stage');
 const bd = document.getElementById('backdrop');
@@ -478,6 +486,111 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       opacity: 1,
       hover: false,
       name: `repeater:${c.v}:${c.state}`,
+      pairs,
+    };
+  } else if (c.kind === 'sortable' || c.kind === 'masked') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const probe = document.createElement('span');
+    stage.appendChild(probe);
+    const tok = (name) => { probe.style.setProperty('color', `var(${name})`); return getComputedStyle(probe).color; };
+    const themeBg = tok('--td-color-bg');
+    const surface = tok('--td-color-surface');
+    const textInk = tok('--td-color-text');
+    const hoverFill = tok('--td-color-hover-strong');
+    probe.remove();
+    const nums = (str) => String(str).match(/-?[\d.]+/g).map(Number);
+    /** an rgba fill composited on an opaque background → rgb() */
+    const over = (fill, bg) => {
+      const [r, g, b, a = 1] = nums(fill);
+      const base = nums(bg);
+      return `rgb(${[r, g, b].map((v, i) => Math.round(v * a + base[i] * (1 - a))).join(', ')})`;
+    };
+    let target;
+    let pairs;
+    if (c.kind === 'sortable') {
+      const host = document.createElement('td-sortable');
+      host.setAttribute('label', 'Section');
+      host.innerHTML = '<div data-td-sort-item data-id="a">A</div><div data-td-sort-item data-id="b">B</div>';
+      if (c.state === 'disabled') host.setAttribute('disabled', '');
+      let grid = null;
+      if (c.state === 'gallery') {
+        grid = document.createElement('td-media-grid');
+        host.setAttribute('role', 'none');
+        for (const it of host.children) it.setAttribute('data-td-media-item', '');
+        grid.appendChild(host);
+        stage.appendChild(grid);
+      } else {
+        stage.appendChild(host);
+      }
+      const h = host.querySelector('.td-sortable__handle');
+      await new Promise((r) => setTimeout(r, 300)); // colour transitions
+      const ink = getComputedStyle(h.querySelector('svg')).color;
+      const pageAndBg = (fg, min, what) => [
+        { what: `${what} vs page`, fg, bg: page, min },
+        { what: `${what} vs --td-color-bg`, fg, bg: themeBg, min },
+        { what: `${what} vs --td-color-surface`, fg, bg: surface, min },
+      ];
+      if (c.state === 'rest') pairs = pageAndBg(ink, 3.2, 'icon');
+      else if (c.state === 'hover') {
+        pairs = [
+          { what: 'hover icon vs hover fill on the page', fg: textInk, bg: over(hoverFill, page), min: 3.2 },
+          { what: 'hover icon vs hover fill on --td-color-bg', fg: textInk, bg: over(hoverFill, themeBg), min: 3.2 },
+        ];
+      } else if (c.state === 'disabled') {
+        if (h.getAttribute('aria-disabled') !== 'true') throw new Error('sortable: handle not aria-disabled');
+        pairs = pageAndBg(ink, 2.2, 'aria-disabled icon');
+      } else if (c.state === 'gallery') {
+        pairs = [{ what: 'icon vs its chip', fg: ink, bg: getComputedStyle(h).backgroundColor, min: 3.2 }];
+      } else if (c.state === 'placeholder') {
+        const ph = document.createElement('div');
+        ph.className = 'td-sortable__placeholder';
+        host.appendChild(ph);
+        pairs = pageAndBg(getComputedStyle(ph).borderTopColor, 3, 'placeholder border');
+      } else {
+        h.click();
+        const it = host.querySelector('[data-td-sort-state="lifted"]');
+        if (!it) throw new Error('sortable: not lifted');
+        pairs = pageAndBg(getComputedStyle(it).outlineColor, 3, 'lifted outline');
+        h.click();
+      }
+      target = h;
+    } else {
+      const host = document.createElement('td-masked-value');
+      host.setAttribute('label', 'SĐT');
+      host.setAttribute('masked', '09xx xxx 123');
+      host.reveal = () => Promise.resolve('0912 345 123');
+      stage.appendChild(host);
+      if (c.state === 'revealed') {
+        host.querySelector('button').click();
+        await new Promise((r) => setTimeout(r, 20));
+        if (!host.revealed) throw new Error('masked: not revealed');
+      }
+      await new Promise((r) => setTimeout(r, 300));
+      const t = host.querySelector('.td-masked__text');
+      if (c.state === 'toggle') {
+        target = host.querySelector('button');
+        const ink = getComputedStyle(target.querySelector('svg')).color;
+        pairs = [
+          { what: 'icon vs page', fg: ink, bg: page, min: 3.2 },
+          { what: 'icon vs --td-color-bg', fg: ink, bg: themeBg, min: 3.2 },
+        ];
+      } else {
+        target = t;
+        const ink = getComputedStyle(t).color;
+        pairs = [
+          { what: `${c.state} text vs page`, fg: ink, bg: page, min: 4.7 },
+          { what: `${c.state} text vs --td-color-bg`, fg: ink, bg: themeBg, min: 4.7 },
+          { what: `${c.state} text vs --td-color-surface`, fg: ink, bg: surface, min: 4.7 },
+        ];
+      }
+    }
+    const b = target.getBoundingClientRect();
+    return {
+      rect: { x: b.x, y: b.y, width: b.width, height: b.height },
+      ink: {},
+      opacity: 1,
+      hover: false,
+      name: `${c.kind}:${c.v}:${c.state}`,
       pairs,
     };
   } else if (c.kind === 'otp' || c.kind === 'copy' || c.kind === 'skeleton') {
