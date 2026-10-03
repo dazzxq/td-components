@@ -13,8 +13,9 @@ plan-review APPROVE 4 vòng).
   không JS) hiển thị thành 6 ô; lọc chữ số (cả full-width); sự kiện `complete` **một lần** khi đủ 6 số (không tự submit —
   app quyết định); form-associated, lỗi, `required`. PHP `td_otp_input()` (native mặc định, element mode `otp-input@1`).
 - **`<td-drawer>` / `TdDrawer.open()`** — panel trượt trái / phải (RTL), kích thước, ≤ 640px toàn màn hình; focus trap, trả
-  focus, inert, khoá cuộn, Escape / bấm nền (`dismissible`), sự kiện **`before-close`** chặn được (form chưa lưu), `close`
-  sau khi đóng xong; chồng đúng với modal / lightbox. Không JS: nội dung hiện tại chỗ.
+  focus, inert, khoá cuộn, Escape / bấm nền (`dismissible`), sự kiện **`before-close`** chặn được (form chưa lưu), `open`
+  / `close` sau khi hiệu ứng xong; chồng đúng với modal / lightbox. `body` / `footer` dạng chuỗi là **văn bản** (HTML tin
+  cậy chỉ qua `bodyHtml` / `footerHtml`). Không JS: nội dung hiện tại chỗ.
 - **`<td-copy>`** — nút icon (kiểu action button dcms2): copy → icon ✓ vài giây rồi tự trả về; fallback chọn văn bản khi
   clipboard bị chặn; `for="id"` hoặc `<code class="td-copy__source">`; `sensitive` không đưa giá trị vào sự kiện. PHP
   `td_copy()`.
