@@ -87,7 +87,7 @@ nhánh, thêm quyền con mới vào nhóm sau này không tự cấp ngầm. Kh
 | 3. Bấm cha | mọi lá **không khoá** của nhánh đã check → bỏ check chúng; ngược lại → check hết chúng. Lá khoá giữ nguyên (cha `mixed` vì lá khoá vẫn bấm qua lại được, không bao giờ kẹt) |
 | 4. Bấm lá | lật lá đó; tổ tiên tính lại (O(độ sâu)) |
 | 5. Giá trị ban đầu | value của nút **cha** hoặc value không có trong cây → bỏ + một cảnh báo |
-| 6. `cascade` + `loadChildren` | không hỗ trợ (không biết lá của nhánh chưa tải) → một cảnh báo, chạy như `multiple` độc lập |
+| 6. `cascade` + nhánh lazy | không hỗ trợ khi có `loadChildren` **hoặc** còn nút `hasChildren` chưa tải (không biết lá của nhánh chưa tải; nhánh chưa tải không bao giờ bị coi là lá) → một cảnh báo, chạy như `multiple` độc lập. Gán `data` mới không còn nhánh lazy (và không có hook) → `cascade` có hiệu lực lại, giá trị được đối chiếu (bỏ value cha) |
 
 ### 4. Nút khoá: "khoá hiển thị", vẫn được gửi
 
@@ -281,7 +281,7 @@ server luôn tự kiểm quyền.
 
 - **`name="perms"` chỉ nhận giá trị cuối trong PHP** — dùng `name="perms[]"`.
 - **Gán `value` (JSON) cho `multiple` qua attribute** phải là JSON hợp lệ: `value='["a","b"]'` (nháy đơn bên ngoài).
-- **`cascade` cùng `loadChildren`** → cảnh báo, chạy như chọn nhiều độc lập.
+- **`cascade` cùng `loadChildren` / nút `hasChildren` chưa tải** → cảnh báo, chạy như chọn nhiều độc lập.
 - **Dữ liệu > 5.000 nút** → dùng `loadChildren`.
 - Cần lưu trạng thái mở → nghe `expanded-change` (kit không tự lưu). Kéo thả sắp xếp, sửa / xoá nút tại chỗ là
   non-goal (ghép bằng `td-table` / menu).

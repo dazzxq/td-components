@@ -107,9 +107,12 @@ export class TreeModel {
     this._settle();
   }
 
-  /** Effective cascade: `multiple` + `cascade` without a lazy hook (M3 rule 6). */
+  /**
+   * Effective cascade: `multiple` + `cascade` with NO lazy branch at all — neither a loadChildren hook nor an unloaded
+   * `hasChildren` node (M3 rule 6; review round 2 ISSUE-9: an unloaded branch must never count as a leaf).
+   */
   get cascade() {
-    return this._cascadeOpt && this.mode === 'multiple' && !this.loader;
+    return this._cascadeOpt && this.mode === 'multiple' && !this.loader && this._lazyCount === 0;
   }
 
   /** @param {Function|null} fn loadChildren(node, { signal }) */
@@ -132,8 +135,8 @@ export class TreeModel {
 
   /** @private */
   _checkCascade() {
-    if (this._cascadeOpt && this.mode === 'multiple' && this.loader) {
-      this._warnOnce('cascade-lazy', 'td-tree: cascade is not supported with loadChildren (unknown leaves of unloaded branches) — independent multiple is used.');
+    if (this._cascadeOpt && this.mode === 'multiple' && (this.loader || this._lazyCount > 0)) {
+      this._warnOnce('cascade-lazy', 'td-tree: cascade is not supported with lazy branches (loadChildren / hasChildren: unknown leaves of unloaded branches) — independent multiple is used.');
     }
   }
 
@@ -175,6 +178,7 @@ export class TreeModel {
       this._warnOnce('size', `td-tree: ${this._count} nodes — above ${TREE_WARN_NODES}, load branches on demand with loadChildren.`);
     }
     this._changed();
+    this._checkCascade(); // review round 2 (ISSUE-9): effective cascade depends on the normalized data (lazy branches)
     this._reconcile();
     this._recount();
     this._notify({ type: 'data' });
@@ -586,6 +590,7 @@ export class TreeModel {
     node.lazy = false;
     this._lazyCount -= 1;
     this._changed();
+    this._checkCascade();
     this._reconcile();
     this._recount();
     this._notify({ type: 'load', node });

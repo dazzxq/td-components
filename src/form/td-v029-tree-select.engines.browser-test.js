@@ -657,3 +657,23 @@ describe('td-tree-select — review round 1', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------- review round 2 ---------------------------------
+describe('td-tree-select — review round 2', () => {
+  for (const [name, moves] of [['Home', [{ press: 'Home' }]], ['ArrowLeft ×3', [{ press: 'ArrowLeft' }, { press: 'ArrowLeft' }, { press: 'ArrowLeft' }]]]) {
+    it(`ISSUE-10: caret moved (${name}) inside the closed label, then typing → the query is only the typed text`, async () => {
+      const el = ts();
+      el.value = 'samsung';
+      const c = combo(el);
+      c.focus();
+      c.setSelectionRange(c.value.length, c.value.length);
+      for (const m of moves) await sendKeys(m);
+      expect(isOpen(el)).to.equal(false, 'caret keys do not open');
+      await sendKeys({ type: 'gal' });
+      expect(c.value).to.equal('gal');
+      await wait(250);
+      expect(shownLabels(el)).to.deep.equal(['Điện thoại', 'Samsung', 'Galaxy S24']);
+      keyOn(c, 'Escape');
+    });
+  }
+});

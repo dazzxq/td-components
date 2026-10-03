@@ -425,6 +425,30 @@ describe('tree-model — multiple + cascade (M3 rules 1-6)', () => {
     assert.ok(ev.includes('values'));
   });
 
+  it('review ISSUE-9: unloaded hasChildren branches WITHOUT a loader → cascade stays off (independent + warning), never leaves', () => {
+    const { m, warns } = mk('multiple', true);
+    m.setData([{ value: 'p', label: 'P', hasChildren: true }, { value: 'q', label: 'Q', children: [{ value: 'q1', label: 'Q1' }] }]);
+    assert.equal(m.cascade, false);
+    assert.equal(warns.filter((w) => /cascade/i.test(w)).length, 1);
+    // the unloaded branch is not a cascade leaf: a parent click toggles only that node (independent mode)
+    assert.deepEqual(m.activate(n(m, 'q')), { added: ['q'], removed: [] });
+    assert.equal(m.checkState(n(m, 'q1')), 'false');
+    m.setValues(['p', 'q1']);
+    assert.deepEqual(vals(m), ['p', 'q1']);
+    assert.equal(m.checkState(n(m, 'q')), 'false', 'no tri-state derived through an unloaded branch');
+  });
+
+  it('review ISSUE-9: new data without lazy branches → cascade activates, reconciles (parents dropped) and recounts', () => {
+    const { m } = mk('multiple', true);
+    m.setData([{ value: 'p', label: 'P', hasChildren: true }, { value: 'q', label: 'Q', children: [{ value: 'q1', label: 'Q1' }, { value: 'q2', label: 'Q2' }] }]);
+    m.setValues(['q', 'q1']);
+    assert.equal(m.cascade, false);
+    m.setData([{ value: 'q', label: 'Q', children: [{ value: 'q1', label: 'Q1' }, { value: 'q2', label: 'Q2' }] }]);
+    assert.equal(m.cascade, true);
+    assert.deepEqual(vals(m), ['q1']);
+    assert.equal(m.checkState(n(m, 'q')), 'mixed');
+  });
+
   it('rule 6: cascade + loadChildren → one warning, independent multiple', () => {
     const { m, warns } = mk('multiple', true);
     m.setLoader(async () => []);

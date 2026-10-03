@@ -11,6 +11,22 @@ const FILTER_MS = 150;
 const LIST_MAX = 320; // px: max height of the tree scroller in the popup
 const PATH_SEP = ' › ';
 
+/**
+ * The text an edit inserted into `before` (review round 2 ISSUE-10): strip the longest common prefix, then the longest
+ * common suffix that does not overlap it. A pure deletion → ''.
+ * @param {string} before
+ * @param {string} after
+ * @returns {string}
+ */
+function editDelta(before, after) {
+  const max = Math.min(before.length, after.length);
+  let p = 0;
+  while (p < max && before[p] === after[p]) p++;
+  let s = 0;
+  while (s < max - p && before[before.length - 1 - s] === after[after.length - 1 - s]) s++;
+  return after.slice(p, after.length - s);
+}
+
 /** `{key}` placeholders → values (function replacer: `$` in data is never special). */
 const format = (tpl, vars = {}) => String(tpl ?? '').replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
 
@@ -581,18 +597,23 @@ export class TdTreeSelect extends TdFormElement {
       // review round 1 (ISSUE-3): the closed input shows the selected LABEL — the first edit (typing, paste, drop)
       // starts a fresh query instead of editing that label. Chromium / Firefox: the whole label is selected right before
       // the edit, so the browser's own insertion replaces it. WebKit fixes the edit range before `beforeinput` (and
-      // clearing the value there loses the keystroke): the label left in front of the new text is stripped on `input`.
-      this.listen(combo, 'beforeinput', () => {
+      // clearing the value there loses the keystroke): on `input` only the inserted part is kept (editDelta — caret at
+      // the start, middle or end, typing or paste; review round 2 ISSUE-10).
+      this.listen(combo, 'beforeinput', (e) => {
         if (this._isOpen || this._effectiveDisabled || !combo.value) return;
         this._labelBefore = combo.value;
+        // the edit's own text (typing / paste / drop): when the value ends up exactly this, the label was replaced
+        const dt = e.dataTransfer;
+        this._editText = typeof e.data === 'string' ? e.data : (dt ? dt.getData('text/plain') : null);
         combo.setSelectionRange(0, combo.value.length);
       });
       this.listen(combo, 'input', () => {
         const before = this._labelBefore;
+        const text = this._editText;
         this._labelBefore = '';
-        if (!this._isOpen && before && combo.value !== before && combo.value.startsWith(before)) {
-          combo.value = combo.value.slice(before.length);
-        }
+        this._editText = null;
+        // replaced (Chromium / Firefox honour the selection) → keep; else (WebKit) keep only what the edit inserted
+        if (!this._isOpen && before && combo.value !== before && combo.value !== text) combo.value = editDelta(before, combo.value);
         if (!this._isOpen) this.open({ typing: true });
         this._scheduleFilter(combo.value);
       });
