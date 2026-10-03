@@ -167,6 +167,20 @@
         "opacity"
       ],
       "excludeNote": "the pending thumb pulses (animation) — opacity is time-dependent"
+    },
+    {
+      "state": "ssr",
+      "markup": "<td-toggle data-td-ssr=\"toggle@1\" id=\"csp-wifi-host\" name=\"wifi\" checked label=\"Wifi\" size=\"md\"><label class=\"td-switch td-switch--md\"><input type=\"checkbox\" role=\"switch\" class=\"td-switch__input\" id=\"csp-wifi\" name=\"wifi\" checked><span class=\"td-switch__track\" aria-hidden=\"true\"><span class=\"td-switch__thumb\"><span class=\"td-switch__icon td-switch__icon--off\" data-td-icon=\"close\"><svg class=\"td-icon td-icon--m\" data-icon=\"close\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/></svg></span><span class=\"td-switch__icon td-switch__icon--on\" data-td-icon=\"check\"><svg class=\"td-icon td-icon--m\" data-icon=\"check\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M20 6 9 17l-5-5\"/></svg></span></span></span><span class=\"td-switch__label\">Wifi</span></label></td-toggle>",
+      "selectors": [
+        ".td-switch",
+        ".td-switch__track",
+        ".td-switch__thumb",
+        ".td-switch__icon--off",
+        ".td-switch__icon--on",
+        ".td-switch__label"
+      ],
+      "settle": 300,
+      "selectorNote": "PHP td_toggle(…, ['element' => true]) markup (toggle@1) hydrated in place (v0.26.0)"
     }
   ],
   "td-checkbox": [
@@ -247,6 +261,18 @@
         ".td-field-error"
       ],
       "settle": 300
+    },
+    {
+      "state": "ssr",
+      "markup": "<td-checkbox data-td-ssr=\"checkbox@1\" id=\"csp-accept-host\" name=\"accept\" checked label=\"Accept\" size=\"md\"><label class=\"td-checkbox td-checkbox--md\"><input type=\"checkbox\" class=\"td-checkbox__input\" id=\"csp-accept\" name=\"accept\" checked><span class=\"td-checkbox__mark\" aria-hidden=\"true\"><span class=\"td-checkbox__icon\" data-td-icon=\"check\" data-td-icon-class=\"td-checkbox__svg\"><svg class=\"td-icon td-icon--m td-checkbox__svg\" data-icon=\"check\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M20 6 9 17l-5-5\"/></svg></span></span><span class=\"td-checkbox__label\">Accept</span></label></td-checkbox>",
+      "selectors": [
+        ".td-checkbox",
+        ".td-checkbox__mark",
+        ".td-checkbox__svg",
+        ".td-checkbox__label"
+      ],
+      "settle": 300,
+      "selectorNote": "PHP td_checkbox(…, ['element' => true]) markup (checkbox@1) hydrated in place (v0.26.0)"
     }
   ],
   "td-slider": [
@@ -488,6 +514,19 @@
         ".td-field__control"
       ],
       "settle": 300
+    },
+    {
+      "state": "ssr",
+      "markup": "<td-input-field data-td-ssr=\"input-field@1\" id=\"csp-email-host\" type=\"email\" size=\"md\" name=\"email\" value=\"an@example.com\" label=\"Email\" helper-text=\"Email công việc\" required max-length=\"40\" field-id=\"csp-email\" autocomplete=\"email\"><div class=\"td-field td-field--md\"><label class=\"td-field__label\" id=\"csp-email-host-label\" for=\"csp-email\">Email<span class=\"td-field__required\" aria-hidden=\"true\"> *</span></label><input type=\"email\" class=\"td-field__control\" id=\"csp-email\" name=\"email\" required aria-required=\"true\" maxlength=\"40\" autocomplete=\"email\" aria-describedby=\"csp-email-host-note csp-email-host-counter\" value=\"an@example.com\"><div class=\"td-field__footer\"><div class=\"td-field__note\" id=\"csp-email-host-note\">Email công việc</div><div class=\"td-field__counter\" id=\"csp-email-host-counter\">14/40 ký tự</div></div></div></td-input-field>",
+      "selectors": [
+        ".td-field",
+        ".td-field__label",
+        ".td-field__control",
+        ".td-field__note",
+        ".td-field__counter"
+      ],
+      "settle": 300,
+      "selectorNote": "PHP td_field(…, ['element' => true]) markup (input-field@1) hydrated in place (v0.26.0)"
     }
   ],
   "td-dropdown": [

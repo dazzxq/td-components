@@ -12,7 +12,7 @@ chọn ngày giờ theo định dạng Việt Nam, [chip-input](chip-input.md) k
 | Import | `import '@dazzxq/td-components/input-field';` (class: `import { TdInputField } from '@dazzxq/td-components';`) |
 | Loại | Custom element |
 | Form-associated | có |
-| Từ phiên bản | 0.1.0 (form-associated từ 0.2.0, token-native + BEM `.td-field` từ 0.8.0, `autoresize` từ 0.13.0) |
+| Từ phiên bản | 0.1.0 (form-associated từ 0.2.0, token-native + BEM `.td-field` từ 0.8.0, `autoresize` từ 0.13.0, hydrate SSR tại chỗ từ 0.26.0) |
 
 Cần `td.css` trên trang (xem [Cài đặt](../getting-started/installation.md)).
 
@@ -431,6 +431,53 @@ Input field là tầng nội dung: luôn nền đặc, không bao giờ là kín
   đứng riêng). Các file `test/contracts/*.html` trong repo kit chỉ là fixture test (không nằm trong gói npm). Xem
   [WordPress & PHP](../guides/wordpress-php.md) và [bảng class cũ](../upgrading/class-map.md) (đổi `.td-input*` →
   `.td-field*` ở 0.8.0).
+
+### Hợp đồng SSR `input-field@1` — hydrate tại chỗ (0.26.0)
+
+Muốn ô nhập có dáng + chạy được ngay khi chưa có JS **và** đủ tính năng component (bộ đếm, lỗi động, `validate-on`…)
+mà không "nháy" lúc module tải (trang đăng nhập): dùng
+[`td_field` ở chế độ element](../guides/php-adapter.md#td_field-ở-chế-độ-element-0260) (`'element' => true` hoặc
+`Td::configure(…, ['ssr_elements' => true])`). PHP in host `<td-input-field data-td-ssr="input-field@1" …>` + đúng cây
+`.td-field` mà component render, với control **native** còn giữ `name`, ràng buộc (`required`, `pattern`,
+`minlength`, `min` / `max` / `step`), type native (`email` / `url` / `number`), `autocomplete` — form chạy đủ khi chưa
+có JS (submit, validate, trình quản lý mật khẩu).
+
+Khi module nạp, `td-input-field` **nhận** markup đó (`canHydrate()`):
+
+- **Điều kiện nhận:** dấu `input-field@1`; con duy nhất `.td-field` có đúng cấu trúc `render()` sinh ra với attribute
+  **hiện tại** của host: class wrapper (size, textarea), nhãn nội bộ (`id`, `for`, text, dấu `*` tuỳ chọn), control
+  (thẻ, `id` = `field-id` hoặc `{host}-control`, `type` — hoặc type native tương ứng: `email`↔`text`+`inputmode=email`,
+  `url`↔`text`+`url`, `number`↔`text`+`decimal`, type khác phải trùng —, `maxlength`, `rows`), footer (ghi chú lỗi tuỳ
+  chọn, ghi chú gợi ý, bộ đếm khi có `max-length`). Mọi node chỉ mang attribute trong **allowlist** (những gì helper PHP
+  / component sinh ra + `aria-*` / `data-*`, không `data-td-*`) — có `on*`, `style`, `form`, `formaction`… → không nhận.
+  `type="contenteditable"` không có hợp đồng SSR (luôn render).
+- **Thứ tự hydrate:** chụp giá trị **sống** (chữ người dùng gõ trước khi module tải; vùng chọn nếu đang focus; property
+  `value` gán trước define thắng) → đổi `type` trên **cùng node** khi cần, chỉ ghi lại `value` khi bắt buộc (rồi trả
+  vùng chọn) → ElementInternals (giá trị + validity) **trước** → gỡ `name` + `autofocus` + ràng buộc ngoài tập
+  component vẫn giữ trên control → `<label for="{id control}">` nằm **ngoài** host chuyển sang host.
+- **Ràng buộc còn trên control sau hydrate** = đúng tập một `<td-input-field>` tạo bằng JS có:
+
+  | `type` | Giữ trên control | Gỡ (host tự kiểm validity) |
+  |---|---|---|
+  | `date` | `min`, `max` | `step`, `required`, `pattern`, `minlength` |
+  | `month`, `datetime-local`, `time` | `min`, `max`, `step` | `required`, `pattern`, `minlength` |
+  | `email`, `url`, `number` (thành `text`) | — | `min`, `max`, `step`, `required`, `pattern`, `minlength` |
+  | còn lại (`text`, `password`, `search`, `tel`, `textarea`) | — | như trên |
+
+  `maxlength` (bộ đếm ký tự) là cấu trúc: component cũng in nó. `validity` / `form.checkValidity()` sau hydrate khớp
+  component thường (có test cho email / url sai, number ngoài khoảng / sai bước, date / time ngoài khoảng, `pattern`,
+  `required` rỗng).
+- **Giữ nguyên:** node control (tham chiếu, focus, vùng chọn), kích thước (không xô layout), giá trị đang gõ. Không
+  phát `input` / `change`. FormData trước = sau, đúng **một** mục mỗi `name`.
+- **Reset** (`form.reset()`) → giá trị mặc định **native** (`value` PHP in ra), không về giá trị lúc nâng cấp.
+- **Không khớp** (script đổi `label` / `type` / `size`… trước khi module tải, markup bị sửa) → render lại nhưng **giữ
+  giá trị**. Control đang **focus** lúc đó → **hoãn** tới `blur` (không giật ô đang gõ): trong lúc hoãn component chưa
+  gắn gì, control native vẫn submit + validate; rời ô → render **một** lần + trả giá trị, không phát event.
+- **Gỡ ra rồi gắn lại** phần tử đã hydrate: gắn lại listener tại chỗ (giữ node) sau khi kiểm lại markup
+  (`canRebind()`, chặt: không còn `name` / ràng buộc của bản không-JS); bị sửa lúc tách → render lại giữ giá trị.
+  `<td-input-field>` tạo bằng JS / viết tay không dấu: hành vi như trước (render lại khi gắn lại).
+
+`data-td-ssr` bị gỡ sau lần kết nối đầu. Hợp đồng `@1` là phiên bản **cấu trúc markup**, không phải phiên bản gói.
 
 ## Bàn phím & trợ năng
 

@@ -48,12 +48,14 @@ produce byte-identical baselines.
 Styled els: `.td-toggle-track`, `.td-toggle-thumb`, `.td-toggle-icon:first-child` (cross),
 `.td-toggle-icon:last-child` (check), check `path` (color).
 States: `unchecked`, `checked`, `disabled`, `disabled-checked`, `custom-color` (#f59e0b),
-`size-sm`, `size-lg`. (7)
+`size-sm`, `size-lg`. (7) — later: `pending`, `ssr` (v0.26.0: PHP `td_toggle(…, ['element' => true])` markup `toggle@1`,
+hydrated in place under the strict CSP; computed styles identical to `checked`).
 
 ### td-checkbox (1 injected `<style>`)
 Styled els: `.td-checkmark` (the `:checked ~` bg/border rule), `.td-checkmark-icon` (opacity/scale),
 `.td-checkbox-label`.
-States: `unchecked`, `checked`, `disabled`, `custom-color` (#10b981), `size-sm`, `size-lg`. (6)
+States: `unchecked`, `checked`, `disabled`, `custom-color` (#10b981), `size-sm`, `size-lg`. (6) — later: `error`, `ssr`
+(v0.26.0: PHP `td_checkbox(…, ['element' => true])` markup `checkbox@1`, hydrated in place; styles identical to `checked`).
 
 ### td-slider (10 declarative)
 Styled els: `.td-slider-container`, `.td-slider-track-bg`, `.td-slider-track-active` (width %),
@@ -65,7 +67,8 @@ States: `min`, `mid`, `max`, `disabled`, `custom-color` (#a855f7), `show-value-l
 ### td-input-field (5 declarative)
 Styled els: `.td-input` / `.td-input-textarea`, `.td-input-note`, `.td-input-counter`.
 States: `text`, `text-focus` (focus pseudo), `textarea`, `number`, `size-sm`, `size-lg`,
-`disabled`, `error` (red border + note), `note`, `counter`, `counter-full` (count==max → error color). (11)
+`disabled`, `error` (red border + note), `note`, `counter`, `counter-full` (count==max → error color). (11) — later additions
+incl. `ssr` (v0.26.0: PHP `td_field(…, ['element' => true])` markup `input-field@1` — email, counter, helper — hydrated in place).
 
 ### td-dropdown (4 declarative incl. 1 SVG `style=`; menu portaled to body)
 Styled els: `.td-dropdown-button`, `.td-dropdown-arrow` (rotate when open), `.td-dropdown-selected`,

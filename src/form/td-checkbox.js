@@ -27,6 +27,9 @@ import { TdCheckableElement } from '../base/td-checkable-element.js';
  * @fires change - detail: { checked: boolean } (exactly one per user toggle)
  */
 export class TdCheckbox extends TdCheckableElement {
+  /** v0.26.0 SSR contract `data-td-ssr="checkbox@1"` (PHP td_checkbox element mode). */
+  static SSR_NAME = 'checkbox';
+
   /** Validation texts (Vietnamese); override per site: `TdCheckbox.messages.valueMissing = 'Please tick this box.'`. */
   static messages = {
     valueMissing: 'Vui lòng chọn ô này.',

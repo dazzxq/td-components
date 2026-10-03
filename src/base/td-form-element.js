@@ -3,6 +3,51 @@ import { TdBaseElement } from './td-base-element.js';
 let _autoIdCounter = 0;
 let _labelIdCounter = 0;
 
+// --- v0.26.0 SSR markup checks shared by the form-associated hydratable components (ADR 0012) ---
+
+/** Sorted class list (order-insensitive comparison). @param {Element} el */
+export const ssrClassKey = (el) => [...el.classList].sort().join(' ');
+/** Element children + non-blank text nodes (comments / whitespace ignored). @param {Node} el */
+export const ssrContentNodes = (el) => [...el.childNodes].filter((n) => n.nodeType === 1 || (n.nodeType === 3 && n.data.trim()));
+/** `aria-*` and `data-*` (never the kit's internal `data-td-*` namespace). */
+export const SSR_ARIA_DATA = /^(?:aria-[a-z0-9][a-z0-9._-]*|data-(?!td-)[a-z0-9][a-z0-9._-]*)$/;
+/**
+ * Attributes a server-rendered CONTROL may carry: what php/td.php prints (owned names + the `attrs` allowlist
+ * Td::ALLOWED_ATTRS) + aria-* / data-*. Anything else (on*, style, form, formaction, formmethod…, contenteditable,
+ * srcdoc…) → the markup is not adopted (safe render).
+ */
+export const SSR_CONTROL_ATTRS = new Set(['class', 'type', 'name', 'value', 'checked', 'id', 'title', 'lang', 'dir', 'role',
+  'tabindex', 'hidden', 'translate', 'accesskey', 'autofocus', 'autocomplete', 'inputmode', 'enterkeyhint', 'autocapitalize',
+  'spellcheck', 'placeholder', 'readonly', 'required', 'disabled', 'maxlength', 'minlength', 'min', 'max', 'step', 'pattern',
+  'size', 'rows', 'cols']);
+
+/** Same attribute set + values (class order-insensitive). @param {Element} a @param {Element} b */
+export function ssrSameAttrs(a, b) {
+  if (a.attributes.length !== b.attributes.length) return false;
+  return [...b.attributes].every((x) => a.hasAttribute(x.name)
+    && (x.name === 'class' ? ssrClassKey(a) === ssrClassKey(b) : a.getAttribute(x.name) === x.value));
+}
+
+/**
+ * A decorative / text part equals render()'s: same tag, exactly the same attributes, same children (text compared
+ * exactly). An icon slot (`data-td-icon`) is compared by its attributes only — its content is re-created by
+ * fillIconSlots() on bind.
+ * @param {Node} live @param {Node} want
+ */
+export function ssrSamePart(live, want) {
+  if (live.nodeType !== want.nodeType) return false;
+  if (live.nodeType === 3) return live.data === want.data;
+  if (live.localName !== want.localName || !ssrSameAttrs(live, want)) return false;
+  if (want.hasAttribute('data-td-icon')) return true;
+  const a = ssrContentNodes(live);
+  const b = ssrContentNodes(want);
+  return a.length === b.length && a.every((n, i) => ssrSamePart(n, b[i]));
+}
+
+/** The error note the base error contract renders (`span.td-field-error`, text only). @param {Node} n */
+export const ssrIsErrorNote = (n) => n.nodeType === 1 && n.localName === 'span' && ssrClassKey(n) === 'td-field-error'
+  && [...n.attributes].every((a) => ['class', 'id', 'data-for'].includes(a.name)) && n.children.length === 0;
+
 /**
  * Base class for form-associated td-components. Extends {@link TdBaseElement}
  * with native form participation via **ElementInternals** (no Shadow DOM).
@@ -91,6 +136,12 @@ export class TdFormElement extends TdBaseElement {
     // `<label for="${this.id}">` gets a real target on the very first paint (ISSUE-1).
     this._ensureId();
     super.connectedCallback(); // _setupProperties + first _doRender (if not yet initialized)
+    // v0.26.0 (ADR 0012): server markup that could not be adopted was rendered → put the captured state back (silently).
+    if (this._ssrRestore && !this._deferred) {
+      const state = this._ssrRestore;
+      this._ssrRestore = null;
+      this._restoreSsrState(state);
+    }
     // External <label for="host-id">: the browser runs the label's activation on the HOST (form-associated
     // custom elements are labelable). Forward it to the inner control like a native one: focus it, and
     // activate checkable controls (checkbox/switch).
@@ -143,6 +194,7 @@ export class TdFormElement extends TdBaseElement {
    * @protected
    */
   _setFormValue(value, state) {
+    if (this._deferred) return; // v0.26.0: the native SSR control still submits until the deferred render
     if (state === undefined) this._internals.setFormValue(value);
     else this._internals.setFormValue(value, state);
   }
@@ -178,6 +230,7 @@ export class TdFormElement extends TdBaseElement {
    * combined validity to internals. Custom message takes display precedence when present.
    */
   _applyValidity() {
+    if (this._deferred) return; // v0.26.0: the native SSR control still validates until the deferred render
     const flags = { ...this._baseFlags };
     let message = this._baseMessage;
     if (this._customMessage) {
@@ -443,6 +496,87 @@ export class TdFormElement extends TdBaseElement {
       this._effectiveDisabled = newVal !== null || this._ancestorDisabled;
     }
     super.attributeChangedCallback(name, oldVal, newVal);
+  }
+
+  // --- SSR hydrate of a form-associated component (v0.26.0, ADR 0012 §3–5) ---
+  //
+  // A subclass's canHydrate() finds the server-rendered native control (`this._ssrControl`), captures its state with
+  // `_ssrCapture(control, live)` (precedence: early property > live native state > attribute; `live` = the native state
+  // only), stores the native defaults (`this._ssrDefaults`, reset target) and then returns:
+  //   true     → hydrateExisting() adopts the SAME nodes (state onto the host, ElementInternals FIRST, then the no-JS-only
+  //              attributes come off the control, external labels move to the host);
+  //   false    → normal render, then `_restoreSsrState(this._ssrRestore)` (connectedCallback above);
+  //   'defer'  → the control has focus: deferHydration() below waits for its blur.
+
+  /**
+   * v0.26.0 (F0): the refused SSR control has focus → do not replace it under the user's fingers. The early / resolved
+   * state is pushed into it (`_ssrPrime`), the native control keeps submitting + validating alone (internals cleared),
+   * ONE capture-phase `blur` listener (removed on disconnect) then captures the LIVE state, resumes (one render = one
+   * bind) and restores that state into the new control without events.
+   * @param {() => boolean} resume
+   */
+  deferHydration(resume) {
+    const control = this._ssrControl;
+    const state = this._ssrRestore;
+    this._ssrRestore = null;
+    if (!control || !state) {
+      if (resume() && state) this._restoreSsrState(state);
+      return;
+    }
+    this._ssrPrime(control, state);
+    this._internals.setFormValue(null);
+    this._internals.setValidity({});
+    const onBlur = () => {
+      control.removeEventListener('blur', onBlur, true);
+      const live = this._ssrCapture(control, true);
+      if (resume()) this._restoreSsrState(live);
+    };
+    this.listen(control, 'blur', onBlur, true);
+  }
+
+  /**
+   * @protected SSR state of `control` (subclass). `live` = ignore early properties (re-evaluation, blur).
+   * @param {HTMLElement} _control @param {boolean} _live
+   * @returns {object}
+   */
+  _ssrCapture(_control, _live) { return {}; }
+
+  /** @protected Push a captured state into the still-native control while deferred (subclass). */
+  _ssrPrime(_control, _state) {}
+
+  /** @protected Put a captured state into the rendered control, silently (subclass). */
+  _restoreSsrState(_state) {}
+
+  /**
+   * @protected An SSR markup check found the control: record it + the native defaults (once), capture its state, and
+   * turn "does the markup match" into the canHydrate() decision (see the block comment above).
+   * @param {HTMLElement} control
+   * @param {boolean} matches
+   * @param {boolean} live
+   * @returns {boolean|'defer'}
+   */
+  _ssrDecide(control, matches, live) {
+    this._ssrControl = control;
+    const state = this._ssrCapture(control, live);
+    if (matches) {
+      this._ssrState = state;
+      return true;
+    }
+    this._ssrRestore = state;
+    return control === control.ownerDocument.activeElement ? 'defer' : false;
+  }
+
+  /**
+   * @protected Hydrate step 4: only EXTERNAL `<label for="{control id}">` (outside the host) move to the host, like a
+   * labelled form-associated element (the component forwards the activation to the control). Internal / wrapping
+   * labels stay — they keep naming the control.
+   * @param {HTMLElement} control
+   */
+  _ssrRetargetLabels(control) {
+    if (!control.id || !control.labels) return;
+    for (const l of [...control.labels]) {
+      if (!this.contains(l) && l.htmlFor === control.id) l.htmlFor = this.id;
+    }
   }
 
   // --- Id + label-click focus delegation (ISSUE-2) ---
