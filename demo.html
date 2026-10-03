@@ -21,7 +21,7 @@
   </script>
 
   <h1 class="demo-title">td-components Demo</h1>
-  <p class="demo-lead">Test tất cả components trực tiếp (bản 0.30.0: thêm Number Input, Repeater, Tree, Tree Select, Multi-select, OTP, Drawer, Copy, Skeleton…). Mở DevTools Console để xem events.</p>
+  <p class="demo-lead">Test tất cả components trực tiếp (bản 0.31.0: thêm Sortable, Masked value, Repeater kéo thả; trước đó Number Input, Repeater, Tree, Tree Select, Multi-select, OTP, Drawer, Copy, Skeleton…). Mở DevTools Console để xem events.</p>
 
   <!-- ═══════════════════ SURFACES (v0.14.0; minimal surfaces v0.20.0) ═══════════════════ -->
   <div class="demo-section">
@@ -260,7 +260,7 @@
   <div class="demo-section">
     <h2>Repeater <span class="demo-code">&lt;td-repeater&gt;</span></h2>
     <form id="demo-repeater-form">
-      <td-repeater id="demo-repeater" label="Hộp gồm" min-rows="1" max-rows="6" add-label="Thêm phụ kiện">
+      <td-repeater id="demo-repeater" label="Hộp gồm" min-rows="1" max-rows="6" add-label="Thêm phụ kiện" sortable>
         <template>
           <div data-td-row class="demo-rep-row">
             <td-input-field data-name="box[{i}][name]" aria-label="Phụ kiện" placeholder="Tên phụ kiện"></td-input-field>
@@ -277,8 +277,34 @@
         </div>
       </td-repeater>
     </form>
-    <p class="demo-note">Thêm / xoá (hỏi xác nhận qua <code>before-remove</code>) / ↑ ↓. Tên field đánh lại index theo công thức <code>rename()</code> + <code>data-name</code>.</p>
+    <p class="demo-note">Thêm / xoá (hỏi xác nhận qua <code>before-remove</code>) / ↑ ↓. Tên field đánh lại index theo công thức <code>rename()</code> + <code>data-name</code>.
+      <code>sortable</code> (0.31.0): kéo tay nắm ⠿, hoặc focus tay nắm → Space nhấc, ↑ ↓ di chuyển, Space thả, Esc huỷ — mỗi bước một <code>rows-change</code> <code>move</code>, tên field theo kịp.</p>
     <pre id="demo-repeater-output" class="demo-output" aria-live="polite"></pre>
+  </div>
+
+  <!-- ═══════════════════ SORTABLE (v0.31.0) ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Sortable <span class="demo-code">&lt;td-sortable&gt;</span></h2>
+    <div class="demo-grid">
+      <td-sortable id="demo-sort-home" label="Thứ tự section trang chủ" class="demo-sort-list">
+        <div data-td-sort-item data-id="hero" data-td-sort-label="Banner đầu trang" class="demo-sort-item">Banner đầu trang</div>
+        <div data-td-sort-item data-id="flash" data-td-sort-label="Flash sale" class="demo-sort-item">Flash sale</div>
+        <div data-td-sort-item data-id="new" data-td-sort-label="Hàng mới về" class="demo-sort-item">Hàng mới về</div>
+        <div data-td-sort-item data-id="brands" data-td-sort-label="Thương hiệu" class="demo-sort-item">Thương hiệu</div>
+        <div data-td-sort-item data-id="news" data-td-sort-label="Tin tức" class="demo-sort-item">Tin tức</div>
+      </td-sortable>
+      <td-media-grid id="demo-sort-grid" label="Ảnh sản phẩm">
+        <td-sortable id="demo-sort-gallery" role="none" label="Thứ tự ảnh">
+          <div data-td-media-item data-td-sort-item data-id="p1"><button type="button" data-td-media-open aria-label="Ảnh 1"><img src="/test/fixtures/1.svg" alt="" class="demo-sort-img"></button></div>
+          <div data-td-media-item data-td-sort-item data-id="p2"><button type="button" data-td-media-open aria-label="Ảnh 2"><img src="/test/fixtures/2.svg" alt="" class="demo-sort-img"></button></div>
+          <div data-td-media-item data-td-sort-item data-id="p3"><button type="button" data-td-media-open aria-label="Ảnh 3"><img src="/test/fixtures/3.svg" alt="" class="demo-sort-img"></button></div>
+          <div data-td-media-item data-td-sort-item data-id="p4"><button type="button" data-td-media-open aria-label="Ảnh 4"><img src="/test/fixtures/4.svg" alt="" class="demo-sort-img"></button></div>
+        </td-sortable>
+      </td-media-grid>
+    </div>
+    <p class="demo-note">Kéo tay nắm, hoặc Tab tới tay nắm → Space / Enter nhấc, mũi tên di chuyển (lưới: ↑ ↓ theo hàng), Space / Enter thả, Esc huỷ.
+      Chạm tay nắm A rồi tay nắm C = chuyển A tới chỗ C. <code>order-change</code> chỉ phát một lần khi thả (Console); app tự lưu server.</p>
+    <pre id="demo-sort-output" class="demo-output" aria-live="polite"></pre>
   </div>
 
   <hr>
@@ -489,6 +515,26 @@
     <p class="demo-note">Bấm → toast từ event <code>copy-success</code> / <code>copy-error</code> (cần secure context: localhost được).</p>
   </div>
 
+  <!-- ═══════════════════ MASKED VALUE (v0.31.0) ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Masked value <span class="demo-code">&lt;td-masked-value&gt;</span></h2>
+    <div class="demo-row">
+      <span class="demo-label">SĐT khách:</span>
+      <td-masked-value id="demo-mv-phone" label="SĐT khách" masked="09xx xxx 123" data-id="c-1024"></td-masked-value>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label">Giá vốn:</span>
+      <td-masked-value id="demo-mv-cost" label="giá vốn" masked="***" copyable duration="5" data-id="sp-1"></td-masked-value>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label">Không có quyền:</span>
+      <td-masked-value id="demo-mv-denied" label="số tài khoản" masked="•••• •••• 6789"></td-masked-value>
+    </div>
+    <p class="demo-note">Chuỗi che do server tính; bấm nút mắt → hook <code>reveal()</code> của app (giả lập 600 ms: quyền, 2FA, audit) → hiện rồi tự che lại
+      (SĐT sau 30 giây, giá vốn sau 5 giây, có nút copy). Dòng cuối: endpoint từ chối → <code>reveal-error</code>. Event không bao giờ mang giá trị.</p>
+    <pre id="demo-mv-output" class="demo-output" aria-live="polite"></pre>
+  </div>
+
   <!-- ═══════════════════ MEDIA GRID ═══════════════════ -->
   <div class="demo-section">
     <h2>Media Grid <span class="demo-code">&lt;td-media-grid&gt;</span></h2>
@@ -574,6 +620,9 @@
     import './src/form/td-repeater.js';
     import './src/form/td-number-input.js';
     import { TdDrawer } from './src/feedback/td-drawer.js';
+    // v0.31
+    import './src/display/td-sortable.js';
+    import './src/display/td-masked-value.js';
 
     // Expose cho onclick handlers
     window.TdModal = TdModal;
@@ -912,6 +961,37 @@
       e.preventDefault();
       const ok = await TdModal.confirm({ message: `Xoá dòng ${e.detail.index + 1}?`, confirmVariant: 'danger' });
       if (ok) rep.removeRow(e.detail.row);
+    });
+
+    // ── Sortable (v0.31.0): order-change fires once per drop; the app would POST `order` and setOrder(previous) on error ──
+    const sortOut = document.querySelector('#demo-sort-output');
+    const sortHome = document.querySelector('#demo-sort-home');
+    const sortGallery = document.querySelector('#demo-sort-gallery');
+    const renderSort = () => {
+      sortOut.textContent = `Section trang chủ: ${sortHome.order.join(' → ')}\nThứ tự ảnh: ${sortGallery.order.join(' → ')}`;
+    };
+    await customElements.whenDefined('td-sortable');
+    [sortHome, sortGallery].forEach((el) => el.addEventListener('order-change', (e) => {
+      console.log(`[td-sortable ${el.getAttribute('label')}] order-change:`, e.detail);
+      renderSort();
+    }));
+    renderSort();
+
+    // ── Masked value (v0.31.0): fake endpoint; never log / print the value ──
+    const mvOut = document.querySelector('#demo-mv-output');
+    const mvLog = (msg) => { console.log(msg); mvOut.textContent = msg; };
+    const fakeReveal = (value, fail = false) => ({ signal }) => new Promise((resolve, reject) => {
+      const t = setTimeout(() => (fail ? reject(new Error('403 (giả lập)')) : resolve(value)), 600);
+      signal.addEventListener('abort', () => { clearTimeout(t); reject(new DOMException('Aborted', 'AbortError')); });
+    });
+    document.querySelector('#demo-mv-phone').reveal = fakeReveal('0912 345 123');
+    document.querySelector('#demo-mv-cost').reveal = fakeReveal('12.500.000 ₫');
+    document.querySelector('#demo-mv-denied').reveal = fakeReveal(null, true);
+    document.querySelectorAll('td-masked-value').forEach((el) => {
+      const who = `[td-masked-value ${el.getAttribute('label')}]`;
+      el.addEventListener('revealed', (e) => mvLog(`${who} revealed: ${JSON.stringify(e.detail)}`));
+      el.addEventListener('remasked', (e) => mvLog(`${who} remasked: ${JSON.stringify(e.detail)}`));
+      el.addEventListener('reveal-error', (e) => mvLog(`${who} reveal-error: ${JSON.stringify(e.detail)}`));
     });
 
     // ── Alert ──
