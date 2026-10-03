@@ -9,7 +9,8 @@
  *   .td-glass-surface--strong    small popups: 94 % + blur (menu, dropdown, chip-input suggestions, hovercard; the toast left in v0.21.0)
  *   .td-glass-surface--lg        deeper shadow only (--td-glass-shadow-lg)
  *   .td-glass-surface--clear     lightbox bars: dark 88 % + blur, never themed
- *   OPAQUE group (no blur): .td-modal__dialog, .td-loading__card, .td-tooltip, .td-scroll-top → --td-glass-solid
+ *   OPAQUE group (no blur): .td-modal__dialog, .td-drawer__panel (v0.27.0), .td-loading__card, .td-tooltip,
+ *                                .td-scroll-top → --td-glass-solid
  *                                (v0.21.0: tooltip.css repaints the tooltip black via --td-tooltip-bg)
  *   .td-glass-tint               solid capsule button (the one primary action on a floating bar)
  *   .td-glass-dim(--text)        deprecated v0.20.0: no effect (class kept so markup does not break)
@@ -40,7 +41,7 @@
 
 	/* Opaque surfaces: large or text-dense, or a control that floats over content — no blur at all. The fallbacks
 	   still override --_td-glass-fill (contrast → surface colour, forced colours → Canvas). */
-	:is(.td-modal__dialog, .td-loading__card, .td-tooltip, .td-scroll-top).td-glass-surface {
+	:is(.td-modal__dialog, .td-drawer__panel, .td-loading__card, .td-tooltip, .td-scroll-top).td-glass-surface {
 		background-color: var(--_td-glass-fill, var(--td-glass-solid));
 		-webkit-backdrop-filter: none;
 		backdrop-filter: none;

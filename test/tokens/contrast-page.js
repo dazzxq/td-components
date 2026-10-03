@@ -5,6 +5,8 @@ import '/src/feedback/td-alert.js';
 import '/src/display/td-media-grid.js';
 import { TdLightbox } from '/src/feedback/td-lightbox.js';
 import { fillIconSlots, tdIcon } from '/src/icons/td-icon.js';
+import '/src/form/td-otp-input.js';
+import '/src/display/td-copy.js';
 
 const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning'];
 const TOASTS = ['success', 'error', 'warning', 'info'];
@@ -51,6 +53,12 @@ for (const v of ['off', 'on']) for (const state of ['light-image', 'dark-image']
 // current filmstrip thumb's ring ≥ 3:1 against the strip (the viewer backdrop over a white page — the lighter case).
 for (const state of ['light-image', 'dark-image']) CASES.push({ kind: 'lb-disc', v: 'next', state, pageOnly: true });
 CASES.push({ kind: 'lb-thumb', v: 'current', state: 'ring', pageOnly: true });
+// v0.27.0: td-otp-input cells (digit ≥ 4.7 on the cell; the cell edge ≥ 3:1 at rest, active and in error — WCAG 1.4.11),
+// the td-copy icon button (icon ≥ 3.2:1 on the page at rest, copied and in error) and the skeleton block (no text: it
+// only has to stay visible on the page / a surface, ≥ 1.05:1) — computed colours (`pairs`), light + dark.
+for (const state of ['rest', 'active', 'error']) CASES.push({ kind: 'otp', v: 'cell', state, pageOnly: true });
+for (const state of ['rest', 'copied', 'error']) CASES.push({ kind: 'copy', v: 'button', state, pageOnly: true });
+CASES.push({ kind: 'skeleton', v: 'block', state: 'rest', pageOnly: true });
 
 const stage = document.getElementById('stage');
 const bd = document.getElementById('backdrop');
@@ -247,6 +255,77 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       box = thumb.getBoundingClientRect();
     }
     TdLightbox.close();
+    return {
+      rect: { x: box.x, y: box.y, width: box.width, height: box.height },
+      ink: {},
+      opacity: 1,
+      hover: false,
+      name: `${c.kind}:${c.v}:${c.state}`,
+      pairs,
+    };
+  } else if (c.kind === 'otp' || c.kind === 'copy' || c.kind === 'skeleton') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const probe = document.createElement('span');
+    probe.style.setProperty('color', 'var(--td-color-bg)');
+    stage.appendChild(probe);
+    const themeBg = getComputedStyle(probe).color;
+    probe.style.setProperty('color', 'var(--td-color-surface)');
+    const surface = getComputedStyle(probe).color;
+    probe.remove();
+    let box;
+    let pairs;
+    if (c.kind === 'otp') {
+      const host = document.createElement('td-otp-input');
+      host.setAttribute('label', 'Mã');
+      if (c.state === 'error') host.setAttribute('error-text', 'Sai mã');
+      stage.appendChild(host);
+      host.value = '123';
+      const input = host.querySelector('input');
+      if (c.state === 'active') { input.focus(); input.setSelectionRange(3, 3); }
+      await new Promise((r) => setTimeout(r, 300)); // border transition
+      const cell = c.state === 'active' ? host.querySelector('.td-otp__cell[data-active]') : host.querySelector('.td-otp__cell');
+      if (!cell) throw new Error(`otp ${c.state}: cell not found`);
+      const cs = getComputedStyle(cell);
+      pairs = [
+        { what: 'cell edge vs cell fill', fg: cs.borderTopColor, bg: cs.backgroundColor },
+        { what: 'cell edge vs page', fg: cs.borderTopColor, bg: page },
+        { what: 'cell edge vs --td-color-bg', fg: cs.borderTopColor, bg: themeBg },
+      ];
+      if (c.state === 'rest') pairs.push({ what: 'digit vs cell fill', fg: cs.color, bg: cs.backgroundColor, min: 4.7 });
+      box = cell.getBoundingClientRect();
+      input.blur();
+    } else if (c.kind === 'copy') {
+      const own = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => (c.state === 'error' ? Promise.reject(new Error('denied')) : Promise.resolve()) } });
+      const host = document.createElement('td-copy');
+      host.setAttribute('value', 'ABC-123');
+      host.setAttribute('duration', '60000');
+      stage.appendChild(host);
+      const btn = host.querySelector('button');
+      if (c.state !== 'rest') btn.click();
+      await new Promise((r) => setTimeout(r, 300));
+      if (own) Object.defineProperty(navigator, 'clipboard', own); else delete navigator.clipboard;
+      if (c.state !== 'rest' && btn.getAttribute('data-state') !== c.state) throw new Error(`copy: state ${btn.getAttribute('data-state')} ≠ ${c.state}`);
+      const ink = getComputedStyle(btn.querySelector('svg')).color;
+      pairs = [
+        { what: 'icon vs page', fg: ink, bg: page, min: 3.2 },
+        { what: 'icon vs --td-color-bg', fg: ink, bg: themeBg, min: 3.2 },
+      ];
+      box = btn.getBoundingClientRect();
+    } else {
+      const sk = document.createElement('span');
+      sk.className = 'td-skeleton';
+      sk.setAttribute('aria-hidden', 'true');
+      sk.style.setProperty('width', '200px');
+      stage.appendChild(sk);
+      const bg = getComputedStyle(sk).backgroundColor;
+      pairs = [
+        { what: 'block vs page', fg: bg, bg: page, min: 1.05 },
+        { what: 'block vs --td-color-bg', fg: bg, bg: themeBg, min: 1.05 },
+        { what: 'block vs --td-color-surface', fg: bg, bg: surface, min: 1.05 },
+      ];
+      box = sk.getBoundingClientRect();
+    }
     return {
       rect: { x: box.x, y: box.y, width: box.width, height: box.height },
       ink: {},

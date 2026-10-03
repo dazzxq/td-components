@@ -334,8 +334,13 @@ Token (khai báo trong `@layer td.tokens`, override bằng CSS không layer củ
 | `--td-table-cell-px` | `1.5rem` | Padding ngang ô |
 | `--td-table-cell-py` | `1rem` | Padding dọc ô dữ liệu |
 | `--td-table-head-py` | `0.75rem` | Padding dọc ô tiêu đề |
-| `--td-table-skeleton` | `var(--td-color-skeleton)` | Màu thanh skeleton |
-| `--td-table-sheen` | `var(--td-color-sheen, rgb(255 255 255 / 60%))` (dark: `…8%`) | Vệt sáng shimmer |
+| `--td-table-skeleton` | `var(--td-skeleton-bg)` | Màu thanh skeleton |
+| `--td-table-sheen` | `var(--td-skeleton-shine)` | Vệt sáng shimmer |
+
+Từ 0.27.0, hàng skeleton của bảng dùng chung token với class [`.td-skeleton`](loading.md#skeleton-khối-giữ-chỗ-thuần-css):
+`--td-table-skeleton` / `--td-table-sheen` mặc định trỏ vào `--td-skeleton-bg` / `--td-skeleton-shine`, còn bo góc và chu
+kỳ lướt đọc thẳng `--td-skeleton-radius` / `--td-skeleton-dur`. Đổi `--td-skeleton-*` trên `:root` là bảng và skeleton
+của site khớp nhau; ghi đè `--td-table-skeleton` / `--td-table-sheen` vẫn chỉ đổi riêng bảng. Markup không đổi.
 
 `--td-table-max-h` do JS đặt (CSSOM) từ attribute `max-height`; không đặt tay.
 

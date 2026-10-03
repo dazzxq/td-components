@@ -44,3 +44,19 @@ export function renderDropdownFixture() {
 export function renderEmptyFixture() {
   return renderPhp('empty-fixture.php');
 }
+
+// v0.27.0: otp-input@1 (td_otp_input element mode) and copy@1 (td_copy).
+export const OTP_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'otp.fixtures.json'), 'utf8'));
+export const OTP_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'otp.html');
+export const COPY_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'copy.fixtures.json'), 'utf8'));
+export const COPY_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'copy.html');
+
+/** Render test/ssr/otp-fixture.php (the HTML loaded by the OTP SSR browser test). */
+export function renderOtpFixture() {
+  return renderPhp('otp-fixture.php');
+}
+
+/** Render test/ssr/copy-fixture.php (the HTML loaded by the copy SSR browser test). */
+export function renderCopyFixture() {
+  return renderPhp('copy-fixture.php');
+}

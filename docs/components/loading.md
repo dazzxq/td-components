@@ -8,18 +8,20 @@ Module loading có hai phần:
   chờ một việc xong (lưu, chuyển bước, tải lại dữ liệu).
 - **`TdLoadingSpinner`**: tạo một spinner **inline** nhỏ đặt ở bất kỳ đâu (trong ô bảng, cạnh chữ, trong khung đang
   tải).
+- **Skeleton** (`.td-skeleton`, từ 0.27.0): khối giữ chỗ **thuần CSS** có ánh sáng lướt, vẽ hình dạng nội dung sắp
+  tới (dòng chữ, avatar, ảnh) trong lúc tải. Không cần import JS — xem [mục Skeleton](#skeleton-khối-giữ-chỗ-thuần-css).
 
 Đừng dùng overlay cho việc chỉ ảnh hưởng một phần trang — dùng spinner inline hoặc trạng thái `loading` của
 [button](button.md). Trong một [modal](modal.md), nút footer async đã tự có spinner; không cần overlay.
 
 | | |
 |---|---|
-| Import | `import { TdLoading, TdLoadingSpinner } from '@dazzxq/td-components/loading'` |
-| Loại | API JS tĩnh |
+| Import | `import { TdLoading, TdLoadingSpinner } from '@dazzxq/td-components/loading'` · skeleton: không import, chỉ `td.css` |
+| Loại | API JS tĩnh (skeleton: class CSS) |
 | Form-associated | không |
-| Từ phiên bản | 0.1.0 (token-native, focus/inert, `wrap()` đếm tham chiếu từ 0.7.0) |
+| Từ phiên bản | 0.1.0 (token-native, focus/inert, `wrap()` đếm tham chiếu từ 0.7.0) · skeleton 0.27.0 |
 
-Cần `td.css` (`loading.css` + `spinner.css`). Overlay được tạo ở lần gọi đầu; không cần khởi tạo.
+Cần `td.css` (`loading.css` + `spinner.css`; skeleton: `skeleton.css`). Overlay được tạo ở lần gọi đầu; không cần khởi tạo.
 
 ## Ví dụ nhanh
 
@@ -242,8 +244,81 @@ CSSOM — không dùng `style="…"`, chạy được dưới CSP nghiêm ngặt
 - Overlay nằm **trên** modal: mở loading khi đang có modal là hợp lệ (modal bị `inert` trong lúc chờ, focus trả lại
   đúng chỗ khi xong).
 
+## Skeleton (khối giữ chỗ, thuần CSS)
+
+Từ 0.27.0, `td.css` có sẵn class `.td-skeleton` để vẽ "bộ xương" của nội dung đang tải: dòng chữ, khối, avatar tròn,
+khung ảnh. Không có JS, không có custom element — chỉ cần `td.css`. Hợp khi bạn biết **hình dạng** của nội dung sắp tới
+(danh sách thẻ, hồ sơ, bài viết); khi không biết, dùng spinner inline.
+
+```html
+<section id="profile" aria-busy="true">
+  <div class="profile-row">
+    <span class="td-skeleton td-skeleton--circle" aria-hidden="true"></span>
+    <span class="td-skeleton td-skeleton--text td-skeleton--lines-2" aria-hidden="true"></span>
+  </div>
+  <span class="td-skeleton td-skeleton--rect" aria-hidden="true"></span>
+</section>
+
+<script type="module">
+  const region = document.getElementById('profile');
+  const data = await loadProfile();
+  region.replaceChildren(renderProfile(data)); // thay bộ xương bằng nội dung thật
+  region.removeAttribute('aria-busy');
+</script>
+```
+
+| Class | Hình dạng |
+|---|---|
+| `.td-skeleton` | Khối chữ nhật rộng 100%, cao `--td-skeleton-h` (mặc định `1rem`). Dùng một mình hoặc làm gốc cho các modifier dưới. |
+| `.td-skeleton--text` | Dòng chữ: mỗi dòng cao `--td-skeleton-line`, cách nhau `--td-skeleton-gap`. Mặc định 1 dòng. |
+| `.td-skeleton--lines-2` / `--lines-3` | Thêm vào `--text`: 2 / 3 dòng. Từ 2 dòng trở lên, **dòng cuối rộng 60 %** (giống đoạn văn thật). Cần số dòng khác thì đặt `--td-skeleton-lines` (số nguyên) bằng CSS hoặc CSSOM. |
+| `.td-skeleton--circle` | Đĩa tròn (avatar), đường kính `--td-skeleton-size` (mặc định `2.5rem`); không co trong flex. |
+| `.td-skeleton--rect` | Khung media theo tỉ lệ `--td-skeleton-ratio` (mặc định `16 / 9`), rộng 100%. |
+
+Độ rộng: khối và dòng chữ chiếm 100% chiều ngang của cha; muốn ngắn hơn, đặt `width` bằng class của site (ví dụ
+`.card-title-skel { width: 40%; }`) — không dùng `style="…"`.
+
+```css
+/* CSS của site — không bọc trong @layer để thắng td.tokens */
+:root { --td-skeleton-radius: 999px; }                      /* thanh bo tròn hẳn */
+.avatar-lg.td-skeleton--circle { --td-skeleton-size: 4rem; }
+.post-excerpt.td-skeleton--text { --td-skeleton-lines: 5; }
+```
+
+```js
+// Per-instance bằng CSSOM (an toàn với CSP)
+el.style.setProperty('--td-skeleton-lines', String(n));
+```
+
+Token (khai báo trên `:root`, bảng đầy đủ ở [Theming](../customization/theming.md#skeleton)):
+
+| Token | Mặc định | Tác dụng |
+|---|---|---|
+| `--td-skeleton-bg` | `var(--td-color-skeleton)` | Màu khối (dark tự đổi theo `--td-color-skeleton`) |
+| `--td-skeleton-shine` | `var(--td-color-sheen)` | Vệt sáng lướt qua |
+| `--td-skeleton-radius` | `var(--td-radius-sm)` | Bo góc khối / từng dòng chữ |
+| `--td-skeleton-dur` | `1.3s` | Chu kỳ một lần lướt |
+| `--td-skeleton-h` | `1rem` | Chiều cao `.td-skeleton` trơn |
+| `--td-skeleton-line` | `0.875rem` | Chiều cao một dòng của `--text` |
+| `--td-skeleton-gap` | `0.5rem` | Khoảng cách giữa các dòng |
+| `--td-skeleton-size` | `2.5rem` | Đường kính `--circle` |
+| `--td-skeleton-ratio` | `16 / 9` | Tỉ lệ khung `--rect` |
+| `--td-skeleton-lines` | `1` (`--lines-2` / `--lines-3` đặt `2` / `3`) | Số dòng của `--text`; đặt **trên phần tử** (không có tác dụng ở `:root`, vì `.td-skeleton` đặt lại giá trị này) |
+
+Hàng đang tải của [td-table](table.md) dùng chung bộ token này (`--td-table-skeleton` / `--td-table-sheen` mặc định trỏ
+vào `--td-skeleton-bg` / `--td-skeleton-shine`, bo góc và chu kỳ cũng theo `--td-skeleton-*`), nên đổi một chỗ là bảng và
+skeleton của site khớp nhau. Markup của bảng không đổi.
+
+**Trợ năng là việc của markup** (kit không tự thêm):
+
+- Mỗi khối skeleton mang `aria-hidden="true"` — nó chỉ để trang trí, trình đọc màn hình không cần đọc "khối xám".
+- Vùng đang tải mang `aria-busy="true"`, gỡ đi khi nội dung thật đã vào. Muốn thông báo "Đang tải…" cho trình đọc màn
+  hình, thêm một vùng `role="status"` ẩn (`.td-sr-only`) như td-table.
+- `prefers-reduced-motion: reduce` → không có vệt sáng lướt (khối đứng yên). Forced colors → khối tô `GrayText`.
+
 ## Xem thêm
 
 - [Button](button.md) (trạng thái loading của nút) · [Modal](modal.md) (nút footer async) · [Toast](toast.md)
+- [Table](table.md) (hàng skeleton khi `loading`)
 - [Lớp nổi, inert và focus](../concepts/how-it-works.md)
 - [Theming](../customization/theming.md) · [Trợ năng](../guides/accessibility.md)
