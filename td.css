@@ -7672,7 +7672,9 @@
 	/* The box has the same size with or without JS: 6 cells + 5 gaps (shrinks on a narrow screen). */
 	.td-otp__box {
 		position: relative;
-		width: min(100%, calc(6 * var(--td-otp-cell-w) + 5 * var(--td-otp-gap)));
+		/* fixed width + max-width (not min(100%, …)): a % inside a shrink-to-fit flex item resolves cyclically → collapse */
+		width: calc(6 * var(--td-otp-cell-w) + 5 * var(--td-otp-gap));
+		max-width: 100%;
 		height: var(--td-otp-cell-h);
 		direction: ltr; /* digits read left → right in every script */
 	}
