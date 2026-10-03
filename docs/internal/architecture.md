@@ -34,22 +34,56 @@ Mỗi subpath trong `package.json#exports` trỏ thẳng vào một file source 
 
 ```text
 connectedCallback (lần đầu)
-  _setupProperties()            accessor + replay property gán sớm (render bị chặn)
+  _setupProperties()            accessor + replay property gán sớm (render bị chặn); tên đã replay → _earlyProps (0.26)
   _initialized = true
   canHydrate()                  hook, mặc định false — đọc host SAU replay; không được sửa DOM
   hydratable → gỡ data-td-ssr   dấu đã dùng (nhận hay không), lần render sau không đọc nhầm
-  ├─ true  → _hydrated = true; hydrateExisting() (hook, không đụng innerHTML); _bindStep()
-  └─ false → _doRender()        innerHTML = render(); _bindStep()   ← như cũ
+  _applyHydration(quyết định)
+  ├─ true    → _hydrated = true; hydrateExisting() (hook, không đụng innerHTML); _bindStep()
+  ├─ 'defer' → _deferred = true; deferHydration(resume)   (0.26) KHÔNG render, KHÔNG bind
+  │            resume() một lần: _deferred = false; _doRender() (= render + bind) → true; lần sau → false
+  └─ false   → _doRender()      innerHTML = render(); _bindStep()   ← như cũ
 connectedCallback (gắn lại sau disconnect)
   chạy + xoá _cleanups          listener gắn TRONG LÚC tách (render khi attribute đổi) không bị nhân đôi
+  _deferred → _deferred = false; _applyHydration(canHydrate())   (0.26) đánh giá lại từ đầu
   hydratable && canRebind() → _bindStep()   giữ node + focus, listener gắn đúng một lần
   còn lại (kể cả canRebind() false: markup bị sửa lúc tách) → _doRender()
 ```
 
+**Bổ sung 0.26.0 (F0 — plan v0.26.0):**
+
+- **Nguồn gốc property sớm:** `_setupProperties()` ghi tên property đã replay (camelCase) vào `this._earlyProps`
+  (`Set`, chỉ đọc sau khởi tạo; luôn có, rỗng khi không có gì gán sớm). Hydrate form dùng nó cho thứ tự ưu tiên ADR
+  mục 3: tên có trong `_earlyProps` → **giá trị host thắng** state native; ngược lại state **sống** của control native
+  thắng attribute host. Giá trị reset luôn là mặc định native (`defaultValue` / `defaultChecked`), không từ property
+  sớm. (`TdInputField.setValue()` gọi trong lúc replay còn nhớ giá trị gốc ở `_earlyValue` — control `type=number`
+  native sẽ làm sạch mất chuỗi không phải số trước khi hydrate đổi nó sang `text`.)
+- **`canHydrate()` → `'defer'`:** markup không nhận được nhưng control đang **focus** (người dùng đang gõ) → base
+  không render, không bind, gọi hook `deferHydration(resume)` (mặc định: `resume()` ngay). Trong lúc hoãn, `_doRender()`
+  bị chặn (attribute đổi thì `resume()` render một lần với giá trị cuối). `resume()` chỉ chạy một lần.
+  `TdFormElement.deferHydration`: đẩy state đã phân giải vào control native (`_ssrPrime`), xoá giá trị / validity của
+  ElementInternals (control native tự submit + validate, FormData đúng một mục; `_setFormValue` / `_applyValidity`
+  không chạy khi `_deferred`), gắn **một** listener `blur` (capture, qua `listen()` → disconnect gỡ) → khi blur: gỡ
+  listener, chụp state **sống** (`_ssrCapture(control, true)`), `resume()`, rồi `_restoreSsrState()` (không event).
+  Gỡ khỏi trang trước blur → cleanup gỡ listener, `_deferred` giữ (không render khi tách); gắn lại → đánh giá lại.
+  (Chromium phát `blur` khi gỡ phần tử đang focus → render xảy ra lúc gỡ; Firefox / WebKit thì không — cả hai đường
+  đều giữ state, không rò listener; test chấp nhận cả hai.)
+- **Khung hydrate form** (`TdFormElement`): `canHydrate()` của component tìm control → ghi `_ssrDefaults` (mặc định
+  native, một lần) → `_ssrDecide(control, khớp, live)`: khớp → `hydrateExisting()`; lệch → `_ssrRestore` (render rồi
+  `connectedCallback` của `TdFormElement` gọi `_restoreSsrState`) hoặc `'defer'` khi control đang focus. Hook con:
+  `_ssrCapture(control, live)`, `_ssrPrime`, `_restoreSsrState`. `_ssrRetargetLabels(control)`: chỉ `<label
+  for="{id control}">` **ngoài** host chuyển `for` sang host. Helper so markup dùng chung (export):
+  `ssrClassKey`, `ssrContentNodes`, `ssrSameAttrs`, `ssrSamePart` (phần trang trí / text giống hệt `render()`; ô icon so
+  attribute, nội dung do `fillIconSlots` vẽ lại), `ssrIsErrorNote`, `SSR_CONTROL_ATTRS` (allowlist control = tên PHP in
+  + `Td::ALLOWED_ATTRS`) + `SSR_ARIA_DATA` (`aria-*`, `data-*` trừ `data-td-*`).
+- `TdInputField`, `TdCheckableElement` (`TdToggle` / `TdCheckbox`) có `static hydratable = true` nhưng `canRebind()`
+  chỉ `true` cho phần tử **đã hydrate** (và markup còn khớp, kiểm chặt: không còn `name` / ràng buộc của bản không-JS)
+  → phần tử tạo bằng JS / viết tay vẫn render lại khi gắn lại như trước 0.26.
+
 - `canRebind()` (mặc định `true`): component hydratable kiểm lại markup khi gắn lại; `TdButton` dùng cùng phép so
   cấu trúc + **allowlist attribute** như `canHydrate()` (review round 1 SEC-1).
 - `static hydratable` (mặc định `false`): chỉ component **khai báo** mới đổi vòng đời gắn lại — v0.25 chỉ
-  `TdButton`. `afterRender()` của component hydratable phải **idempotent** trên DOM sẵn có (đồng bộ state tại chỗ,
+  `TdButton`; v0.26 thêm `TdInputField`, `TdToggle`, `TdCheckbox` (gắn lại tại chỗ chỉ khi đã hydrate, xem trên). `afterRender()` của component hydratable phải **idempotent** trên DOM sẵn có (đồng bộ state tại chỗ,
   `listen()` lại), vì nó chạy sau render, sau hydrate và mỗi lần gắn lại.
 - Dấu SSR `data-td-ssr="<tên>@<schema>"`: `ssrMarker(el)` (export của `td-base-element.js`) → `{ name, schema }` hoặc
   `null`; `_ssrMatches(name, schema)` so khớp chính xác. `schema` là phiên bản **cấu trúc markup** của component
@@ -62,7 +96,11 @@ connectedCallback (gắn lại sau disconnect)
   giữ chỗ (button 2.5 / 2 / 3rem, input-field + dropdown 2.5rem, toggle + checkbox 1.5rem) — không giả style.
 - Test: fixture dùng chung `test/ssr/button.fixtures.json` → PHP sinh `test/ssr/fixtures/button.html`
   (`node test/ssr/build-button-fixture.mjs`; `test/php/td-ssr.test.js` báo khi file cũ) → nhóm web-test-runner `ssr`
-  (`*.ssr.browser-test.js`, Chromium + Firefox + WebKit) define muộn và so DOM / hộp / focus / FormData.
+  (`*.ssr.browser-test.js`, Chromium + Firefox + WebKit) define muộn và so DOM / hộp / focus / FormData. v0.26:
+  `test/ssr/form.fixtures.json` → `test/ssr/fixtures/form.html` (`node test/ssr/build-form-fixture.mjs`;
+  `test/php/td-ssr-form.test.js` báo khi cũ; `test/ssr/form.native.json` = output native của 0.25 để chứng minh native
+  mode giữ nguyên từng byte) → `src/form/td-form.ssr.browser-test.js` (kịch bản cần control đang focus lúc define chạy
+  trong iframe, mỗi iframe một registry).
 - Helper có cleanup tự động: `listen()`, `setTimeout()`, `setInterval()`. `emit(name, detail)` phát
   `CustomEvent` với `bubbles + composed`. `escapeHtml()`, `safeColor()`.
 

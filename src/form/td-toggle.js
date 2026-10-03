@@ -34,6 +34,9 @@ import { TdCheckableElement } from '../base/td-checkable-element.js';
  * @fires commit-error - detail: { checked: boolean, error } — a `commit()` failed and the switch reverted
  */
 export class TdToggle extends TdCheckableElement {
+  /** v0.26.0 SSR contract `data-td-ssr="toggle@1"` (PHP td_toggle element mode). */
+  static SSR_NAME = 'toggle';
+
   static get observedAttributes() { return [...super.observedAttributes, 'controlled']; }
   static get booleanAttributes() { return [...super.booleanAttributes, 'controlled']; }
 

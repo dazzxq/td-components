@@ -11,7 +11,7 @@ lực khi bấm "Lưu" hay "Gửi" (ví dụ đồng ý điều khoản trong fo
 | Import | `import '@dazzxq/td-components/toggle';` (class: `import { TdToggle } from '@dazzxq/td-components';`) |
 | Loại | Custom element |
 | Form-associated | có |
-| Từ phiên bản | 0.1.0 (mặc định uncontrolled từ 0.2.0, input native `role="switch"` từ 0.7.0, `commit()` từ 0.13.0) |
+| Từ phiên bản | 0.1.0 (mặc định uncontrolled từ 0.2.0, input native `role="switch"` từ 0.7.0, `commit()` từ 0.13.0, hydrate SSR tại chỗ từ 0.26.0) |
 
 Cần `td.css` trên trang (xem [Cài đặt](../getting-started/installation.md)).
 
@@ -258,6 +258,26 @@ Render phía server: `td_toggle('wifi', true, 'Wifi')` của [adapter PHP](../gu
 in đúng block `.td-switch` ở trên (checkbox native `role="switch"`, icon vẽ sẵn, chạy với chỉ `td.css`). Không dùng PHP
 thì in tay block trên; icon theo [Icons › markup render sẵn](icons.md#icon-trong-markup-render-sẵn). Các file `test/contracts/*.html` trong repo kit chỉ là **fixture test** (không nằm trong gói npm, icon trong đó viết tắt) — đừng copy từ đó.
 Xem [WordPress & PHP](../guides/wordpress-php.md) và [bảng class cũ](../upgrading/class-map.md).
+
+### Hợp đồng SSR `toggle@1` — hydrate tại chỗ (0.26.0)
+
+[`td_toggle` ở chế độ element](../guides/php-adapter.md#td_toggle--td_checkbox-ở-chế-độ-element-0260)
+(`'element' => true` hoặc `ssr_elements`) in host `<td-toggle data-td-ssr="toggle@1" name … checked … label … size …>`
+chứa đúng block `.td-switch` ở trên (ô icon có `data-td-icon` + SVG sẵn); input native còn giữ `name` / `value` /
+`checked` / `required` (+ `id` của caller) để form chạy khi chưa có JS. Khi module nạp, `td-toggle` **nhận** markup đó:
+
+- **Điều kiện nhận:** dấu `toggle@1`; con là `label.td-switch.td-switch--{size}` có đúng input `type="checkbox"
+  role="switch"`, rãnh / núm / 2 ô icon (`close` / `check`) và nhãn như `render()` với attribute hiện tại của host;
+  attribute ngoài allowlist (`on*`, `style`, `form`, `formaction`, `data-td-*` trên input…) → không nhận.
+- **Trạng thái:** `el.checked` / `el.value` gán trước define > trạng thái **sống** của input (người dùng đã gạt trước
+  khi JS tới) > attribute; chép lên host (`checked` / `value`), ElementInternals **trước**, rồi gỡ `name` / `value` /
+  `checked` / `required` khỏi input (FormData đúng một mục). Không phát `change`. Node input, focus giữ nguyên.
+- `<label for="{id input}">` nằm ngoài host chuyển sang host (bấm vẫn gạt + phát đúng một `change`); `id` của input
+  được giữ, kể cả khi sau này phải render lại.
+- **Reset** → mặc định native (`checked` / `value` PHP in ra).
+- **Không khớp** → render lại giữ `checked` / `value` / `id`; input đang focus → hoãn tới `blur` (trong lúc hoãn input
+  native vẫn gạt + submit, component chưa phát `change`).
+- Gỡ ra rồi gắn lại phần tử đã hydrate: gắn lại tại chỗ sau khi kiểm lại markup; `<td-toggle>` không dấu: như trước.
 
 ## Bàn phím & trợ năng
 

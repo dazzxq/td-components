@@ -25,8 +25,10 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_button và td_link](#td_button-và-td_link)
   - [Chế độ element: SSR + hydrate tại chỗ (0.25.0)](#chế-độ-element-ssr--hydrate-tại-chỗ-0250)
 - [td_field](#td_field)
+  - [td_field ở chế độ element (0.26.0)](#td_field-ở-chế-độ-element-0260)
 - [td_dropdown](#td_dropdown)
 - [td_toggle và td_checkbox](#td_toggle-và-td_checkbox)
+  - [td_toggle / td_checkbox ở chế độ element (0.26.0)](#td_toggle--td_checkbox-ở-chế-độ-element-0260)
 - [td_icon và icon riêng của site](#td_icon-và-icon-riêng-của-site)
 - [td_badge và td_alert](#td_badge-và-td_alert)
 - [An toàn: escape và whitelist](#an-toàn-escape-và-whitelist)
@@ -42,8 +44,10 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_button`, `td_link` | `<button class="td-btn …">` / `<a class="td-btn …">` **native** (mặc định) | Không | Không |
 | `td_button`, `td_link` — **chế độ element** (0.25.0, tự bật) | host `<td-button data-td-ssr="button@1">` chứa sẵn đúng control trên | Không (control native chạy ngay) | **Có** — nạp module `button`: nhận markup **tại chỗ**, không nháy |
 | `td_field` | `div.td-field` + `input` / `textarea.td-field__control` **native** | Không | Không |
+| `td_field` — **chế độ element** (0.26.0, tự bật) | host `<td-input-field data-td-ssr="input-field@1">` chứa sẵn đúng cây `.td-field` của component, control native giữ `name` / ràng buộc | Không (form native chạy ngay) | **Có** — nạp module `input-field`: nhận markup **tại chỗ**, giữ chữ đang gõ |
 | `td_checkbox` | `label.td-checkbox` + `input.td-checkbox__input` **native** | Không | Không |
 | `td_toggle` | `label.td-switch` + `input[role=switch]` **native** | Không | Không |
+| `td_toggle`, `td_checkbox` — **chế độ element** (0.26.0, tự bật) | host `<td-toggle data-td-ssr="toggle@1">` / `<td-checkbox data-td-ssr="checkbox@1">` chứa sẵn đúng markup component | Không | **Có** — nạp module `toggle` / `checkbox`: nhận tại chỗ, giữ trạng thái tích |
 | `td_dropdown` | host `<td-dropdown>` bọc `<select>` **native** | Không (chạy như select) | **Có** — khi nạp module dropdown |
 | `td_icon` | `svg.td-icon` đủ hình (có `viewBox`) | Không | — |
 | `td_badge` | `span.td-badge…` (thuần CSS) | Không | — |
@@ -55,9 +59,10 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - Cần hành vi JS (nút `loading`/`run()`, bộ đếm ký tự, lỗi validate cập nhật động, `setError()`, toggle
   `controlled`/`commit()`…) → viết thẳng custom element `<td-button>`, `<td-input-field>`, `<td-checkbox>`,
   `<td-toggle>` trong template (xem trang từng component). Helper **không** in custom element cho các control này —
-  **trừ** `td_button` / `td_link` ở [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) (0.25.0): khi bật,
-  helper in host `<td-button>` kèm markup đầy đủ, nên vừa có nút native khi chưa có JS, vừa có `loading` / `run()`
-  khi module đã nạp — không còn "nháy" chữ trần như khi viết tay `<td-button>Nhãn</td-button>`.
+  **trừ** ở [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250): `td_button` / `td_link` (0.25.0) và
+  `td_field` / `td_toggle` / `td_checkbox` (0.26.0). Khi bật, helper in host `<td-*>` kèm markup đầy đủ, nên vừa có
+  control native khi chưa có JS (submit, validate, trình quản lý mật khẩu), vừa có hành vi component khi module đã
+  nạp — không còn "nháy" như khi viết tay `<td-button>Nhãn</td-button>` / `<td-input-field>` rỗng.
 - `td_dropdown` là helper **duy nhất** upgrade: không có JS thì `<select>` hoạt động bình thường; nạp
   `@dazzxq/td-components/dropdown` thì component đọc `<option>` rồi thay select (xem [td_dropdown](#td_dropdown)).
 
@@ -97,7 +102,13 @@ TdComponents\Td::configure(
 
   | Option | Kiểu | Mặc định | Ý nghĩa |
   |---|---|---|---|
-  | `ssr_elements` | `bool` | `false` | `td_button` / `td_link` (không `bare`) in [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) cho **mọi** lần gọi; option `element` của từng lần gọi vẫn ghi đè |
+  | `ssr_elements` | `bool` | `false` | `td_button` / `td_link` (không `bare`) — và từ 0.26.0 cả `td_field` / `td_toggle` / `td_checkbox` — in [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) cho **mọi** lần gọi; option `element` của từng lần gọi vẫn ghi đè |
+
+  > **Nâng từ 0.25 lên 0.26 mà đã bật `ssr_elements`:** từ 0.26.0 cờ này áp thêm cho `td_field` / `td_toggle` /
+  > `td_checkbox` (đúng hợp đồng ADR 0012: cờ toàn cục áp cho mọi helper **đã có** hợp đồng trong bản đó). Markup đổi
+  > theo (host `<td-input-field>`…, `id` thành id của **control**, `class` lên host) — đọc
+  > [td_field ở chế độ element](#td_field-ở-chế-độ-element-0260) trước khi nâng; muốn giữ native cho từng lần gọi thì
+  > truyền `'element' => false`.
 
   Key lạ (gõ nhầm `ssr_element`…) hoặc giá trị không phải `bool` → `InvalidArgumentException` (không im lặng bỏ qua).
   Mỗi lần gọi lại `configure()` đặt lại option theo tham số mới (không truyền → `false`). `Td::ssrElements()` trả giá
@@ -284,9 +295,10 @@ không xô layout, nút đang focus vẫn focus. Quyết định kiến trúc: [
 | `true` | `false` | native |
 | `true` | `true` | **element** |
 
-`td_link(…, ['bare' => true])` **không bao giờ** in element (không có hợp đồng component). Các helper khác
-(`td_field`, `td_toggle`, `td_checkbox`, `td_dropdown`) chưa có chế độ element ở 0.25.0 (`ssr_elements` không ảnh
-hưởng chúng) — lộ trình 0.26 / 0.27.
+`td_link(…, ['bare' => true])` **không bao giờ** in element (không có hợp đồng component). Bảng trên áp y hệt cho
+`td_field` ([chi tiết](#td_field-ở-chế-độ-element-0260)), `td_toggle` và `td_checkbox`
+([chi tiết](#td_toggle--td_checkbox-ở-chế-độ-element-0260)) từ 0.26.0. `td_dropdown` chưa có chế độ element
+(`ssr_elements` không ảnh hưởng nó) — lộ trình 0.27.
 
 ```php
 <?= td_button('Lưu', ['type' => 'submit', 'name' => 'action', 'value' => 'save', 'variant' => 'primary', 'icon' => 'check', 'element' => true]) ?>
@@ -406,6 +418,78 @@ Lỗi validate sau POST (không AJAX): render lại với `value` cũ và `error
 
 Đừng echo lại mật khẩu vào `value` sau POST.
 
+### td_field ở chế độ element (0.26.0)
+
+Bật như [chế độ element của nút](#chế-độ-element-ssr--hydrate-tại-chỗ-0250): `'element' => true` từng lần gọi, hoặc
+`Td::configure(…, ['ssr_elements' => true])` (lần gọi truyền `'element' => false` thì vẫn native). Mặc định **không
+đổi**: native từng byte như 0.25. Helper in host `<td-input-field data-td-ssr="input-field@1">` chứa **đúng cây
+`.td-field` mà `<td-input-field>` tự render** (nhãn + dấu `*`, control, footer có ghi chú / lỗi / **bộ đếm** nếu có
+`max_length`) — không còn ô trống rồi nhảy khi module `@dazzxq/td-components/input-field` tải muộn (trang đăng nhập
+của 135). Không có JS: control native vẫn submit, validate (`required`, `pattern`, `type=email`…), trình quản lý mật
+khẩu thấy `autocomplete`.
+
+```php
+<?= td_field('email', '', ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true, 'id' => 'login-email', 'hint' => 'Email công ty', 'element' => true]) ?>
+```
+
+```html
+<td-input-field data-td-ssr="input-field@1" id="login-email-host" type="email" size="md" name="email" label="Email" helper-text="Email công ty" required field-id="login-email" autocomplete="email">
+  <div class="td-field td-field--md">
+    <label class="td-field__label" id="login-email-host-label" for="login-email">Email<span class="td-field__required" aria-hidden="true"> *</span></label>
+    <input type="email" class="td-field__control" id="login-email" name="email" required aria-required="true" autocomplete="email" aria-describedby="login-email-host-note" value="">
+    <div class="td-field__footer"><div class="td-field__note" id="login-email-host-note">Email công ty</div></div>
+  </div>
+</td-input-field>
+```
+
+**Id (hợp đồng trợ năng, ADR 0012 mục 9):**
+
+| Trường hợp | Control (`input` / `textarea`) | Host `<td-input-field>` | Nhãn / ghi chú / bộ đếm / lỗi |
+|---|---|---|---|
+| Có `id` (`'id' => 'login-email'`) | `id="login-email"` (= thuộc tính `field-id` của host) — `<label for="login-email">` của site trỏ đúng **trước và sau** JS | `id="login-email-host"` | `login-email-host-label` / `-note` / `-counter` / `-error` |
+| Không `id` | `{host}-control` (mặc định của component) | `td-{name đã làm sạch}-{n}` (bộ đếm trong request, ví dụ `td-email-3`) | `{host}-label` … |
+
+Khác native mode: ở native `id` là id **wrapper** và control là `{id}-control`; ở element mode `id` là id **control**.
+Không có id trùng trong trang (có test).
+
+**Bảng chiếu option → host ↔ control:**
+
+| Option PHP | Host | Control (chạy khi chưa có JS) | Sau hydrate |
+|---|---|---|---|
+| `$name` / `$value` | `name` / `value` (khi khác rỗng) | `name` / `value` | control **mất `name`** (host gửi qua ElementInternals → FormData đúng **một** mục, cả tên `x[]`) |
+| `type` | `type` (luôn in) | type **native** (`email` / `url` / `number` thật — bàn phím + validate khi chưa JS) | `email` / `url` / `number` → `type="text"` + `inputmode` (`email` / `url` / `decimal`) **trên cùng node**, như component render; type khác giữ nguyên |
+| `size` | `size` (luôn in) | class `td-field--{size}` | — |
+| `label` | `label` | `label.td-field__label` (+ `span.td-field__required` khi `required`) | giữ nguyên |
+| `placeholder`, `disabled`, `readonly` | cùng tên | cùng tên | component tự đặt lại như bình thường |
+| `required` | `required` | `required` + `aria-required` | `required` gỡ (host báo `valueMissing`), `aria-required` giữ |
+| `max_length` / `maxlength` | `max-length` | `maxlength` + **bộ đếm** `.td-field__counter` (`n/max ký tự`, `data-state="limit"` khi đủ) | giữ (component cũng in) |
+| `minlength`, `pattern` | cùng tên | cùng tên (validate native) | gỡ (host tự kiểm `tooShort` / `patternMismatch`) |
+| `min` / `max` / `step` | cùng tên | cùng tên | giữ đúng tập component vẫn đặt: `date` → `min` `max`; `month` / `datetime-local` / `time` → `min` `max` `step`; type khác → gỡ (host tự kiểm range / step) |
+| `rows` (textarea) | `rows` (luôn in, mặc định `3` của PHP) | `rows` | giữ |
+| `hint` | `helper-text` | `.td-field__note` + `aria-describedby` | giữ |
+| `error` | `error-text` | `span.td-field-error` + `aria-invalid` + `aria-errormessage` | component nhận đúng nút lỗi đó (không tạo thêm) |
+| `autocomplete`, `inputmode`, `enterkeyhint`, `autocapitalize`, `spellcheck` | cùng tên | cùng tên | giữ (component chuyển tiếp từ host) |
+| `autofocus` | `autofocus` | `autofocus` | gỡ (component tự focus một lần nếu chưa có gì focus) |
+| `id` | `{id}-host` + `field-id="{id}"` | `id` | giữ |
+| `class` | `class` | — | — |
+| `attrs` | `aria-label` trong `attrs` **nâng lên host** | các attribute còn lại (cùng allowlist). **Giữ chỗ** mọi tên component sở hữu, không phân biệt hoa thường: `class` `type` `id` `name` `value` `placeholder` `required` `aria-required` `disabled` `readonly` `maxlength` `minlength` `pattern` `min` `max` `step` `rows` `aria-describedby` `aria-invalid` `aria-errormessage` `aria-label` `aria-labelledby` + 6 thuộc tính gợi ý nhập (đi qua option) + mọi `data-td-*` → bị bỏ | pass-through giữ nguyên |
+| — | `data-td-ssr="input-field@1"` (component gỡ sau khi nhận) | — | — |
+
+`type => 'contenteditable'` không có ở helper (không có control native tương ứng) — không có chế độ element.
+
+**Hydrate làm gì (theo thứ tự, ADR 0012 mục 3–4):** (1) chụp state sống của control: chữ người dùng đã gõ **trước**
+khi module tải, vùng chọn nếu đang focus; `el.value = …` gán từ script **trước** define thắng chữ đã gõ; (2) đổi
+`type` trên cùng node nếu cần, chỉ ghi lại `value` khi bắt buộc (rồi trả lại vùng chọn); (3) khởi tạo
+ElementInternals (giá trị + validity) **trước**; (4) rồi mới gỡ `name` + ràng buộc nằm ngoài tập trên; (5) `<label
+for="{id control}">` **nằm ngoài** host chuyển `for` sang host (bấm vẫn focus đúng control); nhãn nội bộ giữ nguyên.
+Không phát `input` / `change`. `form.reset()` về **giá trị mặc định native** (`value` PHP in ra), không về chữ lúc
+nâng cấp.
+
+**Khi markup không khớp** (script đổi `label` / `type` / `size`… trước khi module tải, markup bị sửa, thêm attribute
+ngoài allowlist như `onclick`, `style`, `form`, `formaction`): component **render lại** nhưng **giữ chữ đã gõ**.
+Nếu lúc đó người dùng **đang gõ** trong ô (control đang focus), component **hoãn** tới khi rời ô (`blur`) mới render
+— không giật mất ô đang gõ; trong lúc hoãn, control native vẫn submit / validate như chưa có JS.
+
 ## td_dropdown
 
 ```php
@@ -492,6 +576,48 @@ Markup switch (`input` native ẩn thị giác, nhận focus/Space/label):
   <span class="td-switch__label">Wifi</span>
 </label>
 ```
+
+### td_toggle / td_checkbox ở chế độ element (0.26.0)
+
+Bật / tắt như [td_field](#td_field-ở-chế-độ-element-0260) (`'element' => true` hoặc `ssr_elements`). Helper in host
+`<td-toggle data-td-ssr="toggle@1">` / `<td-checkbox data-td-ssr="checkbox@1">` chứa **đúng markup component tự
+render** (ô icon có sẵn SVG + `data-td-icon`); input native giữ `name` / `value` / `checked` / `required` để form chạy
+khi chưa có JS.
+
+```php
+<?= td_checkbox('remember', false, 'Ghi nhớ', ['id' => 'remember', 'element' => true]) ?>
+```
+
+```html
+<td-checkbox data-td-ssr="checkbox@1" id="remember-host" name="remember" label="Ghi nhớ" size="md">
+  <label class="td-checkbox td-checkbox--md">
+    <input type="checkbox" class="td-checkbox__input" id="remember" name="remember">
+    <span class="td-checkbox__mark" aria-hidden="true"><span class="td-checkbox__icon" data-td-icon="check" data-td-icon-class="td-checkbox__svg"><svg …>…</svg></span></span>
+    <span class="td-checkbox__label">Ghi nhớ</span>
+  </label>
+</td-checkbox>
+```
+
+| Option PHP | Host | Input (chạy khi chưa có JS) | Sau hydrate |
+|---|---|---|---|
+| `$name` | `name` | `name` | input mất `name` (host gửi — đúng một mục, cả `x[]`) |
+| `$checked` | `checked` | `checked` | trạng thái **sống** (người dùng bỏ / tích trước khi JS tới) chép lên host; input mất attribute `checked` (giữ trạng thái) |
+| `$label` | `label` | `span.td-switch__label` / `.td-checkbox__label` | giữ |
+| `value` | `value` | `value` | input mất `value`; host gửi `value` (không có → `on`) |
+| `required` | `required` | `required` | gỡ khỏi input (host báo `valueMissing`) |
+| `disabled` | `disabled` | `disabled` | component đặt lại như bình thường |
+| `size` | `size` (luôn in) | class `td-switch--{size}` / `td-checkbox--{size}` | — |
+| `aria_label` | `aria-label` | `aria-label` **chỉ khi không có `$label`** (có nhãn thấy được thì nhãn đặt tên, như component) | như component |
+| `id` | `{id}-host` | `id` (= id caller — `<label for>` của site trỏ đúng trước + sau JS) | **giữ trên input**, kể cả khi phải render lại |
+| không `id` | `td-{name}-{n}` | không có id (như component render) | — |
+| `class`, `attrs` | **lên host** (native mode: lên `<label>` bao ngoài). `attrs` giữ chỗ: `id` `class` `name` `value` `checked` `required` `disabled` `label` `size` `aria-label` `color` `controlled` `error-text` + `data-td-*` | — | — |
+| `input_attrs` | — | lên input (allowlist). Giữ chỗ: `type` `role` `class` `id` `name` `value` `checked` `required` `disabled` `aria-label` `aria-labelledby` `aria-invalid` `aria-errormessage` `aria-busy` + `data-td-*` (không nâng lên host — dùng option `aria_label`) | pass-through giữ nguyên (cả `aria-describedby` của site) |
+
+Thứ tự ưu tiên trạng thái khi hydrate: `el.checked` / `el.value` gán từ script **trước** define > trạng thái sống của
+input (người dùng đã tích / bỏ tích, script đổi `input.value`) > attribute do PHP in. `form.reset()` về **mặc định
+native** (`checked` / `value` PHP in ra). `indeterminate` của input được giữ. Markup không khớp → render lại giữ
+`checked` / `value` / `indeterminate` / `id`; input đang focus → hoãn tới `blur` (trong lúc hoãn input native vẫn
+submit + bấm được, component chưa phát `change`).
 
 ## td_icon và icon riêng của site
 
@@ -649,6 +775,8 @@ Khác biệt hành vi so với `markup.php` của 135 (cố ý):
 | `InvalidArgumentException … is not a JS module of the kit` | tên trong `Td::modulePreloads()` không phải export JS (`'td.css'`, gõ nhầm, module của site) | dùng tên export (`'button'`) — module của site tự in `<link rel="modulepreload">` |
 | Nút element mode vẫn nháy / render lại | chưa nạp module `button`; hoặc script đổi `variant` / `label` / `icon`… trước khi module tải (cố ý render lại cho đúng) | import module; đổi thuộc tính sau khi `customElements.whenDefined('td-button')` |
 | CSS / JS của site nhắm `#id` của nút không còn ăn | element mode đặt `id` / `class` trên host `<td-button>` | đổi selector sang `#id > .td-btn`, hoặc dùng API component |
+| `td_field` element mode: `#id-control` / `#id` (wrapper) của site không còn ăn | element mode: `id` = id **control**, host = `{id}-host` (native: wrapper = `id`, control = `{id}-control`) | nhắm `#id` (control) / `#id-host` (host), hoặc dùng API component |
+| Ô nhập element mode vẫn render lại khi tải | script đổi `label` / `type` / `size`… trước khi module tải, hoặc markup bị sửa (cố ý render lại; chữ đã gõ được giữ) | đổi thuộc tính sau `customElements.whenDefined('td-input-field')` |
 
 ## Xem thêm
 

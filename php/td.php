@@ -17,6 +17,10 @@
  *   - v0.25.0 ELEMENT mode (opt-in: option `element => true`, or Td::configure(..., ['ssr_elements' => true])):
  *     td_button / td_link (not bare) print `<td-button data-td-ssr="button@1" …>` + the exact control the component
  *     renders — native without JS, hydrated IN PLACE by `@dazzxq/td-components/button` (no flash, ADR 0012).
+ *     v0.26.0: td_field / td_toggle / td_checkbox the same way (`<td-input-field data-td-ssr="input-field@1">`,
+ *     `<td-toggle data-td-ssr="toggle@1">`, `<td-checkbox data-td-ssr="checkbox@1">`): the native control keeps
+ *     name / value / checked / constraints / autocomplete / id (submit + validation + password managers without JS);
+ *     the component adopts it in place and takes over form participation.
  *   - td_dropdown prints a <td-dropdown> host wrapping a native <select>: works without JS, upgrades when
  *     `@dazzxq/td-components/dropdown` is imported (the ONLY helper that upgrades).
  *   - td_icon prints `svg.td-icon` with the full geometry of src/icons/icons.json (+ Td::registerIcons()).
@@ -112,11 +116,18 @@ namespace TdComponents {
             self::$allowHttp = $allow;
         }
         private static int $uid = 0;
-        /** v0.25.0: element mode by default for helpers with an SSR contract (td_button / td_link, not bare). */
+        /**
+         * v0.25.0: element mode by default for helpers with an SSR contract (td_button / td_link, not bare; v0.26.0 +
+         * td_field / td_toggle / td_checkbox).
+         */
         private static bool $ssrElements = false;
 
         /** SSR contract markers (ADR 0012): `data-td-ssr` value printed by element-mode helpers. */
         public const SSR_BUTTON = 'button@1';
+        /** v0.26.0: td_field / td_toggle / td_checkbox element mode. */
+        public const SSR_FIELD = 'input-field@1';
+        public const SSR_TOGGLE = 'toggle@1';
+        public const SSR_CHECKBOX = 'checkbox@1';
 
         /**
          * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.25.0') —
@@ -125,6 +136,8 @@ namespace TdComponents {
          * @param array{ssr_elements?: bool} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
          *                        print the `<td-button>` host + its full SSR markup (hydrated in place by the JS
          *                        module) instead of a native control; a per-call `element` option overrides it.
+         *                        v0.26.0: also td_field / td_toggle / td_checkbox (`<td-input-field>` / `<td-toggle>`
+         *                        / `<td-checkbox>`).
          *                        Unknown keys throw (typos never pass silently).
          */
         public static function configure(string $baseUrl, string $kitDir, array $options = []): void
@@ -847,9 +860,16 @@ namespace {
      * size sm|md|lg, placeholder, hint (helper text), error, required, disabled, readonly, max_length, minlength,
      * pattern, min, max, step, rows, autocomplete, inputmode, enterkeyhint, autocapitalize, spellcheck, autofocus,
      * id (wrapper id; control = {id}-control), class (wrapper), attrs (control).
+     * v0.26.0 `element` (bool, default Td::configure ssr_elements = false): print the `<td-input-field
+     * data-td-ssr="input-field@1">` host + the exact markup <td-input-field> renders, with the native control keeping
+     * name / value / constraints / autocomplete (works without JS; hydrated in place — no flash). `id` is then the
+     * CONTROL id (`field-id`; host = {id}-host), class goes on the host; see docs/guides/php-adapter.md.
      */
     function td_field(string $name, string $value = '', array $o = []): string
     {
+        if (td__element($o)) {
+            return td__field_element($name, $value, $o);
+        }
         $types = ['text', 'password', 'email', 'number', 'date', 'month', 'datetime-local', 'time', 'search', 'url', 'tel', 'textarea'];
         $type = in_array($o['type'] ?? null, $types, true) ? $o['type'] : 'text';
         $size = in_array($o['size'] ?? null, Td::SIZES, true) ? $o['size'] : 'md';
@@ -983,9 +1003,14 @@ namespace {
      * Standalone native switch `label.td-switch` + `input[role=switch].td-switch__input`.
      * Options: size sm|md|lg, value (default: none → native "on"), required, disabled, id (input), aria_label,
      * class (label), attrs (label), input_attrs (input).
+     * v0.26.0 `element` (bool, default Td::configure ssr_elements): `<td-toggle data-td-ssr="toggle@1">` host + the
+     * markup <td-toggle> renders (the input keeps name / value / checked / required / id); class + attrs → host.
      */
     function td_toggle(string $name, bool $checked = false, string $label = '', array $o = []): string
     {
+        if (td__element($o)) {
+            return td__check_element(true, $name, $checked, $label, $o);
+        }
         $size = in_array($o['size'] ?? null, Td::SIZES, true) ? $o['size'] : 'md';
         $input = td__check_input('td-switch__input', $name, $checked, $o, true);
         $taken = [];
@@ -1001,9 +1026,14 @@ namespace {
      * Standalone native checkbox `label.td-checkbox` + `input.td-checkbox__input`.
      * Options: size sm|md|lg, value (default: none → native "on"), required, disabled, id (input), aria_label,
      * class (label), attrs (label), input_attrs (input).
+     * v0.26.0 `element` (bool, default Td::configure ssr_elements): `<td-checkbox data-td-ssr="checkbox@1">` host + the
+     * markup <td-checkbox> renders (the input keeps name / value / checked / required / id); class + attrs → host.
      */
     function td_checkbox(string $name, bool $checked = false, string $label = '', array $o = []): string
     {
+        if (td__element($o)) {
+            return td__check_element(false, $name, $checked, $label, $o);
+        }
         $size = in_array($o['size'] ?? null, Td::SIZES, true) ? $o['size'] : 'md';
         $input = td__check_input('td-checkbox__input', $name, $checked, $o, false);
         $taken = [];
@@ -1081,6 +1111,239 @@ namespace {
             . ($heading !== null ? '<p class="td-alert__heading">' . Td::e($heading) . '</p>' : '')
             . '<div class="td-alert__message">' . Td::e($message) . '</div></div></div>';
         return $html . '</td-alert>';
+    }
+
+    /** @internal v0.26.0: element mode of a form helper — per call `element` (true/false) overrides Td::configure. */
+    function td__element(array $o): bool
+    {
+        return array_key_exists('element', $o) && $o['element'] !== null ? (bool) $o['element'] : Td::ssrElements();
+    }
+
+    /** @internal Element mode host id without a caller id: `td-{name reduced to [A-Za-z0-9_-]}-{n}` (`td-{n}` for none). */
+    function td__host_uid(string $name): string
+    {
+        $clean = (string) preg_replace('/[^A-Za-z0-9_-]/', '', $name);
+        return Td::uid($clean !== '' ? 'td-' . $clean : 'td');
+    }
+
+    /** @internal Non-empty scalar option as a string, else null. */
+    function td__str(mixed $v): ?string
+    {
+        return is_scalar($v) && !is_bool($v) && (string) $v !== '' ? (string) $v : null;
+    }
+
+    /**
+     * @internal Element mode: mark the names a component owns (any case) + the kit's `data-td-*` namespace as taken, so
+     * a caller `attrs` entry can never print them (review v0.25 IMPL-1 / round 2 / round 3 rules).
+     * @param array<int,string> $owned lower-case names
+     * @return array<string,bool>
+     */
+    function td__reserve(array $owned, array $extra, array $taken): array
+    {
+        foreach ($owned as $l) {
+            $taken[$l] = true;
+        }
+        foreach (array_keys($extra) as $k) {
+            $l = strtolower((string) $k);
+            if (strncmp($l, 'data-td-', 8) === 0) {
+                $taken[$l] = true;
+            }
+        }
+        return $taken;
+    }
+
+    /**
+     * @internal Length of $value as <td-input-field> counts it (UTF-16 code units of the control's value: a textarea
+     * normalises CR LF / CR to LF, an <input> drops line breaks) — the counter text printed in element mode.
+     */
+    function td__js_length(string $value, bool $textarea): int
+    {
+        $v = (string) ($textarea ? preg_replace('/\r\n?/', "\n", $value) : preg_replace('/[\r\n]/', '', $value));
+        $points = preg_match_all('/./su', $v);
+        $astral = preg_match_all('/[\x{10000}-\x{10FFFF}]/u', $v);
+        return (int) $points + (int) $astral;
+    }
+
+    /**
+     * @internal td_field element mode (v0.26.0, contract input-field@1). Host `<td-input-field>` with the component
+     * attributes + the exact tree render() produces (wrapper, label + required star, control, footer with error note /
+     * helper note / counter). The control keeps the no-JS attributes (name, required, pattern, minlength, min / max /
+     * step, native type email / url / number, autofocus) that hydrate removes or normalises. Ids: caller `id` = control
+     * id (`field-id`), host = {id}-host; else host = td-{name}-{n}, control = {host}-control (render's default).
+     */
+    function td__field_element(string $name, string $value, array $o): string
+    {
+        $types = ['text', 'password', 'email', 'number', 'date', 'month', 'datetime-local', 'time', 'search', 'url', 'tel', 'textarea'];
+        $type = in_array($o['type'] ?? null, $types, true) ? $o['type'] : 'text';
+        $size = in_array($o['size'] ?? null, Td::SIZES, true) ? $o['size'] : 'md';
+        $textarea = $type === 'textarea';
+        $callerId = td__str($o['id'] ?? null);
+        $hostId = $callerId !== null ? $callerId . '-host' : td__host_uid($name);
+        $cid = $callerId ?? $hostId . '-control';
+        $label = isset($o['label']) && is_scalar($o['label']) && (string) $o['label'] !== '' ? (string) $o['label'] : null;
+        $hint = td__str($o['hint'] ?? null);
+        $error = td__str($o['error'] ?? null);
+        $required = !empty($o['required']);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        // E1 hints passed through `attrs` (135 style) are whitelisted like the options; options win (as native mode).
+        $hintKeys = ['autocomplete', 'inputmode', 'enterkeyhint', 'autocapitalize', 'spellcheck', 'autofocus'];
+        $hintSrc = $o;
+        $ariaLabel = null;
+        foreach ($extra as $k => $v) {
+            $l = strtolower((string) $k);
+            if (in_array($l, $hintKeys, true)) {
+                if (!array_key_exists($l, $hintSrc)) {
+                    $hintSrc[$l] = $l === 'autofocus' ? ($v !== false && $v !== null) : $v;
+                }
+                unset($extra[$k]);
+            } elseif ($l === 'aria-label') {
+                // lifted to the host: the component names the control from it (when there is no visible label)
+                $ariaLabel ??= td__str($v);
+                unset($extra[$k]);
+            }
+        }
+        $hints = Td::inputHints($hintSrc);
+        $max = Td::intOpt($o['max_length'] ?? $o['maxlength'] ?? null, 1);
+        $minlength = Td::intOpt($o['minlength'] ?? null, 1);
+        $placeholder = isset($o['placeholder']) && is_scalar($o['placeholder']) && (string) $o['placeholder'] !== '' ? (string) $o['placeholder'] : null;
+        $range = [];
+        foreach (['pattern', 'min', 'max', 'step'] as $k) {
+            $range[$k] = isset($o[$k]) && is_scalar($o[$k]) && (string) $o[$k] !== '' ? (string) $o[$k] : null;
+        }
+        $rows = $textarea ? (Td::intOpt($o['rows'] ?? null, 1) ?? '3') : null;
+        // component-owned description ids, in the component's order: helper note, counter, error
+        $desc = trim(($hint !== null ? "$hostId-note " : '') . ($max !== null ? "$hostId-counter " : '') . ($error !== null ? "$hostId-error" : ''));
+        $ctl = [
+            'type' => $textarea ? null : $type,
+            'class' => 'td-field__control',
+            'id' => $cid,
+            'name' => $name !== '' ? $name : null,
+            'placeholder' => $placeholder,
+            'required' => $required,
+            'aria-required' => $required ? 'true' : null,
+            'disabled' => !empty($o['disabled']),
+            'readonly' => !empty($o['readonly']),
+            'maxlength' => $max,
+            'minlength' => $minlength,
+        ] + $range + $hints + [
+            'aria-describedby' => $desc !== '' ? $desc : null,
+            'aria-invalid' => $error !== null ? 'true' : null,
+            'aria-errormessage' => $error !== null ? "$hostId-error" : null,
+            'aria-label' => $label === null ? $ariaLabel : null,
+            'rows' => $rows,
+            'value' => $textarea ? null : $value,
+        ];
+        $taken = [];
+        $own = Td::ownAttrs($ctl, $taken);
+        $taken = td__reserve(['class', 'type', 'id', 'name', 'value', 'placeholder', 'required', 'aria-required', 'disabled',
+            'readonly', 'maxlength', 'minlength', 'pattern', 'min', 'max', 'step', 'rows', 'aria-describedby', 'aria-invalid',
+            'aria-errormessage', 'aria-label', 'aria-labelledby', 'autocomplete', 'inputmode', 'enterkeyhint', 'autocapitalize',
+            'spellcheck', 'autofocus'], $extra, $taken);
+        $control = $textarea
+            ? '<textarea' . $own . Td::attrs($extra, $taken) . '>' . "\n" . Td::e($value) . '</textarea>'
+            : '<input' . $own . Td::attrs($extra, $taken) . '>';
+        $hid = Td::e($hostId);
+        $labelHtml = $label !== null
+            ? '<label class="td-field__label" id="' . $hid . '-label" for="' . Td::e($cid) . '">' . Td::e($label)
+                . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') . '</label>'
+            : '';
+        $footer = $error !== null ? '<span class="td-field-error" id="' . $hid . '-error" data-for="' . $hid . '">' . Td::e($error) . '</span>' : '';
+        $footer .= '<div class="td-field__note" id="' . $hid . '-note"' . ($hint === null ? ' hidden' : '') . '>' . Td::e($hint ?? '') . '</div>';
+        if ($max !== null) {
+            $count = td__js_length($value, $textarea);
+            // same text as the component's counter (TdInputField.messages.unitChar = 'ký tự'); data-state at the limit
+            $footer .= '<div class="td-field__counter" id="' . $hid . '-counter"' . ($count >= (int) $max ? ' data-state="limit"' : '')
+                . '>' . $count . '/' . $max . ' ký tự</div>';
+        }
+        $inner = '<div class="td-field td-field--' . $size . ($textarea ? ' td-field--textarea' : '') . '">' . $labelHtml . $control
+            . '<div class="td-field__footer"' . ($hint === null && $error === null && $max === null ? ' hidden' : '') . '>' . $footer . '</div></div>';
+        $host = [
+            'data-td-ssr' => Td::SSR_FIELD,
+            'id' => $hostId,
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'type' => $type,
+            'size' => $size,
+            'name' => $name !== '' ? $name : null,
+            'value' => $value !== '' ? $value : null,
+            'label' => $label,
+            'placeholder' => $placeholder,
+            'helper-text' => $hint,
+            'error-text' => $error,
+            'required' => $required,
+            'disabled' => !empty($o['disabled']),
+            'readonly' => !empty($o['readonly']),
+            'max-length' => $max,
+            'minlength' => $minlength,
+        ] + $range + [
+            'rows' => $rows,
+            'field-id' => $callerId,
+        ] + $hints + ['aria-label' => $ariaLabel];
+        $hostTaken = [];
+        return '<td-input-field' . Td::ownAttrs($host, $hostTaken) . '>' . $inner . '</td-input-field>';
+    }
+
+    /**
+     * @internal td_toggle / td_checkbox element mode (v0.26.0, contracts toggle@1 / checkbox@1). Host with the component
+     * attributes (+ the site's `class` / allowlisted `attrs`) around the exact tree render() produces; the input keeps
+     * name / value / checked / required / the caller `id` (no-JS submit + `<label for>`). `input_attrs` → the input.
+     */
+    function td__check_element(bool $toggle, string $name, bool $checked, string $label, array $o): string
+    {
+        $block = $toggle ? 'td-switch' : 'td-checkbox';
+        $size = in_array($o['size'] ?? null, Td::SIZES, true) ? $o['size'] : 'md';
+        $callerId = td__str($o['id'] ?? null);
+        $hostId = $callerId !== null ? $callerId . '-host' : td__host_uid($name);
+        $value = isset($o['value']) && is_scalar($o['value']) ? (string) $o['value'] : null;
+        $aria = isset($o['aria_label']) && is_scalar($o['aria_label']) && (string) $o['aria_label'] !== '' ? (string) $o['aria_label'] : null;
+        $required = !empty($o['required']);
+        $disabled = !empty($o['disabled']);
+        $inputExtra = is_array($o['input_attrs'] ?? null) ? $o['input_attrs'] : [];
+        $taken = [];
+        $input = '<input' . Td::ownAttrs([
+            'type' => 'checkbox',
+            'role' => $toggle ? 'switch' : null,
+            'class' => $block . '__input',
+            'id' => $callerId,
+            'name' => $name !== '' ? $name : null,
+            'value' => $value,
+            'checked' => $checked,
+            'required' => $required,
+            'disabled' => $disabled,
+            // a visible label names the input (the component removes aria-label then); else the host aria-label
+            'aria-label' => $label === '' ? $aria : null,
+        ], $taken);
+        $taken = td__reserve(['type', 'role', 'class', 'id', 'name', 'value', 'checked', 'required', 'disabled', 'aria-label',
+            'aria-labelledby', 'aria-invalid', 'aria-errormessage', 'aria-busy'], $inputExtra, $taken);
+        $input .= Td::attrs($inputExtra, $taken) . '>';
+        $parts = $toggle
+            ? '<span class="td-switch__track" aria-hidden="true"><span class="td-switch__thumb">'
+                . '<span class="td-switch__icon td-switch__icon--off" data-td-icon="close">' . Td::icon('close') . '</span>'
+                . '<span class="td-switch__icon td-switch__icon--on" data-td-icon="check">' . Td::icon('check') . '</span>'
+                . '</span></span>'
+            : '<span class="td-checkbox__mark" aria-hidden="true">'
+                . '<span class="td-checkbox__icon" data-td-icon="check" data-td-icon-class="td-checkbox__svg">'
+                . Td::icon('check', 'm', '', 'td-checkbox__svg') . '</span></span>';
+        $inner = '<label class="' . $block . ' ' . $block . '--' . $size . '">' . $input . $parts
+            . ($label !== '' ? '<span class="' . $block . '__label">' . Td::e($label) . '</span>' : '') . '</label>';
+        $host = [
+            'data-td-ssr' => $toggle ? Td::SSR_TOGGLE : Td::SSR_CHECKBOX,
+            'id' => $hostId,
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'name' => $name !== '' ? $name : null,
+            'value' => $value,
+            'checked' => $checked,
+            'required' => $required,
+            'disabled' => $disabled,
+            'label' => $label !== '' ? $label : null,
+            'size' => $size,
+            'aria-label' => $aria,
+        ];
+        $hostExtra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $hostTaken = [];
+        $html = '<' . ($toggle ? 'td-toggle' : 'td-checkbox') . Td::ownAttrs($host, $hostTaken);
+        $hostTaken = td__reserve(['id', 'class', 'name', 'value', 'checked', 'required', 'disabled', 'label', 'size', 'aria-label',
+            'color', 'controlled', 'error-text'], $hostExtra, $hostTaken);
+        return $html . Td::attrs($hostExtra, $hostTaken) . '>' . $inner . '</' . ($toggle ? 'td-toggle' : 'td-checkbox') . '>';
     }
 
     /** @internal Shared `<input type=checkbox>` of td_toggle / td_checkbox. */
