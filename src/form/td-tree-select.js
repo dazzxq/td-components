@@ -19,12 +19,15 @@ const PATH_SEP = ' › ';
  * @returns {string}
  */
 function editDelta(before, after) {
-  const max = Math.min(before.length, after.length);
+  // code points, not UTF-16 units: a boundary never splits a surrogate pair (review round 3 ISSUE-11)
+  const b = Array.from(before);
+  const a = Array.from(after);
+  const max = Math.min(b.length, a.length);
   let p = 0;
-  while (p < max && before[p] === after[p]) p++;
+  while (p < max && b[p] === a[p]) p++;
   let s = 0;
-  while (s < max - p && before[before.length - 1 - s] === after[after.length - 1 - s]) s++;
-  return after.slice(p, after.length - s);
+  while (s < max - p && b[b.length - 1 - s] === a[a.length - 1 - s]) s++;
+  return a.slice(p, a.length - s).join('');
 }
 
 /** `{key}` placeholders → values (function replacer: `$` in data is never special). */
@@ -612,8 +615,12 @@ export class TdTreeSelect extends TdFormElement {
         const text = this._editText;
         this._labelBefore = '';
         this._editText = null;
-        // replaced (Chromium / Firefox honour the selection) → keep; else (WebKit) keep only what the edit inserted
-        if (!this._isOpen && before && combo.value !== before && combo.value !== text) combo.value = editDelta(before, combo.value);
+        // the edit's own text IS the fresh query (typing / paste / drop, every engine); no text (a deletion) → keep only
+        // what the edit left inserted (editDelta, code points)
+        if (!this._isOpen && before && combo.value !== before) {
+          const q = typeof text === 'string' && text ? text : editDelta(before, combo.value);
+          if (combo.value !== q) combo.value = q;
+        }
         if (!this._isOpen) this.open({ typing: true });
         this._scheduleFilter(combo.value);
       });

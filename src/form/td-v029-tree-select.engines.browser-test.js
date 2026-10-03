@@ -677,3 +677,18 @@ describe('td-tree-select — review round 2', () => {
     });
   }
 });
+
+// ---------------------------------------------------------------- review round 3 ---------------------------------
+describe('td-tree-select — review round 3', () => {
+  it('ISSUE-11: typing an emoji next to emoji in the closed label never splits a surrogate pair', async () => {
+    const el = ts('', [{ value: 'e', label: '😀😁' }, { value: 'f', label: 'Khác' }]);
+    el.value = 'e';
+    const c = combo(el);
+    c.focus();
+    c.setSelectionRange(2, 2); // between the two emoji (UTF-16 index)
+    await sendKeys({ type: '😂' });
+    expect(c.value).to.equal('😂');
+    expect(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(c.value), 'no lone surrogate').to.equal(false);
+    keyOn(c, 'Escape');
+  });
+});
