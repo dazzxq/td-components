@@ -50,3 +50,14 @@ hr { margin: 32px 0; border: none; border-top: 1px solid var(--td-color-border);
 /* Lightbox gallery thumbnails */
 .demo-lb-gallery figure { margin: 0; cursor: zoom-in; text-align: center; font-size: 0.8rem; color: var(--td-color-text-muted); }
 .demo-lb-thumb { display: block; width: 160px; height: 107px; object-fit: cover; border-radius: 12px; margin-bottom: 6px; }
+
+/* v0.18 → v0.30 sections */
+.demo-stack { display: grid; gap: 12px; }
+.demo-rep-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+.demo-rep-row > td-input-field { flex: 1 1 14rem; min-width: 0; }
+.demo-rep-row > td-number-input { flex: 0 1 8rem; min-width: 0; }
+.demo-skel { display: grid; gap: 12px; max-width: 320px; }
+.demo-skel__head { display: flex; gap: 12px; align-items: center; }
+.demo-copy-input { max-width: 16rem; }
+.demo-mg-img { display: block; width: 160px; height: 107px; object-fit: cover; }
+.demo-mg-bar { margin-top: 12px; }

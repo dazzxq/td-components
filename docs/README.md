@@ -8,7 +8,7 @@ token `--td-*` chạm được tới nó. Toàn bộ giao diện nằm trong **m
 Triết lý: **lõi nhỏ + hook**. Site tuỳ biến bằng token CSS, attribute/property và hook (callback) — không bao giờ sửa
 code của kit.
 
-Phiên bản hiện tại: **0.29.0** (tag git `v0.29.0`) · Lịch sử thay đổi: [CHANGELOG.md](../CHANGELOG.md)
+Phiên bản hiện tại: **0.30.0** (tag git `v0.30.0`) · Lịch sử thay đổi: [CHANGELOG.md](../CHANGELOG.md)
 
 ---
 
@@ -43,7 +43,7 @@ Xem [danh sách đầy đủ](components/README.md). Tóm tắt:
 
 | Nhóm | Component |
 |---|---|
-| Form | [Button](components/button.md) · [Input field](components/input-field.md) · [Checkbox](components/checkbox.md) · [Toggle](components/toggle.md) · [Slider](components/slider.md) · [Dropdown](components/dropdown.md) · [Datetime picker](components/datetime-picker.md) · [Chip input](components/chip-input.md) · [Tree](components/tree.md) · [Tree select](components/tree-select.md) · [Password meter](components/password-meter.md) · [Dropzone](components/dropzone.md) · [Form validation](components/form-validation.md) |
+| Form | [Button](components/button.md) · [Input field](components/input-field.md) · [Checkbox](components/checkbox.md) · [Toggle](components/toggle.md) · [Slider](components/slider.md) · [Dropdown](components/dropdown.md) · [Datetime picker](components/datetime-picker.md) · [Chip input](components/chip-input.md) · [Tree](components/tree.md) · [Tree select](components/tree-select.md) · [Number input](components/number-input.md) · [Repeater](components/repeater.md) · [Password meter](components/password-meter.md) · [Dropzone](components/dropzone.md) · [Form validation](components/form-validation.md) |
 | Lớp nổi & phản hồi | [Modal](components/modal.md) · [Toast](components/toast.md) · [Tooltip](components/tooltip.md) · [Loading](components/loading.md) · [Menu](components/menu.md) · [Hovercard](components/hovercard.md) · [Lightbox](components/lightbox.md) · [Progress](components/progress.md) · [Scroll to top](components/scroll-top.md) · [Alert](components/alert.md) |
 | Hiển thị | [Table](components/table.md) · [Tabs](components/tabs.md) · [Pagination](components/pagination.md) · [Empty state](components/empty-state.md) · [Media grid](components/media-grid.md) · [Badge](components/badge.md) · [Icons](components/icons.md) |
 | Nền tảng | [Base element (tự viết component)](components/base-element.md) · [Tiện ích](components/utilities.md) |

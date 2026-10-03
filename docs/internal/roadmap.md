@@ -9,7 +9,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.27.0: `td-otp-input`, `td-drawer`, `td-copy`, CSS skeleton
 - `done` v0.28.0 ~14/10 (A0 tới 20/10): `td-chip-input` chọn nhiều (closed-set, `<select multiple>`, chọn tất cả đang hiện, `td_multiselect`) — xong P0
 - `done` v0.29.0: `td-tree` + `td-tree-select`
-- `todo` v0.30.0 ~28/10: `td-number-input` + `td-repeater` (đặt `OrderedCollectionModel`) — đảo theo lịch dsuite (A2.3 cần ~26/10)
+- `done` v0.30.0 ~28/10: `td-number-input` + `td-repeater` (đặt `OrderedCollectionModel`) — đảo theo lịch dsuite (A2.3 cần ~26/10)
 - `todo` v0.31.0 ~04/11: `td-sortable` (dùng lại OrderedCollectionModel) + `td-masked-value` (A1 cần từ 12/11)
 - `todo` v0.32.0 ~11/11: `td-cropper` (toạ độ) + `td-scan-input` (A3 từ 26/11)
 - `todo` v0.33.0 ~18/11: table chọn dòng + hook lọc ngoài + ẩn / hiện cột, `td-filter-chips`

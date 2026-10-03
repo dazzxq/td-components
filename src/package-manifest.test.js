@@ -144,3 +144,27 @@ test('v0.29.0: ./tree + ./tree-select exports, sideEffects, barrel, tree CSS in 
     assert.ok(files.indexOf(f) > files.indexOf('components/copy.css') && files.indexOf(f) < files.indexOf('utilities.css'), f);
   }
 });
+
+test('v0.30.0: ./repeater export, sideEffects, barrel, repeater CSS in the td.css manifest before utilities', async () => {
+  assert.equal(pkg.exports['./repeater'], './src/form/td-repeater.js');
+  assert.ok(pkg.sideEffects.includes('./src/form/td-repeater.js'));
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdRepeater \} from '\.\/src\/form\/td-repeater\.js';/);
+  assert.ok(!/ordered-collection/.test(src), 'OrderedCollectionModel stays internal');
+  assert.ok(!Object.values(pkg.exports).some((t) => /ordered-collection/.test(t)), 'no ordered-collection export');
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  assert.ok(files.includes('components/repeater.css'));
+  assert.ok(files.indexOf('components/repeater.css') > files.indexOf('components/tree-select.css')
+    && files.indexOf('components/repeater.css') < files.indexOf('utilities.css'));
+});
+
+test('v0.30.0: ./number-input export, sideEffects, barrel, number-input CSS before repeater / utilities, number-format internal', async () => {
+  assert.equal(pkg.exports['./number-input'], './src/form/td-number-input.js');
+  assert.ok(pkg.sideEffects.includes('./src/form/td-number-input.js'));
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdNumberInput \} from '\.\/src\/form\/td-number-input\.js';/);
+  assert.ok(!Object.values(pkg.exports).some((t) => /number-format/.test(t)), 'number-format stays internal');
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  const i = files.indexOf('components/number-input.css');
+  assert.ok(i > files.indexOf('components/tree-select.css') && i < files.indexOf('components/repeater.css') && i < files.indexOf('utilities.css'));
+});

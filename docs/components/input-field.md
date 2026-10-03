@@ -6,6 +6,8 @@
 `contenteditable`, kèm nhãn, dòng gợi ý, thông báo lỗi và bộ đếm ký tự/từ. Nó tham gia `<form>` như một control
 native. Dùng [dropdown](dropdown.md) khi người dùng chọn từ danh sách, [datetime-picker](datetime-picker.md) khi cần
 chọn ngày giờ theo định dạng Việt Nam, [chip-input](chip-input.md) khi nhập nhiều thẻ (tag).
+**Tiền / giá / số lớn** (hiện `12.990.000`, hậu tố `₫` / `%`, dán số có dấu chấm phẩy, gửi số sạch, chính xác tới 30
+chữ số) → dùng [number input](number-input.md); `type="number"` ở đây là số trần, không định dạng (0.30.0).
 
 | | |
 |---|---|

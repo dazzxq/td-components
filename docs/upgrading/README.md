@@ -6,7 +6,7 @@ Trang này trả lời bốn câu hỏi: kit đánh số phiên bản thế nào
 khi có sự cố, và cần kiểm tra gì sau khi nâng cấp. Chi tiết "bản nào đổi gì, site phải sửa gì" nằm ở
 [breaking-changes.md](breaking-changes.md); bảng đổi tên class cũ → class mới nằm ở [class-map.md](class-map.md).
 
-Phiên bản hiện tại: **0.29.0** (`package.json` → `"version": "0.29.0"`, tag git `v0.29.0`).
+Phiên bản hiện tại: **0.30.0** (`package.json` → `"version": "0.30.0"`, tag git `v0.30.0`).
 
 ## Chính sách phiên bản
 
@@ -131,7 +131,7 @@ comm -23 /tmp/site-tokens.txt /tmp/kit-tokens.txt
 ```
 
 (Đổi `assets/` thành thư mục CSS của site.) Dòng nào in ra ở bước 3 thì tra
-[breaking-changes.md](breaking-changes.md). Tính tới 0.29.0, token duy nhất từng bị gỡ khỏi `td.css` là
+[breaking-changes.md](breaking-changes.md). Tính tới 0.30.0, token duy nhất từng bị gỡ khỏi `td.css` là
 `--td-glass-secondary-film` (0.14.3); ngoài ra custom property `--td-cb-color` của checkbox (không nằm trong
 `td.css`) đã đổi tên thành `--td-checkbox-color` ở 0.7.0.
 

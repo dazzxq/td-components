@@ -7672,7 +7672,9 @@
 	/* The box has the same size with or without JS: 6 cells + 5 gaps (shrinks on a narrow screen). */
 	.td-otp__box {
 		position: relative;
-		width: min(100%, calc(6 * var(--td-otp-cell-w) + 5 * var(--td-otp-gap)));
+		/* fixed width + max-width (not min(100%, …)): a % inside a shrink-to-fit flex item resolves cyclically → collapse */
+		width: calc(6 * var(--td-otp-cell-w) + 5 * var(--td-otp-gap));
+		max-width: 100%;
 		height: var(--td-otp-cell-h);
 		direction: ltr; /* digits read left → right in every script */
 	}
@@ -8902,6 +8904,311 @@
 		.td-tree-select__search:focus-visible,
 		.td-tree-select__native:focus-visible {
 			outline: 2px solid Highlight;
+		}
+	}
+}
+
+/* ---- src/styles/components/number-input.css ---- */
+/*
+ * td-number-input (src/form/td-number-input.js, v0.30.0) — the field look (field.css: label, footer, note, error) with
+ * the CONTROL look moved to `.td-number__box` (fill, border, radius, size height, focus ring via :focus-within), so
+ * the prefix / suffix sit inside the box; the inner input is transparent and borderless. Content layer: solid.
+ * State (never visual classes): the control's :focus / :disabled / [readonly] / [aria-invalid="true"], read on the box
+ * with :has(). Numbers are left-aligned (typing habit kept) with tabular figures.
+ * No JS: php/td.php prints the same tree with a native `type=number` control (spin buttons hidden) → the box is the same
+ * before and after the upgrade.
+ */
+@layer td.tokens {
+	:root {
+		--td-number-affix-fg: var(--td-color-text-muted);
+		--td-number-affix-gap: var(--td-space-2xs);
+	}
+}
+
+@layer td.component {
+	td-number-input {
+		display: block;
+	}
+
+	/* ADR 0012 safety net: hand-written host before define → reserve one field height (no fake styling) */
+	td-number-input:not(:defined):not([data-td-ssr]) {
+		display: block;
+		min-height: 2.5rem;
+	}
+
+	.td-number__box {
+		display: flex;
+		gap: var(--td-number-affix-gap);
+		align-items: center;
+		width: 100%;
+		height: var(--_td-field-h);
+		padding: var(--_td-field-pad);
+		padding-block: 0;
+		margin: 0;
+		color: var(--td-field-fg);
+		cursor: text;
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--_td-field-radius);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: none;
+		transition:
+			border-color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease),
+			background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-number__box:hover:not(:focus-within, :has(> .td-number__control:disabled)) {
+		border-color: var(--td-field-border-hover);
+	}
+
+	.td-number__box:focus-within {
+		background: var(--td-field-bg-focus);
+		border-color: var(--td-field-focus);
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	.td-number__control {
+		flex: 1 1 auto;
+		width: 100%;
+		min-width: 0;
+		height: 100%;
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		font-variant-numeric: tabular-nums;
+		color: inherit;
+		text-align: start;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+		outline: none;
+		box-shadow: none;
+		appearance: none;
+	}
+
+	.td-number__control::placeholder {
+		color: var(--td-field-placeholder);
+		opacity: 1;
+	}
+
+	/* SSR / no-JS shell: the native number control looks like the upgraded text one (no spin buttons) */
+	.td-number__control[type="number"] {
+		appearance: textfield;
+	}
+
+	.td-number__control[type="number"]::-webkit-inner-spin-button,
+	.td-number__control[type="number"]::-webkit-outer-spin-button {
+		margin: 0;
+		appearance: none;
+	}
+
+	.td-number__affix {
+		flex: 0 0 auto;
+		color: var(--td-number-affix-fg);
+		white-space: nowrap;
+		user-select: none;
+	}
+
+	.td-number__box:has(> .td-number__control[readonly]) {
+		background: var(--td-field-bg-readonly);
+	}
+
+	.td-number__box:has(> .td-number__control:disabled) {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-field-bg-disabled);
+	}
+
+	.td-number__control:disabled {
+		cursor: not-allowed;
+	}
+
+	/* a visible error keeps the red border, focused or not */
+	.td-number__box:has(> .td-number__control[aria-invalid="true"]),
+	.td-number__box:has(> .td-number__control[aria-invalid="true"]):focus-within {
+		border-color: var(--td-field-error);
+	}
+
+	@media (pointer: coarse) {
+		.td-number__box {
+			min-height: var(--td-touch-min);
+			font-size: max(1rem, 1em); /* ≥ 16px: iOS does not zoom on focus */
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-number__box {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-number__box {
+			border-color: CanvasText;
+		}
+
+		.td-number__box:focus-within {
+			outline-color: Highlight;
+		}
+
+		.td-number__box:has(> .td-number__control[aria-invalid="true"]) {
+			border-style: dashed;
+			border-width: 2px;
+		}
+
+		.td-number__affix,
+		.td-number__control::placeholder {
+			color: GrayText;
+		}
+	}
+}
+
+/* ---- src/styles/components/repeater.css ---- */
+/*
+ * td-repeater (src/form/td-repeater.js, v0.30.0) — rows the app renders, upgraded in place. Content layer (Minimal
+ * surfaces): no surface / shadow, a hairline between rows, ghost icon buttons (32px, 44px on touch), the add button is
+ * a regular secondary button. No animation.
+ * State (set by JS, never visual classes): buttons [aria-disabled="true"] at a boundary (still focusable).
+ * Layout of a row: the app overrides it with unlayered CSS (always wins), e.g. `.box-row { display: grid; … }`.
+ */
+@layer td.tokens {
+	:root {
+		--td-repeater-gap: var(--td-space-sm);
+		--td-repeater-btn-size: 2rem;
+		--td-repeater-btn-fg: var(--td-color-text-muted);
+		--td-repeater-btn-fg-hover: var(--td-color-text);
+		--td-repeater-btn-bg-hover: var(--td-color-hover-strong);
+		--td-repeater-btn-disabled-fg: var(--td-btn-disabled-fg);
+		--td-repeater-divider: var(--td-color-border);
+	}
+}
+
+@layer td.component {
+	td-repeater {
+		display: block;
+	}
+
+	/* same look as a field label (.td-field__label); explicit metrics: a host reset never changes them */
+	.td-repeater__label {
+		box-sizing: border-box;
+		margin: 0 0 var(--td-space-2xs);
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-medium);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-label);
+	}
+
+	.td-repeater__row {
+		box-sizing: border-box;
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-repeater-gap);
+		align-items: center;
+		padding-block: var(--td-repeater-gap);
+	}
+
+	.td-repeater__row + .td-repeater__row {
+		border-top: 1px solid var(--td-repeater-divider);
+	}
+
+	.td-repeater__actions {
+		display: inline-flex;
+		flex: 0 0 auto;
+		gap: var(--td-space-2xs);
+		align-items: center;
+		margin-inline-start: auto;
+	}
+
+	.td-repeater__btn {
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		width: var(--td-repeater-btn-size);
+		height: var(--td-repeater-btn-size);
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		line-height: 0;
+		color: var(--td-repeater-btn-fg);
+		cursor: pointer;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--td-radius-md);
+		box-shadow: none;
+		transition: background-color var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+	}
+
+	.td-repeater__btn:hover {
+		color: var(--td-repeater-btn-fg-hover);
+		background: var(--td-repeater-btn-bg-hover);
+	}
+
+	.td-repeater__btn:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-repeater__btn[aria-disabled="true"],
+	.td-repeater__btn[aria-disabled="true"]:hover,
+	.td-repeater__btn:disabled {
+		color: var(--td-repeater-btn-disabled-fg);
+		cursor: not-allowed;
+		background: transparent;
+	}
+
+	.td-repeater__btn .td-icon {
+		pointer-events: none;
+	}
+
+	.td-repeater__footer {
+		box-sizing: border-box;
+		display: flex;
+		align-items: center;
+		padding-top: var(--td-repeater-gap);
+	}
+
+	.td-repeater__add {
+		gap: var(--td-space-2xs);
+	}
+
+	.td-repeater__add .td-icon {
+		pointer-events: none;
+	}
+
+	.td-repeater__add[aria-disabled="true"] {
+		color: var(--td-btn-disabled-fg);
+		cursor: not-allowed;
+		background: var(--td-btn-disabled-bg);
+		border-color: var(--td-btn-disabled-border);
+		box-shadow: none;
+	}
+
+	@media (pointer: coarse) {
+		.td-repeater__btn {
+			width: var(--td-touch-min);
+			height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-repeater__btn {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-repeater__btn {
+			color: ButtonText;
+		}
+
+		.td-repeater__btn[aria-disabled="true"] {
+			color: GrayText;
 		}
 	}
 }

@@ -1,0 +1,146 @@
+/*
+ * td-repeater (src/form/td-repeater.js, v0.30.0) — rows the app renders, upgraded in place. Content layer (Minimal
+ * surfaces): no surface / shadow, a hairline between rows, ghost icon buttons (32px, 44px on touch), the add button is
+ * a regular secondary button. No animation.
+ * State (set by JS, never visual classes): buttons [aria-disabled="true"] at a boundary (still focusable).
+ * Layout of a row: the app overrides it with unlayered CSS (always wins), e.g. `.box-row { display: grid; … }`.
+ */
+@layer td.tokens {
+	:root {
+		--td-repeater-gap: var(--td-space-sm);
+		--td-repeater-btn-size: 2rem;
+		--td-repeater-btn-fg: var(--td-color-text-muted);
+		--td-repeater-btn-fg-hover: var(--td-color-text);
+		--td-repeater-btn-bg-hover: var(--td-color-hover-strong);
+		--td-repeater-btn-disabled-fg: var(--td-btn-disabled-fg);
+		--td-repeater-divider: var(--td-color-border);
+	}
+}
+
+@layer td.component {
+	td-repeater {
+		display: block;
+	}
+
+	/* same look as a field label (.td-field__label); explicit metrics: a host reset never changes them */
+	.td-repeater__label {
+		box-sizing: border-box;
+		margin: 0 0 var(--td-space-2xs);
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-medium);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-label);
+	}
+
+	.td-repeater__row {
+		box-sizing: border-box;
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-repeater-gap);
+		align-items: center;
+		padding-block: var(--td-repeater-gap);
+	}
+
+	.td-repeater__row + .td-repeater__row {
+		border-top: 1px solid var(--td-repeater-divider);
+	}
+
+	.td-repeater__actions {
+		display: inline-flex;
+		flex: 0 0 auto;
+		gap: var(--td-space-2xs);
+		align-items: center;
+		margin-inline-start: auto;
+	}
+
+	.td-repeater__btn {
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		width: var(--td-repeater-btn-size);
+		height: var(--td-repeater-btn-size);
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		line-height: 0;
+		color: var(--td-repeater-btn-fg);
+		cursor: pointer;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--td-radius-md);
+		box-shadow: none;
+		transition: background-color var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+	}
+
+	.td-repeater__btn:hover {
+		color: var(--td-repeater-btn-fg-hover);
+		background: var(--td-repeater-btn-bg-hover);
+	}
+
+	.td-repeater__btn:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-repeater__btn[aria-disabled="true"],
+	.td-repeater__btn[aria-disabled="true"]:hover,
+	.td-repeater__btn:disabled {
+		color: var(--td-repeater-btn-disabled-fg);
+		cursor: not-allowed;
+		background: transparent;
+	}
+
+	.td-repeater__btn .td-icon {
+		pointer-events: none;
+	}
+
+	.td-repeater__footer {
+		box-sizing: border-box;
+		display: flex;
+		align-items: center;
+		padding-top: var(--td-repeater-gap);
+	}
+
+	.td-repeater__add {
+		gap: var(--td-space-2xs);
+	}
+
+	.td-repeater__add .td-icon {
+		pointer-events: none;
+	}
+
+	.td-repeater__add[aria-disabled="true"] {
+		color: var(--td-btn-disabled-fg);
+		cursor: not-allowed;
+		background: var(--td-btn-disabled-bg);
+		border-color: var(--td-btn-disabled-border);
+		box-shadow: none;
+	}
+
+	@media (pointer: coarse) {
+		.td-repeater__btn {
+			width: var(--td-touch-min);
+			height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-repeater__btn {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-repeater__btn {
+			color: ButtonText;
+		}
+
+		.td-repeater__btn[aria-disabled="true"] {
+			color: GrayText;
+		}
+	}
+}
