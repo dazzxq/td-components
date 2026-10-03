@@ -34,7 +34,9 @@
       "td-copy": "/src/display/td-copy.js",
       "td-skeleton": "/src/icons/td-icon.js",
       "td-tree": "/src/form/td-tree.js",
-      "td-tree-select": "/src/form/td-tree-select.js"
+      "td-tree-select": "/src/form/td-tree-select.js",
+      "td-number-input": "/src/form/td-number-input.js",
+      "td-repeater": "/src/form/td-repeater.js"
     },
     "tokenNative": [
       "td-button",
@@ -69,7 +71,9 @@
       "td-copy",
       "td-skeleton",
       "td-tree",
-      "td-tree-select"
+      "td-tree-select",
+      "td-number-input",
+      "td-repeater"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -2288,6 +2292,84 @@
         "height"
       ],
       "selectorNote": "php/td.php td_tree_select native mode select (class-styled; inside <td-tree-select> it upgrades when JS runs); height excluded like td-chip-input php-native: the UA list height of a select[multiple][size] depends on the option line metrics (Tailwind preflight in the legacy+td profile changes it by <1px on Linux CI)"
+    }
+  ],
+  "td-number-input": [
+    {
+      "state": "default",
+      "markup": "<td-number-input name=\"price\" label=\"Giá bán\" value=\"12990000\" suffix=\"₫\" helper-text=\"Đã gồm VAT\"></td-number-input>",
+      "selectors": [
+        ".td-number",
+        ".td-field__label",
+        ".td-number__box",
+        ".td-number__control",
+        ".td-number__affix--suffix",
+        ".td-field__note"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "error",
+      "markup": "<td-number-input name=\"refund\" label=\"Hoàn tiền\" value=\"15000000\" prefix=\"$\" error-text=\"Vượt quá số đã thu\"></td-number-input>",
+      "selectors": [
+        ".td-number__box",
+        ".td-number__control",
+        ".td-number__affix--prefix",
+        ".td-field-error"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "disabled",
+      "markup": "<td-number-input name=\"cost\" label=\"Giá vốn\" value=\"5000\" suffix=\"₫\" disabled></td-number-input>",
+      "selectors": [
+        ".td-number__box",
+        ".td-number__control",
+        ".td-number__affix--suffix"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "native",
+      "markup": "<div class=\"td-field td-field--md td-number\"><label class=\"td-field__label\" id=\"nn-label\" for=\"nn-control\">Giá bán</label><div class=\"td-number__box\"><input type=\"number\" class=\"td-number__control\" id=\"nn-control\" inputmode=\"numeric\" autocomplete=\"off\" spellcheck=\"false\" name=\"price\" value=\"12990000\" min=\"0\" step=\"1\" aria-describedby=\"nn-unit\"><span class=\"td-number__affix td-number__affix--suffix\" aria-hidden=\"true\">₫</span><span id=\"nn-unit\" hidden>₫</span></div><div class=\"td-field__footer\" hidden><div class=\"td-field__note\" id=\"nn-note\" hidden></div></div><span class=\"td-sr-only\" id=\"nn-status\" role=\"status\"></span></div>",
+      "selectors": [
+        ".td-number__box",
+        ".td-number__control",
+        ".td-number__affix--suffix"
+      ],
+      "selectorNote": "php/td.php td_number_input default (no JS, no custom element): the native type=number control in the same box (spin buttons hidden)"
+    }
+  ],
+  "td-repeater": [
+    {
+      "state": "default",
+      "markup": "<td-repeater label=\"Hộp gồm\"><template><div data-td-row><input aria-label=\"Tên\"></div></template><div data-td-row><input aria-label=\"Tên\" value=\"Sạc\"></div><div data-td-row><input aria-label=\"Tên\" value=\"Cáp\"></div></td-repeater>",
+      "selectors": [
+        ".td-repeater__label",
+        ".td-repeater__row",
+        ".td-repeater__row + .td-repeater__row",
+        ".td-repeater__actions",
+        ".td-repeater__row ~ .td-repeater__row .td-repeater__btn--up",
+        ".td-repeater__btn--remove",
+        ".td-repeater__btn[aria-disabled=\"true\"]",
+        ".td-repeater__footer",
+        ".td-repeater__add"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "line-height",
+        "margin-left"
+      ],
+      "selectorNote": "rows / actions / footer inherit the page line-height (app content: the kit never forces it) and the actions margin-left is the auto remainder of the row content width — both follow the host page (Tailwind preflight), so they are excluded"
+    },
+    {
+      "state": "full",
+      "markup": "<td-repeater label=\"Hộp gồm\" min-rows=\"1\" max-rows=\"1\" add-label=\"Thêm phụ kiện\"><template><div data-td-row><input aria-label=\"Tên\"></div></template><div data-td-row><input aria-label=\"Tên\" value=\"Sạc\"></div></td-repeater>",
+      "selectors": [
+        ".td-repeater__add[aria-disabled=\"true\"]",
+        ".td-repeater__btn--remove[aria-disabled=\"true\"]"
+      ],
+      "settle": 200
     }
   ]
 }

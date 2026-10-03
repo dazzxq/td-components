@@ -21,7 +21,7 @@
   </script>
 
   <h1 class="demo-title">td-components Demo</h1>
-  <p class="demo-lead">Test tất cả components trực tiếp. Mở DevTools Console để xem events.</p>
+  <p class="demo-lead">Test tất cả components trực tiếp (bản 0.30.0: thêm Number Input, Repeater, Tree, Tree Select, Multi-select, OTP, Drawer, Copy, Skeleton…). Mở DevTools Console để xem events.</p>
 
   <!-- ═══════════════════ SURFACES (v0.14.0; minimal surfaces v0.20.0) ═══════════════════ -->
   <div class="demo-section">
@@ -161,6 +161,126 @@
     <p class="demo-note">Click vào input để mở picker. Xem Console khi chọn.</p>
   </div>
 
+  <!-- ═══════════════════ NUMBER INPUT (v0.30.0) ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Number Input <span class="demo-code">&lt;td-number-input&gt;</span></h2>
+    <form id="demo-number-form" class="demo-grid">
+      <td-number-input name="price" label="Giá bán" suffix="₫" unit-label="đồng" value="12990000" min="1000" required></td-number-input>
+      <td-number-input name="rate" label="Hoa hồng" suffix="%" decimals="2" max="100" value="12.5"></td-number-input>
+      <td-number-input name="refund" label="Hoàn tiền (tối đa 10.000.000 — báo lỗi khi rời ô)" suffix="₫" max="10000000" value="15000000" validate-on="blur"></td-number-input>
+      <td-number-input name="threshold" label="Ngưỡng (clamp — tự kẹp khi rời ô)" suffix="₫" min="0" max="10000000" clamp></td-number-input>
+    </form>
+    <p class="demo-note">Người dùng thấy <code>12.990.000 ₫</code>, FormData là số sạch. ↑ / ↓ cộng bước, PageUp / PageDown ×10.
+      Dán thử <code>1.234,5</code> vào ô Hoa hồng.</p>
+    <pre id="demo-number-output" class="demo-output" aria-live="polite"></pre>
+  </div>
+
+  <!-- ═══════════════════ OTP INPUT (v0.27.0) ═══════════════════ -->
+  <div class="demo-section">
+    <h2>OTP Input <span class="demo-code">&lt;td-otp-input&gt;</span></h2>
+    <div class="demo-row">
+      <td-otp-input id="demo-otp" name="code" label="Mã xác thực (thử 123456)"></td-otp-input>
+    </div>
+    <p class="demo-note">Gõ / dán 6 số → event <code>complete</code> (Console). Mã <code>123456</code> đúng; mã khác → <code>setError()</code> + <code>reset()</code>.</p>
+  </div>
+
+  <!-- ═══════════════════ PASSWORD METER ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Password Meter <span class="demo-code">&lt;td-password-meter&gt;</span></h2>
+    <div class="demo-narrow">
+      <td-input-field id="demo-pw" type="password" name="password" autocomplete="new-password" label="Mật khẩu mới"></td-input-field>
+      <td-password-meter id="demo-pw-meter" for="demo-pw" checklist></td-password-meter>
+    </div>
+    <p class="demo-note">Event <code>strength-change</code> in ra Console (không chứa mật khẩu).</p>
+  </div>
+
+  <!-- ═══════════════════ CHIP INPUT MULTI-SELECT (v0.28.0) ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Multi-select <span class="demo-code">&lt;td-chip-input selection-only&gt;</span></h2>
+    <form id="demo-multi-form" class="demo-grid">
+      <td-chip-input id="demo-roles" name="roles[]" label="Vai trò (tối đa 3)" placeholder="Lọc vai trò…"
+        selection-only select-all max-items="3"></td-chip-input>
+      <div>
+        <label for="demo-city" class="td-field__label">Thành phố (nâng cấp từ &lt;select multiple&gt;)</label>
+        <td-chip-input select-all>
+          <select multiple id="demo-city" name="cities[]">
+            <optgroup label="Miền Bắc">
+              <option value="hn" selected>Hà Nội</option>
+              <option value="hp">Hải Phòng</option>
+            </optgroup>
+            <optgroup label="Miền Nam" disabled><option value="hcm">TP Hồ Chí Minh</option></optgroup>
+            <option value="hue" data-description="Cố đô">Huế</option>
+            <option value="dn">Đà Nẵng</option>
+          </select>
+        </td-chip-input>
+      </div>
+    </form>
+    <p class="demo-note">Chữ gõ chỉ để lọc; Enter / click lật chọn, popup giữ mở. Nhóm "Cộng tác" và mục khoá ("Chủ sở hữu", nhóm "Ngừng dùng").</p>
+    <pre id="demo-multi-output" class="demo-output" aria-live="polite"></pre>
+  </div>
+
+  <!-- ═══════════════════ TREE (v0.29.0) ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Tree <span class="demo-code">&lt;td-tree&gt;</span></h2>
+    <form id="demo-tree-form" class="demo-grid">
+      <td-tree id="demo-tree-perms" name="perms[]" selection="multiple" cascade label="Quyền (cascade: gửi lá)"
+        value='["posts.view","posts.create"]'></td-tree>
+      <td-tree id="demo-tree-lazy" name="categories[]" selection="multiple" label="Chuyên mục (nhánh tải chậm)" searchable></td-tree>
+    </form>
+    <p class="demo-note">Trái: ba trạng thái, nút cha là nhóm; "Quản lý người dùng" bị khoá. Phải: mở "Laptop" → <code>loadChildren</code> giả lập 800 ms.</p>
+    <pre id="demo-tree-output" class="demo-output" aria-live="polite"></pre>
+  </div>
+
+  <!-- ═══════════════════ TREE SELECT (v0.29.0) ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Tree Select <span class="demo-code">&lt;td-tree-select&gt;</span></h2>
+    <form id="demo-tree-select-form" class="demo-grid">
+      <td-tree-select id="demo-ts-parent" name="parent_id" label="Danh mục cha (đang sửa: Apple)" placeholder="— Không có (gốc) —"
+        allow-clear display="path"></td-tree-select>
+      <td-tree-select id="demo-ts-multi" name="cats[]" label="Hiển thị trong chuyên mục" multiple allow-clear
+        value='["ip15","dell"]'></td-tree-select>
+    </form>
+    <p class="demo-note">Một: gõ để lọc, hiện đường dẫn đầy đủ; "Apple" và nhánh con bị khoá (chống chọn chính nó làm cha). Nhiều: popup có ô check.</p>
+    <pre id="demo-tree-select-output" class="demo-output" aria-live="polite"></pre>
+  </div>
+
+  <!-- ═══════════════════ DROPZONE ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Dropzone <span class="demo-code">&lt;td-dropzone&gt;</span></h2>
+    <form id="demo-dropzone-form" class="demo-grid">
+      <td-dropzone name="attachments[]" label="Tệp đính kèm" accept=".pdf,image/*" accept-label="PDF hoặc ảnh"
+        multiple max-size="5MB" max-files="3" preview></td-dropzone>
+      <td-dropzone id="demo-dropzone-upload" label="Upload ngay (giả lập)" accept="image/*" multiple max-files="5" preview></td-dropzone>
+    </form>
+    <p class="demo-note">Trái: lọc loại / kích thước / số lượng, file nằm trong FormData. Phải: hook <code>upload</code> giả lập tiến độ (file tên chứa "loi" → thất bại).</p>
+    <pre id="demo-dropzone-output" class="demo-output" aria-live="polite"></pre>
+  </div>
+
+  <!-- ═══════════════════ REPEATER (v0.30.0) ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Repeater <span class="demo-code">&lt;td-repeater&gt;</span></h2>
+    <form id="demo-repeater-form">
+      <td-repeater id="demo-repeater" label="Hộp gồm" min-rows="1" max-rows="6" add-label="Thêm phụ kiện">
+        <template>
+          <div data-td-row class="demo-rep-row">
+            <td-input-field data-name="box[{i}][name]" aria-label="Phụ kiện" placeholder="Tên phụ kiện"></td-input-field>
+            <td-number-input data-name="box[{i}][qty]" aria-label="Số lượng" value="1" min="1" max="99"></td-number-input>
+          </div>
+        </template>
+        <div data-td-row class="demo-rep-row">
+          <td-input-field name="box[0][name]" data-name="box[{i}][name]" aria-label="Phụ kiện" value="Sạc 20W"></td-input-field>
+          <td-number-input name="box[0][qty]" data-name="box[{i}][qty]" aria-label="Số lượng" value="1" min="1" max="99"></td-number-input>
+        </div>
+        <div data-td-row class="demo-rep-row">
+          <td-input-field name="box[1][name]" data-name="box[{i}][name]" aria-label="Phụ kiện" value="Cáp USB-C"></td-input-field>
+          <td-number-input name="box[1][qty]" data-name="box[{i}][qty]" aria-label="Số lượng" value="2" min="1" max="99"></td-number-input>
+        </div>
+      </td-repeater>
+    </form>
+    <p class="demo-note">Thêm / xoá (hỏi xác nhận qua <code>before-remove</code>) / ↑ ↓. Tên field đánh lại index theo công thức <code>rename()</code> + <code>data-name</code>.</p>
+    <pre id="demo-repeater-output" class="demo-output" aria-live="polite"></pre>
+  </div>
+
   <hr>
 
   <!-- ═══════════════════ MODAL ═══════════════════ -->
@@ -225,6 +345,74 @@
     </div>
   </div>
 
+  <!-- ═══════════════════ SKELETON (v0.27.0) ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Skeleton <span class="demo-code">.td-skeleton</span></h2>
+    <div class="demo-skel" id="demo-skel" aria-busy="true">
+      <div class="demo-skel__head">
+        <span class="td-skeleton td-skeleton--circle" aria-hidden="true"></span>
+        <span class="td-skeleton td-skeleton--text td-skeleton--lines-2" aria-hidden="true"></span>
+      </div>
+      <span class="td-skeleton td-skeleton--rect" aria-hidden="true"></span>
+      <span class="td-skeleton td-skeleton--text td-skeleton--lines-3" aria-hidden="true"></span>
+    </div>
+    <p class="demo-note">Thuần CSS (chỉ cần <code>td.css</code>): <code>--circle</code>, <code>--text --lines-2/3</code>, <code>--rect</code>.</p>
+  </div>
+
+  <!-- ═══════════════════ ALERT ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Alert <span class="demo-code">&lt;td-alert&gt;</span></h2>
+    <div class="demo-stack">
+      <td-alert variant="info">Hệ thống sẽ bảo trì lúc 2:00 sáng Chủ nhật.</td-alert>
+      <td-alert variant="success" heading="Thành công" dismissible>Đã lưu thay đổi.</td-alert>
+      <td-alert variant="warning">Ảnh lớn hơn <strong>5 MB</strong> sẽ bị nén.</td-alert>
+      <td-alert variant="danger" heading="Lỗi máy chủ" dismissible>Không lưu được bài viết, vui lòng thử lại.</td-alert>
+    </div>
+    <p class="demo-note">Bấm × → event <code>dismiss</code> (cancelable) trong Console.</p>
+  </div>
+
+  <!-- ═══════════════════ PROGRESS ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Progress <span class="demo-code">&lt;td-progress&gt;</span></h2>
+    <div class="demo-stack demo-narrow">
+      <td-progress id="demo-progress" value="40" label="Đang tải lên"></td-progress>
+      <td-progress value="3" max="8" variant="success" size="sm" label="Bước 3/8"></td-progress>
+      <td-progress value="90" variant="warning" label="Dung lượng"></td-progress>
+      <td-progress value="100" variant="danger" size="sm" label="Hết hạn mức"></td-progress>
+      <td-progress label="Đang xử lý"></td-progress>
+    </div>
+    <div class="demo-row">
+      <button type="button" id="demo-progress-run" class="td-btn td-btn--secondary"><span class="td-btn__label">Chạy 0 → 100%</span></button>
+      <span id="demo-progress-text" class="demo-label">40%</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ DRAWER (v0.27.0) ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Drawer <span class="demo-code">&lt;td-drawer&gt; · TdDrawer.open()</span></h2>
+    <div class="demo-row">
+      <button type="button" id="demo-drawer-open" class="td-btn td-btn--primary"><span class="td-btn__label">Bộ lọc (khai báo, chặn đóng khi chưa áp dụng)</span></button>
+      <button type="button" id="demo-drawer-js" class="td-btn td-btn--secondary"><span class="td-btn__label">TdDrawer.open() — nội dung chữ</span></button>
+      <button type="button" id="demo-drawer-start" class="td-btn td-btn--secondary"><span class="td-btn__label">Cạnh trái, size sm</span></button>
+    </div>
+    <td-drawer id="demo-drawer" title="Bộ lọc">
+      <div class="demo-stack">
+        <td-input-field id="demo-drawer-q" label="Từ khoá" placeholder="Gõ gì đó rồi thử đóng…"></td-input-field>
+        <td-checkbox label="Chỉ bài đã xuất bản"></td-checkbox>
+      </div>
+      <div slot="footer">
+        <button type="button" class="td-btn td-btn--primary" id="demo-drawer-apply"><span class="td-btn__label">Áp dụng</span></button>
+      </div>
+    </td-drawer>
+    <p class="demo-note">Đã gõ từ khoá mà đóng (Esc / nền / ×) → <code>before-close</code> chặn và hỏi bằng TdModal.confirm. Event <code>open</code> / <code>close</code> trong Console.</p>
+  </div>
+
+  <!-- ═══════════════════ SCROLL TOP ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Scroll to top <span class="demo-code">&lt;td-scroll-top&gt;</span></h2>
+    <p class="demo-note">Nút tròn ở góc dưới phải, hiện khi đã cuộn quá 600px (đặt ở cuối <code>&lt;body&gt;</code>). Bấm → cuộn lên đầu, event <code>scroll-top</code> trong Console.</p>
+  </div>
+
   <hr>
 
   <!-- ═══════════════════ TABLE ═══════════════════ -->
@@ -258,6 +446,67 @@
     </div>
   </div>
 
+  <!-- ═══════════════════ BADGE ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Badge <span class="demo-code">.td-badge</span></h2>
+    <div class="demo-row">
+      <span class="td-badge">Mặc định</span>
+      <span class="td-badge td-badge--accent">Mới</span>
+      <span class="td-badge td-badge--success">Đã duyệt</span>
+      <span class="td-badge td-badge--warning">Chờ duyệt</span>
+      <span class="td-badge td-badge--danger">Hết hạn</span>
+      <span class="td-badge td-badge--info">3<span class="td-sr-only"> tin mới</span></span>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label">Outline:</span>
+      <span class="td-badge td-badge--success td-badge--outline">Đã duyệt</span>
+      <span class="td-badge td-badge--danger td-badge--outline">Hết hạn</span>
+      <span class="demo-label">Con dấu:</span>
+      <span class="td-badge td-badge--warning td-badge--stamp">Nháp</span>
+      <span class="td-badge td-badge--danger td-badge--stamp">Đã huỷ</span>
+    </div>
+    <p class="demo-note">Thuần CSS. Cột "Trạng thái" của Table phía trên cũng dùng badge.</p>
+  </div>
+
+  <!-- ═══════════════════ COPY (v0.27.0) ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Copy <span class="demo-code">&lt;td-copy&gt;</span></h2>
+    <div class="demo-row">
+      <span class="demo-label">Code nguồn:</span>
+      <code>req_01HZX9K2</code>
+      <td-copy label="Copy request ID"><code class="td-copy__source">req_01HZX9K2</code></td-copy>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label">Attribute value:</span>
+      <code>evt_7f3a91</code>
+      <td-copy label="Copy ID sự kiện" value="evt_7f3a91" size="sm"></td-copy>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label">for= ô nhập:</span>
+      <input id="demo-copy-key" class="td-field__control demo-copy-input" value="pk_live_51HdemoKey" readonly aria-label="Khoá API">
+      <td-copy for="demo-copy-key" label="Copy khoá API"></td-copy>
+    </div>
+    <p class="demo-note">Bấm → toast từ event <code>copy-success</code> / <code>copy-error</code> (cần secure context: localhost được).</p>
+  </div>
+
+  <!-- ═══════════════════ MEDIA GRID ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Media Grid <span class="demo-code">&lt;td-media-grid&gt;</span></h2>
+    <td-media-grid id="demo-media-grid" label="Khung hình cuộn 12" max="5" data-td-lightbox-group>
+      <div data-td-media-item data-id="f1"><a href="/test/fixtures/1.svg" data-td-media-open data-td-lightbox-item data-td-lightbox-caption="Khung 1" aria-label="Khung 1"><img src="/test/fixtures/1.svg" alt="" class="demo-mg-img"></a></div>
+      <div data-td-media-item data-id="f2"><a href="/test/fixtures/2.svg" data-td-media-open data-td-lightbox-item data-td-lightbox-caption="Khung 2" aria-label="Khung 2"><img src="/test/fixtures/2.svg" alt="" class="demo-mg-img"></a></div>
+      <div data-td-media-item data-id="f3"><a href="/test/fixtures/3.svg" data-td-media-open data-td-lightbox-item data-td-lightbox-caption="Khung 3" aria-label="Khung 3"><img src="/test/fixtures/3.svg" alt="" class="demo-mg-img"></a></div>
+      <div data-td-media-item data-id="f4"><a href="/test/fixtures/4.svg" data-td-media-open data-td-lightbox-item data-td-lightbox-caption="Khung 4" aria-label="Khung 4"><img src="/test/fixtures/4.svg" alt="" class="demo-mg-img"></a></div>
+      <div data-td-media-item data-id="f5"><a href="/test/fixtures/2.svg" data-td-media-open data-td-lightbox-item data-td-lightbox-caption="Khung 5" aria-label="Khung 5"><img src="/test/fixtures/2.svg" alt="" class="demo-mg-img"></a></div>
+      <div data-td-media-item data-id="f6"><a href="/test/fixtures/1.svg" data-td-media-open data-td-lightbox-item data-td-lightbox-caption="Khung 6" aria-label="Khung 6"><img src="/test/fixtures/1.svg" alt="" class="demo-mg-img"></a></div>
+    </td-media-grid>
+    <div class="demo-row demo-mg-bar">
+      <span id="demo-mg-count" class="demo-label">Chưa chọn khung nào</span>
+      <button type="button" id="demo-mg-clear" class="td-btn td-btn--secondary td-btn--sm"><span class="td-btn__label">Bỏ chọn</span></button>
+    </div>
+    <p class="demo-note">Chưa chọn gì: bấm ảnh → lightbox. Rê chuột / focus → nút tick; đang chọn: bấm ảnh để lật, Shift + bấm chọn dải, Esc bỏ chọn. Tối đa 5.</p>
+  </div>
+
   <!-- ═══════════════════ FORM (v0.13.0) ═══════════════════ -->
   <div class="demo-section">
     <h2>Form thật <span class="demo-code">TdFormValidation + run() + commit()</span></h2>
@@ -280,6 +529,9 @@
       Công tắc "Công khai" lưu thử bằng commit() (lần bật thứ hai giả lập lỗi mạng → tự trả về).</p>
     <pre id="demo-form-output" class="demo-output" aria-live="polite"></pre>
   </div>
+
+  <!-- ═══════════════════ SCROLL TOP (fixed, end of body) ═══════════════════ -->
+  <td-scroll-top id="demo-scroll-top" threshold="600"></td-scroll-top>
 
   <!-- ═══════════════════ SCRIPTS ═══════════════════ -->
   <script type="module">
@@ -308,6 +560,20 @@
     import { TdToast } from './src/feedback/td-toast.js';
     import { TdLoading, TdLoadingSpinner } from './src/feedback/td-loading.js';
     import { TdLightbox } from './src/feedback/td-lightbox.js';
+    // v0.18 → v0.30
+    import './src/feedback/td-alert.js';
+    import './src/feedback/td-progress.js';
+    import './src/feedback/td-scroll-top.js';
+    import './src/form/td-dropzone.js';
+    import './src/form/td-password-meter.js';
+    import './src/display/td-media-grid.js';
+    import './src/form/td-otp-input.js';
+    import './src/display/td-copy.js';
+    import './src/form/td-tree.js';
+    import './src/form/td-tree-select.js';
+    import './src/form/td-repeater.js';
+    import './src/form/td-number-input.js';
+    import { TdDrawer } from './src/feedback/td-drawer.js';
 
     // Expose cho onclick handlers
     window.TdModal = TdModal;
@@ -347,9 +613,9 @@
       { key: 'author', label: 'Tác giả', sortable: true },
       { key: 'status', label: 'Trạng thái', render: (row) => {
         // render(row, rowIdxInPage) → a Node (row data as text, never interpolated into HTML)
-        const colors = { published: 'bg-green-100 text-green-700', draft: 'bg-gray-100 text-gray-600', archived: 'bg-yellow-100 text-yellow-700' };
+        const variants = { published: 'td-badge--success', draft: 'td-badge--neutral', archived: 'td-badge--warning' };
         const badge = document.createElement('span');
-        badge.className = `px-2 py-1 rounded-full text-xs font-medium ${colors[row.status] || ''}`;
+        badge.className = `td-badge ${variants[row.status] || ''}`;
         badge.textContent = row.status;
         return badge;
       }},
@@ -496,6 +762,234 @@
       setTimeout(() => TdToast.warning('Bản nháp chưa lưu'), 300);
       setTimeout(() => TdToast.error('Không kết nối được máy chủ'), 600);
     });
+
+    // ══════════ v0.18 → v0.30 sections ══════════
+    /** Print a form's FormData into a <pre> (live: on input / change / rows-change). */
+    const showFormData = (form, out) => {
+      const render = () => {
+        const lines = [];
+        for (const [k, v] of new FormData(form)) lines.push(`${k} = ${v instanceof File ? `[File] ${v.name} (${v.size} B)` : v}`);
+        out.textContent = lines.length ? `FormData:\n${lines.join('\n')}` : 'FormData: (trống)';
+      };
+      ['input', 'change', 'rows-change', 'files-change'].forEach((t) => form.addEventListener(t, () => queueMicrotask(render)));
+      form.addEventListener('submit', (e) => e.preventDefault());
+      queueMicrotask(render);
+      return render;
+    };
+
+    // ── Number input (v0.30.0) ──
+    showFormData(document.querySelector('#demo-number-form'), document.querySelector('#demo-number-output'));
+    document.querySelector('#demo-number-form').addEventListener('change', (e) => {
+      if (e.target.tagName === 'TD-NUMBER-INPUT') console.log(`[td-number-input ${e.target.getAttribute('name')}] change:`, e.detail.value);
+    });
+
+    // ── OTP (v0.27.0) ──
+    const otp = document.querySelector('#demo-otp');
+    otp.addEventListener('complete', (e) => {
+      console.log('[td-otp-input] complete:', e.detail.value);
+      if (e.detail.value === '123456') {
+        otp.clearError();
+        TdToast.success('Mã đúng!');
+      } else {
+        otp.setError('Mã không đúng (thử 123456).');
+        otp.reset();
+        otp.focus();
+      }
+    });
+
+    // ── Password meter ──
+    document.querySelector('#demo-pw-meter').addEventListener('strength-change', (e) => {
+      console.log('[td-password-meter] strength-change:', e.detail);
+    });
+
+    // ── Multi-select (v0.28.0) ──
+    document.querySelector('#demo-roles').options = [
+      { value: 'admin', label: 'Quản trị', description: 'Toàn quyền' },
+      { value: 'editor', label: 'Biên tập viên' },
+      { value: 'owner', label: 'Chủ sở hữu', disabled: true },
+      { label: 'Cộng tác', options: [
+        { value: 'author', label: 'Tác giả' },
+        { value: 'guest', label: 'Khách mời' },
+      ] },
+      { label: 'Ngừng dùng', disabled: true, options: [{ value: 'old', label: 'Cũ' }] },
+    ];
+    showFormData(document.querySelector('#demo-multi-form'), document.querySelector('#demo-multi-output'));
+
+    // ── Tree (v0.29.0) ──
+    const permsTree = document.querySelector('#demo-tree-perms');
+    permsTree.data = [
+      { value: 'posts', label: 'Bài viết', expanded: true, children: [
+        { value: 'posts.view', label: 'Xem' },
+        { value: 'posts.create', label: 'Tạo' },
+        { value: 'posts.edit', label: 'Sửa' },
+        { value: 'posts.delete', label: 'Xoá', description: 'Không hoàn tác' },
+      ] },
+      { value: 'users', label: 'Người dùng', expanded: true, children: [
+        { value: 'users.view', label: 'Xem danh sách' },
+        { value: 'users.manage', label: 'Quản lý người dùng', disabled: true, children: [
+          { value: 'users.ban', label: 'Khoá tài khoản' },
+          { value: 'users.role', label: 'Đổi vai trò' },
+        ] },
+      ] },
+      { value: 'settings', label: 'Cài đặt hệ thống' },
+    ];
+    const lazyTree = document.querySelector('#demo-tree-lazy');
+    lazyTree.loadChildren = (node, { signal }) => new Promise((resolve, reject) => {
+      const timer = setTimeout(() => resolve([
+        { value: `${node.value}.dell`, label: 'Dell' },
+        { value: `${node.value}.mac`, label: 'MacBook', hasChildren: true },
+        { value: `${node.value}.asus`, label: 'Asus', description: 'Tải chậm 800 ms' },
+      ]), 800);
+      signal.addEventListener('abort', () => { clearTimeout(timer); reject(new DOMException('Aborted', 'AbortError')); });
+    });
+    lazyTree.data = [
+      { value: 'phone', label: 'Điện thoại', children: [
+        { value: 'apple', label: 'Apple', children: [{ value: 'ip15', label: 'iPhone 15' }] },
+        { value: 'samsung', label: 'Samsung', description: '12 sản phẩm' },
+      ] },
+      { value: 'laptop', label: 'Laptop', hasChildren: true },
+      { value: 'acc', label: 'Phụ kiện' },
+    ];
+    [permsTree, lazyTree].forEach((t) => {
+      t.addEventListener('change', (e) => console.log(`[td-tree ${t.getAttribute('name')}] change:`, e.detail));
+      t.addEventListener('expanded-change', (e) => console.log('[td-tree] expanded-change:', e.detail));
+    });
+    showFormData(document.querySelector('#demo-tree-form'), document.querySelector('#demo-tree-output'));
+
+    // ── Tree select (v0.29.0) ──
+    const catTree = () => [
+      { value: 'phone', label: 'Điện thoại', children: [
+        { value: 'apple', label: 'Apple', children: [{ value: 'ip15', label: 'iPhone 15' }, { value: 'ip16', label: 'iPhone 16' }] },
+        { value: 'samsung', label: 'Samsung' },
+      ] },
+      { value: 'laptop', label: 'Laptop', children: [{ value: 'dell', label: 'Dell' }, { value: 'mac', label: 'MacBook' }] },
+      { value: 'acc', label: 'Phụ kiện' },
+    ];
+    const tsParent = document.querySelector('#demo-ts-parent');
+    const parentData = catTree();
+    parentData[0].children[0].disabled = true; // editing "Apple": it and its subtree can't be its own parent
+    tsParent.data = parentData;
+    tsParent.value = 'phone';
+    document.querySelector('#demo-ts-multi').data = catTree();
+    document.querySelectorAll('#demo-tree-select-form td-tree-select').forEach((el) => {
+      el.addEventListener('change', (e) => console.log(`[td-tree-select ${el.getAttribute('name')}] change:`, e.detail));
+    });
+    showFormData(document.querySelector('#demo-tree-select-form'), document.querySelector('#demo-tree-select-output'));
+
+    // ── Dropzone ──
+    const dzUpload = document.querySelector('#demo-dropzone-upload');
+    dzUpload.upload = (file, { onProgress, signal }) => new Promise((resolve, reject) => {
+      let pct = 0;
+      const timer = setInterval(() => {
+        pct += 10;
+        onProgress(pct);
+        if (pct >= 100) {
+          clearInterval(timer);
+          if (/loi/i.test(file.name)) reject(new Error('Máy chủ từ chối file (giả lập)'));
+          else resolve({ id: file.name });
+        }
+      }, 200);
+      signal.addEventListener('abort', () => clearInterval(timer));
+    });
+    document.querySelector('#demo-dropzone-form').addEventListener('files-change', (e) => {
+      console.log('[td-dropzone] files-change:', e.detail.files.map((f) => f.name), 'rejected:', e.detail.rejected);
+    });
+    showFormData(document.querySelector('#demo-dropzone-form'), document.querySelector('#demo-dropzone-output'));
+
+    // ── Repeater (v0.30.0): the documented rename() recipe + confirm before remove ──
+    const rep = document.querySelector('#demo-repeater');
+    const rename = (rows) => rows.forEach((row, i) => row.querySelectorAll('[data-name]')
+      .forEach((el) => el.setAttribute('name', el.dataset.name.replaceAll('{i}', String(i)))));
+    const renderRep = showFormData(document.querySelector('#demo-repeater-form'), document.querySelector('#demo-repeater-output'));
+    await customElements.whenDefined('td-repeater');
+    rep.addEventListener('rows-change', (e) => {
+      rename(e.detail.rows);
+      console.log('[td-repeater] rows-change:', e.detail.reason, e.detail.source, `${e.detail.rows.length} dòng`);
+    });
+    rename(rep.rows);
+    renderRep();
+    rep.addEventListener('before-remove', async (e) => {
+      e.preventDefault();
+      const ok = await TdModal.confirm({ message: `Xoá dòng ${e.detail.index + 1}?`, confirmVariant: 'danger' });
+      if (ok) rep.removeRow(e.detail.row);
+    });
+
+    // ── Alert ──
+    document.addEventListener('dismiss', (e) => {
+      if (e.target.tagName === 'TD-ALERT') console.log('[td-alert] dismiss:', e.target.getAttribute('variant'));
+    });
+
+    // ── Progress ──
+    const bar = document.querySelector('#demo-progress');
+    const barText = document.querySelector('#demo-progress-text');
+    let barTimer = null;
+    document.querySelector('#demo-progress-run').addEventListener('click', () => {
+      clearInterval(barTimer);
+      let v = 0;
+      barTimer = setInterval(() => {
+        v = Math.min(100, v + 5);
+        bar.value = v;
+        barText.textContent = `${v}%`;
+        if (v >= 100) clearInterval(barTimer);
+      }, 100);
+    });
+
+    // ── Drawer (v0.27.0) ──
+    const drawer = document.querySelector('#demo-drawer');
+    const drawerQ = document.querySelector('#demo-drawer-q');
+    let applied = '';
+    let discarding = false;
+    document.querySelector('#demo-drawer-open').addEventListener('click', () => drawer.show());
+    // While open, the footer button lives in the panel under <body> → listen on document.
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('#demo-drawer-apply')) {
+        applied = drawerQ.value;
+        TdToast.success(applied ? `Đã lọc theo "${applied}"` : 'Đã bỏ lọc');
+        drawer.close('button');
+      }
+    });
+    drawer.addEventListener('before-close', async (e) => {
+      if (discarding || drawerQ.value === applied) return;
+      e.preventDefault();
+      const ok = await TdModal.confirm({ message: 'Bỏ bộ lọc chưa áp dụng?', confirmText: 'Bỏ thay đổi', confirmVariant: 'danger' });
+      if (!ok) return;
+      drawerQ.value = applied;
+      discarding = true;
+      try { await drawer.close(e.detail.reason); } finally { discarding = false; }
+    });
+    drawer.addEventListener('open', () => console.log('[td-drawer] open'));
+    drawer.addEventListener('close', (e) => console.log('[td-drawer] close:', e.detail.reason));
+    document.querySelector('#demo-drawer-js').addEventListener('click', async () => {
+      const d = TdDrawer.open({
+        title: 'Đơn hàng #1024',
+        body: 'Chuỗi body luôn là TEXT (không parse HTML): <b>không in đậm</b>. Khách: Nguyễn Văn An · 3 sản phẩm · 12.990.000 ₫.',
+        footer: 'Đóng bằng ×, Esc hoặc bấm nền.',
+        size: 'lg',
+      });
+      console.log('[TdDrawer.open] closed:', await d.closed);
+    });
+    document.querySelector('#demo-drawer-start').addEventListener('click', () => {
+      TdDrawer.open({ label: 'Menu chính', side: 'start', size: 'sm', body: 'Drawer trượt từ cạnh đầu dòng (trái với LTR).' });
+    });
+
+    // ── Scroll top ──
+    document.querySelector('#demo-scroll-top').addEventListener('scroll-top', (e) => console.log('[td-scroll-top] focus →', e.detail.target));
+
+    // ── Copy (v0.27.0) ──
+    document.addEventListener('copy-success', (e) => { console.log('[td-copy] copy-success:', e.detail); TdToast.success('Đã copy vào clipboard'); });
+    document.addEventListener('copy-error', (e) => { console.warn('[td-copy] copy-error:', e.detail); TdToast.warning('Không copy tự động được — nhấn Ctrl/⌘+C'); });
+
+    // ── Media grid ──
+    const mediaGrid = document.querySelector('#demo-media-grid');
+    TdLightbox.bind(mediaGrid); // opens only while nothing is selected (the grid blocks the click otherwise)
+    const mgCount = document.querySelector('#demo-mg-count');
+    mediaGrid.addEventListener('select-change', (e) => {
+      console.log('[td-media-grid] select-change:', e.detail);
+      mgCount.textContent = e.detail.ids.length ? `Đã chọn ${e.detail.ids.length}: ${e.detail.ids.join(', ')}` : 'Chưa chọn khung nào';
+    });
+    mediaGrid.addEventListener('activate', (e) => console.log('[td-media-grid] activate:', e.detail.id));
+    mediaGrid.addEventListener('select-limit', (e) => TdToast.warning(`Tối đa ${e.detail.max} khung`));
+    document.querySelector('#demo-mg-clear').addEventListener('click', () => mediaGrid.clear({ emit: true }));
 
     // ── Log all component events ──
     document.addEventListener('change', (e) => {

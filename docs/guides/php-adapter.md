@@ -37,6 +37,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_copy (0.27.0)](#td_copy-0270)
 - [td_multiselect (0.28.0)](#td_multiselect-0280)
 - [td_tree_select (0.29.0)](#td_tree_select-0290)
+- [td_number_input (0.30.0)](#td_number_input-0300)
 - [An toàn: escape và whitelist](#an-toàn-escape-và-whitelist)
 - [Chuyển từ adapter riêng của 135](#chuyển-từ-adapter-riêng-của-135)
 - [Lỗi thường gặp](#lỗi-thường-gặp)
@@ -59,6 +60,8 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_empty` (0.26.0) | **luôn** host `<td-empty-state data-td-ssr="empty-state@1">` chứa sẵn đúng cây component (icon, tiêu đề, lời nhắn, nút hành động) | Không (link hành động bấm được) | **Có** — nạp module `empty-state`: nhận **tại chỗ**, không nháy |
 | `td_otp_input` (0.27.0) | `div.td-otp` + `input.td-otp__input` **native** (`maxlength="6"`, `pattern="[0-9]{6}"`, `autocomplete="one-time-code"`) | Không | Không |
 | `td_otp_input` — **chế độ element** (0.27.0, tự bật) | host `<td-otp-input data-td-ssr="otp-input@1">` chứa sẵn cùng input + 6 ô trang trí | Không (input native chạy ngay) | **Có** — nạp module `otp-input`: nhận **tại chỗ**, giữ mã đang gõ |
+| `td_number_input` (0.30.0) | `div.td-field.td-number` + `input.td-number__control` **native** `type=number` (giá trị chuẩn, `min` ngầm `0`, `step` theo `decimals`) | Không | Không |
+| `td_number_input` — **chế độ element** (0.30.0, tự bật) | host `<td-number-input data-td-ssr="number-input@1">` chứa sẵn cùng cây | Không (input native chạy ngay, gửi số sạch) | **Có** — nạp module `number-input`: nhận **tại chỗ**, hiện `12.990.000` |
 | `td_copy` (0.27.0) | **luôn** host `<td-copy data-td-ssr="copy@1">` chứa nguồn `<code>` + nút icon + live region | Không (chưa có JS: hiện mã để bôi đen, ẩn nút) | **Có** — nạp module `copy`: nhận **tại chỗ** |
 | `td_icon` | `svg.td-icon` đủ hình (có `viewBox`) | Không | — |
 | `td_badge` | `span.td-badge…` (thuần CSS) | Không | — |
@@ -86,7 +89,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.29.0/
+public/assets/vendor/td-components/0.30.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -94,7 +97,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.29.0';
+const TD_VERSION = '0.30.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -117,7 +120,7 @@ TdComponents\Td::configure(
 
   | Option | Kiểu | Mặc định | Ý nghĩa |
   |---|---|---|---|
-  | `ssr_elements` | `bool` | `false` | `td_button` / `td_link` (không `bare`) — từ 0.26.0 cả `td_field` / `td_toggle` / `td_checkbox` / `td_dropdown`, từ 0.27.0 cả `td_otp_input` — in [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) cho **mọi** lần gọi; option `element` của từng lần gọi vẫn ghi đè |
+  | `ssr_elements` | `bool` | `false` | `td_button` / `td_link` (không `bare`) — từ 0.26.0 cả `td_field` / `td_toggle` / `td_checkbox` / `td_dropdown`, từ 0.27.0 cả `td_otp_input`, từ 0.30.0 cả `td_number_input` — in [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) cho **mọi** lần gọi; option `element` của từng lần gọi vẫn ghi đè |
 
   > **Nâng từ 0.25 lên 0.26 mà đã bật `ssr_elements`:** từ 0.26.0 cờ này áp thêm cho `td_field` / `td_toggle` /
   > `td_checkbox` (đúng hợp đồng ADR 0012: cờ toàn cục áp cho mọi helper **đã có** hợp đồng trong bản đó). Markup đổi
@@ -213,6 +216,7 @@ td_otp_input(string $name, array $opts = []): string      // 0.27.0
 td_copy(string $value, array $opts = []): string          // 0.27.0 (luôn element)
 td_multiselect(string $name, array $options, array $selected = [], array $opts = []): string   // 0.28.0
 td_tree_select(string $name, array $tree, string|int|array|null $selected = null, array $opts = []): string   // 0.29.0
+td_number_input(string $name, string|int|null $value = null, array $opts = []): string   // 0.30.0
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
 td_stylesheet_tag(?string $nonce = null): string
@@ -1072,6 +1076,75 @@ Kết quả (element, thực tế in liền một dòng):
 
 Không có helper cho `<td-tree>` dạng cây luôn hiện (cây quyền là trang admin có JS).
 
+## td_number_input (0.30.0)
+
+```php
+<?= td_number_input('price', $product->price, ['label' => 'Giá bán', 'suffix' => '₫', 'unit_label' => 'đồng', 'required' => true, 'min' => '1000']) ?>
+<?= td_number_input('rate', '12.5', ['label' => 'Tỉ lệ', 'suffix' => '%', 'decimals' => 2, 'max' => '100', 'element' => true]) ?>
+<?= td_number_input('adjust', null, ['label' => 'Điều chỉnh', 'min' => '-1000000', 'error' => $errors['adjust'] ?? '']) ?>
+```
+
+`td_number_input($name, string|int|null $value = null, $opts)` in ô nhập số / tiền của
+[Number input](../components/number-input.md) (hợp đồng `number-input@1`). Giá trị **luôn ở dạng chuẩn** (`12990000`,
+`12.5`) — form gửi số sạch cả khi không có JS.
+
+- **Mặc định (native)**: `div.td-field.td-number` > [nhãn] + `div.td-number__box` > [tiền tố] `input.td-number__control`
+  `type="number"` (`name`, `value` chuẩn, `min` = `min` hoặc **`0`** khi vắng — không nhận số âm, `max`, `step` = `step`
+  hoặc `10^-decimals` — `1`, `0.01`…, `required`, `inputmode`) [hậu tố] [chữ đơn vị ẩn] + footer (lỗi / ghi chú) + live
+  region. Trình duyệt tự kiểm khoảng / bước / ký tự và gửi số sạch. **Không có dấu phân cách hàng nghìn khi chưa có
+  JS** (giới hạn của `type=number`); `td.css` ẩn nút xoay để hộp giống hệt bản có JS.
+- **Chế độ element** (`'element' => true` hoặc `Td::configure(…, ['ssr_elements' => true])`; `'element' => false` giữ
+  native): host `<td-number-input data-td-ssr="number-input@1">` (+ attribute của component) + đúng cây trên với giá trị
+  **chuẩn** (không in sẵn `12.990.000`: không-JS submit chuỗi đó thì `(int) "12.990.000"` = 12). Nạp
+  `@dazzxq/td-components/number-input` thì component nhận **tại chỗ**: cùng node input (giá trị người dùng đã gõ, focus),
+  đổi `type` → `text`, dựng ElementInternals rồi gỡ `name` / `value` / `min` / `max` / `step` / `required`, định dạng hiển
+  thị (`12.990.000`). Con trỏ không được khôi phục (có thể về cuối ô — ca hiếm: đang gõ đúng lúc module tải). Markup bị
+  sửa → render an toàn ngay, giữ giá trị + focus.
+
+| Option | Ý nghĩa |
+|---|---|
+| `$name` | tên field (rỗng → không có `name`) |
+| `$value` | **chỉ `string` hoặc `int`** — `float` (`12.5`, `INF`, `NAN`), `bool`, mảng… bị **từ chối** + cảnh báo (không ép kiểu: `12.5` không lặng lẽ thành `12`; muốn số lẻ thì truyền chuỗi `'12.5'`). Giá trị mặc định, **dạng chuẩn**: `-?(0\|[1-9][0-9]*)(\.[0-9]+)?`, ≤ 30 chữ số, không nhiều chữ số lẻ hơn `decimals`; `int` được nhận. Sai (`'12.990.000'`, `'1,5'`, `'1e5'`, `'1.234'` với `decimals=2`…) → **bỏ** + một `E_USER_WARNING` (không làm tròn, không cắt). `'-0'` → `0` |
+| `min`, `max`, `step` | cùng cổng kiểm và cùng luật kiểu (`string` / `int`) như `$value` (sai → bỏ + cảnh báo). `step` phải **> 0** (`0` / âm → bỏ + cảnh báo, in bước mặc định) |
+| `decimals` | số chữ số lẻ tối đa, `0`–`10` (mặc định `0`) |
+| `group_separator` | `'.'` (mặc định) \| `','` \| `' '` \| `''` (không nhóm) — chỉ có tác dụng khi có JS |
+| `decimal_separator` | `','` (mặc định; `'.'` khi nhóm là `','`) \| `'.'`; trùng dấu nhóm → bỏ |
+| `prefix`, `suffix` | đơn vị trang trí trong hộp (`$`, `₫`, `%`), `aria-hidden` |
+| `unit_label` | chữ đọc cho đơn vị (ví dụ `đồng`); mặc định = `suffix` / `prefix`. In trong `span#{base}-unit[hidden]`, nối vào `aria-describedby` |
+| `label`, `hint`, `error`, `placeholder` | như `td_field` (nhãn có `*` khi `required`; `error` → `span.td-field-error` + `aria-invalid`) |
+| `required`, `disabled`, `readonly` | native trên input (element: cả trên host) |
+| `clamp` | element: attribute `clamp` trên host (kẹp vào khoảng khi rời ô — chỉ có JS) |
+| `size` | `sm` \| `md` (mặc định) \| `lg` |
+| `aria_label` | tên truy cập khi **không** có `label` |
+| `id` | id của **input** (`<label for>` của site). Element: host = `{id}-host`; native: ghi chú / lỗi / đơn vị = `{id}-note`… |
+| `class` | native → wrapper `div.td-field`; element → host |
+| `attrs` | attribute thêm trên **input** (allowlist). Giữ chỗ (bị bỏ, không phân biệt hoa thường): `type` `class` `id` `inputmode` `autocomplete` `spellcheck` `name` `value` `min` `max` `step` `placeholder` `required` `aria-required` `disabled` `readonly` `aria-label` `aria-labelledby` `aria-describedby` `aria-invalid` `aria-errormessage` `pattern` `maxlength` `minlength` `list` + mọi `data-td-*` |
+
+```html
+<!-- td_number_input('price', '12990000', ['label' => 'Giá bán', 'suffix' => '₫', 'required' => true, 'element' => true]) -->
+<td-number-input data-td-ssr="number-input@1" id="td-price-1" name="price" value="12990000" label="Giá bán" required suffix="₫">
+  <div class="td-field td-field--md td-number">
+    <label class="td-field__label" id="td-price-1-label" for="td-price-1-control">Giá bán<span class="td-field__required" aria-hidden="true"> *</span></label>
+    <div class="td-number__box">
+      <input type="number" class="td-number__control" id="td-price-1-control" inputmode="numeric" autocomplete="off" spellcheck="false"
+             name="price" value="12990000" min="0" step="1" required aria-required="true" aria-describedby="td-price-1-unit">
+      <span class="td-number__affix td-number__affix--suffix" aria-hidden="true">₫</span><span id="td-price-1-unit" hidden>₫</span>
+    </div>
+    <div class="td-field__footer" hidden><div class="td-field__note" id="td-price-1-note" hidden></div></div>
+    <span class="td-sr-only" id="td-price-1-status" role="status"></span>
+  </div>
+</td-number-input>
+```
+
+Cảnh báo (`E_USER_WARNING`) chỉ ghi tên option, kiểu PHP và độ dài (`value (string, 19 chars)`) — **không bao giờ** in giá trị
+thô vào log.
+
+Server **vẫn phải kiểm** giá trị nhận được (khoảng, bước, số lẻ) và lưu bằng `BIGINT` / `DECIMAL` — đừng ép qua `float`.
+Laravel: `ConvertEmptyStringsToNull` biến ô trống (`''`) thành `null` — rỗng **không bao giờ** thành `0`.
+
+**Repeater:** không có helper PHP — nội dung dòng là markup của app. Mẫu Blade / PHP ở
+[Repeater › Lưu ý](../components/repeater.md#lưu-ý--lỗi-thường-gặp).
+
 ## An toàn: escape và whitelist
 
 - **Mọi giá trị** (nhãn, value, id, placeholder, tooltip, URL, nonce…) qua
@@ -1145,6 +1218,8 @@ Khác biệt hành vi so với `markup.php` của 135 (cố ý):
 | `td_field` element mode: `#id-control` / `#id` (wrapper) của site không còn ăn | element mode: `id` = id **control**, host = `{id}-host` (native: wrapper = `id`, control = `{id}-control`) | nhắm `#id` (control) / `#id-host` (host), hoặc dùng API component |
 | Dropdown element mode vẫn là select native sau khi module tải | select đang được focus đúng lúc module tới (cố ý đợi blur) | bình thường: rời select thì nâng cấp; đừng `focus()` select bằng script trước khi module tải |
 | `td_otp_input`: `#id` của site trỏ vào wrapper không còn ăn | `id` là id **input** (cả native lẫn element); element: host = `{id}-host` | nhắm `#id` (input) / `.td-otp` (wrapper) / `#id-host` (host) |
+| `td_number_input` không JS không có dấu chấm hàng nghìn | giới hạn của `type=number` native (cố ý: giá trị gửi đi phải là số sạch) | nạp module `number-input` (element mode) |
+| `td_number_input`: giá trị / `min` / `step` biến mất + `Warning` | không ở dạng chuẩn (`12.990.000`, `1,5`, nhiều số lẻ hơn `decimals`, `step` ≤ 0) | truyền số chuẩn (`12990000`, `1.5`), đặt `decimals` |
 | `td_copy` không JS chỉ thấy mã, không có nút | cố ý: nút ẩn khi chưa có JS (không có nút chết), mã bôi đen được | import module `copy` |
 | Ô nhập element mode vẫn render lại khi tải | script đổi `label` / `type` / `size`… trước khi module tải, hoặc markup bị sửa (cố ý render lại; chữ đã gõ được giữ) | đổi thuộc tính sau `customElements.whenDefined('td-input-field')` |
 
@@ -1154,5 +1229,6 @@ Khác biệt hành vi so với `markup.php` của 135 (cố ý):
 - [Button](../components/button.md) · [Input field](../components/input-field.md) ·
   [Dropdown](../components/dropdown.md) · [Checkbox](../components/checkbox.md) · [Toggle](../components/toggle.md) ·
   [Icons](../components/icons.md) · [Badge](../components/badge.md) · [Alert](../components/alert.md) ·
-  [Empty state](../components/empty-state.md) · [OTP input](../components/otp-input.md) · [Copy](../components/copy.md)
+  [Empty state](../components/empty-state.md) · [OTP input](../components/otp-input.md) · [Copy](../components/copy.md) ·
+  [Number input](../components/number-input.md) · [Repeater](../components/repeater.md)
 - [Bảo mật](security.md) · [CSP](csp.md) · [Form](forms.md)
