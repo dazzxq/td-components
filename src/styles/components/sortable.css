@@ -14,6 +14,11 @@
 		display: block;
 	}
 
+	/* the drag placeholder of a sortable repeater is positioned in the host */
+	td-repeater[sortable] {
+		position: relative;
+	}
+
 	/* the gallery recipe: <td-media-grid><td-sortable role="none">… — the sortable takes the whole row of the outer grid
 	   and is itself the grid, with the SAME column / gap tokens (a site changing --td-media-grid-cols on td-media-grid
 	   reaches it by inheritance). Specificity 0,0,2 beats `td-sortable { display: block }`. */

@@ -422,7 +422,7 @@ describe('td-repeater — move', () => {
     expect(rec[0].from).to.equal(2);
     expect(rec[0].to).to.equal(1);
     expect(rec[0].row === rowC).to.equal(true);
-    expect(live(rep).textContent).to.equal('Đã chuyển tới vị trí 2 / 3.');
+    expect(live(rep).textContent).to.equal('Đã chuyển tới vị trí 2 trên 3.');
     up.click();
     expect(names(rep)).to.deep.equal(['c', 'a', 'b']);
     expect(up.getAttribute('aria-disabled')).to.equal('true');
