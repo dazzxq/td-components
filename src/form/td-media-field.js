@@ -3,8 +3,8 @@ import {
 } from '../base/td-form-element.js';
 import { ssrMarker } from '../base/td-base-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
-import { TdMediaPicker } from '../feedback/td-media-picker.js';
-import { isAdapter, normalizeAsset, LatestRequest } from '../utils/media-picker-core.js';
+import { TdMediaPicker, onDefaultsChange } from '../feedback/td-media-picker.js';
+import { isAdapter, normalizeAsset, normalizeError, LatestRequest } from '../utils/media-picker-core.js';
 import { safeMediaUrl } from '../utils/media-url.js';
 import {
   KINDS, parseAspectRatio, parseCrop, parseKinds, fieldEntries, encodeState, decodeState,
@@ -147,10 +147,16 @@ export class TdMediaField extends TdFormElement {
     }
     super.connectedCallback();
     if (reconnect) this._refocusAfterMove();
+    // review SEC-1: an id without a preview (restored state, `.value =`) waits for an adapter — configureDefaults() later
+    if (this._unsubDefaults) this._unsubDefaults();
+    this._unsubDefaults = onDefaultsChange(() => {
+      if (this.isConnected && this._needsPreview() && !this._getReq.pending) this._lazyGet();
+    });
     if (this._needsPreview()) this._lazyGet();
   }
 
   disconnectedCallback() {
+    if (this._unsubDefaults) { this._unsubDefaults(); this._unsubDefaults = null; }
     super.disconnectedCallback();
     this._pickGen += 1; // a picker result arriving after the field left the page is dropped
     this._picking = false;
@@ -324,7 +330,7 @@ export class TdMediaField extends TdFormElement {
     this._getReq.run((signal) => adapter.get(id, { context, signal })).then((r) => {
       if (r.stale || id !== this._value) return;
       if (r.error) {
-        if (!(r.error && r.error.name === 'AbortError')) console.warn('td-media-field: adapter.get failed', r.error);
+        normalizeError(r.error, null, { operation: 'td-media-field get' }); // logs operation + code only (review SEC-2)
         return;
       }
       const asset = normalizeAsset(r.value, { safeUrl: (u) => safeMediaUrl(u) });
@@ -520,10 +526,8 @@ export class TdMediaField extends TdFormElement {
       fd = new FormData();
       for (const [k, v] of entries) fd.append(k, v);
     }
-    this._setFormValue(fd, encodeState({
-      id: this._value, alt: this._alt, cropRaw: this._cropRaw,
-      preview: { src: this._previewSrc, alt: this._previewAlt, kind: this._kind },
-    }));
+    // review SEC-1: the restore state carries no preview URL / server label (re-fetched with adapter.get on restore)
+    this._setFormValue(fd, encodeState({ id: this._value, alt: this._alt, cropRaw: this._cropRaw }));
     if (this.hasAttribute('required') && !this._value) {
       const kind = this._kinds()[0];
       this._setValidity({ valueMissing: true },
@@ -541,12 +545,17 @@ export class TdMediaField extends TdFormElement {
     this._applyLive({ ...(this._defaults || this._stateFromAttrs()), asset: null }, { lazy: this.isConnected });
   }
 
-  /** @protected formStateRestoreCallback: only a v1 state; the preview URL is validated again */
+  /**
+   * @protected formStateRestoreCallback (review SEC-1): only a v1 state of id / alt / crop; the preview starts empty and
+   * is fetched with adapter.get(id) under the current session (latest wins). No adapter yet → fetched once one appears
+   * (field.adapter / pickerOptions / TdMediaPicker.configureDefaults).
+   */
   _restoreState(state) {
     if (typeof state !== 'string') return;
-    const s = decodeState(state, { safeUrl: (u) => safeMediaUrl(u) });
+    const s = decodeState(state);
     if (!s) return;
-    this._applyLive({ id: s.id, src: s.preview.src, previewAlt: s.preview.alt, kind: s.preview.kind, alt: s.alt, cropRaw: s.cropRaw, asset: null });
+    this._applyLive({ id: s.id, src: '', previewAlt: '', kind: this._kinds()[0], alt: s.alt, cropRaw: s.cropRaw, asset: null },
+      { lazy: true });
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
@@ -627,7 +636,8 @@ export class TdMediaField extends TdFormElement {
     }, (err) => {
       if (gen !== this._pickGen) return;
       this._picking = false;
-      console.warn('td-media-field: the media picker failed', err);
+      // review SEC-2: never the raw error object (it may carry adapter data); the name only
+      console.warn(`td-media-field: the media picker failed (${err && typeof err.name === 'string' ? err.name : 'error'})`);
     });
   }
 

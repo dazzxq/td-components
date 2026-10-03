@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import {
   normalizeAsset, normalizePage, normalizeFacets, normalizeFields, normalizeError, resolveCapabilities, canDo,
   resolveOptions, DefaultsRegistry, buildListRequest, requestKey, LatestRequest, SelectionModel, InitialLoad, Debouncer,
-  SessionCache, ScalarTokens, buildOutcome, cancelledOutcome, formatLabel,
+  SessionCache, ScalarTokens, buildOutcome, cancelledOutcome, formatLabel, LIMITS,
 } from './media-picker-core.js';
 import { safeMediaUrl } from './media-url.js';
 
@@ -174,11 +174,19 @@ describe('normalizeError (decision 8)', () => {
     assert.equal(normalizeError({ code: 'network', retryable: false }, null, { warn: quiet }).retryable, false);
   });
 
-  it('warns the original error (dev tool); non-objects → server', () => {
+  it('review SEC-2: the warning carries only the operation + code (never the raw error / response / url)', () => {
     const warns = [];
-    const n = normalizeError('boom', null, { warn: (...a) => warns.push(a) });
-    assert.equal(n.code, 'server');
+    const SECRET = 'tok_SECRET_123';
+    const err = Object.assign(new Error(`boom ${SECRET}`), { code: 'forbidden', response: { body: SECRET }, url: `https://x/?t=${SECRET}` });
+    const n = normalizeError(err, null, { warn: (...a) => warns.push(a), operation: 'list' });
+    assert.equal(n.code, 'forbidden');
     assert.equal(warns.length, 1);
+    assert.ok(warns[0].every((a) => typeof a === 'string' && !a.includes(SECRET)));
+    assert.match(warns[0].join(' '), /list/);
+    assert.match(warns[0].join(' '), /forbidden/);
+    const w2 = [];
+    assert.equal(normalizeError('boom', null, { warn: (...a) => w2.push(a) }).code, 'server');
+    assert.ok(w2[0].every((a) => typeof a === 'string' && !a.includes('boom')));
   });
 });
 
@@ -601,5 +609,65 @@ describe('outcome + labels', () => {
     assert.equal(formatLabel(labels, { title: () => { throw new Error('x'); } }, 'title'), 'Thư viện');
     assert.equal(formatLabel(labels, { title: 5 }, 'title'), 'Thư viện');
     assert.equal(formatLabel(labels, {}, 'missing'), '');
+  });
+});
+
+describe('payload bounds (review SEC-3)', () => {
+  const SECRET = 'RAW_SENTINEL_9';
+  const many = (n, f) => Array.from({ length: n }, (_, i) => f(i));
+
+  it('LIMITS are the documented numbers', () => {
+    assert.deepEqual({ ...LIMITS }, { pageItems: 100, text: 500, badges: 10, facets: 20, options: 200, fields: 50 });
+  });
+
+  it('page items capped at min(limit, 100), one warning without raw data', () => {
+    const warns = [];
+    const p = normalizePage({ items: many(8, (i) => raw(`a${i}`, { name: SECRET })), nextCursor: null }, { safeUrl, limit: 5, warn: (m) => warns.push(m) });
+    assert.equal(p.items.length, 5);
+    assert.equal(warns.length, 1);
+    assert.ok(!warns[0].includes(SECRET));
+    const big = normalizePage({ items: many(150, (i) => raw(`b${i}`)), nextCursor: null }, { safeUrl, limit: 500, warn: () => {} });
+    assert.equal(big.items.length, 100);
+    const nolimit = normalizePage({ items: many(150, (i) => raw(`c${i}`)), nextCursor: null }, { safeUrl, warn: () => {} });
+    assert.equal(nolimit.items.length, 100);
+  });
+
+  it('asset text fields capped at 500 code points; badges at 10', () => {
+    const long = '😀'.repeat(600);
+    const a = normalizeAsset(raw('a', { name: long, uploadedByLabel: long, defaultAltText: long, mimeType: long, createdAt: long,
+      badges: many(15, (i) => ({ key: `k${i}`, label: long })) }), { safeUrl });
+    for (const k of ['name', 'uploadedByLabel', 'defaultAltText', 'mimeType']) assert.equal([...a[k]].length, 500, k);
+    assert.equal(a.badges.length, 10);
+    assert.equal([...a.badges[0].label].length, 500);
+  });
+
+  it('facets capped at 20, options at 200, labels at 500; one warning without raw data', () => {
+    const warns = [];
+    const f = normalizeFacets(many(25, (i) => ({ key: `f${i}`, label: `${SECRET}${'x'.repeat(600)}`, type: 'single',
+      options: many(250, (j) => ({ value: j, label: SECRET })) })), { warn: (m) => warns.push(m) });
+    assert.equal(f.length, 20);
+    assert.equal(f[0].options.length, 200);
+    assert.equal([...f[0].label].length, 500);
+    assert.ok(warns.length >= 1 && warns.every((w) => !w.includes(SECRET)));
+  });
+
+  it('field descriptors capped at 50, options at 200, label / helpText at 500', () => {
+    const warns = [];
+    const f = normalizeFields(many(60, (i) => ({ key: `k${i}`, label: 'x'.repeat(600), helpText: 'y'.repeat(600), control: 'select',
+      options: many(250, (j) => ({ value: j, label: SECRET })) })), { warn: (m) => warns.push(m) });
+    assert.equal(f.length, 50);
+    assert.equal(f[0].options.length, 200);
+    assert.equal(f[0].label.length, 500);
+    assert.equal(f[0].helpText.length, 500);
+    assert.ok(warns.length >= 1 && warns.every((w) => !w.includes(SECRET)));
+  });
+
+  it('InitialLoad warnings never carry the raw rejection', async () => {
+    const warns = [];
+    const m = new SelectionModel({ mode: 'single' });
+    const load = new InitialLoad({ ids: ['a'], model: m, get: async () => { throw new Error(SECRET); }, warn: (...a) => warns.push(a) });
+    load.start();
+    await flush();
+    assert.ok(warns.length && warns.every((a) => a.every((x) => typeof x === 'string' && !x.includes(SECRET))));
   });
 });

@@ -336,8 +336,26 @@ Adapter reject bằng `MediaAdapterError` (hoặc bất cứ thứ gì — kit c
 - `fieldErrors`: chỉ key là own property chuỗi (bỏ `__proto__` / `constructor` / `prototype`), giá trị phải là mảng
   chuỗi (mỗi chuỗi cắt 200, tối đa 5 / key). Key trùng `FieldDescriptor.key` → lỗi hiện **dưới đúng control**; key khác →
   danh sách lỗi chung đầu form. Control lỗi đầu tiên được focus.
-- Lỗi gốc được `console.warn` (công cụ dev, không ra giao diện).
+- Console chỉ nhận **một chuỗi** dạng `td-media-picker: <thao tác> failed (<code>)` — **không bao giờ** đối tượng lỗi gốc,
+  `message`, body response hay URL (có thể mang token / dữ liệu server). Muốn log chi tiết → app tự log trong adapter.
 - Lỗi `list` → khối lỗi `role="alert"` + "Thử lại". Lỗi thao tác (upload, lưu) → hiện tại chỗ.
+
+## Giới hạn dữ liệu từ adapter
+
+Trước khi vào DOM, dữ liệu adapter bị chặn trên (`LIMITS` trong `src/utils/media-picker-core.js`); phần thừa bị **bỏ**
+kèm **một** `console.warn` chỉ có số lượng (không có dữ liệu thô):
+
+| Dữ liệu | Giới hạn |
+|---|---|
+| Mục mỗi trang `list()` | `min(limit của request, 100)` (`pageSize` tối đa 100) |
+| Chuỗi hiển thị của asset: `name`, `mimeType`, `uploadedByLabel`, `defaultAltText`, nhãn badge | 500 code point (cắt) |
+| `badges` mỗi asset | 10 |
+| Facet (`facets()`) | 20 |
+| Option mỗi facet / mỗi field (kể cả kết quả `loadOptions`) | 200; nhãn option 500 code point |
+| Field descriptor (`assetFields`, `uploadFields`) | 50; `label` / `helpText` 500 code point |
+
+`metadata` **không** bị cắt: giá trị của nó là giá trị form (ô nhập) — cắt sẽ làm hỏng dữ liệu khi lưu. Server tự giới
+hạn độ dài các trường đó.
 
 ## Facet (bộ lọc)
 

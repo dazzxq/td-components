@@ -101,45 +101,31 @@ export function fieldEntries(name, value, usage) {
 }
 
 /**
- * Restore state (setFormValue 2nd argument): `{"v":1,"id","alt","crop","preview":{"src","alt","kind"}}`.
- * @param {{ id: string, alt: string, cropRaw: string|null, preview: { src: string, alt: string, kind: string } }} s
+ * Restore state (setFormValue 2nd argument) — review SEC-1: ONLY `{"v":1,"id","alt","crop"}` (the asset id, the alt the
+ * user typed, the validated crop). Never a preview URL (signed / tokenised) nor a server label: the browser may persist
+ * this state (bfcache, session restore); the preview is fetched again with `adapter.get(id)` under the current session.
+ * @param {{ id: string, alt: string, cropRaw: string|null }} s extra keys (e.g. `preview`) are ignored
  * @returns {string}
  */
 export function encodeState(s) {
-  return JSON.stringify({
-    v: 1,
-    id: String(s.id ?? ''),
-    alt: String(s.alt ?? ''),
-    crop: typeof s.cropRaw === 'string' && s.cropRaw ? s.cropRaw : null,
-    preview: { src: String(s.preview?.src ?? ''), alt: String(s.preview?.alt ?? ''), kind: String(s.preview?.kind ?? 'image') },
-  });
+  const crop = typeof s.cropRaw === 'string' ? parseCrop(s.cropRaw) : null;
+  return JSON.stringify({ v: 1, id: String(s.id ?? ''), alt: String(s.alt ?? ''), crop: crop ? crop.raw : null });
 }
 
 /**
- * Parse a restore state; only `v === 1`. The preview URL is re-validated (`safeUrl`; refused → ''), an invalid crop →
- * null, an unknown kind → 'image'.
+ * Parse a restore state; only `v === 1`. Anything but id / alt / crop (an old or forged `preview`) is ignored; an invalid
+ * crop → null.
  * @param {unknown} str
- * @param {{ safeUrl: (u: unknown) => string }} opts
- * @returns {{ id: string, alt: string, cropRaw: string|null, preview: { src: string, alt: string, kind: string } } | null}
+ * @returns {{ id: string, alt: string, cropRaw: string|null } | null}
  */
-export function decodeState(str, { safeUrl }) {
+export function decodeState(str) {
   if (typeof str !== 'string' || str.length > STATE_MAX_LEN) return null;
   let o;
   try { o = JSON.parse(str); } catch { return null; }
   if (!o || typeof o !== 'object' || Array.isArray(o) || o.v !== 1) return null;
   if (typeof o.id !== 'string' || o.id.length > ID_MAX || typeof o.alt !== 'string') return null;
-  const p = o.preview && typeof o.preview === 'object' && !Array.isArray(o.preview) ? o.preview : {};
   const crop = typeof o.crop === 'string' ? parseCrop(o.crop) : null;
-  return {
-    id: o.id,
-    alt: [...o.alt].slice(0, ALT_MAX).join(''),
-    cropRaw: crop ? crop.raw : null,
-    preview: {
-      src: typeof p.src === 'string' ? safeUrl(p.src) : '',
-      alt: typeof p.alt === 'string' ? p.alt : '',
-      kind: KINDS.includes(p.kind) ? p.kind : 'image',
-    },
-  };
+  return { id: o.id, alt: [...o.alt].slice(0, ALT_MAX).join(''), cropRaw: crop ? crop.raw : null };
 }
 
 /** Parity table (JS + PHP): [input, expected parseAspectRatio()]. */

@@ -62,6 +62,17 @@ import '../display/td-empty-state.js';
 import '../form/td-dropzone.js';
 
 const registry = new DefaultsRegistry();
+/** @type {Set<() => void>} notified after each configureDefaults() (module-level, no global) */
+const defaultsListeners = new Set();
+
+/**
+ * @internal Run `fn` after every `TdMediaPicker.configureDefaults()` (td-media-field: fetch a pending preview once an
+ * adapter exists). @param {() => void} fn @returns {() => void} unsubscribe
+ */
+export function onDefaultsChange(fn) {
+  defaultsListeners.add(fn);
+  return () => defaultsListeners.delete(fn);
+}
 const SEARCH_DEBOUNCE_MS = 250;
 const SKELETON_TILES = 8;
 const TONES = ['info', 'success', 'warning', 'danger'];
@@ -182,7 +193,12 @@ export class TdMediaPicker extends HTMLElement {
    * without list() / get() → TypeError (previous defaults kept).
    * @param {object} defaults
    */
-  static configureDefaults(defaults) { registry.configure(defaults); }
+  static configureDefaults(defaults) {
+    registry.configure(defaults);
+    for (const fn of [...defaultsListeners]) {
+      try { fn(); } catch { /* a listener never breaks configure */ }
+    }
+  }
 
   /** @returns {object} a shallow copy of the configured defaults */
   static get defaults() { return registry.get(); }
@@ -612,14 +628,14 @@ export class TdMediaPicker extends HTMLElement {
       const dedup = d && d.outcome === 'exact-reused' && typeof d.matchedAssetId === 'string'
         ? { outcome: 'exact-reused', matchedAssetId: d.matchedAssetId } : { outcome: 'created' };
       if (!asset) {
-        console.warn('td-media-picker: malformed upload result', raw);
+        console.warn('td-media-picker: malformed upload result (ignored)'); // never the raw result (review SEC-2)
         throw new Error(this._t('uploadError'));
       }
       this._onUploaded(asset, dedup);
       return { asset, deduplication: dedup };
     }, (err) => {
       if (this._s !== s || this._settled) throw err;
-      const n = normalizeError(err, signal);
+      const n = normalizeError(err, signal, { operation: 'upload' });
       if (!n) throw err; // aborted (row removed / picker closed): the dropzone shows nothing
       if (s.uploadForm && n.fieldErrors.size) s.uploadForm.applyErrors(n);
       this._emit('operation-error', { operation: 'upload', code: n.code, retryable: n.retryable });
@@ -715,7 +731,7 @@ export class TdMediaPicker extends HTMLElement {
       }
       let page;
       try {
-        page = normalizePage(r.value, { safeUrl: safeMediaUrl, kinds: s.kinds, warn: (m) => console.warn(m) });
+        page = normalizePage(r.value, { safeUrl: safeMediaUrl, kinds: s.kinds, limit: s.pageSize, warn: (m) => warnOnce(`page:${m}`, m) });
       } catch (err) {
         this._listError(err, null);
         return;
@@ -742,7 +758,7 @@ export class TdMediaPicker extends HTMLElement {
       }
       let page;
       try {
-        page = normalizePage(r.value, { safeUrl: safeMediaUrl, kinds: s.kinds, warn: (m) => console.warn(m) });
+        page = normalizePage(r.value, { safeUrl: safeMediaUrl, kinds: s.kinds, limit: s.pageSize, warn: (m) => warnOnce(`page:${m}`, m) });
       } catch (err) {
         this._listError(err, null, true);
         return;
@@ -767,7 +783,7 @@ export class TdMediaPicker extends HTMLElement {
   /** @private */
   _listError(err, slot, more = false) {
     const s = this._s;
-    const n = normalizeError(err, null);
+    const n = normalizeError(err, null, { operation: 'list' });
     if (!n) return;
     this._emit('operation-error', { operation: 'list', code: n.code, retryable: n.retryable });
     const text = n.userMessage || this._t(`error.${n.code}`);
@@ -864,7 +880,7 @@ export class TdMediaPicker extends HTMLElement {
       ...(s.context !== undefined ? { context: s.context } : {}), signal })).then((r) => {
       if (r.stale || this._s !== s || this._settled) return;
       if ('error' in r) {
-        const n = normalizeError(r.error, null);
+        const n = normalizeError(r.error, null, { operation: 'facets' });
         if (n) this._emit('operation-error', { operation: 'facets', code: n.code, retryable: n.retryable });
         return;
       }
@@ -1219,7 +1235,7 @@ export class TdMediaPicker extends HTMLElement {
       if (r.stale || this._s !== s || this._settled || s.detailId !== id) return;
       s.els.detail.removeAttribute('data-loading');
       if ('error' in r) {
-        const n = normalizeError(r.error, null);
+        const n = normalizeError(r.error, null, { operation: 'get' });
         if (n) this._emit('operation-error', { operation: 'get', code: n.code, retryable: n.retryable });
         return;
       }
@@ -1476,7 +1492,7 @@ export class TdMediaPicker extends HTMLElement {
       if (r.stale || this._s !== s || this._settled || s.edit !== ed) return;
       ed.save.removeAttribute('aria-busy');
       if ('error' in r) {
-        const n = normalizeError(r.error, null);
+        const n = normalizeError(r.error, null, { operation: 'update' });
         if (!n) return;
         this._emit('operation-error', { operation: 'update', code: n.code, retryable: n.retryable });
         if (n.code === 'conflict') {
@@ -1524,7 +1540,7 @@ export class TdMediaPicker extends HTMLElement {
         s.req.reload.run((signal) => s.adapter.get(ed.id, { context: s.context, signal })).then((r) => {
           if (r.stale || this._s !== s || this._settled || s.edit !== ed) return;
           if ('error' in r) {
-            const n = normalizeError(r.error, null);
+            const n = normalizeError(r.error, null, { operation: 'get' });
             if (n) {
               this._emit('operation-error', { operation: 'get', code: n.code, retryable: n.retryable });
               this._editNotice(n.userMessage || this._t(`error.${n.code}`), true);

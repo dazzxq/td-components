@@ -98,7 +98,7 @@ metadata, nhãn facet / descriptor, chữ lỗi) do **người dùng khác** t�
 tin cậy; adapter và descriptor do dev của site viết nhưng chạy trong trình duyệt → không phải lớp phân quyền.
 
 - **URL — một cổng duy nhất `safeMediaUrl`** (`src/utils/media-url.js`): mọi `src` của picker và field (thumbnail,
-  preview, poster, `preview-src`, state khôi phục form) resolve theo `document.baseURI` rồi chỉ nhận `https:`, `http:`
+  preview, poster, `preview-src`) resolve theo `document.baseURI` rồi chỉ nhận `https:`, `http:`
   khi chính trang là `http:` (không hạ cấp), `blob:` chỉ khi gọi với `allowBlob` (preview cục bộ); từ chối
   `javascript:`, `data:`, `file:`, `mailto:`, mọi scheme khác, chuỗi > 8 KiB → không có `<img>`. PHP `td_media_field()`:
   `Td::safeUrl()` rồi loại thêm `mailto:` / `tel:`. URL **không bao giờ** là danh tính hay giá trị form (danh tính =
@@ -114,13 +114,16 @@ tin cậy; adapter và descriptor do dev của site viết nhưng chạy trong t
   server sinh, dedup bằng hash; không phục vụ file upload từ cùng origin với quyền chạy script.
 - **Lỗi**: UI chỉ hiện `userMessage` (cắt 200 code point) hoặc nhãn `labels.error.{code}`; **không bao giờ**
   `err.message` (exception thô, SQL, đường dẫn lưu trữ). `fieldErrors` chỉ nhận own key chuỗi (bỏ `__proto__` /
-  `constructor` / `prototype`), giá trị mảng chuỗi (≤ 5 / key, mỗi chuỗi ≤ 200). Lỗi gốc chỉ ra `console.warn`. Lỗi
+  `constructor` / `prototype`), giá trị mảng chuỗi (≤ 5 / key, mỗi chuỗi ≤ 200). Console chỉ nhận chuỗi `<thao tác> failed (<code>)` — không bao giờ lỗi gốc / response / URL (có thể mang token). Lỗi
   upload chuyển cho dropzone dưới dạng `new Error(userMessage || labels.uploadError)` để dropzone (vốn hiện
   `err.message`) không lộ chuỗi thô. Event `operation-error` không mang chữ lỗi.
 - **FormData của field** (API công khai): `name=<assetId>` hoặc `name[id]` / `name[alt]` / `name[crop]` (crop JSON v1 đã
   validate: số hữu hạn, 0..1, `x + width ≤ 1`, `y + height ≤ 1`, ≤ 512 ký tự; sai → `null`). Usage + `name` kết thúc `[]`
   → không gửi (fail closed, JS = PHP). Server vẫn phải kiểm `assetId` (tồn tại, đúng loại, quyền dùng), cắt alt, validate
-  lại crop. State khôi phục form (`formStateRestoreCallback`) chỉ nhận `v === 1` và kiểm lại URL preview.
+  lại crop. State khôi phục form chỉ gồm `{"v":1,"id","alt","crop"}` — không URL xem trước (URL ký), không nhãn server;
+  khôi phục → ảnh lấy lại bằng `adapter.get(id)` theo phiên hiện tại.
+- **Giới hạn payload adapter** (`LIMITS`): ≤ min(limit, 100) mục / trang, chuỗi hiển thị ≤ 500 code point, ≤ 10 badge,
+  ≤ 20 facet, ≤ 200 option, ≤ 50 field descriptor; phần thừa bỏ + một cảnh báo chỉ có số lượng.
 - **Referrer**: mọi `<img>` có `referrerpolicy="no-referrer"` cố định — URL ký và đường dẫn trang quản trị không lộ qua
   `Referer` tới CDN / bucket. Hệ quả cho site: CDN chống hotlink phải chấp nhận referer rỗng; CSP `img-src` phải cho
   origin ảnh của adapter (`blob:` chỉ khi muốn thumbnail xem trước của dropzone).

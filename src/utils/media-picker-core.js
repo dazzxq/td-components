@@ -160,6 +160,14 @@ const TEXT_MAX = 200;
 const ID_MAX = 512;
 export const PAGE_SIZE_DEFAULT = 40;
 
+/**
+ * Bounds on adapter payloads before anything reaches the DOM (review SEC-3): extras are dropped (one warning per call,
+ * counts only — never the raw data). `text` = code points of a display string (asset name / alt / labels / help text).
+ */
+export const LIMITS = Object.freeze({ pageItems: 100, text: 500, badges: 10, facets: 20, options: 200, fields: 50 });
+/** First `max` code points (no trim). @param {string} s @param {number} [max] */
+const capText = (s, max = LIMITS.text) => (s.length <= max ? s : [...s].slice(0, max).join(''));
+
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
 const str = (v) => (typeof v === 'string' ? v : '');
 const isScalar = (v) => v === null || typeof v === 'string' || typeof v === 'boolean'
@@ -192,8 +200,8 @@ export function normalizeAsset(raw, { safeUrl }) {
       id,
       kind: o.kind,
       status: o.status,
-      name: str(o.name),
-      mimeType: str(o.mimeType),
+      name: capText(str(o.name)),
+      mimeType: capText(str(o.mimeType)),
       byteSize: typeof o.byteSize === 'number' && Number.isFinite(o.byteSize) && o.byteSize >= 0 ? o.byteSize : 0,
       urls: { thumbnail: safeUrl(urls.thumbnail), preview: safeUrl(urls.preview) },
       metadata: isObj(o.metadata) ? { ...o.metadata } : {},
@@ -203,12 +211,12 @@ export function normalizeAsset(raw, { safeUrl }) {
     const h = finitePos(o.height);
     if (w !== undefined) a.width = w;
     if (h !== undefined) a.height = h;
-    if (typeof o.createdAt === 'string' && o.createdAt) a.createdAt = o.createdAt;
-    if (typeof o.uploadedByLabel === 'string' && o.uploadedByLabel) a.uploadedByLabel = o.uploadedByLabel;
-    if (typeof o.defaultAltText === 'string') a.defaultAltText = o.defaultAltText;
+    if (typeof o.createdAt === 'string' && o.createdAt && o.createdAt.length <= 64) a.createdAt = o.createdAt;
+    if (typeof o.uploadedByLabel === 'string' && o.uploadedByLabel) a.uploadedByLabel = capText(o.uploadedByLabel);
+    if (typeof o.defaultAltText === 'string') a.defaultAltText = capText(o.defaultAltText);
     if (Array.isArray(o.badges)) {
-      a.badges = o.badges.filter((b) => isObj(b) && typeof b.label === 'string' && b.label)
-        .map((b) => ({ key: str(b.key), label: b.label, tone: TONES.includes(b.tone) ? b.tone : 'neutral' }));
+      a.badges = o.badges.filter((b) => isObj(b) && typeof b.label === 'string' && b.label).slice(0, LIMITS.badges)
+        .map((b) => ({ key: capText(str(b.key)), label: capText(b.label), tone: TONES.includes(b.tone) ? b.tone : 'neutral' }));
     }
     if (isObj(o.capabilities)) {
       const caps = {};
@@ -231,17 +239,20 @@ export function contractError(code = 'server', message = 'media picker: malforme
  * (one warning); `kinds` given → other kinds hidden (`hidden` = how many). Not an object / `items` not an array → throws
  * an error with `code: 'server'`.
  * @param {unknown} raw
- * @param {{ safeUrl: (u: unknown) => string, kinds?: string[]|null, warn?: (...a: unknown[]) => void }} opts
+ * @param {{ safeUrl: (u: unknown) => string, kinds?: string[]|null, limit?: number, warn?: (...a: unknown[]) => void }} opts
+ *   `limit` = the request's limit: at most min(limit, LIMITS.pageItems) items are read (review SEC-3)
  * @returns {{ items: MediaAsset[], nextCursor: string|null, total: number|undefined, hidden: number }}
  */
-export function normalizePage(raw, { safeUrl, kinds = null, warn = console.warn }) {
+export function normalizePage(raw, { safeUrl, kinds = null, limit, warn = console.warn }) {
   if (!isObj(raw) || !Array.isArray(/** @type {any} */ (raw).items)) throw contractError('server');
   const o = /** @type {any} */ (raw);
   const seen = new Set();
   const items = [];
   let invalid = 0;
   let hidden = 0;
-  for (const r of o.items) {
+  const cap = Math.min(Number.isInteger(limit) && limit >= 1 ? limit : LIMITS.pageItems, LIMITS.pageItems);
+  if (o.items.length > cap) warn(`td-media-picker: the adapter page has ${o.items.length} items — only the first ${cap} are used.`);
+  for (const r of o.items.slice(0, cap)) {
     const a = normalizeAsset(r, { safeUrl });
     if (!a) { invalid += 1; continue; }
     if (seen.has(a.id)) continue;
@@ -255,13 +266,18 @@ export function normalizePage(raw, { safeUrl, kinds = null, warn = console.warn 
   return { items, nextCursor, total, hidden };
 }
 
-/** @param {unknown} list @returns {FacetOption[]} */
-function normalizeOptions(list) {
+/**
+ * Raw options → valid `{ value, label, count?, disabled }`, at most LIMITS.options, labels capped (review SEC-3).
+ * @param {unknown} list @param {{ dropped?: number }} [stat] counts the options cut by the cap
+ * @returns {FacetOption[]}
+ */
+export function normalizeOptions(list, stat) {
   if (!Array.isArray(list)) return [];
   const out = [];
   for (const op of list) {
     if (!isObj(op) || !isScalar(op.value) || typeof op.label !== 'string') continue;
-    const o = { value: op.value, label: op.label };
+    if (out.length >= LIMITS.options) { if (stat) stat.dropped = (stat.dropped || 0) + 1; continue; }
+    const o = { value: op.value, label: capText(op.label) };
     if (Number.isInteger(op.count) && op.count >= 0) o.count = op.count;
     o.disabled = op.disabled === true;
     out.push(o);
@@ -281,13 +297,19 @@ export function normalizeFacets(raw, { warn = console.warn } = {}) {
   const out = [];
   const keys = new Set();
   let dropped = 0;
+  let over = 0;
+  const stat = { dropped: 0 };
   for (const f of raw) {
-    if (!isObj(f) || typeof f.key !== 'string' || !f.key || keys.has(f.key) || typeof f.label !== 'string'
+    if (!isObj(f) || typeof f.key !== 'string' || !f.key || f.key.length > 200 || keys.has(f.key) || typeof f.label !== 'string'
       || !FACET_TYPES.includes(f.type)) { dropped += 1; continue; }
+    if (out.length >= LIMITS.facets) { over += 1; continue; }
     keys.add(f.key);
-    out.push({ key: f.key, label: f.label, type: f.type, options: normalizeOptions(f.options) });
+    out.push({ key: f.key, label: capText(f.label), type: f.type, options: normalizeOptions(f.options, stat) });
   }
   if (dropped) warn(`td-media-picker: ${dropped} invalid / duplicate facet descriptor(s) ignored.`);
+  if (over || stat.dropped) {
+    warn(`td-media-picker: facets over the limits ignored (${over} facet(s) past ${LIMITS.facets}, ${stat.dropped} option(s) past ${LIMITS.options} per facet).`);
+  }
   return out;
 }
 
@@ -302,21 +324,27 @@ export function normalizeFields(raw, { warn = console.warn } = {}) {
   const out = [];
   const keys = new Set();
   let dropped = 0;
+  let over = 0;
+  const stat = { dropped: 0 };
   for (const f of raw) {
-    if (!isObj(f) || typeof f.key !== 'string' || !f.key || BAD_KEYS.has(f.key) || keys.has(f.key)
+    if (!isObj(f) || typeof f.key !== 'string' || !f.key || f.key.length > 200 || BAD_KEYS.has(f.key) || keys.has(f.key)
       || typeof f.label !== 'string' || !CONTROLS.includes(f.control)) { dropped += 1; continue; }
+    if (out.length >= LIMITS.fields) { over += 1; continue; }
     keys.add(f.key);
     /** @type {FieldDescriptor} */
-    const d = { key: f.key, label: f.label, control: f.control, required: f.required === true };
+    const d = { key: f.key, label: capText(f.label), control: f.control, required: f.required === true };
     if (f.scope === 'upload' || f.scope === 'asset') d.scope = f.scope;
-    if (typeof f.helpText === 'string' && f.helpText) d.helpText = f.helpText;
-    d.options = normalizeOptions(f.options);
+    if (typeof f.helpText === 'string' && f.helpText) d.helpText = capText(f.helpText);
+    d.options = normalizeOptions(f.options, stat);
     if (typeof f.loadOptions === 'function') d.loadOptions = f.loadOptions;
     if (typeof f.createOption === 'function') d.createOption = f.createOption;
     if (typeof f.visibleWhen === 'function') d.visibleWhen = f.visibleWhen;
     out.push(d);
   }
   if (dropped) warn(`td-media-picker: ${dropped} invalid / duplicate field descriptor(s) ignored.`);
+  if (over || stat.dropped) {
+    warn(`td-media-picker: field descriptors over the limits ignored (${over} field(s) past ${LIMITS.fields}, ${stat.dropped} option(s) past ${LIMITS.options} per field).`);
+  }
   return out;
 }
 
@@ -328,13 +356,13 @@ export function normalizeFields(raw, { warn = console.warn } = {}) {
  * Adapter rejection → what the UI may show (decision 8), or null for an abort (silent). The text shown is ONLY
  * `userMessage` (trimmed, 200 code points) — never `message` (raw exception / SQL). Unknown `code` → 'server'.
  * `fieldErrors`: own string keys (no `__proto__` / `constructor` / `prototype`), arrays of non-empty strings (≤ 5,
- * each ≤ 200). The original error is logged with `warn` (developer tool, never UI).
+ * each ≤ 200). `warn` gets ONE string: the operation + the normalised code — never the raw error (review SEC-2).
  * @param {unknown} err
  * @param {AbortSignal|null|undefined} signal
- * @param {{ warn?: (...a: unknown[]) => void }} [opts]
+ * @param {{ warn?: (...a: unknown[]) => void, operation?: string }} [opts]
  * @returns {NormalizedError|null}
  */
-export function normalizeError(err, signal, { warn = console.warn } = {}) {
+export function normalizeError(err, signal, { warn = console.warn, operation = 'adapter call' } = {}) {
   if (signal && signal.aborted) return null;
   let name = '';
   let code;
@@ -369,7 +397,8 @@ export function normalizeError(err, signal, { warn = console.warn } = {}) {
     userMessage = '';
     fieldErrors = new Map();
   }
-  try { warn('td-media-picker: adapter error', err); } catch { /* ignore */ }
+  // review SEC-2: never the raw error (message / response / URL may carry tokens or server internals) — operation + code
+  try { warn(`td-media-picker: ${String(operation).slice(0, 60)} failed (${code})`); } catch { /* ignore */ }
   return { code, userMessage, fieldErrors, retryable: retryable ?? RETRYABLE.has(code) };
 }
 
@@ -760,11 +789,12 @@ export class InitialLoad {
       p.then((asset) => {
         if (!live()) return;
         if (asset && asset.id === id) results[i] = asset;
-        else this._warn(`td-media-picker: initial id "${id}" could not be loaded.`);
+        else this._warn(`td-media-picker: an initial id could not be loaded (${i + 1} of ${this._ids.length}).`);
         settle();
       }, (err) => {
         if (!live()) return;
-        this._warn(`td-media-picker: initial id "${id}" could not be loaded.`, err);
+        void err; // review SEC-2: never logged raw
+        this._warn(`td-media-picker: an initial id could not be loaded (${i + 1} of ${this._ids.length}).`);
         settle();
       });
     });

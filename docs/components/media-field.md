@@ -144,7 +144,7 @@ giá trị form ai cũng sửa được.
 - Gán `field.value = 'a_123'` bằng code (im lặng, không event): ảnh xem trước và **crop bị xoá** (thuộc ảnh cũ), **alt
   giữ nguyên**, `kind` về loại đầu của `accept-kind`. Rồi nếu có adapter, field gọi `adapter.get(id)` (lười, latest-wins,
   gán tiếp thì request cũ bị abort) để lấy ảnh; không có adapter / `get` lỗi → trạng thái "Đã chọn (không có ảnh xem
-  trước)" (lỗi chỉ ra `console.warn`). Trang SSR có sẵn `preview-src` / `preview-alt` **không bao giờ** gọi adapter lúc
+  trước)" (console chỉ nhận `td-media-field get failed (<code>)`, không lỗi gốc). Trang SSR có sẵn `preview-src` / `preview-alt` **không bao giờ** gọi adapter lúc
   tải.
 - Cần gán đủ id + ảnh + alt + crop cùng lúc (ví dụ app tự mở picker) → `setSelection(selectedMedia)` (im lặng); `null`
   hoặc `[]` → xoá hết.
@@ -178,8 +178,11 @@ khi rời ô nếu đã đổi (event `input` / `change` native của ô bị ch
 
 - `form.reset()` → về đúng trạng thái chụp từ thuộc tính (`value`, `preview-src`, `preview-alt`, `kind`, `alt`, `crop`),
   không event.
-- Trình duyệt khôi phục form (Back / bfcache, tự điền phiên) → field nhận lại `id`, alt, crop, ảnh xem trước (URL xem trước
-  được **kiểm lại**, sai → bỏ).
+- Trình duyệt khôi phục form (Back / bfcache, tự điền phiên) → field nhận lại **chỉ** `id`, alt, crop. State khôi phục
+  (`setFormValue` tham số 2, `{"v":1,"id","alt","crop"}`) **không** chứa URL xem trước (có thể là URL ký / token) hay
+  nhãn từ server. Ảnh xem trước bắt đầu trống rồi được lấy lại bằng `adapter.get(id)` theo phiên hiện tại (latest-wins,
+  abort khi đổi tiếp); chưa có adapter → chờ, tự lấy khi có (`field.adapter`, `pickerOptions` hoặc
+  `TdMediaPicker.configureDefaults({ adapter })`).
 - `required` → phải có id (`valueMissing`, thông báo `labels.required` "Vui lòng chọn {kind}." — `{kind}` lấy từ
   `labels.kinds` theo loại đầu của `accept-kind`: "ảnh" / "video" / "file"); dùng chung
   [hợp đồng lỗi](../customization/hooks.md#hợp-đồng-lỗi-của-mọi-form-control) (`setError`, `error-text`).

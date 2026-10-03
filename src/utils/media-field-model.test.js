@@ -5,9 +5,6 @@ import assert from 'node:assert/strict';
 import {
   parseAspectRatio, parseCrop, fieldEntries, encodeState, decodeState, parseKinds, ASPECT_CASES, CROP_CASES,
 } from './media-field-model.js';
-import { safeMediaUrl } from './media-url.js';
-
-const safeUrl = (u) => safeMediaUrl(u, { baseURI: 'https://site.test/', protocol: 'https:' });
 
 describe('parseAspectRatio', () => {
   it('W/H, W:H, a single number', () => {
@@ -92,28 +89,30 @@ describe('fieldEntries', () => {
   });
 });
 
-describe('form state v1', () => {
-  const state = { id: 'a1', alt: 'Mô tả', cropRaw: '{"v":1,"x":0,"y":0,"width":1,"height":1}',
-    preview: { src: 'https://cdn.test/a.jpg', alt: 'a.jpg', kind: 'image' } };
+describe('form state v1 (review SEC-1: id + alt + validated crop only)', () => {
+  const raw = '{"v":1,"x":0,"y":0,"width":1,"height":1}';
+  const state = { id: 'a1', alt: 'Mô tả', cropRaw: raw };
+
+  it('encodes ONLY v / id / alt / crop — never a preview URL or server labels, even when given', () => {
+    const s = encodeState({ ...state, preview: { src: 'https://cdn.test/signed?token=SECRET', alt: 'server name', kind: 'video' } });
+    assert.deepEqual(Object.keys(JSON.parse(s)).sort(), ['alt', 'crop', 'id', 'v']);
+    assert.ok(!s.includes('SECRET') && !s.includes('server name') && !s.includes('cdn.test'));
+  });
 
   it('round trip', () => {
-    const s = encodeState(state);
-    assert.equal(JSON.parse(s).v, 1);
-    assert.deepEqual(decodeState(s, { safeUrl }), state);
+    assert.deepEqual(decodeState(encodeState(state)), state);
   });
 
-  it('unsafe preview URL is dropped (the rest kept)', () => {
-    const s = encodeState({ ...state, preview: { ...state.preview, src: 'javascript:alert(1)' } });
-    assert.deepEqual(decodeState(s, { safeUrl }).preview, { src: '', alt: 'a.jpg', kind: 'image' });
+  it('a preview inside an old / forged state is ignored', () => {
+    const s = JSON.stringify({ v: 1, id: 'a1', alt: 'x', crop: null, preview: { src: 'javascript:alert(1)', alt: 'y', kind: 'video' } });
+    assert.deepEqual(decodeState(s), { id: 'a1', alt: 'x', cropRaw: null });
   });
 
-  it('v:2, broken JSON, wrong types → null; bad crop → null crop; bad kind → image', () => {
-    assert.equal(decodeState(JSON.stringify({ ...JSON.parse(encodeState(state)), v: 2 }), { safeUrl }), null);
-    assert.equal(decodeState('{', { safeUrl }), null);
-    assert.equal(decodeState(JSON.stringify({ v: 1, id: 5 }), { safeUrl }), null);
-    assert.equal(decodeState(null, { safeUrl }), null);
-    const odd = decodeState(JSON.stringify({ v: 1, id: 'a', alt: 'x', crop: '{bad', preview: { src: '', alt: '', kind: 'zip' } }), { safeUrl });
-    assert.equal(odd.cropRaw, null);
-    assert.equal(odd.preview.kind, 'image');
+  it('v:2, broken JSON, wrong types → null; bad crop → null crop', () => {
+    assert.equal(decodeState(JSON.stringify({ v: 2, id: 'a', alt: '', crop: null })), null);
+    assert.equal(decodeState('{'), null);
+    assert.equal(decodeState(JSON.stringify({ v: 1, id: 5 })), null);
+    assert.equal(decodeState(null), null);
+    assert.equal(decodeState(JSON.stringify({ v: 1, id: 'a', alt: 'x', crop: '{bad' })).cropRaw, null);
   });
 });

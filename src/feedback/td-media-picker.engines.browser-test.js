@@ -1291,3 +1291,58 @@ describe('td-media-picker + td-media-field (integration, real picker)', () => {
     expect(document.activeElement === openBtn || field.contains(document.activeElement), 'focus back in the field').to.equal(true);
   });
 });
+
+describe('td-media-picker — review SEC-2: raw adapter errors never reach the console', () => {
+  it('list / facets / get / initial / upload / update rejections + a malformed upload result → only strings without the secret', async () => {
+    const SECRET = 'tok_PICKER_SECRET_42';
+    const bad = (what) => Object.assign(new Error(`${what} failed: ${SECRET}`), {
+      code: 'server', response: { body: `<pre>${SECRET}</pre>` }, url: `https://api.test/media?token=${SECRET}`,
+    });
+    const logged = [];
+    const real = {};
+    for (const k of ['warn', 'error', 'log', 'info', 'debug']) {
+      real[k] = console[k];
+      console[k] = (...a) => logged.push(a);
+    }
+    extra.push(() => { for (const k of Object.keys(real)) console[k] = real[k]; });
+    const ad = createMockAdapter();
+    const list = ad.list;
+    let listCalls = 0;
+    ad.list = (req) => (++listCalls === 2 ? Promise.reject(bad('list')) : list(req));
+    ad.facets = () => Promise.reject(bad('facets'));
+    const get = ad.get;
+    ad.get = (id, o) => (id === 'm60' || id === 'm2' ? Promise.reject(bad('get')) : get(id, o));
+    let uploads = 0;
+    ad.upload = () => (++uploads === 1 ? Promise.reject(bad('upload')) : Promise.resolve({ asset: { secret: SECRET }, deduplication: {} }));
+    ad.update = () => Promise.reject(bad('update'));
+    const promise = TdMediaPicker.open({ adapter: ad, assetFields: assetFields(), selection: { mode: 'multiple', initialIds: ['m2'] } });
+    await until(() => items().length, 3000, 'list');
+    click(opener('m59'));
+    await until(() => q('.td-media-picker__edit'), 3000, 'edit button');
+    q('.td-media-picker__edit').click();
+    await until(() => q('.td-media-picker__save'), 3000, 'save');
+    q('.td-media-picker__save').click();
+    await until(() => q('.td-media-picker__notice:not([hidden])'), 3000, 'update error');
+    opener('m60').focus();
+    await sendKeys({ press: 'Enter' }); // detail get(m60) rejects
+    await until(() => discardDialog() || q('.td-media-picker__detail-name')?.textContent === assetName('m60'), 3000, 'detail');
+    if (discardDialog()) clickDiscard(true);
+    q('.td-media-picker__upload-toggle').click();
+    dropzone().addFiles([file('a.png')]);
+    await until(() => dropzone().querySelector('[data-status="error"]'), 3000, 'upload error');
+    dropzone().addFiles([file('b.png')]);
+    await until(() => dropzone().querySelectorAll('[data-status="error"]').length === 2, 3000, 'malformed upload');
+    await search('x'); // list #2 rejects
+    await until(() => !q('.td-media-picker__error').hidden, 3000, 'list error');
+    await wait(50);
+    document.querySelector('td-media-picker').close();
+    await promise;
+    expect(logged.length > 0, 'something was logged (the gate is exercised)').to.equal(true);
+    for (const args of logged) {
+      for (const a of args) {
+        expect(typeof a, `console arg ${String(a).slice(0, 60)}`).to.equal('string');
+        expect(a.includes(SECRET), a).to.equal(false);
+      }
+    }
+  });
+});

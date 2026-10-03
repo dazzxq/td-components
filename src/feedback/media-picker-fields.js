@@ -18,7 +18,7 @@
  *
  * @module feedback/media-picker-fields
  */
-import { ScalarTokens, normalizeError } from '../utils/media-picker-core.js';
+import { ScalarTokens, normalizeError, normalizeOptions } from '../utils/media-picker-core.js';
 import '../form/td-input-field.js';
 import '../form/td-dropdown.js';
 import '../form/td-chip-input.js';
@@ -67,15 +67,7 @@ const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
  * @returns {FacetOption[]}
  */
 function cleanOptions(list) {
-  if (!Array.isArray(list)) return [];
-  const out = [];
-  for (const o of list) {
-    if (!isObj(o) || !isScalar(o.value) || typeof o.label !== 'string') continue;
-    const x = { value: o.value, label: o.label, disabled: o.disabled === true };
-    if (Number.isInteger(o.count) && o.count >= 0) x.count = o.count;
-    out.push(x);
-  }
-  return out;
+  return normalizeOptions(list); // review SEC-3: ≤ LIMITS.options, labels capped
 }
 
 /** Text of any value (readonly fields, provisional option labels). @param {unknown} v */
@@ -307,7 +299,7 @@ export function createFieldControl(descriptor, { idPrefix, signal, warn = consol
       api.setError('');
       return opt;
     } catch (err) {
-      const n = normalizeError(err, run.signal, { warn });
+      const n = normalizeError(err, run.signal, { warn, operation: 'createOption' });
       if (n && !destroyed) api.setError(n.userMessage || FIELD_LABELS.createError);
       return null;
     } finally {
@@ -365,9 +357,9 @@ export function createFieldControl(descriptor, { idPrefix, signal, warn = consol
             if (destroyed || life.signal.aborted) return;
             opts.append(cleanOptions(list));
             sync();
-          }, (err) => { normalizeError(err, life.signal, { warn }); });
+          }, (err) => { normalizeError(err, life.signal, { warn, operation: 'loadOptions' }); });
         } catch (err) {
-          normalizeError(err, life.signal, { warn });
+          normalizeError(err, life.signal, { warn, operation: 'loadOptions' });
         }
       }
       if (d.createOption) {
@@ -701,7 +693,7 @@ export class FieldForm {
       } catch (err) {
         if (!warnedVisible) {
           warnedVisible = true;
-          this._warn(`td-media-picker: visibleWhen of field "${c.key}" threw (field shown).`, err);
+          this._warn(`td-media-picker: visibleWhen of field "${c.key}" threw (field shown).`);
         }
       }
       c.setVisible(show);

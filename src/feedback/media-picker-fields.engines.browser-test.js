@@ -609,3 +609,14 @@ describe('media-picker-fields — FieldForm (decision 21)', () => {
     expect(form.controls.get('caption').get()).to.equal('');
   });
 });
+
+describe('media-picker-fields — review SEC-3 bounds', () => {
+  it('loadOptions results are capped at 200 options, labels at 500', async () => {
+    const f = mountField({ key: 'big', label: 'Big', control: 'select',
+      loadOptions: async () => Array.from({ length: 250 }, (_, i) => ({ value: i, label: `${'x'.repeat(600)}${i}` })) });
+    for (let i = 0; i < 20; i++) await tick();
+    const opts = f.control.options || [];
+    expect(opts.length).to.equal(200);
+    expect(opts.every((o) => [...o.label].length <= 500)).to.equal(true);
+  });
+});

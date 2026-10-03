@@ -242,19 +242,75 @@ describe('td-media-field — form value', () => {
     expect(fd(form)).to.deep.equal([['hero[id]', 'm1'], ['hero[alt]', 'gốc'], ['hero[crop]', 'null']]);
   });
 
-  it('formStateRestoreCallback: a valid v1 state applies; v:2 / garbage ignored; an evil preview URL is dropped', () => {
-    const { el, form } = mk({ name: 'hero', usage: true });
-    const state = (o) => JSON.stringify({ v: 1, id: 'm9', alt: 'khôi phục', crop: null, preview: { src: '/test/fixtures/2.svg', alt: 'Ảnh 9', kind: 'image' }, ...o });
-    el.formStateRestoreCallback(state(), 'restore');
+  it('review SEC-1: the restore state holds only v / id / alt / crop — no preview URL, no server label', async () => {
+    const states = [];
+    const real = ElementInternals.prototype.setFormValue;
+    ElementInternals.prototype.setFormValue = function (v, st) { states.push(st); return real.call(this, v, st); };
+    try {
+      const { el } = mk({ name: 'hero', usage: true, value: 'm1', 'preview-src': '/test/fixtures/1.svg?token=SECRET', 'preview-alt': 'Tên server SECRET' });
+      openBtn(el).click();
+      opens[0].resolve(picked('m3'));
+      await tick();
+    } finally {
+      ElementInternals.prototype.setFormValue = real;
+    }
+    const strings = states.filter((x) => typeof x === 'string');
+    expect(strings.length > 0).to.equal(true);
+    for (const st of strings) {
+      expect(Object.keys(JSON.parse(st)).sort()).to.deep.equal(['alt', 'crop', 'id', 'v']);
+      expect(st.includes('SECRET') || st.includes('fixtures') || st.includes('anh-3')).to.equal(false);
+    }
+  });
+
+  it('review SEC-1: restore → preview empty, then adapter.get(id) (latest wins); v:2 / garbage ignored', async () => {
+    const a = createMockAdapter();
+    const { el, form } = mk({ name: 'hero', usage: true }, { adapter: a });
+    const state = (o) => JSON.stringify({ v: 1, id: 'm9', alt: 'khôi phục', crop: null, ...o });
+    el.formStateRestoreCallback(state({ preview: { src: '/test/fixtures/2.svg', alt: 'giả', kind: 'image' } }), 'restore');
     expect(el.value).to.equal('m9');
-    expect(q(el, 'img').getAttribute('src')).to.equal(new URL('/test/fixtures/2.svg', document.baseURI).href);
+    expect(!!q(el, 'img'), 'no preview from the state').to.equal(false);
     expect(fd(form)).to.deep.equal([['hero[id]', 'm9'], ['hero[alt]', 'khôi phục'], ['hero[crop]', 'null']]);
+    el.formStateRestoreCallback(state({ id: 'm10' }), 'restore');
+    expect(a.calls.get.map((c) => c.args[0])).to.deep.equal(['m9', 'm10']);
+    expect(a.calls.get[0].signal.aborted).to.equal(true);
+    for (let i = 0; i < 50 && !q(el, 'img'); i++) await tick();
+    expect(q(el, 'img').getAttribute('src')).to.equal(new URL(a.db.get('m10').urls.preview, document.baseURI).href);
     el.formStateRestoreCallback(state({ v: 2, id: 'zz' }), 'restore');
     el.formStateRestoreCallback('{oops', 'restore');
-    expect(el.value).to.equal('m9');
-    el.formStateRestoreCallback(state({ id: 'm10', preview: { src: 'javascript:alert(1)', alt: 'x', kind: 'image' } }), 'restore');
     expect(el.value).to.equal('m10');
+  });
+
+  it('review SEC-1: restore without any adapter → no crash, preview empty; resolved once configureDefaults provides one', async () => {
+    const a = createMockAdapter();
+    const { el } = mk({ name: 'hero' }, { adapter: null });
+    el.formStateRestoreCallback(JSON.stringify({ v: 1, id: 'm12', alt: '', crop: null }), 'restore');
+    expect(el.value).to.equal('m12');
     expect(!!q(el, 'img')).to.equal(false);
+    TdMediaPicker.configureDefaults({ adapter: a });
+    try {
+      expect(a.calls.get.map((c) => c.args[0])).to.deep.equal(['m12']);
+      for (let i = 0; i < 50 && !q(el, 'img'); i++) await tick();
+      expect(!!q(el, 'img')).to.equal(true);
+    } finally {
+      TdMediaPicker.configureDefaults({});
+    }
+  });
+
+  it('review SEC-2: a failing lazy get never logs the raw error', async () => {
+    const SECRET = 'tok_FIELD_SECRET';
+    const a = createMockAdapter();
+    a.get = () => Promise.reject(Object.assign(new Error(`get ${SECRET}`), { code: 'server', url: `https://x/?t=${SECRET}` }));
+    const errs = [];
+    const realErr = console.error;
+    console.error = (...x) => errs.push(x.map(String).join(' '));
+    try {
+      const { el } = mk({ name: 'hero' }, { adapter: a });
+      el.value = 'm1';
+      for (let i = 0; i < 10; i++) await tick();
+    } finally {
+      console.error = realErr;
+    }
+    expect([...warns, ...errs].some((w) => w.includes(SECRET))).to.equal(false);
   });
 
   it('required → valueMissing + message; error contract on the open button', () => {
