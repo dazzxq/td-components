@@ -286,6 +286,12 @@ export class TdCheckableElement extends TdFormElement {
     else this.removeAttribute('checked');
     if (this._defaultValueAttr === null) this.removeAttribute('value');
     else this.setAttribute('value', this._defaultValueAttr);
+    // v0.26.0 (pre-existing bug): form.reset() also resets the inner native input — it carries no `checked` attribute,
+    // so it ends unchecked — and runs BEFORE this callback (custom element reaction). When the host attribute did not
+    // change, no attributeChangedCallback re-syncs it: do it here. (`indeterminate` has no host model and native reset
+    // leaves it alone, so it is not touched.)
+    const input = this._focusTarget();
+    if (input) input.checked = this.hasAttribute('checked');
     this._syncForm();
   }
 

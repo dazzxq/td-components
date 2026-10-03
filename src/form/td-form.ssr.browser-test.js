@@ -915,8 +915,7 @@ describe('v0.26.0 SSR hydrate — review round 4 (ISSUE-8): state never comes fr
     expect(/evil/.test(host.innerHTML)).to.equal(false);
     expect(doc.activeElement === n, 'focus was inside the host → new control').to.equal(true);
     host.closest('form').reset();
-    // reset target = the host default (PHP `checked`), never a foreign default (asserted on the host model / FormData)
-    expect(host.hasAttribute('checked')).to.equal(true);
+    expect(n.checked, 'reset → the host default, not a foreign default').to.equal(true);
     expect([...new win.FormData(doc.querySelector('form'))]).to.deep.equal([['agree', 'on']]);
   });
 
@@ -970,5 +969,43 @@ describe('v0.26.0 SSR hydrate — review round 4 (ISSUE-8): state never comes fr
     expect([...new win.FormData(doc.querySelector('form'))]).to.deep.equal([['fullname', 'mine']]);
     expect(/foreign|evil/.test(host.innerHTML), host.innerHTML.slice(0, 200)).to.equal(false);
     expect(doc.activeElement === n).to.equal(true);
+  });
+});
+
+describe('checkbox / toggle reset re-syncs the inner input with the host default (pre-existing bug)', () => {
+  const sync = (host, form, name) => {
+    const input = host.querySelector('input[type="checkbox"]');
+    expect(input.checked, `${host.localName} input.checked = host checked`).to.equal(host.hasAttribute('checked'));
+    expect([...new FormData(form)]).to.deep.equal(host.hasAttribute('checked') ? [[name, 'on']] : []);
+  };
+
+  for (const tag of ['td-checkbox', 'td-toggle']) {
+    it(`JS-created ${tag}: reset with the state unchanged / changed → input.checked = host default, FormData matches`, () => {
+      for (const [checked, click] of [[true, false], [true, true], [false, true], [false, false]]) {
+        const form = document.createElement('form');
+        const el = document.createElement(tag);
+        el.setAttribute('name', 'x');
+        if (checked) el.setAttribute('checked', '');
+        form.appendChild(el);
+        sandbox.appendChild(form);
+        if (click) el.querySelector('input').click();
+        form.reset();
+        expect(el.hasAttribute('checked'), `${tag} default ${checked} click ${click}`).to.equal(checked);
+        sync(el, form, 'x');
+        form.remove();
+      }
+    });
+  }
+
+  it('hydrated checkbox / toggle (PHP checked, untouched): reset → input stays checked', async () => {
+    const { doc } = await frameCase(['c-basic', 't-basic'], () => {});
+    for (const [tag, name] of [['td-checkbox', 'agree'], ['td-toggle', 'notify']]) {
+      const host = doc.querySelector(tag);
+      const form = host.closest('form');
+      const input = host.querySelector('input[type="checkbox"]');
+      form.reset();
+      expect(input.checked, `${tag} input.checked after reset`).to.equal(true);
+      expect([...new doc.defaultView.FormData(form)]).to.deep.equal([[name, 'on']]);
+    }
   });
 });
