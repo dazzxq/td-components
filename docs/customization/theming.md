@@ -732,6 +732,8 @@ diện** của trang component. Cột "Khai báo ở" cho biết ghi đè ở đ
 | td-tree-select | dùng `--td-field-*` (ô) + `--td-dropdown-search-*` (ô tìm) + `--td-tree-*` (cây) | `:root` | [tree-select.md](../components/tree-select.md) |
 | td-number-input | dùng `--td-field-*` (hộp = dáng ô nhập) + `--td-number-affix-fg` (chữ tiền tố / hậu tố, `var(--td-color-text-muted)`), `--td-number-affix-gap` (0.30.0) | `:root` | [number-input.md](../components/number-input.md) |
 | td-repeater | `--td-repeater-gap` (khoảng cách trong dòng + đệm dòng, `var(--td-space-sm)`), `--td-repeater-btn-size` (`2rem`, ≥ 44px trên cảm ứng), `--td-repeater-btn-fg` / `-fg-hover` / `-bg-hover` / `-disabled-fg`, `--td-repeater-divider` (0.30.0) | `:root` | [repeater.md](../components/repeater.md) |
+| td-media-field | `--td-media-field-w` (bề rộng host, `100%`), `--td-media-field-empty-h` (khung rỗng khi không có `aspect-ratio`, `10rem`), `--td-media-field-max-h` (trần chiều cao ảnh khi không có `aspect-ratio`, `24rem`) (0.32.0) | `:root` (hoặc trên từng host) | [media-field.md](../components/media-field.md) |
+| td-media-picker | không có token riêng: vỏ dùng `--td-modal-*`, lưới dùng `--td-media-grid-*` (0.32.0) | `:root` | [media-picker.md](../components/media-picker.md) |
 | TdFormValidation (summary) | `--td-form-summary-*` | `:root` | [form-validation.md](../components/form-validation.md) |
 | TdModal | `--td-modal-*` | `:root` (per-instance `--td-modal-w` / `-h` / `-body-pad` / `-body-overflow` do JS đặt) | [modal.md](../components/modal.md) |
 | TdToast | `--td-toast-*` | `:root` | [toast.md](../components/toast.md) |
