@@ -652,3 +652,60 @@ describe('media-picker-fields — review SEC-3 r2: oversized values are never as
     expect(Object.keys(form.values()).sort()).to.deep.equal(['caption', 'source', 'tags', 'title']);
   });
 });
+
+describe('media-picker-fields — review SEC-3 r3: readonly accepts scalars only, never serialised', () => {
+  it('objects / arrays / nested / inherited-enumerable values → locked with tooLarge, no JSON.stringify of adapter data, fast', async () => {
+    const huge = { payload: 'x'.repeat(5e6) };
+    const deep = {};
+    let cur = deep;
+    for (let i = 0; i < 5000; i++) { cur.n = {}; cur = cur.n; }
+    const inherited = Object.create({ big: 'y'.repeat(1e6) });
+    const values = {
+      r1: huge,
+      r2: Array.from({ length: 200 }, () => 'z'.repeat(10000)),
+      r3: deep,
+      r4: inherited,
+      r5: 'w'.repeat(10001),
+      r6: Number.NaN,
+      ok1: 'ngắn', ok2: 42, ok3: true, ok4: null,
+    };
+    const descriptors = normalizeFields(Object.keys(values).map((key) => ({ key, label: key, control: 'readonly' })), silent);
+    const realStringify = JSON.stringify;
+    const seen = new Set([huge, values.r2, deep, inherited]);
+    let leaked = 0;
+    JSON.stringify = function (v, ...rest) {
+      if (seen.has(v)) leaked += 1;
+      return realStringify.call(this, v, ...rest);
+    };
+    let form;
+    const t0 = performance.now();
+    try {
+      form = new FieldForm(descriptors, { values, warn() {} });
+    } finally {
+      JSON.stringify = realStringify;
+    }
+    const ms = performance.now() - t0;
+    host.appendChild(form.el);
+    expect(leaked, 'JSON.stringify on adapter values').to.equal(0);
+    expect(ms < 500, `${ms} ms`).to.equal(true);
+    const text = (k) => form.controls.get(k).el.querySelector('.td-media-picker__readonly-value').textContent;
+    for (const k of ['r1', 'r2', 'r3', 'r4', 'r5', 'r6']) {
+      expect(text(k), k).to.equal('');
+      expect(form.controls.get(k).el.textContent.includes(FIELD_LABELS.tooLarge), `${k} message`).to.equal(true);
+    }
+    expect(text('ok1')).to.equal('ngắn');
+    expect(text('ok2')).to.equal('42');
+    expect(text('ok3')).to.equal('true');
+    expect(text('ok4')).to.equal('');
+  });
+
+  it('a readonly control set directly with a non-scalar shows nothing (no serialisation)', () => {
+    const f = mountField({ key: 'r', label: 'R', control: 'readonly' });
+    f.set({ a: 'x'.repeat(1000) });
+    expect(f.el.querySelector('.td-media-picker__readonly-value').textContent).to.equal('');
+    f.set(['a', 'b']);
+    expect(f.el.querySelector('.td-media-picker__readonly-value').textContent).to.equal('');
+    f.set('v');
+    expect(f.el.querySelector('.td-media-picker__readonly-value').textContent).to.equal('v');
+  });
+});

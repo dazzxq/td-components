@@ -72,35 +72,36 @@ function cleanOptions(list) {
   return normalizeOptions(list); // review SEC-3: ≤ LIMITS.options, labels capped
 }
 
+/** Review SEC-3 r3: a displayable scalar — string ≤ VALUE_LIMITS.text, finite number, boolean, null. */
+const okScalar = (x) => x === null || typeof x === 'boolean' || (typeof x === 'number' && Number.isFinite(x))
+  || (typeof x === 'string' && x.length <= VALUE_LIMITS.text);
+
 /**
- * Review SEC-3 r2: is `v` over the size limit of its control (VALUE_LIMITS)? Strings by length, multiselect by item count
- * (and each string item), a plain object (readonly) by key count. Bounded work: no serialisation of the value.
+ * Review SEC-3 r2 / r3: is `v` NOT acceptable for its control (→ the field is locked)? Every control except
+ * `multiselect` takes ONLY a scalar (string within its VALUE_LIMITS length, finite number, boolean, null): any object /
+ * array / NaN is refused without being walked or serialised. `multiselect`: an array of ≤ VALUE_LIMITS.multiselect
+ * scalars (each string ≤ VALUE_LIMITS.text). O(1) per control (O(items ≤ 200) for multiselect).
  * @param {string} control @param {unknown} v @returns {boolean}
  */
 export function oversizedValue(control, v) {
-  if (v == null) return false;
-  const max = VALUE_LIMITS[control] ?? VALUE_LIMITS.text;
-  if (typeof v === 'string') return v.length > (control === 'multiselect' ? VALUE_LIMITS.text : max);
-  if (Array.isArray(v)) {
-    const items = control === 'multiselect' ? max : VALUE_LIMITS.multiselect;
-    if (v.length > items) return true;
-    return v.some((x) => (typeof x === 'string' && x.length > VALUE_LIMITS.text) || (x !== null && typeof x === 'object'));
-  }
-  if (typeof v === 'object') {
-    let n = 0;
-    for (const k in v) { if (Object.prototype.hasOwnProperty.call(v, k) && ++n > VALUE_LIMITS.multiselect) return true; }
+  if (v === undefined || v === null) return false;
+  if (control === 'multiselect') {
+    if (!Array.isArray(v)) return !okScalar(v);
+    if (v.length > VALUE_LIMITS.multiselect) return true;
+    for (let i = 0; i < v.length; i++) if (!okScalar(v[i])) return true;
     return false;
   }
-  return false;
+  if (typeof v === 'string') return v.length > (VALUE_LIMITS[control] ?? VALUE_LIMITS.text);
+  return !okScalar(v);
 }
 
-/** Text of any value (readonly fields, provisional option labels). @param {unknown} v */
+/**
+ * Text of a value (readonly fields, provisional option labels) — review SEC-3 r3: scalars only (string ≤ 10 000, finite
+ * number, boolean); anything else (object, array, null, oversized) → '' — never serialised.
+ * @param {unknown} v
+ */
 function displayText(v) {
-  if (v == null) return '';
-  if (Array.isArray(v)) return v.map(displayText).filter(Boolean).join(', ');
-  if (typeof v === 'object') {
-    try { return JSON.stringify(v); } catch { return ''; }
-  }
+  if (v == null || !okScalar(v)) return '';
   return String(v);
 }
 
@@ -478,8 +479,9 @@ export function createFieldControl(descriptor, { idPrefix, signal, warn = consol
       let current = null;
       get = () => copyValue(current);
       set = (v) => {
-        current = v === undefined ? null : copyValue(v);
-        dd.textContent = displayText(v);
+        const ok = v !== undefined && okScalar(v); // review SEC-3 r3: scalars only, never copied / serialised
+        current = ok ? v : null;
+        dd.textContent = ok ? displayText(v) : '';
       };
     }
   }

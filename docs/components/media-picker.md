@@ -363,11 +363,15 @@ sửa (disabled + chữ `TdMediaPicker.fieldLabels.tooLarge`), không gán vào 
 
 | Control | Giới hạn giá trị |
 |---|---|
-| `text` / `select` / `readonly` | 10 000 ký tự |
+| `text` / `select` | 10 000 ký tự |
+| `readonly` | **chỉ scalar**: chuỗi ≤ 10 000 ký tự, số hữu hạn, boolean, `null` — object / mảng → khoá, không bao giờ serialize |
 | `textarea` | 100 000 ký tự |
 | `url` | 2 048 ký tự |
 | `date` | 64 ký tự |
-| `multiselect` | 200 mục (mỗi chuỗi ≤ 10 000) |
+| `multiselect` | mảng ≤ 200 scalar (mỗi chuỗi ≤ 10 000) |
+
+Mọi control trừ `multiselect` chỉ nhận **scalar** (object / mảng / `NaN` → khoá). Kit không bao giờ `JSON.stringify` /
+duyệt sâu giá trị metadata của adapter.
 
 ## Facet (bộ lọc)
 
