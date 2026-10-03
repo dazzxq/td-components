@@ -1257,3 +1257,37 @@ describe('td-media-picker — XSS / safety', () => {
     expect(added).to.deep.equal([]);
   });
 });
+
+describe('td-media-picker + td-media-field (integration, real picker)', () => {
+  it('the field opens the real picker (title, kinds, initialIds = [value]); a pick sets value + one change; FormData', async () => {
+    await import('../form/td-media-field.js');
+    const ad = createMockAdapter();
+    const form = document.createElement('form');
+    form.innerHTML = '<td-media-field name="hero" label="Ảnh đại diện" aspect-ratio="3/2" value="m58" '
+      + 'preview-src="/test/fixtures/2.svg" preview-alt="anh-58.jpg"></td-media-field>';
+    document.body.appendChild(form);
+    extra.push(() => form.remove());
+    const field = form.querySelector('td-media-field');
+    field.adapter = ad;
+    const changes = [];
+    field.addEventListener('change', (e) => changes.push(e.detail.value));
+    const openBtn = field.querySelector('.td-media-field__open');
+    openBtn.focus();
+    openBtn.click();
+    openBtn.click(); // double click → one picker
+    await until(() => pickerRoot() && items().length, 3000, 'picker open');
+    expect(document.querySelectorAll('td-media-picker').length).to.equal(1);
+    expect(q('.td-modal__title').textContent).to.equal('Ảnh đại diện');
+    expect(ad.calls.list[0].args[0].kinds).to.deep.equal(['image']);
+    expect(ad.calls.get.some((c) => c.args[0] === 'm58')).to.equal(true);
+    await until(() => grid().selectedIds.includes('m58'), 3000, 'initial selection');
+    expect(ad.calls.get.filter((c) => c.args[0] === 'm58').length).to.equal(1); // SSR preview: no lazy get by the field
+    click(opener('m59'));
+    confirmBtn().click();
+    await until(() => field.value === 'm59', 3000, 'value');
+    expect(changes).to.deep.equal(['m59']);
+    expect(new FormData(form).getAll('hero')).to.deep.equal(['m59']);
+    await wait(350);
+    expect(document.activeElement === openBtn || field.contains(document.activeElement), 'focus back in the field').to.equal(true);
+  });
+});

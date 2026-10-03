@@ -349,8 +349,13 @@ Adapter reject bằng `MediaAdapterError` (hoặc bất cứ thứ gì — kit c
 
 `count` hiện trong nhãn option ("Album A (12)"). Giá trị đang chọn giữ khi descriptor tải lại (option không còn → bỏ).
 Đổi facet → tải lại list + facet **ngay** (không debounce). ≤ 640px facet gom sau nút "Bộ lọc ({n})".
-Chữ "Tất cả", "Thêm mới", "Lỗi" (tên danh sách lỗi chung của form) và "Không thêm được lựa chọn." hiện **chưa** đổi được qua
-`TdMediaPicker.labels`.
+Chữ của control facet / descriptor nằm ở `TdMediaPicker.fieldLabels` (đổi theo site, đọc lúc dùng): `all` "Tất cả"
+(placeholder facet `single`), `create` "Thêm mới" (`create-label` khi có `createOption`), `generalErrors` "Lỗi" (tên danh
+sách lỗi chung của form), `createError` "Không thêm được lựa chọn." (`createOption` lỗi mà không có `userMessage`).
+
+```js
+Object.assign(TdMediaPicker.fieldLabels, { all: 'All', create: 'Add new', generalErrors: 'Errors', createError: 'Could not add.' });
+```
 
 ## Upload
 

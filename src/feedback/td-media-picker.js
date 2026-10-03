@@ -56,7 +56,7 @@ import {
   normalizeFields, normalizeError, canDo, buildListRequest, requestKey, LatestRequest, SelectionModel, InitialLoad,
   Debouncer, SessionCache, formatLabel,
 } from '../utils/media-picker-core.js';
-import { createFacetControl, FieldForm } from './media-picker-fields.js';
+import { createFacetControl, FieldForm, FIELD_LABELS } from './media-picker-fields.js';
 import '../display/td-media-grid.js';
 import '../display/td-empty-state.js';
 import '../form/td-dropzone.js';
@@ -169,6 +169,12 @@ export class TdMediaPicker extends HTMLElement {
       server: 'Có lỗi xảy ra. Thử lại sau.',
     },
   };
+
+  /**
+   * Texts of the descriptor / facet controls (facet placeholder "Tất cả", create row, general-errors list name, create
+   * error); the same object the controls read at use time — override per site: `TdMediaPicker.fieldLabels.all = 'All'`.
+   */
+  static fieldLabels = FIELD_LABELS;
 
   /**
    * Module-level defaults (decision 6): REPLACES the whole default object on every call (one call in the site
