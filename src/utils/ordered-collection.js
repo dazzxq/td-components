@@ -7,9 +7,15 @@
  * - Limits gate insert / remove only: initial keys above `max` are all kept (one warning — a server that printed 25
  *   rows for `max-rows=20` never loses data); lowering `max` never drops keys (only `canAdd()` turns false).
  * - `reset(keys)` replaces the whole order (the repeater's DOM is the source of truth) and applies no limit.
+ * - `min` has a hard ceiling `OrderedCollectionModel.MAX_MIN` (200): a larger `min` is ignored (→ 0, one warning) so a
+ *   caller that auto-fills to `min` (the repeater clones template rows) can never be driven into an unbounded loop.
+ *   `max` may be larger.
  * - Keys are unique: a duplicate is refused on insert and dropped (first wins) by the constructor / reset.
  */
 export class OrderedCollectionModel {
+  /** Hard ceiling of `min` (security review v0.30.0): above it `min` is ignored. */
+  static MAX_MIN = 200;
+
   /**
    * @param {{ keys?: Iterable<*>, min?: *, max?: *, warn?: (msg: string) => void }} [opts]
    */
@@ -98,7 +104,12 @@ export class OrderedCollectionModel {
       const n = Number(v);
       return Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
     };
-    this.min = int(min) ?? 0;
+    let lo = min === Infinity ? Infinity : int(min);
+    if (lo != null && lo > OrderedCollectionModel.MAX_MIN) {
+      this._warnOnce('mincap', `[td] OrderedCollectionModel: min > ${OrderedCollectionModel.MAX_MIN} (the ceiling) — ignored.`);
+      lo = null;
+    }
+    this.min = lo ?? 0;
     this.max = max === Infinity ? Infinity : (int(max) ?? Infinity);
     if (this.max < this.min) {
       this._warnOnce('limits', `[td] OrderedCollectionModel: max ${this.max} < min ${this.min} — max set to ${this.min}.`);

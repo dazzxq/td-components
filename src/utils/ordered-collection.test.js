@@ -179,3 +179,20 @@ describe('ordered-collection — focusAfterRemove', () => {
     assert.equal(OrderedCollectionModel.focusAfterRemove(0, 0), -1);
   });
 });
+
+describe('ordered-collection — min ceiling (security review: no unbounded auto-fill)', () => {
+  it('MAX_MIN = 200; min above it (1e9, Infinity, 201) is ignored (→ 0) with ONE warning, also via setLimits later', () => {
+    assert.equal(OrderedCollectionModel.MAX_MIN, 200);
+    const { m, warns } = mk({ min: 1e9 });
+    assert.equal(m.min, 0);
+    assert.equal(warns.length, 1);
+    m.setLimits({ min: 201 });
+    assert.equal(m.min, 0);
+    m.setLimits({ min: Infinity });
+    assert.equal(m.min, 0);
+    assert.equal(warns.length, 1, 'once per model');
+    m.setLimits({ min: 200, max: 1e9 });
+    assert.equal(m.min, 200);
+    assert.equal(m.max, 1e9, 'max may stay larger');
+  });
+});

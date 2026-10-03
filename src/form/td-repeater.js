@@ -45,7 +45,8 @@ let _uid = 0;
  *
  * @element td-repeater
  * @attr {string} label - visible group label (text)
- * @attr {number} min-rows - integer ≥ 0 (default 0): never fewer rows (filled from the template)
+ * @attr {number} min-rows - integer 0–200 (default 0; above `MAX_MIN_ROWS` = 200 → ignored + one warning): never fewer
+ *   rows (filled from the template)
  * @attr {number} max-rows - integer ≥ 0 (default none): no add past it (rows already there are kept)
  * @attr {string} add-label - text of the add button (default `TdRepeater.labels.add`)
  * @fires rows-change - detail: { reason: 'init'|'add'|'remove'|'move'|'sync', source: 'user'|'api', rows, row?, index?, from?, to? }
@@ -68,6 +69,12 @@ export class TdRepeater extends TdBaseElement {
     atMin: 'Cần ít nhất {min} dòng.',
   };
 
+  /**
+   * Hard ceiling of `min-rows` (security review v0.30.0): above it the attribute is ignored (one warning), so the
+   * auto-fill from the template never clones more than this many rows. `max-rows` may be larger.
+   */
+  static MAX_MIN_ROWS = OrderedCollectionModel.MAX_MIN;
+
   static get observedAttributes() {
     return ['label', 'min-rows', 'max-rows', 'add-label'];
   }
@@ -77,7 +84,10 @@ export class TdRepeater extends TdBaseElement {
     this._uid = ++_uid;
     /** @private clone counter (ids `{id}--r{n}`), never reused */
     this._cloneN = 0;
-    this._model = new OrderedCollectionModel({ warn: (m) => this._warnOnce('model', m) });
+    this._model = new OrderedCollectionModel({
+      warn: (m) => this._warnOnce(m.includes('ceiling') ? 'mincap' : 'model',
+        m.includes('ceiling') ? `td-repeater: min-rows above ${TdRepeater.MAX_MIN_ROWS} is ignored.` : m),
+    });
     /** @private @type {HTMLTemplateElement|null} */
     this._template = null;
     this._templateOk = false;
@@ -209,7 +219,8 @@ export class TdRepeater extends TdBaseElement {
   /** @private append template rows until min-rows; @returns {number} how many */
   _fillMin() {
     let n = 0;
-    while (this._templateOk && this._model.size < this._model.min) {
+    // bounded twice: min ≤ MAX_MIN_ROWS (model) and never more than that many clones in one fill
+    while (this._templateOk && this._model.size < this._model.min && n < TdRepeater.MAX_MIN_ROWS) {
       const row = this._cloneRow();
       this._insertRowNode(row, this._model.size);
       this._model.insert(row, this._model.size);

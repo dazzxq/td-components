@@ -150,8 +150,8 @@ dựng lại thứ tự **từ DOM** (DOM là nguồn sự thật), gắn nút /
 | Attribute | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
 | `label` | string | — | Nhãn nhóm hiển thị (`div.td-repeater__label`, host `aria-labelledby`). Không có nhãn hiển thị → app đặt `aria-label` trên host để nhóm có tên. |
-| `min-rows` | số nguyên ≥ 0 | `0` | Không bao giờ ít hơn: thiếu thì nối dòng từ template; × ở mức này `aria-disabled`. |
-| `max-rows` | số nguyên ≥ 0 | không giới hạn | Không thêm quá; dòng đã có (server in nhiều hơn) được giữ hết. `max-rows < min-rows` → `max = min` + cảnh báo. |
+| `min-rows` | số nguyên 0–200 | `0` | Không bao giờ ít hơn: thiếu thì nối dòng từ template; × ở mức này `aria-disabled`. **Trần cứng 200** (`TdRepeater.MAX_MIN_ROWS`): giá trị lớn hơn (kể cả đổi attribute sau khi nâng cấp) bị **bỏ qua** (như `0`) + một cảnh báo — kit không bao giờ tự clone quá 200 dòng. |
+| `max-rows` | số nguyên ≥ 0 (được lớn hơn 200) | không giới hạn | Không thêm quá; dòng đã có (server in nhiều hơn) được giữ hết. `max-rows < min-rows` → `max = min` + cảnh báo. |
 | `add-label` | string | `TdRepeater.labels.add` | Chữ trên nút thêm. |
 
 Đổi attribute sau khi nâng cấp → cập nhật tại chỗ (tăng `min-rows` → nối dòng + `rows-change` `sync`).
@@ -165,6 +165,7 @@ dựng lại thứ tự **từ DOM** (DOM là nguồn sự thật), gắn nút /
 | `removeRow(rowOrIndex)` | `→ boolean` | Xoá dòng (phần tử hoặc index). Tôn trọng `min-rows`; **không** phát `before-remove`. |
 | `moveRow(from, to)` | `→ boolean` | Chuyển dòng ở `from` tới đúng index `to` (các dòng ở giữa dời chỗ, dòng được chuyển không bị tách khỏi DOM). |
 | `TdRepeater.labels` | static | Văn bản (xem dưới). |
+| `TdRepeater.MAX_MIN_ROWS` | `200` (static) | Trần của `min-rows` (chống vòng clone vô hạn khi `min-rows` đến từ dữ liệu). |
 
 Ba API đều phát `rows-change` với `source: 'api'`.
 
@@ -254,6 +255,7 @@ Không có animation.
 - `label`, `add-label`, văn bản `labels` đều là text (`textContent` / `setAttribute`). Không có cửa HTML mới.
 - Template là markup tin cậy của dev; dòng mới được tạo bằng `importNode` (không `innerHTML` dữ liệu). Id của dòng clone
   sinh từ bộ đếm, không từ dữ liệu.
+- `min-rows` có trần 200: một giá trị cực lớn (vd. lấy từ cấu hình / dữ liệu) không thể khiến trang treo vì clone dòng.
 - Kit không đặt `name` → không có đường nào để dữ liệu người dùng chọn tên field gửi đi. Server vẫn phải kiểm số dòng
   (`min-rows` / `max-rows` chỉ là UX) và từng giá trị.
 

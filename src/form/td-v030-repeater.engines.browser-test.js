@@ -162,6 +162,32 @@ describe('td-repeater — upgrade in place (M5)', () => {
   });
 });
 
+describe('td-repeater — min-rows ceiling (security review)', () => {
+  it('min-rows="1000000000" → ignored with one warning, no rows cloned, fast', () => {
+    const warns = captureWarn();
+    const t0 = performance.now();
+    const w = mount(`<td-repeater min-rows="1000000000">${ROW_TPL}</td-repeater>`);
+    const rep = w.querySelector('td-repeater');
+    expect(performance.now() - t0 < 1000).to.equal(true);
+    expect(rowsOf(rep).length).to.equal(0);
+    expect(warns.filter((m) => m.includes('min-rows')).length).to.equal(1);
+  });
+
+  it('a later attribute change above the ceiling is ignored too; at the ceiling (200) the fill stops at 200', () => {
+    const warns = captureWarn();
+    const w = mount(`<td-repeater>${ROW_TPL}</td-repeater>`);
+    const rep = w.querySelector('td-repeater');
+    rep.setAttribute('min-rows', '1e9');
+    expect(rowsOf(rep).length).to.equal(0);
+    rep.setAttribute('min-rows', '201');
+    expect(rowsOf(rep).length).to.equal(0);
+    expect(warns.filter((m) => m.includes('min-rows')).length).to.equal(1);
+    rep.setAttribute('min-rows', String(TdRepeater.MAX_MIN_ROWS));
+    expect(TdRepeater.MAX_MIN_ROWS).to.equal(200);
+    expect(rowsOf(rep).length).to.equal(200);
+  });
+});
+
 describe('td-repeater — template', () => {
   it('a template element without data-td-row gets it on the clone', () => {
     const w = mount('<td-repeater><template><div class="r"><input></div></template></td-repeater>');
