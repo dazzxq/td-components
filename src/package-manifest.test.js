@@ -130,3 +130,17 @@ test('v0.27.0: npm pack ships the new modules + CSS (not their tests / stories)'
     'src/styles/components/copy.css']) assert.ok(paths.includes(f), f);
   assert.ok(!paths.some((p) => /\.(engines|ssr)\.browser-test\.js$|td-(otp-input|drawer|copy)\.stories/.test(p)), 'tests / stories not shipped');
 });
+
+test('v0.29.0: ./tree + ./tree-select exports, sideEffects, barrel, tree CSS in the td.css manifest before utilities', async () => {
+  assert.equal(pkg.exports['./tree'], './src/form/td-tree.js');
+  assert.equal(pkg.exports['./tree-select'], './src/form/td-tree-select.js');
+  for (const f of ['./src/form/td-tree.js', './src/form/td-tree-select.js']) assert.ok(pkg.sideEffects.includes(f), f);
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdTree \} from '\.\/src\/form\/td-tree\.js';/);
+  assert.match(src, /export \{ TdTreeSelect \} from '\.\/src\/form\/td-tree-select\.js';/);
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  for (const f of ['components/tree.css', 'components/tree-select.css']) {
+    assert.ok(files.includes(f), f);
+    assert.ok(files.indexOf(f) > files.indexOf('components/copy.css') && files.indexOf(f) < files.indexOf('utilities.css'), f);
+  }
+});

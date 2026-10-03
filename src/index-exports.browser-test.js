@@ -60,4 +60,11 @@ describe('index.js exports', () => {
     expect(customElements.get('td-copy') === kit.TdCopy).to.equal(true);
     expect(typeof kit.TdDrawer.open).to.equal('function');
   });
+
+  it('registers <td-tree> and <td-tree-select> from the root entry (v0.29.0)', () => {
+    expect(typeof kit.TdTree).to.equal('function');
+    expect(typeof kit.TdTreeSelect).to.equal('function');
+    expect(customElements.get('td-tree')).to.equal(kit.TdTree);
+    expect(customElements.get('td-tree-select')).to.equal(kit.TdTreeSelect);
+  });
 });

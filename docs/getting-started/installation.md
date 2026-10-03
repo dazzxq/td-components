@@ -239,6 +239,8 @@ sẽ bị dịch thành `/vendor/td-components-0.28.0/button` (không tồn tạ
     "@dazzxq/td-components/progress": "/vendor/td-components-0.28.0/src/feedback/td-progress.js",
     "@dazzxq/td-components/alert": "/vendor/td-components-0.28.0/src/feedback/td-alert.js",
     "@dazzxq/td-components/otp-input": "/vendor/td-components-0.28.0/src/form/td-otp-input.js",
+    "@dazzxq/td-components/tree": "/vendor/td-components-0.28.0/src/form/td-tree.js",
+    "@dazzxq/td-components/tree-select": "/vendor/td-components-0.28.0/src/form/td-tree-select.js",
     "@dazzxq/td-components/drawer": "/vendor/td-components-0.28.0/src/feedback/td-drawer.js",
     "@dazzxq/td-components/copy": "/vendor/td-components-0.28.0/src/display/td-copy.js",
     "@dazzxq/td-components/media-grid": "/vendor/td-components-0.28.0/src/display/td-media-grid.js",
@@ -483,6 +485,8 @@ Nguồn: `package.json#exports`.
 | `@dazzxq/td-components/progress` | `src/feedback/td-progress.js` | `<td-progress>`, `TdProgress` |
 | `@dazzxq/td-components/alert` | `src/feedback/td-alert.js` | `<td-alert>`, `TdAlert` |
 | `@dazzxq/td-components/otp-input` | `src/form/td-otp-input.js` | `<td-otp-input>`, `TdOtpInput` |
+| `@dazzxq/td-components/tree` | `src/form/td-tree.js` | `<td-tree>`, `TdTree` |
+| `@dazzxq/td-components/tree-select` | `src/form/td-tree-select.js` | `<td-tree-select>`, `TdTreeSelect` (nạp kèm `td-tree`) |
 | `@dazzxq/td-components/drawer` | `src/feedback/td-drawer.js` | `<td-drawer>`, `TdDrawer` |
 | `@dazzxq/td-components/copy` | `src/display/td-copy.js` | `<td-copy>`, `TdCopy` |
 | `@dazzxq/td-components/media-grid` | `src/display/td-media-grid.js` | `<td-media-grid>`, `TdMediaGrid` |
