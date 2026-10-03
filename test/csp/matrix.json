@@ -28,7 +28,11 @@
       "td-alert": "/src/feedback/td-alert.js",
       "td-badge": "/src/icons/td-icon.js",
       "td-media-grid": "/src/display/td-media-grid.js",
-      "td-lightbox": "/src/feedback/td-lightbox.js"
+      "td-lightbox": "/src/feedback/td-lightbox.js",
+      "td-otp-input": "/src/form/td-otp-input.js",
+      "td-drawer": "/src/feedback/td-drawer.js",
+      "td-copy": "/src/display/td-copy.js",
+      "td-skeleton": "/src/icons/td-icon.js"
     },
     "tokenNative": [
       "td-button",
@@ -57,7 +61,11 @@
       "td-alert",
       "td-badge",
       "td-media-grid",
-      "td-lightbox"
+      "td-lightbox",
+      "td-otp-input",
+      "td-drawer",
+      "td-copy",
+      "td-skeleton"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -1954,6 +1962,197 @@
       ],
       "settle": 700,
       "selectorNote": "v0.24.0 N4: filmstrip: true -> second row of the column; current thumb ringed, the others dimmed"
+    }
+  ],
+  "td-otp-input": [
+    {
+      "state": "default",
+      "markup": "<td-otp-input name=\"otp_code\" label=\"Mã xác thực\"></td-otp-input>",
+      "selectors": [
+        ".td-otp__label",
+        ".td-otp__box",
+        ".td-otp__input",
+        ".td-otp__cell:nth-child(1)"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "filled-focus",
+      "setup": "const t=document.createElement('td-otp-input'); t.setAttribute('label','Mã'); window.__mount.appendChild(t); t.value='123'; const i=t.querySelector('input'); i.focus(); i.setSelectionRange(3,3);",
+      "selectors": [
+        ".td-otp__cell:nth-child(1)",
+        ".td-otp__cell[data-active]",
+        ".td-otp__input"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "error",
+      "markup": "<td-otp-input name=\"c\" value=\"123450\" error-text=\"Mã không đúng\"></td-otp-input>",
+      "selectors": [
+        ".td-otp__cell:nth-child(1)",
+        ".td-field-error"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "disabled",
+      "markup": "<td-otp-input name=\"c\" value=\"12\" disabled></td-otp-input>",
+      "selectors": [
+        ".td-otp__cell:nth-child(1)",
+        ".td-otp__cell:nth-child(4)"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "ssr",
+      "markup": "<td-otp-input data-td-ssr=\"otp-input@1\" id=\"otp-s\" name=\"c\" label=\"Mã\"><div class=\"td-otp\"><label class=\"td-otp__label\" for=\"otp-s-input\">Mã</label><div class=\"td-otp__box\"><input type=\"text\" class=\"td-otp__input\" id=\"otp-s-input\" inputmode=\"numeric\" autocomplete=\"one-time-code\" name=\"c\" maxlength=\"6\" pattern=\"[0-9]{6}\"><span class=\"td-otp__cells\" aria-hidden=\"true\"><span class=\"td-otp__cell\"></span><span class=\"td-otp__cell\"></span><span class=\"td-otp__cell\"></span><span class=\"td-otp__cell\"></span><span class=\"td-otp__cell\"></span><span class=\"td-otp__cell\"></span></span></div></div></td-otp-input>",
+      "selectors": [
+        ".td-otp__box",
+        ".td-otp__input",
+        ".td-otp__cell:nth-child(1)"
+      ],
+      "settle": 300,
+      "selectorNote": "php/td.php td_otp_input element mode (otp-input@1), hydrated in place"
+    },
+    {
+      "state": "native",
+      "markup": "<div class=\"td-otp\"><label class=\"td-otp__label\" for=\"otp-n\">Mã</label><div class=\"td-otp__box\"><input type=\"text\" class=\"td-otp__input\" id=\"otp-n\" inputmode=\"numeric\" autocomplete=\"one-time-code\" name=\"c\" maxlength=\"6\" pattern=\"[0-9]{6}\"></div></div>",
+      "selectors": [
+        ".td-otp__box",
+        ".td-otp__input"
+      ],
+      "selectorNote": "php/td.php td_otp_input default (no JS, no custom element)"
+    }
+  ],
+  "td-drawer": [
+    {
+      "state": "open",
+      "setup": "const d=document.createElement('td-drawer'); d.setAttribute('title','Bộ lọc'); d.innerHTML='<p>Nội dung</p><div slot=\"footer\"><button type=\"button\" class=\"td-btn td-btn--primary\">Lưu</button></div>'; window.__mount.appendChild(d); d.show();",
+      "selectors": [
+        ".td-drawer__panel",
+        ".td-drawer__backdrop",
+        ".td-drawer__header",
+        ".td-drawer__title",
+        ".td-drawer__body",
+        ".td-drawer__footer",
+        ".td-drawer__close"
+      ],
+      "portal": [
+        ".td-drawer__panel",
+        ".td-drawer__backdrop",
+        ".td-drawer__header",
+        ".td-drawer__title",
+        ".td-drawer__body",
+        ".td-drawer__footer",
+        ".td-drawer__close"
+      ],
+      "settle": 500
+    },
+    {
+      "state": "start-sm",
+      "setup": "TdDrawer.open({ label:'Panel', side:'start', size:'sm', bodyHtml:'<p>Trái</p>' });",
+      "selectors": [
+        ".td-drawer__panel",
+        ".td-drawer__backdrop",
+        ".td-drawer__body"
+      ],
+      "portal": [
+        ".td-drawer__panel",
+        ".td-drawer__backdrop",
+        ".td-drawer__body"
+      ],
+      "settle": 500
+    },
+    {
+      "state": "reduced-motion",
+      "reducedMotion": true,
+      "setup": "TdDrawer.open({ title:'Giảm chuyển động', bodyHtml:'<p>x</p>' });",
+      "selectors": [
+        ".td-drawer__panel",
+        ".td-drawer__backdrop"
+      ],
+      "portal": [
+        ".td-drawer__panel",
+        ".td-drawer__backdrop"
+      ],
+      "settle": 400
+    }
+  ],
+  "td-copy": [
+    {
+      "state": "default",
+      "markup": "<td-copy label=\"Copy mã\"><code class=\"td-copy__source\">ABCD-1234</code></td-copy>",
+      "selectors": [
+        ".td-copy",
+        ".td-copy__icon",
+        ".td-copy__source",
+        ".td-copy__status"
+      ],
+      "settle": 200
+    },
+    {
+      "state": "sm",
+      "markup": "<td-copy label=\"Copy\" size=\"sm\" value=\"x\"></td-copy>",
+      "selectors": [
+        ".td-copy",
+        ".td-copy__icon"
+      ],
+      "settle": 200
+    },
+    {
+      "state": "copied",
+      "setup": "Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:()=>Promise.resolve()}});const t=document.createElement('td-copy'); t.setAttribute('label','Copy'); t.setAttribute('value','ABC-123'); t.setAttribute('duration','60000'); window.__mount.appendChild(t); t.querySelector('button').click();",
+      "selectors": [
+        ".td-copy[data-state=\"copied\"]",
+        ".td-copy__icon"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "error",
+      "setup": "Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:()=>Promise.reject(new Error('denied'))}});const t=document.createElement('td-copy'); t.setAttribute('label','Copy'); t.setAttribute('value','ABC-123'); t.setAttribute('duration','60000'); window.__mount.appendChild(t); t.querySelector('button').click();",
+      "selectors": [
+        ".td-copy[data-state=\"error\"]",
+        ".td-copy__manual"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "ssr",
+      "markup": "<td-copy data-td-ssr=\"copy@1\" label=\"Copy\" size=\"md\"><code class=\"td-copy__source\">SSR-1</code><button type=\"button\" class=\"td-copy td-copy--md\" aria-label=\"Copy\" data-tooltip=\"Copy\"><span class=\"td-copy__icon\" data-td-icon=\"copy\" aria-hidden=\"true\"></span></button><span class=\"td-copy__status\" role=\"status\"></span></td-copy>",
+      "selectors": [
+        ".td-copy",
+        ".td-copy__source"
+      ],
+      "settle": 200,
+      "selectorNote": "php/td.php td_copy (copy@1), hydrated in place"
+    }
+  ],
+  "td-skeleton": [
+    {
+      "state": "shapes",
+      "markup": "<div><span class=\"td-skeleton td-skeleton--text\" aria-hidden=\"true\"></span><span class=\"td-skeleton td-skeleton--text td-skeleton--lines-3\" aria-hidden=\"true\"></span><span class=\"td-skeleton sk-block\" aria-hidden=\"true\"></span><span class=\"td-skeleton td-skeleton--circle\" aria-hidden=\"true\"></span><span class=\"td-skeleton td-skeleton--rect\" aria-hidden=\"true\"></span></div>",
+      "selectors": [
+        ".td-skeleton--text:not(.td-skeleton--lines-3)",
+        ".td-skeleton--lines-3",
+        ".sk-block",
+        ".td-skeleton--circle",
+        ".td-skeleton--rect"
+      ],
+      "selectorNote": "CSS-only (.td-skeleton has no JS; .sk-block = a plain block)"
+    },
+    {
+      "state": "reduced-motion",
+      "reducedMotion": true,
+      "markup": "<div><span class=\"td-skeleton td-skeleton--text\" aria-hidden=\"true\"></span><span class=\"td-skeleton td-skeleton--text td-skeleton--lines-3\" aria-hidden=\"true\"></span><span class=\"td-skeleton sk-block\" aria-hidden=\"true\"></span><span class=\"td-skeleton td-skeleton--circle\" aria-hidden=\"true\"></span><span class=\"td-skeleton td-skeleton--rect\" aria-hidden=\"true\"></span></div>",
+      "selectors": [
+        ".td-skeleton--text:not(.td-skeleton--lines-3)",
+        ".td-skeleton--lines-3",
+        ".sk-block",
+        ".td-skeleton--circle",
+        ".td-skeleton--rect"
+      ]
     }
   ]
 }

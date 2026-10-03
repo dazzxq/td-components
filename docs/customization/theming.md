@@ -38,6 +38,7 @@ thế nào, và kit tự xử lý các chế độ trợ năng của hệ điề
   - [Checkbox / switch](#checkbox--switch)
   - [Lỗi form](#lỗi-form)
   - [Icon](#icon)
+  - [Skeleton (0.27.0)](#skeleton)
   - [Bề mặt nổi (`--td-glass-*`)](#bề-mặt-nổi---td-glass-)
   - [Thanh lightbox (`--td-glass-clear-*`)](#thanh-lightbox---td-glass-clear-)
   - [Scrim, hình học, chuyển động](#scrim-hình-học-chuyển-động)
@@ -280,11 +281,11 @@ Người dùng bật "giảm chuyển động" (`prefers-reduced-motion: reduce`
 | `--td-color-text-subtle` | `var(--td-gray-500)` | `#8a8a93` | Chữ rất nhạt |
 | `--td-color-border` | `var(--td-gray-200)` | `#2c2c30` | Viền nhẹ |
 | `--td-color-border-strong` | `var(--td-gray-300)` | `#45454b` | Viền đậm hơn |
-| `--td-color-sheen` | `rgb(255 255 255 / 60%)` | `rgb(255 255 255 / 8%)` | Ánh sáng lướt của skeleton |
+| `--td-color-sheen` | `rgb(255 255 255 / 60%)` | `rgb(255 255 255 / 8%)` | Ánh sáng lướt của skeleton (qua `--td-skeleton-shine`) |
 | `--td-color-hover` | `rgb(0 0 0 / 5%)` | `rgb(255 255 255 / 6%)` | Nền hover |
 | `--td-color-hover-strong` | `rgb(0 0 0 / 8%)` | `rgb(255 255 255 / 10%)` | Nền hover đậm |
 | `--td-color-overlay` | `rgb(10 10 12 / 45%)` | `rgb(0 0 0 / 60%)` | Scrim sau modal |
-| `--td-color-skeleton` | `var(--td-gray-100)` | `#242427` | Khối skeleton |
+| `--td-color-skeleton` | `var(--td-gray-100)` | `#242427` | Khối skeleton (qua `--td-skeleton-bg`) |
 | `--td-color-success` | `#15803d` | `#22c55e` | Chữ/biểu tượng trạng thái thành công |
 | `--td-color-warning` | `#b45309` | `#f59e0b` | Cảnh báo |
 | `--td-color-error` | `#b91c1c` | `#f87171` | Lỗi |
@@ -428,6 +429,25 @@ Ngoài ra `--td-checkbox-radius` (mặc định `50%`, checkbox tròn) nằm tro
 | `--td-icon-m` | `1.25rem` |
 | `--td-icon-l` | `1.5rem` |
 | `--td-icon-stroke` | `2` |
+
+### Skeleton
+
+Từ 0.27.0, khai báo trong `skeleton.css`. Dùng cho class `.td-skeleton` ([Loading › Skeleton](../components/loading.md#skeleton-khối-giữ-chỗ-thuần-css))
+và hàng đang tải của td-table (`--td-table-skeleton` / `--td-table-sheen` trỏ vào hai token màu đầu). Dark không đổi
+token nào ở đây: màu tự theo `--td-color-skeleton` / `--td-color-sheen`.
+
+| Token | Mặc định | Dùng cho |
+|---|---|---|
+| `--td-skeleton-bg` | `var(--td-color-skeleton)` | Màu khối |
+| `--td-skeleton-shine` | `var(--td-color-sheen)` | Vệt sáng lướt |
+| `--td-skeleton-radius` | `var(--td-radius-sm)` | Bo góc khối / dòng (cả ô skeleton của td-table) |
+| `--td-skeleton-dur` | `1.3s` | Chu kỳ lướt (cả td-table) |
+| `--td-skeleton-h` | `1rem` | Chiều cao `.td-skeleton` trơn |
+| `--td-skeleton-line` | `0.875rem` | Chiều cao một dòng `--text` |
+| `--td-skeleton-gap` | `0.5rem` | Khoảng cách giữa các dòng |
+| `--td-skeleton-size` | `2.5rem` | Đường kính `--circle` |
+| `--td-skeleton-ratio` | `16 / 9` | Tỉ lệ khung `--rect` |
+| `--td-skeleton-lines` | `1` | Số dòng `--text`; đặt trên **phần tử** (`.td-skeleton` đặt lại giá trị này, `--lines-2` / `--lines-3` = `2` / `3`), ghi đè ở `:root` không có tác dụng |
 
 ### Bề mặt nổi (`--td-glass-*`)
 
@@ -723,6 +743,8 @@ diện** của trang component. Cột "Khai báo ở" cho biết ghi đè ở đ
 | td-empty-state | `--td-empty-state-*` | `:root` (`--sm` / `--lg` / `--compact` đặt lại `-pad` / `-gap` trên phần tử) | [empty-state.md](../components/empty-state.md) |
 | Icon | `--td-icon-*` (bảng trên) | `:root` | [icons.md](../components/icons.md) |
 | Badge (`.td-badge`) | `--td-badge-*` — gồm font `--td-badge-font-family` (mặc định `var(--td-font-sans)`) và `--td-badge-stamp-font-family` (mặc định `var(--td-font-mono)`, 0.19.0). Ghi đè `--td-badge-*-fg` / `-bg` thì site tự kiểm tương phản (gate chỉ đo mặc định) | `:root` | [badge.md](../components/badge.md) |
+| td-drawer | `--td-drawer-*` (per-instance `--td-drawer-w`: trên host, chép sang root lúc mở) | `:root` | [drawer.md](../components/drawer.md) |
+| Skeleton (`.td-skeleton`) | `--td-skeleton-*` (bảng trên) | `:root` (riêng `--td-skeleton-lines` trên phần tử) | [loading.md](../components/loading.md#skeleton-khối-giữ-chỗ-thuần-css) |
 
 Ví dụ (từ 0.16.0 ghi đè trên `:root` là đủ; ghi trên class cũ vẫn chạy):
 

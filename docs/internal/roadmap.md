@@ -4,6 +4,19 @@ Roadmap sống. Mỗi item một dòng, kèm trạng thái: `todo` · `doing` ·
 Khi xong: đánh `done`, ghi vào [CHANGELOG.md](../../CHANGELOG.md), rồi xoá dòng ở lần release sau.
 Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-09-sync-dcms-dwp.md).
 
+## Đang làm — lộ trình dsuite (yêu cầu dienthoaihay, chốt với Codex 2026-10-03)
+
+- `done` v0.27.0: `td-otp-input`, `td-drawer`, `td-copy`, CSS skeleton
+- `todo` v0.28.0 ~14/10 (A0 tới 20/10): `td-chip-input` chọn nhiều (closed-set, `<select multiple>`, chọn tất cả đang hiện, `td_multiselect`) — xong P0
+- `todo` v0.29.0: `td-tree` + `td-tree-select`
+- `todo` v0.30.0 ~28/10: `td-number-input` + `td-repeater` (đặt `OrderedCollectionModel`) — đảo theo lịch dsuite (A2.3 cần ~26/10)
+- `todo` v0.31.0 ~04/11: `td-sortable` (dùng lại OrderedCollectionModel) + `td-masked-value` (A1 cần từ 12/11)
+- `todo` v0.32.0 ~11/11: `td-cropper` (toạ độ) + `td-scan-input` (A3 từ 26/11)
+- `todo` v0.33.0 ~18/11: table chọn dòng + hook lọc ngoài + ẩn / hiện cột, `td-filter-chips`
+- `todo` v0.34.0 ~25/11: datetime `range` + preset — xong P1
+- `todo` v0.35–v0.38: typeToConfirm, `trackFormDirty`, `td-steps`, `td-timeline`, `td-diff`, `td-check-matrix`, `td-color-picker`
+- `todo` B (sau B0 ~01/2027): choice-group, number stepper, rating chỉ đọc, carousel không autoplay
+
 ## Done — v0.4.1 bugfix (2026-09-27, xem CHANGELOG)
 
 - `done` **B1** toast: vòng lặp FIFO vô hạn (`td-toast.js:204`: `_removeToast` chỉ xoá khỏi `_activeToasts` sau 180ms nên `while` không bao giờ thoát)

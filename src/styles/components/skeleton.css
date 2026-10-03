@@ -1,0 +1,116 @@
+/*
+ * Skeleton placeholder (v0.27.0, CSS only — no JS, no custom element). Shared tokens: td-table's loading rows read
+ * them too (components/table.css).
+ *   .td-skeleton                        a block (height via --td-skeleton-h, default 1rem)
+ *   .td-skeleton--text                  text line(s): line height --td-skeleton-line, gap --td-skeleton-gap;
+ *     .td-skeleton--lines-2 | --lines-3 more lines (sets --td-skeleton-lines; any integer works through CSSOM / CSS)
+ *   .td-skeleton--circle                avatar disc, size --td-skeleton-size (default 2.5rem)
+ *   .td-skeleton--rect                  media box, aspect ratio --td-skeleton-ratio (default 16 / 9)
+ * Shimmer: a light band (--td-skeleton-shine) sweeping over --td-skeleton-bg every --td-skeleton-dur; reduced motion →
+ * static; forced colours → GrayText. The markup carries `aria-hidden="true"` (decorative) and the region being loaded
+ * `aria-busy="true"` — the site's job (docs).
+ */
+@layer td.tokens {
+	:root {
+		--td-skeleton-bg: var(--td-color-skeleton);
+		--td-skeleton-shine: var(--td-color-sheen);
+		--td-skeleton-radius: var(--td-radius-sm);
+		--td-skeleton-dur: 1.3s;
+		--td-skeleton-h: 1rem;
+		--td-skeleton-line: 0.875rem;
+		--td-skeleton-gap: 0.5rem;
+		--td-skeleton-size: 2.5rem;
+		--td-skeleton-ratio: 16 / 9;
+	}
+}
+
+@layer td.component {
+	.td-skeleton {
+		--td-skeleton-lines: 1;
+
+		position: relative;
+		display: block;
+		width: 100%;
+		height: var(--td-skeleton-h);
+		overflow: hidden;
+		line-height: normal; /* explicit: independent of a site reset */
+		background: var(--td-skeleton-bg);
+		border-radius: var(--td-skeleton-radius);
+	}
+
+	.td-skeleton::after {
+		position: absolute;
+		inset: 0;
+		content: "";
+		background: linear-gradient(90deg, transparent, var(--td-skeleton-shine), transparent);
+		transform: translateX(-100%);
+		animation: td-skeleton-shimmer var(--td-skeleton-dur) ease-in-out infinite;
+	}
+
+	/* Text lines: one box masked into N lines (the shimmer follows the mask); with 2+ lines the last one is 60 % wide. */
+	.td-skeleton--text {
+		height: calc(var(--td-skeleton-lines) * var(--td-skeleton-line) + (var(--td-skeleton-lines) - 1) * var(--td-skeleton-gap));
+		background: transparent;
+		border-radius: 0;
+		-webkit-mask-image:
+			repeating-linear-gradient(to bottom, #000 0 var(--td-skeleton-line), transparent var(--td-skeleton-line) calc(var(--td-skeleton-line) + var(--td-skeleton-gap)));
+		mask-image:
+			repeating-linear-gradient(to bottom, #000 0 var(--td-skeleton-line), transparent var(--td-skeleton-line) calc(var(--td-skeleton-line) + var(--td-skeleton-gap)));
+	}
+
+	.td-skeleton--text::before {
+		position: absolute;
+		inset: 0;
+		content: "";
+		background:
+			linear-gradient(var(--td-skeleton-bg), var(--td-skeleton-bg)) 0 0 / 100% calc(100% - var(--td-skeleton-line)) no-repeat,
+			linear-gradient(var(--td-skeleton-bg), var(--td-skeleton-bg)) 0 100%
+				/ calc(100% - 40% * min(1, var(--td-skeleton-lines) - 1)) var(--td-skeleton-line) no-repeat;
+		border-radius: var(--td-skeleton-radius);
+	}
+
+	.td-skeleton--lines-2 { --td-skeleton-lines: 2; }
+	.td-skeleton--lines-3 { --td-skeleton-lines: 3; }
+
+	.td-skeleton--circle {
+		flex: 0 0 auto;
+		width: var(--td-skeleton-size);
+		height: auto;
+		aspect-ratio: 1;
+		border-radius: 50%;
+	}
+
+	.td-skeleton--rect {
+		height: auto;
+		aspect-ratio: var(--td-skeleton-ratio);
+	}
+
+	@keyframes td-skeleton-shimmer {
+		to {
+			transform: translateX(100%);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-skeleton::after {
+			animation: none;
+			display: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-skeleton,
+		.td-skeleton--text::before {
+			background: GrayText;
+			forced-color-adjust: none;
+		}
+
+		.td-skeleton--text {
+			background: transparent;
+		}
+
+		.td-skeleton::after {
+			display: none;
+		}
+	}
+}

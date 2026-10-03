@@ -99,3 +99,34 @@ test('v0.23.0: npm pack ships td-media-grid.js and media-grid.css (not its tests
   for (const f of ['src/display/td-media-grid.js', 'src/styles/components/media-grid.css']) assert.ok(paths.includes(f), f);
   assert.ok(!paths.some((p) => /td-v023-media-grid|td-media-grid\.stories/.test(p)), 'tests / stories not shipped');
 });
+
+test('v0.27.0: ./otp-input ./drawer ./copy exports, sideEffects, barrel, CSS (otp / drawer / copy / skeleton) in the td.css manifest', async () => {
+  assert.equal(pkg.exports['./otp-input'], './src/form/td-otp-input.js');
+  assert.equal(pkg.exports['./drawer'], './src/feedback/td-drawer.js');
+  assert.equal(pkg.exports['./copy'], './src/display/td-copy.js');
+  for (const f of ['./src/form/td-otp-input.js', './src/feedback/td-drawer.js', './src/display/td-copy.js']) assert.ok(pkg.sideEffects.includes(f), f);
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdOtpInput \} from '\.\/src\/form\/td-otp-input\.js';/);
+  assert.match(src, /export \{ TdDrawer \} from '\.\/src\/feedback\/td-drawer\.js';/);
+  assert.match(src, /export \{ TdCopy \} from '\.\/src\/display\/td-copy\.js';/);
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  for (const f of ['components/skeleton.css', 'components/otp-input.css', 'components/drawer.css', 'components/copy.css']) {
+    assert.ok(files.includes(f), f);
+    assert.ok(files.indexOf(f) < files.indexOf('utilities.css'), `${f} before utilities.css`);
+  }
+  const css = await readFile(join(ROOT, 'td.css'), 'utf8');
+  for (const sel of ['.td-skeleton--text', '.td-skeleton--circle', '.td-skeleton--rect', '--td-skeleton-bg', '--td-skeleton-shine',
+    '.td-otp__cell', '.td-drawer-root', '.td-drawer__panel', '.td-copy__source', 'td-copy:not(:defined)', 'td-drawer:not(:defined)']) {
+    assert.ok(css.includes(sel), sel);
+  }
+});
+
+test('v0.27.0: npm pack ships the new modules + CSS (not their tests / stories)', { timeout: 60000 }, () => {
+  const r = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], { cwd: ROOT, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  const paths = JSON.parse(r.stdout)[0].files.map((f) => f.path);
+  for (const f of ['src/form/td-otp-input.js', 'src/feedback/td-drawer.js', 'src/feedback/dialog-layer.js', 'src/display/td-copy.js',
+    'src/styles/components/skeleton.css', 'src/styles/components/otp-input.css', 'src/styles/components/drawer.css',
+    'src/styles/components/copy.css']) assert.ok(paths.includes(f), f);
+  assert.ok(!paths.some((p) => /\.(engines|ssr)\.browser-test\.js$|td-(otp-input|drawer|copy)\.stories/.test(p)), 'tests / stories not shipped');
+});
