@@ -104,11 +104,11 @@ WordPress in modulepreload cho dependency của script module). `'self'` cho ph�
 
 ```php
 <?php $nonce = csp_nonce(); // chuỗi ngẫu nhiên >= 128 bit, base64, sinh MỘT lần mỗi request ?>
-<link rel="stylesheet" href="/vendor/td-components/0.27.0/td.css" nonce="<?= h($nonce) ?>">
+<link rel="stylesheet" href="/vendor/td-components/0.28.0/td.css" nonce="<?= h($nonce) ?>">
 <script type="importmap" nonce="<?= h($nonce) ?>">
 <?= json_encode(['imports' => [
-    '@dazzxq/td-components/button' => '/vendor/td-components/0.27.0/src/form/td-button.js',
-    '@dazzxq/td-components/toast'  => '/vendor/td-components/0.27.0/src/feedback/td-toast.js',
+    '@dazzxq/td-components/button' => '/vendor/td-components/0.28.0/src/form/td-button.js',
+    '@dazzxq/td-components/toast'  => '/vendor/td-components/0.28.0/src/feedback/td-toast.js',
 ]], JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>
 </script>
 <script type="module" nonce="<?= h($nonce) ?>">
