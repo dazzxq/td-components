@@ -69,3 +69,12 @@ export const MULTISELECT_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'multiselect.h
 export function renderMultiselectFixture() {
   return renderPhp('multiselect-fixture.php');
 }
+
+// v0.29.0: td_tree_select (native <select> inside <td-tree-select> / element mode tree-select@1).
+export const TREE_SELECT_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'tree-select.fixtures.json'), 'utf8'));
+export const TREE_SELECT_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'tree-select.html');
+
+/** Render test/ssr/tree-select-fixture.php (the HTML loaded by the tree-select SSR browser test). */
+export function renderTreeSelectFixture() {
+  return renderPhp('tree-select-fixture.php');
+}
