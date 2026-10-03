@@ -68,6 +68,7 @@
     "./media-grid": "./src/display/td-media-grid.js",
     "./copy": "./src/display/td-copy.js",
     "./sortable": "./src/display/td-sortable.js",
+    "./masked-value": "./src/display/td-masked-value.js",
     "./dom-utils": "./src/utils/dom-utils.js",
     "./form-validation": "./src/utils/form-validation.js",
     "./package.json": "./package.json"
@@ -112,6 +113,7 @@
     "./src/display/td-empty-state.js",
     "./src/display/td-media-grid.js",
     "./src/display/td-sortable.js",
+    "./src/display/td-masked-value.js",
     "./src/display/td-pagination.js",
     "./src/display/td-table.js",
     "./src/display/td-tabs.js"

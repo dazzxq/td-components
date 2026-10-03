@@ -37,6 +37,7 @@ export { TdEmptyState } from './src/display/td-empty-state.js';
 export { TdMediaGrid } from './src/display/td-media-grid.js';
 export { TdSortable } from './src/display/td-sortable.js';
 export { TdCopy } from './src/display/td-copy.js';
+export { TdMaskedValue } from './src/display/td-masked-value.js';
 export { TdFormValidation } from './src/utils/form-validation.js';
 export {
   slugify,
