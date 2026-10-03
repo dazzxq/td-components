@@ -26,7 +26,9 @@ plan-review APPROVE 3 vòng). Nâng cấp `<td-chip-input>` thay vì thêm `mult
 
 ### Ghi chú
 
-- Mục `disabled` có `selected` sẵn trong `<select multiple>` **không** được nhận vào lựa chọn khi nâng cấp.
+- Mục `disabled` (hoặc trong `<optgroup disabled>`) có `selected` sẵn trong `<select multiple>` **được giữ** trong lựa
+  chọn và mặc định reset khi nâng cấp (khoá: không thêm lại được, nhưng bỏ chọn được). Khác select native: sau nâng cấp
+  giá trị đó được gửi cùng form.
 - Element mode giảm xô lệch layout (select có chiều cao tối thiểu bằng khung chip) nhưng không triệt tiêu hẳn — số chip
   quyết định chiều cao sau nâng cấp.
 

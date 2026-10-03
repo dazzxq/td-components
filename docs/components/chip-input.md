@@ -243,8 +243,8 @@ document.getElementById('roles').options = [
 
 Khác với chế độ thường:
 
-- **Chữ gõ chỉ để lọc**, không bao giờ thành chip. Enter khi không có mục đang trỏ → không làm gì (và không submit form
-  khi ô đang có chữ). `allow-create` bị **bỏ qua** (cảnh báo `console.warn` một lần mỗi phần tử).
+- **Chữ gõ chỉ để lọc**, không bao giờ thành chip. Enter khi không có mục đang trỏ → không làm gì và **không
+  submit form** (kể cả khi ô trống). `allow-create` bị **bỏ qua** (cảnh báo `console.warn` một lần mỗi phần tử).
 - Listbox có `aria-multiselectable="true"`; mục **đã chọn vẫn hiện** trong danh sách với dấu ✓. Hai trạng thái tách
   riêng: `aria-selected="true|false"` = **có trong lựa chọn**; mục bàn phím đang trỏ = `data-active` trên option +
   `aria-activedescendant` trên ô nhập. Mũi tên chỉ di chuyển, **không** đổi lựa chọn.
@@ -292,12 +292,13 @@ mục **đang hiện** (sau lọc) không bị `disabled`. Chọn → thêm mọ
   (component gửi form thay nó). Không có select (hoặc `<select>` không `multiple`) → hành vi như cũ.
 - **Lựa chọn ban đầu**, theo thứ tự ưu tiên: (1) property JS gán sớm (`value` / `options` gán trước khi phần tử nâng
   cấp), (2) attribute `value` của host, (3) lựa chọn **đang sống** của select (người dùng đã chọn trước khi JS chạy). Option
-  `selected` nhưng `disabled` (hoặc trong `<optgroup disabled>`) **không** thành giá trị — đúng như form native không
-  gửi nó.
+  `selected` nhưng `disabled` (hoặc trong `<optgroup disabled>`) **vẫn được giữ** trong lựa chọn (và trong mặc định
+  reset), kèm thông tin khoá: không thêm lại được, nhưng **bỏ chọn được** như mọi mục đã chọn bị khoá. Lưu ý: sau nâng
+  cấp component gửi cả giá trị đó, khác select native (native bỏ qua option disabled khi gửi form).
 - **Reset form** → các option có `selected` gốc (`defaultSelected`), như select đã thay; không có select → attribute
   `value`.
-- Select **đang được focus** lúc module nạp (chỉ với vỏ PHP `data-td-ssr="chip-input@1"`) → không đụng gì cho tới khi nó
-  **blur**, rồi nâng cấp một lần với lựa chọn lúc đó.
+- Select **đang được focus** lúc module nạp (mọi `<select multiple>` con trực tiếp, có hay không vỏ PHP
+  `data-td-ssr="chip-input@1"`) → không đụng gì cho tới khi nó **blur**, rồi nâng cấp một lần với lựa chọn lúc đó.
 
 **PHP**: `td_multiselect('roles[]', $options, $selected, [...])` in sẵn `<select multiple>` (chạy không cần JS); chế độ
 element in `<td-chip-input data-td-ssr="chip-input@1" selection-only>` + select đó → component nâng cấp như trên. Xem
@@ -539,7 +540,7 @@ Mẫu APG **editable combobox** (list autocomplete). Toàn bộ component là **
 | `Backspace` / `ArrowLeft` ở đầu ô (con trỏ vị trí 0) | Chuyển focus tới nút xoá của chip cuối (không xoá). |
 
 **0.28.0 — `selection-only`**: `ArrowDown` / `ArrowUp` chỉ dời `data-active` (+ `aria-activedescendant`), **bỏ qua mục
-bị khoá**, không đổi lựa chọn; `Enter` lật chọn mục đang trỏ (không có → không làm gì), popup giữ mở; `Space` gõ dấu
+bị khoá**, không đổi lựa chọn; `Enter` lật chọn mục đang trỏ (không có → không làm gì, không submit form), popup giữ mở; `Space` gõ dấu
 cách; ArrowDown / gõ chữ / `show-on-focus` vẫn mở danh sách khi đã đủ `max-items` (để bỏ chọn).
 
 **Trên nút xoá chip**
