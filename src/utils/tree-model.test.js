@@ -396,6 +396,35 @@ describe('tree-model — multiple + cascade (M3 rules 1-6)', () => {
     assert.equal(warns.filter((w) => /cascade/i.test(w)).length, 1, 'once');
   });
 
+  it('review ISSUE-1: turning cascade ON at runtime drops parent values and recounts tri-state (values event)', () => {
+    const { m, warns } = mk('multiple');
+    m.setData(PERMS());
+    m.setValues(['post', 'post.read']);
+    assert.deepEqual(vals(m), ['post', 'post.read']);
+    const ev = [];
+    m.subscribe((e) => ev.push(e.type));
+    m.setMode('multiple', true);
+    assert.deepEqual(vals(m), ['post.read']);
+    assert.equal(m.checkState(n(m, 'post')), 'mixed');
+    assert.ok(ev.includes('values'));
+    assert.equal(warns.filter((w) => /cascade/i.test(w)).length, 1);
+  });
+
+  it('review ISSUE-1: removing loadChildren makes an opted-in cascade effective → parents dropped, tri-state recounted', () => {
+    const { m } = mk('multiple', true);
+    m.setLoader(async () => []);
+    m.setData(PERMS());
+    m.setValues(['post', 'post.read']);
+    assert.deepEqual(vals(m), ['post', 'post.read'], 'independent while lazy');
+    const ev = [];
+    m.subscribe((e) => ev.push(e.type));
+    m.setLoader(null);
+    assert.equal(m.cascade, true);
+    assert.deepEqual(vals(m), ['post.read']);
+    assert.equal(m.checkState(n(m, 'post')), 'mixed');
+    assert.ok(ev.includes('values'));
+  });
+
   it('rule 6: cascade + loadChildren → one warning, independent multiple', () => {
     const { m, warns } = mk('multiple', true);
     m.setLoader(async () => []);
@@ -530,14 +559,17 @@ describe('tree-model — lazy children (M4)', () => {
     assert.ok(warns.some((w) => /duplicate/i.test(w)));
   });
 
-  it('expandSiblings (*) on lazy siblings: one independent request each', async () => {
+  it('review S-02: expandSiblings (*) opens only LOADED siblings — lazy ones are never requested', () => {
     const { m } = mk();
     const asked = [];
-    m.setLoader(async (src) => { asked.push(src.value); return [{ value: `${src.value}.c`, label: 'c' }]; });
-    m.setData([{ value: 'a', label: 'A', hasChildren: true }, { value: 'b', label: 'B', hasChildren: true }]);
-    await Promise.all(m.expandSiblings(n(m, 'a')));
-    assert.deepEqual(asked, ['a', 'b']);
-    assert.equal(m.visible().length, 4);
+    m.setLoader(async (src) => { asked.push(src.value); return []; });
+    m.setData([{ value: 'a', label: 'A', hasChildren: true }, { value: 'b', label: 'B', hasChildren: true },
+      { value: 'c', label: 'C', children: [{ value: 'c1', label: 'C1' }] }]);
+    const started = m.expandSiblings(n(m, 'a'));
+    assert.deepEqual(started, []);
+    assert.deepEqual(asked, []);
+    assert.equal(m.isExpanded(n(m, 'c')), true);
+    assert.equal(m.wantsOpen(n(m, 'a')), false);
   });
 });
 

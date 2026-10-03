@@ -58,6 +58,10 @@ describe('td_tree_select — no JS (native <select>)', () => {
     for (const c of SPEC.nativeCases) expect(before[c.id].submit, c.id).to.deep.equal(c.submit);
   });
 
+  it('review ISSUE-7: multiple with locked values — enabled selected options first, then the locked hidden inputs (documented order)', () => {
+    expect(before['m-locked-order'].submit).to.deep.equal([['perm4[]', 'user.read'], ['perm4[]', 'post.del']]);
+  });
+
   it('element mode: even the multiple select is one control high; native mode keeps its rows', () => {
     expect(parseFloat(shellHeight)).to.be.within(30, 50);
     expect(nativeMultiRows).to.equal(8);
@@ -98,6 +102,10 @@ describe('td-tree-select — upgrade of the PHP markup (tree-select@1)', () => {
     for (const c of [...SPEC.cases, ...SPEC.nativeCases]) {
       const form = caseForm(c.id);
       expect(entries(form), c.id).to.deep.equal(c.submitAfter ?? before[c.id].submit);
+      // review ISSUE-7: the same SET of values before and after (order may differ only where documented: locked last
+      // without JS); an empty native entry ('') is "no value"
+      const set = (list) => list.filter(([, v]) => v !== '').map((e) => e.join('=')).sort();
+      expect(set(entries(form)), `${c.id} set`).to.deep.equal(set(before[c.id].submit));
       if ('valid' in c) expect(form.checkValidity(), `${c.id} valid`).to.equal(c.valid);
     }
   });

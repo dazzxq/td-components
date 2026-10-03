@@ -122,8 +122,9 @@ tree.data = [{ value: 'phone', label: 'Điện thoại', hasChildren: true }];
   nhánh **không** tự mở lại.
 - Kết quả không phải mảng / reject → nút về đóng, `data-load="error"`, thông báo `labels.loadError`, phát `load-error`;
   mở lại = thử lại. Mảng rỗng → nút thành lá.
-- Con tải về đi qua đúng luật của `data` (value hợp lệ / trùng, độ sâu, khoá kế thừa từ cha). `*` mở các anh em lazy →
-  mỗi nút một request độc lập.
+- Con tải về đi qua đúng luật của `data` (value hợp lệ / trùng, độ sâu, khoá kế thừa từ cha). `*` **không** tải: nó chỉ
+  mở các anh em đã có con (như `expandAll()`), nhánh lazy chưa tải giữ nguyên đóng — một phím không bao giờ bắn hàng
+  loạt request.
 - Giá trị chọn trước nằm trong nhánh **chưa tải** được **giữ** (vẫn gửi, vẫn tính `required`) tới khi một lần tải đưa
   nút đó vào; khi cây đã tải **đủ** mà vẫn không thấy → bỏ + cảnh báo (không phát `change`). Xem [Form](#form).
 
@@ -262,7 +263,7 @@ bao giờ từ dữ liệu. Thụt lề bằng lồng `group` (CSS), không `sty
 | ← | đang mở → đóng; đóng / lá → nút cha |
 | Home / End | nút hiện đầu / cuối |
 | chữ cái | type-ahead (500 ms, không phân biệt dấu) |
-| `*` | mở mọi anh em cùng cấp |
+| `*` | mở mọi anh em cùng cấp **đã tải** (nhánh lazy chưa tải không bị tải) |
 | Enter / Space | `single` chọn, `multiple` lật check, `none` phát `activate` |
 
 RTL (`dir="rtl"` tính được) đổi vai ← / →. Một tab stop (roving tabindex); thu gọn nhánh đang chứa focus → focus về nút

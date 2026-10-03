@@ -160,6 +160,19 @@ describe('php/td.php — td_tree_select (v0.29.0 M8)', opts, () => {
     assert.equal(withWarnings(['t', SMALL, null, {}]).warnings, 0);
   });
 
+  test('review S-01: linear walk — 8× the nodes costs ≈ 8× the time (no per-node array_keys), 40 000 nodes < 2 s', () => {
+    const code = `require ${JSON.stringify(join(ROOT, 'php/td.php'))}; TdComponents\\Td::configure('/', ${JSON.stringify(ROOT)});`
+      + ' $mk = function (int $n): array { $t = []; for ($i = 0; $i < $n; $i++) { $t[] = ["value" => "v$i", "label" => "L$i"]; } return $t; };'
+      + ' $time = function (array $t): float { $best = INF; for ($k = 0; $k < 3; $k++) { $s = microtime(true); td_tree_select("x", $t); $best = min($best, microtime(true) - $s); } return $best; };'
+      + ' $a = $time($mk(5000)); $b = $time($mk(40000)); echo json_encode([$a, $b]);';
+    const r = spawnSync(PHP_BIN, ['-d', 'display_errors=stderr', '-r', code], { encoding: 'utf8', timeout: 120000 });
+    assert.equal(r.status, 0, r.stderr);
+    const [small, big] = JSON.parse(r.stdout);
+    assert.ok(big < 2, `40k nodes took ${big.toFixed(2)} s`);
+    // linear ≈ 8×, quadratic ≈ 64×: 25× leaves room for noise without hiding a quadratic walk
+    assert.ok(big / small < 25, `5k → 40k: ${(big / small).toFixed(1)}× (${small.toFixed(3)} s → ${big.toFixed(3)} s)`);
+  });
+
   test('$selected filtered like the values ("" / bool / unknown dropped); single keeps one', () => {
     const out = one('td_tree_select', ['t', SMALL, ['', 'zzz', 'b', 'a'], { id: 't' }]);
     assert.equal((out.match(/ selected/g) || []).length, 1, out);

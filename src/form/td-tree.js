@@ -326,8 +326,20 @@ export class TdTree extends TdFormElement {
         return;
       default: // label, selection, cascade, searchable → structure
         this._syncMode();
-        this._doRender();
+        this._rerenderStructure();
     }
+  }
+
+  /**
+   * @private Review round 1 (ISSUE-5, same class of bug as td-tree-select): a structural re-render while DETACHED is
+   * left to the reconnect (which renders anyway); a connected one first runs and clears the previous render's cleanups
+   * (listeners on the replaced nodes, the model subscription) so nothing accumulates.
+   */
+  _rerenderStructure() {
+    if (!this.isConnected) return;
+    this._cleanups.forEach((fn) => fn());
+    this._cleanups = [];
+    this._doRender();
   }
 
   /** @protected <fieldset disabled> toggles in place (no re-render → focus kept). */
@@ -647,8 +659,11 @@ export class TdTree extends TdFormElement {
   _onClick(e) {
     if (this._effectiveDisabled) return;
     const t = e.target instanceof Element ? e.target : null;
-    const li = t ? t.closest('.td-tree__item') : null;
-    if (!li || !this._list.contains(li)) return;
+    // review round 1 (ISSUE-2): only a node's OWN row acts — a click in a nested group's whitespace (its padding /
+    // indent) resolves to the ancestor li and must do nothing
+    const row = t ? t.closest('.td-tree__row') : null;
+    const li = row ? row.parentElement : null;
+    if (!li || !li.classList.contains('td-tree__item') || !this._list.contains(li)) return;
     const node = this._nodeOf(li);
     if (!node) return;
     if (t.closest('.td-tree__toggle')) {
@@ -703,8 +718,9 @@ export class TdTree extends TdFormElement {
         else go(m.parentOf(node));
         return true;
       case '*': {
+        // review round 1 (S-02): only siblings whose children are LOADED — never a burst of loadChildren requests
         for (const sib of m.shownChildren(node.parent)) {
-          if (m.expandable(sib) && !m.wantsOpen(sib)) this._toggle(sib, true, true);
+          if (sib.children && sib.children.length && !m.wantsOpen(sib)) this._toggle(sib, true, true);
         }
         return true;
       }

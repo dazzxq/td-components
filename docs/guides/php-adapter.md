@@ -1039,7 +1039,9 @@ Thụt lề = **NBSP ở đầu chữ** (2 mỗi cấp; popup native của Safar
   khác** `disabled data-native-only`, không option rỗng → không đổi / xoá được, `required` thoả;
 - **nhiều**: option khoá đã chọn `disabled selected` (không gửi, không bỏ chọn được) + **một**
   `<input type="hidden" class="td-tree-select__locked" name value>` mỗi giá trị. Có ≥ 1 giá trị khoá → select **không**
-  có `required` (trường đã khác rỗng — tránh `valueMissing` giả); host vẫn có `required`;
+  có `required` (trường đã khác rỗng — tránh `valueMissing` giả); host vẫn có `required`. **Thứ tự khi không JS:**
+  các option đã chọn không khoá gửi **trước** (thứ tự cây), các mục khoá (input ẩn) gửi **sau** — cùng **tập** giá trị
+  với bản đã nâng cấp (vốn gửi đúng thứ tự cây), chỉ khác thứ tự; server đừng dựa vào thứ tự;
 - control `disabled` → input khoá cũng `disabled`: không gửi gì, như control native bị tắt.
 
 > Server vẫn phải tự kiểm quyền / khoá — HTML gửi lên có thể bị sửa.

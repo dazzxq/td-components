@@ -1196,17 +1196,20 @@ namespace {
         $rows = [];
         $seen = [];
         $bad = 0;
-        $stack = [[$tree, 0, 0, false]];
+        // review round 1 (S-01): each frame holds its items as a LIST (array_values once, on push) + an index — no
+        // per-node array_keys() (that made a wide level quadratic)
+        $stack = [[array_values($tree), 0, 0, false]];
         while ($stack) {
             $top = count($stack) - 1;
-            [$items, $i, $level, $plocked] = $stack[$top];
-            $keys = array_keys($items);
-            if ($i >= count($keys)) {
+            $i = $stack[$top][1];
+            if ($i >= count($stack[$top][0])) {
                 array_pop($stack);
                 continue;
             }
             $stack[$top][1] = $i + 1;
-            $item = $items[$keys[$i]];
+            $item = $stack[$top][0][$i];
+            $level = $stack[$top][2];
+            $plocked = $stack[$top][3];
             $value = is_array($item) ? td__tree_value($item['value'] ?? null) : null;
             if ($value === null || $level >= 16 || isset($seen[$value])) {
                 $bad++;
@@ -1219,7 +1222,7 @@ namespace {
             $rows[] = ['value' => $value, 'label' => $label, 'level' => $level, 'locked' => $locked,
                 'desc' => td__str($item['description'] ?? null)];
             if (isset($item['children']) && is_array($item['children']) && $item['children']) {
-                $stack[] = [$item['children'], 0, $level + 1, $locked];
+                $stack[] = [array_values($item['children']), 0, $level + 1, $locked];
             }
         }
         if ($bad) {

@@ -536,3 +536,60 @@ describe('td-tree — XSS + size', () => {
     expect(items(el).length).to.equal(1000);
   });
 });
+
+// ---------------------------------------------------------------- review round 1 ---------------------------------
+describe('td-tree — review round 1', () => {
+  const PERMS = () => [{ value: 'post', label: 'Bài viết', expanded: true, children: [
+    { value: 'post.read', label: 'Xem' }, { value: 'post.write', label: 'Sửa' },
+  ] }];
+
+  it('ISSUE-1: cascade turned on at runtime → parent value dropped, tri-state shown, form updated', () => {
+    const el = tree('selection="multiple" name="p[]"', PERMS());
+    el.value = ['post', 'post.read'];
+    expect(entries(el.form)).to.deep.equal([['p[]', 'post'], ['p[]', 'post.read']]);
+    el.setAttribute('cascade', '');
+    expect(el.value).to.deep.equal(['post.read']);
+    expect(item(el, 'Bài viết').getAttribute('aria-checked')).to.equal('mixed');
+    expect(entries(el.form)).to.deep.equal([['p[]', 'post.read']]);
+  });
+
+  it('ISSUE-1: removing loadChildren of an opted-in cascade tree → parent dropped, tri-state, form updated', () => {
+    const el = tree('selection="multiple" cascade name="q[]"', null);
+    el.loadChildren = async () => [];
+    el.data = PERMS();
+    el.value = ['post', 'post.read'];
+    expect(entries(el.form)).to.deep.equal([['q[]', 'post'], ['q[]', 'post.read']], 'independent while lazy');
+    el.loadChildren = null;
+    expect(el.value).to.deep.equal(['post.read']);
+    expect(item(el, 'Bài viết').getAttribute('aria-checked')).to.equal('mixed');
+    expect(entries(el.form)).to.deep.equal([['q[]', 'post.read']]);
+  });
+
+  it('ISSUE-2: a click in a nested group\'s whitespace never activates / selects the ancestor', () => {
+    const el = tree();
+    el.expand('phone');
+    const acts = spy(el, 'activate');
+    const group = item(el, 'Điện thoại').querySelector(':scope > .td-tree__group');
+    group.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    expect(acts.length).to.equal(0);
+    const single = tree('selection="single"');
+    single.expand('phone');
+    const ch = spy(single, 'change');
+    item(single, 'Điện thoại').querySelector(':scope > .td-tree__group').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    expect(ch.length).to.equal(0);
+    expect(single.value).to.equal('');
+  });
+
+  it('S-02: * opens only loaded siblings — loadChildren is never called', () => {
+    const el = tree('', [{ value: 'a', label: 'A', hasChildren: true }, { value: 'b', label: 'B', hasChildren: true },
+      { value: 'c', label: 'C', children: [{ value: 'c1', label: 'C1' }] }]);
+    let calls = 0;
+    el.loadChildren = () => { calls++; return new Promise(() => {}); };
+    active(el).focus();
+    key(el, '*');
+    expect(calls).to.equal(0);
+    expect(item(el, 'C').getAttribute('aria-expanded')).to.equal('true');
+    expect(item(el, 'A').getAttribute('aria-expanded')).to.equal('false');
+    expect(item(el, 'A').hasAttribute('aria-busy')).to.equal(false);
+  });
+});

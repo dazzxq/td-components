@@ -413,7 +413,7 @@ Có thể gán `data` / `loadChildren` / `value` **trước** khi element đư�
 
 | Property | Chữ ký | Trả về | Khi nào gọi | Lỗi thì sao |
 |---|---|---|---|---|
-| `loadChildren` | `(node, { signal }) => Promise<Array> \| Array` | Mảng nút cùng hình dạng `data` (`[]` = lá) | Lần đầu mở một nút `hasChildren: true` (kể cả `*`), mở lại sau lỗi | Reject / không phải mảng → nút đóng lại, `data-load="error"`, event `load-error` `{ value, error }`, mở lại = thử lại. Kết quả của request đã huỷ (data mới, gỡ phần tử) bị bỏ kể cả khi hook phớt lờ `signal` |
+| `loadChildren` | `(node, { signal }) => Promise<Array> \| Array` | Mảng nút cùng hình dạng `data` (`[]` = lá) | Lần đầu người dùng / `expand()` mở một nút `hasChildren: true`, mở lại sau lỗi (`*` không tải nhánh lazy) | Reject / không phải mảng → nút đóng lại, `data-load="error"`, event `load-error` `{ value, error }`, mở lại = thử lại. Kết quả của request đã huỷ (data mới, gỡ phần tử) bị bỏ kể cả khi hook phớt lờ `signal` |
 | `data` | `Array` | — | Gán = thế hệ mới (huỷ mọi request lazy) | Nút value không hợp lệ → bỏ cả nhánh + cảnh báo |
 
 `TdTree.labels`: `search` `Tìm trong cây` · `empty` `Không có mục nào` · `noResults` `Không tìm thấy kết quả` · `loading`

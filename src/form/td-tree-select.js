@@ -409,10 +409,26 @@ export class TdTreeSelect extends TdFormElement {
         return;
       default: // label, multiple, cascade, searchable, allow-clear → structure (the popup is rebuilt)
         if (this._isOpen) this.close();
-        this._destroyMenu();
         this._syncMode();
-        this._doRender();
+        this._rerenderStructure();
     }
+  }
+
+  /**
+   * @private Review round 1 (ISSUE-5). Detached: nothing is rendered (no portal may be put into <body> by an element
+   * that is not on the page) — the reconnect renders. Connected: the previous render's cleanups run first (the old
+   * portal + its tree, listeners on the replaced nodes, the model subscription) and are cleared, so re-renders never
+   * accumulate closures or portals.
+   */
+  _rerenderStructure() {
+    if (!this.isConnected) {
+      this._destroyMenu();
+      return;
+    }
+    this._cleanups.forEach((fn) => fn());
+    this._cleanups = [];
+    this._destroyMenu();
+    this._doRender();
   }
 
   /** @protected <fieldset disabled> toggles in place. */
@@ -562,7 +578,21 @@ export class TdTreeSelect extends TdFormElement {
       if (e.key === ' ' || e.key === 'Enter') window.setTimeout(() => { this._suppressClick = 0; }, 0);
     });
     if (combo.localName === 'input') {
+      // review round 1 (ISSUE-3): the closed input shows the selected LABEL — the first edit (typing, paste, drop)
+      // starts a fresh query instead of editing that label. Chromium / Firefox: the whole label is selected right before
+      // the edit, so the browser's own insertion replaces it. WebKit fixes the edit range before `beforeinput` (and
+      // clearing the value there loses the keystroke): the label left in front of the new text is stripped on `input`.
+      this.listen(combo, 'beforeinput', () => {
+        if (this._isOpen || this._effectiveDisabled || !combo.value) return;
+        this._labelBefore = combo.value;
+        combo.setSelectionRange(0, combo.value.length);
+      });
       this.listen(combo, 'input', () => {
+        const before = this._labelBefore;
+        this._labelBefore = '';
+        if (!this._isOpen && before && combo.value !== before && combo.value.startsWith(before)) {
+          combo.value = combo.value.slice(before.length);
+        }
         if (!this._isOpen) this.open({ typing: true });
         this._scheduleFilter(combo.value);
       });
@@ -729,12 +759,16 @@ export class TdTreeSelect extends TdFormElement {
     const raw = this.getAttribute('value-labels');
     if (raw === this._vlRaw) return this._vl;
     this._vlRaw = raw;
-    this._vl = {};
+    // review round 1 (ISSUE-6): a null-prototype copy of the OWN string / number entries — a value such as
+    // "toString" / "constructor" / "__proto__" never reads through Object.prototype
+    this._vl = Object.create(null);
     if (raw) {
       try {
         const v = JSON.parse(raw);
-        if (v && typeof v === 'object' && !Array.isArray(v)) this._vl = v;
-        else throw new TypeError('not an object');
+        if (!v || typeof v !== 'object' || Array.isArray(v)) throw new TypeError('not an object');
+        for (const k of Object.keys(v)) {
+          if (typeof v[k] === 'string' || typeof v[k] === 'number') this._vl[k] = String(v[k]);
+        }
       } catch {
         if (!this._warnedLabels) {
           this._warnedLabels = true;
@@ -752,8 +786,9 @@ export class TdTreeSelect extends TdFormElement {
       return single && this.getAttribute('display') === 'path' ? this._model.pathOf(node).join(PATH_SEP) : node.label;
     }
     if (single) return this.getAttribute('value-label') || v;
-    const l = this._valueLabels()[v];
-    return l == null || l === '' ? v : String(l);
+    const vl = this._valueLabels();
+    const l = Object.prototype.hasOwnProperty.call(vl, v) ? vl[v] : '';
+    return l === '' ? v : l;
   }
 
   /** @private the text of the closed control */
@@ -868,6 +903,9 @@ export class TdTreeSelect extends TdFormElement {
     const combo = this._combo;
     const single = !this._multiple();
     this._isOpen = true;
+    // review round 1 (ISSUE-4): the portal lives in <body> — carry the host's computed direction over (a `dir`
+    // attribute, not a style: CSP) so the popup and its tree (← / → swap) follow an RTL host on an LTR page
+    menu.dir = getComputedStyle(this).direction === 'rtl' ? 'rtl' : 'ltr';
     if (single) {
       this._model.revealSelected();
       tree._rerender();
@@ -876,9 +914,9 @@ export class TdTreeSelect extends TdFormElement {
     menu.setAttribute('data-state', 'open');
     this.querySelector('.td-tree-select')?.setAttribute('data-state', 'open');
     combo.setAttribute('aria-expanded', 'true');
-    if (single && combo.localName === 'input' && !opts.typing) {
+    if (single && combo.localName === 'input') {
       combo.placeholder = this._displayText() || this._placeholder();
-      combo.value = '';
+      if (!opts.typing) combo.value = '';
     }
     this._place(this._control.getBoundingClientRect());
     this._layer = registerLayer({

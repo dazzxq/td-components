@@ -160,8 +160,11 @@ Phát trên **host**, chỉ khi người dùng thao tác (sự kiện của cây
 Như [`td-tree`](tree.md#form): mỗi giá trị một entry (nhiều: thứ tự cây), `required` → `valueMissing` (mục khoá tính là
 có giá trị), state khôi phục = JSON mảng, `<fieldset disabled>` theo `TdFormElement`. Không JS (PHP native): select gửi
 như mọi select; lựa chọn **khoá** của `multiple` đi qua input ẩn (đúng một lần), control `disabled` không gửi gì — trước
-và sau nâng cấp cùng kết quả (bản native một-giá-trị có option rỗng gửi `name=` rỗng; sau nâng cấp không gửi entry nào —
-server coi cả hai là trống).
+và sau nâng cấp cùng **tập** giá trị, với hai ngoại lệ đã biết:
+
+- bản native một-giá-trị có option rỗng gửi `name=` rỗng; sau nâng cấp không gửi entry nào (server coi cả hai là trống);
+- **không JS, chọn nhiều có mục khoá**: các option đã chọn không khoá gửi trước, mục khoá (input ẩn) gửi **sau**; sau nâng
+  cấp mọi giá trị theo thứ tự cây — cùng tập giá trị, khác thứ tự. Server đừng dựa vào thứ tự.
 
 ## Tuỳ biến giao diện
 
@@ -213,7 +216,7 @@ chạy focus ảo (`data-active`).
 |---|---|
 | ↓ / ↑ | đóng → mở; mở → nút kế / trước |
 | Home / End | nút: đầu / cuối; ô nhập: phím con trỏ |
-| ← / → / `*` | nút: luôn là phím cây; ô nhập: **chỉ khi ô rỗng** (có chữ → di con trỏ) |
+| ← / → / `*` | nút: luôn là phím cây; ô nhập: **chỉ khi ô rỗng** (có chữ → di con trỏ). `*` chỉ mở anh em đã tải (không tải nhánh lazy) |
 | Enter | chọn nút đang trỏ + đóng, focus ở lại combobox |
 | Space | nút: chọn + đóng (đang đóng → mở; click kích hoạt sinh ra từ phím bị chặn, không mở lại); ô nhập: gõ dấu cách |
 | Escape | đóng, focus ở combobox |

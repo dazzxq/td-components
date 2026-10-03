@@ -28,6 +28,8 @@ plan-review APPROVE 3 vòng). Viết mới (dcms2 / dwp không có cây thật).
 - Mục **khoá đang được chọn vẫn được gửi** trong form (khác `<option disabled>`): chọn một thì không đổi / xoá được, chọn
   nhiều thì "xoá" chỉ bỏ mục không khoá. Server vẫn phải tự kiểm tra quyền.
 - Không có JS, `<select>` chọn một có placeholder gửi `name=` rỗng; sau nâng cấp ô rỗng không gửi mục nào.
+- Không JS, chọn nhiều có mục khoá: cùng tập giá trị, mục khoá gửi sau (sau nâng cấp: theo thứ tự cây).
+- Phím `*` chỉ mở các nhánh anh em **đã tải** (như `expandAll()`); nhánh lazy chưa tải không bị tải hàng loạt.
 
 ## 0.28.0
 

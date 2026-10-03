@@ -104,6 +104,7 @@ export class TreeModel {
     this._cascadeOpt = !!cascade;
     this._checkCascade();
     this._applyValues(this._values);
+    this._settle();
   }
 
   /** Effective cascade: `multiple` + `cascade` without a lazy hook (M3 rule 6). */
@@ -115,7 +116,18 @@ export class TreeModel {
   setLoader(fn) {
     this.loader = typeof fn === 'function' ? fn : null;
     this._checkCascade();
+    this._settle();
+  }
+
+  /**
+   * @private Review round 1 (ISSUE-1): the mode or the EFFECTIVE cascade changed at runtime (cascade attribute, a
+   * loadChildren hook added / removed) — reconcile the values (cascade drops parent / unknown values), recount the
+   * tri-state, then tell the views (`values`: rows + form value re-synced).
+   */
+  _settle() {
+    this._reconcile(true);
     this._recount();
+    this._notify({ type: 'values' });
   }
 
   /** @private */
@@ -344,18 +356,17 @@ export class TreeModel {
   }
 
   /**
-   * APG `*`: open every expandable visible sibling of `node` (lazy ones: one independent request each).
+   * APG `*`: open every visible sibling of `node` whose children are already LOADED. Review round 1 (S-02): lazy,
+   * not-loaded siblings are left closed — one keystroke never fires an unbounded burst of loadChildren requests (like
+   * expandAll()).
    * @param {TreeNode} node
-   * @returns {Promise[]} the started / in-flight requests
+   * @returns {Promise[]} always empty (kept for the call shape)
    */
   expandSiblings(node) {
-    const out = [];
     for (const sib of this._shownSiblings(node)) {
-      if (!this.expandable(sib) || this.isExpanded(sib)) continue;
-      const p = this.setExpanded(sib, true);
-      if (p) out.push(p);
+      if (sib.children && sib.children.length && !this.isExpanded(sib)) this.setExpanded(sib, true);
     }
-    return out;
+    return [];
   }
 
   /** Expand the ancestors of every selected (loaded) node. */
@@ -654,9 +665,10 @@ export class TreeModel {
   /**
    * @private M6: values not in the tree are kept while the model is incomplete (submitted, resolved when a branch
    * loads them); once complete they are dropped with one warning (no change event). Cascade: parent / unknown dropped.
+   * @param {boolean} [silent] no `values` notification (the caller notifies after recounting)
    * @returns {boolean} something was dropped
    */
-  _reconcile() {
+  _reconcile(silent = false) {
     if (!this.hasData || !this._values.length) return false;
     let keep;
     if (this.cascade) {
@@ -678,7 +690,7 @@ export class TreeModel {
     if (keep.length === this._values.length) return false;
     this._values = keep;
     this._valueSet = new Set(keep);
-    this._notify({ type: 'values' });
+    if (!silent) this._notify({ type: 'values' });
     return true;
   }
 

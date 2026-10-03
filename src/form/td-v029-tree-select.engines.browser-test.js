@@ -583,3 +583,77 @@ describe('td-tree-select — accessible name (M7)', () => {
     });
   }
 });
+
+// ---------------------------------------------------------------- review round 1 ---------------------------------
+describe('td-tree-select — review round 1', () => {
+  it('ISSUE-3: typing into the closed input (showing the selected label) starts a fresh query', async () => {
+    const el = ts();
+    el.value = 'samsung';
+    const c = combo(el);
+    expect(c.value).to.equal('Samsung');
+    c.focus();
+    c.setSelectionRange(c.value.length, c.value.length);
+    await sendKeys({ type: 'gal' });
+    expect(c.value).to.equal('gal');
+    expect(isOpen(el)).to.equal(true);
+    await wait(250);
+    expect(shownLabels(el)).to.deep.equal(['Điện thoại', 'Samsung', 'Galaxy S24']);
+    keyOn(c, 'Escape');
+    expect(c.value).to.equal('Samsung', 'closed again: the selected label is back');
+  });
+
+  it('ISSUE-4: the portaled popup follows the host direction (RTL: ← opens, → closes)', () => {
+    const form = mount('<div dir="rtl"><td-tree-select searchable="false"></td-tree-select></div>');
+    const el = form.querySelector('td-tree-select');
+    el.data = CATS();
+    const c = combo(el);
+    c.focus();
+    keyOn(c, 'ArrowDown');
+    expect(getComputedStyle(menu(el)).direction).to.equal('rtl');
+    keyOn(c, 'ArrowLeft');
+    expect(item(el, 'Điện thoại').getAttribute('aria-expanded')).to.equal('true');
+    keyOn(c, 'ArrowRight');
+    expect(item(el, 'Điện thoại').getAttribute('aria-expanded')).to.equal('false');
+    keyOn(c, 'Escape');
+  });
+
+  it('ISSUE-5: a structural attribute change while DETACHED never puts a portal into <body>; reconnect renders once', () => {
+    const el = ts('searchable="false"');
+    const id = el.id;
+    const parent = el.parentElement;
+    el.remove();
+    el.setAttribute('multiple', '');
+    el.setAttribute('allow-clear', '');
+    expect(document.querySelectorAll(`[id="${id}-menu"]`).length).to.equal(0);
+    parent.appendChild(el);
+    expect(document.querySelectorAll(`[id="${id}-menu"]`).length).to.equal(1);
+    expect(!!trigger(el) && trigger(el).getAttribute('aria-controls') === `${id}-menu`).to.equal(true);
+  });
+
+  it('ISSUE-5: connected structural re-renders do not accumulate cleanups / portals', () => {
+    const el = ts('searchable="false"');
+    el.setAttribute('allow-clear', '');
+    const n1 = el._cleanups.length;
+    for (let i = 0; i < 4; i++) {
+      el.removeAttribute('allow-clear');
+      el.setAttribute('allow-clear', '');
+    }
+    expect(el._cleanups.length).to.equal(n1);
+    expect(document.querySelectorAll(`[id="${el.id}-menu"]`).length).to.equal(1);
+    combo(el).focus();
+    keyOn(combo(el), 'ArrowDown');
+    expect(isOpen(el)).to.equal(true);
+    keyOn(combo(el), 'Escape');
+  });
+
+  it('ISSUE-6: value-labels are own properties only (toString / constructor / __proto__)', () => {
+    const lazyRoot = [{ value: 'r', label: 'R', hasChildren: true }];
+    for (const [v, labels, want] of [['toString', '{}', 'toString'], ['constructor', '{"x":"y"}', 'constructor'],
+      ['__proto__', '{"__proto__":"Proto"}', 'Proto'], ['hasOwnProperty', '', 'hasOwnProperty']]) {
+      const el = ts(`multiple value='${JSON.stringify([v])}'${labels ? ` value-labels='${labels}'` : ''}`, null);
+      el.loadChildren = async () => [];
+      el.data = lazyRoot;
+      expect(valueText(el), v).to.equal(want);
+    }
+  });
+});
