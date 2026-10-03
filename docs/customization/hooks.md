@@ -24,6 +24,7 @@ Nguồn sự thật là source code (`src/**`); mỗi dòng dưới đây đối
   - [td-dropdown](#td-dropdown)
   - [td-chip-input](#td-chip-input)
   - [td-tree và td-tree-select](#td-tree-và-td-tree-select)
+  - [td-repeater](#td-repeater)
   - [td-datetime-picker](#td-datetime-picker)
   - [Hợp đồng lỗi của mọi form control](#hợp-đồng-lỗi-của-mọi-form-control)
   - [TdFormValidation](#tdformvalidation)
@@ -420,6 +421,22 @@ Có thể gán `data` / `loadChildren` / `value` **trước** khi element đư�
 `Đang tải…` · `loadError` `Không tải được nhánh này` · `results` `{n} kết quả` · `required` `Vui lòng chọn ít nhất một mục`.
 `TdTreeSelect.labels`: `search` `Tìm kiếm` · `tree` `Chọn mục` (tên dự phòng) · `clear` `Xoá lựa chọn` · `selectedCount`
 `+{n}` · `required` `Vui lòng chọn một mục`.
+
+---
+
+## td-repeater
+
+`import '@dazzxq/td-components/repeater';` · Trang: [repeater.md](../components/repeater.md) (0.30.0)
+
+Không có property hook: điểm móc là **event**. `rows-change` (`{ reason, source, rows, row?, index?, from?, to? }`) phát
+**đồng bộ** sau mọi thay đổi cấu trúc (người dùng và API) — nơi duy nhất app đặt lại `name` cho field trong dòng (kit
+không bao giờ đặt; [công thức](../components/repeater.md#2-đặt-tên-field--công-thức-của-app)). `before-remove`
+(`{ row, index }`, hủy được) cho phép hỏi xác nhận rồi gọi `removeRow(row)`.
+
+`TdRepeater.labels`: `add` `Thêm dòng` · `row` `Dòng {n}` · `remove` `Xoá dòng {n}` · `moveUp` `Chuyển dòng {n} lên` ·
+`moveDown` `Chuyển dòng {n} xuống` · `added` `Đã thêm dòng {n}. Có {count} dòng.` · `removed` `Đã xoá dòng {n}. Còn
+{count} dòng.` · `moved` `Đã chuyển tới vị trí {n} / {count}.` · `full` `Tối đa {max} dòng.` · `atMin` `Cần ít nhất {min}
+dòng.`
 
 ---
 
