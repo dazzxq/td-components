@@ -243,7 +243,9 @@ sẽ bị dịch thành `/vendor/td-components-0.30.0/button` (không tồn tạ
     "@dazzxq/td-components/tree-select": "/vendor/td-components-0.30.0/src/form/td-tree-select.js",
     "@dazzxq/td-components/number-input": "/vendor/td-components-0.30.0/src/form/td-number-input.js",
     "@dazzxq/td-components/repeater": "/vendor/td-components-0.30.0/src/form/td-repeater.js",
+    "@dazzxq/td-components/media-field": "/vendor/td-components-0.30.0/src/form/td-media-field.js",
     "@dazzxq/td-components/drawer": "/vendor/td-components-0.30.0/src/feedback/td-drawer.js",
+    "@dazzxq/td-components/media-picker": "/vendor/td-components-0.30.0/src/feedback/td-media-picker.js",
     "@dazzxq/td-components/copy": "/vendor/td-components-0.30.0/src/display/td-copy.js",
     "@dazzxq/td-components/media-grid": "/vendor/td-components-0.30.0/src/display/td-media-grid.js",
     "@dazzxq/td-components/pagination": "/vendor/td-components-0.30.0/src/display/td-pagination.js",
@@ -492,6 +494,8 @@ Nguồn: `package.json#exports`.
 | `@dazzxq/td-components/number-input` | `src/form/td-number-input.js` | `<td-number-input>`, `TdNumberInput` |
 | `@dazzxq/td-components/repeater` | `src/form/td-repeater.js` | `<td-repeater>`, `TdRepeater` |
 | `@dazzxq/td-components/drawer` | `src/feedback/td-drawer.js` | `<td-drawer>`, `TdDrawer` |
+| `@dazzxq/td-components/media-picker` | `src/feedback/td-media-picker.js` | `<td-media-picker>`, `TdMediaPicker` (0.32.0) |
+| `@dazzxq/td-components/media-field` | `src/form/td-media-field.js` | `<td-media-field>`, `TdMediaField` (0.32.0; nạp kèm `media-picker`) |
 | `@dazzxq/td-components/copy` | `src/display/td-copy.js` | `<td-copy>`, `TdCopy` |
 | `@dazzxq/td-components/media-grid` | `src/display/td-media-grid.js` | `<td-media-grid>`, `TdMediaGrid` |
 | `@dazzxq/td-components/pagination` | `src/display/td-pagination.js` | `<td-pagination>`, `TdPagination` |
