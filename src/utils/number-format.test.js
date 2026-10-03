@@ -319,3 +319,26 @@ describe('number-format — fromNumberString (native type=number value → canon
     for (const bad of ['', 'abc', '1.2.3', '-', '.', 'e5', '1,5', '1'.repeat(31)]) assert.equal(fromNumberString(bad), null, bad);
   });
 });
+
+describe('number-format — step keeps |dir| after aligning (impl review round 1)', () => {
+  it('misaligned PageUp / PageDown (±10): align, then the remaining steps', () => {
+    assert.equal(step('1501', 10, { step: '500' }), '6500'); // 2000 + 9 × 500
+    assert.equal(step('1501', -10, { step: '500' }), '-3000'); // 1500 − 9 × 500 (no min here)
+    assert.equal(step('7', 10, { step: '5', base: '2' }), '57'); // 7 aligned (2+5): +50
+    assert.equal(step('8', 10, { step: '5', base: '2' }), '57'); // 12 + 9 × 5
+    assert.equal(step('8', -10, { step: '5', base: '2' }), '-38'); // 7 − 9 × 5
+  });
+
+  it('negatives: floor alignment, both directions', () => {
+    assert.equal(step('-7', 1, { step: '5' }), '-5');
+    assert.equal(step('-7', -1, { step: '5' }), '-10');
+    assert.equal(step('-7', 10, { step: '5' }), '40'); // −5 + 9 × 5
+    assert.equal(step('-7', -10, { step: '5' }), '-55'); // −10 − 9 × 5
+    assert.equal(step('-1.3', -10, { step: '0.5' }), '-6'); // −1.5 − 9 × 0.5
+  });
+
+  it('aligned values unchanged: ±dir × step; clamped', () => {
+    assert.equal(step('1500', 10, { step: '500' }), '6500');
+    assert.equal(step('1501', 10, { step: '500', max: '3000' }), '3000');
+  });
+});

@@ -57,6 +57,7 @@ const early = hostOf('n-decimals');
 early.value = '42.25';
 const focused = hostOf('n-id').querySelector('input');
 focused.focus();
+hostOf('n-id').value = '6000'; // impl review round 1: an EARLY property on the focused control's host
 const tampered = mismatch.querySelector('#mm-onclick input');
 tampered.value = '4321';
 
@@ -81,8 +82,8 @@ describe('td-number-input SSR (number-input@1) — adopted in place', () => {
       expect(input.type).to.equal('text');
       for (const a of ['name', 'min', 'max', 'step', 'required', 'value']) expect(input.hasAttribute(a), a).to.equal(false);
       const want = c.expect;
-      const value = c.id === 'n-basic' ? '777' : c.id === 'n-decimals' ? '42.25' : want.value;
-      const display = c.id === 'n-basic' ? '777' : c.id === 'n-decimals' ? '42,25' : want.display;
+      const value = c.id === 'n-basic' ? '777' : c.id === 'n-decimals' ? '42.25' : c.id === 'n-id' ? '6000' : want.value;
+      const display = c.id === 'n-basic' ? '777' : c.id === 'n-decimals' ? '42,25' : c.id === 'n-id' ? '6.000' : want.display;
       expect(host.value).to.equal(value);
       expect(input.value).to.equal(display);
       if (want.controlId) expect(input.id).to.equal(want.controlId);
@@ -111,10 +112,14 @@ describe('td-number-input SSR (number-input@1) — adopted in place', () => {
     }
   });
 
-  it('a focused control keeps the focus (node + focus + value; the caret is not promised)', () => {
+  it('a focused control keeps the focus (node + focus + value; the caret is not promised); an early value is the focus baseline (no change on blur)', () => {
+    const host = hostOf('n-id');
     expect(document.activeElement === focused).to.equal(true);
-    expect(hostOf('n-id').value).to.equal('5000');
+    expect(host.value).to.equal('6000');
+    let changes = 0;
+    host.addEventListener('change', () => { changes += 1; });
     focused.blur();
+    expect(changes).to.equal(0);
   });
 
   it('reset → the value the server printed', () => {

@@ -549,6 +549,36 @@ describe('td-repeater — outside changes (MutationObserver → sync)', () => {
   });
 });
 
+describe('td-repeater — API right after a direct DOM change (impl review round 1)', () => {
+  it('append a row via DOM, then moveRow / addRow in the same task: the API sees it; one sync, no duplicate later', async () => {
+    const w = mount(`<td-repeater>${ROW_TPL}${serverRow(0, 'a')}</td-repeater>`);
+    const rep = w.querySelector('td-repeater');
+    const rec = record(rep);
+    const x = document.createElement('div');
+    x.setAttribute('data-td-row', '');
+    x.innerHTML = '<input value="x">';
+    rowsOf(rep)[0].after(x);
+    expect(rep.moveRow(1, 0)).to.equal(true);
+    expect(names(rep)).to.deep.equal(['x', 'a']);
+    const added = rep.addRow({ at: 1 });
+    expect(rowsOf(rep)[1] === added).to.equal(true);
+    await wait();
+    expect(rec.map((r) => r.reason)).to.deep.equal(['sync', 'move', 'add']);
+    expect(rowsOf(rep).map((r) => r.getAttribute('data-td-index'))).to.deep.equal(['0', '1', '2']);
+  });
+
+  it('remove a row via DOM, then removeRow(0): acts on the current rows (min respected), no stale model', async () => {
+    const w = mount(`<td-repeater min-rows="1">${ROW_TPL}${serverRow(0, 'a')}${serverRow(1, 'b')}</td-repeater>`);
+    const rep = w.querySelector('td-repeater');
+    const rec = record(rep);
+    rowsOf(rep)[0].remove();
+    expect(rep.removeRow(0)).to.equal(false, 'only one row left = min');
+    expect(names(rep)).to.deep.equal(['b']);
+    await wait();
+    expect(rec.map((r) => r.reason)).to.deep.equal(['sync']);
+  });
+});
+
 describe('td-repeater — naming recipe from the docs (decision 7)', () => {
   const rename = (rows) => rows.forEach((row, i) => row.querySelectorAll('[data-name]')
     .forEach((el) => el.setAttribute('name', el.dataset.name.replaceAll('{i}', String(i)))));

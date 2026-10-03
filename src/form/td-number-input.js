@@ -573,6 +573,8 @@ export class TdNumberInput extends TdFormElement {
     if (!this._editable()) return;
     const min = this._min();
     const next = stepValue(this._value, dir, { step: this._stepAttr() || '1', base: min, min, max: this._max() });
+    // same gate as typing: a result past 30 digits (or `decimals`) is refused, the value stays
+    if (parseCanonical(next, this._decimals()) == null) return;
     this._commitValue(next, true);
   }
 
@@ -674,8 +676,19 @@ export class TdNumberInput extends TdFormElement {
     this._defaultValue = this._ssrDefaults ? this._ssrDefaults.value : (this._canonAttr('value') ?? '');
   }
 
+  /**
+   * Form reset: the captured default is already canonical — restored as is (no precision gate: a default kept after
+   * `decimals` was reduced stays, with badInput), silently.
+   */
   _restoreDefaults() {
-    this.setValue(this._defaultValue);
+    this._value = this._defaultValue;
+    this._valueSet = true;
+    this._bad = false;
+    if (!this._initialized) return;
+    this._paintValue();
+    const c = this._focusTarget();
+    if (c && c.ownerDocument.activeElement === c) this._valueAtFocus = this._value; // programmatic ≠ user change
+    this._syncForm();
   }
 
   _restoreState(state) {
@@ -797,7 +810,7 @@ export class TdNumberInput extends TdFormElement {
   _ssrCapture(control, live) {
     const focused = control === control.ownerDocument.activeElement;
     const early = !live && this._earlyProps?.has('value');
-    return { value: early ? this._value : (fromNumberString(control.value) ?? ''), focused };
+    return { value: early ? this._value : (fromNumberString(control.value) ?? ''), focused, early };
   }
 
   hydrateExisting() {
@@ -808,7 +821,9 @@ export class TdNumberInput extends TdFormElement {
     if (control.type !== 'text') control.type = 'text'; // same node
     control.value = format(state.value, this._opts()); // also makes the value dirty: removing `value` changes nothing
     if (state.focused && control.ownerDocument.activeElement !== control) control.focus({ preventScroll: true });
-    if (state.focused && this._valueAtFocus == null) this._valueAtFocus = this._ssrDefaults?.value ?? state.value;
+    // focus baseline: an early property is programmatic (no `change` for it); a value typed into the native control
+    // before define is the user's → compared with the server default
+    if (state.focused && this._valueAtFocus == null) this._valueAtFocus = state.early ? state.value : (this._ssrDefaults?.value ?? state.value);
     const own = new Set([`${this.id}-unit`, `${this.id}-note`, `${this.id}-error`]);
     const rest = (control.getAttribute('aria-describedby') || '').split(/\s+/).filter((t) => t && !own.has(t));
     if (rest.length) control.setAttribute('aria-describedby', rest.join(' '));

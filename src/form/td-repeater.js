@@ -105,6 +105,7 @@ export class TdRepeater extends TdBaseElement {
 
   /** @returns {HTMLElement[]} the rows in DOM order */
   get rows() {
+    this._flush();
     return this._domRows();
   }
 
@@ -114,6 +115,7 @@ export class TdRepeater extends TdBaseElement {
    * @returns {HTMLElement|null} the new row, or null (full / bad template / not upgraded)
    */
   addRow({ at } = {}) {
+    this._flush();
     return this._add(at, 'api');
   }
 
@@ -124,6 +126,7 @@ export class TdRepeater extends TdBaseElement {
    */
   removeRow(rowOrIndex) {
     if (!this._started) return false;
+    this._flush();
     const rows = this._domRows();
     const row = typeof rowOrIndex === 'number' ? rows[rowOrIndex] : rowOrIndex;
     if (!row || !rows.includes(row)) return false;
@@ -138,6 +141,7 @@ export class TdRepeater extends TdBaseElement {
    */
   moveRow(from, to) {
     if (!this._started) return false;
+    this._flush();
     return this._move(from, to, 'api');
   }
 
@@ -431,6 +435,17 @@ export class TdRepeater extends TdBaseElement {
   _changed(detail) {
     this._paint();
     this.emit('rows-change', { ...detail, rows: this._model.keys() });
+  }
+
+  /**
+   * @private Impl review round 1: a public API call right after a direct DOM change (same task, observer callback not run
+   * yet) reconciles first — pending records taken (the queued callback then sees nothing), `_sync()` emits the one
+   * `sync` if the DOM and the model differ.
+   */
+  _flush() {
+    if (!this._mo || !this.isConnected) return;
+    this._mo.takeRecords();
+    this._sync();
   }
 
   /** @private outside change (MutationObserver): the DOM is the source of truth */

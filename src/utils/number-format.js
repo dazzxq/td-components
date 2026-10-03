@@ -330,7 +330,7 @@ export function stepAligned(v, stepVal, base = '0') {
 
 /**
  * ↑ / ↓ like native `stepUp(n)` / `stepDown(n)`: an aligned value moves by `dir` steps; a misaligned one snaps to the
- * next aligned value in that direction; always clamped to [min, max]. Empty → clamp(0, min, max).
+ * next aligned value in that direction, then moves the remaining |dir| − 1 steps; always clamped to [min, max]. Empty → clamp(0, min, max).
  * @param {string} v - canonical or ''
  * @param {number} dir - signed number of steps (±1, ±10)
  * @param {{ step?: string, base?: string|null, min?: string|null, max?: string|null }} [o]
@@ -348,7 +348,8 @@ export function step(v, dir, o = {}) {
   const off = x - b;
   const r = ((off % s) + s) % s; // non-negative remainder
   let next;
+  // misaligned: the first step lands on the aligned neighbour (floor / ceiling), the remaining |dir| − 1 steps follow
   if (r === 0n) next = x + BigInt(dir) * s;
-  else next = dir > 0 ? x - r + s : x - r;
+  else next = dir > 0 ? x - r + BigInt(dir) * s : x - r + BigInt(dir + 1) * s;
   return clamp(fromBig(next, sc), min, max);
 }

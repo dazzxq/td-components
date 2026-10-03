@@ -379,6 +379,46 @@ describe('td-number-input — keyboard steps', () => {
   });
 });
 
+describe('td-number-input — impl review round 1', () => {
+  it('↑ / PageUp never produce a 31-digit value: unchanged, no input event (like a typed 31st digit)', async () => {
+    const d30 = '9'.repeat(30);
+    const el = num(`value="${d30}"`);
+    const rec = events(el);
+    await focusAt(el, 0);
+    await sendKeys({ press: 'ArrowUp' });
+    await sendKeys({ press: 'PageUp' });
+    expect(el.value).to.equal(d30);
+    expect(rec.input.length).to.equal(0);
+    await sendKeys({ press: 'ArrowDown' });
+    expect(el.value).to.equal(`${'9'.repeat(29)}8`);
+  });
+
+  it('PageUp / PageDown on a misaligned value move 10 steps (not 1)', async () => {
+    const el = num('value="1501" step="500"');
+    await focusAt(el, 0);
+    await sendKeys({ press: 'PageUp' });
+    expect(el.value).to.equal('6500');
+    el.value = '6501';
+    await sendKeys({ press: 'PageDown' });
+    expect(el.value).to.equal('2000');
+  });
+
+  it('reset restores the captured default even after decimals were reduced (kept, badInput), no event', () => {
+    captureWarn();
+    const form = formOf('<td-number-input name="p" decimals="2" value="12.5"></td-number-input>');
+    const el = form.querySelector('td-number-input');
+    const rec = events(el);
+    el.setAttribute('decimals', '0');
+    el.value = '3';
+    form.reset();
+    expect(el.value).to.equal('12.5');
+    expect(ctl(el).value).to.equal('12,5');
+    expect(el.validity.badInput).to.equal(true);
+    expect(new FormData(form).get('p')).to.equal('12.5');
+    expect(rec.input.length + rec.change.length).to.equal(0);
+  });
+});
+
 describe('td-number-input — validity + range', () => {
   it('empty ≠ 0: FormData has name="" (never 0), required → valueMissing', () => {
     const form = formOf('<td-number-input name="a"></td-number-input><td-number-input name="b" required></td-number-input><td-number-input name="c" value="0"></td-number-input>');
