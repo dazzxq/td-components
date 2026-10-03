@@ -144,3 +144,16 @@ test('v0.29.0: ./tree + ./tree-select exports, sideEffects, barrel, tree CSS in 
     assert.ok(files.indexOf(f) > files.indexOf('components/copy.css') && files.indexOf(f) < files.indexOf('utilities.css'), f);
   }
 });
+
+test('v0.30.0: ./repeater export, sideEffects, barrel, repeater CSS in the td.css manifest before utilities', async () => {
+  assert.equal(pkg.exports['./repeater'], './src/form/td-repeater.js');
+  assert.ok(pkg.sideEffects.includes('./src/form/td-repeater.js'));
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdRepeater \} from '\.\/src\/form\/td-repeater\.js';/);
+  assert.ok(!/ordered-collection/.test(src), 'OrderedCollectionModel stays internal');
+  assert.ok(!Object.values(pkg.exports).some((t) => /ordered-collection/.test(t)), 'no ordered-collection export');
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  assert.ok(files.includes('components/repeater.css'));
+  assert.ok(files.indexOf('components/repeater.css') > files.indexOf('components/tree-select.css')
+    && files.indexOf('components/repeater.css') < files.indexOf('utilities.css'));
+});
