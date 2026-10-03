@@ -421,24 +421,41 @@ Bottom sheet (dùng lại CSS của [modal](modal.md)): chi tiết / tải lên 
 chuỗi hoặc hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dùng nhãn mặc định). Placeholder `{n}`,
 `{max}`, `{total}`, `{name}` được điền sẵn. Kết quả **luôn** gán bằng `textContent` — không nhận HTML.
 
-| Key | Mặc định / ý nghĩa |
+| Key | Mặc định |
 |---|---|
-| `title` | "Thư viện media" — tiêu đề dialog (option `title` thắng) |
-| `close`, `cancel` | Nút × / "Huỷ" |
-| `confirm` | "Chọn ({n})" |
-| `search`, `filters`, `upload`, `results` | Nhãn ô tìm ("Tìm media"), nút "Bộ lọc ({n})", "Tải lên", vùng kết quả |
-| `count`, `loadMore` | "Hiển thị {n} / {total}", "Tải thêm" |
-| `empty`, `emptyFiltered` | Thư viện rỗng / không có kết quả cho bộ lọc |
-| `retry`, `back`, `detail` | "Thử lại", "← Quay lại", vùng chi tiết |
-| `edit`, `save`, `saved` | "Sửa thông tin", "Lưu", "Đã lưu" |
-| `discardTitle`, `discardMessage`, `discard`, `keepEditing` | Hộp xác nhận; `discard` "Bỏ thay đổi", `keepEditing` "Tiếp tục sửa" |
-| `limit` | "Tối đa {max} mục" |
-| `loadingInitial` | "Đang tải lựa chọn…" |
-| `selected`, `clearSelection`, `deselect` | Khay: "Đã chọn {n}/{max}", "Bỏ chọn tất cả", "Bỏ chọn {name}" |
-| `selectFirst`, `notReady` | Bấm "Chọn" khi chưa chọn gì; mục chưa `ready` |
-| `uploaded`, `reused`, `uploadError`, `uploadNeedsFields` | Thông báo upload; `reused` "{name} đã có trong thư viện — dùng lại ảnh cũ" |
-| `conflict`, `reload` | Lỗi xung đột khi lưu + nút "Tải lại" |
-| `error.network` · `error.unauthorized` · `error.forbidden` · `error.not-found` · `error.conflict` · `error.rate-limited` · `error.validation` · `error.server` | Chữ lỗi khi adapter không có `userMessage` |
+| `title` | "Thư viện media" (option `title` thắng) |
+| `close` · `cancel` · `confirm` | "Đóng" · "Huỷ" · "Chọn ({n})" |
+| `search` · `searchPlaceholder` | "Tìm media" (nhãn ẩn của ô tìm) · "Tìm theo tên…" |
+| `filters` · `filtersCount` | "Bộ lọc" · "Bộ lọc ({n})" |
+| `upload` · `results` · `grid` | "Tải lên" · "Kết quả" · "Media" (tên vùng / lưới) |
+| `count` · `resultsCount` | "Hiển thị {n} / {total}" · "{n} kết quả" (thông báo sau tìm) |
+| `loadMore` · `loadedMore` | "Tải thêm" · "Đã tải thêm {n}" |
+| `empty` · `emptyFiltered` · `emptyHint` | "Chưa có media nào" · "Không có kết quả phù hợp" · "Thử từ khoá hoặc bộ lọc khác, hoặc tải lên file mới." |
+| `retry` · `back` | "Thử lại" · "Quay lại" |
+| `detail` · `detailEmpty` | "Chi tiết" · "Chọn một mục để xem chi tiết." |
+| `edit` · `save` · `saved` · `cancelEdit` | "Sửa thông tin" · "Lưu" · "Đã lưu" · "Huỷ" |
+| `discardTitle` · `discardMessage` | "Bỏ thay đổi?" · "Các thay đổi chưa lưu hoặc file đang tải lên sẽ bị huỷ." |
+| `discard` · `keepEditing` | "Bỏ thay đổi" · "Tiếp tục sửa" |
+| `limit` · `loadingInitial` | "Tối đa {max} mục" · "Đang tải lựa chọn…" |
+| `selected` · `selectedMax` | "Đã chọn {n}" · "Đã chọn {n}/{max}" (khay) |
+| `clearSelection` · `deselect` | "Bỏ chọn tất cả" · "Bỏ chọn {name}" |
+| `selectFirst` · `notReady` | "Hãy chọn ít nhất một mục." · "Mục này chưa sẵn sàng để chọn." |
+| `uploaded` · `reused` | "Đã tải lên {name}" · "{name} đã có trong thư viện — dùng lại ảnh cũ" |
+| `uploadError` · `uploadNeedsFields` | "Tải lên thất bại" · "Điền các trường bắt buộc trước khi tải lên." |
+| `conflict` · `reload` | "Media đã bị thay đổi ở nơi khác." · "Tải lại" |
+| `video` | "Video" (nhãn trên poster) |
+| `kind.{image\|video\|file}` | "Ảnh" · "Video" · "File" |
+| `status.{pending\|processing\|failed\|archived}` | "Đang chờ" · "Đang xử lý" · "Lỗi" · "Đã lưu trữ" |
+| `meta.{kind\|size\|dimensions\|date\|uploadedBy}` | "Loại" · "Dung lượng" · "Kích thước" · "Ngày tải" · "Người tải" (chi tiết) |
+| `error.network` | "Không kết nối được. Kiểm tra mạng rồi thử lại." |
+| `error.unauthorized` | "Phiên đăng nhập đã hết. Hãy đăng nhập lại." |
+| `error.forbidden` | "Bạn không có quyền thực hiện thao tác này." |
+| `error.not-found` · `error.conflict` | "Không tìm thấy media." · "Media đã bị thay đổi ở nơi khác." |
+| `error.rate-limited` | "Thao tác quá nhanh. Thử lại sau giây lát." |
+| `error.validation` · `error.server` | "Dữ liệu chưa hợp lệ." · "Có lỗi xảy ra. Thử lại sau." |
+
+`error.*` chỉ dùng khi adapter không có `userMessage`. Key lồng nhau (`error`, `kind`, `status`, `meta`) đè bằng
+`messages: { 'error.network': '…' }` theo lần mở, hoặc thay cả object con trên `TdMediaPicker.labels`.
 
 ```js
 Object.assign(TdMediaPicker.labels, { title: 'Media library', confirm: 'Select ({n})' });
