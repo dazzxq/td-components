@@ -647,7 +647,7 @@ export class TdRepeater extends TdBaseElement {
   _warnOnce(kind, msg) {
     if (this._warned.has(kind)) return;
     this._warned.add(kind);
-    console.warn(msg, this);
+    console.warn(msg);
   }
 }
 
