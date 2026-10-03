@@ -238,6 +238,29 @@ export function parseLoose(text, opts = {}) {
   return noNegZero((neg ? '-' : '') + intPart + (frac ? `.${frac}` : ''));
 }
 
+/**
+ * The value of a native `<input type="number">` (an HTML "valid floating-point number": `.5`, `1e3`, `-0`, `1.50`) as
+ * an exact canonical string — used when the SSR control of td-number-input is adopted. No `decimals` check here (the
+ * component keeps the value and reports it); more than MAX_DIGITS digits / anything else → null.
+ * @param {string} str
+ * @returns {string|null}
+ */
+export function fromNumberString(str) {
+  const m = /^(-?)([0-9]*)(?:\.([0-9]*))?(?:[eE]([-+]?[0-9]{1,3}))?$/.exec(String(str ?? '').trim());
+  if (!m || !(m[2] || m[3])) return null;
+  const digits = (m[2] || '') + (m[3] || '');
+  const point = (m[2] || '').length + Number(m[4] || 0);
+  let int;
+  let frac;
+  if (point <= 0) { int = '0'; frac = '0'.repeat(-point) + digits; } else if (point >= digits.length) {
+    int = digits + '0'.repeat(point - digits.length); frac = '';
+  } else { int = digits.slice(0, point); frac = digits.slice(point); }
+  if (m[4]) frac = frac.replace(/0+$/, ''); // an exponent shift adds no meaningful trailing zero
+  int = int.replace(/^0+(?=[0-9])/, '');
+  if (int.length + frac.length > MAX_DIGITS) return null;
+  return noNegZero(m[1] + int + (frac ? `.${frac}` : ''));
+}
+
 // --- arithmetic (BigInt on a 10^scale grid) ---
 
 /** @param {string} v canonical @returns {number} fraction digits */

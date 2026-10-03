@@ -4,6 +4,7 @@ import { TdRepeater } from './td-repeater.js';
 import './td-input-field.js';
 import './td-dropdown.js';
 import './td-toggle.js';
+import './td-number-input.js';
 import { TdModal } from '../feedback/td-modal.js';
 
 // v0.30.0 (plan docs/internal/plans/v0.30.0-number-repeater.md M5) — <td-repeater> in Chromium, Firefox AND WebKit.
@@ -265,11 +266,12 @@ describe('td-repeater — add / max', () => {
     expect(rec.length).to.equal(1);
   });
 
-  it('td-* inside cloned rows work and submit (input-field, dropdown upgrading a <select>, toggle)', async () => {
+  it('td-* inside cloned rows work and submit (input-field, dropdown upgrading a <select>, toggle, number-input)', async () => {
     const w = mount(`<form><td-repeater><template><div data-td-row>
         <td-input-field name="f" label="Tên"></td-input-field>
         <td-dropdown name="d"><select><option value="x">X</option><option value="y" selected>Y</option></select></td-dropdown>
         <td-toggle name="t" checked label="Bật"></td-toggle>
+        <td-number-input name="n" label="Giá" value="1500"></td-number-input>
       </div></template></td-repeater></form>`);
     const rep = w.querySelector('td-repeater');
     const row = rep.addRow();
@@ -281,6 +283,9 @@ describe('td-repeater — add / max', () => {
     expect(fd.get('f')).to.equal('Pin');
     expect(fd.get('d')).to.equal('y');
     expect(fd.get('t')).to.equal('on');
+    expect(fd.get('n')).to.equal('1500');
+    expect(row.querySelector('.td-number__control').value).to.equal('1.500');
+    expect(row.querySelector('.td-number__control').id.endsWith('-control')).to.equal(true);
     expect(row.querySelector('select')).to.equal(null);
   });
 });

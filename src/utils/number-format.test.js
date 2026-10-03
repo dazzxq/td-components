@@ -3,7 +3,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  asciiDigit, parseCanonical, format, edit, parseLoose, compare, clamp, step, stepAligned, MAX_DIGITS,
+  asciiDigit, parseCanonical, format, edit, parseLoose, compare, clamp, step, stepAligned, fromNumberString, MAX_DIGITS,
 } from './number-format.js';
 
 // td-otp-input.js defines a custom element at import: a two-line shim is enough to read its pure `otpDigits` export
@@ -300,5 +300,22 @@ describe('number-format — arithmetic (BigInt)', () => {
   it('exact above 2^53', () => {
     assert.equal(step('9007199254740993', 1, { step: '1' }), '9007199254740994');
     assert.equal(step('123456789012345678901234567890', -1, { step: '1' }), '123456789012345678901234567889');
+  });
+});
+
+describe('number-format — fromNumberString (native type=number value → canonical, SSR adoption)', () => {
+  it('valid floating-point numbers, exact', () => {
+    assert.equal(fromNumberString('12990000'), '12990000');
+    assert.equal(fromNumberString('1.50'), '1.50');
+    assert.equal(fromNumberString('.5'), '0.5');
+    assert.equal(fromNumberString('-0'), '0');
+    assert.equal(fromNumberString('1e3'), '1000');
+    assert.equal(fromNumberString('1.5E-2'), '0.015');
+    assert.equal(fromNumberString('007'), '7');
+    assert.equal(fromNumberString('123456789012345678901234567890'), '123456789012345678901234567890');
+  });
+
+  it('anything else / too many digits → null', () => {
+    for (const bad of ['', 'abc', '1.2.3', '-', '.', 'e5', '1,5', '1'.repeat(31)]) assert.equal(fromNumberString(bad), null, bad);
   });
 });
