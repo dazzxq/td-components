@@ -475,6 +475,18 @@ describe('v0.28.0 M2 — select-all (shown results)', () => {
     expect(vals(el)).to.deep.equal([]);
   });
 
+  it('bulk deselect removes only enabled shown values — locked selections (disabled / disabled group) stay (review round 2)', () => {
+    const el = mk('selection-only select-all', [
+      { value: 'a', label: 'A' }, { value: 'b', label: 'B', disabled: true },
+      { label: 'Nhóm khoá', disabled: true, options: [{ value: 'c', label: 'C' }] },
+    ]);
+    el.value = ['a', 'b', 'c'];
+    el.open();
+    expect(allRow(el).textContent).to.equal('Bỏ chọn tất cả (1)');
+    allRow(el).click();
+    expect(vals(el)).to.deep.equal(['b', 'c']);
+  });
+
   it('select-all without selection-only → no row', () => {
     const el = mk('select-all');
     el.open();

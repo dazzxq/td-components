@@ -1501,7 +1501,8 @@ export class TdChipInput extends TdFormElement {
     const shown = this._nav.filter((e) => e.item);
     const enabled = shown.filter((e) => !e.off);
     const addable = enabled.filter((e) => !this._has(this._val(e.item)));
-    const selected = shown.filter((e) => this._has(this._val(e.item)));
+    // Only enabled rows: bulk deselect never drops a locked (disabled / disabled-group) selection.
+    const selected = enabled.filter((e) => this._has(this._val(e.item)));
     const mode = addable.length && !this._isFull() ? 'add' : selected.length ? 'remove' : 'none';
     return { mode, n: enabled.length, addable, selected };
   }
