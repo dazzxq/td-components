@@ -65,7 +65,13 @@ export class TdBaseElement extends HTMLElement {
       // anything else renders as before. canHydrate() reads the host AFTER the early-property replay above.
       const hydrate = this.canHydrate();
       if (this.constructor.hydratable) this.removeAttribute('data-td-ssr'); // consumed: a later render never re-reads it
-      this._applyHydration(hydrate);
+      if (hydrate) {
+        this._hydrated = true;
+        this.hydrateExisting();
+        this._bindStep();
+      } else {
+        this._doRender();
+      }
     } else if (this._needsRebind) {
       // Moved/re-inserted: disconnect ran every cleanup (listeners, timers). A hydratable component re-binds in place
       // (same nodes, focus kept) when its markup still passes canRebind(); the others render again to re-bind.
@@ -74,36 +80,8 @@ export class TdBaseElement extends HTMLElement {
       // — drop them first so the bind below is the only one.
       this._cleanups.forEach((fn) => fn());
       this._cleanups = [];
-      if (this._deferred) {
-        // v0.26.0 (F0): detached while a hydration was deferred (its blur listener is gone with the cleanups) →
-        // evaluate again from scratch, exactly like a first connect.
-        this._deferred = false;
-        this._applyHydration(this.canHydrate());
-      } else if (this.constructor.hydratable && this.canRebind()) this._bindStep();
+      if (this.constructor.hydratable && this.canRebind()) this._bindStep();
       else this._doRender();
-    }
-  }
-
-  /**
-   * @private Act on a canHydrate() decision: true → adopt in place (hydrateExisting + bind); 'defer' (v0.26.0 F0) →
-   * neither render nor bind now, hand deferHydration() a one-shot resume(); anything else → normal render.
-   * @param {boolean|'defer'} decision
-   */
-  _applyHydration(decision) {
-    if (decision === 'defer') {
-      this._deferred = true;
-      this.deferHydration(() => {
-        if (!this._deferred) return false; // resumed already / re-evaluated after a re-connect
-        this._deferred = false;
-        this._doRender(); // one render = one bind (afterRender is part of it)
-        return true;
-      });
-    } else if (decision) {
-      this._hydrated = true;
-      this.hydrateExisting();
-      this._bindStep();
-    } else {
-      this._doRender();
     }
   }
 
@@ -122,8 +100,7 @@ export class TdBaseElement extends HTMLElement {
   _doRender() {
     // Shared choke point: subclasses that re-render straight from their own attributeChangedCallback also land here,
     // so the property replay in _setupProperties() never renders a half-set state.
-    // v0.26.0 (F0): no render while a hydration is deferred — resume() renders once, with the final attributes.
-    if (this._suppressRender || this._deferred) return;
+    if (this._suppressRender) return;
     this.innerHTML = this.render();
     this._bindStep();
   }
@@ -145,22 +122,12 @@ export class TdBaseElement extends HTMLElement {
 
   /**
    * Hook: can the CURRENT children (server-rendered, marked `data-td-ssr="<name>@<schema>"`) be adopted as they are?
-   * Called once, on the first connect, after the early-property replay (and again on the re-connect of an element whose
-   * hydration was deferred). Must not modify the DOM. Default: false (render as before).
-   * v0.26.0 (F0): may also return `'defer'` — the markup cannot be adopted but must not be replaced right now (a
-   * focused control the user is typing in): nothing is rendered or bound, deferHydration(resume) is called instead.
-   * @returns {boolean|'defer'}
+   * Called once, on the first connect, after the early-property replay. Must not modify the DOM. Default: false
+   * (render as before). A stateful component that refuses the markup captures its state here and restores it after the
+   * render (v0.26.0, ADR 0012 §5 — there is no deferral: refused markup is always replaced at once).
+   * @returns {boolean}
    */
   canHydrate() { return false; }
-
-  /**
-   * Hook (v0.26.0 F0): canHydrate() returned `'defer'`. The component waits for its moment (e.g. one `blur` listener
-   * registered with listen() — a disconnect removes it and the next connect evaluates canHydrate() again), then calls
-   * `resume()`: exactly ONE `_doRender()` (which binds, like every render); it returns false when there was nothing to
-   * resume. The component restores its captured state right after, without events. Default: resume at once.
-   * @param {() => boolean} resume
-   */
-  deferHydration(resume) { resume(); }
 
   /**
    * Hook (hydratable components, review round 1 SEC-1): on RE-connect, is the current markup still the component's own

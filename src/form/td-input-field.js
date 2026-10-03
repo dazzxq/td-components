@@ -14,6 +14,12 @@ const SSR_KEEP = { date: ['min', 'max'], month: ['min', 'max', 'step'], 'datetim
 const SSR_CONSTRAINTS = ['required', 'pattern', 'minlength', 'min', 'max', 'step'];
 /** Native type PHP prints for a public type the component renders as text + inputmode (validation without JS). */
 const SSR_NATIVE_TYPE = { email: 'email', url: 'url', number: 'number' };
+/**
+ * Review round 3: host attribute ↔ the no-JS attribute PHP printed on the control — they must still agree on the first
+ * hydrate (`maxlength` is compared as structure).
+ */
+const SSR_AGREE = [['name', 'name'], ['required', 'required'], ['disabled', 'disabled'], ['readonly', 'readonly'],
+  ['pattern', 'pattern'], ['minlength', 'minlength'], ['min', 'min'], ['max', 'max'], ['step', 'step']];
 /** Other no-JS-only control attributes removed on hydrate. */
 const SSR_ONLY = ['name', 'autofocus'];
 
@@ -52,8 +58,8 @@ const SSR_ONLY = ['name', 'autofocus'];
  *   `value` property > what the user typed > the attribute), ElementInternals first, then `name` and the constraints the
  *   component does not keep on its control (SSR_KEEP) come off; a native email / url / number control becomes
  *   text + inputmode on the same node; external `<label for="{field-id}">` move to the host; reset → the native
- *   default. Mismatch → render + restore (deferred until blur while the control has focus). `contenteditable` has no
- *   SSR contract (always rendered).
+ *   default. Any mismatch → safe render AT ONCE + restore (value, selection, and the focus when the control had it) —
+ *   no deferral (ADR 0012 §5). `contenteditable` has no SSR contract (always rendered).
  *
  * @element td-input-field
  * @attr {string} type - text|password|email|tel|number|url|search|date|month|datetime-local|time|textarea|contenteditable
@@ -402,7 +408,6 @@ export class TdInputField extends TdFormElement {
   // --- In-place attribute handling ---
 
   attributeChangedCallback(name, oldVal, newVal) {
-    this._ssrMirror(name, newVal); // review round 2: a deferred native control follows the host's form attributes
     if (oldVal === newVal || !this._initialized || !this._getFieldElement()) {
       super.attributeChangedCallback(name, oldVal, newVal);
       return;
@@ -746,38 +751,28 @@ export class TdInputField extends TdFormElement {
   // --- SSR hydrate (v0.26.0, ADR 0012) ---
 
   /**
-   * Marker `input-field@1` + a native input / textarea control → capture its state, then adopt the tree when it is
-   * exactly render()'s for the current host attributes (else render + restore; 'defer' while the control has focus).
-   * `contenteditable` never hydrates. Evaluated again (live state only) when a deferred element is re-connected.
-   * @returns {boolean|'defer'}
+   * Marker `input-field@<n>` + a native input / textarea control → capture its state; adopt the tree only when the
+   * schema is 1, it is exactly render()'s for the current host attributes, its no-JS form attributes still agree with
+   * the host and it passes the subtree scan + skeleton (else safe render at once + restore, focus included).
+   * `contenteditable` never hydrates.
+   * @returns {boolean}
    */
   canHydrate() {
-    const live = !!this._ssrSeen;
-    if (!live) {
-      // Review round 1 IMPL-1: `input-field@<other schema>` is never adopted, but its control state still goes through
-      // the state-safe path (no marker → legacy render, unchanged).
-      const m = ssrMarker(this);
-      if (!m || m.name !== 'input-field') return false;
-      this._ssrSchemaOk = m.schema === 1;
-    }
-    this._ssrSeen = true;
+    // Review round 1 IMPL-1: `input-field@<other schema>` is never adopted, but its control state still goes through
+    // the state-safe path (no marker → legacy render, unchanged).
+    const m = ssrMarker(this);
+    if (!m || m.name !== 'input-field') return false;
     const control = this._ssrFindControl();
     if (!control) return false; // nothing stateful: plain render
-    if (!this._ssrDefaults) this._ssrDefaults = { value: control.defaultValue };
-    const matches = this._ssrSchemaOk && this._type() !== 'contenteditable' && this._markupMatches(true);
-    return this._ssrDecide(control, matches, live);
+    this._ssrDefaults = { value: control.defaultValue };
+    const matches = m.schema === 1 && this._type() !== 'contenteditable' && this._markupMatches(true)
+      && this._ssrFormAttrsAgree(control, SSR_AGREE, ['required', 'disabled', 'readonly']);
+    return this._ssrDecide(control, matches, false);
   }
 
-  /**
-   * Re-connect of a HYDRATED element: re-bind in place while the markup is still the component's own. Review round 1
-   * IMPL-2: rejected → the live value of the current control is captured and restored after the re-render.
-   */
+  /** Re-connect of a HYDRATED element: re-bind in place while the markup is still the component's own (else restore). */
   canRebind() {
-    if (!this._hydrated) return false;
-    if (this._markupMatches(false)) return true;
-    const control = this._ssrFindControl();
-    if (control) this._ssrRestore = this._ssrCapture(control, true);
-    return false;
+    return this._ssrRevalidate(this._ssrFindControl());
   }
 
   /** @private The stateful native control under the host (the kit's class first, else any text-like input). */
@@ -855,12 +850,6 @@ export class TdInputField extends TdFormElement {
     });
   }
 
-  /** @protected Review round 2: host → deferred control (the value itself is synced in place by `value`). */
-  _ssrMirrorName(name) {
-    if (name === 'max-length') return 'maxlength';
-    return ['name', 'required', 'disabled', 'readonly', 'pattern', 'minlength', 'min', 'max', 'step'].includes(name) ? name : null;
-  }
-
   /** @protected */
   _ssrCapture(control, live) {
     const focused = control === control.ownerDocument.activeElement;
@@ -878,11 +867,6 @@ export class TdInputField extends TdFormElement {
     return { value, selection, focused, edited: !early && control.value !== control.defaultValue };
   }
 
-  /** @protected Deferred: the resolved value goes into the still-native control. */
-  _ssrPrime(control, state) {
-    if (control.value !== state.value) control.value = state.value;
-  }
-
   /** @protected */
   _restoreSsrState(state) {
     const field = this._getFieldElement();
@@ -892,7 +876,7 @@ export class TdInputField extends TdFormElement {
     this._updateCounter();
     this._syncForm();
     if (state.refocus) {
-      // review round 1 SEC-01: unsafe markup replaced while focused → focus + selection move to the new control;
+      // the replaced control had focus → focus + selection move to the new one (review rounds 1 + 3);
       // `change` on blur still compares with the value the page was served with
       field.focus({ preventScroll: true });
       if (state.selection) {

@@ -470,12 +470,12 @@ Khi module nạp, `td-input-field` **nhận** markup đó (`canHydrate()`):
 - **Giữ nguyên:** node control (tham chiếu, focus, vùng chọn), kích thước (không xô layout), giá trị đang gõ. Không
   phát `input` / `change`. FormData trước = sau, đúng **một** mục mỗi `name`.
 - **Reset** (`form.reset()`) → giá trị mặc định **native** (`value` PHP in ra), không về giá trị lúc nâng cấp.
-- **Không khớp** (script đổi `label` / `type` / `size`… trước khi module tải, markup bị sửa) → render lại nhưng **giữ
-  giá trị**. Control đang **focus** lúc đó → **hoãn** tới `blur` (không giật ô đang gõ): trong lúc hoãn component chưa
-  gắn gì, control native vẫn submit + validate; rời ô → render **một** lần + trả giá trị, không phát event. Chỉ hoãn
-  khi lệch **vô hại** (nhãn, size…): markup bị từ chối vì lý do **an toàn** (attribute ngoài allowlist như `oninput`,
-  `style`, `form`, phần tử / node lạ) bị thay **ngay** cả khi đang focus — giá trị, vùng chọn và focus chuyển sang
-  control mới. Dấu `input-field@<schema khác>` không bao giờ được nhận nhưng vẫn đi đường giữ state này.
+- **Không khớp** — bất kỳ lý do nào: script đổi `label` / `type` / `size`… trước khi module tải; markup bị sửa;
+  attribute ngoài allowlist (`oninput`, `style`, `form`…) hay phần tử / node lạ; control thừa; dấu
+  `input-field@<schema khác>`; `name` / `required` / `disabled` / `readonly` / `pattern` / `minlength` / `min` / `max` /
+  `step` của control khác host → **render an toàn NGAY** rồi trả giá trị, vùng chọn và (nếu control đang focus) focus
+  sang control mới, không phát event, bind đúng một lần. Không có cơ chế "hoãn tới blur" (ADR 0012 mục 5, sửa sau
+  review v0.26): ca hiếm "markup lệch + đang gõ đúng lúc nâng cấp" đổi node nhưng không mất chữ / con trỏ.
 - **Gỡ ra rồi gắn lại** phần tử đã hydrate: gắn lại listener tại chỗ (giữ node) sau khi kiểm lại markup
   (`canRebind()`, chặt: không còn `name` / ràng buộc của bản không-JS); bị sửa lúc tách → render lại giữ giá trị.
   `<td-input-field>` tạo bằng JS / viết tay không dấu: hành vi như trước (render lại khi gắn lại).

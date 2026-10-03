@@ -275,8 +275,9 @@ chứa đúng block `.td-switch` ở trên (ô icon có `data-td-icon` + SVG s�
 - `<label for="{id input}">` nằm ngoài host chuyển sang host (bấm vẫn gạt + phát đúng một `change`); `id` của input
   được giữ, kể cả khi sau này phải render lại.
 - **Reset** → mặc định native (`checked` / `value` PHP in ra).
-- **Không khớp** → render lại giữ `checked` / `value` / `id`; input đang focus → hoãn tới `blur` (trong lúc hoãn input
-  native vẫn gạt + submit, component chưa phát `change`).
+- **Không khớp** (attribute / phần tử lạ, control thừa, dấu sai schema, nhãn / size lệch, `name` / `required` /
+  `disabled` của input khác host) → **render an toàn ngay**, giữ `checked` / `value` / `id`; input đang focus thì focus
+  chuyển sang input mới. Không phát `change`. (Không còn "hoãn tới blur" — ADR 0012 mục 5.)
 - Gỡ ra rồi gắn lại phần tử đã hydrate: gắn lại tại chỗ sau khi kiểm lại markup; `<td-toggle>` không dấu: như trước.
 
 ## Bàn phím & trợ năng

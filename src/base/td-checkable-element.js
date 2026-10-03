@@ -27,8 +27,8 @@ const LABEL_ATTRS = ['class', 'data-pending', 'data-dragging'];
  *   attribute allowlist on every node) is adopted IN PLACE: same input node (focus kept), state captured (early
  *   property > live `checked` / `value` > attribute) onto the host, ElementInternals first, then the no-JS attributes
  *   come off the input; an external `<label for="{input id}">` moves to the host; the caller's input `id` is kept (and
- *   re-applied after any later render); reset → the native defaults. Mismatch → render + restore (deferred until blur
- *   while the input has focus).
+ *   re-applied after any later render); reset → the native defaults. Any mismatch → safe render AT ONCE + restore
+ *   (checked / value / indeterminate / id, and the focus when the input had it) — no deferral (ADR 0012 §5).
  */
 export class TdCheckableElement extends TdFormElement {
   /** v0.26.0: adopts PHP element-mode markup in place; a hydrated element re-binds on re-connect. */
@@ -56,7 +56,6 @@ export class TdCheckableElement extends TdFormElement {
   }
 
   attributeChangedCallback(name, oldVal, newVal) {
-    this._ssrMirror(name, newVal); // review round 2: a deferred native input follows the host's form attributes
     if (oldVal === newVal || !this._initialized) {
       super.attributeChangedCallback(name, oldVal, newVal);
       return;
@@ -147,38 +146,28 @@ export class TdCheckableElement extends TdFormElement {
   // --- SSR hydrate (v0.26.0, ADR 0012) ---
 
   /**
-   * Marker `{SSR_NAME}@1` + a native checkbox input inside → capture its state, then adopt the markup when it is
-   * exactly render()'s (else render + restore; 'defer' while the input has focus). Evaluated again (live state only)
-   * when a deferred element is re-connected.
-   * @returns {boolean|'defer'}
+   * Marker `{SSR_NAME}@<n>` + a native checkbox input inside → capture its state; adopt the markup only when the schema
+   * is 1, it is exactly render()'s, its no-JS form attributes still agree with the host and it passes the subtree scan +
+   * skeleton (else safe render at once + restore, focus included).
+   * @returns {boolean}
    */
   canHydrate() {
-    const live = !!this._ssrSeen;
-    if (!live) {
-      // Review round 1 IMPL-1: a marker naming THIS component with an unsupported schema is never adopted, but its
-      // control state still goes through the state-safe path (no marker → legacy render, unchanged).
-      const m = ssrMarker(this);
-      if (!m || m.name !== this.constructor.SSR_NAME) return false;
-      this._ssrSchemaOk = m.schema === 1;
-    }
-    this._ssrSeen = true;
+    // Review round 1 IMPL-1: a marker naming THIS component with an unsupported schema is never adopted, but its
+    // control state still goes through the state-safe path (no marker → legacy render, unchanged).
+    const m = ssrMarker(this);
+    if (!m || m.name !== this.constructor.SSR_NAME) return false;
     const control = this.querySelector('input[type="checkbox"]');
     if (!control) return false; // nothing stateful: plain render
-    if (!this._ssrDefaults) this._ssrDefaults = { checked: control.defaultChecked, value: control.getAttribute('value') };
-    if (this._ssrControlId === undefined) this._ssrControlId = control.id || null;
-    return this._ssrDecide(control, this._ssrSchemaOk && this._markupMatches(true), live);
+    this._ssrDefaults = { checked: control.defaultChecked, value: control.getAttribute('value') };
+    this._ssrControlId = control.id || null;
+    const matches = m.schema === 1 && this._markupMatches(true)
+      && this._ssrFormAttrsAgree(control, [['name', 'name'], ['required', 'required'], ['disabled', 'disabled']], ['required', 'disabled']);
+    return this._ssrDecide(control, matches, false);
   }
 
-  /**
-   * Re-connect of a HYDRATED element: re-bind in place while the markup is still the component's own. Review round 1
-   * IMPL-2: rejected → the live state of the current input is captured and restored after the re-render.
-   */
+  /** Re-connect of a HYDRATED element: re-bind in place while the markup is still the component's own (else restore). */
   canRebind() {
-    if (!this._hydrated) return false;
-    if (this._markupMatches(false)) return true;
-    const control = this.querySelector('input[type="checkbox"]');
-    if (control) this._ssrRestore = this._ssrCapture(control, true);
-    return false;
+    return this._ssrRevalidate(this.querySelector('input[type="checkbox"]'));
   }
 
   hydrateExisting() {
@@ -214,28 +203,15 @@ export class TdCheckableElement extends TdFormElement {
     return !text || (text.localName === 'span' && text.classList.contains(`${block}__label`) && text.children.length === 0);
   }
 
-  /** @protected Review round 2: host → deferred input (`checked` is synced in place by attributeChangedCallback). */
-  _ssrMirrorName(name) {
-    return ['name', 'value', 'required', 'disabled'].includes(name) ? name : null;
-  }
-
   /** @protected */
   _ssrCapture(control, live) {
     const early = live ? null : this._earlyProps;
     return {
       checked: early?.has('checked') ? this.hasAttribute('checked') : control.checked,
-      // live: the host `value` was synced into the model when the hydration was deferred
+      // live (re-connect of a hydrated element): the host `value` is the component's model
       value: live || early?.has('value') ? this.getAttribute('value') : control.getAttribute('value'),
       indeterminate: control.indeterminate,
     };
-  }
-
-  /** @protected Deferred: the resolved state goes to the model (host) and the still-native input. */
-  _ssrPrime(control, state) {
-    this._ssrSetHostState(state);
-    control.checked = state.checked;
-    if (state.value === null) control.removeAttribute('value');
-    else control.setAttribute('value', state.value);
   }
 
   /** @protected */
@@ -247,7 +223,7 @@ export class TdCheckableElement extends TdFormElement {
       input.indeterminate = !!state.indeterminate;
     }
     this._syncForm();
-    // review round 1 SEC-01: unsafe markup replaced while focused → the focus moves to the new input
+    // the replaced input had focus → the focus moves to the new one (review rounds 1 + 3)
     if (state.refocus && input) input.focus({ preventScroll: true });
   }
 

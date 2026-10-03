@@ -148,7 +148,7 @@ export class TdFormElement extends TdBaseElement {
     this._ensureId();
     super.connectedCallback(); // _setupProperties + first _doRender (if not yet initialized)
     // v0.26.0 (ADR 0012): server markup that could not be adopted was rendered → put the captured state back (silently).
-    if (this._ssrRestore && !this._deferred) {
+    if (this._ssrRestore) {
       const state = this._ssrRestore;
       this._ssrRestore = null;
       this._ssrControl = null; // review round 1 IMPL-3: the old control is gone — no stale reference
@@ -206,7 +206,6 @@ export class TdFormElement extends TdBaseElement {
    * @protected
    */
   _setFormValue(value, state) {
-    if (this._deferred) return; // v0.26.0: the native SSR control still submits until the deferred render
     if (state === undefined) this._internals.setFormValue(value);
     else this._internals.setFormValue(value, state);
   }
@@ -242,7 +241,6 @@ export class TdFormElement extends TdBaseElement {
    * combined validity to internals. Custom message takes display precedence when present.
    */
   _applyValidity() {
-    if (this._deferred) return; // v0.26.0: the native SSR control still validates until the deferred render
     const flags = { ...this._baseFlags };
     let message = this._baseMessage;
     if (this._customMessage) {
@@ -515,113 +513,84 @@ export class TdFormElement extends TdBaseElement {
   // A subclass's canHydrate() finds the server-rendered native control (`this._ssrControl`), captures its state with
   // `_ssrCapture(control, live)` (precedence: early property > live native state > attribute; `live` = the native state
   // only), stores the native defaults (`this._ssrDefaults`, reset target) and then returns:
-  //   true     → hydrateExisting() adopts the SAME nodes (state onto the host, ElementInternals FIRST, then the no-JS-only
-  //              attributes come off the control, external labels move to the host);
-  //   false    → normal render, then `_restoreSsrState(this._ssrRestore)` (connectedCallback above);
-  //   'defer'  → the control has focus: deferHydration() below waits for its blur.
+  //   true  → hydrateExisting() adopts the SAME nodes (state onto the host, ElementInternals FIRST, then the no-JS-only
+  //           attributes come off the control, external labels move to the host);
+  //   false → safe render AT ONCE, then `_restoreSsrState(this._ssrRestore)` (connectedCallback above) puts the value /
+  //           selection / checked / indeterminate / control id back and, when the control had focus, the focus too —
+  //           without events. Review round 3 (ADR 0012 §5): there is no deferral, whatever the reason of the mismatch.
 
   /**
-   * v0.26.0 (F0): the refused SSR control has focus → do not replace it under the user's fingers. The early / resolved
-   * state is pushed into it (`_ssrPrime`), the native control keeps submitting + validating alone (internals cleared),
-   * ONE capture-phase `blur` listener (removed on disconnect) then captures the LIVE state, resumes (one render = one
-   * bind) and restores that state into the new control without events.
-   * @param {() => boolean} resume
-   */
-  deferHydration(resume) {
-    const control = this._ssrControl;
-    const state = this._ssrRestore;
-    this._ssrRestore = null;
-    if (!control || !state) {
-      if (resume() && state) this._restoreSsrState(state);
-      return;
-    }
-    this._ssrPrime(control, state);
-    this._internals.setFormValue(null);
-    this._internals.setValidity({});
-    // Review round 1 IMPL-3: the listener and ITS cleanup entry go away together (blur) — a disconnect first runs it.
-    const off = () => control.removeEventListener('blur', onBlur, true);
-    const onBlur = () => {
-      off();
-      this._cleanups = this._cleanups.filter((fn) => fn !== off);
-      const live = this._ssrCapture(control, true);
-      this._ssrControl = null;
-      if (resume()) this._restoreSsrState(live);
-    };
-    control.addEventListener('blur', onBlur, true);
-    this._cleanups.push(off);
-  }
-
-  /**
-   * @protected SSR state of `control` (subclass). `live` = ignore early properties (re-evaluation, blur).
+   * @protected SSR state of `control` (subclass). `live` = ignore early properties (re-connect revalidation).
    * @param {HTMLElement} _control @param {boolean} _live
    * @returns {object}
    */
   _ssrCapture(_control, _live) { return {}; }
 
-  /** @protected Push a captured state into the still-native control while deferred (subclass). */
-  _ssrPrime(_control, _state) {}
-
-  /** @protected Put a captured state into the rendered control, silently (subclass). */
+  /** @protected Put a captured state into the rendered control, silently; `state.refocus` → focus it (subclass). */
   _restoreSsrState(_state) {}
 
   /**
-   * @protected An SSR markup check found the control: record it + the native defaults (once), capture its state, and
-   * turn "does the markup match" into the canHydrate() decision (see the block comment above).
+   * @protected An SSR markup check found the control: record it, capture its state, and turn the checks into the
+   * canHydrate() decision. Adopted only when the component's structural match (`matches`), the subtree scan
+   * (`_ssrUnsafe()`) and the skeleton / cardinality check (`_ssrSkeletonOk()`) all pass; anything else → safe render now
+   * + restore (focus included when the control had it).
    * @param {HTMLElement} control
    * @param {boolean} matches
    * @param {boolean} live
-   * @returns {boolean|'defer'}
+   * @returns {boolean}
    */
   _ssrDecide(control, matches, live) {
     this._ssrControl = control;
     const state = this._ssrCapture(control, live);
-    if (matches) {
+    if (matches && !this._ssrUnsafe() && this._ssrSkeletonOk()) {
       this._ssrState = state;
       return true;
     }
+    state.refocus = control === control.ownerDocument.activeElement;
     this._ssrRestore = state;
-    if (control !== control.ownerDocument.activeElement) return false;
-    // Review round 1 SEC-01: only BENIGN drift (label text, size…) may stay live under the user's fingers until blur.
-    // Markup refused for a security reason (attribute outside the allowlists — on*, style, form… —, unexpected
-    // element / node) is replaced AT ONCE; the state (value, selection, checked) and the focus move to the new control.
-    // Review round 2: defer only when the drift is PROVEN benign — the component's known skeleton with exactly one
-    // native control (`_ssrSkeletonOk()`); any unknown topology renders safely at once too.
-    if (this._ssrUnsafe() || !this._ssrSkeletonOk()) {
-      state.refocus = true;
-      return false;
-    }
-    return 'defer';
+    return false;
   }
 
   /**
-   * @protected Review round 2: the host holds the component's known skeleton (tags / classes / cardinality of every part,
-   * `this._ssrControl` in its place) — only then may a focused mismatch be deferred. Subclass; default: false (never
-   * defer).
+   * @protected Review round 3: on the FIRST hydrate the no-JS form attributes the server printed on the control must
+   * still agree with the host (a script changed `name` / `required` / `disabled` / a constraint on either side before
+   * define → the markup is no longer the component's: safe render). Booleans compare by presence.
+   * @param {HTMLElement} control
+   * @param {Array<[string, string]>} pairs [host attribute, control attribute]
+   * @param {string[]} booleans host attribute names compared by presence
+   * @returns {boolean}
+   */
+  _ssrFormAttrsAgree(control, pairs, booleans) {
+    return pairs.every(([h, c]) => (booleans.includes(h)
+      ? this.hasAttribute(h) === control.hasAttribute(c)
+      : this.getAttribute(h) === control.getAttribute(c)));
+  }
+
+  /**
+   * @protected Re-connect of a HYDRATED element (review round 1 IMPL-2): re-bind in place only while the markup still
+   * passes the same gate as adoption (strict structure, subtree scan, skeleton); else capture the live state of the
+   * current control so it is restored after the re-render.
+   * @param {HTMLElement|null} control
+   * @returns {boolean}
+   */
+  _ssrRevalidate(control) {
+    if (!this._hydrated) return false;
+    this._ssrControl = control;
+    const ok = !!control && this._markupMatches(false) && !this._ssrUnsafe() && this._ssrSkeletonOk();
+    this._ssrControl = null;
+    if (!ok && control) this._ssrRestore = this._ssrCapture(control, true);
+    return ok;
+  }
+
+  /** @protected Strict structural match with render() (subclass). @param {boolean} _first */
+  _markupMatches(_first) { return false; }
+
+  /**
+   * @protected The host holds the component's known skeleton (tags / classes / cardinality of every part,
+   * `this._ssrControl` in its place). Part of the adoption gate. Subclass; default: false (never adopt).
    * @returns {boolean}
    */
   _ssrSkeletonOk() { return false; }
-
-  /**
-   * @protected Review round 2: host attribute → attribute of the still-native control while a hydration is deferred
-   * (that control is the only form participant then). Subclass map; `null` = not mirrored.
-   * @param {string} _name
-   * @returns {string|null}
-   */
-  _ssrMirrorName(_name) { return null; }
-
-  /**
-   * @protected Review round 2: while deferred, keep the native control's form attributes in step with the host
-   * (`name`, `required`, `disabled`, constraints…) — no render, no bind. Called first by the subclasses'
-   * attributeChangedCallback.
-   * @param {string} name @param {string|null} value
-   */
-  _ssrMirror(name, value) {
-    const control = this._deferred ? this._ssrControl : null;
-    const target = control && this._ssrMirrorName(name);
-    if (!target) return;
-    if (value === null) control.removeAttribute(target);
-    else control.setAttribute(target, value);
-  }
 
   /**
    * @protected Review round 1 SEC-01: does anything under the host fall outside what php/td.php / render() can produce,
@@ -644,8 +613,8 @@ export class TdFormElement extends TdBaseElement {
       return walk(n);
     });
     if (walk(this)) return true;
-    // Review round 2: exactly ONE native control may survive — any other form-associated element (an injected hidden
-    // input / textarea would submit with the form while deferred) makes the markup unsafe.
+    // Review round 2: exactly ONE native control — any other form-associated element (an injected hidden input /
+    // textarea would submit with the form) makes the markup unsafe.
     const controls = this.querySelectorAll('input, textarea, select, button, fieldset, output, object');
     return controls.length !== 1 || controls[0] !== this._ssrControl;
   }
