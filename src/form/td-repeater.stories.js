@@ -92,3 +92,24 @@ export const InAFormWithRenaming = {
     });
   },
 };
+
+/**
+ * v0.31.0 `sortable`: a grip handle opens each action group — drag it, or focus it → Space / Enter lifts, ↑ / ↓ move
+ * (one rows-change per step: the names follow), Space / Enter drops, Escape puts it back. ↑ / ↓ buttons stay.
+ */
+export const Sortable = {
+  render: (args) => `<div class="sb-stack"><form>
+    <td-repeater label="${esc(args.label)}" sortable add-label="Thêm phụ kiện">
+      <template><div data-td-row class="sb-rep-row"><td-input-field data-name="box[{i}]" aria-label="Phụ kiện"></td-input-field></div></template>
+      ${['Sạc 20W', 'Cáp USB-C', 'Ốp lưng'].map((v, i) => `<div data-td-row class="sb-rep-row"><td-input-field name="box[${i}]" data-name="box[{i}]" aria-label="Phụ kiện" value="${v}"></td-input-field></div>`).join('')}
+    </td-repeater></form><pre class="sb-rep-pre"></pre></div>`,
+  args: { label: 'Hộp gồm (sắp xếp được)' },
+  play: ({ canvasElement }) => {
+    const rep = canvasElement.querySelector('td-repeater');
+    const out = canvasElement.querySelector('.sb-rep-pre');
+    const show = () => { out.textContent = [...new FormData(canvasElement.querySelector('form')).entries()].map(([k, v]) => `${k} = ${v}`).join('\n'); };
+    rep.addEventListener('rows-change', (e) => { rename(e.detail.rows); show(); });
+    rename(rep.rows);
+    show();
+  },
+};

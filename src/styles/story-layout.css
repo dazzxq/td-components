@@ -10,3 +10,7 @@
 .sb-rep-row > td-input-field, .sb-rep-row > td-number-input { flex: 1 1 12rem; min-width: 0; }
 .sb-rep-row > td-input-field[type="textarea"] { flex-basis: 100%; }
 .sb-rep-pre { margin: 0; font: 12px/1.5 var(--td-font-mono); color: var(--td-color-text-muted); white-space: pre-wrap; }
+/* td-sortable list stories (the gallery story uses NO story CSS: the td.css composition rule does the grid) */
+.sb-sort-list { width: min(100%, 28rem); }
+.sb-sort-item { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--td-color-border); font: 14px/1.5 var(--td-font-sans); }
+.sb-sort-item > td-input-field { flex: 1 1 auto; min-width: 0; }
