@@ -35,6 +35,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_empty (0.26.0)](#td_empty-0260)
 - [td_otp_input (0.27.0)](#td_otp_input-0270)
 - [td_copy (0.27.0)](#td_copy-0270)
+- [td_multiselect (0.28.0)](#td_multiselect-0280)
 - [An toàn: escape và whitelist](#an-toàn-escape-và-whitelist)
 - [Chuyển từ adapter riêng của 135](#chuyển-từ-adapter-riêng-của-135)
 - [Lỗi thường gặp](#lỗi-thường-gặp)
@@ -209,6 +210,7 @@ td_alert(string $message, array $opts = []): string       // 0.18.0
 td_empty(string $title, string $message = '', array $opts = []): string   // 0.26.0 (luôn element)
 td_otp_input(string $name, array $opts = []): string      // 0.27.0
 td_copy(string $value, array $opts = []): string          // 0.27.0 (luôn element)
+td_multiselect(string $name, array $options, array $selected = [], array $opts = []): string   // 0.28.0
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
 td_stylesheet_tag(?string $nonce = null): string
@@ -908,6 +910,71 @@ Native mode in đúng khối `div.td-otp` trên (không có `span.td-otp__cells`
 (Thực tế in liền một dòng.) Không truyền `label` mà site đã đổi `TdCopy.labels.copy` (ví dụ `'Sao chép'`) → tên nút PHP
 (`Copy`) khác tên component render → component render lại (vẫn đúng, chỉ mất lợi ích "tại chỗ"). Site đã dịch nhãn thì
 truyền `label` tường minh.
+
+## td_multiselect (0.28.0)
+
+```php
+<?= td_multiselect('roles[]', ['admin' => 'Quản trị', 'editor' => 'Biên tập', 'viewer' => 'Người xem'],
+    $user->roles, ['label' => 'Vai trò', 'required' => true]) ?>
+
+<?= td_multiselect('cities[]', [
+        ['label' => 'Miền Bắc', 'options' => ['hn' => 'Hà Nội', 'hp' => 'Hải Phòng']],
+        ['label' => 'Miền Nam', 'disabled' => true, 'options' => [['value' => 'hcm', 'label' => 'TP Hồ Chí Minh']]],
+        ['value' => 'hue', 'label' => 'Huế', 'description' => 'Cố đô'],
+    ], ['hn'], ['label' => 'Thành phố', 'element' => true, 'select_all' => true, 'max_items' => 3]) ?>
+```
+
+`td_multiselect($name, $options, $selected = [], $opts = [])` — chọn nhiều giá trị (bản chọn nhiều của
+[chip input](../components/chip-input.md#11-chọn-nhiều-từ-danh-sách--multi-select-0280); `td_dropdown` vẫn chỉ chọn
+một).
+
+- **Mặc định (native)**: `div.td-multiselect` > [`label.td-field__label`] + `select.td-multiselect__native` có
+  `multiple` (`size` mặc định 4). Chạy đủ khi **không có JS**: mỗi option đã chọn (không `disabled`) gửi một entry dưới
+  `name` **nguyên văn** — đặt `name="roles[]"` để PHP / Laravel nhận mảng (helper không tự thêm `[]`).
+- **Chế độ element** (`'element' => true` hoặc `Td::configure(…, ['ssr_elements' => true])`; `'element' => false` giữ
+  native): `<td-chip-input data-td-ssr="chip-input@1" selection-only …>` + [nhãn] + cùng select nhưng class
+  `td-chip-input__native`. Chưa có JS: select multiple gốc (được tạo kiểu như khung chip, `min-height` bằng chiều cao tối
+  thiểu của khung). Nạp `@dazzxq/td-components/chip-input` → component **nâng cấp** select (không phải hydrate tại chỗ):
+  đọc option / nhóm / lựa chọn đang sống, lấy `name` / `required` / `disabled` / `aria-label` của select, gỡ select, vẽ
+  chip. Select **đang focus** lúc module nạp → chờ nó blur rồi mới nâng cấp. **Xô lệch**: chiều cao sau nâng cấp do số
+  chip quyết định (thường thấp hơn danh sách `size=4`), nên không triệt tiêu được hẳn — `min-height` chỉ giảm bớt; muốn
+  sát hơn thì truyền `size` nhỏ (ví dụ 2).
+
+**`$options`** — cùng hình dạng `td_dropdown`, thêm nhóm:
+
+| Hình dạng | Ví dụ | Kết quả |
+|---|---|---|
+| `value => label` | `['admin' => 'Quản trị']` | `<option value="admin">Quản trị</option>` (key số → chuỗi) |
+| mục lá | `['value' => 'x', 'label' => 'X', 'disabled' => true, 'description' => 'phụ']` | `<option value="x" disabled data-description="phụ">X</option>` (`label` thiếu → dùng `value`; không có `value` → bỏ) |
+| nhóm | `['label' => 'Nhóm', 'disabled' => true, 'options' => [lá…]]` | `<optgroup label="Nhóm" disabled>…</optgroup>` — **một cấp** (nhóm lồng bị bỏ); lá trong nhóm `disabled` bị khoá theo |
+
+**`$selected`**: mảng value đã chọn (so sánh dạng chuỗi: `[2]` khớp key `2`). Thứ tự gửi khi không JS = thứ tự option;
+sau khi nâng cấp = thứ tự **chọn** của người dùng.
+
+| Option | Ý nghĩa |
+|---|---|
+| `label` | nhãn `label.td-field__label[for={id}-select]` (+ dấu `*` khi `required`); element: thêm attribute `label` trên host |
+| `id` | id của wrapper / host; select = `{id}-select`. Không có → `td-{name đã làm sạch}-{n}` (ví dụ `roles[]` → `td-roles-1`) |
+| `class` | class thêm trên wrapper / host |
+| `required`, `disabled` | native trên select (component lấy lên host khi nâng cấp) |
+| `aria_label` | `aria-label` của select (tên khi không có `label`) |
+| `size` | số dòng của danh sách native (mặc định 4) |
+| `placeholder` | element: placeholder ô lọc |
+| `select_all` | element: `true` → dòng "Chọn tất cả (N)" |
+| `max_items` | element: số mục tối đa (≥ 1) → `max-items` (chế độ native không giới hạn được — server tự kiểm) |
+| `close_on_select` | element: đóng popup sau mỗi lần chọn |
+| `attrs` | attribute thêm trên **wrapper / host** (allowlist). Element: giữ chỗ (bỏ khỏi `attrs`, không phân biệt hoa thường) `id` `class` `label` `placeholder` `selection-only` `select-all` `max-items` `close-on-select` `name` `value` `required` `disabled` `aria-label` `aria-labelledby` `value-key` `label-key` `min-chars` `search-delay` `allow-create` `show-on-focus` `max-length` `error-text` + mọi `data-td-*` |
+
+Kết quả (element, thực tế in liền một dòng):
+
+```html
+<td-chip-input data-td-ssr="chip-input@1" id="roles" label="Vai trò" selection-only>
+  <label class="td-field__label" for="roles-select">Vai trò</label>
+  <select class="td-chip-input__native" id="roles-select" name="roles[]" multiple size="4">
+    <option value="admin">Quản trị</option><option value="editor" selected>Biên tập</option>
+  </select>
+</td-chip-input>
+```
 
 ## An toàn: escape và whitelist
 

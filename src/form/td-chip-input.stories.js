@@ -185,3 +185,55 @@ export const InAModal = {
       + 'Esc chỉ đóng gợi ý trước.</p></div>';
   },
 };
+
+const ROLES = [
+  { value: 'admin', label: 'Quản trị', description: 'Toàn quyền' },
+  { value: 'editor', label: 'Biên tập viên' },
+  { value: 'author', label: 'Tác giả' },
+  { value: 'viewer', label: 'Người xem' },
+  { value: 'owner', label: 'Chủ sở hữu', disabled: true },
+];
+const CITIES = [
+  { label: 'Miền Bắc', options: [{ value: 'hn', label: 'Hà Nội' }, { value: 'hp', label: 'Hải Phòng' }] },
+  { label: 'Miền Trung', options: [{ value: 'dn', label: 'Đà Nẵng' }, { value: 'hue', label: 'Huế' }] },
+  { label: 'Miền Nam (chưa mở)', disabled: true, options: [{ value: 'hcm', label: 'TP Hồ Chí Minh' }] },
+];
+
+/** v0.28.0: selection-only multi-select — rows toggle (Enter / click), ✓ on selected rows, select-all, max-items. */
+export const MultiSelect = {
+  render: () => {
+    const a = `ci-ms-${++seq}`;
+    const b = `ci-ms-${++seq}`;
+    withProps(a, (el) => { el.options = ROLES; });
+    withProps(b, (el) => { el.options = CITIES; });
+    return '<div class="sb-stack">'
+      + `<td-chip-input id="${a}" name="roles[]" label="Vai trò" placeholder="Lọc vai trò…" selection-only select-all`
+      + ' show-on-focus min-chars="0" value=\'["editor"]\'></td-chip-input>'
+      + `<td-chip-input id="${b}" name="cities[]" label="Thành phố (tối đa 2)" selection-only select-all max-items="2"`
+      + ' show-on-focus min-chars="0"></td-chip-input>'
+      + '<p class="sb-note">Chữ gõ chỉ để lọc; Enter / click lật chọn mục đang trỏ, popup giữ mở; Space là dấu cách. '
+      + 'Khi đầy, mục chưa chọn bị khoá; mục đã chọn luôn bỏ chọn được.</p></div>';
+  },
+};
+
+/** v0.28.0: progressive enhancement of a native <select multiple> (also what PHP td_multiselect element mode prints). */
+export const FromSelectMultiple = {
+  render: () => {
+    const id = `ci-sel-${++seq}`;
+    withProps(`${id}-form`, (form) => {
+      const out = form.querySelector('.sb-note');
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        out.textContent = `cities[] = ${JSON.stringify(new FormData(form).getAll('cities[]'))}`;
+      });
+    });
+    return `<form class="sb-stack" id="${id}-form"><label for="${id}">Thành phố</label>`
+      + `<td-chip-input select-all><select multiple id="${id}" name="cities[]" required>`
+      + '<optgroup label="Miền Bắc"><option value="hn" selected>Hà Nội</option><option value="hp">Hải Phòng</option></optgroup>'
+      + '<optgroup label="Miền Trung"><option value="dn">Đà Nẵng</option><option value="hue" data-description="Cố đô">Huế</option></optgroup>'
+      + '<optgroup label="Miền Nam" disabled><option value="hcm">TP Hồ Chí Minh</option></optgroup>'
+      + '</select></td-chip-input>'
+      + '<div class="sb-row"><button type="submit">Gửi</button><button type="reset">Đặt lại</button></div>'
+      + '<p class="sb-note">Không JS: select multiple gốc. Có JS: chip + lọc + nhóm; Đặt lại về các option selected gốc.</p></form>';
+  },
+};

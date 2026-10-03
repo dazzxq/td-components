@@ -22,8 +22,11 @@
  *     name / value / checked / constraints / autocomplete / id (submit + validation + password managers without JS);
  *     the component adopts it in place and takes over form participation.
  *   - td_dropdown prints a <td-dropdown> host wrapping a native <select>: works without JS, upgrades when
- *     `@dazzxq/td-components/dropdown` is imported (the ONLY helper that upgrades). v0.26.0 element mode: the same
+ *     `@dazzxq/td-components/dropdown` is imported (with td_multiselect element mode, the only helpers that UPGRADE a select). v0.26.0 element mode: the same
  *     markup + `data-td-ssr="dropdown@1"` + `select.td-dropdown__native` styled to the trigger box (no layout shift).
+ *   - v0.28.0 td_multiselect prints a native `<select multiple>` (div.td-multiselect; every selected value submitted
+ *     under the name, verbatim — `roles[]`); element mode: `<td-chip-input data-td-ssr="chip-input@1" selection-only>`
+ *     + the same select (`select.td-chip-input__native`), upgraded by `@dazzxq/td-components/chip-input`.
  *   - v0.26.0 td_empty prints `<td-empty-state data-td-ssr="empty-state@1">` + the full styled tree (always element),
  *     hydrated in place by `@dazzxq/td-components/empty-state`.
  *   - td_icon prints `svg.td-icon` with the full geometry of src/icons/icons.json (+ Td::registerIcons()).
@@ -137,6 +140,8 @@ namespace TdComponents {
         /** v0.27.0: td_otp_input element mode and td_copy (always). */
         public const SSR_OTP = 'otp-input@1';
         public const SSR_COPY = 'copy@1';
+        /** v0.28.0: td_multiselect element mode (<td-chip-input> + the native <select multiple>, upgraded via M3). */
+        public const SSR_CHIP_INPUT = 'chip-input@1';
 
         /**
          * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.27.0') —
@@ -1036,6 +1041,116 @@ namespace {
                 . ($opt['disabled'] ? ' disabled' : '') . '>' . Td::e($opt['label']) . '</option>';
         }
         return $html . '</select></td-dropdown>';
+    }
+
+    /**
+     * v0.28.0 multi-select. Default: a NATIVE `<select multiple>` that works without JS — `div.td-multiselect` >
+     * [`label.td-field__label`] + `select.td-multiselect__native` (name verbatim: use `roles[]` for a PHP array; every
+     * selected, enabled option is submitted). `element` (bool, default Td::configure ssr_elements = false):
+     * `<td-chip-input data-td-ssr="chip-input@1" selection-only …>` + [label] + the same select with
+     * `class="td-chip-input__native"` (styled to at least the chip box height), upgraded by <td-chip-input> (options,
+     * groups, live selection, name / required / disabled / aria-label taken from the select; focused → upgraded on blur).
+     * $options: value => label, or a list of ['value' => …, 'label' => …, 'disabled' => bool, 'description' => …];
+     * a group is ['label' => …, 'disabled' => bool, 'options' => [same leaf shapes]] → `<optgroup>` (one level).
+     * $selected: the selected values (compared as strings). Options: label, id (host / wrapper; select = {id}-select),
+     * class, required, disabled, aria_label (names the select), size (rows of the native list, default 4); element mode
+     * only: placeholder, select_all (bool), max_items (int), close_on_select (bool). attrs → the host / wrapper
+     * (allowlisted; element mode: names the component reads and data-td-* are reserved).
+     */
+    function td_multiselect(string $name, array $options, array $selected = [], array $o = []): string
+    {
+        $sel = [];
+        foreach ($selected as $v) {
+            if (is_scalar($v) && !is_bool($v)) {
+                $sel[(string) $v] = true;
+            }
+        }
+        $element = td__element($o);
+        $id = td__str($o['id'] ?? null) ?? td__host_uid($name);
+        $label = td__str($o['label'] ?? null);
+        $required = !empty($o['required']);
+        $aria = td__str($o['aria_label'] ?? null);
+        $taken = [];
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        if ($element) {
+            $html = '<td-chip-input' . Td::ownAttrs([
+                'data-td-ssr' => Td::SSR_CHIP_INPUT,
+                'id' => $id,
+                'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+                'label' => $label,
+                'placeholder' => td__str($o['placeholder'] ?? null),
+                'selection-only' => true,
+                'select-all' => !empty($o['select_all']),
+                'max-items' => Td::intOpt($o['max_items'] ?? null, 1),
+                'close-on-select' => !empty($o['close_on_select']),
+            ], $taken);
+            $taken = td__reserve(['id', 'class', 'label', 'placeholder', 'selection-only', 'select-all', 'max-items',
+                'close-on-select', 'name', 'value', 'required', 'disabled', 'aria-label', 'aria-labelledby', 'value-key',
+                'label-key', 'min-chars', 'search-delay', 'allow-create', 'show-on-focus', 'max-length', 'error-text'],
+                $extra, $taken);
+        } else {
+            $html = '<div' . Td::ownAttrs(['class' => 'td-multiselect' . Td::classTokens($o['class'] ?? null), 'id' => $id], $taken);
+        }
+        $html .= Td::attrs($extra, $taken) . '>';
+        if ($label !== null) {
+            $html .= '<label class="td-field__label" for="' . Td::e($id) . '-select">' . Td::e($label)
+                . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') . '</label>';
+        }
+        $html .= '<select' . Td::ownAttrs([
+            'class' => $element ? 'td-chip-input__native' : 'td-multiselect__native',
+            'id' => "$id-select",
+            'name' => $name !== '' ? $name : null,
+            'multiple' => true,
+            'size' => Td::intOpt($o['size'] ?? null, 1) ?? '4',
+            'required' => $required,
+            'disabled' => !empty($o['disabled']),
+            'aria-label' => $aria,
+        ]) . '>';
+        foreach ($options as $k => $v) {
+            if (is_array($v) && !isset($v['value']) && isset($v['options']) && is_array($v['options'])) {
+                $inner = '';
+                foreach ($v['options'] as $ik => $iv) {
+                    $inner .= td__ms_option($ik, $iv, $sel);
+                }
+                $html .= '<optgroup' . Td::ownAttrs([
+                    'label' => td__str($v['label'] ?? null) ?? '',
+                    'disabled' => !empty($v['disabled']),
+                ]) . '>' . $inner . '</optgroup>';
+            } else {
+                $html .= td__ms_option($k, $v, $sel);
+            }
+        }
+        return $html . '</select>' . ($element ? '</td-chip-input>' : '</div>');
+    }
+
+    /**
+     * @internal One td_multiselect leaf → `<option>` ('' for anything that is not a leaf: a nested group, no value).
+     * @param array<string,bool> $sel selected values
+     */
+    function td__ms_option(int|string $k, mixed $v, array $sel): string
+    {
+        if (is_array($v)) {
+            if (!isset($v['value']) || !is_scalar($v['value']) || is_bool($v['value'])) {
+                return '';
+            }
+            $value = (string) $v['value'];
+            $label = isset($v['label']) && is_scalar($v['label']) ? (string) $v['label'] : $value;
+            $disabled = !empty($v['disabled']);
+            $desc = td__str($v['description'] ?? null);
+        } elseif (is_scalar($v) && !is_bool($v)) {
+            $value = (string) $k;
+            $label = (string) $v;
+            $disabled = false;
+            $desc = null;
+        } else {
+            return '';
+        }
+        return '<option' . Td::ownAttrs([
+            'value' => $value,
+            'selected' => isset($sel[$value]),
+            'disabled' => $disabled,
+            'data-description' => $desc,
+        ]) . '>' . Td::e($label) . '</option>';
     }
 
     /**

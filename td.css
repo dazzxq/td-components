@@ -5854,6 +5854,10 @@
  * State: data-state / [data-full] / [data-empty] on the root, :has(input:focus-visible / :disabled / [aria-invalid])
  * on the box, [hidden] on the chip list, [hidden] / data-state / data-placement on the popup, [aria-selected="true"]
  * (= active) on options, [data-kind] on the empty row. Only popup geometry is written by JS through CSSOM.
+ * v0.28.0 multi-select (`selection-only`): the listbox is [aria-multiselectable="true"] — there [aria-selected] is the
+ * MEMBERSHIP (✓ shown), [data-active] the keyboard highlight, [aria-disabled="true"] a locked row; groups
+ * (.td-chip-input__group + .td-chip-input__group-label); select-all row .td-chip-input__option--all. PHP td_multiselect:
+ * select.td-multiselect__native (native mode) / select.td-chip-input__native (element mode shell, chip-input@1).
  */
 @layer td.tokens {
 	:root {
@@ -6117,9 +6121,114 @@
 		background: var(--td-dropdown-option-hover);
 	}
 
-	.td-chip-input__option[aria-selected="true"] {
+	/* highlight: aria-selected in the single list, data-active in the multi-select one (aria-selected = membership) */
+	.td-chip-input__options:not([aria-multiselectable="true"]) .td-chip-input__option[aria-selected="true"],
+	.td-chip-input__option[data-active] {
 		background: var(--td-dropdown-option-active);
 		box-shadow: inset 0 0 0 1px var(--td-dropdown-option-active-line);
+	}
+
+	/* ---- v0.28.0 multi-select rows: ✓ slot, locked rows, groups, select-all ---- */
+	.td-chip-input__options[aria-multiselectable="true"] .td-chip-input__option {
+		position: relative;
+		padding-inline-start: 34px;
+	}
+
+	.td-chip-input__check {
+		position: absolute;
+		top: 50%;
+		left: 10px;
+		display: inline-flex;
+		visibility: hidden;
+		transform: translateY(-50%);
+	}
+
+	.td-chip-input__option[aria-selected="true"] > .td-chip-input__check {
+		visibility: visible;
+	}
+
+	.td-chip-input__option[aria-disabled="true"] {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+	}
+
+	.td-chip-input__option[aria-disabled="true"]:hover {
+		background: none;
+	}
+
+	.td-chip-input__option--all {
+		font-weight: var(--td-fw-medium);
+	}
+
+	.td-chip-input__group {
+		display: flex;
+		flex: none;
+		flex-direction: column;
+		gap: 1px;
+	}
+
+	.td-chip-input__group-label {
+		padding: 8px 10px 2px;
+		overflow: hidden;
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-color-text-muted);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		user-select: none;
+	}
+
+	/* ---- v0.28.0 PHP td_multiselect: native <select multiple> (no JS) + the element-mode shell ---- */
+	.td-multiselect {
+		display: block;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-fg);
+	}
+
+	td-chip-input[data-td-ssr="chip-input@1"] {
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-fg);
+	}
+
+	/* at least the chip box height (the upgrade cannot be shift-free: the chips decide the height afterwards) */
+	.td-multiselect__native,
+	td-chip-input > .td-chip-input__native {
+		box-sizing: border-box;
+		display: block;
+		width: 100%;
+		min-width: 0;
+		min-height: var(--td-field-h-md);
+		padding: 5px 8px;
+		margin: 0;
+		font: inherit;
+		color: var(--td-field-fg);
+		background-color: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: none;
+	}
+
+	.td-multiselect__native:hover:not(:disabled, :focus-visible),
+	td-chip-input > .td-chip-input__native:hover:not(:disabled, :focus-visible) {
+		border-color: var(--td-field-border-hover);
+	}
+
+	.td-multiselect__native:focus-visible,
+	td-chip-input > .td-chip-input__native:focus-visible {
+		border-color: var(--td-field-focus);
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	.td-multiselect__native:disabled,
+	td-chip-input > .td-chip-input__native:disabled {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background-color: var(--td-field-bg-disabled);
 	}
 
 	.td-chip-input__option--create {
@@ -6183,6 +6292,11 @@
 		.td-chip-input__option {
 			min-height: var(--td-touch-min);
 		}
+
+		.td-multiselect__native,
+		td-chip-input > .td-chip-input__native {
+			min-height: var(--td-touch-min);
+		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
@@ -6226,9 +6340,23 @@
 			border: 1px solid CanvasText;
 		}
 
-		.td-chip-input__option[aria-selected="true"] {
+		.td-chip-input__options:not([aria-multiselectable="true"]) .td-chip-input__option[aria-selected="true"],
+		.td-chip-input__option[data-active] {
 			outline: 2px solid Highlight;
 			outline-offset: -2px;
+		}
+
+		.td-chip-input__check {
+			color: Highlight;
+		}
+
+		.td-chip-input__option[aria-disabled="true"] {
+			color: GrayText;
+		}
+
+		.td-multiselect__native,
+		td-chip-input > .td-chip-input__native {
+			border-color: CanvasText;
 		}
 	}
 }

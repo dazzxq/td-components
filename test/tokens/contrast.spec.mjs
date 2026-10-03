@@ -20,7 +20,8 @@
  * v0.22.0: the dropdown create row (accent label ≥ 4.7, plus icon ≥ 3.2) on the menu surface, rest + active, every backdrop.
  * v0.23.0: the td-media-grid tick (off / on) — edge ≥ 3:1 over a white and a black image, "on" glyph ≥ 3.2 on its fill
  * (computed-colour `pairs`; a pair may carry its own `min`). v0.27.0: td-otp-input cells, the td-copy icon button and the
- * skeleton block (pairs, page only).
+ * skeleton block (pairs, page only). v0.28.0: td-chip-input multi-select rows on the menu surface, every backdrop — selected
+ * row label ≥ 4.7 + ✓ ≥ 3.2 (rest + active), locked (aria-disabled) row label ≥ 2.2.
  * v0.24.0: the lightbox side-nav disc (fill vs a white photo / edge vs a black photo ≥ 3:1, chevron ≥ 3.2 on the disc)
  * and the current filmstrip thumb ring vs the strip (≥ 3:1).
  * v0.25.0: the PHP td_badge `icon` (decorative, currentColor) ≥ 3.2:1 on every soft badge fill, label ≥ 4.7 as before.
@@ -225,6 +226,7 @@ console.log(`  lowest focus border ratios: ${[...focusWorst.entries()].filter(([
 console.log(`  lowest lightbox disc / thumb ratios: ${[...focusWorst.entries()].filter(([k]) => k.includes('lb-')).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 console.log(`  lowest media-grid tick ratios: ${[...focusWorst.entries()].filter(([k]) => k.includes('media-tick:')).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 console.log(`  lowest otp / copy / skeleton ratios (v0.27.0): ${[...focusWorst.entries()].filter(([k]) => /(otp|copy|skeleton):/.test(k)).sort((a, b) => a[1] - b[1]).slice(0, 5).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
+console.log(`  lowest chip-input multi-select label ratios (v0.28.0): ${[...worst.entries()].filter(([k]) => k.includes('chip-multi:')).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 const hoverReport = [...worst.entries()].filter(([k]) => /:hover|custom/.test(k)).sort((a, b) => a[1] - b[1]).slice(0, 6)
   .map(([k, v]) => `${k} ${v.toFixed(2)}`);
 console.log(`  lowest hover / custom label ratios: ${hoverReport.join(' · ')}`);
