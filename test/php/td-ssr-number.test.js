@@ -33,6 +33,14 @@ function withWarnings(args) {
   assert.equal(r.status, 0, r.stderr);
   return { out: r.stdout, warnings: (r.stderr.match(/Warning: +td_number_input:/g) || []).length, stderr: r.stderr };
 }
+/** td_number_input with raw PHP argument expressions (floats, INF, NAN — JSON cannot carry them), caller NOT strict_types. */
+function rawPhp(argsPhp) {
+  const code = `require ${JSON.stringify(join(ROOT, 'php/td.php'))}; TdComponents\\Td::configure('/', ${JSON.stringify(ROOT)});`
+    + ` echo td_number_input(${argsPhp});`;
+  // xdebug (when installed locally) prints call ARGUMENTS in its own trace: off, only the message itself is under test
+  const r = spawnSync(PHP_BIN, ['-d', 'display_errors=stderr', '-d', 'log_errors=0', '-d', 'error_reporting=E_ALL', '-d', 'xdebug.mode=off', '-r', code], { encoding: 'utf8' });
+  return { status: r.status, out: r.stdout, stderr: r.stderr, warnings: (r.stderr.match(/Warning: +td_number_input:/g) || []).length };
+}
 const attr = (html, name) => {
   const m = new RegExp(`<input[^>]* ${name}="([^"]*)"`).exec(html);
   return m ? m[1] : null;
@@ -144,5 +152,33 @@ describe('php/td.php — td_number_input (v0.30.0, contract number-input@1)', op
 
   test('test/ssr/fixtures/number.html (browser fixture) is up to date', () => {
     assert.equal(readFileSync(NUMBER_FIXTURE_FILE, 'utf8'), renderNumberFixture(), 'stale fixture: run `node test/ssr/build-number-fixture.mjs`');
+  });
+
+  test('security review: $value / min / max / step accept ONLY string and int — float (12.5), INF, NAN, bool, array → rejected + one warning each, never coerced', () => {
+    for (const v of ['12.5', 'INF', 'NAN', '-INF', 'true', '[1]', '1.0']) {
+      const r = rawPhp(`'p', ${v}`);
+      assert.equal(r.status, 0, `${v}: ${r.stderr}`);
+      assert.equal(r.warnings, 1, `${v}: ${r.stderr}`);
+      assert.equal(attr(r.out, 'value'), null, `${v} must not become a value: ${r.out}`);
+    }
+    const o = rawPhp(`'p', null, ['min' => 0.5, 'max' => INF, 'step' => NAN]`);
+    assert.equal(o.status, 0, o.stderr);
+    assert.equal(o.warnings, 3, o.stderr);
+    assert.equal(attr(o.out, 'min'), '0');
+    assert.equal(attr(o.out, 'max'), null);
+    assert.equal(attr(o.out, 'step'), '1');
+    assert.equal(attr(rawPhp(`'p', 12`).out, 'value'), '12', 'int still accepted');
+  });
+
+  test('security review: warnings never echo the raw value — option name, PHP type, bounded length only', () => {
+    const secret = 'SECRET-TOKEN-abc123';
+    const r = rawPhp(`'p', '${secret}', ['min' => '${secret}', 'step' => '-${'9'.repeat(5)}']`);
+    assert.equal(r.status, 0, r.stderr);
+    assert.ok(r.warnings >= 3, r.stderr);
+    assert.ok(!r.stderr.includes(secret) && !r.stderr.includes('SECRET'), r.stderr);
+    assert.ok(!r.stderr.includes('99999'), r.stderr);
+    assert.match(r.stderr, /td_number_input: value \(string, 19 chars\)/);
+    const long = rawPhp(`'p', str_repeat('x', 100000)`);
+    assert.ok(long.stderr.length < 400, `bounded: ${long.stderr.length}`);
   });
 });

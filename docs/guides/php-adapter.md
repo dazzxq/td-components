@@ -1104,8 +1104,8 @@ Không có helper cho `<td-tree>` dạng cây luôn hiện (cây quyền là tra
 | Option | Ý nghĩa |
 |---|---|
 | `$name` | tên field (rỗng → không có `name`) |
-| `$value` | giá trị mặc định, **dạng chuẩn**: `-?(0\|[1-9][0-9]*)(\.[0-9]+)?`, ≤ 30 chữ số, không nhiều chữ số lẻ hơn `decimals`; `int` được nhận. Sai (`'12.990.000'`, `'1,5'`, `'1e5'`, `'1.234'` với `decimals=2`…) → **bỏ** + một `E_USER_WARNING` (không làm tròn, không cắt). `'-0'` → `0` |
-| `min`, `max`, `step` | cùng cổng kiểm như `$value` (sai → bỏ + cảnh báo). `step` phải **> 0** (`0` / âm → bỏ + cảnh báo, in bước mặc định) |
+| `$value` | **chỉ `string` hoặc `int`** — `float` (`12.5`, `INF`, `NAN`), `bool`, mảng… bị **từ chối** + cảnh báo (không ép kiểu: `12.5` không lặng lẽ thành `12`; muốn số lẻ thì truyền chuỗi `'12.5'`). Giá trị mặc định, **dạng chuẩn**: `-?(0\|[1-9][0-9]*)(\.[0-9]+)?`, ≤ 30 chữ số, không nhiều chữ số lẻ hơn `decimals`; `int` được nhận. Sai (`'12.990.000'`, `'1,5'`, `'1e5'`, `'1.234'` với `decimals=2`…) → **bỏ** + một `E_USER_WARNING` (không làm tròn, không cắt). `'-0'` → `0` |
+| `min`, `max`, `step` | cùng cổng kiểm và cùng luật kiểu (`string` / `int`) như `$value` (sai → bỏ + cảnh báo). `step` phải **> 0** (`0` / âm → bỏ + cảnh báo, in bước mặc định) |
 | `decimals` | số chữ số lẻ tối đa, `0`–`10` (mặc định `0`) |
 | `group_separator` | `'.'` (mặc định) \| `','` \| `' '` \| `''` (không nhóm) — chỉ có tác dụng khi có JS |
 | `decimal_separator` | `','` (mặc định; `'.'` khi nhóm là `','`) \| `'.'`; trùng dấu nhóm → bỏ |
@@ -1135,6 +1135,9 @@ Không có helper cho `<td-tree>` dạng cây luôn hiện (cây quyền là tra
   </div>
 </td-number-input>
 ```
+
+Cảnh báo (`E_USER_WARNING`) chỉ ghi tên option, kiểu PHP và độ dài (`value (string, 19 chars)`) — **không bao giờ** in giá trị
+thô vào log.
 
 Server **vẫn phải kiểm** giá trị nhận được (khoảng, bước, số lẻ) và lưu bằng `BIGINT` / `DECIMAL` — đừng ép qua `float`.
 Laravel: `ConvertEmptyStringsToNull` biến ô trống (`''`) thành `null` — rỗng **không bao giờ** thành `0`.

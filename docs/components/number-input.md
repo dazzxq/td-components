@@ -126,7 +126,8 @@ dữ liệu): nhiều chữ số lẻ hơn → giữ nguyên, hiển thị đủ
 
 `td_number_input('price', $price, ['label' => 'Giá bán', 'suffix' => '₫', 'element' => true])` in host + control native
 `type=number` với giá trị **chuẩn** (không có JS vẫn gửi số sạch, trình duyệt tự kiểm khoảng / bước; chưa có dấu chấm
-hàng nghìn). Module tải → nhận tại chỗ, hiện `12.990.000`. Chi tiết option và id:
+hàng nghìn). Module tải → nhận tại chỗ, hiện `12.990.000`. Helper PHP chỉ nhận giá trị kiểu `string` / `int` (`float`
+`12.5` bị từ chối, không lặng lẽ thành `12` — truyền `'12.5'`). Chi tiết option và id:
 [Adapter PHP › td_number_input](../guides/php-adapter.md#td_number_input-0300).
 
 ## Attribute

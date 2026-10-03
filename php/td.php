@@ -1640,13 +1640,14 @@ namespace {
      * `@dazzxq/td-components/number-input`.
      * $value / min / max / step go through td__number_canonical() (same gate as the component: canonical form, ≤ 30
      * digits, no more fraction digits than `decimals` — never rounded / cut; invalid → dropped + one E_USER_WARNING);
-     * `step` must be > 0. Native: `min` = min ?? 0 (no negatives unless min < 0), `step` = step ?? 10^-decimals.
+     * `step` must be > 0. Only string and int values are accepted (float / INF / NAN / bool / array → rejected, never
+     * coerced: `12.5` would otherwise become 12); warnings name the option + PHP type + length, never the raw value. Native: `min` = min ?? 0 (no negatives unless min < 0), `step` = step ?? 10^-decimals.
      * Options: label, hint, error, placeholder, required, disabled, readonly, min, max, step, decimals (0–10),
      * group_separator ('.' | ',' | ' ' | ''), decimal_separator (',' | '.'), prefix, suffix, unit_label, clamp, size
      * (sm|md|lg), aria_label (when there is no label), id (the CONTROL id — `<label for>`; element mode: host =
      * {id}-host), class (wrapper / host), attrs (the control: allowlisted; owned names and data-td-* reserved), element.
      */
-    function td_number_input(string $name, string|int|null $value = null, array $o = []): string
+    function td_number_input(string $name, mixed $value = null, array $o = []): string
     {
         $element = td__element($o);
         $decimals = isset($o['decimals']) && is_numeric($o['decimals']) && (int) $o['decimals'] == $o['decimals']
@@ -1657,14 +1658,17 @@ namespace {
         $decFallback = $groupEff === ',' ? '.' : ',';
         $decimal = isset($o['decimal_separator']) && in_array($o['decimal_separator'], [',', '.'], true) && $o['decimal_separator'] !== $groupEff
             ? $o['decimal_separator'] : null;
+        // Security review: ONLY string / int are accepted (a float 12.5 / INF / NAN, bool, array… is rejected, never
+        // coerced); the warning names the option, the PHP type and a bounded length — never the raw value (logs).
         $canon = static function (string $what, mixed $v) use ($decimals): ?string {
-            if ($v === null || $v === '' || is_bool($v)) {
+            if ($v === null || $v === '') {
                 return null;
             }
             $c = is_int($v) || is_string($v) ? td__number_canonical((string) $v, $decimals) : null;
             if ($c === null) {
-                trigger_error("td_number_input: $what " . json_encode(is_scalar($v) ? (string) $v : gettype($v))
-                    . " is not a canonical number with at most $decimals decimals / 30 digits — ignored", E_USER_WARNING);
+                $type = get_debug_type($v);
+                $len = is_string($v) ? ', ' . min(strlen($v), 9999) . (strlen($v) > 9999 ? '+' : '') . ' chars' : '';
+                trigger_error("td_number_input: $what ($type$len) is not a canonical number (string or int, at most $decimals decimals / 30 digits) — ignored", E_USER_WARNING);
             }
             return $c;
         };
@@ -1673,7 +1677,7 @@ namespace {
         $max = $canon('max', $o['max'] ?? null);
         $step = $canon('step', $o['step'] ?? null);
         if ($step !== null && ($step[0] === '-' || !preg_match('/[1-9]/', $step))) { // must be > 0
-            trigger_error("td_number_input: step \"$step\" must be > 0 — ignored", E_USER_WARNING);
+            trigger_error('td_number_input: step must be > 0 — ignored', E_USER_WARNING);
             $step = null;
         }
         $minEff = $min ?? '0';
