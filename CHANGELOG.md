@@ -19,6 +19,11 @@ All notable changes to **td-components** are documented here.
   vị trí con trỏ, trạng thái tích và focus.
 - Base: ghi nhận property gán sớm (`_earlyProps`, ưu tiên hơn state native).
 
+### Fixed
+
+- `<td-checkbox>` / `<td-toggle>`: sau `form.reset()` ô bên trong hiện đúng trạng thái tích của host (trước: host vẫn
+  tích + vẫn gửi nhưng ô hiện bỏ tích).
+
 ### Changed
 
 - Site **đã bật `ssr_elements` từ 0.25** giờ cũng nhận element mode cho `td_field` / `td_toggle` / `td_checkbox` (đúng
