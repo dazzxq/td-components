@@ -90,3 +90,45 @@ style với baseline, animation của spinner thực sự chạy. Danh mục con
 - [ ] URL từ dữ liệu ngoài qua whitelist scheme (menu/lightbox mặc định: `https:`; `http:` chỉ khi chính trang là
   `http:`; hovercard: chỉ http(s) cùng origin).
 - [ ] Có test XSS trong `*.browser-test.js` và state mới trong CSP matrix.
+
+## 5. Media picker / media field
+
+v0.32.0, ranh giới ở [ADR 0013](decisions/0013-media-picker-boundary.md). Mô hình đe doạ: dữ liệu adapter (tên file,
+metadata, nhãn facet / descriptor, chữ lỗi) do **người dùng khác** tạo ra (tên file upload, alt, tag) → coi là không
+tin cậy; adapter và descriptor do dev của site viết nhưng chạy trong trình duyệt → không phải lớp phân quyền.
+
+- **URL — một cổng duy nhất `safeMediaUrl`** (`src/utils/media-url.js`): mọi `src` của picker và field (thumbnail,
+  preview, poster, `preview-src`, state khôi phục form) resolve theo `document.baseURI` rồi chỉ nhận `https:`, `http:`
+  khi chính trang là `http:` (không hạ cấp), `blob:` chỉ khi gọi với `allowBlob` (preview cục bộ); từ chối
+  `javascript:`, `data:`, `file:`, `mailto:`, mọi scheme khác, chuỗi > 8 KiB → không có `<img>`. PHP `td_media_field()`:
+  `Td::safeUrl()` rồi loại thêm `mailto:` / `tel:`. URL **không bao giờ** là danh tính hay giá trị form (danh tính =
+  `assetId`).
+- **Chỉ render text**: mọi chuỗi từ adapter / descriptor / `messages` / nhãn (tên, badge, facet, option, `label`,
+  `helpText`, `userMessage`, `fieldErrors`, `preview-alt`, `prompt`) gán bằng `textContent` / escape. Không descriptor,
+  message hay hook nào nhận HTML — picker **không thêm hatch** nào vào §2. Không `style="…"`, không `<style>`, không
+  handler inline; DOM dựng bằng DOM API. Hộp xác nhận "bỏ thay đổi" truyền Node (không chuỗi HTML) cho `TdModal.show`.
+- **Capability không phải quyền**: cờ `capabilities` (top-level và per-asset, per-asset chỉ thu hẹp) chỉ ẩn / hiện nút.
+  Server phải kiểm quyền cho **mọi** request mà adapter gửi (list theo scope, get, upload, update, delete, download).
+- **Upload**: `accept` / `maxSize` của dropzone chỉ là UX. Server phải kiểm magic byte (không tin `Content-Type` /
+  đuôi file), re-encode ảnh (bỏ metadata / payload lạ), giới hạn dung lượng và kích thước điểm ảnh, đặt tên lưu trữ do
+  server sinh, dedup bằng hash; không phục vụ file upload từ cùng origin với quyền chạy script.
+- **Lỗi**: UI chỉ hiện `userMessage` (cắt 200 code point) hoặc nhãn `labels.error.{code}`; **không bao giờ**
+  `err.message` (exception thô, SQL, đường dẫn lưu trữ). `fieldErrors` chỉ nhận own key chuỗi (bỏ `__proto__` /
+  `constructor` / `prototype`), giá trị mảng chuỗi (≤ 5 / key, mỗi chuỗi ≤ 200). Lỗi gốc chỉ ra `console.warn`. Lỗi
+  upload chuyển cho dropzone dưới dạng `new Error(userMessage || labels.uploadError)` để dropzone (vốn hiện
+  `err.message`) không lộ chuỗi thô. Event `operation-error` không mang chữ lỗi.
+- **FormData của field** (API công khai): `name=<assetId>` hoặc `name[id]` / `name[alt]` / `name[crop]` (crop JSON v1 đã
+  validate: số hữu hạn, 0..1, `x + width ≤ 1`, `y + height ≤ 1`, ≤ 512 ký tự; sai → `null`). Usage + `name` kết thúc `[]`
+  → không gửi (fail closed, JS = PHP). Server vẫn phải kiểm `assetId` (tồn tại, đúng loại, quyền dùng), cắt alt, validate
+  lại crop. State khôi phục form (`formStateRestoreCallback`) chỉ nhận `v === 1` và kiểm lại URL preview.
+- **Referrer**: mọi `<img>` có `referrerpolicy="no-referrer"` cố định — URL ký và đường dẫn trang quản trị không lộ qua
+  `Referer` tới CDN / bucket. Hệ quả cho site: CDN chống hotlink phải chấp nhận referer rỗng; CSP `img-src` phải cho
+  origin ảnh của adapter (`blob:` chỉ khi muốn thumbnail xem trước của dropzone).
+- **Request**: mọi lời gọi adapter nhận `AbortSignal`; kết quả của request cũ bị bỏ kể cả khi adapter phớt lờ signal
+  (không có trạng thái "kết quả cũ thắng" hiện dữ liệu sai ngữ cảnh). Cache chỉ sống trong một lần mở, không
+  localStorage (không lưu dữ liệu media của người dùng trước cho người dùng sau trên máy chung).
+- **Không toàn cục**: không biến trên `window`; `configureDefaults` là registry cấp module.
+
+Test: phần XSS / an toàn của `td-media-picker.engines.browser-test.js` (chuỗi `<img src=x onerror=…>` ở mọi trường chỉ là
+text, URL `javascript:` / `data:` / `file:` không thành `src`, không thuộc tính `style` / `on*`), `media-url.test.js`,
+`media-picker-core.test.js` (`normalizeError`), test SSR PHP (`preview_src` độc → không `img`, `attrs` allowlist).
