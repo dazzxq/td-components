@@ -246,6 +246,7 @@ sẽ bị dịch thành `/vendor/td-components-0.30.0/button` (không tồn tạ
     "@dazzxq/td-components/drawer": "/vendor/td-components-0.30.0/src/feedback/td-drawer.js",
     "@dazzxq/td-components/copy": "/vendor/td-components-0.30.0/src/display/td-copy.js",
     "@dazzxq/td-components/media-grid": "/vendor/td-components-0.30.0/src/display/td-media-grid.js",
+    "@dazzxq/td-components/sortable": "/vendor/td-components-0.30.0/src/display/td-sortable.js",
     "@dazzxq/td-components/pagination": "/vendor/td-components-0.30.0/src/display/td-pagination.js",
     "@dazzxq/td-components/empty-state": "/vendor/td-components-0.30.0/src/display/td-empty-state.js",
     "@dazzxq/td-components/dom-utils": "/vendor/td-components-0.30.0/src/utils/dom-utils.js",
@@ -494,6 +495,7 @@ Nguồn: `package.json#exports`.
 | `@dazzxq/td-components/drawer` | `src/feedback/td-drawer.js` | `<td-drawer>`, `TdDrawer` |
 | `@dazzxq/td-components/copy` | `src/display/td-copy.js` | `<td-copy>`, `TdCopy` |
 | `@dazzxq/td-components/media-grid` | `src/display/td-media-grid.js` | `<td-media-grid>`, `TdMediaGrid` |
+| `@dazzxq/td-components/sortable` | `src/display/td-sortable.js` | `<td-sortable>`, `TdSortable` |
 | `@dazzxq/td-components/pagination` | `src/display/td-pagination.js` | `<td-pagination>`, `TdPagination` |
 | `@dazzxq/td-components/empty-state` | `src/display/td-empty-state.js` | `<td-empty-state>`, `TdEmptyState` |
 | `@dazzxq/td-components/icons` | `src/icons/td-icon.js` | Hàm icon (`tdIcon`, `registerIcons`, …) |

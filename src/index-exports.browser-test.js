@@ -77,4 +77,9 @@ describe('index.js exports', () => {
     expect(typeof kit.TdNumberInput).to.equal('function');
     expect(customElements.get('td-number-input')).to.equal(kit.TdNumberInput);
   });
+
+  it('registers <td-sortable> from the root entry (v0.31.0)', () => {
+    expect(typeof kit.TdSortable).to.equal('function');
+    expect(customElements.get('td-sortable')).to.equal(kit.TdSortable);
+  });
 });
