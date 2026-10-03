@@ -77,7 +77,7 @@
       "touch-action": "auto"
     },
     ".td-masked__text": {
-      "height": "18px",
+      "height": "20px",
       "min-height": "auto",
       "max-height": "none",
       "padding-top": "0px",
@@ -117,7 +117,7 @@
       "-webkit-backdrop-filter": "",
       "font-size": "16px",
       "font-weight": "400",
-      "line-height": "normal",
+      "line-height": "20px",
       "text-align": "start",
       "resize": "none",
       "overflow-y": "visible",

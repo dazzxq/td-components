@@ -15,7 +15,7 @@
   ],
   "styles": {
     ".td-masked__text[data-state=\"revealed\"]": {
-      "height": "18px",
+      "height": "20px",
       "min-height": "auto",
       "max-height": "none",
       "padding-top": "0px",
@@ -55,7 +55,7 @@
       "-webkit-backdrop-filter": "",
       "font-size": "16px",
       "font-weight": "500",
-      "line-height": "normal",
+      "line-height": "20px",
       "text-align": "start",
       "resize": "none",
       "overflow-y": "visible",

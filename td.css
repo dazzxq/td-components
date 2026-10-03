@@ -9436,6 +9436,9 @@
 
 	.td-masked__text {
 		min-width: 0;
+		/* numeric, not `normal`: the text uses the page font, and `normal` follows the font's own metrics (a site font
+		   changed the height 18 → 19px under Tailwind preflight); a number keeps the box the same in every page font */
+		line-height: var(--td-leading-tight);
 		color: var(--td-color-text-muted);
 		font-variant-numeric: tabular-nums;
 		overflow-wrap: anywhere;
