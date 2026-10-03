@@ -96,6 +96,28 @@ dùng `icon="tên"` sẽ gọn hơn.
 
 `heading-level` 2–6 (mặc định 3, ngoài khoảng → 3). Chọn cấp nối tiếp heading bao quanh để cây heading của trang đúng.
 
+### 6. In sẵn từ server, không nháy (`td_empty()`, 0.26.0)
+
+Trang PHP dùng [`td_empty()`](../guides/php-adapter.md#td_empty-0260): helper in host
+`<td-empty-state data-td-ssr="empty-state@1">` kèm **đúng cây** mà `render()` tạo (icon đã điền SVG, heading đúng cấp,
+lời nhắn, nút hành động là link `td_link` chế độ element). `td.css` tạo dáng ngay khi chưa có JS; nạp module thì
+component **nhận markup tại chỗ** — không thay con, không nháy, không xô lệch:
+
+```php
+<?= td_empty('Chưa có sản phẩm', 'Tạo sản phẩm đầu tiên.', [
+    'actions' => [['label' => 'Tạo sản phẩm', 'href' => '/products/new', 'variant' => 'primary']],
+]) ?>
+```
+
+- Hydrate chỉ khi cấu trúc khớp `render()` cho đúng attribute hiện tại và mọi node chỉ mang thuộc tính trong allowlist
+  (`on*`, `style`, `data-td-*` lạ, phần tử / chữ thừa, icon / cấp heading / chữ lệch → **render lại** như thường; không
+  có state nên không mất gì). Icon được tạo lại từ registry JS (cùng hộp). Icon không có / tên lạ → `inbox` ở cả PHP lẫn JS.
+- **Nút hành động của server được giữ** (cùng node) tới khi trang gán property `actions` — lúc đó thay bằng nút JS như
+  mục 1. Đổi attribute cấu trúc (`size`, `title`…) sau đó vẫn giữ chúng. Mỗi nút server ở **một trong hai** trạng thái
+  hợp lệ: `<td-button data-td-ssr="button@1">` chưa hydrate (chỉ nạp module `empty-state` — `td-button` chưa định
+  nghĩa; link vẫn bấm được) hoặc `<td-button>` đã hydrate (nạp gốc package: `td-button` được định nghĩa trước).
+- Dấu `data-td-ssr` bị gỡ sau khi đọc. Viết `<td-empty-state>` bằng tay (không dấu) → render như trước.
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
@@ -193,7 +215,8 @@ trên (geometry từ `icons.json`). `td_icon()` của [adapter PHP](../guides/ph
   chung, nên luôn truyền `label`.
 - **Icon không đổi màu**: icon dùng `currentColor`, lấy từ `--td-empty-state-icon`; `iconNode` tự đặt `fill`/`stroke`
   cứng sẽ không theo token — dùng `currentColor` trong SVG của bạn.
-- Di chuyển element trong DOM: listener của nút được gỡ khi rời trang và gắn lại khi vào lại, nút vẫn hoạt động.
+- Di chuyển element trong DOM: listener của nút được gỡ khi rời trang và gắn lại khi vào lại, nút vẫn hoạt động. Từ
+  0.26.0 gắn lại **không render lại** (giữ nguyên node; markup bị sửa trong lúc rời trang thì render lại).
 
 ## Xem thêm
 

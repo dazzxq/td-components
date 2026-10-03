@@ -466,3 +466,40 @@ describe('TdBaseElement hydrate lifecycle (v0.25.0)', () => {
     assert.equal(ssrMarker(null), null);
   });
 });
+
+// --- v0.26.0 (ADR 0012, plan F0): early-property provenance (the focus deferral was removed in review round 3) ---
+describe('TdBaseElement F0 (v0.26.0): _earlyProps (no deferral since review round 3)', () => {
+  it('_earlyProps records the names replayed from properties assigned before connect (empty Set otherwise)', () => {
+    class El extends TdBaseElement {
+      static get observedAttributes() { return ['checked', 'value', 'label', 'field-id']; }
+      static get booleanAttributes() { return ['checked']; }
+    }
+    const a = new El();
+    a.checked = true;
+    a.fieldId = 'x';
+    a.connectedCallback();
+    assert.ok(a._earlyProps instanceof Set);
+    assert.deepEqual([...a._earlyProps].sort(), ['checked', 'fieldId']);
+    assert.equal(a.hasAttribute('checked'), true);
+    const b = new El();
+    b.connectedCallback();
+    assert.ok(b._earlyProps instanceof Set);
+    assert.equal(b._earlyProps.size, 0);
+  });
+
+
+  it('review round 3: canHydrate() is a plain boolean decision — no deferral hook, no _deferred state', () => {
+    const el = new TdBaseElement();
+    assert.equal(typeof el.deferHydration, 'undefined');
+    let renders = 0;
+    class El extends TdBaseElement {
+      canHydrate() { return false; }
+      render() { renders++; return '<p>y</p>'; }
+    }
+    const e = new El();
+    e.connectedCallback();
+    assert.equal(e.innerHTML, '<p>y</p>');
+    assert.equal(renders, 1);
+    assert.equal('_deferred' in e, false);
+  });
+});

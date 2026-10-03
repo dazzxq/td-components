@@ -1,4 +1,27 @@
-import { TdFormElement } from '../base/td-form-element.js';
+import {
+  TdFormElement, ssrClassKey, ssrContentNodes, ssrSameAttrs, ssrIsErrorNote, SSR_ARIA_DATA, SSR_CONTROL_ATTRS,
+} from '../base/td-form-element.js';
+import { ssrMarker } from '../base/td-base-element.js';
+
+/**
+ * v0.26.0 SSR (ADR 0012) — native constraint attributes a NORMALLY rendered + bound control carries, per public type
+ * (render() + afterRender(): `_applyRange` forwards min / max to `date`, min / max / step to month / datetime-local /
+ * time; `maxlength` comes from render() with a character counter and is checked as structure). Everything else in
+ * SSR_CONSTRAINTS exists on the server-rendered control only for the no-JS form and comes off on hydrate (the host owns
+ * validity: email / url / number render as text, `required` / `pattern` / `minlength` are never on the control).
+ */
+const SSR_KEEP = { date: ['min', 'max'], month: ['min', 'max', 'step'], 'datetime-local': ['min', 'max', 'step'], time: ['min', 'max', 'step'] };
+const SSR_CONSTRAINTS = ['required', 'pattern', 'minlength', 'min', 'max', 'step'];
+/** Native type PHP prints for a public type the component renders as text + inputmode (validation without JS). */
+const SSR_NATIVE_TYPE = { email: 'email', url: 'url', number: 'number' };
+/**
+ * Review round 3: host attribute ↔ the no-JS attribute PHP printed on the control — they must still agree on the first
+ * hydrate (`maxlength` is compared as structure).
+ */
+const SSR_AGREE = [['name', 'name'], ['required', 'required'], ['disabled', 'disabled'], ['readonly', 'readonly'],
+  ['pattern', 'pattern'], ['minlength', 'minlength'], ['min', 'min'], ['max', 'max'], ['step', 'step']];
+/** Other no-JS-only control attributes removed on hydrate. */
+const SSR_ONLY = ['name', 'autofocus'];
 
 /**
  * Multi-type input field — token-native (needs td.css; no Tailwind). Styles: src/styles/components/field.css.
@@ -30,6 +53,13 @@ import { TdFormElement } from '../base/td-form-element.js';
  * - value/placeholder/helper/error/disabled/readonly/required update IN PLACE (focus + caret kept).
  * - Exactly one `input` and one `change` per user action (native ones stopped at the host); `change` only when
  *   the value changed since focus (D8).
+ * - SSR (v0.26.0, ADR 0012): a host marked `data-td-ssr="input-field@1"` (PHP td_field element mode) whose tree is
+ *   exactly render()'s is adopted IN PLACE — same control node (focus + selection kept), live value captured (early
+ *   `value` property > what the user typed > the attribute), ElementInternals first, then `name` and the constraints the
+ *   component does not keep on its control (SSR_KEEP) come off; a native email / url / number control becomes
+ *   text + inputmode on the same node; external `<label for="{field-id}">` move to the host; reset → the native
+ *   default. Any mismatch → safe render AT ONCE + restore (value, selection, and the focus when the control had it) —
+ *   no deferral (ADR 0012 §5). `contenteditable` has no SSR contract (always rendered).
  *
  * @element td-input-field
  * @attr {string} type - text|password|email|tel|number|url|search|date|month|datetime-local|time|textarea|contenteditable
@@ -70,6 +100,9 @@ import { TdFormElement } from '../base/td-form-element.js';
  * @fires change - detail: { value } — on blur, only when the value changed since focus
  */
 export class TdInputField extends TdFormElement {
+  /** v0.26.0: adopts PHP element-mode markup in place (`input-field@1`); a hydrated element re-binds on re-connect. */
+  static hydratable = true;
+
   static get observedAttributes() {
     return [
       ...super.observedAttributes,
@@ -229,8 +262,11 @@ export class TdInputField extends TdFormElement {
   render() {
     const esc = (v) => this.escapeHtml(v);
     const type = this._type();
-    // A structural re-render keeps what the user typed (the live value), not the stale attribute.
-    const value = this._getFieldElement() ? this._getValue() : (this.getAttribute('value') || '');
+    // A structural re-render keeps what the user typed (the live value), not the stale attribute. Review round 4: the
+    // render that replaces REFUSED SSR markup never reads it (an injected control could come first) — the host value
+    // is rendered and the trusted captured state is restored afterwards.
+    const fresh = !!this._ssrFreshRender;
+    const value = this._getFieldElement() && !fresh ? this._getValue() : (this.getAttribute('value') || '');
     const maxLength = this._maxLength();
     const limitType = this._limitType();
     const label = this.getAttribute('label') || '';
@@ -708,6 +744,237 @@ export class TdInputField extends TdFormElement {
     super._captureDefaults();
     /** @private null = no initial `value` attr; a string = explicit initial value. */
     this._defaultValueAttr = this.getAttribute('value');
+    if (this._ssrDefaults) {
+      // v0.26.0: reset target = the NATIVE default of the server-rendered control (not the value at upgrade)
+      this._defaultValueAttr = this._ssrDefaults.value;
+      this._defaultValue = this._ssrDefaults.value;
+    }
+  }
+
+  // --- SSR hydrate (v0.26.0, ADR 0012) ---
+
+  /**
+   * Marker `input-field@<n>` + a native input / textarea control → capture its state; adopt the tree only when the
+   * schema is 1, it is exactly render()'s for the current host attributes, its no-JS form attributes still agree with
+   * the host and it passes the subtree scan + skeleton (else safe render at once + restore, focus included).
+   * `contenteditable` never hydrates.
+   * @returns {boolean}
+   */
+  canHydrate() {
+    // Review round 1 IMPL-1: `input-field@<other schema>` is never adopted, but its control state still goes through
+    // the state-safe path (no marker → legacy render, unchanged).
+    const m = ssrMarker(this);
+    if (!m || m.name !== 'input-field') return false;
+    // review round 4 (ISSUE-8): state comes only from the expected skeleton slot (or the single control there is)
+    const control = this._ssrStateSource();
+    if (!control) return this._ssrClean(false); // none / ambiguous: clean render from the host, nothing transplanted
+    this._ssrDefaults = { value: control.defaultValue };
+    const matches = m.schema === 1 && this._type() !== 'contenteditable' && this._markupMatches(true)
+      && this._ssrFormAttrsAgree(control, SSR_AGREE, ['required', 'disabled', 'readonly']);
+    return this._ssrDecide(control, matches, false);
+  }
+
+  /** Re-connect of a HYDRATED element: re-bind in place while the markup is still the component's own (else restore). */
+  canRebind() {
+    return this._ssrRevalidate(this._ssrStateSource());
+  }
+
+  /** @protected Review round 4: `div.td-field` (unique host child) > `input|textarea.td-field__control` (unique child). */
+  _ssrSlotControl() {
+    const roots = [...this.children].filter((e) => e.localName === 'div' && e.classList.contains('td-field'));
+    if (roots.length !== 1) return null;
+    const c = [...roots[0].children].filter((e) => (e.localName === 'input' || e.localName === 'textarea')
+      && e.classList.contains('td-field__control'));
+    return c.length === 1 ? c[0] : null;
+  }
+
+  /** @protected */
+  _ssrPlausible() {
+    return 'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea';
+  }
+
+  hydrateExisting() {
+    const control = this._ssrControl;
+    const state = this._ssrState;
+    const type = this._type();
+    // Same node: a native email / url / number control becomes the component's text control (+ inputmode on bind).
+    let rewrote = false;
+    const renderType = this._resolveInputType(type);
+    if (control.localName === 'input' && control.getAttribute('type') !== renderType) {
+      control.type = renderType;
+      rewrote = true;
+    }
+    if (control.value !== state.value) {
+      control.value = state.value; // only when required: an early value, or an engine that cleared it on the type change
+      rewrote = true;
+    }
+    if (rewrote && state.focused && state.selection) {
+      try { control.setSelectionRange(...state.selection); } catch { /* type without a selection API */ }
+    }
+    if (state.focused && control.ownerDocument.activeElement !== control) control.focus({ preventScroll: true });
+    // focused before define: `change` on blur compares with the value the field had when the page was served
+    if (state.focused && this._valueAtFocus == null) this._valueAtFocus = control.defaultValue;
+    this._userEdited = state.edited;
+    // the component's own description ids are re-added (in its order) by the bind; the page's own ids stay
+    const own = new Set([`${this.id}-note`, `${this.id}-counter`, `${this.id}-error`]);
+    const rest = (control.getAttribute('aria-describedby') || '').split(/\s+/).filter((t) => t && !own.has(t));
+    if (rest.length) control.setAttribute('aria-describedby', rest.join(' '));
+    else control.removeAttribute('aria-describedby');
+    const note = this.querySelector('.td-field__footer > .td-field-error');
+    if (note) this._errorNote = note;
+    this._syncForm(); // ElementInternals FIRST…
+    const keep = SSR_KEEP[type] || [];
+    for (const a of [...SSR_ONLY, ...SSR_CONSTRAINTS.filter((c) => !keep.includes(c))]) control.removeAttribute(a); // …then
+    this._ssrRetargetLabels(control);
+    this._ssrControl = null; // review round 1 IMPL-3: adopted — no stale references
+    this._ssrState = null;
+  }
+
+  /**
+   * @protected Review round 2: the known skeleton — one `div.td-field` > [optional label (text + at most the required
+   * star), THIS control, footer of text-only error note / helper note / counter, each at most once].
+   */
+  _ssrSkeletonOk() {
+    const kids = ssrContentNodes(this);
+    if (kids.length !== 1 || kids[0].nodeType !== 1 || kids[0].localName !== 'div' || !kids[0].classList.contains('td-field')) return false;
+    const parts = ssrContentNodes(kids[0]);
+    if (parts.some((n) => n.nodeType !== 1)) return false;
+    let i = 0;
+    if (parts[0]?.localName === 'label') {
+      const nodes = ssrContentNodes(parts[0]);
+      const els = nodes.filter((n) => n.nodeType === 1);
+      if (els.length > 1 || (els[0] && (els[0] !== nodes[nodes.length - 1] || !els[0].classList.contains('td-field__required')
+        || els[0].localName !== 'span' || els[0].children.length))) return false;
+      i = 1;
+    }
+    if (parts[i] !== this._ssrControl || parts.length !== i + 2) return false;
+    const footer = parts[i + 1];
+    if (footer.localName !== 'div' || !footer.classList.contains('td-field__footer')) return false;
+    const seen = new Set();
+    return ssrContentNodes(footer).every((n) => {
+      if (n.nodeType !== 1 || n.children.length) return false;
+      const kind = ssrIsErrorNote(n) ? 'error'
+        : n.localName === 'div' && n.classList.contains('td-field__note') ? 'note'
+          : n.localName === 'div' && n.classList.contains('td-field__counter') ? 'counter' : null;
+      if (!kind || seen.has(kind)) return false;
+      seen.add(kind);
+      return true;
+    });
+  }
+
+  /** @protected */
+  _ssrCapture(control, live) {
+    const focused = control === control.ownerDocument.activeElement;
+    let selection = null;
+    if (focused) {
+      try {
+        if (control.selectionStart != null) selection = [control.selectionStart, control.selectionEnd, control.selectionDirection || 'none'];
+      } catch { /* no selection API for this type */ }
+    }
+    const early = !live && this._earlyProps?.has('value') && this._earlyValue !== undefined;
+    let value = early ? this._earlyValue : control.value;
+    const max = this._maxLength();
+    if (early && max && value) value = this._truncateToLimit(value, max, this._limitType());
+    // native "dirty by user edit" (gates tooShort): the user changed it before the module loaded
+    return { value, selection, focused, edited: !early && control.value !== control.defaultValue };
+  }
+
+  /** @protected */
+  _restoreSsrState(state) {
+    const field = this._getFieldElement();
+    if (!field) return;
+    if (state.clean) { // review round 4: rendered from the host only — nothing to put back but the focus
+      if (state.refocus) field.focus({ preventScroll: true });
+      return;
+    }
+    if (TdInputField._isEditable(field)) return;
+    if (field.value !== state.value) field.value = state.value;
+    this._userEdited = !!state.edited;
+    this._updateCounter();
+    this._syncForm();
+    if (state.refocus) {
+      // the replaced control had focus → focus + selection move to the new one (review rounds 1 + 3);
+      // `change` on blur still compares with the value the page was served with
+      field.focus({ preventScroll: true });
+      if (state.selection) {
+        try { field.setSelectionRange(...state.selection); } catch { /* type without a selection API */ }
+      }
+      this._valueAtFocus = this._ssrDefaults?.value ?? this._valueAtFocus;
+    }
+  }
+
+  /**
+   * @private The single `.td-field` child is exactly render()'s tree for the current host attributes: wrapper classes,
+   * internal label (+ the required star), control (tag, type — or its native SSR type on the first hydrate —, id,
+   * maxlength, rows / autoresize, attribute allowlist), footer (error note, helper note, counter). `first` = the SSR
+   * markup (no-JS-only attributes allowed on the control); re-connect (`first` false) is strict.
+   * @param {boolean} first
+   */
+  _markupMatches(first) {
+    const kids = ssrContentNodes(this);
+    if (kids.length !== 1 || kids[0].nodeType !== 1) return false;
+    const root = kids[0];
+    const tpl = document.createElement('template');
+    tpl.innerHTML = this.render();
+    const want = tpl.content.firstElementChild;
+    if (root.localName !== 'div' || !ssrSameAttrs(root, want)) return false;
+    const have = ssrContentNodes(root);
+    const need = [...want.children];
+    if (have.length !== need.length || have.some((n) => n.nodeType !== 1)) return false;
+    return need.every((w, i) => {
+      const l = have[i];
+      if (w.localName === 'label') return this._ssrLabelOk(l, w);
+      if (w.classList.contains('td-field__control')) return this._ssrControlOk(l, w, first);
+      return this._ssrFooterOk(l, w);
+    });
+  }
+
+  /** @private Internal label: same attributes, the label text, then at most the required star. */
+  _ssrLabelOk(l, w) {
+    if (l.localName !== 'label' || !ssrSameAttrs(l, w)) return false;
+    const nodes = ssrContentNodes(l);
+    const star = nodes.length && nodes[nodes.length - 1].nodeType === 1 ? nodes.pop() : null;
+    if (nodes.some((n) => n.nodeType !== 3) || nodes.map((n) => n.data).join('') !== w.textContent) return false;
+    if (!!star !== this.hasAttribute('required')) return false; // review round 1 IMPL-4: star ⇔ required
+    return !star || (star.localName === 'span' && ssrClassKey(star) === 'td-field__required' && star.attributes.length === 2
+      && star.getAttribute('aria-hidden') === 'true' && star.children.length === 0 && star.textContent === ' *');
+  }
+
+  /** @private The control: structure + attribute allowlist (see _markupMatches). */
+  _ssrControlOk(c, w, first) {
+    if (c.localName !== w.localName || ssrClassKey(c) !== 'td-field__control' || c.id !== w.id) return false;
+    if (c.getAttribute('maxlength') !== w.getAttribute('maxlength')) return false;
+    const type = this._type();
+    if (c.localName === 'textarea') {
+      if (c.children.length || c.getAttribute('rows') !== w.getAttribute('rows')
+        || c.hasAttribute('data-autoresize') !== w.hasAttribute('data-autoresize')) return false;
+    } else {
+      const t = c.getAttribute('type');
+      if (t !== w.getAttribute('type') && !(first && t === SSR_NATIVE_TYPE[type])) return false;
+    }
+    const keep = SSR_KEEP[type] || [];
+    const ssrOnly = [...SSR_ONLY, ...SSR_CONSTRAINTS.filter((a) => !keep.includes(a))];
+    return [...c.attributes].every(({ name }) => ((SSR_CONTROL_ATTRS.has(name) && name !== 'checked' && (first || !ssrOnly.includes(name)))
+      || SSR_ARIA_DATA.test(name)) && !(name === 'data-autoresize' && c.localName !== 'textarea'));
+  }
+
+  /** @private Footer: [base error note] + helper note + [counter] (text only), ids derived from the host id. */
+  _ssrFooterOk(f, w) {
+    if (f.localName !== 'div' || ssrClassKey(f) !== 'td-field__footer'
+      || ![...f.attributes].every((a) => a.name === 'class' || a.name === 'hidden')) return false;
+    const have = ssrContentNodes(f);
+    const note = have.length > 0 && ssrIsErrorNote(have[0]);
+    if (note !== !!this.errorMessage) return false; // review round 1 IMPL-4: error note ⇔ an error is shown
+    if (note) have.shift();
+    const need = [...w.children];
+    if (have.length !== need.length) return false;
+    const allowed = { 'td-field__note': ['class', 'id', 'hidden'], 'td-field__counter': ['class', 'id', 'data-state'] };
+    return need.every((x, i) => {
+      const n = have[i];
+      const cls = ssrClassKey(x);
+      return n.nodeType === 1 && n.localName === 'div' && ssrClassKey(n) === cls && n.id === x.id && n.children.length === 0
+        && [...n.attributes].every((a) => allowed[cls]?.includes(a.name));
+    });
   }
 
   _restoreDefaults() {
@@ -858,6 +1125,9 @@ export class TdInputField extends TdFormElement {
    * @param {string} val
    */
   setValue(val) {
+    // v0.26.0: a value assigned before upgrade (replayed during the first connect) is remembered as given — SSR hydrate
+    // applies it to the adopted control after its type is normalised (a native number control would sanitise it).
+    if (!this._initialized) this._earlyValue = val == null ? '' : String(val);
     const field = this._getFieldElement();
     if (!field) {
       if (val == null) this.removeAttribute('value');

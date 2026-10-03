@@ -48,12 +48,14 @@ produce byte-identical baselines.
 Styled els: `.td-toggle-track`, `.td-toggle-thumb`, `.td-toggle-icon:first-child` (cross),
 `.td-toggle-icon:last-child` (check), check `path` (color).
 States: `unchecked`, `checked`, `disabled`, `disabled-checked`, `custom-color` (#f59e0b),
-`size-sm`, `size-lg`. (7)
+`size-sm`, `size-lg`. (7) — later: `pending`, `ssr` (v0.26.0: PHP `td_toggle(…, ['element' => true])` markup `toggle@1`,
+hydrated in place under the strict CSP; computed styles identical to `checked`).
 
 ### td-checkbox (1 injected `<style>`)
 Styled els: `.td-checkmark` (the `:checked ~` bg/border rule), `.td-checkmark-icon` (opacity/scale),
 `.td-checkbox-label`.
-States: `unchecked`, `checked`, `disabled`, `custom-color` (#10b981), `size-sm`, `size-lg`. (6)
+States: `unchecked`, `checked`, `disabled`, `custom-color` (#10b981), `size-sm`, `size-lg`. (6) — later: `error`, `ssr`
+(v0.26.0: PHP `td_checkbox(…, ['element' => true])` markup `checkbox@1`, hydrated in place; styles identical to `checked`).
 
 ### td-slider (10 declarative)
 Styled els: `.td-slider-container`, `.td-slider-track-bg`, `.td-slider-track-active` (width %),
@@ -65,7 +67,8 @@ States: `min`, `mid`, `max`, `disabled`, `custom-color` (#a855f7), `show-value-l
 ### td-input-field (5 declarative)
 Styled els: `.td-input` / `.td-input-textarea`, `.td-input-note`, `.td-input-counter`.
 States: `text`, `text-focus` (focus pseudo), `textarea`, `number`, `size-sm`, `size-lg`,
-`disabled`, `error` (red border + note), `note`, `counter`, `counter-full` (count==max → error color). (11)
+`disabled`, `error` (red border + note), `note`, `counter`, `counter-full` (count==max → error color). (11) — later additions
+incl. `ssr` (v0.26.0: PHP `td_field(…, ['element' => true])` markup `input-field@1` — email, counter, helper — hydrated in place).
 
 ### td-dropdown (4 declarative incl. 1 SVG `style=`; menu portaled to body)
 Styled els: `.td-dropdown-button`, `.td-dropdown-arrow` (rotate when open), `.td-dropdown-selected`,
@@ -73,6 +76,8 @@ and (portaled) `.td-dropdown-search`, `.td-dropdown-options` (max-height).
 States: `closed`, `closed-selected`, `open` (portal + settle), `disabled`. (4)
 v0.22.0: `.td-dropdown__options` (listbox) no longer scrolls — `.td-dropdown__scroller` inside it does (max-height);
 new state `create` (`create-label` + 12 options: listbox, scroller, pinned `.td-dropdown__option--create` + its icon).
+v0.26.0: `ssr` (PHP `td_dropdown(…, ['element' => true])` shell `dropdown@1` — label + required star + styled
+`select.td-dropdown__native` — upgraded to the trigger under the strict CSP).
 
 ### td-button (1 declarative — variant glass OR custom-color inline style)
 Styled el: inner `button` (bg/box-shadow/backdrop-filter from `_glassStyles[variant]`, or
@@ -94,7 +99,9 @@ States: `page1`, `page3`, `custom-color` (#0ea5e9). (3)
 ### td-empty-state (5 declarative incl. 1 SVG `style=`)
 Styled els: `.td-empty-state-card` (border/padding/bg/shadow), `.td-empty-icon` (SVG size/color),
 `.td-empty-title` (margin), `.td-empty-actions` (margin + display:none when no actions).
-States: `default`, `compact` (half padding), `size-sm`, `size-lg`. (4)
+States: `default`, `compact` (half padding), `size-sm`, `size-lg`. (4) — later additions: `actions`, and `ssr`
+(v0.26.0: PHP `td_empty()` markup `empty-state@1` with a registry icon + one server action `td_link` element mode,
+hydrated in place under the strict CSP).
 
 ### td-table (17 declarative; imports td-pagination + td-empty-state)
 Styled els: `.td-table-container` (card), `.td-table-row[data-row-idx]` (zebra bg + transition),

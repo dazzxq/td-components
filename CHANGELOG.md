@@ -2,6 +2,44 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.26.0
+
+**Hết "flash" lúc tải — bước 2 + 3:** `<td-input-field>`, `<td-toggle>`, `<td-checkbox>`, vỏ `<td-dropdown>` và
+`td_empty()` / `<td-empty-state>` in sẵn từ PHP và hydrate tại chỗ (ADR 0012; plan `v0.26.0-ssr-form.md` + 
+`v0.26.0-ssr-dropdown-empty.md`, Codex plan-review APPROVE).
+
+### Added
+
+- **PHP element mode** cho `td_field()`, `td_toggle()`, `td_checkbox()` (`['element' => true]` hoặc cờ toàn site
+  `ssr_elements`): in host + ô native đã có style (`data-td-ssr` `input-field@1` / `toggle@1` / `checkbox@1`). Chưa có JS
+  vẫn nhập, submit, validation native, password manager / autofill. `id` người gọi = id của ô native (`<label for>` ngoài
+  vẫn đúng); host có id riêng (`{id}-host` hoặc tự sinh).
+- **Hydrate form-associated:** JS nhận ô tại chỗ — giữ chữ đã gõ / autofill / trạng thái tích trước khi JS nạp, giữ
+  focus + vị trí con trỏ, không phát `input` / `change`; dữ liệu form đúng **một** mục mỗi tên; `reset` về mặc định
+  native; label ngoài chuyển sang host. Markup lệch / bị sửa / thuộc tính form khác host → dựng lại an toàn ngay, giữ chữ đã gõ,
+  vị trí con trỏ, trạng thái tích và focus.
+- Base: ghi nhận property gán sớm (`_earlyProps`, ưu tiên hơn state native).
+- **Dropdown không xô lệch:** `td_dropdown(…, ['element' => true])` in `<select class="td-dropdown__native">` có **đúng hộp**
+  của nút chọn (giữ mũi tên native) → JS thay bằng nút chọn không nhảy layout; `<select>` đang focus lúc JS nạp → chờ rời
+  ô rồi nâng cấp đúng một lần với lựa chọn lúc đó.
+- **`td_empty($title, $message, $o)`** mới: in sẵn `<td-empty-state>` đầy đủ (icon registry / `site-*`, không có hoặc lạ →
+  `inbox`; `size`, `compact`, `heading`, `actions` → nút link element mode); `<td-empty-state>` nhận markup tại chỗ, giữ
+  actions của server tới khi site gán `actions` bằng JS.
+- `Td::icon()` nhận cỡ số nguyên 8–128px.
+
+### Fixed
+
+- `<td-empty-state>`: `actions` / `iconNode` gán trước khi component nạp trước đây bị bỏ qua — giờ có tác dụng.
+- `<td-checkbox>` / `<td-toggle>`: sau `form.reset()` ô bên trong hiện đúng trạng thái tích của host (trước: host vẫn
+  tích + vẫn gửi nhưng ô hiện bỏ tích).
+
+### Changed
+
+- `<td-empty-state>` gắn lại (di chuyển) giữ nguyên node thay vì render lại.
+- Site **đã bật `ssr_elements` từ 0.25** giờ cũng nhận element mode cho `td_field` / `td_toggle` / `td_checkbox` / `td_dropdown` (đúng
+  ADR: cờ toàn site áp cho mọi helper đã có contract). Trong element mode: `td_toggle` / `td_checkbox` đưa `class` /
+  `attrs` lên host (native: lên `<label>`), `input_attrs` vẫn xuống ô.
+
 ## 0.25.0
 
 **Hết "flash" lúc tải trang SSR** — bước 1: nền tảng hydrate tại chỗ + `<td-button>` / link (đề xuất site 135; ADR 0012,

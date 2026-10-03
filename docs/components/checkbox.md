@@ -12,7 +12,7 @@ radio native.
 | Import | `import '@dazzxq/td-components/checkbox';` (class: `import { TdCheckbox } from '@dazzxq/td-components';`) |
 | Loại | Custom element |
 | Form-associated | có |
-| Từ phiên bản | 0.1.0 (form-associated từ 0.2.0, token-native + một event `change` từ 0.7.0, tròn từ 0.14.0) |
+| Từ phiên bản | 0.1.0 (form-associated từ 0.2.0, token-native + một event `change` từ 0.7.0, tròn từ 0.14.0, hydrate SSR tại chỗ từ 0.26.0) |
 
 Cần `td.css` trên trang (xem [Cài đặt](../getting-started/installation.md)).
 
@@ -223,6 +223,30 @@ in đúng khối `<label class="td-checkbox …">` ở trên (checkbox native, d
 PHP thì in tay khối trên (trong `<td-checkbox>` hoặc đứng riêng); dấu tích lấy theo
 [Icons › markup render sẵn](icons.md#icon-trong-markup-render-sẵn). Các file `test/contracts/*.html` trong repo kit chỉ là **fixture test** (không nằm trong gói npm, icon trong đó viết tắt) — đừng copy từ đó. Xem [WordPress & PHP](../guides/wordpress-php.md) và
 [bảng class cũ](../upgrading/class-map.md) (host property `--td-cb-color` đổi thành `--td-checkbox-color` ở 0.7.0).
+
+### Hợp đồng SSR `checkbox@1` — hydrate tại chỗ (0.26.0)
+
+[`td_checkbox` ở chế độ element](../guides/php-adapter.md#td_toggle--td_checkbox-ở-chế-độ-element-0260)
+(`'element' => true` hoặc `ssr_elements`) in host `<td-checkbox data-td-ssr="checkbox@1" …>` chứa đúng khối
+`label.td-checkbox` ở trên (ô dấu tích `data-td-icon="check"` + SVG sẵn); input native còn giữ `name` / `value` /
+`checked` / `required` (+ `id` của caller) để form chạy khi chưa có JS. Khi module nạp, `td-checkbox` **nhận** markup đó:
+
+- **Điều kiện nhận:** dấu `checkbox@1`; con là `label.td-checkbox.td-checkbox--{size}` có đúng input
+  `type="checkbox"`, ô dấu tích và nhãn như `render()` với attribute hiện tại của host (sau đó tuỳ chọn một dòng lỗi
+  `.td-field-error`); attribute ngoài allowlist (`on*`, `style`, `form`, `formaction`, `data-td-*` trên input…) → không
+  nhận.
+- **Trạng thái:** `el.checked` / `el.value` gán trước define > trạng thái **sống** của input (người dùng tích / bỏ tích,
+  script đổi `input.value` trước khi JS tới) > attribute; chép lên host, ElementInternals **trước**, rồi gỡ `name` /
+  `value` / `checked` / `required` khỏi input — FormData trước = sau, đúng một mục (cả tên `tags[]`), bỏ tích / disabled
+  không gửi. `indeterminate` của input được giữ. Không phát `change`; node input + focus giữ nguyên.
+- `<label for="{id input}">` nằm ngoài host chuyển sang host (bấm vẫn tích + phát đúng một `change`); `id` của input
+  được giữ, kể cả khi sau này phải render lại. Nhãn bọc (`label.td-checkbox`) vẫn đặt tên cho input.
+- **Reset** → mặc định native (`checked` / `value` PHP in ra), không về trạng thái lúc nâng cấp.
+- **Không khớp** (attribute / phần tử lạ, control thừa, dấu sai schema, nhãn / size lệch, `name` / `required` /
+  `disabled` của input khác host) → **render an toàn ngay**, giữ `checked` / `value` / `indeterminate` / `id`; input
+  đang focus thì focus chuyển sang input mới. Không phát `change`. (Không còn "hoãn tới blur" — ADR 0012 mục 5.)
+- Gỡ ra rồi gắn lại phần tử đã hydrate: gắn lại tại chỗ sau khi kiểm lại markup (bị sửa lúc tách → render lại giữ
+  trạng thái); `<td-checkbox>` không dấu: như trước.
 
 ## Bàn phím & trợ năng
 

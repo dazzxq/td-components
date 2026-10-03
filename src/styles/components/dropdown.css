@@ -54,6 +54,54 @@
 		min-height: 2.5rem;
 	}
 
+	/*
+	 * v0.26.0 SSR shell (ADR 0012, contract dropdown@1 — PHP td_dropdown element mode): before the upgrade the host holds
+	 * [label] + select.td-dropdown__native. The host takes the .td-dropdown typography (the label then has the same box
+	 * as inside .td-dropdown) and the select takes the trigger BOX (size, padding, border, radius, font, colours) while
+	 * keeping its NATIVE arrow (no appearance: none, no data: image — CSP img-src). The arrow may differ in pixels from the
+	 * trigger chevron, never the box: the upgrade select → trigger moves nothing. The marker is removed on upgrade.
+	 */
+	td-dropdown[data-td-ssr="dropdown@1"] {
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-fg);
+	}
+
+	td-dropdown > .td-dropdown__native {
+		box-sizing: border-box;
+		display: block;
+		width: 100%;
+		min-width: 0;
+		height: var(--td-field-h-md);
+		padding: 8px 14px;
+		margin: 0;
+		font: inherit;
+		color: var(--td-field-fg);
+		cursor: pointer;
+		background-color: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: none;
+	}
+
+	td-dropdown > .td-dropdown__native:hover:not(:disabled, :focus-visible) {
+		border-color: var(--td-field-border-hover);
+	}
+
+	td-dropdown > .td-dropdown__native:focus-visible {
+		border-color: var(--td-field-focus);
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	td-dropdown > .td-dropdown__native:disabled {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background-color: var(--td-field-bg-disabled);
+	}
+
 	.td-dropdown {
 		box-sizing: border-box;
 		display: block;
@@ -330,7 +378,8 @@
 	}
 
 	@media (pointer: coarse) {
-		.td-dropdown__trigger {
+		.td-dropdown__trigger,
+		td-dropdown > .td-dropdown__native {
 			height: auto;
 			min-height: var(--td-touch-min);
 		}
@@ -359,12 +408,14 @@
 
 	@media (forced-colors: active) {
 		.td-dropdown__trigger,
-		.td-dropdown__search {
+		.td-dropdown__search,
+		td-dropdown > .td-dropdown__native {
 			border-color: CanvasText;
 		}
 
 		.td-dropdown__trigger:focus-visible,
-		.td-dropdown__search:focus-visible {
+		.td-dropdown__search:focus-visible,
+		td-dropdown > .td-dropdown__native:focus-visible {
 			outline-color: Highlight;
 		}
 

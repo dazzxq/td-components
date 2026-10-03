@@ -3,6 +3,64 @@ import { TdBaseElement } from './td-base-element.js';
 let _autoIdCounter = 0;
 let _labelIdCounter = 0;
 
+// --- v0.26.0 SSR markup checks shared by the form-associated hydratable components (ADR 0012) ---
+
+/** Sorted class list (order-insensitive comparison). @param {Element} el */
+export const ssrClassKey = (el) => [...el.classList].sort().join(' ');
+/** Element children + non-blank text nodes (comments / whitespace ignored). @param {Node} el */
+export const ssrContentNodes = (el) => [...el.childNodes].filter((n) => n.nodeType === 1 || (n.nodeType === 3 && n.data.trim()));
+/** `aria-*` and `data-*` (never the kit's internal `data-td-*` namespace). */
+export const SSR_ARIA_DATA = /^(?:aria-[a-z0-9][a-z0-9._-]*|data-(?!td-)[a-z0-9][a-z0-9._-]*)$/;
+/**
+ * Attributes a server-rendered CONTROL may carry: what php/td.php prints (owned names + the `attrs` allowlist
+ * Td::ALLOWED_ATTRS) + aria-* / data-*. Anything else (on*, style, form, formaction, formmethod…, contenteditable,
+ * srcdoc…) → the markup is not adopted (safe render).
+ */
+export const SSR_CONTROL_ATTRS = new Set(['class', 'type', 'name', 'value', 'checked', 'id', 'title', 'lang', 'dir', 'role',
+  'tabindex', 'hidden', 'translate', 'accesskey', 'autofocus', 'autocomplete', 'inputmode', 'enterkeyhint', 'autocapitalize',
+  'spellcheck', 'placeholder', 'readonly', 'required', 'disabled', 'maxlength', 'minlength', 'min', 'max', 'step', 'pattern',
+  'size', 'rows', 'cols']);
+
+/** Review round 1 SEC-01 — what can legitimately sit under a form host (php/td.php element mode + render()). */
+const SSR_HTML_TAGS = new Set(['div', 'label', 'span', 'input', 'textarea']);
+const SSR_SVG_TAGS = new Set(['svg', 'title', 'path', 'circle', 'rect', 'line', 'polyline', 'polygon', 'ellipse']);
+const SSR_INPUT_TYPES = new Set(['text', 'password', 'email', 'number', 'url', 'search', 'tel', 'date', 'month',
+  'datetime-local', 'time', 'checkbox']);
+/** Every form-associated element (review rounds 2 + 4: exactly one may exist under a hydrated host). */
+const SSR_FORM_ASSOCIATED = 'input, textarea, select, button, fieldset, output, object';
+/** Non-control parts: label `for`, error note `data-for`, the kit's icon slot attributes. */
+const SSR_PART_ATTRS = new Set(['for', 'data-td-icon', 'data-td-icon-class', 'data-td-icon-size']);
+const SSR_SVG_ATTRS = new Set(['class', 'data-icon', 'viewBox', 'xmlns', 'fill', 'stroke', 'stroke-width', 'stroke-linecap',
+  'stroke-linejoin', 'aria-hidden', 'aria-label', 'role', 'focusable', 'd', 'points', 'cx', 'cy', 'r', 'rx', 'ry', 'x',
+  'y', 'x1', 'y1', 'x2', 'y2', 'width', 'height', 'fill-rule', 'clip-rule', 'opacity', 'fill-opacity', 'stroke-opacity']);
+
+/** Same attribute set + values (class order-insensitive). @param {Element} a @param {Element} b */
+export function ssrSameAttrs(a, b) {
+  if (a.attributes.length !== b.attributes.length) return false;
+  return [...b.attributes].every((x) => a.hasAttribute(x.name)
+    && (x.name === 'class' ? ssrClassKey(a) === ssrClassKey(b) : a.getAttribute(x.name) === x.value));
+}
+
+/**
+ * A decorative / text part equals render()'s: same tag, exactly the same attributes, same children (text compared
+ * exactly). An icon slot (`data-td-icon`) is compared by its attributes only — its content is re-created by
+ * fillIconSlots() on bind.
+ * @param {Node} live @param {Node} want
+ */
+export function ssrSamePart(live, want) {
+  if (live.nodeType !== want.nodeType) return false;
+  if (live.nodeType === 3) return live.data === want.data;
+  if (live.localName !== want.localName || !ssrSameAttrs(live, want)) return false;
+  if (want.hasAttribute('data-td-icon')) return true;
+  const a = ssrContentNodes(live);
+  const b = ssrContentNodes(want);
+  return a.length === b.length && a.every((n, i) => ssrSamePart(n, b[i]));
+}
+
+/** The error note the base error contract renders (`span.td-field-error`, text only). @param {Node} n */
+export const ssrIsErrorNote = (n) => n.nodeType === 1 && n.localName === 'span' && ssrClassKey(n) === 'td-field-error'
+  && [...n.attributes].every((a) => ['class', 'id', 'data-for'].includes(a.name)) && n.children.length === 0;
+
 /**
  * Base class for form-associated td-components. Extends {@link TdBaseElement}
  * with native form participation via **ElementInternals** (no Shadow DOM).
@@ -91,6 +149,14 @@ export class TdFormElement extends TdBaseElement {
     // `<label for="${this.id}">` gets a real target on the very first paint (ISSUE-1).
     this._ensureId();
     super.connectedCallback(); // _setupProperties + first _doRender (if not yet initialized)
+    this._ssrFreshRender = false; // review round 4: only the render replacing refused SSR markup ignores the old DOM
+    // v0.26.0 (ADR 0012): server markup that could not be adopted was rendered → put the captured state back (silently).
+    if (this._ssrRestore) {
+      const state = this._ssrRestore;
+      this._ssrRestore = null;
+      this._ssrControl = null; // review round 1 IMPL-3: the old control is gone — no stale reference
+      this._restoreSsrState(state);
+    }
     // External <label for="host-id">: the browser runs the label's activation on the HOST (form-associated
     // custom elements are labelable). Forward it to the inner control like a native one: focus it, and
     // activate checkable controls (checkbox/switch).
@@ -443,6 +509,170 @@ export class TdFormElement extends TdBaseElement {
       this._effectiveDisabled = newVal !== null || this._ancestorDisabled;
     }
     super.attributeChangedCallback(name, oldVal, newVal);
+  }
+
+  // --- SSR hydrate of a form-associated component (v0.26.0, ADR 0012 §3–5) ---
+  //
+  // A subclass's canHydrate() finds the server-rendered native control (`this._ssrControl`), captures its state with
+  // `_ssrCapture(control, live)` (precedence: early property > live native state > attribute; `live` = the native state
+  // only), stores the native defaults (`this._ssrDefaults`, reset target) and then returns:
+  //   true  → hydrateExisting() adopts the SAME nodes (state onto the host, ElementInternals FIRST, then the no-JS-only
+  //           attributes come off the control, external labels move to the host);
+  //   false → safe render AT ONCE, then `_restoreSsrState(this._ssrRestore)` (connectedCallback above) puts the value /
+  //           selection / checked / indeterminate / control id back and, when the control had focus, the focus too —
+  //           without events. Review round 3 (ADR 0012 §5): there is no deferral, whatever the reason of the mismatch.
+
+  /**
+   * @protected SSR state of `control` (subclass). `live` = ignore early properties (re-connect revalidation).
+   * @param {HTMLElement} _control @param {boolean} _live
+   * @returns {object}
+   */
+  _ssrCapture(_control, _live) { return {}; }
+
+  /** @protected Put a captured state into the rendered control, silently; `state.refocus` → focus it (subclass). */
+  _restoreSsrState(_state) {}
+
+  /**
+   * @protected An SSR markup check found the control: record it, capture its state, and turn the checks into the
+   * canHydrate() decision. Adopted only when the component's structural match (`matches`), the subtree scan
+   * (`_ssrUnsafe()`) and the skeleton / cardinality check (`_ssrSkeletonOk()`) all pass; anything else → safe render now
+   * + restore (focus included when the control had it).
+   * @param {HTMLElement} control
+   * @param {boolean} matches
+   * @param {boolean} live
+   * @returns {boolean}
+   */
+  _ssrDecide(control, matches, live) {
+    this._ssrControl = control;
+    const state = this._ssrCapture(control, live);
+    if (matches && !this._ssrUnsafe() && this._ssrSkeletonOk()) {
+      this._ssrState = state;
+      return true;
+    }
+    state.refocus = control === control.ownerDocument.activeElement;
+    this._ssrRestore = state;
+    this._ssrFreshRender = true; // review round 4: the render reads the host, never the refused DOM
+    return false;
+  }
+
+  /**
+   * @protected Review round 4 (ISSUE-8): the ONLY trustworthy source of SSR state. The control at the exact skeleton
+   * slot of the current schema (`_ssrSlotControl()`, unique there) wins; without one, the generic fallback (unsupported
+   * schema / drift) is used only when the host holds exactly ONE form-associated element and it is a plausible control
+   * (`_ssrPlausible()`). Otherwise null: several candidates / ambiguous slot → no state, default, id or focus is ever
+   * taken from any of them (an injected control placed first would otherwise win by query order).
+   * @returns {HTMLElement|null}
+   */
+  _ssrStateSource() {
+    const slot = this._ssrSlotControl();
+    if (slot) return slot;
+    const all = this.querySelectorAll(SSR_FORM_ASSOCIATED);
+    return all.length === 1 && all[0].matches(this._ssrPlausible()) ? all[0] : null;
+  }
+
+  /** @protected The unique control at the expected skeleton slot, or null (subclass). @returns {HTMLElement|null} */
+  _ssrSlotControl() { return null; }
+
+  /** @protected Selector of a plausible stateful control for the fallback (subclass). @returns {string} */
+  _ssrPlausible() { return 'input, textarea'; }
+
+  /**
+   * @protected Review round 4: no trustworthy state source → render clean from the host attributes only; the focus
+   * goes to the new control only when it was inside the host (and the element is connected — `live` = re-connect).
+   * @param {boolean} live
+   * @returns {false}
+   */
+  _ssrClean(live) {
+    this._ssrControl = null;
+    const active = this.ownerDocument.activeElement;
+    this._ssrRestore = { clean: true, refocus: !live && !!active && active !== this && this.contains(active) };
+    this._ssrFreshRender = true;
+    return false;
+  }
+
+  /**
+   * @protected Review round 3: on the FIRST hydrate the no-JS form attributes the server printed on the control must
+   * still agree with the host (a script changed `name` / `required` / `disabled` / a constraint on either side before
+   * define → the markup is no longer the component's: safe render). Booleans compare by presence.
+   * @param {HTMLElement} control
+   * @param {Array<[string, string]>} pairs [host attribute, control attribute]
+   * @param {string[]} booleans host attribute names compared by presence
+   * @returns {boolean}
+   */
+  _ssrFormAttrsAgree(control, pairs, booleans) {
+    return pairs.every(([h, c]) => (booleans.includes(h)
+      ? this.hasAttribute(h) === control.hasAttribute(c)
+      : this.getAttribute(h) === control.getAttribute(c)));
+  }
+
+  /**
+   * @protected Re-connect of a HYDRATED element (review round 1 IMPL-2): re-bind in place only while the markup still
+   * passes the same gate as adoption (strict structure, subtree scan, skeleton); else capture the live state of the
+   * current control so it is restored after the re-render.
+   * @param {HTMLElement|null} control
+   * @returns {boolean}
+   */
+  _ssrRevalidate(control) {
+    if (!this._hydrated) return false;
+    this._ssrControl = control;
+    const ok = !!control && this._markupMatches(false) && !this._ssrUnsafe() && this._ssrSkeletonOk();
+    this._ssrControl = null;
+    if (ok) return true;
+    // review round 4: `control` comes from _ssrStateSource() — null (ambiguous) → clean render, nothing transplanted
+    if (!control) return this._ssrClean(true);
+    this._ssrRestore = this._ssrCapture(control, true);
+    this._ssrFreshRender = true;
+    return false;
+  }
+
+  /** @protected Strict structural match with render() (subclass). @param {boolean} _first */
+  _markupMatches(_first) { return false; }
+
+  /**
+   * @protected The host holds the component's known skeleton (tags / classes / cardinality of every part,
+   * `this._ssrControl` in its place). Part of the adoption gate. Subclass; default: false (never adopt).
+   * @returns {boolean}
+   */
+  _ssrSkeletonOk() { return false; }
+
+  /**
+   * @protected Review round 1 SEC-01: does anything under the host fall outside what php/td.php / render() can produce,
+   * whatever the structure? Unexpected node types or elements (only the form-control parts + inline icon SVG are
+   * known), or an attribute outside the allowlists (control: SSR_CONTROL_ATTRS + aria-* / data-* without data-td-*;
+   * parts: + `for` / `data-for` / the icon slot's data-td-icon*; SVG: geometry + presentation attributes).
+   * @returns {boolean}
+   */
+  _ssrUnsafe() {
+    const walk = (node) => [...node.childNodes].some((n) => {
+      if (n.nodeType === 3 || n.nodeType === 8) return false;
+      if (n.nodeType !== 1) return true;
+      const svg = n.namespaceURI === 'http://www.w3.org/2000/svg';
+      if (svg ? !SSR_SVG_TAGS.has(n.localName) : (n.namespaceURI !== 'http://www.w3.org/1999/xhtml' || !SSR_HTML_TAGS.has(n.localName))) return true;
+      const control = n.localName === 'input' || n.localName === 'textarea';
+      if (n.localName === 'input' && !SSR_INPUT_TYPES.has((n.getAttribute('type') || 'text').toLowerCase())) return true;
+      const ok = (name) => (svg ? SSR_SVG_ATTRS.has(name)
+        : SSR_CONTROL_ATTRS.has(name) || SSR_ARIA_DATA.test(name) || (!control && SSR_PART_ATTRS.has(name)));
+      if (![...n.attributes].every((a) => ok(a.name))) return true;
+      return walk(n);
+    });
+    if (walk(this)) return true;
+    // Review round 2: exactly ONE native control — any other form-associated element (an injected hidden input /
+    // textarea would submit with the form) makes the markup unsafe.
+    const controls = this.querySelectorAll(SSR_FORM_ASSOCIATED);
+    return controls.length !== 1 || controls[0] !== this._ssrControl;
+  }
+
+  /**
+   * @protected Hydrate step 4: only EXTERNAL `<label for="{control id}">` (outside the host) move to the host, like a
+   * labelled form-associated element (the component forwards the activation to the control). Internal / wrapping
+   * labels stay — they keep naming the control.
+   * @param {HTMLElement} control
+   */
+  _ssrRetargetLabels(control) {
+    if (!control.id || !control.labels) return;
+    for (const l of [...control.labels]) {
+      if (!this.contains(l) && l.htmlFor === control.id) l.htmlFor = this.id;
+    }
   }
 
   // --- Id + label-click focus delegation (ISSUE-2) ---

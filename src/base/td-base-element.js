@@ -123,7 +123,8 @@ export class TdBaseElement extends HTMLElement {
   /**
    * Hook: can the CURRENT children (server-rendered, marked `data-td-ssr="<name>@<schema>"`) be adopted as they are?
    * Called once, on the first connect, after the early-property replay. Must not modify the DOM. Default: false
-   * (render as before).
+   * (render as before). A stateful component that refuses the markup captures its state here and restores it after the
+   * render (v0.26.0, ADR 0012 §5 — there is no deferral: refused markup is always replaced at once).
    * @returns {boolean}
    */
   canHydrate() { return false; }
@@ -178,15 +179,20 @@ export class TdBaseElement extends HTMLElement {
    * assigned BEFORE connect / before `customElements.define` (such a value lives in an own data property that
    * would otherwise shadow the accessor and never reach the attribute). Names that already have an accessor on
    * the prototype chain (e.g. a subclass `value` getter/setter) keep it; an early value is replayed through it.
+   * v0.26.0 (F0): the replayed property names are recorded in `this._earlyProps` (a Set, read-only afterwards) — SSR
+   * hydration lets such a value win over the live state of the server-rendered control.
    * @private
    */
   _setupProperties() {
     const booleans = new Set(this.constructor.booleanAttributes);
     const early = [];
+    /** @type {Set<string>} property names assigned before connect / define (camelCase) */
+    this._earlyProps = new Set();
     for (const attr of this.constructor.observedAttributes) {
       const prop = attr.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
       if (Object.prototype.hasOwnProperty.call(this, prop)) {
         early.push([prop, this[prop]]);
+        this._earlyProps.add(prop);
         delete this[prop];
       }
       if (prop in this) continue; // a subclass accessor (incl. camelCase of a dashed attribute) is kept
