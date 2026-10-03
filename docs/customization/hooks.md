@@ -24,6 +24,7 @@ Nguồn sự thật là source code (`src/**`); mỗi dòng dưới đây đối
   - [td-dropdown](#td-dropdown)
   - [td-chip-input](#td-chip-input)
   - [td-tree và td-tree-select](#td-tree-và-td-tree-select)
+  - [td-number-input](#td-number-input)
   - [td-repeater](#td-repeater)
   - [td-datetime-picker](#td-datetime-picker)
   - [Hợp đồng lỗi của mọi form control](#hợp-đồng-lỗi-của-mọi-form-control)
@@ -421,6 +422,19 @@ Có thể gán `data` / `loadChildren` / `value` **trước** khi element đư�
 `Đang tải…` · `loadError` `Không tải được nhánh này` · `results` `{n} kết quả` · `required` `Vui lòng chọn ít nhất một mục`.
 `TdTreeSelect.labels`: `search` `Tìm kiếm` · `tree` `Chọn mục` (tên dự phòng) · `clear` `Xoá lựa chọn` · `selectedCount`
 `+{n}` · `required` `Vui lòng chọn một mục`.
+
+---
+
+## td-number-input
+
+`import '@dazzxq/td-components/number-input';` · Trang: [number-input.md](../components/number-input.md) (0.30.0)
+
+Không có property hook: dấu phân cách / số lẻ / đơn vị là attribute (kit không đọc cài đặt tiền tệ của site), giá trị là
+chuỗi chuẩn qua event `input` / `change` (`detail.value`). `TdNumberInput.messages`: `valueMissing` `Trường này là bắt buộc`
+· `badInput` `Giá trị không hợp lệ` · `rangeUnderflow` `Giá trị tối thiểu là {min}` · `rangeOverflow` `Giá trị tối đa là
+{max}` · `stepMismatch` `Giá trị phải theo bước {step}` · `tooManyDecimals` `Tối đa {decimals} chữ số thập phân` ·
+`pasteRejected` `Không dán được: giá trị không hợp lệ` · `clamped` `Đã chỉnh về {value}` (`{min}` / `{max}` / `{value}`
+đã định dạng kèm đơn vị).
 
 ---
 

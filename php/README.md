@@ -21,6 +21,8 @@ echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
 - `td_badge` prints a CSS-only `span.td-badge`; `td_alert` prints a `<td-alert>` host already containing the full
   styled `div.td-alert` (no JS needed; the alert module upgrades it in place and adds the close button).
 - `td_link(…, ['bare' => true])` prints a plain `<a>` (site class only, no button look).
+- v0.30.0 `td_number_input` prints a native `type=number` field (canonical value, implicit min 0) in the
+  `.td-number` box; element mode `<td-number-input data-td-ssr="number-input@1">` is adopted in place (grouped display).
 - Everything is escaped; attribute names, URLs and class tokens are allowlisted.
 
 Full reference (Vietnamese): [docs/guides/php-adapter.md](../docs/guides/php-adapter.md).

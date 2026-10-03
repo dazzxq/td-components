@@ -279,5 +279,5 @@ Không có animation.
 
 ## Xem thêm
 
-- [Input field](input-field.md) · [Modal](modal.md) · [Media grid](media-grid.md)
+- [Number input](number-input.md) · [Input field](input-field.md) · [Modal](modal.md) · [Media grid](media-grid.md)
 - [Form](../guides/forms.md) · [Trợ năng](../guides/accessibility.md) · [Theming](../customization/theming.md)
