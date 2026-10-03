@@ -1,0 +1,170 @@
+/*
+ * td-copy (src/display/td-copy.js, v0.27.0) — one ghost icon button (the dcms2 action-button style). Content layer:
+ * transparent at rest (no shadow, ghost rule), solid hover fill, focus ring.
+ * State (set by JS, never visual classes): button [data-state="copied|error"] (success / error tone + check / error icon).
+ * No JS: `td-copy:not(:defined)` shows the server-written `<code class="td-copy__source">` (selectable by hand) and hides
+ * the button (no dead control); once defined the source is hidden and the button is the only UI.
+ */
+@layer td.tokens {
+	:root {
+		--td-copy-size-sm: 1.75rem;
+		--td-copy-size-md: 2.25rem;
+		--td-copy-fg: var(--td-color-text-muted);
+		--td-copy-fg-hover: var(--td-color-text);
+		--td-copy-bg-hover: var(--td-color-hover-strong);
+		--td-copy-success: var(--td-color-success);
+		--td-copy-error: var(--td-color-error);
+		--td-copy-radius: var(--td-radius-md);
+		--td-copy-source-bg: var(--td-color-surface-muted);
+	}
+}
+
+@layer td.component {
+	td-copy {
+		position: relative;
+		display: inline-flex;
+		gap: var(--td-space-2xs);
+		align-items: center;
+		vertical-align: middle;
+		max-width: 100%;
+		line-height: normal; /* explicit: a site reset (Tailwind preflight) never changes the button */
+	}
+
+	/* No JS (undefined element): the server-written source is the UI — selectable text, no button. */
+	td-copy:not(:defined) .td-copy,
+	td-copy:not(:defined) .td-copy__status {
+		display: none;
+	}
+
+	.td-copy__source {
+		padding: 0.125rem 0.375rem;
+		font-family: var(--td-font-mono);
+		font-size: 0.875em;
+		line-height: normal;
+		color: var(--td-color-text);
+		overflow-wrap: anywhere;
+		white-space: pre-wrap;
+		user-select: all;
+		background: var(--td-copy-source-bg);
+		border-radius: var(--td-radius-sm);
+	}
+
+	td-copy:defined > .td-copy__source {
+		display: none;
+	}
+
+	.td-copy {
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		width: var(--td-copy-size-md);
+		height: var(--td-copy-size-md);
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		color: var(--td-copy-fg);
+		cursor: pointer;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--td-copy-radius);
+		box-shadow: none;
+		transition: background-color var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+	}
+
+	.td-copy--sm {
+		width: var(--td-copy-size-sm);
+		height: var(--td-copy-size-sm);
+	}
+
+	.td-copy:hover {
+		color: var(--td-copy-fg-hover);
+		background: var(--td-copy-bg-hover);
+	}
+
+	.td-copy:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-copy[data-state="copied"],
+	.td-copy[data-state="copied"]:hover {
+		color: var(--td-copy-success);
+	}
+
+	.td-copy[data-state="error"],
+	.td-copy[data-state="error"]:hover {
+		color: var(--td-copy-error);
+	}
+
+	.td-copy__icon {
+		display: inline-flex;
+		line-height: 0;
+		pointer-events: none;
+	}
+
+	.td-copy--sm .td-copy__icon .td-icon {
+		width: 1rem;
+		height: 1rem;
+	}
+
+	.td-copy__status {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	/* Fallback (clipboard refused): a read-only field holding the value, already selected. */
+	.td-copy__manual {
+		box-sizing: border-box;
+		width: 14rem;
+		max-width: 100%;
+		height: var(--td-copy-size-md);
+		padding: 0 var(--td-space-xs);
+		font-family: var(--td-font-mono);
+		font-size: var(--td-text-sm);
+		line-height: normal;
+		color: var(--td-control-fg);
+		background: var(--td-control-bg);
+		border: 1px solid var(--td-copy-error);
+		border-radius: var(--td-copy-radius);
+		outline: 2px solid transparent;
+	}
+
+	.td-copy__manual:focus {
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	@media (pointer: coarse) {
+		.td-copy,
+		.td-copy--sm {
+			width: var(--td-touch-min);
+			height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-copy {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-copy {
+			color: ButtonText;
+		}
+
+		.td-copy[data-state] {
+			border-color: Highlight;
+		}
+	}
+}

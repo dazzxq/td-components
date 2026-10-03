@@ -60,6 +60,9 @@ const BODY = `
   <div class="ref-canvas" id="refCanvas">ref</div>
   <button class="ref-button" id="refButton" type="button">ref</button>
   <div class="td-modal__dialog td-glass-surface td-glass-surface--strong td-glass-surface--lg" id="s-modal">m</div>
+  <div class="td-drawer__panel td-glass-surface td-glass-surface--lg" id="s-drawer">d</div>
+  <span class="td-skeleton" id="k-skel"></span>
+  <span class="td-table__skeleton" id="k-table-skel"></span>
   <div class="td-loading__card td-glass-surface td-glass-surface--strong" id="s-loading">l</div>
   <div class="td-tooltip td-glass-surface td-glass-surface--strong" id="s-tooltip">t</div>
   <div class="td-tooltip td-glass-surface td-glass-surface--strong" data-custom id="s-tooltip-custom">c</div>
@@ -81,7 +84,7 @@ const BODY = `
   <span class="alias-tint"><button class="td-btn td-btn--danger" id="b-alias" type="button">b</button></span>
 </div>`;
 
-const OPAQUE = ['s-modal', 's-loading', 's-scrolltop'];
+const OPAQUE = ['s-modal', 's-drawer', 's-loading', 's-scrolltop']; // v0.27.0: + the drawer panel (opaque, shadow-lg)
 const TOOLTIP = ['s-tooltip']; // v0.21.0: opaque but BLACK (--td-tooltip-bg), not --td-glass-solid
 const BLURRED = ['s-menu', 's-dropdown', 's-chip', 's-hovercard'];
 const TOASTS = ['s-toast']; // v0.21.0: solid pastel, own fallbacks (no glass recipe)
@@ -285,7 +288,14 @@ function materialChecks(tag, s) {
   check(`${tag} custom colour button solid`, sameColor(s['b-custom'].bg, [200, 10, 10, 1]), s['b-custom'].bg);
   check(`${tag} custom tooltip keeps its colour`, sameColor(s['s-tooltip-custom'].bg, [30, 60, 90, 1]) && sameColor(s['s-tooltip-custom'].color, [255, 255, 255, 1]), JSON.stringify(s['s-tooltip-custom']));
   check(`${tag} custom tooltip no filter`, noFilter(s['s-tooltip-custom'].bf), s['s-tooltip-custom'].bf);
+  // v0.27.0: the drawer panel = the modal recipe (opaque + --td-glass-shadow-lg); skeleton tokens shared with td-table
+  check(`${tag} drawer panel --td-glass-shadow-lg`, sameAlphas(s['s-drawer'].shadow, [0.08, 0.18]), s['s-drawer'].shadow);
+  check(`${tag} skeleton bg = --td-color-skeleton (gray-100)`, sameColor(s['k-skel'].bg, [240, 240, 242, 1]), s['k-skel'].bg);
+  check(`${tag} td-table skeleton = the shared --td-skeleton-bg`, s['k-table-skel'].bg === s['k-skel'].bg, `${s['k-table-skel'].bg} vs ${s['k-skel'].bg}`);
 }
+
+/** v0.27.0: the skeleton shimmer (::after) animation name of an element. */
+const shimmerOf = (page, id) => page.evaluate((i) => getComputedStyle(document.getElementById(i), '::after').animationName, id);
 
 const failures = [];
 const notes = [];
@@ -334,6 +344,7 @@ async function runEngine(name, launcher) {
         const s = await read(page);
         check(`${tag} zero CSP violations`, s.violations.length === 0, JSON.stringify(s.violations));
         check(`${tag} regular bg = site :root override`, sameColor(s.reg.bg, [200, 100, 50, 0.4]), s.reg.bg);
+        check(`${tag} skeleton shimmer runs (td-skeleton-shimmer)`, (await shimmerOf(page, 'k-skel')) === 'td-skeleton-shimmer', await shimmerOf(page, 'k-skel'));
         check(`${tag} regular has backdrop blur(12px)`, BLUR12.test(s.reg.bf), s.reg.bf); // v0.20.0
         check(`${tag} strong bg = --td-glass-bg-strong`, sameColor(s.strong.bg, [255, 255, 255, 0.94]), s.strong.bg);
         check(`${tag} clear bg = --td-glass-clear-bg`, sameColor(s.clear.bg, [20, 20, 22, 0.88]), s.clear.bg);
@@ -388,6 +399,7 @@ async function runEngine(name, launcher) {
         check(`${tag} dark danger pastel`, sameColor(d['b-danger'].bg, [57, 26, 28, 1]) && sameColor(d['b-danger'].color, [254, 202, 202, 1]), JSON.stringify(d['b-danger']));
         check(`${tag} dark --td-glass-shadow ×2`, sameAlphas(d['s-menu'].shadow, [0.12, 0.24]), d['s-menu'].shadow);
         check(`${tag} dark --td-btn-lift ×2`, sameAlphas(d['b-primary'].shadow, [0.2, 0.24]), d['b-primary'].shadow);
+        check(`${tag} dark skeleton bg (#242427), table follows`, sameColor(d['k-skel'].bg, [36, 36, 39, 1]) && d['k-table-skel'].bg === d['k-skel'].bg, `${d['k-skel'].bg} / ${d['k-table-skel'].bg}`);
         await context.close();
       }
 
@@ -403,6 +415,8 @@ async function runEngine(name, launcher) {
       {
         const { page, context } = await freshPage(browser, profile, { reducedMotion: 'reduce' });
         const s = await read(page);
+        check(`${tag} reduced-motion skeleton static (no shimmer)`, (await shimmerOf(page, 'k-skel')) === 'none', await shimmerOf(page, 'k-skel'));
+        check(`${tag} reduced-motion td-table skeleton static`, (await shimmerOf(page, 'k-table-skel')) === 'none', await shimmerOf(page, 'k-table-skel'));
         check(`${tag} reduced-motion dur = 120ms`, s.root.dur === '120ms', s.root.dur);
         check(`${tag} reduced-motion ease = linear`, s.root.ease === 'linear', s.root.ease);
         // The shadow token must stay a real shadow (regression: it was once overwritten with `1`).

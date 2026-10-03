@@ -1,0 +1,195 @@
+/*
+ * td-otp-input (src/form/td-otp-input.js, v0.27.0) + the native field of php/td.php td_otp_input().
+ * Content layer: solid cells, never glass. ONE native input; once the element is defined it lies transparently over 6
+ * decorative cells (`aria-hidden`) — before that (no JS, or SSR element mode while the module loads) the input itself
+ * is the visible field, in the SAME box (no layout shift on upgrade).
+ * State (set by JS / native, never visual classes): cell [data-state="empty|filled"] [data-active] (caret / selection
+ * while focused); input :disabled / [readonly] / [aria-invalid="true"].
+ */
+@layer td.tokens {
+	:root {
+		--td-otp-cell-w: 2.75rem;
+		--td-otp-cell-h: 3.25rem;
+		--td-otp-gap: 0.5rem;
+		--td-otp-radius: var(--td-field-radius-md);
+		--td-otp-bg: var(--td-control-bg);
+		--td-otp-fg: var(--td-control-fg);
+		--td-otp-border: var(--td-control-border-strong);   /* ≥ 3:1 at rest: each cell is a boundary */
+		--td-otp-border-active: var(--td-field-focus);
+		--td-otp-ring: var(--td-field-focus-ring);
+		--td-otp-error: var(--td-field-error);
+		--td-otp-bg-disabled: var(--td-field-bg-disabled);
+		--td-otp-bg-readonly: var(--td-field-bg-readonly);
+		--td-otp-fg-disabled: var(--td-field-fg-disabled);
+		--td-otp-font-size: var(--td-text-xl);
+	}
+}
+
+@layer td.component {
+	td-otp-input {
+		display: block;
+	}
+
+	.td-otp {
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-otp-fg);
+	}
+
+	.td-otp *,
+	.td-otp *::before {
+		box-sizing: border-box;
+	}
+
+	.td-otp__label {
+		display: block;
+		margin: 0 0 var(--td-space-2xs);
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-medium);
+		color: var(--td-field-label);
+	}
+
+	/* The box has the same size with or without JS: 6 cells + 5 gaps (shrinks on a narrow screen). */
+	.td-otp__box {
+		position: relative;
+		width: min(100%, calc(6 * var(--td-otp-cell-w) + 5 * var(--td-otp-gap)));
+		height: var(--td-otp-cell-h);
+		direction: ltr; /* digits read left → right in every script */
+	}
+
+	/* The input: a plain OTP field (no JS / before the upgrade) … */
+	.td-otp__input {
+		display: block;
+		width: 100%;
+		height: 100%;
+		padding: 0 var(--td-space-sm);
+		margin: 0;
+		font-family: var(--td-font-mono);
+		font-size: var(--td-otp-font-size);
+		font-variant-numeric: tabular-nums;
+		line-height: normal; /* explicit: a site reset (Tailwind preflight) never changes the box */
+		letter-spacing: 0.5em;
+		text-align: center;
+		color: var(--td-otp-fg);
+		background: var(--td-otp-bg);
+		border: 1px solid var(--td-otp-border);
+		border-radius: var(--td-otp-radius);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		appearance: none;
+	}
+
+	.td-otp__input:focus {
+		border-color: var(--td-otp-border-active);
+		box-shadow: var(--td-otp-ring);
+	}
+
+	.td-otp__input[readonly] { background: var(--td-otp-bg-readonly); }
+
+	.td-otp__input:disabled {
+		color: var(--td-otp-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-otp-bg-disabled);
+	}
+
+	.td-otp__input[aria-invalid="true"] {
+		border-color: var(--td-otp-error);
+	}
+
+	/* … the cells only exist visually once the element is defined. */
+	.td-otp__cells {
+		display: none;
+	}
+
+	td-otp-input:defined .td-otp__cells {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		grid-template-columns: repeat(6, minmax(0, 1fr));
+		gap: var(--td-otp-gap);
+		pointer-events: none;
+	}
+
+	/* Upgraded: the input stays the real control (focus, caret, paste, autofill) but paints nothing. */
+	td-otp-input:defined .td-otp__input {
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		color: transparent;
+		caret-color: transparent;
+		background: transparent;
+		border-color: transparent;
+		box-shadow: none;
+		cursor: text;
+	}
+
+	td-otp-input:defined .td-otp__input::selection {
+		color: transparent;
+		background: transparent;
+	}
+
+	.td-otp__cell {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 0;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-otp-font-size);
+		font-weight: var(--td-fw-semibold);
+		font-variant-numeric: tabular-nums;
+		line-height: 1;
+		color: var(--td-otp-fg);
+		background: var(--td-otp-bg);
+		border: 1px solid var(--td-otp-border);
+		border-radius: var(--td-otp-radius);
+		transition: border-color var(--td-dur-fast) var(--td-ease), box-shadow var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-otp__cell[data-active] {
+		border-color: var(--td-otp-border-active);
+		box-shadow: var(--td-otp-ring);
+	}
+
+	.td-otp__input[readonly] + .td-otp__cells .td-otp__cell {
+		background: var(--td-otp-bg-readonly);
+	}
+
+	.td-otp__input:disabled + .td-otp__cells .td-otp__cell {
+		color: var(--td-otp-fg-disabled);
+		background: var(--td-otp-bg-disabled);
+	}
+
+	td-otp-input:defined .td-otp__input:disabled {
+		cursor: not-allowed;
+	}
+
+	.td-otp__input[aria-invalid="true"] + .td-otp__cells .td-otp__cell {
+		border-color: var(--td-otp-error);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-otp__cell {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-otp__cell {
+			border-color: CanvasText;
+		}
+
+		.td-otp__cell[data-active] {
+			outline: 2px solid Highlight;
+			outline-offset: 1px;
+		}
+
+		.td-otp__input[aria-invalid="true"] + .td-otp__cells .td-otp__cell {
+			border-width: 2px;
+		}
+	}
+}

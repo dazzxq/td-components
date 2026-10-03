@@ -134,6 +134,9 @@ namespace TdComponents {
         /** v0.26.0 part 2: td_dropdown element mode (the native select shell) and td_empty (always). */
         public const SSR_DROPDOWN = 'dropdown@1';
         public const SSR_EMPTY = 'empty-state@1';
+        /** v0.27.0: td_otp_input element mode and td_copy (always). */
+        public const SSR_OTP = 'otp-input@1';
+        public const SSR_COPY = 'copy@1';
 
         /**
          * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.26.1') —
@@ -1202,6 +1205,133 @@ namespace {
             . '<p class="td-empty-state__message">' . Td::e($message !== '' ? $message : 'Chưa có mục nào được tạo.') . '</p>'
             . '<div class="td-empty-state__actions"' . ($actions === '' ? ' hidden' : '') . '>' . $actions . '</div>'
             . '</div></td-empty-state>';
+    }
+
+    /**
+     * v0.27.0 one-time code field (6 digits, contract otp-input@1). Default: a NATIVE field that works without JS —
+     * `div.td-otp` > [label] + `div.td-otp__box` > `input.td-otp__input` (type text, inputmode numeric, autocomplete
+     * one-time-code, maxlength 6, pattern [0-9]{6}, name / value / required…) [+ the error note]. `element` (bool, default
+     * Td::configure ssr_elements = false): `<td-otp-input data-td-ssr="otp-input@1">` host + the same field + the 6
+     * decorative cells, adopted IN PLACE by `@dazzxq/td-components/otp-input` (no flash). $name: form field name.
+     * Options: label, value (digits kept: full-width / Arabic-Indic digits → ASCII, other characters dropped, max 6),
+     * required, disabled, readonly, autofocus, error (text), aria_label (when there is no label; default "Mã xác thực"),
+     * id (the INPUT id — `<label for>`; element mode: host = {id}-host), class (wrapper / host), attrs (the input:
+     * allowlisted; owned names and data-td-* reserved). Never submits the form by itself (no JS in this markup).
+     */
+    function td_otp_input(string $name, array $o = []): string
+    {
+        $element = td__element($o);
+        $callerId = td__str($o['id'] ?? null);
+        $hostId = $element ? ($callerId !== null ? $callerId . '-host' : td__host_uid($name)) : null;
+        $cid = $callerId ?? ($element ? $hostId . '-input' : td__host_uid($name) . '-input');
+        $label = isset($o['label']) && is_scalar($o['label']) && (string) $o['label'] !== '' ? (string) $o['label'] : null;
+        $aria = isset($o['aria_label']) && is_scalar($o['aria_label']) && (string) $o['aria_label'] !== '' ? (string) $o['aria_label'] : null;
+        $error = td__str($o['error'] ?? null);
+        $value = isset($o['value']) && is_scalar($o['value']) ? td__otp_digits((string) $o['value']) : '';
+        $required = !empty($o['required']);
+        $disabled = !empty($o['disabled']);
+        $readonly = !empty($o['readonly']);
+        $errId = ($element ? $hostId : $cid) . '-error';
+        $taken = [];
+        $input = '<input' . Td::ownAttrs([
+            'type' => 'text',
+            'class' => 'td-otp__input',
+            'id' => $cid,
+            'inputmode' => 'numeric',
+            'autocomplete' => 'one-time-code',
+            'name' => $name !== '' ? $name : null,
+            'maxlength' => '6',
+            'pattern' => '[0-9]{6}',
+            'value' => $value !== '' ? $value : null,
+            'required' => $required,
+            'disabled' => $disabled,
+            'readonly' => $readonly,
+            'autofocus' => !empty($o['autofocus']),
+            'aria-label' => $label === null ? ($aria ?? 'Mã xác thực') : null,
+            'aria-invalid' => $error !== null ? 'true' : null,
+            'aria-errormessage' => $error !== null ? $errId : null,
+            'aria-describedby' => $error !== null ? $errId : null,
+        ], $taken);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $taken = td__reserve(['type', 'class', 'id', 'inputmode', 'autocomplete', 'name', 'maxlength', 'minlength', 'pattern',
+            'value', 'required', 'disabled', 'readonly', 'autofocus', 'aria-label', 'aria-labelledby', 'aria-invalid',
+            'aria-errormessage', 'aria-describedby'], $extra, $taken);
+        $input .= Td::attrs($extra, $taken) . '>';
+        $labelHtml = $label !== null ? '<label class="td-otp__label" for="' . Td::e($cid) . '">' . Td::e($label) . '</label>' : '';
+        $note = $error !== null
+            ? '<span class="td-field-error" id="' . Td::e($errId) . '" data-for="' . Td::e($element ? $hostId : $cid) . '">' . Td::e($error) . '</span>'
+            : '';
+        if (!$element) {
+            return '<div class="td-otp' . Td::e(Td::classTokens($o['class'] ?? null)) . '">' . $labelHtml
+                . '<div class="td-otp__box">' . $input . '</div>' . $note . '</div>';
+        }
+        $cells = '<span class="td-otp__cells" aria-hidden="true">' . str_repeat('<span class="td-otp__cell"></span>', 6) . '</span>';
+        $hostTaken = [];
+        return '<td-otp-input' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_OTP,
+            'id' => $hostId,
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'name' => $name !== '' ? $name : null,
+            'value' => $value !== '' ? $value : null,
+            'label' => $label,
+            'required' => $required,
+            'disabled' => $disabled,
+            'readonly' => $readonly,
+            'error-text' => $error,
+            'aria-label' => $aria,
+        ], $hostTaken) . '><div class="td-otp">' . $labelHtml . '<div class="td-otp__box">' . $input . $cells . '</div></div>'
+            . $note . '</td-otp-input>';
+    }
+
+    /**
+     * @internal OTP value as <td-otp-input> keeps it: full-width (U+FF10…), Arabic-Indic (U+0660…) and extended
+     * Arabic-Indic (U+06F0…) digits → ASCII, every other character dropped, at most 6 digits.
+     */
+    function td__otp_digits(string $v): string
+    {
+        static $map = null;
+        if ($map === null) {
+            $map = [];
+            foreach ([0xFF10, 0x0660, 0x06F0] as $base) {
+                for ($i = 0; $i < 10; $i++) {
+                    $map[(string) json_decode(sprintf('"\\u%04X"', $base + $i))] = (string) $i;
+                }
+            }
+        }
+        return substr((string) preg_replace('/[^0-9]/', '', strtr($v, $map)), 0, 6);
+    }
+
+    /**
+     * v0.27.0 copy button (contract copy@1) — ALWAYS the element: `<td-copy data-td-ssr="copy@1" …>` + the
+     * server-authored source `<code class="td-copy__source">{value}</code>` (shown while the element is undefined: no-JS
+     * users select it by hand; hidden once defined) + the icon button `button.td-copy` (hidden while undefined, no dead
+     * control) + the status live region, exactly as <td-copy> renders them — hydrated IN PLACE by
+     * `@dazzxq/td-components/copy`. $value is TEXT (escaped). Options: label (button name + tooltip; default "Copy"),
+     * size sm|md (default md), sensitive (bool: copy events carry no value), duration (ms of the "copied" feedback),
+     * id, class, attrs (host: allowlisted; owned names and data-td-* reserved).
+     */
+    function td_copy(string $value, array $o = []): string
+    {
+        $size = in_array($o['size'] ?? null, ['sm', 'md'], true) ? $o['size'] : 'md';
+        $label = isset($o['label']) && is_scalar($o['label']) && (string) $o['label'] !== '' ? (string) $o['label'] : null;
+        $name = $label ?? 'Copy';
+        $taken = [];
+        $html = '<td-copy' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_COPY,
+            'id' => td__str($o['id'] ?? null),
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'label' => $label,
+            'size' => $size,
+            'sensitive' => !empty($o['sensitive']),
+            'duration' => Td::intOpt($o['duration'] ?? null, 0),
+        ], $taken);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $taken = td__reserve(['id', 'class', 'label', 'size', 'sensitive', 'duration', 'value', 'for'], $extra, $taken);
+        return $html . Td::attrs($extra, $taken) . '>'
+            . '<code class="td-copy__source">' . Td::e($value) . '</code>'
+            . '<button type="button" class="td-copy td-copy--' . $size . '" aria-label="' . Td::e($name) . '" data-tooltip="' . Td::e($name) . '">'
+            . '<span class="td-copy__icon" data-td-icon="copy" aria-hidden="true">' . Td::icon('copy') . '</span></button>'
+            . '<span class="td-copy__status" role="status"></span></td-copy>';
     }
 
     /** @internal v0.26.0: element mode of a form helper — per call `element` (true/false) overrides Td::configure. */

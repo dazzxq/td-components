@@ -23,13 +23,13 @@
 		--td-table-cell-px: 1.5rem;
 		--td-table-cell-py: 1rem;
 		--td-table-head-py: 0.75rem;
-		--td-table-skeleton: var(--td-color-skeleton);
-		--td-table-sheen: var(--td-color-sheen, rgb(255 255 255 / 60%));
+		--td-table-skeleton: var(--td-skeleton-bg); /* v0.27.0: the shared skeleton tokens (components/skeleton.css) */
+		--td-table-sheen: var(--td-skeleton-shine);
 	}
 
 	:root[data-td-theme="dark"] {
 		--td-table-zebra: rgb(255 255 255 / 3%);
-		--td-table-sheen: var(--td-color-sheen, rgb(255 255 255 / 8%));
+		--td-table-sheen: var(--td-skeleton-shine);
 	}
 }
 
@@ -262,7 +262,7 @@
 		height: 0.875rem;
 		overflow: hidden;
 		background: var(--td-table-skeleton);
-		border-radius: var(--td-radius-sm);
+		border-radius: var(--td-skeleton-radius);
 	}
 
 	.td-table__skeleton::after {
@@ -271,7 +271,7 @@
 		content: "";
 		background: linear-gradient(90deg, transparent, var(--td-table-sheen), transparent);
 		transform: translateX(-100%);
-		animation: td-table-shimmer 1.3s ease-in-out infinite;
+		animation: td-table-shimmer var(--td-skeleton-dur) ease-in-out infinite;
 	}
 
 	.td-table__row--skeleton:nth-child(odd) .td-table__cell:nth-child(3n + 1) .td-table__skeleton { width: 60%; }

@@ -413,7 +413,8 @@
  *   .td-glass-surface--strong    small popups: 94 % + blur (menu, dropdown, chip-input suggestions, hovercard; the toast left in v0.21.0)
  *   .td-glass-surface--lg        deeper shadow only (--td-glass-shadow-lg)
  *   .td-glass-surface--clear     lightbox bars: dark 88 % + blur, never themed
- *   OPAQUE group (no blur): .td-modal__dialog, .td-loading__card, .td-tooltip, .td-scroll-top → --td-glass-solid
+ *   OPAQUE group (no blur): .td-modal__dialog, .td-drawer__panel (v0.27.0), .td-loading__card, .td-tooltip,
+ *                                .td-scroll-top → --td-glass-solid
  *                                (v0.21.0: tooltip.css repaints the tooltip black via --td-tooltip-bg)
  *   .td-glass-tint               solid capsule button (the one primary action on a floating bar)
  *   .td-glass-dim(--text)        deprecated v0.20.0: no effect (class kept so markup does not break)
@@ -444,7 +445,7 @@
 
 	/* Opaque surfaces: large or text-dense, or a control that floats over content — no blur at all. The fallbacks
 	   still override --_td-glass-fill (contrast → surface colour, forced colours → Canvas). */
-	:is(.td-modal__dialog, .td-loading__card, .td-tooltip, .td-scroll-top).td-glass-surface {
+	:is(.td-modal__dialog, .td-drawer__panel, .td-loading__card, .td-tooltip, .td-scroll-top).td-glass-surface {
 		background-color: var(--_td-glass-fill, var(--td-glass-solid));
 		-webkit-backdrop-filter: none;
 		backdrop-filter: none;
@@ -942,6 +943,124 @@
 	@media (forced-colors: active) {
 		.td-spinner {
 			color: CanvasText;
+		}
+	}
+}
+
+/* ---- src/styles/components/skeleton.css ---- */
+/*
+ * Skeleton placeholder (v0.27.0, CSS only — no JS, no custom element). Shared tokens: td-table's loading rows read
+ * them too (components/table.css).
+ *   .td-skeleton                        a block (height via --td-skeleton-h, default 1rem)
+ *   .td-skeleton--text                  text line(s): line height --td-skeleton-line, gap --td-skeleton-gap;
+ *     .td-skeleton--lines-2 | --lines-3 more lines (sets --td-skeleton-lines; any integer works through CSSOM / CSS)
+ *   .td-skeleton--circle                avatar disc, size --td-skeleton-size (default 2.5rem)
+ *   .td-skeleton--rect                  media box, aspect ratio --td-skeleton-ratio (default 16 / 9)
+ * Shimmer: a light band (--td-skeleton-shine) sweeping over --td-skeleton-bg every --td-skeleton-dur; reduced motion →
+ * static; forced colours → GrayText. The markup carries `aria-hidden="true"` (decorative) and the region being loaded
+ * `aria-busy="true"` — the site's job (docs).
+ */
+@layer td.tokens {
+	:root {
+		--td-skeleton-bg: var(--td-color-skeleton);
+		--td-skeleton-shine: var(--td-color-sheen);
+		--td-skeleton-radius: var(--td-radius-sm);
+		--td-skeleton-dur: 1.3s;
+		--td-skeleton-h: 1rem;
+		--td-skeleton-line: 0.875rem;
+		--td-skeleton-gap: 0.5rem;
+		--td-skeleton-size: 2.5rem;
+		--td-skeleton-ratio: 16 / 9;
+	}
+}
+
+@layer td.component {
+	.td-skeleton {
+		--td-skeleton-lines: 1;
+
+		position: relative;
+		display: block;
+		width: 100%;
+		height: var(--td-skeleton-h);
+		overflow: hidden;
+		line-height: normal; /* explicit: independent of a site reset */
+		background: var(--td-skeleton-bg);
+		border-radius: var(--td-skeleton-radius);
+	}
+
+	.td-skeleton::after {
+		position: absolute;
+		inset: 0;
+		content: "";
+		background: linear-gradient(90deg, transparent, var(--td-skeleton-shine), transparent);
+		transform: translateX(-100%);
+		animation: td-skeleton-shimmer var(--td-skeleton-dur) ease-in-out infinite;
+	}
+
+	/* Text lines: one box masked into N lines (the shimmer follows the mask); with 2+ lines the last one is 60 % wide. */
+	.td-skeleton--text {
+		height: calc(var(--td-skeleton-lines) * var(--td-skeleton-line) + (var(--td-skeleton-lines) - 1) * var(--td-skeleton-gap));
+		background: transparent;
+		border-radius: 0;
+		-webkit-mask-image:
+			repeating-linear-gradient(to bottom, #000 0 var(--td-skeleton-line), transparent var(--td-skeleton-line) calc(var(--td-skeleton-line) + var(--td-skeleton-gap)));
+		mask-image:
+			repeating-linear-gradient(to bottom, #000 0 var(--td-skeleton-line), transparent var(--td-skeleton-line) calc(var(--td-skeleton-line) + var(--td-skeleton-gap)));
+	}
+
+	.td-skeleton--text::before {
+		position: absolute;
+		inset: 0;
+		content: "";
+		background:
+			linear-gradient(var(--td-skeleton-bg), var(--td-skeleton-bg)) 0 0 / 100% calc(100% - var(--td-skeleton-line)) no-repeat,
+			linear-gradient(var(--td-skeleton-bg), var(--td-skeleton-bg)) 0 100%
+				/ calc(100% - 40% * min(1, var(--td-skeleton-lines) - 1)) var(--td-skeleton-line) no-repeat;
+		border-radius: var(--td-skeleton-radius);
+	}
+
+	.td-skeleton--lines-2 { --td-skeleton-lines: 2; }
+	.td-skeleton--lines-3 { --td-skeleton-lines: 3; }
+
+	.td-skeleton--circle {
+		flex: 0 0 auto;
+		width: var(--td-skeleton-size);
+		height: auto;
+		aspect-ratio: 1;
+		border-radius: 50%;
+	}
+
+	.td-skeleton--rect {
+		height: auto;
+		aspect-ratio: var(--td-skeleton-ratio);
+	}
+
+	@keyframes td-skeleton-shimmer {
+		to {
+			transform: translateX(100%);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-skeleton::after {
+			animation: none;
+			display: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-skeleton,
+		.td-skeleton--text::before {
+			background: GrayText;
+			forced-color-adjust: none;
+		}
+
+		.td-skeleton--text {
+			background: transparent;
+		}
+
+		.td-skeleton::after {
+			display: none;
 		}
 	}
 }
@@ -4559,13 +4678,13 @@
 		--td-table-cell-px: 1.5rem;
 		--td-table-cell-py: 1rem;
 		--td-table-head-py: 0.75rem;
-		--td-table-skeleton: var(--td-color-skeleton);
-		--td-table-sheen: var(--td-color-sheen, rgb(255 255 255 / 60%));
+		--td-table-skeleton: var(--td-skeleton-bg); /* v0.27.0: the shared skeleton tokens (components/skeleton.css) */
+		--td-table-sheen: var(--td-skeleton-shine);
 	}
 
 	:root[data-td-theme="dark"] {
 		--td-table-zebra: rgb(255 255 255 / 3%);
-		--td-table-sheen: var(--td-color-sheen, rgb(255 255 255 / 8%));
+		--td-table-sheen: var(--td-skeleton-shine);
 	}
 }
 
@@ -4798,7 +4917,7 @@
 		height: 0.875rem;
 		overflow: hidden;
 		background: var(--td-table-skeleton);
-		border-radius: var(--td-radius-sm);
+		border-radius: var(--td-skeleton-radius);
 	}
 
 	.td-table__skeleton::after {
@@ -4807,7 +4926,7 @@
 		content: "";
 		background: linear-gradient(90deg, transparent, var(--td-table-sheen), transparent);
 		transform: translateX(-100%);
-		animation: td-table-shimmer 1.3s ease-in-out infinite;
+		animation: td-table-shimmer var(--td-skeleton-dur) ease-in-out infinite;
 	}
 
 	.td-table__row--skeleton:nth-child(odd) .td-table__cell:nth-child(3n + 1) .td-table__skeleton { width: 60%; }
@@ -7361,6 +7480,640 @@
 			border-color: Highlight;
 			background: Highlight;
 			color: HighlightText;
+		}
+	}
+}
+
+/* ---- src/styles/components/otp-input.css ---- */
+/*
+ * td-otp-input (src/form/td-otp-input.js, v0.27.0) + the native field of php/td.php td_otp_input().
+ * Content layer: solid cells, never glass. ONE native input; once the element is defined it lies transparently over 6
+ * decorative cells (`aria-hidden`) — before that (no JS, or SSR element mode while the module loads) the input itself
+ * is the visible field, in the SAME box (no layout shift on upgrade).
+ * State (set by JS / native, never visual classes): cell [data-state="empty|filled"] [data-active] (caret / selection
+ * while focused); input :disabled / [readonly] / [aria-invalid="true"].
+ */
+@layer td.tokens {
+	:root {
+		--td-otp-cell-w: 2.75rem;
+		--td-otp-cell-h: 3.25rem;
+		--td-otp-gap: 0.5rem;
+		--td-otp-radius: var(--td-field-radius-md);
+		--td-otp-bg: var(--td-control-bg);
+		--td-otp-fg: var(--td-control-fg);
+		--td-otp-border: var(--td-control-border-strong);   /* ≥ 3:1 at rest: each cell is a boundary */
+		--td-otp-border-active: var(--td-field-focus);
+		--td-otp-ring: var(--td-field-focus-ring);
+		--td-otp-error: var(--td-field-error);
+		--td-otp-bg-disabled: var(--td-field-bg-disabled);
+		--td-otp-bg-readonly: var(--td-field-bg-readonly);
+		--td-otp-fg-disabled: var(--td-field-fg-disabled);
+		--td-otp-font-size: var(--td-text-xl);
+	}
+}
+
+@layer td.component {
+	td-otp-input {
+		display: block;
+	}
+
+	.td-otp {
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-otp-fg);
+	}
+
+	.td-otp *,
+	.td-otp *::before {
+		box-sizing: border-box;
+	}
+
+	.td-otp__label {
+		display: block;
+		margin: 0 0 var(--td-space-2xs);
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-medium);
+		color: var(--td-field-label);
+	}
+
+	/* The box has the same size with or without JS: 6 cells + 5 gaps (shrinks on a narrow screen). */
+	.td-otp__box {
+		position: relative;
+		width: min(100%, calc(6 * var(--td-otp-cell-w) + 5 * var(--td-otp-gap)));
+		height: var(--td-otp-cell-h);
+		direction: ltr; /* digits read left → right in every script */
+	}
+
+	/* The input: a plain OTP field (no JS / before the upgrade) … */
+	.td-otp__input {
+		display: block;
+		width: 100%;
+		height: 100%;
+		padding: 0 var(--td-space-sm);
+		margin: 0;
+		font-family: var(--td-font-mono);
+		font-size: var(--td-otp-font-size);
+		font-variant-numeric: tabular-nums;
+		line-height: normal; /* explicit: a site reset (Tailwind preflight) never changes the box */
+		letter-spacing: 0.5em;
+		text-align: center;
+		color: var(--td-otp-fg);
+		background: var(--td-otp-bg);
+		border: 1px solid var(--td-otp-border);
+		border-radius: var(--td-otp-radius);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		appearance: none;
+	}
+
+	.td-otp__input:focus {
+		border-color: var(--td-otp-border-active);
+		box-shadow: var(--td-otp-ring);
+	}
+
+	.td-otp__input[readonly] { background: var(--td-otp-bg-readonly); }
+
+	.td-otp__input:disabled {
+		color: var(--td-otp-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-otp-bg-disabled);
+	}
+
+	.td-otp__input[aria-invalid="true"] {
+		border-color: var(--td-otp-error);
+	}
+
+	/* … the cells only exist visually once the element is defined. */
+	.td-otp__cells {
+		display: none;
+	}
+
+	td-otp-input:defined .td-otp__cells {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		grid-template-columns: repeat(6, minmax(0, 1fr));
+		gap: var(--td-otp-gap);
+		pointer-events: none;
+	}
+
+	/* Upgraded: the input stays the real control (focus, caret, paste, autofill) but paints nothing. */
+	td-otp-input:defined .td-otp__input {
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		color: transparent;
+		caret-color: transparent;
+		background: transparent;
+		border-color: transparent;
+		box-shadow: none;
+		cursor: text;
+	}
+
+	td-otp-input:defined .td-otp__input::selection {
+		color: transparent;
+		background: transparent;
+	}
+
+	.td-otp__cell {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 0;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-otp-font-size);
+		font-weight: var(--td-fw-semibold);
+		font-variant-numeric: tabular-nums;
+		line-height: 1;
+		color: var(--td-otp-fg);
+		background: var(--td-otp-bg);
+		border: 1px solid var(--td-otp-border);
+		border-radius: var(--td-otp-radius);
+		transition: border-color var(--td-dur-fast) var(--td-ease), box-shadow var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-otp__cell[data-active] {
+		border-color: var(--td-otp-border-active);
+		box-shadow: var(--td-otp-ring);
+	}
+
+	.td-otp__input[readonly] + .td-otp__cells .td-otp__cell {
+		background: var(--td-otp-bg-readonly);
+	}
+
+	.td-otp__input:disabled + .td-otp__cells .td-otp__cell {
+		color: var(--td-otp-fg-disabled);
+		background: var(--td-otp-bg-disabled);
+	}
+
+	td-otp-input:defined .td-otp__input:disabled {
+		cursor: not-allowed;
+	}
+
+	.td-otp__input[aria-invalid="true"] + .td-otp__cells .td-otp__cell {
+		border-color: var(--td-otp-error);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-otp__cell {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-otp__cell {
+			border-color: CanvasText;
+		}
+
+		.td-otp__cell[data-active] {
+			outline: 2px solid Highlight;
+			outline-offset: 1px;
+		}
+
+		.td-otp__input[aria-invalid="true"] + .td-otp__cells .td-otp__cell {
+			border-width: 2px;
+		}
+	}
+}
+
+/* ---- src/styles/components/drawer.css ---- */
+/*
+ * td-drawer (src/feedback/td-drawer.js, v0.27.0). Minimal surfaces: an OPAQUE panel (--td-glass-solid, glass.css opaque
+ * group) + thin border + --td-glass-shadow-lg, no blur, over the plain modal scrim (never blurred).
+ * Layer: var(--td-z-modal) like a modal (one band: later layers stack by DOM order; v0.21.1 promotion over a lightbox).
+ * State (set by JS, never visual classes): root [data-state="opening|open|closing"] · footer [hidden].
+ * The root is a <body> child: a site sizes it with `--td-drawer-w` (on :root, on the host — copied to the root on open —
+ * or on `.td-drawer-root`), or picks a size class. ≤ 640 px: full screen.
+ * Motion: the panel slides in from its edge (logical: `end` = right in LTR, left in RTL — the root carries `dir`),
+ * --td-drawer-enter-dur / --td-drawer-exit-dur; the scrim fades. Reduced motion → opacity only, --td-dur-fast.
+ * No JS: an undefined <td-drawer> shows its content in place (no hiding — docs: put it at the end / in <details>).
+ */
+@layer td.tokens {
+	:root {
+		--td-drawer-w-sm: 20rem;
+		--td-drawer-w-md: 28rem;
+		--td-drawer-w-lg: 36rem;
+		--td-drawer-w-xl: 48rem;
+		--td-drawer-pad-x: var(--td-space-lg);
+		--td-drawer-pad-y: var(--td-space-md);
+		--td-drawer-enter-dur: 280ms;
+		--td-drawer-exit-dur: 200ms;
+		--td-drawer-ease: cubic-bezier(0.32, 0.72, 0, 1);
+		--td-drawer-exit-ease: cubic-bezier(0.4, 0, 0.2, 1);
+	}
+}
+
+@layer td.component {
+	td-drawer:not(:defined) {
+		display: block;
+	}
+
+	/* Defined: the host is only a container of the nodes while the drawer is closed (they live in the panel while open). */
+	td-drawer:defined {
+		display: none;
+	}
+
+	.td-drawer-root {
+		--_td-drawer-size: var(--td-drawer-w-md);
+		--_td-drawer-from: 100%;
+
+		position: fixed;
+		inset: 0;
+		z-index: var(--td-z-modal);
+		box-sizing: border-box;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-base);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text);
+	}
+
+	.td-drawer-root *,
+	.td-drawer-root *::before,
+	.td-drawer-root *::after {
+		box-sizing: border-box;
+	}
+
+	.td-drawer-root[hidden],
+	.td-drawer__footer[hidden] {
+		display: none;
+	}
+
+	.td-drawer-root--sm { --_td-drawer-size: var(--td-drawer-w-sm); }
+	.td-drawer-root--md { --_td-drawer-size: var(--td-drawer-w-md); }
+	.td-drawer-root--lg { --_td-drawer-size: var(--td-drawer-w-lg); }
+	.td-drawer-root--xl { --_td-drawer-size: var(--td-drawer-w-xl); }
+
+	/* the start edge is the left in LTR: slide from -100%; RTL mirrors both sides */
+	.td-drawer-root--start { --_td-drawer-from: -100%; }
+	.td-drawer-root--end[dir="rtl"] { --_td-drawer-from: -100%; }
+	.td-drawer-root--start[dir="rtl"] { --_td-drawer-from: 100%; }
+
+	.td-drawer__backdrop {
+		position: absolute;
+		inset: 0;
+		background: var(--td-glass-scrim);
+		opacity: 0;
+		transition: opacity var(--td-drawer-enter-dur) ease-out;
+	}
+
+	.td-drawer-root[data-state="open"] .td-drawer__backdrop {
+		opacity: 1;
+	}
+
+	.td-drawer-root[data-state="closing"] .td-drawer__backdrop {
+		transition: opacity var(--td-drawer-exit-dur) var(--td-drawer-exit-ease);
+	}
+
+	.td-drawer__panel {
+		position: absolute;
+		inset-block: 0;
+		display: flex;
+		flex-direction: column;
+		width: min(var(--td-drawer-w, var(--_td-drawer-size)), 100%);
+		max-width: 100%;
+		height: 100%;
+		overflow: hidden;
+		border-radius: 0;
+		outline: none;
+		isolation: isolate;
+		transform: translateX(var(--_td-drawer-from));
+		transition: transform var(--td-drawer-enter-dur) var(--td-drawer-ease);
+	}
+
+	.td-drawer-root--end .td-drawer__panel {
+		inset-inline-end: 0;
+		border-block-width: 0;
+		border-inline-end-width: 0;
+	}
+
+	.td-drawer-root--start .td-drawer__panel {
+		inset-inline-start: 0;
+		border-block-width: 0;
+		border-inline-start-width: 0;
+	}
+
+	.td-drawer-root[data-state="open"] .td-drawer__panel {
+		transform: none;
+	}
+
+	.td-drawer-root[data-state="closing"] .td-drawer__panel {
+		transition: transform var(--td-drawer-exit-dur) var(--td-drawer-exit-ease);
+	}
+
+	/* An exiting drawer is never interactive (its panel is also inert). */
+	.td-drawer-root[data-state="closing"] {
+		pointer-events: none;
+	}
+
+	.td-drawer__header {
+		display: flex;
+		flex: 0 0 auto;
+		gap: var(--td-space-sm);
+		align-items: center;
+		min-height: 3.5rem;
+		padding: var(--td-space-sm) var(--td-drawer-pad-x);
+		border-bottom: 1px solid var(--td-hairline);
+	}
+
+	.td-drawer-root .td-drawer__title {
+		flex: 1 1 auto;
+		min-width: 0;
+		margin: 0;
+		font-family: inherit;
+		font-size: var(--td-text-lg);
+		font-weight: var(--td-fw-bold);
+		line-height: var(--td-leading-tight);
+		color: inherit;
+		overflow-wrap: anywhere;
+	}
+
+	.td-drawer__close {
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		width: 2.25rem;
+		height: 2.25rem;
+		padding: 0;
+		margin-inline: auto calc(-1 * var(--td-space-xs));
+		font: inherit;
+		color: var(--_td-glass-fg, var(--td-glass-fg));
+		cursor: pointer;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--td-radius-full);
+		transition: background var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+	}
+
+	.td-drawer__close:hover {
+		color: var(--td-color-text);
+		background: var(--td-color-hover-strong);
+	}
+
+	.td-drawer__close:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-drawer__close-icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+
+	/* The only scroller. */
+	.td-drawer__body {
+		flex: 1 1 auto;
+		min-height: 0;
+		padding: var(--td-drawer-pad-y) var(--td-drawer-pad-x);
+		overflow: auto;
+		overscroll-behavior: contain;
+		overflow-wrap: break-word;
+	}
+
+	.td-drawer__footer {
+		display: flex;
+		flex: 0 0 auto;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+		align-items: center;
+		justify-content: flex-end;
+		padding: var(--td-space-sm) var(--td-drawer-pad-x);
+		padding-bottom: max(var(--td-space-sm), env(safe-area-inset-bottom, 0px));
+		border-top: 1px solid var(--td-hairline);
+	}
+
+	/* Phones: full screen. */
+	@media (max-width: 640px) {
+		.td-drawer__panel {
+			width: 100%;
+			border-width: 0;
+		}
+	}
+
+	@media (pointer: coarse) {
+		.td-drawer__close {
+			width: var(--td-touch-min);
+			height: var(--td-touch-min);
+			margin-inline-end: calc(-1 * var(--td-space-sm));
+		}
+	}
+
+	/* Reduced motion: opacity only (no slide). */
+	@media (prefers-reduced-motion: reduce) {
+		.td-drawer__panel,
+		.td-drawer-root[data-state="open"] .td-drawer__panel,
+		.td-drawer-root[data-state="closing"] .td-drawer__panel {
+			opacity: 0;
+			transform: none;
+			transition: opacity var(--td-dur-fast) linear;
+		}
+
+		.td-drawer-root[data-state="open"] .td-drawer__panel {
+			opacity: 1;
+		}
+
+		.td-drawer__backdrop,
+		.td-drawer-root[data-state="closing"] .td-drawer__backdrop {
+			transition: opacity var(--td-dur-fast) linear;
+		}
+
+		.td-drawer__close {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-drawer__panel {
+			border: 1px solid CanvasText;
+		}
+
+		.td-drawer__header,
+		.td-drawer__footer {
+			border-color: CanvasText;
+		}
+
+		.td-drawer__close {
+			color: ButtonText;
+			border-color: ButtonText;
+		}
+	}
+}
+
+/* ---- src/styles/components/copy.css ---- */
+/*
+ * td-copy (src/display/td-copy.js, v0.27.0) — one ghost icon button (the dcms2 action-button style). Content layer:
+ * transparent at rest (no shadow, ghost rule), solid hover fill, focus ring.
+ * State (set by JS, never visual classes): button [data-state="copied|error"] (success / error tone + check / error icon).
+ * No JS: `td-copy:not(:defined)` shows the server-written `<code class="td-copy__source">` (selectable by hand) and hides
+ * the button (no dead control); once defined the source is hidden and the button is the only UI.
+ */
+@layer td.tokens {
+	:root {
+		--td-copy-size-sm: 1.75rem;
+		--td-copy-size-md: 2.25rem;
+		--td-copy-fg: var(--td-color-text-muted);
+		--td-copy-fg-hover: var(--td-color-text);
+		--td-copy-bg-hover: var(--td-color-hover-strong);
+		--td-copy-success: var(--td-color-success);
+		--td-copy-error: var(--td-color-error);
+		--td-copy-radius: var(--td-radius-md);
+		--td-copy-source-bg: var(--td-color-surface-muted);
+	}
+}
+
+@layer td.component {
+	td-copy {
+		position: relative;
+		display: inline-flex;
+		gap: var(--td-space-2xs);
+		align-items: center;
+		vertical-align: middle;
+		max-width: 100%;
+		line-height: normal; /* explicit: a site reset (Tailwind preflight) never changes the button */
+	}
+
+	/* No JS (undefined element): the server-written source is the UI — selectable text, no button. */
+	td-copy:not(:defined) .td-copy,
+	td-copy:not(:defined) .td-copy__status {
+		display: none;
+	}
+
+	.td-copy__source {
+		padding: 0.125rem 0.375rem;
+		font-family: var(--td-font-mono);
+		font-size: 0.875em;
+		line-height: normal;
+		color: var(--td-color-text);
+		overflow-wrap: anywhere;
+		white-space: pre-wrap;
+		user-select: all;
+		background: var(--td-copy-source-bg);
+		border-radius: var(--td-radius-sm);
+	}
+
+	td-copy:defined > .td-copy__source {
+		display: none;
+	}
+
+	.td-copy {
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		width: var(--td-copy-size-md);
+		height: var(--td-copy-size-md);
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		color: var(--td-copy-fg);
+		cursor: pointer;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--td-copy-radius);
+		box-shadow: none;
+		transition: background-color var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+	}
+
+	.td-copy--sm {
+		width: var(--td-copy-size-sm);
+		height: var(--td-copy-size-sm);
+	}
+
+	.td-copy:hover {
+		color: var(--td-copy-fg-hover);
+		background: var(--td-copy-bg-hover);
+	}
+
+	.td-copy:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-copy[data-state="copied"],
+	.td-copy[data-state="copied"]:hover {
+		color: var(--td-copy-success);
+	}
+
+	.td-copy[data-state="error"],
+	.td-copy[data-state="error"]:hover {
+		color: var(--td-copy-error);
+	}
+
+	.td-copy__icon {
+		display: inline-flex;
+		line-height: 0;
+		pointer-events: none;
+	}
+
+	.td-copy--sm .td-copy__icon .td-icon {
+		width: 1rem;
+		height: 1rem;
+	}
+
+	.td-copy__status {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	/* Fallback (clipboard refused): a read-only field holding the value, already selected. */
+	.td-copy__manual {
+		box-sizing: border-box;
+		width: 14rem;
+		max-width: 100%;
+		height: var(--td-copy-size-md);
+		padding: 0 var(--td-space-xs);
+		font-family: var(--td-font-mono);
+		font-size: var(--td-text-sm);
+		line-height: normal;
+		color: var(--td-control-fg);
+		background: var(--td-control-bg);
+		border: 1px solid var(--td-copy-error);
+		border-radius: var(--td-copy-radius);
+		outline: 2px solid transparent;
+	}
+
+	.td-copy__manual:focus {
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	@media (pointer: coarse) {
+		.td-copy,
+		.td-copy--sm {
+			width: var(--td-touch-min);
+			height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-copy {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-copy {
+			color: ButtonText;
+		}
+
+		.td-copy[data-state] {
+			border-color: Highlight;
 		}
 	}
 }
