@@ -2,6 +2,33 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.29.0
+
+dsuite P1 lô 1 — **cây phân cấp** (yêu cầu dienthoaihay.vn #9; plan `docs/internal/plans/v0.29.0-tree.md`, Codex
+plan-review APPROVE 3 vòng). Viết mới (dcms2 / dwp không có cây thật).
+
+### Added
+
+- **`<td-tree>`** — cây mở / đóng theo mẫu WAI-ARIA tree (roving tabindex; ↑ ↓ ← → Home End, `*`, gõ chữ để nhảy);
+  `selection="none | single | multiple"`, `cascade` (opt-in: checkbox ba trạng thái, form chỉ gửi **lá**); mục khoá
+  (`disabled` kế thừa xuống cả nhánh — chống chọn con làm cha); `loadChildren(node, { signal })` tải nhánh khi mở
+  (request mới nhất thắng); `searchable` lọc tại chỗ (hiện mục khớp + tổ tiên); form-associated (`name` nguyên văn, một
+  mục `FormData` mỗi giá trị, `required`). Dữ liệu `{ value, label, children?, disabled?, description?, hasChildren? }` (`hasChildren` không có `children` = nhánh tải sau), chỉ
+  render text; tối đa 16 cấp, quá 5.000 nút thì cảnh báo (chỉ nhánh đang mở nằm trong DOM).
+- **`<td-tree-select>`** — chọn nút trong cây qua popup: chọn một = combobox (focus ở ô, `aria-activedescendant`), chọn
+  nhiều = nút mở popup có ô tìm + cây `aria-multiselectable` (ô hiện tóm tắt "A, B +3"); `allow-clear`, `cascade`,
+  `loadChildren`, giá trị chưa tải giữ tới khi nhánh tải (`value-label` / `value-labels`); nâng cấp `<select>` con trực
+  tiếp; chồng đúng với modal / drawer.
+- **PHP `td_tree_select($name, $tree, $selected, $o)`** — mặc định `<select>` native thụt lề theo cấp (chạy không JS);
+  element mode `tree-select@1` hydrate tại chỗ, không xô lệch.
+- Export `@dazzxq/td-components/tree`, `/tree-select`.
+
+### Ghi chú
+
+- Mục **khoá đang được chọn vẫn được gửi** trong form (khác `<option disabled>`): chọn một thì không đổi / xoá được, chọn
+  nhiều thì "xoá" chỉ bỏ mục không khoá. Server vẫn phải tự kiểm tra quyền.
+- Không có JS, `<select>` chọn một có placeholder gửi `name=` rỗng; sau nâng cấp ô rỗng không gửi mục nào.
+
 ## 0.28.0
 
 dsuite P0 lô 2 — **chọn nhiều** (yêu cầu dienthoaihay.vn #3; plan `docs/internal/plans/v0.28.0-multiselect.md`, Codex
