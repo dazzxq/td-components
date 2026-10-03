@@ -59,6 +59,11 @@ CASES.push({ kind: 'lb-thumb', v: 'current', state: 'ring', pageOnly: true });
 for (const state of ['rest', 'active', 'error']) CASES.push({ kind: 'otp', v: 'cell', state, pageOnly: true });
 for (const state of ['rest', 'copied', 'error']) CASES.push({ kind: 'copy', v: 'button', state, pageOnly: true });
 CASES.push({ kind: 'skeleton', v: 'block', state: 'rest', pageOnly: true });
+// v0.28.0: td-chip-input multi-select rows on the translucent menu surface, over every backdrop: a SELECTED row (label
+// ≥ 4.7, the ✓ ≥ 3.2) at rest and active (keyboard highlight fill), and a LOCKED row (aria-disabled: greyed out on
+// purpose, label ≥ 2.2 like a disabled button).
+for (const state of ['rest', 'active']) CASES.push({ kind: 'chip-multi', v: 'selected', state });
+CASES.push({ kind: 'chip-multi', v: 'locked', state: 'disabled' });
 
 const stage = document.getElementById('stage');
 const bd = document.getElementById('backdrop');
@@ -180,6 +185,37 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     stage.appendChild(menu);
     fillIconSlots(el);
     parts = { label, icon };
+  } else if (c.kind === 'chip-multi') {
+    // the real rendered shape of a td-chip-input selection-only row (_renderSelRows), state set as the component does
+    const menu = document.createElement('div');
+    menu.className = 'td-chip-input__menu td-glass-surface td-glass-surface--strong';
+    menu.setAttribute('data-state', 'open');
+    menu.style.setProperty('top', '96px');
+    menu.style.setProperty('left', '48px');
+    menu.style.setProperty('width', '280px');
+    const listbox = document.createElement('div');
+    listbox.className = 'td-chip-input__options';
+    listbox.setAttribute('role', 'listbox');
+    listbox.setAttribute('aria-multiselectable', 'true');
+    el = document.createElement('div');
+    el.className = 'td-chip-input__option';
+    el.setAttribute('role', 'option');
+    el.setAttribute('aria-selected', c.v === 'selected' ? 'true' : 'false');
+    if (c.v === 'locked') el.setAttribute('aria-disabled', 'true');
+    if (c.state === 'active') el.setAttribute('data-active', '');
+    const check = document.createElement('span');
+    check.className = 'td-chip-input__check';
+    check.setAttribute('data-td-icon', 'check');
+    check.setAttribute('data-td-icon-size', 's');
+    const label = document.createElement('span');
+    label.className = 'td-chip-input__option-label';
+    label.textContent = 'Nguyễn Văn An';
+    el.append(check, label);
+    listbox.appendChild(el);
+    menu.appendChild(listbox);
+    stage.appendChild(menu);
+    fillIconSlots(el);
+    parts = c.v === 'selected' ? { label, icon: check } : { label };
   } else if (c.kind === 'media-tick') {
     const image = c.state === 'light-image' ? 'rgb(255, 255, 255)' : 'rgb(0, 0, 0)';
     const grid = document.createElement('td-media-grid');

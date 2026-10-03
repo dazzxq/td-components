@@ -83,6 +83,23 @@ export function parseChipItems(str) {
  * Form (D8): one FormData entry per item under the host `name` (use `name="tags[]"` for PHP arrays); state = JSON
  * `[{value,label}]` for restore; `required` → `valueMissing`; reset restores the `value` attribute items.
  *
+ * Multi-select (v0.28.0, plan v0.28.0-multiselect): `selection-only` → items come ONLY from `options` / `search()`
+ * (typed text filters, never becomes a chip; `allow-create` is ignored with one warning). The listbox is
+ * `aria-multiselectable="true"`; selected rows stay listed with a ✓ (`span.td-chip-input__check`): `aria-selected` =
+ * membership (true|false on every row), the keyboard highlight = `data-active` + `aria-activedescendant`. Enter / click
+ * TOGGLE the active row (Space types a space — the input is editable), the popup stays open (`close-on-select` closes
+ * it). Locked rows (`disabled` item, item of a `disabled` group, or unselected while `max-items` is reached) are
+ * `aria-disabled="true"`: never selected by click, Enter, arrows (skipped) or select-all; a SELECTED row is always
+ * deselectable. Groups `{ label, disabled?, options: [leaf…] }` (one level) render as `div[role=group]` labelled by a
+ * `role="presentation"` header; filtering applies to leaves (empty groups hidden). `select-all` adds a first row
+ * `.td-chip-input__option--all` "Chọn tất cả (N)" / "Bỏ chọn tất cả (N)" (N = shown enabled leaves): it adds every shown
+ * unselected leaf (stops at `max-items`) or removes the shown selected ones — ONE `change` with `addedItems` /
+ * `removedItems`. A direct child `<select multiple>` is adopted on the first connect (options, `<optgroup>` → groups,
+ * `data-description`, live selection incl. selected locked options; `name` / `required` / `disabled` / `aria-label` when the host lacks them;
+ * `<label for>` → host; `selection-only` set; select removed). Initial value: early `value` property > host `value`
+ * attribute > the select's live selection; reset → the options' `defaultSelected`. A FOCUSED select (with or without
+ * the PHP td_multiselect shell, SSR contract `chip-input@1`) defers the whole first connect to its blur.
+ *
  * Security (D14): labels, descriptions, typed text, remote results and `labels.*` are rendered with `textContent` /
  * `setAttribute` only. `renderOption(item, { query })` / `renderChip(item)` return a Node (built by the page with DOM
  * APIs) or a string rendered AS TEXT — there is no HTML-string hatch. Ids come from indices, never from data.
@@ -103,7 +120,11 @@ export function parseChipItems(str) {
  * @attr {string} value-key - Item value key (default "value")
  * @attr {string} label-key - Item label key (default "label")
  * @attr {number} max-length - Max typed/created text length (default 200)
- * @fires change - User add/remove only: detail `{ value: items, items, added? , removed? }` (programmatic API is silent)
+ * @attr {boolean} selection-only - v0.28.0: pick only from options / results (multi-select, rows toggle, ✓ shown)
+ * @attr {boolean} select-all - v0.28.0 (with selection-only): "select all shown" first row
+ * @attr {boolean} close-on-select - v0.28.0 (with selection-only): close the popup after each toggle
+ * @fires change - User add/remove only: detail `{ value: items, items, added? , removed? }` (programmatic API is silent);
+ *   select-all: `{ value, items, addedItems | removedItems }`
  * @fires search-error - The provider rejected: detail `{ query, error }`
  *
  * @property {Array} value - Current items (setter is silent)
@@ -119,12 +140,20 @@ export function parseChipItems(str) {
 export class TdChipInput extends TdFormElement {
   static get observedAttributes() {
     return [...super.observedAttributes, 'label', 'placeholder', 'value', 'max-items', 'min-chars', 'search-delay',
-      'allow-create', 'show-on-focus', 'value-key', 'label-key', 'max-length', 'error-text', 'aria-label'];
+      'allow-create', 'show-on-focus', 'value-key', 'label-key', 'max-length', 'error-text', 'aria-label',
+      'selection-only', 'select-all', 'close-on-select'];
   }
 
   static get booleanAttributes() {
-    return [...super.booleanAttributes, 'allow-create', 'show-on-focus'];
+    return [...super.booleanAttributes, 'allow-create', 'show-on-focus', 'selection-only', 'select-all', 'close-on-select'];
   }
+
+  /**
+   * v0.28.0: version of the SSR shell contract `data-td-ssr="chip-input@1"` (PHP td_multiselect element mode: the native
+   * `<select multiple>` styled `.td-chip-input__native`). Only the focused-select deferral reads it; the shell itself
+   * is upgraded by the `<select multiple>` path.
+   */
+  static SSR_SCHEMA = 1;
 
   static get errorContract() { return true; }
 
@@ -142,6 +171,11 @@ export class TdChipInput extends TdFormElement {
     error: 'Không tải được gợi ý',
     max: 'Đã đạt tối đa {max} mục',
     required: 'Vui lòng thêm ít nhất một mục',
+    /** v0.28.0 select-all row (`{n}` = shown enabled items) + its announcements */
+    selectAll: 'Chọn tất cả ({n})',
+    deselectAll: 'Bỏ chọn tất cả ({n})',
+    addedMany: 'Đã thêm {n} mục',
+    removedMany: 'Đã bỏ chọn {n} mục',
   };
 
   constructor() {
@@ -177,6 +211,13 @@ export class TdChipInput extends TdFormElement {
     this._createGen = 0;
     this._scrollRafId = null;
     this._warnedValue = false;
+    /** @private rendered rows aligned with `_nav` (v0.28.0: rows may sit inside group containers) */
+    this._rowEls = [];
+    /** @private v0.28.0: `options` assigned before the first connect (beats a child <select>) */
+    this._optionsSet = false;
+    /** @private v0.28.0: reset default of an adopted <select multiple> (its `defaultSelected` items), else null */
+    this._selectDefaults = null;
+    this._warnedCreate = false;
 
     this._boundPointerOutside = (e) => {
       const t = e.target;
@@ -201,7 +242,112 @@ export class TdChipInput extends TdFormElement {
         this[p] = v;
       }
     }
+    // v0.28.0 M3: first connect → adopt a direct child <select multiple> (JS-assigned `options` / `value` win).
+    if (!this._initialized && !this._selectChecked) {
+      const select = [...this.children].find((c) => c.localName === 'select' && c.multiple);
+      // A FOCUSED select (the user is choosing) is left alone — no upgrade, no render, no bind — until it blurs; then
+      // this path runs exactly once with the live choice. Any direct-child select, with or without the chip-input@1
+      // shell (PHP td_multiselect element mode); only the shell marker removal depends on the shell.
+      const shell = this._ssrMatches('chip-input', TdChipInput.SSR_SCHEMA);
+      if (select && !this._ssrNoDefer && select.ownerDocument.activeElement === select) {
+        this._deferUntilBlur(select);
+        return;
+      }
+      this._selectChecked = true;
+      if (shell) this.removeAttribute('data-td-ssr'); // consumed (the shell styling ends with the upgrade)
+      if (select) this._upgradeSelect(select);
+    }
     super.connectedCallback();
+  }
+
+  /**
+   * @private v0.28.0: wait for the focused child select to blur — ONE capture listener (same mechanism as
+   * td-dropdown v0.26). Disconnecting meanwhile cancels it (re-evaluated on reconnect).
+   * @param {HTMLSelectElement} select
+   */
+  _deferUntilBlur(select) {
+    if (this._ssrDefer) return;
+    const onBlur = () => {
+      this._cancelSsrDefer();
+      // after the blur dispatch: removing the host can blur its select while still connected — the microtask then
+      // sees it disconnected and leaves the decision to the next connect
+      queueMicrotask(() => {
+        if (!this.isConnected || this._initialized || this._selectChecked || this._ssrDefer) return;
+        this._ssrNoDefer = true;
+        try {
+          this.connectedCallback();
+        } finally {
+          this._ssrNoDefer = false;
+        }
+      });
+    };
+    select.addEventListener('blur', onBlur, { capture: true });
+    this._ssrDefer = { select, onBlur };
+  }
+
+  /** @private Drop a pending focused-select deferral (listener removed). */
+  _cancelSsrDefer() {
+    const d = this._ssrDefer;
+    if (!d) return;
+    this._ssrDefer = null;
+    d.select.removeEventListener('blur', d.onBlur, { capture: true });
+  }
+
+  /**
+   * @private v0.28.0 M3: read a child `<select multiple>` into options (`<optgroup>` → groups), the initial selection
+   * (only when neither an early `value` property nor the host `value` attribute set one), the reset default
+   * (`defaultSelected`), host attributes; re-point its `<label for>` at the host, then remove it.
+   * @param {HTMLSelectElement} select
+   */
+  _upgradeSelect(select) {
+    this._ensureId();
+    const vk = this._vk();
+    const lk = this._lk();
+    const byOpt = new Map();
+    const leaf = (opt) => {
+      const item = { [vk]: opt.value, [lk]: opt.label.trim() || opt.value };
+      if (opt.disabled) item.disabled = true;
+      const d = opt.getAttribute('data-description');
+      if (d) item.description = d;
+      byOpt.set(opt, item);
+      return item;
+    };
+    const tree = [];
+    for (const child of select.children) {
+      if (child.localName === 'optgroup') {
+        const group = { label: child.label, options: [] };
+        if (child.disabled) group.disabled = true;
+        for (const o of child.children) if (o.localName === 'option') group.options.push(leaf(o));
+        tree.push(group);
+      } else if (child.localName === 'option') {
+        tree.push(leaf(child));
+      }
+    }
+    // EVERY selected option is kept, locked ones too (disabled itself or in a disabled optgroup): it stays selected with
+    // its disabled metadata — locked for adding, deselectable like any selected locked row (plan M3)
+    const pick = (list) => list.map((o) => byOpt.get(o)).filter(Boolean);
+    const live = pick([...(select.selectedOptions || [])]);
+    this._selectDefaults = pick([...select.options].filter((o) => o.defaultSelected));
+    for (const attr of ['name', 'aria-label']) {
+      const v = select.getAttribute(attr);
+      if (v != null && !this.hasAttribute(attr)) this.setAttribute(attr, v);
+    }
+    for (const attr of ['required', 'disabled']) {
+      if (select.hasAttribute(attr) && !this.hasAttribute(attr)) this.setAttribute(attr, '');
+    }
+    if (!this.hasAttribute('selection-only')) this.setAttribute('selection-only', '');
+    if (select.id) {
+      for (const label of [...(select.labels || [])]) {
+        if (label.htmlFor === select.id) label.htmlFor = this.id;
+      }
+    }
+    select.remove();
+    if (!this._optionsSet) this.options = tree;
+    // selection-only is on and the final options are known: items replayed before the upgrade (early `value` with early
+    // `options`) take their option labels now — the `options` replay ran before selection-only and skipped it
+    this._relabel();
+    // precedence: early `value` property (already applied) > host `value` attribute (afterRender) > live selection
+    if (!this._itemsFromProp && !this.hasAttribute('value')) this.setValue(live);
   }
 
   // --- Properties ---
@@ -218,6 +364,8 @@ export class TdChipInput extends TdFormElement {
   get options() { return this._options; }
   set options(data) {
     this._options = Array.isArray(data) ? data : [];
+    if (!this._initialized) this._optionsSet = true;
+    this._relabel();
     if (this._isOpen && !this._search) this._runSearch(this._currentQuery());
   }
 
@@ -260,6 +408,10 @@ export class TdChipInput extends TdFormElement {
     const max = this._maxItems();
     return max > 0 && this._items.length >= max;
   }
+  /** @private v0.28.0 multi-select mode */
+  _selOnly() { return this.hasAttribute('selection-only'); }
+  /** @private the RENDERED listbox is the multi-select one (rows in `_rowEls`, highlight = data-active) */
+  _rendSel() { return this._list()?.getAttribute('aria-multiselectable') === 'true'; }
 
   /** @private text from `messages` → `TdChipInput.labels`, placeholders filled */
   _t(key, vars) {
@@ -306,6 +458,52 @@ export class TdChipInput extends TdFormElement {
     return this._items.some((i) => fold(this._val(i)) === f || fold(this._lab(i)) === f);
   }
 
+  /** @private v0.28.0: a group `{ label, disabled?, options: [] }` (an object without a usable value + an options array) */
+  _isGroup(x) {
+    return !!x && typeof x === 'object' && Array.isArray(x.options) && this._norm(x) === null;
+  }
+
+  /** @private v0.28.0: every leaf of `options` (groups flattened, one level), normalised */
+  _leaves() {
+    const out = [];
+    for (const x of this._options) {
+      if (this._isGroup(x)) {
+        for (const y of x.options) if (!this._isGroup(y)) out.push(this._norm(y));
+      } else out.push(this._norm(x));
+    }
+    return out.filter(Boolean);
+  }
+
+  /** @private v0.28.0 selection-only: a value-only item (label = value) takes the label of the matching option leaf */
+  _resolveLeaf(item) {
+    if (this._lab(item) !== this._val(item)) return item;
+    const v = this._val(item);
+    return this._leaves().find((l) => this._val(l) === v) || item;
+  }
+
+  /** @private items for the selection: normalise + dedupe (+ option labels in selection-only) */
+  _normItems(list) {
+    const out = this._normList(list);
+    return this._selOnly() ? out.map((i) => this._resolveLeaf(i)) : out;
+  }
+
+  /** @private v0.28.0: options arrived after the items → value-only items get their option labels */
+  _relabel() {
+    if (!this._selOnly() || !this._items.length) return;
+    let changed = false;
+    const next = this._items.map((i) => {
+      const r = this._resolveLeaf(i);
+      if (r !== i) changed = true;
+      return r;
+    });
+    if (!changed) return;
+    this._items = next;
+    if (this._initialized && this._chipsEl()) {
+      this._renderChips();
+      this._syncForm();
+    }
+  }
+
   /** @private normalise + dedupe a list */
   _normList(list) {
     const out = [];
@@ -342,8 +540,9 @@ export class TdChipInput extends TdFormElement {
   afterRender() {
     if (!this._itemsInit) {
       this._itemsInit = true;
-      if (!this._itemsFromProp) this._items = this._normList(this._parseAttr(this.getAttribute('value')) || []);
+      if (!this._itemsFromProp) this._items = this._normItems(this._parseAttr(this.getAttribute('value')) || []);
     }
+    this._warnCreate();
     // Persistent body portal (fixed positioning escapes overflow/transform clipping, D13).
     if (!this._menuElement) {
       const menu = document.createElement('div');
@@ -421,6 +620,16 @@ export class TdChipInput extends TdFormElement {
         return;
       case 'max-items':
         this._applyFull();
+        return;
+      case 'selection-only':
+      case 'select-all':
+        // v0.28.0: the rows are built per mode → rebuilt on the next open
+        this._warnCreate();
+        this._navQuery = null;
+        this.close();
+        return;
+      case 'allow-create':
+        this._warnCreate(); // read when used (as before)
         return;
       case 'max-length':
         if (input) input.maxLength = this._maxLength();
@@ -511,13 +720,22 @@ export class TdChipInput extends TdFormElement {
     }
   }
 
+  /** @private v0.28.0: `allow-create` has no effect with `selection-only` — one warning per element */
+  _warnCreate() {
+    if (this._warnedCreate || !this._selOnly() || !this.hasAttribute('allow-create')) return;
+    this._warnedCreate = true;
+    console.warn('td-chip-input: allow-create is ignored with selection-only (items come only from the options).', this);
+  }
+
   /** @private `data-full` / `data-empty` on the root */
   _applyFull() {
     const root = this._root();
     if (!root) return;
     root.toggleAttribute('data-full', this._isFull());
     root.toggleAttribute('data-empty', this._items.length === 0);
-    if (this._isFull() && this._isOpen) this.close();
+    // v0.28.0 selection-only: a full list stays open (selected rows stay deselectable) — the other rows lock instead
+    if (this._isOpen && this._rendSel()) this._refreshRows();
+    else if (this._isFull() && this._isOpen) this.close();
   }
 
   /** @private hook result → Node or text; falls back to `fallback` on null/throw */
@@ -633,7 +851,8 @@ export class TdChipInput extends TdFormElement {
     const input = this._input();
     if (input) input.value = '';
     this.close();
-    this.setValue(this._parseAttr(this._defaultValueAttr) || []);
+    // v0.28.0: adopted from a <select multiple> → the native default (`selected` options), like the select it replaced
+    this.setValue(this._selectDefaults ? [...this._selectDefaults] : (this._parseAttr(this._defaultValueAttr) || []));
   }
 
   _restoreState(state) {
@@ -646,6 +865,7 @@ export class TdChipInput extends TdFormElement {
   }
 
   disconnectedCallback() {
+    this._cancelSsrDefer(); // v0.28.0: a focused shell still waiting for its blur — re-evaluated on reconnect
     this._createGen += 1;
     this._cancelSearch();
     this._clearResultsTimer();
@@ -677,7 +897,7 @@ export class TdChipInput extends TdFormElement {
     this.listen(input, 'focus', (e) => {
       const from = e.relatedTarget;
       if (from instanceof Node && this.contains(from)) return; // back from a chip: no new search
-      if (this.hasAttribute('show-on-focus') && !this._isDisabled() && !this._isFull()) {
+      if (this.hasAttribute('show-on-focus') && !this._isDisabled() && (this._selOnly() || !this._isFull())) {
         const q = this._currentQuery();
         this._runSearch(q.length >= this._minChars() ? q : '');
       }
@@ -716,14 +936,15 @@ export class TdChipInput extends TdFormElement {
     menu.addEventListener('click', (e) => {
       const option = e.target instanceof Element ? e.target.closest('.td-chip-input__option') : null;
       if (!option || !menu.contains(option)) return;
-      const i = [...option.parentNode.children].indexOf(option);
+      const i = this._rowEls.indexOf(option);
       const entry = this._nav[i];
       if (entry) this._commit(entry);
     });
     menu.addEventListener('mousemove', (e) => {
       const option = e.target instanceof Element ? e.target.closest('.td-chip-input__option') : null;
       if (!option) return;
-      const i = [...option.parentNode.children].indexOf(option);
+      const i = this._rowEls.indexOf(option);
+      if (i < 0 || (this._rendSel() && this._locked(i))) return; // a locked row is never highlighted
       if (i !== this._activeIndex) {
         this._activeIndex = i;
         this._syncActive(false);
@@ -742,7 +963,7 @@ export class TdChipInput extends TdFormElement {
     if (this._isDisabled()) return;
     this._activeIndex = -1;
     this._syncActive(false);
-    if (this._isFull()) {
+    if (this._isFull() && !this._selOnly()) {
       this.close();
       const msg = this._t('max', { max: this._maxItems() });
       if (this._statusText() !== msg) this._announce(msg);
@@ -750,7 +971,9 @@ export class TdChipInput extends TdFormElement {
     }
     const q = this._currentQuery();
     if (q.length < this._minChars()) {
-      this.close();
+      // v0.28.0 selection-only: clearing the filter of an open list shows every option again
+      if (this._selOnly() && q === '' && this._isOpen) this._runSearch('');
+      else this.close();
       return;
     }
     if (!this._search) {
@@ -810,6 +1033,15 @@ export class TdChipInput extends TdFormElement {
 
   /** @private Enter: active option → pick; else exact match → pick; else create (allow-create). */
   _onEnter(e) {
+    if (this._selOnly()) {
+      // v0.28.0: only the active row toggles; typed text is a filter (never a chip, never submits the form)
+      const entry = this._isOpen && this._activeIndex >= 0 ? this._nav[this._activeIndex] : null;
+      if (entry) {
+        e.preventDefault();
+        this._commit(entry);
+      } else e.preventDefault(); // even with an empty input: no implicit form submission, no mutation
+      return;
+    }
     if (this._isOpen && this._activeIndex >= 0 && this._nav[this._activeIndex]) {
       e.preventDefault();
       this._commit(this._nav[this._activeIndex]);
@@ -889,11 +1121,20 @@ export class TdChipInput extends TdFormElement {
 
   // --- Active option (aria-activedescendant) ---
 
-  /** @private `aria-selected="true"` on the active option + `aria-activedescendant` on the input */
+  /**
+   * @private `aria-selected="true"` on the active option + `aria-activedescendant` on the input. v0.28.0 multi-select
+   * list: `aria-selected` is the membership — the highlight is `data-active` instead.
+   */
   _syncActive(scroll = true) {
     const list = this._list();
     let activeEl = null;
-    if (list) {
+    if (list && this._rendSel()) {
+      this._rowEls.forEach((el, i) => {
+        const on = i === this._activeIndex && this._isOpen;
+        el.toggleAttribute('data-active', on);
+        if (on) activeEl = el;
+      });
+    } else if (list) {
       [...list.children].forEach((el, i) => {
         const on = i === this._activeIndex && this._isOpen;
         el.setAttribute('aria-selected', on ? 'true' : 'false');
@@ -915,12 +1156,34 @@ export class TdChipInput extends TdFormElement {
     this._syncActive();
   }
 
-  /** @private step with wrap-around */
+  /** @private step with wrap-around (v0.28.0 multi-select: locked rows are skipped) */
   _move(step) {
     const n = this._nav.length;
     if (!n) return;
+    if (this._rendSel()) {
+      let i = this._activeIndex;
+      for (let k = 0; k < n; k++) {
+        i = i < 0 ? (step > 0 ? 0 : n - 1) : (i + step + n) % n;
+        if (!this._locked(i)) {
+          this._setActive(i);
+          return;
+        }
+      }
+      return;
+    }
     const cur = this._activeIndex;
     this._setActive(cur < 0 ? (step > 0 ? 0 : n - 1) : (cur + step + n) % n);
+  }
+
+  /** @private first (dir 1) / last (dir -1) row the keyboard may reach; -1 = none */
+  _edge(dir) {
+    const n = this._nav.length;
+    if (!this._rendSel()) return n ? (dir > 0 ? 0 : n - 1) : -1;
+    for (let k = 0; k < n; k++) {
+      const i = dir > 0 ? k : n - 1 - k;
+      if (!this._locked(i)) return i;
+    }
+    return -1;
   }
 
   // --- Search (D9) ---
@@ -959,7 +1222,7 @@ export class TdChipInput extends TdFormElement {
     this._cancelSearch();
     const seq = this._seq;
     if (!this._search) {
-      this._applyResults(q, this._localFilter(q), activate);
+      this._applyResults(q, this._selOnly() ? this._localTree(q) : this._localFilter(q), activate);
       return;
     }
     const ctrl = new AbortController();
@@ -992,9 +1255,84 @@ export class TdChipInput extends TdFormElement {
     this._ctrl = null;
   }
 
+  /**
+   * @private v0.28.0 selection-only local filter: the raw options with groups kept, filtered on the LEAF labels
+   * (a group label never matches); emptied groups dropped.
+   */
+  _localTree(q) {
+    const f = q ? fold(q) : '';
+    const match = (x) => {
+      const item = this._norm(x);
+      return !!item && (!f || fold(this._lab(item)).includes(f));
+    };
+    const out = [];
+    for (const x of this._options) {
+      if (this._isGroup(x)) {
+        const kept = x.options.filter((y) => !this._isGroup(y) && match(y));
+        if (kept.length) out.push({ label: x.label, disabled: x.disabled, options: kept });
+      } else if (match(x)) out.push(x);
+    }
+    return out;
+  }
+
+  /**
+   * @private v0.28.0: raw options / results → navigation model of the multi-select list (deduped by value):
+   * `[{ all: true }?, { item, off, group? }…]`; `off` = disabled item or item of a disabled group.
+   * @returns {Array<Object>} the leaf entries (the select-all row is added by the caller)
+   */
+  _selEntries(raw) {
+    const seen = new Set();
+    const out = [];
+    const leaf = (x, group) => {
+      const item = this._norm(x);
+      if (!item) return;
+      const v = this._val(item);
+      if (seen.has(v)) return;
+      seen.add(v);
+      out.push({ item, off: item.disabled === true || (!!group && group.off), group });
+    };
+    for (const x of Array.isArray(raw) ? raw : []) {
+      if (this._isGroup(x)) {
+        const label = x.label;
+        const group = { label: label != null && typeof label !== 'object' ? String(label) : '', off: x.disabled === true };
+        for (const y of x.options) if (!this._isGroup(y)) leaf(y, group);
+      } else leaf(x, null);
+    }
+    return out;
+  }
+
+  /** @private v0.28.0 selection-only results: every leaf listed (selected ones with ✓), the list stays open when full */
+  _applySelResults(q, raw, activate) {
+    const leaves = this._selEntries(raw);
+    this._lastResults = leaves.map((e) => e.item);
+    const nav = this.hasAttribute('select-all') && leaves.length ? [{ all: true }, ...leaves] : leaves;
+    this._nav = nav;
+    this._navQuery = q;
+    this._renderOptions(q);
+    if (!leaves.length && !q) {
+      this._hide();
+      return;
+    }
+    this._setEmpty(leaves.length ? '' : 'none');
+    this._show();
+    this._activeIndex = -1;
+    this._setActive(activate === 'first' ? this._edge(1) : activate === 'last' ? this._edge(-1) : -1);
+    this._clearResultsTimer();
+    const n = leaves.length;
+    this._resultsTimer = window.setTimeout(() => {
+      this._resultsTimer = 0;
+      if (this._isOpen) this._announce(n ? this._t('results', { n }) : this._t('noResults'));
+    }, RESULTS_MS);
+  }
+
   /** @private show a results list (or "no results") */
   _applyResults(q, raw, activate) {
-    if (this._isDisabled() || this._isFull() || !this.isConnected) return;
+    if (this._isDisabled() || !this.isConnected) return;
+    if (this._selOnly()) {
+      this._applySelResults(q, raw, activate);
+      return;
+    }
+    if (this._isFull()) return;
     const items = this._normList(raw);
     this._lastResults = items;
     const shown = items.filter((i) => !this._has(this._val(i)));
@@ -1051,6 +1389,11 @@ export class TdChipInput extends TdFormElement {
   _renderOptions(query) {
     const list = this._list();
     if (!list) return;
+    if (this._selOnly()) {
+      this._renderSelRows(query);
+      return;
+    }
+    list.removeAttribute('aria-multiselectable');
     const nodes = this._nav.map((entry, i) => {
       const el = document.createElement('div');
       el.setAttribute('role', 'option');
@@ -1078,7 +1421,118 @@ export class TdChipInput extends TdFormElement {
       return el;
     });
     list.replaceChildren(...nodes);
+    this._rowEls = nodes;
     if (this._isOpen) this._updatePosition();
+  }
+
+  /**
+   * @private v0.28.0 multi-select rows (DOM APIs only; ids from indices): `[select-all row] + rows`, a group's rows
+   * inside `div.td-chip-input__group[role=group][aria-labelledby]` after its `role="presentation"` header. Every row
+   * carries the ✓ slot; states (aria-selected / aria-disabled / select-all text) come from `_refreshRows()`.
+   */
+  _renderSelRows(query) {
+    const list = this._list();
+    list.setAttribute('aria-multiselectable', 'true');
+    const rows = [];
+    const nodes = [];
+    let group = null;
+    let groupEl = null;
+    let gi = 0;
+    this._nav.forEach((entry, i) => {
+      const el = document.createElement('div');
+      el.setAttribute('role', 'option');
+      el.setAttribute('aria-selected', 'false');
+      const check = document.createElement('span');
+      check.className = 'td-chip-input__check';
+      check.setAttribute('data-td-icon', 'check');
+      check.setAttribute('data-td-icon-size', 's');
+      check.setAttribute('aria-hidden', 'true');
+      const label = document.createElement('span');
+      label.className = 'td-chip-input__option-label';
+      el.append(check, label);
+      if (entry.all) {
+        el.className = 'td-chip-input__option td-chip-input__option--all';
+        el.id = `${this.id}-opt-all`;
+      } else {
+        el.className = 'td-chip-input__option';
+        el.id = `${this.id}-opt-${i}`;
+        el.setAttribute('data-index', String(i));
+        el.setAttribute('data-value', this._val(entry.item));
+        label.appendChild(this._hookContent(this._renderOption, [entry.item, { query }], this._lab(entry.item)));
+        const desc = entry.item.description;
+        if (!this._renderOption && desc != null && typeof desc !== 'object' && String(desc) !== '') {
+          const d = document.createElement('span');
+          d.className = 'td-chip-input__option-desc';
+          d.textContent = String(desc);
+          el.appendChild(d);
+        }
+      }
+      rows.push(el);
+      if (entry.group) {
+        if (entry.group !== group) {
+          group = entry.group;
+          groupEl = document.createElement('div');
+          groupEl.className = 'td-chip-input__group';
+          groupEl.setAttribute('role', 'group');
+          const head = document.createElement('div');
+          head.className = 'td-chip-input__group-label';
+          head.setAttribute('role', 'presentation');
+          head.id = `${this.id}-grp-${gi++}`;
+          head.textContent = group.label;
+          groupEl.setAttribute('aria-labelledby', head.id);
+          groupEl.appendChild(head);
+          nodes.push(groupEl);
+        }
+        groupEl.appendChild(el);
+      } else {
+        group = null;
+        nodes.push(el);
+      }
+    });
+    list.replaceChildren(...nodes);
+    fillIconSlots(list);
+    this._rowEls = rows;
+    this._refreshRows();
+    if (this._isOpen) this._updatePosition();
+  }
+
+  /** @private v0.28.0 select-all state over the SHOWN leaves: mode add | remove | none, N = shown enabled leaves */
+  _allState() {
+    const shown = this._nav.filter((e) => e.item);
+    const enabled = shown.filter((e) => !e.off);
+    const addable = enabled.filter((e) => !this._has(this._val(e.item)));
+    // Only enabled rows: bulk deselect never drops a locked (disabled / disabled-group) selection.
+    const selected = enabled.filter((e) => this._has(this._val(e.item)));
+    const mode = addable.length && !this._isFull() ? 'add' : selected.length ? 'remove' : 'none';
+    return { mode, n: enabled.length, addable, selected };
+  }
+
+  /** @private v0.28.0: may row `i` NOT be activated / toggled on? (a selected row is always deselectable) */
+  _locked(i) {
+    const entry = this._nav[i];
+    if (!entry) return true;
+    if (entry.all) return this._allState().mode === 'none';
+    return !this._has(this._val(entry.item)) && (entry.off || this._isFull());
+  }
+
+  /** @private v0.28.0: membership (aria-selected), locks (aria-disabled) and the select-all text, in place */
+  _refreshRows() {
+    if (!this._rendSel()) return;
+    this._nav.forEach((entry, i) => {
+      const el = this._rowEls[i];
+      if (!el) return;
+      if (entry.all) {
+        const st = this._allState();
+        el.setAttribute('aria-selected', st.mode === 'remove' ? 'true' : 'false');
+        const text = this._t(st.mode === 'remove' ? 'deselectAll' : 'selectAll', { n: st.n });
+        const label = el.querySelector('.td-chip-input__option-label');
+        if (label && label.textContent !== text) label.textContent = text;
+      } else {
+        el.setAttribute('aria-selected', this._has(this._val(entry.item)) ? 'true' : 'false');
+      }
+      if (this._locked(i)) el.setAttribute('aria-disabled', 'true');
+      else el.removeAttribute('aria-disabled');
+    });
   }
 
   // --- Announcements (D12) ---
@@ -1106,8 +1560,13 @@ export class TdChipInput extends TdFormElement {
 
   // --- Mutations ---
 
-  /** @private commit a nav entry (pick or create) */
+  /** @private commit a nav entry (pick or create; v0.28.0 multi-select list: toggle / select-all) */
   _commit(entry) {
+    if (this._rendSel()) {
+      if (entry.all) this._toggleAll();
+      else if (entry.item) this._toggle(entry);
+      return;
+    }
     if (entry.item) this._addUser(entry.item);
     else if ('create' in entry) this._createFrom(entry.create);
   }
@@ -1142,6 +1601,87 @@ export class TdChipInput extends TdFormElement {
     this._syncForm();
     this.emit('change', { value: this.getValue(), items: this.getValue(), added: item });
     return true;
+  }
+
+  /**
+   * @private v0.28.0 selection-only toggle of one row: selected → removed (always allowed); else added unless locked
+   * (disabled / full). The text and the popup stay (close-on-select: both cleared / closed). ONE `change`.
+   */
+  _toggle(entry) {
+    if (this._isDisabled()) return;
+    const v = this._val(entry.item);
+    const index = this._items.findIndex((i) => this._val(i) === v);
+    if (index >= 0) {
+      this._removeUser(index, false);
+    } else {
+      if (entry.off) return;
+      if (this._isFull()) {
+        this._announce(this._t('max', { max: this._maxItems() }));
+        return;
+      }
+      const item = entry.item;
+      this._items.push(item);
+      const ul = this._chipsEl();
+      if (ul) ul.appendChild(this._buildChip(item, this._items.length - 1));
+      this._renumberChips();
+      this._applyFull();
+      const added = this._t('added', { label: this._lab(item) });
+      this._announce(this._isFull() ? `${added}. ${this._t('max', { max: this._maxItems() })}` : added);
+      this._syncForm();
+      this.emit('change', { value: this.getValue(), items: this.getValue(), added: item });
+    }
+    this._afterToggle();
+  }
+
+  /**
+   * @private v0.28.0 select-all row: add every SHOWN unselected enabled leaf (stops at `max-items`) or remove the shown
+   * selected ones. ONE `change` with `addedItems` / `removedItems`.
+   */
+  _toggleAll() {
+    if (this._isDisabled()) return;
+    const st = this._allState();
+    if (st.mode === 'add') {
+      const added = [];
+      for (const e of st.addable) {
+        if (this._isFull()) break;
+        this._items.push(e.item);
+        added.push(e.item);
+      }
+      this._renderChips();
+      const msg = this._t('addedMany', { n: added.length });
+      this._announce(this._isFull() ? `${msg}. ${this._t('max', { max: this._maxItems() })}` : msg);
+      this._syncForm();
+      this.emit('change', { value: this.getValue(), items: this.getValue(), addedItems: added });
+    } else if (st.mode === 'remove') {
+      const drop = new Set(st.selected.map((e) => this._val(e.item)));
+      const removed = this._items.filter((i) => drop.has(this._val(i)));
+      this._items = this._items.filter((i) => !drop.has(this._val(i)));
+      this._renderChips();
+      this._announce(this._t('removedMany', { n: removed.length }));
+      this._syncForm();
+      this.emit('change', { value: this.getValue(), items: this.getValue(), removedItems: removed });
+    } else {
+      return;
+    }
+    this._afterToggle();
+  }
+
+  /** @private after a multi-select toggle: refresh the rows, or close (`close-on-select`, text cleared) */
+  _afterToggle() {
+    if (this.hasAttribute('close-on-select')) {
+      const input = this._input();
+      if (input) input.value = '';
+      this._navQuery = null;
+      this.close();
+    } else {
+      this._refreshRows();
+      // A just-deselected locked row (disabled / disabled group) can't stay active: move on, or clear.
+      const a = this._activeIndex;
+      if (a >= 0 && this._locked(a)) {
+        this._move(1);
+        if (this._activeIndex === a) this._setActive(-1);
+      }
+    }
   }
 
   /** @private typed text → item (default `{value: text, label: text}` or the `create` hook) */
@@ -1180,8 +1720,11 @@ export class TdChipInput extends TdFormElement {
     this._addUser(item, { keepInput: !!now && now.value !== typed });
   }
 
-  /** @private user removal: only this `li` goes; focus → next chip, else previous, else the input */
-  _removeUser(index) {
+  /**
+   * @private user removal: only this `li` goes; focus → next chip, else previous, else the input (`moveFocus` false:
+   * v0.28.0 deselect from the list — the focus stays where it is)
+   */
+  _removeUser(index, moveFocus = true) {
     if (this._isDisabled()) return;
     const item = this._items[index];
     if (!item) return;
@@ -1193,7 +1736,7 @@ export class TdChipInput extends TdFormElement {
     if (li) li.remove();
     this._renumberChips();
     this._applyFull();
-    if (hadFocus || !active || active === document.body) {
+    if (moveFocus && (hadFocus || !active || active === document.body)) {
       const btns = this._removeButtons();
       const next = btns[index] || btns[index - 1];
       if (next) next.focus();
@@ -1209,14 +1752,15 @@ export class TdChipInput extends TdFormElement {
   /** @private ArrowDown/ArrowUp on a closed popup: cached results or a new search */
   _openFromKey(activate) {
     if (this._isDisabled()) return;
-    if (this._isFull()) {
+    if (this._isFull() && !this._selOnly()) {
       this._announce(this._t('max', { max: this._maxItems() }));
       return;
     }
     const q = this._currentQuery();
     if (this._navQuery === q && this._nav.length) {
       this._show();
-      this._setActive(activate === 'first' ? 0 : activate === 'last' ? this._nav.length - 1 : -1);
+      this._refreshRows();
+      this._setActive(activate === 'first' ? this._edge(1) : activate === 'last' ? this._edge(-1) : -1);
       return;
     }
     if (q && q.length < this._minChars()) return; // typed text too short: no search (only an EMPTY input may search '')
@@ -1361,7 +1905,7 @@ export class TdChipInput extends TdFormElement {
   setValue(items) {
     this._createGen += 1;
     this._itemsFromProp = true;
-    this._items = this._normList(items);
+    this._items = this._normItems(items);
     this._navQuery = null;
     if (!this._initialized || !this._chipsEl()) return;
     if (this._isOpen) this.close();

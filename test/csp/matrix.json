@@ -1502,6 +1502,46 @@
       "selectors": [
         ".td-chip-input__box"
       ]
+    },
+    {
+      "state": "multiselect",
+      "setup": "const c=document.createElement('td-chip-input'); c.id='probe'; c.setAttribute('aria-label','Tác giả'); c.setAttribute('selection-only',''); c.setAttribute('select-all',''); window.__mount.appendChild(c); c.options=[{value:'an',label:'An'},{value:'binh',label:'Bình',disabled:true},{label:'Nhóm',options:[{value:'cuong',label:'Cường'},{value:'dung',label:'Dũng'}]}]; c.value=['an']; const i=c.querySelector('.td-chip-input__input'); i.focus(); c.open(); i.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));",
+      "selectors": [
+        ".td-chip-input__options[aria-multiselectable=\"true\"]",
+        ".td-chip-input__option--all",
+        ".td-chip-input__option[aria-selected=\"true\"]",
+        ".td-chip-input__option[aria-selected=\"true\"] > .td-chip-input__check",
+        ".td-chip-input__option[aria-disabled=\"true\"]",
+        ".td-chip-input__group-label"
+      ],
+      "settle": 450,
+      "excludeProps": [
+        "top",
+        "left",
+        "right",
+        "bottom"
+      ],
+      "selectorNote": "v0.28.0 selection-only + select-all: active select-all row (data-active), selected row + its ✓, disabled row, group header",
+      "portal": [
+        ".td-chip-input__options[aria-multiselectable=\"true\"]",
+        ".td-chip-input__option--all",
+        ".td-chip-input__option[aria-selected=\"true\"]",
+        ".td-chip-input__option[aria-selected=\"true\"] > .td-chip-input__check",
+        ".td-chip-input__option[aria-disabled=\"true\"]",
+        ".td-chip-input__group-label"
+      ]
+    },
+    {
+      "state": "php-native",
+      "markup": "<div class=\"td-multiselect\" id=\"probe\"><label class=\"td-field__label\" for=\"probe-select\">Vai trò</label><select class=\"td-multiselect__native\" id=\"probe-select\" name=\"roles[]\" multiple size=\"4\"><option value=\"a\" selected>Quản trị</option><option value=\"b\">Biên tập</option></select></div>",
+      "selectors": [
+        ".td-multiselect",
+        ".td-multiselect__native"
+      ],
+      "excludeProps": [
+        "height"
+      ],
+      "selectorNote": "v0.28.0 php/td.php td_multiselect native mode (no JS); height excluded: the UA list height of a select[multiple][size] depends on the option line metrics (Tailwind preflight in the legacy+td profile changes it by a few px)"
     }
   ],
   "td-form-validation": [

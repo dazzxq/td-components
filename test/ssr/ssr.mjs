@@ -60,3 +60,12 @@ export function renderOtpFixture() {
 export function renderCopyFixture() {
   return renderPhp('copy-fixture.php');
 }
+
+// v0.28.0: td_multiselect (native <select multiple> / element mode chip-input@1).
+export const MULTISELECT_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'multiselect.fixtures.json'), 'utf8'));
+export const MULTISELECT_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'multiselect.html');
+
+/** Render test/ssr/multiselect-fixture.php (the HTML loaded by the multiselect engines browser test). */
+export function renderMultiselectFixture() {
+  return renderPhp('multiselect-fixture.php');
+}

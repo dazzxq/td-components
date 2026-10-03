@@ -2,6 +2,36 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.28.0
+
+dsuite P0 lô 2 — **chọn nhiều** (yêu cầu dienthoaihay.vn #3; plan `docs/internal/plans/v0.28.0-multiselect.md`, Codex
+plan-review APPROVE 3 vòng). Nâng cấp `<td-chip-input>` thay vì thêm `multiple` vào `<td-dropdown>`. Hết P0 của dsuite.
+
+### Added
+
+- **`<td-chip-input selection-only>`** — chỉ chọn từ `options` / kết quả `search()`, chữ gõ chỉ để lọc (không bao giờ
+  thành chip). Listbox `aria-multiselectable`, mục đã chọn vẫn hiện kèm ✓; Enter / click lật chọn, popup giữ mở
+  (`close-on-select` để đổi); mục khoá (`disabled`, nhóm `disabled`, hoặc chưa chọn khi đủ `max-items`) không chọn được
+  bằng mọi đường, mục đã chọn luôn bỏ chọn được; thông báo "Đã đạt tối đa N mục".
+- **`select-all`** — dòng "Chọn tất cả (N)" / "Bỏ chọn tất cả (N)" cho các mục **đang hiện** (sau lọc), dừng ở `max-items`;
+  không bao giờ chọn mục chưa tải (chọn toàn bộ phía server là việc của app).
+- **Nhóm một cấp** `{ label, disabled?, options: [...] }` (như `<optgroup>`), chỉ trong `selection-only`.
+- **Nâng cấp `<select multiple>`** con trực tiếp (progressive enhancement như dropdown 0.17): option / optgroup / disabled /
+  lựa chọn sống / `name` / `required` / `<label for>` ngoài; select đang focus → chờ rời ô rồi nâng cấp. Ngầm bật
+  `selection-only`.
+- **Form**: `name` giữ nguyên văn (`roles[]`), `FormData` một mục mỗi giá trị theo thứ tự chọn, `required` → `valueMissing`,
+  reset về lựa chọn mặc định.
+- **PHP `td_multiselect($name, $options, $selected, $o)`** — mặc định `<select multiple>` native (chạy không JS); element
+  mode (`'element' => true` / `ssr_elements`) in `<td-chip-input data-td-ssr="chip-input@1" selection-only>` bọc select.
+
+### Ghi chú
+
+- Mục `disabled` (hoặc trong `<optgroup disabled>`) có `selected` sẵn trong `<select multiple>` **được giữ** trong lựa
+  chọn và mặc định reset khi nâng cấp (khoá: không thêm lại được, nhưng bỏ chọn được). Khác select native: sau nâng cấp
+  giá trị đó được gửi cùng form.
+- Element mode giảm xô lệch layout (select có chiều cao tối thiểu bằng khung chip) nhưng không triệt tiêu hẳn — số chip
+  quyết định chiều cao sau nâng cấp.
+
 ## 0.27.0
 
 dsuite P0 lô 1 (yêu cầu dienthoaihay.vn; lộ trình chốt với Codex; plan `docs/internal/plans/v0.27.0-dsuite-p0a.md`,

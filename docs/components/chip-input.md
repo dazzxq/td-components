@@ -218,6 +218,92 @@ Các thao tác này **không** phát `change` và **không** thông báo cho tr�
 Có thể gán `options`, `search`, `create`, `renderOption`, `renderChip`, `messages`, `value` lên phần tử **trước** khi
 import module (ví dụ script không phải module chạy trước). Khi phần tử nâng cấp, các giá trị này được áp lại qua setter.
 
+### 11. Chọn nhiều từ danh sách — multi-select (0.28.0)
+
+Khi người dùng chỉ được **chọn** từ danh sách có sẵn (vai trò, thành phố, chuyên mục…), bật `selection-only`. Đây là
+"multi-select" của kit — `<td-dropdown>` vẫn chỉ chọn **một** giá trị.
+
+```html
+<td-chip-input id="roles" name="roles[]" label="Vai trò" placeholder="Lọc vai trò…"
+               selection-only select-all max-items="3"></td-chip-input>
+```
+
+```js
+document.getElementById('roles').options = [
+  { value: 'admin', label: 'Quản trị', description: 'Toàn quyền' },
+  { value: 'editor', label: 'Biên tập viên' },
+  { value: 'owner', label: 'Chủ sở hữu', disabled: true },            // không chọn được
+  { label: 'Cộng tác', options: [                                       // nhóm (một cấp, như <optgroup>)
+    { value: 'author', label: 'Tác giả' },
+    { value: 'guest', label: 'Khách mời' },
+  ] },
+  { label: 'Ngừng dùng', disabled: true, options: [{ value: 'old', label: 'Cũ' }] }, // cả nhóm bị khoá
+];
+```
+
+Khác với chế độ thường:
+
+- **Chữ gõ chỉ để lọc**, không bao giờ thành chip. Enter khi không có mục đang trỏ → không làm gì và **không
+  submit form** (kể cả khi ô trống). `allow-create` bị **bỏ qua** (cảnh báo `console.warn` một lần mỗi phần tử).
+- Listbox có `aria-multiselectable="true"`; mục **đã chọn vẫn hiện** trong danh sách với dấu ✓. Hai trạng thái tách
+  riêng: `aria-selected="true|false"` = **có trong lựa chọn**; mục bàn phím đang trỏ = `data-active` trên option +
+  `aria-activedescendant` trên ô nhập. Mũi tên chỉ di chuyển, **không** đổi lựa chọn.
+- **Enter / click lật chọn** mục đang trỏ (chưa chọn → thêm, đã chọn → bỏ). **Space là dấu cách** (ô nhập là ô gõ chữ).
+  Popup **giữ mở** sau mỗi lần chọn, chữ lọc giữ nguyên; thêm attribute `close-on-select` để đóng (và xoá chữ) sau mỗi lần
+  chọn. Xoá hết chữ lọc khi popup đang mở → hiện lại toàn bộ danh sách.
+- Backspace ở ô rỗng giữ hành vi cũ: focus nút xoá của chip cuối (không xoá).
+- **Mục bị khoá** — `disabled: true`, thuộc nhóm `disabled`, hoặc **chưa chọn** khi đã đủ `max-items` — có
+  `aria-disabled="true"`, chữ xám: click bị bỏ qua, mũi tên **nhảy qua**, chọn-tất-cả bỏ qua. Mục **đã chọn luôn bỏ chọn
+  được** (kể cả khi đầy, kể cả mục `disabled` được gán sẵn bằng code). Khi đầy, popup **không** đóng (để bỏ chọn được) và
+  trình đọc màn hình nghe "Đã đạt tối đa N mục".
+- **Nhóm**: object `{ label, disabled?, options: [mục…] }` (một cấp). Hiển thị: `div[role="group"]` có
+  `aria-labelledby` trỏ tới tiêu đề nhóm (`role="presentation"`), các mục bên trong. Lọc chữ chỉ áp lên **mục lá** (gõ tên
+  nhóm không khớp gì); nhóm rỗng sau lọc bị ẩn. `search()` cũng có thể trả nhóm theo cùng hình dạng. Ngoài
+  `selection-only`, nhóm **không** được hỗ trợ (giữ nguyên hành vi cũ: object không có `value` bị bỏ).
+- Gán `value` chỉ bằng value (`['editor']`, attribute `value='["editor"]'`) → chip lấy **label từ `options`** (kể cả khi
+  `options` được gán sau).
+
+**Chọn tất cả (`select-all`, chỉ có tác dụng cùng `selection-only`)**: dòng đầu listbox
+`.td-chip-input__option--all` (là một `role="option"`, tới được bằng bàn phím như mọi mục) ghi "Chọn tất cả (N)" — N = số
+mục **đang hiện** (sau lọc) không bị `disabled`. Chọn → thêm mọi mục đang hiện chưa chọn (dừng ở `max-items`, thông báo
+"Đã thêm n mục"). Khi không thêm được gì nữa (đã chọn hết, hoặc đã đầy) dòng đổi thành "Bỏ chọn tất cả (N)" → gỡ các mục
+**đang hiện** đã chọn (mục đã chọn nhưng đang bị lọc khuất thì giữ). Phát **một** `change` với `addedItems` /
+`removedItems`. Không bao giờ chọn mục chưa tải (kết quả server ngoài trang hiện tại là việc của app).
+
+**Nâng cấp từ `<select multiple>` (progressive enhancement)** — như `<td-dropdown>` 0.17 nhưng cho chọn nhiều:
+
+```html
+<label for="city">Thành phố</label>
+<td-chip-input select-all>
+  <select multiple id="city" name="cities[]" required>
+    <optgroup label="Miền Bắc">
+      <option value="hn" selected>Hà Nội</option>
+      <option value="hp">Hải Phòng</option>
+    </optgroup>
+    <optgroup label="Miền Nam" disabled><option value="hcm">TP Hồ Chí Minh</option></optgroup>
+    <option value="hue" data-description="Cố đô">Huế</option>
+  </select>
+</td-chip-input>
+```
+
+- Lần connect đầu, `<select multiple>` là **con trực tiếp** → `options` (option → mục, `<optgroup>` → nhóm, `disabled`
+  giữ nguyên, `data-description` → `description`), `name` / `required` / `disabled` / `aria-label` của select lên host (khi
+  host chưa có), `<label for="{id select}">` bên ngoài trỏ sang host, `selection-only` **tự bật**, rồi select bị gỡ
+  (component gửi form thay nó). Không có select (hoặc `<select>` không `multiple`) → hành vi như cũ.
+- **Lựa chọn ban đầu**, theo thứ tự ưu tiên: (1) property JS gán sớm (`value` / `options` gán trước khi phần tử nâng
+  cấp), (2) attribute `value` của host, (3) lựa chọn **đang sống** của select (người dùng đã chọn trước khi JS chạy). Option
+  `selected` nhưng `disabled` (hoặc trong `<optgroup disabled>`) **vẫn được giữ** trong lựa chọn (và trong mặc định
+  reset), kèm thông tin khoá: không thêm lại được, nhưng **bỏ chọn được** như mọi mục đã chọn bị khoá. Lưu ý: sau nâng
+  cấp component gửi cả giá trị đó, khác select native (native bỏ qua option disabled khi gửi form).
+- **Reset form** → các option có `selected` gốc (`defaultSelected`), như select đã thay; không có select → attribute
+  `value`.
+- Select **đang được focus** lúc module nạp (mọi `<select multiple>` con trực tiếp, có hay không vỏ PHP
+  `data-td-ssr="chip-input@1"`) → không đụng gì cho tới khi nó **blur**, rồi nâng cấp một lần với lựa chọn lúc đó.
+
+**PHP**: `td_multiselect('roles[]', $options, $selected, [...])` in sẵn `<select multiple>` (chạy không cần JS); chế độ
+element in `<td-chip-input data-td-ssr="chip-input@1" selection-only>` + select đó → component nâng cấp như trên. Xem
+[Adapter PHP › td_multiselect](../guides/php-adapter.md#td_multiselect-0280).
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
@@ -238,6 +324,9 @@ import module (ví dụ script không phải module chạy trước). Khi phần
 | `value-key` | string | `value` | Key giá trị trong object mục. |
 | `label-key` | string | `label` | Key chữ hiển thị. |
 | `max-length` | number | `200` | Độ dài tối đa chữ gõ / mục tạo mới (`maxlength` của ô). |
+| `selection-only` | boolean | `false` | 0.28.0: chỉ chọn từ `options` / `search()`, mục lật chọn, ✓ trên mục đã chọn (mục 11). Tự bật khi nâng cấp `<select multiple>`. |
+| `select-all` | boolean | `false` | 0.28.0 (cùng `selection-only`): dòng "Chọn tất cả (N)" đầu danh sách. |
+| `close-on-select` | boolean | `false` | 0.28.0 (cùng `selection-only`): đóng popup (và xoá chữ lọc) sau mỗi lần chọn. |
 
 Tất cả được cập nhật tại chỗ (giữ focus, giữ chữ đang gõ); riêng `label` render lại cấu trúc nhưng vẫn giữ chữ và vị trí
 focus.
@@ -273,7 +362,7 @@ Các attribute còn lại có property phản chiếu tự động (`maxItems`, 
 
 | Event | detail | Khi nào | bubbles? |
 |---|---|---|---|
-| `change` | `{ value, items, added? , removed? }` — `value` và `items` đều là mảng mục hiện tại; `added` là mục vừa thêm **hoặc** `removed` là mục vừa xoá | Người dùng thêm (chọn / tạo) hoặc xoá một chip. API code (`setValue`, `addItem`, …) và reset **không** phát. Sự kiện `change` gốc của ô `<input>` bên trong bị chặn, không lọt ra ngoài. | có |
+| `change` | `{ value, items, added? , removed? }` — `value` và `items` đều là mảng mục hiện tại; `added` là mục vừa thêm **hoặc** `removed` là mục vừa xoá. 0.28.0 dòng chọn-tất-cả: `{ value, items, addedItems }` hoặc `{ value, items, removedItems }` (mảng) | Người dùng thêm (chọn / tạo) hoặc xoá một chip (`selection-only`: mỗi lần lật chọn một mục). API code (`setValue`, `addItem`, …) và reset **không** phát. Sự kiện `change` gốc của ô `<input>` bên trong bị chặn, không lọt ra ngoài. | có |
 | `search-error` | `{ query, error }` | Hàm `search` ném lỗi / reject (trừ `AbortError`, trừ phản hồi đã cũ). | có |
 
 ## Hook & tuỳ chọn
@@ -296,6 +385,10 @@ Tóm tắt các hook đã mô tả ở trên: `search`, `create`, `renderOption`
 | `error` | `Không tải được gợi ý` | Dòng lỗi + thông báo |
 | `max` | `Đã đạt tối đa {max} mục` | Thông báo khi đủ `max-items` |
 | `required` | `Vui lòng thêm ít nhất một mục` | `validationMessage` khi `required` mà trống |
+| `selectAll` | `Chọn tất cả ({n})` | 0.28.0: dòng chọn tất cả (`{n}` = số mục đang hiện, không bị khoá) |
+| `deselectAll` | `Bỏ chọn tất cả ({n})` | 0.28.0: dòng đó khi không còn gì để thêm |
+| `addedMany` | `Đã thêm {n} mục` | 0.28.0: thông báo sau chọn tất cả |
+| `removedMany` | `Đã bỏ chọn {n} mục` | 0.28.0: thông báo sau bỏ chọn tất cả |
 
 ```js
 import { TdChipInput } from '@dazzxq/td-components/chip-input';
@@ -315,7 +408,11 @@ Tất cả chữ là **văn bản thuần**.
   Với PHP đặt `name="tags[]"` để nhận mảng; `name="tags"` sẽ chỉ còn giá trị cuối trong `$_POST`.
 - Chỉ **value** được gửi, không gửi label. Server cần label thì tự tra theo value.
 - **`required`** + không có mục → `valueMissing` (`labels.required`).
-- **Reset**: xoá chữ đang gõ, đóng popup, khôi phục mục từ attribute `value` ban đầu, xoá lỗi `setError`.
+- **Tên giữ nguyên văn**: component **không** tự thêm `[]` — `name="roles[]"` (Laravel / PHP) gửi `roles[]=a`,
+  `roles[]=b`… đúng thứ tự **chọn** (0.28.0 `selection-only`: thứ tự người dùng lật chọn, không phải thứ tự trong danh
+  sách).
+- **Reset**: xoá chữ đang gõ, đóng popup, khôi phục mục từ attribute `value` ban đầu (0.28.0: nâng cấp từ
+  `<select multiple>` → các option `selected` gốc), xoá lỗi `setError`.
 - **Khôi phục trạng thái** (bfcache/autofill): lưu JSON `[{value,label}]`, áp lại khi quay lại trang.
 - **Error contract**: `error-text` / `setError()` → `aria-invalid` + `aria-errormessage` + `aria-describedby` trên ô nhập,
   viền đỏ cho cả khung, `<span class="td-field-error">` sau khối.
@@ -395,6 +492,36 @@ Popup nằm ở `<body>`: nhắm riêng bằng id `#{host}-menu`.
 | `.td-chip-input__option` | `aria-selected="true"` = option **đang active** (không phải "đã chọn" — mục đã chọn không hiện trong gợi ý) |
 | `.td-chip-input__empty` | `data-kind="none|loading|error"` |
 
+**0.28.0 — chế độ `selection-only`** (listbox `aria-multiselectable="true"`; id vẫn từ chỉ số, không bao giờ từ dữ liệu):
+
+```html
+<div class="td-chip-input__options" role="listbox" id="{host}-listbox" aria-multiselectable="true">
+  <div class="td-chip-input__option td-chip-input__option--all" role="option" id="{host}-opt-all"
+       aria-selected="true|false" [data-active] [aria-disabled="true"]>
+    <span class="td-chip-input__check" data-td-icon="check" data-td-icon-size="s" aria-hidden="true">…</span>
+    <span class="td-chip-input__option-label">Chọn tất cả (4)</span>
+  </div>
+  <div class="td-chip-input__option" role="option" id="{host}-opt-1" aria-selected="true|false" data-index="1"
+       data-value="{value}" [data-active] [aria-disabled="true"]>
+    <span class="td-chip-input__check" …>…</span>
+    <span class="td-chip-input__option-label">Quản trị</span>
+    [<span class="td-chip-input__option-desc">Toàn quyền</span>]
+  </div>
+  <div class="td-chip-input__group" role="group" aria-labelledby="{host}-grp-0">
+    <div class="td-chip-input__group-label" role="presentation" id="{host}-grp-0">Cộng tác</div>
+    <div class="td-chip-input__option" role="option" …>…</div>
+  </div>
+</div>
+```
+
+| Ở đâu | Trạng thái (selection-only) |
+|---|---|
+| `.td-chip-input__option` | `aria-selected` = **có trong lựa chọn** (✓ hiện); `data-active` = mục bàn phím đang trỏ; `aria-disabled="true"` = bị khoá |
+| `.td-chip-input__check` | `visibility: visible` khi option `aria-selected="true"` |
+| `.td-chip-input__group-label` | tiêu đề nhóm (chữ nhỏ, xám) |
+| `select.td-chip-input__native` | vỏ PHP `td_multiselect` element mode trước khi nâng cấp: hộp như khung chip, `min-height` = chiều cao tối thiểu khung chip (vẫn có thể xô lệch vì số chip quyết định chiều cao sau nâng cấp) |
+| `.td-multiselect` / `select.td-multiselect__native` | `td_multiselect` chế độ native (không JS) |
+
 ## Bàn phím & trợ năng
 
 Mẫu APG **editable combobox** (list autocomplete). Toàn bộ component là **một** điểm Tab (ô nhập); nút xoá chip có
@@ -411,6 +538,10 @@ Mẫu APG **editable combobox** (list autocomplete). Toàn bộ component là **
 | `Escape` | Popup mở: đóng (giữ chữ). Popup đóng: xoá chữ. |
 | `Tab` | Đóng popup và đi tiếp (không chọn). |
 | `Backspace` / `ArrowLeft` ở đầu ô (con trỏ vị trí 0) | Chuyển focus tới nút xoá của chip cuối (không xoá). |
+
+**0.28.0 — `selection-only`**: `ArrowDown` / `ArrowUp` chỉ dời `data-active` (+ `aria-activedescendant`), **bỏ qua mục
+bị khoá**, không đổi lựa chọn; `Enter` lật chọn mục đang trỏ (không có → không làm gì, không submit form), popup giữ mở; `Space` gõ dấu
+cách; ArrowDown / gõ chữ / `show-on-focus` vẫn mở danh sách khi đã đủ `max-items` (để bỏ chọn).
 
 **Trên nút xoá chip**
 
