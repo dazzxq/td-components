@@ -156,8 +156,9 @@ export class TdCheckableElement extends TdFormElement {
     // control state still goes through the state-safe path (no marker → legacy render, unchanged).
     const m = ssrMarker(this);
     if (!m || m.name !== this.constructor.SSR_NAME) return false;
-    const control = this.querySelector('input[type="checkbox"]');
-    if (!control) return false; // nothing stateful: plain render
+    // review round 4 (ISSUE-8): state comes only from the expected skeleton slot (or the single control there is)
+    const control = this._ssrStateSource();
+    if (!control) return this._ssrClean(false); // none / ambiguous: clean render from the host, nothing transplanted
     this._ssrDefaults = { checked: control.defaultChecked, value: control.getAttribute('value') };
     this._ssrControlId = control.id || null;
     const matches = m.schema === 1 && this._markupMatches(true)
@@ -167,8 +168,21 @@ export class TdCheckableElement extends TdFormElement {
 
   /** Re-connect of a HYDRATED element: re-bind in place while the markup is still the component's own (else restore). */
   canRebind() {
-    return this._ssrRevalidate(this.querySelector('input[type="checkbox"]'));
+    return this._ssrRevalidate(this._ssrStateSource());
   }
+
+  /** @protected Review round 4: `label.{block}` (unique) > its first child `input.{block}__input` (unique there). */
+  _ssrSlotControl() {
+    const block = this.constructor.SSR_NAME === 'toggle' ? 'td-switch' : 'td-checkbox';
+    const labels = [...this.children].filter((e) => e.localName === 'label' && e.classList.contains(block));
+    if (labels.length !== 1) return null;
+    const inputs = [...labels[0].children].filter((e) => e.localName === 'input' && e.classList.contains(`${block}__input`));
+    const first = labels[0].firstElementChild;
+    return inputs.length === 1 && inputs[0] === first && first.type === 'checkbox' ? first : null;
+  }
+
+  /** @protected */
+  _ssrPlausible() { return 'input[type="checkbox"]'; }
 
   hydrateExisting() {
     const control = this._ssrControl;
@@ -216,8 +230,12 @@ export class TdCheckableElement extends TdFormElement {
 
   /** @protected */
   _restoreSsrState(state) {
-    this._ssrSetHostState(state);
     const input = this._focusTarget();
+    if (state.clean) { // review round 4: rendered from the host only — nothing to put back but the focus
+      if (state.refocus && input) input.focus({ preventScroll: true });
+      return;
+    }
+    this._ssrSetHostState(state);
     if (input) {
       input.checked = state.checked;
       input.indeterminate = !!state.indeterminate;

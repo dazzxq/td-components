@@ -68,7 +68,13 @@ connectedCallback (gắn lại sau disconnect)
   `_ssrRestore` (+ `refocus` nếu control đang focus) → render ngay → `connectedCallback` của `TdFormElement` gọi
   `_restoreSsrState` (value / selection / checked / indeterminate / id + focus, không event). Gắn lại phần tử đã
   hydrate: `_ssrRevalidate(control)` dùng cùng cổng (strict); không qua → chụp state sống → render + khôi phục
-  (IMPL-2). `_ssrControl` / `_ssrState` xoá sau khi nhận / khôi phục (IMPL-3). Hook con: `_ssrCapture(control, live)`,
+  (IMPL-2). `_ssrControl` / `_ssrState` xoá sau khi nhận / khôi phục (IMPL-3). Review round 4 (ISSUE-8): **nguồn state**
+  chỉ là `_ssrStateSource()` — control duy nhất ở đúng ô của bộ khung (`_ssrSlotControl()`: field `div.td-field` >
+  `.td-field__control`; checkable `label.{block}` > con đầu `input.{block}__input`), không theo thứ tự query; không có ô
+  → chỉ dùng fallback khi dưới host có **đúng một** phần tử form-associated (`_ssrPlausible()`); mơ hồ / nhiều ứng viên
+  → `_ssrClean()`: render sạch từ attribute host, không lấy value / checked / mặc định / id của ứng viên nào; focus chỉ
+  chuyển sang control mới khi trước đó nằm trong host. Render thay markup bị từ chối (`_ssrFreshRender`) không đọc DOM
+  cũ (`TdInputField.render()` lấy `value` của host, state tin cậy được khôi phục sau). Hook con: `_ssrCapture(control, live)`,
   `_restoreSsrState`, `_markupMatches(first)`, `_ssrSkeletonOk()`. `_ssrRetargetLabels(control)`: chỉ `<label
   for="{id control}">` **ngoài** host chuyển `for` sang host. Helper so markup dùng chung (export):
   `ssrClassKey`, `ssrContentNodes`, `ssrSameAttrs`, `ssrSamePart` (phần trang trí / text giống hệt `render()`; ô icon so
