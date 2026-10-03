@@ -91,7 +91,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.30.0/
+public/assets/vendor/td-components/0.31.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -99,7 +99,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.30.0';
+const TD_VERSION = '0.31.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -218,7 +218,7 @@ td_otp_input(string $name, array $opts = []): string      // 0.27.0
 td_copy(string $value, array $opts = []): string          // 0.27.0 (luôn element)
 td_multiselect(string $name, array $options, array $selected = [], array $opts = []): string   // 0.28.0
 td_tree_select(string $name, array $tree, string|int|array|null $selected = null, array $opts = []): string   // 0.29.0
-td_number_input(string $name, string|int|null $value = null, array $opts = []): string   // 0.30.0
+td_number_input(string $name, mixed $value = null, array $opts = []): string   // 0.30.0
 td_masked_value(string $masked, array $opts = []): string   // 0.31.0 (luôn element, không có tham số giá trị thật)
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
