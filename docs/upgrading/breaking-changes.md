@@ -18,7 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
-| [0.26.0](#0260) | Không phá vỡ (opt-in) | Site đã bật `ssr_elements`: field / toggle / checkbox cũng in element mode — kiểm CSS / JS bám ô native, id. |
+| [0.26.0](#0260) | Không phá vỡ (opt-in) | Site đã bật `ssr_elements`: field / toggle / checkbox / dropdown cũng in element mode — kiểm CSS / JS bám ô native, id. Thêm `td_empty()`. |
 | [0.25.0](#0250) | Không có thay đổi phá vỡ | Không bắt buộc. Muốn hết flash: bật element mode PHP (`ssr_elements`); khi bật, `id` / `class` của `td_button` nằm trên host. |
 | [0.24.0](#0240) | Đổi giao diện + đổi hành vi (nhỏ) | Lightbox: nút trước / sau ra hai bên trên máy chuột; URL item trả ra là tuyệt đối; tải sẵn ảnh kề chỉ cùng origin mặc định. |
 | [0.23.0](#0230) | Không có thay đổi phá vỡ | Không. Thêm `<td-media-grid>`. |
@@ -60,7 +60,7 @@ theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao
 **Không phá vỡ với site chưa bật element mode.** Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.26.0.
 
 Site **đã bật** `Td::configure(…, ['ssr_elements' => true])` từ 0.25: từ 0.26 cờ này áp thêm cho `td_field`, `td_toggle`,
-`td_checkbox`. Kiểm:
+`td_checkbox`, `td_dropdown` (`<select>` thêm class `td-dropdown__native`, có hộp giống nút chọn). Kiểm:
 
 1. `id` truyền vào là id của **ô native** (như trước); host nhận `{id}-host`. CSS / JS bám `#id` vẫn trúng ô.
 2. `td_toggle` / `td_checkbox`: `class` / `attrs` lên **host** `<td-toggle>` / `<td-checkbox>` (trước: lên `<label>`);

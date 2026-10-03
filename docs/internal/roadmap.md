@@ -80,8 +80,8 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 
 - `done` ADR 0012; base hydrate; `td-button` / link element mode; lưới CSS `:not(:defined)`; `Td::modulePreloads`; `td_badge`
   icon
-- `done` v0.26.0 input-field / toggle / checkbox (form-associated)
-- `todo` v0.27.0 dropdown shell / empty-state · sau đó datetime, dropzone
+- `done` v0.26.0 input-field / toggle / checkbox (form-associated) + dropdown shell + `td_empty` / empty-state
+- `todo` datetime, dropzone (ADR 0012 bước sau)
 
 ## Done — v0.24.0 lightbox điều hướng hai bên
 
