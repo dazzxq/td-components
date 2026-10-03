@@ -41,6 +41,19 @@ const NAV_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Ho
 const X = '--_td-sort-x';
 const Y = '--_td-sort-y';
 
+/**
+ * The click currently being dispatched, per window (impl review round 2 ISSUE-5): one capture listener on the window
+ * remembers it, so a lifted cancel can swallow exactly THAT click (cancelled during its own dispatch) and nothing later.
+ * @type {WeakMap<Window, { click: Event|null }>}
+ */
+const clickInDispatch = new WeakMap();
+function trackClicks(win) {
+  if (!win || clickInDispatch.has(win)) return;
+  const slot = { click: null };
+  clickInDispatch.set(win, slot);
+  win.addEventListener('click', (e) => { slot.click = e; }, true);
+}
+
 /** @param {string} tpl @param {Record<string, *>} vars */
 export function formatLabel(tpl, vars = {}) {
   return String(tpl ?? '').replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
@@ -114,6 +127,7 @@ export class SortableController {
     this.state = 'idle';
     this._g = null; // the active gesture
     this._suppressClick = false;
+    this._swallowEvent = null;
     this._suppressTimer = 0;
     this._downOnHandle = false;
     this._downTimer = 0;
@@ -122,6 +136,7 @@ export class SortableController {
     this._onClick = (e) => this._click(e);
     this._onKeyDown = (e) => this._keyDown(e);
     this._onFocusOut = (e) => this._focusOut(e);
+    trackClicks(host.ownerDocument.defaultView);
     host.addEventListener('pointerdown', this._onPointerDown);
     host.addEventListener('click', this._onClick);
     host.addEventListener('keydown', this._onKeyDown);
@@ -147,10 +162,12 @@ export class SortableController {
       }
       if (reason === 'escape') this._announce('cancelled', g.item, g.origin);
     }
-    // a click already on its way (the button may still be down, or the observer cancelled during the click's own
-    // dispatch — a microtask checkpoint runs between listeners) must not lift again; a fresh press (pointerdown,
-    // Enter / Space keydown) clears it
-    this._swallowClick();
+    // A click already on its way must not lift again. Pointer press (pending / dragging): the browser's compatibility
+    // click for that press may come later → the 500ms one-shot window. Lifted / other (impl review round 2 ISSUE-5): only
+    // a click of the CURRENT task (the observer cancelled during the click's own dispatch — a microtask checkpoint runs
+    // between listeners); a later activation (screen-reader click with detail 0) lifts normally.
+    if (g.mode === 'pending' || g.mode === 'dragging') this._swallowClick();
+    else this._swallowEvent = clickInDispatch.get(this.host.ownerDocument.defaultView)?.click ?? null;
     this._end();
   }
 
@@ -314,6 +331,7 @@ export class SortableController {
   _click(e) {
     const hit = this._itemOfHandle(e.target);
     if (!hit) return;
+    if (e === this._swallowEvent) { this._swallowEvent = null; return; } // the click the cancel happened in
     if (this._suppressClick) {
       this._suppressClick = false;
       clearTimeout(this._suppressTimer);

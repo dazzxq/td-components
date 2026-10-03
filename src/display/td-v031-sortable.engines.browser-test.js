@@ -913,3 +913,41 @@ describe('td-sortable — review round 1 (impl + security)', () => {
   });
 });
 
+describe('td-sortable — impl review round 2 (click suppression scope)', () => {
+  const at0 = (el) => el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 0 }));
+
+  it('ISSUE-5 (a): keyboard lift → external cancel → a fresh screen-reader click (detail 0, no pointerdown / keydown) lifts', async () => {
+    const s = mount(list(3)).querySelector('td-sortable');
+    handle(s, 0).focus();
+    await sendKeys({ press: 'Enter' });
+    s.insertAdjacentHTML('beforeend', item(7));
+    await wait();
+    expect(!!s.querySelector('[data-td-sort-state]')).to.equal(false, 'cancelled external');
+    at0(handle(s, 1));
+    expect(itemsOf(s)[1].getAttribute('data-td-sort-state')).to.equal('lifted');
+    at0(handle(s, 1));
+    // Escape cancel (lifted) → an immediate browse-mode click lifts too
+    at0(handle(s, 2));
+    await sendKeys({ press: 'Escape' });
+    expect(!!s.querySelector('[data-td-sort-state]')).to.equal(false);
+    at0(handle(s, 2));
+    expect(itemsOf(s)[2].getAttribute('data-td-sort-state')).to.equal('lifted');
+    at0(handle(s, 2));
+    noTraces(s);
+  });
+
+  it('ISSUE-5 (c): a cancelled pointer drag still swallows its compatibility click', async () => {
+    const s = mount(list(3)).querySelector('td-sortable');
+    await touchDrag(s, 0, 2, { end: null });
+    expect(s.hasAttribute('data-td-dragging')).to.equal(true);
+    pe('pointercancel', handle(s, 0), 0, 0);
+    at0(handle(s, 0)); // the click the browser may still send for that press
+    expect(!!s.querySelector('[data-td-sort-state]')).to.equal(false);
+    // one-shot: the next activation is a fresh one and lifts
+    at0(handle(s, 0));
+    expect(itemsOf(s)[0].getAttribute('data-td-sort-state')).to.equal('lifted');
+    at0(handle(s, 0));
+    noTraces(s);
+  });
+});
+
