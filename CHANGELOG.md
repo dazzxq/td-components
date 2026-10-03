@@ -15,9 +15,9 @@ All notable changes to **td-components** are documented here.
   vẫn đúng); host có id riêng (`{id}-host` hoặc tự sinh).
 - **Hydrate form-associated:** JS nhận ô tại chỗ — giữ chữ đã gõ / autofill / trạng thái tích trước khi JS nạp, giữ
   focus + vị trí con trỏ, không phát `input` / `change`; dữ liệu form đúng **một** mục mỗi tên; `reset` về mặc định
-  native; label ngoài chuyển sang host. Ô đang focus mà markup lệch → chờ rời ô rồi mới dựng lại (giữ state).
-- Base: ghi nhận property gán sớm (`_earlyProps`, ưu tiên hơn state native); `canHydrate()` trả `'defer'` +
-  `deferHydration(resume)`.
+  native; label ngoài chuyển sang host. Markup lệch / bị sửa / thuộc tính form khác host → dựng lại an toàn ngay, giữ chữ đã gõ,
+  vị trí con trỏ, trạng thái tích và focus.
+- Base: ghi nhận property gán sớm (`_earlyProps`, ưu tiên hơn state native).
 
 ### Changed
 
