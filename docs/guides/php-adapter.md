@@ -38,6 +38,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_multiselect (0.28.0)](#td_multiselect-0280)
 - [td_tree_select (0.29.0)](#td_tree_select-0290)
 - [td_number_input (0.30.0)](#td_number_input-0300)
+- [td_masked_value (0.31.0)](#td_masked_value-0310)
 - [An toàn: escape và whitelist](#an-toàn-escape-và-whitelist)
 - [Chuyển từ adapter riêng của 135](#chuyển-từ-adapter-riêng-của-135)
 - [Lỗi thường gặp](#lỗi-thường-gặp)
@@ -62,6 +63,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_otp_input` — **chế độ element** (0.27.0, tự bật) | host `<td-otp-input data-td-ssr="otp-input@1">` chứa sẵn cùng input + 6 ô trang trí | Không (input native chạy ngay) | **Có** — nạp module `otp-input`: nhận **tại chỗ**, giữ mã đang gõ |
 | `td_number_input` (0.30.0) | `div.td-field.td-number` + `input.td-number__control` **native** `type=number` (giá trị chuẩn, `min` ngầm `0`, `step` theo `decimals`) | Không | Không |
 | `td_number_input` — **chế độ element** (0.30.0, tự bật) | host `<td-number-input data-td-ssr="number-input@1">` chứa sẵn cùng cây | Không (input native chạy ngay, gửi số sạch) | **Có** — nạp module `number-input`: nhận **tại chỗ**, hiện `12.990.000` |
+| `td_masked_value` (0.31.0) | **luôn** host `<td-masked-value data-td-ssr="masked-value@1">` chứa chuỗi che + nút toggle + live region — **không bao giờ** giá trị thật | Không (chưa có JS: chỉ thấy chuỗi che, nút ẩn) | **Có** — nạp module `masked-value`: nhận **tại chỗ** |
 | `td_copy` (0.27.0) | **luôn** host `<td-copy data-td-ssr="copy@1">` chứa nguồn `<code>` + nút icon + live region | Không (chưa có JS: hiện mã để bôi đen, ẩn nút) | **Có** — nạp module `copy`: nhận **tại chỗ** |
 | `td_icon` | `svg.td-icon` đủ hình (có `viewBox`) | Không | — |
 | `td_badge` | `span.td-badge…` (thuần CSS) | Không | — |
@@ -89,7 +91,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.30.0/
+public/assets/vendor/td-components/0.31.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -97,7 +99,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.30.0';
+const TD_VERSION = '0.31.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -216,7 +218,8 @@ td_otp_input(string $name, array $opts = []): string      // 0.27.0
 td_copy(string $value, array $opts = []): string          // 0.27.0 (luôn element)
 td_multiselect(string $name, array $options, array $selected = [], array $opts = []): string   // 0.28.0
 td_tree_select(string $name, array $tree, string|int|array|null $selected = null, array $opts = []): string   // 0.29.0
-td_number_input(string $name, string|int|null $value = null, array $opts = []): string   // 0.30.0
+td_number_input(string $name, mixed $value = null, array $opts = []): string   // 0.30.0
+td_masked_value(string $masked, array $opts = []): string   // 0.31.0 (luôn element, không có tham số giá trị thật)
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
 td_stylesheet_tag(?string $nonce = null): string
@@ -1144,6 +1147,64 @@ Laravel: `ConvertEmptyStringsToNull` biến ô trống (`''`) thành `null` — 
 
 **Repeater:** không có helper PHP — nội dung dòng là markup của app. Mẫu Blade / PHP ở
 [Repeater › Lưu ý](../components/repeater.md#lưu-ý--lỗi-thường-gặp).
+
+## td_masked_value (0.31.0)
+
+```php
+<?php
+// che theo loại dữ liệu là logic của app (server): SĐT giữ 2 số đầu + 3 số cuối
+$masked = mb_substr($phone, 0, 2) . str_repeat('x', max(0, mb_strlen($phone) - 5)) . mb_substr($phone, -3);
+?>
+<?= td_masked_value($masked, ['label' => 'SĐT khách', 'attrs' => ['data-id' => (string) $customer->id]]) ?>
+<?= td_masked_value('***', ['label' => 'Giá vốn', 'duration' => 15, 'copyable' => true]) ?>
+```
+
+`td_masked_value($masked, $opts)` **luôn** in phần tử [Masked value](../components/masked-value.md) đầy đủ (hợp đồng
+`masked-value@1`; option `element` / `ssr_elements` không đổi gì): host `<td-masked-value data-td-ssr="masked-value@1"
+class="td-masked">` + `span.td-masked__text` (chuỗi che) + nút `button.td-masked__toggle` (SVG `eye` có sẵn) + live
+region. `$masked` là **chữ** (escape).
+
+**Chữ ký không có tham số giá trị thật — cố ý.** Giá trị thật phải đi qua endpoint có quyền + 2FA + audit, lấy bằng hook
+`reveal()` của phần tử. In nó vào HTML (kể cả `hidden` / `data-*` / JSON nhúng) là lộ qua mã nguồn trang, cache,
+bfcache, extension, log — và vô hiệu audit. Helper cũng không có hàm che: che theo loại dữ liệu là logic của app.
+
+- **Không JS**: chỉ thấy chuỗi che; nút giữ chỗ nhưng ẩn (`visibility: hidden`) — không có nút chết, không xô lệch.
+- **Nạp `@dazzxq/td-components/masked-value`**: nhận markup **tại chỗ** (cùng node). Trang PHP gán hook **một lần**:
+
+```js
+import { TdMaskedValue } from '@dazzxq/td-components/masked-value';
+TdMaskedValue.reveal = async ({ element, signal }) => {
+  const res = await fetch(`/admin/customers/${element.dataset.id}/phone`, { method: 'POST', signal, headers: { 'X-CSRF-Token': csrf } });
+  if (!res.ok) throw new Error(String(res.status));
+  return (await res.json()).phone;
+};
+```
+
+| Option | Ý nghĩa |
+|---|---|
+| `label` | đây là gì — nút đọc "Hiện {label}" (attribute `label` trên host). Rỗng / không truyền → "giá trị" (không in `label`) |
+| `duration` | giây trước khi tự che: ép số nguyên, kẹp [2, 600] như component; không phải số → không in (component dùng 30) |
+| `copyable` | `true` → nút copy (td-copy `sensitive`) khi đang hiện |
+| `disabled` | `true` → nút `aria-disabled` |
+| `id`, `class` | trên host (`class` sau `td-masked`) |
+| `attrs` | trên **host** (allowlist + `aria-*` / `data-*`, vd. `data-id` cho hook). Giữ chỗ — bị bỏ, không phân biệt hoa thường: `id` `class` `masked` `label` `duration` `copyable` `disabled` `aria-busy` + mọi `data-td-*` |
+
+```html
+<!-- td_masked_value('09xx xxx 123', ['label' => 'SĐT khách', 'attrs' => ['data-id' => 'c-1']]) -->
+<td-masked-value data-td-ssr="masked-value@1" class="td-masked" masked="09xx xxx 123" label="SĐT khách" data-id="c-1">
+  <span class="td-masked__text" translate="no">09xx xxx 123</span>
+  <button type="button" class="td-masked__toggle" aria-pressed="false" aria-label="Hiện SĐT khách" data-tooltip="Hiện SĐT khách">
+    <span class="td-masked__icon" data-td-icon="eye" aria-hidden="true"><svg class="td-icon …" data-icon="eye" …>…</svg></span>
+  </button>
+  <span class="td-sr-only" role="status"></span>
+</td-masked-value>
+```
+
+(Thực tế in liền một dòng.) Site đã đổi `TdMaskedValue.labels.value` / `.show` mà không truyền `label` → tên nút PHP khác
+tên component render → component render lại (vẫn đúng, chỉ mất lợi ích "tại chỗ").
+
+**Sortable:** không có helper PHP — mục là markup của app, tay nắm chỉ có nghĩa khi có JS. Mẫu ở
+[Sortable › Hợp đồng markup](../components/sortable.md#1-hợp-đồng-markup).
 
 ## An toàn: escape và whitelist
 

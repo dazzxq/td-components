@@ -1,0 +1,125 @@
+/*
+ * td-masked-value (src/display/td-masked-value.js, v0.31.0) — a server-masked string + one ghost icon toggle (the
+ * td-copy button style, 28px, 44px on touch). Content layer (Minimal surfaces): no surface / shadow.
+ * State (set by JS, never visual classes): text [data-state="revealed"] (full text colour, medium weight); toggle
+ * [aria-pressed], [aria-disabled="true"], [data-state="loading"] (the shared .td-spinner--sm replaces the icon; its
+ * reduced-motion rule applies). No JS: `td-masked-value:not(:defined)` keeps the toggle's box but hides it (no dead
+ * button) — only the masked string shows.
+ * No new public token (theming unchanged).
+ */
+@layer td.component {
+	td-masked-value {
+		display: inline-flex;
+		gap: 0.25rem;
+		align-items: center;
+		vertical-align: middle;
+		max-width: 100%;
+		line-height: normal; /* explicit: a site reset never changes the toggle */
+	}
+
+	.td-masked__text {
+		min-width: 0;
+		color: var(--td-color-text-muted);
+		font-variant-numeric: tabular-nums;
+		overflow-wrap: anywhere;
+	}
+
+	.td-masked__text[data-state="revealed"] {
+		color: var(--td-color-text);
+		font-weight: 500;
+	}
+
+	.td-masked__toggle {
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		width: 1.75rem;
+		height: 1.75rem;
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		line-height: 0;
+		color: var(--td-color-text-muted);
+		cursor: pointer;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--td-radius-md);
+		box-shadow: none;
+		transition: background-color var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+	}
+
+	.td-masked__toggle:hover {
+		color: var(--td-color-text);
+		background: var(--td-color-hover-strong);
+	}
+
+	.td-masked__toggle:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-masked__toggle[aria-disabled="true"],
+	.td-masked__toggle[aria-disabled="true"]:hover {
+		color: var(--td-btn-disabled-fg);
+		cursor: not-allowed;
+		background: transparent;
+	}
+
+	.td-masked__toggle[data-state="loading"],
+	.td-masked__toggle[data-state="loading"]:hover {
+		color: var(--td-color-text-muted);
+		cursor: progress;
+	}
+
+	.td-masked__icon {
+		display: inline-flex;
+		line-height: 0;
+		pointer-events: none;
+	}
+
+	.td-masked__icon[hidden] {
+		display: none;
+	}
+
+	.td-masked__icon .td-icon {
+		width: 1rem;
+		height: 1rem;
+	}
+
+	.td-masked__toggle .td-spinner {
+		--td-spinner-size: 1rem;
+		pointer-events: none;
+	}
+
+	/* No JS: the masked string only; the toggle keeps its box (no layout shift once defined) */
+	td-masked-value:not(:defined) .td-masked__toggle {
+		visibility: hidden;
+	}
+
+	@media (pointer: coarse) {
+		.td-masked__toggle {
+			width: var(--td-touch-min);
+			height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-masked__toggle {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-masked__toggle {
+			color: ButtonText;
+		}
+
+		.td-masked__toggle[aria-disabled="true"] {
+			color: GrayText;
+		}
+	}
+}

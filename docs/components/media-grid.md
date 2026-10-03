@@ -107,7 +107,27 @@ Site append ô mới (tải thêm, phân trang) hoặc xoá ô: element tự nâ
 lựa chọn — nếu tập chọn đổi thì phát `select-change` với `removed`.
 Thay toàn bộ con của host (`grid.innerHTML = …` khi phân trang) cũng được: live region được gắn lại tự động.
 
-### 7. Contact sheet kiểu 135: lightbox + menu ⋯ + PHP
+### 7. Sắp thứ tự ảnh (kéo thả + bàn phím) — 0.31.0
+
+Bọc các ô trong `<td-sortable role="none">` (con **trực tiếp** của `td-media-grid`) và thêm `data-td-sort-item` vào mỗi
+ô (dùng chung `data-id`):
+
+```html
+<td-media-grid label="Ảnh sản phẩm">
+  <td-sortable role="none" label="Thứ tự ảnh">
+    <div data-td-media-item data-td-sort-item data-id="p1">
+      <button type="button" data-td-media-open aria-label="Ảnh 1"><img src="/img/p1.jpg" alt=""></button>
+    </div>
+    …
+  </td-sortable>
+</td-media-grid>
+```
+
+Không cần CSS của site: `td.css` biến sortable thành lưới với cùng `--td-media-grid-cols` / `--td-media-grid-gap`. Tay nắm
+ở góc trên-cuối của ảnh (tick ở góc trên-đầu); Space trên ảnh = chọn, Space trên tay nắm = nhấc; `selectedIds` theo thứ
+tự mới. Chi tiết: [Sortable › Lưới ảnh](sortable.md#7-lưới-ảnh-với-media-grid-công-thức).
+
+### 8. Contact sheet kiểu 135: lightbox + menu ⋯ + PHP
 
 PHP in markup đúng hợp đồng (escape mọi giá trị):
 
@@ -275,6 +295,6 @@ không `style="…"`.
 
 ## Xem thêm
 
-- [Lightbox](lightbox.md) · [Menu](menu.md) · [Badge](badge.md) · [Icons](icons.md)
+- [Lightbox](lightbox.md) · [Menu](menu.md) · [Badge](badge.md) · [Icons](icons.md) · [Sortable](sortable.md)
 - [Adapter PHP](../guides/php-adapter.md) · [Theming](../customization/theming.md) · [Hooks](../customization/hooks.md)
 - [Trợ năng](../guides/accessibility.md) · [CSP](../guides/csp.md)

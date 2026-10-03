@@ -251,7 +251,7 @@ export class TdTreeSelect extends TdFormElement {
         level = prev + 1;
         if (!warned) {
           warned = true;
-          console.warn('td-tree-select: an <option> data-level jumps more than one level — clamped.', this);
+          console.warn('td-tree-select: an <option> data-level jumps more than one level — clamped.');
         }
       }
       const node = {
@@ -362,7 +362,7 @@ export class TdTreeSelect extends TdFormElement {
     } catch { /* fall through */ }
     if (!this._warnedValue) {
       this._warnedValue = true;
-      console.warn('td-tree-select: the value of a multiple tree-select must be a JSON array — ignored.', this);
+      console.warn('td-tree-select: the value of a multiple tree-select must be a JSON array — ignored.');
     }
     return [];
   }
@@ -802,7 +802,7 @@ export class TdTreeSelect extends TdFormElement {
       } catch {
         if (!this._warnedLabels) {
           this._warnedLabels = true;
-          console.warn('td-tree-select: value-labels must be a JSON object {"value": "label"} — ignored.', this);
+          console.warn('td-tree-select: value-labels must be a JSON object {"value": "label"} — ignored.');
         }
       }
     }

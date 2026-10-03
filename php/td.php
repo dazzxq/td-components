@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.30.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.30.0', __DIR__ . '/public/assets/vendor/td-components/0.30.0');
+ *   require_once '/path/to/vendor/td-components/0.31.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.31.0', __DIR__ . '/public/assets/vendor/td-components/0.31.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -149,9 +149,11 @@ namespace TdComponents {
         public const SSR_TREE_SELECT = 'tree-select@1';
         /** v0.30.0: td_number_input element mode (<td-number-input> + the native type=number control). */
         public const SSR_NUMBER = 'number-input@1';
+        /** v0.31.0: td_masked_value (always — the masked string only, never the real value). */
+        public const SSR_MASKED_VALUE = 'masked-value@1';
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.30.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.31.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -1827,6 +1829,48 @@ namespace {
             . '<button type="button" class="td-copy td-copy--' . $size . '" aria-label="' . Td::e($name) . '" data-tooltip="' . Td::e($name) . '">'
             . '<span class="td-copy__icon" data-td-icon="copy" aria-hidden="true">' . Td::icon('copy') . '</span></button>'
             . '<span class="td-copy__status" role="status"></span></td-copy>';
+    }
+
+    /**
+     * v0.31.0 masked value (contract masked-value@1, plan v0.31.0-sortable-masked M6): ALWAYS the element
+     * `<td-masked-value data-td-ssr="masked-value@1" class="td-masked">` + `span.td-masked__text` (the masked string) + the
+     * toggle (hidden while the element is undefined — no dead button) + the live region, exactly as <td-masked-value>
+     * renders them; hydrated IN PLACE by `@dazzxq/td-components/masked-value`.
+     * The signature has NO parameter for the real value, on purpose: the real value must come from the app's endpoint
+     * (permission + 2FA + audit) through the element's `reveal()` hook — printing it in the page (even `hidden` /
+     * `data-*`) leaks it through the page source, caches, bfcache, extensions and logs. Masking is app logic (no masking
+     * helper here): pass the string the server already masked. $masked: text.
+     * Options: label (what the value is — the toggle reads "Hiện {label}"; default "giá trị"), duration (seconds, cast to
+     * int and clamped to [2, 600] like the component; invalid → absent = 30), copyable, disabled, id, class (host, after
+     * `td-masked`), attrs (host: allowlisted + aria-* / data-* — e.g. `data-id` for the hook; owned names and data-td-*
+     * reserved).
+     */
+    function td_masked_value(string $masked, array $o = []): string
+    {
+        $label = isset($o['label']) && is_scalar($o['label']) && !is_bool($o['label']) && (string) $o['label'] !== '' ? (string) $o['label'] : null;
+        $name = 'Hiện ' . ($label ?? 'giá trị');
+        $d = Td::intOpt($o['duration'] ?? null, PHP_INT_MIN);
+        $duration = $d === null || is_bool($o['duration'] ?? null) ? null : (string) max(2, min(600, (int) $d));
+        $disabled = !empty($o['disabled']);
+        $taken = [];
+        $html = '<td-masked-value' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_MASKED_VALUE,
+            'id' => td__str($o['id'] ?? null),
+            'class' => 'td-masked' . Td::classTokens($o['class'] ?? null),
+            'masked' => $masked,
+            'label' => $label,
+            'duration' => $duration,
+            'copyable' => !empty($o['copyable']),
+            'disabled' => $disabled,
+        ], $taken);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $taken = td__reserve(['id', 'class', 'masked', 'label', 'duration', 'copyable', 'disabled', 'aria-busy'], $extra, $taken);
+        return $html . Td::attrs($extra, $taken) . '>'
+            . '<span class="td-masked__text" translate="no">' . Td::e($masked) . '</span>'
+            . '<button type="button" class="td-masked__toggle" aria-pressed="false" aria-label="' . Td::e($name)
+            . '" data-tooltip="' . Td::e($name) . '"' . ($disabled ? ' aria-disabled="true"' : '') . '>'
+            . '<span class="td-masked__icon" data-td-icon="eye" aria-hidden="true">' . Td::icon('eye') . '</span></button>'
+            . '<span class="td-sr-only" role="status"></span></td-masked-value>';
     }
 
     /** @internal v0.26.0: element mode of a form helper — per call `element` (true/false) overrides Td::configure. */

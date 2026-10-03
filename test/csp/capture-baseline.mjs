@@ -226,7 +226,7 @@ async function main() {
       const modulePath = MATRIX._meta.modules[component];
       if (!modulePath) throw new Error(`No module path for ${component} in matrix _meta.modules`);
       for (const state of states) {
-        const file = await captureState(browser, component, modulePath, state);
+        const file = await captureState(browser, component, state.module || modulePath, state); // v0.31.0: per-state `module`
         written.push(file);
         console.log(`  ✓ ${component}.${state.state}`);
       }

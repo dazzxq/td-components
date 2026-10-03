@@ -69,6 +69,9 @@ export class TdCopy extends TdBaseElement {
     /** @type {string|null} */
     this._valueProp = null;
     this._timer = 0;
+    /** @private v0.31.0 (masked-value security review SEC-1): copy operation generation — a late clipboard result of an
+     * operation that was superseded or whose element left the page is dropped (no feedback, no manual-copy field) */
+    this._op = 0;
   }
 
   connectedCallback() {
@@ -84,6 +87,8 @@ export class TdCopy extends TdBaseElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this._stopTimer();
+    this._op += 1; // a pending clipboard result is dropped
+    this._removeManual();
   }
 
   /** @returns {string} the text a click copies now ('' when there is none) */
@@ -174,6 +179,7 @@ export class TdCopy extends TdBaseElement {
 
   /** @private */
   async _copy() {
+    const op = ++this._op;
     const text = this._text();
     this._removeManual();
     if (text == null) {
@@ -188,9 +194,11 @@ export class TdCopy extends TdBaseElement {
     try {
       await clip.writeText(text);
     } catch (err) {
+      if (op !== this._op || !this.isConnected) return; // superseded / removed meanwhile
       this._fail(err, text);
       return;
     }
+    if (op !== this._op || !this.isConnected) return;
     this._feedback('copied', 'check', TdCopy.labels.copied || 'Đã copy', true);
     this.emit('copy-success', this.hasAttribute('sensitive') ? {} : { value: text });
   }
@@ -284,7 +292,9 @@ export class TdCopy extends TdBaseElement {
   _removeManual() {
     const m = this._manual;
     this._manual = null;
-    if (m && m.parentNode) m.remove();
+    if (!m) return;
+    m.value = ''; // the copied text never outlives the field (a detached reference keeps nothing either)
+    if (m.parentNode) m.remove();
   }
 }
 

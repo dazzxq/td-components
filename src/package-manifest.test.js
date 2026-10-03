@@ -168,3 +168,25 @@ test('v0.30.0: ./number-input export, sideEffects, barrel, number-input CSS befo
   const i = files.indexOf('components/number-input.css');
   assert.ok(i > files.indexOf('components/tree-select.css') && i < files.indexOf('components/repeater.css') && i < files.indexOf('utilities.css'));
 });
+
+test('v0.31.0: ./sortable export, sideEffects, barrel, sortable CSS after repeater (and media-grid) before utilities; controller / geometry internal', async () => {
+  assert.equal(pkg.exports['./sortable'], './src/display/td-sortable.js');
+  assert.ok(pkg.sideEffects.includes('./src/display/td-sortable.js'));
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdSortable \} from '\.\/src\/display\/td-sortable\.js';/);
+  assert.ok(!/sortable-(controller|geometry)/.test(src), 'controller / geometry stay internal');
+  assert.ok(!Object.values(pkg.exports).some((t) => /sortable-(controller|geometry)/.test(t)), 'no controller / geometry export');
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  const i = files.indexOf('components/sortable.css');
+  assert.ok(i > files.indexOf('components/repeater.css') && i > files.indexOf('components/media-grid.css') && i < files.indexOf('utilities.css'));
+});
+
+test('v0.31.0: ./masked-value export, sideEffects, barrel, masked-value CSS after sortable before utilities', async () => {
+  assert.equal(pkg.exports['./masked-value'], './src/display/td-masked-value.js');
+  assert.ok(pkg.sideEffects.includes('./src/display/td-masked-value.js'));
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdMaskedValue \} from '\.\/src\/display\/td-masked-value\.js';/);
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  const i = files.indexOf('components/masked-value.css');
+  assert.ok(i > files.indexOf('components/sortable.css') && i < files.indexOf('utilities.css'));
+});

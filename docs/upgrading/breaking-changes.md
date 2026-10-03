@@ -1,8 +1,8 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.30)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.31)
 
-Trang này liệt kê, cho từng bản từ **0.30.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
+Trang này liệt kê, cho từng bản từ **0.31.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
 [CHANGELOG.md](../../CHANGELOG.md); trang này chỉ gom lại theo góc nhìn "tôi phải làm gì" và thêm ví dụ trước/sau.
 Quy trình nâng cấp chung nằm ở [README.md](README.md).
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.31.0](#0310) | Đổi văn bản (nhỏ) | Không bắt buộc. Thêm `<td-sortable>`, `<td-masked-value>`, `td_masked_value()`, `<td-repeater sortable>`. Câu thông báo di chuyển dòng của repeater đổi chữ (test so đúng chữ phải cập nhật). Import map: thêm `sortable`, `masked-value`. |
 | [0.30.0](#0300) | Không có thay đổi phá vỡ | Không. Sửa `<td-otp-input>` co hẹp trong flex row. Thêm `<td-repeater>`, `<td-number-input>`, `td_number_input()`. Import map tự liệt kê: thêm `repeater`, `number-input`. |
 | [0.29.0](#0290) | Không có thay đổi phá vỡ | Không. Thêm `<td-tree>`, `<td-tree-select>`, `td_tree_select()`. Import map tự liệt kê: thêm `tree`, `tree-select`. |
 | [0.28.0](#0280) | Không có thay đổi phá vỡ | Không. `<td-chip-input>` thêm `selection-only` / `select-all` / nhóm / nâng cấp `<select multiple>`; PHP `td_multiselect()`. |
@@ -57,6 +58,14 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.31.0
+
+**Đổi văn bản (nhỏ)** — `TdRepeater.labels.moved` giờ là "Đã chuyển tới vị trí {n} trên {count}." (trước "{n} / {count}");
+site tự đặt `TdRepeater.labels.moved` không bị ảnh hưởng. Còn lại chỉ bổ sung. Import map tự viết: thêm
+`@dazzxq/td-components/sortable`, `/masked-value`. Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.31.0.
 
 ---
 
