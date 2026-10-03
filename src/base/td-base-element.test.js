@@ -467,8 +467,8 @@ describe('TdBaseElement hydrate lifecycle (v0.25.0)', () => {
   });
 });
 
-// --- v0.26.0 (ADR 0012, plan F0): early-property provenance + deferred hydration ---
-describe('TdBaseElement F0 (v0.26.0): _earlyProps + canHydrate() → "defer"', () => {
+// --- v0.26.0 (ADR 0012, plan F0): early-property provenance (the focus deferral was removed in review round 3) ---
+describe('TdBaseElement F0 (v0.26.0): _earlyProps (no deferral since review round 3)', () => {
   it('_earlyProps records the names replayed from properties assigned before connect (empty Set otherwise)', () => {
     class El extends TdBaseElement {
       static get observedAttributes() { return ['checked', 'value', 'label', 'field-id']; }
@@ -487,94 +487,19 @@ describe('TdBaseElement F0 (v0.26.0): _earlyProps + canHydrate() → "defer"', (
     assert.equal(b._earlyProps.size, 0);
   });
 
-  /** A subclass that records every lifecycle call; canHydrate() returns `decisions` in turn. */
-  function make(decisions) {
-    const calls = [];
-    let resumeFn = null;
+
+  it('review round 3: canHydrate() is a plain boolean decision — no deferral hook, no _deferred state', () => {
+    const el = new TdBaseElement();
+    assert.equal(typeof el.deferHydration, 'undefined');
+    let renders = 0;
     class El extends TdBaseElement {
-      static hydratable = true;
-      static get observedAttributes() { return ['size']; }
-      canHydrate() { calls.push('canHydrate'); return decisions.shift(); }
-      hydrateExisting() { calls.push('hydrateExisting'); }
-      deferHydration(resume) { calls.push('deferHydration'); resumeFn = resume; }
-      render() { calls.push('render'); return '<p>x</p>'; }
-      afterRender() { calls.push('afterRender'); }
-      _applyStyles() { calls.push('applyStyles'); }
+      canHydrate() { return false; }
+      render() { renders++; return '<p>y</p>'; }
     }
-    return { el: new El(), calls, resume: () => resumeFn() };
-  }
-
-  it('"defer" → no render, no bind; deferHydration(resume) is called; markup kept', () => {
-    const { el, calls } = make(['defer']);
-    el.innerHTML = '<ssr></ssr>';
-    el.setAttribute('data-td-ssr', 'x@1');
-    el.connectedCallback();
-    assert.deepEqual(calls, ['canHydrate', 'deferHydration']);
-    assert.equal(el.innerHTML, '<ssr></ssr>');
-    assert.equal(el.hasAttribute('data-td-ssr'), false);
-    assert.equal(el._deferred, true);
-    assert.ok(!el._hydrated);
-  });
-
-  it('while deferred, a render request (attribute change) is ignored; resume() renders + binds exactly once', () => {
-    const { el, calls, resume } = make(['defer']);
-    el.innerHTML = '<ssr></ssr>';
-    el.connectedCallback();
-    el.setAttribute('size', 'lg'); // structural change while deferred → no render yet
-    assert.deepEqual(calls, ['canHydrate', 'deferHydration']);
-    assert.equal(el.innerHTML, '<ssr></ssr>');
-    assert.equal(resume(), true);
-    assert.deepEqual(calls, ['canHydrate', 'deferHydration', 'render', 'afterRender', 'applyStyles']);
-    assert.equal(el.innerHTML, '<p>x</p>');
-    assert.equal(el._deferred, false);
-    assert.equal(resume(), false, 'a second resume() is a no-op');
-    assert.deepEqual(calls, ['canHydrate', 'deferHydration', 'render', 'afterRender', 'applyStyles']);
-    el.setAttribute('size', 'sm'); // normal again
-    assert.deepEqual(calls.slice(-3), ['render', 'afterRender', 'applyStyles']);
-  });
-
-  it('disconnect while deferred runs the cleanups (blur listener); reconnect re-evaluates canHydrate() from scratch', () => {
-    const target = new MockHTMLElement();
-    const decisions = ['defer', false];
-    const calls = [];
-    class El extends TdBaseElement {
-      static hydratable = true;
-      canHydrate() { calls.push('canHydrate'); return decisions.shift(); }
-      deferHydration() { calls.push('deferHydration'); this.listen(target, 'blur', () => {}, true); }
-      render() { calls.push('render'); return '<p>x</p>'; }
-      afterRender() { calls.push('afterRender'); }
-    }
-    const el = new El();
-    el.connectedCallback();
-    assert.equal(target._listeners.length, 1);
-    el.disconnectedCallback();
-    assert.equal(target._listeners.length, 0, 'no leaked blur listener');
-    assert.equal(el._deferred, true, 'still deferred while detached (no render)');
-    el.connectedCallback();
-    assert.deepEqual(calls, ['canHydrate', 'deferHydration', 'canHydrate', 'render', 'afterRender']);
-    assert.equal(el._deferred, false);
-  });
-
-  it('reconnect re-evaluation may defer again or hydrate', () => {
-    const { el, calls } = make(['defer', 'defer', true]);
-    el.connectedCallback();
-    el.disconnectedCallback();
-    el.connectedCallback();
-    assert.deepEqual(calls, ['canHydrate', 'deferHydration', 'canHydrate', 'deferHydration']);
-    el.disconnectedCallback();
-    el.connectedCallback();
-    assert.deepEqual(calls.slice(4), ['canHydrate', 'hydrateExisting', 'afterRender', 'applyStyles']);
-    assert.equal(el._hydrated, true);
-  });
-
-  it('default deferHydration(resume) resumes at once (render)', () => {
-    class El extends TdBaseElement {
-      canHydrate() { return 'defer'; }
-      render() { return '<p>y</p>'; }
-    }
-    const el = new El();
-    el.connectedCallback();
-    assert.equal(el.innerHTML, '<p>y</p>');
-    assert.equal(el._deferred, false);
+    const e = new El();
+    e.connectedCallback();
+    assert.equal(e.innerHTML, '<p>y</p>');
+    assert.equal(renders, 1);
+    assert.equal('_deferred' in e, false);
   });
 });

@@ -485,12 +485,11 @@ for="{id control}">` **nằm ngoài** host chuyển `for` sang host (bấm vẫn
 Không phát `input` / `change`. `form.reset()` về **giá trị mặc định native** (`value` PHP in ra), không về chữ lúc
 nâng cấp.
 
-**Khi markup không khớp** (script đổi `label` / `type` / `size`… trước khi module tải, markup bị sửa, thêm attribute
-ngoài allowlist như `onclick`, `style`, `form`, `formaction`): component **render lại** nhưng **giữ chữ đã gõ**.
-Nếu lúc đó người dùng **đang gõ** trong ô (control đang focus), component **hoãn** tới khi rời ô (`blur`) mới render
-— không giật mất ô đang gõ; trong lúc hoãn, control native vẫn submit / validate như chưa có JS. Hoãn **chỉ** áp cho
-lệch vô hại (nhãn, size…); markup bị từ chối vì lý do an toàn (`on*`, `style`, `form`, phần tử lạ) được render lại
-**ngay** cả khi đang focus, chữ đã gõ + vùng chọn + focus chuyển sang control mới (toggle / checkbox: giữ `checked`).
+**Khi markup không khớp** (script đổi `label` / `type` / `size`… trước khi module tải, markup bị sửa, attribute ngoài
+allowlist như `onclick`, `style`, `form`, `formaction`, control thừa, dấu sai schema, hoặc `name` / ràng buộc /
+`disabled` của control khác host): component **render an toàn ngay** và trả lại chữ đã gõ, vùng chọn và — nếu người
+dùng đang ở trong ô — focus vào control mới (toggle / checkbox: giữ `checked` / `indeterminate`). Không phát event,
+không có giai đoạn "hoãn tới blur" (đã bỏ sau review v0.26, ADR 0012 mục 5).
 
 ## td_dropdown
 
@@ -617,9 +616,8 @@ khi chưa có JS.
 
 Thứ tự ưu tiên trạng thái khi hydrate: `el.checked` / `el.value` gán từ script **trước** define > trạng thái sống của
 input (người dùng đã tích / bỏ tích, script đổi `input.value`) > attribute do PHP in. `form.reset()` về **mặc định
-native** (`checked` / `value` PHP in ra). `indeterminate` của input được giữ. Markup không khớp → render lại giữ
-`checked` / `value` / `indeterminate` / `id`; input đang focus → hoãn tới `blur` (trong lúc hoãn input native vẫn
-submit + bấm được, component chưa phát `change`).
+native** (`checked` / `value` PHP in ra). `indeterminate` của input được giữ. Markup không khớp → render an toàn
+**ngay**, giữ `checked` / `value` / `indeterminate` / `id` và focus (nếu input đang focus); không phát `change`.
 
 ## td_icon và icon riêng của site
 

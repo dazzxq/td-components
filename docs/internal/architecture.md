@@ -38,14 +38,10 @@ connectedCallback (lần đầu)
   _initialized = true
   canHydrate()                  hook, mặc định false — đọc host SAU replay; không được sửa DOM
   hydratable → gỡ data-td-ssr   dấu đã dùng (nhận hay không), lần render sau không đọc nhầm
-  _applyHydration(quyết định)
-  ├─ true    → _hydrated = true; hydrateExisting() (hook, không đụng innerHTML); _bindStep()
-  ├─ 'defer' → _deferred = true; deferHydration(resume)   (0.26) KHÔNG render, KHÔNG bind
-  │            resume() một lần: _deferred = false; _doRender() (= render + bind) → true; lần sau → false
-  └─ false   → _doRender()      innerHTML = render(); _bindStep()   ← như cũ
+  ├─ true  → _hydrated = true; hydrateExisting() (hook, không đụng innerHTML); _bindStep()
+  └─ false → _doRender()        innerHTML = render(); _bindStep()   ← như cũ (form: rồi khôi phục state, xem dưới)
 connectedCallback (gắn lại sau disconnect)
   chạy + xoá _cleanups          listener gắn TRONG LÚC tách (render khi attribute đổi) không bị nhân đôi
-  _deferred → _deferred = false; _applyHydration(canHydrate())   (0.26) đánh giá lại từ đầu
   hydratable && canRebind() → _bindStep()   giữ node + focus, listener gắn đúng một lần
   còn lại (kể cả canRebind() false: markup bị sửa lúc tách) → _doRender()
 ```
@@ -58,33 +54,22 @@ connectedCallback (gắn lại sau disconnect)
   thắng attribute host. Giá trị reset luôn là mặc định native (`defaultValue` / `defaultChecked`), không từ property
   sớm. (`TdInputField.setValue()` gọi trong lúc replay còn nhớ giá trị gốc ở `_earlyValue` — control `type=number`
   native sẽ làm sạch mất chuỗi không phải số trước khi hydrate đổi nó sang `text`.)
-- **`canHydrate()` → `'defer'`:** markup không nhận được nhưng control đang **focus** (người dùng đang gõ) → base
-  không render, không bind, gọi hook `deferHydration(resume)` (mặc định: `resume()` ngay). Trong lúc hoãn, `_doRender()`
-  bị chặn (attribute đổi thì `resume()` render một lần với giá trị cuối). `resume()` chỉ chạy một lần.
-  Review round 1: `_ssrDecide` chỉ trả `'defer'` cho lệch **vô hại**; `_ssrUnsafe()` (quét cả cây host: loại node,
-  thẻ HTML / SVG được phép, `type` input, allowlist attribute) → render ngay + `state.refocus` (`_restoreSsrState` đưa
-  focus + vùng chọn sang control mới) (SEC-01). Dấu đúng tên nhưng sai schema → không nhận, vẫn qua `_ssrDecide`
-  (IMPL-1). `canRebind()` từ chối → `_ssrRestore = _ssrCapture(control, true)` để render lại giữ state (IMPL-2).
-  `_ssrControl` / `_ssrState` xoá sau khi nhận / khôi phục; listener blur gỡ cả mục cleanup của nó (IMPL-3). Matcher:
-  dấu `*` ⇔ `required`, ghi chú lỗi ⇔ đang có lỗi (IMPL-4).
-  Review round 2: chỉ hoãn khi lệch được **chứng minh** vô hại — `_ssrSkeletonOk()` của component (đúng bộ khung đã
-  biết, đúng số lượng từng phần, `_ssrControl` đúng chỗ; mặc định `false`) và `_ssrUnsafe()` đòi **đúng một** phần tử
-  form-associated (`input, textarea, select, button, fieldset, output, object`) chính là `_ssrControl` — control lạ (kể
-  cả input ẩn có `name`) → render ngay. Trong lúc hoãn, `_ssrMirror(name, value)` (gọi đầu `attributeChangedCallback`
-  của component) chép thuộc tính form của host sang control native (`_ssrMirrorName`: field → `name` `required`
-  `disabled` `readonly` `pattern` `minlength` `max-length`→`maxlength` `min` `max` `step`; checkable → `name` `value`
-  `required` `disabled`; `value` / `checked` sống vẫn đồng bộ tại chỗ như trước) — không render, không bind.
-  `TdFormElement.deferHydration`: đẩy state đã phân giải vào control native (`_ssrPrime`), xoá giá trị / validity của
-  ElementInternals (control native tự submit + validate, FormData đúng một mục; `_setFormValue` / `_applyValidity`
-  không chạy khi `_deferred`), gắn **một** listener `blur` (capture, qua `listen()` → disconnect gỡ) → khi blur: gỡ
-  listener, chụp state **sống** (`_ssrCapture(control, true)`), `resume()`, rồi `_restoreSsrState()` (không event).
-  Gỡ khỏi trang trước blur → cleanup gỡ listener, `_deferred` giữ (không render khi tách); gắn lại → đánh giá lại.
-  (Chromium phát `blur` khi gỡ phần tử đang focus → render xảy ra lúc gỡ; Firefox / WebKit thì không — cả hai đường
-  đều giữ state, không rò listener; test chấp nhận cả hai.)
-- **Khung hydrate form** (`TdFormElement`): `canHydrate()` của component tìm control → ghi `_ssrDefaults` (mặc định
-  native, một lần) → `_ssrDecide(control, khớp, live)`: khớp → `hydrateExisting()`; lệch → `_ssrRestore` (render rồi
-  `connectedCallback` của `TdFormElement` gọi `_restoreSsrState`) hoặc `'defer'` khi control đang focus. Hook con:
-  `_ssrCapture(control, live)`, `_ssrPrime`, `_restoreSsrState`. `_ssrRetargetLabels(control)`: chỉ `<label
+- **Không hoãn (review round 3, ADR 0012 mục 5):** bản đầu 0.26 cho `canHydrate()` trả `'defer'` (chờ `blur` khi
+  control lệch đang focus, kèm `deferHydration` / `_deferred` / `_ssrMirror`); ba vòng review liên tiếp tìm lỗi ở
+  đường đó nên đã **gỡ hẳn**. `canHydrate()` chỉ trả boolean; mọi lệch markup của control có state → render an toàn
+  ngay + khôi phục.
+- **Khung hydrate form** (`TdFormElement`): `canHydrate()` của component (dấu đúng tên — schema khác 1 vẫn đi đường
+  giữ state, IMPL-1) tìm control → ghi `_ssrDefaults` (mặc định native) → `_ssrDecide(control, khớp, live)`. Nhận tại
+  chỗ chỉ khi **cả** bốn cổng qua: so cấu trúc chặt với `render()` (`_markupMatches(true)`: dấu `*` ⇔ `required`, ghi
+  chú lỗi ⇔ đang có lỗi — IMPL-4), thuộc tính form không-JS của control khớp host (`_ssrFormAttrsAgree`: field
+  `name` `required` `disabled` `readonly` `pattern` `minlength` `min` `max` `step`; checkable `name` `required`
+  `disabled`), quét cây `_ssrUnsafe()` (loại node, thẻ HTML / SVG, `type` input, allowlist attribute, **đúng một** phần
+  tử form-associated là `_ssrControl`) và bộ khung `_ssrSkeletonOk()` (đúng phần / số lượng). Không qua →
+  `_ssrRestore` (+ `refocus` nếu control đang focus) → render ngay → `connectedCallback` của `TdFormElement` gọi
+  `_restoreSsrState` (value / selection / checked / indeterminate / id + focus, không event). Gắn lại phần tử đã
+  hydrate: `_ssrRevalidate(control)` dùng cùng cổng (strict); không qua → chụp state sống → render + khôi phục
+  (IMPL-2). `_ssrControl` / `_ssrState` xoá sau khi nhận / khôi phục (IMPL-3). Hook con: `_ssrCapture(control, live)`,
+  `_restoreSsrState`, `_markupMatches(first)`, `_ssrSkeletonOk()`. `_ssrRetargetLabels(control)`: chỉ `<label
   for="{id control}">` **ngoài** host chuyển `for` sang host. Helper so markup dùng chung (export):
   `ssrClassKey`, `ssrContentNodes`, `ssrSameAttrs`, `ssrSamePart` (phần trang trí / text giống hệt `render()`; ô icon so
   attribute, nội dung do `fillIconSlots` vẽ lại), `ssrIsErrorNote`, `SSR_CONTROL_ATTRS` (allowlist control = tên PHP in
