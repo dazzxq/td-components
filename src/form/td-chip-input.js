@@ -1675,6 +1675,12 @@ export class TdChipInput extends TdFormElement {
       this.close();
     } else {
       this._refreshRows();
+      // A just-deselected locked row (disabled / disabled group) can't stay active: move on, or clear.
+      const a = this._activeIndex;
+      if (a >= 0 && this._locked(a)) {
+        this._move(1);
+        if (this._activeIndex === a) this._setActive(-1);
+      }
     }
   }
 

@@ -487,6 +487,20 @@ describe('v0.28.0 M2 — select-all (shown results)', () => {
     expect(vals(el)).to.deep.equal(['b', 'c']);
   });
 
+  it('Enter deselecting a locked selection moves the active row off it (review round 3)', () => {
+    const el = mk('selection-only', [{ value: 'a', label: 'A' }, { value: 'b', label: 'B', disabled: true }]);
+    el.value = ['b'];
+    el.open();
+    for (let k = 0; k < 4 && !(activeEl(el) && activeEl(el).textContent.includes('B')); k++) key(el, 'ArrowDown');
+    const locked = activeEl(el);
+    expect(!!locked && locked.textContent.includes('B'), 'locked selected row reachable').to.equal(true);
+    key(el, 'Enter');
+    expect(vals(el)).to.deep.equal([]);
+    expect(activeEl(el) === locked, 'locked row no longer active').to.equal(false);
+    const owner = el.querySelector('[aria-activedescendant]');
+    expect(!!owner && owner.getAttribute('aria-activedescendant') === locked.id, 'not referenced').to.equal(false);
+  });
+
   it('select-all without selection-only → no row', () => {
     const el = mk('select-all');
     el.open();
