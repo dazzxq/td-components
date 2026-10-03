@@ -118,7 +118,9 @@ Event nổi bọt nên một listener trên `document` bắt được mọi td-c
 <td-copy size="sm" duration="1200" value="…"></td-copy>
 ```
 
-Hết `duration`, nút về trạng thái gốc **dựng lại từ cấu hình** (icon `copy`, bỏ `data-state`, xoá live region) — bấm
+Trong lúc "đã copy", `aria-label` của nút là `TdCopy.labels.copied` (trình đọc màn hình đọc đúng trạng thái khi focus
+vào nút). Hết `duration`, nút về trạng thái gốc **dựng lại từ cấu hình** (icon `copy`, `aria-label` lấy lại từ `label`,
+bỏ `data-state`, xoá live region) — bấm
 liên tục nhiều lần không bao giờ "kẹt" ở dấu tích (khác dcms2, vốn chụp `innerHTML` làm trạng thái gốc nên bấm hai lần
 liền là chụp nhầm trạng thái "đã copy").
 

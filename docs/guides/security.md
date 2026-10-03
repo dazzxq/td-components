@@ -40,6 +40,9 @@ Bạn **không cần** escape trước (escape trước sẽ hiện `&amp;lt;` l
 | `TdModal.confirm/success/error/info({ message })` | text | |
 | `TdModal.confirm/…({ messageHtml })` | **HTML thô** | hatch |
 | `TdModal.show({ footer })` | Element (tin cậy) | gắn nguyên |
+| `TdDrawer.open({ title, body, footer })` (chuỗi) | text | 0.27.0: chuỗi không bao giờ là HTML |
+| `TdDrawer.open({ body / footer: Node })` | Node (tin cậy) | gắn nguyên |
+| `TdDrawer.open({ bodyHtml, footerHtml })` | **HTML thô** | hatch tường minh (nhận `TrustedHTML`) |
 | `data-tooltip` / `data-dwp-tooltip` | text | |
 | `TdMenu` item `label`, `hint` | text | |
 | `TdMenu` item `icon` (tên registry) / `iconNode` | tên / SVGElement tin cậy (được clone) | không nhận chuỗi SVG |

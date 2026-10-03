@@ -91,27 +91,32 @@ describe('td-copy — copy', () => {
     expect(events).to.deep.equal([{ value: 'ABC-123' }]);
     expect(iconName(el)).to.equal('check');
     expect(btnOf(el).getAttribute('data-state')).to.equal('copied');
+    expect(btnOf(el).getAttribute('aria-label'), 'review round 1 IMPL-2: the name says copied').to.equal(TdCopy.labels.copied);
     expect(el.querySelector('.td-copy__status').textContent).to.equal(TdCopy.labels.copied);
     expect(btnOf(el).querySelectorAll('svg').length).to.equal(1);
     await wait(250);
     expect(iconName(el)).to.equal('copy');
+    expect(btnOf(el).getAttribute('aria-label'), 'name restored from `label`').to.equal('Copy');
     expect(btnOf(el).hasAttribute('data-state')).to.equal(false);
     expect(el.querySelector('.td-copy__status').textContent).to.equal('');
   });
 
   it('three clicks in a row never stick on "copied" (state rebuilt from config, not a DOM snapshot)', async () => {
     fakeClipboard(true);
-    const el = mount('<td-copy label="Copy" value="v" duration="120"></td-copy>').querySelector('td-copy');
+    const el = mount('<td-copy label="Copy mã" value="v" duration="120"></td-copy>').querySelector('td-copy');
     btnOf(el).click();
     await wait(10);
+    expect(btnOf(el).getAttribute('aria-label')).to.equal(TdCopy.labels.copied);
     btnOf(el).click();
     await wait(10);
     btnOf(el).click();
     await wait(20);
     expect(iconName(el)).to.equal('check');
+    expect(btnOf(el).getAttribute('aria-label')).to.equal(TdCopy.labels.copied);
     await wait(200);
     expect(iconName(el)).to.equal('copy');
     expect(btnOf(el).hasAttribute('data-state')).to.equal(false);
+    expect(btnOf(el).getAttribute('aria-label'), 'never sticks on the copied name').to.equal('Copy mã');
   });
 
   it('`value` attribute / property win over the <code> source', async () => {

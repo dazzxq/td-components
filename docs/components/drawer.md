@@ -228,8 +228,10 @@ Tuỳ chọn của `TdDrawer.open()`:
 |---|---|---|---|
 | `title` | `string` | — | Tiêu đề hiển thị (text). |
 | `label` | `string` | — | `aria-label` khi không có `title`. |
-| `body` | `Node \| Node[] \| string` | — | Nội dung thân. `Node` (ưu tiên) được gắn nguyên. `string` được parse như HTML — **cửa HTML tin cậy**, chỉ dành cho markup do developer viết, không bao giờ chứa dữ liệu người dùng. |
-| `footer` | `Node \| Node[]` | — | Phần tử chân panel (được gắn `slot="footer"`; node không phải element được bọc trong một `<div slot="footer">`). |
+| `body` | `Node \| Node[] \| DocumentFragment \| string` | — | Nội dung thân. Node / fragment được gắn nguyên. **Chuỗi luôn là TEXT** (gán như `textContent`, không bao giờ parse HTML) — đưa dữ liệu người dùng vào là an toàn. |
+| `bodyHtml` | `string \| TrustedHTML` | — | **Cửa HTML tin cậy** (từ 0.27.0, tên tường minh): markup do developer viết, parse bằng `<template>`. **Không bao giờ** dùng cho dữ liệu người dùng / dữ liệu từ server chưa làm sạch. Bị bỏ qua khi có `body`. Nhận `TrustedHTML` khi trang bật Trusted Types. |
+| `footer` | `Node \| Node[] \| string` | — | Phần tử chân panel (được gắn `slot="footer"`; node không phải element được bọc trong một `<div slot="footer">`). Chuỗi = TEXT. |
+| `footerHtml` | `string \| TrustedHTML` | — | Như `bodyHtml` cho chân panel (bị bỏ qua khi có `footer`). |
 | `side` | `'start' \| 'end'` | `'end'` | Như attribute. |
 | `size` | `'sm' \| 'md' \| 'lg' \| 'xl'` | `'md'` | Như attribute. |
 | `dismissible` | `boolean` | `true` | `false` → chỉ nút × / `close()` đóng được. |
@@ -242,7 +244,7 @@ Giá trị trả về: `element` là host `<td-drawer>` (nghe event, gọi metho
 
 | Event | detail | Khi nào | Huỷ được? | bubbles? |
 |---|---|---|---|---|
-| `open` | — | Panel đã mở xong và focus ban đầu đã đặt. | không | có (composed) |
+| `open` | — | Sau khi chuyển động vào kết thúc (trượt, hoặc fade ngắn khi giảm chuyển động); trạng thái mở + focus ban đầu đã đặt từ đầu chuyển động. Đóng trước khi chuyển động xong → **không** phát. Đúng một lần mỗi lần mở. | không | có (composed) |
 | `before-close` | `{ reason }` | Trước mọi lần đóng. `reason`: `'escape'` \| `'backdrop'` \| `'button'` (nút ×) \| `'programmatic'` (hoặc giá trị bạn truyền vào `close()`). | **có** — `preventDefault()` giữ drawer mở | có (composed) |
 | `close` | `{ reason }` | **Sau** khi trượt ra xong và các node đã về lại host (với `TdDrawer.open()`: ngay trước khi host bị gỡ). | không | có (composed) |
 
@@ -337,7 +339,7 @@ trực tiếp của `<body>` (giống TdModal / TdLightbox — để inert, bẫ
 
 - Lúc mở: phần còn lại của trang bị `inert`, cuộn trang bị khoá (khoá chia sẻ với modal / lightbox).
 - **Focus ban đầu**: ô nhập đầu tiên trong body (`input` / `textarea` / `select` không disabled) → phần tử focus được đầu
-  tiên khác → nút × → chính panel. Event `open` phát sau khi focus đã đặt.
+  tiên khác → nút × → chính panel. Event `open` phát khi chuyển động vào đã xong (focus đặt từ trước đó).
 - **Đóng**: focus quay lại phần tử đã mở drawer (thường là nút bấm); nếu nút đó không còn, về lớp nổi bên dưới hoặc lớp
   trên cùng còn lại.
 - Xếp lớp: drawer dùng `--td-z-modal` và chung một "dải" với modal / lightbox — lớp mở sau nằm trên. Mở lightbox hoặc
@@ -352,9 +354,10 @@ TdModal và td-drawer dùng chung một bộ điều khiển lớp hộp thoại
 ## Bảo mật
 
 `title`, `label` được đưa vào DOM dạng **text** / attribute — đưa dữ liệu người dùng vào là an toàn. Nội dung khai báo
-là node do bạn (hoặc server) tạo, kit chỉ di chuyển, không parse lại. Ngoại lệ duy nhất: `TdDrawer.open({ body: '<chuỗi>' })`
-là **cửa HTML tin cậy** (parse bằng `<template>.innerHTML`), chỉ dành cho markup do developer viết; dữ liệu người dùng
-thì tạo Node và gán `textContent`. Không có `style="…"`; độ rộng per-instance ghi bằng CSSOM — chạy được dưới CSP nghiêm
+là node do bạn (hoặc server) tạo, kit chỉ di chuyển, không parse lại. `TdDrawer.open({ body: '…' })` với chuỗi luôn hiển thị **text**
+(không như `TdModal.show({ body })` cũ). HTML chỉ đi qua cửa đặt tên tường minh `bodyHtml` / `footerHtml` (parse bằng
+`<template>.innerHTML`, nhận `TrustedHTML`) — chỉ dành cho markup do developer viết, **không bao giờ** cho dữ liệu người
+dùng (CWE-79). Không có `style="…"`; độ rộng per-instance ghi bằng CSSOM — chạy được dưới CSP nghiêm
 ngặt.
 
 ## Lưu ý & lỗi thường gặp
