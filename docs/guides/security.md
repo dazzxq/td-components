@@ -68,7 +68,7 @@ Bạn **không cần** escape trước (escape trước sẽ hiện `&amp;lt;` l
 
 ## Các cửa HTML thô (raw-HTML hatch)
 
-Chỉ có bốn cửa. Qua chúng, chuỗi được gán thẳng vào `innerHTML`:
+Chỉ có năm cửa. Qua chúng, chuỗi được gán thẳng vào `innerHTML`:
 
 | Cửa | Ở đâu | Phương án an toàn hơn |
 |---|---|---|
@@ -76,6 +76,7 @@ Chỉ có bốn cửa. Qua chúng, chuỗi được gán thẳng vào `innerHTML
 | `messageHtml` của `confirm/success/error/info` | đoạn thông báo | dùng `message` (text) |
 | `td-table` `render()` trả chuỗi | ô bảng | trả `Node` |
 | `TdHovercard` chuỗi từ `content()` và fragment từ `url` | card | `Node`/`template`, hoặc bật `TdHovercard.sanitize` |
+| `TdDrawer.open({ bodyHtml, footerHtml })` (0.27.0) | thân / chân drawer | truyền `body` / `footer` là `Node` hoặc chuỗi (hiện như **văn bản**) |
 
 Luật dùng:
 

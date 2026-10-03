@@ -101,16 +101,24 @@ export class TdDrawer extends HTMLElement {
       return tpl.content;
     };
     const text = (v) => document.createTextNode(String(v));
-    const body = o.body;
-    if (body != null && body !== '') {
-      const list = typeof body === 'string' ? [text(body)] : (Array.isArray(body) ? body : [body]);
+    // Review round 2: only OWN option properties count (an inherited bodyHtml / footerHtml is ignored), an explicitly
+    // supplied body / footer — even '' — always wins over its *Html hatch, and the hatch accepts only a primitive
+    // string or a genuine TrustedHTML.
+    const own = (k) => Object.prototype.hasOwnProperty.call(o, k);
+    const isHtml = (v) => typeof v === 'string'
+      || (typeof globalThis.TrustedHTML === 'function' && v instanceof globalThis.TrustedHTML);
+    const hasBody = own('body') && o.body != null;
+    if (hasBody) {
+      const body = o.body;
+      const list = typeof body === 'string' ? (body === '' ? [] : [text(body)]) : (Array.isArray(body) ? body : [body]);
       for (const n of list) if (n && typeof n.nodeType === 'number') host.appendChild(n);
-    } else if (o.bodyHtml != null) {
+    } else if (own('bodyHtml') && isHtml(o.bodyHtml)) {
       host.appendChild(trusted(o.bodyHtml));
     }
-    let footer = o.footer;
+    const hasFooter = own('footer') && o.footer != null;
+    let footer = hasFooter ? o.footer : null;
     if (typeof footer === 'string') footer = footer === '' ? null : text(footer);
-    else if ((footer == null || footer === '') && o.footerHtml != null) footer = trusted(o.footerHtml);
+    else if (!hasFooter && own('footerHtml') && isHtml(o.footerHtml)) footer = trusted(o.footerHtml);
     if (footer && footer.nodeType === 11) footer = [...footer.childNodes];
     for (const n of Array.isArray(footer) ? footer : (footer ? [footer] : [])) {
       if (!n || typeof n.nodeType !== 'number') continue;

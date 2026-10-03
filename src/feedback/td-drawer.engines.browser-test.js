@@ -324,6 +324,33 @@ describe('TdDrawer.open (JS API)', () => {
   });
 });
 
+describe('td-drawer — hatch precedence (review round 2)', () => {
+  it("an explicit body: '' (and footer: '') suppresses bodyHtml / footerHtml", async () => {
+    const h = TdDrawer.open({ label: 'E', body: '', bodyHtml: '<b class="unexpected">x</b>', footer: '', footerHtml: '<b class="unexpected-f">y</b>' });
+    const root = openRoot();
+    expect(root.querySelectorAll('b.unexpected, b.unexpected-f').length).to.equal(0);
+    expect(root.querySelector('.td-drawer__body').textContent).to.equal('');
+    h.close();
+    await h.closed;
+  });
+
+  it('an inherited bodyHtml / footerHtml (prototype) is ignored; a non-string hatch value is ignored', async () => {
+    const proto = { bodyHtml: '<b class="inherited">x</b>', footerHtml: '<b class="inherited-f">y</b>' };
+    const opts = Object.create(proto);
+    opts.label = 'P';
+    const h = TdDrawer.open(opts);
+    let root = openRoot();
+    expect(root.querySelectorAll('b.inherited, b.inherited-f').length).to.equal(0);
+    h.close();
+    await h.closed;
+    const h2 = TdDrawer.open({ label: 'Q', bodyHtml: { toString: () => '<b class="obj">x</b>' } });
+    root = openRoot();
+    expect(root.querySelectorAll('b.obj').length).to.equal(0);
+    h2.close();
+    await h2.closed;
+  });
+});
+
 describe('td-drawer — `open` after the entrance transition (review round 1 IMPL-1)', () => {
   it('not fired during the transition; fired once after it, with the open state and focus already set', async () => {
     const wrap = mount('<td-drawer label="T"><input class="ti"></td-drawer>');
