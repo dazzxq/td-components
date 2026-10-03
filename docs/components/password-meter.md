@@ -40,7 +40,9 @@ Thẻ con được giữ nguyên; khối đo được thêm vào **sau** nó.
 
 ### 1. Nguồn mật khẩu
 
-- `for="id"`: id của một `<input>` / `<textarea>` hoặc một `<td-input-field>` (component đọc `.value` sống của nó).
+- `for="id"`: id của một `<input>` / `<textarea>` hoặc một `<td-input-field>` (component đọc `.value` sống của nó). Id của
+  **ô bên trong** một `<td-input-field>` (`field-id`, ví dụ `td_field(…, ['id' => …, 'element' => true])`) cũng được — đồng
+  hồ dùng `<td-input-field>` chứa ô đó (0.26.1).
 - Không có `for`: phần tử `td-input-field, input, textarea` đầu tiên **bên trong** `<td-password-meter>`.
 
 Component nghe `input` / `change` (uỷ quyền trên `document`, nên ô nhập thêm sau vẫn được nhận) và `reset` của form.
