@@ -39,6 +39,8 @@
     "components/otp-input.css",
     "components/drawer.css",
     "components/copy.css",
+    "components/tree.css",
+    "components/tree-select.css",
     "utilities.css"
   ]
 }

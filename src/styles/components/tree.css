@@ -1,0 +1,290 @@
+/*
+ * td-tree (src/form/td-tree.js) — v0.29.0, plan v0.29.0-tree M9. Content-layer control: solid, never glass.
+ * Indent = nested `ul[role=group]` (padding-inline-start: --td-tree-indent; never style=""); rows --td-tree-row-h.
+ * State: [aria-expanded] (arrow turned 90° — a FUNCTIONAL transform, minimal-surfaces rule 4), [aria-busy] (the arrow
+ * spins; reduced motion → static), [data-load="error"], [aria-selected] (single), [aria-checked="true|false|mixed"]
+ * (multiple: square check drawn with the check / minus icons), [aria-disabled] (locked: dimmed like disabled controls),
+ * [data-active] (virtual focus inside td-tree-select), :focus-visible on the treeitem (ring on its row only).
+ */
+@layer td.tokens {
+	:root {
+		--td-tree-indent: 1.25rem;
+		--td-tree-row-h: 2rem;
+		--td-tree-row-hover: var(--td-color-hover);
+		--td-tree-row-active: var(--td-color-hover-strong);
+		--td-tree-row-active-line: var(--td-control-border-hover);
+		--td-tree-row-selected: var(--td-color-hover-strong);
+		--td-tree-check-radius: 4px; /* square check (the round td-checkbox is a different control) */
+	}
+}
+
+@layer td.component {
+	td-tree {
+		display: block;
+	}
+
+	/* v0.25.0 safety net (ADR 0012): before define → one row reserved, no fake styling */
+	td-tree:not(:defined) {
+		display: block;
+		min-height: var(--td-tree-row-h);
+	}
+
+	.td-tree {
+		box-sizing: border-box;
+		display: block;
+		width: 100%;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-fg);
+	}
+
+	.td-tree *,
+	.td-tree *::before {
+		box-sizing: border-box;
+	}
+
+	.td-tree__search {
+		display: block;
+		width: 100%;
+		height: 36px;
+		padding: 6px 12px;
+		margin: 0 0 var(--td-space-xs);
+		font: inherit;
+		color: var(--td-field-fg);
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: none;
+		appearance: none;
+	}
+
+	.td-tree__search::placeholder {
+		color: var(--td-field-placeholder);
+		opacity: 1;
+	}
+
+	.td-tree__search:focus-visible {
+		border-color: var(--td-field-focus);
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	.td-tree__search:disabled {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-field-bg-disabled);
+	}
+
+	.td-tree__list,
+	.td-tree__group {
+		padding: 0;
+		margin: 0;
+		list-style: none;
+	}
+
+	.td-tree__group {
+		padding-inline-start: var(--td-tree-indent);
+	}
+
+	.td-tree__item {
+		display: block;
+		outline: none; /* the ring is drawn on the row (the li box also holds the children) */
+	}
+
+	.td-tree__row {
+		display: flex;
+		gap: 6px;
+		align-items: center;
+		min-height: var(--td-tree-row-h);
+		padding: 2px 8px 2px 4px;
+		cursor: pointer;
+		user-select: none;
+		border-radius: var(--td-glass-radius-inner);
+	}
+
+	.td-tree__row:hover {
+		background: var(--td-tree-row-hover);
+	}
+
+	.td-tree__item[aria-selected="true"] > .td-tree__row {
+		font-weight: var(--td-fw-medium);
+		background: var(--td-tree-row-selected);
+	}
+
+	.td-tree__item[data-active] > .td-tree__row {
+		background: var(--td-tree-row-active);
+		box-shadow: inset 0 0 0 1px var(--td-tree-row-active-line);
+	}
+
+	.td-tree__item:focus-visible > .td-tree__row {
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: -2px;
+		box-shadow: inset 0 0 0 2px var(--td-field-focus);
+	}
+
+	.td-tree__toggle {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		width: 1.25rem;
+		height: 1.25rem;
+		line-height: 0;
+		color: var(--td-field-placeholder);
+		visibility: hidden; /* leaves keep the slot: labels stay aligned */
+		transition: transform var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-tree__item[aria-expanded] > .td-tree__row > .td-tree__toggle {
+		visibility: visible;
+	}
+
+	.td-tree__item[aria-expanded="true"] > .td-tree__row > .td-tree__toggle {
+		transform: rotate(90deg);
+	}
+
+	/* RTL: the arrow points left; open = turned down the other way */
+	.td-tree:dir(rtl) .td-tree__toggle > svg {
+		transform: scaleX(-1);
+	}
+
+	.td-tree:dir(rtl) .td-tree__item[aria-expanded="true"] > .td-tree__row > .td-tree__toggle {
+		transform: rotate(-90deg);
+	}
+
+	.td-tree__item[aria-busy="true"] > .td-tree__row > .td-tree__toggle {
+		animation: td-tree-busy 0.9s linear infinite;
+	}
+
+	.td-tree__item[data-load="error"] > .td-tree__row > .td-tree__toggle {
+		color: var(--td-field-error);
+	}
+
+	.td-tree__check {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		width: 1rem;
+		height: 1rem;
+		line-height: 0;
+		color: var(--td-accent-contrast);
+		background: var(--td-control-bg);
+		border: 1.5px solid var(--td-checkbox-border);
+		border-radius: var(--td-tree-check-radius);
+		transition:
+			background var(--td-dur-fast) var(--td-ease),
+			border-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-tree__check-on,
+	.td-tree__check-mixed {
+		display: none;
+		line-height: 0;
+	}
+
+	.td-tree__check svg {
+		width: 0.75rem;
+		height: 0.75rem;
+		stroke-width: 3;
+	}
+
+	.td-tree__item:is([aria-checked="true"], [aria-checked="mixed"]) > .td-tree__row > .td-tree__check {
+		background: var(--td-checkbox-color);
+		border-color: var(--td-checkbox-color);
+	}
+
+	.td-tree__item[aria-checked="true"] > .td-tree__row .td-tree__check-on,
+	.td-tree__item[aria-checked="mixed"] > .td-tree__row .td-tree__check-mixed {
+		display: inline-flex;
+	}
+
+	.td-tree__label {
+		flex: 0 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.td-tree__desc {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		font-size: var(--td-text-xs);
+		color: var(--td-field-note);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	/* locked (disabled, inherited by the branch): reachable + expandable, never selected */
+	.td-tree__item[aria-disabled="true"] > .td-tree__row {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+	}
+
+	.td-tree__item[aria-disabled="true"] > .td-tree__row > .td-tree__check {
+		opacity: 0.55;
+	}
+
+	.td-tree__item[aria-disabled="true"] > .td-tree__row > .td-tree__toggle {
+		cursor: pointer;
+	}
+
+	.td-tree__list[aria-disabled="true"] {
+		pointer-events: none;
+		opacity: 0.6;
+	}
+
+	.td-tree__empty {
+		padding: 8px;
+		margin: 0;
+		font-style: italic;
+		color: var(--td-field-note);
+	}
+
+	.td-tree__empty[hidden] {
+		display: none;
+	}
+
+	@keyframes td-tree-busy {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	@media (pointer: coarse) {
+		.td-tree__row {
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-tree__toggle,
+		.td-tree__check {
+			transition: none;
+		}
+
+		.td-tree__item[aria-busy="true"] > .td-tree__row > .td-tree__toggle {
+			animation: none;
+			opacity: 0.5;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-tree__check {
+			border-color: ButtonText;
+		}
+
+		.td-tree__item:focus-visible > .td-tree__row,
+		.td-tree__item[data-active] > .td-tree__row {
+			outline: 2px solid Highlight;
+		}
+
+		.td-tree__item:is([aria-selected="true"], [aria-checked="true"], [aria-checked="mixed"]) > .td-tree__row {
+			outline: 1px solid CanvasText;
+		}
+	}
+}

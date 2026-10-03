@@ -1,0 +1,361 @@
+/*
+ * td-tree-select (src/form/td-tree-select.js) — v0.29.0, plan v0.29.0-tree M9.
+ * Control box = the field look (solid, --td-field-* tokens like td-dropdown): input / trigger + clear button + arrow.
+ * Popup = body-portaled small popup (minimal surfaces: .td-glass-surface--strong = 94 % + blur(12px) + thin border +
+ * soft shadow), fade only; the tree inside is a <td-tree> (components/tree.css), its scroller capped by JS (CSSOM).
+ * State: [data-state] on the wrapper / menu, [data-disabled] on the control, [aria-expanded] / :disabled /
+ * [aria-invalid] on the combobox / trigger, [data-placeholder] on the value, [hidden] / data-placement on the menu.
+ * SSR shell (contract tree-select@1, PHP td_tree_select element mode): the native select gets the exact control box
+ * (single AND multiple) → the upgrade moves nothing. Native mode (no marker): the select is a plain field.
+ */
+@layer td.component {
+	td-tree-select {
+		display: block;
+	}
+
+	/* v0.25.0 safety net (ADR 0012): hand-written host before define → one control height reserved */
+	td-tree-select:not(:defined):not([data-td-ssr]) {
+		display: block;
+		min-height: 2.5rem;
+	}
+
+	/* SSR shell: the host has the wrapper typography (the label then has the same box as after the upgrade) */
+	td-tree-select[data-td-ssr="tree-select@1"],
+	.td-tree-select {
+		box-sizing: border-box;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-fg);
+	}
+
+	/* the native select: a field in native mode, the exact control box in the shell (multiple too: one row high,
+	   scrollable — usable without JS) */
+	td-tree-select > .td-tree-select__native {
+		box-sizing: border-box;
+		display: block;
+		width: 100%;
+		min-width: 0;
+		min-height: var(--td-field-h-md);
+		padding: 8px 14px;
+		margin: 0;
+		font: inherit;
+		color: var(--td-field-fg);
+		cursor: pointer;
+		background-color: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: none;
+	}
+
+	td-tree-select:not([data-td-ssr]) > .td-tree-select__native {
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+	}
+
+	td-tree-select:not([data-td-ssr]) > .td-tree-select__native[multiple] {
+		padding: 5px 8px;
+	}
+
+	td-tree-select[data-td-ssr] > .td-tree-select__native {
+		height: var(--td-field-h-md);
+	}
+
+	td-tree-select[data-td-ssr] > .td-tree-select__native[multiple] {
+		padding-block: 4px;
+		overflow-y: auto;
+	}
+
+	td-tree-select > .td-tree-select__native:hover:not(:disabled, :focus-visible) {
+		border-color: var(--td-field-border-hover);
+	}
+
+	td-tree-select > .td-tree-select__native:focus-visible {
+		border-color: var(--td-field-focus);
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	td-tree-select > .td-tree-select__native:disabled {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background-color: var(--td-field-bg-disabled);
+	}
+
+	.td-tree-select {
+		display: block;
+		width: 100%;
+	}
+
+	.td-tree-select *,
+	.td-tree-select *::before {
+		box-sizing: border-box;
+	}
+
+	.td-tree-select__control {
+		position: relative;
+		display: flex;
+		gap: 2px;
+		align-items: center;
+		width: 100%;
+		min-width: 0;
+		height: var(--td-field-h-md);
+		padding: 0 12px 0 0;
+		cursor: pointer;
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+		transition:
+			border-color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease),
+			background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-tree-select__control:hover:not([data-disabled], :has(:focus-visible), :has([aria-expanded="true"])) {
+		border-color: var(--td-field-border-hover);
+	}
+
+	.td-tree-select__control:has([aria-expanded="true"]) {
+		border-color: var(--td-field-focus);
+	}
+
+	.td-tree-select__control:has(:focus-visible) {
+		border-color: var(--td-field-focus);
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	.td-tree-select__control:has([aria-invalid="true"]) {
+		border-color: var(--td-field-error);
+	}
+
+	.td-tree-select__control[data-disabled] {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-field-bg-disabled);
+	}
+
+	.td-tree-select__input,
+	.td-tree-select__trigger {
+		display: flex;
+		flex: 1 1 auto;
+		align-items: center;
+		min-width: 0;
+		height: 100%;
+		padding: 8px 4px 8px 14px;
+		margin: 0;
+		font: inherit;
+		color: var(--td-field-fg);
+		text-align: start;
+		cursor: inherit;
+		background: transparent;
+		border: 0;
+		border-radius: var(--td-field-radius-md);
+		outline: none; /* the control box draws the focus ring */
+		box-shadow: none;
+		appearance: none;
+	}
+
+	.td-tree-select__input {
+		cursor: text;
+	}
+
+	.td-tree-select__input::placeholder {
+		color: var(--td-field-placeholder);
+		opacity: 1;
+	}
+
+	.td-tree-select__input:disabled,
+	.td-tree-select__trigger:disabled {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+	}
+
+	.td-tree-select__value {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.td-tree-select__value[data-placeholder] {
+		color: var(--td-field-placeholder);
+	}
+
+	.td-tree-select__trigger:disabled .td-tree-select__value {
+		color: var(--td-field-fg-disabled);
+	}
+
+	.td-tree-select__clear {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		padding: 0;
+		margin: 0;
+		color: var(--td-field-placeholder);
+		cursor: pointer;
+		background: none;
+		border: 0;
+		border-radius: var(--td-glass-radius-inner);
+		outline: 2px solid transparent;
+		outline-offset: 0;
+	}
+
+	.td-tree-select__clear[hidden] {
+		display: none;
+	}
+
+	.td-tree-select__clear:hover {
+		color: var(--td-field-fg);
+		background: var(--td-color-hover);
+	}
+
+	.td-tree-select__clear:focus-visible {
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-tree-select__arrow {
+		display: inline-flex;
+		flex: none;
+		color: var(--td-field-placeholder);
+		pointer-events: none;
+		transition: transform var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-tree-select[data-state="open"] .td-tree-select__arrow {
+		transform: rotate(180deg);
+	}
+
+	/* ---- Portaled popup (a <body> child) ---- */
+	.td-tree-select__menu {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: var(--td-z-popover);
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		padding: var(--td-glass-pad);
+		overflow: hidden;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		border-radius: var(--td-glass-radius);
+		transform-origin: top center;
+	}
+
+	.td-tree-select__menu *,
+	.td-tree-select__menu *::before {
+		box-sizing: border-box;
+	}
+
+	.td-tree-select__menu[hidden] {
+		display: none;
+	}
+
+	.td-tree-select__menu[data-placement="top"] {
+		transform-origin: bottom center;
+	}
+
+	.td-tree-select__menu[data-state="open"] {
+		opacity: 1;
+		transition: opacity var(--td-glass-dur) var(--td-glass-ease);
+	}
+
+	@starting-style {
+		.td-tree-select__menu[data-state="open"] {
+			opacity: 0;
+		}
+	}
+
+	.td-tree-select__search-wrap {
+		flex: none;
+		padding: 2px 2px var(--td-glass-pad);
+		margin-bottom: var(--td-glass-pad);
+		border-bottom: 1px solid var(--td-dropdown-hairline);
+	}
+
+	.td-tree-select__search {
+		display: block;
+		width: 100%;
+		height: 36px;
+		padding: 6px 12px;
+		margin: 0;
+		font: inherit;
+		color: var(--td-field-fg);
+		background: var(--td-dropdown-search-bg);
+		border: 1px solid var(--td-dropdown-search-border);
+		border-radius: var(--td-glass-radius-inner);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: none;
+		appearance: none;
+	}
+
+	.td-tree-select__search::placeholder {
+		color: var(--td-field-placeholder);
+		opacity: 1;
+	}
+
+	.td-tree-select__search:focus {
+		border-color: var(--td-field-focus);
+	}
+
+	.td-tree-select__search:focus-visible {
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	.td-tree-select__scroller {
+		min-height: 0;
+		overflow-y: auto; /* scrolling inside the popup does NOT close it */
+		overscroll-behavior: contain;
+	}
+
+	@media (pointer: coarse) {
+		.td-tree-select__control,
+		td-tree-select[data-td-ssr] > .td-tree-select__native {
+			height: auto;
+			min-height: var(--td-touch-min);
+		}
+
+		.td-tree-select__search,
+		.td-tree-select__input {
+			font-size: max(1rem, 1em); /* ≥ 16px: iOS does not zoom on focus */
+		}
+
+		.td-tree-select__search {
+			height: auto;
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-tree-select__control,
+		.td-tree-select__arrow {
+			transition: none;
+		}
+
+		.td-tree-select__menu[data-state="open"] {
+			transition: opacity var(--td-glass-dur) linear;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-tree-select__control,
+		.td-tree-select__search,
+		td-tree-select > .td-tree-select__native {
+			border-color: CanvasText;
+		}
+
+		.td-tree-select__control:has(:focus-visible),
+		.td-tree-select__search:focus-visible,
+		td-tree-select > .td-tree-select__native:focus-visible {
+			outline: 2px solid Highlight;
+		}
+	}
+}
