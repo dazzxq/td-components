@@ -87,3 +87,12 @@ export const NUMBER_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'number.html');
 export function renderNumberFixture() {
   return renderPhp('number-fixture.php');
 }
+
+// v0.31.0: td_masked_value (always element mode, masked-value@1).
+export const MASKED_VALUE_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'masked-value.fixtures.json'), 'utf8'));
+export const MASKED_VALUE_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'masked-value.html');
+
+/** Render test/ssr/masked-value-fixture.php (the HTML loaded by the masked-value SSR browser test). */
+export function renderMaskedValueFixture() {
+  return renderPhp('masked-value-fixture.php');
+}
