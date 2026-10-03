@@ -12,6 +12,12 @@ export const BUTTON_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'button.html');
 export const FORM_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'form.fixtures.json'), 'utf8'));
 export const FORM_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'form.html');
 
+// v0.26.0 (part 2): dropdown@1 (td_dropdown element mode) and empty-state@1 (td_empty).
+export const DROPDOWN_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'dropdown.fixtures.json'), 'utf8'));
+export const DROPDOWN_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'dropdown.html');
+export const EMPTY_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'empty.fixtures.json'), 'utf8'));
+export const EMPTY_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'empty.html');
+
 /** Run a fixture PHP script of this directory and return its stdout. */
 function renderPhp(script) {
   const r = spawnSync(PHP_BIN, ['-d', 'display_errors=stderr', join(SSR_DIR, script)], { encoding: 'utf8' });
@@ -27,4 +33,14 @@ export function renderButtonFixture() {
 /** Render test/ssr/form-fixture.php (the HTML loaded by the form SSR browser test). */
 export function renderFormFixture() {
   return renderPhp('form-fixture.php');
+}
+
+/** Render test/ssr/dropdown-fixture.php (the HTML loaded by the dropdown SSR browser test). */
+export function renderDropdownFixture() {
+  return renderPhp('dropdown-fixture.php');
+}
+
+/** Render test/ssr/empty-fixture.php (the HTML loaded by the empty-state SSR browser test). */
+export function renderEmptyFixture() {
+  return renderPhp('empty-fixture.php');
 }

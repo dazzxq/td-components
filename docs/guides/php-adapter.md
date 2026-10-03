@@ -27,10 +27,12 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_field](#td_field)
   - [td_field ở chế độ element (0.26.0)](#td_field-ở-chế-độ-element-0260)
 - [td_dropdown](#td_dropdown)
+  - [td_dropdown ở chế độ element: vỏ không xô lệch (0.26.0)](#td_dropdown-ở-chế-độ-element-vỏ-không-xô-lệch-0260)
 - [td_toggle và td_checkbox](#td_toggle-và-td_checkbox)
   - [td_toggle / td_checkbox ở chế độ element (0.26.0)](#td_toggle--td_checkbox-ở-chế-độ-element-0260)
 - [td_icon và icon riêng của site](#td_icon-và-icon-riêng-của-site)
 - [td_badge và td_alert](#td_badge-và-td_alert)
+- [td_empty (0.26.0)](#td_empty-0260)
 - [An toàn: escape và whitelist](#an-toàn-escape-và-whitelist)
 - [Chuyển từ adapter riêng của 135](#chuyển-từ-adapter-riêng-của-135)
 - [Lỗi thường gặp](#lỗi-thường-gặp)
@@ -49,6 +51,8 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_toggle` | `label.td-switch` + `input[role=switch]` **native** | Không | Không |
 | `td_toggle`, `td_checkbox` — **chế độ element** (0.26.0, tự bật) | host `<td-toggle data-td-ssr="toggle@1">` / `<td-checkbox data-td-ssr="checkbox@1">` chứa sẵn đúng markup component | Không | **Có** — nạp module `toggle` / `checkbox`: nhận tại chỗ, giữ trạng thái tích |
 | `td_dropdown` | host `<td-dropdown>` bọc `<select>` **native** | Không (chạy như select) | **Có** — khi nạp module dropdown |
+| `td_dropdown` — **chế độ element** (0.26.0, tự bật) | như trên + dấu `data-td-ssr="dropdown@1"` + `select.td-dropdown__native` đã tạo dáng **đúng hộp trigger** | Không | **Có** — nâng cấp select → trigger **không xô lệch**; select đang focus thì đợi blur |
+| `td_empty` (0.26.0) | **luôn** host `<td-empty-state data-td-ssr="empty-state@1">` chứa sẵn đúng cây component (icon, tiêu đề, lời nhắn, nút hành động) | Không (link hành động bấm được) | **Có** — nạp module `empty-state`: nhận **tại chỗ**, không nháy |
 | `td_icon` | `svg.td-icon` đủ hình (có `viewBox`) | Không | — |
 | `td_badge` | `span.td-badge…` (thuần CSS) | Không | — |
 | `td_alert` | host `<td-alert>` chứa sẵn khối `div.td-alert` đầy đủ | Không (có dáng ngay) | **Có** — nạp module `alert`: nâng cấp tại chỗ + nút đóng |
@@ -63,8 +67,10 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
   `td_field` / `td_toggle` / `td_checkbox` (0.26.0). Khi bật, helper in host `<td-*>` kèm markup đầy đủ, nên vừa có
   control native khi chưa có JS (submit, validate, trình quản lý mật khẩu), vừa có hành vi component khi module đã
   nạp — không còn "nháy" như khi viết tay `<td-button>Nhãn</td-button>` / `<td-input-field>` rỗng.
-- `td_dropdown` là helper **duy nhất** upgrade: không có JS thì `<select>` hoạt động bình thường; nạp
+- `td_dropdown` luôn upgrade (cả native mode): không có JS thì `<select>` hoạt động bình thường; nạp
   `@dazzxq/td-components/dropdown` thì component đọc `<option>` rồi thay select (xem [td_dropdown](#td_dropdown)).
+  Chế độ element (0.26.0) tạo dáng select đúng hộp trigger nên lúc thay **không xô lệch**.
+- `td_empty` (0.26.0) luôn in `<td-empty-state>` kèm markup đầy đủ (xem [td_empty](#td_empty-0260)).
 
 ## Cài đặt và cấu hình
 
@@ -102,7 +108,7 @@ TdComponents\Td::configure(
 
   | Option | Kiểu | Mặc định | Ý nghĩa |
   |---|---|---|---|
-  | `ssr_elements` | `bool` | `false` | `td_button` / `td_link` (không `bare`) — và từ 0.26.0 cả `td_field` / `td_toggle` / `td_checkbox` — in [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) cho **mọi** lần gọi; option `element` của từng lần gọi vẫn ghi đè |
+  | `ssr_elements` | `bool` | `false` | `td_button` / `td_link` (không `bare`) — và từ 0.26.0 cả `td_field` / `td_toggle` / `td_checkbox` / `td_dropdown` — in [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) cho **mọi** lần gọi; option `element` của từng lần gọi vẫn ghi đè |
 
   > **Nâng từ 0.25 lên 0.26 mà đã bật `ssr_elements`:** từ 0.26.0 cờ này áp thêm cho `td_field` / `td_toggle` /
   > `td_checkbox` (đúng hợp đồng ADR 0012: cờ toàn cục áp cho mọi helper **đã có** hợp đồng trong bản đó). Markup đổi
@@ -193,6 +199,7 @@ td_toggle(string $name, bool $checked = false, string $label = '', array $opts =
 td_checkbox(string $name, bool $checked = false, string $label = '', array $opts = []): string
 td_badge(string $text, array $opts = []): string          // 0.18.0
 td_alert(string $message, array $opts = []): string       // 0.18.0
+td_empty(string $title, string $message = '', array $opts = []): string   // 0.26.0 (luôn element)
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
 td_stylesheet_tag(?string $nonce = null): string
@@ -200,7 +207,8 @@ td_stylesheet_tag(?string $nonce = null): string
 
 Class `TdComponents\Td` (static): `configure` (+ option `ssr_elements`, 0.25.0), `ssrElements()`, `baseUrl`, `kitDir`,
 `importMap`, `importMapTag`, `stylesheetTag`, `modulePreloads` (0.25.0),
-`registerIcons`, `siteIcons`, `hasIcon`, `iconAliases()`, `icon($name, $size, $label, $class)`, và các tiện ích an toàn dùng lại được
+`registerIcons`, `siteIcons`, `hasIcon`, `iconAliases()`, `icon($name, $size, $label, $class)` (0.26.0: `$size` nhận cả số
+nguyên 8–128 = px → `width` / `height`, như `tdIcon(name, { size: n })`), và các tiện ích an toàn dùng lại được
 trong template của site: `e()` (escape), `attrs()` (in attribute đã lọc), `safeUrl()`, `classTokens()`, `uid()`,
 `safeFilename()`. Hằng `Td::JSON_FLAGS` cho JSON in vào HTML.
 
@@ -297,8 +305,9 @@ không xô layout, nút đang focus vẫn focus. Quyết định kiến trúc: [
 
 `td_link(…, ['bare' => true])` **không bao giờ** in element (không có hợp đồng component). Bảng trên áp y hệt cho
 `td_field` ([chi tiết](#td_field-ở-chế-độ-element-0260)), `td_toggle` và `td_checkbox`
-([chi tiết](#td_toggle--td_checkbox-ở-chế-độ-element-0260)) từ 0.26.0. `td_dropdown` chưa có chế độ element
-(`ssr_elements` không ảnh hưởng nó) — lộ trình 0.27.
+([chi tiết](#td_toggle--td_checkbox-ở-chế-độ-element-0260)) từ 0.26.0, và `td_dropdown`
+([chi tiết](#td_dropdown-ở-chế-độ-element-vỏ-không-xô-lệch-0260)) cũng từ 0.26.0. `td_empty` thì **luôn** in element
+(component không có dạng native; option `element` / `ssr_elements` không đổi gì).
 
 ```php
 <?= td_button('Lưu', ['type' => 'submit', 'name' => 'action', 'value' => 'save', 'variant' => 'primary', 'icon' => 'check', 'element' => true]) ?>
@@ -545,6 +554,38 @@ Markup:
 <?= td_dropdown('film_id', $films, $roll['film_id'] ?? '', ['label' => 'Film', 'create_label' => 'Thêm film mới']) ?>
 ```
 
+### td_dropdown ở chế độ element: vỏ không xô lệch (0.26.0)
+
+Native mode: khung hình đầu là `<select>` mặc định của trình duyệt (cao / viền / font khác), JS tải xong thì nhảy sang
+trigger → trang xô lệch. Element mode (bật như [nút](#chế-độ-element-ssr--hydrate-tại-chỗ-0250): `'element' => true`
+từng lần gọi hoặc `Td::configure(…, ['ssr_elements' => true])`; `'element' => false` giữ native) in **đúng markup
+native** cộng hai thứ:
+
+```html
+<td-dropdown data-td-ssr="dropdown@1" id="dd-role-3" label="Vai trò" searchable="false" allow-clear="false">
+  <label class="td-field__label" for="dd-role-3-select">Vai trò<span class="td-field__required" aria-hidden="true"> *</span></label>
+  <select class="td-dropdown__native" id="dd-role-3-select" name="role" required>…</select>
+</td-dropdown>
+```
+
+- `td.css` tạo dáng `select.td-dropdown__native` **đúng hộp của trigger**: cao `--td-field-h-md`, padding, viền
+  `--td-field-border`, bo `--td-field-radius-md`, font / màu theo token field, rộng 100 %; host mang kiểu chữ của
+  `.td-dropdown` (nhãn cùng cao). **Giữ mũi tên native** của trình duyệt (không `appearance: none`, không ảnh `data:` —
+  CSP `img-src 'self'`): mũi tên có thể khác hình chevron của trigger (khác **pixel**), nhưng **hộp** trùng — nạp
+  module thì select → trigger không dịch một pixel nào (test đo bounding box ở Chromium / Firefox / WebKit).
+- **Không JS**: y như native (chọn, submit, `required` chặn submit, nhãn ngoài `<label for="{id}-select">`).
+- **Nạp module dropdown**: đường nâng cấp 0.17 như cũ (đọc option, lựa chọn sống, `name` / `required` / `disabled`, nhãn
+  ngoài chuyển sang host, gỡ select), rồi gỡ dấu `data-td-ssr`. **Select đang focus** (người dùng đang chọn đúng lúc
+  module tới): component **không đụng gì** — không gỡ select, không render — cho tới khi select blur; khi đó nâng cấp
+  **đúng một lần** với lựa chọn tại thời điểm blur, focus ở nguyên chỗ người dùng vừa chuyển tới.
+- Dấu lệch (`dropdown@2`…) hoặc không có dấu → hành vi 0.17 (nâng cấp ngay).
+- **`attrs` ở element mode**: không đặt được tên component đọc từ host (`required`, `disabled`, `name`, `value`,
+  `label`, `placeholder`, `searchable`, `allow-clear`, `create-label`, `aria-label`, `value-key`, `label-key`,
+  `max-height`, `error-text`, `id`, `class` — không phân biệt hoa thường) và `data-td-*` — dùng option tương ứng.
+  `attrs['aria-label']` (khi không có option `aria_label`) đặt lên **select** (component chuyển lên host khi nâng cấp).
+  Native mode giữ nguyên như cũ.
+- Id không đổi so với native: host = `id` (hoặc `dd-{name}-{n}`), select = `{id}-select`.
+
 ## td_toggle và td_checkbox
 
 ```php
@@ -705,6 +746,59 @@ Không JS thì không có nút đóng.
 </td-alert>
 ```
 
+## td_empty (0.26.0)
+
+```php
+<?= td_empty('Chưa có đơn hàng', 'Đơn hàng mới sẽ hiện ở đây.', [
+    'icon' => 'inbox',
+    'actions' => [
+        ['label' => 'Tạo đơn', 'href' => '/orders/new', 'variant' => 'primary'],
+        ['label' => 'Xem hướng dẫn', 'href' => '/help'],
+    ],
+]) ?>
+```
+
+`td_empty($title, $message = '', $opts)` **luôn** in phần tử `<td-empty-state data-td-ssr="empty-state@1">` chứa sẵn
+**đúng cây** `render()` của [Empty state](../components/empty-state.md) — `td.css` tạo dáng ngay khi chưa có JS; nạp
+`@dazzxq/td-components/empty-state` thì nhận markup **tại chỗ** (không nháy, không xô lệch). `$title` / `$message` là
+**chữ** (escape); rỗng → chữ mặc định của component (`Không có dữ liệu` / `Chưa có mục nào được tạo.`).
+
+| Option | Ý nghĩa |
+|---|---|
+| `icon` | tên icon registry (core, alias như `x`, icon site `site-*` đã `registerIcons`). **Không có / tên lạ → `inbox`** (không in attribute `icon`, như component fallback) |
+| `size` | `sm` `md` `lg` (mặc định `md`; icon 28 / 40 / 56 px) |
+| `compact` | `true` → padding gọn |
+| `heading` | 2–6 (số hoặc chuỗi số) → `heading-level` + thẻ `h2`…`h6`; giá trị khác → `h3` của component |
+| `actions` | danh sách `['label' => …, 'href' => …, 'variant' => 'primary'\|'secondary'\|'danger']` (mặc định `secondary`) → mỗi mục in bằng `td_link(…, ['size' => 'sm', 'element' => true])` trong `.td-empty-state__actions` (bỏ `hidden`). Mục **không có `href` an toàn** (thiếu, `javascript:`…) bị **bỏ** (không in nút chết); `label` rỗng → `Thực hiện` |
+| `id`, `class` | trên host |
+| `attrs` | trên host, qua allowlist; không đặt được `id`, `class`, `title`, `message`, `size`, `compact`, `heading-level`, `icon` (không phân biệt hoa thường) và `data-td-*` |
+
+Markup (rút gọn):
+
+```html
+<td-empty-state data-td-ssr="empty-state@1" title="Chưa có đơn hàng" message="Đơn hàng mới sẽ hiện ở đây." size="md" icon="inbox">
+  <div class="td-empty-state td-empty-state--md">
+    <div class="td-empty-state__icon" aria-hidden="true"><span data-td-icon="inbox" data-td-icon-size="40"><svg class="td-icon" data-icon="inbox" … width="40" height="40">…</svg></span></div>
+    <h3 class="td-empty-state__title">Chưa có đơn hàng</h3>
+    <p class="td-empty-state__message">Đơn hàng mới sẽ hiện ở đây.</p>
+    <div class="td-empty-state__actions">
+      <td-button data-td-ssr="button@1" variant="primary" size="sm" label="Tạo đơn" href="/orders/new"><a class="td-btn td-btn--primary td-btn--sm" href="/orders/new">…</a></td-button>
+      …
+    </div>
+  </div>
+</td-empty-state>
+```
+
+- **Không JS**: thẻ hiện đủ dáng, link hành động bấm được (link thường).
+- **Nạp module**: `td-empty-state` nhận markup tại chỗ (icon tạo lại từ registry JS, cùng hộp); **nút hành động của
+  server giữ nguyên** (cùng node) tới khi trang gán property JS `actions` — lúc đó thay bằng nút JS như cũ. Đổi thuộc tính
+  cấu trúc sau đó (`size`, `title`…) render lại nhưng vẫn giữ nút server.
+- Nạp **gốc package** (`@dazzxq/td-components`): `td-button` được định nghĩa trước → nút hydrate trước, empty state nhận
+  nút đã hydrate. Chỉ nạp `empty-state`: nút vẫn là `<td-button data-td-ssr="button@1">` chưa định nghĩa — vẫn hợp lệ,
+  link vẫn bấm được; nạp `button` sau thì nút hydrate tại chỗ.
+- Markup bị sửa (thuộc tính lạ `on*` / `style` / `data-td-*`, phần tử thừa, chữ khác thuộc tính…) → component render
+  lại như cũ (không có state; nút server bị bỏ).
+
 ## An toàn: escape và whitelist
 
 - **Mọi giá trị** (nhãn, value, id, placeholder, tooltip, URL, nonce…) qua
@@ -776,6 +870,7 @@ Khác biệt hành vi so với `markup.php` của 135 (cố ý):
 | Nút element mode vẫn nháy / render lại | chưa nạp module `button`; hoặc script đổi `variant` / `label` / `icon`… trước khi module tải (cố ý render lại cho đúng) | import module; đổi thuộc tính sau khi `customElements.whenDefined('td-button')` |
 | CSS / JS của site nhắm `#id` của nút không còn ăn | element mode đặt `id` / `class` trên host `<td-button>` | đổi selector sang `#id > .td-btn`, hoặc dùng API component |
 | `td_field` element mode: `#id-control` / `#id` (wrapper) của site không còn ăn | element mode: `id` = id **control**, host = `{id}-host` (native: wrapper = `id`, control = `{id}-control`) | nhắm `#id` (control) / `#id-host` (host), hoặc dùng API component |
+| Dropdown element mode vẫn là select native sau khi module tải | select đang được focus đúng lúc module tới (cố ý đợi blur) | bình thường: rời select thì nâng cấp; đừng `focus()` select bằng script trước khi module tải |
 | Ô nhập element mode vẫn render lại khi tải | script đổi `label` / `type` / `size`… trước khi module tải, hoặc markup bị sửa (cố ý render lại; chữ đã gõ được giữ) | đổi thuộc tính sau `customElements.whenDefined('td-input-field')` |
 
 ## Xem thêm

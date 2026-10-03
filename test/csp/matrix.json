@@ -623,6 +623,16 @@
       "selectors": [
         ".td-dropdown__trigger"
       ]
+    },
+    {
+      "state": "ssr",
+      "markup": "<td-dropdown data-td-ssr=\"dropdown@1\" id=\"csp-city\" label=\"City\" searchable=\"false\" allow-clear=\"false\"><label class=\"td-field__label\" for=\"csp-city-select\">City<span class=\"td-field__required\" aria-hidden=\"true\"> *</span></label><select class=\"td-dropdown__native\" id=\"csp-city-select\" name=\"city\" required><option value=\"a\">Apple</option><option value=\"b\" selected>Banana</option></select></td-dropdown>",
+      "selectors": [
+        ".td-dropdown__trigger",
+        ".td-dropdown__value",
+        ".td-field__label",
+        ".td-field__required"
+      ]
     }
   ],
   "td-button": [
@@ -878,6 +888,17 @@
       "state": "actions",
       "setup": "const e=document.createElement('td-empty-state'); window.__mount.appendChild(e); e.actions=[{label:'Tạo mới',variant:'primary',onClick(){}}];",
       "selectors": [
+        ".td-empty-state__actions",
+        ".td-empty-state__actions .td-btn"
+      ]
+    },
+    {
+      "state": "ssr",
+      "markup": "<td-empty-state data-td-ssr=\"empty-state@1\" title=\"Chưa có đơn\" message=\"Đơn mới sẽ hiện ở đây.\" size=\"md\" icon=\"search\"><div class=\"td-empty-state td-empty-state--md\"><div class=\"td-empty-state__icon\" aria-hidden=\"true\"><span data-td-icon=\"search\" data-td-icon-size=\"40\"><svg class=\"td-icon\" data-icon=\"search\" viewBox=\"0 0 24 24\" width=\"40\" height=\"40\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.34-4.34\"/></svg></span></div><h3 class=\"td-empty-state__title\">Chưa có đơn</h3><p class=\"td-empty-state__message\">Đơn mới sẽ hiện ở đây.</p><div class=\"td-empty-state__actions\"><td-button data-td-ssr=\"button@1\" variant=\"primary\" size=\"sm\" label=\"Tạo đơn\" href=\"/orders/new\"><a class=\"td-btn td-btn--primary td-btn--sm\" href=\"/orders/new\"><span class=\"td-btn__label\">Tạo đơn</span><span class=\"td-btn__spinner td-spinner td-spinner--sm\" aria-hidden=\"true\" hidden><svg class=\"td-spinner__svg\" viewBox=\"0 0 50 50\" aria-hidden=\"true\" focusable=\"false\"><circle class=\"td-spinner__track\" cx=\"25\" cy=\"25\" r=\"20\"></circle><circle class=\"td-spinner__arc\" cx=\"25\" cy=\"25\" r=\"20\"></circle></svg></span></a></td-button></div></div></td-empty-state>",
+      "selectors": [
+        ".td-empty-state",
+        ".td-empty-state__icon svg",
+        ".td-empty-state__title",
         ".td-empty-state__actions",
         ".td-empty-state__actions .td-btn"
       ]

@@ -77,6 +77,12 @@ function safeCall(fn, arg, what) {
  * is then removed (the component submits instead). A `<select multiple>` is NOT upgraded (single choice only): it is
  * left in place, working natively, with a `console.warn`.
  *
+ * **SSR shell (v0.26.0, ADR 0012, contract `data-td-ssr="dropdown@1"` — PHP td_dropdown element mode):** the same
+ * select markup with `class="td-dropdown__native"`; td.css gives the select the exact trigger BOX (native arrow kept), so
+ * the upgrade above moves nothing. If that select is FOCUSED at the first connect, nothing happens (no upgrade, no
+ * render, no bind) until it blurs — then the normal path runs once with the choice made meanwhile. The marker is removed
+ * on upgrade. No / another marker → the 0.17 path at once.
+ *
  * **Disabled options (0.17.0 E2):** an option with `disabled: true` renders `aria-disabled="true"`, stays visible
  * (dimmed), cannot be picked with the mouse or keyboard and is skipped by ↑↓ / Home / End / PageUp / PageDown /
  * type-ahead. `setValue()` may still select it programmatically (as a native select).
@@ -121,6 +127,13 @@ export class TdDropdown extends TdFormElement {
   }
 
   static get errorContract() { return true; }
+
+  /**
+   * v0.26.0 (ADR 0012): version of the SSR shell contract `data-td-ssr="dropdown@1"` (PHP td_dropdown element mode: the
+   * native markup + `select.td-dropdown__native` styled to the trigger box). Only the focused-select deferral reads it;
+   * the shell itself is upgraded by the 0.17 select path.
+   */
+  static SSR_SCHEMA = 1;
 
   // NOTE: `searchable`/`allow-clear` are intentionally NOT booleanAttributes. They are
   // default-ON tri-state flags (absent → ON; `="false"`/`"0"`/`"off"` → OFF), which the base
@@ -196,8 +209,17 @@ export class TdDropdown extends TdFormElement {
     }
     // 0.17.0 E2: first connect → progressive enhancement of a child <select> (JS-assigned `options` win).
     if (!this._initialized && !this._selectChecked) {
-      this._selectChecked = true;
       const select = [...this.children].find((c) => c.localName === 'select');
+      // v0.26.0 (ADR 0012, contract dropdown@1): the PHP element-mode shell whose <select> is FOCUSED right now (the user
+      // is choosing) is left alone — no upgrade, no render, no bind — until that select blurs; then the normal path runs
+      // exactly once, reading the live choice at that moment. Checked before ANY DOM change.
+      const shell = this._ssrMatches('dropdown', TdDropdown.SSR_SCHEMA);
+      if (shell && select && !this._ssrNoDefer && select.ownerDocument.activeElement === select) {
+        this._deferUntilBlur(select);
+        return;
+      }
+      this._selectChecked = true;
+      if (shell) this.removeAttribute('data-td-ssr'); // consumed (the shell styling ends with the upgrade below)
       if (select && !this._optionsInit) {
         if (select.multiple) {
           console.warn('td-dropdown: <select multiple> is not upgraded (td-dropdown picks one value); it stays native.', this);
@@ -210,6 +232,39 @@ export class TdDropdown extends TdFormElement {
     // A kept native <select multiple>: never render over it, never submit anything (the select does).
     if (this._passthrough) return;
     super.connectedCallback();
+  }
+
+  /**
+   * @private v0.26.0 (dropdown@1): wait for the focused shell select to blur — ONE capture listener; on blur it is
+   * removed and the first connect runs normally (once). Disconnecting meanwhile cancels it (re-evaluated on reconnect).
+   * @param {HTMLSelectElement} select
+   */
+  _deferUntilBlur(select) {
+    if (this._ssrDefer) return;
+    const onBlur = () => {
+      this._cancelSsrDefer();
+      // Run after the blur dispatch: removing the host can blur its select while it is still connected (Chromium /
+      // Firefox) — the microtask then sees it disconnected and leaves the decision to the next connect.
+      queueMicrotask(() => {
+        if (!this.isConnected || this._initialized || this._selectChecked || this._ssrDefer) return;
+        this._ssrNoDefer = true; // the select has left focus: the normal path runs now, exactly once
+        try {
+          this.connectedCallback();
+        } finally {
+          this._ssrNoDefer = false;
+        }
+      });
+    };
+    select.addEventListener('blur', onBlur, { capture: true });
+    this._ssrDefer = { select, onBlur };
+  }
+
+  /** @private Drop a pending focused-select deferral (listener removed). */
+  _cancelSsrDefer() {
+    const d = this._ssrDefer;
+    if (!d) return;
+    this._ssrDefer = null;
+    d.select.removeEventListener('blur', d.onBlur, { capture: true });
   }
 
   /**
@@ -605,6 +660,7 @@ export class TdDropdown extends TdFormElement {
   _search() { return this._menuElement ? this._menuElement.querySelector('.td-dropdown__search') : null; }
 
   disconnectedCallback() {
+    this._cancelSsrDefer(); // v0.26.0: a focused shell still waiting for its blur — re-evaluated on reconnect
     this._clearSearchFocusTimer();
     this._clearTypeahead();
     if (this._isOpen) {
