@@ -268,7 +268,11 @@ export class TdPasswordMeter extends TdBaseElement {
     const id = this.getAttribute('for');
     if (id) {
       const root = this.getRootNode();
-      return (root && typeof root.getElementById === 'function' ? root.getElementById(id) : null) || document.getElementById(id);
+      const el = (root && typeof root.getElementById === 'function' ? root.getElementById(id) : null) || document.getElementById(id);
+      // `for` may name the CONTROL id of a <td-input-field> (its `field-id`, e.g. PHP element mode, v0.26.0): the
+      // field re-emits `input` from its host, so the host is the source (events + value).
+      const host = el && typeof el.closest === 'function' ? el.closest('td-input-field') : null;
+      return host || el;
     }
     return this.querySelector('td-input-field, input, textarea');
   }

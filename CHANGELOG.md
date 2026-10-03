@@ -2,6 +2,14 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.26.1
+
+### Fixed
+
+- `<td-password-meter for="…">` trỏ vào **id của ô** bên trong một `<td-input-field>` (`field-id`, ví dụ ô mật khẩu in bằng
+  PHP element mode 0.26.0) giờ cập nhật khi gõ — đồng hồ lấy chính `<td-input-field>` chứa ô đó làm nguồn (trước: không
+  bao giờ đổi vì field phát `input` từ host). `for` trỏ id host vẫn chạy như cũ. (Báo lỗi từ site 135.)
+
 ## 0.26.0
 
 **Hết "flash" lúc tải — bước 2 + 3:** `<td-input-field>`, `<td-toggle>`, `<td-checkbox>`, vỏ `<td-dropdown>` và

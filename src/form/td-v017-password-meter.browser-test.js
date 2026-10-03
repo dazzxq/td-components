@@ -232,4 +232,24 @@ describe('v0.17.0 E7 — td-password-meter', () => {
     type(outside, 'Xk9#mQ2$vL7!pZ');
     expect(meter.querySelector('.td-password-meter').getAttribute('data-level')).to.equal('empty');
   });
+
+  it('v0.26.1: for = the CONTROL id of a <td-input-field> (field-id / PHP element mode) still refreshes on typing', async () => {
+    mount('<td-input-field id="pwf-host" field-id="pw-new" type="password"></td-input-field>'
+      + '<td-password-meter for="pw-new"></td-password-meter>');
+    await new Promise((r) => requestAnimationFrame(() => r()));
+    const meter = host.querySelector('td-password-meter');
+    const control = document.getElementById('pw-new');
+    expect(!!control && control.matches('.td-field__control')).to.equal(true);
+    type(control, 'Xk9#mQ2$vL7!pZ');
+    expect(meter.strength.score > 0, `score ${meter.strength.score}`).to.equal(true);
+    expect(box(meter).getAttribute('data-level')).to.not.equal('empty');
+  });
+
+  it('v0.26.1: for = the host id of a <td-input-field> keeps working', async () => {
+    mount('<td-input-field id="pwf2" type="password"></td-input-field><td-password-meter for="pwf2"></td-password-meter>');
+    await new Promise((r) => requestAnimationFrame(() => r()));
+    const meter = host.querySelector('td-password-meter');
+    type(host.querySelector('#pwf2 .td-field__control'), 'Xk9#mQ2$vL7!pZ');
+    expect(meter.strength.score > 0).to.equal(true);
+  });
 });
