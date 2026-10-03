@@ -7,7 +7,7 @@
 
 1. In `<link>` tới `td.css` và **import map** sinh từ `exports` của `package.json` đã vendor.
 2. In **markup phía server** (SSR) đúng hợp đồng DOM của component: nút, nút dạng link, ô nhập, dropdown, switch,
-   checkbox, icon, badge, khối thông báo (alert), empty state, ô mã OTP, nút copy.
+   checkbox, icon, badge, khối thông báo (alert), empty state, ô mã OTP, nút copy, ô chọn ảnh (media field, 0.32.0).
 3. Escape mọi giá trị và lọc tên attribute / URL / class — site không phải tự nhớ.
 
 Yêu cầu: **PHP ≥ 8.0** (0.18.0; kiểm chứng trên PHP 8.0 thật bằng job CI `php80`), không framework, không composer. File chỉ khai báo class `TdComponents\Td` và các hàm toàn cục
@@ -38,6 +38,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_multiselect (0.28.0)](#td_multiselect-0280)
 - [td_tree_select (0.29.0)](#td_tree_select-0290)
 - [td_number_input (0.30.0)](#td_number_input-0300)
+- [td_media_field (0.32.0)](#td_media_field-0320)
 - [An toàn: escape và whitelist](#an-toàn-escape-và-whitelist)
 - [Chuyển từ adapter riêng của 135](#chuyển-từ-adapter-riêng-của-135)
 - [Lỗi thường gặp](#lỗi-thường-gặp)
@@ -62,6 +63,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_otp_input` — **chế độ element** (0.27.0, tự bật) | host `<td-otp-input data-td-ssr="otp-input@1">` chứa sẵn cùng input + 6 ô trang trí | Không (input native chạy ngay) | **Có** — nạp module `otp-input`: nhận **tại chỗ**, giữ mã đang gõ |
 | `td_number_input` (0.30.0) | `div.td-field.td-number` + `input.td-number__control` **native** `type=number` (giá trị chuẩn, `min` ngầm `0`, `step` theo `decimals`) | Không | Không |
 | `td_number_input` — **chế độ element** (0.30.0, tự bật) | host `<td-number-input data-td-ssr="number-input@1">` chứa sẵn cùng cây | Không (input native chạy ngay, gửi số sạch) | **Có** — nạp module `number-input`: nhận **tại chỗ**, hiện `12.990.000` |
+| `td_media_field` (0.32.0) | **luôn** host `<td-media-field data-td-ssr="media-field@1">` chứa sẵn khung (tỉ lệ bằng SVG sizer), ảnh xem trước, nút mở / Đổi / Gỡ + **hidden input** gửi `assetId` (và ô alt / crop ở chế độ usage) | Không (form gửi đúng hình dạng; chưa có JS thì nút ẩn, giữ chỗ) | **Có** — nạp module `media-field`: nhận **tại chỗ**, gỡ hidden input |
 | `td_copy` (0.27.0) | **luôn** host `<td-copy data-td-ssr="copy@1">` chứa nguồn `<code>` + nút icon + live region | Không (chưa có JS: hiện mã để bôi đen, ẩn nút) | **Có** — nạp module `copy`: nhận **tại chỗ** |
 | `td_icon` | `svg.td-icon` đủ hình (có `viewBox`) | Không | — |
 | `td_badge` | `span.td-badge…` (thuần CSS) | Không | — |
@@ -83,6 +85,8 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - `td_empty` (0.26.0) luôn in `<td-empty-state>` kèm markup đầy đủ (xem [td_empty](#td_empty-0260)).
 - `td_otp_input` (0.27.0) mặc định in ô nhập native; chế độ element in `<td-otp-input>` (xem
   [td_otp_input](#td_otp_input-0270)). `td_copy` (0.27.0) luôn in `<td-copy>` (xem [td_copy](#td_copy-0270)).
+- `td_media_field` (0.32.0) luôn in `<td-media-field>` — không có control native tương đương (xem
+  [td_media_field](#td_media_field-0320)); `ssr_elements` / `element` không áp dụng.
 
 ## Cài đặt và cấu hình
 
@@ -217,6 +221,7 @@ td_copy(string $value, array $opts = []): string          // 0.27.0 (luôn eleme
 td_multiselect(string $name, array $options, array $selected = [], array $opts = []): string   // 0.28.0
 td_tree_select(string $name, array $tree, string|int|array|null $selected = null, array $opts = []): string   // 0.29.0
 td_number_input(string $name, string|int|null $value = null, array $opts = []): string   // 0.30.0
+td_media_field(string $name, string|int|null $assetId = null, array $o = []): string    // 0.32.0 (luôn element)
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
 td_stylesheet_tag(?string $nonce = null): string
@@ -1145,6 +1150,85 @@ Laravel: `ConvertEmptyStringsToNull` biến ô trống (`''`) thành `null` — 
 **Repeater:** không có helper PHP — nội dung dòng là markup của app. Mẫu Blade / PHP ở
 [Repeater › Lưu ý](../components/repeater.md#lưu-ý--lỗi-thường-gặp).
 
+## td_media_field (0.32.0)
+
+```php
+<?= td_media_field('hero', $post->hero_media_id, [
+    'label'        => 'Ảnh đại diện',
+    'aspect_ratio' => '3/2',
+    'required'     => true,
+    'preview_src'  => $hero?->thumb_url,     // URL hiển thị, KHÔNG phải giá trị form
+    'preview_alt'  => $hero?->original_name,
+    'error_text'   => $errors['hero'] ?? '',
+]) ?>
+
+<?= td_media_field('og', $seo->og_media_id, [
+    'label' => 'Ảnh chia sẻ (OG)', 'aspect_ratio' => '1.91', 'usage' => true,
+    'alt'   => $seo->og_alt, 'crop' => $seo->og_crop,   // ['x' => 0.1, 'y' => 0, 'width' => 0.8, 'height' => 1] | null
+    'preview_src' => $og?->thumb_url, 'preview_alt' => $og?->original_name,
+]) ?>
+```
+
+`td_media_field($name, string|int|null $assetId = null, $o)` in ô chọn ảnh của [Media field](../components/media-field.md)
+(hợp đồng `media-field@1`). **Luôn element mode** — không có control native nào chọn được ảnh từ thư viện, nên không có
+option `element` và `ssr_elements` không ảnh hưởng. Helper **không** in endpoint, quyền, envelope hay `MediaAsset`
+serialize: adapter là JS của site ([Media picker](../components/media-picker.md#cấu-hình-mặc-định--configuredefaults)).
+
+- **Không có JS:** host + khung + ảnh xem trước có dáng ngay; nút mở / Đổi / Gỡ `visibility: hidden` (giữ chỗ, không có
+  nút chết). Form vẫn gửi **đúng** hình dạng của component nhờ hidden input:
+  - reference: `<input type="hidden" class="td-media-field__value" name="hero" value="{assetId}">` (rỗng → `hero=`);
+  - usage: hidden `name="og[id]"`, ô alt thật `name="og[alt]"`, hidden `.td-media-field__crop` `name="og[crop]"`
+    (`null` hoặc JSON v1).
+- **Có JS:** nạp `@dazzxq/td-components/media-field` → nhận markup **tại chỗ** (cùng node nút / ảnh, không xô lệch),
+  đặt giá trị vào ElementInternals **trước**, rồi gỡ hidden input + bỏ `name` của ô alt → FormData giống từng byte, đúng
+  một bộ mục. Markup bị sửa / thuộc tính lạ → render an toàn, giữ value / alt đang gõ / focus.
+- `required` khi chưa có JS **không** được trình duyệt kiểm (hidden input không validate) → server luôn validate.
+
+| Option | Ý nghĩa |
+|---|---|
+| `$name` | tên field (rỗng → không gửi). Usage + tên kết thúc `[]` → không in `name` nào + một `E_USER_WARNING` (giống JS) |
+| `$assetId` | `assetId` hiện tại (`string` / `int`; `null` / `''` = rỗng) |
+| `label`, `helper_text`, `error_text` | nhãn (có `*` khi `required`), ghi chú, lỗi (text) |
+| `required`, `disabled` | trên host (disabled: nút + ô alt `disabled`, hidden input không gửi) |
+| `aspect_ratio` | `'3/2'` \| `'3:2'` \| `'1.91'` — cùng luật với JS (số dương ≤ 10000, ≤ 4 chữ số thập phân); sai → bỏ + cảnh báo |
+| `preview_fit` | `'cover'` (mặc định) \| `'contain'` |
+| `preview_src` | URL ảnh xem trước. Qua `Td::safeUrl()` rồi **từ chối thêm** `mailto:` / `tel:`: chỉ `https:`, `http:` khi `Td::allowHttpLinks(true)`, đường dẫn tương đối. Sai → không in `<img>` (trạng thái "đã chọn, không có ảnh xem trước") |
+| `preview_alt` | tên đọc của asset đang chọn (tên file khi `kind = 'file'`) |
+| `kind` | `'image'` (mặc định) \| `'video'` (poster + nhãn "Video") \| `'file'` |
+| `accept_kind` | chuỗi `'image,video'` hoặc mảng `['image', 'video']` (mặc định `image`) |
+| `usage` | `true` → dạng gửi `name[id]` / `name[alt]` / `name[crop]` + ô alt |
+| `alt` | alt mặc định (usage) |
+| `crop` | mảng `['x', 'y', 'width', 'height']` chuẩn hoá 0..1 → JSON `{"v":1,…}`; sai (ngoài 0..1, `x + width > 1`…) → `null` + một `E_USER_WARNING` |
+| `prompt` | chữ trong khung rỗng (mặc định theo `accept_kind`: "Chọn ảnh" / "Chọn video" / "Chọn file") |
+| `id` | id của host; id con suy ra (`{id}-label`, `{id}-state`, `{id}-alt`, `{id}-help`). Không có → id duy nhất trong request |
+| `class` | class thêm trên host |
+| `attrs` | attribute thêm trên host (allowlist `Td::ALLOWED_ATTRS` + `data-*`); tên mà component tự đọc (`value`, `kind`, `crop`, `usage`…) bị bỏ |
+
+```html
+<!-- td_media_field('hero', 'a_9f2c', ['label' => 'Ảnh đại diện', 'aspect_ratio' => '3/2',
+     'preview_src' => 'https://cdn.example.com/t/a_9f2c.jpg', 'preview_alt' => 'iphone-17.jpg']) — minh hoạ -->
+<td-media-field data-td-ssr="media-field@1" class="td-media-field" id="td-hero-1" name="hero" label="Ảnh đại diện"
+                aspect-ratio="3/2" value="a_9f2c" preview-src="https://cdn.example.com/t/a_9f2c.jpg" preview-alt="iphone-17.jpg">
+  <span class="td-media-field__label" id="td-hero-1-label">Ảnh đại diện</span>
+  <div class="td-media-field__frame" data-state="filled" data-kind="image">
+    <svg class="td-media-field__sizer" viewBox="0 0 3 2" aria-hidden="true" focusable="false"></svg>
+    <button type="button" class="td-media-field__open" aria-haspopup="dialog" aria-labelledby="td-hero-1-label td-hero-1-state">
+      <img class="td-media-field__img" src="https://cdn.example.com/t/a_9f2c.jpg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">
+      <span class="td-sr-only" id="td-hero-1-state">Đã chọn: iphone-17.jpg</span>
+    </button>
+  </div>
+  <div class="td-media-field__actions">
+    <button type="button" class="td-btn td-btn--secondary td-btn--sm td-media-field__replace" aria-haspopup="dialog">Đổi ảnh</button>
+    <button type="button" class="td-btn td-btn--ghost td-btn--sm td-media-field__remove">Gỡ</button>
+  </div>
+  <input type="hidden" class="td-media-field__value" name="hero" value="a_9f2c">
+</td-media-field>
+```
+
+Nguồn chuẩn của markup là fixture `test/ssr/fixtures/media-field.html` (sinh từ PHP, test so với `render()` của JS).
+Đọc giá trị ở server (Laravel / PHP thuần, `crop = 'null'`): [Media field › Hai dạng gửi form](../components/media-field.md#1-hai-dạng-gửi-form-api-công-khai-chốt-từ-032).
+Cảnh báo (`E_USER_WARNING`) chỉ ghi tên option và kiểu, không in giá trị thô.
+
 ## An toàn: escape và whitelist
 
 - **Mọi giá trị** (nhãn, value, id, placeholder, tooltip, URL, nonce…) qua
@@ -1220,6 +1304,9 @@ Khác biệt hành vi so với `markup.php` của 135 (cố ý):
 | `td_otp_input`: `#id` của site trỏ vào wrapper không còn ăn | `id` là id **input** (cả native lẫn element); element: host = `{id}-host` | nhắm `#id` (input) / `.td-otp` (wrapper) / `#id-host` (host) |
 | `td_number_input` không JS không có dấu chấm hàng nghìn | giới hạn của `type=number` native (cố ý: giá trị gửi đi phải là số sạch) | nạp module `number-input` (element mode) |
 | `td_number_input`: giá trị / `min` / `step` biến mất + `Warning` | không ở dạng chuẩn (`12.990.000`, `1,5`, nhiều số lẻ hơn `decimals`, `step` ≤ 0) | truyền số chuẩn (`12990000`, `1.5`), đặt `decimals` |
+| `td_media_field` không JS không thấy nút Đổi / Gỡ | cố ý: nút `visibility: hidden` tới khi module tải (không nút chết); hidden input vẫn gửi `assetId` | import module `media-field` (và cấu hình adapter: `TdMediaPicker.configureDefaults`) |
+| `td_media_field`: ảnh xem trước không in ra | `preview_src` bị từ chối (`javascript:`, `data:`, `mailto:`, `http:` khi chưa `allowHttpLinks`) | URL `https:` hoặc tương đối |
+| `td_media_field` usage không gửi gì + `Warning` | `name` kết thúc `[]` | bỏ `[]` (`og`, không phải `og[]`) |
 | `td_copy` không JS chỉ thấy mã, không có nút | cố ý: nút ẩn khi chưa có JS (không có nút chết), mã bôi đen được | import module `copy` |
 | Ô nhập element mode vẫn render lại khi tải | script đổi `label` / `type` / `size`… trước khi module tải, hoặc markup bị sửa (cố ý render lại; chữ đã gõ được giữ) | đổi thuộc tính sau `customElements.whenDefined('td-input-field')` |
 
@@ -1230,5 +1317,6 @@ Khác biệt hành vi so với `markup.php` của 135 (cố ý):
   [Dropdown](../components/dropdown.md) · [Checkbox](../components/checkbox.md) · [Toggle](../components/toggle.md) ·
   [Icons](../components/icons.md) · [Badge](../components/badge.md) · [Alert](../components/alert.md) ·
   [Empty state](../components/empty-state.md) · [OTP input](../components/otp-input.md) · [Copy](../components/copy.md) ·
-  [Number input](../components/number-input.md) · [Repeater](../components/repeater.md)
+  [Number input](../components/number-input.md) · [Repeater](../components/repeater.md) ·
+  [Media field](../components/media-field.md) · [Media picker](../components/media-picker.md)
 - [Bảo mật](security.md) · [CSP](csp.md) · [Form](forms.md)
