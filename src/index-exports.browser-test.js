@@ -52,4 +52,12 @@ describe('index.js exports', () => {
     expect(kit.hasIcon('trash')).to.equal(true);
     expect(kit.slugify('Chuyên mục')).to.equal('chuyen-muc');
   });
+
+  it('registers <td-otp-input>, <td-drawer>, <td-copy> from the root entry (v0.27.0)', () => {
+    for (const name of ['TdOtpInput', 'TdDrawer', 'TdCopy']) expect(typeof kit[name], name).to.equal('function');
+    expect(customElements.get('td-otp-input') === kit.TdOtpInput).to.equal(true);
+    expect(customElements.get('td-drawer') === kit.TdDrawer).to.equal(true);
+    expect(customElements.get('td-copy') === kit.TdCopy).to.equal(true);
+    expect(typeof kit.TdDrawer.open).to.equal('function');
+  });
 });

@@ -1,0 +1,263 @@
+/*
+ * td-drawer (src/feedback/td-drawer.js, v0.27.0). Minimal surfaces: an OPAQUE panel (--td-glass-solid, glass.css opaque
+ * group) + thin border + --td-glass-shadow-lg, no blur, over the plain modal scrim (never blurred).
+ * Layer: var(--td-z-modal) like a modal (one band: later layers stack by DOM order; v0.21.1 promotion over a lightbox).
+ * State (set by JS, never visual classes): root [data-state="opening|open|closing"] · footer [hidden].
+ * The root is a <body> child: a site sizes it with `--td-drawer-w` (on :root, on the host — copied to the root on open —
+ * or on `.td-drawer-root`), or picks a size class. ≤ 640 px: full screen.
+ * Motion: the panel slides in from its edge (logical: `end` = right in LTR, left in RTL — the root carries `dir`),
+ * --td-drawer-enter-dur / --td-drawer-exit-dur; the scrim fades. Reduced motion → opacity only, --td-dur-fast.
+ * No JS: an undefined <td-drawer> shows its content in place (no hiding — docs: put it at the end / in <details>).
+ */
+@layer td.tokens {
+	:root {
+		--td-drawer-w-sm: 20rem;
+		--td-drawer-w-md: 28rem;
+		--td-drawer-w-lg: 36rem;
+		--td-drawer-w-xl: 48rem;
+		--td-drawer-pad-x: var(--td-space-lg);
+		--td-drawer-pad-y: var(--td-space-md);
+		--td-drawer-enter-dur: 280ms;
+		--td-drawer-exit-dur: 200ms;
+		--td-drawer-ease: cubic-bezier(0.32, 0.72, 0, 1);
+		--td-drawer-exit-ease: cubic-bezier(0.4, 0, 0.2, 1);
+	}
+}
+
+@layer td.component {
+	td-drawer:not(:defined) {
+		display: block;
+	}
+
+	/* Defined: the host is only a container of the nodes while the drawer is closed (they live in the panel while open). */
+	td-drawer:defined {
+		display: none;
+	}
+
+	.td-drawer-root {
+		--_td-drawer-size: var(--td-drawer-w-md);
+		--_td-drawer-from: 100%;
+
+		position: fixed;
+		inset: 0;
+		z-index: var(--td-z-modal);
+		box-sizing: border-box;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-base);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text);
+	}
+
+	.td-drawer-root *,
+	.td-drawer-root *::before,
+	.td-drawer-root *::after {
+		box-sizing: border-box;
+	}
+
+	.td-drawer-root[hidden],
+	.td-drawer__footer[hidden] {
+		display: none;
+	}
+
+	.td-drawer-root--sm { --_td-drawer-size: var(--td-drawer-w-sm); }
+	.td-drawer-root--md { --_td-drawer-size: var(--td-drawer-w-md); }
+	.td-drawer-root--lg { --_td-drawer-size: var(--td-drawer-w-lg); }
+	.td-drawer-root--xl { --_td-drawer-size: var(--td-drawer-w-xl); }
+
+	/* the start edge is the left in LTR: slide from -100%; RTL mirrors both sides */
+	.td-drawer-root--start { --_td-drawer-from: -100%; }
+	.td-drawer-root--end[dir="rtl"] { --_td-drawer-from: -100%; }
+	.td-drawer-root--start[dir="rtl"] { --_td-drawer-from: 100%; }
+
+	.td-drawer__backdrop {
+		position: absolute;
+		inset: 0;
+		background: var(--td-glass-scrim);
+		opacity: 0;
+		transition: opacity var(--td-drawer-enter-dur) ease-out;
+	}
+
+	.td-drawer-root[data-state="open"] .td-drawer__backdrop {
+		opacity: 1;
+	}
+
+	.td-drawer-root[data-state="closing"] .td-drawer__backdrop {
+		transition: opacity var(--td-drawer-exit-dur) var(--td-drawer-exit-ease);
+	}
+
+	.td-drawer__panel {
+		position: absolute;
+		inset-block: 0;
+		display: flex;
+		flex-direction: column;
+		width: min(var(--td-drawer-w, var(--_td-drawer-size)), 100%);
+		max-width: 100%;
+		height: 100%;
+		overflow: hidden;
+		border-radius: 0;
+		outline: none;
+		isolation: isolate;
+		transform: translateX(var(--_td-drawer-from));
+		transition: transform var(--td-drawer-enter-dur) var(--td-drawer-ease);
+	}
+
+	.td-drawer-root--end .td-drawer__panel {
+		inset-inline-end: 0;
+		border-block-width: 0;
+		border-inline-end-width: 0;
+	}
+
+	.td-drawer-root--start .td-drawer__panel {
+		inset-inline-start: 0;
+		border-block-width: 0;
+		border-inline-start-width: 0;
+	}
+
+	.td-drawer-root[data-state="open"] .td-drawer__panel {
+		transform: none;
+	}
+
+	.td-drawer-root[data-state="closing"] .td-drawer__panel {
+		transition: transform var(--td-drawer-exit-dur) var(--td-drawer-exit-ease);
+	}
+
+	/* An exiting drawer is never interactive (its panel is also inert). */
+	.td-drawer-root[data-state="closing"] {
+		pointer-events: none;
+	}
+
+	.td-drawer__header {
+		display: flex;
+		flex: 0 0 auto;
+		gap: var(--td-space-sm);
+		align-items: center;
+		min-height: 3.5rem;
+		padding: var(--td-space-sm) var(--td-drawer-pad-x);
+		border-bottom: 1px solid var(--td-hairline);
+	}
+
+	.td-drawer-root .td-drawer__title {
+		flex: 1 1 auto;
+		min-width: 0;
+		margin: 0;
+		font-family: inherit;
+		font-size: var(--td-text-lg);
+		font-weight: var(--td-fw-bold);
+		line-height: var(--td-leading-tight);
+		color: inherit;
+		overflow-wrap: anywhere;
+	}
+
+	.td-drawer__close {
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		width: 2.25rem;
+		height: 2.25rem;
+		padding: 0;
+		margin-inline: auto calc(-1 * var(--td-space-xs));
+		font: inherit;
+		color: var(--_td-glass-fg, var(--td-glass-fg));
+		cursor: pointer;
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--td-radius-full);
+		transition: background var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+	}
+
+	.td-drawer__close:hover {
+		color: var(--td-color-text);
+		background: var(--td-color-hover-strong);
+	}
+
+	.td-drawer__close:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-drawer__close-icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+
+	/* The only scroller. */
+	.td-drawer__body {
+		flex: 1 1 auto;
+		min-height: 0;
+		padding: var(--td-drawer-pad-y) var(--td-drawer-pad-x);
+		overflow: auto;
+		overscroll-behavior: contain;
+		overflow-wrap: break-word;
+	}
+
+	.td-drawer__footer {
+		display: flex;
+		flex: 0 0 auto;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+		align-items: center;
+		justify-content: flex-end;
+		padding: var(--td-space-sm) var(--td-drawer-pad-x);
+		padding-bottom: max(var(--td-space-sm), env(safe-area-inset-bottom, 0px));
+		border-top: 1px solid var(--td-hairline);
+	}
+
+	/* Phones: full screen. */
+	@media (max-width: 640px) {
+		.td-drawer__panel {
+			width: 100%;
+			border-width: 0;
+		}
+	}
+
+	@media (pointer: coarse) {
+		.td-drawer__close {
+			width: var(--td-touch-min);
+			height: var(--td-touch-min);
+			margin-inline-end: calc(-1 * var(--td-space-sm));
+		}
+	}
+
+	/* Reduced motion: opacity only (no slide). */
+	@media (prefers-reduced-motion: reduce) {
+		.td-drawer__panel,
+		.td-drawer-root[data-state="open"] .td-drawer__panel,
+		.td-drawer-root[data-state="closing"] .td-drawer__panel {
+			opacity: 0;
+			transform: none;
+			transition: opacity var(--td-dur-fast) linear;
+		}
+
+		.td-drawer-root[data-state="open"] .td-drawer__panel {
+			opacity: 1;
+		}
+
+		.td-drawer__backdrop,
+		.td-drawer-root[data-state="closing"] .td-drawer__backdrop {
+			transition: opacity var(--td-dur-fast) linear;
+		}
+
+		.td-drawer__close {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-drawer__panel {
+			border: 1px solid CanvasText;
+		}
+
+		.td-drawer__header,
+		.td-drawer__footer {
+			border-color: CanvasText;
+		}
+
+		.td-drawer__close {
+			color: ButtonText;
+			border-color: ButtonText;
+		}
+	}
+}

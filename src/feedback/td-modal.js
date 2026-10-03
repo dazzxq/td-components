@@ -44,11 +44,11 @@
 
 import { TdModalStackManager } from './td-modal-stack.js';
 import {
-  LAYERS, register as registerLayer, trapTab, focusablesIn, setFocusHandoff, followFocusHandoff, floatingContains,
-  coverFloatingIn, restoreFocus,
+  LAYERS, focusablesIn, setFocusHandoff, followFocusHandoff, restoreFocus,
 } from '../utils/layers.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import { transitionEndMs } from '../utils/transition.js';
+import { openDialogLayer } from './dialog-layer.js';
 
 const MODAL_LAYER = LAYERS.modal; // --td-z-modal
 const SIZES = ['xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', 'full'];
@@ -243,39 +243,46 @@ export class TdModal {
 
     document.body.appendChild(root);
     TdModalStackManager.push(instance);
-    instance.layer = registerLayer({
+    const autoFocus = opts.autoFocus !== false;
+    const focusTarget = opts.focusTarget || null;
+    // v0.27.0 (§A): the layer mechanics live in the shared dialog-layer controller — same order, same timing.
+    instance.handle = openDialogLayer({
+      root,
+      dialog,
       layer: MODAL_LAYER,
-      element: root,
-      blocking: true,
+      opener,
       // ADR 0006: Escape never closes (consumed so it cannot reach a layer below) — except `escapeCloses` dialogs
       // whose close loses no user data (e.g. the datetime picker keeps a pending copy); never while busy.
       onEscape: () => {
         if (opts.escapeCloses === true && !instance.busy) instance.close();
         return true;
       },
-      onTab: (e) => trapTab(e, dialog, MODAL_LAYER),
       // v0.21.1 F4: opened over a lightbox that sits above the modals (lightbox opened from a modal) → promoted above
       // it; under TdModalStackManager.BASE_Z_INDEX its normal z is the stack's (kept in sync by _sync()).
       baseZ: () => (TdModalStackManager._zBase() !== null ? instance.zIndex : null),
-    });
-    TdModal._focusTrapHandlers.set(id, { el: root, layer: instance.layer });
-    // Focus moves into the dialog immediately (the opener is inert now); the initial target is chosen once the
-    // content is laid out (second frame).
-    try { dialog.focus({ preventScroll: true }); } catch { /* ignore */ }
-
-    const autoFocus = opts.autoFocus !== false;
-    const focusTarget = opts.focusTarget || null;
-    requestAnimationFrame(() => {
-      if (!TdModal._isOpen(id)) return;
-      requestAnimationFrame(() => {
+      // The initial target is chosen once the content is laid out (second frame); focus moved into the dialog at once.
+      onOpened: () => {
         if (!TdModal._isOpen(id)) return;
         root.setAttribute('data-state', 'open');
         TdModal._initialFocus(instance, autoFocus, focusTarget);
         if (typeof opts.onShow === 'function') {
           try { opts.onShow(root, opts.onShowPayload); } catch (err) { console.warn('TdModal onShow failed:', err); }
         }
-      });
+      },
+      wasTop: () => TdModalStackManager.getTop() === instance,
+      beforeRelease: () => {
+        TdModalStackManager.removeById(instance.id);
+        TdModal._removeFocusTrap(instance.id);
+      },
+      restoreFocus: (ctx) => TdModal._restoreFocus(instance, ctx),
+      // onClose: called once on every close path, after focus is restored, before the exit transition
+      onClosing: (value) => {
+        if (typeof instance.onClose === 'function') instance.onClose(value);
+      },
+      exitMs: () => TdModal._exitMs(instance),
     });
+    instance.layer = instance.handle.layer;
+    TdModal._focusTrapHandlers.set(id, { el: root, layer: instance.layer });
     return id;
   }
 
@@ -344,24 +351,20 @@ export class TdModal {
   static _closeInstance(inst, value) {
     if (inst.closed) return;
     inst.closed = true;
+    // v0.27.0 (§A): phase 1 of the shared dialog-layer close (popups covered, closing state + inert dialog, stack
+    // bookkeeping, layer released, focus restored by _restoreFocus below, onClose) — then the root is removed after the
+    // exit transition (_exitMs). Same steps, same order as before the extraction.
+    inst.handle.close(value);
+  }
+
+  /**
+   * @private Focus (D10) on close — the modal's own restore (stack-aware), run by the dialog-layer controller.
+   * @param {object} inst
+   * @param {{ wasTop: boolean, focusWasHere: boolean, over: Element|null }} ctx
+   */
+  static _restoreFocus(inst, ctx) {
     const root = inst.element;
-    const wasTop = TdModalStackManager.getTop() === inst;
-    const active = document.activeElement;
-    // v0.21.1 F2b: focus in a popup anchored in this dialog (the portaled search of its dropdown) counts as "here"
-    const focusWasHere = !active || active === document.body || root.contains(active) || floatingContains(root, active);
-    // …and those popups close now, not after the exit transition (no focus hand-back to their leaving triggers)
-    coverFloatingIn(root);
-    // the open layer this dialog was promoted above (a lightbox opened from a lower modal) — read before release
-    const over = inst.layer ? inst.layer.promotedOver : null;
-
-    // Closing state first, and `inert` on the DIALOG (not the body child, whose inert inert-lock owns and may lift
-    // when another lease is released) so the exiting modal is never interactive again.
-    root.setAttribute('data-state', 'closing');
-    if (inst.dialog) inst.dialog.setAttribute('inert', '');
-    TdModalStackManager.removeById(inst.id);
-    TdModal._removeFocusTrap(inst.id);
-    if (inst.layer) inst.layer.release();
-
+    const { wasTop, focusWasHere, over } = ctx;
     // Focus (D10): resolved when this dialog was on top; moved only if focus was in it (never steal it from a higher
     // layer — that layer follows the hand-off when it releases, e.g. the loading overlay).
     // The outward opener: walk out of dialogs that are gone, then through closed overlays' hand-offs (an opener inside
@@ -406,24 +409,20 @@ export class TdModal {
       // own outward opener chain, not the current top dialog (which may be the very dialog resolving it).
       setFocusHandoff(root, resolved);
     }
+  }
 
-    if (typeof inst.onClose === 'function') {
-      try { inst.onClose(value); } catch (err) { console.error(err); }
-    }
-    const remove = () => {
-      root.hidden = true;
-      if (root.parentNode) root.remove();
-    };
-    // Stay connected for the whole exit transition actually computed in the closing state (dialog + scrim) — under
-    // reduced motion that is the 120 ms opacity fade (P5), otherwise the longer of --td-modal-exit-dur (scale) and
-    // --td-modal-exit-fade-dur (opacity, scrim).
+  /**
+   * @private How long the closing root stays connected: the whole exit transition actually computed in the closing
+   * state (dialog + scrim) — under reduced motion that is the 120 ms opacity fade (P5), otherwise the longer of
+   * --td-modal-exit-dur (scale) and --td-modal-exit-fade-dur (opacity, scrim).
+   * @param {object} inst
+   * @returns {number}
+   */
+  static _exitMs(inst) {
+    const root = inst.element;
     const measured = transitionEndMs(inst.dialog, root.querySelector('.td-modal__backdrop'));
-    if (prefersReducedMotion()) {
-      setTimeout(remove, (measured === null ? REDUCED_EXIT_MS : measured) + EXIT_MARGIN);
-    } else {
-      setTimeout(remove, Math.max(EXIT_MS, TdModal._cssMs(root, '--td-modal-exit-dur', 0) + EXIT_MARGIN,
-        (measured || 0) + EXIT_MARGIN));
-    }
+    if (prefersReducedMotion()) return (measured === null ? REDUCED_EXIT_MS : measured) + EXIT_MARGIN;
+    return Math.max(EXIT_MS, TdModal._cssMs(root, '--td-modal-exit-dur', 0) + EXIT_MARGIN, (measured || 0) + EXIT_MARGIN);
   }
 
   /**

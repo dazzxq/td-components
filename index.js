@@ -9,12 +9,14 @@ export { TdDropdown } from './src/form/td-dropdown.js';
 export { TdChipInput } from './src/form/td-chip-input.js';
 export { TdPasswordMeter } from './src/form/td-password-meter.js';
 export { TdDropzone } from './src/form/td-dropzone.js';
+export { TdOtpInput } from './src/form/td-otp-input.js';
 export { TdIconElement } from './src/icons/td-icon-element.js';
 export { tdIcon, registerIcons, hasIcon, listIcons, fillIconSlots } from './src/icons/td-icon.js';
 export { TdDateTime } from './src/utils/datetime.js';
 export { TdDatetimePicker } from './src/form/td-datetime-picker.js';
 export { TdModalStackManager } from './src/feedback/td-modal-stack.js';
 export { TdModal } from './src/feedback/td-modal.js';
+export { TdDrawer } from './src/feedback/td-drawer.js';
 export { TdToast } from './src/feedback/td-toast.js';
 export { TdLightbox } from './src/feedback/td-lightbox.js';
 export { TdTooltip, tdTooltip } from './src/feedback/td-tooltip.js';
@@ -29,6 +31,7 @@ export { TdTabs } from './src/display/td-tabs.js';
 export { TdPagination } from './src/display/td-pagination.js';
 export { TdEmptyState } from './src/display/td-empty-state.js';
 export { TdMediaGrid } from './src/display/td-media-grid.js';
+export { TdCopy } from './src/display/td-copy.js';
 export { TdFormValidation } from './src/utils/form-validation.js';
 export {
   slugify,

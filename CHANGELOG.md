@@ -2,6 +2,30 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.27.0
+
+dsuite P0 lô 1 (yêu cầu dienthoaihay.vn; lộ trình chốt với Codex; plan `docs/internal/plans/v0.27.0-dsuite-p0a.md`,
+plan-review APPROVE 4 vòng).
+
+### Added
+
+- **`<td-otp-input>`** — mã 6 số: **một** ô native (`autocomplete="one-time-code"`, dán / autofill / password manager, chạy
+  không JS) hiển thị thành 6 ô; lọc chữ số (cả full-width); sự kiện `complete` **một lần** khi đủ 6 số (không tự submit —
+  app quyết định); form-associated, lỗi, `required`. PHP `td_otp_input()` (native mặc định, element mode `otp-input@1`).
+- **`<td-drawer>` / `TdDrawer.open()`** — panel trượt trái / phải (RTL), kích thước, ≤ 640px toàn màn hình; focus trap, trả
+  focus, inert, khoá cuộn, Escape / bấm nền (`dismissible`), sự kiện **`before-close`** chặn được (form chưa lưu), `close`
+  sau khi đóng xong; chồng đúng với modal / lightbox. Không JS: nội dung hiện tại chỗ.
+- **`<td-copy>`** — nút icon (kiểu action button dcms2): copy → icon ✓ vài giây rồi tự trả về; fallback chọn văn bản khi
+  clipboard bị chặn; `for="id"` hoặc `<code class="td-copy__source">`; `sensitive` không đưa giá trị vào sự kiện. PHP
+  `td_copy()`.
+- **CSS skeleton** `.td-skeleton` (`--text`, `--circle`, `--rect`) + token `--td-skeleton-*`; skeleton của `td-table` dùng
+  chung token.
+
+### Changed
+
+- `TdModal` dùng controller lớp hộp thoại chung (`dialog-layer.js`) với drawer — hành vi modal không đổi (toàn bộ test cũ
+  giữ nguyên).
+
 ## 0.26.1
 
 ### Fixed

@@ -18,9 +18,9 @@ Mọi import đều theo dạng `@dazzxq/td-components/<tên>` (xem [Cài đặt
 nạp `td.css` một lần cho cả trang.
 
 **Render phía server (SSR) từ PHP:** dùng [adapter PHP](../guides/php-adapter.md) `php/td.php` ship kèm gói —
-`td_button`, `td_link`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert` in đúng markup của component
+`td_button`, `td_link`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy` in đúng markup của component
 (control native, chạy không cần JS). Component không có helper PHP (menu, table, tabs, pagination, empty-state, trigger
-lightbox, hovercard…) có mẫu markup ngay trong trang của nó (mục cấu trúc DOM / SSR).
+lightbox, hovercard, drawer…) có mẫu markup ngay trong trang của nó (mục cấu trúc DOM / SSR).
 
 ## Form
 
@@ -35,6 +35,7 @@ lightbox, hovercard…) có mẫu markup ngay trong trang của nó (mục cấu
 | [Datetime picker](datetime-picker.md) | `<td-datetime-picker>` | `/datetime-picker` | có | Chọn ngày/giờ với bánh xe, `min`/`max` |
 | [Chip input](chip-input.md) | `<td-chip-input>` | `/chip-input` | có | Nhập nhiều thẻ (tag), gợi ý từ server, tạo mới |
 | [Password meter](password-meter.md) | `<td-password-meter>` | `/password-meter` | không | Đo độ mạnh mật khẩu tại chỗ: thanh 4 mức, nhãn đọc được, checklist điều kiện, hook `score` |
+| [OTP input](otp-input.md) | `<td-otp-input>` | `/otp-input` | có | Nhập mã một lần 6 chữ số (2FA, xác thực lại): một input thật, dán / tự điền từ SMS; PHP `td_otp_input` |
 | [Dropzone](dropzone.md) | `<td-dropzone>` | `/dropzone` | có (gửi file qua `FormData`) | Chọn / kéo thả file: lọc `accept` / `max-size` / `max-files`, danh sách + xoá, hook `upload` có tiến độ từng file, thumbnail ảnh |
 | [Form validation](form-validation.md) | `TdFormValidation` | `/form-validation` | — | Kiểm tra form: ràng buộc gốc + rule riêng + lỗi từ server, tóm tắt lỗi |
 
@@ -43,6 +44,7 @@ lightbox, hovercard…) có mẫu markup ngay trong trang của nó (mục cấu
 | Component | Dạng | Import | Dùng để |
 |---|---|---|---|
 | [Modal](modal.md) | `TdModal` (+ `TdModalStackManager`) | `/modal`, `/modal-stack` | Hộp thoại, xác nhận, footer có hành động bất đồng bộ, nhiều modal chồng nhau |
+| [Drawer](drawer.md) | `<td-drawer>` + `TdDrawer.open()` | `/drawer` | Panel trượt từ cạnh màn hình (bộ lọc, sửa nhanh, chi tiết), chặn trang như modal; khai báo trong HTML hoặc mở từ JS |
 | [Toast](toast.md) | `TdToast` | `/toast` | Thông báo ngắn góc màn hình (thành công/lỗi/cảnh báo/thông tin) |
 | [Tooltip](tooltip.md) | `data-tooltip` + `TdTooltip` | `/tooltip` | Chú thích khi rê chuột/focus (giao diện + hành vi dwp) |
 | [Loading](loading.md) | `TdLoading`, `TdLoadingSpinner` | `/loading` | Màn chờ toàn trang, spinner nội tuyến |
@@ -63,6 +65,8 @@ lightbox, hovercard…) có mẫu markup ngay trong trang của nó (mục cấu
 | [Empty state](empty-state.md) | `<td-empty-state>` | `/empty-state` | Màn "chưa có dữ liệu" có hành động |
 | [Media grid](media-grid.md) | `<td-media-grid>` | `/media-grid` | Lưới ảnh chọn được: nâng cấp markup site/PHP, tick khi rê/focus, chế độ chọn, Shift chọn dải, Space/Enter/Esc, `select-change` / `activate` |
 | [Badge](badge.md) | class CSS `.td-badge` | — (chỉ `td.css`) | Nhãn trạng thái dạng viên thuốc, viền, con dấu (`--stamp`); thuần CSS, PHP `td_badge` |
+| [Copy](copy.md) | `<td-copy>` | `/copy` | Nút icon chép một giá trị (mã, ID, đường dẫn) vào clipboard, phản hồi bằng icon + thông báo cho trình đọc màn hình; PHP `td_copy` |
+| [Skeleton](loading.md#skeleton-khối-giữ-chỗ-thuần-css) | class CSS `.td-skeleton` | — (chỉ `td.css`) | Khối giữ chỗ có ánh sáng lướt (dòng chữ, avatar, khung ảnh) trong lúc tải; thuần CSS |
 | [Icons](icons.md) | `<td-icon>`, `tdIcon()`, `fillIconSlots()` | `/icons`, `/icon-element` (hoặc barrel) | Bộ icon (Lucide) + đăng ký icon riêng; PHP: `td_icon()` |
 
 ## Nền tảng

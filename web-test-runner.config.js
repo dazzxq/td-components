@@ -63,7 +63,8 @@ const storiesPlugin = {
  * `customElements` / `attachInternals` do not exist.
  */
 export default {
-  files: ['src/**/*.browser-test.js', '!src/**/*.scrollbar.browser-test.js', '!src/**/*.ssr.browser-test.js'],
+  files: ['src/**/*.browser-test.js', '!src/**/*.scrollbar.browser-test.js', '!src/**/*.ssr.browser-test.js',
+    '!src/**/*.engines.browser-test.js'],
   nodeResolve: true,
   plugins: [storiesPlugin],
   browsers: [playwrightLauncher({ product: 'chromium' })],
@@ -77,6 +78,15 @@ export default {
     // v0.25.0 (ADR 0012): SSR hydrate in place must hold in every engine — Chromium, Firefox AND WebKit.
     name: 'ssr',
     files: ['src/**/*.ssr.browser-test.js'],
+    browsers: [
+      playwrightLauncher({ product: 'chromium' }),
+      playwrightLauncher({ product: 'firefox', launchOptions: engineLaunchOptions('firefox') }),
+      playwrightLauncher({ product: 'webkit', launchOptions: engineLaunchOptions('webkit') }),
+    ],
+  }, {
+    // v0.27.0: behaviour of the dsuite batch-1 components (td-otp-input, td-drawer, td-copy) in every engine.
+    name: 'engines',
+    files: ['src/**/*.engines.browser-test.js'],
     browsers: [
       playwrightLauncher({ product: 'chromium' }),
       playwrightLauncher({ product: 'firefox', launchOptions: engineLaunchOptions('firefox') }),

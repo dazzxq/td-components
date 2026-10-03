@@ -7,7 +7,7 @@
 
 1. In `<link>` tới `td.css` và **import map** sinh từ `exports` của `package.json` đã vendor.
 2. In **markup phía server** (SSR) đúng hợp đồng DOM của component: nút, nút dạng link, ô nhập, dropdown, switch,
-   checkbox, icon, badge, khối thông báo (alert).
+   checkbox, icon, badge, khối thông báo (alert), empty state, ô mã OTP, nút copy.
 3. Escape mọi giá trị và lọc tên attribute / URL / class — site không phải tự nhớ.
 
 Yêu cầu: **PHP ≥ 8.0** (0.18.0; kiểm chứng trên PHP 8.0 thật bằng job CI `php80`), không framework, không composer. File chỉ khai báo class `TdComponents\Td` và các hàm toàn cục
@@ -33,6 +33,8 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_icon và icon riêng của site](#td_icon-và-icon-riêng-của-site)
 - [td_badge và td_alert](#td_badge-và-td_alert)
 - [td_empty (0.26.0)](#td_empty-0260)
+- [td_otp_input (0.27.0)](#td_otp_input-0270)
+- [td_copy (0.27.0)](#td_copy-0270)
 - [An toàn: escape và whitelist](#an-toàn-escape-và-whitelist)
 - [Chuyển từ adapter riêng của 135](#chuyển-từ-adapter-riêng-của-135)
 - [Lỗi thường gặp](#lỗi-thường-gặp)
@@ -53,6 +55,9 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_dropdown` | host `<td-dropdown>` bọc `<select>` **native** | Không (chạy như select) | **Có** — khi nạp module dropdown |
 | `td_dropdown` — **chế độ element** (0.26.0, tự bật) | như trên + dấu `data-td-ssr="dropdown@1"` + `select.td-dropdown__native` đã tạo dáng **đúng hộp trigger** | Không | **Có** — nâng cấp select → trigger **không xô lệch**; select đang focus thì đợi blur |
 | `td_empty` (0.26.0) | **luôn** host `<td-empty-state data-td-ssr="empty-state@1">` chứa sẵn đúng cây component (icon, tiêu đề, lời nhắn, nút hành động) | Không (link hành động bấm được) | **Có** — nạp module `empty-state`: nhận **tại chỗ**, không nháy |
+| `td_otp_input` (0.27.0) | `div.td-otp` + `input.td-otp__input` **native** (`maxlength="6"`, `pattern="[0-9]{6}"`, `autocomplete="one-time-code"`) | Không | Không |
+| `td_otp_input` — **chế độ element** (0.27.0, tự bật) | host `<td-otp-input data-td-ssr="otp-input@1">` chứa sẵn cùng input + 6 ô trang trí | Không (input native chạy ngay) | **Có** — nạp module `otp-input`: nhận **tại chỗ**, giữ mã đang gõ |
+| `td_copy` (0.27.0) | **luôn** host `<td-copy data-td-ssr="copy@1">` chứa nguồn `<code>` + nút icon + live region | Không (chưa có JS: hiện mã để bôi đen, ẩn nút) | **Có** — nạp module `copy`: nhận **tại chỗ** |
 | `td_icon` | `svg.td-icon` đủ hình (có `viewBox`) | Không | — |
 | `td_badge` | `span.td-badge…` (thuần CSS) | Không | — |
 | `td_alert` | host `<td-alert>` chứa sẵn khối `div.td-alert` đầy đủ | Không (có dáng ngay) | **Có** — nạp module `alert`: nâng cấp tại chỗ + nút đóng |
@@ -71,13 +76,15 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
   `@dazzxq/td-components/dropdown` thì component đọc `<option>` rồi thay select (xem [td_dropdown](#td_dropdown)).
   Chế độ element (0.26.0) tạo dáng select đúng hộp trigger nên lúc thay **không xô lệch**.
 - `td_empty` (0.26.0) luôn in `<td-empty-state>` kèm markup đầy đủ (xem [td_empty](#td_empty-0260)).
+- `td_otp_input` (0.27.0) mặc định in ô nhập native; chế độ element in `<td-otp-input>` (xem
+  [td_otp_input](#td_otp_input-0270)). `td_copy` (0.27.0) luôn in `<td-copy>` (xem [td_copy](#td_copy-0270)).
 
 ## Cài đặt và cấu hình
 
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.26.1/
+public/assets/vendor/td-components/0.27.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -85,7 +92,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.26.1';
+const TD_VERSION = '0.27.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -108,7 +115,7 @@ TdComponents\Td::configure(
 
   | Option | Kiểu | Mặc định | Ý nghĩa |
   |---|---|---|---|
-  | `ssr_elements` | `bool` | `false` | `td_button` / `td_link` (không `bare`) — và từ 0.26.0 cả `td_field` / `td_toggle` / `td_checkbox` / `td_dropdown` — in [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) cho **mọi** lần gọi; option `element` của từng lần gọi vẫn ghi đè |
+  | `ssr_elements` | `bool` | `false` | `td_button` / `td_link` (không `bare`) — từ 0.26.0 cả `td_field` / `td_toggle` / `td_checkbox` / `td_dropdown`, từ 0.27.0 cả `td_otp_input` — in [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) cho **mọi** lần gọi; option `element` của từng lần gọi vẫn ghi đè |
 
   > **Nâng từ 0.25 lên 0.26 mà đã bật `ssr_elements`:** từ 0.26.0 cờ này áp thêm cho `td_field` / `td_toggle` /
   > `td_checkbox` (đúng hợp đồng ADR 0012: cờ toàn cục áp cho mọi helper **đã có** hợp đồng trong bản đó). Markup đổi
@@ -200,6 +207,8 @@ td_checkbox(string $name, bool $checked = false, string $label = '', array $opts
 td_badge(string $text, array $opts = []): string          // 0.18.0
 td_alert(string $message, array $opts = []): string       // 0.18.0
 td_empty(string $title, string $message = '', array $opts = []): string   // 0.26.0 (luôn element)
+td_otp_input(string $name, array $opts = []): string      // 0.27.0
+td_copy(string $value, array $opts = []): string          // 0.27.0 (luôn element)
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
 td_stylesheet_tag(?string $nonce = null): string
@@ -306,8 +315,9 @@ không xô layout, nút đang focus vẫn focus. Quyết định kiến trúc: [
 `td_link(…, ['bare' => true])` **không bao giờ** in element (không có hợp đồng component). Bảng trên áp y hệt cho
 `td_field` ([chi tiết](#td_field-ở-chế-độ-element-0260)), `td_toggle` và `td_checkbox`
 ([chi tiết](#td_toggle--td_checkbox-ở-chế-độ-element-0260)) từ 0.26.0, và `td_dropdown`
-([chi tiết](#td_dropdown-ở-chế-độ-element-vỏ-không-xô-lệch-0260)) cũng từ 0.26.0. `td_empty` thì **luôn** in element
-(component không có dạng native; option `element` / `ssr_elements` không đổi gì).
+([chi tiết](#td_dropdown-ở-chế-độ-element-vỏ-không-xô-lệch-0260)) cũng từ 0.26.0, và `td_otp_input`
+([chi tiết](#td_otp_input-0270)) từ 0.27.0. `td_empty` và `td_copy` (0.27.0) thì **luôn** in element (component không
+có dạng native; option `element` / `ssr_elements` không đổi gì).
 
 ```php
 <?= td_button('Lưu', ['type' => 'submit', 'name' => 'action', 'value' => 'save', 'variant' => 'primary', 'icon' => 'check', 'element' => true]) ?>
@@ -799,6 +809,106 @@ Markup (rút gọn):
 - Markup bị sửa (thuộc tính lạ `on*` / `style` / `data-td-*`, phần tử thừa, chữ khác thuộc tính…) → component render
   lại như cũ (không có state; nút server bị bỏ).
 
+## td_otp_input (0.27.0)
+
+```php
+<?= td_otp_input('code', ['label' => 'Mã xác thực', 'required' => true, 'autofocus' => true]) ?>
+<?= td_otp_input('code', ['label' => 'Mã từ ứng dụng xác thực', 'required' => true, 'id' => 'otp', 'element' => true]) ?>
+<?= td_otp_input('code', ['aria_label' => 'Mã gồm 6 số', 'error' => $errors['code'] ?? '']) ?>
+```
+
+`td_otp_input($name, $opts)` in ô nhập mã một lần 6 chữ số của [OTP input](../components/otp-input.md) (hợp đồng
+`otp-input@1`). Helper **không bao giờ** tự submit form (markup không có JS); `complete` / gọi API là việc của JS trang.
+
+- **Mặc định (native)**: `div.td-otp` > [nhãn] + `div.td-otp__box` > `input.td-otp__input` (`type="text"`,
+  `inputmode="numeric"`, `autocomplete="one-time-code"`, `maxlength="6"`, `pattern="[0-9]{6}"`, `name`, `value`,
+  `required`…) [+ dòng lỗi]. Chạy đủ khi không có JS: bàn phím số, tự điền SMS, validate native. `td.css` vẽ nó đúng
+  hộp của bản có JS.
+- **Chế độ element** (`'element' => true` hoặc `Td::configure(…, ['ssr_elements' => true])`; `'element' => false` giữ
+  native): host `<td-otp-input data-td-ssr="otp-input@1">` + cùng input + `span.td-otp__cells` (6 ô `aria-hidden`).
+  Chưa có JS: ô ẩn, input là ô nhìn thấy; nạp `@dazzxq/td-components/otp-input` thì component nhận **tại chỗ** (giữ
+  node input, mã đã gõ, vùng chọn, focus), dựng ElementInternals rồi gỡ `name` / `value` / `required` / `maxlength` /
+  `pattern` khỏi input (FormData đúng một mục). Markup bị sửa → render an toàn ngay, trả lại mã + focus.
+
+| Option | Ý nghĩa |
+|---|---|
+| `$name` | tên field (rỗng → không có `name`) |
+| `label` | nhãn `label.td-otp__label[for={id input}]` (element: thêm attribute `label` trên host) |
+| `value` | giá trị mặc định, **chuẩn hoá như component**: chữ số full-width (`１２３`) và Ả Rập – Ấn (`١٢٣`, `۱۲۳`) → ASCII, ký tự khác bị bỏ, tối đa 6 số (`'12-34 56'` → `123456`). Rỗng sau chuẩn hoá → không in |
+| `required`, `disabled`, `readonly` | native trên input (element: cả trên host) |
+| `autofocus` | `true` → `autofocus` trên input |
+| `error` | lỗi từ server: `span.td-field-error` + `aria-invalid` + `aria-errormessage` + `aria-describedby` trên input (element: thêm `error-text` trên host) |
+| `aria_label` | tên truy cập khi **không** có `label`; mặc định `Mã xác thực` (element: in `aria-label` lên host chỉ khi truyền) |
+| `id` | id của **input** (`<label for>` của site trỏ đúng trước và sau JS) — xem bảng id dưới |
+| `class` | class thêm: native → wrapper `div.td-otp`; element → host |
+| `attrs` | attribute thêm trên **input** (allowlist). Giữ chỗ — bị bỏ khỏi `attrs`, không phân biệt hoa thường: `type` `class` `id` `inputmode` `autocomplete` `name` `maxlength` `minlength` `pattern` `value` `required` `disabled` `readonly` `autofocus` `aria-label` `aria-labelledby` `aria-invalid` `aria-errormessage` `aria-describedby` + mọi `data-td-*` |
+
+**Id:**
+
+| Trường hợp | Input | Host `<td-otp-input>` | Dòng lỗi |
+|---|---|---|---|
+| Native, có `id` | `id` | — | `{id}-error` |
+| Native, không `id` | `td-{name đã làm sạch}-{n}-input` (ví dụ `td-code-3-input`) | — | `{input}-error` |
+| Element, có `id` | `id` | `{id}-host` | `{id}-host-error` |
+| Element, không `id` | `{host}-input` | `td-{name đã làm sạch}-{n}` (bộ đếm trong request) | `{host}-error` |
+
+Giống `td_field` element mode: `id` luôn là id **control**, không phải wrapper / host.
+
+```html
+<!-- td_otp_input('code', ['label' => 'Mã xác thực', 'required' => true, 'id' => 'otp', 'element' => true]) -->
+<td-otp-input data-td-ssr="otp-input@1" id="otp-host" name="code" label="Mã xác thực" required>
+  <div class="td-otp">
+    <label class="td-otp__label" for="otp">Mã xác thực</label>
+    <div class="td-otp__box">
+      <input type="text" class="td-otp__input" id="otp" inputmode="numeric" autocomplete="one-time-code" name="code" maxlength="6" pattern="[0-9]{6}" required>
+      <span class="td-otp__cells" aria-hidden="true"><span class="td-otp__cell"></span>…(6 ô)</span>
+    </div>
+  </div>
+</td-otp-input>
+```
+
+Native mode in đúng khối `div.td-otp` trên (không có `span.td-otp__cells`; dòng lỗi nằm **trong** `div.td-otp`).
+
+## td_copy (0.27.0)
+
+```php
+<?= td_copy($requestId, ['label' => 'Copy request ID', 'size' => 'sm']) ?>
+<?= td_copy($auditEventId, ['label' => 'Copy audit ID']) ?>
+<?= td_copy(implode("\n", $recoveryCodes), ['label' => 'Copy mã khôi phục', 'sensitive' => true, 'duration' => 3000]) ?>
+```
+
+`td_copy($value, $opts)` **luôn** in phần tử [Copy](../components/copy.md) đầy đủ (hợp đồng `copy@1`; option `element`
+/ `ssr_elements` không đổi gì): host `<td-copy data-td-ssr="copy@1">` + nguồn `<code class="td-copy__source">{value}</code>`
++ nút icon `button.td-copy` (SVG `copy` có sẵn) + live region `span.td-copy__status`. `$value` là **chữ** (escape).
+
+- **Không JS**: `<code>` hiện (người dùng tự bôi đen, `user-select: all`), nút và live region ẩn — không có nút chết.
+- **Nạp `@dazzxq/td-components/copy`**: `<code>` ẩn, nút hiện; component nhận markup **tại chỗ** (cùng node nút). Markup
+  không khớp → render lại, mã trong `<code>` (đã chụp lúc gắn) vẫn được copy.
+
+| Option | Ý nghĩa |
+|---|---|
+| `label` | tên nút + tooltip (`aria-label` + `data-tooltip` trên nút; attribute `label` trên host). Rỗng / không truyền → `Copy` (không in `label` lên host) |
+| `size` | `sm` `md` (mặc định `md`; luôn in) |
+| `sensitive` | `true` → event `copy-success` / `copy-error` không mang `value` |
+| `duration` | số ms giữ icon "đã copy" / lỗi — số nguyên ≥ 0; giá trị khác → không in (component dùng 2000) |
+| `id`, `class` | trên host |
+| `attrs` | trên **host** (allowlist). Giữ chỗ — bị bỏ, không phân biệt hoa thường: `id` `class` `label` `size` `sensitive` `duration` `value` `for` + mọi `data-td-*` (nguồn duy nhất là `$value`) |
+
+```html
+<!-- td_copy('req_01HZX9K2', ['label' => 'Copy request ID', 'size' => 'sm']) -->
+<td-copy data-td-ssr="copy@1" label="Copy request ID" size="sm">
+  <code class="td-copy__source">req_01HZX9K2</code>
+  <button type="button" class="td-copy td-copy--sm" aria-label="Copy request ID" data-tooltip="Copy request ID">
+    <span class="td-copy__icon" data-td-icon="copy" aria-hidden="true"><svg class="td-icon …" data-icon="copy" …>…</svg></span>
+  </button>
+  <span class="td-copy__status" role="status"></span>
+</td-copy>
+```
+
+(Thực tế in liền một dòng.) Không truyền `label` mà site đã đổi `TdCopy.labels.copy` (ví dụ `'Sao chép'`) → tên nút PHP
+(`Copy`) khác tên component render → component render lại (vẫn đúng, chỉ mất lợi ích "tại chỗ"). Site đã dịch nhãn thì
+truyền `label` tường minh.
+
 ## An toàn: escape và whitelist
 
 - **Mọi giá trị** (nhãn, value, id, placeholder, tooltip, URL, nonce…) qua
@@ -871,6 +981,8 @@ Khác biệt hành vi so với `markup.php` của 135 (cố ý):
 | CSS / JS của site nhắm `#id` của nút không còn ăn | element mode đặt `id` / `class` trên host `<td-button>` | đổi selector sang `#id > .td-btn`, hoặc dùng API component |
 | `td_field` element mode: `#id-control` / `#id` (wrapper) của site không còn ăn | element mode: `id` = id **control**, host = `{id}-host` (native: wrapper = `id`, control = `{id}-control`) | nhắm `#id` (control) / `#id-host` (host), hoặc dùng API component |
 | Dropdown element mode vẫn là select native sau khi module tải | select đang được focus đúng lúc module tới (cố ý đợi blur) | bình thường: rời select thì nâng cấp; đừng `focus()` select bằng script trước khi module tải |
+| `td_otp_input`: `#id` của site trỏ vào wrapper không còn ăn | `id` là id **input** (cả native lẫn element); element: host = `{id}-host` | nhắm `#id` (input) / `.td-otp` (wrapper) / `#id-host` (host) |
+| `td_copy` không JS chỉ thấy mã, không có nút | cố ý: nút ẩn khi chưa có JS (không có nút chết), mã bôi đen được | import module `copy` |
 | Ô nhập element mode vẫn render lại khi tải | script đổi `label` / `type` / `size`… trước khi module tải, hoặc markup bị sửa (cố ý render lại; chữ đã gõ được giữ) | đổi thuộc tính sau `customElements.whenDefined('td-input-field')` |
 
 ## Xem thêm
@@ -878,5 +990,6 @@ Khác biệt hành vi so với `markup.php` của 135 (cố ý):
 - [WordPress & PHP](wordpress-php.md) — vendor kit, phiên bản trong đường dẫn, WordPress Script Modules, CSP.
 - [Button](../components/button.md) · [Input field](../components/input-field.md) ·
   [Dropdown](../components/dropdown.md) · [Checkbox](../components/checkbox.md) · [Toggle](../components/toggle.md) ·
-  [Icons](../components/icons.md) · [Badge](../components/badge.md) · [Alert](../components/alert.md)
+  [Icons](../components/icons.md) · [Badge](../components/badge.md) · [Alert](../components/alert.md) ·
+  [Empty state](../components/empty-state.md) · [OTP input](../components/otp-input.md) · [Copy](../components/copy.md)
 - [Bảo mật](security.md) · [CSP](csp.md) · [Form](forms.md)
