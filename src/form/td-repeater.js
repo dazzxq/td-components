@@ -20,8 +20,8 @@ let _uid = 0;
  *
  * Markup contract (works without JS — the buttons only exist once upgraded):
  *   <td-repeater label="Hộp gồm" min-rows="1" max-rows="20" [add-label="Thêm phụ kiện"]>
- *     <template><div data-td-row class="box-row">…fields…[<div data-td-row-actions></div>]</div></template>
- *     <div data-td-row class="box-row">…fields (server-rendered, already named)…</div>   (0..n)
+ *     <template><div data-td-row>…fields…[<div data-td-row-actions></div>]</div></template>
+ *     <div data-td-row>…fields (server-rendered, already named)…</div>   (0..n)
  *   </td-repeater>
  *
  * - The FIRST direct `<template>` child holds exactly one element (`data-td-row` added when missing); anything else →
