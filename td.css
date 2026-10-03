@@ -8570,9 +8570,8 @@
 		color: var(--td-field-fg);
 	}
 
-	/* the native select: a field in native mode, the exact control box in the shell (multiple too: one row high,
-	   scrollable — usable without JS) */
-	td-tree-select > .td-tree-select__native {
+	/* the native select (PHP td_tree_select): a field in native mode … */
+	.td-tree-select__native {
 		box-sizing: border-box;
 		display: block;
 		width: 100%;
@@ -8580,7 +8579,9 @@
 		min-height: var(--td-field-h-md);
 		padding: 8px 14px;
 		margin: 0;
-		font: inherit;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
 		color: var(--td-field-fg);
 		cursor: pointer;
 		background-color: var(--td-field-bg);
@@ -8591,18 +8592,20 @@
 		box-shadow: none;
 	}
 
-	td-tree-select:not([data-td-ssr]) > .td-tree-select__native {
-		font-family: var(--td-font-sans);
-		font-size: var(--td-text-sm);
-		line-height: var(--td-leading-normal);
+	.td-tree-select__native[multiple] {
+		padding: 5px 8px; /* rows = `size` */
 	}
 
-	td-tree-select:not([data-td-ssr]) > .td-tree-select__native[multiple] {
-		padding: 5px 8px;
+	/* own the row box: a host reset (Tailwind preflight `* { padding: 0 }`) never changes the list height */
+	.td-tree-select__native > option {
+		padding: 1px 4px;
 	}
 
+	/* … and the exact control box in the SSR shell (multiple too: one control high, scrollable — usable without JS) */
 	td-tree-select[data-td-ssr] > .td-tree-select__native {
 		height: var(--td-field-h-md);
+		padding: 8px 14px;
+		font: inherit;
 	}
 
 	td-tree-select[data-td-ssr] > .td-tree-select__native[multiple] {
@@ -8610,16 +8613,16 @@
 		overflow-y: auto;
 	}
 
-	td-tree-select > .td-tree-select__native:hover:not(:disabled, :focus-visible) {
+	.td-tree-select__native:hover:not(:disabled, :focus-visible) {
 		border-color: var(--td-field-border-hover);
 	}
 
-	td-tree-select > .td-tree-select__native:focus-visible {
+	.td-tree-select__native:focus-visible {
 		border-color: var(--td-field-focus);
 		box-shadow: var(--td-field-focus-ring);
 	}
 
-	td-tree-select > .td-tree-select__native:disabled {
+	.td-tree-select__native:disabled {
 		color: var(--td-field-fg-disabled);
 		cursor: not-allowed;
 		background-color: var(--td-field-bg-disabled);
@@ -8738,6 +8741,8 @@
 		height: 28px;
 		padding: 0;
 		margin: 0;
+		font: inherit;
+		line-height: 1;
 		color: var(--td-field-placeholder);
 		cursor: pointer;
 		background: none;
@@ -8889,13 +8894,13 @@
 	@media (forced-colors: active) {
 		.td-tree-select__control,
 		.td-tree-select__search,
-		td-tree-select > .td-tree-select__native {
+		.td-tree-select__native {
 			border-color: CanvasText;
 		}
 
 		.td-tree-select__control:has(:focus-visible),
 		.td-tree-select__search:focus-visible,
-		td-tree-select > .td-tree-select__native:focus-visible {
+		.td-tree-select__native:focus-visible {
 			outline: 2px solid Highlight;
 		}
 	}
