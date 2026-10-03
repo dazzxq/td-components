@@ -1477,3 +1477,40 @@ describe('td-media-picker — impl review round 1', () => {
     expect([...q('.td-media-picker__facet[data-key="k"] td-chip-input').querySelectorAll('.td-chip-input__chip-label')].map((x) => x.textContent.trim())).to.deep.equal(['Hai']);
   });
 });
+
+describe('td-media-picker — impl review round 2 (ISSUE-9)', () => {
+  it('a removed facet with an active filter: filter gone, BOTH facets and list reloaded without it', async () => {
+    const ad = createMockAdapter();
+    const facetReqs = [];
+    ad.facets = async (req) => {
+      facetReqs.push(req);
+      const k = { key: 'k', label: 'K', type: 'single', options: [{ value: 1, label: 'Một' }] };
+      return facetReqs.length === 1 ? [k, { key: 'z', label: 'Z', type: 'single', options: [{ value: 'a', label: 'A' }] }] : [k];
+    };
+    const calls = [];
+    const list = ad.list;
+    ad.list = (req) => { calls.push(req); return list({ ...req, filters: {} }); };
+    await openReady({ adapter: ad });
+    await until(() => q('.td-media-picker__facet[data-key="z"] td-dropdown'), 3000, 'z facet');
+    await ddPick(q('.td-media-picker__facet[data-key="z"] td-dropdown'), 'A');
+    await until(() => facetReqs.length >= 3, 3000, 'facets reloaded after the removal');
+    expect('z' in facetReqs.at(-1).filters).to.equal(false);
+    await until(() => calls.length && !('z' in calls.at(-1).filters), 3000, 'list reloaded without z');
+    expect(q('.td-media-picker__facet[data-key="z"]') === null).to.equal(true);
+  });
+
+  it('a type conversion that changes the typed filter reloads BOTH facets and list', async () => {
+    const ad = createMockAdapter();
+    const facetReqs = [];
+    ad.facets = async (req) => {
+      facetReqs.push(req);
+      const type = facetReqs.length === 1 ? 'single' : 'multiple';
+      return [{ key: 'k', label: 'K', type, options: [{ value: 1, label: 'Một' }, { value: 2, label: 'Hai' }] }];
+    };
+    await openReady({ adapter: ad });
+    await until(() => q('.td-media-picker__facet[data-key="k"] td-dropdown'), 3000, 'single facet');
+    await ddPick(q('.td-media-picker__facet[data-key="k"] td-dropdown'), 'Hai');
+    await until(() => facetReqs.length >= 3 && JSON.stringify(facetReqs.at(-1).filters.k) === '[2]', 3000, 'facets reloaded with [2]');
+    await until(() => JSON.stringify(ad.calls.list.at(-1).args[0].filters.k) === '[2]', 3000, 'list reloaded with [2]');
+  });
+});

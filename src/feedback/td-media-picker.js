@@ -871,12 +871,13 @@ export class TdMediaPicker extends HTMLElement {
   }
 
   /** @private */
-  _loadFacets() {
+  _loadFacets({ fresh = false } = {}) {
     const s = this._s;
     if (!s || this._settled || typeof s.adapter.facets !== 'function') return;
     const state = { query: s.query, filters: s.filters };
     const key = requestKey(state, null);
-    const cached = s.cache.getFacets(key);
+    // `fresh`: the descriptors changed under us (reconciliation) — a cached older descriptor set must never come back
+    const cached = fresh ? undefined : s.cache.getFacets(key);
     if (cached) {
       s.req.facets.abort();
       this._renderFacets(cached);
@@ -901,14 +902,17 @@ export class TdMediaPicker extends HTMLElement {
     const s = this._s;
     const box = s.els.facets;
     const keys = new Set(list.map((f) => f.key));
+    let filtersChanged = false;
     for (const [k, c] of s.facets) {
       if (keys.has(k)) continue;
       c.destroy();
       c.el.remove();
       s.facets.delete(k);
-      delete s.filters[k];
+      if (k in s.filters) {
+        delete s.filters[k];
+        filtersChanged = true; // impl review ISSUE-9: an active filter went away with its facet
+      }
     }
-    let filtersChanged = false;
     for (const f of list) {
       let c = s.facets.get(f.key);
       if (c && c.type !== f.type) {
@@ -945,7 +949,12 @@ export class TdMediaPicker extends HTMLElement {
     box.hidden = list.length === 0;
     s.els.filtersToggle.hidden = list.length === 0;
     this._renderFiltersToggle();
-    if (filtersChanged) this._loadList(); // the shown list must match the filters now in force
+    if (filtersChanged) {
+      // impl review ISSUE-9: reconciliation changed the filters → facets (counts) AND list follow the filters now in force
+      s.cache.invalidateLists(); // older descriptor sets (and pages) cached for these filters are now stale
+      this._loadFacets({ fresh: true });
+      this._loadList();
+    }
   }
 
   /** @private */

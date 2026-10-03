@@ -743,3 +743,23 @@ describe('media-picker-fields — impl review round 1', () => {
     expect(t.type).to.equal('toggle');
   });
 });
+
+describe('media-picker-fields — impl review round 2 (ISSUE-10)', () => {
+  it('a checked toggle keeps its value across setDescriptor; the refreshed on-value is adopted only after a user off → on', async () => {
+    const f = mountFacet({ key: 'scope', label: 'Phạm vi', type: 'toggle', options: [{ value: 'mine', label: 'Của tôi' }] });
+    await tick();
+    const input = () => f.el.querySelector('td-toggle input');
+    input().click();
+    await tick();
+    expect(f.get()).to.equal('mine');
+    f.setDescriptor(normalizeFacets([{ key: 'scope', label: 'Phạm vi', type: 'toggle', options: [{ value: 'own', label: 'Của tôi' }] }], silent)[0]);
+    await tick();
+    expect(f.get()).to.equal('mine');
+    input().click();
+    await tick();
+    expect(f.get()).to.equal(undefined);
+    input().click();
+    await tick();
+    expect(f.get()).to.equal('own');
+  });
+});

@@ -556,13 +556,21 @@ export function createFacetControl(facet, { idPrefix, onChange } = {}) {
   }
   control.id = id;
   control.setAttribute('label', f.label);
-  control.addEventListener('change', changed);
-  el.appendChild(control);
-
   const onValue = () => {
     const o = f.options && f.options[0];
     return o ? (o.value ?? true) : true;
   };
+  // impl review ISSUE-10: the value of a CHECKED toggle is its own scalar — fixed when it is turned on, kept across
+  // descriptor reloads; a refreshed on-value is adopted only by a user off → on
+  /** @type {Scalar|undefined} */
+  let toggleValue;
+  if (type === 'toggle') {
+    control.addEventListener('change', () => {
+      toggleValue = control.hasAttribute('checked') ? onValue() : undefined;
+    });
+  }
+  control.addEventListener('change', changed);
+  el.appendChild(control);
 
   /** @type {FacetControl} */
   const api = {
@@ -579,7 +587,7 @@ export function createFacetControl(facet, { idPrefix, onChange } = {}) {
         }
         return out.length ? out : undefined;
       }
-      return control.hasAttribute('checked') ? onValue() : undefined;
+      return control.hasAttribute('checked') ? toggleValue : undefined;
     },
     set(v) {
       if (type === 'single') {
@@ -598,7 +606,9 @@ export function createFacetControl(facet, { idPrefix, onChange } = {}) {
         if (opts.order.length !== listed) control.options = opts.items(true);
         control.setValue(items);
       } else {
-        control.toggleAttribute('checked', v !== undefined && Object.is(v, onValue()));
+        const on = v !== undefined && Object.is(v, onValue());
+        toggleValue = on ? onValue() : undefined;
+        control.toggleAttribute('checked', on);
       }
     },
     setDescriptor(next) {
