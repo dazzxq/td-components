@@ -242,7 +242,7 @@ describe('td-media-field — form value', () => {
     expect(fd(form)).to.deep.equal([['hero[id]', 'm1'], ['hero[alt]', 'gốc'], ['hero[crop]', 'null']]);
   });
 
-  it('review SEC-1: the restore state holds only v / id / alt / crop — no preview URL, no server label', async () => {
+  it('review SEC-1: the restore state holds only v / id / alt / crop / focal (v0.35) — no preview URL, no server label', async () => {
     const states = [];
     const real = ElementInternals.prototype.setFormValue;
     ElementInternals.prototype.setFormValue = function (v, st) { states.push(st); return real.call(this, v, st); };
@@ -257,7 +257,7 @@ describe('td-media-field — form value', () => {
     const strings = states.filter((x) => typeof x === 'string');
     expect(strings.length > 0).to.equal(true);
     for (const st of strings) {
-      expect(Object.keys(JSON.parse(st)).sort()).to.deep.equal(['alt', 'crop', 'id', 'v']);
+      expect(Object.keys(JSON.parse(st)).sort()).to.deep.equal(['alt', 'crop', 'focal', 'id', 'v']);
       expect(st.includes('SECRET') || st.includes('fixtures') || st.includes('anh-3')).to.equal(false);
     }
   });

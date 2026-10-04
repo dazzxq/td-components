@@ -104,11 +104,11 @@ WordPress in modulepreload cho dependency của script module). `'self'` cho ph�
 
 ```php
 <?php $nonce = csp_nonce(); // chuỗi ngẫu nhiên >= 128 bit, base64, sinh MỘT lần mỗi request ?>
-<link rel="stylesheet" href="/vendor/td-components/0.34.0/td.css" nonce="<?= h($nonce) ?>">
+<link rel="stylesheet" href="/vendor/td-components/0.35.0/td.css" nonce="<?= h($nonce) ?>">
 <script type="importmap" nonce="<?= h($nonce) ?>">
 <?= json_encode(['imports' => [
-    '@dazzxq/td-components/button' => '/vendor/td-components/0.34.0/src/form/td-button.js',
-    '@dazzxq/td-components/toast'  => '/vendor/td-components/0.34.0/src/feedback/td-toast.js',
+    '@dazzxq/td-components/button' => '/vendor/td-components/0.35.0/src/form/td-button.js',
+    '@dazzxq/td-components/toast'  => '/vendor/td-components/0.35.0/src/feedback/td-toast.js',
 ]], JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?>
 </script>
 <script type="module" nonce="<?= h($nonce) ?>">
@@ -146,6 +146,7 @@ Kit tự nó chỉ cần `'self'`. Các chỉ thị dưới đây phụ thuộc 
 | `TdLightbox` hook `video` nhúng YouTube/Vimeo | `frame-src` | ví dụ `https://www.youtube-nocookie.com`; script của player (Plyr…) cần `script-src` tương ứng — tự host thì chỉ cần `'self'` |
 | `TdLightbox` nút toàn màn hình | — | Fullscreen API không chịu CSP |
 | `TdHovercard` `url` / `data-td-hovercard` | `connect-src 'self'` | hovercard chỉ fetch cùng origin |
+| `td-cropper` / bước cắt của media picker / "Cắt ảnh" của media field (0.35) | `img-src` | origin của ảnh cần cắt; **không** cần `connect-src`, `blob:` / `data:` hay CORS — cropper chỉ hiển thị `<img>`, không đọc pixel |
 | `td-chip-input` `search()` | `connect-src` | tuỳ endpoint mà provider của bạn gọi |
 | Form AJAX | `connect-src`, `form-action` | `form-action 'self'` cho submit native |
 

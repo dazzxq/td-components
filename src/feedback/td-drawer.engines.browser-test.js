@@ -31,7 +31,9 @@ const frames = (n = 2) => new Promise((r) => {
   requestAnimationFrame(f);
 });
 const roots = () => [...document.body.querySelectorAll(':scope > .td-drawer-root')];
-const openRoot = () => roots().find((r) => r.getAttribute('data-state') !== 'closing') || null;
+// the NEWEST non-closing root: under a loaded 3-engine run a previous test's root can still be on its way out (afterEach
+// releases it, but a released root of an earlier test must never be mistaken for the one under test)
+const openRoot = () => roots().filter((r) => r.getAttribute('data-state') !== 'closing').pop() || null;
 const nextEvent = (el, name) => new Promise((r) => el.addEventListener(name, r, { once: true }));
 const IMG = '/td-v027-missing.png';
 
@@ -483,7 +485,12 @@ describe('td-drawer — stacking with modal / lightbox (dải v0.21.1)', () => {
 
   it('lightbox → drawer: drawer on top of the lightbox; closing the LOWER layer first keeps the drawer usable', async () => {
     TdLightbox.open([IMG]);
-    await wait(300);
+    // the lightbox fully open (real signal, not a fixed 300 ms) before the drawer goes over it
+    for (const t0 = performance.now(); !document.querySelector('.td-lightbox[data-state="open"]');) {
+      if (performance.now() - t0 > 4000) throw new Error('timeout: lightbox open');
+      await frames(1);
+    }
+    await frames(2);
     const wrap = mount('<td-drawer label="A"><input class="x"></td-drawer>');
     const host = wrap.querySelector('td-drawer');
     const opened = new Promise((r) => host.addEventListener('open', r, { once: true })); // after the transition

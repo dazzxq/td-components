@@ -196,3 +196,38 @@ Test: phần XSS / an toàn của `td-media-picker.engines.browser-test.js` (chu
 text, URL `javascript:` / `data:` / `file:` không thành `src`, không thuộc tính `style` / `on*`), `media-url.test.js`,
 `media-picker-core.test.js` (`normalizeError`; từ v0.33 `validateRemoteUrl`, `normalizeDeleteResult`,
 `normalizeDownloadResult`, `safeFilename`, `safeLinkUrl`), test SSR PHP (`preview_src` độc → không `img`, `attrs` allowlist).
+
+**Bổ sung v0.35 — `td-cropper` + cắt ảnh trong picker / field** ([ADR 0015](decisions/0015-td-cropper.md),
+[ADR 0013 › Bổ sung v0.35](decisions/0013-media-picker-boundary.md#bổ-sung-v035), plan
+[v0.35.0](plans/v0.35.0-cropper.md) quyết định 2, 26, 28a, 29, 33):
+
+- **Không bao giờ tạo pixel** (QĐ 2): `src/form/td-cropper.js`, `src/feedback/crop-dialog.js`, `src/utils/crop-geometry.js`
+  không dùng `<canvas>`, `toBlob`, `toDataURL`, `getImageData`, `fetch(`, `createObjectURL` (guard test tĩnh trong
+  `crop-geometry.test.js`); không upload, không thuộc tính `crossorigin`. Ảnh chỉ hiển thị bằng `<img>` ⇒ không đọc
+  pixel, không cần CORS, không có bề mặt "tainted canvas" / rò rỉ ảnh khác origin. Kết quả **chỉ là số**.
+- **URL ảnh**: `src` của cropper / hộp cắt chỉ qua `safeMediaUrl` (cùng cổng picker / field), **không** `blob:` / `data:`
+  (`allowBlob` không bật), `referrerpolicy="no-referrer"`. URL sai → `image-error { kind: 'src' }`, không có `<img src>`.
+  CSP chỉ cần `img-src` cho origin ảnh.
+- **Parse chặt mọi số từ thuộc tính**: `natural-*` regex số nguyên 1–100 000; `aspect-ratio` / `crop-ratio` qua
+  `parseAspectRatio`; `crop` qua `parseCrop` (≤ 512 ký tự, khoá đúng `v,x,y,width,height`); `focal` qua `parseFocal`
+  (≤ 128 ký tự, khoá đúng `v,x,y`, 0..1); `Number.isFinite` + kẹp ở mọi đầu vào hình học. PHP `td_media_field` parse
+  `focal` cùng luật (bảng parity `FOCAL_CASES`, sai → `null` + một `E_USER_WARNING`, cảnh báo không in giá trị thô).
+- **Text-only**: `alt`, nhãn, câu live region gán bằng `textContent` / `setAttribute`; không hatch HTML mới (§2 không
+  đổi). Vị trí khung / ảnh / điểm đặt bằng CSSOM custom property `--_tdc-*` (`--_td-mf-crop-*` cho xem trước của field),
+  gỡ khi disconnect — không `style="…"`, không `<style>`.
+- **Fail closed với ảnh đã cắt sẵn** (QĐ 5, 26, 28a): biết kích thước gốc mà ảnh tải về lệch tỉ lệ > 1 % → trạng thái
+  `error` `ratio`, nút xác nhận khoá — không bao giờ ra toạ độ tính trên ảnh đã cắt. Field có adapter lấy nguồn từ
+  `adapter.get()` (`urls.preview` + `width/height`), không âm thầm dùng `preview-src`; lỗi chỉ hiện `userMessage` / nhãn.
+- **FormData** (QĐ 29): `name[crop]` không đổi (tên, JSON v1, byte gốc khi không sửa); `name[focal]` = mục thứ tư **opt-in**
+  (`focal-point`), `{"v":1,"x","y"}` hoặc `null`. State khôi phục thêm khoá `focal` (đã validate) — vẫn không URL, không
+  nhãn server.
+- **Toạ độ chỉ là UX** (QĐ 33): server **phải** validate lại crop + focal (`v`, đúng khoá, số hữu hạn 0..1,
+  `x + width ≤ 1`, `y + height ≤ 1`, độ dài), không coi crop là quyền, lưu theo chỗ dùng. Tham số biến đổi ảnh của URL
+  công khai **chỉ** do server sinh + ký từ giá trị đã lưu (preset đầu ra do server quyết) — không bao giờ nhận crop tuỳ ý
+  từ query string (CDN thành máy cắt ảnh miễn phí, cache poisoning / DoS). Trần chất lượng (OG ≥ 1200 × 630) kiểm `pixels`
+  ở server; `MIN_PX` của kit chỉ là hằng tương tác.
+- **EXIF** (QĐ 6): server chuẩn hoá hướng ảnh khi re-encode upload (đã bắt buộc ở trên); kit không đọc EXIF ở client.
+
+Test: guard tĩnh QĐ 2 (`crop-geometry.test.js`), fuzz 10 000 ca `toOutput` → luôn qua `parseCrop`, `FOCAL_CASES` parity
+JS = PHP, engines a11y (`alt` = `<img src=x onerror=…>` chỉ là text; `src` `javascript:` / `data:` / `blob:` → `image-error
+src`; không thuộc tính `style` ngoài `--_tdc-*` trên host), CSP gate state `td-cropper` + bước cắt picker.

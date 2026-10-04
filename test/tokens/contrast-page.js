@@ -15,6 +15,7 @@ import '/src/display/td-sortable.js';
 import '/src/display/td-masked-value.js';
 import '/src/display/td-table.js';
 import '/src/form/td-media-field.js';
+import '/src/form/td-cropper.js';
 import { TdMediaPicker } from '/src/feedback/td-media-picker.js';
 import { createMockAdapter } from '/test/fixtures/media-adapter.js';
 
@@ -106,6 +107,12 @@ for (const state of ['empty', 'video', 'error']) CASES.push({ kind: 'media-field
 // the list background (WCAG 1.4.11), card name + meta text, the `.td-media-picker__label` muted label, the cursor page info,
 // the footer count, the `td-pagination` "Hiển thị…" text ('pages' mode) and the upload dialog dropzone texts + badges ≥ 4.7.
 for (const v of ['cards', 'pages', 'upload']) CASES.push({ kind: 'media-picker', v, state: 'rest', pageOnly: true });
+// v0.35.0: td-cropper over the worst-case images (flat white / flat black): the frame line and the handle fill vs the
+// DIMMED image right outside the box, the handle edge (fill or dark border, whichever faces the image) and the focal ring
+// (white ring or its dark contrast line) vs the image, the keyboard focus outline vs the dimmed image — ≥ 3:1 (WCAG
+// 1.4.11); the focus ring is two-tone (light ring on the dim; corners: light ring over a dark halo) — computed colours
+// (`pairs`) composited in the page, light + dark.
+for (const state of ['light-image', 'dark-image']) CASES.push({ kind: 'cropper', v: 'frame', state, pageOnly: true });
 
 const stage = document.getElementById('stage');
 const bd = document.getElementById('backdrop');
@@ -512,6 +519,78 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       opacity: 1,
       hover: false,
       name: `media-field:${c.v}:${c.state}`,
+      pairs,
+    };
+  } else if (c.kind === 'cropper') {
+    const rgba = (str) => { const n = (String(str).match(/-?[\d.]+/g) || []).map(Number); return [n[0] || 0, n[1] || 0, n[2] || 0, n.length > 3 ? n[3] : 1]; };
+    const over = (fg, bg) => { const f = rgba(fg); const b = rgba(bg); return `rgb(${[0, 1, 2].map((i) => Math.round(f[i] * f[3] + b[i] * (1 - f[3]))).join(', ')})`; };
+    const colors = (shadow) => String(shadow).match(/rgba?\([^)]*\)|color\([^)]*\)/g) || [];
+    const light = c.state === 'light-image';
+    const image = light ? 'rgb(255, 255, 255)' : 'rgb(0, 0, 0)';
+    const host = document.createElement('td-cropper');
+    host.setAttribute('src', `/test/fixtures/flat-${light ? 'white' : 'black'}.svg`);
+    host.setAttribute('natural-width', '800');
+    host.setAttribute('natural-height', '600');
+    host.setAttribute('alt', 'Ảnh phẳng');
+    host.setAttribute('focal-point', '');
+    host.setAttribute('focal', '{"v":1,"x":0.5,"y":0.5}');
+    host.setAttribute('crop', '{"v":1,"x":0.2,"y":0.2,"width":0.6,"height":0.6}');
+    const wrap = document.createElement('div');
+    wrap.style.setProperty('width', '480px');
+    wrap.appendChild(host);
+    stage.appendChild(wrap);
+    if (host.getAttribute('data-state') !== 'ready') {
+      await new Promise((resolve, reject) => {
+        host.addEventListener('image-ready', resolve, { once: true });
+        host.addEventListener('image-error', (e) => reject(new Error(`cropper image-error ${e.detail && e.detail.kind}`)), { once: true });
+      });
+    }
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const box = host.querySelector('.td-cropper__box');
+    const bcs = getComputedStyle(box);
+    const [contrastLine, dim] = colors(bcs.boxShadow);
+    if (!dim) throw new Error(`cropper: no dim in box-shadow "${bcs.boxShadow}"`);
+    const dimmed = over(dim, image);
+    const handle = getComputedStyle(host.querySelector('.td-cropper__handle--corner'));
+    const focal = host.querySelector('.td-cropper__focal');
+    if (focal.hidden) throw new Error('cropper: focal point hidden (focal-point + focal set)');
+    const fcs = getComputedStyle(focal);
+    const [focalShadow] = colors(fcs.boxShadow);
+    box.focus();
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const focus = getComputedStyle(box);
+    if (focus.outlineStyle === 'none') throw new Error('cropper: no focus outline on the box after focus()');
+    const focusColor = focus.outlineColor;
+    const corner = host.querySelector('.td-cropper__handle--corner');
+    corner.focus();
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const ccs = getComputedStyle(corner);
+    const [halo] = colors(ccs.boxShadow);
+    if (ccs.outlineStyle === 'none' || !halo) throw new Error(`cropper: corner focus ring "${ccs.outlineStyle}" / halo "${ccs.boxShadow}"`);
+    const pairs = [
+      { what: 'frame line vs dimmed image', fg: bcs.borderTopColor, bg: dimmed },
+      { what: 'handle fill vs dimmed image', fg: handle.backgroundColor, bg: dimmed },
+      light
+        ? { what: 'handle border vs image', fg: over(handle.borderTopColor, handle.backgroundColor), bg: image }
+        : { what: 'handle fill vs image', fg: handle.backgroundColor, bg: image },
+      light
+        ? { what: 'focal contrast line vs image', fg: focalShadow || 'rgba(0, 0, 0, 0)', bg: image }
+        : { what: 'focal ring vs image', fg: fcs.borderTopColor, bg: image },
+      { what: 'box focus ring vs dimmed image', fg: focusColor, bg: dimmed },
+      // two-tone corner ring: the light ring vs its dark halo over the image (one of the two contrasts with any image)
+      { what: 'corner focus ring vs its halo on the image', fg: ccs.outlineColor, bg: over(halo, image) },
+      light
+        ? { what: 'corner focus halo vs image', fg: halo, bg: image }
+        : { what: 'corner focus ring vs image', fg: ccs.outlineColor, bg: image },
+    ];
+    if (contrastLine && light) pairs.push({ what: 'frame contrast line vs image', fg: contrastLine, bg: image });
+    const r0 = box.getBoundingClientRect();
+    return {
+      rect: { x: r0.x, y: r0.y, width: r0.width, height: r0.height },
+      ink: {},
+      opacity: 1,
+      hover: false,
+      name: `cropper:${c.v}:${c.state}`,
       pairs,
     };
   } else if (c.kind === 'media-picker') {

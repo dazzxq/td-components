@@ -15,6 +15,7 @@ const RATIO_ONE = new RegExp(`^${NUM}$`);
 const RATIO_MAX = 10000;
 const CROP_MAX_LEN = 512;
 const CROP_EPS = 1e-6;
+const FOCAL_MAX_LEN = 128;
 const STATE_MAX_LEN = 16384;
 const ALT_MAX = 500;
 const ID_MAX = 512;
@@ -66,6 +67,101 @@ export function parseCrop(str) {
 }
 
 /**
+ * v0.35 (decision 29) — `focal` attribute / `name[focal]` → `{ raw, focal }` (raw = the exact string, submitted as is), or
+ * null (absent / "null" / invalid). Exactly `{"v":1,"x","y"}` with finite numbers in [0, 1]; at most 128 characters.
+ * @param {unknown} str
+ * @returns {{ raw: string, focal: { x: number, y: number } } | null}
+ */
+export function parseFocal(str) {
+  if (typeof str !== 'string' || !str || str.length > FOCAL_MAX_LEN) return null;
+  let o;
+  try { o = JSON.parse(str); } catch { return null; }
+  if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
+  if (Object.keys(o).sort().join(',') !== 'v,x,y' || o.v !== 1) return null;
+  const { x, y } = o;
+  if (![x, y].every((n) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 1)) return null;
+  return { raw: str, focal: { x, y } };
+}
+
+const q6 = (v) => Math.round(v * 1e6) / 1e6;
+
+/**
+ * v0.35 (decision 29) — the crop string the CROP UI writes (picker crop step, dialog "Áp dụng"): keys `v,x,y,width,height`,
+ * values quantised to 6 decimals, `x + width ≤ 1` kept. Always passes `parseCrop` (else null). Never used by
+ * `setSelection()` / attribute paths (those keep v0.34 semantics, review R1 #5).
+ * @param {{ x: number, y: number, width: number, height: number }|null|undefined} n
+ * @returns {string|null}
+ */
+export function serializeCrop(n) {
+  if (!n || ![n.x, n.y, n.width, n.height].every((v) => typeof v === 'number' && Number.isFinite(v))) return null;
+  const fit = (a, size) => {
+    let s = size;
+    if (a + s > 1) s = q6(1 - a);
+    for (let i = 0; i < 10 && a + s > 1; i++) s = q6(s - 1e-6);
+    return s;
+  };
+  const x = Math.max(0, q6(n.x));
+  const y = Math.max(0, q6(n.y));
+  const out = JSON.stringify({ v: 1, x, y, width: fit(x, q6(n.width)), height: fit(y, q6(n.height)) });
+  return parseCrop(out) ? out : null;
+}
+
+/**
+ * v0.35 — the focal string the crop UI writes: `{"v":1,"x","y"}`, 6 decimals, clamped to [0, 1]; invalid ⇒ null.
+ * @param {{ x: number, y: number }|null|undefined} p
+ * @returns {string|null}
+ */
+export function serializeFocal(p) {
+  if (!p || ![p.x, p.y].every((v) => typeof v === 'number' && Number.isFinite(v))) return null;
+  const c = (v) => Math.min(1, Math.max(0, q6(v)));
+  const out = JSON.stringify({ v: 1, x: c(p.x), y: c(p.y) });
+  return parseFocal(out) ? out : null;
+}
+
+/** v0.35 review R1 #5 — the PUBLIC crop ratio range (w / h), boundaries included: picker `crop.aspectRatio`, field
+ * `crop-ratio`, PHP `crop_ratio`, `<td-cropper aspect-ratio>`. Outside ⇒ rejected with one bounded warning. */
+export const CROP_RATIO_MIN = 0.01;
+export const CROP_RATIO_MAX = 100;
+
+/** @param {unknown} r @returns {boolean} a finite number in [0.01, 100] */
+export function cropRatioInRange(r) {
+  return typeof r === 'number' && Number.isFinite(r) && r >= CROP_RATIO_MIN && r <= CROP_RATIO_MAX;
+}
+
+/**
+ * v0.35 (decision 27) — `crop-ratio` attribute: `free` (any case) ⇒ `'free'`; a ratio (`parseAspectRatio` rules) whose
+ * `w / h` is in [0.01, 100] ⇒ that number; absent / invalid / out of range ⇒ null (the field warns, then falls back to
+ * `aspect-ratio`, then free).
+ * @param {unknown} str
+ * @returns {number|'free'|null}
+ */
+export function parseCropRatio(str) {
+  if (typeof str !== 'string') return null;
+  if (str.trim().toLowerCase() === 'free') return 'free';
+  const r = parseAspectRatio(str);
+  return r && cropRatioInRange(r.w / r.h) ? r.w / r.h : null;
+}
+
+/**
+ * v0.35 (decision 30) — crop preview of the field frame: when the crop's PIXEL ratio (`width·W / height·H`) is within 2 %
+ * of the frame ratio, the unitless CSSOM values `{ x, y, w, h }` (= the normalised crop) the `<img>` uses to show exactly
+ * the cropped area; otherwise null (plain `object-fit: cover`).
+ * @param {{ x: number, y: number, width: number, height: number }|null|undefined} crop normalised
+ * @param {{ W: number, H: number, frameRatio: number|null|undefined }} o natural size + frame ratio (w / h)
+ * @returns {{ x: number, y: number, w: number, h: number } | null}
+ */
+export function cropPreviewVars(crop, o) {
+  if (!crop || !o) return null;
+  const { W, H, frameRatio } = o;
+  if (![W, H, frameRatio].every((v) => typeof v === 'number' && Number.isFinite(v) && v > 0)) return null;
+  if (![crop.x, crop.y, crop.width, crop.height].every((v) => typeof v === 'number' && Number.isFinite(v))) return null;
+  if (crop.width <= 0 || crop.height <= 0) return null;
+  const r = (crop.width * W) / (crop.height * H);
+  if (Math.abs(r / frameRatio - 1) > 0.02) return null;
+  return { x: crop.x, y: crop.y, w: crop.width, h: crop.height };
+}
+
+/**
  * `accept-kind` (a comma / space list, or an array) → the valid kinds, unique, in order; none → `['image']`.
  * @param {unknown} v
  * @returns {Array<'image'|'video'|'file'>}
@@ -83,40 +179,51 @@ export function parseKinds(v) {
 /**
  * The FormData entries of a field (decision 24) — the public form shape.
  * Reference (default): `[[name, id]]` (empty id → `name=`, the server reads "cleared").
- * Usage: always `name[id]`, `name[alt]`, `name[crop]` (crop = the validated attribute string, or `null`).
+ * Usage: always `name[id]`, `name[alt]`, `name[crop]` (crop = the validated attribute string, or `null`); v0.35
+ * `opts.focal` (the `focal-point` attribute, opt-in) adds a fourth `name[focal]` (validated string, or `null`).
  * No name, or usage + a name ending in `[]` (would mis-group entries) → null (nothing submitted).
  * @param {string|null|undefined} name
- * @param {{ id?: string, alt?: string, cropRaw?: string|null }} value
+ * @param {{ id?: string, alt?: string, cropRaw?: string|null, focalRaw?: string|null }} value
  * @param {boolean} usage
+ * @param {{ focal?: boolean }} [opts]
  * @returns {Array<[string, string]> | null}
  */
-export function fieldEntries(name, value, usage) {
+export function fieldEntries(name, value, usage, opts) {
   if (typeof name !== 'string' || !name) return null;
   const id = typeof value?.id === 'string' ? value.id : '';
   if (!usage) return [[name, id]];
   if (name.endsWith('[]')) return null;
   const alt = typeof value?.alt === 'string' ? value.alt : '';
   const crop = typeof value?.cropRaw === 'string' && value.cropRaw ? value.cropRaw : 'null';
-  return [[`${name}[id]`, id], [`${name}[alt]`, alt], [`${name}[crop]`, crop]];
+  const out = [[`${name}[id]`, id], [`${name}[alt]`, alt], [`${name}[crop]`, crop]];
+  if (opts?.focal) {
+    const focal = typeof value?.focalRaw === 'string' && value.focalRaw ? value.focalRaw : 'null';
+    out.push([`${name}[focal]`, focal]);
+  }
+  return /** @type {Array<[string, string]>} */ (out);
 }
 
 /**
- * Restore state (setFormValue 2nd argument) — review SEC-1: ONLY `{"v":1,"id","alt","crop"}` (the asset id, the alt the
- * user typed, the validated crop). Never a preview URL (signed / tokenised) nor a server label: the browser may persist
+ * Restore state (setFormValue 2nd argument) — review SEC-1: ONLY `{"v":1,"id","alt","crop","focal"}` (the asset id, the
+ * alt the user typed, the validated crop, v0.35 the validated focal). Never a preview URL (signed / tokenised) nor a server label: the browser may persist
  * this state (bfcache, session restore); the preview is fetched again with `adapter.get(id)` under the current session.
- * @param {{ id: string, alt: string, cropRaw: string|null }} s extra keys (e.g. `preview`) are ignored
+ * @param {{ id: string, alt: string, cropRaw: string|null, focalRaw?: string|null }} s extra keys (e.g. `preview`) are
+ *   ignored
  * @returns {string}
  */
 export function encodeState(s) {
   const crop = typeof s.cropRaw === 'string' ? parseCrop(s.cropRaw) : null;
-  return JSON.stringify({ v: 1, id: String(s.id ?? ''), alt: String(s.alt ?? ''), crop: crop ? crop.raw : null });
+  const focal = typeof s.focalRaw === 'string' ? parseFocal(s.focalRaw) : null;
+  return JSON.stringify({
+    v: 1, id: String(s.id ?? ''), alt: String(s.alt ?? ''), crop: crop ? crop.raw : null, focal: focal ? focal.raw : null,
+  });
 }
 
 /**
- * Parse a restore state; only `v === 1`. Anything but id / alt / crop (an old or forged `preview`) is ignored; an invalid
- * crop → null.
+ * Parse a restore state; only `v === 1`. Anything but id / alt / crop / focal (an old or forged `preview`) is ignored; an
+ * invalid crop / focal → null; a missing `focal` (state written before v0.35) → null.
  * @param {unknown} str
- * @returns {{ id: string, alt: string, cropRaw: string|null } | null}
+ * @returns {{ id: string, alt: string, cropRaw: string|null, focalRaw: string|null } | null}
  */
 export function decodeState(str) {
   if (typeof str !== 'string' || str.length > STATE_MAX_LEN) return null;
@@ -125,7 +232,10 @@ export function decodeState(str) {
   if (!o || typeof o !== 'object' || Array.isArray(o) || o.v !== 1) return null;
   if (typeof o.id !== 'string' || o.id.length > ID_MAX || typeof o.alt !== 'string') return null;
   const crop = typeof o.crop === 'string' ? parseCrop(o.crop) : null;
-  return { id: o.id, alt: [...o.alt].slice(0, ALT_MAX).join(''), cropRaw: crop ? crop.raw : null };
+  const focal = typeof o.focal === 'string' ? parseFocal(o.focal) : null;
+  return {
+    id: o.id, alt: [...o.alt].slice(0, ALT_MAX).join(''), cropRaw: crop ? crop.raw : null, focalRaw: focal ? focal.raw : null,
+  };
 }
 
 /** Parity table (JS + PHP): [input, expected parseAspectRatio()]. */
@@ -154,4 +264,36 @@ export const CROP_CASES = Object.freeze([
   ['{"v":1,"x":"0","y":0,"width":0.5,"height":0.5}', false],
   ['{v:1}', false],
   ['null', false],
+]);
+
+/** v0.35 parity table (JS + PHP): [focal string, valid?]. */
+export const FOCAL_CASES = Object.freeze([
+  ['{"v":1,"x":0.5,"y":0.5}', true],
+  ['{"v":1,"x":0,"y":1}', true],
+  ['{"v":1,"x":0.123456,"y":0.654321}', true],
+  ['{"v":1,"x":1.1,"y":0.5}', false],
+  ['{"v":1,"x":-0.1,"y":0.5}', false],
+  ['{"x":0.5,"y":0.5}', false],
+  ['{"v":2,"x":0.5,"y":0.5}', false],
+  ['{"v":1,"x":0.5,"y":0.5,"z":1}', false],
+  ['{"v":1,"x":"0.5","y":0.5}', false],
+  ['{"v":1,"x":0.5}', false],
+  ['[0.5,0.5]', false],
+  ['null', false],
+  ['', false],
+]);
+
+/** v0.35 review R1 #5 parity table (JS + PHP): [crop-ratio string, parseCropRatio()]. */
+export const CROP_RATIO_CASES = Object.freeze([
+  ['free', 'free'],
+  ['0.01', 0.01],
+  ['1:100', 0.01],
+  ['100', 100],
+  ['100/1', 100],
+  ['16:9', 16 / 9],
+  ['0.0099', null],
+  ['100.01', null],
+  ['1:101', null],
+  ['101/1', null],
+  ['10000/1', null],
 ]);

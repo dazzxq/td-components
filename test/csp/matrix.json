@@ -40,7 +40,8 @@
       "td-sortable": "/src/display/td-sortable.js",
       "td-masked-value": "/src/display/td-masked-value.js",
       "td-media-picker": "/src/feedback/td-media-picker.js",
-      "td-media-field": "/src/form/td-media-field.js"
+      "td-media-field": "/src/form/td-media-field.js",
+      "td-cropper": "/src/form/td-cropper.js"
     },
     "tokenNative": [
       "td-button",
@@ -81,7 +82,8 @@
       "td-sortable",
       "td-masked-value",
       "td-media-picker",
-      "td-media-field"
+      "td-media-field",
+      "td-cropper"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -3104,6 +3106,40 @@
       ],
       "settle": 600,
       "selectorNote": "list error + retry"
+    },
+    {
+      "state": "crop-step",
+      "setup": "const { createMockAdapter, assetFields } = await import('/test/fixtures/media-adapter.js'); const w = (ms) => new Promise((r) => setTimeout(r, ms)); const R = () => document.querySelector('body > .td-media-picker'); const U = () => document.querySelector('body > .td-media-picker-upload'); TdMediaPicker.open({ adapter: createMockAdapter({ count: 12 }), selection: { mode: 'single', kinds: ['image'] }, crop: { enabled: true, aspectRatio: 1.91, allowFocalPoint: true } }); await w(300); R().querySelector('[data-id=\"m12\"] [data-td-media-open]').click(); await w(300); R().querySelector('.td-media-picker__confirm').click(); await w(500);",
+      "selectors": [
+        ".td-crop-dialog",
+        ".td-crop-dialog__dialog",
+        ".td-crop-dialog .td-modal__header",
+        ".td-crop-dialog__body",
+        ".td-crop-dialog__footer",
+        ".td-crop-dialog__cancel",
+        ".td-crop-dialog__confirm",
+        ".td-crop-dialog td-cropper",
+        ".td-crop-dialog .td-cropper__stage",
+        ".td-crop-dialog .td-cropper__box",
+        ".td-crop-dialog .td-cropper__handle--corner",
+        ".td-crop-dialog .td-cropper__focal"
+      ],
+      "portal": [
+        ".td-crop-dialog",
+        ".td-crop-dialog__dialog",
+        ".td-crop-dialog .td-modal__header",
+        ".td-crop-dialog__body",
+        ".td-crop-dialog__footer",
+        ".td-crop-dialog__cancel",
+        ".td-crop-dialog__confirm",
+        ".td-crop-dialog td-cropper",
+        ".td-crop-dialog .td-cropper__stage",
+        ".td-crop-dialog .td-cropper__box",
+        ".td-crop-dialog .td-cropper__handle--corner",
+        ".td-crop-dialog .td-cropper__focal"
+      ],
+      "settle": 600,
+      "selectorNote": "v0.35: crop step (nested td-crop-dialog over the picker), locked 1.91:1, focal tool; footer Quay lại / Chèn"
     }
   ],
   "td-media-field": [
@@ -3249,6 +3285,101 @@
       ],
       "settle": 200,
       "selectorNote": "php/td.php td_media_field (media-field@1), hydrated in place under the strict CSP"
+    },
+    {
+      "state": "croppable",
+      "markup": "<td-media-field name=\"og\" label=\"Ảnh chia sẻ\" usage croppable focal-point aspect-ratio=\"3/2\" value=\"m1\" preview-src=\"/test/fixtures/1.svg\" crop='{\"v\":1,\"x\":0.25,\"y\":0.25,\"width\":0.5,\"height\":0.5}'></td-media-field>",
+      "selectors": [
+        ".td-media-field",
+        ".td-media-field__frame",
+        ".td-media-field__img",
+        ".td-media-field__actions",
+        ".td-media-field__replace",
+        ".td-media-field__crop-btn",
+        ".td-media-field__remove"
+      ],
+      "settle": 400,
+      "selectorNote": "v0.35: croppable usage field — Cắt ảnh button, crop preview via --_td-mf-crop-* on the img"
+    }
+  ],
+  "td-cropper": [
+    {
+      "state": "free",
+      "markup": "<td-cropper src=\"/test/fixtures/crop-16x9.svg\" natural-width=\"1600\" natural-height=\"900\" alt=\"Ảnh mẫu 16:9\"></td-cropper>",
+      "selectors": [
+        "td-cropper",
+        ".td-cropper__toolbar",
+        ".td-cropper__ratios",
+        ".td-cropper__ratio[aria-checked=\"true\"]",
+        ".td-cropper__ratio[aria-checked=\"false\"]",
+        ".td-cropper__tools",
+        ".td-cropper__zoom-out",
+        ".td-cropper__zoom-in",
+        ".td-cropper__focal-toggle",
+        ".td-cropper__reset",
+        ".td-cropper__stage",
+        ".td-cropper__area",
+        ".td-cropper__img",
+        ".td-cropper__box",
+        ".td-cropper__handle--corner",
+        ".td-cropper__handle--edge",
+        ".td-cropper__focal",
+        ".td-cropper__message"
+      ],
+      "settle": 400,
+      "selectorNote": "v0.35: free crop (presets shown), whole image box, 8 handles; geometry via --_tdc-* CSSOM on the host"
+    },
+    {
+      "state": "locked-focal",
+      "markup": "<td-cropper src=\"/test/fixtures/crop-16x9.svg\" natural-width=\"1600\" natural-height=\"900\" alt=\"Ảnh mẫu 16:9\" aspect-ratio=\"1.91\" focal-point focal='{\"v\":1,\"x\":0.3,\"y\":0.4}'></td-cropper>",
+      "selectors": [
+        "td-cropper",
+        ".td-cropper__toolbar",
+        ".td-cropper__ratios",
+        ".td-cropper__ratio[aria-checked=\"true\"]",
+        ".td-cropper__ratio[aria-checked=\"false\"]",
+        ".td-cropper__tools",
+        ".td-cropper__zoom-out",
+        ".td-cropper__zoom-in",
+        ".td-cropper__focal-toggle",
+        ".td-cropper__reset",
+        ".td-cropper__stage",
+        ".td-cropper__area",
+        ".td-cropper__img",
+        ".td-cropper__box",
+        ".td-cropper__handle--corner",
+        ".td-cropper__handle--edge",
+        ".td-cropper__focal",
+        ".td-cropper__message"
+      ],
+      "settle": 400,
+      "selectorNote": "v0.35: locked 1.91:1 (ratio group hidden, corners only), focal point on"
+    },
+    {
+      "state": "loading",
+      "markup": "<td-cropper alt=\"Chưa có ảnh\"></td-cropper>",
+      "selectors": [
+        "td-cropper",
+        ".td-cropper__toolbar",
+        ".td-cropper__stage",
+        ".td-cropper__box",
+        ".td-cropper__message"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.35: no src yet — loading, not interactive"
+    },
+    {
+      "state": "error",
+      "markup": "<td-cropper src=\"/test/fixtures/crop-16x9.svg\" natural-width=\"1000\" natural-height=\"1000\" alt=\"Ảnh lệch tỉ lệ\"></td-cropper>",
+      "selectors": [
+        "td-cropper",
+        ".td-cropper__toolbar",
+        ".td-cropper__stage",
+        ".td-cropper__box",
+        ".td-cropper__message"
+      ],
+      "settle": 400,
+      "selectorNote": "v0.35: natural-* 1:1 vs a 16:9 image ⇒ error ratio (fail closed)"
     }
   ]
 }

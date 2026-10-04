@@ -9,11 +9,12 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { HAS_PHP, PHP_BIN, ROOT } from './php.mjs';
 import { MEDIA_FIELD_FIXTURES, MEDIA_FIELD_FIXTURE_FILE, renderMediaFieldFixture } from '../ssr/ssr.mjs';
-import { ASPECT_CASES, CROP_CASES, parseKinds } from '../../src/utils/media-field-model.js';
+import { ASPECT_CASES, CROP_CASES, FOCAL_CASES, CROP_RATIO_CASES, parseKinds, parseFocal, parseCropRatio } from '../../src/utils/media-field-model.js';
 
 if (!HAS_PHP && process.env.TD_REQUIRE_PHP) throw new Error('TD_REQUIRE_PHP=1 but no php >= 8.0 CLI on PATH');
 const opts = { skip: !HAS_PHP && 'php >= 8.0 CLI not found' };
@@ -236,6 +237,107 @@ describe('php/td.php — td_media_field (v0.32.0, contract media-field@1)', opts
     const alt = /class="td-field__control td-media-field__alt"[^>]* value="([^"]*)"/.exec(html) || /td-media-field__alt[^>]*value="([^"]*)"/.exec(html);
     assert.ok(alt, html);
     assert.equal([...alt[1]].length, 500);
+  });
+
+  test('v0.35 golden: every v0.34 fixture case prints byte-identical markup (sha256 of the case HTML)', () => {
+    // computed from test/ssr/fixtures/media-field.html at v0.34.0 (0702b2e) — the v0.35 options are opt-in
+    const GOLDEN = {
+      free: 'f3ef18fb75acc155', 'ref-empty': 'edd2210dbc201da5', 'ref-filled': 'af82cdbc7389d620', 'usage-full': '5e8701d63d865fa5',
+      'usage-empty': '243892c3e54bc710', contain: '7042fe109a6f3aa2', video: '6e7eaf8218c2dbdb', file: '9f1241032c04ff3d',
+      disabled: '53633ad6a40820bd', 'required-error': '0a2429bd5a177e61', 'unsafe-src': '2fac2b22a3163944',
+      'array-usage': 'b19ed352800479ff', attrs: 'ee523e9f1292784c', xss: '9b16273f56f87cd6',
+    };
+    const html = readFileSync(MEDIA_FIELD_FIXTURE_FILE, 'utf8');
+    const got = {};
+    for (const m of html.matchAll(/<form class="ssr-case" data-case="([^"]+)"[^>]*>(.*)<\/form>\n/g)) {
+      got[m[1]] = createHash('sha256').update(m[2]).digest('hex').slice(0, 16);
+    }
+    for (const [id, h] of Object.entries(GOLDEN)) assert.equal(got[id], h, id);
+  });
+
+  test('v0.35 focal parity with parseFocal() (FOCAL_CASES): valid JSON v1 printed + submitted as is; invalid → null + one warning', () => {
+    const out = run(FOCAL_CASES.map(([input]) => ['f', 'm1', { usage: true, focal_point: true, focal: input }]));
+    FOCAL_CASES.forEach(([input, valid], i) => {
+      assert.equal(!!parseFocal(input), valid, `JS ${input}`);
+      const { html, warns } = out[i];
+      assert.equal(hostAttr(html, 'focal'), valid ? esc(input) : null, input);
+      assert.ok(html.includes(`<input type="hidden" class="td-media-field__focal" name="f[focal]" value="${valid ? esc(input) : 'null'}">`), input);
+      assert.equal(warns, valid || input === 'null' || input === '' ? 0 : 1, input);
+    });
+  });
+
+  test('v0.35 focal as an array → JSON v1; out of range / extra key / non-number → null + one warning', () => {
+    const out = run([
+      ['f', 'm1', { usage: true, focal_point: true, focal: { x: 0.25, y: 1 } }],
+      ['f', 'm1', { usage: true, focal_point: true, focal: { x: 1.5, y: 0 } }],
+      ['f', 'm1', { usage: true, focal_point: true, focal: { x: 0, y: 0, z: 1 } }],
+      ['f', 'm1', { usage: true, focal_point: true, focal: { x: '0', y: 0 } }],
+      ['f', 'm1', { usage: true, focal_point: true }],
+    ]);
+    assert.equal(hostAttr(out[0].html, 'focal'), esc('{"v":1,"x":0.25,"y":1}'));
+    assert.deepEqual(out.map((r) => r.warns), [0, 1, 1, 1, 0]);
+    for (const r of out.slice(1)) assert.ok(r.html.includes('name="f[focal]" value="null"'), r.html);
+  });
+
+  test('v0.35 FormData order id, alt, crop, focal; without focal_point exactly the v0.34 three entries (focal attr kept)', () => {
+    const [withF, without] = run([
+      ['o', 'm2', { usage: true, focal_point: true, focal: '{"v":1,"x":0.5,"y":0.5}', alt: 'A' }],
+      ['o', 'm2', { usage: true, focal: '{"v":1,"x":0.5,"y":0.5}', alt: 'A' }],
+    ]);
+    const names = (html) => [...html.matchAll(/<input[^>]* name="([^"]*)"/g)].map((m) => m[1]);
+    assert.deepEqual(names(withF.html), ['o[id]', 'o[alt]', 'o[crop]', 'o[focal]']);
+    assert.deepEqual(names(without.html), ['o[id]', 'o[alt]', 'o[crop]']);
+    assert.equal(hostAttr(withF.html, 'focal-point'), true);
+    assert.equal(hostAttr(without.html, 'focal-point'), null);
+  });
+
+  test('v0.35 croppable: "Cắt ảnh" between Đổi and Gỡ + the status region; hidden unless an image with preview_src; disabled', () => {
+    const [shown, noSrc, empty, video, dis, plain] = run([
+      ['c', 'm1', { usage: true, croppable: true, preview_src: '/a.jpg' }],
+      ['c', 'm1', { usage: true, croppable: true }],
+      ['c', null, { usage: true, croppable: true }],
+      ['c', 'm4', { usage: true, croppable: true, kind: 'video', preview_src: '/a.jpg' }],
+      ['c', 'm1', { usage: true, croppable: true, preview_src: '/a.jpg', disabled: true }],
+      ['c', 'm1', { usage: true, preview_src: '/a.jpg' }],
+    ]).map((r) => r.html);
+    const btn = '<button type="button" class="td-btn td-btn--secondary td-btn--sm td-media-field__crop-btn" aria-haspopup="dialog"';
+    assert.ok(shown.includes(`aria-haspopup="dialog">Đổi ảnh</button>${btn}>Cắt ảnh</button><button type="button" class="td-btn td-btn--ghost td-btn--sm td-media-field__remove">Gỡ</button></div><span class="td-media-field__status" role="status"></span>`), shown);
+    assert.equal(hostAttr(shown, 'croppable'), true);
+    for (const h of [noSrc, empty, video]) assert.ok(h.includes(`${btn} hidden>Cắt ảnh</button>`), h);
+    assert.ok(dis.includes(`${btn} disabled>Cắt ảnh</button>`), dis);
+    assert.ok(!plain.includes('crop-btn') && !plain.includes('td-media-field__status') && hostAttr(plain, 'croppable') === null, plain);
+  });
+
+  test('v0.35 crop_ratio parity with parseCropRatio(): free / ratios printed as given; invalid → dropped + one warning', () => {
+    // review R1 #5: + the [0.01, 100] boundaries of the shared table
+    const inputs = ['free', ' FREE ', '16:9', '1.91', '3/2', 'abc', '0', '1e9', '', ...CROP_RATIO_CASES.map(([i]) => i)];
+    const out = run(inputs.map((r) => ['r', 'm1', { usage: true, croppable: true, crop_ratio: r }]));
+    inputs.forEach((input, i) => {
+      const valid = parseCropRatio(input) !== null;
+      assert.equal(hostAttr(out[i].html, 'crop-ratio'), valid ? esc(input) : null, input);
+      assert.equal(out[i].warns, valid || input === '' ? 0 : 1, input);
+    });
+  });
+
+  test('v0.35 without usage: croppable / crop_ratio / focal_point / focal dropped (no button, no focal input) + ONE warning', () => {
+    const [a, b, c] = run([
+      ['n', 'm1', { croppable: true, focal_point: true, focal: { x: 0.5, y: 0.5 }, crop_ratio: '3/2', preview_src: '/a.jpg' }],
+      ['n', 'm1', { focal_point: true }],
+      ['n', 'm1', { croppable: false, focal_point: false, crop_ratio: '', focal: null }],
+    ]);
+    assert.equal(a.warns, 1);
+    assert.equal(b.warns, 1);
+    assert.equal(c.warns, 0);
+    for (const r of [a, b, c]) {
+      assert.ok(!/crop-btn|td-media-field__focal|td-media-field__status|croppable|focal|crop-ratio/.test(r.html), r.html);
+      assert.ok(r.html.includes('<input type="hidden" class="td-media-field__value" name="n" value="m1">'), r.html);
+    }
+  });
+
+  test('v0.35 owned names reserved in attrs: croppable / crop-ratio / focal-point / focal', () => {
+    const { html } = one('a', 'm1', { attrs: { croppable: '', 'crop-ratio': '1', 'focal-point': '', focal: 'x', title: 't' } });
+    assert.ok(!/croppable|crop-ratio|focal/.test(html), html);
+    assert.equal(hostAttr(html, 'title'), 't');
   });
 
   test('impl review #5: $assetId accepts only string / int; float / bool / array → ignored + one bounded warning, never coerced', () => {

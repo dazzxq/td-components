@@ -65,7 +65,10 @@ note.prepend(tdIcon('info', { size: 'l', label: 'Thông tin' })); // icon có ng
 | `log-out` | log-out | | `menu` | menu |
 | `rotate-cw` | rotate-cw | | `grip` | grip-vertical |
 | `video` | video | | `file` | file |
-| `filter` | sliders-horizontal | | | |
+| `filter` | sliders-horizontal | | `crop` | crop |
+| `crosshair` | crosshair | | `rotate-ccw` | rotate-ccw |
+
+`crop`, `crosshair`, `rotate-ccw` (0.35.0): toolbar của [cropper](cropper.md) (điểm trọng tâm, đặt lại).
 
 `grip` (0.31.0): tay nắm kéo của [sortable](sortable.md) và repeater `sortable`.
 

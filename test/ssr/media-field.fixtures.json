@@ -29,6 +29,14 @@
     { "id": "attrs", "args": ["att", null, { "id": "mf-att", "class": "a b", "attrs": { "data-x": "1", "onclick": "alert(1)", "style": "color:red", "value": "evil", "Label": "evil", "data-td-z": "1", "title": "Gợi ý" } }],
       "expect": { "value": "", "entries": [["att", ""]], "hostId": "mf-att" }, "dropOnHost": ["onclick", "style", "data-td-z"] },
     { "id": "xss", "args": ["x\"y", "id\"<1>", { "label": "<img src=x onerror=alert(1)>", "prompt": "<b>p</b>", "helper_text": "<i>h</i>", "preview_alt": "<script>alert(1)</script>" }],
-      "expect": { "value": "id\"<1>", "entries": [["x\"y", "id\"<1>"]] } }
+      "expect": { "value": "id\"<1>", "entries": [["x\"y", "id\"<1>"]] } },
+    { "id": "crop-focal", "args": ["ogc", "m2", { "label": "Ảnh OG (cắt)", "usage": true, "croppable": true, "focal_point": true, "aspect_ratio": "3/2", "alt": "Có crop", "crop": { "x": 0.25, "y": 0.25, "width": 0.5, "height": 0.5 }, "focal": { "x": 0.25, "y": 0.75 }, "preview_src": "/test/fixtures/2.svg", "preview_alt": "Ảnh 2" }],
+      "expect": { "value": "m2", "v035": true, "entries": [["ogc[id]", "m2"], ["ogc[alt]", "Có crop"], ["ogc[crop]", "{\"v\":1,\"x\":0.25,\"y\":0.25,\"width\":0.5,\"height\":0.5}"], ["ogc[focal]", "{\"v\":1,\"x\":0.25,\"y\":0.75}"]], "cropBtn": "shown", "focal": { "x": 0.25, "y": 0.75 } } },
+    { "id": "crop-free", "args": ["ogf", "m1", { "label": "Cắt tự do (không adapter)", "usage": true, "croppable": true, "crop_ratio": "free", "preview_src": "/test/fixtures/1.svg" }],
+      "expect": { "value": "m1", "v035": true, "entries": [["ogf[id]", "m1"], ["ogf[alt]", ""], ["ogf[crop]", "null"]], "cropBtn": "shown" } },
+    { "id": "crop-empty", "args": ["oge", null, { "label": "Cắt — trống", "usage": true, "croppable": true, "focal_point": true, "crop_ratio": "16:9" }],
+      "expect": { "value": "", "v035": true, "entries": [["oge[id]", ""], ["oge[alt]", ""], ["oge[crop]", "null"], ["oge[focal]", "null"]], "cropBtn": "hidden" } },
+    { "id": "crop-no-usage", "args": ["nu", "m1", { "label": "Cắt không usage", "croppable": true, "focal_point": true, "focal": { "x": 0.5, "y": 0.5 }, "preview_src": "/test/fixtures/1.svg" }], "warns": 1,
+      "expect": { "value": "m1", "v035": true, "entries": [["nu", "m1"]], "cropBtn": "none" } }
   ]
 }

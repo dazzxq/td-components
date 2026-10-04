@@ -179,3 +179,25 @@ export const PagesPagination = {
     wire(canvasElement, 'mp-pages', () => ({ adapter, pagination: 'pages', pageSize: 12, selection: { mode: 'multiple' } }));
   },
 };
+
+/**
+ * v0.35 crop step: `crop: { enabled: true, aspectRatio: 3 / 2, allowFocalPoint: true }` (like dcms2 `post-avatar-thumb`).
+ * "Chèn" on an image opens "Cắt ảnh · 3:2" over the picker; "Quay lại" returns to the picker, "Chèn" resolves with
+ * `usage.crop` (coordinates only — `normalized` + `pixels` when the asset has width / height) + `usage.focalPoint`.
+ * Video / file → finishes at once (crop null).
+ */
+export const CropStep = {
+  name: 'Bước cắt ảnh (crop 3:2)',
+  render: () => frame('mp-crop', 'Chọn + cắt ảnh 3:2'),
+  play: ({ canvasElement }) => {
+    const adapter = mock();
+    const out = canvasElement.querySelector('#mp-crop-out');
+    canvasElement.querySelector('#mp-crop').addEventListener('click', async () => {
+      const Picker = customElements.get('td-media-picker');
+      const o = await Picker.open({ adapter, crop: { enabled: true, aspectRatio: 3 / 2, allowFocalPoint: true } });
+      out.textContent = JSON.stringify(o.status === 'selected'
+        ? o.selection.map((s) => ({ assetId: s.assetId, crop: s.usage.crop, focalPoint: s.usage.focalPoint }))
+        : o, null, 2);
+    });
+  },
+};
