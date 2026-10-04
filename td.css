@@ -9787,11 +9787,15 @@
 		overflow: hidden;
 	}
 
-	/* --- toolbar (decision 7): upload · search · [facets · pager →]; wraps instead of overflowing --- */
+	/*
+	 * --- toolbar (decision 7): upload · search · [facets · pager →] ---
+	 * ≥ 768px: ONE row like dcms2, never wraps (impl review #3); facets that do not fit scroll horizontally INSIDE the
+	 * row (.td-media-picker__facets is the scroller). < 768px: wraps to two rows (media query below).
+	 */
 	.td-media-picker__toolbar {
 		display: flex;
 		flex: 0 0 auto;
-		flex-wrap: wrap;
+		flex-wrap: nowrap;
 		gap: var(--td-media-picker-gap);
 		align-items: center;
 		min-width: 0;
@@ -9808,26 +9812,38 @@
 		max-width: 600px;
 	}
 
+	/* basis = its content (facets + pager): when the row is short it shrinks (the facet scroller gives way) while the
+	   search keeps its 200px minimum; spare room is shared, the search stops at 600px */
 	.td-media-picker__filters {
 		display: flex;
 		flex: 1 1 auto;
-		flex-wrap: wrap;
+		flex-wrap: nowrap;
 		gap: var(--td-media-picker-gap);
 		align-items: center;
 		min-width: 0;
 	}
 
+	/* the horizontal scroller: padding (cancelled by a negative margin) keeps the controls' focus rings inside the
+	   clip box; menus are portaled (popover layer), never clipped; focusing a control scrolls it into view */
 	.td-media-picker__facets {
+		--_td-mp-ring-room: 4px;
+
 		display: flex;
 		flex: 0 1 auto;
-		flex-wrap: wrap;
+		flex-wrap: nowrap;
 		gap: 0.75rem;
 		align-items: center;
 		min-width: 0;
+		margin: calc(-1 * var(--_td-mp-ring-room));
+		padding: var(--_td-mp-ring-room);
+		overflow-x: auto;
+		overflow-y: hidden;
+		overscroll-behavior-x: contain;
+		scrollbar-width: thin;
 	}
 
 	.td-media-picker__facet {
-		flex: 0 1 auto;
+		flex: none;
 		min-width: 0;
 	}
 
@@ -10365,8 +10381,25 @@
 			max-width: none;
 		}
 
+		.td-media-picker__toolbar,
+		.td-media-picker__filters {
+			flex-wrap: wrap;
+		}
+
 		.td-media-picker__filters {
 			flex: 1 1 100%;
+		}
+
+		.td-media-picker__facets {
+			flex: 1 1 100%;
+			flex-wrap: wrap;
+			margin: 0;
+			padding: 0;
+			overflow: visible;
+		}
+
+		.td-media-picker__facet {
+			flex: 0 1 auto;
 		}
 
 		.td-media-picker__facet[data-type="single"],

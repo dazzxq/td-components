@@ -354,7 +354,7 @@
       "aspect-ratio": "12.121 / 18.1818",
       "object-fit": "fill",
       "--td-mg-w": "12.121",
-      "--td-mg-sub": "3.4285",
+      "--td-mg-sub": "3.4286",
       "--td-mg-k": "18.1818"
     },
     "[data-id=\"j1\"] .td-media-grid__open": {

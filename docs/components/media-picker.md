@@ -96,7 +96,9 @@ Adapter là **object callback**, không bao giờ là chuỗi URL endpoint. Kit 
 
 ### Thanh công cụ + facet gọn
 
-Mọi control là component kit, theo thứ tự (≥ 768px, một hàng):
+Mọi control là component kit, theo thứ tự. Từ 768px toolbar **luôn một hàng** như dcms2, không xuống dòng: ô tìm giữ tối
+thiểu 200px, nhóm facet không đủ chỗ thì **cuộn ngang ngay trong hàng** (focus bằng bàn phím tự cuộn tới facet, vòng focus
+không bị cắt; menu dropdown / chip nổi trên lớp popover nên không bị cắt). Dưới 768px mới xuống hai hàng:
 
 | # | Control | Ghi chú |
 |---|---|---|

@@ -202,6 +202,58 @@ describe('v0.33 td-media-picker — toolbar (decisions 7-10)', () => {
     expect(Math.abs(tr.right - px(getComputedStyle(tb).paddingRight) - pr.right) <= 1.5, `pager right ${pr.right}`).to.equal(true);
   });
 
+  for (const [w, h] of [[768, 1024], [1024, 768]]) {
+    it(`${w}px: ONE toolbar row (no wrap); facets that do not fit scroll inside the row; keyboard-reachable, focus ring unclipped`, async () => {
+      await setViewport({ width: w, height: h });
+      await until(() => window.innerWidth === w, 3000, 'viewport');
+      await openSettled({ pageSize: 20 });
+      await until(() => q('.td-media-picker__facets td-dropdown') && q('.td-media-picker__facets td-toggle')
+        && q('.td-media-picker__facets td-chip-input'), 4000, 'all three facets');
+      await until(() => !q('.td-media-picker__pager').hidden, 4000, 'pager');
+      const tb = q('.td-media-picker__toolbar');
+      const mid = (el) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; };
+      const items = [q('.td-media-picker__upload-btn'), q('.td-media-picker__search'), q('.td-media-picker__facets'),
+        q('.td-media-picker__pager')];
+      const row = mid(items[1]);
+      for (const el of items) expect(Math.abs(mid(el) - row) < 12, `${el.className} on the row`).to.equal(true);
+      // one row tall: toolbar content height = its tallest item (no second line)
+      const cs = getComputedStyle(tb);
+      const inner = tb.getBoundingClientRect().height - px(cs.paddingTop) - px(cs.paddingBottom);
+      const tallest = Math.max(...items.map((el) => el.getBoundingClientRect().height));
+      expect(inner <= tallest + 1.5, `toolbar inner ${inner} vs tallest ${tallest}`).to.equal(true);
+      // no page / dialog / toolbar overflow
+      for (const el of [document.documentElement, q('.td-media-picker__dialog'), tb]) {
+        expect(el.scrollWidth <= el.clientWidth + 1, `${el.className || el.localName} overflow`).to.equal(true);
+      }
+      for (const el of items) {
+        const r = el.getBoundingClientRect();
+        expect(r.right <= w + 0.5 && r.left >= -0.5, `${el.className} ${r.left}-${r.right}`).to.equal(true);
+      }
+      // the facet group scrolls horizontally when it does not fit; every facet control is reachable by keyboard and,
+      // once focused, sits inside the scroller with room for the focus ring (≥ 2px on every side)
+      const facets = q('.td-media-picker__facets');
+      expect(['auto', 'scroll'].includes(getComputedStyle(facets).overflowX)).to.equal(true);
+      const chipInput = q('.td-media-picker__facets td-chip-input input, .td-media-picker__facets td-chip-input [tabindex="0"]');
+      chipInput.focus();
+      expect(document.activeElement === chipInput).to.equal(true);
+      // the focused control was scrolled into the scroller's visible box (its leading edge visible)
+      const visible = () => {
+        const f = facets.getBoundingClientRect();
+        const c = chipInput.getBoundingClientRect();
+        return c.left >= f.left - 0.5 && c.left < f.right - 8;
+      };
+      if (facets.scrollWidth > facets.clientWidth + 1) {
+        await until(visible, 3000, 'focused facet scrolled into view');
+      }
+      expect(visible()).to.equal(true);
+      // room for the focus ring above / below the control inside the clip box
+      const f = facets.getBoundingClientRect();
+      const c = chipInput.closest('td-chip-input').getBoundingClientRect();
+      expect(c.top - f.top >= 2 && f.bottom - c.bottom >= 2, `ring room top ${c.top - f.top} bottom ${f.bottom - c.bottom}`)
+        .to.equal(true);
+    });
+  }
+
   it('< 768: two rows (upload icon-only + search, then facets + pager), no overflow', async () => {
     await setViewport({ width: 390, height: 844 });
     await openSettled({ pageSize: 20 });

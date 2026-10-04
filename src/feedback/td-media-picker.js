@@ -590,6 +590,16 @@ export class TdMediaPicker extends HTMLElement {
     const facets = document.createElement('div');
     facets.className = 'td-media-picker__facets';
     facets.hidden = true;
+    // ≥ 768px the facet group is a horizontal scroller inside the one-row toolbar (impl review #3): a facet that takes
+    // focus (Tab, or a programmatic focus — Firefox does not scroll an overflow box for that) is brought into view
+    facets.addEventListener('focusin', (ev) => {
+      const facet = /** @type {HTMLElement|null} */ (ev.target instanceof Element ? ev.target.closest('.td-media-picker__facet') : null);
+      if (!facet || facets.scrollWidth <= facets.clientWidth + 1) return;
+      const f = facets.getBoundingClientRect();
+      const r = facet.getBoundingClientRect();
+      if (r.left < f.left) facets.scrollLeft -= f.left - r.left;
+      else if (r.right > f.right) facets.scrollLeft += Math.min(r.right - f.right, r.left - f.left);
+    });
     const pager = document.createElement('div');
     pager.className = 'td-media-picker__pager';
     pager.hidden = true;
