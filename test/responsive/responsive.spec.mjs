@@ -20,6 +20,8 @@
  * v0.35.0: td-cropper inline (full width + 280 px column: no overflow, corners / focal / toolbar ≥ 44 coarse incl. corners on
  * the image edge), the crop dialog and the picker crop step (inside the viewport, confirm + back visible, stage ≥ 200 px).
  *
+ * v0.36.1: td-table card density budgets (#rsp-table-density 5 short columns, #rsp-table 9 columns) at 360 / 393 / 768.
+ *
  * Run: npm run test:responsive   (RSP_ENGINES=chromium,webkit RSP_ONLY=<config tag substring> for a subset)
  */
 import { chromium, firefox, webkit } from 'playwright-core';
@@ -191,7 +193,7 @@ async function runConfig(browser, c) {
     check(tag, `overlapping text${where}`, st.overlaps);
     check(tag, `truncated tab labels${where}`, st.truncatedTabs);
     // td-table: card when its container is < 720 (default card-below md); layout="table" never; card mode keeps roles
-    const modes = await page.evaluate(() => ['rsp-table', 'rsp-table-scroll', 'rsp-table-narrow'].map((id) => {
+    const modes = await page.evaluate(() => ['rsp-table', 'rsp-table-density', 'rsp-table-scroll', 'rsp-table-narrow'].map((id) => {
       const host = document.getElementById(id);
       const tr = host.querySelector('tbody tr');
       return { id, width: host.clientWidth, layout: host.getAttribute('layout') || 'auto', display: tr ? getComputedStyle(tr).display : '' };
@@ -203,6 +205,38 @@ async function runConfig(browser, c) {
       if (wantCard !== isCard) modeErr.push(`${m.id} (${m.layout}, host ${m.width}px): ${isCard ? 'card' : 'table'}, want ${wantCard ? 'card' : 'table'}`);
     }
     check(tag, 'td-table mode', modeErr);
+    // v0.36.1 (plan QĐ 10): card density budgets — phone (360 / 393) and the 700 px card column at 768. Each card ≤ the
+    // budget, the sort bar ONE row (same chip top) ≤ 52 coarse / 44 mouse, the `lead` ≥ 14 px coarse (12 px mouse).
+    if ([360, 393, 768].includes(c.w)) {
+      const dens = await page.evaluate(() => ['rsp-table-density', 'rsp-table'].map((id) => {
+        const host = document.getElementById(id);
+        const trs = [...host.querySelectorAll('.td-table__body > tr')];
+        const head = host.querySelector('.td-table__head > tr');
+        const lead = host.querySelector('.td-table__body > tr > [data-card="lead"]');
+        return { id, width: host.clientWidth, card: !!trs[0] && getComputedStyle(trs[0]).display !== 'table-row',
+          rows: trs.map((r) => r.getBoundingClientRect().height), head: head.getBoundingClientRect().height,
+          chipTops: [...head.querySelectorAll('.td-table__th--sortable')].map((ch) => Math.round(ch.getBoundingClientRect().top)),
+          lead: lead ? parseFloat(getComputedStyle(lead).fontSize) : null };
+      }));
+      const coarse = c.touch && c.engine !== 'firefox';
+      // 9-column phone budget 212 (plan: 176 provisional, "M0 records"): customer (≈ 207px) + phone (≈ 182px) pairs
+      // cannot share a 250–283px line, so 4 pair lines + meta + a 44px action line is the floor (before: 294 / 306)
+      const budget = { 'rsp-table-density': c.w < 720 ? 120 : 96, 'rsp-table': c.w < 720 ? 212 : 140 };
+      const densErr = [];
+      for (const d of dens) {
+        if (!d.card) continue; // fallback 768: viewport ≥ 720 → table
+        const max = Math.max(...d.rows);
+        if (max > budget[d.id] + 0.5) densErr.push(`#${d.id} (host ${d.width}px): card ${max.toFixed(1)}px > ${budget[d.id]}`);
+        if (d.head > (coarse ? 52 : 44) + 0.5) densErr.push(`#${d.id}: sort bar ${d.head.toFixed(1)}px > ${coarse ? 52 : 44}`);
+        if (new Set(d.chipTops).size > 1) densErr.push(`#${d.id}: sort chips on ${new Set(d.chipTops).size} rows`);
+        if (d.id === 'rsp-table-density') {
+          if (d.lead === null) densErr.push(`#${d.id}: no lead cell (id column with an explicit primary elsewhere)`);
+          else if (coarse ? d.lead < 14 : d.lead !== 12) densErr.push(`#${d.id}: lead ${d.lead}px (${coarse ? '≥ 14 coarse' : '12 mouse'})`);
+        }
+      }
+      notes.push(`${tag} card heights: ${dens.filter((d) => d.card).map((d) => `${d.id} ${Math.round(Math.max(...d.rows))} / bar ${Math.round(d.head)}`).join(', ')}`);
+      check(tag, `td-table card density (v0.36.1)${c.shots ? ` (screenshot ${join(OUT, tag, 'page.png')})` : ''}`, densErr);
+    }
     const snap = await page.locator('#rsp-table-narrow table').ariaSnapshot();
     // v0.36.0 (plan QĐ 13): td-action-button — coarse = a REAL 44 × 44 box (no ::before extension), mouse = 32 / 36 / 40;
     // inside .td-action-group no two targets overlap and (coarse) they are ≥ 8 px apart.
