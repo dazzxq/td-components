@@ -443,8 +443,11 @@ describe('td-drawer — stacking with modal / lightbox (dải v0.21.1)', () => {
     b.focus();
     const wrap = mount('<td-drawer label="A"><input></td-drawer>');
     const host = wrap.querySelector('td-drawer');
+    // wait for `open` (fires after the entrance transition), not a fixed delay: on a loaded CI WebKit the panel
+    // could still be sliding in at 150ms, so elementFromPoint missed it
+    const opened = new Promise((r) => host.addEventListener('open', r, { once: true }));
     host.show();
-    await wait(150);
+    await opened;
     expect(document.getElementById(id).hasAttribute('inert'), 'modal inert under the drawer').to.equal(true);
     const panel = openRoot().querySelector('.td-drawer__panel');
     const r = panel.getBoundingClientRect();
@@ -483,8 +486,9 @@ describe('td-drawer — stacking with modal / lightbox (dải v0.21.1)', () => {
     await wait(300);
     const wrap = mount('<td-drawer label="A"><input class="x"></td-drawer>');
     const host = wrap.querySelector('td-drawer');
+    const opened = new Promise((r) => host.addEventListener('open', r, { once: true })); // after the transition
     host.show();
-    await wait(150);
+    await opened;
     const panel = openRoot().querySelector('.td-drawer__panel');
     const r = panel.getBoundingClientRect();
     expect(panel.contains(document.elementFromPoint(r.left + r.width / 2, r.top + 20))).to.equal(true);
