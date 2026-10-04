@@ -19,7 +19,6 @@ Nhãn dùng trong trang:
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
 | [0.33.0](#0330) | Đổi giao diện + đổi văn bản (không breaking API) | Không bắt buộc sửa code. Media picker full viewport giống dcms2: nhãn mặc định đổi ("Chọn ({n})" → "Chèn ({n})", "Huỷ" → "Đóng", "Thư viện media" → tiêu đề theo `selection.kinds`), `pageSize` 40 → 30, "Tải thêm" → phân trang, bỏ khay thumb. `td-media-grid`: ô đã chọn hết thu nhỏ / nền, thành vòng inset; grid tự đặt kích thước `img` (CSS site trên `img` không còn thắng — dùng token). |
-| [0.33.0](#0330) | Đổi giao diện | Media picker đổi giao diện theo dcms2 (toàn màn hình, toolbar, card 3:2) — adapter không đổi; site đè CSS / nhãn của picker 0.32 cần kiểm lại. `td-media-grid` tự đặt kích thước ảnh. |
 | [0.32.0](#0320) | Không có thay đổi phá vỡ | Không. Thêm `<td-media-picker>` / `TdMediaPicker`, `<td-media-field>`, `td_media_field()`. Import map tự liệt kê: thêm `media-picker`, `media-field`. |
 | [0.31.0](#0310) | Đổi văn bản (nhỏ) | Không bắt buộc. Thêm `<td-sortable>`, `<td-masked-value>`, `td_masked_value()`, `<td-repeater sortable>`. Câu thông báo di chuyển dòng của repeater đổi chữ (test so đúng chữ phải cập nhật). Import map: thêm `sortable`, `masked-value`. |
 | [0.30.0](#0300) | Không có thay đổi phá vỡ | Không. Sửa `<td-otp-input>` co hẹp trong flex row. Thêm `<td-repeater>`, `<td-number-input>`, `td_number_input()`. Import map tự liệt kê: thêm `repeater`, `number-input`. |
@@ -92,9 +91,11 @@ Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.33.0.
 - **Bỏ khay thumb 40px** ở footer; giữ số đếm "Đã chọn {n}/{max}" + "Bỏ chọn tất cả".
 - Không tự chọn mục đầu (như 0.32); click card ở chế độ nhiều = **xem chi tiết**, bật / tắt chọn qua tick (góc trên-phải),
   Space hoặc Ctrl/Cmd+click. Form chi tiết luôn mở inline (bỏ nút "Sửa thông tin"). Tải lên chuyển sang dialog lồng.
-- Bỏ nút "Bộ lọc (n)" trên màn hẹp: facet hiện inline, toolbar xuống dòng.
+- Bỏ nút "Bộ lọc (n)" trên màn hẹp: facet hiện inline. Toolbar một hàng từ 768px (facet nhiều thì cuộn ngang trong
+  hàng), chỉ xuống dòng dưới 768px.
 - CSS / test site nhắm vào DOM bên trong picker (`.td-media-picker__*`) phải kiểm lại: vỏ, toolbar, card và footer đã dựng
-  lại bằng component kit (`td-button`, `td-input-field`, `td-dropdown`, …).
+  lại bằng component kit (`td-button`, `td-input-field`, `td-dropdown`, …); DOM mới xem
+  [media-picker.md](../components/media-picker.md).
 
 **`td-media-grid` — đổi giao diện ô:**
 
@@ -111,15 +112,6 @@ Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.33.0.
 
 Xem [theming.md › Token riêng của từng component](../customization/theming.md#token-riêng-của-từng-component) cho danh sách
 token mới.
-
----
-
-## 0.33.0
-
-**Đổi giao diện** — `<td-media-picker>` dựng lại theo dcms2 (toàn màn hình mọi khổ, DOM mới). Adapter v0.32 chạy
-nguyên; CSS / nhãn site tự đè lên DOM picker 0.32 cần kiểm lại (xem `docs/components/media-picker.md`). `td-media-grid`
-giờ tự đặt kích thước ảnh bằng CSSOM — CSS site đặt cứng kích thước ảnh trong lưới sẽ không còn tác dụng. Nguồn:
-[CHANGELOG.md](../../CHANGELOG.md) 0.33.0.
 
 ---
 
