@@ -1860,16 +1860,20 @@ namespace {
                 $wide[(string) json_decode(sprintf('"\\u%04X"', 0xFF41 + $i))] = chr(97 + $i);
             }
         }
-        $chars = preg_split('//u', $v, -1, PREG_SPLIT_NO_EMPTY);
-        if ($chars === false) {
+        // SEC-01 (v0.36.0 review): an OTP is ≤ 10 characters — input over TD_OTP_MAX_BYTES bytes is rejected outright (same
+        // policy as otpNormalize() in src/utils/otp.js), then code points are read one by one (no whole-string split) and
+        // the loop stops after $len accepted characters.
+        if (strlen($v) > 256 || ($v !== '' && !preg_match('//u', $v))) {
             return '';
         }
         $out = '';
         $n = 0;
-        foreach ($chars as $ch) {
-            if ($n >= $len) {
-                break;
-            }
+        $bytes = strlen($v);
+        for ($i = 0; $i < $bytes && $n < $len;) {
+            $b = ord($v[$i]);
+            $w = $b < 0x80 ? 1 : ($b >= 0xF0 ? 4 : ($b >= 0xE0 ? 3 : 2));
+            $ch = substr($v, $i, $w);
+            $i += $w;
             $d = preg_match('/^[0-9]$/', $ch) ? $ch : ($digits[$ch] ?? null);
             if ($d !== null) {
                 if ($charset !== 'alpha') {

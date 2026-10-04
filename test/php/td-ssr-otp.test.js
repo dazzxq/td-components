@@ -109,3 +109,28 @@ describe('php/td.php — td_otp_input v0.36.0 (length / charset / case, otp-inpu
     assert.ok(r.out.includes(' data-x="1"'), r.out);
   });
 });
+
+describe('SEC-01 (v0.36.0 review): huge OTP input is rejected before normalisation, bounded time / memory', opts, () => {
+  test('a 4 MB string with no valid character → "" quickly in PHP; JS otpNormalize mirrors the 256-byte cap', () => {
+    const code = `require ${JSON.stringify(join(ROOT, 'php/td.php'))};`
+      + ' $big = str_repeat("\u{3042}-x ", 400000); $t = microtime(true); $m0 = memory_get_usage();'
+      + ' $a = td__otp_value($big, 6, "alphanumeric", "upper");'
+      + ' $b = td__otp_value(str_repeat("1", 257), 6); $c = td__otp_value(str_repeat("1", 256), 6);'
+      + ' echo json_encode([$a, $b, $c, microtime(true) - $t, memory_get_usage() - $m0]);';
+    const r = spawnSync(PHP_BIN, ['-d', 'display_errors=stderr', '-d', 'error_reporting=E_ALL', '-d', 'xdebug.mode=off', '-r', code], { encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+    const [a, b, c, secs, mem] = JSON.parse(r.stdout);
+    assert.equal(a, '');
+    assert.equal(b, '', '> 256 bytes → empty');
+    assert.equal(c, '111111', '≤ 256 bytes → normal');
+    assert.ok(secs < 0.5, `bounded time (${secs}s)`);
+    assert.ok(mem < 1024 * 1024, `no per-character array (${mem} bytes)`);
+    assert.equal(otpNormalize('1'.repeat(257)), '');
+    assert.equal(otpNormalize('1'.repeat(256)), '111111');
+    assert.equal(otpNormalize('\u3042'.repeat(86) + '12'), '', '86 × 3 bytes + 2 = 260 bytes → empty');
+    const t0 = performance.now();
+    assert.equal(otpNormalize('x-'.repeat(2e6), { charset: 'numeric' }), '');
+    assert.ok(performance.now() - t0 < 200);
+  });
+});
+

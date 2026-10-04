@@ -71,11 +71,28 @@ export function otpChar(ch, charset, textCase) {
  * @param {{ charset?: string, case?: string }} [o]
  * @returns {string}
  */
+/** SEC-01 (v0.36.0 review): input longer than this many UTF-8 bytes is rejected (treated as empty) — same as PHP. */
+export const OTP_MAX_INPUT_BYTES = 256;
+
+/** @param {string} s @returns {boolean} more than OTP_MAX_INPUT_BYTES UTF-8 bytes (cheap: no encoding of long strings) */
+function tooLong(s) {
+  if (s.length > OTP_MAX_INPUT_BYTES) return true; // ≥ 1 byte per UTF-16 unit
+  let bytes = 0;
+  for (const ch of s) {
+    const c = ch.codePointAt(0);
+    bytes += c < 0x80 ? 1 : c < 0x800 ? 2 : c < 0x10000 ? 3 : 4;
+    if (bytes > OTP_MAX_INPUT_BYTES) return true;
+  }
+  return false;
+}
+
 export function otpFilter(raw, o = {}) {
   const charset = o.charset || 'numeric';
   const textCase = o.case || 'upper';
+  const str = String(raw ?? '');
+  if (tooLong(str)) return ''; // SEC-01: never walk a huge paste
   let out = '';
-  for (const ch of String(raw ?? '')) out += otpChar(ch, charset, textCase);
+  for (const ch of str) out += otpChar(ch, charset, textCase);
   return out;
 }
 
