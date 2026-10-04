@@ -50,7 +50,7 @@ Gửi form: `hero=a_9f2c`, `og[id]=`, `og[alt]=`, `og[crop]=null`.
 - `name[crop]` = chuỗi JSON `{"v":1,"x":…,"y":…,"width":…,"height":…}` (toạ độ chuẩn hoá 0..1 theo ảnh gốc) **hoặc chuỗi
   `null`**. `null` nghĩa là **không cắt — dùng nguyên ảnh** (hoặc server tự quyết theo tỉ lệ khung). 0.32 chưa có UI
   crop: crop lấy từ thuộc tính `crop` do server in ra và được gửi lại **đúng từng byte**; đổi / gỡ ảnh → `null` (crop cũ
-  thuộc ảnh cũ). 0.33 chỉ thêm UI sửa crop — tên mục và định dạng không đổi.
+  thuộc ảnh cũ). 0.35 (`td-cropper`) chỉ thêm UI sửa crop — tên mục và định dạng không đổi.
 - `name` kết thúc bằng `[]` ở chế độ usage (`og[]`) → **không gửi gì** + cảnh báo console (fail closed; PHP cũng vậy).
 - Field `disabled` (hoặc trong `<fieldset disabled>`) → không có mục nào (như control native) — server phân biệt "không
   gửi" (giữ nguyên) với "gửi rỗng" (gỡ).
@@ -353,7 +353,7 @@ Shim tương thích cho code dcms2 cũ (nếu cần) nằm ở **dcms2**, không
 - **Bấm khung không mở gì, console báo không có adapter** → gọi `TdMediaPicker.configureDefaults({ adapter })` (hoặc gán
   `field.adapter`) trước khi người dùng bấm.
 - **Server nhận URL thay vì id** → đang đọc input khác; FormData của field chỉ có `assetId`.
-- **`og[crop]` luôn là `"null"`** → bình thường ở 0.32 khi chưa có crop từ server (UI crop có ở 0.33).
+- **`og[crop]` luôn là `"null"`** → bình thường ở 0.32 khi chưa có crop từ server (UI crop có ở 0.35).
 - **Form usage không gửi gì** → `name` kết thúc `[]` (ví dụ `og[]`); bỏ `[]`.
 - **Ảnh xem trước không hiện** → `preview-src` không phải `https:` / tương đối, hoặc CSP `img-src` / CDN chống hotlink chặn.
 - **`required` không chặn submit khi chưa có JS** → giới hạn của hidden input; validate ở server.
