@@ -17,7 +17,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
   [v0.32.0-media-picker](plans/v0.32.0-media-picker.md)
 - ~~v0.32.1~~ **gộp vào v0.33.0** (owner 2026-10-04): xoá + trình bày usage chặn xoá (`DeleteResult` `blocked`) + tải bản
   gốc (`download`); acceptance *delete-blocked* + *download* chuyển sang chặn phát hành v0.33.0
-- `doing` v0.33.0 (đã implement trên branch `feat/v0.33.0-media-picker-parity`, chờ phát hành — owner merge + tag sau khi
+- `done` v0.33.0 (sau khi
   CI xanh): picker **giống dcms2** (full viewport, control kit, phân trang số, card 3:2, chi tiết inline, dialog tải
   lên + **tải từ URL** — `adapter.uploadFromUrl` tuỳ chọn) + xoá / tải gốc / copy (từ v0.32.1) + `td-media-grid`
   `layout="justified"` (thuật toán dwp) + sửa ô lưới — plan
