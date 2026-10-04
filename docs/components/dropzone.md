@@ -151,6 +151,15 @@ Ba attribute **chỉ đổi cách trình bày** (lọc, form, upload không đ�
 - Mọi chuỗi chỉ là **text** (`textContent` / escape), không nhận HTML, không có slot markup.
 - Hai kiểu độc lập: dùng riêng `hint-style="badges"` với prompt cũ, hoặc prompt xếp chồng với dòng gợi ý `<p>` cũ đều được.
 
+## Responsive (0.34.0)
+
+Host `<td-dropzone>` là **container** (`container: td-dropzone / inline-size`, thêm `min-inline-size: 0`). Khi dropzone
+**hẹp hơn 360px** (cỡ `2xs` chỉ dành cho container): câu "Kéo thả file vào đây hoặc" được **ẩn khỏi mắt** (vẫn trong
+DOM, trình đọc màn hình vẫn đọc), nút **Chọn file rộng 100%**; dòng gợi ý (định dạng / dung lượng / số file) vẫn hiện,
+tên trợ năng của nút không đổi. Dạng `prompt-title` / `prompt-text` giữ tiêu đề + dòng phụ, nút rộng 100%. ≥ 360px: như
+trước. Cần bề rộng từ cha (`display: block` — mặc định). Không có container query (Chrome / Edge 102–104): dự phòng theo
+viewport < 360px.
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |

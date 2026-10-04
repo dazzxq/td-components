@@ -884,10 +884,20 @@
     },
     {
       "state": "compact",
-      "setup": "const w=document.createElement('div'); w.style.setProperty('width','320px'); window.__mount.appendChild(w); w.innerHTML='<td-pagination total-items=\"2000\" items-per-page=\"10\" current-page=\"57\"></td-pagination>';",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','400px'); window.__mount.appendChild(w); w.innerHTML='<td-pagination total-items=\"2000\" items-per-page=\"10\" current-page=\"57\"></td-pagination>';",
       "selectors": [
         ".td-pagination",
         ".td-pagination__page[aria-current=\"page\"]"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "status",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','320px'); window.__mount.appendChild(w); w.innerHTML='<td-pagination total-items=\"2000\" items-per-page=\"10\" current-page=\"57\"></td-pagination>';",
+      "selectors": [
+        ".td-pagination",
+        ".td-pagination__status",
+        ".td-pagination__nav--prev"
       ],
       "settle": 300
     }

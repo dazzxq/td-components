@@ -60,6 +60,7 @@
 	td-alert {
 		display: block;
 		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5, v0.34.0) */
+		container: td-alert / inline-size; /* v0.34.0 (plan QĐ 12): needs its width from the parent */
 	}
 
 	.td-alert {
@@ -109,6 +110,34 @@
 
 	.td-alert__message > :first-child { margin-top: 0; }
 	.td-alert__message > :last-child { margin-bottom: 0; }
+
+	/*
+	 * v0.34.0 (plan QĐ 12): optional action row the site writes as the last child of the message (or of the body):
+	 * <div class="td-alert__actions"><button class="td-btn td-btn--sm …">…</button>…</div>. Side by side; below 480px of
+	 * alert width stacked, each full width.
+	 */
+	.td-alert__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+		align-items: center;
+		margin-top: var(--td-space-sm);
+	}
+
+	.td-alert__actions[hidden] {
+		display: none;
+	}
+
+	@container td-alert (width < 480px) {
+		.td-alert__actions {
+			flex-direction: column;
+			align-items: stretch;
+		}
+
+		.td-alert__actions > td-button > .td-btn {
+			inline-size: 100%;
+		}
+	}
 
 	.td-alert--success { background-color: var(--td-alert-success-bg); border-color: var(--td-alert-success-border); }
 	.td-alert--warning { background-color: var(--td-alert-warning-bg); border-color: var(--td-alert-warning-border); }

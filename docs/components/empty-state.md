@@ -118,6 +118,13 @@ component **nhận markup tại chỗ** — không thay con, không nháy, khôn
   nghĩa; link vẫn bấm được) hoặc `<td-button>` đã hydrate (nạp gốc package: `td-button` được định nghĩa trước).
 - Dấu `data-td-ssr` bị gỡ sau khi đọc. Viết `<td-empty-state>` bằng tay (không dấu) → render như trước.
 
+## Responsive (0.34.0)
+
+Host `<td-empty-state>` là **container** (`container: td-empty-state / inline-size`). Khi khung **hẹp hơn 480px** các nút
+hành động **xếp dọc, mỗi nút rộng 100%** (cả nút do `actions` tạo lẫn `<td-button>` render từ server). ≥ 480px: như trước
+(nằm cạnh nhau, căn giữa). Cần bề rộng từ cha (`display: block` — mặc định; trong flex: `flex: 1 1 auto;
+min-inline-size: 0`). Không có container query (Chrome / Edge 102–104): dự phòng theo viewport < 480px.
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |

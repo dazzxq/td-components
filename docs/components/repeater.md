@@ -169,6 +169,17 @@ End di chuyển, Space / Enter thả, Escape về chỗ cũ, chạm tay nắm d�
   `sortable` (hoặc tắt lúc chạy) → kit đặt `hidden` lên nút đó.
 - Nút ↑ / ↓ vẫn ở đó: đường chắc chắn nhất cho trình đọc màn hình ở browse mode.
 
+## Responsive (0.34.0)
+
+Host `<td-repeater>` là **container** (`container: td-repeater / inline-size`). Khi repeater **hẹp hơn 480px** (điện thoại,
+hoặc cột hẹp của trang desktop) cụm công cụ của mỗi dòng (kéo / ↑ / ↓ / ×) thành **một hàng riêng, căn cuối, dưới các
+field** — field có cả bề rộng dòng. Áp cho dòng flex mặc định lẫn dòng `display: grid` của site (cụm công cụ chiếm mọi
+cột → tự xuống hàng mới); luật site đặt chỗ cụm công cụ tường minh (CSS không layer) vẫn thắng. ≥ 480px: như trước.
+
+- **Cần bề rộng từ cha** (`display: block` trong luồng thường — mặc định; trong flex: `flex: 1 1 auto; min-inline-size: 0`).
+  Trong khung co theo nội dung (`inline-block`, `float`, flex item `flex: 0 1 auto`) host sụp về 0.
+- Trình duyệt không có container query (Chrome / Edge 102–104): bản dự phòng theo **viewport** < 480px (td.css sinh sẵn).
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |

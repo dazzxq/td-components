@@ -9,6 +9,7 @@
  * (justify-content: flex-end only pushes LEFT when an item is wider than its line — now impossible above ~50px).
  * Compact form below 480px of container width: info on its own row, pages reduced to first / current / last (JS marks
  * each <li> with data-rel = current | edge | adjacent | far | ellipsis | gap; `gap` = an ellipsis only this form shows).
+ * Status form below 360px: "‹ 57 / 200 ›" (.td-pagination__status, aria-hidden; the info line stays the live region).
  */
 @layer td.tokens {
 	:root {
@@ -162,6 +163,11 @@
 		display: none;
 	}
 
+	/* "57 / 200" of the status form (< 360px); decorative copy of the state (aria-hidden), never shown above 360 */
+	.td-pagination__status {
+		display: none;
+	}
+
 	@container td-pagination (width < 480px) {
 		.td-pagination__info {
 			flex: 1 0 100%;
@@ -174,6 +180,49 @@
 
 		.td-pagination__ellipsis[data-rel="gap"] {
 			display: inline-flex;
+		}
+	}
+
+	/*
+	 * v0.34.0 status form below 360px (ADR 0014 container-only 2xs): "‹ 57 / 200 ›" — prev, the status text, next.
+	 * The page list is hidden; the info line is VISUALLY hidden only (not display:none) so it stays the one live region
+	 * that announces a page change.
+	 */
+	@container td-pagination (width < 360px) {
+		.td-pagination {
+			position: relative;
+		}
+
+		.td-pagination__info {
+			position: absolute;
+			inset-block-start: 0;
+			inset-inline-start: 0; /* not the flex-end static position (1px past the right edge) */
+			flex: none;
+			inline-size: 1px;
+			block-size: 1px;
+			padding: 0;
+			margin: 0;
+			overflow: hidden;
+			clip-path: inset(50%);
+			white-space: nowrap;
+			border: 0;
+		}
+
+		.td-pagination__pages {
+			display: none;
+		}
+
+		.td-pagination__status {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			min-inline-size: 0;
+			min-block-size: var(--td-pagination-item-size);
+			padding-inline: var(--td-space-xs);
+			font-variant-numeric: tabular-nums;
+			color: var(--td-color-text);
+			text-align: center;
+			overflow-wrap: anywhere;
 		}
 	}
 

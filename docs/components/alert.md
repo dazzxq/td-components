@@ -67,6 +67,26 @@ document.addEventListener('dismiss', (e) => {
 });
 ```
 
+## Responsive (0.34.0)
+
+Host `<td-alert>` là **container** (`container: td-alert / inline-size`). Hàng nút tuỳ chọn `div.td-alert__actions` (site tự
+viết, là phần tử con cuối của nội dung) hiện cạnh nhau; khi alert **hẹp hơn 480px** các nút **xếp dọc, mỗi nút rộng
+100%**:
+
+```html
+<td-alert variant="warning" heading="Chưa lưu">
+  Bài viết còn thay đổi chưa lưu.
+  <div class="td-alert__actions">
+    <button type="button" class="td-btn td-btn--primary td-btn--sm">Lưu</button>
+    <button type="button" class="td-btn td-btn--secondary td-btn--sm">Bỏ</button>
+  </div>
+</td-alert>
+```
+
+`td_alert()` luôn escape nội dung nên không chèn được nút — cần nút thì viết markup tay như trên (HTML của trang). Cần
+bề rộng từ cha (`display: block` — mặc định). Không có container query (Chrome / Edge 102–104): dự phòng theo viewport
+< 480px.
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
@@ -114,7 +134,9 @@ cả light và dark (gate `npm run test:contrast`). Đổi token thì tự kiể
     <span class="td-alert__icon" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="success">…</svg></span>
     <div class="td-alert__body">
       <p class="td-alert__heading">Thành công</p>
-      <div class="td-alert__message">Đã lưu thay đổi.</div>
+      <div class="td-alert__message">Đã lưu thay đổi.
+        [<div class="td-alert__actions">…nút .td-btn…</div>]   <!-- tuỳ chọn, 0.34.0 -->
+      </div>
     </div>
     <button type="button" class="td-alert__close" aria-label="Đóng">…</button> <!-- JS + dismissible -->
   </div>

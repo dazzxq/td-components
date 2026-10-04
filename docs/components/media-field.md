@@ -205,6 +205,14 @@ PHP in nhãn **tiếng Việt mặc định** (`Td::MEDIA_FIELD_LABELS`). Site �
 in sẵn không khớp `render()` nên field **render lại an toàn** lúc nâng cấp thay vì nhận tại chỗ (không mất giá trị, alt
 đang gõ hay focus — chỉ mất lợi ích "không nháy").
 
+## Responsive (0.34.0)
+
+Host `<td-media-field>` là **container** (`container: td-media-field / inline-size`, thêm `min-inline-size: 0`). Khi field
+**hẹp hơn 360px** (cỡ `2xs` chỉ dành cho container) hai nút **Đổi / Gỡ xếp dọc, mỗi nút rộng 100%**. ≥ 360px: như trước
+(cạnh nhau). Khung ảnh vẫn `max-inline-size: 100%`. Cần bề rộng từ cha: `--td-media-field-w` phải là độ dài / phần trăm
+(mặc định `100%`), **không** `fit-content` / `max-content` (container co theo nội dung sẽ sụp về 0). Không có container
+query (Chrome / Edge 102–104): dự phòng theo viewport < 360px.
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |

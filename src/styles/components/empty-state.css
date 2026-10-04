@@ -19,6 +19,7 @@
 	td-empty-state {
 		display: block;
 		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5, v0.34.0) */
+		container: td-empty-state / inline-size; /* v0.34.0 (plan QĐ 12): needs its width from the parent */
 	}
 
 	.td-empty-state {
@@ -87,6 +88,19 @@
 
 	.td-empty-state__actions[hidden] {
 		display: none;
+	}
+
+	/* v0.34.0 (plan QĐ 12): below 480px of width the actions stack, each full width (JS buttons and server <td-button>) */
+	@container td-empty-state (width < 480px) {
+		.td-empty-state__actions {
+			flex-direction: column;
+			align-items: stretch;
+			align-self: stretch;
+		}
+
+		.td-empty-state__actions > td-button > .td-btn {
+			inline-size: 100%;
+		}
 	}
 
 	@media (forced-colors: active) {
