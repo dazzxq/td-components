@@ -18,7 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
-| [0.36.0](#0360) | Đổi giao diện (màu ngữ nghĩa, badge, alert; các mục khác của bản xem dưới) | Không bắt buộc. Nút / badge ngữ nghĩa thành màu đặc (warning chữ tối), badge viền + bóng, alert vạch mép; muốn pastel cũ: đoạn CSS khôi phục. Thêm `<td-action-button>` / `td_action_button()`. |
+| [0.36.0](#0360) | Đổi giao diện + **DOM toast** (màu ngữ nghĩa, badge, alert, toast, lightbox điện thoại; xem dưới) | CSS / script nhắm `#td-toast-container > .td-toast` phải đổi (toast nằm trong lane > chồng). Còn lại không bắt buộc. Nút / badge ngữ nghĩa thành màu đặc (warning chữ tối), badge viền + bóng, alert vạch mép; muốn pastel cũ: đoạn CSS khôi phục. Thêm `<td-action-button>` / `td_action_button()`. |
 | [0.35.0](#0350) | Đổi hành vi (nhỏ, chỉ khi đã bật `crop` / `focal-point`) | Không bắt buộc. Thêm `<td-cropper>` (`./cropper`), `TdCropper.openDialog()`, field `croppable` / `focal-point` / `name[focal]` (opt-in), PHP `croppable` / `crop_ratio` / `focal_point` / `focal`. Site đã truyền `crop: { enabled: true }` cho picker: "Chèn" giờ mở **bước cắt**, `urls.preview` phải là ảnh nguyên, `aspectRatio` trong [0.01, 100]. Field không `croppable` không đổi; `selection.focalPoint` thật khi có `focal-point`. Import map: thêm `cropper`. |
 | [0.34.0](#0340) | Đổi giao diện + đổi DOM (nhỏ) | Responsive: modal sheet < 720 (trước ≤ 640), `td-table` tự thành card khi hẹp (`layout="table"` để giữ cũ), `textContent` của ô bảng có thêm nhãn cột ẩn, site chỉ đè `--td-media-grid-row-ratio` giờ chỉ áp lưới ≥ 1024px. |
 | [0.33.0](#0330) | Đổi giao diện + đổi văn bản (không breaking API) | Không bắt buộc sửa code. Media picker full viewport giống dcms2: nhãn mặc định đổi ("Chọn ({n})" → "Chèn ({n})", "Huỷ" → "Đóng", "Thư viện media" → tiêu đề theo `selection.kinds`), `pageSize` 40 → 30, "Tải thêm" → phân trang, bỏ khay thumb. `td-media-grid`: ô đã chọn hết thu nhỏ / nền, thành vòng inset; grid tự đặt kích thước `img` (CSS site trên `img` không còn thắng — dùng token). |
@@ -173,6 +173,23 @@ khung khi active); mục đã chọn của danh sách chọn một in đậm (60
 dòng (`--td-option-active-bar`) thay vòng viền trong (`--td-dropdown-option-active-line` hết tác dụng; menu: vạch thay vòng
 focus 2px). Token chung mới `--td-option-*` (xem theming). Muốn bo góc lại: `.td-dropdown__option { border-radius: 6px; }`
 (CSS site, không layer).
+
+### Lightbox trên điện thoại, drawer, datetime sheet
+
+**Đổi giao diện** + **đổi hành vi** (nhỏ), xem [Lightbox](../components/lightbox.md):
+
+- **Lightbox < 480px**: toolbar chỉ giữ tải xuống, **một** nút riêng có `pinned: true`, nút **"Thêm"** (fullscreen + các
+  nút riêng còn lại) và đóng. Nút trước / sau **và** bộ đếm chuyển xuống **thanh đáy** "‹ 3 / 12 ›" (không bao giờ vào
+  "Thêm"). Màn cảm ứng từ 480px và màn ngang thấp: trước / sau là đĩa 48px hai bên ảnh (trước: nằm trên toolbar). Nút
+  riêng tự mở popup neo vào `button` nên đặt `pinned: true`. CSS / test site nhắm `.td-lightbox__toolbar > [data-action="prev"]`
+  trên màn hẹp hoặc cảm ứng phải cập nhật.
+- **Lightbox — cử chỉ**: RTL đảo chiều vuốt ngang; vuốt bắt đầu trong 24px sát mép trái / phải để trình duyệt xử lý (vuốt
+  quay lại); sheet panel chỉ kéo được từ thanh nắm.
+- **Lightbox — menu**: khi menu tải về / "Thêm" đang mở, **bấm chuột** ra ngoài chỉ đóng menu (không zoom / kéo / đóng
+  lightbox), focus về nút mở; bấm nút mở popup khác vẫn mở ngay. Cảm ứng và menu của các component khác không đổi.
+- **Lightbox — mở lại** không còn loé ảnh của lần xem trước.
+- **Drawer < 480px** không còn phủ kín màn: chừa một dải trang bên cạnh.
+- **Datetime < 720px**: sheet gọn, bánh xe 3 dòng, bỏ nhãn trùng.
 
 ## 0.35.0
 

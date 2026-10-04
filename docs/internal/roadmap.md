@@ -28,11 +28,20 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
   [v0.34.0-responsive](plans/v0.34.0-responsive.md) (audit đo 2026-10-04; M0 đối chiếu v0.33)
 - `done` v0.35.0: `td-cropper` (toạ độ) + tích hợp crop vào picker / field (chỉ thêm UI; FormData `name[crop]` giữ nguyên)
   — lùi từ v0.33 (báo dsuite)
-- `todo` v0.36.0: `td-table` chọn dòng (dạng card + ADR container query đã làm ở v0.34; chỗ chọn trong card chừa sẵn)
-- `todo` v0.37.0: `td-scan-input` (A3)
-- `todo` v0.38.0: hook lọc ngoài + ẩn / hiện cột + `td-filter-chips` + datetime `range` + preset — xong P1
-- `todo` v0.39+: field gallery / nhiều ảnh (`td-media-grid` + `td-sortable`)
-- `todo` sau v0.39: typeToConfirm, `trackFormDirty`, `td-steps`, `td-timeline`, `td-diff`, `td-check-matrix`, `td-color-picker`
+- `done` v0.36.0: polish theo owner — tick chung (ADR 0017), phím tắt chọn, màu ngữ nghĩa đặc, toast 6 vị trí (ADR 0016),
+  OTP `length` / `charset`, `td-action-button`, picker / modal gọn di động, lightbox điện thoại (thanh đáy), hàng option
+  kiểu dcms2 — plan [v0.36.0-polish](plans/v0.36.0-polish.md)
+- `todo` v0.36.1: `td-table` card gọn (QĐ 62)
+- `todo` v0.36.2: chuẩn touch toàn kit (hover gate, `:active`, tooltip cảm ứng, ngưỡng kéo, visualViewport cho overlay,
+  lane test touch, lightbox vuốt theo ngón) — đồng thuận Codex 2026-10-05
+- `todo` v0.37.0: `td-table` chọn dòng (ADR 0018)
+- `todo` v0.38.0: `td-scan-input` (A3)
+- `todo` v0.39.0: hook lọc ngoài + ẩn / hiện cột + `td-filter-chips`
+- `todo` v0.40.0: `<td-datetime-range>` + preset — xong P1
+- `todo` v0.41.0 / v0.42.0: theming — dark / light / `auto` + palette sinh màu tự cân tương phản (plan
+  `v0.41.0-theming.md`, nhánh `theming-research`)
+- `todo` v0.43+: field gallery / nhiều ảnh (`td-media-grid` + `td-sortable`) — lùi sau theming (owner 2026-10-05)
+- `todo` sau v0.43: typeToConfirm, `trackFormDirty`, `td-steps`, `td-timeline`, `td-diff`, `td-check-matrix`, `td-color-picker`
 - Ngày từ v0.33 trở đi: **rebaseline từ ngày v0.31 xong thực tế** (không nén test / acceptance để giữ lịch cũ ~11/11 –
   25/11)
 - `todo` B (sau B0 ~01/2027): choice-group, number stepper, rating chỉ đọc, carousel không autoplay
