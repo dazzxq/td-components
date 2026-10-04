@@ -1738,7 +1738,18 @@ export class TdMediaPicker extends HTMLElement {
     });
     const top = TdModalStackManager.stack[TdModalStackManager.stack.length - 1];
     s.deleteConfirmId = top ? top.id : null;
-    done.then(() => { if (this._s === s) s.deleteConfirmId = null; });
+    done.then(() => {
+      if (this._s !== s) return;
+      s.deleteConfirmId = null;
+      // TdModal returns focus to its opener; when the detail re-rendered while the confirm was open (a late `get`),
+      // that node is gone and the focus fell back to the dialog → put it on the panel's (new) "Xoá" instead
+      if (!this._live(s) || !s.handle.layer.isTop()) return;
+      const a = document.activeElement;
+      if (a && a !== s.els.dialog && a !== document.body && s.els.dialog.contains(a)) return;
+      if (s.detailId !== asset.id) return; // deleted: _onDeleted focuses the results heading
+      const del = s.els.detail.querySelector('.td-media-picker__delete button');
+      if (del instanceof HTMLElement) this._focus(del);
+    });
   }
 
   /** @private @returns {Promise<void>} never rejects */

@@ -199,6 +199,28 @@ describe('v0.33 td-media-picker — delete (decision 24)', () => {
     expect(rows[20].textContent).to.equal('… và 10 nơi khác');
   });
 
+  it('focus returns to "Xoá" after the confirm closes, even when the detail re-rendered meanwhile (late get)', async () => {
+    const ad = createMockAdapter();
+    const realGet = ad.get.bind(ad);
+    let release = () => {};
+    const gate = new Promise((r) => { release = r; });
+    ad.get = (...a) => gate.then(() => realGet(...a));
+    await openReady({ adapter: ad, capabilities: { delete: true } });
+    click(opener('m59')); // m59: the mock answers blocked
+    const first = await until(() => q('.td-media-picker__delete'), 4000, 'delete button (cached render)');
+    const inner = first.querySelector('button');
+    inner.focus();
+    click(inner);
+    const dlg = await until(() => deleteDialog(), 4000, 'confirm');
+    release(); // the fresh snapshot re-renders the panel: the confirm's opener node is gone
+    await until(() => !first.isConnected, 4000, 'detail re-rendered');
+    dlgButton(dlg, 'Xoá').click();
+    await until(() => q('.td-media-picker__blocked'), 4000, 'blocked alert');
+    await until(() => deleteDialog() === null, 4000, 'confirm closed');
+    const now = q('.td-media-picker__delete');
+    await until(() => now.contains(document.activeElement), 2000, 'focus on the new "Xoá"');
+  });
+
   it('blocked with a count but NO summaries → the list still says "… và k nơi khác"', async () => {
     const ad = createMockAdapter();
     ad.delete = async () => ({ status: 'blocked', reason: 'in-use', usageCount: 4, usages: [] });
