@@ -372,6 +372,33 @@ async function runOverlays(page, c, tag, shot) {
         // v0.36.0 (plan QĐ 61): the datetime sheet takes ≤ 70 % of the viewport height
         check(tag, `${s.name}: sheet height budget`, m.height <= vp.h * 0.7 + 0.5 ? [] : [`sheet ${Math.round(m.height)} > 70 % of ${vp.h}`]);
       }
+      if (s.name === 'lightbox' || s.name === 'lightbox-panel') {
+        // v0.36.0 (plan QĐ 59 revised): < 480 the bottom rail holds ‹ counter › (inside the viewport, ≥ 44 px, not over the
+        // grabber); a coarse pointer from 480 / the short band → 48 px side discs; nav is never hidden on touch
+        const nv = await page.evaluate(() => {
+          const o = document.querySelector('.td-lightbox');
+          const rail = o.querySelector('.td-lightbox__rail');
+          const r = rail.getBoundingClientRect();
+          const btns = [...o.querySelectorAll('[data-action="prev"], [data-action="next"]')].map((b) => {
+            const q = b.getBoundingClientRect();
+            return { w: q.width, h: q.height, shown: getComputedStyle(b).display !== 'none' && getComputedStyle(b).visibility !== 'hidden' };
+          });
+          const g = o.querySelector('.td-lightbox__grab');
+          const gr = g && o.hasAttribute('data-panel') ? g.getBoundingClientRect() : null;
+          const hit = gr && r.width && r.left < gr.right && gr.left < r.right && r.top < gr.bottom && gr.top < r.bottom;
+          return { mode: o.getAttribute('data-nav'), rail: rail.hidden ? null : { l: r.left, r: r.right, t: r.top, b: r.bottom }, btns, hit };
+        });
+        const err = [];
+        if (vp.w < 480) {
+          if (nv.mode !== 'rail' || !nv.rail) err.push(`no rail below 480 (data-nav=${nv.mode})`);
+          else if (nv.rail.l < -1 || nv.rail.r > vp.w + 1 || nv.rail.t < 0 || nv.rail.b > vp.h + 1) err.push('rail outside the viewport');
+          if (nv.hit) err.push('rail over the sheet grabber');
+        } else if (c.touch || vp.h <= 500) {
+          if (nv.mode !== 'side-compact') err.push(`coarse / short: data-nav=${nv.mode} (side discs expected)`);
+        }
+        if (c.touch && nv.btns.some((b) => !b.shown || b.w < 43.5 || b.h < 43.5)) err.push(`nav buttons ${JSON.stringify(nv.btns)}`);
+        check(tag, `${s.name}: persistent navigation`, err);
+      }
       if (s.name === 'lightbox-panel') {
         // v0.36.0 (plan QĐ 59): the counter / back area never under the toolbar
         const hit = await page.evaluate(() => {

@@ -274,18 +274,26 @@ trùng — vẫn một điểm Tab cho mỗi hành động, nhãn giữ "Ảnh t
 - **Video:** không có dải lớn; chỉ hai đĩa 48px giữa mép, không đè player. Cột quá hẹp (khoảng trống mỗi bên < 64px) →
   hai nút về lại toolbar cho slide đó. Kit tự tính lại khi player dựng xong (kể cả hook bất đồng bộ) hoặc đổi kích thước.
 - **Cảm ứng / bút:** dải **không bao giờ** kích hoạt bằng chạm (tránh bấm nhầm khi vuốt) — vuốt ngang để chuyển, vuốt
-  xuống để đóng, kể cả khi bắt đầu vuốt trong dải. Trên thiết bị cảm ứng (không chuột) hai nút vẫn nằm trên toolbar (44px).
+  xuống để đóng, kể cả khi bắt đầu vuốt trong dải. Thiết bị cảm ứng (không chuột): từ 0.36.0 hai nút là **đĩa 48px**
+  hai bên ảnh (chạm là chuyển) từ 480px, và nằm trên **thanh đáy** dưới 480px — không còn trên toolbar.
 - **Bàn phím:** `←` / `→` như cũ; Tab tới đúng một nút trước và một nút sau; focus ring vẽ quanh đĩa.
 - **RTL** (`dir="rtl"`): "trước" ở mép phải (inline-start), mũi tên lật; `←` = ảnh sau.
 - Bộ đếm là vùng `role="status" aria-live="polite"` → trình đọc màn hình đọc "2 / 5" khi chuyển, focus không đổi.
 
 Overlay mang `data-nav="side" | "side-compact" | "toolbar"` (chế độ hiện tại) để site đọc khi cần.
 
+**Điều hướng trên điện thoại (0.36.0, sửa 2026-10-05):** dưới 480px nút trước / sau **và** bộ đếm chuyển xuống một
+**thanh đáy** cố định "‹ 3 / 12 ›" (cùng nút, cùng vùng thông báo — không bản sao), nút ≥ 44px, nằm trên vùng an toàn
+đáy và **phía trên** filmstrip / tay nắm panel; chạm là chuyển ảnh, không bao giờ ẩn hay tự ẩn. Một ảnh → không có thanh.
+Màn cảm ứng từ 480px và màn nằm ngang thấp (≤ 500px): hai đĩa 48px hai bên ảnh. Vuốt ngang vẫn chuyển ảnh (RTL: vuốt
+sang phải = ảnh sau); cử chỉ bắt đầu sát mép trái / phải (24px) để trình duyệt xử lý (vuốt lùi trang). Panel dạng sheet chỉ
+kéo lên / xuống từ **tay nắm**; vuốt trong nội dung panel chỉ cuộn.
+
 **Màn hẹp < 480px (0.36.0):** toolbar 6–7 nút (≈ 300px) từng đè lên cụm Quay lại + bộ đếm ở góc trái. Dưới 480px
 (`@media (max-width: 479.98px)`, chuột lẫn cảm ứng) toolbar chỉ giữ **tải xuống**, **một** nút riêng có `pinned: true`
 (ví dụ bật/tắt panel), nút **"Thêm"** và **đóng**:
 
-- Nút trước / sau rời toolbar — vuốt ngang và phím `←` / `→` vẫn chuyển ảnh (trên máy chuột chúng đã ở hai bên ảnh).
+- Nút trước / sau rời toolbar xuống thanh đáy (xem trên) — không bao giờ nằm trong "Thêm".
 - Fullscreen và các nút riêng còn lại vào menu **"Thêm"** (`TdMenu`, APG menu button: `Enter` / `Space` / `↓` mở,
   focus vào mục đầu, chọn mục = bấm chính nút đó → `onClick(ctx, button)` nhận nút gốc như trên desktop). "Thêm" chỉ
   hiện khi có ít nhất một mục; nhãn `labels.more`.

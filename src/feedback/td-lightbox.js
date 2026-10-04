@@ -26,6 +26,7 @@ import { TdMenu, sanitizeDownloadName } from './td-menu.js';
 
 const LIGHTBOX_LAYER = LAYERS.lightbox; // --td-z-lightbox
 import { tdIcon } from '../icons/td-icon.js';
+import { matchesBelow, isCoarsePointer, isShort } from '../utils/breakpoints.js';
 
 const DEFAULT_LABELS = {
   dialog: 'Trình xem ảnh',
@@ -47,6 +48,7 @@ const FN_LABELS = new Set(['counter', 'thumb']);
 
 const IMAGE_EXT = /\.(jpe?g|png|webp|gif|avif|svg)$/i;
 const SWIPE_NAV = 50;      // px, horizontal → navigate
+const EDGE_GUARD = 24;     // px, v0.36.0: a touch gesture starting this close to the left / right edge is the browser's (back swipe)
 const SWIPE_CLOSE = 90;    // px, down → close (dearer than navigating: it loses context)
 const SWIPE_SHEET = 60;    // px, up → open the info sheet (undoable → cheaper)
 const DOUBLE_TAP_MS = 300;
@@ -411,7 +413,10 @@ function build() {
   const nav = h('div', { class: 'td-lightbox__nav' });
   // v0.24.0 N4: optional filmstrip (second row of the column).
   const filmstrip = h('div', { class: 'td-lightbox__filmstrip', hidden: true });
-  const col = h('div', { class: 'td-lightbox__col' }, [stage, nav, filmstrip]);
+  // v0.36.0 (plan QĐ 59 revised): the phone rail "‹ 3 / 12 ›" — below 480 px the SAME prev / next buttons and the SAME
+  // counter (one live region) are MOVED here (never cloned); a row of the column, above the filmstrip / sheet grabber.
+  const rail = h('div', { class: 'td-lightbox__rail td-glass-surface td-glass-surface--clear', hidden: true });
+  const col = h('div', { class: 'td-lightbox__col' }, [stage, nav, rail, filmstrip]);
   const caption = h('div', { class: 'td-lightbox__caption', hidden: true });
   const grab = h('button', { type: 'button', class: 'td-lightbox__grab', 'aria-expanded': 'false' }, [
     h('span', { class: 'td-lightbox__grab-bar', 'aria-hidden': 'true' }),
@@ -437,7 +442,7 @@ function build() {
   ]);
 
   document.body.appendChild(overlay);
-  ui = { overlay, backdrop, lead, backBtn, counter, col, stage, spinner, img, videoMount, caption, panel, grab,
+  ui = { overlay, backdrop, lead, backBtn, counter, rail, col, stage, spinner, img, videoMount, caption, panel, grab,
     panelBody, toolbar, prevBtn, nextBtn, fsBtn, dlBtn, dlMenuBtn, moreBtn, closeBtn, nav, filmstrip, error, errorText, retryBtn,
     errorNextBtn };
 
@@ -625,7 +630,9 @@ function bindPanelSwipe(panel) {
   let atTop = true;
   resetPanelSwipe = () => { y0 = null; atTop = true; };
   panel.addEventListener('touchstart', (e) => {
-    if (e.touches.length !== 1) { y0 = null; return; }
+    // v0.36.0: only a drag that STARTS on the grabber moves the sheet — scrolling the panel content never collapses it
+    const onGrab = e.target instanceof Element && !!e.target.closest('.td-lightbox__grab');
+    if (e.touches.length !== 1 || !onGrab) { y0 = null; return; }
     y0 = e.touches[0].clientY;
     atTop = panel.scrollTop <= 0;
   }, { passive: true });
@@ -715,7 +722,7 @@ let lastDownTarget = null;
 
 const inSideNav = (t) => t instanceof Element && !!t.closest('.td-lightbox__nav') && !!t.closest('.td-lightbox__btn');
 /** Filmstrip (native horizontal scroll) and the error block (plain buttons) never take part in gestures. */
-const outsideGestures = (t) => t instanceof Element && !!t.closest('.td-lightbox__filmstrip, .td-lightbox__error');
+const outsideGestures = (t) => t instanceof Element && !!t.closest('.td-lightbox__filmstrip, .td-lightbox__error, .td-lightbox__rail');
 const isBackground = (t) => !!ui && (t === ui.col || t === ui.stage || t === ui.nav);
 
 /**
@@ -787,7 +794,9 @@ function bindPointer(col) {
       clearDrag();
     } else if (pointers.size === 1) {
       g = { type: 'single', kind: e.pointerType, x0: e.clientX, y0: e.clientY, zx: zoom.x, zy: zoom.y,
-        moved: false, onImg: e.target === ui.img, pinched: false };
+        moved: false, onImg: e.target === ui.img, pinched: false,
+        // v0.36.0: a touch / pen gesture starting at the very left / right edge belongs to the browser (back / forward)
+        edge: e.pointerType !== 'mouse' && (e.clientX < EDGE_GUARD || e.clientX > document.documentElement.clientWidth - EDGE_GUARD) };
     }
   });
 
@@ -898,7 +907,11 @@ function bindPointer(col) {
       closeDown();
       return;
     }
-    if (Math.abs(dx) > SWIPE_NAV && Math.abs(dx) > Math.abs(dy)) navigate(dx < 0 ? 1 : -1);
+    if (Math.abs(dx) > SWIPE_NAV && Math.abs(dx) > Math.abs(dy) && !gesture.edge) {
+      // v0.36.0: RTL reverses the reading direction — a rightward swipe is "next" there
+      const rtl = getComputedStyle(ui.overlay).direction === 'rtl';
+      navigate((dx < 0) !== rtl ? 1 : -1);
+    }
   };
   col.addEventListener('pointerup', end);
   col.addEventListener('pointercancel', end);
@@ -911,7 +924,10 @@ function bindPointer(col) {
 function onNavClick(e, dir) {
   const press = navPress;
   navPress = null;
-  if (ui && e.currentTarget instanceof Element && e.currentTarget.parentElement === ui.nav && e.detail > 0) {
+  // v0.36.0: only the full-height side STRIPS (data-nav="side", fine pointer) ignore a touch / pen click (a swipe may start
+  // there); the compact 48 px discs (coarse pointer, short, zoomed) and the phone rail are plain buttons — a tap navigates
+  const strips = ui && ui.overlay.getAttribute('data-nav') === 'side' && !ui.overlay.hasAttribute('data-zoomed');
+  if (ui && strips && e.currentTarget instanceof Element && e.currentTarget.parentElement === ui.nav && e.detail > 0) {
     const type = typeof e.pointerType === 'string' && e.pointerType ? e.pointerType : lastPointerType;
     if (type && type !== 'mouse') return;
     if (press && press.moved) return;
@@ -1162,7 +1178,12 @@ function fineMq() {
 
 function navModeFor() {
   const mq = fineMq();
-  if (!session || session.items.length < 2 || !mq || !mq.matches) return 'toolbar';
+  if (!session || session.items.length < 2) return 'toolbar';
+  // v0.36.0 (plan QĐ 59 revised, owner + Codex think-about): phones (< 480) → the persistent bottom rail; a coarse pointer
+  // from 480, and the short landscape band, → persistent 48 px side discs inset from the edges (never the top toolbar)
+  if (matchesBelow('sm')) return 'rail';
+  if (isCoarsePointer() || isShort()) return 'side-compact';
+  if (!mq || !mq.matches) return 'toolbar';
   if (!isVideoSlide()) return 'side';
   const colW = ui.nav.getBoundingClientRect().width || ui.col.getBoundingClientRect().width;
   const playerW = ui.videoMount.getBoundingClientRect().width;
@@ -1174,15 +1195,21 @@ function syncNavMode() {
   if (!ui || !session || lifecycle !== 'open') return;
   const mode = navModeFor();
   if (ui.overlay.getAttribute('data-nav') !== mode) ui.overlay.setAttribute('data-nav', mode);
-  const inToolbar = ui.prevBtn.parentElement === ui.toolbar;
-  if ((mode === 'toolbar') === inToolbar) return;
+  ui.rail.hidden = mode !== 'rail';
+  // the counter (ONE polite live region) lives in the rail between ‹ and › in rail mode, else in the lead after "back"
+  const counterHome = mode === 'rail' ? ui.rail : ui.lead;
+  const home = mode === 'toolbar' ? ui.toolbar : mode === 'rail' ? ui.rail : ui.nav;
+  if (ui.prevBtn.parentElement === home && ui.counter.parentElement === counterHome) return;
   const active = document.activeElement;
   if (mode === 'toolbar') {
     ui.toolbar.insertBefore(ui.prevBtn, ui.fsBtn);
     ui.toolbar.insertBefore(ui.nextBtn, ui.fsBtn);
+  } else if (mode === 'rail') {
+    ui.rail.append(ui.prevBtn, ui.counter, ui.nextBtn);
   } else {
     ui.nav.append(ui.prevBtn, ui.nextBtn);
   }
+  if (mode !== 'rail' && ui.counter.parentElement !== ui.lead) ui.lead.appendChild(ui.counter);
   if (active === ui.prevBtn || active === ui.nextBtn) active.focus({ preventScroll: true }); // a move drops focus
 }
 

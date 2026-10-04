@@ -1,5 +1,6 @@
 // v0.36.0 (plan docs/internal/plans/v0.36.0-polish.md QĐ 59) — td-lightbox below 480 px in Chromium, Firefox AND WebKit:
-// the toolbar drops ‹ › (swipe + arrow keys still navigate) and moves fullscreen + unpinned extras into a "Thêm" menu
+// (revised 2026-10-05: ‹ › + the counter move to the bottom rail — td-v036-lightbox-rail) the toolbar moves fullscreen +
+// unpinned extras into a "Thêm" menu
 // button (TdMenu, APG menu button); download, close and the first `pinned: true` extra (panel toggle) stay. Geometry
 // gate: the lead (back + counter) and the toolbar never intersect at 360 / 393 / 430 / 768, the counter is visible and
 // not covered. ≥ 480 unchanged (no "Thêm", every control in the toolbar). Only real signals (image decoded, animations
@@ -107,7 +108,7 @@ describe('v0.36.0 td-lightbox — narrow toolbar ("Thêm" overflow, QĐ 59)', ()
     expect(rect($('[data-action="more"]')).width >= 43.5, '"Thêm" keeps the touch size').to.equal(true);
   });
 
-  it('< 480: toolbar = pinned panel toggle + download + "Thêm" + close; fullscreen / other extras / ‹ › hidden', async () => {
+  it('< 480: toolbar = pinned panel toggle + download + "Thêm" + close; fullscreen / other extras in "Thêm" (‹ › are in the rail)', async () => {
     await setViewport({ width: 360, height: 780 });
     await openReady(...panelSetup());
     const more = $('[data-action="more"]');
@@ -122,27 +123,20 @@ describe('v0.36.0 td-lightbox — narrow toolbar ("Thêm" overflow, QĐ 59)', ()
     expect(shown($('[data-action="fullscreen"]')), 'fullscreen moved to the menu').to.equal(false);
     const order = [...$('.td-lightbox__toolbar').children].filter(shown).map((b) => b.dataset.action || b.dataset.extra);
     expect(order.join(','), 'toolbar order').to.equal('download,info,more,close');
-    // arrow keys still navigate with ‹ › gone
+    // arrow keys navigate too
     key('ArrowRight');
     expect(await until(() => $('.td-lightbox__counter').textContent === '2 / 4'), 'ArrowRight → 2 / 4').to.equal(true);
   });
 
-  it('< 480: ‹ › in the toolbar (video slide, narrow column → data-nav="toolbar") are hidden', async () => {
+  it('< 480: ‹ › are never hidden — the phone rail holds them (revised QĐ 59), even on a video slide', async () => {
     await setViewport({ width: 360, height: 780 });
-    const video = (item, mount) => {
-      const p = document.createElement('div');
-      p.className = 'fake-player';
-      p.style.setProperty('width', '320px');
-      p.style.setProperty('height', '180px');
-      mount.appendChild(p);
-      return { destroy() { p.remove(); } };
-    };
-    TdLightbox.open([{ type: 'video', src: '/v.mp4' }, IMG(1)], { video });
-    expect(await until(() => overlay().getAttribute('data-nav') === 'toolbar'), 'nav in the toolbar').to.equal(true);
-    await settle();
-    const prev = $('[data-action="prev"]');
-    expect(prev.parentElement === $('.td-lightbox__toolbar'), 'prev lives in the toolbar').to.equal(true);
-    expect(shown(prev) || shown($('[data-action="next"]')), '‹ › hidden').to.equal(false);
+    await openReady([{ src: IMG(1) }, { src: IMG(2) }, { src: IMG(3) }]);
+    await until(() => overlay().getAttribute('data-nav') === 'rail');
+    for (const a of ['prev', 'next']) {
+      const b = $(`[data-action="${a}"]`);
+      expect(b.parentElement === $('.td-lightbox__rail'), `${a} in the rail`).to.equal(true);
+      expect(shown(b), `${a} shown`).to.equal(true);
+    }
   });
 
   for (const [k, label] of [['Enter', 'Enter'], [' ', 'Space']]) {
