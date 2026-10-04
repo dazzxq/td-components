@@ -5,7 +5,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "npm run check:css && npm run check:icons && npm run check:stories && npm run test:node && npm run test:browser && npm run test:csp && npm run test:csp:combined && npm run test:tokens && npm run test:contrast && npm run test:engines",
+    "test": "npm run check:css && npm run check:icons && npm run check:stories && npm run test:node && npm run test:browser && npm run test:csp && npm run test:csp:combined && npm run test:tokens && npm run test:contrast && npm run test:engines && npm run test:responsive",
     "test:node": "node --test --test-force-exit \"src/**/*.test.js\" \"test/php/*.test.js\"",
     "test:browser": "web-test-runner",
     "test:csp": "node test/csp/csp.spec.mjs",
@@ -22,7 +22,8 @@
     "demo": "vite --open /demo.html",
     "check:stories": "node --import ./scripts/check-stories/register.mjs scripts/check-stories.mjs",
     "test:engines": "node test/engines/menu-tab.spec.mjs",
-    "test:contrast": "node test/tokens/contrast.spec.mjs"
+    "test:contrast": "node test/tokens/contrast.spec.mjs",
+    "test:responsive": "node test/responsive/responsive.spec.mjs"
   },
   "exports": {
     ".": "./index.js",

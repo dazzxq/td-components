@@ -1,0 +1,62 @@
+/* Layout of the responsive fixture (test/fixtures/responsive-page.js) — used by the gate page and demo.html. */
+.rsp-page {
+	box-sizing: border-box;
+	max-width: 72rem;
+	margin: 0 auto;
+	padding: var(--td-gutter, 16px);
+	font-family: var(--td-font-sans);
+	color: var(--td-color-text);
+	background: var(--td-color-surface-muted);
+}
+
+.rsp-section {
+	box-sizing: border-box;
+	display: grid;
+	gap: 12px;
+	margin: 0 0 16px;
+	padding: 16px;
+	background: var(--td-color-surface);
+	border: 1px solid var(--td-color-border);
+	border-radius: 12px;
+}
+
+.rsp-section > h2 {
+	margin: 0;
+	font-size: 1.125rem;
+}
+
+.rsp-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	align-items: center;
+}
+
+/* Deliberately two equal columns at EVERY width: form-control hosts must shrink (ADR 0014 §5). */
+.rsp-grid2 {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+}
+
+/* A narrow sidebar-like column (container-query components must adapt to it, not to the viewport). */
+.rsp-narrow {
+	box-sizing: border-box;
+	display: grid;
+	gap: 12px;
+	width: 280px;
+	max-width: 100%;
+}
+
+.rsp-thumb {
+	display: block;
+	width: 120px;
+	height: 80px;
+	object-fit: cover;
+	border-radius: 8px;
+}
+
+.rsp-sort-item {
+	padding: 6px 8px;
+	border-bottom: 1px solid var(--td-color-border);
+}
