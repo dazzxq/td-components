@@ -381,7 +381,7 @@ const outcome = await TdMediaPicker.open({
 | `pageSize` | số 1–100 | `30` | → `limit` (0.32: 40) |
 | `pagination` | `'cursor'` \| `'pages'` | `'cursor'` | 0.33 — [Phân trang](#phân-trang--hai-chế-độ) |
 | `upload` | `{ accept?, maxSize?, multiple? = true, acceptLabel? }` | — | Chuyển cho `td-dropzone` ([dropzone](dropzone.md)). `acceptLabel` (0.33) chỉ là **chữ** trên badge / mô tả tab URL, không phải bộ lọc; thiếu thì suy từ `accept` |
-| `crop` | `{ enabled, aspectRatio?, allowFocalPoint? }` | — | 0.35.0: `enabled: true` + chọn **một** ảnh ⇒ bước cắt sau "Chèn". `aspectRatio` = số `w / h` trong `(0, 10000]` (khoá tỉ lệ; thiếu ⇒ tự do có preset). Xem [Cắt ảnh](#cắt-ảnh--option-crop-0350) |
+| `crop` | `{ enabled, aspectRatio?, allowFocalPoint? }` | — | 0.35.0: `enabled: true` + chọn **một** ảnh ⇒ bước cắt sau "Chèn". `aspectRatio` = số `w / h` trong `[0.01, 100]` (khoá tỉ lệ; thiếu ⇒ tự do có preset). Xem [Cắt ảnh](#cắt-ảnh--option-crop-0350) |
 
 - **Một picker một lúc**: gọi `open()` khi đã có picker mở → resolve ngay `{ status: 'cancelled', reason:
   'programmatic' }` + cảnh báo một lần (không chồng picker).
@@ -446,7 +446,7 @@ Luồng (giống dcms2: cắt **sau khi chọn**):
   cắt).
 - `usage.focalPoint` chỉ có khi `allowFocalPoint: true` và người dùng bật điểm trọng tâm.
 - `selection.mode = 'multiple'` + `crop` → cảnh báo console **một lần**, bỏ crop (như dcms2: chọn nhiều không crop).
-- `aspectRatio` không phải số hữu hạn trong `(0, 10000]` → cảnh báo một lần, cắt **tự do**. Muốn nhập `"16:9"` thì tự đổi
+- `aspectRatio` không phải số hữu hạn trong `[0.01, 100]` (gồm hai đầu) → bị từ chối + cảnh báo một lần, cắt **tự do**. Muốn nhập `"16:9"` thì tự đổi
   sang `16 / 9` (field làm việc này từ thuộc tính `crop-ratio`).
 - `close()` bằng code hoặc host bị gỡ khi bước cắt đang mở → cả bước cắt lẫn picker đóng, `cancelled / programmatic`.
 - **Không có nút "Cắt" trong panel chi tiết**: panel là metadata **của asset**; crop là dữ liệu **của chỗ dùng** (một ảnh

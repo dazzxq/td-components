@@ -1262,7 +1262,7 @@ serialize: adapter là JS của site ([Media picker](../components/media-picker.
 | `alt` | alt mặc định (usage), cắt 500 ký tự |
 | `crop` | mảng `['x' => …, 'y' => …, 'width' => …, 'height' => …]` (số, chuẩn hoá 0..1) **hoặc** chuỗi JSON v1 (`{"v":1,…}` — nên in lại được nguyên `$_POST['og']['crop']` sau lỗi validate). `null` / `''` / `'null'` → `null` im lặng; sai (thiếu / thừa key, ngoài 0..1, `x + width > 1`…) → `null` + một `E_USER_WARNING` |
 | `croppable` (0.35.0) | `true` → in nút "Cắt ảnh" `.td-media-field__crop-btn` (ẩn tới khi JS chạy, như Đổi / Gỡ) + `span.td-media-field__status` (`role="status"`, báo lỗi nguồn ảnh). Bốn option 0.35 cần `usage`: thiếu → bỏ cả bốn + một `E_USER_WARNING` (fail closed) |
-| `crop_ratio` (0.35.0) | `'1.91'` \| `'16/9'` \| `'16:9'` \| `'free'` → thuộc tính `crop-ratio`. Vắng → JS theo `aspect_ratio`, rồi tự do. Sai → bỏ + một `E_USER_WARNING` |
+| `crop_ratio` (0.35.0) | `'1.91'` \| `'16/9'` \| `'16:9'` \| `'free'` → thuộc tính `crop-ratio`. Vắng → JS theo `aspect_ratio`, rồi tự do. Sai hoặc tỉ lệ ngoài **[0.01, 100]** → bỏ + một `E_USER_WARNING` (bảng `CROP_RATIO_CASES` JS = PHP) |
 | `focal_point` (0.35.0) | `true` (+ `usage`) → in hidden `input.td-media-field__focal` `name="og[focal]"` (mục thứ tư, sau `og[crop]`) |
 | `focal` (0.35.0) | mảng `['x' => …, 'y' => …]` (0..1) **hoặc** chuỗi JSON v1 `{"v":1,"x","y"}` (in lại được nguyên `$_POST['og']['focal']`). `null` / `''` / `'null'` → `null` im lặng; sai → `null` + một `E_USER_WARNING` |
 | `id` | id của **host**; id con suy ra: `{id}-label`, `{id}-state`, `{id}-alt`, `{id}-help`, `{id}-error`. Không có → id duy nhất trong request (`td-{name}-{n}`) |

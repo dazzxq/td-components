@@ -11,7 +11,7 @@ All notable changes to **td-components** are documented here.
 
 - **`<td-cropper>`** — khung cắt trên ảnh, **chỉ trả toạ độ** (không bao giờ tạo canvas / blob / file mới, không
   `fetch`, không upload — có test chặn): `src` (qua allowlist URL), `natural-width` / `natural-height`, `aspect-ratio`
-  (preset 1:1, 16:9, 1.91:1… hoặc tự do), `crop`, `focal-point` + `focal`. Kéo / đổi cỡ bằng chuột, cảm ứng, bút; zoom =
+  (khoá tỉ lệ, hoặc tự do với preset 1:1, 4:3, 3:2, 16:9, 1.91:1), `crop`, `focal-point` + `focal`. Kéo / đổi cỡ bằng chuột, cảm ứng, bút; zoom =
   đổi cỡ khung quanh tâm / con trỏ / giữa hai ngón; **bàn phím** (mũi tên 1%, Shift 10%, `+` / `-`, Tab qua khung → 4 góc →
   điểm trọng tâm) + thông báo cho trình đọc màn hình; vùng chạm ≥ 44px trên cảm ứng. Sự kiện `crop-input`, `crop-change`
   (`normalized` 0..1 + `pixels` theo ảnh gốc khi biết kích thước + `aspectRatio`), `focal-change`, `image-ready`,
@@ -25,6 +25,15 @@ All notable changes to **td-components** are documented here.
   `get()`; trang PHP / HTML phải in `preview-src` là ảnh gốc. Field không `croppable` giữ nguyên hành vi 0.34 (kể cả khi
   site bật crop trong defaults).
 - PHP `td_media_field`: option `croppable`, `crop_ratio`, `focal_point`, `focal`; phần in `crop` không đổi.
+
+### Changed
+
+- Picker: `crop: { enabled: true }` (0.32–0.34 chỉ cảnh báo, `usage.crop` luôn `null`) giờ **mở bước cắt** khi chọn một
+  ảnh; `urls.preview` của adapter phải là ảnh nguyên chưa cắt (lệch tỉ lệ so với `width/height` → bước cắt báo lỗi, "Chèn"
+  khoá). Tỉ lệ cắt công khai (`crop.aspectRatio`, `crop-ratio`, PHP `crop_ratio`, `<td-cropper aspect-ratio>`) trong
+  **[0.01, 100]** — ngoài khoảng bị từ chối + một cảnh báo, cắt tự do.
+- `<td-media-field>` getter `selection`: `usage.focalPoint` là giá trị thật khi có `focal-point` (0.34 luôn `null`).
+  Không có thay đổi phá vỡ: field không `croppable` / `focal-point` gửi form đúng từng byte như 0.34.
 
 ## 0.34.0
 

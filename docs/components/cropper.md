@@ -287,7 +287,7 @@ còn.
 | `src` | URL | — | Ảnh **nguyên**. Qua `safeMediaUrl` (`https:`, `http:` khi trang là `http:`, tương đối); **không** `blob:` / `data:`. Sai → `error` `src` |
 | `alt` | string | `''` | Mô tả ảnh — tên của vùng cắt ("Cắt ảnh: {alt}") |
 | `natural-width` / `natural-height` | số nguyên 1–100 000 | — | Kích thước ảnh gốc (cả hai). Có ⇒ kết quả có `pixels` + kiểm tỉ lệ ảnh tải về |
-| `aspect-ratio` | `W/H` \| `W:H` \| số | — | Có ⇒ **khoá** tỉ lệ, ẩn bộ chọn preset. Sai → coi như tự do |
+| `aspect-ratio` | `W/H` \| `W:H` \| số | — | Có ⇒ **khoá** tỉ lệ, ẩn bộ chọn preset; tỉ lệ `w / h` phải trong **[0.01, 100]** (gồm hai đầu); ngoài khoảng → bị từ chối + **một** cảnh báo (không lặp lại giá trị), cắt tự do |
 | `crop` | JSON v1 `{"v":1,"x","y","width","height"}` | — | Khung ban đầu (chuẩn hoá). Sai định dạng → khung mặc định |
 | `focal-point` | boolean | — | Bật công cụ điểm trọng tâm |
 | `focal` | JSON v1 `{"v":1,"x","y"}` | — | Điểm trọng tâm ban đầu |

@@ -156,7 +156,7 @@ nguyên từng byte như v0.34.
    thêm key (key lạ như `minWidth` bị bỏ qua). `enabled: true` + chế độ đơn + asset `kind === 'image'` ⇒ "Chèn" mở bước cắt
    (hộp thoại lồng, sau cổng "bỏ thay đổi"); "Quay lại" về picker giữ lựa chọn. `usage.crop` (`CropValue`, toàn ảnh →
    `null`) + `usage.focalPoint` (chỉ khi `allowFocalPoint`) — hình dạng `UsageDraft` không đổi. Chọn nhiều + crop → cảnh
-   báo một lần, bỏ crop; `aspectRatio` ngoài `(0, 10000]` → cảnh báo một lần, tự do. `buildOutcome(model, usageById?)`
+   báo một lần, bỏ crop; `aspectRatio` ngoài `[0.01, 100]` (review R1 #5: khoảng công khai chung cho picker / field `crop-ratio` / PHP `crop_ratio` / `<td-cropper aspect-ratio>`) → từ chối + cảnh báo một lần, tự do. `buildOutcome(model, usageById?)`
    thêm tham số tuỳ chọn. QĐ 3 giữ nguyên: picker không sửa host, không tạo file.
 2. **`urls.preview` phải là ảnh nguyên, không cắt sẵn khi bật crop** (bất kỳ cỡ) — bổ sung vào hợp đồng adapter. Có
    `width/height` thì kết quả có `pixels` và preview lệch tỉ lệ > 1 % ⇒ bước cắt lỗi, "Chèn" khoá (fail closed). Field có

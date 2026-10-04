@@ -271,7 +271,7 @@ Gửi form: `og[id]=a_9f2c`, `og[alt]=…`, `og[crop]={"v":1,…}`, `og[focal]={
 | Thuộc tính | Tác dụng |
 |---|---|
 | `croppable` | Bật cắt ảnh: nút **"Cắt ảnh"** + bước cắt khi chọn ảnh qua picker |
-| `crop-ratio` | Tỉ lệ khung cắt: `W/H` \| `W:H` \| số \| `free`. **Vắng** → theo `aspect-ratio` của khung; vắng cả hai → tự do (như dcms2 tách tỉ lệ cắt khỏi tỉ lệ hiển thị) |
+| `crop-ratio` | Tỉ lệ khung cắt: `W/H` \| `W:H` \| số \| `free`; tỉ lệ phải trong **[0.01, 100]**. **Vắng** (hoặc sai / ngoài khoảng: một cảnh báo) → theo `aspect-ratio` của khung (khung ngoài [0.01, 100] → tự do + cảnh báo); vắng cả hai → tự do (như dcms2 tách tỉ lệ cắt khỏi tỉ lệ hiển thị) |
 | `focal-point` | Bật điểm trọng tâm: công cụ trong hộp cắt (khi `croppable`) + mục thứ tư `name[focal]` |
 | `focal` | Điểm trọng tâm mặc định, JSON v1 `{"v":1,"x","y"}` (0..1). Sai → `null` |
 

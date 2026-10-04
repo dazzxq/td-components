@@ -18,8 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
-| [0.35.0](#0350) | Đổi hành vi (nhỏ, chỉ khi đã bật `crop`) | Không bắt buộc. Thêm `<td-cropper>` (`./cropper`), `TdCropper.openDialog()`, field `croppable` / `focal-point` / `name[focal]` (opt-in), PHP `croppable` / `crop_ratio` / `focal_point` / `focal`. Site đã truyền `crop: { enabled: true }` cho picker: "Chèn" giờ mở **bước cắt**. Import map: thêm `cropper`. |
-| [0.35.0](#0350) | Không có thay đổi phá vỡ | Không. Thêm `<td-cropper>`, bước cắt trong picker (`crop.enabled`), `croppable` / `focal-point` cho `<td-media-field>`. Import map tự liệt kê: thêm `cropper`. |
+| [0.35.0](#0350) | Đổi hành vi (nhỏ, chỉ khi đã bật `crop` / `focal-point`) | Không bắt buộc. Thêm `<td-cropper>` (`./cropper`), `TdCropper.openDialog()`, field `croppable` / `focal-point` / `name[focal]` (opt-in), PHP `croppable` / `crop_ratio` / `focal_point` / `focal`. Site đã truyền `crop: { enabled: true }` cho picker: "Chèn" giờ mở **bước cắt**, `urls.preview` phải là ảnh nguyên, `aspectRatio` trong [0.01, 100]. Field không `croppable` không đổi; `selection.focalPoint` thật khi có `focal-point`. Import map: thêm `cropper`. |
 | [0.34.0](#0340) | Đổi giao diện + đổi DOM (nhỏ) | Responsive: modal sheet < 720 (trước ≤ 640), `td-table` tự thành card khi hẹp (`layout="table"` để giữ cũ), `textContent` của ô bảng có thêm nhãn cột ẩn, site chỉ đè `--td-media-grid-row-ratio` giờ chỉ áp lưới ≥ 1024px. |
 | [0.33.0](#0330) | Đổi giao diện + đổi văn bản (không breaking API) | Không bắt buộc sửa code. Media picker full viewport giống dcms2: nhãn mặc định đổi ("Chọn ({n})" → "Chèn ({n})", "Huỷ" → "Đóng", "Thư viện media" → tiêu đề theo `selection.kinds`), `pageSize` 40 → 30, "Tải thêm" → phân trang, bỏ khay thumb. `td-media-grid`: ô đã chọn hết thu nhỏ / nền, thành vòng inset; grid tự đặt kích thước `img` (CSS site trên `img` không còn thắng — dùng token). |
 | [0.32.0](#0320) | Không có thay đổi phá vỡ | Không. Thêm `<td-media-picker>` / `TdMediaPicker`, `<td-media-field>`, `td_media_field()`. Import map tự liệt kê: thêm `media-picker`, `media-field`. |
@@ -76,7 +75,8 @@ API: mọi phần thêm đều opt-in, FormData mặc định giữ nguyên từ
   0.35, `TdMediaPicker.open({ crop: { enabled: true, … } })` (hoặc `configureDefaults({ crop })`) + chọn **một ảnh** ⇒
   "Chèn" mở **bước cắt** trước khi kết thúc, `usage.crop` / `usage.focalPoint` có giá trị thật (toàn ảnh vẫn `null`).
   Site đã bật sẵn `crop` "cho tương lai" mà chưa muốn bước cắt → bỏ option đó. Cảnh báo "crop UI ships in v0.35" không
-  còn; thay bằng cảnh báo một lần khi chọn nhiều + crop (bỏ crop) hoặc `aspectRatio` sai (cắt tự do).
+  còn; thay bằng cảnh báo một lần khi chọn nhiều + crop (bỏ crop) hoặc `aspectRatio` sai / ngoài **[0.01, 100]** (bị từ
+  chối, cắt tự do) — cùng khoảng cho field `crop-ratio`, PHP `crop_ratio`, `<td-cropper aspect-ratio>`.
 - **Adapter khi bật crop:** `urls.preview` phải là **ảnh nguyên, không cắt sẵn** (bất kỳ cỡ). Preview lệch tỉ lệ so với
   `width/height` > 1 % ⇒ bước cắt báo lỗi, "Chèn" khoá. Adapter trả thumbnail vuông làm `preview` phải đổi trước khi bật
   crop.
@@ -90,11 +90,6 @@ API: mọi phần thêm đều opt-in, FormData mặc định giữ nguyên từ
   `"@dazzxq/td-components/cropper"` nếu dùng.
 
 Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.35.0.
-
-## 0.35.0
-
-**Không có thay đổi phá vỡ** — chỉ bổ sung (opt-in). Field không `croppable` gửi form y như 0.34. Import map tự viết:
-thêm `@dazzxq/td-components/cropper`. Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.35.0.
 
 ---
 
