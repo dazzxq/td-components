@@ -4,6 +4,11 @@
  * · :hover · :focus-visible.
  * Per-instance colours: host custom properties --td-pagination-active / --td-pagination-active-fg (from `active-color`;
  * the fg is chosen by WCAG contrast in JS).
+ * v0.34.0 (plan QĐ 8, ADR 0014): the host is the size container `td-pagination` (needs its width from the parent).
+ * Nothing can stick out on the left any more: every flex level may wrap as a last resort and shrink to 0
+ * (justify-content: flex-end only pushes LEFT when an item is wider than its line — now impossible above ~50px).
+ * Compact form below 480px of container width: info on its own row, pages reduced to first / current / last (JS marks
+ * each <li> with data-rel = current | edge | adjacent | far | ellipsis | gap; `gap` = an ellipsis only this form shows).
  */
 @layer td.tokens {
 	:root {
@@ -27,6 +32,8 @@
 @layer td.component {
 	td-pagination {
 		display: block;
+		min-inline-size: 0;
+		container: td-pagination / inline-size;
 	}
 
 	.td-pagination {
@@ -36,6 +43,7 @@
 		gap: var(--td-space-xs) var(--td-space-sm);
 		align-items: center;
 		justify-content: flex-end;
+		min-inline-size: 0;
 		font-family: var(--td-font-sans);
 		font-size: var(--td-text-sm);
 		line-height: var(--td-leading-normal);
@@ -49,20 +57,29 @@
 	}
 
 	.td-pagination__info {
+		min-inline-size: 0;
 		margin: 0;
 		color: var(--td-color-text-muted);
+		overflow-wrap: anywhere;
 	}
 
 	.td-pagination__controls {
 		display: flex;
+		flex-wrap: wrap; /* last resort only (container narrower than the compact form) */
 		gap: var(--td-space-2xs);
 		align-items: center;
+		justify-content: flex-end;
+		min-inline-size: 0;
+		max-inline-size: 100%;
 	}
 
 	.td-pagination__pages {
 		display: flex;
+		flex-wrap: wrap;
 		gap: var(--td-space-2xs);
 		align-items: center;
+		justify-content: flex-end;
+		min-inline-size: 0;
 		padding: 0;
 		margin: 0;
 		list-style: none;
@@ -139,6 +156,25 @@
 		min-width: 1.5rem;
 		color: var(--td-color-text-muted);
 		user-select: none;
+	}
+
+	.td-pagination__ellipsis[data-rel="gap"] {
+		display: none;
+	}
+
+	@container td-pagination (width < 480px) {
+		.td-pagination__info {
+			flex: 1 0 100%;
+		}
+
+		.td-pagination__pages > [data-rel="adjacent"],
+		.td-pagination__pages > [data-rel="far"] {
+			display: none;
+		}
+
+		.td-pagination__ellipsis[data-rel="gap"] {
+			display: inline-flex;
+		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {

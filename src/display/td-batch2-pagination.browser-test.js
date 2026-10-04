@@ -34,7 +34,8 @@ const ratioRgb = (a, b) => {
   const [x, y] = [TdButton._luminance(a), TdButton._luminance(b)].sort((p, q) => q - p);
   return (x + 0.05) / (y + 0.05);
 };
-const pages = (el) => [...el.querySelectorAll('.td-pagination__pages > li')].map((li) => li.textContent.trim());
+// The full (≥ 480px) sequence: v0.34.0 compact-only `gap` ellipses (display: none here) are left out.
+const pages = (el) => [...el.querySelectorAll('.td-pagination__pages > li:not([data-rel="gap"])')].map((li) => li.textContent.trim());
 const current = (el) => el.querySelector('.td-pagination__page[aria-current="page"]');
 
 describe('batch 2 — td-pagination', () => {

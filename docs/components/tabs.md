@@ -125,7 +125,7 @@ Khoá của một mục `tabs`:
 | Khoá | Kiểu | Mô tả |
 |---|---|---|
 | `id` | string | Bắt buộc, định danh thẻ (trả về trong `tab-change`). |
-| `label` | string | Chữ hiển thị (escape). Chữ dài bị cắt `…`. |
+| `label` | string | Chữ hiển thị (escape). **Không bao giờ bị cắt** (v0.34.0): không đủ chỗ thì hàng thẻ cuộn ngang — xem [Responsive](#responsive-v0340). |
 | `icon` | string | Tên icon registry (hoặc class cũ, deprecated). |
 | `panel` | string | `id` của phần tử panel **nằm ngoài** td-tabs (cùng document / shadow root với td-tabs). |
 
@@ -180,13 +180,38 @@ panel đó. Nên để sẵn `hidden` trên panel không mặc định chọn tr
 .toolbar td-tabs { --td-tabs-bg: transparent; }  /* chỉ trong toolbar */
 ```
 
-Các thẻ chia đều chiều rộng (`flex: 1 1 0`). td-tabs không có glass (lớp nội dung).
+Các thẻ chia đều chiều rộng (`flex: 1 1 0`) khi đủ chỗ (xem [Responsive](#responsive-v0340)). td-tabs không có glass
+(lớp nội dung).
+
+## Responsive (v0.34.0)
+
+td-tabs chọn bố cục theo **bề rộng thật của chính nó** (đo bằng `ResizeObserver`, không theo viewport), nên đặt trong
+cột hẹp của trang desktop cũng đúng như trên điện thoại.
+
+- **Đủ chỗ → ô bằng nhau** (segmented control như cũ). "Đủ chỗ" nghĩa là thẻ **rộng nhất** (đo ở kiểu đang chọn — chữ
+  đậm, nên đổi thẻ không bao giờ làm nhãn bị cắt) vừa một ô: `ô = (bề rộng rãnh − khoảng cách × (n − 1)) / n`.
+- **Không đủ → hàng thẻ cuộn ngang**: mỗi thẻ rộng theo nhãn, rãnh cuộn ngang (bắt dính nhẹ, ẩn thanh cuộn), mép bị
+  che mờ dần (`data-scroll-start` / `data-scroll-end`), thẻ đang chọn tự cuộn vào tầm nhìn (chỉ cuộn rãnh, không cuộn
+  trang), viên thuốc cuộn cùng thẻ. Một nhãn rất dài giữa các nhãn ngắn cũng chuyển sang chế độ này (ô bằng nhau không
+  chứa nổi nó) thay vì cắt nó.
+- **Nhãn không bao giờ bị cắt `…`** ở cả hai chế độ.
+- Có **vùng trễ 4px** (vào chế độ cuộn khi thẻ rộng nhất > ô, ra khi ≤ ô − 4px) nên kéo cửa sổ qua lại quanh ngưỡng
+  không làm bố cục nhảy. JS chỉ đo lại khi `tabs` / nhãn / icon / `size` đổi, khi web font tải xong
+  (`document.fonts` `loadingdone`) hoặc khi cỡ chữ đổi — không đo lại mỗi lần resize.
+- Trạng thái nằm trên `.td-tabs`: `[data-overflow]` (chế độ cuộn), `[data-scroll-start]` / `[data-scroll-end]` (còn
+  nội dung bị che ở đầu / cuối). Chỉ để đọc / style; đừng tự đặt.
+- **Cần bề rộng từ cha**: host là `display: block; min-inline-size: 0` — trong grid / flex nó không đẩy cột rộng ra
+  mà cuộn. Đặt trong khung co theo nội dung (`inline-block`, `float`, flex item `flex: 0 1 auto` không có `width`) thì
+  rãnh rộng theo tổng nhãn và không bao giờ cuộn — cho nó một bề rộng.
+- Thiết bị cảm ứng (`pointer: coarse`): mỗi thẻ ≥ 44 × 44px (cả thẻ một chữ).
+- Không phụ thuộc container query → chạy giống nhau trên mọi trình duyệt trong hợp đồng hỗ trợ.
 
 ## Cấu trúc DOM & class
 
 ```html
 <td-tabs id="t">
-  <div class="td-tabs td-tabs--md" role="tablist" aria-label="Các thẻ" data-state="ready">
+  <div class="td-tabs td-tabs--md" role="tablist" aria-label="Các thẻ" data-state="ready"
+       [data-overflow] [data-scroll-start] [data-scroll-end]>
     <span class="td-tabs__indicator" aria-hidden="true"></span>
     <button type="button" role="tab" class="td-tabs__tab" id="t-tab-0" data-tab-id="profile"
             aria-selected="true" tabindex="0" aria-controls="panel-profile">
@@ -230,8 +255,9 @@ Các thẻ chia đều chiều rộng (`flex: 1 1 0`). td-tabs không có glass 
 
 - **Panel nằm trong td-tabs** sẽ không được quản lý (td-tabs render đè nội dung của chính nó). Đặt panel ở ngoài.
 - **Đổi `active-tab` không phát event** — cố ý. Muốn event thì dùng `setActiveTab()`.
-- **Thẻ nằm trong phần tử đang ẩn** (`display: none`, tab ẩn, modal chưa mở): viên thuốc chưa đo được nên ẩn;
+- **Thẻ nằm trong phần tử đang ẩn** (`display: none`, tab ẩn, modal chưa mở): viên thuốc và bề rộng thẻ chưa đo được;
   `ResizeObserver` đo lại khi phần tử hiện ra.
+- **Đổi chữ nhãn trực tiếp trong DOM** (không qua `tabs`) không được đo lại — luôn gán lại `tabs`.
 - Nếu gán `tabs` không chứa thẻ đang chọn, td-tabs chọn lại theo `active-tab` hoặc thẻ đầu **mà không phát event**.
 - Host có id trùng giữa hai td-tabs sẽ làm id thẻ trùng; để td-tabs tự sinh id hoặc đặt id khác nhau.
 

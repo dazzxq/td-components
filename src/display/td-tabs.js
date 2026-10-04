@@ -5,6 +5,10 @@ let _autoIdCounter = 0;
 const SIZES = ['sm', 'md'];
 const CLASS_TOKEN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
 const DEFAULT_NAME = 'Các thẻ';
+/** px — width of the overflow edge fade (tabs.css `--_td-tabs-fade`); the active tab is scrolled clear of it. */
+const EDGE_FADE = 24;
+/** px — leave overflow mode only when the widest tab fits the slot with this much to spare (no flip-flop). */
+const HYSTERESIS = 4;
 /** Every attribute td-tabs may set on a consumer panel (recorded + restored, D7). */
 const PANEL_ATTRS = ['role', 'aria-labelledby', 'hidden', 'tabindex'];
 const FOCUSABLE = [
@@ -21,6 +25,7 @@ const FOCUSABLE = [
  *
  * DOM contract:
  *   <div class="td-tabs td-tabs--{sm|md}" role="tablist" aria-label="…" data-state="ready"
+ *        [data-overflow] [data-scroll-start] [data-scroll-end]
  *        (CSSOM --td-tabs-ind-x / --td-tabs-ind-w)>
  *     <span class="td-tabs__indicator" aria-hidden="true"></span>
  *     <button type="button" role="tab" class="td-tabs__tab" id="{host-id}-tab-{i}" data-tab-id="{id}"
@@ -30,6 +35,13 @@ const FOCUSABLE = [
  *     </button>…
  *   </div>
  *   Empty: <div class="td-tabs td-tabs--{size}" data-state="empty"></div>
+ *
+ * Responsive (v0.34.0, plan QĐ 9): equal-width segments (`flex: 1 1 0`) while they fit, else `data-overflow` on the
+ * trough → natural-width tabs in a horizontally scrolling row (snap, hidden scrollbar, edge fade driven by
+ * `data-scroll-start` / `data-scroll-end`). Rule: slot = (content width − gap × (n − 1)) / n; overflow when the widest
+ * tab (measured once per render in the ACTIVE style via `data-measuring`) > slot, back when it is ≤ slot − 4px
+ * (hysteresis). Labels never truncate. The trough scrolls itself, so the indicator (its absolute child) scrolls with
+ * the tabs.
  *
  * Keyboard: ← → (wrap, RTL-aware) / Home / End move focus. Default MANUAL activation: Enter/Space (native
  * button click) selects and fires `tab-change` once. `activation="auto"`: arrows also select.
@@ -71,6 +83,17 @@ export class TdTabs extends TdBaseElement {
     this._panels = new Map();
     this._ro = null;
     this._raf = 0;
+    // v0.34.0 overflow decision (QĐ 9)
+    /** widest tab's natural outer width in the active style (0 = not measured / not laid out) */
+    this._maxOuter = 0;
+    this._gap = 0;
+    /** trough content-box width (from the ResizeObserver) */
+    this._avail = 0;
+    this._fontSize = '';
+    this._overflow = false;
+    /** @type {boolean|null} decision waiting for its frame */
+    this._pendingOverflow = null;
+    this._modeRaf = 0;
   }
 
   // --- JS Property accessors ---
@@ -103,8 +126,13 @@ export class TdTabs extends TdBaseElement {
     this._ensureId();
     this.listen(this, 'click', (e) => this._onClick(e));
     this.listen(this, 'keydown', (e) => this._onKeydown(e));
+    // The trough is the scroller in overflow mode; scroll does not bubble → capture on the host.
+    this.listen(this, 'scroll', () => this._syncScrollEdges(), { capture: true, passive: true });
+    if (typeof document !== 'undefined' && document.fonts && typeof document.fonts.addEventListener === 'function') {
+      this.listen(document.fonts, 'loadingdone', () => this._remeasure());
+    }
     if (typeof ResizeObserver !== 'undefined') {
-      this._ro = new ResizeObserver(() => this._scheduleIndicator());
+      this._ro = new ResizeObserver((entries) => this._onResize(entries));
     }
     if (!this._initialized) {
       this._validateActive();
@@ -122,6 +150,9 @@ export class TdTabs extends TdBaseElement {
     this._ro = null;
     if (this._raf) cancelAnimationFrame(this._raf);
     this._raf = 0;
+    if (this._modeRaf) cancelAnimationFrame(this._modeRaf);
+    this._modeRaf = 0;
+    this._pendingOverflow = null;
     this._releasePanels(new Set());
   }
 
@@ -162,7 +193,9 @@ export class TdTabs extends TdBaseElement {
         + ` data-tab-id="${this.escapeHtml(tab.id)}" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"${controls}>`
         + `${this._iconMarkup(tab.icon)}<span class="td-tabs__label">${this.escapeHtml(tab.label)}</span></button>`;
     }).join('');
-    return `<div class="td-tabs td-tabs--${size}" role="tablist">`
+    // Keep the current mode on a re-render (no flash); afterRender re-decides from a fresh measurement.
+    const overflow = this._overflow ? ' data-overflow=""' : '';
+    return `<div class="td-tabs td-tabs--${size}" role="tablist"${overflow}>`
       + `<span class="td-tabs__indicator" aria-hidden="true"></span>${tabs}</div>`;
   }
 
@@ -173,6 +206,8 @@ export class TdTabs extends TdBaseElement {
     this._applyName();
     this._observe();
     this._syncPanels();
+    this._measure();
+    this._decideFromLayout();
     this._updateIndicator();
   }
 
@@ -236,11 +271,154 @@ export class TdTabs extends TdBaseElement {
     const lr = list.getBoundingClientRect();
     const br = btn.getBoundingClientRect();
     if (br.width === 0) return; // not laid out yet (hidden ancestor) — the ResizeObserver retries
-    const x = Math.round((br.left - lr.left - list.clientLeft) * 100) / 100;
+    // + scrollLeft: the indicator is a child of the (possibly scrolled) trough → position in CONTENT coordinates, so it
+    // scrolls with the tabs (RTL: scrollLeft ≤ 0, same formula).
+    const x = Math.round((br.left - lr.left - list.clientLeft + list.scrollLeft) * 100) / 100;
     const w = Math.round(br.width * 100) / 100;
     list.style.setProperty('--td-tabs-ind-x', `${x}px`);
     list.style.setProperty('--td-tabs-ind-w', `${w}px`);
     list.setAttribute('data-state', 'ready');
+  }
+
+  // --- Overflow mode (v0.34.0, plan QĐ 9) ---
+
+  /**
+   * ONE synchronous pass: `data-measuring` makes every tab `flex: 0 0 auto` in the active (heaviest) style; read each
+   * tab's outer width; remove the attribute — same task, no paint in between. Cached until render / size / font change.
+   */
+  _measure() {
+    const list = this._list;
+    this._maxOuter = 0;
+    if (!list || !list.isConnected || this._buttons.length === 0) return;
+    list.setAttribute('data-measuring', '');
+    let max = 0;
+    for (const b of this._buttons) max = Math.max(max, b.getBoundingClientRect().width);
+    const cs = getComputedStyle(list);
+    this._gap = parseFloat(cs.columnGap) || 0;
+    this._fontSize = cs.fontSize;
+    list.removeAttribute('data-measuring');
+    this._maxOuter = max; // 0 when not laid out (hidden ancestor) → measured again on the next real resize
+  }
+
+  /** Re-measure (fonts loaded, size changed) and re-decide with the cached width. */
+  _remeasure() {
+    if (!this._list || !this._list.isConnected) return;
+    this._measure();
+    this._decide();
+    this._scheduleIndicator();
+  }
+
+  /** Right after a render: the trough is new (not painted yet) → decide from layout and apply at once (no flash). */
+  _decideFromLayout() {
+    const list = this._list;
+    if (!list || !list.isConnected) return;
+    const cs = getComputedStyle(list);
+    const pad = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+    const border = (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0);
+    const w = list.getBoundingClientRect().width;
+    if (w > 0) this._avail = Math.max(0, w - pad - border);
+    if (this._modeRaf) cancelAnimationFrame(this._modeRaf);
+    this._modeRaf = 0;
+    this._pendingOverflow = null;
+    const next = this._nextMode(this._overflow);
+    if (next != null && next !== this._overflow) {
+      this._overflow = next;
+      list.toggleAttribute('data-overflow', next);
+    }
+    this._syncScrollEdges();
+    if (this._overflow) this._scrollActiveIntoView();
+  }
+
+  /** @param {ResizeObserverEntry[]} entries */
+  _onResize(entries) {
+    const list = this._list;
+    if (!list || !list.isConnected) return;
+    for (const e of entries) {
+      if (e.target !== list) continue;
+      const box = Array.isArray(e.contentBoxSize) ? e.contentBoxSize[0] : e.contentBoxSize;
+      this._avail = box && typeof box.inlineSize === 'number' ? box.inlineSize : e.contentRect.width;
+    }
+    // Re-measure only when needed: not measured yet (was hidden) or the trough's font size changed.
+    if ((!this._maxOuter && this._avail > 0) || getComputedStyle(list).fontSize !== this._fontSize) this._measure();
+    this._decide();
+    this._syncScrollEdges();
+    this._scheduleIndicator();
+  }
+
+  /**
+   * Hysteresis: enter when maxOuter > slot, leave when maxOuter ≤ slot − 4px.
+   * @param {boolean} cur
+   * @returns {boolean|null} null = cannot decide (not measured / no width)
+   */
+  _nextMode(cur) {
+    const n = this._buttons.length;
+    if (!n || !this._maxOuter || !(this._avail > 0)) return null;
+    const slot = (this._avail - this._gap * (n - 1)) / n;
+    if (cur) return this._maxOuter > slot - HYSTERESIS;
+    return this._maxOuter > slot;
+  }
+
+  /** One decision per call; the attribute is written in the next frame, and only when it changes. */
+  _decide() {
+    const cur = this._pendingOverflow ?? this._overflow;
+    const next = this._nextMode(cur);
+    if (next == null || next === cur) return;
+    if (next === this._overflow) { // back to the applied mode before the frame ran
+      this._pendingOverflow = null;
+      if (this._modeRaf) cancelAnimationFrame(this._modeRaf);
+      this._modeRaf = 0;
+      return;
+    }
+    this._pendingOverflow = next;
+    if (this._modeRaf) return;
+    this._modeRaf = requestAnimationFrame(() => {
+      this._modeRaf = 0;
+      const want = this._pendingOverflow;
+      this._pendingOverflow = null;
+      const list = this._list;
+      if (want == null || !list || !list.isConnected || want === this._overflow) return;
+      this._overflow = want;
+      list.toggleAttribute('data-overflow', want);
+      this._syncScrollEdges();
+      if (want) this._scrollActiveIntoView();
+      this._updateIndicator();
+    });
+  }
+
+  /** `data-scroll-start` / `data-scroll-end`: content hidden before / after the visible part (edge fade). */
+  _syncScrollEdges() {
+    const list = this._list;
+    if (!list) return;
+    let start = false;
+    let end = false;
+    if (this._overflow) {
+      const max = list.scrollWidth - list.clientWidth;
+      const pos = Math.abs(list.scrollLeft);
+      start = pos > 1;
+      end = pos < max - 1;
+    }
+    if (list.hasAttribute('data-scroll-start') !== start) list.toggleAttribute('data-scroll-start', start);
+    if (list.hasAttribute('data-scroll-end') !== end) list.toggleAttribute('data-scroll-end', end);
+  }
+
+  /**
+   * Scroll the TROUGH only (never the page, unlike scrollIntoView) so the active tab is fully visible — `inline:
+   * 'nearest'` semantics, kept clear of the edge fade.
+   */
+  _scrollActiveIntoView() {
+    const list = this._list;
+    const btn = this._buttonFor(this._activeTabId);
+    if (!list || !btn || !this._overflow) return;
+    const lr = list.getBoundingClientRect();
+    const br = btn.getBoundingClientRect();
+    const room = Math.min(EDGE_FADE, Math.max(0, (list.clientWidth - br.width) / 2));
+    const left = lr.left + list.clientLeft + room;
+    const right = lr.left + list.clientLeft + list.clientWidth - room;
+    let delta = 0;
+    if (br.left < left) delta = br.left - left;
+    else if (br.right > right) delta = br.right - right;
+    if (delta) list.scrollLeft += delta;
+    this._syncScrollEdges();
   }
 
   // --- Panels (D7) ---
@@ -296,6 +474,7 @@ export class TdTabs extends TdBaseElement {
       if (newVal != null) this._select(newVal, false);
     } else if (name === 'size') {
       if (this._list) this._list.className = `td-tabs td-tabs--${this._size()}`;
+      this._remeasure();
       this._scheduleIndicator();
     } else {
       this._applyName();
@@ -352,6 +531,7 @@ export class TdTabs extends TdBaseElement {
       b.setAttribute('tabindex', selected ? '0' : '-1');
     }
     this._syncPanels();
+    this._scrollActiveIntoView();
     this._updateIndicator();
     if (fireEvents) {
       if (this._onChange) {

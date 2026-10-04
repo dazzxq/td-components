@@ -84,3 +84,46 @@ export const TwoTabs = {
     ];
   },
 };
+
+/** v0.34.0: a fixed-width frame (CSSOM, no inline style markup) to show the container behaviour. */
+const frame = (canvasElement, width) => {
+  canvasElement.querySelector('[data-sb-frame]')?.style.setProperty('width', `min(100%, ${width}px)`);
+};
+
+export const ManyTabsOverflow = {
+  name: 'Many tabs (overflow)',
+  render: () => `
+    <div data-sb-frame>
+      <td-tabs aria-label="Sản phẩm"></td-tabs>
+    </div>
+    <p class="sb-note">8 thẻ nhãn dài trong khung 360px: không đủ ô bằng nhau → hàng thẻ cuộn ngang (mép mờ, thẻ đang chọn
+      luôn cuộn vào tầm nhìn). Nhãn không bao giờ bị cắt. Khung rộng hơn → trở lại ô bằng nhau.</p>
+  `,
+  play: async ({ canvasElement }) => {
+    frame(canvasElement, 360);
+    const el = canvasElement.querySelector('td-tabs');
+    el.tabs = [
+      'Thông tin chung', 'Thuộc tính và biến thể', 'Hình ảnh', 'Giá bán và khuyến mãi',
+      'Tồn kho theo chi nhánh', 'Vận chuyển', 'Tối ưu tìm kiếm', 'Lịch sử thay đổi',
+    ].map((label, i) => ({ id: `t${i}`, label }));
+    el.setAttribute('active-tab', 't5');
+  },
+};
+
+export const LongLabelAmongShort = {
+  name: 'Long label among short',
+  render: () => `
+    <div data-sb-frame>
+      <td-tabs aria-label="Chính sách"></td-tabs>
+    </div>
+    <p class="sb-note">Tổng bề rộng vừa khung, nhưng ô bằng nhau không chứa nổi nhãn dài nhất → chế độ cuộn
+      (thay vì cắt nhãn dài thành "Chính s…").</p>
+  `,
+  play: async ({ canvasElement }) => {
+    frame(canvasElement, 640);
+    canvasElement.querySelector('td-tabs').tabs = [
+      { id: 'x', label: 'Chính sách bảo hành và đổi trả 30 ngày' },
+      ...['A', 'B', 'C', 'D', 'E'].map((label) => ({ id: label, label })),
+    ];
+  },
+};
