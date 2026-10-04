@@ -578,6 +578,8 @@ describe('td-media-picker — latest wins + abort (decision 9)', () => {
 
   it('search is debounced 250 ms (one request for a burst), Enter runs it now', async () => {
     const { ad } = await openReady();
+    // v0.36.0 (QĐ 69): let the auto preview of the first asset settle first — its detail render must not slow the burst
+    await until(() => ad.calls.get.length >= 1 && document.querySelector('.td-media-picker__detail[data-state="ready"]:not([data-loading])'), 4000, 'auto preview settled');
     const n0 = ad.calls.list.length;
     const input = searchInput();
     input.focus();
