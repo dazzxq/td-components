@@ -3966,7 +3966,7 @@
  *   header / close / footer [hidden]
  * Per-instance CSSOM custom properties on .td-modal__dialog (validated in JS):
  *   --td-modal-w, --td-modal-h, --td-modal-body-pad, --td-modal-body-overflow
- * Only .td-modal__body scrolls (header/footer pinned, D21). ≤ 640 px: bottom sheet (except --viewport).
+ * Only .td-modal__body scrolls (header/footer pinned, D21). < 720 px (ADR 0014 md): bottom sheet (except --viewport).
  * --viewport (v0.33.0): header / footer / body add env(safe-area-inset-*) to their padding (100dvh, never vh).
  * Motion (v0.22.1, ported from dcms-modal): opening → scrim fades in (--td-modal-scrim-dur 120ms ease-out), the dialog
  * fades in (--td-modal-fade-dur 200ms, --td-modal-fade-ease) and scales from --td-modal-enter-from scale(0.95) with a
@@ -4263,7 +4263,7 @@
 	}
 
 	/* Phones: bottom sheet (no drag gesture — D24). */
-	@media (max-width: 640px) {
+	@media (max-width: 719.98px) {
 		.td-modal:not(.td-modal--viewport) {
 			align-items: flex-end;
 			padding: 0;
@@ -4323,7 +4323,7 @@
 		}
 	}
 
-	@media (prefers-reduced-motion: reduce) and (max-width: 640px) {
+	@media (prefers-reduced-motion: reduce) and (max-width: 719.98px) {
 		.td-modal:not(.td-modal--viewport) .td-modal__dialog {
 			transform: none;
 		}
@@ -7981,21 +7981,13 @@
 		/* object-fit of the image in a tile (cover | contain) and the tile ratio (auto = as tall as the image) */
 		--td-media-grid-fit: cover;
 		--td-media-grid-ratio: auto;
-		/* layout="justified": target ratio sum per row (row height = (width − gaps) / Σ) + ratio until an image loads */
+		/* layout="justified": target ratio sum per row (row height = (width − gaps) / Σ) + ratio until an image loads.
+		   v0.34.0 (ADR 0014): chosen by the GRID's width (container), not the viewport — row-ratio ≥ 1024px,
+		   -md 720–1023, -sm < 720. */
 		--td-media-grid-row-ratio: 5.5;
+		--td-media-grid-row-ratio-md: 4;
+		--td-media-grid-row-ratio-sm: 2.5;
 		--td-media-grid-fallback-ar: 1.5;
-	}
-
-	@media (max-width: 1024px) {
-		:root {
-			--td-media-grid-row-ratio: 4;
-		}
-	}
-
-	@media (max-width: 640px) {
-		:root {
-			--td-media-grid-row-ratio: 2.5;
-		}
 	}
 }
 
@@ -8117,6 +8109,41 @@
 		cursor: default;
 	}
 
+	/*
+	 * Justified Σ per grid width (v0.34.0): the host is an inline-size container; its items resolve --_td-mg-sigma,
+	 * which td-media-grid.js reads from the first item. Without container queries (Chrome 102–104) build-css emits the
+	 * same rules by viewport width.
+	 */
+	td-media-grid[layout="justified"] {
+		container: td-media-grid / inline-size;
+	}
+
+	td-media-grid [data-td-media-item] {
+		--_td-mg-sigma: var(--td-media-grid-row-ratio);
+	}
+
+	@container td-media-grid (width < 1024px) {
+		td-media-grid [data-td-media-item] {
+			--_td-mg-sigma: var(--td-media-grid-row-ratio-md);
+		}
+	}
+
+	/* td: generated container fallback (ADR 0014) */
+	@supports not (container-type: inline-size) {
+		@media (max-width: 1023.98px) {td-media-grid [data-td-media-item]{--_td-mg-sigma:var(--td-media-grid-row-ratio-md)}}
+	}
+
+	@container td-media-grid (width < 720px) {
+		td-media-grid [data-td-media-item] {
+			--_td-mg-sigma: var(--td-media-grid-row-ratio-sm);
+		}
+	}
+
+	/* td: generated container fallback (ADR 0014) */
+	@supports not (container-type: inline-size) {
+		@media (max-width: 719.98px) {td-media-grid [data-td-media-item]{--_td-mg-sigma:var(--td-media-grid-row-ratio-sm)}}
+	}
+
 	@media (hover: hover) and (pointer: fine) {
 		.td-media-grid__item:hover .td-media-grid__tick {
 			opacity: 1;
@@ -8127,16 +8154,24 @@
 		}
 	}
 
+	/*
+	 * Hit area (v0.34.0, ADR 0014 §5): the glyph stays small, a transparent ::before makes the target ≥ 24px for a mouse
+	 * and ≥ 44px on touch. ::before is positioned against the PADDING box, hence the extra −2px (the tick's border).
+	 */
+	.td-media-grid__tick {
+		--_td-mg-hit: 24px;
+	}
+
+	.td-media-grid__tick::before {
+		content: "";
+		position: absolute;
+		inset: calc((var(--td-media-grid-tick-size) - var(--_td-mg-hit)) / 2 - 2px);
+	}
+
 	@media (hover: none), (pointer: coarse) {
 		.td-media-grid__tick {
+			--_td-mg-hit: var(--td-touch-min, 44px);
 			opacity: 0.55;
-		}
-
-		/* 24px glyph, ≥ 44px hit area on touch */
-		.td-media-grid__tick::before {
-			content: "";
-			position: absolute;
-			inset: calc((var(--td-media-grid-tick-size) - var(--td-touch-min, 44px)) / 2);
 		}
 	}
 
@@ -10207,10 +10242,10 @@
  * decisions 4-19). The shell IS the td-modal DOM + modal.css (`.td-modal--viewport`: full viewport at every size, fade
  * only, safe-area); this file lays out the content. Content layer: solid surfaces, no glass. State only through
  * attributes set by JS:
- *   root [data-mode="single|multiple"] [data-view="grid|detail"] (data-view matters < 768px only: the detail pane)
+ *   root [data-mode="single|multiple"] [data-view="grid|detail"] (data-view matters < 720px only: the detail pane)
  *   .td-media-picker__detail [data-state="empty|ready"] [data-loading]
  *   .td-media-picker__card [data-kind] [data-status] [data-viewing] (+ td-media-grid's [data-selected])
- * Only __results (the list) and __detail scroll; the body itself does not. Breakpoint 768px (dcms2).
+ * Only __results (the list) and __detail scroll; the body itself does not. Breakpoint 720px (ADR 0014, v0.34.0; dcms2 used 768).
  * CSP: classes / data attributes only.
  */
 @layer td.tokens {
@@ -10234,9 +10269,17 @@
 		}
 	}
 
-	@media (max-width: 767.98px) {
+	@media (max-width: 719.98px) {
 		:root {
 			--td-media-picker-col-min: 150px;
+		}
+	}
+
+	/* md (720–1023, iPad portrait / foldable open — ADR 0014): a narrower detail column so the grid keeps two columns */
+	@media (min-width: 720px) and (max-width: 1023.98px) {
+		:root {
+			--td-media-picker-detail-w: clamp(15rem, 38vw, 400px);
+			--td-media-picker-col-min: 170px;
 		}
 	}
 }
@@ -10260,8 +10303,8 @@
 
 	/*
 	 * --- toolbar (decision 7): upload · search · [facets · pager →] ---
-	 * ≥ 768px: ONE row like dcms2, never wraps (impl review #3); facets that do not fit scroll horizontally INSIDE the
-	 * row (.td-media-picker__facets is the scroller). < 768px: wraps to two rows (media query below).
+	 * ≥ 720px: ONE row like dcms2, never wraps (impl review #3); facets that do not fit scroll horizontally INSIDE the
+	 * row (.td-media-picker__facets is the scroller). < 720px: wraps to two rows (media query below).
 	 */
 	.td-media-picker__toolbar {
 		display: flex;
@@ -10354,8 +10397,11 @@
 		white-space: nowrap;
 	}
 
+	/* content-sized inside the one-row toolbar: opt out of td-pagination's inline-size containment (ADR 0014 §4 — a
+	   contained host would collapse to 0 and stack its pages vertically); the picker lays the pager out itself */
 	.td-media-picker__pager td-pagination {
 		min-width: 0;
+		container-type: normal;
 	}
 
 	/* --- content: [list flex-1 | detail 25rem] (decision 6) --- */
@@ -10839,8 +10885,8 @@
 		margin: 0;
 	}
 
-	/* --- phones (< 768px): toolbar wraps to 2 rows; the detail is a full pane sliding in from the right --- */
-	@media (max-width: 767.98px) {
+	/* --- phones (< 720px): toolbar wraps to 2 rows; the detail is a full pane sliding in from the right --- */
+	@media (max-width: 719.98px) {
 		.td-media-picker__toolbar {
 			gap: 0.75rem;
 			padding: 0.75rem 1rem;
@@ -10859,6 +10905,17 @@
 
 		.td-media-picker__filters {
 			flex: 1 1 100%;
+		}
+
+		/* the pager takes its own full row; the paged td-pagination is a container again (compact below 480) */
+		.td-media-picker__pager {
+			flex: 1 1 100%;
+			justify-content: flex-end; /* the cursor pager stays at the end of its row (v0.33 look) */
+		}
+
+		.td-media-picker__pager td-pagination {
+			flex: 1 1 auto;
+			container-type: inline-size;
 		}
 
 		.td-media-picker__facets {
@@ -10920,7 +10977,20 @@
 		}
 	}
 
-	@media (max-width: 767.98px) and (prefers-reduced-motion: reduce) {
+	/* short (landscape phone, ≤ 500px tall — ADR 0014): compact chrome so ≥ 1 row of cards stays visible */
+	@media (max-height: 500px) {
+		.td-media-picker__toolbar {
+			gap: 0.5rem;
+			padding-block: 0.5rem;
+		}
+
+		.td-media-picker .td-modal__header,
+		.td-media-picker .td-modal__footer {
+			padding-block: 0.375rem;
+		}
+	}
+
+	@media (max-width: 719.98px) and (prefers-reduced-motion: reduce) {
 		.td-media-picker__detail {
 			opacity: 0;
 			transform: none;
@@ -10977,7 +11047,7 @@
 /*
  * Upload dialog of td-media-picker (src/feedback/media-picker-upload.js, v0.33.0 decisions 20-22). The shell IS the
  * td-modal DOM + modal.css at md width (`--td-modal-w-md`); this file lays out the content and makes the dialog full
- * viewport below 768px (instead of the ≤ 640px bottom sheet). Content layer: solid, no glass inside, no new colour
+ * viewport below 720px (ADR 0014; instead of the < 720px bottom sheet). Content layer: solid, no glass inside, no new colour
  * token. CSP: classes / attributes only.
  *   root .td-modal.td-modal--md.td-media-picker-upload [data-state]
  *   .td-media-picker-upload__panel [data-source="file|url"]
@@ -11073,8 +11143,8 @@
 		justify-content: flex-end;
 	}
 
-	/* < 768px: full viewport (decision 20). Specificity ≥ modal.css's bottom-sheet state rules; same layer, later file. */
-	@media (max-width: 767.98px) {
+	/* < 720px: full viewport (decision 20). Specificity ≥ modal.css's bottom-sheet state rules; same layer, later file. */
+	@media (max-width: 719.98px) {
 		.td-modal.td-media-picker-upload {
 			inset-inline-end: 0; /* full viewport: no scroll-lock gap strip (see .td-modal--viewport) */
 			align-items: stretch;

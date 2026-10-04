@@ -36,7 +36,7 @@ if (!isCoarsePointer()) searchInput.focus();                    // không bật 
 
 - **Theo chỗ đặt** — component nằm trong nội dung trang đổi bố cục theo **bề rộng của chính nó**, nên đặt trong cột hẹp
   của trang desktop cũng gọn như trên điện thoại: `td-table` (dạng card khi khung < 720px), `td-pagination` (gọn khi
-  < 480px). `td-tabs` tự đo: tab không vừa thì hàng tab cuộn ngang, nhãn không bao giờ bị cắt.
+  < 480px), Σ dòng của `td-media-grid layout="justified"`. `td-tabs` tự đo: tab không vừa thì hàng tab cuộn ngang, nhãn không bao giờ bị cắt.
 - **Theo màn hình** — lớp phủ (modal, drawer, toast, lightbox, loading, popup) và điều kiện thiết bị (`pointer`,
   `hover`, chiều cao).
 
@@ -64,6 +64,8 @@ khi bàn phím ảo đang mở (`visualViewport`).
 
 | Lớp phủ | < 480 | 480–719 | ≥ 720 | `short` |
 |---|---|---|---|---|
+| Modal thường / datetime | bottom sheet | bottom sheet | hộp giữa | bánh xe datetime 3 dòng |
+| Media picker (luôn phủ kín màn hình) | toolbar 2 hàng, chi tiết là pane trượt | như < 480 | toolbar 1 hàng, lưới + cột chi tiết | chrome gọn, ≥ 1 hàng card |
 | Drawer | toàn màn hình | rộng tối đa `100% − 3rem` | theo `size` | — |
 | Toast | một cột rộng hết (trừ lề) | góc phải như cũ | góc phải | chỉ 2 toast mới nhất hiện |
 | Lightbox | panel là sheet dưới | sheet | sheet; ≥ 1024 panel bên phải | — |

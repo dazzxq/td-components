@@ -8,7 +8,7 @@
  *   header / close / footer [hidden]
  * Per-instance CSSOM custom properties on .td-modal__dialog (validated in JS):
  *   --td-modal-w, --td-modal-h, --td-modal-body-pad, --td-modal-body-overflow
- * Only .td-modal__body scrolls (header/footer pinned, D21). ≤ 640 px: bottom sheet (except --viewport).
+ * Only .td-modal__body scrolls (header/footer pinned, D21). < 720 px (ADR 0014 md): bottom sheet (except --viewport).
  * --viewport (v0.33.0): header / footer / body add env(safe-area-inset-*) to their padding (100dvh, never vh).
  * Motion (v0.22.1, ported from dcms-modal): opening → scrim fades in (--td-modal-scrim-dur 120ms ease-out), the dialog
  * fades in (--td-modal-fade-dur 200ms, --td-modal-fade-ease) and scales from --td-modal-enter-from scale(0.95) with a
@@ -305,7 +305,7 @@
 	}
 
 	/* Phones: bottom sheet (no drag gesture — D24). */
-	@media (max-width: 640px) {
+	@media (max-width: 719.98px) {
 		.td-modal:not(.td-modal--viewport) {
 			align-items: flex-end;
 			padding: 0;
@@ -365,7 +365,7 @@
 		}
 	}
 
-	@media (prefers-reduced-motion: reduce) and (max-width: 640px) {
+	@media (prefers-reduced-motion: reduce) and (max-width: 719.98px) {
 		.td-modal:not(.td-modal--viewport) .td-modal__dialog {
 			transform: none;
 		}

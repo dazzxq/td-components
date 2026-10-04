@@ -90,15 +90,15 @@ Adapter là **object callback**, không bao giờ là chuỗi URL endpoint. Kit 
   góc, chỉ fade). Không còn bottom sheet. Header / footer **cộng thêm** `env(safe-area-inset-*)` vào padding gốc (tai thỏ,
   thanh home của iOS); body chỉ nhận inset hai bên.
 - **Content** hai cột `[danh sách | chi tiết 25rem]`, cách nhau `1rem`. Chỉ danh sách cuộn; panel chi tiết cuộn riêng khi
-  dài. Breakpoint **768px** (dcms2).
+  dài. Breakpoint **720px** (0.34.0, [ADR 0014](../internal/decisions/0014-breakpoints-container-queries.md); dcms2 / 0.33.0: 768px). Dialog luôn phủ kín màn hình ở mọi kích thước.
 - **Tiêu đề mặc định theo `selection.kinds`**: `['image']` "Chọn ảnh", `['video']` "Chọn video", `['file']` "Chọn tài liệu",
   còn lại "Chọn media". Option `title` của `open()` thắng.
 
 ### Thanh công cụ + facet gọn
 
-Mọi control là component kit, theo thứ tự. Từ 768px toolbar **luôn một hàng** như dcms2, không xuống dòng: ô tìm giữ tối
+Mọi control là component kit, theo thứ tự. Từ 720px toolbar **luôn một hàng** như dcms2, không xuống dòng: ô tìm giữ tối
 thiểu 200px, nhóm facet không đủ chỗ thì **cuộn ngang ngay trong hàng** (focus bằng bàn phím tự cuộn tới facet, vòng focus
-không bị cắt; menu dropdown / chip nổi trên lớp popover nên không bị cắt). Dưới 768px mới xuống hai hàng:
+không bị cắt; menu dropdown / chip nổi trên lớp popover nên không bị cắt). Dưới 720px mới xuống hai hàng:
 
 | # | Control | Ghi chú |
 |---|---|---|
@@ -136,7 +136,8 @@ Mỗi mục là một item [`td-media-grid`](media-grid.md) (`select-mode="tick"
 - Ngày định dạng bằng `Intl` theo `locale` (`vi` → `DD/MM/YYYY HH:mm` như dcms2).
 - Video: thumb là poster + icon video ở góc. File: icon loại file cỡ lớn. `processing` / `failed`: lớp phủ trạng thái, không
   chọn được.
-- Cột lưới tối thiểu 200px (220px ≥ 1280px, 150px < 768px).
+- Cột lưới tối thiểu 200px (220px ≥ 1280px, 170px ở 720–1023px — cột chi tiết hẹp lại `clamp(15rem, 38vw, 400px)` để lưới giữ hai cột trên iPad dọc / máy gập mở, 150px < 720px).
+- Màn hình thấp (≤ 500px — điện thoại xoay ngang): toolbar / header / footer gọn hơn, vẫn thấy ít nhất một hàng card.
 
 **Trạng thái card = màu viền 2px** (token mới, mặc định trỏ token có sẵn):
 
@@ -512,7 +513,7 @@ TdMediaPicker.configureDefaults({ adapter: mediaAdapter, pagination: 'pages' });
 
 ## Dialog tải lên
 
-Nút "Tải lên" mở một dialog **lồng trên picker** (cùng tầng modal, band promotion đặt nó trên picker; cỡ md, < 768px full
+Nút "Tải lên" mở một dialog **lồng trên picker** (cùng tầng modal, band promotion đặt nó trên picker; cỡ md, < 720px full
 viewport): header "Tải lên media" + ×, footer "Đóng".
 
 - **`uploadFields`** nằm trên cùng, dùng chung cho cả hai nguồn. Giá trị được **chụp lúc mỗi tác vụ bắt đầu** (sửa ô sau đó
@@ -753,7 +754,7 @@ chọn chưa xác nhận **không** tính là việc dở. `close()` bằng code
 - Facet không nhãn hiển thị vẫn có tên truy cập (`aria-label` = nhãn descriptor); nút "Tải lên" chỉ-icon trên điện thoại có
   `aria-label`.
 
-### Điện thoại (< 768px)
+### Điện thoại (< 720px)
 
 - Picker vẫn full viewport (không còn bottom sheet). Toolbar **xuống dòng, không tràn**: hàng 1 "Tải lên" (chỉ icon) + ô
   tìm; hàng 2 facet (`flex-wrap`) + phân trang.
@@ -1002,7 +1003,7 @@ Picker theo bố cục và cách dùng của media picker dcms2. Bảng dưới 
 | Kích thước | Full viewport (`100vh`) | Full viewport (`100dvh` + safe area) | khớp (sửa lỗi thanh địa chỉ iOS) |
 | Tiêu đề | Theo loại | Theo `selection.kinds` | khớp |
 | Toolbar | Upload · tìm · facet · phân trang, một hàng | Như dcms2, toàn component kit | khớp |
-| Toolbar < 768px | Tràn ngang | Xuống 2 hàng | sửa lỗi |
+| Toolbar < 720px | Tràn ngang | Xuống 2 hàng | sửa lỗi |
 | Facet | Dropdown / toggle gọn, không nhãn | Như dcms2 + `aria-label` | khớp |
 | Phân trang | Số trang + "Hiển thị a-b / total" | `pages` y như vậy; `cursor` là ‹ › + cùng dòng chữ | khớp (thêm chế độ cursor cho dsuite) |
 | Card | 3:2 contain, tên, "cỡ • ngày", viền 2px, bo 12px | Như dcms2 | khớp |

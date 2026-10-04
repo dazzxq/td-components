@@ -3,10 +3,10 @@
  * decisions 4-19). The shell IS the td-modal DOM + modal.css (`.td-modal--viewport`: full viewport at every size, fade
  * only, safe-area); this file lays out the content. Content layer: solid surfaces, no glass. State only through
  * attributes set by JS:
- *   root [data-mode="single|multiple"] [data-view="grid|detail"] (data-view matters < 768px only: the detail pane)
+ *   root [data-mode="single|multiple"] [data-view="grid|detail"] (data-view matters < 720px only: the detail pane)
  *   .td-media-picker__detail [data-state="empty|ready"] [data-loading]
  *   .td-media-picker__card [data-kind] [data-status] [data-viewing] (+ td-media-grid's [data-selected])
- * Only __results (the list) and __detail scroll; the body itself does not. Breakpoint 768px (dcms2).
+ * Only __results (the list) and __detail scroll; the body itself does not. Breakpoint 720px (ADR 0014, v0.34.0; dcms2 used 768).
  * CSP: classes / data attributes only.
  */
 @layer td.tokens {
@@ -30,9 +30,17 @@
 		}
 	}
 
-	@media (max-width: 767.98px) {
+	@media (max-width: 719.98px) {
 		:root {
 			--td-media-picker-col-min: 150px;
+		}
+	}
+
+	/* md (720–1023, iPad portrait / foldable open — ADR 0014): a narrower detail column so the grid keeps two columns */
+	@media (min-width: 720px) and (max-width: 1023.98px) {
+		:root {
+			--td-media-picker-detail-w: clamp(15rem, 38vw, 400px);
+			--td-media-picker-col-min: 170px;
 		}
 	}
 }
@@ -56,8 +64,8 @@
 
 	/*
 	 * --- toolbar (decision 7): upload · search · [facets · pager →] ---
-	 * ≥ 768px: ONE row like dcms2, never wraps (impl review #3); facets that do not fit scroll horizontally INSIDE the
-	 * row (.td-media-picker__facets is the scroller). < 768px: wraps to two rows (media query below).
+	 * ≥ 720px: ONE row like dcms2, never wraps (impl review #3); facets that do not fit scroll horizontally INSIDE the
+	 * row (.td-media-picker__facets is the scroller). < 720px: wraps to two rows (media query below).
 	 */
 	.td-media-picker__toolbar {
 		display: flex;
@@ -150,8 +158,11 @@
 		white-space: nowrap;
 	}
 
+	/* content-sized inside the one-row toolbar: opt out of td-pagination's inline-size containment (ADR 0014 §4 — a
+	   contained host would collapse to 0 and stack its pages vertically); the picker lays the pager out itself */
 	.td-media-picker__pager td-pagination {
 		min-width: 0;
+		container-type: normal;
 	}
 
 	/* --- content: [list flex-1 | detail 25rem] (decision 6) --- */
@@ -635,8 +646,8 @@
 		margin: 0;
 	}
 
-	/* --- phones (< 768px): toolbar wraps to 2 rows; the detail is a full pane sliding in from the right --- */
-	@media (max-width: 767.98px) {
+	/* --- phones (< 720px): toolbar wraps to 2 rows; the detail is a full pane sliding in from the right --- */
+	@media (max-width: 719.98px) {
 		.td-media-picker__toolbar {
 			gap: 0.75rem;
 			padding: 0.75rem 1rem;
@@ -655,6 +666,17 @@
 
 		.td-media-picker__filters {
 			flex: 1 1 100%;
+		}
+
+		/* the pager takes its own full row; the paged td-pagination is a container again (compact below 480) */
+		.td-media-picker__pager {
+			flex: 1 1 100%;
+			justify-content: flex-end; /* the cursor pager stays at the end of its row (v0.33 look) */
+		}
+
+		.td-media-picker__pager td-pagination {
+			flex: 1 1 auto;
+			container-type: inline-size;
 		}
 
 		.td-media-picker__facets {
@@ -716,7 +738,20 @@
 		}
 	}
 
-	@media (max-width: 767.98px) and (prefers-reduced-motion: reduce) {
+	/* short (landscape phone, ≤ 500px tall — ADR 0014): compact chrome so ≥ 1 row of cards stays visible */
+	@media (max-height: 500px) {
+		.td-media-picker__toolbar {
+			gap: 0.5rem;
+			padding-block: 0.5rem;
+		}
+
+		.td-media-picker .td-modal__header,
+		.td-media-picker .td-modal__footer {
+			padding-block: 0.375rem;
+		}
+	}
+
+	@media (max-width: 719.98px) and (prefers-reduced-motion: reduce) {
 		.td-media-picker__detail {
 			opacity: 0;
 			transform: none;

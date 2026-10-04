@@ -12,11 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { checkBreakpoints, addContainerFallbacks, expandVariants } from './css-responsive.mjs';
 
-/**
- * Files v0.33 is rewriting in parallel: their old thresholds (640 / 768 / 1024) are mapped to ADR 0014 in plan v0.34.0
- * M0, after v0.33 merges. Remove entries as M0 converts them.
- */
-const PENDING_M0 = new Set(['components/modal.css', 'components/media-picker.css', 'components/media-grid.css', 'components/dropzone.css', 'components/media-picker-upload.css']);
+
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const STYLES = join(ROOT, 'src', 'styles');
@@ -34,7 +30,7 @@ const bpErrors = [];
 for (const file of manifest.files) {
   const css = (await readFile(join(STYLES, file), 'utf8')).replace(/\r\n/g, '\n').trimEnd();
   if (/^\s*@import\b/m.test(css)) throw new Error(`${file}: @import is not allowed (td.css must be self-contained)`);
-  if (!PENDING_M0.has(file)) bpErrors.push(...checkBreakpoints(css, `src/styles/${file}`));
+  bpErrors.push(...checkBreakpoints(css, `src/styles/${file}`));
   parts.push(`\n/* ---- src/styles/${file} ---- */\n${addContainerFallbacks(expandVariants(css, `src/styles/${file}`), `src/styles/${file}`)}\n`);
 }
 if (bpErrors.length) {

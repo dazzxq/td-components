@@ -30,8 +30,7 @@ test('matches() is false without matchMedia (node / SSR)', () => {
 
 /**
  * Component JS must not hard-code viewport thresholds. `innerWidth` / `innerHeight` used to MEASURE (clip rects,
- * scrollbar width, sortable autoscroll) is allowed per file with a reason. PENDING_M0: files v0.33 is rewriting;
- * plan v0.34.0 M0 converts them, then they leave this list.
+ * scrollbar width, sortable autoscroll) is allowed per file with a reason.
  */
 const MEASURE_OK = {
   'src/utils/floating.js': 'clip rect of the viewport for placement',
@@ -41,7 +40,6 @@ const MEASURE_OK = {
   'src/feedback/td-hovercard.js': 'max list height = viewport height − margin',
   'src/feedback/td-menu.js': 'max list height = viewport height − margin',
 };
-const PENDING_M0 = new Set(['src/feedback/td-media-picker.js']);
 
 async function jsFiles(dir, out = []) {
   for (const e of await readdir(dir, { withFileTypes: true })) {
@@ -57,7 +55,7 @@ test('no hand-written width/height thresholds in component JS', async () => {
   const bad = [];
   for (const f of await jsFiles(join(root, 'src'))) {
     const rel = relative(root, f).split('\\').join('/');
-    if (rel === 'src/utils/breakpoints.js' || PENDING_M0.has(rel)) continue;
+    if (rel === 'src/utils/breakpoints.js') continue;
     const src = await readFile(f, 'utf8');
     src.split('\n').forEach((line, i) => {
       if (/^\s*(\*|\/\/)/.test(line)) return;

@@ -319,7 +319,7 @@ Token riêng của modal (đặt trong `:root` hoặc một selector hẹp hơn,
 | `--td-modal-w-full` | `100%` | Bề rộng của `size: 'full'`. |
 | `--td-modal-gap` | `var(--td-space-md)` | Khoảng cách từ dialog tới mép màn hình. |
 | `--td-modal-radius` | `var(--td-glass-radius)` | Bo góc dialog. |
-| `--td-modal-sheet-radius` | `24px` | Bo góc trên của bottom sheet (≤ 640px). |
+| `--td-modal-sheet-radius` | `24px` | Bo góc trên của bottom sheet (< 720px; trước 0.34.0: ≤ 640px). |
 | `--td-modal-pad-x` | `var(--td-space-lg)` | Padding ngang header / body / footer. |
 | `--td-modal-pad-y` | `var(--td-space-md)` | Padding dọc của body. |
 | `--td-modal-enter-dur` | `300ms` | (0.22.1, trước là `260ms`) Thời lượng **transform** khi hiện (phóng từ `scale(0.95)` / sheet trượt lên). |
@@ -366,7 +366,7 @@ Tương phản cao → nền `--td-color-surface`, viền rõ, không bóng.
   xo `cubic-bezier(0.34, 1.56, 0.64, 1)` (vượt nhẹ ~1–2% rồi về — cảm giác "bật" như dcms).
 - **Đóng:** thu về `scale(0.95)` trong 200ms, mờ dần (dialog + scrim) trong 150ms, cùng đường cong
   `cubic-bezier(0.4, 0, 0.2, 1)`. Kit đọc transition dài nhất trong computed style rồi mới gỡ modal khỏi DOM.
-- **Điện thoại (≤ 640px):** bottom sheet vẫn trượt từ dưới lên (300ms, `--td-modal-sheet-ease`, không vượt) và mờ dần
+- **Điện thoại (< 720px — 0.34.0, trước đó ≤ 640px):** bottom sheet vẫn trượt từ dưới lên (300ms, `--td-modal-sheet-ease`, không vượt) và mờ dần
   200ms; khi đóng trượt xuống 200ms / mờ 150ms.
 - **Toàn màn hình (`fullViewport`):** chỉ mờ dần.
 - **`prefers-reduced-motion: reduce`:** chỉ mờ dần 120ms (`linear`), không trượt, không scale; khi đóng kit chờ hết lần mờ dần đó (đọc từ computed style) rồi mới gỡ modal.
@@ -417,7 +417,7 @@ Mỗi modal đang mở là một phần tử gắn thẳng vào `<body>`:
 | `role="alertdialog"` + `aria-describedby="{id}-message"` | Trên các hộp thoại Promise (`confirm`, `success`, `error`, `info`). |
 | `.td-modal__message`, `.td-modal__message--{success\|error\|info}`, `.td-modal__icon`, `.td-modal__text` | Khối nội dung của hộp thoại Promise. |
 
-Chỉ `.td-modal__body` cuộn; header và footer luôn đứng yên. Trên màn hình ≤ 640px modal thành bottom sheet (không có cử
+Chỉ `.td-modal__body` cuộn; header và footer luôn đứng yên. Trên màn hình < 720px (0.34.0; trước đó ≤ 640px) modal thường thành bottom sheet — `fullViewport` thì luôn phủ kín (không có cử
 chỉ kéo), trừ `fullViewport`. Khi modal mở, trang được khoá cuộn (một khoá cho cả chồng, đặt trên `<html>` và khôi phục
 đúng giá trị `overflow` cũ).
 

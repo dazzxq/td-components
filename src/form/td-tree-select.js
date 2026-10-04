@@ -50,7 +50,7 @@ const format = (tpl, vars = {}) => String(tpl ?? '').replace(/\{(\w+)\}/g, (m, k
  *   Home / End (button; caret keys in the input), ← → and `*` (button; input only when EMPTY), Enter = pick + close
  *   (focus kept), Space on the button = pick + close (its keyboard activation click is suppressed), Escape / Tab close.
  * - multiple = disclosure: a button (aria-expanded + aria-controls the popup); open → focus in the popup search box
- *   (≥ 768px, else the tree) — the tree uses roving tabindex, Space / Enter toggle a check, the popup stays open;
+ *   (mouse; touch-first devices → the tree, no on-screen keyboard — v0.34.0) — the tree uses roving tabindex, Space / Enter toggle a check, the popup stays open;
  *   Escape / Tab out close and focus the trigger.
  *
  * Rendered DOM:

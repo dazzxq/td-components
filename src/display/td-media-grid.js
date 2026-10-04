@@ -213,7 +213,9 @@ export class TdMediaGrid extends TdBaseElement {
     }
     const mode = box ? 'justified' : 'default';
     if (box) {
-      const target = Number.parseFloat(cs.getPropertyValue('--td-media-grid-row-ratio'));
+      // v0.34.0: Σ follows the grid's width (container query on the items, components/media-grid.css)
+      const sigma = items.length ? getComputedStyle(items[0]).getPropertyValue('--_td-mg-sigma') : '';
+      const target = Number.parseFloat(sigma || cs.getPropertyValue('--td-media-grid-row-ratio'));
       const t = Number.isFinite(target) && target > 0 ? target : 5.5;
       const gap = Number.parseFloat(getComputedStyle(box).columnGap);
       const g = Number.isFinite(gap) && gap > 0 ? gap : 0;

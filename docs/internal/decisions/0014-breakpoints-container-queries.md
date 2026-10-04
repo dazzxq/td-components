@@ -78,7 +78,7 @@ viewport nên **đặt trong cột hẹp của trang desktop vẫn vỡ** như t
 
 ## Hệ quả
 
-- Đổi ngưỡng nhìn thấy được: modal sheet `≤ 640` → `< 720`; bố cục trong media picker `< 768` (v0.33) → `< 720`; drawer full màn hình `≤ 640` → `< 480`
+- Đổi ngưỡng nhìn thấy được (đã làm, M0 sau v0.33): modal sheet `≤ 640` → `< 720`; bố cục trong media picker `< 768` (v0.33) → `< 720`; Σ justified của `td-media-grid` theo bề rộng lưới (container); drawer full màn hình `≤ 640` → `< 480`
   (480–719: `min(size, 100vw − 3rem)`); lightbox `767 / 900` → `720 / 1024`. Ghi Changed trong CHANGELOG, trang upgrading.
 - `td-table` mặc định `layout="auto"` chuyển sang card khi container `< 720px` — thay đổi hình ảnh trên mobile cho mọi site;
   lối thoát `layout="table"` (giữ cuộn ngang).

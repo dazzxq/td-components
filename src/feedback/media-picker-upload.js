@@ -36,7 +36,7 @@
  *
  * Implementation notes (lane D):
  * - Shell = `openDialogLayer` at LAYERS.modal (band promotion puts it above the picker) + the td-modal DOM / CSS
- *   (`components/media-picker-upload.css`: md width, full viewport < 768px). Escape / × / "Đóng" → close() (layered:
+ *   (`components/media-picker-upload.css`: md width, full viewport < 720px (ADR 0014)). Escape / × / "Đóng" → close() (layered:
  *   only this dialog). The focus goes back to the opener (the picker's "Tải lên" button) through dialog-layer; then
  *   `onClosed()` runs once the root is removed. `destroy()` never calls `onClosed`.
  * - The busy confirmation is a `TdModal.show()` whose id is kept (like the picker's discard confirm) so destroy() can

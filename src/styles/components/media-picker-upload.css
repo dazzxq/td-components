@@ -1,7 +1,7 @@
 /*
  * Upload dialog of td-media-picker (src/feedback/media-picker-upload.js, v0.33.0 decisions 20-22). The shell IS the
  * td-modal DOM + modal.css at md width (`--td-modal-w-md`); this file lays out the content and makes the dialog full
- * viewport below 768px (instead of the ≤ 640px bottom sheet). Content layer: solid, no glass inside, no new colour
+ * viewport below 720px (ADR 0014; instead of the < 720px bottom sheet). Content layer: solid, no glass inside, no new colour
  * token. CSP: classes / attributes only.
  *   root .td-modal.td-modal--md.td-media-picker-upload [data-state]
  *   .td-media-picker-upload__panel [data-source="file|url"]
@@ -97,8 +97,8 @@
 		justify-content: flex-end;
 	}
 
-	/* < 768px: full viewport (decision 20). Specificity ≥ modal.css's bottom-sheet state rules; same layer, later file. */
-	@media (max-width: 767.98px) {
+	/* < 720px: full viewport (decision 20). Specificity ≥ modal.css's bottom-sheet state rules; same layer, later file. */
+	@media (max-width: 719.98px) {
 		.td-modal.td-media-picker-upload {
 			inset-inline-end: 0; /* full viewport: no scroll-lock gap strip (see .td-modal--viewport) */
 			align-items: stretch;
