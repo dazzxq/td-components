@@ -750,13 +750,19 @@ export class TdMediaPicker extends HTMLElement {
       s.pendingFacets = null;
       reconciled = this._renderFacets(list, { silent: true });
     }
-    const keys = new Set(s.facetList.map((f) => f.key));
+    // review ISSUE-6: every surviving draft value goes through the CURRENT control (a queued descriptor may have changed
+    // the facet's type) and is read back normalised — `next` only holds what the controls accept. Programmatic set():
+    // no change event → no extra request.
     const next = {};
-    for (const [k, v] of Object.entries(draft)) if (keys.has(k)) next[k] = v;
+    for (const [k, c] of s.facets) {
+      const raw = draft[k];
+      c.set(c.type === 'multiple' && raw !== undefined && !Array.isArray(raw) ? [raw] : raw);
+      const v = c.get();
+      if (v !== undefined && !(Array.isArray(v) && !v.length)) next[k] = v;
+    }
     const same = JSON.stringify(Object.entries(next).sort()) === JSON.stringify(Object.entries(s.filters).sort());
     if (same && !reconciled) return;
     s.filters = next;
-    for (const [k, c] of s.facets) c.set(s.filters[k]); // programmatic: no change event → no extra request
     this._syncFilterCount();
     s.debounce.cancel();
     if (s.els.search) s.query = String(s.els.search.getValue?.() ?? '').trim();
