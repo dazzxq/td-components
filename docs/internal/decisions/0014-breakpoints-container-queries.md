@@ -50,8 +50,15 @@ viewport nên **đặt trong cột hẹp của trang desktop vẫn vỡ** như t
    - **`@media` viewport** — lớp phủ định vị theo viewport: modal / sheet, drawer, toast, lightbox, loading, scroll-top,
      popup (dropdown, chip-input, tree-select, menu, tooltip, hovercard, datetime); và mọi điều kiện **thiết bị**:
      `pointer`, `hover`, `max-height` (`short`), `prefers-*`, `forced-colors`.
-   - Container query là **nâng cấp dần**: trình duyệt không có (Chrome < 105) giữ bố cục hiện tại (bảng cuộn ngang), không
-     vỡ.
+   - **Hợp đồng hỗ trợ giữ nguyên** (Chrome / Edge 102+, Firefox 112+, Safari 16.4+). Chrome 102–104 không có container
+     query → mỗi khối `@container td-<x> (width < N)` có fallback chức năng `@supports not (container-type: inline-size)
+     { @media (max-width: N−0.02px) { …cùng luật… } }` — bố cục theo **viewport** thay vì chỗ đặt (đúng cho trang một cột
+     trên điện thoại). Fallback do `scripts/build-css.mjs` **sinh** lúc build `td.css` (không viết tay hai lần), `check:css`
+     giữ đồng bộ; node test kiểm đủ cặp, engines test ép đường fallback bằng `td.css` biến đổi. JS của component không
+     được phụ thuộc vào việc container query có chạy.
+   - `.td-modal--viewport` (media picker từ v0.33) là lớp phủ full viewport ở **mọi** kích thước: chỉ bố cục bên trong đổi
+     theo `md` / `short`; luật sheet / hộp giữa chỉ áp cho modal thường. `td-media-grid` (kể cả Σ của `justified` v0.33)
+     theo container.
 
 4. **Quy tắc đặt container (tránh bẫy size containment)**
    - Tên: `container: td-<component> / inline-size`, đặt trên **host block-level có bề rộng từ cha** (`display: block`,
@@ -71,7 +78,7 @@ viewport nên **đặt trong cột hẹp của trang desktop vẫn vỡ** như t
 
 ## Hệ quả
 
-- Đổi ngưỡng nhìn thấy được: modal sheet / media picker một-màn `≤ 640` → `< 720`; drawer full màn hình `≤ 640` → `< 480`
+- Đổi ngưỡng nhìn thấy được: modal sheet `≤ 640` → `< 720`; bố cục trong media picker `< 768` (v0.33) → `< 720`; drawer full màn hình `≤ 640` → `< 480`
   (480–719: `min(size, 100vw − 3rem)`); lightbox `767 / 900` → `720 / 1024`. Ghi Changed trong CHANGELOG, trang upgrading.
 - `td-table` mặc định `layout="auto"` chuyển sang card khi container `< 720px` — thay đổi hình ảnh trên mobile cho mọi site;
   lối thoát `layout="table"` (giữ cuộn ngang).
