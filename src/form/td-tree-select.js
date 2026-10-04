@@ -1,8 +1,10 @@
 import { TdFormElement } from '../base/td-form-element.js';
+import { ValueTitleWatcher, displayedValueText } from '../utils/value-title.js';
 import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
 import { LAYERS, register as registerLayer } from '../utils/layers.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import { TreeModel } from '../utils/tree-model.js';
+import { isCoarsePointer } from '../utils/breakpoints.js';
 import './td-tree.js';
 
 /** Instance properties a page may set before the element upgrades (re-applied through the class setters). */
@@ -49,7 +51,7 @@ const format = (tpl, vars = {}) => String(tpl ?? '').replace(/\{(\w+)\}/g, (m, k
  *   Home / End (button; caret keys in the input), ← → and `*` (button; input only when EMPTY), Enter = pick + close
  *   (focus kept), Space on the button = pick + close (its keyboard activation click is suppressed), Escape / Tab close.
  * - multiple = disclosure: a button (aria-expanded + aria-controls the popup); open → focus in the popup search box
- *   (≥ 768px, else the tree) — the tree uses roving tabindex, Space / Enter toggle a check, the popup stays open;
+ *   (mouse; touch-first devices → the tree, no on-screen keyboard — v0.34.0) — the tree uses roving tabindex, Space / Enter toggle a check, the popup stays open;
  *   Escape / Tab out close and focus the trigger.
  *
  * Rendered DOM:
@@ -501,9 +503,42 @@ export class TdTreeSelect extends TdFormElement {
     this._applyName();
     this._applyRequired();
     this._applyDisabled();
+    this._watchValueTitle();
     this._updateDisplay();
     this._syncForm();
     this._applyErrorState();
+  }
+
+  /**
+   * @private v0.34.0 (plan QĐ 11): the element showing the value — the trigger's span, or the closed combobox <input>
+   * (searchable single) — gets `title` = the full displayed value (multiple: the comma list) while it is cut (…). One
+   * ResizeObserver on it (re-checks on resize, no polling), released on disconnect by the cleanups.
+   */
+  _watchValueTitle() {
+    const el = this._valueEl || (this._combo && this._combo.localName === 'input' ? this._combo : null);
+    if (!this._vt) {
+      this._vt = new ValueTitleWatcher((node) => this._valueTitleText(node));
+      this._cleanups.push(() => {
+        if (this._vt) this._vt.destroy();
+        this._vt = null;
+      });
+    }
+    this._vt.watch(el);
+  }
+
+  /** @private value text changed: re-check next frame (src/utils/value-title.js) */
+  _scheduleValueTitle() {
+    if (this._vt) this._vt.schedule();
+  }
+
+  /** @private title only for a cut value (never the placeholder, never while the input is open for typing) */
+  _syncValueTitle() {
+    if (this._vt) this._vt.sync();
+  }
+
+  /** @private the displayed value text: placeholder → '', the combobox input while open for typing → '' */
+  _valueTitleText(el) {
+    return displayedValueText(el, { open: this._isOpen });
   }
 
   /** @private the body portal + its popup tree (rendering THIS model) */
@@ -849,6 +884,7 @@ export class TdTreeSelect extends TdFormElement {
       else this._valueEl.setAttribute('data-placeholder', '');
     }
     if (this._clearBtn) this._clearBtn.hidden = this._effectiveDisabled || !this._model.hasClearable();
+    this._scheduleValueTitle();
   }
 
   // --- name / required / disabled -------------------------------------------------------------------------------
@@ -947,6 +983,7 @@ export class TdTreeSelect extends TdFormElement {
     if (single && combo.localName === 'input') {
       combo.placeholder = this._displayText() || this._placeholder();
       if (!opts.typing) combo.value = '';
+      this._syncValueTitle(); // open for typing → no title (no layout read: the text is empty)
     }
     this._place(this._control.getBoundingClientRect());
     this._layer = registerLayer({
@@ -962,7 +999,7 @@ export class TdTreeSelect extends TdFormElement {
     if (single) {
       const sel = this._model.values.map((v) => this._model.node(v)).find(Boolean) || null;
       tree._activate(sel);
-    } else if (this._search && window.innerWidth >= 768) {
+    } else if (this._search && !isCoarsePointer()) { // touch: no on-screen keyboard over the tree
       this._search.focus();
     } else {
       tree._focusFirst();

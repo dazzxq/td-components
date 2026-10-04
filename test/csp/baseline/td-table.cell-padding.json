@@ -13,7 +13,7 @@
   ],
   "styles": {
     ".td-table__cell--px-2": {
-      "width": "639px",
+      "width": "701.953px",
       "height": "43px",
       "min-height": "0px",
       "max-height": "none",
@@ -64,7 +64,16 @@
       "stroke-width": "1px",
       "stroke-dasharray": "none",
       "stroke-dashoffset": "0px",
-      "stroke-linecap": "butt"
+      "stroke-linecap": "butt",
+      "visibility": "visible",
+      "outline-style": "none",
+      "outline-width": "3px",
+      "outline-color": "rgb(107, 107, 115)",
+      "outline-offset": "0px",
+      "grid-template-columns": "none",
+      "column-gap": "normal",
+      "row-gap": "normal",
+      "touch-action": "auto"
     }
   }
 }

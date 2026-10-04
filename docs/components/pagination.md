@@ -102,7 +102,35 @@ không bị xoá khi render lại (từ 0.16.0).
 
 Hiện: `1 … 47 48 49 50 51 52 53 … 100`. Quy tắc: một cửa sổ `max-pages` trang liên tiếp quanh trang hiện tại (dồn vào
 trong khoảng hợp lệ), cộng trang 1 và trang cuối; khoảng trống đúng **một** trang thì hiện luôn số đó, lớn hơn thì hiện
-`…`. Tổng số trang ≤ `max-pages` thì hiện hết.
+`…`. Tổng số trang ≤ `max-pages` thì hiện hết. Quy tắc này áp khi thanh rộng ≥ 480px; hẹp hơn xem
+[Responsive](#responsive-v0340).
+
+## Responsive (v0.34.0)
+
+Host `<td-pagination>` là **container** (`container: td-pagination / inline-size`): bố cục đổi theo **bề rộng của chính
+thanh**, không theo viewport — đặt trong cột 360px của trang desktop cũng gọn như trên điện thoại.
+
+| Bề rộng thanh | Hiển thị |
+|---|---|
+| ≥ 480px | Như trước: cửa sổ `max-pages` + trang đầu / cuối + `…`; dòng "Hiển thị …" nằm cạnh cụm nút (xuống dòng khi không đủ chỗ) |
+| 360 – 479px | **Gọn**: chỉ trang đầu / hiện tại / cuối, mỗi phía có trang bị ẩn thì đúng một `…` (`‹ 1 … 57 … 200 ›`); dòng "Hiển thị …" chiếm một hàng riêng phía trên |
+| < 360px | **Trạng thái**: `‹ 57 / 200 ›` — nút trước, chữ "trang hiện tại / tổng số trang" (`labels.status`), nút sau; không còn số trang / `…`; dòng "Hiển thị …" ẩn **khỏi mắt** nhưng vẫn là vùng `aria-live` duy nhất (trình đọc màn hình vẫn đọc khi đổi trang, đúng một lần) |
+
+- **Không gì tràn ra ngoài**, đặc biệt mép trái (trước v0.34.0 nút "Trang trước" có thể lọt ra ngoài mép trái, không
+  cuộn tới được). Khung hẹp hơn cả dạng trạng thái (< ~130px) thì cụm nút xuống dòng — vẫn bấm được mọi nút.
+- Mỗi `<li>` có `data-rel` tĩnh do JS đặt: `current` · `edge` (trang 1 / trang cuối) · `adjacent` (± 1) · `far` (phần
+  còn lại của cửa sổ) · `ellipsis` (`…` thường, hiện ở cả hai dạng) · `gap` (`…` chỉ dạng gọn hiện). CSS ẩn `adjacent` +
+  `far` và hiện `gap` khi < 480px — không có JS chạy khi resize. `aria-current`, nhãn nút và live region không đổi.
+- Dạng trạng thái (< 360px, cỡ `2xs` chỉ dành cho container — ADR 0014): `span.td-pagination__status` luôn có trong
+  markup (dựng lại cùng cụm nút mỗi lần đổi trang) nhưng chỉ hiện ở dạng này; nó `aria-hidden="true"` để không đọc hai
+  lần. Ở trang cuối, bấm "Trang sau" thì focus **ở lại** nút đó (giờ `aria-disabled`) thay vì nhảy sang số trang đang ẩn.
+- **Cần bề rộng từ cha.** Container `inline-size` làm bề rộng host không còn phụ thuộc nội dung: trong khung co theo
+  nội dung (`inline-block`, `float`, `position: absolute` không có `width`, flex item `flex: 0 1 auto`) host **sụp về
+  0** và chỉ còn dạng gọn tràn. Cho nó `display: block` trong luồng thường (mặc định), hoặc trong flex: `flex: 1 1 auto;
+  min-inline-size: 0` (td-table tự làm vậy cho thanh trong header).
+- Trình duyệt không có container query (Chrome / Edge 102–104): td.css có sẵn bản dự phòng theo **viewport** (dạng gọn
+  khi viewport < 480px, dạng trạng thái khi viewport < 360px) — đúng cho trang một cột trên điện thoại; trong cột hẹp
+  của trang desktop thì như trước.
 
 ## Attribute
 
@@ -148,6 +176,7 @@ Object.assign(TdPagination.labels, {
 | `page` | `Trang {n}` | `aria-label` từng nút số trang (`{n}` = số trang) |
 | `info` | `Hiển thị {from}-{to} / {total} {item}` | Dòng thông tin |
 | `item` | `mục` | `{item}` khi phần tử không có attribute `item-label` |
+| `status` | `{current} / {total}` | Chữ của dạng trạng thái < 360px (`{current}` = trang hiện tại, `{total}` = tổng số trang; 0.34.0) |
 
 `item-label` trên phần tử luôn thắng `labels.item`. Tên landmark (`Phân trang`) đổi bằng attribute `aria-label`.
 Mọi nhãn được escape.
@@ -192,10 +221,12 @@ chỉ `active-color` mới tự tính màu chữ.
               aria-label="Trang trước" aria-disabled="true">
         <span class="td-pagination__icon" data-td-icon="prev"><svg class="td-icon td-icon--m" data-icon="prev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m15 18-6-6 6-6"/></svg></span>
       </button>
+      <span class="td-pagination__status" aria-hidden="true">1 / 3</span> <!-- 0.34.0: chỉ hiện < 360px -->
       <ul class="td-pagination__pages">
-        <li><button type="button" class="td-pagination__page" data-page="1" aria-label="Trang 1" aria-current="page">1</button></li>
-        <li class="td-pagination__ellipsis" aria-hidden="true">…</li>
-        …
+        <li data-rel="current"><button type="button" class="td-pagination__page" data-page="1" aria-label="Trang 1" aria-current="page">1</button></li>
+        <li data-rel="adjacent"><button type="button" class="td-pagination__page" data-page="2" aria-label="Trang 2">2</button></li>
+        <li class="td-pagination__ellipsis" data-rel="gap" aria-hidden="true">…</li>
+        <li data-rel="edge"><button type="button" class="td-pagination__page" data-page="3" aria-label="Trang 3">3</button></li>
       </ul>
       <button type="button" class="td-pagination__nav td-pagination__nav--next" data-nav="next" aria-label="Trang sau">…</button>
     </div>
@@ -205,6 +236,9 @@ chỉ `active-color` mới tự tính màu chữ.
 
 - Trang hiện tại: `.td-pagination__page[aria-current="page"]`.
 - Nút trước/sau ở đầu/cuối: `[aria-disabled="true"]` (vẫn focus được, click bị chặn).
+- `data-rel` trên mỗi `<li>` (v0.34.0) — xem [Responsive](#responsive-v0340). Markup render sẵn từ server nên có luôn
+  `data-rel` + các `<li data-rel="gap">` (thiếu thì dạng gọn trước khi JS chạy sẽ hiện đủ trang) và
+  `span.td-pagination__status` (thiếu thì dạng trạng thái trước khi JS chạy chỉ còn hai nút).
 - Render phía server: in sẵn đúng khối `<nav class="td-pagination">` ở trên bên trong `<td-pagination>` (icon
   trước/sau: `<?= td_icon('prev') ?>` / `<?= td_icon('next') ?>` của [adapter PHP](../guides/php-adapter.md), hoặc slot
   `data-td-icon` để JS điền — xem [Icons](icons.md#icon-trong-markup-render-sẵn)). Khi JS chạy, component giữ `<nav>` có

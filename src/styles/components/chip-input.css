@@ -33,6 +33,7 @@
 @layer td.component {
 	td-chip-input {
 		display: block;
+		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5, v0.34.0) */
 		font-family: var(--td-font-sans); /* the error-contract note sits outside .td-chip-input */
 	}
 

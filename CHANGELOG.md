@@ -2,6 +2,47 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.34.0
+
+**Responsive chuẩn toàn kit** — điện thoại → máy gập → tablet dọc (iPad mini) → desktop (owner + yêu cầu dsuite; audit đo ở
+360/393/430/600/700/744/768/884/1024/1280/1440 + ngang 844×390, chuột và cảm ứng; plan
+`docs/internal/plans/v0.34.0-responsive.md`, Codex plan-review APPROVE 3 vòng; quy ước:
+[ADR 0014](docs/internal/decisions/0014-breakpoints-container-queries.md)).
+
+### Added
+
+- **Breakpoint chung** `xs < 480 · sm 480–719 · md 720–1023 · lg 1024–1279 · xl ≥ 1280` + `short` (cao ≤ 500):
+  `@dazzxq/td-components/breakpoints` (`BREAKPOINTS`, `SHORT_MAX`, `mqBelow()`, `matchesBelow()`, `isCoarsePointer()`, `isShort()`); `check:css` chặn mọi số breakpoint khác.
+  Ranh giới sm/md đặt ở **720** (không phải 768) để iPad mini dọc (744) vào nhóm tablet. Component nằm trong nội dung trang
+  phản ứng theo **bề rộng của chính nó** (container query) — đúng cả khi đặt trong cột hẹp trên desktop; trình duyệt chưa
+  có container query (Chrome 102–104) dùng bản dự phòng theo viewport do build tự sinh.
+- **`<td-table>` dạng card** khi bảng hẹp (< 720px, `card-below="sm|md|lg"`, `layout="table|cards"`): cột có vai trò
+  `card: 'primary' | 'secondary' | 'meta' | 'actions'`, thao tác dòng `actions` + sự kiện `row-action` (> 2 thao tác gom vào
+  menu), sắp xếp thành thanh sort, giữ phân trang / loading / server mode, vẫn đúng ngữ nghĩa bảng cho trình đọc màn hình.
+- Gate **`npm run test:responsive`** (3 trình duyệt, trong `npm test` + CI): tràn trang, phần tử không với tới, vùng chạm,
+  overlay trong màn hình, chữ đè, tab bị cắt, ARIA của bảng card; ảnh chụp 8 khổ là artifact CI.
+
+### Changed / Fixed
+
+- **Vùng chạm ≥ 44px** trên màn cảm ứng cho mọi control (tree, tree-select, tick media-grid / sortable, tay nắm lightbox…);
+  chuột ≥ 24px.
+- **Pagination** không còn tràn ra mép trái trên điện thoại (nút "trang trước" từng ở x = −135); dạng gọn khi hẹp
+  (< 480: đầu / hiện tại / cuối), dạng trạng thái `‹ 57 / 200 ›` khi khung < 360 (`TdPagination.labels.status`).
+- Khung hẹp (container): repeater đưa cụm nút xuống hàng riêng (< 480); empty-state / alert xếp nút dọc toàn bề rộng
+  (< 480; alert nhận thêm khối tuỳ chọn `div.td-alert__actions`); dropzone ẩn câu hướng dẫn, nút chọn file toàn bề rộng
+  (< 360); media-field xếp Đổi / Gỡ dọc (< 360).
+- Dropdown / tree-select / datetime: giá trị bị cắt `…` có `title` chứa giá trị đầy đủ.
+- **Tabs** không bao giờ cắt nhãn: tab dài hơn ô chia đều → hàng tab cuộn ngang.
+- Nút có nhãn dài xuống dòng thay vì đẩy rộng trang; field co theo cột lưới.
+- Modal thường thành sheet khi < 720px (trước ≤ 640); drawer toàn màn hình < 480, tôn trọng tai thỏ; lightbox theo 720 /
+  1024; toast toàn bề rộng trên điện thoại, chừa tai thỏ (trên ≥ safe-area + 8px, hai bên ở mọi bề rộng), ngang màn chỉ 2 toast
+  mới nhất; datetime 3 hàng khi ngang màn; lightbox màn thấp (≤ 500px) ẩn filmstrip, thanh công cụ gọn (nút giữ cỡ).
+- Media picker: luôn toàn màn hình; bố cục trong đổi ở 720 (trước 768); iPad dọc giữ 2 cột lưới; chế độ gọn khi màn ngang.
+- Popup (dropdown, tree-select, datetime…) bám **visual viewport** — bàn phím ảo không che danh sách; trên thiết bị cảm
+  ứng không tự focus ô tìm (trước iPad bật bàn phím đè lên danh sách).
+- `td-table`: cột `ellipsis` không còn ép cả bảng sang layout cố định (cột chia đều).
+- `td-media-grid` justified: chiều cao dòng theo **bề rộng lưới** (`--td-media-grid-row-ratio`, `-md`, `-sm`).
+
 ## 0.33.0
 
 **Media picker giống dcms2** + phần nợ v0.32.1 (xoá / tải bản gốc) + **lưới justified** cho `td-media-grid` (học từ lưới

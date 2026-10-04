@@ -1,6 +1,7 @@
 import { TdBaseElement } from '../base/td-base-element.js';
 import { safeCssDimension, applyStyles } from '../utils/css-safe.js';
-import { tdIcon, hasIcon } from '../icons/td-icon.js';
+import { tdIcon, hasIcon, fillIconSlots } from '../icons/td-icon.js';
+import { TdMenu } from '../feedback/td-menu.js';
 import './td-pagination.js';
 import './td-empty-state.js';
 
@@ -8,6 +9,12 @@ import './td-empty-state.js';
 const CELL_PADDING = { 'px-0': 0, 'px-1': 1, 'px-2': 2, 'px-3': 3, 'px-4': 4, 'px-5': 5, 'px-6': 6 };
 const ALIGN = ['left', 'center', 'right', 'justify'];
 const OFF = new Set(['false', '0', 'off']);
+/** Card roles of a column (v0.34.0 QĐ 16); `false` → `data-card="false"` (not shown on a card). */
+const CARD_ROLES = ['primary', 'secondary', 'meta', 'actions'];
+/** `actions[].variant` whitelist → `td-btn--{variant}` (anything else → secondary). */
+const ACTION_VARIANTS = new Set(['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'ghost']);
+/** More visible actions than this → card mode shows one "Thao tác" menu button instead (QĐ 18). */
+const CARD_INLINE_ACTIONS = 2;
 /** Attributes whose change rebuilds the structure; every other observed attribute updates in place (D11). */
 const STRUCTURAL = new Set(['title', 'heading-level', 'zebra', 'max-height']);
 
@@ -36,12 +43,17 @@ function safeMaxHeight(value) {
  * `div.td-table[.td-table--zebra|--fixed|--scroll-y][data-state=ready|loading|empty]`
  *   > `div.td-table__header` (`h{n}.td-table__title#{host}-title` + `div.td-table__pagination > td-pagination[quiet]`)
  *   > `div.td-table__scroll` (focusable named `role=region` only while it overflows)
- *     > `table.td-table__table[aria-labelledby|aria-label][aria-busy]` > `thead.td-table__head` (`th.td-table__th
- *       [scope=col][data-col][data-col-key][aria-sort]`, sortable → `button.td-table__sort[data-sort-col]`)
- *       + `tbody.td-table__body` (`tr.td-table__row[data-row-idx] > td.td-table__cell[data-col][data-col-key]`)
+ *     > `table.td-table__table[role=table][aria-labelledby|aria-label][aria-busy]` > `thead.td-table__head[role=rowgroup]`
+ *       > `tr[role=row]` > `th.td-table__th[role=columnheader][scope=col][data-col][data-col-key][data-card][aria-sort]`
+ *       (sortable → `button.td-table__sort[data-sort-col]`) + `tbody.td-table__body[role=rowgroup]`
+ *       (`tr.td-table__row[role=row][data-row-idx] > td.td-table__cell[role=cell][data-col][data-col-key][data-card]
+ *       > span.td-table__cell-label[aria-hidden=true]` + value; actions column → `div.td-table__actions`)
  *   > `div.td-table__footer > td-pagination` > `p.td-sr-only[role=status]` (loading text).
  * Sorting, paging and data loads keep `thead` and both paginations, so focus stays on the activated control and the
  * bottom pagination's live region announces each page once (the top one is `quiet`).
+ * v0.34.0 card mode (QĐ 15–20) is PURE CSS on the same DOM: the host is `container: td-table / inline-size`; `layout`
+ * / `card-below` are read by td.css only (no re-render on resize or attribute change). The explicit roles keep the
+ * table semantics when card mode changes `display`; the cell labels are aria-hidden (the columnheader names a cell).
  *
  * @element td-table
  * @attr {number} per-page - Items per page (default 10)
@@ -60,17 +72,27 @@ function safeMaxHeight(value) {
  *   paginations stay hidden and one console warning is printed)
  * @attr {string} max-height - Any CSS `max-height` (e.g. `320px`, `50vh`): the table scrolls inside and the header is
  *   sticky (validated with `CSS.supports`; url()/var() rejected)
+ * @attr {string} layout - `auto` (default: cards when the host is narrower than `card-below`) | `table` (always a
+ *   table with horizontal scroll — pre-0.34 behaviour, no container) | `cards` (always cards). CSS only.
+ * @attr {string} card-below - `sm` (480) | `md` (720, default) | `lg` (1024): container width under which `auto` shows
+ *   cards. CSS only.
  *
  * @property {Array<Object>} columns - Column definitions: `{ key, label, sortable?, width?, widthType?:
- *   'fixed'|'flexible', minWidth?, maxWidth?, align?: 'left'|'center'|'right'|'justify', ellipsis?, render? }`.
+ *   'fixed'|'flexible', minWidth?, maxWidth?, align?: 'left'|'center'|'right'|'justify', ellipsis?, nowrap?,
+ *   card?: 'primary'|'secondary'|'meta'|'actions'|false, actions?, render? }`.
  *   `width` is applied ONLY with `widthType: 'fixed'` (width = min = max); the default `'flexible'` ignores it and
- *   uses `minWidth`/`maxWidth` (width `auto`).
+ *   uses `minWidth`/`maxWidth` (width `auto`). `table-layout: fixed` only when EVERY column is fixed (v0.34.0).
+ *   `nowrap` (default true for `align: 'right'`) keeps the value on one line. `card` = role on a card (default:
+ *   first column primary, an `actions` column actions, others secondary; `false` = not on the card).
+ *   `actions: [{ id, label, icon?, variant?, hidden?(row), disabled?(row) }]` → small `td-btn` buttons (labels are
+ *   text, `variant` whitelisted, `icon` a registry name); in card mode more than 2 visible actions collapse into one
+ *   menu button (`TdTable.labels.actions`, TdMenu). A throwing `hidden` / `disabled` counts as true.
  *   `label` and plain values are always escaped; `width`/`minWidth`/`maxWidth` pass `safeCssDimension`, `align` a
  *   whitelist, all applied via CSSOM. Columns are resolved by INDEX (keys may repeat, be numeric or missing).
- *   `ellipsis: true` → one line, truncated, full text in `title`. Any `width` or `ellipsis` → `table-layout: fixed`.
+ *   `ellipsis: true` → one line, truncated at `maxWidth` or `--td-table-ellipsis-max` (18rem), full text in `title`.
  *   `render(row, rowIdxInPage)` — TRUSTED HATCH: return a Node (preferred, appended), a string (**trusted HTML**,
  *   developer markup only, injected with innerHTML — escape any end-user data inside it yourself; its CSP
- *   compliance is the consumer's responsibility) or anything else (text). A render column sorts by `row[key]`.
+ *   compliance is the consumer's responsibility) or anything else (text); it is appended after the cell's card label. A render column sorts by `row[key]`.
  *   A `render` that throws leaves that cell empty (`console.error`); the rest of the table still renders.
  * @property {Array<Object>} data - Rows. Client mode: resets to page 1. Server mode: keeps the current page.
  * @property {string} cellPaddingClass - Cell horizontal padding, one of `px-0`…`px-6` (dcms vocabulary) → the
@@ -82,6 +104,8 @@ function safeMaxHeight(value) {
  *   (`console.error`) and the table state stays consistent.
  * @fires sort-change - `{ key, direction }` (direction `'asc'|'desc'|null`), bubbling, before `onSort`
  * @fires page-change - from the inner td-pagination elements, `{ page }` (bubbles through the host)
+ * @fires row-action - `{ id, row, rowIndex }` (rowIndex = index in the current page, like `render`), bubbling, then
+ *   `onRowAction(detail)` (property; a throw is logged)
  */
 export class TdTable extends TdBaseElement {
   /** Site-overridable strings. */
@@ -93,6 +117,7 @@ export class TdTable extends TdBaseElement {
     itemLabel: 'mục',
     emptyTitle: 'Không có dữ liệu',
     emptyText: 'Chưa có dữ liệu để hiển thị.',
+    actions: 'Thao tác',
   };
 
   static get observedAttributes() {
@@ -111,6 +136,9 @@ export class TdTable extends TdBaseElement {
     this._data = [];
     this._onSort = null;
     this._onPageChange = null;
+    this._onRowAction = null;
+    /** Rows of the rendered page (row-action → `row`). */
+    this._pageRows = [];
     /** Sorted column by INDEX (fixes numeric/duplicate keys). */
     this._sort = { col: null, direction: null };
     this._currentPage = 1;
@@ -146,6 +174,29 @@ export class TdTable extends TdBaseElement {
 
   get onPageChange() { return this._onPageChange; }
   set onPageChange(fn) { this._onPageChange = typeof fn === 'function' ? fn : null; }
+
+  get onRowAction() { return this._onRowAction; }
+  set onRowAction(fn) { this._onRowAction = typeof fn === 'function' ? fn : null; }
+
+  /** `layout` attribute (`auto` | `table` | `cards`) — CSS only, never re-renders. */
+  get layout() {
+    const v = (this.getAttribute('layout') || '').trim();
+    return v === 'table' || v === 'cards' ? v : 'auto';
+  }
+  set layout(v) {
+    if (v === 'table' || v === 'cards') this.setAttribute('layout', v);
+    else this.removeAttribute('layout');
+  }
+
+  /** `card-below` attribute (`sm` | `md` | `lg`, default `md`) — CSS only, never re-renders. */
+  get cardBelow() {
+    const v = (this.getAttribute('card-below') || '').trim();
+    return v === 'sm' || v === 'lg' ? v : 'md';
+  }
+  set cardBelow(v) {
+    if (v === 'sm' || v === 'lg') this.setAttribute('card-below', v);
+    else this.removeAttribute('card-below');
+  }
 
   get cellPaddingClass() { return this._cellPadding || ''; }
   set cellPaddingClass(val) {
@@ -193,8 +244,25 @@ export class TdTable extends TdBaseElement {
   }
   _getMaxHeight() { return safeMaxHeight(this.getAttribute('max-height')); }
   _getHostLabel() { return (this.getAttribute('aria-label') || '').trim(); }
+  /** v0.34.0 QĐ 14: `table-layout: fixed` only when EVERY column is `widthType: 'fixed'` with a valid width. */
   _isFixedLayout() {
-    return this._columns.some((c) => c && (c.ellipsis || safeCssDimension(c.width, '')));
+    const cols = this._columns;
+    return cols.length > 0 && cols.every((c) => c && c.widthType === 'fixed' && safeCssDimension(c.width, ''));
+  }
+
+  /** Card role of a column (QĐ 16): explicit `card`, else actions → 'actions', first → 'primary', else 'secondary'. */
+  _cardRole(col, ci) {
+    const c = col || {};
+    if (c.card === false) return 'false';
+    if (CARD_ROLES.includes(c.card)) return c.card;
+    if (Array.isArray(c.actions)) return 'actions';
+    return ci === 0 ? 'primary' : 'secondary';
+  }
+
+  /** `nowrap` (QĐ 14): explicit boolean, default true for `align: 'right'` (amounts keep "₫" on their line). */
+  _isNowrap(col) {
+    const c = col || {};
+    return typeof c.nowrap === 'boolean' ? c.nowrap : c.align === 'right';
   }
 
   _warnOnce(msg) {
@@ -231,15 +299,17 @@ export class TdTable extends TdBaseElement {
         ? `<button type="button" class="td-table__sort" data-sort-col="${ci}"><span class="td-table__sort-label">${label}</span>`
           + '<span class="td-table__sort-icon" aria-hidden="true"></span></button>'
         : label;
-      return `<th class="td-table__th${pad}" scope="col" data-col="${ci}" data-col-key="${key}">${inner}</th>`;
+      return `<th class="td-table__th${c.sortable ? ' td-table__th--sortable' : ''}${pad}" role="columnheader" scope="col" data-col="${ci}" data-col-key="${key}"`
+        + ` data-card="${this._cardRole(c, ci)}">${inner}</th>`;
     }).join('');
     const titleHtml = title ? `<${h} class="td-table__title" id="${esc(this._titleId)}">${esc(title)}</${h}>` : '';
     const pag = (cls, label, quiet) => `<div class="${cls}"${quiet ? ' hidden' : ''}><td-pagination${quiet ? ' quiet' : ''}`
       + ` item-label="${esc(TdTable.labels.itemLabel)}" aria-label="${esc(label)}"></td-pagination></div>`;
     return `<div class="td-table${mods}" data-state="ready">`
       + `<div class="td-table__header">${titleHtml}${pag('td-table__pagination', TdTable.labels.paginationTop, true)}</div>`
-      + '<div class="td-table__scroll"><table class="td-table__table">'
-      + `<thead class="td-table__head"><tr>${heads}</tr></thead><tbody class="td-table__body"></tbody></table></div>`
+      + '<div class="td-table__scroll"><table class="td-table__table" role="table">'
+      + `<thead class="td-table__head" role="rowgroup"><tr role="row">${heads}</tr></thead>`
+      + '<tbody class="td-table__body" role="rowgroup"></tbody></table></div>'
       + `<div class="td-table__footer" hidden>${pag('td-table__pagination td-table__pagination--bottom', TdTable.labels.paginationBottom, false)}</div>`
       + '<p class="td-sr-only" role="status"></p>'
       + '</div>';
@@ -322,6 +392,7 @@ export class TdTable extends TdBaseElement {
     if (loading) this._tbody.innerHTML = this._skeletonHtml();
     else if (empty) this._renderEmpty();
     else this._renderRows(rows);
+    this._pageRows = loading || empty ? [] : rows;
 
     // Paginations (updated in place: live region + focus restore stay inside td-pagination)
     let showPag = !loading;
@@ -384,24 +455,44 @@ export class TdTable extends TdBaseElement {
     const esc = (v) => this.escapeHtml(v);
     const pad = this._cellPadClass();
     const cols = this._columns;
+    const labels = cols.map((col) => {
+      const l = col && col.label != null ? String(col.label) : '';
+      return `<span class="td-table__cell-label" aria-hidden="true">${esc(l)}</span>`;
+    });
     this._tbody.innerHTML = rows.map((row, ri) => {
       const cells = cols.map((col, ci) => {
         const c = col || {};
-        const cls = `td-table__cell${c.ellipsis ? ' td-table__cell--ellipsis' : ''}${pad}`;
-        const attrs = `class="${cls}" data-col="${ci}" data-col-key="${esc(String(c.key ?? ''))}"`;
-        if (typeof c.render === 'function') return `<td ${attrs}></td>`;
+        const actions = Array.isArray(c.actions);
+        const cls = `td-table__cell${c.ellipsis && !actions ? ' td-table__cell--ellipsis' : ''}`
+          + `${this._isNowrap(c) ? ' td-table__cell--nowrap' : ''}${actions ? ' td-table__cell--actions' : ''}${pad}`;
+        const attrs = `class="${cls}" role="cell" data-col="${ci}" data-col-key="${esc(String(c.key ?? ''))}"`
+          + ` data-card="${this._cardRole(c, ci)}"`;
+        if (actions) return `<td ${attrs}>${labels[ci]}${this._actionsHtml(c, row)}</td>`;
+        if (typeof c.render === 'function') return `<td ${attrs}>${labels[ci]}</td>`;
         const v = row && typeof row === 'object' ? row[c.key] : undefined;
         const text = v == null ? '' : String(v);
-        if (c.ellipsis) return `<td ${attrs}><div class="td-table__truncate" title="${esc(text)}">${esc(text)}</div></td>`;
-        return `<td ${attrs}>${esc(text)}</td>`;
+        if (c.ellipsis) return `<td ${attrs}>${labels[ci]}<div class="td-table__truncate" title="${esc(text)}">${esc(text)}</div></td>`;
+        return `<td ${attrs}>${labels[ci]}${esc(text)}</td>`;
       }).join('');
-      return `<tr class="td-table__row" data-row-idx="${ri}">${cells}</tr>`;
+      return `<tr class="td-table__row" role="row" data-row-idx="${ri}">${cells}</tr>`;
     }).join('');
 
-    // Render cells, resolved by column INDEX (fixes 2.8.4). CONSUMER HATCH: a string is trusted developer HTML.
     const trs = this._tbody.children;
+    // Actions (QĐ 18): icons from the registry, the "Thao tác" menu button bound as an APG menu button (TdMenu).
+    if (cols.some((c) => c && Array.isArray(c.actions))) {
+      fillIconSlots(this._tbody, '.td-table__actions [data-td-icon]');
+      for (const btn of this._tbody.querySelectorAll('.td-table__actions-menu')) {
+        const td = btn.closest('td');
+        const ci = Number(td.getAttribute('data-col'));
+        const ri = Number(td.parentElement.getAttribute('data-row-idx'));
+        TdMenu.bind(btn, () => this._menuItems(ci, ri), { align: 'end' });
+      }
+    }
+
+    // Render cells, resolved by column INDEX (fixes 2.8.4). CONSUMER HATCH: a string is trusted developer HTML.
+    // The cell already holds its aria-hidden card label, so content is APPENDED after it.
     cols.forEach((col, ci) => {
-      if (!col || typeof col.render !== 'function') return;
+      if (!col || typeof col.render !== 'function' || Array.isArray(col.actions)) return;
       rows.forEach((row, ri) => {
         const td = trs[ri].children[ci];
         let out;
@@ -417,19 +508,89 @@ export class TdTable extends TdBaseElement {
           target.className = 'td-table__truncate';
           td.appendChild(target);
         }
-        if (typeof out === 'string') target.innerHTML = out;
+        if (typeof out === 'string') target.insertAdjacentHTML('beforeend', out);
         else if (typeof Node !== 'undefined' && out instanceof Node) target.appendChild(out);
-        else target.textContent = out == null ? '' : String(out);
+        else if (out != null) target.appendChild(document.createTextNode(String(out)));
         if (col.ellipsis && !target.querySelector('[title]')) target.title = target.textContent.trim();
       });
     });
+  }
+
+  // --- Row actions (v0.34.0 QĐ 18) ---
+
+  /** @private An action flag (`hidden` / `disabled`): boolean or `(row) => boolean`; a throw counts as true. */
+  _actionFlag(a, name, row) {
+    if (typeof a[name] !== 'function') return a[name] === true;
+    try {
+      return !!a[name](row);
+    } catch (err) {
+      console.error(`td-table: actions[].${name} threw`, err); // fail closed: hidden / disabled
+      return true;
+    }
+  }
+
+  /** @private Visible actions of a column for a row: `[{ a, idx, disabled }]`. */
+  _rowActions(col, row) {
+    const out = [];
+    col.actions.forEach((a, idx) => {
+      if (!a || typeof a !== 'object' || this._actionFlag(a, 'hidden', row)) return;
+      out.push({ a, idx, disabled: this._actionFlag(a, 'disabled', row) });
+    });
+    return out;
+  }
+
+  /**
+   * @private Inline buttons (table mode; card mode when ≤ 2) + one "Thao tác" menu button when > 2. CSS shows exactly
+   * one of the two sets per mode (the other is display:none), so a mode never has duplicate tab stops.
+   */
+  _actionsHtml(col, row) {
+    const esc = (v) => this.escapeHtml(v);
+    const list = this._rowActions(col, row);
+    const icon = (name) => (typeof name === 'string' && hasIcon(name)
+      ? `<span class="td-table__action-icon" data-td-icon="${esc(name)}" data-td-icon-size="16" aria-hidden="true"></span>` : '');
+    const btns = list.map(({ a, idx, disabled }) => {
+      const v = ACTION_VARIANTS.has(a.variant) ? a.variant : 'secondary';
+      const label = a.label == null ? '' : String(a.label);
+      return `<button type="button" class="td-btn td-btn--sm td-btn--${v} td-table__action" data-action-idx="${idx}"`
+        + `${disabled ? ' disabled' : ''}>${icon(a.icon)}<span class="td-table__action-label">${esc(label)}</span></button>`;
+    }).join('');
+    const menu = list.length > CARD_INLINE_ACTIONS;
+    const more = menu
+      ? '<button type="button" class="td-btn td-btn--sm td-btn--secondary td-table__actions-menu" aria-haspopup="menu"'
+        + ` aria-expanded="false">${icon('more')}<span class="td-table__action-label">${esc(TdTable.labels.actions)}</span></button>`
+      : '';
+    return `<div class="td-table__actions${menu ? ' td-table__actions--menu' : ''}">${btns}${more}</div>`;
+  }
+
+  /** @private TdMenu items of the card-mode menu (labels are text; disabled items are inert). */
+  _menuItems(ci, ri) {
+    const col = this._columns[ci];
+    const row = this._pageRows[ri];
+    if (!col || !Array.isArray(col.actions) || ri >= this._pageRows.length) return [];
+    return this._rowActions(col, row).map(({ a, idx, disabled }) => ({
+      label: a.label == null ? '' : String(a.label),
+      icon: typeof a.icon === 'string' && hasIcon(a.icon) ? a.icon : undefined,
+      danger: a.variant === 'danger',
+      disabled,
+      onSelect: () => this._fireRowAction(ci, idx, ri),
+    }));
+  }
+
+  /** @private `row-action` { id, row, rowIndex } (bubbling), then `onRowAction(detail)`. */
+  _fireRowAction(ci, idx, ri) {
+    const col = this._columns[ci];
+    const a = col && Array.isArray(col.actions) ? col.actions[idx] : null;
+    if (!a || !(ri >= 0 && ri < this._pageRows.length)) return;
+    const detail = { id: a.id, row: this._pageRows[ri], rowIndex: ri };
+    this.emit('row-action', detail);
+    this._safeCall(this._onRowAction, detail, 'onRowAction');
   }
 
   _renderEmpty() {
     const n = Math.max(1, this._columns.length);
     const level = Math.min(6, (this._getTitle() ? this._getHeadingLevel() : 2) + 1);
     const esc = (v) => this.escapeHtml(v);
-    this._tbody.innerHTML = `<tr class="td-table__empty-row"><td class="td-table__empty" colspan="${n}">`
+    this._tbody.innerHTML = `<tr class="td-table__empty-row" role="row"><td class="td-table__empty" role="cell" colspan="${n}">`
       + `<td-empty-state compact size="sm" heading-level="${level}" title="${esc(this._getEmptyTitle())}"`
       + ` message="${esc(this._getEmptyText())}"></td-empty-state></td></tr>`;
   }
@@ -437,9 +598,10 @@ export class TdTable extends TdBaseElement {
   /** Deterministic skeleton rows (widths come from td.css :nth-child rules — D19). */
   _skeletonHtml() {
     const pad = this._cellPadClass();
-    const cells = this._columns.map((_, ci) => `<td class="td-table__cell${pad}" data-col="${ci}"><span class="td-table__skeleton"></span></td>`).join('')
-      || `<td class="td-table__cell${pad}"><span class="td-table__skeleton"></span></td>`;
-    const row = `<tr class="td-table__row td-table__row--skeleton" aria-hidden="true">${cells}</tr>`;
+    const cells = this._columns.map((c, ci) => `<td class="td-table__cell${pad}" role="cell" data-col="${ci}"`
+      + ` data-card="${this._cardRole(c, ci)}"><span class="td-table__skeleton"></span></td>`).join('')
+      || `<td class="td-table__cell${pad}" role="cell" data-card="primary"><span class="td-table__skeleton"></span></td>`;
+    const row = `<tr class="td-table__row td-table__row--skeleton" role="row" aria-hidden="true">${cells}</tr>`;
     return row.repeat(this._getLoadingRows());
   }
 
@@ -493,9 +655,17 @@ export class TdTable extends TdBaseElement {
   }
 
   _onClick(e) {
-    const btn = e.target instanceof Element ? e.target.closest('.td-table__sort') : null;
+    const t = e.target instanceof Element ? e.target : null;
+    const btn = t ? t.closest('.td-table__sort, .td-table__action') : null;
     if (!btn || btn.closest('td-table') !== this) return;
-    this._handleSort(Number(btn.getAttribute('data-sort-col')));
+    if (btn.classList.contains('td-table__sort')) {
+      this._handleSort(Number(btn.getAttribute('data-sort-col')));
+      return;
+    }
+    if (btn.disabled) return;
+    const td = btn.closest('td');
+    this._fireRowAction(Number(td.getAttribute('data-col')), Number(btn.getAttribute('data-action-idx')),
+      Number(td.parentElement.getAttribute('data-row-idx')));
   }
 
   // --- Paging ---
@@ -566,11 +736,13 @@ export class TdTable extends TdBaseElement {
       styles['min-width'] = width;
       styles['max-width'] = width;
     } else {
-      styles.width = 'auto';
+      // v0.34.0: no `width: auto` (the default) — a column without config gets no inline style at all.
       const minW = safeCssDimension(c.minWidth, '');
       const maxW = safeCssDimension(c.maxWidth, '');
       if (minW) styles['min-width'] = minW;
       if (maxW) styles['max-width'] = maxW;
+      // ellipsis content truncates at the column maxWidth (a table cell's max-width alone is ignored in auto layout)
+      if (maxW && c.ellipsis) styles['--td-table-ellipsis-max'] = maxW;
     }
     if (ALIGN.includes(c.align)) styles['text-align'] = c.align;
     return styles;
@@ -583,7 +755,7 @@ export class TdTable extends TdBaseElement {
     const cells = this._table.querySelectorAll(':scope > thead > tr > [data-col], :scope > tbody > tr > [data-col]');
     for (const cell of cells) {
       const s = styles[Number(cell.getAttribute('data-col'))];
-      if (s) applyStyles(cell, s);
+      if (s && Object.keys(s).length) applyStyles(cell, s);
     }
   }
 

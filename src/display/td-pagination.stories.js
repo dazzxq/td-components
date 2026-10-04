@@ -106,3 +106,18 @@ export const TranslucentColor = {
     <p class="sb-note">Màu trong suốt: chữ đen/trắng chọn theo tương phản với màu đã phủ lên nền thật.</p>
   `,
 };
+
+export const NarrowContainer = {
+  name: 'Narrow container',
+  render: () => `
+    <div data-sb-frame>
+      <td-pagination total-items="2000" items-per-page="10" current-page="57" aria-label="Phân trang (khung hẹp)"></td-pagination>
+    </div>
+    <p class="sb-note">Khung 360px (container query, không phải viewport): dưới 480px chỉ còn trang đầu / hiện tại / cuối
+      + "…", dòng "Hiển thị …" xuống hàng riêng; không gì tràn ra ngoài (kể cả mép trái).</p>
+  `,
+  play: ({ canvasElement }) => {
+    // CSSOM (no inline style markup): a fixed-width column inside a wide page
+    canvasElement.querySelector('[data-sb-frame]')?.style.setProperty('width', 'min(100%, 360px)');
+  },
+};

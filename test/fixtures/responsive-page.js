@@ -1,0 +1,244 @@
+/**
+ * Responsive fixture (v0.34.0, plan M5/M6): every non-media component in the situations the audit found hard —
+ * long labels, two equal columns at 360 px, a 280 px column, 8 tabs, 2000-item pagination, a 9-column order table.
+ * Used by the responsive gate (test/responsive/responsive.spec.mjs) and by demo.html ("Responsive" section).
+ * Layout: test/fixtures/responsive-page.css. Exposes `openers` for the overlay scenarios.
+ *
+ * M0 (after v0.33): media picker (mock adapter, no network), media grid (default + justified + sortable gallery) and
+ * dropzone are included.
+ */
+import '../../src/form/td-button.js';
+import '../../src/form/td-input-field.js';
+import '../../src/form/td-dropdown.js';
+import '../../src/form/td-datetime-picker.js';
+import '../../src/form/td-chip-input.js';
+import '../../src/form/td-tree.js';
+import '../../src/form/td-tree-select.js';
+import '../../src/form/td-number-input.js';
+import '../../src/form/td-otp-input.js';
+import '../../src/form/td-toggle.js';
+import '../../src/form/td-checkbox.js';
+import '../../src/form/td-slider.js';
+import '../../src/form/td-password-meter.js';
+import '../../src/form/td-repeater.js';
+import '../../src/display/td-tabs.js';
+import '../../src/display/td-pagination.js';
+import '../../src/display/td-table.js';
+import '../../src/display/td-empty-state.js';
+import '../../src/display/td-copy.js';
+import '../../src/display/td-masked-value.js';
+import '../../src/display/td-sortable.js';
+import '../../src/feedback/td-alert.js';
+import '../../src/feedback/td-progress.js';
+import '../../src/feedback/td-tooltip.js';
+import '../../src/feedback/td-drawer.js';
+import { TdMenu } from '../../src/feedback/td-menu.js';
+import { TdHovercard } from '../../src/feedback/td-hovercard.js';
+import { TdToast } from '../../src/feedback/td-toast.js';
+import { TdModal } from '../../src/feedback/td-modal.js';
+import { TdLoading } from '../../src/feedback/td-loading.js';
+import { TdLightbox } from '../../src/feedback/td-lightbox.js';
+import '../../src/form/td-dropzone.js';
+import '../../src/display/td-media-grid.js';
+import { TdMediaPicker } from '../../src/feedback/td-media-picker.js';
+import { createMockAdapter } from './media-adapter.js';
+
+const LONG = 'Lưu và xuất bản bài viết lên trang chủ ngay bây giờ';
+const TABS = ['Tất cả đơn hàng', 'Chờ xác nhận', 'Đang giao hàng', 'Đã giao thành công', 'Đã huỷ bởi khách', 'Hoàn tiền', 'Khiếu nại', 'Lưu trữ'];
+
+const tree = () => [
+  { value: 'phone', label: 'Điện thoại', expanded: true, children: [
+    { value: 'apple', label: 'Apple', children: [{ value: 'ip15', label: 'iPhone 15' }, { value: 'ip16', label: 'iPhone 16 Pro Max 256GB' }] },
+    { value: 'samsung', label: 'Samsung Galaxy' },
+  ] },
+  { value: 'laptop', label: 'Laptop', children: [{ value: 'dell', label: 'Dell' }, { value: 'mac', label: 'MacBook Pro' }] },
+  { value: 'acc', label: 'Phụ kiện' },
+];
+
+const controls = (p) => `
+  <td-input-field label="Họ và tên khách hàng" placeholder="Nhập họ tên đầy đủ…" required></td-input-field>
+  <td-dropdown id="${p}-dd" label="Chuyên mục" placeholder="— Chọn chuyên mục sản phẩm —" searchable></td-dropdown>
+  <td-datetime-picker id="${p}-dtp" label="Thời điểm đăng" placeholder="dd/mm/yyyy - hh:mm"></td-datetime-picker>
+  <td-chip-input id="${p}-chips" label="Vai trò" placeholder="Lọc vai trò…" selection-only select-all></td-chip-input>
+  <td-tree-select id="${p}-ts" label="Danh mục" multiple allow-clear value='["ip16","mac"]'></td-tree-select>
+  <td-number-input label="Giá bán" suffix="₫" value="32990000"></td-number-input>
+  <td-otp-input label="Mã xác thực"></td-otp-input>
+  <td-tree id="${p}-tree" label="Quyền" selection="multiple" searchable></td-tree>`;
+
+const ORDERS = Array.from({ length: 12 }, (_, i) => ({
+  code: `DH${10240 + i}`,
+  customer: ['Nguyễn Văn An', 'Trần Thị Bích Ngọc', 'Lê Hoàng'][i % 3],
+  phone: `0912 345 6${10 + i}`,
+  product: 'iPhone 16 Pro Max 256GB Titan Sa Mạc + ốp lưng',
+  qty: 1 + (i % 3),
+  total: `${(32990000 + i * 1000).toLocaleString('vi-VN')} ₫`,
+  status: ['Chờ xác nhận', 'Đang giao', 'Đã giao'][i % 3],
+  created: `0${1 + (i % 9)}/10/2026 14:3${i % 10}`,
+}));
+
+/** Order-table columns: card roles + row actions (v0.34.0). */
+export const orderColumns = () => [
+  { key: 'code', label: 'Mã đơn', sortable: true, card: 'primary' },
+  { key: 'customer', label: 'Khách hàng', sortable: true },
+  { key: 'phone', label: 'Số điện thoại' },
+  { key: 'product', label: 'Sản phẩm', ellipsis: true, maxWidth: '220px' },
+  { key: 'qty', label: 'SL', align: 'right' },
+  { key: 'total', label: 'Tổng tiền', align: 'right', sortable: true },
+  { key: 'status', label: 'Trạng thái', card: 'meta' },
+  { key: 'created', label: 'Ngày tạo', sortable: true, card: 'meta' },
+  { key: 'act', label: 'Thao tác', actions: [
+    { id: 'edit', label: 'Sửa' },
+    { id: 'print', label: 'In hoá đơn' },
+    { id: 'delete', label: 'Xoá', variant: 'danger' },
+  ] },
+];
+
+/**
+ * Build the fixture inside `root`.
+ * @param {HTMLElement} root
+ * @returns {{ openers: Record<string, () => void> }}
+ */
+export function mountResponsiveFixture(root) {
+  root.classList.add('rsp-page');
+  root.innerHTML = `
+  <section class="rsp-section" data-section="buttons"><h2>Nút</h2>
+    <div class="rsp-row">
+      <td-button variant="primary">${LONG}</td-button>
+      <td-button variant="secondary">Huỷ</td-button>
+      <td-button variant="danger" id="rsp-menu-btn" icon="more">Thao tác</td-button>
+      <td-button variant="secondary" id="rsp-hovercard">Hồ sơ tác giả</td-button>
+      <button type="button" class="td-btn td-btn--secondary" id="rsp-tooltip" data-tooltip="Tooltip dài hơn một chút để thử xuống dòng khi màn hình hẹp"><span class="td-btn__label">Tooltip</span></button>
+    </div>
+  </section>
+  <section class="rsp-section" data-section="form-grid"><h2>Form hai cột</h2>
+    <div class="rsp-grid2">${controls('g')}</div>
+  </section>
+  <section class="rsp-section" data-section="narrow"><h2>Cột hẹp 280px</h2>
+    <div class="rsp-narrow">${controls('n')}
+      <td-pagination total-items="2000" items-per-page="10" current-page="57"></td-pagination>
+      <td-tabs id="rsp-tabs-narrow"></td-tabs>
+      <td-table id="rsp-table-narrow" title="Đơn hàng"></td-table>
+    </div>
+  </section>
+  <section class="rsp-section" data-section="tabs"><h2>Tab</h2>
+    <td-tabs id="rsp-tabs"></td-tabs>
+    <td-tabs id="rsp-tabs-mixed" size="sm"></td-tabs>
+  </section>
+  <section class="rsp-section" data-section="pagination"><h2>Phân trang</h2>
+    <td-pagination total-items="2000" items-per-page="10" current-page="57"></td-pagination>
+    <td-pagination total-items="150" items-per-page="10" current-page="3"></td-pagination>
+  </section>
+  <section class="rsp-section" data-section="table"><h2>Bảng</h2>
+    <td-table id="rsp-table" title="Đơn hàng"></td-table>
+    <td-table id="rsp-table-scroll" title="Đơn hàng (luôn dạng bảng)" layout="table"></td-table>
+  </section>
+  <section class="rsp-section" data-section="content"><h2>Nội dung</h2>
+    <td-alert variant="danger" heading="Lỗi máy chủ" dismissible>Không lưu được bài viết vì máy chủ thanh toán không phản hồi, vui lòng thử lại sau.</td-alert>
+    <td-empty-state id="rsp-empty" title="Chưa có đơn hàng nào" message="Đơn hàng mới sẽ xuất hiện ở đây khi khách đặt mua."></td-empty-state>
+    <form><td-repeater label="Hộp gồm" min-rows="1" max-rows="6" add-label="Thêm phụ kiện" sortable>
+      <template><div data-td-row class="rsp-row">
+        <td-input-field data-name="box[{i}][name]" aria-label="Phụ kiện" placeholder="Tên phụ kiện"></td-input-field>
+        <td-number-input data-name="box[{i}][qty]" aria-label="Số lượng" value="1" min="1" max="99"></td-number-input>
+      </div></template>
+      <div data-td-row class="rsp-row">
+        <td-input-field name="box[0][name]" data-name="box[{i}][name]" aria-label="Phụ kiện" value="Sạc nhanh 20W chính hãng"></td-input-field>
+        <td-number-input name="box[0][qty]" data-name="box[{i}][qty]" aria-label="Số lượng" value="1" min="1" max="99"></td-number-input>
+      </div>
+    </td-repeater></form>
+    <div class="rsp-row">
+      <td-toggle label="Công khai"></td-toggle>
+      <td-checkbox label="Tôi đồng ý với điều khoản sử dụng"></td-checkbox>
+      <td-copy value="pk_live_51HdemoKey" label="Copy khoá API"></td-copy>
+      <td-masked-value label="SĐT khách" masked="09xx xxx 123"></td-masked-value>
+    </div>
+    <td-slider label="Âm lượng" min="0" max="100" value="60"></td-slider>
+    <td-progress value="40" label="Đang tải lên"></td-progress>
+    <td-sortable label="Thứ tự section">
+      <div data-td-sort-item data-id="a" data-td-sort-label="Banner đầu trang" class="rsp-sort-item">Banner đầu trang</div>
+      <div data-td-sort-item data-id="b" data-td-sort-label="Flash sale" class="rsp-sort-item">Flash sale</div>
+      <div data-td-sort-item data-id="c" data-td-sort-label="Tin tức" class="rsp-sort-item">Tin tức</div>
+    </td-sortable>
+    <td-dropzone label="Tệp đính kèm cho đơn hàng" accept=".pdf,image/*" accept-label="PDF hoặc ảnh" multiple max-size="5MB" max-files="3" preview></td-dropzone>
+    <td-media-grid id="rsp-grid" label="Ảnh sản phẩm" max="3">${[1, 2, 3, 4, 1, 2].map((n, i) => `<div data-td-media-item data-id="g${i}"><a href="/test/fixtures/${n}.svg" data-td-media-open aria-label="Ảnh ${i + 1}"><img src="/test/fixtures/${n}.svg" alt="" class="rsp-thumb"></a></div>`).join('')}</td-media-grid>
+    <td-media-grid id="rsp-grid-sort" label="Thứ tự ảnh"><td-sortable role="none" label="Thứ tự ảnh">${[1, 2, 3, 4].map((n, i) => `<div data-td-media-item data-td-sort-item data-id="s${i}"><button type="button" data-td-media-open aria-label="Ảnh ${i + 1}"><img src="/test/fixtures/${n}.svg" alt="" class="rsp-thumb"></button></div>`).join('')}</td-sortable></td-media-grid>
+    <td-media-grid id="rsp-grid-justified" label="Album" layout="justified" select-mode="tick">${[['1', 1200, 800], ['portrait', 800, 1200], ['panorama', 1800, 600], ['square', 1000, 1000], ['photo', 1200, 800], ['portrait', 800, 1200], ['1', 1200, 800], ['square', 1000, 1000]].map(([n, w, h], i) => `<div data-td-media-item data-id="j${i}"><a href="/test/fixtures/${n}.svg" data-td-media-open aria-label="Ảnh ${i + 1}"><img src="/test/fixtures/${n}.svg" alt="" width="${w}" height="${h}"></a></div>`).join('')}</td-media-grid>
+    <div class="rsp-row" id="rsp-gallery" data-td-lightbox-group>
+      <figure data-td-lightbox-item data-td-lightbox-src="/test/fixtures/1.svg"><img src="/test/fixtures/1.svg" alt="Ảnh 1" class="rsp-thumb"></figure>
+      <figure data-td-lightbox-item data-td-lightbox-src="/test/fixtures/2.svg"><img src="/test/fixtures/2.svg" alt="Ảnh 2" class="rsp-thumb"></figure>
+    </div>
+  </section>`;
+
+  const options = [
+    { value: 'news', label: 'Tin tức công nghệ' }, { value: 'review', label: 'Đánh giá sản phẩm chi tiết' },
+    { value: 'guide', label: 'Hướng dẫn sử dụng' }, { value: 'deal', label: 'Khuyến mãi' }, { value: 'video', label: 'Video' },
+  ];
+  const roles = [
+    { value: 'admin', label: 'Quản trị', description: 'Toàn quyền' }, { value: 'editor', label: 'Biên tập viên' },
+    { value: 'author', label: 'Tác giả' }, { value: 'guest', label: 'Khách mời' },
+  ];
+  for (const p of ['g', 'n']) {
+    root.querySelector(`#${p}-dd`).options = options;
+    root.querySelector(`#${p}-chips`).options = roles;
+    root.querySelector(`#${p}-ts`).data = tree();
+    root.querySelector(`#${p}-tree`).data = tree();
+  }
+  const tabs = TABS.map((label, i) => ({ id: `t${i}`, label }));
+  root.querySelector('#rsp-tabs').tabs = tabs;
+  root.querySelector('#rsp-tabs-narrow').tabs = tabs.slice(0, 4);
+  root.querySelector('#rsp-tabs-mixed').tabs = [{ id: 'a', label: 'Tất cả đơn hàng đang chờ xác nhận thanh toán' }, ...['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((l) => ({ id: l, label: l }))];
+  for (const id of ['rsp-table', 'rsp-table-scroll', 'rsp-table-narrow']) {
+    const t = root.querySelector(`#${id}`);
+    t.columns = orderColumns();
+    t.data = ORDERS.map((o) => ({ ...o }));
+  }
+  root.querySelector('#rsp-empty').actions = [{ label: 'Tạo đơn hàng mới', variant: 'primary' }, { label: 'Nhập từ tệp Excel', variant: 'secondary' }];
+
+  TdMenu.define('rsp-menu', [
+    { label: 'Sửa bài viết', icon: 'plus' }, { label: 'Chia sẻ' }, { separator: true }, { label: 'Xoá', danger: true },
+  ]);
+  TdMenu.bind(root.querySelector('#rsp-menu-btn button'), 'rsp-menu');
+  TdHovercard.bind(root.querySelector('#rsp-hovercard'), {
+    label: 'Hồ sơ tác giả',
+    content: () => {
+      const box = document.createElement('div');
+      box.textContent = 'Nguyễn Văn An — Biên tập viên · 128 bài viết';
+      return box;
+    },
+  });
+  TdLightbox.bind(root.querySelector('#rsp-gallery'));
+
+  const drawer = document.createElement('td-drawer');
+  drawer.setAttribute('title', 'Bộ lọc đơn hàng');
+  drawer.innerHTML = '<td-input-field label="Từ khoá" placeholder="Mã đơn, tên khách…"></td-input-field><td-checkbox label="Chỉ đơn chưa giao"></td-checkbox>'
+    + '<div slot="footer"><button type="button" class="td-btn td-btn--primary"><span class="td-btn__label">Áp dụng</span></button></div>';
+  root.append(drawer);
+
+  const openers = {
+    toast: () => {
+      TdToast.error('Không thể kết nối tới máy chủ thanh toán. Vui lòng thử lại sau ít phút hoặc liên hệ hỗ trợ.', 0);
+      TdToast.success('Đã lưu', 0);
+      TdToast.warning('Dữ liệu chưa lưu, rời trang sẽ mất thay đổi!', 0);
+    },
+    modalConfirm: () => { TdModal.confirm({ title: 'Xác nhận xoá đơn hàng', message: 'Bạn có chắc muốn xoá đơn hàng DH10240 không? Thao tác không hoàn tác.' }); },
+    modalLong: () => {
+      TdModal.show({
+        title: 'Chỉnh sửa sản phẩm iPhone 16 Pro Max 256GB',
+        size: 'xl',
+        body: `<p>${'Nội dung dài để kiểm tra cuộn trong thân modal. '.repeat(60)}</p>`,
+        actions: [{ label: 'Huỷ', variant: 'secondary' }, { label: 'Lưu thay đổi', variant: 'primary' }, { label: 'Lưu và xuất bản', variant: 'success' }],
+      });
+    },
+    drawer: () => drawer.show(),
+    lightbox: () => TdLightbox.open([1, 2, 3].map((n) => ({ src: `/test/fixtures/${n}.svg`, caption: `Ảnh mẫu ${n}` }))),
+    lightboxPanel: () => TdLightbox.open([1, 2].map((n) => ({ src: `/test/fixtures/${n}.svg`, caption: `Ảnh mẫu ${n} có chú thích dài` })), {
+      panel: (ctx) => { const p = document.createElement('p'); p.textContent = ctx.item.caption; return p; },
+    }),
+    loading: () => TdLoading.show('Đang xử lý đơn hàng, vui lòng chờ...'),
+    picker: (multiple = false, pages = false) => {
+      const adapter = createMockAdapter({ latency: 0, ...(pages ? { pagination: 'pages' } : {}) });
+      return TdMediaPicker.open({ adapter, ...(pages ? { pagination: 'pages' } : {}),
+        selection: multiple ? { mode: 'multiple', maxItems: 5 } : { mode: 'single' } });
+    },
+  };
+  return { openers };
+}

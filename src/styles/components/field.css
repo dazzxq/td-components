@@ -64,6 +64,7 @@
 
 	td-input-field {
 		display: block;
+		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5, v0.34.0) */
 	}
 
 	/* v0.25.0 safety net (ADR 0012): hand-written host before define → reserve one field height (no fake styling) */

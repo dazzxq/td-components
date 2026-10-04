@@ -333,6 +333,11 @@ là TdModal (xem [token của modal](modal.md)).
 Hộp thoại được gắn ở `<body>` nên biến đặt trên host picker **không** ảnh hưởng hộp thoại; đặt ở `:root` hoặc trên
 `.td-dtp-panel`.
 
+### Responsive (0.34.0)
+
+Màn hình thấp (≤ 500px — điện thoại xoay ngang): bánh xe giờ / phút còn **3 dòng** (`--td-dtp-visible: 3`) để hộp thoại
+vừa chiều cao. Ô trigger co theo cột (`min-inline-size: 0`); chữ giá trị bị cắt `…` thì `.td-dtp__value` có `title` = giá trị đầy đủ (không có cho placeholder). Xem [responsive](../concepts/responsive.md).
+
 ## Cấu trúc DOM & class
 
 ```html

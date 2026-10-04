@@ -504,6 +504,8 @@ JS chỉ ghi toạ độ/độ rộng menu và `max-height` của vùng cuộn (
 
 ## Bàn phím & trợ năng
 
+Giá trị bị cắt `…` (ô hẹp, 0.34.0): `.td-dropdown__value` có `title` = nhãn đầy đủ (rê chuột để xem); không có khi vừa chỗ hoặc đang là placeholder.
+
 Mẫu APG **select-only combobox**: option không bao giờ nhận focus; control đang có focus (trigger, hoặc ô tìm kiếm khi
 nó có focus) mang `aria-activedescendant` trỏ tới option active.
 
@@ -531,8 +533,8 @@ nó có focus) mang `aria-activedescendant` trỏ tới option active.
 
 Khác:
 
-- Trên màn hình rộng ≥ 768px, mở menu có ô tìm kiếm sẽ focus ô tìm kiếm sau 100 ms; trên điện thoại thì không (tránh
-  bàn phím ảo che danh sách).
+- Mở menu có ô tìm kiếm sẽ focus ô tìm kiếm sau 100 ms — **trừ trên máy cảm ứng** (`(hover: none) and (pointer: coarse)`,
+  mọi độ rộng kể cả iPad — 0.34.0; trước đó theo bề rộng ≥ 768px) để bàn phím ảo không che danh sách.
 - Bấm chuột ra ngoài (`pointerdown`) đóng menu. Cuộn trong danh sách không đóng. Trigger bị cuộn khuất khỏi màn hình →
   menu tự đóng. Mở một dropdown sẽ đóng dropdown khác.
 - Menu đăng ký lớp nổi `LAYERS.popover` nên dùng được bên trong [modal](modal.md) (không bị `inert` của modal chặn).

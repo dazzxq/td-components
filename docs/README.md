@@ -8,7 +8,7 @@ token `--td-*` chạm được tới nó. Toàn bộ giao diện nằm trong **m
 Triết lý: **lõi nhỏ + hook**. Site tuỳ biến bằng token CSS, attribute/property và hook (callback) — không bao giờ sửa
 code của kit.
 
-Phiên bản hiện tại: **0.33.0** (tag git `v0.33.0`) · Lịch sử thay đổi: [CHANGELOG.md](../CHANGELOG.md)
+Phiên bản hiện tại: **0.34.0** (tag git `v0.34.0`) · Lịch sử thay đổi: [CHANGELOG.md](../CHANGELOG.md)
 
 ---
 
@@ -21,6 +21,7 @@ Phiên bản hiện tại: **0.33.0** (tag git `v0.33.0`) · Lịch sử thay đ
 | Render markup component từ PHP (SSR) | [Adapter PHP](guides/php-adapter.md) |
 | Có một trang chạy được trong 5 phút | [Bắt đầu nhanh](getting-started/quick-start.md) |
 | Hiểu kit hoạt động ra sao (attribute, property, event, form, lớp nổi) | [Cách hoạt động](concepts/how-it-works.md) |
+| Hiển thị đúng từ điện thoại tới desktop (breakpoint, container query, vùng chạm) | [Responsive](concepts/responsive.md) |
 | Tra cứu một component | [Danh sách component](components/README.md) |
 | Đổi màu, font, bo góc, dark mode, bỏ blur | [Theming](customization/theming.md) |
 | Viết CSS đè lên component | [Styling](customization/styling.md) |
@@ -36,6 +37,7 @@ Phiên bản hiện tại: **0.33.0** (tag git `v0.33.0`) · Lịch sử thay đ
 - [Cài đặt](getting-started/installation.md) — npm/GitHub, Vite, PHP thuần + import map, WordPress.
 - [Bắt đầu nhanh](getting-started/quick-start.md) — form + dropdown + toggle + nút + toast + modal.
 - [Cách hoạt động](concepts/how-it-works.md) — light DOM, attribute vs property, event, vòng đời, form, lớp nổi, CSP.
+- [Responsive](concepts/responsive.md) — breakpoint kit, container query vs media query, vùng chạm 44px, lớp phủ theo màn hình.
 
 ## Component
 

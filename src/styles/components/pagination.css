@@ -4,6 +4,12 @@
  * · :hover · :focus-visible.
  * Per-instance colours: host custom properties --td-pagination-active / --td-pagination-active-fg (from `active-color`;
  * the fg is chosen by WCAG contrast in JS).
+ * v0.34.0 (plan QĐ 8, ADR 0014): the host is the size container `td-pagination` (needs its width from the parent).
+ * Nothing can stick out on the left any more: every flex level may wrap as a last resort and shrink to 0
+ * (justify-content: flex-end only pushes LEFT when an item is wider than its line — now impossible above ~50px).
+ * Compact form below 480px of container width: info on its own row, pages reduced to first / current / last (JS marks
+ * each <li> with data-rel = current | edge | adjacent | far | ellipsis | gap; `gap` = an ellipsis only this form shows).
+ * Status form below 360px: "‹ 57 / 200 ›" (.td-pagination__status, aria-hidden; the info line stays the live region).
  */
 @layer td.tokens {
 	:root {
@@ -27,6 +33,8 @@
 @layer td.component {
 	td-pagination {
 		display: block;
+		min-inline-size: 0;
+		container: td-pagination / inline-size;
 	}
 
 	.td-pagination {
@@ -36,6 +44,7 @@
 		gap: var(--td-space-xs) var(--td-space-sm);
 		align-items: center;
 		justify-content: flex-end;
+		min-inline-size: 0;
 		font-family: var(--td-font-sans);
 		font-size: var(--td-text-sm);
 		line-height: var(--td-leading-normal);
@@ -49,20 +58,29 @@
 	}
 
 	.td-pagination__info {
+		min-inline-size: 0;
 		margin: 0;
 		color: var(--td-color-text-muted);
+		overflow-wrap: anywhere;
 	}
 
 	.td-pagination__controls {
 		display: flex;
+		flex-wrap: wrap; /* last resort only (container narrower than the compact form) */
 		gap: var(--td-space-2xs);
 		align-items: center;
+		justify-content: flex-end;
+		min-inline-size: 0;
+		max-inline-size: 100%;
 	}
 
 	.td-pagination__pages {
 		display: flex;
+		flex-wrap: wrap;
 		gap: var(--td-space-2xs);
 		align-items: center;
+		justify-content: flex-end;
+		min-inline-size: 0;
 		padding: 0;
 		margin: 0;
 		list-style: none;
@@ -139,6 +157,73 @@
 		min-width: 1.5rem;
 		color: var(--td-color-text-muted);
 		user-select: none;
+	}
+
+	.td-pagination__ellipsis[data-rel="gap"] {
+		display: none;
+	}
+
+	/* "57 / 200" of the status form (< 360px); decorative copy of the state (aria-hidden), never shown above 360 */
+	.td-pagination__status {
+		display: none;
+	}
+
+	@container td-pagination (width < 480px) {
+		.td-pagination__info {
+			flex: 1 0 100%;
+		}
+
+		.td-pagination__pages > [data-rel="adjacent"],
+		.td-pagination__pages > [data-rel="far"] {
+			display: none;
+		}
+
+		.td-pagination__ellipsis[data-rel="gap"] {
+			display: inline-flex;
+		}
+	}
+
+	/*
+	 * v0.34.0 status form below 360px (ADR 0014 container-only 2xs): "‹ 57 / 200 ›" — prev, the status text, next.
+	 * The page list is hidden; the info line is VISUALLY hidden only (not display:none) so it stays the one live region
+	 * that announces a page change.
+	 */
+	@container td-pagination (width < 360px) {
+		.td-pagination {
+			position: relative;
+		}
+
+		.td-pagination__info {
+			position: absolute;
+			inset-block-start: 0;
+			inset-inline-start: 0; /* not the flex-end static position (1px past the right edge) */
+			flex: none;
+			inline-size: 1px;
+			block-size: 1px;
+			padding: 0;
+			margin: 0;
+			overflow: hidden;
+			clip-path: inset(50%);
+			white-space: nowrap;
+			border: 0;
+		}
+
+		.td-pagination__pages {
+			display: none;
+		}
+
+		.td-pagination__status {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			min-inline-size: 0;
+			min-block-size: var(--td-pagination-item-size);
+			padding-inline: var(--td-space-xs);
+			font-variant-numeric: tabular-nums;
+			color: var(--td-color-text);
+			text-align: center;
+			overflow-wrap: anywhere;
+		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {

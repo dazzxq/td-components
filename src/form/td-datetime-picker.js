@@ -1,4 +1,5 @@
 import { TdFormElement } from '../base/td-form-element.js';
+import { ValueTitleWatcher, displayedValueText } from '../utils/value-title.js';
 import { TdModal } from '../feedback/td-modal.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import {
@@ -282,6 +283,38 @@ export class TdDatetimePicker extends TdFormElement {
     this._applyRequired();
     this._syncForm();
     this._applyErrorState();
+    this._watchValueTitle();
+  }
+
+  /**
+   * @private v0.34.0 (plan QĐ 11): the value span gets `title` = the full formatted value while its text is cut (…).
+   * One ResizeObserver on the span (re-checks on resize, no polling), released on disconnect by the cleanups.
+   */
+  _watchValueTitle() {
+    const el = this.querySelector('.td-dtp__value');
+    if (!this._vt) {
+      this._vt = new ValueTitleWatcher((node) => this._valueTitleText(node));
+      this._cleanups.push(() => {
+        if (this._vt) this._vt.destroy();
+        this._vt = null;
+      });
+    }
+    this._vt.watch(el);
+  }
+
+  /** @private value text changed: re-check next frame (src/utils/value-title.js) */
+  _scheduleValueTitle() {
+    if (this._vt) this._vt.schedule();
+  }
+
+  /** @private title only for a cut NON-placeholder value; removed when it fits / placeholder / empty */
+  _syncValueTitle() {
+    if (this._vt) this._vt.sync();
+  }
+
+  /** @private the displayed value text (placeholder → '') */
+  _valueTitleText(el) {
+    return displayedValueText(el);
   }
 
   /** @private */
@@ -301,6 +334,7 @@ export class TdDatetimePicker extends TdFormElement {
     span.textContent = text;
     if (placeholder) span.setAttribute('data-placeholder', '');
     else span.removeAttribute('data-placeholder');
+    this._scheduleValueTitle();
   }
 
   /** In place: everything except `label` (structure). */

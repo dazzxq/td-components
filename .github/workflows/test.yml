@@ -26,6 +26,13 @@ jobs:
       - run: npx playwright-core install --with-deps chromium firefox webkit
       # The Tailwind CSP fixture (test/csp/fixture/tailwind.css) is committed, so the legacy+td profile needs no build.
       - run: npm test
+      # v0.34.0: screenshots of the responsive gate (8 acceptance widths) — for humans, never compared.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: responsive-screenshots
+          path: test/responsive/__out__/
+          if-no-files-found: ignore
 
   # v0.33.0: pixel gate for td-media-picker / justified td-media-grid (Chromium; not part of `npm test`). Runs inside the
   # official Playwright image pinned to package.json's playwright-core (fonts + Chromium build = the baselines'
@@ -46,7 +53,7 @@ jobs:
           TD_VISUAL_STRICT: '1'
           TD_VISUAL_OUT: ${{ runner.temp }}/td-visual
       - if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: visual-actual
           path: ${{ runner.temp }}/td-visual

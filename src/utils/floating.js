@@ -6,6 +6,24 @@
 const EDGE = 8;
 
 /**
+ * The visible part of the layout viewport (v0.34.0, plan QĐ 7): `visualViewport` when available — the on-screen
+ * keyboard (and pinch zoom) shrink it, so a popup placed in it is never hidden under the keyboard. Coordinates are
+ * layout-viewport (getBoundingClientRect / position: fixed) coordinates.
+ * @param {{ innerWidth: number, innerHeight: number, visualViewport?: { offsetTop: number, offsetLeft: number,
+ *   width: number, height: number } | null }} [win]
+ * @returns {{ top: number, left: number, right: number, bottom: number }}
+ */
+export function viewportBox(win = window) {
+  const W = win.innerWidth;
+  const H = win.innerHeight;
+  const vv = win.visualViewport;
+  if (!vv || !(vv.width > 0) || !(vv.height > 0)) return { top: 0, left: 0, right: W, bottom: H };
+  const top = Math.min(Math.max(0, vv.offsetTop), H);
+  const left = Math.min(Math.max(0, vv.offsetLeft), W);
+  return { top, left, right: Math.min(W, left + vv.width), bottom: Math.min(H, top + vv.height) };
+}
+
+/**
  * The visible box of `el` inside its clipping ancestors (v0.21.1): the viewport intersected with the padding box of
  * every ancestor whose `overflow` clips (hidden / auto / scroll / clip — e.g. a modal body that scrolls). Stops at a
  * `position: fixed` ancestor (nothing above it clips it) and never uses <body> / <html> (scroll lock sets their
@@ -14,7 +32,7 @@ const EDGE = 8;
  * @returns {{ top: number, bottom: number, left: number, right: number }}
  */
 export function clippingRect(el) {
-  const clip = { top: 0, left: 0, bottom: window.innerHeight, right: window.innerWidth };
+  const clip = viewportBox();
   const root = document.documentElement;
   for (let node = el.parentElement; node && node !== document.body && node !== root; node = node.parentElement) {
     const cs = getComputedStyle(node);
@@ -129,6 +147,12 @@ export function watchReference(el, onChange) {
   };
   document.addEventListener('transitionend', onEnd, true);
   document.addEventListener('animationend', onEnd, true);
+  // v0.34.0: the on-screen keyboard opening / closing resizes the visual viewport (no window resize on iOS)
+  const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+  if (vv) {
+    vv.addEventListener('resize', fire);
+    vv.addEventListener('scroll', fire);
+  }
   return () => {
     if (stopped) return;
     stopped = true;
@@ -136,6 +160,10 @@ export function watchReference(el, onChange) {
     detach();
     document.removeEventListener('transitionend', onEnd, true);
     document.removeEventListener('animationend', onEnd, true);
+    if (vv) {
+      vv.removeEventListener('resize', fire);
+      vv.removeEventListener('scroll', fire);
+    }
   };
 }
 
@@ -156,8 +184,8 @@ export function placeFloating(trigger, panel, opts = {}) {
   const rect = typeof trigger.getBoundingClientRect === 'function' ? trigger.getBoundingClientRect() : trigger;
   const gap = opts.gap ?? 8;
   const MARGIN = opts.margin ?? 8;
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
+  const box = viewportBox();
+  const vw = box.right - box.left;
   const s = panel.style;
 
   let width;
@@ -180,13 +208,13 @@ export function placeFloating(trigger, panel, opts = {}) {
   if (opts.width === 'match' || opts.align === 'start') wantLeft = rect.left;
   else if (opts.align === 'end') wantLeft = rect.right - width;
   else wantLeft = rect.left + rect.width / 2 - width / 2;
-  const left = Math.max(margin, Math.min(wantLeft, vw - width - margin));
+  const left = Math.max(box.left + margin, Math.min(wantLeft, box.right - width - margin));
   s.setProperty('left', `${left}px`);
 
   const naturalH = panel.offsetHeight;
   const chromeH = list ? naturalH - list.offsetHeight : 0;
-  const below = vh - rect.bottom - gap - MARGIN;
-  const above = rect.top - gap - MARGIN;
+  const below = box.bottom - rect.bottom - gap - MARGIN;
+  const above = rect.top - box.top - gap - MARGIN;
   const preferTop = opts.side === 'top';
   const first = preferTop ? above : below;
   const second = preferTop ? below : above;

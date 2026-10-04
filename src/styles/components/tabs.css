@@ -6,6 +6,10 @@
  * .td-tabs), never by inline style markup.
  * AA: inactive text gray-600 on the trough ≥ 4.5:1 (light + dark); selected = text colour + weight + pill;
  * forced colours: selected tab gets a 2px Highlight border (the pill disappears).
+ * v0.34.0 (plan QĐ 9): labels NEVER truncate. Equal-width segments while the widest tab fits the slot; otherwise JS
+ * sets [data-overflow] on .td-tabs → natural-width tabs in a horizontally scrolling trough (snap, hidden scrollbar,
+ * edge fade by mask-image from [data-scroll-start] / [data-scroll-end]). [data-measuring] exists only inside one
+ * synchronous JS pass (never painted): every tab at its natural width in the active (semibold) style.
  */
 @layer td.tokens {
 	:root {
@@ -27,12 +31,16 @@
 }
 
 @layer td.component {
+	/* Width comes from the parent (never inflate a grid / flex parent's min-content: the row scrolls instead). */
 	td-tabs {
 		display: block;
+		min-inline-size: 0;
 	}
 
 	.td-tabs {
 		--_td-tabs-inner-radius: max(4px, calc(var(--td-tabs-radius) - var(--td-tabs-pad))); /* concentric (R8) */
+		--_td-tabs-fade: 24px; /* = EDGE_FADE in td-tabs.js */
+		--_td-tabs-fade-dir: to right;
 
 		position: relative;
 		box-sizing: border-box;
@@ -78,7 +86,6 @@
 		gap: 6px;
 		align-items: center;
 		justify-content: center;
-		min-width: 0;
 		min-height: 24px; /* hit target ≥ 24 px (WCAG 2.5.8) */
 		margin: 0;
 		padding: 8px 12px;
@@ -121,15 +128,60 @@
 		line-height: 0;
 	}
 
+	/* No min-width: 0 on the tab / label: a tab can never be squeezed below its label (the JS rule keeps the
+	   equal slots ≥ the widest tab; this is the safety net for the frame before a mode switch). */
 	.td-tabs__label {
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+
+	.td-tabs[data-measuring] > .td-tabs__tab {
+		flex: 0 0 auto;
+		font-weight: var(--td-fw-semibold);
+	}
+
+	/* Overflow mode: the trough itself scrolls, so the absolutely positioned indicator scrolls with the tabs. */
+	.td-tabs[data-overflow] {
+		overflow: auto hidden;
+		overscroll-behavior-x: contain;
+		scroll-snap-type: x proximity;
+		scroll-padding-inline: var(--_td-tabs-fade);
+		scrollbar-width: none;
+	}
+
+	.td-tabs[data-overflow]::-webkit-scrollbar {
+		display: none;
+	}
+
+	.td-tabs[data-overflow] > .td-tabs__tab {
+		flex: 0 0 auto;
+		scroll-snap-align: start;
+	}
+
+	:where([dir="rtl"]) .td-tabs {
+		--_td-tabs-fade-dir: to left;
+	}
+
+	.td-tabs[data-overflow][data-scroll-start] {
+		mask-image: linear-gradient(var(--_td-tabs-fade-dir), transparent, #000 var(--_td-tabs-fade));
+	}
+
+	.td-tabs[data-overflow][data-scroll-end] {
+		mask-image: linear-gradient(var(--_td-tabs-fade-dir), #000 calc(100% - var(--_td-tabs-fade)), transparent);
+	}
+
+	.td-tabs[data-overflow][data-scroll-start][data-scroll-end] {
+		mask-image: linear-gradient(
+			var(--_td-tabs-fade-dir),
+			transparent,
+			#000 var(--_td-tabs-fade),
+			#000 calc(100% - var(--_td-tabs-fade)),
+			transparent
+		);
 	}
 
 	@media (pointer: coarse) {
 		.td-tabs__tab {
+			min-inline-size: var(--td-touch-min); /* 44 × 44 even for a one-letter tab (part of the JS measurement) */
 			min-height: var(--td-touch-min);
 		}
 	}

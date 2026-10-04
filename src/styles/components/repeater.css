@@ -20,6 +20,8 @@
 @layer td.component {
 	td-repeater {
 		display: block;
+		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5, v0.34.0) */
+		container: td-repeater / inline-size; /* v0.34.0 (plan QĐ 12): needs its width from the parent */
 	}
 
 	/* same look as a field label (.td-field__label); explicit metrics: a host reset never changes them */
@@ -119,6 +121,20 @@
 		background: var(--td-btn-disabled-bg);
 		border-color: var(--td-btn-disabled-border);
 		box-shadow: none;
+	}
+
+	/*
+	 * v0.34.0 (plan QĐ 12): below 480px of repeater width the tool cluster (drag / ↑ / ↓ / ×) is its own row, aligned to
+	 * the end, under the fields — in the default flex row (full-width flex item) and in an app grid row (spans every
+	 * track → auto-placed on a new grid row). An app rule placing the cluster explicitly (unlayered) still wins.
+	 */
+	@container td-repeater (width < 480px) {
+		.td-repeater__actions {
+			flex: 1 0 100%;
+			grid-column: 1 / -1;
+			justify-content: flex-end;
+			margin-inline-start: 0;
+		}
 	}
 
 	@media (pointer: coarse) {

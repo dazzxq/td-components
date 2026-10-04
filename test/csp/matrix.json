@@ -831,6 +831,19 @@
         "width"
       ],
       "settle": 350
+    },
+    {
+      "state": "overflow",
+      "setup": "const t=document.createElement('td-tabs'); t.id='probe'; window.__mount.appendChild(t); t.tabs=['Tất cả đơn hàng','Chờ xác nhận','Đang giao hàng','Đã giao thành công','Đã huỷ bởi khách','Hoàn tiền','Khiếu nại','Lưu trữ','Báo cáo doanh thu theo tháng','Cài đặt thông báo'].map((l,i)=>({id:'t'+i,label:l}));",
+      "selectors": [
+        ".td-tabs",
+        ".td-tabs__tab"
+      ],
+      "excludeProps": [
+        "transform",
+        "width"
+      ],
+      "settle": 350
     }
   ],
   "td-pagination": [
@@ -866,6 +879,25 @@
       "markup": "<td-pagination total-items=\"50\" items-per-page=\"10\" current-page=\"5\"></td-pagination>",
       "selectors": [
         ".td-pagination__nav--next"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "compact",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','400px'); window.__mount.appendChild(w); w.innerHTML='<td-pagination total-items=\"2000\" items-per-page=\"10\" current-page=\"57\"></td-pagination>';",
+      "selectors": [
+        ".td-pagination",
+        ".td-pagination__page[aria-current=\"page\"]"
+      ],
+      "settle": 300
+    },
+    {
+      "state": "status",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','320px'); window.__mount.appendChild(w); w.innerHTML='<td-pagination total-items=\"2000\" items-per-page=\"10\" current-page=\"57\"></td-pagination>';",
+      "selectors": [
+        ".td-pagination",
+        ".td-pagination__status",
+        ".td-pagination__nav--prev"
       ],
       "settle": 300
     }
@@ -1001,6 +1033,17 @@
       "setup": "const t=document.createElement('td-table'); t.id='probe'; t.cellPaddingClass='px-2'; window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên',width:'200px'},{key:'age',label:'Tuổi'}]; t.data=[{name:'An',age:30},{name:'Bình',age:25},{name:'Cường',age:40}]; ",
       "selectors": [
         ".td-table__cell--px-2"
+      ]
+    },
+    {
+      "state": "cards",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('layout','cards'); window.__mount.appendChild(t); t.columns=[{key:'code',label:'Mã đơn',sortable:true,card:'primary'},{key:'customer',label:'Khách hàng'},{key:'total',label:'Tổng tiền',align:'right'},{key:'status',label:'Trạng thái',card:'meta'},{key:'act',label:'Thao tác',actions:[{id:'edit',label:'Sửa'},{id:'del',label:'Xoá',variant:'danger'}]}]; t.data=[{code:'DH1',customer:'An',total:'1.000 ₫',status:'Chờ'},{code:'DH2',customer:'Bình',total:'2.000 ₫',status:'Đã giao'}];",
+      "selectors": [
+        ".td-table",
+        ".td-table__row[data-row-idx=\"0\"]",
+        ".td-table__cell[data-card=\"primary\"]",
+        ".td-table__cell[data-card=\"meta\"]",
+        ".td-table__cell-label"
       ]
     }
   ],

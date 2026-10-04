@@ -32,7 +32,7 @@
 .demo-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; }
 .demo-label { min-width: 100px; font-size: var(--td-text-sm); color: var(--td-color-text-muted); }
 .demo-code { padding: 2px 6px; font-family: ui-monospace, monospace; font-size: 0.8rem; background: var(--td-color-surface-muted); border-radius: 4px; }
-.demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.demo-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
 .demo-span-2 { grid-column: span 2; }
 .demo-narrow { max-width: 400px; }
 .demo-narrow td-slider { width: 100%; }
@@ -46,6 +46,15 @@ hr { margin: 32px 0; border: none; border-top: 1px solid var(--td-color-border);
 .demo-glass-stage { position: relative; display: grid; gap: 16px; padding: 32px; border-radius: 16px;
   background: radial-gradient(circle at 18% 30%, #ffd166 0 16%, transparent 17%), radial-gradient(circle at 78% 55%, #06d6a0 0 20%, transparent 21%),
     radial-gradient(circle at 48% 90%, #ef476f 0 14%, transparent 15%), linear-gradient(135deg, #118ab2, #073b4c); }
+
+/* v0.34.0: the demo chrome follows the kit breakpoints (ADR 0014) — one column on phones, gutter padding */
+@media (max-width: 719.98px) {
+	.demo-page { padding: var(--td-gutter); }
+	.demo-section { padding: 16px; }
+	.demo-grid { grid-template-columns: minmax(0, 1fr); }
+	.demo-span-2 { grid-column: auto; }
+	.demo-title { font-size: 1.5rem; }
+}
 
 /* Lightbox gallery thumbnails */
 .demo-lb-gallery figure { margin: 0; cursor: zoom-in; text-align: center; font-size: 0.8rem; color: var(--td-color-text-muted); }

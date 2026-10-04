@@ -59,12 +59,15 @@ describe('B6 table callbacks are guarded', () => {
     ];
     el.data = ROWS.slice(0, 3);
     const trs = rows(el);
+    // v0.34.0: every body cell starts with its aria-hidden card label (span.td-table__cell-label) — read the value only
+    const value = (td) => [...td.childNodes].filter((n) => !(n.classList && n.classList.contains('td-table__cell-label'))).map((n) => n.textContent).join('');
+    const content = (td) => [...td.children].filter((n) => !n.classList.contains('td-table__cell-label'));
     expect(trs).to.have.length(3);
-    expect(trs[0].children[1].textContent).to.equal('1');
-    expect(trs[1].children[1].textContent).to.equal('');
-    expect(trs[1].children[1].children).to.have.length(0);
-    expect(trs[1].children[0].textContent).to.equal('2');
-    expect(trs[2].children[1].textContent).to.equal('3');
+    expect(value(trs[0].children[1])).to.equal('1');
+    expect(value(trs[1].children[1])).to.equal('');
+    expect(content(trs[1].children[1])).to.have.length(0);
+    expect(value(trs[1].children[0])).to.equal('2');
+    expect(value(trs[2].children[1])).to.equal('3');
     expect(errors).to.have.length(1);
   });
 

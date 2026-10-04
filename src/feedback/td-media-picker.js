@@ -52,6 +52,7 @@
  * @fires cancel
  * @fires operation-error
  */
+import { matchesBelow } from '../utils/breakpoints.js';
 import { openDialogLayer } from './dialog-layer.js';
 import { TdModal } from './td-modal.js';
 import { TdModalStackManager } from './td-modal-stack.js';
@@ -590,7 +591,7 @@ export class TdMediaPicker extends HTMLElement {
     const facets = document.createElement('div');
     facets.className = 'td-media-picker__facets';
     facets.hidden = true;
-    // ≥ 768px the facet group is a horizontal scroller inside the one-row toolbar (impl review #3): a facet that takes
+    // ≥ 720px (ADR 0014; v0.33: 768) the facet group is a horizontal scroller inside the one-row toolbar (impl review #3): a facet that takes
     // focus (Tab, or a programmatic focus — Firefox does not scroll an overflow box for that) is brought into view
     facets.addEventListener('focusin', (ev) => {
       const facet = /** @type {HTMLElement|null} */ (ev.target instanceof Element ? ev.target.closest('.td-media-picker__facet') : null);
@@ -1273,7 +1274,7 @@ export class TdMediaPicker extends HTMLElement {
 
   /** @private */
   _isNarrow() {
-    try { return window.matchMedia('(max-width: 767.98px)').matches; } catch { return false; }
+    return matchesBelow('md'); // ADR 0014: < 720 (v0.33: < 768)
   }
 
   /**

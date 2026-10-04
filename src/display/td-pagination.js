@@ -13,6 +13,15 @@ const format = (tpl, vars = {}) => String(tpl ?? '').replace(/\{(\w+)\}/g, (m, k
  * `ul.td-pagination__pages` of `button.td-pagination__page[data-page]`, current = `[aria-current="page"]`).
  * Page changes keep the nav + live region and rebuild only the controls, restoring keyboard focus.
  *
+ * Responsive (v0.34.0, plan QĐ 8): the host is a size container (`container: td-pagination / inline-size` — it needs
+ * its width from the parent). Every `<li>` carries a static `data-rel`: `current` | `edge` (first / last page) |
+ * `adjacent` (current ± 1) | `far` (the rest of the window) | `ellipsis` (a regular gap, always shown) | `gap` (an ellipsis only the compact form shows). Below
+ * 480px of container width CSS hides `adjacent` + `far` and shows `gap` → "‹ 1 … 57 … 200 ›" with exactly one
+ * ellipsis wherever pages are hidden, and the info line takes its own row. Below 360px (ADR 0014 container-only `2xs`)
+ * the STATUS form "‹ 57 / 200 ›": prev + `span.td-pagination__status[aria-hidden]` (`labels.status`, rebuilt with the
+ * controls on every page change) + next; the page list is hidden and the info line is visually hidden but stays the
+ * (single) live region. No JS runs on resize.
+ *
  * @element td-pagination
  * @attr {number} total-items - Total number of items (default 0)
  * @attr {number} items-per-page - Items per page (default 10)
@@ -30,7 +39,7 @@ const format = (tpl, vars = {}) => String(tpl ?? '').replace(/\{(\w+)\}/g, (m, k
  * @fires page-change - When page changes, detail: { page }
  *
  * Texts: `TdPagination.labels` — `prev`, `next`, `page` (`{n}`), `info` (`{from}`, `{to}`, `{total}`, `{item}`),
- * `item`. Override per site; they apply on the next render.
+ * `item`, `status` (`{current}`, `{total}` pages; v0.34.0). Override per site; they apply on the next render.
  */
 export class TdPagination extends TdBaseElement {
   /** Default texts (Vietnamese); override per site: `TdPagination.labels.info = 'Showing {from}-{to} of {total}'`. */
@@ -40,6 +49,7 @@ export class TdPagination extends TdBaseElement {
     page: 'Trang {n}',
     info: 'Hiển thị {from}-{to} / {total} {item}',
     item: 'mục',
+    status: '{current} / {total}',
   };
 
   static get booleanAttributes() { return ['quiet']; }
@@ -105,12 +115,18 @@ export class TdPagination extends TdBaseElement {
     const nav = (dir, label, disabled) => `<button type="button" class="td-pagination__nav td-pagination__nav--${dir}"`
       + ` data-nav="${dir}" aria-label="${esc(label)}"${disabled ? ' aria-disabled="true"' : ''}>`
       + `<span class="td-pagination__icon" data-td-icon="${dir}"></span></button>`;
-    const items = this._buildPageItems(totalPages, current, this._getMaxPages()).map((item) => {
-      if (item === '...') return '<li class="td-pagination__ellipsis" aria-hidden="true">…</li>';
-      const cur = item === current ? ' aria-current="page"' : '';
-      return `<li><button type="button" class="td-pagination__page" data-page="${item}" aria-label="${esc(format(L.page, { n: item }))}"${cur}>${item}</button></li>`;
-    }).join('');
+    const items = TdPagination._withCompactGaps(this._buildPageItems(totalPages, current, this._getMaxPages()), current, totalPages)
+      .map((item) => {
+        if (item === '...') return '<li class="td-pagination__ellipsis" data-rel="ellipsis" aria-hidden="true">…</li>';
+        if (item === 'gap') return '<li class="td-pagination__ellipsis" data-rel="gap" aria-hidden="true">…</li>';
+        const cur = item === current ? ' aria-current="page"' : '';
+        return `<li data-rel="${TdPagination._rel(item, current, totalPages)}"><button type="button" class="td-pagination__page" data-page="${item}" aria-label="${esc(format(L.page, { n: item }))}"${cur}>${item}</button></li>`;
+      }).join('');
+    // v0.34.0: the status form's "57 / 200" (shown by CSS only below 360px of container width). aria-hidden: the
+    // live region (.td-pagination__info, kept as a visually hidden live region in that form) is the ONE announcement.
+    const status = `<span class="td-pagination__status" aria-hidden="true">${esc(format(L.status, { current, total: totalPages }))}</span>`;
     return nav('prev', L.prev, current <= 1)
+      + status
       + `<ul class="td-pagination__pages">${items}</ul>`
       + nav('next', L.next, current >= totalPages);
   }
@@ -167,6 +183,11 @@ export class TdPagination extends TdBaseElement {
       target = this.querySelector(`.td-pagination__page[data-page="${key.slice(5)}"]`);
     }
     target = target || this.querySelector('.td-pagination__page[aria-current="page"]');
+    // v0.34.0 status form (< 360px): the page list is not rendered → stay on the same nav button, now aria-disabled
+    // (still focusable by design) instead of losing focus to <body>.
+    if (target && !target.getClientRects().length && (key === 'prev' || key === 'next')) {
+      target = this.querySelector(`[data-nav="${key}"]`);
+    }
     target?.focus();
   }
 
@@ -277,6 +298,38 @@ export class TdPagination extends TdBaseElement {
       items.push(totalPages);
     }
     return items;
+  }
+
+  /**
+   * v0.34.0: relation of a page to the current one — what the compact form (< 480px) keeps (`current`, `edge`).
+   * @param {number} page
+   * @param {number} current
+   * @param {number} totalPages
+   * @returns {'current'|'edge'|'adjacent'|'far'}
+   */
+  static _rel(page, current, totalPages) {
+    if (page === current) return 'current';
+    if (page === 1 || page === totalPages) return 'edge';
+    return Math.abs(page - current) === 1 ? 'adjacent' : 'far';
+  }
+
+  /**
+   * v0.34.0: the compact form shows only first / current / last, so every side with a hidden page needs an ellipsis.
+   * A regular ellipsis ('...', `data-rel="ellipsis"`, shown in both forms — compact it stands for hidden pages too) already
+   * covers its side; a side without one gets a compact-only 'gap' item next to its edge page. Result: exactly one
+   * visible ellipsis per side with hidden pages, in both forms.
+   * @param {Array<number|'...'>} items
+   * @param {number} current
+   * @param {number} totalPages
+   * @returns {Array<number|'...'|'gap'>}
+   */
+  static _withCompactGaps(items, current, totalPages) {
+    const at = items.indexOf(current);
+    const out = items.slice();
+    // after the current page first (indices before it stay valid)
+    if (current <= totalPages - 2 && !items.slice(at + 1).includes('...')) out.splice(out.length - 1, 0, 'gap');
+    if (current >= 3 && !items.slice(0, at).includes('...')) out.splice(1, 0, 'gap');
+    return out;
   }
 
   /**

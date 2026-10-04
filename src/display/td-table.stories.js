@@ -42,6 +42,8 @@ export default {
     'empty-title': { control: 'text' },
     'empty-text': { control: 'text' },
     'max-height': { control: 'text' },
+    layout: { control: 'select', options: ['', 'auto', 'table', 'cards'] },
+    'card-below': { control: 'select', options: ['', 'sm', 'md', 'lg'] },
   },
 };
 
@@ -49,7 +51,8 @@ export const Default = {
   render: (args) => `<td-table${attr('per-page', args['per-page'])}${attr('active-color', args['active-color'])}`
     + `${attr('zebra', args.zebra)}${attr('loading', args.loading)}${attr('title', args.title)}`
     + `${attr('heading-level', args['heading-level'])}${attr('empty-title', args['empty-title'])}`
-    + `${attr('empty-text', args['empty-text'])}${attr('max-height', args['max-height'])}></td-table>`,
+    + `${attr('empty-text', args['empty-text'])}${attr('max-height', args['max-height'])}`
+    + `${attr('layout', args.layout)}${attr('card-below', args['card-below'])}></td-table>`,
   args: { 'per-page': 10, title: 'Danh sách người dùng' },
   play: async ({ canvasElement }) => {
     const el = canvasElement.querySelector('td-table');
@@ -59,7 +62,7 @@ export const Default = {
 };
 
 export const NoTitle = {
-  render: () => `<div class="sb-stack">
+  render: () => `<div>
       <td-table aria-label="Người dùng"></td-table>
       <p class="sb-note">Không có title → bảng được đặt tên bằng aria-label của host (mặc định "Bảng dữ liệu").</p>
     </div>`,
@@ -96,7 +99,7 @@ export const NoZebra = {
 };
 
 export const StickyHeader = {
-  render: () => `<div class="sb-stack">
+  render: () => `<div>
       <td-table title="Tiêu đề cố định" max-height="320px" per-page="30"></td-table>
       <p class="sb-note">max-height → bảng cuộn bên trong, hàng tiêu đề dính trên cùng (nền đặc).</p>
     </div>`,
@@ -108,9 +111,9 @@ export const StickyHeader = {
 };
 
 export const EllipsisAndWidths = {
-  render: () => `<div class="sb-stack">
+  render: () => `<div>
       <td-table title="Cắt chữ dài"></td-table>
-      <p class="sb-note">Cột có width hoặc ellipsis → table-layout: fixed; ô ellipsis giữ một dòng, nội dung đầy đủ trong title.</p>
+      <p class="sb-note">Từ 0.34.0: ellipsis cắt nội dung ở maxWidth / --td-table-ellipsis-max (18rem), bảng giữ table-layout auto (fixed chỉ khi mọi cột widthType: 'fixed'). Nội dung đầy đủ trong title.</p>
     </div>`,
   play: async ({ canvasElement }) => {
     const el = canvasElement.querySelector('td-table');
@@ -124,7 +127,7 @@ export const EllipsisAndWidths = {
 };
 
 export const CellPadding = {
-  render: () => `<div class="sb-stack">
+  render: () => `<div>
       <td-table title="Ô gọn (px-2)"></td-table>
       <p class="sb-note">cellPaddingClass nhận px-0 … px-6 → td-table__cell--px-{n} (không cần Tailwind).</p>
     </div>`,
@@ -146,7 +149,7 @@ export const CustomColor = {
 };
 
 export const CustomRender = {
-  render: () => `<div class="sb-stack">
+  render: () => `<div>
       <td-table title="Ô tuỳ biến"></td-table>
       <p class="sb-note">render(row, rowIdxInPage) trả về Node (khuyến nghị). Chuỗi HTML là cửa sau tin cậy — không chèn dữ liệu hàng vào chuỗi.</p>
     </div>`,
@@ -175,7 +178,7 @@ export const CustomRender = {
 };
 
 export const ServerMode = {
-  render: () => `<div class="sb-stack">
+  render: () => `<div>
       <td-table title="Chế độ server" server-mode total-items="47" per-page="10"></td-table>
       <p class="sb-note">onPageChange(page) → setLoading(true) → tải trang → data = rows (trang được giữ) → setLoading(false). total-items là bắt buộc.</p>
     </div>`,
@@ -193,4 +196,72 @@ export const ServerMode = {
     el.addEventListener('sort-change', (e) => console.log('sort-change', e.detail));
     load(1);
   },
+};
+
+// --- v0.34.0 responsive: card mode (pure CSS, container query on the host) ---
+
+const ORDER_STATUS = ['Chờ xác nhận', 'Đang giao', 'Đã giao'];
+const orders = Array.from({ length: 24 }, (_, i) => ({
+  code: `DH${10240 + i}`,
+  customer: ['Nguyễn Văn An', 'Trần Thị Bích Ngọc', 'Lê Hoàng'][i % 3],
+  phone: `0912 345 6${10 + i}`,
+  product: 'iPhone 16 Pro Max 256GB Titan Sa Mạc',
+  total: `${(32990000 + i * 1000).toLocaleString('vi-VN')} ₫`,
+  status: ORDER_STATUS[i % 3],
+  created: `0${1 + (i % 9)}/10/2026`,
+}));
+
+/** Order columns with card roles + row actions (3 actions → "Thao tác" menu on a card, inline in a table). */
+const orderColumns = () => [
+  { key: 'code', label: 'Mã đơn', sortable: true },
+  { key: 'customer', label: 'Khách hàng', sortable: true },
+  { key: 'phone', label: 'Số điện thoại' },
+  { key: 'product', label: 'Sản phẩm', ellipsis: true, maxWidth: '220px' },
+  { key: 'total', label: 'Tổng tiền', align: 'right', sortable: true },
+  { key: 'status', label: 'Trạng thái', card: 'meta' },
+  { key: 'created', label: 'Ngày tạo', card: 'meta' },
+  {
+    key: 'act',
+    label: 'Thao tác',
+    actions: [
+      { id: 'edit', label: 'Sửa', icon: 'pencil' },
+      { id: 'print', label: 'In hoá đơn' },
+      { id: 'delete', label: 'Xoá', variant: 'danger', disabled: (row) => row.status === 'Đã giao' },
+    ],
+  },
+];
+
+const fillOrders = (canvasElement, { width } = {}) => {
+  const el = canvasElement.querySelector('td-table');
+  // the frame width is set with CSSOM (CSP strict: no style attribute in markup)
+  if (width) el.parentElement.style.inlineSize = width;
+  el.columns = orderColumns();
+  el.data = orders;
+  el.addEventListener('row-action', (e) => console.log('row-action', e.detail.id, e.detail.row.code, e.detail.rowIndex));
+};
+
+export const Card = {
+  render: () => `<div>
+      <td-table title="Đơn hàng (luôn dạng card)" layout="cards" per-page="5"></td-table>
+      <p class="sb-note">layout="cards": mỗi hàng là một card — cột đầu (primary) đậm, các cột còn lại "nhãn: giá trị", cột card: 'meta' gộp một dòng " · ", cột actions ở chân card (> 2 thao tác → nút "Thao tác" mở menu). Thanh sắp xếp thay cho hàng tiêu đề.</p>
+    </div>`,
+  play: async ({ canvasElement }) => fillOrders(canvasElement),
+};
+
+export const AutoNarrow = {
+  name: 'Auto (khung 360px)',
+  render: () => `<div>
+      <div class="sb-table-frame"><td-table title="Đơn hàng" per-page="5"></td-table></div>
+      <p class="sb-note">layout mặc định (auto): host là container — khung 360px &lt; 720 (card-below="md") → card. Kéo rộng khung hoặc mở story Default để thấy dạng bảng; cùng DOM, không render lại.</p>
+    </div>`,
+  play: async ({ canvasElement }) => fillOrders(canvasElement, { width: '360px' }),
+};
+
+export const ForcedTable = {
+  name: 'Forced table (khung 360px)',
+  render: () => `<div>
+      <div class="sb-table-frame"><td-table title="Đơn hàng (luôn dạng bảng)" layout="table" per-page="5"></td-table></div>
+      <p class="sb-note">layout="table": giữ dạng bảng ở mọi độ rộng — cuộn ngang bên trong (vùng cuộn focus được, bóng mép báo còn nội dung), số tiền căn phải không xuống dòng.</p>
+    </div>`,
+  play: async ({ canvasElement }) => fillOrders(canvasElement, { width: '360px' }),
 };

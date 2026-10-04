@@ -211,6 +211,54 @@
 		box-shadow: var(--td-focus-ring);
 	}
 
+	/* v0.34.0 (ADR 0014 §5, plan QĐ 13): notch / home indicator / landscape side insets, at EVERY width.
+	   - top / bottom: the token, never closer than inset + 8px to the edge. A site `auto` makes max(auto, …) invalid at
+	     computed-value time → the property falls back to its initial value `auto` (the side stays unanchored).
+	   - inline: the anchored side adds its inset (a site `auto` → calc(auto + …) invalid → auto, same mechanism). A
+	     centred stack (start 50%, shift −50%) moves by half the start inset at most; max-width leaves room for both. */
+	.td-toasts {
+		top: max(var(--td-toast-top), calc(env(safe-area-inset-top, 0px) + 8px));
+		bottom: max(var(--td-toast-bottom), calc(env(safe-area-inset-bottom, 0px) + 8px));
+		inset-inline-start: calc(var(--td-toast-inline-start) + env(safe-area-inset-left, 0px));
+		inset-inline-end: calc(var(--td-toast-inline-end) + env(safe-area-inset-right, 0px));
+		max-width: calc(100vw - 2 * var(--td-gutter) - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+	}
+
+	/* RTL: the inline start is the physical right → swap the insets */
+	.td-toasts:dir(rtl) {
+		inset-inline-start: calc(var(--td-toast-inline-start) + env(safe-area-inset-right, 0px));
+		inset-inline-end: calc(var(--td-toast-inline-end) + env(safe-area-inset-left, 0px));
+	}
+
+	/* xs: one full-width column (no ragged right-aligned stack), same width for every toast (physical sides: symmetric) */
+	@media (max-width: 479.98px) {
+		.td-toasts {
+			right: calc(var(--td-gutter) + env(safe-area-inset-right, 0px));
+			left: calc(var(--td-gutter) + env(safe-area-inset-left, 0px));
+			align-items: stretch;
+			width: auto;
+			max-width: none;
+			transform: none;
+		}
+
+		/* own rule: an engine without :dir() drops only this one, never the full-width rule above */
+		.td-toasts:dir(rtl) {
+			right: calc(var(--td-gutter) + env(safe-area-inset-right, 0px));
+			left: calc(var(--td-gutter) + env(safe-area-inset-left, 0px));
+		}
+
+		.td-toast {
+			max-width: none;
+		}
+	}
+
+	/* short (landscape phone): only the two newest stay visible (older ones are still in the DOM / announced) */
+	@media (max-height: 500px) {
+		.td-toast:nth-last-child(n + 3) {
+			display: none;
+		}
+	}
+
 	@media (pointer: coarse) {
 		.td-toast__close:focus-visible {
 			width: var(--td-touch-min);

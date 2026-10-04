@@ -144,6 +144,15 @@ Mặc định toast ở góc **trên bên phải**. Ví dụ đưa xuống **gi�
   Đóng của toast nằm trong vòng Tab của modal. Toast giữ nguyên bề mặt của nó khi có modal đang mở.
 - **Lớp:** `--td-z-toast` (500) — trên modal (400) và loading (480), dưới [tooltip](tooltip.md) (510).
 
+### Responsive (0.34.0)
+
+- Điện thoại (< 480px): chồng toast thành **một cột rộng hết** (trừ lề `--td-gutter`), toast cùng bề rộng, bỏ qua
+  `--td-toast-inline-*` / `--td-toast-align`.
+- Màn hình thấp (≤ 500px — điện thoại xoay ngang): chỉ **hai toast mới nhất** hiện (toast cũ vẫn trong DOM, đã được đọc).
+- Vùng an toàn (tai thỏ, thanh home): `top: max(--td-toast-top, safe-area-inset-top + 8px)` (tương tự `bottom`) — đặt
+  token `0px` vẫn cách mép ≥ 8px; token `auto` thì giữ `auto`. Ở **mọi** độ rộng, cạnh neo (`--td-toast-inline-start` /
+  `-end`) cộng thêm `safe-area-inset-left` / `-right` (RTL đảo), `max-width` trừ cả hai.
+
 ## Tuỳ biến giao diện
 
 Từ 0.21.0 toast theo kiểu **dcms**: viên thuốc gọn (bo 12px, padding 12×16, chữ 14px), **nền pastel theo loại + chữ

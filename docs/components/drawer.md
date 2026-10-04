@@ -118,7 +118,7 @@ trang tự gỡ host khi drawer còn mở, `closed` vẫn resolve. Xem bảng tu
   `direction` của host lúc mở (root nhận `dir` tương ứng).
 - `size`: `sm` (20rem) · `md` (28rem, mặc định) · `lg` (36rem) · `xl` (48rem). Muốn độ rộng tuỳ ý, đặt
   `--td-drawer-w` (thắng `size`, xem [Tuỳ biến giao diện](#tuỳ-biến-giao-diện)).
-- Màn hình ≤ 640px: panel luôn tràn toàn màn hình, bất kể `size`.
+- Theo breakpoint kit ([responsive](../concepts/responsive.md)): màn hình **< 480px** panel tràn toàn màn hình bất kể `size`; **480–719px** panel rộng tối đa `100% − 3rem` (vẫn thấy một dải trang phía sau). Header / footer / cạnh panel cộng `env(safe-area-inset-*)` (tai thỏ, thanh home).
 
 ### 5. Không cho đóng bằng Escape / bấm nền
 

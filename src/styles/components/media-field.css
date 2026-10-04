@@ -25,7 +25,10 @@
 		display: block;
 		box-sizing: border-box;
 		inline-size: var(--td-media-field-w, 100%);
+		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5, v0.34.0) */
 		max-inline-size: 100%;
+		/* v0.34.0 (plan QĐ 12): needs a width from the parent — --td-media-field-w a length / %, never fit-content */
+		container: td-media-field / inline-size;
 		font-family: var(--td-font-sans);
 		font-size: var(--td-text-sm);
 		line-height: var(--td-leading-normal);
@@ -207,6 +210,14 @@
 
 	.td-media-field__actions[hidden] {
 		display: none;
+	}
+
+	/* v0.34.0 (plan QĐ 12): below 360px of width Đổi / Gỡ stack, each full width */
+	@container td-media-field (width < 360px) {
+		.td-media-field__actions {
+			flex-direction: column;
+			align-items: stretch;
+		}
 	}
 
 	.td-media-field__usage {

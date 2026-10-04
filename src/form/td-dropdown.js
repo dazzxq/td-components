@@ -1,4 +1,6 @@
 import { fold, nextTypeaheadIndex } from '../utils/typeahead.js';
+import { ValueTitleWatcher, displayedValueText } from '../utils/value-title.js';
+import { isCoarsePointer } from '../utils/breakpoints.js';
 import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
 import { LAYERS, register as registerLayer } from '../utils/layers.js';
 import { TdFormElement } from '../base/td-form-element.js';
@@ -488,6 +490,7 @@ export class TdDropdown extends TdFormElement {
 
     this._applyName();
     this._applyRequired();
+    this._watchValueTitle();
     if (this._isOpen && this._isDisabled()) this.close();
     // Push the current selection + validity into the form on (re)render.
     this._syncForm();
@@ -594,6 +597,38 @@ export class TdDropdown extends TdFormElement {
       span.textContent = this._getPlaceholder();
       span.setAttribute('data-placeholder', '');
     }
+    this._scheduleValueTitle();
+  }
+
+  /**
+   * @private v0.34.0 (plan QĐ 11): the value span gets `title` = the full value while its text is cut (…). One
+   * ResizeObserver on the span (re-checks on resize, no polling), released on disconnect by the cleanups.
+   */
+  _watchValueTitle() {
+    const el = this.querySelector('.td-dropdown__value');
+    if (!this._vt) {
+      this._vt = new ValueTitleWatcher((node) => this._valueTitleText(node));
+      this._cleanups.push(() => {
+        if (this._vt) this._vt.destroy();
+        this._vt = null;
+      });
+    }
+    this._vt.watch(el);
+  }
+
+  /** @private value text changed: re-check next frame (src/utils/value-title.js) */
+  _scheduleValueTitle() {
+    if (this._vt) this._vt.schedule();
+  }
+
+  /** @private title only for a cut NON-placeholder value; removed when it fits / placeholder / empty */
+  _syncValueTitle() {
+    if (this._vt) this._vt.sync();
+  }
+
+  /** @private the displayed value text (placeholder → '') */
+  _valueTitleText(el) {
+    return displayedValueText(el);
   }
 
   // --- Form participation ---
@@ -1189,9 +1224,9 @@ export class TdDropdown extends TdFormElement {
     this._activeIndex = -1;
     this._setActive(active);
 
-    // Focus the search input (desktop only: on phones the keyboard would cover the list).
+    // Focus the search input — not on touch-first devices (any width: the on-screen keyboard would cover the list).
     const searchInput = this._search();
-    if (searchInput && opts.focusSearch !== false && window.innerWidth >= 768) {
+    if (searchInput && opts.focusSearch !== false && !isCoarsePointer()) {
       this._clearSearchFocusTimer();
       this._searchFocusTimer = window.setTimeout(() => {
         this._searchFocusTimer = null;

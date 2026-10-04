@@ -216,8 +216,9 @@ tối đa 2.5px ở mức kẹp 1:5.
 - **Tỉ lệ mỗi ảnh**, theo thứ tự ưu tiên: `data-td-ar` của ô → `width` / `height` của `<img>` → kích thước thật sau khi ảnh
   tải xong → tạm dùng `--td-media-grid-fallback-ar` (1.5) rồi xếp lại khi ảnh tải xong. **In sẵn `width` / `height`
   (hoặc `data-td-ar`) từ server** để xếp đúng ngay lần đầu, không giật. Tỉ lệ bị kẹp trong [0.2, 5].
+- **Vùng bấm của tick** (0.34.0): hình tick nhỏ, vùng bấm ≥ 24px với chuột và ≥ 44px trên máy cảm ứng.
 - **Xếp dòng** (thuật toán `pack_rows` của dwp): thêm ảnh vào dòng tới khi tổng tỉ lệ Σ gần `--td-media-grid-row-ratio`
-  nhất (5.5; ≤ 1024px: 4; ≤ 640px: 2.5). Không giới hạn số ảnh / dòng.
+  nhất — theo **bề rộng của chính lưới** (container query, 0.34.0): ≥ 1024px `--td-media-grid-row-ratio` (5.5), 720–1023px `--td-media-grid-row-ratio-md` (4), < 720px `--td-media-grid-row-ratio-sm` (2.5). Trước 0.34.0 theo bề rộng màn hình (≤ 1024 / ≤ 640). Không giới hạn số ảnh / dòng.
 - **Dòng cuối thiếu** (Σ < đích) căn trái, để trống bên phải, và **không bao giờ dời ảnh** sang dòng khác. Chiều cao:
   - **vừa** (Σ của nó ≤ Σ dòng trên **và** số ảnh ≤ số ảnh dòng trên, tức ở chiều cao dòng trên nó lọt container ở mọi bề
     rộng) → cao **bằng đúng** dòng trên;
@@ -304,7 +305,8 @@ Method lập trình **không** phát event (giống `setValue`) trừ khi truy�
 | `--td-media-grid-selected-scale` | **`1`** (trước 0.33: `0.88`) | Tỉ lệ thu ảnh của ô đã chọn. Muốn hiệu ứng thu nhỏ kiểu cũ: `0.88` |
 | `--td-media-grid-fit` | `cover` | 0.33.0. `object-fit` của ảnh trong ô (`cover` \| `contain`) |
 | `--td-media-grid-ratio` | `auto` | 0.33.0. Tỉ lệ khung ô ở bố cục mặc định (`auto` = cao theo ảnh; vd `3 / 2`, `1`) |
-| `--td-media-grid-row-ratio` | `5.5` · ≤ 1024px `4` · ≤ 640px `2.5` | 0.33.0, justified. Σ tỉ lệ đích mỗi dòng (lớn hơn = nhiều ảnh / dòng, dòng thấp hơn) |
+| `--td-media-grid-row-ratio` | `5.5` | 0.33.0, justified. Σ tỉ lệ đích mỗi dòng khi **lưới** rộng ≥ 1024px (lớn hơn = nhiều ảnh / dòng, dòng thấp hơn) |
+| `--td-media-grid-row-ratio-md` / `-sm` | `4` / `2.5` | 0.34.0. Σ khi lưới rộng 720–1023px / < 720px (container query; trước đó là cùng token theo màn hình) |
 | `--td-media-grid-fallback-ar` | `1.5` | 0.33.0, justified. Tỉ lệ tạm của ảnh chưa biết kích thước |
 
 0.33.0: bỏ nền ô đã chọn (`--td-media-grid-selected-bg` không còn tác dụng) và phép thu 0.88; ô đã chọn = vòng inset +

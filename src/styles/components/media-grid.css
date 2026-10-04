@@ -34,21 +34,13 @@
 		/* object-fit of the image in a tile (cover | contain) and the tile ratio (auto = as tall as the image) */
 		--td-media-grid-fit: cover;
 		--td-media-grid-ratio: auto;
-		/* layout="justified": target ratio sum per row (row height = (width − gaps) / Σ) + ratio until an image loads */
+		/* layout="justified": target ratio sum per row (row height = (width − gaps) / Σ) + ratio until an image loads.
+		   v0.34.0 (ADR 0014): chosen by the GRID's width (container), not the viewport — row-ratio ≥ 1024px,
+		   -md 720–1023, -sm < 720. */
 		--td-media-grid-row-ratio: 5.5;
+		--td-media-grid-row-ratio-md: 4;
+		--td-media-grid-row-ratio-sm: 2.5;
 		--td-media-grid-fallback-ar: 1.5;
-	}
-
-	@media (max-width: 1024px) {
-		:root {
-			--td-media-grid-row-ratio: 4;
-		}
-	}
-
-	@media (max-width: 640px) {
-		:root {
-			--td-media-grid-row-ratio: 2.5;
-		}
 	}
 }
 
@@ -170,6 +162,31 @@
 		cursor: default;
 	}
 
+	/*
+	 * Justified Σ per grid width (v0.34.0): the host is an inline-size container; its items resolve --_td-mg-sigma,
+	 * which td-media-grid.js reads from the first item. Without container queries (Chrome 102–104) build-css emits the
+	 * same rules by viewport width.
+	 */
+	td-media-grid[layout="justified"] {
+		container: td-media-grid / inline-size;
+	}
+
+	td-media-grid [data-td-media-item] {
+		--_td-mg-sigma: var(--td-media-grid-row-ratio);
+	}
+
+	@container td-media-grid (width < 1024px) {
+		td-media-grid [data-td-media-item] {
+			--_td-mg-sigma: var(--td-media-grid-row-ratio-md);
+		}
+	}
+
+	@container td-media-grid (width < 720px) {
+		td-media-grid [data-td-media-item] {
+			--_td-mg-sigma: var(--td-media-grid-row-ratio-sm);
+		}
+	}
+
 	@media (hover: hover) and (pointer: fine) {
 		.td-media-grid__item:hover .td-media-grid__tick {
 			opacity: 1;
@@ -180,16 +197,24 @@
 		}
 	}
 
+	/*
+	 * Hit area (v0.34.0, ADR 0014 §5): the glyph stays small, a transparent ::before makes the target ≥ 24px for a mouse
+	 * and ≥ 44px on touch. ::before is positioned against the PADDING box, hence the extra −2px (the tick's border).
+	 */
+	.td-media-grid__tick {
+		--_td-mg-hit: 24px;
+	}
+
+	.td-media-grid__tick::before {
+		content: "";
+		position: absolute;
+		inset: calc((var(--td-media-grid-tick-size) - var(--_td-mg-hit)) / 2 - 2px);
+	}
+
 	@media (hover: none), (pointer: coarse) {
 		.td-media-grid__tick {
+			--_td-mg-hit: var(--td-touch-min, 44px);
 			opacity: 0.55;
-		}
-
-		/* 24px glyph, ≥ 44px hit area on touch */
-		.td-media-grid__tick::before {
-			content: "";
-			position: absolute;
-			inset: calc((var(--td-media-grid-tick-size) - var(--td-touch-min, 44px)) / 2);
 		}
 	}
 

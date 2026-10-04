@@ -25,11 +25,18 @@
 			--td-dtp-option-h: var(--td-touch-min);
 		}
 	}
+	/* short (landscape phone, v0.34.0): 3 visible wheel rows so the dialog fits 390 px of height */
+	@media (max-height: 500px) {
+		:root {
+			--td-dtp-visible: 3;
+		}
+	}
 }
 
 @layer td.component {
 	td-datetime-picker {
 		display: block;
+		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5, v0.34.0) */
 		font-family: var(--td-font-sans); /* the error-contract note sits outside .td-dtp */
 	}
 

@@ -1,7 +1,10 @@
-<!-- td-table markup contract (v0.10.0). `data-setup` is a JS function body run with `el` = the mounted host (columns and
-     data are JS properties). Explicit host id → deterministic title id {host-id}-title. Compared structurally (tag,
-     sorted classes, KEEP attributes) by src/display/td-batch4-table.browser-test.js; nested td-pagination /
-     td-empty-state / sort-icon children are not compared (own contracts; the sort glyph depends on the registry). Templates: data + sortable (title, 2 pages) · empty · loading (no title → fallback name). -->
+<!-- td-table markup contract (v0.10.0; v0.34.0: explicit roles table/rowgroup/row/columnheader/cell, data-card roles,
+     th--sortable, aria-hidden card label in every body cell). `data-setup` is a JS function body run with `el` = the
+     mounted host (columns and data are JS properties). Explicit host id → deterministic title id {host-id}-title.
+     Compared structurally (tag, sorted classes, KEEP attributes, text of leaf elements) by
+     src/display/td-batch4-table.browser-test.js; nested td-pagination / td-empty-state / sort-icon children are not
+     compared (own contracts; the sort glyph depends on the registry). Templates: data + sortable (title, 2 pages) ·
+     empty · loading (no title → fallback name). -->
 <template data-component="td-table"
           data-markup='<td-table id="tbl-c" title="Người dùng" per-page="2"></td-table>'
           data-setup='el.columns = [{ key: "name", label: "Tên", sortable: true }, { key: "role", label: "Vai trò" }]; el.data = [{ name: "An", role: "Admin" }, { name: "Bình", role: "Editor" }, { name: "Chi", role: "Viewer" }];'>
@@ -11,14 +14,14 @@
       <div class="td-table__pagination"><td-pagination quiet aria-label="Phân trang (trên)"></td-pagination></div>
     </div>
     <div class="td-table__scroll">
-      <table class="td-table__table" aria-labelledby="tbl-c-title">
-        <thead class="td-table__head"><tr>
-          <th class="td-table__th" scope="col" data-col="0" data-col-key="name"><button type="button" class="td-table__sort" data-sort-col="0"><span class="td-table__sort-label">Tên</span><span class="td-table__sort-icon" aria-hidden="true" data-sort-icon="sort"></span></button></th>
-          <th class="td-table__th" scope="col" data-col="1" data-col-key="role">Vai trò</th>
+      <table class="td-table__table" role="table" aria-labelledby="tbl-c-title">
+        <thead class="td-table__head" role="rowgroup"><tr role="row">
+          <th class="td-table__th td-table__th--sortable" role="columnheader" scope="col" data-col="0" data-col-key="name" data-card="primary"><button type="button" class="td-table__sort" data-sort-col="0"><span class="td-table__sort-label">Tên</span><span class="td-table__sort-icon" aria-hidden="true" data-sort-icon="sort"></span></button></th>
+          <th class="td-table__th" role="columnheader" scope="col" data-col="1" data-col-key="role" data-card="secondary">Vai trò</th>
         </tr></thead>
-        <tbody class="td-table__body">
-          <tr class="td-table__row" data-row-idx="0"><td class="td-table__cell" data-col="0" data-col-key="name">An</td><td class="td-table__cell" data-col="1" data-col-key="role">Admin</td></tr>
-          <tr class="td-table__row" data-row-idx="1"><td class="td-table__cell" data-col="0" data-col-key="name">Bình</td><td class="td-table__cell" data-col="1" data-col-key="role">Editor</td></tr>
+        <tbody class="td-table__body" role="rowgroup">
+          <tr class="td-table__row" role="row" data-row-idx="0"><td class="td-table__cell" role="cell" data-col="0" data-col-key="name" data-card="primary"><span class="td-table__cell-label" aria-hidden="true">Tên</span>An</td><td class="td-table__cell" role="cell" data-col="1" data-col-key="role" data-card="secondary"><span class="td-table__cell-label" aria-hidden="true">Vai trò</span>Admin</td></tr>
+          <tr class="td-table__row" role="row" data-row-idx="1"><td class="td-table__cell" role="cell" data-col="0" data-col-key="name" data-card="primary"><span class="td-table__cell-label" aria-hidden="true">Tên</span>Bình</td><td class="td-table__cell" role="cell" data-col="1" data-col-key="role" data-card="secondary"><span class="td-table__cell-label" aria-hidden="true">Vai trò</span>Editor</td></tr>
         </tbody>
       </table>
     </div>
@@ -35,13 +38,13 @@
       <div class="td-table__pagination" hidden><td-pagination quiet aria-label="Phân trang (trên)"></td-pagination></div>
     </div>
     <div class="td-table__scroll">
-      <table class="td-table__table" aria-labelledby="tbl-e-title">
-        <thead class="td-table__head"><tr>
-          <th class="td-table__th" scope="col" data-col="0" data-col-key="id">Mã</th>
-          <th class="td-table__th" scope="col" data-col="1" data-col-key="total">Tổng</th>
+      <table class="td-table__table" role="table" aria-labelledby="tbl-e-title">
+        <thead class="td-table__head" role="rowgroup"><tr role="row">
+          <th class="td-table__th" role="columnheader" scope="col" data-col="0" data-col-key="id" data-card="primary">Mã</th>
+          <th class="td-table__th" role="columnheader" scope="col" data-col="1" data-col-key="total" data-card="secondary">Tổng</th>
         </tr></thead>
-        <tbody class="td-table__body">
-          <tr class="td-table__empty-row"><td class="td-table__empty" colspan="2"><td-empty-state compact size="sm" heading-level="3" title="Không có dữ liệu" message="Chưa có dữ liệu để hiển thị."></td-empty-state></td></tr>
+        <tbody class="td-table__body" role="rowgroup">
+          <tr class="td-table__empty-row" role="row"><td class="td-table__empty" role="cell" colspan="2"><td-empty-state compact size="sm" heading-level="3" title="Không có dữ liệu" message="Chưa có dữ liệu để hiển thị."></td-empty-state></td></tr>
         </tbody>
       </table>
     </div>
@@ -57,14 +60,14 @@
       <div class="td-table__pagination" hidden><td-pagination quiet aria-label="Phân trang (trên)"></td-pagination></div>
     </div>
     <div class="td-table__scroll">
-      <table class="td-table__table" aria-label="Bảng dữ liệu" aria-busy="true">
-        <thead class="td-table__head"><tr>
-          <th class="td-table__th" scope="col" data-col="0" data-col-key="a">A</th>
-          <th class="td-table__th" scope="col" data-col="1" data-col-key="b">B</th>
+      <table class="td-table__table" role="table" aria-label="Bảng dữ liệu" aria-busy="true">
+        <thead class="td-table__head" role="rowgroup"><tr role="row">
+          <th class="td-table__th" role="columnheader" scope="col" data-col="0" data-col-key="a" data-card="primary">A</th>
+          <th class="td-table__th" role="columnheader" scope="col" data-col="1" data-col-key="b" data-card="secondary">B</th>
         </tr></thead>
-        <tbody class="td-table__body">
-          <tr class="td-table__row td-table__row--skeleton" aria-hidden="true"><td class="td-table__cell" data-col="0"><span class="td-table__skeleton"></span></td><td class="td-table__cell" data-col="1"><span class="td-table__skeleton"></span></td></tr>
-          <tr class="td-table__row td-table__row--skeleton" aria-hidden="true"><td class="td-table__cell" data-col="0"><span class="td-table__skeleton"></span></td><td class="td-table__cell" data-col="1"><span class="td-table__skeleton"></span></td></tr>
+        <tbody class="td-table__body" role="rowgroup">
+          <tr class="td-table__row td-table__row--skeleton" role="row" aria-hidden="true"><td class="td-table__cell" role="cell" data-col="0" data-card="primary"><span class="td-table__skeleton"></span></td><td class="td-table__cell" role="cell" data-col="1" data-card="secondary"><span class="td-table__skeleton"></span></td></tr>
+          <tr class="td-table__row td-table__row--skeleton" role="row" aria-hidden="true"><td class="td-table__cell" role="cell" data-col="0" data-card="primary"><span class="td-table__skeleton"></span></td><td class="td-table__cell" role="cell" data-col="1" data-card="secondary"><span class="td-table__skeleton"></span></td></tr>
         </tbody>
       </table>
     </div>

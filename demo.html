@@ -7,6 +7,7 @@
   <!-- The kit is td.css only (no Tailwind since 0.11.0); demo.css styles this page's chrome. -->
   <link rel="stylesheet" href="./td.css">
   <link rel="stylesheet" href="./demo.css">
+  <link rel="stylesheet" href="./test/fixtures/responsive-page.css">
 </head>
 <body class="demo-page">
   <!-- ES modules cannot load from file:// (browsers block them: CORS, origin "null"). Explain instead of a blank page. -->
@@ -441,6 +442,15 @@
 
   <hr>
 
+  <!-- ═══════════════════ RESPONSIVE (v0.34.0) ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Responsive <span class="demo-code">ADR 0014 · test/fixtures/responsive-page.js</span></h2>
+    <p class="demo-note">Trang dùng chung với gate <code>npm run test:responsive</code>: nút nhãn dài, form hai cột ở mọi độ rộng,
+      cột hẹp 280px, 8 tab, phân trang 2000 mục, bảng đơn hàng 9 cột (dạng card khi khung &lt; 720px, thao tác vào menu).
+      Kéo hẹp cửa sổ hoặc mở DevTools chế độ thiết bị để xem.</p>
+    <div id="demo-responsive"></div>
+  </div>
+
   <!-- ═══════════════════ TABLE ═══════════════════ -->
   <div class="demo-section">
     <h2>Table <span class="demo-code">&lt;td-table&gt;</span></h2>
@@ -681,6 +691,9 @@
     import { TdMediaPicker } from './src/feedback/td-media-picker.js';
     import './src/form/td-media-field.js';
     import { createMockAdapter, assetFields, uploadFields } from './test/fixtures/media-adapter.js';
+    // v0.34
+    import { mountResponsiveFixture } from './test/fixtures/responsive-page.js';
+    mountResponsiveFixture(document.querySelector('#demo-responsive'));
 
     // Expose cho onclick handlers
     window.TdModal = TdModal;
