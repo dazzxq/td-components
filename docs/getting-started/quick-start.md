@@ -18,7 +18,7 @@ Bạn cần Node.js + npm (chỉ để tải kit và chạy server dev). Xem [Y�
 ```bash
 mkdir td-quickstart && cd td-quickstart
 npm init -y
-npm install github:dazzxq/td-components#v0.33.0
+npm install github:dazzxq/td-components#v0.34.0
 npm install -D vite
 ```
 
@@ -214,7 +214,7 @@ Muốn đổi màu chủ đạo của cả kit, thêm vào `app.css` (không b�
 :root { --td-accent: #b3261e; }
 ```
 
-`--td-accent` đổi checkbox, slider, pagination, nút ghost, viền focus ô nhập… Nút **primary** mặc định **đen** (0.33.0)
+`--td-accent` đổi checkbox, slider, pagination, nút ghost, viền focus ô nhập… Nút **primary** mặc định **đen** (0.34.0)
 và **không** đi theo accent; muốn primary cùng màu thương hiệu, map thêm ba token:
 
 ```css
@@ -249,7 +249,7 @@ Thử lần lượt:
 ## Không dùng Vite? (PHP / HTML thuần)
 
 Cùng `index.html` và `app.js` (đổi tên từ `main.js`), chỉ khác phần `<head>`: nạp CSS bằng `<link>` và khai báo import map
-để trình duyệt hiểu tên `@dazzxq/td-components/...`. Giả sử bạn đã copy kit vào `/vendor/td-components-0.33.0/` theo
+để trình duyệt hiểu tên `@dazzxq/td-components/...`. Giả sử bạn đã copy kit vào `/vendor/td-components-0.34.0/` theo
 [Cài đặt, mục 3](installation.md#3-php-thuần--html-không-bundler):
 
 ```html
@@ -257,17 +257,17 @@ Cùng `index.html` và `app.js` (đổi tên từ `main.js`), chỉ khác phần
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>td-components: form đầu tiên</title>
-  <link rel="stylesheet" href="/vendor/td-components-0.33.0/td.css">
+  <link rel="stylesheet" href="/vendor/td-components-0.34.0/td.css">
   <link rel="stylesheet" href="/app.css">
   <script type="importmap">
   {
     "imports": {
-      "@dazzxq/td-components/input-field": "/vendor/td-components-0.33.0/src/form/td-input-field.js",
-      "@dazzxq/td-components/dropdown": "/vendor/td-components-0.33.0/src/form/td-dropdown.js",
-      "@dazzxq/td-components/toggle": "/vendor/td-components-0.33.0/src/form/td-toggle.js",
-      "@dazzxq/td-components/button": "/vendor/td-components-0.33.0/src/form/td-button.js",
-      "@dazzxq/td-components/toast": "/vendor/td-components-0.33.0/src/feedback/td-toast.js",
-      "@dazzxq/td-components/modal": "/vendor/td-components-0.33.0/src/feedback/td-modal.js"
+      "@dazzxq/td-components/input-field": "/vendor/td-components-0.34.0/src/form/td-input-field.js",
+      "@dazzxq/td-components/dropdown": "/vendor/td-components-0.34.0/src/form/td-dropdown.js",
+      "@dazzxq/td-components/toggle": "/vendor/td-components-0.34.0/src/form/td-toggle.js",
+      "@dazzxq/td-components/button": "/vendor/td-components-0.34.0/src/form/td-button.js",
+      "@dazzxq/td-components/toast": "/vendor/td-components-0.34.0/src/feedback/td-toast.js",
+      "@dazzxq/td-components/modal": "/vendor/td-components-0.34.0/src/feedback/td-modal.js"
     }
   }
   </script>

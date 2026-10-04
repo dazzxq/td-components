@@ -1,8 +1,8 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.33)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.34)
 
-Trang này liệt kê, cho từng bản từ **0.33.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
+Trang này liệt kê, cho từng bản từ **0.34.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
 [CHANGELOG.md](../../CHANGELOG.md); trang này chỉ gom lại theo góc nhìn "tôi phải làm gì" và thêm ví dụ trước/sau.
 Quy trình nâng cấp chung nằm ở [README.md](README.md).
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.34.0](#0340) | Đổi giao diện + đổi DOM (nhỏ) | Responsive: modal sheet < 720 (trước ≤ 640), `td-table` tự thành card khi hẹp (`layout="table"` để giữ cũ), `textContent` của ô bảng có thêm nhãn cột ẩn, site chỉ đè `--td-media-grid-row-ratio` giờ chỉ áp lưới ≥ 1024px. |
 | [0.33.0](#0330) | Đổi giao diện + đổi văn bản (không breaking API) | Không bắt buộc sửa code. Media picker full viewport giống dcms2: nhãn mặc định đổi ("Chọn ({n})" → "Chèn ({n})", "Huỷ" → "Đóng", "Thư viện media" → tiêu đề theo `selection.kinds`), `pageSize` 40 → 30, "Tải thêm" → phân trang, bỏ khay thumb. `td-media-grid`: ô đã chọn hết thu nhỏ / nền, thành vòng inset; grid tự đặt kích thước `img` (CSS site trên `img` không còn thắng — dùng token). |
 | [0.32.0](#0320) | Không có thay đổi phá vỡ | Không. Thêm `<td-media-picker>` / `TdMediaPicker`, `<td-media-field>`, `td_media_field()`. Import map tự liệt kê: thêm `media-picker`, `media-field`. |
 | [0.31.0](#0310) | Đổi văn bản (nhỏ) | Không bắt buộc. Thêm `<td-sortable>`, `<td-masked-value>`, `td_masked_value()`, `<td-repeater sortable>`. Câu thông báo di chuyển dòng của repeater đổi chữ (test so đúng chữ phải cập nhật). Import map: thêm `sortable`, `masked-value`. |
@@ -60,6 +61,22 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.34.0
+
+**Đổi giao diện + đổi DOM (nhỏ)** — responsive toàn kit:
+
+- `<td-table>` **tự thành card khi bảng < 720px**. Muốn giữ bảng cuộn ngang như cũ: `layout="table"`.
+- `textContent` của một ô bảng giờ **bắt đầu bằng nhãn cột ẩn** (dùng cho card / trình đọc màn hình) — code đọc chữ ô
+  bằng `textContent` cần đọc phần giá trị (xem `docs/components/table.md`).
+- Modal thường thành bottom sheet khi < 720px (trước ≤ 640); drawer toàn màn hình < 480; lightbox đổi mốc 767/900 → 720/1024.
+- `td-media-grid` justified: site chỉ đè `--td-media-grid-row-ratio` giờ chỉ ảnh hưởng lưới ≥ 1024px; lưới hẹp dùng
+  `--td-media-grid-row-ratio-md` / `-sm`.
+- Dropdown / tree-select không tự focus ô tìm trên thiết bị cảm ứng.
+
+Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.34.0.
 
 ---
 
