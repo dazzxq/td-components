@@ -130,12 +130,19 @@ async function newPage(browser, viewport, html) {
   return { page, context };
 }
 
-/** Fonts loaded, every <img> settled, no pending frames. */
+/**
+ * Fonts loaded, every VISIBLE <img> settled (a loading="lazy" image off-screen never loads — waiting for it would
+ * hang), two frames. Capped at 5 s so a stuck image shows up as a pixel diff instead of hanging the run.
+ */
 async function settle(page) {
   await page.evaluate(async () => {
-    await document.fonts.ready;
-    await Promise.all([...document.images].map((img) => (img.complete ? null
-      : new Promise((r) => { img.addEventListener('load', r, { once: true }); img.addEventListener('error', r, { once: true }); }))));
+    const inView = (img) => {
+      const r = img.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth;
+    };
+    const images = Promise.all([...document.images].filter((img) => !img.complete && inView(img)).map((img) =>
+      new Promise((r) => { img.addEventListener('load', r, { once: true }); img.addEventListener('error', r, { once: true }); })));
+    await Promise.race([Promise.all([document.fonts.ready, images]), new Promise((r) => setTimeout(r, 5000))]);
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   });
   await page.waitForTimeout(100);
@@ -152,7 +159,9 @@ const LABEL = {
   urlTab: 'Tải từ URL',
   remove: 'Xoá', // detail-panel button AND the confirm dialog's button
 };
-const BLOCKED_ID = 'm3'; // mock adapter: delete(id) → blocked when the numeric id % 7 === 3
+// Mock adapter: newest first (page 1 = m60 … m31); delete(id) → blocked when the numeric id % 7 === 3. m59 is an image
+// on page 1.
+const BLOCKED_ID = 'm59';
 
 async function openPicker(page, selection = { mode: 'single' }) {
   await page.evaluate((sel) => {
@@ -162,6 +171,7 @@ async function openPicker(page, selection = { mode: 'single' }) {
   await page.locator(`${PICKER} [data-td-media-item]`).first().waitFor({ state: 'visible' });
 }
 const card = (page, id) => page.locator(`${PICKER} [data-td-media-item][data-id="${id}"]`);
+const nthCard = (page, n) => page.locator(`${PICKER} [data-td-media-item]`).nth(n);
 const picker = (page) => page.locator(PICKER);
 
 /** The topmost dialog other than the picker (upload dialog, confirm). */
@@ -178,12 +188,12 @@ const STATES = {
   },
   async selected(page) {
     await openPicker(page);
-    await card(page, 'm2').locator('[data-td-media-open]').click();
+    await nthCard(page, 1).locator('[data-td-media-open]').click();
   },
   async multiple(page) {
     await openPicker(page, { mode: 'multiple', maxItems: 10 });
-    for (const id of ['m1', 'm2', 'm6']) await card(page, id).locator('.td-media-grid__tick').click();
-    await card(page, 'm6').locator('[data-td-media-open]').click(); // view one of them
+    for (const n of [0, 1, 5]) await nthCard(page, n).locator('.td-media-grid__tick').click();
+    await nthCard(page, 5).locator('[data-td-media-open]').click(); // view one of them
   },
   async upload(page) {
     await openPicker(page);
