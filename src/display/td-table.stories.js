@@ -294,3 +294,48 @@ export const CompactCards = {
     el.data = posts;
   },
 };
+
+// --- v0.37.0 row selection (selectable + rowKey; plan v0.37.0-table-row-selection, ADR 0018) ---
+
+const fillPosts = (canvasElement, mode, width) => {
+  const el = canvasElement.querySelector('td-table');
+  if (width) el.parentElement.style.inlineSize = width;
+  el.rowSelectable = (r) => r.id !== 4; // one locked row
+  el.columns = [
+    { key: 'id', label: 'ID', sortable: true },
+    { key: 'title', label: 'Tiêu đề', sortable: true, card: 'primary' },
+    { key: 'author', label: 'Tác giả', sortable: true },
+    { key: 'views', label: 'Lượt xem', align: 'right' },
+  ];
+  el.data = posts;
+  el.selectedKeys = mode === 'single' ? [2] : [2, 3];
+  const out = canvasElement.querySelector('.sb-note output');
+  el.addEventListener('select-change', (e) => { out.textContent = `select-change: keys [${e.detail.keys.join(', ')}], trigger ${e.detail.trigger}`; });
+};
+
+export const Selection = {
+  name: 'Chọn dòng (nhiều)',
+  render: () => `<div>
+      <td-table title="Bài viết" selectable row-key="id" per-page="5" max-selected="4"></td-table>
+      <p class="sb-note">selectable + row-key="id": ô đầu header chọn cả trang (ba trạng thái), Shift+click / Shift+Space chọn dải theo thứ tự đang hiện, dòng 4 bị khoá (rowSelectable), tối đa 4 dòng (max-selected). Lựa chọn giữ qua trang / sort. <output></output></p>
+    </div>`,
+  play: async ({ canvasElement }) => fillPosts(canvasElement, 'multiple'),
+};
+
+export const SelectionSingle = {
+  name: 'Chọn dòng (một)',
+  render: () => `<div>
+      <td-table title="Chọn một bài" selectable="single" row-key="id" per-page="5"></td-table>
+      <p class="sb-note">selectable="single": checkbox độc quyền — chọn dòng khác tự bỏ dòng cũ (một select-change có cả added lẫn removed), bấm lại dòng đang chọn = bỏ chọn. Không có ô chọn cả trang. <output></output></p>
+    </div>`,
+  play: async ({ canvasElement }) => fillPosts(canvasElement, 'single'),
+};
+
+export const SelectionCards = {
+  name: 'Chọn dòng (card, khung 360px)',
+  render: () => `<div>
+      <div class="sb-table-frame"><td-table title="Bài viết" selectable row-key="id" per-page="5"></td-table></div>
+      <p class="sb-note">Card: ô chọn đứng đầu dòng [chọn][lead][tiêu đề]; "Chọn tất cả trên trang" là chip đầu của thanh sắp xếp; card đã chọn viền accent. <output></output></p>
+    </div>`,
+  play: async ({ canvasElement }) => fillPosts(canvasElement, 'multiple', '360px'),
+};

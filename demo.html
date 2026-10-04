@@ -517,7 +517,15 @@
   <!-- ═══════════════════ TABLE ═══════════════════ -->
   <div class="demo-section">
     <h2>Table <span class="demo-code">&lt;td-table&gt;</span></h2>
-    <td-table id="demo-table"></td-table>
+    <!-- v0.37.0: thanh hàng loạt = công thức phía app (div của app, ẩn khi 0 dòng chọn) -->
+    <div class="demo-row" id="demo-bulk" hidden>
+      <strong id="demo-bulk-count"></strong>
+      <button type="button" class="td-btn td-btn--sm td-btn--danger" id="demo-bulk-delete">Xoá đã chọn</button>
+      <button type="button" class="td-btn td-btn--sm td-btn--ghost" id="demo-bulk-all" hidden></button>
+      <button type="button" class="td-btn td-btn--sm td-btn--secondary" id="demo-bulk-clear">Bỏ chọn</button>
+    </div>
+    <td-table id="demo-table" selectable row-key="id" per-page="5"></td-table>
+    <p class="demo-note">v0.37.0: <code>selectable</code> + <code>row-key="id"</code> — Shift+click chọn dải, ô header chọn cả trang (ba trạng thái); thanh hàng loạt nghe <code>select-change</code>; "Chọn tất cả 8 kết quả" là công thức phía app.</p>
   </div>
 
   <!-- ═══════════════════ TABS ═══════════════════ -->
@@ -875,6 +883,38 @@
       { id: 7, title: 'Docker Compose Best Practices', author: 'Minh', status: 'published', views: 670 },
       { id: 8, title: 'Git Workflow cho team nhỏ', author: 'Duyệt', status: 'published', views: 1580 },
     ];
+
+    // ── Table selection: bulk bar recipe (app-side; the kit only emits select-change) ──
+    const bulk = document.querySelector('#demo-bulk');
+    const bulkCount = document.querySelector('#demo-bulk-count');
+    const bulkAll = document.querySelector('#demo-bulk-all');
+    let allMatching = false;
+    const syncBulk = (keys) => {
+      const total = table.data.length;
+      bulk.hidden = keys.length === 0 && !allMatching;
+      bulkCount.textContent = allMatching ? `Đã chọn tất cả ${total} kết quả` : `${keys.length} đã chọn`;
+      bulkAll.hidden = allMatching || keys.length >= total;
+      bulkAll.textContent = `Chọn tất cả ${total} kết quả`;
+    };
+    table.addEventListener('select-change', (e) => {
+      allMatching = false; // any change by the user drops the "all results" flag
+      syncBulk(e.detail.keys);
+    });
+    bulkAll.addEventListener('click', () => {
+      allMatching = true; // a real app would send the CURRENT FILTER to the server, not a list of keys
+      syncBulk(table.selectedKeys);
+    });
+    document.querySelector('#demo-bulk-clear').addEventListener('click', () => {
+      allMatching = false;
+      table.clearSelection({ emit: true });
+    });
+    document.querySelector('#demo-bulk-delete').addEventListener('click', () => {
+      const keys = allMatching ? table.data.map((r) => r.id) : table.selectedKeys;
+      table.data = table.data.filter((r) => !keys.includes(r.id));
+      allMatching = false;
+      table.deselect(keys, { emit: true });
+      TdToast.success(`Đã xoá ${keys.length} bài (giả lập)`);
+    });
 
     // ── Tabs ──
     const tabs = document.querySelector('#demo-tabs');
