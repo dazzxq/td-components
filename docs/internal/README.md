@@ -12,6 +12,7 @@ Tài liệu cho người **phát triển kit**, không phải người dùng kit
 | [design/liquid-glass.md](design/liquid-glass.md) | Bộ luật **Minimal surfaces** (thay Liquid Glass từ 0.20.0, ADR 0011) — **bắt buộc cho UI mới** |
 | [decisions/](decisions/README.md) | ADR: các quyết định kiến trúc |
 | [plans/](plans/) | Plan từng release (đã qua Codex plan-review) |
+| [research/](research/) | Kiểm kê / nghiên cứu đầu vào cho plan (vd. kiểm kê UI media picker dcms2 + harness render) |
 | [history/](history/README.md) | Lịch sử milestone, so sánh dcms, các đợt sync |
 
 Quy trình: một thay đổi = sửa code + test + cập nhật `roadmap.md` + `CHANGELOG.md` (+ ADR nếu là quyết định kiến
