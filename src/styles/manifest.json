@@ -46,6 +46,7 @@
     "components/sortable.css",
     "components/masked-value.css",
     "components/media-picker.css",
+    "components/media-picker-upload.css",
     "components/media-field.css",
     "utilities.css"
   ]

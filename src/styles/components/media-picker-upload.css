@@ -1,0 +1,114 @@
+/*
+ * Upload dialog of td-media-picker (src/feedback/media-picker-upload.js, v0.33.0 decisions 20-22). The shell IS the
+ * td-modal DOM + modal.css at md width (`--td-modal-w-md`); this file lays out the content and makes the dialog full
+ * viewport below 768px (instead of the ≤ 640px bottom sheet). Content layer: solid, no glass inside, no new colour
+ * token. CSP: classes / attributes only.
+ *   root .td-modal.td-modal--md.td-media-picker-upload [data-state]
+ *   .td-media-picker-upload__panel [data-source="file|url"]
+ */
+@layer td.component {
+	.td-media-picker-upload__body {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-md);
+	}
+
+	.td-media-picker-upload__hint {
+		margin: 0;
+		font-size: var(--td-text-sm);
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-picker-upload__hint[hidden],
+	.td-media-picker-upload__notes[hidden],
+	.td-media-picker-upload__abort[hidden],
+	.td-media-picker-upload__progress[hidden],
+	.td-media-picker-upload__panel[hidden] {
+		display: none;
+	}
+
+	.td-media-picker-upload__tabs {
+		display: flex;
+		justify-content: center;
+	}
+
+	.td-media-picker-upload__panel {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-sm);
+		min-width: 0;
+	}
+
+	.td-media-picker-upload__notes {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		font-size: var(--td-text-sm);
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-picker-upload__desc {
+		margin: 0;
+		font-size: var(--td-text-sm);
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-picker-upload__url-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		gap: var(--td-space-sm);
+	}
+
+	.td-media-picker-upload__url {
+		flex: 1 1 14rem;
+		min-width: 0;
+	}
+
+	.td-media-picker-upload__submit,
+	.td-media-picker-upload__abort {
+		flex: 0 0 auto;
+	}
+
+	.td-media-picker-upload__footer {
+		justify-content: flex-end;
+	}
+
+	/* < 768px: full viewport (decision 20). Specificity ≥ modal.css's bottom-sheet state rules; same layer, later file. */
+	@media (max-width: 767.98px) {
+		.td-modal.td-media-picker-upload {
+			align-items: stretch;
+			padding: 0;
+		}
+
+		.td-modal.td-media-picker-upload[data-state] .td-modal__dialog {
+			--td-modal-enter-from: none;
+			width: 100%;
+			height: 100dvh;
+			max-height: none;
+			padding-bottom: 0;
+			border-width: 0;
+			border-radius: 0;
+			transform: none;
+		}
+
+		.td-modal.td-media-picker-upload .td-modal__header {
+			padding-top: calc(var(--td-space-sm) + env(safe-area-inset-top, 0px));
+		}
+
+		.td-modal.td-media-picker-upload .td-modal__footer {
+			padding-bottom: calc(var(--td-space-sm) + env(safe-area-inset-bottom, 0px));
+		}
+
+		.td-modal.td-media-picker-upload .td-modal__header,
+		.td-modal.td-media-picker-upload .td-modal__footer {
+			padding-right: calc(var(--td-modal-pad-x) + env(safe-area-inset-right, 0px));
+			padding-left: calc(var(--td-modal-pad-x) + env(safe-area-inset-left, 0px));
+		}
+
+		.td-modal.td-media-picker-upload .td-modal__body {
+			padding-right: calc(var(--td-modal-pad-x) + env(safe-area-inset-right, 0px));
+			padding-left: calc(var(--td-modal-pad-x) + env(safe-area-inset-left, 0px));
+		}
+	}
+}
