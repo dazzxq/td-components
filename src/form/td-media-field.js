@@ -200,8 +200,7 @@ export class TdMediaField extends TdFormElement {
   disconnectedCallback() {
     if (this._unsubDefaults) { this._unsubDefaults(); this._unsubDefaults = null; }
     super.disconnectedCallback();
-    this._pickGen += 1; // a picker result arriving after the field left the page is dropped
-    this._picking = false;
+    this._cancelPicker(); // review R3 #1: a picker result arriving after the field left is dropped AND the picker closes
     this._getReq.abort();
     this._abortCrop();
     this._clearCropPreview(); // CSSOM vars off while detached: a re-connect re-binds the markup unchanged
@@ -463,13 +462,7 @@ export class TdMediaField extends TdFormElement {
     if (this._cropCtrl) this._abortCrop();
     this._assetProv = null; // a cached asset of the old source is never the crop source again
     // review R2 path 2: a picker opened under the old source never commits (invalidate + close it)
-    if (this._picking) {
-      this._pickGen += 1;
-      this._picking = false;
-      const host = this._pickerHost;
-      this._pickerHost = null;
-      try { if (host && host.isConnected && typeof host.close === 'function') host.close('programmatic'); } catch { /* ignore */ }
-    }
+    if (this._picking) this._cancelPicker();
     // review R2 path 1: an adapter-derived preview of the old source goes; the explicit preview-src (same value) comes back
     if (this._previewProv) {
       const ex = this._explicitPreview;
@@ -901,7 +894,14 @@ export class TdMediaField extends TdFormElement {
     try {
       p = Promise.resolve(TdMediaPicker.open(opts));
       // review R2 path 2: the picker host this open() mounted (so a source change can close it)
-      this._pickerHost = hosts().find((n) => !before.has(n)) || null;
+      const host = hosts().find((n) => !before.has(n)) || null;
+      if (gen === this._pickGen && this._provMatches(prov) && this.isConnected) this._pickerHost = host;
+      else {
+        // review R3 #2: app code run synchronously inside open() (adapter list() / get() → configureDefaults, an
+        // adapter swap, removal) already invalidated this picker before its host was known: close it now
+        try { if (host && host.isConnected) host.close('programmatic'); } catch { /* ignore */ }
+        if (gen === this._pickGen) { this._pickGen += 1; this._picking = false; }
+      }
     } catch (err) {
       p = Promise.reject(err);
     }
@@ -917,6 +917,18 @@ export class TdMediaField extends TdFormElement {
       // review SEC-2: never the raw error object (it may carry adapter data); the name only
       console.warn(`td-media-field: the media picker failed (${err && typeof err.name === 'string' ? err.name : 'error'})`);
     });
+  }
+
+  /**
+   * @private review R3 #1: the one way to drop the field's picker — bump the generation (its outcome is ignored), release
+   * the double-open lock, close the host programmatically (no interactive picker of an old source / a removed field).
+   */
+  _cancelPicker() {
+    this._pickGen += 1;
+    this._picking = false;
+    const host = this._pickerHost;
+    this._pickerHost = null;
+    try { if (host && host.isConnected && typeof host.close === 'function') host.close('programmatic'); } catch { /* ignore */ }
   }
 
   /** @private */

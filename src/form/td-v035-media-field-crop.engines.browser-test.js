@@ -872,3 +872,49 @@ describe('td-media-field v0.35 — review R2 path 2: a picker of an old source n
     expectState(t, 'og', { crop: CROP_B, focal: null, events: 0 });
   });
 });
+
+// Codex security review v0.35 round 3: no interactive picker of an old source may stay open.
+describe('td-media-field v0.35 — review R3: the field’s picker never outlives its source', () => {
+  const pickerGone = () => until(() => !document.querySelector('body > .td-media-picker') && !document.querySelector('body > td-media-picker'),
+    4000, 'picker closed');
+
+  it('field removed while a REAL picker is open → the picker is closed (no old-context picker left)', async () => {
+    TdMediaPicker.open = realOpen;
+    const t = mk({ ...CROPPABLE, value: 'm1', 'preview-src': '/test/fixtures/3.svg' });
+    q(t.el, '.td-media-field__replace').click();
+    await until(() => document.querySelector('body > .td-media-picker[data-state="open"]'), 4000, 'picker open');
+    t.form.remove();
+    await pickerGone();
+  });
+
+  for (const [what, trigger] of [
+    ['field.adapter swap', (el) => { el.adapter = createMockAdapter(); }],
+    ['configureDefaults', () => { TdMediaPicker.configureDefaults({ context: 'switched' }); }],
+  ]) {
+    it(`adapter list() synchronously changing the source during picker startup (${what}) → picker closed at once, no commit`, async () => {
+      TdMediaPicker.open = realOpen;
+      const base = createMockAdapter();
+      let fired = false;
+      let el;
+      const reentrant = {
+        ...base,
+        list: (req) => {
+          if (!fired) { fired = true; trigger(el); }
+          return base.list(req);
+        },
+        get: (id, o) => base.get(id, o),
+      };
+      try {
+        const t = mk({ ...CROPPABLE, value: 'm1', crop: CROP_B, 'preview-src': '/test/fixtures/3.svg' }, { adapter: reentrant });
+        el = t.el;
+        q(t.el, '.td-media-field__replace').click();
+        expect(fired, 'list() ran during open()').to.equal(true);
+        await pickerGone();
+        expectState(t, 'og', { crop: CROP_B, focal: null, events: 0 });
+        expect(t.el.value).to.equal('m1');
+      } finally {
+        TdMediaPicker.configureDefaults({});
+      }
+    });
+  }
+});
