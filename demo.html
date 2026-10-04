@@ -535,12 +535,13 @@
     <pre id="demo-mv-output" class="demo-output" aria-live="polite"></pre>
   </div>
 
-  <!-- ═══════════════════ MEDIA PICKER + MEDIA FIELD (v0.32.0) ═══════════════════ -->
+  <!-- ═══════════════════ MEDIA PICKER + MEDIA FIELD (v0.32.0; v0.33.0 dcms2 parity) ═══════════════════ -->
   <div class="demo-section">
     <h2>Media picker <span class="demo-code">TdMediaPicker.open() + &lt;td-media-field&gt;</span></h2>
     <div class="demo-row">
       <button type="button" id="demo-mp-open" class="td-btn td-btn--primary"><span class="td-btn__label">Mở media picker</span></button>
       <button type="button" id="demo-mp-multi" class="td-btn td-btn--secondary"><span class="td-btn__label">Chọn nhiều (tối đa 5)</span></button>
+      <button type="button" id="demo-mp-pages" class="td-btn td-btn--secondary"><span class="td-btn__label">Phân trang số (pages)</span></button>
     </div>
     <pre id="demo-mp-output" class="demo-output" aria-live="polite"></pre>
     <form id="demo-mf-form" class="demo-narrow">
@@ -551,8 +552,10 @@
         <button type="reset" class="td-btn td-btn--secondary"><span class="td-btn__label">Reset</span></button>
       </div>
     </form>
-    <p class="demo-note">Adapter giả trong bộ nhớ (60 media, tìm kiếm, facet album / phạm vi / thẻ, upload có tiến độ giả + dùng lại bản trùng theo tên,
-      sửa metadata) — không gọi mạng. <code>TdMediaPicker.configureDefaults()</code> một lần cho cả trang; field dùng lại adapter đó.
+    <p class="demo-note">Picker mở full viewport (bố cục dcms2). Adapter giả trong bộ nhớ (60 media, tìm kiếm, facet album / phạm vi / thẻ,
+      tải lên file hoặc URL có tiến độ giả + dùng lại bản trùng, sửa metadata, xoá, tải về, copy link) — không gọi mạng.
+      Thử: URL có <code>?fail=</code> → lỗi server; xoá <code>anh-3</code>, <code>anh-10</code>, <code>anh-17</code>… → bị chặn vì đang được dùng;
+      "Tải về" lần lượt trả URL / blob. <code>TdMediaPicker.configureDefaults()</code> một lần cho cả trang; field dùng lại adapter đó.
       Giá trị form là <code>assetId</code>, không bao giờ là URL.</p>
     <pre id="demo-mf-output" class="demo-output" aria-live="polite"></pre>
   </div>
@@ -1127,13 +1130,17 @@
     mediaGrid.addEventListener('select-limit', (e) => TdToast.warning(`Tối đa ${e.detail.max} khung`));
     document.querySelector('#demo-mg-clear').addEventListener('click', () => mediaGrid.clear({ emit: true }));
 
-    // ── Media picker + media field (v0.32.0) ──
+    // ── Media picker + media field (v0.32.0; v0.33.0 dcms2 parity) ──
     // One configureDefaults() for the whole page (in a real site: the app's adapter mapping its own endpoints).
+    // The mock adapter has uploadFromUrl / delete / download; delete, downloadOriginal and copyLink default to OFF, so the
+    // demo turns them on. The "Album" upload field is optional here — a required one would lock the whole upload dialog.
+    const demoUploadFields = uploadFields().map((f) => ({ ...f, required: false }));
     TdMediaPicker.configureDefaults({
       adapter: createMockAdapter({ latency: 300 }),
+      capabilities: { delete: true, downloadOriginal: true, copyLink: true },
       assetFields: assetFields(),
-      uploadFields: uploadFields(),
-      upload: { accept: 'image/*', maxSize: '5MB' },
+      uploadFields: demoUploadFields,
+      upload: { accept: 'image/*', maxSize: '5MB', acceptLabel: 'JPG, PNG, WEBP, GIF' },
       context: { site: 'demo' },
     });
     const mpOut = document.querySelector('#demo-mp-output');
@@ -1147,6 +1154,11 @@
     });
     document.querySelector('#demo-mp-multi').addEventListener('click', async () => {
       showOutcome(await TdMediaPicker.open({ title: 'Chọn ảnh cho bài viết', selection: { mode: 'multiple', maxItems: 5 } }));
+    });
+    // pagination: 'pages' — the adapter answers MediaListRequest.page + total (numbered <td-pagination>, like dcms2)
+    const pagesAdapter = createMockAdapter({ latency: 300, pagination: 'pages' });
+    document.querySelector('#demo-mp-pages').addEventListener('click', async () => {
+      showOutcome(await TdMediaPicker.open({ adapter: pagesAdapter, pagination: 'pages', selection: { mode: 'multiple' } }));
     });
     const mfForm = document.querySelector('#demo-mf-form');
     const mfOut = document.querySelector('#demo-mf-output');
