@@ -18,6 +18,14 @@ await new Promise((r) => { link.onload = r; link.onerror = r; });
 
 const wait = (ms = 0) => new Promise((r) => setTimeout(r, ms));
 const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+/** poll a condition (real signal) with a generous upper bound instead of a fixed sleep */
+async function until(fn, ms = 3000, what = 'condition') {
+  const t0 = performance.now();
+  while (!fn()) {
+    if (performance.now() - t0 > ms) throw new Error(`timeout: ${what}`);
+    await wait(10);
+  }
+}
 const extra = [];
 afterEach(async () => {
   await resetMouse();
@@ -92,6 +100,11 @@ function pe(type, el, x, y, o = {}) {
     button: type === 'pointermove' ? -1 : 0, buttons: type === 'pointerup' || type === 'pointercancel' ? 0 : 1, ...o,
   }));
 }
+/**
+ * Drags item `from` onto item `to`'s slot. Returns the point the pointer was released at / is resting on: a later manual
+ * `pointerup` must use THIS point — re-measuring an item mid-drag reads its preview transform (150ms transition), so
+ * the result depended on how far the transition had run (CI WebKit flake).
+ */
 async function touchDrag(s, from, to, { end = 'pointerup', type = 'touch' } = {}) {
   const h = handle(s, from);
   const [x0, y0] = center(h);
@@ -103,6 +116,7 @@ async function touchDrag(s, from, to, { end = 'pointerup', type = 'touch' } = {}
   }
   if (end) pe(end, h, x1, y1, { pointerType: type });
   await frame();
+  return [x1, y1];
 }
 
 describe('td-sortable — upgrade in place (M3)', () => {
@@ -446,8 +460,8 @@ describe('td-sortable — tap-to-move (WCAG 2.5.7) and pointer', () => {
     const to = [from[0], Math.round(r.bottom - 6)];
     await mouseDown(from);
     await mouseTo(from, to);
-    await wait(250);
-    await frame();
+    // auto-scroll advances once per animation frame while the pointer rests in the edge zone: poll, frames are slow under load
+    await until(() => sc.scrollTop > 0, 3000, 'edge auto-scroll');
     expect(sc.scrollTop).to.be.greaterThan(0);
     await sendMouse({ type: 'up' });
     await frame();
@@ -535,10 +549,10 @@ describe('td-sortable — keys (data-id) are mandatory', () => {
     captureWarn();
     const s = mount(list(3)).querySelector('td-sortable');
     const rec = record(s);
-    await touchDrag(s, 0, 2, { end: null });
+    const at = await touchDrag(s, 0, 2, { end: null });
     const h = handle(s, 0);
     itemsOf(s)[1].setAttribute('data-id', 's3');
-    pe('pointerup', h, ...center(itemsOf(s)[2]));
+    pe('pointerup', h, ...at);
     expect(rec.length).to.equal(0);
     await wait();
     noTraces(s);
@@ -555,10 +569,11 @@ describe('td-sortable — the controller\'s own mutations', () => {
     expect(ids(s)).to.deep.equal(['s2', 's3', 's4', 's1', 's5']);
     await sendKeys({ press: 'Escape' });
     expect(ids(s)).to.deep.equal(['s1', 's2', 's3', 's4', 's5']);
-    await touchDrag(s, 0, 3, { end: null });
+    const at = await touchDrag(s, 0, 3, { end: null });
     await wait();
     expect(s.hasAttribute('data-td-dragging')).to.equal(true, 'placeholder insertion did not cancel');
-    pe('pointerup', handle(s, 0), ...center(itemsOf(s)[3]));
+    // release where the finger is (slot 3), not at s4's centre re-measured mid-preview (it slides up 40px over 150ms)
+    pe('pointerup', handle(s, 0), ...at);
     expect(ids(s)).to.deep.equal(['s2', 's3', 's4', 's1', 's5']);
   });
 
@@ -819,11 +834,11 @@ describe('td-sortable — review round 1 (impl + security)', () => {
   it('IMPL-1: the app mutating direct children in a capture pointerup listener right before the drop → no order-change, model = DOM', async () => {
     const s = mount(list(4)).querySelector('td-sortable');
     const rec = record(s);
-    await touchDrag(s, 0, 2, { end: null });
+    const at = await touchDrag(s, 0, 2, { end: null });
     const mutate = () => { s.insertAdjacentHTML('afterbegin', item(9)); };
     window.addEventListener('pointerup', mutate, { capture: true, once: true });
     extra.push(() => window.removeEventListener('pointerup', mutate, true));
-    pe('pointerup', handle(s, 1), ...center(itemsOf(s)[3]));
+    pe('pointerup', handle(s, 1), ...at);
     expect(rec.length).to.equal(0);
     expect(ids(s)).to.deep.equal(['s9', 's1', 's2', 's3', 's4'], 'nothing moved');
     await wait();

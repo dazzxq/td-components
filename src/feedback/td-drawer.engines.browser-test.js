@@ -505,8 +505,9 @@ describe('td-drawer — layout', () => {
     const wrap = mount('<td-drawer class="e" label="E"><p>e</p></td-drawer><div dir="rtl"><td-drawer class="r" label="R"><p>r</p></td-drawer></div>');
     const at = async (cls) => {
       const h = wrap.querySelector(`td-drawer.${cls}`);
+      const opened = nextEvent(h, 'open'); // after the slide-in transition, not a fixed sleep
       h.show();
-      await wait(400);
+      await opened;
       const rect = openRoot().querySelector('.td-drawer__panel').getBoundingClientRect();
       await h.close();
       return rect;
@@ -516,7 +517,7 @@ describe('td-drawer — layout', () => {
     const r = await at('r');
     expect(Math.round(r.left)).to.equal(0);
     const h = TdDrawer.open({ label: 'S', side: 'start', body: 'x' });
-    await wait(400);
+    await nextEvent(h.element, 'open');
     expect(Math.round(openRoot().querySelector('.td-drawer__panel').getBoundingClientRect().left)).to.equal(0);
     h.close();
     await h.closed;
@@ -547,7 +548,7 @@ describe('td-drawer — layout', () => {
     await host.close();
     await setViewport({ width: 500, height: 700 });
     const h = TdDrawer.open({ label: 'm', size: 'sm', body: 'x' });
-    await wait(400);
+    await nextEvent(h.element, 'open');
     const rect = openRoot().querySelector('.td-drawer__panel').getBoundingClientRect();
     expect(Math.round(rect.width)).to.equal(document.documentElement.clientWidth);
     expect(Math.round(rect.height)).to.equal(window.innerHeight);

@@ -11,6 +11,8 @@ document.head.appendChild(link);
 await new Promise((r) => { link.onload = r; link.onerror = r; });
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+/** every running CSS transition / animation on `el` has finished (getAnimations() flushes style first) */
+const transitionsDone = (el) => Promise.all(el.getAnimations().map((a) => a.finished.catch(() => {})));
 const extra = [];
 afterEach(() => { extra.splice(0).forEach((f) => f()); });
 
@@ -210,14 +212,14 @@ describe('td-otp-input — form association', () => {
 
   it('error state: error-text / setError → aria-invalid + note; the cells take the error colour', async () => {
     const el = otp('error-text="Mã không đúng"');
-    await wait(250); // border-color transition
     expect(inputOf(el).getAttribute('aria-invalid')).to.equal('true');
     expect(el.querySelector('.td-field-error').textContent).to.equal('Mã không đúng');
     const cell = cellsOf(el)[0];
+    await transitionsDone(cell); // border-color transition
     const errBorder = getComputedStyle(cell).borderTopColor;
     el.clearError();
     expect(inputOf(el).hasAttribute('aria-invalid')).to.equal(false);
-    await wait(250);
+    await transitionsDone(cell);
     expect(getComputedStyle(cell).borderTopColor).to.not.equal(errBorder);
     el.setError('Hết hạn');
     expect(el.querySelector('.td-field-error').textContent).to.equal('Hết hạn');

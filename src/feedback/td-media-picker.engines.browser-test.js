@@ -92,6 +92,18 @@ async function open(opts = {}, adOpts = {}) {
   await frames(3);
   return { ad, promise, root: pickerRoot() };
 }
+/**
+ * The open motion has really finished: the root goes `data-state="open"` on the 2nd animation frame after open (dialog
+ * layer `onOpened`), which starts the dialog's transitions (sheet slide 300ms on phones); then every running animation
+ * on the dialog has finished. Geometry measured before that is mid-slide — a fixed wait raced it on loaded CI WebKit.
+ */
+async function openSettled(root = pickerRoot()) {
+  await until(() => root.getAttribute('data-state') === 'open', 3000, 'data-state="open"');
+  const dialog = root.querySelector('.td-media-picker__dialog');
+  let done = false;
+  Promise.all(dialog.getAnimations().map((a) => a.finished.catch(() => {}))).then(() => { done = true; });
+  await until(() => done, 3000, 'dialog open transition finished');
+}
 async function openReady(opts = {}, adOpts = {}) {
   const r = await open(opts, adOpts);
   await until(() => items().length > 0 || q('.td-media-picker__empty:not([hidden])'), 3000, 'first page');
@@ -139,8 +151,7 @@ describe('td-media-picker — shell (decisions 10-12)', () => {
     const out = await promise;
     expect(out).to.deep.equal({ status: 'cancelled', reason: 'close', selection: [] });
     expect(document.activeElement === btn, 'focus restored').to.equal(true);
-    await wait(320);
-    expect(anyRoot() === null, 'root removed').to.equal(true);
+    await until(() => anyRoot() === null, 3000, 'root removed after the exit transition');
     expect(document.querySelector('td-media-picker') === null, 'JS host removed').to.equal(true);
   });
 
@@ -1157,7 +1168,7 @@ describe('td-media-picker — mobile, motion, forced colours', () => {
   it('375×740: bottom sheet; detail replaces the grid + "Quay lại" returns focus; facets behind "Bộ lọc"; tray count only', async () => {
     await setViewport({ width: 375, height: 740 });
     await openReady({ selection: { mode: 'multiple', maxItems: 5 } });
-    await wait(400);
+    await openSettled(); // the sheet slides up from translateY(100%): measure only once it has landed
     const dialog = q('.td-media-picker__dialog');
     const r = dialog.getBoundingClientRect();
     expect(Math.abs(r.bottom - 740) <= 1, `bottom ${r.bottom}`).to.equal(true);
