@@ -5,7 +5,8 @@
  *
  * Chromium only. Screenshots the picker (driven through its PUBLIC API: TdMediaPicker.open + the mock adapter of
  * test/fixtures/media-adapter.js, no network) at 1440×900 and 390×844 in 6 states — open, selected, multiple, upload
- * dialog, URL error, delete blocked — plus a justified td-media-grid at 1280 and 390 wide (14 images), and compares each
+ * dialog, URL error, delete blocked, v0.35 crop step — plus a justified td-media-grid at 1280 and 390 wide (14 images), and
+ * (v0.35) an inline td-cropper + a croppable td-media-field with its crop preview at 1280, and compares each
  * with test/visual/baseline/linux-chromium/<name>.png: a pixel differs when any RGB channel differs by > 16; a shot
  * fails when > 0.5% of its pixels differ (or its size differs). Motion off: `reducedMotion: 'reduce'`, animations /
  * transitions disabled, `caret-color: transparent`.
@@ -114,6 +115,24 @@ const GRID_PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
   window.__ready = true;
 </script>
 </head><body><main><td-media-grid layout="justified" label="Ảnh">${GRID_ITEMS}</td-media-grid></main></body></html>`;
+
+// v0.35.0: an inline td-cropper (free, presets) + a croppable td-media-field showing its crop preview (CSSOM vars).
+const CROP_PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
+<link rel="stylesheet" href="${ORIGIN}/td.css">
+<style>${FREEZE_CSS} main { padding: 16px; display: grid; gap: 24px; max-width: 960px; }</style>
+<script type="module">
+  await import('${ORIGIN}/src/form/td-cropper.js');
+  await import('${ORIGIN}/src/form/td-media-field.js');
+  const c = document.querySelector('td-cropper');
+  if (c.getAttribute('data-state') !== 'ready') await new Promise((r) => c.addEventListener('image-ready', r, { once: true }));
+  window.__ready = true;
+</script>
+</head><body><main>
+<td-cropper src="${ORIGIN}/test/fixtures/crop-16x9.svg" natural-width="1600" natural-height="900" alt="Ảnh mẫu"
+  crop='{"v":1,"x":0.1,"y":0.15,"width":0.6,"height":0.7}'></td-cropper>
+<td-media-field name="og" label="Ảnh chia sẻ" usage croppable aspect-ratio="3/2" value="m1"
+  preview-src="${ORIGIN}/test/fixtures/1.svg" crop='{"v":1,"x":0.25,"y":0.25,"width":0.5,"height":0.5}'></td-media-field>
+</main></body></html>`;
 
 // ---------- browser ----------
 async function newPage(browser, viewport, html) {
@@ -237,6 +256,20 @@ const STATES = {
     await input.blur(); // validation error shows on blur, not while typing
     await dlg.getByText('URL không hợp lệ').first().waitFor({ state: 'visible' });
   },
+  // v0.35.0: the crop step after "Chèn" (locked 1.91:1, focal point tool switched on) — nested crop dialog over the picker
+  async 'crop-step'(page) {
+    await page.evaluate(() => {
+      window.__adapter = window.createMockAdapter();
+      window.__outcome = window.TdMediaPicker.open({ adapter: window.__adapter, selection: { mode: 'single' },
+        crop: { enabled: true, aspectRatio: 1.91, allowFocalPoint: true } });
+    });
+    await page.locator(`${PICKER} [data-td-media-item]`).first().waitFor({ state: 'visible' });
+    await nthCard(page, 1).locator('[data-td-media-open]').click();
+    await picker(page).locator('.td-media-picker__confirm').click();
+    await page.locator('.td-crop-dialog[data-state="open"] td-cropper[data-state="ready"]').waitFor({ state: 'visible' });
+    await page.locator('.td-crop-dialog .td-cropper__focal-toggle').click();
+    await page.locator('.td-crop-dialog .td-cropper__focal:not([hidden])').waitFor({ state: 'visible' });
+  },
   async 'delete-blocked'(page) {
     await openPicker(page, { mode: 'single' }, { delete: true }); // delete is opt-in (default false)
     await card(page, BLOCKED_ID).locator('[data-td-media-open]').click();
@@ -312,6 +345,18 @@ try {
     const { page, context } = await newPage(browser, vp, GRID_PAGE);
     try {
       await page.locator('td-media-grid [data-td-media-item]').first().waitFor({ state: 'visible' });
+      await settle(page);
+      await check(name, await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide' }));
+    } catch (e) {
+      failures.push(`${name}: could not render — ${e.message.split('\n')[0]}`);
+    } finally {
+      await context.close();
+    }
+  }
+  {
+    const name = 'cropper-field-1280';
+    const { page, context } = await newPage(browser, { width: 1280, height: 900 }, CROP_PAGE);
+    try {
       await settle(page);
       await check(name, await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide' }));
     } catch (e) {
