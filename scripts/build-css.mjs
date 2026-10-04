@@ -16,7 +16,7 @@ import { checkBreakpoints, addContainerFallbacks, expandVariants } from './css-r
  * Files v0.33 is rewriting in parallel: their old thresholds (640 / 768 / 1024) are mapped to ADR 0014 in plan v0.34.0
  * M0, after v0.33 merges. Remove entries as M0 converts them.
  */
-const PENDING_M0 = new Set(['components/modal.css', 'components/media-picker.css', 'components/media-grid.css', 'components/dropzone.css']);
+const PENDING_M0 = new Set(['components/modal.css', 'components/media-picker.css', 'components/media-grid.css', 'components/dropzone.css', 'components/media-picker-upload.css']);
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const STYLES = join(ROOT, 'src', 'styles');

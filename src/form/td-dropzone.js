@@ -110,6 +110,13 @@ let seq = 0;
  * @attr {boolean} required - At least one file
  * @attr {boolean} disabled
  * @attr {string} error-text - Error message (error contract, like the other fields)
+ * @attr {string} prompt-title - v0.33.0 presentation (text only): when it or `prompt-text` is non-empty the zone is
+ *   STACKED (`.td-dropzone--stacked`): large upload icon → `<p class="td-dropzone__title">` → `<p class="td-dropzone__subtext">`
+ *   → the "choose" button (kept for keyboard reach; the whole zone stays clickable). Neither set → the v0.32 markup.
+ * @attr {string} prompt-text - v0.33.0: the muted sub-line under `prompt-title` (text only)
+ * @attr {string} hint-style - v0.33.0: `badges` → the hint is one `<span class="td-badge td-dropzone__badge">` per part
+ *   (formats: `accept-label` or derived from `accept` · `labels.badgeSize` · `labels.badgeCount`) inside
+ *   `<div class="td-dropzone__hint td-dropzone__hint--badges">`; anything else → the joined `<p>` hint.
  * @fires files-change - User add / drop / remove: detail `{ files: File[], rejected: { file, reason, message }[] }`
  */
 export class TdDropzone extends TdFormElement {
@@ -133,10 +140,14 @@ export class TdDropzone extends TdFormElement {
     uploadWaiting: 'Đang chờ…',
     progress: 'Tải lên {name}',
     required: 'Vui lòng chọn file.',
+    badgeAccept: '{accept}',
+    badgeSize: 'Tối đa {size}',
+    badgeCount: 'Tối đa {n} file',
   };
 
   static get observedAttributes() {
-    return [...super.observedAttributes, 'label', 'accept', 'accept-label', 'multiple', 'max-size', 'max-files', 'preview', 'error-text'];
+    return [...super.observedAttributes, 'label', 'accept', 'accept-label', 'multiple', 'max-size', 'max-files', 'preview', 'error-text',
+      'prompt-title', 'prompt-text', 'hint-style'];
   }
 
   static get booleanAttributes() {
@@ -243,19 +254,34 @@ export class TdDropzone extends TdFormElement {
     const label = (this.getAttribute('label') || '').trim();
     const dis = this._effectiveDisabled;
     const accept = this.getAttribute('accept');
+    const title = (this.getAttribute('prompt-title') || '').trim();
+    const sub = (this.getAttribute('prompt-text') || '').trim();
+    const stacked = !!(title || sub);
+    const badges = this._badgeHint();
     const labelHtml = label
       ? `<span class="td-dropzone__label" id="${id}-label">${esc(label)}`
         + `${this.hasAttribute('required') ? '<span class="td-field__required" aria-hidden="true"> *</span>' : ''}</span>`
       : '';
-    return `<div class="td-dropzone" role="group"${label ? ` aria-labelledby="${id}-label"` : ''} data-state="idle"${dis ? ' data-disabled=""' : ''}>`
+    const browse = `<button type="button" class="td-dropzone__browse td-btn td-btn--secondary td-btn--sm"${dis ? ' disabled' : ''}>${esc(L.browse)}</button>`;
+    // v0.33.0 presentation API (additive): without prompt-title / prompt-text / hint-style="badges" the markup below is
+    // byte-for-byte the v0.32 one.
+    const prompt = stacked
+      ? '<span class="td-dropzone__icon" data-td-icon="upload" data-td-icon-size="64" aria-hidden="true"></span>'
+        + (title ? `<p class="td-dropzone__title">${esc(title)}</p>` : '')
+        + (sub ? `<p class="td-dropzone__subtext">${esc(sub)}</p>` : '')
+        + `<p class="td-dropzone__prompt">${browse}</p>`
+      : '<span class="td-dropzone__icon" data-td-icon="upload" aria-hidden="true"></span>'
+        + `<p class="td-dropzone__prompt"><span class="td-dropzone__text">${esc(L.prompt)}</span> ${browse}</p>`;
+    const hint = badges
+      ? `<div class="td-dropzone__hint td-dropzone__hint--badges" id="${id}-hint" hidden></div>`
+      : `<p class="td-dropzone__hint" id="${id}-hint" hidden></p>`;
+    return `<div class="${stacked ? 'td-dropzone td-dropzone--stacked' : 'td-dropzone'}" role="group"${label ? ` aria-labelledby="${id}-label"` : ''} data-state="idle"${dis ? ' data-disabled=""' : ''}>`
       + labelHtml
       + `<input type="file" class="td-dropzone__input" tabindex="-1" aria-hidden="true"${accept ? ` accept="${esc(accept)}"` : ''}`
       + `${this.hasAttribute('multiple') ? ' multiple' : ''}${dis ? ' disabled' : ''}>`
       + '<div class="td-dropzone__zone">'
-      + '<span class="td-dropzone__icon" data-td-icon="upload" aria-hidden="true"></span>'
-      + `<p class="td-dropzone__prompt"><span class="td-dropzone__text">${esc(L.prompt)}</span> `
-      + `<button type="button" class="td-dropzone__browse td-btn td-btn--secondary td-btn--sm"${dis ? ' disabled' : ''}>${esc(L.browse)}</button></p>`
-      + `<p class="td-dropzone__hint" id="${id}-hint" hidden></p>`
+      + prompt
+      + hint
       + '</div>'
       + '<ul class="td-dropzone__rejected" hidden></ul>'
       + `<ul class="td-dropzone__list" aria-label="${esc(L.list)}" hidden></ul>`
@@ -266,9 +292,23 @@ export class TdDropzone extends TdFormElement {
   afterRender() {
     fillIconSlots(this);
     const hint = this.querySelector('.td-dropzone__hint');
-    const text = this._hintText();
-    hint.textContent = text;
-    hint.hidden = !text;
+    if (this._badgeHint()) {
+      // One badge per part, text only; a space between them keeps the accessible description readable.
+      const nodes = [];
+      for (const part of this._hintParts(true)) {
+        if (nodes.length) nodes.push(document.createTextNode(' '));
+        const span = document.createElement('span');
+        span.className = 'td-badge td-dropzone__badge';
+        span.textContent = part;
+        nodes.push(span);
+      }
+      hint.replaceChildren(...nodes);
+      hint.hidden = nodes.length === 0;
+    } else {
+      const text = this._hintText();
+      hint.textContent = text;
+      hint.hidden = !text;
+    }
     const root = this.querySelector('.td-dropzone');
     this._applyAccessibleName(root, !!(this.getAttribute('label') || '').trim());
     this._refresh();
@@ -379,22 +419,43 @@ export class TdDropzone extends TdFormElement {
     return Number.isFinite(n) && n > 0 ? n : Infinity;
   }
 
-  /** @private */
-  _hintText() {
+  /** @private `hint-style="badges"` (v0.33.0) */
+  _badgeHint() {
+    return (this.getAttribute('hint-style') || '').trim().toLowerCase() === 'badges';
+  }
+
+  /**
+   * @private The hint parts (formats · size · count). `badges` → the badge texts: formats without the "Định dạng:"
+   * prefix and, without `accept-label`, derived from `accept` (`.pdf` → PDF, `image/svg+xml` → SVG, `image/*` as written).
+   * @param {boolean} [badges] @returns {string[]}
+   */
+  _hintParts(badges = false) {
     const L = TdDropzone.labels;
     const parts = [];
     const tokens = (this.getAttribute('accept') || '').split(',').map((t) => t.trim()).filter(Boolean);
     if (tokens.length) {
       // accept-label: absent → the raw list; non-empty → friendly text; empty → no format part at all.
       const friendly = this.hasAttribute('accept-label') ? (this.getAttribute('accept-label') || '').trim() : null;
-      if (friendly == null) parts.push(format(L.hintAccept, { accept: tokens.join(', ') }));
+      if (badges) {
+        const list = friendly ?? [...new Set(tokens.map((t) => {
+          if (t.startsWith('.')) return t.slice(1).toUpperCase();
+          const sub = t.split('/')[1] || '';
+          return sub && sub !== '*' ? sub.split('+')[0].toUpperCase() : t;
+        }))].join(', ');
+        if (list) parts.push(format(L.badgeAccept, { accept: list }));
+      } else if (friendly == null) parts.push(format(L.hintAccept, { accept: tokens.join(', ') }));
       else if (friendly) parts.push(format(L.hintAccept, { accept: friendly }));
     }
     const max = parseFileSize(this.getAttribute('max-size'));
-    if (max) parts.push(format(L.hintSize, { size: formatFileSize(max) }));
+    if (max) parts.push(format(badges ? L.badgeSize : L.hintSize, { size: formatFileSize(max) }));
     const limit = this._limit();
-    if (limit !== Infinity && limit > 1) parts.push(format(L.hintCount, { n: limit }));
-    return parts.join(' · ');
+    if (limit !== Infinity && limit > 1) parts.push(format(badges ? L.badgeCount : L.hintCount, { n: limit }));
+    return parts;
+  }
+
+  /** @private */
+  _hintText() {
+    return this._hintParts().join(' · ');
   }
 
   /**

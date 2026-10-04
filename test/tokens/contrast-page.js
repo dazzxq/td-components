@@ -102,7 +102,10 @@ for (const state of ['label', 'value', 'sort-chip']) CASES.push({ kind: 'table-c
 // field error text ≥ 4.7 on the page; td-media-picker (inside the solid dialog): tile name, detail meta label and tray
 // count ≥ 4.7 on the dialog surface, the selected tile border ≥ 3.2 vs the dialog surface — computed colours (`pairs`).
 for (const state of ['empty', 'video', 'error']) CASES.push({ kind: 'media-field', v: 'frame', state, pageOnly: true });
-CASES.push({ kind: 'media-picker', v: 'dialog', state: 'rest', pageOnly: true });
+// v0.33.0 (dcms2 parity): the picker card state borders (hover / viewing / checked tokens) ≥ 3:1 vs the card surface and
+// the list background (WCAG 1.4.11), card name + meta text, the `.td-media-picker__label` muted label, the cursor page info,
+// the footer count, the `td-pagination` "Hiển thị…" text ('pages' mode) and the upload dialog dropzone texts + badges ≥ 4.7.
+for (const v of ['cards', 'pages', 'upload']) CASES.push({ kind: 'media-picker', v, state: 'rest', pageOnly: true });
 
 const stage = document.getElementById('stage');
 const bd = document.getElementById('backdrop');
@@ -133,7 +136,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
   await setBackdrop(backdrop);
   stage.replaceChildren();
   for (const h of document.querySelectorAll('td-media-picker')) { if (h.isOpen) h.close(); h.remove(); }
-  document.querySelectorAll('body > .td-media-picker').forEach((n) => n.remove());
+  document.querySelectorAll('body > .td-media-picker, body > .td-media-picker-upload').forEach((n) => n.remove());
   document.querySelectorAll('#td-toast-container').forEach((n) => n.remove());
   TdToast._activeToasts = [];
   let el;
@@ -512,25 +515,90 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       pairs,
     };
   } else if (c.kind === 'media-picker') {
-    const ad = createMockAdapter({ count: 12 });
-    TdMediaPicker.open({ adapter: ad, selection: { mode: 'multiple', maxItems: 5 } });
+    const pages = c.v === 'pages';
+    const ad = createMockAdapter({ count: 40, pagination: pages ? 'pages' : 'cursor' });
+    TdMediaPicker.open({
+      adapter: ad, pagination: pages ? 'pages' : 'cursor', selection: { mode: 'multiple', maxItems: 5 },
+      upload: { accept: 'image/*', maxSize: '5MB' },
+    });
     const R = () => document.querySelector('body > .td-media-picker');
-    for (let n = 0; n < 100 && !R()?.querySelector('[data-id="m12"] .td-media-grid__tick'); n++) await new Promise((r) => setTimeout(r, 20));
-    R().querySelector('[data-id="m12"] [data-td-media-open]').click(); // activate: select + detail
-    await new Promise((r) => setTimeout(r, 450)); // dialog entrance + colour transitions
+    const wait = async (fn, what) => {
+      for (let n = 0; n < 150; n++) { if (fn()) return; await new Promise((r) => setTimeout(r, 20)); }
+      throw new Error(`media-picker ${c.v}: ${what} never appeared`);
+    };
+    await wait(() => R()?.querySelector('[data-id="m38"] .td-media-grid__tick'), 'cards');
+    /** the first opaque background up the tree (the page colour at the top) */
+    const bgOf = (el) => {
+      for (let n = el; n; n = n.parentElement) {
+        const b = getComputedStyle(n).backgroundColor;
+        if (b && b !== 'transparent' && !/rgba\(.*,\s*0\)$/.test(b)) return b;
+      }
+      return theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    };
     const root = R();
-    const dialogBg = getComputedStyle(root.querySelector('.td-media-picker__dialog')).backgroundColor;
-    const sel = root.querySelector('.td-media-picker__item[data-selected] .td-media-picker__open');
-    if (!sel) throw new Error('media-picker: no selected tile');
-    const pairs = [
-      { what: 'tile name vs dialog', fg: getComputedStyle(root.querySelector('.td-media-picker__name')).color, bg: dialogBg, min: 4.7 },
-      { what: 'detail meta label vs dialog', fg: getComputedStyle(root.querySelector('.td-media-picker__meta dt')).color, bg: dialogBg, min: 4.7 },
-      { what: 'tray count vs dialog', fg: getComputedStyle(root.querySelector('.td-media-picker__tray-count')).color, bg: dialogBg, min: 4.7 },
-      { what: 'selected tile border vs dialog', fg: getComputedStyle(sel).borderTopColor, bg: dialogBg, min: 3.2 },
-    ];
-    const b = root.querySelector('.td-media-picker__dialog').getBoundingClientRect();
+    let pairs;
+    let box;
+    if (c.v === 'cards') {
+      for (const id of ['m40', 'm39']) root.querySelector(`[data-id="${id}"] .td-media-grid__tick`).click();
+      root.querySelector('[data-id="m38"] [data-td-media-open]').click(); // multiple mode: view only
+      await new Promise((r) => setTimeout(r, 500)); // dialog entrance + border transitions
+      const checked = root.querySelector('.td-media-picker__card[data-selected]');
+      const viewing = root.querySelector('.td-media-picker__card[data-viewing]:not([data-selected])');
+      const rest = root.querySelector('.td-media-picker__card:not([data-viewing]):not([data-selected])');
+      if (!checked || !viewing || !rest) throw new Error('media-picker cards: checked / viewing / rest card missing');
+      // hover = the token's resolved colour (the gate cannot hover inside a pairs case): a probe card-less element
+      const probe = document.createElement('span');
+      probe.style.setProperty('color', 'var(--td-media-picker-card-hover)');
+      root.querySelector('.td-media-picker__grid').appendChild(probe);
+      const hover = getComputedStyle(probe).color;
+      probe.remove();
+      const cardBg = getComputedStyle(rest).backgroundColor;
+      const listBg = bgOf(root.querySelector('.td-media-picker__results'));
+      const label = root.querySelector('.td-media-picker__label');
+      const info = root.querySelector('.td-media-picker__page-info');
+      if (!label || !info || info.closest('[hidden]')) throw new Error('media-picker cards: label / page info not shown');
+      const count = root.querySelector('.td-media-picker__selcount');
+      pairs = [
+        { what: 'checked border (--td-media-picker-card-checked) vs card', fg: getComputedStyle(checked).borderTopColor, bg: cardBg, min: 3 },
+        { what: 'checked border vs list bg', fg: getComputedStyle(checked).borderTopColor, bg: listBg, min: 3 },
+        { what: 'viewing border (--td-media-picker-card-viewing) vs card', fg: getComputedStyle(viewing).borderTopColor, bg: cardBg, min: 3 },
+        { what: 'viewing border vs list bg', fg: getComputedStyle(viewing).borderTopColor, bg: listBg, min: 3 },
+        { what: 'hover border (--td-media-picker-card-hover) vs card', fg: hover, bg: cardBg, min: 3 },
+        { what: 'hover border vs list bg', fg: hover, bg: listBg, min: 3 },
+        { what: 'card name vs card', fg: getComputedStyle(rest.querySelector('.td-media-picker__name')).color, bg: cardBg, min: 4.7 },
+        { what: 'card meta vs card', fg: getComputedStyle(rest.querySelector('.td-media-picker__meta')).color, bg: cardBg, min: 4.7 },
+        { what: '__label (muted) vs detail', fg: getComputedStyle(label).color, bg: bgOf(label), min: 4.7 },
+        { what: 'page info "Hiển thị…" (cursor) vs toolbar', fg: getComputedStyle(info).color, bg: bgOf(info), min: 4.7 },
+        { what: 'footer count vs footer', fg: getComputedStyle(count).color, bg: bgOf(count), min: 4.7 },
+      ];
+      box = root.querySelector('.td-media-picker__dialog').getBoundingClientRect();
+    } else if (c.v === 'pages') {
+      await wait(() => root.querySelector('.td-media-picker__pager .td-pagination__info'), 'td-pagination');
+      await new Promise((r) => setTimeout(r, 450));
+      const info = root.querySelector('.td-media-picker__pager .td-pagination__info');
+      if (info.closest('[hidden]') || !/Hiển thị/.test(info.textContent)) throw new Error('media-picker pages: "Hiển thị…" not shown');
+      pairs = [{ what: 'td-pagination "Hiển thị…" vs toolbar', fg: getComputedStyle(info).color, bg: bgOf(info), min: 4.7 }];
+      box = info.getBoundingClientRect();
+    } else {
+      root.querySelector('.td-media-picker__upload-btn button').click();
+      const U = () => document.querySelector('body > .td-media-picker-upload');
+      await wait(() => U()?.querySelector('.td-dropzone__badge'), 'upload dialog badges');
+      await new Promise((r) => setTimeout(r, 450));
+      const up = U();
+      const zone = up.querySelector('.td-dropzone__zone');
+      const zoneBg = bgOf(zone);
+      pairs = [
+        { what: 'dropzone title vs zone', fg: getComputedStyle(up.querySelector('.td-dropzone__title')).color, bg: zoneBg, min: 4.7 },
+        { what: 'dropzone sub-line vs zone', fg: getComputedStyle(up.querySelector('.td-dropzone__subtext')).color, bg: zoneBg, min: 4.7 },
+        { what: 'dropzone icon vs zone', fg: getComputedStyle(up.querySelector('.td-dropzone__icon')).color, bg: zoneBg, min: 3.2 },
+      ];
+      for (const [i, b] of [...up.querySelectorAll('.td-dropzone__badge')].entries()) {
+        pairs.push({ what: `dropzone badge ${i + 1} text vs its fill`, fg: getComputedStyle(b).color, bg: bgOf(b), min: 4.7 });
+      }
+      box = zone.getBoundingClientRect();
+    }
     return {
-      rect: { x: b.x, y: b.y, width: b.width, height: b.height },
+      rect: { x: box.x, y: box.y, width: box.width, height: box.height },
       ink: {},
       opacity: 1,
       hover: false,

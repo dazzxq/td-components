@@ -7,6 +7,11 @@
  * ADR 0013: the kit owns the reusable interaction shell; the APP owns endpoints, envelopes, auth, permissions, DTO
  * mapping, upload security and storage. The adapter is an object of callbacks — never an endpoint string.
  *
+ * v0.33.0 (plan v0.33.0-media-picker-dcms-parity M1) — additive only (decision 3): `uploadFromUrl`, the
+ * `uploadFromUrl` / `copyLink` capabilities, `pagination: 'cursor'|'pages'` + `MediaListRequest.page`, `upload.acceptLabel`,
+ * page size 30; pure helpers for URL upload (`validateRemoteUrl`), delete / download results, filenames, default titles,
+ * upload results and paging (`PageState`). v0.32 adapters keep working unchanged.
+ *
  * @module utils/media-picker-core
  */
 
@@ -17,7 +22,8 @@
  * @typedef {object} MediaListRequest
  * @property {string} query
  * @property {Record<string, FilterValue>} filters
- * @property {string|null} cursor opaque to the kit
+ * @property {string|null} cursor opaque to the kit (always null in `pagination: 'pages'` mode)
+ * @property {number} [page] v0.33 addition: 1-based page number, sent ONLY in `pagination: 'pages'` mode (decision 13)
  * @property {number} limit
  * @property {{ key: string, direction: 'asc'|'desc' }} [sort] never set by v0.32 (use a `sort` facet)
  * @property {unknown} [context] passed through, never interpreted
@@ -32,6 +38,8 @@
  * @property {boolean} editMetadata
  * @property {boolean} delete
  * @property {boolean} downloadOriginal
+ * @property {boolean} uploadFromUrl v0.33: inferred `!!adapter.uploadFromUrl`; `false` hides the URL tab (decision 22)
+ * @property {boolean} copyLink v0.33: default false (no method needed; copies the DISPLAY url `urls.preview`, decision 27)
  */
 
 /**
@@ -59,7 +67,7 @@
  * @property {MediaAsset[]} items
  * @property {string|null} nextCursor
  * @property {string|null} [previousCursor] not used by v0.32
- * @property {number} [total]
+ * @property {number} [total] integer ≥ 0; REQUIRED in `pagination: 'pages'` mode (missing → warned once, cursor UI)
  */
 
 /** @typedef {{ value: Scalar, label: string, count?: number, disabled?: boolean }} FacetOption */
@@ -107,9 +115,13 @@
  *   onProgress(p: UploadProgress): void }) => Promise<UploadResult>} [upload]
  * @property {(id: string, patch: { fields: Record<string, unknown>, version?: string|number },
  *   o: { context?: unknown, signal: AbortSignal }) => Promise<MediaAsset>} [update]
- * @property {(id: string, o: { context?: unknown, signal: AbortSignal }) => Promise<DeleteResult>} [delete] v0.32.1
+ * @property {(url: string, o: { fields: Record<string, unknown>, context?: unknown, signal: AbortSignal,
+ *   onProgress?(p: UploadProgress): void }) => Promise<UploadResult>} [uploadFromUrl] v0.33 (decision 22): `url` is the
+ *   normalised `href` of `validateRemoteUrl` (UX only — the SERVER must block SSRF, decision 23)
+ * @property {(id: string, o: { context?: unknown, signal: AbortSignal }) => Promise<DeleteResult>} [delete] the SERVER
+ *   checks usage + permission; the kit never does (decision 24)
  * @property {(id: string, o: { rendition: 'original', context?: unknown, signal: AbortSignal })
- *   => Promise<DownloadResult>} [download] v0.32.1
+ *   => Promise<DownloadResult>} [download] decision 25 (a blob is only ever downloaded, never opened)
  */
 
 /**
@@ -134,15 +146,17 @@
  * @property {FieldDescriptor[]} [uploadFields]
  * @property {{ mode: 'single'|'multiple', maxItems?: number, initialIds?: string[],
  *   kinds?: Array<'image'|'video'|'file'> }} selection
- * @property {{ enabled: boolean, aspectRatio?: number, allowFocalPoint?: boolean }} [crop] v0.33 (warned at v0.32)
+ * @property {{ enabled: boolean, aspectRatio?: number, allowFocalPoint?: boolean }} [crop] v0.35 (`td-cropper`; warned until then)
  * @property {string} [initialQuery]
  * @property {Record<string, FilterValue>} [initialFilters]
  * @property {unknown} [context]
  * @property {string} [locale]
  * @property {Partial<Record<string, string|((params: unknown) => string)>>} [messages]
- * @property {string} [title] v0.32 addition (default labels.title)
- * @property {number} [pageSize] v0.32 addition: 1-100 (default 40) → `limit`
- * @property {{ accept?: string, maxSize?: string, multiple?: boolean }} [upload] v0.32 addition (→ td-dropzone)
+ * @property {string} [title] v0.32 addition (default: `defaultTitle(selection.kinds, labels)`, v0.33 decision 6)
+ * @property {number} [pageSize] v0.32 addition: 1-100 (default 30 since v0.33, was 40) → `limit`
+ * @property {'cursor'|'pages'} [pagination] v0.33 addition (default 'cursor'; also via configureDefaults, decision 13)
+ * @property {{ accept?: string, maxSize?: string, multiple?: boolean, acceptLabel?: string }} [upload] v0.32 addition
+ *   (→ td-dropzone); v0.33 `acceptLabel`: badge TEXT only, never a filter (decision 21)
  */
 
 export const KINDS = Object.freeze(['image', 'video', 'file']);
@@ -152,13 +166,15 @@ export const ERROR_CODES = Object.freeze(['validation', 'unauthorized', 'forbidd
   'network', 'server']);
 export const CONTROLS = Object.freeze(['text', 'textarea', 'url', 'select', 'multiselect', 'date', 'readonly']);
 export const FACET_TYPES = Object.freeze(['single', 'multiple', 'toggle']);
-const CAP_KEYS = ['search', 'upload', 'editMetadata', 'delete', 'downloadOriginal'];
-const CAP_METHOD = { upload: 'upload', editMetadata: 'update', delete: 'delete', downloadOriginal: 'download' };
+const CAP_KEYS = ['search', 'upload', 'editMetadata', 'delete', 'downloadOriginal', 'uploadFromUrl', 'copyLink'];
+const CAP_METHOD = { upload: 'upload', editMetadata: 'update', delete: 'delete', downloadOriginal: 'download',
+  uploadFromUrl: 'uploadFromUrl' };
 const RETRYABLE = new Set(['network', 'rate-limited', 'server']);
 const BAD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const TEXT_MAX = 200;
 const ID_MAX = 512;
-export const PAGE_SIZE_DEFAULT = 40;
+export const PAGE_SIZE_DEFAULT = 30; // v0.33 decision 13 (dcms2); was 40
+export const PAGINATION_MODES = Object.freeze(['cursor', 'pages']);
 
 /**
  * Bounds on adapter payloads before anything reaches the DOM (review SEC-3): extras are dropped (one warning per call,
@@ -271,11 +287,13 @@ export function contractError(code = 'server', message = 'media picker: malforme
  * (one warning); `kinds` given → other kinds hidden (`hidden` = how many). Not an object / `items` not an array → throws
  * an error with `code: 'server'`.
  * @param {unknown} raw
- * @param {{ safeUrl: (u: unknown) => string, kinds?: string[]|null, limit?: number, warn?: (...a: unknown[]) => void }} opts
+ * @param {{ safeUrl: (u: unknown) => string, kinds?: string[]|null, limit?: number, warn?: (...a: unknown[]) => void,
+ *   metadataKeys?: Iterable<string>|null, pagination?: 'cursor'|'pages' }} opts
  *   `limit` = the request's limit: at most min(limit, LIMITS.pageItems) items are read (review SEC-3)
- * @returns {{ items: MediaAsset[], nextCursor: string|null, total: number|undefined, hidden: number }}
+ * @returns {{ items: MediaAsset[], nextCursor: string|null, total: number|undefined, hidden: number,
+ *   pagesFallback?: boolean }} `pagesFallback` (pages mode only): true when `total` is missing / invalid
  */
-export function normalizePage(raw, { safeUrl, kinds = null, limit, metadataKeys = null, warn = console.warn }) {
+export function normalizePage(raw, { safeUrl, kinds = null, limit, metadataKeys = null, warn = console.warn, pagination = 'cursor' }) {
   if (!isObj(raw) || !Array.isArray(/** @type {any} */ (raw).items)) throw contractError('server');
   const o = /** @type {any} */ (raw);
   const seen = new Set();
@@ -295,6 +313,9 @@ export function normalizePage(raw, { safeUrl, kinds = null, limit, metadataKeys 
   if (invalid) warn(`td-media-picker: ${invalid} invalid asset(s) dropped from the adapter page.`);
   const nextCursor = typeof o.nextCursor === 'string' && o.nextCursor ? o.nextCursor : null;
   const total = Number.isInteger(o.total) && o.total >= 0 ? o.total : undefined;
+  // v0.33 decision 13: pages mode needs `total` — missing / invalid → the caller falls back to the cursor UI
+  // (`PageState` warns once). The flag only exists in pages mode, so the v0.32 shape is unchanged.
+  if (pagination === 'pages') return { items, nextCursor, total, hidden, pagesFallback: total === undefined };
   return { items, nextCursor, total, hidden };
 }
 
@@ -446,8 +467,11 @@ export function normalizeError(err, signal, { warn = console.warn, operation = '
 
 /**
  * Effective capabilities (decisions 2, 5): a flag is on only when the method exists AND the flag is not false. Missing
- * flags are inferred: search true, upload = !!adapter.upload, editMetadata = !!adapter.update, delete / downloadOriginal
- * false (v0.32 never shows them). Presentation hints only — the server still authorises every call.
+ * flags are inferred: search true, upload = !!adapter.upload, editMetadata = !!adapter.update, uploadFromUrl =
+ * !!adapter.uploadFromUrl (v0.33); delete / downloadOriginal stay false unless the site sets them true (destructive /
+ * egress actions are an explicit opt-in — a v0.32 adapter that merely HAS the method shows nothing new); copyLink
+ * (v0.33, no method) false unless set true. Only booleans count. Presentation hints only — the server still authorises
+ * every call.
  * @param {MediaPickerAdapter} adapter
  * @param {Partial<MediaCapabilities>|null|undefined} caps
  * @returns {MediaCapabilities}
@@ -455,7 +479,8 @@ export function normalizeError(err, signal, { warn = console.warn, operation = '
 export function resolveCapabilities(adapter, caps) {
   const c = isObj(caps) ? caps : {};
   const has = (m) => !!adapter && typeof adapter[m] === 'function';
-  const inferred = { search: true, upload: has('upload'), editMetadata: has('update'), delete: false, downloadOriginal: false };
+  const inferred = { search: true, upload: has('upload'), editMetadata: has('update'), delete: false, downloadOriginal: false,
+    uploadFromUrl: has('uploadFromUrl'), copyLink: false };
   const out = /** @type {MediaCapabilities} */ ({});
   for (const k of CAP_KEYS) {
     const flag = typeof c[k] === 'boolean' ? c[k] : inferred[k];
@@ -488,8 +513,9 @@ let warnedCrop = false;
 /**
  * Resolve the options of one open (decision 6): `defaults`, then each layer in INCREASING priority (shallow merge per
  * key; an `undefined` value never overrides). `selection` never comes from `defaults`. Normalises `selection`,
- * `pageSize` (1-100, default 40), `upload`, `messages`, `crop` (v0.32: warned once, `cropRequested`). No valid adapter
- * → TypeError (a programming error).
+ * `pageSize` (1-100, default 30), `pagination` ('cursor' | 'pages', invalid → warned + 'cursor'), `upload` (+ text
+ * `acceptLabel`), `messages`, `crop` (until v0.35: warned once, `cropRequested`). No valid adapter → TypeError (a
+ * programming error).
  * @param {object|null|undefined} defaults
  * @param {...(object|null|undefined)} layers last argument may be `{ warn }` only when it is the sole key
  * @returns {OpenMediaPickerOptions & { cropRequested: boolean, capabilitiesResolved: MediaCapabilities }}
@@ -529,17 +555,26 @@ export function resolveOptions(defaults, ...layers) {
   const cropRequested = isObj(merged.crop) && merged.crop.enabled === true;
   if (cropRequested && !warnedCrop) {
     warnedCrop = true;
-    try { warn('td-media-picker: crop UI ships in v0.33 — `crop.enabled` is ignored (usage.crop = null).'); } catch { /* ignore */ }
+    try { warn('td-media-picker: crop UI ships in v0.35 — `crop.enabled` is ignored (usage.crop = null).'); } catch { /* ignore */ }
+  }
+  let pagination = 'cursor';
+  if (merged.pagination !== undefined) {
+    if (PAGINATION_MODES.includes(merged.pagination)) pagination = merged.pagination;
+    else {
+      try { warn("td-media-picker: options.pagination must be 'cursor' or 'pages' — using 'cursor'."); } catch { /* ignore */ }
+    }
   }
   const filters = isObj(merged.initialFilters) ? { ...merged.initialFilters } : {};
   return {
     ...merged,
     selection: { mode, maxItems, initialIds: maxItems ? ids.slice(0, maxItems) : ids, kinds: kinds.length ? kinds : null },
     pageSize,
+    pagination,
     upload: {
       accept: typeof up.accept === 'string' ? up.accept : '',
       maxSize: typeof up.maxSize === 'string' ? up.maxSize : '',
       multiple: up.multiple !== false,
+      acceptLabel: typeof up.acceptLabel === 'string' ? cut(up.acceptLabel) : '',
     },
     messages: isObj(merged.messages) ? merged.messages : {},
     initialQuery: typeof merged.initialQuery === 'string' ? merged.initialQuery : '',
@@ -582,20 +617,23 @@ export class DefaultsRegistry {
  * The adapter list request for the current query / filters (filters copied one level deep — arrays included — so the
  * adapter can never mutate the picker's state, and the picker never mutates the caller's object). No `sort` in v0.32.
  * @param {{ query?: string, filters?: Record<string, FilterValue>, pageSize: number, context?: unknown, kinds?: string[]|null }} state
- * @param {{ cursor?: string|null, signal?: AbortSignal }} [o]
+ * @param {{ cursor?: string|null, page?: number, signal?: AbortSignal }} [o] `page` (v0.33, pages mode): an integer ≥ 1 →
+ *   `request.page` and `cursor: null`; anything else → no `page` key (cursor mode, the v0.32 shape)
  * @returns {MediaListRequest}
  */
-export function buildListRequest(state, { cursor = null, signal } = {}) {
+export function buildListRequest(state, { cursor = null, page, signal } = {}) {
+  const pages = Number.isInteger(page) && page >= 1;
   const filters = {};
   for (const [k, v] of Object.entries(state.filters || {})) filters[k] = Array.isArray(v) ? v.slice() : v;
   const req = {
     query: typeof state.query === 'string' ? state.query.trim() : '',
     filters,
-    cursor: typeof cursor === 'string' && cursor ? cursor : null,
+    cursor: !pages && typeof cursor === 'string' && cursor ? cursor : null,
     limit: state.pageSize,
     kinds: state.kinds && state.kinds.length ? state.kinds.slice() : null,
     signal: /** @type {AbortSignal} */ (signal),
   };
+  if (pages) req.page = page;
   if (state.context !== undefined) req.context = state.context;
   return req;
 }
@@ -610,14 +648,15 @@ function filtersKey(filters) {
 }
 
 /**
- * Cache key of a list (or facet) request: query + typed filters + cursor + limit + kinds.
+ * Cache key of a list (or facet) request: query + typed filters + cursor + limit + kinds + page (v0.33, pages mode).
  * @param {{ query?: string, filters?: object, pageSize?: number, kinds?: string[]|null }} state
  * @param {string|null} [cursor]
+ * @param {number|null} [page]
  * @returns {string}
  */
-export function requestKey(state, cursor = null) {
+export function requestKey(state, cursor = null, page = null) {
   return JSON.stringify([typeof state.query === 'string' ? state.query.trim() : '', filtersKey(state.filters), cursor || null,
-    state.pageSize ?? null, state.kinds || null]);
+    state.pageSize ?? null, state.kinds || null, Number.isInteger(page) && page >= 1 ? page : null]);
 }
 
 /**
@@ -993,4 +1032,370 @@ export function formatLabel(labels, messages, key, params = {}) {
   let v = labels;
   for (const part of key.split('.')) v = v && typeof v === 'object' ? v[part] : undefined;
   return typeof v === 'string' ? fill(v) : '';
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// v0.33.0 (plan v0.33.0-media-picker-dcms-parity, M1)
+
+/** Longest remote URL accepted by the URL upload tab (decision 22, invariant 31d). */
+export const REMOTE_URL_MAX = 2048;
+
+/**
+ * Client-side check of the URL typed in the "Tải từ URL" tab (decision 22). **UX only, not security**: private hosts /
+ * loopback / metadata IPs are NOT blocked here (DNS rebinding + redirects defeat a client check) — the SERVER must block
+ * SSRF (decision 23). Steps, in this order:
+ * 1. trim (non-string → '');
+ * 2. empty → `'empty'` (the submit button stays disabled; show NO error);
+ * 3. > 2048 characters → `'too-long'` ("URL quá dài");
+ * 4. `new URL()` throws → `'invalid'` ("URL không hợp lệ");
+ * 5. scheme not `http:` / `https:` → `'scheme'` ("Chỉ nhận http hoặc https");
+ * 6. `username` or `password` → `'credentials'` ("URL không được chứa thông tin đăng nhập");
+ * 7. empty hostname → `'invalid'`.
+ * The rules run AFTER WHATWG normalisation: `http:///x` → `http://x/`, `https://@h/` → `https://h/` are valid; an IDN
+ * becomes punycode. Send `href` (the normalised form), never the raw input.
+ * @param {unknown} s
+ * @returns {{ ok: true, href: string } | { ok: false, code: 'empty'|'too-long'|'invalid'|'scheme'|'credentials' }}
+ */
+export function validateRemoteUrl(s) {
+  const t = typeof s === 'string' ? s.trim() : '';
+  if (!t) return { ok: false, code: 'empty' };
+  if (t.length > REMOTE_URL_MAX) return { ok: false, code: 'too-long' };
+  let u;
+  try {
+    u = new URL(t);
+  } catch {
+    return { ok: false, code: 'invalid' };
+  }
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') return { ok: false, code: 'scheme' };
+  if (u.username || u.password) return { ok: false, code: 'credentials' };
+  if (!u.hostname) return { ok: false, code: 'invalid' };
+  if (u.href.length > REMOTE_URL_MAX) return { ok: false, code: 'too-long' }; // punycode / percent-encoding grew it
+  return { ok: true, href: u.href };
+}
+
+const USAGES_MAX = 50;
+const HREF_MAX = 8192;
+const isPlain = (v) => isObj(v) && [Object.prototype, null].includes(Object.getPrototypeOf(v));
+const hasBadOwnKey = (o) => Object.getOwnPropertyNames(o).some((k) => BAD_KEYS.has(k));
+
+/**
+ * Raw `adapter.delete()` result → a normalised `DeleteResult` (decision 24), or THROWS `contractError('server')` for
+ * any other shape (the picker then shows the generic error; never the raw value).
+ * - `{ status: 'deleted', id }` — `id` must equal the requested id (strict string) → `{ status: 'deleted', id }`.
+ * - `{ status: 'blocked', reason: 'in-use', usageCount, usages, truncated? }` → `usageCount` an integer ≥ 0; `usages` a
+ *   real array — only the first 50 are inspected / kept (`truncated: true` when more were sent); each item a plain
+ *   object without own `__proto__` / `constructor` / `prototype`, with `id` (non-empty string, or an integer →
+ *   string) and a non-empty `label` (trimmed, 200 code points); optional `kind` (string, 200 code points) and `href`
+ *   (string). A bad item rejects the WHOLE result. `truncated` kept only when boolean. Consistency: `usageCount` ≥ the
+ *   number of summaries sent; `truncated: true` needs `usageCount` > that number, `truncated: false` needs it equal —
+ *   otherwise the whole result is malformed. A count with no summaries (`usages: []`) is valid.
+ * - `href`: by default passed through RAW (≤ 8 KiB) — the renderer MUST gate it with `safeLinkUrl` (invariant 31b).
+ *   With `opts.safeLink` (e.g. `safeLinkUrl`) it is gated here instead: refused (`''`) → the key is dropped.
+ * The kit never checks usage itself: the server decides and answers `blocked`.
+ * @param {unknown} raw
+ * @param {string} id the id that was deleted
+ * @param {{ safeLink?: (u: string) => string }} [opts]
+ * @returns {DeleteResult}
+ */
+export function normalizeDeleteResult(raw, id, { safeLink } = {}) {
+  const bad = () => contractError('server', 'media picker: malformed delete result');
+  if (!isObj(raw)) throw bad();
+  const o = /** @type {Record<string, any>} */ (raw);
+  if (o.status === 'deleted') {
+    if (typeof id !== 'string' || !id || o.id !== id) throw bad();
+    return { status: 'deleted', id };
+  }
+  if (o.status !== 'blocked' || o.reason !== 'in-use') throw bad();
+  if (!Number.isInteger(o.usageCount) || o.usageCount < 0) throw bad();
+  if (!Array.isArray(o.usages)) throw bad();
+  // contract consistency (impl review #5): the count covers every listed summary; `truncated` must agree with it
+  if (o.usageCount < o.usages.length) throw bad();
+  if (o.truncated === true && o.usageCount <= o.usages.length) throw bad();
+  if (o.truncated === false && o.usageCount > o.usages.length) throw bad();
+  const usages = [];
+  for (const u of o.usages.slice(0, USAGES_MAX)) {
+    if (!isPlain(u) || hasBadOwnKey(u)) throw bad();
+    const uid = typeof u.id === 'string' ? u.id : (Number.isInteger(u.id) ? String(u.id) : '');
+    if (!uid || uid.length > ID_MAX || typeof u.label !== 'string') throw bad();
+    const label = cut(u.label.slice(0, TEXT_MAX * 8));
+    if (!label) throw bad();
+    /** @type {UsageSummary} */
+    const item = { id: uid, label };
+    if (typeof u.kind === 'string' && u.kind.trim()) item.kind = cut(u.kind.slice(0, TEXT_MAX * 8));
+    if (typeof u.href === 'string' && u.href && u.href.length <= HREF_MAX) {
+      const href = typeof safeLink === 'function' ? safeLink(u.href) : u.href;
+      if (typeof href === 'string' && href) item.href = href;
+    }
+    usages.push(item);
+  }
+  /** @type {DeleteResult} */
+  const out = { status: 'blocked', reason: 'in-use', usageCount: o.usageCount, usages };
+  if (o.usages.length > USAGES_MAX) out.truncated = true;
+  else if (typeof o.truncated === 'boolean') out.truncated = o.truncated;
+  return out;
+}
+
+// eslint-disable-next-line no-control-regex
+const FILENAME_STRIP = /[/\\:\u0000-\u001f\u007f-\u009f‎‏‪-‮⁦-⁩]/g;
+
+/**
+ * A download filename (decision 25): `/ \ :`, C0 / C1 control characters and bidi controls removed, leading dots
+ * dropped, trimmed, 200 code points. Empty → the cleaned `fallback` (e.g. `asset.name`) → `'download'`.
+ * @param {unknown} s
+ * @param {unknown} [fallback]
+ * @returns {string}
+ */
+export function safeFilename(s, fallback = '') {
+  const clean = (v) => (typeof v === 'string' ? cut(v.slice(0, TEXT_MAX * 8).replace(FILENAME_STRIP, '').replace(/^[\s.]+/, '')) : '');
+  return clean(s) || clean(fallback) || 'download';
+}
+
+/**
+ * Raw `adapter.download()` result → what the picker may do with it (decision 25), or THROWS:
+ * - `{ url, filename, expiresAt? }` → `{ kind: 'url', url, filename }`: `url` through `safeUrl` (pass `safeMediaUrl`
+ *   WITHOUT `allowBlob`) and must come back `http(s):` — `blob:` / `data:` / `javascript:` / refused → `code: 'server'`;
+ *   `expiresAt` (ISO string) already past (≤ `now`) → `code: 'expired'` (label "Liên kết tải đã hết hạn"),
+ *   unparseable / not a string → `'server'`.
+ * - `{ blob, filename }` → `{ kind: 'blob', blob, filename }`: `blob instanceof Blob` required. The picker only ever
+ *   DOWNLOADS it (same-origin `<a download>` + revoke), never opens it in a tab.
+ * - both / neither / not an object → `'server'`.
+ * `filename` → `safeFilename(filename, fallbackName)`. Thrown errors come from `contractError` (`err.code`).
+ * @param {unknown} raw
+ * @param {{ safeUrl: (u: unknown) => string, fallbackName?: string, now?: number }} opts
+ * @returns {{ kind: 'url', url: string, filename: string } | { kind: 'blob', blob: Blob, filename: string }}
+ */
+export function normalizeDownloadResult(raw, { safeUrl, fallbackName = '', now = Date.now() }) {
+  const bad = () => contractError('server', 'media picker: malformed download result');
+  if (!isObj(raw)) throw bad();
+  const o = /** @type {Record<string, any>} */ (raw);
+  const hasUrl = o.url !== undefined;
+  const hasBlob = o.blob !== undefined;
+  if (hasUrl === hasBlob) throw bad();
+  const filename = safeFilename(o.filename, fallbackName);
+  if (hasBlob) {
+    if (typeof Blob === 'undefined' || !(o.blob instanceof Blob)) throw bad();
+    return { kind: 'blob', blob: o.blob, filename };
+  }
+  const url = typeof o.url === 'string' ? safeUrl(o.url) : '';
+  if (typeof url !== 'string' || !/^https?:/i.test(url)) throw bad();
+  if (o.expiresAt !== undefined) {
+    const t = typeof o.expiresAt === 'string' ? Date.parse(o.expiresAt) : NaN;
+    if (!Number.isFinite(t)) throw bad();
+    if (t <= now) throw contractError('expired', 'media picker: download link expired');
+  }
+  return { kind: 'url', url, filename };
+}
+
+/** Built-in default titles (decision 6); `labels` / `messages` override them per key. */
+export const DEFAULT_TITLES = Object.freeze({ title: 'Chọn media', titleImage: 'Chọn ảnh', titleVideo: 'Chọn video',
+  titleFile: 'Chọn tài liệu' });
+const TITLE_KEY = { image: 'titleImage', video: 'titleVideo', file: 'titleFile' };
+
+/**
+ * The picker title (decision 6): a non-empty `title` (the `open()` option) wins; else by `selection.kinds` — exactly
+ * one kind → `titleImage` / `titleVideo` / `titleFile`, anything else → `title` — read from `labels` (non-empty
+ * string), falling back to `DEFAULT_TITLES` ("Chọn ảnh" / "Chọn video" / "Chọn tài liệu" / "Chọn media").
+ * @param {string[]|null|undefined} kinds
+ * @param {Partial<Record<'title'|'titleImage'|'titleVideo'|'titleFile', unknown>>} [labels]
+ * @param {unknown} [title]
+ * @returns {string}
+ */
+export function defaultTitle(kinds, labels = {}, title = '') {
+  if (typeof title === 'string' && title.trim()) return title;
+  const key = Array.isArray(kinds) && kinds.length === 1 && TITLE_KEY[kinds[0]] ? TITLE_KEY[kinds[0]] : 'title';
+  const l = isObj(labels) ? labels[key] : undefined;
+  if (typeof l === 'string' && l) return l;
+  return DEFAULT_TITLES[key];
+}
+
+/**
+ * Raw `adapter.upload()` / `adapter.uploadFromUrl()` result → `{ asset, deduplication }`, or null when malformed (v0.32
+ * #20, impl review #4): the asset must normalise, and `deduplication` must be exactly `{ outcome: 'created' }` or
+ * `{ outcome: 'exact-reused', matchedAssetId }` with `matchedAssetId === asset.id`. Extra keys are dropped. The caller
+ * warns (never with the raw result) and shows its upload error on null.
+ * @param {unknown} raw
+ * @param {{ safeUrl: (u: unknown) => string, metadataKeys?: Iterable<string>|null }} opts
+ * @returns {UploadResult|null}
+ */
+export function normalizeUploadResult(raw, { safeUrl, metadataKeys = null }) {
+  if (!isObj(raw)) return null;
+  const o = /** @type {Record<string, any>} */ (raw);
+  const asset = normalizeAsset(o.asset, { safeUrl, metadataKeys });
+  const d = isObj(o.deduplication) ? o.deduplication : null;
+  if (!asset || !d) return null;
+  if (d.outcome === 'created') return { asset, deduplication: { outcome: 'created' } };
+  if (d.outcome === 'exact-reused' && d.matchedAssetId === asset.id) {
+    return { asset, deduplication: { outcome: 'exact-reused', matchedAssetId: asset.id } };
+  }
+  return null;
+}
+
+/**
+ * Paging state of one picker session (decision 13). Pure: it never calls the adapter — it says WHAT to request and is
+ * told what came back. Lane B usage:
+ *
+ * ```js
+ * const ps = new PageState({ mode: opts.pagination, pageSize: opts.pageSize });
+ * const r = ps.begin('next');                    // 'next' | 'prev' | 'reload' | a page number (pages mode)
+ * if (!r) return;                                // refused: cursor mode busy (single-flight) / no such page
+ * const req = buildListRequest(state, { cursor: r.cursor, page: r.page, signal });
+ * // success: ps.commit(r.token, normalizedPage) → true (false = stale: superseded / reset — ignore the result)
+ * // failure / abort: ps.rollback(r.token)       → page + cursor stack unchanged
+ * // query / filter change: ps.reset() then ps.begin('reload') (page 1)
+ * // after a delete: ps.begin('reload'); commit; then `const back = ps.stepBackIfEmpty(); if (back) load(back);`
+ * ```
+ *
+ * Modes:
+ * - `'cursor'` (default): the kit keeps the stack of cursors of visited pages (no `previousCursor` needed); `r.page` is
+ *   undefined (never sent). **Single-flight**: while a request is pending, `begin('next' | 'prev')` returns null;
+ *   `begin('reload')` supersedes it. The page / stack only move on `commit()`.
+ * - `'pages'`: `r.page` = the 1-based page, `r.cursor` = null; **latest-wins** (every `begin()` supersedes the previous
+ *   token). Needs a valid `total`; when a committed page has none (or an invalid one) → `ui` becomes `'cursor'` and
+ *   ONE warning is logged per PageState; requests keep sending `page`, and `hasNext` = a full page or a `nextCursor`.
+ *
+ * Read-outs (after a commit): `page`, `total` (integer ≥ 0 or undefined), `from` / `to` (1-based range of the shown
+ * items, undefined without total or on an empty page), `pageCount` (pages UI), `hasPrev`, `hasNext`, `visible` (false
+ * when everything fits one page → hide the pager), `ui` ('cursor' | 'pages' — which pager to render), `pending`.
+ */
+export class PageState {
+  /**
+   * @param {{ mode?: 'cursor'|'pages', pageSize?: number, warn?: (...a: unknown[]) => void }} [o]
+   */
+  constructor({ mode = 'cursor', pageSize = PAGE_SIZE_DEFAULT, warn = console.warn } = {}) {
+    /** @type {'cursor'|'pages'} */
+    this.mode = mode === 'pages' ? 'pages' : 'cursor';
+    this.pageSize = Number.isInteger(pageSize) && pageSize >= 1 ? pageSize : PAGE_SIZE_DEFAULT;
+    this._warn = warn;
+    this._warned = false;
+    this._token = 0;
+    /** @type {{ token: number, target: number, cursor: string|null }|null} */
+    this._req = null;
+    this.reset();
+  }
+
+  /** Back to page 1 (query / filter change): stack + total cleared; a pending request becomes stale. */
+  reset() {
+    this.page = 1;
+    /** @type {Array<string|null>} cursor that fetched page i + 1 */
+    this._cursors = [null];
+    /** @type {number[]} item count of page i + 1 */
+    this._counts = [];
+    this._next = null;
+    /** @type {number|undefined} */
+    this.total = undefined;
+    this._count = 0;
+    this._fallback = false;
+    this._token += 1;
+    this._req = null;
+  }
+
+  /** @returns {boolean} a request is in flight */
+  get pending() { return this._req !== null; }
+
+  /** @returns {'cursor'|'pages'} the pager to render */
+  get ui() { return this.mode === 'pages' && !this._fallback ? 'pages' : 'cursor'; }
+
+  /** @returns {number|undefined} */
+  get pageCount() {
+    return this.total === undefined ? undefined : Math.max(1, Math.ceil(this.total / this.pageSize));
+  }
+
+  get hasPrev() { return this.page > 1; }
+
+  get hasNext() {
+    if (this.mode === 'cursor') return this._next !== null;
+    if (this.ui === 'pages') return this.page < /** @type {number} */ (this.pageCount);
+    return this._count >= this.pageSize || this._next !== null;
+  }
+
+  /** @returns {boolean} false → hide the pager (one page only) */
+  get visible() { return this.hasPrev || this.hasNext; }
+
+  /** @returns {number|undefined} */
+  get from() {
+    if (this.total === undefined || !this._count) return undefined;
+    const before = this.mode === 'pages' ? (this.page - 1) * this.pageSize
+      : this._counts.slice(0, this.page - 1).reduce((n, c) => n + c, 0);
+    return before + 1;
+  }
+
+  /** @returns {number|undefined} */
+  get to() {
+    const f = this.from;
+    return f === undefined ? undefined : f + this._count - 1;
+  }
+
+  /**
+   * Start a page request. Returns null when refused (see the class doc), else `{ token, target, cursor, page }`:
+   * `target` = the page that `commit()` will show; `cursor` / `page` go into `buildListRequest()`.
+   * @param {'next'|'prev'|'reload'|number} what
+   * @returns {{ token: number, target: number, cursor: string|null, page: number|undefined }|null}
+   */
+  begin(what) {
+    let target;
+    if (what === 'reload') target = this.page;
+    else if (what === 'next') target = this.hasNext ? this.page + 1 : 0;
+    else if (what === 'prev') target = this.page > 1 ? this.page - 1 : 0;
+    else if (Number.isInteger(what) && what >= 1) {
+      if (this.mode === 'cursor' && what !== this.page) return null; // cursors cannot jump
+      target = what;
+    } else return null;
+    if (!target) return null;
+    if (this.mode === 'cursor' && this._req && what !== 'reload' && what !== this.page) return null; // single-flight
+    let cursor = null;
+    if (this.mode === 'cursor') {
+      cursor = target === this.page + 1 ? this._next : (this._cursors[target - 1] ?? null);
+    }
+    const token = ++this._token;
+    this._req = { token, target, cursor };
+    return { token, target, cursor, page: this.mode === 'pages' ? target : undefined };
+  }
+
+  /**
+   * The request of `token` succeeded: move to its page. Stale token → false (nothing changes).
+   * @param {number} token
+   * @param {{ items?: unknown[], count?: number, nextCursor?: string|null, total?: unknown }} result a `normalizePage()`
+   *   result (or `{ count }`)
+   * @returns {boolean}
+   */
+  commit(token, result) {
+    const req = this._req;
+    if (!req || req.token !== token) return false;
+    this._req = null;
+    const r = isObj(result) ? result : {};
+    const count = Array.isArray(r.items) ? r.items.length : (Number.isInteger(r.count) && r.count >= 0 ? r.count : 0);
+    this.page = req.target;
+    this._count = count;
+    this._next = typeof r.nextCursor === 'string' && r.nextCursor ? r.nextCursor : null;
+    this.total = Number.isInteger(r.total) && r.total >= 0 ? r.total : undefined;
+    if (this.mode === 'cursor') {
+      this._cursors.length = req.target;
+      this._cursors[req.target - 1] = req.cursor;
+      this._counts.length = req.target;
+      this._counts[req.target - 1] = count;
+    } else {
+      this._fallback = this.total === undefined;
+      if (this._fallback && !this._warned) {
+        this._warned = true;
+        try {
+          this._warn("td-media-picker: pagination 'pages' needs an integer `total` ≥ 0 from adapter.list() — showing the cursor pager.");
+        } catch { /* ignore */ }
+      }
+    }
+    return true;
+  }
+
+  /** The request of `token` failed / was aborted: the page and the stack stay. @param {number} token */
+  rollback(token) {
+    if (this._req && this._req.token === token) this._req = null;
+  }
+
+  /**
+   * After a delete reload (decision 24): the committed page is empty and is not page 1 → `begin('prev')`; else null.
+   * @returns {ReturnType<PageState['begin']>}
+   */
+  stepBackIfEmpty() {
+    if (this._count > 0 || this.page <= 1 || this._req) return null;
+    return this.begin('prev');
+  }
 }

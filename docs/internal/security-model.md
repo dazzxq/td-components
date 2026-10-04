@@ -162,6 +162,37 @@ tin cậy; adapter và descriptor do dev của site viết nhưng chạy trong t
   localStorage (không lưu dữ liệu media của người dùng trước cho người dùng sau trên máy chung).
 - **Không toàn cục**: không biến trên `window`; `configureDefaults` là registry cấp module.
 
+**Bổ sung v0.33** ([ADR 0013 › Bổ sung v0.33](decisions/0013-media-picker-boundary.md#bổ-sung-v033), plan
+[v0.33.0](plans/v0.33.0-media-picker-dcms-parity.md) quyết định 22-27, 31):
+
+- **Tải từ URL (`uploadFromUrl`)**: kiểm URL ở client (`validateRemoteUrl`: trim, ≤ 2048 ký tự, `new URL()` hợp lệ,
+  chỉ `http:` / `https:`, không `username` / `password`, có hostname) **chỉ là UX, không phải bảo mật**; giá trị gửi đi là
+  `href` đã chuẩn hoá. Client **cố ý không** chặn host nội bộ / IP riêng (DNS rebinding, redirect vượt qua được) và
+  **không** xem trước URL người dùng nhập (trình duyệt không request tới host đó; "xem trước" là asset do server trả về,
+  qua `safeMediaUrl`). **SSRF là việc của server**: resolve DNS một lần và kết nối đúng IP đã kiểm; chặn loopback / mạng
+  riêng / link-local / `169.254.169.254` / IPv6 ULA và mapped / `0.0.0.0`; kiểm lại mỗi redirect (≤ 3); chỉ cổng 80 / 443;
+  timeout + trần kích thước khi đọc luồng (không tin `Content-Length`); magic byte + re-encode + cùng giới hạn như upload;
+  quyền, CSRF, rate limit, audit; không dội body / lỗi của host từ xa. Lỗi chỉ hiện `userMessage` / nhãn, abort im lặng.
+- **Xoá (`delete`)**: **server quyết định**, kit không bao giờ tự kiểm usage — `delete` không kiểm usage + quyền ở server
+  là không an toàn. Hộp xác nhận dùng `message` dạng text (không `messageHtml`): tên `<b>x</b>` hiện nguyên văn. Kết quả
+  `blocked` được chuẩn hoá (`usageCount` nguyên ≥ 0, `usages` ≤ 50 mục, hiện ≤ 20, `label` ≤ 200, mảng có `__proto__` /
+  không phải mảng → lỗi hợp đồng) và render **text-only**; `href` của usage chỉ thành `<a target="_blank"
+  rel="noopener noreferrer">` khi qua `safeLinkUrl` (`https:`, `http:` khi trang là `http:`, đường dẫn tương đối), còn lại
+  (ví dụ `javascript:`) là chữ thường. Đóng picker khi đang xoá → abort.
+- **Tải về (`download`)**: nhánh `{ url }` qua `safeMediaUrl` và **từ chối** `blob:` / `data:` / `javascript:` (không an
+  toàn → lỗi `server`); tải bằng `<a download rel="noopener noreferrer">` tạm, URL khác origin thêm `target="_blank"`,
+  không bao giờ điều hướng trang hiện tại; `expiresAt` đã qua → lỗi. Nhánh `{ blob }` bắt buộc `instanceof Blob`,
+  `URL.createObjectURL` → `<a download>` cùng origin → `revokeObjectURL` ở macrotask kế tiếp, thu hồi luôn URL còn sót khi
+  đóng picker; **blob chỉ được tải về, không bao giờ mở trong tab / `window.open`** (blob `text/html` mở ra sẽ chạy dưới
+  origin của site). `filename` làm sạch: ≤ 200 ký tự, bỏ `/ \ :` và ký tự điều khiển, rỗng → `asset.name`.
+- **Copy link (`copyLink`, mặc định `false`)**: giá trị là `urls.preview` sau `safeMediaUrl`, dạng tuyệt đối; URL không
+  an toàn → không có nút. Đây là link **hiển thị, không phải danh tính** (danh tính vẫn là `assetId`); site dùng URL ký có
+  hạn thì đừng bật.
+- **Latest-wins + abort** thêm slot: trang, `delete` theo asset, `download`, `uploadFromUrl`; đóng picker hoặc dialog lồng
+  thì abort tất cả. `td-media-grid` đặt kích thước ảnh / biến justified bằng CSSOM `style.setProperty` (không `style="…"`),
+  khôi phục giá trị inline gốc của site khi item rời grid.
+
 Test: phần XSS / an toàn của `td-media-picker.engines.browser-test.js` (chuỗi `<img src=x onerror=…>` ở mọi trường chỉ là
 text, URL `javascript:` / `data:` / `file:` không thành `src`, không thuộc tính `style` / `on*`), `media-url.test.js`,
-`media-picker-core.test.js` (`normalizeError`), test SSR PHP (`preview_src` độc → không `img`, `attrs` allowlist).
+`media-picker-core.test.js` (`normalizeError`; từ v0.33 `validateRemoteUrl`, `normalizeDeleteResult`,
+`normalizeDownloadResult`, `safeFilename`, `safeLinkUrl`), test SSR PHP (`preview_src` độc → không `img`, `attrs` allowlist).

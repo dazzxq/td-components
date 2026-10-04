@@ -491,15 +491,20 @@ describe('td-media-grid — tick visibility (td.css)', () => {
     expect(document.activeElement.classList.contains('site-more')).to.equal(true, 'tick skipped (tabindex -1)');
   });
 
-  it('selected item: surface fill, opener scaled, solid tick', async () => {
+  // v0.33.0 (decision 37): no 0.88 scale, no item fill — a 3px inset ring on the opener's ::after + solid tick
+  it('selected item: inset ring on the opener, no scale, no fill, solid tick', async () => {
     const grid = mount(2);
     grid.select(['f1']);
     await wait(400);
     const t = getComputedStyle(tickOf(grid, 'f1'));
     expect(t.opacity).to.equal('1');
     expect(t.backgroundColor).to.not.equal(getComputedStyle(tickOf(grid, 'f2')).backgroundColor);
-    expect(getComputedStyle(openOf(grid, 'f1')).transform).to.not.equal('none');
-    expect(getComputedStyle(openOf(grid, 'f2')).transform).to.equal('none');
+    const unscaled = (el) => ['none', 'matrix(1, 0, 0, 1, 0, 0)'].includes(getComputedStyle(el).transform);
+    expect(unscaled(openOf(grid, 'f1'))).to.equal(true);
+    expect(getComputedStyle(itemOf(grid, 'f1')).backgroundColor).to.equal(getComputedStyle(itemOf(grid, 'f2')).backgroundColor);
+    expect(getComputedStyle(openOf(grid, 'f1'), '::after').boxShadow).to.match(/inset/);
+    expect(getComputedStyle(openOf(grid, 'f1'), '::after').boxShadow).to.match(/3px/);
+    expect(getComputedStyle(openOf(grid, 'f1'), '::after').boxShadow).to.not.equal(getComputedStyle(openOf(grid, 'f2'), '::after').boxShadow);
   });
 });
 

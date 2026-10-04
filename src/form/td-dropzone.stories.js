@@ -89,3 +89,14 @@ export const UploadHook = {
     return dz;
   },
 };
+
+/**
+ * v0.33.0 presentation API (dcms2 look): `prompt-title` + `prompt-text` → stacked zone (64 px icon → title → muted
+ * sub-line; the whole zone opens the picker, "Chọn file" stays for the keyboard); `hint-style="badges"` → one
+ * `td-badge` per hint part. Text only — no markup is accepted.
+ */
+export const StackedBadges = {
+  render: () => `<td-dropzone name="media[]" multiple accept="image/jpeg,image/png,image/gif,image/webp"`
+    + ' accept-label="JPG, JPEG, PNG, GIF, WEBP" max-size="20MB"'
+    + ' prompt-title="Kéo thả file vào đây" prompt-text="hoặc bấm để chọn file" hint-style="badges"></td-dropzone>',
+};

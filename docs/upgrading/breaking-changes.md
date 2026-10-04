@@ -1,8 +1,8 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.32)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.33)
 
-Trang này liệt kê, cho từng bản từ **0.32.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
+Trang này liệt kê, cho từng bản từ **0.33.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
 [CHANGELOG.md](../../CHANGELOG.md); trang này chỉ gom lại theo góc nhìn "tôi phải làm gì" và thêm ví dụ trước/sau.
 Quy trình nâng cấp chung nằm ở [README.md](README.md).
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.33.0](#0330) | Đổi giao diện + đổi văn bản (không breaking API) | Không bắt buộc sửa code. Media picker full viewport giống dcms2: nhãn mặc định đổi ("Chọn ({n})" → "Chèn ({n})", "Huỷ" → "Đóng", "Thư viện media" → tiêu đề theo `selection.kinds`), `pageSize` 40 → 30, "Tải thêm" → phân trang, bỏ khay thumb. `td-media-grid`: ô đã chọn hết thu nhỏ / nền, thành vòng inset; grid tự đặt kích thước `img` (CSS site trên `img` không còn thắng — dùng token). |
 | [0.32.0](#0320) | Không có thay đổi phá vỡ | Không. Thêm `<td-media-picker>` / `TdMediaPicker`, `<td-media-field>`, `td_media_field()`. Import map tự liệt kê: thêm `media-picker`, `media-field`. |
 | [0.31.0](#0310) | Đổi văn bản (nhỏ) | Không bắt buộc. Thêm `<td-sortable>`, `<td-masked-value>`, `td_masked_value()`, `<td-repeater sortable>`. Câu thông báo di chuyển dòng của repeater đổi chữ (test so đúng chữ phải cập nhật). Import map: thêm `sortable`, `masked-value`. |
 | [0.30.0](#0300) | Không có thay đổi phá vỡ | Không. Sửa `<td-otp-input>` co hẹp trong flex row. Thêm `<td-repeater>`, `<td-number-input>`, `td_number_input()`. Import map tự liệt kê: thêm `repeater`, `number-input`. |
@@ -59,6 +60,58 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.33.0
+
+**Đổi giao diện + đổi văn bản — không breaking API.** Hợp đồng adapter chỉ thêm phần tuỳ chọn (`uploadFromUrl`,
+`capabilities.uploadFromUrl` / `copyLink`, `pagination: 'pages'` + `MediaListRequest.page`, `upload.acceptLabel`, xem
+[ADR 0013 › Bổ sung v0.33](../internal/decisions/0013-media-picker-boundary.md#bổ-sung-v033)); adapter v0.32 chạy y nguyên.
+Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.33.0.
+
+**`td-media-picker` — chữ hiển thị đổi.** Test so đúng chữ phải cập nhật. Site đã ghi đè nhãn (`TdMediaPicker.labels` / `messages`) cần soát ba điểm:
+
+- Tiêu đề giờ lấy theo `selection.kinds` từ các key mới `titleImage` / `titleVideo` / `titleFile`; `title` chỉ còn dùng khi `kinds` khác ba trường hợp đó. Site muốn một tiêu đề cố định thì truyền `title` cho `open()` hoặc ghi đè cả bốn key.
+- Nút xác nhận có hai key: `confirm` ("Chèn", chưa chọn / chế độ đơn) và `confirmCount` ("Chèn ({n})", chế độ nhiều).
+- Các key bị bỏ cùng UI cũ: `filters`, `filtersCount`, `loadMore`, `loadedMore`, `count`, `emptyFiltered`, `edit`, `cancelEdit`, `deselect` (ghi đè chúng giờ không có tác dụng, không lỗi).
+
+| Chỗ | Trước (0.32) | Sau (0.33) |
+|---|---|---|
+| Nút xác nhận (`confirm`) | "Chọn ({n})" | "Chèn" / "Chèn ({n})" |
+| Nút huỷ ở footer (`cancel`) | "Huỷ" | "Đóng" |
+| Tiêu đề mặc định (`title`) | "Thư viện media" | theo `selection.kinds`: `['image']` "Chọn ảnh", `['video']` "Chọn video", `['file']` "Chọn tài liệu", khác "Chọn media" (`title` của `open()` vẫn thắng) |
+
+**`td-media-picker` — hành vi / giao diện đổi:**
+
+- **Full viewport ở mọi kích thước** (`.td-modal--viewport`), bỏ bottom sheet; breakpoint 768px (trước 640px).
+- **`pageSize` mặc định 40 → 30.** Muốn giữ 40 thì truyền `pageSize: 40` cho `open()` / `configureDefaults`.
+- **"Tải thêm" → phân trang**: mỗi trang **thay** nội dung lưới (lựa chọn vẫn giữ qua các trang). Mặc định `‹` / `›`
+  theo cursor; adapter trả `total` thì có thể bật `pagination: 'pages'` để có `td-pagination` số trang.
+- **Bỏ khay thumb 40px** ở footer; giữ số đếm "Đã chọn {n}/{max}" + "Bỏ chọn tất cả".
+- Không tự chọn mục đầu (như 0.32); click card ở chế độ nhiều = **xem chi tiết**, bật / tắt chọn qua tick (góc trên-phải),
+  Space hoặc Ctrl/Cmd+click. Form chi tiết luôn mở inline (bỏ nút "Sửa thông tin"). Tải lên chuyển sang dialog lồng.
+- Bỏ nút "Bộ lọc (n)" trên màn hẹp: facet hiện inline. Toolbar một hàng từ 768px (facet nhiều thì cuộn ngang trong
+  hàng), chỉ xuống dòng dưới 768px.
+- CSS / test site nhắm vào DOM bên trong picker (`.td-media-picker__*`) phải kiểm lại: vỏ, toolbar, card và footer đã dựng
+  lại bằng component kit (`td-button`, `td-input-field`, `td-dropdown`, …); DOM mới xem
+  [media-picker.md](../components/media-picker.md).
+
+**`td-media-grid` — đổi giao diện ô:**
+
+- **Ô đã chọn**: bỏ phép thu 0.88 (`--td-media-grid-selected-scale` mặc định thành `1`) và bỏ nền; đánh dấu bằng **vòng
+  inset** vẽ trên opener (`--td-media-grid-selected-ring`). Muốn hiệu ứng thu nhỏ kiểu cũ: `:root
+  { --td-media-grid-selected-scale: 0.88; }`.
+- **Grid sở hữu kích thước ảnh**: `<img>` / `<video>` đầu tiên trong opener được đặt `width` / `height: 100%`,
+  `max-width: none`, `object-fit` bằng CSSOM inline `!important`. Hệ quả: **CSS của site đặt lên `img` trong grid
+  (`width`, `height`, `object-fit`) không còn tác dụng**, kể cả `!important`. Muốn khác thì dùng token:
+  `--td-media-grid-fit` (`cover` / `contain`), `--td-media-grid-ratio` (tỉ lệ khung ô; mặc định `auto`, chiều cao ô theo
+  ảnh như trước). Giá trị inline gốc của site được khôi phục khi item rời grid.
+- Thêm (tuỳ chọn): `layout="justified"`, `select-mode="tick"`, `--td-media-grid-tick-inline`. Không đặt thì bố cục lưới
+  giữ như cũ.
+
+Xem [theming.md › Token riêng của từng component](../customization/theming.md#token-riêng-của-từng-component) cho danh sách
+token mới.
 
 ---
 

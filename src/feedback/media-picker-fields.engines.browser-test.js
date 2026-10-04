@@ -374,15 +374,19 @@ describe('media-picker-fields — date (R2-10)', () => {
 });
 
 describe('media-picker-fields — facets (decision 18)', () => {
-  it('single: dropdown allow-clear, "Tất cả" placeholder, count in the label, typed values, clear → undefined', async () => {
+  it('single (v0.33 decision 8): compact dropdown — no visible label (aria-label), searchable / allow-clear "false", first option "Tất cả" = no filter; count in the label, typed values', async () => {
     let changes = 0;
     const f = mountFacet({ key: 'album', label: 'Album', type: 'single', options: [...SCALARS, { value: 9, label: 'Album A', count: 12 }] },
       { onChange: () => { changes += 1; } });
     await tick();
     const dd = f.el.querySelector('td-dropdown');
     expect(f.key).to.equal('album');
-    expect(dd.getAttribute('allow-clear')).to.not.equal('false');
-    expect(dd.getAttribute('placeholder')).to.equal(FIELD_LABELS.all);
+    expect(dd.getAttribute('allow-clear')).to.equal('false');
+    expect(dd.getAttribute('searchable')).to.equal('false');
+    expect(dd.getAttribute('aria-label')).to.equal('Album');
+    expect(dd.hasAttribute('label')).to.equal(false);
+    expect(dd.options[0]).to.deep.include({ value: '', label: FIELD_LABELS.all });
+    expect(ddText(dd)).to.equal(FIELD_LABELS.all);
     expect(f.get()).to.equal(undefined);
     await ddPick(dd, 'Album A (12)');
     expect(f.get()).to.equal(9);
@@ -390,7 +394,7 @@ describe('media-picker-fields — facets (decision 18)', () => {
       await ddPick(dd, o.label);
       expect(Object.is(f.get(), o.value)).to.equal(true);
     }
-    await ddClear(dd);
+    await ddPick(dd, FIELD_LABELS.all);
     expect(f.get()).to.equal(undefined);
     expect(changes).to.equal(SCALARS.length + 2);
     f.set('1');
@@ -405,6 +409,8 @@ describe('media-picker-fields — facets (decision 18)', () => {
     await tick();
     const ci = f.el.querySelector('td-chip-input');
     expect(ci.hasAttribute('selection-only')).to.equal(true);
+    expect(ci.getAttribute('aria-label')).to.equal('Thẻ');
+    expect(ci.hasAttribute('label')).to.equal(false);
     expect(f.get()).to.equal(undefined);
     await chipPick(ci, 'số 1');
     await chipPick(ci, 'chuỗi 1');
@@ -421,6 +427,8 @@ describe('media-picker-fields — facets (decision 18)', () => {
       { onChange: () => { changes += 1; } });
     await tick();
     const tg = f.el.querySelector('td-toggle');
+    expect(tg.getAttribute('size')).to.equal('sm');
+    expect(tg.getAttribute('label')).to.equal('Chỉ của tôi');
     expect(f.get()).to.equal(undefined);
     tg.querySelector('input').click();
     await tick();
@@ -761,5 +769,44 @@ describe('media-picker-fields — impl review round 2 (ISSUE-10)', () => {
     input().click();
     await tick();
     expect(f.get()).to.equal('own');
+  });
+});
+
+describe('media-picker-fields — v0.33 always-open detail form (decision 18)', () => {
+  it('onDirtyChange fires only when dirty flips (user edit, snapshot, setValues)', async () => {
+    const seen = [];
+    const form = new FieldForm(normalizeFields(assetFields(), silent), {
+      asset: { id: 'a1' }, values: { title: 'T' }, idPrefix: 'fd', warn() {}, onDirtyChange: (d) => seen.push(d),
+    });
+    host.appendChild(form.el);
+    await tick();
+    expect(seen).to.deep.equal([]);
+    const inp = form.controls.get('title').control.querySelector('.td-field__control');
+    inp.value = 'T2';
+    inp.dispatchEvent(new Event('input', { bubbles: true }));
+    inp.value = 'T3';
+    inp.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(seen).to.deep.equal([true]);
+    form.snapshot();
+    expect(seen).to.deep.equal([true, false]);
+    form.setValues({ title: 'X' });
+    expect(seen).to.deep.equal([true, false, true]);
+    form.setValues({ title: 'T3' });
+    expect(seen).to.deep.equal([true, false, true, false]);
+  });
+
+  it('readonly: every field renders as text (no control), values() empty, never dirty, missingRequired false', async () => {
+    const form = new FieldForm(normalizeFields(assetFields(), silent), {
+      asset: { id: 'a1' }, values: { title: '<b>T</b>', license: 'owned', tags: ['hero'] }, idPrefix: 'fr', warn() {}, readonly: true,
+    });
+    host.appendChild(form.el);
+    await tick();
+    expect(form.el.querySelector('td-input-field, td-dropdown, td-chip-input, td-datetime-picker') === null).to.equal(true);
+    const title = form.controls.get('title').el.querySelector('.td-media-picker__readonly-value');
+    expect(title.textContent).to.equal('<b>T</b>');
+    expect(title.querySelector('b') === null).to.equal(true);
+    expect(form.values()).to.deep.equal({});
+    expect(form.dirty).to.equal(false);
+    expect(form.missingRequired()).to.equal(false);
   });
 });

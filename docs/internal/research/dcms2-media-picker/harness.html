@@ -1,0 +1,68 @@
+<!doctype html>
+<!--
+  dcms2 media picker parity harness (dev tool, NOT shipped, NOT a test). Renders the REAL dcms2 build read-only.
+  Setup (in a scratch dir, never inside dcms2):
+    cp harness.html <dir>/index.html; cp test/fixtures/{1,2,3,4}.svg <dir>/
+    ln -s /path/to/dcms2/public/build <dir>/build      # hashed names below = dcms2 manifest 2026-10-03; update if rebuilt
+    python3 -m http.server 5198 --bind 127.0.0.1 -d <dir>
+  Then: node docs/internal/research/dcms2-media-picker/shoot.mjs <outDir>
+  fetch is mocked (60 images 1200×800, /media/data + /media/{id}); window.__empty / window.__delay toggle states.
+-->
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dcms2 media picker harness</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+<link rel="stylesheet" href="build/assets/dcms-WAOzRaX1.css">
+<link rel="stylesheet" href="build/assets/tailwind-BS8YMWoC.css">
+<link rel="stylesheet" href="build/assets/dcms-app-B9ZS6GW0.css">
+<script>
+  // Mock environment (read-only harness; no dcms2 files touched)
+  window.APP_CONFIG = { csrfToken: 'x', authUserId: 1, authUserRoleId: 1, authz: { isAdmin: true, permissions: ['view_all_media','upload_media','delete_media'] } };
+  const names = (i) => `anh-${i}.jpg`;
+  const mk = (i) => ({
+    id: i, is_image: true, is_video: false, is_file: false,
+    original_filename: names(i), original_name: names(i), file_size: 120000 + i * 3171,
+    created_at: `2026-09-${String((i % 28) + 1).padStart(2, '0')}T08:30:00Z`,
+    width: 1200, height: 800, mime_type: 'image/jpeg',
+    url: `${((i - 1) % 4) + 1}.svg`, resize_urls: { 400: `${((i - 1) % 4) + 1}.svg`, 1200: `${((i - 1) % 4) + 1}.svg` },
+    alt_text: `Ảnh mẫu ${i}`, caption: '', uploaded_by: i % 2 ? 'Biên tập viên A' : 'Biên tập viên B', user_id: 1,
+  });
+  const all = Array.from({ length: 60 }, (_, k) => mk(k + 1));
+  const realFetch = window.fetch.bind(window);
+  window.__delay = 0;
+  window.fetch = async (input, init) => {
+    const url = new URL(typeof input === 'string' ? input : input.url, location.href);
+    const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+    if (url.pathname === '/media/data') {
+      if (window.__delay) await new Promise((r) => setTimeout(r, window.__delay));
+      if (window.__empty) return json({ status: 'success', data: [], pagination: { total: 0, per_page: 30, current_page: 1, last_page: 1 } });
+      const q = url.searchParams.get('search') || '';
+      const page = +url.searchParams.get('page') || 1;
+      const list = all.filter((m) => m.original_filename.includes(q));
+      const data = list.slice((page - 1) * 30, page * 30);
+      return json({ status: 'success', data, pagination: { total: list.length, per_page: 30, current_page: page, last_page: Math.ceil(list.length / 30) || 1 } });
+    }
+    const m = url.pathname.match(/^\/media\/(\d+)$/);
+    if (m) return json({ success: true, data: all.find((x) => x.id === +m[1]) });
+    if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/notifications')) return json({});
+    return realFetch(input, init);
+  };
+</script>
+<script type="module" src="build/assets/dcms-permission-BL66xhCn.js"></script>
+<script type="module" src="build/assets/dcms-components-entry-Br28UYij.js"></script>
+<script type="module" src="build/assets/index-Cd3AYwZt.js"></script>
+<script type="module" src="build/assets/dcms-app-08dOnAyO.js"></script>
+</head>
+<body class="bg-gray-50">
+<button id="open" type="button">Open</button>
+<button id="open-multi" type="button">Open multi</button>
+<script type="module">
+  const go = (multiple) => window.DCMS.MediaPicker.show({ type: 'image', multiple, onSelect: (x) => console.log('select', x) });
+  document.getElementById('open').addEventListener('click', () => go(false));
+  document.getElementById('open-multi').addEventListener('click', () => go(true));
+</script>
+</body>
+</html>
