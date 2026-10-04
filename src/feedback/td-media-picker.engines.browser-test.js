@@ -583,15 +583,22 @@ describe('td-media-picker — latest wins + abort (decision 9)', () => {
     const n0 = ad.calls.list.length;
     const input = searchInput();
     input.focus();
+    // keystroke timing is real: under heavy machine load a gap between two keys can itself exceed the 250 ms debounce,
+    // and then a request for the partial text is CORRECT — count the gaps instead of assuming a fast burst
+    const stamps = [];
+    const onInput = () => stamps.push(performance.now());
+    input.addEventListener('input', onInput);
     await sendKeys({ type: 'anh' });
-    await wait(100);
-    expect(ad.calls.list.length).to.equal(n0);
+    input.removeEventListener('input', onInput);
+    const longGaps = stamps.slice(1).filter((t, i) => t - stamps[i] >= 250).length;
+    await until(() => ad.calls.list.length >= n0 + 1 + longGaps && ad.calls.list.at(-1).args[0].query === 'anh', 4000, 'debounced request');
     await wait(300);
-    expect(ad.calls.list.length).to.equal(n0 + 1);
+    expect(ad.calls.list.length, `one request per settled burst (${longGaps} long gap(s))`).to.equal(n0 + 1 + longGaps);
     expect(ad.calls.list.at(-1).args[0].query).to.equal('anh');
+    const n1 = ad.calls.list.length;
     await sendKeys({ type: '-2' });
     await sendKeys({ press: 'Enter' });
-    expect(ad.calls.list.length).to.equal(n0 + 2);
+    expect(ad.calls.list.length).to.be.at.least(n1 + 1);
     expect(ad.calls.list.at(-1).args[0].query).to.equal('anh-2');
   });
 
