@@ -29,7 +29,7 @@ matchMedia(mqBelow('md')).addEventListener('change', relayout); // '(max-width: 
 if (!isCoarsePointer()) searchInput.focus();                    // không bật bàn phím ảo trên máy cảm ứng
 ```
 
-`BREAKPOINTS = { sm: 480, md: 720, lg: 1024, xl: 1280 }`, `SHORT_MAX = 500`, `mqBelow(name)`, `mqAtLeast(name)`,
+Đúng sáu tên: `BREAKPOINTS = { sm: 480, md: 720, lg: 1024, xl: 1280 }`, `SHORT_MAX = 500`, `mqBelow(name)`,
 `matchesBelow(name)`, `isCoarsePointer()` (`(hover: none) and (pointer: coarse)`), `isShort()`.
 
 ## Component theo chỗ đặt (container query) và theo màn hình (media query)

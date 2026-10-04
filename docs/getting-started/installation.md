@@ -477,7 +477,7 @@ Nguồn: `package.json#exports`.
 | `@dazzxq/td-components/datetime-picker` | `src/form/td-datetime-picker.js` | `<td-datetime-picker>`, `TdDatetimePicker` |
 | `@dazzxq/td-components/datetime` | `src/utils/datetime.js` | `TdDateTime` (tiện ích ngày giờ) |
 | `@dazzxq/td-components/form-validation` | `src/utils/form-validation.js` | `TdFormValidation` |
-| `@dazzxq/td-components/breakpoints` | `src/utils/breakpoints.js` | Breakpoint kit (0.34.0, [ADR 0014](../internal/decisions/0014-breakpoints-container-queries.md)): `BREAKPOINTS`, `mqBelow`, `mqAtLeast`, `isCoarsePointer`, `isShort`… — xem [responsive](../concepts/responsive.md) |
+| `@dazzxq/td-components/breakpoints` | `src/utils/breakpoints.js` | Breakpoint kit (0.34.0, [ADR 0014](../internal/decisions/0014-breakpoints-container-queries.md)): `BREAKPOINTS`, `SHORT_MAX`, `mqBelow`, `matchesBelow`, `isCoarsePointer`, `isShort` — xem [responsive](../concepts/responsive.md) |
 | `@dazzxq/td-components/modal` | `src/feedback/td-modal.js` | `TdModal` (API tĩnh) |
 | `@dazzxq/td-components/modal-stack` | `src/feedback/td-modal-stack.js` | `TdModalStackManager` |
 | `@dazzxq/td-components/toast` | `src/feedback/td-toast.js` | `TdToast` (API tĩnh) |

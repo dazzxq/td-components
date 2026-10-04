@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BREAKPOINTS, SHORT_MAX, MQ_SHORT, MQ_COARSE, mqBelow, mqAtLeast, matches, isCoarsePointer } from './breakpoints.js';
+import { BREAKPOINTS, SHORT_MAX, mqBelow, isCoarsePointer } from './breakpoints.js';
+import { MQ_SHORT, MQ_COARSE, mqAtLeast, matches } from './breakpoints-internal.js';
 import { WIDTHS, SHORT_MAX as CSS_SHORT } from '../../scripts/css-responsive.mjs';
 
 test('constants match the CSS lint (one set of numbers)', () => {
@@ -55,7 +56,7 @@ test('no hand-written width/height thresholds in component JS', async () => {
   const bad = [];
   for (const f of await jsFiles(join(root, 'src'))) {
     const rel = relative(root, f).split('\\').join('/');
-    if (rel === 'src/utils/breakpoints.js') continue;
+    if (rel === 'src/utils/breakpoints.js' || rel === 'src/utils/breakpoints-internal.js') continue;
     const src = await readFile(f, 'utf8');
     src.split('\n').forEach((line, i) => {
       if (/^\s*(\*|\/\/)/.test(line)) return;
@@ -65,4 +66,13 @@ test('no hand-written width/height thresholds in component JS', async () => {
     });
   }
   assert.deepEqual(bad, []);
+});
+
+test('public API (review #6): ./breakpoints and the barrel export exactly the plan names', async () => {
+  const pub = await import('./breakpoints.js');
+  assert.deepEqual(Object.keys(pub).sort(), ['BREAKPOINTS', 'SHORT_MAX', 'isCoarsePointer', 'isShort', 'matchesBelow', 'mqBelow']);
+  const src = await readFile(new URL('../../index.js', import.meta.url), 'utf8');
+  const block = /export \{([^}]*)\} from '\.\/src\/utils\/breakpoints\.js';/.exec(src);
+  assert.ok(block, 'barrel re-exports breakpoints');
+  assert.deepEqual(block[1].split(',').map((x) => x.trim()).filter(Boolean).sort(), ['BREAKPOINTS', 'SHORT_MAX', 'isCoarsePointer', 'isShort', 'matchesBelow', 'mqBelow']);
 });
