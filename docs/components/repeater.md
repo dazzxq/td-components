@@ -297,6 +297,12 @@ Không có animation.
 - Kit không đặt `name` → không có đường nào để dữ liệu người dùng chọn tên field gửi đi. Server vẫn phải kiểm số dòng
   (`min-rows` / `max-rows` chỉ là UX) và từng giá trị.
 
+## Cảm ứng
+
+- Sắp xếp bằng tay nắm (khi `sortable`) theo ngưỡng của [td-sortable](sortable.md#cảm-ứng): ngón 10 px, bút 8, chuột 4. Nút thêm / xoá / tay nắm có hình nhấn; hover chỉ trên con trỏ mịn.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **Submit ra `items[{i}][name]`** (chưa thay `{i}`) hoặc thiếu dòng mới → chưa gắn công thức đặt tên, hoặc quên gọi

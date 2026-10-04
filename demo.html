@@ -494,6 +494,26 @@
     <div id="demo-responsive"></div>
   </div>
 
+  <!-- ═══════════════════ CẢM ỨNG (v0.36.2) ═══════════════════ -->
+  <div class="demo-section" id="demo-touch">
+    <h2>Cảm ứng <span class="demo-code">ADR 0019 · docs/internal/release-touch-checklist.md</span></h2>
+    <p class="demo-note">Khu chạy checklist iPhone thật: chạm giữ nút / option / tab để thấy hình nhấn (không có hover dính),
+      chạm nút có tooltip (không bật), mở form dài trong sheet và chạm ô cuối (ô + lỗi + footer nằm trên bàn phím), vuốt
+      lightbox (theo ngón, 1/4 bề rộng hoặc vuốt nhanh thì sang ảnh), kéo tay nắm sortable (ngón 10 px) và vuốt dọc trên thân item.</p>
+    <div class="demo-row">
+      <button type="button" class="td-btn td-btn--primary" id="demo-touch-sheet"><span class="td-btn__label">Form trong sheet</span></button>
+      <button type="button" class="td-btn td-btn--secondary" id="demo-touch-drawer"><span class="td-btn__label">Form trong drawer</span></button>
+      <button type="button" class="td-btn td-btn--secondary" id="demo-touch-lightbox"><span class="td-btn__label">Lightbox 5 ảnh</span></button>
+      <button type="button" class="td-btn td-btn--ghost" id="demo-touch-lightbox-one"><span class="td-btn__label">Lightbox 1 ảnh</span></button>
+      <button type="button" class="td-btn td-btn--ghost" data-tooltip="Tooltip không bật khi chạm"><span class="td-btn__label">Có tooltip</span></button>
+    </div>
+    <td-sortable label="Thứ tự (cảm ứng)">
+      <div data-td-sort-item data-id="t1" data-td-sort-label="Mục một">Mục một — kéo tay nắm, vuốt dọc ở đây để cuộn</div>
+      <div data-td-sort-item data-id="t2" data-td-sort-label="Mục hai">Mục hai</div>
+      <div data-td-sort-item data-id="t3" data-td-sort-label="Mục ba">Mục ba</div>
+    </td-sortable>
+  </div>
+
   <!-- ═══════════════════ TABLE ═══════════════════ -->
   <div class="demo-section">
     <h2>Table <span class="demo-code">&lt;td-table&gt;</span></h2>
@@ -774,6 +794,29 @@
     // v0.34
     import { mountResponsiveFixture } from './test/fixtures/responsive-page.js';
     mountResponsiveFixture(document.querySelector('#demo-responsive'));
+
+    // v0.36.2 touch section (ADR 0019): long form + errors in a sheet / drawer, lightbox 5 / 1 images
+    const touchForm = () => {
+      const f = document.createElement('div');
+      for (let i = 1; i <= 9; i++) {
+        const el = document.createElement(i % 3 === 0 ? 'td-number-input' : 'td-input-field');
+        el.setAttribute('label', i % 3 === 0 ? `Số lượng ${i}` : `Trường ${i}`);
+        el.setAttribute('enterkeyhint', i === 9 ? 'done' : 'next');
+        f.append(el);
+      }
+      queueMicrotask(() => { const last = f.lastElementChild; if (last.setError) last.setError('Không được bỏ trống'); });
+      return f;
+    };
+    document.querySelector('#demo-touch-sheet').addEventListener('click', () => {
+      TdModal.show({ title: 'Form dài trong sheet', body: touchForm(), actions: [{ label: 'Huỷ', value: false }, { label: 'Lưu', variant: 'primary', value: true }] });
+    });
+    document.querySelector('#demo-touch-drawer').addEventListener('click', () => { TdDrawer.open({ title: 'Form trong drawer', body: touchForm() }); });
+    document.querySelector('#demo-touch-lightbox').addEventListener('click', () => {
+      TdLightbox.open([1, 2, 3, 4, 1].map((n, i) => ({ src: `./test/fixtures/${n}.svg`, caption: `Ảnh ${i + 1}` })));
+    });
+    document.querySelector('#demo-touch-lightbox-one').addEventListener('click', () => {
+      TdLightbox.open([{ src: './test/fixtures/photo.svg', caption: 'Một ảnh (dây chun)' }]);
+    });
 
     // Expose cho onclick handlers
     window.TdModal = TdModal;

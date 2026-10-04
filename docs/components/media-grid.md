@@ -387,6 +387,13 @@ chữ). `data-id` chỉ dùng như chuỗi so sánh, không đi vào selector ha
 (regex chặt, sai → bỏ qua). CSP strict: class / data attribute + CSSOM `style.setProperty` (không bị
 `style-src-attr` chặn), không `style="…"`, không `<style>`.
 
+## Cảm ứng
+
+- Tick chọn luôn hiện trên cảm ứng (`(hover: none), (pointer: coarse)`); opener (ảnh) và tick có hình nhấn (ảnh tối nhẹ). Hover chỉ trên con trỏ mịn.
+- Sắp xếp (gallery với `td-sortable`) theo ngưỡng ngón 10 px / bút 8 / chuột 4.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **Quên `data-id`** hoặc `data-id` trùng: ô không chọn được (ô trùng sau bị bỏ qua). `data-id` nên cố định; nếu site

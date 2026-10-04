@@ -281,6 +281,12 @@ Nhãn, mô tả, dữ liệu tải về và `TdTree.labels` chỉ đi qua `textC
 hook render nút. Id từ bộ đếm, không ghép từ dữ liệu. Không `style=""` (CSP strict). Nút khoá chỉ là khoá **giao diện**:
 server luôn tự kiểm quyền.
 
+## Cảm ứng
+
+- Hàng cây có hình nhấn (`--td-option-pressed-bg`); hover chỉ trên con trỏ mịn.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **`name="perms"` chỉ nhận giá trị cuối trong PHP** — dùng `name="perms[]"`.

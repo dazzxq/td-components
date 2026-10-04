@@ -21,6 +21,21 @@
 - **Consumer mới thêm selector trạng thái của mình (bật / lưng chừng / khoá) vào `src/styles/components/check.css`** —
   danh sách selector nằm một chỗ đó, không viết luật trạng thái của mark trong CSS component.
 
+## Cảm ứng (v0.36.2, [ADR 0019](decisions/0019-touch-standard.md))
+
+- Luật đầy đủ: [design/touch.md](design/touch.md). `npm run check:css` chạy hai lint của `scripts/css-touch.mjs`:
+  `:hover` chỉ trong `@media (hover: hover) and (pointer: fine)`; mọi control (gốc của `:hover` / `cursor: pointer`) có
+  luật `:is(:active, [data-td-pressed])` ngoài cổng đó. Ngoại lệ bằng comment cùng dòng hoặc dòng trên:
+  `/* hover-exempt: <lý do> */`, `/* active-exempt: <lý do> */` (lý do bắt buộc, được review).
+- Thêm control mới → thêm luật nhấn (token `--td-color-pressed` / `--td-option-pressed-bg` / `--td-btn-*-pressed`, chỉ
+  đổi màu, `transition-duration: 0s`, `-webkit-tap-highlight-color: transparent`) → cập nhật `PRESS_TARGETS` trong
+  `src/utils/press.js` (test `css-touch.test.js` in diff). Không tự đặt `data-td-pressed`: `ensurePressStates()` làm việc
+  đó (overlay mở trước khi có element nào connect phải gọi nó).
+- Ngưỡng kéo / khoá trục / vận tốc / vuốt: `src/utils/gesture.js` (`dragSlop(e.pointerType)` theo sự kiện, không theo
+  media query). `touch-action` mới → sửa bảng trong `src/styles/td-touch-action.test.js` + design/touch.md.
+- Dialog có ô gõ chữ: `openDialogLayer({ viewport: { root, scroller } })` (`src/utils/keyboard-viewport.js`); con của gốc
+  lớp phủ dùng `100%`, không `100dvh`.
+
 ## Escaping theo ngữ cảnh
 
 | Ngữ cảnh | Dùng |
@@ -42,6 +57,7 @@ Chi tiết và danh sách raw-HTML hatch: [security.md](security-model.md).
 | `npm run test:node` | Node + DOM shim tối giản, logic thuần | `src/**/*.test.js` |
 | `npm run test:browser` | Chromium thật qua `@web/test-runner` (form association, XSS, CSP fallback) | `src/**/*.browser-test.js` |
 | `npm run test:csp` | Playwright + header CSP strict: 0 violation + parity computed style với baseline (70 state) + animation liveness | `test/csp/` |
+| `npm run test:touch` | Playwright: Chromium 390×844 hasTouch + CDP touch, WebKit iPhone 13 smoke (ADR 0019) | `test/touch/` |
 | `npm test` | cả ba | |
 
 - Đổi visual có chủ đích → chạy lại `npm run capture:baseline` và commit baseline mới kèm lý do.

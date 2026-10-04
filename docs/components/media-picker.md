@@ -1161,6 +1161,13 @@ Picker theo bố cục và cách dùng của media picker dcms2. Bảng dưới 
 | Giá trị form | URL | `assetId` | cố ý khác |
 | CSP | `<style>` chèn lúc chạy, `style.cssText`, z-index 100000 | CSP strict, CSSOM, tầng modal của kit | cố ý khác |
 
+## Cảm ứng
+
+- Khi bàn phím ảo mở (ô tìm, trường chi tiết, hộp tải lên / URL, sheet lọc), lớp phủ co theo vùng nhìn thấy; vùng cuộn chứa ô đang nhập tự cuộn tới nó. Card, nút quay lại có hình nhấn (opener ảnh tối nhẹ); hover viền chỉ trên con trỏ mịn.
+- Bước cắt (crop dialog) không theo bàn phím (không có ô gõ chữ).
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **`TypeError: … adapter must implement list() and get()`** → chưa `configureDefaults({ adapter })`, hoặc adapter thiếu

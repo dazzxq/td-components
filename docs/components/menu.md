@@ -439,6 +439,12 @@ rê chuột / được bấm.
 
 Xem thêm [Hướng dẫn bảo mật](../guides/security.md).
 
+## Cảm ứng
+
+- Mục menu và nút mở menu có hình nhấn (`--td-option-pressed-bg`); hover chỉ trên con trỏ mịn. Mục disabled không có hình nhấn.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **Menu đi theo "chủ" của nó (0.21.1).** Popup tự đóng khi trigger bị khung cuộn cắt, bị ẩn mà không cần

@@ -241,6 +241,12 @@ ngoài nguồn đã chụp).
   clipboard. Bí mật thật sự (mật khẩu, khoá bí mật) không nên in ra trang chỉ để có nút copy.
 - Clipboard là của hệ điều hành: ứng dụng khác đọc được. Với mã khôi phục, nhắc người dùng lưu vào trình quản lý mật khẩu.
 
+## Cảm ứng
+
+- Nút có hình nhấn; hover chỉ trên con trỏ mịn. Chạm hai lần nhanh trong lúc đang sao chép chỉ đổi trạng thái một lần.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **Bấm luôn báo lỗi trên `http://` (không phải localhost)**: Clipboard API chỉ có ở secure context. Dùng HTTPS; trong

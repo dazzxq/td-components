@@ -850,6 +850,25 @@ Những giả định tin cậy mà site phải biết:
 
 Xem [Hướng dẫn bảo mật](../guides/security.md).
 
+## Cảm ứng
+
+Thứ tự ưu tiên cử chỉ: **pinch** (hai ngón, zoom) > **pan** (đang zoom > 1) > **khoá trục** ở 8 px đầu tiên > vuốt
+**ngang** (chuyển ảnh) / **xuống** (đóng) / **lên** (mở sheet thông tin) > **chạm** / **chạm đúp** (zoom).
+
+| Cử chỉ (zoom = 1, ngón / bút) | Kết quả |
+|---|---|
+| Kéo ngang | Khung ảnh **đi theo ngón** (0.36.2). Thả qua **1/4** bề rộng vùng ảnh, hoặc vuốt nhanh (> 0.3 px/ms, qua 10 px, cùng chiều) → sang ảnh (RTL: vuốt phải = ảnh kế); không thì **bật về** |
+| Kéo ngang, chỉ 1 ảnh | Dây chun (đi theo ít hơn ngón, có trần), không chuyển |
+| Bắt đầu trong 24 px mép trái / phải | Của trình duyệt (cử chỉ back), lightbox không theo |
+| Kéo xuống > 90 px | Đóng (ảnh theo ngón, như cũ) |
+| Kéo lên > 60 px (có panel) | Mở sheet thông tin |
+| Reduced motion | Không theo ngón, không trượt / bật; thả qua ngưỡng → đổi ảnh ngay |
+
+Trong lúc ảnh đang trượt ra / bật về (~0.2 s), cử chỉ mới chờ; nút, phím và `next()` / `prev()` vẫn chạy và thắng (không
+chuyển hai lần). Nút thanh đáy / đĩa có hình nhấn; hover chỉ trên con trỏ mịn.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **Mở từ trong modal (0.21.1):** lightbox nằm trên modal (trước đây nằm dưới và bị inert), phím mũi tên / Escape
