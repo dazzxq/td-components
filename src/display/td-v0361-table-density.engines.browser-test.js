@@ -247,6 +247,67 @@ describe('v0.36.1 td-table — icon-only actions in card mode (QĐ 7)', () => {
   });
 });
 
+/**
+ * Hit area of `btn`: its box, and elementFromPoint at the centre and 2px inside each edge resolves to `btn` (or inside it).
+ * @returns {{ w: number, h: number, misses: string[] }}
+ */
+function hitArea(btn) {
+  const r = btn.getBoundingClientRect();
+  const pts = { centre: [r.left + r.width / 2, r.top + r.height / 2], left: [r.left + 2, r.top + r.height / 2],
+    right: [r.right - 2, r.top + r.height / 2], top: [r.left + r.width / 2, r.top + 2], bottom: [r.left + r.width / 2, r.bottom - 2] };
+  const misses = Object.entries(pts).filter(([, [x, y]]) => {
+    const hit = document.elementFromPoint(x, y);
+    return !hit || !(hit === btn || btn.contains(hit));
+  }).map(([k]) => k);
+  return { w: r.width, h: r.height, misses };
+}
+
+// ISSUE-3 (Codex impl-review): coarse-pointer runtime fixture. web-test-runner cannot emulate `pointer: coarse` (its
+// emulateMedia has no pointer feature), so the values of td.css's OWN `@media (pointer: coarse)` rule for `.td-table`
+// are read from the stylesheet and applied to the table root via CSSOM (same values, same cascade target); when the
+// engine really is coarse the media rule applies by itself. The real-device version (Playwright hasTouch / isMobile,
+// Chromium + WebKit) is in test/responsive/responsive.spec.mjs ("td-table icon actions (coarse)").
+describe('v0.36.1 td-table — coarse pointer: two icon actions (ISSUE-3)', () => {
+  /** custom properties the td.css `@media (pointer: coarse)` rule sets on `.td-table` */
+  function coarseTableVars() {
+    const sheet = [...document.styleSheets].find((x) => x.href && x.href.endsWith('/td.css'));
+    const out = {};
+    const walk = (list, coarse) => {
+      for (const r of list) {
+        const isCoarse = coarse || (r.media && /pointer:\s*coarse/.test(r.media.mediaText));
+        if (r.cssRules) walk(r.cssRules, isCoarse);
+        if (isCoarse && r.selectorText === '.td-table' && r.style) {
+          for (const prop of r.style) if (prop.startsWith('--_td-table-')) out[prop] = r.style.getPropertyValue(prop).trim();
+        }
+      }
+    };
+    walk(sheet.cssRules, false);
+    return out;
+  }
+
+  it('each visible icon action has a ≥ 44 × 44 hit area (elementFromPoint centre + edges), ≥ 8px apart', async () => {
+    const vars = coarseTableVars();
+    expect(Object.keys(vars).sort()).to.deep.equal(['--_td-table-action-gap', '--_td-table-action-size', '--_td-table-lead-size']);
+    const { el } = await mk(360, COLS, POSTS);
+    const root = el.querySelector('.td-table');
+    if (!matchMedia('(pointer: coarse)').matches) for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
+    await frames(2);
+    const btns = [...rows(el)[0].querySelectorAll('.td-table__action--icon')].filter(visible);
+    expect(btns).to.have.length(2);
+    btns[0].scrollIntoView({ block: 'center' });
+    await frames(2);
+    const areas = btns.map(hitArea);
+    areas.forEach((a, i) => {
+      expect(a.w >= 43.5 && a.h >= 43.5, `action ${i} ${a.w}×${a.h}`).to.equal(true);
+      expect(a.misses, `action ${i} edge probes`).to.deep.equal([]);
+    });
+    const [a, b] = btns.map((x) => x.getBoundingClientRect());
+    const gap = Math.max(b.left - a.right, a.left - b.right);
+    expect(gap >= 7.5, `separation ${gap}px`).to.equal(true);
+    expect(btns.map((x) => x.textContent.trim())).to.deep.equal(['Sửa', 'Xoá']);
+  });
+});
+
 describe('v0.36.1 td-table — one-row sort bar (QĐ 8)', () => {
   const SORT6 = ['code', 'customer', 'phone', 'total', 'date', 'status'].map((key, i) => ({ key, label: `Cột sắp xếp ${i + 1}`, sortable: true }));
   const DATA = Array.from({ length: 3 }, (_, i) => ({ code: `DH${i}`, customer: `Khách ${3 - i}`, phone: '0900', total: i, date: '01/10', status: 'x' }));

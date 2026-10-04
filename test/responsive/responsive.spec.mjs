@@ -235,6 +235,40 @@ async function runConfig(browser, c) {
         }
       }
       notes.push(`${tag} card heights: ${dens.filter((d) => d.card).map((d) => `${d.id} ${Math.round(Math.max(...d.rows))} / bar ${Math.round(d.head)}`).join(', ')}`);
+      if (c.touch && c.engine !== 'firefox') {
+        // ISSUE-3: real coarse pointer — a card row with TWO visible icon actions: each a ≥ 44 × 44 hit area (box +
+        // elementFromPoint at the centre and 2px inside every edge hits that action), ≥ 8px apart
+        const act = await page.evaluate(async () => {
+          const wrap = document.createElement('div');
+          wrap.style.setProperty('width', `${Math.min(360, document.documentElement.clientWidth)}px`);
+          document.body.prepend(wrap);
+          const t = document.createElement('td-table');
+          wrap.appendChild(t);
+          t.columns = [{ key: 'id', label: 'ID' }, { key: 'title', label: 'Tiêu đề', card: 'primary' }, { key: 'd', label: 'Ngày', card: 'meta' },
+            { key: 'act', label: 'Thao tác', actions: [{ id: 'e', label: 'Sửa', icon: 'pencil' }, { id: 'x', label: 'Xoá', icon: 'trash', variant: 'danger' }] }];
+          t.data = [{ id: 1, title: 'Bài viết', d: '01/10/2026' }];
+          await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+          window.scrollTo(0, 0);
+          const btns = [...t.querySelectorAll('.td-table__action--icon')].filter((b) => b.getBoundingClientRect().width > 1);
+          const res = btns.map((b) => {
+            const r = b.getBoundingClientRect();
+            const pts = [[r.left + r.width / 2, r.top + r.height / 2], [r.left + 2, r.top + r.height / 2], [r.right - 2, r.top + r.height / 2],
+              [r.left + r.width / 2, r.top + 2], [r.left + r.width / 2, r.bottom - 2]];
+            const miss = pts.filter(([x, y]) => { const h = document.elementFromPoint(x, y); return !h || !(h === b || b.contains(h)); }).length;
+            return { l: r.left, r: r.right, w: r.width, h: r.height, miss };
+          });
+          wrap.remove();
+          return res;
+        });
+        const actErr = [];
+        if (act.length !== 2) actErr.push(`expected 2 visible icon actions, got ${act.length}`);
+        act.forEach((x, i) => {
+          if (x.w < 43.5 || x.h < 43.5) actErr.push(`action ${i} ${x.w}×${x.h} < 44 × 44`);
+          if (x.miss) actErr.push(`action ${i}: ${x.miss} of 5 elementFromPoint probes miss it`);
+        });
+        if (act.length === 2 && Math.max(act[1].l - act[0].r, act[0].l - act[1].r) < 7.5) actErr.push(`actions ${(act[1].l - act[0].r).toFixed(1)}px apart (< 8)`);
+        check(tag, 'td-table icon actions (coarse, v0.36.1)', actErr);
+      }
       check(tag, `td-table card density (v0.36.1)${c.shots ? ` (screenshot ${join(OUT, tag, 'page.png')})` : ''}`, densErr);
     }
     const snap = await page.locator('#rsp-table-narrow table').ariaSnapshot();
