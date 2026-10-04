@@ -1747,7 +1747,7 @@ namespace {
             'id' => $cid,
             'inputmode' => $text ? 'text' : 'numeric',
             'autocomplete' => 'one-time-code',
-            'autocapitalize' => $text ? ($case === 'upper' ? 'characters' : 'off') : null,
+            'autocapitalize' => $text ? ($case === 'upper' ? 'characters' : 'none') : null,
             'autocorrect' => $text ? 'off' : null,
             'spellcheck' => $text ? 'false' : null,
             'name' => $name !== '' ? $name : null,

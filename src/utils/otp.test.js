@@ -65,5 +65,5 @@ test('pattern / cell text / input attributes per charset', () => {
   assert.deepEqual(otpInputAttrs('numeric', 'upper'), [['inputmode', 'numeric'], ['autocomplete', 'one-time-code']]);
   assert.deepEqual(otpInputAttrs('alphanumeric', 'upper'), [['inputmode', 'text'], ['autocomplete', 'one-time-code'],
     ['autocapitalize', 'characters'], ['autocorrect', 'off'], ['spellcheck', 'false']]);
-  assert.equal(otpInputAttrs('alpha', 'lower')[2][1], 'off');
+  assert.equal(otpInputAttrs('alpha', 'lower')[2][1], 'none');
 });

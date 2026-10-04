@@ -67,7 +67,7 @@ describe('php/td.php — td_otp_input v0.36.0 (length / charset / case, otp-inpu
     assert.equal(b.warns.length, 1);
     assert.ok(b.out.includes('autocapitalize="characters"'), b.out);
     assert.equal(c.warns.length, 0);
-    assert.ok(c.out.includes('autocapitalize="off"') && c.out.includes('pattern="[A-Za-z]{3}"'), c.out);
+    assert.ok(c.out.includes('autocapitalize="none"') && c.out.includes('pattern="[A-Za-z]{3}"'), c.out);
   });
 
   test('golden: 6-digit numeric markup is byte-identical to v0.35 (native + element)', () => {
@@ -97,7 +97,7 @@ describe('php/td.php — td_otp_input v0.36.0 (length / charset / case, otp-inpu
       + ' autocomplete="one-time-code" autocapitalize="characters" autocorrect="off" spellcheck="false" name="code" maxlength="5"'
       + ` pattern="${otpPattern('alphanumeric', 5)}" value="WMX7Q" aria-label="Mã xác thực">${CELLS(5)}</div></div></td-otp-input>`);
     assert.equal(nat.out, '<div class="td-otp x" data-length="5"><div class="td-otp__box"><input type="text" class="td-otp__input" id="sn"'
-      + ' inputmode="text" autocomplete="one-time-code" autocapitalize="off" autocorrect="off" spellcheck="false" name="code"'
+      + ' inputmode="text" autocomplete="one-time-code" autocapitalize="none" autocorrect="off" spellcheck="false" name="code"'
       + ' maxlength="5" pattern="[A-Za-z0-9]{5}" aria-label="Mã xác thực"></div></div>');
   });
 

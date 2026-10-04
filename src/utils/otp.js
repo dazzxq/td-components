@@ -127,7 +127,7 @@ export function otpCellOk(text, charset) {
 
 /**
  * Input attributes per charset, in markup order (after type / class / id): numeric → inputmode numeric; letters →
- * inputmode text, autocapitalize (characters for upper, off otherwise), autocorrect off, spellcheck false; always
+ * inputmode text, autocapitalize (characters for upper, none otherwise — not 'off': Linux Firefox reports the canonical 'none'), autocorrect off, spellcheck false; always
  * autocomplete one-time-code. Same order in php/td.php.
  * @param {string} charset
  * @param {string} textCase
@@ -135,7 +135,7 @@ export function otpCellOk(text, charset) {
  */
 export function otpInputAttrs(charset, textCase) {
   if (charset === 'numeric') return [['inputmode', 'numeric'], ['autocomplete', 'one-time-code']];
-  return [['inputmode', 'text'], ['autocomplete', 'one-time-code'], ['autocapitalize', textCase === 'upper' ? 'characters' : 'off'],
+  return [['inputmode', 'text'], ['autocomplete', 'one-time-code'], ['autocapitalize', textCase === 'upper' ? 'characters' : 'none'],
     ['autocorrect', 'off'], ['spellcheck', 'false']];
 }
 

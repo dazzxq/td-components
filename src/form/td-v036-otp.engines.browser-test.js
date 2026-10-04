@@ -30,7 +30,7 @@ function ssrHtml(id, { length = 6, charset = 'numeric', textCase = null, value =
   const pattern = { numeric: '[0-9]', alphanumeric: '[A-Za-z0-9]', alpha: '[A-Za-z]' }[charset];
   const text = charset !== 'numeric';
   const caseAttr = textCase ? ` case="${textCase}"` : '';
-  const ac = text ? ` autocapitalize="${(textCase || 'upper') === 'upper' ? 'characters' : 'off'}" autocorrect="off" spellcheck="false"` : '';
+  const ac = text ? ` autocapitalize="${(textCase || 'upper') === 'upper' ? 'characters' : 'none'}" autocorrect="off" spellcheck="false"` : '';
   return `<td-otp-input data-td-ssr="otp-input@1" id="${id}" name="${name}"${value ? ` value="${value}"` : ''}`
     + `${length !== 6 ? ` length="${length}"` : ''}${charset !== 'numeric' ? ` charset="${charset}"` : ''}${caseAttr}>`
     + `<div class="td-otp"${length !== 6 ? ` data-length="${length}"` : ''}><div class="td-otp__box">`
@@ -151,7 +151,7 @@ describe('v0.36.0 td-otp-input — charset + case', () => {
     expect(input.getAttribute('autocapitalize')).to.equal('characters');
     expect(input.getAttribute('autocorrect')).to.equal('off');
     expect(input.getAttribute('spellcheck')).to.equal('false');
-    expect(inputOf(otp('charset="alpha" case="lower"')).getAttribute('autocapitalize')).to.equal('off');
+    expect(inputOf(otp('charset="alpha" case="lower"')).getAttribute('autocapitalize')).to.equal('none');
   });
 
   it('typing (real keys): alphanumeric upper-cases, drops - and spaces', async () => {
