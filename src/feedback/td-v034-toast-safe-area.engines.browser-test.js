@@ -136,3 +136,56 @@ describe('v0.34.0 TdToast — horizontal safe area at every width (rule text)', 
     expect(/max\(/.test(bottom) && /safe-area-inset-bottom/.test(bottom), `bottom: ${bottom}`).to.equal(true);
   });
 });
+
+describe('v0.34.0 TdToast — RTL (dir="rtl" document): insets follow the physical side of each placement', () => {
+  afterEach(() => { root.removeAttribute('dir'); });
+
+  /** top-level `.td-toasts:dir(rtl)` rules (outside width queries) */
+  function rtlRules() {
+    const out = [];
+    const walk = (rules, inWidthMedia) => {
+      for (const rule of rules) {
+        if (rule.cssRules && !rule.selectorText) {
+          walk(rule.cssRules, inWidthMedia || !!(rule.media && /width/.test(rule.media.mediaText)));
+        } else if (rule.selectorText && /^\.td-toasts:dir\(rtl\)$/.test(rule.selectorText.trim()) && !inWidthMedia) {
+          out.push(rule);
+        }
+      }
+    };
+    walk(link.sheet.cssRules, false);
+    return out;
+  }
+
+  it('the :dir(rtl) rule swaps the insets (inline-start ↔ right, inline-end ↔ left)', () => {
+    const rules = rtlRules();
+    expect(rules.length, 'one top-level .td-toasts:dir(rtl) rule').to.equal(1);
+    const st = rules[0].style;
+    const start = st.getPropertyValue('inset-inline-start');
+    const end = st.getPropertyValue('inset-inline-end');
+    expect(/safe-area-inset-right/.test(start), start).to.equal(true);
+    expect(/safe-area-inset-left/.test(end), end).to.equal(true);
+  });
+
+  it('end placement (default) anchors to the physical LEFT in RTL; start placement to the physical RIGHT', async () => {
+    await setViewport({ width: 1280, height: 800 });
+    root.setAttribute('dir', 'rtl');
+    let r = await showOne();
+    expect(Math.abs(r.left - 16) < 0.5, `rtl end: left ${r.left}`).to.equal(true);
+    await clearAll();
+    root.style.setProperty('--td-toast-inline-start', '1rem');
+    root.style.setProperty('--td-toast-inline-end', 'auto');
+    root.style.setProperty('--td-toast-align', 'flex-start');
+    r = await showOne();
+    const vw = document.documentElement.clientWidth;
+    expect(Math.abs(vw - r.right - 16) < 0.5, `rtl start: right gap ${vw - r.right}`).to.equal(true);
+    expect(r.left >= 0).to.equal(true);
+  });
+
+  it('xs (390px) in RTL: still one full-width column inside the gutters', async () => {
+    await setViewport({ width: 390, height: 844 });
+    root.setAttribute('dir', 'rtl');
+    const r = await showOne();
+    const vw = document.documentElement.clientWidth;
+    expect(Math.abs(r.left - 16) < 0.5 && Math.abs(vw - r.right - 16) < 0.5, `${r.left}..${r.right} / ${vw}`).to.equal(true);
+  });
+});

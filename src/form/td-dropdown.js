@@ -1,4 +1,5 @@
 import { fold, nextTypeaheadIndex } from '../utils/typeahead.js';
+import { ValueTitleWatcher, displayedValueText } from '../utils/value-title.js';
 import { isCoarsePointer } from '../utils/breakpoints.js';
 import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
 import { LAYERS, register as registerLayer } from '../utils/layers.js';
@@ -605,45 +606,29 @@ export class TdDropdown extends TdFormElement {
    */
   _watchValueTitle() {
     const el = this.querySelector('.td-dropdown__value');
-    if (!this._vtRO && typeof ResizeObserver === 'function') {
-      this._vtRO = new ResizeObserver(() => this._syncValueTitle());
+    if (!this._vt) {
+      this._vt = new ValueTitleWatcher((node) => this._valueTitleText(node));
       this._cleanups.push(() => {
-        if (this._vtRO) this._vtRO.disconnect();
-        if (this._vtRaf) cancelAnimationFrame(this._vtRaf);
-        this._vtRO = null;
-        this._vtRaf = 0;
-        this._vtEl = null;
+        if (this._vt) this._vt.destroy();
+        this._vt = null;
       });
     }
-    if (el !== this._vtEl) {
-      if (this._vtEl && this._vtRO) this._vtRO.unobserve(this._vtEl);
-      this._vtEl = el;
-      if (el && this._vtRO) this._vtRO.observe(el); // its initial notification (after layout) does the first check
-    }
+    this._vt.watch(el);
   }
 
-  /**
-   * @private value text changed: re-check in the next frame (one per change, coalesced) — never a synchronous layout
-   * read during render / setValue (it would start style transitions from a stale state).
-   */
+  /** @private value text changed: re-check next frame (src/utils/value-title.js) */
   _scheduleValueTitle() {
-    if (!this._vtRO || this._vtRaf) return;
-    this._vtRaf = requestAnimationFrame(() => {
-      this._vtRaf = 0;
-      this._syncValueTitle();
-    });
+    if (this._vt) this._vt.schedule();
   }
 
   /** @private title only for a cut NON-placeholder value; removed when it fits / placeholder / empty */
   _syncValueTitle() {
-    const el = this._vtEl;
-    if (!el || !el.isConnected) return;
-    const text = el.hasAttribute('data-placeholder') ? '' : el.textContent;
-    if (text && el.scrollWidth > el.clientWidth) {
-      if (el.getAttribute('title') !== text) el.setAttribute('title', text);
-    } else if (el.hasAttribute('title')) {
-      el.removeAttribute('title');
-    }
+    if (this._vt) this._vt.sync();
+  }
+
+  /** @private the displayed value text (placeholder → '') */
+  _valueTitleText(el) {
+    return displayedValueText(el);
   }
 
   // --- Form participation ---
