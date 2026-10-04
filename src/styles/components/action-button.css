@@ -99,6 +99,7 @@
 
 	.td-action-group {
 		display: inline-flex;
+		line-height: normal; /* own it: never inherit the host page's */
 		flex-wrap: wrap;
 		gap: 4px;
 		align-items: center;

@@ -170,6 +170,7 @@
 	.td-media-field__img {
 		display: block;
 		inline-size: 100%;
+		max-inline-size: none; /* never a host reset's max-width (Tailwind preflight) */
 		block-size: auto;
 		max-block-size: var(--td-media-field-max-h, 24rem);
 		object-fit: contain;

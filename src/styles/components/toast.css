@@ -246,6 +246,7 @@
 		position: fixed;
 		inset: 0;
 		z-index: var(--td-z-toast);
+		line-height: normal; /* own it: a host reset never sizes the root */
 		pointer-events: none; /* the page stays clickable around the stacks */
 	}
 

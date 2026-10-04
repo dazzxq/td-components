@@ -2032,7 +2032,7 @@
         ".td-media-grid__open",
         ".td-media-grid__open img",
         ".td-media-grid__tick",
-        ".td-media-grid__tick svg"
+        ".td-media-grid__tick .td-check"
       ],
       "settle": 300,
       "selectorNote": "site markup upgraded in place; tick hidden (opacity 0) at rest on a fine pointer"
@@ -2045,7 +2045,8 @@
         ".td-media-grid__item[data-selected]",
         ".td-media-grid__item[data-selected] .td-media-grid__open",
         ".td-media-grid__item[data-selected] .td-media-grid__tick",
-        ".td-media-grid__item:not([data-selected]) .td-media-grid__tick"
+        ".td-media-grid__item:not([data-selected]) .td-media-grid__tick",
+        ".td-media-grid__item[data-selected] .td-media-grid__tick .td-check"
       ],
       "settle": 450,
       "selectorNote": "select(['f1']): surface fill, opener scaled, solid tick; every tick shown while selecting"
@@ -2056,7 +2057,7 @@
       "markup": "<td-media-grid label=\"Khung hình cuộn 12\"><div data-td-media-item data-id=\"f1\"><button type=\"button\" data-td-media-open aria-label=\"Khung 1\"><img src=\"/test/fixtures/1.svg\" width=\"160\" height=\"120\" alt=\"\"></button></div><div data-td-media-item data-id=\"f2\"><button type=\"button\" data-td-media-open aria-label=\"Khung 2\"><img src=\"/test/fixtures/2.svg\" width=\"160\" height=\"120\" alt=\"\"></button></div></td-media-grid>",
       "selectors": [
         ".td-media-grid__tick",
-        ".td-media-grid__tick svg"
+        ".td-media-grid__tick .td-check"
       ],
       "settle": 300,
       "selectorNote": "touch context (hasTouch + isMobile; matchMedia('(hover: none), (pointer: coarse)') asserted first): tick faded 0.55"
@@ -2402,8 +2403,8 @@
         ".td-tree__check",
         ".td-tree__item[aria-checked=\"mixed\"] > .td-tree__row > .td-tree__check",
         ".td-tree__item[aria-checked=\"true\"] > .td-tree__row > .td-tree__check",
-        ".td-tree__check-on",
-        ".td-tree__check-mixed"
+        ".td-tree__item[aria-checked=\"true\"] > .td-tree__row > .td-check .td-check__svg",
+        ".td-tree__item[aria-checked=\"mixed\"] > .td-tree__row > .td-check .td-check__svg"
       ],
       "settle": 200
     },

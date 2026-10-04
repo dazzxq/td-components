@@ -835,6 +835,7 @@
 	.td-lightbox__thumb > img {
 		display: block;
 		width: 100%;
+		max-width: none; /* never a host reset's max-width (Tailwind preflight) */
 		height: 100%;
 		object-fit: cover;
 		user-select: none;

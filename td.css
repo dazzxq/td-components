@@ -1492,6 +1492,7 @@
 
 	.td-action-group {
 		display: inline-flex;
+		line-height: normal; /* own it: never inherit the host page's */
 		flex-wrap: wrap;
 		gap: 4px;
 		align-items: center;
@@ -3802,6 +3803,7 @@
 	.td-lightbox__thumb > img {
 		display: block;
 		width: 100%;
+		max-width: none; /* never a host reset's max-width (Tailwind preflight) */
 		height: 100%;
 		object-fit: cover;
 		user-select: none;
@@ -4194,6 +4196,7 @@
 		position: fixed;
 		inset: 0;
 		z-index: var(--td-z-toast);
+		line-height: normal; /* own it: a host reset never sizes the root */
 		pointer-events: none; /* the page stays clickable around the stacks */
 	}
 
@@ -12292,6 +12295,7 @@
 	.td-media-field__img {
 		display: block;
 		inline-size: 100%;
+		max-inline-size: none; /* never a host reset's max-width (Tailwind preflight) */
 		block-size: auto;
 		max-block-size: var(--td-media-field-max-h, 24rem);
 		object-fit: contain;
