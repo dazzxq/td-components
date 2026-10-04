@@ -523,7 +523,7 @@ describe('td-drawer — layout', () => {
     await h.closed;
   });
 
-  it('sizes sm < md < lg < xl; --td-drawer-w overrides; ≤ 640px fills the screen', async () => {
+  it('sizes sm < md < lg < xl; --td-drawer-w overrides; < 480px fills the screen, 480–719 leaves 3rem', async () => {
     const widths = {};
     for (const size of ['sm', 'md', 'lg', 'xl']) {
       const h = TdDrawer.open({ label: size, size, body: 'x' });
@@ -546,7 +546,8 @@ describe('td-drawer — layout', () => {
     host.show();
     expect(Math.round(openRoot().querySelector('.td-drawer__panel').getBoundingClientRect().width)).to.equal(333);
     await host.close();
-    await setViewport({ width: 500, height: 700 });
+    // v0.34.0 (ADR 0014): xs (< 480) full screen; sm (480–719) at most 100% − 3rem (a strip of the page stays visible)
+    await setViewport({ width: 400, height: 700 });
     const h = TdDrawer.open({ label: 'm', size: 'sm', body: 'x' });
     await nextEvent(h.element, 'open');
     const rect = openRoot().querySelector('.td-drawer__panel').getBoundingClientRect();
@@ -554,6 +555,15 @@ describe('td-drawer — layout', () => {
     expect(Math.round(rect.height)).to.equal(window.innerHeight);
     h.close();
     await h.closed;
+    await setViewport({ width: 600, height: 700 });
+    for (const [size, want] of [['sm', 320], ['xl', 600 - 48]]) {
+      const hs = TdDrawer.open({ label: size, size, body: 'x' });
+      await nextEvent(hs.element, 'open');
+      const w = Math.round(openRoot().querySelector('.td-drawer__panel').getBoundingClientRect().width);
+      expect(w, `${size} at 600px`).to.equal(Math.min(want, document.documentElement.clientWidth - 48));
+      hs.close();
+      await hs.closed;
+    }
     expect(widths.sm > 0).to.equal(true);
   });
 

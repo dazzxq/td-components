@@ -59,6 +59,7 @@
 @layer td.component {
 	td-alert {
 		display: block;
+		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5, v0.34.0) */
 	}
 
 	.td-alert {

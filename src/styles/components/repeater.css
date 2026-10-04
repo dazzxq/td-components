@@ -20,6 +20,7 @@
 @layer td.component {
 	td-repeater {
 		display: block;
+		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5, v0.34.0) */
 	}
 
 	/* same look as a field label (.td-field__label); explicit metrics: a host reset never changes them */

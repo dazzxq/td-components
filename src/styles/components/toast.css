@@ -211,6 +211,34 @@
 		box-shadow: var(--td-focus-ring);
 	}
 
+	/* v0.34.0 (ADR 0014): notch / home indicator. A site that sets --td-toast-top: auto makes this calc invalid → auto. */
+	.td-toasts {
+		top: calc(var(--td-toast-top) + env(safe-area-inset-top, 0px));
+		bottom: calc(var(--td-toast-bottom) + env(safe-area-inset-bottom, 0px));
+	}
+
+	/* xs: one full-width column (no ragged right-aligned stack), same width for every toast */
+	@media (max-width: 479.98px) {
+		.td-toasts {
+			inset-inline: calc(var(--td-gutter) + env(safe-area-inset-left, 0px)) calc(var(--td-gutter) + env(safe-area-inset-right, 0px));
+			align-items: stretch;
+			width: auto;
+			max-width: none;
+			transform: none;
+		}
+
+		.td-toast {
+			max-width: none;
+		}
+	}
+
+	/* short (landscape phone): only the two newest stay visible (older ones are still in the DOM / announced) */
+	@media (max-height: 500px) {
+		.td-toast:nth-last-child(n + 3) {
+			display: none;
+		}
+	}
+
 	@media (pointer: coarse) {
 		.td-toast__close:focus-visible {
 			width: var(--td-touch-min);

@@ -11,6 +11,7 @@
 @layer td.component {
 	td-tree-select {
 		display: block;
+		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5, v0.34.0) */
 	}
 
 	/* v0.25.0 safety net (ADR 0012): hand-written host before define → one control height reserved */
@@ -336,6 +337,18 @@
 		.td-tree-select__search {
 			height: auto;
 			min-height: var(--td-touch-min);
+		}
+
+		/* v0.34.0: the typing area fills the 44 px control; the clear button is a 44 px target */
+		.td-tree-select__input,
+		.td-tree-select__trigger {
+			align-self: stretch;
+			height: auto;
+		}
+
+		.td-tree-select__clear {
+			width: var(--td-touch-min);
+			height: var(--td-touch-min);
 		}
 	}
 

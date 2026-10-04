@@ -21,6 +21,7 @@
 @layer td.component {
 	td-tree {
 		display: block;
+		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5, v0.34.0) */
 	}
 
 	/* v0.25.0 safety net (ADR 0012): before define → one row reserved, no fake styling */
@@ -258,6 +259,12 @@
 	@media (pointer: coarse) {
 		.td-tree__row {
 			min-height: var(--td-touch-min);
+		}
+
+		/* v0.34.0: 44 px search box, ≥ 16px text (iOS does not zoom on focus) */
+		.td-tree__search {
+			height: var(--td-touch-min);
+			font-size: max(1rem, 1em);
 		}
 	}
 

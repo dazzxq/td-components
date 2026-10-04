@@ -222,8 +222,8 @@ chạy focus ảo (`data-active`).
 | Escape | đóng, focus ở combobox |
 | Tab | đóng, đi tiếp |
 
-**Nhiều = disclosure.** Nút (không `role=combobox`) với `aria-expanded` + `aria-controls`; mở → focus vào ô tìm (màn
-≥ 768px; nhỏ hơn → vào cây). Cây dùng roving tabindex như `td-tree`: ↓ từ ô tìm vào cây, Space / Enter lật check (popup
+**Nhiều = disclosure.** Nút (không `role=combobox`) với `aria-expanded` + `aria-controls`; mở → focus vào ô tìm (chuột;
+máy cảm ứng → vào cây, không bật bàn phím ảo — 0.34.0). Cây dùng roving tabindex như `td-tree`: ↓ từ ô tìm vào cây, Space / Enter lật check (popup
 giữ mở). Escape / Tab ra khỏi popup → đóng + focus về nút.
 
 **Tên truy cập** (cả hai chế độ, kể cả khi popup nằm ở `<body>`): `label` (nhãn nội bộ) > `<label for>` ngoài > `aria-label`

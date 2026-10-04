@@ -317,6 +317,12 @@ modal / menu đều giống nhau, không cần xử lý riêng (`data-td-density
 </div>
 ```
 
+## Responsive (0.34.0)
+
+Nút một dòng khi đủ chỗ; nhãn dài hơn khung chứa **xuống dòng** (cân dòng bằng `text-wrap: balance`) thay vì đẩy rộng
+trang hay bị cắt `…` — nhãn hành động bị cắt có thể đổi nghĩa. Nút không bao giờ rộng hơn khung (`max-inline-size:
+100%`). Trên máy cảm ứng nút cao ≥ 44px. Xem [responsive](../concepts/responsive.md).
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |

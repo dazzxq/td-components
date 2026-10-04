@@ -16,6 +16,7 @@
 @layer td.component {
 	td-button {
 		display: inline-block;
+		max-inline-size: 100%; /* a long label wraps instead of widening the page (v0.34.0) */
 	}
 
 	td-button:has(.td-btn--full) {
@@ -59,7 +60,12 @@
 		line-height: 1.25;
 		color: var(--td-btn-fg-v);
 		text-decoration: none; /* link buttons */
-		white-space: nowrap;
+		/* v0.34.0 (ADR 0014 §5): one line while it fits; a label longer than its container wraps (balanced) — never
+		   truncated (a cut-off action label changes meaning), never wider than the container. */
+		max-inline-size: 100%;
+		text-align: center;
+		text-wrap: balance;
+		overflow-wrap: break-word; /* not anywhere: keeps the min-content of a flex row of buttons */
 		cursor: pointer;
 		background-color: var(--td-btn-bg-v);
 		background-image: none;
