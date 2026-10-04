@@ -127,6 +127,30 @@ dz.upload = (file, { onProgress, signal }) => new Promise((resolve, reject) => {
 khi xoá file, reset, bỏ `preview`, hoặc component rời trang (tạo lại khi quay lại). Không bật `preview` thì kit
 không bao giờ tạo object URL và không đọc nội dung file. CSP cần `img-src … blob:`.
 
+### 6. Trình bày kiểu xếp chồng + badge (0.33.0)
+
+Ba attribute **chỉ đổi cách trình bày** (lọc, form, upload không đổi). Không đặt chúng (hoặc để rỗng) → markup y hệt
+0.32, từng byte.
+
+```html
+<td-dropzone name="media[]" multiple accept="image/jpeg,image/png" accept-label="JPG, PNG" max-size="20MB"
+  prompt-title="Kéo thả file vào đây" prompt-text="hoặc bấm để chọn file" hint-style="badges"></td-dropzone>
+```
+
+- **`prompt-title` / `prompt-text`**: có ít nhất một chuỗi khác rỗng → vùng chọn **xếp chồng** (`.td-dropzone--stacked`):
+  icon upload 64px → tiêu đề (`.td-dropzone__title`, 1.25rem / 600) → dòng phụ màu nhạt (`.td-dropzone__subtext`) → nút
+  **Chọn file** (giữ lại cho bàn phím). Câu `labels.prompt` không hiện. Bấm bất kỳ đâu trong vùng vẫn mở hộp chọn file.
+  Viền nét đứt 2px, bo góc lớn, đệm rộng (token `--td-dropzone-stacked-*`).
+- **`hint-style="badges"`**: dòng gợi ý tách thành từng mục, mỗi mục là `<span class="td-badge td-dropzone__badge">`
+  trong `<div class="td-dropzone__hint td-dropzone__hint--badges">` (vẫn là đích `aria-describedby` của nút):
+  - định dạng: `accept-label` nếu có (rỗng → bỏ badge này), không thì suy từ `accept` (`.pdf` → `PDF`,
+    `image/png` → `PNG`, `image/svg+xml` → `SVG`, `image/*` giữ nguyên), không có tiền tố "Định dạng:";
+  - `labels.badgeSize` (`'Tối đa {size}'`) khi có `max-size`; `labels.badgeCount` (`'Tối đa {n} file'`) khi có
+    `multiple` + `max-files`.
+  - Giao diện badge là của [Badge](badge.md); `__badge` chỉ chỉnh khoảng cách (badge dài được xuống dòng).
+- Mọi chuỗi chỉ là **text** (`textContent` / escape), không nhận HTML, không có slot markup.
+- Hai kiểu độc lập: dùng riêng `hint-style="badges"` với prompt cũ, hoặc prompt xếp chồng với dòng gợi ý `<p>` cũ đều được.
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
@@ -142,8 +166,12 @@ không bao giờ tạo object URL và không đọc nội dung file. CSP cần `
 | `required` | boolean | `false` | Bắt buộc có ít nhất một file. |
 | `disabled` | boolean | `false` | Vô hiệu hoá (xem mục 3). |
 | `error-text` | string | — | Thông báo lỗi hiển thị dưới component (như các field khác). |
+| `prompt-title` | string | — | 0.33.0 — tiêu đề vùng chọn kiểu xếp chồng (mục 6). Text. |
+| `prompt-text` | string | — | 0.33.0 — dòng phụ dưới tiêu đề (mục 6). Text. |
+| `hint-style` | `badges` | — | 0.33.0 — `badges`: gợi ý thành các `td-badge` (mục 6); giá trị khác = dòng `<p>` như cũ. |
 
-Đổi `label`, `accept`, `accept-label`, `multiple`, `max-size`, `max-files`, `preview`, `required`, `disabled` → dựng lại giao diện
+Đổi `label`, `accept`, `accept-label`, `multiple`, `max-size`, `max-files`, `preview`, `required`, `disabled`,
+`prompt-title`, `prompt-text`, `hint-style` → dựng lại giao diện
 (danh sách file được giữ).
 
 ## Property & method
@@ -176,6 +204,7 @@ không bao giờ tạo object URL và không đọc nội dung file. CSP cần `
 | `uploadWaiting` / `uploading` / `uploaded` / `uploadError` | `'Đang chờ…'` / `'Đang tải lên…'` / `'Đã tải lên'` / `'Tải lên thất bại'` (`uploadError` chỉ dùng khi lỗi không có `message` chuỗi) |
 | `progress` | `'Tải lên {name}'` (tên thanh tiến độ) |
 | `required` | `'Vui lòng chọn file.'` |
+| `badgeAccept` / `badgeSize` / `badgeCount` | `'{accept}'` / `'Tối đa {size}'` / `'Tối đa {n} file'` (0.33.0, chỉ `hint-style="badges"`) |
 
 ```js
 import { TdDropzone } from '@dazzxq/td-components';
@@ -213,6 +242,11 @@ dz.addEventListener('files-change', (e) => {
 | `--td-dropzone-item-bg` / `--td-dropzone-item-radius` | `var(--td-color-surface-muted)` / `var(--td-radius-md)` | Dòng file |
 | `--td-dropzone-thumb` | `40px` | Cỡ thumbnail |
 | `--td-dropzone-reject` | `var(--td-color-error)` | Màu dòng file bị loại |
+| `--td-dropzone-stacked-pad` | `4rem 2rem` (`--td-space-md` × 4 / × 2) | 0.33.0 — đệm vùng xếp chồng |
+| `--td-dropzone-stacked-radius` | `var(--td-radius-xl)` | 0.33.0 — bo góc vùng xếp chồng |
+| `--td-dropzone-stacked-border-width` | `2px` | 0.33.0 — độ dày viền nét đứt khi xếp chồng |
+| `--td-dropzone-stacked-icon` | `64px` | 0.33.0 — cỡ icon upload khi xếp chồng |
+| `--td-dropzone-title-size` / `--td-dropzone-title-weight` | `var(--td-text-lg)` / `var(--td-fw-semibold)` | 0.33.0 — chữ tiêu đề |
 
 Vùng chọn là field (lớp nội dung) → nền đặc, không kính; nút "Chọn file" là nút `secondary` của kit (nền đặc
 xám nhạt + viền mảnh, như `<td-button variant="secondary">`). Thanh tiến độ: token của [Progress](progress.md).
@@ -243,6 +277,24 @@ xám nhạt + viền mảnh, như `<td-button variant="secondary">`). Thanh ti�
     <span class="td-sr-only td-dropzone__live" aria-live="polite"></span>
   </div>
 </td-dropzone>
+```
+
+Kiểu xếp chồng (0.33.0, `prompt-title` / `prompt-text`) và badge (`hint-style="badges"`) chỉ đổi phần trong `__zone`:
+
+```html
+<div class="td-dropzone td-dropzone--stacked" …>
+  …
+  <div class="td-dropzone__zone">
+    <span class="td-dropzone__icon" aria-hidden="true"><svg class="td-icon" width="64" height="64" data-icon="upload">…</svg></span>
+    [<p class="td-dropzone__title">Kéo thả file vào đây</p>]
+    [<p class="td-dropzone__subtext">hoặc bấm để chọn file</p>]
+    <p class="td-dropzone__prompt"><button type="button" class="td-dropzone__browse td-btn td-btn--secondary td-btn--sm">Chọn file</button></p>
+    <div class="td-dropzone__hint td-dropzone__hint--badges" id="{id}-hint" [hidden]>
+      <span class="td-badge td-dropzone__badge">JPG, PNG</span> <span class="td-badge td-dropzone__badge">Tối đa 20 MB</span>
+    </div>
+  </div>
+  …
+</div>
 ```
 
 Danh sách được dựng bằng DOM API (`textContent`, `setAttribute`) — không `innerHTML` với tên file.
