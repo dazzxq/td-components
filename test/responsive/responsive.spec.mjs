@@ -81,7 +81,7 @@ const SCENARIOS = [
   { name: 'loading', act: (p) => p.evaluate(() => window.__openers.loading()), panel: '.td-loading__card' },
   { name: 'media-picker', act: (p) => p.evaluate(() => { window.__openers.picker(); }), panel: '.td-media-picker .td-modal__dialog', ready: '.td-media-picker__card', picker: true, see: ['.td-media-picker .td-modal__close', '.td-media-picker__confirm'] },
   { name: 'media-picker-multiple', act: (p) => p.evaluate(() => { window.__openers.picker(true); }), panel: '.td-media-picker .td-modal__dialog', ready: '.td-media-picker__card', picker: true, see: ['.td-media-picker .td-modal__close', '.td-media-picker__confirm'] },
-  { name: 'media-picker-pages', act: (p) => p.evaluate(() => { window.__openers.picker(false, true); }), panel: '.td-media-picker .td-modal__dialog', ready: '.td-media-picker__card', picker: true, see: ['.td-media-picker .td-modal__close', '.td-media-picker__pager td-pagination'] },
+  { name: 'media-picker-pages', act: (p) => p.evaluate(() => { window.__openers.picker(false, true); }), panel: '.td-media-picker .td-modal__dialog', ready: '.td-media-picker__card', picker: true, pages: true, see: ['.td-media-picker .td-modal__close'] },
   // v0.35.0: the crop dialog (overlay ⇒ @media: box from 720, full viewport below, short band) and the picker crop step
   { name: 'crop-dialog', act: (p) => p.evaluate(() => { window.__openers.cropDialog(); }), panel: '.td-crop-dialog .td-modal__dialog', ready: '.td-crop-dialog td-cropper[data-state="ready"]', crop: true, see: ['.td-crop-dialog__confirm', '.td-crop-dialog__cancel'] },
   { name: 'picker-crop', act: async (p) => { await p.evaluate(() => { window.__openers.pickerCrop(); }); await p.locator('.td-media-picker__card').first().click(); await p.click('.td-media-picker__confirm'); }, panel: '.td-crop-dialog .td-modal__dialog', ready: '.td-crop-dialog td-cropper[data-state="ready"]', crop: true, see: ['.td-crop-dialog__confirm', '.td-crop-dialog__cancel'] },
@@ -305,6 +305,17 @@ async function runOverlays(page, c, tag, shot) {
             header: h('.td-media-picker .td-modal__header'), toolbar: h('.td-media-picker__toolbar'), footer: h('.td-media-picker__footer') };
         });
         if (chrome.wrap === 'wrap') err.push(`toolbar wraps at ${vp.w}px (one row since v0.36)`);
+        if (s.pages) {
+          // v0.36.0 (QĐ 51): < 720 the pager is the last row of the results scroller; ≥ 720 it sits in the toolbar row
+          const pg = await page.evaluate(() => {
+            const p = document.querySelector('.td-media-picker__pager');
+            const tb = document.querySelector('.td-media-picker__toolbar').getBoundingClientRect();
+            const r = p.querySelector('td-pagination').getBoundingClientRect();
+            return { inResults: !!p.closest('.td-media-picker__results'), right: r.right, tbRight: tb.right };
+          });
+          if (vp.w < 720 && !pg.inResults) err.push('pager not under the grid below 720');
+          if (vp.w >= 720 && (pg.inResults || pg.right > pg.tbRight + 1)) err.push(`pager outside the toolbar row (${Math.round(pg.right)} > ${Math.round(pg.tbRight)})`);
+        }
         if (vp.w < 720 && vp.h > 500) {
           if (chrome.header > 56.5) err.push(`header ${Math.round(chrome.header)}px > 56 (QĐ 60)`);
           if (chrome.toolbar > 56.5) err.push(`toolbar ${Math.round(chrome.toolbar)}px > 56 (QĐ 52)`);

@@ -4868,7 +4868,7 @@
 		.td-modal__header {
 			min-height: 0;
 			padding-block: 0.375rem;
-			border-bottom-color: transparent;
+			border-bottom-width: 0;
 		}
 
 		.td-modal--viewport .td-modal__header {
@@ -11313,9 +11313,20 @@
 			display: none;
 		}
 
-		/* upload · search · Bộ lọc · pager fit one row from 720: upload is icon-only below 1024 (aria-label keeps the name) */
+		/* upload · search · Bộ lọc · pager fit one row from 720: upload is icon-only below 1024 (aria-label keeps the name);
+		   the paged td-pagination is a container again so it compacts instead of overflowing the row */
 		.td-media-picker__search {
 			min-width: 8rem;
+		}
+
+		.td-media-picker__pager {
+			flex: 1 1 auto;
+			justify-content: flex-end;
+		}
+
+		.td-media-picker__pager td-pagination {
+			flex: 1 1 auto;
+			container-type: inline-size;
 		}
 
 		.td-media-picker__upload-btn .td-btn {
