@@ -16,6 +16,8 @@
 		--td-media-grid-radius: var(--td-radius-md);
 		--td-media-grid-tick-size: 24px;
 		--td-media-grid-tick-inset: 6px;
+		/* tick corner: start | end (read by JS → host [data-td-tick="end"]) */
+		--td-media-grid-tick-inline: start;
 		--td-media-grid-tick-bg: rgb(0 0 0 / 35%);
 		--td-media-grid-tick-border: #fff;
 		--td-media-grid-tick-ring: rgb(0 0 0 / 50%);
@@ -83,7 +85,7 @@
 	.td-media-grid__tick {
 		position: absolute;
 		top: var(--td-media-grid-tick-inset);
-		left: var(--td-media-grid-tick-inset);
+		inset-inline-start: var(--td-media-grid-tick-inset);
 		z-index: 2;
 		box-sizing: border-box;
 		display: grid;
@@ -105,6 +107,10 @@
 			opacity var(--td-dur-base) var(--td-ease-out),
 			background-color var(--td-dur-base) var(--td-ease-out),
 			color var(--td-dur-base) var(--td-ease-out);
+	}
+
+	.td-media-grid[data-td-tick="end"] .td-media-grid__tick {
+		inset-inline: auto var(--td-media-grid-tick-inset);
 	}
 
 	.td-media-grid__tick svg {

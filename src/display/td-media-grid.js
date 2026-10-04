@@ -28,7 +28,10 @@ const TICK = `${SITE_TICK}, .td-media-grid__tick`;
  * Items added / removed later are picked up by a MutationObserver (batched per microtask); a removed selected item
  * leaves the selection (`select-change`).
  *
- * Behaviour: nothing selected → opener click = `activate` (cancelable: preventDefault() blocks the opener default,
+ * select-mode="tick" (v0.33): a plain opener click ALWAYS fires `activate` (selecting or not); the selection changes
+ * only via the tick, Space, Ctrl/Cmd+click (flip) and Shift+click / Shift+Space (range). Tick corner: token
+ * `--td-media-grid-tick-inline: start | end` (read once per frame → host [data-td-tick="end"]).
+ * Default behaviour: nothing selected → opener click = `activate` (cancelable: preventDefault() blocks the opener default,
  * e.g. a link or TdLightbox.bind()), tick click = select. Selecting → opener / tick click flips the item (no
  * activate; the opener default is blocked). Shift + click: range in DOM order from the anchor (adds only; no anchor
  * → single flip). Keyboard on the opener only: Space flips (Shift+Space = range), Enter = `activate` (always, the
@@ -37,6 +40,7 @@ const TICK = `${SITE_TICK}, .td-media-grid__tick`;
  * @element td-media-grid
  * @attr {string} label - Accessible name of the list (aria-label).
  * @attr {number} max - Optional cap (integer ≥ 1) on user selection; past it → `select-limit`.
+ * @attr {string} select-mode - `tick`: opener click always activates; select via tick / Space / Ctrl·Cmd+click / Shift.
  * @attr {boolean} disabled - No selecting / flipping by the user (activate still works; the selection is kept).
  *
  * @fires select-change - User changed the selection. detail: { ids: string[] (DOM order), added, removed }
@@ -76,6 +80,8 @@ export class TdMediaGrid extends TdBaseElement {
     this._passClick = false;
     this._syncQueued = false;
     this._ownLabel = false;
+    this._raf = 0;
+    this._ro = null;
   }
 
   get onSelectChange() { return this._onSelectChange; }
@@ -133,6 +139,43 @@ export class TdMediaGrid extends TdBaseElement {
     }
     this._cleanups.push(() => this._setDocKey(false));
     this._setDocKey(this._selected.size > 0);
+
+    // token reads (tick corner…) happen in one rAF read phase; a resize may cross a breakpoint that changes them
+    if (typeof ResizeObserver === 'function') {
+      this._ro = new ResizeObserver(() => this._schedule());
+      this._ro.observe(this);
+      this._cleanups.push(() => { this._ro?.disconnect(); this._ro = null; });
+    }
+    this._cleanups.push(() => {
+      if (this._raf) cancelAnimationFrame(this._raf);
+      this._raf = 0;
+    });
+    this._frame();
+  }
+
+  /** @private batch the next read + write phase into one animation frame */
+  _schedule() {
+    if (this._raf || typeof requestAnimationFrame !== 'function') return;
+    this._raf = requestAnimationFrame(() => {
+      this._raf = 0;
+      if (this.isConnected) this._frame();
+    });
+  }
+
+  /**
+   * One read phase (computed style of the host only — no per-item layout reads), then one write phase.
+   * @private
+   */
+  _frame() {
+    if (typeof getComputedStyle !== 'function') return;
+    const cs = getComputedStyle(this);
+    const tick = cs.getPropertyValue('--td-media-grid-tick-inline').trim() === 'end' ? 'end' : null;
+    // write
+    if (tick) {
+      if (this.getAttribute('data-td-tick') !== tick) this.setAttribute('data-td-tick', tick);
+    } else if (this.hasAttribute('data-td-tick')) {
+      this.removeAttribute('data-td-tick');
+    }
   }
 
   /** @private label / disabled → host + ticks (incremental, no re-render) */
@@ -291,7 +334,12 @@ export class TdMediaGrid extends TdBaseElement {
       if (!disabled) this._userFlip(item, e.shiftKey);
       return;
     }
-    if (!disabled && (this._selected.size > 0 || e.shiftKey)) {
+    // select-mode="tick": a plain opener click ALWAYS activates; only Ctrl/Cmd+click (flip) and Shift+click (range)
+    // change the selection from the opener. Default mode: selecting (or Shift) → the opener flips.
+    const flip = this._tickMode()
+      ? (e.shiftKey || e.ctrlKey || e.metaKey)
+      : (this._selected.size > 0 || e.shiftKey);
+    if (!disabled && flip) {
       e.preventDefault();
       e.stopPropagation();
       this._userFlip(item, e.shiftKey);
@@ -299,6 +347,9 @@ export class TdMediaGrid extends TdBaseElement {
     }
     if (!this._activate(item, e)) e.preventDefault();
   }
+
+  /** @private select-mode="tick" (opener click = activate; select via tick / Space / Ctrl·Cmd+click / Shift range) */
+  _tickMode() { return this.getAttribute('select-mode') === 'tick'; }
 
   /** @private focused opener of this grid for a key event, else null */
   _openFromKey(e) {
