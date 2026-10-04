@@ -69,6 +69,7 @@ import {
   Debouncer, SessionCache, formatLabel, PageState, defaultTitle, normalizeDeleteResult, normalizeDownloadResult,
 } from '../utils/media-picker-core.js';
 import { createFacetControl, FieldForm, FIELD_LABELS } from './media-picker-fields.js';
+import { TdMenu } from './td-menu.js';
 import { openUploadDialog, UPLOAD_LABELS } from './media-picker-upload.js';
 import { openFilterSheet, FILTER_LABELS } from './media-picker-filters.js';
 import { openCropDialog } from './crop-dialog.js';
@@ -207,6 +208,11 @@ export class TdMediaPicker extends HTMLElement {
     selected: 'Đã chọn {n}',
     selectedMax: 'Đã chọn {n}/{max}',
     clearSelection: 'Bỏ chọn tất cả',
+    detailMore: 'Thêm',
+    /** v0.36.0 (review ISSUE-5, plan QĐ 55): the footer selection chip — visible label + accessible name */
+    selectedChip: '{n} đã chọn',
+    selectedChipMax: '{n}/{max} đã chọn',
+    clearSelectionChip: 'Bỏ chọn tất cả ({label})',
     selectFirst: 'Hãy chọn ít nhất một mục.',
     notReady: 'Mục này chưa sẵn sàng để chọn.',
     conflict: 'Media đã bị thay đổi ở nơi khác.',
@@ -462,7 +468,9 @@ export class TdMediaPicker extends HTMLElement {
     root.innerHTML = '<div class="td-modal__backdrop" aria-hidden="true"></div>'
       + '<div class="td-modal__dialog td-glass-surface td-glass-surface--strong td-glass-surface--lg td-media-picker__dialog"'
       + ' role="dialog" aria-modal="true" tabindex="-1">'
-      + '<div class="td-modal__header"><h2 class="td-modal__title"></h2>'
+      + '<div class="td-modal__header">'
+      + '<button type="button" class="td-media-picker__back"><span class="td-modal__close-icon" data-td-icon="back" aria-hidden="true"></span></button>'
+      + '<h2 class="td-modal__title"></h2>'
       + '<button type="button" class="td-modal__close"><span class="td-modal__close-icon" data-td-icon="close" aria-hidden="true"></span></button></div>'
       + '<div class="td-modal__body td-media-picker__body">'
       + '<div class="td-media-picker__toolbar"></div>'
@@ -492,6 +500,11 @@ export class TdMediaPicker extends HTMLElement {
     const x = q('.td-modal__close');
     x.setAttribute('aria-label', t('close'));
     x.addEventListener('click', () => this._requestFinish('cancel', 'close'));
+    // review ISSUE-3 (plan QĐ 56): < 720 the detail pane's "Quay lại" is a 44 px arrow in the dialog header (CSS shows it
+    // only while the pane is open); the pane has no back row of its own any more
+    const back = /** @type {HTMLButtonElement} */ (root.querySelector('.td-media-picker__back'));
+    back.setAttribute('aria-label', t('back'));
+    back.addEventListener('click', () => this._closeDetail());
     root.querySelector('.td-modal__backdrop').addEventListener('mousedown', (e) => e.preventDefault());
     fillIconSlots(root);
 
@@ -537,9 +550,10 @@ export class TdMediaPicker extends HTMLElement {
     e.error.appendChild(retry);
     e.retry = retry;
     // footer (decision 17)
-    const selcount = document.createElement('span');
-    selcount.className = 'td-media-picker__selcount';
-    const clear = makeButton(t('clearSelection'), { variant: 'ghost', size: 'sm', icon: 'close', aria: t('clearSelection'), cls: 'td-media-picker__clear' });
+    // v0.36.0 (review ISSUE-5, plan QĐ 55): ONE chip "n đã chọn ×" = the count AND "Bỏ chọn tất cả" (label + name follow
+    // every selection change in _renderSelection)
+    const clear = makeButton(t('selectedChip', { n: 0 }), { variant: 'ghost', size: 'sm', icon: 'close', cls: 'td-media-picker__clear' });
+    clear.setAttribute('icon-position', 'right');
     clear.addEventListener('click', () => {
       if (!usable(clear)) return;
       this._userChange(() => s.model.clear());
@@ -549,9 +563,9 @@ export class TdMediaPicker extends HTMLElement {
     loadingNote.className = 'td-media-picker__initial-loading';
     loadingNote.textContent = t('loadingInitial');
     loadingNote.hidden = true;
-    if (s.mode === 'multiple') e.selbar.append(selcount, clear);
+    if (s.mode === 'multiple') e.selbar.append(clear);
     e.selbar.appendChild(loadingNote);
-    Object.assign(e, { selcount, clear, loadingNote });
+    Object.assign(e, { clear, loadingNote });
     const cancel = makeButton(t('cancel'), { cls: 'td-media-picker__cancel' });
     cancel.addEventListener('click', () => { if (usable(cancel)) this._requestFinish('cancel', 'close'); });
     const confirm = makeButton(t('confirm'), { variant: 'primary', cls: 'td-media-picker__confirm' });
@@ -1418,8 +1432,10 @@ export class TdMediaPicker extends HTMLElement {
     if (e.confirm.getAttribute('label') !== label) e.confirm.setAttribute('label', label);
     e.confirm.toggleAttribute('disabled', n === 0);
     if (s.mode === 'multiple') {
-      e.selcount.textContent = s.model.max === Infinity ? this._t('selected', { n }) : this._t('selectedMax', { n, max: s.model.max });
-      e.selcount.setAttribute('data-count', String(n));
+      const chip = s.model.max === Infinity ? this._t('selectedChip', { n }) : this._t('selectedChipMax', { n, max: s.model.max });
+      if (e.clear.getAttribute('label') !== chip) e.clear.setAttribute('label', chip);
+      e.clear.setAttribute('aria-label', this._t('clearSelectionChip', { label: chip }));
+      e.clear.setAttribute('data-count', String(n));
       e.clear.hidden = n === 0;
     }
     e.loadingNote.hidden = !(s.initial && s.initial.pending);
@@ -1480,7 +1496,7 @@ export class TdMediaPicker extends HTMLElement {
   /** @private */
   _focusDetailHeading() {
     const s = this._s;
-    const h = s.els.detail.querySelector('.td-media-picker__detail-name') || s.els.detail.querySelector('.td-media-picker__back');
+    const h = s.els.detail.querySelector('.td-media-picker__detail-name') || s.root.querySelector('.td-media-picker__back');
     this._focus(/** @type {HTMLElement|null} */ (h));
   }
 
@@ -1527,9 +1543,6 @@ export class TdMediaPicker extends HTMLElement {
     const box = s.els.detail;
     if (s.edit) { try { s.edit.form.destroy(); } catch { /* ignore */ } s.edit = null; }
     box.replaceChildren();
-    const back = makeButton(t('back'), { variant: 'ghost', size: 'sm', icon: 'back', cls: 'td-media-picker__back' });
-    back.addEventListener('click', () => { if (usable(back)) this._closeDetail(); });
-    box.appendChild(back);
     const asset = s.detailId ? s.cache.getAsset(s.detailId) : null;
     box.toggleAttribute('data-loading', !!loading && !!asset);
     // review ISSUE-4 (plan QĐ 57): 720–1023 the detail column collapses while nothing is viewed (root flag; no :has())
@@ -1674,6 +1687,21 @@ export class TdMediaPicker extends HTMLElement {
       actions.appendChild(del);
     }
     if (saveBtn) actions.appendChild(saveBtn);
+    // review ISSUE-3 (plan QĐ 56): at most 3 actions inline below 720 — "Lưu" always stays, the rest in order; the others
+    // are marked [data-overflow] (CSS hides them < 720) and offered by an internal "Thêm" TdMenu that clicks them
+    const inline = [...actions.children];
+    const keep = new Set(saveBtn ? [saveBtn] : []);
+    for (const b of inline) if (keep.size < 3 && !keep.has(b)) keep.add(b);
+    const overflowed = inline.filter((b) => !keep.has(b));
+    if (overflowed.length) {
+      for (const b of overflowed) b.setAttribute('data-overflow', '');
+      const more = makeButton(t('detailMore'), { size: 'sm', icon: 'more', aria: t('detailMore'), cls: 'td-media-picker__detail-more' });
+      actions.insertBefore(more, saveBtn || null);
+      TdMenu.bind(more, () => overflowed.filter((b) => b.isConnected).map((b) => ({
+        label: b.getAttribute('label') || b.getAttribute('aria-label') || b.textContent.trim(),
+        onSelect: () => (b.querySelector('button') || b).click(),
+      })), { align: 'end', dismiss: 'swallow' });
+    }
     if (actions.childNodes.length) {
       const hr2 = document.createElement('hr');
       hr2.className = 'td-media-picker__divider';

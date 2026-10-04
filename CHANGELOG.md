@@ -19,8 +19,10 @@ tác, picker / modal gọn trên di động, lightbox điện thoại, hàng opt
   option.
 - **`td-checkbox indeterminate`**; ô tick chung `.td-check` (ADR 0017) cho media grid / picker / tree / multiselect / menu.
 - **Phím tắt chọn**: Ctrl/Cmd+click bật/tắt một mục, Shift+click chọn dải trong `td-media-grid` / picker.
-- **Media picker**: sheet "Bộ lọc" < 1024px, tự xem trước asset đầu (≥ 720px, không tự chọn), dialog tải lên là sheet <
-  720px.
+- **Media picker**: sheet "Bộ lọc" < 1024px, tự xem trước (≥ 720px: mục đang xem → mục đã chọn đầu tiên → mục đầu; không
+  tự chọn; kết quả rỗng → panel trống, 720–1023px cột chi tiết thu lại), dialog tải lên là sheet < 720px, chip footer
+  "{n} đã chọn ×" thay "Đã chọn …" + "Bỏ chọn tất cả", < 720px "Quay lại" là mũi tên trên header và tối đa 3 nút trong
+  pane chi tiết (còn lại vào "Thêm").
 - **Lightbox điện thoại**: thanh đáy "‹ 3 / 12 ›" < 480px, đĩa 48px hai bên ảnh trên cảm ứng ≥ 480px, menu "Thêm" cho nút
   phụ, option `pinned` cho nút riêng.
 - `td-copy for=` đọc được `<td-input-field>`.

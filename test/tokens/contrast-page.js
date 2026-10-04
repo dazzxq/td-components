@@ -662,7 +662,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       const label = root.querySelector('.td-media-picker__label');
       const info = root.querySelector('.td-media-picker__page-info');
       if (!label || !info || info.closest('[hidden]')) throw new Error('media-picker cards: label / page info not shown');
-      const count = root.querySelector('.td-media-picker__selcount');
+      const count = root.querySelector('.td-media-picker__clear .td-btn__label');
       pairs = [
         { what: 'checked border (--td-media-picker-card-checked) vs card', fg: getComputedStyle(checked).borderTopColor, bg: cardBg, min: 3 },
         { what: 'checked border vs list bg', fg: getComputedStyle(checked).borderTopColor, bg: listBg, min: 3 },

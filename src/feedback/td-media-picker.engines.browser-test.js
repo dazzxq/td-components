@@ -51,7 +51,7 @@ const live = () => q('.td-media-picker__live')?.textContent || '';
 const confirmBtn = () => q('.td-media-picker__confirm');
 const btnText = (b) => (b?.textContent || '').trim();
 /** v0.33: the footer shows the count (data-count), the 40px thumb tray is gone */
-const selCount = () => Number(q('.td-media-picker__selcount')?.getAttribute('data-count') || 0);
+const selCount = () => Number(q('.td-media-picker__clear')?.getAttribute('data-count') || 0);
 const searchHost = () => q('.td-media-picker__search');
 const searchInput = () => q('.td-media-picker__search input');
 const modalRoots = () => [...document.body.querySelectorAll(':scope > .td-modal:not(.td-media-picker)')].filter((r) => r.getAttribute('data-state') !== 'closing');
@@ -491,7 +491,7 @@ describe('td-media-picker — initialIds transaction (R1-4, R2-4)', () => {
     expect(selCount()).to.equal(0);
     getCall(ad, 'm1').resolve();
     await until(() => selCount() === 3);
-    expect(q('.td-media-picker__selcount').textContent).to.equal('Đã chọn 3');
+    expect(btnText(q('.td-media-picker__clear'))).to.equal('3 đã chọn');
     expect(btnText(confirmBtn())).to.equal('Chèn (3)');
     expect(loadingNote().hidden).to.equal(true);
     expect(changes.length, 'no selection-change for initial').to.equal(0);
@@ -794,7 +794,7 @@ describe('td-media-picker — selection (decision 13)', () => {
     await until(() => ids().every((id) => assetName(id).includes('anh-1')) && items().length);
     click(tick('m19'));
     expect(selCount()).to.equal(3);
-    expect(q('.td-media-picker__selcount').textContent).to.equal('Đã chọn 3/3');
+    expect(btnText(q('.td-media-picker__clear'))).to.equal('3/3 đã chọn');
     click(tick('m18'));
     await wait(20);
     expect(grid().selectedIds.includes('m18')).to.equal(false);
@@ -837,7 +837,7 @@ describe('td-media-picker — selection (decision 13)', () => {
     await openReady({ selection: { mode: 'multiple' } });
     click(tick('m60'));
     click(tick('m59'));
-    expect(btnText(q('.td-media-picker__clear'))).to.equal('Bỏ chọn tất cả');
+    expect(q('.td-media-picker__clear button').getAttribute('aria-label')).to.match(/^Bỏ chọn tất cả \(/);
     q('.td-media-picker__clear').click();
     expect(selCount()).to.equal(0);
     expect(grid().selectedIds).to.deep.equal([]);
@@ -1400,7 +1400,10 @@ describe('td-media-picker + td-media-field (integration, real picker)', () => {
     expect(ad.calls.list[0].args[0].kinds).to.deep.equal(['image']);
     expect(ad.calls.get.some((c) => c.args[0] === 'm58')).to.equal(true);
     await until(() => grid().selectedIds.includes('m58'), 3000, 'initial selection');
-    expect(ad.calls.get.filter((c) => c.args[0] === 'm58').length).to.equal(1); // SSR preview: no lazy get by the field
+    // SSR preview: no lazy get by the field — the picker's initial selection load, plus (v0.36.0 review ISSUE-2) its auto
+    // preview of the first selected asset in the results
+    await until(() => !q('.td-media-picker__detail').hasAttribute('data-loading'), 3000, 'preview settled');
+    expect(ad.calls.get.filter((c) => c.args[0] === 'm58').length).to.be.at.most(2);
     click(opener('m59'));
     confirmBtn().click();
     await until(() => field.value === 'm59', 3000, 'value');

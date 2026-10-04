@@ -213,7 +213,7 @@ describe('v0.33 td-media-picker — multiple selection (decision 15)', () => {
     click(opener('m58'), { ctrlKey: true });
     expect(grid().selectedIds).to.deep.equal(['m60', 'm59', 'm58']);
     expect(btnText(confirmBtn())).to.equal('Chèn (3)');
-    expect(q('.td-media-picker__selcount').textContent).to.equal('Đã chọn 3');
+    expect(btnText(q('.td-media-picker__clear'))).to.equal('3 đã chọn');
     click(opener('m58'), { metaKey: true });
     expect(grid().selectedIds).to.deep.equal(['m60', 'm59']);
     click(opener('m55'), { shiftKey: true }); // range from the anchor (m58 flip) → m57..m55 added
@@ -234,7 +234,7 @@ describe('v0.33 td-media-picker — multiple selection (decision 15)', () => {
     expect(btnText(confirmBtn())).to.equal('Chèn (2)');
     click(tick('m40'));
     click(tick('m39'));
-    expect(q('.td-media-picker__selcount').textContent).to.equal('Đã chọn 4');
+    expect(btnText(q('.td-media-picker__clear'))).to.equal('4 đã chọn');
     q('.td-media-picker__prev').click();
     await until(() => item('m60') && grid().selectedIds.join() === 'm60,m58', 4000, 'page 1 again, re-selected');
     confirmBtn().click();
@@ -244,10 +244,10 @@ describe('v0.33 td-media-picker — multiple selection (decision 15)', () => {
   it('footer: "Đã chọn n/max" + ghost "Bỏ chọn tất cả" on the left (multiple only); right "Đóng" + "Chèn"', async () => {
     await openReady({ selection: { mode: 'multiple', maxItems: 4 } });
     const sel = q('.td-media-picker__selbar');
-    expect(q('.td-media-picker__selcount').textContent).to.equal('Đã chọn 0/4');
-    expect(q('.td-media-picker__clear').hidden).to.equal(true);
+    expect(q('.td-media-picker__clear').hidden, 'no chip at 0').to.equal(true);
     click(tick('m60'));
-    expect(q('.td-media-picker__selcount').textContent).to.equal('Đã chọn 1/4');
+    expect(btnText(q('.td-media-picker__clear'))).to.equal('1/4 đã chọn');
+    expect(q('.td-media-picker__clear button').getAttribute('aria-label')).to.equal('Bỏ chọn tất cả (1/4 đã chọn)');
     expect(q('.td-media-picker__clear').hidden).to.equal(false);
     expect(q('.td-media-picker__clear').getAttribute('variant')).to.equal('ghost');
     expect(q('.td-media-picker__clear').getAttribute('size')).to.equal('sm');
@@ -255,7 +255,7 @@ describe('v0.33 td-media-picker — multiple selection (decision 15)', () => {
     expect(q('.td-media-picker__tray-list') === null && q('.td-media-picker__tray-item') === null, 'no 40px tray').to.equal(true);
     await closeAll();
     await openReady();
-    expect(q('.td-media-picker__selcount') === null, 'single: no count').to.equal(true);
+    expect(q('.td-media-picker__clear') === null, 'single: no chip').to.equal(true);
   });
 });
 

@@ -12,7 +12,7 @@ await new Promise((r) => { link.onload = r; link.onerror = r; });
 
 const { TdMediaPicker } = await import('./td-media-picker.js');
 const { TdModal } = await import('./td-modal.js');
-const { createMockAdapter } = await import('../../test/fixtures/media-adapter.js');
+const { createMockAdapter, assetFields } = await import('../../test/fixtures/media-adapter.js');
 
 const raf = () => new Promise((r) => requestAnimationFrame(() => r()));
 async function until(fn, ms = 4000, what = 'condition') {
@@ -270,6 +270,45 @@ describe('v0.36.0 picker auto preview (QĐ 69)', () => {
     await sendKeys({ type: 'anh-4' });
     await sendKeys({ press: 'Enter' });
     await until(() => detailName() === 'anh-49.jpg' && getComputedStyle(det).display !== 'none', 4000, 'back with a preview');
+  });
+
+  it('ISSUE-3: < 720 the back arrow sits in the dialog header only while the pane is open; ≤ 3 actions inline, the rest in "Thêm"', async () => {
+    await setViewport({ width: 390, height: 844 });
+    await openReady({ selection: { mode: 'multiple' }, assetFields: assetFields(),
+      capabilities: { delete: true, downloadOriginal: true, copyLink: true } });
+    const back = q('.td-modal__header .td-media-picker__back');
+    expect(visible(back), 'hidden on the grid').to.equal(false);
+    item('m60').querySelector('[data-td-media-open]').click();
+    await until(() => pickerRoot().getAttribute('data-view') === 'detail' && detailName() === 'anh-60.jpg', 4000, 'pane');
+    await until(() => visible(back), 4000, 'back shown');
+    const actions = q('.td-media-picker__detail-actions');
+    const shownKids = [...actions.children].filter(visible);
+    expect(shownKids.length, 'at most 3 inline + "Thêm"').to.be.at.most(4);
+    const more = q('.td-media-picker__detail-more');
+    expect(visible(more), '"Thêm" shown').to.equal(true);
+    more.querySelector('button').click();
+    await until(() => document.querySelector('.td-menu[data-state="open"]'), 4000, 'menu');
+    const items = [...document.querySelectorAll('.td-menu[data-state="open"] .td-menu__item')].map((n) => n.textContent.trim());
+    expect(items.length).to.be.at.least(1);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    back.click();
+    await until(() => pickerRoot().getAttribute('data-view') === 'grid', 4000, 'grid');
+  });
+
+  it('ISSUE-5: footer chip "n đã chọn ×" — one button; label + accessible name follow every selection change', async () => {
+    await openReady({ selection: { mode: 'multiple', maxItems: 5 } });
+    const chip = q('.td-media-picker__clear');
+    expect(chip.hidden, 'no chip at 0').to.equal(true);
+    item('m60').querySelector('.td-media-grid__tick').click();
+    await until(() => !chip.hidden, 4000, 'chip');
+    expect(chip.textContent.trim()).to.equal('1/5 đã chọn');
+    expect(chip.querySelector('button').getAttribute('aria-label')).to.equal('Bỏ chọn tất cả (1/5 đã chọn)');
+    item('m59').querySelector('.td-media-grid__tick').click();
+    await until(() => chip.textContent.trim() === '2/5 đã chọn', 4000, 'label updated');
+    expect(chip.querySelector('button').getAttribute('aria-label')).to.equal('Bỏ chọn tất cả (2/5 đã chọn)');
+    expect(pickerRoot().querySelectorAll('.td-media-picker__selbar > *:not([hidden])').length, 'one control').to.equal(1);
+    chip.querySelector('button').click();
+    await until(() => grid().selectedIds.length === 0 && chip.hidden, 4000, 'cleared');
   });
 
   it('< 720: no auto-open (the grid comes first)', async () => {

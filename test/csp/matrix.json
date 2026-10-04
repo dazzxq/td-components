@@ -2842,7 +2842,6 @@
         ".td-media-picker__card[data-selected] .td-media-grid__tick",
         ".td-media-picker__card:not([data-selected]) .td-media-grid__tick",
         ".td-media-picker__selbar",
-        ".td-media-picker__selcount",
         ".td-media-picker__clear",
         ".td-media-picker__detail",
         ".td-media-picker__card[data-viewing]:not([data-selected])"
@@ -2869,7 +2868,6 @@
         ".td-media-picker__card[data-selected] .td-media-grid__tick",
         ".td-media-picker__card:not([data-selected]) .td-media-grid__tick",
         ".td-media-picker__selbar",
-        ".td-media-picker__selcount",
         ".td-media-picker__clear",
         ".td-media-picker__detail",
         ".td-media-picker__card[data-viewing]:not([data-selected])"

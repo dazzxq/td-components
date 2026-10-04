@@ -83,7 +83,7 @@ Adapter là **object callback**, không bao giờ là chuỗi URL endpoint. Kit 
 │                                                       │ ──────────────────── │
 │                                                       │ [Tải về][Copy][Xoá][Lưu] │
 ├───────────────────────────────────────────────────────┴──────────────────────┤
-│ Đã chọn 2/5 · Bỏ chọn tất cả                                    [Đóng] [Chèn (2)] │  footer (viền trên)
+│ [2/5 đã chọn ×]                                                  [Đóng] [Chèn (2)] │  footer (viền trên)
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -194,7 +194,8 @@ Từ trên xuống: **xem trước vuông 1:1** (`contain`; video = poster, khô
 | 3 | "Xoá" (danger sm, icon `trash`) | `canDo('delete')` + có `adapter.delete` — [Xoá](#xoá) |
 | 4 | "Lưu" (success sm, icon `check`) | Có form sửa; **chỉ bật khi form bẩn** |
 
-- **Luôn có xem trước** (0.36.0, từ 720px): mở picker và sau **mỗi** lần tải danh sách (tìm, lọc, đổi trang, tải lại), nếu
+- **Luôn có xem trước** (0.36.0, từ 720px; thứ tự: mục đang xem nếu còn trong kết quả → mục **đã chọn** đầu tiên có trong
+  kết quả → mục đầu tiên; kết quả rỗng → panel về trạng thái trống; không bao giờ đổi lựa chọn): mở picker và sau **mỗi** lần tải danh sách (tìm, lọc, đổi trang, tải lại), nếu
   không có mục nào đang xem (hoặc mục đang xem không còn trong kết quả) thì panel **xem trước asset đầu tiên** (card có
   `data-viewing`) — **không chọn**: "Chèn" vẫn khoá tới khi người dùng chọn. Mục đang xem còn trong kết quả → giữ; form
   đang sửa dở không bị thay. Dưới 720px không tự mở (lưới hiện trước). [ADR 0013 › Bổ sung v0.36](../internal/decisions/0013-media-picker-boundary.md#bổ-sung-v036).
@@ -207,10 +208,10 @@ Từ trên xuống: **xem trước vuông 1:1** (`contain`; video = poster, khô
 ### Footer
 
 Căn phải: "Đóng" (secondary) và "Chèn" / "Chèn ({n})" (primary, disabled khi chưa chọn gì). Bên trái, **chỉ ở chế độ
-nhiều**: "Đã chọn {n}/{max}" + "Bỏ chọn tất cả". Số đếm cho thấy lựa chọn trải qua nhiều trang — dcms2 không có.
-
-Dưới 720px (0.36.0) footer **một hàng**: chữ "Đã chọn …" chỉ còn cho trình đọc màn hình (số đã có trong "Chèn (n)"),
-"Bỏ chọn tất cả" thành nút chỉ icon × 44px (`aria-label` "Bỏ chọn tất cả") cạnh "Đóng" / "Chèn".
+nhiều**, một **chip "{n} đã chọn ×"** (0.36.0; "{n}/{max} đã chọn" khi có `maxItems`): vừa là số đếm (cho thấy lựa chọn trải
+qua nhiều trang — dcms2 không có), vừa là nút "Bỏ chọn tất cả" (tên đọc "Bỏ chọn tất cả ({n} đã chọn)", cập nhật mỗi lần
+chọn / bỏ). Không chọn gì → không có chip. Footer luôn **một hàng**. Nhãn: `selectedChip`, `selectedChipMax`,
+`clearSelectionChip` (`selected` / `selectedMax` cũ không còn dùng).
 
 ## Hợp đồng adapter
 
@@ -869,8 +870,12 @@ chọn chưa xác nhận **không** tính là việc dở. `close()` bằng code
 - Picker vẫn full viewport (không còn bottom sheet). Toolbar **một hàng** (0.36.0): "Tải lên" + ô tìm + "Bộ lọc" (chỉ
   icon, 44px); facet trong [sheet Bộ lọc](#toolbar-dưới-1024px--sheet-bộ-lọc-0360); phân trang **dưới lưới**; footer một
   hàng. Không tự mở chi tiết khi tải danh sách.
-- Panel chi tiết là **pane full màn hình trượt vào từ phải**: đầu pane có "Quay lại" (`back`); mở pane → focus tiêu đề pane;
-  Quay lại → focus về card vừa xem. Footer "Đóng / Chèn" vẫn hiện bên dưới. dcms2 không có lối ra này.
+- Panel chi tiết là **pane full màn hình trượt vào từ phải**; "Quay lại" là **mũi tên 44px trên header hộp thoại** (0.36.0,
+  chỉ hiện khi pane đang mở; tên `back`); mở pane → focus tiêu đề pane; Quay lại → focus về card vừa xem. Footer "Đóng /
+  Chèn" vẫn hiện bên dưới. Hàng nút của pane hiện **tối đa 3** (luôn giữ "Lưu"); phần còn lại vào nút **"Thêm"** (menu,
+  nhãn `detailMore`). dcms2 không có lối ra này.
+- 720–1023px: khi không có mục nào đang xem (kết quả rỗng) cột chi tiết **thu lại**, lưới dùng hết bề ngang; có xem trước
+  → cột hiện lại.
 - Dialog tải lên là bottom sheet cao theo nội dung, không footer. Header các hộp thoại gọn (≤ 56px, [modal](modal.md)).
   Reduced motion → chỉ fade, không trượt. Forced colors → viền card vẫn thấy.
 

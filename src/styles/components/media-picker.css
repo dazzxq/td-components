@@ -484,9 +484,34 @@
 		justify-content: center;
 	}
 
+	/* review ISSUE-3 (plan QĐ 56): the "Quay lại" arrow lives in the dialog header — only < 720 while the pane is open */
 	.td-media-picker__back {
 		display: none;
-		align-self: flex-start;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		width: var(--td-touch-min, 44px);
+		height: var(--td-touch-min, 44px);
+		padding: 0;
+		margin: 0 0 0 calc(-1 * var(--td-space-xs));
+		color: inherit;
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: var(--td-radius-full);
+	}
+
+	.td-media-picker__back:hover {
+		background: var(--td-color-hover-strong);
+	}
+
+	.td-media-picker__back:focus-visible {
+		outline: 2px solid transparent;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-media-picker__detail-more {
+		display: none;
 	}
 
 	.td-media-picker__preview {
@@ -697,7 +722,6 @@
 		min-width: 0;
 	}
 
-	.td-media-picker__selcount,
 	.td-media-picker__initial-loading {
 		font-size: var(--td-text-sm);
 		color: var(--td-color-text-muted);
@@ -780,37 +804,22 @@
 				visibility 0s linear 0s;
 		}
 
-		.td-media-picker__back {
+		.td-media-picker[data-view="detail"] .td-media-picker__back {
 			display: inline-flex;
 		}
 
-		/* QĐ 55: the footer stays ONE row — the count is already in "Chèn (n)"; "Bỏ chọn tất cả" becomes an icon button */
+		/* ISSUE-3: ≤ 3 actions inline, the rest behind "Thêm" */
+		.td-media-picker__detail-actions > [data-overflow] {
+			display: none;
+		}
+
+		.td-media-picker__detail-actions > .td-media-picker__detail-more {
+			display: inline-flex;
+		}
+
+		/* QĐ 55 (review ISSUE-5): the footer stays ONE row — the selection is one chip "n đã chọn ×" */
 		.td-media-picker .td-media-picker__footer {
 			flex-wrap: nowrap;
-		}
-
-		.td-media-picker__selcount {
-			position: absolute;
-			width: 1px;
-			height: 1px;
-			overflow: hidden;
-			clip-path: inset(50%);
-			white-space: nowrap;
-		}
-
-		.td-media-picker__clear .td-btn {
-			min-width: var(--td-touch-min, 44px);
-			min-height: var(--td-touch-min, 44px);
-			padding-inline: 0;
-		}
-
-		.td-media-picker__clear .td-btn__label {
-			position: absolute;
-			width: 1px;
-			height: 1px;
-			overflow: hidden;
-			clip-path: inset(50%);
-			white-space: nowrap;
 		}
 
 		/* QĐ 67: the card meta line ≥ 14px on touch screens */
