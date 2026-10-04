@@ -5,6 +5,20 @@
  * (max-height → CSSOM --td-table-max-h). Cell padding: .td-table__cell--px-{0..6} (cellPaddingClass whitelist).
  * State: [data-state="ready|loading|empty"] · table[aria-busy] · th[aria-sort] · wrappers [hidden] ·
  * .td-table__scroll[tabindex] (only while overflowing) · :hover / :focus-within rows.
+ * v0.34.0 (ADR 0014, plan v0.34.0 QĐ 14–20):
+ * - Layout fixes: --fixed only when every column is fixed (JS); ellipsis truncates the CONTENT at
+ *   --td-table-ellipsis-max (or the column maxWidth, CSSOM); .td-table__cell--nowrap; CSS-only horizontal scroll edge
+ *   shadows on .td-table__scroll (background-attachment: local covers over scroll shadows — no JS, no inline style).
+ * - Card mode = pure CSS on the same DOM. The host is `container: td-table / inline-size` (it needs its width from
+ *   the parent). Card mode when: [layout="cards"] (always) · auto (no / unknown layout) and the container is under
+ *   card-below: sm 480 · md 720 (default, unknown values) · lg 1024. [layout="table"] = always a table (it scrolls).
+ *   CSS cannot put an attribute in a query condition, so the card rule set is written FOUR times with the same body
+ *   (forced + 3 container blocks); every prefix is wrapped in :where() so all copies have the SAME specificity.
+ *   KEEP THE FOUR BODIES IDENTICAL — td-v034-table.engines.browser-test.js compares their computed styles.
+ *   Flex placement of the card roles (order / flex) is inert in table mode, so it is written once below.
+ * - Card roles (data-card on th/td): primary (first line, bold) · secondary ("label: value", 2 per line ≥ 480) ·
+ *   meta (one muted line, " · ") · actions (footer, end) · false (hidden on the card). `order: 0` is reserved for
+ *   .td-table__card-select (row selection, v0.36 — no element yet).
  */
 @layer td.tokens {
 	:root {
@@ -25,17 +39,33 @@
 		--td-table-head-py: 0.75rem;
 		--td-table-skeleton: var(--td-skeleton-bg); /* v0.27.0: the shared skeleton tokens (components/skeleton.css) */
 		--td-table-sheen: var(--td-skeleton-shine);
+		--td-table-ellipsis-max: 18rem; /* v0.34.0: max inline size of an ellipsis cell's content */
+		--td-table-edge-shadow: rgb(0 0 0 / 14%); /* horizontal scroll hint at the clipped edge */
+		--td-table-card-bg: var(--td-table-bg);
+		--td-table-card-border: var(--td-table-border);
+		--td-table-card-radius: var(--td-radius-md);
+		--td-table-card-gap: var(--td-space-sm); /* between cards + around the card list */
+		--td-table-card-px: var(--td-space-md);
+		--td-table-card-py: var(--td-space-sm);
+		--td-table-label-fg: var(--td-color-text-muted); /* card cell labels + meta line (contrast gate ≥ 4.7) */
 	}
 
 	:root[data-td-theme="dark"] {
 		--td-table-zebra: rgb(255 255 255 / 3%);
 		--td-table-sheen: var(--td-skeleton-shine);
+		--td-table-edge-shadow: rgb(0 0 0 / 55%);
 	}
 }
 
 @layer td.component {
+	/*
+	 * v0.34.0: inline-size container (card mode + the table never widens its parent: a wide table scrolls INSIDE
+	 * .td-table__scroll, also with layout="table"). The host needs its width from the parent (ADR 0014 §4).
+	 */
 	td-table {
 		display: block;
+		min-inline-size: 0;
+		container: td-table / inline-size;
 	}
 
 	.td-table {
@@ -78,6 +108,10 @@
 	}
 
 	.td-table__pagination {
+		/* td-pagination is an inline-size container: content-sized it would collapse (ADR 0014 §4). A 16rem basis makes
+		   it wrap under the title in a narrow table instead of being squeezed next to it. */
+		flex: 1 1 16rem;
+		min-inline-size: 0;
 		margin-inline-start: auto;
 	}
 
@@ -94,9 +128,19 @@
 		display: none;
 	}
 
-	/* Scroll wrapper: horizontal scroll always; both axes with max-height (sticky header, D14) */
+	/*
+	 * Scroll wrapper: horizontal scroll always; both axes with max-height (sticky header, D14).
+	 * v0.34.0 edge shadows: two `local` covers (table fill, they scroll with the content) over two `scroll` shadows
+	 * (fixed at the edges) — a shadow shows only where content is clipped. Pure CSS (CSP strict).
+	 */
 	.td-table__scroll {
 		overflow-x: auto;
+		background:
+			linear-gradient(to right, var(--td-table-bg) 40%, transparent) left center / 2.5rem 100% no-repeat local,
+			linear-gradient(to left, var(--td-table-bg) 40%, transparent) right center / 2.5rem 100% no-repeat local,
+			linear-gradient(to right, var(--td-table-edge-shadow), transparent) left center / 0.75rem 100% no-repeat scroll,
+			linear-gradient(to left, var(--td-table-edge-shadow), transparent) right center / 0.75rem 100% no-repeat scroll;
+		background-color: var(--td-table-bg);
 	}
 
 	.td-table--scroll-y .td-table__scroll {
@@ -176,6 +220,8 @@
 		display: inline-flex;
 		gap: var(--td-space-2xs);
 		align-items: center;
+		min-inline-size: 24px; /* WCAG 2.5.8 with a mouse (ADR 0014 §5); 44px on coarse pointers (end of file) */
+		min-height: 24px;
 		padding: 2px 4px;
 		margin: -2px -4px;
 		font: inherit;
@@ -236,12 +282,699 @@
 		transition: background var(--td-dur-fast) var(--td-ease);
 	}
 
-	/* Ellipsis (D21) */
-	.td-table__cell--ellipsis,
+	/* Ellipsis (D21; v0.34.0: the content is capped, the table keeps its auto layout) */
 	.td-table__truncate {
+		max-inline-size: var(--td-table-ellipsis-max);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+
+	/* nowrap (v0.34.0, default for align: 'right' — amounts keep "₫" on their line) */
+	.td-table__cell--nowrap {
+		white-space: nowrap;
+	}
+
+	/* Card label: in the DOM of every body cell (aria-hidden), shown only in card mode */
+	.td-table__cell-label {
+		display: none;
+	}
+
+	/* Row actions (v0.34.0): inline buttons; the "Thao tác" menu button exists only with > 2 actions (card mode) */
+	.td-table__actions {
+		display: inline-flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		vertical-align: middle;
+	}
+
+	.td-table__actions > .td-table__actions-menu {
+		display: none;
+	}
+
+	.td-table__action-icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+
+	/*
+	 * Card placement (inert in table mode: order / flex only apply to flex items). --_td-table-pair = basis of a
+	 * secondary pair: one per line, two from a 480px container.
+	 */
+	.td-table {
+		--_td-table-pair: 100%;
+	}
+
+	@container td-table (width >= 480px) {
+		.td-table {
+			--_td-table-pair: calc(50% - var(--td-space-md) / 2);
+		}
+	}
+
+	.td-table__card-select { flex: none; order: 0; } /* v0.36 hook: row selection, shares the primary line */
+	.td-table__row > [data-card="primary"] { flex: 1 1 0%; order: 1; }
+	.td-table__row::after { flex: 0 0 100%; order: 2; } /* line break after the primary line (card mode only) */
+	.td-table__row > [data-card="secondary"] { flex: 0 0 var(--_td-table-pair); order: 3; }
+	.td-table__row::before { flex: 0 0 100%; order: 4; } /* line break before the meta line (card mode only) */
+	.td-table__row > [data-card="meta"] { flex: 0 1 auto; order: 5; }
+	.td-table__row > [data-card="actions"] { flex: 1 1 100%; order: 6; }
+
+	/* ---- Card mode 1/4: layout="cards" (always). The four bodies are IDENTICAL — edit all four. ---- */
+	:where(td-table[layout="cards"]) .td-table__table,
+	:where(td-table[layout="cards"]) .td-table__head {
+		display: block;
+	}
+
+	:where(td-table[layout="cards"]) .td-table__table {
+		position: relative; /* containing block of the visually hidden headers */
+	}
+
+	:where(td-table[layout="cards"]) .td-table__head > tr {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0 var(--td-space-xs);
+		padding-inline: var(--td-table-card-gap);
+	}
+
+	/* Sort bar: every header stays a columnheader, visually hidden; sortable ones show as chips */
+	:where(td-table[layout="cards"]) .td-table .td-table__th {
+		position: absolute;
+		width: 1px !important; /* !important: beats the CSSOM column width */
+		min-width: 0 !important;
+		max-width: none !important;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	:where(td-table[layout="cards"]) .td-table .td-table__th--sortable {
+		position: static;
+		width: auto !important;
+		height: auto;
+		margin: var(--td-table-card-gap) 0 0;
+		overflow: visible;
+		clip: auto;
+		text-transform: none;
+		letter-spacing: normal;
+		background: transparent;
+	}
+
+	:where(td-table[layout="cards"]) .td-table__th--sortable > .td-table__sort {
+		min-height: 2rem;
+		padding: 0 var(--td-space-sm);
+		margin: 0;
+		border: 1px solid var(--td-table-card-border);
+		border-radius: var(--td-radius-full);
+	}
+
+	/* Cards: solid, one hairline, no shadow; zebra off (:nth-child(n) ties the zebra rule, hover still wins) */
+	:where(td-table[layout="cards"]) .td-table__body {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-table-card-gap);
+		padding: var(--td-table-card-gap);
+	}
+
+	:where(td-table[layout="cards"]) .td-table .td-table__row:nth-child(n) {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0 var(--td-space-md);
+		align-items: baseline;
+		padding: var(--td-table-card-py) var(--td-table-card-px);
+		background: var(--td-table-card-bg);
+		border: 1px solid var(--td-table-card-border);
+		border-radius: var(--td-table-card-radius);
+	}
+
+	:where(td-table[layout="cards"]) .td-table__row::before,
+	:where(td-table[layout="cards"]) .td-table__row::after {
+		content: "";
+	}
+
+	:where(td-table[layout="cards"]) .td-table__row > td {
+		display: block;
+		width: auto !important; /* !important: beats the CSSOM column styles */
+		min-width: 0 !important;
+		max-width: 100% !important;
+		padding: var(--td-space-2xs) 0;
+		text-align: start !important;
+		overflow-wrap: anywhere;
+		white-space: normal;
+		border: 0;
+	}
+
+	:where(td-table[layout="cards"]) .td-table__row > [data-card="primary"] {
+		font-size: var(--td-text-base);
+		font-weight: var(--td-fw-semibold);
+	}
+
+	:where(td-table[layout="cards"]) .td-table__row > [data-card="meta"] {
+		font-size: var(--td-text-xs);
+		color: var(--td-table-label-fg);
+	}
+
+	:where(td-table[layout="cards"]) .td-table__row > [data-card="meta"] ~ [data-card="meta"]::before {
+		margin-inline: calc(-1 * var(--td-space-xs)) var(--td-space-xs); /* the dot sits in the gap */
+		content: "\00b7";
+		content: "\00b7" / "";
+	}
+
+	:where(td-table[layout="cards"]) .td-table__row > [data-card="actions"] {
+		padding-top: var(--td-space-xs);
+	}
+
+	:where(td-table[layout="cards"]) .td-table__row > [data-card="false"] {
+		display: none;
+	}
+
+	:where(td-table[layout="cards"]) .td-table__cell-label {
+		display: inline;
+		margin-inline-end: var(--td-space-2xs);
+		color: var(--td-table-label-fg);
+	}
+
+	:where(td-table[layout="cards"]) .td-table__cell-label::after {
+		content: ":";
+	}
+
+	:where(td-table[layout="cards"]) .td-table__row > :not([data-card="secondary"]) > .td-table__cell-label {
+		display: none;
+	}
+
+	:where(td-table[layout="cards"]) .td-table__truncate {
+		display: inline-block;
+		max-inline-size: 100%;
+		vertical-align: bottom;
+	}
+
+	:where(td-table[layout="cards"]) .td-table__actions {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+	}
+
+	:where(td-table[layout="cards"]) .td-table__actions--menu > .td-table__action {
+		display: none;
+	}
+
+	:where(td-table[layout="cards"]) .td-table__actions--menu > .td-table__actions-menu {
+		display: inline-flex;
+	}
+
+	:where(td-table[layout="cards"]) .td-table__empty-row,
+	:where(td-table[layout="cards"]) .td-table__empty {
+		display: block;
+	}
+
+	:where(td-table[layout="cards"]) .td-table--scroll-y .td-table__head {
+		position: sticky;
+		top: 0;
+		z-index: 1;
+		background: var(--td-table-head-sticky-bg);
+	}
+
+	/* ---- Card mode 2/4: auto + card-below="sm" ---- */
+	@container td-table (width < 480px) {
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__table,
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__head {
+			display: block;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__table {
+			position: relative; /* containing block of the visually hidden headers */
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__head > tr {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0 var(--td-space-xs);
+			padding-inline: var(--td-table-card-gap);
+		}
+
+		/* Sort bar: every header stays a columnheader, visually hidden; sortable ones show as chips */
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table .td-table__th {
+			position: absolute;
+			width: 1px !important; /* !important: beats the CSSOM column width */
+			min-width: 0 !important;
+			max-width: none !important;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+			white-space: nowrap;
+			border: 0;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table .td-table__th--sortable {
+			position: static;
+			width: auto !important;
+			height: auto;
+			margin: var(--td-table-card-gap) 0 0;
+			overflow: visible;
+			clip: auto;
+			text-transform: none;
+			letter-spacing: normal;
+			background: transparent;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__th--sortable > .td-table__sort {
+			min-height: 2rem;
+			padding: 0 var(--td-space-sm);
+			margin: 0;
+			border: 1px solid var(--td-table-card-border);
+			border-radius: var(--td-radius-full);
+		}
+
+		/* Cards: solid, one hairline, no shadow; zebra off (:nth-child(n) ties the zebra rule, hover still wins) */
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__body {
+			display: flex;
+			flex-direction: column;
+			gap: var(--td-table-card-gap);
+			padding: var(--td-table-card-gap);
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table .td-table__row:nth-child(n) {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0 var(--td-space-md);
+			align-items: baseline;
+			padding: var(--td-table-card-py) var(--td-table-card-px);
+			background: var(--td-table-card-bg);
+			border: 1px solid var(--td-table-card-border);
+			border-radius: var(--td-table-card-radius);
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__row::before,
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__row::after {
+			content: "";
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__row > td {
+			display: block;
+			width: auto !important; /* !important: beats the CSSOM column styles */
+			min-width: 0 !important;
+			max-width: 100% !important;
+			padding: var(--td-space-2xs) 0;
+			text-align: start !important;
+			overflow-wrap: anywhere;
+			white-space: normal;
+			border: 0;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__row > [data-card="primary"] {
+			font-size: var(--td-text-base);
+			font-weight: var(--td-fw-semibold);
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__row > [data-card="meta"] {
+			font-size: var(--td-text-xs);
+			color: var(--td-table-label-fg);
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__row > [data-card="meta"] ~ [data-card="meta"]::before {
+			margin-inline: calc(-1 * var(--td-space-xs)) var(--td-space-xs); /* the dot sits in the gap */
+			content: "\00b7";
+			content: "\00b7" / "";
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__row > [data-card="actions"] {
+			padding-top: var(--td-space-xs);
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__row > [data-card="false"] {
+			display: none;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__cell-label {
+			display: inline;
+			margin-inline-end: var(--td-space-2xs);
+			color: var(--td-table-label-fg);
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__cell-label::after {
+			content: ":";
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__row > :not([data-card="secondary"]) > .td-table__cell-label {
+			display: none;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__truncate {
+			display: inline-block;
+			max-inline-size: 100%;
+			vertical-align: bottom;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__actions {
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: flex-end;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__actions--menu > .td-table__action {
+			display: none;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__actions--menu > .td-table__actions-menu {
+			display: inline-flex;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__empty-row,
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table__empty {
+			display: block;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="sm"]) .td-table--scroll-y .td-table__head {
+			position: sticky;
+			top: 0;
+			z-index: 1;
+			background: var(--td-table-head-sticky-bg);
+		}
+	}
+
+	/* ---- Card mode 3/4: auto + card-below="md" (default) ---- */
+	@container td-table (width < 720px) {
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__table,
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__head {
+			display: block;
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__table {
+			position: relative; /* containing block of the visually hidden headers */
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__head > tr {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0 var(--td-space-xs);
+			padding-inline: var(--td-table-card-gap);
+		}
+
+		/* Sort bar: every header stays a columnheader, visually hidden; sortable ones show as chips */
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table .td-table__th {
+			position: absolute;
+			width: 1px !important; /* !important: beats the CSSOM column width */
+			min-width: 0 !important;
+			max-width: none !important;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+			white-space: nowrap;
+			border: 0;
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table .td-table__th--sortable {
+			position: static;
+			width: auto !important;
+			height: auto;
+			margin: var(--td-table-card-gap) 0 0;
+			overflow: visible;
+			clip: auto;
+			text-transform: none;
+			letter-spacing: normal;
+			background: transparent;
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__th--sortable > .td-table__sort {
+			min-height: 2rem;
+			padding: 0 var(--td-space-sm);
+			margin: 0;
+			border: 1px solid var(--td-table-card-border);
+			border-radius: var(--td-radius-full);
+		}
+
+		/* Cards: solid, one hairline, no shadow; zebra off (:nth-child(n) ties the zebra rule, hover still wins) */
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__body {
+			display: flex;
+			flex-direction: column;
+			gap: var(--td-table-card-gap);
+			padding: var(--td-table-card-gap);
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table .td-table__row:nth-child(n) {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0 var(--td-space-md);
+			align-items: baseline;
+			padding: var(--td-table-card-py) var(--td-table-card-px);
+			background: var(--td-table-card-bg);
+			border: 1px solid var(--td-table-card-border);
+			border-radius: var(--td-table-card-radius);
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__row::before,
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__row::after {
+			content: "";
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__row > td {
+			display: block;
+			width: auto !important; /* !important: beats the CSSOM column styles */
+			min-width: 0 !important;
+			max-width: 100% !important;
+			padding: var(--td-space-2xs) 0;
+			text-align: start !important;
+			overflow-wrap: anywhere;
+			white-space: normal;
+			border: 0;
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__row > [data-card="primary"] {
+			font-size: var(--td-text-base);
+			font-weight: var(--td-fw-semibold);
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__row > [data-card="meta"] {
+			font-size: var(--td-text-xs);
+			color: var(--td-table-label-fg);
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__row > [data-card="meta"] ~ [data-card="meta"]::before {
+			margin-inline: calc(-1 * var(--td-space-xs)) var(--td-space-xs); /* the dot sits in the gap */
+			content: "\00b7";
+			content: "\00b7" / "";
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__row > [data-card="actions"] {
+			padding-top: var(--td-space-xs);
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__row > [data-card="false"] {
+			display: none;
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__cell-label {
+			display: inline;
+			margin-inline-end: var(--td-space-2xs);
+			color: var(--td-table-label-fg);
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__cell-label::after {
+			content: ":";
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__row > :not([data-card="secondary"]) > .td-table__cell-label {
+			display: none;
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__truncate {
+			display: inline-block;
+			max-inline-size: 100%;
+			vertical-align: bottom;
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__actions {
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: flex-end;
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__actions--menu > .td-table__action {
+			display: none;
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__actions--menu > .td-table__actions-menu {
+			display: inline-flex;
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__empty-row,
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table__empty {
+			display: block;
+		}
+
+		:where(td-table:not([layout="table"]):not([card-below="sm"]):not([card-below="lg"])) .td-table--scroll-y .td-table__head {
+			position: sticky;
+			top: 0;
+			z-index: 1;
+			background: var(--td-table-head-sticky-bg);
+		}
+	}
+
+	/* ---- Card mode 4/4: auto + card-below="lg" ---- */
+	@container td-table (width < 1024px) {
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__table,
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__head {
+			display: block;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__table {
+			position: relative; /* containing block of the visually hidden headers */
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__head > tr {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0 var(--td-space-xs);
+			padding-inline: var(--td-table-card-gap);
+		}
+
+		/* Sort bar: every header stays a columnheader, visually hidden; sortable ones show as chips */
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table .td-table__th {
+			position: absolute;
+			width: 1px !important; /* !important: beats the CSSOM column width */
+			min-width: 0 !important;
+			max-width: none !important;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+			white-space: nowrap;
+			border: 0;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table .td-table__th--sortable {
+			position: static;
+			width: auto !important;
+			height: auto;
+			margin: var(--td-table-card-gap) 0 0;
+			overflow: visible;
+			clip: auto;
+			text-transform: none;
+			letter-spacing: normal;
+			background: transparent;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__th--sortable > .td-table__sort {
+			min-height: 2rem;
+			padding: 0 var(--td-space-sm);
+			margin: 0;
+			border: 1px solid var(--td-table-card-border);
+			border-radius: var(--td-radius-full);
+		}
+
+		/* Cards: solid, one hairline, no shadow; zebra off (:nth-child(n) ties the zebra rule, hover still wins) */
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__body {
+			display: flex;
+			flex-direction: column;
+			gap: var(--td-table-card-gap);
+			padding: var(--td-table-card-gap);
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table .td-table__row:nth-child(n) {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0 var(--td-space-md);
+			align-items: baseline;
+			padding: var(--td-table-card-py) var(--td-table-card-px);
+			background: var(--td-table-card-bg);
+			border: 1px solid var(--td-table-card-border);
+			border-radius: var(--td-table-card-radius);
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__row::before,
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__row::after {
+			content: "";
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__row > td {
+			display: block;
+			width: auto !important; /* !important: beats the CSSOM column styles */
+			min-width: 0 !important;
+			max-width: 100% !important;
+			padding: var(--td-space-2xs) 0;
+			text-align: start !important;
+			overflow-wrap: anywhere;
+			white-space: normal;
+			border: 0;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__row > [data-card="primary"] {
+			font-size: var(--td-text-base);
+			font-weight: var(--td-fw-semibold);
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__row > [data-card="meta"] {
+			font-size: var(--td-text-xs);
+			color: var(--td-table-label-fg);
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__row > [data-card="meta"] ~ [data-card="meta"]::before {
+			margin-inline: calc(-1 * var(--td-space-xs)) var(--td-space-xs); /* the dot sits in the gap */
+			content: "\00b7";
+			content: "\00b7" / "";
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__row > [data-card="actions"] {
+			padding-top: var(--td-space-xs);
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__row > [data-card="false"] {
+			display: none;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__cell-label {
+			display: inline;
+			margin-inline-end: var(--td-space-2xs);
+			color: var(--td-table-label-fg);
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__cell-label::after {
+			content: ":";
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__row > :not([data-card="secondary"]) > .td-table__cell-label {
+			display: none;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__truncate {
+			display: inline-block;
+			max-inline-size: 100%;
+			vertical-align: bottom;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__actions {
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: flex-end;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__actions--menu > .td-table__action {
+			display: none;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__actions--menu > .td-table__actions-menu {
+			display: inline-flex;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__empty-row,
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table__empty {
+			display: block;
+		}
+
+		:where(td-table:not([layout="table"])[card-below="lg"]) .td-table--scroll-y .td-table__head {
+			position: sticky;
+			top: 0;
+			z-index: 1;
+			background: var(--td-table-head-sticky-bg);
+		}
 	}
 
 	/* Empty state: no card inside the card */
@@ -285,8 +1018,10 @@
 		}
 	}
 
+	/* After the card rules (same specificity as the card chips → this wins): 44px touch targets (ADR 0014) */
 	@media (pointer: coarse) {
-		.td-table__sort {
+		.td-table .td-table__sort {
+			min-inline-size: var(--td-touch-min);
 			min-height: var(--td-touch-min);
 		}
 	}

@@ -32,7 +32,10 @@ function table(attrs = '', { columns = COLS, data = ROWS, parent = host } = {}) 
 }
 const ths = (el) => [...el.querySelectorAll('.td-table__th')];
 const rows = (el) => [...el.querySelectorAll('.td-table__body > .td-table__row')];
-const col = (el, ci) => rows(el).map((tr) => tr.children[ci].textContent);
+/** v0.34.0: a body cell = aria-hidden card label + value → read the value only */
+const val = (td) => [...td.childNodes].filter((n) => !(n.nodeType === 1 && n.classList.contains('td-table__cell-label')))
+  .map((n) => n.textContent).join('');
+const col = (el, ci) => rows(el).map((tr) => val(tr.children[ci]));
 const sortBtn = (el, ci) => el.querySelector(`.td-table__sort[data-sort-col="${ci}"]`);
 const pagTop = (el) => el.querySelector('.td-table__header td-pagination');
 const pagBottom = (el) => el.querySelector('.td-table__footer td-pagination');
@@ -62,7 +65,7 @@ const ratio = (a, b) => {
 };
 
 const KEEP = ['type', 'role', 'aria-hidden', 'hidden', 'id', 'scope', 'colspan', 'aria-label', 'aria-labelledby',
-  'aria-sort', 'aria-busy', 'data-state', 'data-col', 'data-col-key', 'data-sort-col', 'data-row-idx',
+  'aria-sort', 'aria-busy', 'data-state', 'data-col', 'data-col-key', 'data-card', 'data-sort-col', 'data-row-idx',
   'data-sort-icon', 'tabindex', 'quiet', 'heading-level', 'title', 'message', 'compact', 'size'];
 const OPAQUE = new Set(['td-pagination', 'td-empty-state']);
 function shape(el) {
@@ -164,7 +167,8 @@ describe('batch 4 — td-table naming (D18, review ISSUE-4)', () => {
   it('no title and no aria-label → table AND overflow region are named "Bảng dữ liệu" (TdTable.labels.table)', async () => {
     const box = mount('<div class="t-narrow"></div>');
     box.style.width = '200px';
-    const el = table('', { parent: box, columns: [...COLS, { key: 'role', label: 'Một cột rất rất rất dài để tràn ngang' }] });
+    // v0.34.0: under 720px the default layout is cards (no overflow) → the overflow region needs layout="table"
+    const el = table('layout="table"', { parent: box, columns: [...COLS, { key: 'role', label: 'Một cột rất rất rất dài để tràn ngang' }] });
     await frames(3);
     const t = el.querySelector('table');
     expect(t.getAttribute('aria-label')).to.equal('Bảng dữ liệu');
@@ -180,7 +184,7 @@ describe('batch 4 — td-table overflow region (D16)', () => {
   it('focusable + named only while overflowing (ResizeObserver), title name via aria-labelledby', async () => {
     const box = mount('<div></div>');
     box.style.width = '1200px';
-    const el = table('id="ov" title="Bảng rộng"', { parent: box });
+    const el = table('id="ov" title="Bảng rộng" layout="table"', { parent: box }); // v0.34.0: cards under 720 otherwise
     await frames(3);
     const s = el.querySelector('.td-table__scroll');
     expect(s.hasAttribute('tabindex')).to.equal(false);
@@ -476,8 +480,8 @@ describe('batch 4 — td-table columns + render hatch (D20, 2.8.4)', () => {
     const tr = rows(el)[0];
     expect(tr.children[1].querySelector('em').textContent).to.equal('3');
     expect(tr.children[2].querySelector('button').textContent).to.equal('x3');
-    expect(tr.children[3].textContent).to.equal('30');
-    expect(tr.children[4].textContent).to.equal('');
+    expect(val(tr.children[3])).to.equal('30');
+    expect(val(tr.children[4])).to.equal('');
     expect(calls.at(-1)).to.equal(0); // index within the page
     expect(tr.children[1].getAttribute('data-col-key')).to.equal('');
   });
@@ -490,7 +494,8 @@ describe('batch 4 — td-table columns + render hatch (D20, 2.8.4)', () => {
       data: [{ [pay]: pay, v: pay }],
     });
     expect(el.querySelector('img')).to.equal(null);
-    expect(rows(el)[0].children[0].textContent).to.equal(pay);
+    expect(val(rows(el)[0].children[0])).to.equal(pay);
+    expect(rows(el)[0].children[0].querySelector('.td-table__cell-label').textContent).to.equal(pay); // v0.34.0
     expect(ths(el)[0].getAttribute('data-col-key')).to.equal(pay);
     el.data = [];
     el.setAttribute('empty-text', pay);
@@ -514,11 +519,11 @@ describe('batch 4 — td-table columns + render hatch (D20, 2.8.4)', () => {
       expect(c.style.maxWidth).to.equal('80px');
       expect(c.style.textAlign).to.equal('right');
     }
-    expect(th1.style.width).to.equal('auto');
+    expect(th1.style.width).to.equal(''); // v0.34.0: no redundant `width: auto` inline style
     expect(th1.style.minWidth).to.equal('120px');
     expect(th1.style.maxWidth).to.equal('20rem');
     expect(th1.style.textAlign).to.equal('center');
-    expect(th2.style.width).to.equal('auto');
+    expect(th2.style.width).to.equal('');
     expect(th2.style.minWidth).to.equal('');
     expect(th2.style.textAlign).to.equal('');
     expect(th2.style.background).to.equal('');
@@ -528,7 +533,7 @@ describe('batch 4 — td-table columns + render hatch (D20, 2.8.4)', () => {
     expect(rows(el)[2].children[0].style.width).to.equal('80px');
   });
 
-  it('ellipsis (D21): truncate wrapper + title = text, table-layout fixed, text-overflow ellipsis', () => {
+  it('ellipsis (D21): truncate wrapper + title = text, text-overflow ellipsis; v0.34.0: layout stays auto', () => {
     const long = 'Một đoạn văn bản rất dài '.repeat(10);
     const el = table('', {
       columns: [{ key: 'id', label: 'ID' }, { key: 't', label: 'Mô tả', ellipsis: true },
@@ -536,8 +541,9 @@ describe('batch 4 — td-table columns + render hatch (D20, 2.8.4)', () => {
         { key: 'r', label: 'R2', ellipsis: true, render: () => '<span title="riêng">y</span>' }],
       data: [{ id: 1, t: long }],
     });
-    expect(el.querySelector('.td-table').classList.contains('td-table--fixed')).to.equal(true);
-    expect(getComputedStyle(el.querySelector('table')).tableLayout).to.equal('fixed');
+    // v0.34.0 (plan QĐ 14): ellipsis no longer forces table-layout fixed (it split every column evenly)
+    expect(el.querySelector('.td-table').classList.contains('td-table--fixed')).to.equal(false);
+    expect(getComputedStyle(el.querySelector('table')).tableLayout).to.equal('auto');
     const cells = rows(el)[0].children;
     expect(cells[1].classList.contains('td-table__cell--ellipsis')).to.equal(true);
     const tr = cells[1].querySelector('.td-table__truncate');

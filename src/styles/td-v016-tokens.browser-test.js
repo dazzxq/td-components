@@ -143,7 +143,7 @@ describe('D5 default-size tokens are overridable from :root (unlayered site CSS)
 
   it('--td-table-cell-px', () => {
     siteCss(':root { --td-table-cell-px: 7px; }');
-    const el = mount('<td-table></td-table>');
+    const el = mount('<td-table layout="table"></td-table>'); // v0.34.0: a host < 720px is cards by default
     el.columns = [{ key: 'a', label: 'A' }];
     el.data = [{ a: 'x' }];
     expect(px(el.querySelector('.td-table__body .td-table__cell'), 'paddingLeft')).to.equal(7);
