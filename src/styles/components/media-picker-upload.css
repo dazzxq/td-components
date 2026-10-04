@@ -27,9 +27,10 @@
 		display: none;
 	}
 
+	/* dcms2: the segmented control spans the dialog width, two equal segments (labels never truncated) */
 	.td-media-picker-upload__tabs {
-		display: flex;
-		justify-content: center;
+		display: block;
+		width: 100%;
 	}
 
 	.td-media-picker-upload__panel {
