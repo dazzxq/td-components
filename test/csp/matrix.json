@@ -1083,6 +1083,62 @@
         "height",
         "margin-left"
       ]
+    },
+    {
+      "state": "selection",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('selectable',''); t.setAttribute('row-key','id'); t.setAttribute('layout','table'); t.rowSelectable=(r)=>r.id!==3; window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên',sortable:true},{key:'role',label:'Vai trò'}];t.data=[{id:1,name:'An',role:'Admin'},{id:2,name:'Bình',role:'Editor'},{id:3,name:'Chi',role:'Viewer'},{id:4,name:'Dũng',role:'Editor'}]; t.selectedKeys=[1,3];",
+      "selectors": [
+        ".td-table__th--select",
+        ".td-table__select-all",
+        ".td-table__select-all > .td-check",
+        ".td-table__select-all-label",
+        ".td-table__row[data-row-idx=\"0\"]",
+        ".td-table__row[data-row-idx=\"0\"] .td-table__cell--select",
+        ".td-table__row[data-row-idx=\"0\"] .td-table__select",
+        ".td-table__row[data-row-idx=\"0\"] .td-check",
+        ".td-table__row[data-row-idx=\"1\"]",
+        ".td-table__row[data-row-idx=\"1\"] .td-check",
+        ".td-table__row[data-row-idx=\"2\"]",
+        ".td-table__row[data-row-idx=\"2\"] .td-check"
+      ],
+      "settle": 400,
+      "pseudo": "focus",
+      "focusSelector": ".td-table__row[data-row-idx=\"0\"] .td-table__select"
+    },
+    {
+      "state": "selection-all",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('selectable',''); t.setAttribute('row-key','id'); t.setAttribute('layout','table'); window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên',sortable:true},{key:'role',label:'Vai trò'}];t.data=[{id:1,name:'An',role:'Admin'},{id:2,name:'Bình',role:'Editor'},{id:3,name:'Chi',role:'Viewer'},{id:4,name:'Dũng',role:'Editor'}]; t.selectedKeys=[1,2,3,4];",
+      "selectors": [
+        ".td-table__select-all",
+        ".td-table__select-all > .td-check",
+        ".td-table__row[data-row-idx=\"1\"]"
+      ],
+      "settle": 400
+    },
+    {
+      "state": "selection-cards",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('selectable',''); t.setAttribute('row-key','id'); t.setAttribute('layout','cards'); window.__mount.appendChild(t); t.columns=[{key:'id',label:'ID'},{key:'name',label:'Tên',sortable:true,card:'primary'},{key:'role',label:'Vai trò'}]; t.data=[{id:1,name:'An',role:'Admin'},{id:2,name:'Bình',role:'Editor'},{id:3,name:'Chi',role:'Viewer'},{id:4,name:'Dũng',role:'Editor'}]; t.selectedKeys=[2];",
+      "selectors": [
+        ".td-table__head > tr",
+        ".td-table__th--select-all",
+        ".td-table__select-all",
+        ".td-table__select-all-label",
+        ".td-table__row[data-row-idx=\"0\"]",
+        ".td-table__row[data-row-idx=\"1\"]",
+        ".td-table__row[data-row-idx=\"1\"] .td-table__cell--select",
+        ".td-table__row[data-row-idx=\"1\"] .td-table__select"
+      ],
+      "settle": 400
+    },
+    {
+      "state": "selection-single",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('selectable','single'); t.setAttribute('row-key','id'); t.setAttribute('layout','table'); window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên',sortable:true},{key:'role',label:'Vai trò'}];t.data=[{id:1,name:'An',role:'Admin'},{id:2,name:'Bình',role:'Editor'},{id:3,name:'Chi',role:'Viewer'},{id:4,name:'Dũng',role:'Editor'}]; t.selectedKeys=[2];",
+      "selectors": [
+        ".td-table__th--select",
+        ".td-table__row[data-row-idx=\"1\"]",
+        ".td-table__row[data-row-idx=\"1\"] .td-check"
+      ],
+      "settle": 400
     }
   ],
   "td-modal": [
