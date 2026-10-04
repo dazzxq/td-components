@@ -396,6 +396,11 @@ export class TdMediaField extends TdFormElement {
     this._asset = s.asset ?? null;
     // review R1 #2 (TOCTOU): where the asset came from — reused as the crop source only on an EXACT match
     this._assetProv = this._asset ? (s.assetProv ?? null) : null;
+    // review R2 path 1: a preview produced by an adapter (picker outcome) carries that source; an attribute /
+    // programmatic preview (null) is the only one trusted as the no-adapter crop source, and is kept apart to come back
+    // when an adapter-derived preview is invalidated
+    this._previewProv = s.previewProv ?? null;
+    if (!this._previewProv) this._explicitPreview = { id: this._value, src: this._previewSrc, previewAlt: this._previewAlt, kind: this._kind };
   }
 
   /** @private the current source provenance: adapter + context + source generation */
@@ -457,6 +462,25 @@ export class TdMediaField extends TdFormElement {
     // v0.35 review R1 #2: a pending crop source AND an open crop dialog of the old adapter / context are aborted
     if (this._cropCtrl) this._abortCrop();
     this._assetProv = null; // a cached asset of the old source is never the crop source again
+    // review R2 path 2: a picker opened under the old source never commits (invalidate + close it)
+    if (this._picking) {
+      this._pickGen += 1;
+      this._picking = false;
+      const host = this._pickerHost;
+      this._pickerHost = null;
+      try { if (host && host.isConnected && typeof host.close === 'function') host.close('programmatic'); } catch { /* ignore */ }
+    }
+    // review R2 path 1: an adapter-derived preview of the old source goes; the explicit preview-src (same value) comes back
+    if (this._previewProv) {
+      const ex = this._explicitPreview;
+      const keep = !!ex && ex.id === this._value;
+      this._previewSrc = keep ? ex.src : '';
+      this._previewAlt = keep ? ex.previewAlt : '';
+      if (keep) this._kind = ex.kind;
+      this._asset = null;
+      this._previewProv = null;
+      if (this._initialized) this._update();
+    }
     if (this._initialized && this.isConnected && this._needsPreview()) this._lazyGet();
     if (this._initialized) this._syncCropBtn(); // the "Cắt ảnh" source (28a) may have appeared / gone
   }
@@ -488,6 +512,7 @@ export class TdMediaField extends TdFormElement {
       this._kind = p.kind;
       this._asset = asset;
       this._assetProv = { adapter, context, gen };
+      this._previewProv = { adapter, context, gen }; // review R2 path 1
       if (this._initialized) this._update();
     });
   }
@@ -688,7 +713,9 @@ export class TdMediaField extends TdFormElement {
    */
   _cropBtnShown() {
     if (!this._value || this._kind !== 'image') return false;
-    return !!this._previewSrc || (!this._ssrRender && !!this._resolveAdapter());
+    const adapter = !!this._resolveAdapter();
+    // review R2 path 1: without an adapter only an explicit (attribute / programmatic) preview is a crop source
+    return (!!this._previewSrc && (adapter || !this._previewProv)) || (!this._ssrRender && adapter);
   }
 
   /** @private the crop button's `hidden` follows the source (adapter appeared / removed) */
@@ -869,14 +896,20 @@ export class TdMediaField extends TdFormElement {
     const gen = ++this._pickGen;
     const prov = this._prov(); // review R1 #2: the asset of the outcome comes from THIS source
     let p;
+    const hosts = () => [...document.body.children].filter((n) => n.localName === 'td-media-picker');
+    const before = new Set(hosts());
     try {
       p = Promise.resolve(TdMediaPicker.open(opts));
+      // review R2 path 2: the picker host this open() mounted (so a source change can close it)
+      this._pickerHost = hosts().find((n) => !before.has(n)) || null;
     } catch (err) {
       p = Promise.reject(err);
     }
     p.then((outcome) => {
       if (gen !== this._pickGen) return;
       this._picking = false;
+      this._pickerHost = null;
+      if (!this._provMatches(prov)) return; // review R2 path 2: a stale source never commits
       if (this.isConnected) this._onOutcome(outcome, trigger, prov);
     }, (err) => {
       if (gen !== this._pickGen) return;
@@ -902,7 +935,7 @@ export class TdMediaField extends TdFormElement {
     if (sel.assetId === this._value) {
       if (!croppable) {
         // v0.34: same asset → refresh what is shown, nothing changed for the form → no event
-        this._applyLive({ id: this._value, ...preview, alt: this._alt, cropRaw: this._cropRaw, focalRaw: this._focalRaw, asset, assetProv: prov });
+        this._applyLive({ id: this._value, ...preview, alt: this._alt, cropRaw: this._cropRaw, focalRaw: this._focalRaw, asset, assetProv: prov, previewProv: prov });
         return;
       }
       // croppable: refresh the asset / preview AND apply the crop step's crop + focal; numbers equal (± 1e-6) → the
@@ -917,6 +950,7 @@ export class TdMediaField extends TdFormElement {
         focalRaw: focalSame ? this._focalRaw : focalRaw,
         asset,
         assetProv: prov,
+        previewProv: prov,
       });
       if (cropSame && focalSame) return;
       this._emit('input');
@@ -924,7 +958,7 @@ export class TdMediaField extends TdFormElement {
       return;
     }
     const altText = typeof sel.usage?.altText === 'string' ? sel.usage.altText : (asset?.defaultAltText ?? '');
-    this._applyLive({ id: sel.assetId, ...preview, alt: cap(altText), cropRaw, focalRaw, asset, assetProv: prov });
+    this._applyLive({ id: sel.assetId, ...preview, alt: cap(altText), cropRaw, focalRaw, asset, assetProv: prov, previewProv: prov });
     this._emit('input');
     this._emit('change');
     if (trigger && (!trigger.isConnected || trigger.closest('[hidden]')) && this.contains(this.ownerDocument.activeElement) === false) {
@@ -971,7 +1005,8 @@ export class TdMediaField extends TdFormElement {
    */
   async _cropSource(btn, gen) {
     const adapter = this._resolveAdapter();
-    if (!adapter) return this._previewSrc ? { src: this._previewSrc } : null;
+    // review R2 path 1: no adapter → ONLY an attribute / programmatic preview-src, never one an adapter produced
+    if (!adapter) return this._previewSrc && !this._previewProv ? { src: this._previewSrc } : null;
     const id = this._value;
     let asset = this._asset;
     if (!(asset && asset.id === id && posInt(asset.width) && posInt(asset.height) && this._provMatches(this._assetProv))) {
@@ -995,7 +1030,7 @@ export class TdMediaField extends TdFormElement {
       }
       const p = this._previewOf(asset); // the fresh asset is the field's too (preview, name)
       Object.assign(this, { _previewSrc: p.src, _previewAlt: p.previewAlt, _kind: p.kind, _asset: asset,
-        _assetProv: { adapter, context, gen: srcGen } });
+        _assetProv: { adapter, context, gen: srcGen }, _previewProv: { adapter, context, gen: srcGen } });
       this._update();
       if (asset.kind !== 'image') return null;
     }

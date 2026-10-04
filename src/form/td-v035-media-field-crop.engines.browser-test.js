@@ -784,3 +784,91 @@ describe('td-media-field v0.35 — review R1 #3: same asset, null crop ≡ whole
     expectState(t, 'og', { crop: WHOLE, focal: null, events: 0 });
   });
 });
+
+// Codex security review v0.35 round 2 (TOCTOU, medium): path 1 — a preview URL produced by an adapter that is no longer
+// the source must never become the no-adapter crop source; path 2 — a picker opened under an old adapter / context can
+// never commit.
+describe('td-media-field v0.35 — review R2 path 1: adapter-derived preview vs the explicit preview-src', () => {
+  const abs = (u) => new URL(u, document.baseURI).href;
+
+  it('adapter A fills the preview (no preview-src) → adapter removed → no crop source at all (A’s URL is not trusted)', async () => {
+    const a = createMockAdapter({ manual: true });
+    const t = mk({ ...CROPPABLE, value: 'm1' }, { adapter: a });
+    await until(() => a.calls.get.length === 1, 4000, 'lazy get');
+    a.calls.get[0].resolve();
+    await until(() => q(t.el, 'img'), 4000, 'preview from A');
+    expect(cropBtn(t.el).hidden).to.equal(false);
+    t.el.adapter = null;
+    expect(cropBtn(t.el).hidden, 'no adapter + no explicit preview-src → no crop source').to.equal(true);
+    cropBtn(t.el).click();
+    for (let i = 0; i < 5; i++) await tick();
+    expect(dialogRoots().length).to.equal(0);
+    expect(q(t.el, 'img'), 'A’s preview cleared').to.equal(null);
+  });
+
+  it('explicit preview-src + adapter A → crop get swaps in A’s urls.preview → adapter removed → the dialog uses preview-src again', async () => {
+    const a = createMockAdapter({ manual: true });
+    const t = mk({ ...CROPPABLE, value: 'm1', 'preview-src': '/test/fixtures/3.svg' }, { adapter: a });
+    cropBtn(t.el).click();
+    a.calls.get[0].resolve();
+    const d = await dialogReady();
+    expect(abs(cropperOf(d).getAttribute('src'))).to.equal(abs(asset('m1').urls.preview));
+    cancelBtn(d).click();
+    await dialogGone();
+    t.el.adapter = null;
+    expect(abs(q(t.el, 'img').getAttribute('src')), 'explicit preview restored').to.equal(abs('/test/fixtures/3.svg'));
+    const d2 = await openCrop(t.el);
+    expect(abs(cropperOf(d2).getAttribute('src'))).to.equal(abs('/test/fixtures/3.svg'));
+    expect(cropperOf(d2).hasAttribute('natural-width'), 'no natural size from the invalidated adapter').to.equal(false);
+    cancelBtn(d2).click();
+    await dialogGone();
+  });
+
+  it('defaults adapter → defaults removed → the same rule (explicit preview-src only)', async () => {
+    const a = createMockAdapter({ manual: true });
+    TdMediaPicker.configureDefaults({ adapter: a });
+    try {
+      const t = mk({ ...CROPPABLE, value: 'm1', 'preview-src': '/test/fixtures/2.svg' }, { adapter: null });
+      cropBtn(t.el).click();
+      a.calls.get[0].resolve();
+      const d = await dialogReady();
+      cancelBtn(d).click();
+      await dialogGone();
+      TdMediaPicker.configureDefaults({});
+      const d2 = await openCrop(t.el);
+      expect(abs(cropperOf(d2).getAttribute('src'))).to.equal(abs('/test/fixtures/2.svg'));
+      cancelBtn(d2).click();
+      await dialogGone();
+    } finally {
+      TdMediaPicker.configureDefaults({});
+    }
+  });
+});
+
+describe('td-media-field v0.35 — review R2 path 2: a picker of an old source never commits', () => {
+  for (const [what, change] of [['context', (el) => { el.pickerOptions = { context: 'other' }; }],
+    ['adapter', (el) => { el.adapter = createMockAdapter(); }]]) {
+    it(`${what} change while the field's picker is open → the old outcome is ignored (field unchanged, no event)`, async () => {
+      const t = mk({ ...CROPPABLE, value: 'm1', crop: CROP_B, 'preview-src': '/test/fixtures/3.svg' });
+      q(t.el, '.td-media-field__replace').click();
+      expect(opens.length).to.equal(1);
+      change(t.el);
+      opens[0].resolve(picked('m2', { crop: { normalized: { x: 0, y: 0, width: 0.5, height: 0.5 } } }));
+      for (let i = 0; i < 5; i++) await tick();
+      expect(t.el.value).to.equal('m1');
+      expectState(t, 'og', { crop: CROP_B, focal: null, events: 0 });
+      q(t.el, '.td-media-field__replace').click();
+      expect(opens.length, 'lock released').to.equal(2);
+    });
+  }
+
+  it('REAL picker: a source change closes the open picker (cancelled / programmatic), the field is unchanged', async () => {
+    TdMediaPicker.open = realOpen;
+    const t = mk({ ...CROPPABLE, value: 'm1', crop: CROP_B, 'preview-src': '/test/fixtures/3.svg' });
+    q(t.el, '.td-media-field__replace').click();
+    await until(() => document.querySelector('body > .td-media-picker[data-state="open"]'), 4000, 'picker open');
+    t.el.pickerOptions = { context: 'other' };
+    await until(() => !document.querySelector('body > .td-media-picker'), 4000, 'picker closed');
+    expectState(t, 'og', { crop: CROP_B, focal: null, events: 0 });
+  });
+});
