@@ -67,7 +67,7 @@ hr { margin: 32px 0; border: none; border-top: 1px solid var(--td-color-border);
 .demo-rep-row > td-number-input { flex: 0 1 8rem; min-width: 0; }
 .demo-skel { display: grid; gap: 12px; max-width: 320px; }
 .demo-skel__head { display: flex; gap: 12px; align-items: center; }
-.demo-copy-input { max-width: 16rem; }
+.demo-copy-input { max-width: 16rem; flex: 1 1 12rem; }
 /* v0.33: no size here — td-media-grid owns the tile / image size (tokens --td-media-grid-fit / -ratio) */
 .demo-mg-img { display: block; }
 .demo-mg-bar { margin-top: 12px; }
@@ -76,3 +76,9 @@ hr { margin: 32px 0; border: none; border-top: 1px solid var(--td-color-border);
 .demo-sort-list { align-self: start; }
 .demo-sort-item { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--td-color-border); }
 .demo-sort-img { display: block; }
+
+/* v0.36.0: badge on a fill of its own colour (border + soft shadow keep it visible) */
+.demo-fill { display: inline-flex; padding: 0.5rem 0.75rem; border-radius: 8px; }
+.demo-fill--success { background: #15803d; }
+.demo-fill--danger { background: #dc2626; }
+.demo-fill--neutral { background: #f4f4f5; }
