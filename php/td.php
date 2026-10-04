@@ -956,13 +956,11 @@ namespace {
         $ownLabel = isset($o['label']) && is_scalar($o['label']) && !is_bool($o['label']) ? $trim((string) $o['label']) : '';
         $label = $ownLabel !== '' ? $ownLabel : ($preset[1] ?? '');
         if ($icon === '' || $label === '') {
-            // SEC-02 (v0.36.0 review): never log the raw value — control characters out, at most 64 printable
-            // characters, plus the original byte length (a single-line warning whatever the caller passed)
-            $shown = (string) preg_replace('/[\x00-\x1F\x7F]|\p{C}/u', '', $action);
-            if ($shown === '' && $action !== '') {
-                $shown = (string) preg_replace('/[^\x20-\x7E]/', '', $action); // not valid UTF-8 → printable ASCII only
-            }
-            $shown = preg_match('/^.{0,64}/su', $shown, $m) ? $m[0] : substr($shown, 0, 64); // ≤ 64 code points, no mbstring
+            // SEC-02 / ISSUE-9 (v0.36.0 review): never log the raw value — a printable-ASCII allowlist (0x20–0x7E; every
+            // other byte, incl. U+2028 / U+2029 and all non-ASCII, dropped), `\` and `"` escaped, at most 64 characters,
+            // plus the original byte length → always one line, nothing the log can mistake for structure
+            $shown = substr((string) preg_replace('/[^\x20-\x7E]/', '', $action), 0, 64);
+            $shown = addcslashes($shown, '\\"');
             trigger_error('td_action_button: unknown action "' . $shown . '" (' . strlen($action) . ' bytes; no preset; give icon + label)', E_USER_WARNING);
             return '';
         }

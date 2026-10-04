@@ -197,18 +197,28 @@ describe('php td_action_button — element mode == render() (QĐ 14)', opts, () 
     assert.match(ok.out, /^<button class="td-btn td-btn--action td-btn--action-standard td-btn--action-md" type="button" aria-label="Ghim"/);
   });
 
-  test('SEC-02: the unknown-action warning is one line — control characters stripped, ≤ 64 characters + the byte length', () => {
-    const payload = `evil\nWarning: forged line\r\n${'x'.repeat(200)}\u0000`;
-    const r = withWarnings([payload]);
-    assert.equal(r.out, '');
-    assert.equal(r.warnings, 1);
-    const line = r.stderr.split('\n').find((l) => l.includes('td_action_button:'));
-    assert.ok(!r.stderr.includes('forged line\n'), 'no injected line break');
-    const shown = /unknown action "([^"]*)"/.exec(line)[1];
-    assert.ok(shown.length <= 64, `shown ${shown.length} chars`);
-    assert.ok(!/[\x00-\x1f\x7f]/.test(shown));
-    assert.match(line, new RegExp(`\\(${Buffer.byteLength(payload)} bytes;`));
-  });
+  for (const [name, payload] of [
+    ['newline / CR / NUL', `evil\nWarning: forged line\r\n${'x'.repeat(200)}\u0000`],
+    ['U+2028 / U+2029 separators', `a\u2028Warning: forged\u2029b`],
+    ['quotes + backslashes', `x" (0 bytes; ok) \\" injected \\\\`],
+    ['non-ASCII only', 'ảnh-đại-diện\u00a0\u200b'],
+  ]) {
+    test(`SEC-02 / ISSUE-9: unknown-action warning is one line of printable ASCII — ${name}`, () => {
+      const r = withWarnings([payload]);
+      assert.equal(r.out, '');
+      assert.equal(r.warnings, 1);
+      const lines = r.stderr.split('\n').filter((l) => l.includes('td_action_button:'));
+      assert.equal(lines.length, 1);
+      const line = lines[0];
+      assert.ok(!/[\u2028\u2029\r\u0000]/.test(r.stderr), 'no raw separators anywhere in the log');
+      const m = /unknown action "((?:[^"\\]|\\.)*)" \((\d+) bytes;/.exec(line);
+      assert.ok(m, `parsable: ${line}`);
+      const shown = m[1].replace(/\\(.)/g, '$1');
+      assert.ok(shown.length <= 64, `shown ${shown.length} chars`);
+      assert.ok(/^[\x20-\x7e]*$/.test(m[1]), 'printable ASCII only');
+      assert.ok(Number(m[2]) >= Buffer.byteLength(payload.trim()), 'original byte length appended');
+    });
+  }
 
   test('native mode (no element): the control alone, site id / class on it, svg filled, no data-td-icon slot name', () => {
     const [r] = runPhp([{ fn: 'td_action_button', args: ['delete', { id: 'x1', class: 'a b', disabled: true }] }], { baseUrl: '/' });
