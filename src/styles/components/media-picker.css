@@ -115,6 +115,18 @@
 		margin-inline-start: auto;
 	}
 
+	/* cursor pager: ONE row "Hiển thị a-b / n media ‹ ›" (wraps as a unit, never stacks) */
+	.td-media-picker__cursor {
+		display: flex;
+		flex-wrap: nowrap;
+		gap: 0.5rem;
+		align-items: center;
+	}
+
+	.td-media-picker__cursor[hidden] {
+		display: none;
+	}
+
 	.td-media-picker__page-info {
 		margin: 0;
 		font-size: var(--td-text-sm);
@@ -234,7 +246,8 @@
 		height: 3rem;
 	}
 
-	.td-media-picker__card[data-selected] .td-media-picker__thumb {
+	/* dcms2: only the multiple mode fades the checked thumbs (single keeps the chosen card at full opacity) */
+	.td-media-picker[data-mode="multiple"] .td-media-picker__card[data-selected] .td-media-picker__thumb {
 		opacity: var(--td-media-picker-checked-opacity);
 	}
 
