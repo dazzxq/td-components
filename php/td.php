@@ -962,7 +962,7 @@ namespace {
             if ($shown === '' && $action !== '') {
                 $shown = (string) preg_replace('/[^\x20-\x7E]/', '', $action); // not valid UTF-8 → printable ASCII only
             }
-            $shown = function_exists('mb_substr') ? mb_substr($shown, 0, 64, 'UTF-8') : substr($shown, 0, 64);
+            $shown = preg_match('/^.{0,64}/su', $shown, $m) ? $m[0] : substr($shown, 0, 64); // ≤ 64 code points, no mbstring
             trigger_error('td_action_button: unknown action "' . $shown . '" (' . strlen($action) . ' bytes; no preset; give icon + label)', E_USER_WARNING);
             return '';
         }
