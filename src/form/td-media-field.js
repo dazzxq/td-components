@@ -417,7 +417,10 @@ export class TdMediaField extends TdFormElement {
   /** @private set the whole live state (silent), repaint in place, sync the form; `lazy` → fetch a missing preview */
   _applyLive(s, { lazy = false } = {}) {
     this._getReq.abort();
-    if (s.id !== this._value) { // decision 28a: a value change aborts a pending crop source / open crop dialog
+    // decision 28a: a value change aborts a pending crop source / open crop dialog; ISSUE-9 (impl review R3): so does ANY
+    // change of the effective crop image (preview src / kind) on any path — the dialog never crops a stale image
+    const imageChanged = (s.src ?? '') !== (this._previewSrc ?? '') || (s.kind ?? this._kind) !== this._kind;
+    if (s.id !== this._value || (this._cropCtrl && imageChanged)) {
       this._abortCrop();
       this._cropStatus = '';
     }

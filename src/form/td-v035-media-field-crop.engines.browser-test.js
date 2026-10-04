@@ -918,3 +918,41 @@ describe('td-media-field v0.35 — review R3: the field’s picker never outlive
     });
   }
 });
+
+// Codex impl re-review v0.35 round 3, ISSUE-9: the crop image may never change under an open crop dialog.
+describe('td-media-field v0.35 — ISSUE-9: a change of the effective crop image closes the crop dialog', () => {
+  const abs = (u) => new URL(u, document.baseURI).href;
+  async function expectClosedThenReusable(t) {
+    await dialogGone();
+    expectState(t, 'og', { crop: CROP_B, focal: null, events: 0 });
+    const d = await openCrop(t.el); // lock released: the dialog opens again, on the NEW image
+    cancelBtn(d).click();
+    await dialogGone();
+    return d;
+  }
+
+  it('no adapter: preview-src mutated while the dialog is open → dialog closes, nothing commits, lock released', async () => {
+    const t = mk({ ...CROPPABLE, value: 'm1', crop: CROP_B, 'preview-src': '/test/fixtures/2.svg' }, { adapter: null });
+    const d = await openCrop(t.el);
+    cropperOf(d).crop = { normalized: { x: 0, y: 0, width: 0.5, height: 0.5 } };
+    t.el.setAttribute('preview-src', '/test/fixtures/3.svg');
+    const d2 = await expectClosedThenReusable(t);
+    expect(abs(cropperOf(d2).getAttribute('src'))).to.equal(abs('/test/fixtures/3.svg'));
+  });
+
+  it('same-ID setSelection() replacement (other preview) while the dialog is open → dialog closes, nothing commits', async () => {
+    const t = mk({ ...CROPPABLE, value: 'm1', crop: CROP_B, 'preview-src': '/test/fixtures/2.svg' }, { adapter: null });
+    const d = await openCrop(t.el);
+    cropperOf(d).crop = { normalized: { x: 0, y: 0, width: 0.5, height: 0.5 } };
+    const a = asset('m1');
+    a.urls.preview = '/test/fixtures/4.svg';
+    t.el.setSelection([{ assetId: 'm1', asset: a, usage: { altText: '', crop: parseCrop(CROP_B).crop, focalPoint: null } }]);
+    await dialogGone();
+    expect(t.c.input + t.c.change, 'no event').to.equal(0);
+    expect(dialogRoots().length).to.equal(0);
+    const d2 = await openCrop(t.el);
+    expect(abs(cropperOf(d2).getAttribute('src'))).to.equal(abs('/test/fixtures/4.svg'));
+    cancelBtn(d2).click();
+    await dialogGone();
+  });
+});
