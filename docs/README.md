@@ -8,7 +8,7 @@ token `--td-*` chạm được tới nó. Toàn bộ giao diện nằm trong **m
 Triết lý: **lõi nhỏ + hook**. Site tuỳ biến bằng token CSS, attribute/property và hook (callback) — không bao giờ sửa
 code của kit.
 
-Phiên bản hiện tại: **0.35.0** (tag git `v0.35.0`) · Lịch sử thay đổi: [CHANGELOG.md](../CHANGELOG.md)
+Phiên bản hiện tại: **0.36.0** (tag git `v0.36.0`) · Lịch sử thay đổi: [CHANGELOG.md](../CHANGELOG.md)
 
 ---
 
@@ -63,6 +63,8 @@ Xem [danh sách đầy đủ](components/README.md). Tóm tắt:
 - [Trợ năng (a11y)](guides/accessibility.md) — bàn phím, ARIA, focus, các đánh đổi có chủ đích.
 - [Bảo mật](guides/security.md) — text vs HTML, các "cửa" HTML tin cậy, URL, checklist cho site.
 - [CSP](guides/csp.md) — header nên dùng, nonce, những gì kit không bao giờ làm.
+- [Biến thể ảnh đã cắt](guides/media-renditions.md) — **bắt buộc** khi dùng crop / focal: URL ký HMAC, giới hạn biến thể,
+  cache, chống lạm dụng endpoint cắt ảnh (kit chỉ xuất toạ độ).
 - [WordPress & PHP](guides/wordpress-php.md) — tích hợp vào dwp và 135.
 - [Adapter PHP](guides/php-adapter.md) — `php/td.php`: import map, `td.css`, markup render phía server (nút, ô nhập,
   dropdown, switch, checkbox, icon, ô chọn ảnh `td_media_field`).

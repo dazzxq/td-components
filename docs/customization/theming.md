@@ -31,7 +31,8 @@ thế nào, và kit tự xử lý các chế độ trợ năng của hệ điề
   - [Z-index](#z-index)
   - [Chuyển động](#chuyển-động)
   - [Màu ngữ nghĩa](#màu-ngữ-nghĩa)
-  - [Màu pastel (0.21.0)](#màu-pastel-0210)
+  - [Màu ngữ nghĩa đặc (0.36.0)](#màu-ngữ-nghĩa-đặc-0360)
+  - [Màu pastel (0.21.0, deprecated 0.36.0)](#màu-pastel-0210-deprecated-0360)
   - [Accent và focus](#accent-và-focus)
   - [Control (ô nhập, viền mềm)](#control-ô-nhập-viền-mềm)
   - [Button](#button)
@@ -292,9 +293,31 @@ Người dùng bật "giảm chuyển động" (`prefers-reduced-motion: reduce`
 | `--td-color-info` | `#1d4ed8` | `#60a5fa` | Thông tin |
 | `--td-color-on-status` | `#fff` | `#111113` | Chữ đặt trên nền màu trạng thái |
 
-### Màu pastel (0.21.0)
+### Màu ngữ nghĩa đặc (0.36.0)
 
-Bộ màu ngữ nghĩa **dịu** dùng chung cho nút success / danger / warning / info, badge mềm và toast: nền nhạt (~100), viền
+Bộ màu "bình thường" như dcms2 cho mọi bề mặt **đặc** mang nghĩa trạng thái: nút success / danger / warning / info và
+badge (toast: token riêng `--td-toast-*`, cùng tinh thần). `-bg` = nền, `-fg` = chữ (≥ 4.7:1 trên `-bg` **và** trên
+`-hover` — cổng tương phản đo), `-hover` = đậm hơn một bậc, `-border` = bậc hover. **Warning luôn chữ tối**: không sắc
+vàng / cam nào còn "nhìn ra vàng" đạt 4.5:1 với chữ trắng (amber-500 2.15:1, amber-600 3.19:1). Theme tối dùng **cùng
+giá trị** (chữ trắng trên 600/700 vẫn đọc tốt trên trang tối).
+
+| Token (`-bg` / `-fg` / `-hover` = `-border`) | Giá trị | fg / bg | fg / hover |
+|---|---|---|---|
+| `--td-solid-success-*` | `#15803d` / `#fff` / `#166534` | 5.02 | 7.1 |
+| `--td-solid-danger-*` | `#dc2626` / `#fff` / `#b91c1c` | 4.83 | 6.47 |
+| `--td-solid-warning-*` | `#f59e0b` / `#18181b` / `#d97706` | 8.25 | 5.56 |
+| `--td-solid-info-*` | `#2563eb` / `#fff` / `#1d4ed8` | 5.17 | 6.70 |
+
+Đổi một bộ (ví dụ `--td-solid-danger-bg` + `-hover`) là nút và badge cùng loại đổi theo; muốn chỉ đổi nút, đặt
+`--td-btn-{v}-*` (xem [Button](#button)), chỉ đổi badge: `--td-badge-{v}-*` ([badge.md](../components/badge.md)). Alert
+giữ nền nhạt cho thân chữ, chỉ vạch mép + icon dùng màu đặc (`--td-alert-{v}-accent`, [alert.md](../components/alert.md)).
+Muốn trả về pastel như 0.21–0.35: đoạn CSS ở [Thay đổi phá vỡ › 0.36.0](../upgrading/breaking-changes.md#0360).
+
+### Màu pastel (0.21.0, deprecated 0.36.0)
+
+**Deprecated 0.36.0:** vẫn khai báo (cả theme tối) nhưng **không component nào dùng làm nền mặc định nữa** — giữ để site
+khôi phục giao diện pastel (đoạn CSS ở [Thay đổi phá vỡ › 0.36.0](../upgrading/breaking-changes.md#0360)).
+Trước 0.36.0, bộ màu ngữ nghĩa **dịu** này dùng chung cho nút success / danger / warning / info, badge mềm và toast: nền nhạt (~100), viền
 (~200) và chữ đậm cùng tông (~800/900). Theme tối: màu ngữ nghĩa ~18 % trộn sẵn trên nền tối `#111113` (giá trị **đặc**,
 không trong suốt), viền ~30 %, chữ bậc ~200. Chữ đạt ≥ 4.7:1 trên cả nền và viền (cổng tương phản đo).
 
@@ -305,8 +328,7 @@ không trong suốt), viền ~30 %, chữ bậc ~200. Chữ đạt ≥ 4.7:1 tr�
 | `--td-pastel-warning-*` | `#fef3c7` / `#fde68a` / `#78350f` | `#3a2a12` / `#553b11` / `#fde68a` |
 | `--td-pastel-info-*` | `#dbeafe` / `#bfdbfe` / `#1e3a8a` | `#19253c` / `#1e3357` / `#bfdbfe` |
 
-Đổi một bộ pastel (ví dụ `--td-pastel-danger-bg`) là nút, badge và toast cùng loại đổi theo. Muốn chỉ đổi nút, đặt
-`--td-btn-{v}-bg/-fg/-border/-hover` (xem [Button](#button)).
+Từ 0.36.0 đổi `--td-pastel-*` **không** còn đổi nút / badge (chúng đọc `--td-solid-*`).
 
 ### Accent và focus
 
@@ -348,8 +370,8 @@ Xem [Viền control mềm và override chuẩn WCAG nghiêm ngặt](#viền-cont
 ### Button
 
 Button là **màu đặc** (0.20.0): nền `--td-btn-{variant}-bg` + **một** shadow `--td-btn-lift`, không blur / film /
-sheen / viền sáng / glow / co khi nhấn. 0.21.0: **primary đen** (dark: đảo sáng), success / danger / warning / info
-**pastel** (nền + chữ đậm cùng tông + viền `-border`, trỏ vào [bộ pastel](#màu-pastel-0210)). Hover = nền đặc đọc
+sheen / viền sáng / glow / co khi nhấn. 0.21.0: **primary đen** (dark: đảo sáng). 0.36.0: success / danger / warning /
+info **màu đặc** (trỏ vào [bộ màu đặc](#màu-ngữ-nghĩa-đặc-0360); warning chữ tối; 0.21–0.35 là pastel). Hover = nền đặc đọc
 `--td-btn-{v}-hover`; nút có thuộc tính `color` và alias `-tint` pha 8 % đen bằng `color-mix()` (trình duyệt không có
 `color-mix()` giữ nguyên nền). **Đổi `-bg` thì đặt kèm `-hover`** (kit không suy hover từ `-bg` của site). Ghost và
 disabled không có shadow.
@@ -365,10 +387,10 @@ disabled không có shadow.
 | `--td-btn-secondary-fg` | `var(--td-gray-900)` | `#f5f5f7` |
 | `--td-btn-secondary-border` | `rgb(0 0 0 / 12%)` | `rgb(255 255 255 / 12%)` |
 | `--td-btn-secondary-hover` | `var(--td-gray-200)` | `#3a3a3e` |
-| `--td-btn-{success,danger,info,warning}-bg` | `var(--td-pastel-{v}-bg)` | theo pastel dark |
-| `--td-btn-{success,danger,info,warning}-fg` | `var(--td-pastel-{v}-fg)` | theo pastel dark |
-| `--td-btn-{success,danger,info,warning}-border` | `var(--td-pastel-{v}-border)` | theo pastel dark |
-| `--td-btn-{success,danger,info,warning}-hover` | `var(--td-pastel-{v}-border)` (bậc ~200) | theo pastel dark |
+| `--td-btn-{success,danger,info,warning}-bg` | `var(--td-solid-{v}-bg)` (0.36.0) | như light |
+| `--td-btn-{success,danger,info,warning}-fg` | `var(--td-solid-{v}-fg)` | như light |
+| `--td-btn-{success,danger,info,warning}-border` | `var(--td-solid-{v}-border)` | như light |
+| `--td-btn-{success,danger,info,warning}-hover` | `var(--td-solid-{v}-hover)` (đậm hơn một bậc) | như light |
 | `--td-btn-disabled-bg` | `#f4f4f5` | `#202024` |
 | `--td-btn-disabled-fg` | `#a1a1aa` | `#6b6b73` |
 | `--td-btn-disabled-border` | `#e4e4e7` | `rgb(255 255 255 / 6%)` |
@@ -380,7 +402,7 @@ Ghi chú:
 
 - **Alias tương thích (một chu kỳ, 0.20.0):** `--td-btn-{primary,success,danger,info,warning}-tint` — site nào còn đặt
   (ví dụ `--td-btn-danger-tint`) thì màu đó vẫn thành **nền đặc và viền** của nút, hover đậm 8 %. Chữ vẫn là
-  `--td-btn-{v}-fg` (0.21.0: chữ đậm cho nền pastel) — tint màu đậm thì đặt kèm `--td-btn-{v}-fg: #fff`. Kit không còn
+  `--td-btn-{v}-fg` (0.36.0: trắng, warning `#18181b`) — tint màu sáng thì đặt kèm `--td-btn-{v}-fg` tối. Kit không còn
   khai báo các token `-tint`; hãy chuyển sang `--td-btn-{v}-bg` + `-hover`.
 - Nút **ghost** (0.17.0, `variant="ghost"`) không có nền / viền / shadow: chữ `--td-btn-ghost-fg` nằm thẳng trên nền
   trang, hover phủ `--td-btn-ghost-hover-bg`. Cổng tương phản đo chữ ghost ≥ 4.7:1 trên nền trắng (light) và đen
@@ -396,10 +418,29 @@ Ghi chú:
     --td-btn-primary-hover: color-mix(in srgb, var(--td-accent-fill) 92%, #000);
   }
   ```
-- Nền nút ngữ nghĩa theo bộ pastel (không theo `--td-color-*`) vì dark làm sáng `--td-color-*` cho mục đích **chữ**,
-  không hợp làm nền nút.
+- Nền nút ngữ nghĩa theo bộ màu đặc `--td-solid-*` (không theo `--td-color-*`) vì dark làm sáng `--td-color-*` cho mục
+  đích **chữ**, không hợp làm nền nút.
 - Kit có một gate đo tương phản thật (`npm run test:contrast`) cho mọi cặp giá trị mặc định. Gate này **không** chạy trên
   site của bạn: nếu bạn đổi `-bg` / `-fg`, tự kiểm tra chữ trên nút vẫn ≥ 4.5:1.
+
+### Hàng option trong popup (0.36.0)
+
+Dropdown, multi-select (`td-chip-input`), popup của tree-select và menu dùng chung kiểu hàng (giống dcms2): hàng **tràn
+mép** (không bo, không khung viền), nền khi hover / chọn / đang active; danh sách chọn một: mục đã chọn **in đậm** + ✓ ở
+cuối; danh sách chọn nhiều giữ ô tick chung ở đầu (ADR 0017). Hàng đang active bằng bàn phím có **vạch nhấn ở đầu dòng**
+(chỉ báo focus, ≥ 3:1 so với nền popup — contrast gate).
+
+| Token | Mặc định | Ý nghĩa |
+|---|---|---|
+| `--td-option-pad-x` | `12px` | Lề ngang của chữ trong hàng (và ô tìm phía trên) |
+| `--td-option-hover-bg` | `var(--td-color-hover)` | Nền khi rê chuột |
+| `--td-option-active-bg` | `var(--td-color-hover-strong)` | Nền hàng active (bàn phím) |
+| `--td-option-selected-bg` | `var(--td-color-hover-strong)` | Nền hàng đã chọn |
+| `--td-option-active-bar` | `var(--td-accent)` | Màu vạch nhấn của hàng active |
+| `--td-option-active-bar-w` | `3px` | Độ dày vạch nhấn |
+
+Token riêng cũ (`--td-dropdown-option-hover/-active/-selected`, `--td-menu-item-hover/-active`) vẫn chạy (mặc định trỏ về
+token chung); `--td-dropdown-option-active-line` hết tác dụng.
 
 ### Checkbox / switch
 
@@ -414,6 +455,11 @@ Ghi chú:
 
 Ngoài ra `--td-checkbox-radius` (mặc định `50%`, checkbox tròn) nằm trong `checkbox.css`, xem
 [checkbox.md](../components/checkbox.md).
+
+Từ 0.36.0 ba token `--td-checkbox-color` / `-border` / `-radius` vẽ **mọi ô tick** của kit (ô tick chung `.td-check`:
+media grid / picker, tree chọn nhiều, multiselect, mục checkbox của menu) — xem
+[checkbox.md › phần hình dùng chung](../components/checkbox.md#phần-hình-dùng-chung-td-check-0360).
+`--td-media-grid-tick-*` chỉ còn cho tick do site in; `--td-tree-check-radius` deprecated (không tác dụng).
 
 ### Lỗi form
 
@@ -454,7 +500,7 @@ token nào ở đây: màu tự theo `--td-color-skeleton` / `--td-color-sheen`.
 Mỗi bề mặt nổi = **nền + một viền mảnh + một shadow mềm**. Popup nhỏ (menu, dropdown, gợi ý chip-input, hovercard)
 dùng nền 94 % + `blur(12px)`; modal, thẻ loading và nút scroll-top là **đặc** (`--td-glass-solid`, không blur);
 tooltip đặc **màu đen** (`--td-tooltip-bg`, 0.21.0 — xem [tooltip](../components/tooltip.md#tuỳ-biến-giao-diện)).
-Toast (0.21.0) là viên **đặc pastel** theo loại (`--td-toast-{type}-bg/-fg/-border`, trỏ vào [bộ pastel](#màu-pastel-0210)),
+Toast (0.21.0) là viên **đặc pastel** theo loại (`--td-toast-{type}-bg/-fg/-border`, trỏ vào [bộ pastel](#màu-pastel-0210-deprecated-0360)),
 không blur, không icon hiển thị — xem [toast](../components/toast.md).
 
 | Token | Mặc định (light) | Dark | Ý nghĩa |
@@ -683,8 +729,8 @@ accent sáng, nên tự chọn fill.
 
 - `--td-switch-on` (toggle bật) mặc định xanh lá `#16a34a`, không theo accent.
 - Nút primary mặc định **đen** (0.21.0) — chỉ theo accent khi bạn map như bước 1.
-- Nút `success` / `danger` / `info` / `warning` dùng bộ [pastel](#màu-pastel-0210) (`--td-btn-{v}-bg`).
-- Toast dùng bộ [pastel](#màu-pastel-0210) theo loại (`--td-toast-{type}-bg/-fg/-border`), không dùng accent.
+- Nút `success` / `danger` / `info` / `warning` dùng bộ [màu đặc](#màu-ngữ-nghĩa-đặc-0360) (`--td-btn-{v}-bg`).
+- Toast dùng bộ [pastel](#màu-pastel-0210-deprecated-0360) theo loại (`--td-toast-{type}-bg/-fg/-border`), không dùng accent.
 
 **Bước 4 — kiểm tra tương phản.** Kit chỉ gate giá trị mặc định. Với màu mới, kiểm tra bằng DevTools (hoặc
 `contrastRatio()` trong [dom-utils](../components/utilities.md)): chữ trắng trên `--td-accent-fill` ≥ 4.5:1 (light và dark), accent
@@ -750,7 +796,7 @@ diện** của trang component. Cột "Khai báo ở" cho biết ghi đè ở đ
 | td-pagination | `--td-pagination-*` | `:root` (có `@media (pointer: coarse)`) | [pagination.md](../components/pagination.md) |
 | td-empty-state | `--td-empty-state-*` | `:root` (`--sm` / `--lg` / `--compact` đặt lại `-pad` / `-gap` trên phần tử) | [empty-state.md](../components/empty-state.md) |
 | Icon | `--td-icon-*` (bảng trên) | `:root` | [icons.md](../components/icons.md) |
-| Badge (`.td-badge`) | `--td-badge-*` — gồm font `--td-badge-font-family` (mặc định `var(--td-font-sans)`) và `--td-badge-stamp-font-family` (mặc định `var(--td-font-mono)`, 0.19.0). Ghi đè `--td-badge-*-fg` / `-bg` thì site tự kiểm tương phản (gate chỉ đo mặc định) | `:root` | [badge.md](../components/badge.md) |
+| Badge (`.td-badge`) | `--td-badge-*` — 0.36.0: nền đặc ngữ nghĩa, `-ink` (outline / stamp), `-border` (viền hex tính sẵn), `--td-badge-shadow`; gồm font `--td-badge-font-family` (mặc định `var(--td-font-sans)`) và `--td-badge-stamp-font-family` (mặc định `var(--td-font-mono)`, 0.19.0). Ghi đè `--td-badge-*-fg` / `-bg` thì site tự kiểm tương phản (gate chỉ đo mặc định) | `:root` | [badge.md](../components/badge.md) |
 | td-drawer | `--td-drawer-*` (per-instance `--td-drawer-w`: trên host, chép sang root lúc mở) | `:root` | [drawer.md](../components/drawer.md) |
 | Skeleton (`.td-skeleton`) | `--td-skeleton-*` (bảng trên) | `:root` (riêng `--td-skeleton-lines` trên phần tử) | [loading.md](../components/loading.md#skeleton-khối-giữ-chỗ-thuần-css) |
 

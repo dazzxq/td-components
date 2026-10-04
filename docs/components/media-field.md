@@ -260,6 +260,10 @@ in sẵn không khớp `render()` nên field **render lại an toàn** lúc nân
 
 ### 9. Cắt ảnh — `croppable` (0.35.0)
 
+> **⚠ Site phải tự xử lý**: field chỉ gửi toạ độ (`name[crop]`, `name[focal]`); cắt / đổi cỡ ảnh khi render trang là
+> việc của endpoint / CDN của site, và checklist [Biến thể ảnh đã cắt](../guides/media-renditions.md) (URL ký HMAC,
+> giới hạn biến thể, rate limit, ảnh riêng tư) là **bắt buộc**.
+
 ```html
 <td-media-field name="og" label="Ảnh chia sẻ (OG)" aspect-ratio="1.91" usage croppable focal-point
                 value="a_9f2c" preview-src="https://cdn.example.com/o/a_9f2c.jpg"
@@ -492,6 +496,7 @@ Tên của nút mở = nhãn + trạng thái ("Ảnh đại diện, Chưa chọn
 - Giá trị form chỉ là `assetId` / alt / crop / focal đã validate định dạng. Server **phải** kiểm id (tồn tại, loại, quyền), cắt
   alt, validate crop + focal — không tin client, không coi crop là quyền.
 - Hộp cắt không tạo pixel (không canvas / blob / fetch ảnh) — chỉ cần CSP `img-src` cho origin ảnh, không cần CORS.
+- **⚠ Site phải tự xử lý** endpoint biến thể ảnh đã cắt: [checklist bắt buộc](../guides/media-renditions.md#checklist-bắt-buộc).
 
 ## Chuyển từ dcms2 `MediaPickerPlaceholder`
 

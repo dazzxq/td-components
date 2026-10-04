@@ -1,4 +1,5 @@
 import { TdFormElement } from '../base/td-form-element.js';
+import { createCheckMark } from '../utils/check-mark.js';
 import { tdIcon } from '../icons/td-icon.js';
 import { TreeModel } from '../utils/tree-model.js';
 
@@ -33,7 +34,7 @@ const format = (tpl, vars = {}) => String(tpl ?? '').replace(/\{(\w+)\}/g, (m, k
  *             aria-labelledby="{h}-n{uid}-l" [aria-describedby="{h}-n{uid}-d"] [aria-expanded] [aria-selected | aria-checked]
  *             [aria-disabled="true"] [aria-busy="true"] [data-load="error"]>
  *           <div class="td-tree__row"><span class="td-tree__toggle" aria-hidden="true">svg</span>
- *             [<span class="td-tree__check" aria-hidden="true"><span class="td-tree__check-on">✓</span><span class="td-tree__check-mixed">–</span></span>]
+ *             [<span class="td-check td-check--sm td-tree__check" aria-hidden="true"><svg …✓></span>]   (v0.36.0 shared mark)
  *             <span class="td-tree__label" id="…-l">…</span>[<span class="td-tree__desc" id="…-d">…</span>]</div>
  *           [<ul role="group" class="td-tree__group">…</ul>]
  *         </li>
@@ -458,16 +459,9 @@ export class TdTree extends TdFormElement {
     if (arrow) toggle.appendChild(arrow);
     row.appendChild(toggle);
     if (this._mode() === 'multiple') {
-      const check = document.createElement('span');
-      check.className = 'td-tree__check';
-      check.setAttribute('aria-hidden', 'true');
-      for (const [cls, name] of [['td-tree__check-on', 'check'], ['td-tree__check-mixed', 'minus']]) {
-        const s = document.createElement('span');
-        s.className = cls;
-        const svg = icon(name);
-        if (svg) s.appendChild(svg);
-        check.appendChild(s);
-      }
+      // v0.36.0 (ADR 0017): the shared td-checkbox mark; on / mixed come from the item's aria-checked (check.css)
+      const check = createCheckMark('sm');
+      check.classList.add('td-tree__check');
       row.appendChild(check);
     }
     const label = document.createElement('span');

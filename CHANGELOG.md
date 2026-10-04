@@ -2,6 +2,53 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.36.0
+
+**Polish theo owner** — tick chung, phím tắt chọn, màu ngữ nghĩa đặc, toast 6 vị trí, OTP tuỳ độ dài / ký tự, nút thao
+tác, picker / modal gọn trên di động, lightbox điện thoại, hàng option kiểu dcms2 (plan
+`docs/internal/plans/v0.36.0-polish.md`, Codex plan-review APPROVE 3 vòng; [ADR 0016](docs/internal/decisions/0016-toast-placement.md),
+[ADR 0017](docs/internal/decisions/0017-shared-check-mark.md)). Chi tiết nâng cấp: `docs/upgrading/breaking-changes.md#0360`.
+
+### Added
+
+- **`<td-action-button>`** (`./action-button`) — 23 preset kiểu dcms2 ActionButtons (sửa, xoá, xem, sao chép…), icon +
+  nhãn + tooltip, PHP `td_action_button()` + SSR.
+- **Toast vị trí**: `TdToast.configure({ placement })` + tham số thứ ba `{ duration?, placement? }`; 6 vị trí logic
+  (`top-start|center|end`, `bottom-start|center|end`), mới nhất sát mép.
+- **OTP**: `length` 1–10 (mặc định 6), `charset` (`numeric` | `alphanumeric` | `alpha`, kiểu Steam), `case`; PHP cùng
+  option.
+- **`td-checkbox indeterminate`**; ô tick chung `.td-check` (ADR 0017) cho media grid / picker / tree / multiselect / menu.
+- **Phím tắt chọn**: Ctrl/Cmd+click bật/tắt một mục, Shift+click chọn dải trong `td-media-grid` / picker.
+- **Media picker**: sheet "Bộ lọc" < 1024px, tự xem trước (≥ 720px: mục đang xem → mục đã chọn đầu tiên → mục đầu; không
+  tự chọn; kết quả rỗng → panel trống, 720–1023px cột chi tiết thu lại), dialog tải lên là sheet < 720px, chip footer
+  "{n} đã chọn ×" thay "Đã chọn …" + "Bỏ chọn tất cả", < 720px "Quay lại" là mũi tên trên header và tối đa 3 nút trong
+  pane chi tiết (còn lại vào "Thêm").
+- **Lightbox điện thoại**: thanh đáy "‹ 3 / 12 ›" < 480px, đĩa 48px hai bên ảnh trên cảm ứng ≥ 480px, menu "Thêm" cho nút
+  phụ, option `pinned` cho nút riêng.
+- `td-copy for=` đọc được `<td-input-field>`.
+- Hướng dẫn `docs/guides/media-renditions.md`: phục vụ ảnh cắt từ ảnh gốc + **chống lạm dụng** (URL ký HMAC, allowlist
+  bề rộng / định dạng, làm tròn toạ độ, cache, giới hạn tần suất) — việc của site.
+
+### Changed
+
+- Nút / badge ngữ nghĩa **màu đặc** (warning chữ tối); badge viền 1px + bóng; alert vạch màu đặc ở mép đầu dòng.
+- **Toast DOM**: root > lane > chồng (xem breaking changes); màu đặc.
+- Tab và phân trang giữ bề rộng chữ đậm (không còn xê dịch khi đổi tab / trang).
+- Hàng option trong dropdown / multiselect / tree-select / menu **tràn mép** như dcms2 (không bo, vạch nhấn khi active
+  bằng bàn phím); token `--td-option-*`.
+- Modal < 720px: header ≤ 56px, footer ≤ 64px; datetime sheet < 720px gọn (3 dòng bánh xe); drawer < 480px chừa dải trang.
+- Lượt UX di động: lưới media 2 cột trên điện thoại, nhãn ≥ 14px, khoảng cách chạm ≥ 8px, repeater gọn.
+- `td-cropper`: lăn trackpad được giảm chấn.
+- Lightbox: bấm chuột ra ngoài menu tải về / "Thêm" chỉ đóng menu (không zoom); vuốt RTL đúng chiều; bỏ qua vuốt bắt đầu
+  sát mép; sheet panel chỉ kéo từ thanh nắm.
+
+### Fixed
+
+- Ô OTP bị ép méo trên điện thoại.
+- Lightbox mở lại loé ảnh của lần xem trước.
+- Ảnh thumbnail lightbox, ảnh media field, toast root, nhóm nút thao tác tự đặt `max-width` / `line-height` — reset CSS của
+  trang chủ không còn làm lệch.
+
 ## 0.35.0
 
 **Cắt ảnh — chỉ toạ độ** (dsuite #13; plan `docs/internal/plans/v0.35.0-cropper.md`, Codex plan-review APPROVE 3 vòng;

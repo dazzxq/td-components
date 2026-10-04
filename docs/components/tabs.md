@@ -194,6 +194,11 @@ cột hẹp của trang desktop cũng đúng như trên điện thoại.
   che mờ dần (`data-scroll-start` / `data-scroll-end`), thẻ đang chọn tự cuộn vào tầm nhìn (chỉ cuộn rãnh, không cuộn
   trang), viên thuốc cuộn cùng thẻ. Một nhãn rất dài giữa các nhãn ngắn cũng chuyển sang chế độ này (ô bằng nhau không
   chứa nổi nó) thay vì cắt nó.
+- **Chữ không xê dịch khi đổi thẻ (0.36.0).** Nhãn thẻ đang chọn in đậm; mỗi `.td-tabs__label` mang `data-label` và
+  `::after { content: attr(data-label) }` (cao 0, `visibility: hidden`, đậm) giữ chỗ bề rộng **chữ đậm** ở mọi trạng
+  thái — đổi thẻ không đổi bề rộng nhãn, không đẩy thẻ bên cạnh (cả ô bằng nhau lẫn hàng cuộn). Phần giữ chỗ không vào
+  cây truy cập, không bị tìm / copy. Site markup tay (SSR) nên in `data-label` = nhãn (escape thuộc tính); thiếu thì chỉ
+  mất phần giữ chỗ.
 - **Nhãn không bao giờ bị cắt `…`** ở cả hai chế độ.
 - Có **vùng trễ 4px** (vào chế độ cuộn khi thẻ rộng nhất > ô, ra khi ≤ ô − 4px) nên kéo cửa sổ qua lại quanh ngưỡng
   không làm bố cục nhảy. JS chỉ đo lại khi `tabs` / nhãn / icon / `size` đổi, khi web font tải xong
@@ -216,7 +221,7 @@ cột hẹp của trang desktop cũng đúng như trên điện thoại.
     <button type="button" role="tab" class="td-tabs__tab" id="t-tab-0" data-tab-id="profile"
             aria-selected="true" tabindex="0" aria-controls="panel-profile">
       <span class="td-tabs__icon" data-td-icon="upload" data-td-icon-size="s" aria-hidden="true"><svg class="td-icon td-icon--s" data-icon="upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg></span>
-      <span class="td-tabs__label">Hồ sơ</span>
+      <span class="td-tabs__label" data-label="Hồ sơ">Hồ sơ</span>
     </button>
     …
   </div>

@@ -69,7 +69,7 @@ describe('C1 — TdToast handle + clear() + labels.close', () => {
     third.close();
     await wait(400);
     const texts = toasts().map((t) => t.querySelector('.td-toast__message').textContent);
-    expect(texts).to.deep.equal(['một', 'hai']);
+    expect(texts).to.deep.equal(['hai', 'một']); // v0.36.0: top stacks put the newest nearest the edge (first)
     expect(TdToast._scheduled.size).to.equal(0);
   });
 

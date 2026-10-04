@@ -22,27 +22,36 @@ Mỗi bề mặt nổi = **nền + một viền mảnh + một shadow mềm** (+
 | Popup nhỏ | `.td-menu`, `.td-dropdown__menu`, `.td-chip-input__menu`, `.td-hovercard` | `--td-glass-bg-strong` (94 %) + `--td-glass-blur` (12px) + viền + `--td-glass-shadow` |
 | Toast (0.21.0) | `.td-toast--{type}` | Viên kiểu dcms, **đặc** pastel theo loại (`--td-pastel-{type}-*`) + viền cùng tông + `--td-glass-shadow`; không blur, không icon hiển thị (tiền tố loại cho trình đọc màn hình) |
 | Lightbox bar | `.td-lightbox__toolbar`, `.td-lightbox__counter` (`--clear`) | Tối `--td-glass-clear-bg` (88 %) + blur 12px + viền + shadow; không dim cục bộ, không glyph shadow. Panel / sheet: đặc `--td-glass-clear-solid`. Caption gradient (để đọc chữ trên ảnh) giữ |
-| Nút có nền | `.td-btn--{primary,secondary,success,danger,info,warning}`, `.td-btn--custom` | **Màu đặc** `--td-btn-{v}-bg` + viền `-border` + **một** shadow `--td-btn-lift`; hover = nền đặc `--td-btn-{v}-hover`; focus ring giữ. 0.21.0: primary **đen** `#18181b` / chữ trắng / hover `#3f3f46` (dark đảo: `#f4f4f5` / `#18181b` / `#d4d4d8`); success / danger / warning / info **pastel** (bảng dưới) |
+| Nút có nền | `.td-btn--{primary,secondary,success,danger,info,warning}`, `.td-btn--custom` | **Màu đặc** `--td-btn-{v}-bg` + viền `-border` + **một** shadow `--td-btn-lift`; hover = nền đặc `--td-btn-{v}-hover`; focus ring giữ. 0.21.0: primary **đen** `#18181b` / chữ trắng / hover `#3f3f46` (dark đảo: `#f4f4f5` / `#18181b` / `#d4d4d8`); 0.36.0: success / danger / warning / info **đặc ngữ nghĩa** `--td-solid-*` (bảng dưới; warning chữ tối; 0.21–0.35 pastel) |
 | Nút ghost / disabled | `.td-btn--ghost`, `:disabled` | Không shadow |
+| Nút thao tác (0.36.0) | `.td-btn--action` (`<td-action-button>`) | Vuông chỉ icon, **trong suốt**, không shadow; icon theo tone (standard `--td-gray-700`, warning `#b45309`, danger `#b91c1c`, ≥ 4.7:1 trên trắng và trên nền hover); hover = nền nhạt theo tone; focus ring kit |
+| Badge (0.36.0) | `.td-badge--{v}` | Đặc (ngữ nghĩa = `--td-solid-*`) + **viền 1px** `--td-badge-{v}-border` (nền trộn 30 % đen, hex tính sẵn) + bóng `--td-badge-shadow`; outline / stamp trong suốt, mực `--td-badge-{v}-ink`, không bóng |
+| Alert (0.36.0) | `.td-alert--{v}` | Thân nền nhạt (đọc chữ / liên kết / nút con); nhận diện đặc: vạch `border-inline-start` 4px `--td-alert-{v}-accent`, icon màu đặc, viền ~300 |
 | Control nội dung | switch, slider, checkbox, chip, field, bảng, tab | Đặc; thumb / nút một shadow nhẹ |
 
-### Bảng màu (0.21.0)
+### Bảng màu (0.21.0; màu ngữ nghĩa đặc 0.36.0)
 
 | Nhóm | Light | Dark |
 |---|---|---|
 | Primary (nền / chữ / hover) | `#18181b` / `#fff` / `#3f3f46` | `#f4f4f5` / `#18181b` / `#d4d4d8` |
 | Tooltip (nền / chữ / viền) | `#18181b` / `#fff` / trong suốt | `#18181b` / `#fff` / `rgb(255 255 255 / 12%)` |
-| Pastel success (nền / viền = hover / chữ) | `#dcfce7` / `#bbf7d0` / `#14532d` | `#143121` / `#16472a` / `#bbf7d0` |
-| Pastel danger | `#fee2e2` / `#fecaca` / `#7f1d1d` | `#391a1c` / `#542022` / `#fecaca` |
-| Pastel warning | `#fef3c7` / `#fde68a` / `#78350f` | `#3a2a12` / `#553b11` / `#fde68a` |
-| Pastel info | `#dbeafe` / `#bfdbfe` / `#1e3a8a` | `#19253c` / `#1e3357` / `#bfdbfe` |
+| Đặc success (nền / chữ / hover = viền) | `#15803d` / `#fff` / `#166534` (5.02 · 7.1) | như light |
+| Đặc danger | `#dc2626` / `#fff` / `#b91c1c` (4.83 · 6.47) | như light |
+| Đặc warning | `#f59e0b` / `#18181b` / `#d97706` (8.25 · 5.56) — **chữ tối** | như light |
+| Đặc info | `#2563eb` / `#fff` / `#1d4ed8` (5.17 · 6.70) | như light |
+| Badge viền (neutral · accent · success · danger · warning · info) | `#ababac` · `#99a4b2` · `#0f5a2b` · `#9a1b1b` · `#ac6f08` · `#1a45a5` | như light |
+| Badge mực outline / stamp (success · warning · danger · info) | `#15803d` · `#b45309` · `#b91c1c` · `#2563eb` | `#86efac` · `#fcd34d` · `#fca5a5` · `#93c5fd` |
+| Pastel (deprecated 0.36.0) success / danger / warning / info (nền / viền / chữ) | `#dcfce7`/`#bbf7d0`/`#14532d` · `#fee2e2`/`#fecaca`/`#7f1d1d` · `#fef3c7`/`#fde68a`/`#78350f` · `#dbeafe`/`#bfdbfe`/`#1e3a8a` | `#143121`/`#16472a`/`#bbf7d0` · `#391a1c`/`#542022`/`#fecaca` · `#3a2a12`/`#553b11`/`#fde68a` · `#19253c`/`#1e3357`/`#bfdbfe` |
 | Shadow `--td-glass-shadow` | `0 2px 6px /6%, 0 8px 24px /12%` | alpha × 2 (12 % / 24 %) |
 | Shadow `--td-glass-shadow-lg` | `0 4px 12px /8%, 0 20px 48px /18%` | 16 % / 36 % |
 | Shadow `--td-btn-lift` | `0 1px 3px /10%, 0 4px 10px -2px /12%` | 20 % / 24 % |
 | Focus ô nhập (viền / quầng) | `color-mix(accent 85%, #fff)` / `0 0 0 3px` accent 12 % | cùng công thức / quầng 22 % |
 
-Pastel (`--td-pastel-{v}-bg/-border/-fg`) dùng chung cho nút ngữ nghĩa, badge mềm và toast. Dark = màu ngữ nghĩa ~18 %
-trộn sẵn trên `#111113` (đặc), viền ~30 %, chữ bậc ~200. Mọi cặp chữ / nền nằm trong contrast gate (luật 9); viền focus
+Đặc (`--td-solid-{v}-bg/-fg/-hover/-border`, 0.36.0) dùng chung cho nút ngữ nghĩa và badge (toast: token riêng cùng
+tinh thần); dark giữ cùng giá trị. **Warning luôn chữ tối** trên mọi bề mặt đặc (vàng + chữ trắng không bao giờ đạt).
+Pastel (`--td-pastel-*`) deprecated, vẫn khai báo để site khôi phục (breaking-changes § 0.36.0). Badge có nền thêm viền
+1px (≥ 1.6:1 với nền của chính nó / trắng / `#f4f4f5` — badge không tương tác, chữ mang thông tin) + bóng nhẹ, để nằm
+trên nền **trùng màu** vẫn thấy mép; `prefers-contrast: more` → viền `currentColor`, bỏ bóng. Mọi cặp chữ / nền nằm trong contrast gate (luật 9); viền focus
 ô nhập ≥ 3:1 với nền ô và nền trang (gate đo từ màu computed). `--td-accent` (checkbox, ghost, slider…) không đổi.
 
 Cài đặt: [`src/styles/glass.css`](../../../src/styles/glass.css) (recipe + fallback), token trong
@@ -68,7 +77,8 @@ Cài đặt: [`src/styles/glass.css`](../../../src/styles/glass.css) (recipe + f
 6. **Hover = nền đặc khác.** Mỗi variant có nền đọc `--td-btn-{v}-hover` (0.21.0; primary đen thì hover sáng lên);
    `--custom` và alias `-tint` dùng `color-mix(in srgb, <nền> 92%, #000)`; trình duyệt không có `color-mix()` giữ nền cũ.
 7. **Màu nút theo token.** Primary = đen (0.21.0; site muốn theo accent: `--td-btn-primary-bg: var(--td-accent-fill)` +
-   `--td-btn-primary-fg: var(--td-accent-contrast)` + `--td-btn-primary-hover`). Nút ngữ nghĩa = pastel. Alias một chu kỳ:
+   `--td-btn-primary-fg: var(--td-accent-contrast)` + `--td-btn-primary-hover`). Nút ngữ nghĩa = đặc `--td-solid-*`
+   (0.36.0; 0.21–0.35 pastel). Alias một chu kỳ:
    `--td-btn-{primary,success,danger,info,warning}-tint` site còn đặt vẫn thành nền + viền nút.
 8. **Scrim không blur** (modal, loading). **Bo góc đồng tâm** (inner = outer − padding, `--td-glass-radius-inner`)
    và **capsule ≥ 44px trên cảm ứng** giữ như cũ. Header bảng ghim: nền đặc.
@@ -93,7 +103,9 @@ Nút luôn đặc nên chỉ còn contrast (viền rõ, bỏ shadow) và forced 
 **Giữ (công khai):** `--td-glass-bg`, `-bg-strong`, `-solid`, `-fg`, `-border`, `-blur`, `-blur-lg`, `-shadow`,
 `-shadow-lg`, `-scrim`, `-clear-bg/-solid/-fg/-border/-shadow`, token hình học / thời lượng (`-radius`, `-pad`,
 `-radius-inner`, `-capsule`, `-dur`, `-ease`, `-ease-flex`), `--td-btn-*-bg/-fg/-border/-hover`, `--td-btn-lift`;
-0.21.0: `--td-pastel-{success,danger,warning,info}-bg/-border/-fg`, `--td-tooltip-bg/-fg/-border/-text-align`.
+0.21.0: `--td-pastel-{success,danger,warning,info}-bg/-border/-fg` (deprecated 0.36.0, giữ), `--td-tooltip-bg/-fg/-border/-text-align`;
+0.36.0: `--td-solid-{success,danger,warning,info}-bg/-fg/-hover/-border`, `--td-badge-{v}-border`, `--td-badge-{v}-ink`,
+`--td-badge-shadow`, `--td-alert-{v}-accent`, `--td-alert-accent-width`, `--td-action-btn-*`.
 
 **Deprecated v0.20.0** (vẫn khai báo, không tác dụng; xoá ở bản lớn sau): `--td-glass-edge`, `-side-edge`,
 `-bottom`, `-outline`, `-sheen`, `-dim`, `-dim-text`, `-clear-edge`, `-clear-glyph-shadow`, `-tint`, `-tint-alpha`,

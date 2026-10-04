@@ -165,6 +165,78 @@
 		container-type: normal;
 	}
 
+	/* --- v0.36.0 (plan QĐ 49): < 1024 the facets leave the toolbar for ONE "Bộ lọc" button (+ committed-count badge)
+	   opening the filter sheet (media-picker-filters.js); ≥ 1024 the dcms2 one-row toolbar is unchanged --- */
+	.td-media-picker__filter {
+		position: relative;
+		display: none;
+		flex: none;
+	}
+
+	.td-media-picker__filter-count {
+		position: absolute;
+		top: -0.375rem;
+		inset-inline-end: -0.375rem;
+		justify-content: center;
+		min-width: 1.25rem;
+		pointer-events: none;
+	}
+
+	@media (max-width: 1023.98px) {
+		.td-media-picker__filter:not([hidden]) {
+			display: inline-flex;
+		}
+
+		.td-media-picker__facets {
+			display: none;
+		}
+
+		/* upload · search · Bộ lọc · pager fit one row from 720: upload is icon-only below 1024 (aria-label keeps the name);
+		   the paged td-pagination is a container again so it compacts instead of overflowing the row */
+		.td-media-picker__search {
+			min-width: 8rem;
+		}
+
+		.td-media-picker__pager {
+			flex: 1 1 auto;
+			justify-content: flex-end;
+		}
+
+		.td-media-picker__pager td-pagination {
+			flex: 1 1 auto;
+			container-type: inline-size;
+		}
+
+		.td-media-picker__upload-btn .td-btn {
+			min-width: var(--td-touch-min, 44px);
+			padding-inline: 0;
+		}
+
+		.td-media-picker__upload-btn .td-btn__label {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			overflow: hidden;
+			clip-path: inset(50%);
+			white-space: nowrap;
+		}
+	}
+
+	/* review ISSUE-4 (plan QĐ 57): 720–1023 the detail column collapses while nothing is viewed (empty state) — the grid
+	   takes the full width; it comes back as soon as a manual / auto preview sets an asset */
+	@media (min-width: 720px) and (max-width: 1023.98px) {
+		.td-media-picker[data-detail-empty] .td-media-picker__detail {
+			display: none;
+		}
+	}
+
+	/* QĐ 51: < 720 the pager is the last row of the results scroller (JS moves the node) */
+	.td-media-picker__pager--below {
+		justify-content: center;
+		margin: 0;
+		padding-block: 0.75rem 0.25rem;
+	}
+
 	/* --- content: [list flex-1 | detail 25rem] (decision 6) --- */
 	.td-media-picker__content {
 		display: flex;
@@ -199,8 +271,6 @@
 		--td-media-grid-tick-inline: end;
 		--td-media-grid-tick-size: 20px;
 		--td-media-grid-tick-inset: 8px;
-		--td-media-grid-tick-on-bg: var(--td-media-picker-card-checked);
-		--td-media-grid-tick-on-fg: #fff;
 		--td-media-grid-selected-bg: transparent;
 		--td-media-grid-selected-scale: 1;
 		--td-media-grid-radius: var(--td-media-picker-card-radius);
@@ -338,10 +408,8 @@
 		gap: 0.25rem;
 	}
 
-	/* the tick: top-right square, always visible in multiple mode; single mode has none (Space still works) */
-	.td-media-picker .td-media-grid__tick {
-		border-radius: var(--td-radius-sm);
-	}
+	/* the tick: top-right, always visible in multiple mode; single mode has none (Space still works). v0.36.0: the shared
+	   td-checkbox mark (check.css) at the 20px picker size — no own square / colour any more (ADR 0017). */
 
 	.td-media-picker[data-mode="multiple"] .td-media-grid__tick {
 		opacity: 1;
@@ -416,9 +484,34 @@
 		justify-content: center;
 	}
 
+	/* review ISSUE-3 (plan QĐ 56): the "Quay lại" arrow lives in the dialog header — only < 720 while the pane is open */
 	.td-media-picker__back {
 		display: none;
-		align-self: flex-start;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		width: var(--td-touch-min, 44px);
+		height: var(--td-touch-min, 44px);
+		padding: 0;
+		margin: 0 0 0 calc(-1 * var(--td-space-xs));
+		color: inherit;
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: var(--td-radius-full);
+	}
+
+	.td-media-picker__back:hover {
+		background: var(--td-color-hover-strong);
+	}
+
+	.td-media-picker__back:focus-visible {
+		outline: 2px solid transparent;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-media-picker__detail-more {
+		display: none;
 	}
 
 	.td-media-picker__preview {
@@ -629,7 +722,11 @@
 		min-width: 0;
 	}
 
-	.td-media-picker__selcount,
+	/* review ISSUE-5: the selection chip "n đã chọn ×" reads as a count — page ink (≥ 4.7 in both themes), not the accent */
+	.td-media-picker__clear {
+		--td-btn-ghost-fg: var(--td-color-text);
+	}
+
 	.td-media-picker__initial-loading {
 		font-size: var(--td-text-sm);
 		color: var(--td-color-text-muted);
@@ -650,7 +747,7 @@
 	@media (max-width: 719.98px) {
 		.td-media-picker__toolbar {
 			gap: 0.75rem;
-			padding: 0.75rem 1rem;
+			padding: 0.375rem 1rem; /* v0.36.0 QĐ 52: one row ≤ 56px (44px touch controls) */
 		}
 
 		.td-media-picker__search {
@@ -659,19 +756,9 @@
 			max-width: none;
 		}
 
-		.td-media-picker__toolbar,
+		/* v0.36.0 (QĐ 49): ONE row — [Tải lên] [tìm] [Bộ lọc]; the facets live in the sheet, the pager under the grid */
 		.td-media-picker__filters {
-			flex-wrap: wrap;
-		}
-
-		.td-media-picker__filters {
-			flex: 1 1 100%;
-		}
-
-		/* the pager takes its own full row; the paged td-pagination is a container again (compact below 480) */
-		.td-media-picker__pager {
-			flex: 1 1 100%;
-			justify-content: flex-end; /* the cursor pager stays at the end of its row (v0.33 look) */
+			display: none;
 		}
 
 		.td-media-picker__pager td-pagination {
@@ -679,25 +766,14 @@
 			container-type: inline-size;
 		}
 
-		.td-media-picker__facets {
-			flex: 1 1 100%;
-			flex-wrap: wrap;
-			margin: 0;
-			padding: 0;
-			overflow: visible;
+		.td-media-picker__upload-btn .td-btn,
+		.td-media-picker__filter-btn .td-btn {
+			min-width: var(--td-touch-min, 44px);
+			padding-inline: 0;
 		}
 
-		.td-media-picker__facet {
-			flex: 0 1 auto;
-		}
-
-		.td-media-picker__facet[data-type="single"],
-		.td-media-picker__facet[data-type="multiple"] {
-			min-width: 0;
-			flex: 1 1 9rem;
-		}
-
-		/* "Tải lên" icon-only (its aria-label keeps the name) */
+		/* "Tải lên" / "Bộ lọc" icon-only (their aria-label keeps the name) */
+		.td-media-picker__filter-btn .td-btn__label,
 		.td-media-picker__upload-btn .td-btn__label {
 			position: absolute;
 			width: 1px;
@@ -733,9 +809,52 @@
 				visibility 0s linear 0s;
 		}
 
-		.td-media-picker__back {
+		.td-media-picker[data-view="detail"] .td-media-picker__back {
 			display: inline-flex;
 		}
+
+		/* ISSUE-3: ≤ 3 actions inline, the rest behind "Thêm" */
+		.td-media-picker__detail-actions > [data-overflow] {
+			display: none;
+		}
+
+		.td-media-picker__detail-actions > .td-media-picker__detail-more {
+			display: inline-flex;
+		}
+
+		/* QĐ 55 (review ISSUE-5): the footer stays ONE row — the selection is one chip "n đã chọn ×" */
+		.td-media-picker .td-media-picker__footer {
+			flex-wrap: nowrap;
+		}
+
+		/* QĐ 67: the card meta line ≥ 14px on touch screens */
+		.td-media-picker__meta {
+			font-size: var(--td-text-sm);
+		}
+
+		/* QĐ 56: the preview follows the image (no fixed square letterbox), at most 40% of the viewport height */
+		.td-media-picker__preview {
+			aspect-ratio: auto;
+			max-block-size: 40vh;
+		}
+
+		.td-media-picker__preview img {
+			height: auto;
+			max-block-size: 40vh;
+		}
+	}
+
+	/* --- v0.36.0 filter sheet (media-picker-filters.js): facets stacked, full width --- */
+	.td-media-picker-filters__body {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.td-media-picker-filters__facet,
+	.td-media-picker-filters__facet > * {
+		width: 100%;
+		min-width: 0;
 	}
 
 	/* short (landscape phone, ≤ 500px tall — ADR 0014): compact chrome so ≥ 1 row of cards stays visible */

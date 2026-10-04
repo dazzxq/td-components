@@ -54,7 +54,7 @@
  * @fires cancel
  * @fires operation-error
  */
-import { matchesBelow } from '../utils/breakpoints.js';
+import { matchesBelow, mqBelow } from '../utils/breakpoints.js';
 import { openDialogLayer } from './dialog-layer.js';
 import { TdModal } from './td-modal.js';
 import { TdModalStackManager } from './td-modal-stack.js';
@@ -69,7 +69,9 @@ import {
   Debouncer, SessionCache, formatLabel, PageState, defaultTitle, normalizeDeleteResult, normalizeDownloadResult,
 } from '../utils/media-picker-core.js';
 import { createFacetControl, FieldForm, FIELD_LABELS } from './media-picker-fields.js';
+import { TdMenu } from './td-menu.js';
 import { openUploadDialog, UPLOAD_LABELS } from './media-picker-upload.js';
+import { openFilterSheet, FILTER_LABELS } from './media-picker-filters.js';
 import { openCropDialog } from './crop-dialog.js';
 import '../display/td-media-grid.js';
 import '../display/td-empty-state.js';
@@ -162,6 +164,7 @@ export class TdMediaPicker extends HTMLElement {
    */
   static labels = {
     ...UPLOAD_LABELS,
+    ...FILTER_LABELS,
     title: 'Chọn media',
     titleImage: 'Chọn ảnh',
     titleVideo: 'Chọn video',
@@ -205,6 +208,11 @@ export class TdMediaPicker extends HTMLElement {
     selected: 'Đã chọn {n}',
     selectedMax: 'Đã chọn {n}/{max}',
     clearSelection: 'Bỏ chọn tất cả',
+    detailMore: 'Thêm',
+    /** v0.36.0 (review ISSUE-5, plan QĐ 55): the footer selection chip — visible label + accessible name */
+    selectedChip: '{n} đã chọn',
+    selectedChipMax: '{n}/{max} đã chọn',
+    clearSelectionChip: 'Bỏ chọn tất cả ({label})',
     selectFirst: 'Hãy chọn ít nhất một mục.',
     notReady: 'Mục này chưa sẵn sàng để chọn.',
     conflict: 'Media đã bị thay đổi ở nơi khác.',
@@ -387,6 +395,12 @@ export class TdMediaPicker extends HTMLElement {
       edit: null,
       blocked: null,
       upload: null,
+      /** v0.36.0 (QĐ 49–50): the open filter sheet, the last descriptor list, a descriptor list that arrived meanwhile */
+      filterSheet: null,
+      facetList: [],
+      pendingFacets: null,
+      /** @type {MediaQueryList|null} < 720 → the pager sits under the grid (QĐ 51) */
+      mqMd: null,
       confirm: null,
       /** @type {{ ctrl: AbortController }|null} the open crop step (v0.35 decisions 24-25) */
       crop: null,
@@ -449,11 +463,14 @@ export class TdMediaPicker extends HTMLElement {
     root.setAttribute('data-state', 'opening');
     root.setAttribute('data-view', 'grid');
     root.setAttribute('data-mode', s.mode);
+    root.setAttribute('data-detail-empty', ''); // review ISSUE-4: nothing viewed yet
     // Static markup only (no interpolation); every dynamic value is set through the DOM below.
     root.innerHTML = '<div class="td-modal__backdrop" aria-hidden="true"></div>'
       + '<div class="td-modal__dialog td-glass-surface td-glass-surface--strong td-glass-surface--lg td-media-picker__dialog"'
       + ' role="dialog" aria-modal="true" tabindex="-1">'
-      + '<div class="td-modal__header"><h2 class="td-modal__title"></h2>'
+      + '<div class="td-modal__header">'
+      + '<button type="button" class="td-media-picker__back"><span class="td-modal__close-icon" data-td-icon="back" aria-hidden="true"></span></button>'
+      + '<h2 class="td-modal__title"></h2>'
       + '<button type="button" class="td-modal__close"><span class="td-modal__close-icon" data-td-icon="close" aria-hidden="true"></span></button></div>'
       + '<div class="td-modal__body td-media-picker__body">'
       + '<div class="td-media-picker__toolbar"></div>'
@@ -483,6 +500,11 @@ export class TdMediaPicker extends HTMLElement {
     const x = q('.td-modal__close');
     x.setAttribute('aria-label', t('close'));
     x.addEventListener('click', () => this._requestFinish('cancel', 'close'));
+    // review ISSUE-3 (plan QĐ 56): < 720 the detail pane's "Quay lại" is a 44 px arrow in the dialog header (CSS shows it
+    // only while the pane is open); the pane has no back row of its own any more
+    const back = /** @type {HTMLButtonElement} */ (root.querySelector('.td-media-picker__back'));
+    back.setAttribute('aria-label', t('back'));
+    back.addEventListener('click', () => this._closeDetail());
     root.querySelector('.td-modal__backdrop').addEventListener('mousedown', (e) => e.preventDefault());
     fillIconSlots(root);
 
@@ -528,9 +550,10 @@ export class TdMediaPicker extends HTMLElement {
     e.error.appendChild(retry);
     e.retry = retry;
     // footer (decision 17)
-    const selcount = document.createElement('span');
-    selcount.className = 'td-media-picker__selcount';
-    const clear = makeButton(t('clearSelection'), { variant: 'ghost', size: 'sm', cls: 'td-media-picker__clear' });
+    // v0.36.0 (review ISSUE-5, plan QĐ 55): ONE chip "n đã chọn ×" = the count AND "Bỏ chọn tất cả" (label + name follow
+    // every selection change in _renderSelection)
+    const clear = makeButton(t('selectedChip', { n: 0 }), { variant: 'ghost', size: 'sm', icon: 'close', cls: 'td-media-picker__clear' });
+    clear.setAttribute('icon-position', 'right');
     clear.addEventListener('click', () => {
       if (!usable(clear)) return;
       this._userChange(() => s.model.clear());
@@ -540,9 +563,9 @@ export class TdMediaPicker extends HTMLElement {
     loadingNote.className = 'td-media-picker__initial-loading';
     loadingNote.textContent = t('loadingInitial');
     loadingNote.hidden = true;
-    if (s.mode === 'multiple') e.selbar.append(selcount, clear);
+    if (s.mode === 'multiple') e.selbar.append(clear);
     e.selbar.appendChild(loadingNote);
-    Object.assign(e, { selcount, clear, loadingNote });
+    Object.assign(e, { clear, loadingNote });
     const cancel = makeButton(t('cancel'), { cls: 'td-media-picker__cancel' });
     cancel.addEventListener('click', () => { if (usable(cancel)) this._requestFinish('cancel', 'close'); });
     const confirm = makeButton(t('confirm'), { variant: 'primary', cls: 'td-media-picker__confirm' });
@@ -595,6 +618,20 @@ export class TdMediaPicker extends HTMLElement {
       e.toolbar.appendChild(f);
       e.search = f;
     }
+    // v0.36.0 (QĐ 49): < 1024 the facets leave the toolbar for one "Bộ lọc" button (+ count badge) opening the sheet
+    const filterWrap = document.createElement('span');
+    filterWrap.className = 'td-media-picker__filter';
+    filterWrap.hidden = true;
+    const filterBtn = makeButton(t('filters'), { icon: 'filter', cls: 'td-media-picker__filter-btn' });
+    filterBtn.setAttribute('aria-haspopup', 'dialog');
+    filterBtn.addEventListener('click', () => { if (usable(filterBtn)) this._openFilters(); });
+    const filterCount = document.createElement('span');
+    filterCount.className = 'td-badge td-badge--accent td-media-picker__filter-count';
+    filterCount.setAttribute('aria-hidden', 'true');
+    filterCount.hidden = true;
+    filterWrap.append(filterBtn, filterCount);
+    e.toolbar.appendChild(filterWrap);
+    Object.assign(e, { filterWrap, filterBtn, filterCount });
     const filters = document.createElement('div');
     filters.className = 'td-media-picker__filters';
     const facets = document.createElement('div');
@@ -638,7 +675,100 @@ export class TdMediaPicker extends HTMLElement {
       if (Number.isInteger(n) && n >= 1 && n !== s.pages.page) this._loadPage(n, { nav: true });
     });
     pager.append(cursorBox, pg);
-    Object.assign(e, { prev, next, pageInfo: info, cursorBox, pagination: pg });
+    Object.assign(e, { prev, next, pageInfo: info, cursorBox, pagination: pg, filters });
+    // v0.36.0 (QĐ 51): < 720 the pager moves under the grid (end of the results scroller); back into the toolbar ≥ 720
+    if (typeof matchMedia === 'function') {
+      s.mqMd = matchMedia(mqBelow('md'));
+      const place = () => this._placePager();
+      s.mqMd.addEventListener('change', place);
+      s.ctrl.signal.addEventListener('abort', () => s.mqMd && s.mqMd.removeEventListener('change', place), { once: true });
+    }
+    this._placePager();
+  }
+
+  /** @private QĐ 51: the pager node lives in the toolbar (≥ 720) or right after the grid in the results (< 720) */
+  _placePager() {
+    const s = this._s;
+    if (!s || !s.els) return;
+    const e = s.els;
+    const narrow = s.mqMd ? s.mqMd.matches : false;
+    if (narrow) {
+      if (e.pager.parentNode !== e.results) e.results.appendChild(e.pager);
+    } else if (e.pager.parentNode !== e.filters) {
+      e.filters.appendChild(e.pager);
+    }
+    e.pager.classList.toggle('td-media-picker__pager--below', narrow);
+  }
+
+  // --- filter sheet (v0.36.0 QĐ 49–50) ---
+
+  /** @private number of COMMITTED filters (never the sheet draft) → badge + accessible name */
+  _syncFilterCount() {
+    const s = this._s;
+    const e = s.els;
+    if (!e.filterBtn) return;
+    const n = Object.keys(s.filters).length;
+    e.filterCount.textContent = String(n);
+    e.filterCount.hidden = n === 0;
+    e.filterBtn.setAttribute('aria-label', n ? this._t('filtersActive', { n }) : this._t('filters'));
+  }
+
+  /** @private open the sheet on a draft copy of the committed filters */
+  _openFilters() {
+    const s = this._s;
+    if (!this._live(s) || s.filterSheet) return;
+    s.filterSheet = openFilterSheet({
+      t: (k, p) => this._t(k, p),
+      descriptors: s.facetList,
+      committed: s.filters,
+      idPrefix: `${s.id}-fs`,
+      onApply: (draft) => { if (this._live(s)) this._applyFilters(draft); },
+      onClosing: (applied) => {
+        if (!this._live(s)) return;
+        s.filterSheet = null;
+        // ISSUE-1: "Áp dụng" reconciles the queued descriptors itself (without requests) in _applyFilters; only a
+        // dismissal (draft discarded) applies them here
+        if (!applied && s.pendingFacets) {
+          const list = s.pendingFacets;
+          s.pendingFacets = null;
+          this._renderFacets(list);
+        }
+      },
+    });
+  }
+
+  /**
+   * @private "Áp dụng" (ISSUE-1): descriptors that arrived while the sheet was open are reconciled FIRST, silently (no
+   * request); the draft keeps only keys that still have a facet; then ONE atomic commit (filters + toolbar controls +
+   * badge) and exactly one facet reload + one list reload — none when nothing changed.
+   */
+  _applyFilters(draft) {
+    const s = this._s;
+    let reconciled = false;
+    if (s.pendingFacets) {
+      const list = s.pendingFacets;
+      s.pendingFacets = null;
+      reconciled = this._renderFacets(list, { silent: true });
+    }
+    // review ISSUE-6: every surviving draft value goes through the CURRENT control (a queued descriptor may have changed
+    // the facet's type) and is read back normalised — `next` only holds what the controls accept. Programmatic set():
+    // no change event → no extra request.
+    const next = {};
+    for (const [k, c] of s.facets) {
+      const raw = draft[k];
+      c.set(c.type === 'multiple' && raw !== undefined && !Array.isArray(raw) ? [raw] : raw);
+      const v = c.get();
+      if (v !== undefined && !(Array.isArray(v) && !v.length)) next[k] = v;
+    }
+    const same = JSON.stringify(Object.entries(next).sort()) === JSON.stringify(Object.entries(s.filters).sort());
+    if (same && !reconciled) return;
+    s.filters = next;
+    this._syncFilterCount();
+    s.debounce.cancel();
+    if (s.els.search) s.query = String(s.els.search.getValue?.() ?? '').trim();
+    if (reconciled) s.cache.invalidateLists();
+    this._loadFacets({ fresh: reconciled });
+    this._loadPage('reload', { reset: true });
   }
 
   /** @private the inner <input> of the search field */
@@ -866,6 +996,32 @@ export class TdMediaPicker extends HTMLElement {
     }
     this._syncGrid();
     if (announce) this._announce(this._t('resultsCount', { n: page.total ?? page.items.length }));
+    this._autoPreview(page);
+  }
+
+  /**
+   * @private v0.36.0 (plan QĐ 69, ADR 0013 note; review ISSUE-2): ≥ 720 the detail panel always PREVIEWS something after
+   * every list load — the asset already viewed when it is still in the results, else the first SELECTED asset that is in
+   * the results, else the first result; an empty result clears the panel (empty state). The selection is never touched
+   * ("Chèn" stays disabled until the user selects). < 720 the grid comes first (no auto-open); a dirty form is never
+   * replaced.
+   */
+  _autoPreview(page) {
+    const s = this._s;
+    if (this._isNarrow() || this._editBusy()) return;
+    if (!page.items.length) {
+      if (s.detailId) {
+        s.req.detail.abort();
+        s.detailId = null;
+        s.blocked = null;
+        this._markViewing();
+        this._renderDetail();
+      }
+      return;
+    }
+    if (s.detailId && s.items.has(s.detailId)) return;
+    const selected = s.model.ids.find((id) => s.items.has(id));
+    this._showDetail(selected || page.items[0].id, { gated: false, auto: true });
   }
 
   /** @private pager (decision 13): hidden on one page; cursor ‹ › + text, or a silent td-pagination */
@@ -930,8 +1086,18 @@ export class TdMediaPicker extends HTMLElement {
   }
 
   /** @private create / update facet controls; values are kept across descriptor reloads */
-  _renderFacets(list) {
+  /**
+   * @param {Array<object>} list
+   * @param {{ silent?: boolean }} [o] silent (ISSUE-1): reconcile only — no reload; returns whether the filters changed
+   * @returns {boolean}
+   */
+  _renderFacets(list, { silent = false } = {}) {
     const s = this._s;
+    if (s.filterSheet) { // v0.36.0 QĐ 50: the committed descriptors / controls are frozen while the sheet is open
+      s.pendingFacets = list;
+      return false;
+    }
+    s.facetList = list;
     const box = s.els.facets;
     const keys = new Set(list.map((f) => f.key));
     let filtersChanged = false;
@@ -979,12 +1145,16 @@ export class TdMediaPicker extends HTMLElement {
       box.appendChild(c.el); // keeps descriptor order
     }
     box.hidden = list.length === 0;
+    if (s.els.filterWrap) s.els.filterWrap.hidden = list.length === 0;
+    this._syncFilterCount();
+    if (filtersChanged && silent) return true;
     if (filtersChanged) {
       // impl review ISSUE-9: reconciliation changed the filters → facets (counts) AND list follow the filters now in force
       s.cache.invalidateLists(); // older descriptor sets (and pages) cached for these filters are now stale
       this._loadFacets({ fresh: true });
       this._loadPage('reload', { reset: true });
     }
+    return filtersChanged;
   }
 
   /** @private */
@@ -995,6 +1165,7 @@ export class TdMediaPicker extends HTMLElement {
     const v = c.get();
     if (v === undefined || (Array.isArray(v) && !v.length)) delete s.filters[key];
     else s.filters[key] = v;
+    this._syncFilterCount();
     s.debounce.cancel();
     if (s.els.search) s.query = String(s.els.search.getValue?.() ?? '').trim();
     this._loadFacets();
@@ -1267,8 +1438,10 @@ export class TdMediaPicker extends HTMLElement {
     if (e.confirm.getAttribute('label') !== label) e.confirm.setAttribute('label', label);
     e.confirm.toggleAttribute('disabled', n === 0);
     if (s.mode === 'multiple') {
-      e.selcount.textContent = s.model.max === Infinity ? this._t('selected', { n }) : this._t('selectedMax', { n, max: s.model.max });
-      e.selcount.setAttribute('data-count', String(n));
+      const chip = s.model.max === Infinity ? this._t('selectedChip', { n }) : this._t('selectedChipMax', { n, max: s.model.max });
+      if (e.clear.getAttribute('label') !== chip) e.clear.setAttribute('label', chip);
+      e.clear.setAttribute('aria-label', this._t('clearSelectionChip', { label: chip }));
+      e.clear.setAttribute('data-count', String(n));
       e.clear.hidden = n === 0;
     }
     e.loadingNote.hidden = !(s.initial && s.initial.pending);
@@ -1290,11 +1463,12 @@ export class TdMediaPicker extends HTMLElement {
    * @private Open the detail of `id`. `gated` (default): a dirty form of ANOTHER asset asks first (keep → nothing
    * changes). The same id keeps the current panel (and what the user typed).
    * @param {string} id
-   * @param {{ gated?: boolean, fromGrid?: boolean }} [o]
+   * @param {{ gated?: boolean, fromGrid?: boolean, auto?: boolean }} [o]
    */
-  async _showDetail(id, { gated = true } = {}) {
+  async _showDetail(id, { gated = true, auto = false } = {}) {
     const s = this._s;
     if (s.detailId === id && s.root.querySelector('.td-media-picker__detail[data-state="ready"]')) {
+      if (auto) return;
       this._setView('detail');
       if (this._isNarrow()) this._focusDetailHeading();
       return;
@@ -1307,7 +1481,7 @@ export class TdMediaPicker extends HTMLElement {
     s.detailId = id;
     s.blocked = null;
     this._markViewing();
-    this._setView('detail');
+    if (!auto) this._setView('detail'); // an auto preview (QĐ 69) never opens the < 720 pane
     this._renderDetail(true);
     if (this._isNarrow()) this._focusDetailHeading();
     s.req.detail.run((signal) => s.adapter.get(id, { context: s.context, signal })).then((r) => {
@@ -1328,7 +1502,7 @@ export class TdMediaPicker extends HTMLElement {
   /** @private */
   _focusDetailHeading() {
     const s = this._s;
-    const h = s.els.detail.querySelector('.td-media-picker__detail-name') || s.els.detail.querySelector('.td-media-picker__back');
+    const h = s.els.detail.querySelector('.td-media-picker__detail-name') || s.root.querySelector('.td-media-picker__back');
     this._focus(/** @type {HTMLElement|null} */ (h));
   }
 
@@ -1375,11 +1549,10 @@ export class TdMediaPicker extends HTMLElement {
     const box = s.els.detail;
     if (s.edit) { try { s.edit.form.destroy(); } catch { /* ignore */ } s.edit = null; }
     box.replaceChildren();
-    const back = makeButton(t('back'), { variant: 'ghost', size: 'sm', icon: 'back', cls: 'td-media-picker__back' });
-    back.addEventListener('click', () => { if (usable(back)) this._closeDetail(); });
-    box.appendChild(back);
     const asset = s.detailId ? s.cache.getAsset(s.detailId) : null;
     box.toggleAttribute('data-loading', !!loading && !!asset);
+    // review ISSUE-4 (plan QĐ 57): 720–1023 the detail column collapses while nothing is viewed (root flag; no :has())
+    s.root?.toggleAttribute('data-detail-empty', !asset && !(s.detailId && loading));
     if (!asset) {
       if (s.detailId && loading) {
         box.setAttribute('data-state', 'ready');
@@ -1520,6 +1693,22 @@ export class TdMediaPicker extends HTMLElement {
       actions.appendChild(del);
     }
     if (saveBtn) actions.appendChild(saveBtn);
+    // review ISSUE-3 (plan QĐ 56): at most 3 actions inline below 720 — "Lưu" always stays, the rest in order; the others
+    // are marked [data-overflow] (CSS hides them < 720) and offered by an internal "Thêm" TdMenu that clicks them
+    const inline = [...actions.children];
+    const keep = new Set(saveBtn ? [saveBtn] : []);
+    for (const b of inline) if (keep.size < 3 && !keep.has(b)) keep.add(b);
+    const overflowed = inline.filter((b) => !keep.has(b));
+    if (overflowed.length) {
+      for (const b of overflowed) b.setAttribute('data-overflow', '');
+      const more = makeButton(t('detailMore'), { size: 'sm', icon: 'more', aria: t('detailMore'), cls: 'td-media-picker__detail-more' });
+      actions.insertBefore(more, saveBtn || null);
+      // review ISSUE-7: TdMenu's default dismissal (an outside press passes through) — 'swallow' is lightbox-only
+      TdMenu.bind(more, () => overflowed.filter((b) => b.isConnected).map((b) => ({
+        label: b.getAttribute('label') || b.getAttribute('aria-label') || b.textContent.trim(),
+        onSelect: () => (b.querySelector('button') || b).click(),
+      })), { align: 'end' });
+    }
     if (actions.childNodes.length) {
       const hr2 = document.createElement('hr');
       hr2.className = 'td-media-picker__divider';
@@ -2113,6 +2302,7 @@ export class TdMediaPicker extends HTMLElement {
       s.debounce.cancel();
       s.ctrl.abort();
       if (s.upload) { try { s.upload.destroy(); } catch { /* ignore */ } s.upload = null; }
+      if (s.filterSheet) { try { s.filterSheet.destroy(); } catch { /* ignore */ } s.filterSheet = null; }
       if (s.crop) { const c = s.crop; s.crop = null; c.ctrl.abort(); } // v0.35 decision 25: the crop step closes too
       if (s.edit) { try { s.edit.form.destroy(); } catch { /* ignore */ } s.edit = null; }
       for (const c of s.facets.values()) { try { c.destroy(); } catch { /* ignore */ } }

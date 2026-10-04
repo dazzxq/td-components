@@ -1,6 +1,6 @@
 {
   "name": "@dazzxq/td-components",
-  "version": "0.35.0",
+  "version": "0.36.0",
   "description": "Shared UI Web Components library — single source of truth UI kit (token CSS + minimal surfaces)",
   "type": "module",
   "main": "index.js",
@@ -38,6 +38,7 @@
     "./toggle": "./src/form/td-toggle.js",
     "./checkbox": "./src/form/td-checkbox.js",
     "./button": "./src/form/td-button.js",
+    "./action-button": "./src/form/td-action-button.js",
     "./input-field": "./src/form/td-input-field.js",
     "./slider": "./src/form/td-slider.js",
     "./dropdown": "./src/form/td-dropdown.js",
@@ -102,6 +103,7 @@
     "./src/feedback/td-scroll-top.js",
     "./src/feedback/td-tooltip.js",
     "./src/form/td-button.js",
+    "./src/form/td-action-button.js",
     "./src/form/td-checkbox.js",
     "./src/form/td-chip-input.js",
     "./src/form/td-datetime-picker.js",

@@ -18,8 +18,8 @@ export const SSR_ARIA_DATA = /^(?:aria-[a-z0-9][a-z0-9._-]*|data-(?!td-)[a-z0-9]
  */
 export const SSR_CONTROL_ATTRS = new Set(['class', 'type', 'name', 'value', 'checked', 'id', 'title', 'lang', 'dir', 'role',
   'tabindex', 'hidden', 'translate', 'accesskey', 'autofocus', 'autocomplete', 'inputmode', 'enterkeyhint', 'autocapitalize',
-  'spellcheck', 'placeholder', 'readonly', 'required', 'disabled', 'maxlength', 'minlength', 'min', 'max', 'step', 'pattern',
-  'size', 'rows', 'cols']);
+  'autocorrect', 'spellcheck', 'placeholder', 'readonly', 'required', 'disabled', 'maxlength', 'minlength', 'min', 'max', 'step',
+  'pattern', 'size', 'rows', 'cols']);
 
 /** Review round 1 SEC-01 — what can legitimately sit under a form host (php/td.php element mode + render()). */
 const SSR_HTML_TAGS = new Set(['div', 'label', 'span', 'input', 'textarea']);

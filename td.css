@@ -113,6 +113,15 @@
 		--td-color-border-strong: var(--td-gray-300);
 		--td-color-hover: rgb(0 0 0 / 5%);
 		--td-color-hover-strong: rgb(0 0 0 / 8%);
+		/* v0.36.0 popup option rows (dropdown, multiselect, tree-select, menu — dcms2 look): full-bleed rows, a hover fill,
+		   a selected fill (single lists: semibold label + ✓ at the end), the keyboard-active row = fill + an inline-start
+		   accent bar (the focus indicator, ≥ 3:1 vs the popup surface — contrast gate) */
+		--td-option-pad-x: 12px;
+		--td-option-hover-bg: var(--td-color-hover);
+		--td-option-active-bg: var(--td-color-hover-strong);
+		--td-option-selected-bg: var(--td-color-hover-strong);
+		--td-option-active-bar: var(--td-accent);
+		--td-option-active-bar-w: 3px;
 		--td-color-overlay: rgb(10 10 12 / 45%);
 		--td-color-skeleton: var(--td-gray-100);
 		--td-color-success: #15803d;
@@ -146,8 +155,9 @@
 		--td-touch-min: 44px; /* minimum hit target for touch controls */
 
 		/* ===== Pastel semantic palette (v0.21.0) — soft fill (~100) + border (~200) + deep ink (~800/900) of the same hue.
-		   Used by the semantic buttons, the soft badges and the toasts. Dark (theme-dark.css): the semantic colour ~18 %
-		   pre-mixed on the dark page (solid), border ~30 %, ink ~200. Ink ≥ 4.7:1 on fill and border (contrast gate). */
+		   DEPRECATED v0.36.0: no component uses it as its default fill any more (buttons / badges → --td-solid-*); kept so a
+		   site can restore the pastel look (docs/upgrading/breaking-changes.md § 0.36.0). Dark (theme-dark.css): the semantic
+		   colour ~18 % pre-mixed on the dark page (solid), border ~30 %, ink ~200. Ink ≥ 4.7:1 on fill and border. */
 		--td-pastel-success-bg: #dcfce7;
 		--td-pastel-success-border: #bbf7d0;
 		--td-pastel-success-fg: #14532d;
@@ -161,9 +171,30 @@
 		--td-pastel-info-border: #bfdbfe;
 		--td-pastel-info-fg: #1e3a8a;
 
+		/* ===== Solid semantic palette (v0.36.0, plan QĐ 18) — "normal" status colours like dcms2: fill -bg, label -fg
+		   (≥ 4.7:1 on -bg AND on -hover — contrast gate), -hover one step darker, -border = the hover step. Warning carries
+		   DARK text (no amber that still reads as yellow reaches 4.5:1 with white). Read by the semantic buttons and the
+		   badges (toasts: their own tokens). Same values in theme-dark.css (white on 600/700 reads on a dark page too). */
+		--td-solid-success-bg: #15803d;
+		--td-solid-success-fg: #fff;
+		--td-solid-success-hover: #166534;
+		--td-solid-success-border: #166534;
+		--td-solid-danger-bg: #dc2626;
+		--td-solid-danger-fg: #fff;
+		--td-solid-danger-hover: #b91c1c;
+		--td-solid-danger-border: #b91c1c;
+		--td-solid-warning-bg: #f59e0b;
+		--td-solid-warning-fg: #18181b;
+		--td-solid-warning-hover: #d97706;
+		--td-solid-warning-border: #d97706;
+		--td-solid-info-bg: #2563eb;
+		--td-solid-info-fg: #fff;
+		--td-solid-info-hover: #1d4ed8;
+		--td-solid-info-border: #1d4ed8;
+
 		/* ===== Buttons — v0.20.0 minimal surfaces: SOLID fill + one soft shadow (--td-btn-lift), no blur / film / sheen /
-		   rim / glow / scale. v0.21.0: primary is BLACK (dark theme: inverted) with its own hover token; success / danger /
-		   warning / info are PASTEL (fill + same-hue ink + -border, hover = the ~200 step). Each filled variant reads
+		   rim / glow / scale. v0.21.0: primary is BLACK (dark theme: inverted) with its own hover token. v0.36.0: success /
+		   danger / warning / info are SOLID (--td-solid-*: fill + white / dark label + -border, hover one step darker). Each filled variant reads
 		   -bg / -fg / -border / -hover. A site that changes -bg should set -hover too (otherwise hover keeps the default).
 		   Primary back on the site accent: --td-btn-primary-bg: var(--td-accent-fill) + --td-btn-primary-hover.
 		   Compatibility alias for one cycle: a site that still sets --td-btn-{primary,success,danger,info,warning}-tint
@@ -177,22 +208,22 @@
 		--td-btn-secondary-fg: var(--td-gray-900);
 		--td-btn-secondary-border: rgb(0 0 0 / 12%);
 		--td-btn-secondary-hover: var(--td-gray-200);
-		--td-btn-success-bg: var(--td-pastel-success-bg);
-		--td-btn-success-fg: var(--td-pastel-success-fg);
-		--td-btn-success-border: var(--td-pastel-success-border);
-		--td-btn-success-hover: var(--td-pastel-success-border);
-		--td-btn-danger-bg: var(--td-pastel-danger-bg);
-		--td-btn-danger-fg: var(--td-pastel-danger-fg);
-		--td-btn-danger-border: var(--td-pastel-danger-border);
-		--td-btn-danger-hover: var(--td-pastel-danger-border);
-		--td-btn-info-bg: var(--td-pastel-info-bg);
-		--td-btn-info-fg: var(--td-pastel-info-fg);
-		--td-btn-info-border: var(--td-pastel-info-border);
-		--td-btn-info-hover: var(--td-pastel-info-border);
-		--td-btn-warning-bg: var(--td-pastel-warning-bg);
-		--td-btn-warning-fg: var(--td-pastel-warning-fg);
-		--td-btn-warning-border: var(--td-pastel-warning-border);
-		--td-btn-warning-hover: var(--td-pastel-warning-border);
+		--td-btn-success-bg: var(--td-solid-success-bg);
+		--td-btn-success-fg: var(--td-solid-success-fg);
+		--td-btn-success-border: var(--td-solid-success-border);
+		--td-btn-success-hover: var(--td-solid-success-hover);
+		--td-btn-danger-bg: var(--td-solid-danger-bg);
+		--td-btn-danger-fg: var(--td-solid-danger-fg);
+		--td-btn-danger-border: var(--td-solid-danger-border);
+		--td-btn-danger-hover: var(--td-solid-danger-hover);
+		--td-btn-info-bg: var(--td-solid-info-bg);
+		--td-btn-info-fg: var(--td-solid-info-fg);
+		--td-btn-info-border: var(--td-solid-info-border);
+		--td-btn-info-hover: var(--td-solid-info-hover);
+		--td-btn-warning-bg: var(--td-solid-warning-bg);
+		--td-btn-warning-fg: var(--td-solid-warning-fg);
+		--td-btn-warning-border: var(--td-solid-warning-border);
+		--td-btn-warning-hover: var(--td-solid-warning-hover);
 		/* v0.14.3: disabled reads as greyed out — pale fill, muted label (WCAG 1.4.3 exempts disabled controls; the
 		   contrast gate keeps it ≥ 2.2:1 so it stays legible). Opaque: a state colour, never element opacity. */
 		--td-btn-disabled-bg: #f4f4f5;
@@ -366,6 +397,25 @@
 		--td-pastel-info-bg: #19253c;
 		--td-pastel-info-border: #1e3357;
 		--td-pastel-info-fg: #bfdbfe;
+
+		/* v0.36.0 solid semantic palette: the SAME values as light (white on 600/700 and dark on amber-500 read on a dark
+		   page too; the label contrast is measured against the fill only) */
+		--td-solid-success-bg: #15803d;
+		--td-solid-success-fg: #fff;
+		--td-solid-success-hover: #166534;
+		--td-solid-success-border: #166534;
+		--td-solid-danger-bg: #dc2626;
+		--td-solid-danger-fg: #fff;
+		--td-solid-danger-hover: #b91c1c;
+		--td-solid-danger-border: #b91c1c;
+		--td-solid-warning-bg: #f59e0b;
+		--td-solid-warning-fg: #18181b;
+		--td-solid-warning-hover: #d97706;
+		--td-solid-warning-border: #d97706;
+		--td-solid-info-bg: #2563eb;
+		--td-solid-info-fg: #fff;
+		--td-solid-info-hover: #1d4ed8;
+		--td-solid-info-border: #1d4ed8;
 
 		/* v0.21.0: primary inverted (a black fill would sink into the dark page) */
 		--td-btn-primary-bg: #f4f4f5;
@@ -829,6 +879,12 @@
 			min-height: var(--td-touch-min);
 			font-size: max(1rem, 1em); /* ≥ 16px: iOS does not zoom on focus */
 		}
+
+		/* v0.36.0 (plan QĐ 67): the note / counter / error under a field ≥ 14px on touch screens */
+		.td-field__footer,
+		.td-field-error {
+			font-size: var(--td-text-sm);
+		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
@@ -1072,8 +1128,8 @@
  * with a fill is a SOLID colour (--td-btn-{v}-bg) + one soft shadow (--td-btn-lift); hover = another SOLID fill
  * (--td-btn-{v}-hover; -tint alias / custom colours: color-mix() with 8 % black — engines without color-mix() keep the
  * resting fill). No blur, film, sheen, rim, hairline, glow or press scale. Ghost and disabled have no shadow.
- * v0.21.0: primary = black (dark theme: inverted), success / danger / warning / info = pastel fill + same-hue ink +
- * -border; every filled variant hovers to its --td-btn-{v}-hover token.
+ * v0.21.0: primary = black (dark theme: inverted); every filled variant hovers to its --td-btn-{v}-hover token.
+ * v0.36.0: success / danger / warning / info = SOLID semantic fill (--td-solid-*, warning with a dark label) + -border.
  * Compatibility alias (one cycle): a site's --td-btn-{primary,success,danger,info,warning}-tint still becomes the fill.
  * Disabled = explicit opaque state colours (never element opacity). Increased contrast / forced colours drop the
  * shadow through the private --_td-btn-lift (glass.css fallbacks).
@@ -1153,7 +1209,7 @@
 	.td-btn--lg { min-height: 3rem; padding: 0 1.6rem; font-size: var(--td-text-base); }
 	.td-btn--full { display: flex; width: 100%; }
 
-	/* Solid variants: fill -bg, ink -fg, edge -border, hover -hover (v0.21.0: primary black, semantic pastel).
+	/* Solid variants: fill -bg, ink -fg, edge -border, hover -hover (v0.21.0: primary black; v0.36.0: semantic solid).
 	   -tint = the v0.20.0 compatibility alias: when a site sets it, it becomes the fill AND the edge (--_td-btn-tint is
 	   guaranteed-invalid when the alias is unset, so var() falls through to the kit token) and the hover is 8 % darker. */
 	.td-btn--primary {
@@ -1316,6 +1372,8 @@
 
 	@media (pointer: coarse) {
 		.td-btn { min-height: var(--td-touch-min); border-radius: var(--td-radius-full); }
+		/* v0.36.0 (plan QĐ 67): interactive labels ≥ 14px on touch screens */
+		.td-btn--sm { font-size: var(--td-text-sm); }
 	}
 
 	@media (prefers-reduced-motion: reduce) {
@@ -1329,6 +1387,269 @@
 
 	@media (forced-colors: active) {
 		.td-btn { border-color: ButtonText; }
+	}
+}
+
+/* ---- src/styles/components/action-button.css ---- */
+/*
+ * td-action-button (src/form/td-action-button.js, v0.36.0 plan QĐ 8–15) — an icon-only SQUARE button on top of the
+ * `.td-btn` control (button.css): transparent fill, no shadow, icon in the tone colour, a soft hover fill, the kit
+ * focus ring. Sizes 32 / 36 / 40 px (sm / md / lg; NOT td-button's 32 / 40 / 48), icon 16 / 18 / 20 px.
+ * Touch (pointer: coarse): every size is a REAL 44 × 44 box (no ::before hit-area extension — side-by-side action
+ * buttons would overlap their targets, ADR 0014 §5).
+ * Tones: standard (dark grey icon) · warning (amber-700) · danger (red-700) — icon ≥ 4.7:1 on white AND on its hover
+ * fill (test/tokens/contrast.spec.mjs). Disabled: transparent, greyed icon (no fill).
+ * `.td-action-group` (CSS only): a row of action buttons, gap 4 px (8 px on touch).
+ */
+@layer td.tokens {
+	:root {
+		--td-action-btn-size-sm: 2rem;
+		--td-action-btn-size-md: 2.25rem;
+		--td-action-btn-size-lg: 2.5rem;
+		--td-action-btn-radius: var(--td-radius-md);
+		--td-action-btn-standard-fg: var(--td-gray-700);
+		--td-action-btn-standard-hover-bg: var(--td-color-hover);
+		--td-action-btn-warning-fg: #b45309;
+		/* amber-50, not the pastel warning fill: #b45309 on #fef3c7 is only 4.5:1 (gate ≥ 4.7) */
+		--td-action-btn-warning-hover-bg: #fffbeb;
+		--td-action-btn-danger-fg: #b91c1c;
+		--td-action-btn-danger-hover-bg: var(--td-pastel-danger-bg);
+	}
+
+	/* dark (opt-in): light inks on the dark page, translucent tone fills */
+	:root[data-td-theme="dark"] {
+		--td-action-btn-standard-fg: #d4d4d8;
+		--td-action-btn-warning-fg: #fcd34d;
+		--td-action-btn-warning-hover-bg: rgb(245 158 11 / 14%);
+		--td-action-btn-danger-fg: #fca5a5;
+		--td-action-btn-danger-hover-bg: rgb(220 38 38 / 18%);
+	}
+}
+
+@layer td.component {
+	td-action-button {
+		display: inline-flex;
+		vertical-align: middle;
+	}
+
+	/* hand-written host before the module loads: reserve the square (SSR hosts already hold the control) */
+	td-action-button:not(:defined):not([data-td-ssr]) {
+		inline-size: var(--td-action-btn-size-md);
+		block-size: var(--td-action-btn-size-md);
+	}
+
+	td-action-button[size="sm"]:not(:defined):not([data-td-ssr]) {
+		inline-size: var(--td-action-btn-size-sm);
+		block-size: var(--td-action-btn-size-sm);
+	}
+
+	td-action-button[size="lg"]:not(:defined):not([data-td-ssr]) {
+		inline-size: var(--td-action-btn-size-lg);
+		block-size: var(--td-action-btn-size-lg);
+	}
+
+	.td-btn.td-btn--action {
+		--td-btn-bg-v: transparent;
+		--td-btn-border-v: transparent;
+		--td-btn-fg-v: var(--td-action-btn-standard-fg);
+		--td-btn-hover-v: var(--td-action-btn-standard-hover-bg);
+		--_td-btn-lift: none;
+		--_td-action-size: var(--td-action-btn-size-md);
+		--_td-action-icon: 1.125rem;
+
+		flex: none;
+		gap: 0;
+		inline-size: var(--_td-action-size);
+		block-size: var(--_td-action-size);
+		min-height: 0;
+		padding: 0;
+		border-radius: var(--td-action-btn-radius);
+	}
+
+	.td-btn--action.td-btn--action-sm { --_td-action-size: var(--td-action-btn-size-sm); --_td-action-icon: 1rem; }
+	.td-btn--action.td-btn--action-lg { --_td-action-size: var(--td-action-btn-size-lg); --_td-action-icon: 1.25rem; }
+
+	.td-btn--action.td-btn--action-warning {
+		--td-btn-fg-v: var(--td-action-btn-warning-fg);
+		--td-btn-hover-v: var(--td-action-btn-warning-hover-bg);
+	}
+
+	.td-btn--action.td-btn--action-danger {
+		--td-btn-fg-v: var(--td-action-btn-danger-fg);
+		--td-btn-hover-v: var(--td-action-btn-danger-hover-bg);
+	}
+
+	.td-btn--action .td-btn__icon .td-icon {
+		width: var(--_td-action-icon);
+		height: var(--_td-action-icon);
+	}
+
+	/* Disabled stays a ghost: no fill / border, greyed icon (button.css sets the disabled colour). */
+	.td-btn--action:is(:disabled, [aria-disabled="true"]:not([aria-busy="true"]), a[aria-disabled="true"][tabindex="-1"]) {
+		background-color: transparent;
+		border-color: transparent;
+	}
+
+	.td-action-group {
+		display: inline-flex;
+		line-height: normal; /* own it: never inherit the host page's */
+		flex-wrap: wrap;
+		gap: 4px;
+		align-items: center;
+	}
+
+	@media (pointer: coarse) {
+		.td-btn.td-btn--action {
+			--_td-action-size: var(--td-touch-min);
+
+			border-radius: var(--td-action-btn-radius);
+		}
+
+		.td-action-group { gap: 8px; }
+	}
+}
+
+/* ---- src/styles/components/check.css ---- */
+/*
+ * Shared tick mark (v0.36.0, ADR 0017) — THE look of every "tick to select" in the kit: td-checkbox's mark
+ * (.td-checkbox__mark, markup unchanged) and the decorative `.td-check` printed by src/utils/check-mark.js inside
+ * td-media-grid / td-media-picker ticks, td-tree (multiple), td-chip-input (selection-only) and td-menu checkbox items.
+ * The mark is ALWAYS aria-hidden: the semantics live on its container (input, aria-pressed, aria-checked, aria-selected).
+ *
+ * State is read from ARIA / native state that already exists — no duplicated state attribute. A NEW consumer adds its
+ * selector to the "on" / "mixed" lists below (one place; conventions.md).
+ * Size: .td-check--{sm|md|lg} = 1rem / 1.25rem / 1.5rem (the three td-checkbox sizes); a consumer may set
+ * --_td-check-size on the mark (e.g. the media grid tick size token).
+ * Mixed (indeterminate) = a bar drawn by ::after (no extra node; CSP-safe).
+ */
+@layer td.component {
+	.td-check {
+		--_td-check-size: 1.25rem;
+	}
+
+	.td-check--sm { --_td-check-size: 1rem; }
+	.td-check--lg { --_td-check-size: 1.5rem; }
+
+	.td-checkbox__mark {
+		--_td-check-size: var(--td-checkbox-box);
+	}
+
+	:is(.td-check, .td-checkbox__mark) {
+		position: relative;
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		width: var(--_td-check-size);
+		height: var(--_td-check-size);
+		color: var(--td-accent-contrast);
+		background: var(--td-control-bg);
+		border: 1.5px solid var(--td-checkbox-border);
+		border-radius: var(--td-checkbox-radius); /* v0.14.0: round by default */
+		line-height: 1;
+		transition:
+			background var(--td-dur-fast) var(--td-ease),
+			border-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	:is(.td-check, .td-checkbox__mark)::after {
+		content: "";
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 50%;
+		height: 2px;
+		background: currentcolor;
+		border-radius: 1px;
+		opacity: 0;
+		transform: translate(-50%, -50%);
+		transition: opacity var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-check__icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+
+	:is(.td-check .td-check__svg, .td-checkbox__svg) {
+		width: calc(var(--_td-check-size) * 0.7);
+		height: calc(var(--_td-check-size) * 0.7);
+		stroke-width: 3;
+		opacity: 0;
+		transition: opacity var(--td-dur-fast) var(--td-ease); /* v0.20.0: fade only, no scale */
+	}
+
+	/* ---- ON ---- */
+	.td-checkbox__input:checked ~ .td-checkbox__mark,
+	:is([aria-pressed="true"], [aria-checked="true"], [aria-selected="true"]) > .td-check,
+	.td-tree__item[aria-checked="true"] > .td-tree__row > .td-check {
+		background: var(--td-checkbox-color);
+		border-color: var(--td-checkbox-color);
+	}
+
+	.td-checkbox__input:checked ~ .td-checkbox__mark .td-checkbox__svg,
+	:is([aria-pressed="true"], [aria-checked="true"], [aria-selected="true"]) > .td-check .td-check__svg,
+	.td-tree__item[aria-checked="true"] > .td-tree__row > .td-check .td-check__svg {
+		opacity: 1;
+	}
+
+	/* ---- MIXED (after ON: an indeterminate checkbox that is also :checked shows the bar) ---- */
+	.td-checkbox__input:indeterminate ~ .td-checkbox__mark,
+	[aria-checked="mixed"] > .td-check,
+	[data-td-check-mixed] > .td-check,
+	.td-tree__item[aria-checked="mixed"] > .td-tree__row > .td-check {
+		background: var(--td-checkbox-color);
+		border-color: var(--td-checkbox-color);
+	}
+
+	.td-checkbox__input:indeterminate ~ .td-checkbox__mark .td-checkbox__svg,
+	[data-td-check-mixed] > .td-check .td-check__svg {
+		opacity: 0;
+	}
+
+	.td-checkbox__input:indeterminate ~ .td-checkbox__mark::after,
+	[aria-checked="mixed"] > .td-check::after,
+	[data-td-check-mixed] > .td-check::after,
+	.td-tree__item[aria-checked="mixed"] > .td-tree__row > .td-check::after {
+		opacity: 1;
+	}
+
+	/* ---- LOCKED (the container greys itself; the mark follows like td-checkbox's 50 %) ---- */
+	:is([aria-disabled="true"], :disabled) > .td-check {
+		opacity: 0.5;
+	}
+
+	/* ---- On a photo (media grid / picker ticks): a dark hairline keeps the white box visible on white images ---- */
+	.td-check--on-media {
+		background: #fff; /* light box in every theme: it sits on a photo, not on the page */
+		box-shadow: 0 0 0 1px rgb(0 0 0 / 45%);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:is(.td-check, .td-checkbox__mark),
+		:is(.td-check, .td-checkbox__mark)::after,
+		:is(.td-check__svg, .td-checkbox__svg) {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		:is(.td-check, .td-checkbox__mark) {
+			border-color: ButtonText;
+		}
+
+		:is(.td-check, .td-checkbox__mark)::after {
+			background: HighlightText;
+		}
+
+		.td-checkbox__input:is(:checked, :indeterminate) ~ .td-checkbox__mark,
+		:is([aria-pressed="true"], [aria-checked="true"], [aria-checked="mixed"], [aria-selected="true"], [data-td-check-mixed]) > .td-check,
+		.td-tree__item:is([aria-checked="true"], [aria-checked="mixed"]) > .td-tree__row > .td-check {
+			color: HighlightText;
+			background: Highlight;
+			border-color: Highlight;
+		}
 	}
 }
 
@@ -1390,49 +1711,14 @@
 		border: 0;
 	}
 
-	.td-checkbox__mark {
-		box-sizing: border-box;
-		display: inline-flex;
-		flex: 0 0 auto;
-		align-items: center;
-		justify-content: center;
-		width: var(--td-checkbox-box);
-		height: var(--td-checkbox-box);
-		color: var(--td-accent-contrast);
-		background: var(--td-control-bg);
-		border: 1.5px solid var(--td-checkbox-border);
-		border-radius: var(--td-checkbox-radius); /* v0.14.0: round by default */
-		line-height: 1;
-		transition:
-			background var(--td-dur-fast) var(--td-ease),
-			border-color var(--td-dur-fast) var(--td-ease);
-	}
-
+	/* The mark (box, ✓, indeterminate bar, checked fill, sizes) is the SHARED tick part — check.css (v0.36.0, ADR 0017). */
 	.td-checkbox__icon {
 		display: inline-flex;
-		line-height: 0;
-	}
-
-	.td-checkbox__svg {
-		width: calc(var(--td-checkbox-box) * 0.7);
-		height: calc(var(--td-checkbox-box) * 0.7);
-		stroke-width: 3;
-		opacity: 0;
-		transition: opacity var(--td-dur-fast) var(--td-ease); /* v0.20.0: fade only, no scale */
 	}
 
 	/* soft border at rest (v0.14.1), one soft step darker under the pointer (v0.14.2) */
-	.td-checkbox:hover .td-checkbox__input:not(:checked, :disabled) ~ .td-checkbox__mark {
+	.td-checkbox:hover .td-checkbox__input:not(:checked, :indeterminate, :disabled) ~ .td-checkbox__mark {
 		border-color: var(--td-control-border-hover);
-	}
-
-	.td-checkbox__input:checked ~ .td-checkbox__mark {
-		background: var(--td-checkbox-color);
-		border-color: var(--td-checkbox-color);
-	}
-
-	.td-checkbox__input:checked ~ .td-checkbox__mark .td-checkbox__svg {
-		opacity: 1;
 	}
 
 	.td-checkbox__input:focus-visible ~ .td-checkbox__mark {
@@ -1458,25 +1744,6 @@
 		.td-checkbox {
 			min-width: var(--td-touch-min);
 			min-height: var(--td-touch-min);
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.td-checkbox__mark,
-		.td-checkbox__svg {
-			transition: none;
-		}
-	}
-
-	@media (forced-colors: active) {
-		.td-checkbox__mark {
-			border-color: ButtonText;
-		}
-
-		.td-checkbox__input:checked ~ .td-checkbox__mark {
-			color: HighlightText;
-			background: Highlight;
-			border-color: Highlight;
 		}
 	}
 }
@@ -2186,6 +2453,24 @@
 		border-color: var(--td-control-border);
 	}
 
+	/* v0.36.0 (plan QĐ 17, measured: the semibold current page was up to 2.3 px wider): the same reservation as
+	   .td-tabs__label — a 0 px tall, hidden semibold copy of the number (data-page) sets the column width, so the page
+	   buttons keep their widths when the current page changes. */
+	.td-pagination__page {
+		flex-direction: column;
+	}
+
+	.td-pagination__page::after {
+		height: 0;
+		overflow: hidden;
+		font-weight: var(--td-fw-semibold);
+		visibility: hidden;
+		content: attr(data-page);
+		content: attr(data-page) / "";
+		user-select: none;
+		pointer-events: none;
+	}
+
 	.td-pagination__icon {
 		display: inline-flex;
 		line-height: 0;
@@ -2453,7 +2738,26 @@
 	/* No min-width: 0 on the tab / label: a tab can never be squeezed below its label (the JS rule keeps the
 	   equal slots ≥ the widest tab; this is the safety net for the frame before a mode switch). */
 	.td-tabs__label {
+		display: inline-flex;
+		flex-direction: column;
+		align-items: center;
 		white-space: nowrap;
+	}
+
+	/* v0.36.0 (plan QĐ 16): reserve the width of the SEMIBOLD label in every state — the label box = max(regular, bold),
+	   so the active tab turning bold never moves its text or its neighbours (equal-slot and overflow modes). 0 px tall +
+	   visibility: hidden keeps it out of layout height and of the accessibility tree; `/ ""` (empty alt text) is a second
+	   layer where supported (older engines drop that declaration and keep the first). Not text: find-in-page / copy
+	   never see it. */
+	.td-tabs__label::after {
+		height: 0;
+		overflow: hidden;
+		font-weight: var(--td-fw-semibold);
+		visibility: hidden;
+		content: attr(data-label);
+		content: attr(data-label) / "";
+		user-select: none;
+		pointer-events: none;
 	}
 
 	.td-tabs[data-measuring] > .td-tabs__tab {
@@ -2502,6 +2806,11 @@
 	}
 
 	@media (pointer: coarse) {
+		/* v0.36.0 (plan QĐ 67): tab labels ≥ 14px on touch screens (the overflow measurement follows the computed size) */
+		.td-tabs {
+			font-size: var(--td-text-sm);
+		}
+
 		.td-tabs__tab {
 			min-inline-size: var(--td-touch-min); /* 44 × 44 even for a one-letter tab (part of the JS measurement) */
 			min-height: var(--td-touch-min);
@@ -3191,6 +3500,106 @@
 		font-weight: var(--td-fw-semibold);
 	}
 
+	/* v0.36.0 (plan QĐ 59, revised 2026-10-05) "Thêm" overflow: off by default; below 480 px the toolbar drops every
+	   [data-overflow] control (fullscreen, unpinned extras — marked by JS) into "Thêm" (JS hides it when nothing
+	   overflows). Navigation is NEVER in "Thêm": below 480 ‹ › + the counter live in the bottom rail (data-nav="rail"). */
+	.td-lightbox__more {
+		display: none;
+	}
+
+	@media (max-width: 479.98px) {
+		.td-lightbox__toolbar > [data-overflow] {
+			display: none;
+		}
+
+		.td-lightbox__toolbar > .td-lightbox__more {
+			display: inline-flex;
+		}
+	}
+
+	/* ── v0.36.0 phone rail (data-nav="rail", < 480 px, ≥ 2 items): "‹ 3 / 12 ›" — the same prev / next buttons and the
+	   same counter (one live region), a persistent row of the column ABOVE the filmstrip and the closed sheet's
+	   grabber, above the home indicator; ≥ 44 px targets; never hidden, never auto-hidden ─────────────────────── */
+	.td-lightbox {
+		--td-lb-rail-btn: max(var(--td-lb-btn), 44px);
+		--td-lb-rail-h: calc(var(--td-lb-rail-btn) + 8px);
+		--td-lb-rail-reserve: calc(var(--td-lb-rail-h) + 8px + max(8px, env(safe-area-inset-bottom, 0px)));
+	}
+
+	.td-lightbox__rail {
+		display: none;
+	}
+
+	.td-lightbox[data-nav="rail"] .td-lightbox__col {
+		grid-template-rows: minmax(0, 1fr) auto;
+	}
+
+	.td-lightbox[data-nav="rail"] .td-lightbox__rail:not([hidden]) {
+		position: relative;
+		z-index: 3;
+		box-sizing: border-box;
+		display: inline-flex;
+		grid-area: 2 / 1;
+		gap: 4px;
+		align-items: center;
+		place-self: center;
+		padding: 4px;
+		margin-block: 8px max(8px, env(safe-area-inset-bottom, 0px));
+		cursor: default;
+		border-radius: var(--td-glass-capsule);
+	}
+
+	.td-lightbox[data-nav="rail"] .td-lightbox__rail > .td-lightbox__btn {
+		width: var(--td-lb-rail-btn);
+		height: var(--td-lb-rail-btn);
+		touch-action: manipulation;
+	}
+
+	/* the counter sits on the rail's own surface (no second capsule) */
+	.td-lightbox[data-nav="rail"] .td-lightbox__rail > .td-lightbox__counter {
+		padding-inline: 8px;
+		background: none;
+		border: 0;
+		box-shadow: none;
+		backdrop-filter: none;
+	}
+
+	/* media never run under the rail (no filmstrip: the stage is centred in the first row, bounded by the viewport) */
+	.td-lightbox[data-nav="rail"]:not([data-filmstrip]) :is(.td-lightbox__stage, .td-lightbox__img, .td-lightbox__video-el) {
+		max-height: calc(100dvh - var(--td-lb-rail-reserve));
+	}
+
+	.td-lightbox[data-nav="rail"]:not([data-filmstrip]) .td-lightbox__caption {
+		bottom: var(--td-lb-rail-reserve);
+	}
+
+	/* with the filmstrip: stage | caption | rail | thumbnails */
+	.td-lightbox[data-nav="rail"][data-filmstrip] .td-lightbox__col {
+		grid-template-rows: minmax(0, 1fr) auto auto calc(var(--td-lb-filmstrip-h) + env(safe-area-inset-bottom, 0px));
+	}
+
+	.td-lightbox[data-nav="rail"][data-filmstrip] .td-lightbox__rail:not([hidden]) {
+		grid-area: 3 / 1;
+		margin-block: 4px;
+	}
+
+	.td-lightbox[data-nav="rail"][data-filmstrip] .td-lightbox__filmstrip {
+		grid-area: 4 / 1;
+	}
+
+	/* with a panel (a bottom sheet below 1024): the column ends above the closed sheet's grabber */
+	.td-lightbox[data-nav="rail"][data-panel] .td-lightbox__col {
+		bottom: var(--td-lb-sheet-peek);
+	}
+
+	.td-lightbox[data-nav="rail"][data-panel]:not([data-filmstrip]) .td-lightbox__caption {
+		bottom: calc(var(--td-lb-rail-reserve) + var(--td-lb-sheet-peek));
+	}
+
+	.td-lightbox[data-nav="rail"][data-panel]:not([data-filmstrip]) :is(.td-lightbox__stage, .td-lightbox__img, .td-lightbox__video-el) {
+		max-height: calc(100dvh - var(--td-lb-rail-reserve) - var(--td-lb-sheet-peek));
+	}
+
 	/* ── Panel mode ([data-panel] only when a panel renderer returned an element) ─────────────────── */
 	.td-lightbox__panel {
 		position: absolute;
@@ -3477,6 +3886,7 @@
 	.td-lightbox__thumb > img {
 		display: block;
 		width: 100%;
+		max-width: none; /* never a host reset's max-width (Tailwind preflight) */
 		height: 100%;
 		object-fit: cover;
 		user-select: none;
@@ -3622,20 +4032,28 @@
 
 /* ---- src/styles/components/toast.css ---- */
 /*
- * td-toast (src/feedback/td-toast.js). v0.21.0 dcms style: a compact pill (12px radius, 12×16 padding, 14px text) with
- * a PASTEL fill per type + dark ink of the same hue + a `-border` hairline + one soft shadow (--td-glass-shadow).
- * Solid: no blur, no glass recipe (the toast no longer carries .td-glass-surface). No visible icon and no visible close
- * button: the type is announced through a screen-reader-only prefix (.td-toast__type.td-sr-only, TdToast.labels.types)
- * and the close button stays in the DOM, visually hidden until it receives KEYBOARD focus (:focus-visible) — so a
- * sticky toast (duration 0) is still dismissable from the keyboard. Click anywhere on a toast dismisses it.
- * Colours: --td-toast-{success,error,warning,info}-{bg,fg,border} read the shared pastel tokens
- * --td-pastel-{success,danger,warning,info}-{bg,fg,border} (tokens.css / theme-dark.css), with the same literals as
- * fallbacks. A site wanting dcms' saturated look sets e.g. --td-toast-success-bg: #22c55e; --td-toast-success-fg: #fff.
- * Top-right by default (D11) — a site moves the stack with tokens only, e.g. 135/dwp bottom-centre:
+ * td-toast (src/feedback/td-toast.js). v0.21.0 dcms style: a compact pill (12px radius, 12×16 padding, 14px text) + a
+ * `-border` hairline + one soft shadow (--td-glass-shadow). v0.36.0 (plan QĐ 20): SOLID fill per type — the shared
+ * --td-solid-{success,danger,warning,info}-{bg,fg,border} tokens (white ink; warning dark ink), literal fallbacks;
+ * the border is the darker `hover` shade. No visible icon and no visible close button: the type is announced through a
+ * screen-reader-only prefix (.td-toast__type.td-sr-only, TdToast.labels.types) and the close button stays in the DOM,
+ * visually hidden until it receives KEYBOARD focus (:focus-visible). Click anywhere on a toast dismisses it.
+ * A site wanting the v0.35 pastel look sets --td-toast-{type}-bg/-fg/-border back to --td-pastel-* (docs/upgrading).
+ *
+ * Placement (v0.36.0, ADR 0016): portal root .td-toast-root (fixed, inset 0, no pointer events) > two lanes
+ * .td-toast-lane[data-edge="top|bottom"] > lazy stacks .td-toasts[data-placement="top-start|…|bottom-end"] — six
+ * logical positions from the offset tokens --td-toast-offset-top/-bottom/-inline (+ safe area). ≥ 480: lanes are
+ * `display: contents`, each stack is fixed at its corner / centre. < 480: each lane is ONE full-width fixed column, its
+ * stacks `display: contents`, toasts ordered by the CSSOM --_td-toast-seq (newest nearest the edge), vertical motion.
+ * Short viewports (≤ 500 tall): only the 2 newest toasts (globally) show — JS marks the rest [data-td-toast-older].
+ * LEGACY stack (.td-toasts without data-placement, used only when a site changed the old anchor tokens and the call /
+ * configure() gave no placement): positioned by --td-toast-top/-bottom/-inline-start/-inline-end/-shift/-align exactly
+ * as v0.35, e.g. 135/dwp bottom-centre:
  *   :root { --td-toast-top: auto; --td-toast-bottom: 1.5rem; --td-toast-inline-end: auto;
  *           --td-toast-inline-start: 50%; --td-toast-shift: -50%; --td-toast-align: center; }
- * Motion: enter slides in from the inline end (translateX(1rem) → 0) + fade 200 ms ease-out; exit reverses in 180 ms.
- * State: data-state="entering|open|closing" · [data-paused]. Reduced motion → opacity only.
+ * Motion: enter slides in from the stack's own edge (*-start: inline start, *-end: inline end, top-center: from above,
+ * bottom-center: from below; legacy: inline end) + fade 200 ms ease-out; exit reverses in 180 ms; RTL mirrors the
+ * inline axis. State: data-state="entering|open|closing" · [data-paused]. Reduced motion → opacity only.
  */
 @layer td.tokens {
 	:root {
@@ -3655,19 +4073,30 @@
 		--td-toast-enter-shift: 1rem;
 		--td-toast-enter-dur: 200ms;
 		--td-toast-exit-dur: 180ms;
-		/* pastel per type (P1 tokens; literals = the light pastel values, used until/unless the shared tokens exist) */
-		--td-toast-success-bg: var(--td-pastel-success-bg, #dcfce7);
-		--td-toast-success-fg: var(--td-pastel-success-fg, #14532d);
-		--td-toast-success-border: var(--td-pastel-success-border, #bbf7d0);
-		--td-toast-error-bg: var(--td-pastel-danger-bg, #fee2e2);
-		--td-toast-error-fg: var(--td-pastel-danger-fg, #7f1d1d);
-		--td-toast-error-border: var(--td-pastel-danger-border, #fecaca);
-		--td-toast-warning-bg: var(--td-pastel-warning-bg, #fef3c7);
-		--td-toast-warning-fg: var(--td-pastel-warning-fg, #78350f);
-		--td-toast-warning-border: var(--td-pastel-warning-border, #fde68a);
-		--td-toast-info-bg: var(--td-pastel-info-bg, #dbeafe);
-		--td-toast-info-fg: var(--td-pastel-info-fg, #1e3a8a);
-		--td-toast-info-border: var(--td-pastel-info-border, #bfdbfe);
+		/* v0.36.0 offsets of the six named placements (independent of the legacy anchor tokens above) */
+		--td-toast-offset-top: 5rem;
+		--td-toast-offset-bottom: 1rem;
+		--td-toast-offset-inline: 1rem;
+		/* v0.36.0 solid per type (QĐ 18 / 20; error ↔ danger). Literals = the shared values, used until/unless the
+		   --td-solid-* tokens exist. Border = the darker hover shade. */
+		--td-toast-success-bg: var(--td-solid-success-bg, #15803d);
+		--td-toast-success-fg: var(--td-solid-success-fg, #fff);
+		--td-toast-success-border: var(--td-solid-success-border, #166534);
+		--td-toast-error-bg: var(--td-solid-danger-bg, #dc2626);
+		--td-toast-error-fg: var(--td-solid-danger-fg, #fff);
+		--td-toast-error-border: var(--td-solid-danger-border, #b91c1c);
+		--td-toast-warning-bg: var(--td-solid-warning-bg, #f59e0b);
+		--td-toast-warning-fg: var(--td-solid-warning-fg, #18181b);
+		--td-toast-warning-border: var(--td-solid-warning-border, #d97706);
+		--td-toast-info-bg: var(--td-solid-info-bg, #2563eb);
+		--td-toast-info-fg: var(--td-solid-info-fg, #fff);
+		--td-toast-info-border: var(--td-solid-info-border, #1d4ed8);
+		/* close button hover per type: white 16 % on the dark fills, black 8 % on warning */
+		--td-toast-success-close-hover: rgb(255 255 255 / 16%);
+		--td-toast-error-close-hover: rgb(255 255 255 / 16%);
+		--td-toast-warning-close-hover: rgb(0 0 0 / 8%);
+		--td-toast-info-close-hover: rgb(255 255 255 / 16%);
+		/* deprecated (no effect since v0.36.0: the per-type -close-hover tokens decide) */
 		--td-toast-close-hover: rgb(0 0 0 / 8%);
 		/* deprecated (no effect): v0.20.0 neutral surface + status icons, v0.19 washes */
 		--td-toast-fg: var(--td-color-text);
@@ -3683,21 +4112,8 @@
 		--td-toast-error-wash: transparent;
 	}
 
-	/* Dark: solid pastel = the status hue ~18 % over the dark surface, border ~30 %, ink ~200 (fallback literals). */
+	/* Dark: the solid fills stay (white ink on 600/700 reads on a dark page too — QĐ 18). */
 	:root[data-td-theme="dark"] {
-		--td-toast-success-bg: var(--td-pastel-success-bg, #1d3a2a);
-		--td-toast-success-fg: var(--td-pastel-success-fg, #bbf7d0);
-		--td-toast-success-border: var(--td-pastel-success-border, #1e4f31);
-		--td-toast-error-bg: var(--td-pastel-danger-bg, #422325);
-		--td-toast-error-fg: var(--td-pastel-danger-fg, #fecaca);
-		--td-toast-error-border: var(--td-pastel-danger-border, #5b2829);
-		--td-toast-warning-bg: var(--td-pastel-warning-bg, #43331b);
-		--td-toast-warning-fg: var(--td-pastel-warning-fg, #fde68a);
-		--td-toast-warning-border: var(--td-pastel-warning-border, #5d4318);
-		--td-toast-info-bg: var(--td-pastel-info-bg, #222e45);
-		--td-toast-info-fg: var(--td-pastel-info-fg, #bfdbfe);
-		--td-toast-info-border: var(--td-pastel-info-border, #253b5f);
-		--td-toast-close-hover: rgb(255 255 255 / 12%);
 		--td-toast-fg: var(--td-glass-fg);
 		--td-toast-close-fg: var(--td-glass-fg);
 	}
@@ -3729,6 +4145,7 @@
 		--_td-toast-bg: var(--td-toast-info-bg);
 		--_td-toast-fg: var(--td-toast-info-fg);
 		--_td-toast-border: var(--td-toast-info-border);
+		--_td-toast-close-hover: var(--td-toast-info-close-hover);
 
 		position: relative;
 		box-sizing: border-box;
@@ -3749,7 +4166,8 @@
 		pointer-events: auto;
 		cursor: pointer; /* click anywhere dismisses (keyboard: the focus-visible close button) */
 		opacity: 0;
-		transform: translateX(var(--td-toast-enter-shift));
+		/* the stack sets --_td-toast-from (its own edge); legacy stack: from the inline end, as before */
+		transform: var(--_td-toast-from, translateX(var(--td-toast-enter-shift)));
 		transition:
 			opacity var(--td-toast-enter-dur) var(--td-ease-out),
 			transform var(--td-toast-enter-dur) var(--td-ease-out);
@@ -3759,18 +4177,21 @@
 		--_td-toast-bg: var(--td-toast-success-bg);
 		--_td-toast-fg: var(--td-toast-success-fg);
 		--_td-toast-border: var(--td-toast-success-border);
+		--_td-toast-close-hover: var(--td-toast-success-close-hover);
 	}
 
 	.td-toast--warning {
 		--_td-toast-bg: var(--td-toast-warning-bg);
 		--_td-toast-fg: var(--td-toast-warning-fg);
 		--_td-toast-border: var(--td-toast-warning-border);
+		--_td-toast-close-hover: var(--td-toast-warning-close-hover);
 	}
 
 	.td-toast--error {
 		--_td-toast-bg: var(--td-toast-error-bg);
 		--_td-toast-fg: var(--td-toast-error-fg);
 		--_td-toast-border: var(--td-toast-error-border);
+		--_td-toast-close-hover: var(--td-toast-error-close-hover);
 	}
 
 	.td-toast[data-state="open"] {
@@ -3781,7 +4202,7 @@
 	.td-toast[data-state="closing"] {
 		pointer-events: none;
 		opacity: 0;
-		transform: translateX(var(--td-toast-enter-shift));
+		transform: var(--_td-toast-from, translateX(var(--td-toast-enter-shift)));
 		transition:
 			opacity var(--td-toast-exit-dur) var(--td-ease),
 			transform var(--td-toast-exit-dur) var(--td-ease);
@@ -3825,7 +4246,7 @@
 	}
 
 	.td-toast__close:hover {
-		background: var(--td-toast-close-hover);
+		background: var(--_td-toast-close-hover);
 	}
 
 	.td-toast__close:focus-visible {
@@ -3853,6 +4274,73 @@
 		inset-inline-end: calc(var(--td-toast-inline-end) + env(safe-area-inset-left, 0px));
 	}
 
+	/* ---- v0.36.0 portal root + lanes + named stacks (ADR 0016) ---- */
+	.td-toast-root {
+		position: fixed;
+		inset: 0;
+		z-index: var(--td-z-toast);
+		line-height: normal; /* own it: a host reset never sizes the root */
+		pointer-events: none; /* the page stays clickable around the stacks */
+	}
+
+	.td-toast-lane {
+		display: contents;
+	}
+
+	/* the legacy stack sits in the root: its own z-index is no longer needed but harmless (same token) */
+	.td-toasts[data-placement] {
+		top: auto;
+		bottom: auto;
+		inset-inline: auto;
+		max-width: calc(100vw - 2 * var(--td-gutter) - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+		transform: none;
+	}
+
+	/* block edge: the offset token, never closer than the safe-area inset + 8px (as v0.34) */
+	.td-toasts[data-placement^="top-"] {
+		top: max(var(--td-toast-offset-top), calc(env(safe-area-inset-top, 0px) + 8px));
+		--_td-toast-from: translateY(calc(-1 * var(--td-toast-enter-shift)));
+	}
+
+	.td-toasts[data-placement^="bottom-"] {
+		bottom: max(var(--td-toast-offset-bottom), calc(env(safe-area-inset-bottom, 0px) + 8px));
+		--_td-toast-from: translateY(var(--td-toast-enter-shift));
+	}
+
+	/* inline edge: offset + the inset of that physical side */
+	.td-toasts[data-placement$="-start"] {
+		inset-inline-start: calc(var(--td-toast-offset-inline) + env(safe-area-inset-left, 0px));
+		align-items: flex-start;
+		--_td-toast-from: translateX(calc(-1 * var(--td-toast-enter-shift)));
+	}
+
+	.td-toasts[data-placement$="-end"] {
+		inset-inline-end: calc(var(--td-toast-offset-inline) + env(safe-area-inset-right, 0px));
+		align-items: flex-end;
+		--_td-toast-from: translateX(var(--td-toast-enter-shift));
+	}
+
+	/* centre: physical left / right = gutter + each side's own inset, items centred (no translateX(-50%)) */
+	.td-toasts[data-placement$="-center"] {
+		right: calc(var(--td-gutter) + env(safe-area-inset-right, 0px));
+		left: calc(var(--td-gutter) + env(safe-area-inset-left, 0px));
+		align-items: center;
+		width: auto;
+		max-width: none;
+	}
+
+	/* RTL: inline start = physical right → swap the insets and mirror the slide (own rules: an engine without :dir()
+	   drops only these) */
+	.td-toasts[data-placement$="-start"]:dir(rtl) {
+		inset-inline-start: calc(var(--td-toast-offset-inline) + env(safe-area-inset-right, 0px));
+		--_td-toast-from: translateX(var(--td-toast-enter-shift));
+	}
+
+	.td-toasts[data-placement$="-end"]:dir(rtl) {
+		inset-inline-end: calc(var(--td-toast-offset-inline) + env(safe-area-inset-left, 0px));
+		--_td-toast-from: translateX(calc(-1 * var(--td-toast-enter-shift)));
+	}
+
 	/* xs: one full-width column (no ragged right-aligned stack), same width for every toast (physical sides: symmetric) */
 	@media (max-width: 479.98px) {
 		.td-toasts {
@@ -3873,11 +4361,54 @@
 		.td-toast {
 			max-width: none;
 		}
+
+		/* v0.36.0: start / centre / end merge into ONE full-width lane per edge; stacks dissolve (display: contents)
+		   and the toasts are ordered by their global sequence — newest nearest the edge (top lane reversed). */
+		.td-toast-lane {
+			position: fixed;
+			right: calc(var(--td-gutter) + env(safe-area-inset-right, 0px));
+			left: calc(var(--td-gutter) + env(safe-area-inset-left, 0px));
+			box-sizing: border-box;
+			display: flex;
+			flex-direction: column;
+			gap: var(--td-toast-gap);
+			align-items: stretch;
+			font-family: var(--td-font-sans);
+			line-height: var(--td-leading-normal);
+			pointer-events: none;
+		}
+
+		.td-toast-lane[data-edge="top"] {
+			top: max(var(--td-toast-offset-top), calc(env(safe-area-inset-top, 0px) + 8px));
+			flex-direction: column-reverse;
+		}
+
+		.td-toast-lane[data-edge="bottom"] {
+			bottom: max(var(--td-toast-offset-bottom), calc(env(safe-area-inset-bottom, 0px) + 8px));
+		}
+
+		.td-toast-lane > .td-toasts[data-placement] {
+			display: contents;
+		}
+
+		.td-toast-lane .td-toast {
+			order: var(--_td-toast-seq, 0);
+		}
+
+		/* vertical motion in the lanes (beats the per-placement / RTL slide: higher specificity) */
+		.td-toast-lane[data-edge="top"] > .td-toasts[data-placement] {
+			--_td-toast-from: translateY(calc(-1 * var(--td-toast-enter-shift)));
+		}
+
+		.td-toast-lane[data-edge="bottom"] > .td-toasts[data-placement] {
+			--_td-toast-from: translateY(var(--td-toast-enter-shift));
+		}
 	}
 
-	/* short (landscape phone): only the two newest stay visible (older ones are still in the DOM / announced) */
+	/* short (landscape phone): only the two newest toasts (globally, every stack) stay visible — older ones are still in
+	   the DOM / announced. JS marks them (a per-stack :nth-last-child is wrong with several stacks). */
 	@media (max-height: 500px) {
-		.td-toast:nth-last-child(n + 3) {
+		.td-toast[data-td-toast-older] {
 			display: none;
 		}
 	}
@@ -4414,6 +4945,37 @@
 		}
 	}
 
+	/* v0.36.0 (plan QĐ 60, mobile UX audit): < 720 the chrome is compact — header ≤ 56 (no hairline), footer ≤ 64; an
+	   ordinary modal's footer buttons share the row (full width, side by side) */
+	@media (max-width: 719.98px) {
+		.td-modal__header {
+			min-height: 0;
+			padding-block: 0.375rem;
+			border-bottom-width: 0;
+		}
+
+		.td-modal--viewport .td-modal__header {
+			padding-top: calc(0.375rem + env(safe-area-inset-top, 0px));
+		}
+
+		.td-modal__footer {
+			padding-block: 0.5rem;
+		}
+
+		.td-modal--viewport .td-modal__footer {
+			padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+		}
+
+		.td-modal:not(.td-modal--viewport) .td-modal__footer {
+			flex-wrap: nowrap;
+		}
+
+		.td-modal:not(.td-modal--viewport) .td-modal__footer > * {
+			flex: 1 1 0;
+			min-width: 0;
+		}
+	}
+
 	@media (pointer: coarse) {
 		.td-modal__close {
 			width: var(--td-touch-min);
@@ -4485,10 +5047,12 @@
 @layer td.tokens {
 	:root {
 		--td-dropdown-option-h: 40px; /* JS mirrors it: max-height = visible options × 40 px */
-		--td-dropdown-option-hover: var(--td-color-hover);
-		--td-dropdown-option-active: var(--td-color-hover-strong);
-		--td-dropdown-option-active-line: var(--td-control-border-hover); /* v0.14.2: soft outline; the fill marks it too */
-		--td-dropdown-option-selected: var(--td-color-hover-strong);
+		/* v0.36.0: defaults follow the shared option-row tokens (--td-option-*); -active-line no longer has an effect (the
+		   active row shows the inline-start accent bar --td-option-active-bar instead) */
+		--td-dropdown-option-hover: var(--td-option-hover-bg);
+		--td-dropdown-option-active: var(--td-option-active-bg);
+		--td-dropdown-option-active-line: var(--td-control-border-hover);
+		--td-dropdown-option-selected: var(--td-option-selected-bg);
 		--td-dropdown-search-bg: var(--td-color-hover);
 		--td-dropdown-search-border: var(--td-control-border-soft);      /* soft like the fields (v0.14.1) */
 		--td-dropdown-hairline: var(--td-color-border);
@@ -4680,7 +5244,7 @@
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
-		padding: var(--td-glass-pad);
+		padding: var(--td-glass-pad) 0; /* v0.36.0: rows are full-bleed (block padding only) */
 		overflow: hidden;
 		font-family: var(--td-font-sans);
 		font-size: var(--td-text-sm);
@@ -4717,7 +5281,7 @@
 
 	.td-dropdown__search-wrap {
 		flex: none;
-		padding: 2px 2px var(--td-glass-pad);
+		padding: 2px var(--td-option-pad-x) var(--td-glass-pad);
 		margin-bottom: var(--td-glass-pad);
 		border-bottom: 1px solid var(--td-dropdown-hairline);
 	}
@@ -4764,7 +5328,6 @@
 	.td-dropdown__scroller {
 		display: flex;
 		flex-direction: column;
-		gap: 1px;
 		min-height: 0;
 		overflow-y: auto; /* scrolling inside the menu does NOT close it */
 		overscroll-behavior: contain;
@@ -4777,25 +5340,31 @@
 		align-items: center;
 		justify-content: space-between;
 		min-height: var(--td-dropdown-option-h);
-		padding: 8px 10px;
+		padding: 8px var(--td-option-pad-x);
 		color: inherit;
 		cursor: pointer;
 		user-select: none;
-		border-radius: var(--td-glass-radius-inner);
+		border-radius: 0; /* v0.36.0: full-bleed row (dcms2) */
 	}
 
 	.td-dropdown__option:hover {
 		background: var(--td-dropdown-option-hover);
 	}
 
+	/* selected = semibold label + the ✓ at the inline end (JS prints .td-dropdown__check on the selected row) */
 	.td-dropdown__option[aria-selected="true"] {
-		font-weight: var(--td-fw-medium);
+		font-weight: var(--td-fw-semibold);
 		background: var(--td-dropdown-option-selected);
 	}
 
+	/* the keyboard-active row (aria-activedescendant): fill + inline-start accent bar = the focus indicator */
 	.td-dropdown__option[data-active] {
 		background: var(--td-dropdown-option-active);
-		box-shadow: inset 0 0 0 1px var(--td-dropdown-option-active-line);
+		box-shadow: inset var(--td-option-active-bar-w) 0 0 var(--td-option-active-bar);
+	}
+
+	.td-dropdown__option[data-active]:dir(rtl) {
+		box-shadow: inset calc(-1 * var(--td-option-active-bar-w)) 0 0 var(--td-option-active-bar);
 	}
 
 	/* v0.17.0 E2: disabled option — shown dimmed, never selectable nor active (JS skips it) */
@@ -4819,7 +5388,7 @@
 		font-weight: var(--td-fw-semibold);
 		color: var(--td-dropdown-create-fg);
 		border-top: 1px solid var(--td-dropdown-hairline);
-		border-radius: 0 0 var(--td-glass-radius-inner) var(--td-glass-radius-inner);
+		border-radius: 0;
 	}
 
 	.td-dropdown__create-icon {
@@ -4840,7 +5409,7 @@
 	}
 
 	.td-dropdown__empty {
-		padding: 8px 10px;
+		padding: 8px var(--td-option-pad-x);
 		margin: 0;
 		font-style: italic;
 		color: var(--td-field-note);
@@ -5583,6 +6152,13 @@
 			--td-dtp-visible: 3;
 		}
 	}
+
+	/* v0.36.0 (plan QĐ 61) sheet (< 720): 3 visible wheel rows — the sheet stays ≤ 70 % of a phone's height */
+	@media (max-width: 719.98px) {
+		:root {
+			--td-dtp-visible: 3;
+		}
+	}
 }
 
 @layer td.component {
@@ -5900,6 +6476,27 @@
 		}
 	}
 
+	/* v0.36.0 (plan QĐ 61) sheet (< 720): drop duplicated VISIBLE text only. The date legend ("Ngày" / "Tháng" /
+	   "Năm") repeats a column label → visually hidden but still names the fieldset (td-sr-only recipe); the preview
+	   pill repeats the fields + wheels → not rendered (plain text, no live region / describedby points at it). */
+	@media (max-width: 719.98px) {
+		.td-dtp-panel > fieldset.td-dtp-panel__group > .td-dtp-panel__legend {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+			white-space: nowrap;
+			border: 0;
+		}
+
+		.td-dtp-panel__preview {
+			display: none;
+		}
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		.td-dtp__trigger,
 		.td-dtp-panel__input {
@@ -6118,8 +6715,8 @@
 		--td-menu-max-w: 22rem;
 		--td-menu-item-py: 0.6rem;
 		--td-menu-item-px: 0.75rem;
-		--td-menu-item-hover: var(--td-color-hover);
-		--td-menu-item-active: var(--td-color-hover-strong);
+		--td-menu-item-hover: var(--td-option-hover-bg); /* v0.36.0: shared option-row tokens */
+		--td-menu-item-active: var(--td-option-active-bg);
 		--td-menu-danger-fg: var(--td-color-error);
 		--td-menu-hint-fg: var(--td-color-text-muted);
 		--td-menu-icon-fg: var(--td-color-text-muted);
@@ -6145,10 +6742,9 @@
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
-		gap: 1px;
 		min-width: min(var(--td-menu-min-w), calc(100vw - 16px));
 		max-width: min(var(--td-menu-max-w), calc(100vw - 16px));
-		padding: var(--td-glass-pad);
+		padding: var(--td-glass-pad) 0; /* v0.36.0: full-bleed rows */
 		margin: 0;
 		overflow-x: hidden;
 		overflow-y: auto; /* capped by JS (max-height); scrolling inside the menu does NOT close it */
@@ -6207,7 +6803,7 @@
 		user-select: none;
 		background: none;
 		border: 0;
-		border-radius: var(--td-glass-radius-inner); /* concentric with the menu */
+		border-radius: 0; /* v0.36.0: full-bleed row (dcms2) */
 		outline: 2px solid transparent;
 		outline-offset: -2px;
 		appearance: none;
@@ -6221,12 +6817,16 @@
 		outline: 2px solid transparent;
 	}
 
-	/* Inset ring: an outer ring would be clipped by the scrolling menu. */
+	/* v0.36.0: the focused row (keyboard) = fill + inline-start accent bar (inset: never clipped by the scroller) */
 	.td-menu__item:focus-visible {
 		background: var(--td-menu-item-active);
 		outline: 2px solid transparent;
 		outline-offset: -2px;
-		box-shadow: inset 0 0 0 2px var(--td-focus);
+		box-shadow: inset var(--td-option-active-bar-w) 0 0 var(--td-option-active-bar);
+	}
+
+	.td-menu__item:focus-visible:dir(rtl) {
+		box-shadow: inset calc(-1 * var(--td-option-active-bar-w)) 0 0 var(--td-option-active-bar);
 	}
 
 	.td-menu__item--danger {
@@ -6282,6 +6882,12 @@
 		visibility: visible;
 	}
 
+	/* v0.36.0: a menuitemcheckbox carries the shared mark (check.css) — always visible, state from aria-checked */
+	.td-menu__check.td-check {
+		color: var(--td-accent-contrast);
+		visibility: visible;
+	}
+
 	/* Secondary line on any item (wraps below the label). */
 	.td-menu__hint {
 		flex-basis: 100%;
@@ -6293,6 +6899,13 @@
 
 	.td-menu__item--danger .td-menu__hint {
 		color: var(--td-menu-hint-fg);
+	}
+
+	/* v0.36.0 (plan QĐ 65): a keyboard-shortcut hint (1–3 characters, e.g. "E") means nothing on a touch screen */
+	@media (hover: none) {
+		.td-menu__hint--kbd {
+			display: none;
+		}
 	}
 
 	.td-menu__separator {
@@ -6627,7 +7240,7 @@
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
-		padding: var(--td-glass-pad);
+		padding: var(--td-glass-pad) 0; /* v0.36.0: full-bleed rows */
 		overflow: hidden;
 		font-family: var(--td-font-sans);
 		font-size: var(--td-text-sm);
@@ -6665,7 +7278,6 @@
 	.td-chip-input__options {
 		display: flex;
 		flex-direction: column;
-		gap: 1px;
 		min-height: 0;
 		overflow-y: auto; /* scrolling inside the popup does NOT close it */
 		overscroll-behavior: contain;
@@ -6677,41 +7289,36 @@
 		flex-direction: column;
 		justify-content: center;
 		min-height: var(--td-dropdown-option-h);
-		padding: 6px 10px;
+		padding: 8px var(--td-option-pad-x);
 		color: inherit;
 		cursor: pointer;
 		user-select: none;
-		border-radius: var(--td-glass-radius-inner);
+		border-radius: 0; /* v0.36.0: full-bleed row (dcms2) */
 	}
 
 	.td-chip-input__option:hover {
-		background: var(--td-dropdown-option-hover);
+		background: var(--td-option-hover-bg);
 	}
 
 	/* highlight: aria-selected in the single list, data-active in the multi-select one (aria-selected = membership) */
 	.td-chip-input__options:not([aria-multiselectable="true"]) .td-chip-input__option[aria-selected="true"],
 	.td-chip-input__option[data-active] {
-		background: var(--td-dropdown-option-active);
-		box-shadow: inset 0 0 0 1px var(--td-dropdown-option-active-line);
+		background: var(--td-option-active-bg);
+		box-shadow: inset var(--td-option-active-bar-w) 0 0 var(--td-option-active-bar);
 	}
 
 	/* ---- v0.28.0 multi-select rows: ✓ slot, locked rows, groups, select-all ---- */
 	.td-chip-input__options[aria-multiselectable="true"] .td-chip-input__option {
 		position: relative;
-		padding-inline-start: 34px;
+		padding-inline-start: calc(var(--td-option-pad-x) + 1rem + 8px);
 	}
 
+	/* v0.36.0: the ✓ slot is the shared td-checkbox mark (check.css), always visible */
 	.td-chip-input__check {
 		position: absolute;
 		top: 50%;
-		left: 10px;
-		display: inline-flex;
-		visibility: hidden;
+		inset-inline-start: var(--td-option-pad-x);
 		transform: translateY(-50%);
-	}
-
-	.td-chip-input__option[aria-selected="true"] > .td-chip-input__check {
-		visibility: visible;
 	}
 
 	.td-chip-input__option[aria-disabled="true"] {
@@ -6731,11 +7338,10 @@
 		display: flex;
 		flex: none;
 		flex-direction: column;
-		gap: 1px;
 	}
 
 	.td-chip-input__group-label {
-		padding: 8px 10px 2px;
+		padding: 8px var(--td-option-pad-x) 2px;
 		overflow: hidden;
 		font-size: var(--td-text-xs);
 		font-weight: var(--td-fw-semibold);
@@ -6743,6 +7349,11 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		user-select: none;
+	}
+
+	.td-chip-input__options:not([aria-multiselectable="true"]) .td-chip-input__option[aria-selected="true"]:dir(rtl),
+	.td-chip-input__option[data-active]:dir(rtl) {
+		box-shadow: inset calc(-1 * var(--td-option-active-bar-w)) 0 0 var(--td-option-active-bar);
 	}
 
 	/* ---- v0.28.0 PHP td_multiselect: native <select multiple> (no JS) + the element-mode shell ---- */
@@ -6911,10 +7522,6 @@
 		.td-chip-input__option[data-active] {
 			outline: 2px solid Highlight;
 			outline-offset: -2px;
-		}
-
-		.td-chip-input__check {
-			color: Highlight;
 		}
 
 		.td-chip-input__option[aria-disabled="true"] {
@@ -7803,8 +8410,13 @@
  * Variants: --neutral (default) | --accent | --success | --warning | --danger | --info.
  * Modifiers: --outline (transparent, currentColor border) · --stamp (uppercase, double border, slight tilt like the
  * 135 `td-stamp`; tilt token `--td-badge-stamp-rotate: 0deg` turns it off, colours follow the variant tokens).
- * The ink (--td-badge-{v}-fg) is ≥ 4.7:1 on its own fill AND on the page (outline / stamp), light + dark
- * (test/tokens/contrast.spec.mjs).
+ * v0.36.0 (plan QĐ 21–22): success / warning / danger / info are SOLID (--td-solid-*: white label, warning dark). A
+ * filled badge has a 1px edge (--td-badge-{v}-border = the fill mixed with 30 % black, PRECOMPUTED hex — no color-mix,
+ * Chrome 102) + a soft shadow (--td-badge-shadow), so a badge on a background of its own colour keeps its outline.
+ * Outline / stamp (transparent) use the page ink --td-badge-{v}-ink (a white -fg would vanish) and no shadow.
+ * The label is ≥ 4.7:1 on its fill and the ink on the page; the edge ≥ 1.6:1 vs its fill / white / #f4f4f5 (badges are
+ * not interactive — the text carries the information) — light + dark (test/tokens/contrast.spec.mjs).
+ * `prefers-contrast: more` → currentColor edge, no shadow.
  * Fonts (v0.19.0 G4): --td-badge-font-family (default the sans stack) and --td-badge-stamp-font-family (default the
  * mono stack). A site overriding --td-badge-*-fg / -bg must check the contrast itself (the gate measures defaults).
  */
@@ -7818,15 +8430,27 @@
 		/* accent: static fallback (= info) without color-mix(); @supports below follows the site accent */
 		--td-badge-accent-bg: #dbeafe;
 		--td-badge-accent-fg: #1e40af;
-		/* v0.21.0: the semantic soft badges share the pastel palette (tokens.css / theme-dark.css) */
-		--td-badge-success-bg: var(--td-pastel-success-bg);
-		--td-badge-success-fg: var(--td-pastel-success-fg);
-		--td-badge-warning-bg: var(--td-pastel-warning-bg);
-		--td-badge-warning-fg: var(--td-pastel-warning-fg);
-		--td-badge-danger-bg: var(--td-pastel-danger-bg);
-		--td-badge-danger-fg: var(--td-pastel-danger-fg);
-		--td-badge-info-bg: var(--td-pastel-info-bg);
-		--td-badge-info-fg: var(--td-pastel-info-fg);
+		/* v0.36.0: the semantic badges are solid (tokens.css --td-solid-*); -ink = outline / stamp text on the page */
+		--td-badge-success-bg: var(--td-solid-success-bg);
+		--td-badge-success-fg: var(--td-solid-success-fg);
+		--td-badge-success-ink: #15803d;
+		--td-badge-warning-bg: var(--td-solid-warning-bg);
+		--td-badge-warning-fg: var(--td-solid-warning-fg);
+		--td-badge-warning-ink: #b45309;
+		--td-badge-danger-bg: var(--td-solid-danger-bg);
+		--td-badge-danger-fg: var(--td-solid-danger-fg);
+		--td-badge-danger-ink: #b91c1c;
+		--td-badge-info-bg: var(--td-solid-info-bg);
+		--td-badge-info-fg: var(--td-solid-info-fg);
+		--td-badge-info-ink: #2563eb;
+		/* edge = fill + 30 % black, precomputed (accent: of the static #dbeafe fill) */
+		--td-badge-neutral-border: #ababac;
+		--td-badge-accent-border: #99a4b2;
+		--td-badge-success-border: #0f5a2b;
+		--td-badge-danger-border: #9a1b1b;
+		--td-badge-warning-border: #ac6f08;
+		--td-badge-info-border: #1a45a5;
+		--td-badge-shadow: 0 1px 2px rgb(0 0 0 / 12%);
 		--td-badge-stamp-font-family: var(--td-font-mono);
 		--td-badge-stamp-rotate: -4deg;
 		--td-badge-stamp-border: 3px;
@@ -7838,6 +8462,11 @@
 		--td-badge-neutral-fg: #e4e4e7;
 		--td-badge-accent-bg: #172554;
 		--td-badge-accent-fg: #bfdbfe;
+		/* v0.36.0: outline / stamp ink on the DARK page (the light-theme ~700 inks are too dark there) */
+		--td-badge-success-ink: #86efac;
+		--td-badge-warning-ink: #fcd34d;
+		--td-badge-danger-ink: #fca5a5;
+		--td-badge-info-ink: #93c5fd;
 	}
 
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
@@ -7869,8 +8498,9 @@
 		white-space: nowrap;
 		vertical-align: middle;
 		background-color: var(--td-badge-neutral-bg);
-		border: 1px solid transparent;
+		border: 1px solid var(--td-badge-neutral-border);
 		border-radius: var(--td-badge-radius);
+		box-shadow: var(--td-badge-shadow);
 	}
 
 	/* v0.25.0: optional decorative icon (PHP td_badge `icon`) — 1em, follows the badge ink (currentColor) */
@@ -7887,15 +8517,22 @@
 		height: 1em;
 	}
 
-	.td-badge--accent { color: var(--td-badge-accent-fg); background-color: var(--td-badge-accent-bg); }
-	.td-badge--success { color: var(--td-badge-success-fg); background-color: var(--td-badge-success-bg); }
-	.td-badge--warning { color: var(--td-badge-warning-fg); background-color: var(--td-badge-warning-bg); }
-	.td-badge--danger { color: var(--td-badge-danger-fg); background-color: var(--td-badge-danger-bg); }
-	.td-badge--info { color: var(--td-badge-info-fg); background-color: var(--td-badge-info-bg); }
+	.td-badge--accent { color: var(--td-badge-accent-fg); background-color: var(--td-badge-accent-bg); border-color: var(--td-badge-accent-border); }
+	.td-badge--success { color: var(--td-badge-success-fg); background-color: var(--td-badge-success-bg); border-color: var(--td-badge-success-border); }
+	.td-badge--warning { color: var(--td-badge-warning-fg); background-color: var(--td-badge-warning-bg); border-color: var(--td-badge-warning-border); }
+	.td-badge--danger { color: var(--td-badge-danger-fg); background-color: var(--td-badge-danger-bg); border-color: var(--td-badge-danger-border); }
+	.td-badge--info { color: var(--td-badge-info-fg); background-color: var(--td-badge-info-bg); border-color: var(--td-badge-info-border); }
+
+	/* transparent modifiers: the page ink (v0.36.0 -ink for the solid variants), currentColor edge, no shadow */
+	.td-badge--success:is(.td-badge--outline, .td-badge--stamp) { color: var(--td-badge-success-ink); }
+	.td-badge--warning:is(.td-badge--outline, .td-badge--stamp) { color: var(--td-badge-warning-ink); }
+	.td-badge--danger:is(.td-badge--outline, .td-badge--stamp) { color: var(--td-badge-danger-ink); }
+	.td-badge--info:is(.td-badge--outline, .td-badge--stamp) { color: var(--td-badge-info-ink); }
 
 	.td-badge--outline {
 		background-color: transparent;
 		border-color: currentcolor;
+		box-shadow: none;
 	}
 
 	.td-badge--stamp {
@@ -7907,7 +8544,15 @@
 		background-color: transparent;
 		border: var(--td-badge-stamp-border) double currentcolor;
 		border-radius: var(--td-badge-stamp-radius);
+		box-shadow: none;
 		transform: rotate(var(--td-badge-stamp-rotate));
+	}
+
+	@media (prefers-contrast: more) {
+		.td-badge {
+			border-color: currentcolor;
+			box-shadow: none;
+		}
 	}
 
 	@media (forced-colors: active) {
@@ -7932,6 +8577,10 @@
  *   </td-alert>
  * Variants: .td-alert--info (default) | --success | --warning | --danger. The registry status icon keeps colour from
  * being the only cue. Text ≥ 4.7:1 and icon / close ≥ 3.2:1 on the fill, light + dark (test/tokens/contrast.spec.mjs).
+ * v0.36.0 (plan QĐ 26): the body keeps its light fill (paragraphs, links, action buttons stay readable); the IDENTITY is
+ * solid — a 4px inline-start bar (--td-alert-{v}-accent = --td-solid-{v}-bg; warning: the darker amber step, amber-500
+ * is < 3:1 on the light fill), the icon in the solid colour (warning #b45309 for ≥ 3:1) and a border one step stronger
+ * (~300). A site that wants a fully solid alert sets -bg / -fg / -heading / -icon / -accent (docs/components/alert.md).
  */
 @layer td.tokens {
 	:root {
@@ -7939,22 +8588,27 @@
 		--td-alert-fg: var(--td-color-text);
 		--td-alert-close-fg: var(--td-color-text);
 		--td-alert-close-hover: var(--td-color-hover-strong);
+		--td-alert-accent-width: 4px;
 		--td-alert-info-bg: #eff6ff;
-		--td-alert-info-border: #bfdbfe;
+		--td-alert-info-border: #93c5fd;
 		--td-alert-info-heading: #1e3a8a;
-		--td-alert-info-icon: #1d4ed8;
+		--td-alert-info-icon: var(--td-solid-info-bg);
+		--td-alert-info-accent: var(--td-solid-info-bg);
 		--td-alert-success-bg: #f0fdf4;
-		--td-alert-success-border: #bbf7d0;
+		--td-alert-success-border: #86efac;
 		--td-alert-success-heading: #14532d;
-		--td-alert-success-icon: #15803d;
+		--td-alert-success-icon: var(--td-solid-success-bg);
+		--td-alert-success-accent: var(--td-solid-success-bg);
 		--td-alert-warning-bg: #fffbeb;
-		--td-alert-warning-border: #fde68a;
+		--td-alert-warning-border: #fcd34d;
 		--td-alert-warning-heading: #78350f;
 		--td-alert-warning-icon: #b45309;
+		--td-alert-warning-accent: var(--td-solid-warning-border);
 		--td-alert-danger-bg: #fef2f2;
-		--td-alert-danger-border: #fecaca;
+		--td-alert-danger-border: #fca5a5;
 		--td-alert-danger-heading: #7f1d1d;
-		--td-alert-danger-icon: #b91c1c;
+		--td-alert-danger-icon: var(--td-solid-danger-bg);
+		--td-alert-danger-accent: var(--td-solid-danger-bg);
 	}
 
 	:root[data-td-theme="dark"] {
@@ -7997,6 +8651,8 @@
 		color: var(--td-alert-fg);
 		background-color: var(--td-alert-info-bg);
 		border: 1px solid var(--td-alert-info-border);
+		border-inline-start: 4px solid var(--td-alert-info-accent);
+		border-inline-start-width: var(--td-alert-accent-width);
 		border-radius: var(--td-alert-radius);
 	}
 
@@ -8068,6 +8724,11 @@
 	.td-alert--success { background-color: var(--td-alert-success-bg); border-color: var(--td-alert-success-border); }
 	.td-alert--warning { background-color: var(--td-alert-warning-bg); border-color: var(--td-alert-warning-border); }
 	.td-alert--danger { background-color: var(--td-alert-danger-bg); border-color: var(--td-alert-danger-border); }
+
+	/* v0.36.0: the solid bar (after the border-color shorthands above, which would repaint it) */
+	.td-alert--success { border-inline-start-color: var(--td-alert-success-accent); }
+	.td-alert--warning { border-inline-start-color: var(--td-alert-warning-accent); }
+	.td-alert--danger { border-inline-start-color: var(--td-alert-danger-accent); }
 
 	.td-alert--success .td-alert__icon { color: var(--td-alert-success-icon); }
 	.td-alert--warning .td-alert__icon { color: var(--td-alert-warning-icon); }
@@ -8155,7 +8816,10 @@
  */
 @layer td.tokens {
 	:root {
-		--td-media-grid-cols: repeat(auto-fill, minmax(160px, 1fr));
+		/* v0.36.0 (plan QĐ 64): never one column on a phone — a column is at most half the grid wide (minus the gap), so a
+		   294–324px grid shows 2 tiles a row; wider grids keep the 160px minimum */
+		--td-media-grid-col-min: 160px;
+		--td-media-grid-cols: repeat(auto-fill, minmax(min(var(--td-media-grid-col-min), calc(50% - var(--td-media-grid-gap) / 2)), 1fr));
 		--td-media-grid-gap: var(--td-space-xs);
 		--td-media-grid-radius: var(--td-radius-md);
 		--td-media-grid-tick-size: 24px;
@@ -8167,7 +8831,9 @@
 		--td-media-grid-tick-ring: rgb(0 0 0 / 50%);
 		--td-media-grid-tick-on-bg: var(--td-btn-primary-bg);
 		--td-media-grid-tick-on-fg: var(--td-btn-primary-fg);
-		--td-media-grid-selected-ring: var(--td-media-grid-tick-on-bg);
+		/* v0.36.0: the kit tick is the shared td-checkbox mark (check.css) — tick-bg / -border / -ring / -on-bg / -on-fg only
+		   style a SITE tick ([data-td-media-tick]); the selected ring follows the checkbox colour */
+		--td-media-grid-selected-ring: var(--td-checkbox-color);
 		--td-media-grid-selected-scale: 1;
 		/* object-fit of the image in a tile (cover | contain) and the tile ratio (auto = as tall as the image) */
 		--td-media-grid-fit: cover;
@@ -8359,6 +9025,11 @@
 		inset: calc((var(--td-media-grid-tick-size) - var(--_td-mg-hit)) / 2 - 2px);
 	}
 
+	/* the mark button has no border → no −2px */
+	.td-media-grid__tick--mark::before {
+		inset: calc((var(--td-media-grid-tick-size) - var(--_td-mg-hit)) / 2);
+	}
+
 	@media (hover: none), (pointer: coarse) {
 		.td-media-grid__tick {
 			--_td-mg-hit: var(--td-touch-min, 44px);
@@ -8375,6 +9046,40 @@
 	.td-media-grid__item[data-selected] .td-media-grid__tick {
 		background: var(--td-media-grid-tick-on-bg);
 		color: var(--td-media-grid-tick-on-fg);
+	}
+
+	/* v0.36.0 (ADR 0017): the kit-created tick is a transparent button around the shared mark (.td-check) — same box,
+	   ✓, colours and focus ring as td-checkbox; the button keeps aria-pressed, position and the ::before hit area. */
+	.td-media-grid__tick--mark,
+	.td-media-grid__item[data-selected] .td-media-grid__tick--mark {
+		color: inherit;
+		background: none;
+		border: 0;
+		box-shadow: none;
+	}
+
+	.td-media-grid__tick--mark > .td-check {
+		--_td-check-size: var(--td-media-grid-tick-size);
+	}
+
+	.td-media-grid__tick--mark:focus-visible {
+		outline: 0;
+	}
+
+	.td-media-grid__tick--mark:focus-visible > .td-check {
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: 0 0 0 1px rgb(0 0 0 / 45%), var(--td-focus-ring);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-grid__tick--mark:hover:not(:disabled) > .td-check {
+			border-color: var(--td-control-border-hover);
+		}
+
+		.td-media-grid__item[data-selected] .td-media-grid__tick--mark:hover > .td-check {
+			border-color: var(--td-checkbox-color);
+		}
 	}
 
 	/* --- layout="justified" ---
@@ -8458,16 +9163,20 @@
 /* ---- src/styles/components/otp-input.css ---- */
 /*
  * td-otp-input (src/form/td-otp-input.js, v0.27.0) + the native field of php/td.php td_otp_input().
- * Content layer: solid cells, never glass. ONE native input; once the element is defined it lies transparently over 6
- * decorative cells (`aria-hidden`) — before that (no JS, or SSR element mode while the module loads) the input itself
- * is the visible field, in the SAME box (no layout shift on upgrade).
+ * Content layer: solid cells, never glass. ONE native input; once the element is defined it lies transparently over
+ * N (1–10, `.td-otp[data-length]`, default 6) decorative cells (`aria-hidden`) — before that (SSR element mode while
+ * the module loads) the input itself is the visible field over the hidden cells, in the SAME box (no layout shift).
+ * v0.36.0 (plan QĐ 41): the cells are always in flow (grid of N equal tracks) and each keeps its SHAPE with
+ * `aspect-ratio: var(--td-otp-cell-aspect)` → the box is as tall as a cell at any width (no more tall pills when the box
+ * shrinks). The native PHP field (no host element, never upgraded) keeps a fixed height (`--td-otp-cell-h`).
  * State (set by JS / native, never visual classes): cell [data-state="empty|filled"] [data-active] (caret / selection
  * while focused); input :disabled / [readonly] / [aria-invalid="true"].
  */
 @layer td.tokens {
 	:root {
 		--td-otp-cell-w: 2.75rem;
-		--td-otp-cell-h: 3.25rem;
+		--td-otp-cell-h: 3.25rem;   /* native (no-JS PHP) field height only; element mode uses the aspect below */
+		--td-otp-cell-aspect: 44 / 52;
 		--td-otp-gap: 0.5rem;
 		--td-otp-radius: var(--td-field-radius-md);
 		--td-otp-bg: var(--td-control-bg);
@@ -8490,6 +9199,8 @@
 	}
 
 	.td-otp {
+		--_td-otp-n: 6;
+
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
@@ -8499,6 +9210,16 @@
 		line-height: var(--td-leading-normal);
 		color: var(--td-otp-fg);
 	}
+
+	.td-otp[data-length="1"] { --_td-otp-n: 1; }
+	.td-otp[data-length="2"] { --_td-otp-n: 2; }
+	.td-otp[data-length="3"] { --_td-otp-n: 3; }
+	.td-otp[data-length="4"] { --_td-otp-n: 4; }
+	.td-otp[data-length="5"] { --_td-otp-n: 5; }
+	.td-otp[data-length="7"] { --_td-otp-n: 7; }
+	.td-otp[data-length="8"] { --_td-otp-n: 8; }
+	.td-otp[data-length="9"] { --_td-otp-n: 9; }
+	.td-otp[data-length="10"] { --_td-otp-n: 10; }
 
 	.td-otp *,
 	.td-otp *::before {
@@ -8513,14 +9234,19 @@
 		color: var(--td-field-label);
 	}
 
-	/* The box has the same size with or without JS: 6 cells + 5 gaps (shrinks on a narrow screen). */
+	/* The box: N cells + N − 1 gaps wide (shrinks on a narrow screen). Native field: fixed height. Element mode: as tall
+	   as the in-flow cells (their aspect ratio), before and after the upgrade. */
 	.td-otp__box {
 		position: relative;
 		/* fixed width + max-width (not min(100%, …)): a % inside a shrink-to-fit flex item resolves cyclically → collapse */
-		width: calc(6 * var(--td-otp-cell-w) + 5 * var(--td-otp-gap));
+		width: calc(var(--_td-otp-n) * var(--td-otp-cell-w) + (var(--_td-otp-n) - 1) * var(--td-otp-gap));
 		max-width: 100%;
 		height: var(--td-otp-cell-h);
-		direction: ltr; /* digits read left → right in every script */
+		direction: ltr; /* characters read left → right in every script */
+	}
+
+	td-otp-input .td-otp__box {
+		height: auto;
 	}
 
 	/* The input: a plain OTP field (no JS / before the upgrade) … */
@@ -8562,25 +9288,27 @@
 		border-color: var(--td-otp-error);
 	}
 
-	/* … the cells only exist visually once the element is defined. */
+	/* … the cells: in flow, they size the box (element mode); invisible until the element is defined. */
 	.td-otp__cells {
-		display: none;
+		display: grid;
+		grid-template-columns: repeat(var(--_td-otp-n), minmax(0, 1fr));
+		gap: min(var(--td-otp-gap), 3%);
+		pointer-events: none;
 	}
 
-	td-otp-input:defined .td-otp__cells {
+	td-otp-input:not(:defined) .td-otp__cells {
+		visibility: hidden;
+	}
+
+	/* element mode: the input covers the cells' box (before the upgrade it is the visible field) */
+	td-otp-input .td-otp__input {
 		position: absolute;
 		inset: 0;
-		display: grid;
-		grid-template-columns: repeat(6, minmax(0, 1fr));
-		gap: var(--td-otp-gap);
-		pointer-events: none;
+		z-index: 1;
 	}
 
 	/* Upgraded: the input stays the real control (focus, caret, paste, autofill) but paints nothing. */
 	td-otp-input:defined .td-otp__input {
-		position: absolute;
-		inset: 0;
-		z-index: 1;
 		color: transparent;
 		caret-color: transparent;
 		background: transparent;
@@ -8599,6 +9327,7 @@
 		align-items: center;
 		justify-content: center;
 		min-width: 0;
+		aspect-ratio: var(--td-otp-cell-aspect);
 		font-family: var(--td-font-sans);
 		font-size: var(--td-otp-font-size);
 		font-weight: var(--td-fw-semibold);
@@ -8631,6 +9360,13 @@
 
 	.td-otp__input[aria-invalid="true"] + .td-otp__cells .td-otp__cell {
 		border-color: var(--td-otp-error);
+	}
+
+	/* touch: never shorter than the touch minimum (a cell only grows taller than its ratio below ~37 px wide) */
+	@media (pointer: coarse) {
+		.td-otp__cell {
+			min-block-size: var(--td-touch-min);
+		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
@@ -8877,20 +9613,15 @@
 		padding-inline-start: env(safe-area-inset-left, 0px);
 	}
 
-	/* sm (480–719): keep a strip of the page visible so it reads as a drawer, not a page. */
+	/* < 720: keep a strip of the page visible so it reads as a drawer, not a page. */
 	@media (max-width: 719.98px) {
 		.td-drawer__panel {
 			width: min(var(--td-drawer-w, var(--_td-drawer-size)), calc(100% - 3rem));
 		}
 	}
 
-	/* xs (< 480): full screen. */
-	@media (max-width: 479.98px) {
-		.td-drawer__panel {
-			width: 100%;
-			border-width: 0;
-		}
-	}
+	/* v0.36.0 (plan QĐ 66, mobile UX audit): no full screen below 480 any more — the < 720 strip of page (3rem) stays
+	   visible on phones too, so the drawer reads as a drawer and the backdrop edge is reachable. */
 
 	@media (pointer: coarse) {
 		.td-drawer__close {
@@ -9119,7 +9850,7 @@
  * Indent = nested `ul[role=group]` (padding-inline-start: --td-tree-indent; never style=""); rows --td-tree-row-h.
  * State: [aria-expanded] (arrow turned 90° — a FUNCTIONAL transform, minimal-surfaces rule 4), [aria-busy] (the arrow
  * spins; reduced motion → static), [data-load="error"], [aria-selected] (single), [aria-checked="true|false|mixed"]
- * (multiple: square check drawn with the check / minus icons), [aria-disabled] (locked: dimmed like disabled controls),
+ * (multiple: the shared td-checkbox mark, check.css), [aria-disabled] (locked: dimmed like disabled controls),
  * [data-active] (virtual focus inside td-tree-select), :focus-visible on the treeitem (ring on its row only).
  */
 @layer td.tokens {
@@ -9130,7 +9861,7 @@
 		--td-tree-row-active: var(--td-color-hover-strong);
 		--td-tree-row-active-line: var(--td-control-border-hover);
 		--td-tree-row-selected: var(--td-color-hover-strong);
-		--td-tree-check-radius: 4px; /* square check (the round td-checkbox is a different control) */
+		--td-tree-check-radius: var(--td-checkbox-radius); /* deprecated v0.36.0 (no effect): the check is the shared td-checkbox mark */
 	}
 }
 
@@ -9279,44 +10010,7 @@
 		color: var(--td-field-error);
 	}
 
-	.td-tree__check {
-		display: inline-flex;
-		flex: none;
-		align-items: center;
-		justify-content: center;
-		width: 1rem;
-		height: 1rem;
-		line-height: 0;
-		color: var(--td-accent-contrast);
-		background: var(--td-control-bg);
-		border: 1.5px solid var(--td-checkbox-border);
-		border-radius: var(--td-tree-check-radius);
-		transition:
-			background var(--td-dur-fast) var(--td-ease),
-			border-color var(--td-dur-fast) var(--td-ease);
-	}
-
-	.td-tree__check-on,
-	.td-tree__check-mixed {
-		display: none;
-		line-height: 0;
-	}
-
-	.td-tree__check svg {
-		width: 0.75rem;
-		height: 0.75rem;
-		stroke-width: 3;
-	}
-
-	.td-tree__item:is([aria-checked="true"], [aria-checked="mixed"]) > .td-tree__row > .td-tree__check {
-		background: var(--td-checkbox-color);
-		border-color: var(--td-checkbox-color);
-	}
-
-	.td-tree__item[aria-checked="true"] > .td-tree__row .td-tree__check-on,
-	.td-tree__item[aria-checked="mixed"] > .td-tree__row .td-tree__check-mixed {
-		display: inline-flex;
-	}
+	/* v0.36.0: the multiple-mode check is the shared td-checkbox mark (check.css; on / mixed from aria-checked) */
 
 	.td-tree__label {
 		flex: 0 1 auto;
@@ -9661,7 +10355,7 @@
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
-		padding: var(--td-glass-pad);
+		padding: var(--td-glass-pad) 0; /* v0.36.0: full-bleed rows */
 		overflow: hidden;
 		font-family: var(--td-font-sans);
 		font-size: var(--td-text-sm);
@@ -9696,7 +10390,7 @@
 
 	.td-tree-select__search-wrap {
 		flex: none;
-		padding: 2px 2px var(--td-glass-pad);
+		padding: 2px var(--td-option-pad-x) var(--td-glass-pad);
 		margin-bottom: var(--td-glass-pad);
 		border-bottom: 1px solid var(--td-dropdown-hairline);
 	}
@@ -9729,6 +10423,54 @@
 
 	.td-tree-select__search:focus-visible {
 		box-shadow: var(--td-field-focus-ring);
+	}
+
+	/* v0.36.0 popup rows (dcms2): the tree rows inside the popup are full-bleed — the row state is painted by a ::before that
+	   reaches the popup's inline-start edge across the nesting indent (clipped by the scroller), no radius, no ring box;
+	   the keyboard-active row (data-active, aria-activedescendant) adds the inline-start accent bar */
+	.td-tree-select__menu .td-tree__row {
+		position: relative;
+		isolation: isolate;
+		padding-inline-end: var(--td-option-pad-x);
+		background: none;
+		border-radius: 0;
+		box-shadow: none;
+	}
+
+	.td-tree-select__menu .td-tree__row::before {
+		content: "";
+		position: absolute;
+		inset-block: 0;
+		inset-inline: -100vw 0;
+		z-index: -1;
+		pointer-events: none;
+	}
+
+	.td-tree-select__menu .td-tree__row:hover::before {
+		background: var(--td-option-hover-bg);
+	}
+
+	.td-tree-select__menu .td-tree__item[aria-selected="true"] > .td-tree__row {
+		font-weight: var(--td-fw-semibold);
+		background: none;
+	}
+
+	.td-tree-select__menu .td-tree__item[aria-selected="true"] > .td-tree__row::before {
+		background: var(--td-option-selected-bg);
+	}
+
+	/* the bar sits at the row's own inline start (after the nesting indent) */
+	.td-tree-select__menu .td-tree__item[data-active] > .td-tree__row {
+		background: none;
+		box-shadow: inset var(--td-option-active-bar-w) 0 0 var(--td-option-active-bar);
+	}
+
+	.td-tree-select__menu .td-tree__item[data-active] > .td-tree__row:dir(rtl) {
+		box-shadow: inset calc(-1 * var(--td-option-active-bar-w)) 0 0 var(--td-option-active-bar);
+	}
+
+	.td-tree-select__menu .td-tree__item[data-active] > .td-tree__row::before {
+		background: var(--td-option-active-bg);
 	}
 
 	.td-tree-select__scroller {
@@ -9764,6 +10506,7 @@
 		.td-tree-select__clear {
 			width: var(--td-touch-min);
 			height: var(--td-touch-min);
+			margin-inline-start: var(--td-space-xs); /* v0.36.0 (QĐ 68): ≥ 8 px from the value / trigger target */
 		}
 	}
 
@@ -10083,8 +10826,11 @@
 	 * track → auto-placed on a new grid row). An app rule placing the cluster explicitly (unlayered) still wins.
 	 */
 	@container td-repeater (width < 480px) {
+		/* v0.36.0 (plan QĐ 63, mobile UX audit: 180 px per row at 360): in a flex row the cluster SHARES the last line
+		   with the short field before it (e.g. quantity) when it fits, aligned to the end — a line of its own only when
+		   it does not; in an app grid row it still spans every track */
 		.td-repeater__actions {
-			flex: 1 0 100%;
+			flex: 1 0 auto;
 			grid-column: 1 / -1;
 			justify-content: flex-end;
 			margin-inline-start: 0;
@@ -10093,13 +10839,18 @@
 
 	/* td: generated container fallback (ADR 0014) */
 	@supports not (container-type: inline-size) {
-		@media (max-width: 479.98px) {.td-repeater__actions{flex:1 0 100%;grid-column:1 / -1;justify-content:flex-end;margin-inline-start:0}}
+		@media (max-width: 479.98px) {.td-repeater__actions{flex:1 0 auto;grid-column:1 / -1;justify-content:flex-end;margin-inline-start:0}}
 	}
 
 	@media (pointer: coarse) {
 		.td-repeater__btn {
 			width: var(--td-touch-min);
 			height: var(--td-touch-min);
+		}
+
+		/* v0.36.0 (QĐ 68): ≥ 8 px between adjacent touch targets */
+		.td-repeater__actions {
+			gap: var(--td-space-xs, 8px);
 		}
 	}
 
@@ -10619,6 +11370,78 @@
 		container-type: normal;
 	}
 
+	/* --- v0.36.0 (plan QĐ 49): < 1024 the facets leave the toolbar for ONE "Bộ lọc" button (+ committed-count badge)
+	   opening the filter sheet (media-picker-filters.js); ≥ 1024 the dcms2 one-row toolbar is unchanged --- */
+	.td-media-picker__filter {
+		position: relative;
+		display: none;
+		flex: none;
+	}
+
+	.td-media-picker__filter-count {
+		position: absolute;
+		top: -0.375rem;
+		inset-inline-end: -0.375rem;
+		justify-content: center;
+		min-width: 1.25rem;
+		pointer-events: none;
+	}
+
+	@media (max-width: 1023.98px) {
+		.td-media-picker__filter:not([hidden]) {
+			display: inline-flex;
+		}
+
+		.td-media-picker__facets {
+			display: none;
+		}
+
+		/* upload · search · Bộ lọc · pager fit one row from 720: upload is icon-only below 1024 (aria-label keeps the name);
+		   the paged td-pagination is a container again so it compacts instead of overflowing the row */
+		.td-media-picker__search {
+			min-width: 8rem;
+		}
+
+		.td-media-picker__pager {
+			flex: 1 1 auto;
+			justify-content: flex-end;
+		}
+
+		.td-media-picker__pager td-pagination {
+			flex: 1 1 auto;
+			container-type: inline-size;
+		}
+
+		.td-media-picker__upload-btn .td-btn {
+			min-width: var(--td-touch-min, 44px);
+			padding-inline: 0;
+		}
+
+		.td-media-picker__upload-btn .td-btn__label {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			overflow: hidden;
+			clip-path: inset(50%);
+			white-space: nowrap;
+		}
+	}
+
+	/* review ISSUE-4 (plan QĐ 57): 720–1023 the detail column collapses while nothing is viewed (empty state) — the grid
+	   takes the full width; it comes back as soon as a manual / auto preview sets an asset */
+	@media (min-width: 720px) and (max-width: 1023.98px) {
+		.td-media-picker[data-detail-empty] .td-media-picker__detail {
+			display: none;
+		}
+	}
+
+	/* QĐ 51: < 720 the pager is the last row of the results scroller (JS moves the node) */
+	.td-media-picker__pager--below {
+		justify-content: center;
+		margin: 0;
+		padding-block: 0.75rem 0.25rem;
+	}
+
 	/* --- content: [list flex-1 | detail 25rem] (decision 6) --- */
 	.td-media-picker__content {
 		display: flex;
@@ -10653,8 +11476,6 @@
 		--td-media-grid-tick-inline: end;
 		--td-media-grid-tick-size: 20px;
 		--td-media-grid-tick-inset: 8px;
-		--td-media-grid-tick-on-bg: var(--td-media-picker-card-checked);
-		--td-media-grid-tick-on-fg: #fff;
 		--td-media-grid-selected-bg: transparent;
 		--td-media-grid-selected-scale: 1;
 		--td-media-grid-radius: var(--td-media-picker-card-radius);
@@ -10792,10 +11613,8 @@
 		gap: 0.25rem;
 	}
 
-	/* the tick: top-right square, always visible in multiple mode; single mode has none (Space still works) */
-	.td-media-picker .td-media-grid__tick {
-		border-radius: var(--td-radius-sm);
-	}
+	/* the tick: top-right, always visible in multiple mode; single mode has none (Space still works). v0.36.0: the shared
+	   td-checkbox mark (check.css) at the 20px picker size — no own square / colour any more (ADR 0017). */
 
 	.td-media-picker[data-mode="multiple"] .td-media-grid__tick {
 		opacity: 1;
@@ -10870,9 +11689,34 @@
 		justify-content: center;
 	}
 
+	/* review ISSUE-3 (plan QĐ 56): the "Quay lại" arrow lives in the dialog header — only < 720 while the pane is open */
 	.td-media-picker__back {
 		display: none;
-		align-self: flex-start;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		width: var(--td-touch-min, 44px);
+		height: var(--td-touch-min, 44px);
+		padding: 0;
+		margin: 0 0 0 calc(-1 * var(--td-space-xs));
+		color: inherit;
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: var(--td-radius-full);
+	}
+
+	.td-media-picker__back:hover {
+		background: var(--td-color-hover-strong);
+	}
+
+	.td-media-picker__back:focus-visible {
+		outline: 2px solid transparent;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-media-picker__detail-more {
+		display: none;
 	}
 
 	.td-media-picker__preview {
@@ -11083,7 +11927,11 @@
 		min-width: 0;
 	}
 
-	.td-media-picker__selcount,
+	/* review ISSUE-5: the selection chip "n đã chọn ×" reads as a count — page ink (≥ 4.7 in both themes), not the accent */
+	.td-media-picker__clear {
+		--td-btn-ghost-fg: var(--td-color-text);
+	}
+
 	.td-media-picker__initial-loading {
 		font-size: var(--td-text-sm);
 		color: var(--td-color-text-muted);
@@ -11104,7 +11952,7 @@
 	@media (max-width: 719.98px) {
 		.td-media-picker__toolbar {
 			gap: 0.75rem;
-			padding: 0.75rem 1rem;
+			padding: 0.375rem 1rem; /* v0.36.0 QĐ 52: one row ≤ 56px (44px touch controls) */
 		}
 
 		.td-media-picker__search {
@@ -11113,19 +11961,9 @@
 			max-width: none;
 		}
 
-		.td-media-picker__toolbar,
+		/* v0.36.0 (QĐ 49): ONE row — [Tải lên] [tìm] [Bộ lọc]; the facets live in the sheet, the pager under the grid */
 		.td-media-picker__filters {
-			flex-wrap: wrap;
-		}
-
-		.td-media-picker__filters {
-			flex: 1 1 100%;
-		}
-
-		/* the pager takes its own full row; the paged td-pagination is a container again (compact below 480) */
-		.td-media-picker__pager {
-			flex: 1 1 100%;
-			justify-content: flex-end; /* the cursor pager stays at the end of its row (v0.33 look) */
+			display: none;
 		}
 
 		.td-media-picker__pager td-pagination {
@@ -11133,25 +11971,14 @@
 			container-type: inline-size;
 		}
 
-		.td-media-picker__facets {
-			flex: 1 1 100%;
-			flex-wrap: wrap;
-			margin: 0;
-			padding: 0;
-			overflow: visible;
+		.td-media-picker__upload-btn .td-btn,
+		.td-media-picker__filter-btn .td-btn {
+			min-width: var(--td-touch-min, 44px);
+			padding-inline: 0;
 		}
 
-		.td-media-picker__facet {
-			flex: 0 1 auto;
-		}
-
-		.td-media-picker__facet[data-type="single"],
-		.td-media-picker__facet[data-type="multiple"] {
-			min-width: 0;
-			flex: 1 1 9rem;
-		}
-
-		/* "Tải lên" icon-only (its aria-label keeps the name) */
+		/* "Tải lên" / "Bộ lọc" icon-only (their aria-label keeps the name) */
+		.td-media-picker__filter-btn .td-btn__label,
 		.td-media-picker__upload-btn .td-btn__label {
 			position: absolute;
 			width: 1px;
@@ -11187,9 +12014,52 @@
 				visibility 0s linear 0s;
 		}
 
-		.td-media-picker__back {
+		.td-media-picker[data-view="detail"] .td-media-picker__back {
 			display: inline-flex;
 		}
+
+		/* ISSUE-3: ≤ 3 actions inline, the rest behind "Thêm" */
+		.td-media-picker__detail-actions > [data-overflow] {
+			display: none;
+		}
+
+		.td-media-picker__detail-actions > .td-media-picker__detail-more {
+			display: inline-flex;
+		}
+
+		/* QĐ 55 (review ISSUE-5): the footer stays ONE row — the selection is one chip "n đã chọn ×" */
+		.td-media-picker .td-media-picker__footer {
+			flex-wrap: nowrap;
+		}
+
+		/* QĐ 67: the card meta line ≥ 14px on touch screens */
+		.td-media-picker__meta {
+			font-size: var(--td-text-sm);
+		}
+
+		/* QĐ 56: the preview follows the image (no fixed square letterbox), at most 40% of the viewport height */
+		.td-media-picker__preview {
+			aspect-ratio: auto;
+			max-block-size: 40vh;
+		}
+
+		.td-media-picker__preview img {
+			height: auto;
+			max-block-size: 40vh;
+		}
+	}
+
+	/* --- v0.36.0 filter sheet (media-picker-filters.js): facets stacked, full width --- */
+	.td-media-picker-filters__body {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.td-media-picker-filters__facet,
+	.td-media-picker-filters__facet > * {
+		width: 100%;
+		min-width: 0;
 	}
 
 	/* short (landscape phone, ≤ 500px tall — ADR 0014): compact chrome so ≥ 1 row of cards stays visible */
@@ -11358,42 +12228,12 @@
 		justify-content: flex-end;
 	}
 
-	/* < 720px: full viewport (decision 20). Specificity ≥ modal.css's bottom-sheet state rules; same layer, later file. */
+	/* v0.36.0 (plan QĐ 58, mobile UX audit — replaces v0.33 decision 20's full viewport): < 720 the upload dialog is the
+	   kit's ordinary bottom sheet, as tall as its content (≤ 90dvh, safe-area from modal.css); the footer held only
+	   "Đóng" — the header × does that, so the footer is dropped. */
 	@media (max-width: 719.98px) {
-		.td-modal.td-media-picker-upload {
-			inset-inline-end: 0; /* full viewport: no scroll-lock gap strip (see .td-modal--viewport) */
-			align-items: stretch;
-			padding: 0;
-		}
-
-		.td-modal.td-media-picker-upload[data-state] .td-modal__dialog {
-			--td-modal-enter-from: none;
-			width: 100%;
-			height: 100dvh;
-			max-height: none;
-			padding-bottom: 0;
-			border-width: 0;
-			border-radius: 0;
-			transform: none;
-		}
-
-		.td-modal.td-media-picker-upload .td-modal__header {
-			padding-top: calc(var(--td-space-sm) + env(safe-area-inset-top, 0px));
-		}
-
-		.td-modal.td-media-picker-upload .td-modal__footer {
-			padding-bottom: calc(var(--td-space-sm) + env(safe-area-inset-bottom, 0px));
-		}
-
-		.td-modal.td-media-picker-upload .td-modal__header,
-		.td-modal.td-media-picker-upload .td-modal__footer {
-			padding-right: calc(var(--td-modal-pad-x) + env(safe-area-inset-right, 0px));
-			padding-left: calc(var(--td-modal-pad-x) + env(safe-area-inset-left, 0px));
-		}
-
-		.td-modal.td-media-picker-upload .td-modal__body {
-			padding-right: calc(var(--td-modal-pad-x) + env(safe-area-inset-right, 0px));
-			padding-left: calc(var(--td-modal-pad-x) + env(safe-area-inset-left, 0px));
+		.td-modal.td-media-picker-upload .td-media-picker-upload__footer {
+			display: none;
 		}
 	}
 }
@@ -11571,6 +12411,7 @@
 	.td-media-field__img {
 		display: block;
 		inline-size: 100%;
+		max-inline-size: none; /* never a host reset's max-width (Tailwind preflight) */
 		block-size: auto;
 		max-block-size: var(--td-media-field-max-h, 24rem);
 		object-fit: contain;

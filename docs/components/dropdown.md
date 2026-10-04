@@ -411,10 +411,10 @@ Token riêng của dropdown (khai báo trong `@layer td.tokens`, file `component
 | Token | Mặc định | Tác dụng |
 |---|---|---|
 | `--td-dropdown-option-h` | `40px` | Chiều cao tối thiểu một option. **Lưu ý:** JS tính `max-height` của danh sách theo 40px/option, đổi token không đổi phép tính này. |
-| `--td-dropdown-option-hover` | `var(--td-color-hover)` | Nền option khi hover chuột. |
-| `--td-dropdown-option-active` | `var(--td-color-hover-strong)` | Nền option đang active (bàn phím). |
-| `--td-dropdown-option-active-line` | `var(--td-control-border-hover)` | Viền trong (inset) của option active. |
-| `--td-dropdown-option-selected` | `var(--td-color-hover-strong)` | Nền option đã chọn. |
+| `--td-dropdown-option-hover` | `var(--td-option-hover-bg)` | Nền option khi hover chuột. |
+| `--td-dropdown-option-active` | `var(--td-option-active-bg)` | Nền option đang active (bàn phím) + vạch nhấn đầu dòng (0.36.0). |
+| `--td-dropdown-option-active-line` | `var(--td-control-border-hover)` | **Hết tác dụng từ 0.36.0** — hàng active có vạch nhấn đầu dòng `--td-option-active-bar` (xem [Tuỳ biến › Hàng option](../customization/theming.md)). |
+| `--td-dropdown-option-selected` | `var(--td-option-selected-bg)` | Nền option đã chọn (0.36.0: nhãn in đậm, ✓ ở cuối, hàng tràn mép). |
 | `--td-dropdown-search-bg` | `var(--td-color-hover)` (dark: `rgb(255 255 255 / 6%)`) | Nền ô tìm kiếm. |
 | `--td-dropdown-search-border` | `var(--td-control-border-soft)` | Viền ô tìm kiếm. |
 | `--td-dropdown-hairline` | `var(--td-color-border)` | Đường kẻ dưới ô tìm kiếm và trên dòng "Thêm mới". |

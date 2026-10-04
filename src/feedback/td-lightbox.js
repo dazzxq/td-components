@@ -26,6 +26,7 @@ import { TdMenu, sanitizeDownloadName } from './td-menu.js';
 
 const LIGHTBOX_LAYER = LAYERS.lightbox; // --td-z-lightbox
 import { tdIcon } from '../icons/td-icon.js';
+import { matchesBelow, isCoarsePointer, isShort } from '../utils/breakpoints.js';
 
 const DEFAULT_LABELS = {
   dialog: 'Trình xem ảnh',
@@ -36,6 +37,7 @@ const DEFAULT_LABELS = {
   fullscreen: 'Toàn màn hình',
   download: 'Tải xuống',
   info: 'Thông tin ảnh',
+  more: 'Thêm',
   counter: (i, n) => `${i} / ${n}`,
   loadError: 'Không tải được ảnh',
   retry: 'Thử lại',
@@ -46,6 +48,7 @@ const FN_LABELS = new Set(['counter', 'thumb']);
 
 const IMAGE_EXT = /\.(jpe?g|png|webp|gif|avif|svg)$/i;
 const SWIPE_NAV = 50;      // px, horizontal → navigate
+const EDGE_GUARD = 24;     // px, v0.36.0: a touch gesture starting this close to the left / right edge is the browser's (back swipe)
 const SWIPE_CLOSE = 90;    // px, down → close (dearer than navigating: it loses context)
 const SWIPE_SHEET = 60;    // px, up → open the info sheet (undoable → cheaper)
 const DOUBLE_TAP_MS = 300;
@@ -410,7 +413,10 @@ function build() {
   const nav = h('div', { class: 'td-lightbox__nav' });
   // v0.24.0 N4: optional filmstrip (second row of the column).
   const filmstrip = h('div', { class: 'td-lightbox__filmstrip', hidden: true });
-  const col = h('div', { class: 'td-lightbox__col' }, [stage, nav, filmstrip]);
+  // v0.36.0 (plan QĐ 59 revised): the phone rail "‹ 3 / 12 ›" — below 480 px the SAME prev / next buttons and the SAME
+  // counter (one live region) are MOVED here (never cloned); a row of the column, above the filmstrip / sheet grabber.
+  const rail = h('div', { class: 'td-lightbox__rail td-glass-surface td-glass-surface--clear', hidden: true });
+  const col = h('div', { class: 'td-lightbox__col' }, [stage, nav, rail, filmstrip]);
   const caption = h('div', { class: 'td-lightbox__caption', hidden: true });
   const grab = h('button', { type: 'button', class: 'td-lightbox__grab', 'aria-expanded': 'false' }, [
     h('span', { class: 'td-lightbox__grab-bar', 'aria-hidden': 'true' }),
@@ -419,22 +425,25 @@ function build() {
   const panel = h('aside', { class: 'td-lightbox__panel', hidden: true }, [grab, panelBody]);
   const prevBtn = btn('', 'prev', { 'data-action': 'prev' });
   const nextBtn = btn('', 'next', { 'data-action': 'next' });
-  const fsBtn = btn('', 'fullscreen', { 'data-action': 'fullscreen' });
+  // v0.36.0 (plan QĐ 59): `data-overflow` → moved into the "Thêm" menu below 480 px (CSS); never shown there itself.
+  const fsBtn = btn('', 'fullscreen', { 'data-action': 'fullscreen', 'data-overflow': true });
   const dlBtn = h('a', { class: 'td-lightbox__btn', 'data-action': 'download', hidden: true });
   dlBtn.appendChild(icon('download'));
   // ≥ 2 download variants (E6): the same icon, but a menu button opening a TdMenu of `<a download>` items.
   const dlMenuBtn = btn('', 'download', { 'data-action': 'downloads', hidden: true });
+  // v0.36.0 (plan QĐ 59): overflow menu button, shown only below 480 px (CSS) AND while something overflows (JS).
+  const moreBtn = btn('td-lightbox__more', 'more', { 'data-action': 'more', hidden: true });
   const closeBtn = btn('td-lightbox__close', 'close', { 'data-action': 'close' });
   const toolbar = h('div', { class: 'td-lightbox__toolbar td-glass-surface td-glass-surface--clear' }, [
-    prevBtn, nextBtn, fsBtn, dlBtn, dlMenuBtn, closeBtn,
+    prevBtn, nextBtn, fsBtn, dlBtn, dlMenuBtn, moreBtn, closeBtn,
   ]);
   const overlay = h('div', { class: 'td-lightbox', role: 'dialog', 'aria-modal': 'true', tabindex: '-1' }, [
     backdrop, lead, col, caption, panel, toolbar,
   ]);
 
   document.body.appendChild(overlay);
-  ui = { overlay, backdrop, lead, backBtn, counter, col, stage, spinner, img, videoMount, caption, panel, grab,
-    panelBody, toolbar, prevBtn, nextBtn, fsBtn, dlBtn, dlMenuBtn, closeBtn, nav, filmstrip, error, errorText, retryBtn,
+  ui = { overlay, backdrop, lead, backBtn, counter, rail, col, stage, spinner, img, videoMount, caption, panel, grab,
+    panelBody, toolbar, prevBtn, nextBtn, fsBtn, dlBtn, dlMenuBtn, moreBtn, closeBtn, nav, filmstrip, error, errorText, retryBtn,
     errorNextBtn };
 
   backdrop.addEventListener('click', onBackdropClick);
@@ -448,7 +457,10 @@ function build() {
   fsBtn.addEventListener('click', toggleFullscreen);
   // Lazy items (the current slide's variants) + the lightbox's own URL policy with the item being viewed (the menu
   // closes on every slide change, so the item at open time is the one on screen).
-  TdMenu.bind(dlMenuBtn, downloadMenuItems, { align: 'end', isAllowedUrl: downloadMenuPolicy });
+  // v0.36.0: the lightbox's own menus use the internal 'swallow' dismissal — a mouse press outside only closes the menu
+  // (never also zooms / pans / closes the viewer); touch / pen stay pass-through
+  TdMenu.bind(dlMenuBtn, downloadMenuItems, { align: 'end', isAllowedUrl: downloadMenuPolicy, dismiss: 'swallow' });
+  TdMenu.bind(moreBtn, overflowMenuItems, { align: 'end', dismiss: 'swallow' });
   grab.addEventListener('click', (e) => { e.stopPropagation(); setSheet(ui.panel.getAttribute('data-sheet') !== 'open'); });
   bindPanelSwipe(panel);
   bindPointer(col);
@@ -466,6 +478,7 @@ function applyLabels(labels) {
   set(ui.fsBtn, labels.fullscreen);
   set(ui.dlBtn, labels.download);
   set(ui.dlMenuBtn, labels.download);
+  set(ui.moreBtn, labels.more);
   set(ui.closeBtn, labels.close);
   ui.grab.setAttribute('aria-label', labels.info);
 }
@@ -512,7 +525,7 @@ function addExtra(spec) {
     if (!session || session.token !== token) return;
     try { spec.onClick(ctxOf(), b); } catch (err) { console.error('td-lightbox toolbar onClick', err); }
   });
-  ui.toolbar.insertBefore(b, ui.closeBtn); // close stays last
+  ui.toolbar.insertBefore(b, ui.moreBtn); // "Thêm" + close stay last
   extras.set(spec.id, { spec, button: b });
   return b;
 }
@@ -523,6 +536,7 @@ function removeExtra(id, button) {
   if (!e || (button && e.button !== button)) return;
   e.button.remove();
   extras.delete(id);
+  syncOverflow();
 }
 
 function syncExtras(ctx) {
@@ -533,6 +547,43 @@ function syncExtras(ctx) {
     }
     button.hidden = !visible;
   }
+  syncOverflow();
+}
+
+/* ------------------------------------------------------------------ v0.36.0 QĐ 59: "Thêm" overflow (< 480 px) */
+
+/**
+ * Below 480 px (CSS `@media (max-width: 479.98px)`) the toolbar keeps only download, close, the first visible
+ * `pinned: true` extra (e.g. a panel toggle) and the "Thêm" button; prev / next are dropped (swipe + arrow keys
+ * still navigate) and every `[data-overflow]` control (fullscreen, the other extras) is listed in the menu instead.
+ * JS only marks the controls and decides whether "Thêm" has anything to offer — no width threshold in JS.
+ */
+function syncOverflow() {
+  if (!ui) return;
+  let pinnedKept = false;
+  let any = !ui.fsBtn.hidden;
+  for (const { spec, button } of extras.values()) {
+    const keep = !pinnedKept && spec.pinned === true && !button.hidden;
+    if (keep) pinnedKept = true;
+    button.toggleAttribute('data-overflow', !keep);
+    if (!keep && !button.hidden) any = true;
+  }
+  ui.moreBtn.hidden = !any;
+  if (!any && TdMenu.isOpen(ui.moreBtn)) TdMenu.close();
+}
+
+/** TdMenu items of "Thêm" (lazy: read at open) — the overflowed controls, in toolbar order; selecting one clicks it. */
+function overflowMenuItems() {
+  if (!session || lifecycle !== 'open') return null;
+  const items = [];
+  for (const b of ui.toolbar.querySelectorAll(':scope > [data-overflow]')) {
+    if (b.hidden) continue;
+    const ex = b.hasAttribute('data-extra') ? extras.get(b.getAttribute('data-extra')) : null;
+    const label = b.getAttribute('aria-label') || '';
+    const iconName = b === ui.fsBtn ? 'fullscreen' : ex && typeof ex.spec.icon === 'string' ? ex.spec.icon : '';
+    items.push({ label, icon: iconName || undefined, onSelect: () => b.click() });
+  }
+  return items.length ? items : null;
 }
 
 /* ------------------------------------------------------------------ panel / sheet */
@@ -581,7 +632,9 @@ function bindPanelSwipe(panel) {
   let atTop = true;
   resetPanelSwipe = () => { y0 = null; atTop = true; };
   panel.addEventListener('touchstart', (e) => {
-    if (e.touches.length !== 1) { y0 = null; return; }
+    // v0.36.0: only a drag that STARTS on the grabber moves the sheet — scrolling the panel content never collapses it
+    const onGrab = e.target instanceof Element && !!e.target.closest('.td-lightbox__grab');
+    if (e.touches.length !== 1 || !onGrab) { y0 = null; return; }
     y0 = e.touches[0].clientY;
     atTop = panel.scrollTop <= 0;
   }, { passive: true });
@@ -671,7 +724,7 @@ let lastDownTarget = null;
 
 const inSideNav = (t) => t instanceof Element && !!t.closest('.td-lightbox__nav') && !!t.closest('.td-lightbox__btn');
 /** Filmstrip (native horizontal scroll) and the error block (plain buttons) never take part in gestures. */
-const outsideGestures = (t) => t instanceof Element && !!t.closest('.td-lightbox__filmstrip, .td-lightbox__error');
+const outsideGestures = (t) => t instanceof Element && !!t.closest('.td-lightbox__filmstrip, .td-lightbox__error, .td-lightbox__rail');
 const isBackground = (t) => !!ui && (t === ui.col || t === ui.stage || t === ui.nav);
 
 /**
@@ -743,7 +796,9 @@ function bindPointer(col) {
       clearDrag();
     } else if (pointers.size === 1) {
       g = { type: 'single', kind: e.pointerType, x0: e.clientX, y0: e.clientY, zx: zoom.x, zy: zoom.y,
-        moved: false, onImg: e.target === ui.img, pinched: false };
+        moved: false, onImg: e.target === ui.img, pinched: false,
+        // v0.36.0: a touch / pen gesture starting at the very left / right edge belongs to the browser (back / forward)
+        edge: e.pointerType !== 'mouse' && (e.clientX < EDGE_GUARD || e.clientX > document.documentElement.clientWidth - EDGE_GUARD) };
     }
   });
 
@@ -854,7 +909,11 @@ function bindPointer(col) {
       closeDown();
       return;
     }
-    if (Math.abs(dx) > SWIPE_NAV && Math.abs(dx) > Math.abs(dy)) navigate(dx < 0 ? 1 : -1);
+    if (Math.abs(dx) > SWIPE_NAV && Math.abs(dx) > Math.abs(dy) && !gesture.edge) {
+      // v0.36.0: RTL reverses the reading direction — a rightward swipe is "next" there
+      const rtl = getComputedStyle(ui.overlay).direction === 'rtl';
+      navigate((dx < 0) !== rtl ? 1 : -1);
+    }
   };
   col.addEventListener('pointerup', end);
   col.addEventListener('pointercancel', end);
@@ -867,7 +926,10 @@ function bindPointer(col) {
 function onNavClick(e, dir) {
   const press = navPress;
   navPress = null;
-  if (ui && e.currentTarget instanceof Element && e.currentTarget.parentElement === ui.nav && e.detail > 0) {
+  // v0.36.0: only the full-height side STRIPS (data-nav="side", fine pointer) ignore a touch / pen click (a swipe may start
+  // there); the compact 48 px discs (coarse pointer, short, zoomed) and the phone rail are plain buttons — a tap navigates
+  const strips = ui && ui.overlay.getAttribute('data-nav') === 'side' && !ui.overlay.hasAttribute('data-zoomed');
+  if (ui && strips && e.currentTarget instanceof Element && e.currentTarget.parentElement === ui.nav && e.detail > 0) {
     const type = typeof e.pointerType === 'string' && e.pointerType ? e.pointerType : lastPointerType;
     if (type && type !== 'mouse') return;
     if (press && press.moved) return;
@@ -1118,7 +1180,12 @@ function fineMq() {
 
 function navModeFor() {
   const mq = fineMq();
-  if (!session || session.items.length < 2 || !mq || !mq.matches) return 'toolbar';
+  if (!session || session.items.length < 2) return 'toolbar';
+  // v0.36.0 (plan QĐ 59 revised, owner + Codex think-about): phones (< 480) → the persistent bottom rail; a coarse pointer
+  // from 480, and the short landscape band, → persistent 48 px side discs inset from the edges (never the top toolbar)
+  if (matchesBelow('sm')) return 'rail';
+  if (isCoarsePointer() || isShort()) return 'side-compact';
+  if (!mq || !mq.matches) return 'toolbar';
   if (!isVideoSlide()) return 'side';
   const colW = ui.nav.getBoundingClientRect().width || ui.col.getBoundingClientRect().width;
   const playerW = ui.videoMount.getBoundingClientRect().width;
@@ -1130,15 +1197,21 @@ function syncNavMode() {
   if (!ui || !session || lifecycle !== 'open') return;
   const mode = navModeFor();
   if (ui.overlay.getAttribute('data-nav') !== mode) ui.overlay.setAttribute('data-nav', mode);
-  const inToolbar = ui.prevBtn.parentElement === ui.toolbar;
-  if ((mode === 'toolbar') === inToolbar) return;
+  ui.rail.hidden = mode !== 'rail';
+  // the counter (ONE polite live region) lives in the rail between ‹ and › in rail mode, else in the lead after "back"
+  const counterHome = mode === 'rail' ? ui.rail : ui.lead;
+  const home = mode === 'toolbar' ? ui.toolbar : mode === 'rail' ? ui.rail : ui.nav;
+  if (ui.prevBtn.parentElement === home && ui.counter.parentElement === counterHome) return;
   const active = document.activeElement;
   if (mode === 'toolbar') {
     ui.toolbar.insertBefore(ui.prevBtn, ui.fsBtn);
     ui.toolbar.insertBefore(ui.nextBtn, ui.fsBtn);
+  } else if (mode === 'rail') {
+    ui.rail.append(ui.prevBtn, ui.counter, ui.nextBtn);
   } else {
     ui.nav.append(ui.prevBtn, ui.nextBtn);
   }
+  if (mode !== 'rail' && ui.counter.parentElement !== ui.lead) ui.lead.appendChild(ui.counter);
   if (active === ui.prevBtn || active === ui.nextBtn) active.focus({ preventScroll: true }); // a move drops focus
 }
 
@@ -1381,9 +1454,9 @@ function downloadMenuPolicy(url) {
   return !!allowed(url, session.items[session.index], session.isAllowedUrl);
 }
 
-/** Close the download menu when it is open (slide change / lightbox close). */
+/** Close the download / "Thêm" menu when it is open (slide change / lightbox close). */
 function closeDownloadMenu() {
-  if (ui && TdMenu.isOpen(ui.dlMenuBtn)) TdMenu.close();
+  if (ui && (TdMenu.isOpen(ui.dlMenuBtn) || TdMenu.isOpen(ui.moreBtn))) TdMenu.close();
 }
 
 function navigate(dir) {
@@ -1479,9 +1552,14 @@ function openViewer(items, options = {}) {
   ui.nextBtn.hidden = !many;
   ui.counter.hidden = !many;
   ui.fsBtn.hidden = !document.fullscreenEnabled;
+  syncOverflow();
   mountFilmstrip();
 
   if (lifecycle !== 'open') {
+    // The singleton <img> still holds the previous session's image (kept on close so the fade-out shows it). A fresh
+    // open must not paint it while the new one loads (the old frame used to fade out over the new open) → drop it now.
+    ui.img.removeAttribute('src');
+    ui.img.alt = '';
     clearFocusHandoff(ui.overlay);
     viewer = {
       savedFocus: document.activeElement instanceof HTMLElement ? document.activeElement : null,

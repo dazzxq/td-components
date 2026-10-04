@@ -2,19 +2,20 @@
 
 # Ô nhập mã xác thực — `<td-otp-input>`
 
-Ô nhập mã một lần (OTP) **6 chữ số** cho đăng nhập 2 bước (2FA), xác thực lại trước thao tác nhạy cảm (step-up), xác
-nhận email/điện thoại. Bên trong chỉ có **một** `<input type="text" inputmode="numeric" autocomplete="one-time-code">`
-thật — gõ, dán, tự điền từ SMS / trình quản lý mật khẩu, IME đều là của trình duyệt — phủ trong suốt lên 6 ô vẽ trang
-trí. Form-associated: gửi **một** giá trị dưới `name`. Component **chỉ nhận mã**: không tự submit, không gọi API, không
-đếm ngược, không có nút "gửi lại" — đó là việc của trang. **Không** dùng cho mật khẩu, PIN có độ dài khác 6, mã có chữ
-cái (mã khôi phục `ABCD-1234`…) hay số điện thoại — dùng [input field](input-field.md).
+Ô nhập mã một lần (OTP) — mặc định **6 chữ số**, từ 0.36.0 cấu hình được **độ dài 1–10** và **bộ ký tự** (số / chữ-số /
+chữ, ví dụ Steam Guard 5 ký tự `WMX7Q`) — cho đăng nhập 2 bước (2FA), xác thực lại trước thao tác nhạy cảm (step-up),
+xác nhận email/điện thoại. Bên trong chỉ có **một** `<input type="text" autocomplete="one-time-code">` thật — gõ, dán,
+tự điền từ SMS / trình quản lý mật khẩu, IME đều là của trình duyệt — phủ trong suốt lên N ô vẽ trang trí. Form-associated:
+gửi **một** giá trị dưới `name`. Component **chỉ nhận mã**: không tự submit, không gọi API, không đếm ngược, không có nút
+"gửi lại" — đó là việc của trang. **Không** dùng cho mật khẩu, mã dài hơn 10 ký tự, mã có ký tự đặc biệt / phân nhóm
+hiển thị (`ABCD-1234`) hay số điện thoại — dùng [input field](input-field.md).
 
 | | |
 |---|---|
 | Import | `import '@dazzxq/td-components/otp-input'` (class: `import { TdOtpInput } from '@dazzxq/td-components'`) |
 | Loại | Custom element |
 | Form-associated | có |
-| Từ phiên bản | 0.27.0 (token-native: cần `td.css`) |
+| Từ phiên bản | 0.27.0 (token-native: cần `td.css`); `length` / `charset` / `case` + ô giữ hình từ 0.36.0 |
 
 ## Ví dụ nhanh
 
@@ -49,9 +50,32 @@ Form gửi `code=123456` (đúng một mục). `required` + rỗng → form khô
 - `autocomplete="one-time-code"`: iOS / Android gợi ý mã từ SMS; trình quản lý mật khẩu điền mã TOTP. Mã điền vào một
   lần → `complete` phát một lần.
 
+### 1b. Độ dài và bộ ký tự (0.36.0)
+
+```html
+<td-otp-input name="code" label="Mã 8 số" length="8"></td-otp-input>
+<td-otp-input name="steam" label="Mã Steam Guard" length="5" charset="alphanumeric"></td-otp-input>
+<td-otp-input name="word" label="Mã chữ" length="4" charset="alpha" case="lower"></td-otp-input>
+```
+
+- `length`: số nguyên **1–10** (mặc định 6). Giá trị khác (`0`, `11`, `"abc"`, `8.5`) → **dùng 6** + một cảnh báo console
+  cho mỗi phần tử (không kẹp: kẹp 12 → 10 sẽ tạo mã sai âm thầm). Đổi `length` sau khi chạy → render lại, giá trị bị cắt
+  theo độ dài mới.
+- `charset`: `numeric` (mặc định) · `alphanumeric` · `alpha`. `case` (chỉ bộ có chữ): `upper` (mặc định) · `lower` ·
+  `preserve`.
+- Chuẩn hoá từng ký tự: chữ số full-width / Ả Rập → ASCII; chữ: chuẩn hoá NFKC từng ký tự (full-width `Ａ` → `A`) rồi chỉ
+  nhận `A–Z` / `a–z`, đổi hoa / thường theo `case`; mọi ký tự khác (khoảng trắng, `-`, chữ có dấu `â`, emoji) bị bỏ. Dán
+  `ab-12 34` vào bộ `alphanumeric` → `AB1234`.
+- Bàn phím điện thoại: `numeric` → bàn phím số (`inputmode="numeric"`); bộ có chữ → `inputmode="text"`,
+  `autocapitalize="characters"` (khi `upper`; khác → `off`), `autocorrect="off"`, `spellcheck="false"`.
+- **Bộ gõ tiếng Việt (Telex / VNI)**: kit không chuẩn hoá giữa lúc đang gõ dấu (composition), chỉ chuẩn hoá một lần khi
+  kết thúc — nhưng Telex có thể biến `aa` thành `â` (bị bỏ). Hãy hướng dẫn người dùng **tắt bộ gõ** khi nhập mã có chữ.
+- Câu báo thiếu ký tự: số → `messages.tooShort` (`Mã gồm {length} chữ số.`), có chữ → `messages.tooShortChars`
+  (`Mã gồm {length} ký tự.`).
+
 ### 2. Event `complete` — và vì sao component không tự submit
 
-`complete` (`detail: { value }`) phát **một lần cho mỗi "lượt"**: khi số thứ 6 vào với một giá trị chưa phát. Xoá một số
+`complete` (`detail: { value }`) phát **một lần cho mỗi "lượt"**: khi ký tự thứ `length` (mặc định 6) vào với một giá trị chưa phát. Xoá một số
 (hoặc gọi `reset()`) thì "lượt" mới bắt đầu, đủ 6 số lại phát. Gán `value` bằng code **không bao giờ** phát.
 
 Component cố ý **không** submit, không gọi API, không đếm ngược: mỗi app có luồng riêng (submit form, gọi `fetch`,
@@ -195,7 +219,14 @@ function askStepUpCode() {
 ```
 
 Mặc định helper in một **ô nhập native** chạy đủ khi không có JS (`maxlength="6"`, `pattern="[0-9]{6}"`, `required`,
-`autocomplete="one-time-code"`), cùng hộp với bản có JS. `'element' => true` (hoặc `Td::configure(…, ['ssr_elements'
+`autocomplete="one-time-code"`), cùng hộp với bản có JS. 0.36.0: option `length` (1–10; sai → 6 + `E_USER_WARNING`),
+`charset`, `case` — cùng luật chuẩn hoá với JS (`td__otp_value`, kiểm parity bằng bảng `OTP_CASES`); `maxlength` = N,
+`pattern` = `[0-9]{N}` · `[A-Za-z0-9]{N}` · `[A-Za-z]{N}` (pattern native nhận cả chữ thường — server tự chuẩn hoá hoa /
+thường). Chuẩn hoá chữ full-width ở PHP dùng `Normalizer` (ext intl); thiếu intl chỉ chữ full-width được gấp.
+
+```php
+<?= td_otp_input('steam', ['label' => 'Mã Steam Guard', 'length' => 5, 'charset' => 'alphanumeric', 'element' => true]) ?>
+``` `'element' => true` (hoặc `Td::configure(…, ['ssr_elements'
 => true])`) in host `<td-otp-input data-td-ssr="otp-input@1">` + input + 6 ô — module nạp thì nhận **tại chỗ**. Chi tiết
 option và id: [Adapter PHP › td_otp_input](../guides/php-adapter.md#td_otp_input-0270).
 
@@ -204,7 +235,10 @@ option và id: [Adapter PHP › td_otp_input](../guides/php-adapter.md#td_otp_in
 | Attribute | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
 | `name` | string | — | Tên field khi submit form. |
-| `value` | string | `''` | Giá trị **mặc định** (chuẩn hoá: chỉ giữ số, tối đa 6). Đổi sau khi render → đặt luôn giá trị sống (không phát event). `form.reset()` về giá trị này. |
+| `value` | string | `''` | Giá trị **mặc định** (chuẩn hoá theo bộ ký tự, tối đa `length`). Đổi sau khi render → đặt luôn giá trị sống (không phát event). `form.reset()` về giá trị này. |
+| `length` | number | `6` | (0.36.0) Số ký tự, 1–10. Sai → 6 + một cảnh báo. Đổi → render lại. |
+| `charset` | string | `numeric` | (0.36.0) `numeric` · `alphanumeric` · `alpha`. Đổi → render lại. |
+| `case` | string | `upper` | (0.36.0) `upper` · `lower` · `preserve` (chỉ áp cho chữ). |
 | `label` | string | — | Nhãn hiển thị (`<label for>` nội bộ). Đổi → render lại. |
 | `required` | boolean | — | Rỗng → `valueMissing`. |
 | `disabled` | boolean | — | Khoá input, không gửi giá trị. |
@@ -216,16 +250,17 @@ option và id: [Adapter PHP › td_otp_input](../guides/php-adapter.md#td_otp_in
 
 | Thành viên | Kiểu / chữ ký | Mô tả |
 |---|---|---|
-| `value` | `string` | Các số đã nhập (0–6 ký tự). Gán → chuẩn hoá (số full-width / Ả Rập → ASCII, bỏ ký tự khác, cắt 6), **không** phát `input` / `complete`; gán đủ 6 số coi như "lượt" đó đã hoàn tất. |
+| `value` | `string` | Các ký tự đã nhập (0…`length`). Gán → chuẩn hoá (theo bộ ký tự, cắt `length`), **không** phát `input` / `complete`; gán đủ coi như "lượt" đó đã hoàn tất. |
+| `length` / `charset` | `number` / `string` | (0.36.0) Giá trị đã resolve (sai → mặc định); gán → đặt attribute. |
 | `reset()` | `() => void` | Xoá mã và mở lại `complete`. |
 | `setError(msg)` / `clearError()` | `(string) => void` | Error contract. |
 | `errorMessage` | `string` (chỉ đọc) | Lỗi đang hiện. |
 | `form`, `validity`, `validationMessage`, `willValidate` | — | Như control native. |
 | `checkValidity()` / `reportValidity()` | `() => boolean` | Như control native. |
 | `focus()` | `() => void` | Focus input bên trong. |
-| `TdOtpInput.LENGTH` | `6` (static) | Số chữ số — cố định, không cấu hình. |
+| `TdOtpInput.LENGTH` | `6` (static) | **Deprecated** (0.36.0): độ dài **mặc định**; độ dài thật là property `length`. |
 | `TdOtpInput.labels.input` | static | Tên mặc định khi không có nhãn nào: `'Mã xác thực'`. |
-| `TdOtpInput.messages` | static | `valueMissing: 'Vui lòng nhập mã xác thực.'`, `tooShort: 'Mã gồm {length} chữ số.'` (`{length}` = 6). |
+| `TdOtpInput.messages` | static | `valueMissing: 'Vui lòng nhập mã xác thực.'`, `tooShort: 'Mã gồm {length} chữ số.'`, `tooShortChars: 'Mã gồm {length} ký tự.'` (0.36.0, bộ có chữ). |
 
 Dịch cho site (gán một lần trong file boot):
 
@@ -241,7 +276,7 @@ TdOtpInput.messages.tooShort = 'Enter all {length} digits.';
 | Event | detail | Khi nào | bubbles? |
 |---|---|---|---|
 | `input` | — (event native) | Mỗi lần người dùng gõ / dán / xoá / tự điền. Phát từ input bên trong; lúc trang nhận, `otp.value` đã được chuẩn hoá. | có |
-| `complete` | `{ value }` | Số thứ 6 vào với giá trị chưa phát trong "lượt" này. Đúng **một lần** mỗi lượt; xoá một số hoặc `reset()` mở lượt mới. Gán `value` bằng code và `form.reset()` **không** phát. | có (composed) |
+| `complete` | `{ value }` | Ký tự thứ `length` vào với giá trị chưa phát trong "lượt" này. Đúng **một lần** mỗi lượt; xoá một số hoặc `reset()` mở lượt mới. Gán `value` bằng code và `form.reset()` **không** phát. | có (composed) |
 
 Không có event `change` riêng (input bên trong vẫn phát `change` native khi blur).
 
@@ -250,8 +285,9 @@ Không có event `change` riêng (input bên trong vẫn phát `change` native k
 | Token | Mặc định | Tác dụng |
 |---|---|---|
 | `--td-otp-cell-w` | `2.75rem` | Rộng một ô (hộp co lại trên màn hẹp) |
-| `--td-otp-cell-h` | `3.25rem` | Cao ô (= cao hộp) |
-| `--td-otp-gap` | `0.5rem` | Khoảng cách giữa các ô |
+| `--td-otp-cell-aspect` | `44 / 52` | (0.36.0) Tỉ lệ rộng / cao của ô — ô **giữ hình** khi hộp co (chiều cao theo bề rộng thật). |
+| `--td-otp-cell-h` | `3.25rem` | Cao của ô nhập **native** (PHP không JS). **Deprecated** cho element mode từ 0.36.0 (không còn tác dụng — đặt `--td-otp-cell-aspect`). |
+| `--td-otp-gap` | `0.5rem` | Khoảng cách giữa các ô (tối đa 3 % bề rộng hộp) |
 | `--td-otp-radius` | `var(--td-field-radius-md)` | Bo góc ô |
 | `--td-otp-bg` | `var(--td-control-bg)` | Nền ô |
 | `--td-otp-fg` | `var(--td-control-fg)` | Chữ số |
@@ -266,25 +302,29 @@ Không có event `change` riêng (input bên trong vẫn phát `change` native k
 
 ```css
 :root { --td-otp-cell-w: 3rem; --td-otp-gap: 0.75rem; }
-.compact-form td-otp-input { --td-otp-cell-h: 2.75rem; --td-otp-font-size: var(--td-text-lg); }
+.compact-form td-otp-input { --td-otp-cell-aspect: 1; --td-otp-font-size: var(--td-text-lg); }
 ```
 
-Ô là lớp nội dung: nền đặc, không glass. Hộp có cùng kích thước khi có và không có JS (không xô layout lúc nâng cấp);
-chữ số luôn đọc trái → phải kể cả trang `dir="rtl"`.
+Ô là lớp nội dung: nền đặc, không glass. **Hình ô (0.36.0):** các ô luôn nằm trong luồng (lưới N cột bằng nhau) và giữ tỉ
+lệ `--td-otp-cell-aspect` → trên điện thoại hộp co lại thì ô **nhỏ đi cả hai chiều**, không còn bị kéo thành "viên thuốc"
+cao. Trên màn cảm ứng ô không thấp hơn `--td-touch-min` (44px) — nên ô chỉ cao hơn tỉ lệ khi ô hẹp hơn ~37px (cột hẹp
+hơn ~262px với 6 ô). Hộp có cùng kích thước trước và sau khi module nạp (SSR element mode: ô ẩn nhưng vẫn chiếm chỗ,
+input phủ lên hiện như ô nhập thường); ký tự luôn đọc trái → phải kể cả trang `dir="rtl"`.
 
 ## Cấu trúc DOM & class
 
 ```html
 <td-otp-input id="otp" name="code" label="Mã xác thực">
-  <div class="td-otp">
+  <div class="td-otp">  <!-- length ≠ 6: data-length="N" -->
     <label class="td-otp__label" for="otp-input">Mã xác thực</label>
     <div class="td-otp__box">
       <input type="text" class="td-otp__input" id="otp-input" inputmode="numeric" autocomplete="one-time-code">
+      <!-- bộ có chữ: inputmode="text" autocapitalize="characters|off" autocorrect="off" spellcheck="false" -->
       <span class="td-otp__cells" aria-hidden="true">
         <span class="td-otp__cell" data-state="filled">1</span>
         <span class="td-otp__cell" data-state="filled">2</span>
         <span class="td-otp__cell" data-state="empty" data-active></span>
-        … (đủ 6 ô)
+        … (đủ length ô)
       </span>
     </div>
   </div>
@@ -296,9 +336,9 @@ chữ số luôn đọc trái → phải kể cả trang `dir="rtl"`.
   riêng (option `id` của PHP) — component giữ id đó.
 - Trạng thái ô (do JS đặt, không phải class): `data-state="empty|filled"`, `data-active` (ô có con trỏ, hoặc các ô đang
   được chọn, khi input focus). Trạng thái input: `:disabled`, `[readonly]`, `[aria-invalid="true"]`.
-- Trước khi phần tử được định nghĩa (chưa có JS / module đang tải): ô bị ẩn, **chính input** là ô nhập nhìn thấy được
-  (chữ số giãn cách, cùng hộp). Sau khi định nghĩa: input trong suốt phủ lên 6 ô, vẫn là control thật (focus, con trỏ,
-  dán, tự điền).
+- Trước khi phần tử được định nghĩa (module đang tải): ô bị ẩn (`visibility: hidden`, vẫn chiếm chỗ → hộp đúng cỡ),
+  **chính input** phủ lên là ô nhập nhìn thấy được. Sau khi định nghĩa: input trong suốt phủ lên N ô, vẫn là control thật
+  (focus, con trỏ, dán, tự điền). Ô nhập native của PHP (không host) giữ chiều cao cố định `--td-otp-cell-h`.
 
 ### Hợp đồng SSR `otp-input@1` — hydrate tại chỗ
 
@@ -307,8 +347,9 @@ chữ số luôn đọc trái → phải kể cả trang `dir="rtl"`.
 `maxlength="6"`, `pattern="[0-9]{6}"` để form chạy khi chưa có JS.
 
 - **Nhận tại chỗ** khi: dấu `otp-input@1`; cấu trúc đúng `render()` (wrapper, nhãn chỉ có chữ, hộp, input `type=text`
-  + `inputmode=numeric` + `autocomplete=one-time-code` + id đúng, 6 ô mỗi ô tối đa một chữ số, dòng lỗi đúng khi có
-  lỗi); attribute chỉ nằm trong allowlist (`aria-*` / `data-*`, không `on*` / `style` / `form`…); `name` / `required` /
+  + `inputmode` / thuộc tính chữ đúng bộ ký tự + `autocomplete=one-time-code` + id đúng, N ô mỗi ô tối đa một ký tự của bộ,
+  dòng lỗi đúng khi có lỗi); **0.36.0 (thêm, vẫn `@1`)**: số ô == `length` của host == `data-length` của wrapper (chỉ có
+  khi N ≠ 6), `maxlength` / `pattern` lần đầu khớp `length` + `charset`; attribute chỉ nằm trong allowlist (`aria-*` / `data-*`, không `on*` / `style` / `form`…); `name` / `required` /
   `disabled` / `readonly` của input khớp host.
 - **Giữ nguyên:** node input (giá trị người dùng gõ trước khi module tải — chuẩn hoá —, vùng chọn, focus), kích thước.
   Property `value` gán trước khi define thắng chữ đã gõ. Không phát `input` / `complete`.
@@ -318,13 +359,14 @@ chữ số luôn đọc trái → phải kể cả trang `dir="rtl"`.
 - **Không khớp** (markup bị sửa, attribute lạ, script đổi `label` / `name`… trước khi module tải, dấu `@2`) → **render
   an toàn ngay**, trả lại giá trị, vùng chọn và focus cho input mới.
 - Gỡ ra rồi gắn lại phần tử đã hydrate: kiểm lại markup rồi gắn listener tại chỗ; bị sửa lúc tách → render lại.
+- **PHP và JS phải cùng phiên bản**: JS cũ (cache) gặp markup 8 ô sẽ render an toàn thành 6 ô (không biết `length`).
 
 ## Bàn phím & trợ năng
 
 | Phím | Tác dụng |
 |---|---|
 | Tab | Vào / ra ô (một điểm dừng duy nhất — chỉ có một input) |
-| 0–9 | Nhập số (bàn phím số trên điện thoại nhờ `inputmode="numeric"`) |
+| 0–9 / A–Z | Nhập ký tự của bộ (bàn phím số trên điện thoại khi `numeric`) |
 | Backspace / Delete | Xoá số (như ô text thường); mở lại `complete` |
 | ← / → / Home / End | Di con trỏ; ô tương ứng có vòng focus |
 | Ctrl/⌘+V | Dán (chuẩn hoá) |
@@ -347,7 +389,8 @@ chữ số luôn đọc trái → phải kể cả trang `dir="rtl"`.
 
 ## Lưu ý & lỗi thường gặp
 
-- **Không có `length`.** Luôn 6 số (`TdOtpInput.LENGTH`). Mã 4 / 8 số hoặc có chữ → dùng input field.
+- **Từ 0.36.0 có `length` / `charset`.** Mã 4 / 8 số, mã chữ-số 5 ký tự → `length` + `charset`. Mã > 10 ký tự, ký tự đặc
+  biệt hoặc phân nhóm `123-456` hiển thị → dùng input field.
 - **`complete` không phát khi gán `value`** — cố ý (khôi phục state không được kích hoạt lại luồng xác thực). Muốn xử
   lý ngay mã đã có, gọi trực tiếp hàm xác thực của bạn.
 - **Sai mã mà gõ lại y hệt không thấy `complete`**: mã cũ còn đủ 6 số nên "lượt" đó đã phát. Gọi `reset()` sau khi

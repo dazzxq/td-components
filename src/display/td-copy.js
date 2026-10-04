@@ -14,7 +14,8 @@ const DEFAULT_DURATION = 2000;
  *   while "copied" the button's `aria-label` is `labels.copied` (back to `label` after `duration`) and a polite live
  *   region announces it. No text mode, no toast (the page may call TdToast on
  *   `copy-success`).
- * - Source, in order: the `value` property, the `value` attribute, `for="id"` (an input / textarea / select's value, any
+ * - Source, in order: the `value` property, the `value` attribute, `for="id"` (an input / textarea / select's value — v0.36.0:
+ *   also a kit field host such as `<td-input-field>`, read through its `value` property —, any
  *   other element's text), the server-authored `<code class="td-copy__source">` (exactly ONE direct child; captured as
  *   state on the first connect, before any render — a re-render rebuilds it with the captured text).
  * - Copy: `navigator.clipboard.writeText` inside the click (user activation). Refused / unavailable → the source is
@@ -152,7 +153,12 @@ export class TdCopy extends TdBaseElement {
     if (this._valueProp != null) return this._valueProp;
     if (this.hasAttribute('value')) return this.getAttribute('value');
     const target = this._target();
-    if (target) return TdCopy._isField(target) ? target.value : target.textContent;
+    if (target) {
+      if (TdCopy._isField(target)) return target.value;
+      // v0.36.0 (plan QĐ 53): a kit form host (td-input-field, td-number-input, …) — its string `value`
+      if (TdCopy._isKitField(target)) return String(/** @type {any} */ (target).value);
+      return target.textContent;
+    }
     if (this.hasAttribute('for')) return null;
     return this._source;
   }
@@ -169,6 +175,19 @@ export class TdCopy extends TdBaseElement {
   /** @private */
   static _isField(el) {
     return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement;
+  }
+
+  /** @private v0.36.0: a kit custom element (`td-*`) exposing a string `value` property */
+  static _isKitField(el) {
+    return el.localName.startsWith('td-') && el.localName.includes('-') && typeof /** @type {any} */ (el).value === 'string';
+  }
+
+  /** @private the native control INSIDE a kit field host (for the manual-copy selection), else null */
+  static _innerControl(el) {
+    for (const c of el.querySelectorAll('input, textarea')) {
+      if (c.closest(el.localName) === el && c.type !== 'hidden') return /** @type {HTMLInputElement} */ (c);
+    }
+    return null;
   }
 
   /** @private */
@@ -256,7 +275,8 @@ export class TdCopy extends TdBaseElement {
 
   /** @private the `for` field / element is selected; a value without one goes into a temporary read-only field */
   _selectForManualCopy(text) {
-    const target = this._target();
+    let target = this._target();
+    if (target && !TdCopy._isField(target) && TdCopy._isKitField(target)) target = TdCopy._innerControl(target) || target;
     try {
       if (target && TdCopy._isField(target) && !(target instanceof HTMLSelectElement)) {
         target.focus({ preventScroll: true });

@@ -51,7 +51,7 @@ const live = () => q('.td-media-picker__live')?.textContent || '';
 const confirmBtn = () => q('.td-media-picker__confirm');
 const btnText = (b) => (b?.textContent || '').trim();
 /** v0.33: the footer shows the count (data-count), the 40px thumb tray is gone */
-const selCount = () => Number(q('.td-media-picker__selcount')?.getAttribute('data-count') || 0);
+const selCount = () => Number(q('.td-media-picker__clear')?.getAttribute('data-count') || 0);
 const searchHost = () => q('.td-media-picker__search');
 const searchInput = () => q('.td-media-picker__search input');
 const modalRoots = () => [...document.body.querySelectorAll(':scope > .td-modal:not(.td-media-picker)')].filter((r) => r.getAttribute('data-state') !== 'closing');
@@ -491,7 +491,7 @@ describe('td-media-picker — initialIds transaction (R1-4, R2-4)', () => {
     expect(selCount()).to.equal(0);
     getCall(ad, 'm1').resolve();
     await until(() => selCount() === 3);
-    expect(q('.td-media-picker__selcount').textContent).to.equal('Đã chọn 3');
+    expect(btnText(q('.td-media-picker__clear'))).to.equal('3 đã chọn');
     expect(btnText(confirmBtn())).to.equal('Chèn (3)');
     expect(loadingNote().hidden).to.equal(true);
     expect(changes.length, 'no selection-change for initial').to.equal(0);
@@ -578,32 +578,43 @@ describe('td-media-picker — latest wins + abort (decision 9)', () => {
 
   it('search is debounced 250 ms (one request for a burst), Enter runs it now', async () => {
     const { ad } = await openReady();
+    // v0.36.0 (QĐ 69): let the auto preview of the first asset settle first — its detail render must not slow the burst
+    await until(() => ad.calls.get.length >= 1 && document.querySelector('.td-media-picker__detail[data-state="ready"]:not([data-loading])'), 4000, 'auto preview settled');
     const n0 = ad.calls.list.length;
     const input = searchInput();
     input.focus();
+    // keystroke timing is real: under heavy machine load a gap between two keys can itself exceed the 250 ms debounce,
+    // and then a request for the partial text is CORRECT — count the gaps instead of assuming a fast burst
+    const stamps = [];
+    const onInput = () => stamps.push(performance.now());
+    input.addEventListener('input', onInput);
     await sendKeys({ type: 'anh' });
-    await wait(100);
-    expect(ad.calls.list.length).to.equal(n0);
+    input.removeEventListener('input', onInput);
+    const longGaps = stamps.slice(1).filter((t, i) => t - stamps[i] >= 250).length;
+    await until(() => ad.calls.list.length >= n0 + 1 + longGaps && ad.calls.list.at(-1).args[0].query === 'anh', 4000, 'debounced request');
     await wait(300);
-    expect(ad.calls.list.length).to.equal(n0 + 1);
+    expect(ad.calls.list.length, `one request per settled burst (${longGaps} long gap(s))`).to.equal(n0 + 1 + longGaps);
     expect(ad.calls.list.at(-1).args[0].query).to.equal('anh');
+    const n1 = ad.calls.list.length;
     await sendKeys({ type: '-2' });
     await sendKeys({ press: 'Enter' });
-    expect(ad.calls.list.length).to.equal(n0 + 2);
+    expect(ad.calls.list.length).to.be.at.least(n1 + 1);
     expect(ad.calls.list.at(-1).args[0].query).to.equal('anh-2');
   });
 
   it('detail A then B quickly → B shown, get(A) aborted', async () => {
     const { ad } = await openReady();
+    // v0.36.0 (QĐ 69): the open auto-previews m60 (one get, already settled) — view two OTHER assets quickly
+    await until(() => ad.calls.get.length >= 1, 4000, 'auto preview get');
+    const base = ad.calls.get.length;
     ad.manual = true;
-    click(opener('m60'));
-    click(tick('m60')); // deselect so the next click activates again
+    click(opener('m58'));
     click(opener('m59'));
-    await until(() => ad.calls.get.length === 2);
-    expect(ad.calls.get[0].signal.aborted).to.equal(true);
+    await until(() => ad.calls.get.length === base + 2);
+    expect(ad.calls.get[base].signal.aborted).to.equal(true);
     ad.ignoreSignal = true;
-    ad.calls.get[1].resolve();
-    ad.calls.get[0].resolve();
+    ad.calls.get[base + 1].resolve();
+    ad.calls.get[base].resolve();
     await wait(30);
     expect(q('.td-media-picker__detail-name').textContent).to.equal(assetName('m59'));
   });
@@ -783,7 +794,7 @@ describe('td-media-picker — selection (decision 13)', () => {
     await until(() => ids().every((id) => assetName(id).includes('anh-1')) && items().length);
     click(tick('m19'));
     expect(selCount()).to.equal(3);
-    expect(q('.td-media-picker__selcount').textContent).to.equal('Đã chọn 3/3');
+    expect(btnText(q('.td-media-picker__clear'))).to.equal('3/3 đã chọn');
     click(tick('m18'));
     await wait(20);
     expect(grid().selectedIds.includes('m18')).to.equal(false);
@@ -826,7 +837,7 @@ describe('td-media-picker — selection (decision 13)', () => {
     await openReady({ selection: { mode: 'multiple' } });
     click(tick('m60'));
     click(tick('m59'));
-    expect(btnText(q('.td-media-picker__clear'))).to.equal('Bỏ chọn tất cả');
+    expect(q('.td-media-picker__clear button').getAttribute('aria-label')).to.match(/^Bỏ chọn tất cả \(/);
     q('.td-media-picker__clear').click();
     expect(selCount()).to.equal(0);
     expect(grid().selectedIds).to.deep.equal([]);
@@ -1251,7 +1262,7 @@ describe('td-media-picker — cache after a change (R1-7)', () => {
 });
 
 describe('td-media-picker — mobile, motion, forced colours', () => {
-  it('375×740 (v0.33: full viewport, no sheet): detail pane slides over the list + "Quay lại" returns focus; facets inline (no "Bộ lọc"); footer count only', async () => {
+  it('375×740 (v0.33: full viewport, no sheet): detail pane slides over the list + "Quay lại" returns focus; v0.36: facets behind "Bộ lọc"; footer count only', async () => {
     await setViewport({ width: 375, height: 740 });
     await openReady({ selection: { mode: 'multiple', maxItems: 5 } });
     await openSettled();
@@ -1261,8 +1272,9 @@ describe('td-media-picker — mobile, motion, forced colours', () => {
     expect(Math.abs(r.top) <= 1, `top ${r.top}`).to.equal(true);
     expect(Math.abs(r.width - 375) <= 1, `width ${r.width}`).to.equal(true);
     await until(() => q('.td-media-picker__facets') && !q('.td-media-picker__facets').hidden, 3000, 'facets');
-    expect(q('.td-media-picker__filters-toggle') === null).to.equal(true);
-    expect(getComputedStyle(q('.td-media-picker__facets')).display).to.not.equal('none');
+    // v0.36.0 (QĐ 49): < 1024 the facets leave the toolbar for the "Bộ lọc" sheet trigger
+    expect(getComputedStyle(q('.td-media-picker__facets')).display).to.equal('none');
+    expect(getComputedStyle(q('.td-media-picker__filter')).display).to.not.equal('none');
     click(tick('m60'));
     expect(q('.td-media-picker__tray-list') === null, 'no thumb tray').to.equal(true);
     expect(selCount()).to.equal(1);
@@ -1388,7 +1400,10 @@ describe('td-media-picker + td-media-field (integration, real picker)', () => {
     expect(ad.calls.list[0].args[0].kinds).to.deep.equal(['image']);
     expect(ad.calls.get.some((c) => c.args[0] === 'm58')).to.equal(true);
     await until(() => grid().selectedIds.includes('m58'), 3000, 'initial selection');
-    expect(ad.calls.get.filter((c) => c.args[0] === 'm58').length).to.equal(1); // SSR preview: no lazy get by the field
+    // SSR preview: no lazy get by the field — the picker's initial selection load, plus (v0.36.0 review ISSUE-2) its auto
+    // preview of the first selected asset in the results
+    await until(() => !q('.td-media-picker__detail').hasAttribute('data-loading'), 3000, 'preview settled');
+    expect(ad.calls.get.filter((c) => c.args[0] === 'm58').length).to.be.at.most(2);
     click(opener('m59'));
     confirmBtn().click();
     await until(() => field.value === 'm59', 3000, 'value');

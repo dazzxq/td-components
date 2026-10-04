@@ -121,8 +121,11 @@ Quan trọng: menu **không bao giờ sửa object item của bạn**. Trạng t
 bạn phải lưu vào model của mình (như ví dụ trên), nếu không lần mở sau sẽ hiện trạng thái cũ. Vì vậy nên dùng dạng
 hàm `() => items` để mỗi lần mở đọc lại model.
 
-- `checkbox`: bấm là đảo trạng thái **tại chỗ**, menu **vẫn mở**.
-- `radio`: bấm chọn một mục trong cùng `group`, menu **đóng**, `ctx.checked` luôn là `true`.
+- `checkbox`: bấm là đảo trạng thái **tại chỗ**, menu **vẫn mở**. Từ 0.36.0 mục hiện
+  [ô tick chung](checkbox.md#phần-hình-dùng-chung-td-check-0360) cỡ `sm` **luôn hiện** (hộp rỗng khi tắt, đã tick khi bật —
+  đúng hình `td-checkbox`); trước là ✓ trần chỉ hiện khi bật.
+- `radio`: bấm chọn một mục trong cùng `group`, menu **đóng**, `ctx.checked` luôn là `true`. Radio **giữ dấu ✓** (chỉ hiện
+  ở mục đang chọn) — ngữ nghĩa chọn một, không phải hộp.
 - Item có `checked` (boolean) mà không có `type` → được coi là `radio` (tương thích dwp).
 
 ### 5. Registry tuỳ chọn: lõi định nghĩa, module/site thêm mục (0.14.0)
@@ -340,7 +343,11 @@ Menu (tạo khi mở, gỡ khi đóng; `{m}` = `td-menu-{n}`):
   <div class="td-menu__separator" role="separator"></div>
   <button type="button" class="td-menu__item" role="menuitemcheckbox" tabindex="-1" aria-checked="true">
     <span class="td-menu__label">Chế độ tối</span>
-    <span class="td-menu__check" data-td-icon="check" aria-hidden="true"><svg class="td-icon td-icon--m" data-icon="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"/></svg></span>
+    <span class="td-check td-check--sm td-menu__check" aria-hidden="true"><svg class="… td-check__svg" data-icon="check" …/></span>  <!-- 0.36.0 -->
+  </button>
+  <button type="button" class="td-menu__item" role="menuitemradio" tabindex="-1" aria-checked="false">
+    <span class="td-menu__label">Dạng lưới</span>
+    <span class="td-menu__check" data-td-icon="check" aria-hidden="true"><svg …/></span>                <!-- radio: ✓ trần -->
   </button>
   <a class="td-menu__item" role="menuitem" tabindex="-1" href="https://example.com/"
      target="_blank" rel="noopener noreferrer"><span class="td-menu__label">Mở trang</span></a>
@@ -354,7 +361,8 @@ Menu (tạo khi mở, gỡ khi đóng; `{m}` = `td-menu-{n}`):
 | `.td-menu[data-placement="bottom\|top"]` | Phía thực tế sau khi tự lật |
 | `.td-menu[data-align="start\|center\|end"]` | Căn lề |
 | `.td-menu__item[aria-disabled="true"]` | Mục disabled |
-| `.td-menu__item[aria-checked="true"] .td-menu__check` | Dấu check hiện |
+| `.td-menu__item[aria-checked="true"] .td-menu__check` | Radio: dấu ✓ hiện |
+| `.td-menu__check.td-check` | 0.36.0: mục checkbox — ô tick chung, luôn hiện; trạng thái từ `aria-checked` (`check.css`) |
 | `.td-menu__item--danger` | Mục nguy hiểm |
 | Trigger `[aria-expanded="true"]` | Menu của trigger đang mở (`.td-menu-btn` tô nền) |
 

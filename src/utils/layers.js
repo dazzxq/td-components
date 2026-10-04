@@ -411,3 +411,45 @@ export function restoreFocus(saved) {
   const el = /** @type {HTMLElement} */ (top.element);
   return tryFocus(el.querySelector('[role="dialog"], [role="alertdialog"]')) || tryFocus(el);
 }
+
+/* ------------------------------------------------------------------ v0.36.0 internal: swallowed outside press */
+
+/** @type {null|{ id: number, timer: number, up: (e: Event) => void, click: (e: Event) => void, down: () => void }} */
+let swallowed = null;
+
+function clearSwallowedPress() {
+  const st = swallowed;
+  if (!st) return;
+  swallowed = null;
+  clearTimeout(st.timer);
+  window.removeEventListener('pointerup', st.up, true);
+  window.removeEventListener('click', st.click, true);
+  window.removeEventListener('pointerdown', st.down, true);
+}
+
+/**
+ * INTERNAL (v0.36.0, not a public API): the rest of a MOUSE press that only dismissed a popup is swallowed — its
+ * pointerup (same pointerId) and the click it generates never reach the page (e.g. the lightbox image would zoom). The
+ * guard ends with that click, the next pointerdown, or after 1 s. The caller already prevented + stopped the pointerdown.
+ * @param {number} pointerId
+ */
+export function swallowPointerPress(pointerId) {
+  if (typeof window === 'undefined') return;
+  clearSwallowedPress();
+  const stop = (e) => { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); };
+  const st = {
+    id: pointerId,
+    timer: 0,
+    up: (e) => { if (/** @type {PointerEvent} */ (e).pointerId === st.id) stop(e); },
+    click: (e) => { stop(e); clearSwallowedPress(); },
+    down: () => clearSwallowedPress(),
+  };
+  // added while the swallowed pointerdown is still being dispatched (document capture): window capture is already
+  // behind it, so `down` only sees the NEXT press
+  window.addEventListener('pointerup', st.up, true);
+  window.addEventListener('click', st.click, true);
+  window.addEventListener('pointerdown', st.down, true);
+  st.timer = setTimeout(clearSwallowedPress, 1000);
+  swallowed = st;
+}
+

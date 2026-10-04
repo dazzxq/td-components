@@ -83,7 +83,7 @@ Adapter là **object callback**, không bao giờ là chuỗi URL endpoint. Kit 
 │                                                       │ ──────────────────── │
 │                                                       │ [Tải về][Copy][Xoá][Lưu] │
 ├───────────────────────────────────────────────────────┴──────────────────────┤
-│ Đã chọn 2/5 · Bỏ chọn tất cả                                    [Đóng] [Chèn (2)] │  footer (viền trên)
+│ [2/5 đã chọn ×]                                                  [Đóng] [Chèn (2)] │  footer (viền trên)
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -92,14 +92,17 @@ Adapter là **object callback**, không bao giờ là chuỗi URL endpoint. Kit 
   thanh home của iOS); body chỉ nhận inset hai bên.
 - **Content** hai cột `[danh sách | chi tiết 25rem]`, cách nhau `1rem`. Chỉ danh sách cuộn; panel chi tiết cuộn riêng khi
   dài. Breakpoint **720px** (0.34.0, [ADR 0014](../internal/decisions/0014-breakpoints-container-queries.md); dcms2 / 0.33.0: 768px). Dialog luôn phủ kín màn hình ở mọi kích thước.
+- **Dưới 1024px** (0.36.0): facet rời toolbar vào **sheet "Bộ lọc"**; **dưới 720px** phân trang nằm **dưới lưới**, footer
+  một hàng — [Toolbar dưới 1024px](#toolbar-dưới-1024px--sheet-bộ-lọc-0360).
 - **Tiêu đề mặc định theo `selection.kinds`**: `['image']` "Chọn ảnh", `['video']` "Chọn video", `['file']` "Chọn tài liệu",
   còn lại "Chọn media". Option `title` của `open()` thắng.
 
 ### Thanh công cụ + facet gọn
 
-Mọi control là component kit, theo thứ tự. Từ 720px toolbar **luôn một hàng** như dcms2, không xuống dòng: ô tìm giữ tối
-thiểu 200px, nhóm facet không đủ chỗ thì **cuộn ngang ngay trong hàng** (focus bằng bàn phím tự cuộn tới facet, vòng focus
-không bị cắt; menu dropdown / chip nổi trên lớp popover nên không bị cắt). Dưới 720px mới xuống hai hàng:
+Mọi control là component kit, theo thứ tự. Từ **1024px** toolbar **luôn một hàng** như dcms2, không xuống dòng: ô tìm giữ
+tối thiểu 200px, nhóm facet không đủ chỗ thì **cuộn ngang ngay trong hàng** (focus bằng bàn phím tự cuộn tới facet, vòng
+focus không bị cắt; menu dropdown / chip nổi trên lớp popover nên không bị cắt). Dưới 1024px facet chuyển vào sheet "Bộ lọc"
+(mục kế tiếp).
 
 | # | Control | Ghi chú |
 |---|---|---|
@@ -116,6 +119,27 @@ không bị cắt; menu dropdown / chip nổi trên lớp popover nên không b�
 
 Sắp xếp "Mới nhất / Cũ nhất" = một facet `single` key `sort` do adapter hiểu (kit không có UI sắp xếp riêng).
 
+### Toolbar dưới 1024px + sheet "Bộ lọc" (0.36.0)
+
+Từ 720–1023px facet bị cắt khi cuộn ngang, dưới 720px toolbar cũ chiếm 4 hàng (≈ 250px). Giờ toolbar **một hàng** ở mọi
+độ rộng:
+
+| Độ rộng | Toolbar | Phân trang |
+|---|---|---|
+| ≥ 1024px | Như trên (facet trong hàng, cuộn ngang) | Cuối toolbar |
+| 720–1023px | [Tải lên — chỉ icon] [ô tìm] [**Bộ lọc** + badge] | Cuối toolbar |
+| < 720px | [Tải lên — chỉ icon, 44px] [ô tìm] [**Bộ lọc** — chỉ icon, 44px + badge] | **Dưới lưới** (cuối vùng cuộn kết quả) |
+
+- Nút "Bộ lọc" (`icon="filter"`, `aria-haspopup="dialog"`) chỉ có khi adapter khai báo facet. Badge số = số bộ lọc **đang
+  áp** (ẩn khi 0); tên truy cập "Bộ lọc, {n} đang áp dụng" (`labels.filtersActive`).
+- **Sheet bộ lọc** = hộp thoại lồng (cỡ `sm`; dưới 720px là bottom sheet của [modal](modal.md)), chứa **mọi** facet
+  adapter khai báo, xếp dọc rộng hết, footer "Xoá lọc" · "Áp dụng". Không thêm facet hay sắp xếp mới.
+- Sheet làm trên **bản nháp**: đổi control trong sheet không gọi `list`, không đổi badge. **"Áp dụng"** = một lần commit
+  (về trang 1, đúng **một** request `list`; nháp trùng bộ lọc đang áp → không request) rồi đóng, focus về nút. **"Xoá
+  lọc"** chỉ xoá nháp (sheet vẫn mở). **× / Escape / đóng picker** = bỏ nháp, bộ lọc đang áp giữ nguyên. Descriptor facet
+  tải về trong lúc sheet mở được áp **sau khi** sheet đóng.
+- Quay lại ≥ 1024px: facet trong toolbar mang đúng giá trị đã áp từ sheet.
+
 ### Card
 
 Mỗi mục là một item [`td-media-grid`](media-grid.md) (`select-mode="tick"`):
@@ -130,7 +154,9 @@ Mỗi mục là một item [`td-media-grid`](media-grid.md) (`select-mode="tick"
       [<span class="td-media-picker__badges">td-badge…</span>]
     </span>
   </button>
-  <button class="td-media-grid__tick">✓</button>                    <!-- góc trên-phải, chỉ ở chế độ nhiều -->
+  <button class="td-media-grid__tick td-media-grid__tick--mark" aria-pressed="…">   <!-- góc trên-phải, chỉ ở chế độ nhiều -->
+    <span class="td-check td-check--lg td-check--on-media" aria-hidden="true">✓</span>  <!-- 0.36.0: ô tick chung, 20px -->
+  </button>
 </div>
 ```
 
@@ -148,7 +174,8 @@ Mỗi mục là một item [`td-media-grid`](media-grid.md) (`select-mode="tick"
 | Đang xem (`[data-viewing]`) | `--td-media-picker-card-viewing` | `var(--td-accent)` |
 | Đã chọn (`[data-selected]`) | `--td-media-picker-card-checked` | `var(--td-color-success)` |
 
-Đã chọn thắng đang xem. Ở chế độ nhiều, thumb của mục đã chọn mờ `--td-media-picker-checked-opacity` (0.7). Cả ba màu viền
+Đã chọn thắng đang xem. Ô tick (0.36.0) là [ô tick chung](checkbox.md#phần-hình-dùng-chung-td-check-0360) — đúng hình
+`td-checkbox`, màu `--td-checkbox-color`; `--td-media-picker-card-checked` chỉ còn tô **viền card**. Ở chế độ nhiều, thumb của mục đã chọn mờ `--td-media-picker-checked-opacity` (0.7). Cả ba màu viền
 được `test:contrast` kiểm ≥ 3:1 trên nền card — đổi token thì giữ ngưỡng đó. `forced-colors`: viền `Highlight` /
 `CanvasText`. Token khác: `--td-media-picker-detail-w` (25rem), `--td-media-picker-col-min`, `--td-media-picker-gap`,
 `--td-media-picker-list-bg`, `--td-media-picker-card-radius`, `--td-media-picker-card-shadow` — xem
@@ -167,8 +194,13 @@ Từ trên xuống: **xem trước vuông 1:1** (`contain`; video = poster, khô
 | 3 | "Xoá" (danger sm, icon `trash`) | `canDo('delete')` + có `adapter.delete` — [Xoá](#xoá) |
 | 4 | "Lưu" (success sm, icon `check`) | Có form sửa; **chỉ bật khi form bẩn** |
 
-- Chưa xem gì: `td-empty-state` "Chọn một ảnh để xem chi tiết" / "Bấm vào ảnh trong danh sách bên trái". Đang tải bản mới
-  (`get`): skeleton theo bố cục panel.
+- **Luôn có xem trước** (0.36.0, từ 720px; thứ tự: mục đang xem nếu còn trong kết quả → mục **đã chọn** đầu tiên có trong
+  kết quả → mục đầu tiên; kết quả rỗng → panel về trạng thái trống; không bao giờ đổi lựa chọn): mở picker và sau **mỗi** lần tải danh sách (tìm, lọc, đổi trang, tải lại), nếu
+  không có mục nào đang xem (hoặc mục đang xem không còn trong kết quả) thì panel **xem trước asset đầu tiên** (card có
+  `data-viewing`) — **không chọn**: "Chèn" vẫn khoá tới khi người dùng chọn. Mục đang xem còn trong kết quả → giữ; form
+  đang sửa dở không bị thay. Dưới 720px không tự mở (lưới hiện trước). [ADR 0013 › Bổ sung v0.36](../internal/decisions/0013-media-picker-boundary.md#bổ-sung-v036).
+- Chưa xem gì (danh sách rỗng, hoặc < 720px): `td-empty-state` "Chọn một ảnh để xem chi tiết" / "Bấm vào ảnh trong danh
+  sách bên trái". Đang tải bản mới (`get`): skeleton theo bố cục panel.
 - **Lưu tường minh**, không bao giờ autosave: nút "Lưu", **Enter trong ô một dòng** (chỉ trong phạm vi ô), Ctrl/⌘+Enter
   trong textarea. Lưu xong → toast "Đã lưu thay đổi" + live region.
 - Đổi sang mục khác khi form đang bẩn → hỏi "Bỏ thay đổi?" trước (dcms2 mất dữ liệu im lặng).
@@ -176,7 +208,10 @@ Từ trên xuống: **xem trước vuông 1:1** (`contain`; video = poster, khô
 ### Footer
 
 Căn phải: "Đóng" (secondary) và "Chèn" / "Chèn ({n})" (primary, disabled khi chưa chọn gì). Bên trái, **chỉ ở chế độ
-nhiều**: "Đã chọn {n}/{max}" + "Bỏ chọn tất cả". Số đếm cho thấy lựa chọn trải qua nhiều trang — dcms2 không có.
+nhiều**, một **chip "{n} đã chọn ×"** (0.36.0; "{n}/{max} đã chọn" khi có `maxItems`): vừa là số đếm (cho thấy lựa chọn trải
+qua nhiều trang — dcms2 không có), vừa là nút "Bỏ chọn tất cả" (tên đọc "Bỏ chọn tất cả ({n} đã chọn)", cập nhật mỗi lần
+chọn / bỏ). Không chọn gì → không có chip. Footer luôn **một hàng**. Nhãn: `selectedChip`, `selectedChipMax`,
+`clearSelectionChip` (`selected` / `selectedMax` cũ không còn dùng).
 
 ## Hợp đồng adapter
 
@@ -419,6 +454,10 @@ interface CropValue {             // xem Cropper
 
 ## Cắt ảnh — option `crop` (0.35.0)
 
+> **⚠ Site phải tự xử lý**: picker chỉ trả toạ độ (`usage.crop`, `usage.focalPoint`); cắt / đổi cỡ ảnh khi render là việc
+> của endpoint / CDN của site — checklist **bắt buộc** (URL ký HMAC, giới hạn biến thể, rate limit, ảnh riêng tư):
+> [Biến thể ảnh đã cắt](../guides/media-renditions.md).
+
 ```js
 const outcome = await TdMediaPicker.open({
   selection: { mode: 'single', kinds: ['image'] },
@@ -564,14 +603,28 @@ TdMediaPicker.configureDefaults({ adapter: mediaAdapter, pagination: 'pages' });
 - **Chế độ đơn**: click / Enter / Space trên card = **chọn + xem** chi tiết. Không có tick. Chọn mục khác thay mục đang
   chọn; nếu form chi tiết đang bẩn thì hỏi trước, "Không" → lựa chọn và chi tiết giữ nguyên.
 - **Chế độ nhiều** (giống dcms2): click card hoặc Enter = **chỉ xem** chi tiết, không đổi lựa chọn. Tick (góc trên-phải,
-  luôn hiện), Space, Ctrl/⌘+click = bật / tắt chọn; Shift+click / Shift+Space = chọn một dải. Vượt `maxItems` → bị chặn +
-  thông báo "Tối đa {max} mục".
-- Không tự chọn mục đầu (khác dcms2).
+  luôn hiện) và phím tắt bên dưới đổi lựa chọn. Vượt `maxItems` → bị chặn + thông báo "Tối đa {max} mục".
+- **Không bao giờ tự chọn** (khác dcms2). Từ 720px picker tự **xem trước** asset đầu ([Panel chi tiết](#panel-chi-tiết-luôn-mở)) — xem, không chọn.
+
+**Phím tắt chọn** (thật bằng chuột + bàn phím, test 3 engine). "Cmd" trên macOS, "Ctrl" trên Windows / Linux — trên macOS
+Ctrl+click là menu chuột phải, nên chỉ Cmd dùng được:
+
+| Thao tác | Chế độ nhiều | Chế độ đơn |
+|---|---|---|
+| Click / Enter trên card | Xem chi tiết (không đổi lựa chọn) | Chọn đúng mục này + xem |
+| Cmd / Ctrl + click | Bật / tắt mục, đặt mốc (anchor) | Như click thường |
+| Shift + click | **Thêm** cả dải từ mốc tới mục (không bỏ chọn ngoài dải; dừng ở `maxItems`). Mốc không còn trên trang (đã đổi trang / lọc) → bật / tắt một mục | Như click thường |
+| Space / Shift + Space | Bật / tắt / thêm dải | Chọn + xem |
+| Tick | Bật / tắt | (không có tick) |
+
+Lựa chọn tích luỹ qua nhiều trang. Shift+click không bôi đen chữ trên lưới. Không có Ctrl/Cmd+A (picker phân trang —
+"tất cả" mơ hồ) và Ctrl/Cmd+Space (đụng phím đổi bộ gõ / Spotlight).
 
 ## Dialog tải lên
 
-Nút "Tải lên" mở một dialog **lồng trên picker** (cùng tầng modal, band promotion đặt nó trên picker; cỡ md, < 720px full
-viewport): header "Tải lên media" + ×, footer "Đóng".
+Nút "Tải lên" mở một dialog **lồng trên picker** (cùng tầng modal, band promotion đặt nó trên picker; cỡ md): header
+"Tải lên media" + ×, footer "Đóng". Dưới 720px (0.36.0) là **bottom sheet cao theo nội dung** của [modal](modal.md) (trước:
+full viewport với ≈ 110px trống) và **không có footer** — × ở header đủ để đóng.
 
 - **`uploadFields`** nằm trên cùng, dùng chung cho cả hai nguồn. Giá trị được **chụp lúc mỗi tác vụ bắt đầu** (sửa ô sau đó
   không ảnh hưởng file đang tải). Field `required` chưa điền → **khoá cả hai nguồn** kèm gợi ý "Điền các trường bắt buộc
@@ -800,7 +853,8 @@ chọn chưa xác nhận **không** tính là việc dở. `close()` bằng code
 | Escape | Theo tầng: popup (dropdown, chip, lịch) → dialog lồng (tải lên, xác nhận, **bước cắt** = "Quay lại") → ô tìm có chữ (xoá chữ) → đóng picker (`cancelled / escape`, qua cổng xác nhận nếu có việc dở) |
 | Enter trên card | Đơn: chọn + xem. Nhiều: chỉ xem chi tiết |
 | Space trên card | Đơn: chọn + xem. Nhiều: bật / tắt chọn; Shift+Space: chọn dải |
-| Ctrl/⌘+click card | (nhiều) Bật / tắt chọn |
+| Ctrl+click card (⌘+click trên macOS) | (nhiều) Bật / tắt chọn; (đơn) như click |
+| Shift+click card | (nhiều) Thêm dải từ mốc; (đơn) như click |
 | Enter trong ô một dòng của form | Lưu (chỉ trong phạm vi ô) |
 | Ctrl/⌘+Enter trong form | Lưu |
 | Enter trong ô URL | Gửi tải từ URL |
@@ -808,16 +862,22 @@ chọn chưa xác nhận **không** tính là việc dở. `close()` bằng code
 - **Không có Enter toàn cục = Chèn**: chỉ nút "Chèn" ở footer xác nhận (disabled khi chưa chọn gì).
 - Live region của picker đọc: số kết quả, "Trang {n}", tải lên xong / dùng lại, đã lưu, đã xoá. `aria-busy` trên vùng kết
   quả khi đang tải. Đóng → focus về phần tử đã mở picker.
-- Facet không nhãn hiển thị vẫn có tên truy cập (`aria-label` = nhãn descriptor); nút "Tải lên" chỉ-icon trên điện thoại có
-  `aria-label`.
+- Facet không nhãn hiển thị vẫn có tên truy cập (`aria-label` = nhãn descriptor); nút "Tải lên" / "Bộ lọc" / "Bỏ chọn tất
+  cả" chỉ-icon có `aria-label` (nút Bộ lọc kèm số bộ lọc đang áp).
 
 ### Điện thoại (< 720px)
 
-- Picker vẫn full viewport (không còn bottom sheet). Toolbar **xuống dòng, không tràn**: hàng 1 "Tải lên" (chỉ icon) + ô
-  tìm; hàng 2 facet (`flex-wrap`) + phân trang.
-- Panel chi tiết là **pane full màn hình trượt vào từ phải**: đầu pane có "Quay lại" (`back`); mở pane → focus tiêu đề pane;
-  Quay lại → focus về card vừa xem. Footer "Đóng / Chèn" vẫn hiện bên dưới. dcms2 không có lối ra này.
-- Dialog tải lên full viewport. Reduced motion → chỉ fade, không trượt. Forced colors → viền card vẫn thấy.
+- Picker vẫn full viewport (không còn bottom sheet). Toolbar **một hàng** (0.36.0): "Tải lên" + ô tìm + "Bộ lọc" (chỉ
+  icon, 44px); facet trong [sheet Bộ lọc](#toolbar-dưới-1024px--sheet-bộ-lọc-0360); phân trang **dưới lưới**; footer một
+  hàng. Không tự mở chi tiết khi tải danh sách.
+- Panel chi tiết là **pane full màn hình trượt vào từ phải**; "Quay lại" là **mũi tên 44px trên header hộp thoại** (0.36.0,
+  chỉ hiện khi pane đang mở; tên `back`); mở pane → focus tiêu đề pane; Quay lại → focus về card vừa xem. Footer "Đóng /
+  Chèn" vẫn hiện bên dưới. Hàng nút của pane hiện **tối đa 3** (luôn giữ "Lưu"); phần còn lại vào nút **"Thêm"** (menu,
+  nhãn `detailMore`). dcms2 không có lối ra này.
+- 720–1023px: khi không có mục nào đang xem (kết quả rỗng) cột chi tiết **thu lại**, lưới dùng hết bề ngang; có xem trước
+  → cột hiện lại.
+- Dialog tải lên là bottom sheet cao theo nội dung, không footer. Header các hộp thoại gọn (≤ 56px, [modal](modal.md)).
+  Reduced motion → chỉ fade, không trượt. Forced colors → viền card vẫn thấy.
 
 ## Nhãn — `TdMediaPicker.labels`
 
@@ -832,6 +892,8 @@ hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dù
 | `cropTitle` · `cropBack` · `cropConfirm` · `cropUnavailable` (0.35) | "Cắt ảnh" · "Quay lại" · "Chèn" · "Không mở được ảnh để cắt." (nhãn bên trong vùng cắt: [`TdCropper.labels`](cropper.md#nhãn--tdcropperlabels)) |
 | `search` · `searchPlaceholder` | "Tìm media" (nhãn ẩn) · "Tìm kiếm media…" |
 | `upload` · `results` · `grid` | "Tải lên" · "Kết quả" · "Media" |
+| `filters` · `filtersActive` · `filtersTitle` (0.36) | "Bộ lọc" · "Bộ lọc, {n} đang áp dụng" · "Bộ lọc" |
+| `filtersApply` · `filtersClear` · `filtersClose` (0.36) | "Áp dụng" · "Xoá lọc" · "Đóng bộ lọc" |
 | `pagination` · `pageItem` · `pageInfo` · `page` | "Phân trang media" · "media" · "Hiển thị {from}-{to} / {total} media" · "Trang {n}" |
 | `prevPage` · `nextPage` · `resultsCount` | "Trang trước" · "Trang sau" · "{n} kết quả" |
 | `empty` · `emptyHint` · `retry` · `back` | "Không có media nào" · "Thử từ khoá khác" · "Thử lại" · "Quay lại" |
@@ -1008,9 +1070,12 @@ Ghi nhớ khi viết adapter:
     <div class="td-modal__body td-media-picker__body">
       <div class="td-media-picker__toolbar">
         <td-button class="td-media-picker__upload-btn"> <td-input-field class="td-media-picker__search">
+        <span class="td-media-picker__filter" [hidden]>              <!-- 0.36.0: hiện < 1024px khi có facet -->
+          <td-button class="td-media-picker__filter-btn" aria-haspopup="dialog"> <span class="td-badge td-media-picker__filter-count">
+        </span>
         <div class="td-media-picker__filters">
           <div class="td-media-picker__facets"><div class="td-media-picker__facet" data-key data-type>…</div></div>
-          <div class="td-media-picker__pager">
+          <div class="td-media-picker__pager[ td-media-picker__pager--below]">   <!-- < 720px: JS dời node xuống cuối __results -->
             <div class="td-media-picker__cursor"><p class="td-media-picker__page-info"> .td-media-picker__prev .td-media-picker__next</div>
             | <td-pagination>
           </div>
@@ -1034,6 +1099,12 @@ Ghi nhớ khi viết adapter:
       <div class="td-media-picker__actions">.td-media-picker__cancel · .td-media-picker__confirm</div>
     </div>
   </div>
+</div>
+
+<!-- sheet bộ lọc (0.36.0), lồng trên picker -->
+<div class="td-modal td-modal--sm td-media-picker-filters">
+  … .td-media-picker-filters__body > .td-media-picker-filters__facet (control facet, rộng hết)
+  · .td-media-picker-filters__footer > .td-media-picker-filters__clear · .td-media-picker-filters__apply
 </div>
 
 <!-- dialog tải lên, lồng trên picker -->

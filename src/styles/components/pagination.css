@@ -120,6 +120,24 @@
 		border-color: var(--td-control-border);
 	}
 
+	/* v0.36.0 (plan QĐ 17, measured: the semibold current page was up to 2.3 px wider): the same reservation as
+	   .td-tabs__label — a 0 px tall, hidden semibold copy of the number (data-page) sets the column width, so the page
+	   buttons keep their widths when the current page changes. */
+	.td-pagination__page {
+		flex-direction: column;
+	}
+
+	.td-pagination__page::after {
+		height: 0;
+		overflow: hidden;
+		font-weight: var(--td-fw-semibold);
+		visibility: hidden;
+		content: attr(data-page);
+		content: attr(data-page) / "";
+		user-select: none;
+		pointer-events: none;
+	}
+
 	.td-pagination__icon {
 		display: inline-flex;
 		line-height: 0;

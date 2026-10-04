@@ -421,6 +421,13 @@ Chỉ `.td-modal__body` cuộn; header và footer luôn đứng yên. Trên màn
 chỉ kéo), trừ `fullViewport`. Khi modal mở, trang được khoá cuộn (một khoá cho cả chồng, đặt trên `<html>` và khôi phục
 đúng giá trị `overflow` cũ).
 
+**Chrome gọn dưới 720px (0.36.0).** Đo ở 360 / 390px, header + footer chiếm ~70 % một hộp xác nhận một câu. Giờ dưới
+720px (mọi modal, kể cả `fullViewport` và hộp thoại lồng của media picker): header `padding-block: 0.375rem`, **bỏ đường
+kẻ dưới** (viền trong suốt) → cao ≤ 56px; footer `padding-block: 0.5rem` → ≤ 64px. Modal thường (không `fullViewport`):
+nút footer **một hàng, chia đều bề rộng** (`flex: 1 1 0`, không xuống dòng — hai nút cạnh nhau mỗi nút một nửa). Với
+`fullViewport` safe area vẫn cộng vào: header `calc(0.375rem + env(safe-area-inset-top))`, footer `calc(0.5rem +
+env(safe-area-inset-bottom))`. Từ 720px trở lên không đổi.
+
 **Safe area của `fullViewport` (0.33.0).** Trên máy có tai thỏ / thanh home (cần `<meta name="viewport"
 content="…, viewport-fit=cover">` thì inset mới khác 0), `.td-modal--viewport` **cộng** inset vào padding gốc chứ không
 thay: header `padding-top: calc(var(--td-space-sm) + env(safe-area-inset-top, 0px))`, footer `padding-bottom` tương tự

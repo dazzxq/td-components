@@ -211,7 +211,9 @@ describe('td-lightbox — toolbar + panel hooks', () => {
     const btn = overlay().querySelector('.td-lightbox__toolbar [aria-label="Đặt ảnh bìa"]');
     expect(!!btn).to.equal(true);
     expect(btn.querySelector('svg[data-icon="star"]') !== null).to.equal(true);
-    same(btn.nextElementSibling, $('.td-lightbox__close')); // close stays last
+    // v0.36.0 QĐ 59: extras go before the (hidden ≥ 480) "Thêm" button; close stays last
+    same(btn.nextElementSibling, $('.td-lightbox__more'));
+    same($('.td-lightbox__more').nextElementSibling, $('.td-lightbox__close'));
     btn.click();
     expect(calls).to.deep.equal([['a', 'BUTTON']]);
     lb.next();
@@ -647,19 +649,20 @@ describe('td-lightbox — v0.15.0 dwp parity', () => {
       const lb = TdLightbox.open([IMG(1)], { panel: () => pnode('info') });
       const panel = $('.td-lightbox__panel');
       const grab = $('.td-lightbox__grab');
-      swipe(panel, 400, 360);
+      // v0.36.0: the sheet moves only from its grabber (a drag in the content scrolls it, never moves the sheet)
+      swipe(grab, 400, 360);
       expect(panel.getAttribute('data-sheet')).to.equal('open');
       expect(grab.getAttribute('aria-expanded')).to.equal('true');
-      swipe(panel, 360, 400);
+      swipe(grab, 360, 400);
       expect(panel.hasAttribute('data-sheet')).to.equal(false);
-      swipe(panel, 400, 360); // open again, then a swipe starts…
-      touch(panel, 'touchstart', 300);
+      swipe(grab, 400, 360); // open again, then a swipe starts…
+      touch(grab, 'touchstart', 300);
       lb.setPanel(false); // …and the panel goes away mid-swipe
       expect(panel.hasAttribute('data-sheet')).to.equal(false);
       expect(grab.getAttribute('aria-expanded')).to.equal('false');
       lb.setPanel(() => pnode('back'));
       expect(panel.hasAttribute('data-sheet'), 're-enabled panel starts closed').to.equal(false);
-      touch(panel, 'touchend', 200); // the dropped swipe must not open it
+      touch(grab, 'touchend', 200); // the dropped swipe must not open it
       expect(panel.hasAttribute('data-sheet')).to.equal(false);
     } finally {
       await setViewport({ width: 800, height: 600 });
@@ -671,7 +674,10 @@ describe('td-lightbox — v0.15.0 dwp parity', () => {
     try {
       TdLightbox.open([IMG(1)], { panel: () => { const d = pnode(''); d.textContent = 'dòng chữ dài '.repeat(1500); return d; } });
       const panel = $('.td-lightbox__panel');
-      swipe(panel, 400, 360);
+      swipe($('.td-lightbox__grab'), 400, 360);
+      expect(panel.getAttribute('data-sheet')).to.equal('open');
+      // v0.36.0: at scrollTop 0 a downward drag in the CONTENT does not collapse it either (only the grabber does)
+      swipe($('.td-lightbox__panel-body'), 300, 360);
       expect(panel.getAttribute('data-sheet')).to.equal('open');
       await frames();
       panel.scrollTop = 50;
@@ -756,7 +762,7 @@ describe('td-lightbox — v0.15.0 dwp parity', () => {
     const lb = TdLightbox.open([IMG(1), IMG(2)]);
     const r1 = lb.addToolbarButton({ id: 'info', label: 'Thông tin', icon: 'info', onClick() {}, visible: (c) => c.index === 1 });
     let b = overlay().querySelector('[data-extra="info"]');
-    same(b.nextElementSibling, $('.td-lightbox__close'));
+    same(b.nextElementSibling, $('.td-lightbox__more')); // v0.36.0: before "Thêm" + close
     expect(b.hidden, 'visible() applied at once').to.equal(true);
     lb.next();
     expect(b.hidden).to.equal(false);

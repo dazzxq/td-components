@@ -331,6 +331,30 @@ export function wheelFactor(deltaY, deltaMode = 0) {
   return clamp(Math.exp(px * 0.002), 0.8, 1.25);
 }
 
+/**
+ * v0.36.0 (plan QĐ 70): is this wheel event a TRACKPAD scroll (small pixel deltas, many per frame) rather than a mouse
+ * wheel notch? Notches (`deltaMode` line / page, or ≥ 50px) keep the per-event step of wheelFactor().
+ * @param {number} deltaY @param {number} [deltaMode]
+ * @returns {boolean}
+ */
+export function isTrackpadDelta(deltaY, deltaMode = 0) {
+  return deltaMode === 0 && fin(deltaY) && Math.abs(deltaY) < 50;
+}
+
+/** Largest zoom change one animation frame may apply from accumulated trackpad deltas (±10 %). */
+export const WHEEL_FRAME_CAP = 1.1;
+
+/**
+ * v0.36.0 (plan QĐ 70): the zoom factor of ONE frame of accumulated trackpad pixels — same curve as wheelFactor(),
+ * capped at ±WHEEL_FRAME_CAP per frame so a burst of small deltas zooms smoothly instead of jumping.
+ * @param {number} accPx summed deltaY of the frame (pixels)
+ * @returns {number} factor (1 = no change)
+ */
+export function dampedWheelFactor(accPx) {
+  if (!fin(accPx) || accPx === 0) return 1;
+  return clamp(Math.exp(accPx * 0.002), 1 / WHEEL_FRAME_CAP, WHEEL_FRAME_CAP);
+}
+
 /** @param {CropValue|CropBox|null|undefined} c @returns {CropBox} null ⇒ the whole image */
 function asBox(c) {
   const n = c && typeof c === 'object' && 'normalized' in c ? /** @type {CropValue} */ (c).normalized : c;

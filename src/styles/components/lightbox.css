@@ -532,6 +532,106 @@
 		font-weight: var(--td-fw-semibold);
 	}
 
+	/* v0.36.0 (plan QĐ 59, revised 2026-10-05) "Thêm" overflow: off by default; below 480 px the toolbar drops every
+	   [data-overflow] control (fullscreen, unpinned extras — marked by JS) into "Thêm" (JS hides it when nothing
+	   overflows). Navigation is NEVER in "Thêm": below 480 ‹ › + the counter live in the bottom rail (data-nav="rail"). */
+	.td-lightbox__more {
+		display: none;
+	}
+
+	@media (max-width: 479.98px) {
+		.td-lightbox__toolbar > [data-overflow] {
+			display: none;
+		}
+
+		.td-lightbox__toolbar > .td-lightbox__more {
+			display: inline-flex;
+		}
+	}
+
+	/* ── v0.36.0 phone rail (data-nav="rail", < 480 px, ≥ 2 items): "‹ 3 / 12 ›" — the same prev / next buttons and the
+	   same counter (one live region), a persistent row of the column ABOVE the filmstrip and the closed sheet's
+	   grabber, above the home indicator; ≥ 44 px targets; never hidden, never auto-hidden ─────────────────────── */
+	.td-lightbox {
+		--td-lb-rail-btn: max(var(--td-lb-btn), 44px);
+		--td-lb-rail-h: calc(var(--td-lb-rail-btn) + 8px);
+		--td-lb-rail-reserve: calc(var(--td-lb-rail-h) + 8px + max(8px, env(safe-area-inset-bottom, 0px)));
+	}
+
+	.td-lightbox__rail {
+		display: none;
+	}
+
+	.td-lightbox[data-nav="rail"] .td-lightbox__col {
+		grid-template-rows: minmax(0, 1fr) auto;
+	}
+
+	.td-lightbox[data-nav="rail"] .td-lightbox__rail:not([hidden]) {
+		position: relative;
+		z-index: 3;
+		box-sizing: border-box;
+		display: inline-flex;
+		grid-area: 2 / 1;
+		gap: 4px;
+		align-items: center;
+		place-self: center;
+		padding: 4px;
+		margin-block: 8px max(8px, env(safe-area-inset-bottom, 0px));
+		cursor: default;
+		border-radius: var(--td-glass-capsule);
+	}
+
+	.td-lightbox[data-nav="rail"] .td-lightbox__rail > .td-lightbox__btn {
+		width: var(--td-lb-rail-btn);
+		height: var(--td-lb-rail-btn);
+		touch-action: manipulation;
+	}
+
+	/* the counter sits on the rail's own surface (no second capsule) */
+	.td-lightbox[data-nav="rail"] .td-lightbox__rail > .td-lightbox__counter {
+		padding-inline: 8px;
+		background: none;
+		border: 0;
+		box-shadow: none;
+		backdrop-filter: none;
+	}
+
+	/* media never run under the rail (no filmstrip: the stage is centred in the first row, bounded by the viewport) */
+	.td-lightbox[data-nav="rail"]:not([data-filmstrip]) :is(.td-lightbox__stage, .td-lightbox__img, .td-lightbox__video-el) {
+		max-height: calc(100dvh - var(--td-lb-rail-reserve));
+	}
+
+	.td-lightbox[data-nav="rail"]:not([data-filmstrip]) .td-lightbox__caption {
+		bottom: var(--td-lb-rail-reserve);
+	}
+
+	/* with the filmstrip: stage | caption | rail | thumbnails */
+	.td-lightbox[data-nav="rail"][data-filmstrip] .td-lightbox__col {
+		grid-template-rows: minmax(0, 1fr) auto auto calc(var(--td-lb-filmstrip-h) + env(safe-area-inset-bottom, 0px));
+	}
+
+	.td-lightbox[data-nav="rail"][data-filmstrip] .td-lightbox__rail:not([hidden]) {
+		grid-area: 3 / 1;
+		margin-block: 4px;
+	}
+
+	.td-lightbox[data-nav="rail"][data-filmstrip] .td-lightbox__filmstrip {
+		grid-area: 4 / 1;
+	}
+
+	/* with a panel (a bottom sheet below 1024): the column ends above the closed sheet's grabber */
+	.td-lightbox[data-nav="rail"][data-panel] .td-lightbox__col {
+		bottom: var(--td-lb-sheet-peek);
+	}
+
+	.td-lightbox[data-nav="rail"][data-panel]:not([data-filmstrip]) .td-lightbox__caption {
+		bottom: calc(var(--td-lb-rail-reserve) + var(--td-lb-sheet-peek));
+	}
+
+	.td-lightbox[data-nav="rail"][data-panel]:not([data-filmstrip]) :is(.td-lightbox__stage, .td-lightbox__img, .td-lightbox__video-el) {
+		max-height: calc(100dvh - var(--td-lb-rail-reserve) - var(--td-lb-sheet-peek));
+	}
+
 	/* ── Panel mode ([data-panel] only when a panel renderer returned an element) ─────────────────── */
 	.td-lightbox__panel {
 		position: absolute;
@@ -818,6 +918,7 @@
 	.td-lightbox__thumb > img {
 		display: block;
 		width: 100%;
+		max-width: none; /* never a host reset's max-width (Tailwind preflight) */
 		height: 100%;
 		object-fit: cover;
 		user-select: none;

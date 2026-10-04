@@ -12,6 +12,10 @@ cắt sau "Chèn" (option `crop`), [media field](media-field.md#9-cắt-ảnh--c
 Cả hai dùng chung hộp thoại [`TdCropper.openDialog()`](#hộp-thoại--tdcropperopendialogopts). Dùng thẳng element khi cần
 cắt ngay trong trang (trang sửa ảnh, trình soạn thảo).
 
+> **⚠ Site phải tự xử lý** phần biến toạ độ thành ảnh: endpoint / CDN cắt ảnh của site là máy xử lý ảnh công khai — URL
+> ký HMAC-SHA256, allowlist bề rộng / định dạng, trần kích thước, cache, rate limit, phân quyền ảnh riêng tư là **bắt
+> buộc**. Xem [Biến thể ảnh đã cắt](../guides/media-renditions.md).
+
 | | |
 |---|---|
 | Import | `import '@dazzxq/td-components/cropper'` (class: `import { TdCropper } from '@dazzxq/td-components'`) |
@@ -132,6 +136,11 @@ tiến vào trong ảnh.
 
 Lăn chuột: hệ số `exp(deltaY · 0.002)` kẹp `[0.8, 1.25]` mỗi sự kiện (`deltaMode` dòng × 16). Lăn lên = phóng to.
 
+Trackpad (0.36.0): trackpad gửi rất nhiều `deltaY` nhỏ mỗi giây nên trước đây zoom "nhảy". Giờ sự kiện `deltaMode` 0 với
+`|deltaY|` < 50 được **cộng dồn theo frame** và áp **một** bước mỗi frame, kẹp ± 10 % — zoom mượt, không giật. Nấc chuột
+(`|deltaY|` ≥ 50 hoặc `deltaMode` dòng / trang) giữ đúng bước như trên. Wheel chỉ chặn cuộn trang khi con trỏ **trên
+stage**; ngoài stage trang cuộn bình thường.
+
 Vì sao: mọi thao tác đều đổi kết quả (không có trạng thái ẩn "đang zoom mà khung không đổi"), hình học thuần, test được;
 độ chính xác đủ cho toạ độ. Phóng đại khung nhìn để chỉnh từng pixel là **non-goal**.
 
@@ -224,6 +233,10 @@ function td_signed_image_url(array $asset, ?array $crop, ?array $focal, int $out
 
 Tên tham số tuỳ dịch vụ (imgproxy, Cloudflare Images, Thumbor, Imgix…); điều cốt lõi: **chỉ server ký**, chỉ từ giá trị
 đã lưu, và preset kích thước đầu ra (`1200×630`) do server quyết.
+
+> **⚠ Site phải tự xử lý** phía kiểm: so chữ ký hằng thời gian, sai → 403 trước khi đọc file, allowlist bề rộng /
+> định dạng, crop làm tròn 4 chữ số, trần kích thước, cache hai tầng, rate limit cache miss, ảnh riêng tư có `exp` +
+> kiểm quyền. Checklist đầy đủ + ví dụ Cloudflare Worker / endpoint PHP: [Biến thể ảnh đã cắt](../guides/media-renditions.md).
 
 ### 9. Không có JS / SSR
 
@@ -452,6 +465,7 @@ cho chuột / chạm (`aria-hidden`, không focus) — 4 góc đã chỉnh đư�
 ## Xem thêm
 
 - [Media picker › Cắt ảnh](media-picker.md#cắt-ảnh--option-crop-0350) · [Media field › Cắt ảnh](media-field.md#9-cắt-ảnh--croppable-0350)
+- [Biến thể ảnh đã cắt](../guides/media-renditions.md) — checklist bắt buộc cho endpoint cắt ảnh của site
 - [Responsive](../concepts/responsive.md) · [Theming](../customization/theming.md) · [CSP](../guides/csp.md)
 - [ADR 0015](../internal/decisions/0015-td-cropper.md) · [ADR 0013 › Bổ sung v0.35](../internal/decisions/0013-media-picker-boundary.md#bổ-sung-v035) ·
   [security-model › Media picker](../internal/security-model.md#6-media-picker--media-field)

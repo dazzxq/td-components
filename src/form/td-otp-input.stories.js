@@ -53,3 +53,12 @@ export const NativeNoJs = {
     <input type="text" class="td-otp__input" id="otp-native" inputmode="numeric" autocomplete="one-time-code" name="otp_code" maxlength="6" pattern="[0-9]{6}"></div></div>`,
   args: { label: 'Mã xác thực (không JS)' },
 };
+
+/** v0.36.0: `length` 1–10 + `charset` / `case` — 6 digits, 8 digits, Steam Guard-like 5 upper-case alphanumerics. */
+export const LengthsAndCharsets = {
+  render: () => `<div class="sb-stack">
+    <td-otp-input label="Mã 6 số (mặc định)" name="otp6"></td-otp-input>
+    <td-otp-input label="Mã 8 số" name="otp8" length="8"></td-otp-input>
+    <td-otp-input label="Mã Steam Guard (5 ký tự chữ-số)" name="steam" length="5" charset="alphanumeric"></td-otp-input>
+    <p class="sb-note">Bộ có chữ: gõ / dán "wm-x7q" → WMX7Q (chuẩn hoá chữ hoa, bỏ gạch / khoảng trắng). Nên tắt bộ gõ tiếng Việt khi nhập mã chữ.</p></div>`,
+};

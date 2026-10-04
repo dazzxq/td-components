@@ -3,7 +3,7 @@
  * Indent = nested `ul[role=group]` (padding-inline-start: --td-tree-indent; never style=""); rows --td-tree-row-h.
  * State: [aria-expanded] (arrow turned 90° — a FUNCTIONAL transform, minimal-surfaces rule 4), [aria-busy] (the arrow
  * spins; reduced motion → static), [data-load="error"], [aria-selected] (single), [aria-checked="true|false|mixed"]
- * (multiple: square check drawn with the check / minus icons), [aria-disabled] (locked: dimmed like disabled controls),
+ * (multiple: the shared td-checkbox mark, check.css), [aria-disabled] (locked: dimmed like disabled controls),
  * [data-active] (virtual focus inside td-tree-select), :focus-visible on the treeitem (ring on its row only).
  */
 @layer td.tokens {
@@ -14,7 +14,7 @@
 		--td-tree-row-active: var(--td-color-hover-strong);
 		--td-tree-row-active-line: var(--td-control-border-hover);
 		--td-tree-row-selected: var(--td-color-hover-strong);
-		--td-tree-check-radius: 4px; /* square check (the round td-checkbox is a different control) */
+		--td-tree-check-radius: var(--td-checkbox-radius); /* deprecated v0.36.0 (no effect): the check is the shared td-checkbox mark */
 	}
 }
 
@@ -163,44 +163,7 @@
 		color: var(--td-field-error);
 	}
 
-	.td-tree__check {
-		display: inline-flex;
-		flex: none;
-		align-items: center;
-		justify-content: center;
-		width: 1rem;
-		height: 1rem;
-		line-height: 0;
-		color: var(--td-accent-contrast);
-		background: var(--td-control-bg);
-		border: 1.5px solid var(--td-checkbox-border);
-		border-radius: var(--td-tree-check-radius);
-		transition:
-			background var(--td-dur-fast) var(--td-ease),
-			border-color var(--td-dur-fast) var(--td-ease);
-	}
-
-	.td-tree__check-on,
-	.td-tree__check-mixed {
-		display: none;
-		line-height: 0;
-	}
-
-	.td-tree__check svg {
-		width: 0.75rem;
-		height: 0.75rem;
-		stroke-width: 3;
-	}
-
-	.td-tree__item:is([aria-checked="true"], [aria-checked="mixed"]) > .td-tree__row > .td-tree__check {
-		background: var(--td-checkbox-color);
-		border-color: var(--td-checkbox-color);
-	}
-
-	.td-tree__item[aria-checked="true"] > .td-tree__row .td-tree__check-on,
-	.td-tree__item[aria-checked="mixed"] > .td-tree__row .td-tree__check-mixed {
-		display: inline-flex;
-	}
+	/* v0.36.0: the multiple-mode check is the shared td-checkbox mark (check.css; on / mixed from aria-checked) */
 
 	.td-tree__label {
 		flex: 0 1 auto;

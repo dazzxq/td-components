@@ -56,7 +56,7 @@ import { parseAspectRatio, parseCrop, parseFocal, cropRatioInRange } from '../ut
 let warnedRatio = false;
 import {
   ZOOM_STEP, moveBy, resizeFrom, scaleAround, applyPreset, normalizeInitial, stepFor, toOutput, clampFocal,
-  ratioMismatch, containFit, wheelFactor, modelToDisplay, focalChanged,
+  ratioMismatch, containFit, wheelFactor, isTrackpadDelta, dampedWheelFactor, modelToDisplay, focalChanged,
 } from '../utils/crop-geometry.js';
 import { openCropDialog } from '../feedback/crop-dialog.js';
 
@@ -266,6 +266,9 @@ export class TdCropper extends TdBaseElement {
     if (this._g) this._finish(false);
     if (this._raf) cancelAnimationFrame(this._raf);
     this._raf = 0;
+    if (this._wheelRaf) cancelAnimationFrame(this._wheelRaf);
+    this._wheelRaf = 0;
+    this._wheelAcc = 0;
     if (this._liveTimer) clearTimeout(this._liveTimer);
     this._liveTimer = 0;
     this._touches.clear();
@@ -947,8 +950,26 @@ export class TdCropper extends TdBaseElement {
   /** @private */
   _onWheel(e) {
     if (!this._interactive()) return; // not ready: let the page scroll
-    e.preventDefault();
+    e.preventDefault(); // only over the stage (the listener is on the stage): the page scrolls everywhere else
     if (this._g) return;
+    if (isTrackpadDelta(e.deltaY, e.deltaMode)) {
+      // v0.36.0 (plan QĐ 70): trackpads send many tiny deltas — accumulate them and apply ONE capped step per frame
+      this._wheelAcc = (this._wheelAcc || 0) + e.deltaY;
+      this._wheelAt = { x: e.clientX, y: e.clientY };
+      if (!this._wheelRaf) {
+        this._wheelRaf = requestAnimationFrame(() => {
+          this._wheelRaf = 0;
+          const acc = this._wheelAcc || 0;
+          this._wheelAcc = 0;
+          const k = dampedWheelFactor(acc);
+          if (k === 1 || !this._interactive() || this._g) return;
+          const at = this._wheelAt;
+          const anchor = this._clientToModel(at.x, at.y);
+          this._apply(scaleAround(/** @type {Rect} */ (this._rect), k, anchor, { ratio: this._ratio(), W: this._W, H: this._H }), 'wheel');
+        });
+      }
+      return;
+    }
     const k = wheelFactor(e.deltaY, e.deltaMode);
     if (k === 1) return;
     const anchor = this._clientToModel(e.clientX, e.clientY);

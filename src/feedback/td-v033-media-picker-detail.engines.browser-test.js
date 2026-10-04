@@ -87,7 +87,8 @@ describe('v0.33 td-media-picker — detail panel (decision 18)', () => {
     const d = detail();
     expect(d.getAttribute('data-state')).to.equal('ready');
     const order = [...d.children].map((c) => c.className.split(' ').find((x) => x.startsWith('td-media-picker__')) || c.localName);
-    const want = ['td-media-picker__back', 'td-media-picker__preview', 'td-media-picker__field-group', 'td-media-picker__form',
+    // v0.36.0 (review ISSUE-3): "Quay lại" moved to the dialog header (no back row in the pane)
+    const want = ['td-media-picker__preview', 'td-media-picker__field-group', 'td-media-picker__form',
       'td-media-picker__notice', 'td-media-picker__divider', 'td-media-picker__facts', 'td-media-picker__divider', 'td-media-picker__detail-actions'];
     expect(order).to.deep.equal(want);
     const pr = q('.td-media-picker__preview').getBoundingClientRect();
@@ -186,15 +187,18 @@ describe('v0.33 td-media-picker — detail panel (decision 18)', () => {
     const errs = [];
     await openReady({ adapter: ad });
     document.querySelector('td-media-picker').addEventListener('operation-error', (e) => errs.push(e.detail));
+    // v0.36.0 (QĐ 69): the open auto-previews m60 — view another asset
+    await until(() => ad.calls.get.length >= 1 && !detail().hasAttribute('data-loading'), 4000, 'auto preview settled');
+    const base = ad.calls.get.length;
     ad.manual = true;
-    click(opener('m60'));
-    await until(() => ad.calls.get.length === 1);
+    click(opener('m59'));
+    await until(() => ad.calls.get.length === base + 1);
     expect(detail().hasAttribute('data-loading')).to.equal(true);
-    expect(detailName()).to.equal('anh-60.jpg');
-    ad.calls.get[0].reject(Object.assign(new Error('raw'), { code: 'server' }));
+    expect(detailName()).to.equal('anh-59.jpg');
+    ad.calls.get[base].reject(Object.assign(new Error('raw'), { code: 'server' }));
     await until(() => !detail().hasAttribute('data-loading'), 4000, 'settled');
     expect(errs).to.deep.equal([{ operation: 'get', code: 'server', retryable: true }]);
-    expect(detailName()).to.equal('anh-60.jpg');
+    expect(detailName()).to.equal('anh-59.jpg');
   });
 });
 
@@ -217,9 +221,12 @@ describe('v0.33 td-media-picker — mobile detail pane (decision 19)', () => {
     const footer = q('.td-modal__footer').getBoundingClientRect();
     expect(footer.bottom <= 844 + 1 && footer.top >= r.bottom - 1, 'footer below the pane, visible').to.equal(true);
     expect(q('.td-media-picker__confirm').getBoundingClientRect().height > 0).to.equal(true);
-    const back = q('.td-media-picker__back');
-    expect([back.getAttribute('variant'), back.getAttribute('icon')]).to.deep.equal(['ghost', 'back']);
-    expect(back.textContent.trim()).to.equal('Quay lại');
+    // v0.36.0 (review ISSUE-3): a 44 px back arrow in the dialog header, named "Quay lại"
+    const back = q('.td-modal__header .td-media-picker__back');
+    expect(back.getAttribute('aria-label')).to.equal('Quay lại');
+    const bb = back.getBoundingClientRect();
+    expect(bb.width >= 43.5 && bb.height >= 43.5, `back ${bb.width}×${bb.height}`).to.equal(true);
+    expect(q('.td-media-picker__detail .td-media-picker__back')).to.equal(null);
     back.click();
     await until(() => document.activeElement === opener('m60'), 4000, 'focus back on the card');
     expect(pickerRoot().getAttribute('data-view')).to.equal('grid');

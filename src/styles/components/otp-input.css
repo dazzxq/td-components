@@ -1,15 +1,19 @@
 /*
  * td-otp-input (src/form/td-otp-input.js, v0.27.0) + the native field of php/td.php td_otp_input().
- * Content layer: solid cells, never glass. ONE native input; once the element is defined it lies transparently over 6
- * decorative cells (`aria-hidden`) — before that (no JS, or SSR element mode while the module loads) the input itself
- * is the visible field, in the SAME box (no layout shift on upgrade).
+ * Content layer: solid cells, never glass. ONE native input; once the element is defined it lies transparently over
+ * N (1–10, `.td-otp[data-length]`, default 6) decorative cells (`aria-hidden`) — before that (SSR element mode while
+ * the module loads) the input itself is the visible field over the hidden cells, in the SAME box (no layout shift).
+ * v0.36.0 (plan QĐ 41): the cells are always in flow (grid of N equal tracks) and each keeps its SHAPE with
+ * `aspect-ratio: var(--td-otp-cell-aspect)` → the box is as tall as a cell at any width (no more tall pills when the box
+ * shrinks). The native PHP field (no host element, never upgraded) keeps a fixed height (`--td-otp-cell-h`).
  * State (set by JS / native, never visual classes): cell [data-state="empty|filled"] [data-active] (caret / selection
  * while focused); input :disabled / [readonly] / [aria-invalid="true"].
  */
 @layer td.tokens {
 	:root {
 		--td-otp-cell-w: 2.75rem;
-		--td-otp-cell-h: 3.25rem;
+		--td-otp-cell-h: 3.25rem;   /* native (no-JS PHP) field height only; element mode uses the aspect below */
+		--td-otp-cell-aspect: 44 / 52;
 		--td-otp-gap: 0.5rem;
 		--td-otp-radius: var(--td-field-radius-md);
 		--td-otp-bg: var(--td-control-bg);
@@ -32,6 +36,8 @@
 	}
 
 	.td-otp {
+		--_td-otp-n: 6;
+
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
@@ -41,6 +47,16 @@
 		line-height: var(--td-leading-normal);
 		color: var(--td-otp-fg);
 	}
+
+	.td-otp[data-length="1"] { --_td-otp-n: 1; }
+	.td-otp[data-length="2"] { --_td-otp-n: 2; }
+	.td-otp[data-length="3"] { --_td-otp-n: 3; }
+	.td-otp[data-length="4"] { --_td-otp-n: 4; }
+	.td-otp[data-length="5"] { --_td-otp-n: 5; }
+	.td-otp[data-length="7"] { --_td-otp-n: 7; }
+	.td-otp[data-length="8"] { --_td-otp-n: 8; }
+	.td-otp[data-length="9"] { --_td-otp-n: 9; }
+	.td-otp[data-length="10"] { --_td-otp-n: 10; }
 
 	.td-otp *,
 	.td-otp *::before {
@@ -55,14 +71,19 @@
 		color: var(--td-field-label);
 	}
 
-	/* The box has the same size with or without JS: 6 cells + 5 gaps (shrinks on a narrow screen). */
+	/* The box: N cells + N − 1 gaps wide (shrinks on a narrow screen). Native field: fixed height. Element mode: as tall
+	   as the in-flow cells (their aspect ratio), before and after the upgrade. */
 	.td-otp__box {
 		position: relative;
 		/* fixed width + max-width (not min(100%, …)): a % inside a shrink-to-fit flex item resolves cyclically → collapse */
-		width: calc(6 * var(--td-otp-cell-w) + 5 * var(--td-otp-gap));
+		width: calc(var(--_td-otp-n) * var(--td-otp-cell-w) + (var(--_td-otp-n) - 1) * var(--td-otp-gap));
 		max-width: 100%;
 		height: var(--td-otp-cell-h);
-		direction: ltr; /* digits read left → right in every script */
+		direction: ltr; /* characters read left → right in every script */
+	}
+
+	td-otp-input .td-otp__box {
+		height: auto;
 	}
 
 	/* The input: a plain OTP field (no JS / before the upgrade) … */
@@ -104,25 +125,27 @@
 		border-color: var(--td-otp-error);
 	}
 
-	/* … the cells only exist visually once the element is defined. */
+	/* … the cells: in flow, they size the box (element mode); invisible until the element is defined. */
 	.td-otp__cells {
-		display: none;
+		display: grid;
+		grid-template-columns: repeat(var(--_td-otp-n), minmax(0, 1fr));
+		gap: min(var(--td-otp-gap), 3%);
+		pointer-events: none;
 	}
 
-	td-otp-input:defined .td-otp__cells {
+	td-otp-input:not(:defined) .td-otp__cells {
+		visibility: hidden;
+	}
+
+	/* element mode: the input covers the cells' box (before the upgrade it is the visible field) */
+	td-otp-input .td-otp__input {
 		position: absolute;
 		inset: 0;
-		display: grid;
-		grid-template-columns: repeat(6, minmax(0, 1fr));
-		gap: var(--td-otp-gap);
-		pointer-events: none;
+		z-index: 1;
 	}
 
 	/* Upgraded: the input stays the real control (focus, caret, paste, autofill) but paints nothing. */
 	td-otp-input:defined .td-otp__input {
-		position: absolute;
-		inset: 0;
-		z-index: 1;
 		color: transparent;
 		caret-color: transparent;
 		background: transparent;
@@ -141,6 +164,7 @@
 		align-items: center;
 		justify-content: center;
 		min-width: 0;
+		aspect-ratio: var(--td-otp-cell-aspect);
 		font-family: var(--td-font-sans);
 		font-size: var(--td-otp-font-size);
 		font-weight: var(--td-fw-semibold);
@@ -173,6 +197,13 @@
 
 	.td-otp__input[aria-invalid="true"] + .td-otp__cells .td-otp__cell {
 		border-color: var(--td-otp-error);
+	}
+
+	/* touch: never shorter than the touch minimum (a cell only grows taller than its ratio below ~37 px wide) */
+	@media (pointer: coarse) {
+		.td-otp__cell {
+			min-block-size: var(--td-touch-min);
+		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {

@@ -145,7 +145,7 @@ describe('v0.33.0 media picker upload dialog (engines)', () => {
       expect(document.activeElement === base.opener).to.equal(true);
     });
 
-    it('md width from 720px; full viewport below 720px (ADR 0014; not the bottom sheet)', async () => {
+    it('md width from 720px; v0.36.0 (QĐ 58): below 720px the kit bottom sheet as tall as its content, no footer', async () => {
       await setViewport({ width: 1280, height: 800 });
       try {
         const o = open();
@@ -159,19 +159,22 @@ describe('v0.33.0 media picker upload dialog (engines)', () => {
         const d2 = p.q('.td-modal__dialog');
         await until(() => {
           const r = d2.getBoundingClientRect();
-          return Math.abs(r.width - innerWidth) < 1 && Math.abs(r.height - innerHeight) < 1 && Math.abs(r.top) < 1;
-        }, 3000, 'full viewport');
-        expect(getComputedStyle(d2).borderTopLeftRadius).to.equal('0px');
+          return Math.abs(r.width - document.documentElement.clientWidth) < 1 && Math.abs(r.bottom - innerHeight) < 1;
+        }, 3000, 'bottom sheet');
+        const r = d2.getBoundingClientRect();
+        expect(r.top > 0, `content height: top ${r.top}`).to.equal(true);
+        expect(getComputedStyle(d2).borderTopLeftRadius).to.not.equal('0px');
+        expect(getComputedStyle(p.q('.td-media-picker-upload__footer')).display).to.equal('none');
         p.h.destroy();
-        // the md / full-viewport boundary is 720 (v0.33: 768)
-        for (const [w, full] of [[719, true], [720, false]]) {
+        // the md / sheet boundary is 720
+        for (const [w, sheetMode] of [[719, true], [720, false]]) {
           await setViewport({ width: w, height: 900 });
           await until(() => window.innerWidth === w, 3000, `viewport ${w}`);
           const b = open();
           await until(b.isOpen);
           const d = b.q('.td-modal__dialog');
-          await until(() => (Math.abs(d.getBoundingClientRect().width - innerWidth) < 1) === full
-            && (full || Math.abs(d.getBoundingClientRect().width - 512) < 2), 3000, `${w}px ${full ? 'full viewport' : 'md'}`);
+          await until(() => (Math.abs(d.getBoundingClientRect().bottom - innerHeight) < 1) === sheetMode
+            && (sheetMode || Math.abs(d.getBoundingClientRect().width - 512) < 2), 3000, `${w}px ${sheetMode ? 'sheet' : 'md'}`);
           b.h.destroy();
         }
       } finally {
@@ -190,26 +193,6 @@ describe('v0.33.0 media picker upload dialog (engines)', () => {
       press(p.q('.td-media-picker-upload__close'));
       await until(p.gone);
       expect(p.rec.closed).to.equal(1);
-    });
-
-    it('< 720px full viewport also with a nonzero --td-scroll-lock-gap (fills to the right edge)', async () => {
-      await setViewport({ width: 390, height: 844 });
-      const html = document.documentElement;
-      html.style.setProperty('--td-scroll-lock-gap', '17px');
-      try {
-        const o = open();
-        await until(o.isOpen, 3000, 'upload dialog open');
-        const vw = html.clientWidth;
-        const dlg = o.q('.td-modal__dialog');
-        await until(() => Math.abs(dlg.getBoundingClientRect().width - dlg.offsetWidth) < 0.5, 3000, 'no scale transform');
-        for (const el of [o.h.root, dlg]) {
-          const r = el.getBoundingClientRect();
-          expect(Math.abs(r.left), el.className).to.be.at.most(1);
-          expect(Math.abs(r.right - vw), el.className).to.be.at.most(1);
-        }
-      } finally {
-        html.style.removeProperty('--td-scroll-lock-gap');
-      }
     });
 
     it('dialog height is stable across tabs (±1px, dcms2); the inactive panel is invisible + unfocusable', async () => {

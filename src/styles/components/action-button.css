@@ -1,0 +1,117 @@
+/*
+ * td-action-button (src/form/td-action-button.js, v0.36.0 plan QĐ 8–15) — an icon-only SQUARE button on top of the
+ * `.td-btn` control (button.css): transparent fill, no shadow, icon in the tone colour, a soft hover fill, the kit
+ * focus ring. Sizes 32 / 36 / 40 px (sm / md / lg; NOT td-button's 32 / 40 / 48), icon 16 / 18 / 20 px.
+ * Touch (pointer: coarse): every size is a REAL 44 × 44 box (no ::before hit-area extension — side-by-side action
+ * buttons would overlap their targets, ADR 0014 §5).
+ * Tones: standard (dark grey icon) · warning (amber-700) · danger (red-700) — icon ≥ 4.7:1 on white AND on its hover
+ * fill (test/tokens/contrast.spec.mjs). Disabled: transparent, greyed icon (no fill).
+ * `.td-action-group` (CSS only): a row of action buttons, gap 4 px (8 px on touch).
+ */
+@layer td.tokens {
+	:root {
+		--td-action-btn-size-sm: 2rem;
+		--td-action-btn-size-md: 2.25rem;
+		--td-action-btn-size-lg: 2.5rem;
+		--td-action-btn-radius: var(--td-radius-md);
+		--td-action-btn-standard-fg: var(--td-gray-700);
+		--td-action-btn-standard-hover-bg: var(--td-color-hover);
+		--td-action-btn-warning-fg: #b45309;
+		/* amber-50, not the pastel warning fill: #b45309 on #fef3c7 is only 4.5:1 (gate ≥ 4.7) */
+		--td-action-btn-warning-hover-bg: #fffbeb;
+		--td-action-btn-danger-fg: #b91c1c;
+		--td-action-btn-danger-hover-bg: var(--td-pastel-danger-bg);
+	}
+
+	/* dark (opt-in): light inks on the dark page, translucent tone fills */
+	:root[data-td-theme="dark"] {
+		--td-action-btn-standard-fg: #d4d4d8;
+		--td-action-btn-warning-fg: #fcd34d;
+		--td-action-btn-warning-hover-bg: rgb(245 158 11 / 14%);
+		--td-action-btn-danger-fg: #fca5a5;
+		--td-action-btn-danger-hover-bg: rgb(220 38 38 / 18%);
+	}
+}
+
+@layer td.component {
+	td-action-button {
+		display: inline-flex;
+		vertical-align: middle;
+	}
+
+	/* hand-written host before the module loads: reserve the square (SSR hosts already hold the control) */
+	td-action-button:not(:defined):not([data-td-ssr]) {
+		inline-size: var(--td-action-btn-size-md);
+		block-size: var(--td-action-btn-size-md);
+	}
+
+	td-action-button[size="sm"]:not(:defined):not([data-td-ssr]) {
+		inline-size: var(--td-action-btn-size-sm);
+		block-size: var(--td-action-btn-size-sm);
+	}
+
+	td-action-button[size="lg"]:not(:defined):not([data-td-ssr]) {
+		inline-size: var(--td-action-btn-size-lg);
+		block-size: var(--td-action-btn-size-lg);
+	}
+
+	.td-btn.td-btn--action {
+		--td-btn-bg-v: transparent;
+		--td-btn-border-v: transparent;
+		--td-btn-fg-v: var(--td-action-btn-standard-fg);
+		--td-btn-hover-v: var(--td-action-btn-standard-hover-bg);
+		--_td-btn-lift: none;
+		--_td-action-size: var(--td-action-btn-size-md);
+		--_td-action-icon: 1.125rem;
+
+		flex: none;
+		gap: 0;
+		inline-size: var(--_td-action-size);
+		block-size: var(--_td-action-size);
+		min-height: 0;
+		padding: 0;
+		border-radius: var(--td-action-btn-radius);
+	}
+
+	.td-btn--action.td-btn--action-sm { --_td-action-size: var(--td-action-btn-size-sm); --_td-action-icon: 1rem; }
+	.td-btn--action.td-btn--action-lg { --_td-action-size: var(--td-action-btn-size-lg); --_td-action-icon: 1.25rem; }
+
+	.td-btn--action.td-btn--action-warning {
+		--td-btn-fg-v: var(--td-action-btn-warning-fg);
+		--td-btn-hover-v: var(--td-action-btn-warning-hover-bg);
+	}
+
+	.td-btn--action.td-btn--action-danger {
+		--td-btn-fg-v: var(--td-action-btn-danger-fg);
+		--td-btn-hover-v: var(--td-action-btn-danger-hover-bg);
+	}
+
+	.td-btn--action .td-btn__icon .td-icon {
+		width: var(--_td-action-icon);
+		height: var(--_td-action-icon);
+	}
+
+	/* Disabled stays a ghost: no fill / border, greyed icon (button.css sets the disabled colour). */
+	.td-btn--action:is(:disabled, [aria-disabled="true"]:not([aria-busy="true"]), a[aria-disabled="true"][tabindex="-1"]) {
+		background-color: transparent;
+		border-color: transparent;
+	}
+
+	.td-action-group {
+		display: inline-flex;
+		line-height: normal; /* own it: never inherit the host page's */
+		flex-wrap: wrap;
+		gap: 4px;
+		align-items: center;
+	}
+
+	@media (pointer: coarse) {
+		.td-btn.td-btn--action {
+			--_td-action-size: var(--td-touch-min);
+
+			border-radius: var(--td-action-btn-radius);
+		}
+
+		.td-action-group { gap: 8px; }
+	}
+}

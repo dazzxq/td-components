@@ -131,7 +131,26 @@
 	/* No min-width: 0 on the tab / label: a tab can never be squeezed below its label (the JS rule keeps the
 	   equal slots ≥ the widest tab; this is the safety net for the frame before a mode switch). */
 	.td-tabs__label {
+		display: inline-flex;
+		flex-direction: column;
+		align-items: center;
 		white-space: nowrap;
+	}
+
+	/* v0.36.0 (plan QĐ 16): reserve the width of the SEMIBOLD label in every state — the label box = max(regular, bold),
+	   so the active tab turning bold never moves its text or its neighbours (equal-slot and overflow modes). 0 px tall +
+	   visibility: hidden keeps it out of layout height and of the accessibility tree; `/ ""` (empty alt text) is a second
+	   layer where supported (older engines drop that declaration and keep the first). Not text: find-in-page / copy
+	   never see it. */
+	.td-tabs__label::after {
+		height: 0;
+		overflow: hidden;
+		font-weight: var(--td-fw-semibold);
+		visibility: hidden;
+		content: attr(data-label);
+		content: attr(data-label) / "";
+		user-select: none;
+		pointer-events: none;
 	}
 
 	.td-tabs[data-measuring] > .td-tabs__tab {
@@ -180,6 +199,11 @@
 	}
 
 	@media (pointer: coarse) {
+		/* v0.36.0 (plan QĐ 67): tab labels ≥ 14px on touch screens (the overflow measurement follows the computed size) */
+		.td-tabs {
+			font-size: var(--td-text-sm);
+		}
+
 		.td-tabs__tab {
 			min-inline-size: var(--td-touch-min); /* 44 × 44 even for a one-letter tab (part of the JS measurement) */
 			min-height: var(--td-touch-min);

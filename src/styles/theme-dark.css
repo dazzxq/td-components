@@ -56,6 +56,25 @@
 		--td-pastel-info-border: #1e3357;
 		--td-pastel-info-fg: #bfdbfe;
 
+		/* v0.36.0 solid semantic palette: the SAME values as light (white on 600/700 and dark on amber-500 read on a dark
+		   page too; the label contrast is measured against the fill only) */
+		--td-solid-success-bg: #15803d;
+		--td-solid-success-fg: #fff;
+		--td-solid-success-hover: #166534;
+		--td-solid-success-border: #166534;
+		--td-solid-danger-bg: #dc2626;
+		--td-solid-danger-fg: #fff;
+		--td-solid-danger-hover: #b91c1c;
+		--td-solid-danger-border: #b91c1c;
+		--td-solid-warning-bg: #f59e0b;
+		--td-solid-warning-fg: #18181b;
+		--td-solid-warning-hover: #d97706;
+		--td-solid-warning-border: #d97706;
+		--td-solid-info-bg: #2563eb;
+		--td-solid-info-fg: #fff;
+		--td-solid-info-hover: #1d4ed8;
+		--td-solid-info-border: #1d4ed8;
+
 		/* v0.21.0: primary inverted (a black fill would sink into the dark page) */
 		--td-btn-primary-bg: #f4f4f5;
 		--td-btn-primary-fg: #18181b;

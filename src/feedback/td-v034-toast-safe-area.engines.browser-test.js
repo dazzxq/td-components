@@ -18,7 +18,13 @@ const raf = () => new Promise((r) => requestAnimationFrame(r));
 const root = document.documentElement;
 const TOKENS = ['--td-toast-top', '--td-toast-bottom', '--td-toast-inline-start', '--td-toast-inline-end',
   '--td-toast-shift', '--td-toast-align'];
-const stack = () => document.querySelector('.td-toasts');
+// v0.36.0: several stacks may exist (named + legacy, lazily kept) → measure the stack of the newest toast; in a < 480
+// lane the stack is `display: contents` (no box) → the toast itself (lane width).
+const stack = () => {
+  const t = TdToast._activeToasts.at(-1);
+  const s = t.parentElement;
+  return getComputedStyle(s).display === 'contents' ? t : s;
+};
 
 /** show one toast and resolve once it is open with every transition finished */
 async function showOne(msg = 'Đã lưu thay đổi của bạn') {

@@ -52,8 +52,10 @@ Mỗi ô cần:
 
 Element **chèn** nút tick `button.td-media-grid__tick` ngay **sau** phần tử mở (anh em, không bao giờ nằm trong `<a>`),
 với `tabindex="-1"`, `aria-pressed`, `aria-label` = `"Chọn {tên}"` (tên lấy theo thứ tự: `aria-label` của phần tử mở →
-`alt` của ảnh → `data-id`) và icon `check`. Site muốn tự in tick thì đặt `[data-td-media-tick]` trong ô — element giữ
-nguyên nút đó, chỉ thêm class và quản lý `aria-pressed`.
+`alt` của ảnh → `data-id`). Từ 0.36.0 nút này **trong suốt** và chứa [ô tick chung](checkbox.md#phần-hình-dùng-chung-td-check-0360)
+`span.td-check` — đúng hình `td-checkbox` (hộp tròn, ✓ trên `--td-checkbox-color`) cộng vành tối mảnh để thấy trên ảnh
+trắng ([ADR 0017](../internal/decisions/0017-shared-check-mark.md)). Site muốn tự in tick thì đặt `[data-td-media-tick]`
+trong ô — element giữ nguyên nút đó, chỉ thêm class và quản lý `aria-pressed`.
 
 Mọi thứ khác trong ô (nút ⋯ [TdMenu](menu.md), [badge](badge.md), chú thích…) element **không đụng tới**. Ô có thể nằm
 lồng trong wrapper của site (dải, cột…), không bắt buộc là con trực tiếp (trừ `layout="justified"`, xem §9).
@@ -67,6 +69,7 @@ Tuỳ chọn (0.33.0): `data-td-ar` trên ô = tỉ lệ khung ảnh (`"1.5"`, `
 | Chưa chọn gì | `activate` (cancelable) — hành vi mặc định (link, lightbox) chạy nếu không `preventDefault()` | Chọn ô, vào chế độ chọn |
 | Đang chọn (≥ 1 ô) | Lật ô; **không** `activate`, hành vi mặc định bị chặn (link / lightbox không mở) | Lật ô |
 | Shift + bấm | Chọn **dải** theo thứ tự DOM từ ô neo (ô bấm gần nhất) tới ô này — chỉ thêm, neo giữ nguyên; chưa có neo → lật ô | như bên trái |
+| Cmd + bấm (macOS) / Ctrl + bấm (khác), 0.36.0 | Phần tử mở là `<button>`: lật ô — **bắt đầu** chọn kể cả khi chưa chọn gì (không `activate`). Phần tử mở là `<a href>` khi chưa chọn gì: giữ hành vi trình duyệt (mở tab mới), không đổi lựa chọn (đang chọn thì lật ô như bấm thường) | Lật ô |
 
 Host có `[data-selecting]` khi tập chọn khác rỗng; ô đã chọn có `[data-selected]`.
 
@@ -76,9 +79,26 @@ Host có `[data-selecting]` khi tập chọn khác rỗng; ô đã chọn có `[
 | Thao tác | Tác dụng |
 |---|---|
 | Bấm tick | Lật ô |
-| Ctrl + bấm / Cmd + bấm ảnh | Lật ô (không `activate`, hành vi mặc định bị chặn) |
-| Shift + bấm ảnh | Chọn dải từ ô neo |
+| Cmd + bấm (macOS) / Ctrl + bấm (khác) ảnh | Lật ô + đặt neo (không `activate`, hành vi mặc định bị chặn — kể cả link) |
+| Shift + bấm ảnh | **Thêm** dải từ ô neo (không bỏ chọn ngoài dải; dừng ở `max` + `select-limit`); không có neo → lật ô |
 | Space / Shift + Space | Như mặc định |
+
+Tóm tắt phím tắt chọn (đã test bằng chuột + phím thật trên Chromium / Firefox / WebKit):
+
+| Thao tác | Mặc định | `select-mode="tick"` |
+|---|---|---|
+| Bấm ảnh | Chưa chọn: `activate`. Đang chọn: lật ô | Luôn `activate` |
+| Cmd / Ctrl + bấm ảnh | `<button>`: lật ô (bắt đầu chọn). `<a href>` khi chưa chọn gì: tab mới | Lật ô |
+| Shift + bấm ảnh | Thêm dải từ neo | Thêm dải từ neo |
+| Space / Shift + Space | Lật ô / thêm dải | Lật ô / thêm dải |
+| Enter | `activate` | `activate` |
+| Esc | Bỏ hết | Bỏ hết |
+
+- **macOS dùng Cmd**: Ctrl + bấm trên macOS là menu chuột phải (trình duyệt không phát `click`), nên chỉ Cmd chạy — đúng
+  quy ước của mac.
+- Shift + bấm **không bôi đen chữ** trên lưới (đã kiểm ở 3 engine với phần tử mở là button và link).
+- Không có Ctrl/Cmd + A (chọn tất cả) và Ctrl/Cmd + Space — Space đã là bật / tắt theo APG listbox; Ctrl + Space đổi bộ
+  gõ trên macOS, Cmd + Space là Spotlight.
 
 Không có attribute (mặc định) thì giữ đúng hành vi bảng trên. Góc của tick đổi bằng token
 `--td-media-grid-tick-inline: start | end` (picker đặt `end` = góc trên-phải).
@@ -293,15 +313,11 @@ Method lập trình **không** phát event (giống `setValue`) trừ khi truy�
 | `--td-media-grid-cols` | `repeat(auto-fill, minmax(160px, 1fr))` | `grid-template-columns` của lưới |
 | `--td-media-grid-gap` | `var(--td-space-xs)` | Khoảng cách ô |
 | `--td-media-grid-radius` | `var(--td-radius-md)` | Bo góc ô / ảnh |
-| `--td-media-grid-tick-size` | `24px` | Đường kính tick (vùng bấm ≥ 44px trên cảm ứng) |
+| `--td-media-grid-tick-size` | `24px` | Cỡ ô tick (vùng bấm ≥ 44px trên cảm ứng); picker đặt `20px` |
 | `--td-media-grid-tick-inset` | `6px` | Khoảng cách tick tới góc trên của ô |
 | `--td-media-grid-tick-inline` | `start` | 0.33.0. Góc của tick: `start` (trên-đầu) \| `end` (trên-cuối). Đọc mỗi frame đo (host `[data-td-tick="end"]`) |
-| `--td-media-grid-tick-bg` | `rgb(0 0 0 / 35%)` | Nền tick chưa chọn |
-| `--td-media-grid-tick-border` | `#fff` | Viền tick (và màu dấu check khi rê chuột lên tick) |
-| `--td-media-grid-tick-ring` | `rgb(0 0 0 / 50%)` | Vòng tối mảnh ngoài viền (để tick nổi trên ảnh sáng) |
-| `--td-media-grid-tick-on-bg` | `var(--td-btn-primary-bg)` | Nền tick đã chọn (dark tự đảo theo primary) |
-| `--td-media-grid-tick-on-fg` | `var(--td-btn-primary-fg)` | Dấu check của tick đã chọn |
-| `--td-media-grid-selected-ring` | `var(--td-media-grid-tick-on-bg)` | 0.33.0. Màu vòng inset 3px của ô đã chọn (vẽ trên phần tử mở, trùng khung ảnh) |
+| `--td-media-grid-tick-bg` / `-border` / `-ring` / `-on-bg` / `-on-fg` | `rgb(0 0 0 / 35%)` / `#fff` / `rgb(0 0 0 / 50%)` / `var(--td-btn-primary-bg)` / `var(--td-btn-primary-fg)` | **Từ 0.36.0 chỉ style tick do site in** (`[data-td-media-tick]`). Tick của kit là ô tick chung — đổi bằng `--td-checkbox-color` / `--td-checkbox-border` / `--td-checkbox-radius` |
+| `--td-media-grid-selected-ring` | `var(--td-checkbox-color)` (trước 0.36: `var(--td-media-grid-tick-on-bg)`) | 0.33.0. Màu vòng inset 3px của ô đã chọn (vẽ trên phần tử mở, trùng khung ảnh) |
 | `--td-media-grid-selected-scale` | **`1`** (trước 0.33: `0.88`) | Tỉ lệ thu ảnh của ô đã chọn. Muốn hiệu ứng thu nhỏ kiểu cũ: `0.88` |
 | `--td-media-grid-fit` | `cover` | 0.33.0. `object-fit` của ảnh trong ô (`cover` \| `contain`) |
 | `--td-media-grid-ratio` | `auto` | 0.33.0. Tỉ lệ khung ô ở bố cục mặc định (`auto` = cao theo ảnh; vd `3 / 2`, `1`) |
@@ -319,8 +335,8 @@ tick đặc, nên khe giữa các ô luôn đều.
 
 Tick ẩn khi nghỉ; hiện khi rê chuột (chuột thật: `hover: hover` + `pointer: fine`), khi ô có focus bên trong, khi đang
 chọn và trên ô đã chọn. Màn cảm ứng (`hover: none` hoặc `pointer: coarse`) luôn hiện tick mờ (0.55). Không glass (lớp nội
-dung). Tương phản đã kiểm trong gate (sáng + tối): viền tick ≥ 3:1 trên ảnh trắng và ảnh đen, dấu check ≥ 3.2:1 trên nền
-tick đã chọn.
+dung). Tương phản đã kiểm trong gate: vành của ô tick ≥ 3:1 trên ảnh trắng và ảnh đen, dấu check ≥ 3.2:1 trên nền đã
+chọn. Focus bàn phím lên tick (khi site cho tick vào Tab) vẽ `--td-focus-ring` quanh ô.
 
 ## Cấu trúc DOM & class
 
@@ -329,8 +345,8 @@ tick đã chọn.
   <div data-td-media-item data-id="f1" class="td-media-grid__item" role="listitem" data-selected>
     <button type="button" data-td-media-open aria-label="Khung 1" class="td-media-grid__open"><img src="…" alt=""></button>
     <button type="button" class="td-media-grid__tick" tabindex="-1" aria-pressed="true" aria-label="Chọn Khung 1">
-      <svg class="td-icon td-icon--s" data-icon="check" …></svg>
-    </button>
+      <span class="td-check td-check--lg td-check--on-media" aria-hidden="true"><svg class="… td-check__svg" data-icon="check" …></svg></span>
+    </button>                                                        <!-- class thêm td-media-grid__tick--mark (tick của kit) -->
     <!-- nút ⋯, badge… của site -->
   </div>
   …
@@ -357,6 +373,7 @@ tick đã chọn.
 - Phím chỉ được xử lý khi focus nằm trên phần tử mở; nút ⋯ / link khác trong ô tự xử lý phím của nó.
 - Host `role="list"`, ô `role="listitem"`; tick là nút bật/tắt (`aria-pressed`). Một live region `polite` đọc "Đã chọn
   {n}" một lần cho mỗi thao tác (chọn dải không đọc từng ô).
+- Ctrl + bấm (Cmd trên macOS) / Shift + bấm: xem bảng phím tắt ở §2.
 - `prefers-reduced-motion`: không chạy hiệu ứng (thu nhỏ, vòng chọn). Forced colors: tick viền `ButtonText`, ô đã chọn
   viền `Highlight` (trên phần tử mở), tick đã chọn nền `Highlight`.
 - Focus ring vẽ trên phần tử mở, và phần tử mở rộng đúng bằng ảnh. Layout justified không đổi thứ tự DOM, nên thứ tự Tab

@@ -49,7 +49,7 @@ const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
 
 describe('batch 3 — td-toast DOM contract', () => {
   it('matches test/contracts/toast.html (container + one toast per type + sticky)', async () => {
-    const KEEP = ['type', 'role', 'aria-hidden', 'aria-live', 'aria-label', 'data-state', 'data-icon', 'id'];
+    const KEEP = ['type', 'role', 'aria-hidden', 'aria-live', 'aria-label', 'data-state', 'data-icon', 'id', 'data-edge', 'data-placement'];
     const shape = (el) => ({
       tag: el.localName,
       cls: [...el.classList].sort().join('.'),
@@ -68,19 +68,20 @@ describe('batch 3 — td-toast DOM contract', () => {
     }
   });
 
-  it('no Tailwind/legacy classes, no inline style markup; z-index from --td-z-toast; top-right by tokens', async () => {
+  it('no Tailwind/legacy classes, no inline style markup; z-index from --td-z-toast; top-right by default', async () => {
     TdToast._showSingle('Xin chào', 'info', 0);
     await frames(3);
     const c = TdToast.container;
     expect(c.id).to.equal('td-toast-container');
     expect(c.querySelector('[class*="toast-item"], [class*="bg-"], .fixed, .text-sm')).to.equal(null);
     expect(c.hasAttribute('style')).to.equal(false);
-    expect(c.querySelector('[style]')).to.equal(null);
+    // v0.36.0: the only inline property is the CSSOM sequence of each toast (lane order < 480)
+    expect([...c.querySelectorAll('[style]')].every((n) => n.style.length === 1 && n.style[0] === '--_td-toast-seq')).to.equal(true);
     const cs = getComputedStyle(c);
     expect(cs.position).to.equal('fixed');
     expect(cs.zIndex).to.equal('500');
     expect(TdToast.getToastZIndex()).to.equal(500);
-    expect(cs.top).to.equal('80px'); // 5rem
+    expect(getComputedStyle(c.querySelector('.td-toasts')).top).to.equal('80px'); // --td-toast-offset-top 5rem
     await wait(260); // v0.21.0: the toast slides in horizontally — measure after the entry
     const r = toasts()[0].getBoundingClientRect();
     expect(Math.round(window.innerWidth - r.right)).to.equal(16); // 1rem from the inline end
@@ -279,7 +280,7 @@ describe('batch 3 — td-toast close button + pause', () => {
 
 describe('batch 3 — td-toast visuals', () => {
   for (const theme of ['light', 'dark']) {
-    it(`text ≥ 4.7:1 on the pastel fill (${theme})`, async () => {
+    it(`text ≥ 4.7:1 on the solid fill (${theme})`, async () => {
       if (theme === 'dark') document.documentElement.setAttribute('data-td-theme', 'dark');
       for (const type of ['success', 'error', 'warning', 'info']) TdToast._showSingle(`Nội dung ${type}`, type, 0);
       await frames(3);

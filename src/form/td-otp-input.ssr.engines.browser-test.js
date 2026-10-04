@@ -48,7 +48,7 @@ document.body.appendChild(mismatch);
 // No-JS: the element-mode field shows the native input (cells hidden); a native field too.
 const box0 = hostOf('o-basic').querySelector('.td-otp__box').getBoundingClientRect();
 const noJs = {
-  cells: getComputedStyle(hostOf('o-basic').querySelector('.td-otp__cells')).display,
+  cells: getComputedStyle(hostOf('o-basic').querySelector('.td-otp__cells')).visibility, // v0.36.0: in flow, hidden
   input: getComputedStyle(hostOf('o-basic').querySelector('input')).color,
   native: getComputedStyle(root.querySelector('form.ssr-native input')).display,
 };
@@ -68,8 +68,8 @@ tampered.setSelectionRange(2, 2);
 const { TdOtpInput } = await import('./td-otp-input.js');
 
 describe('td-otp-input SSR (otp-input@1) — no JS', () => {
-  it('cells hidden, the native input visible (element mode and native mode)', () => {
-    expect(noJs.cells).to.equal('none');
+  it('cells hidden (v0.36.0: still in flow — they size the box), the native input visible (element and native mode)', () => {
+    expect(noJs.cells).to.equal('hidden');
     expect(noJs.native).to.not.equal('none');
     expect(noJs.input).to.not.equal('rgba(0, 0, 0, 0)');
   });
@@ -105,6 +105,10 @@ describe('td-otp-input SSR (otp-input@1) — adopted in place', () => {
       expect(entries).to.deep.equal(want.disabled ? [] : [value]);
       const shown = [...host.querySelectorAll('.td-otp__cell')].map((x) => x.textContent).join('');
       expect(shown).to.equal(value);
+      // v0.36.0 additive: length / charset adopted from the PHP host
+      expect(host.length).to.equal(want.length || 6);
+      expect(host.charset).to.equal(want.charset || 'numeric');
+      expect(host.querySelectorAll('.td-otp__cell').length).to.equal(want.length || 6);
       for (const bad of c.dropped || []) expect(host.hasAttribute(bad) || input.hasAttribute(bad), bad).to.equal(false);
       if (c.dropped) expect(host.getAttribute('name')).to.equal('code');
     });

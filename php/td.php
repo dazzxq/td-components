@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.35.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.35.0', __DIR__ . '/public/assets/vendor/td-components/0.35.0');
+ *   require_once '/path/to/vendor/td-components/0.36.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.36.0', __DIR__ . '/public/assets/vendor/td-components/0.36.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -155,6 +155,40 @@ namespace TdComponents {
         public const SSR_MASKED_VALUE = 'masked-value@1';
         /** v0.32.0: td_media_field (always the element <td-media-field> + the no-JS hidden inputs). */
         public const SSR_MEDIA_FIELD = 'media-field@1';
+        /** v0.36.0: td_action_button element mode (<td-action-button> + the icon-only control). */
+        public const SSR_ACTION_BUTTON = 'action-button@1';
+        /** v0.36.0: tones / sizes of td_action_button (= TdActionButton). */
+        public const ACTION_TONES = ['standard', 'warning', 'danger'];
+        public const ACTION_SIZES = ['sm', 'md', 'lg'];
+        /**
+         * v0.36.0: the 23 dcms2 action presets — name => [icon, label, tone]. MUST equal TdActionButton.presets
+         * (src/form/td-action-button.js; parity: test/php/td-action-button.test.js). Plan v0.36.0 QĐ 11.
+         */
+        public const ACTION_PRESETS = [
+            'edit' => ['pencil', 'Chỉnh sửa', 'standard'],
+            'view' => ['eye', 'Xem chi tiết', 'standard'],
+            'review' => ['send', 'Gửi bài', 'standard'],
+            'remove' => ['arrow-down-to-line', 'Gỡ bài viết', 'warning'],
+            'unpublish' => ['arrow-down-to-line', 'Gỡ xuống', 'danger'],
+            'withdraw' => ['rewind', 'Rút bài', 'warning'],
+            'return' => ['undo-2', 'Trả lại', 'warning'],
+            'log' => ['history', 'Xem log', 'standard'],
+            'versions' => ['layers', 'Lịch sử phiên bản', 'standard'],
+            'password' => ['rotate-cw', 'Reset mật khẩu', 'warning'],
+            'reset' => ['key-round', 'Reset mật khẩu', 'warning'],
+            'open' => ['external', 'Mở trong tab mới', 'standard'],
+            'copy' => ['copy', 'Sao chép', 'standard'],
+            'delete' => ['trash', 'Xoá', 'danger'],
+            'download' => ['download', 'Tải về', 'standard'],
+            'moveup' => ['arrow-up', 'Di chuyển lên', 'standard'],
+            'movedown' => ['arrow-down', 'Di chuyển xuống', 'standard'],
+            'publish' => ['success', 'Xuất bản', 'standard'],
+            'send-to-publish' => ['send', 'Gửi chờ xuất bản', 'standard'],
+            'submit' => ['send', 'Gửi bài', 'standard'],
+            'claim' => ['hand', 'Nhận bài', 'standard'],
+            'release' => ['reply', 'Nhả bài', 'warning'],
+            'force-release' => ['user-x', 'Nhả bài cho người khác', 'danger'],
+        ];
         /** @internal JS `\s` (String.prototype.trim / RegExp \s) as a PCRE /u class body — parity with media-field-model.js. */
         public const JS_WS = '\t\n\x{0B}\f\r \x{A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}';
         /** v0.32.0: default texts of td_media_field = TdMediaField.labels (Vietnamese; a site overriding the JS labels gets a safe re-render). */
@@ -172,7 +206,7 @@ namespace TdComponents {
         ];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.35.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.36.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -901,6 +935,123 @@ namespace {
     }
 
     /**
+     * v0.36.0 — icon-only action button with a preset (dcms2 `ActionButtons`): `button.td-btn.td-btn--action…` with
+     * `aria-label` + `data-tooltip` = the name, or `a.td-btn…` with `href`. $action = preset key (Td::ACTION_PRESETS;
+     * dcms camelCase accepted: `sendToPublish`). Options: label (overrides the preset label), icon (registry name),
+     * tone standard|warning|danger, size sm|md|lg, disabled, href, target, aria_label (name: aria_label > label >
+     * preset), id, class, attrs (Td::ALLOWED_ATTRS + aria-* / data-*; owned names and data-td-* dropped), element
+     * (default Td::configure ssr_elements): the `<td-action-button data-td-ssr="action-button@1">` host + the exact
+     * control <td-action-button> renders (hydrated in place). An action that is neither a preset nor given icon + label
+     * → '' + one E_USER_WARNING. A site preset registered only in JS must pass icon + label here.
+     */
+    function td_action_button(string $action, array $o = []): string
+    {
+        $trim = static fn (string $s): string => (string) preg_replace('/^[' . Td::JS_WS . ']+|[' . Td::JS_WS . ']+$/u', '', $s);
+        $action = $trim($action);
+        $key = strtolower((string) preg_replace('/([a-z0-9])([A-Z])/', '$1-$2', $action));
+        $preset = preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $key) && isset(Td::ACTION_PRESETS[$key]) ? Td::ACTION_PRESETS[$key] : null;
+        $ownIcon = isset($o['icon']) && is_string($o['icon']) ? $trim($o['icon']) : '';
+        $ownIcon = $ownIcon !== '' && Td::hasIcon($ownIcon) ? $ownIcon : '';
+        $icon = $ownIcon !== '' ? $ownIcon : ($preset !== null && Td::hasIcon($preset[0]) ? $preset[0] : '');
+        $ownLabel = isset($o['label']) && is_scalar($o['label']) && !is_bool($o['label']) ? $trim((string) $o['label']) : '';
+        $label = $ownLabel !== '' ? $ownLabel : ($preset[1] ?? '');
+        if ($icon === '' || $label === '') {
+            // SEC-02 / ISSUE-9 (v0.36.0 review): never log the raw value — a printable-ASCII allowlist (0x20–0x7E; every
+            // other byte, incl. U+2028 / U+2029 and all non-ASCII, dropped), `\` and `"` escaped, at most 64 characters,
+            // plus the original byte length → always one line, nothing the log can mistake for structure
+            $shown = substr((string) preg_replace('/[^\x20-\x7E]/', '', $action), 0, 64);
+            $shown = addcslashes($shown, '\\"');
+            trigger_error('td_action_button: unknown action "' . $shown . '" (' . strlen($action) . ' bytes; no preset; give icon + label)', E_USER_WARNING);
+            return '';
+        }
+        $ownTone = in_array($o['tone'] ?? null, Td::ACTION_TONES, true) ? $o['tone'] : null;
+        $tone = $ownTone ?? (in_array($preset[2] ?? null, Td::ACTION_TONES, true) ? $preset[2] : 'standard');
+        $ownSize = in_array($o['size'] ?? null, Td::ACTION_SIZES, true) ? $o['size'] : null;
+        $size = $ownSize ?? 'md';
+        $element = td__element($o);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $lift = td__button_lift($extra);
+        $aria = isset($o['aria_label']) && is_scalar($o['aria_label']) && !is_bool($o['aria_label']) ? $trim((string) $o['aria_label']) : '';
+        $aria = $aria !== '' ? $aria : $trim($lift['aria-label'] ?? '');
+        $name = $aria !== '' ? $aria : $label;
+        $disabled = !empty($o['disabled']);
+        $isLink = array_key_exists('href', $o) && $o['href'] !== null;
+        $class = 'td-btn td-btn--action td-btn--action-' . $tone . ' td-btn--action-' . $size;
+        $site = $element ? ['id' => null, 'class' => ''] : ['id' => td__str($o['id'] ?? null), 'class' => Td::classTokens($o['class'] ?? null)];
+        if ($isLink) {
+            $href = Td::safeUrl((string) $o['href']);
+            $target = in_array($o['target'] ?? null, Td::TARGETS, true) ? $o['target'] : null;
+            $inert = $disabled || $href === '';
+            $attrs = [
+                'class' => $class . $site['class'],
+                'href' => $inert ? null : $href,
+                'target' => $target,
+                'rel' => $target === '_blank' ? 'noopener noreferrer' : null,
+                'id' => $site['id'],
+                'role' => $inert ? 'link' : null,
+                'aria-disabled' => $inert ? 'true' : null,
+                'tabindex' => $inert ? '-1' : null,
+            ];
+            $tag = 'a';
+        } else {
+            $attrs = ['class' => $class . $site['class'], 'type' => 'button', 'id' => $site['id'], 'disabled' => $disabled];
+            $tag = 'button';
+        }
+        $attrs += ['aria-label' => $name, 'data-tooltip' => $name];
+        $forwarded = ['aria-pressed', 'aria-expanded', 'aria-haspopup', 'aria-controls'];
+        $owned = ['class', 'type', 'id', 'name', 'value', 'disabled', 'aria-busy', 'aria-disabled', 'aria-label', 'data-tooltip',
+            'href', 'target', 'rel', 'download', 'role', 'tabindex'];
+        if ($element) {
+            // forwarded ARIA goes through the component whitelist (host + control identical before / after hydrate)
+            foreach ($extra as $k => $v) {
+                if (in_array(strtolower((string) $k), $forwarded, true)) {
+                    unset($extra[$k]);
+                }
+            }
+            foreach ($forwarded as $a) {
+                if (isset($lift[$a])) {
+                    $attrs[$a] = $lift[$a];
+                }
+            }
+        }
+        $taken = [];
+        $html = '<' . $tag . Td::ownAttrs($attrs, $taken);
+        $taken = td__reserve($owned, $extra, $taken);
+        $html .= Td::attrs($extra, $taken) . '>';
+        $svg = Td::icon($icon, 's');
+        $html .= $element
+            ? '<span class="td-btn__icon" data-td-icon="' . Td::e($icon) . '" data-td-icon-size="s" aria-hidden="true">' . $svg . '</span>'
+            : '<span class="td-btn__icon" aria-hidden="true">' . $svg . '</span>';
+        $html .= '<span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden>'
+            . '<svg class="td-spinner__svg" viewBox="0 0 50 50" aria-hidden="true" focusable="false">'
+            . '<circle class="td-spinner__track" cx="25" cy="25" r="20"></circle>'
+            . '<circle class="td-spinner__arc" cx="25" cy="25" r="20"></circle></svg></span>';
+        $html .= '</' . $tag . '>';
+        if (!$element) {
+            return $html;
+        }
+        $hostAttrs = [
+            'id' => td__str($o['id'] ?? null),
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'data-td-ssr' => Td::SSR_ACTION_BUTTON,
+            'action' => $action !== '' ? $action : null,
+            'label' => $ownLabel !== '' ? $ownLabel : null,
+            'icon' => $ownIcon !== '' ? $ownIcon : null,
+            'tone' => $ownTone,
+            'size' => $ownSize,
+        ];
+        if ($isLink) {
+            $hostAttrs += ['href' => $href, 'target' => $target];
+        }
+        $hostAttrs += ['disabled' => $disabled, 'aria-label' => $aria !== '' ? $aria : null];
+        foreach ($forwarded as $a) {
+            $hostAttrs[$a] = $lift[$a] ?? null;
+        }
+        $hostTaken = [];
+        return '<td-action-button' . Td::ownAttrs($hostAttrs, $hostTaken) . '>' . $html . '</td-action-button>';
+    }
+
+    /**
      * Standalone native field `.td-field` + `input|textarea.td-field__control` (native validation, no JS).
      * Options: label, type (text|password|email|number|date|month|datetime-local|time|search|url|tel|textarea),
      * size sm|md|lg, placeholder, hint (helper text), error, required, disabled, readonly, max_length, minlength,
@@ -1558,15 +1709,19 @@ namespace {
     }
 
     /**
-     * v0.27.0 one-time code field (6 digits, contract otp-input@1). Default: a NATIVE field that works without JS —
-     * `div.td-otp` > [label] + `div.td-otp__box` > `input.td-otp__input` (type text, inputmode numeric, autocomplete
-     * one-time-code, maxlength 6, pattern [0-9]{6}, name / value / required…) [+ the error note]. `element` (bool, default
-     * Td::configure ssr_elements = false): `<td-otp-input data-td-ssr="otp-input@1">` host + the same field + the 6
+     * v0.27.0 one-time code field (contract otp-input@1; v0.36.0 additive: length / charset / case). Default: a NATIVE
+     * field that works without JS — `div.td-otp[data-length=N when N ≠ 6]` > [label] + `div.td-otp__box` >
+     * `input.td-otp__input` (type text, inputmode numeric|text, autocomplete one-time-code, letter charsets: autocapitalize
+     * / autocorrect / spellcheck, maxlength N, pattern [0-9]{N} | [A-Za-z0-9]{N} | [A-Za-z]{N}, name / value / required…)
+     * [+ the error note]. `element` (bool, default Td::configure ssr_elements = false): `<td-otp-input
+     * data-td-ssr="otp-input@1">` host (+ `length` / `charset` / `case` when not the default) + the same field + the N
      * decorative cells, adopted IN PLACE by `@dazzxq/td-components/otp-input` (no flash). $name: form field name.
-     * Options: label, value (digits kept: full-width / Arabic-Indic digits → ASCII, other characters dropped, max 6),
-     * required, disabled, readonly, autofocus, error (text), aria_label (when there is no label; default "Mã xác thực"),
-     * id (the INPUT id — `<label for>`; element mode: host = {id}-host), class (wrapper / host), attrs (the input:
-     * allowlisted; owned names and data-td-* reserved). Never submits the form by itself (no JS in this markup).
+     * Options: length (int 1–10, default 6; anything else → 6 + one E_USER_WARNING), charset (numeric | alphanumeric |
+     * alpha; invalid → numeric + warning), case (upper | lower | preserve, letters only; invalid → upper + warning), label,
+     * value (normalised like the component: td__otp_value()), required, disabled, readonly, autofocus, error (text),
+     * aria_label (when there is no label; default "Mã xác thực"), id (the INPUT id — `<label for>`; element mode: host =
+     * {id}-host), class (wrapper / host), attrs (the input: allowlisted; owned names and data-td-* reserved). The native
+     * `pattern` accepts lower case too: the server normalises the case. Never submits the form by itself.
      */
     function td_otp_input(string $name, array $o = []): string
     {
@@ -1577,7 +1732,10 @@ namespace {
         $label = isset($o['label']) && is_scalar($o['label']) && (string) $o['label'] !== '' ? (string) $o['label'] : null;
         $aria = isset($o['aria_label']) && is_scalar($o['aria_label']) && (string) $o['aria_label'] !== '' ? (string) $o['aria_label'] : null;
         $error = td__str($o['error'] ?? null);
-        $value = isset($o['value']) && is_scalar($o['value']) ? td__otp_digits((string) $o['value']) : '';
+        [$len, $charset, $case] = td__otp_config($o);
+        $text = $charset !== 'numeric';
+        $value = isset($o['value']) && is_scalar($o['value']) ? td__otp_value((string) $o['value'], $len, $charset, $case) : '';
+        $pattern = ['numeric' => '[0-9]', 'alphanumeric' => '[A-Za-z0-9]', 'alpha' => '[A-Za-z]'][$charset] . '{' . $len . '}';
         $required = !empty($o['required']);
         $disabled = !empty($o['disabled']);
         $readonly = !empty($o['readonly']);
@@ -1587,11 +1745,14 @@ namespace {
             'type' => 'text',
             'class' => 'td-otp__input',
             'id' => $cid,
-            'inputmode' => 'numeric',
+            'inputmode' => $text ? 'text' : 'numeric',
             'autocomplete' => 'one-time-code',
+            'autocapitalize' => $text ? ($case === 'upper' ? 'characters' : 'off') : null,
+            'autocorrect' => $text ? 'off' : null,
+            'spellcheck' => $text ? 'false' : null,
             'name' => $name !== '' ? $name : null,
-            'maxlength' => '6',
-            'pattern' => '[0-9]{6}',
+            'maxlength' => (string) $len,
+            'pattern' => $pattern,
             'value' => $value !== '' ? $value : null,
             'required' => $required,
             'disabled' => $disabled,
@@ -1603,19 +1764,20 @@ namespace {
             'aria-describedby' => $error !== null ? $errId : null,
         ], $taken);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
-        $taken = td__reserve(['type', 'class', 'id', 'inputmode', 'autocomplete', 'name', 'maxlength', 'minlength', 'pattern',
-            'value', 'required', 'disabled', 'readonly', 'autofocus', 'aria-label', 'aria-labelledby', 'aria-invalid',
-            'aria-errormessage', 'aria-describedby'], $extra, $taken);
+        $taken = td__reserve(['type', 'class', 'id', 'inputmode', 'autocomplete', 'autocapitalize', 'autocorrect', 'spellcheck',
+            'name', 'maxlength', 'minlength', 'pattern', 'value', 'required', 'disabled', 'readonly', 'autofocus', 'aria-label',
+            'aria-labelledby', 'aria-invalid', 'aria-errormessage', 'aria-describedby'], $extra, $taken);
         $input .= Td::attrs($extra, $taken) . '>';
         $labelHtml = $label !== null ? '<label class="td-otp__label" for="' . Td::e($cid) . '">' . Td::e($label) . '</label>' : '';
         $note = $error !== null
             ? '<span class="td-field-error" id="' . Td::e($errId) . '" data-for="' . Td::e($element ? $hostId : $cid) . '">' . Td::e($error) . '</span>'
             : '';
+        $dataLength = $len !== 6 ? ' data-length="' . $len . '"' : '';
         if (!$element) {
-            return '<div class="td-otp' . Td::e(Td::classTokens($o['class'] ?? null)) . '">' . $labelHtml
+            return '<div class="td-otp' . Td::e(Td::classTokens($o['class'] ?? null)) . '"' . $dataLength . '>' . $labelHtml
                 . '<div class="td-otp__box">' . $input . '</div>' . $note . '</div>';
         }
-        $cells = '<span class="td-otp__cells" aria-hidden="true">' . str_repeat('<span class="td-otp__cell"></span>', 6) . '</span>';
+        $cells = '<span class="td-otp__cells" aria-hidden="true">' . str_repeat('<span class="td-otp__cell"></span>', $len) . '</span>';
         $hostTaken = [];
         return '<td-otp-input' . Td::ownAttrs([
             'data-td-ssr' => Td::SSR_OTP,
@@ -1623,32 +1785,119 @@ namespace {
             'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
             'name' => $name !== '' ? $name : null,
             'value' => $value !== '' ? $value : null,
+            'length' => $len !== 6 ? (string) $len : null,
+            'charset' => $text ? $charset : null,
+            'case' => $text && $case !== 'upper' ? $case : null,
             'label' => $label,
             'required' => $required,
             'disabled' => $disabled,
             'readonly' => $readonly,
             'error-text' => $error,
             'aria-label' => $aria,
-        ], $hostTaken) . '><div class="td-otp">' . $labelHtml . '<div class="td-otp__box">' . $input . $cells . '</div></div>'
+        ], $hostTaken) . '><div class="td-otp"' . $dataLength . '>' . $labelHtml . '<div class="td-otp__box">' . $input . $cells . '</div></div>'
             . $note . '</td-otp-input>';
     }
 
     /**
-     * @internal OTP value as <td-otp-input> keeps it: full-width (U+FF10…), Arabic-Indic (U+0660…) and extended
-     * Arabic-Indic (U+06F0…) digits → ASCII, every other character dropped, at most 6 digits.
+     * @internal v0.27.0 numeric OTP value, at most 6 digits — kept as a wrapper of td__otp_value().
      */
     function td__otp_digits(string $v): string
     {
-        static $map = null;
-        if ($map === null) {
-            $map = [];
-            foreach ([0xFF10, 0x0660, 0x06F0] as $base) {
-                for ($i = 0; $i < 10; $i++) {
-                    $map[(string) json_decode(sprintf('"\\u%04X"', $base + $i))] = (string) $i;
-                }
+        return td__otp_value($v, 6, 'numeric', 'upper');
+    }
+
+    /**
+     * @internal v0.36.0 `length` / `charset` / `case` options of td_otp_input(), with one E_USER_WARNING per invalid
+     * option (→ the default). Same rules as src/utils/otp.js otpLength / otpCharset / otpCase.
+     * @return array{0: int, 1: string, 2: string}
+     */
+    function td__otp_config(array $o): array
+    {
+        $len = 6;
+        if (array_key_exists('length', $o) && $o['length'] !== null) {
+            $l = $o['length'];
+            $ok = is_int($l) ? $l : (is_string($l) && preg_match('/^\s*[0-9]+\s*$/', $l) ? (int) trim($l) : null);
+            if ($ok !== null && $ok >= 1 && $ok <= 10) {
+                $len = $ok;
+            } else {
+                trigger_error('td_otp_input: invalid length (expected an integer 1–10); using 6', E_USER_WARNING);
             }
         }
-        return substr((string) preg_replace('/[^0-9]/', '', strtr($v, $map)), 0, 6);
+        $charset = 'numeric';
+        if (array_key_exists('charset', $o) && $o['charset'] !== null) {
+            if (in_array($o['charset'], ['numeric', 'alphanumeric', 'alpha'], true)) {
+                $charset = $o['charset'];
+            } else {
+                trigger_error('td_otp_input: invalid charset (expected numeric | alphanumeric | alpha); using numeric', E_USER_WARNING);
+            }
+        }
+        $case = 'upper';
+        if (array_key_exists('case', $o) && $o['case'] !== null) {
+            if (in_array($o['case'], ['upper', 'lower', 'preserve'], true)) {
+                $case = $o['case'];
+            } else {
+                trigger_error('td_otp_input: invalid case (expected upper | lower | preserve); using upper', E_USER_WARNING);
+            }
+        }
+        return [$len, $charset, $case];
+    }
+
+    /**
+     * @internal v0.36.0 OTP value as <td-otp-input> keeps it (src/utils/otp.js otpNormalize, parity OTP_CASES): digits
+     * (ASCII, full-width U+FF10…, Arabic-Indic U+0660…, extended Arabic-Indic U+06F0…) → ASCII when the charset takes
+     * digits; a letter: NFKC of that one character (intl Normalizer; without intl only full-width letters fold) must be
+     * one [A-Za-z], then the case; everything else dropped; at most $len characters.
+     */
+    function td__otp_value(string $v, int $len = 6, string $charset = 'numeric', string $case = 'upper'): string
+    {
+        static $digits = null;
+        static $wide = null;
+        if ($digits === null) {
+            $digits = [];
+            foreach ([0xFF10, 0x0660, 0x06F0] as $base) {
+                for ($i = 0; $i < 10; $i++) {
+                    $digits[(string) json_decode(sprintf('"\\u%04X"', $base + $i))] = (string) $i;
+                }
+            }
+            $wide = [];
+            for ($i = 0; $i < 26; $i++) {
+                $wide[(string) json_decode(sprintf('"\\u%04X"', 0xFF21 + $i))] = chr(65 + $i);
+                $wide[(string) json_decode(sprintf('"\\u%04X"', 0xFF41 + $i))] = chr(97 + $i);
+            }
+        }
+        // SEC-01 (v0.36.0 review): an OTP is ≤ 10 characters — input over TD_OTP_MAX_BYTES bytes is rejected outright (same
+        // policy as otpNormalize() in src/utils/otp.js), then code points are read one by one (no whole-string split) and
+        // the loop stops after $len accepted characters.
+        if (strlen($v) > 256 || ($v !== '' && !preg_match('//u', $v))) {
+            return '';
+        }
+        $out = '';
+        $n = 0;
+        $bytes = strlen($v);
+        for ($i = 0; $i < $bytes && $n < $len;) {
+            $b = ord($v[$i]);
+            $w = $b < 0x80 ? 1 : ($b >= 0xF0 ? 4 : ($b >= 0xE0 ? 3 : 2));
+            $ch = substr($v, $i, $w);
+            $i += $w;
+            $d = preg_match('/^[0-9]$/', $ch) ? $ch : ($digits[$ch] ?? null);
+            if ($d !== null) {
+                if ($charset !== 'alpha') {
+                    $out .= $d;
+                    $n++;
+                }
+                continue;
+            }
+            if ($charset === 'numeric') {
+                continue;
+            }
+            $k = class_exists('Normalizer') ? (string) \Normalizer::normalize($ch, \Normalizer::FORM_KC) : ($wide[$ch] ?? $ch);
+            if (!preg_match('/^[A-Za-z]$/', $k)) {
+                continue;
+            }
+            $out .= $case === 'lower' ? strtolower($k) : ($case === 'preserve' ? $k : strtoupper($k));
+            $n++;
+        }
+        return $out;
     }
 
     /**

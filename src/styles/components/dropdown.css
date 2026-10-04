@@ -13,10 +13,12 @@
 @layer td.tokens {
 	:root {
 		--td-dropdown-option-h: 40px; /* JS mirrors it: max-height = visible options × 40 px */
-		--td-dropdown-option-hover: var(--td-color-hover);
-		--td-dropdown-option-active: var(--td-color-hover-strong);
-		--td-dropdown-option-active-line: var(--td-control-border-hover); /* v0.14.2: soft outline; the fill marks it too */
-		--td-dropdown-option-selected: var(--td-color-hover-strong);
+		/* v0.36.0: defaults follow the shared option-row tokens (--td-option-*); -active-line no longer has an effect (the
+		   active row shows the inline-start accent bar --td-option-active-bar instead) */
+		--td-dropdown-option-hover: var(--td-option-hover-bg);
+		--td-dropdown-option-active: var(--td-option-active-bg);
+		--td-dropdown-option-active-line: var(--td-control-border-hover);
+		--td-dropdown-option-selected: var(--td-option-selected-bg);
 		--td-dropdown-search-bg: var(--td-color-hover);
 		--td-dropdown-search-border: var(--td-control-border-soft);      /* soft like the fields (v0.14.1) */
 		--td-dropdown-hairline: var(--td-color-border);
@@ -208,7 +210,7 @@
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
-		padding: var(--td-glass-pad);
+		padding: var(--td-glass-pad) 0; /* v0.36.0: rows are full-bleed (block padding only) */
 		overflow: hidden;
 		font-family: var(--td-font-sans);
 		font-size: var(--td-text-sm);
@@ -245,7 +247,7 @@
 
 	.td-dropdown__search-wrap {
 		flex: none;
-		padding: 2px 2px var(--td-glass-pad);
+		padding: 2px var(--td-option-pad-x) var(--td-glass-pad);
 		margin-bottom: var(--td-glass-pad);
 		border-bottom: 1px solid var(--td-dropdown-hairline);
 	}
@@ -292,7 +294,6 @@
 	.td-dropdown__scroller {
 		display: flex;
 		flex-direction: column;
-		gap: 1px;
 		min-height: 0;
 		overflow-y: auto; /* scrolling inside the menu does NOT close it */
 		overscroll-behavior: contain;
@@ -305,25 +306,31 @@
 		align-items: center;
 		justify-content: space-between;
 		min-height: var(--td-dropdown-option-h);
-		padding: 8px 10px;
+		padding: 8px var(--td-option-pad-x);
 		color: inherit;
 		cursor: pointer;
 		user-select: none;
-		border-radius: var(--td-glass-radius-inner);
+		border-radius: 0; /* v0.36.0: full-bleed row (dcms2) */
 	}
 
 	.td-dropdown__option:hover {
 		background: var(--td-dropdown-option-hover);
 	}
 
+	/* selected = semibold label + the ✓ at the inline end (JS prints .td-dropdown__check on the selected row) */
 	.td-dropdown__option[aria-selected="true"] {
-		font-weight: var(--td-fw-medium);
+		font-weight: var(--td-fw-semibold);
 		background: var(--td-dropdown-option-selected);
 	}
 
+	/* the keyboard-active row (aria-activedescendant): fill + inline-start accent bar = the focus indicator */
 	.td-dropdown__option[data-active] {
 		background: var(--td-dropdown-option-active);
-		box-shadow: inset 0 0 0 1px var(--td-dropdown-option-active-line);
+		box-shadow: inset var(--td-option-active-bar-w) 0 0 var(--td-option-active-bar);
+	}
+
+	.td-dropdown__option[data-active]:dir(rtl) {
+		box-shadow: inset calc(-1 * var(--td-option-active-bar-w)) 0 0 var(--td-option-active-bar);
 	}
 
 	/* v0.17.0 E2: disabled option — shown dimmed, never selectable nor active (JS skips it) */
@@ -347,7 +354,7 @@
 		font-weight: var(--td-fw-semibold);
 		color: var(--td-dropdown-create-fg);
 		border-top: 1px solid var(--td-dropdown-hairline);
-		border-radius: 0 0 var(--td-glass-radius-inner) var(--td-glass-radius-inner);
+		border-radius: 0;
 	}
 
 	.td-dropdown__create-icon {
@@ -368,7 +375,7 @@
 	}
 
 	.td-dropdown__empty {
-		padding: 8px 10px;
+		padding: 8px var(--td-option-pad-x);
 		margin: 0;
 		font-style: italic;
 		color: var(--td-field-note);

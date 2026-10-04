@@ -208,3 +208,21 @@ test('v0.35.0: ./cropper export, sideEffects, barrel TdCropper, cropper CSS in t
     assert.ok(css.includes(sel), sel);
   }
 });
+
+test('v0.36.0: ./action-button export, sideEffects, barrel TdActionButton, action-button CSS right after button.css; button-structure internal', async () => {
+  assert.equal(pkg.exports['./action-button'], './src/form/td-action-button.js');
+  assert.ok(pkg.sideEffects.includes('./src/form/td-action-button.js'));
+  assert.ok(!pkg.sideEffects.includes('./src/form/button-structure.js'), 'button-structure defines no element');
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdActionButton \} from '\.\/src\/form\/td-action-button\.js';/);
+  assert.ok(!/button-structure/.test(src), 'button-structure stays internal');
+  assert.ok(!Object.values(pkg.exports).some((t) => /button-structure/.test(t)), 'no button-structure export');
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  const i = files.indexOf('components/action-button.css');
+  assert.ok(i > files.indexOf('components/button.css') && i < files.indexOf('utilities.css'), 'action-button.css after button.css, before utilities.css');
+  const css = await readFile(join(ROOT, 'td.css'), 'utf8');
+  for (const sel of ['.td-btn.td-btn--action', '.td-btn--action-warning', '.td-btn--action-danger', '.td-action-group',
+    'td-action-button:not(:defined)', '--td-action-btn-size-md', '--td-action-btn-danger-hover-bg']) {
+    assert.ok(css.includes(sel), sel);
+  }
+});

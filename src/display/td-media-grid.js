@@ -1,5 +1,5 @@
 import { TdBaseElement } from '../base/td-base-element.js';
-import { tdIcon } from '../icons/td-icon.js';
+import { createCheckMark } from '../utils/check-mark.js';
 import { hasActiveAbove } from '../utils/layers.js';
 import { packRows, rowStyles, parseAr } from '../utils/justified.js';
 
@@ -23,7 +23,8 @@ const INERT_CHILD = 'template, script, [hidden], .td-sr-only';
  *       <button type="button" data-td-media-open aria-label="Khung 1"><img src="…" alt=""></button>
  *                                                        → JS: class="td-media-grid__open" (or <a href>)
  *       <button type="button" class="td-media-grid__tick" tabindex="-1" aria-pressed="false" aria-label="Chọn Khung 1">
- *         <svg class="td-icon td-icon--s" data-icon="check" …></svg></button>   → JS, right after the opener (sibling,
+ *         <span class="td-check td-check--lg td-check--on-media" aria-hidden="true"><svg …></span></button>
+ *                                                          (v0.36.0: the shared tick mark, check.css)   → JS, right after the opener (sibling,
  *                                                          never inside an <a>); a site `[data-td-media-tick]` is kept
  *       <!-- site controls (⋯ TdMenu, badge…) are left alone -->
  *     </div>
@@ -39,7 +40,9 @@ const INERT_CHILD = 'template, script, [hidden], .td-sr-only';
  * Default behaviour: nothing selected → opener click = `activate` (cancelable: preventDefault() blocks the opener default,
  * e.g. a link or TdLightbox.bind()), tick click = select. Selecting → opener / tick click flips the item (no
  * activate; the opener default is blocked). Shift + click: range in DOM order from the anchor (adds only; no anchor
- * → single flip). Keyboard on the opener only: Space flips (Shift+Space = range), Enter = `activate` (always, the
+ * → single flip). v0.36.0: Ctrl/Cmd+click on a <button> opener also flips (starts a selection); an <a href> opener keeps
+ * the browser's new-tab behaviour. macOS: Cmd (Ctrl+click is the
+ * context menu there). Keyboard on the opener only: Space flips (Shift+Space = range), Enter = `activate` (always, the
  * selection is not changed). Escape clears unless an overlay layer is open (layers.js) or an IME is composing.
  *
  * @element td-media-grid
@@ -500,10 +503,9 @@ export class TdMediaGrid extends TdBaseElement {
     if (!t) {
       t = document.createElement('button');
       t.type = 'button';
-      t.className = 'td-media-grid__tick';
+      t.className = 'td-media-grid__tick td-media-grid__tick--mark';
       t.setAttribute('tabindex', '-1');
-      const svg = tdIcon('check', { size: 's' });
-      if (svg) t.appendChild(svg);
+      t.appendChild(createCheckMark('lg', { onMedia: true })); // v0.36.0: the shared td-checkbox look (ADR 0017)
       t.setAttribute('aria-label', String(TdMediaGrid.labels.select ?? '').replace('{name}', this._nameOf(item, open)));
       if (open && open.parentNode) open.after(t);
       else item.appendChild(t);
@@ -584,7 +586,9 @@ export class TdMediaGrid extends TdBaseElement {
     // change the selection from the opener. Default mode: selecting (or Shift) → the opener flips.
     const flip = this._tickMode()
       ? (e.shiftKey || e.ctrlKey || e.metaKey)
-      : (this._selected.size > 0 || e.shiftKey);
+      // v0.36.0 (plan QĐ 7b): Ctrl/Cmd+click on a <button> opener starts / extends the selection; on an <a href>
+      // opener it stays the browser's "open in a new tab"
+      : (this._selected.size > 0 || e.shiftKey || ((e.ctrlKey || e.metaKey) && !open.matches('a[href]')));
     if (!disabled && flip) {
       e.preventDefault();
       e.stopPropagation();

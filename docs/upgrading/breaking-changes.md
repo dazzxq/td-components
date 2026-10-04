@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.36.0](#0360) | Đổi giao diện + **DOM toast** (màu ngữ nghĩa, badge, alert, toast, lightbox điện thoại; xem dưới) | CSS / script nhắm `#td-toast-container > .td-toast` phải đổi (toast nằm trong lane > chồng). Còn lại không bắt buộc. Nút / badge ngữ nghĩa thành màu đặc (warning chữ tối), badge viền + bóng, alert vạch mép; muốn pastel cũ: đoạn CSS khôi phục. Thêm `<td-action-button>` / `td_action_button()`. |
 | [0.35.0](#0350) | Đổi hành vi (nhỏ, chỉ khi đã bật `crop` / `focal-point`) | Không bắt buộc. Thêm `<td-cropper>` (`./cropper`), `TdCropper.openDialog()`, field `croppable` / `focal-point` / `name[focal]` (opt-in), PHP `croppable` / `crop_ratio` / `focal_point` / `focal`. Site đã truyền `crop: { enabled: true }` cho picker: "Chèn" giờ mở **bước cắt**, `urls.preview` phải là ảnh nguyên, `aspectRatio` trong [0.01, 100]. Field không `croppable` không đổi; `selection.focalPoint` thật khi có `focal-point`. Import map: thêm `cropper`. |
 | [0.34.0](#0340) | Đổi giao diện + đổi DOM (nhỏ) | Responsive: modal sheet < 720 (trước ≤ 640), `td-table` tự thành card khi hẹp (`layout="table"` để giữ cũ), `textContent` của ô bảng có thêm nhãn cột ẩn, site chỉ đè `--td-media-grid-row-ratio` giờ chỉ áp lưới ≥ 1024px. |
 | [0.33.0](#0330) | Đổi giao diện + đổi văn bản (không breaking API) | Không bắt buộc sửa code. Media picker full viewport giống dcms2: nhãn mặc định đổi ("Chọn ({n})" → "Chèn ({n})", "Huỷ" → "Đóng", "Thư viện media" → tiêu đề theo `selection.kinds`), `pageSize` 40 → 30, "Tải thêm" → phân trang, bỏ khay thumb. `td-media-grid`: ô đã chọn hết thu nhỏ / nền, thành vòng inset; grid tự đặt kích thước `img` (CSS site trên `img` không còn thắng — dùng token). |
@@ -64,6 +65,131 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.36.0
+
+### Màu ngữ nghĩa đặc, badge viền, alert vạch mép, tab, nút thao tác
+
+**Đổi giao diện** — không phải sửa code. Nút / badge ngữ nghĩa từ pastel sang **màu đặc** (`--td-solid-*`, như dcms2);
+**warning chữ tối** trên nền vàng hổ phách (vàng + chữ trắng không bao giờ đạt tương phản); badge có nền thêm **viền 1px
++ bóng nhẹ**; badge `--outline` / `--stamp` dùng mực `--td-badge-{v}-ink`; alert giữ nền nhạt nhưng có **vạch 4px màu
+đặc ở mép đầu dòng**, icon màu đặc, viền đậm lên một bậc. Tab: nhãn giữ chỗ bề rộng chữ đậm (đổi tab không xê dịch chữ);
+phân trang: trang hiện tại không còn rộng hơn khi in đậm. Thêm `<td-action-button>` (`./action-button`) + PHP
+`td_action_button()` (import map tự liệt kê; gõ tay thì thêm `"@dazzxq/td-components/action-button"`).
+
+- Token pastel `--td-pastel-*` **vẫn khai báo** (deprecated) nhưng không còn là nền mặc định của component nào. Site đã
+  đổi `--td-pastel-*` để chỉnh màu nút / badge: chuyển sang `--td-solid-*` (hoặc `--td-btn-{v}-*` / `--td-badge-{v}-*`).
+- Site muốn **giữ giao diện pastel** của 0.21–0.35 (nút + badge; toast xem mục toast của bản này), dán vào CSS không
+  layer của site:
+
+```css
+:root {
+  --td-btn-success-bg: var(--td-pastel-success-bg); --td-btn-success-fg: var(--td-pastel-success-fg); --td-btn-success-border: var(--td-pastel-success-border); --td-btn-success-hover: var(--td-pastel-success-border);
+  --td-btn-danger-bg: var(--td-pastel-danger-bg); --td-btn-danger-fg: var(--td-pastel-danger-fg); --td-btn-danger-border: var(--td-pastel-danger-border); --td-btn-danger-hover: var(--td-pastel-danger-border);
+  --td-btn-warning-bg: var(--td-pastel-warning-bg); --td-btn-warning-fg: var(--td-pastel-warning-fg); --td-btn-warning-border: var(--td-pastel-warning-border); --td-btn-warning-hover: var(--td-pastel-warning-border);
+  --td-btn-info-bg: var(--td-pastel-info-bg); --td-btn-info-fg: var(--td-pastel-info-fg); --td-btn-info-border: var(--td-pastel-info-border); --td-btn-info-hover: var(--td-pastel-info-border);
+  --td-badge-success-bg: var(--td-pastel-success-bg); --td-badge-success-fg: var(--td-pastel-success-fg); --td-badge-success-ink: var(--td-pastel-success-fg);
+  --td-badge-danger-bg: var(--td-pastel-danger-bg); --td-badge-danger-fg: var(--td-pastel-danger-fg); --td-badge-danger-ink: var(--td-pastel-danger-fg);
+  --td-badge-warning-bg: var(--td-pastel-warning-bg); --td-badge-warning-fg: var(--td-pastel-warning-fg); --td-badge-warning-ink: var(--td-pastel-warning-fg);
+  --td-badge-info-bg: var(--td-pastel-info-bg); --td-badge-info-fg: var(--td-pastel-info-fg); --td-badge-info-ink: var(--td-pastel-info-fg);
+  --td-badge-shadow: none; /* badge không viền: thêm --td-badge-{neutral,accent,success,danger,warning,info}-border: transparent */
+  --td-alert-accent-width: 1px; /* alert không vạch: kèm --td-alert-{v}-accent bằng --td-alert-{v}-border */
+}
+```
+
+- Theme tối (opt-in): nút ngữ nghĩa giờ dùng **cùng màu đặc** như theme sáng (trước: pastel tối trộn sẵn).
+- Visual baseline / ảnh chụp so sánh của site có nút / badge / alert ngữ nghĩa sẽ đổi — có chủ đích.
+
+### Toast: 6 vị trí, DOM root > lane > chồng
+
+**Phá vỡ (DOM)** + **đổi giao diện** ([ADR 0016](../internal/decisions/0016-toast-placement.md),
+[Toast](../components/toast.md)). API cũ chạy y nguyên (`show(msg, type, 3000)`); thêm `TdToast.configure({ placement })`
+và tham số thứ ba `{ duration?, placement? }`.
+
+- `#td-toast-container` giữ id nhưng giờ là **portal root** `div.td-toast-root` (không còn class `.td-toasts`). Toast nằm
+  trong root > `div.td-toast-lane[data-edge]` > `div.td-toasts[data-placement]` > `div.td-toast` — **không còn là con trực
+  tiếp** của `#td-toast-container`. CSS / script site viết `#td-toast-container > .td-toast` hoặc
+  `#td-toast-container.td-toasts` phải đổi sang `.td-toasts > .td-toast` / `#td-toast-container .td-toast`. CSS nhắm
+  `.td-toasts` vẫn trúng (nay là từng chồng).
+- **Mới nhất sát mép**: chồng `top-*` chèn toast mới **lên đầu**, `bottom-*` xuống cuối. Site mặc định (trên-phải) thấy
+  toast mới nằm **trên cùng** (trước: dưới cùng).
+- Site đã đổi 6 token neo cũ (`--td-toast-top/-bottom/-inline-start/-inline-end/-shift/-align`): toast không có
+  `placement` vào **chồng legacy** (`div.td-toasts` không `data-placement`, con trực tiếp của root) — vị trí và thứ tự
+  `append` y như 0.35, không phải sửa gì. Muốn chuyển: `TdToast.configure({ placement: 'bottom-center' })` rồi bỏ token.
+- Màn thấp (≤ 500px): chỉ 2 toast mới nhất **toàn cục** hiện (đánh dấu `[data-td-toast-older]`), thay luật
+  `:nth-last-child` cũ. `MAX_VISIBLE`, FIFO, `clear()`, pause vẫn toàn cục.
+
+### OTP: ô giữ hình, `--td-otp-cell-h` hết tác dụng ở chế độ element
+
+**Đổi giao diện** (sửa lỗi ô bị ép thành viên thuốc trên điện thoại). Ở chế độ element / JS, mỗi ô giữ tỉ lệ
+`aspect-ratio: var(--td-otp-cell-aspect)` (mặc định `44 / 52` = tỉ lệ cũ) và co theo bề rộng — **`--td-otp-cell-h` không
+còn tác dụng** ở chế độ này (chỉ còn cho ô native PHP không JS). Site đã đổi `--td-otp-cell-h` để ô cao / thấp hơn: đặt
+`--td-otp-cell-aspect` (ví dụ `--td-otp-cell-aspect: 44 / 60`). Thêm `length` (1–10) / `charset` / `case` (mặc định giữ
+6 số); SSR `otp-input@1` mở rộng thêm, markup 6 số giữ từng byte — PHP và JS phải **cùng phiên bản** khi dùng `length`
+≠ 6. [OTP input](../components/otp-input.md).
+
+### Ô tick chung (`.td-check`)
+
+**Đổi giao diện** + **đổi DOM bên trong** ([ADR 0017](../internal/decisions/0017-shared-check-mark.md), [bảng
+class](class-map.md#ô-tick-chung-và-media-picker-0360)). Mọi "tick để chọn" giờ là đúng hình `td-checkbox` (hộp tròn, ✓ trên
+`--td-checkbox-color`): tick của media grid / media picker, ô check của `td-tree` chọn nhiều, mục của `td-chip-input`
+`selection-only`, mục checkbox của `TdMenu`. Đổi màu / bo / viền bằng `--td-checkbox-color` / `--td-checkbox-border` /
+`--td-checkbox-radius`.
+
+- `--td-media-grid-tick-{bg,border,ring,on-bg,on-fg}` **chỉ còn style tick do site in** (`[data-td-media-tick]`); tick do
+  kit tạo không đọc chúng. `--td-media-grid-selected-ring` mặc định `var(--td-checkbox-color)`.
+- `--td-media-picker-card-checked` **không còn tô tick** (vẫn là màu viền card đã chọn).
+- `--td-tree-check-radius` **deprecated, không tác dụng** (alias `--td-checkbox-radius`) — ô check của tree **tròn** theo
+  mặc định (trước: vuông 4px). Muốn vuông: `--td-checkbox-radius: 4px` (đổi cả checkbox và mọi ô tick).
+- Mục checkbox của menu và mục của multiselect **luôn hiện hộp** (rỗng khi chưa chọn); trước chỉ hiện ✓ khi chọn. Radio
+  (menu `menuitemradio`, dropdown chọn một) giữ ✓.
+- CSS site nhắm `.td-tree__check-on` / `.td-tree__check-mixed` / `svg` trực tiếp trong `.td-media-grid__tick` không còn
+  trúng.
+- `td-checkbox` thêm `indeterminate` (additive). Không ảnh hưởng FormData / SSR `checkbox@1`.
+
+### Media picker dưới 1024px, modal gọn dưới 720px, phím tắt lưới
+
+**Đổi giao diện** + **đổi hành vi** (nhỏ):
+
+- **Picker < 1024px**: facet rời toolbar vào **sheet "Bộ lọc"** (nút + badge số bộ lọc đang áp); "Tải lên" chỉ icon.
+  **< 720px**: toolbar một hàng (nút "Bộ lọc" chỉ icon), phân trang **dưới lưới**, footer một hàng (chữ "Đã chọn …" chỉ
+  cho trình đọc màn hình, "Bỏ chọn tất cả" thành nút icon ×), dialog tải lên là bottom sheet cao theo nội dung và **bỏ
+  footer "Đóng"** (× ở header). Test / CSS site nhắm vị trí `.td-media-picker__pager` trong toolbar ở màn hẹp, hoặc nút
+  `.td-media-picker-upload__footer` dưới 720px, phải cập nhật. Nhãn mới `filters*` trong `TdMediaPicker.labels`.
+- **Picker ≥ 720px tự xem trước** asset đầu sau mỗi lần tải danh sách (không chọn — "Chèn" vẫn khoá). Test dựa vào panel
+  chi tiết rỗng lúc mở phải cập nhật.
+- **Modal < 720px**: header ≤ 56px (padding nhỏ, bỏ đường kẻ dưới), footer ≤ 64px; modal thường xếp nút footer một hàng
+  chia đều bề rộng. Áp cho mọi modal, kể cả `fullViewport` và hộp thoại lồng của picker. Từ 720px không đổi.
+- **`td-media-grid` mặc định**: Ctrl+click (Cmd trên macOS) trên phần tử mở là `<button>` giờ **bắt đầu chọn** (trước:
+  `activate`); phần tử mở `<a href>` giữ "mở tab mới".
+- **`td-cropper`**: lăn trackpad được giảm chấn (một bước ≤ 10 % mỗi frame); nấc chuột không đổi.
+
+---
+
+### Hàng option trong popup kiểu dcms2 (đổi hình)
+
+Dropdown, multi-select, popup tree-select và menu: hàng tràn mép (popup không còn lề ngang, hàng không bo, không viền
+khung khi active); mục đã chọn của danh sách chọn một in đậm (600) + ✓ ở cuối; hàng active bằng bàn phím có vạch nhấn đầu
+dòng (`--td-option-active-bar`) thay vòng viền trong (`--td-dropdown-option-active-line` hết tác dụng; menu: vạch thay vòng
+focus 2px). Token chung mới `--td-option-*` (xem theming). Muốn bo góc lại: `.td-dropdown__option { border-radius: 6px; }`
+(CSS site, không layer).
+
+### Lightbox trên điện thoại, drawer, datetime sheet
+
+**Đổi giao diện** + **đổi hành vi** (nhỏ), xem [Lightbox](../components/lightbox.md):
+
+- **Lightbox < 480px**: toolbar chỉ giữ tải xuống, **một** nút riêng có `pinned: true`, nút **"Thêm"** (fullscreen + các
+  nút riêng còn lại) và đóng. Nút trước / sau **và** bộ đếm chuyển xuống **thanh đáy** "‹ 3 / 12 ›" (không bao giờ vào
+  "Thêm"). Màn cảm ứng từ 480px và màn ngang thấp: trước / sau là đĩa 48px hai bên ảnh (trước: nằm trên toolbar). Nút
+  riêng tự mở popup neo vào `button` nên đặt `pinned: true`. CSS / test site nhắm `.td-lightbox__toolbar > [data-action="prev"]`
+  trên màn hẹp hoặc cảm ứng phải cập nhật.
+- **Lightbox — cử chỉ**: RTL đảo chiều vuốt ngang; vuốt bắt đầu trong 24px sát mép trái / phải để trình duyệt xử lý (vuốt
+  quay lại); sheet panel chỉ kéo được từ thanh nắm.
+- **Lightbox — menu**: khi menu tải về / "Thêm" đang mở, **bấm chuột** ra ngoài chỉ đóng menu (không zoom / kéo / đóng
+  lightbox), focus về nút mở; bấm nút mở popup khác vẫn mở ngay. Cảm ứng và menu của các component khác không đổi.
+- **Lightbox — mở lại** không còn loé ảnh của lần xem trước.
+- **Drawer < 480px** không còn phủ kín màn: chừa một dải trang bên cạnh.
+- **Datetime < 720px**: sheet gọn, bánh xe 3 dòng, bỏ nhãn trùng.
 
 ## 0.35.0
 

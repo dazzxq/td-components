@@ -231,3 +231,38 @@ text, URL `javascript:` / `data:` / `file:` không thành `src`, không thuộc 
 Test: guard tĩnh QĐ 2 (`crop-geometry.test.js`), fuzz 10 000 ca `toOutput` → luôn qua `parseCrop`, `FOCAL_CASES` parity
 JS = PHP, engines a11y (`alt` = `<img src=x onerror=…>` chỉ là text; `src` `javascript:` / `data:` / `blob:` → `image-error
 src`; không thuộc tính `style` ngoài `--_tdc-*` trên host), CSP gate state `td-cropper` + bước cắt picker.
+
+## 7. Trách nhiệm của site
+
+Những thứ kit **cố ý không làm** và site phải làm, nếu không thì có lỗ hổng dù kit đúng. Trang người dùng tương ứng:
+[guides/security.md](../guides/security.md), [guides/media-renditions.md](../guides/media-renditions.md).
+
+- **Biến đổi ảnh** (v0.36.0, plan v0.36.0 M12): kit chỉ xuất toạ độ crop / focal ([ADR 0015](decisions/0015-td-cropper.md)),
+  không bao giờ tạo pixel. Endpoint / CDN cắt ảnh của site là một máy xử lý ảnh công khai → bắt buộc theo
+  [guide biến thể ảnh](../guides/media-renditions.md):
+  - **Chữ ký**: URL ký HMAC-SHA256 trên chuỗi chuẩn hoá `asset id | crop (4 chữ số) | w | fmt | v [| exp]`, secret trong
+    env, so sánh hằng thời gian (`hash_equals` / `crypto.subtle.verify`, không `==` / `strcmp`), sai → 403 **trước** khi
+    đọc file / biến đổi; `kid` + hai khoá hợp lệ khi xoay.
+  - **Giới hạn biến thể**: allowlist bề rộng + định dạng (webp / avif / jpeg), crop làm tròn trước khi ký, ảnh ra ≤ vùng
+    cắt gốc và ≤ trần cứng (vd. 4096 px), từ chối ảnh gốc quá nhiều điểm ảnh; cache CDN + cache đĩa khoá = hash tham số
+    đã ký.
+  - **Rate limit**: WAF / rate limit trên cache miss theo IP; giới hạn tác vụ đồng thời + timeout / bộ nhớ ở server.
+  - **Ảnh riêng tư**: URL ký không phải phân quyền — kiểm phiên + quyền mỗi request, `exp` ngắn, không cache công khai.
+- Validate lại mọi giá trị form (`name[crop]`, `name[focal]`, `assetId`, OTP, checkbox) ở server — xem §6 và các ghi chú
+  dưới.
+
+**Ghi chú v0.36.0** (plan [v0.36.0-polish](plans/v0.36.0-polish.md)):
+
+- **`td-otp-input` chuẩn hoá input** khi gõ, dán, kéo thả, autofill (`otpNormalize` trong `src/utils/otp.js`; PHP
+  `td__otp_value` cùng luật, bảng parity): chữ số → ASCII (full-width, Ả Rập), chữ → NFKC từng ký tự rồi chỉ nhận
+  `[A-Za-z]` (theo `charset` / `case`), mọi ký tự khác bị bỏ; không chuẩn hoá giữa composition IME. Đây là **UX**: server
+  vẫn chuẩn hoá + so mã (hoa / thường theo quy ước của server — `pattern` native nhận cả chữ thường), giới hạn số lần
+  thử, hết hạn mã.
+- **`td-copy for=` đọc field của kit**: `for` trỏ tới phần tử `td-*` có property `value` kiểu chuỗi (`td-input-field`,
+  `td-number-input`…) → copy `host.value`; copy thất bại → chọn chữ trong control native **bên trong chính host đó**. Như
+  field native, `td-copy` copy bất kỳ giá trị nào nó trỏ tới (kể cả ô mật khẩu) — site đừng trỏ `for` vào field bí mật;
+  giá trị không bao giờ vào attribute / live region / `detail` của event.
+- **`td-action-button` nhãn là text**: nhãn preset / `label` / host `aria-label` chỉ vào `aria-label` + `data-tooltip`
+  (escape ngữ cảnh thuộc tính); không có chữ hiển thị, không hatch HTML. PHP `td_action_button()` escape cùng luật, `attrs`
+  qua allowlist (`on*`, `style`, `data-td-*` bị chặn); `href` qua `Td::safeUrl` như `td_button`. Quyền của hành động là
+  việc của server (nút chỉ là UI).

@@ -125,8 +125,9 @@ describe('v0.33 td-media-picker — cards (decisions 11-12)', () => {
     const badge = item('m54').querySelector('.td-media-picker__badges .td-badge');
     expect(badge.textContent).to.equal('Mới');
     expect(badge.classList.contains('td-badge--success')).to.equal(true);
-    // card surface: 2px transparent border, radius token, text area with a top border
-    const cs = getComputedStyle(card);
+    // card surface: 2px transparent border, radius token, text area with a top border (v0.36: m60 is auto-previewed →
+    // its border is the "viewing" one; read a card nobody views)
+    const cs = getComputedStyle(item('m57'));
     expect(cs.borderTopWidth).to.equal('2px');
     expect(cs.borderTopColor).to.equal('rgba(0, 0, 0, 0)');
     expect(px(cs.borderTopLeftRadius) > 0).to.equal(true);
@@ -212,7 +213,7 @@ describe('v0.33 td-media-picker — multiple selection (decision 15)', () => {
     click(opener('m58'), { ctrlKey: true });
     expect(grid().selectedIds).to.deep.equal(['m60', 'm59', 'm58']);
     expect(btnText(confirmBtn())).to.equal('Chèn (3)');
-    expect(q('.td-media-picker__selcount').textContent).to.equal('Đã chọn 3');
+    expect(btnText(q('.td-media-picker__clear'))).to.equal('3 đã chọn');
     click(opener('m58'), { metaKey: true });
     expect(grid().selectedIds).to.deep.equal(['m60', 'm59']);
     click(opener('m55'), { shiftKey: true }); // range from the anchor (m58 flip) → m57..m55 added
@@ -233,7 +234,7 @@ describe('v0.33 td-media-picker — multiple selection (decision 15)', () => {
     expect(btnText(confirmBtn())).to.equal('Chèn (2)');
     click(tick('m40'));
     click(tick('m39'));
-    expect(q('.td-media-picker__selcount').textContent).to.equal('Đã chọn 4');
+    expect(btnText(q('.td-media-picker__clear'))).to.equal('4 đã chọn');
     q('.td-media-picker__prev').click();
     await until(() => item('m60') && grid().selectedIds.join() === 'm60,m58', 4000, 'page 1 again, re-selected');
     confirmBtn().click();
@@ -243,10 +244,10 @@ describe('v0.33 td-media-picker — multiple selection (decision 15)', () => {
   it('footer: "Đã chọn n/max" + ghost "Bỏ chọn tất cả" on the left (multiple only); right "Đóng" + "Chèn"', async () => {
     await openReady({ selection: { mode: 'multiple', maxItems: 4 } });
     const sel = q('.td-media-picker__selbar');
-    expect(q('.td-media-picker__selcount').textContent).to.equal('Đã chọn 0/4');
-    expect(q('.td-media-picker__clear').hidden).to.equal(true);
+    expect(q('.td-media-picker__clear').hidden, 'no chip at 0').to.equal(true);
     click(tick('m60'));
-    expect(q('.td-media-picker__selcount').textContent).to.equal('Đã chọn 1/4');
+    expect(btnText(q('.td-media-picker__clear'))).to.equal('1/4 đã chọn');
+    expect(q('.td-media-picker__clear button').getAttribute('aria-label')).to.equal('Bỏ chọn tất cả (1/4 đã chọn)');
     expect(q('.td-media-picker__clear').hidden).to.equal(false);
     expect(q('.td-media-picker__clear').getAttribute('variant')).to.equal('ghost');
     expect(q('.td-media-picker__clear').getAttribute('size')).to.equal('sm');
@@ -254,22 +255,18 @@ describe('v0.33 td-media-picker — multiple selection (decision 15)', () => {
     expect(q('.td-media-picker__tray-list') === null && q('.td-media-picker__tray-item') === null, 'no 40px tray').to.equal(true);
     await closeAll();
     await openReady();
-    expect(q('.td-media-picker__selcount') === null, 'single: no count').to.equal(true);
+    expect(q('.td-media-picker__clear') === null, 'single: no chip').to.equal(true);
   });
 });
 
 describe('v0.33 td-media-picker — single selection (decision 16)', () => {
-  it('open → nothing selected, "Chèn" disabled, detail empty state (no auto-select of the first item)', async () => {
+  it('open → nothing selected, "Chèn" disabled; v0.36 (QĐ 69): the first item is PREVIEWED, never auto-selected', async () => {
     await openReady();
-    await wait(50);
+    await detailReady('m60');
     expect(grid().selectedIds).to.deep.equal([]);
     expect(confirmBtn().hasAttribute('disabled')).to.equal(true);
-    const det = q('.td-media-picker__detail');
-    expect(det.getAttribute('data-state')).to.equal('empty');
-    const es = det.querySelector('td-empty-state');
-    expect(es.getAttribute('title')).to.equal('Chọn một ảnh để xem chi tiết');
-    expect(es.getAttribute('message')).to.equal('Bấm vào ảnh trong danh sách bên trái');
-    expect(items().some((i) => i.hasAttribute('data-viewing'))).to.equal(false);
+    expect(q('.td-media-picker__detail').getAttribute('data-state')).to.equal('ready');
+    expect(items().filter((i) => i.hasAttribute('data-viewing')).map((i) => i.getAttribute('data-id'))).to.deep.equal(['m60']);
   });
 
   it('Space on B (A selected) → selection [B], detail B, B viewing, A not', async () => {

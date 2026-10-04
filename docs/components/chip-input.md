@@ -245,7 +245,9 @@ Khác với chế độ thường:
 
 - **Chữ gõ chỉ để lọc**, không bao giờ thành chip. Enter khi không có mục đang trỏ → không làm gì và **không
   submit form** (kể cả khi ô trống). `allow-create` bị **bỏ qua** (cảnh báo `console.warn` một lần mỗi phần tử).
-- Listbox có `aria-multiselectable="true"`; mục **đã chọn vẫn hiện** trong danh sách với dấu ✓. Hai trạng thái tách
+- Listbox có `aria-multiselectable="true"`; mục **đã chọn vẫn hiện** trong danh sách với ô đã tick. Từ 0.36.0 mỗi mục có
+  [ô tick chung](checkbox.md#phần-hình-dùng-chung-td-check-0360) cỡ `sm` **luôn hiện** (hộp rỗng = chưa chọn, đúng hình
+  `td-checkbox`; trước là ✓ trần chỉ hiện khi chọn). Hai trạng thái tách
   riêng: `aria-selected="true|false"` = **có trong lựa chọn**; mục bàn phím đang trỏ = `data-active` trên option +
   `aria-activedescendant` trên ô nhập. Mũi tên chỉ di chuyển, **không** đổi lựa chọn.
 - **Enter / click lật chọn** mục đang trỏ (chưa chọn → thêm, đã chọn → bỏ). **Space là dấu cách** (ô nhập là ô gõ chữ).
@@ -267,7 +269,8 @@ Khác với chế độ thường:
 `.td-chip-input__option--all` (là một `role="option"`, tới được bằng bàn phím như mọi mục) ghi "Chọn tất cả (N)" — N = số
 mục **đang hiện** (sau lọc) không bị `disabled`. Chọn → thêm mọi mục đang hiện chưa chọn (dừng ở `max-items`, thông báo
 "Đã thêm n mục"). Khi không thêm được gì nữa (đã chọn hết, hoặc đã đầy) dòng đổi thành "Bỏ chọn tất cả (N)" → gỡ các mục
-**đang hiện** đã chọn (mục đã chọn nhưng đang bị lọc khuất thì giữ). Phát **một** `change` với `addedItems` /
+**đang hiện** đã chọn (mục đã chọn nhưng đang bị lọc khuất thì giữ). Ô tick của dòng (0.36.0): rỗng khi chưa chọn mục
+đang hiện nào, **vạch ngang (lưng chừng)** khi đã chọn một phần và còn thêm được, đã tick khi dòng là "Bỏ chọn tất cả". Phát **một** `change` với `addedItems` /
 `removedItems`. Không bao giờ chọn mục chưa tải (kết quả server ngoài trang hiện tại là việc của app).
 
 **Nâng cấp từ `<select multiple>` (progressive enhancement)** — như `<td-dropdown>` 0.17 nhưng cho chọn nhiều:
@@ -324,7 +327,7 @@ element in `<td-chip-input data-td-ssr="chip-input@1" selection-only>` + select 
 | `value-key` | string | `value` | Key giá trị trong object mục. |
 | `label-key` | string | `label` | Key chữ hiển thị. |
 | `max-length` | number | `200` | Độ dài tối đa chữ gõ / mục tạo mới (`maxlength` của ô). |
-| `selection-only` | boolean | `false` | 0.28.0: chỉ chọn từ `options` / `search()`, mục lật chọn, ✓ trên mục đã chọn (mục 11). Tự bật khi nâng cấp `<select multiple>`. |
+| `selection-only` | boolean | `false` | 0.28.0: chỉ chọn từ `options` / `search()`, mục lật chọn, ô tick trên mỗi mục (0.36.0: ô tick chung) (mục 11). Tự bật khi nâng cấp `<select multiple>`. |
 | `select-all` | boolean | `false` | 0.28.0 (cùng `selection-only`): dòng "Chọn tất cả (N)" đầu danh sách. |
 | `close-on-select` | boolean | `false` | 0.28.0 (cùng `selection-only`): đóng popup (và xoá chữ lọc) sau mỗi lần chọn. |
 
@@ -497,8 +500,8 @@ Popup nằm ở `<body>`: nhắm riêng bằng id `#{host}-menu`.
 ```html
 <div class="td-chip-input__options" role="listbox" id="{host}-listbox" aria-multiselectable="true">
   <div class="td-chip-input__option td-chip-input__option--all" role="option" id="{host}-opt-all"
-       aria-selected="true|false" [data-active] [aria-disabled="true"]>
-    <span class="td-chip-input__check" data-td-icon="check" data-td-icon-size="s" aria-hidden="true">…</span>
+       aria-selected="true|false" [data-td-check-mixed] [data-active] [aria-disabled="true"]>
+    <span class="td-check td-check--sm td-chip-input__check" aria-hidden="true"><svg …✓/></span>   <!-- 0.36.0 -->
     <span class="td-chip-input__option-label">Chọn tất cả (4)</span>
   </div>
   <div class="td-chip-input__option" role="option" id="{host}-opt-1" aria-selected="true|false" data-index="1"
@@ -516,8 +519,9 @@ Popup nằm ở `<body>`: nhắm riêng bằng id `#{host}-menu`.
 
 | Ở đâu | Trạng thái (selection-only) |
 |---|---|
-| `.td-chip-input__option` | `aria-selected` = **có trong lựa chọn** (✓ hiện); `data-active` = mục bàn phím đang trỏ; `aria-disabled="true"` = bị khoá |
-| `.td-chip-input__check` | `visibility: visible` khi option `aria-selected="true"` |
+| `.td-chip-input__option` | `aria-selected` = **có trong lựa chọn** (ô tick đã tick); `data-active` = mục bàn phím đang trỏ; `aria-disabled="true"` = bị khoá (ô tick mờ) |
+| `.td-chip-input__option--all[data-td-check-mixed]` | 0.36.0: dòng "Chọn tất cả" khi đã chọn một phần — ô tick hiện vạch lưng chừng (`aria-selected` vẫn `false`) |
+| `.td-chip-input__check` | 0.36.0: là `.td-check.td-check--sm` (ô tick chung), **luôn hiện**; trạng thái đọc từ `aria-selected` của option |
 | `.td-chip-input__group-label` | tiêu đề nhóm (chữ nhỏ, xám) |
 | `select.td-chip-input__native` | vỏ PHP `td_multiselect` element mode trước khi nâng cấp: hộp như khung chip, `min-height` = chiều cao tối thiểu khung chip (vẫn có thể xô lệch vì số chip quyết định chiều cao sau nâng cấp) |
 | `.td-multiselect` / `select.td-multiselect__native` | `td_multiselect` chế độ native (không JS) |

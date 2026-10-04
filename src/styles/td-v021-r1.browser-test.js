@@ -73,10 +73,19 @@ const PASTEL = {
   info: ['#dbeafe', '#bfdbfe', '#1e3a8a'],
 };
 
-describe('v0.21.0 P1 — pastel semantic buttons', () => {
-  for (const [v, [bg, border, fg]] of Object.entries(PASTEL)) {
-    it(`${v}: pastel fill + same-hue ink + -border edge; hover = the ~200 step (solid); ink ≥ 4.7:1 at rest + hover`, async () => {
-      expect(near(tokenColor(`--td-pastel-${v}-bg`), hex(bg))).to.equal(true);
+// v0.36.0 (plan QĐ 18–19): the semantic buttons moved from pastel to SOLID (--td-solid-*); the pastel tokens stay
+// declared (deprecated) so a site can restore them — checked below.
+const SOLID = {
+  success: ['#15803d', '#166534', '#ffffff', '#166534'],
+  danger: ['#dc2626', '#b91c1c', '#ffffff', '#b91c1c'],
+  warning: ['#f59e0b', '#d97706', '#18181b', '#d97706'],
+  info: ['#2563eb', '#1d4ed8', '#ffffff', '#1d4ed8'],
+};
+describe('v0.21.0 P1 → v0.36.0 solid semantic buttons', () => {
+  for (const [v, [bg, border, fg, hoverFill]] of Object.entries(SOLID)) {
+    it(`${v}: solid fill + white / dark label + -border edge; hover = the darker solid step; label ≥ 4.7:1 at rest + hover`, async () => {
+      expect(near(tokenColor(`--td-solid-${v}-bg`), hex(bg))).to.equal(true);
+      expect(near(tokenColor(`--td-pastel-${v}-bg`), hex(PASTEL[v][0])), 'pastel token kept').to.equal(true);
       const b = btn(`variant="${v}"`);
       const cs = getComputedStyle(b);
       expect(near(rgb(cs.backgroundColor), hex(bg)), `${v} fill`).to.equal(true);
@@ -85,19 +94,25 @@ describe('v0.21.0 P1 — pastel semantic buttons', () => {
       expect(ratio(rgb(cs.color), rgb(cs.backgroundColor))).to.be.at.least(4.7);
       await hover(b);
       const h = getComputedStyle(b);
-      expect(near(rgb(h.backgroundColor), hex(border)), `${v} hover fill`).to.equal(true);
+      expect(near(rgb(h.backgroundColor), hex(hoverFill)), `${v} hover fill`).to.equal(true);
       expect(ratio(rgb(h.color), rgb(h.backgroundColor))).to.be.at.least(4.7);
     });
   }
 
-  it('dark: pastel pre-mixed on the dark page (solid), ink ~200 ≥ 4.7:1', async () => {
+  it('dark: the same solid fill (white label ≥ 4.7:1)', async () => {
     html.setAttribute('data-td-theme', 'dark');
     const b = btn('variant="danger"');
     await wait(200); // colour transition
     const cs = getComputedStyle(b);
-    expect(near(rgb(cs.backgroundColor), hex('#391a1c'))).to.equal(true);
-    expect(near(rgb(cs.color), hex('#fecaca'))).to.equal(true);
+    expect(near(rgb(cs.backgroundColor), hex('#dc2626'))).to.equal(true);
+    expect(near(rgb(cs.color), hex('#ffffff'))).to.equal(true);
     expect(ratio(rgb(cs.color), rgb(cs.backgroundColor))).to.be.at.least(4.7);
+  });
+
+  it('the documented restore snippet brings the pastel button back (docs/upgrading/breaking-changes.md § 0.36.0)', () => {
+    siteCss(':root { --td-btn-warning-bg: var(--td-pastel-warning-bg); --td-btn-warning-fg: var(--td-pastel-warning-fg); }');
+    const b = btn('variant="warning"');
+    expect(near(rgb(getComputedStyle(b).backgroundColor), hex(PASTEL.warning[0]))).to.equal(true);
   });
 
   it('a site -bg + -hover pair is honoured', async () => {
@@ -126,10 +141,10 @@ describe('v0.21.0 P1 — pastel semantic buttons', () => {
     expect(near(rgb(getComputedStyle(b).backgroundColor), [46 * 0.92, 125 * 0.92, 50 * 0.92], 3)).to.equal(true);
   });
 
-  it('soft badges share the pastel palette', () => {
+  it('v0.36.0: semantic badges are solid too (warning: amber fill, dark label)', () => {
     const badge = mount('<span class="td-badge td-badge--warning">Chờ</span>');
-    expect(near(rgb(getComputedStyle(badge).backgroundColor), hex('#fef3c7'))).to.equal(true);
-    expect(near(rgb(getComputedStyle(badge).color), hex('#78350f'))).to.equal(true);
+    expect(near(rgb(getComputedStyle(badge).backgroundColor), hex('#f59e0b'))).to.equal(true);
+    expect(near(rgb(getComputedStyle(badge).color), hex('#18181b'))).to.equal(true);
   });
 });
 

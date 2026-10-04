@@ -29,7 +29,10 @@ function engineLaunchOptions(name) {
 /** v0.31.0: engines tests driving REAL mouse drags (one group each = own browser instances). */
 /** v0.35.0: + td-cropper pointer (real mouse drags, synthetic pinch, wheel). */
 const POINTER_FILES = ['src/display/td-v031-sortable.engines.browser-test.js', 'src/form/td-v031-repeater-sortable.engines.browser-test.js',
-  'src/form/td-v035-cropper.engines.browser-test.js'];
+  'src/form/td-v035-cropper.engines.browser-test.js',
+  // v0.36.0: real modifier + mouse clicks on the media grid
+  'src/display/td-v036-media-grid-shortcuts.engines.browser-test.js', 'src/feedback/td-v036-media-picker-shortcuts.engines.browser-test.js',
+  'src/feedback/td-v036-lightbox-menu-dismiss.engines.browser-test.js'];
 
 /** All src stories (for src/stories-dom.browser-test.js). */
 function storyFiles(dir = 'src', out = []) {

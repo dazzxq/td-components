@@ -246,7 +246,7 @@
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
-		padding: var(--td-glass-pad);
+		padding: var(--td-glass-pad) 0; /* v0.36.0: full-bleed rows */
 		overflow: hidden;
 		font-family: var(--td-font-sans);
 		font-size: var(--td-text-sm);
@@ -281,7 +281,7 @@
 
 	.td-tree-select__search-wrap {
 		flex: none;
-		padding: 2px 2px var(--td-glass-pad);
+		padding: 2px var(--td-option-pad-x) var(--td-glass-pad);
 		margin-bottom: var(--td-glass-pad);
 		border-bottom: 1px solid var(--td-dropdown-hairline);
 	}
@@ -314,6 +314,54 @@
 
 	.td-tree-select__search:focus-visible {
 		box-shadow: var(--td-field-focus-ring);
+	}
+
+	/* v0.36.0 popup rows (dcms2): the tree rows inside the popup are full-bleed — the row state is painted by a ::before that
+	   reaches the popup's inline-start edge across the nesting indent (clipped by the scroller), no radius, no ring box;
+	   the keyboard-active row (data-active, aria-activedescendant) adds the inline-start accent bar */
+	.td-tree-select__menu .td-tree__row {
+		position: relative;
+		isolation: isolate;
+		padding-inline-end: var(--td-option-pad-x);
+		background: none;
+		border-radius: 0;
+		box-shadow: none;
+	}
+
+	.td-tree-select__menu .td-tree__row::before {
+		content: "";
+		position: absolute;
+		inset-block: 0;
+		inset-inline: -100vw 0;
+		z-index: -1;
+		pointer-events: none;
+	}
+
+	.td-tree-select__menu .td-tree__row:hover::before {
+		background: var(--td-option-hover-bg);
+	}
+
+	.td-tree-select__menu .td-tree__item[aria-selected="true"] > .td-tree__row {
+		font-weight: var(--td-fw-semibold);
+		background: none;
+	}
+
+	.td-tree-select__menu .td-tree__item[aria-selected="true"] > .td-tree__row::before {
+		background: var(--td-option-selected-bg);
+	}
+
+	/* the bar sits at the row's own inline start (after the nesting indent) */
+	.td-tree-select__menu .td-tree__item[data-active] > .td-tree__row {
+		background: none;
+		box-shadow: inset var(--td-option-active-bar-w) 0 0 var(--td-option-active-bar);
+	}
+
+	.td-tree-select__menu .td-tree__item[data-active] > .td-tree__row:dir(rtl) {
+		box-shadow: inset calc(-1 * var(--td-option-active-bar-w)) 0 0 var(--td-option-active-bar);
+	}
+
+	.td-tree-select__menu .td-tree__item[data-active] > .td-tree__row::before {
+		background: var(--td-option-active-bg);
 	}
 
 	.td-tree-select__scroller {
@@ -349,6 +397,7 @@
 		.td-tree-select__clear {
 			width: var(--td-touch-min);
 			height: var(--td-touch-min);
+			margin-inline-start: var(--td-space-xs); /* v0.36.0 (QĐ 68): ≥ 8 px from the value / trigger target */
 		}
 	}
 

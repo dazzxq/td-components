@@ -11,6 +11,10 @@
  *   </td-alert>
  * Variants: .td-alert--info (default) | --success | --warning | --danger. The registry status icon keeps colour from
  * being the only cue. Text ≥ 4.7:1 and icon / close ≥ 3.2:1 on the fill, light + dark (test/tokens/contrast.spec.mjs).
+ * v0.36.0 (plan QĐ 26): the body keeps its light fill (paragraphs, links, action buttons stay readable); the IDENTITY is
+ * solid — a 4px inline-start bar (--td-alert-{v}-accent = --td-solid-{v}-bg; warning: the darker amber step, amber-500
+ * is < 3:1 on the light fill), the icon in the solid colour (warning #b45309 for ≥ 3:1) and a border one step stronger
+ * (~300). A site that wants a fully solid alert sets -bg / -fg / -heading / -icon / -accent (docs/components/alert.md).
  */
 @layer td.tokens {
 	:root {
@@ -18,22 +22,27 @@
 		--td-alert-fg: var(--td-color-text);
 		--td-alert-close-fg: var(--td-color-text);
 		--td-alert-close-hover: var(--td-color-hover-strong);
+		--td-alert-accent-width: 4px;
 		--td-alert-info-bg: #eff6ff;
-		--td-alert-info-border: #bfdbfe;
+		--td-alert-info-border: #93c5fd;
 		--td-alert-info-heading: #1e3a8a;
-		--td-alert-info-icon: #1d4ed8;
+		--td-alert-info-icon: var(--td-solid-info-bg);
+		--td-alert-info-accent: var(--td-solid-info-bg);
 		--td-alert-success-bg: #f0fdf4;
-		--td-alert-success-border: #bbf7d0;
+		--td-alert-success-border: #86efac;
 		--td-alert-success-heading: #14532d;
-		--td-alert-success-icon: #15803d;
+		--td-alert-success-icon: var(--td-solid-success-bg);
+		--td-alert-success-accent: var(--td-solid-success-bg);
 		--td-alert-warning-bg: #fffbeb;
-		--td-alert-warning-border: #fde68a;
+		--td-alert-warning-border: #fcd34d;
 		--td-alert-warning-heading: #78350f;
 		--td-alert-warning-icon: #b45309;
+		--td-alert-warning-accent: var(--td-solid-warning-border);
 		--td-alert-danger-bg: #fef2f2;
-		--td-alert-danger-border: #fecaca;
+		--td-alert-danger-border: #fca5a5;
 		--td-alert-danger-heading: #7f1d1d;
-		--td-alert-danger-icon: #b91c1c;
+		--td-alert-danger-icon: var(--td-solid-danger-bg);
+		--td-alert-danger-accent: var(--td-solid-danger-bg);
 	}
 
 	:root[data-td-theme="dark"] {
@@ -76,6 +85,8 @@
 		color: var(--td-alert-fg);
 		background-color: var(--td-alert-info-bg);
 		border: 1px solid var(--td-alert-info-border);
+		border-inline-start: 4px solid var(--td-alert-info-accent);
+		border-inline-start-width: var(--td-alert-accent-width);
 		border-radius: var(--td-alert-radius);
 	}
 
@@ -142,6 +153,11 @@
 	.td-alert--success { background-color: var(--td-alert-success-bg); border-color: var(--td-alert-success-border); }
 	.td-alert--warning { background-color: var(--td-alert-warning-bg); border-color: var(--td-alert-warning-border); }
 	.td-alert--danger { background-color: var(--td-alert-danger-bg); border-color: var(--td-alert-danger-border); }
+
+	/* v0.36.0: the solid bar (after the border-color shorthands above, which would repaint it) */
+	.td-alert--success { border-inline-start-color: var(--td-alert-success-accent); }
+	.td-alert--warning { border-inline-start-color: var(--td-alert-warning-accent); }
+	.td-alert--danger { border-inline-start-color: var(--td-alert-danger-accent); }
 
 	.td-alert--success .td-alert__icon { color: var(--td-alert-success-icon); }
 	.td-alert--warning .td-alert__icon { color: var(--td-alert-warning-icon); }

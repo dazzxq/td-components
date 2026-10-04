@@ -7,6 +7,9 @@ A curated subset of path data from Lucide (https://lucide.dev), mapped to td-own
 `pencil`, `copy`, `log-out`, `menu`, `rotate-cw`, `zoom-out`) were checked against lucide-static 1.48.0; `<line>`
 elements are stored as the equivalent `path` data (as for `zoom-in`).
 Icons added in 0.35.0 (`crop`, `crosshair`, `rotate-ccw`) follow the same rule.
+Icons added in 0.36.0 for `<td-action-button>` (`send`, `arrow-down-to-line`, `rewind`, `undo-2`, `history`, `layers`,
+`key-round`, `arrow-up`, `arrow-down`, `hand`, `reply`, `user-x`) follow the same rule (`key-round`'s filled dot is a
+stroked `r=".5"` circle — the registry has no per-node `fill`).
 
 ISC License
 

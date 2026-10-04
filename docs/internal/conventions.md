@@ -13,6 +13,14 @@
 - Stories: `*.stories.js`, CSF với template là **chuỗi HTML thường** (không lit-html).
 - JS + JSDoc, không TypeScript.
 
+## Ô tick chung (`.td-check`)
+
+- Mọi "tick để chọn" dùng phần hình `.td-check` (`src/utils/check-mark.js`: `createCheckMark()` / `checkMarkHTML()`) —
+  không vẽ hộp / ✓ riêng, không lồng `<td-checkbox>` ([ADR 0017](decisions/0017-shared-check-mark.md)). Mark luôn
+  `aria-hidden`; ngữ nghĩa ở phần tử chứa (`aria-pressed` / `aria-checked` / `aria-selected`).
+- **Consumer mới thêm selector trạng thái của mình (bật / lưng chừng / khoá) vào `src/styles/components/check.css`** —
+  danh sách selector nằm một chỗ đó, không viết luật trạng thái của mark trong CSS component.
+
 ## Escaping theo ngữ cảnh
 
 | Ngữ cảnh | Dùng |
