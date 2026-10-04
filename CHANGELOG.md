@@ -2,6 +2,25 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.36.1
+
+**`<td-table>` dạng card gọn hơn** (plan `docs/internal/plans/v0.36.1-table-card-density.md`, Codex plan-review APPROVE 2
+vòng; QĐ 62 của 0.36.0). Đo ở 360 / 393 / 768: card 5 cột 220 → 115px, card 9 cột 294 → 174px (chuột) / 208px (cảm
+ứng), thanh sắp xếp 2–3 hàng → 1 hàng. Chi tiết nâng cấp: `docs/upgrading/breaking-changes.md#0361`.
+
+### Added
+
+- Vai trò card **`lead`** (`card: 'lead'`): ID nhỏ, màu nhạt, đứng trước tiêu đề; cột đầu không khai báo `card` tự thành
+  `lead` khi có cột khác `card: 'primary'`.
+- Class `td-table__action--icon`: action có `icon` hợp lệ (và nút "Thao tác") chỉ hiện icon ở card.
+- Token `--td-table-card-pair-min`, `--td-table-card-cell-py`.
+
+### Changed
+
+- Cặp `secondary` xếp theo nội dung (cặp ngắn chung dòng), bỏ mốc 480px; giá trị bị cắt (ellipsis) ở cùng dòng với nhãn.
+- Thao tác nằm cuối dòng meta; thanh sắp xếp một hàng cuộn ngang.
+- Khoảng cách card gọn hơn (`--td-table-card-gap` / `-px` / `-py` lùi một bậc); tiêu đề primary `line-height` 1.25.
+
 ## 0.36.0
 
 **Polish theo owner** — tick chung, phím tắt chọn, màu ngữ nghĩa đặc, toast 6 vị trí, OTP tuỳ độ dài / ký tự, nút thao

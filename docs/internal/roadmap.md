@@ -31,7 +31,8 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.36.0: polish theo owner — tick chung (ADR 0017), phím tắt chọn, màu ngữ nghĩa đặc, toast 6 vị trí (ADR 0016),
   OTP `length` / `charset`, `td-action-button`, picker / modal gọn di động, lightbox điện thoại (thanh đáy), hàng option
   kiểu dcms2 — plan [v0.36.0-polish](plans/v0.36.0-polish.md)
-- `todo` v0.36.1: `td-table` card gọn (QĐ 62)
+- `done` v0.36.1: `td-table` card gọn (QĐ 62) — vai trò `lead`, cặp theo nội dung, action chỉ icon, thanh sắp xếp một hàng — plan
+  [v0.36.1-table-card-density](plans/v0.36.1-table-card-density.md)
 - `todo` v0.36.2: chuẩn touch toàn kit (hover gate, `:active`, tooltip cảm ứng, ngưỡng kéo, visualViewport cho overlay,
   lane test touch, lightbox vuốt theo ngón) — đồng thuận Codex 2026-10-05
 - `todo` v0.37.0: `td-table` chọn dòng (ADR 0018)
