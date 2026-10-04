@@ -66,8 +66,8 @@ mỗi lần một bộ lỗi.
    - `name` kết thúc bằng `[]` ở chế độ usage → không gửi + cảnh báo (fail closed; JS và PHP giống nhau).
    - PHP `td_media_field()` in hidden input cho đúng hình dạng này khi chưa có JS; sau nâng cấp FormData giống từng
      byte.
-   - v0.33 (`td-cropper`) **chỉ thêm UI sửa crop**; không đổi tên mục, không đổi định dạng JSON (`v` tăng chỉ khi có
-     ADR mới).
+   - v0.35 (`td-cropper`; ban đầu ghi v0.33, lùi theo [Bổ sung v0.33](#bổ-sung-v033)) **chỉ thêm UI sửa crop**; không
+     đổi tên mục, không đổi định dạng JSON (`v` tăng chỉ khi có ADR mới).
 
    Hợp đồng adapter (typedef trong `src/utils/media-picker-core.js`, đúng tên / trường dsuite §2-3, cộng phần bổ sung
    additive của v0.32: `MediaListRequest.kinds`, `selection.kinds`, `title`, `pageSize`, `upload`) cũng **chốt cuối từ
@@ -83,3 +83,63 @@ mỗi lần một bộ lỗi.
 - Đổi hình dạng FormData hay chữ ký adapter về sau = breaking change → phải có ADR mới + ghi `docs/upgrading`.
 - dcms2 không bị ảnh hưởng; không có nghĩa vụ đồng bộ.
 - Không có cache liên phiên, không localStorage, không nhiều backend trên một trang; khi một site thật sự cần, mở ADR mới.
+
+## Bổ sung v0.33
+
+Ngày 2026-10-04. Nguồn: plan [v0.33.0-media-picker-dcms-parity](../plans/v0.33.0-media-picker-dcms-parity.md) quyết
+định 1, 3, 13, 20-27, 40; kiểm kê [research/dcms2-media-picker-inventory](../research/dcms2-media-picker-inventory.md).
+
+Mục này **chỉ thêm**, không thay quyết định nào ở trên, nên ghi ngay trong ADR này thay vì viết ADR mới. Mọi phần thêm
+vào hợp đồng đều **tuỳ chọn** và **không đổi chữ ký** nào: adapter v0.32 chạy y nguyên, không phải sửa dòng nào.
+
+### Hợp đồng: phần thêm
+
+| Phần thêm | Kiểu | Mặc định / ghi chú |
+|---|---|---|
+| `adapter.uploadFromUrl?(url, o)` | `(url: string, o: { fields: Record<string, unknown>, context?: unknown, signal: AbortSignal, onProgress?(p: UploadProgress): void }) => Promise<UploadResult>` | Tuỳ chọn. Kết quả kiểm bằng **cùng** bộ kiểm với `upload` (`created`, hoặc `exact-reused` với `matchedAssetId === asset.id`). `url` là `href` đã chuẩn hoá |
+| `capabilities.uploadFromUrl` | `boolean` | Suy ra bằng `!!adapter.uploadFromUrl`; site đặt `false` để ẩn tab "Tải từ URL" |
+| `capabilities.copyLink` | `boolean` | **`false`**. Bật thì chi tiết có nút copy link hiển thị |
+| `OpenMediaPickerOptions.pagination` | `'cursor' \| 'pages'` | `'cursor'` (hợp đồng dsuite). Đặt được qua `configureDefaults` |
+| `MediaListRequest.page?` | số nguyên ≥ 1 | Chỉ gửi ở chế độ `'pages'`, kèm `cursor: null`. Chế độ này **bắt buộc** `MediaPage.total`; thiếu / sai → cảnh báo một lần, quay về giao diện cursor |
+| `pageSize` | số | Mặc định đổi **40 → 30** (như dcms2). Chỉ là giá trị mặc định, không đổi chữ ký |
+| `upload.acceptLabel?` | `string` | Chỉ là chữ hiển thị trên badge định dạng, **không** phải bộ lọc |
+
+`delete` / `download` đã có trong interface từ v0.32 (`DeleteResult`, `DownloadResult` chốt từ v0.32); v0.33 thêm
+*consumer* cho chúng (phần v0.32.1 gộp vào), không đổi chữ ký hay union. Typedef ở `src/utils/media-picker-core.js`
+cập nhật tương ứng.
+
+### Trách nhiệm (bổ sung bảng ở quyết định 1)
+
+1. **Tải từ URL: server sở hữu việc tải từ xa và chống SSRF.** Kiểm URL ở client (`validateRemoteUrl`: độ dài ≤ 2048,
+   `http:` / `https:`, không thông tin đăng nhập, có hostname) **chỉ là UX**. Kit cố ý **không** chặn host nội bộ / IP
+   riêng ở client (DNS rebinding và redirect vượt qua được, chỉ tạo cảm giác an toàn giả) và **không** xem trước URL ở
+   client (lộ IP người dùng tới host tuỳ ý; CSP `img-src` của site cũng chặn). Kit không bảo đảm điều nào dưới đây;
+   server phải:
+   - **chặn SSRF**: resolve DNS **một lần** và kết nối tới đúng IP đã kiểm; chặn loopback, mạng riêng, link-local,
+     `169.254.169.254` / metadata, IPv6 ULA / mapped, `0.0.0.0`; kiểm lại ở **mỗi** redirect, tối đa 3 redirect;
+   - chỉ nhận `http` / `https` và cổng 80 / 443, trừ khi site cho phép rõ ràng;
+   - timeout kết nối và đọc; đọc theo luồng với trần kích thước (dừng khi vượt, không tin `Content-Length`);
+   - kiểm magic byte, re-encode, áp cùng giới hạn loại / kích thước như upload file; dedup SHA-256 như upload;
+   - kiểm quyền, CSRF, rate limit, audit;
+   - không dội lại cho người dùng body hay chuỗi lỗi của host từ xa (chỉ `userMessage` đã soạn).
+
+   Kit không có logic theo loại media cho URL: server muốn chặn (ví dụ video) thì trả lỗi `validation`.
+2. **Xoá: kit không bao giờ tự kiểm usage.** Kit chỉ hỏi lại người dùng (`TdModal.confirm`, message dạng text) rồi gọi
+   `adapter.delete`. Server của site quyết định có xoá hay không và trả `{ status: 'blocked', reason: 'in-use', … }` khi
+   asset đang được dùng. **Không có `delete` an toàn nếu server không kiểm usage + quyền.** Usage chặn xoá render dạng
+   text; `href` của usage chỉ thành link khi qua `safeLinkUrl`.
+3. **Tải về: xử lý `DownloadResult`.** Nhánh `{ url }` qua `safeMediaUrl` (từ chối `blob:` / `data:` / `javascript:`),
+   tải bằng `<a download>` tạm, khác origin thì `target="_blank"`, không bao giờ điều hướng trang hiện tại; `expiresAt`
+   đã qua → lỗi. Nhánh `{ blob }` bắt buộc `instanceof Blob`, **chỉ tải về, không bao giờ mở** trong tab (blob
+   `text/html` mở ra sẽ chạy dưới origin của site); object URL thu hồi ngay sau khi tải và khi đóng picker. `filename`
+   được làm sạch (≤ 200 ký tự, bỏ `/ \ :` và ký tự điều khiển).
+4. **Copy link** (`copyLink`) copy URL **hiển thị** (`urls.preview` sau `safeMediaUrl`, dạng tuyệt đối), không phải danh
+   tính (quyết định 3 giữ nguyên). URL ký có hạn thì site đừng bật capability này.
+
+### Đính chính
+
+- Quyết định 6: dòng "v0.33 (`td-cropper`)" nay là **v0.35** (v0.34 dành cho bản responsive toàn kit). Nội dung cam kết
+  giữ nguyên: chỉ thêm UI sửa crop, FormData `name[crop]` không đổi.
+- Đồng thuận với dsuite (`17-codex-media-picker-r2.md`) từng **bỏ** tab tải từ URL. Từ v0.33, tải từ URL là **khả năng
+  tuỳ chọn của adapter**: không có `uploadFromUrl` thì tab không bao giờ hiện, nên dsuite **vẫn được phép không làm** và
+  không phải sửa gì.
