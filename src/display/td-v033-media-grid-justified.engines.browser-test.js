@@ -206,6 +206,18 @@ describe('td-media-grid layout="justified" — geometry', () => {
 });
 
 describe('td-media-grid layout="justified" — reflow', () => {
+  // Root cause of the CI WebKit failures (Linux WebKit 26.4, rev 2287): with align-items: stretch, WebKit caches the
+  // flex line's cross size and does not recompute it when the items' aspect-ratio heights change (percentage width on
+  // resize, new --td-mg-w / --td-mg-k), so every cell kept the old height. No cell may stretch: each height must come
+  // from its own aspect-ratio (the last cell of a full row is then ≤ 0.5px / ratio shorter — the width slack).
+  it('no cell stretches to the line (WebKit stale flex-line guard): the row aligns cells to flex-start', async () => {
+    const { grid, box } = mount(MIX.slice(0, 6));
+    await waitFor(() => settled(grid), 4000, 'row vars');
+    expect(getComputedStyle(box).alignItems).to.be.oneOf(['flex-start', 'start']);
+    // computed align-self stays `auto` (= the container's align-items) unless a cell overrides it — none may stretch
+    for (const it of itemsOf(grid)) expect(getComputedStyle(it).alignSelf, it.dataset.id).to.be.oneOf(['auto', 'flex-start', 'start']);
+  });
+
   it('resize within a breakpoint does not rebuild; crossing one does (once)', async () => {
     await setViewport({ width: 1280, height: 900 });
     await waitFor(() => window.innerWidth === 1280, 4000, 'viewport');
