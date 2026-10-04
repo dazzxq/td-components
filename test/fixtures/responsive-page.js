@@ -9,6 +9,7 @@
  * step (openers `cropDialog` / `pickerCrop`).
  */
 import '../../src/form/td-button.js';
+import '../../src/form/td-action-button.js'; // v0.36.0
 import '../../src/form/td-input-field.js';
 import '../../src/form/td-dropdown.js';
 import '../../src/form/td-datetime-picker.js';
@@ -111,6 +112,16 @@ export function mountResponsiveFixture(root) {
       <td-button variant="danger" id="rsp-menu-btn" icon="more">Thao tác</td-button>
       <td-button variant="secondary" id="rsp-hovercard">Hồ sơ tác giả</td-button>
       <button type="button" class="td-btn td-btn--secondary" id="rsp-tooltip" data-tooltip="Tooltip dài hơn một chút để thử xuống dòng khi màn hình hẹp"><span class="td-btn__label">Tooltip</span></button>
+    </div>
+  </section>
+  <section class="rsp-section" data-section="action-buttons"><h2>Nút thao tác</h2>
+    <div class="td-action-group" id="rsp-action-group">
+      <td-action-button action="view" size="sm"></td-action-button>
+      <td-action-button action="edit"></td-action-button>
+      <td-action-button action="versions" size="lg"></td-action-button>
+      <td-action-button action="remove"></td-action-button>
+      <td-action-button action="delete"></td-action-button>
+      <td-action-button action="open" href="#rsp-action-group"></td-action-button>
     </div>
   </section>
   <section class="rsp-section" data-section="form-grid"><h2>Form hai cột</h2>

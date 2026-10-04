@@ -69,6 +69,10 @@ CASES.push({ kind: 'lb-thumb', v: 'current', state: 'ring', pageOnly: true });
 // only has to stay visible on the page / a surface, ≥ 1.05:1) — computed colours (`pairs`), light + dark.
 for (const state of ['rest', 'active', 'error']) CASES.push({ kind: 'otp', v: 'cell', state, pageOnly: true });
 for (const state of ['rest', 'copied', 'error']) CASES.push({ kind: 'copy', v: 'button', state, pageOnly: true });
+// v0.36.0 toast/OTP: solid toast colours (plan QĐ 18 / 20) from computed colours — ink ≥ 4.7 on the fill, the ink on the
+// close button's hover wash (composited over the fill) ≥ 3.2; + OTP letters (charset alphanumeric) ≥ 4.7 on the cell.
+for (const t of TOASTS) CASES.push({ kind: 'toast-pairs', v: t, state: 'solid', pageOnly: true });
+CASES.push({ kind: 'otp', v: 'cell', state: 'alpha', pageOnly: true });
 CASES.push({ kind: 'skeleton', v: 'block', state: 'rest', pageOnly: true });
 // v0.28.0: td-chip-input multi-select rows on the translucent menu surface, over every backdrop: a SELECTED row (label
 // ≥ 4.7, the ✓ ≥ 3.2) at rest and active (keyboard highlight fill), and a LOCKED row (aria-disabled: greyed out on
@@ -98,6 +102,15 @@ for (const state of ['rest', 'hover', 'disabled', 'gallery', 'placeholder', 'lif
 for (const state of ['masked', 'revealed', 'toggle']) CASES.push({ kind: 'masked', v: 'value', state, pageOnly: true });
 // v0.34.0 td-table card mode: cell label (muted) + value on the card fill, sort chip label on its fill — ≥ 4.7, light + dark.
 for (const state of ['label', 'value', 'sort-chip']) CASES.push({ kind: 'table-card', v: 'card', state, pageOnly: true });
+// v0.36.0 colours/action-button (plan QĐ 12, 18–26): computed-colour pairs (page only, light + dark). Solid semantic
+// tokens: label vs fill and vs hover ≥ 4.7 (buttons / badges read them); badge -ink (outline / stamp) vs the page ≥ 4.7;
+// badge edge vs its own fill / white / #f4f4f5 ≥ 1.6 (light theme); alert icon vs the alert fill ≥ 3.2 and the
+// inline-start bar vs the fill ≥ 3; td-action-button icon (3 tones) vs the page and vs its hover fill (composited on the
+// page) ≥ 4.7.
+for (const v of ['success', 'danger', 'warning', 'info']) CASES.push({ kind: 'v036', v, state: 'solid', pageOnly: true });
+for (const v of ['neutral', 'accent', 'success', 'danger', 'warning', 'info']) CASES.push({ kind: 'v036', v, state: 'badge', pageOnly: true });
+for (const v of ['info', 'success', 'warning', 'danger']) CASES.push({ kind: 'v036', v, state: 'alert', pageOnly: true });
+for (const v of ['standard', 'warning', 'danger']) CASES.push({ kind: 'v036', v, state: 'action-button', pageOnly: true });
 // v0.32.0: td-media-field (content layer → page only): prompt + ratio text ≥ 4.7 on the empty frame fill, the empty-frame
 // icon + dashed border ≥ 3.2 (border vs the page and vs the frame fill), the "Video" badge text ≥ 4.7 on its fill, the
 // field error text ≥ 4.7 on the page; td-media-picker (inside the solid dialog): tile name, detail meta label and tray
@@ -723,6 +736,58 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       name: `repeater:${c.v}:${c.state}`,
       pairs,
     };
+  } else if (c.kind === 'v036') {
+    // v0.36.0 colours/action-button — computed colours only (no screenshot)
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const probe = document.createElement('span');
+    stage.appendChild(probe);
+    const tok = (name) => { probe.style.setProperty('color', `var(${name})`); return getComputedStyle(probe).color; };
+    /** translucent colour composited on an opaque one (rgb() strings) */
+    const over = (top, base) => {
+      const t = top.match(/[\d.]+/g).map(Number); const b = base.match(/[\d.]+/g).map(Number);
+      const a = t.length > 3 ? t[3] : 1;
+      return `rgb(${[0, 1, 2].map((i) => Math.round(t[i] * a + b[i] * (1 - a))).join(', ')})`;
+    };
+    let pairs = [];
+    let target = probe;
+    if (c.state === 'solid') {
+      const bg = tok(`--td-solid-${c.v}-bg`); const fg = tok(`--td-solid-${c.v}-fg`); const hv = tok(`--td-solid-${c.v}-hover`);
+      pairs = [{ what: 'solid label vs fill', fg, bg, min: 4.7 }, { what: 'solid label vs hover', fg, bg: hv, min: 4.7 }];
+    } else if (c.state === 'badge') {
+      target = document.createElement('span');
+      target.className = `td-badge td-badge--${c.v}`;
+      target.textContent = 'Đã duyệt';
+      stage.appendChild(target);
+      const cs = getComputedStyle(target);
+      pairs = [{ what: 'badge label vs fill', fg: cs.color, bg: cs.backgroundColor, min: 4.7 }];
+      if (theme !== 'dark') {
+        pairs.push({ what: 'badge edge vs its fill', fg: cs.borderTopColor, bg: cs.backgroundColor, min: 1.6 },
+          { what: 'badge edge vs white', fg: cs.borderTopColor, bg: 'rgb(255, 255, 255)', min: 1.6 },
+          { what: 'badge edge vs #f4f4f5', fg: cs.borderTopColor, bg: 'rgb(244, 244, 245)', min: 1.6 });
+      }
+      if (!['neutral', 'accent'].includes(c.v)) {
+        const ink = document.createElement('span');
+        ink.className = `td-badge td-badge--${c.v} td-badge--outline`;
+        ink.textContent = 'Đã duyệt';
+        stage.appendChild(ink);
+        pairs.push({ what: 'badge -ink (outline) vs page', fg: getComputedStyle(ink).color, bg: page, min: 4.7 });
+      }
+    } else if (c.state === 'alert') {
+      const host = document.createElement('td-alert');
+      host.setAttribute('variant', c.v);
+      host.textContent = 'Đã lưu';
+      stage.appendChild(host);
+      target = host.querySelector('.td-alert');
+      const cs = getComputedStyle(target);
+      pairs = [{ what: 'alert icon vs fill', fg: getComputedStyle(target.querySelector('.td-alert__icon')).color, bg: cs.backgroundColor, min: 3.2 },
+        { what: 'alert bar vs fill', fg: cs.borderInlineStartColor || cs.borderLeftColor, bg: cs.backgroundColor, min: 3 }];
+    } else {
+      const fg = tok(`--td-action-btn-${c.v}-fg`);
+      const hv = over(tok(`--td-action-btn-${c.v}-hover-bg`), page);
+      pairs = [{ what: 'action-button icon vs page', fg, bg: page, min: 4.7 }, { what: 'action-button icon vs hover fill', fg, bg: hv, min: 4.7 }];
+    }
+    const b = target.getBoundingClientRect();
+    return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `v036:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'table-card') {
     const host = document.createElement('td-table');
     host.setAttribute('layout', 'cards');
@@ -874,8 +939,9 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       const host = document.createElement('td-otp-input');
       host.setAttribute('label', 'Mã');
       if (c.state === 'error') host.setAttribute('error-text', 'Sai mã');
+      if (c.state === 'alpha') host.setAttribute('charset', 'alphanumeric'); // v0.36.0 toast/OTP: letters
       stage.appendChild(host);
-      host.value = '123';
+      host.value = c.state === 'alpha' ? 'WMX' : '123';
       const input = host.querySelector('input');
       if (c.state === 'active') { input.focus(); input.setSelectionRange(3, 3); }
       await new Promise((r) => setTimeout(r, 300)); // border transition
@@ -888,6 +954,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
         { what: 'cell edge vs --td-color-bg', fg: cs.borderTopColor, bg: themeBg },
       ];
       if (c.state === 'rest') pairs.push({ what: 'digit vs cell fill', fg: cs.color, bg: cs.backgroundColor, min: 4.7 });
+      if (c.state === 'alpha') pairs.push({ what: 'letter vs cell fill', fg: cs.color, bg: cs.backgroundColor, min: 4.7 });
       box = cell.getBoundingClientRect();
       input.blur();
     } else if (c.kind === 'copy') {
@@ -929,6 +996,32 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       hover: false,
       name: `${c.kind}:${c.v}:${c.state}`,
       pairs,
+    };
+  } else if (c.kind === 'toast-pairs') { // v0.36.0 toast/OTP
+    const t = TdToast._showSingle('Đã lưu thay đổi của bạn', c.v, 0, 'top-end');
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const cs = getComputedStyle(t);
+    const probe = document.createElement('span');
+    probe.style.setProperty('color', `var(--td-toast-${c.v}-close-hover)`);
+    stage.appendChild(probe);
+    const wash = getComputedStyle(probe).color;
+    probe.remove();
+    const nums = (str) => str.match(/[\d.]+/g).map(Number);
+    const [br, bgc, bb] = nums(cs.backgroundColor);
+    const [wr, wg, wb, wa = 1] = nums(wash);
+    const mix = (w, b) => Math.round(w * wa + b * (1 - wa));
+    const hoverBg = `rgb(${mix(wr, br)}, ${mix(wg, bgc)}, ${mix(wb, bb)})`;
+    const r0 = t.getBoundingClientRect();
+    return {
+      rect: { x: r0.x, y: r0.y, width: r0.width, height: r0.height },
+      ink: {},
+      opacity: 1,
+      hover: false,
+      name: `toast-pairs:${c.v}:${c.state}`,
+      pairs: [
+        { what: 'ink vs solid fill', fg: cs.color, bg: cs.backgroundColor, min: 4.7 },
+        { what: 'close glyph vs hover wash', fg: cs.color, bg: hoverBg, min: 3.2 },
+      ],
     };
   } else if (c.kind === 'focus') {
     let control;

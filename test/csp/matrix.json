@@ -41,7 +41,8 @@
       "td-masked-value": "/src/display/td-masked-value.js",
       "td-media-picker": "/src/feedback/td-media-picker.js",
       "td-media-field": "/src/form/td-media-field.js",
-      "td-cropper": "/src/form/td-cropper.js"
+      "td-cropper": "/src/form/td-cropper.js",
+      "td-action-button": "/src/form/td-action-button.js"
     },
     "tokenNative": [
       "td-button",
@@ -83,7 +84,8 @@
       "td-masked-value",
       "td-media-picker",
       "td-media-field",
-      "td-cropper"
+      "td-cropper",
+      "td-action-button"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -846,6 +848,20 @@
         "width"
       ],
       "settle": 350
+    },
+    {
+      "state": "bold-reserve",
+      "setup": "const t=document.createElement('td-tabs'); t.id='probe'; window.__mount.appendChild(t); t.tabs=[{id:'a',label:'Thông tin chung'},{id:'b',label:'Lịch sử thay đổi'}];",
+      "selectors": [
+        ".td-tabs__tab",
+        ".td-tabs__label"
+      ],
+      "excludeProps": [
+        "transform",
+        "width"
+      ],
+      "settle": 350,
+      "selectorNote": "v0.36.0 (QĐ 16): label = inline-flex column + ::after attr(data-label) width reservation — static CSS only"
     }
   ],
   "td-pagination": [
@@ -1160,6 +1176,46 @@
         ".td-toast__close"
       ],
       "settle": 350
+    },
+    {
+      "state": "v036-placements",
+      "setup": "for (const p of TdToast.PLACEMENTS) TdToast._showSingle('Vị trí '+p,'success',0,p);",
+      "selectors": [
+        ".td-toast-root",
+        ".td-toasts[data-placement=\"top-start\"]",
+        ".td-toasts[data-placement=\"top-center\"]",
+        ".td-toasts[data-placement=\"top-end\"]",
+        ".td-toasts[data-placement=\"bottom-start\"]",
+        ".td-toasts[data-placement=\"bottom-center\"]",
+        ".td-toasts[data-placement=\"bottom-end\"]",
+        ".td-toasts[data-placement=\"bottom-center\"] .td-toast"
+      ],
+      "portal": [
+        ".td-toast-root",
+        ".td-toasts[data-placement=\"top-start\"]",
+        ".td-toasts[data-placement=\"top-center\"]",
+        ".td-toasts[data-placement=\"top-end\"]",
+        ".td-toasts[data-placement=\"bottom-start\"]",
+        ".td-toasts[data-placement=\"bottom-center\"]",
+        ".td-toasts[data-placement=\"bottom-end\"]",
+        ".td-toasts[data-placement=\"bottom-center\"] .td-toast"
+      ],
+      "settle": 350,
+      "selectorNote": "v0.36.0 (ADR 0016): portal root + the six named stacks (offset tokens, 1280x720 page); the toast carries the CSSOM --_td-toast-seq (the only inline property). The < 480 lane / short-viewport states need a viewport this harness does not set: covered by td-v036-toast-placement.engines + the responsive gate (toast-lanes)."
+    },
+    {
+      "state": "v036-legacy-stack",
+      "setup": "document.documentElement.style.setProperty('--td-toast-top','auto'); document.documentElement.style.setProperty('--td-toast-bottom','1.5rem'); TdToast._showSingle('Token cũ','info',0);",
+      "selectors": [
+        ".td-toast-root > .td-toasts:not([data-placement])",
+        ".td-toast-root > .td-toasts:not([data-placement]) .td-toast"
+      ],
+      "portal": [
+        ".td-toast-root > .td-toasts:not([data-placement])",
+        ".td-toast-root > .td-toasts:not([data-placement]) .td-toast"
+      ],
+      "settle": 350,
+      "selectorNote": "v0.36.0: a site that changed the pre-0.36 anchor tokens and gives no placement -> the legacy stack (token-positioned, v0.35 CSS)."
     }
   ],
   "td-loading": [
@@ -1953,6 +2009,17 @@
         ".td-badge--info.td-badge--stamp"
       ],
       "selectorNote": "CSS-only; transform = the tilt token"
+    },
+    {
+      "state": "edge-on-own-fill",
+      "markup": "<span class=\"td-badge td-badge--success\">success</span> <span class=\"td-badge td-badge--danger\">danger</span> <span class=\"td-badge td-badge--warning\">warning</span> <span class=\"td-badge td-badge--info\">info</span>",
+      "selectors": [
+        ".td-badge--success",
+        ".td-badge--danger",
+        ".td-badge--warning",
+        ".td-badge--info"
+      ],
+      "selectorNote": "v0.36.0 (QĐ 21–22): solid fill + 1px precomputed edge + --td-badge-shadow"
     }
   ],
   "td-media-grid": [
@@ -2140,6 +2207,44 @@
         ".td-otp__input"
       ],
       "selectorNote": "php/td.php td_otp_input default (no JS, no custom element)"
+    },
+    {
+      "state": "v036-length-8",
+      "markup": "<td-otp-input name=\"c\" label=\"Mã 8 số\" length=\"8\" value=\"1234\"></td-otp-input>",
+      "selectors": [
+        ".td-otp",
+        ".td-otp__box",
+        ".td-otp__cells",
+        ".td-otp__cell:nth-child(1)",
+        ".td-otp__cell:nth-child(8)",
+        ".td-otp__input"
+      ],
+      "settle": 300,
+      "selectorNote": "v0.36.0 (QĐ 41-42): 8 in-flow cells, aspect-ratio shape, box height = cell height"
+    },
+    {
+      "state": "v036-alnum-5",
+      "markup": "<td-otp-input name=\"c\" label=\"Mã Steam Guard\" length=\"5\" charset=\"alphanumeric\" value=\"WMX\"></td-otp-input>",
+      "selectors": [
+        ".td-otp",
+        ".td-otp__box",
+        ".td-otp__cell:nth-child(1)",
+        ".td-otp__cell:nth-child(5)",
+        ".td-otp__input"
+      ],
+      "settle": 300,
+      "selectorNote": "v0.36.0 (QĐ 43-45): Steam-like 5 alphanumerics (letters drawn in the cells)"
+    },
+    {
+      "state": "v036-ssr-alnum-5",
+      "markup": "<td-otp-input data-td-ssr=\"otp-input@1\" id=\"otp-s5\" name=\"c\" length=\"5\" charset=\"alphanumeric\"><div class=\"td-otp\" data-length=\"5\"><div class=\"td-otp__box\"><input type=\"text\" class=\"td-otp__input\" id=\"otp-s5-input\" inputmode=\"text\" autocomplete=\"one-time-code\" autocapitalize=\"characters\" autocorrect=\"off\" spellcheck=\"false\" name=\"c\" maxlength=\"5\" pattern=\"[A-Za-z0-9]{5}\" aria-label=\"Mã xác thực\"><span class=\"td-otp__cells\" aria-hidden=\"true\"><span class=\"td-otp__cell\"></span><span class=\"td-otp__cell\"></span><span class=\"td-otp__cell\"></span><span class=\"td-otp__cell\"></span><span class=\"td-otp__cell\"></span></span></div></div></td-otp-input>",
+      "selectors": [
+        ".td-otp__box",
+        ".td-otp__input",
+        ".td-otp__cell:nth-child(1)"
+      ],
+      "settle": 300,
+      "selectorNote": "v0.36.0: php/td.php td_otp_input element mode, 5 alphanumerics (otp-input@1 additive), hydrated in place"
     }
   ],
   "td-drawer": [
@@ -3380,6 +3485,125 @@
       ],
       "settle": 400,
       "selectorNote": "v0.35: natural-* 1:1 vs a 16:9 image ⇒ error ratio (fail closed)"
+    }
+  ],
+  "td-action-button": [
+    {
+      "state": "standard-sm",
+      "markup": "<td-action-button action=\"edit\" tone=\"standard\" size=\"sm\"></td-action-button>",
+      "selectors": [
+        ".td-btn--action",
+        ".td-btn__icon",
+        ".td-btn__icon svg"
+      ],
+      "selectorNote": "v0.36.0: icon-only square (32 / 36 / 40), tone colour, transparent fill — token CSS only, no style attribute"
+    },
+    {
+      "state": "standard-md",
+      "markup": "<td-action-button action=\"edit\" tone=\"standard\" size=\"md\"></td-action-button>",
+      "selectors": [
+        ".td-btn--action",
+        ".td-btn__icon",
+        ".td-btn__icon svg"
+      ],
+      "selectorNote": "v0.36.0: icon-only square (32 / 36 / 40), tone colour, transparent fill — token CSS only, no style attribute"
+    },
+    {
+      "state": "standard-lg",
+      "markup": "<td-action-button action=\"edit\" tone=\"standard\" size=\"lg\"></td-action-button>",
+      "selectors": [
+        ".td-btn--action",
+        ".td-btn__icon",
+        ".td-btn__icon svg"
+      ],
+      "selectorNote": "v0.36.0: icon-only square (32 / 36 / 40), tone colour, transparent fill — token CSS only, no style attribute"
+    },
+    {
+      "state": "warning-sm",
+      "markup": "<td-action-button action=\"edit\" tone=\"warning\" size=\"sm\"></td-action-button>",
+      "selectors": [
+        ".td-btn--action",
+        ".td-btn__icon",
+        ".td-btn__icon svg"
+      ],
+      "selectorNote": "v0.36.0: icon-only square (32 / 36 / 40), tone colour, transparent fill — token CSS only, no style attribute"
+    },
+    {
+      "state": "warning-md",
+      "markup": "<td-action-button action=\"edit\" tone=\"warning\" size=\"md\"></td-action-button>",
+      "selectors": [
+        ".td-btn--action",
+        ".td-btn__icon",
+        ".td-btn__icon svg"
+      ],
+      "selectorNote": "v0.36.0: icon-only square (32 / 36 / 40), tone colour, transparent fill — token CSS only, no style attribute"
+    },
+    {
+      "state": "warning-lg",
+      "markup": "<td-action-button action=\"edit\" tone=\"warning\" size=\"lg\"></td-action-button>",
+      "selectors": [
+        ".td-btn--action",
+        ".td-btn__icon",
+        ".td-btn__icon svg"
+      ],
+      "selectorNote": "v0.36.0: icon-only square (32 / 36 / 40), tone colour, transparent fill — token CSS only, no style attribute"
+    },
+    {
+      "state": "danger-sm",
+      "markup": "<td-action-button action=\"edit\" tone=\"danger\" size=\"sm\"></td-action-button>",
+      "selectors": [
+        ".td-btn--action",
+        ".td-btn__icon",
+        ".td-btn__icon svg"
+      ],
+      "selectorNote": "v0.36.0: icon-only square (32 / 36 / 40), tone colour, transparent fill — token CSS only, no style attribute"
+    },
+    {
+      "state": "danger-md",
+      "markup": "<td-action-button action=\"edit\" tone=\"danger\" size=\"md\"></td-action-button>",
+      "selectors": [
+        ".td-btn--action",
+        ".td-btn__icon",
+        ".td-btn__icon svg"
+      ],
+      "selectorNote": "v0.36.0: icon-only square (32 / 36 / 40), tone colour, transparent fill — token CSS only, no style attribute"
+    },
+    {
+      "state": "danger-lg",
+      "markup": "<td-action-button action=\"edit\" tone=\"danger\" size=\"lg\"></td-action-button>",
+      "selectors": [
+        ".td-btn--action",
+        ".td-btn__icon",
+        ".td-btn__icon svg"
+      ],
+      "selectorNote": "v0.36.0: icon-only square (32 / 36 / 40), tone colour, transparent fill — token CSS only, no style attribute"
+    },
+    {
+      "state": "disabled",
+      "markup": "<td-action-button action=\"delete\" disabled></td-action-button>",
+      "selectors": [
+        ".td-btn--action",
+        ".td-btn__icon svg"
+      ],
+      "selectorNote": "v0.36.0: disabled stays transparent, greyed icon"
+    },
+    {
+      "state": "link",
+      "markup": "<td-action-button action=\"open\" href=\"#x\" target=\"_blank\"></td-action-button>",
+      "selectors": [
+        "a.td-btn--action",
+        ".td-btn__icon svg"
+      ],
+      "selectorNote": "v0.36.0: link mode (<a>)"
+    },
+    {
+      "state": "group",
+      "markup": "<div class=\"td-action-group\"><td-action-button action=\"view\"></td-action-button><td-action-button action=\"edit\"></td-action-button><td-action-button action=\"delete\"></td-action-button></div>",
+      "selectors": [
+        ".td-action-group",
+        ".td-btn--action"
+      ],
+      "selectorNote": "v0.36.0: CSS-only group (gap 4 / 8 coarse)"
     }
   ]
 }

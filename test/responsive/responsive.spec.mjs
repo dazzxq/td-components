@@ -64,7 +64,15 @@ const SCENARIOS = [
   { name: 'menu', act: (p) => p.click('#rsp-menu-btn button'), panel: '.td-menu' },
   { name: 'tooltip', act: (p, c) => (c.touch ? p.tap('#rsp-tooltip') : hoverIntent(p, '#rsp-tooltip', '.td-tooltip', notes)), panel: '.td-tooltip' },
   { name: 'hovercard', mouseOnly: true, act: (p) => hoverIntent(p, '#rsp-hovercard', '.td-hovercard[data-state="open"]', notes), panel: '.td-hovercard' },
-  { name: 'toast', act: (p) => p.evaluate(() => window.__openers.toast()), panel: '.td-toasts', see: ['.td-toast:last-child', '.td-toast:nth-last-child(2)'] },
+  // v0.36.0 (ADR 0016): the stacks live in lanes (display: contents < 480) and the newest is first in a top stack; in a
+  // short viewport only the two newest (globally) show — measure the displayed toasts, not stack children.
+  { name: 'toast', act: (p) => p.evaluate(() => window.__openers.toast()), panel: '.td-toast:not([data-td-toast-older])', see: ['.td-toast:not([data-td-toast-older])'] },
+  // v0.36.0: six placements — < 480 every top-* toast is in ONE full-width lane column (same left / right), ≥ 480 each
+  // placement is its own stack; all inside the viewport. (Same module URL as the fixture's import → same TdToast.)
+  { name: 'toast-lanes', act: (p) => p.evaluate(async () => {
+    const { TdToast } = await import('/src/feedback/td-toast.js');
+    for (const placement of ['top-start', 'top-center', 'top-end', 'bottom-start']) TdToast.info(`Thông báo ${placement}`, { placement, duration: 0 });
+  }), panel: '.td-toast:not([data-td-toast-older])', toastLanes: true, see: ['.td-toast:not([data-td-toast-older])'] },
   { name: 'modal-confirm', act: (p) => p.evaluate(() => window.__openers.modalConfirm()), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer .td-btn:last-child'] },
   { name: 'modal-long', act: (p) => p.evaluate(() => window.__openers.modalLong()), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer .td-btn:last-child'] },
   { name: 'drawer', act: (p) => p.evaluate(() => window.__openers.drawer()), panel: '.td-drawer__panel', see: ['.td-drawer__close', '.td-drawer__footer .td-btn'] },
@@ -196,7 +204,62 @@ async function runConfig(browser, c) {
     }
     check(tag, 'td-table mode', modeErr);
     const snap = await page.locator('#rsp-table-narrow table').ariaSnapshot();
+    // v0.36.0 (plan QĐ 13): td-action-button — coarse = a REAL 44 × 44 box (no ::before extension), mouse = 32 / 36 / 40;
+    // inside .td-action-group no two targets overlap and (coarse) they are ≥ 8 px apart.
+    const ab = await page.evaluate(() => [...document.querySelectorAll('#rsp-action-group .td-btn--action')].map((b) => {
+      const r = b.getBoundingClientRect();
+      const before = getComputedStyle(b, '::before').content;
+      return { l: r.left, t: r.top, r: r.right, b: r.bottom, w: r.width, h: r.height, before };
+    }));
+    const abErr = [];
+    if (ab.length !== 6) abErr.push(`expected 6 action buttons, got ${ab.length}`);
+    ab.forEach((x, i) => {
+      if (c.touch && (x.w < 44 - 0.5 || x.h < 44 - 0.5)) abErr.push(`#${i} ${x.w}×${x.h} < 44 × 44 (coarse)`);
+      if (!c.touch && (x.w < 32 - 0.5 || x.w > 40 + 0.5)) abErr.push(`#${i} ${x.w}px outside 32–40 (mouse)`);
+      if (x.before && x.before !== 'none' && x.before !== 'normal') abErr.push(`#${i} has a ::before hit area (${x.before})`);
+      for (const y of ab.slice(i + 1)) {
+        const dx = Math.max(y.l - x.r, x.l - y.r);
+        const dy = Math.max(y.t - x.b, x.t - y.b);
+        if (dx < 0 && dy < 0) abErr.push(`#${i} overlaps another action button`);
+        else if (c.touch && dy < 0 && dx < 8 - 0.5) abErr.push(`#${i} only ${dx.toFixed(1)}px from its neighbour (coarse ≥ 8)`);
+      }
+    });
+    check(tag, 'td-action-button targets', abErr);
     check(tag, 'card-mode table semantics', ['- table', '- columnheader', '- row', '- cell'].filter((s) => !snap.includes(s)).map((s) => `aria snapshot lacks "${s}"`));
+    // v0.36.0 (plan QĐ 41): td-otp-input cells keep their shape — in columns of 320 / 360 / 390 / 240 px (and the page
+    // width when narrower), 6 / 8 / 10 digits and 5 alphanumerics: each cell width / height = 44 / 52 ± 4 % (except a
+    // touch cell narrower than 37 px, which grows to the 44 px touch minimum), nothing wider than its column.
+    const otpErr = await page.evaluate(async () => {
+      const errs = [];
+      const coarse = matchMedia('(pointer: coarse)').matches;
+      const vw = document.documentElement.clientWidth;
+      const host = document.createElement('div');
+      document.body.appendChild(host);
+      for (const w of [320, 360, 390, 240]) {
+        const col = document.createElement('div');
+        col.style.setProperty('width', `${Math.min(w, vw)}px`);
+        col.innerHTML = ['', 'length="8"', 'length="10"', 'length="5" charset="alphanumeric"']
+          .map((a) => `<td-otp-input label="Mã" ${a}></td-otp-input>`).join('');
+        host.appendChild(col);
+      }
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      for (const col of host.children) {
+        const cr = col.getBoundingClientRect();
+        for (const el of col.querySelectorAll('td-otp-input')) {
+          const tagName = `${Math.round(cr.width)}px ${el.getAttribute('length') || 6}${el.getAttribute('charset') ? ' alnum' : ''}`;
+          const box = el.querySelector('.td-otp__box').getBoundingClientRect();
+          if (box.right > cr.right + 0.5 || box.left < cr.left - 0.5) errs.push(`${tagName}: box ${Math.round(box.width)} wider than column`);
+          for (const c of el.querySelectorAll('.td-otp__cell')) {
+            const r = c.getBoundingClientRect();
+            if (coarse && r.width < 37) { if (r.height < 43.5) errs.push(`${tagName}: touch cell ${r.height.toFixed(1)} < 44`); continue; }
+            if (Math.abs((r.width / r.height) / (44 / 52) - 1) > 0.04) { errs.push(`${tagName}: cell ${r.width.toFixed(1)}×${r.height.toFixed(1)}`); break; }
+          }
+        }
+      }
+      host.remove();
+      return errs;
+    });
+    check(tag, 'otp cell shape (v0.36.0)', otpErr);
     if (errors.length) check(tag, 'page errors', errors);
 
     if (!c.fallback) await runOverlays(page, c, tag, shot);
@@ -253,6 +316,19 @@ async function runOverlays(page, c, tag, shot) {
           return st ? st.getBoundingClientRect().height : 0;
         });
         check(tag, `${s.name}: crop stage height`, stageH >= 200 ? [] : [`stage ${Math.round(stageH)}px < 200`]);
+      }
+      if (s.toastLanes) {
+        await page.waitForFunction(() => document.querySelectorAll('.td-toast[data-state="open"]').length === 4);
+        await page.evaluate(settle);
+        const lane = await page.evaluate(() => [...document.querySelectorAll('.td-toast-lane[data-edge="top"] .td-toast')]
+          .filter((t) => getComputedStyle(t).display !== 'none').map((t) => { const r = t.getBoundingClientRect(); return [r.left, r.right]; }));
+        const err = [];
+        if (vp.w < 480) {
+          const [l0, r0] = lane[0] || [0, 0];
+          if (lane.some(([l, r]) => Math.abs(l - l0) > 1 || Math.abs(r - r0) > 1)) err.push(`top lane not one column: ${JSON.stringify(lane)}`);
+          if (r0 - l0 < vp.w * 0.8) err.push(`top lane width ${Math.round(r0 - l0)} < 80 % of ${vp.w}`);
+        }
+        check(tag, `${s.name}: xs lane column`, err);
       }
       if (s.name === 'modal-confirm' || s.name === 'modal-long') {
         // ordinary TdModal: bottom sheet below 720 (full width, glued to the bottom), centred dialog from 720

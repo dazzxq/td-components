@@ -236,9 +236,10 @@ function materialChecks(tag, s) {
   }
   for (const id of TOASTS) {
     check(`${tag} ${id} no backdrop-filter (v0.21.0)`, noFilter(s[id].bf), s[id].bf);
-    check(`${tag} ${id} pastel success fill`, sameColor(s[id].bg, [220, 252, 231, 1]), s[id].bg);
-    check(`${tag} ${id} pastel success ink`, sameColor(s[id].color, [20, 83, 45, 1]), s[id].color);
-    check(`${tag} ${id} pastel success border`, sameColor(s[id].border, [187, 247, 208, 1]), s[id].border);
+    // v0.36.0 (plan QĐ 18 / 20): solid semantic colours — green-700 fill, white ink, green-800 border
+    check(`${tag} ${id} solid success fill`, sameColor(s[id].bg, [21, 128, 61, 1]), s[id].bg);
+    check(`${tag} ${id} solid success ink`, sameColor(s[id].color, [255, 255, 255, 1]), s[id].color);
+    check(`${tag} ${id} solid success border`, sameColor(s[id].border, [22, 101, 52, 1]), s[id].border);
   }
   // v0.21.0 P5: modal motion tokens (the fixture dialog sits in the "opening" pose: no data-state="open" ancestor)
   const m = s['s-modal'];
@@ -271,17 +272,18 @@ function materialChecks(tag, s) {
     check(`${tag} ${id} no backdrop-filter`, noFilter(s[id].bf), s[id].bf);
     check(`${tag} ${id} --td-btn-lift shadow`, (s[id].shadow.match(COLOR_FN) || []).length === 2, s[id].shadow);
   }
-  // v0.21.0: primary black + white label; semantic variants pastel (fill + same-hue ink + -border)
+  // v0.21.0: primary black + white label. v0.36.0 (plan QĐ 18–19): semantic variants SOLID (--td-solid-*: fill + white /
+  // dark label + -border = the hover step)
   check(`${tag} primary button = black`, sameColor(s['b-primary'].bg, [24, 24, 27, 1]) && sameColor(s['b-primary'].color, [255, 255, 255, 1]), JSON.stringify(s['b-primary']));
   for (const [id, bg, border, fg] of [
-    ['b-success', [220, 252, 231], [187, 247, 208], [20, 83, 45]],
-    ['b-danger', [254, 226, 226], [254, 202, 202], [127, 29, 29]],
-    ['b-warning', [254, 243, 199], [253, 230, 138], [120, 53, 15]],
-    ['b-info', [219, 234, 254], [191, 219, 254], [30, 58, 138]],
+    ['b-success', [21, 128, 61], [22, 101, 52], [255, 255, 255]],
+    ['b-danger', [220, 38, 38], [185, 28, 28], [255, 255, 255]],
+    ['b-warning', [245, 158, 11], [217, 119, 6], [24, 24, 27]],
+    ['b-info', [37, 99, 235], [29, 78, 216], [255, 255, 255]],
   ]) {
-    check(`${tag} ${id} pastel fill`, sameColor(s[id].bg, [...bg, 1]), s[id].bg);
-    check(`${tag} ${id} pastel border`, sameColor(s[id].border, [...border, 1]), s[id].border);
-    check(`${tag} ${id} pastel ink`, sameColor(s[id].color, [...fg, 1]), s[id].color);
+    check(`${tag} ${id} solid semantic fill`, sameColor(s[id].bg, [...bg, 1]), s[id].bg);
+    check(`${tag} ${id} solid semantic border`, sameColor(s[id].border, [...border, 1]), s[id].border);
+    check(`${tag} ${id} solid semantic label`, sameColor(s[id].color, [...fg, 1]), s[id].color);
   }
   check(`${tag} -tint alias colours the button`, sameColor(s['b-alias'].bg, [10, 20, 30, 1]), s['b-alias'].bg);
   check(`${tag} -tint alias colours the edge too`, sameColor(s['b-alias'].border, [10, 20, 30, 1]), s['b-alias'].border);
@@ -390,13 +392,13 @@ async function runEngine(name, launcher) {
           d = await read(page);
         }
         check(`${tag} dark strong bg`, sameColor(d.strong.bg, [28, 28, 30, 0.94]), d.strong.bg);
-        check(`${tag} dark toast solid pastel (not the light fill)`, opaqueBg(d['s-toast'].bg) && !sameColor(d['s-toast'].bg, [220, 252, 231, 1]), d['s-toast'].bg);
+        check(`${tag} dark toast solid fill (v0.36.0: the same solid colour in both themes)`, opaqueBg(d['s-toast'].bg) && sameColor(d['s-toast'].bg, [21, 128, 61, 1]), d['s-toast'].bg);
         check(`${tag} dark toast no filter`, noFilter(d['s-toast'].bf), d['s-toast'].bf);
         check(`${tag} dark opaque surfaces keep the site solid`, sameColor(d['s-modal'].bg, [9, 9, 9, 1]), d['s-modal'].bg);
         // v0.21.0: dark keeps the black tooltip (+ a faint light edge); primary inverted; shadows alpha × 2
         check(`${tag} dark tooltip black + light edge`, sameColor(d['s-tooltip'].bg, [24, 24, 27, 1]) && sameColor(d['s-tooltip'].border, [255, 255, 255, 0.12]), JSON.stringify(d['s-tooltip']));
         check(`${tag} dark primary inverted`, sameColor(d['b-primary'].bg, [244, 244, 245, 1]) && sameColor(d['b-primary'].color, [24, 24, 27, 1]), JSON.stringify(d['b-primary']));
-        check(`${tag} dark danger pastel`, sameColor(d['b-danger'].bg, [57, 26, 28, 1]) && sameColor(d['b-danger'].color, [254, 202, 202, 1]), JSON.stringify(d['b-danger']));
+        check(`${tag} dark danger solid (v0.36.0: same as light)`, sameColor(d['b-danger'].bg, [220, 38, 38, 1]) && sameColor(d['b-danger'].color, [255, 255, 255, 1]), JSON.stringify(d['b-danger']));
         check(`${tag} dark --td-glass-shadow ×2`, sameAlphas(d['s-menu'].shadow, [0.12, 0.24]), d['s-menu'].shadow);
         check(`${tag} dark --td-btn-lift ×2`, sameAlphas(d['b-primary'].shadow, [0.2, 0.24]), d['b-primary'].shadow);
         check(`${tag} dark skeleton bg (#242427), table follows`, sameColor(d['k-skel'].bg, [36, 36, 39, 1]) && d['k-table-skel'].bg === d['k-skel'].bg, `${d['k-skel'].bg} / ${d['k-table-skel'].bg}`);
