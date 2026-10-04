@@ -11731,6 +11731,8 @@
 		display: block;
 		min-inline-size: 0;
 		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal); /* own metrics: a host reset (Tailwind preflight) must not leak in */
 		color: var(--td-color-text);
 		container: td-cropper / inline-size; /* ADR 0014 §4: needs its width from the parent */
 	}

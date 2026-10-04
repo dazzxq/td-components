@@ -65,5 +65,19 @@
   "object-fit",
   "--td-mg-w",
   "--td-mg-sub",
-  "--td-mg-k"
+  "--td-mg-k",
+  "--_tdc-img-x",
+  "--_tdc-img-y",
+  "--_tdc-img-w",
+  "--_tdc-img-h",
+  "--_tdc-box-x",
+  "--_tdc-box-y",
+  "--_tdc-box-w",
+  "--_tdc-box-h",
+  "--_tdc-focal-x",
+  "--_tdc-focal-y",
+  "--_td-mf-crop-x",
+  "--_td-mf-crop-y",
+  "--_td-mf-crop-w",
+  "--_td-mf-crop-h"
 ]
