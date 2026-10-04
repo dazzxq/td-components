@@ -3433,7 +3433,11 @@
         ".td-cropper__message"
       ],
       "settle": 400,
-      "selectorNote": "v0.35: free crop (presets shown), whole image box, 8 handles; geometry via --_tdc-* CSSOM on the host"
+      "selectorNote": "v0.35: free crop (presets shown), whole image box, 8 handles; geometry via --_tdc-* CSSOM on the host",
+      "excludeProps": [
+        "margin-left"
+      ],
+      "excludeNote": "the tools row is pushed to the inline end with margin-left:auto, whose used px value depends on the page font's text widths (macOS vs Linux CI); position is covered by the cropper geometry tests"
     },
     {
       "state": "locked-focal",
@@ -3459,7 +3463,11 @@
         ".td-cropper__message"
       ],
       "settle": 400,
-      "selectorNote": "v0.35: locked 1.91:1 (ratio group hidden, corners only), focal point on"
+      "selectorNote": "v0.35: locked 1.91:1 (ratio group hidden, corners only), focal point on",
+      "excludeProps": [
+        "margin-left"
+      ],
+      "excludeNote": "the tools row is pushed to the inline end with margin-left:auto, whose used px value depends on the page font's text widths (macOS vs Linux CI); position is covered by the cropper geometry tests"
     },
     {
       "state": "loading",

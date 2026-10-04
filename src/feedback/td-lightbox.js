@@ -1527,6 +1527,10 @@ function openViewer(items, options = {}) {
   mountFilmstrip();
 
   if (lifecycle !== 'open') {
+    // The singleton <img> still holds the previous session's image (kept on close so the fade-out shows it). A fresh
+    // open must not paint it while the new one loads (the old frame used to fade out over the new open) → drop it now.
+    ui.img.removeAttribute('src');
+    ui.img.alt = '';
     clearFocusHandoff(ui.overlay);
     viewer = {
       savedFocus: document.activeElement instanceof HTMLElement ? document.activeElement : null,

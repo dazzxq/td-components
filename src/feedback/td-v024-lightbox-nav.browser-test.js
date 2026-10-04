@@ -597,3 +597,30 @@ describe('v0.24.0 review round 1 — preload records, preload option, canonical 
     }
   });
 });
+
+describe('td-lightbox — reopen shows no stale image (v0.36.0 fix)', () => {
+  it('closing then opening another item never paints the previous image', async () => {
+    const lb = await openReady([IMG(1)]);
+    const img = $('.td-lightbox__img');
+    for (let i = 0; i < 100 && img.hasAttribute('data-loading'); i++) await wait(10);
+    expect(img.src).to.equal(A(1));
+    lb.close();
+    await wait(50);
+    TdLightbox.open([IMG(2)]);
+    // Synchronously after open (before the new image decodes) the old one must already be gone.
+    expect(img.getAttribute('src'), 'old src dropped on reopen').to.equal(null);
+    expect(getComputedStyle(img).visibility).to.equal('hidden');
+    for (let i = 0; i < 100 && img.getAttribute('src') === null; i++) await wait(10);
+    expect(img.src).to.equal(A(2));
+    TdLightbox.close();
+  });
+
+  it('navigating inside an open session keeps the current image until the next one is ready (unchanged)', async () => {
+    await openReady([IMG(1), IMG(2)]);
+    const img = $('.td-lightbox__img');
+    for (let i = 0; i < 100 && img.hasAttribute('data-loading'); i++) await wait(10);
+    key('ArrowRight');
+    expect(img.src, 'slide keeps the outgoing image while the next loads').to.equal(A(1));
+    TdLightbox.close();
+  });
+});
