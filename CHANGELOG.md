@@ -12,7 +12,7 @@ All notable changes to **td-components** are documented here.
 ### Added
 
 - **Breakpoint chung** `xs < 480 · sm 480–719 · md 720–1023 · lg 1024–1279 · xl ≥ 1280` + `short` (cao ≤ 500):
-  `@dazzxq/td-components/breakpoints` (`BREAKPOINTS`, `matchesBelow()`…); `check:css` chặn mọi số breakpoint khác.
+  `@dazzxq/td-components/breakpoints` (`BREAKPOINTS`, `mqBelow()`, `mqAtLeast()`, `matches()`); `check:css` chặn mọi số breakpoint khác.
   Ranh giới sm/md đặt ở **720** (không phải 768) để iPad mini dọc (744) vào nhóm tablet. Component nằm trong nội dung trang
   phản ứng theo **bề rộng của chính nó** (container query) — đúng cả khi đặt trong cột hẹp trên desktop; trình duyệt chưa
   có container query (Chrome 102–104) dùng bản dự phòng theo viewport do build tự sinh.
