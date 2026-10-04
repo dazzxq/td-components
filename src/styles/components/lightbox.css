@@ -532,6 +532,23 @@
 		font-weight: var(--td-fw-semibold);
 	}
 
+	/* v0.36.0 (plan QĐ 59) "Thêm" overflow: off by default; below 480 px the toolbar drops prev / next (swipe + arrow
+	   keys still navigate) and every [data-overflow] control (fullscreen, unpinned extras — marked by JS), and shows
+	   "Thêm" (JS hides it when nothing overflows) → the toolbar never runs into the lead (back + counter) at 360. */
+	.td-lightbox__more {
+		display: none;
+	}
+
+	@media (max-width: 479.98px) {
+		.td-lightbox__toolbar > :is([data-action="prev"], [data-action="next"], [data-overflow]) {
+			display: none;
+		}
+
+		.td-lightbox__toolbar > .td-lightbox__more {
+			display: inline-flex;
+		}
+	}
+
 	/* ── Panel mode ([data-panel] only when a panel renderer returned an element) ─────────────────── */
 	.td-lightbox__panel {
 		position: absolute;

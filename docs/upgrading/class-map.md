@@ -75,6 +75,7 @@ Ghi chú: `.td-btn--custom` được thêm khi dùng `color` / `text-color`; mà
 | td ≤ 0.6 | `.td-checkbox-label` | `span.td-checkbox__label` | — | 0.7.0 |
 | td ≤ 0.6 | `.td-checkbox--disabled` | bỏ | `.td-checkbox__input:disabled` | 0.7.0 |
 | td ≤ 0.6 | custom property `--td-cb-color` trên host | `--td-checkbox-color` (host, hoặc thuộc tính `color`) | — | 0.7.0 |
+| — | (không có) | thuộc tính / property `indeterminate` trên host → `input.indeterminate` native | `.td-checkbox__input:indeterminate ~ .td-checkbox__mark` (vạch ngang) | 0.36.0 |
 
 Lỗi (error contract): `span.td-field-error#{host-id}-error` sau `label.td-checkbox`.
 
@@ -193,7 +194,8 @@ Spinner dùng chung: `.td-spinner.td-spinner--{sm|md|lg}`; màu qua custom prope
 
 | Nguồn legacy | Class cũ | Class / attribute hiện tại | Trạng thái | Từ bản |
 |---|---|---|---|---|
-| td ≤ 0.8 | `#td-toast-container` (Tailwind) | `div#td-toast-container.td-toasts` | — | 0.9.0 |
+| td ≤ 0.8 | `#td-toast-container` (Tailwind) | `div#td-toast-container.td-toasts` (0.9.0–0.35) → **0.36.0:** `div#td-toast-container.td-toast-root` (portal root, **không** còn `.td-toasts`) | — | 0.9.0 / 0.36.0 |
+| td ≤ 0.35 | toast là con trực tiếp của `#td-toast-container` | root > `div.td-toast-lane[data-edge="top\|bottom"]` > `div.td-toasts[data-placement="top-start\|top-center\|top-end\|bottom-start\|bottom-center\|bottom-end"]` > `div.td-toast`; chồng legacy (site đổi token neo cũ) = `div.td-toasts` **không** `data-placement`, con trực tiếp của root | toast: `[data-td-toast-older]` (ẩn khi màn thấp), custom property `--_td-toast-seq` | 0.36.0 |
 | td ≤ 0.8 | `.toast-item` (+ class translate / opacity) + div nền màu bên trong | `div.td-toast.td-toast--{success\|error\|warning\|info}` (+ `span.td-toast__type.td-sr-only`, `span.td-toast__message`, `button.td-toast__close`) — 0.9.0–0.20.x còn `.td-glass-surface.td-glass-surface--strong` + `span.td-toast__icon`, bỏ từ 0.21.0 | `data-state="entering\|open\|closing"`, `[data-paused]` | 0.9.0 |
 
 ## TdTooltip
@@ -332,6 +334,22 @@ Phần tử bên trong viewer dùng khối `.td-lightbox__*` (`__backdrop`, `__s
 [WordPress & PHP › Lightbox](../guides/wordpress-php.md#lightbox-tdlightboxbindroot--attrprefix--mặc-định-prefix-td)
 (fixture `test/contracts/lightbox.html` của repo kit chỉ dùng cho test, không nằm trong gói npm).
 
+## Ô tick chung và media picker (0.36.0)
+
+Không có class legacy để đổi, nhưng phần tử bên trong đổi — CSS site nhắm phần tử cũ phải sửa. Chi tiết:
+[breaking-changes › 0.36.0](breaking-changes.md#0360), [ADR 0017](../internal/decisions/0017-shared-check-mark.md).
+
+| Ở đâu | Trước 0.36 | Từ 0.36.0 |
+|---|---|---|
+| Mọi "tick để chọn" | hình riêng từng component | `span.td-check.td-check--{sm\|md\|lg}[.td-check--on-media][aria-hidden]` > `svg.td-check__svg` (markup dựng từ chuỗi: bọc thêm `span.td-check__icon`); trạng thái từ ARIA của cha (`aria-pressed` / `aria-checked` / `aria-selected`, `aria-checked="mixed"`, `[data-td-check-mixed]`) |
+| `td-media-grid` (tick của kit) | `button.td-media-grid__tick` > `svg.td-icon` | `button.td-media-grid__tick.td-media-grid__tick--mark` (trong suốt) > `span.td-check.td-check--lg.td-check--on-media`; tick của site `[data-td-media-tick]` không đổi |
+| `td-tree` (multiple) | `span.td-tree__check` > `span.td-tree__check-on` / `span.td-tree__check-mixed` | `span.td-check.td-check--sm.td-tree__check` (bỏ hai span con) |
+| `td-chip-input` (`selection-only`) | `span.td-chip-input__check[data-td-icon]` (ẩn khi chưa chọn) | `span.td-check.td-check--sm.td-chip-input__check` (luôn hiện); dòng "Chọn tất cả" `[data-td-check-mixed]` khi chọn một phần |
+| `TdMenu` mục checkbox | `span.td-menu__check[data-td-icon]` (ẩn khi tắt) | `span.td-check.td-check--sm.td-menu__check` (luôn hiện); mục radio giữ `span.td-menu__check` ✓ |
+| Media picker toolbar < 1024px | facet trong `.td-media-picker__facets` | thêm `span.td-media-picker__filter` > `td-button.td-media-picker__filter-btn` + `span.td-badge.td-media-picker__filter-count`; `.td-media-picker__facets` ẩn |
+| Media picker sheet lọc | (không có) | `div.td-modal.td-modal--sm.td-media-picker-filters` > `.td-media-picker-filters__body` > `.td-media-picker-filters__facet`; `.td-media-picker-filters__footer` > `__clear` · `__apply` |
+| Media picker pager < 720px | trong toolbar | cùng node, dời xuống cuối `.td-media-picker__results`, thêm `.td-media-picker__pager--below` |
+
 ## Component không có class legacy
 
 - **TdHovercard** (0.14.0): `div#td-hovercard.td-hovercard.td-glass-surface.td-glass-surface--strong[role=dialog]`
@@ -354,6 +372,8 @@ thể cần xem lại. Chi tiết và token để chỉnh lại ở [breaking-ch
 | `.td-toast--{type}` | Viên đặc pastel theo loại (`--td-toast-{type}-bg/-fg/-border`), không blur, không icon (DOM đổi — xem bảng trên) | 0.21.0 |
 | `.td-btn--primary` | Nền đen `--td-btn-primary-bg` (dark: đảo sáng), không theo `--td-accent` | 0.21.0 |
 | `.td-tooltip` | Có mũi tên `::after` | 0.14.0 |
+| `.td-btn--{success\|danger\|warning\|info}`, `.td-toast--{type}`, `.td-badge--{v}` | Màu đặc `--td-solid-*` thay pastel (xem breaking-changes) | 0.36.0 |
+| `.td-modal__header`, `.td-modal__footer` | < 720px: header ≤ 56px không đường kẻ, footer ≤ 64px, nút footer modal thường chia đều một hàng | 0.36.0 |
 | `.td-field__control`, `.td-dropdown__trigger`, `.td-dtp__trigger`, `.td-chip-input__box`, `.td-checkbox__mark`, `.td-switch__track` | Viền mềm lúc nghỉ / hover (`--td-control-border-soft`, `--td-control-border-hover`) | 0.14.1, 0.14.2 |
 
 ## Xem thêm

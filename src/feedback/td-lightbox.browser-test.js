@@ -211,7 +211,9 @@ describe('td-lightbox — toolbar + panel hooks', () => {
     const btn = overlay().querySelector('.td-lightbox__toolbar [aria-label="Đặt ảnh bìa"]');
     expect(!!btn).to.equal(true);
     expect(btn.querySelector('svg[data-icon="star"]') !== null).to.equal(true);
-    same(btn.nextElementSibling, $('.td-lightbox__close')); // close stays last
+    // v0.36.0 QĐ 59: extras go before the (hidden ≥ 480) "Thêm" button; close stays last
+    same(btn.nextElementSibling, $('.td-lightbox__more'));
+    same($('.td-lightbox__more').nextElementSibling, $('.td-lightbox__close'));
     btn.click();
     expect(calls).to.deep.equal([['a', 'BUTTON']]);
     lb.next();
@@ -756,7 +758,7 @@ describe('td-lightbox — v0.15.0 dwp parity', () => {
     const lb = TdLightbox.open([IMG(1), IMG(2)]);
     const r1 = lb.addToolbarButton({ id: 'info', label: 'Thông tin', icon: 'info', onClick() {}, visible: (c) => c.index === 1 });
     let b = overlay().querySelector('[data-extra="info"]');
-    same(b.nextElementSibling, $('.td-lightbox__close'));
+    same(b.nextElementSibling, $('.td-lightbox__more')); // v0.36.0: before "Thêm" + close
     expect(b.hidden, 'visible() applied at once').to.equal(true);
     lb.next();
     expect(b.hidden).to.equal(false);

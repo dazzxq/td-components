@@ -68,4 +68,11 @@ Phần thật sự cần (khung, 8 tay nắm, zoom, bàn phím, pinch) nhỏ, v�
   crop cho một usage, helper PHP / SSR cho `<td-cropper>` (cắt cần JS), xem trước kết quả dạng thumbnail. Muốn thêm thì
   mở ADR mới.
 - Site không chuẩn hoá EXIF ở server sẽ nhận toạ độ theo ảnh **đang hiển thị** — ghi rõ là trách nhiệm server.
+- **⚠ Site phải tự xử lý** (bổ sung v0.36, plan v0.36.0 M12): endpoint / CDN biến toạ độ thành ảnh là máy xử lý ảnh
+  công khai của **site** — URL ký HMAC-SHA256, allowlist bề rộng / định dạng, trần kích thước, cache hai tầng, rate limit
+  cache miss, phân quyền ảnh riêng tư là **bắt buộc**: [guides/media-renditions.md](../../guides/media-renditions.md),
+  [security-model §7](../security-model.md#7-trách-nhiệm-của-site). Kit không ship helper ký URL / endpoint.
+- Bổ sung v0.36 (plan QĐ 70): wheel trên stage có **giảm chấn trackpad** — `deltaY` nhỏ (`deltaMode` 0, `|deltaY|` < 50)
+  cộng dồn theo frame, mỗi frame một bước zoom kẹp ± 10 % (`dampedWheelFactor`, `WHEEL_FRAME_CAP`); nấc chuột (≥ 50 px
+  hoặc `deltaMode` dòng / trang) giữ bước `wheelFactor` như QĐ 6. Chỉ chặn cuộn trang khi con trỏ trên stage.
 - Docs người dùng: [components/cropper.md](../../components/cropper.md).

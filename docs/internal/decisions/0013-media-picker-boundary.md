@@ -172,3 +172,20 @@ nguyên từng byte như v0.34.
 5. **Field `croppable`** (+ `crop-ratio`, `focal`): nút "Cắt ảnh"; field **luôn** đặt `crop` ở tham số `open()` (ưu tiên
    cao nhất) — không `croppable` ⇒ `{ enabled: false }`, nên `configureDefaults({ crop })` không bao giờ đổi hành vi field
    cũ. Getter `selection` trả `focalPoint` thật khi có `focal-point` (v0.34 luôn `null`).
+
+## Bổ sung v0.36
+
+Plan [v0.36.0-polish](../plans/v0.36.0-polish.md) QĐ 49–51, 69 (owner, 2026-10-05). **Chỉ thêm**, không đổi hợp đồng
+adapter / FormData / kết quả picker.
+
+1. **Tự chọn bị loại; tự xem trước được phép.** ≥ 720 px, sau **mỗi** lần tải danh sách (mở, tìm, lọc, đổi trang, tải
+   lại) mà không có mục nào đang xem (hoặc mục đang xem không còn trong kết quả), panel chi tiết **xem trước** asset đầu
+   tiên (`data-viewing`) — **không bao giờ chọn**: "Chèn" vẫn khoá tới khi người dùng chọn; mục đang xem còn trong kết
+   quả → giữ; form chi tiết đang sửa dở không bị thay. < 720 không tự mở chi tiết (lưới hiện trước — tránh "bẫy" mobile
+   của dcms2). Lý do: chọn là quyết định của người dùng (tự chọn = chèn nhầm khi bấm "Chèn" vội); xem trước chỉ là
+   trạng thái hiển thị, không vào kết quả.
+2. **< 1024 px**: facet rời toolbar; một nút "Bộ lọc" (+ badge số bộ lọc **đã áp**) mở **sheet lọc** chứa mọi facet adapter
+   khai báo. Sheet làm trên **bản nháp**: chỉnh trong sheet không gọi `list`; "Áp dụng" = một commit + đúng một request
+   `list` (không request nếu nháp trùng); × / Escape / đóng picker bỏ nháp. Không thêm facet / sort mới (vẫn là descriptor
+   của adapter).
+3. **< 720 px**: pager dời xuống **dưới lưới** (cuối vùng kết quả); 720–1023 và ≥ 1024 pager ở toolbar.

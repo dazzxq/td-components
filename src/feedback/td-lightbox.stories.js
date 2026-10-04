@@ -67,6 +67,35 @@ export const Hooks = {
   },
 };
 
+/**
+ * v0.36.0 (plan QĐ 59) — narrow screen (< 480 px, e.g. the mobile viewport): ‹ › leave the toolbar (swipe / arrow keys),
+ * fullscreen + unpinned extras move into "Thêm"; the `pinned: true` panel toggle, download and close stay.
+ */
+export const NarrowOverflow = {
+  render: () => {
+    const btn = document.createElement('button');
+    btn.textContent = 'Mở (thu hẹp < 480 px để thấy nút "Thêm")';
+    btn.addEventListener('click', () => {
+      const info = (ctx) => {
+        const p = document.createElement('p');
+        p.textContent = `Ảnh ${ctx.index + 1} / ${ctx.count}`;
+        return p;
+      };
+      let on = true;
+      TdLightbox.open(IMGS, {
+        panel: info,
+        download: (item) => item.src,
+        toolbar: [
+          { id: 'info', label: 'Bật/tắt thông tin', icon: 'info', pinned: true,
+            onClick: (ctx) => { on = !on; ctx.handle.setPanel(on ? info : false); } },
+          { id: 'cover', label: 'Đặt làm ảnh bìa', icon: 'star', onClick: (ctx, b) => b.toggleAttribute('data-on') },
+        ],
+      });
+    });
+    return btn;
+  },
+};
+
 /** Video: default native <video>; a site passes `video` to plug Plyr etc. */
 export const Video = {
   render: () => {

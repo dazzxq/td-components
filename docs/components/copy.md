@@ -13,7 +13,7 @@ bạn; không dùng để copy nội dung lớn / định dạng (HTML, ảnh) �
 | Import | `import '@dazzxq/td-components/copy'` (class: `import { TdCopy } from '@dazzxq/td-components'`) |
 | Loại | Custom element |
 | Form-associated | không |
-| Từ phiên bản | 0.27.0 (token-native: cần `td.css`) |
+| Từ phiên bản | 0.27.0 (token-native: cần `td.css`; `for` nhận field của kit từ 0.36.0) |
 
 ## Ví dụ nhanh
 
@@ -39,8 +39,9 @@ Lúc bấm, td-copy lấy chữ theo thứ tự ưu tiên:
 
 1. Property `value` (`el.value = '…'`; gán `null` / `undefined` → bỏ, quay về nguồn sau).
 2. Attribute `value`.
-3. `for="id"`: phần tử cùng document / shadow root — `input` / `textarea` / `select` → `.value`; phần tử khác →
-   `textContent`. Đọc **lúc bấm** (giá trị luôn mới). Có `for` mà không tìm thấy phần tử → **không có nguồn**.
+3. `for="id"`: phần tử cùng document / shadow root — `input` / `textarea` / `select` → `.value`; **field của kit** (phần
+   tử `td-*` có property `value` kiểu chuỗi: `<td-input-field>`, `<td-number-input>`…, 0.36.0) → `host.value`; phần tử
+   khác → `textContent`. Đọc **lúc bấm** (giá trị luôn mới). Có `for` mà không tìm thấy phần tử → **không có nguồn**.
 4. **Đúng một** con trực tiếp `<code class="td-copy__source">` — chụp lại thành state ở lần gắn đầu tiên (trước mọi
    render), render lại vẫn giữ. Hai nguồn, hoặc một `.td-copy__source` lồng sâu hơn → **không có nguồn**.
 
@@ -50,9 +51,12 @@ Không có nguồn → bấm phát `copy-error` (icon lỗi), không chép gì.
 <!-- giá trị cố định trong attribute -->
 <td-copy label="Copy ID sự kiện" value="evt_7f3a91"></td-copy>
 
-<!-- lấy từ ô nhập / phần tử trên trang -->
-<input id="api-key" class="td-field__control" value="pk_live_51H…" readonly>
+<!-- lấy từ ô nhập của kit (0.36.0) hoặc ô native / phần tử trên trang -->
+<td-input-field id="api-key" label="Khoá API" value="pk_live_51H…" readonly></td-input-field>
 <td-copy for="api-key" label="Copy khoá API"></td-copy>
+
+<input id="api-key-raw" value="pk_live_51H…" readonly>
+<td-copy for="api-key-raw" label="Copy khoá API"></td-copy>
 
 <span id="audit-id">aud_2026_000913</span>
 <td-copy for="audit-id" size="sm" label="Copy audit ID"></td-copy>
@@ -105,7 +109,8 @@ Event nổi bọt nên một listener trên `document` bắt được mọi td-c
 `navigator.clipboard.writeText` được gọi ngay trong click (có user activation). Bị từ chối (quyền, iframe không có
 `allow="clipboard-write"`) hoặc không có API (trang `http:` không phải secure context, trình duyệt cũ):
 
-- nguồn là `for` trỏ tới `input` / `textarea` → focus + chọn hết chữ trong ô đó;
+- nguồn là `for` trỏ tới `input` / `textarea` → focus + chọn hết chữ trong ô đó; trỏ tới field của kit → chọn chữ trong
+  `input` / `textarea` **bên trong chính host đó** (0.36.0);
 - nguồn là `for` trỏ tới phần tử khác (không phải `select`) → bôi đen chữ của phần tử;
 - còn lại → chèn tạm một `input.td-copy__manual` (read-only) chứa giá trị, focus + chọn sẵn; ô tự gỡ khi blur hoặc sau
   khi người dùng copy;

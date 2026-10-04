@@ -338,6 +338,13 @@ Hộp thoại được gắn ở `<body>` nên biến đặt trên host picker *
 Màn hình thấp (≤ 500px — điện thoại xoay ngang): bánh xe giờ / phút còn **3 dòng** (`--td-dtp-visible: 3`) để hộp thoại
 vừa chiều cao. Ô trigger co theo cột (`min-inline-size: 0`); chữ giá trị bị cắt `…` thì `.td-dtp__value` có `title` = giá trị đầy đủ (không có cho placeholder). Xem [responsive](../concepts/responsive.md).
 
+**Sheet gọn < 720px (0.36.0):** dưới 720px (hộp thoại là bottom sheet) bánh xe cũng còn **3 dòng**, và bỏ chữ hiện
+lặp: nhãn nhóm ngày ("Ngày" / "Tháng" / "Năm" — trùng nhãn cột) được ẩn khỏi màn hình nhưng **vẫn** là `<legend>` đặt
+tên cho nhóm (trình đọc màn hình đọc như cũ); dòng xem trước `.td-dtp-panel__preview` (trùng giá trị đang thấy trên ô
+và bánh xe) không hiển thị. Nhãn cột, `aria-label` "Giờ" / "Phút" của bánh xe và nhãn nhóm "Giờ" giữ nguyên; bàn phím
+không đổi. Sheet ≈ 47–49 % chiều cao ở 360×780 (trước: 75 %). ≥ 720px như cũ (5 dòng, có nhãn nhóm + xem trước). Site muốn
+giữ 5 dòng: đặt `--td-dtp-visible: 5` trong `@media (max-width: 719.98px)` của mình.
+
 ## Cấu trúc DOM & class
 
 ```html

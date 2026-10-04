@@ -364,6 +364,12 @@ Trusted Types (`Content-Security-Policy: require-trusted-types-for 'script'`) ch
 - [ ] Lỗi mà hook `upload` của dropzone reject (hiện nguyên văn cho người dùng) là thông báo đã soạn cho người dùng —
       không stack trace, đường dẫn, SQL hay mã nội bộ.
 
+**Ảnh đã cắt (crop / focal của cropper, media field, media picker)**
+
+- [ ] Endpoint / CDN biến đổi ảnh làm đủ checklist **bắt buộc** của [Biến thể ảnh đã cắt](media-renditions.md): URL ký
+      HMAC-SHA256 (so sánh hằng thời gian, sai → 403 trước khi đọc file), allowlist bề rộng / định dạng, trần kích thước,
+      cache hai tầng, rate limit cache miss, phân quyền ảnh riêng tư.
+
 **Phân quyền**
 
 - [ ] Mọi hành động từ `TdMenu onSelect`, toolbar lightbox, form AJAX, hook `upload` của dropzone đều được server
@@ -382,4 +388,5 @@ Trusted Types (`Content-Security-Policy: require-trusted-types-for 'script'`) ch
   [Modal](../components/modal.md), [Table](../components/table.md), [Dropzone](../components/dropzone.md)
 - [Hook & tuỳ chọn](../customization/hooks.md) — danh mục mọi hook
 - [WordPress & PHP](wordpress-php.md) — escaping trong template
+- [Biến thể ảnh đã cắt](media-renditions.md) — ký URL, giới hạn biến thể, chống lạm dụng endpoint cắt ảnh
 - Tài liệu nội bộ: [security-model](../internal/security-model.md), [ADR 0009 lightbox hooks](../internal/decisions/0009-td-lightbox-hooks.md)

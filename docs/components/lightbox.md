@@ -281,6 +281,18 @@ trùng — vẫn một điểm Tab cho mỗi hành động, nhãn giữ "Ảnh t
 
 Overlay mang `data-nav="side" | "side-compact" | "toolbar"` (chế độ hiện tại) để site đọc khi cần.
 
+**Màn hẹp < 480px (0.36.0):** toolbar 6–7 nút (≈ 300px) từng đè lên cụm Quay lại + bộ đếm ở góc trái. Dưới 480px
+(`@media (max-width: 479.98px)`, chuột lẫn cảm ứng) toolbar chỉ giữ **tải xuống**, **một** nút riêng có `pinned: true`
+(ví dụ bật/tắt panel), nút **"Thêm"** và **đóng**:
+
+- Nút trước / sau rời toolbar — vuốt ngang và phím `←` / `→` vẫn chuyển ảnh (trên máy chuột chúng đã ở hai bên ảnh).
+- Fullscreen và các nút riêng còn lại vào menu **"Thêm"** (`TdMenu`, APG menu button: `Enter` / `Space` / `↓` mở,
+  focus vào mục đầu, chọn mục = bấm chính nút đó → `onClick(ctx, button)` nhận nút gốc như trên desktop). "Thêm" chỉ
+  hiện khi có ít nhất một mục; nhãn `labels.more`.
+- Chỉ CSS quyết định theo bề rộng (đổi cỡ khi đang mở cũng đúng); ≥ 480px toolbar như cũ, không có "Thêm".
+- Nút riêng tự mở popup neo vào `button` (ví dụ `TdMenu.open(button, …)`) nên đặt `pinned: true` — trong menu "Thêm"
+  nút gốc đang ẩn nên popup không neo được.
+
 ### 9. Filmstrip — dải ảnh nhỏ (0.24.0, tuỳ chọn)
 
 ```js
@@ -417,6 +429,7 @@ ctx = { index, count, item, token, handle, itemEl, groupEl }
 | `fullscreen` | `Toàn màn hình` | Nút fullscreen |
 | `download` | `Tải xuống` | Nút tải |
 | `info` | `Thông tin ảnh` | Tay nắm bottom sheet |
+| `more` | `Thêm` | Nút menu tràn của toolbar khi < 480px (0.36.0) |
 | `counter` | ``(i, n) => `${i} / ${n}` `` | Bộ đếm (hàm; `i` bắt đầu từ 1) |
 | `loadError` | `Không tải được ảnh` | Chữ trong khối lỗi ảnh (0.24.0) |
 | `retry` | `Thử lại` | Nút thử lại trong khối lỗi (0.24.0); nút "Ảnh sau" của khối lỗi dùng `next` |
@@ -604,9 +617,11 @@ TdLightbox.bind(document, { history: navHistory });
 | `icon` | `string` | Tên icon trong registry (core hoặc `registerIcons()`) |
 | `iconNode` | `SVGElement` | SVG tin cậy do bạn dựng (được clone), dùng khi `icon` không có / không tồn tại |
 | `visible` | `(ctx) => boolean` | `false` hoặc throw → ẩn nút ở slide đó |
+| `pinned` | `boolean` | 0.36.0: `true` → vẫn ở toolbar khi < 480px (nút `pinned` **đầu tiên đang hiện**; còn lại vào menu "Thêm"). Dành cho nút bật/tắt panel |
 
 Spec thiếu `id`/`onClick` bị bỏ qua. Không có icon → nút hiện chữ `label` (`[data-text]`). Không nhận chuỗi SVG/HTML.
-Nút được chèn **trước** nút đóng (nút đóng luôn cuối), mang `data-extra="{id}"`, và bị gỡ khi đóng lightbox hoặc khi
+Nút được chèn **trước** nút "Thêm" + nút đóng (nút đóng luôn cuối), mang `data-extra="{id}"` (và `data-overflow` khi
+dưới 480px nó vào menu "Thêm"), và bị gỡ khi đóng lightbox hoặc khi
 `open()` mới. Nút có `[data-on]` hoặc `[aria-pressed="true"]` được tô vàng — dùng cho nút bật/tắt.
 
 ### Hook isForeignLayerOpen (nhường bàn phím)
@@ -731,12 +746,14 @@ overlay: ảnh `zoom-in` / `zoom-out` khi đang zoom (chuột), nền `zoom-out`
   </aside>
   <div class="td-lightbox__toolbar td-glass-surface td-glass-surface--clear">
     <!-- data-nav="toolbar" (cảm ứng / video cột hẹp): prev + next nằm ở đây, trước fullscreen -->
-    <button class="td-lightbox__btn" data-action="fullscreen">…</button>
+    <button class="td-lightbox__btn" data-action="fullscreen" data-overflow>…</button>  <!-- < 480: trong menu "Thêm" -->
     <a class="td-lightbox__btn" data-action="download" href="…" download="…">…</a>
     <button class="td-lightbox__btn" data-action="downloads" aria-haspopup="menu" aria-expanded="false" hidden>…</button>
     <!-- ≥ 2 biến thể từ hook downloads: nút này hiện (link tải ẩn), mở TdMenu -->
 
-    <button class="td-lightbox__btn" data-extra="cover">…</button>              <!-- nút toolbar riêng -->
+    <button class="td-lightbox__btn" data-extra="cover" [data-overflow]>…</button> <!-- nút toolbar riêng -->
+    <button class="td-lightbox__btn td-lightbox__more" data-action="more" aria-haspopup="menu" aria-expanded="false"
+            [hidden]>…</button>                                       <!-- 0.36.0: chỉ hiện < 480px, mở TdMenu -->
     <button class="td-lightbox__btn td-lightbox__close" data-action="close">…</button>
   </div>
 </div>

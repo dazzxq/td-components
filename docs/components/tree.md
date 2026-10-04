@@ -74,6 +74,10 @@ Kit không đổi tên trường (`value-key` / `label-key` không có): dữ li
 - `multiple` **độc lập** (mặc định): mỗi nút một ô check riêng, check "Điện thoại" **không** có nghĩa là mọi mục con —
   đúng mô hình "chuyên mục bài viết" của WordPress.
 
+Ô check (0.36.0) là [ô tick chung](checkbox.md#phần-hình-dùng-chung-td-check-0360) cỡ `sm` — **đúng hình `td-checkbox`**
+(tròn theo mặc định, ✓ khi `aria-checked="true"`, vạch ngang khi `"mixed"`, mờ khi `aria-disabled`). Trước 0.36 là hộp
+vuông 4px riêng ([ADR 0017](../internal/decisions/0017-shared-check-mark.md)).
+
 ### 3. `cascade` — cây quyền (ba trạng thái)
 
 `<td-tree selection="multiple" cascade>`: ô check ba trạng thái, **giá trị = chỉ các LÁ đã check** (nút cha là "nhóm",
@@ -219,9 +223,9 @@ Chỉ phát khi **người dùng** thao tác — không phát khi `setValue` / g
 | `--td-tree-row-hover` | `var(--td-color-hover)` | nền hàng khi rê chuột |
 | `--td-tree-row-selected` | `var(--td-color-hover-strong)` | nền hàng đã chọn (`single`) |
 | `--td-tree-row-active` / `--td-tree-row-active-line` | `--td-color-hover-strong` / `--td-control-border-hover` | hàng đang trỏ khi focus ảo (trong tree-select) |
-| `--td-tree-check-radius` | `4px` | bo góc ô check vuông |
+| `--td-tree-check-radius` | `var(--td-checkbox-radius)` | **Deprecated 0.36.0, không còn tác dụng** (ô check là ô tick chung). Muốn ô vuông: `--td-checkbox-radius` (đổi cả checkbox và mọi ô tick) |
 
-Ô check dùng `--td-checkbox-color` / `--td-checkbox-border` / `--td-accent-contrast`; chữ dùng token field
+Ô check dùng `--td-checkbox-color` / `--td-checkbox-border` / `--td-checkbox-radius` / `--td-accent-contrast`; chữ dùng token field
 (`--td-field-fg`, `--td-field-note`, `--td-field-fg-disabled`, `--td-field-focus`). Cây là control nội dung: nền đặc,
 không blur.
 
@@ -238,7 +242,7 @@ không blur.
           [aria-disabled="true"] [aria-busy="true"] [data-load="error"]>
         <div class="td-tree__row">
           <span class="td-tree__toggle" aria-hidden="true"><svg …/></span>
-          <span class="td-tree__check" aria-hidden="true">…</span>                  <!-- multiple -->
+          <span class="td-check td-check--sm td-tree__check" aria-hidden="true"><svg …✓/></span>   <!-- multiple; 0.36.0 -->
           <span class="td-tree__label" id="{h}-n{uid}-l">Điện thoại</span>
           <span class="td-tree__desc" id="{h}-n{uid}-d">…</span>
         </div>

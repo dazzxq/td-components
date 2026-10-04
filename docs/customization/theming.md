@@ -437,6 +437,11 @@ Ghi chú:
 Ngoài ra `--td-checkbox-radius` (mặc định `50%`, checkbox tròn) nằm trong `checkbox.css`, xem
 [checkbox.md](../components/checkbox.md).
 
+Từ 0.36.0 ba token `--td-checkbox-color` / `-border` / `-radius` vẽ **mọi ô tick** của kit (ô tick chung `.td-check`:
+media grid / picker, tree chọn nhiều, multiselect, mục checkbox của menu) — xem
+[checkbox.md › phần hình dùng chung](../components/checkbox.md#phần-hình-dùng-chung-td-check-0360).
+`--td-media-grid-tick-*` chỉ còn cho tick do site in; `--td-tree-check-radius` deprecated (không tác dụng).
+
 ### Lỗi form
 
 | Token | Mặc định | Dùng cho |

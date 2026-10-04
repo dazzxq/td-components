@@ -31,6 +31,13 @@
 			--td-dtp-visible: 3;
 		}
 	}
+
+	/* v0.36.0 (plan QĐ 61) sheet (< 720): 3 visible wheel rows — the sheet stays ≤ 70 % of a phone's height */
+	@media (max-width: 719.98px) {
+		:root {
+			--td-dtp-visible: 3;
+		}
+	}
 }
 
 @layer td.component {
@@ -345,6 +352,27 @@
 			height: auto;
 			min-height: var(--td-touch-min);
 			font-size: max(1rem, 1em); /* ≥ 16px: iOS does not zoom on focus */
+		}
+	}
+
+	/* v0.36.0 (plan QĐ 61) sheet (< 720): drop duplicated VISIBLE text only. The date legend ("Ngày" / "Tháng" /
+	   "Năm") repeats a column label → visually hidden but still names the fieldset (td-sr-only recipe); the preview
+	   pill repeats the fields + wheels → not rendered (plain text, no live region / describedby points at it). */
+	@media (max-width: 719.98px) {
+		.td-dtp-panel > fieldset.td-dtp-panel__group > .td-dtp-panel__legend {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+			white-space: nowrap;
+			border: 0;
+		}
+
+		.td-dtp-panel__preview {
+			display: none;
 		}
 	}
 

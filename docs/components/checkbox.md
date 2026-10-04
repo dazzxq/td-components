@@ -12,7 +12,7 @@ radio native.
 | Import | `import '@dazzxq/td-components/checkbox';` (class: `import { TdCheckbox } from '@dazzxq/td-components';`) |
 | Loại | Custom element |
 | Form-associated | có |
-| Từ phiên bản | 0.1.0 (form-associated từ 0.2.0, token-native + một event `change` từ 0.7.0, tròn từ 0.14.0, hydrate SSR tại chỗ từ 0.26.0) |
+| Từ phiên bản | 0.1.0 (form-associated từ 0.2.0, token-native + một event `change` từ 0.7.0, tròn từ 0.14.0, hydrate SSR tại chỗ từ 0.26.0, `indeterminate` + phần hình dùng chung `.td-check` từ 0.36.0) |
 
 Cần `td.css` trên trang (xem [Cài đặt](../getting-started/installation.md)).
 
@@ -89,6 +89,34 @@ Mỗi lần người dùng đổi trạng thái (chuột, chạm, phím Space, b
 
 Nhiều checkbox cùng `name` được gửi thành nhiều cặp, đọc bằng `formData.getAll('name')`.
 
+### Trạng thái lưng chừng (`indeterminate`, 0.36.0)
+
+Dùng cho ô "chọn tất cả" khi mới chọn **một phần** (ô hiện vạch ngang, trình đọc màn hình đọc "mixed"):
+
+```html
+<td-checkbox id="all" indeterminate label="Chọn tất cả"></td-checkbox>
+```
+
+```js
+const all = document.getElementById('all');
+all.indeterminate = true;      // = setAttribute('indeterminate', '') — áp tại chỗ, focus giữ, không event
+all.indeterminate = false;
+```
+
+Vòng đời:
+
+- **Nguồn** là thuộc tính boolean `indeterminate` trên host (property phản chiếu). Kit chép nó xuống
+  `input.indeterminate` native sau mỗi lần render, khi nhận markup SSR, khi gắn lại vào trang và sau `form.reset()`.
+- **Người dùng bấm** (chuột, Space, nhãn): trình duyệt tự bỏ lưng chừng → kit gỡ thuộc tính host **trước** rồi phát đúng
+  **một** `change { checked }` (không có event riêng cho indeterminate).
+- **Đặt bằng code** (`indeterminate = …`) không phát event. Đổi `checked` bằng code **không** xoá lưng chừng (giống
+  native) — app tự quản lý, ví dụ khi tính lại "chọn tất cả".
+- **Form**: lưng chừng không phải giá trị — FormData chỉ theo `checked`. Reset form trả `checked` về mặc định, **giữ**
+  thuộc tính `indeterminate` (đúng native) và áp lại lên input.
+- **SSR** `checkbox@1`: PHP không in lưng chừng (markup không đổi); site đặt thuộc tính `indeterminate` lên host in sẵn
+  thì kit áp sau khi nhận markup. Input native đã lưng chừng trước khi JS tới → thành thuộc tính host.
+- Ô hiện vạch ngay cả khi `checked` (lưng chừng thắng dấu tích).
+
 ### Màu và kích thước
 
 ```html
@@ -136,13 +164,14 @@ Hiện lỗi = viền ô màu lỗi + `aria-invalid="true"` + `aria-errormessage
 | `aria-label` | string | — | Tên truy cập khi không có `label` (chép xuống input). |
 | `size` | string | `md` | `sm` \| `md` \| `lg` (ô 16 / 20 / 24 px). Khác → `md`. |
 | `color` | string (màu CSS) | `--td-checkbox-color` | Màu nền khi được chọn, riêng phần tử này. |
+| `indeterminate` | boolean | không | 0.36.0: trạng thái lưng chừng (vạch ngang, "mixed"). Người dùng bấm thì tự gỡ. Không gửi trong form. |
 | `error-text` | string | — | Dòng lỗi (error contract). |
 | `id` | string | tự sinh `td-td-checkbox-{n}` | Tự gán nếu thiếu, để `<label for>` và id lỗi hoạt động. |
 
 ## Property & method
 
 Property phản chiếu attribute: `checked` (boolean), `value`, `name`, `required`, `disabled`, `label`, `ariaLabel`,
-`size`, `color`, `errorText`. Lưu ý `value` trả về `''` khi không có attribute, dù giá trị gửi đi khi đó là `on`.
+`size`, `color`, `errorText`, `indeterminate` (0.36.0). Lưu ý `value` trả về `''` khi không có attribute, dù giá trị gửi đi khi đó là `on`.
 
 > Gán property trước khi phần tử gắn vào trang (hoặc trước khi module được import) vẫn có tác dụng từ 0.16.0: giá
 > trị được áp khi phần tử kết nối lần đầu. Chi tiết: [Cách hoạt động](../concepts/how-it-works.md).
@@ -157,7 +186,7 @@ Property phản chiếu attribute: `checked` (boolean), `value`, `name`, `requir
 | `checkValidity()` / `reportValidity()` | `boolean` | Như native. |
 | `form`, `validity`, `validationMessage`, `willValidate`, `labels` | — | Như native (chỉ đọc). |
 
-Checkbox không có trạng thái `indeterminate`.
+Trạng thái lưng chừng: xem [`indeterminate`](#trạng-thái-lưng-chừng-indeterminate-0360).
 
 ## Event
 
@@ -215,7 +244,7 @@ Checkbox là control tầng nội dung: đặc, không bao giờ là kính. Xem 
 | `.td-checkbox__mark` | Ô hiển thị. |
 | `.td-checkbox__icon` / `.td-checkbox__svg` | Dấu tích (icon registry `check`). |
 | `.td-checkbox__label` | Nhãn (chỉ có khi có `label`). |
-| `.td-checkbox__input:checked` / `:disabled` / `:focus-visible` / `[aria-invalid="true"]` | Trạng thái; CSS style `.td-checkbox__mark` phía sau bằng combinator `~`. |
+| `.td-checkbox__input:checked` / `:indeterminate` / `:disabled` / `:focus-visible` / `[aria-invalid="true"]` | Trạng thái; CSS style `.td-checkbox__mark` phía sau bằng combinator `~`. |
 | `.td-field-error` | Dòng lỗi, nằm sau `<label>`, trong host. |
 
 Render phía server: `td_checkbox('agree', false, 'Đồng ý')` của [adapter PHP](../guides/php-adapter.md#td_toggle-và-td_checkbox)
@@ -223,6 +252,26 @@ in đúng khối `<label class="td-checkbox …">` ở trên (checkbox native, d
 PHP thì in tay khối trên (trong `<td-checkbox>` hoặc đứng riêng); dấu tích lấy theo
 [Icons › markup render sẵn](icons.md#icon-trong-markup-render-sẵn). Các file `test/contracts/*.html` trong repo kit chỉ là **fixture test** (không nằm trong gói npm, icon trong đó viết tắt) — đừng copy từ đó. Xem [WordPress & PHP](../guides/wordpress-php.md) và
 [bảng class cũ](../upgrading/class-map.md) (host property `--td-cb-color` đổi thành `--td-checkbox-color` ở 0.7.0).
+
+### Phần hình dùng chung `.td-check` (0.36.0)
+
+Ô của `td-checkbox` là **hình chuẩn của mọi "tick để chọn"** trong kit ([ADR 0017](../internal/decisions/0017-shared-check-mark.md)):
+ô tick của [media grid](media-grid.md) / [media picker](media-picker.md), [tree](tree.md) chọn nhiều,
+[chip input](chip-input.md) `selection-only`, mục checkbox của [menu](menu.md) đều in cùng một phần hình
+`span.td-check` (CSS ở `check.css`) — cùng hộp, dấu ✓, vạch lưng chừng, màu `--td-checkbox-color`, viền
+`--td-checkbox-border`, bo `--td-checkbox-radius`. Đổi token checkbox là đổi tất cả. Markup của `td-checkbox` **không
+đổi** (vẫn `.td-checkbox__mark`; SSR / golden giữ từng byte).
+
+| Class | Ý nghĩa |
+|---|---|
+| `.td-check` | Phần hình (luôn `aria-hidden="true"`; ngữ nghĩa ở phần tử chứa). |
+| `.td-check--sm` / `--md` / `--lg` | 1rem / 1.25rem / 1.5rem — đúng ba cỡ `td-checkbox`. |
+| `.td-check--on-media` | Ô nằm trên ảnh: thêm vành tối mảnh để thấy trên ảnh trắng. |
+| `.td-check__svg` | Dấu ✓ (icon `check`; markup dựng từ chuỗi bọc thêm `span.td-check__icon`). |
+
+Trạng thái đọc từ ARIA **sẵn có** của phần tử chứa (cha trực tiếp): bật = `aria-pressed` / `aria-checked` /
+`aria-selected="true"`; lưng chừng = `aria-checked="mixed"`; khoá = `aria-disabled="true"` / `:disabled` (mờ 50 %). Không
+bao giờ lồng `<td-checkbox>` vào trong một control khác — dùng `.td-check`.
 
 ### Hợp đồng SSR `checkbox@1` — hydrate tại chỗ (0.26.0)
 
@@ -250,7 +299,7 @@ PHP thì in tay khối trên (trong `<td-checkbox>` hoặc đứng riêng); dấ
 
 ## Bàn phím & trợ năng
 
-- Input là checkbox native: Tab để tới, Space để đổi trạng thái. Focus bàn phím hiện vòng `--td-focus-ring` quanh ô.
+- Input là checkbox native: Tab để tới, Space để đổi trạng thái. Lưng chừng → trình đọc màn hình đọc "mixed" (native). Focus bàn phím hiện vòng `--td-focus-ring` quanh ô.
 - Đổi trạng thái bằng bàn phím hoặc bằng code đều giữ focus (không render lại).
 - Tên truy cập theo thứ tự ưu tiên: `label` → `aria-label` trên host → `<label for="host-id">` ở ngoài (thành
   `aria-labelledby` của input).

@@ -36,6 +36,7 @@ const DEFAULT_LABELS = {
   fullscreen: 'Toàn màn hình',
   download: 'Tải xuống',
   info: 'Thông tin ảnh',
+  more: 'Thêm',
   counter: (i, n) => `${i} / ${n}`,
   loadError: 'Không tải được ảnh',
   retry: 'Thử lại',
@@ -419,14 +420,17 @@ function build() {
   const panel = h('aside', { class: 'td-lightbox__panel', hidden: true }, [grab, panelBody]);
   const prevBtn = btn('', 'prev', { 'data-action': 'prev' });
   const nextBtn = btn('', 'next', { 'data-action': 'next' });
-  const fsBtn = btn('', 'fullscreen', { 'data-action': 'fullscreen' });
+  // v0.36.0 (plan QĐ 59): `data-overflow` → moved into the "Thêm" menu below 480 px (CSS); never shown there itself.
+  const fsBtn = btn('', 'fullscreen', { 'data-action': 'fullscreen', 'data-overflow': true });
   const dlBtn = h('a', { class: 'td-lightbox__btn', 'data-action': 'download', hidden: true });
   dlBtn.appendChild(icon('download'));
   // ≥ 2 download variants (E6): the same icon, but a menu button opening a TdMenu of `<a download>` items.
   const dlMenuBtn = btn('', 'download', { 'data-action': 'downloads', hidden: true });
+  // v0.36.0 (plan QĐ 59): overflow menu button, shown only below 480 px (CSS) AND while something overflows (JS).
+  const moreBtn = btn('td-lightbox__more', 'more', { 'data-action': 'more', hidden: true });
   const closeBtn = btn('td-lightbox__close', 'close', { 'data-action': 'close' });
   const toolbar = h('div', { class: 'td-lightbox__toolbar td-glass-surface td-glass-surface--clear' }, [
-    prevBtn, nextBtn, fsBtn, dlBtn, dlMenuBtn, closeBtn,
+    prevBtn, nextBtn, fsBtn, dlBtn, dlMenuBtn, moreBtn, closeBtn,
   ]);
   const overlay = h('div', { class: 'td-lightbox', role: 'dialog', 'aria-modal': 'true', tabindex: '-1' }, [
     backdrop, lead, col, caption, panel, toolbar,
@@ -434,7 +438,7 @@ function build() {
 
   document.body.appendChild(overlay);
   ui = { overlay, backdrop, lead, backBtn, counter, col, stage, spinner, img, videoMount, caption, panel, grab,
-    panelBody, toolbar, prevBtn, nextBtn, fsBtn, dlBtn, dlMenuBtn, closeBtn, nav, filmstrip, error, errorText, retryBtn,
+    panelBody, toolbar, prevBtn, nextBtn, fsBtn, dlBtn, dlMenuBtn, moreBtn, closeBtn, nav, filmstrip, error, errorText, retryBtn,
     errorNextBtn };
 
   backdrop.addEventListener('click', onBackdropClick);
@@ -449,6 +453,7 @@ function build() {
   // Lazy items (the current slide's variants) + the lightbox's own URL policy with the item being viewed (the menu
   // closes on every slide change, so the item at open time is the one on screen).
   TdMenu.bind(dlMenuBtn, downloadMenuItems, { align: 'end', isAllowedUrl: downloadMenuPolicy });
+  TdMenu.bind(moreBtn, overflowMenuItems, { align: 'end' });
   grab.addEventListener('click', (e) => { e.stopPropagation(); setSheet(ui.panel.getAttribute('data-sheet') !== 'open'); });
   bindPanelSwipe(panel);
   bindPointer(col);
@@ -466,6 +471,7 @@ function applyLabels(labels) {
   set(ui.fsBtn, labels.fullscreen);
   set(ui.dlBtn, labels.download);
   set(ui.dlMenuBtn, labels.download);
+  set(ui.moreBtn, labels.more);
   set(ui.closeBtn, labels.close);
   ui.grab.setAttribute('aria-label', labels.info);
 }
@@ -512,7 +518,7 @@ function addExtra(spec) {
     if (!session || session.token !== token) return;
     try { spec.onClick(ctxOf(), b); } catch (err) { console.error('td-lightbox toolbar onClick', err); }
   });
-  ui.toolbar.insertBefore(b, ui.closeBtn); // close stays last
+  ui.toolbar.insertBefore(b, ui.moreBtn); // "Thêm" + close stay last
   extras.set(spec.id, { spec, button: b });
   return b;
 }
@@ -523,6 +529,7 @@ function removeExtra(id, button) {
   if (!e || (button && e.button !== button)) return;
   e.button.remove();
   extras.delete(id);
+  syncOverflow();
 }
 
 function syncExtras(ctx) {
@@ -533,6 +540,43 @@ function syncExtras(ctx) {
     }
     button.hidden = !visible;
   }
+  syncOverflow();
+}
+
+/* ------------------------------------------------------------------ v0.36.0 QĐ 59: "Thêm" overflow (< 480 px) */
+
+/**
+ * Below 480 px (CSS `@media (max-width: 479.98px)`) the toolbar keeps only download, close, the first visible
+ * `pinned: true` extra (e.g. a panel toggle) and the "Thêm" button; prev / next are dropped (swipe + arrow keys
+ * still navigate) and every `[data-overflow]` control (fullscreen, the other extras) is listed in the menu instead.
+ * JS only marks the controls and decides whether "Thêm" has anything to offer — no width threshold in JS.
+ */
+function syncOverflow() {
+  if (!ui) return;
+  let pinnedKept = false;
+  let any = !ui.fsBtn.hidden;
+  for (const { spec, button } of extras.values()) {
+    const keep = !pinnedKept && spec.pinned === true && !button.hidden;
+    if (keep) pinnedKept = true;
+    button.toggleAttribute('data-overflow', !keep);
+    if (!keep && !button.hidden) any = true;
+  }
+  ui.moreBtn.hidden = !any;
+  if (!any && TdMenu.isOpen(ui.moreBtn)) TdMenu.close();
+}
+
+/** TdMenu items of "Thêm" (lazy: read at open) — the overflowed controls, in toolbar order; selecting one clicks it. */
+function overflowMenuItems() {
+  if (!session || lifecycle !== 'open') return null;
+  const items = [];
+  for (const b of ui.toolbar.querySelectorAll(':scope > [data-overflow]')) {
+    if (b.hidden) continue;
+    const ex = b.hasAttribute('data-extra') ? extras.get(b.getAttribute('data-extra')) : null;
+    const label = b.getAttribute('aria-label') || '';
+    const iconName = b === ui.fsBtn ? 'fullscreen' : ex && typeof ex.spec.icon === 'string' ? ex.spec.icon : '';
+    items.push({ label, icon: iconName || undefined, onSelect: () => b.click() });
+  }
+  return items.length ? items : null;
 }
 
 /* ------------------------------------------------------------------ panel / sheet */
@@ -1381,9 +1425,9 @@ function downloadMenuPolicy(url) {
   return !!allowed(url, session.items[session.index], session.isAllowedUrl);
 }
 
-/** Close the download menu when it is open (slide change / lightbox close). */
+/** Close the download / "Thêm" menu when it is open (slide change / lightbox close). */
 function closeDownloadMenu() {
-  if (ui && TdMenu.isOpen(ui.dlMenuBtn)) TdMenu.close();
+  if (ui && (TdMenu.isOpen(ui.dlMenuBtn) || TdMenu.isOpen(ui.moreBtn))) TdMenu.close();
 }
 
 function navigate(dir) {
@@ -1479,6 +1523,7 @@ function openViewer(items, options = {}) {
   ui.nextBtn.hidden = !many;
   ui.counter.hidden = !many;
   ui.fsBtn.hidden = !document.fullscreenEnabled;
+  syncOverflow();
   mountFilmstrip();
 
   if (lifecycle !== 'open') {
