@@ -1,0 +1,506 @@
+/*
+ * td-cropper (src/form/td-cropper.js) + the shared crop dialog (src/feedback/crop-dialog.js) — v0.35.0, plan
+ * v0.35.0-cropper decisions 19-22 (ADR 0014 responsive, ADR 0011 minimal surfaces).
+ * Content layer → solid toolbar controls; the box = a 1 px light line + a 1 px dark outer line (visible on any image),
+ * the outside dimmed by the box's own spread shadow inside the overflow-hidden stage; no blur, no decorative shadow.
+ * State (JS, never visual classes): host [data-state="loading|ready|error"] [data-error] [data-locked] (4 corners only)
+ * [data-dragging] (rule-of-thirds grid) [data-small-box] (edge handles hidden on coarse pointers) [disabled];
+ * radios [aria-checked]; focal toggle [aria-pressed]; [hidden].
+ * CSSOM (JS, on the host, display px): --_tdc-img-x/y/w/h (image rect in the stage padding box), --_tdc-box-x/y/w/h
+ * (relative to the image), --_tdc-focal-x/y (relative to the image). Physical coordinates (left / top) also under RTL.
+ * Dialog: root .td-modal.td-modal--lg.td-crop-dialog — lg box from 720 px; full viewport below 720 px and when short.
+ */
+@layer td.tokens {
+	:root {
+		--td-cropper-h: min(60vh, 32rem);        /* stage height of an inline cropper */
+		--td-cropper-bg: var(--td-color-surface-muted); /* letterbox around the image */
+		--td-cropper-dim: rgb(0 0 0 / 55%);      /* outside the crop box */
+		--td-cropper-line: #fff;                  /* box line, handle fill, focal ring */
+		--td-cropper-line-contrast: rgb(0 0 0 / 60%); /* outer line: visible on white images too */
+		--td-cropper-handle: #fff;
+		--td-cropper-grid: rgb(255 255 255 / 60%); /* rule of thirds while dragging */
+	}
+}
+
+@layer td.component {
+	td-cropper {
+		display: block;
+		min-inline-size: 0;
+		font-family: var(--td-font-sans);
+		color: var(--td-color-text);
+		container: td-cropper / inline-size; /* ADR 0014 §4: needs its width from the parent */
+	}
+
+	/* not defined yet: keep the box (toolbar + stage) — no layout shift */
+	td-cropper:not(:defined) {
+		min-block-size: calc(var(--td-cropper-h) + 2.5rem);
+	}
+
+	td-cropper *,
+	td-cropper *::before,
+	td-cropper *::after {
+		box-sizing: border-box;
+	}
+
+	/* --- toolbar --- */
+	.td-cropper__toolbar {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+		align-items: center;
+		margin-block-end: var(--td-space-xs);
+	}
+
+	.td-cropper__ratios {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-2xs);
+		min-inline-size: 0;
+	}
+
+	.td-cropper__ratios[hidden],
+	.td-cropper__tool[hidden],
+	.td-cropper__focal[hidden],
+	.td-cropper__message[hidden] {
+		display: none;
+	}
+
+	.td-cropper__tools {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-2xs);
+		margin-inline-start: auto;
+	}
+
+	.td-cropper__ratio {
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		min-height: 2rem;
+		padding: 0 0.75rem;
+		margin: 0;
+		font-family: inherit;
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-semibold);
+		line-height: 1.25;
+		color: var(--td-control-fg);
+		white-space: nowrap;
+		cursor: pointer;
+		background: var(--td-control-bg);
+		border: 1px solid var(--td-control-border);
+		border-radius: var(--td-radius-full);
+		transition: background-color var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+	}
+
+	.td-cropper__ratio:hover:not(:disabled, [aria-checked="true"]) {
+		background: var(--td-color-hover-strong);
+	}
+
+	.td-cropper__ratio[aria-checked="true"] {
+		color: var(--td-btn-primary-fg);
+		background: var(--td-btn-primary-bg);
+		border-color: var(--td-btn-primary-bg);
+	}
+
+	.td-cropper__ratio:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-cropper__ratio:disabled {
+		cursor: not-allowed;
+		color: var(--td-btn-disabled-fg);
+		background: var(--td-btn-disabled-bg);
+		border-color: var(--td-btn-disabled-border);
+	}
+
+	/* --- stage: overflow hidden (the dim), inner padding so corner hit areas at the image edge are not clipped --- */
+	.td-cropper__stage {
+		--_tdc-pad: 12px;
+
+		position: relative;
+		height: var(--td-cropper-h);
+		padding: var(--_tdc-pad);
+		overflow: hidden;
+		background: var(--td-cropper-bg);
+		border-radius: var(--td-radius-md);
+		touch-action: none;
+		-webkit-user-select: none;
+		user-select: none;
+	}
+
+	.td-cropper__area {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: var(--_tdc-img-w, 0px);
+		height: var(--_tdc-img-h, 0px);
+		transform: translate(var(--_tdc-img-x, 0px), var(--_tdc-img-y, 0px));
+	}
+
+	td-cropper:not([data-state="ready"]) .td-cropper__area {
+		visibility: hidden;
+	}
+
+	.td-cropper__img {
+		display: block;
+		width: 100%;
+		max-width: none;
+		height: 100%;
+		pointer-events: none;
+		-webkit-user-select: none;
+		user-select: none;
+		-webkit-user-drag: none;
+		image-orientation: from-image; /* decision 6: the server should already have normalised EXIF */
+	}
+
+	/* --- crop box --- */
+	.td-cropper__box {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: var(--_tdc-box-w, 0px);
+		height: var(--_tdc-box-h, 0px);
+		cursor: move;
+		border: 1px solid var(--td-cropper-line);
+		/* outer contrast line, then the dim spread over everything else (clipped by the stage) */
+		box-shadow: 0 0 0 1px var(--td-cropper-line-contrast), 0 0 0 200vmax var(--td-cropper-dim);
+		transform: translate(var(--_tdc-box-x, 0px), var(--_tdc-box-y, 0px));
+	}
+
+	.td-cropper__box:focus {
+		outline: none;
+	}
+
+	.td-cropper__box:focus-visible,
+	.td-cropper__handle--corner:focus-visible,
+	.td-cropper__focal:focus-visible {
+		outline: 2px solid var(--td-focus);
+		outline-offset: 2px;
+	}
+
+	td-cropper[disabled] .td-cropper__box,
+	td-cropper[disabled] .td-cropper__handle,
+	td-cropper[disabled] .td-cropper__focal {
+		cursor: default;
+	}
+
+	/* rule of thirds, only while dragging */
+	.td-cropper__grid {
+		position: absolute;
+		inset: 0;
+		display: none;
+		pointer-events: none;
+	}
+
+	td-cropper[data-dragging] .td-cropper__grid {
+		display: block;
+	}
+
+	.td-cropper__grid::before,
+	.td-cropper__grid::after {
+		position: absolute;
+		content: "";
+		border: 0 solid var(--td-cropper-grid);
+	}
+
+	.td-cropper__grid::before {
+		inset: 0 33.333%;
+		border-inline-width: 1px;
+	}
+
+	.td-cropper__grid::after {
+		inset: 33.333% 0;
+		border-block-width: 1px;
+	}
+
+	/* --- handles: 12 px visual, hit area ::before 24 px (mouse) / 44 px (coarse) --- */
+	.td-cropper__handle {
+		position: absolute;
+		width: 12px;
+		height: 12px;
+		background: var(--td-cropper-handle);
+		border: 1px solid var(--td-cropper-line-contrast);
+		border-radius: 2px;
+	}
+
+	.td-cropper__handle::before {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 24px;
+		height: 24px;
+		content: "";
+		transform: translate(-50%, -50%);
+	}
+
+	.td-cropper__handle[data-handle="nw"] { top: -7px; left: -7px; cursor: nwse-resize; }
+	.td-cropper__handle[data-handle="ne"] { top: -7px; right: -7px; cursor: nesw-resize; }
+	.td-cropper__handle[data-handle="se"] { right: -7px; bottom: -7px; cursor: nwse-resize; }
+	.td-cropper__handle[data-handle="sw"] { bottom: -7px; left: -7px; cursor: nesw-resize; }
+	.td-cropper__handle[data-handle="n"] { top: -7px; left: calc(50% - 6px); cursor: ns-resize; }
+	.td-cropper__handle[data-handle="s"] { bottom: -7px; left: calc(50% - 6px); cursor: ns-resize; }
+	.td-cropper__handle[data-handle="e"] { top: calc(50% - 6px); right: -7px; cursor: ew-resize; }
+	.td-cropper__handle[data-handle="w"] { top: calc(50% - 6px); left: -7px; cursor: ew-resize; }
+
+	/* a ratio in force: corners only (decision 14) */
+	td-cropper[data-locked] .td-cropper__handle--edge {
+		display: none;
+	}
+
+	/* --- focal point: above the box (z by DOM order), normalised to the whole image, may sit outside the box --- */
+	.td-cropper__focal {
+		position: absolute;
+		top: -10px;
+		left: -10px;
+		width: 20px;
+		height: 20px;
+		cursor: grab;
+		border: 2px solid var(--td-cropper-line);
+		border-radius: 50%;
+		box-shadow: 0 0 0 1px var(--td-cropper-line-contrast), inset 0 0 0 1px var(--td-cropper-line-contrast);
+		transform: translate(var(--_tdc-focal-x, 0px), var(--_tdc-focal-y, 0px));
+	}
+
+	.td-cropper__focal::before {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 32px;
+		height: 32px;
+		content: "";
+		transform: translate(-50%, -50%);
+	}
+
+	.td-cropper__focal::after {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 4px;
+		height: 4px;
+		content: "";
+		background: var(--td-cropper-line);
+		border-radius: 50%;
+		box-shadow: 0 0 0 1px var(--td-cropper-line-contrast);
+		transform: translate(-50%, -50%);
+	}
+
+	/* --- loading / error text --- */
+	.td-cropper__message {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: var(--td-space-md);
+		margin: 0;
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text-muted);
+		text-align: center;
+	}
+
+	td-cropper[data-state="error"] .td-cropper__message {
+		color: var(--td-color-error);
+	}
+
+	/* --- narrow container: toolbar on two rows (ratios own row, scrolls sideways), − / + icon only --- */
+	@container td-cropper (width < 480px) {
+		.td-cropper__ratios {
+			flex: 1 0 100%;
+			flex-wrap: nowrap;
+			padding: 3px; /* room for the focus ring inside the scroller */
+			margin: -3px;
+			overflow-x: auto;
+			scrollbar-width: thin;
+		}
+
+		.td-cropper__tools {
+			margin-inline-start: 0;
+		}
+
+		.td-cropper__zoom-in .td-cropper__tool-text,
+		.td-cropper__zoom-out .td-cropper__tool-text {
+			display: none;
+		}
+
+		.td-cropper__zoom-in,
+		.td-cropper__zoom-out {
+			padding-inline: 0.5rem;
+		}
+	}
+
+	/* --- touch: bigger hit areas + padding so they are not clipped (decision 20, ADR 0014 §5) --- */
+	@media (pointer: coarse) {
+		td-cropper:not(:defined) {
+			min-block-size: calc(var(--td-cropper-h) + 3.25rem);
+		}
+
+		.td-cropper__stage {
+			--_tdc-pad: 22px;
+		}
+
+		.td-cropper__handle::before,
+		.td-cropper__focal::before {
+			width: var(--td-touch-min);
+			height: var(--td-touch-min);
+		}
+
+		.td-cropper__ratio {
+			min-height: var(--td-touch-min);
+		}
+
+		td-cropper[data-small-box] .td-cropper__handle--edge {
+			display: none;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-cropper__ratio {
+			transition: none;
+		}
+	}
+
+	/* --- increased contrast / forced colours: system colours, no translucent dim (a 1 px CanvasText line) --- */
+	@media (prefers-contrast: more), (forced-colors: active) {
+		.td-cropper__box {
+			border: 2px solid Highlight;
+			box-shadow: none;
+			outline: 1px solid CanvasText;
+			outline-offset: 0;
+		}
+
+		.td-cropper__box:focus-visible,
+		.td-cropper__handle--corner:focus-visible,
+		.td-cropper__focal:focus-visible {
+			outline: 3px solid CanvasText;
+			outline-offset: 2px;
+		}
+
+		.td-cropper__handle {
+			forced-color-adjust: none;
+			background: Highlight;
+			border-color: CanvasText;
+		}
+
+		.td-cropper__focal {
+			forced-color-adjust: none;
+			border-color: Highlight;
+			box-shadow: 0 0 0 1px CanvasText;
+		}
+
+		.td-cropper__focal::after {
+			background: Highlight;
+			box-shadow: none;
+		}
+
+		.td-cropper__grid::before,
+		.td-cropper__grid::after {
+			border-color: CanvasText;
+		}
+
+		.td-cropper__ratio[aria-checked="true"] {
+			forced-color-adjust: none;
+			color: HighlightText;
+			background: Highlight;
+			border-color: Highlight;
+		}
+	}
+
+	/* ===== crop dialog (overlay ⇒ @media, ADR 0014 §3) ===== */
+	.td-crop-dialog .td-modal__dialog {
+		height: min(calc(100dvh - 2 * var(--td-modal-gap)), 44rem);
+	}
+
+	.td-crop-dialog__body {
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+		overflow: hidden;
+	}
+
+	td-cropper.td-crop-dialog__cropper {
+		display: flex;
+		flex: 1 1 auto;
+		flex-direction: column;
+		min-height: 0;
+	}
+
+	.td-crop-dialog__cropper .td-cropper__toolbar {
+		flex: 0 0 auto;
+	}
+
+	.td-crop-dialog__cropper .td-cropper__stage {
+		flex: 1 1 auto;
+		height: auto;
+		min-height: 200px;
+	}
+
+	.td-crop-dialog__footer {
+		justify-content: flex-end;
+	}
+
+	/* < 720 px wide, or short (≤ 500 px high: phone landscape): full viewport, footer always inside + safe areas */
+	@media (max-width: 719.98px), (max-height: 500px) {
+		.td-modal.td-crop-dialog {
+			inset-inline-end: 0; /* full viewport: no scroll-lock gap strip */
+			align-items: stretch;
+			padding: 0;
+		}
+
+		.td-modal.td-crop-dialog[data-state] .td-modal__dialog {
+			--td-modal-enter-from: none;
+			width: 100%;
+			height: 100dvh;
+			max-height: none;
+			padding-bottom: 0;
+			border-width: 0;
+			border-radius: 0;
+			transform: none;
+		}
+
+		.td-modal.td-crop-dialog .td-modal__header {
+			padding-top: calc(var(--td-space-sm) + env(safe-area-inset-top, 0px));
+		}
+
+		.td-modal.td-crop-dialog .td-modal__footer {
+			padding-bottom: calc(var(--td-space-sm) + env(safe-area-inset-bottom, 0px));
+		}
+
+		.td-modal.td-crop-dialog .td-modal__header,
+		.td-modal.td-crop-dialog .td-modal__footer,
+		.td-modal.td-crop-dialog .td-modal__body {
+			padding-right: calc(var(--td-modal-pad-x) + env(safe-area-inset-right, 0px));
+			padding-left: calc(var(--td-modal-pad-x) + env(safe-area-inset-left, 0px));
+		}
+	}
+
+	/* short: compact header / footer / body so the stage keeps ≥ 200 px */
+	@media (max-height: 500px) {
+		.td-modal.td-crop-dialog .td-modal__header {
+			min-height: 0;
+			padding-top: calc(var(--td-space-2xs) + env(safe-area-inset-top, 0px));
+			padding-bottom: var(--td-space-2xs);
+		}
+
+		.td-modal.td-crop-dialog .td-modal__title {
+			font-size: var(--td-text-base);
+		}
+
+		.td-modal.td-crop-dialog .td-modal__footer {
+			padding-top: var(--td-space-2xs);
+			padding-bottom: calc(var(--td-space-2xs) + env(safe-area-inset-bottom, 0px));
+		}
+
+		.td-modal.td-crop-dialog .td-modal__body {
+			padding-top: var(--td-space-xs);
+			padding-bottom: var(--td-space-xs);
+		}
+
+		.td-crop-dialog__cropper .td-cropper__toolbar {
+			margin-block-end: var(--td-space-2xs);
+		}
+	}
+}

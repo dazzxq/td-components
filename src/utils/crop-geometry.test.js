@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import {
   MIN_PX, q, round4, minSize, fitLargest, clampRect, moveBy, resizeFrom, scaleAround, applyPreset, normalizeInitial,
   stepFor, toOutput, isWholeImage, clampFocal, ratioMismatch, displayToModel, modelToDisplay, containFit, wheelFactor,
+  cropChanged, focalChanged,
 } from './crop-geometry.js';
 import { parseCrop, serializeCrop } from './media-field-model.js';
 
@@ -265,14 +266,50 @@ describe('focal / ratio / display helpers', () => {
   });
 });
 
+describe('cropChanged / focalChanged (crop dialog `changed`)', () => {
+  const whole = { x: 0, y: 0, width: 1, height: 1 };
+  it('null ⇔ whole image; identical ⇒ unchanged', () => {
+    assert.equal(cropChanged(null, null, 1000, 500), false);
+    assert.equal(cropChanged(null, whole, 1000, 500), false);
+    assert.equal(cropChanged(whole, null, 1000, 500), false);
+    const c = { x: 0.1, y: 0.2, width: 0.5, height: 0.4 };
+    assert.equal(cropChanged(c, { ...c }, 1000, 500), false);
+    assert.equal(cropChanged(c, null, 1000, 500), true);
+    assert.equal(cropChanged(null, c, 1000, 500), true);
+  });
+  it('one model pixel of tolerance per axis (x / width with W, y / height with H)', () => {
+    const c = { x: 0.1, y: 0.2, width: 0.5, height: 0.4 };
+    assert.equal(cropChanged(c, { ...c, x: 0.1 + 1 / 1000 }, 1000, 500), false);
+    assert.equal(cropChanged(c, { ...c, x: 0.1 + 1.5 / 1000 }, 1000, 500), true);
+    assert.equal(cropChanged(c, { ...c, height: 0.4 + 1 / 500 }, 1000, 500), false);
+    assert.equal(cropChanged(c, { ...c, height: 0.4 + 1.5 / 500 }, 1000, 500), true);
+    // the floor is 1e-6 (huge images) and an unknown size falls back to it
+    assert.equal(cropChanged(c, { ...c, width: 0.5 + 2e-6 }, 1e7, 1e7), true);
+    assert.equal(cropChanged(c, { ...c, width: 0.5 + 2e-6 }, NaN, 0), true);
+    assert.equal(cropChanged(c, { ...c, width: 0.5 + 5e-7 }, NaN, 0), false);
+  });
+  it('accepts CropValue-like objects ({ normalized })', () => {
+    const c = { x: 0.1, y: 0.2, width: 0.5, height: 0.4 };
+    assert.equal(cropChanged({ normalized: c }, c, 100, 100), false);
+    assert.equal(cropChanged({ normalized: whole }, null, 100, 100), false);
+  });
+  it('focalChanged: ε 1e-6, null vs point', () => {
+    assert.equal(focalChanged(null, null), false);
+    assert.equal(focalChanged(null, { x: 0.5, y: 0.5 }), true);
+    assert.equal(focalChanged({ x: 0.5, y: 0.5 }, null), true);
+    assert.equal(focalChanged({ x: 0.5, y: 0.5 }, { x: 0.5 + 5e-7, y: 0.5 }), false);
+    assert.equal(focalChanged({ x: 0.5, y: 0.5 }, { x: 0.5, y: 0.5 + 2e-6 }), true);
+  });
+});
+
 describe('static guard (decision 2): coordinates only — no pixels, no network', () => {
   const files = ['./crop-geometry.js', '../form/td-cropper.js', '../feedback/crop-dialog.js'];
   const banned = [/canvas/i, /toBlob/, /toDataURL/, /getImageData/, /\bfetch\s*\(/, /createObjectURL/, /crossorigin/i,
     /XMLHttpRequest/, /sendBeacon/];
   for (const f of files) {
-    it(f, (t) => {
+    it(f, () => {
       const path = fileURLToPath(new URL(f, import.meta.url));
-      if (!existsSync(path)) { t.skip('not written yet'); return; }
+      assert.ok(existsSync(path), `${f} must exist (v0.35 lane B shipped it)`);
       // Comments may name the banned APIs (to say they are never used); the code may not.
       const code = readFileSync(path, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
       for (const re of banned) assert.equal(re.test(code), false, `${f} must not use ${re}`);

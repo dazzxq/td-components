@@ -1,0 +1,3 @@
+/* td-cropper stories (Storybook only, not shipped): story layout widths. */
+.sb-cropper { width: min(100%, 48rem); }
+.sb-cropper--narrow { width: 320px; }

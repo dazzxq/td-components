@@ -48,6 +48,7 @@
     "components/media-picker.css",
     "components/media-picker-upload.css",
     "components/media-field.css",
+    "components/cropper.css",
     "utilities.css"
   ]
 }

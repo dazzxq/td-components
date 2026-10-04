@@ -330,3 +330,36 @@ export function wheelFactor(deltaY, deltaMode = 0) {
   const px = deltaMode === 1 ? deltaY * 16 : deltaMode === 2 ? deltaY * 16 * 24 : deltaY;
   return clamp(Math.exp(px * 0.002), 0.8, 1.25);
 }
+
+/** @param {CropValue|CropBox|null|undefined} c @returns {CropBox} null ⇒ the whole image */
+function asBox(c) {
+  const n = c && typeof c === 'object' && 'normalized' in c ? /** @type {CropValue} */ (c).normalized : c;
+  return n && typeof n === 'object' ? /** @type {CropBox} */ (n) : { x: 0, y: 0, width: 1, height: 1 };
+}
+
+/**
+ * Did the crop change in a way that matters (crop dialog `changed`, decision 8 / 28)? `null` = the whole image. One MODEL
+ * pixel of tolerance per axis: `|Δx|, |Δwidth| ≤ max(1e-6, 1 / W)`, `|Δy|, |Δheight| ≤ max(1e-6, 1 / H)` (W / H = the
+ * model size; non-finite / ≤ 0 ⇒ 1e-6). Accepts normalised boxes or `CropValue`s.
+ * @param {CropValue|CropBox|null|undefined} a @param {CropValue|CropBox|null|undefined} b
+ * @param {number} W @param {number} H
+ * @returns {boolean}
+ */
+export function cropChanged(a, b, W, H) {
+  const p = asBox(a);
+  const r = asBox(b);
+  const tx = fin(W) && W > 0 ? Math.max(1e-6, 1 / W) : 1e-6;
+  const ty = fin(H) && H > 0 ? Math.max(1e-6, 1 / H) : 1e-6;
+  const off = (u, v, t) => !(fin(u) && fin(v)) || Math.abs(u - v) > t + 1e-12;
+  return off(p.x, r.x, tx) || off(p.width, r.width, tx) || off(p.y, r.y, ty) || off(p.height, r.height, ty);
+}
+
+/**
+ * Did the focal point change (ε 1e-6)? `null` vs a point ⇒ changed.
+ * @param {{ x: number, y: number }|null|undefined} a @param {{ x: number, y: number }|null|undefined} b
+ * @returns {boolean}
+ */
+export function focalChanged(a, b) {
+  if (!a || !b) return !a !== !b;
+  return Math.abs(a.x - b.x) > 1e-6 || Math.abs(a.y - b.y) > 1e-6;
+}
