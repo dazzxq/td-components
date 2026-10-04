@@ -4,10 +4,16 @@
  * display), .td-media-grid__item [data-selected], .td-media-grid__open (button / a), .td-media-grid__tick
  * (aria-pressed). Host [data-selecting] = selection not empty.
  * Tick: hidden (opacity 0) → shown on mouse hover (hover + fine pointer), :focus-within, while selecting and on a
- * selected item; touch screens (hover none / coarse pointer) show it faded (0.55). Selected: item fill, opener scaled
- * (selection cue — functional, not decorative), solid tick. Tick edge = white border + thin dark ring → ≥ 3:1 on dark
+ * selected item; touch screens (hover none / coarse pointer) show it faded (0.55). Selected (v0.33): a 3px inset ring
+ * drawn by the opener's ::after (always on the image box, gaps stay even) + solid tick; no fill, no scale (token
+ * --td-media-grid-selected-scale defaults to 1). Tick edge = white border + thin dark ring → ≥ 3:1 on dark
  * AND light images; glyph ≥ 3.2:1 on the solid fill (test/tokens/contrast.spec.mjs, light + dark).
- * CSP: classes / data attributes only.
+ * Tile sizing (v0.33, decision 37): the element owns the opener + image size by CSSOM inline !important (no site CSS
+ * can resize the image — change --td-media-grid-fit / --td-media-grid-ratio instead); the rules below are only the
+ * before-JS look.
+ * layout="justified" (v0.33, decisions 32-36): rows packed in JS (src/utils/justified.js); each item gets
+ * --td-mg-w / --td-mg-sub / --td-mg-k by CSSOM; host [data-td-layout="justified"|"default"] = effective layout.
+ * CSP: classes / data attributes / CSSOM only.
  */
 @layer td.tokens {
 	:root {
@@ -23,8 +29,26 @@
 		--td-media-grid-tick-ring: rgb(0 0 0 / 50%);
 		--td-media-grid-tick-on-bg: var(--td-btn-primary-bg);
 		--td-media-grid-tick-on-fg: var(--td-btn-primary-fg);
-		--td-media-grid-selected-bg: var(--td-color-surface);
-		--td-media-grid-selected-scale: 0.88;
+		--td-media-grid-selected-ring: var(--td-media-grid-tick-on-bg);
+		--td-media-grid-selected-scale: 1;
+		/* object-fit of the image in a tile (cover | contain) and the tile ratio (auto = as tall as the image) */
+		--td-media-grid-fit: cover;
+		--td-media-grid-ratio: auto;
+		/* layout="justified": target ratio sum per row (row height = (width − gaps) / Σ) + ratio until an image loads */
+		--td-media-grid-row-ratio: 5.5;
+		--td-media-grid-fallback-ar: 1.5;
+	}
+
+	@media (max-width: 1024px) {
+		:root {
+			--td-media-grid-row-ratio: 4;
+		}
+	}
+
+	@media (max-width: 640px) {
+		:root {
+			--td-media-grid-row-ratio: 2.5;
+		}
 	}
 }
 
@@ -41,14 +65,10 @@
 		position: relative;
 		min-width: 0;
 		border-radius: var(--td-media-grid-radius);
-		transition: background-color var(--td-dur-base) var(--td-ease-out);
-	}
-
-	.td-media-grid__item[data-selected] {
-		background-color: var(--td-media-grid-selected-bg);
 	}
 
 	.td-media-grid__open {
+		position: relative;
 		display: block;
 		box-sizing: border-box;
 		width: 100%;
@@ -65,12 +85,34 @@
 		transition: transform var(--td-dur-base) var(--td-ease-out);
 	}
 
-	.td-media-grid__open img {
+	.td-media-grid__open img,
+	.td-media-grid__open video {
 		display: block;
 		width: 100%;
 		height: auto;
 		user-select: none;
 		-webkit-user-drag: none;
+	}
+
+	.td-media-grid__open picture {
+		display: block;
+		height: 100%;
+	}
+
+	/* selected: inset ring on the image box (the opener is exactly the image box) */
+	.td-media-grid__open::after {
+		content: "";
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		border-radius: inherit;
+		box-shadow: inset 0 0 0 3px transparent;
+		pointer-events: none;
+		transition: box-shadow var(--td-dur-base) var(--td-ease-out);
+	}
+
+	.td-media-grid__item[data-selected] .td-media-grid__open::after {
+		box-shadow: inset 0 0 0 3px var(--td-media-grid-selected-ring);
 	}
 
 	.td-media-grid__open:focus-visible {
@@ -162,8 +204,55 @@
 		color: var(--td-media-grid-tick-on-fg);
 	}
 
+	/* --- layout="justified" ---
+	   Row container = the grid, or ONE direct-child <td-sortable> (gallery recipe; this beats its display: grid rule).
+	   Before JS (no [data-td-layout]) the same flex box with flex: 1 1 12rem + 3/2 tiles: no breakage, just not
+	   justified yet. [data-td-layout="default"] = unsupported structure → the default grid. */
+	td-media-grid[layout="justified"]:not([data-td-layout="default"]),
+	td-media-grid[layout="justified"]:not([data-td-layout="default"]) > td-sortable {
+		display: flex;
+		flex-wrap: wrap;
+		align-content: flex-start;
+		align-items: stretch;
+		gap: var(--td-media-grid-gap);
+	}
+
+	td-media-grid[layout="justified"]:not([data-td-layout="default"]) > td-sortable {
+		flex: 0 0 100%;
+		min-width: 0;
+	}
+
+	td-media-grid[layout="justified"]:not([data-td-layout]) [data-td-media-item] {
+		flex: 1 1 12rem;
+		aspect-ratio: 3 / 2;
+		min-width: 0;
+		min-height: 0;
+	}
+
+	td-media-grid[layout="justified"] [data-td-media-open] {
+		height: 100%;
+	}
+
+	td-media-grid[layout="justified"] [data-td-media-open] img {
+		height: 100%;
+		object-fit: cover;
+	}
+
+	/* a cell = P% of the row minus its share of the gaps; ratio P / k with k shared by the row → equal heights.
+	   The line stretches every cell to the row height (the last cell of a full row is 0.5px narrower by design).
+	   A new item without its vars yet is 0 wide for at most one frame. */
+	td-media-grid[data-td-layout="justified"] .td-media-grid__item {
+		flex: 0 0 auto;
+		box-sizing: border-box;
+		width: calc(var(--td-mg-w, 0) * 1% - var(--td-mg-sub, 0) * 1px);
+		min-width: 0;
+		min-height: 0; /* a clamped (very tall) image must not grow the cell past its ratio */
+		aspect-ratio: var(--td-mg-w, 3) / var(--td-mg-k, 2);
+	}
+
 	@media (prefers-reduced-motion: reduce) {
-		.td-media-grid__open {
+		.td-media-grid__open,
+		.td-media-grid__open::after {
 			transition: none;
 		}
 	}
@@ -175,8 +264,10 @@
 			box-shadow: none;
 		}
 
-		.td-media-grid__item[data-selected] {
-			outline: 2px solid Highlight;
+		.td-media-grid__item[data-selected] .td-media-grid__open::after {
+			box-shadow: none;
+			outline: 3px solid Highlight;
+			outline-offset: -3px;
 		}
 
 		.td-media-grid__item[data-selected] .td-media-grid__tick {

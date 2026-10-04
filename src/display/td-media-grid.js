@@ -1,11 +1,16 @@
 import { TdBaseElement } from '../base/td-base-element.js';
 import { tdIcon } from '../icons/td-icon.js';
 import { hasActiveAbove } from '../utils/layers.js';
+import { packRows, rowStyles, parseAr } from '../utils/justified.js';
 
 const ITEM = '[data-td-media-item]';
 const OPEN = '[data-td-media-open]';
 const SITE_TICK = '[data-td-media-tick]';
 const TICK = `${SITE_TICK}, .td-media-grid__tick`;
+/** per-item custom properties of the justified layout (grid-owned, no site snapshot) */
+const ROW_VARS = ['--td-mg-w', '--td-mg-sub', '--td-mg-k'];
+/** non-item children allowed next to the items in a row container */
+const INERT_CHILD = 'template, script, [hidden], .td-sr-only';
 
 /**
  * Media grid with selection (v0.23.0) — ENHANCES site / PHP markup in place, never renders the cells (no innerHTML).
@@ -60,7 +65,7 @@ export class TdMediaGrid extends TdBaseElement {
   };
 
   static get observedAttributes() {
-    return ['label', 'max', 'disabled'];
+    return ['label', 'max', 'disabled', 'layout'];
   }
 
   static get booleanAttributes() {
@@ -82,6 +87,17 @@ export class TdMediaGrid extends TdBaseElement {
     this._ownLabel = false;
     this._raf = 0;
     this._ro = null;
+    /** layout applied by the last write phase: 'justified' | 'default' | null (never written) */
+    this._mode = null;
+    this._dirty = true;
+    this._rowKey = '';
+    this._warned = false;
+    /** @type {WeakMap<HTMLElement, Map<string, { value: string, priority: string }>>} site inline values, first write */
+    this._snap = new WeakMap();
+    /** @type {Set<HTMLElement>} elements carrying a snapshot (WeakMap is not iterable) */
+    this._owned = new Set();
+    /** @type {Set<HTMLElement>} items carrying the justified row vars */
+    this._varItems = new Set();
   }
 
   get onSelectChange() { return this._onSelectChange; }
@@ -110,6 +126,10 @@ export class TdMediaGrid extends TdBaseElement {
 
   attributeChangedCallback(name, oldVal, newVal) {
     if (oldVal === newVal || !this._initialized) return;
+    if (name === 'layout') {
+      if (this.isConnected) this._schedule(true);
+      return;
+    }
     this._syncAttrs();
   }
 
@@ -134,7 +154,7 @@ export class TdMediaGrid extends TdBaseElement {
         this._queueSync();
       });
       // data-id changes too: the selection is reconciled (an id that no longer exists leaves it)
-      this._mo.observe(this, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-id'] });
+      this._mo.observe(this, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-id', 'data-td-ar'] });
       this._cleanups.push(() => { this._mo?.disconnect(); this._mo = null; });
     }
     this._cleanups.push(() => this._setDocKey(false));
@@ -146,15 +166,21 @@ export class TdMediaGrid extends TdBaseElement {
       this._ro.observe(this);
       this._cleanups.push(() => { this._ro?.disconnect(); this._ro = null; });
     }
+    // an image of unknown ratio finished loading → its ratio is known now (load does not bubble: capture)
+    this.listen(this, 'load', (e) => this._onMediaLoad(e), true);
+    this.listen(this, 'loadedmetadata', (e) => this._onMediaLoad(e), true);
     this._cleanups.push(() => {
       if (this._raf) cancelAnimationFrame(this._raf);
       this._raf = 0;
+      this._release();
     });
+    this._dirty = true;
     this._frame();
   }
 
-  /** @private batch the next read + write phase into one animation frame */
-  _schedule() {
+  /** @private batch the next read + write phase into one animation frame; `dirty` = items / ratios / layout changed */
+  _schedule(dirty = false) {
+    if (dirty) this._dirty = true;
     if (this._raf || typeof requestAnimationFrame !== 'function') return;
     this._raf = requestAnimationFrame(() => {
       this._raf = 0;
@@ -163,19 +189,232 @@ export class TdMediaGrid extends TdBaseElement {
   }
 
   /**
-   * One read phase (computed style of the host only — no per-item layout reads), then one write phase.
+   * One read phase (computed style of the host / row container + attributes / natural sizes — no per-item layout
+   * reads), then one write phase. Justified rows are rebuilt only when the items / ratios / layout changed (dirty) or
+   * the Σ target / gap read now differ from the last build; a plain resize only re-reads (widths are percentages).
    * @private
    */
   _frame() {
     if (typeof getComputedStyle !== 'function') return;
+    // --- read ---
     const cs = getComputedStyle(this);
     const tick = cs.getPropertyValue('--td-media-grid-tick-inline').trim() === 'end' ? 'end' : null;
-    // write
+    const items = this.items;
+    const wantJustified = this.getAttribute('layout') === 'justified';
+    let box = null;
+    let plan = null;
+    if (wantJustified) {
+      box = this._rowBox(items);
+      if (!box && !this._warned) {
+        this._warned = true;
+        console.warn('td-media-grid: layout="justified" needs the items as direct children of the grid or of ONE '
+          + 'direct-child <td-sortable>; using the default layout.');
+      }
+    }
+    const mode = box ? 'justified' : 'default';
+    if (box) {
+      const target = Number.parseFloat(cs.getPropertyValue('--td-media-grid-row-ratio'));
+      const t = Number.isFinite(target) && target > 0 ? target : 5.5;
+      const gap = Number.parseFloat(getComputedStyle(box).columnGap);
+      const g = Number.isFinite(gap) && gap > 0 ? gap : 0;
+      const key = `${t}|${g}`;
+      if (this._dirty || this._mode !== 'justified' || key !== this._rowKey) {
+        const fb = parseAr(cs.getPropertyValue('--td-media-grid-fallback-ar'));
+        const fallback = Number.isFinite(fb) ? fb : 1.5;
+        plan = { key, t, g, ars: items.map((it) => this._arOf(it, fallback)) };
+      }
+    }
+    // --- write ---
+    this._dirty = false;
     if (tick) {
       if (this.getAttribute('data-td-tick') !== tick) this.setAttribute('data-td-tick', tick);
     } else if (this.hasAttribute('data-td-tick')) {
       this.removeAttribute('data-td-tick');
     }
+    const flag = wantJustified ? mode : null;
+    if (flag) {
+      if (this.getAttribute('data-td-layout') !== flag) this.setAttribute('data-td-layout', flag);
+    } else if (this.hasAttribute('data-td-layout')) {
+      this.removeAttribute('data-td-layout');
+    }
+    this._mode = mode;
+    if (plan) {
+      this._rowKey = plan.key;
+      this._relayout(items, plan.ars, plan.t, plan.g);
+    } else if (mode !== 'justified') {
+      this._rowKey = '';
+      for (const it of [...this._varItems]) this._clearRowVars(it);
+    }
+    for (const it of items) this._size(it);
+  }
+
+  /**
+   * The justified row container: the grid itself (items are its direct children) or ONE direct-child <td-sortable>
+   * holding the items. Anything else → null (default layout).
+   * @private
+   */
+  _rowBox(items) {
+    const kids = [...this.children].filter((el) => el !== this._live && !el.matches(INERT_CHILD));
+    const set = new Set(items);
+    if (kids.every((el) => set.has(el))) return this;
+    if (kids.length === 1 && kids[0].localName === 'td-sortable') {
+      const s = kids[0];
+      const inner = [...s.children].filter((el) => !el.matches(INERT_CHILD));
+      if (items.every((it) => it.parentElement === s) && inner.every((el) => set.has(el))) return s;
+    }
+    return null;
+  }
+
+  /**
+   * Aspect ratio of an item: data-td-ar > <img> width / height attributes > natural size once loaded > fallback.
+   * @private
+   */
+  _arOf(item, fallback) {
+    const own = parseAr(item.getAttribute('data-td-ar'));
+    if (Number.isFinite(own)) return own;
+    const m = this._mediaOf(item);
+    if (m) {
+      const w = Number(m.getAttribute('width'));
+      const h = Number(m.getAttribute('height'));
+      if (w > 0 && h > 0) return w / h;
+      if (m.localName === 'img' && m.naturalWidth > 0 && m.naturalHeight > 0) return m.naturalWidth / m.naturalHeight;
+      if (m.localName === 'video' && m.videoWidth > 0 && m.videoHeight > 0) return m.videoWidth / m.videoHeight;
+    }
+    return fallback;
+  }
+
+  /** @private true when the ratio of `item` comes from its loaded media (no data-td-ar, no width / height) */
+  _arFromLoad(item, m) {
+    if (Number.isFinite(parseAr(item.getAttribute('data-td-ar')))) return false;
+    return !(Number(m.getAttribute('width')) > 0 && Number(m.getAttribute('height')) > 0);
+  }
+
+  /** @private */
+  _onMediaLoad(e) {
+    if (this.getAttribute('layout') !== 'justified') return;
+    const m = e.target;
+    const item = m instanceof Element ? this._itemFrom(m) : null;
+    if (!item || this._mediaOf(item) !== m || !this._arFromLoad(item, m)) return;
+    this._schedule(true);
+  }
+
+  /**
+   * Write the row vars (only values that changed). Tests spy on this method to count rebuilds.
+   * @private
+   */
+  _relayout(items, ars, target, gap) {
+    const rows = rowStyles(packRows(ars, target), target, gap);
+    let i = 0;
+    for (const row of rows) {
+      for (const c of row.cells) {
+        const it = items[i++];
+        this._setVar(it, '--td-mg-w', String(c.w));
+        this._setVar(it, '--td-mg-sub', String(c.sub));
+        this._setVar(it, '--td-mg-k', String(row.k));
+        this._varItems.add(it);
+      }
+    }
+    // items that are no longer laid out (left the grid) lose their vars
+    const now = new Set(items);
+    for (const it of [...this._varItems]) if (!now.has(it)) this._clearRowVars(it);
+  }
+
+  /** @private */
+  _setVar(el, prop, value) {
+    if (el.style.getPropertyValue(prop) !== value) el.style.setProperty(prop, value);
+  }
+
+  /** @private */
+  _clearRowVars(item) {
+    for (const p of ROW_VARS) item.style.removeProperty(p);
+    this._varItems.delete(item);
+  }
+
+  /** @private first <img> / <video> of the opener (a <picture> img included) */
+  _mediaOf(item) {
+    const open = this._openOf(item);
+    return open ? /** @type {HTMLElement|null} */ (open.querySelector('img, video')) : null;
+  }
+
+  /**
+   * Kit-owned tile sizing (decision 37): inline + !important via CSSOM, so no site author CSS (layered or not,
+   * !important or not) can resize the image inside the opener. Writes only, no reads of layout.
+   * @private
+   */
+  _size(item) {
+    const open = this._openOf(item);
+    if (!open) return;
+    const justified = this._mode === 'justified';
+    this._hold(open, 'width', '100%');
+    this._hold(open, 'height', justified ? '100%' : 'auto');
+    this._hold(open, 'aspect-ratio', justified ? 'auto' : 'var(--td-media-grid-ratio, auto)');
+    const m = this._mediaOf(item);
+    if (!m) return;
+    this._hold(m, 'width', '100%');
+    this._hold(m, 'height', '100%');
+    this._hold(m, 'max-width', 'none');
+    this._hold(m, 'object-fit', 'var(--td-media-grid-fit, cover)');
+  }
+
+  /**
+   * Set an owned property (inline, !important). The FIRST write per element + property snapshots the site's inline
+   * value + priority; later writes never re-snapshot, so the snapshot is always the site's.
+   * @private
+   */
+  _hold(el, prop, value) {
+    let snap = this._snap.get(el);
+    if (!snap) {
+      snap = new Map();
+      this._snap.set(el, snap);
+      this._owned.add(el);
+    }
+    if (!snap.has(prop)) {
+      snap.set(prop, { value: el.style.getPropertyValue(prop), priority: el.style.getPropertyPriority(prop) });
+    }
+    if (el.style.getPropertyValue(prop) !== value || el.style.getPropertyPriority(prop) !== 'important') {
+      el.style.setProperty(prop, value, 'important');
+    }
+  }
+
+  /** @private put the site's inline values back (empty original → removed) and forget the snapshot */
+  _restore(el) {
+    const snap = this._snap.get(el);
+    if (snap) {
+      for (const [prop, { value, priority }] of snap) {
+        if (value === '') el.style.removeProperty(prop);
+        else el.style.setProperty(prop, value, priority);
+      }
+    }
+    this._snap.delete(el);
+    this._owned.delete(el);
+  }
+
+  /**
+   * Restore owned elements that left the grid (item removed, opener / media replaced) and drop row vars of items that
+   * left. Runs on every sync (after a mutation).
+   * @private
+   */
+  _prune(items) {
+    const now = new Set(items);
+    const keep = new Set();
+    for (const it of items) {
+      const open = this._openOf(it);
+      if (open) keep.add(open);
+      const m = this._mediaOf(it);
+      if (m) keep.add(m);
+    }
+    for (const el of [...this._owned]) if (!keep.has(el)) this._restore(el);
+    for (const it of [...this._varItems]) if (!now.has(it)) this._clearRowVars(it);
+  }
+
+  /** @private disconnect: give everything back (snapshots, row vars, host flags) */
+  _release() {
+    for (const el of [...this._owned]) this._restore(el);
+    for (const it of [...this._varItems]) this._clearRowVars(it);
+    this.removeAttribute('data-td-layout');
+    this.removeAttribute('data-td-tick');
+    this._mode = null;
+    this._rowKey = '';
   }
 
   /** @private label / disabled → host + ticks (incremental, no re-render) */
@@ -228,6 +467,11 @@ export class TdMediaGrid extends TdBaseElement {
     for (const id of removed) this._selected.delete(id);
     if (this._anchor != null && !present.has(this._anchor)) this._anchor = null;
     this._paint(items);
+    this._prune(items);
+    if (!initial && this._mode) {
+      for (const item of items) this._size(item); // new items are sized at once (writes only), rows in the next rAF
+      this._schedule(true);
+    }
     if (removed.length && !initial) this._changed([], removed, true);
   }
 
