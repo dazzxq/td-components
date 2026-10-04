@@ -26,6 +26,7 @@ import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { settle, analyze, panel, inViewport } from './probe.js';
+import { hoverIntent } from './hover-intent.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OUT = join(ROOT, 'test', 'responsive', '__out__');
@@ -58,8 +59,8 @@ const SCENARIOS = [
   { name: 'tree-select', act: (p) => p.click('#g-ts .td-tree-select__trigger'), panel: '.td-tree-select__menu[data-state="open"]' },
   { name: 'multiselect', act: async (p) => { await p.click('#g-chips .td-chip-input__input'); await p.keyboard.press('ArrowDown'); }, panel: '.td-chip-input__menu[data-state="open"]' },
   { name: 'menu', act: (p) => p.click('#rsp-menu-btn button'), panel: '.td-menu' },
-  { name: 'tooltip', act: (p, c) => (c.touch ? p.tap('#rsp-tooltip') : p.hover('#rsp-tooltip')), panel: '.td-tooltip' },
-  { name: 'hovercard', mouseOnly: true, act: (p) => p.hover('#rsp-hovercard'), panel: '.td-hovercard' },
+  { name: 'tooltip', act: (p, c) => (c.touch ? p.tap('#rsp-tooltip') : hoverIntent(p, '#rsp-tooltip', '.td-tooltip', notes)), panel: '.td-tooltip' },
+  { name: 'hovercard', mouseOnly: true, act: (p) => hoverIntent(p, '#rsp-hovercard', '.td-hovercard[data-state="open"]', notes), panel: '.td-hovercard' },
   { name: 'toast', act: (p) => p.evaluate(() => window.__openers.toast()), panel: '.td-toasts', see: ['.td-toast:last-child', '.td-toast:nth-last-child(2)'] },
   { name: 'modal-confirm', act: (p) => p.evaluate(() => window.__openers.modalConfirm()), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer .td-btn:last-child'] },
   { name: 'modal-long', act: (p) => p.evaluate(() => window.__openers.modalLong()), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer .td-btn:last-child'] },
@@ -262,10 +263,49 @@ async function runOverlays(page, c, tag, shot) {
   }
 }
 
+/**
+ * Self-test of the hover helper (CI run 37201806355 regression): inject the layout shift that cancels the hover
+ * intent (content inserted above the trigger right after the hover). A plain hover must NOT open (proves the
+ * reproduction); hoverIntent must still open it (it re-aims once after a displacement).
+ */
+async function hoverSelfTest(browser, engine) {
+  const c = { engine, w: 360, h: 780, touch: false };
+  const { context, page } = await newPage(browser, c);
+  const shiftOnHover = () => page.evaluate(() => {
+    // shift 50 ms into the 350 ms intent (as late content / a font swap would), by 120px
+    document.getElementById('rsp-hovercard').addEventListener('pointerover', () => {
+      setTimeout(() => {
+        const d = document.createElement('div');
+        d.style.setProperty('height', '120px');
+        document.getElementById('root').prepend(d);
+      }, 50);
+    }, { once: true });
+  });
+  try {
+    await load(page);
+    await shiftOnHover();
+    await page.hover('#rsp-hovercard');
+    const plain = await page.locator('.td-hovercard[data-state="open"]').waitFor({ state: 'visible', timeout: 2000 }).then(() => true, () => false);
+    // whether the engine cancels a plain hover depends on when it dispatches its synthetic boundary events after a
+    // layout change (Firefox / WebKit: yes at 50 ms; Chromium: on its own timer) — informational, not asserted
+    notes.push(`${engine} hover self-test: plain hover with a layout shift during the intent ${plain ? 'still opened' : 'was cancelled (CI flake reproduced)'}`);
+    await load(page);
+    await shiftOnHover();
+    const own = [];
+    await hoverIntent(page, '#rsp-hovercard', '.td-hovercard[data-state="open"]', own);
+    const ok = await page.locator('.td-hovercard[data-state="open"]').isVisible();
+    check(`${engine} hover self-test`, 'hoverIntent re-aims after the shift and opens', ok ? [] : ['did not open']);
+    if (!plain) check(`${engine} hover self-test`, 'hoverIntent noticed the displacement and re-aimed', own.length ? [] : ['no re-aim note']);
+  } finally {
+    await context.close();
+  }
+}
+
 async function runEngine(name, launcher, configs) {
   if (!configs.length) return;
   const browser = await launcher.launch(await launchOptions(name, launcher));
   try {
+    if (!only) await hoverSelfTest(browser, name);
     // two pages at a time per engine: deterministic (separate contexts), roughly halves the wall time
     const queue = [...configs];
     const worker = async () => { for (let c = queue.shift(); c; c = queue.shift()) await runConfig(browser, c); };
