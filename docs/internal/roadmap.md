@@ -18,10 +18,12 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `todo` v0.32.1: picker — xoá + trình bày usage chặn xoá (`DeleteResult` `blocked`) + tải bản gốc (`download`) + ổn định
   picker; acceptance *delete-blocked* + *download* **chặn phát hành** bản này (interface adapter không đổi)
 - `todo` v0.33.0: `td-cropper` (toạ độ) + tích hợp crop vào picker / field (chỉ thêm UI; FormData `name[crop]` giữ nguyên)
-- `todo` v0.34.0: `td-table` dạng card + chọn dòng — viết ADR container-query **trước** khi bắt đầu
+- `todo` v0.34.0: responsive chuẩn toàn kit (xs < 480 · sm 480–719 · md 720–1023 · lg · xl; `short` ≤ 500 cao) + `td-table`
+  dạng card + gate responsive 3 engine (10 độ rộng + xoay ngang) — [ADR 0014](decisions/0014-breakpoints-container-queries.md)
+  (đề xuất), plan [v0.34.0-responsive](plans/v0.34.0-responsive.md) (audit đo 2026-10-04); gộp mục v0.37 cũ, chọn dòng → v0.36
 - `todo` v0.35.0: `td-scan-input` (A3)
-- `todo` v0.36.0: hook lọc ngoài + ẩn / hiện cột + `td-filter-chips` + datetime `range` + preset — xong P1
-- `todo` v0.37.0: responsive toàn kit + screenshot 8 độ rộng
+- `todo` v0.36.0: hook lọc ngoài + ẩn / hiện cột + chọn dòng `td-table` (chỗ trong card đã chừa ở v0.34) + `td-filter-chips` +
+  datetime `range` + preset — xong P1
 - `todo` v0.38+: field gallery / nhiều ảnh (`td-media-grid` + `td-sortable`)
 - `todo` sau v0.38: typeToConfirm, `trackFormDirty`, `td-steps`, `td-timeline`, `td-diff`, `td-check-matrix`, `td-color-picker`
 - Ngày từ v0.32.1 trở đi: **rebaseline từ ngày v0.31 xong thực tế** (không nén test / acceptance để giữ lịch cũ ~11/11 –

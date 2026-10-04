@@ -18,3 +18,4 @@ muốn đổi thì viết ADR mới và đánh dấu cái cũ `Superseded by`.
 | [0011](0011-minimal-surfaces.md) | Minimal surfaces thay Liquid Glass (nền + viền + một shadow, blur chỉ popup nhỏ) | Accepted 2026-10-02 |
 | [0012](0012-ssr-hydration.md) | SSR contract + hydrate tại chỗ (PHP in markup đã style, JS nhận tại chỗ; hết flash lúc tải) | Accepted 2026-10-03 |
 | [0013](0013-media-picker-boundary.md) | Media picker: kit sở hữu vỏ tương tác, app sở hữu adapter / quyền / lưu trữ; capability ≠ quyền; danh tính = `assetId`; FormData của media field là API công khai (supersede dòng "Không làm … media-picker", ADR 0007 giữ nguyên) | Accepted 2026-10-04 |
+| [0014](0014-breakpoints-container-queries.md) | Breakpoint có tên (480 / 720 / 1024 / 1280, `short` ≤ 500) + `@container` cho component trong dòng nội dung, `@media` cho lớp phủ / thiết bị; gate số breakpoint + luật nền (không tràn, chạm ≥ 44 khi coarse) | Proposed 2026-10-04 |
