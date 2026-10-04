@@ -3,8 +3,8 @@
  * with a fill is a SOLID colour (--td-btn-{v}-bg) + one soft shadow (--td-btn-lift); hover = another SOLID fill
  * (--td-btn-{v}-hover; -tint alias / custom colours: color-mix() with 8 % black — engines without color-mix() keep the
  * resting fill). No blur, film, sheen, rim, hairline, glow or press scale. Ghost and disabled have no shadow.
- * v0.21.0: primary = black (dark theme: inverted), success / danger / warning / info = pastel fill + same-hue ink +
- * -border; every filled variant hovers to its --td-btn-{v}-hover token.
+ * v0.21.0: primary = black (dark theme: inverted); every filled variant hovers to its --td-btn-{v}-hover token.
+ * v0.36.0: success / danger / warning / info = SOLID semantic fill (--td-solid-*, warning with a dark label) + -border.
  * Compatibility alias (one cycle): a site's --td-btn-{primary,success,danger,info,warning}-tint still becomes the fill.
  * Disabled = explicit opaque state colours (never element opacity). Increased contrast / forced colours drop the
  * shadow through the private --_td-btn-lift (glass.css fallbacks).
@@ -84,7 +84,7 @@
 	.td-btn--lg { min-height: 3rem; padding: 0 1.6rem; font-size: var(--td-text-base); }
 	.td-btn--full { display: flex; width: 100%; }
 
-	/* Solid variants: fill -bg, ink -fg, edge -border, hover -hover (v0.21.0: primary black, semantic pastel).
+	/* Solid variants: fill -bg, ink -fg, edge -border, hover -hover (v0.21.0: primary black; v0.36.0: semantic solid).
 	   -tint = the v0.20.0 compatibility alias: when a site sets it, it becomes the fill AND the edge (--_td-btn-tint is
 	   guaranteed-invalid when the alias is unset, so var() falls through to the kit token) and the hover is 8 % darker. */
 	.td-btn--primary {

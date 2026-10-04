@@ -31,8 +31,10 @@ const FOCUSABLE = [
  *     <button type="button" role="tab" class="td-tabs__tab" id="{host-id}-tab-{i}" data-tab-id="{id}"
  *             aria-selected="true|false" tabindex="0|-1" [aria-controls="{panel}"]>
  *       [<span class="td-tabs__icon" data-td-icon="{name}" aria-hidden="true">svg</span>]
- *       <span class="td-tabs__label">{label}</span>
+ *       <span class="td-tabs__label" data-label="{label}">{label}</span>
  *     </button>…
+ *   v0.36.0 (plan QĐ 16): `data-label` feeds `.td-tabs__label::after` (0 px tall, hidden, semibold) — every label is as
+ *   wide as its bold rendering, so switching the active (bold) tab never moves text or neighbours.
  *   </div>
  *   Empty: <div class="td-tabs td-tabs--{size}" data-state="empty"></div>
  *
@@ -191,7 +193,8 @@ export class TdTabs extends TdBaseElement {
       const controls = tab.panel ? ` aria-controls="${this.escapeHtml(tab.panel)}"` : '';
       return `<button type="button" role="tab" class="td-tabs__tab" id="${this.escapeHtml(this._tabDomId(i))}"`
         + ` data-tab-id="${this.escapeHtml(tab.id)}" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"${controls}>`
-        + `${this._iconMarkup(tab.icon)}<span class="td-tabs__label">${this.escapeHtml(tab.label)}</span></button>`;
+        + `${this._iconMarkup(tab.icon)}<span class="td-tabs__label" data-label="${this.escapeHtml(tab.label)}">`
+        + `${this.escapeHtml(tab.label)}</span></button>`;
     }).join('');
     // Keep the current mode on a re-render (no flash); afterRender re-decides from a fresh measurement.
     const overflow = this._overflow ? ' data-overflow=""' : '';

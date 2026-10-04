@@ -136,8 +136,9 @@
 		--td-touch-min: 44px; /* minimum hit target for touch controls */
 
 		/* ===== Pastel semantic palette (v0.21.0) — soft fill (~100) + border (~200) + deep ink (~800/900) of the same hue.
-		   Used by the semantic buttons, the soft badges and the toasts. Dark (theme-dark.css): the semantic colour ~18 %
-		   pre-mixed on the dark page (solid), border ~30 %, ink ~200. Ink ≥ 4.7:1 on fill and border (contrast gate). */
+		   DEPRECATED v0.36.0: no component uses it as its default fill any more (buttons / badges → --td-solid-*); kept so a
+		   site can restore the pastel look (docs/upgrading/breaking-changes.md § 0.36.0). Dark (theme-dark.css): the semantic
+		   colour ~18 % pre-mixed on the dark page (solid), border ~30 %, ink ~200. Ink ≥ 4.7:1 on fill and border. */
 		--td-pastel-success-bg: #dcfce7;
 		--td-pastel-success-border: #bbf7d0;
 		--td-pastel-success-fg: #14532d;
@@ -151,9 +152,30 @@
 		--td-pastel-info-border: #bfdbfe;
 		--td-pastel-info-fg: #1e3a8a;
 
+		/* ===== Solid semantic palette (v0.36.0, plan QĐ 18) — "normal" status colours like dcms2: fill -bg, label -fg
+		   (≥ 4.7:1 on -bg AND on -hover — contrast gate), -hover one step darker, -border = the hover step. Warning carries
+		   DARK text (no amber that still reads as yellow reaches 4.5:1 with white). Read by the semantic buttons and the
+		   badges (toasts: their own tokens). Same values in theme-dark.css (white on 600/700 reads on a dark page too). */
+		--td-solid-success-bg: #15803d;
+		--td-solid-success-fg: #fff;
+		--td-solid-success-hover: #166534;
+		--td-solid-success-border: #166534;
+		--td-solid-danger-bg: #dc2626;
+		--td-solid-danger-fg: #fff;
+		--td-solid-danger-hover: #b91c1c;
+		--td-solid-danger-border: #b91c1c;
+		--td-solid-warning-bg: #f59e0b;
+		--td-solid-warning-fg: #18181b;
+		--td-solid-warning-hover: #d97706;
+		--td-solid-warning-border: #d97706;
+		--td-solid-info-bg: #2563eb;
+		--td-solid-info-fg: #fff;
+		--td-solid-info-hover: #1d4ed8;
+		--td-solid-info-border: #1d4ed8;
+
 		/* ===== Buttons — v0.20.0 minimal surfaces: SOLID fill + one soft shadow (--td-btn-lift), no blur / film / sheen /
-		   rim / glow / scale. v0.21.0: primary is BLACK (dark theme: inverted) with its own hover token; success / danger /
-		   warning / info are PASTEL (fill + same-hue ink + -border, hover = the ~200 step). Each filled variant reads
+		   rim / glow / scale. v0.21.0: primary is BLACK (dark theme: inverted) with its own hover token. v0.36.0: success /
+		   danger / warning / info are SOLID (--td-solid-*: fill + white / dark label + -border, hover one step darker). Each filled variant reads
 		   -bg / -fg / -border / -hover. A site that changes -bg should set -hover too (otherwise hover keeps the default).
 		   Primary back on the site accent: --td-btn-primary-bg: var(--td-accent-fill) + --td-btn-primary-hover.
 		   Compatibility alias for one cycle: a site that still sets --td-btn-{primary,success,danger,info,warning}-tint
@@ -167,22 +189,22 @@
 		--td-btn-secondary-fg: var(--td-gray-900);
 		--td-btn-secondary-border: rgb(0 0 0 / 12%);
 		--td-btn-secondary-hover: var(--td-gray-200);
-		--td-btn-success-bg: var(--td-pastel-success-bg);
-		--td-btn-success-fg: var(--td-pastel-success-fg);
-		--td-btn-success-border: var(--td-pastel-success-border);
-		--td-btn-success-hover: var(--td-pastel-success-border);
-		--td-btn-danger-bg: var(--td-pastel-danger-bg);
-		--td-btn-danger-fg: var(--td-pastel-danger-fg);
-		--td-btn-danger-border: var(--td-pastel-danger-border);
-		--td-btn-danger-hover: var(--td-pastel-danger-border);
-		--td-btn-info-bg: var(--td-pastel-info-bg);
-		--td-btn-info-fg: var(--td-pastel-info-fg);
-		--td-btn-info-border: var(--td-pastel-info-border);
-		--td-btn-info-hover: var(--td-pastel-info-border);
-		--td-btn-warning-bg: var(--td-pastel-warning-bg);
-		--td-btn-warning-fg: var(--td-pastel-warning-fg);
-		--td-btn-warning-border: var(--td-pastel-warning-border);
-		--td-btn-warning-hover: var(--td-pastel-warning-border);
+		--td-btn-success-bg: var(--td-solid-success-bg);
+		--td-btn-success-fg: var(--td-solid-success-fg);
+		--td-btn-success-border: var(--td-solid-success-border);
+		--td-btn-success-hover: var(--td-solid-success-hover);
+		--td-btn-danger-bg: var(--td-solid-danger-bg);
+		--td-btn-danger-fg: var(--td-solid-danger-fg);
+		--td-btn-danger-border: var(--td-solid-danger-border);
+		--td-btn-danger-hover: var(--td-solid-danger-hover);
+		--td-btn-info-bg: var(--td-solid-info-bg);
+		--td-btn-info-fg: var(--td-solid-info-fg);
+		--td-btn-info-border: var(--td-solid-info-border);
+		--td-btn-info-hover: var(--td-solid-info-hover);
+		--td-btn-warning-bg: var(--td-solid-warning-bg);
+		--td-btn-warning-fg: var(--td-solid-warning-fg);
+		--td-btn-warning-border: var(--td-solid-warning-border);
+		--td-btn-warning-hover: var(--td-solid-warning-hover);
 		/* v0.14.3: disabled reads as greyed out — pale fill, muted label (WCAG 1.4.3 exempts disabled controls; the
 		   contrast gate keeps it ≥ 2.2:1 so it stays legible). Opaque: a state colour, never element opacity. */
 		--td-btn-disabled-bg: #f4f4f5;

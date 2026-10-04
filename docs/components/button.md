@@ -3,7 +3,8 @@
 # Button — `<td-button>`
 
 Nút bấm màu đặc (minimal surfaces, 0.20.0): **primary màu đen** (0.21.0; theme tối đảo thành nền sáng chữ đen),
-success / danger / info / warning là **nền pastel** + chữ đậm cùng tông + viền mảnh cùng tông (0.21.0), secondary là
+success / danger / info / warning là **màu đặc ngữ nghĩa** (0.36.0: xanh lá / đỏ / xanh dương chữ trắng, vàng hổ phách
+**chữ đậm tối**; trước đó là pastel), secondary là
 nền xám nhạt có viền mảnh, ghost là nút chữ không nền. Mỗi nút có một bóng mềm. Dùng cho mọi hành động (lưu, gửi form, mở modal…). Cần một
 **đường dẫn trông như nút** (chuyển trang, tải file) thì thêm `href`: `td-button` render `<a>` thật (xem
 [Nút dạng link](#nút-dạng-link-href)). Nếu cần nút có menu con, dùng [menu](menu.md) gắn vào một `td-button`.
@@ -395,10 +396,10 @@ thắng các lớp `td.*`. Xem thêm [Theming](../customization/theming.md) và 
 | `--td-btn-primary-fg` | `#fff` (dark `#18181b`) | Màu chữ primary. |
 | `--td-btn-primary-hover` | `#3f3f46` (dark `#d4d4d8`) | Nền primary khi hover (0.21.0) — đen không đậm hơn được nên hover **sáng lên**. |
 | `--td-btn-primary-border` | `transparent` | Viền primary (0.21.0). |
-| `--td-btn-success-bg` / `-fg` / `-border` / `-hover` | `var(--td-pastel-success-*)`: `#dcfce7` / `#14532d` / `#bbf7d0` / `#bbf7d0` | Success pastel (0.21.0). |
-| `--td-btn-danger-bg` / `-fg` / `-border` / `-hover` | `var(--td-pastel-danger-*)`: `#fee2e2` / `#7f1d1d` / `#fecaca` / `#fecaca` | Danger pastel. |
-| `--td-btn-info-bg` / `-fg` / `-border` / `-hover` | `var(--td-pastel-info-*)`: `#dbeafe` / `#1e3a8a` / `#bfdbfe` / `#bfdbfe` | Info pastel. |
-| `--td-btn-warning-bg` / `-fg` / `-border` / `-hover` | `var(--td-pastel-warning-*)`: `#fef3c7` / `#78350f` / `#fde68a` / `#fde68a` | Warning pastel. |
+| `--td-btn-success-bg` / `-fg` / `-border` / `-hover` | `var(--td-solid-success-*)`: `#15803d` / `#fff` / `#166534` / `#166534` | Success đặc (0.36.0; 0.21–0.35 pastel). |
+| `--td-btn-danger-bg` / `-fg` / `-border` / `-hover` | `var(--td-solid-danger-*)`: `#dc2626` / `#fff` / `#b91c1c` / `#b91c1c` | Danger đặc. |
+| `--td-btn-info-bg` / `-fg` / `-border` / `-hover` | `var(--td-solid-info-*)`: `#2563eb` / `#fff` / `#1d4ed8` / `#1d4ed8` | Info đặc. |
+| `--td-btn-warning-bg` / `-fg` / `-border` / `-hover` | `var(--td-solid-warning-*)`: `#f59e0b` / `#18181b` / `#d97706` / `#d97706` | Warning đặc, **chữ tối** (vàng + chữ trắng không bao giờ đạt tương phản). |
 | `--td-btn-secondary-bg` / `-fg` | `var(--td-gray-100)` / `var(--td-gray-900)` | Nền đặc + chữ của secondary. |
 | `--td-btn-secondary-border` | `rgb(0 0 0 / 12%)` | Viền mảnh của secondary. |
 | `--td-btn-secondary-hover` | `var(--td-gray-200)` | Nền secondary khi hover. |
@@ -407,20 +408,21 @@ thắng các lớp `td.*`. Xem thêm [Theming](../customization/theming.md) và 
 | `--td-btn-ghost-fg` | `var(--td-accent)` (#2563eb; dark #3b82f6) | Màu chữ/icon của ghost (0.17.0). |
 | `--td-btn-ghost-hover-bg` | `var(--td-color-hover)` (`rgb(0 0 0 / 5%)`; dark `rgb(255 255 255 / 6%)`) | Nền khi hover của ghost (0.17.0). |
 
-**Hover (0.21.0):** mỗi variant có nền đọc token `--td-btn-{v}-hover` của nó (primary `#3f3f46`, pastel = bậc ~200
-cùng tông, secondary `--td-btn-secondary-hover`). Nút màu tuỳ chỉnh (`color`) và alias `-tint` vẫn hover bằng
+**Hover (0.21.0):** mỗi variant có nền đọc token `--td-btn-{v}-hover` của nó (primary `#3f3f46`, ngữ nghĩa = bậc đậm
+hơn một nấc — 0.36.0, chữ vẫn ≥ 4.7:1, secondary `--td-btn-secondary-hover`). Nút màu tuỳ chỉnh (`color`) và alias `-tint` vẫn hover bằng
 `color-mix(in srgb, <nền> 92%, #000)`. **Đổi `-bg` thì đặt kèm `-hover`**: kit không tự suy hover từ `-bg` của site,
-nên nếu chỉ đổi `-bg`, hover vẫn là màu mặc định (pastel / xám đen) — trông lệch tông.
+nên nếu chỉ đổi `-bg`, hover vẫn là màu mặc định — trông lệch tông.
 
 Theme tối (`<html data-td-theme="dark">`) đổi: primary **đảo** (`--td-btn-primary-bg` `#f4f4f5`, `-fg` `#18181b`,
-`-hover` `#d4d4d8` — nền đen sẽ chìm vào trang tối), pastel tối (màu ngữ nghĩa ~18 % trộn sẵn trên nền tối, viền ~30 %,
-chữ bậc ~200: success `#143121` / `#16472a` / `#bbf7d0`, danger `#391a1c` / `#542022` / `#fecaca`, warning `#3a2a12` /
-`#553b11` / `#fde68a`, info `#19253c` / `#1e3357` / `#bfdbfe` — nền / viền + hover / chữ), `--td-btn-secondary-bg` /
+`-hover` `#d4d4d8` — nền đen sẽ chìm vào trang tối), nút ngữ nghĩa **giữ cùng màu đặc** như theme sáng (0.36.0),
+`--td-btn-secondary-bg` /
 `-fg` / `-border` / `-hover` #2c2c30 / #f5f5f7 / `rgb(255 255 255 / 12%)` / #3a3a3e, `--td-btn-disabled-bg/-fg/-border`
 #202024 / #6b6b73 / `rgb(255 255 255 / 6%)`, `--td-btn-lift` đậm gấp đôi (20 % / 24 %).
 
-Bảng màu pastel dùng chung (`--td-pastel-{success,danger,warning,info}-bg/-border/-fg`, cũng cho badge và toast): xem
-[Theming › Màu pastel](../customization/theming.md#màu-pastel-0210).
+Bảng màu đặc dùng chung (`--td-solid-{success,danger,warning,info}-bg/-fg/-hover/-border`, cũng cho badge): xem
+[Theming › Màu ngữ nghĩa đặc](../customization/theming.md#màu-ngữ-nghĩa-đặc-0360). Muốn **trả nút về pastel** như
+0.21–0.35: đoạn CSS ở [Thay đổi phá vỡ › 0.36.0](../upgrading/breaking-changes.md#0360). Nút chỉ có icon dạng nút
+thao tác (sửa / xoá / xem… như dcms2): dùng [`<td-action-button>`](action-button.md).
 
 #### Đưa primary về màu accent
 
@@ -452,13 +454,13 @@ Sau khi đổi màu nền, tự kiểm tra tương phản chữ (kit chỉ đo c
 `--td-btn-sheen`, `--td-btn-secondary-glass` (→ `--td-btn-secondary-bg`), `--td-btn-secondary-edge` (→
 `--td-btn-secondary-border`). **Alias một chu kỳ:** `--td-btn-{primary,success,danger,info,warning}-tint` nếu site còn
 đặt thì vẫn thành nền **và viền** nút, hover = nền đậm 8 % (`color-mix`); chữ vẫn là `--td-btn-{v}-fg` — từ 0.21.0
-chữ mặc định của variant ngữ nghĩa là màu đậm (cho nền pastel), nên site dùng `-tint` màu đậm phải đặt kèm
-`--td-btn-{v}-fg: #fff`. Nên đổi sang `--td-btn-{v}-bg` + `-hover`.
+chữ mặc định của variant ngữ nghĩa là màu đậm (cho nền pastel); từ 0.36.0 là trắng (warning: `#18181b`) cho nền đặc —
+site dùng `-tint` thì kiểm lại `--td-btn-{v}-fg` cho hợp nền của mình. Nên đổi sang `--td-btn-{v}-bg` + `-hover`.
 
 ### Giao diện của button (0.20.0 — minimal surfaces)
 
-- **Mọi variant có nền** = màu **đặc** `--td-btn-{v}-bg` + viền `--td-btn-{v}-border` (0.21.0: pastel có viền cùng
-  tông; primary trong suốt) + **một** bóng `--td-btn-lift`. Không blur, không phim, không vệt sáng, không viền sáng.
+- **Mọi variant có nền** = màu **đặc** `--td-btn-{v}-bg` + viền `--td-btn-{v}-border` (0.36.0: ngữ nghĩa đặc, viền = bậc
+  hover; primary trong suốt) + **một** bóng `--td-btn-lift`. Không blur, không phim, không vệt sáng, không viền sáng.
 - **Hover** = nền đặc khác, đọc `--td-btn-{v}-hover` (0.21.0). Không glow, không phóng to.
 - **Nhấn** = không thu nhỏ (bỏ press scale).
 - **Focus bàn phím** = vòng `--td-focus-ring` (giữ).

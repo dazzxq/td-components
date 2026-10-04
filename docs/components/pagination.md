@@ -234,7 +234,8 @@ chỉ `active-color` mới tự tính màu chữ.
 </td-pagination>
 ```
 
-- Trang hiện tại: `.td-pagination__page[aria-current="page"]`.
+- Trang hiện tại: `.td-pagination__page[aria-current="page"]` (in đậm; 0.36.0: `::after { content: attr(data-page) }` ẩn giữ
+  chỗ bề rộng chữ đậm nên nút trang không rộng ra / các nút bên cạnh không xê dịch khi đổi trang — đo trước khi sửa: lệch tới 2.3 px).
 - Nút trước/sau ở đầu/cuối: `[aria-disabled="true"]` (vẫn focus được, click bị chặn).
 - `data-rel` trên mỗi `<li>` (v0.34.0) — xem [Responsive](#responsive-v0340). Markup render sẵn từ server nên có luôn
   `data-rel` + các `<li data-rel="gap">` (thiếu thì dạng gọn trước khi JS chạy sẽ hiện đủ trang) và

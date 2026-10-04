@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.36.0](#0360) | Đổi giao diện (màu ngữ nghĩa, badge, alert; các mục khác của bản xem dưới) | Không bắt buộc. Nút / badge ngữ nghĩa thành màu đặc (warning chữ tối), badge viền + bóng, alert vạch mép; muốn pastel cũ: đoạn CSS khôi phục. Thêm `<td-action-button>` / `td_action_button()`. |
 | [0.35.0](#0350) | Đổi hành vi (nhỏ, chỉ khi đã bật `crop` / `focal-point`) | Không bắt buộc. Thêm `<td-cropper>` (`./cropper`), `TdCropper.openDialog()`, field `croppable` / `focal-point` / `name[focal]` (opt-in), PHP `croppable` / `crop_ratio` / `focal_point` / `focal`. Site đã truyền `crop: { enabled: true }` cho picker: "Chèn" giờ mở **bước cắt**, `urls.preview` phải là ảnh nguyên, `aspectRatio` trong [0.01, 100]. Field không `croppable` không đổi; `selection.focalPoint` thật khi có `focal-point`. Import map: thêm `cropper`. |
 | [0.34.0](#0340) | Đổi giao diện + đổi DOM (nhỏ) | Responsive: modal sheet < 720 (trước ≤ 640), `td-table` tự thành card khi hẹp (`layout="table"` để giữ cũ), `textContent` của ô bảng có thêm nhãn cột ẩn, site chỉ đè `--td-media-grid-row-ratio` giờ chỉ áp lưới ≥ 1024px. |
 | [0.33.0](#0330) | Đổi giao diện + đổi văn bản (không breaking API) | Không bắt buộc sửa code. Media picker full viewport giống dcms2: nhãn mặc định đổi ("Chọn ({n})" → "Chèn ({n})", "Huỷ" → "Đóng", "Thư viện media" → tiêu đề theo `selection.kinds`), `pageSize` 40 → 30, "Tải thêm" → phân trang, bỏ khay thumb. `td-media-grid`: ô đã chọn hết thu nhỏ / nền, thành vòng inset; grid tự đặt kích thước `img` (CSS site trên `img` không còn thắng — dùng token). |
@@ -62,6 +63,42 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.36.0
+
+### Màu ngữ nghĩa đặc, badge viền, alert vạch mép, tab, nút thao tác
+
+**Đổi giao diện** — không phải sửa code. Nút / badge ngữ nghĩa từ pastel sang **màu đặc** (`--td-solid-*`, như dcms2);
+**warning chữ tối** trên nền vàng hổ phách (vàng + chữ trắng không bao giờ đạt tương phản); badge có nền thêm **viền 1px
++ bóng nhẹ**; badge `--outline` / `--stamp` dùng mực `--td-badge-{v}-ink`; alert giữ nền nhạt nhưng có **vạch 4px màu
+đặc ở mép đầu dòng**, icon màu đặc, viền đậm lên một bậc. Tab: nhãn giữ chỗ bề rộng chữ đậm (đổi tab không xê dịch chữ);
+phân trang: trang hiện tại không còn rộng hơn khi in đậm. Thêm `<td-action-button>` (`./action-button`) + PHP
+`td_action_button()` (import map tự liệt kê; gõ tay thì thêm `"@dazzxq/td-components/action-button"`).
+
+- Token pastel `--td-pastel-*` **vẫn khai báo** (deprecated) nhưng không còn là nền mặc định của component nào. Site đã
+  đổi `--td-pastel-*` để chỉnh màu nút / badge: chuyển sang `--td-solid-*` (hoặc `--td-btn-{v}-*` / `--td-badge-{v}-*`).
+- Site muốn **giữ giao diện pastel** của 0.21–0.35 (nút + badge; toast xem mục toast của bản này), dán vào CSS không
+  layer của site:
+
+```css
+:root {
+  --td-btn-success-bg: var(--td-pastel-success-bg); --td-btn-success-fg: var(--td-pastel-success-fg); --td-btn-success-border: var(--td-pastel-success-border); --td-btn-success-hover: var(--td-pastel-success-border);
+  --td-btn-danger-bg: var(--td-pastel-danger-bg); --td-btn-danger-fg: var(--td-pastel-danger-fg); --td-btn-danger-border: var(--td-pastel-danger-border); --td-btn-danger-hover: var(--td-pastel-danger-border);
+  --td-btn-warning-bg: var(--td-pastel-warning-bg); --td-btn-warning-fg: var(--td-pastel-warning-fg); --td-btn-warning-border: var(--td-pastel-warning-border); --td-btn-warning-hover: var(--td-pastel-warning-border);
+  --td-btn-info-bg: var(--td-pastel-info-bg); --td-btn-info-fg: var(--td-pastel-info-fg); --td-btn-info-border: var(--td-pastel-info-border); --td-btn-info-hover: var(--td-pastel-info-border);
+  --td-badge-success-bg: var(--td-pastel-success-bg); --td-badge-success-fg: var(--td-pastel-success-fg); --td-badge-success-ink: var(--td-pastel-success-fg);
+  --td-badge-danger-bg: var(--td-pastel-danger-bg); --td-badge-danger-fg: var(--td-pastel-danger-fg); --td-badge-danger-ink: var(--td-pastel-danger-fg);
+  --td-badge-warning-bg: var(--td-pastel-warning-bg); --td-badge-warning-fg: var(--td-pastel-warning-fg); --td-badge-warning-ink: var(--td-pastel-warning-fg);
+  --td-badge-info-bg: var(--td-pastel-info-bg); --td-badge-info-fg: var(--td-pastel-info-fg); --td-badge-info-ink: var(--td-pastel-info-fg);
+  --td-badge-shadow: none; /* badge không viền: thêm --td-badge-{neutral,accent,success,danger,warning,info}-border: transparent */
+  --td-alert-accent-width: 1px; /* alert không vạch: kèm --td-alert-{v}-accent bằng --td-alert-{v}-border */
+}
+```
+
+- Theme tối (opt-in): nút ngữ nghĩa giờ dùng **cùng màu đặc** như theme sáng (trước: pastel tối trộn sẵn).
+- Visual baseline / ảnh chụp so sánh của site có nút / badge / alert ngữ nghĩa sẽ đổi — có chủ đích.
 
 ---
 

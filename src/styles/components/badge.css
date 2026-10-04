@@ -5,8 +5,13 @@
  * Variants: --neutral (default) | --accent | --success | --warning | --danger | --info.
  * Modifiers: --outline (transparent, currentColor border) · --stamp (uppercase, double border, slight tilt like the
  * 135 `td-stamp`; tilt token `--td-badge-stamp-rotate: 0deg` turns it off, colours follow the variant tokens).
- * The ink (--td-badge-{v}-fg) is ≥ 4.7:1 on its own fill AND on the page (outline / stamp), light + dark
- * (test/tokens/contrast.spec.mjs).
+ * v0.36.0 (plan QĐ 21–22): success / warning / danger / info are SOLID (--td-solid-*: white label, warning dark). A
+ * filled badge has a 1px edge (--td-badge-{v}-border = the fill mixed with 30 % black, PRECOMPUTED hex — no color-mix,
+ * Chrome 102) + a soft shadow (--td-badge-shadow), so a badge on a background of its own colour keeps its outline.
+ * Outline / stamp (transparent) use the page ink --td-badge-{v}-ink (a white -fg would vanish) and no shadow.
+ * The label is ≥ 4.7:1 on its fill and the ink on the page; the edge ≥ 1.6:1 vs its fill / white / #f4f4f5 (badges are
+ * not interactive — the text carries the information) — light + dark (test/tokens/contrast.spec.mjs).
+ * `prefers-contrast: more` → currentColor edge, no shadow.
  * Fonts (v0.19.0 G4): --td-badge-font-family (default the sans stack) and --td-badge-stamp-font-family (default the
  * mono stack). A site overriding --td-badge-*-fg / -bg must check the contrast itself (the gate measures defaults).
  */
@@ -20,15 +25,27 @@
 		/* accent: static fallback (= info) without color-mix(); @supports below follows the site accent */
 		--td-badge-accent-bg: #dbeafe;
 		--td-badge-accent-fg: #1e40af;
-		/* v0.21.0: the semantic soft badges share the pastel palette (tokens.css / theme-dark.css) */
-		--td-badge-success-bg: var(--td-pastel-success-bg);
-		--td-badge-success-fg: var(--td-pastel-success-fg);
-		--td-badge-warning-bg: var(--td-pastel-warning-bg);
-		--td-badge-warning-fg: var(--td-pastel-warning-fg);
-		--td-badge-danger-bg: var(--td-pastel-danger-bg);
-		--td-badge-danger-fg: var(--td-pastel-danger-fg);
-		--td-badge-info-bg: var(--td-pastel-info-bg);
-		--td-badge-info-fg: var(--td-pastel-info-fg);
+		/* v0.36.0: the semantic badges are solid (tokens.css --td-solid-*); -ink = outline / stamp text on the page */
+		--td-badge-success-bg: var(--td-solid-success-bg);
+		--td-badge-success-fg: var(--td-solid-success-fg);
+		--td-badge-success-ink: #15803d;
+		--td-badge-warning-bg: var(--td-solid-warning-bg);
+		--td-badge-warning-fg: var(--td-solid-warning-fg);
+		--td-badge-warning-ink: #b45309;
+		--td-badge-danger-bg: var(--td-solid-danger-bg);
+		--td-badge-danger-fg: var(--td-solid-danger-fg);
+		--td-badge-danger-ink: #b91c1c;
+		--td-badge-info-bg: var(--td-solid-info-bg);
+		--td-badge-info-fg: var(--td-solid-info-fg);
+		--td-badge-info-ink: #2563eb;
+		/* edge = fill + 30 % black, precomputed (accent: of the static #dbeafe fill) */
+		--td-badge-neutral-border: #ababac;
+		--td-badge-accent-border: #99a4b2;
+		--td-badge-success-border: #0f5a2b;
+		--td-badge-danger-border: #9a1b1b;
+		--td-badge-warning-border: #ac6f08;
+		--td-badge-info-border: #1a45a5;
+		--td-badge-shadow: 0 1px 2px rgb(0 0 0 / 12%);
 		--td-badge-stamp-font-family: var(--td-font-mono);
 		--td-badge-stamp-rotate: -4deg;
 		--td-badge-stamp-border: 3px;
@@ -40,6 +57,11 @@
 		--td-badge-neutral-fg: #e4e4e7;
 		--td-badge-accent-bg: #172554;
 		--td-badge-accent-fg: #bfdbfe;
+		/* v0.36.0: outline / stamp ink on the DARK page (the light-theme ~700 inks are too dark there) */
+		--td-badge-success-ink: #86efac;
+		--td-badge-warning-ink: #fcd34d;
+		--td-badge-danger-ink: #fca5a5;
+		--td-badge-info-ink: #93c5fd;
 	}
 
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
@@ -71,8 +93,9 @@
 		white-space: nowrap;
 		vertical-align: middle;
 		background-color: var(--td-badge-neutral-bg);
-		border: 1px solid transparent;
+		border: 1px solid var(--td-badge-neutral-border);
 		border-radius: var(--td-badge-radius);
+		box-shadow: var(--td-badge-shadow);
 	}
 
 	/* v0.25.0: optional decorative icon (PHP td_badge `icon`) — 1em, follows the badge ink (currentColor) */
@@ -89,15 +112,22 @@
 		height: 1em;
 	}
 
-	.td-badge--accent { color: var(--td-badge-accent-fg); background-color: var(--td-badge-accent-bg); }
-	.td-badge--success { color: var(--td-badge-success-fg); background-color: var(--td-badge-success-bg); }
-	.td-badge--warning { color: var(--td-badge-warning-fg); background-color: var(--td-badge-warning-bg); }
-	.td-badge--danger { color: var(--td-badge-danger-fg); background-color: var(--td-badge-danger-bg); }
-	.td-badge--info { color: var(--td-badge-info-fg); background-color: var(--td-badge-info-bg); }
+	.td-badge--accent { color: var(--td-badge-accent-fg); background-color: var(--td-badge-accent-bg); border-color: var(--td-badge-accent-border); }
+	.td-badge--success { color: var(--td-badge-success-fg); background-color: var(--td-badge-success-bg); border-color: var(--td-badge-success-border); }
+	.td-badge--warning { color: var(--td-badge-warning-fg); background-color: var(--td-badge-warning-bg); border-color: var(--td-badge-warning-border); }
+	.td-badge--danger { color: var(--td-badge-danger-fg); background-color: var(--td-badge-danger-bg); border-color: var(--td-badge-danger-border); }
+	.td-badge--info { color: var(--td-badge-info-fg); background-color: var(--td-badge-info-bg); border-color: var(--td-badge-info-border); }
+
+	/* transparent modifiers: the page ink (v0.36.0 -ink for the solid variants), currentColor edge, no shadow */
+	.td-badge--success:is(.td-badge--outline, .td-badge--stamp) { color: var(--td-badge-success-ink); }
+	.td-badge--warning:is(.td-badge--outline, .td-badge--stamp) { color: var(--td-badge-warning-ink); }
+	.td-badge--danger:is(.td-badge--outline, .td-badge--stamp) { color: var(--td-badge-danger-ink); }
+	.td-badge--info:is(.td-badge--outline, .td-badge--stamp) { color: var(--td-badge-info-ink); }
 
 	.td-badge--outline {
 		background-color: transparent;
 		border-color: currentcolor;
+		box-shadow: none;
 	}
 
 	.td-badge--stamp {
@@ -109,7 +139,15 @@
 		background-color: transparent;
 		border: var(--td-badge-stamp-border) double currentcolor;
 		border-radius: var(--td-badge-stamp-radius);
+		box-shadow: none;
 		transform: rotate(var(--td-badge-stamp-rotate));
+	}
+
+	@media (prefers-contrast: more) {
+		.td-badge {
+			border-color: currentcolor;
+			box-shadow: none;
+		}
 	}
 
 	@media (forced-colors: active) {

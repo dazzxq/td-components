@@ -18,7 +18,7 @@ Mọi import đều theo dạng `@dazzxq/td-components/<tên>` (xem [Cài đặt
 nạp `td.css` một lần cho cả trang.
 
 **Render phía server (SSR) từ PHP:** dùng [adapter PHP](../guides/php-adapter.md) `php/td.php` ship kèm gói —
-`td_button`, `td_link`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_masked_value`, `td_media_field` in đúng markup của component
+`td_button`, `td_link`, `td_action_button`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_masked_value`, `td_media_field` in đúng markup của component
 (control native, chạy không cần JS). Component không có helper PHP (menu, table, tabs, pagination, empty-state, trigger
 lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong trang của nó (mục cấu trúc DOM / SSR).
 
@@ -27,6 +27,7 @@ lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong 
 | Component | Dạng | Import | Form-associated | Dùng để |
 |---|---|---|---|---|
 | [Button](button.md) | `<td-button>` | `/button` | không (nhưng `type="submit"` gửi form cha) | Nút bấm: 6 biến thể màu đặc + ghost, loading, icon, `run(asyncFn)` chống bấm đúp |
+| [Action button](action-button.md) | `<td-action-button>` | `/action-button` | không | (0.36.0) Nút thao tác vuông chỉ icon như dcms2 `ActionButtons`: 23 preset (sửa / xem / xoá / gửi…), tooltip = nhãn, 3 tone × 3 cỡ, `registerPreset()`, PHP `td_action_button` |
 | [Input field](input-field.md) | `<td-input-field>` | `/input-field` | có | Ô nhập text/số/email/mật khẩu/textarea, label, ghi chú, lỗi, đếm ký tự, tự giãn |
 | [Checkbox](checkbox.md) | `<td-checkbox>` | `/checkbox` | có | Ô chọn (tròn), trạng thái lỗi |
 | [Toggle](toggle.md) | `<td-toggle>` | `/toggle` | có | Công tắc bật/tắt, `commit()` lạc quan có trạng thái chờ |
