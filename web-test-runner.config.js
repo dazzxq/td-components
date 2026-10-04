@@ -31,7 +31,8 @@ function engineLaunchOptions(name) {
 const POINTER_FILES = ['src/display/td-v031-sortable.engines.browser-test.js', 'src/form/td-v031-repeater-sortable.engines.browser-test.js',
   'src/form/td-v035-cropper.engines.browser-test.js',
   // v0.36.0: real modifier + mouse clicks on the media grid
-  'src/display/td-v036-media-grid-shortcuts.engines.browser-test.js', 'src/feedback/td-v036-media-picker-shortcuts.engines.browser-test.js'];
+  'src/display/td-v036-media-grid-shortcuts.engines.browser-test.js', 'src/feedback/td-v036-media-picker-shortcuts.engines.browser-test.js',
+  'src/feedback/td-v036-lightbox-menu-dismiss.engines.browser-test.js'];
 
 /** All src stories (for src/stories-dom.browser-test.js). */
 function storyFiles(dir = 'src', out = []) {

@@ -282,6 +282,12 @@ trùng — vẫn một điểm Tab cho mỗi hành động, nhãn giữ "Ảnh t
 
 Overlay mang `data-nav="side" | "side-compact" | "toolbar"` (chế độ hiện tại) để site đọc khi cần.
 
+**Bấm ra ngoài menu trong lightbox chỉ đóng menu (0.36.0):** khi menu tải về (nhiều biến thể) hoặc menu "Thêm" đang
+mở, một cú **bấm chuột** ra ngoài chỉ đóng menu và trả focus về nút mở menu — ảnh không phóng to, không pan, lightbox
+không đóng; cú bấm sau hoạt động như thường. Bấm vào một nút mở popup khác thì popup đó mở luôn trong cùng cú bấm. Chạm
+(cảm ứng / bút) giữ hành vi cũ: menu đóng và thao tác vẫn đi tiếp. Menu `TdMenu` ngoài lightbox không đổi (bấm ngoài: đóng
+và cú bấm vẫn đi tiếp).
+
 **Điều hướng trên điện thoại (0.36.0, sửa 2026-10-05):** dưới 480px nút trước / sau **và** bộ đếm chuyển xuống một
 **thanh đáy** cố định "‹ 3 / 12 ›" (cùng nút, cùng vùng thông báo — không bản sao), nút ≥ 44px, nằm trên vùng an toàn
 đáy và **phía trên** filmstrip / tay nắm panel; chạm là chuyển ảnh, không bao giờ ẩn hay tự ẩn. Một ảnh → không có thanh.

@@ -457,8 +457,10 @@ function build() {
   fsBtn.addEventListener('click', toggleFullscreen);
   // Lazy items (the current slide's variants) + the lightbox's own URL policy with the item being viewed (the menu
   // closes on every slide change, so the item at open time is the one on screen).
-  TdMenu.bind(dlMenuBtn, downloadMenuItems, { align: 'end', isAllowedUrl: downloadMenuPolicy });
-  TdMenu.bind(moreBtn, overflowMenuItems, { align: 'end' });
+  // v0.36.0: the lightbox's own menus use the internal 'swallow' dismissal — a mouse press outside only closes the menu
+  // (never also zooms / pans / closes the viewer); touch / pen stay pass-through
+  TdMenu.bind(dlMenuBtn, downloadMenuItems, { align: 'end', isAllowedUrl: downloadMenuPolicy, dismiss: 'swallow' });
+  TdMenu.bind(moreBtn, overflowMenuItems, { align: 'end', dismiss: 'swallow' });
   grab.addEventListener('click', (e) => { e.stopPropagation(); setSheet(ui.panel.getAttribute('data-sheet') !== 'open'); });
   bindPanelSwipe(panel);
   bindPointer(col);

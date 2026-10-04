@@ -71,7 +71,7 @@
  *   lightbox opened over it, or the dialog / hovercard holding its anchor closed). The anchor hidden without a scroll
  *   (tab switch, display:none) or removed from the DOM closes it too ('hidden', watchReference).
  */
-import { LAYERS, register as registerLayer, restoreFocus } from '../utils/layers.js';
+import { LAYERS, register as registerLayer, restoreFocus, swallowPointerPress } from '../utils/layers.js';
 import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
 import { nextTypeaheadIndex } from '../utils/typeahead.js';
 import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
@@ -609,14 +609,28 @@ export class TdMenu {
       ctx,
       closed: false,
       typeBuffer: '',
+      // v0.36.0 INTERNAL (not documented as API): 'swallow' → a MOUSE press outside only dismisses (used by td-lightbox)
+      dismiss: o.dismiss === 'swallow' ? 'swallow' : 'pass',
       typeTimer: 0,
       raf: 0,
       layer: null,
     };
     s.onPointerDown = (e) => {
-      const t = /** @type {Node} */ (e.target);
-      if (menu.contains(t) || anchor.contains(t)) return; // the trigger's own click toggles
+      const path = typeof e.composedPath === 'function' ? e.composedPath() : [e.target];
+      if (path.includes(menu) || path.includes(anchor)) return; // the trigger's own click toggles
+      // default (D5): close, the press continues. 'swallow' (internal): a MOUSE press that is not on another popup trigger
+      // only dismisses — the pointerdown / pointerup / click never reach the page, focus returns to the trigger.
+      // Touch / pen stay pass-through (scrolling, gestures); another trigger opens its popup in the same press.
+      const otherTrigger = path.some((n) => n instanceof Element && n.hasAttribute('aria-haspopup') && n !== anchor);
+      const swallow = s.dismiss === 'swallow' && e.pointerType === 'mouse' && !otherTrigger;
+      if (swallow) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        swallowPointerPress(e.pointerId);
+      }
       closeSession(s, 'outside');
+      if (swallow && usableAnchor(anchor)) focusEl(anchor);
     };
     s.onScroll = (e) => {
       if (e.target instanceof Node && menu.contains(e.target)) return; // scrolling a long menu never closes it
