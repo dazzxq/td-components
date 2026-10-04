@@ -199,8 +199,6 @@
 		--td-media-grid-tick-inline: end;
 		--td-media-grid-tick-size: 20px;
 		--td-media-grid-tick-inset: 8px;
-		--td-media-grid-tick-on-bg: var(--td-media-picker-card-checked);
-		--td-media-grid-tick-on-fg: #fff;
 		--td-media-grid-selected-bg: transparent;
 		--td-media-grid-selected-scale: 1;
 		--td-media-grid-radius: var(--td-media-picker-card-radius);
@@ -338,10 +336,8 @@
 		gap: 0.25rem;
 	}
 
-	/* the tick: top-right square, always visible in multiple mode; single mode has none (Space still works) */
-	.td-media-picker .td-media-grid__tick {
-		border-radius: var(--td-radius-sm);
-	}
+	/* the tick: top-right, always visible in multiple mode; single mode has none (Space still works). v0.36.0: the shared
+	   td-checkbox mark (check.css) at the 20px picker size — no own square / colour any more (ADR 0017). */
 
 	.td-media-picker[data-mode="multiple"] .td-media-grid__tick {
 		opacity: 1;

@@ -29,7 +29,9 @@
 		--td-media-grid-tick-ring: rgb(0 0 0 / 50%);
 		--td-media-grid-tick-on-bg: var(--td-btn-primary-bg);
 		--td-media-grid-tick-on-fg: var(--td-btn-primary-fg);
-		--td-media-grid-selected-ring: var(--td-media-grid-tick-on-bg);
+		/* v0.36.0: the kit tick is the shared td-checkbox mark (check.css) — tick-bg / -border / -ring / -on-bg / -on-fg only
+		   style a SITE tick ([data-td-media-tick]); the selected ring follows the checkbox colour */
+		--td-media-grid-selected-ring: var(--td-checkbox-color);
 		--td-media-grid-selected-scale: 1;
 		/* object-fit of the image in a tile (cover | contain) and the tile ratio (auto = as tall as the image) */
 		--td-media-grid-fit: cover;
@@ -211,6 +213,11 @@
 		inset: calc((var(--td-media-grid-tick-size) - var(--_td-mg-hit)) / 2 - 2px);
 	}
 
+	/* the mark button has no border → no −2px */
+	.td-media-grid__tick--mark::before {
+		inset: calc((var(--td-media-grid-tick-size) - var(--_td-mg-hit)) / 2);
+	}
+
 	@media (hover: none), (pointer: coarse) {
 		.td-media-grid__tick {
 			--_td-mg-hit: var(--td-touch-min, 44px);
@@ -227,6 +234,40 @@
 	.td-media-grid__item[data-selected] .td-media-grid__tick {
 		background: var(--td-media-grid-tick-on-bg);
 		color: var(--td-media-grid-tick-on-fg);
+	}
+
+	/* v0.36.0 (ADR 0017): the kit-created tick is a transparent button around the shared mark (.td-check) — same box,
+	   ✓, colours and focus ring as td-checkbox; the button keeps aria-pressed, position and the ::before hit area. */
+	.td-media-grid__tick--mark,
+	.td-media-grid__item[data-selected] .td-media-grid__tick--mark {
+		color: inherit;
+		background: none;
+		border: 0;
+		box-shadow: none;
+	}
+
+	.td-media-grid__tick--mark > .td-check {
+		--_td-check-size: var(--td-media-grid-tick-size);
+	}
+
+	.td-media-grid__tick--mark:focus-visible {
+		outline: 0;
+	}
+
+	.td-media-grid__tick--mark:focus-visible > .td-check {
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: 0 0 0 1px rgb(0 0 0 / 45%), var(--td-focus-ring);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-grid__tick--mark:hover:not(:disabled) > .td-check {
+			border-color: var(--td-control-border-hover);
+		}
+
+		.td-media-grid__item[data-selected] .td-media-grid__tick--mark:hover > .td-check {
+			border-color: var(--td-checkbox-color);
+		}
 	}
 
 	/* --- layout="justified" ---

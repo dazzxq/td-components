@@ -498,7 +498,9 @@ describe('td-media-grid — tick visibility (td.css)', () => {
     await wait(400);
     const t = getComputedStyle(tickOf(grid, 'f1'));
     expect(t.opacity).to.equal('1');
-    expect(t.backgroundColor).to.not.equal(getComputedStyle(tickOf(grid, 'f2')).backgroundColor);
+    // v0.36.0: the fill is on the shared mark inside the (transparent) tick button
+    const markBg = (id) => getComputedStyle(tickOf(grid, id).querySelector('.td-check')).backgroundColor;
+    expect(markBg('f1')).to.not.equal(markBg('f2'));
     const unscaled = (el) => ['none', 'matrix(1, 0, 0, 1, 0, 0)'].includes(getComputedStyle(el).transform);
     expect(unscaled(openOf(grid, 'f1'))).to.equal(true);
     expect(getComputedStyle(itemOf(grid, 'f1')).backgroundColor).to.equal(getComputedStyle(itemOf(grid, 'f2')).backgroundColor);

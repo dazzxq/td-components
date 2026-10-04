@@ -225,9 +225,12 @@ describe('v0.28.0 M1 — selection-only', () => {
     expect(list(el).getAttribute('aria-multiselectable')).to.equal('true');
     expect(leafOpts(el).length).to.equal(4);
     expect(selState(el)).to.deep.equal(['false', 'true', 'false', 'false']);
-    const check = (o) => getComputedStyle(o.querySelector('.td-chip-input__check')).visibility;
-    expect(check(optByText(el, 'Biên tập'))).to.equal('visible');
-    expect(check(optByText(el, 'Quản trị'))).to.equal('hidden');
+    // v0.36.0 (ADR 0017): the shared td-checkbox mark, always visible — filled when selected, an empty box otherwise
+    const mark = (o) => o.querySelector('.td-chip-input__check.td-check');
+    const fill = (o) => getComputedStyle(mark(o)).backgroundColor;
+    expect(getComputedStyle(mark(optByText(el, 'Biên tập'))).visibility).to.equal('visible');
+    expect(getComputedStyle(mark(optByText(el, 'Quản trị'))).visibility).to.equal('visible');
+    expect(fill(optByText(el, 'Biên tập'))).to.not.equal(fill(optByText(el, 'Quản trị')));
     expect(optByText(el, 'Biên tập').querySelector('.td-chip-input__check').getAttribute('aria-hidden')).to.equal('true');
   });
 

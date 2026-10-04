@@ -1,5 +1,5 @@
 import { TdBaseElement } from '../base/td-base-element.js';
-import { tdIcon } from '../icons/td-icon.js';
+import { createCheckMark } from '../utils/check-mark.js';
 import { hasActiveAbove } from '../utils/layers.js';
 import { packRows, rowStyles, parseAr } from '../utils/justified.js';
 
@@ -23,7 +23,8 @@ const INERT_CHILD = 'template, script, [hidden], .td-sr-only';
  *       <button type="button" data-td-media-open aria-label="Khung 1"><img src="…" alt=""></button>
  *                                                        → JS: class="td-media-grid__open" (or <a href>)
  *       <button type="button" class="td-media-grid__tick" tabindex="-1" aria-pressed="false" aria-label="Chọn Khung 1">
- *         <svg class="td-icon td-icon--s" data-icon="check" …></svg></button>   → JS, right after the opener (sibling,
+ *         <span class="td-check td-check--lg td-check--on-media" aria-hidden="true"><svg …></span></button>
+ *                                                          (v0.36.0: the shared tick mark, check.css)   → JS, right after the opener (sibling,
  *                                                          never inside an <a>); a site `[data-td-media-tick]` is kept
  *       <!-- site controls (⋯ TdMenu, badge…) are left alone -->
  *     </div>
@@ -500,10 +501,9 @@ export class TdMediaGrid extends TdBaseElement {
     if (!t) {
       t = document.createElement('button');
       t.type = 'button';
-      t.className = 'td-media-grid__tick';
+      t.className = 'td-media-grid__tick td-media-grid__tick--mark';
       t.setAttribute('tabindex', '-1');
-      const svg = tdIcon('check', { size: 's' });
-      if (svg) t.appendChild(svg);
+      t.appendChild(createCheckMark('lg', { onMedia: true })); // v0.36.0: the shared td-checkbox look (ADR 0017)
       t.setAttribute('aria-label', String(TdMediaGrid.labels.select ?? '').replace('{name}', this._nameOf(item, open)));
       if (open && open.parentNode) open.after(t);
       else item.appendChild(t);

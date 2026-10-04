@@ -401,7 +401,11 @@ describe('v0.12 TdMenu — selection, checkable items, links', () => {
     b.click(); // reopen renders the CALLER's model (unchanged — a caller persists ctx.checked itself)
     its = items();
     expect(its.map((n) => n.getAttribute('aria-checked'))).to.deep.equal(['false', 'true', 'false', 'true']);
-    expect(getComputedStyle(its[0].querySelector('.td-menu__check')).visibility).to.equal('hidden');
+    // v0.36.0 (ADR 0017): a checkbox item shows the shared mark (always visible, empty box when off); radio items keep ✓
+    const box = its[0].querySelector('.td-menu__check.td-check');
+    expect(getComputedStyle(box).visibility).to.equal('visible');
+    expect(getComputedStyle(box).backgroundColor).to.equal('rgb(255, 255, 255)'); // off = the empty white box
+    expect(its[1].querySelector('.td-check')).to.equal(null);
     expect(getComputedStyle(its[1].querySelector('.td-menu__check')).visibility).to.equal('visible');
     TdMenu.close();
     const frozen = [Object.freeze({ label: 'Đóng băng', type: 'checkbox', checked: false })];

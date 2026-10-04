@@ -55,49 +55,14 @@
 		border: 0;
 	}
 
-	.td-checkbox__mark {
-		box-sizing: border-box;
-		display: inline-flex;
-		flex: 0 0 auto;
-		align-items: center;
-		justify-content: center;
-		width: var(--td-checkbox-box);
-		height: var(--td-checkbox-box);
-		color: var(--td-accent-contrast);
-		background: var(--td-control-bg);
-		border: 1.5px solid var(--td-checkbox-border);
-		border-radius: var(--td-checkbox-radius); /* v0.14.0: round by default */
-		line-height: 1;
-		transition:
-			background var(--td-dur-fast) var(--td-ease),
-			border-color var(--td-dur-fast) var(--td-ease);
-	}
-
+	/* The mark (box, ✓, indeterminate bar, checked fill, sizes) is the SHARED tick part — check.css (v0.36.0, ADR 0017). */
 	.td-checkbox__icon {
 		display: inline-flex;
-		line-height: 0;
-	}
-
-	.td-checkbox__svg {
-		width: calc(var(--td-checkbox-box) * 0.7);
-		height: calc(var(--td-checkbox-box) * 0.7);
-		stroke-width: 3;
-		opacity: 0;
-		transition: opacity var(--td-dur-fast) var(--td-ease); /* v0.20.0: fade only, no scale */
 	}
 
 	/* soft border at rest (v0.14.1), one soft step darker under the pointer (v0.14.2) */
-	.td-checkbox:hover .td-checkbox__input:not(:checked, :disabled) ~ .td-checkbox__mark {
+	.td-checkbox:hover .td-checkbox__input:not(:checked, :indeterminate, :disabled) ~ .td-checkbox__mark {
 		border-color: var(--td-control-border-hover);
-	}
-
-	.td-checkbox__input:checked ~ .td-checkbox__mark {
-		background: var(--td-checkbox-color);
-		border-color: var(--td-checkbox-color);
-	}
-
-	.td-checkbox__input:checked ~ .td-checkbox__mark .td-checkbox__svg {
-		opacity: 1;
 	}
 
 	.td-checkbox__input:focus-visible ~ .td-checkbox__mark {
@@ -123,25 +88,6 @@
 		.td-checkbox {
 			min-width: var(--td-touch-min);
 			min-height: var(--td-touch-min);
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.td-checkbox__mark,
-		.td-checkbox__svg {
-			transition: none;
-		}
-	}
-
-	@media (forced-colors: active) {
-		.td-checkbox__mark {
-			border-color: ButtonText;
-		}
-
-		.td-checkbox__input:checked ~ .td-checkbox__mark {
-			color: HighlightText;
-			background: Highlight;
-			border-color: Highlight;
 		}
 	}
 }

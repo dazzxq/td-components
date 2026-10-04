@@ -75,6 +75,7 @@ import { LAYERS, register as registerLayer, restoreFocus } from '../utils/layers
 import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
 import { nextTypeaheadIndex } from '../utils/typeahead.js';
 import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
+import { createCheckMark } from '../utils/check-mark.js';
 
 const TYPEAHEAD_MS = 500;
 const LIST_MAX = 448; // px, 28rem at 16px: the menu itself scrolls beyond this (or the room on the chosen side)
@@ -336,7 +337,12 @@ function build(entries, menuId) {
       ic.appendChild(clone);
       node.appendChild(ic);
     }
-    if (e.type !== 'item') {
+    if (e.type === 'checkbox') {
+      // v0.36.0 (ADR 0017): checkbox items show the shared td-checkbox mark (always visible); radio items keep the ✓
+      const check = createCheckMark('sm');
+      check.classList.add('td-menu__check');
+      node.appendChild(check);
+    } else if (e.type !== 'item') {
       const check = el('span', 'td-menu__check');
       check.setAttribute('data-td-icon', 'check');
       check.setAttribute('aria-hidden', 'true');

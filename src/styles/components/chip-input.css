@@ -288,17 +288,12 @@
 		padding-inline-start: 34px;
 	}
 
+	/* v0.36.0: the ✓ slot is the shared td-checkbox mark (check.css), always visible */
 	.td-chip-input__check {
 		position: absolute;
 		top: 50%;
 		left: 10px;
-		display: inline-flex;
-		visibility: hidden;
 		transform: translateY(-50%);
-	}
-
-	.td-chip-input__option[aria-selected="true"] > .td-chip-input__check {
-		visibility: visible;
 	}
 
 	.td-chip-input__option[aria-disabled="true"] {
@@ -498,10 +493,6 @@
 		.td-chip-input__option[data-active] {
 			outline: 2px solid Highlight;
 			outline-offset: -2px;
-		}
-
-		.td-chip-input__check {
-			color: Highlight;
 		}
 
 		.td-chip-input__option[aria-disabled="true"] {

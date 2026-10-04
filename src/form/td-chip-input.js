@@ -1,4 +1,5 @@
 import { fold } from '../utils/typeahead.js';
+import { createCheckMark } from '../utils/check-mark.js';
 import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
 import { LAYERS, register as registerLayer } from '../utils/layers.js';
 import { TdFormElement } from '../base/td-form-element.js';
@@ -85,7 +86,7 @@ export function parseChipItems(str) {
  *
  * Multi-select (v0.28.0, plan v0.28.0-multiselect): `selection-only` → items come ONLY from `options` / `search()`
  * (typed text filters, never becomes a chip; `allow-create` is ignored with one warning). The listbox is
- * `aria-multiselectable="true"`; selected rows stay listed with a ✓ (`span.td-chip-input__check`): `aria-selected` =
+ * `aria-multiselectable="true"`; selected rows stay listed with a ticked box (v0.36.0: the shared `.td-check` mark, `span.td-chip-input__check`): `aria-selected` =
  * membership (true|false on every row), the keyboard highlight = `data-active` + `aria-activedescendant`. Enter / click
  * TOGGLE the active row (Space types a space — the input is editable), the popup stays open (`close-on-select` closes
  * it). Locked rows (`disabled` item, item of a `disabled` group, or unselected while `max-items` is reached) are
@@ -1442,11 +1443,9 @@ export class TdChipInput extends TdFormElement {
       const el = document.createElement('div');
       el.setAttribute('role', 'option');
       el.setAttribute('aria-selected', 'false');
-      const check = document.createElement('span');
-      check.className = 'td-chip-input__check';
-      check.setAttribute('data-td-icon', 'check');
-      check.setAttribute('data-td-icon-size', 's');
-      check.setAttribute('aria-hidden', 'true');
+      // v0.36.0 (ADR 0017): the shared td-checkbox mark, always visible (empty box = not selected)
+      const check = createCheckMark('sm');
+      check.classList.add('td-chip-input__check');
       const label = document.createElement('span');
       label.className = 'td-chip-input__option-label';
       el.append(check, label);
@@ -1524,6 +1523,8 @@ export class TdChipInput extends TdFormElement {
       if (entry.all) {
         const st = this._allState();
         el.setAttribute('aria-selected', st.mode === 'remove' ? 'true' : 'false');
+        // v0.36.0: some (not all) shown enabled leaves selected → the select-all mark shows the mixed bar
+        el.toggleAttribute('data-td-check-mixed', st.mode === 'add' && st.selected.length > 0);
         const text = this._t(st.mode === 'remove' ? 'deselectAll' : 'selectAll', { n: st.n });
         const label = el.querySelector('.td-chip-input__option-label');
         if (label && label.textContent !== text) label.textContent = text;

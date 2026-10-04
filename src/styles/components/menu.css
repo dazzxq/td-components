@@ -177,6 +177,12 @@
 		visibility: visible;
 	}
 
+	/* v0.36.0: a menuitemcheckbox carries the shared mark (check.css) — always visible, state from aria-checked */
+	.td-menu__check.td-check {
+		color: var(--td-accent-contrast);
+		visibility: visible;
+	}
+
 	/* Secondary line on any item (wraps below the label). */
 	.td-menu__hint {
 		flex-basis: 100%;

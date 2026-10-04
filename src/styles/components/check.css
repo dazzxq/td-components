@@ -1,0 +1,141 @@
+/*
+ * Shared tick mark (v0.36.0, ADR 0017) — THE look of every "tick to select" in the kit: td-checkbox's mark
+ * (.td-checkbox__mark, markup unchanged) and the decorative `.td-check` printed by src/utils/check-mark.js inside
+ * td-media-grid / td-media-picker ticks, td-tree (multiple), td-chip-input (selection-only) and td-menu checkbox items.
+ * The mark is ALWAYS aria-hidden: the semantics live on its container (input, aria-pressed, aria-checked, aria-selected).
+ *
+ * State is read from ARIA / native state that already exists — no duplicated state attribute. A NEW consumer adds its
+ * selector to the "on" / "mixed" lists below (one place; conventions.md).
+ * Size: .td-check--{sm|md|lg} = 1rem / 1.25rem / 1.5rem (the three td-checkbox sizes); a consumer may set
+ * --_td-check-size on the mark (e.g. the media grid tick size token).
+ * Mixed (indeterminate) = a bar drawn by ::after (no extra node; CSP-safe).
+ */
+@layer td.component {
+	.td-check {
+		--_td-check-size: 1.25rem;
+	}
+
+	.td-check--sm { --_td-check-size: 1rem; }
+	.td-check--lg { --_td-check-size: 1.5rem; }
+
+	.td-checkbox__mark {
+		--_td-check-size: var(--td-checkbox-box);
+	}
+
+	:is(.td-check, .td-checkbox__mark) {
+		position: relative;
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		width: var(--_td-check-size);
+		height: var(--_td-check-size);
+		color: var(--td-accent-contrast);
+		background: var(--td-control-bg);
+		border: 1.5px solid var(--td-checkbox-border);
+		border-radius: var(--td-checkbox-radius); /* v0.14.0: round by default */
+		line-height: 1;
+		transition:
+			background var(--td-dur-fast) var(--td-ease),
+			border-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	:is(.td-check, .td-checkbox__mark)::after {
+		content: "";
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 50%;
+		height: 2px;
+		background: currentcolor;
+		border-radius: 1px;
+		opacity: 0;
+		transform: translate(-50%, -50%);
+		transition: opacity var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-check__icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+
+	:is(.td-check .td-check__svg, .td-checkbox__svg) {
+		width: calc(var(--_td-check-size) * 0.7);
+		height: calc(var(--_td-check-size) * 0.7);
+		stroke-width: 3;
+		opacity: 0;
+		transition: opacity var(--td-dur-fast) var(--td-ease); /* v0.20.0: fade only, no scale */
+	}
+
+	/* ---- ON ---- */
+	.td-checkbox__input:checked ~ .td-checkbox__mark,
+	:is([aria-pressed="true"], [aria-checked="true"], [aria-selected="true"]) > .td-check,
+	.td-tree__item[aria-checked="true"] > .td-tree__row > .td-check {
+		background: var(--td-checkbox-color);
+		border-color: var(--td-checkbox-color);
+	}
+
+	.td-checkbox__input:checked ~ .td-checkbox__mark .td-checkbox__svg,
+	:is([aria-pressed="true"], [aria-checked="true"], [aria-selected="true"]) > .td-check .td-check__svg,
+	.td-tree__item[aria-checked="true"] > .td-tree__row > .td-check .td-check__svg {
+		opacity: 1;
+	}
+
+	/* ---- MIXED (after ON: an indeterminate checkbox that is also :checked shows the bar) ---- */
+	.td-checkbox__input:indeterminate ~ .td-checkbox__mark,
+	[aria-checked="mixed"] > .td-check,
+	[data-td-check-mixed] > .td-check,
+	.td-tree__item[aria-checked="mixed"] > .td-tree__row > .td-check {
+		background: var(--td-checkbox-color);
+		border-color: var(--td-checkbox-color);
+	}
+
+	.td-checkbox__input:indeterminate ~ .td-checkbox__mark .td-checkbox__svg,
+	[data-td-check-mixed] > .td-check .td-check__svg {
+		opacity: 0;
+	}
+
+	.td-checkbox__input:indeterminate ~ .td-checkbox__mark::after,
+	[aria-checked="mixed"] > .td-check::after,
+	[data-td-check-mixed] > .td-check::after,
+	.td-tree__item[aria-checked="mixed"] > .td-tree__row > .td-check::after {
+		opacity: 1;
+	}
+
+	/* ---- LOCKED (the container greys itself; the mark follows like td-checkbox's 50 %) ---- */
+	:is([aria-disabled="true"], :disabled) > .td-check {
+		opacity: 0.5;
+	}
+
+	/* ---- On a photo (media grid / picker ticks): a dark hairline keeps the white box visible on white images ---- */
+	.td-check--on-media {
+		box-shadow: 0 0 0 1px rgb(0 0 0 / 45%);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:is(.td-check, .td-checkbox__mark),
+		:is(.td-check, .td-checkbox__mark)::after,
+		:is(.td-check__svg, .td-checkbox__svg) {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		:is(.td-check, .td-checkbox__mark) {
+			border-color: ButtonText;
+		}
+
+		:is(.td-check, .td-checkbox__mark)::after {
+			background: HighlightText;
+		}
+
+		.td-checkbox__input:is(:checked, :indeterminate) ~ .td-checkbox__mark,
+		:is([aria-pressed="true"], [aria-checked="true"], [aria-checked="mixed"], [aria-selected="true"], [data-td-check-mixed]) > .td-check,
+		.td-tree__item:is([aria-checked="true"], [aria-checked="mixed"]) > .td-tree__row > .td-check {
+			color: HighlightText;
+			background: Highlight;
+			border-color: Highlight;
+		}
+	}
+}
