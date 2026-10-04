@@ -197,6 +197,7 @@ const report = [...worst.entries()].sort((a, b) => a[1] - b[1]).slice(0, 8).map(
 console.log(`  lowest label ratios: ${report.join(' · ')}`);
 console.log(`  lowest focus border ratios: ${[...focusWorst.entries()].filter(([k]) => k.includes('focus:')).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 console.log(`  lowest lightbox disc / thumb ratios: ${[...focusWorst.entries()].filter(([k]) => k.includes('lb-')).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
+console.log(`  td-table selection ratios (v0.37.0): ${[...focusWorst.entries()].filter(([k]) => k.includes('table-select:')).sort((a, b) => a[1] - b[1]).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 console.log(`  lowest media-grid tick ratios: ${[...focusWorst.entries()].filter(([k]) => k.includes('media-tick:')).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 console.log(`  media-picker ratios (v0.33.0): ${[...focusWorst.entries()].filter(([k]) => k.includes('media-picker:')).sort((a, b) => a[1] - b[1]).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 console.log(`  lowest pressed-state ratios (v0.36.2): ${[...focusWorst.entries()].filter(([k]) => k.includes('v0362:')).sort((a, b) => a[1] - b[1]).slice(0, 6).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);

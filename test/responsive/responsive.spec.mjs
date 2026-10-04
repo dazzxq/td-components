@@ -222,12 +222,14 @@ async function runConfig(browser, c) {
         const lead = host.querySelector('.td-table__body > tr > [data-card="lead"]');
         return { id, width: host.clientWidth, card: !!trs[0] && getComputedStyle(trs[0]).display !== 'table-row',
           rows: trs.map((r) => r.getBoundingClientRect().height), head: head.getBoundingClientRect().height,
-          chipTops: [...head.querySelectorAll('.td-table__th--sortable')].map((ch) => Math.round(ch.getBoundingClientRect().top)),
+          chipTops: [...head.querySelectorAll('.td-table__th--sortable, .td-table__th--select-all')].map((ch) => Math.round(ch.getBoundingClientRect().top)),
           lead: lead ? parseFloat(getComputedStyle(lead).fontSize) : null };
       }));
       const coarse = c.touch && c.engine !== 'firefox';
       // 9-column phone budget 212 (plan: 176 provisional, "M0 records"): customer (≈ 207px) + phone (≈ 182px) pairs
       // cannot share a 250–283px line, so 4 pair lines + meta + a 44px action line is the floor (before: 294 / 306)
+      // v0.37.0: #rsp-table-density is selectable (plan allowance 136); measured 115 at 360 coarse — the 44px control fits
+      // the first line, so the v0.36.1 budget 120 stays
       const budget = { 'rsp-table-density': c.w < 720 ? 120 : 96, 'rsp-table': c.w < 720 ? 212 : 140 };
       const densErr = [];
       for (const d of dens) {
@@ -276,6 +278,38 @@ async function runConfig(browser, c) {
         if (act.length === 2 && Math.max(act[1].l - act[0].r, act[0].l - act[1].r) < 7.5) actErr.push(`actions ${(act[1].l - act[0].r).toFixed(1)}px apart (< 8)`);
         check(tag, 'td-table icon actions (coarse, v0.36.1)', actErr);
       }
+      if (c.touch && c.engine !== 'firefox') {
+        // v0.37.0 (plan QĐ 23): row selection controls of #rsp-table-density in card mode — a REAL 44 × 44 box (padding,
+        // no ::before), the centre and 2px inside each edge hit the control (elementFromPoint), ≥ 8px from the next target
+        const sel = await page.evaluate(() => {
+          const host = document.getElementById('rsp-table-density');
+          host.scrollIntoView({ block: 'start' });
+          const out = [];
+          for (const b of [...host.querySelectorAll('.td-table__select')].slice(0, 3)) {
+            const r = b.getBoundingClientRect();
+            if (r.top < 0 || r.bottom > innerHeight) continue;
+            const pts = [[r.left + r.width / 2, r.top + r.height / 2], [r.left + 2, r.top + r.height / 2], [r.right - 2, r.top + r.height / 2],
+              [r.left + r.width / 2, r.top + 2], [r.left + r.width / 2, r.bottom - 2]];
+            const miss = pts.filter(([x, y]) => { const h = document.elementFromPoint(x, y); return !h || !(h === b || b.contains(h)); }).length;
+            const others = [...host.querySelectorAll('button, a[href]')].filter((o) => o !== b && !b.contains(o) && o.getBoundingClientRect().width > 1);
+            const gap = Math.min(...others.map((o) => {
+              const q = o.getBoundingClientRect();
+              return Math.max(q.left - r.right, r.left - q.right, q.top - r.bottom, r.top - q.bottom);
+            }));
+            out.push({ w: r.width, h: r.height, miss, gap, before: getComputedStyle(b, '::before').content });
+          }
+          return out;
+        });
+        const selErr = [];
+        if (!sel.length) selErr.push('no visible selection control');
+        sel.forEach((x, i) => {
+          if (x.w < 43.5 || x.h < 43.5) selErr.push(`control ${i} ${x.w}×${x.h} < 44 × 44`);
+          if (x.miss) selErr.push(`control ${i}: ${x.miss} of 5 elementFromPoint probes miss it`);
+          if (x.gap < 7.5) selErr.push(`control ${i}: ${x.gap.toFixed(1)}px from the nearest target (< 8)`);
+          if (x.before && x.before !== 'none' && x.before !== 'normal') selErr.push(`control ${i} has a ::before (${x.before})`);
+        });
+        check(tag, 'td-table selection controls (coarse, v0.37.0)', selErr);
+      }
       check(tag, `td-table card density (v0.36.1)${c.shots ? ` (screenshot ${join(OUT, tag, 'page.png')})` : ''}`, densErr);
     }
     const snap = await page.locator('#rsp-table-narrow table').ariaSnapshot();
@@ -301,6 +335,15 @@ async function runConfig(browser, c) {
     });
     check(tag, 'td-action-button targets', abErr);
     check(tag, 'card-mode table semantics', ['- table', '- columnheader', '- row', '- cell'].filter((s) => !snap.includes(s)).map((s) => `aria snapshot lacks "${s}"`));
+    // v0.37.0 (plan QĐ 5–8): selection keeps role=table — the header and every row control are checkboxes with names,
+    // the selected one checked; no grid / radio / aria-selected
+    const selSnap = await page.locator('#rsp-table-density table').ariaSnapshot();
+    check(tag, 'td-table selection semantics (v0.37.0)', [
+      ...['- table', '- columnheader "Chọn tất cả trên trang"', '- checkbox "Chọn tất cả trên trang" [checked=mixed]',
+        '- checkbox "Chọn Tailwind CSS Tips & Tricks" [checked]', '- checkbox "Chọn Hướng dẫn Web Components"']
+        .filter((s) => !selSnap.includes(s)).map((s) => `aria snapshot lacks "${s}"`),
+      ...['- grid', '- radio', '[selected]'].filter((s) => selSnap.includes(s)).map((s) => `aria snapshot has "${s}"`),
+    ]);
     // v0.36.0 (plan QĐ 41): td-otp-input cells keep their shape — in columns of 320 / 360 / 390 / 240 px (and the page
     // width when narrower), 6 / 8 / 10 digits and 5 alphanumerics: each cell width / height = 44 / 52 ± 4 % (except a
     // touch cell narrower than 37 px, which grows to the 44 px touch minimum), nothing wider than its column.

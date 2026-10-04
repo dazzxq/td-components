@@ -107,6 +107,9 @@ for (const state of ['label', 'value', 'sort-chip']) CASES.push({ kind: 'table-c
 // v0.36.1: the `lead` (muted id before the primary, xs mouse / sm coarse — same colour) ≥ 4.7 on the card, and an icon-only
 // card action: icon ≥ 3:1 on the button fill — light + dark.
 for (const state of ['lead', 'action-icon']) CASES.push({ kind: 'table-card', v: 'card', state, pageOnly: true });
+// v0.37.0 td-table row selection: cell text on the selected-row tint (and with the hover wash on top) ≥ 4.7 over the
+// table fill; the selected card's accent border ≥ 3 vs the page — computed colours (`pairs`), light + dark.
+for (const state of ['row', 'card']) CASES.push({ kind: 'table-select', v: 'selected', state, pageOnly: true });
 // v0.36.0 colours/action-button (plan QĐ 12, 18–26): computed-colour pairs (page only, light + dark). Solid semantic
 // tokens: label vs fill and vs hover ≥ 4.7 (buttons / badges read them); badge -ink (outline / stamp) vs the page ≥ 4.7;
 // badge edge vs its own fill / white / #f4f4f5 ≥ 1.6 (light theme); alert icon vs the alert fill ≥ 3.2 and the
@@ -952,6 +955,43 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       name: `table-card:${c.v}:${c.state}`,
       pairs: [{ what: `${c.state} ${c.state === 'action-icon' ? 'icon' : 'text'} vs its fill`, fg: ink, bg: fill(target), min: c.state === 'action-icon' ? 3 : 4.7 }],
     };
+  } else if (c.kind === 'table-select') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const host = document.createElement('td-table');
+    host.setAttribute('selectable', '');
+    host.setAttribute('row-key', 'id');
+    host.setAttribute('layout', c.state === 'card' ? 'cards' : 'table');
+    host.setAttribute('zebra', 'false');
+    stage.appendChild(host);
+    host.columns = [{ key: 'name', label: 'Tên' }, { key: 'role', label: 'Vai trò' }];
+    host.data = [{ id: 1, name: 'Nguyễn Văn An', role: 'Quản trị' }, { id: 2, name: 'Bình', role: 'Biên tập' }];
+    host.selectedKeys = [1];
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const probe = document.createElement('span');
+    host.appendChild(probe);
+    const tok = (name) => { probe.style.setProperty('color', `var(${name})`); return getComputedStyle(probe).color; };
+    /** a translucent colour (rgb()/rgba()/color(srgb …)) composited on an opaque rgb() */
+    const parse = (str) => {
+      const n = (String(str).match(/-?[\d.]+/g) || []).map(Number);
+      const k = String(str).startsWith('color(') ? 255 : 1;
+      return [n[0] * k, n[1] * k, n[2] * k, n.length > 3 ? n[3] : 1];
+    };
+    const over = (top, base) => {
+      const t = parse(top); const b = parse(base);
+      return `rgb(${[0, 1, 2].map((i) => Math.round(t[i] * t[3] + b[i] * (1 - t[3]))).join(', ')})`;
+    };
+    const tr = host.querySelector('tbody tr[data-selected]');
+    const tableBg = over(tok('--td-table-bg'), page);
+    const sel = over(tok('--td-table-row-selected'), tableBg);
+    const text = getComputedStyle(tr.querySelector('[data-col="0"]')).color;
+    const pairs = c.state === 'card'
+      ? [{ what: 'selected card border vs page', fg: getComputedStyle(tr).borderTopColor, bg: page, min: 3 },
+        { what: 'selected card border vs table fill', fg: getComputedStyle(tr).borderTopColor, bg: tableBg, min: 3 },
+        { what: 'card text on the selected tint', fg: text, bg: sel, min: 4.7 }]
+      : [{ what: 'cell text on the selected tint', fg: text, bg: sel, min: 4.7 },
+        { what: 'cell text on the selected tint + hover wash', fg: text, bg: over(tok('--td-table-row-hover'), sel), min: 4.7 }];
+    const b = tr.getBoundingClientRect();
+    return { rect: { x: b.x, y: b.y, width: b.width, height: b.height }, ink: {}, opacity: 1, hover: false, name: `table-select:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'sortable' || c.kind === 'masked') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
     const probe = document.createElement('span');
