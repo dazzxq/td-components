@@ -94,6 +94,17 @@ export const Usage = {
   args: { label: 'Ảnh trong bài' },
 };
 
+/**
+ * v0.35 croppable + focal-point (OG 1.91:1): "Cắt ảnh" opens the crop dialog on the un-cropped `urls.preview` (adapter
+ * `get`); "Áp dụng" submits og[crop] (JSON v1) + og[focal]; the frame previews the cropped area. "Đổi ảnh" runs the
+ * picker's crop step.
+ */
+export const Croppable = {
+  render: (args) => field('usage croppable focal-point aspect-ratio="1.91" value="m1" preview-src="/lightbox/1.svg" preview-alt="anh-1.jpg"'
+    + ` crop="${esc('{"v":1,"x":0,"y":0.1,"width":1,"height":0.785340}')}" focal="${esc('{"v":1,"x":0.5,"y":0.4}')}"`, args),
+  args: { label: 'Ảnh chia sẻ (OG, cắt được)' },
+};
+
 /** disabled: buttons + alt disabled, nothing submitted. */
 export const Disabled = {
   render: (args) => field('usage aspect-ratio="3/2" value="m2" preview-src="/lightbox/2.svg" preview-alt="anh-2.jpg"', args),

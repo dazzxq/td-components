@@ -26,7 +26,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.34.0: responsive chuẩn toàn kit (xs < 480 · sm 480–719 · md 720–1023 · lg · xl; `short` ≤ 500 cao) + `td-table`
   dạng card + gate responsive 3 engine — [ADR 0014](decisions/0014-breakpoints-container-queries.md), plan
   [v0.34.0-responsive](plans/v0.34.0-responsive.md) (audit đo 2026-10-04; M0 đối chiếu v0.33)
-- `todo` v0.35.0: `td-cropper` (toạ độ) + tích hợp crop vào picker / field (chỉ thêm UI; FormData `name[crop]` giữ nguyên)
+- `done` v0.35.0: `td-cropper` (toạ độ) + tích hợp crop vào picker / field (chỉ thêm UI; FormData `name[crop]` giữ nguyên)
   — lùi từ v0.33 (báo dsuite)
 - `todo` v0.36.0: `td-table` chọn dòng (dạng card + ADR container query đã làm ở v0.34; chỗ chọn trong card chừa sẵn)
 - `todo` v0.37.0: `td-scan-input` (A3)

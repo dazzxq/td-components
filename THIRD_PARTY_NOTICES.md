@@ -6,6 +6,7 @@ A curated subset of path data from Lucide (https://lucide.dev), mapped to td-own
 (the upstream name is recorded per icon in `icons.json` → `lucide`). Icons added in 0.17.0 (`trash` ← trash-2,
 `pencil`, `copy`, `log-out`, `menu`, `rotate-cw`, `zoom-out`) were checked against lucide-static 1.48.0; `<line>`
 elements are stored as the equivalent `path` data (as for `zoom-in`).
+Icons added in 0.35.0 (`crop`, `crosshair`, `rotate-ccw`) follow the same rule.
 
 ISC License
 

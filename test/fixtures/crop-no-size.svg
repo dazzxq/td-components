@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0">
+  <!-- td-cropper fixture (v0.35.0): zero intrinsic size ⇒ naturalWidth 0 in every engine ⇒ image-error { kind: 'size' }.
+       (An SVG with NO width / height gets the 300 × 150 default object size in Chromium, Firefox and WebKit, so it is
+       not detectable as "no size" — only natural-* + the ratio check catch that case.) -->
+  <rect width="10" height="10" fill="#e76f51"/>
+</svg>

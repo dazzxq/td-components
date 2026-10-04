@@ -5,7 +5,8 @@
  * Layout: test/fixtures/responsive-page.css. Exposes `openers` for the overlay scenarios.
  *
  * M0 (after v0.33): media picker (mock adapter, no network), media grid (default + justified + sortable gallery) and
- * dropzone are included.
+ * dropzone are included. v0.35.0: td-cropper (inline: full width + the 280 px column), the crop dialog and the picker crop
+ * step (openers `cropDialog` / `pickerCrop`).
  */
 import '../../src/form/td-button.js';
 import '../../src/form/td-input-field.js';
@@ -41,6 +42,8 @@ import { TdLightbox } from '../../src/feedback/td-lightbox.js';
 import '../../src/form/td-dropzone.js';
 import '../../src/display/td-media-grid.js';
 import { TdMediaPicker } from '../../src/feedback/td-media-picker.js';
+import { TdCropper } from '../../src/form/td-cropper.js';
+import '../../src/form/td-media-field.js';
 import { createMockAdapter } from './media-adapter.js';
 
 const LONG = 'Lưu và xuất bản bài viết lên trang chủ ngay bây giờ';
@@ -118,7 +121,12 @@ export function mountResponsiveFixture(root) {
       <td-pagination total-items="2000" items-per-page="10" current-page="57"></td-pagination>
       <td-tabs id="rsp-tabs-narrow"></td-tabs>
       <td-table id="rsp-table-narrow" title="Đơn hàng"></td-table>
+      <td-cropper id="rsp-cropper-narrow" src="/test/fixtures/panorama.svg" natural-width="1800" natural-height="600" aspect-ratio="1.91" alt="Ảnh OG"></td-cropper>
     </div>
+  </section>
+  <section class="rsp-section" data-section="cropper"><h2>Cắt ảnh</h2>
+    <td-cropper id="rsp-cropper" src="/test/fixtures/photo.svg" natural-width="1200" natural-height="800" alt="Ảnh phong cảnh" focal-point focal='{"v":1,"x":0.3,"y":0.4}'></td-cropper>
+    <td-media-field name="og" label="Ảnh chia sẻ (OG)" usage croppable focal-point aspect-ratio="1.91" value="m1" preview-src="/test/fixtures/1.svg" crop='{"v":1,"x":0,"y":0.1,"width":1,"height":0.785}'></td-media-field>
   </section>
   <section class="rsp-section" data-section="tabs"><h2>Tab</h2>
     <td-tabs id="rsp-tabs"></td-tabs>
@@ -234,6 +242,10 @@ export function mountResponsiveFixture(root) {
       panel: (ctx) => { const p = document.createElement('p'); p.textContent = ctx.item.caption; return p; },
     }),
     loading: () => TdLoading.show('Đang xử lý đơn hàng, vui lòng chờ...'),
+    cropDialog: () => TdCropper.openDialog({ src: '/test/fixtures/photo.svg', alt: 'Ảnh phong cảnh', naturalWidth: 1200,
+      naturalHeight: 800, aspectRatio: 1.91, allowFocalPoint: true, focalPoint: { x: 0.5, y: 0.5 } }),
+    pickerCrop: () => TdMediaPicker.open({ adapter: createMockAdapter({ latency: 0 }), selection: { mode: 'single', kinds: ['image'] },
+      crop: { enabled: true, aspectRatio: 1.91, allowFocalPoint: true } }),
     picker: (multiple = false, pages = false) => {
       const adapter = createMockAdapter({ latency: 0, ...(pages ? { pagination: 'pages' } : {}) });
       return TdMediaPicker.open({ adapter, ...(pages ? { pagination: 'pages' } : {}),

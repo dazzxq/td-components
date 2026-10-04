@@ -27,7 +27,9 @@ function engineLaunchOptions(name) {
 }
 
 /** v0.31.0: engines tests driving REAL mouse drags (one group each = own browser instances). */
-const POINTER_FILES = ['src/display/td-v031-sortable.engines.browser-test.js', 'src/form/td-v031-repeater-sortable.engines.browser-test.js'];
+/** v0.35.0: + td-cropper pointer (real mouse drags, synthetic pinch, wheel). */
+const POINTER_FILES = ['src/display/td-v031-sortable.engines.browser-test.js', 'src/form/td-v031-repeater-sortable.engines.browser-test.js',
+  'src/form/td-v035-cropper.engines.browser-test.js'];
 
 /** All src stories (for src/stories-dom.browser-test.js). */
 function storyFiles(dir = 'src', out = []) {

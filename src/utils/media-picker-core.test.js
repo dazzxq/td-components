@@ -247,8 +247,8 @@ describe('resolveOptions + DefaultsRegistry (decision 6)', () => {
     assert.equal(o.selection.maxItems, 1);
     assert.deepEqual(o.selection.kinds, ['video']);
     assert.deepEqual(o.upload, { accept: 'image/*', maxSize: '', multiple: false, acceptLabel: '' });
-    assert.equal(o.cropRequested, true);
-    assert.ok(warns.some((w) => /v0\.35/.test(w)), 'v0.33 decision 2: crop ships in v0.35');
+    assert.deepEqual(o.cropResolved, { aspectRatio: null, allowFocalPoint: false });
+    assert.ok(!warns.some((w) => /v0\.35/.test(w)), 'v0.35: the "ships in v0.35" warning is gone');
     assert.ok(!warns.some((w) => /v0\.33/.test(w)));
     const m = resolveOptions({ adapter: adapter() }, { selection: { mode: 'multiple', maxItems: 2, initialIds: ['a', 'b', 'c'] } });
     assert.deepEqual(m.selection.initialIds, ['a', 'b']);
@@ -597,6 +597,12 @@ describe('outcome + labels', () => {
     m.add({ id: 'b', defaultAltText: 'B alt' });
     m.add({ id: 'a' });
     const o = buildOutcome(m);
+    const crop = { normalized: { x: 0, y: 0, width: 0.5, height: 1 }, aspectRatio: 0.5 };
+    const withUsage = buildOutcome(m, new Map([[m.assets[0].id, { crop, focalPoint: { x: 0.5, y: 0.5 } }]]));
+    assert.deepEqual(withUsage.selection[0].usage.crop, crop);
+    assert.deepEqual(withUsage.selection[0].usage.focalPoint, { x: 0.5, y: 0.5 });
+    assert.equal(withUsage.selection[1].usage.crop, null, 'v0.35: an asset without a usage entry keeps null');
+    assert.equal(buildOutcome(m, new Map()).selection[0].usage.crop, null);
     assert.equal(o.status, 'selected');
     assert.deepEqual(o.selection.map((s) => s.assetId), ['b', 'a']);
     assert.deepEqual(o.selection[0].usage, { altText: 'B alt', crop: null, focalPoint: null });
@@ -1032,13 +1038,35 @@ describe('v0.33 resolveOptions: pagination + upload.acceptLabel (decisions 13, 2
     assert.equal([...resolveOptions({ adapter: adapter() }, { upload: { acceptLabel: 'x'.repeat(500) } }).upload.acceptLabel].length, 200);
   });
 
-  it('crop warning (once) names v0.35', () => {
+  it('v0.35 cropResolved (decision 23): on / off / bad ratio / multiple warn once; unknown keys ignored', () => {
     _resetCoreWarnings();
     const warns = [];
-    resolveOptions({ adapter: adapter() }, { crop: { enabled: true } }, { warn: (m) => warns.push(m) });
-    resolveOptions({ adapter: adapter() }, { crop: { enabled: true } }, { warn: (m) => warns.push(m) });
-    assert.equal(warns.length, 1);
-    assert.match(warns[0], /v0\.35/);
+    const w = { warn: (m) => warns.push(m) };
+    const r = (crop, sel) => resolveOptions({ adapter: adapter() }, { crop, ...(sel ? { selection: sel } : {}) }, w).cropResolved;
+    assert.equal(r(undefined), null);
+    assert.equal(r({ enabled: false, aspectRatio: 2 }), null);
+    assert.equal(r({ aspectRatio: 2 }), null);
+    assert.deepEqual(r({ enabled: true, aspectRatio: 1.91, allowFocalPoint: true }), { aspectRatio: 1.91, allowFocalPoint: true });
+    assert.deepEqual(r({ enabled: true, aspectRatio: 1.5, minWidth: 1200, presets: [] }), { aspectRatio: 1.5, allowFocalPoint: false });
+    assert.equal(warns.length, 0);
+    // review R1 #5: the public range is [0.01, 100] (boundaries included)
+    assert.deepEqual(r({ enabled: true, aspectRatio: 0.01 }), { aspectRatio: 0.01, allowFocalPoint: false });
+    assert.deepEqual(r({ enabled: true, aspectRatio: 100 }), { aspectRatio: 100, allowFocalPoint: false });
+    assert.equal(warns.length, 0);
+    for (const bad of [0, -1, 0.0099, 100.01, 10001, NaN, Infinity, '16/9']) {
+      assert.deepEqual(r({ enabled: true, aspectRatio: bad }), { aspectRatio: null, allowFocalPoint: false }, String(bad));
+    }
+    assert.equal(warns.length, 1, 'bad ratio warns once');
+    assert.match(warns[0], /aspectRatio/);
+    assert.match(warns[0], /\[0\.01, 100\]/);
+    assert.ok(warns[0].length < 200, 'bounded: never echoes the value');
+    assert.equal(r({ enabled: true }, { mode: 'multiple' }), null);
+    assert.equal(r({ enabled: true }, { mode: 'multiple' }), null);
+    assert.equal(warns.length, 2, 'multiple warns once');
+    assert.match(warns[1], /single/);
+    assert.ok(!warns.some((m) => /v0\.35/.test(m)));
+    // A defaults layer can enable crop; a higher layer can switch it off (the media field always passes `crop`).
+    assert.equal(resolveOptions({ adapter: adapter(), crop: { enabled: true } }, { crop: { enabled: false } }).cropResolved, null);
   });
 });
 

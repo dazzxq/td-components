@@ -190,3 +190,21 @@ test('v0.31.0: ./masked-value export, sideEffects, barrel, masked-value CSS afte
   const i = files.indexOf('components/masked-value.css');
   assert.ok(i > files.indexOf('components/sortable.css') && i < files.indexOf('utilities.css'));
 });
+
+test('v0.35.0: ./cropper export, sideEffects, barrel TdCropper, cropper CSS in the td.css manifest before utilities; crop dialog / geometry internal', async () => {
+  assert.equal(pkg.exports['./cropper'], './src/form/td-cropper.js');
+  assert.ok(pkg.sideEffects.includes('./src/form/td-cropper.js'));
+  assert.ok(!pkg.sideEffects.includes('./src/feedback/crop-dialog.js'), 'crop-dialog defines no element');
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdCropper \} from '\.\/src\/form\/td-cropper\.js';/);
+  assert.ok(!/crop-(dialog|geometry)/.test(src), 'crop dialog / geometry stay internal');
+  assert.ok(!Object.values(pkg.exports).some((t) => /crop-(dialog|geometry)/.test(t)), 'no crop-dialog / crop-geometry export');
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  const i = files.indexOf('components/cropper.css');
+  assert.ok(i > files.indexOf('components/modal.css') && i < files.indexOf('utilities.css'), 'cropper.css after modal.css, before utilities.css');
+  const css = await readFile(join(ROOT, 'td.css'), 'utf8');
+  for (const sel of ['td-cropper:not(:defined)', '.td-cropper__box', '.td-cropper__handle--corner', '.td-cropper__focal',
+    '@container td-cropper (width < 480px)', '.td-crop-dialog__cropper', '--td-cropper-h', '--td-cropper-dim', '--td-cropper-line-contrast']) {
+    assert.ok(css.includes(sel), sel);
+  }
+});

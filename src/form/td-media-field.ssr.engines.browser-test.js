@@ -28,6 +28,9 @@ const hostOf = (id) => formOf(id).querySelector(':scope > td-media-field');
 const hostHtml = (id) => TPL.content.querySelector(`form[data-case="${id}"] > td-media-field`);
 const fd = (form) => [...new FormData(form)].map(([k, v]) => [k, String(v)]);
 const vis = (el) => getComputedStyle(el).visibility;
+/** v0.35: the only inline style allowed = the crop preview's CSSOM custom properties on the image (decision 30). */
+const foreignStyle = (n) => n.hasAttribute('style')
+  && !(n.classList.contains('td-media-field__img') && [...n.style].every((p) => p.startsWith('--_td-mf-crop-')));
 
 // Hand-written mismatches of the usage case (must render, never adopt) — the alt being typed + the focus must survive.
 const usageHost = hostHtml('usage-full');
@@ -58,6 +61,8 @@ for (const c of SPEC.cases) {
   before[c.id] = {
     entries: fd(formOf(c.id)),
     open: host.querySelector('.td-media-field__open'),
+    cropBtn: host.querySelector('.td-media-field__crop-btn'),
+    cropBtnVis: host.querySelector('.td-media-field__crop-btn') ? vis(host.querySelector('.td-media-field__crop-btn')) : null,
     img: host.querySelector('img'),
     alt: host.querySelector('.td-media-field__alt'),
     box: host.getBoundingClientRect(),
@@ -92,6 +97,13 @@ describe('td-media-field SSR (media-field@1) — before define', () => {
     }
   });
 
+  it('v0.35: the "Cắt ảnh" button is printed only for croppable + usage, visibility hidden until define', () => {
+    for (const c of SPEC.cases.filter((x) => x.expect.v035)) {
+      expect(before[c.id].cropBtn !== null, c.id).to.equal(c.expect.cropBtn !== 'none');
+      if (before[c.id].cropBtn) expect(before[c.id].cropBtnVis, c.id).to.equal('hidden');
+    }
+  });
+
   it('no-JS FormData = the component\'s shape for every case (typed alt included)', () => {
     for (const c of SPEC.cases) {
       const want = c.id === 'usage-full' ? [c.expect.entries[0], ['og[alt]', 'Đang gõ trước khi tải'], c.expect.entries[2]] : c.expect.entries;
@@ -118,7 +130,7 @@ describe('td-media-field SSR (media-field@1) — adopted in place', () => {
       expect(Math.abs(r.width - b.box.width) <= 1 && Math.abs(r.height - b.box.height) <= 1, `${r.width}×${r.height} vs ${b.box.width}×${b.box.height}`).to.equal(true);
       expect(vis(host.querySelector('.td-media-field__open'))).to.equal('visible');
       for (const btn of host.querySelectorAll('.td-media-field__actions button')) expect(vis(btn)).to.equal('visible');
-      expect([...host.querySelectorAll('*')].some((n) => n.hasAttribute('style') || [...n.attributes].some((a) => a.name.startsWith('on')))).to.equal(false);
+      expect([...host.querySelectorAll('*')].some((n) => foreignStyle(n) || [...n.attributes].some((a) => a.name.startsWith('on')))).to.equal(false);
       if (c.expect.hostId) expect(host.id).to.equal(c.expect.hostId);
       if (c.expect.disabled) expect([...host.querySelectorAll('button, input')].every((x) => x.disabled)).to.equal(true);
       if (c.expect.required) expect(host.validity.valueMissing).to.equal(true);
@@ -132,6 +144,39 @@ describe('td-media-field SSR (media-field@1) — adopted in place', () => {
       for (const bad of c.dropOnHost || []) expect(host.hasAttribute(bad), bad).to.equal(false);
     });
   }
+
+  it('v0.35 croppable + focal fixture: adopted in place (crop button, status, focal entry), selection carries crop + focal', () => {
+    const host = hostOf('crop-focal');
+    const b = before['crop-focal'];
+    expect(host.querySelector('.td-media-field__crop-btn') === b.cropBtn, 'crop button kept').to.equal(true);
+    expect(b.cropBtn.hidden).to.equal(false);
+    expect(vis(b.cropBtn)).to.equal('visible');
+    expect(b.cropBtn.textContent).to.equal('Cắt ảnh');
+    expect(host.querySelectorAll('.td-media-field__status').length).to.equal(1);
+    expect(fd(formOf('crop-focal'))).to.deep.equal(SPEC.cases.find((c) => c.id === 'crop-focal').expect.entries);
+    const s = host.selection[0];
+    expect(s.usage.crop).to.deep.equal({ normalized: { x: 0.25, y: 0.25, width: 0.5, height: 0.5 } });
+    expect(s.usage.focalPoint).to.deep.equal({ x: 0.25, y: 0.75 });
+  });
+
+  it('v0.35 crop preview after adoption: the frame shows exactly the cropped area (3:2 crop of a 3:2 image)', async () => {
+    const host = hostOf('crop-focal');
+    const img = host.querySelector('img');
+    host.scrollIntoView(); // loading="lazy": Firefox / WebKit load it only near the viewport
+    if (!img.complete || !img.naturalWidth) await new Promise((r) => { img.addEventListener('load', r, { once: true }); });
+    await new Promise((r) => requestAnimationFrame(() => r()));
+    expect(img.style.getPropertyValue('--_td-mf-crop-w').trim()).to.equal('0.5');
+    const btn = host.querySelector('.td-media-field__open').getBoundingClientRect();
+    const r = img.getBoundingClientRect();
+    expect(Math.abs(r.width - btn.width * 2) <= 1 && Math.abs(r.left - (btn.left - btn.width * 0.5)) <= 1, `${r.left},${r.width} vs ${btn.left},${btn.width}`).to.equal(true);
+    expect(Math.abs(r.height - btn.height * 2) <= 1 && Math.abs(r.top - (btn.top - btn.height * 0.5)) <= 1).to.equal(true);
+  });
+
+  it('v0.35 croppable empty: crop button adopted hidden; focal null submitted; crop-no-usage: nothing v0.35', () => {
+    expect(hostOf('crop-empty').querySelector('.td-media-field__crop-btn').hidden).to.equal(true);
+    expect(hostOf('crop-no-usage').querySelector('.td-media-field__crop-btn')).to.equal(null);
+    expect(fd(formOf('crop-no-usage'))).to.deep.equal([['nu', 'm1']]);
+  });
 
   it('the alt typed before the upgrade wins over the attribute (live native state)', () => {
     expect(hostOf('usage-full').querySelector('.td-media-field__alt').value).to.equal('Đang gõ trước khi tải');
