@@ -161,7 +161,9 @@ describe('v0.34.0 td-table — auto layout switches by CONTAINER width (QĐ 15)'
     expect(getComputedStyle(scroll).backgroundAttachment).to.contain('local');
   });
 
-  it('layout="cards" at 1280 → cards; secondary pairs in 2 columns (≥ 480)', async () => {
+  // v0.36.1 (QĐ 4, revised): pairs are sized by their content and pack on a line while they fit (no 480 container
+  // query, no 2-per-line cap) — was "2 columns ≥ 480 / one column under 480"
+  it('layout="cards" at 1280 → cards; short secondary pairs share one line', async () => {
     const { el } = await mk(1280, 'layout="cards"');
     expect(isCard(el)).to.equal(true);
     const [a, b] = [...rows(el)[0].querySelectorAll('[data-card="secondary"]')].map((c) => c.getBoundingClientRect());
@@ -169,10 +171,15 @@ describe('v0.34.0 td-table — auto layout switches by CONTAINER width (QĐ 15)'
     expect(b.left > a.right - 1).to.equal(true);
   });
 
-  it('secondary pairs are one column under 480', async () => {
-    const { el } = await mk(400, 'layout="cards"');
-    const [a, b] = [...rows(el)[0].querySelectorAll('[data-card="secondary"]')].map((c) => c.getBoundingClientRect());
-    expect(b.top >= a.bottom - 1).to.equal(true);
+  it('secondary pairs: pack by content at 360; one per line with --td-table-card-pair-min: 100%', async () => {
+    const two = await mk(360, 'layout="cards"');
+    const [a, b] = [...rows(two.el)[0].querySelectorAll('[data-card="secondary"]')].map((c) => c.getBoundingClientRect());
+    expect(b.top >= a.bottom - 1, 'customer + phone do not fit one 360 card line').to.equal(true);
+    const one = await mk(1280, 'layout="cards"');
+    one.el.style.setProperty('--td-table-card-pair-min', '100%');
+    await frames(2);
+    const [c, d] = [...rows(one.el)[0].querySelectorAll('[data-card="secondary"]')].map((x) => x.getBoundingClientRect());
+    expect(d.top >= c.bottom - 1).to.equal(true);
   });
 
   it('card-below: md default (<720), sm (<480), lg (<1024); unknown → md', async () => {
@@ -320,6 +327,11 @@ describe('v0.34.0 td-table — actions + row-action (QĐ 18)', () => {
     expect(td.querySelector('.td-table__actions-menu')).to.equal(null);
     expect(btns[1].classList.contains('td-btn--danger') && btns[0].classList.contains('td-btn--sm')).to.equal(true);
     expect(btns[0].querySelector('svg')).to.not.equal(null);
+    // v0.36.1 (QĐ 7): card mode — the action with an icon shows only the icon (its text stays in the DOM and names
+    // the button); the action without an icon keeps its visible text
+    const lab = (b) => b.querySelector('.td-table__action-label').getBoundingClientRect().width;
+    expect(btns[0].classList.contains('td-table__action--icon') && lab(btns[0]) <= 1).to.equal(true);
+    expect(btns[1].classList.contains('td-table__action--icon') || lab(btns[1]) <= 10).to.equal(false);
     const got = [];
     const hook = [];
     el.addEventListener('row-action', (e) => got.push(e.detail));
@@ -333,6 +345,7 @@ describe('v0.34.0 td-table — actions + row-action (QĐ 18)', () => {
     wrap.style.width = '900px';
     expect(await until(() => !isCard(el))).to.equal(true);
     expect([...td.querySelectorAll('.td-table__action')].every(visible)).to.equal(true);
+    expect(lab(btns[0])).to.be.above(10); // table mode: icon + text
   });
 
   it('3+ actions: table mode inline, card mode one "Thao tác" menu button (TdMenu); choosing fires once', async () => {

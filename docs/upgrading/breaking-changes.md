@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.36.1](#0361) | Đổi giao diện card của `td-table` (mật độ) | Không bắt buộc. Cột đầu không khai báo `card` thành `lead` khi cột khác khai báo `card: 'primary'` (giữ cũ: `card: 'secondary'` trên cột đầu); cặp xếp theo nội dung (giữ cũ: `--td-table-card-pair-min: 100%`); action có `icon` chỉ hiện icon ở card; card / khoảng cách gọn hơn (token `--td-table-card-*`). |
 | [0.36.0](#0360) | Đổi giao diện + **DOM toast** (màu ngữ nghĩa, badge, alert, toast, lightbox điện thoại; xem dưới) | CSS / script nhắm `#td-toast-container > .td-toast` phải đổi (toast nằm trong lane > chồng). Còn lại không bắt buộc. Nút / badge ngữ nghĩa thành màu đặc (warning chữ tối), badge viền + bóng, alert vạch mép; muốn pastel cũ: đoạn CSS khôi phục. Thêm `<td-action-button>` / `td_action_button()`. |
 | [0.35.0](#0350) | Đổi hành vi (nhỏ, chỉ khi đã bật `crop` / `focal-point`) | Không bắt buộc. Thêm `<td-cropper>` (`./cropper`), `TdCropper.openDialog()`, field `croppable` / `focal-point` / `name[focal]` (opt-in), PHP `croppable` / `crop_ratio` / `focal_point` / `focal`. Site đã truyền `crop: { enabled: true }` cho picker: "Chèn" giờ mở **bước cắt**, `urls.preview` phải là ảnh nguyên, `aspectRatio` trong [0.01, 100]. Field không `croppable` không đổi; `selection.focalPoint` thật khi có `focal-point`. Import map: thêm `cropper`. |
 | [0.34.0](#0340) | Đổi giao diện + đổi DOM (nhỏ) | Responsive: modal sheet < 720 (trước ≤ 640), `td-table` tự thành card khi hẹp (`layout="table"` để giữ cũ), `textContent` của ô bảng có thêm nhãn cột ẩn, site chỉ đè `--td-media-grid-row-ratio` giờ chỉ áp lưới ≥ 1024px. |
@@ -63,6 +64,27 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.36.1
+
+**Đổi giao diện dạng card của `<td-table>`** (mật độ) — không đổi DOM ngoài giá trị `data-card` và class
+`td-table__action--icon`; dạng bảng không đổi.
+
+- **Cột đầu thành `lead`**: cột đầu **không khai báo `card`** giờ thành `lead` (ID nhỏ, màu nhạt, trước tiêu đề trên dòng
+  đầu) khi một cột khác khai báo `card: 'primary'` — trước đây thành cặp "ID: 1" một dòng. Giữ cũ: `card: 'secondary'`
+  trên cột đầu. Bảng không khai báo `card` nào không đổi. CSS / test nhắm `td[data-col="0"][data-card="secondary"]` cần
+  sửa.
+- **Cặp `secondary` xếp theo nội dung** (cặp ngắn chung dòng, dài chiếm cả dòng), bỏ mốc 480px. Giữ một cặp mỗi dòng:
+  `td-table { --td-table-card-pair-min: 100%; }`.
+- **Chân card**: thao tác nằm cuối dòng meta; action có `icon` hợp lệ (và nút "Thao tác") **chỉ hiện icon** ở card (tên
+  đọc không đổi). Icon không rõ nghĩa → bỏ `icon` để giữ chữ.
+- **Thanh sắp xếp một hàng**, cuộn ngang khi nhiều chip.
+- **Khoảng cách gọn hơn**: `--td-table-card-gap` `sm` → `xs`, `--td-table-card-px` `md` → `sm`, `--td-table-card-py`
+  `sm` → `xs`, ô card 2px (`--td-table-card-cell-py`), tiêu đề primary `line-height` 1.25. Giữ cũ: đặt lại các token đó.
+
+Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.36.1.
 
 ---
 

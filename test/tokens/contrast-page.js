@@ -103,6 +103,9 @@ for (const state of ['rest', 'hover', 'disabled', 'gallery', 'placeholder', 'lif
 for (const state of ['masked', 'revealed', 'toggle']) CASES.push({ kind: 'masked', v: 'value', state, pageOnly: true });
 // v0.34.0 td-table card mode: cell label (muted) + value on the card fill, sort chip label on its fill — ≥ 4.7, light + dark.
 for (const state of ['label', 'value', 'sort-chip']) CASES.push({ kind: 'table-card', v: 'card', state, pageOnly: true });
+// v0.36.1: the `lead` (muted id before the primary, xs mouse / sm coarse — same colour) ≥ 4.7 on the card, and an icon-only
+// card action: icon ≥ 3:1 on the button fill — light + dark.
+for (const state of ['lead', 'action-icon']) CASES.push({ kind: 'table-card', v: 'card', state, pageOnly: true });
 // v0.36.0 colours/action-button (plan QĐ 12, 18–26): computed-colour pairs (page only, light + dark). Solid semantic
 // tokens: label vs fill and vs hover ≥ 4.7 (buttons / badges read them); badge -ink (outline / stamp) vs the page ≥ 4.7;
 // badge edge vs its own fill / white / #f4f4f5 ≥ 1.6 (light theme); alert icon vs the alert fill ≥ 3.2 and the
@@ -831,8 +834,9 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     const host = document.createElement('td-table');
     host.setAttribute('layout', 'cards');
     stage.appendChild(host);
-    host.columns = [{ key: 'code', label: 'Mã đơn', sortable: true }, { key: 'customer', label: 'Khách hàng' }];
-    host.data = [{ code: 'DH1', customer: 'Nguyễn Văn An' }];
+    host.columns = [{ key: 'id', label: 'ID' }, { key: 'code', label: 'Mã đơn', sortable: true, card: 'primary' },
+      { key: 'customer', label: 'Khách hàng' }, { key: 'act', label: 'Thao tác', actions: [{ id: 'e', label: 'Sửa', icon: 'pencil' }] }];
+    host.data = [{ id: 7, code: 'DH1', customer: 'Nguyễn Văn An' }];
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     /** first opaque background colour from `el` up */
     const fill = (el) => {
@@ -846,9 +850,11 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     let target;
     if (c.state === 'label') target = cell.querySelector('.td-table__cell-label');
     else if (c.state === 'value') target = cell;
+    else if (c.state === 'lead') target = host.querySelector('tbody td[data-card="lead"]');
+    else if (c.state === 'action-icon') target = host.querySelector('tbody .td-table__action--icon');
     else target = host.querySelector('.td-table__sort');
     if (!target) throw new Error(`table-card: no ${c.state} target`);
-    const ink = getComputedStyle(target).color;
+    const ink = getComputedStyle(c.state === 'action-icon' ? target.querySelector('svg') : target).color;
     const b = target.getBoundingClientRect();
     return {
       rect: { x: b.x, y: b.y, width: b.width, height: b.height },
@@ -856,7 +862,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       opacity: 1,
       hover: false,
       name: `table-card:${c.v}:${c.state}`,
-      pairs: [{ what: `${c.state} text vs its fill`, fg: ink, bg: fill(target), min: 4.7 }],
+      pairs: [{ what: `${c.state} ${c.state === 'action-icon' ? 'icon' : 'text'} vs its fill`, fg: ink, bg: fill(target), min: c.state === 'action-icon' ? 3 : 4.7 }],
     };
   } else if (c.kind === 'sortable' || c.kind === 'masked') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';

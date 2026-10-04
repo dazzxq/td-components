@@ -6,7 +6,7 @@
  *
  * M0 (after v0.33): media picker (mock adapter, no network), media grid (default + justified + sortable gallery) and
  * dropzone are included. v0.35.0: td-cropper (inline: full width + the 280 px column), the crop dialog and the picker crop
- * step (openers `cropDialog` / `pickerCrop`).
+ * step (openers `cropDialog` / `pickerCrop`). v0.36.1: `#rsp-table-density` (5 short columns, card density budget).
  */
 import '../../src/form/td-button.js';
 import '../../src/form/td-action-button.js'; // v0.36.0
@@ -97,6 +97,32 @@ export const orderColumns = () => [
   ] },
 ];
 
+const POSTS = [
+  ['Hướng dẫn Web Components', 'Duyệt', 'published', 1250], ['Tailwind CSS Tips & Tricks', 'Duyệt', 'published', 890],
+  ['JavaScript ES2025 Features', 'Minh', 'draft', 0], ['Laravel 12 Migration Guide', 'Hùng', 'published', 2100],
+  ['Building a CMS from Scratch', 'Duyệt', 'archived', 3400], ['Storybook for Web Components', 'Linh', 'draft', 0],
+  ['Docker Compose Best Practices', 'Minh', 'published', 670], ['Git Workflow cho team nhỏ', 'Duyệt', 'published', 1580],
+].map(([title, author, status, views], i) => ({ id: i + 1, title, author, status, views }));
+const STATUS = { published: ['Đã đăng', 'td-badge--success'], draft: ['Nháp', 'td-badge--neutral'], archived: ['Lưu trữ', 'td-badge--warning'] };
+
+/**
+ * v0.36.1 (plan QĐ 10): the demo's 5 short columns — `id` first WITHOUT a card role, `title` explicit primary (→ the id
+ * becomes the `lead`), a badge render column and a right-aligned number. Card density budget fixture.
+ */
+export const densityColumns = () => [
+  { key: 'id', label: 'ID', sortable: true, width: '60px' },
+  { key: 'title', label: 'Tiêu đề', sortable: true, card: 'primary' },
+  { key: 'author', label: 'Tác giả', sortable: true },
+  { key: 'status', label: 'Trạng thái', render: (row) => {
+    const [text, cls] = STATUS[row.status] || [String(row.status), ''];
+    const badge = document.createElement('span');
+    badge.className = `td-badge ${cls}`;
+    badge.textContent = text;
+    return badge;
+  } },
+  { key: 'views', label: 'Lượt xem', sortable: true, align: 'right' },
+];
+
 /**
  * Build the fixture inside `root`.
  * @param {HTMLElement} root
@@ -148,6 +174,7 @@ export function mountResponsiveFixture(root) {
     <td-pagination total-items="150" items-per-page="10" current-page="3"></td-pagination>
   </section>
   <section class="rsp-section" data-section="table"><h2>Bảng</h2>
+    <td-table id="rsp-table-density" title="Bài viết"></td-table>
     <td-table id="rsp-table" title="Đơn hàng"></td-table>
     <td-table id="rsp-table-scroll" title="Đơn hàng (luôn dạng bảng)" layout="table"></td-table>
   </section>
@@ -210,6 +237,9 @@ export function mountResponsiveFixture(root) {
     t.columns = orderColumns();
     t.data = ORDERS.map((o) => ({ ...o }));
   }
+  const posts = root.querySelector('#rsp-table-density');
+  posts.columns = densityColumns();
+  posts.data = POSTS.map((o) => ({ ...o }));
   root.querySelector('#rsp-empty').actions = [{ label: 'Tạo đơn hàng mới', variant: 'primary' }, { label: 'Nhập từ tệp Excel', variant: 'secondary' }];
 
   TdMenu.define('rsp-menu', [

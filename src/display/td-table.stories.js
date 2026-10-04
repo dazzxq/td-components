@@ -265,3 +265,32 @@ export const ForcedTable = {
     </div>`,
   play: async ({ canvasElement }) => fillOrders(canvasElement, { width: '360px' }),
 };
+
+// --- v0.36.1 card density: `lead` role, content-sized pairs, meta + icon actions on one line, one-row sort bar ---
+
+const posts = [
+  ['Hướng dẫn Web Components', 'Duyệt', 1250], ['Tailwind CSS Tips & Tricks', 'Duyệt', 890],
+  ['JavaScript ES2025 Features', 'Minh', 0], ['Laravel 12 Migration Guide', 'Hùng', 2100],
+  ['Storybook for Web Components', 'Linh', 0], ['Git Workflow cho team nhỏ', 'Duyệt', 1580],
+].map(([title, author, views], i) => ({ id: i + 1, title, author, views, date: `0${i + 1}/10/2026` }));
+
+export const CompactCards = {
+  name: 'Card gọn (khung 360px)',
+  render: () => `<div>
+      <div class="sb-table-frame"><td-table title="Bài viết" per-page="5"></td-table></div>
+      <p class="sb-note">0.36.1: cột ID đầu không khai báo card, cột Tiêu đề card: 'primary' → ID thành lead (nhỏ, nhạt, trước tiêu đề). Cặp nhãn: giá trị xếp theo độ dài; ngày (meta) và thao tác chung một dòng; action có icon chỉ hiện icon ở card (tên đọc giữ "Sửa" / "Xoá"); thanh sắp xếp một hàng, cuộn ngang.</p>
+    </div>`,
+  play: async ({ canvasElement }) => {
+    const el = canvasElement.querySelector('td-table');
+    el.parentElement.style.inlineSize = '360px';
+    el.columns = [
+      { key: 'id', label: 'ID', sortable: true },
+      { key: 'title', label: 'Tiêu đề', sortable: true, card: 'primary' },
+      { key: 'author', label: 'Tác giả', sortable: true },
+      { key: 'views', label: 'Lượt xem', align: 'right', sortable: true },
+      { key: 'date', label: 'Ngày', card: 'meta', sortable: true },
+      { key: 'act', label: 'Thao tác', actions: [{ id: 'edit', label: 'Sửa', icon: 'pencil' }, { id: 'del', label: 'Xoá', icon: 'trash', variant: 'danger' }] },
+    ];
+    el.data = posts;
+  },
+};

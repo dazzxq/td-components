@@ -20,6 +20,8 @@
  * v0.35.0: td-cropper inline (full width + 280 px column: no overflow, corners / focal / toolbar ≥ 44 coarse incl. corners on
  * the image edge), the crop dialog and the picker crop step (inside the viewport, confirm + back visible, stage ≥ 200 px).
  *
+ * v0.36.1: td-table card density budgets (#rsp-table-density 5 short columns, #rsp-table 9 columns) at 360 / 393 / 768.
+ *
  * Run: npm run test:responsive   (RSP_ENGINES=chromium,webkit RSP_ONLY=<config tag substring> for a subset)
  */
 import { chromium, firefox, webkit } from 'playwright-core';
@@ -191,7 +193,7 @@ async function runConfig(browser, c) {
     check(tag, `overlapping text${where}`, st.overlaps);
     check(tag, `truncated tab labels${where}`, st.truncatedTabs);
     // td-table: card when its container is < 720 (default card-below md); layout="table" never; card mode keeps roles
-    const modes = await page.evaluate(() => ['rsp-table', 'rsp-table-scroll', 'rsp-table-narrow'].map((id) => {
+    const modes = await page.evaluate(() => ['rsp-table', 'rsp-table-density', 'rsp-table-scroll', 'rsp-table-narrow'].map((id) => {
       const host = document.getElementById(id);
       const tr = host.querySelector('tbody tr');
       return { id, width: host.clientWidth, layout: host.getAttribute('layout') || 'auto', display: tr ? getComputedStyle(tr).display : '' };
@@ -203,6 +205,72 @@ async function runConfig(browser, c) {
       if (wantCard !== isCard) modeErr.push(`${m.id} (${m.layout}, host ${m.width}px): ${isCard ? 'card' : 'table'}, want ${wantCard ? 'card' : 'table'}`);
     }
     check(tag, 'td-table mode', modeErr);
+    // v0.36.1 (plan QĐ 10): card density budgets — phone (360 / 393) and the 700 px card column at 768. Each card ≤ the
+    // budget, the sort bar ONE row (same chip top) ≤ 52 coarse / 44 mouse, the `lead` ≥ 14 px coarse (12 px mouse).
+    if ([360, 393, 768].includes(c.w)) {
+      const dens = await page.evaluate(() => ['rsp-table-density', 'rsp-table'].map((id) => {
+        const host = document.getElementById(id);
+        const trs = [...host.querySelectorAll('.td-table__body > tr')];
+        const head = host.querySelector('.td-table__head > tr');
+        const lead = host.querySelector('.td-table__body > tr > [data-card="lead"]');
+        return { id, width: host.clientWidth, card: !!trs[0] && getComputedStyle(trs[0]).display !== 'table-row',
+          rows: trs.map((r) => r.getBoundingClientRect().height), head: head.getBoundingClientRect().height,
+          chipTops: [...head.querySelectorAll('.td-table__th--sortable')].map((ch) => Math.round(ch.getBoundingClientRect().top)),
+          lead: lead ? parseFloat(getComputedStyle(lead).fontSize) : null };
+      }));
+      const coarse = c.touch && c.engine !== 'firefox';
+      // 9-column phone budget 212 (plan: 176 provisional, "M0 records"): customer (≈ 207px) + phone (≈ 182px) pairs
+      // cannot share a 250–283px line, so 4 pair lines + meta + a 44px action line is the floor (before: 294 / 306)
+      const budget = { 'rsp-table-density': c.w < 720 ? 120 : 96, 'rsp-table': c.w < 720 ? 212 : 140 };
+      const densErr = [];
+      for (const d of dens) {
+        if (!d.card) continue; // fallback 768: viewport ≥ 720 → table
+        const max = Math.max(...d.rows);
+        if (max > budget[d.id] + 0.5) densErr.push(`#${d.id} (host ${d.width}px): card ${max.toFixed(1)}px > ${budget[d.id]}`);
+        if (d.head > (coarse ? 52 : 44) + 0.5) densErr.push(`#${d.id}: sort bar ${d.head.toFixed(1)}px > ${coarse ? 52 : 44}`);
+        if (new Set(d.chipTops).size > 1) densErr.push(`#${d.id}: sort chips on ${new Set(d.chipTops).size} rows`);
+        if (d.id === 'rsp-table-density') {
+          if (d.lead === null) densErr.push(`#${d.id}: no lead cell (id column with an explicit primary elsewhere)`);
+          else if (coarse ? d.lead < 14 : d.lead !== 12) densErr.push(`#${d.id}: lead ${d.lead}px (${coarse ? '≥ 14 coarse' : '12 mouse'})`);
+        }
+      }
+      notes.push(`${tag} card heights: ${dens.filter((d) => d.card).map((d) => `${d.id} ${Math.round(Math.max(...d.rows))} / bar ${Math.round(d.head)}`).join(', ')}`);
+      if (c.touch && c.engine !== 'firefox') {
+        // ISSUE-3: real coarse pointer — a card row with TWO visible icon actions: each a ≥ 44 × 44 hit area (box +
+        // elementFromPoint at the centre and 2px inside every edge hits that action), ≥ 8px apart
+        const act = await page.evaluate(async () => {
+          const wrap = document.createElement('div');
+          wrap.style.setProperty('width', `${Math.min(360, document.documentElement.clientWidth)}px`);
+          document.body.prepend(wrap);
+          const t = document.createElement('td-table');
+          wrap.appendChild(t);
+          t.columns = [{ key: 'id', label: 'ID' }, { key: 'title', label: 'Tiêu đề', card: 'primary' }, { key: 'd', label: 'Ngày', card: 'meta' },
+            { key: 'act', label: 'Thao tác', actions: [{ id: 'e', label: 'Sửa', icon: 'pencil' }, { id: 'x', label: 'Xoá', icon: 'trash', variant: 'danger' }] }];
+          t.data = [{ id: 1, title: 'Bài viết', d: '01/10/2026' }];
+          await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+          window.scrollTo(0, 0);
+          const btns = [...t.querySelectorAll('.td-table__action--icon')].filter((b) => b.getBoundingClientRect().width > 1);
+          const res = btns.map((b) => {
+            const r = b.getBoundingClientRect();
+            const pts = [[r.left + r.width / 2, r.top + r.height / 2], [r.left + 2, r.top + r.height / 2], [r.right - 2, r.top + r.height / 2],
+              [r.left + r.width / 2, r.top + 2], [r.left + r.width / 2, r.bottom - 2]];
+            const miss = pts.filter(([x, y]) => { const h = document.elementFromPoint(x, y); return !h || !(h === b || b.contains(h)); }).length;
+            return { l: r.left, r: r.right, w: r.width, h: r.height, miss };
+          });
+          wrap.remove();
+          return res;
+        });
+        const actErr = [];
+        if (act.length !== 2) actErr.push(`expected 2 visible icon actions, got ${act.length}`);
+        act.forEach((x, i) => {
+          if (x.w < 43.5 || x.h < 43.5) actErr.push(`action ${i} ${x.w}×${x.h} < 44 × 44`);
+          if (x.miss) actErr.push(`action ${i}: ${x.miss} of 5 elementFromPoint probes miss it`);
+        });
+        if (act.length === 2 && Math.max(act[1].l - act[0].r, act[0].l - act[1].r) < 7.5) actErr.push(`actions ${(act[1].l - act[0].r).toFixed(1)}px apart (< 8)`);
+        check(tag, 'td-table icon actions (coarse, v0.36.1)', actErr);
+      }
+      check(tag, `td-table card density (v0.36.1)${c.shots ? ` (screenshot ${join(OUT, tag, 'page.png')})` : ''}`, densErr);
+    }
     const snap = await page.locator('#rsp-table-narrow table').ariaSnapshot();
     // v0.36.0 (plan QĐ 13): td-action-button — coarse = a REAL 44 × 44 box (no ::before extension), mouse = 32 / 36 / 40;
     // inside .td-action-group no two targets overlap and (coarse) they are ≥ 8 px apart.

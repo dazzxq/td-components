@@ -2,6 +2,7 @@ import { TdBaseElement } from '../base/td-base-element.js';
 import { safeCssDimension, applyStyles } from '../utils/css-safe.js';
 import { tdIcon, hasIcon, fillIconSlots } from '../icons/td-icon.js';
 import { TdMenu } from '../feedback/td-menu.js';
+import { cardRoles } from '../utils/table-card-role.js';
 import './td-pagination.js';
 import './td-empty-state.js';
 
@@ -9,8 +10,6 @@ import './td-empty-state.js';
 const CELL_PADDING = { 'px-0': 0, 'px-1': 1, 'px-2': 2, 'px-3': 3, 'px-4': 4, 'px-5': 5, 'px-6': 6 };
 const ALIGN = ['left', 'center', 'right', 'justify'];
 const OFF = new Set(['false', '0', 'off']);
-/** Card roles of a column (v0.34.0 QĐ 16); `false` → `data-card="false"` (not shown on a card). */
-const CARD_ROLES = ['primary', 'secondary', 'meta', 'actions'];
 /** `actions[].variant` whitelist → `td-btn--{variant}` (anything else → secondary). */
 const ACTION_VARIANTS = new Set(['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'ghost']);
 /** More visible actions than this → card mode shows one "Thao tác" menu button instead (QĐ 18). */
@@ -79,14 +78,17 @@ function safeMaxHeight(value) {
  *
  * @property {Array<Object>} columns - Column definitions: `{ key, label, sortable?, width?, widthType?:
  *   'fixed'|'flexible', minWidth?, maxWidth?, align?: 'left'|'center'|'right'|'justify', ellipsis?, nowrap?,
- *   card?: 'primary'|'secondary'|'meta'|'actions'|false, actions?, render? }`.
+ *   card?: 'lead'|'primary'|'secondary'|'meta'|'actions'|false, actions?, render? }`.
  *   `width` is applied ONLY with `widthType: 'fixed'` (width = min = max); the default `'flexible'` ignores it and
  *   uses `minWidth`/`maxWidth` (width `auto`). `table-layout: fixed` only when EVERY column is fixed (v0.34.0).
  *   `nowrap` (default true for `align: 'right'`) keeps the value on one line. `card` = role on a card (default:
- *   first column primary, an `actions` column actions, others secondary; `false` = not on the card).
+ *   first column primary — or `lead` when another column declares `card: 'primary'` (v0.36.1) —, an `actions` column
+ *   actions, others secondary; `false` = not on the card). `lead` = a short identifier (ID, code) before the primary
+ *   on the card's first line, muted, no label.
  *   `actions: [{ id, label, icon?, variant?, hidden?(row), disabled?(row) }]` → small `td-btn` buttons (labels are
  *   text, `variant` whitelisted, `icon` a registry name); in card mode more than 2 visible actions collapse into one
- *   menu button (`TdTable.labels.actions`, TdMenu). A throwing `hidden` / `disabled` counts as true.
+ *   menu button (`TdTable.labels.actions`, TdMenu). v0.36.1: in card mode a button whose action has a valid `icon`
+ *   (and the menu button) shows ONLY the icon — the text stays in the DOM (visually hidden) and names the button. A throwing `hidden` / `disabled` counts as true.
  *   `label` and plain values are always escaped; `width`/`minWidth`/`maxWidth` pass `safeCssDimension`, `align` a
  *   whitelist, all applied via CSSOM. Columns are resolved by INDEX (keys may repeat, be numeric or missing).
  *   `ellipsis: true` → one line, truncated at `maxWidth` or `--td-table-ellipsis-max` (18rem), full text in `title`.
@@ -250,13 +252,9 @@ export class TdTable extends TdBaseElement {
     return cols.length > 0 && cols.every((c) => c && c.widthType === 'fixed' && safeCssDimension(c.width, ''));
   }
 
-  /** Card role of a column (QĐ 16): explicit `card`, else actions → 'actions', first → 'primary', else 'secondary'. */
-  _cardRole(col, ci) {
-    const c = col || {};
-    if (c.card === false) return 'false';
-    if (CARD_ROLES.includes(c.card)) return c.card;
-    if (Array.isArray(c.actions)) return 'actions';
-    return ci === 0 ? 'primary' : 'secondary';
+  /** Card role of every column (QĐ 16 + v0.36.1 `lead`), computed once per render — see utils/table-card-role.js. */
+  _cardRoles() {
+    return cardRoles(this._columns);
   }
 
   /** `nowrap` (QĐ 14): explicit boolean, default true for `align: 'right'` (amounts keep "₫" on their line). */
@@ -291,6 +289,7 @@ export class TdTable extends TdBaseElement {
       + (this._getMaxHeight() ? ' td-table--scroll-y' : '');
     const pad = this._cellPadClass();
     const esc = (v) => this.escapeHtml(v);
+    const roles = this._cardRoles();
     const heads = this._columns.map((col, ci) => {
       const c = col || {};
       const key = esc(String(c.key ?? ''));
@@ -300,7 +299,7 @@ export class TdTable extends TdBaseElement {
           + '<span class="td-table__sort-icon" aria-hidden="true"></span></button>'
         : label;
       return `<th class="td-table__th${c.sortable ? ' td-table__th--sortable' : ''}${pad}" role="columnheader" scope="col" data-col="${ci}" data-col-key="${key}"`
-        + ` data-card="${this._cardRole(c, ci)}">${inner}</th>`;
+        + ` data-card="${roles[ci]}">${inner}</th>`;
     }).join('');
     const titleHtml = title ? `<${h} class="td-table__title" id="${esc(this._titleId)}">${esc(title)}</${h}>` : '';
     const pag = (cls, label, quiet) => `<div class="${cls}"${quiet ? ' hidden' : ''}><td-pagination${quiet ? ' quiet' : ''}`
@@ -455,6 +454,7 @@ export class TdTable extends TdBaseElement {
     const esc = (v) => this.escapeHtml(v);
     const pad = this._cellPadClass();
     const cols = this._columns;
+    const roles = this._cardRoles();
     const labels = cols.map((col) => {
       const l = col && col.label != null ? String(col.label) : '';
       return `<span class="td-table__cell-label" aria-hidden="true">${esc(l)}</span>`;
@@ -466,7 +466,7 @@ export class TdTable extends TdBaseElement {
         const cls = `td-table__cell${c.ellipsis && !actions ? ' td-table__cell--ellipsis' : ''}`
           + `${this._isNowrap(c) ? ' td-table__cell--nowrap' : ''}${actions ? ' td-table__cell--actions' : ''}${pad}`;
         const attrs = `class="${cls}" role="cell" data-col="${ci}" data-col-key="${esc(String(c.key ?? ''))}"`
-          + ` data-card="${this._cardRole(c, ci)}"`;
+          + ` data-card="${roles[ci]}"`;
         if (actions) return `<td ${attrs}>${labels[ci]}${this._actionsHtml(c, row)}</td>`;
         if (typeof c.render === 'function') return `<td ${attrs}>${labels[ci]}</td>`;
         const v = row && typeof row === 'object' ? row[c.key] : undefined;
@@ -546,17 +546,20 @@ export class TdTable extends TdBaseElement {
   _actionsHtml(col, row) {
     const esc = (v) => this.escapeHtml(v);
     const list = this._rowActions(col, row);
-    const icon = (name) => (typeof name === 'string' && hasIcon(name)
+    const valid = (name) => typeof name === 'string' && hasIcon(name);
+    const icon = (name) => (valid(name)
       ? `<span class="td-table__action-icon" data-td-icon="${esc(name)}" data-td-icon-size="16" aria-hidden="true"></span>` : '');
+    // v0.36.1 (QĐ 7): `--icon` → icon-only in card mode (the label stays in the DOM, visually hidden: same name)
+    const iconCls = (name) => (valid(name) ? ' td-table__action--icon' : '');
     const btns = list.map(({ a, idx, disabled }) => {
       const v = ACTION_VARIANTS.has(a.variant) ? a.variant : 'secondary';
       const label = a.label == null ? '' : String(a.label);
-      return `<button type="button" class="td-btn td-btn--sm td-btn--${v} td-table__action" data-action-idx="${idx}"`
+      return `<button type="button" class="td-btn td-btn--sm td-btn--${v} td-table__action${iconCls(a.icon)}" data-action-idx="${idx}"`
         + `${disabled ? ' disabled' : ''}>${icon(a.icon)}<span class="td-table__action-label">${esc(label)}</span></button>`;
     }).join('');
     const menu = list.length > CARD_INLINE_ACTIONS;
     const more = menu
-      ? '<button type="button" class="td-btn td-btn--sm td-btn--secondary td-table__actions-menu" aria-haspopup="menu"'
+      ? `<button type="button" class="td-btn td-btn--sm td-btn--secondary td-table__actions-menu${iconCls('more')}" aria-haspopup="menu"`
         + ` aria-expanded="false">${icon('more')}<span class="td-table__action-label">${esc(TdTable.labels.actions)}</span></button>`
       : '';
     return `<div class="td-table__actions${menu ? ' td-table__actions--menu' : ''}">${btns}${more}</div>`;
@@ -598,8 +601,9 @@ export class TdTable extends TdBaseElement {
   /** Deterministic skeleton rows (widths come from td.css :nth-child rules — D19). */
   _skeletonHtml() {
     const pad = this._cellPadClass();
+    const roles = this._cardRoles();
     const cells = this._columns.map((c, ci) => `<td class="td-table__cell${pad}" role="cell" data-col="${ci}"`
-      + ` data-card="${this._cardRole(c, ci)}"><span class="td-table__skeleton"></span></td>`).join('')
+      + ` data-card="${roles[ci]}"><span class="td-table__skeleton"></span></td>`).join('')
       || `<td class="td-table__cell${pad}" role="cell" data-card="primary"><span class="td-table__skeleton"></span></td>`;
     const row = `<tr class="td-table__row td-table__row--skeleton" role="row" aria-hidden="true">${cells}</tr>`;
     return row.repeat(this._getLoadingRows());
