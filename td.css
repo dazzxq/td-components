@@ -3176,6 +3176,7 @@
 		/* v0.24.0 slide on navigation */
 		--td-lb-slide-dist: 24px;
 		--td-lb-slide-dur: 160ms;
+		--td-lb-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* v0.36.2: swipe spring back (the modal enter curve) */
 	}
 
 	/* Touch: 44 px hit targets (docs/internal/design/liquid-glass.md geometry rule). */
@@ -3476,6 +3477,26 @@
 
 	.td-lightbox[data-dragging] {
 		opacity: clamp(0.45, calc(1 - var(--td-lb-drag, 0px) / 320px), 1);
+	}
+
+	/* v0.36.2 (ADR 0019, QĐ 19–21): the media frame follows a horizontal swipe (--td-lb-swipe-x, written per frame by JS —
+	   a functional transform, ADR 0011 rule 4), then slides out (commit) or springs back; "reset" returns it to 0 with no
+	   transition (and hides the outgoing image where it is). */
+	.td-lightbox[data-swiping] .td-lightbox__stage {
+		translate: var(--td-lb-swipe-x, 0px) 0;
+		transition: none;
+	}
+
+	.td-lightbox[data-swiping="out"] .td-lightbox__stage {
+		transition: translate var(--td-lb-dur-fast) var(--td-ease-out);
+	}
+
+	.td-lightbox[data-swiping="back"] .td-lightbox__stage {
+		transition: translate var(--td-lb-dur) var(--td-lb-spring);
+	}
+
+	.td-lightbox[data-swiping="reset"] .td-lightbox__img {
+		transition: none;
 	}
 
 	.td-lightbox[data-closing-down] .td-lightbox__stage {
@@ -4202,6 +4223,12 @@
 		.td-lightbox__stage[data-slide] {
 			opacity: 1;
 			transform: none;
+		}
+
+		/* v0.36.2: no swipe follow / slide out / spring (JS does not start them either) */
+		.td-lightbox[data-swiping] .td-lightbox__stage {
+			translate: 0 0;
+			transition: none;
 		}
 
 		/* The swipe still closes — it just does not slide. */

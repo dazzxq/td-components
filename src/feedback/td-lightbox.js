@@ -28,6 +28,7 @@ const LIGHTBOX_LAYER = LAYERS.lightbox; // --td-z-lightbox
 import { tdIcon } from '../icons/td-icon.js';
 import { matchesBelow, isCoarsePointer, isShort } from '../utils/breakpoints.js';
 import { ensurePressStates } from '../utils/press.js';
+import { axisLock, dragSlop, releaseVelocity, rubberBand, swipeOutcome } from '../utils/gesture.js';
 
 const DEFAULT_LABELS = {
   dialog: 'Trình xem ảnh',
@@ -48,7 +49,6 @@ const DEFAULT_LABELS = {
 const FN_LABELS = new Set(['counter', 'thumb']);
 
 const IMAGE_EXT = /\.(jpe?g|png|webp|gif|avif|svg)$/i;
-const SWIPE_NAV = 50;      // px, horizontal → navigate
 const EDGE_GUARD = 24;     // px, v0.36.0: a touch gesture starting this close to the left / right edge is the browser's (back swipe)
 const SWIPE_CLOSE = 90;    // px, down → close (dearer than navigating: it loses context)
 const SWIPE_SHEET = 60;    // px, up → open the info sheet (undoable → cheaper)
@@ -337,6 +337,11 @@ let lifecycle = 'closed'; // 'closed' | 'open'
 let tokenSeq = 0;
 /** Timers of transient UI states (cleared on navigate/close so they never touch another session). */
 const timers = { zoom: 0, closeDown: 0 };
+/**
+ * v0.36.2 (ADR 0019, plan QĐ 19b): the ONE swipe settle (slide out after a committed swipe / spring back) —
+ * `{ kind: 'out' | 'back', dir, token, session, timer }`. Every exit goes through clearSwipe().
+ */
+let swipeSettle = null;
 /** Set by bindPanelSwipe(): forgets an in-flight sheet swipe. */
 let resetPanelSwipe = () => {};
 /** Toolbar buttons added by the current open (removed on the next open and on close). */
@@ -789,15 +794,19 @@ function bindPointer(col) {
     }
     if (isVideoSlide()) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (swipeSettle) return; // v0.36.2: a new gesture waits for the slide out / spring back (buttons still work)
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     try { col.setPointerCapture(e.pointerId); } catch { /* synthetic events */ }
     if (pointers.size === 2) {
       g = { type: 'pinch', startDist: dist() || 1, startScale: zoom.scale };
       ui.img.style.willChange = 'transform';
       clearDrag();
+      clearSwipe(); // a second finger ends a swipe follow
     } else if (pointers.size === 1) {
       g = { type: 'single', kind: e.pointerType, x0: e.clientX, y0: e.clientY, zx: zoom.x, zy: zoom.y,
         moved: false, onImg: e.target === ui.img, pinched: false,
+        // v0.36.2: axis lock + velocity samples (x, timeStamp) for the swipe follow
+        axis: null, samples: [{ x: e.clientX, t: e.timeStamp }], fx: 0,
         // v0.36.0: a touch / pen gesture starting at the very left / right edge belongs to the browser (back / forward)
         edge: e.pointerType !== 'mouse' && (e.clientX < EDGE_GUARD || e.clientX > document.documentElement.clientWidth - EDGE_GUARD) };
     }
@@ -838,6 +847,8 @@ function bindPointer(col) {
     if (g.type !== 'single') return;
     const dx = e.clientX - g.x0;
     const dy = e.clientY - g.y0;
+    g.samples.push({ x: e.clientX, t: e.timeStamp });
+    if (g.samples.length > 16) g.samples.shift();
     if (!g.moved && Math.abs(dx) < MOVE_SLOP && Math.abs(dy) < MOVE_SLOP) return;
     g.moved = true;
 
@@ -853,6 +864,19 @@ function bindPointer(col) {
       return;
     }
     if (e.pointerType === 'mouse') return; // swipes are touch/pen gestures
+    // v0.36.2 (QĐ 19): the first move past the slop locks the axis; a horizontal one (not from the edge band) moves the
+    // media FRAME with the finger (--td-lb-swipe-x, per frame) — one item: a rubber band; reduced motion: no follow.
+    if (!g.axis) g.axis = axisLock(dx, dy, MOVE_SLOP) || 'y';
+    if (g.axis === 'x') {
+      if (g.edge || reducedMotion()) return;
+      g.fx = session.items.length < 2 ? rubberBand(dx, viewRect().width) : dx;
+      schedule(() => {
+        if (!g || g.axis !== 'x' || !ui) return;
+        ui.overlay.setAttribute('data-swiping', 'drag');
+        ui.overlay.style.setProperty('--td-lb-swipe-x', `${Math.round(g.fx * 10) / 10}px`);
+      });
+      return;
+    }
     // Swipe-down feedback: the stage follows the finger (CSS reads --td-lb-drag; zoom owns img transform).
     if (dy > MOVE_SLOP && dy > Math.abs(dx)) {
       ui.overlay.setAttribute('data-dragging', '');
@@ -881,7 +905,8 @@ function bindPointer(col) {
     const gesture = g;
     g = null;
     clearDrag();
-    if (e.type === 'pointercancel') return;
+    if (raf && gesture.axis === 'x') { cancelAnimationFrame(raf); raf = 0; } // a pending follow frame must not land after the release
+    if (e.type === 'pointercancel') { springBack(); return; }
     const dx = e.clientX - gesture.x0;
     const dy = e.clientY - gesture.y0;
 
@@ -901,6 +926,18 @@ function bindPointer(col) {
       return;
     }
     if (zoom.scale > 1 || gesture.kind === 'mouse') return; // that was a pan
+    if (gesture.axis === 'x') {
+      if (gesture.edge) return;
+      // v0.36.2 (QĐ 20): commit past 25 % of the visible column width, or a flick (> 0.3 px/ms, past the slop, same
+      // direction); one item never changes. Physical direction → logical: RTL reverses (a rightward swipe is "next").
+      const width = viewRect().width;
+      const vx = releaseVelocity(gesture.samples, e.timeStamp);
+      const out = session.items.length < 2 ? 'cancel' : swipeOutcome({ dx, vx, width, slop: dragSlop(gesture.kind) });
+      if (out === 'cancel') { springBack(); return; }
+      const rtl = getComputedStyle(ui.overlay).direction === 'rtl';
+      commitSwipe((out === 'next') !== rtl ? 1 : -1, out === 'next' ? -1 : 1, width);
+      return;
+    }
     if (dy < -SWIPE_SHEET && Math.abs(dy) > Math.abs(dx) && !ui.panel.hidden
       && ui.panel.getAttribute('data-sheet') !== 'open') {
       setSheet(true);
@@ -908,12 +945,6 @@ function bindPointer(col) {
     }
     if (dy > SWIPE_CLOSE && dy > Math.abs(dx)) {
       closeDown();
-      return;
-    }
-    if (Math.abs(dx) > SWIPE_NAV && Math.abs(dx) > Math.abs(dy) && !gesture.edge) {
-      // v0.36.0: RTL reverses the reading direction — a rightward swipe is "next" there
-      const rtl = getComputedStyle(ui.overlay).direction === 'rtl';
-      navigate((dx < 0) !== rtl ? 1 : -1);
     }
   };
   col.addEventListener('pointerup', end);
@@ -948,8 +979,76 @@ function closeDown() {
   }, CLOSE_DOWN_MS);
 }
 
+/* ------------------------------------------------------------------ v0.36.2: swipe follow (ADR 0019, QĐ 19–21) */
+
+/** A duration token of the overlay in ms (`0.15s` / `150ms`), else `fallback`. */
+function cssMs(name, fallback) {
+  const raw = ui ? getComputedStyle(ui.overlay).getPropertyValue(name).trim() : '';
+  const n = parseFloat(raw);
+  if (!Number.isFinite(n)) return fallback;
+  return raw.endsWith('ms') ? n : n * 1000;
+}
+
+/**
+ * End any swipe follow / settle at once: cancel the timer, put the frame back at 0 WITHOUT replaying a transition
+ * (data-swiping="reset" + a style flush), remove data-swiping and --td-lb-swipe-x. Commit done, spring done, a
+ * pointercancel, close, a new session and a navigation by button / key / thumb / API all end here (via
+ * resetTransient for the last three) — a navigation during a settle wins, the settle never navigates afterwards.
+ */
+function clearSwipe() {
+  if (swipeSettle) { clearTimeout(swipeSettle.timer); swipeSettle = null; }
+  if (!ui) return;
+  const o = ui.overlay;
+  if (o.hasAttribute('data-swiping')) {
+    o.setAttribute('data-swiping', 'reset');
+    o.style.removeProperty('--td-lb-swipe-x');
+    void getComputedStyle(ui.stage).translate; // applied now, without the stage's translate transition
+    o.removeAttribute('data-swiping');
+  }
+  o.style.removeProperty('--td-lb-swipe-x');
+}
+
+/** Hold the settle state for `ms` (+ 50 ms margin, a fixed timer — never transitionend), then finish it. */
+function settleSwipe(kind, dir, ms) {
+  if (swipeSettle) clearTimeout(swipeSettle.timer);
+  const token = renderToken;
+  const sess = session;
+  const timer = setTimeout(() => {
+    if (!swipeSettle || swipeSettle.timer !== timer) return;
+    const live = session === sess && renderToken === token && lifecycle === 'open';
+    if (kind === 'out' && live) {
+      // the outgoing image vanishes where it is (off to the side) before the frame returns to 0 for the next one
+      ui.overlay.setAttribute('data-swiping', 'reset');
+      ui.img.setAttribute('data-loading', '');
+      void getComputedStyle(ui.img).opacity;
+      clearSwipe();
+      navigate(dir);
+      return;
+    }
+    clearSwipe();
+  }, ms + 50);
+  swipeSettle = { kind, dir, token, session: sess, timer };
+}
+
+/** Released without a commit (or cancelled): the frame springs back to 0. */
+function springBack() {
+  if (!ui || !ui.overlay.hasAttribute('data-swiping') || reducedMotion()) { clearSwipe(); return; }
+  ui.overlay.setAttribute('data-swiping', 'back');
+  ui.overlay.style.removeProperty('--td-lb-swipe-x');
+  settleSwipe('back', 0, cssMs('--td-lb-dur', 240));
+}
+
+/** A committed swipe: the frame slides on out of the stage (physical `sign`), then `navigate(dir)`. */
+function commitSwipe(dir, sign, width) {
+  if (!ui || !ui.overlay.hasAttribute('data-swiping') || reducedMotion()) { clearSwipe(); navigate(dir); return; }
+  ui.overlay.setAttribute('data-swiping', 'out');
+  ui.overlay.style.setProperty('--td-lb-swipe-x', `${Math.round(sign * width)}px`);
+  settleSwipe('out', dir, cssMs('--td-lb-dur-fast', 150));
+}
+
 /** Drop every transient interaction state (pointer, sheet swipe, zoom animation, swipe-close). */
 function resetTransient() {
+  clearSwipe();
   resetPointer();
   resetPanelSwipe();
   clearTimeout(timers.zoom);
