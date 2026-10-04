@@ -266,6 +266,8 @@
 
 	/* Full viewport. */
 	.td-modal--viewport {
+		/* the surface IS the viewport: the scroll-lock gap shift (centred dialogs only) must not leave a strip */
+		inset-inline-end: 0;
 		padding: 0;
 	}
 

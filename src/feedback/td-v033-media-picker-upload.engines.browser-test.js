@@ -180,6 +180,26 @@ describe('v0.33.0 media picker upload dialog (engines)', () => {
       expect(p.rec.closed).to.equal(1);
     });
 
+    it('< 768px full viewport also with a nonzero --td-scroll-lock-gap (fills to the right edge)', async () => {
+      await setViewport({ width: 390, height: 844 });
+      const html = document.documentElement;
+      html.style.setProperty('--td-scroll-lock-gap', '17px');
+      try {
+        const o = open();
+        await until(o.isOpen, 3000, 'upload dialog open');
+        const vw = html.clientWidth;
+        const dlg = o.q('.td-modal__dialog');
+        await until(() => Math.abs(dlg.getBoundingClientRect().width - dlg.offsetWidth) < 0.5, 3000, 'no scale transform');
+        for (const el of [o.h.root, dlg]) {
+          const r = el.getBoundingClientRect();
+          expect(Math.abs(r.left), el.className).to.be.at.most(1);
+          expect(Math.abs(r.right - vw), el.className).to.be.at.most(1);
+        }
+      } finally {
+        html.style.removeProperty('--td-scroll-lock-gap');
+      }
+    });
+
     it('dialog height is stable across tabs (±1px, dcms2); the inactive panel is invisible + unfocusable', async () => {
       await setViewport({ width: 1440, height: 900 });
       const o = open();

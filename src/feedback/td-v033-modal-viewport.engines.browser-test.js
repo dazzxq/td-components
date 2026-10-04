@@ -65,6 +65,22 @@ for (const [w, h] of [[390, 844], [1440, 900]]) {
       await until(() => window.innerWidth === w && window.innerHeight === h, 3000, 'viewport size');
     });
 
+    it('a nonzero --td-scroll-lock-gap (scroll lock padding fallback) never shrinks the viewport surface', async () => {
+      const html = document.documentElement;
+      html.style.setProperty('--td-scroll-lock-gap', '17px');
+      try {
+        const root = await openViewport();
+        const vw = html.clientWidth;
+        for (const el of [root, root.querySelector('.td-modal__dialog')]) {
+          const r = el.getBoundingClientRect();
+          expect(Math.abs(r.left), el.className).to.be.at.most(1);
+          expect(Math.abs(r.right - vw), el.className).to.be.at.most(1);
+        }
+      } finally {
+        html.style.removeProperty('--td-scroll-lock-gap');
+      }
+    });
+
     it('dialog fills the viewport (±1px), no radius, no bottom sheet', async () => {
       const root = await openViewport();
       expect(root.classList.contains('td-modal--viewport')).to.equal(true);

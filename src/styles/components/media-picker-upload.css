@@ -100,6 +100,7 @@
 	/* < 768px: full viewport (decision 20). Specificity ≥ modal.css's bottom-sheet state rules; same layer, later file. */
 	@media (max-width: 767.98px) {
 		.td-modal.td-media-picker-upload {
+			inset-inline-end: 0; /* full viewport: no scroll-lock gap strip (see .td-modal--viewport) */
 			align-items: stretch;
 			padding: 0;
 		}
