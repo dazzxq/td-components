@@ -30,7 +30,7 @@ function buttons(items, note = '') {
   return root;
 }
 
-/** v0.21.0 dcms-style pills: pastel fill per type, no icon, no visible close button (keyboard: Tab reveals it). */
+/** v0.21.0 dcms-style pills (v0.36.0: solid fill per type), no icon, no visible close button (keyboard: Tab reveals it). */
 export const AllVariants = {
   render: () => buttons([
     ['Thành công', 'secondary', () => TdToast.success('Lưu thành công!')],
@@ -61,6 +61,13 @@ export const LongText = {
       8000,
     )],
   ]),
+};
+
+/** v0.36.0 (ADR 0016): six logical placements per call; the newest sits nearest the edge; < 480 one lane per edge. */
+export const Placements = {
+  render: () => buttons(TdToast.PLACEMENTS.map((placement) => [
+    placement, 'secondary', () => TdToast.success(`Đã lưu (${placement})`, { placement }),
+  ]), 'Mỗi vị trí là một chồng riêng; MAX_VISIBLE, FIFO và tạm dừng vẫn tính chung. TdToast.configure({ placement }) đặt vị trí toàn cục.'),
 };
 
 /** FIFO: at most MAX_VISIBLE (5); the oldest leaves first. */

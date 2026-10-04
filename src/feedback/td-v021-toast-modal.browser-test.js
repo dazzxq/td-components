@@ -33,12 +33,12 @@ afterEach(async () => {
 });
 
 describe('v0.21.0 P4 — toast (dcms style)', () => {
-  it('light pastel per type: fill / ink / border from the pastel tokens', async () => {
+  it('v0.36.0 (QĐ 20): solid per type — fill / ink / border from the --td-solid-* tokens (border = hover shade)', async () => {
     const want = {
-      success: ['rgb(220, 252, 231)', 'rgb(20, 83, 45)', 'rgb(187, 247, 208)'],
-      error: ['rgb(254, 226, 226)', 'rgb(127, 29, 29)', 'rgb(254, 202, 202)'],
-      warning: ['rgb(254, 243, 199)', 'rgb(120, 53, 15)', 'rgb(253, 230, 138)'],
-      info: ['rgb(219, 234, 254)', 'rgb(30, 58, 138)', 'rgb(191, 219, 254)'],
+      success: ['rgb(21, 128, 61)', 'rgb(255, 255, 255)', 'rgb(22, 101, 52)'],
+      error: ['rgb(220, 38, 38)', 'rgb(255, 255, 255)', 'rgb(185, 28, 28)'],
+      warning: ['rgb(245, 158, 11)', 'rgb(24, 24, 27)', 'rgb(217, 119, 6)'],
+      info: ['rgb(37, 99, 235)', 'rgb(255, 255, 255)', 'rgb(29, 78, 216)'],
     };
     for (const type of Object.keys(want)) TdToast._showSingle(type, type, 0);
     await frames(3);

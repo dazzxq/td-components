@@ -1,18 +1,26 @@
 /*
- * td-toast (src/feedback/td-toast.js). v0.21.0 dcms style: a compact pill (12px radius, 12×16 padding, 14px text) with
- * a PASTEL fill per type + dark ink of the same hue + a `-border` hairline + one soft shadow (--td-glass-shadow).
- * Solid: no blur, no glass recipe (the toast no longer carries .td-glass-surface). No visible icon and no visible close
- * button: the type is announced through a screen-reader-only prefix (.td-toast__type.td-sr-only, TdToast.labels.types)
- * and the close button stays in the DOM, visually hidden until it receives KEYBOARD focus (:focus-visible) — so a
- * sticky toast (duration 0) is still dismissable from the keyboard. Click anywhere on a toast dismisses it.
- * Colours: --td-toast-{success,error,warning,info}-{bg,fg,border} read the shared pastel tokens
- * --td-pastel-{success,danger,warning,info}-{bg,fg,border} (tokens.css / theme-dark.css), with the same literals as
- * fallbacks. A site wanting dcms' saturated look sets e.g. --td-toast-success-bg: #22c55e; --td-toast-success-fg: #fff.
- * Top-right by default (D11) — a site moves the stack with tokens only, e.g. 135/dwp bottom-centre:
+ * td-toast (src/feedback/td-toast.js). v0.21.0 dcms style: a compact pill (12px radius, 12×16 padding, 14px text) + a
+ * `-border` hairline + one soft shadow (--td-glass-shadow). v0.36.0 (plan QĐ 20): SOLID fill per type — the shared
+ * --td-solid-{success,danger,warning,info}-{bg,fg,border} tokens (white ink; warning dark ink), literal fallbacks;
+ * the border is the darker `hover` shade. No visible icon and no visible close button: the type is announced through a
+ * screen-reader-only prefix (.td-toast__type.td-sr-only, TdToast.labels.types) and the close button stays in the DOM,
+ * visually hidden until it receives KEYBOARD focus (:focus-visible). Click anywhere on a toast dismisses it.
+ * A site wanting the v0.35 pastel look sets --td-toast-{type}-bg/-fg/-border back to --td-pastel-* (docs/upgrading).
+ *
+ * Placement (v0.36.0, ADR 0016): portal root .td-toast-root (fixed, inset 0, no pointer events) > two lanes
+ * .td-toast-lane[data-edge="top|bottom"] > lazy stacks .td-toasts[data-placement="top-start|…|bottom-end"] — six
+ * logical positions from the offset tokens --td-toast-offset-top/-bottom/-inline (+ safe area). ≥ 480: lanes are
+ * `display: contents`, each stack is fixed at its corner / centre. < 480: each lane is ONE full-width fixed column, its
+ * stacks `display: contents`, toasts ordered by the CSSOM --_td-toast-seq (newest nearest the edge), vertical motion.
+ * Short viewports (≤ 500 tall): only the 2 newest toasts (globally) show — JS marks the rest [data-td-toast-older].
+ * LEGACY stack (.td-toasts without data-placement, used only when a site changed the old anchor tokens and the call /
+ * configure() gave no placement): positioned by --td-toast-top/-bottom/-inline-start/-inline-end/-shift/-align exactly
+ * as v0.35, e.g. 135/dwp bottom-centre:
  *   :root { --td-toast-top: auto; --td-toast-bottom: 1.5rem; --td-toast-inline-end: auto;
  *           --td-toast-inline-start: 50%; --td-toast-shift: -50%; --td-toast-align: center; }
- * Motion: enter slides in from the inline end (translateX(1rem) → 0) + fade 200 ms ease-out; exit reverses in 180 ms.
- * State: data-state="entering|open|closing" · [data-paused]. Reduced motion → opacity only.
+ * Motion: enter slides in from the stack's own edge (*-start: inline start, *-end: inline end, top-center: from above,
+ * bottom-center: from below; legacy: inline end) + fade 200 ms ease-out; exit reverses in 180 ms; RTL mirrors the
+ * inline axis. State: data-state="entering|open|closing" · [data-paused]. Reduced motion → opacity only.
  */
 @layer td.tokens {
 	:root {
@@ -32,19 +40,30 @@
 		--td-toast-enter-shift: 1rem;
 		--td-toast-enter-dur: 200ms;
 		--td-toast-exit-dur: 180ms;
-		/* pastel per type (P1 tokens; literals = the light pastel values, used until/unless the shared tokens exist) */
-		--td-toast-success-bg: var(--td-pastel-success-bg, #dcfce7);
-		--td-toast-success-fg: var(--td-pastel-success-fg, #14532d);
-		--td-toast-success-border: var(--td-pastel-success-border, #bbf7d0);
-		--td-toast-error-bg: var(--td-pastel-danger-bg, #fee2e2);
-		--td-toast-error-fg: var(--td-pastel-danger-fg, #7f1d1d);
-		--td-toast-error-border: var(--td-pastel-danger-border, #fecaca);
-		--td-toast-warning-bg: var(--td-pastel-warning-bg, #fef3c7);
-		--td-toast-warning-fg: var(--td-pastel-warning-fg, #78350f);
-		--td-toast-warning-border: var(--td-pastel-warning-border, #fde68a);
-		--td-toast-info-bg: var(--td-pastel-info-bg, #dbeafe);
-		--td-toast-info-fg: var(--td-pastel-info-fg, #1e3a8a);
-		--td-toast-info-border: var(--td-pastel-info-border, #bfdbfe);
+		/* v0.36.0 offsets of the six named placements (independent of the legacy anchor tokens above) */
+		--td-toast-offset-top: 5rem;
+		--td-toast-offset-bottom: 1rem;
+		--td-toast-offset-inline: 1rem;
+		/* v0.36.0 solid per type (QĐ 18 / 20; error ↔ danger). Literals = the shared values, used until/unless the
+		   --td-solid-* tokens exist. Border = the darker hover shade. */
+		--td-toast-success-bg: var(--td-solid-success-bg, #15803d);
+		--td-toast-success-fg: var(--td-solid-success-fg, #fff);
+		--td-toast-success-border: var(--td-solid-success-border, #166534);
+		--td-toast-error-bg: var(--td-solid-danger-bg, #dc2626);
+		--td-toast-error-fg: var(--td-solid-danger-fg, #fff);
+		--td-toast-error-border: var(--td-solid-danger-border, #b91c1c);
+		--td-toast-warning-bg: var(--td-solid-warning-bg, #f59e0b);
+		--td-toast-warning-fg: var(--td-solid-warning-fg, #18181b);
+		--td-toast-warning-border: var(--td-solid-warning-border, #d97706);
+		--td-toast-info-bg: var(--td-solid-info-bg, #2563eb);
+		--td-toast-info-fg: var(--td-solid-info-fg, #fff);
+		--td-toast-info-border: var(--td-solid-info-border, #1d4ed8);
+		/* close button hover per type: white 16 % on the dark fills, black 8 % on warning */
+		--td-toast-success-close-hover: rgb(255 255 255 / 16%);
+		--td-toast-error-close-hover: rgb(255 255 255 / 16%);
+		--td-toast-warning-close-hover: rgb(0 0 0 / 8%);
+		--td-toast-info-close-hover: rgb(255 255 255 / 16%);
+		/* deprecated (no effect since v0.36.0: the per-type -close-hover tokens decide) */
 		--td-toast-close-hover: rgb(0 0 0 / 8%);
 		/* deprecated (no effect): v0.20.0 neutral surface + status icons, v0.19 washes */
 		--td-toast-fg: var(--td-color-text);
@@ -60,21 +79,8 @@
 		--td-toast-error-wash: transparent;
 	}
 
-	/* Dark: solid pastel = the status hue ~18 % over the dark surface, border ~30 %, ink ~200 (fallback literals). */
+	/* Dark: the solid fills stay (white ink on 600/700 reads on a dark page too — QĐ 18). */
 	:root[data-td-theme="dark"] {
-		--td-toast-success-bg: var(--td-pastel-success-bg, #1d3a2a);
-		--td-toast-success-fg: var(--td-pastel-success-fg, #bbf7d0);
-		--td-toast-success-border: var(--td-pastel-success-border, #1e4f31);
-		--td-toast-error-bg: var(--td-pastel-danger-bg, #422325);
-		--td-toast-error-fg: var(--td-pastel-danger-fg, #fecaca);
-		--td-toast-error-border: var(--td-pastel-danger-border, #5b2829);
-		--td-toast-warning-bg: var(--td-pastel-warning-bg, #43331b);
-		--td-toast-warning-fg: var(--td-pastel-warning-fg, #fde68a);
-		--td-toast-warning-border: var(--td-pastel-warning-border, #5d4318);
-		--td-toast-info-bg: var(--td-pastel-info-bg, #222e45);
-		--td-toast-info-fg: var(--td-pastel-info-fg, #bfdbfe);
-		--td-toast-info-border: var(--td-pastel-info-border, #253b5f);
-		--td-toast-close-hover: rgb(255 255 255 / 12%);
 		--td-toast-fg: var(--td-glass-fg);
 		--td-toast-close-fg: var(--td-glass-fg);
 	}
@@ -106,6 +112,7 @@
 		--_td-toast-bg: var(--td-toast-info-bg);
 		--_td-toast-fg: var(--td-toast-info-fg);
 		--_td-toast-border: var(--td-toast-info-border);
+		--_td-toast-close-hover: var(--td-toast-info-close-hover);
 
 		position: relative;
 		box-sizing: border-box;
@@ -126,7 +133,8 @@
 		pointer-events: auto;
 		cursor: pointer; /* click anywhere dismisses (keyboard: the focus-visible close button) */
 		opacity: 0;
-		transform: translateX(var(--td-toast-enter-shift));
+		/* the stack sets --_td-toast-from (its own edge); legacy stack: from the inline end, as before */
+		transform: var(--_td-toast-from, translateX(var(--td-toast-enter-shift)));
 		transition:
 			opacity var(--td-toast-enter-dur) var(--td-ease-out),
 			transform var(--td-toast-enter-dur) var(--td-ease-out);
@@ -136,18 +144,21 @@
 		--_td-toast-bg: var(--td-toast-success-bg);
 		--_td-toast-fg: var(--td-toast-success-fg);
 		--_td-toast-border: var(--td-toast-success-border);
+		--_td-toast-close-hover: var(--td-toast-success-close-hover);
 	}
 
 	.td-toast--warning {
 		--_td-toast-bg: var(--td-toast-warning-bg);
 		--_td-toast-fg: var(--td-toast-warning-fg);
 		--_td-toast-border: var(--td-toast-warning-border);
+		--_td-toast-close-hover: var(--td-toast-warning-close-hover);
 	}
 
 	.td-toast--error {
 		--_td-toast-bg: var(--td-toast-error-bg);
 		--_td-toast-fg: var(--td-toast-error-fg);
 		--_td-toast-border: var(--td-toast-error-border);
+		--_td-toast-close-hover: var(--td-toast-error-close-hover);
 	}
 
 	.td-toast[data-state="open"] {
@@ -158,7 +169,7 @@
 	.td-toast[data-state="closing"] {
 		pointer-events: none;
 		opacity: 0;
-		transform: translateX(var(--td-toast-enter-shift));
+		transform: var(--_td-toast-from, translateX(var(--td-toast-enter-shift)));
 		transition:
 			opacity var(--td-toast-exit-dur) var(--td-ease),
 			transform var(--td-toast-exit-dur) var(--td-ease);
@@ -202,7 +213,7 @@
 	}
 
 	.td-toast__close:hover {
-		background: var(--td-toast-close-hover);
+		background: var(--_td-toast-close-hover);
 	}
 
 	.td-toast__close:focus-visible {
@@ -230,6 +241,72 @@
 		inset-inline-end: calc(var(--td-toast-inline-end) + env(safe-area-inset-left, 0px));
 	}
 
+	/* ---- v0.36.0 portal root + lanes + named stacks (ADR 0016) ---- */
+	.td-toast-root {
+		position: fixed;
+		inset: 0;
+		z-index: var(--td-z-toast);
+		pointer-events: none; /* the page stays clickable around the stacks */
+	}
+
+	.td-toast-lane {
+		display: contents;
+	}
+
+	/* the legacy stack sits in the root: its own z-index is no longer needed but harmless (same token) */
+	.td-toasts[data-placement] {
+		top: auto;
+		bottom: auto;
+		inset-inline: auto;
+		max-width: calc(100vw - 2 * var(--td-gutter) - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+		transform: none;
+	}
+
+	/* block edge: the offset token, never closer than the safe-area inset + 8px (as v0.34) */
+	.td-toasts[data-placement^="top-"] {
+		top: max(var(--td-toast-offset-top), calc(env(safe-area-inset-top, 0px) + 8px));
+		--_td-toast-from: translateY(calc(-1 * var(--td-toast-enter-shift)));
+	}
+
+	.td-toasts[data-placement^="bottom-"] {
+		bottom: max(var(--td-toast-offset-bottom), calc(env(safe-area-inset-bottom, 0px) + 8px));
+		--_td-toast-from: translateY(var(--td-toast-enter-shift));
+	}
+
+	/* inline edge: offset + the inset of that physical side */
+	.td-toasts[data-placement$="-start"] {
+		inset-inline-start: calc(var(--td-toast-offset-inline) + env(safe-area-inset-left, 0px));
+		align-items: flex-start;
+		--_td-toast-from: translateX(calc(-1 * var(--td-toast-enter-shift)));
+	}
+
+	.td-toasts[data-placement$="-end"] {
+		inset-inline-end: calc(var(--td-toast-offset-inline) + env(safe-area-inset-right, 0px));
+		align-items: flex-end;
+		--_td-toast-from: translateX(var(--td-toast-enter-shift));
+	}
+
+	/* centre: physical left / right = gutter + each side's own inset, items centred (no translateX(-50%)) */
+	.td-toasts[data-placement$="-center"] {
+		right: calc(var(--td-gutter) + env(safe-area-inset-right, 0px));
+		left: calc(var(--td-gutter) + env(safe-area-inset-left, 0px));
+		align-items: center;
+		width: auto;
+		max-width: none;
+	}
+
+	/* RTL: inline start = physical right → swap the insets and mirror the slide (own rules: an engine without :dir()
+	   drops only these) */
+	.td-toasts[data-placement$="-start"]:dir(rtl) {
+		inset-inline-start: calc(var(--td-toast-offset-inline) + env(safe-area-inset-right, 0px));
+		--_td-toast-from: translateX(var(--td-toast-enter-shift));
+	}
+
+	.td-toasts[data-placement$="-end"]:dir(rtl) {
+		inset-inline-end: calc(var(--td-toast-offset-inline) + env(safe-area-inset-left, 0px));
+		--_td-toast-from: translateX(calc(-1 * var(--td-toast-enter-shift)));
+	}
+
 	/* xs: one full-width column (no ragged right-aligned stack), same width for every toast (physical sides: symmetric) */
 	@media (max-width: 479.98px) {
 		.td-toasts {
@@ -250,11 +327,54 @@
 		.td-toast {
 			max-width: none;
 		}
+
+		/* v0.36.0: start / centre / end merge into ONE full-width lane per edge; stacks dissolve (display: contents)
+		   and the toasts are ordered by their global sequence — newest nearest the edge (top lane reversed). */
+		.td-toast-lane {
+			position: fixed;
+			right: calc(var(--td-gutter) + env(safe-area-inset-right, 0px));
+			left: calc(var(--td-gutter) + env(safe-area-inset-left, 0px));
+			box-sizing: border-box;
+			display: flex;
+			flex-direction: column;
+			gap: var(--td-toast-gap);
+			align-items: stretch;
+			font-family: var(--td-font-sans);
+			line-height: var(--td-leading-normal);
+			pointer-events: none;
+		}
+
+		.td-toast-lane[data-edge="top"] {
+			top: max(var(--td-toast-offset-top), calc(env(safe-area-inset-top, 0px) + 8px));
+			flex-direction: column-reverse;
+		}
+
+		.td-toast-lane[data-edge="bottom"] {
+			bottom: max(var(--td-toast-offset-bottom), calc(env(safe-area-inset-bottom, 0px) + 8px));
+		}
+
+		.td-toast-lane > .td-toasts[data-placement] {
+			display: contents;
+		}
+
+		.td-toast-lane .td-toast {
+			order: var(--_td-toast-seq, 0);
+		}
+
+		/* vertical motion in the lanes (beats the per-placement / RTL slide: higher specificity) */
+		.td-toast-lane[data-edge="top"] > .td-toasts[data-placement] {
+			--_td-toast-from: translateY(calc(-1 * var(--td-toast-enter-shift)));
+		}
+
+		.td-toast-lane[data-edge="bottom"] > .td-toasts[data-placement] {
+			--_td-toast-from: translateY(var(--td-toast-enter-shift));
+		}
 	}
 
-	/* short (landscape phone): only the two newest stay visible (older ones are still in the DOM / announced) */
+	/* short (landscape phone): only the two newest toasts (globally, every stack) stay visible — older ones are still in
+	   the DOM / announced. JS marks them (a per-stack :nth-last-child is wrong with several stacks). */
 	@media (max-height: 500px) {
-		.td-toast:nth-last-child(n + 3) {
+		.td-toast[data-td-toast-older] {
 			display: none;
 		}
 	}
