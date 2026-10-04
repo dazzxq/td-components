@@ -6,7 +6,12 @@
  * ratio sum Σ stays as close as possible to the target Σ (row height = (W − gaps) / Σ). Each cell gets
  *   width:        calc(P% − sub px)         P = ar / denom × 100, sub = P / ΣP × (n − 1) × gap
  *   aspect-ratio: P / k                      k = 100 / denom (one constant per row → equal heights by algebra)
- * with denom = Σ for a full row and denom = target for a short LAST row (keeps the row height, leaves the right empty).
+ * with denom = Σ for a full row. A short LAST row (Σ < target) keeps the row height and leaves the right empty:
+ *   - after a full row with Σ_prev ≥ its Σ and ≥ its item count, it takes that row's EXACT height (gaps included):
+ *     P = ar / Σ_prev × 100, sub = P / 100 × (n_prev − 1) × gap, k = 100 / Σ_prev — then
+ *     row width = Σ/Σ_prev × (W − (n_prev − 1)·gap) + (n − 1)·gap ≤ W for every W;
+ *   - otherwise (first / only row, or it could not fit) denom = target, as dwp rows_markup() does (height within a few
+ *     % of the other rows, since the gap share differs).
  * Full rows: P rounded to 3 decimals, the remainder goes to the last cell (ΣP = 100.000 by addition) and the last cell
  * takes 0.5px MORE off (never less), so the row never exceeds the container and flex-wrap never breaks it early.
  */
@@ -84,10 +89,29 @@ export function packRows(ars, target) {
 export function rowStyles(rows, target, gapPx, containerWidth) {
   const gap = Number.isFinite(gapPx) && gapPx > 0 ? gapPx : 0;
   const last = rows.length - 1;
+  const sums = rows.map((row) => row.reduce((a, b) => a + b, 0));
   return rows.map((row, ri) => {
     const n = row.length;
-    const sum = row.reduce((a, b) => a + b, 0);
+    const sum = sums[ri];
     const short = ri === last && sum < target;
+    const prev = short && ri > 0 ? rows[ri - 1] : null;
+    if (prev && sums[ri - 1] >= sum && prev.length >= n) {
+      // match the previous full row's height exactly (see the header)
+      const ps = sums[ri - 1];
+      const k = round(100 / ps, 4);
+      // P rounded DOWN: the row can only get narrower than the exact fit (≤ W even when Σ = Σ_prev, n = n_prev);
+      // the height does not depend on P (it cancels out), so all cells keep the previous row's height
+      const cells = row.map((ar) => {
+        const w = Math.floor((ar / ps) * 100 * 1000) / 1000;
+        return { w, sub: round((w / 100) * (prev.length - 1) * gap, 4) };
+      });
+      const out = { full: false, k, cells };
+      if (Number.isFinite(containerWidth)) {
+        out.widths = cells.map((c) => (c.w / 100) * containerWidth - c.sub);
+        out.total = out.widths.reduce((a, b) => a + b, 0) + (n - 1) * gap;
+      }
+      return out;
+    }
     const denom = short ? target : sum;
     const pcts = [];
     let acc = 0;

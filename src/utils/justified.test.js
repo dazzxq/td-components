@@ -65,20 +65,21 @@ describe('justified — packRows', () => {
     assert.deepEqual(rows.map((r) => r.length), [8, 8, 8]);
   });
 
-  it('dwp: 25 portraits 2:3 → 8, 8, 8, 1 (no "move items to fix the last row" — §17.2); full rows share k', () => {
+  it('dwp: 25 portraits 2:3 → 8, 8, 8, 1 (no "move items to fix the last row" — §17.2); every row has the same k', () => {
     const rows = packRows(Array(25).fill(2 / 3), 5.5);
     assert.deepEqual(rows.map((r) => r.length), [8, 8, 8, 1]);
     const st = rowStyles(rows, 5.5, 4, 1200);
     assert.equal(st[0].k, st[1].k);
     assert.equal(st[1].k, st[2].k);
-    // short last row: denominator = target → k = 100 / 5.5; height stays within 1% of the full rows
-    // (dwp measured 220, 220, 220, 218 px at W = 1200)
+    // short last row after a full row: the previous row's k and its exact height, gaps included
+    // (dwp's denominator = target gave 220, 220, 220, 218 px at W = 1200; this gives 4 × the same height)
     assert.equal(st[3].full, false);
-    assert.equal(st[3].k, Math.round((100 / 5.5) * 1e4) / 1e4);
+    assert.equal(st[3].k, st[2].k);
     const h = (r) => r.widths[0] / ((r.cells[0].w) / r.k);
     const hFull = h(st[0]);
     assert.ok(Math.abs(h(st[1]) - hFull) < 1e-6);
-    assert.ok(Math.abs(h(st[3]) - hFull) / hFull < 0.01, `${h(st[3])} vs ${hFull}`);
+    assert.ok(Math.abs(h(st[3]) - hFull) < 1e-3, `${h(st[3])} vs ${hFull}`);
+    assert.ok(st[3].total < 1200);
   });
 
   it('clamps 10:1 and 1:10', () => {
@@ -124,14 +125,28 @@ describe('justified — rowStyles', () => {
     for (const c of r.cells) assert.equal(c.w, Math.round(c.w * 1000) / 1000, '3 decimals');
   });
 
-  it('short last row: ΣP < 100, k = 100 / target, no slack added, gaps still fully subtracted', () => {
+  it('short last row after a full row: ΣP < 100, the previous k, sub = P / 100 × (n_prev − 1) × gap (+ slack)', () => {
     const rows = packRows([1.5, 1.5, 1.5, 1.5, 1.5, 1.5], 5.5);
-    const st = rowStyles(rows, 5.5, 8);
+    const st = rowStyles(rows, 5.5, 8, 1000);
     const s = st[1];
     assert.equal(s.full, false);
     assert.ok(sum(s.cells.map((c) => c.w)) < 100);
-    assert.equal(s.k, Math.round((100 / 5.5) * 1e4) / 1e4);
-    assert.ok(Math.abs(sum(s.cells.map((c) => c.sub)) - 8) < 0.001);
+    assert.equal(s.k, st[0].k);
+    assert.equal(s.cells[0].sub, 0.25 * 3 * 8);
+    assert.equal(s.cells[1].sub, 0.25 * 3 * 8);
+    const h = (r, i) => r.widths[i] * r.k / r.cells[i].w;
+    assert.ok(Math.abs(h(s, 0) - h(st[0], 0)) < 1e-6);
+  });
+
+  it('short ONLY row, or a short row that could not fit the previous height: denominator = target (dwp)', () => {
+    const [only] = rowStyles([[1, 1]], 5.5, 8, 1000);
+    assert.equal(only.full, false);
+    assert.equal(only.k, Math.round((100 / 5.5) * 1e4) / 1e4);
+    assert.ok(Math.abs(sum(only.cells.map((c) => c.sub)) - 8) < 0.001, 'all gaps subtracted, no slack');
+    // previous row has fewer items than the short one → no exact match possible for every W → target
+    const st = rowStyles([[5, 0.6], [0.5, 0.5, 0.5, 0.5]], 5.5, 8, 1000);
+    assert.equal(st[1].k, Math.round((100 / 5.5) * 1e4) / 1e4);
+    assert.ok(st[1].total <= 1000);
   });
 
   it('single item / single full row: no gap, only the slack', () => {
