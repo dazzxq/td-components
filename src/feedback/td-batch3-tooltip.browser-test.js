@@ -270,11 +270,10 @@ describe('batch 3 — td-tooltip interaction (1.4.13)', () => {
     expect(shown()).to.equal(true);
   });
 
-  it('touch and pen pointers show it too (v0.14 dwp behaviour)', () => {
+  it('touch does not show it, pen does (v0.36.2, ADR 0019; v0.14 showed both)', () => {
     const b = mount('<button type="button" data-tooltip="Chạm">tap</button>');
     b.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'touch', bubbles: false }));
-    expect(shown()).to.equal(true);
-    tdTooltip.hide();
+    expect(shown()).to.equal(false);
     b.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'pen', bubbles: false }));
     expect(shown()).to.equal(true);
   });

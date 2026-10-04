@@ -64,7 +64,14 @@ const SCENARIOS = [
   { name: 'tree-select', act: (p) => p.click('#g-ts .td-tree-select__trigger'), panel: '.td-tree-select__menu[data-state="open"]' },
   { name: 'multiselect', act: async (p) => { await p.click('#g-chips .td-chip-input__input'); await p.keyboard.press('ArrowDown'); }, panel: '.td-chip-input__menu[data-state="open"]' },
   { name: 'menu', act: (p) => p.click('#rsp-menu-btn button'), panel: '.td-menu' },
-  { name: 'tooltip', act: (p, c) => (c.touch ? p.tap('#rsp-tooltip') : hoverIntent(p, '#rsp-tooltip', '.td-tooltip', notes)), panel: '.td-tooltip' },
+  // v0.36.2 (ADR 0019): a tap never opens the tooltip — on touch configs it opens from KEYBOARD focus (a key press, then
+  // focus), and `tooltip-tap` asserts a tap leaves it closed.
+  { name: 'tooltip', act: async (p, c) => {
+    if (!c.touch) return hoverIntent(p, '#rsp-tooltip', '.td-tooltip', notes);
+    await p.keyboard.press('Shift');
+    await p.locator('#rsp-tooltip').focus();
+  }, panel: '.td-tooltip' },
+  { name: 'tooltip-tap', touchOnly: true, act: (p) => p.tap('#rsp-tooltip'), absent: '.td-tooltip[data-state="open"]' },
   { name: 'hovercard', mouseOnly: true, act: (p) => hoverIntent(p, '#rsp-hovercard', '.td-hovercard[data-state="open"]', notes), panel: '.td-hovercard' },
   // v0.36.0 (ADR 0016): the stacks live in lanes (display: contents < 480) and the newest is first in a top stack; in a
   // short viewport only the two newest (globally) show — measure the displayed toasts, not stack children.
@@ -344,11 +351,18 @@ async function runOverlays(page, c, tag, shot) {
   {
     for (const s of SCENARIOS) {
       if (s.mouseOnly && c.touch) continue;
+      if (s.touchOnly && !c.touch) continue;
       await load(page);
       try {
         await s.act(page, c);
       } catch (e) {
         check(tag, `${s.name}: could not open`, [String(e.message).split('\n')[0]]);
+        continue;
+      }
+      if (s.absent) { // v0.36.2: the action must NOT open this
+        await page.evaluate(settle);
+        const n = await page.locator(s.absent).count();
+        check(tag, `${s.name}: stays closed`, n ? [`${s.absent} ×${n}`] : []);
         continue;
       }
       try {

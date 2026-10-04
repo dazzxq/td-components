@@ -103,13 +103,14 @@ describe('v0.14 tooltip — dwp attribute aliases', () => {
 });
 
 describe('v0.14 tooltip — behaviour (dwp)', () => {
-  it('touch: shows on pointerenter and stays after the finger lifts; a tap elsewhere hides it', async () => {
+  // v0.36.2 (ADR 0019): a touch never opens it (v0.14 showed it on a touch pointerenter); a pen still hovers; a tap
+  // elsewhere still hides any shown chip.
+  it('touch: a touch pointerenter does not show it; a pen does; a tap elsewhere hides it', async () => {
     const b = at(mount('<button type="button" data-tooltip="Chạm">tap</button>'), 300, 200);
     const other = mount('<p>ngoài</p>');
     b.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'touch' }));
-    expect(shown()).to.equal(true);
-    b.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'touch' }));
-    await wait(200);
+    expect(shown()).to.equal(false);
+    b.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'pen' }));
     expect(shown()).to.equal(true);
     other.dispatchEvent(new PointerEvent('pointerdown', { pointerType: 'touch', bubbles: true }));
     expect(shown()).to.equal(false);
