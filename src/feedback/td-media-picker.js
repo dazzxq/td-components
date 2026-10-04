@@ -7,6 +7,8 @@
  * upload dialog (file + URL, media-picker-upload.js), keyboard / focus / responsive / i18n, text-only rendering. The
  * APP owns the adapter (endpoints, envelopes, auth, permissions, DTO mapping, upload / delete / download security,
  * storage); the picker NEVER mutates host content and never creates usages — it only resolves `SelectedMedia[]`.
+ * v0.35.0 (plan v0.35.0-cropper, decisions 23-26): with `crop.enabled` (single mode) "Chèn" on an image opens the crop
+ * step (crop-dialog.js, nested) before finishing; its coordinates fill `usage.crop` / `usage.focalPoint`.
  *
  * Token-native: needs td.css (modal.css shell + components/media-picker.css). Light DOM, CSP-strict (no style
  * attributes, no <style>, no inline handlers; every adapter / descriptor / message string → textContent; every URL →
@@ -68,6 +70,7 @@ import {
 } from '../utils/media-picker-core.js';
 import { createFacetControl, FieldForm, FIELD_LABELS } from './media-picker-fields.js';
 import { openUploadDialog, UPLOAD_LABELS } from './media-picker-upload.js';
+import { openCropDialog } from './crop-dialog.js';
 import '../display/td-media-grid.js';
 import '../display/td-empty-state.js';
 import '../display/td-pagination.js';
@@ -167,6 +170,10 @@ export class TdMediaPicker extends HTMLElement {
     cancel: 'Đóng',
     confirm: 'Chèn',
     confirmCount: 'Chèn ({n})',
+    cropTitle: 'Cắt ảnh',
+    cropBack: 'Quay lại',
+    cropConfirm: 'Chèn',
+    cropUnavailable: 'Không mở được ảnh để cắt.',
     search: 'Tìm media',
     searchPlaceholder: 'Tìm kiếm media…',
     upload: 'Tải lên',
@@ -381,6 +388,8 @@ export class TdMediaPicker extends HTMLElement {
       blocked: null,
       upload: null,
       confirm: null,
+      /** @type {{ ctrl: AbortController }|null} the open crop step (v0.35 decisions 24-25) */
+      crop: null,
       /** @type {Set<string>} object URLs of blob downloads not revoked yet */
       blobUrls: new Set(),
       assetFields: normalizeFields(opts.assetFields, { warn: (m) => warnOnce(`af:${m}`, m) }),
@@ -1967,7 +1976,8 @@ export class TdMediaPicker extends HTMLElement {
    */
   async _requestFinish(kind, reason) {
     const s = this._s;
-    if (!s || this._settled || s.confirm) return;
+    // s.crop: the crop step is open over the picker — its own Quay lại / Chèn decide (no double finish, decision 24)
+    if (!s || this._settled || s.confirm || s.crop) return;
     if (kind === 'confirm' && s.model.size === 0) {
       this._announce(this._t('selectFirst'));
       return;
@@ -1980,8 +1990,94 @@ export class TdMediaPicker extends HTMLElement {
         return;
       }
     }
+    if (s.crop) return; // opened while the discard confirmation was answered (cannot happen through the UI)
+    const cropAsset = kind === 'confirm' ? this._cropTarget() : null;
+    if (cropAsset) {
+      this._openCrop(cropAsset);
+      return;
+    }
     const outcome = kind === 'confirm' ? buildOutcome(s.model) : cancelledOutcome(/** @type {any} */ (reason));
     this._teardown(outcome, false);
+  }
+
+  // --- crop step (v0.35 decisions 23-26) ---
+
+  /**
+   * @private The asset "Chèn" must crop first: `crop` resolved (single mode only — resolveOptions drops it for
+   * multiple), exactly one selected asset, `kind === 'image'`. Video / file → null (finish now, crop null).
+   * @returns {import('../utils/media-picker-core.js').MediaAsset|null}
+   */
+  _cropTarget() {
+    const s = this._s;
+    if (!s.opts.cropResolved || s.mode !== 'single' || s.model.size !== 1) return null;
+    const asset = s.model.assets[0];
+    return asset && asset.kind === 'image' ? asset : null;
+  }
+
+  /**
+   * @private Open the crop step: the shared crop dialog (crop-dialog.js), nested over the picker. Its source is the
+   * asset's `urls.preview` (adapter contract: the WHOLE, uncropped image, any size) through `safeMediaUrl`; the
+   * original size comes from `asset.width/height` when both are positive integers (then `pixels` is filled and a
+   * preview of another ratio fails closed in the dialog: Chèn locked). No safe preview URL → fail closed: the crop step
+   * does not open, the picker stays open (selection kept) and its live region says so — never a finish without the
+   * crop the app asked for. Quay lại / Escape / × → back to the picker, focus on "Chèn". Applied → the ONE end path with
+   * `usage.crop` (whole image → null, already by the dialog) + `usage.focalPoint` (only with `allowFocalPoint`).
+   * @param {import('../utils/media-picker-core.js').MediaAsset} asset
+   */
+  _openCrop(asset) {
+    const s = this._s;
+    if (!this._live(s) || s.crop) return;
+    const cfg = s.opts.cropResolved;
+    const src = safeMediaUrl(asset.urls && asset.urls.preview);
+    if (!src) {
+      this._announce(this._t('cropUnavailable'));
+      return;
+    }
+    const dim = (v) => (Number.isInteger(v) && v >= 1 && v <= 100000 ? v : undefined);
+    const naturalWidth = dim(asset.width);
+    const naturalHeight = dim(asset.height);
+    const known = naturalWidth !== undefined && naturalHeight !== undefined;
+    const ctrl = new AbortController();
+    const step = { ctrl };
+    s.crop = step;
+    const opener = /** @type {HTMLElement|null} */ (s.els.confirm.querySelector('button')) || s.els.confirm;
+    let pending;
+    try {
+      pending = Promise.resolve(openCropDialog({
+        src,
+        alt: asset.defaultAltText || asset.name || '',
+        naturalWidth: known ? naturalWidth : undefined,
+        naturalHeight: known ? naturalHeight : undefined,
+        aspectRatio: cfg.aspectRatio,
+        crop: null,
+        focalPoint: null,
+        allowFocalPoint: cfg.allowFocalPoint,
+        title: this._t('cropTitle'),
+        confirmLabel: this._t('cropConfirm'),
+        cancelLabel: this._t('cropBack'),
+        nested: true,
+        signal: ctrl.signal,
+        opener,
+      }));
+    } catch (err) {
+      pending = Promise.reject(err);
+    }
+    pending.then((res) => {
+      if (!this._live(s) || s.crop !== step) return;
+      s.crop = null;
+      if (res && res.status === 'applied') {
+        const usage = { crop: res.crop || null, focalPoint: cfg.allowFocalPoint ? (res.focalPoint || null) : null };
+        this._teardown(buildOutcome(s.model, new Map([[asset.id, usage]])), false);
+        return;
+      }
+      this._focusButton(s.els.confirm); // Quay lại / Escape / ×: the selection is kept
+    }, () => {
+      if (!this._live(s) || s.crop !== step) return;
+      s.crop = null;
+      warnOnce('crop-dialog', 'td-media-picker: the crop dialog could not open.');
+      this._announce(this._t('cropUnavailable'));
+      this._focusButton(s.els.confirm);
+    });
   }
 
   /** @private Escape on the picker layer (popups / nested dialogs handle theirs): clears a non-empty search first */
@@ -2017,6 +2113,7 @@ export class TdMediaPicker extends HTMLElement {
       s.debounce.cancel();
       s.ctrl.abort();
       if (s.upload) { try { s.upload.destroy(); } catch { /* ignore */ } s.upload = null; }
+      if (s.crop) { const c = s.crop; s.crop = null; c.ctrl.abort(); } // v0.35 decision 25: the crop step closes too
       if (s.edit) { try { s.edit.form.destroy(); } catch { /* ignore */ } s.edit = null; }
       for (const c of s.facets.values()) { try { c.destroy(); } catch { /* ignore */ } }
       for (const u of s.blobUrls) { try { URL.revokeObjectURL(u); } catch { /* ignore */ } }
