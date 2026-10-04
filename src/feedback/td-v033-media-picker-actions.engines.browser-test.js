@@ -76,7 +76,10 @@ describe('v0.33 td-media-picker — action row (decisions 18, 26)', () => {
     await openReady({ assetFields: [{ key: 'title', label: 'Tiêu đề', control: 'text' }],
       capabilities: { delete: true, downloadOriginal: true, copyLink: true } });
     await view('m60');
-    expect(names()).to.deep.equal(['td-media-picker__download', 'td-media-picker__copy', 'td-media-picker__delete', 'td-media-picker__save']);
+    // v0.36.0 (review ISSUE-3): the overflowed action is still in the row (shown ≥ 720, behind "Thêm" < 720) + the "Thêm" button
+    expect(names()).to.deep.equal(['td-media-picker__download', 'td-media-picker__copy', 'td-media-picker__delete',
+      'td-media-picker__detail-more', 'td-media-picker__save']);
+    expect(q('.td-media-picker__delete').hasAttribute('data-overflow')).to.equal(true);
     const dl = q('.td-media-picker__download');
     expect([dl.getAttribute('variant'), dl.getAttribute('size'), dl.getAttribute('icon')]).to.deep.equal(['secondary', 'sm', 'download']);
     const del = q('.td-media-picker__delete');
