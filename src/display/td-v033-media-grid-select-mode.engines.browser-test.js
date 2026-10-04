@@ -102,16 +102,15 @@ describe('td-media-grid select-mode="tick"', () => {
     expect(act.length).to.equal(2);
   });
 
-  it('default mode keeps the old behaviour (selecting → opener click flips; Ctrl+click with nothing selected activates)', () => {
+  it('default mode: selecting → opener click flips; v0.36.0 (QĐ 7b): Ctrl+click on a <button> opener with nothing selected starts the selection', () => {
     const g = mount(3, '');
     const act = record(g, 'activate');
     click(openOf(g, 'm1'), { ctrlKey: true });
-    expect(act.length).to.equal(1);
-    expect(g.selectedIds).to.deep.equal([]);
-    click(tickOf(g, 'm1'));
+    expect(act.length).to.equal(0);
+    expect(g.selectedIds).to.deep.equal(['m1']);
     click(openOf(g, 'm2'));
     expect(g.selectedIds).to.deep.equal(['m1', 'm2']);
-    expect(act.length).to.equal(1);
+    expect(act.length).to.equal(0);
   });
 
   it('switching the attribute at runtime takes effect on the next click', () => {

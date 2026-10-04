@@ -106,12 +106,15 @@ for (const [w, h] of [[390, 844], [1440, 900]]) {
       const header = getComputedStyle(root.querySelector('.td-modal__header'));
       const footer = getComputedStyle(root.querySelector('.td-modal__footer'));
       const body = getComputedStyle(root.querySelector('.td-modal__body'));
-      expect(header.paddingTop).to.equal(sm);
-      expect(header.paddingBottom).to.equal(sm);
+      // v0.36.0 (plan QĐ 60): below 720 the chrome is compact — header 6px, footer 8px block padding
+      const hp = innerWidth < 720 ? '6px' : sm;
+      const fp = innerWidth < 720 ? '8px' : sm;
+      expect(header.paddingTop).to.equal(hp);
+      expect(header.paddingBottom).to.equal(hp);
       expect(header.paddingLeft).to.equal(padX);
       expect(header.paddingRight).to.equal(padX);
-      expect(footer.paddingTop).to.equal(sm);
-      expect(footer.paddingBottom).to.equal(sm);
+      expect(footer.paddingTop).to.equal(fp);
+      expect(footer.paddingBottom).to.equal(fp);
       expect(footer.paddingLeft).to.equal(padX);
       expect(footer.paddingRight).to.equal(padX);
       expect(body.paddingLeft).to.equal('0px');
