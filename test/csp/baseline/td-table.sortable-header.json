@@ -14,7 +14,7 @@
   "styles": {
     "th[data-col-key=\"name\"]": {
       "width": "682.906px",
-      "height": "43px",
+      "height": "45px",
       "min-height": "0px",
       "max-height": "none",
       "padding-top": "12px",
@@ -64,12 +64,21 @@
       "stroke-width": "1px",
       "stroke-dasharray": "none",
       "stroke-dashoffset": "0px",
-      "stroke-linecap": "butt"
+      "stroke-linecap": "butt",
+      "visibility": "visible",
+      "outline-style": "none",
+      "outline-width": "3px",
+      "outline-color": "rgb(107, 107, 115)",
+      "outline-offset": "0px",
+      "grid-template-columns": "none",
+      "column-gap": "normal",
+      "row-gap": "normal",
+      "touch-action": "auto"
     },
     ".td-table__sort": {
       "width": "52.0938px",
-      "height": "22px",
-      "min-height": "0px",
+      "height": "24px",
+      "min-height": "24px",
       "max-height": "none",
       "padding-top": "2px",
       "padding-bottom": "2px",
@@ -118,7 +127,16 @@
       "stroke-width": "1px",
       "stroke-dasharray": "none",
       "stroke-dashoffset": "0px",
-      "stroke-linecap": "butt"
+      "stroke-linecap": "butt",
+      "visibility": "visible",
+      "outline-style": "none",
+      "outline-width": "3px",
+      "outline-color": "rgb(107, 107, 115)",
+      "outline-offset": "0px",
+      "grid-template-columns": "none",
+      "column-gap": "4px",
+      "row-gap": "4px",
+      "touch-action": "auto"
     }
   }
 }

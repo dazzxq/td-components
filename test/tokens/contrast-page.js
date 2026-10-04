@@ -13,6 +13,7 @@ import '/src/form/td-repeater.js';
 import '/src/form/td-number-input.js';
 import '/src/display/td-sortable.js';
 import '/src/display/td-masked-value.js';
+import '/src/display/td-table.js';
 import '/src/form/td-media-field.js';
 import { TdMediaPicker } from '/src/feedback/td-media-picker.js';
 import { createMockAdapter } from '/test/fixtures/media-adapter.js';
@@ -94,6 +95,8 @@ for (const state of ['affix', 'focus']) CASES.push({ kind: 'number', v: 'box', s
 // td-masked-value text ≥ 4.7 masked and revealed, toggle icon ≥ 3.2 — computed colours (`pairs`), light + dark.
 for (const state of ['rest', 'hover', 'disabled', 'gallery', 'placeholder', 'lifted']) CASES.push({ kind: 'sortable', v: 'handle', state, pageOnly: true });
 for (const state of ['masked', 'revealed', 'toggle']) CASES.push({ kind: 'masked', v: 'value', state, pageOnly: true });
+// v0.34.0 td-table card mode: cell label (muted) + value on the card fill, sort chip label on its fill — ≥ 4.7, light + dark.
+for (const state of ['label', 'value', 'sort-chip']) CASES.push({ kind: 'table-card', v: 'card', state, pageOnly: true });
 // v0.32.0: td-media-field (content layer → page only): prompt + ratio text ≥ 4.7 on the empty frame fill, the empty-frame
 // icon + dashed border ≥ 3.2 (border vs the page and vs the frame fill), the "Video" badge text ≥ 4.7 on its fill, the
 // field error text ≥ 4.7 on the page; td-media-picker (inside the solid dialog): tile name, detail meta label and tray
@@ -572,6 +575,37 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       hover: false,
       name: `repeater:${c.v}:${c.state}`,
       pairs,
+    };
+  } else if (c.kind === 'table-card') {
+    const host = document.createElement('td-table');
+    host.setAttribute('layout', 'cards');
+    stage.appendChild(host);
+    host.columns = [{ key: 'code', label: 'Mã đơn', sortable: true }, { key: 'customer', label: 'Khách hàng' }];
+    host.data = [{ code: 'DH1', customer: 'Nguyễn Văn An' }];
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    /** first opaque background colour from `el` up */
+    const fill = (el) => {
+      for (let n = el; n; n = n.parentElement) {
+        const bg = getComputedStyle(n).backgroundColor;
+        if (bg && !/rgba\(.*,\s*0\)$/.test(bg) && bg !== 'transparent') return bg;
+      }
+      return theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    };
+    const cell = host.querySelector('tbody td[data-col-key="customer"]');
+    let target;
+    if (c.state === 'label') target = cell.querySelector('.td-table__cell-label');
+    else if (c.state === 'value') target = cell;
+    else target = host.querySelector('.td-table__sort');
+    if (!target) throw new Error(`table-card: no ${c.state} target`);
+    const ink = getComputedStyle(target).color;
+    const b = target.getBoundingClientRect();
+    return {
+      rect: { x: b.x, y: b.y, width: b.width, height: b.height },
+      ink: {},
+      opacity: 1,
+      hover: false,
+      name: `table-card:${c.v}:${c.state}`,
+      pairs: [{ what: `${c.state} text vs its fill`, fg: ink, bg: fill(target), min: 4.7 }],
     };
   } else if (c.kind === 'sortable' || c.kind === 'masked') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';

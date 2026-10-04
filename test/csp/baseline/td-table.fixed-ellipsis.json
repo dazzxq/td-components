@@ -13,7 +13,7 @@
   ],
   "styles": {
     ".td-table__cell--ellipsis": {
-      "width": "639px",
+      "width": "1031.61px",
       "height": "53px",
       "min-height": "0px",
       "max-height": "none",
@@ -57,17 +57,26 @@
       "line-height": "21px",
       "text-align": "start",
       "resize": "none",
-      "overflow-y": "hidden",
+      "overflow-y": "visible",
       "cursor": "auto",
       "fill": "rgb(0, 0, 0)",
       "stroke": "none",
       "stroke-width": "1px",
       "stroke-dasharray": "none",
       "stroke-dashoffset": "0px",
-      "stroke-linecap": "butt"
+      "stroke-linecap": "butt",
+      "visibility": "visible",
+      "outline-style": "none",
+      "outline-width": "3px",
+      "outline-color": "rgb(28, 28, 30)",
+      "outline-offset": "0px",
+      "grid-template-columns": "none",
+      "column-gap": "normal",
+      "row-gap": "normal",
+      "touch-action": "auto"
     },
     ".td-table__truncate": {
-      "width": "591px",
+      "width": "288px",
       "height": "21px",
       "min-height": "0px",
       "max-height": "none",
@@ -118,7 +127,16 @@
       "stroke-width": "1px",
       "stroke-dasharray": "none",
       "stroke-dashoffset": "0px",
-      "stroke-linecap": "butt"
+      "stroke-linecap": "butt",
+      "visibility": "visible",
+      "outline-style": "none",
+      "outline-width": "3px",
+      "outline-color": "rgb(28, 28, 30)",
+      "outline-offset": "0px",
+      "grid-template-columns": "none",
+      "column-gap": "normal",
+      "row-gap": "normal",
+      "touch-action": "auto"
     }
   }
 }
