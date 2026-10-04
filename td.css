@@ -11927,6 +11927,11 @@
 		min-width: 0;
 	}
 
+	/* review ISSUE-5: the selection chip "n đã chọn ×" reads as a count — page ink (≥ 4.7 in both themes), not the accent */
+	.td-media-picker__clear {
+		--td-btn-ghost-fg: var(--td-color-text);
+	}
+
 	.td-media-picker__initial-loading {
 		font-size: var(--td-text-sm);
 		color: var(--td-color-text-muted);
