@@ -97,8 +97,10 @@
 		appearance: none;
 	}
 
-	.td-cropper__ratio:hover:not(:disabled, [aria-checked="true"]) {
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-cropper__ratio:hover:not(:disabled, [aria-checked="true"]) {
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-cropper__ratio[aria-checked="true"] {

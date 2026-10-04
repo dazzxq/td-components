@@ -234,13 +234,20 @@
 		transition: background var(--td-lb-dur-fast) var(--td-lb-ease);
 	}
 
-	.td-lightbox__nav > .td-lightbox__btn:is(:hover, :focus-visible) {
+	.td-lightbox__nav > .td-lightbox__btn:focus-visible {
 		background: transparent;
 		outline: none;
 	}
 
-	.td-lightbox__nav > .td-lightbox__btn:hover::before {
-		background: var(--td-lb-disc-bg-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-lightbox__nav > .td-lightbox__btn:hover {
+			background: transparent;
+			outline: none;
+		}
+
+		.td-lightbox__nav > .td-lightbox__btn:hover::before {
+			background: var(--td-lb-disc-bg-hover);
+		}
 	}
 
 	/* focus ring on the disc, not around the whole strip */
@@ -320,8 +327,10 @@
 		transition: background var(--td-lb-dur-fast) var(--td-lb-ease);
 	}
 
-	.td-lightbox__error-btn:hover {
-		background: #26262a;
+	@media (hover: hover) and (pointer: fine) {
+		.td-lightbox__error-btn:hover {
+			background: #26262a;
+		}
 	}
 
 	.td-lightbox__error-btn:focus-visible {
@@ -499,9 +508,11 @@
 		opacity: 1;
 	}
 
-	.td-lightbox__btn:hover {
-		background: rgb(255 255 255 / 14%);
-		opacity: 1;
+	@media (hover: hover) and (pointer: fine) {
+		.td-lightbox__btn:hover {
+			background: rgb(255 255 255 / 14%);
+			opacity: 1;
+		}
 	}
 
 	.td-lightbox__btn:focus-visible {
@@ -512,8 +523,14 @@
 	}
 
 	/* after the generic hover / focus rules: the back button stays solid in every state */
-	.td-lightbox__back:is(:hover, :focus-visible) {
+	.td-lightbox__back:focus-visible {
 		background: var(--td-glass-clear-solid);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-lightbox__back:hover {
+			background: var(--td-glass-clear-solid);
+		}
 	}
 
 	.td-lightbox__btn[aria-pressed="true"],
@@ -925,8 +942,10 @@
 		-webkit-user-drag: none;
 	}
 
-	.td-lightbox__thumb:hover {
-		opacity: 0.85;
+	@media (hover: hover) and (pointer: fine) {
+		.td-lightbox__thumb:hover {
+			opacity: 0.85;
+		}
 	}
 
 	.td-lightbox__thumb[aria-current="true"] {

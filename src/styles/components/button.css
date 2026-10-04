@@ -171,19 +171,25 @@
 		--td-btn-hover-v: var(--td-btn-secondary-hover);
 	}
 
-	.td-btn:hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"], .td-btn--ghost) {
-		background-color: var(--td-btn-hover-v, var(--td-btn-bg-v));
+	@media (hover: hover) and (pointer: fine) {
+		.td-btn:hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"], .td-btn--ghost) {
+			background-color: var(--td-btn-hover-v, var(--td-btn-bg-v));
+		}
 	}
 
 	/* ghost hover: the fill only. :not(.td-btn--custom) keeps the specificity above the base hover rule. */
-	.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
-		background-color: var(--td-btn-ghost-hover-bg);
-		color: #1d4ed8; /* engines without color-mix(): fixed darker step */
+	@media (hover: hover) and (pointer: fine) {
+		.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+			background-color: var(--td-btn-ghost-hover-bg);
+			color: #1d4ed8; /* engines without color-mix(): fixed darker step */
+		}
 	}
 
 	@supports (color: color-mix(in srgb, red 50%, transparent)) {
-		.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
-			color: var(--td-btn-ghost-hover-fg);
+		@media (hover: hover) and (pointer: fine) {
+			.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+				color: var(--td-btn-ghost-hover-fg);
+			}
 		}
 	}
 

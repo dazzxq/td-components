@@ -91,8 +91,10 @@
 			background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-dtp__trigger:hover:not(:disabled, :focus-visible, [aria-expanded="true"]) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-dtp__trigger:hover:not(:disabled, :focus-visible, [aria-expanded="true"]) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-dtp__trigger[aria-expanded="true"] {
@@ -326,8 +328,10 @@
 		scroll-snap-align: center;
 	}
 
-	.td-dtp-wheel__option:hover {
-		color: var(--td-dtp-option-selected-fg);
+	@media (hover: hover) and (pointer: fine) {
+		.td-dtp-wheel__option:hover {
+			color: var(--td-dtp-option-selected-fg);
+		}
 	}
 
 	.td-dtp-wheel__option[aria-selected="true"] {

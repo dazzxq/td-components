@@ -168,9 +168,11 @@
 		appearance: none;
 	}
 
-	.td-drawer__close:hover {
-		color: var(--td-color-text);
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-drawer__close:hover {
+			color: var(--td-color-text);
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-drawer__close:focus-visible {

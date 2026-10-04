@@ -79,9 +79,11 @@
 		height: var(--td-copy-size-sm);
 	}
 
-	.td-copy:hover {
-		color: var(--td-copy-fg-hover);
-		background: var(--td-copy-bg-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-copy:hover {
+			color: var(--td-copy-fg-hover);
+			background: var(--td-copy-bg-hover);
+		}
 	}
 
 	.td-copy:focus-visible {
@@ -90,14 +92,24 @@
 		box-shadow: var(--td-focus-ring);
 	}
 
-	.td-copy[data-state="copied"],
-	.td-copy[data-state="copied"]:hover {
+	.td-copy[data-state="copied"] {
 		color: var(--td-copy-success);
 	}
 
-	.td-copy[data-state="error"],
-	.td-copy[data-state="error"]:hover {
+	@media (hover: hover) and (pointer: fine) {
+		.td-copy[data-state="copied"]:hover {
+			color: var(--td-copy-success);
+		}
+	}
+
+	.td-copy[data-state="error"] {
 		color: var(--td-copy-error);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-copy[data-state="error"]:hover {
+			color: var(--td-copy-error);
+		}
 	}
 
 	.td-copy__icon {

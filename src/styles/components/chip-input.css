@@ -72,8 +72,10 @@
 			box-shadow var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-chip-input__box:hover:not(:has(.td-chip-input__input:disabled, .td-chip-input__input:focus)) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-chip-input__box:hover:not(:has(.td-chip-input__input:disabled, .td-chip-input__input:focus)) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-chip-input__box:has(.td-chip-input__input:focus) {
@@ -157,8 +159,10 @@
 		transition: background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-chip-input__remove:hover:not(:disabled) {
-		background: var(--td-chip-remove-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-chip-input__remove:hover:not(:disabled) {
+			background: var(--td-chip-remove-hover);
+		}
 	}
 
 	.td-chip-input__remove:focus-visible {
@@ -270,8 +274,10 @@
 		border-radius: 0; /* v0.36.0: full-bleed row (dcms2) */
 	}
 
-	.td-chip-input__option:hover {
-		background: var(--td-option-hover-bg);
+	@media (hover: hover) and (pointer: fine) {
+		.td-chip-input__option:hover {
+			background: var(--td-option-hover-bg);
+		}
 	}
 
 	/* highlight: aria-selected in the single list, data-active in the multi-select one (aria-selected = membership) */
@@ -300,8 +306,10 @@
 		cursor: not-allowed;
 	}
 
-	.td-chip-input__option[aria-disabled="true"]:hover {
-		background: none;
+	@media (hover: hover) and (pointer: fine) {
+		.td-chip-input__option[aria-disabled="true"]:hover {
+			background: none;
+		}
 	}
 
 	.td-chip-input__option--all {
@@ -365,9 +373,11 @@
 		box-shadow: none;
 	}
 
-	.td-multiselect__native:hover:not(:disabled, :focus-visible),
-	td-chip-input > .td-chip-input__native:hover:not(:disabled, :focus-visible) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-multiselect__native:hover:not(:disabled, :focus-visible),
+		td-chip-input > .td-chip-input__native:hover:not(:disabled, :focus-visible) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-multiselect__native:focus-visible,

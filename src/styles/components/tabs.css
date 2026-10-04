@@ -107,8 +107,10 @@
 		padding: 6px 12px;
 	}
 
-	.td-tabs__tab:hover {
-		color: var(--td-tabs-fg-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-tabs__tab:hover {
+			color: var(--td-tabs-fg-hover);
+		}
 	}
 
 	.td-tabs__tab[aria-selected="true"] {

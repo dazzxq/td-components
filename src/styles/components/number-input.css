@@ -49,8 +49,10 @@
 			background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-number__box:hover:not(:focus-within, :has(> .td-number__control:disabled)) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-number__box:hover:not(:focus-within, :has(> .td-number__control:disabled)) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-number__box:focus-within {

@@ -90,8 +90,10 @@
 		box-shadow: none;
 	}
 
-	td-dropdown > .td-dropdown__native:hover:not(:disabled, :focus-visible) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		td-dropdown > .td-dropdown__native:hover:not(:disabled, :focus-visible) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	td-dropdown > .td-dropdown__native:focus-visible {
@@ -147,8 +149,10 @@
 			background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-dropdown__trigger:hover:not(:disabled, :focus-visible, [aria-expanded="true"]) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropdown__trigger:hover:not(:disabled, :focus-visible, [aria-expanded="true"]) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-dropdown__trigger[aria-expanded="true"] {
@@ -313,8 +317,10 @@
 		border-radius: 0; /* v0.36.0: full-bleed row (dcms2) */
 	}
 
-	.td-dropdown__option:hover {
-		background: var(--td-dropdown-option-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropdown__option:hover {
+			background: var(--td-dropdown-option-hover);
+		}
 	}
 
 	/* selected = semibold label + the ✓ at the inline end (JS prints .td-dropdown__check on the selected row) */
@@ -339,8 +345,10 @@
 		opacity: 0.55;
 	}
 
-	.td-dropdown__option[aria-disabled="true"]:hover {
-		background: none;
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropdown__option[aria-disabled="true"]:hover {
+			background: none;
+		}
 	}
 
 	.td-dropdown__option--clear {

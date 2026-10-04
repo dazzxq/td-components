@@ -143,9 +143,11 @@
 		line-height: 0;
 	}
 
-	.td-pagination__page:hover:not([aria-current="page"]),
-	.td-pagination__nav:hover:not([aria-disabled="true"]) {
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-pagination__page:hover:not([aria-current="page"]),
+		.td-pagination__nav:hover:not([aria-disabled="true"]) {
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-pagination__page[aria-current="page"] {

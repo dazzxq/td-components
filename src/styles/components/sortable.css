@@ -101,9 +101,11 @@
 		appearance: none;
 	}
 
-	.td-sortable__handle:hover {
-		color: var(--td-color-text);
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-sortable__handle:hover {
+			color: var(--td-color-text);
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-sortable__handle:focus-visible {
@@ -112,11 +114,18 @@
 		box-shadow: var(--td-focus-ring);
 	}
 
-	.td-sortable__handle[aria-disabled="true"],
-	.td-sortable__handle[aria-disabled="true"]:hover {
+	.td-sortable__handle[aria-disabled="true"] {
 		color: var(--td-btn-disabled-fg);
 		cursor: not-allowed;
 		background: transparent;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-sortable__handle[aria-disabled="true"]:hover {
+			color: var(--td-btn-disabled-fg);
+			cursor: not-allowed;
+			background: transparent;
+		}
 	}
 
 	td-repeater button[data-td-sort-handle][hidden] {
@@ -138,9 +147,14 @@
 		border-color: var(--td-color-border);
 	}
 
-	td-media-grid > td-sortable > [data-td-sort-item] > .td-sortable__handle:hover,
 	td-media-grid > td-sortable > [data-td-sort-item] > .td-sortable__handle[aria-disabled="true"] {
 		background: var(--td-color-surface);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		td-media-grid > td-sortable > [data-td-sort-item] > .td-sortable__handle:hover {
+			background: var(--td-color-surface);
+		}
 	}
 
 	/* an app placeholder for the kit handle keeps its 32px box before JS runs (no layout shift) */

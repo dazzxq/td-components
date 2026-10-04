@@ -61,8 +61,10 @@
 	}
 
 	/* soft border at rest (v0.14.1), one soft step darker under the pointer (v0.14.2) */
-	.td-checkbox:hover .td-checkbox__input:not(:checked, :indeterminate, :disabled) ~ .td-checkbox__mark {
-		border-color: var(--td-control-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-checkbox:hover .td-checkbox__input:not(:checked, :indeterminate, :disabled) ~ .td-checkbox__mark {
+			border-color: var(--td-control-border-hover);
+		}
 	}
 
 	.td-checkbox__input:focus-visible ~ .td-checkbox__mark {

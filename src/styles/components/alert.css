@@ -186,8 +186,10 @@
 		transition: background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-alert__close:hover {
-		background: var(--td-alert-close-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-alert__close:hover {
+			background: var(--td-alert-close-hover);
+		}
 	}
 
 	.td-alert__close:focus-visible {

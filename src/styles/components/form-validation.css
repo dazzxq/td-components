@@ -76,8 +76,10 @@
 		outline-offset: 2px;
 	}
 
-	.td-form-summary__link:hover {
-		text-decoration-thickness: 2px;
+	@media (hover: hover) and (pointer: fine) {
+		.td-form-summary__link:hover {
+			text-decoration-thickness: 2px;
+		}
 	}
 
 	.td-form-summary__link:focus-visible {

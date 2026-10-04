@@ -804,8 +804,10 @@
 		content: attr(data-placeholder);
 	}
 
-	.td-field__control:hover:not(:disabled, [aria-disabled="true"], :focus) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-field__control:hover:not(:disabled, [aria-disabled="true"], :focus) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-field__control:focus {
@@ -831,9 +833,14 @@
 
 	/* A visible error keeps the red border, focused or not (only a shown error — never the counter). */
 	.td-field__control[aria-invalid="true"],
-	.td-field__control[aria-invalid="true"]:focus,
-	.td-field__control[aria-invalid="true"]:hover {
+	.td-field__control[aria-invalid="true"]:focus {
 		border-color: var(--td-field-error);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-field__control[aria-invalid="true"]:hover {
+			border-color: var(--td-field-error);
+		}
 	}
 
 	.td-field__footer {
@@ -1296,19 +1303,25 @@
 		--td-btn-hover-v: var(--td-btn-secondary-hover);
 	}
 
-	.td-btn:hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"], .td-btn--ghost) {
-		background-color: var(--td-btn-hover-v, var(--td-btn-bg-v));
+	@media (hover: hover) and (pointer: fine) {
+		.td-btn:hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"], .td-btn--ghost) {
+			background-color: var(--td-btn-hover-v, var(--td-btn-bg-v));
+		}
 	}
 
 	/* ghost hover: the fill only. :not(.td-btn--custom) keeps the specificity above the base hover rule. */
-	.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
-		background-color: var(--td-btn-ghost-hover-bg);
-		color: #1d4ed8; /* engines without color-mix(): fixed darker step */
+	@media (hover: hover) and (pointer: fine) {
+		.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+			background-color: var(--td-btn-ghost-hover-bg);
+			color: #1d4ed8; /* engines without color-mix(): fixed darker step */
+		}
 	}
 
 	@supports (color: color-mix(in srgb, red 50%, transparent)) {
-		.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
-			color: var(--td-btn-ghost-hover-fg);
+		@media (hover: hover) and (pointer: fine) {
+			.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+				color: var(--td-btn-ghost-hover-fg);
+			}
 		}
 	}
 
@@ -1717,8 +1730,10 @@
 	}
 
 	/* soft border at rest (v0.14.1), one soft step darker under the pointer (v0.14.2) */
-	.td-checkbox:hover .td-checkbox__input:not(:checked, :indeterminate, :disabled) ~ .td-checkbox__mark {
-		border-color: var(--td-control-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-checkbox:hover .td-checkbox__input:not(:checked, :indeterminate, :disabled) ~ .td-checkbox__mark {
+			border-color: var(--td-control-border-hover);
+		}
 	}
 
 	.td-checkbox__input:focus-visible ~ .td-checkbox__mark {
@@ -1875,9 +1890,11 @@
 		opacity: 0;
 	}
 
-	.td-switch:hover .td-switch__input:not(:checked, :disabled) + .td-switch__track,
-	.td-switch:hover .td-switch__input:not(:checked, :disabled) + .td-switch__track .td-switch__thumb {
-		border-color: var(--td-control-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-switch:hover .td-switch__input:not(:checked, :disabled) + .td-switch__track,
+		.td-switch:hover .td-switch__input:not(:checked, :disabled) + .td-switch__track .td-switch__thumb {
+			border-color: var(--td-control-border-hover);
+		}
 	}
 
 	.td-switch__input:checked + .td-switch__track {
@@ -2476,9 +2493,11 @@
 		line-height: 0;
 	}
 
-	.td-pagination__page:hover:not([aria-current="page"]),
-	.td-pagination__nav:hover:not([aria-disabled="true"]) {
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-pagination__page:hover:not([aria-current="page"]),
+		.td-pagination__nav:hover:not([aria-disabled="true"]) {
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-pagination__page[aria-current="page"] {
@@ -2714,8 +2733,10 @@
 		padding: 6px 12px;
 	}
 
-	.td-tabs__tab:hover {
-		color: var(--td-tabs-fg-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-tabs__tab:hover {
+			color: var(--td-tabs-fg-hover);
+		}
 	}
 
 	.td-tabs__tab[aria-selected="true"] {
@@ -3202,13 +3223,20 @@
 		transition: background var(--td-lb-dur-fast) var(--td-lb-ease);
 	}
 
-	.td-lightbox__nav > .td-lightbox__btn:is(:hover, :focus-visible) {
+	.td-lightbox__nav > .td-lightbox__btn:focus-visible {
 		background: transparent;
 		outline: none;
 	}
 
-	.td-lightbox__nav > .td-lightbox__btn:hover::before {
-		background: var(--td-lb-disc-bg-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-lightbox__nav > .td-lightbox__btn:hover {
+			background: transparent;
+			outline: none;
+		}
+
+		.td-lightbox__nav > .td-lightbox__btn:hover::before {
+			background: var(--td-lb-disc-bg-hover);
+		}
 	}
 
 	/* focus ring on the disc, not around the whole strip */
@@ -3288,8 +3316,10 @@
 		transition: background var(--td-lb-dur-fast) var(--td-lb-ease);
 	}
 
-	.td-lightbox__error-btn:hover {
-		background: #26262a;
+	@media (hover: hover) and (pointer: fine) {
+		.td-lightbox__error-btn:hover {
+			background: #26262a;
+		}
 	}
 
 	.td-lightbox__error-btn:focus-visible {
@@ -3467,9 +3497,11 @@
 		opacity: 1;
 	}
 
-	.td-lightbox__btn:hover {
-		background: rgb(255 255 255 / 14%);
-		opacity: 1;
+	@media (hover: hover) and (pointer: fine) {
+		.td-lightbox__btn:hover {
+			background: rgb(255 255 255 / 14%);
+			opacity: 1;
+		}
 	}
 
 	.td-lightbox__btn:focus-visible {
@@ -3480,8 +3512,14 @@
 	}
 
 	/* after the generic hover / focus rules: the back button stays solid in every state */
-	.td-lightbox__back:is(:hover, :focus-visible) {
+	.td-lightbox__back:focus-visible {
 		background: var(--td-glass-clear-solid);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-lightbox__back:hover {
+			background: var(--td-glass-clear-solid);
+		}
 	}
 
 	.td-lightbox__btn[aria-pressed="true"],
@@ -3893,8 +3931,10 @@
 		-webkit-user-drag: none;
 	}
 
-	.td-lightbox__thumb:hover {
-		opacity: 0.85;
+	@media (hover: hover) and (pointer: fine) {
+		.td-lightbox__thumb:hover {
+			opacity: 0.85;
+		}
 	}
 
 	.td-lightbox__thumb[aria-current="true"] {
@@ -4245,8 +4285,10 @@
 		white-space: nowrap;
 	}
 
-	.td-toast__close:hover {
-		background: var(--_td-toast-close-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-toast__close:hover {
+			background: var(--_td-toast-close-hover);
+		}
 	}
 
 	.td-toast__close:focus-visible {
@@ -4800,9 +4842,11 @@
 		appearance: none;
 	}
 
-	.td-modal__close:hover:not(:disabled) {
-		color: var(--td-color-text);
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-modal__close:hover:not(:disabled) {
+			color: var(--td-color-text);
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-modal__close:focus-visible {
@@ -5124,8 +5168,10 @@
 		box-shadow: none;
 	}
 
-	td-dropdown > .td-dropdown__native:hover:not(:disabled, :focus-visible) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		td-dropdown > .td-dropdown__native:hover:not(:disabled, :focus-visible) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	td-dropdown > .td-dropdown__native:focus-visible {
@@ -5181,8 +5227,10 @@
 			background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-dropdown__trigger:hover:not(:disabled, :focus-visible, [aria-expanded="true"]) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropdown__trigger:hover:not(:disabled, :focus-visible, [aria-expanded="true"]) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-dropdown__trigger[aria-expanded="true"] {
@@ -5347,8 +5395,10 @@
 		border-radius: 0; /* v0.36.0: full-bleed row (dcms2) */
 	}
 
-	.td-dropdown__option:hover {
-		background: var(--td-dropdown-option-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropdown__option:hover {
+			background: var(--td-dropdown-option-hover);
+		}
 	}
 
 	/* selected = semibold label + the ✓ at the inline end (JS prints .td-dropdown__check on the selected row) */
@@ -5373,8 +5423,10 @@
 		opacity: 0.55;
 	}
 
-	.td-dropdown__option[aria-disabled="true"]:hover {
-		background: none;
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropdown__option[aria-disabled="true"]:hover {
+			background: none;
+		}
 	}
 
 	.td-dropdown__option--clear {
@@ -5741,9 +5793,11 @@
 		appearance: none;
 	}
 
-	.td-table__sort:hover {
-		color: var(--td-table-fg);
-		background: var(--td-color-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-table__sort:hover {
+			color: var(--td-table-fg);
+			background: var(--td-color-hover);
+		}
 	}
 
 	.td-table__sort:focus-visible {
@@ -5777,9 +5831,14 @@
 		background: var(--td-table-zebra);
 	}
 
-	.td-table .td-table__row:not(.td-table__row--skeleton):hover,
 	.td-table .td-table__row:not(.td-table__row--skeleton):focus-within {
 		background: var(--td-table-row-hover);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-table .td-table__row:not(.td-table__row--skeleton):hover {
+			background: var(--td-table-row-hover);
+		}
 	}
 
 	.td-table__row {
@@ -6180,9 +6239,11 @@
 			color: CanvasText;
 		}
 
-		.td-table .td-table__row:not(.td-table__row--skeleton):hover {
-			outline: 2px solid Highlight;
-			outline-offset: -2px;
+		@media (hover: hover) and (pointer: fine) {
+			.td-table .td-table__row:not(.td-table__row--skeleton):hover {
+				outline: 2px solid Highlight;
+				outline-offset: -2px;
+			}
 		}
 
 		.td-table__skeleton {
@@ -6289,8 +6350,10 @@
 			background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-dtp__trigger:hover:not(:disabled, :focus-visible, [aria-expanded="true"]) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-dtp__trigger:hover:not(:disabled, :focus-visible, [aria-expanded="true"]) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-dtp__trigger[aria-expanded="true"] {
@@ -6524,8 +6587,10 @@
 		scroll-snap-align: center;
 	}
 
-	.td-dtp-wheel__option:hover {
-		color: var(--td-dtp-option-selected-fg);
+	@media (hover: hover) and (pointer: fine) {
+		.td-dtp-wheel__option:hover {
+			color: var(--td-dtp-option-selected-fg);
+		}
 	}
 
 	.td-dtp-wheel__option[aria-selected="true"] {
@@ -6737,8 +6802,10 @@
 		outline-offset: 2px;
 	}
 
-	.td-form-summary__link:hover {
-		text-decoration-thickness: 2px;
+	@media (hover: hover) and (pointer: fine) {
+		.td-form-summary__link:hover {
+			text-decoration-thickness: 2px;
+		}
 	}
 
 	.td-form-summary__link:focus-visible {
@@ -6886,8 +6953,10 @@
 		appearance: none;
 	}
 
-	.td-menu__item:hover {
-		background: var(--td-menu-item-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-menu__item:hover {
+			background: var(--td-menu-item-hover);
+		}
 	}
 
 	.td-menu__item:focus {
@@ -6915,8 +6984,10 @@
 		opacity: 0.55;
 	}
 
-	.td-menu__item[aria-disabled="true"]:hover {
-		background: none;
+	@media (hover: hover) and (pointer: fine) {
+		.td-menu__item[aria-disabled="true"]:hover {
+			background: none;
+		}
 	}
 
 	.td-menu__label {
@@ -7024,10 +7095,16 @@
 		padding-inline: var(--td-space-xs);
 	}
 
-	.td-menu-btn:hover,
 	.td-menu-btn[aria-expanded="true"] {
 		color: var(--td-menu-btn-fg-hover);
 		background: var(--td-menu-btn-hover);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-menu-btn:hover {
+			color: var(--td-menu-btn-fg-hover);
+			background: var(--td-menu-btn-hover);
+		}
 	}
 
 	.td-menu-btn:focus-visible {
@@ -7175,8 +7252,10 @@
 			box-shadow var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-chip-input__box:hover:not(:has(.td-chip-input__input:disabled, .td-chip-input__input:focus)) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-chip-input__box:hover:not(:has(.td-chip-input__input:disabled, .td-chip-input__input:focus)) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-chip-input__box:has(.td-chip-input__input:focus) {
@@ -7260,8 +7339,10 @@
 		transition: background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-chip-input__remove:hover:not(:disabled) {
-		background: var(--td-chip-remove-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-chip-input__remove:hover:not(:disabled) {
+			background: var(--td-chip-remove-hover);
+		}
 	}
 
 	.td-chip-input__remove:focus-visible {
@@ -7373,8 +7454,10 @@
 		border-radius: 0; /* v0.36.0: full-bleed row (dcms2) */
 	}
 
-	.td-chip-input__option:hover {
-		background: var(--td-option-hover-bg);
+	@media (hover: hover) and (pointer: fine) {
+		.td-chip-input__option:hover {
+			background: var(--td-option-hover-bg);
+		}
 	}
 
 	/* highlight: aria-selected in the single list, data-active in the multi-select one (aria-selected = membership) */
@@ -7403,8 +7486,10 @@
 		cursor: not-allowed;
 	}
 
-	.td-chip-input__option[aria-disabled="true"]:hover {
-		background: none;
+	@media (hover: hover) and (pointer: fine) {
+		.td-chip-input__option[aria-disabled="true"]:hover {
+			background: none;
+		}
 	}
 
 	.td-chip-input__option--all {
@@ -7468,9 +7553,11 @@
 		box-shadow: none;
 	}
 
-	.td-multiselect__native:hover:not(:disabled, :focus-visible),
-	td-chip-input > .td-chip-input__native:hover:not(:disabled, :focus-visible) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-multiselect__native:hover:not(:disabled, :focus-visible),
+		td-chip-input > .td-chip-input__native:hover:not(:disabled, :focus-visible) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-multiselect__native:focus-visible,
@@ -8189,9 +8276,14 @@
 			border-color var(--td-dur-base) var(--td-ease);
 	}
 
-	.td-dropzone__zone:hover,
 	.td-dropzone[data-state="dragover"] .td-dropzone__zone {
 		border-color: var(--td-dropzone-border-active);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropzone__zone:hover {
+			border-color: var(--td-dropzone-border-active);
+		}
 	}
 
 	.td-dropzone[data-state="dragover"] .td-dropzone__zone {
@@ -8435,9 +8527,11 @@
 		transition: background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-dropzone__remove:hover:not(:disabled) {
-		color: var(--td-color-text);
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropzone__remove:hover:not(:disabled) {
+			color: var(--td-color-text);
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-dropzone__remove:focus-visible {
@@ -8834,8 +8928,10 @@
 		transition: background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-alert__close:hover {
-		background: var(--td-alert-close-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-alert__close:hover {
+			background: var(--td-alert-close-hover);
+		}
 	}
 
 	.td-alert__close:focus-visible {
@@ -9639,9 +9735,11 @@
 		appearance: none;
 	}
 
-	.td-drawer__close:hover {
-		color: var(--td-color-text);
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-drawer__close:hover {
+			color: var(--td-color-text);
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-drawer__close:focus-visible {
@@ -9831,9 +9929,11 @@
 		height: var(--td-copy-size-sm);
 	}
 
-	.td-copy:hover {
-		color: var(--td-copy-fg-hover);
-		background: var(--td-copy-bg-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-copy:hover {
+			color: var(--td-copy-fg-hover);
+			background: var(--td-copy-bg-hover);
+		}
 	}
 
 	.td-copy:focus-visible {
@@ -9842,14 +9942,24 @@
 		box-shadow: var(--td-focus-ring);
 	}
 
-	.td-copy[data-state="copied"],
-	.td-copy[data-state="copied"]:hover {
+	.td-copy[data-state="copied"] {
 		color: var(--td-copy-success);
 	}
 
-	.td-copy[data-state="error"],
-	.td-copy[data-state="error"]:hover {
+	@media (hover: hover) and (pointer: fine) {
+		.td-copy[data-state="copied"]:hover {
+			color: var(--td-copy-success);
+		}
+	}
+
+	.td-copy[data-state="error"] {
 		color: var(--td-copy-error);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-copy[data-state="error"]:hover {
+			color: var(--td-copy-error);
+		}
 	}
 
 	.td-copy__icon {
@@ -10029,8 +10139,10 @@
 		border-radius: var(--td-glass-radius-inner);
 	}
 
-	.td-tree__row:hover {
-		background: var(--td-tree-row-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-tree__row:hover {
+			background: var(--td-tree-row-hover);
+		}
 	}
 
 	.td-tree__item[aria-selected="true"] > .td-tree__row {
@@ -10259,8 +10371,10 @@
 		overflow-y: auto;
 	}
 
-	.td-tree-select__native:hover:not(:disabled, :focus-visible) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-tree-select__native:hover:not(:disabled, :focus-visible) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-tree-select__native:focus-visible {
@@ -10303,8 +10417,10 @@
 			background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-tree-select__control:hover:not([data-disabled], :has(:focus-visible), :has([aria-expanded="true"])) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-tree-select__control:hover:not([data-disabled], :has(:focus-visible), :has([aria-expanded="true"])) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-tree-select__control:has([aria-expanded="true"]) {
@@ -10402,9 +10518,11 @@
 		display: none;
 	}
 
-	.td-tree-select__clear:hover {
-		color: var(--td-field-fg);
-		background: var(--td-color-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-tree-select__clear:hover {
+			color: var(--td-field-fg);
+			background: var(--td-color-hover);
+		}
 	}
 
 	.td-tree-select__clear:focus-visible {
@@ -10523,8 +10641,10 @@
 		pointer-events: none;
 	}
 
-	.td-tree-select__menu .td-tree__row:hover::before {
-		background: var(--td-option-hover-bg);
+	@media (hover: hover) and (pointer: fine) {
+		.td-tree-select__menu .td-tree__row:hover::before {
+			background: var(--td-option-hover-bg);
+		}
 	}
 
 	.td-tree-select__menu .td-tree__item[aria-selected="true"] > .td-tree__row {
@@ -10665,8 +10785,10 @@
 			background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-number__box:hover:not(:focus-within, :has(> .td-number__control:disabled)) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-number__box:hover:not(:focus-within, :has(> .td-number__control:disabled)) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-number__box:focus-within {
@@ -10851,9 +10973,11 @@
 		appearance: none;
 	}
 
-	.td-repeater__btn:hover {
-		color: var(--td-repeater-btn-fg-hover);
-		background: var(--td-repeater-btn-bg-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-repeater__btn:hover {
+			color: var(--td-repeater-btn-fg-hover);
+			background: var(--td-repeater-btn-bg-hover);
+		}
 	}
 
 	.td-repeater__btn:focus-visible {
@@ -10863,11 +10987,18 @@
 	}
 
 	.td-repeater__btn[aria-disabled="true"],
-	.td-repeater__btn[aria-disabled="true"]:hover,
 	.td-repeater__btn:disabled {
 		color: var(--td-repeater-btn-disabled-fg);
 		cursor: not-allowed;
 		background: transparent;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-repeater__btn[aria-disabled="true"]:hover {
+			color: var(--td-repeater-btn-disabled-fg);
+			cursor: not-allowed;
+			background: transparent;
+		}
 	}
 
 	.td-repeater__btn .td-icon {
@@ -11052,9 +11183,11 @@
 		appearance: none;
 	}
 
-	.td-sortable__handle:hover {
-		color: var(--td-color-text);
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-sortable__handle:hover {
+			color: var(--td-color-text);
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-sortable__handle:focus-visible {
@@ -11063,11 +11196,18 @@
 		box-shadow: var(--td-focus-ring);
 	}
 
-	.td-sortable__handle[aria-disabled="true"],
-	.td-sortable__handle[aria-disabled="true"]:hover {
+	.td-sortable__handle[aria-disabled="true"] {
 		color: var(--td-btn-disabled-fg);
 		cursor: not-allowed;
 		background: transparent;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-sortable__handle[aria-disabled="true"]:hover {
+			color: var(--td-btn-disabled-fg);
+			cursor: not-allowed;
+			background: transparent;
+		}
 	}
 
 	td-repeater button[data-td-sort-handle][hidden] {
@@ -11089,9 +11229,14 @@
 		border-color: var(--td-color-border);
 	}
 
-	td-media-grid > td-sortable > [data-td-sort-item] > .td-sortable__handle:hover,
 	td-media-grid > td-sortable > [data-td-sort-item] > .td-sortable__handle[aria-disabled="true"] {
 		background: var(--td-color-surface);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		td-media-grid > td-sortable > [data-td-sort-item] > .td-sortable__handle:hover {
+			background: var(--td-color-surface);
+		}
 	}
 
 	/* an app placeholder for the kit handle keeps its 32px box before JS runs (no layout shift) */
@@ -11206,9 +11351,11 @@
 		appearance: none;
 	}
 
-	.td-masked__toggle:hover {
-		color: var(--td-color-text);
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-masked__toggle:hover {
+			color: var(--td-color-text);
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-masked__toggle:focus-visible {
@@ -11217,17 +11364,30 @@
 		box-shadow: var(--td-focus-ring);
 	}
 
-	.td-masked__toggle[aria-disabled="true"],
-	.td-masked__toggle[aria-disabled="true"]:hover {
+	.td-masked__toggle[aria-disabled="true"] {
 		color: var(--td-btn-disabled-fg);
 		cursor: not-allowed;
 		background: transparent;
 	}
 
-	.td-masked__toggle[data-state="loading"],
-	.td-masked__toggle[data-state="loading"]:hover {
+	@media (hover: hover) and (pointer: fine) {
+		.td-masked__toggle[aria-disabled="true"]:hover {
+			color: var(--td-btn-disabled-fg);
+			cursor: not-allowed;
+			background: transparent;
+		}
+	}
+
+	.td-masked__toggle[data-state="loading"] {
 		color: var(--td-color-text-muted);
 		cursor: progress;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-masked__toggle[data-state="loading"]:hover {
+			color: var(--td-color-text-muted);
+			cursor: progress;
+		}
 	}
 
 	.td-masked__icon {
@@ -11569,8 +11729,10 @@
 		transition: border-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-media-picker__card:hover {
-		border-color: var(--td-media-picker-card-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-picker__card:hover {
+			border-color: var(--td-media-picker-card-hover);
+		}
 	}
 
 	.td-media-picker__card[data-viewing] {
@@ -11578,9 +11740,14 @@
 	}
 
 	/* checked wins over viewing / hover */
-	.td-media-picker__card[data-selected],
-	.td-media-picker__card[data-selected]:hover {
+	.td-media-picker__card[data-selected] {
 		border-color: var(--td-media-picker-card-checked);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-picker__card[data-selected]:hover {
+			border-color: var(--td-media-picker-card-checked);
+		}
 	}
 
 	.td-media-picker__card .td-media-picker__open {
@@ -11783,8 +11950,10 @@
 		border-radius: var(--td-radius-full);
 	}
 
-	.td-media-picker__back:hover {
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-picker__back:hover {
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-media-picker__back:focus-visible {
@@ -12182,15 +12351,26 @@
 			border-color: CanvasText;
 		}
 
-		.td-media-picker__card:hover,
 		.td-media-picker__card[data-viewing] {
 			border-color: Highlight;
 		}
 
-		.td-media-picker__card[data-selected],
-		.td-media-picker__card[data-selected]:hover {
+		@media (hover: hover) and (pointer: fine) {
+			.td-media-picker__card:hover {
+				border-color: Highlight;
+			}
+		}
+
+		.td-media-picker__card[data-selected] {
 			border-color: Highlight;
 			outline: 2px solid Highlight;
+		}
+
+		@media (hover: hover) and (pointer: fine) {
+			.td-media-picker__card[data-selected]:hover {
+				border-color: Highlight;
+				outline: 2px solid Highlight;
+			}
 		}
 
 		.td-media-picker__kind,
@@ -12438,8 +12618,10 @@
 		cursor: not-allowed;
 	}
 
-	.td-media-field__frame[data-state="empty"] > .td-media-field__open:hover:not(:disabled) {
-		background: var(--td-color-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-field__frame[data-state="empty"] > .td-media-field__open:hover:not(:disabled) {
+			background: var(--td-color-hover);
+		}
 	}
 
 	.td-media-field__open:disabled > :not(.td-sr-only) {
@@ -12719,8 +12901,10 @@
 		appearance: none;
 	}
 
-	.td-cropper__ratio:hover:not(:disabled, [aria-checked="true"]) {
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-cropper__ratio:hover:not(:disabled, [aria-checked="true"]) {
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-cropper__ratio[aria-checked="true"] {

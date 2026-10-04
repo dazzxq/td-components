@@ -73,8 +73,10 @@
 		overflow-y: auto;
 	}
 
-	.td-tree-select__native:hover:not(:disabled, :focus-visible) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-tree-select__native:hover:not(:disabled, :focus-visible) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-tree-select__native:focus-visible {
@@ -117,8 +119,10 @@
 			background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-tree-select__control:hover:not([data-disabled], :has(:focus-visible), :has([aria-expanded="true"])) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-tree-select__control:hover:not([data-disabled], :has(:focus-visible), :has([aria-expanded="true"])) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-tree-select__control:has([aria-expanded="true"]) {
@@ -216,9 +220,11 @@
 		display: none;
 	}
 
-	.td-tree-select__clear:hover {
-		color: var(--td-field-fg);
-		background: var(--td-color-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-tree-select__clear:hover {
+			color: var(--td-field-fg);
+			background: var(--td-color-hover);
+		}
 	}
 
 	.td-tree-select__clear:focus-visible {
@@ -337,8 +343,10 @@
 		pointer-events: none;
 	}
 
-	.td-tree-select__menu .td-tree__row:hover::before {
-		background: var(--td-option-hover-bg);
+	@media (hover: hover) and (pointer: fine) {
+		.td-tree-select__menu .td-tree__row:hover::before {
+			background: var(--td-option-hover-bg);
+		}
 	}
 
 	.td-tree-select__menu .td-tree__item[aria-selected="true"] > .td-tree__row {

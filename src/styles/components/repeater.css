@@ -77,9 +77,11 @@
 		appearance: none;
 	}
 
-	.td-repeater__btn:hover {
-		color: var(--td-repeater-btn-fg-hover);
-		background: var(--td-repeater-btn-bg-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-repeater__btn:hover {
+			color: var(--td-repeater-btn-fg-hover);
+			background: var(--td-repeater-btn-bg-hover);
+		}
 	}
 
 	.td-repeater__btn:focus-visible {
@@ -89,11 +91,18 @@
 	}
 
 	.td-repeater__btn[aria-disabled="true"],
-	.td-repeater__btn[aria-disabled="true"]:hover,
 	.td-repeater__btn:disabled {
 		color: var(--td-repeater-btn-disabled-fg);
 		cursor: not-allowed;
 		background: transparent;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-repeater__btn[aria-disabled="true"]:hover {
+			color: var(--td-repeater-btn-disabled-fg);
+			cursor: not-allowed;
+			background: transparent;
+		}
 	}
 
 	.td-repeater__btn .td-icon {

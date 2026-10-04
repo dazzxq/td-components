@@ -96,9 +96,14 @@
 			border-color var(--td-dur-base) var(--td-ease);
 	}
 
-	.td-dropzone__zone:hover,
 	.td-dropzone[data-state="dragover"] .td-dropzone__zone {
 		border-color: var(--td-dropzone-border-active);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropzone__zone:hover {
+			border-color: var(--td-dropzone-border-active);
+		}
 	}
 
 	.td-dropzone[data-state="dragover"] .td-dropzone__zone {
@@ -337,9 +342,11 @@
 		transition: background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-dropzone__remove:hover:not(:disabled) {
-		color: var(--td-color-text);
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropzone__remove:hover:not(:disabled) {
+			color: var(--td-color-text);
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-dropzone__remove:focus-visible {

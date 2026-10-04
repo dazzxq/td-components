@@ -189,9 +189,11 @@
 		appearance: none;
 	}
 
-	.td-modal__close:hover:not(:disabled) {
-		color: var(--td-color-text);
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-modal__close:hover:not(:disabled) {
+			color: var(--td-color-text);
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-modal__close:focus-visible {

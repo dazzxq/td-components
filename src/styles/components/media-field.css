@@ -120,8 +120,10 @@
 		cursor: not-allowed;
 	}
 
-	.td-media-field__frame[data-state="empty"] > .td-media-field__open:hover:not(:disabled) {
-		background: var(--td-color-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-field__frame[data-state="empty"] > .td-media-field__open:hover:not(:disabled) {
+			background: var(--td-color-hover);
+		}
 	}
 
 	.td-media-field__open:disabled > :not(.td-sr-only) {

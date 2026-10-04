@@ -124,9 +124,11 @@
 		opacity: 0;
 	}
 
-	.td-switch:hover .td-switch__input:not(:checked, :disabled) + .td-switch__track,
-	.td-switch:hover .td-switch__input:not(:checked, :disabled) + .td-switch__track .td-switch__thumb {
-		border-color: var(--td-control-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-switch:hover .td-switch__input:not(:checked, :disabled) + .td-switch__track,
+		.td-switch:hover .td-switch__input:not(:checked, :disabled) + .td-switch__track .td-switch__thumb {
+			border-color: var(--td-control-border-hover);
+		}
 	}
 
 	.td-switch__input:checked + .td-switch__track {

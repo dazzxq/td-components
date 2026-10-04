@@ -287,8 +287,10 @@
 		transition: border-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-media-picker__card:hover {
-		border-color: var(--td-media-picker-card-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-picker__card:hover {
+			border-color: var(--td-media-picker-card-hover);
+		}
 	}
 
 	.td-media-picker__card[data-viewing] {
@@ -296,9 +298,14 @@
 	}
 
 	/* checked wins over viewing / hover */
-	.td-media-picker__card[data-selected],
-	.td-media-picker__card[data-selected]:hover {
+	.td-media-picker__card[data-selected] {
 		border-color: var(--td-media-picker-card-checked);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-picker__card[data-selected]:hover {
+			border-color: var(--td-media-picker-card-checked);
+		}
 	}
 
 	.td-media-picker__card .td-media-picker__open {
@@ -501,8 +508,10 @@
 		border-radius: var(--td-radius-full);
 	}
 
-	.td-media-picker__back:hover {
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-picker__back:hover {
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-media-picker__back:focus-visible {
@@ -900,15 +909,26 @@
 			border-color: CanvasText;
 		}
 
-		.td-media-picker__card:hover,
 		.td-media-picker__card[data-viewing] {
 			border-color: Highlight;
 		}
 
-		.td-media-picker__card[data-selected],
-		.td-media-picker__card[data-selected]:hover {
+		@media (hover: hover) and (pointer: fine) {
+			.td-media-picker__card:hover {
+				border-color: Highlight;
+			}
+		}
+
+		.td-media-picker__card[data-selected] {
 			border-color: Highlight;
 			outline: 2px solid Highlight;
+		}
+
+		@media (hover: hover) and (pointer: fine) {
+			.td-media-picker__card[data-selected]:hover {
+				border-color: Highlight;
+				outline: 2px solid Highlight;
+			}
 		}
 
 		.td-media-picker__kind,

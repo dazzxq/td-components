@@ -212,8 +212,10 @@
 		white-space: nowrap;
 	}
 
-	.td-toast__close:hover {
-		background: var(--_td-toast-close-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-toast__close:hover {
+			background: var(--_td-toast-close-hover);
+		}
 	}
 
 	.td-toast__close:focus-visible {

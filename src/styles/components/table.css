@@ -242,9 +242,11 @@
 		appearance: none;
 	}
 
-	.td-table__sort:hover {
-		color: var(--td-table-fg);
-		background: var(--td-color-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-table__sort:hover {
+			color: var(--td-table-fg);
+			background: var(--td-color-hover);
+		}
 	}
 
 	.td-table__sort:focus-visible {
@@ -278,9 +280,14 @@
 		background: var(--td-table-zebra);
 	}
 
-	.td-table .td-table__row:not(.td-table__row--skeleton):hover,
 	.td-table .td-table__row:not(.td-table__row--skeleton):focus-within {
 		background: var(--td-table-row-hover);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-table .td-table__row:not(.td-table__row--skeleton):hover {
+			background: var(--td-table-row-hover);
+		}
 	}
 
 	.td-table__row {
@@ -665,9 +672,11 @@
 			color: CanvasText;
 		}
 
-		.td-table .td-table__row:not(.td-table__row--skeleton):hover {
-			outline: 2px solid Highlight;
-			outline-offset: -2px;
+		@media (hover: hover) and (pointer: fine) {
+			.td-table .td-table__row:not(.td-table__row--skeleton):hover {
+				outline: 2px solid Highlight;
+				outline-offset: -2px;
+			}
 		}
 
 		.td-table__skeleton {

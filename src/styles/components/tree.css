@@ -105,8 +105,10 @@
 		border-radius: var(--td-glass-radius-inner);
 	}
 
-	.td-tree__row:hover {
-		background: var(--td-tree-row-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-tree__row:hover {
+			background: var(--td-tree-row-hover);
+		}
 	}
 
 	.td-tree__item[aria-selected="true"] > .td-tree__row {
