@@ -18,10 +18,15 @@
  *   Flex placement of the card roles (order / flex) is inert in table mode, so it is written once below.
  * - Card roles (data-card on th/td): lead (v0.36.1: short muted id before the primary, no label) · primary (first
  *   line, bold) · secondary ("label: value", 2 per line when 2 × --td-table-card-pair-min fit) · meta (muted line,
- *   " · ") · actions (end of the meta line, icon-only buttons) · false (hidden on the card). `order: 0` is reserved
- *   for .td-table__card-select (row selection, v0.37 — no element yet).
+ *   " · ") · actions (end of the meta line, icon-only buttons) · false (hidden on the card). `order: 0` =
+ *   .td-table__card-select (row selection cell, v0.37.0).
  * v0.36.1 (plan v0.36.1-table-card-density QĐ 3–9): denser cards — lead role, intrinsic pairs (no container query),
  * meta + actions on one footer line, icon-only actions, one-row scrolling sort bar, 2px cell padding.
+ * v0.37.0 (plan v0.37.0-table-row-selection QĐ 23–25, ADR 0018): row selection — a narrow first column
+ * (.td-table__th--select / .td-table__cell--select, outside `columns`) with button[role=checkbox] controls holding the
+ * shared .td-check mark (its states come from check.css via aria-checked / :disabled); selected rows
+ * [data-selected] tinted (--td-table-row-selected), selected cards get an accent border; in card mode the control
+ * shares the primary line and "select all on this page" is the FIRST chip of the sort bar (label visible).
  */
 @layer td.tokens {
 	:root {
@@ -53,6 +58,17 @@
 		--td-table-label-fg: var(--td-color-text-muted); /* card cell labels + meta line + lead (contrast gate ≥ 4.7) */
 		--td-table-card-pair-min: 0px; /* v0.36.1: min width of a secondary pair (0 = by content; 100% = one per line) */
 		--td-table-card-cell-py: 2px; /* v0.36.1: block padding of a card cell */
+		--td-table-select-w: 3rem; /* v0.37.0: selection column */
+		/* v0.37.0: selected row = a very light accent wash (text contrast gate ≥ 4.7, also with hover on top); a site
+		   accent follows through color-mix() (fallback: the default accent at the same alpha) */
+		--td-table-row-selected: rgb(37 99 235 / 8%);
+		--td-table-card-selected-border: var(--td-accent); /* ≥ 3:1 vs the page (contrast gate) */
+	}
+
+	@supports (color: color-mix(in srgb, red 50%, blue)) {
+		:root {
+			--td-table-row-selected: color-mix(in srgb, var(--td-accent) 8%, transparent);
+		}
 	}
 
 	:root[data-td-theme="dark"] {
@@ -293,6 +309,89 @@
 
 	.td-table__row {
 		transition: background var(--td-dur-fast) var(--td-ease);
+	}
+
+	/* ---- v0.37.0 row selection (self-contained block) ---- */
+	.td-table__th--select,
+	.td-table__cell--select {
+		inline-size: var(--td-table-select-w);
+		min-inline-size: var(--td-table-select-w);
+		padding-inline: 0;
+		text-align: center;
+		vertical-align: middle;
+	}
+
+	.td-table__select,
+	.td-table__select-all {
+		display: inline-flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		justify-content: center;
+		min-inline-size: 24px; /* WCAG 2.5.8 with a mouse; 44px on coarse pointers (end of file) */
+		min-block-size: 24px;
+		padding: 2px;
+		margin: 0;
+		font: inherit;
+		color: inherit;
+		text-transform: none;
+		letter-spacing: normal;
+		vertical-align: middle;
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: var(--td-radius-sm);
+		transition: background var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+	}
+
+	.td-table__select:disabled,
+	.td-table__select-all:disabled {
+		cursor: not-allowed;
+	}
+
+	.td-table__select:focus-visible,
+	.td-table__select-all:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-table__select:active:not(:disabled),
+	.td-table__select-all:active:not(:disabled) {
+		background: var(--td-color-hover-strong);
+	}
+
+	/* "Chọn tất cả trên trang": names the header button; visually hidden in table mode, shown on the card chip */
+	.td-table__select-all-label {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	/* Selected row (after zebra + hover: the higher specificity keeps the tint while hovered / focused) */
+	.td-table .td-table__row[data-selected]:not(.td-table__row--skeleton) {
+		background: var(--td-table-row-selected);
+	}
+
+	.td-table .td-table__row[data-selected]:not(.td-table__row--skeleton):focus-within {
+		background: linear-gradient(var(--td-table-row-hover) 0 0) var(--td-table-row-selected);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-table__select:hover:not(:disabled),
+		.td-table__select-all:hover:not(:disabled) {
+			background: var(--td-color-hover);
+		}
+
+		.td-table .td-table__row[data-selected]:not(.td-table__row--skeleton):hover {
+			background: linear-gradient(var(--td-table-row-hover) 0 0) var(--td-table-row-selected);
+		}
 	}
 
 	/* Ellipsis (D21; v0.34.0: the content is capped, the table keeps its auto layout) */
@@ -585,6 +684,49 @@
 		z-index: 1;
 		background: var(--td-table-head-sticky-bg);
 	}
+
+	/* v0.37.0: "select all on this page" = the FIRST chip of the sort bar (DOM first), its label visible */
+	:where(td-table[layout="cards"]) .td-table .td-table__th--select-all {
+		position: static;
+		flex: none;
+		width: auto !important;
+		min-width: 0 !important;
+		height: auto;
+		margin: 0;
+		overflow: visible;
+		clip: auto;
+		text-transform: none;
+		letter-spacing: normal;
+		background: transparent;
+	}
+
+	:where(td-table[layout="cards"]) .td-table__th--select-all > .td-table__select-all {
+		min-height: 2rem;
+		padding: 0 var(--td-space-sm) 0 var(--td-space-xs);
+		font-weight: var(--td-fw-semibold);
+		border: 1px solid var(--td-table-card-border);
+		border-radius: var(--td-radius-full);
+	}
+
+	:where(td-table[layout="cards"]) .td-table__select-all-label {
+		position: static;
+		width: auto;
+		height: auto;
+		margin: 0;
+		overflow: visible;
+		clip: auto;
+	}
+
+	/* the control shares the primary line ([select][lead][primary]), centred on it */
+	:where(td-table[layout="cards"]) .td-table__row > .td-table__cell--select {
+		align-self: center;
+		padding-block: 0;
+		margin-inline: calc(-1 * var(--td-space-2xs)) calc(var(--td-space-xs) - var(--td-space-md));
+	}
+
+	:where(td-table[layout="cards"]) .td-table .td-table__row[data-selected]:nth-child(n) {
+		border-color: var(--td-table-card-selected-border);
+	}
 	/* @td-variants-end */
 
 	/* Empty state: no card inside the card */
@@ -642,11 +784,20 @@
 			--_td-table-action-size: var(--td-touch-min);
 			--_td-table-action-gap: var(--td-space-xs);
 		}
+
+		/* v0.37.0: a real 44 × 44 selection control (padding — the cell has room, no ::before) */
+		.td-table .td-table__select,
+		.td-table .td-table__select-all {
+			min-inline-size: var(--td-touch-min);
+			min-block-size: var(--td-touch-min);
+		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
 		.td-table__row,
-		.td-table__sort {
+		.td-table__sort,
+		.td-table__select,
+		.td-table__select-all {
 			transition: none;
 		}
 
@@ -678,6 +829,15 @@
 				outline: 2px solid Highlight;
 				outline-offset: -2px;
 			}
+		}
+
+		.td-table .td-table__row[data-selected]:not(.td-table__row--skeleton) {
+			outline: 2px solid Highlight;
+			outline-offset: -2px;
+		}
+
+		.td-table .td-table__row[data-selected]:nth-child(n) {
+			border-color: Highlight;
 		}
 
 		.td-table__skeleton {
