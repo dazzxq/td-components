@@ -11822,7 +11822,7 @@
 
 	/* --- stage: overflow hidden (the dim), inner padding so corner hit areas at the image edge are not clipped --- */
 	.td-cropper__stage {
-		--_tdc-pad: 12px;
+		--_tdc-pad: 14px; /* ≥ half the 26 px hit area of a corner on the image edge: never clipped by overflow */
 
 		position: relative;
 		height: var(--td-cropper-h);
@@ -11920,7 +11920,7 @@
 		border-block-width: 1px;
 	}
 
-	/* --- handles: 12 px visual, hit area ::before 24 px (mouse) / 44 px (coarse) --- */
+	/* --- handles: 12 px visual, hit area ::before 26 px (mouse) / 46 px (coarse) --- */
 	.td-cropper__handle {
 		position: absolute;
 		width: 12px;
@@ -11930,12 +11930,13 @@
 		border-radius: 2px;
 	}
 
+	/* 2 px over the 24 / 44 minimum: a handle centred on a half pixel is rasterised 1 px short (Firefox) */
 	.td-cropper__handle::before {
 		position: absolute;
 		top: 50%;
 		left: 50%;
-		width: 24px;
-		height: 24px;
+		width: 26px;
+		height: 26px;
 		content: "";
 		transform: translate(-50%, -50%);
 	}
@@ -12048,17 +12049,21 @@
 		}
 
 		.td-cropper__stage {
-			--_tdc-pad: 22px;
+			--_tdc-pad: 24px; /* ≥ half of the 46 px coarse hit area */
 		}
 
 		.td-cropper__handle::before,
 		.td-cropper__focal::before {
-			width: var(--td-touch-min);
-			height: var(--td-touch-min);
+			width: calc(var(--td-touch-min) + 2px);
+			height: calc(var(--td-touch-min) + 2px);
 		}
 
-		.td-cropper__ratio {
+		/* ≥ 44 × 44 on touch (responsive gate): the short "1:1" chip and the icon-only − / + buttons */
+		.td-cropper__ratio,
+		.td-cropper__tool {
 			min-height: var(--td-touch-min);
+			min-inline-size: var(--td-touch-min);
+			justify-content: center;
 		}
 
 		td-cropper[data-small-box] .td-cropper__handle--edge {
