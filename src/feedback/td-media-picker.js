@@ -1703,10 +1703,11 @@ export class TdMediaPicker extends HTMLElement {
       for (const b of overflowed) b.setAttribute('data-overflow', '');
       const more = makeButton(t('detailMore'), { size: 'sm', icon: 'more', aria: t('detailMore'), cls: 'td-media-picker__detail-more' });
       actions.insertBefore(more, saveBtn || null);
+      // review ISSUE-7: TdMenu's default dismissal (an outside press passes through) — 'swallow' is lightbox-only
       TdMenu.bind(more, () => overflowed.filter((b) => b.isConnected).map((b) => ({
         label: b.getAttribute('label') || b.getAttribute('aria-label') || b.textContent.trim(),
         onSelect: () => (b.querySelector('button') || b).click(),
-      })), { align: 'end', dismiss: 'swallow' });
+      })), { align: 'end' });
     }
     if (actions.childNodes.length) {
       const hr2 = document.createElement('hr');

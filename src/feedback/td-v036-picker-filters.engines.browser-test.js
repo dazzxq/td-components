@@ -35,7 +35,7 @@ const visible = (el) => !!el && el.getClientRects().length > 0 && getComputedSty
 const detailName = () => q('.td-media-picker__detail-name')?.textContent || '';
 
 async function openReady(opts = {}, adOpts = {}) {
-  const ad = createMockAdapter(adOpts);
+  const ad = opts.adapter || createMockAdapter(adOpts);
   const promise = TdMediaPicker.open({ ...opts, adapter: ad });
   await until(() => pickerRoot()?.getAttribute('data-state') === 'open', 4000, 'open');
   await until(() => grid() && grid().querySelector('[data-td-media-item]'), 4000, 'first page');
@@ -161,6 +161,58 @@ describe('v0.36.0 picker toolbar < 1024 + filter sheet', () => {
     expect(req.filters && req.filters.scope).to.equal('mine');
     expect(q('.td-media-picker__filter-count').textContent).to.equal('1');
     expect(q('.td-media-picker__facet[data-key="album"]')).to.equal(null);
+  });
+
+  for (const [title, initialFilters, key, newType, want] of [
+    ['compatible (album single → multiple): the draft value is normalised to [1]', { album: 1 }, 'album', 'multiple', [1]],
+    ['incompatible (tags multiple → single): the old-type draft value is dropped', { tags: ['hero'] }, 'tags', 'single', undefined],
+  ]) {
+    it(`ISSUE-6: a queued descriptor changes a facet type — ${title}; still 1 facet + 1 list request`, async () => {
+      await setViewport({ width: 768, height: 1024 });
+      const ad0 = createMockAdapter();
+      for (const a of ad0.db.values()) a.metadata.tags = ['hero']; // results exist under the tags filter
+      const { ad } = await openReady({ selection: { mode: 'multiple' }, initialFilters, adapter: ad0 });
+      q('.td-media-picker__filter-btn').click();
+      await until(() => sheet(), 4000, 'sheet');
+      const original = ad.facets;
+      ad.facets = (req) => original(req).then((list) => list.map((f) => (f.key === key ? { ...f, type: newType } : f)));
+      host()._loadFacets({ fresh: true });
+      await until(() => host()._s.pendingFacets, 4000, 'descriptors queued');
+      const lists = ad.calls.list.length;
+      const facets = ad.calls.facets.length;
+      sheet().querySelector('.td-media-picker-filters__apply').click();
+      await until(() => !sheet(), 4000, 'closed');
+      await until(() => ad.calls.list.length > lists, 4000, 'list');
+      for (let i = 0; i < 30; i++) await raf();
+      expect(ad.calls.list.length - lists, 'list requests').to.equal(1);
+      expect(ad.calls.facets.length - facets, 'facet requests').to.equal(1);
+      const filters = ad.calls.list.at(-1).args[0].filters || {};
+      expect(filters[key]).to.deep.equal(want);
+    });
+  }
+
+  it('ISSUE-7: the detail "Thêm" menu keeps the default dismissal — an outside click closes it AND passes through', async () => {
+    await setViewport({ width: 390, height: 844 });
+    await openReady({ selection: { mode: 'multiple' }, assetFields: assetFields(),
+      capabilities: { delete: true, downloadOriginal: true, copyLink: true } });
+    item('m60').querySelector('[data-td-media-open]').click();
+    await until(() => pickerRoot().getAttribute('data-view') === 'detail' && q('.td-media-picker__detail-more'), 4000, 'pane');
+    q('.td-media-picker__detail-more button').click();
+    await until(() => document.querySelector('.td-menu[data-state="open"]'), 4000, 'menu');
+    const target = q('.td-media-picker__detail-name');
+    let reached = 0;
+    const count = () => { reached++; };
+    target.addEventListener('pointerdown', count);
+    target.addEventListener('click', count);
+    const r = target.getBoundingClientRect();
+    const o = { bubbles: true, cancelable: true, composed: true, pointerId: 41, pointerType: 'mouse', isPrimary: true,
+      button: 0, clientX: r.left + 4, clientY: r.top + 4 };
+    target.dispatchEvent(new PointerEvent('pointerdown', o));
+    target.dispatchEvent(new PointerEvent('pointerup', o));
+    target.dispatchEvent(new MouseEvent('click', { ...o, detail: 1 }));
+    await raf();
+    expect(!!document.querySelector('.td-menu[data-state="open"]'), 'menu closed').to.equal(false);
+    expect(reached, 'pointerdown + click reached the page').to.equal(2);
   });
 
   it('Xoá lọc changes only the draft; Escape discards it (committed untouched, no request, controls destroyed)', async () => {
