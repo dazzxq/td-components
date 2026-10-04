@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseAspectRatio, parseCrop, fieldEntries, encodeState, decodeState, parseKinds, ASPECT_CASES, CROP_CASES,
+  parseFocal, serializeCrop, serializeFocal, parseCropRatio, cropPreviewVars, FOCAL_CASES,
 } from './media-field-model.js';
 
 describe('parseAspectRatio', () => {
@@ -91,11 +92,11 @@ describe('fieldEntries', () => {
 
 describe('form state v1 (review SEC-1: id + alt + validated crop only)', () => {
   const raw = '{"v":1,"x":0,"y":0,"width":1,"height":1}';
-  const state = { id: 'a1', alt: 'Mô tả', cropRaw: raw };
+  const state = { id: 'a1', alt: 'Mô tả', cropRaw: raw, focalRaw: null };
 
-  it('encodes ONLY v / id / alt / crop — never a preview URL or server labels, even when given', () => {
+  it('encodes ONLY v / id / alt / crop / focal — never a preview URL or server labels, even when given', () => {
     const s = encodeState({ ...state, preview: { src: 'https://cdn.test/signed?token=SECRET', alt: 'server name', kind: 'video' } });
-    assert.deepEqual(Object.keys(JSON.parse(s)).sort(), ['alt', 'crop', 'id', 'v']);
+    assert.deepEqual(Object.keys(JSON.parse(s)).sort(), ['alt', 'crop', 'focal', 'id', 'v']);
     assert.ok(!s.includes('SECRET') && !s.includes('server name') && !s.includes('cdn.test'));
   });
 
@@ -105,7 +106,7 @@ describe('form state v1 (review SEC-1: id + alt + validated crop only)', () => {
 
   it('a preview inside an old / forged state is ignored', () => {
     const s = JSON.stringify({ v: 1, id: 'a1', alt: 'x', crop: null, preview: { src: 'javascript:alert(1)', alt: 'y', kind: 'video' } });
-    assert.deepEqual(decodeState(s), { id: 'a1', alt: 'x', cropRaw: null });
+    assert.deepEqual(decodeState(s), { id: 'a1', alt: 'x', cropRaw: null, focalRaw: null });
   });
 
   it('v:2, broken JSON, wrong types → null; bad crop → null crop', () => {
@@ -114,5 +115,88 @@ describe('form state v1 (review SEC-1: id + alt + validated crop only)', () => {
     assert.equal(decodeState(JSON.stringify({ v: 1, id: 5 })), null);
     assert.equal(decodeState(null), null);
     assert.equal(decodeState(JSON.stringify({ v: 1, id: 'a', alt: 'x', crop: '{bad' })).cropRaw, null);
+  });
+});
+
+describe('v0.35 focal (decision 29) — parseFocal / serializeFocal / FOCAL_CASES', () => {
+  it('valid v1 → { raw (byte-identical), focal }', () => {
+    const raw = '{"v":1,"x":0.25,"y":1}';
+    assert.deepEqual(parseFocal(raw), { raw, focal: { x: 0.25, y: 1 } });
+  });
+  it('invalid → null', () => {
+    for (const s of [null, undefined, 5, '', 'null', '{', '{"v":1,"x":0.5,"y":2}', '{"v":1,"x":0.5,"y":NaN}',
+      `{"v":1,"x":0.5,"y":0.5${' '.repeat(120)}}`]) assert.equal(parseFocal(s), null, String(s));
+  });
+  it('the shared parity table (PHP runs the same cases)', () => {
+    for (const [input, ok] of FOCAL_CASES) assert.equal(!!parseFocal(input), ok, input);
+  });
+  it('serializeFocal: keys v,x,y, 6 decimals, clamped; invalid → null', () => {
+    assert.equal(serializeFocal({ x: 0.1234567, y: 0.5 }), '{"v":1,"x":0.123457,"y":0.5}');
+    assert.equal(serializeFocal({ x: -1, y: 2 }), '{"v":1,"x":0,"y":1}');
+    assert.equal(serializeFocal({ x: NaN, y: 0 }), null);
+    assert.equal(serializeFocal(null), null);
+  });
+});
+
+describe('v0.35 serializeCrop (decision 29 — only the crop UI writes through it)', () => {
+  it('fixed key order, 6 decimals, x + width ≤ 1', () => {
+    assert.equal(serializeCrop({ x: 0.1, y: 0.2, width: 0.5, height: 0.25 }), '{"v":1,"x":0.1,"y":0.2,"width":0.5,"height":0.25}');
+    assert.equal(serializeCrop({ x: 0.3333333, y: 0, width: 0.6666667, height: 1 }),
+      '{"v":1,"x":0.333333,"y":0,"width":0.666667,"height":1}');
+    assert.equal(serializeCrop({ x: 0.5, y: 0, width: 0.5000004, height: 1 }), '{"v":1,"x":0.5,"y":0,"width":0.5,"height":1}');
+    assert.equal(serializeCrop({ x: NaN, y: 0, width: 1, height: 1 }), null);
+    assert.equal(serializeCrop(null), null);
+    assert.equal(serializeCrop({ x: 0, y: 0, width: 0, height: 1 }), null);
+  });
+  it('fuzz: every serialised crop passes parseCrop', () => {
+    let seed = 7;
+    const r = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+    for (let i = 0; i < 5000; i++) {
+      const x = r();
+      const y = r();
+      const s = serializeCrop({ x, y, width: Math.max(1e-6, (1 - x) * r() + 1e-7), height: Math.max(1e-6, (1 - y) * r() + 1e-7) });
+      if (s !== null) assert.ok(parseCrop(s), s);
+    }
+  });
+});
+
+describe('v0.35 fieldEntries + focal (decision 29)', () => {
+  const raw = '{"v":1,"x":0,"y":0,"width":1,"height":1}';
+  it('without focal: exactly the v0.34 three entries', () => {
+    const v34 = [['og[id]', 'a1'], ['og[alt]', 'Ảnh'], ['og[crop]', raw]];
+    assert.deepEqual(fieldEntries('og', { id: 'a1', alt: 'Ảnh', cropRaw: raw, focalRaw: '{"v":1,"x":0.5,"y":0.5}' }, true), v34);
+    assert.deepEqual(fieldEntries('og', { id: 'a1', alt: 'Ảnh', cropRaw: raw }, true, { focal: false }), v34);
+  });
+  it('with focal: a fourth entry, order id, alt, crop, focal; null → "null"', () => {
+    assert.deepEqual(fieldEntries('og', { id: 'a1', alt: '', cropRaw: null, focalRaw: '{"v":1,"x":0.5,"y":0.5}' }, true, { focal: true }),
+      [['og[id]', 'a1'], ['og[alt]', ''], ['og[crop]', 'null'], ['og[focal]', '{"v":1,"x":0.5,"y":0.5}']]);
+    assert.deepEqual(fieldEntries('og', { id: '', alt: '', cropRaw: null, focalRaw: null }, true, { focal: true })[3], ['og[focal]', 'null']);
+    assert.deepEqual(fieldEntries('og', { id: 'a1' }, false, { focal: true }), [['og', 'a1']], 'reference mode never has focal');
+  });
+  it('state: focal round-trips; missing focal (pre-v0.35 state) → null; bad focal → null', () => {
+    const st = { id: 'a1', alt: 'x', cropRaw: raw, focalRaw: '{"v":1,"x":0.1,"y":0.9}' };
+    assert.deepEqual(decodeState(encodeState(st)), st);
+    assert.equal(decodeState(JSON.stringify({ v: 1, id: 'a', alt: '', crop: null })).focalRaw, null);
+    assert.equal(decodeState(JSON.stringify({ v: 1, id: 'a', alt: '', crop: null, focal: '{"v":1,"x":3,"y":0}' })).focalRaw, null);
+  });
+});
+
+describe('v0.35 parseCropRatio / cropPreviewVars (decisions 27, 30)', () => {
+  it('free, ratios, invalid', () => {
+    assert.equal(parseCropRatio('free'), 'free');
+    assert.equal(parseCropRatio(' FREE '), 'free');
+    assert.equal(parseCropRatio('16:9'), 16 / 9);
+    assert.equal(parseCropRatio('1.91'), 1.91);
+    assert.equal(parseCropRatio('3/2'), 1.5);
+    for (const s of [null, undefined, '', 'abc', '0', '-1/2']) assert.equal(parseCropRatio(s), null, String(s));
+  });
+  it('matching ratio (≤ 2 %) → unitless vars; off → null', () => {
+    const c = { x: 0.1, y: 0.2, width: 0.5, height: 0.5 };
+    assert.deepEqual(cropPreviewVars(c, { W: 1600, H: 900, frameRatio: 16 / 9 }), { x: 0.1, y: 0.2, w: 0.5, h: 0.5 });
+    assert.ok(cropPreviewVars(c, { W: 1600, H: 900, frameRatio: (16 / 9) * 1.019 }));
+    assert.equal(cropPreviewVars(c, { W: 1600, H: 900, frameRatio: (16 / 9) * 1.021 }), null);
+    assert.equal(cropPreviewVars(c, { W: 1600, H: 900, frameRatio: null }), null);
+    assert.equal(cropPreviewVars(null, { W: 1600, H: 900, frameRatio: 1 }), null);
+    assert.equal(cropPreviewVars(c, { W: 0, H: 900, frameRatio: 1 }), null);
   });
 });

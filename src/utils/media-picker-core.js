@@ -146,7 +146,8 @@
  * @property {FieldDescriptor[]} [uploadFields]
  * @property {{ mode: 'single'|'multiple', maxItems?: number, initialIds?: string[],
  *   kinds?: Array<'image'|'video'|'file'> }} selection
- * @property {{ enabled: boolean, aspectRatio?: number, allowFocalPoint?: boolean }} [crop] v0.35 (`td-cropper`; warned until then)
+ * @property {{ enabled: boolean, aspectRatio?: number, allowFocalPoint?: boolean }} [crop] v0.35: single mode + an image ⇒
+ *   "Chèn" opens the crop step (`td-cropper`); `usage.crop` / `focalPoint` are then filled (`resolveOptions` → `cropResolved`)
  * @property {string} [initialQuery]
  * @property {Record<string, FilterValue>} [initialFilters]
  * @property {unknown} [context]
@@ -508,17 +509,21 @@ export function isAdapter(a) {
     && typeof /** @type {any} */ (a).get === 'function';
 }
 
-let warnedCrop = false;
+const CROP_RATIO_MAX = 10000;
+let warnedCropRatio = false;
+let warnedCropMultiple = false;
 
 /**
  * Resolve the options of one open (decision 6): `defaults`, then each layer in INCREASING priority (shallow merge per
  * key; an `undefined` value never overrides). `selection` never comes from `defaults`. Normalises `selection`,
  * `pageSize` (1-100, default 30), `pagination` ('cursor' | 'pages', invalid → warned + 'cursor'), `upload` (+ text
- * `acceptLabel`), `messages`, `crop` (until v0.35: warned once, `cropRequested`). No valid adapter → TypeError (a
+ * `acceptLabel`), `messages`, `crop` (v0.35 decision 23 → `cropResolved = { aspectRatio, allowFocalPoint } | null`: a bad
+ * `aspectRatio` warns once ⇒ free; `selection.mode = 'multiple'` warns once ⇒ no crop; unknown keys ignored). No valid adapter → TypeError (a
  * programming error).
  * @param {object|null|undefined} defaults
  * @param {...(object|null|undefined)} layers last argument may be `{ warn }` only when it is the sole key
- * @returns {OpenMediaPickerOptions & { cropRequested: boolean, capabilitiesResolved: MediaCapabilities }}
+ * @returns {OpenMediaPickerOptions & { cropResolved: { aspectRatio: number|null, allowFocalPoint: boolean } | null,
+ *   capabilitiesResolved: MediaCapabilities }}
  */
 export function resolveOptions(defaults, ...layers) {
   let warn = console.warn;
@@ -552,10 +557,25 @@ export function resolveOptions(defaults, ...layers) {
   const ps = Number(merged.pageSize);
   const pageSize = merged.pageSize === undefined || !Number.isFinite(ps) ? PAGE_SIZE_DEFAULT : Math.min(100, Math.max(1, Math.round(ps)));
   const up = isObj(merged.upload) ? merged.upload : {};
-  const cropRequested = isObj(merged.crop) && merged.crop.enabled === true;
-  if (cropRequested && !warnedCrop) {
-    warnedCrop = true;
-    try { warn('td-media-picker: crop UI ships in v0.35 — `crop.enabled` is ignored (usage.crop = null).'); } catch { /* ignore */ }
+  let cropResolved = null;
+  if (isObj(merged.crop) && merged.crop.enabled === true) {
+    if (mode === 'multiple') {
+      if (!warnedCropMultiple) {
+        warnedCropMultiple = true;
+        try { warn("td-media-picker: crop needs selection.mode = 'single' — crop ignored for this multiple picker."); } catch { /* ignore */ }
+      }
+    } else {
+      const ar = merged.crop.aspectRatio;
+      let aspectRatio = null;
+      if (ar !== undefined && ar !== null) {
+        if (typeof ar === 'number' && Number.isFinite(ar) && ar > 0 && ar <= CROP_RATIO_MAX) aspectRatio = ar;
+        else if (!warnedCropRatio) {
+          warnedCropRatio = true;
+          try { warn('td-media-picker: crop.aspectRatio must be a number in (0, 10000] — using a free crop.'); } catch { /* ignore */ }
+        }
+      }
+      cropResolved = { aspectRatio, allowFocalPoint: merged.crop.allowFocalPoint === true };
+    }
   }
   let pagination = 'cursor';
   if (merged.pagination !== undefined) {
@@ -583,13 +603,13 @@ export function resolveOptions(defaults, ...layers) {
     uploadFields: Array.isArray(merged.uploadFields) ? merged.uploadFields : [],
     title: typeof merged.title === 'string' ? merged.title : '',
     locale: typeof merged.locale === 'string' ? merged.locale : '',
-    cropRequested,
+    cropResolved,
     capabilitiesResolved: resolveCapabilities(merged.adapter, merged.capabilities),
   };
 }
 
-/** Test hook: forget the one-time crop warning. */
-export function _resetCoreWarnings() { warnedCrop = false; }
+/** Test hook: forget the one-time crop warnings. */
+export function _resetCoreWarnings() { warnedCropRatio = false; warnedCropMultiple = false; }
 
 /**
  * Module-level defaults (decision 6 — `TdMediaPicker.configureDefaults()`): each configure REPLACES the whole object
@@ -989,18 +1009,27 @@ export class ScalarTokens {
 
 /**
  * `{ status: 'selected', selection }` in selection order; usage v0.32 = `{ altText: defaultAltText ?? '', crop: null,
- * focalPoint: null }`.
+ * focalPoint: null }`. v0.35 (decision 25): `usageById` (a Map id → `{ crop?, focalPoint? }`, from the crop step) fills
+ * `crop` / `focalPoint` of that asset (missing ⇒ null).
  * @param {SelectionModel} model
+ * @param {Map<string, { crop?: UsageDraft['crop'], focalPoint?: UsageDraft['focalPoint'] }>} [usageById]
  * @returns {PickerOutcome}
  */
-export function buildOutcome(model) {
+export function buildOutcome(model, usageById) {
   return {
     status: 'selected',
-    selection: model.assets.map((asset) => ({
-      assetId: asset.id,
-      asset,
-      usage: { altText: typeof asset.defaultAltText === 'string' ? asset.defaultAltText : '', crop: null, focalPoint: null },
-    })),
+    selection: model.assets.map((asset) => {
+      const u = usageById instanceof Map ? usageById.get(asset.id) : undefined;
+      return {
+        assetId: asset.id,
+        asset,
+        usage: {
+          altText: typeof asset.defaultAltText === 'string' ? asset.defaultAltText : '',
+          crop: u?.crop ?? null,
+          focalPoint: u?.focalPoint ?? null,
+        },
+      };
+    }),
   };
 }
 
