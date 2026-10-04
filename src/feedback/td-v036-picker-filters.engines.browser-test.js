@@ -130,6 +130,39 @@ describe('v0.36.0 picker toolbar < 1024 + filter sheet', () => {
     expect(ad.calls.list.length).to.equal(before);
   });
 
+  it('ISSUE-1: descriptors queued while the sheet is open + Áp dụng → exactly 1 list + 1 facet request; a removed facet is not restored', async () => {
+    await setViewport({ width: 768, height: 1024 });
+    const { ad } = await openReady({ selection: { mode: 'multiple' } });
+    q('.td-media-picker__filter-btn').click();
+    await until(() => sheet(), 4000, 'sheet');
+    // the draft picks an album …
+    const dd = sheet().querySelector('.td-media-picker__facet[data-key="album"] td-dropdown');
+    dd.setValue(dd.options[1].value);
+    dd.dispatchEvent(new Event('change', { bubbles: true }));
+    // … and "Chỉ của tôi"
+    const tg = sheet().querySelector('.td-media-picker__facet[data-key="scope"] td-toggle');
+    tg.setAttribute('checked', '');
+    tg.dispatchEvent(new Event('change', { bubbles: true }));
+    // … while new descriptors arrive WITHOUT the album facet (queued: the sheet is open)
+    const original = ad.facets;
+    ad.facets = (req) => original(req).then((list) => list.filter((f) => f.key !== 'album'));
+    host()._loadFacets({ fresh: true }); // a descriptor reload, as after an upload / search
+    await until(() => ad.calls.facets.length > 0 && host()._s.pendingFacets, 4000, 'descriptors queued');
+    const lists = ad.calls.list.length;
+    const facets = ad.calls.facets.length;
+    sheet().querySelector('.td-media-picker-filters__apply').click();
+    await until(() => !sheet(), 4000, 'closed');
+    await until(() => ad.calls.list.length > lists, 4000, 'list');
+    for (let i = 0; i < 30; i++) await raf(); // nothing else may follow
+    expect(ad.calls.list.length - lists, 'list requests').to.equal(1);
+    expect(ad.calls.facets.length - facets, 'facet requests').to.equal(1);
+    const req = ad.calls.list.at(-1).args[0];
+    expect(req.filters && 'album' in req.filters, 'removed facet not restored').to.equal(false);
+    expect(req.filters && req.filters.scope).to.equal('mine');
+    expect(q('.td-media-picker__filter-count').textContent).to.equal('1');
+    expect(q('.td-media-picker__facet[data-key="album"]')).to.equal(null);
+  });
+
   it('Xoá lọc changes only the draft; Escape discards it (committed untouched, no request, controls destroyed)', async () => {
     await setViewport({ width: 768, height: 1024 });
     const { ad } = await openReady({ selection: { mode: 'multiple' }, initialFilters: { album: 1 } });

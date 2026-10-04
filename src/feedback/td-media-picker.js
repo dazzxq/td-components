@@ -708,10 +708,12 @@ export class TdMediaPicker extends HTMLElement {
       committed: s.filters,
       idPrefix: `${s.id}-fs`,
       onApply: (draft) => { if (this._live(s)) this._applyFilters(draft); },
-      onClosing: () => {
+      onClosing: (applied) => {
         if (!this._live(s)) return;
         s.filterSheet = null;
-        if (s.pendingFacets) {
+        // ISSUE-1: "Áp dụng" reconciles the queued descriptors itself (without requests) in _applyFilters; only a
+        // dismissal (draft discarded) applies them here
+        if (!applied && s.pendingFacets) {
           const list = s.pendingFacets;
           s.pendingFacets = null;
           this._renderFacets(list);
@@ -720,17 +722,31 @@ export class TdMediaPicker extends HTMLElement {
     });
   }
 
-  /** @private "Áp dụng": one atomic commit (filters + toolbar controls + badge) and ONE list reload — none if equal */
+  /**
+   * @private "Áp dụng" (ISSUE-1): descriptors that arrived while the sheet was open are reconciled FIRST, silently (no
+   * request); the draft keeps only keys that still have a facet; then ONE atomic commit (filters + toolbar controls +
+   * badge) and exactly one facet reload + one list reload — none when nothing changed.
+   */
   _applyFilters(draft) {
     const s = this._s;
-    const same = JSON.stringify(Object.entries(draft).sort()) === JSON.stringify(Object.entries(s.filters).sort());
-    if (same) return;
-    s.filters = { ...draft };
+    let reconciled = false;
+    if (s.pendingFacets) {
+      const list = s.pendingFacets;
+      s.pendingFacets = null;
+      reconciled = this._renderFacets(list, { silent: true });
+    }
+    const keys = new Set(s.facetList.map((f) => f.key));
+    const next = {};
+    for (const [k, v] of Object.entries(draft)) if (keys.has(k)) next[k] = v;
+    const same = JSON.stringify(Object.entries(next).sort()) === JSON.stringify(Object.entries(s.filters).sort());
+    if (same && !reconciled) return;
+    s.filters = next;
     for (const [k, c] of s.facets) c.set(s.filters[k]); // programmatic: no change event → no extra request
     this._syncFilterCount();
     s.debounce.cancel();
     if (s.els.search) s.query = String(s.els.search.getValue?.() ?? '').trim();
-    this._loadFacets();
+    if (reconciled) s.cache.invalidateLists();
+    this._loadFacets({ fresh: reconciled });
     this._loadPage('reload', { reset: true });
   }
 
@@ -1037,11 +1053,16 @@ export class TdMediaPicker extends HTMLElement {
   }
 
   /** @private create / update facet controls; values are kept across descriptor reloads */
-  _renderFacets(list) {
+  /**
+   * @param {Array<object>} list
+   * @param {{ silent?: boolean }} [o] silent (ISSUE-1): reconcile only — no reload; returns whether the filters changed
+   * @returns {boolean}
+   */
+  _renderFacets(list, { silent = false } = {}) {
     const s = this._s;
     if (s.filterSheet) { // v0.36.0 QĐ 50: the committed descriptors / controls are frozen while the sheet is open
       s.pendingFacets = list;
-      return;
+      return false;
     }
     s.facetList = list;
     const box = s.els.facets;
@@ -1093,12 +1114,14 @@ export class TdMediaPicker extends HTMLElement {
     box.hidden = list.length === 0;
     if (s.els.filterWrap) s.els.filterWrap.hidden = list.length === 0;
     this._syncFilterCount();
+    if (filtersChanged && silent) return true;
     if (filtersChanged) {
       // impl review ISSUE-9: reconciliation changed the filters → facets (counts) AND list follow the filters now in force
       s.cache.invalidateLists(); // older descriptor sets (and pages) cached for these filters are now stale
       this._loadFacets({ fresh: true });
       this._loadPage('reload', { reset: true });
     }
+    return filtersChanged;
   }
 
   /** @private */

@@ -40,7 +40,8 @@ const isSet = (v) => v !== undefined && !(Array.isArray(v) && !v.length);
  * @param {Record<string, unknown>} o.committed the committed filters (copied, never mutated)
  * @param {string} o.idPrefix
  * @param {(draft: Record<string, unknown>) => void} o.onApply
- * @param {() => void} [o.onClosing] at once when it starts closing (Áp dụng / × / Escape; not destroy())
+ * @param {(applied: boolean) => void} [o.onClosing] at once when it starts closing: `applied` true for "Áp dụng" (then
+ *   onApply follows), false for × / Escape (the draft is discarded); not called by destroy()
  * @returns {{ root: HTMLElement, close: () => void, destroy: () => void, draft: () => Record<string, unknown> }}
  */
 export function openFilterSheet(o) {
@@ -113,7 +114,7 @@ export function openFilterSheet(o) {
   apply.addEventListener('click', () => {
     if (closing) return;
     const d = draft();
-    close(); // the picker is free again (onClosing) before it commits
+    close(true); // the picker is free again (onClosing(true)) — it reconciles + commits in onApply, once
     try { o.onApply(d); } catch (err) { console.error(err); }
   });
   q('.td-media-picker-filters__footer').append(clear, apply);
@@ -139,11 +140,11 @@ export function openFilterSheet(o) {
     for (const c of controls.values()) { try { c.destroy(); } catch { /* ignore */ } }
   };
 
-  function close() {
+  function close(applied = false) {
     if (closing || destroyed) return;
     closing = true;
     dropControls();
-    try { if (typeof o.onClosing === 'function') o.onClosing(); } catch (err) { console.error(err); }
+    try { if (typeof o.onClosing === 'function') o.onClosing(applied === true); } catch (err) { console.error(err); }
     void handle.close('close');
   }
 
