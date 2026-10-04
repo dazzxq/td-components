@@ -1,0 +1,138 @@
+/*
+ * Upload dialog of td-media-picker (src/feedback/media-picker-upload.js, v0.33.0 decisions 20-22). The shell IS the
+ * td-modal DOM + modal.css at md width (`--td-modal-w-md`); this file lays out the content and makes the dialog full
+ * viewport below 768px (instead of the ≤ 640px bottom sheet). Content layer: solid, no glass inside, no new colour
+ * token. CSP: classes / attributes only.
+ *   root .td-modal.td-modal--md.td-media-picker-upload [data-state]
+ *   .td-media-picker-upload__panel [data-source="file|url"]
+ */
+@layer td.component {
+	.td-media-picker-upload__body {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-md);
+	}
+
+	.td-media-picker-upload__hint {
+		margin: 0;
+		font-size: var(--td-text-sm);
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-picker-upload__hint[hidden],
+	.td-media-picker-upload__notes[hidden],
+	.td-media-picker-upload__abort[hidden],
+	.td-media-picker-upload__progress[hidden],
+	.td-media-picker-upload__panel[hidden] {
+		display: none;
+	}
+
+	/* dcms2: the segmented control spans the dialog width, two equal segments (labels never truncated) */
+	.td-media-picker-upload__tabs {
+		display: block;
+		width: 100%;
+	}
+
+	.td-media-picker-upload__panel {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-sm);
+		min-width: 0;
+	}
+
+	.td-media-picker-upload__notes {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+		font-size: var(--td-text-sm);
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-picker-upload__desc {
+		margin: 0;
+		font-size: var(--td-text-sm);
+		color: var(--td-color-text-muted);
+	}
+
+	/*
+	 * Both source panels share ONE grid cell: the inactive one ([hidden], set by td-tabs) keeps its box but is invisible
+	 * (visibility: hidden → not painted, not focusable, out of the a11y tree), so the dialog height is the taller panel's
+	 * and never jumps when switching tabs (dcms2 keeps the dialog steady too).
+	 */
+	.td-media-picker-upload__panels {
+		display: grid;
+		min-width: 0;
+	}
+
+	.td-media-picker-upload__panels > .td-media-picker-upload__panel {
+		grid-area: 1 / 1;
+		align-self: start; /* natural height (measured by the JS min-height fallback) */
+	}
+
+	.td-media-picker-upload__panels > .td-media-picker-upload__panel[hidden] {
+		display: flex;
+		visibility: hidden;
+	}
+
+	/* dcms2 URL tab: input full width, the "Tải lên" button BELOW it (left-aligned), progress under that */
+	.td-media-picker-upload__url-row {
+		display: block;
+		min-width: 0;
+	}
+
+	.td-media-picker-upload__url {
+		display: block;
+		width: 100%;
+	}
+
+	.td-media-picker-upload__url-actions {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--td-space-sm);
+		margin-top: var(--td-space-2xs); /* + the panel gap = 1rem, dcms2 mt-4 */
+	}
+
+	.td-media-picker-upload__footer {
+		justify-content: flex-end;
+	}
+
+	/* < 768px: full viewport (decision 20). Specificity ≥ modal.css's bottom-sheet state rules; same layer, later file. */
+	@media (max-width: 767.98px) {
+		.td-modal.td-media-picker-upload {
+			inset-inline-end: 0; /* full viewport: no scroll-lock gap strip (see .td-modal--viewport) */
+			align-items: stretch;
+			padding: 0;
+		}
+
+		.td-modal.td-media-picker-upload[data-state] .td-modal__dialog {
+			--td-modal-enter-from: none;
+			width: 100%;
+			height: 100dvh;
+			max-height: none;
+			padding-bottom: 0;
+			border-width: 0;
+			border-radius: 0;
+			transform: none;
+		}
+
+		.td-modal.td-media-picker-upload .td-modal__header {
+			padding-top: calc(var(--td-space-sm) + env(safe-area-inset-top, 0px));
+		}
+
+		.td-modal.td-media-picker-upload .td-modal__footer {
+			padding-bottom: calc(var(--td-space-sm) + env(safe-area-inset-bottom, 0px));
+		}
+
+		.td-modal.td-media-picker-upload .td-modal__header,
+		.td-modal.td-media-picker-upload .td-modal__footer {
+			padding-right: calc(var(--td-modal-pad-x) + env(safe-area-inset-right, 0px));
+			padding-left: calc(var(--td-modal-pad-x) + env(safe-area-inset-left, 0px));
+		}
+
+		.td-modal.td-media-picker-upload .td-modal__body {
+			padding-right: calc(var(--td-modal-pad-x) + env(safe-area-inset-right, 0px));
+			padding-left: calc(var(--td-modal-pad-x) + env(safe-area-inset-left, 0px));
+		}
+	}
+}

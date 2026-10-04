@@ -517,8 +517,10 @@ export function createFieldControl(descriptor, { idPrefix, signal, warn = consol
  */
 
 /**
- * Facet → control (decision 18): `single` → td-dropdown (allow-clear, placeholder "Tất cả"); `multiple` → td-chip-input
- * selection-only; `toggle` → td-toggle (on = `options[0].value ?? true`, off = undefined). `count` → "Album A (12)".
+ * Facet → control, v0.33 compact toolbar (plan v0.33.0 decision 8 — no visible label; the descriptor label becomes
+ * `aria-label` / placeholder): `single` → td-dropdown `searchable="false" allow-clear="false"` whose FIRST option is
+ * "Tất cả" (value '' → no filter); `multiple` → td-chip-input selection-only; `toggle` → td-toggle size="sm" with the
+ * label inline (on = `options[0].value ?? true`, off = undefined). `count` → "Album A (12)".
  * A facet whose `type` changes needs a new control (setDescriptor keeps the type).
  * @param {FacetDescriptor} facet already normalised (normalizeFacets)
  * @param {object} [o]
@@ -543,19 +545,32 @@ export function createFacetControl(facet, { idPrefix, onChange } = {}) {
     if (!destroyed && typeof onChange === 'function') onChange({ key: f.key, value: api.get() });
   };
 
+  // single: the "Tất cả" row (value '' — never a token, tokens are `o0`, `o1`…) always comes first
+  const singleItems = () => [{ value: '', label: FIELD_LABELS.all }, ...opts.items(true)];
+  const named = () => {
+    if (type === 'toggle') {
+      control.setAttribute('label', f.label);
+      return;
+    }
+    control.setAttribute('aria-label', f.label);
+    control.setAttribute('placeholder', type === 'single' ? FIELD_LABELS.all : f.label);
+  };
   if (type === 'single') {
     control = document.createElement('td-dropdown');
-    control.setAttribute('placeholder', FIELD_LABELS.all);
-    control.options = opts.items(true);
+    control.setAttribute('searchable', 'false');
+    control.setAttribute('allow-clear', 'false');
+    control.options = singleItems();
+    control.setAttribute('value', '');
   } else if (type === 'multiple') {
     control = document.createElement('td-chip-input');
     control.setAttribute('selection-only', '');
     control.options = opts.items(true);
   } else {
     control = document.createElement('td-toggle');
+    control.setAttribute('size', 'sm');
   }
   control.id = id;
-  control.setAttribute('label', f.label);
+  named();
   const onValue = () => {
     const o = f.options && f.options[0];
     return o ? (o.value ?? true) : true;
@@ -591,10 +606,10 @@ export function createFacetControl(facet, { idPrefix, onChange } = {}) {
     },
     set(v) {
       if (type === 'single') {
-        if (v === undefined || !isScalar(v)) { control.setValue(null); return; }
+        if (v === undefined || !isScalar(v)) { control.setValue(''); return; }
         const listed = opts.order.length;
         const t = opts.ensure(/** @type {Scalar} */ (v), true);
-        if (opts.order.length !== listed) control.options = opts.items(true);
+        if (opts.order.length !== listed) control.options = singleItems();
         control.setValue(t);
       } else if (type === 'multiple') {
         const list = Array.isArray(v) ? v : (v === undefined ? [] : [v]);
@@ -614,15 +629,15 @@ export function createFacetControl(facet, { idPrefix, onChange } = {}) {
     setDescriptor(next) {
       if (!next || next.type !== type) return;
       f = next;
-      control.setAttribute('label', f.label);
+      named();
       if (type === 'toggle') return;
       // impl review #7: the COMPLETE typed current value survives a refresh — a value the new list omits keeps its token
       // and its last label (listed again), so the control and the picker's filters never diverge
       const current = api.get();
       opts.reset(cleanOptions(f.options));
       if (current !== undefined) for (const v of Array.isArray(current) ? current : [current]) opts.ensure(v, true);
-      control.options = opts.items(true);
-      if (current !== undefined) api.set(current);
+      control.options = type === 'single' ? singleItems() : opts.items(true);
+      api.set(current);
     },
     destroy() { destroyed = true; },
   };
@@ -644,11 +659,19 @@ export class FieldForm {
    * @param {AbortSignal} [o.signal]
    * @param {(...a: unknown[]) => void} [o.warn]
    * @param {(change: { key: string, value: unknown, form: FieldForm }) => void} [o.onChange] user edits only
+   * @param {(dirty: boolean) => void} [o.onDirtyChange] v0.33 (always-open detail form): called when `dirty` flips —
+   *   after a user edit, setValues() or snapshot()
+   * @param {boolean} [o.readonly] v0.33: every field renders as readonly text (no permission to edit) — values() is {},
+   *   never dirty
    */
-  constructor(descriptors, { asset, values = {}, idPrefix, signal, warn = console.warn, onChange } = {}) {
+  constructor(descriptors, { asset, values = {}, idPrefix, signal, warn = console.warn, onChange, onDirtyChange,
+    readonly = false } = {}) {
     this._asset = asset;
     this._warn = warn;
     this._onChange = onChange;
+    this._onDirtyChange = onDirtyChange;
+    this._lastDirty = false;
+    this.readonly = !!readonly;
     this.el = document.createElement('div');
     this.el.className = 'td-media-picker__form';
     this._errors = document.createElement('ul');
@@ -659,13 +682,15 @@ export class FieldForm {
     this.el.appendChild(this._errors);
     /** @type {Map<string, FieldControl>} */
     this.controls = new Map();
-    for (const d of Array.isArray(descriptors) ? descriptors : []) {
-      if (this.controls.has(d.key)) continue;
+    for (const d0 of Array.isArray(descriptors) ? descriptors : []) {
+      if (this.controls.has(d0.key)) continue;
+      const d = this.readonly && d0.control !== 'readonly' ? { ...d0, control: 'readonly', required: false } : d0;
       const c = createFieldControl(d, {
         idPrefix, signal, warn,
         onChange: ({ key, value }) => {
           this.refreshVisibility();
           if (typeof this._onChange === 'function') this._onChange({ key, value, form: this });
+          this._notifyDirty();
         },
       });
       this.controls.set(d.key, c);
@@ -726,6 +751,18 @@ export class FieldForm {
   snapshot() {
     const all = this._all();
     this._baseline = Object.fromEntries(Object.entries(all).map(([k, v]) => [k, copyValue(v)]));
+    this._notifyDirty();
+  }
+
+  /** @private onDirtyChange when `dirty` flipped */
+  _notifyDirty() {
+    if (!this._baseline) return;
+    const d = this.dirty;
+    if (d === this._lastDirty) return;
+    this._lastDirty = d;
+    if (typeof this._onDirtyChange === 'function') {
+      try { this._onDirtyChange(d); } catch { /* a listener never breaks the form */ }
+    }
   }
 
   /**
@@ -738,6 +775,7 @@ export class FieldForm {
     if (asset !== undefined) this._asset = asset;
     this._applyValues(obj);
     this.refreshVisibility();
+    this._notifyDirty();
   }
 
   /** Re-run `visibleWhen(values, asset)` for every field (values = every field, typed). A throw → visible + one warning. */

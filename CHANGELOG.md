@@ -2,6 +2,41 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.33.0
+
+**Media picker giống dcms2** + phần nợ v0.32.1 (xoá / tải bản gốc) + **lưới justified** cho `td-media-grid` (học từ lưới
+album photos.aetv.vn của dwp). Plan `docs/internal/plans/v0.33.0-media-picker-dcms-parity.md` (Codex plan-review APPROVE
+3 vòng); kiểm kê dcms2: `docs/internal/research/dcms2-media-picker-inventory.md`.
+
+### Changed
+
+- **`<td-media-picker>` dựng lại theo dcms2:** mở **toàn màn hình** ở mọi khổ; thanh công cụ một hàng (Tải lên · tìm ·
+  sắp xếp · "Chỉ của tôi" · facet gọn · "Hiển thị a–b / n" + ‹ ›); card ảnh 3:2 (tên + dung lượng • ngày, viền xanh khi
+  đang xem, xanh lá khi đã chọn, ô tick góc trên-phải); panel chi tiết 400px sửa alt / caption tại chỗ + hàng nút; footer
+  "Đóng" / "Chèn (n)"; mobile: chi tiết thay lưới, có "Quay lại". Mọi control là component kit (`td-input-field`,
+  `td-button`, `td-dropdown`, `td-toggle`, `td-chip-input`, `td-pagination`, `td-tabs`, `td-dropzone`…). Không chép các
+  lỗi UX của dcms2: tự chọn ảnh đầu, Enter toàn trang = chèn, tự lưu, lỗi thô của server, không đóng được bằng Esc.
+- Phân trang: mặc định theo cursor (‹ › một request mỗi lần, chỉ sang trang khi thành công); `pagination: 'pages'` dùng
+  `td-pagination` số trang.
+- `td-media-grid` tự đặt kích thước ảnh (CSSOM) — CSS của site không còn làm ảnh thừa / thiếu chiều; giá trị inline cũ
+  của site được trả lại khi gỡ.
+
+### Added
+
+- **Dialog tải lên** hai tab **Tệp** / **Từ URL**. Tab URL chỉ hiện khi adapter có **`uploadFromUrl(url, { fields,
+  context, signal, onProgress })`** (tuỳ chọn, cùng hợp đồng kết quả với `upload`). Kiểm URL ở trình duyệt chỉ để tiện
+  (http/https, ≤ 2048 ký tự, không user/pass) — **server phải tự chặn SSRF**, giới hạn dung lượng / loại tệp.
+- **Xoá** (`adapter.delete`, bật bằng capability): hỏi xác nhận; **server quyết định** xoá được hay không — bị chặn thì
+  picker chỉ **hiện danh sách nơi đang dùng do server trả về** (kit không tự kiểm tra). **Tải bản gốc**
+  (`adapter.download`: URL qua allowlist hoặc Blob — chỉ tải xuống, thu hồi object URL). **Copy link** (capability
+  `copyLink`, mặc định tắt). Xoá / tải về mặc định tắt — site v0.32 không tự dưng có nút mới.
+- **`<td-media-grid layout="justified">`** — mỗi dòng cùng chiều cao, ảnh giữ tỉ lệ, dòng lấp đủ bề rộng (không bao giờ
+  tràn), dòng cuối thiếu giữ chiều cao; tự xếp lại khi đổi kích thước / thêm ảnh / ảnh tải xong; chạy được với
+  `<td-sortable>` bọc trong (gallery kéo thả). `select-mode="tick"`.
+- `td-dropzone`: `prompt-title`, `prompt-text`, `hint-style="badges"` (badge `td-badge`). `td-modal` toàn màn hình chừa
+  vùng an toàn (tai thỏ / thanh home).
+- Adapter chỉ **thêm** phần tuỳ chọn — adapter v0.32 chạy nguyên không cần sửa.
+
 ## 0.32.0
 
 **Media picker** dùng chung cho dcms2 / 135 / dwp / dsuite (yêu cầu dsuite, contract adapter của dsuite research/17; owner:

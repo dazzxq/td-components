@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="600" viewBox="0 0 1800 600">
+  <!-- Panorama 3:1 fixture (td-media-grid justified tests / demo). -->
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#90e0ef"/><stop offset="1" stop-color="#0077b6"/></linearGradient></defs>
+  <rect width="1800" height="600" fill="url(#g)"/>
+  <path d="M0 420 L300 260 L560 380 L900 200 L1240 360 L1500 240 L1800 400 L1800 600 L0 600 Z" fill="#344e41"/>
+  <circle cx="1450" cy="130" r="70" fill="#fefae0"/>
+</svg>

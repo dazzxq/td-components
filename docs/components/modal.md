@@ -227,7 +227,7 @@ window.addEventListener('beforeunload', (e) => {
 | `size` | `string` | `'md'` | `xs` (20rem), `sm` (24rem), `md` (32rem), `lg` (42rem), `xl` (48rem), `2xl` (56rem), `3xl` (64rem), `4xl` (72rem), `5xl` (80rem), `full` (100%). Giá trị lạ → `md`. |
 | `width` | `string` | `null` | Chiều rộng tuỳ ý (giá trị CSS `width` hợp lệ, ví dụ `'700px'`, `'min(90vw, 50rem)'`). Không nhận `url()`, `var()`, `;{}`, dài quá 200 ký tự. Sai → bỏ qua + `console.warn`. Vẫn bị chặn bởi bề rộng màn hình. |
 | `height` | `string` | `null` | Chiều cao tuỳ ý, cùng luật như `width`. |
-| `fullViewport` | `boolean` | `false` | Dialog phủ kín màn hình, không bo góc, không thành bottom sheet trên điện thoại. `width`/`height` bị bỏ qua. Body mặc định không padding và `overflow: hidden`. |
+| `fullViewport` | `boolean` | `false` | Dialog phủ kín màn hình, không bo góc, không thành bottom sheet trên điện thoại. `width`/`height` bị bỏ qua. Body mặc định không padding và `overflow: hidden`. Từ 0.33.0 có **safe area** (tai thỏ / thanh home): header / footer **cộng thêm** `env(safe-area-inset-*)` vào padding gốc, body chỉ nhận inset hai bên (khi không đặt `bodyPadding`); xem ghi chú dưới bảng class. |
 | `closable` | `boolean` | `true` | Hiện nút X. `false` chỉ **ẩn nút X** — người dùng phải chọn một nút footer. |
 | `escapeCloses` | `boolean` | `false` | Cho phép phím Escape đóng modal (trừ khi đang có action bận). Chỉ bật cho hộp thoại mà đóng không mất dữ liệu (ví dụ bộ chọn ngày). Xem [Vì sao không đóng khi click nền / Escape](#vì-sao-không-đóng-khi-click-nền-hoặc-escape). |
 | `showHeader` | `boolean` | `true` | `false` → ẩn header (cả nút X); `title` trở thành `aria-label` của dialog. |
@@ -410,7 +410,7 @@ Mỗi modal đang mở là một phần tử gắn thẳng vào `<body>`:
 | Class / attribute | Ý nghĩa |
 |---|---|
 | `.td-modal--{xs…5xl\|full}` | Size. |
-| `.td-modal--viewport` | `fullViewport: true`. |
+| `.td-modal--viewport` | `fullViewport: true`. Cao `100dvh` (không dùng `vh`). |
 | `[data-state="opening\|open\|closing"]` | Vòng đời. Modal `closing` không nhận click, dialog của nó có `inert`; phần tử bị gỡ sau ~220ms (reduced motion: sau lần mờ dần 120ms). |
 | `[data-covered]` | Có modal khác chồng lên trên → dialog chuyển nền đặc. |
 | `.td-modal__header[hidden]`, `.td-modal__close[hidden]`, `.td-modal__footer[hidden]` | Ẩn theo `showHeader`, `closable`, footer rỗng. |
@@ -420,6 +420,13 @@ Mỗi modal đang mở là một phần tử gắn thẳng vào `<body>`:
 Chỉ `.td-modal__body` cuộn; header và footer luôn đứng yên. Trên màn hình ≤ 640px modal thành bottom sheet (không có cử
 chỉ kéo), trừ `fullViewport`. Khi modal mở, trang được khoá cuộn (một khoá cho cả chồng, đặt trên `<html>` và khôi phục
 đúng giá trị `overflow` cũ).
+
+**Safe area của `fullViewport` (0.33.0).** Trên máy có tai thỏ / thanh home (cần `<meta name="viewport"
+content="…, viewport-fit=cover">` thì inset mới khác 0), `.td-modal--viewport` **cộng** inset vào padding gốc chứ không
+thay: header `padding-top: calc(var(--td-space-sm) + env(safe-area-inset-top, 0px))`, footer `padding-bottom` tương tự
+với inset dưới, header / footer hai bên `calc(var(--td-modal-pad-x) + env(safe-area-inset-left|right, 0px))`. Body chỉ
+nhận inset trái / phải (không cộng `--td-modal-pad-x`), và chỉ khi không đặt `bodyPadding` (`bodyPadding` vẫn thắng).
+Inset bằng 0 (máy tính, đa số trình duyệt) → padding y như trước.
 
 Kit không đọc markup server-render cho modal — modal luôn do JS dựng. Nếu cần nội dung soạn sẵn ở phía server, đặt nó
 trong `<template>` rồi truyền `template.content.cloneNode(true)` làm `body`.

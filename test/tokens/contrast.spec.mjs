@@ -25,6 +25,9 @@
  * v0.24.0: the lightbox side-nav disc (fill vs a white photo / edge vs a black photo ≥ 3:1, chevron ≥ 3.2 on the disc)
  * and the current filmstrip thumb ring vs the strip (≥ 3:1).
  * v0.25.0: the PHP td_badge `icon` (decorative, currentColor) ≥ 3.2:1 on every soft badge fill, label ≥ 4.7 as before.
+ * v0.33.0: td-media-picker (dcms2 parity) — card border tokens hover / viewing / checked ≥ 3:1 vs the card surface and the
+ *   list background, `.td-media-picker__label` + card texts + page info / td-pagination "Hiển thị…" + upload dropzone texts and
+ *   badges ≥ 4.7 (pairs, page only).
  * No dependencies: PNGs are decoded with node:zlib.
  *
  *   node test/tokens/contrast.spec.mjs            (npm run test:contrast)
@@ -35,7 +38,7 @@ import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { inflateSync } from 'node:zlib';
+import { decodePng } from '../visual/png.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const ORIGIN = 'http://td-contrast.test';
@@ -60,39 +63,7 @@ const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
 <script type="module" src="${ORIGIN}/test/tokens/contrast-page.js"></script>
 </head><body><div id="backdrop"></div><div id="stage"></div></body></html>`;
 
-// ---------- PNG decode (8-bit RGB/RGBA, non-interlaced — what Playwright emits) ----------
-function decodePng(buf) {
-  let p = 8;
-  let width = 0; let height = 0; let colorType = 0; const idat = [];
-  while (p < buf.length) {
-    const len = buf.readUInt32BE(p); const type = buf.toString('ascii', p + 4, p + 8);
-    const data = buf.subarray(p + 8, p + 8 + len);
-    if (type === 'IHDR') { width = data.readUInt32BE(0); height = data.readUInt32BE(4); colorType = data[9]; }
-    else if (type === 'IDAT') idat.push(data);
-    else if (type === 'IEND') break;
-    p += 12 + len;
-  }
-  const bpp = colorType === 6 ? 4 : 3;
-  const raw = inflateSync(Buffer.concat(idat));
-  const stride = width * bpp;
-  const out = Buffer.alloc(height * stride);
-  for (let y = 0; y < height; y++) {
-    const f = raw[y * (stride + 1)];
-    const src = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1));
-    for (let x = 0; x < stride; x++) {
-      const a = x >= bpp ? out[y * stride + x - bpp] : 0;
-      const b = y > 0 ? out[(y - 1) * stride + x] : 0;
-      const c = x >= bpp && y > 0 ? out[(y - 1) * stride + x - bpp] : 0;
-      let v = src[x];
-      if (f === 1) v += a;
-      else if (f === 2) v += b;
-      else if (f === 3) v += (a + b) >> 1;
-      else if (f === 4) { const pa = Math.abs(b - c); const pb = Math.abs(a - c); const pc = Math.abs(a + b - 2 * c); v += pa <= pb && pa <= pc ? a : pb <= pc ? b : c; }
-      out[y * stride + x] = v & 255;
-    }
-  }
-  return { width, height, bpp, px: (x, y) => { const i = y * stride + x * bpp; return [out[i], out[i + 1], out[i + 2]]; } };
-}
+// PNG decode: test/visual/png.mjs (shared with the visual gate, v0.33.0)
 
 // ---------- colour maths ----------
 const lin = (v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
@@ -225,6 +196,7 @@ console.log(`  lowest label ratios: ${report.join(' · ')}`);
 console.log(`  lowest focus border ratios: ${[...focusWorst.entries()].filter(([k]) => k.includes('focus:')).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 console.log(`  lowest lightbox disc / thumb ratios: ${[...focusWorst.entries()].filter(([k]) => k.includes('lb-')).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 console.log(`  lowest media-grid tick ratios: ${[...focusWorst.entries()].filter(([k]) => k.includes('media-tick:')).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
+console.log(`  media-picker ratios (v0.33.0): ${[...focusWorst.entries()].filter(([k]) => k.includes('media-picker:')).sort((a, b) => a[1] - b[1]).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 console.log(`  lowest otp / copy / skeleton ratios (v0.27.0): ${[...focusWorst.entries()].filter(([k]) => /(otp|copy|skeleton):/.test(k)).sort((a, b) => a[1] - b[1]).slice(0, 5).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 console.log(`  lowest chip-input multi-select label ratios (v0.28.0): ${[...worst.entries()].filter(([k]) => k.includes('chip-multi:')).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 console.log(`  lowest tree label ratios (v0.29.0): ${[...worst.entries()].filter(([k]) => /tree(-popup)?:/.test(k)).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);

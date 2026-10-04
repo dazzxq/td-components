@@ -2,7 +2,7 @@
 // the media picker / media field set. Resolved against a fake base (no DOM in Node).
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { safeMediaUrl } from './media-url.js';
+import { safeMediaUrl, safeLinkUrl } from './media-url.js';
 
 const HTTPS = { baseURI: 'https://site.test/admin/page', protocol: 'https:' };
 const HTTP = { baseURI: 'http://site.test/admin/page', protocol: 'http:' };
@@ -58,5 +58,34 @@ describe('safeMediaUrl — schemes', () => {
 
   it('over-long input → ""', () => {
     assert.equal(safeMediaUrl(`https://x.test/${'a'.repeat(9000)}`, HTTPS), '');
+  });
+});
+
+// v0.33.0 (plan v0.33.0-media-picker-dcms-parity, decision 24 / invariant 31b) — safeLinkUrl: the gate for usage links
+// of a blocked delete (`<a href target="_blank">`). Same allowlist as safeMediaUrl, and NEVER blob:.
+describe('safeLinkUrl — usage links', () => {
+  it('https / relative / root-relative → normalised href', () => {
+    assert.equal(safeLinkUrl('https://cms.test/posts/1', HTTPS), 'https://cms.test/posts/1');
+    assert.equal(safeLinkUrl('/admin/posts/12?edit=1', HTTPS), 'https://site.test/admin/posts/12?edit=1');
+    assert.equal(safeLinkUrl('posts/12', HTTPS), 'https://site.test/admin/posts/12');
+    assert.equal(safeLinkUrl('//cms.test/p', HTTPS), 'https://cms.test/p');
+  });
+
+  it('http only when the page is http:', () => {
+    assert.equal(safeLinkUrl('http://cms.test/p', HTTPS), '');
+    assert.equal(safeLinkUrl('http://cms.test/p', HTTP), 'http://cms.test/p');
+  });
+
+  it('javascript: / data: / blob: / file: / mailto: / unknown → "" (blob: even when asked)', () => {
+    for (const u of ['javascript:alert(1)', ' JAVASCRIPT:alert(1)', 'java\tscript:alert(1)', 'data:text/html,<script>alert(1)</script>',
+      'blob:https://site.test/1-2', 'file:///etc/passwd', 'vbscript:x', 'mailto:a@b.c', 'ftp://x.test/', 'chrome://settings']) {
+      assert.equal(safeLinkUrl(u, HTTPS), '', u);
+      assert.equal(safeLinkUrl(u, { ...HTTPS, allowBlob: true }), '', u);
+    }
+  });
+
+  it('non-strings / empty / over-long → ""', () => {
+    for (const u of [null, undefined, 1, {}, [], '', '  ', { toString: () => 'https://x.test/' }]) assert.equal(safeLinkUrl(u, HTTPS), '');
+    assert.equal(safeLinkUrl(`https://x.test/${'a'.repeat(9000)}`, HTTPS), '');
   });
 });

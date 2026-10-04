@@ -10,8 +10,21 @@
  *   with an AbortError.
  * - manual (`manual: true`): every call stays pending; the test settles it through its record:
  *   `ad.calls.list[0].resolve()` (default result) / `.resolve(value)` / `.reject(err)`.
- * Every call is recorded in `ad.calls.{list|get|facets|upload|update}` as `{ args, signal, result, promise, resolve,
- * reject, settled }`. `ad.ignoreSignal = true` → aborts are ignored (an adapter that does not honour the signal).
+ * Every call is recorded in `ad.calls.{list|get|facets|upload|update|uploadFromUrl|delete|download}` as `{ args, signal,
+ * result, promise, resolve, reject, settled }`. `ad.ignoreSignal = true` → aborts are ignored (an adapter that does not
+ * honour the signal).
+ *
+ * v0.33.0 additions (plan v0.33.0-media-picker-dcms-parity M1) — all on by default, each can be turned off:
+ * - `uploadFromUrl(url, o)`: fake progress like upload (auto mode); a URL containing `?fail=` → rejects with a
+ *   `validation` error (`userMessage` + `fieldErrors.url`); a URL already imported (or the seeded
+ *   `https://example.com/anh-1.jpg` → m1) → `exact-reused` with that asset's id; else a new image asset (`created`).
+ * - `delete(id, o)`: numeric id % 7 === 3 (m3, m10, m17, …) → `blocked` (`usageCount: 3`, 3 usages: a safe relative
+ *   href, a `javascript:alert(1)` href, an HTML-looking label without href); else `deleted` + removed from `db`;
+ *   unknown id → `not-found`.
+ * - `download(id, o)`: `{ url, filename }` / `{ blob, filename }` alternating per call (1st url, 2nd blob, …);
+ *   `unsafeDownloadId` (default 'm2') always answers `{ url: 'javascript:alert(1)', … }`.
+ * - `pagination: 'pages'`: list honours `request.page` (1-based, `limit` per page), `nextCursor: null`, `total`
+ *   (omitted with `total: false` → the picker's warn + cursor-UI fallback). Cursor mode is unchanged.
  *
  * @param {object} [o]
  * @param {number} [o.count=60]
@@ -23,6 +36,12 @@
  * @param {boolean} [o.update=true] provide update()
  * @param {number} [o.uploadSteps=4] progress callbacks per upload (auto mode)
  * @param {number} [o.uploadStepMs=20]
+ * @param {boolean} [o.uploadFromUrl=true] provide uploadFromUrl() (v0.33)
+ * @param {boolean} [o.delete=true] provide delete() (v0.33)
+ * @param {boolean} [o.download=true] provide download() (v0.33)
+ * @param {'cursor'|'pages'} [o.pagination='cursor'] v0.33: 'pages' → list honours `request.page`
+ * @param {boolean} [o.total=true] v0.33: false → list never returns `total`
+ * @param {string} [o.unsafeDownloadId='m2'] v0.33: this asset's download answers a `javascript:` URL
  */
 export function createMockAdapter(o = {}) {
   const count = o.count ?? 60;
@@ -55,7 +74,9 @@ export function createMockAdapter(o = {}) {
   }
   let seq = count;
 
-  const calls = { list: [], get: [], facets: [], upload: [], update: [] };
+  const calls = { list: [], get: [], facets: [], upload: [], update: [], uploadFromUrl: [], delete: [], download: [] };
+  /** v0.33: imported URL → asset id (dedup of uploadFromUrl). */
+  const byUrl = new Map(count >= 1 ? [['https://example.com/anh-1.jpg', 'm1']] : []);
   const clone = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
   const abortError = () => {
     const e = new Error('aborted');
@@ -120,10 +141,19 @@ export function createMockAdapter(o = {}) {
   ad.list = (req) => {
     const rec = record('list', [req], req.signal, () => {
       const all = [...db.values()].reverse().filter((a) => matches(a, req)); // newest first
+      if (o.pagination === 'pages') {
+        const page = Number.isInteger(req.page) && req.page >= 1 ? req.page : 1;
+        const start = (page - 1) * req.limit;
+        const out = { items: all.slice(start, start + req.limit).map(clone), nextCursor: null };
+        if (o.total !== false) out.total = all.length;
+        return out;
+      }
       const start = req.cursor ? Number(req.cursor) : 0;
       const items = all.slice(start, start + req.limit).map(clone);
       const next = start + req.limit < all.length ? String(start + req.limit) : null;
-      return { items, nextCursor: next, total: all.length };
+      const out = { items, nextCursor: next };
+      if (o.total !== false) out.total = all.length;
+      return out;
     });
     return rec.promise;
   };
@@ -170,18 +200,93 @@ export function createMockAdapter(o = {}) {
         db.set(id, asset);
         return { asset: clone(asset), deduplication: { outcome: 'created' } };
       }, true);
-      if (!ad.manual) {
-        // fake progress, then settle
-        let n = 0;
-        const tick = () => {
-          if (rec.settled || (opts.signal?.aborted && !ad.ignoreSignal)) return;
-          n += 1;
-          try { opts.onProgress?.({ loaded: n * 25, total: steps * 25, percent: Math.round((n / steps) * 100) }); } catch { /* ignore */ }
-          if (n < steps) { setTimeout(tick, stepMs); return; }
-          rec.resolve();
+      fakeProgress(rec, opts);
+      return rec.promise;
+    };
+  }
+
+  /** Auto mode: `uploadSteps` progress callbacks every `uploadStepMs`, then settle (manual mode: the test settles). */
+  function fakeProgress(rec, opts) {
+    if (ad.manual) return;
+    const steps = o.uploadSteps ?? 4;
+    const stepMs = o.uploadStepMs ?? 20;
+    let n = 0;
+    const tick = () => {
+      if (rec.settled || (opts.signal?.aborted && !ad.ignoreSignal)) return;
+      n += 1;
+      try { opts.onProgress?.({ loaded: n * 25, total: steps * 25, percent: Math.round((n / steps) * 100) }); } catch { /* ignore */ }
+      if (n < steps) { setTimeout(tick, stepMs); return; }
+      rec.resolve();
+    };
+    setTimeout(tick, stepMs);
+  }
+
+  if (o.uploadFromUrl !== false) {
+    ad.uploadFromUrl = (url, opts = {}) => {
+      const rec = record('uploadFromUrl', [url, opts], opts.signal, () => {
+        if (String(url).includes('?fail=')) {
+          throw Object.assign(new Error('remote fetch failed: 500 from upstream (raw)'), {
+            code: 'validation', userMessage: 'Không tải được ảnh từ URL này.',
+            fieldErrors: { url: ['URL không trỏ tới một ảnh hợp lệ.'] },
+          });
+        }
+        const dupId = byUrl.get(url);
+        if (dupId && db.has(dupId)) {
+          return { asset: clone(db.get(dupId)), deduplication: { outcome: 'exact-reused', matchedAssetId: dupId } };
+        }
+        seq += 1;
+        const id = `m${seq}`;
+        let name = String(url).split(/[?#]/)[0].split('/').pop() || '';
+        try { name = decodeURIComponent(name); } catch { /* keep it encoded */ }
+        name = name || `anh-url-${seq}.jpg`;
+        const asset = {
+          id, version: 1, kind: 'image', status: 'ready', name, mimeType: 'image/jpeg',
+          byteSize: 98765, width: 1024, height: 768, createdAt: '2026-10-04T09:30:00Z', uploadedByLabel: 'Bạn',
+          urls: { thumbnail: `${base}2.svg`, preview: `${base}2.svg` }, defaultAltText: '',
+          metadata: { album: Number(opts.fields?.album) || 1, license: 'owned', title: name, tags: [] }, badges: [],
         };
-        setTimeout(tick, stepMs);
-      }
+        db.set(id, asset);
+        byUrl.set(url, id);
+        return { asset: clone(asset), deduplication: { outcome: 'created' } };
+      }, true);
+      fakeProgress(rec, opts);
+      return rec.promise;
+    };
+  }
+
+  if (o.delete !== false) {
+    ad.delete = (id, opts = {}) => {
+      const rec = record('delete', [id, opts], opts.signal, () => {
+        const a = db.get(id);
+        if (!a) throw Object.assign(new Error(`asset ${id} missing (raw)`), { code: 'not-found', userMessage: 'Không tìm thấy media.' });
+        if (Number(String(id).slice(1)) % 7 === 3) {
+          return {
+            status: 'blocked', reason: 'in-use', usageCount: 3,
+            usages: [
+              { id: 'post-12', label: 'Bài viết: Ra mắt sản phẩm mới', kind: 'Bài viết', href: '/admin/posts/12' },
+              { id: 'product-7', label: 'Sản phẩm: Tai nghe X', kind: 'Sản phẩm', href: 'javascript:alert(1)' },
+              { id: 'banner-3', label: '<img src=x onerror=alert(1)> Banner trang chủ', kind: 'Banner' },
+            ],
+          };
+        }
+        db.delete(id);
+        return { status: 'deleted', id };
+      });
+      return rec.promise;
+    };
+  }
+
+  if (o.download !== false) {
+    let nDownload = 0;
+    ad.download = (id, opts = {}) => {
+      const rec = record('download', [id, opts], opts.signal, () => {
+        const a = db.get(id);
+        if (!a) throw Object.assign(new Error(`asset ${id} missing (raw)`), { code: 'not-found', userMessage: 'Không tìm thấy media.' });
+        if (id === (o.unsafeDownloadId ?? 'm2')) return { url: 'javascript:alert(1)', filename: a.name };
+        nDownload += 1;
+        if (nDownload % 2 === 1) return { url: a.urls.preview, filename: a.name };
+        return { blob: new Blob([`fake original of ${a.name}`], { type: a.mimeType }), filename: a.name };
+      });
       return rec.promise;
     };
   }

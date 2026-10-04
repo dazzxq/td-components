@@ -4,6 +4,11 @@ import { sendKeys, setViewport, emulateMedia } from '@web/test-runner-commands';
 // v0.32.0 (plan docs/internal/plans/v0.32.0-media-picker.md, Test section) — <td-media-picker> / TdMediaPicker.open in
 // Chromium, Firefox AND WebKit (group `engines`). A controllable mock adapter (test/fixtures/media-adapter.js: deferred
 // calls, call log, recorded signals) — no network. DOM nodes are compared as booleans (chai + DOM nodes hangs).
+// v0.33.0 (plan v0.33.0-media-picker-dcms-parity, "Test > Engines"): every v0.32 test kept; only the selectors / labels
+// the plan changed are updated (full viewport shell, td-input-field search, td-button actions, "Chèn" / "Đóng", footer
+// count instead of the thumb tray, inline always-open detail form whose Save needs a dirty form, tick-mode multiple
+// selection where a click only views, the nested upload dialog, cursor pages instead of "Tải thêm"). New v0.33 cases
+// live in td-v033-media-picker-*.engines.browser-test.js.
 const link = document.createElement('link');
 link.rel = 'stylesheet';
 link.href = '/td.css';
@@ -44,7 +49,11 @@ const opener = (id) => item(id)?.querySelector('[data-td-media-open]') || null;
 const tick = (id) => item(id)?.querySelector('.td-media-grid__tick') || null;
 const live = () => q('.td-media-picker__live')?.textContent || '';
 const confirmBtn = () => q('.td-media-picker__confirm');
-const trayIds = () => [...(pickerRoot()?.querySelectorAll('.td-media-picker__tray-item') || [])].map((b) => b.getAttribute('aria-label'));
+const btnText = (b) => (b?.textContent || '').trim();
+/** v0.33: the footer shows the count (data-count), the 40px thumb tray is gone */
+const selCount = () => Number(q('.td-media-picker__selcount')?.getAttribute('data-count') || 0);
+const searchHost = () => q('.td-media-picker__search');
+const searchInput = () => q('.td-media-picker__search input');
 const modalRoots = () => [...document.body.querySelectorAll(':scope > .td-modal:not(.td-media-picker)')].filter((r) => r.getAttribute('data-state') !== 'closing');
 const discardDialog = () => modalRoots().find((r) => r.textContent.includes(TdMediaPicker.labels.discardTitle)) || null;
 const clickDiscard = (yes) => {
@@ -58,7 +67,38 @@ const key = (el, k, init = {}) => {
   el.dispatchEvent(new KeyboardEvent('keyup', { key: k, bubbles: true, cancelable: true, composed: true, ...init }));
 };
 const file = (name = 'moi.png', type = 'image/png') => new File([new Uint8Array([137, 80, 78, 71])], name, { type });
-const dropzone = () => q('td-dropzone');
+// v0.33: upload = a nested dialog (media-picker-upload.js) opened from the toolbar "Tải lên" button
+const uploadRoot = () => [...document.body.querySelectorAll(':scope > .td-media-picker-upload')].find((r) => r.getAttribute('data-state') !== 'closing') || null;
+const dropzone = () => uploadRoot()?.querySelector('td-dropzone') || null;
+async function openUpload() {
+  q('.td-media-picker__upload-btn').click();
+  await until(() => dropzone(), 3000, 'upload dialog');
+  await frames(2);
+}
+/** v0.33: the detail panel shows `id` and its get() settled (the inline form is the final one) */
+async function detailReady(id, name = assetName(id)) {
+  await until(() => q('.td-media-picker__detail-name')?.textContent === name
+    && !q('.td-media-picker__detail').hasAttribute('data-loading'), 3000, `detail ${id}`);
+  await tickTask();
+}
+const saveBtn = () => q('.td-media-picker__save');
+/**
+ * v0.33: every text written to the picker's OR the upload dialog's live region (the dialog announces per-file results
+ * in its own region while it is open — the picker's is inert under it).
+ */
+function liveLog() {
+  const log = [];
+  const mo = new MutationObserver(() => {
+    for (const el of document.querySelectorAll('.td-media-picker__live, .td-media-picker-upload__live')) {
+      const t = el.textContent;
+      if (t && log.at(-1) !== t) log.push(t);
+    }
+  });
+  mo.observe(document.body, { childList: true, subtree: true, characterData: true });
+  extra.push(() => mo.disconnect());
+  return log;
+}
+const saveEnabled = () => !!saveBtn() && !saveBtn().hasAttribute('disabled') && !saveBtn().hasAttribute('loading');
 const assetName = (id) => `anh-${id.slice(1)}.jpg`;
 const tickTask = () => new Promise((r) => setTimeout(r, 0));
 // WebKit (like Safari's default) does not Tab to buttons; Option(Alt)+Tab reaches every control there.
@@ -110,7 +150,7 @@ async function openReady(opts = {}, adOpts = {}) {
   return r;
 }
 async function search(text) {
-  const input = q('.td-media-picker__search');
+  const input = searchHost();
   input.value = text;
   input.dispatchEvent(new Event('input', { bubbles: true }));
   key(input, 'Enter');
@@ -120,7 +160,7 @@ async function closeAll() {
     if (h.isOpen) h.close('programmatic');
   }
   TdModal.closeAll();
-  await wait(300);
+  await until(() => !document.body.querySelector(':scope > .td-media-picker, :scope > .td-media-picker-upload, :scope > .td-modal'), 3000, 'all closed').catch(() => {});
   document.querySelectorAll('td-media-picker').forEach((h) => h.remove());
 }
 
@@ -141,7 +181,7 @@ describe('td-media-picker — shell (decisions 10-12)', () => {
     extra.push(() => btn.remove());
     btn.focus();
     const { promise } = await openReady();
-    expect(document.activeElement === q('.td-media-picker__search'), 'search focused').to.equal(true);
+    expect(document.activeElement === searchInput(), 'search focused').to.equal(true);
     expect(isScrollLocked()).to.equal(true);
     for (let i = 0; i < 25; i++) {
       await sendKeys({ press: TAB });
@@ -157,9 +197,10 @@ describe('td-media-picker — shell (decisions 10-12)', () => {
 
   it('"Huỷ" → cancelled close; Escape (clean) → cancelled escape', async () => {
     let r = await openReady();
+    expect(btnText(q('.td-media-picker__cancel'))).to.equal('Đóng');
     q('.td-media-picker__cancel').click();
     expect((await r.promise).reason).to.equal('close');
-    await wait(320);
+    await until(() => anyRoot() === null, 3000, 'closed');
     r = await openReady();
     q('.td-media-picker__dialog').focus();
     await sendKeys({ press: 'Escape' });
@@ -168,7 +209,7 @@ describe('td-media-picker — shell (decisions 10-12)', () => {
 
   it('Escape in a non-empty search clears it, picker stays open', async () => {
     const { promise, ad } = await openReady();
-    const input = q('.td-media-picker__search');
+    const input = searchInput();
     input.focus();
     await sendKeys({ type: 'anh-1' });
     await sendKeys({ press: 'Escape' });
@@ -209,8 +250,7 @@ describe('td-media-picker — shell (decisions 10-12)', () => {
   it('dirty (edit form typed) → × asks; "no" keeps it; "yes" aborts and cancels', async () => {
     const { promise, ad } = await openReady({ assetFields: assetFields() });
     click(opener('m60'));
-    await until(() => q('.td-media-picker__edit'));
-    q('.td-media-picker__edit').click();
+    await detailReady('m60');
     const title = await until(() => q('.td-media-picker__field[data-key="title"] input'));
     title.focus();
     await sendKeys({ type: ' sửa' });
@@ -229,28 +269,34 @@ describe('td-media-picker — shell (decisions 10-12)', () => {
     expect(ad.calls.update.length).to.equal(0);
   });
 
-  it('dirty (upload running) → Escape asks; yes → upload signal aborted + cancelled escape', async () => {
+  it('dirty (upload running) → Escape is layered: the nested upload dialog asks first; yes → upload aborted, picker stays; then Escape → cancelled escape', async () => {
     const { promise, ad } = await openReady({}, {});
     ad.manual = true; // the upload stays pending
-    q('.td-media-picker__upload-toggle').click();
+    await openUpload();
     dropzone().addFiles([file()]);
     await until(() => ad.calls.upload.length === 1);
+    uploadRoot().querySelector('.td-media-picker-upload__dialog').focus();
+    await sendKeys({ press: 'Escape' });
+    const busyConfirm = () => modalRoots().find((r) => r.textContent.includes(TdMediaPicker.labels.uploadCancelTitle)) || null;
+    await until(() => busyConfirm(), 3000, 'upload busy confirm');
+    expect(await peek(promise)).to.equal(PENDING);
+    [...busyConfirm().querySelectorAll('.td-modal__footer .td-btn')].find((b) => b.textContent.includes(TdMediaPicker.labels.uploadCancelConfirm)).click();
+    await until(() => ad.calls.upload[0].args[1].signal.aborted, 3000, 'upload aborted');
+    await until(() => uploadRoot() === null, 3000, 'upload dialog closed');
+    expect(await peek(promise)).to.equal(PENDING);
+    await until(() => pickerRoot().contains(document.activeElement), 3000, 'focus back in the picker');
     q('.td-media-picker__dialog').focus();
     await sendKeys({ press: 'Escape' });
-    await until(() => discardDialog());
-    clickDiscard(true);
     const out = await promise;
     expect(out.reason).to.equal('escape');
-    expect(ad.calls.upload[0].args[1].signal.aborted).to.equal(true);
   });
 });
 
-describe('td-media-picker — finish gate with "Chọn" (R1-3)', () => {
-  it('dirty edit → "Chọn (1)" asks; no → still open; yes → selected A (old snapshot), update never called', async () => {
+describe('td-media-picker — finish gate with "Chèn" (R1-3)', () => {
+  it('dirty edit → "Chèn" asks; no → still open; yes → selected A (old snapshot), update never called', async () => {
     const { promise, ad } = await openReady({ assetFields: assetFields() });
     click(opener('m60'));
-    await until(() => q('.td-media-picker__edit'));
-    q('.td-media-picker__edit').click();
+    await detailReady('m60');
     const title = await until(() => q('.td-media-picker__field[data-key="title"] input'));
     title.focus();
     await sendKeys({ type: 'Z' });
@@ -272,12 +318,12 @@ describe('td-media-picker — finish gate with "Chọn" (R1-3)', () => {
     expect(ad.calls.update.length).to.equal(0);
   });
 
-  it('upload running + A selected → "Chọn" asks; yes → upload aborted, selected only A', async () => {
+  it('upload running + A selected → "Chèn" asks; yes → upload aborted, selected only A', async () => {
     const { promise, ad } = await openReady();
     click(opener('m60'));
-    await until(() => confirmBtn().textContent.includes('1'));
+    await until(() => !confirmBtn().hasAttribute('disabled'));
     ad.manual = true;
-    q('.td-media-picker__upload-toggle').click();
+    await openUpload();
     dropzone().addFiles([file()]);
     await until(() => ad.calls.upload.length === 1);
     confirmBtn().click();
@@ -288,14 +334,16 @@ describe('td-media-picker — finish gate with "Chọn" (R1-3)', () => {
     expect(ad.calls.upload[0].args[1].signal.aborted).to.equal(true);
   });
 
-  it('clean → "Chọn" resolves at once; nothing selected → aria-disabled + announcement', async () => {
+  it('clean → "Chèn" resolves at once; nothing selected → disabled (+ announcement when clicked by code)', async () => {
     const { promise } = await openReady();
-    expect(confirmBtn().getAttribute('aria-disabled')).to.equal('true');
+    expect(confirmBtn().hasAttribute('disabled')).to.equal(true);
+    expect(confirmBtn().querySelector('button').disabled).to.equal(true);
+    expect(btnText(confirmBtn())).to.equal('Chèn');
     confirmBtn().click();
     await until(() => live() === TdMediaPicker.labels.selectFirst);
     expect(await peek(promise)).to.equal(PENDING);
     click(opener('m59'));
-    await until(() => confirmBtn().getAttribute('aria-disabled') === null);
+    await until(() => !confirmBtn().hasAttribute('disabled'));
     confirmBtn().click();
     expect(modalRoots().length).to.equal(0);
     const out = await promise;
@@ -317,10 +365,12 @@ describe('td-media-picker — host removed while open (R1-5, R2-5)', () => {
     await until(() => ad.calls.list.length && ad.calls.get.length);
     ad.calls.list[0].resolve();
     await until(() => items().length);
-    q('.td-media-picker__upload-toggle').click();
+    q('.td-media-picker__upload-btn').click();
+    await until(() => dropzone(), 3000, 'upload dialog');
     dropzone().addFiles([file()]);
     await until(() => ad.calls.upload.length === 1);
     host.remove();
+    expect(uploadRoot() === null, 'upload dialog removed at once').to.equal(true);
     expect(anyRoot() === null, 'root removed at once').to.equal(true);
     expect(document.querySelector('[inert]') === null, 'no inert left').to.equal(true);
     expect(isScrollLocked()).to.equal(false);
@@ -357,16 +407,14 @@ describe('td-media-picker — host removed while open (R1-5, R2-5)', () => {
     const promise = host.open();
     await until(() => items().length);
     click(opener('m60'));
-    await until(() => q('.td-media-picker__edit'));
-    q('.td-media-picker__edit').click();
+    await detailReady('m60');
     const title = await until(() => q('.td-media-picker__field[data-key="title"] input'));
     title.focus();
     await sendKeys({ type: 'x' });
     q('.td-modal__close').click();
     await until(() => discardDialog());
     host.remove();
-    await wait(300);
-    expect(discardDialog() === null).to.equal(true);
+    await until(() => discardDialog() === null, 3000, 'confirm closed');
     expect((await promise).reason).to.equal('programmatic');
   });
 
@@ -383,8 +431,7 @@ describe('td-media-picker — host removed while open (R1-5, R2-5)', () => {
     const promise = host.open();
     await until(() => items().length);
     click(opener('m60'));
-    await until(() => q('.td-media-picker__edit'));
-    q('.td-media-picker__edit').click();
+    await detailReady('m60');
     const title = await until(() => q('.td-media-picker__field[data-key="title"] input'));
     title.focus();
     await sendKeys({ type: 'x' });
@@ -408,8 +455,7 @@ describe('td-media-picker — host removed while open (R1-5, R2-5)', () => {
   it('close() by code while the discard confirm is open → only it closes; cancelled', async () => {
     const { promise } = await openReady({ assetFields: assetFields() });
     click(opener('m60'));
-    await until(() => q('.td-media-picker__edit'));
-    q('.td-media-picker__edit').click();
+    await detailReady('m60');
     const title = await until(() => q('.td-media-picker__field[data-key="title"] input'));
     title.focus();
     await sendKeys({ type: 'x' });
@@ -417,8 +463,7 @@ describe('td-media-picker — host removed while open (R1-5, R2-5)', () => {
     await until(() => discardDialog());
     document.querySelector('td-media-picker').close();
     expect((await promise).status).to.equal('cancelled');
-    await wait(300);
-    expect(discardDialog() === null).to.equal(true);
+    await until(() => discardDialog() === null, 3000, 'confirm closed');
   });
 });
 
@@ -433,19 +478,22 @@ describe('td-media-picker — initialIds transaction (R1-4, R2-4)', () => {
   };
   const getCall = (ad, id) => ad.calls.get.find((c) => c.args[0] === id);
 
-  it('resolved c, a, b → tray in initialIds order, applied once; "Đang tải lựa chọn…" while pending', async () => {
+  it('resolved c, a, b → selection in initialIds order, applied once; "Đang tải lựa chọn…" while pending', async () => {
     const { ad, promise } = await openInitial(['m3', 'm1', 'm2']);
-    expect(q('.td-media-picker__tray-loading')?.textContent).to.equal(TdMediaPicker.labels.loadingInitial);
+    const loadingNote = () => q('.td-media-picker__initial-loading');
+    expect(loadingNote().textContent).to.equal(TdMediaPicker.labels.loadingInitial);
+    expect(loadingNote().hidden).to.equal(false);
     const changes = [];
     document.querySelector('td-media-picker').addEventListener('selection-change', (e) => changes.push(e));
     getCall(ad, 'm2').resolve();
     getCall(ad, 'm3').resolve();
     await wait(20);
-    expect(trayIds().length).to.equal(0);
+    expect(selCount()).to.equal(0);
     getCall(ad, 'm1').resolve();
-    await until(() => trayIds().length === 3);
-    expect(trayIds()).to.deep.equal(['m3', 'm1', 'm2'].map((id) => TdMediaPicker.labels.deselect.replace('{name}', assetName(id))));
-    expect(q('.td-media-picker__tray-loading') === null).to.equal(true);
+    await until(() => selCount() === 3);
+    expect(q('.td-media-picker__selcount').textContent).to.equal('Đã chọn 3');
+    expect(btnText(confirmBtn())).to.equal('Chèn (3)');
+    expect(loadingNote().hidden).to.equal(true);
     expect(changes.length, 'no selection-change for initial').to.equal(0);
     confirmBtn().click();
     expect((await promise).selection.map((s) => s.assetId)).to.deep.equal(['m3', 'm1', 'm2']);
@@ -456,7 +504,7 @@ describe('td-media-picker — initialIds transaction (R1-4, R2-4)', () => {
     getCall(ad, 'm1').resolve();
     getCall(ad, 'm2').reject(Object.assign(new Error('raw'), { code: 'not-found' }));
     getCall(ad, 'm3').resolve();
-    await until(() => trayIds().length === 2);
+    await until(() => selCount() === 2);
     confirmBtn().click();
     expect((await promise).selection.map((s) => s.assetId)).to.deep.equal(['m1', 'm3']);
   });
@@ -466,11 +514,11 @@ describe('td-media-picker — initialIds transaction (R1-4, R2-4)', () => {
     ad.ignoreSignal = true;
     getCall(ad, 'm1').resolve();
     await wait(10);
-    click(opener('m60'));
+    click(tick('m60')); // multiple (v0.33 tick mode): the tick selects, a click only views
     // same task: aborted + no "loading" note + X selected
     expect(getCall(ad, 'm2').signal.aborted).to.equal(true);
-    expect(q('.td-media-picker__tray-loading') === null).to.equal(true);
-    expect(trayIds().length).to.equal(1);
+    expect(q('.td-media-picker__initial-loading').hidden).to.equal(true);
+    expect(selCount()).to.equal(1);
     let unhandled = 0;
     const onUnhandled = () => { unhandled += 1; };
     window.addEventListener('unhandledrejection', onUnhandled);
@@ -478,7 +526,7 @@ describe('td-media-picker — initialIds transaction (R1-4, R2-4)', () => {
     await wait(50);
     window.removeEventListener('unhandledrejection', onUnhandled);
     expect(unhandled).to.equal(0);
-    expect(trayIds().length).to.equal(1);
+    expect(selCount()).to.equal(1);
     confirmBtn().click();
     expect((await promise).selection.map((s) => s.assetId)).to.deep.equal(['m60']);
   });
@@ -487,8 +535,8 @@ describe('td-media-picker — initialIds transaction (R1-4, R2-4)', () => {
     const { ad, promise } = await openInitial(['m1', 'm2']);
     getCall(ad, 'm1').resolve();
     await wait(30);
-    expect(q('.td-media-picker__tray-loading') !== null).to.equal(true);
-    click(opener('m59'));
+    expect(q('.td-media-picker__initial-loading').hidden).to.equal(false);
+    click(tick('m59'));
     confirmBtn().click();
     const out = await promise;
     expect(out.selection.map((s) => s.assetId)).to.deep.equal(['m59']);
@@ -500,7 +548,7 @@ describe('td-media-picker — initialIds transaction (R1-4, R2-4)', () => {
     await until(() => live() === TdMediaPicker.labels.selectFirst);
     expect(await peek(promise)).to.equal(PENDING);
     getCall(ad, 'm1').resolve();
-    await until(() => trayIds().length === 1);
+    await until(() => selCount() === 1);
     confirmBtn().click();
     expect((await promise).selection[0].assetId).to.equal('m1');
   });
@@ -531,7 +579,7 @@ describe('td-media-picker — latest wins + abort (decision 9)', () => {
   it('search is debounced 250 ms (one request for a burst), Enter runs it now', async () => {
     const { ad } = await openReady();
     const n0 = ad.calls.list.length;
-    const input = q('.td-media-picker__search');
+    const input = searchInput();
     input.focus();
     await sendKeys({ type: 'anh' });
     await wait(100);
@@ -571,10 +619,12 @@ describe('td-media-picker — latest wins + abort (decision 9)', () => {
     click(opener('m60'));
     await until(() => ad.calls.get.length);
     ad.calls.get[0].resolve();
-    await until(() => q('.td-media-picker__edit'));
-    q('.td-media-picker__edit').click();
-    await until(() => q('.td-media-picker__save'));
-    q('.td-media-picker__save').click();
+    await detailReady('m60');
+    const t1 = q('.td-media-picker__field[data-key="title"] input');
+    t1.focus();
+    await sendKeys({ type: 'x' });
+    await until(() => saveEnabled(), 3000, 'save enabled');
+    saveBtn().click();
     await until(() => ad.calls.update.length);
     await search('x');
     await until(() => ad.calls.list.length === 2);
@@ -597,13 +647,14 @@ describe('td-media-picker — list states', () => {
     const promise = TdMediaPicker.open({ adapter: ad, pageSize: 20 });
     await until(() => ad.calls.list.length);
     expect(q('.td-media-picker__skeleton').hidden).to.equal(false);
+    expect(q('.td-media-picker__skeleton').querySelectorAll('.td-media-picker__skeleton-card').length).to.equal(30);
     expect(q('.td-media-picker__results').getAttribute('aria-busy')).to.equal('true');
     ad.calls.list[0].resolve();
     await until(() => items().length === 20);
     expect(q('.td-media-picker__skeleton').hidden).to.equal(true);
     expect(q('.td-media-picker__results').getAttribute('aria-busy')).to.equal('false');
     expect(grid().selectedIds.length).to.equal(0);
-    expect(q('.td-media-picker__count').textContent).to.equal('Hiển thị 20 / 60');
+    expect(q('.td-media-picker__page-info').textContent).to.equal('Hiển thị 1-20 / 60 media');
     document.querySelector('td-media-picker').close();
     await promise;
   });
@@ -611,9 +662,11 @@ describe('td-media-picker — list states', () => {
   it('empty with / without filter → the right empty text', async () => {
     const ad = createMockAdapter({ count: 0 });
     const { promise } = await openReady({ adapter: ad });
-    expect(q('.td-media-picker__empty').getAttribute('title')).to.equal(TdMediaPicker.labels.empty);
+    expect(q('.td-media-picker__empty').getAttribute('title')).to.equal('Không có media nào');
+    expect(q('.td-media-picker__empty').hasAttribute('message')).to.equal(false);
     await search('zzz');
-    await until(() => q('.td-media-picker__empty').getAttribute('title') === TdMediaPicker.labels.emptyFiltered);
+    await until(() => q('.td-media-picker__empty').getAttribute('message') === 'Thử từ khoá khác');
+    expect(q('.td-media-picker__empty').getAttribute('title')).to.equal('Không có media nào');
     document.querySelector('td-media-picker').close();
     await promise;
   });
@@ -638,15 +691,15 @@ describe('td-media-picker — list states', () => {
     await promise;
   });
 
-  it('"Tải thêm" sends nextCursor and appends; wrong kinds hidden', async () => {
+  it('"›" (v0.33 replaces "Tải thêm") sends nextCursor and REPLACES the page; wrong kinds hidden', async () => {
     const { ad } = await openReady({ pageSize: 25, selection: { mode: 'single', kinds: ['image'] } });
     expect(ad.calls.list[0].args[0].kinds).to.deep.equal(['image']);
-    ad.list = ((orig) => (req) => orig(req))(ad.list);
-    const n = items().length;
+    const first = ids().join();
     expect(items().every((i) => i.getAttribute('data-kind') === 'image')).to.equal(true);
-    q('.td-media-picker__more').click();
-    await until(() => items().length > n);
+    q('.td-media-picker__next').click();
+    await until(() => ids().length && ids().join() !== first);
     expect(ad.calls.list.at(-1).args[0].cursor).to.equal('25');
+    expect(ids().some((id) => first.split(',').includes(id))).to.equal(false);
   });
 
   it('an adapter returning other kinds anyway → hidden + one warning', async () => {
@@ -711,25 +764,30 @@ describe('td-media-picker — selection (decision 13)', () => {
     opener(a).focus();
     await sendKeys({ press: 'Shift+Space' });
     expect(grid().selectedIds).to.deep.equal([a]);
-    // tick of an unselected item → replace; click on the selected → deselect
+    // tick of an unselected item → replace; v0.33 decision 16: a click = select + view, so clicking the selected one
+    // keeps it (Space on it still deselects)
     click(tick(e));
     expect(grid().selectedIds).to.deep.equal([e]);
     click(opener(e));
+    expect(grid().selectedIds).to.deep.equal([e]);
+    opener(e).focus();
+    await sendKeys({ press: 'Space' });
     expect(grid().selectedIds).to.deep.equal([]);
   });
 
-  it('multiple maxItems=3: the 4th is blocked + announcement; retained across searches; tray order', async () => {
+  it('multiple maxItems=3: the 4th is blocked + announcement; retained across searches; selection order', async () => {
     const { promise } = await openReady({ selection: { mode: 'multiple', maxItems: 3 } });
     click(tick('m60'));
-    click(opener('m59'));
+    click(tick('m59'));
     await search('anh-1');
     await until(() => ids().every((id) => assetName(id).includes('anh-1')) && items().length);
     click(tick('m19'));
-    expect(trayIds().length).to.equal(3);
+    expect(selCount()).to.equal(3);
+    expect(q('.td-media-picker__selcount').textContent).to.equal('Đã chọn 3/3');
     click(tick('m18'));
     await wait(20);
     expect(grid().selectedIds.includes('m18')).to.equal(false);
-    expect(trayIds().length).to.equal(3);
+    expect(selCount()).to.equal(3);
     confirmBtn().click();
     expect((await promise).selection.map((s) => s.assetId)).to.deep.equal(['m60', 'm59', 'm19']);
   });
@@ -737,13 +795,13 @@ describe('td-media-picker — selection (decision 13)', () => {
   it('capacity used up by items outside the page (R1-2): no max="0", every flip vetoed, then one slot frees max=1', async () => {
     const { promise } = await openReady({ selection: { mode: 'multiple', maxItems: 3 } });
     click(tick('m60'));
-    click(opener('m59'));
-    click(opener('m58'));
+    click(tick('m59'));
+    click(opener('m58'), { ctrlKey: true }); // tick mode: Ctrl/Cmd+click flips
     await search('anh-1');
     await until(() => items().length && ids().every((id) => assetName(id).includes('anh-1')));
     expect(grid().hasAttribute('max')).to.equal(false);
     click(tick('m19'));
-    click(opener('m18'));
+    click(opener('m18'), { ctrlKey: true });
     opener('m17').focus();
     await sendKeys({ press: 'Space' });
     click(opener('m16'), { shiftKey: true });
@@ -751,8 +809,12 @@ describe('td-media-picker — selection (decision 13)', () => {
     expect(grid().selectedIds).to.deep.equal([]);
     expect(items().every((i) => i.querySelector('.td-media-grid__tick')?.getAttribute('aria-pressed') !== 'true')).to.equal(true);
     expect(live()).to.equal('Tối đa 3 mục');
-    // free one slot from the tray
-    pickerRoot().querySelector('.td-media-picker__tray-item').click();
+    // free one slot (v0.33: no tray — untick m60 on its page, then back to the query)
+    await search('');
+    await until(() => item('m60') && grid().selectedIds.includes('m60'), 3000, 'page 1 back');
+    click(tick('m60'));
+    await search('anh-1');
+    await until(() => item('m19') && ids().every((id) => assetName(id).includes('anh-1')), 3000, 'anh-1 back');
     expect(grid().getAttribute('max')).to.equal('1');
     click(tick('m19'));
     expect(grid().selectedIds).to.deep.equal(['m19']);
@@ -764,8 +826,9 @@ describe('td-media-picker — selection (decision 13)', () => {
     await openReady({ selection: { mode: 'multiple' } });
     click(tick('m60'));
     click(tick('m59'));
-    q('.td-media-picker__tray-clear').click();
-    expect(trayIds().length).to.equal(0);
+    expect(btnText(q('.td-media-picker__clear'))).to.equal('Bỏ chọn tất cả');
+    q('.td-media-picker__clear').click();
+    expect(selCount()).to.equal(0);
     expect(grid().selectedIds).to.deep.equal([]);
     // m7 is processing
     await search('anh-7');
@@ -778,7 +841,7 @@ describe('td-media-picker — selection (decision 13)', () => {
 
   it('keyboard only: Tab → search, type, Tab → grid, Space selects, Enter opens detail (no confirm), Tab → "Chọn", Enter resolves', async () => {
     const { promise } = await openReady();
-    expect(document.activeElement === q('.td-media-picker__search')).to.equal(true);
+    expect(document.activeElement === searchInput()).to.equal(true);
     await sendKeys({ type: 'anh-5' });
     await sendKeys({ press: 'Enter' }); // runs the search, never confirms
     await until(() => items().length && ids().every((id) => assetName(id).includes('anh-5')));
@@ -792,28 +855,33 @@ describe('td-media-picker — selection (decision 13)', () => {
     await until(() => q('.td-media-picker__detail-name')?.textContent === assetName(focusedId));
     expect(await peek(promise)).to.equal(PENDING);
     guard = 0;
-    while (document.activeElement !== confirmBtn() && guard++ < 40) await sendKeys({ press: TAB });
+    while (document.activeElement !== confirmBtn().querySelector('button') && guard++ < 40) await sendKeys({ press: TAB });
     await sendKeys({ press: 'Enter' });
     expect((await promise).selection.map((s) => s.assetId)).to.deep.equal([focusedId]);
   });
 });
 
-describe('td-media-picker — upload (decisions 19-20)', () => {
-  it('upload toggle hidden without adapter.upload or with capabilities.upload false', async () => {
-    let r = await openReady({}, { upload: false });
-    expect(q('.td-media-picker__upload-toggle') === null).to.equal(true);
+describe('td-media-picker — upload (decisions 19-20; v0.33: nested dialog, decisions 20-22)', () => {
+  it('"Tải lên" hidden without upload() AND uploadFromUrl() or with both capabilities false; shown with only one source', async () => {
+    await openReady({}, { upload: false, uploadFromUrl: false });
+    expect(q('.td-media-picker__upload-btn') === null).to.equal(true);
     await closeAll();
-    r = await openReady({ capabilities: { upload: false } });
-    expect(q('.td-media-picker__upload-toggle') === null).to.equal(true);
-    void r;
+    await openReady({ capabilities: { upload: false, uploadFromUrl: false } });
+    expect(q('.td-media-picker__upload-btn') === null).to.equal(true);
+    await closeAll();
+    await openReady({ capabilities: { upload: false } });
+    expect(q('.td-media-picker__upload-btn') !== null, 'URL source only').to.equal(true);
+    await closeAll();
+    await openReady({}, { uploadFromUrl: false });
+    expect(q('.td-media-picker__upload-btn') !== null, 'file source only').to.equal(true);
   });
 
   it('required upload field empty → dropzone disabled; fields captured at start; signal; progress; remove → aborted', async () => {
     const { ad } = await openReady({ uploadFields: uploadFields() });
-    q('.td-media-picker__upload-toggle').click();
+    await openUpload();
     expect(dropzone().hasAttribute('disabled')).to.equal(true);
-    expect(q('.td-media-picker__upload-hint').hidden).to.equal(false);
-    await ddPick(q('.td-media-picker__field[data-key="album"] td-dropdown'), 'Tin tức');
+    expect(uploadRoot().querySelector('.td-media-picker-upload__hint').hidden).to.equal(false);
+    await ddPick(uploadRoot().querySelector('.td-media-picker__field[data-key="album"] td-dropdown'), 'Tin tức');
     await until(() => !dropzone().hasAttribute('disabled'), 3000, 'dropzone enabled');
     ad.manual = true;
     dropzone().addFiles([file('a.png')]);
@@ -831,13 +899,14 @@ describe('td-media-picker — upload (decisions 19-20)', () => {
     expect(dropzone().querySelector('[data-status="error"]') === null).to.equal(true);
   });
 
-  it('created → first in the grid, selected (single replaces A), announcement, asset-change', async () => {
+  it('created → first in the grid (page 1 reloaded), selected (single replaces A), detail, announcement, asset-change', async () => {
     const { ad, promise } = await openReady();
     click(opener('m60'));
     const host = document.querySelector('td-media-picker');
     const changes = [];
     host.addEventListener('asset-change', (e) => changes.push(e.detail));
-    q('.td-media-picker__upload-toggle').click();
+    const said = liveLog();
+    await openUpload();
     dropzone().addFiles([file('moi.png')]);
     await until(() => changes.length === 1, 4000);
     expect(changes[0].operation).to.equal('upload');
@@ -845,21 +914,23 @@ describe('td-media-picker — upload (decisions 19-20)', () => {
     const newId = changes[0].asset.id;
     await until(() => ids()[0] === newId);
     expect(grid().selectedIds).to.deep.equal([newId]);
-    expect(live().includes('moi.png')).to.equal(true);
+    await until(() => said.some((x) => x.includes('moi.png')), 3000, 'announced');
+    await until(() => q('.td-media-picker__detail-name')?.textContent === 'moi.png', 3000, 'detail of the upload');
     void ad;
+    await until(() => uploadRoot() === null, 3000, 'dialog closed (no error)');
     confirmBtn().click();
     expect((await promise).selection.map((s) => s.assetId)).to.deep.equal([newId]);
   });
 
-  it('exact-reused → no duplicate, matched asset selected (replaces A), "dùng lại" note', async () => {
+  it('exact-reused → no duplicate, matched asset selected (replaces A), "dùng lại" announcement', async () => {
     const { promise } = await openReady();
     click(opener('m60'));
-    q('.td-media-picker__upload-toggle').click();
+    const said = liveLog();
+    await openUpload();
     const n = items().length;
     dropzone().addFiles([file(assetName('m58'), 'image/jpeg')]);
-    await until(() => q('.td-media-picker__upload-note'), 4000);
-    expect(q('.td-media-picker__upload-note').textContent).to.equal(TdMediaPicker.labels.reused.replace('{name}', assetName('m58')));
-    await wait(50);
+    await until(() => said.includes(TdMediaPicker.labels.reused.replace('{name}', assetName('m58'))), 4000, 'reused announced');
+    await until(() => grid().selectedIds.join() === 'm58', 3000, 'm58 selected');
     expect(ids().filter((id) => id === 'm58').length).to.equal(1);
     expect(items().length).to.equal(n);
     confirmBtn().click();
@@ -868,7 +939,7 @@ describe('td-media-picker — upload (decisions 19-20)', () => {
 
   it('rejection: only userMessage shows; none → labels.uploadError; fieldErrors → on the upload control', async () => {
     const { ad } = await openReady({ uploadFields: [{ key: 'note', label: 'Ghi chú', control: 'text' }] });
-    q('.td-media-picker__upload-toggle').click();
+    await openUpload();
     ad.manual = true;
     dropzone().addFiles([file('x1.png')]);
     await until(() => ad.calls.upload.length === 1);
@@ -876,35 +947,38 @@ describe('td-media-picker — upload (decisions 19-20)', () => {
     await until(() => dropzone().querySelector('[data-status="error"]'));
     expect(dropzone().querySelector('.td-dropzone__status').textContent).to.equal('File quá lớn');
     expect(pickerRoot().textContent.includes('/var/www')).to.equal(false);
-    await until(() => q('.td-media-picker__field[data-key="note"] [aria-invalid="true"]'));
+    expect(uploadRoot().textContent.includes('/var/www')).to.equal(false);
+    await until(() => uploadRoot().querySelector('.td-media-picker__field[data-key="note"] [aria-invalid="true"]'));
     dropzone().addFiles([file('x2.png')]);
     await until(() => ad.calls.upload.length === 2);
     ad.calls.upload[1].reject(new Error('Internal Server Error <stack>'));
     await until(() => dropzone().querySelectorAll('[data-status="error"]').length === 2);
-    const texts = [...dropzone().querySelectorAll('.td-dropzone__status')].map((s) => s.textContent);
+    const texts = [...dropzone().querySelectorAll('.td-dropzone__status')].map((x) => x.textContent);
     expect(texts.includes(TdMediaPicker.labels.error.server) || texts.includes(TdMediaPicker.labels.uploadError)).to.equal(true);
     expect(pickerRoot().textContent.includes('<stack>')).to.equal(false);
+    expect(uploadRoot().textContent.includes('<stack>')).to.equal(false);
   });
 
-  it('single + processing result → A kept, B inserted unselected, notReady', async () => {
+  it('single + processing result → A kept, B unselected, notReady', async () => {
     const ad = createMockAdapter();
     const up = ad.upload;
     ad.upload = (f, o) => up(f, o).then((r) => ({ ...r, asset: { ...r.asset, status: 'processing' } }));
     await openReady({ adapter: ad });
     click(opener('m60'));
-    q('.td-media-picker__upload-toggle').click();
+    await openUpload();
     dropzone().addFiles([file('cho.png')]);
     await until(() => live() === TdMediaPicker.labels.notReady, 4000);
     expect(grid().selectedIds).to.deep.equal(['m60']);
   });
 
-  it('multiple maxItems=2 full → upload D inserted, not selected, "Tối đa 2 mục"', async () => {
+  it('multiple maxItems=2 full → upload D not selected, "Tối đa 2 mục"', async () => {
     const { promise } = await openReady({ selection: { mode: 'multiple', maxItems: 2 } });
     click(tick('m60'));
     click(tick('m59'));
-    q('.td-media-picker__upload-toggle').click();
+    await openUpload();
     dropzone().addFiles([file('d.png')]);
     await until(() => live() === 'Tối đa 2 mục', 4000);
+    await until(() => uploadRoot() === null, 3000, 'dialog closed');
     confirmBtn().click();
     expect((await promise).selection.map((s) => s.assetId)).to.deep.equal(['m60', 'm59']);
   });
@@ -918,44 +992,51 @@ describe('td-media-picker — upload (decisions 19-20)', () => {
     const promise = TdMediaPicker.open({ adapter: ad, selection: { mode: 'single', initialIds: ['m3'] } });
     document.querySelector('td-media-picker').addEventListener('asset-change', (e) => changes.push(e.detail));
     await until(() => items().length);
-    q('.td-media-picker__upload-toggle').click();
+    await openUpload();
     dropzone().addFiles([file('b.png')]);
     await until(() => changes.length, 4000);
     hang?.(ad.db.get('m3'));
-    await wait(30);
+    await until(() => uploadRoot() === null, 3000, 'dialog closed');
     confirmBtn().click();
     expect((await promise).selection.map((s) => s.assetId)).to.deep.equal([changes[0].asset.id]);
   });
 });
 
-describe('td-media-picker — edit metadata (decision 21-22)', () => {
+describe('td-media-picker — edit metadata (decision 21-22; v0.33: always-open inline form, decision 18)', () => {
   const openEdit = async (id = 'm60', o = {}) => {
     const r = await openReady({ assetFields: assetFields(), ...o });
     click(opener(id));
-    await until(() => q('.td-media-picker__edit'));
-    q('.td-media-picker__edit').click();
-    await until(() => q('.td-media-picker__save'));
+    await detailReady(id);
+    await until(() => saveBtn(), 3000, 'save button');
     return r;
   };
+  /** type into the title field so the form is dirty (Save is enabled only then) */
+  const dirtyTitle = async (text = 'x') => {
+    const input = q('.td-media-picker__field[data-key="title"] input');
+    input.focus();
+    await sendKeys({ type: text });
+    await until(() => saveEnabled(), 3000, 'save enabled');
+  };
 
-  it('edit button hidden without update / editMetadata false / per-asset editMetadata false', async () => {
+  it('no Save / readonly fields without update / editMetadata false / per-asset editMetadata false', async () => {
     await openReady({ assetFields: assetFields() }, { update: false });
     click(opener('m60'));
-    await until(() => q('.td-media-picker__detail-name'));
-    expect(q('.td-media-picker__edit') === null).to.equal(true);
+    await detailReady('m60');
+    expect(saveBtn() === null).to.equal(true);
+    expect(q('.td-media-picker__detail td-input-field') === null, 'readonly text only').to.equal(true);
+    expect(q('.td-media-picker__field[data-key="title"] .td-media-picker__readonly-value').textContent).to.equal('Ảnh mẫu 60');
     await closeAll();
     await openReady({ assetFields: assetFields(), capabilities: { editMetadata: false } });
     click(opener('m60'));
-    await until(() => q('.td-media-picker__detail-name'));
-    expect(q('.td-media-picker__edit') === null).to.equal(true);
+    await detailReady('m60');
+    expect(saveBtn() === null).to.equal(true);
     await closeAll();
     await openReady({ assetFields: assetFields() });
     await search('anh-5');
     await until(() => item('m5'));
     click(opener('m5')); // per-asset capabilities.editMetadata false
-    await until(() => q('.td-media-picker__detail-name')?.textContent === 'anh-5.jpg');
-    await wait(30);
-    expect(q('.td-media-picker__edit') === null).to.equal(true);
+    await detailReady('m5', 'anh-5.jpg');
+    expect(saveBtn() === null).to.equal(true);
   });
 
   it('7 descriptor controls; visibleWhen; save → update(id, { fields, version }) + asset replaced everywhere + event', async () => {
@@ -966,6 +1047,7 @@ describe('td-media-picker — edit metadata (decision 21-22)', () => {
     expect(field('license').querySelector('td-dropdown') !== null).to.equal(true);
     expect(field('tags').querySelector('td-chip-input') !== null).to.equal(true);
     expect(field('licenseExpiry') === null || field('licenseExpiry').hidden).to.equal(true);
+    expect(saveBtn().hasAttribute('disabled'), 'clean form → Save disabled').to.equal(true);
     const host = document.querySelector('td-media-picker');
     const changes = [];
     host.addEventListener('asset-change', (e) => changes.push(e.detail));
@@ -973,7 +1055,8 @@ describe('td-media-picker — edit metadata (decision 21-22)', () => {
     input.focus();
     input.select();
     await sendKeys({ type: 'Tên mới' });
-    q('.td-media-picker__save').click();
+    await until(() => saveEnabled(), 3000, 'save enabled');
+    saveBtn().click();
     await until(() => changes.length === 1);
     const [id, patch] = ad.calls.update[0].args;
     expect(id).to.equal('m60');
@@ -989,7 +1072,8 @@ describe('td-media-picker — edit metadata (decision 21-22)', () => {
   it('server fieldErrors → control aria-invalid + general list; focus on the first; conflict → "Tải lại"', async () => {
     const { ad } = await openEdit();
     ad.manual = true;
-    q('.td-media-picker__save').click();
+    await dirtyTitle();
+    saveBtn().click();
     await until(() => ad.calls.update.length === 1);
     ad.calls.update[0].reject(Object.assign(new Error('raw'), { code: 'validation', fieldErrors: { license: ['Chưa hợp lệ'], unknown: ['Lỗi chung <b>x</b>'] } }));
     await until(() => q('.td-media-picker__field[data-key="license"] [aria-invalid="true"]'));
@@ -998,7 +1082,8 @@ describe('td-media-picker — edit metadata (decision 21-22)', () => {
     expect(general.textContent.includes('Lỗi chung <b>x</b>')).to.equal(true);
     expect(general.querySelector('b') === null).to.equal(true);
     expect(q('.td-media-picker__field[data-key="license"]').contains(document.activeElement)).to.equal(true);
-    q('.td-media-picker__save').click();
+    await until(() => saveEnabled(), 3000, 'save enabled again (still dirty)');
+    saveBtn().click();
     await until(() => ad.calls.update.length === 2);
     ad.calls.update[1].reject(Object.assign(new Error('raw'), { code: 'conflict' }));
     await until(() => q('.td-media-picker__reload'));
@@ -1024,9 +1109,10 @@ describe('td-media-picker — edit metadata (decision 21-22)', () => {
     await until(() => discardDialog(), 3000, 'discard dialog');
     clickDiscard(false);
     await wait(50);
-    expect(q('.td-media-picker__save') !== null).to.equal(true);
+    expect(q('.td-media-picker__detail-name').textContent).to.equal(assetName('m60'));
+    expect(saveBtn() !== null).to.equal(true);
     expect(ad.calls.update.length).to.equal(0);
-    q('.td-media-picker__field[data-key="title"] input').focus();
+    q('.td-media-picker__field[data-key="caption"] textarea').focus();
     const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
     await sendKeys({ press: mac ? 'Meta+Enter' : 'Control+Enter' });
     await until(() => ad.calls.update.length === 1);
@@ -1044,31 +1130,29 @@ describe('td-media-picker — edit metadata (decision 21-22)', () => {
     extra.push(() => { console.warn = orig; });
     await openReady({ adapter: ad, assetFields: assetFields() });
     click(opener('m60'));
-    await until(() => q('.td-media-picker__edit'), 3000, 'd1')
-    q('.td-media-picker__edit').click();
-    const dtp = await until(() => q('.td-media-picker__field[data-key="licenseExpiry"] td-datetime-picker'), 3000, 'd2')
+    await detailReady('m60');
+    const dtp = await until(() => q('.td-media-picker__field[data-key="licenseExpiry"] td-datetime-picker'), 3000, 'd2');
     await until(() => dtp.querySelector('.td-dtp__value')?.textContent.trim() === '31/03/2027', 3000, 'date shown');
     dtp.setDBValue('2027-04-15');
     dtp.dispatchEvent(new Event('change', { bubbles: true }));
-    q('.td-media-picker__save').click();
-    await until(() => ad.calls.update.length === 1, 3000, 'd3')
+    await until(() => saveEnabled(), 3000, 'save enabled');
+    saveBtn().click();
+    await until(() => ad.calls.update.length === 1, 3000, 'd3');
     expect(ad.calls.update[0].args[1].fields.licenseExpiry).to.equal('2027-04-15');
-    await until(() => q('.td-media-picker__edit'), 3000, 'd4')
-    q('.td-media-picker__edit').click();
-    const dtp2 = await until(() => q('.td-media-picker__field[data-key="licenseExpiry"] td-datetime-picker'), 3000, 'd5')
+    await until(() => saveBtn() && saveBtn().hasAttribute('disabled') && !saveBtn().hasAttribute('loading'), 3000, 'd4 saved');
+    const dtp2 = await until(() => q('.td-media-picker__field[data-key="licenseExpiry"] td-datetime-picker'), 3000, 'd5');
     dtp2.setDBValue('');
     dtp2.dispatchEvent(new Event('change', { bubbles: true }));
-    q('.td-media-picker__save').click();
-    await until(() => ad.calls.update.length === 2, 3000, 'd6')
+    await until(() => saveEnabled(), 3000, 'save enabled 2');
+    saveBtn().click();
+    await until(() => ad.calls.update.length === 2, 3000, 'd6');
     expect(ad.calls.update[1].args[1].fields.licenseExpiry).to.equal(null);
-    await until(() => q('.td-media-picker__edit'), 3000, 'saved'); // the save finished (a running save is "dirty")
+    await until(() => saveBtn() && saveBtn().hasAttribute('disabled') && !saveBtn().hasAttribute('loading'), 3000, 'saved'); // a running save is "dirty"
     // broken metadata
     click(tick('m60'));
     click(opener('m59'));
-    await until(() => q('.td-media-picker__detail-name')?.textContent === assetName('m59'), 3000, 'd7')
-    await until(() => q('.td-media-picker__edit'), 3000, 'd8')
-    q('.td-media-picker__edit').click();
-    const dtp3 = await until(() => q('.td-media-picker__field[data-key="licenseExpiry"] td-datetime-picker'), 3000, 'd9')
+    await detailReady('m59');
+    const dtp3 = await until(() => q('.td-media-picker__field[data-key="licenseExpiry"] td-datetime-picker'), 3000, 'd9');
     expect(dtp3.getDBValue() || '').to.equal('');
     expect(warns.filter((w) => /date|ngày|YYYY/i.test(w)).length).to.equal(1);
   });
@@ -1088,7 +1172,9 @@ describe('td-media-picker — facets + typed scalars (decision 18, R1-6)', () =>
     await wait(30);
     await chipPick(q('.td-media-picker__facets td-chip-input'), 'Hero');
     await until(() => JSON.stringify(ad.calls.list.at(-1).args[0].filters.tags) === '["hero"]', 3000, 'tags filter');
-    expect(q('.td-media-picker__filters-toggle').textContent.includes('3')).to.equal(true);
+    // v0.33: no "Bộ lọc (n)" toggle — the three filters are all in force, inline
+    expect(Object.keys(ad.calls.list.at(-1).args[0].filters).sort()).to.deep.equal(['album', 'scope', 'tags']);
+    expect(q('.td-media-picker__filters-toggle') === null).to.equal(true);
   });
 
   it('typed facet values: 1, "1", true, null are distinct; multiple keeps 1 and "1"', async () => {
@@ -1126,15 +1212,15 @@ describe('td-media-picker — cache after a change (R1-7)', () => {
     click(tick('m60'));
     opener('m60').focus();
     await sendKeys({ press: 'Enter' });
-    await until(() => q('.td-media-picker__edit'));
-    q('.td-media-picker__edit').click();
+    await detailReady('m60');
     const input = await until(() => q('.td-media-picker__field[data-key="title"] input'));
     input.focus();
     input.select();
     await sendKeys({ type: 'Z' });
+    await until(() => saveEnabled(), 3000, 'save enabled');
     const before = ad.calls.list.length;
     const facetsBefore = ad.calls.facets.length;
-    q('.td-media-picker__save').click();
+    saveBtn().click();
     await until(() => ad.calls.list.length === before + 1);
     expect(ad.calls.facets.length > facetsBefore).to.equal(true);
     await until(() => grid().selectedIds.includes('m60') && item('m60').querySelector('.td-media-picker__name').textContent === 'Z', 3000, 'reloaded, still selected');
@@ -1145,7 +1231,7 @@ describe('td-media-picker — cache after a change (R1-7)', () => {
     await until(() => ad.calls.list.length === n + 1, 3000, 'list called again');
     await until(() => item('m60')?.querySelector('.td-media-picker__name').textContent === 'Z', 3000, 'tile Z');
     expect(grid().selectedIds.includes('m60')).to.equal(true);
-    expect(trayIds().length).to.equal(1);
+    expect(selCount()).to.equal(1);
   });
 
   it('upload created → back to the previous query shows the new item (cache dropped)', async () => {
@@ -1154,7 +1240,7 @@ describe('td-media-picker — cache after a change (R1-7)', () => {
     await until(() => items().length && ids().every((id) => assetName(id).includes('anh-1')));
     await search('');
     await until(() => ids()[0] === 'm60');
-    q('.td-media-picker__upload-toggle').click();
+    await openUpload();
     dropzone().addFiles([file('anh-1-moi.png')]);
     await until(() => ids()[0] !== 'm60', 4000);
     const n = ad.calls.list.length;
@@ -1165,27 +1251,26 @@ describe('td-media-picker — cache after a change (R1-7)', () => {
 });
 
 describe('td-media-picker — mobile, motion, forced colours', () => {
-  it('375×740: bottom sheet; detail replaces the grid + "Quay lại" returns focus; facets behind "Bộ lọc"; tray count only', async () => {
+  it('375×740 (v0.33: full viewport, no sheet): detail pane slides over the list + "Quay lại" returns focus; facets inline (no "Bộ lọc"); footer count only', async () => {
     await setViewport({ width: 375, height: 740 });
     await openReady({ selection: { mode: 'multiple', maxItems: 5 } });
-    await openSettled(); // the sheet slides up from translateY(100%): measure only once it has landed
+    await openSettled();
     const dialog = q('.td-media-picker__dialog');
     const r = dialog.getBoundingClientRect();
     expect(Math.abs(r.bottom - 740) <= 1, `bottom ${r.bottom}`).to.equal(true);
+    expect(Math.abs(r.top) <= 1, `top ${r.top}`).to.equal(true);
     expect(Math.abs(r.width - 375) <= 1, `width ${r.width}`).to.equal(true);
-    await until(() => q('.td-media-picker__filters-toggle') && !q('.td-media-picker__filters-toggle').hidden, 3000, 'filters toggle');
-    expect(getComputedStyle(q('.td-media-picker__facets')).display).to.equal('none');
-    q('.td-media-picker__filters-toggle').click();
-    expect(q('.td-media-picker__filters-toggle').getAttribute('aria-expanded')).to.equal('true');
+    await until(() => q('.td-media-picker__facets') && !q('.td-media-picker__facets').hidden, 3000, 'facets');
+    expect(q('.td-media-picker__filters-toggle') === null).to.equal(true);
     expect(getComputedStyle(q('.td-media-picker__facets')).display).to.not.equal('none');
     click(tick('m60'));
-    expect(getComputedStyle(q('.td-media-picker__tray-list')).display).to.equal('none');
+    expect(q('.td-media-picker__tray-list') === null, 'no thumb tray').to.equal(true);
+    expect(selCount()).to.equal(1);
     opener('m59').focus();
     await sendKeys({ press: 'Enter' });
     await until(() => pickerRoot().getAttribute('data-view') === 'detail', 3000, 'detail view');
-    expect(getComputedStyle(q('.td-media-picker__results')).display).to.equal('none');
-    await until(() => document.activeElement?.classList.contains('td-media-picker__back'), 3000, 'back focused');
-    document.activeElement.click();
+    await until(() => document.activeElement === q('.td-media-picker__detail-name'), 3000, 'pane heading focused');
+    q('.td-media-picker__back').click();
     await until(() => document.activeElement === opener('m59'), 3000, 'focus back on the item');
     expect(pickerRoot().getAttribute('data-view')).to.equal('grid');
   });
@@ -1199,15 +1284,15 @@ describe('td-media-picker — mobile, motion, forced colours', () => {
     await p;
   });
 
-  it('forced colours → dialog, tiles and buttons keep a visible border', async () => {
+  it('forced colours → dialog, cards and buttons keep a visible border', async () => {
     await emulateMedia({ forcedColors: 'active' });
     extra.push(() => emulateMedia({ forcedColors: 'none' }));
     if (!matchMedia('(forced-colors: active)').matches) return; // engine cannot emulate
     await openReady();
     const bw = (el) => parseFloat(getComputedStyle(el).borderTopWidth);
     expect(bw(q('.td-media-picker__dialog')) > 0).to.equal(true);
-    expect(bw(opener('m60')) > 0).to.equal(true);
-    expect(bw(confirmBtn()) > 0).to.equal(true);
+    expect(bw(item('m60')) > 0).to.equal(true);
+    expect(bw(q('.td-media-picker__cancel .td-btn')) > 0).to.equal(true);
   });
 });
 
@@ -1243,11 +1328,13 @@ describe('td-media-picker — XSS / safety', () => {
       messages: { title: PAY, confirm: PAY, loadMore: () => PAY },
     });
     click(opener('m3'));
-    await until(() => q('.td-media-picker__edit'));
-    q('.td-media-picker__edit').click();
-    await until(() => q('.td-media-picker__save'));
+    await until(() => q('.td-media-picker__detail-name')?.textContent === PAY && !q('.td-media-picker__detail').hasAttribute('data-loading'));
+    await until(() => saveBtn());
+    q('.td-media-picker__field[data-key="title"] input').focus();
+    await sendKeys({ type: 'x' });
+    await until(() => saveEnabled(), 3000, 'save enabled');
     ad.manual = true;
-    q('.td-media-picker__save').click();
+    saveBtn().click();
     await until(() => ad.calls.update.length);
     ad.calls.update[0].reject(Object.assign(new Error(PAY), { code: 'validation', userMessage: PAY, fieldErrors: { title: [PAY], other: [PAY] } }));
     await wait(80);
@@ -1260,8 +1347,17 @@ describe('td-media-picker — XSS / safety', () => {
       const src = img.getAttribute('src') || '';
       expect(/^(javascript|data|file):/i.test(src), src).to.equal(false);
     }
+    // v0.33 (plan decision 37): td-media-grid owns the tile sizing through CSSOM (not blocked by CSP style-src-attr) —
+    // the ONLY inline styles allowed are those kit-owned sizing properties on a grid item / opener / its first media;
+    // nothing from the adapter can ever reach a style.
+    const GRID_OWNED = new Set(['width', 'height', 'max-width', 'object-fit', 'aspect-ratio']);
     for (const el of [root, ...root.querySelectorAll('*')]) {
-      expect(el.hasAttribute('style'), `${el.localName}.${el.className} style="${el.getAttribute('style')}"`).to.equal(false);
+      if (el.hasAttribute('style')) {
+        const inGrid = !!el.closest('td-media-grid [data-td-media-item]');
+        const props = [...el.style];
+        const ok = inGrid && props.length > 0 && props.every((p) => GRID_OWNED.has(p) || p.startsWith('--td-mg-'));
+        expect(ok, `${el.localName}.${el.className} style="${el.getAttribute('style')}"`).to.equal(true);
+      }
       for (const a of el.attributes) expect(/^on/i.test(a.name), `${el.localName} ${a.name}`).to.equal(false);
     }
     const added = Object.keys(window).filter((k) => !globals.has(k) && k !== '__mpXss');
@@ -1329,20 +1425,25 @@ describe('td-media-picker — review SEC-2: raw adapter errors never reach the c
     const promise = TdMediaPicker.open({ adapter: ad, assetFields: assetFields(), selection: { mode: 'multiple', initialIds: ['m2'] } });
     await until(() => items().length, 3000, 'list');
     click(opener('m59'));
-    await until(() => q('.td-media-picker__edit'), 3000, 'edit button');
-    q('.td-media-picker__edit').click();
-    await until(() => q('.td-media-picker__save'), 3000, 'save');
-    q('.td-media-picker__save').click();
+    await detailReady('m59');
+    await until(() => saveBtn(), 3000, 'save');
+    q('.td-media-picker__field[data-key="title"] input').focus();
+    await sendKeys({ type: 'x' });
+    await until(() => saveEnabled(), 3000, 'save enabled');
+    saveBtn().click();
     await until(() => q('.td-media-picker__notice:not([hidden])'), 3000, 'update error');
     opener('m60').focus();
     await sendKeys({ press: 'Enter' }); // detail get(m60) rejects
     await until(() => discardDialog() || q('.td-media-picker__detail-name')?.textContent === assetName('m60'), 3000, 'detail');
     if (discardDialog()) clickDiscard(true);
-    q('.td-media-picker__upload-toggle').click();
+    await until(() => discardDialog() === null, 3000, 'discard closed');
+    await openUpload();
     dropzone().addFiles([file('a.png')]);
     await until(() => dropzone().querySelector('[data-status="error"]'), 3000, 'upload error');
     dropzone().addFiles([file('b.png')]);
     await until(() => dropzone().querySelectorAll('[data-status="error"]').length === 2, 3000, 'malformed upload');
+    uploadRoot().querySelector('.td-modal__close').click(); // errors keep the dialog open — close it (nothing running)
+    await until(() => uploadRoot() === null, 3000, 'upload dialog closed');
     await search('x'); // list #2 rejects
     await until(() => !q('.td-media-picker__error').hidden, 3000, 'list error');
     await wait(50);
@@ -1362,8 +1463,7 @@ describe('td-media-picker — impl review round 1', () => {
   const dirtyEdit = async (id = 'm60', o = {}) => {
     const r = await openReady({ assetFields: assetFields(), ...o });
     click(opener(id));
-    await until(() => q('.td-media-picker__edit'), 3000, 'edit button');
-    q('.td-media-picker__edit').click();
+    await detailReady(id);
     const title = await until(() => q('.td-media-picker__field[data-key="title"] input'), 3000, 'title');
     title.focus();
     await sendKeys({ type: 'x' });
@@ -1377,7 +1477,8 @@ describe('td-media-picker — impl review round 1', () => {
     click(opener('m59'));
     await until(() => discardDialog(), 3000, 'discard dialog');
     expect(grid().selectedIds).to.deep.equal(['m60']);
-    expect(confirmBtn().textContent).to.equal('Chọn (1)');
+    expect(btnText(confirmBtn())).to.equal('Chèn');
+    expect(confirmBtn().hasAttribute('disabled')).to.equal(false);
     expect(changes.length).to.equal(0);
     clickDiscard(false);
     await wait(80);
@@ -1404,7 +1505,8 @@ describe('td-media-picker — impl review round 1', () => {
     await wait(30);
     expect(live()).to.equal(TdMediaPicker.labels.notReady);
     expect(grid().selectedIds).to.deep.equal(['m60']);
-    expect(confirmBtn().textContent).to.equal('Chọn (1)');
+    expect(btnText(confirmBtn())).to.equal('Chèn');
+    expect(confirmBtn().hasAttribute('disabled')).to.equal(false);
   });
 
   it('#3 conflict reload gives the NEW asset to visibleWhen', async () => {
@@ -1412,12 +1514,14 @@ describe('td-media-picker — impl review round 1', () => {
     const fields = [...assetFields(), { key: 'note', label: 'Ghi chú v2', control: 'text', visibleWhen: (v, asset) => !!asset && asset.version >= 2 }];
     await openReady({ adapter: ad, assetFields: fields });
     click(opener('m60'));
-    await until(() => q('.td-media-picker__edit'), 3000, 'edit');
-    q('.td-media-picker__edit').click();
-    await until(() => q('.td-media-picker__save'), 3000, 'save');
+    await detailReady('m60');
+    await until(() => saveBtn(), 3000, 'save');
     expect(q('.td-media-picker__field[data-key="note"]').hidden).to.equal(true);
     ad.db.get('m60').version = 2; // changed elsewhere → the save conflicts
-    q('.td-media-picker__save').click();
+    q('.td-media-picker__field[data-key="title"] input').focus();
+    await sendKeys({ type: 'x' });
+    await until(() => saveEnabled(), 3000, 'save enabled');
+    saveBtn().click();
     await until(() => q('.td-media-picker__reload'), 3000, 'reload button');
     q('.td-media-picker__reload').click();
     await until(() => !q('.td-media-picker__field[data-key="note"]').hidden, 3000, 'note visible for v2');
@@ -1435,7 +1539,7 @@ describe('td-media-picker — impl review round 1', () => {
     const changes = [];
     await openReady({ adapter: ad });
     document.querySelector('td-media-picker').addEventListener('asset-change', (e) => changes.push(e.detail));
-    q('.td-media-picker__upload-toggle').click();
+    await openUpload();
     dropzone().addFiles([file('a.png')]);
     dropzone().addFiles([file('b.png')]);
     dropzone().addFiles([file('c.png')]);

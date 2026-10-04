@@ -50,7 +50,7 @@ lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong 
 |---|---|---|---|
 | [Modal](modal.md) | `TdModal` (+ `TdModalStackManager`) | `/modal`, `/modal-stack` | Hộp thoại, xác nhận, footer có hành động bất đồng bộ, nhiều modal chồng nhau |
 | [Drawer](drawer.md) | `<td-drawer>` + `TdDrawer.open()` | `/drawer` | Panel trượt từ cạnh màn hình (bộ lọc, sửa nhanh, chi tiết), chặn trang như modal; khai báo trong HTML hoặc mở từ JS |
-| [Media picker](media-picker.md) | `TdMediaPicker.open()` + `<td-media-picker>` | `/media-picker` | Hộp thoại thư viện media (bottom sheet trên điện thoại): tìm, facet, "Tải thêm", chọn đơn / nhiều, tải lên có tiến độ / dedup, sửa thông tin theo descriptor — dữ liệu qua **adapter** của site |
+| [Media picker](media-picker.md) | `TdMediaPicker.open()` + `<td-media-picker>` | `/media-picker` | Thư viện media full viewport kiểu dcms2: tìm, facet gọn, phân trang (cursor / số trang), card, chi tiết inline (sửa thông tin, tải về, copy link, xoá có kiểm usage ở server), dialog tải lên file / URL — dữ liệu qua **adapter** của site |
 | [Toast](toast.md) | `TdToast` | `/toast` | Thông báo ngắn góc màn hình (thành công/lỗi/cảnh báo/thông tin) |
 | [Tooltip](tooltip.md) | `data-tooltip` + `TdTooltip` | `/tooltip` | Chú thích khi rê chuột/focus (giao diện + hành vi dwp) |
 | [Loading](loading.md) | `TdLoading`, `TdLoadingSpinner` | `/loading` | Màn chờ toàn trang, spinner nội tuyến |

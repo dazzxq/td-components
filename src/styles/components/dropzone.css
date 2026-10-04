@@ -4,6 +4,9 @@
  * button (.td-btn--secondary, G1/G3); file rows are plain fills; per-file progress = <td-progress size="sm">.
  * State: data-state="idle|dragover" + [data-disabled] on .td-dropzone · data-status on .td-dropzone__item
  * (selected|uploading|done|error) + [data-waiting] (v0.19.0: uploading, no progress yet → indeterminate bar) · data-reason on .td-dropzone__reject · [hidden] on hint / lists / status / progress.
+ * v0.33.0 presentation (additive, dcms2 look): .td-dropzone--stacked (prompt-title / prompt-text: 64 px icon → title →
+ * muted sub-line → button; 2px dashed, larger radius + padding) · .td-dropzone__hint--badges (hint-style="badges": a row
+ * of .td-badge.td-dropzone__badge — the badge look is badge.css, __badge only spaces).
  */
 @layer td.tokens {
 	:root {
@@ -20,6 +23,13 @@
 		--td-dropzone-item-radius: var(--td-radius-md);
 		--td-dropzone-thumb: 40px;
 		--td-dropzone-reject: var(--td-color-error);
+		/* v0.33.0 stacked presentation (dcms2: py-16 px-8, rounded-2xl, 2px dashed, 64 px icon, title 1.25rem/600) */
+		--td-dropzone-stacked-pad: calc(var(--td-space-md) * 4) calc(var(--td-space-md) * 2);
+		--td-dropzone-stacked-radius: var(--td-radius-xl);
+		--td-dropzone-stacked-border-width: 2px;
+		--td-dropzone-stacked-icon: 64px;
+		--td-dropzone-title-size: var(--td-text-lg);
+		--td-dropzone-title-weight: var(--td-fw-semibold);
 	}
 }
 
@@ -124,6 +134,64 @@
 		margin: 0;
 		font-size: var(--td-text-xs);
 		color: var(--td-dropzone-hint);
+	}
+
+	/* v0.33.0 — stacked zone (prompt-title / prompt-text). The whole zone stays the click target. */
+	.td-dropzone--stacked .td-dropzone__zone {
+		gap: var(--td-space-xs);
+		padding: var(--td-dropzone-stacked-pad);
+		border-width: var(--td-dropzone-stacked-border-width);
+		border-radius: var(--td-dropzone-stacked-radius);
+	}
+
+	.td-dropzone--stacked .td-dropzone__icon {
+		margin-bottom: var(--td-space-xs);
+	}
+
+	.td-dropzone--stacked .td-dropzone__icon .td-icon {
+		width: var(--td-dropzone-stacked-icon);
+		height: var(--td-dropzone-stacked-icon);
+	}
+
+	.td-dropzone__title {
+		margin: 0;
+		font-size: var(--td-dropzone-title-size);
+		font-weight: var(--td-dropzone-title-weight);
+		line-height: var(--td-leading-tight);
+		color: var(--td-field-fg);
+		overflow-wrap: anywhere;
+	}
+
+	.td-dropzone__subtext {
+		margin: 0;
+		font-size: var(--td-text-sm);
+		color: var(--td-dropzone-hint);
+		overflow-wrap: anywhere;
+	}
+
+	.td-dropzone[data-disabled] .td-dropzone__title,
+	.td-dropzone[data-disabled] .td-dropzone__subtext {
+		color: var(--td-field-fg-disabled);
+	}
+
+	.td-dropzone--stacked .td-dropzone__prompt {
+		margin-top: var(--td-space-2xs);
+	}
+
+	/* v0.33.0 — hint-style="badges": a wrapping row of .td-badge (look from badge.css; only spacing here). */
+	.td-dropzone__hint--badges {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+		justify-content: center;
+		margin-top: var(--td-space-xs);
+	}
+
+	/* two classes: badge.css loads after this file; a long accept-label wraps instead of overflowing a phone */
+	.td-dropzone__hint--badges .td-dropzone__badge {
+		margin: 0;
+		white-space: normal;
+		overflow-wrap: anywhere;
 	}
 
 	.td-dropzone__hint[hidden],

@@ -59,5 +59,11 @@
   "grid-template-columns",
   "column-gap",
   "row-gap",
-  "touch-action"
+  "touch-action",
+  "max-width",
+  "aspect-ratio",
+  "object-fit",
+  "--td-mg-w",
+  "--td-mg-sub",
+  "--td-mg-k"
 ]
