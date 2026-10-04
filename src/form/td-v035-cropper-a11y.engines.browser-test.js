@@ -317,12 +317,20 @@ describe('td-cropper keyboard + ARIA (v0.35.0)', () => {
     });
   }
 
-  it('unknown sizes: a zero-size SVG ⇒ size; natural-* off by > 1 % ⇒ ratio; a missing file ⇒ load', async () => {
+  it('unknown sizes: a zero-size SVG ⇒ size (or an engine default size); natural-* off by > 1 % ⇒ ratio; a missing file ⇒ load', async () => {
     for (const [attrs, kind] of [[{ src: NO_SIZE }, 'size'], [{ 'natural-width': '1000', 'natural-height': '1000' }, 'ratio'],
       [{ src: '/test/fixtures/does-not-exist.svg' }, 'load']]) {
+      let readyDetail = null;
       const got = await new Promise((resolve) => {
-        mount(attrs, { wait: false, events: { 'image-error': (e) => resolve(e.detail.kind), 'image-ready': () => resolve('ready') } });
+        mount(attrs, { wait: false, events: { 'image-error': (e) => resolve(e.detail.kind),
+          'image-ready': (e) => { readyDetail = e.detail; resolve('ready'); } } });
       });
+      if (attrs.src === NO_SIZE && got === 'ready') {
+        // Linux WebKit (CI) gives a width="0" height="0" SVG a non-zero default object size, so it is not detectable as
+        // "no size" there; the 'size' branch only fires where the engine reports 0. Real raster images always carry a size.
+        expect(readyDetail && readyDetail.naturalWidth > 0 && readyDetail.naturalHeight > 0, 'engine default size').to.equal(true);
+        continue;
+      }
       expect(got, JSON.stringify(attrs)).to.equal(kind);
     }
     // within 1 %: ready, pixels in the given (original) size
