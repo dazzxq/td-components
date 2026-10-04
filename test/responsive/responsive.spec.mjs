@@ -13,8 +13,9 @@
  * Fallback  the same static checks with a td.css whose container queries never match and whose
  *            `@supports not (container-type)` fallbacks are forced on (simulates Chrome/Edge 102–104).
  *
- * PENDING M0 (plan v0.34.0, after v0.33 merges): media picker / media grid / dropzone scenarios and the ordinary-modal
- * sheet-vs-centred threshold (modal.css) — listed in PENDING below, reported, not asserted.
+ * M0 (after v0.33): media picker (always .td-modal--viewport: dialog = viewport at every size; inner layout switches
+ * at 720 — toolbar wraps / detail is a sliding pane below it; short band keeps ≥ 1 row of cards visible), media grid
+ * (default, sortable gallery, justified), dropzone, and the ordinary-modal sheet (< 720) vs centred (≥ 720) rule.
  *
  * Run: npm run test:responsive   (RSP_ENGINES=chromium,webkit RSP_ONLY=<config tag substring> for a subset)
  */
@@ -31,22 +32,15 @@ const OUT = join(ROOT, 'test', 'responsive', '__out__');
 const ORIGIN = 'http://responsive.local';
 const MIME = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.css': 'text/css' };
 
-export const PENDING = [
-  'media picker (td-media-picker): v0.33 rewrites the shell — re-audit + assertions in M0',
-  'media grid / dropzone: v0.33 rewrites them — touch ticks + container Σ in M0',
-  'ordinary TdModal: sheet < 720 / centred ≥ 720 (modal.css owned by v0.33) — M0',
-];
 
 /** Elements exempt from the touch-target rule (each with the reason). */
 const ALLOW = [
   '.td-toast__close', // visually hidden until focused; the whole toast is the tap target (plan QĐ 5)
-  '.td-media-grid__tick', // PENDING M0
   '.td-sr-only, .td-sr-only *',
-  'td-sortable[role="none"] [data-td-sort-handle]', // inside td-media-grid — PENDING M0
 ];
 
 const W8 = [[360, 780], [393, 852], [430, 932], [768, 1024], [884, 1104], [1024, 768], [1280, 800], [1440, 900]];
-const EXTRA = [[744, 1133], [600, 960], [844, 390], [932, 430]];
+const EXTRA = [[744, 1133], [700, 900], [600, 960], [844, 390], [932, 430]]; // 700: just under md (720)
 const CONFIGS = [];
 for (const [w, h] of W8) CONFIGS.push({ engine: 'chromium', w, h, touch: false, shots: true });
 for (const [w, h] of W8.filter(([w]) => w <= 1024)) CONFIGS.push({ engine: 'chromium', w, h, touch: true, shots: true });
@@ -73,6 +67,10 @@ const SCENARIOS = [
   { name: 'lightbox', act: (p) => p.evaluate(() => window.__openers.lightbox()), panel: '.td-lightbox', see: ['.td-lightbox__close'] },
   { name: 'lightbox-panel', act: (p) => p.evaluate(() => window.__openers.lightboxPanel()), panel: '.td-lightbox', see: ['.td-lightbox__close'] },
   { name: 'loading', act: (p) => p.evaluate(() => window.__openers.loading()), panel: '.td-loading__card' },
+  { name: 'media-picker', act: (p) => p.evaluate(() => { window.__openers.picker(); }), panel: '.td-media-picker .td-modal__dialog', ready: '.td-media-picker__card', picker: true, see: ['.td-media-picker .td-modal__close', '.td-media-picker__confirm'] },
+  { name: 'media-picker-multiple', act: (p) => p.evaluate(() => { window.__openers.picker(true); }), panel: '.td-media-picker .td-modal__dialog', ready: '.td-media-picker__card', picker: true, see: ['.td-media-picker .td-modal__close', '.td-media-picker__confirm'] },
+  { name: 'media-picker-pages', act: (p) => p.evaluate(() => { window.__openers.picker(false, true); }), panel: '.td-media-picker .td-modal__dialog', ready: '.td-media-picker__card', picker: true, see: ['.td-media-picker .td-modal__close', '.td-media-picker__pager td-pagination'] },
+  { name: 'media-picker-upload', act: async (p) => { await p.evaluate(() => { window.__openers.picker(); }); await p.locator('.td-media-picker__card').first().waitFor(); await p.click('.td-media-picker__upload-btn'); }, panel: '.td-modal__dialog', see: ['.td-modal__dialog .td-modal__close'] },
 ];
 
 const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
@@ -218,13 +216,43 @@ async function runOverlays(page, c, tag, shot) {
         check(tag, `${s.name}: did not open`, [s.panel]);
         continue;
       }
+      if (s.ready) await page.locator(s.ready).first().waitFor({ state: 'visible' });
       await page.evaluate(settle);
       const m = await page.evaluate(panel, s.panel);
+      const vp = await page.evaluate(() => ({ w: document.documentElement.clientWidth, h: window.innerHeight }));
+      if (s.picker) {
+        // always full viewport (v0.33 decision 4); inner layout: toolbar wraps < 720 (ADR 0014), one row ≥ 720
+        const near = (a, b) => Math.abs(a - b) <= 1;
+        const err = [];
+        if (!(near(m.left, 0) && near(m.top, 0) && near(m.width, vp.w) && near(m.height, vp.h))) err.push(`dialog ${Math.round(m.left)},${Math.round(m.top)} ${Math.round(m.width)}×${Math.round(m.height)} ≠ viewport ${vp.w}×${vp.h}`);
+        const wrap = await page.evaluate(() => getComputedStyle(document.querySelector('.td-media-picker__toolbar')).flexWrap);
+        if ((vp.w < 720) !== (wrap === 'wrap')) err.push(`toolbar flex-wrap ${wrap} at ${vp.w}px (wrap below 720)`);
+        const gridH = await page.evaluate(() => {
+          const g = document.querySelector('.td-media-picker__grid');
+          const r = document.querySelector('.td-media-picker__results') || g;
+          return Math.min(g.getBoundingClientRect().bottom, r.getBoundingClientRect().bottom, window.innerHeight)
+            - Math.max(g.getBoundingClientRect().top, r.getBoundingClientRect().top, 0);
+        });
+        if (gridH < 112) err.push(`visible grid height ${Math.round(gridH)}px < 112 (one row of cards)`);
+        check(tag, `${s.name}: viewport dialog + inner layout`, err);
+      }
+      if (s.name === 'modal-confirm' || s.name === 'modal-long') {
+        // ordinary TdModal: bottom sheet below 720 (full width, glued to the bottom), centred dialog from 720
+        const sheet = Math.abs(m.bottom - vp.h) <= 1 && Math.abs(m.width - vp.w) <= 1;
+        if ((vp.w < 720) !== sheet) check(tag, `${s.name}: sheet below 720 / centred from 720`, [`${sheet ? 'sheet' : 'centred'} at ${vp.w}px`]);
+        else checks += 1;
+      }
       const f = await shot(`ov-${s.name}`);
       const w = f ? ` (screenshot ${f})` : '';
       check(tag, `${s.name}: inside the viewport${w}`, await page.evaluate(inViewport, [s.panel, ...(s.see || [])]));
       check(tag, `${s.name}: page horizontal scroll${w}`, (await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)) ? ['scrollWidth > clientWidth'] : []);
-      const a = await page.evaluate(analyze, { root: s.panel, targets: true, coarse: c.touch, allow: ALLOW });
+      let a = await page.evaluate(analyze, { root: s.panel, targets: true, coarse: c.touch, allow: ALLOW });
+      if (a.targets.length) {
+        // a late layout change (image decode, list re-render under load) can land between settle and the probes:
+        // settle again on real signals and measure once more — a real defect fails both times
+        await page.evaluate(settle);
+        a = await page.evaluate(analyze, { root: s.panel, targets: true, coarse: c.touch, allow: ALLOW });
+      }
       check(tag, `${s.name}: touch targets${w}`, a.targets);
       if (!m.found) check(tag, `${s.name}: panel`, ['not found']);
     }
@@ -255,7 +283,6 @@ await Promise.all([
   runEngine('firefox', firefox, selected.filter((c) => c.engine === 'firefox')),
 ]);
 for (const n of notes) console.log(`note: ${n}`);
-for (const p of PENDING) console.log(`pending: ${p}`);
 console.log(`responsive gate: ${selected.length} configurations, ${checks} checks, ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 if (failures.length) {
   console.error(`\n${failures.length} failure(s):\n${failures.join('\n')}`);

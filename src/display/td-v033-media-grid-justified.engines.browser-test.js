@@ -80,7 +80,7 @@ function rows(grid) {
 function checkInvariants(grid, box, ars, label = '') {
   const cw = box.getBoundingClientRect().width;
   const gap = gapOf(box);
-  const target = parseFloat(getComputedStyle(grid).getPropertyValue('--td-media-grid-row-ratio'));
+  const target = parseFloat(getComputedStyle(itemsOf(grid)[0]).getPropertyValue('--_td-mg-sigma')); // v0.34.0: per grid width
   const expected = rowStyles(packRows(ars, target), target, gap, cw);
   const got = rows(grid);
   expect(got.length, `${label} row count`).to.equal(expected.length);
@@ -114,7 +114,7 @@ function checkInvariants(grid, box, ars, label = '') {
 
 /** expected ids per row from packRows() (items in DOM order) */
 function idsByPackRows(ars, grid) {
-  const target = parseFloat(getComputedStyle(grid).getPropertyValue('--td-media-grid-row-ratio'));
+  const target = parseFloat(getComputedStyle(itemsOf(grid)[0]).getPropertyValue('--_td-mg-sigma')); // v0.34.0: per grid width
   const ids = itemsOf(grid).map((el) => el.dataset.id);
   let i = 0;
   return packRows(ars, target).map((row) => row.map(() => ids[i++]));
@@ -174,7 +174,7 @@ describe('td-media-grid layout="justified" — geometry', () => {
         + '</td-media-grid>';
       const grid = root.querySelector('td-media-grid');
       await waitFor(() => settled(grid), 4000, 'row vars');
-      expect(getComputedStyle(grid).getPropertyValue('--td-media-grid-row-ratio').trim()).to.equal('5.5');
+      expect(getComputedStyle(itemsOf(grid)[0]).getPropertyValue('--_td-mg-sigma').trim()).to.equal('5.5');
       const { got } = checkInvariants(grid, grid, ars, `not-fit@${vw}`);
       const cw = grid.getBoundingClientRect().width;
       const gap = gapOf(grid);
@@ -188,13 +188,20 @@ describe('td-media-grid layout="justified" — geometry', () => {
     });
   }
 
-  it('Σ target follows the viewport token (5.5 / ≤1024px 4 / ≤640px 2.5)', async () => {
+  it('Σ target follows the GRID width (v0.34.0 container query: ≥ 1024 5.5 / 720–1023 4 / < 720 2.5), not the viewport', async () => {
+    await setViewport({ width: 1280, height: 900 });
+    await waitFor(() => window.innerWidth === 1280, 4000, 'viewport');
     const { grid } = mount();
-    for (const [vw, t] of [[1280, '5.5'], [1000, '4'], [600, '2.5']]) {
-      await setViewport({ width: vw, height: 900 });
-      await waitFor(() => window.innerWidth === vw, 4000, 'viewport');
-      expect(getComputedStyle(grid).getPropertyValue('--td-media-grid-row-ratio').trim()).to.equal(t);
+    const sigma = () => getComputedStyle(itemsOf(grid)[0]).getPropertyValue('--_td-mg-sigma').trim();
+    for (const [w, t] of [[1100, '5.5'], [1024, '5.5'], [1023, '4'], [720, '4'], [719, '2.5'], [500, '2.5']]) {
+      grid.style.setProperty('width', `${w}px`);
+      await waitFor(() => Math.round(grid.getBoundingClientRect().width) === w, 4000, `width ${w}`);
+      expect(sigma(), `grid ${w}px in a 1280px viewport`).to.equal(t);
     }
+    // the rows follow: a 500px grid packs with Σ 2.5
+    await waitFor(() => settled(grid), 4000, 'row vars');
+    await frames(3);
+    checkInvariants(grid, grid, MIX.map(arOfKind), 'grid 500px'); // packs with the item-resolved Σ 2.5
   });
 });
 

@@ -444,7 +444,7 @@ describe('batch 3 — td-modal async actions + thenable onConfirm', () => {
 
 /* ---------- layout / contrast ---------- */
 describe('batch 3 — td-modal layout + contrast', () => {
-  it('bottom sheet below 640 px; centred above', async () => {
+  it('bottom sheet below 720 px (ADR 0014; was 640); centred from 720', async () => {
     await setViewport({ width: 480, height: 800 });
     let id = TdModal.show({ title: 'sheet', size: 'lg' });
     await opened();
@@ -460,7 +460,18 @@ describe('batch 3 — td-modal layout + contrast', () => {
     await wait(400);
     r = dialogOf(document.getElementById(id)).getBoundingClientRect();
     expect(Math.round(r.width)).to.equal(384); // 24rem
-    expect(Math.abs((r.top + r.bottom) / 2 - 400)).to.be.below(2);
+    expect(Math.abs((r.top + r.bottom) / 2 - 400)).to.be.below(2);    TdModal.closeAll();
+    // the md boundary (v0.34.0): 719 = sheet, 720 = centred
+    for (const [w, sheet] of [[719, true], [720, false]]) {
+      await setViewport({ width: w, height: 800 });
+      id = TdModal.show({ title: String(w), size: 'sm' });
+      await opened();
+      await wait(400);
+      r = dialogOf(document.getElementById(id)).getBoundingClientRect();
+      expect(Math.round(r.bottom) === 800 && Math.round(r.width) === w, `${w}px sheet`).to.equal(sheet);
+      TdModal.closeAll();
+    }
+    await setViewport({ width: 800, height: 600 });
   });
 
   function rgba(str) {

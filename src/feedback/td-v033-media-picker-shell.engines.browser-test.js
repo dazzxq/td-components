@@ -146,7 +146,7 @@ describe('v0.33 td-media-picker — full viewport shell (decisions 4-6)', () => 
 });
 
 describe('v0.33 td-media-picker — toolbar (decisions 7-10)', () => {
-  it('DOM order upload · search · facets · pager; kit components; aria-labels; one row ≥ 768', async () => {
+  it('DOM order upload · search · facets · pager; kit components; aria-labels; one row ≥ 720 (ADR 0014; v0.33: 768)', async () => {
     await setViewport({ width: 1440, height: 900 });
     await openSettled({ pageSize: 20 });
     await until(() => q('.td-media-picker__facets td-dropdown') && q('.td-media-picker__facets td-chip-input'), 4000, 'facets');
@@ -202,7 +202,7 @@ describe('v0.33 td-media-picker — toolbar (decisions 7-10)', () => {
     expect(Math.abs(tr.right - px(getComputedStyle(tb).paddingRight) - pr.right) <= 1.5, `pager right ${pr.right}`).to.equal(true);
   });
 
-  for (const [w, h] of [[768, 1024], [1024, 768]]) {
+  for (const [w, h] of [[720, 1024], [768, 1024], [1024, 768]]) {
     it(`${w}px: ONE toolbar row (no wrap); facets that do not fit scroll inside the row; keyboard-reachable, focus ring unclipped`, async () => {
       await setViewport({ width: w, height: h });
       await until(() => window.innerWidth === w, 3000, 'viewport');
@@ -254,7 +254,7 @@ describe('v0.33 td-media-picker — toolbar (decisions 7-10)', () => {
     });
   }
 
-  it('< 768: two rows (upload icon-only + search, then facets + pager), no overflow', async () => {
+  it('< 720 (ADR 0014; v0.33: 768): two rows (upload icon-only + search, then facets + pager), no overflow', async () => {
     await setViewport({ width: 390, height: 844 });
     await openSettled({ pageSize: 20 });
     await until(() => q('.td-media-picker__facets td-dropdown'), 4000, 'facets');
@@ -317,7 +317,7 @@ describe('v0.33 td-media-picker — toolbar (decisions 7-10)', () => {
 describe('v0.33 td-media-picker — shell geometry (plan "Hình học")', () => {
   const colCount = (el) => getComputedStyle(el).gridTemplateColumns.split(' ').filter(Boolean).length;
   for (const [w, h, min] of [[1440, 900, 220], [1024, 768, 200], [390, 844, 150]]) {
-    it(`${w}px: grid column minimum ${min}px, gap 16px; detail ${w >= 768 ? '400px' : 'off-canvas'}`, async () => {
+    it(`${w}px: grid column minimum ${min}px, gap 16px; detail ${w >= 720 ? '400px' : 'off-canvas'}`, async () => {
       await setViewport({ width: w, height: h });
       await openSettled({ selection: { mode: 'multiple' } });
       const g = q('td-media-grid');

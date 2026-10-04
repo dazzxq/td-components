@@ -145,7 +145,7 @@ describe('v0.33.0 media picker upload dialog (engines)', () => {
       expect(document.activeElement === base.opener).to.equal(true);
     });
 
-    it('md width on desktop; full viewport below 768px (not the bottom sheet)', async () => {
+    it('md width from 720px; full viewport below 720px (ADR 0014; not the bottom sheet)', async () => {
       await setViewport({ width: 1280, height: 800 });
       try {
         const o = open();
@@ -162,6 +162,18 @@ describe('v0.33.0 media picker upload dialog (engines)', () => {
           return Math.abs(r.width - innerWidth) < 1 && Math.abs(r.height - innerHeight) < 1 && Math.abs(r.top) < 1;
         }, 3000, 'full viewport');
         expect(getComputedStyle(d2).borderTopLeftRadius).to.equal('0px');
+        p.h.destroy();
+        // the md / full-viewport boundary is 720 (v0.33: 768)
+        for (const [w, full] of [[719, true], [720, false]]) {
+          await setViewport({ width: w, height: 900 });
+          await until(() => window.innerWidth === w, 3000, `viewport ${w}`);
+          const b = open();
+          await until(b.isOpen);
+          const d = b.q('.td-modal__dialog');
+          await until(() => (Math.abs(d.getBoundingClientRect().width - innerWidth) < 1) === full
+            && (full || Math.abs(d.getBoundingClientRect().width - 512) < 2), 3000, `${w}px ${full ? 'full viewport' : 'md'}`);
+          b.h.destroy();
+        }
       } finally {
         await setViewport({ width: 1280, height: 800 });
       }
@@ -180,7 +192,7 @@ describe('v0.33.0 media picker upload dialog (engines)', () => {
       expect(p.rec.closed).to.equal(1);
     });
 
-    it('< 768px full viewport also with a nonzero --td-scroll-lock-gap (fills to the right edge)', async () => {
+    it('< 720px full viewport also with a nonzero --td-scroll-lock-gap (fills to the right edge)', async () => {
       await setViewport({ width: 390, height: 844 });
       const html = document.documentElement;
       html.style.setProperty('--td-scroll-lock-gap', '17px');

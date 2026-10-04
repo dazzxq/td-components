@@ -108,11 +108,17 @@ export function analyze(opts) {
       if (!vis(target)) continue;
       let rr = target.getBoundingClientRect();
       if (rr.width >= min && rr.height >= min) continue;
-      if (rr.bottom < 0 || rr.top > vh) target.scrollIntoView({ block: 'center', inline: 'nearest' });
+      // bring it into view when it is off-screen OR clipped / covered (e.g. below a scroller's visible part, under a
+      // dialog footer): never smooth — measure where it lands
+      const cHit = (() => {
+        const x = rr.left + rr.width / 2; const y = rr.top + rr.height / 2;
+        if (x < 0 || y < 0 || x >= vw || y >= vh) return false;
+        const h = document.elementFromPoint(x, y);
+        return !!h && (h === target || target.contains(h));
+      })();
+      if (!cHit) target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
       rr = target.getBoundingClientRect();
       if (rr.right < 0 || rr.left > vw) continue; // inside a horizontal scroller, scrolled away
-      const cx = rr.left + rr.width / 2;
-      const cy = rr.top + rr.height / 2;
       const half = min / 2 - 0.5;
       const hits = (x, y, axis) => {
         if (x < 0 || y < 0 || x >= vw || y >= vh) return false;
@@ -128,9 +134,19 @@ export function analyze(opts) {
         }
         return false;
       };
-      const w = rr.width >= min || (hits(cx - half, cy, 'x') && hits(cx + half, cy, 'x'));
-      const h = rr.height >= min || (hits(cx, cy - half, 'y') && hits(cx, cy + half, 'y'));
-      if (w && h) continue;
+      const measure = () => {
+        const b = target.getBoundingClientRect();
+        const x = b.left + b.width / 2; const y = b.top + b.height / 2;
+        rr = b;
+        return (b.width >= min || (hits(x - half, y, 'x') && hits(x + half, y, 'x')))
+          && (b.height >= min || (hits(x, y - half, 'y') && hits(x, y + half, 'y')));
+      };
+      if (measure()) continue;
+      // a probe may have left a partly clipped target (edge of a scroller): centre it once and measure again
+      if (cHit) {
+        target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' });
+        if (measure()) continue;
+      }
       const label = (target.getAttribute('aria-label') || target.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 30);
       out.targets.push(`${path(target)} "${label}" ${Math.round(rr.width)}×${Math.round(rr.height)} < ${min}`);
     }

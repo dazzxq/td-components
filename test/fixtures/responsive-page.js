@@ -4,7 +4,8 @@
  * Used by the responsive gate (test/responsive/responsive.spec.mjs) and by demo.html ("Responsive" section).
  * Layout: test/fixtures/responsive-page.css. Exposes `openers` for the overlay scenarios.
  *
- * Media picker / media grid / dropzone are NOT here until plan M0 (v0.33 rewrites them).
+ * M0 (after v0.33): media picker (mock adapter, no network), media grid (default + justified + sortable gallery) and
+ * dropzone are included.
  */
 import '../../src/form/td-button.js';
 import '../../src/form/td-input-field.js';
@@ -37,6 +38,10 @@ import { TdToast } from '../../src/feedback/td-toast.js';
 import { TdModal } from '../../src/feedback/td-modal.js';
 import { TdLoading } from '../../src/feedback/td-loading.js';
 import { TdLightbox } from '../../src/feedback/td-lightbox.js';
+import '../../src/form/td-dropzone.js';
+import '../../src/display/td-media-grid.js';
+import { TdMediaPicker } from '../../src/feedback/td-media-picker.js';
+import { createMockAdapter } from './media-adapter.js';
 
 const LONG = 'Lưu và xuất bản bài viết lên trang chủ ngay bây giờ';
 const TABS = ['Tất cả đơn hàng', 'Chờ xác nhận', 'Đang giao hàng', 'Đã giao thành công', 'Đã huỷ bởi khách', 'Hoàn tiền', 'Khiếu nại', 'Lưu trữ'];
@@ -153,6 +158,10 @@ export function mountResponsiveFixture(root) {
       <div data-td-sort-item data-id="b" data-td-sort-label="Flash sale" class="rsp-sort-item">Flash sale</div>
       <div data-td-sort-item data-id="c" data-td-sort-label="Tin tức" class="rsp-sort-item">Tin tức</div>
     </td-sortable>
+    <td-dropzone label="Tệp đính kèm cho đơn hàng" accept=".pdf,image/*" accept-label="PDF hoặc ảnh" multiple max-size="5MB" max-files="3" preview></td-dropzone>
+    <td-media-grid id="rsp-grid" label="Ảnh sản phẩm" max="3">${[1, 2, 3, 4, 1, 2].map((n, i) => `<div data-td-media-item data-id="g${i}"><a href="/test/fixtures/${n}.svg" data-td-media-open aria-label="Ảnh ${i + 1}"><img src="/test/fixtures/${n}.svg" alt="" class="rsp-thumb"></a></div>`).join('')}</td-media-grid>
+    <td-media-grid id="rsp-grid-sort" label="Thứ tự ảnh"><td-sortable role="none" label="Thứ tự ảnh">${[1, 2, 3, 4].map((n, i) => `<div data-td-media-item data-td-sort-item data-id="s${i}"><button type="button" data-td-media-open aria-label="Ảnh ${i + 1}"><img src="/test/fixtures/${n}.svg" alt="" class="rsp-thumb"></button></div>`).join('')}</td-sortable></td-media-grid>
+    <td-media-grid id="rsp-grid-justified" label="Album" layout="justified" select-mode="tick">${[['1', 1200, 800], ['portrait', 800, 1200], ['panorama', 1800, 600], ['square', 1000, 1000], ['photo', 1200, 800], ['portrait', 800, 1200], ['1', 1200, 800], ['square', 1000, 1000]].map(([n, w, h], i) => `<div data-td-media-item data-id="j${i}"><a href="/test/fixtures/${n}.svg" data-td-media-open aria-label="Ảnh ${i + 1}"><img src="/test/fixtures/${n}.svg" alt="" width="${w}" height="${h}"></a></div>`).join('')}</td-media-grid>
     <div class="rsp-row" id="rsp-gallery" data-td-lightbox-group>
       <figure data-td-lightbox-item data-td-lightbox-src="/test/fixtures/1.svg"><img src="/test/fixtures/1.svg" alt="Ảnh 1" class="rsp-thumb"></figure>
       <figure data-td-lightbox-item data-td-lightbox-src="/test/fixtures/2.svg"><img src="/test/fixtures/2.svg" alt="Ảnh 2" class="rsp-thumb"></figure>
@@ -225,6 +234,11 @@ export function mountResponsiveFixture(root) {
       panel: (ctx) => { const p = document.createElement('p'); p.textContent = ctx.item.caption; return p; },
     }),
     loading: () => TdLoading.show('Đang xử lý đơn hàng, vui lòng chờ...'),
+    picker: (multiple = false, pages = false) => {
+      const adapter = createMockAdapter({ latency: 0, ...(pages ? { pagination: 'pages' } : {}) });
+      return TdMediaPicker.open({ adapter, ...(pages ? { pagination: 'pages' } : {}),
+        selection: multiple ? { mode: 'multiple', maxItems: 5 } : { mode: 'single' } });
+    },
   };
   return { openers };
 }
