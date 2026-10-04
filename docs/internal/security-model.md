@@ -232,6 +232,23 @@ Test: guard tĩnh QĐ 2 (`crop-geometry.test.js`), fuzz 10 000 ca `toOutput` →
 JS = PHP, engines a11y (`alt` = `<img src=x onerror=…>` chỉ là text; `src` `javascript:` / `data:` / `blob:` → `image-error
 src`; không thuộc tính `style` ngoài `--_tdc-*` trên host), CSP gate state `td-cropper` + bước cắt picker.
 
+## 6b. Chọn dòng `td-table` (v0.37.0)
+
+[ADR 0018](decisions/0018-table-row-selection.md). Mô hình đe doạ: dữ liệu dòng (tên hiển thị, khoá) do người dùng khác
+tạo; `rowKey` / `rowSelectable` / `onSelectChange` là callback của dev; lựa chọn là **trạng thái phía client**.
+
+- **Khoá → form**: `name` → `setFormValue(FormData)` một mục mỗi khoá (`String(key)`). Kẻ tấn công gửi lên được **mọi
+  chuỗi** (sửa DOM / gọi API / tự POST) → server **luôn** ép kiểu + kiểm quyền từng id (docs có ví dụ PHP). Khoá hợp lệ chỉ
+  là chuỗi khác rỗng / số hữu hạn / `bigint` (`keyId`); object, `NaN`, rỗng bị loại; khoá trùng trong trang → dòng sau
+  không chọn được.
+- **Khoá không vào DOM**: dòng ↔ khoá qua `data-row-idx` → mảng trong JS; không escape, không lộ kiểu.
+- **Tên ô tick** = chữ của ô `primary` sau render (`textContent`, bỏ nhãn card, ≤ 80 ký tự) đặt bằng `setAttribute`;
+  thông báo `role=status` bằng `textContent`; mẫu nhãn thay `{label}` / `{n}` / `{max}` bằng **hàm** (chuỗi dữ liệu có
+  `$&` / `$1` giữ nguyên chữ). Test: `<img src=x onerror=…>$&$1` trong ô primary → `aria-label` / status là chữ, không thực thi.
+- **Callback fail closed**: `rowKey` ném → dòng không chọn được (cảnh báo một lần); `rowSelectable` ném → khoá;
+  `onSelectChange` ném → `console.error`, event vẫn phát.
+- **Không `style`**: cột chọn / màu dòng chọn chỉ từ `td.css` (CSP gate `td-table.selection*`).
+
 ## 7. Trách nhiệm của site
 
 Những thứ kit **cố ý không làm** và site phải làm, nếu không thì có lỗ hổng dù kit đúng. Trang người dùng tương ứng:
