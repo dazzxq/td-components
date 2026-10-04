@@ -32,6 +32,10 @@ viewport nên **đặt trong cột hẹp của trang desktop vẫn vỡ** như t
    nhóm 768–1023, điều đó không thể với ngưỡng 768. 720 giữ đúng ý dsuite (744 là "tablet dọc") và vẫn tách máy gập khi gập
    (≤ ~690) ra khỏi tablet. Các ngưỡng còn lại trùng dsuite (480, 1024, 1280).
 
+   **Bổ sung (review v0.34.0):** cỡ **chỉ dành cho container** `2xs` = 360 — bố cục vi mô bên trong component đặt trong
+   cột rất hẹp (dạng trạng thái của phân trang, hành động xếp dọc). Không bao giờ dùng trong `@media` viết tay; bản dự
+   phòng viewport `(max-width: 359.98px)` chỉ do build sinh.
+
 2. **Viết điều kiện**
    - `@media`: dạng cổ điển `(max-width: 719.98px)` / `(min-width: 720px)` (kit hỗ trợ Chrome 102 — range syntax của
      `@media` cần 104). Chiều cao: `(max-height: 500px)`.

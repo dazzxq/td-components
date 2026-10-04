@@ -11,6 +11,7 @@ test('checkBreakpoints: kit numbers pass, others fail with file:line', () => {
 @media (pointer: coarse) { a { b: c } }
 @container td-x (width < 480px) { a { b: c } }
 @container td-x (width >= 1280px) { a { b: c } }
+@container td-x (width < 360px) { a { b: c } }
 /* @media (max-width: 999px) in a comment is ignored */`;
   assert.deepEqual(checkBreakpoints(ok, 'ok.css'), []);
   const bad = `x {}
@@ -128,4 +129,11 @@ test('td-table.css holds ONE card rule set (no hand copies); td.css carries 3 ge
     assert.ok(i > 0, `variant ${n}`);
     assert.ok(css.slice(i, i + 400).includes(p), `variant ${n} prefix`);
   }
+});
+
+test('360 is a container-only size: allowed in @container (+ generated fallback), rejected in hand-written @media', () => {
+  assert.deepEqual(checkBreakpoints('@container td-p (width < 360px) { a { b: c } }', 'c.css'), []);
+  assert.equal(checkBreakpoints('@media (max-width: 359.98px) { a { b: c } }', 'c.css').length, 1);
+  const out = addContainerFallbacks('@container td-p (width < 360px) { .a { b: c; } }', 'c.css');
+  assert.ok(out.includes('@media (max-width: 359.98px) {.a{b:c}}'), out);
 });

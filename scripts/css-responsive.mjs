@@ -26,6 +26,12 @@
  */
 
 export const WIDTHS = [480, 720, 1024, 1280];
+/**
+ * Container-only size (ADR 0014 amendment, v0.34.0 review): `2xs` 360 — micro layouts INSIDE a component placed in a
+ * very narrow column (pagination status form, stacked actions). Never a viewport breakpoint in hand-written @media;
+ * its generated viewport fallback (max-width: 359.98px) is emitted by addContainerFallbacks only.
+ */
+export const CONTAINER_WIDTHS = [360, ...WIDTHS];
 export const SHORT_MAX = 500;
 const FALLBACK_MARK = '/* td: generated container fallback (ADR 0014) */';
 
@@ -96,7 +102,7 @@ export function checkBreakpoints(css, file) {
         continue;
       }
       const n = Number(num);
-      if (axis === 'height' || !WIDTHS.includes(n)) err(`container condition ${n}px is not a kit breakpoint`);
+      if (axis === 'height' || !CONTAINER_WIDTHS.includes(n)) err(`container condition ${n}px is not a kit breakpoint`);
     }
     if (/\b(min-|max-)?(width|height)\s*:\s*[\d.]+(em|rem|vw|vh)/.test(prelude)) err('breakpoints are px');
   }
@@ -119,7 +125,7 @@ export function addContainerFallbacks(css, file) {
     const cm = /^(td-[a-z0-9-]+)\s+\(\s*width\s*(<|>=)\s*(\d+)px\s*\)$/.exec(prelude);
     if (!cm) throw new Error(`${file}:${line}: @container must be "td-<name> (width < N)" or "(width >= N)", got "${prelude}"`);
     const n = Number(cm[3]);
-    if (!WIDTHS.includes(n)) throw new Error(`${file}:${line}: container condition ${n}px is not a kit breakpoint`);
+    if (!CONTAINER_WIDTHS.includes(n)) throw new Error(`${file}:${line}: container condition ${n}px is not a kit breakpoint`);
     const open = m.index + m[0].length - 1;
     const close = matchBrace(css, open);
     const body = css.slice(open, close + 1);
