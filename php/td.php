@@ -167,6 +167,8 @@ namespace TdComponents {
             'selected' => 'Đã chọn: {name}',
             'noPreview' => 'Đã chọn (không có ảnh xem trước)',
             'video' => 'Video',
+            /** v0.35 */
+            'crop' => 'Cắt ảnh',
         ];
 
         /**
@@ -1865,6 +1867,13 @@ namespace {
      * crop (array x / y / width / height in 0..1, or the JSON v1 string → printed / submitted as JSON v1; invalid → null +
      * one E_USER_WARNING), prompt, id (host id; inner ids derive from it), class, attrs (host: allowlisted; owned names
      * and data-td-* reserved). `usage` + a name ending in `[]` → nothing is named (not submitted) + one E_USER_WARNING.
+     * v0.35 (plan v0.35.0-cropper decisions 27-31; `usage` only — without it: dropped + ONE E_USER_WARNING): croppable
+     * (bool: prints the "Cắt ảnh" button, hidden by td.css until the element is defined like Đổi / Gỡ, and `hidden`
+     * unless the field holds an image with a preview_src; then preview_src MUST be the whole, un-cropped image — any
+     * size), crop_ratio (`W/H`, `W:H`, one number or `free`; invalid → dropped + one E_USER_WARNING), focal_point (bool:
+     * prints the hidden `input.td-media-field__focal` `name[focal]` after `name[crop]`), focal (array x / y in 0..1 or
+     * the JSON v1 string `{"v":1,"x","y"}` → printed / submitted as JSON v1; invalid → null + one E_USER_WARNING). The
+     * crop printing is unchanged (byte-identical to v0.34 without these options).
      * Never prints adapter endpoints, permissions or serialized assets.
      */
     function td_media_field(string $name, mixed $assetId = null, array $o = []): string
@@ -1898,6 +1907,26 @@ namespace {
         $pAlt = isset($o['preview_alt']) && is_scalar($o['preview_alt']) && !is_bool($o['preview_alt']) ? (string) $o['preview_alt'] : '';
         $alt = isset($o['alt']) && is_scalar($o['alt']) && !is_bool($o['alt']) ? td__utf8_prefix((string) $o['alt'], 500) : '';
         $crop = td__media_crop($o['crop'] ?? null);
+        // v0.35: croppable / crop_ratio / focal_point / focal — usage mode only (fail closed: the reference shape has no crop)
+        $croppable = false;
+        $focalOn = false;
+        $cropRatio = null;
+        $focal = null;
+        $given = static fn (string $key): bool => ($o[$key] ?? null) !== null && $o[$key] !== '' && $o[$key] !== 'null';
+        $v35 = !empty($o['croppable']) || !empty($o['focal_point']) || $given('crop_ratio') || $given('focal');
+        if ($v35 && !$usage) {
+            trigger_error('td_media_field: croppable / crop_ratio / focal_point / focal need usage — ignored', E_USER_WARNING);
+        } elseif ($v35) {
+            $croppable = !empty($o['croppable']);
+            $focalOn = !empty($o['focal_point']);
+            $crRaw = isset($o['crop_ratio']) && is_scalar($o['crop_ratio']) && !is_bool($o['crop_ratio']) ? (string) $o['crop_ratio'] : null;
+            if ($crRaw !== null && $crRaw !== '' && td__media_crop_ratio($crRaw)) {
+                $cropRatio = $crRaw;
+            } elseif ($given('crop_ratio')) {
+                trigger_error('td_media_field: crop_ratio is not W/H, W:H, a positive number or free — ignored', E_USER_WARNING);
+            }
+            $focal = td__media_focal($o['focal'] ?? null);
+        }
         $filled = $id !== '';
         $k = $filled ? ($kindOpt ?? 'image') : $kinds[0];
         $hid = Td::e($hostId);
@@ -1913,6 +1942,7 @@ namespace {
             . Td::e($n) . '" value="' . Td::e($v) . '"' . $dis . '>';
         $valueInput = $named ? $hidden('td-media-field__value', $usage ? $name . '[id]' : $name, $id) : '';
         $cropInput = $named && $usage ? $hidden('td-media-field__crop', $name . '[crop]', $crop ?? 'null') : '';
+        $focalInput = $named && $focalOn ? $hidden('td-media-field__focal', $name . '[focal]', $focal ?? 'null') : '';
 
         if (!$filled) {
             $inner = '<span class="td-media-field__empty"><span class="td-media-field__icon" data-td-icon="' . $k . '" aria-hidden="true">'
@@ -1948,13 +1978,18 @@ namespace {
             'kind' => $kindOpt,
             'alt' => $alt !== '' ? $alt : null,
             'crop' => $crop,
+            'croppable' => $croppable,
+            'crop-ratio' => $cropRatio,
+            'focal-point' => $focalOn,
+            'focal' => $focal,
             'prompt' => $prompt,
             'helper-text' => $help,
             'error-text' => $error,
         ], $taken);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $taken = td__reserve(['id', 'class', 'name', 'label', 'aspect-ratio', 'preview-fit', 'accept-kind', 'usage', 'required',
-            'disabled', 'value', 'preview-src', 'preview-alt', 'kind', 'alt', 'crop', 'prompt', 'helper-text', 'error-text'], $extra, $taken);
+            'disabled', 'value', 'preview-src', 'preview-alt', 'kind', 'alt', 'crop', 'prompt', 'helper-text', 'error-text',
+            'croppable', 'crop-ratio', 'focal-point', 'focal'], $extra, $taken);
         return $html . Td::attrs($extra, $taken) . '>'
             . '<span class="td-media-field__label" id="' . $hid . '-label">' . Td::e($label)
             . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') . '</span>'
@@ -1967,7 +2002,12 @@ namespace {
             . '<div class="td-media-field__actions"' . ($filled ? '' : ' hidden') . '>'
             . '<button type="button" class="td-btn td-btn--secondary td-btn--sm td-media-field__replace" aria-haspopup="dialog"' . $dis . '>'
             . Td::e($L['replace'][$k]) . '</button>'
+            . ($croppable
+                ? '<button type="button" class="td-btn td-btn--secondary td-btn--sm td-media-field__crop-btn" aria-haspopup="dialog"'
+                    . ($filled && $k === 'image' && $src !== null ? '' : ' hidden') . $dis . '>' . Td::e($L['crop']) . '</button>'
+                : '')
             . '<button type="button" class="td-btn td-btn--ghost td-btn--sm td-media-field__remove"' . $dis . '>' . Td::e($L['remove']) . '</button></div>'
+            . ($croppable ? '<span class="td-media-field__status" role="status"></span>' : '')
             . $valueInput
             . ($usage
                 ? '<div class="td-field td-media-field__usage"><label class="td-field__label" for="' . $hid . '-alt">' . Td::e($L['alt']) . '</label>'
@@ -1975,6 +2015,7 @@ namespace {
                     . ($named ? ' name="' . Td::e($name . '[alt]') . '"' : '') . ($alt !== '' ? ' value="' . Td::e($alt) . '"' : '') . $dis . '></div>'
                 : '')
             . $cropInput
+            . $focalInput
             . ($help !== null ? '<span class="td-media-field__help" id="' . $hid . '-help">' . Td::e($help) . '</span>' : '')
             . ($error !== null ? '<span class="td-field-error" id="' . $hid . '-error" data-for="' . $hid . '">' . Td::e($error) . '</span>' : '')
             . '</td-media-field>';
@@ -2089,6 +2130,78 @@ namespace {
             trigger_error('td_media_field: crop must be x / y / width / height in 0..1 (x + width ≤ 1, y + height ≤ 1) — submitted as null', E_USER_WARNING);
         }
         return $ok;
+    }
+
+    /** @internal v0.35 parseCropRatio() of src/utils/media-field-model.js: `free` (any case, JS-trimmed) or a valid ratio. */
+    function td__media_crop_ratio(string $v): bool
+    {
+        $ws = Td::JS_WS;
+        $t = preg_replace('/^[' . $ws . ']+|[' . $ws . ']+$/uD', '', $v);
+        return (is_string($t) && strtolower($t) === 'free') || td__media_ratio($v) !== null;
+    }
+
+    /**
+     * @internal v0.35 The `focal` option → the JSON v1 string printed + submitted as is (parseFocal() parity,
+     * FOCAL_CASES), or null. An array x / y (numbers) is encoded first; null / '' / 'null' → null silently; anything
+     * invalid → null + ONE E_USER_WARNING.
+     */
+    function td__media_focal(mixed $v): ?string
+    {
+        if ($v === null || $v === '' || $v === 'null') {
+            return null;
+        }
+        $json = null;
+        if (is_string($v)) {
+            $json = $v;
+        } elseif (is_array($v)) {
+            $keys = array_keys($v);
+            sort($keys);
+            $nums = true;
+            foreach (['x', 'y'] as $key) {
+                $n = $v[$key] ?? null;
+                $nums = $nums && (is_int($n) || is_float($n)) && is_finite((float) $n);
+            }
+            if ($keys === ['x', 'y'] && $nums) {
+                $json = '{"v":1,"x":' . json_encode($v['x'], JSON_THROW_ON_ERROR) . ',"y":' . json_encode($v['y'], JSON_THROW_ON_ERROR) . '}';
+            }
+        }
+        $ok = $json !== null ? td__media_focal_parse($json) : null;
+        if ($ok === null) {
+            trigger_error('td_media_field: focal must be x / y in 0..1 (JSON v1 {"v":1,"x","y"}) — submitted as null', E_USER_WARNING);
+        }
+        return $ok;
+    }
+
+    /** @internal v0.35 parseFocal() of src/utils/media-field-model.js: exactly {"v":1,"x","y"}, finite, in 0..1, ≤ 128 characters. */
+    function td__media_focal_parse(string $s): ?string
+    {
+        if ($s === '' || strlen($s) > 128) {
+            return null;
+        }
+        try {
+            $o = json_decode($s, false, 8, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return null;
+        }
+        if (!$o instanceof \stdClass) {
+            return null;
+        }
+        $a = get_object_vars($o);
+        $keys = array_map('strval', array_keys($a));
+        sort($keys, SORT_STRING);
+        if ($keys !== ['v', 'x', 'y']) {
+            return null;
+        }
+        $isNum = static fn (mixed $n): bool => (is_int($n) || is_float($n)) && is_finite((float) $n);
+        if (!$isNum($a['v']) || (float) $a['v'] !== 1.0) {
+            return null;
+        }
+        foreach (['x', 'y'] as $key) {
+            if (!$isNum($a[$key]) || (float) $a[$key] < 0 || (float) $a[$key] > 1) {
+                return null;
+            }
+        }
+        return $s;
     }
 
     /** @internal parseCrop() of src/utils/media-field-model.js: exactly {"v":1,"x","y","width","height"}, finite, in 0..1 (± 1e-6). */

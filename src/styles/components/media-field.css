@@ -10,7 +10,13 @@
  * Before define (php/td.php td_media_field): the open / Đổi / Gỡ buttons are `visibility: hidden` (no dead control;
  * the box, sizer and preview stay → no layout shift).
  * Tokens: --td-media-field-w (host inline size), --td-media-field-empty-h, --td-media-field-max-h.
- * CSP: classes / data / aria attributes only.
+ * v0.35 (plan v0.35.0-cropper decisions 28, 30): "Cắt ảnh" button (.td-media-field__crop-btn, one more action button —
+ * same touch rule), the crop source error (.td-media-field__status, role="status", text only) and the crop preview of
+ * `td-media-field[croppable]` with a ratio: the `<img>` is sized / offset so the frame shows exactly the cropped area
+ * from the private unitless CSSOM properties --_td-mf-crop-x / -y / -w / -h (set by JS only when the crop's pixel ratio
+ * is within 2 % of the frame's; absent → 0 / 0 / 1 / 1 = the plain cover box). Physical left / top: the crop is in
+ * image coordinates (RTL too).
+ * CSP: classes / data / aria attributes only; per-instance values through CSSOM custom properties.
  */
 @layer td.tokens {
 	:root {
@@ -183,6 +189,16 @@
 		object-fit: contain;
 	}
 
+	/* v0.35 decision 30: crop preview (vars absent → the same box as above) */
+	td-media-field[croppable] .td-media-field__sizer + .td-media-field__open > .td-media-field__img {
+		inset: auto;
+		top: calc(-100% * var(--_td-mf-crop-y, 0) / var(--_td-mf-crop-h, 1));
+		left: calc(-100% * var(--_td-mf-crop-x, 0) / var(--_td-mf-crop-w, 1));
+		inline-size: calc(100% / var(--_td-mf-crop-w, 1));
+		block-size: calc(100% / var(--_td-mf-crop-h, 1));
+		max-inline-size: none;
+	}
+
 	/* free mode, filled: the image's natural ratio (no empty-frame minimum) */
 	.td-media-field__frame[data-state="filled"] > .td-media-field__open:first-child {
 		min-block-size: 0;
@@ -218,6 +234,18 @@
 			flex-direction: column;
 			align-items: stretch;
 		}
+	}
+
+	/* v0.35: the crop source error (stays rendered while empty: a live region must exist before its text changes) */
+	.td-media-field__status {
+		display: block;
+		margin-block-start: var(--td-space-2xs);
+		font-size: var(--td-text-xs);
+		color: var(--td-field-error);
+	}
+
+	.td-media-field__status:empty {
+		margin: 0;
 	}
 
 	.td-media-field__usage {
