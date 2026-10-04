@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import {
   MIN_PX, q, round4, minSize, fitLargest, clampRect, moveBy, resizeFrom, scaleAround, applyPreset, normalizeInitial,
   stepFor, toOutput, isWholeImage, clampFocal, ratioMismatch, displayToModel, modelToDisplay, containFit, wheelFactor,
+  isTrackpadDelta, dampedWheelFactor, WHEEL_FRAME_CAP,
   cropChanged, focalChanged,
 } from './crop-geometry.js';
 import { parseCrop, serializeCrop } from './media-field-model.js';
@@ -315,4 +316,17 @@ describe('static guard (decision 2): coordinates only — no pixels, no network'
       for (const re of banned) assert.equal(re.test(code), false, `${f} must not use ${re}`);
     });
   }
+});
+
+it('v0.36.0 trackpad damping: isTrackpadDelta + dampedWheelFactor (capped per frame)', () => {
+  assert.equal(isTrackpadDelta(3, 0), true);
+  assert.equal(isTrackpadDelta(-49, 0), true);
+  assert.equal(isTrackpadDelta(100, 0), false);
+  assert.equal(isTrackpadDelta(3, 1), false);
+  assert.equal(isTrackpadDelta(Number.NaN, 0), false);
+  assert.equal(dampedWheelFactor(0), 1);
+  assert.ok(Math.abs(dampedWheelFactor(10) - Math.exp(0.02)) < 1e-12);
+  assert.equal(dampedWheelFactor(1000), WHEEL_FRAME_CAP);
+  assert.equal(dampedWheelFactor(-1000), 1 / WHEEL_FRAME_CAP);
+  assert.equal(dampedWheelFactor(Number.POSITIVE_INFINITY), 1);
 });

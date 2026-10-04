@@ -222,9 +222,44 @@ describe('td-cropper pointer (v0.35.0)', () => {
     expect(rec.change.length).to.equal(2);
     expect(rec.change[1].crop.pixels.width).to.be.above(w1);
     expect(wheel({ deltaY: -40, deltaMode: 0, ctrlKey: true })).to.equal(false);
+    // v0.36.0 (QĐ 70): small pixel deltas (trackpad / pinch) are applied once per animation frame
+    await frame();
+    await frame();
     expect(rec.change.length).to.equal(3);
     expect(rec.change[2].source).to.equal('wheel');
     expect(rec.change[2].crop.pixels.width).to.be.below(rec.change[1].crop.pixels.width);
+  });
+
+  it('v0.36.0 trackpad damping: a burst of 30 small deltas zooms smoothly — ≤ 10 % per frame, one change per frame; page never scrolls over the stage', async () => {
+    const { el } = await mount({ crop: crop(0.25, 0.25, 0.5, 0.5), 'natural-width': '1600', 'natural-height': '900' });
+    const rec = record(el);
+    const stage = $(el, '.td-cropper__stage');
+    const [cx, cy] = centerOf($(el, '.td-cropper__box'));
+    const wheel = (o) => stage.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, clientX: cx, clientY: cy, ...o }));
+    const w0 = el.crop.pixels.width;
+    let notPrevented = 0;
+    for (let i = 0; i < 30; i++) {
+      if (wheel({ deltaY: 2 + (i % 3), deltaMode: 0 })) notPrevented++;
+      if (i % 10 === 9) await frame(); // three frames of ten events
+    }
+    await frame();
+    await frame();
+    expect(notPrevented, 'default prevented over the stage').to.equal(0);
+    expect(rec.change.length, 'one change per frame').to.be.within(2, 4);
+    let prev = w0;
+    for (const c of rec.change) {
+      const k = c.crop.pixels.width / prev;
+      expect(k, `step ${k}`).to.be.within(1, 1.1 + 1e-3); // zoom out (deltaY > 0) → wider box, ≤ 10 % a frame
+      prev = c.crop.pixels.width;
+    }
+    expect(prev).to.be.above(w0);
+    // one mouse notch = one immediate step
+    const before = rec.change.length;
+    wheel({ deltaY: -100, deltaMode: 0 });
+    expect(rec.change.length).to.equal(before + 1);
+    // outside the stage the wheel is not touched (the page may scroll)
+    const outside = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: 3 });
+    expect(el.parentElement.dispatchEvent(outside)).to.equal(true);
   });
 
   it('focal point: a click (≤ 4 px) on the image sets it, dragging it moves it — normalised to the whole image', async () => {
