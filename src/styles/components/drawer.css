@@ -41,6 +41,9 @@
 
 		position: fixed;
 		inset: 0;
+		top: var(--td-vv-top, 0); /* v0.36.2 (ADR 0019): follows the visual viewport while the keyboard is up */
+		bottom: auto;
+		height: var(--td-vv-height, 100%);
 		z-index: var(--td-z-modal);
 		box-sizing: border-box;
 		font-family: var(--td-font-sans);

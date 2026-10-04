@@ -30,6 +30,7 @@ import {
 import { lockScroll } from '../utils/scroll-lock.js';
 import { transitionEndMs } from '../utils/transition.js';
 import { ensurePressStates } from '../utils/press.js';
+import { watchKeyboardViewport } from '../utils/keyboard-viewport.js';
 
 const EXIT_MARGIN = 40;
 const FALLBACK_EXIT_MS = 240;
@@ -60,6 +61,9 @@ const FALLBACK_EXIT_MS = 240;
  * @param {(reason: *, ctx: DialogCloseContext) => void} [o.onClosing] phase 1, last step (before the exit transition)
  * @param {() => number} [o.exitMs] ms to keep the root connected after phase 1
  * @param {Element|null} [o.backdrop] measured with the dialog by the default exitMs
+ * @param {{ root: HTMLElement, scroller?: HTMLElement | ((active: Element) => HTMLElement | null) | null }} [o.viewport]
+ *   v0.36.2 (ADR 0019): follow the on-screen keyboard while open (utils/keyboard-viewport.js) — the root shrinks to the
+ *   visual viewport and `scroller` reveals the focused field; stopped (variables removed) when the close starts
  * @returns {{ root: HTMLElement, dialog: HTMLElement, layer: ReturnType<typeof registerLayer>, opener: HTMLElement|null,
  *   readonly closed: boolean, close(reason?: *): Promise<*>, release(): void }}
  */
@@ -72,6 +76,7 @@ export function openDialogLayer(o) {
     : (active0 instanceof HTMLElement && active0 !== document.body ? active0 : null);
   if (!root.isConnected) document.body.appendChild(root);
   const releaseScroll = o.scrollLock ? lockScroll() : null;
+  let stopViewport = o.viewport && o.viewport.root ? watchKeyboardViewport(o.viewport) : null;
 
   let closed = false;
   let removed = false;
@@ -166,6 +171,7 @@ export function openDialogLayer(o) {
       if (typeof o.beforeRelease === 'function') o.beforeRelease(ctx);
       layer.release();
       if (releaseScroll) releaseScroll();
+      if (stopViewport) { stopViewport(); stopViewport = null; }
       if (typeof o.restoreFocus === 'function') o.restoreFocus(ctx);
       else genericRestore(ctx);
       if (typeof o.onClosing === 'function') {

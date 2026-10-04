@@ -56,6 +56,7 @@
  */
 import { matchesBelow, mqBelow } from '../utils/breakpoints.js';
 import { openDialogLayer } from './dialog-layer.js';
+import { nearestScroller } from '../utils/keyboard-viewport.js';
 import { TdModal } from './td-modal.js';
 import { TdModalStackManager } from './td-modal-stack.js';
 import { TdToast } from './td-toast.js';
@@ -421,6 +422,7 @@ export class TdMediaPicker extends HTMLElement {
     s.handle = openDialogLayer({
       root,
       dialog,
+      viewport: { root, scroller: nearestScroller(root) }, // v0.36.2: above the keyboard
       layer: LAYERS.modal,
       scrollLock: true,
       backdrop: root.querySelector('.td-modal__backdrop'),

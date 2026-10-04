@@ -9,7 +9,8 @@
  * Per-instance CSSOM custom properties on .td-modal__dialog (validated in JS):
  *   --td-modal-w, --td-modal-h, --td-modal-body-pad, --td-modal-body-overflow
  * Only .td-modal__body scrolls (header/footer pinned, D21). < 720 px (ADR 0014 md): bottom sheet (except --viewport).
- * --viewport (v0.33.0): header / footer / body add env(safe-area-inset-*) to their padding (100dvh, never vh).
+ * --viewport (v0.33.0): header / footer / body add env(safe-area-inset-*) to their padding (100dvh, never vh; v0.36.2:
+ *   100 % of the root, which follows the visual viewport while the on-screen keyboard is up).
  * Motion (v0.22.1, ported from dcms-modal): opening → scrim fades in (--td-modal-scrim-dur 120ms ease-out), the dialog
  * fades in (--td-modal-fade-dur 200ms, --td-modal-fade-ease) and scales from --td-modal-enter-from scale(0.95) with a
  * slight spring overshoot (--td-modal-enter-dur 300ms, --td-modal-enter-ease); closing scales back (--td-modal-exit-dur
@@ -56,6 +57,11 @@
 
 		position: fixed;
 		inset: 0;
+		/* v0.36.2 (ADR 0019): the root follows the VISUAL viewport while an on-screen keyboard is up (--td-vv-* written
+		   by utils/keyboard-viewport.js, not an API) — dialog, sheet, full-viewport surface and footer stay above it */
+		top: var(--td-vv-top, 0);
+		bottom: auto;
+		height: var(--td-vv-height, 100%);
 		/* scroll lock's padding fallback (utils/scroll-lock.js): the viewport grew by the hidden scrollbar's width →
 		   keep the centred dialog where it was (0 when scrollbar-gutter held or there was no classic scrollbar) */
 		inset-inline-end: var(--td-scroll-lock-gap, 0px);
@@ -120,7 +126,7 @@
 		flex-direction: column;
 		width: min(var(--td-modal-w, var(--_td-modal-size)), 100%);
 		height: var(--td-modal-h, auto);
-		max-height: calc(100dvh - 2 * var(--td-modal-gap));
+		max-height: 100%; /* the root content box = viewport − 2 × gap (v0.36.2: was calc(100dvh − 2 × gap)) */
 		overflow: hidden;
 		border-radius: var(--td-modal-radius);
 		outline: none;
@@ -276,7 +282,7 @@
 	.td-modal--viewport .td-modal__dialog {
 		--td-modal-enter-from: none; /* a full-viewport surface only fades */
 		width: 100%;
-		height: 100dvh;
+		height: 100%; /* the root = the (visual) viewport (v0.36.2: was 100dvh) */
 		max-height: none;
 		border-radius: 0;
 	}
@@ -315,7 +321,7 @@
 
 		.td-modal:not(.td-modal--viewport) .td-modal__dialog {
 			width: 100%;
-			max-height: min(var(--td-modal-h, 90dvh), 90dvh);
+			max-height: min(var(--td-modal-h, 90%), 90%); /* of the root (v0.36.2: was 90dvh) */
 			padding-bottom: env(safe-area-inset-bottom, 0);
 			border-bottom-width: 0;
 			border-radius: var(--td-modal-sheet-radius) var(--td-modal-sheet-radius) 0 0;

@@ -250,6 +250,8 @@ export function openCropDialog(opts = /** @type {any} */ ({})) {
   cancelBtn.addEventListener('click', cancel);
   confirmBtn.addEventListener('click', apply);
 
+  // v0.36.2 (ADR 0019): no `viewport` on purpose — the crop dialog has no text control (preset buttons + the crop box
+  // only), so the on-screen keyboard never opens over it.
   handle = openDialogLayer({
     root,
     dialog,
