@@ -502,9 +502,59 @@ export class TdTreeSelect extends TdFormElement {
     this._applyName();
     this._applyRequired();
     this._applyDisabled();
+    this._watchValueTitle();
     this._updateDisplay();
     this._syncForm();
     this._applyErrorState();
+  }
+
+  /**
+   * @private v0.34.0 (plan QĐ 11): the element showing the value — the trigger's span, or the closed combobox <input>
+   * (searchable single) — gets `title` = the full displayed value (multiple: the comma list) while it is cut (…). One
+   * ResizeObserver on it (re-checks on resize, no polling), released on disconnect by the cleanups.
+   */
+  _watchValueTitle() {
+    const el = this._valueEl || (this._combo && this._combo.localName === 'input' ? this._combo : null);
+    if (!this._vtRO && typeof ResizeObserver === 'function') {
+      this._vtRO = new ResizeObserver(() => this._syncValueTitle());
+      this._cleanups.push(() => {
+        if (this._vtRO) this._vtRO.disconnect();
+        if (this._vtRaf) cancelAnimationFrame(this._vtRaf);
+        this._vtRO = null;
+        this._vtRaf = 0;
+        this._vtEl = null;
+      });
+    }
+    if (el !== this._vtEl) {
+      if (this._vtEl && this._vtRO) this._vtRO.unobserve(this._vtEl);
+      this._vtEl = el;
+      if (el && this._vtRO) this._vtRO.observe(el); // its initial notification (after layout) does the first check
+    }
+  }
+
+  /**
+   * @private value text changed: re-check in the next frame (one per change, coalesced) — never a synchronous layout
+   * read during render / setValue (it would start style transitions from a stale state).
+   */
+  _scheduleValueTitle() {
+    if (!this._vtRO || this._vtRaf) return;
+    this._vtRaf = requestAnimationFrame(() => {
+      this._vtRaf = 0;
+      this._syncValueTitle();
+    });
+  }
+
+  /** @private title only for a cut value (never the placeholder, never while the input is open for typing) */
+  _syncValueTitle() {
+    const el = this._vtEl;
+    if (!el || !el.isConnected) return;
+    const input = el.localName === 'input';
+    const text = input ? (this._isOpen ? '' : el.value) : (el.hasAttribute('data-placeholder') ? '' : el.textContent);
+    if (text && el.scrollWidth > el.clientWidth) {
+      if (el.getAttribute('title') !== text) el.setAttribute('title', text);
+    } else if (el.hasAttribute('title')) {
+      el.removeAttribute('title');
+    }
   }
 
   /** @private the body portal + its popup tree (rendering THIS model) */
@@ -850,6 +900,7 @@ export class TdTreeSelect extends TdFormElement {
       else this._valueEl.setAttribute('data-placeholder', '');
     }
     if (this._clearBtn) this._clearBtn.hidden = this._effectiveDisabled || !this._model.hasClearable();
+    this._scheduleValueTitle();
   }
 
   // --- name / required / disabled -------------------------------------------------------------------------------
@@ -948,6 +999,7 @@ export class TdTreeSelect extends TdFormElement {
     if (single && combo.localName === 'input') {
       combo.placeholder = this._displayText() || this._placeholder();
       if (!opts.typing) combo.value = '';
+      this._syncValueTitle(); // open for typing → no title (no layout read: the text is empty)
     }
     this._place(this._control.getBoundingClientRect());
     this._layer = registerLayer({

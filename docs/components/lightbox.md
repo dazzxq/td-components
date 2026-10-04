@@ -296,6 +296,8 @@ TdLightbox.bind(document, { filmstrip: 'auto' }); // bind() truyền tiếp như
   `poster` (video, kèm dấu play). Video không có `thumb` / `poster` hợp lệ → ô tối có dấu play (không `<img>`). Thumbnail
   đang xem có `aria-current="true"` (viền trắng), tự cuộn vào giữa dải. Bấm thumbnail → chuyển tới ảnh đó.
 - Dải cuộn ngang bằng vuốt (cảm ứng) / bánh xe-trackpad; thao tác trong dải không bao giờ chuyển ảnh hay đóng lightbox.
+- Màn hình thấp (≤ 500px — điện thoại xoay ngang, 0.34.0): dải **ẩn và hàng của nó thu về 0** (ảnh nhận phần chiều cao
+  đó); thanh công cụ gọn hơn (khoảng cách / padding / lề trên nhỏ lại), nút vẫn giữ `--td-lb-btn` (44px khi cảm ứng).
 
 ### 10. Tải sẵn, lỗi ảnh, hiệu ứng trượt (0.24.0)
 

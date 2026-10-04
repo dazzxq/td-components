@@ -63,6 +63,7 @@ Server-render bằng PHP (chạy cả khi không JS):
 - `display="path"` (một): "Điện thoại › Apple › iPhone 15" thay vì chỉ "iPhone 15".
 - `placeholder`: chữ khi trống.
 - `allow-clear`: nút × (anh em của ô, không lồng trong nút) xoá các giá trị **không khoá**; ẩn khi không có gì xoá được.
+- Giá trị bị cắt `…` (ô hẹp, 0.34.0): phần tử hiện giá trị (`.td-tree-select__value`, hoặc ô `<input>` khi đóng) có `title` = chữ đầy đủ (nhiều: cả danh sách); không có khi vừa chỗ / đang là placeholder / đang gõ.
 
 ### 3. Khoá (vẫn gửi đúng một lần)
 

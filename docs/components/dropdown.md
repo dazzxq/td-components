@@ -504,6 +504,8 @@ JS chỉ ghi toạ độ/độ rộng menu và `max-height` của vùng cuộn (
 
 ## Bàn phím & trợ năng
 
+Giá trị bị cắt `…` (ô hẹp, 0.34.0): `.td-dropdown__value` có `title` = nhãn đầy đủ (rê chuột để xem); không có khi vừa chỗ hoặc đang là placeholder.
+
 Mẫu APG **select-only combobox**: option không bao giờ nhận focus; control đang có focus (trigger, hoặc ô tìm kiếm khi
 nó có focus) mang `aria-activedescendant` trỏ tới option active.
 

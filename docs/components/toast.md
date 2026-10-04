@@ -149,7 +149,9 @@ Mặc định toast ở góc **trên bên phải**. Ví dụ đưa xuống **gi�
 - Điện thoại (< 480px): chồng toast thành **một cột rộng hết** (trừ lề `--td-gutter`), toast cùng bề rộng, bỏ qua
   `--td-toast-inline-*` / `--td-toast-align`.
 - Màn hình thấp (≤ 500px — điện thoại xoay ngang): chỉ **hai toast mới nhất** hiện (toast cũ vẫn trong DOM, đã được đọc).
-- `top` / `bottom` cộng `env(safe-area-inset-*)` (tai thỏ, thanh home); site đặt `--td-toast-top: auto` thì giữ `auto`.
+- Vùng an toàn (tai thỏ, thanh home): `top: max(--td-toast-top, safe-area-inset-top + 8px)` (tương tự `bottom`) — đặt
+  token `0px` vẫn cách mép ≥ 8px; token `auto` thì giữ `auto`. Ở **mọi** độ rộng, cạnh neo (`--td-toast-inline-start` /
+  `-end`) cộng thêm `safe-area-inset-left` / `-right` (RTL đảo), `max-width` trừ cả hai.
 
 ## Tuỳ biến giao diện
 

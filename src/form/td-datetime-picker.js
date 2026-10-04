@@ -282,6 +282,54 @@ export class TdDatetimePicker extends TdFormElement {
     this._applyRequired();
     this._syncForm();
     this._applyErrorState();
+    this._watchValueTitle();
+  }
+
+  /**
+   * @private v0.34.0 (plan QĐ 11): the value span gets `title` = the full formatted value while its text is cut (…).
+   * One ResizeObserver on the span (re-checks on resize, no polling), released on disconnect by the cleanups.
+   */
+  _watchValueTitle() {
+    const el = this.querySelector('.td-dtp__value');
+    if (!this._vtRO && typeof ResizeObserver === 'function') {
+      this._vtRO = new ResizeObserver(() => this._syncValueTitle());
+      this._cleanups.push(() => {
+        if (this._vtRO) this._vtRO.disconnect();
+        if (this._vtRaf) cancelAnimationFrame(this._vtRaf);
+        this._vtRO = null;
+        this._vtRaf = 0;
+        this._vtEl = null;
+      });
+    }
+    if (el !== this._vtEl) {
+      if (this._vtEl && this._vtRO) this._vtRO.unobserve(this._vtEl);
+      this._vtEl = el;
+      if (el && this._vtRO) this._vtRO.observe(el); // its initial notification (after layout) does the first check
+    }
+  }
+
+  /**
+   * @private value text changed: re-check in the next frame (one per change, coalesced) — never a synchronous layout
+   * read during render / setValue (it would start style transitions from a stale state).
+   */
+  _scheduleValueTitle() {
+    if (!this._vtRO || this._vtRaf) return;
+    this._vtRaf = requestAnimationFrame(() => {
+      this._vtRaf = 0;
+      this._syncValueTitle();
+    });
+  }
+
+  /** @private title only for a cut NON-placeholder value; removed when it fits / placeholder / empty */
+  _syncValueTitle() {
+    const el = this._vtEl;
+    if (!el || !el.isConnected) return;
+    const text = el.hasAttribute('data-placeholder') ? '' : el.textContent;
+    if (text && el.scrollWidth > el.clientWidth) {
+      if (el.getAttribute('title') !== text) el.setAttribute('title', text);
+    } else if (el.hasAttribute('title')) {
+      el.removeAttribute('title');
+    }
   }
 
   /** @private */
@@ -301,6 +349,7 @@ export class TdDatetimePicker extends TdFormElement {
     span.textContent = text;
     if (placeholder) span.setAttribute('data-placeholder', '');
     else span.removeAttribute('data-placeholder');
+    this._scheduleValueTitle();
   }
 
   /** In place: everything except `label` (structure). */

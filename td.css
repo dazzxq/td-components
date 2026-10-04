@@ -2075,6 +2075,7 @@
  * (justify-content: flex-end only pushes LEFT when an item is wider than its line — now impossible above ~50px).
  * Compact form below 480px of container width: info on its own row, pages reduced to first / current / last (JS marks
  * each <li> with data-rel = current | edge | adjacent | far | ellipsis | gap; `gap` = an ellipsis only this form shows).
+ * Status form below 360px: "‹ 57 / 200 ›" (.td-pagination__status, aria-hidden; the info line stays the live region).
  */
 @layer td.tokens {
 	:root {
@@ -2228,6 +2229,11 @@
 		display: none;
 	}
 
+	/* "57 / 200" of the status form (< 360px); decorative copy of the state (aria-hidden), never shown above 360 */
+	.td-pagination__status {
+		display: none;
+	}
+
 	@container td-pagination (width < 480px) {
 		.td-pagination__info {
 			flex: 1 0 100%;
@@ -2246,6 +2252,54 @@
 	/* td: generated container fallback (ADR 0014) */
 	@supports not (container-type: inline-size) {
 		@media (max-width: 479.98px) {.td-pagination__info{flex:1 0 100%}.td-pagination__pages>[data-rel="adjacent"],.td-pagination__pages>[data-rel="far"]{display:none}.td-pagination__ellipsis[data-rel="gap"]{display:inline-flex}}
+	}
+
+	/*
+	 * v0.34.0 status form below 360px (ADR 0014 container-only 2xs): "‹ 57 / 200 ›" — prev, the status text, next.
+	 * The page list is hidden; the info line is VISUALLY hidden only (not display:none) so it stays the one live region
+	 * that announces a page change.
+	 */
+	@container td-pagination (width < 360px) {
+		.td-pagination {
+			position: relative;
+		}
+
+		.td-pagination__info {
+			position: absolute;
+			inset-block-start: 0;
+			inset-inline-start: 0; /* not the flex-end static position (1px past the right edge) */
+			flex: none;
+			inline-size: 1px;
+			block-size: 1px;
+			padding: 0;
+			margin: 0;
+			overflow: hidden;
+			clip-path: inset(50%);
+			white-space: nowrap;
+			border: 0;
+		}
+
+		.td-pagination__pages {
+			display: none;
+		}
+
+		.td-pagination__status {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			min-inline-size: 0;
+			min-block-size: var(--td-pagination-item-size);
+			padding-inline: var(--td-space-xs);
+			font-variant-numeric: tabular-nums;
+			color: var(--td-color-text);
+			text-align: center;
+			overflow-wrap: anywhere;
+		}
+	}
+
+	/* td: generated container fallback (ADR 0014) */
+	@supports not (container-type: inline-size) {
+		@media (max-width: 359.98px) {.td-pagination{position:relative}.td-pagination__info{position:absolute;inset-block-start:0;inset-inline-start:0;flex:none;inline-size:1px;block-size:1px;padding:0;margin:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}.td-pagination__pages{display:none}.td-pagination__status{display:inline-flex;align-items:center;justify-content:center;min-inline-size:0;min-block-size:var(--td-pagination-item-size);padding-inline:var(--td-space-xs);font-variant-numeric:tabular-nums;color:var(--td-color-text);text-align:center;overflow-wrap:anywhere}}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
@@ -2502,6 +2556,7 @@
 	td-empty-state {
 		display: block;
 		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5, v0.34.0) */
+		container: td-empty-state / inline-size; /* v0.34.0 (plan QĐ 12): needs its width from the parent */
 	}
 
 	.td-empty-state {
@@ -2570,6 +2625,24 @@
 
 	.td-empty-state__actions[hidden] {
 		display: none;
+	}
+
+	/* v0.34.0 (plan QĐ 12): below 480px of width the actions stack, each full width (JS buttons and server <td-button>) */
+	@container td-empty-state (width < 480px) {
+		.td-empty-state__actions {
+			flex-direction: column;
+			align-items: stretch;
+			align-self: stretch;
+		}
+
+		.td-empty-state__actions > td-button > .td-btn {
+			inline-size: 100%;
+		}
+	}
+
+	/* td: generated container fallback (ADR 0014) */
+	@supports not (container-type: inline-size) {
+		@media (max-width: 479.98px) {.td-empty-state__actions{flex-direction:column;align-items:stretch;align-self:stretch}.td-empty-state__actions>td-button>.td-btn{inline-size:100%}}
 	}
 
 	@media (forced-colors: active) {
@@ -2648,6 +2721,15 @@
 		:root {
 			--td-lb-bar-top: max(14px, env(safe-area-inset-top));
 			--td-lb-bar-side: max(14px, env(safe-area-inset-right));
+		}
+	}
+
+	/* v0.34.0 short (landscape phone): tighter bar spacing — the buttons keep --td-lb-btn (44 on a coarse pointer). */
+	@media (max-height: 500px) {
+		:root {
+			--td-lb-bar-pad: 3px;
+			--td-lb-bar-top: max(6px, env(safe-area-inset-top, 0px));
+			--td-lb-bar-side: max(8px, env(safe-area-inset-right, 0px));
 		}
 	}
 }
@@ -3449,6 +3531,26 @@
 		translate: -35% -50%;
 	}
 
+	/* v0.34.0 short (landscape phone, ADR 0014): the filmstrip is hidden AND its row collapses → the stage takes the
+	   freed height (no empty band); the toolbar is compacted (gap here, padding / offsets via the tokens above). */
+	@media (max-height: 500px) {
+		.td-lightbox[data-filmstrip] .td-lightbox__col {
+			grid-template-rows: minmax(0, 1fr) auto 0;
+		}
+
+		.td-lightbox[data-filmstrip] .td-lightbox__filmstrip {
+			display: none;
+		}
+
+		.td-lightbox[data-filmstrip] .td-lightbox__video-el {
+			max-height: calc(100dvh - 2rem);
+		}
+
+		.td-lightbox__toolbar {
+			gap: 2px;
+		}
+	}
+
 	/* Safe areas (notch / home indicator). env() = 0 without viewport-fit=cover. Bar tokens: see @layer td.tokens. */
 	@supports (padding: max(0px)) {
 		.td-lightbox__lead {
@@ -3732,20 +3834,40 @@
 		box-shadow: var(--td-focus-ring);
 	}
 
-	/* v0.34.0 (ADR 0014): notch / home indicator. A site that sets --td-toast-top: auto makes this calc invalid → auto. */
+	/* v0.34.0 (ADR 0014 §5, plan QĐ 13): notch / home indicator / landscape side insets, at EVERY width.
+	   - top / bottom: the token, never closer than inset + 8px to the edge. A site `auto` makes max(auto, …) invalid at
+	     computed-value time → the property falls back to its initial value `auto` (the side stays unanchored).
+	   - inline: the anchored side adds its inset (a site `auto` → calc(auto + …) invalid → auto, same mechanism). A
+	     centred stack (start 50%, shift −50%) moves by half the start inset at most; max-width leaves room for both. */
 	.td-toasts {
-		top: calc(var(--td-toast-top) + env(safe-area-inset-top, 0px));
-		bottom: calc(var(--td-toast-bottom) + env(safe-area-inset-bottom, 0px));
+		top: max(var(--td-toast-top), calc(env(safe-area-inset-top, 0px) + 8px));
+		bottom: max(var(--td-toast-bottom), calc(env(safe-area-inset-bottom, 0px) + 8px));
+		inset-inline-start: calc(var(--td-toast-inline-start) + env(safe-area-inset-left, 0px));
+		inset-inline-end: calc(var(--td-toast-inline-end) + env(safe-area-inset-right, 0px));
+		max-width: calc(100vw - 2 * var(--td-gutter) - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
 	}
 
-	/* xs: one full-width column (no ragged right-aligned stack), same width for every toast */
+	/* RTL: the inline start is the physical right → swap the insets */
+	.td-toasts:dir(rtl) {
+		inset-inline-start: calc(var(--td-toast-inline-start) + env(safe-area-inset-right, 0px));
+		inset-inline-end: calc(var(--td-toast-inline-end) + env(safe-area-inset-left, 0px));
+	}
+
+	/* xs: one full-width column (no ragged right-aligned stack), same width for every toast (physical sides: symmetric) */
 	@media (max-width: 479.98px) {
 		.td-toasts {
-			inset-inline: calc(var(--td-gutter) + env(safe-area-inset-left, 0px)) calc(var(--td-gutter) + env(safe-area-inset-right, 0px));
+			right: calc(var(--td-gutter) + env(safe-area-inset-right, 0px));
+			left: calc(var(--td-gutter) + env(safe-area-inset-left, 0px));
 			align-items: stretch;
 			width: auto;
 			max-width: none;
 			transform: none;
+		}
+
+		/* own rule: an engine without :dir() drops only this one, never the full-width rule above */
+		.td-toasts:dir(rtl) {
+			right: calc(var(--td-gutter) + env(safe-area-inset-right, 0px));
+			left: calc(var(--td-gutter) + env(safe-area-inset-left, 0px));
 		}
 
 		.td-toast {
@@ -7323,7 +7445,9 @@
 @layer td.component {
 	td-dropzone {
 		display: block;
+		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5, v0.34.0) */
 		font-family: var(--td-font-sans); /* the error-contract note sits inside .td-dropzone, but be explicit */
+		container: td-dropzone / inline-size; /* v0.34.0 (plan QĐ 12): needs its width from the parent */
 	}
 
 	.td-dropzone {
@@ -7479,6 +7603,39 @@
 		margin: 0;
 		white-space: normal;
 		overflow-wrap: anywhere;
+	}
+
+	/*
+	 * v0.34.0 (plan QĐ 12): below 360px of width the instruction shortens to the button — "Kéo thả file vào đây hoặc" is
+	 * visually hidden (kept in the DOM / reading order), the browse button is full width. The hint (formats / size /
+	 * count) stays. Stacked zone: title / sub-line stay, the button is full width.
+	 */
+	@container td-dropzone (width < 360px) {
+		.td-dropzone__text {
+			position: absolute;
+			inline-size: 1px;
+			block-size: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip-path: inset(50%);
+			white-space: nowrap;
+			border: 0;
+		}
+
+		.td-dropzone__prompt {
+			align-self: stretch;
+		}
+
+		.td-dropzone__browse {
+			flex: 1 1 100%;
+			inline-size: 100%;
+		}
+	}
+
+	/* td: generated container fallback (ADR 0014) */
+	@supports not (container-type: inline-size) {
+		@media (max-width: 359.98px) {.td-dropzone__text{position:absolute;inline-size:1px;block-size:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}.td-dropzone__prompt{align-self:stretch}.td-dropzone__browse{flex:1 1 100%;inline-size:100%}}
 	}
 
 	.td-dropzone__hint[hidden],
@@ -7824,6 +7981,7 @@
 	td-alert {
 		display: block;
 		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5, v0.34.0) */
+		container: td-alert / inline-size; /* v0.34.0 (plan QĐ 12): needs its width from the parent */
 	}
 
 	.td-alert {
@@ -7873,6 +8031,39 @@
 
 	.td-alert__message > :first-child { margin-top: 0; }
 	.td-alert__message > :last-child { margin-bottom: 0; }
+
+	/*
+	 * v0.34.0 (plan QĐ 12): optional action row the site writes as the last child of the message (or of the body):
+	 * <div class="td-alert__actions"><button class="td-btn td-btn--sm …">…</button>…</div>. Side by side; below 480px of
+	 * alert width stacked, each full width.
+	 */
+	.td-alert__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+		align-items: center;
+		margin-top: var(--td-space-sm);
+	}
+
+	.td-alert__actions[hidden] {
+		display: none;
+	}
+
+	@container td-alert (width < 480px) {
+		.td-alert__actions {
+			flex-direction: column;
+			align-items: stretch;
+		}
+
+		.td-alert__actions > td-button > .td-btn {
+			inline-size: 100%;
+		}
+	}
+
+	/* td: generated container fallback (ADR 0014) */
+	@supports not (container-type: inline-size) {
+		@media (max-width: 479.98px) {.td-alert__actions{flex-direction:column;align-items:stretch}.td-alert__actions>td-button>.td-btn{inline-size:100%}}
+	}
 
 	.td-alert--success { background-color: var(--td-alert-success-bg); border-color: var(--td-alert-success-border); }
 	.td-alert--warning { background-color: var(--td-alert-warning-bg); border-color: var(--td-alert-warning-border); }
@@ -9780,6 +9971,7 @@
 	td-repeater {
 		display: block;
 		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5, v0.34.0) */
+		container: td-repeater / inline-size; /* v0.34.0 (plan QĐ 12): needs its width from the parent */
 	}
 
 	/* same look as a field label (.td-field__label); explicit metrics: a host reset never changes them */
@@ -9879,6 +10071,25 @@
 		background: var(--td-btn-disabled-bg);
 		border-color: var(--td-btn-disabled-border);
 		box-shadow: none;
+	}
+
+	/*
+	 * v0.34.0 (plan QĐ 12): below 480px of repeater width the tool cluster (drag / ↑ / ↓ / ×) is its own row, aligned to
+	 * the end, under the fields — in the default flex row (full-width flex item) and in an app grid row (spans every
+	 * track → auto-placed on a new grid row). An app rule placing the cluster explicitly (unlayered) still wins.
+	 */
+	@container td-repeater (width < 480px) {
+		.td-repeater__actions {
+			flex: 1 0 100%;
+			grid-column: 1 / -1;
+			justify-content: flex-end;
+			margin-inline-start: 0;
+		}
+	}
+
+	/* td: generated container fallback (ADR 0014) */
+	@supports not (container-type: inline-size) {
+		@media (max-width: 479.98px) {.td-repeater__actions{flex:1 0 100%;grid-column:1 / -1;justify-content:flex-end;margin-inline-start:0}}
 	}
 
 	@media (pointer: coarse) {
@@ -11211,7 +11422,10 @@
 		display: block;
 		box-sizing: border-box;
 		inline-size: var(--td-media-field-w, 100%);
+		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5, v0.34.0) */
 		max-inline-size: 100%;
+		/* v0.34.0 (plan QĐ 12): needs a width from the parent — --td-media-field-w a length / %, never fit-content */
+		container: td-media-field / inline-size;
 		font-family: var(--td-font-sans);
 		font-size: var(--td-text-sm);
 		line-height: var(--td-leading-normal);
@@ -11393,6 +11607,19 @@
 
 	.td-media-field__actions[hidden] {
 		display: none;
+	}
+
+	/* v0.34.0 (plan QĐ 12): below 360px of width Đổi / Gỡ stack, each full width */
+	@container td-media-field (width < 360px) {
+		.td-media-field__actions {
+			flex-direction: column;
+			align-items: stretch;
+		}
+	}
+
+	/* td: generated container fallback (ADR 0014) */
+	@supports not (container-type: inline-size) {
+		@media (max-width: 359.98px) {.td-media-field__actions{flex-direction:column;align-items:stretch}}
 	}
 
 	.td-media-field__usage {
