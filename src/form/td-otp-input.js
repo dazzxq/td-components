@@ -41,7 +41,7 @@ export function otpDigits(raw) {
  *   paste, drop and autofill alike; at most `length` (typing inside a full code overwrites the character after the
  *   caret). Never while an IME composition runs: once after `compositionend` (+ the next `input`).
  * - Input attributes per charset: numeric → `inputmode="numeric"`; letters → `inputmode="text"`, `autocapitalize`
- *   (`characters` for upper, `off` otherwise), `autocorrect="off"`, `spellcheck="false"`; always
+ *   (`characters` for upper, `none` otherwise), `autocorrect="off"`, `spellcheck="false"`; always
  *   `autocomplete="one-time-code"`.
  * - `input` is the native event (bubbles from the inner input; the value is already normalised). `complete`
  *   (`detail: { value }`) fires ONCE per "generation": when the `length`-th character arrives with a value not completed yet;
