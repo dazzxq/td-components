@@ -40,7 +40,9 @@ const INERT_CHILD = 'template, script, [hidden], .td-sr-only';
  * Default behaviour: nothing selected → opener click = `activate` (cancelable: preventDefault() blocks the opener default,
  * e.g. a link or TdLightbox.bind()), tick click = select. Selecting → opener / tick click flips the item (no
  * activate; the opener default is blocked). Shift + click: range in DOM order from the anchor (adds only; no anchor
- * → single flip). Keyboard on the opener only: Space flips (Shift+Space = range), Enter = `activate` (always, the
+ * → single flip). v0.36.0: Ctrl/Cmd+click on a <button> opener also flips (starts a selection); an <a href> opener keeps
+ * the browser's new-tab behaviour. macOS: Cmd (Ctrl+click is the
+ * context menu there). Keyboard on the opener only: Space flips (Shift+Space = range), Enter = `activate` (always, the
  * selection is not changed). Escape clears unless an overlay layer is open (layers.js) or an IME is composing.
  *
  * @element td-media-grid
@@ -584,7 +586,9 @@ export class TdMediaGrid extends TdBaseElement {
     // change the selection from the opener. Default mode: selecting (or Shift) → the opener flips.
     const flip = this._tickMode()
       ? (e.shiftKey || e.ctrlKey || e.metaKey)
-      : (this._selected.size > 0 || e.shiftKey);
+      // v0.36.0 (plan QĐ 7b): Ctrl/Cmd+click on a <button> opener starts / extends the selection; on an <a href>
+      // opener it stays the browser's "open in a new tab"
+      : (this._selected.size > 0 || e.shiftKey || ((e.ctrlKey || e.metaKey) && !open.matches('a[href]')));
     if (!disabled && flip) {
       e.preventDefault();
       e.stopPropagation();
