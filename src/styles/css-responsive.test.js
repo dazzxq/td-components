@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { checkBreakpoints, addContainerFallbacks, matchBrace, FALLBACK_MARK } from '../../scripts/css-responsive.mjs';
+import { checkBreakpoints, addContainerFallbacks, expandVariants, compact, matchBrace, FALLBACK_MARK, VARIANT_MARK } from '../../scripts/css-responsive.mjs';
 
 test('checkBreakpoints: kit numbers pass, others fail with file:line', () => {
   const ok = `@media (max-width: 719.98px) { a { b: c } }
@@ -51,8 +51,8 @@ test('addContainerFallbacks: one @supports-not viewport block per @container, sa
 }`;
   const out = addContainerFallbacks(css, 't.css');
   assert.equal(out.split(FALLBACK_MARK).length - 1, 2);
-  assert.match(out, /@supports not \(container-type: inline-size\) \{\n\t\t@media \(max-width: 479\.98px\) \{\n\t\t\t\.a \{ display: none; \}\n\t\t\t\.b \{ content: "\}"; \}\n\t\t\}\n\t\}/);
-  assert.match(out, /@media \(min-width: 720px\) \{\n\t\t\t\.c \{ gap: 1rem; \}/);
+  assert.ok(out.includes('@supports not (container-type: inline-size) {\n\t\t@media (max-width: 479.98px) {.a{display:none}.b{content:"}"}}\n\t}'), out);
+  assert.ok(out.includes('@media (min-width: 720px) {.c{gap:1rem}}'), out);
   // still inside the layer, original blocks untouched
   assert.ok(out.startsWith('@layer td.component {\n\t@container td-pager (width < 480px) {'));
   assert.ok(out.trimEnd().endsWith('}'));
@@ -84,7 +84,48 @@ test('td.css: every @container td-* block is followed by exactly its generated f
     const inner = fb.slice(fb.indexOf('@media'));
     assert.ok(inner.startsWith(`@media ${media} {`), `${m[1]}: ${inner.slice(0, 60)}`);
     const fbBody = inner.slice(inner.indexOf('{'), matchBrace(inner, inner.indexOf('{')) + 1);
-    assert.equal(fbBody.replace(/\s+/g, ' '), body.replace(/\s+/g, ' '), `${m[1]} rules identical`);
+    assert.equal(compact(fbBody), compact(body), `${m[1]} rules identical`);
   }
   return count;
+});
+
+test('expandVariants: one source rule set re-emitted per container condition with the variant prefix', () => {
+  const css = `@layer td.component {
+	/* card mode
+	 * @td-variants source=":where(x-t[layout=\\"cards\\"])"
+	 *   td-t (width < 480px) => :where(x-t[below="sm"])
+	 *   td-t (width < 720px) => :where(x-t:not([below]))
+	 */
+	:where(x-t[layout="cards"]) .row { display: flex; } /* note */
+	:where(x-t[layout="cards"]) .cell::before { content: "a: b"; }
+	/* @td-variants-end */
+}`;
+  const out = expandVariants(css, 'v.css');
+  assert.ok(out.includes(':where(x-t[layout="cards"]) .row { display: flex; }'), 'source kept');
+  assert.equal(out.split(VARIANT_MARK).length - 1, 2);
+  assert.ok(out.includes('@container td-t (width < 480px) {:where(x-t[below="sm"]) .row{display:flex}:where(x-t[below="sm"]) .cell::before{content:"a:b"}}'), out);
+  assert.ok(out.includes('@container td-t (width < 720px) {:where(x-t:not([below])) .row{display:flex}'), out);
+  assert.ok(!out.includes('@td-variants-end'));
+  // then the fallbacks follow each generated block
+  const full = addContainerFallbacks(out, 'v.css');
+  assert.equal(full.split(FALLBACK_MARK).length - 1, 2);
+  assert.deepEqual(checkBreakpoints(full, 'v.css'), []);
+});
+
+test('expandVariants: malformed specs throw with file:line', () => {
+  const bad = (spec, body = ':where(s) a { b: c; }') => `/* @td-variants source=":where(s)"\n${spec}\n*/\n${body}\n/* @td-variants-end */`;
+  assert.throws(() => expandVariants(bad('td-t (width < 480px) :where(v)'), 'b.css'), /b\.css:1: bad @td-variants line/);
+  assert.throws(() => expandVariants(bad(''), 'b.css'), /without variants/);
+  assert.throws(() => expandVariants(bad('td-t (width < 480px) => :where(v)', 'a { b: c; }'), 'b.css'), /never uses its source prefix/);
+});
+
+test('td-table.css holds ONE card rule set (no hand copies); td.css carries 3 generated card-below variants', async () => {
+  const src = await readFile(new URL('./components/table.css', import.meta.url), 'utf8');
+  assert.equal((src.match(/@container td-table \(width < /g) || []).length, 0, 'no hand-written card container blocks');
+  const css = await readFile(new URL('../../td.css', import.meta.url), 'utf8');
+  for (const [n, p] of [[480, '[card-below="sm"]'], [720, ':not([layout="table"],[card-below="sm"],[card-below="lg"])'], [1024, '[card-below="lg"]']]) {
+    const i = css.indexOf(`@container td-table (width < ${n}px) {`);
+    assert.ok(i > 0, `variant ${n}`);
+    assert.ok(css.slice(i, i + 400).includes(p), `variant ${n} prefix`);
+  }
 });

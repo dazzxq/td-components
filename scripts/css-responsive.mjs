@@ -13,6 +13,16 @@
  *    (`width >= N` → `min-width: N`). The support contract is Chrome/Edge 102+; container queries arrived in 105.
  *    Only named `td-*` containers with ONE width condition are allowed (anything else throws — keeps the generator
  *    trivially correct).
+ * 3. `expandVariants(css, file)` — one hand-written rule set re-emitted under container conditions with another
+ *    selector prefix (td-table card mode: `layout="cards"` is the source, `card-below="sm|md|lg"` the variants), so the
+ *    source never holds copies:
+ *      / * @td-variants source=":where(td-table[layout=\"cards\"])"
+ *         td-table (width < 720px) => :where(td-table:not([layout="table"]))
+ *      * /
+ *      …rules using the source prefix…
+ *      / * @td-variants-end * /
+ *    Generated copies are compact (comments stripped, whitespace collapsed); `addContainerFallbacks` then adds their
+ *    viewport fallbacks.
  */
 
 export const WIDTHS = [480, 720, 1024, 1280];
@@ -118,7 +128,7 @@ export function addContainerFallbacks(css, file) {
     const indent = /^[ \t]*/.exec(css.slice(lineStart, m.index))[0];
     inserts.push({
       at: close + 1,
-      text: `\n\n${indent}${FALLBACK_MARK}\n${indent}@supports not (container-type: inline-size) {\n${indent}\t@media ${media} ${body.replace(/\n/g, '\n\t')}\n${indent}}`,
+      text: `\n\n${indent}${FALLBACK_MARK}\n${indent}@supports not (container-type: inline-size) {\n${indent}\t@media ${media} ${compact(body)}\n${indent}}`,
     });
   }
   let out = css;
@@ -126,4 +136,34 @@ export function addContainerFallbacks(css, file) {
   return out;
 }
 
-export { FALLBACK_MARK };
+/** Strip comments and collapse whitespace (generated copies only). */
+export function compact(css) {
+  return css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, ' ').replace(/\s*([{};,>])\s*/g, '$1').replace(/:\s+/g, ':').replace(/;}/g, '}').trim();
+}
+
+const VARIANT_MARK = '/* td: generated variant (ADR 0014) */';
+
+/**
+ * @param {string} css
+ * @param {string} file
+ * @returns {string}
+ */
+export function expandVariants(css, file) {
+  const re = /\/\*(?:(?!\*\/)[\s\S])*?@td-variants\s+source="((?:[^"\\]|\\.)*)"((?:(?!\*\/)[\s\S])*)\*\/([\s\S]*?)\/\*\s*@td-variants-end\s*\*\//g;
+  return css.replace(re, (whole, rawSource, spec, body, offset) => {
+    const line = lineOf(css, offset);
+    const source = rawSource.replace(/\\"/g, '"');
+    if (!body.includes(source)) throw new Error(`${file}:${line}: @td-variants body never uses its source prefix ${source}`);
+    const variants = spec.split('\n').map((l) => l.replace(/^\s*\*?\s*/, '').trim()).filter(Boolean).map((l) => {
+      const m = /^(td-[a-z0-9-]+ \(width (?:<|>=) \d+px\))\s*=>\s*(.+)$/.exec(l);
+      if (!m) throw new Error(`${file}:${line}: bad @td-variants line "${l}" (want "td-x (width < N) => prefix")`);
+      return { cond: m[1], prefix: m[2].trim() };
+    });
+    if (!variants.length) throw new Error(`${file}:${line}: @td-variants without variants`);
+    const rules = compact(body);
+    const out = variants.map((v) => `\t${VARIANT_MARK}\n\t@container ${v.cond} {${rules.split(source).join(v.prefix)}}`);
+    return `${body.trimEnd()}\n\n${out.join('\n\n')}`;
+  });
+}
+
+export { FALLBACK_MARK, VARIANT_MARK };

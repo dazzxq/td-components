@@ -54,7 +54,7 @@ viewport nên **đặt trong cột hẹp của trang desktop vẫn vỡ** như t
      query → mỗi khối `@container td-<x> (width < N)` có fallback chức năng `@supports not (container-type: inline-size)
      { @media (max-width: N−0.02px) { …cùng luật… } }` — bố cục theo **viewport** thay vì chỗ đặt (đúng cho trang một cột
      trên điện thoại). Fallback do `scripts/build-css.mjs` **sinh** lúc build `td.css` (không viết tay hai lần), `check:css`
-     giữ đồng bộ; node test kiểm đủ cặp, engines test ép đường fallback bằng `td.css` biến đổi. JS của component không
+     giữ đồng bộ; node test kiểm đủ cặp, engines test ép đường fallback bằng `td.css` biến đổi. Một bộ luật cần chạy dưới nhiều điều kiện container (card của `td-table` theo `card-below`) cũng chỉ viết **một lần** — khối `/* @td-variants … */ … /* @td-variants-end */` được `build-css` sinh lại cho từng điều kiện (bản sinh gọn, không comment); không chép tay. JS của component không
      được phụ thuộc vào việc container query có chạy.
    - `.td-modal--viewport` (media picker từ v0.33) là lớp phủ full viewport ở **mọi** kích thước: chỉ bố cục bên trong đổi
      theo `md` / `short`; luật sheet / hộp giữa chỉ áp cho modal thường. `td-media-grid` (kể cả Σ của `justified` v0.33)

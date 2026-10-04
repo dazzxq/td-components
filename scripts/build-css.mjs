@@ -10,7 +10,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { checkBreakpoints, addContainerFallbacks } from './css-responsive.mjs';
+import { checkBreakpoints, addContainerFallbacks, expandVariants } from './css-responsive.mjs';
 
 /**
  * Files v0.33 is rewriting in parallel: their old thresholds (640 / 768 / 1024) are mapped to ADR 0014 in plan v0.34.0
@@ -35,7 +35,7 @@ for (const file of manifest.files) {
   const css = (await readFile(join(STYLES, file), 'utf8')).replace(/\r\n/g, '\n').trimEnd();
   if (/^\s*@import\b/m.test(css)) throw new Error(`${file}: @import is not allowed (td.css must be self-contained)`);
   if (!PENDING_M0.has(file)) bpErrors.push(...checkBreakpoints(css, `src/styles/${file}`));
-  parts.push(`\n/* ---- src/styles/${file} ---- */\n${addContainerFallbacks(css, `src/styles/${file}`)}\n`);
+  parts.push(`\n/* ---- src/styles/${file} ---- */\n${addContainerFallbacks(expandVariants(css, `src/styles/${file}`), `src/styles/${file}`)}\n`);
 }
 if (bpErrors.length) {
   console.error(`Breakpoints (ADR 0014):\n  ${bpErrors.join('\n  ')}`);
