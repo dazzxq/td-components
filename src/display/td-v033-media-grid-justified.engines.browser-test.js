@@ -112,6 +112,14 @@ function checkInvariants(grid, box, ars, label = '') {
   return { got, expected };
 }
 
+/** expected ids per row from packRows() (items in DOM order) */
+function idsByPackRows(ars, grid) {
+  const target = parseFloat(getComputedStyle(grid).getPropertyValue('--td-media-grid-row-ratio'));
+  const ids = itemsOf(grid).map((el) => el.dataset.id);
+  let i = 0;
+  return packRows(ars, target).map((row) => row.map(() => ids[i++]));
+}
+
 const settled = (grid) => itemsOf(grid).every((it) => it.style.getPropertyValue('--td-mg-w') !== '');
 
 /** resolves on the next ResizeObserver callback for `el` (the grid's own observer fired in the same frame) */
@@ -142,10 +150,41 @@ describe('td-media-grid layout="justified" — geometry', () => {
       ({ grid, box } = mount(portraits));
       await waitFor(() => settled(grid), 4000, 'row vars');
       const { got } = checkInvariants(grid, box, portraits.map(arOfKind), `portraits@${vw}`);
-      // the short last row keeps the height of the full row above it ±1px (decision 33)
+      // 25 portraits: the short last row (1 item, Σ ≤ Σ_prev, n ≤ n_prev) FITS → the height of the full row above ±1px
+      // (decision 33), membership = packRows
+      const ids = (row) => row.map((c) => c.el.dataset.id);
+      expect(got.map(ids)).to.deep.equal(idsByPackRows(portraits.map(arOfKind), grid));
       const last = got[got.length - 1][0].r.height;
       expect(Math.abs(last - got[got.length - 2][0].r.height)).to.be.at.most(1);
       expect(got[got.length - 1].reduce((a, c) => a + c.r.width, 0)).to.be.below(box.getBoundingClientRect().width);
+    });
+  }
+
+  // Decision 33 contract for a short last row that does NOT fit at the previous height: it stays ≤ the container, keeps
+  // packRows()'s membership (no repacking), and its height may differ.
+  for (const vw of [1280, 1440]) {
+    it(`${vw}px: a short last row that does not fit the previous height stays ≤ container, no item moves`, async () => {
+      await setViewport({ width: vw, height: 900 });
+      await waitFor(() => window.innerWidth === vw, 4000, 'viewport');
+      // Σ target 5.5: [5] closes (5 + 4 = 9 is farther), [4, 1.4] Σ 5.4 < 5.5 → short; at the previous height its width
+      // would be 5.4 / 5 × W + gap > W
+      const ars = [5, 4, 1.4];
+      root.innerHTML = '<td-media-grid label="Album" layout="justified">'
+        + ars.map((ar, i) => `<div data-td-media-item data-id="n${i}" data-td-ar="${ar}"><button type="button" data-td-media-open aria-label="Ảnh ${i}"><img src="/test/fixtures/1.svg" alt=""></button></div>`).join('')
+        + '</td-media-grid>';
+      const grid = root.querySelector('td-media-grid');
+      await waitFor(() => settled(grid), 4000, 'row vars');
+      expect(getComputedStyle(grid).getPropertyValue('--td-media-grid-row-ratio').trim()).to.equal('5.5');
+      const { got } = checkInvariants(grid, grid, ars, `not-fit@${vw}`);
+      const cw = grid.getBoundingClientRect().width;
+      const gap = gapOf(grid);
+      expect(got.map((row) => row.map((c) => c.el.dataset.id))).to.deep.equal([['n0'], ['n1', 'n2']]);
+      const prevH = got[0][0].r.height;
+      const atPrev = (4 + 1.4) * prevH + gap; // the short row's width at the previous row's height
+      expect(atPrev, 'really does not fit').to.be.above(cw);
+      const total = got[1].reduce((a, c) => a + c.r.width, 0) + gap;
+      expect(total, 'short row ≤ container').to.be.at.most(cw + 0.01);
+      expect(got[1][0].r.height, 'lower than the previous row instead of overflowing').to.be.below(prevH - 1);
     });
   }
 

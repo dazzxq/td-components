@@ -6,12 +6,15 @@
  * ratio sum Σ stays as close as possible to the target Σ (row height = (W − gaps) / Σ). Each cell gets
  *   width:        calc(P% − sub px)         P = ar / denom × 100, sub = P / ΣP × (n − 1) × gap
  *   aspect-ratio: P / k                      k = 100 / denom (one constant per row → equal heights by algebra)
- * with denom = Σ for a full row. A short LAST row (Σ < target) keeps the row height and leaves the right empty:
- *   - after a full row with Σ_prev ≥ its Σ and ≥ its item count, it takes that row's EXACT height (gaps included):
- *     P = ar / Σ_prev × 100, sub = P / 100 × (n_prev − 1) × gap, k = 100 / Σ_prev — then
- *     row width = Σ/Σ_prev × (W − (n_prev − 1)·gap) + (n − 1)·gap ≤ W for every W;
- *   - otherwise (first / only row, or it could not fit) denom = target, as dwp rows_markup() does (height within a few
- *     % of the other rows, since the gap share differs).
+ * with denom = Σ for a full row. A short LAST row (Σ < target) is never repacked (its items are exactly packRows()'s
+ * last row; no item moves between rows — dwp GOTCHAS §17.2) and leaves the right empty. Its height:
+ *   - FITS (Σ ≤ Σ_prev AND n ≤ n_prev, i.e. at the previous row's height it fits the container at EVERY width — the
+ *     grid only rebuilds on a breakpoint change, so the choice cannot depend on W) → the previous row's EXACT height:
+ *     P = ⌊ar / Σ_prev × 100⌋₃, sub = P / 100 × (n_prev − 1) × gap, k = 100 / Σ_prev — so
+ *     row width = Σ/Σ_prev × (W − (n_prev − 1)·gap) + (n − 1)·gap ≤ W;
+ *   - otherwise (first / only row, Σ > Σ_prev, or n > n_prev) → denom = target, as dwp rows_markup() does: row width =
+ *     ΣP% × W ≤ W (P rounded DOWN), and the height may differ from the previous row's (lower when Σ > Σ_prev).
+ * Contract (plan decision 33): equal height to the previous row only when it fits; never overflow; never repack.
  * Full rows: P rounded to 3 decimals, the remainder goes to the last cell (ΣP = 100.000 by addition) and the last cell
  * takes 0.5px MORE off (never less), so the row never exceeds the container and flex-wrap never breaks it early.
  */
@@ -119,6 +122,9 @@ export function rowStyles(rows, target, gapPx, containerWidth) {
       let p;
       if (!short && i === n - 1) {
         p = round(100 - acc, 3);
+      } else if (short) {
+        // rounded DOWN: ΣP ≤ Σ / target × 100 < 100, so the row never exceeds the container (half-up could, by n × 0.0005%)
+        p = Math.floor((row[i] / denom) * 100 * 1000) / 1000;
       } else {
         p = round((row[i] / denom) * 100, 3);
         acc = round(acc + p, 3);

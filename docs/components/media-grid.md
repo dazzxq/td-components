@@ -212,8 +212,12 @@ giữ đúng tỉ lệ (không cắt, trừ ảnh bị kẹp tỉ lệ). Là tu�
   tải xong → tạm dùng `--td-media-grid-fallback-ar` (1.5) rồi xếp lại khi ảnh tải xong. **In sẵn `width` / `height`
   (hoặc `data-td-ar`) từ server** để xếp đúng ngay lần đầu, không giật. Tỉ lệ bị kẹp trong [0.2, 5].
 - **Xếp dòng** (thuật toán `pack_rows` của dwp): thêm ảnh vào dòng tới khi tổng tỉ lệ Σ gần `--td-media-grid-row-ratio`
-  nhất (5.5; ≤ 1024px: 4; ≤ 640px: 2.5). Không giới hạn số ảnh / dòng. Dòng cuối thiếu giữ chiều cao của dòng trên, căn
-  trái, để trống bên phải.
+  nhất (5.5; ≤ 1024px: 4; ≤ 640px: 2.5). Không giới hạn số ảnh / dòng.
+- **Dòng cuối thiếu** (Σ < đích) căn trái, để trống bên phải, và **không bao giờ dời ảnh** sang dòng khác. Chiều cao:
+  - **vừa** (Σ của nó ≤ Σ dòng trên **và** số ảnh ≤ số ảnh dòng trên, tức ở chiều cao dòng trên nó lọt container ở mọi bề
+    rộng) → cao **bằng đúng** dòng trên;
+  - **không vừa** → chỉ đảm bảo không tràn (bề rộng dòng ≤ container, mẫu số = Σ đích như dwp). Chiều cao có thể khác dòng
+    trên (thường thấp hơn).
 - **Bề rộng là phần trăm**: resize trong cùng một nấc không phải xếp lại; qua nấc (Σ đổi), thêm / bớt / đổi thứ tự ô,
   đổi `data-td-ar` hoặc ảnh tải xong thì xếp lại trong một `requestAnimationFrame` (một pha đọc, một pha ghi).
 - **Vùng chứa dòng** phải là chính `td-media-grid` (ô là con trực tiếp) hoặc **một** `<td-sortable>` con trực tiếp (§7).

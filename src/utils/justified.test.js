@@ -149,6 +149,100 @@ describe('justified — rowStyles', () => {
     assert.ok(st[1].total <= 1000);
   });
 
+  // Decision 33 contract (relaxed, owner decision on impl-review issue 4): the short last row takes the previous row's
+  // height WHEN IT FITS at every container width (Σ ≤ Σ_prev and n ≤ n_prev); otherwise it only stays ≤ W (denominator
+  // = target) and may be a different height. Never any repacking: row membership is exactly packRows()'s.
+  const membership = (rows) => rows.map((r) => r.length);
+  const hOf = (r, i) => (r.widths[i] * r.k) / r.cells[i].w;
+
+  it('contract — short last row that fits: same k as the previous row (equal heights), membership = packRows', () => {
+    const ars = [1.5, 1.5, 1.5, 1.5, 1.5, 1.5];
+    const rows = packRows(ars, 5.5);
+    assert.deepEqual(membership(rows), [4, 2]);
+    for (const g of GAPS) {
+      for (const W of WIDTHS) {
+        const st = rowStyles(rows, 5.5, g, W);
+        assert.deepEqual(st.map((r) => r.cells.length), [4, 2], 'no item moved');
+        assert.equal(st[1].full, false);
+        assert.equal(st[1].k, st[0].k, 'previous row k');
+        assert.ok(Math.abs(hOf(st[1], 0) - hOf(st[0], 0)) < 1e-3, `${hOf(st[1], 0)} vs ${hOf(st[0], 0)}`);
+        assert.ok(st[1].total <= W);
+      }
+    }
+  });
+
+  it('contract — short last row that does NOT fit (Σ_last > Σ_prev): ≤ W, membership = packRows, height may differ', () => {
+    // [5] closes (5 + 4 = 9 is farther from 5.5); [4, 1.4] Σ 5.4 < 5.5 → short. At the previous height (Σ_prev = 5)
+    // its width would be 5.4 / 5 × W + gap > W, so it cannot take that height.
+    const rows = packRows([5, 4, 1.4], 5.5);
+    assert.deepEqual(membership(rows), [1, 2]);
+    for (const g of GAPS) {
+      for (const W of WIDTHS) {
+        const st = rowStyles(rows, 5.5, g, W);
+        const atPrevHeight = (5.4 / 5) * W + g;
+        assert.ok(atPrevHeight > W, 'really does not fit');
+        assert.deepEqual(st.map((r) => r.cells.length), [1, 2], 'no item moved');
+        assert.equal(st[1].full, false);
+        assert.ok(st[1].total <= W, `${st[1].total} > ${W}`);
+        assert.equal(st[1].k, Math.round((100 / 5.5) * 1e4) / 1e4, 'denominator = target');
+        assert.ok(hOf(st[1], 0) < hOf(st[0], 0), 'lower than the previous row (no overflow instead)');
+      }
+    }
+  });
+
+  it('contract — more items than the previous row (n > n_prev): would overflow a narrow container → target, ≤ W', () => {
+    // [5, 0.6] closes (6.1 is farther); [0.5 × 4] Σ 2. At the previous height its width is 2 / 5.6 × (W − g) + 3g,
+    // > W when W < ~4.1 gaps — not "fits at every width", so it uses the target denominator at every W.
+    const rows = packRows([5, 0.6, 0.5, 0.5, 0.5, 0.5], 5.5);
+    assert.deepEqual(membership(rows), [2, 4]);
+    assert.ok((2 / 5.6) * (20 - 8) + 3 * 8 > 20, 'overflows at W = 20, gap 8');
+    for (const [g, W] of [[8, 20], ...WIDTHS.map((w) => [8, w])]) {
+      const st = rowStyles(rows, 5.5, g, W);
+      assert.deepEqual(st.map((r) => r.cells.length), [2, 4], 'no item moved');
+      assert.equal(st[1].k, Math.round((100 / 5.5) * 1e4) / 1e4);
+      assert.ok(st[1].total <= W, `${st[1].total} > ${W}`);
+    }
+  });
+
+  it('contract — not-fit short row with Σ just under the target: P never rounds up past the container', () => {
+    // three P ≈ 33.3336 / 33.3336 / 33.3326 % (true sum 99.9998 %): half-up rounding gave 100.001 % → 2560.03 px > 2560
+    const a = 33.3336 * 0.055;
+    const b = 33.3326 * 0.055;
+    const rows = packRows([5, a, a, b], 5.5);
+    assert.deepEqual(membership(rows), [1, 3]);
+    for (const g of GAPS) {
+      for (const W of WIDTHS) {
+        const st = rowStyles(rows, 5.5, g, W);
+        assert.equal(st[1].full, false);
+        assert.ok(st[1].total <= W, `${st[1].total} > ${W}`);
+      }
+    }
+  });
+
+  it('contract — every seeded set: membership = packRows; a fitting short row has the previous k, any short row ≤ W', () => {
+    for (const set of SETS) {
+      for (const t of TARGETS) {
+        const rows = packRows(set, t);
+        for (const W of WIDTHS) {
+          const st = rowStyles(rows, t, 8, W);
+          assert.deepEqual(st.map((r) => r.cells.length), membership(rows));
+          const li = rows.length - 1;
+          if (li > 0 && !st[li].full) {
+            const fits = sum(rows[li]) <= sum(rows[li - 1]) && rows[li].length <= rows[li - 1].length;
+            if (fits) {
+              assert.equal(st[li].k, st[li - 1].k);
+              // the previous row's exact height, gaps included (not its cell 0: a 1-item row's cell is also its last
+              // cell and carries the 0.5px slack)
+              const hPrev = (st[li - 1].k * (W - (rows[li - 1].length - 1) * 8)) / 100;
+              assert.ok(Math.abs(hOf(st[li], 0) - hPrev) < 1e-3, `${hOf(st[li], 0)} vs ${hPrev}`);
+            }
+            assert.ok(st[li].total <= W);
+          }
+        }
+      }
+    }
+  });
+
   it('single item / single full row: no gap, only the slack', () => {
     const [r] = rowStyles([[5.5]], 5.5, 8, 1000);
     assert.equal(r.full, true);
