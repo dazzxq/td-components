@@ -125,8 +125,9 @@ describe('v0.33 td-media-picker — cards (decisions 11-12)', () => {
     const badge = item('m54').querySelector('.td-media-picker__badges .td-badge');
     expect(badge.textContent).to.equal('Mới');
     expect(badge.classList.contains('td-badge--success')).to.equal(true);
-    // card surface: 2px transparent border, radius token, text area with a top border
-    const cs = getComputedStyle(card);
+    // card surface: 2px transparent border, radius token, text area with a top border (v0.36: m60 is auto-previewed →
+    // its border is the "viewing" one; read a card nobody views)
+    const cs = getComputedStyle(item('m57'));
     expect(cs.borderTopWidth).to.equal('2px');
     expect(cs.borderTopColor).to.equal('rgba(0, 0, 0, 0)');
     expect(px(cs.borderTopLeftRadius) > 0).to.equal(true);
@@ -259,17 +260,13 @@ describe('v0.33 td-media-picker — multiple selection (decision 15)', () => {
 });
 
 describe('v0.33 td-media-picker — single selection (decision 16)', () => {
-  it('open → nothing selected, "Chèn" disabled, detail empty state (no auto-select of the first item)', async () => {
+  it('open → nothing selected, "Chèn" disabled; v0.36 (QĐ 69): the first item is PREVIEWED, never auto-selected', async () => {
     await openReady();
-    await wait(50);
+    await detailReady('m60');
     expect(grid().selectedIds).to.deep.equal([]);
     expect(confirmBtn().hasAttribute('disabled')).to.equal(true);
-    const det = q('.td-media-picker__detail');
-    expect(det.getAttribute('data-state')).to.equal('empty');
-    const es = det.querySelector('td-empty-state');
-    expect(es.getAttribute('title')).to.equal('Chọn một ảnh để xem chi tiết');
-    expect(es.getAttribute('message')).to.equal('Bấm vào ảnh trong danh sách bên trái');
-    expect(items().some((i) => i.hasAttribute('data-viewing'))).to.equal(false);
+    expect(q('.td-media-picker__detail').getAttribute('data-state')).to.equal('ready');
+    expect(items().filter((i) => i.hasAttribute('data-viewing')).map((i) => i.getAttribute('data-id'))).to.deep.equal(['m60']);
   });
 
   it('Space on B (A selected) → selection [B], detail B, B viewing, A not', async () => {

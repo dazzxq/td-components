@@ -97,42 +97,12 @@
 		justify-content: flex-end;
 	}
 
-	/* < 720px: full viewport (decision 20). Specificity ≥ modal.css's bottom-sheet state rules; same layer, later file. */
+	/* v0.36.0 (plan QĐ 58, mobile UX audit — replaces v0.33 decision 20's full viewport): < 720 the upload dialog is the
+	   kit's ordinary bottom sheet, as tall as its content (≤ 90dvh, safe-area from modal.css); the footer held only
+	   "Đóng" — the header × does that, so the footer is dropped. */
 	@media (max-width: 719.98px) {
-		.td-modal.td-media-picker-upload {
-			inset-inline-end: 0; /* full viewport: no scroll-lock gap strip (see .td-modal--viewport) */
-			align-items: stretch;
-			padding: 0;
-		}
-
-		.td-modal.td-media-picker-upload[data-state] .td-modal__dialog {
-			--td-modal-enter-from: none;
-			width: 100%;
-			height: 100dvh;
-			max-height: none;
-			padding-bottom: 0;
-			border-width: 0;
-			border-radius: 0;
-			transform: none;
-		}
-
-		.td-modal.td-media-picker-upload .td-modal__header {
-			padding-top: calc(var(--td-space-sm) + env(safe-area-inset-top, 0px));
-		}
-
-		.td-modal.td-media-picker-upload .td-modal__footer {
-			padding-bottom: calc(var(--td-space-sm) + env(safe-area-inset-bottom, 0px));
-		}
-
-		.td-modal.td-media-picker-upload .td-modal__header,
-		.td-modal.td-media-picker-upload .td-modal__footer {
-			padding-right: calc(var(--td-modal-pad-x) + env(safe-area-inset-right, 0px));
-			padding-left: calc(var(--td-modal-pad-x) + env(safe-area-inset-left, 0px));
-		}
-
-		.td-modal.td-media-picker-upload .td-modal__body {
-			padding-right: calc(var(--td-modal-pad-x) + env(safe-area-inset-right, 0px));
-			padding-left: calc(var(--td-modal-pad-x) + env(safe-area-inset-left, 0px));
+		.td-modal.td-media-picker-upload .td-media-picker-upload__footer {
+			display: none;
 		}
 	}
 }

@@ -101,8 +101,11 @@ describe('v0.33 td-media-picker — full viewport shell (decisions 4-6)', () => 
       const header = getComputedStyle(q('.td-modal__header'));
       const footer = getComputedStyle(q('.td-modal__footer'));
       const body = getComputedStyle(q('.td-modal__body'));
-      expect(Math.abs(px(header.paddingTop) - spaceSm) < 0.5, `header top ${header.paddingTop} vs ${spaceSm}`).to.equal(true);
-      expect(Math.abs(px(footer.paddingBottom) - spaceSm) < 0.5, `footer bottom ${footer.paddingBottom}`).to.equal(true);
+      // v0.36.0 (QĐ 60): < 720 the chrome is compact — header 6px, footer 8px block padding (+ the insets)
+      const headTop = w < 720 ? 6 : spaceSm;
+      const footBottom = w < 720 ? 8 : spaceSm;
+      expect(Math.abs(px(header.paddingTop) - headTop) < 0.5, `header top ${header.paddingTop} vs ${headTop}`).to.equal(true);
+      expect(Math.abs(px(footer.paddingBottom) - footBottom) < 0.5, `footer bottom ${footer.paddingBottom}`).to.equal(true);
       for (const cs of [header, footer]) {
         expect(Math.abs(px(cs.paddingLeft) - padX) < 0.5, `left ${cs.paddingLeft} vs ${padX}`).to.equal(true);
         expect(Math.abs(px(cs.paddingRight) - padX) < 0.5, `right ${cs.paddingRight} vs ${padX}`).to.equal(true);
@@ -163,7 +166,10 @@ describe('v0.33 td-media-picker — toolbar (decisions 7-10)', () => {
     const input = kids[1].querySelector('input');
     expect(input.getAttribute('placeholder')).to.equal('Tìm kiếm media…');
     expect(input.getAttribute('aria-label') || kids[1].getAttribute('aria-label')).to.equal('Tìm media');
-    const filters = kids[2];
+    // v0.36.0: the "Bộ lọc" sheet trigger sits between search and filters — hidden ≥ 1024
+    expect(kids[2].classList.contains('td-media-picker__filter')).to.equal(true);
+    expect(getComputedStyle(kids[2]).display).to.equal('none');
+    const filters = kids[3];
     expect(filters.classList.contains('td-media-picker__filters')).to.equal(true);
     const [facets, pager] = filters.children;
     expect(facets.classList.contains('td-media-picker__facets')).to.equal(true);
@@ -202,7 +208,8 @@ describe('v0.33 td-media-picker — toolbar (decisions 7-10)', () => {
     expect(Math.abs(tr.right - px(getComputedStyle(tb).paddingRight) - pr.right) <= 1.5, `pager right ${pr.right}`).to.equal(true);
   });
 
-  for (const [w, h] of [[720, 1024], [768, 1024], [1024, 768]]) {
+  // v0.36.0 (QĐ 49): 720–1023 use the "Bộ lọc" sheet (td-v036-picker-filters); the facet row is ≥ 1024
+  for (const [w, h] of [[1024, 768], [1280, 800]]) {
     it(`${w}px: ONE toolbar row (no wrap); facets that do not fit scroll inside the row; keyboard-reachable, focus ring unclipped`, async () => {
       await setViewport({ width: w, height: h });
       await until(() => window.innerWidth === w, 3000, 'viewport');
@@ -254,23 +261,22 @@ describe('v0.33 td-media-picker — toolbar (decisions 7-10)', () => {
     });
   }
 
-  it('< 720 (ADR 0014; v0.33: 768): two rows (upload icon-only + search, then facets + pager), no overflow', async () => {
+  it('< 720 (v0.36.0 QĐ 49): ONE row — upload icon-only · search · "Bộ lọc"; the pager under the grid; no overflow', async () => {
     await setViewport({ width: 390, height: 844 });
     await openSettled({ pageSize: 20 });
-    await until(() => q('.td-media-picker__facets td-dropdown'), 4000, 'facets');
+    await until(() => !q('.td-media-picker__filter').hidden, 4000, 'filter trigger');
     await until(() => !q('.td-media-picker__pager').hidden, 4000, 'pager');
     const up = q('.td-media-picker__upload-btn');
     const search = q('.td-media-picker__search');
-    const ur = up.getBoundingClientRect();
-    const sr = search.getBoundingClientRect();
-    expect(Math.abs((ur.top + ur.height / 2) - (sr.top + sr.height / 2)) < 12, 'upload + search on row 1').to.equal(true);
-    expect(ur.width < 64, `upload icon-only ${ur.width}`).to.equal(true);
+    const filter = q('.td-media-picker__filter');
+    const mid = (el) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; };
+    for (const el of [up, filter]) expect(Math.abs(mid(el) - mid(search)) < 12, `${el.className} on the row`).to.equal(true);
+    expect(up.getBoundingClientRect().width < 64, 'upload icon-only').to.equal(true);
     expect(up.querySelector('button').getAttribute('aria-label')).to.equal('Tải lên');
-    const fr = q('.td-media-picker__filters').getBoundingClientRect();
-    expect(fr.top >= sr.bottom - 1, 'facets on the next row').to.equal(true);
+    expect(q('.td-media-picker__pager').parentElement).to.equal(q('.td-media-picker__results'));
     const tb = q('.td-media-picker__toolbar');
     expect(tb.scrollWidth <= tb.clientWidth + 1).to.equal(true);
-    for (const el of tb.querySelectorAll('td-button, td-input-field, td-dropdown, td-toggle, td-chip-input, .td-media-picker__pager')) {
+    for (const el of tb.querySelectorAll('td-button, td-input-field')) {
       const r = el.getBoundingClientRect();
       if (!r.width) continue;
       expect(r.right <= 390 + 1 && r.left >= -1, `${el.localName} ${r.left}-${r.right}`).to.equal(true);

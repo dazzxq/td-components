@@ -595,15 +595,17 @@ describe('td-media-picker — latest wins + abort (decision 9)', () => {
 
   it('detail A then B quickly → B shown, get(A) aborted', async () => {
     const { ad } = await openReady();
+    // v0.36.0 (QĐ 69): the open auto-previews m60 (one get, already settled) — view two OTHER assets quickly
+    await until(() => ad.calls.get.length >= 1, 4000, 'auto preview get');
+    const base = ad.calls.get.length;
     ad.manual = true;
-    click(opener('m60'));
-    click(tick('m60')); // deselect so the next click activates again
+    click(opener('m58'));
     click(opener('m59'));
-    await until(() => ad.calls.get.length === 2);
-    expect(ad.calls.get[0].signal.aborted).to.equal(true);
+    await until(() => ad.calls.get.length === base + 2);
+    expect(ad.calls.get[base].signal.aborted).to.equal(true);
     ad.ignoreSignal = true;
-    ad.calls.get[1].resolve();
-    ad.calls.get[0].resolve();
+    ad.calls.get[base + 1].resolve();
+    ad.calls.get[base].resolve();
     await wait(30);
     expect(q('.td-media-picker__detail-name').textContent).to.equal(assetName('m59'));
   });
@@ -1251,7 +1253,7 @@ describe('td-media-picker — cache after a change (R1-7)', () => {
 });
 
 describe('td-media-picker — mobile, motion, forced colours', () => {
-  it('375×740 (v0.33: full viewport, no sheet): detail pane slides over the list + "Quay lại" returns focus; facets inline (no "Bộ lọc"); footer count only', async () => {
+  it('375×740 (v0.33: full viewport, no sheet): detail pane slides over the list + "Quay lại" returns focus; v0.36: facets behind "Bộ lọc"; footer count only', async () => {
     await setViewport({ width: 375, height: 740 });
     await openReady({ selection: { mode: 'multiple', maxItems: 5 } });
     await openSettled();
@@ -1261,8 +1263,9 @@ describe('td-media-picker — mobile, motion, forced colours', () => {
     expect(Math.abs(r.top) <= 1, `top ${r.top}`).to.equal(true);
     expect(Math.abs(r.width - 375) <= 1, `width ${r.width}`).to.equal(true);
     await until(() => q('.td-media-picker__facets') && !q('.td-media-picker__facets').hidden, 3000, 'facets');
-    expect(q('.td-media-picker__filters-toggle') === null).to.equal(true);
-    expect(getComputedStyle(q('.td-media-picker__facets')).display).to.not.equal('none');
+    // v0.36.0 (QĐ 49): < 1024 the facets leave the toolbar for the "Bộ lọc" sheet trigger
+    expect(getComputedStyle(q('.td-media-picker__facets')).display).to.equal('none');
+    expect(getComputedStyle(q('.td-media-picker__filter')).display).to.not.equal('none');
     click(tick('m60'));
     expect(q('.td-media-picker__tray-list') === null, 'no thumb tray').to.equal(true);
     expect(selCount()).to.equal(1);

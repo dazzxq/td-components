@@ -334,6 +334,37 @@
 		}
 	}
 
+	/* v0.36.0 (plan QĐ 60, mobile UX audit): < 720 the chrome is compact — header ≤ 56 (no hairline), footer ≤ 64; an
+	   ordinary modal's footer buttons share the row (full width, side by side) */
+	@media (max-width: 719.98px) {
+		.td-modal__header {
+			min-height: 0;
+			padding-block: 0.375rem;
+			border-bottom-color: transparent;
+		}
+
+		.td-modal--viewport .td-modal__header {
+			padding-top: calc(0.375rem + env(safe-area-inset-top, 0px));
+		}
+
+		.td-modal__footer {
+			padding-block: 0.5rem;
+		}
+
+		.td-modal--viewport .td-modal__footer {
+			padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+		}
+
+		.td-modal:not(.td-modal--viewport) .td-modal__footer {
+			flex-wrap: nowrap;
+		}
+
+		.td-modal:not(.td-modal--viewport) .td-modal__footer > * {
+			flex: 1 1 0;
+			min-width: 0;
+		}
+	}
+
 	@media (pointer: coarse) {
 		.td-modal__close {
 			width: var(--td-touch-min);

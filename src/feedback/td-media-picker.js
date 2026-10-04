@@ -54,7 +54,7 @@
  * @fires cancel
  * @fires operation-error
  */
-import { matchesBelow } from '../utils/breakpoints.js';
+import { matchesBelow, mqBelow } from '../utils/breakpoints.js';
 import { openDialogLayer } from './dialog-layer.js';
 import { TdModal } from './td-modal.js';
 import { TdModalStackManager } from './td-modal-stack.js';
@@ -70,6 +70,7 @@ import {
 } from '../utils/media-picker-core.js';
 import { createFacetControl, FieldForm, FIELD_LABELS } from './media-picker-fields.js';
 import { openUploadDialog, UPLOAD_LABELS } from './media-picker-upload.js';
+import { openFilterSheet, FILTER_LABELS } from './media-picker-filters.js';
 import { openCropDialog } from './crop-dialog.js';
 import '../display/td-media-grid.js';
 import '../display/td-empty-state.js';
@@ -162,6 +163,7 @@ export class TdMediaPicker extends HTMLElement {
    */
   static labels = {
     ...UPLOAD_LABELS,
+    ...FILTER_LABELS,
     title: 'Chọn media',
     titleImage: 'Chọn ảnh',
     titleVideo: 'Chọn video',
@@ -387,6 +389,12 @@ export class TdMediaPicker extends HTMLElement {
       edit: null,
       blocked: null,
       upload: null,
+      /** v0.36.0 (QĐ 49–50): the open filter sheet, the last descriptor list, a descriptor list that arrived meanwhile */
+      filterSheet: null,
+      facetList: [],
+      pendingFacets: null,
+      /** @type {MediaQueryList|null} < 720 → the pager sits under the grid (QĐ 51) */
+      mqMd: null,
       confirm: null,
       /** @type {{ ctrl: AbortController }|null} the open crop step (v0.35 decisions 24-25) */
       crop: null,
@@ -530,7 +538,7 @@ export class TdMediaPicker extends HTMLElement {
     // footer (decision 17)
     const selcount = document.createElement('span');
     selcount.className = 'td-media-picker__selcount';
-    const clear = makeButton(t('clearSelection'), { variant: 'ghost', size: 'sm', cls: 'td-media-picker__clear' });
+    const clear = makeButton(t('clearSelection'), { variant: 'ghost', size: 'sm', icon: 'close', aria: t('clearSelection'), cls: 'td-media-picker__clear' });
     clear.addEventListener('click', () => {
       if (!usable(clear)) return;
       this._userChange(() => s.model.clear());
@@ -595,6 +603,20 @@ export class TdMediaPicker extends HTMLElement {
       e.toolbar.appendChild(f);
       e.search = f;
     }
+    // v0.36.0 (QĐ 49): < 1024 the facets leave the toolbar for one "Bộ lọc" button (+ count badge) opening the sheet
+    const filterWrap = document.createElement('span');
+    filterWrap.className = 'td-media-picker__filter';
+    filterWrap.hidden = true;
+    const filterBtn = makeButton(t('filters'), { icon: 'filter', cls: 'td-media-picker__filter-btn' });
+    filterBtn.setAttribute('aria-haspopup', 'dialog');
+    filterBtn.addEventListener('click', () => { if (usable(filterBtn)) this._openFilters(); });
+    const filterCount = document.createElement('span');
+    filterCount.className = 'td-badge td-badge--accent td-media-picker__filter-count';
+    filterCount.setAttribute('aria-hidden', 'true');
+    filterCount.hidden = true;
+    filterWrap.append(filterBtn, filterCount);
+    e.toolbar.appendChild(filterWrap);
+    Object.assign(e, { filterWrap, filterBtn, filterCount });
     const filters = document.createElement('div');
     filters.className = 'td-media-picker__filters';
     const facets = document.createElement('div');
@@ -638,7 +660,78 @@ export class TdMediaPicker extends HTMLElement {
       if (Number.isInteger(n) && n >= 1 && n !== s.pages.page) this._loadPage(n, { nav: true });
     });
     pager.append(cursorBox, pg);
-    Object.assign(e, { prev, next, pageInfo: info, cursorBox, pagination: pg });
+    Object.assign(e, { prev, next, pageInfo: info, cursorBox, pagination: pg, filters });
+    // v0.36.0 (QĐ 51): < 720 the pager moves under the grid (end of the results scroller); back into the toolbar ≥ 720
+    if (typeof matchMedia === 'function') {
+      s.mqMd = matchMedia(mqBelow('md'));
+      const place = () => this._placePager();
+      s.mqMd.addEventListener('change', place);
+      s.ctrl.signal.addEventListener('abort', () => s.mqMd && s.mqMd.removeEventListener('change', place), { once: true });
+    }
+    this._placePager();
+  }
+
+  /** @private QĐ 51: the pager node lives in the toolbar (≥ 720) or right after the grid in the results (< 720) */
+  _placePager() {
+    const s = this._s;
+    if (!s || !s.els) return;
+    const e = s.els;
+    const narrow = s.mqMd ? s.mqMd.matches : false;
+    if (narrow) {
+      if (e.pager.parentNode !== e.results) e.results.appendChild(e.pager);
+    } else if (e.pager.parentNode !== e.filters) {
+      e.filters.appendChild(e.pager);
+    }
+    e.pager.classList.toggle('td-media-picker__pager--below', narrow);
+  }
+
+  // --- filter sheet (v0.36.0 QĐ 49–50) ---
+
+  /** @private number of COMMITTED filters (never the sheet draft) → badge + accessible name */
+  _syncFilterCount() {
+    const s = this._s;
+    const e = s.els;
+    if (!e.filterBtn) return;
+    const n = Object.keys(s.filters).length;
+    e.filterCount.textContent = String(n);
+    e.filterCount.hidden = n === 0;
+    e.filterBtn.setAttribute('aria-label', n ? this._t('filtersActive', { n }) : this._t('filters'));
+  }
+
+  /** @private open the sheet on a draft copy of the committed filters */
+  _openFilters() {
+    const s = this._s;
+    if (!this._live(s) || s.filterSheet) return;
+    s.filterSheet = openFilterSheet({
+      t: (k, p) => this._t(k, p),
+      descriptors: s.facetList,
+      committed: s.filters,
+      idPrefix: `${s.id}-fs`,
+      onApply: (draft) => { if (this._live(s)) this._applyFilters(draft); },
+      onClosing: () => {
+        if (!this._live(s)) return;
+        s.filterSheet = null;
+        if (s.pendingFacets) {
+          const list = s.pendingFacets;
+          s.pendingFacets = null;
+          this._renderFacets(list);
+        }
+      },
+    });
+  }
+
+  /** @private "Áp dụng": one atomic commit (filters + toolbar controls + badge) and ONE list reload — none if equal */
+  _applyFilters(draft) {
+    const s = this._s;
+    const same = JSON.stringify(Object.entries(draft).sort()) === JSON.stringify(Object.entries(s.filters).sort());
+    if (same) return;
+    s.filters = { ...draft };
+    for (const [k, c] of s.facets) c.set(s.filters[k]); // programmatic: no change event → no extra request
+    this._syncFilterCount();
+    s.debounce.cancel();
+    if (s.els.search) s.query = String(s.els.search.getValue?.() ?? '').trim();
+    this._loadFacets();
+    this._loadPage('reload', { reset: true });
   }
 
   /** @private the inner <input> of the search field */
@@ -866,6 +959,20 @@ export class TdMediaPicker extends HTMLElement {
     }
     this._syncGrid();
     if (announce) this._announce(this._t('resultsCount', { n: page.total ?? page.items.length }));
+    this._autoPreview(page);
+  }
+
+  /**
+   * @private v0.36.0 (plan QĐ 69, ADR 0013 note): ≥ 720 the detail panel always PREVIEWS something — after every list
+   * load, when nothing is being viewed (or the viewed asset left the results) the first asset is shown, NEVER selected
+   * ("Chèn" stays disabled until the user selects). < 720 the grid comes first (no auto-open). A dirty form is never
+   * replaced.
+   */
+  _autoPreview(page) {
+    const s = this._s;
+    if (!page.items.length || this._isNarrow() || this._editBusy()) return;
+    if (s.detailId && s.items.has(s.detailId)) return;
+    this._showDetail(page.items[0].id, { gated: false, auto: true });
   }
 
   /** @private pager (decision 13): hidden on one page; cursor ‹ › + text, or a silent td-pagination */
@@ -932,6 +1039,11 @@ export class TdMediaPicker extends HTMLElement {
   /** @private create / update facet controls; values are kept across descriptor reloads */
   _renderFacets(list) {
     const s = this._s;
+    if (s.filterSheet) { // v0.36.0 QĐ 50: the committed descriptors / controls are frozen while the sheet is open
+      s.pendingFacets = list;
+      return;
+    }
+    s.facetList = list;
     const box = s.els.facets;
     const keys = new Set(list.map((f) => f.key));
     let filtersChanged = false;
@@ -979,6 +1091,8 @@ export class TdMediaPicker extends HTMLElement {
       box.appendChild(c.el); // keeps descriptor order
     }
     box.hidden = list.length === 0;
+    if (s.els.filterWrap) s.els.filterWrap.hidden = list.length === 0;
+    this._syncFilterCount();
     if (filtersChanged) {
       // impl review ISSUE-9: reconciliation changed the filters → facets (counts) AND list follow the filters now in force
       s.cache.invalidateLists(); // older descriptor sets (and pages) cached for these filters are now stale
@@ -995,6 +1109,7 @@ export class TdMediaPicker extends HTMLElement {
     const v = c.get();
     if (v === undefined || (Array.isArray(v) && !v.length)) delete s.filters[key];
     else s.filters[key] = v;
+    this._syncFilterCount();
     s.debounce.cancel();
     if (s.els.search) s.query = String(s.els.search.getValue?.() ?? '').trim();
     this._loadFacets();
@@ -1290,11 +1405,12 @@ export class TdMediaPicker extends HTMLElement {
    * @private Open the detail of `id`. `gated` (default): a dirty form of ANOTHER asset asks first (keep → nothing
    * changes). The same id keeps the current panel (and what the user typed).
    * @param {string} id
-   * @param {{ gated?: boolean, fromGrid?: boolean }} [o]
+   * @param {{ gated?: boolean, fromGrid?: boolean, auto?: boolean }} [o]
    */
-  async _showDetail(id, { gated = true } = {}) {
+  async _showDetail(id, { gated = true, auto = false } = {}) {
     const s = this._s;
     if (s.detailId === id && s.root.querySelector('.td-media-picker__detail[data-state="ready"]')) {
+      if (auto) return;
       this._setView('detail');
       if (this._isNarrow()) this._focusDetailHeading();
       return;
@@ -1307,7 +1423,7 @@ export class TdMediaPicker extends HTMLElement {
     s.detailId = id;
     s.blocked = null;
     this._markViewing();
-    this._setView('detail');
+    if (!auto) this._setView('detail'); // an auto preview (QĐ 69) never opens the < 720 pane
     this._renderDetail(true);
     if (this._isNarrow()) this._focusDetailHeading();
     s.req.detail.run((signal) => s.adapter.get(id, { context: s.context, signal })).then((r) => {
@@ -2113,6 +2229,7 @@ export class TdMediaPicker extends HTMLElement {
       s.debounce.cancel();
       s.ctrl.abort();
       if (s.upload) { try { s.upload.destroy(); } catch { /* ignore */ } s.upload = null; }
+      if (s.filterSheet) { try { s.filterSheet.destroy(); } catch { /* ignore */ } s.filterSheet = null; }
       if (s.crop) { const c = s.crop; s.crop = null; c.ctrl.abort(); } // v0.35 decision 25: the crop step closes too
       if (s.edit) { try { s.edit.form.destroy(); } catch { /* ignore */ } s.edit = null; }
       for (const c of s.facets.values()) { try { c.destroy(); } catch { /* ignore */ } }

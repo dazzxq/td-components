@@ -186,15 +186,18 @@ describe('v0.33 td-media-picker — detail panel (decision 18)', () => {
     const errs = [];
     await openReady({ adapter: ad });
     document.querySelector('td-media-picker').addEventListener('operation-error', (e) => errs.push(e.detail));
+    // v0.36.0 (QĐ 69): the open auto-previews m60 — view another asset
+    await until(() => ad.calls.get.length >= 1 && !detail().hasAttribute('data-loading'), 4000, 'auto preview settled');
+    const base = ad.calls.get.length;
     ad.manual = true;
-    click(opener('m60'));
-    await until(() => ad.calls.get.length === 1);
+    click(opener('m59'));
+    await until(() => ad.calls.get.length === base + 1);
     expect(detail().hasAttribute('data-loading')).to.equal(true);
-    expect(detailName()).to.equal('anh-60.jpg');
-    ad.calls.get[0].reject(Object.assign(new Error('raw'), { code: 'server' }));
+    expect(detailName()).to.equal('anh-59.jpg');
+    ad.calls.get[base].reject(Object.assign(new Error('raw'), { code: 'server' }));
     await until(() => !detail().hasAttribute('data-loading'), 4000, 'settled');
     expect(errs).to.deep.equal([{ operation: 'get', code: 'server', retryable: true }]);
-    expect(detailName()).to.equal('anh-60.jpg');
+    expect(detailName()).to.equal('anh-59.jpg');
   });
 });
 
