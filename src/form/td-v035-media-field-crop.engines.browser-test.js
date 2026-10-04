@@ -674,3 +674,101 @@ describe('td-media-field v0.35 — REAL picker + crop step on the same asset', (
     expectState(t, 'og', { crop, focal: serializeFocal({ x: 0.4, y: 0.6 }), events: 1 });
   });
 });
+
+// Codex review v0.35 round 1: #2 (SEC medium, TOCTOU — a cached asset / an open crop dialog of an OLD adapter or context
+// must never feed the crop dialog after a source change) and #3 (same asset: null crop ≡ whole image).
+describe('td-media-field v0.35 — review R1 #2: crop source provenance (adapter / context / source generation)', () => {
+  /** crop click → get resolves → dialog → Huỷ: the field now caches the asset (with width / height). */
+  async function cacheAsset(t, man) {
+    cropBtn(t.el).click();
+    man.calls.get[man.calls.get.length - 1].resolve();
+    const d = await dialogReady();
+    cancelBtn(d).click();
+    await dialogGone();
+  }
+
+  it('context change after the asset is cached → the next "Cắt ảnh" calls get() again with the new context', async () => {
+    const man = createMockAdapter({ manual: true });
+    const t = mk({ ...CROPPABLE, value: 'm1', crop: CROP_B, 'preview-src': '/test/fixtures/3.svg' }, { adapter: man });
+    t.el.pickerOptions = { context: 'tenant-a' };
+    await cacheAsset(t, man);
+    expect(man.calls.get.length).to.equal(1);
+    t.el.pickerOptions = { context: 'tenant-b' };
+    cropBtn(t.el).click();
+    expect(man.calls.get.length, 'cached asset of the old context is not reused').to.equal(2);
+    expect(man.calls.get[1].args[1].context).to.equal('tenant-b');
+    man.calls.get[1].resolve();
+    const d = await dialogReady();
+    cancelBtn(d).click();
+    await dialogGone();
+    expectState(t, 'og', { crop: CROP_B, focal: null, events: 0 });
+  });
+
+  it('adapter change after the asset is cached → get() on the NEW adapter, never the cached asset of the old one', async () => {
+    const a1 = createMockAdapter({ manual: true });
+    const a2 = createMockAdapter({ manual: true });
+    const t = mk({ ...CROPPABLE, value: 'm1', 'preview-src': '/test/fixtures/3.svg' }, { adapter: a1 });
+    await cacheAsset(t, a1);
+    t.el.adapter = a2;
+    cropBtn(t.el).click();
+    expect(a1.calls.get.length).to.equal(1);
+    expect(a2.calls.get.length).to.equal(1);
+    a2.calls.get[0].resolve();
+    const d = await dialogReady();
+    cancelBtn(d).click();
+    await dialogGone();
+  });
+
+  it('source change while the crop dialog is OPEN → the dialog closes, lock released, no event', async () => {
+    const man = createMockAdapter({ manual: true });
+    const t = mk({ ...CROPPABLE, value: 'm1', crop: CROP_B, 'preview-src': '/test/fixtures/3.svg' }, { adapter: man });
+    cropBtn(t.el).click();
+    man.calls.get[0].resolve();
+    const d = await dialogReady();
+    cropperOf(d).crop = { normalized: { x: 0, y: 0, width: 0.5, height: 0.5 } };
+    t.el.pickerOptions = { context: 'other' };
+    await dialogGone();
+    q(t.el, '.td-media-field__replace').click();
+    expect(opens.length, 'double-open lock released').to.equal(1);
+    expectState(t, 'og', { crop: CROP_B, focal: null, events: 0 });
+  });
+
+  it('old adapter IGNORING its abort signal resolves after a context change → no dialog; the next click fetches again', async () => {
+    const man = createMockAdapter({ manual: true });
+    man.ignoreSignal = true;
+    const t = mk({ ...CROPPABLE, value: 'm1', 'preview-src': '/test/fixtures/3.svg' }, { adapter: man });
+    cropBtn(t.el).click();
+    t.el.pickerOptions = { context: 'other' };
+    man.calls.get[0].resolve();
+    for (let i = 0; i < 5; i++) await tick();
+    expect(dialogRoots().length).to.equal(0);
+    cropBtn(t.el).click();
+    expect(man.calls.get.length, 'the late result was not cached as the crop source').to.equal(2);
+    expect(man.calls.get[1].args[1].context).to.equal('other');
+    man.calls.get[1].resolve();
+    const d = await dialogReady();
+    cancelBtn(d).click();
+    await dialogGone();
+  });
+});
+
+describe('td-media-field v0.35 — review R1 #3: same asset, null crop ≡ whole image', () => {
+  const WHOLE = '{"v":1,"x":0,"y":0,"width":1,"height":1}';
+  it('field crop null + picker returns the whole image {0,0,1,1} → no event, crop stays null', async () => {
+    const t = mk({ ...CROPPABLE, value: 'm1', 'preview-src': '/test/fixtures/3.svg' });
+    q(t.el, '.td-media-field__replace').click();
+    opens[0].resolve(picked('m1', { crop: { normalized: { x: 0, y: 0, width: 1, height: 1 }, aspectRatio: 1.5 } }));
+    await until(() => q(t.el, '.td-sr-only').textContent === `Đã chọn: ${asset('m1').name}`);
+    await tick();
+    expectState(t, 'og', { crop: null, focal: null, events: 0 });
+  });
+
+  it('field crop = whole image (server bytes) + picker returns null → no event, the raw string kept byte-identical', async () => {
+    const t = mk({ ...CROPPABLE, value: 'm1', crop: WHOLE, 'preview-src': '/test/fixtures/3.svg' });
+    q(t.el, '.td-media-field__replace').click();
+    opens[0].resolve(picked('m1', { crop: null }));
+    await until(() => q(t.el, '.td-sr-only').textContent === `Đã chọn: ${asset('m1').name}`);
+    await tick();
+    expectState(t, 'og', { crop: WHOLE, focal: null, events: 0 });
+  });
+});
