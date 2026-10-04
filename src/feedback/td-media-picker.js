@@ -457,6 +457,7 @@ export class TdMediaPicker extends HTMLElement {
     root.setAttribute('data-state', 'opening');
     root.setAttribute('data-view', 'grid');
     root.setAttribute('data-mode', s.mode);
+    root.setAttribute('data-detail-empty', ''); // review ISSUE-4: nothing viewed yet
     // Static markup only (no interpolation); every dynamic value is set through the DOM below.
     root.innerHTML = '<div class="td-modal__backdrop" aria-hidden="true"></div>'
       + '<div class="td-modal__dialog td-glass-surface td-glass-surface--strong td-glass-surface--lg td-media-picker__dialog"'
@@ -979,16 +980,28 @@ export class TdMediaPicker extends HTMLElement {
   }
 
   /**
-   * @private v0.36.0 (plan QĐ 69, ADR 0013 note): ≥ 720 the detail panel always PREVIEWS something — after every list
-   * load, when nothing is being viewed (or the viewed asset left the results) the first asset is shown, NEVER selected
-   * ("Chèn" stays disabled until the user selects). < 720 the grid comes first (no auto-open). A dirty form is never
+   * @private v0.36.0 (plan QĐ 69, ADR 0013 note; review ISSUE-2): ≥ 720 the detail panel always PREVIEWS something after
+   * every list load — the asset already viewed when it is still in the results, else the first SELECTED asset that is in
+   * the results, else the first result; an empty result clears the panel (empty state). The selection is never touched
+   * ("Chèn" stays disabled until the user selects). < 720 the grid comes first (no auto-open); a dirty form is never
    * replaced.
    */
   _autoPreview(page) {
     const s = this._s;
-    if (!page.items.length || this._isNarrow() || this._editBusy()) return;
+    if (this._isNarrow() || this._editBusy()) return;
+    if (!page.items.length) {
+      if (s.detailId) {
+        s.req.detail.abort();
+        s.detailId = null;
+        s.blocked = null;
+        this._markViewing();
+        this._renderDetail();
+      }
+      return;
+    }
     if (s.detailId && s.items.has(s.detailId)) return;
-    this._showDetail(page.items[0].id, { gated: false, auto: true });
+    const selected = s.model.ids.find((id) => s.items.has(id));
+    this._showDetail(selected || page.items[0].id, { gated: false, auto: true });
   }
 
   /** @private pager (decision 13): hidden on one page; cursor ‹ › + text, or a silent td-pagination */
@@ -1519,6 +1532,8 @@ export class TdMediaPicker extends HTMLElement {
     box.appendChild(back);
     const asset = s.detailId ? s.cache.getAsset(s.detailId) : null;
     box.toggleAttribute('data-loading', !!loading && !!asset);
+    // review ISSUE-4 (plan QĐ 57): 720–1023 the detail column collapses while nothing is viewed (root flag; no :has())
+    s.root?.toggleAttribute('data-detail-empty', !asset && !(s.detailId && loading));
     if (!asset) {
       if (s.detailId && loading) {
         box.setAttribute('data-state', 'ready');

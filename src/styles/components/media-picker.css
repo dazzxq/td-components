@@ -222,6 +222,14 @@
 		}
 	}
 
+	/* review ISSUE-4 (plan QĐ 57): 720–1023 the detail column collapses while nothing is viewed (empty state) — the grid
+	   takes the full width; it comes back as soon as a manual / auto preview sets an asset */
+	@media (min-width: 720px) and (max-width: 1023.98px) {
+		.td-media-picker[data-detail-empty] .td-media-picker__detail {
+			display: none;
+		}
+	}
+
 	/* QĐ 51: < 720 the pager is the last row of the results scroller (JS moves the node) */
 	.td-media-picker__pager--below {
 		justify-content: center;

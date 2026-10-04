@@ -227,6 +227,51 @@ describe('v0.36.0 picker auto preview (QĐ 69)', () => {
     expect(grid().selectedIds).to.deep.equal([]);
   });
 
+  it('ISSUE-2: viewed asset gone → the first SELECTED asset still in the results is previewed (selection untouched)', async () => {
+    await openReady({ selection: { mode: 'multiple' } });
+    await until(() => detailName() === 'anh-60.jpg', 4000, 'auto preview');
+    item('m35').querySelector('.td-media-grid__tick').click(); // select m35 (not viewed)
+    await until(() => grid().selectedIds.includes('m35'), 4000, 'selected');
+    item('m59').querySelector('[data-td-media-open]').click();
+    await until(() => detailName() === 'anh-59.jpg', 4000, 'view m59');
+    const input = q('.td-media-picker__search input');
+    input.focus();
+    await sendKeys({ type: 'anh-3' }); // m59 leaves the results, m35 stays (first result is m39)
+    await sendKeys({ press: 'Enter' });
+    await until(() => !item('m59') && item('m35'), 4000, 'filtered');
+    await until(() => detailName() === 'anh-35.jpg', 4000, 'first selected previewed');
+    expect(grid().selectedIds).to.deep.equal(['m35']);
+  });
+
+  it('ISSUE-2: an empty result clears the detail (empty state, nothing viewed)', async () => {
+    await openReady({ selection: { mode: 'multiple' } });
+    await until(() => detailName() === 'anh-60.jpg', 4000, 'auto preview');
+    const input = q('.td-media-picker__search input');
+    input.focus();
+    await sendKeys({ type: 'khong-co-gi' });
+    await sendKeys({ press: 'Enter' });
+    await until(() => q('.td-media-picker__detail').getAttribute('data-state') === 'empty', 4000, 'detail emptied');
+    expect(pickerRoot().querySelectorAll('[data-viewing]').length).to.equal(0);
+    expect(pickerRoot().hasAttribute('data-detail-empty')).to.equal(true);
+  });
+
+  it('ISSUE-4: 768 — the detail column is collapsed while nothing is viewed and comes back with a preview', async () => {
+    await setViewport({ width: 768, height: 1024 });
+    await openReady({ selection: { mode: 'multiple' } });
+    const det = q('.td-media-picker__detail');
+    await until(() => detailName() === 'anh-60.jpg', 4000, 'auto preview');
+    expect(getComputedStyle(det).display).to.not.equal('none');
+    const input = q('.td-media-picker__search input');
+    input.focus();
+    await sendKeys({ type: 'khong-co-gi' });
+    await sendKeys({ press: 'Enter' });
+    await until(() => getComputedStyle(det).display === 'none', 4000, 'collapsed on an empty result');
+    input.select();
+    await sendKeys({ type: 'anh-4' });
+    await sendKeys({ press: 'Enter' });
+    await until(() => detailName() === 'anh-49.jpg' && getComputedStyle(det).display !== 'none', 4000, 'back with a preview');
+  });
+
   it('< 720: no auto-open (the grid comes first)', async () => {
     await setViewport({ width: 390, height: 844 });
     const { ad } = await openReady({ selection: { mode: 'single' } });
