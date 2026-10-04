@@ -800,10 +800,29 @@ describe('v0.33 normalizeDeleteResult (decision 24)', () => {
   });
 
   it('blocked → normalised usages', () => {
-    const r = normalizeDeleteResult({ status: 'blocked', reason: 'in-use', usageCount: 2, truncated: true,
+    const r = normalizeDeleteResult({ status: 'blocked', reason: 'in-use', usageCount: 5, truncated: true,
       usages: [{ id: 'p1', label: '  Bài 1 ', kind: 'post', href: '/admin/p/1' }, { id: 7, label: 'SP' }] }, 'a1');
-    assert.deepEqual(r, { status: 'blocked', reason: 'in-use', usageCount: 2, truncated: true,
+    assert.deepEqual(r, { status: 'blocked', reason: 'in-use', usageCount: 5, truncated: true,
       usages: [{ id: 'p1', label: 'Bài 1', kind: 'post', href: '/admin/p/1' }, { id: '7', label: 'SP' }] });
+  });
+
+  it('contract-inconsistent blocked results → contract error (usageCount < usages; truncated vs count mismatch)', () => {
+    const u = (n) => Array.from({ length: n }, (_, i) => ({ id: `u${i}`, label: `L${i}` }));
+    const bad = [
+      { usageCount: 1, usages: u(2) }, // fewer than listed
+      { usageCount: 0, usages: u(1) },
+      { usageCount: 2, usages: u(2), truncated: true }, // "truncated" but nothing omitted
+      { usageCount: 3, usages: u(2), truncated: false }, // "complete" but the count says more
+    ];
+    for (const b of bad) {
+      assert.throws(() => normalizeDeleteResult({ status: 'blocked', reason: 'in-use', ...b }, 'a'),
+        (e) => e.code === 'server', JSON.stringify({ c: b.usageCount, n: b.usages.length, t: b.truncated }));
+    }
+    // consistent: counts only, no summaries; omitted rest without a flag; flag matching the count
+    assert.equal(normalizeDeleteResult({ status: 'blocked', reason: 'in-use', usageCount: 4, usages: [] }, 'a').usages.length, 0);
+    assert.equal(normalizeDeleteResult({ status: 'blocked', reason: 'in-use', usageCount: 3, usages: u(1) }, 'a').usageCount, 3);
+    assert.equal(normalizeDeleteResult({ status: 'blocked', reason: 'in-use', usageCount: 3, usages: u(1), truncated: true }, 'a').truncated, true);
+    assert.equal(normalizeDeleteResult({ status: 'blocked', reason: 'in-use', usageCount: 2, usages: u(2), truncated: false }, 'a').truncated, false);
   });
 
   it('usageCount must be an integer ≥ 0', () => {

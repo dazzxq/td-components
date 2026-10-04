@@ -1816,7 +1816,10 @@ export class TdMediaPicker extends HTMLElement {
     p.textContent = t('blockedText', { n: result.usageCount });
     al.appendChild(p);
     const shown = result.usages.slice(0, USAGES_SHOWN);
-    if (shown.length) {
+    // usageCount ≥ usages.length (normalizeDeleteResult): everything not rendered is "… và k nơi khác", also when the
+    // server sent a count without any summaries
+    const remainder = Math.max(0, result.usageCount - shown.length);
+    if (shown.length || remainder > 0) {
       const ul = document.createElement('ul');
       ul.className = 'td-media-picker__usages';
       for (const u of shown) {
@@ -1842,11 +1845,10 @@ export class TdMediaPicker extends HTMLElement {
         }
         ul.appendChild(li);
       }
-      const more = Math.max(result.usageCount, result.usages.length) - shown.length;
-      if (more > 0) {
+      if (remainder > 0) {
         const li = document.createElement('li');
         li.className = 'td-media-picker__usage-more';
-        li.textContent = t('blockedMore', { k: more });
+        li.textContent = t('blockedMore', { k: remainder });
         ul.appendChild(li);
       }
       al.appendChild(ul);

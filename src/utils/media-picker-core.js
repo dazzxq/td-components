@@ -1086,7 +1086,9 @@ const hasBadOwnKey = (o) => Object.getOwnPropertyNames(o).some((k) => BAD_KEYS.h
  *   real array — only the first 50 are inspected / kept (`truncated: true` when more were sent); each item a plain
  *   object without own `__proto__` / `constructor` / `prototype`, with `id` (non-empty string, or an integer →
  *   string) and a non-empty `label` (trimmed, 200 code points); optional `kind` (string, 200 code points) and `href`
- *   (string). A bad item rejects the WHOLE result. `truncated` kept only when boolean.
+ *   (string). A bad item rejects the WHOLE result. `truncated` kept only when boolean. Consistency: `usageCount` ≥ the
+ *   number of summaries sent; `truncated: true` needs `usageCount` > that number, `truncated: false` needs it equal —
+ *   otherwise the whole result is malformed. A count with no summaries (`usages: []`) is valid.
  * - `href`: by default passed through RAW (≤ 8 KiB) — the renderer MUST gate it with `safeLinkUrl` (invariant 31b).
  *   With `opts.safeLink` (e.g. `safeLinkUrl`) it is gated here instead: refused (`''`) → the key is dropped.
  * The kit never checks usage itself: the server decides and answers `blocked`.
@@ -1106,6 +1108,10 @@ export function normalizeDeleteResult(raw, id, { safeLink } = {}) {
   if (o.status !== 'blocked' || o.reason !== 'in-use') throw bad();
   if (!Number.isInteger(o.usageCount) || o.usageCount < 0) throw bad();
   if (!Array.isArray(o.usages)) throw bad();
+  // contract consistency (impl review #5): the count covers every listed summary; `truncated` must agree with it
+  if (o.usageCount < o.usages.length) throw bad();
+  if (o.truncated === true && o.usageCount <= o.usages.length) throw bad();
+  if (o.truncated === false && o.usageCount > o.usages.length) throw bad();
   const usages = [];
   for (const u of o.usages.slice(0, USAGES_MAX)) {
     if (!isPlain(u) || hasBadOwnKey(u)) throw bad();

@@ -199,6 +199,33 @@ describe('v0.33 td-media-picker — delete (decision 24)', () => {
     expect(rows[20].textContent).to.equal('… và 10 nơi khác');
   });
 
+  it('blocked with a count but NO summaries → the list still says "… và k nơi khác"', async () => {
+    const ad = createMockAdapter();
+    ad.delete = async () => ({ status: 'blocked', reason: 'in-use', usageCount: 4, usages: [] });
+    await openReady({ adapter: ad, capabilities: { delete: true } });
+    await view('m60');
+    q('.td-media-picker__delete').click();
+    dlgButton(await until(() => deleteDialog(), 4000, 'confirm'), 'Xoá').click();
+    const al = await until(() => q('.td-media-picker__blocked'), 4000, 'alert');
+    const rows = [...al.querySelectorAll('.td-media-picker__usages > li')];
+    expect(rows.length).to.equal(1);
+    expect(rows[0].textContent).to.equal('… và 4 nơi khác');
+    expect(al.textContent.includes('4 nơi')).to.equal(true);
+  });
+
+  it('contract-inconsistent blocked result (usageCount < usages) → malformed path: server toast, no alert, item kept', async () => {
+    const ad = createMockAdapter();
+    ad.delete = async () => ({ status: 'blocked', reason: 'in-use', usageCount: 1,
+      usages: [{ id: 'u1', label: 'A' }, { id: 'u2', label: 'B' }] });
+    await openReady({ adapter: ad, capabilities: { delete: true } });
+    await view('m60');
+    q('.td-media-picker__delete').click();
+    dlgButton(await until(() => deleteDialog(), 4000, 'confirm'), 'Xoá').click();
+    await until(() => toastTexts().includes(TdMediaPicker.labels.error.server), 4000, 'server toast');
+    expect(q('.td-media-picker__blocked') === null).to.equal(true);
+    expect(item('m60') !== null).to.equal(true);
+  });
+
   it('forbidden → toast with the userMessage only + operation-error; malformed result → server text', async () => {
     const ad = createMockAdapter();
     let n = 0;
