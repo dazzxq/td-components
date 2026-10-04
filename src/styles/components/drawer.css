@@ -4,7 +4,8 @@
  * Layer: var(--td-z-modal) like a modal (one band: later layers stack by DOM order; v0.21.1 promotion over a lightbox).
  * State (set by JS, never visual classes): root [data-state="opening|open|closing"] · footer [hidden].
  * The root is a <body> child: a site sizes it with `--td-drawer-w` (on :root, on the host — copied to the root on open —
- * or on `.td-drawer-root`), or picks a size class. ≤ 640 px: full screen.
+ * or on `.td-drawer-root`), or picks a size class. ADR 0014: xs (< 480 px) full screen; sm (480–719) leaves a 3rem strip of
+ * the page visible; safe areas on every edge that touches the screen.
  * Motion: the panel slides in from its edge (logical: `end` = right in LTR, left in RTL — the root carries `dir`),
  * --td-drawer-enter-dur / --td-drawer-exit-dur; the scrim fades. Reduced motion → opacity only, --td-dur-fast.
  * No JS: an undefined <td-drawer> shows its content in place (no hiding — docs: put it at the end / in <details>).
@@ -205,8 +206,28 @@
 		border-top: 1px solid var(--td-hairline);
 	}
 
-	/* Phones: full screen. */
-	@media (max-width: 640px) {
+	/* Safe areas: the panel touches the top, bottom and one side of the screen (notch / home indicator). */
+	.td-drawer__header {
+		padding-top: max(var(--td-space-sm), env(safe-area-inset-top, 0px));
+	}
+
+	.td-drawer-root--end .td-drawer__panel {
+		padding-inline-end: env(safe-area-inset-right, 0px);
+	}
+
+	.td-drawer-root--start .td-drawer__panel {
+		padding-inline-start: env(safe-area-inset-left, 0px);
+	}
+
+	/* sm (480–719): keep a strip of the page visible so it reads as a drawer, not a page. */
+	@media (max-width: 719.98px) {
+		.td-drawer__panel {
+			width: min(var(--td-drawer-w, var(--_td-drawer-size)), calc(100% - 3rem));
+		}
+	}
+
+	/* xs (< 480): full screen. */
+	@media (max-width: 479.98px) {
 		.td-drawer__panel {
 			width: 100%;
 			border-width: 0;

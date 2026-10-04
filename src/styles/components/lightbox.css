@@ -53,6 +53,7 @@
 		:root {
 			--td-lb-btn: var(--td-touch-min);
 			--td-lb-thumb-size: 44px;
+			--td-lb-sheet-peek: var(--td-touch-min); /* grab handle ≥ 44 px (v0.34.0) */
 		}
 	}
 
@@ -553,7 +554,7 @@
 		display: none;
 	}
 
-	@media (width > 900px) {
+	@media (min-width: 1024px) {
 		.td-lightbox[data-panel] {
 			display: grid;
 			grid-template-rows: 100%;
@@ -608,7 +609,7 @@
 		}
 	}
 
-	@media (width <= 900px) {
+	@media (max-width: 1023.98px) {
 		.td-lightbox[data-panel] .td-lightbox__stage,
 		.td-lightbox[data-panel] .td-lightbox__img {
 			max-width: 100vw;
@@ -675,7 +676,7 @@
 		}
 	}
 
-	@media (width <= 767px) {
+	@media (max-width: 719.98px) {
 		.td-lightbox__stage,
 		.td-lightbox__img,
 		.td-lightbox__video-el {
@@ -689,13 +690,13 @@
 		grid-template-rows: minmax(0, 1fr) auto calc(var(--td-lb-filmstrip-h) + env(safe-area-inset-bottom, 0px));
 	}
 
-	@media (width > 900px) {
+	@media (min-width: 1024px) {
 		.td-lightbox[data-panel][data-filmstrip] .td-lightbox__col {
 			place-items: stretch;
 		}
 	}
 
-	@media (width <= 900px) {
+	@media (max-width: 1023.98px) {
 		/* the closed sheet peeks at the bottom → the strip sits above it */
 		.td-lightbox[data-panel][data-filmstrip] .td-lightbox__col {
 			bottom: var(--td-lb-sheet-peek);

@@ -3,6 +3,7 @@ import { placeFloating, isReferenceHidden, watchReference } from '../utils/float
 import { LAYERS, register as registerLayer } from '../utils/layers.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import { TreeModel } from '../utils/tree-model.js';
+import { isCoarsePointer } from '../utils/breakpoints.js';
 import './td-tree.js';
 
 /** Instance properties a page may set before the element upgrades (re-applied through the class setters). */
@@ -962,7 +963,7 @@ export class TdTreeSelect extends TdFormElement {
     if (single) {
       const sel = this._model.values.map((v) => this._model.node(v)).find(Boolean) || null;
       tree._activate(sel);
-    } else if (this._search && window.innerWidth >= 768) {
+    } else if (this._search && !isCoarsePointer()) { // touch: no on-screen keyboard over the tree
       this._search.focus();
     } else {
       tree._focusFirst();

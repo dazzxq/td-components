@@ -278,8 +278,10 @@ describe('batch 3 — td-dropdown keyboard (D17)', () => {
     expect(empty.textContent).to.equal('');
   });
 
-  it('search autofocus is skipped below 768 px', async () => {
-    await setViewport({ width: 500, height: 700 });
+  it('search autofocus is skipped on touch-first devices (v0.34.0: pointer, not width), kept on a narrow desktop', async () => {
+    const real = window.matchMedia;
+    window.matchMedia = (q) => (q === '(hover: none) and (pointer: coarse)'
+      ? { matches: true, media: q, addEventListener() {}, removeEventListener() {} } : real.call(window, q));
     try {
       const el = dd();
       trig(el).focus();
@@ -287,6 +289,17 @@ describe('batch 3 — td-dropdown keyboard (D17)', () => {
       await wait(150);
       expect(same(document.activeElement, trig(el))).to.equal(true);
       expect(trig(el).getAttribute('aria-activedescendant')).to.equal(activeOpt(el).id);
+      el.close();
+    } finally {
+      window.matchMedia = real;
+    }
+    await setViewport({ width: 500, height: 700 });
+    try {
+      const el = dd();
+      trig(el).focus();
+      await sendKeys({ press: 'ArrowDown' });
+      await wait(150);
+      expect(document.activeElement.classList.contains('td-dropdown__search')).to.equal(true);
       el.close();
     } finally {
       await setViewport({ width: 800, height: 600 });

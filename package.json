@@ -73,6 +73,7 @@
     "./masked-value": "./src/display/td-masked-value.js",
     "./dom-utils": "./src/utils/dom-utils.js",
     "./form-validation": "./src/utils/form-validation.js",
+    "./breakpoints": "./src/utils/breakpoints.js",
     "./package.json": "./package.json"
   },
   "files": [

@@ -2537,6 +2537,7 @@
 		:root {
 			--td-lb-btn: var(--td-touch-min);
 			--td-lb-thumb-size: 44px;
+			--td-lb-sheet-peek: var(--td-touch-min); /* grab handle ≥ 44 px (v0.34.0) */
 		}
 	}
 
@@ -3037,7 +3038,7 @@
 		display: none;
 	}
 
-	@media (width > 900px) {
+	@media (min-width: 1024px) {
 		.td-lightbox[data-panel] {
 			display: grid;
 			grid-template-rows: 100%;
@@ -3092,7 +3093,7 @@
 		}
 	}
 
-	@media (width <= 900px) {
+	@media (max-width: 1023.98px) {
 		.td-lightbox[data-panel] .td-lightbox__stage,
 		.td-lightbox[data-panel] .td-lightbox__img {
 			max-width: 100vw;
@@ -3159,7 +3160,7 @@
 		}
 	}
 
-	@media (width <= 767px) {
+	@media (max-width: 719.98px) {
 		.td-lightbox__stage,
 		.td-lightbox__img,
 		.td-lightbox__video-el {
@@ -3173,13 +3174,13 @@
 		grid-template-rows: minmax(0, 1fr) auto calc(var(--td-lb-filmstrip-h) + env(safe-area-inset-bottom, 0px));
 	}
 
-	@media (width > 900px) {
+	@media (min-width: 1024px) {
 		.td-lightbox[data-panel][data-filmstrip] .td-lightbox__col {
 			place-items: stretch;
 		}
 	}
 
-	@media (width <= 900px) {
+	@media (max-width: 1023.98px) {
 		/* the closed sheet peeks at the bottom → the strip sits above it */
 		.td-lightbox[data-panel][data-filmstrip] .td-lightbox__col {
 			bottom: var(--td-lb-sheet-peek);
@@ -7818,7 +7819,8 @@
  * Layer: var(--td-z-modal) like a modal (one band: later layers stack by DOM order; v0.21.1 promotion over a lightbox).
  * State (set by JS, never visual classes): root [data-state="opening|open|closing"] · footer [hidden].
  * The root is a <body> child: a site sizes it with `--td-drawer-w` (on :root, on the host — copied to the root on open —
- * or on `.td-drawer-root`), or picks a size class. ≤ 640 px: full screen.
+ * or on `.td-drawer-root`), or picks a size class. ADR 0014: xs (< 480 px) full screen; sm (480–719) leaves a 3rem strip of
+ * the page visible; safe areas on every edge that touches the screen.
  * Motion: the panel slides in from its edge (logical: `end` = right in LTR, left in RTL — the root carries `dir`),
  * --td-drawer-enter-dur / --td-drawer-exit-dur; the scrim fades. Reduced motion → opacity only, --td-dur-fast.
  * No JS: an undefined <td-drawer> shows its content in place (no hiding — docs: put it at the end / in <details>).
@@ -8019,8 +8021,28 @@
 		border-top: 1px solid var(--td-hairline);
 	}
 
-	/* Phones: full screen. */
-	@media (max-width: 640px) {
+	/* Safe areas: the panel touches the top, bottom and one side of the screen (notch / home indicator). */
+	.td-drawer__header {
+		padding-top: max(var(--td-space-sm), env(safe-area-inset-top, 0px));
+	}
+
+	.td-drawer-root--end .td-drawer__panel {
+		padding-inline-end: env(safe-area-inset-right, 0px);
+	}
+
+	.td-drawer-root--start .td-drawer__panel {
+		padding-inline-start: env(safe-area-inset-left, 0px);
+	}
+
+	/* sm (480–719): keep a strip of the page visible so it reads as a drawer, not a page. */
+	@media (max-width: 719.98px) {
+		.td-drawer__panel {
+			width: min(var(--td-drawer-w, var(--_td-drawer-size)), calc(100% - 3rem));
+		}
+	}
+
+	/* xs (< 480): full screen. */
+	@media (max-width: 479.98px) {
 		.td-drawer__panel {
 			width: 100%;
 			border-width: 0;

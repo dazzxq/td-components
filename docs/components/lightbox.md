@@ -190,7 +190,7 @@ TdLightbox.open(items, {
 - Renderer chạy lại mỗi khi đổi slide. Chỉ nhận `Element`; **chuỗi bị bỏ qua** (không có đường chèn HTML). Throw hoặc
   trả `null` → không có panel ở slide đó.
 - `panel: true` dựng `<p class="td-lightbox__panel-caption">` từ `caption` (text).
-- Bố cục: màn hình **> 900px** → hai cột (ảnh | panel rộng `--td-lb-panel-w`), zoom bị cắt theo cột ảnh; **≤ 900px** →
+- Bố cục: màn hình **≥ 1024px** → hai cột (ảnh | panel rộng `--td-lb-panel-w`), zoom bị cắt theo cột ảnh; **< 1024px** →
   **bottom sheet** đóng sẵn, chỉ lộ tay nắm (nút `.td-lightbox__grab`, `aria-expanded`, tên = `labels.info`). Chạm tay
   nắm, vuốt lên trên panel (> 32px) hoặc vuốt lên trên ảnh (> 60px) để mở; vuốt xuống (> 32px) khi panel đang ở đầu
   để đóng. Sheet luôn đóng khi mở lightbox và khi panel chuyển sang "không có".

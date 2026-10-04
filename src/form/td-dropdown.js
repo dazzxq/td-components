@@ -1,4 +1,5 @@
 import { fold, nextTypeaheadIndex } from '../utils/typeahead.js';
+import { isCoarsePointer } from '../utils/breakpoints.js';
 import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
 import { LAYERS, register as registerLayer } from '../utils/layers.js';
 import { TdFormElement } from '../base/td-form-element.js';
@@ -1189,9 +1190,9 @@ export class TdDropdown extends TdFormElement {
     this._activeIndex = -1;
     this._setActive(active);
 
-    // Focus the search input (desktop only: on phones the keyboard would cover the list).
+    // Focus the search input — not on touch-first devices (any width: the on-screen keyboard would cover the list).
     const searchInput = this._search();
-    if (searchInput && opts.focusSearch !== false && window.innerWidth >= 768) {
+    if (searchInput && opts.focusSearch !== false && !isCoarsePointer()) {
       this._clearSearchFocusTimer();
       this._searchFocusTimer = window.setTimeout(() => {
         this._searchFocusTimer = null;

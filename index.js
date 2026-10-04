@@ -42,6 +42,17 @@ export { TdCopy } from './src/display/td-copy.js';
 export { TdMaskedValue } from './src/display/td-masked-value.js';
 export { TdFormValidation } from './src/utils/form-validation.js';
 export {
+  BREAKPOINTS,
+  SHORT_MAX,
+  MQ_COARSE,
+  MQ_SHORT,
+  mqBelow,
+  mqAtLeast,
+  matchesBelow,
+  isCoarsePointer,
+  isShort,
+} from './src/utils/breakpoints.js';
+export {
   slugify,
   formatFileSize,
   formatNumber,

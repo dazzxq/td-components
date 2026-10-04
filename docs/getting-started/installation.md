@@ -253,7 +253,8 @@ sẽ bị dịch thành `/vendor/td-components-0.32.0/button` (không tồn tạ
     "@dazzxq/td-components/pagination": "/vendor/td-components-0.32.0/src/display/td-pagination.js",
     "@dazzxq/td-components/empty-state": "/vendor/td-components-0.32.0/src/display/td-empty-state.js",
     "@dazzxq/td-components/dom-utils": "/vendor/td-components-0.32.0/src/utils/dom-utils.js",
-    "@dazzxq/td-components/form-validation": "/vendor/td-components-0.32.0/src/utils/form-validation.js"
+    "@dazzxq/td-components/form-validation": "/vendor/td-components-0.32.0/src/utils/form-validation.js",
+    "@dazzxq/td-components/breakpoints": "/vendor/td-components-0.32.0/src/utils/breakpoints.js"
   }
 }
 </script>
@@ -476,6 +477,7 @@ Nguồn: `package.json#exports`.
 | `@dazzxq/td-components/datetime-picker` | `src/form/td-datetime-picker.js` | `<td-datetime-picker>`, `TdDatetimePicker` |
 | `@dazzxq/td-components/datetime` | `src/utils/datetime.js` | `TdDateTime` (tiện ích ngày giờ) |
 | `@dazzxq/td-components/form-validation` | `src/utils/form-validation.js` | `TdFormValidation` |
+| `@dazzxq/td-components/breakpoints` | `src/utils/breakpoints.js` | Breakpoint kit (0.34.0, [ADR 0014](../internal/decisions/0014-breakpoints-container-queries.md)): `BREAKPOINTS`, `mqBelow`, `mqAtLeast`, `isCoarsePointer`, `isShort`… — xem [responsive](../concepts/responsive.md) |
 | `@dazzxq/td-components/modal` | `src/feedback/td-modal.js` | `TdModal` (API tĩnh) |
 | `@dazzxq/td-components/modal-stack` | `src/feedback/td-modal-stack.js` | `TdModalStackManager` |
 | `@dazzxq/td-components/toast` | `src/feedback/td-toast.js` | `TdToast` (API tĩnh) |

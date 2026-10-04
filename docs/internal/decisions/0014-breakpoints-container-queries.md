@@ -1,7 +1,7 @@
 # ADR 0014 — Breakpoint chung + quy ước `@container` / `@media` (responsive toàn kit)
 
-Trạng thái: đề xuất (2026-10-04) — chấp nhận khi plan [v0.34.0-responsive](../plans/v0.34.0-responsive.md) qua
-`/codex-plan-review`. Nguồn: audit đo thật 2026-10-04 (Chromium + WebKit + Firefox, 10 độ rộng + 2 khổ ngang, chuột / cảm
+Trạng thái: chấp nhận (2026-10-04) — plan [v0.34.0-responsive](../plans/v0.34.0-responsive.md) APPROVED qua
+`/codex-plan-review` (3 vòng). Nguồn: audit đo thật 2026-10-04 (Chromium + WebKit + Firefox, 10 độ rộng + 2 khổ ngang, chuột / cảm
 ứng; số liệu trong plan), yêu cầu breakpoint của dsuite (`dienthoaihay/docs/06-TD-COMPONENTS-REQUESTS.md`: < 480,
 480–767, 768–1023, 1024–1279, ≥ 1280; máy gập mở ~840–884, iPad mini / iPad dọc 744–834; ô chạm ≥ 44px khi
 `pointer: coarse`; ưu tiên container query trong component).
