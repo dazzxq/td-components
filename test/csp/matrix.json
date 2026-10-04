@@ -1078,6 +1078,10 @@
         ".td-table__cell[data-card=\"actions\"]",
         ".td-table__action--icon",
         ".td-table__action--icon > .td-table__action-label"
+      ],
+      "excludeProps": [
+        "height",
+        "margin-left"
       ]
     }
   ],
