@@ -674,6 +674,7 @@ export class TdMediaPicker extends HTMLElement {
     if (!s.upload) this._announce(this._t(dedup.outcome === 'exact-reused' ? 'reused' : 'uploaded', { name: asset.name || asset.id }));
     const existing = s.items.get(asset.id);
     if (existing) this._paintItem(existing, asset);
+    if (s.detailId === asset.id && !this._editBusy()) this._renderDetail(); // a re-upload refreshes the open detail
     let view = false;
     if (!this._selectable(asset)) {
       this._announce(this._t('notReady'));
