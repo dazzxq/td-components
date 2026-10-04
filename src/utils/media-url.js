@@ -43,3 +43,16 @@ export function safeMediaUrl(url, opts = {}) {
   if (p === 'blob:') return opts.allowBlob === true ? u.href : '';
   return '';
 }
+
+/**
+ * v0.33.0 (plan v0.33.0-media-picker-dcms-parity, decision 24 / invariant 31b) — the gate for the usage links of a
+ * blocked delete (`<a href target="_blank" rel="noopener noreferrer">`). Same allowlist as `safeMediaUrl` — `https:`,
+ * `http:` only on an `http:` page, relative input resolving to those — and NEVER `blob:` (`allowBlob` is ignored).
+ * Refused → '' (render the label as plain text, without a link).
+ * @param {unknown} url
+ * @param {{ baseURI?: string, protocol?: string }} [opts] injectable for tests (like `safeMediaUrl`)
+ * @returns {string}
+ */
+export function safeLinkUrl(url, opts = {}) {
+  return safeMediaUrl(url, { baseURI: opts.baseURI, protocol: opts.protocol });
+}

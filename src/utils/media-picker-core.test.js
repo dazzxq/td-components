@@ -8,6 +8,8 @@ import {
   normalizeAsset, normalizePage, normalizeFacets, normalizeFields, normalizeError, resolveCapabilities, canDo,
   resolveOptions, DefaultsRegistry, buildListRequest, requestKey, LatestRequest, SelectionModel, InitialLoad, Debouncer,
   SessionCache, ScalarTokens, buildOutcome, cancelledOutcome, formatLabel, LIMITS, VALUE_LIMITS, normalizeOptions,
+  validateRemoteUrl, normalizeDeleteResult, normalizeDownloadResult, safeFilename, defaultTitle, normalizeUploadResult,
+  PageState, PAGE_SIZE_DEFAULT, REMOTE_URL_MAX, _resetCoreWarnings,
 } from './media-picker-core.js';
 import { safeMediaUrl } from './media-url.js';
 
@@ -193,10 +195,10 @@ describe('normalizeError (decision 8)', () => {
 describe('capabilities (decisions 2, 5)', () => {
   it('missing caps → inferred from methods', () => {
     assert.deepEqual(resolveCapabilities(adapter(), undefined),
-      { search: true, upload: false, editMetadata: false, delete: false, downloadOriginal: false });
+      { search: true, upload: false, editMetadata: false, delete: false, downloadOriginal: false, uploadFromUrl: false, copyLink: false });
     const full = adapter({ upload: async () => {}, update: async () => {}, delete: async () => {} });
     assert.deepEqual(resolveCapabilities(full, null),
-      { search: true, upload: true, editMetadata: true, delete: false, downloadOriginal: false });
+      { search: true, upload: true, editMetadata: true, delete: false, downloadOriginal: false, uploadFromUrl: false, copyLink: false });
   });
 
   it('flag true without the method → false; flag false hides', () => {
@@ -244,12 +246,14 @@ describe('resolveOptions + DefaultsRegistry (decision 6)', () => {
     assert.deepEqual(o.selection.initialIds, ['a']);
     assert.equal(o.selection.maxItems, 1);
     assert.deepEqual(o.selection.kinds, ['video']);
-    assert.deepEqual(o.upload, { accept: 'image/*', maxSize: '', multiple: false });
+    assert.deepEqual(o.upload, { accept: 'image/*', maxSize: '', multiple: false, acceptLabel: '' });
     assert.equal(o.cropRequested, true);
-    assert.ok(warns.some((w) => /v0\.33/.test(w)));
+    assert.ok(warns.some((w) => /v0\.35/.test(w)), 'v0.33 decision 2: crop ships in v0.35');
+    assert.ok(!warns.some((w) => /v0\.33/.test(w)));
     const m = resolveOptions({ adapter: adapter() }, { selection: { mode: 'multiple', maxItems: 2, initialIds: ['a', 'b', 'c'] } });
     assert.deepEqual(m.selection.initialIds, ['a', 'b']);
-    assert.equal(resolveOptions({ adapter: adapter() }).pageSize, 40);
+    assert.equal(resolveOptions({ adapter: adapter() }).pageSize, 30, 'v0.33 decision 13: dcms2 page size');
+    assert.equal(PAGE_SIZE_DEFAULT, 30);
     assert.equal(resolveOptions({ adapter: adapter() }, { pageSize: 0 }).pageSize, 1);
   });
 
@@ -722,5 +726,463 @@ describe('bounded PROCESSING (review SEC-3 round 2)', () => {
 
   it('VALUE_LIMITS per control', () => {
     assert.deepEqual({ ...VALUE_LIMITS }, { text: 10000, textarea: 100000, url: 2048, select: 10000, date: 64, readonly: 10000, multiselect: 200 });
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// v0.33.0 (plan docs/internal/plans/v0.33.0-media-picker-dcms-parity.md M1, "Test > Node") — URL upload, delete,
+// download, filenames, titles, upload results, paging, the new capabilities / options.
+
+describe('v0.33 validateRemoteUrl (decision 22 — UX only, not security)', () => {
+  it('valid https → ok + normalised href', () => {
+    assert.deepEqual(validateRemoteUrl('https://a.b/x.jpg'), { ok: true, href: 'https://a.b/x.jpg' });
+    assert.deepEqual(validateRemoteUrl('  HTTP://A.B/x y.jpg  '), { ok: true, href: 'http://a.b/x%20y.jpg' });
+  });
+
+  it('empty / blank / not a string → "empty" (button disabled, no error shown)', () => {
+    for (const v of ['', '   ', '\t\n', null, undefined, 5, {}]) assert.deepEqual(validateRemoteUrl(v), { ok: false, code: 'empty' });
+  });
+
+  it('> 2048 characters → "too-long" (checked before parsing)', () => {
+    assert.equal(REMOTE_URL_MAX, 2048);
+    const long = `https://a.b/${'a'.repeat(2049 - 'https://a.b/'.length)}`;
+    assert.equal(long.length, 2049);
+    assert.deepEqual(validateRemoteUrl(long), { ok: false, code: 'too-long' });
+    assert.equal(validateRemoteUrl(long.slice(0, 2048)).ok, true);
+    assert.deepEqual(validateRemoteUrl(`javascript:${'a'.repeat(3000)}`), { ok: false, code: 'too-long' }, 'order: length first');
+  });
+
+  it('unparseable → "invalid"', () => {
+    for (const v of ['https://exa mple.com', 'not a url', '/relative/x.jpg', 'https://', 'http://[::1']) {
+      assert.deepEqual(validateRemoteUrl(v), { ok: false, code: 'invalid' }, v);
+    }
+  });
+
+  it('ftp: / javascript: / data: / file: / blob: → "scheme"', () => {
+    for (const v of ['ftp://a.b/x.jpg', 'javascript:alert(1)', 'data:image/png;base64,AAAA', 'file:///etc/passwd',
+      'blob:https://a.b/1-2', 'mailto:a@b.c']) {
+      assert.deepEqual(validateRemoteUrl(v), { ok: false, code: 'scheme' }, v);
+    }
+  });
+
+  it('username / password → "credentials"', () => {
+    assert.deepEqual(validateRemoteUrl('https://user:pw@h/'), { ok: false, code: 'credentials' });
+    assert.deepEqual(validateRemoteUrl('https://user@h/'), { ok: false, code: 'credentials' });
+    assert.deepEqual(validateRemoteUrl('https://:pw@h/'), { ok: false, code: 'credentials' });
+  });
+
+  it('WHATWG normalisation happens first: `http:///x` and `https://@h/` are VALID; the normalised href is what is sent', () => {
+    assert.deepEqual(validateRemoteUrl('http:///x'), { ok: true, href: 'http://x/' });
+    assert.deepEqual(validateRemoteUrl('https://@h/'), { ok: true, href: 'https://h/' });
+  });
+
+  it('IDN → punycode href', () => {
+    assert.deepEqual(validateRemoteUrl('https://bücher.de/ảnh.jpg'),
+      { ok: true, href: 'https://xn--bcher-kva.de/%E1%BA%A3nh.jpg' });
+  });
+
+  it('does NOT block private / loopback hosts — SSRF protection is the SERVER\'s job (decision 23)', () => {
+    for (const v of ['http://127.0.0.1/x.jpg', 'http://localhost/x', 'http://169.254.169.254/latest/meta-data', 'http://[::1]/x', 'http://10.0.0.1/']) {
+      assert.equal(validateRemoteUrl(v).ok, true, v);
+    }
+  });
+});
+
+describe('v0.33 normalizeDeleteResult (decision 24)', () => {
+  it('deleted with the matching id → { status: "deleted", id }', () => {
+    assert.deepEqual(normalizeDeleteResult({ status: 'deleted', id: 'a1', extra: 1 }, 'a1'), { status: 'deleted', id: 'a1' });
+  });
+
+  it('deleted with another / missing id → contract error (server)', () => {
+    for (const r of [{ status: 'deleted', id: 'a2' }, { status: 'deleted' }, { status: 'deleted', id: 1 }]) {
+      assert.throws(() => normalizeDeleteResult(r, 'a1'), (e) => e.code === 'server');
+    }
+  });
+
+  it('blocked → normalised usages', () => {
+    const r = normalizeDeleteResult({ status: 'blocked', reason: 'in-use', usageCount: 2, truncated: true,
+      usages: [{ id: 'p1', label: '  Bài 1 ', kind: 'post', href: '/admin/p/1' }, { id: 7, label: 'SP' }] }, 'a1');
+    assert.deepEqual(r, { status: 'blocked', reason: 'in-use', usageCount: 2, truncated: true,
+      usages: [{ id: 'p1', label: 'Bài 1', kind: 'post', href: '/admin/p/1' }, { id: '7', label: 'SP' }] });
+  });
+
+  it('usageCount must be an integer ≥ 0', () => {
+    for (const usageCount of [-1, 1.5, '3', NaN, undefined, null]) {
+      assert.throws(() => normalizeDeleteResult({ status: 'blocked', reason: 'in-use', usageCount, usages: [] }, 'a'),
+        (e) => e.code === 'server', String(usageCount));
+    }
+    assert.equal(normalizeDeleteResult({ status: 'blocked', reason: 'in-use', usageCount: 0, usages: [] }, 'a').usageCount, 0);
+  });
+
+  it('80 usages → 50 (truncated: true); label 500 code points → 200', () => {
+    const usages = Array.from({ length: 80 }, (_, i) => ({ id: `u${i}`, label: i === 0 ? '😀'.repeat(500) : `L${i}` }));
+    const r = normalizeDeleteResult({ status: 'blocked', reason: 'in-use', usageCount: 80, usages }, 'a');
+    assert.equal(r.usages.length, 50);
+    assert.equal(r.truncated, true);
+    assert.equal([...r.usages[0].label].length, 200);
+    assert.equal(r.usages[49].id, 'u49');
+  });
+
+  it('usages not an array / an item with an own __proto__ / constructor key / bad item → contract error', () => {
+    const base = { status: 'blocked', reason: 'in-use', usageCount: 1 };
+    const fakeArr = Object.create(Array.prototype);
+    for (const usages of [undefined, null, {}, 'x', fakeArr, { length: 1, 0: { id: 'a', label: 'b' } }]) {
+      assert.throws(() => normalizeDeleteResult({ ...base, usages }, 'a'), (e) => e.code === 'server');
+    }
+    for (const item of [JSON.parse('{"id":"u","label":"L","__proto__":{"x":1}}'), { id: 'u', label: 'L', constructor: 1 },
+      null, 'u', { id: '', label: 'L' }, { id: 'u' }, { id: 'u', label: '   ' }, { id: {}, label: 'L' }]) {
+      assert.throws(() => normalizeDeleteResult({ ...base, usages: [item] }, 'a'), (e) => e.code === 'server', JSON.stringify(item));
+    }
+  });
+
+  it('truncated not a boolean → dropped; kind / href non-strings dropped', () => {
+    const r = normalizeDeleteResult({ status: 'blocked', reason: 'in-use', usageCount: 1, truncated: 'yes',
+      usages: [{ id: 'u', label: 'L', kind: 5, href: { toString: () => 'https://x' } }] }, 'a');
+    assert.equal('truncated' in r, false);
+    assert.deepEqual(r.usages, [{ id: 'u', label: 'L' }]);
+  });
+
+  it('href: raw by default (the renderer gates it through safeLinkUrl); with `safeLink` pre-gated, unsafe dropped', () => {
+    const raw0 = { status: 'blocked', reason: 'in-use', usageCount: 2,
+      usages: [{ id: 'u1', label: 'A', href: 'javascript:alert(1)' }, { id: 'u2', label: 'B', href: '/p/2' }] };
+    assert.equal(normalizeDeleteResult(raw0, 'a').usages[0].href, 'javascript:alert(1)');
+    const gate = (u) => (u.startsWith('/') ? `https://site.test${u}` : '');
+    const r = normalizeDeleteResult(raw0, 'a', { safeLink: gate });
+    assert.deepEqual(r.usages, [{ id: 'u1', label: 'A' }, { id: 'u2', label: 'B', href: 'https://site.test/p/2' }]);
+  });
+
+  it('other shapes → contract error', () => {
+    for (const r of [null, undefined, 'deleted', [], {}, { status: 'gone', id: 'a' },
+      { status: 'blocked', reason: 'other', usageCount: 1, usages: [] }]) {
+      assert.throws(() => normalizeDeleteResult(r, 'a'), (e) => e.code === 'server');
+    }
+  });
+});
+
+describe('v0.33 safeFilename (decision 25)', () => {
+  it('strips / \\ : control + bidi characters, cuts 200, empty → fallback', () => {
+    assert.equal(safeFilename('../../etc/passwd'), 'etcpasswd');
+    assert.equal(safeFilename('C:\\Windows\\a.exe'), 'CWindowsa.exe');
+    assert.equal(safeFilename('a\u0000b\u001fc\u007fd\u0085e\u202Egpj.exe'), 'abcdegpj.exe');
+    assert.equal([...safeFilename('ả'.repeat(300))].length, 200);
+    assert.equal(safeFilename('   ', 'anh-1.jpg'), 'anh-1.jpg');
+    assert.equal(safeFilename('///', 'x/y.jpg'), 'xy.jpg', 'the fallback is cleaned too');
+    assert.equal(safeFilename(null, ''), 'download');
+    assert.equal(safeFilename('báo cáo 2026.pdf'), 'báo cáo 2026.pdf');
+  });
+});
+
+describe('v0.33 normalizeDownloadResult (decision 25)', () => {
+  const opts = { safeUrl, now: Date.parse('2026-10-04T10:00:00Z'), fallbackName: 'anh-1.jpg' };
+
+  it('{ url, filename } → kind url, URL gated, filename cleaned', () => {
+    assert.deepEqual(normalizeDownloadResult({ url: '/dl/1?sig=x', filename: '../a\\b:c\u0007.jpg' }, opts),
+      { kind: 'url', url: 'https://site.test/dl/1?sig=x', filename: 'abc.jpg' });
+    assert.deepEqual(normalizeDownloadResult({ url: 'https://cdn.test/o.jpg', filename: '' }, opts),
+      { kind: 'url', url: 'https://cdn.test/o.jpg', filename: 'anh-1.jpg' });
+  });
+
+  it('javascript: / blob: / data: / non-string url → contract error (server)', () => {
+    for (const url of ['javascript:alert(1)', 'blob:https://site.test/1', 'data:text/html,<script>alert(1)</script>', 5, '']) {
+      assert.throws(() => normalizeDownloadResult({ url, filename: 'a' }, opts), (e) => e.code === 'server', String(url));
+    }
+    // even a gate that lets blob: through cannot open a blob from the url branch
+    assert.throws(() => normalizeDownloadResult({ url: 'blob:https://site.test/1', filename: 'a' }, { ...opts, safeUrl: (u) => u }),
+      (e) => e.code === 'server');
+  });
+
+  it('expiresAt in the past → code "expired"; future ok; unparseable → server', () => {
+    assert.throws(() => normalizeDownloadResult({ url: '/d', filename: 'a', expiresAt: '2026-10-04T09:59:59Z' }, opts),
+      (e) => e.code === 'expired');
+    assert.equal(normalizeDownloadResult({ url: '/d', filename: 'a', expiresAt: '2026-10-04T10:05:00Z' }, opts).kind, 'url');
+    assert.throws(() => normalizeDownloadResult({ url: '/d', filename: 'a', expiresAt: 'soon' }, opts), (e) => e.code === 'server');
+  });
+
+  it('{ blob, filename } → kind blob (blob instanceof Blob required)', () => {
+    const blob = new Blob(['x'], { type: 'text/html' });
+    const r = normalizeDownloadResult({ blob, filename: 'x.html' }, opts);
+    assert.equal(r.kind, 'blob');
+    assert.equal(r.blob, blob);
+    assert.equal(r.filename, 'x.html');
+    for (const b of [{}, 'blob', null, { size: 1, type: 'x' }]) {
+      assert.throws(() => normalizeDownloadResult({ blob: b, filename: 'a' }, opts), (e) => e.code === 'server');
+    }
+  });
+
+  it('both / neither / not an object → contract error', () => {
+    for (const r of [null, 'x', [], {}, { filename: 'a' }, { url: '/d', blob: new Blob(['x']), filename: 'a' }]) {
+      assert.throws(() => normalizeDownloadResult(r, opts), (e) => e.code === 'server');
+    }
+  });
+});
+
+describe('v0.33 defaultTitle (decision 6)', () => {
+  it('the four cases + overrides', () => {
+    assert.equal(defaultTitle(['image']), 'Chọn ảnh');
+    assert.equal(defaultTitle(['video']), 'Chọn video');
+    assert.equal(defaultTitle(['file']), 'Chọn tài liệu');
+    assert.equal(defaultTitle(['image', 'video']), 'Chọn media');
+    assert.equal(defaultTitle(null), 'Chọn media');
+    assert.equal(defaultTitle([]), 'Chọn media');
+    assert.equal(defaultTitle(['image'], { titleImage: 'Pick an image', title: 'Media' }), 'Pick an image');
+    assert.equal(defaultTitle(['zip'], { title: 'Media' }), 'Media');
+    assert.equal(defaultTitle(['image'], { titleImage: '' }), 'Chọn ảnh', 'empty label → default');
+    assert.equal(defaultTitle(['image'], {}, 'Ảnh đại diện'), 'Ảnh đại diện', 'options.title wins');
+    assert.equal(defaultTitle(['image'], {}, ''), 'Chọn ảnh');
+  });
+});
+
+describe('v0.33 normalizeUploadResult (v0.32 #20, shared by file + URL upload)', () => {
+  it('created / exact-reused with the same id → normalised; anything else → null', () => {
+    const ok = normalizeUploadResult({ asset: raw('n1'), deduplication: { outcome: 'created', x: 1 } }, { safeUrl });
+    assert.equal(ok.asset.id, 'n1');
+    assert.deepEqual(ok.deduplication, { outcome: 'created' });
+    const re = normalizeUploadResult({ asset: raw('n1'), deduplication: { outcome: 'exact-reused', matchedAssetId: 'n1' } }, { safeUrl });
+    assert.deepEqual(re.deduplication, { outcome: 'exact-reused', matchedAssetId: 'n1' });
+    for (const r of [null, {}, { asset: raw('n1') }, { asset: raw('n1'), deduplication: { outcome: 'exact-reused', matchedAssetId: 'n2' } },
+      { asset: raw('n1'), deduplication: { outcome: 'exact-reused' } }, { asset: raw('n1'), deduplication: { outcome: 'other' } },
+      { asset: { id: 'x' }, deduplication: { outcome: 'created' } }, { asset: raw('n1'), deduplication: 'created' }]) {
+      assert.equal(normalizeUploadResult(r, { safeUrl }), null, JSON.stringify(r));
+    }
+  });
+
+  it('metadataKeys restrict the metadata copy; URLs gated', () => {
+    const r = normalizeUploadResult({ asset: raw('n1', { metadata: { title: 'T', secret: 1 }, urls: { thumbnail: 'javascript:x', preview: '/p.jpg' } }),
+      deduplication: { outcome: 'created' } }, { safeUrl, metadataKeys: ['title'] });
+    assert.deepEqual(r.asset.metadata, { title: 'T' });
+    assert.equal(r.asset.urls.thumbnail, '');
+    assert.equal(r.asset.urls.preview, 'https://site.test/p.jpg');
+  });
+});
+
+describe('v0.33 capabilities: uploadFromUrl + copyLink (decisions 20, 22, 27)', () => {
+  const fromUrl = async () => ({});
+  it('uploadFromUrl inferred from the method; false hides; true without the method → false', () => {
+    assert.equal(resolveCapabilities(adapter({ uploadFromUrl: fromUrl }), undefined).uploadFromUrl, true);
+    assert.equal(resolveCapabilities(adapter({ uploadFromUrl: fromUrl }), { uploadFromUrl: false }).uploadFromUrl, false);
+    assert.equal(resolveCapabilities(adapter(), { uploadFromUrl: true }).uploadFromUrl, false);
+    assert.equal(resolveCapabilities(adapter({ uploadFromUrl: 'x' }), undefined).uploadFromUrl, false);
+  });
+
+  it('copyLink defaults to false; on only when the site turns it on (no method needed)', () => {
+    assert.equal(resolveCapabilities(adapter(), undefined).copyLink, false);
+    assert.equal(resolveCapabilities(adapter(), { copyLink: true }).copyLink, true);
+    assert.equal(resolveCapabilities(adapter(), { copyLink: 'yes' }).copyLink, false);
+  });
+
+  it('delete / downloadOriginal stay explicit opt-in: method + flag true', () => {
+    const del = async () => {};
+    assert.equal(resolveCapabilities(adapter({ delete: del, download: del }), undefined).delete, false);
+    assert.equal(resolveCapabilities(adapter({ delete: del }), { delete: true }).delete, true);
+    assert.equal(resolveCapabilities(adapter(), { delete: true, downloadOriginal: true }).downloadOriginal, false);
+    assert.equal(resolveCapabilities(adapter({ download: del }), { downloadOriginal: true }).downloadOriginal, true);
+  });
+
+  it('canDo: per-asset flags only narrow (all four new / v0.32.1 actions)', () => {
+    const fn = async () => {};
+    const ad = adapter({ uploadFromUrl: fn, delete: fn, download: fn });
+    const caps = { delete: true, downloadOriginal: true, copyLink: true };
+    for (const action of ['uploadFromUrl', 'copyLink', 'delete', 'downloadOriginal']) {
+      assert.equal(canDo(action, ad, caps, null), true, action);
+      assert.equal(canDo(action, ad, caps, { capabilities: { [action]: false } }), false, action);
+      assert.equal(canDo(action, ad, { ...caps, [action]: false }, { capabilities: { [action]: true } }), false, action);
+    }
+    assert.equal(canDo('copyLink', ad, undefined, { capabilities: { copyLink: true } }), false, 'per-asset cannot widen');
+  });
+
+  it('normalizeAsset keeps the new per-asset flags (booleans only)', () => {
+    const a = normalizeAsset(raw('a', { capabilities: { copyLink: false, uploadFromUrl: 'no', delete: false } }), { safeUrl });
+    assert.deepEqual(a.capabilities, { copyLink: false, delete: false });
+  });
+});
+
+describe('v0.33 resolveOptions: pagination + upload.acceptLabel (decisions 13, 21)', () => {
+  it('pagination: default cursor; pages; defaults layer; invalid → warn + cursor', () => {
+    assert.equal(resolveOptions({ adapter: adapter() }).pagination, 'cursor');
+    assert.equal(resolveOptions({ adapter: adapter() }, { pagination: 'pages' }).pagination, 'pages');
+    assert.equal(resolveOptions({ adapter: adapter(), pagination: 'pages' }).pagination, 'pages', 'via configureDefaults');
+    const warns = [];
+    assert.equal(resolveOptions({ adapter: adapter() }, { pagination: 'infinite' }, { warn: (m) => warns.push(m) }).pagination, 'cursor');
+    assert.equal(warns.length, 1);
+    assert.ok(!warns[0].includes('infinite'), 'never echoes the raw value');
+  });
+
+  it('upload.acceptLabel: text only, cut', () => {
+    assert.equal(resolveOptions({ adapter: adapter() }, { upload: { acceptLabel: ' JPG, PNG ' } }).upload.acceptLabel, 'JPG, PNG');
+    assert.equal(resolveOptions({ adapter: adapter() }, { upload: { acceptLabel: 5 } }).upload.acceptLabel, '');
+    assert.equal([...resolveOptions({ adapter: adapter() }, { upload: { acceptLabel: 'x'.repeat(500) } }).upload.acceptLabel].length, 200);
+  });
+
+  it('crop warning (once) names v0.35', () => {
+    _resetCoreWarnings();
+    const warns = [];
+    resolveOptions({ adapter: adapter() }, { crop: { enabled: true } }, { warn: (m) => warns.push(m) });
+    resolveOptions({ adapter: adapter() }, { crop: { enabled: true } }, { warn: (m) => warns.push(m) });
+    assert.equal(warns.length, 1);
+    assert.match(warns[0], /v0\.35/);
+  });
+});
+
+describe('v0.33 buildListRequest / requestKey / normalizePage: pages mode (decision 13)', () => {
+  it('page given → request.page, cursor forced null; cursor mode → no page key', () => {
+    const st = { query: '', filters: {}, pageSize: 30 };
+    const r = buildListRequest(st, { page: 3, cursor: 'ignored' });
+    assert.equal(r.page, 3);
+    assert.equal(r.cursor, null);
+    assert.equal('page' in buildListRequest(st, { cursor: 'c' }), false);
+    for (const page of [0, -1, 1.5, '2', NaN]) assert.equal('page' in buildListRequest(st, { page }), false, String(page));
+  });
+
+  it('requestKey includes the page', () => {
+    const st = { query: '', filters: {}, pageSize: 30, kinds: null };
+    assert.notEqual(requestKey(st, null, 1), requestKey(st, null, 2));
+    assert.equal(requestKey(st, null, 2), requestKey(st, null, 2));
+    assert.equal(requestKey(st, 'c'), requestKey(st, 'c', null));
+  });
+
+  it('pages mode: valid total kept; missing / invalid total → pagesFallback', () => {
+    const p = (total) => normalizePage({ items: [raw('a')], nextCursor: null, total }, { safeUrl, pagination: 'pages', warn: quiet });
+    assert.equal(p(61).total, 61);
+    assert.equal(p(61).pagesFallback, false);
+    for (const t of [undefined, -1, 1.5, '61', null]) {
+      assert.equal(p(t).pagesFallback, true, String(t));
+      assert.equal(p(t).total, undefined);
+    }
+    assert.equal('pagesFallback' in normalizePage({ items: [] }, { safeUrl, warn: quiet }), false, 'cursor mode unchanged');
+  });
+});
+
+describe('v0.33 PageState (decision 13)', () => {
+  const page = (n, nextCursor = null, total) => ({ items: new Array(n).fill(0), nextCursor, total });
+
+  it('cursor: forward 3, back 2, query change → reset; from / to with total', () => {
+    const ps = new PageState({ mode: 'cursor', pageSize: 30 });
+    let r = ps.begin('reload');
+    assert.deepEqual({ target: r.target, cursor: r.cursor, page: r.page }, { target: 1, cursor: null, page: undefined });
+    assert.equal(ps.commit(r.token, page(30, 'c30', 95)), true);
+    assert.deepEqual([ps.page, ps.from, ps.to, ps.total, ps.hasPrev, ps.hasNext, ps.visible], [1, 1, 30, 95, false, true, true]);
+    for (const [cur, n, next] of [['c30', 30, 'c60'], ['c60', 30, 'c90'], ['c90', 5, null]]) {
+      r = ps.begin('next');
+      assert.equal(r.cursor, cur);
+      ps.commit(r.token, page(n, next, 95));
+    }
+    assert.deepEqual([ps.page, ps.from, ps.to, ps.hasNext, ps.hasPrev], [4, 91, 95, false, true]);
+    assert.equal(ps.begin('next'), null, 'no next cursor');
+    r = ps.begin('prev');
+    assert.equal(r.cursor, 'c60');
+    ps.commit(r.token, page(30, 'c90', 95));
+    r = ps.begin('prev');
+    assert.equal(r.cursor, 'c30');
+    ps.commit(r.token, page(30, 'c60', 95));
+    assert.deepEqual([ps.page, ps.from, ps.to], [2, 31, 60]);
+    ps.reset();
+    assert.deepEqual([ps.page, ps.total, ps.hasNext, ps.hasPrev, ps.pending], [1, undefined, false, false, false]);
+    assert.equal(ps.begin('reload').cursor, null);
+  });
+
+  it('cursor: single-flight — next / prev ignored while pending; failure / abort keeps page + stack', () => {
+    const ps = new PageState({ mode: 'cursor', pageSize: 2 });
+    ps.commit(ps.begin('reload').token, page(2, 'c2'));
+    const r = ps.begin('next');
+    assert.equal(ps.pending, true);
+    assert.equal(ps.begin('next'), null);
+    assert.equal(ps.begin('prev'), null);
+    ps.rollback(r.token);
+    assert.deepEqual([ps.page, ps.pending, ps.hasNext], [1, false, true]);
+    const r2 = ps.begin('next');
+    assert.equal(r2.cursor, 'c2');
+    ps.commit(r2.token, page(1, null));
+    assert.deepEqual([ps.page, ps.hasNext, ps.hasPrev], [2, false, true]);
+  });
+
+  it('cursor: without total → no from/to (UI says "Trang n"); stale tokens ignored; reload supersedes', () => {
+    const ps = new PageState({ pageSize: 2 });
+    const a = ps.begin('reload');
+    const b = ps.begin('reload');
+    assert.equal(ps.commit(a.token, page(2, 'x')), false, 'superseded');
+    assert.equal(ps.commit(b.token, page(2, 'c2')), true);
+    assert.equal(ps.total, undefined);
+    assert.equal(ps.from, undefined);
+    const n = ps.begin('next');
+    ps.reset();
+    assert.equal(ps.commit(n.token, page(2, 'c4')), false, 'reset makes pending stale');
+    assert.equal(ps.page, 1);
+  });
+
+  it('hidden when everything fits one page', () => {
+    const ps = new PageState({ pageSize: 30 });
+    ps.commit(ps.begin('reload').token, page(12, null, 12));
+    assert.equal(ps.visible, false);
+    const pp = new PageState({ mode: 'pages', pageSize: 30 });
+    pp.commit(pp.begin(1).token, page(30, null, 30));
+    assert.equal(pp.visible, false);
+    pp.commit(pp.begin(1).token, page(30, null, 31));
+    assert.equal(pp.visible, true);
+  });
+
+  it('pages: page numbers, latest wins, cursor null, pageCount + from / to', () => {
+    const ps = new PageState({ mode: 'pages', pageSize: 30 });
+    const r1 = ps.begin(1);
+    assert.deepEqual({ target: r1.target, cursor: r1.cursor, page: r1.page }, { target: 1, cursor: null, page: 1 });
+    ps.commit(r1.token, page(30, null, 95));
+    assert.deepEqual([ps.ui, ps.pageCount, ps.from, ps.to, ps.hasNext], ['pages', 4, 1, 30, true]);
+    const a = ps.begin(3);
+    const b = ps.begin(4);
+    assert.ok(a && b, 'pages mode is latest-wins, never blocked');
+    assert.equal(ps.commit(a.token, page(30, null, 95)), false);
+    ps.commit(b.token, page(5, null, 95));
+    assert.deepEqual([ps.page, ps.from, ps.to, ps.hasNext], [4, 91, 95, false]);
+    assert.equal(ps.begin('next'), null);
+    assert.equal(ps.begin('prev').page, 3);
+    assert.equal(ps.begin(0), null);
+    assert.equal(ps.begin(1.5), null);
+  });
+
+  it('pages: missing / invalid total → warn ONCE + cursor UI; requests keep sending page', () => {
+    const warns = [];
+    const ps = new PageState({ mode: 'pages', pageSize: 2, warn: (m) => warns.push(m) });
+    ps.commit(ps.begin(1).token, page(2, null, undefined));
+    assert.equal(ps.ui, 'cursor');
+    assert.equal(ps.hasNext, true, 'a full page → there may be a next page');
+    const r = ps.begin('next');
+    assert.deepEqual({ page: r.page, cursor: r.cursor }, { page: 2, cursor: null });
+    ps.commit(r.token, page(1, null, '3'));
+    assert.equal(ps.hasNext, false);
+    assert.equal(warns.length, 1);
+    ps.reset();
+    ps.commit(ps.begin(1).token, page(2, null, 4));
+    assert.equal(ps.ui, 'pages', 'a later valid total brings the pages UI back');
+    assert.equal(ps.mode, 'pages');
+  });
+
+  it('cursor: begin(number) other than the current page is refused', () => {
+    const ps = new PageState({ pageSize: 2 });
+    assert.equal(ps.begin(3), null);
+  });
+
+  it('empty page after delete → step back one page (never below 1)', () => {
+    const ps = new PageState({ pageSize: 2 });
+    ps.commit(ps.begin('reload').token, page(2, 'c2', 3));
+    ps.commit(ps.begin('next').token, page(1, null, 3));
+    const re = ps.begin('reload');
+    assert.equal(re.cursor, 'c2', 'reload re-fetches the current page');
+    ps.commit(re.token, page(0, null, 2));
+    const back = ps.stepBackIfEmpty();
+    assert.equal(back.cursor, null);
+    assert.equal(back.target, 1);
+    ps.commit(back.token, page(2, null, 2));
+    assert.equal(ps.page, 1);
+    ps.commit(ps.begin('reload').token, page(0, null, 0));
+    assert.equal(ps.stepBackIfEmpty(), null, 'page 1 stays');
+    const pp = new PageState({ mode: 'pages', pageSize: 30 });
+    pp.commit(pp.begin(4).token, page(1, null, 91));
+    pp.commit(pp.begin('reload').token, page(0, null, 90));
+    assert.equal(pp.stepBackIfEmpty().page, 3);
+  });
+
+  it('invalid mode → cursor; pageSize falls back to the default', () => {
+    const ps = new PageState({ mode: 'x', pageSize: 0 });
+    assert.equal(ps.mode, 'cursor');
+    assert.equal(ps.pageSize, PAGE_SIZE_DEFAULT);
   });
 });
