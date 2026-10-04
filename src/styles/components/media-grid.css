@@ -213,7 +213,10 @@
 		display: flex;
 		flex-wrap: wrap;
 		align-content: flex-start;
-		align-items: stretch;
+		/* NOT stretch: WebKit (26.x) caches a stretched flex line's cross size and never recomputes it when the cells'
+		   aspect-ratio heights change (resize, new --td-mg-* vars) → stale row heights. Each cell's own aspect-ratio
+		   gives the height instead. */
+		align-items: flex-start;
 		gap: var(--td-media-grid-gap);
 	}
 
@@ -239,7 +242,8 @@
 	}
 
 	/* a cell = P% of the row minus its share of the gaps; ratio P / k with k shared by the row → equal heights.
-	   The line stretches every cell to the row height (the last cell of a full row is 0.5px narrower by design).
+	   Heights come from aspect-ratio only (no stretch, see above): the last cell of a full row is 0.5px narrower by
+	   design, so it is 0.5px / its ratio shorter (≤ 1px down to 1:2; 2.5px at the 1:5 clamp).
 	   A new item without its vars yet is 0 wide for at most one frame. */
 	td-media-grid[data-td-layout="justified"] .td-media-grid__item {
 		flex: 0 0 auto;

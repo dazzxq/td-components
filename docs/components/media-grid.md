@@ -196,6 +196,11 @@ chọn, Esc đóng menu trước (không bỏ lựa chọn).
 Kiểu album Google Photos / `photos.aetv.vn`: mỗi dòng **lấp đủ ngang**, các ảnh trong một dòng **cao bằng nhau**, mỗi ảnh
 giữ đúng tỉ lệ (không cắt, trừ ảnh bị kẹp tỉ lệ). Là tuỳ chọn; mặc định vẫn là lưới ô đều.
 
+Chiều cao mỗi ô lấy từ `aspect-ratio` của chính nó, **không** kéo giãn theo dòng (`align-items: flex-start`): WebKit
+26.x giữ nguyên chiều cao cũ của một dòng flex có ô `stretch` khi bề rộng / tỉ lệ đổi. Vì ô cuối của dòng đầy hẹp
+hơn 0.5px (để dòng không bao giờ tràn), nó thấp hơn các ô khác 0.5px / tỉ lệ của nó: dưới 1px với ảnh từ 1:2 trở lên,
+tối đa 2.5px ở mức kẹp 1:5.
+
 ```html
 <td-media-grid label="Album" layout="justified">
   <div data-td-media-item data-id="p1">
