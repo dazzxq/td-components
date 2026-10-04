@@ -144,6 +144,9 @@ async function newPage(browser, c) {
 }
 
 async function load(page) {
+  // park the pointer at (0, 0): a pointer left over a card by the previous scenario (tooltip / hovercard hover) can
+  // raise a hover tooltip over the targets being probed — same rule as the v0.33 visual gate
+  await page.mouse.move(0, 0);
   await page.goto(`${ORIGIN}/`);
   await page.waitForFunction(() => window.__ready === true);
   await page.evaluate(settle);
