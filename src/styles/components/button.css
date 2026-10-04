@@ -247,6 +247,8 @@
 
 	@media (pointer: coarse) {
 		.td-btn { min-height: var(--td-touch-min); border-radius: var(--td-radius-full); }
+		/* v0.36.0 (plan QĐ 67): interactive labels ≥ 14px on touch screens */
+		.td-btn--sm { font-size: var(--td-text-sm); }
 	}
 
 	@media (prefers-reduced-motion: reduce) {

@@ -349,6 +349,7 @@
 		.td-tree-select__clear {
 			width: var(--td-touch-min);
 			height: var(--td-touch-min);
+			margin-inline-start: var(--td-space-xs); /* v0.36.0 (QĐ 68): ≥ 8 px from the value / trigger target */
 		}
 	}
 

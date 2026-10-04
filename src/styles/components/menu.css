@@ -196,6 +196,13 @@
 		color: var(--td-menu-hint-fg);
 	}
 
+	/* v0.36.0 (plan QĐ 65): a keyboard-shortcut hint (1–3 characters, e.g. "E") means nothing on a touch screen */
+	@media (hover: none) {
+		.td-menu__hint--kbd {
+			display: none;
+		}
+	}
+
 	.td-menu__separator {
 		flex: none;
 		height: 1px;

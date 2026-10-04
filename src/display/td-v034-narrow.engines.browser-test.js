@@ -110,7 +110,7 @@ function styleRepeaterFields(el, grid) {
 describe('v0.34.0 narrow containers (QĐ 12): td-repeater', () => {
   for (const grid of [false, true]) {
     const kind = grid ? 'app grid row' : 'default flex row';
-    it(`280px (${kind}): the tool cluster is its own row under the fields, aligned to the end`, async () => {
+    it(`280px (${kind}): grid → the tool cluster is its own row; flex → it shares the last line when the basis allows (v0.36); aligned to the end`, async () => {
       const { wrap, el } = mount(280, repeaterHtml());
       styleRepeaterFields(el, grid);
       await frame();
@@ -119,7 +119,13 @@ describe('v0.34.0 narrow containers (QĐ 12): td-repeater', () => {
         expect(!!tools, 'tools').to.equal(true);
         expect(tools.querySelectorAll('.td-repeater__btn').length, 'drag / ↑ / ↓ / ×').to.equal(4);
         const fieldsBottom = Math.max(...[...row.querySelectorAll('.t-f')].map((f) => rect(f).bottom));
-        expect(rect(tools).top, `${kind}: tools below the fields`).to.be.at.least(fieldsBottom - 0.5);
+        if (grid) {
+          expect(rect(tools).top, `${kind}: tools below the fields`).to.be.at.least(fieldsBottom - 0.5);
+        } else {
+          // v0.36.0 (plan QĐ 63): in a flex row the cluster joins the last line when the fields' flex-basis leaves room
+          // (here 2 × 3rem) — the fields never go below their basis
+          for (const f of row.querySelectorAll('.t-f')) expect(rect(f).width, `${kind}: field ≥ its basis`).to.be.at.least(47.5);
+        }
         const btns = [...tools.querySelectorAll('.td-repeater__btn')];
         const box = contentBox(row);
         expect(Math.abs(rect(btns.at(-1)).right - box.right), `${kind}: aligned to the end`).to.be.below(2);

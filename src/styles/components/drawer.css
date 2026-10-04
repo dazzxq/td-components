@@ -219,20 +219,15 @@
 		padding-inline-start: env(safe-area-inset-left, 0px);
 	}
 
-	/* sm (480–719): keep a strip of the page visible so it reads as a drawer, not a page. */
+	/* < 720: keep a strip of the page visible so it reads as a drawer, not a page. */
 	@media (max-width: 719.98px) {
 		.td-drawer__panel {
 			width: min(var(--td-drawer-w, var(--_td-drawer-size)), calc(100% - 3rem));
 		}
 	}
 
-	/* xs (< 480): full screen. */
-	@media (max-width: 479.98px) {
-		.td-drawer__panel {
-			width: 100%;
-			border-width: 0;
-		}
-	}
+	/* v0.36.0 (plan QĐ 66, mobile UX audit): no full screen below 480 any more — the < 720 strip of page (3rem) stays
+	   visible on phones too, so the drawer reads as a drawer and the backdrop edge is reachable. */
 
 	@media (pointer: coarse) {
 		.td-drawer__close {

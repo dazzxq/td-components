@@ -794,6 +794,11 @@
 			white-space: nowrap;
 		}
 
+		/* QĐ 67: the card meta line ≥ 14px on touch screens */
+		.td-media-picker__meta {
+			font-size: var(--td-text-sm);
+		}
+
 		/* QĐ 56: the preview follows the image (no fixed square letterbox), at most 40% of the viewport height */
 		.td-media-picker__preview {
 			aspect-ratio: auto;

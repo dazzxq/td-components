@@ -17,7 +17,10 @@
  */
 @layer td.tokens {
 	:root {
-		--td-media-grid-cols: repeat(auto-fill, minmax(160px, 1fr));
+		/* v0.36.0 (plan QĐ 64): never one column on a phone — a column is at most half the grid wide (minus the gap), so a
+		   294–324px grid shows 2 tiles a row; wider grids keep the 160px minimum */
+		--td-media-grid-col-min: 160px;
+		--td-media-grid-cols: repeat(auto-fill, minmax(min(var(--td-media-grid-col-min), calc(50% - var(--td-media-grid-gap) / 2)), 1fr));
 		--td-media-grid-gap: var(--td-space-xs);
 		--td-media-grid-radius: var(--td-radius-md);
 		--td-media-grid-tick-size: 24px;

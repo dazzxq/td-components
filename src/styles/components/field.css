@@ -256,6 +256,12 @@
 			min-height: var(--td-touch-min);
 			font-size: max(1rem, 1em); /* ≥ 16px: iOS does not zoom on focus */
 		}
+
+		/* v0.36.0 (plan QĐ 67): the note / counter / error under a field ≥ 14px on touch screens */
+		.td-field__footer,
+		.td-field-error {
+			font-size: var(--td-text-sm);
+		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {

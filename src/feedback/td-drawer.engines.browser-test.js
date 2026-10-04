@@ -530,7 +530,7 @@ describe('td-drawer — layout', () => {
     await h.closed;
   });
 
-  it('sizes sm < md < lg < xl; --td-drawer-w overrides; < 480px fills the screen, 480–719 leaves 3rem', async () => {
+  it('sizes sm < md < lg < xl; --td-drawer-w overrides; below 720 (phones too, v0.36) leaves 3rem', async () => {
     const widths = {};
     for (const size of ['sm', 'md', 'lg', 'xl']) {
       const h = TdDrawer.open({ label: size, size, body: 'x' });
@@ -553,12 +553,12 @@ describe('td-drawer — layout', () => {
     host.show();
     expect(Math.round(openRoot().querySelector('.td-drawer__panel').getBoundingClientRect().width)).to.equal(333);
     await host.close();
-    // v0.34.0 (ADR 0014): xs (< 480) full screen; sm (480–719) at most 100% − 3rem (a strip of the page stays visible)
+    // v0.36.0 (plan QĐ 66): below 720 — phones included — at most 100% − 3rem (a strip of the page stays visible)
     await setViewport({ width: 400, height: 700 });
-    const h = TdDrawer.open({ label: 'm', size: 'sm', body: 'x' });
+    const h = TdDrawer.open({ label: 'm', size: 'xl', body: 'x' });
     await nextEvent(h.element, 'open');
     const rect = openRoot().querySelector('.td-drawer__panel').getBoundingClientRect();
-    expect(Math.round(rect.width)).to.equal(document.documentElement.clientWidth);
+    expect(Math.round(rect.width)).to.equal(document.documentElement.clientWidth - 48);
     expect(Math.round(rect.height)).to.equal(window.innerHeight);
     h.close();
     await h.closed;

@@ -354,6 +354,8 @@ function build(entries, menuId) {
       const hint = el('span', 'td-menu__hint');
       hint.id = `${menuId}-hint-${i}`;
       hint.textContent = e.hint;
+      // v0.36.0 (plan QĐ 65): a 1–3 character hint is a keyboard shortcut → hidden on touch screens (CSS)
+      if (/^\S{1,3}$/.test(String(e.hint).trim())) hint.classList.add('td-menu__hint--kbd');
       node.appendChild(hint);
       node.setAttribute('aria-labelledby', label.id);
       node.setAttribute('aria-describedby', hint.id);
