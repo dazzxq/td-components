@@ -9,6 +9,7 @@
  * Per-instance CSSOM custom properties on .td-modal__dialog (validated in JS):
  *   --td-modal-w, --td-modal-h, --td-modal-body-pad, --td-modal-body-overflow
  * Only .td-modal__body scrolls (header/footer pinned, D21). ≤ 640 px: bottom sheet (except --viewport).
+ * --viewport (v0.33.0): header / footer / body add env(safe-area-inset-*) to their padding (100dvh, never vh).
  * Motion (v0.22.1, ported from dcms-modal): opening → scrim fades in (--td-modal-scrim-dur 120ms ease-out), the dialog
  * fades in (--td-modal-fade-dur 200ms, --td-modal-fade-ease) and scales from --td-modal-enter-from scale(0.95) with a
  * slight spring overshoot (--td-modal-enter-dur 300ms, --td-modal-enter-ease); closing scales back (--td-modal-exit-dur
@@ -276,10 +277,28 @@
 		border-radius: 0;
 	}
 
+	/* v0.33.0 safe area (notch / home indicator), ADDED to the base padding — never a bare env() that would drop it
+	   when the inset is 0. The body gets only the side insets, as the fallback of --td-modal-body-pad (an explicit
+	   bodyPadding still wins); its children space themselves. */
+	.td-modal--viewport .td-modal__header {
+		padding-top: calc(var(--td-space-sm) + env(safe-area-inset-top, 0px));
+	}
+
+	.td-modal--viewport .td-modal__footer {
+		padding-bottom: calc(var(--td-space-sm) + env(safe-area-inset-bottom, 0px));
+	}
+
+	.td-modal--viewport .td-modal__header,
+	.td-modal--viewport .td-modal__footer {
+		/* physical sides: the insets are physical (correct under dir="rtl" too) */
+		padding-right: calc(var(--td-modal-pad-x) + env(safe-area-inset-right, 0px));
+		padding-left: calc(var(--td-modal-pad-x) + env(safe-area-inset-left, 0px));
+	}
+
 	.td-modal--viewport .td-modal__body {
 		display: flex;
 		flex-direction: column;
-		padding: var(--td-modal-body-pad, 0);
+		padding: var(--td-modal-body-pad, 0 env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px));
 		overflow: var(--td-modal-body-overflow, hidden);
 	}
 
