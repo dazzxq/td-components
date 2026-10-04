@@ -306,10 +306,14 @@ async function runEngine(name, launcher, configs) {
   const browser = await launcher.launch(await launchOptions(name, launcher));
   try {
     if (!only) await hoverSelfTest(browser, name);
-    // two pages at a time per engine: deterministic (separate contexts), roughly halves the wall time
+    // Two pages at a time in Chromium / WebKit (separate contexts) roughly halves the wall time. Firefox runs its pages
+    // ONE AT A TIME: its pointer is shared by every page of a browser instance (Juggler), so a mouse move / hover in a
+    // second page sends pointerout to the first and cancels its hover intent — CI 37201806355 + 37205524647
+    // (firefox-360 hovercard / tooltip "did not open"), reproduced 4/4 in mcr.microsoft.com/playwright:v1.60.0-jammy
+    // with all three Firefox configs; same engine quirk as the per-file pointer groups of web-test-runner.config.js.
     const queue = [...configs];
     const worker = async () => { for (let c = queue.shift(); c; c = queue.shift()) await runConfig(browser, c); };
-    await Promise.all([worker(), worker()]);
+    await Promise.all(name === 'firefox' ? [worker()] : [worker(), worker()]);
   } finally {
     await browser.close();
   }

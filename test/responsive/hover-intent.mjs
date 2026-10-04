@@ -10,6 +10,8 @@
  *   2. hover, then wait for the popup's open signal; if the trigger fired pointerout without the pointer having left
  *      (the layout moved it), re-stabilise and hover once more — a real user re-aims the same way;
  *   3. a popup that still does not open with a stable, uncovered trigger under the pointer is a real failure.
+ * NOTE (CI 37205524647): in Firefox the pointer is shared by every page of a browser instance — a second page hovering
+ * concurrently also sends pointerout here. The gate therefore runs Firefox pages one at a time (responsive.spec.mjs).
  */
 export async function hoverIntent(page, sel, openSel, notes = []) {
   const trigger = page.locator(sel);
