@@ -154,7 +154,8 @@ tỉ lệ. Cropper tính toạ độ trên ảnh nó thấy; ảnh đã bị c�
 | Có `natural-*`, ảnh tải về **cùng tỉ lệ** (lệch ≤ 1 %) | `ready`, có `pixels` |
 | Có `natural-*`, ảnh tải về **lệch tỉ lệ > 1 %** (preview bị cắt sẵn) | `error` (`ratio`) — **fail closed**: không tương tác, không kết quả; hộp thoại khoá nút xác nhận |
 | Không `natural-*` | `ready`, **không** `pixels` (không kiểm được — hợp đồng nguồn ảnh là trách nhiệm của site) |
-| Ảnh không có kích thước (SVG không `width/height`/`viewBox`…) | `error` (`size`) |
+| Ảnh decode ra kích thước 0 (vd. SVG `width="0"`) | `error` (`size`) |
+| SVG **không** `width/height` | trình duyệt báo 300 × 150 (hoặc theo `viewBox`) ⇒ chỉ bị chặn khi có `natural-*` (lỗi `ratio`); không `natural-*` thì toạ độ theo kích thước đó — luôn truyền `natural-*` cho SVG |
 | Ảnh không tải được | `error` (`load`) |
 | `src` không an toàn (`javascript:`, `data:`, `blob:`, `file:`…) | `error` (`src`), không có `<img>` |
 
@@ -249,7 +250,7 @@ TdCropper.openDialog(opts: {
   title?: string;                  // mặc định "Cắt ảnh"; khoá tỉ lệ ⇒ tự thêm " · 16:9" (nhãn preset nếu khớp)
   confirmLabel?: string;           // mặc định "Áp dụng"
   cancelLabel?: string;            // mặc định "Huỷ"
-  signal?: AbortSignal;            // abort ⇒ đóng hộp, resolve cancelled
+  signal?: AbortSignal;            // abort ⇒ gỡ hộp ngay (không hiệu ứng thoát), resolve cancelled
   opener?: HTMLElement;            // nhận lại focus khi đóng
 }): Promise<
   | { status: 'applied'; crop: CropValue | null; focalPoint: FocalPoint; changed: boolean }
@@ -275,8 +276,8 @@ riêng, cuộn ngang nếu thiếu chỗ), nút − / + chỉ còn icon (nhãn v
 Edge 102–104): dự phòng theo viewport < 480px.
 
 Chiều cao vùng cắt: `--td-cropper-h` (mặc định `min(60vh, 32rem)`); `td-cropper:not(:defined)` giữ chỗ cùng chiều cao
-(không xô lệch khi JS tải). Cảm ứng (`pointer: coarse`): vùng chạm của góc / điểm trọng tâm / nút toolbar ≥ 44px — vùng
-cắt có đệm trong để vùng chạm của góc nằm sát mép ảnh không bị cắt; khung hiển thị quá nhỏ thì ẩn tay nắm cạnh, góc vẫn
+(không xô lệch khi JS tải). Cảm ứng (`pointer: coarse`): vùng chạm của góc / điểm trọng tâm / nút toolbar ≥ 44px (chuột ≥ 24px;
+vùng chạm thật 26 / 46px vì góc nằm trên nửa pixel bị trình duyệt làm tròn thiếu 1px) — vùng cắt có đệm trong (14 / 24px) để vùng chạm của góc nằm sát mép ảnh không bị cắt; khung hiển thị quá nhỏ thì ẩn tay nắm cạnh, góc vẫn
 còn.
 
 ## Attribute
@@ -348,6 +349,8 @@ preset nằm ở `TdCropper.presets` (`label`), không ở đây.
 | `--td-cropper-dim` | `rgb(0 0 0 / 55%)` | Vùng mờ ngoài khung |
 | `--td-cropper-line` | trắng | Viền trong 1px của khung |
 | `--td-cropper-line-contrast` | đen 60 % | Viền ngoài 1px — khung thấy được trên cả ảnh trắng lẫn ảnh đen |
+| `--td-cropper-focus` | trắng | Vòng focus bàn phím trên ảnh (khung / góc / điểm trọng tâm) — không dùng màu accent của kit vì đo được ~1.1:1 trên ảnh sáng đã làm mờ |
+| `--td-cropper-focus-halo` | đen 75 % | Quầng tối dưới vòng focus của góc / điểm trọng tâm (vòng hai tông: luôn có một tông tương phản với ảnh) |
 | `--td-cropper-handle` | trắng | Nền tay nắm góc / cạnh (viền tối) |
 
 Bề mặt theo [minimal surfaces](../internal/design/liquid-glass.md): không shadow trang trí, không blur; lưới 1/3 chỉ

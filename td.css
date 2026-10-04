@@ -11723,6 +11723,8 @@
 		--td-cropper-line-contrast: rgb(0 0 0 / 60%); /* outer line: visible on white images too */
 		--td-cropper-handle: #fff;
 		--td-cropper-grid: rgb(255 255 255 / 60%); /* rule of thirds while dragging */
+		--td-cropper-focus: #fff;                 /* keyboard focus ring on the image (two-tone with the halo) */
+		--td-cropper-focus-halo: rgb(0 0 0 / 75%); /* dark halo under the ring of a corner / the focal point */
 	}
 }
 
@@ -11880,11 +11882,23 @@
 		outline: none;
 	}
 
+	/* Focus on an image (contrast gate v0.35): the kit accent ring measures ~1.1:1 on a dimmed light photo, so the ring is
+	   two-tone — a light outline (the box ring always lies on the dim, ≤ 45 % of any image's luminance) and, for the
+	   corners / focal point that straddle the undimmed image, a dark halo under it: one of the two always contrasts. */
 	.td-cropper__box:focus-visible,
 	.td-cropper__handle--corner:focus-visible,
 	.td-cropper__focal:focus-visible {
-		outline: 2px solid var(--td-focus);
+		outline: 2px solid var(--td-cropper-focus);
 		outline-offset: 2px;
+	}
+
+	.td-cropper__handle--corner:focus-visible {
+		box-shadow: 0 0 0 6px var(--td-cropper-focus-halo);
+	}
+
+	.td-cropper__focal:focus-visible {
+		box-shadow: 0 0 0 1px var(--td-cropper-line-contrast), inset 0 0 0 1px var(--td-cropper-line-contrast),
+			0 0 0 6px var(--td-cropper-focus-halo);
 	}
 
 	td-cropper[disabled] .td-cropper__box,
