@@ -4,17 +4,28 @@ Roadmap sống. Mỗi item một dòng, kèm trạng thái: `todo` · `doing` ·
 Khi xong: đánh `done`, ghi vào [CHANGELOG.md](../../CHANGELOG.md), rồi xoá dòng ở lần release sau.
 Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-09-sync-dcms-dwp.md).
 
-## Đang làm — lộ trình dsuite (yêu cầu dienthoaihay, chốt với Codex 2026-10-03)
+## Đang làm — lộ trình dsuite (yêu cầu dienthoaihay, chốt với Codex 2026-10-03; xếp lại 2026-10-04 theo đồng thuận media picker, [ADR 0013](decisions/0013-media-picker-boundary.md))
 
 - `done` v0.27.0: `td-otp-input`, `td-drawer`, `td-copy`, CSS skeleton
 - `done` v0.28.0 ~14/10 (A0 tới 20/10): `td-chip-input` chọn nhiều (closed-set, `<select multiple>`, chọn tất cả đang hiện, `td_multiselect`) — xong P0
 - `done` v0.29.0: `td-tree` + `td-tree-select`
 - `done` v0.30.0 ~28/10: `td-number-input` + `td-repeater` (đặt `OrderedCollectionModel`) — đảo theo lịch dsuite (A2.3 cần ~26/10)
 - `done` v0.31.0 ~04/11: `td-sortable` (dùng lại OrderedCollectionModel) + `td-masked-value` (A1 cần từ 12/11)
-- `todo` v0.32.0 ~11/11: `td-cropper` (toạ độ) + `td-scan-input` (A3 từ 26/11)
-- `todo` v0.33.0 ~18/11: table chọn dòng + hook lọc ngoài + ẩn / hiện cột, `td-filter-chips`
-- `todo` v0.34.0 ~25/11: datetime `range` + preset — xong P1
-- `todo` v0.35–v0.38: typeToConfirm, `trackFormDirty`, `td-steps`, `td-timeline`, `td-diff`, `td-check-matrix`, `td-color-picker`
+- `done` v0.32.0: `<td-media-picker>` / `TdMediaPicker.open()` (list / get / tìm / facet / chọn đơn + nhiều, upload kèm
+  `uploadFields` + dedup, sửa metadata tường minh theo descriptor) + `<td-media-field>` (đơn, reference / usage) + PHP
+  `td_media_field()` — [ADR 0013](decisions/0013-media-picker-boundary.md), plan
+  [v0.32.0-media-picker](plans/v0.32.0-media-picker.md)
+- `todo` v0.32.1: picker — xoá + trình bày usage chặn xoá (`DeleteResult` `blocked`) + tải bản gốc (`download`) + ổn định
+  picker; acceptance *delete-blocked* + *download* **chặn phát hành** bản này (interface adapter không đổi)
+- `todo` v0.33.0: `td-cropper` (toạ độ) + tích hợp crop vào picker / field (chỉ thêm UI; FormData `name[crop]` giữ nguyên)
+- `todo` v0.34.0: `td-table` dạng card + chọn dòng — viết ADR container-query **trước** khi bắt đầu
+- `todo` v0.35.0: `td-scan-input` (A3)
+- `todo` v0.36.0: hook lọc ngoài + ẩn / hiện cột + `td-filter-chips` + datetime `range` + preset — xong P1
+- `todo` v0.37.0: responsive toàn kit + screenshot 8 độ rộng
+- `todo` v0.38+: field gallery / nhiều ảnh (`td-media-grid` + `td-sortable`)
+- `todo` sau v0.38: typeToConfirm, `trackFormDirty`, `td-steps`, `td-timeline`, `td-diff`, `td-check-matrix`, `td-color-picker`
+- Ngày từ v0.32.1 trở đi: **rebaseline từ ngày v0.31 xong thực tế** (không nén test / acceptance để giữ lịch cũ ~11/11 –
+  25/11)
 - `todo` B (sau B0 ~01/2027): choice-group, number stepper, rating chỉ đọc, carousel không autoplay
 
 ## Done — v0.4.1 bugfix (2026-09-27, xem CHANGELOG)
@@ -183,7 +194,9 @@ Mỗi batch làm luôn a11y và error-contract trong cùng slice. Error contract
 ## Không làm
 
 - `td-breadcrumb`
-- dcms: notification, action-buttons, media-picker, post-*, richtext, draft-preview, banner, color-picker
+- dcms: notification, action-buttons, post-*, richtext, draft-preview, banner, color-picker (port module dcms2). *Media
+  picker không còn ở đây*: `td-media-picker` là bản viết sạch theo hợp đồng adapter, không port dcms2 — xem
+  [ADR 0013](decisions/0013-media-picker-boundary.md) (ADR 0007 giữ nguyên: dcms2 độc lập, shim nếu cần nằm ở dcms2)
 - Bundle Plyr (chỉ adapter)
 - Copy token CSS của dwp
 

@@ -42,7 +42,7 @@ note.prepend(tdIcon('info', { size: 'l', label: 'Thông tin' })); // icon có ng
 
 ## Danh sách icon core
 
-36 icon. Tên là tên **ngữ nghĩa** của td; cột phải là tên gốc bên Lucide.
+39 icon. Tên là tên **ngữ nghĩa** của td; cột phải là tên gốc bên Lucide.
 
 | Tên td | Lucide | | Tên td | Lucide |
 |---|---|---|---|---|
@@ -64,6 +64,8 @@ note.prepend(tdIcon('info', { size: 'l', label: 'Thông tin' })); // icon có ng
 | `pencil` | pencil | | `copy` | copy |
 | `log-out` | log-out | | `menu` | menu |
 | `rotate-cw` | rotate-cw | | `grip` | grip-vertical |
+| `video` | video | | `file` | file |
+| `filter` | sliders-horizontal | | | |
 
 `grip` (0.31.0): tay nắm kéo của [sortable](sortable.md) và repeater `sortable`.
 
@@ -74,6 +76,9 @@ Nhóm icon cho màn quản trị (CMS) — `trash`, `pencil`, `copy`, `log-out`,
 <td-button variant="secondary" size="sm" icon="pencil" aria-label="Sửa"></td-button>
 <td-button variant="danger" size="sm" icon="trash" aria-label="Xoá"></td-button>
 ```
+
+`video`, `file`, `filter` có từ 0.32.0 (khung rỗng của [media field](media-field.md), nút "Bộ lọc" của
+[media picker](media-picker.md)); `filter` vẽ theo Lucide `sliders-horizontal`.
 
 Danh sách luôn đúng nhất là lấy từ code, vì site có thể đã đăng ký thêm:
 

@@ -1,0 +1,257 @@
+/*
+ * td-media-field (src/form/td-media-field.js) — v0.32.0, plan v0.32.0-media-picker M6 (field). Content layer: solid
+ * surfaces, never glass (minimal surfaces).
+ * Frame: `display: grid`, the SVG sizer (viewBox = the aspect ratio, same markup in PHP and JS — no CSSOM) and the open
+ * button share one cell, so the box keeps its ratio before AND after the upgrade. No sizer (no / invalid
+ * `aspect-ratio`) = the free mode (dcms2 `freeStyle`): empty = --td-media-field-empty-h tall, filled = the image's
+ * natural ratio capped at --td-media-field-max-h. `preview-fit="contain"` (with a ratio) fits the image in the frame.
+ * State: [data-state="empty|filled"] / [data-kind] on the frame, [aria-invalid] / :disabled on the open button,
+ * [hidden] on the actions. Empty frame = dashed border (≥ 3.2:1 on the empty fill, --td-color-text-muted), filled = solid.
+ * Before define (php/td.php td_media_field): the open / Đổi / Gỡ buttons are `visibility: hidden` (no dead control;
+ * the box, sizer and preview stay → no layout shift).
+ * Tokens: --td-media-field-w (host inline size), --td-media-field-empty-h, --td-media-field-max-h.
+ * CSP: classes / data / aria attributes only.
+ */
+@layer td.tokens {
+	:root {
+		--td-media-field-w: 100%;
+		--td-media-field-empty-h: 10rem;
+		--td-media-field-max-h: 24rem;
+	}
+}
+
+@layer td.component {
+	td-media-field {
+		display: block;
+		box-sizing: border-box;
+		inline-size: var(--td-media-field-w, 100%);
+		max-inline-size: 100%;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text);
+	}
+
+	td-media-field *,
+	td-media-field *::before {
+		box-sizing: border-box;
+	}
+
+	.td-media-field__label {
+		display: block;
+		margin: 0 0 var(--td-space-2xs);
+		font-weight: var(--td-fw-medium);
+		color: var(--td-field-label);
+	}
+
+	.td-media-field__label:empty {
+		display: none;
+	}
+
+	.td-media-field__frame {
+		position: relative;
+		display: grid;
+		inline-size: 100%;
+		border: 1px solid var(--td-color-border);
+		border-radius: var(--td-radius-md);
+		background: var(--td-color-surface);
+	}
+
+	.td-media-field__frame[data-state="empty"] {
+		border-style: dashed;
+		border-color: var(--td-color-text-muted);
+		background: var(--td-color-surface-muted);
+	}
+
+	.td-media-field__frame:has(> .td-media-field__open[aria-invalid="true"]) {
+		border-color: var(--td-field-error);
+	}
+
+	.td-media-field__sizer {
+		display: block;
+		grid-area: 1 / 1;
+		inline-size: 100%;
+		block-size: auto;
+		pointer-events: none;
+	}
+
+	.td-media-field__open {
+		position: relative;
+		display: flex;
+		grid-area: 1 / 1;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		inline-size: 100%;
+		min-block-size: var(--td-media-field-empty-h, 10rem);
+		margin: 0;
+		padding: 0;
+		border: 0;
+		border-radius: calc(var(--td-radius-md) - 1px);
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		text-align: center;
+		cursor: pointer;
+		overflow: hidden;
+		transition: background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	/* ratio mode: the sizer sets the height, the button fills the cell, the image covers it */
+	.td-media-field__sizer + .td-media-field__open {
+		min-block-size: 0;
+	}
+
+	.td-media-field__open:focus-visible {
+		outline: 2px solid var(--td-focus);
+		outline-offset: 2px;
+	}
+
+	.td-media-field__open:disabled {
+		cursor: not-allowed;
+	}
+
+	.td-media-field__frame[data-state="empty"] > .td-media-field__open:hover:not(:disabled) {
+		background: var(--td-color-hover);
+	}
+
+	.td-media-field__open:disabled > :not(.td-sr-only) {
+		opacity: 0.6;
+	}
+
+	.td-media-field__empty,
+	.td-media-field__file {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--td-space-2xs);
+		max-inline-size: 100%;
+		padding: var(--td-space-md);
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-field__file {
+		color: var(--td-color-text);
+	}
+
+	.td-media-field__icon {
+		display: inline-flex;
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-field__icon svg {
+		inline-size: 1.75rem;
+		block-size: 1.75rem;
+	}
+
+	.td-media-field__prompt {
+		font-weight: var(--td-fw-medium);
+	}
+
+	.td-media-field__ratio {
+		font-size: var(--td-text-xs);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.td-media-field__name {
+		max-inline-size: 100%;
+		overflow-wrap: anywhere;
+	}
+
+	.td-media-field__img {
+		display: block;
+		inline-size: 100%;
+		block-size: auto;
+		max-block-size: var(--td-media-field-max-h, 24rem);
+		object-fit: contain;
+		user-select: none;
+		-webkit-user-drag: none;
+	}
+
+	.td-media-field__sizer + .td-media-field__open > .td-media-field__img {
+		position: absolute;
+		inset: 0;
+		block-size: 100%;
+		max-block-size: none;
+		object-fit: cover;
+	}
+
+	td-media-field[preview-fit="contain" i] .td-media-field__sizer + .td-media-field__open > .td-media-field__img {
+		object-fit: contain;
+	}
+
+	/* free mode, filled: the image's natural ratio (no empty-frame minimum) */
+	.td-media-field__frame[data-state="filled"] > .td-media-field__open:first-child {
+		min-block-size: 0;
+	}
+
+	.td-media-field__badge {
+		position: absolute;
+		inset-block-start: var(--td-space-xs);
+		inset-inline-start: var(--td-space-xs);
+		padding: 0.125rem 0.5rem;
+		border-radius: var(--td-radius-full);
+		background: var(--td-color-text);
+		color: var(--td-color-surface);
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-medium);
+		line-height: var(--td-leading-normal);
+	}
+
+	.td-media-field__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+		margin-block-start: var(--td-space-xs);
+	}
+
+	.td-media-field__actions[hidden] {
+		display: none;
+	}
+
+	.td-media-field__usage {
+		margin-block-start: var(--td-space-sm);
+	}
+
+	.td-media-field__help {
+		display: block;
+		margin-block-start: var(--td-space-2xs);
+		font-size: var(--td-text-xs);
+		color: var(--td-field-note);
+	}
+
+	/* ADR 0012 §6: before define no dead control — the buttons keep their box, their content (preview) stays */
+	td-media-field:not(:defined) :is(.td-media-field__open, .td-media-field__actions button) {
+		visibility: hidden;
+	}
+
+	td-media-field:not(:defined) .td-media-field__open > :not(.td-sr-only) {
+		visibility: visible;
+	}
+
+	@media (pointer: coarse) {
+		.td-media-field__actions .td-btn {
+			min-block-size: var(--td-touch-min, 44px);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-media-field__open {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-media-field__frame {
+			border-color: CanvasText;
+		}
+
+		.td-media-field__badge {
+			border: 1px solid CanvasText;
+		}
+
+		.td-media-field__open:focus-visible {
+			outline-color: Highlight;
+		}
+	}
+}

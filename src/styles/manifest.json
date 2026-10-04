@@ -45,6 +45,8 @@
     "components/repeater.css",
     "components/sortable.css",
     "components/masked-value.css",
+    "components/media-picker.css",
+    "components/media-field.css",
     "utilities.css"
   ]
 }

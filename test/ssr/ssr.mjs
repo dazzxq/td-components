@@ -96,3 +96,12 @@ export const MASKED_VALUE_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'masked-value
 export function renderMaskedValueFixture() {
   return renderPhp('masked-value-fixture.php');
 }
+
+// v0.32.0: td_media_field (always the element <td-media-field data-td-ssr="media-field@1"> + the no-JS hidden inputs).
+export const MEDIA_FIELD_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'media-field.fixtures.json'), 'utf8'));
+export const MEDIA_FIELD_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'media-field.html');
+
+/** Render test/ssr/media-field-fixture.php (the HTML loaded by the media-field SSR browser test). */
+export function renderMediaFieldFixture() {
+  return renderPhp('media-field-fixture.php');
+}

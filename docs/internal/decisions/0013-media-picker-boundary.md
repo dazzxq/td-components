@@ -1,0 +1,85 @@
+# ADR 0013 — Media picker: ranh giới kit / app, hợp đồng adapter, hình dạng form của media field
+
+Trạng thái: chấp nhận (2026-10-04). Nguồn: đồng thuận Claude × Codex 2026-10-04 (think-about, gpt-5.6-sol high, 2 vòng,
+CONSENSUS) + hợp đồng dsuite `dsuite/docs/research/17-codex-media-picker-r2.md` §1-3; plan
+[v0.32.0-media-picker](../plans/v0.32.0-media-picker.md) quyết định 1-4, 6, 24.
+
+## Bối cảnh
+
+dsuite (dienthoaihay), 135 và dwp đều cần chọn ảnh / video / file từ thư viện media của chính site: hộp thoại có tìm
+kiếm, bộ lọc, lưới, xem chi tiết, chọn một / nhiều, tải lên, sửa thông tin ảnh — và một ô form "ảnh đại diện" đặt vào
+trang sửa bài / sản phẩm. Mỗi site có backend khác hẳn nhau: endpoint, envelope JSON, CSRF / 2FA, quyền, album / brand /
+tag, lưu trữ R2 / S3 / đĩa, URL ký, dedup SHA-256, bảng `media_usages`.
+
+dcms2 có `window.DCMS.MediaPicker` (13 mixin) + `MediaPickerPlaceholder`, nhưng gắn chặt vào backend dcms: dò 4 kiểu
+envelope, URL làm giá trị form, `innerHTML` có nội suy, `<style>` chèn lúc chạy, Enter toàn cục = Chèn, kết quả request
+cũ thắng, tự chọn mục đầu. Roadmap ghi "Không làm — dcms: … media-picker …" và ADR 0007 ghi "Không port phần CMS-riêng
+(… media-picker …)". Hai dòng đó nói về việc **port module dcms2** — chúng không trả lời câu hỏi "kit có nên có một
+picker viết sạch theo hợp đồng adapter hay không".
+
+Nếu mỗi site tự viết picker, phần khó và giống nhau (vòng đời dialog / bottom sheet, latest-wins + abort, bàn phím /
+focus, chọn nhiều giữ qua trang, hàng đợi upload có huỷ, form metadata, render text an toàn, CSP) bị viết lại ba lần,
+mỗi lần một bộ lỗi.
+
+## Quyết định
+
+1. **Kit sở hữu vỏ tương tác tái dùng; app sở hữu mọi thứ về dữ liệu, quyền và lưu trữ.**
+
+   | Kit (`td-media-picker`, `td-media-field`) | App (adapter + server của site) |
+   |---|---|
+   | Vòng đời dialog / bottom sheet, focus, Escape, khoá cuộn | Endpoint, envelope, map DTO → `MediaAsset` |
+   | Tìm kiếm (debounce), facet, phân trang cursor | Auth, CSRF, 2FA / xác thực lại, quyền, audit |
+   | Trạng thái tải / rỗng / lỗi / thử lại; latest-wins + abort | Chuẩn hoá lỗi thành `MediaAdapterError` (`code`, `userMessage`, `fieldErrors`) |
+   | Lưới + chi tiết, chọn đơn / nhiều + `maxItems` | Album / brand / tag / quyền ảnh (đưa vào qua facet + descriptor) |
+   | Hàng đợi upload (tiến độ, huỷ) | Xử lý upload an toàn: magic byte, re-encode, giới hạn kích thước, SHA-256 dedup |
+   | Form metadata dựng từ descriptor; hiện lỗi field | Lưu trữ, URL ký, CDN, `media_usages`, chèn vào nội dung |
+   | Bàn phím, trợ năng, responsive, nhãn i18n, render text an toàn | Validate lại mọi thứ ở server (giá trị form, quyền, upload) |
+
+   **Adapter là object callback** (`list`, `get` bắt buộc; `facets`, `upload`, `update`, `delete`, `download` tuỳ chọn),
+   **không bao giờ** là chuỗi endpoint. Kit không diễn giải HTTP status, không nối URL, không dò envelope.
+
+2. **Capability chỉ là gợi ý trình bày, không phải quyền.** Một action hiện ra khi **có method + cờ capability
+   top-level bật + cờ per-asset không thu hẹp** (per-asset chỉ được tắt, không được bật). Mọi lời gọi adapter vẫn phải
+   được server kiểm quyền. Lọc file phía trình duyệt (`accept`, kích thước) chỉ là UX.
+
+3. **Danh tính = `assetId`** (chuỗi opaque do app cấp). URL (`urls.thumbnail` / `urls.preview`, `preview-src` của
+   field) chỉ để hiển thị, không bao giờ là giá trị form hay danh tính, và luôn qua cổng URL `safeMediaUrl`. Picker
+   **không bao giờ** sửa nội dung host hay tạo usage — chỉ trả `SelectedMedia[]`; app quyết định làm gì với nó.
+
+4. **Supersede dòng "Không làm … media-picker" của roadmap.** `td-media-picker` / `td-media-field` là **bản viết sạch**
+   theo hợp đồng adapter, không phải port module dcms2 (chỉ lấy ý tưởng UX của `MediaPickerPlaceholder`, ghi nguồn trong
+   plan). ADR 0007 **vẫn giữ nguyên**: dcms2 đứng độc lập, không sync hai chiều; nếu dcms2 muốn dùng kit thì **shim
+   tương thích nằm ở dcms2**, kit không có code nào biết tới `window.DCMS`. Bullet "Không port phần CMS-riêng" của
+   ADR 0007 tiếp tục đúng nghĩa đen (không port code dcms2); ADR này chỉ thu hẹp cách đọc nó cho media-picker.
+
+5. **`TdMediaPicker.configureDefaults({ adapter, capabilities, assetFields, uploadFields, messages, context, upload,
+   pageSize })`** — registry cấp module (tiền lệ icon registry ADR 0010), không biến `window`. Mỗi lần gọi **thay thế
+   toàn bộ** object mặc định (một lần trong bootstrap của site; dễ đoán hơn merge). `adapter` thiếu `list` / `get` →
+   `TypeError`, giữ mặc định cũ. `TdMediaPicker.defaults` = bản sao nông. Thứ tự resolve **lúc mở**: tham số `open()` >
+   `field.pickerOptions` > `field.adapter` > defaults (merge nông theo key, `undefined` không ghi đè); `selection` luôn
+   do người gọi / field quyết, không bao giờ lấy từ defaults. Không registry nhiều backend (YAGNI).
+
+6. **Hình dạng FormData của `<td-media-field>` là API công khai, chốt cuối từ v0.32.**
+   - **Reference** (mặc định): `name=<assetId>`; rỗng → `name=` (server phân biệt "xoá").
+   - **Usage** (thuộc tính `usage`): luôn đủ ba mục `name[id]`, `name[alt]`, `name[crop]`; `crop` = JSON
+     `{"v":1,"x":…,"y":…,"width":…,"height":…}` chuẩn hoá 0..1, hoặc chuỗi `null`.
+   - `name` kết thúc bằng `[]` ở chế độ usage → không gửi + cảnh báo (fail closed; JS và PHP giống nhau).
+   - PHP `td_media_field()` in hidden input cho đúng hình dạng này khi chưa có JS; sau nâng cấp FormData giống từng
+     byte.
+   - v0.33 (`td-cropper`) **chỉ thêm UI sửa crop**; không đổi tên mục, không đổi định dạng JSON (`v` tăng chỉ khi có
+     ADR mới).
+
+   Hợp đồng adapter (typedef trong `src/utils/media-picker-core.js`, đúng tên / trường dsuite §2-3, cộng phần bổ sung
+   additive của v0.32: `MediaListRequest.kinds`, `selection.kinds`, `title`, `pageSize`, `upload`) cũng **chốt cuối từ
+   v0.32**: v0.32.1 chỉ thêm *consumer* cho `delete` / `download` đã có trong interface, không đổi chữ ký hay union.
+
+## Hệ quả
+
+- Site viết **một adapter** (vài chục dòng `fetch`) cho backend của mình; mọi phần tương tác dùng chung. Ví dụ adapter
+  ở [docs/components/media-picker.md](../../components/media-picker.md) là code của app, không phải API kit.
+- Bảo mật tách rõ: kit bảo đảm render text an toàn, URL qua allowlist scheme, không `style` / `<style>` / handler inline,
+  chỉ hiện `userMessage`; server bảo đảm quyền, validate upload, validate giá trị form (`assetId` có tồn tại và được
+  phép dùng không). Xem [security-model.md](../security-model.md) mục Media picker.
+- Đổi hình dạng FormData hay chữ ký adapter về sau = breaking change → phải có ADR mới + ghi `docs/upgrading`.
+- dcms2 không bị ảnh hưởng; không có nghĩa vụ đồng bộ.
+- Không có cache liên phiên, không localStorage, không nhiều backend trên một trang; khi một site thật sự cần, mở ADR mới.

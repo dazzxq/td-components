@@ -21,7 +21,7 @@
   </script>
 
   <h1 class="demo-title">td-components Demo</h1>
-  <p class="demo-lead">Test tất cả components trực tiếp (bản 0.31.0: thêm Sortable, Masked value, Repeater kéo thả; trước đó Number Input, Repeater, Tree, Tree Select, Multi-select, OTP, Drawer, Copy, Skeleton…). Mở DevTools Console để xem events.</p>
+  <p class="demo-lead">Test tất cả components trực tiếp (bản 0.32.0: thêm Media picker, Media field; 0.31.0: Sortable, Masked value, Repeater kéo thả; trước đó Number Input, Repeater, Tree, Tree Select, Multi-select, OTP, Drawer, Copy, Skeleton…). Mở DevTools Console để xem events.</p>
 
   <!-- ═══════════════════ SURFACES (v0.14.0; minimal surfaces v0.20.0) ═══════════════════ -->
   <div class="demo-section">
@@ -535,6 +535,28 @@
     <pre id="demo-mv-output" class="demo-output" aria-live="polite"></pre>
   </div>
 
+  <!-- ═══════════════════ MEDIA PICKER + MEDIA FIELD (v0.32.0) ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Media picker <span class="demo-code">TdMediaPicker.open() + &lt;td-media-field&gt;</span></h2>
+    <div class="demo-row">
+      <button type="button" id="demo-mp-open" class="td-btn td-btn--primary"><span class="td-btn__label">Mở media picker</span></button>
+      <button type="button" id="demo-mp-multi" class="td-btn td-btn--secondary"><span class="td-btn__label">Chọn nhiều (tối đa 5)</span></button>
+    </div>
+    <pre id="demo-mp-output" class="demo-output" aria-live="polite"></pre>
+    <form id="demo-mf-form" class="demo-narrow">
+      <td-media-field id="demo-mf-hero" name="hero" label="Ảnh đại diện" aspect-ratio="3/2" usage
+        helper-text="Ảnh ngang 3:2 — gửi hero[id], hero[alt], hero[crop]"></td-media-field>
+      <div class="demo-row">
+        <button type="submit" class="td-btn td-btn--primary"><span class="td-btn__label">Gửi form (in FormData)</span></button>
+        <button type="reset" class="td-btn td-btn--secondary"><span class="td-btn__label">Reset</span></button>
+      </div>
+    </form>
+    <p class="demo-note">Adapter giả trong bộ nhớ (60 media, tìm kiếm, facet album / phạm vi / thẻ, upload có tiến độ giả + dùng lại bản trùng theo tên,
+      sửa metadata) — không gọi mạng. <code>TdMediaPicker.configureDefaults()</code> một lần cho cả trang; field dùng lại adapter đó.
+      Giá trị form là <code>assetId</code>, không bao giờ là URL.</p>
+    <pre id="demo-mf-output" class="demo-output" aria-live="polite"></pre>
+  </div>
+
   <!-- ═══════════════════ MEDIA GRID ═══════════════════ -->
   <div class="demo-section">
     <h2>Media Grid <span class="demo-code">&lt;td-media-grid&gt;</span></h2>
@@ -623,6 +645,10 @@
     // v0.31
     import './src/display/td-sortable.js';
     import './src/display/td-masked-value.js';
+    // v0.32
+    import { TdMediaPicker } from './src/feedback/td-media-picker.js';
+    import './src/form/td-media-field.js';
+    import { createMockAdapter, assetFields, uploadFields } from './test/fixtures/media-adapter.js';
 
     // Expose cho onclick handlers
     window.TdModal = TdModal;
@@ -1070,6 +1096,37 @@
     mediaGrid.addEventListener('activate', (e) => console.log('[td-media-grid] activate:', e.detail.id));
     mediaGrid.addEventListener('select-limit', (e) => TdToast.warning(`Tối đa ${e.detail.max} khung`));
     document.querySelector('#demo-mg-clear').addEventListener('click', () => mediaGrid.clear({ emit: true }));
+
+    // ── Media picker + media field (v0.32.0) ──
+    // One configureDefaults() for the whole page (in a real site: the app's adapter mapping its own endpoints).
+    TdMediaPicker.configureDefaults({
+      adapter: createMockAdapter({ latency: 300 }),
+      assetFields: assetFields(),
+      uploadFields: uploadFields(),
+      upload: { accept: 'image/*', maxSize: '5MB' },
+      context: { site: 'demo' },
+    });
+    const mpOut = document.querySelector('#demo-mp-output');
+    const showOutcome = (o) => {
+      mpOut.textContent = JSON.stringify(o.status === 'selected'
+        ? { status: o.status, selection: o.selection.map((s) => ({ assetId: s.assetId, name: s.asset.name, altText: s.usage.altText })) }
+        : o, null, 2);
+    };
+    document.querySelector('#demo-mp-open').addEventListener('click', async () => {
+      showOutcome(await TdMediaPicker.open({ selection: { mode: 'single', kinds: ['image'] } }));
+    });
+    document.querySelector('#demo-mp-multi').addEventListener('click', async () => {
+      showOutcome(await TdMediaPicker.open({ title: 'Chọn ảnh cho bài viết', selection: { mode: 'multiple', maxItems: 5 } }));
+    });
+    const mfForm = document.querySelector('#demo-mf-form');
+    const mfOut = document.querySelector('#demo-mf-output');
+    const printForm = () => { mfOut.textContent = [...new FormData(mfForm)].map(([k, v]) => `${k} = ${v}`).join('\n'); };
+    mfForm.addEventListener('submit', (e) => { e.preventDefault(); printForm(); });
+    mfForm.addEventListener('reset', () => setTimeout(printForm, 0));
+    document.querySelector('#demo-mf-hero').addEventListener('change', (e) => {
+      console.log('[td-media-field] change:', e.detail.value);
+      printForm();
+    });
 
     // ── Log all component events ──
     document.addEventListener('change', (e) => {

@@ -2,6 +2,37 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.32.0
+
+**Media picker** dùng chung cho dcms2 / 135 / dwp / dsuite (yêu cầu dsuite, contract adapter của dsuite research/17; owner:
+port ý tưởng `MediaPickerPlaceholder` của dcms2; phạm vi chốt qua Claude × Codex think-about; plan
+`docs/internal/plans/v0.32.0-media-picker.md`, Codex plan-review APPROVE 3 vòng; ranh giới:
+[ADR 0013](docs/internal/decisions/0013-media-picker-boundary.md)).
+
+### Added
+
+- **`<td-media-picker>` / `TdMediaPicker.open(options)`** — hộp chọn media: lưới + xem chi tiết (≤ 640px: bottom sheet),
+  tìm kiếm, facet, chọn một / nhiều (`maxItems`, giữ lựa chọn khi tải thêm / lọc), upload (tiến trình, huỷ, ảnh trùng →
+  dùng lại), sửa metadata **lưu tường minh** (lỗi từng field từ server hiện đúng chỗ). Trả `{ status: 'selected',
+  selection: SelectedMedia[] }` hoặc `{ status: 'cancelled', reason }`; **không** sửa trang gọi, không tạo usage. Kit chỉ
+  gọi **adapter** của site (`list` / `get` / `facets?` / `upload?` / `update?`, mọi lời gọi có `AbortSignal`, kết quả cũ bị
+  bỏ) — không endpoint, không tên quyền, không biết envelope API. Có thay đổi chưa lưu / upload đang chạy → hỏi trước khi
+  đóng. Dữ liệu adapter chỉ render dạng text, URL qua allowlist, có giới hạn kích thước.
+- **`TdMediaPicker.configureDefaults({ adapter, capabilities, assetFields, uploadFields, messages, … })`** — khai báo một
+  lần lúc khởi động site; `open({ adapter })` / `field.adapter` / `field.pickerOptions` ghi đè.
+- **`<td-media-field>`** (chọn một) — ô form thật thay cho "placeholder" của dcms2: khung theo `aspect-ratio`, nút mở
+  picker + Đổi / Gỡ, xem trước; **giá trị là `assetId`** (không bao giờ URL). Mặc định gửi `name=id`; `usage` → gửi
+  `name[id]`, `name[alt]`, `name[crop]`. `required`, reset, khôi phục trạng thái form (chỉ id / alt / crop — ảnh xem trước
+  lấy lại qua `adapter.get()` theo phiên hiện tại). Video = chọn qua ảnh poster.
+- **PHP `td_media_field($name, $assetId, $o)`** — in sẵn field kèm ảnh xem trước (`preview-src`) để trang PHP không nháy và
+  không phải gọi API; không JS vẫn gửi đúng giá trị.
+- Icon `video`, `file`, `filter`. Export `@dazzxq/td-components/media-picker`, `/media-field`.
+
+### Ghi chú
+
+- Chưa có trong bản này: xoá / tải bản gốc (v0.32.1), crop (v0.33), field nhiều ảnh (gallery), kéo thả / dán file vào field.
+- `preview-src` chỉ để hiển thị, không gửi đi; link `http:` chỉ được nhận trên trang `http:`.
+
 ## 0.31.0
 
 dsuite P1 lô 3 — **sắp xếp + che giá trị nhạy cảm** (yêu cầu dienthoaihay.vn #8, #10; plan

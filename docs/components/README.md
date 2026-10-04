@@ -18,7 +18,7 @@ Mọi import đều theo dạng `@dazzxq/td-components/<tên>` (xem [Cài đặt
 nạp `td.css` một lần cho cả trang.
 
 **Render phía server (SSR) từ PHP:** dùng [adapter PHP](../guides/php-adapter.md) `php/td.php` ship kèm gói —
-`td_button`, `td_link`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_masked_value` in đúng markup của component
+`td_button`, `td_link`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_masked_value`, `td_media_field` in đúng markup của component
 (control native, chạy không cần JS). Component không có helper PHP (menu, table, tabs, pagination, empty-state, trigger
 lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong trang của nó (mục cấu trúc DOM / SSR).
 
@@ -40,6 +40,7 @@ lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong 
 | [Repeater](repeater.md) | `<td-repeater>` | `/repeater` | không (field trong dòng tự gửi) | Danh sách dòng động (thêm / xoá / sắp xếp bằng nút ↑ ↓ ×, `sortable`: kéo thả + bàn phím) từ `<template>` của app: "Hộp gồm", FAQ, quyền lợi; `min-rows` / `max-rows`; app tự đặt `name` qua `rows-change` |
 | [Password meter](password-meter.md) | `<td-password-meter>` | `/password-meter` | không | Đo độ mạnh mật khẩu tại chỗ: thanh 4 mức, nhãn đọc được, checklist điều kiện, hook `score` |
 | [OTP input](otp-input.md) | `<td-otp-input>` | `/otp-input` | có | Nhập mã một lần 6 chữ số (2FA, xác thực lại): một input thật, dán / tự điền từ SMS; PHP `td_otp_input` |
+| [Media field](media-field.md) | `<td-media-field>` | `/media-field` | có (gửi `assetId`; dạng usage gửi `[id]` / `[alt]` / `[crop]`) | Ô chọn **một** ảnh / video / file từ thư viện media: khung theo tỉ lệ, xem trước, Đổi / Gỡ, mở media picker; PHP `td_media_field` |
 | [Dropzone](dropzone.md) | `<td-dropzone>` | `/dropzone` | có (gửi file qua `FormData`) | Chọn / kéo thả file: lọc `accept` / `max-size` / `max-files`, danh sách + xoá, hook `upload` có tiến độ từng file, thumbnail ảnh |
 | [Form validation](form-validation.md) | `TdFormValidation` | `/form-validation` | — | Kiểm tra form: ràng buộc gốc + rule riêng + lỗi từ server, tóm tắt lỗi |
 
@@ -49,6 +50,7 @@ lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong 
 |---|---|---|---|
 | [Modal](modal.md) | `TdModal` (+ `TdModalStackManager`) | `/modal`, `/modal-stack` | Hộp thoại, xác nhận, footer có hành động bất đồng bộ, nhiều modal chồng nhau |
 | [Drawer](drawer.md) | `<td-drawer>` + `TdDrawer.open()` | `/drawer` | Panel trượt từ cạnh màn hình (bộ lọc, sửa nhanh, chi tiết), chặn trang như modal; khai báo trong HTML hoặc mở từ JS |
+| [Media picker](media-picker.md) | `TdMediaPicker.open()` + `<td-media-picker>` | `/media-picker` | Hộp thoại thư viện media (bottom sheet trên điện thoại): tìm, facet, "Tải thêm", chọn đơn / nhiều, tải lên có tiến độ / dedup, sửa thông tin theo descriptor — dữ liệu qua **adapter** của site |
 | [Toast](toast.md) | `TdToast` | `/toast` | Thông báo ngắn góc màn hình (thành công/lỗi/cảnh báo/thông tin) |
 | [Tooltip](tooltip.md) | `data-tooltip` + `TdTooltip` | `/tooltip` | Chú thích khi rê chuột/focus (giao diện + hành vi dwp) |
 | [Loading](loading.md) | `TdLoading`, `TdLoadingSpinner` | `/loading` | Màn chờ toàn trang, spinner nội tuyến |

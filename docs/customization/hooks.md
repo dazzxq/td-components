@@ -28,6 +28,7 @@ Nguồn sự thật là source code (`src/**`); mỗi dòng dưới đây đối
   - [td-repeater](#td-repeater)
   - [td-sortable](#td-sortable)
   - [td-masked-value](#td-masked-value)
+  - [TdMediaPicker và td-media-field](#tdmediapicker)
   - [td-datetime-picker](#td-datetime-picker)
   - [Hợp đồng lỗi của mọi form control](#hợp-đồng-lỗi-của-mọi-form-control)
   - [TdFormValidation](#tdformvalidation)
@@ -483,6 +484,47 @@ chung với repeater `sortable`): `handle` `Sắp xếp {name}` · `item` `Mục
 Event không bao giờ mang giá trị: `revealed { duration }`, `remasked { reason }`, `reveal-error { kind }`.
 `TdMaskedValue.labels`: `value` `giá trị` · `show` `Hiện {label}` · `copy` `Copy {label}` · `loading` `Đang tải {label}…` ·
 `revealed` `Đã hiện {label}. Tự che lại sau {s} giây.` · `remasked` `Đã che {label}.` · `error` `Không hiện được {label}.`
+
+---
+
+## TdMediaPicker
+
+`import { TdMediaPicker } from '@dazzxq/td-components/media-picker';` · Trang: [media-picker.md](../components/media-picker.md)
+(0.32.0) · ranh giới kit / app: [ADR 0013](../internal/decisions/0013-media-picker-boundary.md)
+
+Điểm tuỳ biến chính là **adapter** — object callback do site viết (kit không bao giờ nhận URL endpoint):
+
+| Hook | Chữ ký | Khi nào gọi | Lỗi thì sao |
+|---|---|---|---|
+| `adapter.list` (bắt buộc) | `(MediaListRequest) => Promise<MediaPage>` | Mở, tìm (debounce 250ms, Enter = ngay), đổi facet, "Tải thêm", "Thử lại", sau upload / update | Reject → khối lỗi `role="alert"` + "Thử lại"; chỉ hiện `userMessage` (hoặc `labels.error.{code}`), không bao giờ `message`. Trả sai hình dạng → lỗi `server` |
+| `adapter.get` (bắt buộc) | `(id, { context, signal }) => Promise<MediaAsset>` | `initialIds` lúc mở; mở chi tiết; "Tải lại" sau `conflict`; media field `.value =` không có preview | `initialIds` lỗi → id đó bị bỏ (cảnh báo); chi tiết lỗi → giữ bản chụp từ lưới, event `operation-error` |
+| `adapter.facets` | `({ query, filters, context, signal }) => Promise<FacetDescriptor[]>` | Mở; cùng nhịp `list` khi đổi query / filter; sau upload / update | Lỗi → giữ bộ lọc đang có / không có bộ lọc (lưới vẫn chạy), event `operation-error` |
+| `adapter.upload` | `(file, { fields, context, signal, onProgress }) => Promise<UploadResult>` | Mỗi file thả vào khu "Tải lên"; `fields` chụp lúc file bắt đầu | Dòng file đỏ với `userMessage` / `labels.uploadError`; `fieldErrors` → lỗi trên ô `uploadFields`. Abort (xoá dòng, đóng) → im lặng |
+| `adapter.update` | `(id, { fields, version }, { context, signal }) => Promise<MediaAsset>` | Bấm "Lưu" / Ctrl+Enter trong form sửa — không bao giờ tự lưu | `validation` → `fieldErrors` lên control; `conflict` → nút "Tải lại" |
+| `adapter.delete` / `adapter.download` | typedef có sẵn | **0.32.1** mới gọi | — |
+| `FieldDescriptor.loadOptions` / `createOption` / `visibleWhen` | xem trang component | Mở form / gõ tìm option / bấm "Thêm mới" / mỗi lần giá trị form đổi | `visibleWhen` ném → field hiện + một cảnh báo |
+
+Mọi `signal` bị abort khi request bị thay (latest-wins) hoặc picker đóng; kết quả về muộn bị bỏ kể cả khi adapter phớt lờ
+`signal`. Abort không bao giờ hiện lỗi.
+
+**Cấu hình tĩnh** — `TdMediaPicker.configureDefaults({ adapter, capabilities, assetFields, uploadFields, messages, context,
+upload, pageSize })`: registry cấp module, mỗi lần gọi **thay toàn bộ** (gọi một lần trong bootstrap); adapter thiếu
+`list` / `get` → `TypeError`. `TdMediaPicker.defaults` = bản sao nông. Thứ tự resolve lúc mở: tham số `open()` >
+`field.pickerOptions` > `field.adapter` > defaults; `selection` luôn từ người gọi.
+
+**Option theo lần mở** — `TdMediaPicker.open(options)` / `<td-media-picker>.options`: bảng đủ ở
+[media-picker.md › Mở picker](../components/media-picker.md#mở-picker--tdmediapickeropenoptions). `messages`: chuỗi hoặc
+`(params) => string` (ném / không phải chuỗi → nhãn mặc định), luôn render bằng `textContent`.
+
+**`<td-media-field>`** ([media-field.md](../components/media-field.md)): property `adapter` (adapter riêng cho field) và
+`pickerOptions` (option riêng khi field mở picker, trừ `selection`); gán khi field có `value` mà chưa có ảnh xem trước →
+field gọi `adapter.get` lười. Event `input` / `change` (`{ value, selection }`).
+
+`TdMediaPicker.labels` (bảng đủ ở [media-picker.md › Nhãn](../components/media-picker.md#nhãn--tdmediapickerlabels)) và
+`TdMediaField.labels`: `prompt.{image|video|file}` "Chọn ảnh / video / file" · `replace.{…}` "Đổi ảnh / video / file" ·
+`remove` "Gỡ" · `alt` "Mô tả ảnh (alt)" · `empty` "Chưa chọn" · `selected` "Đã chọn: {name}" · `noPreview` "Đã chọn
+(không có ảnh xem trước)" · `video` "Video" · `required` "Vui lòng chọn {kind}." · `kinds.{image|video|file}` "ảnh / video / file" (điền
+`{kind}`). PHP `td_media_field()` in nhãn mặc định — đổi nhãn → field render lại an toàn lúc nâng cấp.
 
 ---
 
