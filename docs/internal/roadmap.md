@@ -17,12 +17,13 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
   [v0.32.0-media-picker](plans/v0.32.0-media-picker.md)
 - ~~v0.32.1~~ **gộp vào v0.33.0** (owner 2026-10-04): xoá + trình bày usage chặn xoá (`DeleteResult` `blocked`) + tải bản
   gốc (`download`); acceptance *delete-blocked* + *download* chuyển sang chặn phát hành v0.33.0
-- `todo` v0.33.0: picker **giống dcms2** (full viewport, control kit, phân trang số, card 3:2, chi tiết inline, dialog tải
+- `doing` v0.33.0 (đã implement trên branch `feat/v0.33.0-media-picker-parity`, chờ phát hành — owner merge + tag sau khi
+  CI xanh): picker **giống dcms2** (full viewport, control kit, phân trang số, card 3:2, chi tiết inline, dialog tải
   lên + **tải từ URL** — `adapter.uploadFromUrl` tuỳ chọn) + xoá / tải gốc / copy (từ v0.32.1) + `td-media-grid`
   `layout="justified"` (thuật toán dwp) + sửa ô lưới — plan
   [v0.33.0-media-picker-dcms-parity](plans/v0.33.0-media-picker-dcms-parity.md), kiểm kê
-  [research/dcms2-media-picker-inventory](research/dcms2-media-picker-inventory.md); hợp đồng adapter chỉ **thêm** (bổ sung
-  ADR 0013)
+  [research/dcms2-media-picker-inventory](research/dcms2-media-picker-inventory.md); hợp đồng adapter chỉ **thêm** ([bổ sung
+  ADR 0013](decisions/0013-media-picker-boundary.md#bổ-sung-v033)); ảnh chụp so sánh `npm run test:visual` (chỉ CI Ubuntu)
 - `todo` v0.34.0: responsive toàn kit + screenshot 8 độ rộng (đã dành sẵn bản này; plan riêng)
 - `todo` v0.35.0: `td-cropper` (toạ độ) + tích hợp crop vào picker / field (chỉ thêm UI; FormData `name[crop]` giữ nguyên)
   — lùi từ v0.33 (báo dsuite)
