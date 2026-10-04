@@ -26,11 +26,17 @@ All notable changes to **td-components** are documented here.
 
 - **Vùng chạm ≥ 44px** trên màn cảm ứng cho mọi control (tree, tree-select, tick media-grid / sortable, tay nắm lightbox…);
   chuột ≥ 24px.
-- **Pagination** không còn tràn ra mép trái trên điện thoại (nút "trang trước" từng ở x = −135); dạng gọn khi hẹp.
+- **Pagination** không còn tràn ra mép trái trên điện thoại (nút "trang trước" từng ở x = −135); dạng gọn khi hẹp
+  (< 480: đầu / hiện tại / cuối), dạng trạng thái `‹ 57 / 200 ›` khi khung < 360 (`TdPagination.labels.status`).
+- Khung hẹp (container): repeater đưa cụm nút xuống hàng riêng (< 480); empty-state / alert xếp nút dọc toàn bề rộng
+  (< 480; alert nhận thêm khối tuỳ chọn `div.td-alert__actions`); dropzone ẩn câu hướng dẫn, nút chọn file toàn bề rộng
+  (< 360); media-field xếp Đổi / Gỡ dọc (< 360).
+- Dropdown / tree-select / datetime: giá trị bị cắt `…` có `title` chứa giá trị đầy đủ.
 - **Tabs** không bao giờ cắt nhãn: tab dài hơn ô chia đều → hàng tab cuộn ngang.
 - Nút có nhãn dài xuống dòng thay vì đẩy rộng trang; field co theo cột lưới.
 - Modal thường thành sheet khi < 720px (trước ≤ 640); drawer toàn màn hình < 480, tôn trọng tai thỏ; lightbox theo 720 /
-  1024; toast toàn bề rộng trên điện thoại, chừa tai thỏ, ngang màn chỉ 2 toast mới nhất; datetime 3 hàng khi ngang màn.
+  1024; toast toàn bề rộng trên điện thoại, chừa tai thỏ (trên ≥ safe-area + 8px, hai bên ở mọi bề rộng), ngang màn chỉ 2 toast
+  mới nhất; datetime 3 hàng khi ngang màn; lightbox màn thấp (≤ 500px) ẩn filmstrip, thanh công cụ gọn (nút giữ cỡ).
 - Media picker: luôn toàn màn hình; bố cục trong đổi ở 720 (trước 768); iPad dọc giữ 2 cột lưới; chế độ gọn khi màn ngang.
 - Popup (dropdown, tree-select, datetime…) bám **visual viewport** — bàn phím ảo không che danh sách; trên thiết bị cảm
   ứng không tự focus ô tìm (trước iPad bật bàn phím đè lên danh sách).
