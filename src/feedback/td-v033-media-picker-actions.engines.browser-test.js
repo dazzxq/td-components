@@ -115,7 +115,7 @@ describe('v0.33 td-media-picker — delete (decision 24)', () => {
     expect(ad.calls.delete.length).to.equal(0);
   });
 
-  it('deleted → gone from grid + selection, detail empty, no auto-select, current page reloaded, toast, asset-change / selection-change', async () => {
+  it('deleted → gone from grid + selection, detail moves to the first selected asset (v0.36), no auto-select, current page reloaded, toast, asset-change / selection-change', async () => {
     const { ad, promise } = await openReady({ selection: { mode: 'multiple' }, capabilities: { delete: true } });
     click(tick('m60'));
     click(tick('m59'));
@@ -136,8 +136,10 @@ describe('v0.33 td-media-picker — delete (decision 24)', () => {
     expect(sel.at(-1).removedIds).to.deep.equal(['m60']);
     await until(() => ad.calls.list.length > lists && !item('m60'), 4000, 'reloaded');
     expect(ad.calls.list.at(-1).args[0].cursor).to.equal(null);
-    expect(detail().getAttribute('data-state')).to.equal('empty');
-    expect(items().some((i) => i.hasAttribute('data-viewing'))).to.equal(false);
+    // v0.36.0 (review ISSUE-2): the deleted asset leaves the detail; after the reload the auto preview shows the first
+    // SELECTED asset still in the results (m59) — viewed, never auto-selected
+    await until(() => q('.td-media-picker__detail-name')?.textContent === 'anh-59.jpg', 4000, 'preview of the first selected');
+    expect(items().filter((i) => i.hasAttribute('data-viewing')).map((i) => i.getAttribute('data-id'))).to.deep.equal(['m59']);
     expect(grid().selectedIds).to.deep.equal(['m59']);
     await until(() => toastTexts().includes('Đã xoá anh-60.jpg'), 4000, 'toast');
     await until(() => deleteDialog() === null, 4000, 'confirm closed');
