@@ -1782,7 +1782,7 @@
       "line-height": "18px",
       "text-align": "start",
       "resize": "none",
-      "overflow-y": "hidden",
+      "overflow-y": "visible",
       "cursor": "pointer",
       "fill": "rgb(0, 0, 0)",
       "stroke": "none",

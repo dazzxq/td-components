@@ -57,10 +57,14 @@
  *       <div class="td-modal__body td-media-picker-upload__body">
  *         [FieldForm .td-media-picker-upload__fields] <p class="td-media-picker-upload__hint" [hidden]>
  *         [<td-tabs size="sm" class="td-media-picker-upload__tabs">]   (both sources only)
+ *         <div class="td-media-picker-upload__panels">   (one grid cell: the inactive panel keeps its box, invisible →
+ *                                                          one dialog height across tabs, like dcms2)
  *         [<div class="td-media-picker-upload__panel" data-source="file">td-dropzone + <ul class="td-media-picker-upload__notes"></div>]
  *         [<div class="td-media-picker-upload__panel" data-source="url"><p class="td-media-picker-upload__desc">
- *            <div class="td-media-picker-upload__url-row">td-input-field.td-media-picker-upload__url · td-button submit · td-button abort</div>
+ *            <div class="td-media-picker-upload__url-row">td-input-field.td-media-picker-upload__url</div>
+ *            <div class="td-media-picker-upload__url-actions">td-button submit · td-button abort</div>   (below the input, dcms2)
  *            <td-progress class="td-media-picker-upload__progress" size="sm" hidden></div>]
+ *         </div>
  *       </div>
  *       <div class="td-modal__footer td-media-picker-upload__footer"><td-button variant="secondary">Đóng</td-button></div>
  *       <span class="td-sr-only td-media-picker-upload__live" role="status"></span>
@@ -264,6 +268,11 @@ export function openUploadDialog(o) {
     body.appendChild(tabs);
   }
 
+  // --- panels: one grid cell for both sources, so the dialog keeps one height across tabs (dcms2) ---
+  const panels = document.createElement('div');
+  panels.className = 'td-media-picker-upload__panels';
+  body.appendChild(panels);
+
   // --- file source ---
   /** @type {any} */
   let dz = null;
@@ -289,7 +298,38 @@ export function openUploadDialog(o) {
     notes.className = 'td-media-picker-upload__notes';
     notes.hidden = true;
     panel.appendChild(notes);
-    body.appendChild(panel);
+    panels.appendChild(panel);
+  }
+
+  // Stable height, robust to host resets: a reset such as Tailwind preflight's `[hidden] { display: none !important }`
+  // collapses the inactive panel out of the shared grid cell, so the tallest panel height seen at the current width is
+  // also kept as the container's min-height (CSSOM, CSP-safe). A width change starts over (content reflows).
+  let panelsRO = null;
+  if (sources.file && sources.url && typeof ResizeObserver === 'function') {
+    let maxH = 0;
+    let lastW = -1;
+    const remember = () => {
+      if (destroyed || !panels.isConnected) return;
+      const w = panels.clientWidth;
+      if (Math.abs(w - lastW) > 0.5) {
+        lastW = w;
+        maxH = 0;
+      }
+      let h = 0;
+      for (const el of panels.children) {
+        h = Math.max(h, /** @type {HTMLElement} */ (el).offsetHeight); // layout px (never the open scale transform); display:none → 0
+      }
+      if (h > maxH + 0.5) {
+        maxH = h;
+        panels.style.setProperty('min-height', `${Math.ceil(maxH)}px`);
+      }
+    };
+    panelsRO = new ResizeObserver(remember);
+    // also right before a tab switch (capture: td-tabs hides the current panel in its own handler)
+    if (tabs) {
+      tabs.addEventListener('click', remember, true);
+      tabs.addEventListener('keydown', remember, true);
+    }
   }
 
   // --- URL source ---
@@ -324,26 +364,30 @@ export function openUploadDialog(o) {
     urlField.setAttribute('spellcheck', 'false');
     urlField.setAttribute('aria-label', t('urlLabel'));
     row.appendChild(urlField);
+    panel.appendChild(row);
+    const actions = document.createElement('div');
+    actions.className = 'td-media-picker-upload__url-actions';
     submitBtn = document.createElement('td-button');
     submitBtn.className = 'td-media-picker-upload__submit';
     submitBtn.setAttribute('variant', 'primary');
     submitBtn.setAttribute('disabled', '');
     submitBtn.textContent = t('urlSubmit');
-    row.appendChild(submitBtn);
+    actions.appendChild(submitBtn);
     abortBtn = document.createElement('td-button');
     abortBtn.className = 'td-media-picker-upload__abort';
     abortBtn.setAttribute('variant', 'ghost');
     abortBtn.textContent = t('urlAbort');
     abortBtn.hidden = true;
-    row.appendChild(abortBtn);
-    panel.appendChild(row);
+    actions.appendChild(abortBtn);
+    panel.appendChild(actions);
     progress = document.createElement('td-progress');
     progress.className = 'td-media-picker-upload__progress';
     progress.setAttribute('size', 'sm');
     progress.setAttribute('label', t('urlProgress'));
     progress.hidden = true;
     panel.appendChild(progress);
-    body.appendChild(panel);
+    panels.appendChild(panel);
+    if (panelsRO) for (const el of panels.children) panelsRO.observe(el);
 
     urlField.addEventListener('input', () => {
       if (urlField.getAttribute('error-text')) urlField.removeAttribute('error-text'); // never shown while typing
@@ -598,6 +642,7 @@ export function openUploadDialog(o) {
   function finish() {
     if (closing || destroyed) return;
     closing = true;
+    if (panelsRO) panelsRO.disconnect();
     abortAll();
     ctrl.abort();
     if (form) { try { form.destroy(); } catch { /* ignore */ } }
@@ -626,6 +671,7 @@ export function openUploadDialog(o) {
     if (destroyed) return;
     destroyed = true;
     closing = true;
+    if (panelsRO) panelsRO.disconnect();
     if (urlTask) { urlTask.ctrl.abort(); urlTask = null; }
     if (dz) {
       try { dz.clear(); } catch { /* ignore */ }

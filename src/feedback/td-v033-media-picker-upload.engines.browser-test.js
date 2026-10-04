@@ -180,6 +180,71 @@ describe('v0.33.0 media picker upload dialog (engines)', () => {
       expect(p.rec.closed).to.equal(1);
     });
 
+    it('dialog height is stable across tabs (±1px, dcms2); the inactive panel is invisible + unfocusable', async () => {
+      await setViewport({ width: 1440, height: 900 });
+      const o = open();
+      await until(o.isOpen, 3000, 'upload dialog open');
+      const tabs = o.q('td-tabs');
+      await until(() => tabs.querySelectorAll('[role="tab"]').length === 2);
+      const dlg = o.q('.td-modal__dialog');
+      const filePanel = o.q('[data-source="file"]');
+      const urlPanel = o.q('[data-source="url"]');
+      // layout settled: the dropzone (taller panel) has its box
+      await until(() => o.dz().getBoundingClientRect().height > 100, 3000, 'dropzone laid out');
+      const h1 = dlg.offsetHeight; // layout height: independent of the open scale transition
+      expect(getComputedStyle(urlPanel).visibility).to.equal('hidden');
+      click(tabs.querySelectorAll('[role="tab"]')[1]);
+      await until(() => !urlPanel.hidden && filePanel.hidden, 2000, 'url tab active');
+      await until(() => getComputedStyle(filePanel).visibility === 'hidden', 2000, 'file panel invisible');
+      const h2 = dlg.offsetHeight;
+      expect(Math.abs(h2 - h1)).to.be.at.most(1);
+      expect(getComputedStyle(urlPanel).visibility).to.equal('visible');
+      // the hidden panel's controls cannot take focus
+      const dzBtn = filePanel.querySelector('button');
+      if (dzBtn) { dzBtn.focus(); expect(document.activeElement === dzBtn).to.equal(false); }
+      click(tabs.querySelectorAll('[role="tab"]')[0]);
+      await until(() => !filePanel.hidden && urlPanel.hidden, 2000, 'file tab active');
+      expect(Math.abs(dlg.offsetHeight - h1)).to.be.at.most(1);
+    });
+
+    it('stable height also under a host reset `[hidden] { display: none !important }` (Tailwind preflight)', async () => {
+      await setViewport({ width: 1440, height: 900 });
+      const reset = document.createElement('style');
+      reset.textContent = '[hidden] { display: none !important; }';
+      document.head.appendChild(reset);
+      try {
+        const o = open();
+        await until(o.isOpen, 3000, 'upload dialog open');
+        const tabs = o.q('td-tabs');
+        await until(() => tabs.querySelectorAll('[role="tab"]').length === 2);
+        const dlg = o.q('.td-modal__dialog');
+        const panels = o.q('.td-media-picker-upload__panels');
+        await until(() => o.dz().getBoundingClientRect().height > 100, 3000, 'dropzone laid out');
+        // the fallback min-height has caught up with the file panel (ResizeObserver, CSSOM)
+        await until(() => parseFloat(panels.style.getPropertyValue('min-height')) >= o.q('[data-source="file"]').getBoundingClientRect().height - 0.5, 3000, 'min-height recorded');
+        const h1 = dlg.offsetHeight;
+        click(tabs.querySelectorAll('[role="tab"]')[1]);
+        await until(() => !o.q('[data-source="url"]').hidden, 2000, 'url tab active');
+        await until(() => getComputedStyle(o.q('[data-source="file"]')).display === 'none', 2000, 'reset applies');
+        expect(Math.abs(dlg.offsetHeight - h1)).to.be.at.most(1);
+      } finally {
+        reset.remove();
+      }
+    });
+
+    it('URL tab: the submit button sits BELOW the full-width input, left-aligned (dcms2)', async () => {
+      await setViewport({ width: 1440, height: 900 });
+      const o = open({ sources: { file: false, url: true } });
+      await until(o.isOpen, 3000, 'upload dialog open');
+      await until(() => o.input() && o.submit().getBoundingClientRect().height > 0, 3000, 'laid out');
+      const f = o.field().getBoundingClientRect();
+      const b = o.submit().getBoundingClientRect();
+      const panel = o.q('[data-source="url"]').getBoundingClientRect();
+      expect(b.top).to.be.at.least(f.bottom - 0.5);
+      expect(Math.abs(b.left - f.left)).to.be.at.most(1);
+      expect(Math.abs(f.width - panel.width)).to.be.at.most(1);
+    });
+
     it('tabs only with both sources; sources.url false → no URL tab; url only → no tabs', async () => {
       const both = open();
       const tabs = both.q('td-tabs');

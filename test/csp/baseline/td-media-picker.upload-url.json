@@ -842,7 +842,7 @@
     },
     ".td-media-picker-upload__dialog": {
       "width": "512px",
-      "height": "307px",
+      "height": "561px",
       "min-height": "auto",
       "max-height": "688px",
       "padding-top": "0px",
@@ -1059,7 +1059,7 @@
       "margin-top": "0px",
       "margin-bottom": "0px",
       "margin-left": "0px",
-      "display": "flex",
+      "display": "block",
       "position": "static",
       "top": "auto",
       "left": "auto",
@@ -1106,8 +1106,8 @@
       "outline-color": "rgb(24, 24, 27)",
       "outline-offset": "0px",
       "grid-template-columns": "none",
-      "column-gap": "12px",
-      "row-gap": "12px",
+      "column-gap": "normal",
+      "row-gap": "normal",
       "touch-action": "auto",
       "max-width": "none",
       "aspect-ratio": "auto",
@@ -1117,9 +1117,9 @@
       "--td-mg-k": ""
     },
     ".td-media-picker-upload__url": {
-      "width": "364.859px",
+      "width": "462px",
       "height": "62px",
-      "min-height": "auto",
+      "min-height": "0px",
       "max-height": "none",
       "padding-top": "0px",
       "padding-bottom": "0px",
@@ -1186,7 +1186,7 @@
       "--td-mg-k": ""
     },
     ".td-media-picker-upload__url .td-field__control": {
-      "width": "364.859px",
+      "width": "462px",
       "height": "40px",
       "min-height": "auto",
       "max-height": "none",
@@ -1255,7 +1255,7 @@
       "--td-mg-k": ""
     },
     ".td-media-picker-upload__url .td-field-error": {
-      "width": "356.859px",
+      "width": "454px",
       "height": "18px",
       "min-height": "auto",
       "max-height": "none",
@@ -1462,7 +1462,7 @@
       "--td-mg-k": ""
     },
     ".td-media-picker-upload__url .td-field": {
-      "width": "364.859px",
+      "width": "462px",
       "height": "62px",
       "min-height": "0px",
       "max-height": "none",

@@ -977,8 +977,12 @@ Ghi nhớ khi viết adapter:
 
 <!-- dialog tải lên, lồng trên picker -->
 <div class="td-modal td-modal--md td-media-picker-upload">
-  … .td-media-picker-upload__fields · td-tabs.td-media-picker-upload__tabs · .td-media-picker-upload__panel
-  (td-dropzone.td-media-picker-upload__dropzone | .td-media-picker-upload__url · __submit · __abort · __progress) · __footer
+  … .td-media-picker-upload__fields · td-tabs.td-media-picker-upload__tabs
+  · .td-media-picker-upload__panels (một ô grid chung cho hai panel → dialog giữ nguyên chiều cao khi đổi tab, như dcms2)
+    > .td-media-picker-upload__panel (td-dropzone.td-media-picker-upload__dropzone
+      | .td-media-picker-upload__url-row > .td-media-picker-upload__url, rồi .td-media-picker-upload__url-actions
+        > __submit · __abort (nút nằm DƯỚI ô URL, như dcms2), rồi __progress)
+  · __footer
 </div>
 ```
 

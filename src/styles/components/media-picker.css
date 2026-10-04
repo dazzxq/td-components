@@ -297,12 +297,12 @@
 		white-space: nowrap;
 	}
 
+	/* dcms2: the "{size} • {date}" line wraps on narrow cards (no clamp, no ellipsis) */
 	.td-media-picker__meta {
-		overflow: hidden;
+		min-width: 0;
 		font-size: var(--td-text-xs);
 		color: var(--td-color-text-muted);
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		overflow-wrap: anywhere;
 	}
 
 	.td-media-picker__badges {

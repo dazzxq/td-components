@@ -80,6 +80,21 @@ afterEach(async () => {
 });
 
 describe('v0.33 td-media-picker — cards (decisions 11-12)', () => {
+  it('390px: the meta line "size • date" WRAPS inside the card (dcms2) — never cut with an ellipsis, never overflows', async () => {
+    await setViewport({ width: 390, height: 844 });
+    await openReady({ selection: { mode: 'single' } });
+    const meta = item('m60').querySelector('.td-media-picker__meta');
+    const info = meta.parentElement;
+    await until(() => meta.getBoundingClientRect().width > 0, 4000, 'laid out');
+    const cs = getComputedStyle(meta);
+    expect(cs.textOverflow).to.not.equal('ellipsis');
+    expect(cs.whiteSpace).to.equal('normal');
+    expect(meta.scrollWidth <= meta.clientWidth + 1, 'no horizontal overflow').to.equal(true);
+    const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.5;
+    expect(meta.getBoundingClientRect().height > lh * 1.5, 'two lines on a 2-column phone card').to.equal(true);
+    expect(meta.getBoundingClientRect().right <= info.getBoundingClientRect().right + 0.5).to.equal(true);
+  });
+
   it('card markup: opener holds thumb 3:2 (img contain, no-referrer / lazy / async) + name (title) + "size • DD/MM/YYYY HH:mm" + badges; tick after the opener', async () => {
     await setViewport({ width: 1440, height: 900 });
     await openReady({ selection: { mode: 'multiple' } });
