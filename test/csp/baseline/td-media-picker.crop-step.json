@@ -815,7 +815,7 @@
       "visibility": "visible",
       "outline-style": "solid",
       "outline-width": "2px",
-      "outline-color": "rgb(37, 99, 235)",
+      "outline-color": "rgb(255, 255, 255)",
       "outline-offset": "2px",
       "grid-template-columns": "none",
       "column-gap": "normal",
