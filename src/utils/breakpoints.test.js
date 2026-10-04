@@ -40,6 +40,7 @@ const MEASURE_OK = {
   'src/feedback/td-tooltip.js': 'room left/right of the trigger',
   'src/feedback/td-hovercard.js': 'max list height = viewport height − margin',
   'src/feedback/td-menu.js': 'max list height = viewport height − margin',
+  'src/utils/keyboard-viewport.js': 'on-screen keyboard inset = innerHeight − visual viewport bottom (v0.36.2)',
 };
 
 async function jsFiles(dir, out = []) {
