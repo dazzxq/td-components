@@ -4,7 +4,8 @@
      Compared structurally (tag, sorted classes, KEEP attributes, text of leaf elements) by
      src/display/td-batch4-table.browser-test.js; nested td-pagination / td-empty-state / sort-icon children are not
      compared (own contracts; the sort glyph depends on the registry). Templates: data + sortable (title, 2 pages) ·
-     empty · loading (no title → fallback name). -->
+     empty · loading (no title → fallback name) · v0.37.0 selection (selectable multiple, 2 rows, 1 selected → header
+     mixed; the tick icon slot is not compared). -->
 <template data-component="td-table"
           data-markup='<td-table id="tbl-c" title="Người dùng" per-page="2"></td-table>'
           data-setup='el.columns = [{ key: "name", label: "Tên", sortable: true }, { key: "role", label: "Vai trò" }]; el.data = [{ name: "An", role: "Admin" }, { name: "Bình", role: "Editor" }, { name: "Chi", role: "Viewer" }];'>
@@ -73,5 +74,28 @@
     </div>
     <div class="td-table__footer" hidden><div class="td-table__pagination td-table__pagination--bottom"><td-pagination aria-label="Phân trang (dưới)"></td-pagination></div></div>
     <p class="td-sr-only" role="status">Đang tải dữ liệu…</p>
+  </div>
+</template>
+<template data-component="td-table"
+          data-markup='<td-table id="tbl-s" selectable row-key="id"></td-table>'
+          data-setup='el.columns = [{ key: "name", label: "Tên" }]; el.data = [{ id: 1, name: "An" }, { id: 2, name: "Bình" }]; el.selectedKeys = [2];'>
+  <div class="td-table td-table--zebra" data-state="ready">
+    <div class="td-table__header">
+      <div class="td-table__pagination"><td-pagination quiet aria-label="Phân trang (trên)"></td-pagination></div>
+    </div>
+    <div class="td-table__scroll">
+      <table class="td-table__table" role="table" aria-label="Bảng dữ liệu">
+        <thead class="td-table__head" role="rowgroup"><tr role="row">
+          <th class="td-table__th td-table__th--select td-table__th--select-all" role="columnheader" scope="col" data-card="select"><button type="button" class="td-table__select-all" role="checkbox" aria-checked="mixed"><span class="td-check td-check--md" aria-hidden="true"><span class="td-check__icon"></span></span><span class="td-table__select-all-label">Chọn tất cả trên trang</span></button></th>
+          <th class="td-table__th" role="columnheader" scope="col" data-col="0" data-col-key="name" data-card="primary">Tên</th>
+        </tr></thead>
+        <tbody class="td-table__body" role="rowgroup">
+          <tr class="td-table__row" role="row" data-row-idx="0"><td class="td-table__cell td-table__cell--select td-table__card-select" role="cell" data-card="select"><button type="button" class="td-table__select" role="checkbox" aria-checked="false" aria-label="Chọn An"><span class="td-check td-check--md" aria-hidden="true"><span class="td-check__icon"></span></span></button></td><td class="td-table__cell" role="cell" data-col="0" data-col-key="name" data-card="primary"><span class="td-table__cell-label" aria-hidden="true">Tên</span>An</td></tr>
+          <tr class="td-table__row" role="row" data-row-idx="1" data-selected=""><td class="td-table__cell td-table__cell--select td-table__card-select" role="cell" data-card="select"><button type="button" class="td-table__select" role="checkbox" aria-checked="true" aria-label="Chọn Bình"><span class="td-check td-check--md" aria-hidden="true"><span class="td-check__icon"></span></span></button></td><td class="td-table__cell" role="cell" data-col="0" data-col-key="name" data-card="primary"><span class="td-table__cell-label" aria-hidden="true">Tên</span>Bình</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="td-table__footer"><div class="td-table__pagination td-table__pagination--bottom"><td-pagination aria-label="Phân trang (dưới)"></td-pagination></div></div>
+    <p class="td-sr-only" role="status"></p>
   </div>
 </template>
