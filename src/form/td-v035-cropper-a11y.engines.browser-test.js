@@ -476,3 +476,49 @@ describe('crop dialog (TdCropper.openDialog, v0.35.0)', () => {
     expect(await p).to.deep.equal({ status: 'cancelled' });
   });
 });
+
+// Codex review v0.35 round 1: #4 (properties assigned before the element is defined) and #7 (a focal-only reset is
+// announced).
+describe('td-cropper review R1', () => {
+  it('#4 crop / focalPoint / presets assigned BEFORE definition are upgraded (not shadowed by own data properties)', async () => {
+    const tag = `td-cropper-pre-${Math.random().toString(36).slice(2, 8)}`;
+    const el = document.createElement(tag);
+    el.setAttribute('src', FIX);
+    el.setAttribute('natural-width', '1600');
+    el.setAttribute('natural-height', '900');
+    el.setAttribute('focal-point', '');
+    /** @type {any} */ (el).presets = [{ label: 'Vuông', ratio: 1 }, { label: 'Tự do', ratio: null }];
+    /** @type {any} */ (el).crop = { normalized: { x: 0.25, y: 0, width: 0.5, height: 1 } };
+    /** @type {any} */ (el).focalPoint = { x: 0.3, y: 0.6 };
+    const wrap = document.createElement('div');
+    wrap.style.setProperty('width', '640px');
+    wrap.appendChild(el);
+    document.body.appendChild(wrap);
+    extra.push(() => wrap.remove());
+    const ready = new Promise((r) => el.addEventListener('image-ready', r, { once: true }));
+    customElements.define(tag, class extends TdCropper {});
+    await ready;
+    await frame();
+    for (const k of ['crop', 'focalPoint', 'presets']) {
+      expect(Object.prototype.hasOwnProperty.call(el, k), `${k} is not an own data property`).to.equal(false);
+    }
+    const c = /** @type {any} */ (el).crop;
+    expect(c.pixels).to.deep.equal({ x: 400, y: 0, width: 800, height: 900 });
+    expect(/** @type {any} */ (el).focalPoint).to.deep.equal({ x: 0.3, y: 0.6 });
+    expect([...el.querySelectorAll('.td-cropper__ratio')].map((b) => b.textContent)).to.deep.equal(['Vuông', 'Tự do']);
+  });
+
+  it('#7 "Đặt lại" changing ONLY the focal point announces the focal sentence (400 ms debounce)', async () => {
+    const { el } = await mount({ crop: crop(0.25, 0.25, 0.5, 0.5), 'focal-point': '', focal: JSON.stringify({ v: 1, x: 0.34, y: 0.6 }) });
+    $(el, '.td-cropper__focal').focus();
+    await sendKeys({ press: 'ArrowRight' });
+    await liveSays(el, 'Điểm trọng tâm 35 %, 60 %');
+    const rec = record(el);
+    const t0 = performance.now();
+    $(el, '.td-cropper__reset').click();
+    expect(rec.change.length, 'the box did not change').to.equal(0);
+    expect(rec.focal.length).to.equal(1);
+    await liveSays(el, 'Điểm trọng tâm 34 %, 60 %');
+    expect(performance.now() - t0).to.be.at.least(390);
+  });
+});

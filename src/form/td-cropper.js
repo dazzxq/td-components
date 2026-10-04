@@ -240,10 +240,13 @@ export class TdCropper extends TdBaseElement {
   // --- life cycle ---
 
   connectedCallback() {
-    if (Object.prototype.hasOwnProperty.call(this, 'presets')) { // assigned before the element was defined
-      const v = /** @type {any} */ (this).presets;
-      delete /** @type {any} */ (this).presets;
-      this.presets = v;
+    // review R1 #4: properties assigned before the element was defined live in own data properties that shadow the
+    // accessors — capture, delete, re-assign (presets first: crop / focalPoint are read against the preset list)
+    for (const k of ['presets', 'crop', 'focalPoint']) {
+      if (!Object.prototype.hasOwnProperty.call(this, k)) continue;
+      const v = /** @type {any} */ (this)[k];
+      delete /** @type {any} */ (this)[k];
+      /** @type {any} */ (this)[k] = v;
     }
     // Moved in the DOM: keep the nodes (and the loaded image), re-bind listeners, re-measure.
     if (this._initialized && this._needsRebind && this._els && this.contains(this._els.stage)) {
@@ -850,9 +853,12 @@ export class TdCropper extends TdBaseElement {
     this._syncLocked();
     this._syncFocalUi();
     if (!user || !this._ready()) return;
-    if (!sameRect(prevRect, this._rect) || prevIdx !== this._presetIdx) this._changed('reset');
+    const boxChanged = !sameRect(prevRect, this._rect) || prevIdx !== this._presetIdx;
+    if (boxChanged) this._changed('reset');
     if (focalChanged(prevFocal, this._focal)) {
       this.emit('focal-change', { focalPoint: this.focalPoint, source: 'reset' });
+      // review R1 #7: the focal sentence is announced too (same 400 ms debounce; after the box sentence when both moved)
+      this._queueLive(boxChanged ? `${this._cropSentence()}. ${this._focalSentence()}` : this._focalSentence());
     }
   }
 
@@ -943,6 +949,13 @@ export class TdCropper extends TdBaseElement {
 
   // --- pointer (decision 14): Pointer Events + capture, one update per animation frame ---
 
+  /** @private review R1 #6: is a client point on the RENDERED image (not the stage padding / letterbox)? */
+  _onImage(cx, cy) {
+    if (!this._fit || !this._ready()) return false;
+    const p = this._clientToModel(cx, cy);
+    return p.x >= 0 && p.y >= 0 && p.x <= this._W && p.y <= this._H;
+  }
+
   /** @private */
   _onDown(e) {
     if (!this._interactive()) return;
@@ -963,7 +976,7 @@ export class TdCropper extends TdBaseElement {
     if (h && box.contains(h)) kind = 'resize';
     else if (t && !focal.hidden && focal.contains(t)) kind = 'focal';
     else if (t && box.contains(t)) kind = 'move';
-    else if (this._focalTool()) kind = 'tap';
+    else if (this._focalTool() && this._onImage(e.clientX, e.clientY)) kind = 'tap'; // review R1 #6: never the letterbox / padding
     else return; // drawing a new box outside the box is a non-goal
     e.preventDefault();
     const handle = kind === 'resize' ? /** @type {Element} */ (h).getAttribute('data-handle') : null;

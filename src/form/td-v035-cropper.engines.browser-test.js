@@ -258,6 +258,29 @@ describe('td-cropper pointer (v0.35.0)', () => {
     expect(rec.change.length).to.equal(0);
   });
 
+  it('review R1 #6: with the focal tool on, a click on the letterbox / stage padding (outside the image) sets nothing', async () => {
+    const { el } = await mount({ crop: crop(0.25, 0.25, 0.5, 0.5), 'focal-point': '' });
+    const rec = record(el);
+    const stage = $(el, '.td-cropper__stage').getBoundingClientRect();
+    const area = $(el, '.td-cropper__area').getBoundingClientRect();
+    const gapX = area.x - stage.x;
+    const gapY = area.y - stage.y;
+    expect(Math.max(gapX, gapY), 'the image is letterboxed on one axis').to.be.above(20);
+    const cx = Math.round(area.x + area.width / 2);
+    const cy = Math.round(area.y + area.height / 2);
+    // the letterbox band, the stage padding, and 2 px outside the image edge
+    const pts = gapX > gapY
+      ? [[Math.round(stage.x + gapX / 2), cy], [Math.round(stage.x + 3), cy], [Math.round(area.x - 2), cy]]
+      : [[cx, Math.round(stage.y + gapY / 2)], [cx, Math.round(stage.y + 3)], [cx, Math.round(area.y - 2)]];
+    for (const at of pts) await drag(at, [at[0] + 1, at[1]], 1);
+    expect(rec.focal.length, 'no focal point outside the rendered image').to.equal(0);
+    expect(el.focalPoint).to.equal(null);
+    // inside the image it still works
+    const inside = [Math.round(area.x + area.width * 0.1), Math.round(area.y + area.height * 0.1)];
+    await drag(inside, [inside[0] + 1, inside[1]], 1);
+    expect(rec.focal.length).to.equal(1);
+  });
+
   it('a programmatic set is silent; disabled ignores the pointer', async () => {
     const { el } = await mount({ crop: crop(0.25, 0.25, 0.5, 0.5) });
     const rec = record(el);
