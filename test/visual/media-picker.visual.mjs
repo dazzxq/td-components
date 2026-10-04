@@ -141,10 +141,13 @@ async function newPage(browser, viewport, html) {
 }
 
 /**
- * Fonts loaded, every VISIBLE <img> settled (a loading="lazy" image off-screen never loads — waiting for it would
+ * Pointer parked at (0, 0), fonts loaded, every VISIBLE <img> settled (a loading="lazy" image off-screen never loads — waiting for it would
  * hang), two frames. Capped at 5 s so a stuck image shows up as a pixel diff instead of hanging the run.
  */
 async function settle(page) {
+  // park the pointer: no hover state from the last scripted click may be baked into a shot. (0, 0) is the dialog's
+  // top-left padding corner — nothing hoverable there at any viewport.
+  await page.mouse.move(0, 0);
   await page.evaluate(async () => {
     const inView = (img) => {
       const r = img.getBoundingClientRect();
