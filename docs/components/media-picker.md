@@ -6,7 +6,8 @@ Hộp thoại **full viewport** chọn ảnh / video / file từ **thư viện m
 picker của dcms2: thanh công cụ (Tải lên · tìm · facet gọn · phân trang), lưới **card**, panel **chi tiết** luôn mở bên
 phải (form metadata, Tải về / Copy link / Xoá / Lưu), dialog **tải lên** lồng trên picker (file hoặc **URL**). Chọn **một**
 hoặc **nhiều** (lựa chọn giữ qua các trang và các lần tìm). Kết quả trả về là danh sách `assetId` + ảnh chụp nhanh của
-asset — picker **không** tự chèn gì vào trang.
+asset — picker **không** tự chèn gì vào trang. Bật option `crop` (chọn một ảnh) → sau "Chèn" có **bước cắt ảnh**, kết quả
+kèm toạ độ crop + điểm trọng tâm (0.35.0, không tạo file mới).
 
 Kit **không biết** backend của bạn. Site đưa vào một **adapter** — object gồm vài hàm `async` (`list`, `get`, tuỳ chọn
 `facets`, `upload`, `uploadFromUrl`, `update`, `delete`, `download`) tự gọi API của mình và trả dữ liệu theo đúng hình
@@ -22,7 +23,7 @@ chọn → [`<td-media-grid>`](media-grid.md) là đủ.
 | Import | `import '@dazzxq/td-components/media-picker'` (class: `import { TdMediaPicker } from '@dazzxq/td-components'`) |
 | Loại | API JS tĩnh (`TdMediaPicker.open()`) + custom element khai báo `<td-media-picker>` |
 | Form-associated | không (ô form là [`<td-media-field>`](media-field.md)) |
-| Từ phiên bản | 0.32.0 (cần `td.css`); 0.33.0 bố cục dcms2, tải từ URL, xoá, tải về, copy link, phân trang số |
+| Từ phiên bản | 0.32.0 (cần `td.css`); 0.33.0 bố cục dcms2, tải từ URL, xoá, tải về, copy link, phân trang số; 0.35.0 bước cắt ảnh (option [`crop`](#cắt-ảnh--option-crop-0350)) |
 
 ## Ví dụ nhanh
 
@@ -211,6 +212,7 @@ interface MediaAsset {
   createdAt?: string;                     // ISO, hiển thị theo locale
   uploadedByLabel?: string;
   urls: { thumbnail: string; preview: string };   // CHỈ để hiển thị (và copy link); video: poster
+                                                  // 0.35: bật crop ⇒ preview PHẢI là ảnh nguyên, không cắt sẵn (bất kỳ cỡ)
   defaultAltText?: string;
   metadata: Record<string, unknown>;      // giá trị đầu của form assetFields (theo key)
   badges?: { key: string; label: string; tone?: 'neutral' | 'info' | 'success' | 'warning' | 'danger' }[];
@@ -281,6 +283,12 @@ interface MediaPickerAdapter {
   download?(id: string, o: { rendition: 'original'; context?: unknown; signal: AbortSignal }): Promise<DownloadResult>;
 }
 ```
+
+**`urls.preview` khi bật crop (0.35.0).** Bước cắt hiển thị `urls.preview` và tính toạ độ trên chính ảnh đó, nên khi
+picker mở với `crop.enabled` ảnh preview **phải là toàn bộ ảnh gốc, không cắt sẵn** (bất kỳ cỡ — bản 1600px là đủ;
+thumbnail vuông thì không). `width` / `height` (kích thước gốc **sau** khi server chuẩn hoá EXIF) nên có: có thì kết quả
+có `pixels` và kit kiểm được tỉ lệ — preview lệch tỉ lệ > 1 % so với `width/height` ⇒ bước cắt báo lỗi, nút "Chèn" khoá
+(fail closed, không bao giờ ra toạ độ từ ảnh đã cắt). Không có `width/height` ⇒ kết quả chỉ có `normalized`.
 
 **Kit làm gì với dữ liệu adapter trả về** (an toàn khi adapter sai, không vỡ trang):
 
@@ -373,7 +381,7 @@ const outcome = await TdMediaPicker.open({
 | `pageSize` | số 1–100 | `30` | → `limit` (0.32: 40) |
 | `pagination` | `'cursor'` \| `'pages'` | `'cursor'` | 0.33 — [Phân trang](#phân-trang--hai-chế-độ) |
 | `upload` | `{ accept?, maxSize?, multiple? = true, acceptLabel? }` | — | Chuyển cho `td-dropzone` ([dropzone](dropzone.md)). `acceptLabel` (0.33) chỉ là **chữ** trên badge / mô tả tab URL, không phải bộ lọc; thiếu thì suy từ `accept` |
-| `crop` | `{ enabled, aspectRatio?, allowFocalPoint? }` | — | **0.35** (`td-cropper`). Hiện `enabled: true` chỉ cảnh báo một lần, `usage.crop = null` |
+| `crop` | `{ enabled, aspectRatio?, allowFocalPoint? }` | — | 0.35.0: `enabled: true` + chọn **một** ảnh ⇒ bước cắt sau "Chèn". `aspectRatio` = số `w / h` trong `(0, 10000]` (khoá tỉ lệ; thiếu ⇒ tự do có preset). Xem [Cắt ảnh](#cắt-ảnh--option-crop-0350) |
 
 - **Một picker một lúc**: gọi `open()` khi đã có picker mở → resolve ngay `{ status: 'cancelled', reason:
   'programmatic' }` + cảnh báo một lần (không chồng picker).
@@ -390,7 +398,17 @@ type PickerOutcome =
 interface SelectedMedia {
   assetId: string;
   asset: MediaAsset;            // ảnh chụp nhanh để render ngay — không phải nguồn sự thật
-  usage: { altText: string; crop: null; focalPoint: null };   // altText = asset.defaultAltText ?? ''
+  usage: {
+    altText: string;              // = asset.defaultAltText ?? ''
+    crop: CropValue | null;       // 0.35: chỉ từ bước cắt; null = không cắt / toàn ảnh / không bật crop
+    focalPoint: { x: number; y: number } | null;   // 0.35: chỉ khi crop.allowFocalPoint
+  };
+}
+
+interface CropValue {             // xem Cropper
+  normalized: { x: number; y: number; width: number; height: number };   // 0..1 theo ảnh gốc
+  pixels?: { x: number; y: number; width: number; height: number };      // chỉ khi asset có width/height
+  aspectRatio: number;
 }
 ```
 
@@ -398,6 +416,45 @@ interface SelectedMedia {
   `close()` bằng code / host bị gỡ khỏi DOM / mở chồng.
 - `selection` theo **thứ tự người dùng chọn** (mục `initialIds` trước).
 - App lưu `assetId`; `asset` chỉ để hiện ngay. Server kiểm lại `assetId` (tồn tại, được phép dùng) khi nhận form.
+
+## Cắt ảnh — option `crop` (0.35.0)
+
+```js
+const outcome = await TdMediaPicker.open({
+  selection: { mode: 'single', kinds: ['image'] },
+  crop: { enabled: true, aspectRatio: 3 / 2, allowFocalPoint: true },   // kiểu dcms2 post-avatar-thumb
+});
+if (outcome.status === 'selected') {
+  const { assetId, usage } = outcome.selection[0];
+  save({ assetId, alt: usage.altText, crop: usage.crop?.normalized ?? null, focal: usage.focalPoint });
+}
+```
+
+Luồng (giống dcms2: cắt **sau khi chọn**):
+
+1. Người dùng chọn một ảnh, bấm **"Chèn"**. Cổng kết thúc vẫn chạy trước (form chi tiết bẩn → hỏi "Bỏ thay đổi?").
+2. `crop.enabled` + chế độ **đơn** + asset `kind === 'image'` ⇒ mở **bước cắt** (hộp thoại lồng trên picker, dùng
+   [`<td-cropper>`](cropper.md)): tiêu đề "Cắt ảnh" (+ " · 3:2" khi khoá tỉ lệ), ảnh = `urls.preview`, kích thước gốc = `width/height`, khung ban đầu =
+   hình lớn nhất đúng tỉ lệ (căn giữa) hoặc toàn ảnh khi tự do.
+3. **"Quay lại"** (hoặc Escape / ×) → về picker, lựa chọn còn nguyên, focus về "Chèn". **"Chèn"** (của bước cắt) →
+   picker kết thúc `selected` với `usage.crop` + `usage.focalPoint`. Nút "Chèn" khoá khi ảnh đang tải hoặc lỗi (preview
+   lệch tỉ lệ, không tải được).
+4. Video / file → không có bước cắt, kết thúc ngay với `crop: null`. Không có URL preview an toàn → bước cắt không mở,
+   picker giữ nguyên + thông báo `cropUnavailable` (không bao giờ kết thúc thiếu crop app đã yêu cầu).
+
+- **Toàn ảnh = `null`**: khung phủ toàn ảnh ⇒ `usage.crop = null` ("dùng nguyên ảnh", như dcms2 dùng ảnh gốc khi không
+  cắt).
+- `usage.focalPoint` chỉ có khi `allowFocalPoint: true` và người dùng bật điểm trọng tâm.
+- `selection.mode = 'multiple'` + `crop` → cảnh báo console **một lần**, bỏ crop (như dcms2: chọn nhiều không crop).
+- `aspectRatio` không phải số hữu hạn trong `(0, 10000]` → cảnh báo một lần, cắt **tự do**. Muốn nhập `"16:9"` thì tự đổi
+  sang `16 / 9` (field làm việc này từ thuộc tính `crop-ratio`).
+- `close()` bằng code hoặc host bị gỡ khi bước cắt đang mở → cả bước cắt lẫn picker đóng, `cancelled / programmatic`.
+- **Không có nút "Cắt" trong panel chi tiết**: panel là metadata **của asset**; crop là dữ liệu **của chỗ dùng** (một ảnh
+  có crop khác nhau ở OG, thẻ, bìa) — một lối vào duy nhất.
+- `crop` đặt được qua `configureDefaults` như mọi key khác, nhưng [media field](media-field.md) **luôn** tự đặt `crop`
+  ở tham số `open()` (ưu tiên cao nhất): field không `croppable` mở picker với `crop: { enabled: false }`.
+- Picker **không** cắt ảnh, không tạo file mới, không sửa host (ADR 0013 QĐ 3). App lưu toạ độ theo chỗ dùng; server cắt
+  thật bằng tham số đã ký — xem [Cropper › Dùng toạ độ ở server](cropper.md#8-dùng-toạ-độ-ở-server-cắt-thật-bằng-tham-số-đã-ký).
 
 ### Thẻ khai báo `<td-media-picker>`
 
@@ -740,7 +797,7 @@ chọn chưa xác nhận **không** tính là việc dở. `close()` bằng code
 |---|---|
 | Tab / Shift+Tab | Bị giữ trong dialog; mở picker → focus ô tìm (hoặc card đầu / dialog) |
 | Gõ trong ô tìm | Tìm sau 250ms; **Enter = tìm ngay**, không bao giờ là Chèn |
-| Escape | Theo tầng: popup (dropdown, chip, lịch) → dialog lồng (tải lên, xác nhận) → ô tìm có chữ (xoá chữ) → đóng picker (`cancelled / escape`, qua cổng xác nhận nếu có việc dở) |
+| Escape | Theo tầng: popup (dropdown, chip, lịch) → dialog lồng (tải lên, xác nhận, **bước cắt** = "Quay lại") → ô tìm có chữ (xoá chữ) → đóng picker (`cancelled / escape`, qua cổng xác nhận nếu có việc dở) |
 | Enter trên card | Đơn: chọn + xem. Nhiều: chỉ xem chi tiết |
 | Space trên card | Đơn: chọn + xem. Nhiều: bật / tắt chọn; Shift+Space: chọn dải |
 | Ctrl/⌘+click card | (nhiều) Bật / tắt chọn |
@@ -772,6 +829,7 @@ hàm `(params) => string`; hàm ném lỗi / trả không phải chuỗi → dù
 |---|---|
 | `title` · `titleImage` · `titleVideo` · `titleFile` | "Chọn media" · "Chọn ảnh" · "Chọn video" · "Chọn tài liệu" (option `title` thắng) |
 | `close` · `cancel` · `confirm` · `confirmCount` | "Đóng" · "Đóng" · "Chèn" · "Chèn ({n})" |
+| `cropTitle` · `cropBack` · `cropConfirm` · `cropUnavailable` (0.35) | "Cắt ảnh" · "Quay lại" · "Chèn" · "Không mở được ảnh để cắt." (nhãn bên trong vùng cắt: [`TdCropper.labels`](cropper.md#nhãn--tdcropperlabels)) |
 | `search` · `searchPlaceholder` | "Tìm media" (nhãn ẩn) · "Tìm kiếm media…" |
 | `upload` · `results` · `grid` | "Tải lên" · "Kết quả" · "Media" |
 | `pagination` · `pageItem` · `pageInfo` · `page` | "Phân trang media" · "media" · "Hiển thị {from}-{to} / {total} media" · "Trang {n}" |
@@ -1026,7 +1084,8 @@ Picker theo bố cục và cách dùng của media picker dcms2. Bảng dưới 
 | Escape | Không đóng | Đóng theo tầng (qua cổng xác nhận) | cố ý khác |
 | Mobile chi tiết | Che kín, không lối ra | Pane trượt có "Quay lại" | sửa lỗi |
 | Request cũ / debounce | Kết quả cũ thắng, không debounce | Latest-wins + abort, debounce 250ms | cố ý khác |
-| Crop | Tạo file mới lúc "Chèn" | **Chưa có** — 0.35 `td-cropper` (toạ độ, không tạo file) | chênh đã biết |
+| Crop | Bấm "Chèn" → modal crop (CropperJS) khi có tỉ lệ; chọn nhiều không crop | Như dcms2: bước cắt sau "Chèn" (`crop`), khung lớn nhất đúng tỉ lệ căn giữa, chọn nhiều không crop; + "Quay lại", điểm trọng tâm, bàn phím | khớp UX |
+| Kết quả crop | Canvas → JPEG → **upload file mới** | **Chỉ toạ độ** (`usage.crop` / `focalPoint`), không canvas, không file mới; server cắt bằng tham số đã ký | cố ý khác |
 | Kiểm tỉ lệ ảnh | `validateRatio` | Không — lọc ở adapter / server | cố ý khác |
 | Giá trị form | URL | `assetId` | cố ý khác |
 | CSP | `<style>` chèn lúc chạy, `style.cssText`, z-index 100000 | CSP strict, CSSOM, tầng modal của kit | cố ý khác |
@@ -1048,12 +1107,17 @@ Picker theo bố cục và cách dùng của media picker dcms2. Bảng dưới 
   `message`).
 - **Mục không chọn được** → `status` khác `'ready'`, hoặc sai `selection.kinds` (bị ẩn).
 - **`open()` resolve ngay `cancelled / programmatic`** → đã có một picker đang mở.
+- **Bật `crop` mà "Chèn" kết thúc ngay** → đang chọn nhiều, asset là video / file, hoặc picker do một
+  [media field](media-field.md) không `croppable` mở (field luôn gửi `crop: { enabled: false }`).
+- **Bước cắt báo lỗi tỉ lệ, "Chèn" khoá** → `urls.preview` là ảnh đã cắt sẵn (thumbnail) trong khi `width/height` là của
+  ảnh gốc. Trả preview là ảnh nguyên.
+- **`usage.crop` không có `pixels`** → asset thiếu `width` / `height`.
 
 ## Xem thêm
 
-- [Media field](media-field.md) · [Media grid](media-grid.md) · [Dropzone](dropzone.md) · [Modal](modal.md) ·
+- [Media field](media-field.md) · [Cropper](cropper.md) · [Media grid](media-grid.md) · [Dropzone](dropzone.md) · [Modal](modal.md) ·
   [Pagination](pagination.md) · [Copy](copy.md)
 - [Hook › TdMediaPicker](../customization/hooks.md#tdmediapicker) · [CSP](../guides/csp.md) · [Bảo mật](../guides/security.md)
-- [ADR 0013](../internal/decisions/0013-media-picker-boundary.md) (kèm "Bổ sung v0.33") · plan
+- [ADR 0013](../internal/decisions/0013-media-picker-boundary.md) (kèm "Bổ sung v0.33", "Bổ sung v0.35") · plan
   [v0.33.0](../internal/plans/v0.33.0-media-picker-dcms-parity.md) ·
   [security-model › Media picker](../internal/security-model.md#6-media-picker--media-field)

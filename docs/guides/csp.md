@@ -146,6 +146,7 @@ Kit tự nó chỉ cần `'self'`. Các chỉ thị dưới đây phụ thuộc 
 | `TdLightbox` hook `video` nhúng YouTube/Vimeo | `frame-src` | ví dụ `https://www.youtube-nocookie.com`; script của player (Plyr…) cần `script-src` tương ứng — tự host thì chỉ cần `'self'` |
 | `TdLightbox` nút toàn màn hình | — | Fullscreen API không chịu CSP |
 | `TdHovercard` `url` / `data-td-hovercard` | `connect-src 'self'` | hovercard chỉ fetch cùng origin |
+| `td-cropper` / bước cắt của media picker / "Cắt ảnh" của media field (0.35) | `img-src` | origin của ảnh cần cắt; **không** cần `connect-src`, `blob:` / `data:` hay CORS — cropper chỉ hiển thị `<img>`, không đọc pixel |
 | `td-chip-input` `search()` | `connect-src` | tuỳ endpoint mà provider của bạn gọi |
 | Form AJAX | `connect-src`, `form-action` | `form-action 'self'` cho submit native |
 

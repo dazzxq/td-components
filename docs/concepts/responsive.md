@@ -36,7 +36,8 @@ if (!isCoarsePointer()) searchInput.focus();                    // không bật 
 
 - **Theo chỗ đặt** — component nằm trong nội dung trang đổi bố cục theo **bề rộng của chính nó**, nên đặt trong cột hẹp
   của trang desktop cũng gọn như trên điện thoại: `td-table` (dạng card khi khung < 720px), `td-pagination` (gọn khi
-  < 480px), Σ dòng của `td-media-grid layout="justified"`. `td-tabs` tự đo: tab không vừa thì hàng tab cuộn ngang, nhãn không bao giờ bị cắt.
+  < 480px), Σ dòng của `td-media-grid layout="justified"`, `td-cropper` (0.35: toolbar hai hàng, nút − / + chỉ icon khi
+  < 480px). `td-tabs` tự đo: tab không vừa thì hàng tab cuộn ngang, nhãn không bao giờ bị cắt.
 - **Theo màn hình** — lớp phủ (modal, drawer, toast, lightbox, loading, popup) và điều kiện thiết bị (`pointer`,
   `hover`, chiều cao).
 
@@ -56,7 +57,8 @@ không còn tràn; chữ giá trị dài cắt `…`. `td-button` nhãn dài **x
 ## Vùng chạm
 
 Trên máy cảm ứng (`pointer: coarse`) mọi phần tử bấm được có vùng chạm **≥ 44 × 44px** (có thể nhỏ hơn về hình nếu
-vùng bấm được mở rộng); chuột ≥ 24 × 24px. Ô nhập có chữ ≥ 16px để iOS không tự phóng to. Trên máy cảm ứng, dropdown /
+vùng bấm được mở rộng); chuột ≥ 24 × 24px. Tay nắm góc / điểm trọng tâm của `td-cropper` cũng vậy, kể cả khi nằm sát mép
+ảnh (vùng cắt có đệm trong để vùng chạm không bị cắt). Ô nhập có chữ ≥ 16px để iOS không tự phóng to. Trên máy cảm ứng, dropdown /
 tree-select **không tự focus ô tìm** khi mở (bàn phím ảo sẽ che danh sách); popup neo đặt trong vùng nhìn thấy còn lại
 khi bàn phím ảo đang mở (`visualViewport`).
 
@@ -66,6 +68,7 @@ khi bàn phím ảo đang mở (`visualViewport`).
 |---|---|---|---|---|
 | Modal thường / datetime | bottom sheet | bottom sheet | hộp giữa | bánh xe datetime 3 dòng |
 | Media picker (luôn phủ kín màn hình) | toolbar 2 hàng, chi tiết là pane trượt | như < 480 | toolbar 1 hàng, lưới + cột chi tiết | chrome gọn, ≥ 1 hàng card |
+| Hộp cắt ảnh (`TdCropper.openDialog`, bước cắt của picker, 0.35) | toàn màn hình | toàn màn hình | hộp lớn giữa | header / footer gọn, vùng cắt ≥ 200px, footer trong màn hình |
 | Drawer | toàn màn hình | rộng tối đa `100% − 3rem` | theo `size` | — |
 | Toast | một cột rộng hết (trừ lề) | góc phải như cũ | góc phải | chỉ 2 toast mới nhất hiện |
 | Lightbox | panel là sheet dưới | sheet | sheet; ≥ 1024 panel bên phải | — |

@@ -143,3 +143,32 @@ cập nhật tương ứng.
 - Đồng thuận với dsuite (`17-codex-media-picker-r2.md`) từng **bỏ** tab tải từ URL. Từ v0.33, tải từ URL là **khả năng
   tuỳ chọn của adapter**: không có `uploadFromUrl` thì tab không bao giờ hiện, nên dsuite **vẫn được phép không làm** và
   không phải sửa gì.
+
+## Bổ sung v0.35
+
+Ngày 2026-10-04. Nguồn: plan [v0.35.0-cropper](../plans/v0.35.0-cropper.md) quyết định 23-31; cropper ở
+[ADR 0015](0015-td-cropper.md).
+
+Mục này **chỉ thêm**, không đổi mặc định nào: site không bật option mới thì FormData, kết quả picker và hành vi field giữ
+nguyên từng byte như v0.34.
+
+1. **`OpenMediaPickerOptions.crop` chạy thật, typedef không đổi** — `{ enabled, aspectRatio?, allowFocalPoint? }`, không
+   thêm key (key lạ như `minWidth` bị bỏ qua). `enabled: true` + chế độ đơn + asset `kind === 'image'` ⇒ "Chèn" mở bước cắt
+   (hộp thoại lồng, sau cổng "bỏ thay đổi"); "Quay lại" về picker giữ lựa chọn. `usage.crop` (`CropValue`, toàn ảnh →
+   `null`) + `usage.focalPoint` (chỉ khi `allowFocalPoint`) — hình dạng `UsageDraft` không đổi. Chọn nhiều + crop → cảnh
+   báo một lần, bỏ crop; `aspectRatio` ngoài `(0, 10000]` → cảnh báo một lần, tự do. `buildOutcome(model, usageById?)`
+   thêm tham số tuỳ chọn. QĐ 3 giữ nguyên: picker không sửa host, không tạo file.
+2. **`urls.preview` phải là ảnh nguyên, không cắt sẵn khi bật crop** (bất kỳ cỡ) — bổ sung vào hợp đồng adapter. Có
+   `width/height` thì kết quả có `pixels` và preview lệch tỉ lệ > 1 % ⇒ bước cắt lỗi, "Chèn" khoá (fail closed). Field có
+   adapter lấy nguồn hộp cắt từ `adapter.get()` (`urls.preview`), không từ `preview-src`; không adapter thì `preview-src` /
+   PHP `preview_src` phải là ảnh nguyên.
+3. **`name[focal]` = mục thứ tư, opt-in** (thuộc tính `focal-point` / PHP `focal_point`, chỉ ở chế độ usage): JSON
+   `{"v":1,"x":…,"y":…}` (0..1 theo toàn ảnh, khoá đúng `v,x,y`, ≤ 128 ký tự) hoặc chuỗi `null`; thứ tự mục id, alt, crop,
+   focal. Không `focal-point` ⇒ đúng ba mục như QĐ 6. Không nhét focal vào crop JSON vì `parseCrop` (JS + PHP) từ chối khoá
+   lạ — đổi sẽ là breaking với server đã validate theo docs; không chỉ trả qua JS vì site PHP thuần / không JS cũng phải
+   gửi được. State khôi phục thêm khoá `focal` (additive, state cũ thiếu vẫn đọc được).
+4. **`name[crop]` không đổi** (QĐ 6 giữ nguyên): tên, JSON v1, `null`, gửi lại đúng từng byte khi chưa sửa. Chỉ crop do UI
+   cắt tạo ra đi qua `serializeCrop()` (6 chữ số); `setSelection()` / thuộc tính giữ ngữ nghĩa v0.34.
+5. **Field `croppable`** (+ `crop-ratio`, `focal`): nút "Cắt ảnh"; field **luôn** đặt `crop` ở tham số `open()` (ưu tiên
+   cao nhất) — không `croppable` ⇒ `{ enabled: false }`, nên `configureDefaults({ crop })` không bao giờ đổi hành vi field
+   cũ. Getter `selection` trả `focalPoint` thật khi có `focal-point` (v0.34 luôn `null`).

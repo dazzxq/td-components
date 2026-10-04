@@ -1,8 +1,8 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.34)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.35)
 
-Trang này liệt kê, cho từng bản từ **0.34.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
+Trang này liệt kê, cho từng bản từ **0.35.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
 [CHANGELOG.md](../../CHANGELOG.md); trang này chỉ gom lại theo góc nhìn "tôi phải làm gì" và thêm ví dụ trước/sau.
 Quy trình nâng cấp chung nằm ở [README.md](README.md).
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.35.0](#0350) | Đổi hành vi (nhỏ, chỉ khi đã bật `crop`) | Không bắt buộc. Thêm `<td-cropper>` (`./cropper`), `TdCropper.openDialog()`, field `croppable` / `focal-point` / `name[focal]` (opt-in), PHP `croppable` / `crop_ratio` / `focal_point` / `focal`. Site đã truyền `crop: { enabled: true }` cho picker: "Chèn" giờ mở **bước cắt**. Import map: thêm `cropper`. |
 | [0.34.0](#0340) | Đổi giao diện + đổi DOM (nhỏ) | Responsive: modal sheet < 720 (trước ≤ 640), `td-table` tự thành card khi hẹp (`layout="table"` để giữ cũ), `textContent` của ô bảng có thêm nhãn cột ẩn, site chỉ đè `--td-media-grid-row-ratio` giờ chỉ áp lưới ≥ 1024px. |
 | [0.33.0](#0330) | Đổi giao diện + đổi văn bản (không breaking API) | Không bắt buộc sửa code. Media picker full viewport giống dcms2: nhãn mặc định đổi ("Chọn ({n})" → "Chèn ({n})", "Huỷ" → "Đóng", "Thư viện media" → tiêu đề theo `selection.kinds`), `pageSize` 40 → 30, "Tải thêm" → phân trang, bỏ khay thumb. `td-media-grid`: ô đã chọn hết thu nhỏ / nền, thành vòng inset; grid tự đặt kích thước `img` (CSS site trên `img` không còn thắng — dùng token). |
 | [0.32.0](#0320) | Không có thay đổi phá vỡ | Không. Thêm `<td-media-picker>` / `TdMediaPicker`, `<td-media-field>`, `td_media_field()`. Import map tự liệt kê: thêm `media-picker`, `media-field`. |
@@ -63,6 +64,31 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.35.0
+
+**Đổi hành vi (nhỏ)** — cắt ảnh chỉ bằng toạ độ ([ADR 0015](../internal/decisions/0015-td-cropper.md),
+[ADR 0013 › Bổ sung v0.35](../internal/decisions/0013-media-picker-boundary.md#bổ-sung-v035)). Không có thay đổi phá vỡ
+API: mọi phần thêm đều opt-in, FormData mặc định giữ nguyên từng byte.
+
+- **Picker: `crop.enabled` giờ có tác dụng.** 0.32–0.34 option này chỉ cảnh báo console và trả `usage.crop = null`. Từ
+  0.35, `TdMediaPicker.open({ crop: { enabled: true, … } })` (hoặc `configureDefaults({ crop })`) + chọn **một ảnh** ⇒
+  "Chèn" mở **bước cắt** trước khi kết thúc, `usage.crop` / `usage.focalPoint` có giá trị thật (toàn ảnh vẫn `null`).
+  Site đã bật sẵn `crop` "cho tương lai" mà chưa muốn bước cắt → bỏ option đó. Cảnh báo "crop UI ships in v0.35" không
+  còn; thay bằng cảnh báo một lần khi chọn nhiều + crop (bỏ crop) hoặc `aspectRatio` sai (cắt tự do).
+- **Adapter khi bật crop:** `urls.preview` phải là **ảnh nguyên, không cắt sẵn** (bất kỳ cỡ). Preview lệch tỉ lệ so với
+  `width/height` > 1 % ⇒ bước cắt báo lỗi, "Chèn" khoá. Adapter trả thumbnail vuông làm `preview` phải đổi trước khi bật
+  crop.
+- **Media field không `croppable`: không đổi** — "Chèn" vẫn kết thúc ngay, cùng ảnh không event, FormData ba mục như cũ.
+  Field luôn gửi `crop: { enabled: false }` cho picker, nên `configureDefaults({ crop: { enabled: true } })` **không** làm
+  field cũ hiện bước cắt.
+- **Getter `field.selection`**: `usage.focalPoint` trả **giá trị thật** khi field có `focal-point` (0.34 luôn `null`).
+  Field không `focal-point` vẫn `null`.
+- `name[focal]` chỉ xuất hiện khi bật `focal-point` — server cũ không đổi gì vẫn nhận đúng ba mục.
+- Import map PHP tự liệt kê từ `package.json` (thêm `cropper`); site gõ import map tay thêm
+  `"@dazzxq/td-components/cropper"` nếu dùng.
+
+Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.35.0.
 
 ## 0.34.0
 
