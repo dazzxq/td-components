@@ -2,6 +2,30 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.35.0
+
+**Cắt ảnh — chỉ toạ độ** (dsuite #13; plan `docs/internal/plans/v0.35.0-cropper.md`, Codex plan-review APPROVE 3 vòng;
+[ADR 0015](docs/internal/decisions/0015-td-cropper.md); ADR 0013 mục "Bổ sung v0.35").
+
+### Added
+
+- **`<td-cropper>`** — khung cắt trên ảnh, **chỉ trả toạ độ** (không bao giờ tạo canvas / blob / file mới, không
+  `fetch`, không upload — có test chặn): `src` (qua allowlist URL), `natural-width` / `natural-height`, `aspect-ratio`
+  (preset 1:1, 16:9, 1.91:1… hoặc tự do), `crop`, `focal-point` + `focal`. Kéo / đổi cỡ bằng chuột, cảm ứng, bút; zoom =
+  đổi cỡ khung quanh tâm / con trỏ / giữa hai ngón; **bàn phím** (mũi tên 1%, Shift 10%, `+` / `-`, Tab qua khung → 4 góc →
+  điểm trọng tâm) + thông báo cho trình đọc màn hình; vùng chạm ≥ 44px trên cảm ứng. Sự kiện `crop-input`, `crop-change`
+  (`normalized` 0..1 + `pixels` theo ảnh gốc khi biết kích thước + `aspectRatio`), `focal-change`, `image-ready`,
+  `image-error`. Export `@dazzxq/td-components/cropper`.
+- **Media picker — bước cắt:** `crop: { enabled, aspectRatio, focalPoint }` → chọn một ảnh rồi "Chèn" mở bước cắt ("Quay
+  lại" / "Chèn"); kết quả vào `SelectedMedia.usage.crop` / `focalPoint` (picker không sửa trang gọi). Chọn nhiều → bỏ
+  crop + cảnh báo một lần.
+- **`<td-media-field croppable>`** (chế độ `usage`): nút "Cắt ảnh", `crop-ratio` (mặc định theo `aspect-ratio`), xem
+  trước đúng vùng đã cắt. `focal-point` bật thêm mục form **`name[focal]`** = `{"v":1,"x","y"}` hoặc `null` (không bật →
+  vẫn đúng 3 mục như 0.34). Cắt cần ảnh **nguyên chưa cắt**: có adapter thì lấy `urls.preview` + kích thước gốc qua
+  `get()`; trang PHP / HTML phải in `preview-src` là ảnh gốc. Field không `croppable` giữ nguyên hành vi 0.34 (kể cả khi
+  site bật crop trong defaults).
+- PHP `td_media_field`: option `croppable`, `crop_ratio`, `focal_point`, `focal`; phần in `crop` không đổi.
+
 ## 0.34.0
 
 **Responsive chuẩn toàn kit** — điện thoại → máy gập → tablet dọc (iPad mini) → desktop (owner + yêu cầu dsuite; audit đo ở
