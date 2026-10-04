@@ -10142,6 +10142,7 @@
 	.td-media-picker__preview img {
 		display: block;
 		width: 100%;
+		max-width: none; /* never the host reset's max-width (Tailwind preflight) */
 		height: 100%;
 		object-fit: contain;
 	}
@@ -10194,6 +10195,7 @@
 		width: 100%;
 		height: 0;
 		margin: 0;
+		color: inherit;
 		border: 0;
 		border-top: 1px solid var(--td-hairline);
 	}
@@ -10243,10 +10245,21 @@
 		margin: 0;
 	}
 
+	/* list look owned here, not by browser defaults (host resets such as preflight drop bullets / link styling) */
+	.td-media-picker__blocked .td-alert__message > p {
+		margin: 0;
+	}
+
 	.td-media-picker__usages {
 		margin: 0.5rem 0 0;
 		padding-inline-start: 1.25rem;
 		font-size: var(--td-text-sm);
+		list-style: disc;
+	}
+
+	a.td-media-picker__usage {
+		color: var(--td-accent);
+		text-decoration: underline;
 	}
 
 	.td-media-picker__usage-kind {
