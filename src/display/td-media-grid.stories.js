@@ -84,3 +84,55 @@ export const ContactSheet = {
   },
   args: { label: 'Khung hình cuộn 12' },
 };
+
+// --- v0.33.0: layout="justified" ---
+
+/** a plain coloured SVG of the given size (data URI: no extra fixture files for the stories) */
+const svg = (w, h, color) => `data:image/svg+xml,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="${color}"/>`
+  + `<circle cx="${w / 2}" cy="${h / 2}" r="${Math.min(w, h) / 4}" fill="#fff" opacity="0.6"/></svg>`,
+)}`;
+const KINDS = {
+  doc: [800, 1200, '#2a9d8f', 'dọc'],
+  vuong: [1000, 1000, '#e76f51', 'vuông'],
+  ngang: [1200, 800, '#264653', 'ngang'],
+  pano: [1800, 600, '#0077b6', 'panorama'],
+};
+const MIX = ['ngang', 'doc', 'pano', 'vuong', 'ngang', 'ngang', 'doc', 'doc', 'vuong', 'pano', 'ngang', 'doc',
+  'vuong', 'ngang', 'pano', 'doc', 'ngang', 'vuong', 'doc', 'ngang', 'ngang', 'pano', 'doc', 'vuong'];
+
+/** @param {string[]} kinds @param {{ dims?: boolean }} [o] dims=false → no width / height on the <img> (ratio unknown) */
+const justified = (kinds, { dims = true, label = 'Album' } = {}) => `
+  <td-media-grid label="${esc(label)}" layout="justified" select-mode="tick">
+    ${kinds.map((k, i) => {
+    const [w, h, color, name] = KINDS[k];
+    return `<div data-td-media-item data-id="j${i + 1}">
+      <button type="button" data-td-media-open aria-label="Ảnh ${i + 1} (${name})"><img src="${svg(w, h, color)}" alt=""${dims ? ` width="${w}" height="${h}"` : ''}></button>
+    </div>`;
+  }).join('')}
+  </td-media-grid>`;
+
+/**
+ * `layout="justified"`: 24 ảnh trộn dọc 2:3 / vuông / ngang 3:2 / panorama 3:1. Mỗi dòng lấp đủ ngang, ô cùng dòng cao
+ * bằng nhau; Σ tỉ lệ đích mỗi dòng theo token `--td-media-grid-row-ratio` (5.5 / ≤ 1024px 4 / ≤ 640px 2.5).
+ * `select-mode="tick"`: bấm ảnh luôn phát `activate`; chọn bằng tick, Space, Ctrl/Cmd + bấm, Shift + bấm.
+ */
+export const Justified = {
+  name: 'Justified (ảnh trộn dọc / ngang / panorama)',
+  render: () => justified(MIX),
+};
+
+/** Dòng cuối thiếu (Σ < đích): giữ chiều cao của dòng trên, để trống bên phải, căn trái. */
+export const JustifiedShortLastRow = {
+  name: 'Dòng cuối thiếu',
+  render: () => justified([...Array(8).fill('doc'), ...Array(8).fill('doc'), 'doc', 'vuong'], { label: 'Dòng cuối thiếu' }),
+};
+
+/**
+ * Chưa biết tỉ lệ: `<img>` không có `width` / `height`, item không có `data-td-ar` → tạm xếp với
+ * `--td-media-grid-fallback-ar` (1.5), ảnh tải xong thì xếp lại (gom trong một rAF).
+ */
+export const JustifiedUnknownRatio = {
+  name: 'Chưa biết tỉ lệ',
+  render: () => justified(MIX.slice(0, 12), { dims: false, label: 'Chưa biết tỉ lệ' }),
+};

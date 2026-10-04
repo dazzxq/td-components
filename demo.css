@@ -59,10 +59,11 @@ hr { margin: 32px 0; border: none; border-top: 1px solid var(--td-color-border);
 .demo-skel { display: grid; gap: 12px; max-width: 320px; }
 .demo-skel__head { display: flex; gap: 12px; align-items: center; }
 .demo-copy-input { max-width: 16rem; }
-.demo-mg-img { display: block; width: 160px; height: 107px; object-fit: cover; }
+/* v0.33: no size here — td-media-grid owns the tile / image size (tokens --td-media-grid-fit / -ratio) */
+.demo-mg-img { display: block; }
 .demo-mg-bar { margin-top: 12px; }
 
 /* v0.31 sections */
 .demo-sort-list { align-self: start; }
 .demo-sort-item { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--td-color-border); }
-.demo-sort-img { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: cover; }
+.demo-sort-img { display: block; }
