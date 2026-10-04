@@ -10,6 +10,8 @@ import {
 /** Attributes of the server-rendered control that exist only for the no-JS form (removed on hydrate). */
 const SSR_ONLY = ['name', 'value', 'min', 'max', 'step', 'required'];
 const INPUT_MODES = ['none', 'text', 'decimal', 'numeric', 'tel', 'search', 'email', 'url'];
+/** v0.36.2: `enterkeyhint` values forwarded to the control (same set as td-input-field) */
+const ENTER_KEY_HINTS = ['enter', 'done', 'go', 'next', 'previous', 'search', 'send'];
 const GROUPS = ['.', ',', ' ', ''];
 
 /**
@@ -60,6 +62,7 @@ const GROUPS = ['.', ',', ' ', ''];
  * @attr {string} decimal-separator - `,` | `.` (default `,`; `.` when the group is `,`)
  * @attr {string} prefix / suffix - decorative unit text; unit-label - the unit as read aloud (e.g. `đồng`)
  * @attr {string} inputmode - overrides the derived keyboard hint
+ * @attr {string} enterkeyhint - enter|done|go|next|previous|search|send → the control (v0.36.2; other values dropped)
  * @attr {string} validate-on - blur|change|input
  * @fires input - detail: { value } — the canonical value changed (user)
  * @fires change - detail: { value } — on blur, when it differs from the value at focus
@@ -86,7 +89,7 @@ export class TdNumberInput extends TdFormElement {
   static get observedAttributes() {
     return [...super.observedAttributes, 'value', 'label', 'placeholder', 'helper-text', 'error-text', 'size', 'readonly',
       'min', 'max', 'step', 'decimals', 'group-separator', 'decimal-separator', 'prefix', 'suffix', 'unit-label', 'clamp',
-      'inputmode', 'validate-on', 'aria-label'];
+      'inputmode', 'enterkeyhint', 'validate-on', 'aria-label'];
   }
 
   static get booleanAttributes() { return [...super.booleanAttributes, 'readonly', 'clamp']; }
@@ -233,7 +236,7 @@ export class TdNumberInput extends TdFormElement {
       + (label ? `<label class="td-field__label" id="${id}-label" for="${cid}">${esc(label)}</label>` : '')
       + '<div class="td-number__box">'
       + (prefix ? `<span class="td-number__affix td-number__affix--prefix" aria-hidden="true">${esc(prefix)}</span>` : '')
-      + `<input type="text" class="td-number__control" id="${cid}" inputmode="${esc(this._inputMode())}" autocomplete="off" spellcheck="false">`
+      + `<input type="text" class="td-number__control" id="${cid}" inputmode="${esc(this._inputMode())}"${this._enterKeyHint() ? ` enterkeyhint="${this._enterKeyHint()}"` : ''} autocomplete="off" spellcheck="false">`
       + (suffix ? `<span class="td-number__affix td-number__affix--suffix" aria-hidden="true">${esc(suffix)}</span>` : '')
       + (unit ? `<span id="${id}-unit" hidden>${esc(unit)}</span>` : '')
       + '</div>'
@@ -317,6 +320,9 @@ export class TdNumberInput extends TdFormElement {
       case 'inputmode':
         this._applyInputMode();
         return;
+      case 'enterkeyhint':
+        this._applyEnterKeyHint();
+        return;
       case 'min':
       case 'max':
       case 'step':
@@ -371,6 +377,21 @@ export class TdNumberInput extends TdFormElement {
   /** @private */
   _applyInputMode() {
     this._focusTarget()?.setAttribute('inputmode', this._inputMode());
+  }
+
+  /** @private v0.36.2: the whitelisted host `enterkeyhint` (lower-cased) or null */
+  _enterKeyHint() {
+    const v = (this.getAttribute('enterkeyhint') || '').trim().toLowerCase();
+    return ENTER_KEY_HINTS.includes(v) ? v : null;
+  }
+
+  /** @private v0.36.2: in place on the control (no re-render: focus + caret kept) */
+  _applyEnterKeyHint() {
+    const c = this._focusTarget();
+    if (!c) return;
+    const v = this._enterKeyHint();
+    if (v) c.setAttribute('enterkeyhint', v);
+    else c.removeAttribute('enterkeyhint');
   }
 
   /** @private `aria-required` + the decorative star in the label (in place) */
@@ -833,6 +854,9 @@ export class TdNumberInput extends TdFormElement {
     this._syncForm(); // ElementInternals FIRST…
     for (const a of SSR_ONLY) control.removeAttribute(a); // …then the no-JS attributes: FormData has ONE entry
     this._ssrRetargetLabels(control);
+    // v0.36.2: a keyboard hint, not state — never part of the adoption decision; applied to the adopted control only
+    // when the host carries it (a server `attrs` enterkeyhint on the control stays otherwise)
+    if (this.hasAttribute('enterkeyhint')) this._applyEnterKeyHint();
     this._ssrControl = null;
     this._ssrState = null;
   }
