@@ -67,7 +67,7 @@ Form gửi `code=123456` (đúng một mục). `required` + rỗng → form khô
   nhận `A–Z` / `a–z`, đổi hoa / thường theo `case`; mọi ký tự khác (khoảng trắng, `-`, chữ có dấu `â`, emoji) bị bỏ. Dán
   `ab-12 34` vào bộ `alphanumeric` → `AB1234`.
 - Bàn phím điện thoại: `numeric` → bàn phím số (`inputmode="numeric"`); bộ có chữ → `inputmode="text"`,
-  `autocapitalize="characters"` (khi `upper`; khác → `off`), `autocorrect="off"`, `spellcheck="false"`.
+  `autocapitalize="characters"` (khi `upper`; khác → `none`), `autocorrect="off"`, `spellcheck="false"`.
 - **Bộ gõ tiếng Việt (Telex / VNI)**: kit không chuẩn hoá giữa lúc đang gõ dấu (composition), chỉ chuẩn hoá một lần khi
   kết thúc — nhưng Telex có thể biến `aa` thành `â` (bị bỏ). Hãy hướng dẫn người dùng **tắt bộ gõ** khi nhập mã có chữ.
 - Câu báo thiếu ký tự: số → `messages.tooShort` (`Mã gồm {length} chữ số.`), có chữ → `messages.tooShortChars`
@@ -319,7 +319,7 @@ input phủ lên hiện như ô nhập thường); ký tự luôn đọc trái �
     <label class="td-otp__label" for="otp-input">Mã xác thực</label>
     <div class="td-otp__box">
       <input type="text" class="td-otp__input" id="otp-input" inputmode="numeric" autocomplete="one-time-code">
-      <!-- bộ có chữ: inputmode="text" autocapitalize="characters|off" autocorrect="off" spellcheck="false" -->
+      <!-- bộ có chữ: inputmode="text" autocapitalize="characters|none" autocorrect="off" spellcheck="false" -->
       <span class="td-otp__cells" aria-hidden="true">
         <span class="td-otp__cell" data-state="filled">1</span>
         <span class="td-otp__cell" data-state="filled">2</span>

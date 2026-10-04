@@ -64,7 +64,7 @@ export function otpDigits(raw) {
  *       [<label class="td-otp__label" for="{control id}">label</label>]
  *       <div class="td-otp__box">
  *         <input type="text" class="td-otp__input" id="{host id}-input" inputmode="numeric|text" autocomplete="one-time-code"
- *                [autocapitalize="characters|off" autocorrect="off" spellcheck="false" — letter charsets]>
+ *                [autocapitalize="characters|none" autocorrect="off" spellcheck="false" — letter charsets]>
  *         <span class="td-otp__cells" aria-hidden="true">
  *           <span class="td-otp__cell" data-state="empty|filled" [data-active]>character</span> × length
  *         </span>
