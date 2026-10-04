@@ -70,7 +70,11 @@ theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao
 [ADR 0013 › Bổ sung v0.33](../internal/decisions/0013-media-picker-boundary.md#bổ-sung-v033)); adapter v0.32 chạy y nguyên.
 Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.33.0.
 
-**`td-media-picker` — chữ hiển thị đổi.** Site đã ghi đè nhãn (`TdMediaPicker.labels` / `messages`) không bị ảnh hưởng; test so đúng chữ phải cập nhật.
+**`td-media-picker` — chữ hiển thị đổi.** Test so đúng chữ phải cập nhật. Site đã ghi đè nhãn (`TdMediaPicker.labels` / `messages`) cần soát ba điểm:
+
+- Tiêu đề giờ lấy theo `selection.kinds` từ các key mới `titleImage` / `titleVideo` / `titleFile`; `title` chỉ còn dùng khi `kinds` khác ba trường hợp đó. Site muốn một tiêu đề cố định thì truyền `title` cho `open()` hoặc ghi đè cả bốn key.
+- Nút xác nhận có hai key: `confirm` ("Chèn", chưa chọn / chế độ đơn) và `confirmCount` ("Chèn ({n})", chế độ nhiều).
+- Các key bị bỏ cùng UI cũ: `filters`, `filtersCount`, `loadMore`, `loadedMore`, `count`, `emptyFiltered`, `edit`, `cancelEdit`, `deselect` (ghi đè chúng giờ không có tác dụng, không lỗi).
 
 | Chỗ | Trước (0.32) | Sau (0.33) |
 |---|---|---|
