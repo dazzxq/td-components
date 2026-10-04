@@ -16,7 +16,7 @@ All notable changes to **td-components** are documented here.
   điểm trọng tâm) + thông báo cho trình đọc màn hình; vùng chạm ≥ 44px trên cảm ứng. Sự kiện `crop-input`, `crop-change`
   (`normalized` 0..1 + `pixels` theo ảnh gốc khi biết kích thước + `aspectRatio`), `focal-change`, `image-ready`,
   `image-error`. Export `@dazzxq/td-components/cropper`.
-- **Media picker — bước cắt:** `crop: { enabled, aspectRatio, focalPoint }` → chọn một ảnh rồi "Chèn" mở bước cắt ("Quay
+- **Media picker — bước cắt:** `crop: { enabled, aspectRatio, allowFocalPoint }` → chọn một ảnh rồi "Chèn" mở bước cắt ("Quay
   lại" / "Chèn"); kết quả vào `SelectedMedia.usage.crop` / `focalPoint` (picker không sửa trang gọi). Chọn nhiều → bỏ
   crop + cảnh báo một lần.
 - **`<td-media-field croppable>`** (chế độ `usage`): nút "Cắt ảnh", `crop-ratio` (mặc định theo `aspect-ratio`), xem
