@@ -1,0 +1,30 @@
+# v0.33.0: (re)capture the visual baselines of test/visual/media-picker.visual.mjs on the reference platform (Ubuntu +
+# the Chromium pinned by playwright-core) — never on macOS. Run by hand (Actions → "update visual baselines" → Run
+# workflow), download the `visual-baselines` artifact, unpack it into test/visual/baseline/linux-chromium/, review the
+# images and commit them.
+name: update visual baselines
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright-core install --with-deps chromium
+      - run: npm run test:visual -- --update
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: visual-baselines
+          path: test/visual/baseline/linux-chromium/*.png
+          if-no-files-found: error
