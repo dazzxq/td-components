@@ -118,9 +118,20 @@ export function serializeFocal(p) {
   return parseFocal(out) ? out : null;
 }
 
+/** v0.35 review R1 #5 — the PUBLIC crop ratio range (w / h), boundaries included: picker `crop.aspectRatio`, field
+ * `crop-ratio`, PHP `crop_ratio`, `<td-cropper aspect-ratio>`. Outside ⇒ rejected with one bounded warning. */
+export const CROP_RATIO_MIN = 0.01;
+export const CROP_RATIO_MAX = 100;
+
+/** @param {unknown} r @returns {boolean} a finite number in [0.01, 100] */
+export function cropRatioInRange(r) {
+  return typeof r === 'number' && Number.isFinite(r) && r >= CROP_RATIO_MIN && r <= CROP_RATIO_MAX;
+}
+
 /**
- * v0.35 (decision 27) — `crop-ratio` attribute: `free` (any case) ⇒ `'free'`; a ratio (`parseAspectRatio` rules) ⇒ the
- * number `w / h`; absent / invalid ⇒ null (the field then falls back to `aspect-ratio`, then free).
+ * v0.35 (decision 27) — `crop-ratio` attribute: `free` (any case) ⇒ `'free'`; a ratio (`parseAspectRatio` rules) whose
+ * `w / h` is in [0.01, 100] ⇒ that number; absent / invalid / out of range ⇒ null (the field warns, then falls back to
+ * `aspect-ratio`, then free).
  * @param {unknown} str
  * @returns {number|'free'|null}
  */
@@ -128,7 +139,7 @@ export function parseCropRatio(str) {
   if (typeof str !== 'string') return null;
   if (str.trim().toLowerCase() === 'free') return 'free';
   const r = parseAspectRatio(str);
-  return r ? r.w / r.h : null;
+  return r && cropRatioInRange(r.w / r.h) ? r.w / r.h : null;
 }
 
 /**
@@ -270,4 +281,19 @@ export const FOCAL_CASES = Object.freeze([
   ['[0.5,0.5]', false],
   ['null', false],
   ['', false],
+]);
+
+/** v0.35 review R1 #5 parity table (JS + PHP): [crop-ratio string, parseCropRatio()]. */
+export const CROP_RATIO_CASES = Object.freeze([
+  ['free', 'free'],
+  ['0.01', 0.01],
+  ['1:100', 0.01],
+  ['100', 100],
+  ['100/1', 100],
+  ['16:9', 16 / 9],
+  ['0.0099', null],
+  ['100.01', null],
+  ['1:101', null],
+  ['101/1', null],
+  ['10000/1', null],
 ]);

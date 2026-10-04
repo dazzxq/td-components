@@ -14,7 +14,7 @@ import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { HAS_PHP, PHP_BIN, ROOT } from './php.mjs';
 import { MEDIA_FIELD_FIXTURES, MEDIA_FIELD_FIXTURE_FILE, renderMediaFieldFixture } from '../ssr/ssr.mjs';
-import { ASPECT_CASES, CROP_CASES, FOCAL_CASES, parseKinds, parseFocal, parseCropRatio } from '../../src/utils/media-field-model.js';
+import { ASPECT_CASES, CROP_CASES, FOCAL_CASES, CROP_RATIO_CASES, parseKinds, parseFocal, parseCropRatio } from '../../src/utils/media-field-model.js';
 
 if (!HAS_PHP && process.env.TD_REQUIRE_PHP) throw new Error('TD_REQUIRE_PHP=1 but no php >= 8.0 CLI on PATH');
 const opts = { skip: !HAS_PHP && 'php >= 8.0 CLI not found' };
@@ -309,7 +309,8 @@ describe('php/td.php — td_media_field (v0.32.0, contract media-field@1)', opts
   });
 
   test('v0.35 crop_ratio parity with parseCropRatio(): free / ratios printed as given; invalid → dropped + one warning', () => {
-    const inputs = ['free', ' FREE ', '16:9', '1.91', '3/2', 'abc', '0', '1e9', ''];
+    // review R1 #5: + the [0.01, 100] boundaries of the shared table
+    const inputs = ['free', ' FREE ', '16:9', '1.91', '3/2', 'abc', '0', '1e9', '', ...CROP_RATIO_CASES.map(([i]) => i)];
     const out = run(inputs.map((r) => ['r', 'm1', { usage: true, croppable: true, crop_ratio: r }]));
     inputs.forEach((input, i) => {
       const valid = parseCropRatio(input) !== null;

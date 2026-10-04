@@ -1923,7 +1923,7 @@ namespace {
             if ($crRaw !== null && $crRaw !== '' && td__media_crop_ratio($crRaw)) {
                 $cropRatio = $crRaw;
             } elseif ($given('crop_ratio')) {
-                trigger_error('td_media_field: crop_ratio is not W/H, W:H, a positive number or free — ignored', E_USER_WARNING);
+                trigger_error('td_media_field: crop_ratio must be free or W/H, W:H, a number with a ratio in [0.01, 100] — ignored', E_USER_WARNING);
             }
             $focal = td__media_focal($o['focal'] ?? null);
         }
@@ -2137,7 +2137,16 @@ namespace {
     {
         $ws = Td::JS_WS;
         $t = preg_replace('/^[' . $ws . ']+|[' . $ws . ']+$/uD', '', $v);
-        return (is_string($t) && strtolower($t) === 'free') || td__media_ratio($v) !== null;
+        if (is_string($t) && strtolower($t) === 'free') {
+            return true;
+        }
+        $r = td__media_ratio($v);
+        if ($r === null) {
+            return false;
+        }
+        // v0.35 review R1 #5: public crop ratio range [0.01, 100] (CROP_RATIO_CASES parity)
+        $q = (float) $r['w'] / (float) $r['h'];
+        return $q >= 0.01 && $q <= 100;
     }
 
     /**

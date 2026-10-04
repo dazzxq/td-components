@@ -8,7 +8,7 @@ import { openCropDialog } from '../feedback/crop-dialog.js';
 import { isAdapter, normalizeAsset, normalizeError, LatestRequest } from '../utils/media-picker-core.js';
 import { safeMediaUrl } from '../utils/media-url.js';
 import {
-  KINDS, parseAspectRatio, parseCrop, parseFocal, parseKinds, parseCropRatio, serializeCrop, serializeFocal,
+  KINDS, parseAspectRatio, parseCrop, parseFocal, parseKinds, parseCropRatio, serializeCrop, serializeFocal, cropRatioInRange,
   cropPreviewVars, fieldEntries, encodeState, decodeState,
 } from '../utils/media-field-model.js';
 
@@ -347,10 +347,14 @@ export class TdMediaField extends TdFormElement {
       const r = parseCropRatio(raw);
       if (r === 'free') return null;
       if (typeof r === 'number') return r;
-      this._warnOnce(`crop-ratio:${raw}`, `td-media-field: crop-ratio "${raw}" is not W/H, W:H, a positive number or free — ignored.`);
+      this._warnOnce('crop-ratio', 'td-media-field: crop-ratio must be free or W/H, W:H, a number with a ratio in [0.01, 100] — ignored.');
     }
     const f = this._ratio();
-    return f ? f.w / f.h : null;
+    if (!f) return null;
+    if (cropRatioInRange(f.w / f.h)) return f.w / f.h;
+    // review R1 #5: the frame's aspect-ratio is valid up to 10000:1, the crop ratio only in [0.01, 100]
+    this._warnOnce('crop-ratio-frame', 'td-media-field: aspect-ratio is outside the crop ratio range [0.01, 100] — the crop is free.');
+    return null;
   }
 
   /** @private */

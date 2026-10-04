@@ -1049,11 +1049,17 @@ describe('v0.33 resolveOptions: pagination + upload.acceptLabel (decisions 13, 2
     assert.deepEqual(r({ enabled: true, aspectRatio: 1.91, allowFocalPoint: true }), { aspectRatio: 1.91, allowFocalPoint: true });
     assert.deepEqual(r({ enabled: true, aspectRatio: 1.5, minWidth: 1200, presets: [] }), { aspectRatio: 1.5, allowFocalPoint: false });
     assert.equal(warns.length, 0);
-    for (const bad of [0, -1, 10001, NaN, Infinity, '16/9']) {
+    // review R1 #5: the public range is [0.01, 100] (boundaries included)
+    assert.deepEqual(r({ enabled: true, aspectRatio: 0.01 }), { aspectRatio: 0.01, allowFocalPoint: false });
+    assert.deepEqual(r({ enabled: true, aspectRatio: 100 }), { aspectRatio: 100, allowFocalPoint: false });
+    assert.equal(warns.length, 0);
+    for (const bad of [0, -1, 0.0099, 100.01, 10001, NaN, Infinity, '16/9']) {
       assert.deepEqual(r({ enabled: true, aspectRatio: bad }), { aspectRatio: null, allowFocalPoint: false }, String(bad));
     }
     assert.equal(warns.length, 1, 'bad ratio warns once');
     assert.match(warns[0], /aspectRatio/);
+    assert.match(warns[0], /\[0\.01, 100\]/);
+    assert.ok(warns[0].length < 200, 'bounded: never echoes the value');
     assert.equal(r({ enabled: true }, { mode: 'multiple' }), null);
     assert.equal(r({ enabled: true }, { mode: 'multiple' }), null);
     assert.equal(warns.length, 2, 'multiple warns once');

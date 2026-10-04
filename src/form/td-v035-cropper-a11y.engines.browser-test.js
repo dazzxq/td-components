@@ -522,3 +522,42 @@ describe('td-cropper review R1', () => {
     expect(performance.now() - t0).to.be.at.least(390);
   });
 });
+
+describe('td-cropper review R1 #5: aspect ratio range [0.01, 100], lossless through the dialog', () => {
+  it('aspect-ratio 0.01 / 100 lock; 0.0099 / 100.01 are rejected with ONE bounded warning (free, never silently)', async () => {
+    const warns = [];
+    const realWarn = console.warn;
+    console.warn = (...a) => warns.push(a.map(String).join(' '));
+    extra.push(() => { console.warn = realWarn; });
+    for (const ok of ['0.01', '100']) {
+      const { el } = await mount({ 'aspect-ratio': ok });
+      expect(el.hasAttribute('data-locked'), ok).to.equal(true);
+      expect(el.crop.aspectRatio).to.equal(Number(ok));
+    }
+    expect(warns.length).to.equal(0);
+    for (const bad of ['0.0099', '100.01']) {
+      const { el } = await mount({ 'aspect-ratio': bad });
+      expect(el.hasAttribute('data-locked'), bad).to.equal(false);
+    }
+    const mine = warns.filter((w) => w.includes('aspect-ratio'));
+    expect(mine.length, 'one warning').to.equal(1);
+    expect(mine[0]).to.match(/\[0\.01, 100\]/);
+    expect(mine[0].length).to.be.below(200);
+  });
+
+  it('openDialog passes a non-preset ratio to the cropper without precision loss (≥ 6 significant digits)', async () => {
+    for (const r of [1.234567, 0.0123457, 87.65432]) {
+      const p = TdCropper.openDialog({ src: FIX, aspectRatio: r });
+      await until(() => document.querySelector('.td-crop-dialog[data-state="open"] td-cropper[data-state="ready"]'), 'dialog ready');
+      const cr = /** @type {any} */ (document.querySelector('.td-crop-dialog td-cropper'));
+      const attr = cr.getAttribute('aspect-ratio');
+      const [w, h] = attr.split(/[/:]/).map(Number);
+      const got = h ? w / h : w;
+      expect(Math.abs(got / r - 1), `${r} → "${attr}"`).to.be.below(1e-6);
+      expect(cr.crop.aspectRatio).to.equal(Math.round(r * 1e4) / 1e4);
+      /** @type {HTMLElement} */ (document.querySelector('.td-crop-dialog__cancel')).click();
+      expect((await p).status).to.equal('cancelled');
+      await until(() => !document.querySelector('.td-crop-dialog'), 'dialog removed');
+    }
+  });
+});

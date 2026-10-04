@@ -30,6 +30,14 @@ import { LAYERS } from '../utils/layers.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import { TdCropper } from '../form/td-cropper.js';
 import { cropChanged, focalChanged, isWholeImage, clampFocal, round4 } from '../utils/crop-geometry.js';
+import { cropRatioInRange } from '../utils/media-field-model.js';
+
+let warnedRatio = false;
+function warnRatioOnce() {
+  if (warnedRatio) return;
+  warnedRatio = true;
+  console.warn('td-crop-dialog: aspectRatio must be a number in [0.01, 100] — rejected, the crop is free.');
+}
 
 /** @typedef {import('../utils/crop-geometry.js').CropValue} CropValue */
 /**
@@ -63,7 +71,10 @@ function fraction(r) {
  */
 function ratioAttr(r) {
   const f = fraction(r);
-  return f ? `${f.w}/${f.h}` : String(round4(r));
+  if (f) return `${f.w}/${f.h}`;
+  // review R1 #5: lossless enough (≥ 7 significant digits) within parseAspectRatio's W:H form (each part ≤ 10000, ≤ 4
+  // decimals): the side that is ≥ 1 becomes 10000, the other one is scaled — r ∈ [0.01, 100] ⇒ that part ∈ [100, 10000]
+  return r <= 1 ? `${round4(r * 10000)}:10000` : `10000:${round4(10000 / r)}`;
 }
 
 /**
@@ -121,7 +132,11 @@ export function openCropDialog(opts = /** @type {any} */ ({})) {
   if (signal && signal.aborted) return Promise.resolve({ status: 'cancelled' });
   const L = TdCropper.labels;
   const str = (v, d) => (typeof v === 'string' && v.trim() ? v : d);
-  const lock = fin(o.aspectRatio) && o.aspectRatio > 0 && o.aspectRatio <= 10000 ? o.aspectRatio : null;
+  let lock = null;
+  if (o.aspectRatio != null) {
+    if (cropRatioInRange(o.aspectRatio)) lock = o.aspectRatio;
+    else warnRatioOnce(); // review R1 #5: rejected (free crop), never silently
+  }
   const cropIn = boxOpt(o.crop);
   const focalIn = clampFocal(o.focalPoint);
   const id = `td-crop-dialog-${++seq}`;

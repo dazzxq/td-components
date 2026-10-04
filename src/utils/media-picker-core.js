@@ -509,7 +509,8 @@ export function isAdapter(a) {
     && typeof /** @type {any} */ (a).get === 'function';
 }
 
-const CROP_RATIO_MAX = 10000;
+const CROP_RATIO_MIN = 0.01; // review R1 #5: public range [0.01, 100] (= media-field-model CROP_RATIO_MIN / MAX)
+const CROP_RATIO_MAX = 100;
 let warnedCropRatio = false;
 let warnedCropMultiple = false;
 
@@ -568,10 +569,10 @@ export function resolveOptions(defaults, ...layers) {
       const ar = merged.crop.aspectRatio;
       let aspectRatio = null;
       if (ar !== undefined && ar !== null) {
-        if (typeof ar === 'number' && Number.isFinite(ar) && ar > 0 && ar <= CROP_RATIO_MAX) aspectRatio = ar;
+        if (typeof ar === 'number' && Number.isFinite(ar) && ar >= CROP_RATIO_MIN && ar <= CROP_RATIO_MAX) aspectRatio = ar;
         else if (!warnedCropRatio) {
           warnedCropRatio = true;
-          try { warn('td-media-picker: crop.aspectRatio must be a number in (0, 10000] — using a free crop.'); } catch { /* ignore */ }
+          try { warn('td-media-picker: crop.aspectRatio must be a number in [0.01, 100] — rejected, the crop step is free.'); } catch { /* ignore */ }
         }
       }
       cropResolved = { aspectRatio, allowFocalPoint: merged.crop.allowFocalPoint === true };

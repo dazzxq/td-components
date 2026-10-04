@@ -334,7 +334,19 @@ describe('td-media-field v0.35 — picker `crop` param (decision 28, review R2 #
     const d = mk({ name: 'd', usage: true, croppable: true, 'crop-ratio': 'nope' }).el;
     openBtn(d).click();
     expect(opens[3].opts.crop).to.deep.equal({ enabled: true, aspectRatio: null, allowFocalPoint: false });
-    expect(warns.filter((w) => w.includes('crop-ratio "nope"')).length).to.equal(1);
+    expect(warns.filter((w) => w.includes('crop-ratio must be')).length).to.equal(1);
+    expect(warns.some((w) => w.includes('nope')), 'bounded: the value is not echoed').to.equal(false);
+    // review R1 #5: [0.01, 100] — the boundaries pass, outside is rejected (warned, falls back to aspect-ratio / free)
+    const e = mk({ name: 'e', usage: true, croppable: true, 'crop-ratio': '100' }).el;
+    openBtn(e).click();
+    expect(opens[4].opts.crop.aspectRatio).to.equal(100);
+    const f = mk({ name: 'f', usage: true, croppable: true, 'aspect-ratio': '3/2', 'crop-ratio': '100.01' }).el;
+    openBtn(f).click();
+    expect(opens[5].opts.crop.aspectRatio, 'rejected → the frame ratio').to.equal(1.5);
+    const g = mk({ name: 'g', usage: true, croppable: true, 'aspect-ratio': '200/1' }).el;
+    openBtn(g).click();
+    expect(opens[6].opts.crop.aspectRatio, 'frame ratio outside the crop range → free').to.equal(null);
+    expect(warns.filter((w) => w.includes('[0.01, 100]')).length).to.be.at.least(2);
   });
 
   it('not croppable → crop: { enabled: false } always (also with pickerOptions.crop.enabled)', () => {

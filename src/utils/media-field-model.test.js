@@ -4,7 +4,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseAspectRatio, parseCrop, fieldEntries, encodeState, decodeState, parseKinds, ASPECT_CASES, CROP_CASES,
-  parseFocal, serializeCrop, serializeFocal, parseCropRatio, cropPreviewVars, FOCAL_CASES,
+  parseFocal, serializeCrop, serializeFocal, parseCropRatio, cropPreviewVars, FOCAL_CASES, CROP_RATIO_CASES,
+  CROP_RATIO_MIN, CROP_RATIO_MAX, cropRatioInRange,
 } from './media-field-model.js';
 
 describe('parseAspectRatio', () => {
@@ -198,5 +199,25 @@ describe('v0.35 parseCropRatio / cropPreviewVars (decisions 27, 30)', () => {
     assert.equal(cropPreviewVars(c, { W: 1600, H: 900, frameRatio: null }), null);
     assert.equal(cropPreviewVars(null, { W: 1600, H: 900, frameRatio: 1 }), null);
     assert.equal(cropPreviewVars(c, { W: 0, H: 900, frameRatio: 1 }), null);
+  });
+});
+
+describe('v0.35 review R1 #5: public crop ratio range [0.01, 100]', () => {
+  it('bounds + boundaries (0.01, 100 in; 0.0099, 100.01 out)', () => {
+    assert.equal(CROP_RATIO_MIN, 0.01);
+    assert.equal(CROP_RATIO_MAX, 100);
+    for (const r of [0.01, 1, 100, 1 / 3]) assert.equal(cropRatioInRange(r), true, String(r));
+    for (const r of [0.0099, 100.01, 0, -1, NaN, Infinity, '2']) assert.equal(cropRatioInRange(r), false, String(r));
+    assert.equal(parseCropRatio('0.01'), 0.01);
+    assert.equal(parseCropRatio('100'), 100);
+    assert.equal(parseCropRatio('1:100'), 0.01);
+    assert.equal(parseCropRatio('100/1'), 100);
+    assert.equal(parseCropRatio('0.0099'), null);
+    assert.equal(parseCropRatio('100.01'), null);
+    assert.equal(parseCropRatio('1:101'), null);
+    assert.equal(parseCropRatio('10000/1'), null, 'a valid frame aspect-ratio, but outside the crop range');
+  });
+  it('the shared parity table (PHP runs the same cases)', () => {
+    for (const [input, want] of CROP_RATIO_CASES) assert.equal(parseCropRatio(input), want, String(input));
   });
 });

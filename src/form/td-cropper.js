@@ -51,7 +51,9 @@
 import { TdBaseElement } from '../base/td-base-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import { safeMediaUrl } from '../utils/media-url.js';
-import { parseAspectRatio, parseCrop, parseFocal } from '../utils/media-field-model.js';
+import { parseAspectRatio, parseCrop, parseFocal, cropRatioInRange } from '../utils/media-field-model.js';
+
+let warnedRatio = false;
 import {
   ZOOM_STEP, moveBy, resizeFrom, scaleAround, applyPreset, normalizeInitial, stepFor, toOutput, clampFocal,
   ratioMismatch, containFit, wheelFactor, modelToDisplay, focalChanged,
@@ -574,8 +576,14 @@ export class TdCropper extends TdBaseElement {
 
   /** @private */
   _readLock() {
-    const a = parseAspectRatio(this.getAttribute('aspect-ratio'));
-    this._lock = a ? a.w / a.h : null;
+    const raw = this.getAttribute('aspect-ratio');
+    const a = parseAspectRatio(raw);
+    const r = a ? a.w / a.h : null;
+    this._lock = r !== null && cropRatioInRange(r) ? r : null;
+    if (raw !== null && raw.trim() !== '' && this._lock === null && !warnedRatio) {
+      warnedRatio = true; // review R1 #5: rejected (free), never silently; bounded (the value is not echoed)
+      console.warn('td-cropper: aspect-ratio must be W/H, W:H or a number with a ratio in [0.01, 100] — rejected, the crop is free.');
+    }
   }
 
   /** @private crop attribute / property → the box (silent) */
