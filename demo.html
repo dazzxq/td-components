@@ -809,7 +809,7 @@
     const table = document.querySelector('#demo-table');
     table.columns = [
       { key: 'id', label: 'ID', sortable: true, width: '60px' },
-      { key: 'title', label: 'Tiêu đề', sortable: true },
+      { key: 'title', label: 'Tiêu đề', sortable: true, card: 'primary' }, // v0.36.1: ID (cột đầu) tự thành lead
       { key: 'author', label: 'Tác giả', sortable: true },
       { key: 'status', label: 'Trạng thái', render: (row) => {
         // render(row, rowIdxInPage) → a Node (row data as text, never interpolated into HTML)
@@ -820,6 +820,7 @@
         return badge;
       }},
       { key: 'views', label: 'Lượt xem', sortable: true, width: '100px' },
+      { key: 'act', label: 'Thao tác', actions: [{ id: 'edit', label: 'Sửa', icon: 'pencil' }, { id: 'del', label: 'Xoá', icon: 'trash', variant: 'danger' }] },
     ];
     table.data = [
       { id: 1, title: 'Hướng dẫn Web Components', author: 'Duyệt', status: 'published', views: 1250 },

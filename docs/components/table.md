@@ -244,6 +244,10 @@ table.addEventListener('row-action', (e) => {
 - Cột có `actions` mặc định có vai trò card `actions` (chân card); `render` và giá trị `row[key]` của cột đó bị bỏ qua.
 - Cột `render` tự viết nút vẫn dùng được; ở card nó nằm nguyên trong ô (đặt `card: 'actions'` để nằm ở chân card).
   Kit không đổi được node tuỳ ý của bạn thành menu.
+- **Nút chỉ icon ở card** (0.36.1): ở dạng card, action có `icon` hợp lệ (và nút "Thao tác") chỉ hiện icon — nút
+  vuông 32px (chuột) / 44 × 44px (cảm ứng), cách nhau 4px / 8px. Chữ vẫn nằm trong DOM (ẩn kiểu `td-sr-only`) nên tên
+  đọc của nút **không đổi**, không cần `aria-label`. Dạng bảng giữ icon + chữ. Không có tooltip: icon phải **tự rõ
+  nghĩa** (`pencil` = sửa, `trash` = xoá…); không thì bỏ `icon` để nút giữ chữ ở card.
 
 ### 9. Responsive: bảng thành card khi chỗ đặt hẹp
 
@@ -270,21 +274,41 @@ empty / server mode / `max-height` giữ nguyên.
 
 | `card` | Trên card | Mặc định cho |
 |---|---|---|
-| `'primary'` | Dòng đầu, chữ đậm, rộng hết card (không nhãn) | cột **đầu tiên** |
-| `'secondary'` | Cặp "nhãn: giá trị" — 1 cặp mỗi dòng khi bảng < 480px, 2 cặp mỗi dòng khi ≥ 480px | các cột còn lại |
-| `'meta'` | Một dòng chữ phụ (nhỏ, màu nhạt), các cột meta nối bằng " · " | — |
-| `'actions'` | Chân card, căn cuối | cột có `actions` |
+| `'lead'` (0.36.1) | Định danh ngắn (ID, mã, số thứ tự) **trước** primary trên dòng đầu: chữ nhỏ màu nhạt, số đều (`tabular-nums`), không nhãn; 12px chuột / 14px cảm ứng. Nhiều cột `lead` → nối nhau | cột **đầu tiên** khi một cột khác khai báo `card: 'primary'` |
+| `'primary'` | Dòng đầu, chữ đậm (dài thì xuống dòng, không đẩy `lead`) | cột **đầu tiên** (khi không cột nào khai báo `primary`) |
+| `'secondary'` | Cặp "nhãn: giá trị", xếp theo **độ dài nội dung**: cặp ngắn đứng chung dòng, cặp dài chiếm cả dòng (0.36.1; trước đó 1 cặp / dòng dưới 480px, 2 cặp từ 480px) | các cột còn lại |
+| `'meta'` | Dòng chữ phụ (nhỏ, màu nhạt), các cột meta nối bằng " · " | — |
+| `'actions'` | Cuối dòng meta, căn cuối (không đủ chỗ thì xuống dòng, vẫn căn cuối; không có meta → dòng riêng sau các cặp) | cột có `actions` |
 | `false` | Không hiện trên card (vẫn ở DOM, vẫn hiện ở dạng bảng) | — |
+
+**Suy luận vai trò** (0.36.1): bảng kiểu "ID trước" — cột ID đầu tiên không khai báo `card`, cột tiêu đề khai báo
+`card: 'primary'` → ID tự thành `lead`, nằm trước tiêu đề trên cùng dòng (trước đây thành cặp "ID: 1" một dòng riêng).
+Bảng không khai báo `card` nào giữ nguyên như 0.34 (cột đầu là `primary`). Kit không đoán "cột hẹp = ID".
+
+```js
+table.columns = [
+  { key: 'id', label: 'ID', sortable: true },                  // → lead (vì title là primary)
+  { key: 'title', label: 'Tiêu đề', sortable: true, card: 'primary' },
+  { key: 'author', label: 'Tác giả' },                          // → secondary
+  { key: 'date', label: 'Ngày', card: 'meta' },
+  { key: 'act', label: 'Thao tác', actions: [{ id: 'edit', label: 'Sửa', icon: 'pencil' }] },
+];
+// Card: "1  Hướng dẫn Web Components" / "Tác giả: Duyệt" / "01/10/2026 ······ [✎]"
+```
+
+Muốn cột đầu vẫn là cặp như cũ: `card: 'secondary'` trên cột đó.
 
 Ở dạng card:
 
-- Hàng tiêu đề thành **thanh sắp xếp**: chỉ cột `sortable` hiện thành chip (cùng `button.td-table__sort`, `aria-sort`
-  giữ nguyên, Enter / Space sort, focus ở lại nút); tiêu đề không sort được ẩn kiểu `td-sr-only` (vẫn là
-  `columnheader` cho trình đọc màn hình, **không** `display: none`).
+- Hàng tiêu đề thành **thanh sắp xếp một hàng** (0.36.1): chỉ cột `sortable` hiện thành chip (cùng
+  `button.td-table__sort`, `aria-sort` giữ nguyên, Enter / Space sort, focus ở lại nút); nhiều chip thì thanh **cuộn
+  ngang** (ẩn thanh cuộn, bóng mờ ở mép còn chip; Tab tới chip bị khuất tự cuộn vào). Tiêu đề không sort được ẩn kiểu
+  `td-sr-only` (vẫn là `columnheader` cho trình đọc màn hình, **không** `display: none`).
+- Giá trị `ellipsis` nằm cùng dòng với nhãn của nó, cắt "…" ở mép card (0.36.1; trước đó rơi xuống dòng dưới nhãn).
 - Mỗi hàng là một card nền đặc, một đường viền mảnh, không bóng, không kính (minimal surfaces). Zebra tắt; hover /
   focus-within giữ. Skeleton loading cũng có dạng card; empty-state trải hết chiều ngang.
-- Khoảng trống cho **chọn hàng** (v0.36): `order: 0` cạnh dòng primary dành cho `.td-table__card-select` — chưa có
-  phần tử nào ở 0.34.
+- Khoảng trống cho **chọn hàng** (v0.37): `order: 0` trước `lead` / primary dành cho `.td-table__card-select` — chưa
+  có phần tử nào.
 
 **Host cần bề rộng từ cha.** Host là `container: td-table / inline-size`: bề rộng của nó không còn phụ thuộc nội dung,
 nên đặt bảng ở chỗ "co theo nội dung" (flex item `flex: 0 1 auto` trong hàng flex, `inline-block`, `float`, cột flex
@@ -299,7 +323,8 @@ desktop thì bảng vẫn là bảng cuộn ngang như trước.
 **Bóng mép cuộn ngang** (mọi chế độ): khi bảng rộng hơn khung, mép bị cắt có bóng mờ báo còn nội dung (CSS thuần
 `background-attachment: local`, không JS, CSP an toàn). Màu: token `--td-table-edge-shadow`.
 
-**Cảm ứng** (`pointer: coarse`): nút sort (cả chip ở card) tối thiểu 44 × 44px; chuột: tối thiểu 24px.
+**Cảm ứng** (`pointer: coarse`): nút sort (cả chip ở card) và nút thao tác chỉ icon ở card tối thiểu 44 × 44px;
+chuột: tối thiểu 24px (chip 32px).
 
 Muốn giữ hành vi cũ ở mọi nơi: `layout="table"`.
 
@@ -359,7 +384,7 @@ Các attribute `title`, `heading-level`, `zebra`, `max-height` khi đổi sẽ d
 | `align` | `'left'` \| `'center'` \| `'right'` \| `'justify'` | — | `text-align` cho cả `th` và `td` của cột. Giá trị khác bị bỏ. |
 | `ellipsis` | boolean | `false` | Một dòng, cắt `…` ở `maxWidth` hoặc `--td-table-ellipsis-max`, toàn văn trong `title`. |
 | `nowrap` | boolean | `true` nếu `align: 'right'`, còn lại `false` | Giá trị không xuống dòng (class `td-table__cell--nowrap`). Từ 0.34.0. |
-| `card` | `'primary'` \| `'secondary'` \| `'meta'` \| `'actions'` \| `false` | cột đầu `primary`, cột có `actions` → `actions`, còn lại `secondary` | Vai trò trên card (xem cách dùng số 9). Từ 0.34.0. |
+| `card` | `'lead'` \| `'primary'` \| `'secondary'` \| `'meta'` \| `'actions'` \| `false` | cột đầu `primary` (hoặc `lead` khi cột khác khai báo `primary` — 0.36.1), cột có `actions` → `actions`, còn lại `secondary` | Vai trò trên card (xem cách dùng số 9). Từ 0.34.0; `lead` từ 0.36.1. |
 | `actions` | `Array<{ id, label, icon?, variant?, hidden?, disabled? }>` | — | Nút thao tác theo hàng (xem cách dùng số 8). Từ 0.34.0. |
 | `render` | `(row, rowIdxInPage) => Node \| string \| any` | — | Ô tuỳ biến (xem cách dùng số 3). Nội dung được **nối sau** nhãn card của ô. |
 
@@ -449,9 +474,11 @@ Token (khai báo trong `@layer td.tokens`, override bằng CSS không layer củ
 | `--td-table-card-bg` | `var(--td-table-bg)` | Nền card (dạng card) |
 | `--td-table-card-border` | `var(--td-table-border)` | Viền card + viền chip sort |
 | `--td-table-card-radius` | `var(--td-radius-md)` | Bo góc card |
-| `--td-table-card-gap` | `var(--td-space-sm)` | Khoảng cách giữa các card và quanh danh sách card |
-| `--td-table-card-px` / `--td-table-card-py` | `var(--td-space-md)` / `var(--td-space-sm)` | Padding trong card |
-| `--td-table-label-fg` | `var(--td-color-text-muted)` | Nhãn "nhãn:" và dòng meta trên card |
+| `--td-table-card-gap` | `var(--td-space-xs)` | Khoảng cách giữa các card và quanh danh sách card (0.36.1: trước là `--td-space-sm`) |
+| `--td-table-card-px` / `--td-table-card-py` | `var(--td-space-sm)` / `var(--td-space-xs)` | Padding trong card (0.36.1: trước là `md` / `sm`) |
+| `--td-table-card-cell-py` | `2px` | Padding dọc của mỗi ô trên card (0.36.1) |
+| `--td-table-card-pair-min` | `0px` | Bề rộng tối thiểu một cặp `secondary` (0 = theo nội dung; `100%` = một cặp mỗi dòng như trước 0.36.1) (0.36.1) |
+| `--td-table-label-fg` | `var(--td-color-text-muted)` | Nhãn "nhãn:", dòng meta và `lead` trên card |
 
 Từ 0.27.0, hàng skeleton của bảng dùng chung token với class [`.td-skeleton`](loading.md#skeleton-khối-giữ-chỗ-thuần-css):
 `--td-table-skeleton` / `--td-table-sheen` mặc định trỏ vào `--td-skeleton-bg` / `--td-skeleton-shine`, còn bo góc và chu
@@ -492,7 +519,7 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
       <table class="td-table__table" role="table" aria-labelledby="{host-id}-title" | aria-label="…" [aria-busy="true"]>
         <thead class="td-table__head" role="rowgroup"><tr role="row">
           <th class="td-table__th [td-table__th--sortable]" role="columnheader" scope="col" data-col="0" data-col-key="name"
-              data-card="primary|secondary|meta|actions|false" [aria-sort="ascending|descending"]>
+              data-card="lead|primary|secondary|meta|actions|false" [aria-sort="ascending|descending"]>
             <button type="button" class="td-table__sort" data-sort-col="0">
               <span class="td-table__sort-label">Tên</span>
               <span class="td-table__sort-icon" aria-hidden="true" data-sort-icon="sort"><svg width="14" height="14" class="td-icon" data-icon="sort" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg></span>  <!-- up / down khi đang sort -->
@@ -508,12 +535,13 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
             <td class="td-table__cell td-table__cell--actions" role="cell" data-col="3" data-col-key="act" data-card="actions">
               <span class="td-table__cell-label" aria-hidden="true">Thao tác</span>
               <div class="td-table__actions [td-table__actions--menu]">
-                <button type="button" class="td-btn td-btn--sm td-btn--secondary td-table__action" data-action-idx="0" [disabled]>
+                <!-- td-table__action--icon (0.36.1): action có icon hợp lệ → chỉ icon ở dạng card -->
+                <button type="button" class="td-btn td-btn--sm td-btn--secondary td-table__action [td-table__action--icon]" data-action-idx="0" [disabled]>
                   [<span class="td-table__action-icon" data-td-icon="pencil" aria-hidden="true"><svg…></span>]
                   <span class="td-table__action-label">Sửa</span>
                 </button>
                 <!-- chỉ khi > 2 action hiện: nút menu, chỉ hiện ở dạng card -->
-                <button type="button" class="td-btn td-btn--sm td-btn--secondary td-table__actions-menu" aria-haspopup="menu" aria-expanded="false">…Thao tác</button>
+                <button type="button" class="td-btn td-btn--sm td-btn--secondary td-table__actions-menu td-table__action--icon" aria-haspopup="menu" aria-expanded="false">…Thao tác</button>
               </div>
             </td>
           </tr>
