@@ -285,6 +285,7 @@
 	}
 
 	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: table rows are not activatable (cells / buttons inside are) */
 		.td-table .td-table__row:not(.td-table__row--skeleton):hover {
 			background: var(--td-table-row-hover);
 		}
@@ -685,6 +686,24 @@
 
 		.td-table__skeleton::after {
 			display: none;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-table__sort {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-table__sort:is(:active, [data-td-pressed]) {
+		color: var(--td-table-fg);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-table__sort:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }

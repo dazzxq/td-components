@@ -93,6 +93,7 @@
 		--td-btn-fg-v: var(--td-btn-primary-fg);
 		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-primary-border));
 		--_td-btn-variant-hover: var(--td-btn-primary-hover);
+		--_td-btn-variant-pressed: var(--td-btn-primary-pressed);
 	}
 
 	.td-btn--secondary {
@@ -107,6 +108,7 @@
 		--td-btn-fg-v: var(--td-btn-success-fg);
 		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-success-border));
 		--_td-btn-variant-hover: var(--td-btn-success-hover);
+		--_td-btn-variant-pressed: var(--td-btn-success-pressed);
 	}
 
 	.td-btn--danger {
@@ -115,6 +117,7 @@
 		--td-btn-fg-v: var(--td-btn-danger-fg);
 		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-danger-border));
 		--_td-btn-variant-hover: var(--td-btn-danger-hover);
+		--_td-btn-variant-pressed: var(--td-btn-danger-pressed);
 	}
 
 	.td-btn--warning {
@@ -123,6 +126,7 @@
 		--td-btn-fg-v: var(--td-btn-warning-fg);
 		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-warning-border));
 		--_td-btn-variant-hover: var(--td-btn-warning-hover);
+		--_td-btn-variant-pressed: var(--td-btn-warning-pressed);
 	}
 
 	.td-btn--info {
@@ -131,6 +135,7 @@
 		--td-btn-fg-v: var(--td-btn-info-fg);
 		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-info-border));
 		--_td-btn-variant-hover: var(--td-btn-info-hover);
+		--_td-btn-variant-pressed: var(--td-btn-info-pressed);
 	}
 
 	/* v0.17.0 ghost: no fill, no border, no shadow — just the accent label on the page background.
@@ -156,19 +161,23 @@
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
 		.td-btn {
 			--td-btn-hover-v: color-mix(in srgb, var(--td-btn-bg-v) 92%, #000);
+			--td-btn-pressed-v: color-mix(in srgb, var(--td-btn-bg-v) 84%, #000); /* v0.36.2 */
 		}
 
 		.td-btn:is(.td-btn--primary, .td-btn--success, .td-btn--danger, .td-btn--warning, .td-btn--info):not(.td-btn--custom) {
 			--_td-btn-tint-hover: color-mix(in srgb, var(--_td-btn-tint) 92%, #000); /* invalid when no -tint */
+			--_td-btn-tint-pressed: color-mix(in srgb, var(--_td-btn-tint) 84%, #000);
 		}
 	}
 
 	.td-btn:is(.td-btn--primary, .td-btn--success, .td-btn--danger, .td-btn--warning, .td-btn--info):not(.td-btn--custom) {
 		--td-btn-hover-v: var(--_td-btn-tint-hover, var(--_td-btn-variant-hover));
+		--td-btn-pressed-v: var(--_td-btn-tint-pressed, var(--_td-btn-variant-pressed));
 	}
 
 	.td-btn--secondary:not(.td-btn--custom) {
 		--td-btn-hover-v: var(--td-btn-secondary-hover);
+		--td-btn-pressed-v: var(--td-btn-secondary-pressed);
 	}
 
 	@media (hover: hover) and (pointer: fine) {
@@ -190,6 +199,30 @@
 			.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
 				color: var(--td-btn-ghost-hover-fg);
 			}
+		}
+	}
+
+	/* v0.36.2 pressed (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — a SOLID fill one step past
+	   hover (--td-btn-{v}-pressed; -tint / custom: 16 % darker), applied at once (no transition in), colour only.
+	   Engines without color-mix(): a custom button falls back to its hover / resting fill. */
+	.td-btn {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-btn:is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"], .td-btn--ghost) {
+		background-color: var(--td-btn-pressed-v, var(--td-btn-hover-v, var(--td-btn-bg-v)));
+		transition-duration: 0s;
+	}
+
+	.td-btn--ghost:not(.td-btn--custom):is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+		background-color: var(--td-btn-ghost-pressed);
+		color: #1d4ed8;
+		transition-duration: 0s;
+	}
+
+	@supports (color: color-mix(in srgb, red 50%, transparent)) {
+		.td-btn--ghost:not(.td-btn--custom):is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+			color: var(--td-btn-ghost-hover-fg);
 		}
 	}
 
@@ -268,5 +301,6 @@
 
 	@media (forced-colors: active) {
 		.td-btn { border-color: ButtonText; }
+		.td-btn:is(:active, [data-td-pressed]) { outline: 2px solid Highlight; }
 	}
 }

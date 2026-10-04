@@ -50,6 +50,7 @@
 	}
 
 	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: text input box — the focus ring is the feedback */
 		.td-number__box:hover:not(:focus-within, :has(> .td-number__control:disabled)) {
 			border-color: var(--td-field-border-hover);
 		}

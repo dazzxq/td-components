@@ -296,4 +296,27 @@
 			outline-color: Highlight;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-media-field__open {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-media-field__open:is(:active, [data-td-pressed]):not(:disabled) {
+		filter: brightness(0.88); /* the opener is the media box: a pressed tint over the image */
+		transition-duration: 0s;
+	}
+
+	.td-media-field__frame[data-state="empty"] > .td-media-field__open:is(:active, [data-td-pressed]):not(:disabled) {
+		filter: none;
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-media-field__open:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }

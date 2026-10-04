@@ -31,6 +31,7 @@
 	}
 
 	/* the native select (PHP td_tree_select): a field in native mode … */
+	/* active-exempt: native select — the UA draws it */
 	.td-tree-select__native {
 		box-sizing: border-box;
 		display: block;
@@ -100,6 +101,7 @@
 		box-sizing: border-box;
 	}
 
+	/* active-exempt: text input box — the focus ring is the feedback */
 	.td-tree-select__control {
 		position: relative;
 		display: flex;
@@ -430,6 +432,34 @@
 		.td-tree-select__control:has(:focus-visible),
 		.td-tree-select__search:focus-visible,
 		.td-tree-select__native:focus-visible {
+			outline: 2px solid Highlight;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-tree-select__clear {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-tree-select__clear:is(:active, [data-td-pressed]) {
+		color: var(--td-field-fg);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-tree-select__menu .td-tree__row:is(:active, [data-td-pressed]) {
+		background: none; /* the inset ::before is the row fill here */
+		transition-duration: 0s;
+	}
+
+	.td-tree-select__menu .td-tree__row:is(:active, [data-td-pressed])::before {
+		background: var(--td-option-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-tree-select__clear:is(:active, [data-td-pressed]) {
 			outline: 2px solid Highlight;
 		}
 	}

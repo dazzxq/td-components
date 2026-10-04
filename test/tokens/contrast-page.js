@@ -118,6 +118,13 @@ for (const v of ['standard', 'warning', 'danger']) CASES.push({ kind: 'v036', v,
 // v0.36.0 popup option rows (dcms2): the keyboard-active row's inline-start bar ≥ 3:1 vs the popup surface, the label ≥ 4.7
 // on the active / selected fills (composited on the surface)
 for (const v of ['active', 'selected']) CASES.push({ kind: 'v036', v, state: 'option-row' });
+// v0.36.2 pressed states (ADR 0019, plan M2): the REAL pressed rule (a control carrying data-td-pressed, the attribute
+// ensurePressStates() sets for touch / pen) — computed colours: every td-button variant + ghost label ≥ 4.7 on its
+// pressed fill (composited on the page), td-action-button icon (3 tones) ≥ 4.7 on its pressed fill, a popup option
+// row label ≥ 4.7 on the pressed fill (composited on the popup surface) — light + dark.
+for (const v of ['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'ghost']) CASES.push({ kind: 'v0362', v, state: 'btn-pressed', pageOnly: true });
+for (const v of ['standard', 'warning', 'danger']) CASES.push({ kind: 'v0362', v, state: 'action-pressed', pageOnly: true });
+CASES.push({ kind: 'v0362', v: 'option', state: 'option-pressed', pageOnly: true });
 // v0.32.0: td-media-field (content layer → page only): prompt + ratio text ≥ 4.7 on the empty frame fill, the empty-frame
 // icon + dashed border ≥ 3.2 (border vs the page and vs the frame fill), the "Video" badge text ≥ 4.7 on its fill, the
 // field error text ≥ 4.7 on the page; td-media-picker (inside the solid dialog): tile name, detail meta label and tray
@@ -752,6 +759,54 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       name: `repeater:${c.v}:${c.state}`,
       pairs,
     };
+  } else if (c.kind === 'v0362') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const over = (top, base) => {
+      const t = top.match(/[\d.]+/g).map(Number); const b = base.match(/[\d.]+/g).map(Number);
+      const a = t.length > 3 ? t[3] : 1;
+      return `rgb(${[0, 1, 2].map((i) => Math.round(t[i] * a + b[i] * (1 - a))).join(', ')})`;
+    };
+    let target; let pairs;
+    if (c.state === 'option-pressed') {
+      const menu = document.createElement('div');
+      menu.className = 'td-dropdown__menu td-glass-surface td-glass-surface--strong';
+      menu.setAttribute('data-state', 'open');
+      menu.style.setProperty('top', '96px');
+      menu.style.setProperty('left', '48px');
+      menu.style.setProperty('width', '260px');
+      target = document.createElement('div');
+      target.className = 'td-dropdown__option';
+      target.setAttribute('role', 'option');
+      target.setAttribute('data-td-pressed', '');
+      const label = document.createElement('span');
+      label.className = 'td-dropdown__option-label';
+      label.textContent = 'TP. Hồ Chí Minh';
+      target.appendChild(label);
+      menu.appendChild(target);
+      stage.appendChild(menu);
+      const surface = over(getComputedStyle(menu).backgroundColor, page);
+      const fill = over(getComputedStyle(target).backgroundColor, surface);
+      pairs = [{ what: 'option label vs pressed fill', fg: getComputedStyle(label).color, bg: fill, min: 4.7 },
+        { what: 'pressed fill differs from rest', fg: fill, bg: surface, min: 1.05 }];
+    } else {
+      target = document.createElement('button');
+      target.type = 'button';
+      target.className = c.state === 'action-pressed' ? `td-btn td-btn--action td-btn--action-${c.v}` : `td-btn td-btn--${c.v}`;
+      target.textContent = c.state === 'action-pressed' ? '' : 'Lưu';
+      target.setAttribute('data-td-pressed', '');
+      stage.appendChild(target);
+      const cs = getComputedStyle(target);
+      const fill = over(cs.backgroundColor, page);
+      pairs = [{ what: `${c.state === 'action-pressed' ? 'icon' : 'label'} vs pressed fill`, fg: cs.color, bg: fill, min: 4.7 }];
+      if (c.v !== 'ghost' && c.state === 'btn-pressed') {
+        const rest = document.createElement('button');
+        rest.className = `td-btn td-btn--${c.v}`;
+        stage.appendChild(rest);
+        pairs.push({ what: 'pressed fill differs from rest', fg: fill, bg: over(getComputedStyle(rest).backgroundColor, page), min: 1.05 });
+      }
+    }
+    const b = target.getBoundingClientRect();
+    return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `v0362:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'v036') {
     // v0.36.0 colours/action-button — computed colours only (no screenshot)
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';

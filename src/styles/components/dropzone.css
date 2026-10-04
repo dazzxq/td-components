@@ -79,6 +79,7 @@
 		opacity: 0;
 	}
 
+	/* active-exempt: drop target — dragover is its state; the browse button inside is the control */
 	.td-dropzone__zone {
 		display: flex;
 		flex-direction: column;
@@ -384,6 +385,24 @@
 		.td-dropzone[data-disabled] .td-dropzone__zone {
 			color: GrayText;
 			border-color: GrayText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-dropzone__remove {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-dropzone__remove:is(:active, [data-td-pressed]):not(:disabled) {
+		color: var(--td-color-text);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-dropzone__remove:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }

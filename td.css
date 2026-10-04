@@ -113,6 +113,8 @@
 		--td-color-border-strong: var(--td-gray-300);
 		--td-color-hover: rgb(0 0 0 / 5%);
 		--td-color-hover-strong: rgb(0 0 0 / 8%);
+		/* v0.36.2 (ADR 0019): the shared PRESSED fill (touch :active / [data-td-pressed]) — colour only, never a scale */
+		--td-color-pressed: rgb(0 0 0 / 12%);
 		/* v0.36.0 popup option rows (dropdown, multiselect, tree-select, menu — dcms2 look): full-bleed rows, a hover fill,
 		   a selected fill (single lists: semibold label + ✓ at the end), the keyboard-active row = fill + an inline-start
 		   accent bar (the focus indicator, ≥ 3:1 vs the popup surface — contrast gate) */
@@ -120,6 +122,7 @@
 		--td-option-hover-bg: var(--td-color-hover);
 		--td-option-active-bg: var(--td-color-hover-strong);
 		--td-option-selected-bg: var(--td-color-hover-strong);
+		--td-option-pressed-bg: var(--td-color-pressed); /* v0.36.2 */
 		--td-option-active-bar: var(--td-accent);
 		--td-option-active-bar-w: 3px;
 		--td-color-overlay: rgb(10 10 12 / 45%);
@@ -224,6 +227,14 @@
 		--td-btn-warning-fg: var(--td-solid-warning-fg);
 		--td-btn-warning-border: var(--td-solid-warning-border);
 		--td-btn-warning-hover: var(--td-solid-warning-hover);
+		/* v0.36.2 (ADR 0019): pressed = one step past hover (primary black: one step lighter), label still ≥ 4.7:1
+		   (contrast gate); precomputed hex, no color-mix() in tokens. A site that changes -bg should set -pressed too. */
+		--td-btn-primary-pressed: #52525b;
+		--td-btn-secondary-pressed: var(--td-gray-300);
+		--td-btn-success-pressed: #14532d;
+		--td-btn-danger-pressed: #991b1b;
+		--td-btn-warning-pressed: #cc6d05;              /* dark label keeps 4.86:1 (amber-700 would be 3.5) */
+		--td-btn-info-pressed: #1e40af;
 		/* v0.14.3: disabled reads as greyed out — pale fill, muted label (WCAG 1.4.3 exempts disabled controls; the
 		   contrast gate keeps it ≥ 2.2:1 so it stays legible). Opaque: a state colour, never element opacity. */
 		--td-btn-disabled-bg: #f4f4f5;
@@ -248,6 +259,7 @@
 		   black in dark), a soft hover fill. Both follow the theme (dark remaps --td-accent / --td-color-hover). */
 		--td-btn-ghost-fg: var(--td-accent);
 		--td-btn-ghost-hover-bg: var(--td-color-hover);
+		--td-btn-ghost-pressed: var(--td-color-pressed); /* v0.36.2 */
 		/* hover label one step darker than the accent so it keeps ≥ 4.5:1 on the hover fill (the accent alone is ~4.5
 		   there); follows a site's --td-accent. Fallback without color-mix(): the fixed step in button.css. */
 		--td-btn-ghost-hover-fg: color-mix(in srgb, var(--td-btn-ghost-fg) 82%, #000);
@@ -362,6 +374,7 @@
 		--td-color-border-strong: #45454b;
 		--td-color-hover: rgb(255 255 255 / 6%);
 		--td-color-hover-strong: rgb(255 255 255 / 10%);
+		--td-color-pressed: rgb(255 255 255 / 14%); /* v0.36.2 */
 		--td-color-overlay: rgb(0 0 0 / 60%);
 		--td-color-skeleton: #242427;
 		--td-color-success: #22c55e;
@@ -421,10 +434,12 @@
 		--td-btn-primary-bg: #f4f4f5;
 		--td-btn-primary-fg: #18181b;
 		--td-btn-primary-hover: #d4d4d8;
+		--td-btn-primary-pressed: #a1a1aa;              /* v0.36.2: one step darker (6.9:1 with the dark label) */
 		--td-btn-secondary-bg: #2c2c30;
 		--td-btn-secondary-fg: #f5f5f7;
 		--td-btn-secondary-border: rgb(255 255 255 / 12%);
 		--td-btn-secondary-hover: #3a3a3e;
+		--td-btn-secondary-pressed: #45454b;            /* v0.36.2 */
 		--td-btn-ghost-hover-fg: color-mix(in srgb, var(--td-btn-ghost-fg) 70%, #fff); /* lighter step on the dark fill */
 		--td-btn-disabled-bg: #202024;
 		--td-btn-disabled-fg: #6b6b73;                 /* greyed out, ≥ 2.2:1 (v0.14.3) */
@@ -805,6 +820,7 @@
 	}
 
 	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: text input — the focus ring is the feedback */
 		.td-field__control:hover:not(:disabled, [aria-disabled="true"], :focus) {
 			border-color: var(--td-field-border-hover);
 		}
@@ -1225,6 +1241,7 @@
 		--td-btn-fg-v: var(--td-btn-primary-fg);
 		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-primary-border));
 		--_td-btn-variant-hover: var(--td-btn-primary-hover);
+		--_td-btn-variant-pressed: var(--td-btn-primary-pressed);
 	}
 
 	.td-btn--secondary {
@@ -1239,6 +1256,7 @@
 		--td-btn-fg-v: var(--td-btn-success-fg);
 		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-success-border));
 		--_td-btn-variant-hover: var(--td-btn-success-hover);
+		--_td-btn-variant-pressed: var(--td-btn-success-pressed);
 	}
 
 	.td-btn--danger {
@@ -1247,6 +1265,7 @@
 		--td-btn-fg-v: var(--td-btn-danger-fg);
 		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-danger-border));
 		--_td-btn-variant-hover: var(--td-btn-danger-hover);
+		--_td-btn-variant-pressed: var(--td-btn-danger-pressed);
 	}
 
 	.td-btn--warning {
@@ -1255,6 +1274,7 @@
 		--td-btn-fg-v: var(--td-btn-warning-fg);
 		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-warning-border));
 		--_td-btn-variant-hover: var(--td-btn-warning-hover);
+		--_td-btn-variant-pressed: var(--td-btn-warning-pressed);
 	}
 
 	.td-btn--info {
@@ -1263,6 +1283,7 @@
 		--td-btn-fg-v: var(--td-btn-info-fg);
 		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-info-border));
 		--_td-btn-variant-hover: var(--td-btn-info-hover);
+		--_td-btn-variant-pressed: var(--td-btn-info-pressed);
 	}
 
 	/* v0.17.0 ghost: no fill, no border, no shadow — just the accent label on the page background.
@@ -1288,19 +1309,23 @@
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
 		.td-btn {
 			--td-btn-hover-v: color-mix(in srgb, var(--td-btn-bg-v) 92%, #000);
+			--td-btn-pressed-v: color-mix(in srgb, var(--td-btn-bg-v) 84%, #000); /* v0.36.2 */
 		}
 
 		.td-btn:is(.td-btn--primary, .td-btn--success, .td-btn--danger, .td-btn--warning, .td-btn--info):not(.td-btn--custom) {
 			--_td-btn-tint-hover: color-mix(in srgb, var(--_td-btn-tint) 92%, #000); /* invalid when no -tint */
+			--_td-btn-tint-pressed: color-mix(in srgb, var(--_td-btn-tint) 84%, #000);
 		}
 	}
 
 	.td-btn:is(.td-btn--primary, .td-btn--success, .td-btn--danger, .td-btn--warning, .td-btn--info):not(.td-btn--custom) {
 		--td-btn-hover-v: var(--_td-btn-tint-hover, var(--_td-btn-variant-hover));
+		--td-btn-pressed-v: var(--_td-btn-tint-pressed, var(--_td-btn-variant-pressed));
 	}
 
 	.td-btn--secondary:not(.td-btn--custom) {
 		--td-btn-hover-v: var(--td-btn-secondary-hover);
+		--td-btn-pressed-v: var(--td-btn-secondary-pressed);
 	}
 
 	@media (hover: hover) and (pointer: fine) {
@@ -1322,6 +1347,30 @@
 			.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
 				color: var(--td-btn-ghost-hover-fg);
 			}
+		}
+	}
+
+	/* v0.36.2 pressed (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — a SOLID fill one step past
+	   hover (--td-btn-{v}-pressed; -tint / custom: 16 % darker), applied at once (no transition in), colour only.
+	   Engines without color-mix(): a custom button falls back to its hover / resting fill. */
+	.td-btn {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-btn:is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"], .td-btn--ghost) {
+		background-color: var(--td-btn-pressed-v, var(--td-btn-hover-v, var(--td-btn-bg-v)));
+		transition-duration: 0s;
+	}
+
+	.td-btn--ghost:not(.td-btn--custom):is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+		background-color: var(--td-btn-ghost-pressed);
+		color: #1d4ed8;
+		transition-duration: 0s;
+	}
+
+	@supports (color: color-mix(in srgb, red 50%, transparent)) {
+		.td-btn--ghost:not(.td-btn--custom):is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+			color: var(--td-btn-ghost-hover-fg);
 		}
 	}
 
@@ -1400,6 +1449,7 @@
 
 	@media (forced-colors: active) {
 		.td-btn { border-color: ButtonText; }
+		.td-btn:is(:active, [data-td-pressed]) { outline: 2px solid Highlight; }
 	}
 }
 
@@ -1427,6 +1477,12 @@
 		--td-action-btn-warning-hover-bg: #fffbeb;
 		--td-action-btn-danger-fg: #b91c1c;
 		--td-action-btn-danger-hover-bg: var(--td-pastel-danger-bg);
+		/* v0.36.2 (ADR 0019) pressed fills (icon ≥ 4.7:1 — contrast gate). Warning: no amber fill keeps #b45309 at 4.7
+		   (#fef3c7 is 4.5), so the pressed icon steps to amber-800 on the amber-100 fill. */
+		--td-action-btn-standard-pressed-bg: var(--td-color-pressed);
+		--td-action-btn-warning-pressed-bg: #fef3c7;
+		--td-action-btn-warning-pressed-fg: #92400e;
+		--td-action-btn-danger-pressed-bg: #fdd5d5;
 	}
 
 	/* dark (opt-in): light inks on the dark page, translucent tone fills */
@@ -1436,6 +1492,9 @@
 		--td-action-btn-warning-hover-bg: rgb(245 158 11 / 14%);
 		--td-action-btn-danger-fg: #fca5a5;
 		--td-action-btn-danger-hover-bg: rgb(220 38 38 / 18%);
+		--td-action-btn-warning-pressed-bg: rgb(245 158 11 / 26%);
+		--td-action-btn-warning-pressed-fg: var(--td-action-btn-warning-fg);
+		--td-action-btn-danger-pressed-bg: rgb(220 38 38 / 30%);
 	}
 }
 
@@ -1466,6 +1525,7 @@
 		--td-btn-border-v: transparent;
 		--td-btn-fg-v: var(--td-action-btn-standard-fg);
 		--td-btn-hover-v: var(--td-action-btn-standard-hover-bg);
+		--td-btn-pressed-v: var(--td-action-btn-standard-pressed-bg);
 		--_td-btn-lift: none;
 		--_td-action-size: var(--td-action-btn-size-md);
 		--_td-action-icon: 1.125rem;
@@ -1485,11 +1545,17 @@
 	.td-btn--action.td-btn--action-warning {
 		--td-btn-fg-v: var(--td-action-btn-warning-fg);
 		--td-btn-hover-v: var(--td-action-btn-warning-hover-bg);
+		--td-btn-pressed-v: var(--td-action-btn-warning-pressed-bg);
+	}
+
+	.td-btn--action.td-btn--action-warning:is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+		color: var(--td-action-btn-warning-pressed-fg);
 	}
 
 	.td-btn--action.td-btn--action-danger {
 		--td-btn-fg-v: var(--td-action-btn-danger-fg);
 		--td-btn-hover-v: var(--td-action-btn-danger-hover-bg);
+		--td-btn-pressed-v: var(--td-action-btn-danger-pressed-bg);
 	}
 
 	.td-btn--action .td-btn__icon .td-icon {
@@ -1761,6 +1827,23 @@
 			min-height: var(--td-touch-min);
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-checkbox {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-checkbox:is(:active, [data-td-pressed]) .td-checkbox__input:not(:disabled) ~ .td-checkbox__mark {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-checkbox:is(:active, [data-td-pressed]) .td-checkbox__mark {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/switch.css ---- */
@@ -1973,6 +2056,23 @@
 			border-color: Highlight;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-switch {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-switch:is(:active, [data-td-pressed]) .td-switch__input:not(:disabled) + .td-switch__track {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-switch:is(:active, [data-td-pressed]) .td-switch__track {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/loading.css ---- */
@@ -2142,6 +2242,7 @@
 	}
 
 	/* Native range: invisible, covers the whole control, thumb width = --td-slider-thumb (pointer ↔ value). */
+	/* active-exempt: native range input — the thumb follows the finger */
 	.td-slider__input {
 		position: absolute;
 		inset: 0;
@@ -2621,6 +2722,26 @@
 		}
 		.td-pagination__nav[aria-disabled="true"] { color: GrayText; border-color: GrayText; opacity: 1; }
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-pagination__page,
+	.td-pagination__nav {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-pagination__page:is(:active, [data-td-pressed]):not([aria-current="page"]),
+	.td-pagination__nav:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-pagination__page:is(:active, [data-td-pressed]),
+		.td-pagination__nav:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/tabs.css ---- */
@@ -2862,6 +2983,24 @@
 			border-color: Highlight;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-tabs__tab {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-tabs__tab:is(:active, [data-td-pressed]):not(:disabled, [aria-disabled="true"]) {
+		color: var(--td-tabs-fg-hover);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-tabs__tab:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/empty-state.css ---- */
@@ -3023,6 +3162,8 @@
 		--td-lb-disc: 48px;
 		--td-lb-disc-bg: var(--td-glass-clear-bg); /* dark 88 % */
 		--td-lb-disc-bg-hover: rgb(44 44 48 / 92%);
+		--td-lb-disc-bg-pressed: rgb(64 64 70 / 94%); /* v0.36.2 */
+		--td-lb-btn-pressed: rgb(255 255 255 / 24%); /* v0.36.2: bar buttons (hover 14 %) */
 		--td-lb-disc-border: rgb(255 255 255 / 40%); /* ≥ 3:1 on a black photo (contrast gate) */
 		/* v0.24.0 filmstrip */
 		--td-lb-thumb-size: 56px;
@@ -3748,6 +3889,7 @@
 			translate: 0 0;
 		}
 
+		/* active-exempt: sheet grab handle — the sheet follows the finger */
 		.td-lightbox__grab {
 			all: unset;
 			position: sticky;
@@ -4068,6 +4210,54 @@
 			translate: 0 0;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-lightbox__btn,
+	.td-lightbox__error-btn,
+	.td-lightbox__thumb {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-lightbox__btn:is(:active, [data-td-pressed]):not(:disabled) {
+		background-color: var(--td-lb-btn-pressed);
+		opacity: 1;
+		transition-duration: 0s;
+	}
+
+	.td-lightbox__nav > .td-lightbox__btn:is(:active, [data-td-pressed]) {
+		background: transparent;
+		transition-duration: 0s;
+	}
+
+	.td-lightbox__nav > .td-lightbox__btn:is(:active, [data-td-pressed])::before {
+		background: var(--td-lb-disc-bg-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-lightbox__back:is(:active, [data-td-pressed]) {
+		background-color: var(--td-glass-clear-solid);
+		background-image: linear-gradient(var(--td-lb-btn-pressed), var(--td-lb-btn-pressed));
+		transition-duration: 0s;
+	}
+
+	.td-lightbox__error-btn:is(:active, [data-td-pressed]) {
+		background: #34343a;
+		transition-duration: 0s;
+	}
+
+	.td-lightbox__thumb:is(:active, [data-td-pressed]) {
+		opacity: 0.7;
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-lightbox__btn:is(:active, [data-td-pressed]),
+		.td-lightbox__error-btn:is(:active, [data-td-pressed]),
+		.td-lightbox__thumb:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/toast.css ---- */
@@ -4180,6 +4370,7 @@
 		transform: translateX(var(--td-toast-shift));
 	}
 
+	/* active-exempt: tap-to-dismiss surface — the close button carries the pressed state */
 	.td-toast {
 		/* per-type colours (info = default, also for unknown types) */
 		--_td-toast-bg: var(--td-toast-info-bg);
@@ -4493,6 +4684,24 @@
 		}
 
 		.td-toast__close:focus-visible {
+			outline: 2px solid Highlight;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-toast__close {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-toast__close:is(:active, [data-td-pressed]) {
+		background-color: var(--_td-toast-close-hover);
+		background-image: linear-gradient(var(--_td-toast-close-hover), var(--_td-toast-close-hover)); /* the hover wash, twice */
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-toast__close:is(:active, [data-td-pressed]) {
 			outline: 2px solid Highlight;
 		}
 	}
@@ -5073,6 +5282,24 @@
 			color: CanvasText;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-modal__close {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-modal__close:is(:active, [data-td-pressed]):not(:disabled) {
+		color: var(--td-color-text);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-modal__close:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/dropdown.css ---- */
@@ -5149,6 +5376,7 @@
 		color: var(--td-field-fg);
 	}
 
+	/* active-exempt: native select — the UA draws it */
 	td-dropdown > .td-dropdown__native {
 		box-sizing: border-box;
 		display: block;
@@ -5546,6 +5774,30 @@
 			border-top-color: CanvasText;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-dropdown__trigger,
+	.td-dropdown__option {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-dropdown__trigger:is(:active, [data-td-pressed]):not(:disabled) {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	.td-dropdown__option:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		background: var(--td-option-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-dropdown__trigger:is(:active, [data-td-pressed]),
+		.td-dropdown__option:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/table.css ---- */
@@ -5836,6 +6088,7 @@
 	}
 
 	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: table rows are not activatable (cells / buttons inside are) */
 		.td-table .td-table__row:not(.td-table__row--skeleton):hover {
 			background: var(--td-table-row-hover);
 		}
@@ -6252,6 +6505,24 @@
 
 		.td-table__skeleton::after {
 			display: none;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-table__sort {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-table__sort:is(:active, [data-td-pressed]) {
+		color: var(--td-table-fg);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-table__sort:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -6687,6 +6958,31 @@
 			forced-color-adjust: none;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-dtp__trigger,
+	.td-dtp-wheel__option {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-dtp__trigger:is(:active, [data-td-pressed]):not(:disabled) {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	.td-dtp-wheel__option:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		color: var(--td-dtp-option-selected-fg);
+		background: var(--td-option-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-dtp__trigger:is(:active, [data-td-pressed]),
+		.td-dtp-wheel__option:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/sample.css ---- */
@@ -6839,6 +7135,24 @@
 
 		.td-form-summary__link:focus-visible {
 			outline-color: Highlight;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-form-summary__link {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-form-summary__link:is(:active, [data-td-pressed]) {
+		text-decoration-thickness: 2px;
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-form-summary__link:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -7175,6 +7489,31 @@
 			outline: 1px solid CanvasText;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-menu__item,
+	.td-menu-btn {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-menu__item:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		background: var(--td-option-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	.td-menu-btn:is(:active, [data-td-pressed]) {
+		color: var(--td-menu-btn-fg-hover);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-menu__item:is(:active, [data-td-pressed]),
+		.td-menu-btn:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/chip-input.css ---- */
@@ -7253,6 +7592,7 @@
 	}
 
 	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: text input box — the focus ring is the feedback */
 		.td-chip-input__box:hover:not(:has(.td-chip-input__input:disabled, .td-chip-input__input:focus)) {
 			border-color: var(--td-field-border-hover);
 		}
@@ -7554,8 +7894,8 @@
 	}
 
 	@media (hover: hover) and (pointer: fine) {
-		.td-multiselect__native:hover:not(:disabled, :focus-visible),
-		td-chip-input > .td-chip-input__native:hover:not(:disabled, :focus-visible) {
+		.td-multiselect__native:hover:not(:disabled, :focus-visible), /* active-exempt: native select — the UA draws it */
+		td-chip-input > .td-chip-input__native:hover:not(:disabled, :focus-visible) { /* active-exempt: native select — the UA draws it */
 			border-color: var(--td-field-border-hover);
 		}
 	}
@@ -7695,6 +8035,31 @@
 		.td-multiselect__native,
 		td-chip-input > .td-chip-input__native {
 			border-color: CanvasText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-chip-input__remove,
+	.td-chip-input__option {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-chip-input__remove:is(:active, [data-td-pressed]):not(:disabled) {
+		background-color: var(--td-chip-remove-hover);
+		background-image: linear-gradient(var(--td-chip-remove-hover), var(--td-chip-remove-hover)); /* the hover wash, twice */
+		transition-duration: 0s;
+	}
+
+	.td-chip-input__option:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		background: var(--td-option-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-chip-input__remove:is(:active, [data-td-pressed]),
+		.td-chip-input__option:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -8074,6 +8439,23 @@
 			transition: none;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-scroll-top {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-scroll-top:is(:active, [data-td-pressed]) {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-scroll-top:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/progress.css ---- */
@@ -8259,6 +8641,7 @@
 		opacity: 0;
 	}
 
+	/* active-exempt: drop target — dragover is its state; the browse button inside is the control */
 	.td-dropzone__zone {
 		display: flex;
 		flex-direction: column;
@@ -8569,6 +8952,24 @@
 		.td-dropzone[data-disabled] .td-dropzone__zone {
 			color: GrayText;
 			border-color: GrayText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-dropzone__remove {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-dropzone__remove:is(:active, [data-td-pressed]):not(:disabled) {
+		color: var(--td-color-text);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-dropzone__remove:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -8967,6 +9368,23 @@
 			outline: 2px solid Highlight;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-alert__close {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-alert__close:is(:active, [data-td-pressed]) {
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-alert__close:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/media-grid.css ---- */
@@ -9175,6 +9593,7 @@
 	}
 
 	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: not a control — its opener and tick carry the pressed state */
 		.td-media-grid__item:hover .td-media-grid__tick {
 			opacity: 1;
 		}
@@ -9250,6 +9669,7 @@
 			border-color: var(--td-control-border-hover);
 		}
 
+		/* active-exempt: selected-state restore of the hover rule — .td-media-grid__tick--mark carries the pressed state */
 		.td-media-grid__item[data-selected] .td-media-grid__tick--mark:hover > .td-check {
 			border-color: var(--td-checkbox-color);
 		}
@@ -9329,6 +9749,36 @@
 			border-color: Highlight;
 			background: Highlight;
 			color: HighlightText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-media-grid__open,
+	.td-media-grid__tick {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-media-grid__open:is(:active, [data-td-pressed])::after {
+		background: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-media-grid__tick:is(:active, [data-td-pressed]):not(:disabled) {
+		opacity: 1;
+		color: var(--td-media-grid-tick-border);
+		transition-duration: 0s;
+	}
+
+	.td-media-grid__tick--mark:is(:active, [data-td-pressed]):not(:disabled) > .td-check {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-media-grid__open:is(:active, [data-td-pressed]),
+		.td-media-grid__tick:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -9845,6 +10295,24 @@
 			border-color: ButtonText;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-drawer__close {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-drawer__close:is(:active, [data-td-pressed]) {
+		color: var(--td-color-text);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-drawer__close:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/copy.css ---- */
@@ -10027,6 +10495,23 @@
 
 		.td-copy[data-state] {
 			border-color: Highlight;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-copy {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-copy:is(:active, [data-td-pressed]) {
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-copy:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -10229,6 +10714,7 @@
 		opacity: 0.55;
 	}
 
+	/* active-exempt: part of the row — .td-tree__row carries the pressed state */
 	.td-tree__item[aria-disabled="true"] > .td-tree__row > .td-tree__toggle {
 		cursor: pointer;
 	}
@@ -10293,6 +10779,23 @@
 			outline: 1px solid CanvasText;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-tree__row {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-tree__row:is(:active, [data-td-pressed]) {
+		background: var(--td-option-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-tree__row:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/tree-select.css ---- */
@@ -10329,6 +10832,7 @@
 	}
 
 	/* the native select (PHP td_tree_select): a field in native mode … */
+	/* active-exempt: native select — the UA draws it */
 	.td-tree-select__native {
 		box-sizing: border-box;
 		display: block;
@@ -10398,6 +10902,7 @@
 		box-sizing: border-box;
 	}
 
+	/* active-exempt: text input box — the focus ring is the feedback */
 	.td-tree-select__control {
 		position: relative;
 		display: flex;
@@ -10731,6 +11236,34 @@
 			outline: 2px solid Highlight;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-tree-select__clear {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-tree-select__clear:is(:active, [data-td-pressed]) {
+		color: var(--td-field-fg);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-tree-select__menu .td-tree__row:is(:active, [data-td-pressed]) {
+		background: none; /* the inset ::before is the row fill here */
+		transition-duration: 0s;
+	}
+
+	.td-tree-select__menu .td-tree__row:is(:active, [data-td-pressed])::before {
+		background: var(--td-option-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-tree-select__clear:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/number-input.css ---- */
@@ -10786,6 +11319,7 @@
 	}
 
 	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: text input box — the focus ring is the feedback */
 		.td-number__box:hover:not(:focus-within, :has(> .td-number__control:disabled)) {
 			border-color: var(--td-field-border-hover);
 		}
@@ -11077,6 +11611,24 @@
 			color: GrayText;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-repeater__btn {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-repeater__btn:is(:active, [data-td-pressed]):not(:disabled, [aria-disabled="true"]) {
+		color: var(--td-repeater-btn-fg-hover);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-repeater__btn:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/sortable.css ---- */
@@ -11292,6 +11844,30 @@
 			border-color: CanvasText;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-sortable__handle {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-sortable__handle:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		color: var(--td-color-text);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	td-media-grid > td-sortable > [data-td-sort-item] > .td-sortable__handle:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		background-color: var(--td-color-surface);
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-sortable__handle:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/masked-value.css ---- */
@@ -11435,6 +12011,24 @@
 
 		.td-masked__toggle[aria-disabled="true"] {
 			color: GrayText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-masked__toggle {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-masked__toggle:is(:active, [data-td-pressed]):not([aria-disabled="true"], [data-state="loading"]) {
+		color: var(--td-color-text);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-masked__toggle:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -12383,6 +12977,36 @@
 			border-color: CanvasText;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-media-picker__card,
+	.td-media-picker__back {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-media-picker__card:is(:active, [data-td-pressed]) {
+		border-color: var(--td-media-picker-card-hover);
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	.td-media-picker__card[data-selected]:is(:active, [data-td-pressed]) {
+		border-color: var(--td-media-picker-card-checked);
+		transition-duration: 0s;
+	}
+
+	.td-media-picker__back:is(:active, [data-td-pressed]) {
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-media-picker__card:is(:active, [data-td-pressed]),
+		.td-media-picker__back:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/media-picker-upload.css ---- */
@@ -12797,6 +13421,29 @@
 
 		.td-media-field__open:focus-visible {
 			outline-color: Highlight;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-media-field__open {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-media-field__open:is(:active, [data-td-pressed]):not(:disabled) {
+		filter: brightness(0.88); /* the opener is the media box: a pressed tint over the image */
+		transition-duration: 0s;
+	}
+
+	.td-media-field__frame[data-state="empty"] > .td-media-field__open:is(:active, [data-td-pressed]):not(:disabled) {
+		filter: none;
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-media-field__open:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -13333,6 +13980,23 @@
 
 		.td-crop-dialog__cropper .td-cropper__toolbar {
 			margin-block-end: var(--td-space-2xs);
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-cropper__ratio {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-cropper__ratio:is(:active, [data-td-pressed]):not(:disabled, [aria-checked="true"]) {
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-cropper__ratio:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }

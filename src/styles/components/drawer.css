@@ -278,4 +278,22 @@
 			border-color: ButtonText;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-drawer__close {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-drawer__close:is(:active, [data-td-pressed]) {
+		color: var(--td-color-text);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-drawer__close:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }

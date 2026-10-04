@@ -107,6 +107,7 @@
 		transform: translateX(var(--td-toast-shift));
 	}
 
+	/* active-exempt: tap-to-dismiss surface — the close button carries the pressed state */
 	.td-toast {
 		/* per-type colours (info = default, also for unknown types) */
 		--_td-toast-bg: var(--td-toast-info-bg);
@@ -420,6 +421,24 @@
 		}
 
 		.td-toast__close:focus-visible {
+			outline: 2px solid Highlight;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-toast__close {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-toast__close:is(:active, [data-td-pressed]) {
+		background-color: var(--_td-toast-close-hover);
+		background-image: linear-gradient(var(--_td-toast-close-hover), var(--_td-toast-close-hover)); /* the hover wash, twice */
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-toast__close:is(:active, [data-td-pressed]) {
 			outline: 2px solid Highlight;
 		}
 	}

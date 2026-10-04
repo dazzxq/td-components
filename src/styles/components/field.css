@@ -182,6 +182,7 @@
 	}
 
 	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: text input — the focus ring is the feedback */
 		.td-field__control:hover:not(:disabled, [aria-disabled="true"], :focus) {
 			border-color: var(--td-field-border-hover);
 		}

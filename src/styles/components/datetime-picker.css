@@ -428,4 +428,29 @@
 			forced-color-adjust: none;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-dtp__trigger,
+	.td-dtp-wheel__option {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-dtp__trigger:is(:active, [data-td-pressed]):not(:disabled) {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	.td-dtp-wheel__option:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		color: var(--td-dtp-option-selected-fg);
+		background: var(--td-option-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-dtp__trigger:is(:active, [data-td-pressed]),
+		.td-dtp-wheel__option:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }

@@ -207,4 +207,21 @@
 			border-color: Highlight;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-switch {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-switch:is(:active, [data-td-pressed]) .td-switch__input:not(:disabled) + .td-switch__track {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-switch:is(:active, [data-td-pressed]) .td-switch__track {
+			outline: 2px solid Highlight;
+		}
+	}
 }

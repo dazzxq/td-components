@@ -1,5 +1,6 @@
 import { escapeHtml } from '../utils/escape.js';
 import { safeColor } from '../utils/css-safe.js';
+import { ensurePressStates } from '../utils/press.js';
 
 /**
  * v0.25.0 (ADR 0012): parse the SSR marker `data-td-ssr="<name>@<schema>"` (name: lower-case kebab token; schema: a
@@ -56,6 +57,7 @@ export class TdBaseElement extends HTMLElement {
   }
 
   connectedCallback() {
+    ensurePressStates(this.ownerDocument); // v0.36.2 (ADR 0019): touch pressed states, one listener set per document
     if (!this._initialized) {
       // Accessors + replay of properties assigned before connect/define happen BEFORE `_initialized`, with renders
       // suppressed, so the element renders exactly once below with its final state.

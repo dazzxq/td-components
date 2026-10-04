@@ -140,4 +140,22 @@
 			color: GrayText;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-masked__toggle {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-masked__toggle:is(:active, [data-td-pressed]):not([aria-disabled="true"], [data-state="loading"]) {
+		color: var(--td-color-text);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-masked__toggle:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }

@@ -21,6 +21,12 @@
 		--td-action-btn-warning-hover-bg: #fffbeb;
 		--td-action-btn-danger-fg: #b91c1c;
 		--td-action-btn-danger-hover-bg: var(--td-pastel-danger-bg);
+		/* v0.36.2 (ADR 0019) pressed fills (icon ≥ 4.7:1 — contrast gate). Warning: no amber fill keeps #b45309 at 4.7
+		   (#fef3c7 is 4.5), so the pressed icon steps to amber-800 on the amber-100 fill. */
+		--td-action-btn-standard-pressed-bg: var(--td-color-pressed);
+		--td-action-btn-warning-pressed-bg: #fef3c7;
+		--td-action-btn-warning-pressed-fg: #92400e;
+		--td-action-btn-danger-pressed-bg: #fdd5d5;
 	}
 
 	/* dark (opt-in): light inks on the dark page, translucent tone fills */
@@ -30,6 +36,9 @@
 		--td-action-btn-warning-hover-bg: rgb(245 158 11 / 14%);
 		--td-action-btn-danger-fg: #fca5a5;
 		--td-action-btn-danger-hover-bg: rgb(220 38 38 / 18%);
+		--td-action-btn-warning-pressed-bg: rgb(245 158 11 / 26%);
+		--td-action-btn-warning-pressed-fg: var(--td-action-btn-warning-fg);
+		--td-action-btn-danger-pressed-bg: rgb(220 38 38 / 30%);
 	}
 }
 
@@ -60,6 +69,7 @@
 		--td-btn-border-v: transparent;
 		--td-btn-fg-v: var(--td-action-btn-standard-fg);
 		--td-btn-hover-v: var(--td-action-btn-standard-hover-bg);
+		--td-btn-pressed-v: var(--td-action-btn-standard-pressed-bg);
 		--_td-btn-lift: none;
 		--_td-action-size: var(--td-action-btn-size-md);
 		--_td-action-icon: 1.125rem;
@@ -79,11 +89,17 @@
 	.td-btn--action.td-btn--action-warning {
 		--td-btn-fg-v: var(--td-action-btn-warning-fg);
 		--td-btn-hover-v: var(--td-action-btn-warning-hover-bg);
+		--td-btn-pressed-v: var(--td-action-btn-warning-pressed-bg);
+	}
+
+	.td-btn--action.td-btn--action-warning:is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+		color: var(--td-action-btn-warning-pressed-fg);
 	}
 
 	.td-btn--action.td-btn--action-danger {
 		--td-btn-fg-v: var(--td-action-btn-danger-fg);
 		--td-btn-hover-v: var(--td-action-btn-danger-hover-bg);
+		--td-btn-pressed-v: var(--td-action-btn-danger-pressed-bg);
 	}
 
 	.td-btn--action .td-btn__icon .td-icon {

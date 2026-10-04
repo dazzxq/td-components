@@ -13,7 +13,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { checkBreakpoints, addContainerFallbacks, expandVariants } from './css-responsive.mjs';
-import { checkHoverGate } from './css-touch.mjs';
+import { checkHoverGate, checkPressed } from './css-touch.mjs';
 
 
 
@@ -44,6 +44,7 @@ if (bpErrors.length) {
   console.error(`Breakpoints (ADR 0014):\n  ${bpErrors.join('\n  ')}`);
   process.exit(1);
 }
+touchErrors.push(...checkPressed(touchEntries));
 if (touchErrors.length) {
   console.error(`Touch (ADR 0019):\n  ${touchErrors.join('\n  ')}\n  (${touchErrors.length} errors)`);
   process.exit(1);

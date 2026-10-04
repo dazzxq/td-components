@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { checkHoverGate, checkPressed, pressedBases, baseOf, stripState, splitList } from '../../scripts/css-touch.mjs';
+import { PRESS_TARGETS } from '../utils/press.js';
 
 const GATE = '@media (hover: hover) and (pointer: fine)';
 
@@ -91,4 +92,13 @@ test('the kit CSS: 0 hover-gate errors, 0 hover-exempt (A1)', async () => {
   assert.deepEqual(entries.flatMap((x) => checkHoverGate(x.css, x.file)), []);
   const hoverExempt = entries.reduce((n, x) => n + (x.css.match(/hover-exempt:/g) || []).length, 0);
   assert.equal(hoverExempt, 0);
+});
+
+test('the kit CSS: 0 pressed-state errors; press.js PRESS_TARGETS = the pressed bases (A2)', async () => {
+  const entries = await kitEntries();
+  assert.deepEqual(checkPressed(entries), []);
+  assert.deepEqual([...PRESS_TARGETS].sort(), pressedBases(entries));
+  // every active-exempt carries a reason (checkPressed enforces it) — the list is reviewed in docs/internal/design/touch.md
+  const exempt = entries.flatMap((x) => [...x.css.matchAll(/active-exempt:([^*]*)\*\//g)].map((m) => m[1].trim()));
+  assert.ok(exempt.every(Boolean));
 });

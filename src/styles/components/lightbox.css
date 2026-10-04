@@ -34,6 +34,8 @@
 		--td-lb-disc: 48px;
 		--td-lb-disc-bg: var(--td-glass-clear-bg); /* dark 88 % */
 		--td-lb-disc-bg-hover: rgb(44 44 48 / 92%);
+		--td-lb-disc-bg-pressed: rgb(64 64 70 / 94%); /* v0.36.2 */
+		--td-lb-btn-pressed: rgb(255 255 255 / 24%); /* v0.36.2: bar buttons (hover 14 %) */
 		--td-lb-disc-border: rgb(255 255 255 / 40%); /* ≥ 3:1 on a black photo (contrast gate) */
 		/* v0.24.0 filmstrip */
 		--td-lb-thumb-size: 56px;
@@ -759,6 +761,7 @@
 			translate: 0 0;
 		}
 
+		/* active-exempt: sheet grab handle — the sheet follows the finger */
 		.td-lightbox__grab {
 			all: unset;
 			position: sticky;
@@ -1077,6 +1080,54 @@
 		.td-lightbox[data-closing-down] .td-lightbox__stage {
 			scale: 1;
 			translate: 0 0;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-lightbox__btn,
+	.td-lightbox__error-btn,
+	.td-lightbox__thumb {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-lightbox__btn:is(:active, [data-td-pressed]):not(:disabled) {
+		background-color: var(--td-lb-btn-pressed);
+		opacity: 1;
+		transition-duration: 0s;
+	}
+
+	.td-lightbox__nav > .td-lightbox__btn:is(:active, [data-td-pressed]) {
+		background: transparent;
+		transition-duration: 0s;
+	}
+
+	.td-lightbox__nav > .td-lightbox__btn:is(:active, [data-td-pressed])::before {
+		background: var(--td-lb-disc-bg-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-lightbox__back:is(:active, [data-td-pressed]) {
+		background-color: var(--td-glass-clear-solid);
+		background-image: linear-gradient(var(--td-lb-btn-pressed), var(--td-lb-btn-pressed));
+		transition-duration: 0s;
+	}
+
+	.td-lightbox__error-btn:is(:active, [data-td-pressed]) {
+		background: #34343a;
+		transition-duration: 0s;
+	}
+
+	.td-lightbox__thumb:is(:active, [data-td-pressed]) {
+		opacity: 0.7;
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-lightbox__btn:is(:active, [data-td-pressed]),
+		.td-lightbox__error-btn:is(:active, [data-td-pressed]),
+		.td-lightbox__thumb:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }

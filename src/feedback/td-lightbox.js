@@ -27,6 +27,7 @@ import { TdMenu, sanitizeDownloadName } from './td-menu.js';
 const LIGHTBOX_LAYER = LAYERS.lightbox; // --td-z-lightbox
 import { tdIcon } from '../icons/td-icon.js';
 import { matchesBelow, isCoarsePointer, isShort } from '../utils/breakpoints.js';
+import { ensurePressStates } from '../utils/press.js';
 
 const DEFAULT_LABELS = {
   dialog: 'Trình xem ảnh',
@@ -1517,6 +1518,7 @@ function openViewer(items, options = {}) {
     .map((raw) => normalizeItem(raw, isAllowedUrl))
     .filter(Boolean);
   if (!list.length) return null;
+  ensurePressStates(document); // v0.36.2 (ADR 0019)
 
   build();
   if (session) { destroyPlayer(); cancelPreloads(); }

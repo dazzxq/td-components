@@ -103,6 +103,8 @@
 		--td-color-border-strong: var(--td-gray-300);
 		--td-color-hover: rgb(0 0 0 / 5%);
 		--td-color-hover-strong: rgb(0 0 0 / 8%);
+		/* v0.36.2 (ADR 0019): the shared PRESSED fill (touch :active / [data-td-pressed]) — colour only, never a scale */
+		--td-color-pressed: rgb(0 0 0 / 12%);
 		/* v0.36.0 popup option rows (dropdown, multiselect, tree-select, menu — dcms2 look): full-bleed rows, a hover fill,
 		   a selected fill (single lists: semibold label + ✓ at the end), the keyboard-active row = fill + an inline-start
 		   accent bar (the focus indicator, ≥ 3:1 vs the popup surface — contrast gate) */
@@ -110,6 +112,7 @@
 		--td-option-hover-bg: var(--td-color-hover);
 		--td-option-active-bg: var(--td-color-hover-strong);
 		--td-option-selected-bg: var(--td-color-hover-strong);
+		--td-option-pressed-bg: var(--td-color-pressed); /* v0.36.2 */
 		--td-option-active-bar: var(--td-accent);
 		--td-option-active-bar-w: 3px;
 		--td-color-overlay: rgb(10 10 12 / 45%);
@@ -214,6 +217,14 @@
 		--td-btn-warning-fg: var(--td-solid-warning-fg);
 		--td-btn-warning-border: var(--td-solid-warning-border);
 		--td-btn-warning-hover: var(--td-solid-warning-hover);
+		/* v0.36.2 (ADR 0019): pressed = one step past hover (primary black: one step lighter), label still ≥ 4.7:1
+		   (contrast gate); precomputed hex, no color-mix() in tokens. A site that changes -bg should set -pressed too. */
+		--td-btn-primary-pressed: #52525b;
+		--td-btn-secondary-pressed: var(--td-gray-300);
+		--td-btn-success-pressed: #14532d;
+		--td-btn-danger-pressed: #991b1b;
+		--td-btn-warning-pressed: #cc6d05;              /* dark label keeps 4.86:1 (amber-700 would be 3.5) */
+		--td-btn-info-pressed: #1e40af;
 		/* v0.14.3: disabled reads as greyed out — pale fill, muted label (WCAG 1.4.3 exempts disabled controls; the
 		   contrast gate keeps it ≥ 2.2:1 so it stays legible). Opaque: a state colour, never element opacity. */
 		--td-btn-disabled-bg: #f4f4f5;
@@ -238,6 +249,7 @@
 		   black in dark), a soft hover fill. Both follow the theme (dark remaps --td-accent / --td-color-hover). */
 		--td-btn-ghost-fg: var(--td-accent);
 		--td-btn-ghost-hover-bg: var(--td-color-hover);
+		--td-btn-ghost-pressed: var(--td-color-pressed); /* v0.36.2 */
 		/* hover label one step darker than the accent so it keeps ≥ 4.5:1 on the hover fill (the accent alone is ~4.5
 		   there); follows a site's --td-accent. Fallback without color-mix(): the fixed step in button.css. */
 		--td-btn-ghost-hover-fg: color-mix(in srgb, var(--td-btn-ghost-fg) 82%, #000);

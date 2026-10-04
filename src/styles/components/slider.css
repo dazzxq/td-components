@@ -103,6 +103,7 @@
 	}
 
 	/* Native range: invisible, covers the whole control, thumb width = --td-slider-thumb (pointer ↔ value). */
+	/* active-exempt: native range input — the thumb follows the finger */
 	.td-slider__input {
 		position: absolute;
 		inset: 0;

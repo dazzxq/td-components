@@ -115,4 +115,22 @@
 			outline-color: Highlight;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-form-summary__link {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-form-summary__link:is(:active, [data-td-pressed]) {
+		text-decoration-thickness: 2px;
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-form-summary__link:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }

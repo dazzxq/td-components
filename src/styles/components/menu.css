@@ -329,4 +329,29 @@
 			outline: 1px solid CanvasText;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-menu__item,
+	.td-menu-btn {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-menu__item:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		background: var(--td-option-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	.td-menu-btn:is(:active, [data-td-pressed]) {
+		color: var(--td-menu-btn-fg-hover);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-menu__item:is(:active, [data-td-pressed]),
+		.td-menu-btn:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }

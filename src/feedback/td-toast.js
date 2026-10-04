@@ -55,6 +55,7 @@
 import { tdIcon } from '../icons/td-icon.js';
 import { LAYERS, register as registerLayer } from '../utils/layers.js';
 import { transitionEndMs } from '../utils/transition.js';
+import { ensurePressStates } from '../utils/press.js';
 import {
   PLACEMENTS, LEGACY, LEGACY_TOKEN_DEFAULTS, isPlacement, resolvePlacement, olderSet, toastOptions, edgeOf,
 } from './toast-placement.js';
@@ -161,6 +162,7 @@ export class TdToast {
     if (existing && existing.isConnected) return;
     if (existing) TdToast._releaseLayer();
 
+    ensurePressStates(document); // v0.36.2 (ADR 0019)
     const container = document.createElement('div');
     container.id = 'td-toast-container';
     container.className = 'td-toast-root';

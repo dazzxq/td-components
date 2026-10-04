@@ -261,4 +261,24 @@
 		}
 		.td-pagination__nav[aria-disabled="true"] { color: GrayText; border-color: GrayText; opacity: 1; }
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-pagination__page,
+	.td-pagination__nav {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-pagination__page:is(:active, [data-td-pressed]):not([aria-current="page"]),
+	.td-pagination__nav:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-pagination__page:is(:active, [data-td-pressed]),
+		.td-pagination__nav:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }

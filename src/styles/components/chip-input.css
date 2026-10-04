@@ -73,6 +73,7 @@
 	}
 
 	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: text input box — the focus ring is the feedback */
 		.td-chip-input__box:hover:not(:has(.td-chip-input__input:disabled, .td-chip-input__input:focus)) {
 			border-color: var(--td-field-border-hover);
 		}
@@ -374,8 +375,8 @@
 	}
 
 	@media (hover: hover) and (pointer: fine) {
-		.td-multiselect__native:hover:not(:disabled, :focus-visible),
-		td-chip-input > .td-chip-input__native:hover:not(:disabled, :focus-visible) {
+		.td-multiselect__native:hover:not(:disabled, :focus-visible), /* active-exempt: native select — the UA draws it */
+		td-chip-input > .td-chip-input__native:hover:not(:disabled, :focus-visible) { /* active-exempt: native select — the UA draws it */
 			border-color: var(--td-field-border-hover);
 		}
 	}
@@ -515,6 +516,31 @@
 		.td-multiselect__native,
 		td-chip-input > .td-chip-input__native {
 			border-color: CanvasText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-chip-input__remove,
+	.td-chip-input__option {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-chip-input__remove:is(:active, [data-td-pressed]):not(:disabled) {
+		background-color: var(--td-chip-remove-hover);
+		background-image: linear-gradient(var(--td-chip-remove-hover), var(--td-chip-remove-hover)); /* the hover wash, twice */
+		transition-duration: 0s;
+	}
+
+	.td-chip-input__option:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		background: var(--td-option-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-chip-input__remove:is(:active, [data-td-pressed]),
+		.td-chip-input__option:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }

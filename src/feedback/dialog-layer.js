@@ -29,6 +29,7 @@ import {
 } from '../utils/layers.js';
 import { lockScroll } from '../utils/scroll-lock.js';
 import { transitionEndMs } from '../utils/transition.js';
+import { ensurePressStates } from '../utils/press.js';
 
 const EXIT_MARGIN = 40;
 const FALLBACK_EXIT_MS = 240;
@@ -65,6 +66,7 @@ const FALLBACK_EXIT_MS = 240;
 export function openDialogLayer(o) {
   const { root, dialog } = o;
   const layerNo = typeof o.layer === 'number' ? o.layer : LAYERS.modal;
+  ensurePressStates(document); // v0.36.2 (ADR 0019): imperative overlays may open before any element connects
   const active0 = document.activeElement;
   const opener = o.opener !== undefined ? o.opener
     : (active0 instanceof HTMLElement && active0 !== document.body ? active0 : null);
