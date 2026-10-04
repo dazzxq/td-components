@@ -2,6 +2,32 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.36.2
+
+**Chuẩn cảm ứng toàn kit** (owner: "hỗ trợ behaviors touch chuẩn nhất có thể cho toàn bộ components"; đồng thuận Codex
+think-about; plan `docs/internal/plans/v0.36.2-touch.md`, Codex plan-review APPROVE 3 vòng;
+[ADR 0019](docs/internal/decisions/0019-touch-standard.md), hướng dẫn `docs/guides/touch.md`). Chi tiết nâng cấp:
+`docs/upgrading/breaking-changes.md#0362`.
+
+### Added
+
+- **Hình nhấn** trên mọi control tương tác (`:active` + `[data-td-pressed]` qua Pointer Events — có cả trên iPhone), token
+  `--td-*-pressed` (contrast gate kiểm cả cặp nhấn).
+- `<td-number-input enterkeyhint>`.
+- Lane test cảm ứng `npm run test:touch` (Chromium touch + CDP vuốt / pinch, WebKit iPhone smoke) trong `npm test`;
+  lint CSS: `:hover` phải nằm trong `(hover: hover) and (pointer: fine)`, control tương tác phải có hình nhấn.
+- Checklist iPhone thật `docs/internal/release-touch-checklist.md` + khu "Cảm ứng" trong demo.
+
+### Changed
+
+- Hover chỉ còn trên con trỏ mịn (hết hover dính sau khi chạm).
+- Tooltip không bật khi chạm (kể cả focus do chạm); bàn phím / chuột / bút không đổi.
+- Ngưỡng kéo theo loại con trỏ ở sortable / repeater / media-grid: chạm 10px, bút 8px, chuột 4px.
+- Modal / drawer / media picker (kể cả dialog tải lên, sheet bộ lọc) co theo bàn phím ảo: ô đang nhập + dòng lỗi + footer
+  luôn thấy được, không cuộn trang, không đổi focus.
+- Lightbox: ảnh đi theo ngón khi vuốt ngang, chuyển khi qua 1/4 bề rộng hoặc vuốt nhanh, không thì bật về; một ảnh = dây
+  chun; reduced motion đổi ngay.
+
 ## 0.36.1
 
 **`<td-table>` dạng card gọn hơn** (plan `docs/internal/plans/v0.36.1-table-card-density.md`, Codex plan-review APPROVE 2
