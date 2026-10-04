@@ -21,6 +21,7 @@
  */
 import { register, LAYERS } from './layers.js';
 import { columns, layoutKind, hitSlot, shiftDeltas, slotRect, keyTarget, autoScrollSpeed } from './sortable-geometry.js';
+import { dragSlop } from './gesture.js';
 
 /** Texts (Vietnamese) shared by td-sortable and td-repeater[sortable] (`TdSortable.labels` is this object). */
 export const SORTABLE_LABELS = {
@@ -35,8 +36,8 @@ export const SORTABLE_LABELS = {
   last: '{name} đã ở cuối danh sách.',
 };
 
-/** px of movement before a press on a handle becomes a drag */
-const THRESHOLD = 4;
+/* px of movement before a press on a handle becomes a drag: dragSlop(pointerType) of the PRESS (v0.36.2, ADR 0019 —
+   mouse 4 as before, pen 8, touch 10; read from the event, so a hybrid laptop gets the right one per input) */
 const NAV_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End']);
 const X = '--_td-sort-x';
 const Y = '--_td-sort-y';
@@ -438,7 +439,8 @@ export class SortableController {
     if (e.button !== 0 || !e.isPrimary || !this._usable(hit.handle)) return;
     const g = {
       mode: 'pending', item: hit.item, handle: hit.handle, origin: this._indexOf(hit.item), source: 'pointer',
-      pointerId: e.pointerId, sx: e.clientX, sy: e.clientY, cx: e.clientX, cy: e.clientY, listeners: [], touched: new Set(),
+      pointerId: e.pointerId, slop: dragSlop(e.pointerType), sx: e.clientX, sy: e.clientY, cx: e.clientX, cy: e.clientY,
+      listeners: [], touched: new Set(),
       layer: null, raf: 0, captured: false, to: -1,
     };
     if (g.origin < 0) return;
@@ -458,7 +460,7 @@ export class SortableController {
     g.cx = e.clientX;
     g.cy = e.clientY;
     if (g.mode === 'pending') {
-      if (Math.hypot(g.cx - g.sx, g.cy - g.sy) <= THRESHOLD) return;
+      if (Math.hypot(g.cx - g.sx, g.cy - g.sy) <= g.slop) return;
       if (!this._enabled()) { this.cancel('disabled'); return; }
       this._startDrag(g);
       if (this._g !== g) return;
