@@ -10,19 +10,26 @@
  * fails when > 0.5% of its pixels differ (or its size differs). Motion off: `reducedMotion: 'reduce'`, animations /
  * transitions disabled, `caret-color: transparent`.
  *
- * ONE reference platform: Ubuntu + the Chromium build pinned by playwright-core (CI job `test`, .github/workflows/
- * test.yml). Fonts render differently on macOS, so anywhere else (other OS, other Chromium build) the script prints a
- * skip message and exits 0 — it never compares there. Not part of `npm test`.
+ * ONE reference platform: the official image mcr.microsoft.com/playwright:v<playwright-core version>-jammy (its fonts
+ * + the Chromium build pinned by playwright-core) — CI job `visual` of .github/workflows/test.yml runs in it. Fonts
+ * render differently on macOS, so anywhere else (other OS, other Chromium build) the script prints a skip message and
+ * exits 0 (1 with TD_VISUAL_STRICT=1 or --update) — it never compares there. Not part of `npm test`.
  *
- *   npm run test:visual                    compare (CI Ubuntu)
+ *   npm run test:visual                    compare (CI: job `visual`, Playwright image)
  *   npm run test:visual -- --update        (re)write the baselines — Linux only: run the "update visual baselines"
  *                                          workflow (workflow_dispatch) and commit the artifact, or run inside
  *                                          mcr.microsoft.com/playwright:v<playwright-core version>-jammy
  *   TD_VISUAL_FORCE=1                      run even off the reference platform (debugging only; never commit those PNGs)
  *   TD_VISUAL_OUT=<dir>                    where actual PNGs of failing / unbaselined shots go (default: <tmp>/td-visual)
  *
- * A shot with no baseline yet is reported (and its actual PNG saved) but does not fail the run, so the gate can land
- * before the first baselines; set TD_VISUAL_STRICT=1 to make a missing baseline fail.
+ * A shot with no baseline fails the compare run (its actual PNG is saved to TD_VISUAL_OUT). TD_VISUAL_STRICT=1 (set in
+ * CI) additionally turns a SKIP into a failure, so the gate can never silently pass off the reference platform; `--update`
+ * always fails instead of skipping. The pinned build is matched on major.minor.build: Playwright's arm64 Linux builds
+ * report the same build with patch 0 (e.g. 148.0.7778.0 vs browsers.json 148.0.7778.96); the revision itself is
+ * enforced by chromium.executablePath() (revision-specific path) existing.
+ * The v0.33.0 baselines were captured in the linux/arm64 variant of mcr.microsoft.com/playwright:v1.60.0-jammy (Apple
+ * Silicon host: the amd64 image under QEMU crashes Chromium); CI runs the amd64 variant. If the `visual` job reports
+ * diffs that are pure rasterisation noise, regenerate with the "update visual baselines" workflow (amd64) and commit.
  * No dependencies: PNGs are decoded with node:zlib (test/visual/png.mjs).
  */
 import { chromium } from 'playwright-core';
@@ -57,10 +64,13 @@ async function pinnedChromiumVersion() {
 }
 
 function skip(reason) {
-  console.log(`Visual gate SKIPPED: ${reason}`);
-  console.log('Baselines are Linux + pinned Chromium only (CI job `test` on ubuntu-latest). See test/visual/media-picker.visual.mjs.');
-  process.exit(0);
+  const fatal = UPDATE || STRICT;
+  (fatal ? console.error : console.log)(`Visual gate ${fatal ? 'FAILED (cannot run)' : 'SKIPPED'}: ${reason}`);
+  console.log('Baselines are Linux + pinned Chromium only (mcr.microsoft.com/playwright:v<playwright-core>-jammy, CI job `visual`). See test/visual/media-picker.visual.mjs.');
+  process.exit(fatal ? 1 : 0);
 }
+/** "148.0.7778.96" → "148.0.7778" */
+const buildOf = (v) => String(v).split('.').slice(0, 3).join('.');
 
 const FORCE = process.env.TD_VISUAL_FORCE === '1';
 if (process.platform !== 'linux' && !FORCE) skip(`platform is ${process.platform}, not linux`);
@@ -155,19 +165,27 @@ async function settle(page) {
 // =====================================================================================================================
 const PICKER = 'body > .td-media-picker:not([data-state="closing"])';
 const LABEL = {
-  upload: 'Tải lên', // toolbar button (icon-only + aria-label under 768px) — first match before the dialog opens
-  urlTab: 'Tải từ URL',
-  remove: 'Xoá', // detail-panel button AND the confirm dialog's button
+  remove: 'Xoá', // the confirm dialog's button
+};
+const SEL = {
+  uploadBtn: '.td-media-picker__upload-btn', // toolbar "Tải lên" (icon-only + aria-label under 768px)
+  uploadDialog: 'body > .td-media-picker-upload:not([data-state="closing"])',
+  urlTab: '.td-media-picker-upload .td-tabs__tab[data-tab-id="url"]', // tabs only exist when both sources are available
+  urlInput: '.td-media-picker-upload__url input',
+  deleteBtn: '.td-media-picker__delete', // detail action row; only rendered with capabilities.delete (opt-in)
+  blocked: '.td-media-picker__blocked',
 };
 // Mock adapter: newest first (page 1 = m60 … m31); delete(id) → blocked when the numeric id % 7 === 3. m59 is an image
 // on page 1.
 const BLOCKED_ID = 'm59';
 
-async function openPicker(page, selection = { mode: 'single' }) {
-  await page.evaluate((sel) => {
+async function openPicker(page, selection = { mode: 'single' }, capabilities = undefined) {
+  await page.evaluate(({ sel, caps }) => {
     window.__adapter = window.createMockAdapter();
-    window.__outcome = window.TdMediaPicker.open({ adapter: window.__adapter, selection: sel });
-  }, selection);
+    const opts = { adapter: window.__adapter, selection: sel };
+    if (caps) opts.capabilities = caps;
+    window.__outcome = window.TdMediaPicker.open(opts);
+  }, { sel: selection, caps: capabilities });
   await page.locator(`${PICKER} [data-td-media-item]`).first().waitFor({ state: 'visible' });
 }
 const card = (page, id) => page.locator(`${PICKER} [data-td-media-item][data-id="${id}"]`);
@@ -178,8 +196,8 @@ const picker = (page) => page.locator(PICKER);
 const topDialog = (page) => page.locator('body > .td-modal:not(.td-media-picker):not([data-state="closing"])').last();
 
 async function openUploadDialog(page) {
-  await picker(page).getByRole('button', { name: LABEL.upload }).first().click();
-  await topDialog(page).waitFor({ state: 'visible' });
+  await picker(page).locator(SEL.uploadBtn).first().click();
+  await page.locator(SEL.uploadDialog).waitFor({ state: 'visible' });
 }
 
 const STATES = {
@@ -193,7 +211,14 @@ const STATES = {
   async multiple(page) {
     await openPicker(page, { mode: 'multiple', maxItems: 10 });
     for (const n of [0, 1, 5]) await nthCard(page, n).locator('.td-media-grid__tick').click();
-    await nthCard(page, 5).locator('[data-td-media-open]').click(); // view one of them
+    // view one of them — wide only: under 768px the detail pane slides over the list and would hide the ticks
+    if ((page.viewportSize()?.width ?? 0) >= 768) await nthCard(page, 5).locator('[data-td-media-open]').click();
+    else {
+      // ticking the 6th card scrolled the list: back to the top so all three checked cards are in the shot
+      await nthCard(page, 0).evaluate((el) => {
+        for (let n = el.parentElement; n; n = n.parentElement) if (n.scrollTop) n.scrollTop = 0;
+      });
+    }
   },
   async upload(page) {
     await openPicker(page);
@@ -202,19 +227,23 @@ const STATES = {
   async 'url-error'(page) {
     await openPicker(page);
     await openUploadDialog(page);
-    const dlg = topDialog(page);
-    const tab = dlg.getByRole('tab', { name: LABEL.urlTab });
-    if (await tab.count()) await tab.click(); // tabs only exist when both sources are available
-    const input = dlg.locator('input[type="url"]');
-    await input.fill('ftp://example.com/anh.jpg');
+    const dlg = page.locator(SEL.uploadDialog);
+    await page.locator(SEL.urlTab).click(); // page-level: the selectors already name the dialog's root class
+    const input = page.locator(SEL.urlInput);
+    await input.fill('anh-khong-co-giao-thuc.jpg'); // new URL() throws → 'invalid' (ftp: would be 'scheme')
     await input.blur(); // validation error shows on blur, not while typing
+    await dlg.getByText('URL không hợp lệ').first().waitFor({ state: 'visible' });
   },
   async 'delete-blocked'(page) {
-    await openPicker(page);
+    await openPicker(page, { mode: 'single' }, { delete: true }); // delete is opt-in (default false)
     await card(page, BLOCKED_ID).locator('[data-td-media-open]').click();
-    await picker(page).getByRole('button', { name: LABEL.remove, exact: true }).last().click();
+    await picker(page).locator(SEL.deleteBtn).click();
     await topDialog(page).getByRole('button', { name: LABEL.remove, exact: true }).click();
-    await picker(page).locator('td-alert, .td-alert').first().waitFor({ state: 'visible' });
+    await picker(page).locator(SEL.blocked).waitFor({ state: 'visible' });
+    // the confirm dialog fully gone (closing ones included) before the shot
+    await page.waitForFunction(() => !document.querySelector('body > .td-modal:not(.td-media-picker)'));
+    // the alert + its usage list sit below the fold of the detail pane: scroll it fully into view (instant, no motion)
+    await picker(page).locator(SEL.blocked).evaluate((el) => el.scrollIntoView({ block: 'end', behavior: 'instant' }));
   },
 };
 // ============================================ end of state drivers ===================================================
@@ -255,7 +284,7 @@ async function check(name, png) {
 
 const browser = await chromium.launch();
 const version = browser.version();
-if (pinned && !version.startsWith(pinned) && !FORCE) {
+if (pinned && buildOf(version) !== buildOf(pinned) && !FORCE) {
   await browser.close();
   skip(`Chromium ${version} is not the pinned build ${pinned}`);
 }
@@ -303,8 +332,7 @@ if (UPDATE) {
 }
 if (missing.length) {
   const msg = `${missing.length} shot(s) have no baseline (actual PNGs in ${OUT_DIR}): ${missing.join(', ')}`;
-  if (STRICT) failures.push(msg);
-  else console.log(`note: ${msg} — run the "update visual baselines" workflow and commit its artifact.`);
+  failures.push(`${msg} — run the "update visual baselines" workflow (or --update in the Playwright image) and commit the PNGs`);
 }
 if (failures.length) {
   console.error(`Visual gate FAILED (${failures.length}); actual PNGs in ${OUT_DIR}:\n  ${failures.join('\n  ')}`);
