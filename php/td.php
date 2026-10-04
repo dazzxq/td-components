@@ -956,7 +956,14 @@ namespace {
         $ownLabel = isset($o['label']) && is_scalar($o['label']) && !is_bool($o['label']) ? $trim((string) $o['label']) : '';
         $label = $ownLabel !== '' ? $ownLabel : ($preset[1] ?? '');
         if ($icon === '' || $label === '') {
-            trigger_error('td_action_button: unknown action "' . $action . '" (no preset; give icon + label)', E_USER_WARNING);
+            // SEC-02 (v0.36.0 review): never log the raw value — control characters out, at most 64 printable
+            // characters, plus the original byte length (a single-line warning whatever the caller passed)
+            $shown = (string) preg_replace('/[\x00-\x1F\x7F]|\p{C}/u', '', $action);
+            if ($shown === '' && $action !== '') {
+                $shown = (string) preg_replace('/[^\x20-\x7E]/', '', $action); // not valid UTF-8 → printable ASCII only
+            }
+            $shown = function_exists('mb_substr') ? mb_substr($shown, 0, 64, 'UTF-8') : substr($shown, 0, 64);
+            trigger_error('td_action_button: unknown action "' . $shown . '" (' . strlen($action) . ' bytes; no preset; give icon + label)', E_USER_WARNING);
             return '';
         }
         $ownTone = in_array($o['tone'] ?? null, Td::ACTION_TONES, true) ? $o['tone'] : null;

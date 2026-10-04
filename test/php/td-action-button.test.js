@@ -73,7 +73,7 @@ function withWarnings(args) {
     + ` $a = json_decode(${JSON.stringify(JSON.stringify(args))}, true); echo td_action_button(...$a);`;
   const r = spawnSync(PHP_BIN, ['-d', 'display_errors=stderr', '-d', 'log_errors=0', '-d', 'error_reporting=E_ALL', '-d', 'xdebug.mode=off', '-r', code], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
-  return { out: r.stdout, warnings: (r.stderr.match(/Warning: +td_action_button:/g) || []).length };
+  return { out: r.stdout, warnings: (r.stderr.match(/Warning: +td_action_button:/g) || []).length, stderr: r.stderr };
 }
 
 describe('td-action-button presets (QĐ 11) — one inventory', () => {
@@ -195,6 +195,19 @@ describe('php td_action_button — element mode == render() (QĐ 14)', opts, () 
     const ok = withWarnings(['khong-co', { icon: 'star', label: 'Ghim' }]);
     assert.equal(ok.warnings, 0);
     assert.match(ok.out, /^<button class="td-btn td-btn--action td-btn--action-standard td-btn--action-md" type="button" aria-label="Ghim"/);
+  });
+
+  test('SEC-02: the unknown-action warning is one line — control characters stripped, ≤ 64 characters + the byte length', () => {
+    const payload = `evil\nWarning: forged line\r\n${'x'.repeat(200)}\u0000`;
+    const r = withWarnings([payload]);
+    assert.equal(r.out, '');
+    assert.equal(r.warnings, 1);
+    const line = r.stderr.split('\n').find((l) => l.includes('td_action_button:'));
+    assert.ok(!r.stderr.includes('forged line\n'), 'no injected line break');
+    const shown = /unknown action "([^"]*)"/.exec(line)[1];
+    assert.ok(shown.length <= 64, `shown ${shown.length} chars`);
+    assert.ok(!/[\x00-\x1f\x7f]/.test(shown));
+    assert.match(line, new RegExp(`\\(${Buffer.byteLength(payload)} bytes;`));
   });
 
   test('native mode (no element): the control alone, site id / class on it, svg filled, no data-td-icon slot name', () => {
