@@ -9,6 +9,7 @@ import '/src/form/td-otp-input.js';
 import '/src/display/td-copy.js';
 import '/src/form/td-tree.js';
 import '/src/form/td-tree-select.js';
+import { createCheckMark } from '/src/utils/check-mark.js';
 import '/src/form/td-repeater.js';
 import '/src/form/td-number-input.js';
 import '/src/display/td-sortable.js';
@@ -111,6 +112,9 @@ for (const v of ['success', 'danger', 'warning', 'info']) CASES.push({ kind: 'v0
 for (const v of ['neutral', 'accent', 'success', 'danger', 'warning', 'info']) CASES.push({ kind: 'v036', v, state: 'badge', pageOnly: true });
 for (const v of ['info', 'success', 'warning', 'danger']) CASES.push({ kind: 'v036', v, state: 'alert', pageOnly: true });
 for (const v of ['standard', 'warning', 'danger']) CASES.push({ kind: 'v036', v, state: 'action-button', pageOnly: true });
+// v0.36.0 popup option rows (dcms2): the keyboard-active row's inline-start bar ≥ 3:1 vs the popup surface, the label ≥ 4.7
+// on the active / selected fills (composited on the surface)
+for (const v of ['active', 'selected']) CASES.push({ kind: 'v036', v, state: 'option-row' });
 // v0.32.0: td-media-field (content layer → page only): prompt + ratio text ≥ 4.7 on the empty frame fill, the empty-frame
 // icon + dashed border ≥ 3.2 (border vs the page and vs the frame fill), the "Video" badge text ≥ 4.7 on its fill, the
 // field error text ≥ 4.7 on the page; td-media-picker (inside the solid dialog): tile name, detail meta label and tray
@@ -267,10 +271,9 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     el.setAttribute('aria-selected', c.v === 'selected' ? 'true' : 'false');
     if (c.v === 'locked') el.setAttribute('aria-disabled', 'true');
     if (c.state === 'active') el.setAttribute('data-active', '');
-    const check = document.createElement('span');
-    check.className = 'td-chip-input__check';
-    check.setAttribute('data-td-icon', 'check');
-    check.setAttribute('data-td-icon-size', 's');
+    // v0.36.0 (ADR 0017): the shared td-checkbox mark — its own pairs are gated by the tree-pairs cases (same CSS)
+    const check = createCheckMark('sm');
+    check.classList.add('td-chip-input__check');
     const label = document.createElement('span');
     label.className = 'td-chip-input__option-label';
     label.textContent = 'Nguyễn Văn An';
@@ -279,7 +282,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     menu.appendChild(listbox);
     stage.appendChild(menu);
     fillIconSlots(el);
-    parts = c.v === 'selected' ? { label, icon: check } : { label };
+    parts = { label };
   } else if (c.kind === 'tree') {
     const t = document.createElement('td-tree');
     t.setAttribute('aria-label', 'Danh mục');
@@ -343,7 +346,8 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       if (!li) throw new Error(`tree ${c.state}: row not found`);
       target = li.querySelector('.td-tree__check');
       const cs = getComputedStyle(target);
-      const glyph = getComputedStyle(target.querySelector(c.state === 'mixed' ? '.td-tree__check-mixed svg' : '.td-tree__check-on svg')).color;
+      // v0.36.0: the shared mark — ✓ = its svg (on), the indeterminate bar = its ::after (mixed)
+      const glyph = c.state === 'mixed' ? getComputedStyle(target, '::after').backgroundColor : getComputedStyle(target.querySelector('svg')).color;
       pairs = [
         { what: 'check glyph vs fill', fg: glyph, bg: cs.backgroundColor, min: 3.2 },
         { what: 'check fill vs page', fg: cs.backgroundColor, bg: page },
@@ -382,14 +386,23 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     stage.appendChild(grid);
     grid.select(['a']); // host [data-selecting]: every tick shown; 'a' = on, 'b' = off
     await new Promise((r) => setTimeout(r, 400)); // opacity / fill transitions
-    const tick = grid.querySelector(`[data-id="${c.v === 'on' ? 'a' : 'b'}"] .td-media-grid__tick`);
+    const tickBtn = grid.querySelector(`[data-id="${c.v === 'on' ? 'a' : 'b'}"] .td-media-grid__tick`);
+    if (getComputedStyle(tickBtn).opacity !== '1') throw new Error(`media tick ${c.v}: opacity ${getComputedStyle(tickBtn).opacity} (must be shown to be measured)`);
+    // v0.36.0 (ADR 0017): the visible tick is the shared mark (.td-check--on-media) inside the transparent button
+    const tick = tickBtn.querySelector('.td-check');
     const tcs = getComputedStyle(tick);
-    if (tcs.opacity !== '1') throw new Error(`media tick ${c.v}: opacity ${tcs.opacity} (must be shown to be measured)`);
     const ring = (tcs.boxShadow.match(/rgba?\([^)]*\)|color\([^)]*\)/) || [])[0] || 'rgba(0, 0, 0, 0)';
+    const over = (fg, bg) => {
+      const f = (String(fg).match(/-?[\d.]+/g) || []).map(Number);
+      const b = (String(bg).match(/-?[\d.]+/g) || []).map(Number);
+      const a = f.length > 3 ? f[3] : 1;
+      return `rgb(${[0, 1, 2].map((i) => Math.round(f[i] * a + b[i] * (1 - a))).join(', ')})`;
+    };
+    const fill = c.v === 'on' ? tcs.backgroundColor : tcs.backgroundColor; // off = the white box
     const pairs = [c.state === 'dark-image'
-      ? { what: 'tick border vs dark image', fg: tcs.borderTopColor, bg: image }
-      : { what: 'tick ring vs light image', fg: ring, bg: image }];
-    if (c.v === 'on') pairs.push({ what: 'tick glyph vs on fill', fg: tcs.color, bg: tcs.backgroundColor, min: 3.2 });
+      ? { what: 'tick box vs dark image', fg: fill, bg: image }
+      : { what: 'tick hairline vs light image', fg: over(ring, image), bg: image }];
+    if (c.v === 'on') pairs.push({ what: 'tick glyph vs on fill', fg: getComputedStyle(tick.querySelector('svg')).color, bg: tcs.backgroundColor, min: 3.2 });
     const r0 = tick.getBoundingClientRect();
     return {
       rect: { x: r0.x, y: r0.y, width: r0.width, height: r0.height },
@@ -781,6 +794,32 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       const cs = getComputedStyle(target);
       pairs = [{ what: 'alert icon vs fill', fg: getComputedStyle(target.querySelector('.td-alert__icon')).color, bg: cs.backgroundColor, min: 3.2 },
         { what: 'alert bar vs fill', fg: cs.borderInlineStartColor || cs.borderLeftColor, bg: cs.backgroundColor, min: 3 }];
+    } else if (c.state === 'option-row') {
+      const menu = document.createElement('div');
+      menu.className = 'td-dropdown__menu td-glass-surface td-glass-surface--strong';
+      menu.setAttribute('data-state', 'open');
+      menu.style.setProperty('top', '96px');
+      menu.style.setProperty('left', '48px');
+      menu.style.setProperty('width', '260px');
+      const opt = document.createElement('div');
+      opt.className = 'td-dropdown__option';
+      opt.setAttribute('role', 'option');
+      if (c.v === 'active') opt.setAttribute('data-active', '');
+      else opt.setAttribute('aria-selected', 'true');
+      const label = document.createElement('span');
+      label.className = 'td-dropdown__option-label';
+      label.textContent = 'TP. Hồ Chí Minh';
+      opt.appendChild(label);
+      menu.appendChild(opt);
+      stage.appendChild(menu);
+      target = opt;
+      const surface = over(getComputedStyle(menu).backgroundColor, page);
+      const fill = over(getComputedStyle(opt).backgroundColor, surface);
+      pairs = [{ what: 'option label vs row fill', fg: getComputedStyle(label).color, bg: fill, min: 4.7 }];
+      if (c.v === 'active') {
+        const bar = (getComputedStyle(opt).boxShadow.match(/rgba?\([^)]*\)/) || [])[0] || 'rgba(0, 0, 0, 0)';
+        pairs.push({ what: 'active bar vs popup surface', fg: over(bar, surface), bg: surface, min: 3 });
+      }
     } else {
       const fg = tok(`--td-action-btn-${c.v}-fg`);
       const hv = over(tok(`--td-action-btn-${c.v}-hover-bg`), page);

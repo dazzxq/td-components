@@ -113,6 +113,15 @@
 		--td-color-border-strong: var(--td-gray-300);
 		--td-color-hover: rgb(0 0 0 / 5%);
 		--td-color-hover-strong: rgb(0 0 0 / 8%);
+		/* v0.36.0 popup option rows (dropdown, multiselect, tree-select, menu — dcms2 look): full-bleed rows, a hover fill,
+		   a selected fill (single lists: semibold label + ✓ at the end), the keyboard-active row = fill + an inline-start
+		   accent bar (the focus indicator, ≥ 3:1 vs the popup surface — contrast gate) */
+		--td-option-pad-x: 12px;
+		--td-option-hover-bg: var(--td-color-hover);
+		--td-option-active-bg: var(--td-color-hover-strong);
+		--td-option-selected-bg: var(--td-color-hover-strong);
+		--td-option-active-bar: var(--td-accent);
+		--td-option-active-bar-w: 3px;
 		--td-color-overlay: rgb(10 10 12 / 45%);
 		--td-color-skeleton: var(--td-gray-100);
 		--td-color-success: #15803d;
@@ -870,6 +879,12 @@
 			min-height: var(--td-touch-min);
 			font-size: max(1rem, 1em); /* ≥ 16px: iOS does not zoom on focus */
 		}
+
+		/* v0.36.0 (plan QĐ 67): the note / counter / error under a field ≥ 14px on touch screens */
+		.td-field__footer,
+		.td-field-error {
+			font-size: var(--td-text-sm);
+		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
@@ -1357,6 +1372,8 @@
 
 	@media (pointer: coarse) {
 		.td-btn { min-height: var(--td-touch-min); border-radius: var(--td-radius-full); }
+		/* v0.36.0 (plan QĐ 67): interactive labels ≥ 14px on touch screens */
+		.td-btn--sm { font-size: var(--td-text-sm); }
 	}
 
 	@media (prefers-reduced-motion: reduce) {
@@ -1604,6 +1621,7 @@
 
 	/* ---- On a photo (media grid / picker ticks): a dark hairline keeps the white box visible on white images ---- */
 	.td-check--on-media {
+		background: #fff; /* light box in every theme: it sits on a photo, not on the page */
 		box-shadow: 0 0 0 1px rgb(0 0 0 / 45%);
 	}
 
@@ -2787,6 +2805,11 @@
 	}
 
 	@media (pointer: coarse) {
+		/* v0.36.0 (plan QĐ 67): tab labels ≥ 14px on touch screens (the overflow measurement follows the computed size) */
+		.td-tabs {
+			font-size: var(--td-text-sm);
+		}
+
 		.td-tabs__tab {
 			min-inline-size: var(--td-touch-min); /* 44 × 44 even for a one-letter tab (part of the JS measurement) */
 			min-height: var(--td-touch-min);
@@ -3474,6 +3497,23 @@
 		padding-inline: 0.75rem;
 		font-size: var(--td-text-sm);
 		font-weight: var(--td-fw-semibold);
+	}
+
+	/* v0.36.0 (plan QĐ 59) "Thêm" overflow: off by default; below 480 px the toolbar drops prev / next (swipe + arrow
+	   keys still navigate) and every [data-overflow] control (fullscreen, unpinned extras — marked by JS), and shows
+	   "Thêm" (JS hides it when nothing overflows) → the toolbar never runs into the lead (back + counter) at 360. */
+	.td-lightbox__more {
+		display: none;
+	}
+
+	@media (max-width: 479.98px) {
+		.td-lightbox__toolbar > :is([data-action="prev"], [data-action="next"], [data-overflow]) {
+			display: none;
+		}
+
+		.td-lightbox__toolbar > .td-lightbox__more {
+			display: inline-flex;
+		}
 	}
 
 	/* ── Panel mode ([data-panel] only when a panel renderer returned an element) ─────────────────── */
@@ -4921,10 +4961,12 @@
 @layer td.tokens {
 	:root {
 		--td-dropdown-option-h: 40px; /* JS mirrors it: max-height = visible options × 40 px */
-		--td-dropdown-option-hover: var(--td-color-hover);
-		--td-dropdown-option-active: var(--td-color-hover-strong);
-		--td-dropdown-option-active-line: var(--td-control-border-hover); /* v0.14.2: soft outline; the fill marks it too */
-		--td-dropdown-option-selected: var(--td-color-hover-strong);
+		/* v0.36.0: defaults follow the shared option-row tokens (--td-option-*); -active-line no longer has an effect (the
+		   active row shows the inline-start accent bar --td-option-active-bar instead) */
+		--td-dropdown-option-hover: var(--td-option-hover-bg);
+		--td-dropdown-option-active: var(--td-option-active-bg);
+		--td-dropdown-option-active-line: var(--td-control-border-hover);
+		--td-dropdown-option-selected: var(--td-option-selected-bg);
 		--td-dropdown-search-bg: var(--td-color-hover);
 		--td-dropdown-search-border: var(--td-control-border-soft);      /* soft like the fields (v0.14.1) */
 		--td-dropdown-hairline: var(--td-color-border);
@@ -5116,7 +5158,7 @@
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
-		padding: var(--td-glass-pad);
+		padding: var(--td-glass-pad) 0; /* v0.36.0: rows are full-bleed (block padding only) */
 		overflow: hidden;
 		font-family: var(--td-font-sans);
 		font-size: var(--td-text-sm);
@@ -5153,7 +5195,7 @@
 
 	.td-dropdown__search-wrap {
 		flex: none;
-		padding: 2px 2px var(--td-glass-pad);
+		padding: 2px var(--td-option-pad-x) var(--td-glass-pad);
 		margin-bottom: var(--td-glass-pad);
 		border-bottom: 1px solid var(--td-dropdown-hairline);
 	}
@@ -5200,7 +5242,6 @@
 	.td-dropdown__scroller {
 		display: flex;
 		flex-direction: column;
-		gap: 1px;
 		min-height: 0;
 		overflow-y: auto; /* scrolling inside the menu does NOT close it */
 		overscroll-behavior: contain;
@@ -5213,25 +5254,31 @@
 		align-items: center;
 		justify-content: space-between;
 		min-height: var(--td-dropdown-option-h);
-		padding: 8px 10px;
+		padding: 8px var(--td-option-pad-x);
 		color: inherit;
 		cursor: pointer;
 		user-select: none;
-		border-radius: var(--td-glass-radius-inner);
+		border-radius: 0; /* v0.36.0: full-bleed row (dcms2) */
 	}
 
 	.td-dropdown__option:hover {
 		background: var(--td-dropdown-option-hover);
 	}
 
+	/* selected = semibold label + the ✓ at the inline end (JS prints .td-dropdown__check on the selected row) */
 	.td-dropdown__option[aria-selected="true"] {
-		font-weight: var(--td-fw-medium);
+		font-weight: var(--td-fw-semibold);
 		background: var(--td-dropdown-option-selected);
 	}
 
+	/* the keyboard-active row (aria-activedescendant): fill + inline-start accent bar = the focus indicator */
 	.td-dropdown__option[data-active] {
 		background: var(--td-dropdown-option-active);
-		box-shadow: inset 0 0 0 1px var(--td-dropdown-option-active-line);
+		box-shadow: inset var(--td-option-active-bar-w) 0 0 var(--td-option-active-bar);
+	}
+
+	.td-dropdown__option[data-active]:dir(rtl) {
+		box-shadow: inset calc(-1 * var(--td-option-active-bar-w)) 0 0 var(--td-option-active-bar);
 	}
 
 	/* v0.17.0 E2: disabled option — shown dimmed, never selectable nor active (JS skips it) */
@@ -5255,7 +5302,7 @@
 		font-weight: var(--td-fw-semibold);
 		color: var(--td-dropdown-create-fg);
 		border-top: 1px solid var(--td-dropdown-hairline);
-		border-radius: 0 0 var(--td-glass-radius-inner) var(--td-glass-radius-inner);
+		border-radius: 0;
 	}
 
 	.td-dropdown__create-icon {
@@ -5276,7 +5323,7 @@
 	}
 
 	.td-dropdown__empty {
-		padding: 8px 10px;
+		padding: 8px var(--td-option-pad-x);
 		margin: 0;
 		font-style: italic;
 		color: var(--td-field-note);
@@ -6019,6 +6066,13 @@
 			--td-dtp-visible: 3;
 		}
 	}
+
+	/* v0.36.0 (plan QĐ 61) sheet (< 720): 3 visible wheel rows — the sheet stays ≤ 70 % of a phone's height */
+	@media (max-width: 719.98px) {
+		:root {
+			--td-dtp-visible: 3;
+		}
+	}
 }
 
 @layer td.component {
@@ -6336,6 +6390,27 @@
 		}
 	}
 
+	/* v0.36.0 (plan QĐ 61) sheet (< 720): drop duplicated VISIBLE text only. The date legend ("Ngày" / "Tháng" /
+	   "Năm") repeats a column label → visually hidden but still names the fieldset (td-sr-only recipe); the preview
+	   pill repeats the fields + wheels → not rendered (plain text, no live region / describedby points at it). */
+	@media (max-width: 719.98px) {
+		.td-dtp-panel > fieldset.td-dtp-panel__group > .td-dtp-panel__legend {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+			white-space: nowrap;
+			border: 0;
+		}
+
+		.td-dtp-panel__preview {
+			display: none;
+		}
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		.td-dtp__trigger,
 		.td-dtp-panel__input {
@@ -6554,8 +6629,8 @@
 		--td-menu-max-w: 22rem;
 		--td-menu-item-py: 0.6rem;
 		--td-menu-item-px: 0.75rem;
-		--td-menu-item-hover: var(--td-color-hover);
-		--td-menu-item-active: var(--td-color-hover-strong);
+		--td-menu-item-hover: var(--td-option-hover-bg); /* v0.36.0: shared option-row tokens */
+		--td-menu-item-active: var(--td-option-active-bg);
 		--td-menu-danger-fg: var(--td-color-error);
 		--td-menu-hint-fg: var(--td-color-text-muted);
 		--td-menu-icon-fg: var(--td-color-text-muted);
@@ -6581,10 +6656,9 @@
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
-		gap: 1px;
 		min-width: min(var(--td-menu-min-w), calc(100vw - 16px));
 		max-width: min(var(--td-menu-max-w), calc(100vw - 16px));
-		padding: var(--td-glass-pad);
+		padding: var(--td-glass-pad) 0; /* v0.36.0: full-bleed rows */
 		margin: 0;
 		overflow-x: hidden;
 		overflow-y: auto; /* capped by JS (max-height); scrolling inside the menu does NOT close it */
@@ -6643,7 +6717,7 @@
 		user-select: none;
 		background: none;
 		border: 0;
-		border-radius: var(--td-glass-radius-inner); /* concentric with the menu */
+		border-radius: 0; /* v0.36.0: full-bleed row (dcms2) */
 		outline: 2px solid transparent;
 		outline-offset: -2px;
 		appearance: none;
@@ -6657,12 +6731,16 @@
 		outline: 2px solid transparent;
 	}
 
-	/* Inset ring: an outer ring would be clipped by the scrolling menu. */
+	/* v0.36.0: the focused row (keyboard) = fill + inline-start accent bar (inset: never clipped by the scroller) */
 	.td-menu__item:focus-visible {
 		background: var(--td-menu-item-active);
 		outline: 2px solid transparent;
 		outline-offset: -2px;
-		box-shadow: inset 0 0 0 2px var(--td-focus);
+		box-shadow: inset var(--td-option-active-bar-w) 0 0 var(--td-option-active-bar);
+	}
+
+	.td-menu__item:focus-visible:dir(rtl) {
+		box-shadow: inset calc(-1 * var(--td-option-active-bar-w)) 0 0 var(--td-option-active-bar);
 	}
 
 	.td-menu__item--danger {
@@ -6735,6 +6813,13 @@
 
 	.td-menu__item--danger .td-menu__hint {
 		color: var(--td-menu-hint-fg);
+	}
+
+	/* v0.36.0 (plan QĐ 65): a keyboard-shortcut hint (1–3 characters, e.g. "E") means nothing on a touch screen */
+	@media (hover: none) {
+		.td-menu__hint--kbd {
+			display: none;
+		}
 	}
 
 	.td-menu__separator {
@@ -7069,7 +7154,7 @@
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
-		padding: var(--td-glass-pad);
+		padding: var(--td-glass-pad) 0; /* v0.36.0: full-bleed rows */
 		overflow: hidden;
 		font-family: var(--td-font-sans);
 		font-size: var(--td-text-sm);
@@ -7107,7 +7192,6 @@
 	.td-chip-input__options {
 		display: flex;
 		flex-direction: column;
-		gap: 1px;
 		min-height: 0;
 		overflow-y: auto; /* scrolling inside the popup does NOT close it */
 		overscroll-behavior: contain;
@@ -7119,35 +7203,35 @@
 		flex-direction: column;
 		justify-content: center;
 		min-height: var(--td-dropdown-option-h);
-		padding: 6px 10px;
+		padding: 8px var(--td-option-pad-x);
 		color: inherit;
 		cursor: pointer;
 		user-select: none;
-		border-radius: var(--td-glass-radius-inner);
+		border-radius: 0; /* v0.36.0: full-bleed row (dcms2) */
 	}
 
 	.td-chip-input__option:hover {
-		background: var(--td-dropdown-option-hover);
+		background: var(--td-option-hover-bg);
 	}
 
 	/* highlight: aria-selected in the single list, data-active in the multi-select one (aria-selected = membership) */
 	.td-chip-input__options:not([aria-multiselectable="true"]) .td-chip-input__option[aria-selected="true"],
 	.td-chip-input__option[data-active] {
-		background: var(--td-dropdown-option-active);
-		box-shadow: inset 0 0 0 1px var(--td-dropdown-option-active-line);
+		background: var(--td-option-active-bg);
+		box-shadow: inset var(--td-option-active-bar-w) 0 0 var(--td-option-active-bar);
 	}
 
 	/* ---- v0.28.0 multi-select rows: ✓ slot, locked rows, groups, select-all ---- */
 	.td-chip-input__options[aria-multiselectable="true"] .td-chip-input__option {
 		position: relative;
-		padding-inline-start: 34px;
+		padding-inline-start: calc(var(--td-option-pad-x) + 1rem + 8px);
 	}
 
 	/* v0.36.0: the ✓ slot is the shared td-checkbox mark (check.css), always visible */
 	.td-chip-input__check {
 		position: absolute;
 		top: 50%;
-		left: 10px;
+		inset-inline-start: var(--td-option-pad-x);
 		transform: translateY(-50%);
 	}
 
@@ -7168,11 +7252,10 @@
 		display: flex;
 		flex: none;
 		flex-direction: column;
-		gap: 1px;
 	}
 
 	.td-chip-input__group-label {
-		padding: 8px 10px 2px;
+		padding: 8px var(--td-option-pad-x) 2px;
 		overflow: hidden;
 		font-size: var(--td-text-xs);
 		font-weight: var(--td-fw-semibold);
@@ -7180,6 +7263,11 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		user-select: none;
+	}
+
+	.td-chip-input__options:not([aria-multiselectable="true"]) .td-chip-input__option[aria-selected="true"]:dir(rtl),
+	.td-chip-input__option[data-active]:dir(rtl) {
+		box-shadow: inset calc(-1 * var(--td-option-active-bar-w)) 0 0 var(--td-option-active-bar);
 	}
 
 	/* ---- v0.28.0 PHP td_multiselect: native <select multiple> (no JS) + the element-mode shell ---- */
@@ -8642,7 +8730,10 @@
  */
 @layer td.tokens {
 	:root {
-		--td-media-grid-cols: repeat(auto-fill, minmax(160px, 1fr));
+		/* v0.36.0 (plan QĐ 64): never one column on a phone — a column is at most half the grid wide (minus the gap), so a
+		   294–324px grid shows 2 tiles a row; wider grids keep the 160px minimum */
+		--td-media-grid-col-min: 160px;
+		--td-media-grid-cols: repeat(auto-fill, minmax(min(var(--td-media-grid-col-min), calc(50% - var(--td-media-grid-gap) / 2)), 1fr));
 		--td-media-grid-gap: var(--td-space-xs);
 		--td-media-grid-radius: var(--td-radius-md);
 		--td-media-grid-tick-size: 24px;
@@ -9436,20 +9527,15 @@
 		padding-inline-start: env(safe-area-inset-left, 0px);
 	}
 
-	/* sm (480–719): keep a strip of the page visible so it reads as a drawer, not a page. */
+	/* < 720: keep a strip of the page visible so it reads as a drawer, not a page. */
 	@media (max-width: 719.98px) {
 		.td-drawer__panel {
 			width: min(var(--td-drawer-w, var(--_td-drawer-size)), calc(100% - 3rem));
 		}
 	}
 
-	/* xs (< 480): full screen. */
-	@media (max-width: 479.98px) {
-		.td-drawer__panel {
-			width: 100%;
-			border-width: 0;
-		}
-	}
+	/* v0.36.0 (plan QĐ 66, mobile UX audit): no full screen below 480 any more — the < 720 strip of page (3rem) stays
+	   visible on phones too, so the drawer reads as a drawer and the backdrop edge is reachable. */
 
 	@media (pointer: coarse) {
 		.td-drawer__close {
@@ -10183,7 +10269,7 @@
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
-		padding: var(--td-glass-pad);
+		padding: var(--td-glass-pad) 0; /* v0.36.0: full-bleed rows */
 		overflow: hidden;
 		font-family: var(--td-font-sans);
 		font-size: var(--td-text-sm);
@@ -10218,7 +10304,7 @@
 
 	.td-tree-select__search-wrap {
 		flex: none;
-		padding: 2px 2px var(--td-glass-pad);
+		padding: 2px var(--td-option-pad-x) var(--td-glass-pad);
 		margin-bottom: var(--td-glass-pad);
 		border-bottom: 1px solid var(--td-dropdown-hairline);
 	}
@@ -10251,6 +10337,54 @@
 
 	.td-tree-select__search:focus-visible {
 		box-shadow: var(--td-field-focus-ring);
+	}
+
+	/* v0.36.0 popup rows (dcms2): the tree rows inside the popup are full-bleed — the row state is painted by a ::before that
+	   reaches the popup's inline-start edge across the nesting indent (clipped by the scroller), no radius, no ring box;
+	   the keyboard-active row (data-active, aria-activedescendant) adds the inline-start accent bar */
+	.td-tree-select__menu .td-tree__row {
+		position: relative;
+		isolation: isolate;
+		padding-inline-end: var(--td-option-pad-x);
+		background: none;
+		border-radius: 0;
+		box-shadow: none;
+	}
+
+	.td-tree-select__menu .td-tree__row::before {
+		content: "";
+		position: absolute;
+		inset-block: 0;
+		inset-inline: -100vw 0;
+		z-index: -1;
+		pointer-events: none;
+	}
+
+	.td-tree-select__menu .td-tree__row:hover::before {
+		background: var(--td-option-hover-bg);
+	}
+
+	.td-tree-select__menu .td-tree__item[aria-selected="true"] > .td-tree__row {
+		font-weight: var(--td-fw-semibold);
+		background: none;
+	}
+
+	.td-tree-select__menu .td-tree__item[aria-selected="true"] > .td-tree__row::before {
+		background: var(--td-option-selected-bg);
+	}
+
+	/* the bar sits at the row's own inline start (after the nesting indent) */
+	.td-tree-select__menu .td-tree__item[data-active] > .td-tree__row {
+		background: none;
+		box-shadow: inset var(--td-option-active-bar-w) 0 0 var(--td-option-active-bar);
+	}
+
+	.td-tree-select__menu .td-tree__item[data-active] > .td-tree__row:dir(rtl) {
+		box-shadow: inset calc(-1 * var(--td-option-active-bar-w)) 0 0 var(--td-option-active-bar);
+	}
+
+	.td-tree-select__menu .td-tree__item[data-active] > .td-tree__row::before {
+		background: var(--td-option-active-bg);
 	}
 
 	.td-tree-select__scroller {
@@ -10286,6 +10420,7 @@
 		.td-tree-select__clear {
 			width: var(--td-touch-min);
 			height: var(--td-touch-min);
+			margin-inline-start: var(--td-space-xs); /* v0.36.0 (QĐ 68): ≥ 8 px from the value / trigger target */
 		}
 	}
 
@@ -10605,8 +10740,11 @@
 	 * track → auto-placed on a new grid row). An app rule placing the cluster explicitly (unlayered) still wins.
 	 */
 	@container td-repeater (width < 480px) {
+		/* v0.36.0 (plan QĐ 63, mobile UX audit: 180 px per row at 360): in a flex row the cluster SHARES the last line
+		   with the short field before it (e.g. quantity) when it fits, aligned to the end — a line of its own only when
+		   it does not; in an app grid row it still spans every track */
 		.td-repeater__actions {
-			flex: 1 0 100%;
+			flex: 1 0 auto;
 			grid-column: 1 / -1;
 			justify-content: flex-end;
 			margin-inline-start: 0;
@@ -10615,13 +10753,18 @@
 
 	/* td: generated container fallback (ADR 0014) */
 	@supports not (container-type: inline-size) {
-		@media (max-width: 479.98px) {.td-repeater__actions{flex:1 0 100%;grid-column:1 / -1;justify-content:flex-end;margin-inline-start:0}}
+		@media (max-width: 479.98px) {.td-repeater__actions{flex:1 0 auto;grid-column:1 / -1;justify-content:flex-end;margin-inline-start:0}}
 	}
 
 	@media (pointer: coarse) {
 		.td-repeater__btn {
 			width: var(--td-touch-min);
 			height: var(--td-touch-min);
+		}
+
+		/* v0.36.0 (QĐ 68): ≥ 8 px between adjacent touch targets */
+		.td-repeater__actions {
+			gap: var(--td-space-xs, 8px);
 		}
 	}
 
@@ -11768,6 +11911,11 @@
 			overflow: hidden;
 			clip-path: inset(50%);
 			white-space: nowrap;
+		}
+
+		/* QĐ 67: the card meta line ≥ 14px on touch screens */
+		.td-media-picker__meta {
+			font-size: var(--td-text-sm);
 		}
 
 		/* QĐ 56: the preview follows the image (no fixed square letterbox), at most 40% of the viewport height */

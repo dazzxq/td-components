@@ -251,6 +251,9 @@ export function mountResponsiveFixture(root) {
     lightbox: () => TdLightbox.open([1, 2, 3].map((n) => ({ src: `/test/fixtures/${n}.svg`, caption: `Ảnh mẫu ${n}` }))),
     lightboxPanel: () => TdLightbox.open([1, 2].map((n) => ({ src: `/test/fixtures/${n}.svg`, caption: `Ảnh mẫu ${n} có chú thích dài` })), {
       panel: (ctx) => { const p = document.createElement('p'); p.textContent = ctx.item.caption; return p; },
+      // v0.36.0 (QĐ 59): a pinned panel toggle + one more extra → below 480 the extra goes into the "Thêm" menu
+      toolbar: [{ id: 'info', label: 'Thông tin', icon: 'info', pinned: true, onClick: () => {} },
+        { id: 'share', label: 'Chia sẻ', icon: 'link', onClick: () => {} }],
     }),
     loading: () => TdLoading.show('Đang xử lý đơn hàng, vui lòng chờ...'),
     cropDialog: () => TdCropper.openDialog({ src: '/test/fixtures/photo.svg', alt: 'Ảnh phong cảnh', naturalWidth: 1200,

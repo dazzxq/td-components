@@ -956,7 +956,7 @@
       };
       TdLightbox.open([1, 2, 3, 4].map((n) => ({ src: `/test/fixtures/${n}.svg`, caption: `Ảnh mẫu ${n} — panel bên phải (≥ 900px) hoặc sheet dưới (mobile)` })), {
         panel: info,
-        toolbar: [{ id: 'info', label: 'Bật/tắt thông tin', icon: 'info', onClick: (ctx) => { on = !on; ctx.handle.setPanel(on ? info : false); } }],
+        toolbar: [{ id: 'info', label: 'Bật/tắt thông tin', icon: 'info', pinned: true, onClick: (ctx) => { on = !on; ctx.handle.setPanel(on ? info : false); } }],
       });
     });
 

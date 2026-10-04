@@ -110,6 +110,7 @@
 
 	/* ---- On a photo (media grid / picker ticks): a dark hairline keeps the white box visible on white images ---- */
 	.td-check--on-media {
+		background: #fff; /* light box in every theme: it sits on a photo, not on the page */
 		box-shadow: 0 0 0 1px rgb(0 0 0 / 45%);
 	}
 

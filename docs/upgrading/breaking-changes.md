@@ -166,6 +166,14 @@ class](class-map.md#ô-tick-chung-và-media-picker-0360)). Mọi "tick để ch�
 
 ---
 
+### Hàng option trong popup kiểu dcms2 (đổi hình)
+
+Dropdown, multi-select, popup tree-select và menu: hàng tràn mép (popup không còn lề ngang, hàng không bo, không viền
+khung khi active); mục đã chọn của danh sách chọn một in đậm (600) + ✓ ở cuối; hàng active bằng bàn phím có vạch nhấn đầu
+dòng (`--td-option-active-bar`) thay vòng viền trong (`--td-dropdown-option-active-line` hết tác dụng; menu: vạch thay vòng
+focus 2px). Token chung mới `--td-option-*` (xem theming). Muốn bo góc lại: `.td-dropdown__option { border-radius: 6px; }`
+(CSS site, không layer).
+
 ## 0.35.0
 
 **Đổi hành vi (nhỏ)** — cắt ảnh chỉ bằng toạ độ ([ADR 0015](../internal/decisions/0015-td-cropper.md),

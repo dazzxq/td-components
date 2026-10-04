@@ -298,8 +298,18 @@ async function runOverlays(page, c, tag, shot) {
         const near = (a, b) => Math.abs(a - b) <= 1;
         const err = [];
         if (!(near(m.left, 0) && near(m.top, 0) && near(m.width, vp.w) && near(m.height, vp.h))) err.push(`dialog ${Math.round(m.left)},${Math.round(m.top)} ${Math.round(m.width)}×${Math.round(m.height)} ≠ viewport ${vp.w}×${vp.h}`);
-        const wrap = await page.evaluate(() => getComputedStyle(document.querySelector('.td-media-picker__toolbar')).flexWrap);
-        if ((vp.w < 720) !== (wrap === 'wrap')) err.push(`toolbar flex-wrap ${wrap} at ${vp.w}px (wrap below 720)`);
+        // v0.36.0 (plan QĐ 49–52, 55): the toolbar is ONE row at every width; below 720 the chrome has a height budget
+        const chrome = await page.evaluate(() => {
+          const h = (sel) => { const el = document.querySelector(sel); return el ? el.getBoundingClientRect().height : 0; };
+          return { wrap: getComputedStyle(document.querySelector('.td-media-picker__toolbar')).flexWrap,
+            header: h('.td-media-picker .td-modal__header'), toolbar: h('.td-media-picker__toolbar'), footer: h('.td-media-picker__footer') };
+        });
+        if (chrome.wrap === 'wrap') err.push(`toolbar wraps at ${vp.w}px (one row since v0.36)`);
+        if (vp.w < 720 && vp.h > 500) {
+          if (chrome.header > 56.5) err.push(`header ${Math.round(chrome.header)}px > 56 (QĐ 60)`);
+          if (chrome.toolbar > 56.5) err.push(`toolbar ${Math.round(chrome.toolbar)}px > 56 (QĐ 52)`);
+          if (chrome.footer > 64.5) err.push(`footer ${Math.round(chrome.footer)}px > 64 (QĐ 55)`);
+        }
         const gridH = await page.evaluate(() => {
           const g = document.querySelector('.td-media-picker__grid');
           const r = document.querySelector('.td-media-picker__results') || g;
@@ -335,6 +345,35 @@ async function runOverlays(page, c, tag, shot) {
         const sheet = Math.abs(m.bottom - vp.h) <= 1 && Math.abs(m.width - vp.w) <= 1;
         if ((vp.w < 720) !== sheet) check(tag, `${s.name}: sheet below 720 / centred from 720`, [`${sheet ? 'sheet' : 'centred'} at ${vp.w}px`]);
         else checks += 1;
+      }
+      if (s.name === 'modal-confirm' && vp.w < 720 && vp.h > 500) {
+        // v0.36.0 (plan QĐ 60): compact chrome below 720 — header ≤ 56, footer ≤ 64
+        const hf = await page.evaluate(() => {
+          const d = [...document.querySelectorAll('.td-modal__dialog')].pop();
+          return { h: d.querySelector('.td-modal__header')?.getBoundingClientRect().height || 0, f: d.querySelector('.td-modal__footer')?.getBoundingClientRect().height || 0 };
+        });
+        const err = [];
+        if (hf.h > 56.5) err.push(`header ${Math.round(hf.h)} > 56`);
+        if (hf.f > 64.5) err.push(`footer ${Math.round(hf.f)} > 64`);
+        check(tag, `${s.name}: compact chrome budget`, err);
+      }
+      if (s.name === 'datetime' && vp.w < 720 && vp.h > 500) {
+        // v0.36.0 (plan QĐ 61): the datetime sheet takes ≤ 70 % of the viewport height
+        check(tag, `${s.name}: sheet height budget`, m.height <= vp.h * 0.7 + 0.5 ? [] : [`sheet ${Math.round(m.height)} > 70 % of ${vp.h}`]);
+      }
+      if (s.name === 'lightbox-panel') {
+        // v0.36.0 (plan QĐ 59): the counter / back area never under the toolbar
+        const hit = await page.evaluate(() => {
+          const a = document.querySelector('.td-lightbox__lead');
+          const b = document.querySelector('.td-lightbox__toolbar');
+          if (!a || !b) return null;
+          const r1 = a.getBoundingClientRect();
+          const r2 = b.getBoundingClientRect();
+          const x = Math.min(r1.right, r2.right) - Math.max(r1.left, r2.left);
+          const y = Math.min(r1.bottom, r2.bottom) - Math.max(r1.top, r2.top);
+          return x > 0.5 && y > 0.5 ? `${Math.round(x)}×${Math.round(y)}` : '';
+        });
+        check(tag, `${s.name}: lead and toolbar do not overlap`, hit ? [`overlap ${hit}`] : []);
       }
       const f = await shot(`ov-${s.name}`);
       const w = f ? ` (screenshot ${f})` : '';

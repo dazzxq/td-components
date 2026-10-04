@@ -214,7 +214,7 @@
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: column;
-		padding: var(--td-glass-pad);
+		padding: var(--td-glass-pad) 0; /* v0.36.0: full-bleed rows */
 		overflow: hidden;
 		font-family: var(--td-font-sans);
 		font-size: var(--td-text-sm);
@@ -252,7 +252,6 @@
 	.td-chip-input__options {
 		display: flex;
 		flex-direction: column;
-		gap: 1px;
 		min-height: 0;
 		overflow-y: auto; /* scrolling inside the popup does NOT close it */
 		overscroll-behavior: contain;
@@ -264,35 +263,35 @@
 		flex-direction: column;
 		justify-content: center;
 		min-height: var(--td-dropdown-option-h);
-		padding: 6px 10px;
+		padding: 8px var(--td-option-pad-x);
 		color: inherit;
 		cursor: pointer;
 		user-select: none;
-		border-radius: var(--td-glass-radius-inner);
+		border-radius: 0; /* v0.36.0: full-bleed row (dcms2) */
 	}
 
 	.td-chip-input__option:hover {
-		background: var(--td-dropdown-option-hover);
+		background: var(--td-option-hover-bg);
 	}
 
 	/* highlight: aria-selected in the single list, data-active in the multi-select one (aria-selected = membership) */
 	.td-chip-input__options:not([aria-multiselectable="true"]) .td-chip-input__option[aria-selected="true"],
 	.td-chip-input__option[data-active] {
-		background: var(--td-dropdown-option-active);
-		box-shadow: inset 0 0 0 1px var(--td-dropdown-option-active-line);
+		background: var(--td-option-active-bg);
+		box-shadow: inset var(--td-option-active-bar-w) 0 0 var(--td-option-active-bar);
 	}
 
 	/* ---- v0.28.0 multi-select rows: ✓ slot, locked rows, groups, select-all ---- */
 	.td-chip-input__options[aria-multiselectable="true"] .td-chip-input__option {
 		position: relative;
-		padding-inline-start: 34px;
+		padding-inline-start: calc(var(--td-option-pad-x) + 1rem + 8px);
 	}
 
 	/* v0.36.0: the ✓ slot is the shared td-checkbox mark (check.css), always visible */
 	.td-chip-input__check {
 		position: absolute;
 		top: 50%;
-		left: 10px;
+		inset-inline-start: var(--td-option-pad-x);
 		transform: translateY(-50%);
 	}
 
@@ -313,11 +312,10 @@
 		display: flex;
 		flex: none;
 		flex-direction: column;
-		gap: 1px;
 	}
 
 	.td-chip-input__group-label {
-		padding: 8px 10px 2px;
+		padding: 8px var(--td-option-pad-x) 2px;
 		overflow: hidden;
 		font-size: var(--td-text-xs);
 		font-weight: var(--td-fw-semibold);
@@ -325,6 +323,11 @@
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		user-select: none;
+	}
+
+	.td-chip-input__options:not([aria-multiselectable="true"]) .td-chip-input__option[aria-selected="true"]:dir(rtl),
+	.td-chip-input__option[data-active]:dir(rtl) {
+		box-shadow: inset calc(-1 * var(--td-option-active-bar-w)) 0 0 var(--td-option-active-bar);
 	}
 
 	/* ---- v0.28.0 PHP td_multiselect: native <select multiple> (no JS) + the element-mode shell ---- */

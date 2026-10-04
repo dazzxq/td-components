@@ -423,6 +423,25 @@ Ghi chú:
 - Kit có một gate đo tương phản thật (`npm run test:contrast`) cho mọi cặp giá trị mặc định. Gate này **không** chạy trên
   site của bạn: nếu bạn đổi `-bg` / `-fg`, tự kiểm tra chữ trên nút vẫn ≥ 4.5:1.
 
+### Hàng option trong popup (0.36.0)
+
+Dropdown, multi-select (`td-chip-input`), popup của tree-select và menu dùng chung kiểu hàng (giống dcms2): hàng **tràn
+mép** (không bo, không khung viền), nền khi hover / chọn / đang active; danh sách chọn một: mục đã chọn **in đậm** + ✓ ở
+cuối; danh sách chọn nhiều giữ ô tick chung ở đầu (ADR 0017). Hàng đang active bằng bàn phím có **vạch nhấn ở đầu dòng**
+(chỉ báo focus, ≥ 3:1 so với nền popup — contrast gate).
+
+| Token | Mặc định | Ý nghĩa |
+|---|---|---|
+| `--td-option-pad-x` | `12px` | Lề ngang của chữ trong hàng (và ô tìm phía trên) |
+| `--td-option-hover-bg` | `var(--td-color-hover)` | Nền khi rê chuột |
+| `--td-option-active-bg` | `var(--td-color-hover-strong)` | Nền hàng active (bàn phím) |
+| `--td-option-selected-bg` | `var(--td-color-hover-strong)` | Nền hàng đã chọn |
+| `--td-option-active-bar` | `var(--td-accent)` | Màu vạch nhấn của hàng active |
+| `--td-option-active-bar-w` | `3px` | Độ dày vạch nhấn |
+
+Token riêng cũ (`--td-dropdown-option-hover/-active/-selected`, `--td-menu-item-hover/-active`) vẫn chạy (mặc định trỏ về
+token chung); `--td-dropdown-option-active-line` hết tác dụng.
+
 ### Checkbox / switch
 
 | Token | Mặc định | Dark | Dùng cho |

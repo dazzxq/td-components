@@ -103,6 +103,15 @@
 		--td-color-border-strong: var(--td-gray-300);
 		--td-color-hover: rgb(0 0 0 / 5%);
 		--td-color-hover-strong: rgb(0 0 0 / 8%);
+		/* v0.36.0 popup option rows (dropdown, multiselect, tree-select, menu — dcms2 look): full-bleed rows, a hover fill,
+		   a selected fill (single lists: semibold label + ✓ at the end), the keyboard-active row = fill + an inline-start
+		   accent bar (the focus indicator, ≥ 3:1 vs the popup surface — contrast gate) */
+		--td-option-pad-x: 12px;
+		--td-option-hover-bg: var(--td-color-hover);
+		--td-option-active-bg: var(--td-color-hover-strong);
+		--td-option-selected-bg: var(--td-color-hover-strong);
+		--td-option-active-bar: var(--td-accent);
+		--td-option-active-bar-w: 3px;
 		--td-color-overlay: rgb(10 10 12 / 45%);
 		--td-color-skeleton: var(--td-gray-100);
 		--td-color-success: #15803d;
