@@ -157,6 +157,10 @@ namespace TdComponents {
         public const SSR_MEDIA_FIELD = 'media-field@1';
         /** v0.36.0: td_action_button element mode (<td-action-button> + the icon-only control). */
         public const SSR_ACTION_BUTTON = 'action-button@1';
+        /** v0.38.0: td_scan_input (single: element mode opt-in; multiple: always the element + textarea + hidden inputs). */
+        public const SSR_SCAN_INPUT = 'scan-input@1';
+        /** v0.38.0: texts of td_scan_input = TdScanInput.labels (a site overriding the JS labels gets a safe re-render). */
+        public const SCAN_LABELS = ['input' => 'Mã quét', 'list' => 'Mã đã quét', 'fallback' => 'Nhập tay, mỗi dòng một mã'];
         /** v0.36.0: tones / sizes of td_action_button (= TdActionButton). */
         public const ACTION_TONES = ['standard', 'warning', 'danger'];
         public const ACTION_SIZES = ['sm', 'md', 'lg'];
@@ -2538,6 +2542,166 @@ namespace {
             . '" data-tooltip="' . Td::e($name) . '"' . ($disabled ? ' aria-disabled="true"' : '') . '>'
             . '<span class="td-masked__icon" data-td-icon="eye" aria-hidden="true">' . Td::icon('eye') . '</span></button>'
             . '<span class="td-sr-only" role="status"></span></td-masked-value>';
+    }
+
+    /**
+     * v0.38.0 scan input for keyboard-wedge barcode scanners (contract scan-input@1, plan v0.38.0-scan-input QĐ 19).
+     * SINGLE (default): a NATIVE text field that works without JS (Enter submits the form — accepted without JS) —
+     * `div.td-scan` > [label] + `div.td-scan__box` > `input.td-scan__input` (autocomplete / autocapitalize / autocorrect off,
+     * spellcheck false, enterkeyhint done, name / value / required…) [+ the error note]; `element` (bool, default
+     * Td::configure ssr_elements): the same field inside `<td-scan-input data-td-ssr="scan-input@1">`, adopted IN PLACE by
+     * `@dazzxq/td-components/scan-input`. MULTIPLE (`multiple => true`, always the element): host > `div.td-scan
+     * [data-mode=multiple]` > [label] + box > input (no name) + `textarea.td-scan__fallback[name]` (typed by hand without
+     * JS, one code per line — the SERVER must split that entry on line breaks) + `ul.td-scan__list` > one
+     * `li.td-scan__item[data-value] > span.td-scan__value` per value; then one `input[type=hidden].td-scan__hidden[name]
+     * [value]` per value (same order), the error note last. Values print as the server's VALID state (never re-validated
+     * by the kit) and are the form-reset default. Options: label, value (single), values (multiple: list of strings),
+     * multiple, placeholder, required, disabled, min_length (1–64), max (multiple, ≥ 1), inputmode (none | text | numeric |
+     * decimal | tel | search | email | url), beep, error (text), aria_label (when there is no label; default "Mã quét"),
+     * id (the INPUT id; element mode: host = {id}-host), class (wrapper / host), attrs (the input: allowlisted; owned
+     * names and data-td-* reserved). Values are normalised like the component (td__scan_value(): C0 / C1 controls
+     * stripped, trimmed, ≤ 128 code points); at most 1000 values, empty / duplicate dropped.
+     */
+    function td_scan_input(string $name, array $o = []): string
+    {
+        $multiple = !empty($o['multiple']);
+        $element = $multiple || td__element($o);
+        $callerId = td__str($o['id'] ?? null);
+        $hostId = $element ? ($callerId !== null ? $callerId . '-host' : td__host_uid($name)) : null;
+        $cid = $callerId ?? ($element ? $hostId . '-input' : td__host_uid($name) . '-input');
+        $label = isset($o['label']) && is_scalar($o['label']) && (string) $o['label'] !== '' ? (string) $o['label'] : null;
+        $aria = isset($o['aria_label']) && is_scalar($o['aria_label']) && (string) $o['aria_label'] !== '' ? (string) $o['aria_label'] : null;
+        $placeholder = td__str($o['placeholder'] ?? null);
+        $modes = ['none', 'text', 'numeric', 'decimal', 'tel', 'search', 'email', 'url'];
+        $inputmode = isset($o['inputmode']) && in_array($o['inputmode'], $modes, true) ? $o['inputmode'] : null;
+        $int = static function (mixed $v, int $min, int $max): ?int {
+            $n = is_int($v) ? $v : (is_string($v) && preg_match('/^\s*[0-9]{1,9}\s*$/', $v) ? (int) trim($v) : null);
+            return $n !== null && $n >= $min && $n <= $max ? $n : null;
+        };
+        $minLength = $int($o['min_length'] ?? null, 1, 64);
+        $max = $multiple ? $int($o['max'] ?? null, 1, 100000) : null;
+        $error = td__str($o['error'] ?? null);
+        $required = !empty($o['required']);
+        $disabled = !empty($o['disabled']);
+        $nameAttr = $name !== '' ? $name : null;
+        $value = !$multiple && isset($o['value']) && is_scalar($o['value']) ? td__scan_value((string) $o['value']) : '';
+        $values = $multiple ? td__scan_values($o['values'] ?? []) : [];
+        $errId = ($element ? $hostId : $cid) . '-error';
+        $taken = [];
+        $input = '<input' . Td::ownAttrs([
+            'type' => 'text',
+            'class' => 'td-scan__input',
+            'id' => $cid,
+            'autocomplete' => 'off',
+            'autocapitalize' => 'off',
+            'autocorrect' => 'off',
+            'spellcheck' => 'false',
+            'enterkeyhint' => 'done',
+            'inputmode' => $inputmode,
+            'placeholder' => $placeholder,
+            'name' => $multiple ? null : $nameAttr,
+            'value' => $value !== '' ? $value : null,
+            'required' => !$multiple && $required,
+            'disabled' => $disabled,
+            'autofocus' => !empty($o['autofocus']),
+            'aria-label' => $label === null ? ($aria ?? Td::SCAN_LABELS['input']) : null,
+            'aria-invalid' => $error !== null && !$multiple ? 'true' : null,
+            'aria-errormessage' => $error !== null && !$multiple ? $errId : null,
+            'aria-describedby' => $error !== null && !$multiple ? $errId : null,
+        ], $taken);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $taken = td__reserve(['type', 'class', 'id', 'autocomplete', 'autocapitalize', 'autocorrect', 'spellcheck', 'enterkeyhint',
+            'inputmode', 'placeholder', 'name', 'value', 'required', 'disabled', 'readonly', 'autofocus', 'maxlength', 'minlength',
+            'pattern', 'aria-label', 'aria-labelledby', 'aria-invalid', 'aria-errormessage', 'aria-describedby'], $extra, $taken);
+        $input .= Td::attrs($extra, $taken) . '>';
+        $labelHtml = $label !== null ? '<label class="td-scan__label" for="' . Td::e($cid) . '">' . Td::e($label) . '</label>' : '';
+        $note = $error !== null
+            ? '<span class="td-field-error" id="' . Td::e($errId) . '" data-for="' . Td::e($element ? $hostId : $cid) . '">' . Td::e($error) . '</span>'
+            : '';
+        $box = '<div class="td-scan__box">' . $input . '</div>';
+        if (!$element) {
+            return '<div class="td-scan' . Td::e(Td::classTokens($o['class'] ?? null)) . '">' . $labelHtml . $box . $note . '</div>';
+        }
+        $hostTaken = [];
+        $host = '<td-scan-input' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_SCAN_INPUT,
+            'id' => $hostId,
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'name' => $nameAttr,
+            'value' => $value !== '' ? $value : null,
+            'label' => $label,
+            'placeholder' => $placeholder,
+            'inputmode' => $inputmode,
+            'min-length' => $minLength !== null ? (string) $minLength : null,
+            'max' => $max !== null ? (string) $max : null,
+            'multiple' => $multiple,
+            'beep' => !empty($o['beep']),
+            'required' => $required,
+            'disabled' => $disabled,
+            'error-text' => $error,
+            'aria-label' => $aria,
+        ], $hostTaken) . '>';
+        if (!$multiple) {
+            return $host . '<div class="td-scan">' . $labelHtml . $box . '</div>' . $note . '</td-scan-input>';
+        }
+        $items = '';
+        $hidden = '';
+        foreach ($values as $v) {
+            $items .= '<li class="td-scan__item" data-value="' . Td::e($v) . '"><span class="td-scan__value">' . Td::e($v) . '</span></li>';
+            $hidden .= '<input type="hidden" class="td-scan__hidden"' . ($nameAttr !== null ? ' name="' . Td::e($nameAttr) . '"' : '')
+                . ' value="' . Td::e($v) . '"' . ($disabled ? ' disabled' : '') . '>';
+        }
+        $textarea = '<textarea class="td-scan__fallback"' . ($nameAttr !== null ? ' name="' . Td::e($nameAttr) . '"' : '')
+            . ' rows="3" aria-label="' . Td::e(Td::SCAN_LABELS['fallback']) . '"' . ($disabled ? ' disabled' : '') . '></textarea>';
+        return $host . '<div class="td-scan" data-mode="multiple">' . $labelHtml . $box . $textarea
+            . '<ul class="td-scan__list" aria-label="' . Td::e(Td::SCAN_LABELS['list']) . '">' . $items . '</ul></div>'
+            . $hidden . $note . '</td-scan-input>';
+    }
+
+    /**
+     * @internal v0.38.0 a scanned value as <td-scan-input> keeps it (src/utils/scan-burst.js normalizeScan, parity
+     * SCAN_NORMALIZE_CASES): C0 / C1 controls stripped (the GS1 \x1D too), JS-whitespace trimmed, at most $max code
+     * points (then trimmed at the end again). Invalid UTF-8 → ''.
+     */
+    function td__scan_value(string $v, int $max = 128): string
+    {
+        if (!preg_match('//u', $v)) {
+            return '';
+        }
+        $ws = '[' . Td::JS_WS . ']';
+        $s = (string) preg_replace('/[\x{0}-\x{1F}\x{7F}-\x{9F}]/u', '', $v);
+        $s = (string) preg_replace('/^' . $ws . '+|' . $ws . '+$/u', '', $s);
+        $cut = td__utf8_prefix($s, $max);
+        return $cut === $s ? $s : (string) preg_replace('/' . $ws . '+$/u', '', $cut);
+    }
+
+    /**
+     * @internal v0.38.0 `values` of td_scan_input (= normalizeValues): strings / integers normalised, empty and duplicate
+     * values dropped (first kept), at most 1000. Anything else → [].
+     * @return array<int,string>
+     */
+    function td__scan_values(mixed $list): array
+    {
+        if (!is_array($list)) {
+            return [];
+        }
+        $out = [];
+        $seen = [];
+        foreach (array_slice(array_values($list), 0, 4000) as $raw) {
+            if (!is_string($raw) && !is_int($raw)) {
+                continue;
+            }
+            $v = td__scan_value((string) $raw);
+            if ($v === '' || isset($seen[$v])) {
+                continue;
+            }
+            $seen[$v] = true;
+            $out[] = $v;
+            if (count($out) >= 1000) {
+                break;
+            }
+        }
+        return $out;
     }
 
     /**
