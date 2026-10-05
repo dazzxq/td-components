@@ -47,7 +47,9 @@
       "td-filter-chips": "/src/display/td-filter-chips.js",
       "td-datetime-range": "/src/form/td-datetime-range.js",
       "td-theme-scope": "/src/form/td-dropdown.js",
-      "td-media-gallery": "/src/form/td-media-gallery.js"
+      "td-media-gallery": "/src/form/td-media-gallery.js",
+      "td-steps": "/src/display/td-steps.js",
+      "td-timeline": "/src/display/td-timeline.js"
     },
     "tokenNative": [
       "td-button",
@@ -94,6 +96,8 @@
       "td-scan-input",
       "td-filter-chips",
       "td-datetime-range",
+      "td-steps",
+      "td-timeline",
       "td-theme-scope",
       "td-media-gallery"
     ],
@@ -4228,6 +4232,173 @@
         "margin-left"
       ],
       "excludeNote": "v0.43.0: text-bearing boxes (label, count, the Add prompt, the alt input, the tiles that hold them) size with the font metrics of the platform (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.39 filter chips): width / height / margin-left are excluded from the start; the layout budgets (no horizontal scroll 320–1280, columns, 44px touch targets) are gated by test:responsive and the engines tests"
+    }
+  ],
+  "td-steps": [
+    {
+      "state": "horizontal",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','720px'); window.__mount.appendChild(w); const c=document.createElement('td-steps'); c.id='probe'; c.setAttribute('current','3'); w.appendChild(c); c.steps=[{label:'Tải tệp',description:'nhap-kho.xlsx'},{label:'Kiểm tra dữ liệu',state:'error',description:'Dòng 12: thiếu IMEI'},{label:'Xem trước'},{label:'Nhập'}];",
+      "selectors": [
+        "td-steps",
+        ".td-steps",
+        ".td-steps__list",
+        ".td-steps__item[data-state=\"done\"] .td-steps__marker",
+        ".td-steps__item[data-state=\"error\"] .td-steps__marker",
+        ".td-steps__item[data-state=\"current\"] .td-steps__marker",
+        ".td-steps__item[data-state=\"upcoming\"] .td-steps__marker",
+        ".td-steps__item[data-state=\"current\"] .td-steps__label",
+        ".td-steps__item[data-state=\"error\"] .td-steps__desc",
+        ".td-steps__item[data-state=\"done\"] .td-steps__icon",
+        ".td-steps__summary"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.45.0: text-bearing boxes (labels, descriptions, summary, titles, times, day headings, the 'Xem thêm' button) size with the platform font metrics (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards, v0.39 filter-chips) and centred / auto margins follow them: width / height / margin-left are excluded up front; the layout budgets (no overflow, one row of markers, 44px touch targets) are gated by test:responsive and the engines tests; the four marker states (done ✓ accent, error ! danger pair, current accent + ring, upcoming surface + strong border) in one row"
+    },
+    {
+      "state": "vertical",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','720px'); window.__mount.appendChild(w); const c=document.createElement('td-steps'); c.id='probe'; c.setAttribute('current','2'); c.setAttribute('orientation','vertical'); w.appendChild(c); c.steps=[{label:'Tải tệp',description:'nhap-kho.xlsx'},{label:'Kiểm tra dữ liệu',description:'Dòng 12: thiếu IMEI'},{label:'Xem trước'},{label:'Nhập'}];",
+      "selectors": [
+        ".td-steps__list",
+        ".td-steps__item",
+        ".td-steps__step",
+        ".td-steps__item[data-state=\"current\"] .td-steps__marker",
+        ".td-steps__item[data-state=\"current\"] .td-steps__label",
+        ".td-steps__desc"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.45.0: text-bearing boxes (labels, descriptions, summary, titles, times, day headings, the 'Xem thêm' button) size with the platform font metrics (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards, v0.39 filter-chips) and centred / auto margins follow them: width / height / margin-left are excluded up front; the layout budgets (no overflow, one row of markers, 44px touch targets) are gated by test:responsive and the engines tests; vertical: grid marker | text, no horizontal connector"
+    },
+    {
+      "state": "compact",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','320px'); window.__mount.appendChild(w); const c=document.createElement('td-steps'); c.id='probe'; c.setAttribute('current','2'); w.appendChild(c); c.steps=[{label:'Tải tệp',description:'nhap-kho.xlsx'},{label:'Kiểm tra dữ liệu',description:'Dòng 12: thiếu IMEI'},{label:'Xem trước'},{label:'Nhập'}];",
+      "selectors": [
+        ".td-steps__list",
+        ".td-steps__item[data-state=\"current\"] .td-steps__label",
+        ".td-steps__summary",
+        ".td-steps__item[data-state=\"current\"] .td-steps__marker"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "top",
+        "left",
+        "right",
+        "bottom"
+      ],
+      "excludeNote": "v0.45.0: text-bearing boxes (labels, descriptions, summary, titles, times, day headings, the 'Xem thêm' button) size with the platform font metrics (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards, v0.39 filter-chips) and centred / auto margins follow them: width / height / margin-left are excluded up front; the layout budgets (no overflow, one row of markers, 44px touch targets) are gated by test:responsive and the engines tests; container < 480: labels visually hidden (still read), the summary line shown; the hidden label's resolved insets follow the column split (top / left / right / bottom excluded)"
+    },
+    {
+      "state": "clickable",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','720px'); window.__mount.appendChild(w); const c=document.createElement('td-steps'); c.id='probe'; c.setAttribute('current','4'); c.setAttribute('navigation','back'); w.appendChild(c); c.steps=[{label:'Thông tin',href:'#buoc-1'},{label:'Địa chỉ'},{label:'Thanh toán'},{label:'Xác nhận'}];",
+      "selectors": [
+        "nav.td-steps",
+        "a.td-steps__step",
+        "button.td-steps__step",
+        "span.td-steps__step[aria-current=\"step\"]"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.45.0: text-bearing boxes (labels, descriptions, summary, titles, times, day headings, the 'Xem thêm' button) size with the platform font metrics (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards, v0.39 filter-chips) and centred / auto margins follow them: width / height / margin-left are excluded up front; the layout budgets (no overflow, one row of markers, 44px touch targets) are gated by test:responsive and the engines tests; navigation=\"back\": earlier steps are a link / buttons (transparent, no underline)"
+    }
+  ],
+  "td-timeline": [
+    {
+      "state": "grouped",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','720px'); window.__mount.appendChild(w); const c=document.createElement('td-timeline'); c.id='probe'; c.setAttribute('time-zone','Asia/Ho_Chi_Minh'); c.now=new Date('2026-10-05T03:00:00Z'); w.appendChild(c); c.items=[{id:'a',time:'2026-10-05T02:00:00Z',title:'Đổi trạng thái: Chờ giao → Đang giao',actor:'Nguyễn An',icon:'send',tone:'info',meta:'Kho Hà Nội'},{id:'b',time:'2026-10-05T01:00:00Z',title:'Đã thanh toán',icon:'success',tone:'success'},{id:'c',time:'2026-10-04T09:00:00Z',title:'Sửa địa chỉ',icon:'warning',tone:'warning',href:'#don'},{id:'d',time:'2026-10-03T09:00:00Z',title:'Huỷ yêu cầu',icon:'error',tone:'danger'},{id:'e',time:'2026-10-02T09:00:00Z',title:'Tạo đơn',actor:{name:'Lê Chi',href:'#u'}}];",
+      "selectors": [
+        "td-timeline",
+        ".td-timeline__day",
+        ".td-timeline__day-title",
+        ".td-timeline__list",
+        ".td-timeline__item",
+        ".td-timeline__item[data-tone=\"neutral\"] .td-timeline__marker",
+        ".td-timeline__item[data-tone=\"success\"] .td-timeline__marker",
+        ".td-timeline__item[data-tone=\"warning\"] .td-timeline__marker",
+        ".td-timeline__item[data-tone=\"danger\"] .td-timeline__marker",
+        ".td-timeline__item[data-tone=\"info\"] .td-timeline__marker",
+        ".td-timeline__title",
+        "a.td-timeline__title",
+        ".td-timeline__actor",
+        "a.td-timeline__actor",
+        ".td-timeline__time",
+        ".td-timeline__meta",
+        ".td-timeline__icon"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.45.0: text-bearing boxes (labels, descriptions, summary, titles, times, day headings, the 'Xem thêm' button) size with the platform font metrics (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards, v0.39 filter-chips) and centred / auto margins follow them: width / height / margin-left are excluded up front; the layout budgets (no overflow, one row of markers, 44px touch targets) are gated by test:responsive and the engines tests; day groups, the four tones (alert pairs) + neutral, links in the accent"
+    },
+    {
+      "state": "details-open",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','720px'); window.__mount.appendChild(w); const c=document.createElement('td-timeline'); c.id='probe'; c.setAttribute('time-zone','Asia/Ho_Chi_Minh'); c.now=new Date('2026-10-05T03:00:00Z'); w.appendChild(c); c.items=[{id:'a',time:'2026-10-05T02:00:00Z',title:'Sửa địa chỉ',details:'Trước: 12 Hàng Bài\\nSau: 45 Lý Thường Kiệt',expanded:true},{id:'b',time:'2026-10-05T01:00:00Z',title:'Ghi chú',details:'x'}];",
+      "selectors": [
+        ".td-timeline__details",
+        ".td-timeline__summary",
+        ".td-timeline__summary-inner",
+        ".td-timeline__details[open] .td-timeline__chevron",
+        ".td-timeline__detail"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.45.0: text-bearing boxes (labels, descriptions, summary, titles, times, day headings, the 'Xem thêm' button) size with the platform font metrics (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards, v0.39 filter-chips) and centred / auto margins follow them: width / height / margin-left are excluded up front; the layout budgets (no overflow, one row of markers, 44px touch targets) are gated by test:responsive and the engines tests; native <details>: no UA marker, chevron turned when open, pre-line detail text"
+    },
+    {
+      "state": "loading",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','720px'); window.__mount.appendChild(w); const c=document.createElement('td-timeline'); c.id='probe'; c.setAttribute('time-zone','Asia/Ho_Chi_Minh'); c.setAttribute('loading',''); c.now=new Date('2026-10-05T03:00:00Z'); w.appendChild(c); c.items=[];",
+      "selectors": [
+        "td-timeline[aria-busy=\"true\"]",
+        ".td-timeline__skeleton",
+        ".td-timeline__skeleton-row",
+        ".td-timeline__skeleton-row > .td-skeleton--circle"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left",
+        "transform"
+      ],
+      "excludeNote": "v0.45.0: text-bearing boxes (labels, descriptions, summary, titles, times, day headings, the 'Xem thêm' button) size with the platform font metrics (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards, v0.39 filter-chips) and centred / auto margins follow them: width / height / margin-left are excluded up front; the layout budgets (no overflow, one row of markers, 44px touch targets) are gated by test:responsive and the engines tests; skeleton rows (the shimmer animates: transform excluded)"
+    },
+    {
+      "state": "more",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','720px'); window.__mount.appendChild(w); const c=document.createElement('td-timeline'); c.id='probe'; c.setAttribute('time-zone','Asia/Ho_Chi_Minh'); c.setAttribute('has-more',''); c.setAttribute('more-href','?page=2'); c.now=new Date('2026-10-05T03:00:00Z'); w.appendChild(c); c.items=[{id:'a',time:'2026-10-05T02:00:00Z',title:'A'}];",
+      "selectors": [
+        ".td-timeline__footer",
+        "a.td-timeline__more",
+        ".td-timeline__more .td-btn__spinner"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.45.0: text-bearing boxes (labels, descriptions, summary, titles, times, day headings, the 'Xem thêm' button) size with the platform font metrics (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards, v0.39 filter-chips) and centred / auto margins follow them: width / height / margin-left are excluded up front; the layout budgets (no overflow, one row of markers, 44px touch targets) are gated by test:responsive and the engines tests; 'Xem thêm' as a link (more-href, no loadMore): the secondary td-btn"
     }
   ]
 }
