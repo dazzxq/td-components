@@ -6,11 +6,12 @@
   "main": "index.js",
   "scripts": {
     "test": "npm run check:css && npm run check:icons && npm run check:stories && npm run test:node && npm run test:browser && npm run test:csp && npm run test:csp:combined && npm run test:tokens && npm run test:contrast && npm run test:engines && npm run test:responsive && npm run test:touch",
-    "test:node": "node --test --test-force-exit \"src/**/*.test.js\" \"test/php/*.test.js\"",
+    "test:node": "node --test --test-force-exit \"src/**/*.test.js\" \"test/php/*.test.js\" \"test/tokens/*.test.js\"",
     "test:browser": "web-test-runner",
     "test:csp": "node test/csp/csp.spec.mjs",
     "test:csp:combined": "CSP_PROFILE=legacy+td node test/csp/csp.spec.mjs",
     "test:tokens": "node test/tokens/tokens.spec.mjs",
+    "test:golden": "node test/tokens/golden.spec.mjs",
     "build:css": "node scripts/build-css.mjs",
     "check:css": "node scripts/build-css.mjs --check",
     "build:icons": "node scripts/build-icons.mjs",
