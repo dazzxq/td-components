@@ -39,6 +39,7 @@
 		min-inline-size: 0;
 		container: td-filter-chips / inline-size;
 		font-family: var(--td-font-sans);
+		line-height: var(--td-leading-tight); /* own it: a host page reset (Tailwind preflight) must not change it */
 	}
 
 	td-filter-chips[hidden] {

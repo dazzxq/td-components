@@ -55,7 +55,7 @@
       "-webkit-backdrop-filter": "",
       "font-size": "16px",
       "font-weight": "400",
-      "line-height": "normal",
+      "line-height": "20px",
       "text-align": "start",
       "resize": "none",
       "overflow-y": "visible",
