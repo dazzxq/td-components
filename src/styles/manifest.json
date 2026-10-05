@@ -55,6 +55,7 @@
     "components/scan-input.css",
     "components/filter-chips.css",
     "components/datetime-range.css",
+    "components/steps.css",
     "utilities.css"
   ]
 }

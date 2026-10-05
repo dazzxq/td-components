@@ -89,6 +89,7 @@ export function normalizeSteps(list, opts = {}) {
  */
 export function deriveStates(steps, current, complete) {
   const warn = new Set();
+  if (!steps.length) return { anchor: -1, states: [], warnings: [] }; // nothing to point at: no noise
   const hasCurrent = typeof current === 'string' && current !== '';
   const explicit = [];
   steps.forEach((s, i) => { if (s.state === 'current') explicit.push(i); });
@@ -187,7 +188,7 @@ export const STATE_CASES = Object.freeze([
     anchor: 2, states: ['upcoming', 'error', 'current', 'done'], warnings: [], back: [1], all: [0, 1, 3] },
   { name: 'unmatched + extra together', steps: S('current', 'current'), current: 'zz', complete: false, anchor: 0,
     states: ['current', 'upcoming'], warnings: ['current-unmatched', 'extra-current'], back: [], all: [1] },
-  { name: 'empty', steps: [], current: '1', complete: false, anchor: -1, states: [], warnings: ['current-unmatched'], back: [], all: [] },
+  { name: 'empty (no warning)', steps: [], current: '1', complete: false, anchor: -1, states: [], warnings: [], back: [], all: [] },
 ]);
 
 /** QĐ S3 (review R2-5) summary parity table: labels of the steps, `current`, `complete` → text (default labels). */

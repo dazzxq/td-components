@@ -72,6 +72,8 @@ export const PRESS_TARGETS = Object.freeze([
   '.td-tree-select__clear',
   '.td-tree-select__menu .td-tree__row',
   '.td-tree__row',
+  'a.td-steps__step',
+  'button.td-steps__step',
   'td-media-grid > td-sortable > [data-td-sort-item] > .td-sortable__handle',
 ]);
 
