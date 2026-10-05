@@ -4,8 +4,8 @@ import { TdScanInput } from './td-scan-input.js';
 
 // v0.38.0 (plan v0.38.0-scan-input M2, QĐ 3–18) — <td-scan-input> in Chromium, Firefox AND WebKit (group `engines`).
 // Real signals: `sendKeys` drives Playwright's keyboard (keydown / beforeinput / input / keyup per character). A scan
-// is `type` in ONE command (machine rhythm, no delay); manual typing waits 150 ms between characters (wide margin:
-// the threshold is 40 ms). DOM nodes are compared as booleans (a failing chai assertion carrying nodes hangs the runner).
+// is `type` in ONE command (machine rhythm, no delay); manual typing waits 500 ms between characters (tests run with
+// key-interval 100, see scanEl). DOM nodes are compared as booleans (a failing chai assertion carrying nodes hangs the runner).
 const link = document.createElement('link');
 link.rel = 'stylesheet';
 link.href = '/td.css';
@@ -33,7 +33,11 @@ function mount(html) {
   extra.push(() => wrap.remove());
   return wrap;
 }
-const scanEl = (attrs = '') => mount(`<td-scan-input ${attrs}></td-scan-input>`).querySelector('td-scan-input');
+// Under load (parallel CI / several suites on one machine) Playwright's `type` can stretch key gaps past the 40 ms default,
+// which made machine bursts read as manual (Firefox flakes, CI run 37342699717). Tests use key-interval 100 (scanner: mean
+// ≤ 100 ms, no gap > 400 ms) and hand typing at 500 ms per character, so the two never overlap; the 40 ms default itself
+// is covered by the node tests in src/utils/scan-burst.test.js.
+const scanEl = (attrs = '') => mount(`<td-scan-input ${/(?:^|\s)key-interval\s*=/i.test(attrs) ? attrs : `${attrs} key-interval="100"`}></td-scan-input>`).querySelector('td-scan-input');
 const inputOf = (el) => el.querySelector('input.td-scan__input');
 const rowsOf = (el) => [...el.querySelectorAll('li.td-scan__item')];
 const rowValues = (el) => rowsOf(el).map((li) => li.querySelector('.td-scan__value').textContent);
@@ -48,12 +52,12 @@ async function scan(el, text, key = 'Enter') {
   await sendKeys({ type: text });
   if (key) await sendKeys({ press: key });
 }
-/** Typed by hand: 150 ms between characters. */
-async function typeSlow(el, text, key = 'Enter') {
+/** Typed by hand: 500 ms between characters (or `gap`) — 5× the test key-interval. */
+async function typeSlow(el, text, key = 'Enter', gap = 500) {
   inputOf(el).focus();
   for (const ch of text) {
     await sendKeys({ type: ch });
-    await wait(150);
+    await wait(gap);
   }
   if (key) await sendKeys({ press: key });
 }
@@ -113,7 +117,7 @@ describe('td-scan-input — scanner vs manual (QĐ 3–6)', () => {
     expect(document.activeElement === input).to.equal(true);
   });
 
-  it('typed by hand (150 ms apart) + Enter → source manual (allowed by default)', async () => {
+  it('typed by hand (500 ms apart) + Enter → source manual (allowed by default)', async () => {
     const el = scanEl();
     const rec = record(el, 'scan');
     await typeSlow(el, 'AB12');
@@ -155,7 +159,7 @@ describe('td-scan-input — scanner vs manual (QĐ 3–6)', () => {
 
 describe('td-scan-input — terminators, no implicit submit (QĐ 4)', () => {
   it('Enter inside a <form> never submits it', async () => {
-    const wrap = mount('<form><td-scan-input name="c"></td-scan-input><button>Gửi</button></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" name="c"></td-scan-input><button>Gửi</button></form>');
     const form = wrap.querySelector('form');
     let submits = 0;
     form.addEventListener('submit', (e) => { submits++; e.preventDefault(); });
@@ -170,7 +174,7 @@ describe('td-scan-input — terminators, no implicit submit (QĐ 4)', () => {
   });
 
   it('terminator="tab": a fast Tab ends the scan and keeps the focus; a Tab after typing by hand leaves', async () => {
-    const wrap = mount('<td-scan-input terminator="tab"></td-scan-input><button id="next">x</button>');
+    const wrap = mount('<td-scan-input key-interval="100" terminator="tab"></td-scan-input><button id="next">x</button>');
     const el = wrap.querySelector('td-scan-input');
     const rec = record(el, 'scan');
     await scan(el, IMEI, 'Tab');
@@ -235,7 +239,7 @@ describe('td-scan-input — dedupe (QĐ 11)', () => {
 
 describe('td-scan-input — async validate (QĐ 9, 10, 13)', () => {
   it('3 scans, promises settle 3-1-2 → list + scan events in scan order 1-2-3; form invalid while pending', async () => {
-    const wrap = mount('<form><td-scan-input multiple name="imei[]"></td-scan-input></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" multiple name="imei[]"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
     const form = wrap.querySelector('form');
     const v = deferred();
@@ -310,7 +314,7 @@ describe('td-scan-input — async validate (QĐ 9, 10, 13)', () => {
   });
 
   it('single: an invalid scan keeps the previous valid form value', async () => {
-    const wrap = mount('<form><td-scan-input name="c"></td-scan-input></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" name="c"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
     el.validate = (v) => v !== 'NOPE01';
     const rec = record(el, 'scan', 'scan-invalid');
@@ -327,7 +331,7 @@ describe('td-scan-input — async validate (QĐ 9, 10, 13)', () => {
 
 describe('td-scan-input — multiple (QĐ 12)', () => {
   it('FormData has only the valid codes; "Bỏ" removes one and refocuses the input; change events', async () => {
-    const wrap = mount('<form><td-scan-input multiple name="imei[]"></td-scan-input></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" multiple name="imei[]"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
     const form = wrap.querySelector('form');
     const v = deferred();
@@ -372,7 +376,7 @@ describe('td-scan-input — multiple (QĐ 12)', () => {
   });
 
   it('values is silent; form.reset() goes back to the default captured at connect', async () => {
-    const wrap = mount('<form><td-scan-input multiple name="c[]"></td-scan-input></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" multiple name="c[]"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
     const rec = record(el, 'change', 'scan');
     el.values = ['X1', ' X2 ', 'X1', ''];
@@ -441,7 +445,7 @@ describe('td-scan-input — composition commit of several characters = a batch i
 describe('td-scan-input — generation (QĐ 10, review R1-2)', () => {
   for (const how of ['reset()', 'form.reset()', 'remove()']) {
     it(`a validator ignoring its signal resolves after ${how} → nothing changes (events, list, FormData, validity, live regions, beeps)`, async () => {
-      const wrap = mount('<form><td-scan-input multiple beep name="c[]"></td-scan-input></form>');
+      const wrap = mount('<form><td-scan-input key-interval="100" multiple beep name="c[]"></td-scan-input></form>');
       const el = wrap.querySelector('td-scan-input');
       const form = wrap.querySelector('form');
       let osc = 0;
@@ -504,7 +508,7 @@ describe('td-scan-input — pending reservations (QĐ 11, review R1-3)', () => {
   });
 
   it('final check: a validator returning a value already listed → the row is invalid alreadyListed, no 2nd FormData entry', async () => {
-    const wrap = mount('<form><td-scan-input multiple name="c[]"></td-scan-input></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" multiple name="c[]"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
     el.values = ['CANON1'];
     el.validate = () => ({ valid: true, value: 'CANON1' });
@@ -550,7 +554,7 @@ describe('td-scan-input — max counts pending scans (QĐ 12, review R2-6)', () 
   });
 
   it('re-check on apply: max=2, A + B pending, max lowered to 1 → A valid, B invalid messages.max', async () => {
-    const wrap = mount('<form><td-scan-input multiple max="2" name="c[]"></td-scan-input></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" multiple max="2" name="c[]"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
     const v = deferred();
     el.validate = v.fn;
@@ -638,7 +642,7 @@ describe('td-scan-input — misc', () => {
 
 describe('td-scan-input — review round 1 (ISSUE-1…8, SEC-1…4)', () => {
   it('ISSUE-1 / SEC-1: older pending scan VALID, newer scan refused → the newer error stays, form invalid until a newer scan succeeds', async () => {
-    const wrap = mount('<form><td-scan-input name="c" manual="reject"></td-scan-input></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" name="c" manual="reject"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
     const form = wrap.querySelector('form');
     const v = deferred();
@@ -723,7 +727,7 @@ describe('td-scan-input — review round 1 (ISSUE-1…8, SEC-1…4)', () => {
 
   it('ISSUE-2: value assigned before the upgrade (multiple) = values [value]', () => {
     const tpl = document.createElement('template');
-    tpl.innerHTML = '<td-scan-input multiple name="c[]"></td-scan-input>';
+    tpl.innerHTML = '<td-scan-input key-interval="100" multiple name="c[]"></td-scan-input>';
     const el = tpl.content.firstElementChild;
     expect(el instanceof TdScanInput).to.equal(false, 'not upgraded yet');
     el.value = 'B0002';
@@ -851,7 +855,7 @@ describe('td-scan-input — review round 2 (SEC-1 / ISSUE-5 / ISSUE-9)', () => {
   });
 
   it('ISSUE-9: adding `multiple` keeps the single value → values [v] + FormData', () => {
-    const wrap = mount('<form><td-scan-input name="c" value="A0001"></td-scan-input></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" name="c" value="A0001"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
     inputOf(el).value = 'A0001';
     el.setAttribute('multiple', '');
@@ -861,7 +865,7 @@ describe('td-scan-input — review round 2 (SEC-1 / ISSUE-5 / ISSUE-9)', () => {
   });
 
   it('ISSUE-9: removing `multiple` keeps the newest valid value + FormData', () => {
-    const wrap = mount('<form><td-scan-input multiple name="c"></td-scan-input></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" multiple name="c"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
     el.values = ['A0001', 'B0002'];
     inputOf(el).value = 'TYPED';
