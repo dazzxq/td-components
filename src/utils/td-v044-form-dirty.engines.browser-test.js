@@ -432,13 +432,18 @@ describe('trackFormDirty — confirmDiscard + guards (QĐ 21-22, QĐ 14)', () =>
     expect(await h.closed).to.equal('escape');
   });
 
-  it('isDirty() of a 500-field form stays fast (≤ 5 ms median)', () => {
+  it('isDirty() of a 500-field form costs about one FormData read (relative, no wall-clock budget)', () => {
     const form = mount(`<form id="f">${Array.from({ length: 500 }, (_, i) => `<input name="n${i}" value="${i}">`).join('')}</form>`);
     const { t } = track(form);
     form.querySelector('input').dispatchEvent(new Event('input', { bubbles: true }));
-    const times = [];
-    for (let i = 0; i < 9; i++) { const t0 = performance.now(); t.isDirty(); times.push(performance.now() - t0); }
-    times.sort((x, y) => x - y);
-    expect(times[4]).to.be.below(5);
+    const median = (fn) => {
+      const times = [];
+      for (let i = 0; i < 15; i++) { const t0 = performance.now(); fn(); times.push(performance.now() - t0); }
+      return times.sort((x, y) => x - y)[7];
+    };
+    const base = median(() => [...new FormData(form)]);
+    const dirty = median(() => t.isDirty());
+    // a snapshot + an ordered compare: a small multiple of the FormData read itself, whatever the machine load
+    expect(dirty).to.be.below(Math.max(base * 6, 1));
   });
 });
