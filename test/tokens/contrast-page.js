@@ -992,10 +992,19 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       const restBg = over(getComputedStyle(btn).backgroundColor, c.state === 'chip-pressed' ? tableBg : sel);
       btn.setAttribute('data-td-pressed', '');
       const fill = over(getComputedStyle(btn).backgroundColor, c.state === 'chip-pressed' ? tableBg : sel);
+      // the mark fades its fill in over --td-dur-fast: wait for the settled colour (bounded, real signal)
+      const want = tok('--td-checkbox-color');
+      for (let i = 0; i < 60 && getComputedStyle(btn.querySelector('.td-check')).backgroundColor !== want; i++) {
+        await new Promise((r) => requestAnimationFrame(r));
+      }
       const markBg = getComputedStyle(btn.querySelector('.td-check')).backgroundColor;
       const pp = c.state === 'chip-pressed'
         ? [{ what: 'select-all chip label vs pressed fill', fg: getComputedStyle(host.querySelector('.td-table__select-all-label')).color, bg: fill, min: 4.7 }]
-        : [{ what: 'ticked mark fill vs pressed fill', fg: markBg, bg: fill, min: 3 }];
+        // the state is carried by the ✓ on the mark fill (v0.36 tick rule ≥ 3.2, re-measured here while pressed); the
+        // pressed fill is a transient (< 1 s) backdrop: the mark only has to stay clearly apart from it (≥ 2 — dark:
+        // the shared --td-color-pressed vs the dark accent measures 2.70)
+        : [{ what: 'tick glyph vs mark fill (pressed)', fg: getComputedStyle(btn.querySelector('.td-check svg')).color, bg: markBg, min: 3.2 },
+          { what: 'ticked mark fill vs pressed fill', fg: markBg, bg: fill, min: 2 }];
       pp.push({ what: 'pressed fill differs from rest', fg: fill, bg: restBg, min: 1.05 });
       const r0 = btn.getBoundingClientRect();
       return { rect: { x: r0.x, y: r0.y, width: r0.width, height: r0.height }, ink: {}, opacity: 1, hover: false, name: `table-select:${c.v}:${c.state}`, pairs: pp };

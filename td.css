@@ -6246,6 +6246,7 @@
 	   hover rule above so a mouse press over a hovered control shows the pressed fill */
 	.td-table__select:is(:active, [data-td-pressed]):not(:disabled),
 	.td-table__select-all:is(:active, [data-td-pressed]):not(:disabled) {
+		color: var(--td-table-fg); /* the chip label (muted at rest) reads ≥ 4.7 on the pressed fill, like the sort chips */
 		background-color: var(--td-color-pressed);
 		transition-duration: 0s;
 	}
