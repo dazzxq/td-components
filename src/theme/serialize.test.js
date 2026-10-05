@@ -80,7 +80,7 @@ test('toJson / formatDiagnostics', () => {
   assert.ok(j.diagnostics.some((d) => d.code === 'TD_THEME_CONTRAST_UNSATISFIABLE' && d.severity === 'error-AA' && d.ratio < d.required));
   JSON.parse(JSON.stringify(j));
   const lines = formatDiagnostics(generatePalette({ bg: '#767676', accent: '#b3261e' }));
-  assert.ok(lines.some((l) => /^error-AA TD_THEME_CONTRAST_UNSATISFIABLE --td-color-text on --td-color-bg, .*: \d\.\d\d < 4\.7$/.test(l)), lines.join('\n'));
+  assert.ok(lines.some((l) => /^error-AA TD_THEME_CONTRAST_UNSATISFIABLE --td-color-text on --td-[a-z-]+( over --td-[a-z-]+)? \(worst of \d+ backgrounds\): \d\.\d\d < 4\.7$/.test(l)), lines.join('\n'));
 });
 
 test('presets serialise the kit values verbatim (shadows / ring = the CSS source strings)', () => {

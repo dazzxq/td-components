@@ -760,6 +760,7 @@
       "--td-color-surface-raised",
       "--td-control-bg"
      ],
+     "worst": "--td-color-bg",
      "ratio": 4.62,
      "required": 4.7
     },
@@ -774,6 +775,7 @@
       "--td-color-surface-raised",
       "--td-control-bg"
      ],
+     "worst": "--td-color-bg",
      "ratio": 4.62,
      "required": 4.7
     },
@@ -788,6 +790,7 @@
       "--td-color-surface-raised",
       "--td-control-bg"
      ],
+     "worst": "--td-color-bg",
      "ratio": 4.62,
      "required": 4.7
     },
@@ -802,6 +805,7 @@
       "--td-color-surface-raised",
       "--td-control-bg"
      ],
+     "worst": "--td-color-bg",
      "ratio": 4.62,
      "required": 4.7
     },
@@ -831,6 +835,7 @@
       "--td-alert-danger-bg",
       "--td-alert-info-bg"
      ],
+     "worst": "--td-color-bg",
      "ratio": 4.62,
      "required": 4.7
     },
@@ -851,6 +856,7 @@
       "--td-glass-bg-strong over --td-color-bg",
       "--td-glass-bg-strong over --td-color-surface"
      ],
+     "worst": "--td-color-bg",
      "ratio": 4.62,
      "required": 4.7
     },
@@ -871,6 +877,7 @@
       "--td-glass-bg-strong over --td-color-bg",
       "--td-glass-bg-strong over --td-color-surface"
      ],
+     "worst": "--td-color-bg",
      "ratio": 4.62,
      "required": 4.7
     },
@@ -885,6 +892,7 @@
       "--td-color-surface-raised",
       "--td-control-bg"
      ],
+     "worst": "--td-color-bg",
      "ratio": 4.62,
      "required": 4.7
     },
@@ -914,6 +922,7 @@
       "--td-alert-danger-bg",
       "--td-alert-info-bg"
      ],
+     "worst": "--td-color-bg",
      "ratio": 4.62,
      "required": 7
     },

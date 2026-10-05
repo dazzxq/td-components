@@ -92,7 +92,8 @@ export function toJson(result) {
 /** Human-readable diagnostics, one per line (CLI stderr, builder list). */
 export function formatDiagnostics(result) {
   return result.diagnostics.map((d) => {
-    const against = d.against && d.against.length ? ` on ${d.against.slice(0, 3).join(', ')}${d.against.length > 3 ? ` (+${d.against.length - 3})` : ''}` : '';
+    const n = d.against ? d.against.length : 0;
+    const against = d.worst ? ` on ${d.worst}${n > 1 ? ` (worst of ${n} backgrounds)` : ''}` : n ? ` on ${d.against.join(', ')}` : '';
     const num = d.ratio !== null && d.ratio !== undefined ? `: ${d.ratio.toFixed(2)} < ${d.required}` : '';
     const extra = d.code === 'TD_THEME_ACCENT_ADJUSTED' ? `: ${d.from} → ${d.to}` : d.code === 'TD_THEME_APCA' ? `: Lc ${d.lc}` : '';
     return `${d.severity} ${d.code} ${d.token}${against}${num}${extra}`;

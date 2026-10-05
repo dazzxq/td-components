@@ -535,16 +535,17 @@ export function generatePalette(seeds, options = {}) {
     const ratio = minRatio(fg, c.bgs);
     if (ratio >= c.min) continue;
     const unsat = !usable(feasibleY(c.bgs.map((b) => luminance(b.color)), c.min)).length;
+    const worst = c.bgs.find((b) => contrast(fg, b.color) === ratio).name;
     diagnostics.push({
       code: unsat ? 'TD_THEME_CONTRAST_UNSATISFIABLE' : 'TD_THEME_CONTRAST_MISS', severity: 'error-AA', token: c.token,
-      against: c.against, ratio: floor2(ratio), required: c.min,
+      against: c.against, worst, ratio: floor2(ratio), required: c.min,
     });
   }
   {
     const r = minRatio(text, textBgs);
     if (r < GATE.preferred) {
       diagnostics.push({ code: 'TD_THEME_PREFERRED_MISS', severity: 'info', token: '--td-color-text', against: textBgs.map((b) => b.name),
-        ratio: floor2(r), required: GATE.preferred });
+        worst: textBgs.find((b) => contrast(text, b.color) === r).name, ratio: floor2(r), required: GATE.preferred });
     }
   }
   for (const [token, seed] of [['--td-accent', accentSeed], ['--td-accent-fill', accentSeed]]) {

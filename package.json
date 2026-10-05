@@ -4,11 +4,14 @@
   "description": "Shared UI Web Components library — single source of truth UI kit (token CSS + minimal surfaces)",
   "type": "module",
   "main": "index.js",
+  "bin": {
+    "td-theme": "bin/td-theme.mjs"
+  },
   "scripts": {
     "test": "npm run check:css && npm run check:icons && npm run check:stories && npm run test:node && npm run test:browser && npm run test:csp && npm run test:csp:combined && npm run test:tokens && npm run test:golden && npm run test:contrast && npm run test:page-contrast && npm run test:engines && npm run test:responsive && npm run test:touch",
     "test:ci": "npm run check:css && npm run check:icons && npm run check:stories && npm run test:node && npm run test:browser && npm run test:csp && npm run test:csp:combined && npm run test:tokens && npm run test:golden && npm run test:engines && npm run test:responsive && npm run test:touch",
-    "test:theme": "npm run test:contrast && npm run test:page-contrast",
-    "test:node": "node --test --test-force-exit \"src/**/*.test.js\" \"test/php/*.test.js\" \"test/tokens/*.test.js\"",
+    "test:contrast-gates": "npm run test:contrast && npm run test:page-contrast",
+    "test:node": "node --test --test-force-exit \"src/**/*.test.js\" \"test/php/*.test.js\" \"test/tokens/*.test.js\" \"bin/*.test.mjs\"",
     "test:browser": "web-test-runner",
     "test:csp": "node test/csp/csp.spec.mjs",
     "test:csp:combined": "CSP_PROFILE=legacy+td node test/csp/csp.spec.mjs",
@@ -97,6 +100,8 @@
     "!src/**/*.stories.css",
     "!src/styles/story-layout.css",
     "index.js",
+    "bin",
+    "!bin/*.test.mjs",
     "php",
     "td.css",
     "THIRD_PARTY_NOTICES.md"
