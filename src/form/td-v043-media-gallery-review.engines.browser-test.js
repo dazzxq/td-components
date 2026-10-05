@@ -92,7 +92,7 @@ describe('review round 1', () => {
   });
 
   it('ISSUE-2: an attribute change while the crop dialog is open → the dialog closes, the lock is released', async () => {
-    const { el, form } = mk({ name: 'g', usage: true, croppable: true, items: three });
+    const { el, form } = mk({ name: 'g', usage: true, croppable: true, items: three }, { adapter: createMockAdapter() });
     lis(el)[0].querySelector('.td-media-gallery__crop-btn').click();
     await until(() => dialogRoots().some((r) => r.getAttribute('data-state') === 'open'), 4000, 'dialog open');
     el.setAttribute('helper-text', 'Ghi chú mới');

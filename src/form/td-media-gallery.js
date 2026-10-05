@@ -718,10 +718,10 @@ export class TdMediaGallery extends TdFormElement {
     if (this._suppressRender) return;
     this._initLive();
     const focus = this._initialized ? this._focusInfo() : null;
-    if (this._effectiveDisabled || this._isBroken()) {
-      this._abortCrop();
-      if (this._busy) this._cancelPicker();
-    }
+    // ISSUE-2: a full render replaces every tile — the crop flow's captured tile goes, so the flow is aborted first
+    // (dialog closed through its signal, lock released); a picker survives (its result is appended to the new list)
+    this._abortCrop();
+    if ((this._effectiveDisabled || this._isBroken()) && this._busy) this._cancelPicker();
     this._stopSort();
     super._doRender();
     if (focus && !this.contains(this.ownerDocument.activeElement)) this._restoreFocus(focus);
@@ -1283,6 +1283,11 @@ export class TdMediaGallery extends TdFormElement {
     this._part('crop', c.itemEl)?.removeAttribute('aria-busy');
   }
 
+  /** @private ISSUE-2 (defensive): a flow found stale that is still the current one is aborted (lock + dialog released) */
+  _dropCrop(c) {
+    if (this._crop === c) this._abortCrop();
+  }
+
   /** @private decision 12b: the flow `c` may still act (not aborted, same source, same tile, same id) */
   _cropAlive(c) {
     const ul = this._ul();
@@ -1335,7 +1340,7 @@ export class TdMediaGallery extends TdFormElement {
         const context = this._resolveContext();
         let r;
         try { r = { v: await adapter.get(c.id, { context, signal: c.ctrl.signal }) }; } catch (e) { r = { e }; }
-        if (!this._cropAlive(c)) return; // aborted / stale: the abort already released the lock
+        if (!this._cropAlive(c)) { this._dropCrop(c); return; } // aborted / stale: never left holding the lock
         btn?.removeAttribute('aria-busy');
         if ('e' in r) {
           const err = normalizeError(r.e, c.ctrl.signal, { operation: 'td-media-gallery crop get' }); // operation + code only
@@ -1382,7 +1387,7 @@ export class TdMediaGallery extends TdFormElement {
       if (release()) console.warn(`td-media-gallery: the crop dialog failed (${err && typeof err.name === 'string' ? err.name : 'error'})`);
       return;
     }
-    if (!this._cropAlive(c)) return; // decision 12b: removed / id changed / new source / gone → nothing applied
+    if (!this._cropAlive(c)) { this._dropCrop(c); return; } // decision 12b: removed / id changed / new source / gone → nothing applied
     release();
     if (!res || res.status !== 'applied' || !res.changed) return;
     const cur = this._itemOf.get(li);
