@@ -67,6 +67,11 @@ bỏ); `label` / `hint` dài quá 200 ký tự, `unavailableLabel` quá 100 bị
 quá 8192 ký tự bị **từ chối**. Có gì bị bỏ / cắt → **một** cảnh báo console duy nhất với số lượng (không in giá trị). Property
 `options` đọc ra bản sao đã chuẩn hoá (đông cứng).
 
+Giới hạn cấp nhóm (cũng trong `CHOICE_LIMITS`, code point): `id` 100, `name` 200, `class` 256, `label` / `aria-label` 200,
+`helper-text` 1000, `error-text` 1000. PHP `td_choice_group` **không in gì** (một cảnh báo cố định) khi vượt; markup server
+vượt các giới hạn này (hoặc ngân sách preflight: số node, độ sâu, ≤ 16 thuộc tính mỗi phần tử kể cả host, độ dài thuộc tính)
+thì component **không nhận** mà vẽ lại từ đầu + một cảnh báo cố định. Markup PHP in ra ở đúng giới hạn luôn được nhận.
+
 Gán `options` làm lựa chọn **đang focus** thành `disabled` → focus chuyển sang điểm dừng Tab của nhóm (không cuộn trang).
 
 **Gán lại `options` khi danh sách `value` giữ nguyên thứ tự → vá tại chỗ**: radio giữ nguyên node, focus không mất, không
