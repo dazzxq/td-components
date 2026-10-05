@@ -25,7 +25,9 @@ jobs:
       # and the menu Tab engine check).
       - run: npx playwright-core install --with-deps chromium firefox webkit
       # The Tailwind CSP fixture (test/csp/fixture/tailwind.css) is committed, so the legacy+td profile needs no build.
-      - run: npm test
+      # v0.41.0: `npm test` minus the two theme contrast gates, which run in parallel in the `theme` job below
+      # (together they exceeded this job's 30-minute limit).
+      - run: npm run test:ci
       # v0.34.0: screenshots of the responsive gate (8 acceptance widths) — for humans, never compared.
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
@@ -33,6 +35,22 @@ jobs:
           name: responsive-screenshots
           path: test/responsive/__out__/
           if-no-files-found: ignore
+
+
+  # v0.41.0: the theme contrast gates (token contrast + full-page theme gate: 3 engines × 4 palettes × 2 widths × 8
+  # states) — split out of `test` so neither job nears its time limit. `npm test` locally still runs everything.
+  theme:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright-core install --with-deps chromium firefox webkit
+      - run: npm run test:theme
 
   # v0.33.0: pixel gate for td-media-picker / justified td-media-grid (Chromium; not part of `npm test`). Runs inside the
   # official Playwright image pinned to package.json's playwright-core (fonts + Chromium build = the baselines'
