@@ -87,4 +87,8 @@ describe('index.js exports', () => {
     expect(typeof kit.TdMaskedValue).to.equal('function');
     expect(customElements.get('td-masked-value')).to.equal(kit.TdMaskedValue);
   });
+  it('registers <td-scan-input> from the root entry (v0.38.0)', () => {
+    expect(typeof kit.TdScanInput).to.equal('function');
+    expect(customElements.get('td-scan-input')).to.equal(kit.TdScanInput);
+  });
 });
