@@ -282,45 +282,49 @@ export class TdFilterChips extends TdBaseElement {
     const t = e.target instanceof Element ? e.target.closest('.td-filter-chips__remove, .td-filter-chips__clear') : null;
     if (!t || !this._root || !this._root.contains(t)) return;
     const hadFocus = this.contains(document.activeElement) || document.activeElement === document.body || !document.activeElement;
-    if (t.classList.contains('td-filter-chips__clear')) {
-      const removed = this._items.filter((i) => i.removable);
-      const stay = this._items.filter((i) => !i.removable);
-      const ok = this._dispatch('filter-clear', { items: stay.map((i) => ({ ...i })), removed: removed.map((i) => ({ ...i })) });
-      if (!ok) { e.preventDefault(); return; }
-      if (t.localName === 'a') return; // the browser follows clear-href
-      this._holdEmpty = true;
-      try {
-        this._items = stay;
-        this._renderList();
-        this._announce(TdFilterChips.labels.cleared || DEFAULTS.cleared);
-        if (hadFocus) this._focusAfter(null);
-      } finally {
-        this._holdEmpty = false;
-      }
-      this._syncEmpty();
-      return;
-    }
-    const li = t.closest('li');
-    const idx = [...this._list.children].indexOf(li);
-    const item = this._items[idx];
-    if (!item) return;
-    const after = this._items.filter((_, i) => i !== idx);
-    const ok = this._dispatch('filter-remove', { item: { ...item }, items: after.map((i) => ({ ...i })) });
-    if (!ok) { e.preventDefault(); return; }
-    if (t.localName === 'a') return; // the browser follows the link (the server computed the URL without this filter)
-    const ri = this._items.slice(0, idx).filter((i) => i.removable).length; // removable index of the removed chip
+    const before = this._items;
+    // the empty state waits until focus has moved (a listener may assign `items` — a hidden host cannot take focus)
     this._holdEmpty = true;
     try {
-      this._items = after;
-      li.remove();
-      this._syncClear();
-      this.afterRender();
+      if (t.classList.contains('td-filter-chips__clear')) {
+        const removed = before.filter((i) => i.removable);
+        const stay = before.filter((i) => !i.removable);
+        if (!this._dispatch('filter-clear', { items: stay.map((i) => ({ ...i })), removed: removed.map((i) => ({ ...i })) })) {
+          e.preventDefault();
+          return;
+        }
+        if (t.localName === 'a') return; // the browser follows clear-href
+        if (this._items === before) { // a listener that assigned `items` itself wins
+          this._items = stay;
+          this._renderList();
+        }
+        this._announce(TdFilterChips.labels.cleared || DEFAULTS.cleared);
+        if (hadFocus) this._focusAfter(null);
+        return;
+      }
+      const li = t.closest('li');
+      const idx = [...this._list.children].indexOf(li);
+      const item = before[idx];
+      if (!item) return;
+      const after = before.filter((_, i) => i !== idx);
+      if (!this._dispatch('filter-remove', { item: { ...item }, items: after.map((i) => ({ ...i })) })) {
+        e.preventDefault();
+        return;
+      }
+      if (t.localName === 'a') return; // the browser follows the link (the server computed the URL without this filter)
+      const ri = before.slice(0, idx).filter((i) => i.removable).length; // removable index of the removed chip
+      if (this._items === before) {
+        this._items = after;
+        li.remove();
+        this._syncClear();
+        this.afterRender();
+      }
       this._announce(fill(TdFilterChips.labels.removed || DEFAULTS.removed, { label: item.label, value: item.value }));
       if (hadFocus) this._focusAfter(ri);
     } finally {
       this._holdEmpty = false;
+      this._syncEmpty();
     }
-    this._syncEmpty();
   }
 
   /**

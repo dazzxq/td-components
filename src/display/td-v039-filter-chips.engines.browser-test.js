@@ -169,6 +169,20 @@ describe('v0.39.0 td-filter-chips — removing (QĐ 12, 14)', () => {
     expect(el.hasAttribute('tabindex')).to.equal(false);
   });
 
+  it('a listener that assigns items itself (app → table → chips) wins; focus still moves, never to <body>', async () => {
+    const el = await mk();
+    el.addEventListener('filter-remove', (e) => { el.items = e.detail.items.filter((i) => i.key !== 'brand'); });
+    x(el, 0).focus();
+    await sendKeys({ press: 'Enter' }); // remove "Trạng thái"; the app also drops "Hãng"
+    expect(el.items.map((i) => i.id)).to.deep.equal(['q']);
+    expect(document.activeElement === x(el, 0), 'focus on the remaining ×').to.equal(true);
+    el.addEventListener('filter-remove', (e) => { el.items = e.detail.items; });
+    await sendKeys({ press: 'Enter' }); // the last one, the app assigns [] → host keeps focus, visible until it leaves
+    expect(el.items).to.deep.equal([]);
+    expect(document.activeElement === el, 'host focused').to.equal(true);
+    expect(el.hidden).to.equal(false);
+  });
+
   it('preventDefault → the chip stays, nothing announced', async () => {
     const el = await mk();
     record(el, 'filter-remove', (e) => e.preventDefault());
