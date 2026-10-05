@@ -34,6 +34,10 @@
  * - `open` (event) fires once the entrance transition is over (the open state and the initial focus — first field of
  *   the body → first other focusable → the × → the panel — are set when it starts); a close before that → no `open`.
  * - `dismissible` (default true): Escape and a backdrop click close; `dismissible="false"` → only the × / close().
+ * - v0.44.0 `beforeClose` property (async guard, plan v0.44.0-confirm-dirty QĐ 16): the USER paths (Escape, backdrop,
+ *   ×) and `requestClose()` run it BEFORE `before-close`; `false` (sync / resolved), a throw or a rejection keep the
+ *   drawer open; while pending, further attempts share its Promise. `close()` / `open = false` / removing `open` skip
+ *   it (the event still fires).
  * - Name: `title` → an <h2> + aria-labelledby; else `label` → aria-label; else the host's own `aria-labelledby`; none →
  *   one console.warn per page + `TdDrawer.labels.drawer` as aria-label.
  * - No JS: an undefined <td-drawer> shows its content in place (CSS `td-drawer:not(:defined)`).
@@ -46,6 +50,7 @@
  * @attr {string} size - sm | md | lg | xl (default md); `--td-drawer-w` overrides the width
  * @attr {string} dismissible - "false" → Escape / backdrop do not close
  * @fires open
+ * @prop {Function|null} beforeClose - v0.44.0 `({ reason }) => boolean | void | PromiseLike<boolean | void>`
  * @fires before-close - cancelable, detail: { reason }
  * @fires close - detail: { reason }
  */
@@ -85,7 +90,9 @@ export class TdDrawer extends HTMLElement {
    * @param {boolean} [options.dismissible=true]
    * @param {(reason: string) => void} [options.onClose] - after the close (same moment as the `close` event)
    * @param {Element|null} [options.themeRoot] - v0.42.0 (ADR 0020): follow this element's theme scope (`[data-td-theme]`)
-   * @returns {{ element: TdDrawer, close(reason?: string): Promise<string|null>, closed: Promise<string> }}
+   * @param {Function} [options.beforeClose] - v0.44.0 async close guard (see the `beforeClose` property)
+   * @returns {{ element: TdDrawer, close(reason?: string): Promise<string|null>,
+   *   requestClose(): Promise<string|null>, closed: Promise<string> }}
    */
   static open(options = {}) {
     const o = options || {};
@@ -136,6 +143,7 @@ export class TdDrawer extends HTMLElement {
     host._jsOwned = true;
     // v0.42.0 (ADR 0020): a programmatic drawer lives under <body> — it follows `themeRoot`'s scope when given
     if (typeof Element !== 'undefined' && o.themeRoot instanceof Element) host._themeRoot = o.themeRoot;
+    if (typeof o.beforeClose === 'function') host.beforeClose = o.beforeClose;
     let resolveClosed = () => {};
     const closed = new Promise((r) => { resolveClosed = r; });
     host.addEventListener('close', (e) => {
@@ -147,7 +155,7 @@ export class TdDrawer extends HTMLElement {
     }, { once: true });
     document.body.appendChild(host);
     host.show();
-    return { element: host, close: (reason) => host.close(reason), closed };
+    return { element: host, close: (reason) => host.close(reason), requestClose: () => host.requestClose(), closed };
   }
 
   constructor() {
@@ -160,7 +168,22 @@ export class TdDrawer extends HTMLElement {
     this._closing = null;
     this._reflecting = false;
     this._inBeforeClose = false;
+    /** @type {Function|null} */
+    this._beforeClose = null;
+    /** @type {Promise<string|null>|null} the pending guard (v0.44.0) */
+    this._guarding = null;
+    // a beforeClose set on the element before it upgraded is an own property shadowing the accessor: move it over
+    if (Object.prototype.hasOwnProperty.call(this, 'beforeClose')) {
+      const v = /** @type {any} */ (this).beforeClose;
+      delete (/** @type {any} */ (this)).beforeClose;
+      this.beforeClose = v;
+    }
   }
+
+  /** v0.44.0: async close guard of the user paths + requestClose() (null = none). */
+  get beforeClose() { return this._beforeClose; }
+
+  set beforeClose(fn) { this._beforeClose = typeof fn === 'function' ? fn : null; }
 
   /** @returns {boolean} */
   get open() { return this._state === 'open'; }
@@ -214,7 +237,7 @@ export class TdDrawer extends HTMLElement {
       scrollLock: true,
       backdrop,
       onEscape: () => {
-        if (this._dismissible()) this.close('escape');
+        if (this._dismissible()) this.requestClose('escape');
         return true; // consumed either way (never reaches a layer below)
       },
       onOpened: () => {
@@ -262,6 +285,43 @@ export class TdDrawer extends HTMLElement {
     const layer = this._layer;
     this._closing = layer.close(reason).then(() => this._finish(reason, true));
     return this._closing;
+  }
+
+  /**
+   * v0.44.0: ask to close THROUGH `beforeClose` (then the usual `before-close` event → slide out). Escape / backdrop / ×
+   * use it; `close()` does not.
+   * @param {string} [reason='request'] passed to the guard and the event
+   * @returns {Promise<string|null>} the reason once closed; null when refused / cancelled / not open
+   */
+  requestClose(reason = 'request') {
+    if (this._state === 'closing') return this._closing;
+    if (this._state !== 'open') return Promise.resolve(null);
+    if (this._guarding) return this._guarding;
+    const guard = this._beforeClose;
+    if (!guard) return this.close(reason);
+    let result;
+    try {
+      result = guard({ reason });
+    } catch (err) {
+      console.error('td-drawer beforeClose threw:', err);
+      return Promise.resolve(null);
+    }
+    const thenable = !!result && (typeof result === 'object' || typeof result === 'function')
+      && typeof result.then === 'function';
+    if (!thenable) return result === false ? Promise.resolve(null) : this.close(reason);
+    const layer = this._layer;
+    const live = () => this._state === 'open' && this._layer === layer; // not closed / removed / reopened meanwhile
+    const pending = Promise.resolve(result).then((v) => {
+      this._guarding = null;
+      if (!live() || v === false) return null;
+      return this.close(reason);
+    }, (err) => {
+      this._guarding = null;
+      if (live()) console.error('td-drawer beforeClose rejected:', err);
+      return null;
+    });
+    this._guarding = pending;
+    return pending;
   }
 
   /** @private after the exit transition: nodes back, `close` event, JS host removed */
@@ -357,10 +417,10 @@ export class TdDrawer extends HTMLElement {
     }
     footer.hidden = footer.childNodes.length === 0;
 
-    closeBtn.addEventListener('click', () => this.close('button'));
+    closeBtn.addEventListener('click', () => this.requestClose('button'));
     const scrim = root.querySelector('.td-drawer__backdrop');
     scrim.addEventListener('mousedown', (e) => e.preventDefault()); // keep focus in the panel
-    scrim.addEventListener('click', () => { if (this._dismissible()) this.close('backdrop'); });
+    scrim.addEventListener('click', () => { if (this._dismissible()) this.requestClose('backdrop'); });
     return root;
   }
 

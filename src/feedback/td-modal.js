@@ -209,6 +209,11 @@ export class TdModal {
    * @param {string} [options.bodyOverflow] - visible | hidden | auto | scroll | clip.
    * @param {Element|null} [options.themeRoot=null] - v0.42.0 (ADR 0020): render in the theme scope
    *   (`[data-td-theme]`) of this element; without it the dialog follows the page theme.
+   * @param {(ctx: { reason: 'button'|'escape'|'action'|'request', value: * }) => (boolean|void|PromiseLike<boolean|void>)}
+   *   [options.beforeClose] - v0.44.0 guard of the USER close paths (X, Escape with `escapeCloses`, a closing action —
+   *   also "Lưu": call `tracker.markClean()` before it returns —, `requestClose()`). `false` (sync or resolved) keeps
+   *   the dialog open, so does a throw / rejection (console.error); anything else closes. While it is pending, further
+   *   attempts share it and actions do not run. `close()` / `closeById()` / `closeAll()` never run it.
    * @returns {string} Modal id
    */
   static show(options = {}) {
@@ -239,6 +244,9 @@ export class TdModal {
       closable: opts.closable !== false,
       closed: false,
       busy: false,
+      // v0.44.0: guard of the user close paths (show() only — the Promise dialogs pass no beforeClose)
+      beforeClose: !internal && typeof opts.beforeClose === 'function' ? opts.beforeClose : null,
+      guarding: null, // the pending guard's Promise<boolean>
       layer: null,
       close: (value) => TdModal._closeInstance(instance, value),
     };
@@ -265,7 +273,7 @@ export class TdModal {
       // ADR 0006: Escape never closes (consumed so it cannot reach a layer below) — except `escapeCloses` dialogs
       // whose close loses no user data (e.g. the datetime picker keeps a pending copy); never while busy.
       onEscape: () => {
-        if (opts.escapeCloses === true && !instance.busy) instance.close();
+        if (opts.escapeCloses === true && !instance.busy) TdModal._requestClose(instance, 'escape');
         return true;
       },
       // v0.21.1 F4: opened over a lightbox that sits above the modals (lightbox opened from a modal) → promoted above
@@ -325,6 +333,64 @@ export class TdModal {
       if (tryFocus(close)) return;
     }
     tryFocus(dialog);
+  }
+
+  /**
+   * v0.44.0: ask to close a modal THROUGH its `beforeClose` guard (for a hand-built footer). Not while an action is busy.
+   * `close()` / `closeById()` / `closeAll()` stay unguarded (the app's own decision — logout, route change).
+   * @param {string} modalId
+   * @param {*} [value] passed to the guard and to onClose
+   * @returns {Promise<boolean>} true once closed; false when it stays open (guard refused, busy, unknown id)
+   */
+  static requestClose(modalId, value) {
+    const inst = TdModalStackManager.stack.find((m) => m.id === modalId);
+    if (!inst || typeof inst.close !== 'function' || !inst.handle) return Promise.resolve(false);
+    return TdModal._requestClose(inst, 'request', value);
+  }
+
+  /**
+   * @private v0.44.0 (QĐ 12-15): the guarded close. Sync guard → closes (or not) synchronously; async → `guarding`
+   * until it settles (further attempts get the same Promise); a code close meanwhile drops the result silently.
+   * @param {object} inst
+   * @param {'button'|'escape'|'action'|'request'} reason
+   * @param {*} [value]
+   * @returns {Promise<boolean>}
+   */
+  static _requestClose(inst, reason, value) {
+    if (inst.closed) return Promise.resolve(false);
+    if (inst.guarding) return inst.guarding;
+    if (inst.busy) return Promise.resolve(false);
+    const guard = inst.beforeClose;
+    if (typeof guard !== 'function') {
+      inst.close(value);
+      return Promise.resolve(true);
+    }
+    let result;
+    try {
+      result = guard({ reason, value });
+    } catch (err) {
+      console.error('TdModal beforeClose threw:', err);
+      return Promise.resolve(false);
+    }
+    if (!isThenable(result)) {
+      if (result === false || inst.closed) return Promise.resolve(inst.closed);
+      inst.close(value);
+      return Promise.resolve(true);
+    }
+    const pending = Promise.resolve(result).then((v) => {
+      inst.guarding = null;
+      if (inst.closed) return true; // closed by code meanwhile: the guard's answer no longer matters
+      if (v === false) return false;
+      inst.close(value);
+      return true;
+    }, (err) => {
+      inst.guarding = null;
+      if (inst.closed) return true;
+      console.error('TdModal beforeClose rejected:', err);
+      return false;
+    });
+    inst.guarding = pending;
+    return pending;
   }
 
   /** Close the top modal. */
@@ -847,7 +913,8 @@ export class TdModal {
     closeBtn.hidden = closable === false;
     closeBtn.addEventListener('click', () => {
       if (instance && instance.busy) return;
-      TdModal.closeById(root.id);
+      if (instance && instance.handle) TdModal._requestClose(instance, 'button'); // v0.44.0: through the guard
+      else TdModal.closeById(root.id);
     });
 
     if (typeof body === 'string') bodyEl.innerHTML = body; // TRUSTED hatch (documented)
@@ -885,7 +952,8 @@ export class TdModal {
    */
   static _renderActions(footerEl, actions, instance, root) {
     const buttons = [];
-    const closeWith = (value) => (instance ? instance.close(value) : TdModal.closeById(root.id));
+    // v0.44.0 (QĐ 14): a closing action goes through the guard too (it is the user asking to close)
+    const closeWith = (value) => (instance ? TdModal._requestClose(instance, 'action', value) : TdModal.closeById(root.id));
     const setBusy = (busyBtn, busy) => {
       if (instance) instance.busy = busy;
       for (const b of buttons) {
@@ -902,7 +970,8 @@ export class TdModal {
       btn.disabled = entry.disabled;
       buttons.push(entry);
       btn.addEventListener('click', () => {
-        if ((instance && (instance.busy || instance.closed)) || btn.getAttribute('aria-busy') === 'true') return;
+        if ((instance && (instance.busy || instance.closed || instance.guarding))
+          || btn.getAttribute('aria-busy') === 'true') return;
         const shouldClose = a.close !== false;
         let result;
         try {
