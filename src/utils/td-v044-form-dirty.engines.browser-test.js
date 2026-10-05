@@ -5,6 +5,7 @@
 import { expect } from '@esm-bundle/chai';
 import { sendKeys } from '@web/test-runner-commands';
 import { trackFormDirty } from './form-validation.js';
+import { submitNavigatesHere } from './form-dirty.js';
 import { TdModal } from '../feedback/td-modal.js';
 import { TdDrawer } from '../feedback/td-drawer.js';
 import '../form/td-input-field.js';
@@ -372,59 +373,95 @@ describe('trackFormDirty — beforeunload (QĐ 23-24)', () => {
     expect(unload()).to.equal(true);
   });
 
-  // Synthetic submit events (Firefox really submits on them): the form posts to `javascript:void 0`, which never unloads
-  // the test page. `sub` = an optional submitter.
-  const fire = (form, sub = null) => form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true, submitter: sub }));
+  // Real (trusted) submits: requestSubmit() to `javascript:void 0` never unloads the test page; the synthetic
+  // `beforeunload` below runs in the SAME task, before the exemption expires (review r2 B).
   const harmless = (form) => { form.action = 'javascript:void 0'; };
+  const nextTask = () => new Promise((r) => setTimeout(r, 0));
 
-  it('SEC-2: an un-prevented submit that navigates this window → not blocked ONCE; the next edit / a second unload re-arms', async () => {
+  it('SEC-2: a trusted un-prevented submit that navigates this window → not blocked ONCE; a second unload is', async () => {
     const form = mount(NATIVE);
     harmless(form);
     const { t } = track(form);
     t.markDirty();
-    fire(form);
+    form.requestSubmit();
     expect(unload()).to.equal(false);
     expect(unload()).to.equal(true); // one-shot
-    fire(form);
-    form.elements.namedItem('title').dispatchEvent(new Event('input', { bubbles: true }));
-    expect(unload()).to.equal(true); // cleared by the next edit
   });
 
-  it('SEC-2: target _blank / an iframe name / formtarget / method=dialog / formmethod=dialog never suppress', async () => {
+  it('r2 B: the exemption is short-lived — a task later it still holds for the navigation, a key press or 1 s ends it', async () => {
+    const form = mount(NATIVE);
+    harmless(form);
+    const { t } = track(form);
+    t.markDirty();
+    form.requestSubmit();
+    await nextTask(); // Chromium / WebKit run the submit navigation's beforeunload after a zero-delay timer
+    expect(unload()).to.equal(false);
+    form.requestSubmit();
+    await sendKeys({ press: 'Shift' }); // the user's next key ends it
+    expect(unload()).to.equal(true);
+    form.requestSubmit();
+    await new Promise((r) => setTimeout(r, 1100)); // the grace period (1 s) ends it
+    expect(unload()).to.equal(true);
+  });
+
+  it('r2 C: an untrusted submit event (dispatchEvent) never exempts', async () => {
+    const form = mount(NATIVE);
+    harmless(form);
+    const { t } = track(form);
+    t.markDirty();
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    expect(unload()).to.equal(true);
+    form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }));
+    expect(unload()).to.equal(true);
+  });
+
+  it('SEC-2 / r2 D: target resolution — submitter formtarget (even "") → form target (even "") → <base target>; method dialog', () => {
+    const base = document.createElement('base');
+    base.target = '_blank';
+    document.head.appendChild(base);
+    cleanups.push(() => base.remove());
+    const form = mount(NATIVE);
+    const btn = form.querySelector('button[type="submit"]');
+    const here = (sub = null) => submitNavigatesHere(form, sub);
+    expect(here()).to.equal(false); // no attribute anywhere → <base target="_blank">
+    form.setAttribute('target', '');
+    expect(here()).to.equal(true); // explicit target="" wins over <base>
+    form.setAttribute('target', '_self');
+    expect(here()).to.equal(true);
+    form.setAttribute('target', '_blank');
+    expect(here()).to.equal(false);
+    form.setAttribute('target', 'td-v044-sink');
+    expect(here()).to.equal(false);
+    btn.setAttribute('formtarget', '');
+    expect(here(btn)).to.equal(true); // explicit formtarget="" wins over the form and <base>
+    btn.setAttribute('formtarget', '_SELF');
+    expect(here(btn)).to.equal(true);
+    btn.setAttribute('formtarget', '_blank');
+    form.setAttribute('target', '');
+    expect(here(btn)).to.equal(false);
+    btn.removeAttribute('formtarget');
+    form.setAttribute('method', 'dialog');
+    expect(here(btn)).to.equal(false);
+    btn.setAttribute('formmethod', 'post');
+    expect(here(btn)).to.equal(true); // formmethod wins over method=dialog
+    btn.setAttribute('formmethod', 'dialog');
+    form.setAttribute('method', 'get');
+    expect(here(btn)).to.equal(false);
+  });
+
+  it('SEC-2: a trusted submit into an iframe never exempts', async () => {
     const sink = document.createElement('iframe');
     sink.name = 'td-v044-sink';
     sink.hidden = true;
     document.body.appendChild(sink);
     cleanups.push(() => sink.remove());
-    const cases = [
-      (f) => { f.target = '_blank'; return null; },
-      (f) => { f.target = sink.name; return null; },
-      (f) => { f.method = 'dialog'; return null; },
-      (f) => { const b = f.querySelector('button[type="submit"]'); b.setAttribute('formtarget', '_blank'); return b; },
-      (f) => { const b = f.querySelector('button[type="submit"]'); b.setAttribute('formmethod', 'dialog'); return b; },
-    ];
-    for (const setup of cases) {
-      const form = mount(NATIVE);
-      harmless(form);
-      const sub = setup(form);
-      const { t } = track(form);
-      t.markDirty();
-      fire(form, sub);
-      expect(unload()).to.equal(true);
-      t.destroy();
-      cleanups.pop();
-      form.parentElement.remove();
-    }
-    // formtarget="_self" on the submitter overrides a form target → navigates here → suppressed once
     const form = mount(NATIVE);
-    harmless(form);
-    form.target = '_blank';
-    const b = form.querySelector('button[type="submit"]');
-    b.setAttribute('formtarget', '_self');
+    form.target = sink.name;
+    form.action = 'about:blank';
     const { t } = track(form);
     t.markDirty();
-    fire(form, b);
-    expect(unload()).to.equal(false);
+    form.requestSubmit();
+    expect(unload()).to.equal(true);
   });
 
   it('SEC-2: a window submit listener that prevents AFTER the tracker keeps the protection', async () => {
@@ -435,30 +472,29 @@ describe('trackFormDirty — beforeunload (QĐ 23-24)', () => {
     const late = (e) => e.preventDefault();
     window.addEventListener('submit', late);
     try {
-      fire(form);
+      form.requestSubmit();
       expect(unload()).to.equal(true);
     } finally { window.removeEventListener('submit', late); }
   });
 
-  it('SEC-2: markDirty() / reset / check() finding dirty after a navigating submit clear the suppression', async () => {
+  it('SEC-2: markDirty() / reset / check() finding dirty right after a navigating submit cancel the exemption', async () => {
     const form = mount(NATIVE);
     harmless(form);
     const { t } = track(form);
-    fire(form);
+    form.requestSubmit();
     t.markDirty();
     expect(unload()).to.equal(true);
-    form.elements.namedItem('title').value = 'đổi'; // saved state ≠ the defaults
     t.markClean();
-    fire(form);
-    form.reset(); // back to the defaults → dirty again, and the submit no longer excuses it
-    await until(() => t.isDirty());
+    form.requestSubmit();
+    form.dispatchEvent(new Event('reset')); // the reset path itself (values unchanged)
+    t.markDirty();
     expect(unload()).to.equal(true);
     t.markClean();
     const body = form.elements.namedItem('body');
     body.dispatchEvent(new Event('change', { bubbles: true })); // a user event, value unchanged → interacted, clean
     await frames(2);
-    fire(form);
-    body.value = 'khác'; // then a change from code, found by check()
+    form.requestSubmit();
+    body.value = 'khác'; // a change from code, found by check() in the same task
     expect(t.check()).to.equal(true);
     expect(unload()).to.equal(true);
   });

@@ -299,10 +299,13 @@ Trong modal: bọc thân modal trong `<form>` (FormData + `reset` chuẩn). Guar
 
 **Rời trang (`beforeunload`).** Listener chỉ được đăng ký từ thao tác đầu tiên (và gỡ khi form sạch lại) — trang
 không tương tác vẫn vào bfcache. Khi trang sắp rời đi, kit tính lại ngay: form sạch hoặc đã bị gỡ khỏi DOM → không
-hỏi. **Submit native** của form được miễn **một lần** khi nó thật sự điều hướng chính cửa sổ này: cuối cùng không bị
-`preventDefault()` (kể cả handler `window` đăng ký sau kit), không phải `method="dialog"`, và `target` (của nút submit
-`formtarget`, rồi của form, rồi `<base target>`) rỗng hoặc `_self` — `_blank`, tên iframe… không được miễn. Thao tác
-tiếp theo, `markDirty()`, `reset`, `check()` thấy bẩn mới đều huỷ lần miễn đó. Giới hạn của trình duyệt:
+hỏi. **Submit native** của form được miễn **một lần** khi nó thật sự điều hướng chính cửa sổ này: do trình duyệt phát
+(`submit` giả bằng `dispatchEvent` không được miễn), cuối cùng không bị `preventDefault()` (kể cả handler `window` đăng
+ký sau kit), không phải `method="dialog"`, và target là rỗng hoặc `_self` — `_blank`, tên iframe… không được miễn.
+Target lấy theo thứ tự: attribute `formtarget` **có mặt** trên nút submit (kể cả `""`), rồi attribute `target` có mặt
+trên form (kể cả `""`), chỉ khi cả hai vắng mới dùng `<base target>`; `formmethod` / `method` tương tự. Lần miễn chỉ
+sống tối đa **1 giây** (đủ cho điều hướng mà submit đó khởi động) và hết ngay khi người dùng nhấn phím / chạm tiếp;
+thao tác sửa tiếp theo, `markDirty()`, `reset`, `check()` thấy bẩn mới cũng huỷ nó. Giới hạn của trình duyệt:
 
 - Chữ trong hộp thoại là của trình duyệt (thông điệp tuỳ biến bị bỏ qua từ lâu).
 - Chrome / Firefox chỉ hiện hộp khi trang **đã có tương tác người dùng**.

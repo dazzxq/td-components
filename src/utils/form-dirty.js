@@ -73,9 +73,35 @@ export function sameSnapshot(a, b) {
   return true;
 }
 
+/**
+ * Whether a submit of `form` (by `submitter`) navigates THIS browsing context (review r1 SEC-2, r2 D). The attribute
+ * PRESENT on the submitter (`formmethod` / `formtarget`, even "") wins, then the one present on the form (`method` /
+ * `target`, even ""); only when neither has a target attribute does `<base target>` apply. method "dialog" → no; target
+ * other than "" / "_self" (`_blank`, `_parent`, `_top`, a frame name) → no.
+ * @param {HTMLFormElement} form
+ * @param {Element|null} [submitter]
+ * @returns {boolean}
+ */
+export function submitNavigatesHere(form, submitter = null) {
+  const sub = submitter instanceof Element ? submitter : null;
+  const pick = (subAttr, formAttr) => {
+    if (sub && sub.hasAttribute(subAttr)) return sub.getAttribute(subAttr);
+    if (form.hasAttribute(formAttr)) return form.getAttribute(formAttr);
+    return null;
+  };
+  if (String(pick('formmethod', 'method') || '').trim().toLowerCase() === 'dialog') return false;
+  let target = pick('formtarget', 'target');
+  if (target === null) target = form.ownerDocument.querySelector('base[target]')?.getAttribute('target') || '';
+  target = String(target).trim().toLowerCase();
+  return target === '' || target === '_self';
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Tracker
 // ---------------------------------------------------------------------------------------------------------------
+
+/** How long a recorded native submit excuses the `beforeunload` of the navigation it starts (review r2 B). */
+const SUBMIT_GRACE_MS = 1000;
 
 /** form → its tracker (one per form; trackFormDirty() again returns it). */
 const TRACKERS = new WeakMap();
@@ -123,6 +149,7 @@ export function trackFormDirty(form, opts = {}) {
   let armed = false; // beforeunload listener registered
   /** @type {Event|null} the last submit of this form that navigates THIS window (one-shot, read by beforeunload) */
   let submitEvent = null;
+  let submitTimer = 0;
   let destroyed = false;
   let frame = 0;
   let resetTimer = 0;
@@ -210,22 +237,24 @@ export function trackFormDirty(form, opts = {}) {
     clearTimeout(resetTimer);
     resetTimer = setTimeout(() => { resetTimer = 0; sync(); }, 0); // `reset` fires before the values change
   }
-  /**
-   * Review round 1 SEC-2: only a submit that navigates THIS browsing context counts — method "dialog" or a target other
-   * than "" / "_self" (submitter formmethod / formtarget first, then the form, then <base target>) keeps the page.
-   * @param {SubmitEvent} e
-   */
-  const navigatesHere = (e) => {
-    const sub = e.submitter instanceof Element ? e.submitter : null;
-    const attr = (own, name) => (sub && sub.hasAttribute(own) ? sub.getAttribute(own) : form.getAttribute(name));
-    if (String(attr('formmethod', 'method') || '').trim().toLowerCase() === 'dialog') return false;
-    let target = attr('formtarget', 'target');
-    if (target == null || target === '') target = document.querySelector('base[target]')?.getAttribute('target') || '';
-    target = String(target).trim().toLowerCase();
-    return target === '' || target === '_self';
+  // Review r1 SEC-2 + r2 B / C: only a TRUSTED submit of this form that navigates this window is recorded, and only
+  // briefly: the navigation it starts asks `beforeunload` within SUBMIT_GRACE_MS (Chromium / WebKit run it AFTER a
+  // zero-delay timer, so the task boundary alone is too short — measured), and the next press / key of the user ends it.
+  const expireSubmit = () => {
+    clearTimeout(submitTimer);
+    submitTimer = 0;
+    submitEvent = null;
+    window.removeEventListener('pointerdown', expireSubmit, true);
+    window.removeEventListener('keydown', expireSubmit, true);
   };
   const onSubmit = (e) => {
-    if (e.target === form && navigatesHere(/** @type {SubmitEvent} */ (e))) submitEvent = e;
+    if (!e.isTrusted || e.target !== form) return;
+    if (!submitNavigatesHere(form, /** @type {SubmitEvent} */ (e).submitter || null)) return;
+    expireSubmit();
+    submitEvent = e;
+    submitTimer = setTimeout(expireSubmit, SUBMIT_GRACE_MS);
+    window.addEventListener('pointerdown', expireSubmit, true);
+    window.addEventListener('keydown', expireSubmit, true);
   };
   const onPageShow = () => { submitEvent = null; };
 
@@ -288,6 +317,7 @@ export function trackFormDirty(form, opts = {}) {
       destroyed = true;
       cancelFrame();
       clearTimeout(resetTimer);
+      expireSubmit();
       disarm();
       for (const t of events) document.removeEventListener(t, onUserChange, true);
       document.removeEventListener('focusin', onApproach, true);
