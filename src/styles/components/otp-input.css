@@ -16,6 +16,11 @@
 		--td-otp-cell-aspect: 44 / 52;
 		--td-otp-gap: 0.5rem;
 		--td-otp-radius: var(--td-field-radius-md);
+		--td-otp-font-size: var(--td-text-xl);
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-otp-bg: var(--td-control-bg);
 		--td-otp-fg: var(--td-control-fg);
 		--td-otp-border: var(--td-control-border-strong);   /* ≥ 3:1 at rest: each cell is a boundary */
@@ -25,7 +30,6 @@
 		--td-otp-bg-disabled: var(--td-field-bg-disabled);
 		--td-otp-bg-readonly: var(--td-field-bg-readonly);
 		--td-otp-fg-disabled: var(--td-field-fg-disabled);
-		--td-otp-font-size: var(--td-text-xl);
 	}
 }
 

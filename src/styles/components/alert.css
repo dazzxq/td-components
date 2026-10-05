@@ -19,10 +19,14 @@
 @layer td.tokens {
 	:root {
 		--td-alert-radius: var(--td-radius-lg);
+		--td-alert-accent-width: 4px;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-alert-fg: var(--td-color-text);
 		--td-alert-close-fg: var(--td-color-text);
 		--td-alert-close-hover: var(--td-color-hover-strong);
-		--td-alert-accent-width: 4px;
 		--td-alert-info-bg: #eff6ff;
 		--td-alert-info-border: #93c5fd;
 		--td-alert-info-heading: var(--td-pastel-info-fg);
@@ -45,7 +49,7 @@
 		--td-alert-danger-accent: var(--td-solid-danger-bg);
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-alert-info-bg: #111c33;
 		--td-alert-info-border: #1e3a8a;
 		--td-alert-info-icon: #93c5fd;

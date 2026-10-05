@@ -9,8 +9,12 @@
  */
 @layer td.tokens {
 	:root {
-		--td-number-affix-fg: var(--td-color-text-muted);
 		--td-number-affix-gap: var(--td-space-2xs);
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+		--td-number-affix-fg: var(--td-color-text-muted);
 	}
 }
 

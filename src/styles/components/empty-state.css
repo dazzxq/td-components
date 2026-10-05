@@ -6,12 +6,16 @@
  */
 @layer td.tokens {
 	:root {
-		--td-empty-state-bg: var(--td-color-surface);
-		--td-empty-state-border: var(--td-color-border-strong);
-		--td-empty-state-icon: var(--td-color-text-subtle);
 		/* v0.16.0: on :root (was .td-empty-state); --sm / --lg / --compact still set them on the element */
 		--td-empty-state-pad: 22px;
 		--td-empty-state-gap: 10px;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+		--td-empty-state-bg: var(--td-color-surface);
+		--td-empty-state-border: var(--td-color-border-strong);
+		--td-empty-state-icon: var(--td-color-text-subtle);
 	}
 }
 

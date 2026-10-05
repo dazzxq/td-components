@@ -14,14 +14,18 @@
 		--td-media-picker-detail-w: 25rem;
 		--td-media-picker-col-min: 200px;
 		--td-media-picker-gap: 1rem;
+		--td-media-picker-card-radius: var(--td-radius-lg);
+		--td-media-picker-checked-opacity: 0.7;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-media-picker-list-bg: var(--td-color-surface-muted);
 		/* card states (decision 12): hover = the contrast-checked "viewing" colour; checked wins over viewing */
 		--td-media-picker-card-viewing: var(--td-accent);
 		--td-media-picker-card-hover: var(--td-media-picker-card-viewing);
 		--td-media-picker-card-checked: var(--td-color-success);
-		--td-media-picker-card-radius: var(--td-radius-lg);
 		--td-media-picker-card-shadow: var(--td-shadow-1);
-		--td-media-picker-checked-opacity: 0.7;
 	}
 
 	@media (min-width: 1280px) {

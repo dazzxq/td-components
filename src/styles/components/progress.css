@@ -8,13 +8,17 @@
 		--td-progress-h-sm: 4px;
 		--td-progress-h-md: 8px;
 		--td-progress-radius: var(--td-radius-full);
+		--td-progress-indeterminate-w: 40%;      /* moving segment width */
+		--td-progress-indeterminate-dur: 1.4s;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-progress-track: var(--td-color-border);
 		--td-progress-primary: var(--td-accent);
 		--td-progress-success: var(--td-color-success);
 		--td-progress-danger: var(--td-color-error);
 		--td-progress-warning: var(--td-color-warning);
-		--td-progress-indeterminate-w: 40%;      /* moving segment width */
-		--td-progress-indeterminate-dur: 1.4s;
 	}
 }
 

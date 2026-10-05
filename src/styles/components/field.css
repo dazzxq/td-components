@@ -7,6 +7,16 @@
  */
 @layer td.tokens {
 	:root {
+		--td-field-radius-sm: 10px;
+		--td-field-radius-md: 12px;
+		--td-field-radius-lg: 14px;
+		--td-field-h-sm: 32px;
+		--td-field-h-md: 40px;
+		--td-field-h-lg: 48px;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-field-bg: var(--td-control-bg);
 		--td-field-bg-focus: var(--td-control-bg);
 		--td-field-bg-disabled: var(--td-color-fill);
@@ -24,27 +34,21 @@
 		--td-field-placeholder: var(--td-color-text-muted);    /* 5.28:1 on white (dark: 6.6:1 on #1c1c1e) */
 		--td-field-note: var(--td-color-text-muted);
 		--td-field-label: var(--td-color-text-label);
-		--td-field-radius-sm: 10px;
-		--td-field-radius-md: 12px;
-		--td-field-radius-lg: 14px;
-		--td-field-h-sm: 32px;
-		--td-field-h-md: 40px;
-		--td-field-h-lg: 48px;
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-field-bg-disabled: var(--td-color-surface-muted);
 		--td-field-bg-readonly: var(--td-color-surface-muted);
 		--td-field-focus-ring: 0 0 0 3px rgb(59 130 246 / 22%); /* a 12 % halo vanishes on the dark field */
 	}
 
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
-		:root {
+		:root, [data-td-theme] {
 			--td-field-focus: color-mix(in srgb, var(--td-accent) 85%, #fff);
 			--td-field-focus-ring: 0 0 0 3px color-mix(in srgb, var(--td-accent) 12%, transparent);
 		}
 
-		:root[data-td-theme="dark"] {
+		:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 			--td-field-focus-ring: 0 0 0 3px color-mix(in srgb, var(--td-accent) 22%, transparent);
 		}
 	}

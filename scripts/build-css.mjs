@@ -9,14 +9,15 @@
  * `@media (hover: hover) and (pointer: fine)`, and every interactive control has a pressed (`:active` /
  * `[data-td-pressed]`) rule outside it (scripts/css-touch.mjs). v0.41.0 (theming QĐ4): every
  * `:root[data-td-theme="dark"]` rule gets a generated `@media (prefers-color-scheme: dark) { :root[data-td-theme="auto"] }`
- * copy right after it; hand-written auto rules are rejected (scripts/css-theme.mjs).
+ * copy right after it; hand-written auto rules are rejected (scripts/css-theme.mjs). v0.42.0 (QĐ15, ADR 0020): colour
+ * tokens live on `:root, [data-td-theme]` (theme scopes), geometry on `:root` — checkThemeScope lints both directions.
  */
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { checkBreakpoints, addContainerFallbacks, expandVariants } from './css-responsive.mjs';
 import { checkHoverGate, checkPressed } from './css-touch.mjs';
-import { expandAutoTheme } from './css-theme.mjs';
+import { expandAutoTheme, checkThemeScope } from './css-theme.mjs';
 
 
 
@@ -52,6 +53,11 @@ for (const file of manifest.files) {
 }
 if (bpErrors.length) {
   console.error(`Breakpoints (ADR 0014):\n  ${bpErrors.join('\n  ')}`);
+  process.exit(1);
+}
+const scopeErrors = checkThemeScope(touchEntries);
+if (scopeErrors.length) {
+  console.error(`Theme scope (QĐ15, ADR 0020):\n  ${scopeErrors.join('\n  ')}`);
   process.exit(1);
 }
 touchErrors.push(...checkPressed(touchEntries));

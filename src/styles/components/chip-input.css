@@ -14,17 +14,21 @@
  */
 @layer td.tokens {
 	:root {
-		--td-chip-bg: var(--td-color-fill-strong); /* opaque (v0.20.0): = 8 % black over the #fff field */
-		--td-chip-fg: var(--td-color-text);
 		--td-chip-radius: var(--td-radius-full);
 		--td-chip-h: 28px;
 		--td-chip-gap: 6px;
 		--td-chip-remove-size: 22px;
-		--td-chip-remove-hover: var(--td-color-hover-strong);
 		--td-chip-input-min-w: 8rem;
 	}
 
-	:root[data-td-theme="dark"] {
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+		--td-chip-bg: var(--td-color-fill-strong); /* opaque (v0.20.0): = 8 % black over the #fff field */
+		--td-chip-fg: var(--td-color-text);
+		--td-chip-remove-hover: var(--td-color-hover-strong);
+	}
+
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-chip-remove-hover: rgb(255 255 255 / 16%);
 	}
 }

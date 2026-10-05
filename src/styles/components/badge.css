@@ -20,6 +20,14 @@
 		--td-badge-radius: var(--td-radius-full);
 		--td-badge-font-family: var(--td-font-sans);
 		--td-badge-font-size: var(--td-text-xs);
+		--td-badge-stamp-font-family: var(--td-font-mono);
+		--td-badge-stamp-rotate: -4deg;
+		--td-badge-stamp-border: 3px;
+		--td-badge-stamp-radius: var(--td-radius-sm);
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-badge-neutral-bg: var(--td-color-fill);
 		--td-badge-neutral-fg: var(--td-color-on-fill);
 		/* accent: static fallback (= info) without color-mix(); @supports below follows the site accent */
@@ -46,13 +54,9 @@
 		--td-badge-warning-border: #ac6f08;
 		--td-badge-info-border: #1a45a5;
 		--td-badge-shadow: 0 1px 2px rgb(0 0 0 / 12%);
-		--td-badge-stamp-font-family: var(--td-font-mono);
-		--td-badge-stamp-rotate: -4deg;
-		--td-badge-stamp-border: 3px;
-		--td-badge-stamp-radius: var(--td-radius-sm);
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-badge-accent-bg: #172554;
 		--td-badge-accent-fg: #bfdbfe;
 		/* v0.36.0: outline / stamp ink on the DARK page (the light-theme ~700 inks are too dark there) */
@@ -63,12 +67,12 @@
 	}
 
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
-		:root {
+		:root, [data-td-theme] {
 			--td-badge-accent-bg: color-mix(in srgb, var(--td-accent) 14%, #fff);
 			--td-badge-accent-fg: color-mix(in srgb, var(--td-accent) 62%, #000);
 		}
 
-		:root[data-td-theme="dark"] {
+		:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 			--td-badge-accent-bg: color-mix(in srgb, var(--td-accent) 26%, #111113);
 			--td-badge-accent-fg: color-mix(in srgb, var(--td-accent) 40%, #fff);
 		}

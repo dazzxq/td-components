@@ -9,12 +9,16 @@
 	:root {
 		--td-copy-size-sm: 1.75rem;
 		--td-copy-size-md: 2.25rem;
+		--td-copy-radius: var(--td-radius-md);
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-copy-fg: var(--td-color-text-muted);
 		--td-copy-fg-hover: var(--td-color-text);
 		--td-copy-bg-hover: var(--td-color-hover-strong);
 		--td-copy-success: var(--td-color-success);
 		--td-copy-error: var(--td-color-error);
-		--td-copy-radius: var(--td-radius-md);
 		--td-copy-source-bg: var(--td-color-surface-muted);
 	}
 }

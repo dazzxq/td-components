@@ -32,10 +32,25 @@
  */
 @layer td.tokens {
 	:root {
+		--td-table-radius: var(--td-radius-lg);
+		--td-table-cell-px: 1.5rem;
+		--td-table-cell-py: 1rem;
+		--td-table-head-py: 0.75rem;
+		--td-table-ellipsis-max: 18rem; /* v0.34.0: max inline size of an ellipsis cell's content */
+		--td-table-card-radius: var(--td-radius-md);
+		--td-table-card-gap: var(--td-space-xs); /* between cards + around the card list (v0.36.1: was --td-space-sm) */
+		--td-table-card-px: var(--td-space-sm); /* v0.36.1: was --td-space-md */
+		--td-table-card-py: var(--td-space-xs); /* v0.36.1: was --td-space-sm (12px) */
+		--td-table-card-pair-min: 0px; /* v0.36.1: min width of a secondary pair (0 = by content; 100% = one per line) */
+		--td-table-card-cell-py: 2px; /* v0.36.1: block padding of a card cell */
+		--td-table-select-w: 3rem; /* v0.37.0: selection column */
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-table-bg: var(--td-color-surface);
 		--td-table-fg: var(--td-color-text);
 		--td-table-border: var(--td-color-border);
-		--td-table-radius: var(--td-radius-lg);
 		--td-table-shadow: var(--td-shadow-1);
 		--td-table-head-bg: var(--td-color-surface-muted);
 		--td-table-head-fg: var(--td-color-text-muted);
@@ -44,23 +59,12 @@
 		--td-table-row-border: var(--td-color-border);
 		--td-table-row-hover: var(--td-color-hover);
 		--td-table-zebra: rgb(0 0 0 / 2%);
-		--td-table-cell-px: 1.5rem;
-		--td-table-cell-py: 1rem;
-		--td-table-head-py: 0.75rem;
 		--td-table-skeleton: var(--td-skeleton-bg); /* v0.27.0: the shared skeleton tokens (components/skeleton.css) */
 		--td-table-sheen: var(--td-skeleton-shine);
-		--td-table-ellipsis-max: 18rem; /* v0.34.0: max inline size of an ellipsis cell's content */
 		--td-table-edge-shadow: rgb(0 0 0 / 14%); /* horizontal scroll hint at the clipped edge */
 		--td-table-card-bg: var(--td-table-bg);
 		--td-table-card-border: var(--td-table-border);
-		--td-table-card-radius: var(--td-radius-md);
-		--td-table-card-gap: var(--td-space-xs); /* between cards + around the card list (v0.36.1: was --td-space-sm) */
-		--td-table-card-px: var(--td-space-sm); /* v0.36.1: was --td-space-md */
-		--td-table-card-py: var(--td-space-xs); /* v0.36.1: was --td-space-sm (12px) */
 		--td-table-label-fg: var(--td-color-text-muted); /* card cell labels + meta line + lead (contrast gate ≥ 4.7) */
-		--td-table-card-pair-min: 0px; /* v0.36.1: min width of a secondary pair (0 = by content; 100% = one per line) */
-		--td-table-card-cell-py: 2px; /* v0.36.1: block padding of a card cell */
-		--td-table-select-w: 3rem; /* v0.37.0: selection column */
 		/* v0.37.0: selected row = a very light accent wash (text contrast gate ≥ 4.7, also with hover on top); a site
 		   accent follows through color-mix() (fallback: the default accent at the same alpha) */
 		--td-table-row-selected: rgb(37 99 235 / 8%);
@@ -71,12 +75,12 @@
 	}
 
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
-		:root {
+		:root, [data-td-theme] {
 			--td-table-row-selected: color-mix(in srgb, var(--td-accent) 8%, transparent);
 		}
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-table-zebra: rgb(255 255 255 / 3%);
 		--td-table-sheen: var(--td-skeleton-shine);
 		--td-table-edge-shadow: rgb(0 0 0 / 55%);

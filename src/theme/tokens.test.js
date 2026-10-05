@@ -19,7 +19,7 @@ function declarations(sel) {
     let m;
     while ((m = re.exec(css))) {
       const open = m.index + m[0].length - 1;
-      if (m[1].trim() !== sel) continue;
+      if (m[1].replace(/\s+/g, ' ').trim() !== sel) continue;
       const body = css.slice(open + 1, matchBrace(css, open));
       for (const d of body.matchAll(/(--td-[a-z0-9-]+)\s*:\s*([^;]+);/g)) out.set(d[1], d[2].trim());
     }
@@ -27,8 +27,9 @@ function declarations(sel) {
   return out;
 }
 
-const light = declarations(':root');
-const dark = declarations(':root[data-td-theme="dark"]');
+// v0.42.0 (QĐ15): light colour tokens live on the scope block, geometry on :root — the contract reads both
+const light = new Map([...declarations(':root'), ...declarations(':root, [data-td-theme]')]);
+const dark = declarations(':root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"]');
 
 /** Same value in both themes by design (reason kept next to each). */
 const THEME_INVARIANT = new Map([

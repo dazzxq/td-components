@@ -13,6 +13,11 @@
 		--td-menu-max-w: 22rem;
 		--td-menu-item-py: 0.6rem;
 		--td-menu-item-px: 0.75rem;
+		--td-menu-btn-size: 32px;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-menu-item-hover: var(--td-option-hover-bg); /* v0.36.0: shared option-row tokens */
 		--td-menu-item-active: var(--td-option-active-bg);
 		--td-menu-danger-fg: var(--td-color-error);
@@ -22,10 +27,9 @@
 		--td-menu-btn-fg: var(--td-color-text-muted);
 		--td-menu-btn-fg-hover: var(--td-color-text);
 		--td-menu-btn-hover: var(--td-color-hover);
-		--td-menu-btn-size: 32px;
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-menu-separator: rgb(255 255 255 / 12%);
 	}
 }

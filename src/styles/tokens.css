@@ -7,6 +7,10 @@
  * Never override `--_td-*` (private, resolved by the kit's accessibility fallbacks).
  * Base scale adopted from the 135 `td-` kit; surface values from docs/internal/design/liquid-glass.md (minimal surfaces).
  * Light by default. Dark is opt-in: <html data-td-theme="dark"> (theme-dark.css).
+ * v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens are declared on `:root, [data-td-theme]` (they re-resolve in every
+ * theme scope: `<section data-td-theme="dark">`); geometry / type / spacing / radius / z-index / motion and the grey
+ * ramp stay on `:root`, so a site's `:root { --td-radius-lg: … }` still reaches inside scopes. The build lints both
+ * directions (scripts/css-theme.mjs checkThemeScope).
  */
 @layer td.tokens {
 	:root {
@@ -63,12 +67,6 @@
 		--td-radius-xl: 20px;
 		--td-radius-full: 9999px;
 
-		/* ===== Shadow ===== */
-		--td-shadow-1: 0 1px 2px rgb(0 0 0 / 6%);
-		--td-shadow-2: 0 2px 8px rgb(0 0 0 / 8%);
-		--td-shadow-3: 0 8px 24px rgb(0 0 0 / 12%);
-		--td-hairline: rgb(0 0 0 / 7%);
-
 		/* ===== Z-index scale =====
 		   Open dropdown / menu / chip-input / hovercard panels use --td-z-popover (450), not --td-z-dropdown.
 		   --td-z-sticky is used by <td-scroll-top> (v0.17.0). --td-z-dropdown / --td-z-overlay are RESERVED: public
@@ -90,6 +88,73 @@
 		--td-ease: cubic-bezier(0.4, 0, 0.2, 1);
 		--td-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 		--td-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+		/* v0.36.0 popup option rows (dropdown, multiselect, tree-select, menu — dcms2 look): full-bleed rows, a hover fill,
+		   a selected fill (single lists: semibold label + ✓ at the end), the keyboard-active row = fill + an inline-start
+		   accent bar (the focus indicator, ≥ 3:1 vs the popup surface — contrast gate) */
+		--td-option-pad-x: 12px;
+		--td-option-active-bar-w: 3px;
+		--td-control-radius: var(--td-radius-md);
+		--td-touch-min: 44px; /* minimum hit target for touch controls */
+
+		/* ===== Buttons — v0.20.0 minimal surfaces: SOLID fill + one soft shadow (--td-btn-lift), no blur / film / sheen /
+		   rim / glow / scale. v0.21.0: primary is BLACK (dark theme: inverted) with its own hover token. v0.36.0: success /
+		   danger / warning / info are SOLID (--td-solid-*: fill + white / dark label + -border, hover one step darker). Each filled variant reads
+		   -bg / -fg / -border / -hover. A site that changes -bg should set -hover too (otherwise hover keeps the default).
+		   Primary back on the site accent: --td-btn-primary-bg: var(--td-accent-fill) + --td-btn-primary-hover.
+		   Compatibility alias for one cycle: a site that still sets --td-btn-{primary,success,danger,info,warning}-tint
+		   gets that colour as the fill AND border, hover = 8 % darker (button.css) — the kit no longer declares -tint. */
+		--td-btn-radius: var(--td-radius-lg); /* capsule on coarse pointers (button.css) */
+		/* deprecated v0.20.0 — still declared, no effect (removed in a later major): glass-button films / sheen / alpha */
+		--td-btn-primary-alpha: 94%;
+		--td-btn-success-alpha: 94%;
+		--td-btn-danger-alpha: 94%;
+		--td-btn-info-alpha: 94%;
+		--td-btn-warning-alpha: 86%;
+		--td-btn-sheen: none;                           /* deprecated v0.20.0 */
+
+		/* ===== Icons (src/icons) ===== */
+		--td-icon-s: 1rem;
+		--td-icon-m: 1.25rem;
+		--td-icon-l: 1.5rem;
+		--td-icon-stroke: 2;
+		--td-glass-blur: blur(12px);
+		--td-glass-blur-lg: blur(12px);
+
+		/* Lightbox bars (toolbar / counter, `--clear`): dark, never themed (the backdrop is the photo). */
+		--td-glass-clear-bg: rgb(20 20 22 / 88%);
+		--td-glass-clear-solid: #141416;
+		--td-glass-clear-fg: #fff;
+		--td-glass-clear-border: rgb(255 255 255 / 12%);
+		--td-glass-clear-shadow: 0 4px 16px rgb(0 0 0 / 24%);
+		--td-glass-sheen: none;
+		--td-glass-clear-edge: rgb(255 255 255 / 48%);
+		--td-glass-clear-glyph-shadow: none;
+		--td-glass-tint-alpha: 100%;
+		--td-glass-glow-size: 0px;
+		--td-glass-press-scale: 1;
+		--td-glass-lift-scale: 1;
+		--td-glass-enter-scale: 1;
+		--td-scroll-edge-size: 40px;                   /* soft fade under a floating bar */
+
+		/* ================= Glass motion ================= */
+		--td-glass-dur: var(--td-dur-base);
+		--td-glass-ease: var(--td-ease-out);
+		--td-glass-ease-flex: var(--td-ease-spring);
+		--td-glass-radius: 20px;
+		--td-glass-pad: 6px;
+		--td-glass-radius-min: 4px;
+		--td-glass-radius-inner: max(var(--td-glass-radius-min), calc(var(--td-glass-radius) - var(--td-glass-pad)));
+		--td-glass-capsule: 9999px;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+
+		/* ===== Shadow ===== */
+		--td-shadow-1: 0 1px 2px rgb(0 0 0 / 6%);
+		--td-shadow-2: 0 2px 8px rgb(0 0 0 / 8%);
+		--td-shadow-3: 0 8px 24px rgb(0 0 0 / 12%);
+		--td-hairline: rgb(0 0 0 / 7%);
 
 		/* ===== Semantic colours (the theme contract) ===== */
 		--td-color-bg: #fbfbfa;
@@ -110,16 +175,11 @@
 		--td-color-hover-strong: rgb(0 0 0 / 8%);
 		/* v0.36.2 (ADR 0019): the shared PRESSED fill (touch :active / [data-td-pressed]) — colour only, never a scale */
 		--td-color-pressed: rgb(0 0 0 / 12%);
-		/* v0.36.0 popup option rows (dropdown, multiselect, tree-select, menu — dcms2 look): full-bleed rows, a hover fill,
-		   a selected fill (single lists: semibold label + ✓ at the end), the keyboard-active row = fill + an inline-start
-		   accent bar (the focus indicator, ≥ 3:1 vs the popup surface — contrast gate) */
-		--td-option-pad-x: 12px;
 		--td-option-hover-bg: var(--td-color-hover);
 		--td-option-active-bg: var(--td-color-hover-strong);
 		--td-option-selected-bg: var(--td-color-hover-strong);
 		--td-option-pressed-bg: var(--td-color-pressed); /* v0.36.2 */
 		--td-option-active-bar: var(--td-accent);
-		--td-option-active-bar-w: 3px;
 		--td-color-overlay: rgb(10 10 12 / 45%);
 		--td-color-skeleton: var(--td-gray-100);
 		/* v0.41.0: neutral fills on a surface — switch off, secondary button, neutral badge, filter chip, disabled field
@@ -149,7 +209,6 @@
 		--td-control-bg: var(--td-color-surface-raised);  /* v0.41.0: was #fff */
 		--td-control-fg: var(--td-color-text);
 		--td-control-border: var(--td-color-border-strong);
-		--td-control-radius: var(--td-radius-md);
 		--td-control-border-strong: var(--td-gray-500); /* ≥ 3:1 non-text contrast on white (3.42:1) */
 		/* v0.14.1 (owner request): resting border of fields / dropdown / toggle / checkbox — soft like Apple systemGray4
 		   (1.5:1). It steps up to --td-control-border-hover on hover (v0.14.2) and focus shows the ring; sites that need
@@ -158,7 +217,6 @@
 		--td-control-border-soft: #d1d1d6;
 		/* v0.14.2 (owner request): hover border / active option outline — a softer step up (Apple systemGray2). */
 		--td-control-border-hover: #aeaeb2;
-		--td-touch-min: 44px; /* minimum hit target for touch controls */
 
 		/* ===== Pastel semantic palette (v0.21.0) — soft fill (~100) + border (~200) + deep ink (~800/900) of the same hue.
 		   DEPRECATED v0.36.0: no component uses it as its default fill any more (buttons / badges → --td-solid-*); kept so a
@@ -197,15 +255,6 @@
 		--td-solid-info-fg: #fff;
 		--td-solid-info-hover: #1d4ed8;
 		--td-solid-info-border: #1d4ed8;
-
-		/* ===== Buttons — v0.20.0 minimal surfaces: SOLID fill + one soft shadow (--td-btn-lift), no blur / film / sheen /
-		   rim / glow / scale. v0.21.0: primary is BLACK (dark theme: inverted) with its own hover token. v0.36.0: success /
-		   danger / warning / info are SOLID (--td-solid-*: fill + white / dark label + -border, hover one step darker). Each filled variant reads
-		   -bg / -fg / -border / -hover. A site that changes -bg should set -hover too (otherwise hover keeps the default).
-		   Primary back on the site accent: --td-btn-primary-bg: var(--td-accent-fill) + --td-btn-primary-hover.
-		   Compatibility alias for one cycle: a site that still sets --td-btn-{primary,success,danger,info,warning}-tint
-		   gets that colour as the fill AND border, hover = 8 % darker (button.css) — the kit no longer declares -tint. */
-		--td-btn-radius: var(--td-radius-lg); /* capsule on coarse pointers (button.css) */
 		--td-btn-primary-bg: #18181b;
 		--td-btn-primary-fg: #fff;
 		--td-btn-primary-hover: #3f3f46;                /* black can't get darker: hover lightens */
@@ -244,18 +293,11 @@
 		--td-btn-disabled-fg: #a1a1aa;
 		--td-btn-disabled-border: #e4e4e7;
 		--td-btn-lift: 0 1px 3px rgb(0 0 0 / 10%), 0 4px 10px -2px rgb(0 0 0 / 12%); /* the ONE button shadow (v0.21.0: stronger) */
-		/* deprecated v0.20.0 — still declared, no effect (removed in a later major): glass-button films / sheen / alpha */
-		--td-btn-primary-alpha: 94%;
 		--td-btn-primary-film: rgb(0 0 0 / 10%);
-		--td-btn-success-alpha: 94%;
 		--td-btn-success-film: rgb(0 0 0 / 13%);
-		--td-btn-danger-alpha: 94%;
 		--td-btn-danger-film: rgb(0 0 0 / 6%);
-		--td-btn-info-alpha: 94%;
 		--td-btn-info-film: rgb(0 0 0 / 6%);
-		--td-btn-warning-alpha: 86%;
 		--td-btn-warning-film: rgb(255 255 255 / 10%);
-		--td-btn-sheen: none;                           /* deprecated v0.20.0 */
 		--td-btn-secondary-glass: var(--td-btn-secondary-bg);     /* deprecated v0.20.0 → --td-btn-secondary-bg */
 		--td-btn-secondary-edge: var(--td-btn-secondary-border);  /* deprecated v0.20.0 → --td-btn-secondary-border */
 		/* v0.17.0 ghost button: accent label straight on the page background (contrast gate: ≥ 4.7:1 on white in light,
@@ -280,12 +322,6 @@
 		/* ===== Form errors (error contract) ===== */
 		--td-field-error: var(--td-color-error);
 
-		/* ===== Icons (src/icons) ===== */
-		--td-icon-s: 1rem;
-		--td-icon-m: 1.25rem;
-		--td-icon-l: 1.5rem;
-		--td-icon-stroke: 2;
-
 		/* ================= Minimal surfaces (v0.20.0 — replaces Liquid Glass v2) =================
 		   docs/internal/design/liquid-glass.md. Every floating surface = background + ONE thin border + ONE soft shadow,
 		   plus blur(12px) only on small popups (menu, dropdown, chip-input suggestions, hovercard, toast). Modal, loading
@@ -295,18 +331,9 @@
 		--td-glass-solid: var(--td-color-surface-raised); /* opaque surfaces + every fallback (v0.41.0: was #fff) */
 		--td-glass-fg: #18181b;
 		--td-glass-border: rgb(0 0 0 / 7%);
-		--td-glass-blur: blur(12px);
-		--td-glass-blur-lg: blur(12px);
 		/* v0.21.0: stronger — a tight contact layer + a soft ambient layer (one token = one shadow) */
 		--td-glass-shadow: 0 2px 6px rgb(0 0 0 / 6%), 0 8px 24px rgb(0 0 0 / 12%);
 		--td-glass-shadow-lg: 0 4px 12px rgb(0 0 0 / 8%), 0 20px 48px rgb(0 0 0 / 18%);
-
-		/* Lightbox bars (toolbar / counter, `--clear`): dark, never themed (the backdrop is the photo). */
-		--td-glass-clear-bg: rgb(20 20 22 / 88%);
-		--td-glass-clear-solid: #141416;
-		--td-glass-clear-fg: #fff;
-		--td-glass-clear-border: rgb(255 255 255 / 12%);
-		--td-glass-clear-shadow: 0 4px 16px rgb(0 0 0 / 24%);
 
 		/* deprecated v0.20.0 — still declared, no effect (removed in a later major): rims, hairline, sheen, local dim,
 		   glyph shadow, translucent tint, hover glow, decorative scales */
@@ -314,35 +341,16 @@
 		--td-glass-side-edge: rgb(255 255 255 / 22%);
 		--td-glass-bottom: rgb(0 0 0 / 8%);
 		--td-glass-outline: rgb(0 0 0 / 8%);
-		--td-glass-sheen: none;
 		--td-glass-dim: transparent;
 		--td-glass-dim-text: transparent;
-		--td-glass-clear-edge: rgb(255 255 255 / 48%);
-		--td-glass-clear-glyph-shadow: none;
 		--td-glass-tint: var(--td-accent);
-		--td-glass-tint-alpha: 100%;
 		--td-glass-tint-fg: var(--td-accent-contrast);
 		--td-glass-tint-edge: transparent;
 		--td-glass-glow: transparent;
-		--td-glass-glow-size: 0px;
-		--td-glass-press-scale: 1;
-		--td-glass-lift-scale: 1;
-		--td-glass-enter-scale: 1;
 
 		/* ================= Scrim / scroll edge / geometry ================= */
 		--td-glass-scrim: var(--td-color-overlay);     /* behind modals; NOT blurred */
-		--td-scroll-edge-size: 40px;                   /* soft fade under a floating bar */
 		--td-scroll-edge-hard-bg: var(--td-glass-bg-strong); /* hard style: pinned table header */
-
-		/* ================= Glass motion ================= */
-		--td-glass-dur: var(--td-dur-base);
-		--td-glass-ease: var(--td-ease-out);
-		--td-glass-ease-flex: var(--td-ease-spring);
-		--td-glass-radius: 20px;
-		--td-glass-pad: 6px;
-		--td-glass-radius-min: 4px;
-		--td-glass-radius-inner: max(var(--td-glass-radius-min), calc(var(--td-glass-radius) - var(--td-glass-pad)));
-		--td-glass-capsule: 9999px;
 	}
 
 	/* Reduce Motion — "disables any elastic properties" (W219). Literals only (no var() → safe on

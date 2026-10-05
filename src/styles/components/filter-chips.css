@@ -15,19 +15,23 @@
  */
 @layer td.tokens {
 	:root {
-		--td-filter-chip-bg: var(--td-color-fill);
-		--td-filter-chip-fg: var(--td-color-text);
-		--td-filter-chip-label-fg: var(--td-color-text);
-		--td-filter-chip-border: var(--td-color-border);
 		--td-filter-chip-radius: var(--td-radius-full);
 		--td-filter-chip-h: 28px;
 		--td-filter-chip-gap: var(--td-space-xs);
 		--td-filter-chip-max: 16rem; /* max inline size of a value (cut with …, full text in title) */
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+		--td-filter-chip-bg: var(--td-color-fill);
+		--td-filter-chip-fg: var(--td-color-text);
+		--td-filter-chip-label-fg: var(--td-color-text);
+		--td-filter-chip-border: var(--td-color-border);
 		--td-filter-chip-remove-fg: var(--td-color-text-label); /* ≥ 4.7 on the chip fill (contrast gate; muted gray-600 = 4.64) */
 		--td-filter-chip-remove-hover: var(--td-color-hover-strong);
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-filter-chip-remove-fg: var(--td-color-text-muted);
 	}
 }
