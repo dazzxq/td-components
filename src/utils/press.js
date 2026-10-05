@@ -26,6 +26,7 @@ export const PRESS_TARGETS = Object.freeze([
   '.td-checkbox',
   '.td-chip-input__option',
   '.td-chip-input__remove',
+  '.td-choice__option',
   '.td-color-panel__eyedropper',
   '.td-color-panel__preset',
   '.td-color__clear',

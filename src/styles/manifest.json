@@ -60,6 +60,7 @@
     "components/diff.css",
     "components/check-matrix.css",
     "components/color-picker.css",
+    "components/choice-group.css",
     "utilities.css"
   ]
 }

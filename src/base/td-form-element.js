@@ -344,7 +344,7 @@ export class TdFormElement extends TdBaseElement {
    * @protected
    */
   _syncDescribedBy() {
-    const target = this._focusTarget();
+    const target = this._ariaTarget();
     if (!target) return;
     const own = [...this._describedByIds()];
     if (this.constructor.errorContract && this.errorMessage) own.push(`${this.id}-error`);
@@ -392,7 +392,7 @@ export class TdFormElement extends TdBaseElement {
   _applyErrorState() {
     if (!this.constructor.errorContract || !this._initialized) return;
     const msg = this.errorMessage;
-    const target = this._focusTarget();
+    const target = this._ariaTarget();
     const id = `${this.id}-error`;
     // Direct reference (no selector built from the id); a re-render detaches it → recreate.
     let note = this._errorNote && this.contains(this._errorNote) ? this._errorNote : null;
@@ -692,6 +692,16 @@ export class TdFormElement extends TdBaseElement {
    */
   _focusTarget() {
     return this.querySelector('input, textarea, select, [contenteditable="true"], button, [tabindex]');
+  }
+
+  /**
+   * v0.49.0: the element carrying the error / description ARIA (`aria-invalid`, `aria-errormessage`, `aria-describedby`).
+   * Default: the focus target; a group control (td-choice-group) returns its `role="radiogroup"` element.
+   * @returns {HTMLElement|null}
+   * @protected
+   */
+  _ariaTarget() {
+    return this._focusTarget();
   }
 
   /**
