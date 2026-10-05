@@ -1,5 +1,6 @@
 import { TdBaseElement } from '../base/td-base-element.js';
 import { tdIcon } from '../icons/td-icon.js';
+import { BREAKPOINTS, matchesBelow } from '../utils/breakpoints.js';
 import {
   CAROUSEL_LABELS, pageTargets, slideTargets, nearestIndex, nextTarget, prevTarget, firstVisible, visibleRange,
   targetForSlide, controlsLayout, fill as fillTemplate, EPS,
@@ -430,8 +431,7 @@ export class TdCarousel extends TdBaseElement {
   /** @private The container is ≥ 480px (the container query of carousel.css; viewport width where unsupported). */
   _isWide() {
     const cq = typeof CSS !== 'undefined' && CSS.supports?.('container-type: inline-size');
-    const w = cq ? this.clientWidth : window.innerWidth;
-    return w >= 480;
+    return cq ? this.clientWidth >= BREAKPOINTS.sm : !matchesBelow('sm');
   }
 
   /** @private Current page → dots, counter, disabled ends (cheap: during scroll). */
