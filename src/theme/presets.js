@@ -239,6 +239,8 @@ const SCHEME_COMPONENTS = {
     '--td-badge-danger-ink': '#b91c1c',
     '--td-badge-info-ink': '#2563eb',
     '--td-filter-chip-remove-fg': '#45454b',
+    '--td-diff-added-bg': '#eef6f1',
+    '--td-diff-removed-bg': '#fbf2f2',
   },
   dark: {
     '--td-field-bg-disabled': '#242427',
@@ -278,6 +280,8 @@ const SCHEME_COMPONENTS = {
     '--td-badge-danger-ink': '#fca5a5',
     '--td-badge-info-ink': '#93c5fd',
     '--td-filter-chip-remove-fg': '#acacb4',
+    '--td-diff-added-bg': '#1d3026',
+    '--td-diff-removed-bg': '#362628',
   },
 };
 

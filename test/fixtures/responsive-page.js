@@ -8,6 +8,8 @@
  * dropzone are included. v0.35.0: td-cropper (inline: full width + the 280 px column), the crop dialog and the picker crop
  * step (openers `cropDialog` / `pickerCrop`). v0.36.1: `#rsp-table-density` (5 short columns, card density budget). v0.37.0: it is `selectable` (row 2 selected).
  * v0.38.0: td-scan-input (single + multiple with 30 rows, beep; one in the 280 px column).
+ * v0.46.0: section `diff` — `#rsp-diff` (td-diff, view auto: inline under 480px of host, long value + JSON view) and
+ *   `#rsp-diff-table` (view="table": scrolls inside its box on a narrow page).
  * v0.39.0: section `filters` — a filter bar (search + dropdown) → `#rsp-chips` (td-filter-chips) → `#rsp-table-filters`
  * (server-mode controlled, column-menu, the "Số điện thoại" column hidden).
  * v0.40.0: td-datetime-range (form grid + 280 px column via controls(); a 160 px datetime host; opener `#g-dtr`).
@@ -37,6 +39,7 @@ import '../../src/display/td-copy.js';
 import '../../src/display/td-masked-value.js';
 import '../../src/display/td-sortable.js';
 import '../../src/display/td-filter-chips.js'; // v0.39.0
+import '../../src/display/td-diff.js'; // v0.46.0
 import '../../src/feedback/td-alert.js';
 import '../../src/feedback/td-progress.js';
 import '../../src/feedback/td-tooltip.js';
@@ -252,6 +255,9 @@ export function mountResponsiveFixture(root) {
       <td-steps id="rsp-steps-narrow" current="4" navigation="back"></td-steps>
       <td-timeline id="rsp-timeline-narrow" time-zone="Asia/Ho_Chi_Minh"></td-timeline>
     </div>
+  <section class="rsp-section" data-section="diff"><h2>Lịch sử thay đổi</h2>
+    <td-diff id="rsp-diff" json label="Thay đổi đơn DH10240"></td-diff>
+    <td-diff id="rsp-diff-table" view="table" unchanged="show"></td-diff>
   </section>`;
 
   const options = [
@@ -313,6 +319,17 @@ export function mountResponsiveFixture(root) {
     t.now = tlNow;
     t.items = id === 'rsp-timeline' ? events : events.slice(0, 8);
   }
+  // v0.46.0: an audit diff (dsuite policy `fields`) + a forced table
+  const diffItems = [
+    { key: 'total', label: 'Tổng tiền', type: 'money', before: 32990000, after: 31490000 },
+    { key: 'status', label: 'Trạng thái', type: 'enum', options: { new: 'Chờ xác nhận', ship: 'Đang giao' }, before: 'new', after: 'ship' },
+    { key: 'note', label: 'Ghi chú giao hàng', before: 'Gọi trước khi giao', after: 'Giao giờ hành chính, gọi trước 30 phút. '.repeat(10) },
+    { key: 'tags', label: 'Nhãn', before: ['khách quen'], after: ['khách quen', 'trả góp 0 %'] },
+    { key: 'phone', label: 'SĐT khách', masked: true, before: '***678', after: '***901' },
+    { key: 'id', label: 'Mã đơn', before: 'DH10240', after: 'DH10240' },
+  ];
+  root.querySelector('#rsp-diff').items = diffItems;
+  root.querySelector('#rsp-diff-table').items = diffItems;
   root.querySelector('#rsp-empty').actions = [{ label: 'Tạo đơn hàng mới', variant: 'primary' }, { label: 'Nhập từ tệp Excel', variant: 'secondary' }];
 
   TdMenu.define('rsp-menu', [

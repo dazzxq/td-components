@@ -48,6 +48,7 @@ export { TdMaskedValue } from './src/display/td-masked-value.js';
 export { TdFilterChips } from './src/display/td-filter-chips.js';
 export { TdSteps } from './src/display/td-steps.js';
 export { TdTimeline } from './src/display/td-timeline.js';
+export { TdDiff } from './src/display/td-diff.js';
 export { TdFormValidation, trackFormDirty } from './src/utils/form-validation.js';
 export { BREAKPOINTS, SHORT_MAX, mqBelow, matchesBelow, isCoarsePointer, isShort } from './src/utils/breakpoints.js';
 export {

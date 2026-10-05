@@ -109,4 +109,5 @@ export const SCHEME_TOKENS = Object.freeze([
   '--td-badge-accent-bg', '--td-badge-accent-fg', '--td-badge-success-ink', '--td-badge-warning-ink',
   '--td-badge-danger-ink', '--td-badge-info-ink',
   '--td-filter-chip-remove-fg',
+  '--td-diff-added-bg', '--td-diff-removed-bg', // v0.46.0 td-diff cell tints
 ]);

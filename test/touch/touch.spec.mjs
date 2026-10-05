@@ -183,6 +183,8 @@ const PRESS_TYPES = [
   { name: 'gallery button', sel: '#rsp-gallery .td-media-gallery__remove', token: '--td-color-pressed', noTap: true },
   { name: 'toast', sel: '.td-toast--error', token: '--td-toast-error-pressed-bg', noTap: true,
     open: async (page) => { await page.evaluate(() => window.__openers.toast()); await page.locator('.td-toast--error[data-state="open"]').waitFor(); await settle(page, '.td-toast--error'); } },
+  // v0.46.0: td-diff <summary> (native <details>: a tap toggles it — pressed only)
+  { name: 'diff summary', sel: '#rsp-diff .td-diff__json > .td-diff__summary', token: '--td-color-pressed', noTap: true },
 ];
 
 /**

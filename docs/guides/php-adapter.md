@@ -76,6 +76,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_steps` (0.45.0) | **luôn** host `<td-steps data-td-ssr="steps@1">` chứa sẵn đúng cây component (mỗi bước một `li` với marker / nhãn / chữ trạng thái / mô tả, dòng tóm tắt) | Không (bước có `href` là **link**; bước bấm được không link in như bước thường) | **Có** — nạp module `steps`: nhận **tại chỗ** |
 | `td_timeline` (0.45.0) | **luôn** host `<td-timeline data-td-ssr="timeline@1" time-zone="…">` chứa sẵn nhóm ngày, mục, `<details>` chi tiết, "Xem thêm" (link) | Không (chi tiết mở bằng `<details>`, "Xem thêm" là link `more_href`) | **Có** — nạp module `timeline`: nhận **tại chỗ** (tính lại chữ nhãn ngày) |
 | `td_datetime_range` (0.40.0) | **luôn** host `<td-datetime-range data-td-ssr="datetime-range@1">` + hai `<input type="date\|datetime-local">` **native** (`{name}[start]` / `{name}[end]`, `min` / `max`, `required` theo mốc) + trigger ẩn | Không (hai ô ngày native chạy ngay) | **Có** — nạp module `datetime-range`: nhận **tại chỗ**, giữ giá trị đã sửa, gỡ ô native |
+| `td_diff` / `td_diff_snapshots` (0.46.0) | **luôn** host `<td-diff data-td-ssr="diff@1">` chứa sẵn bảng so sánh đầy đủ (hàng không đổi / JSON / giá trị dài là `<details>` native) | Không (đọc được ngay, `<details>` mở được không cần JS) | **Có** — nạp module `diff`: nhận **tại chỗ** (không đọc dữ liệu ngược từ DOM) |
 | `td_copy` (0.27.0) | **luôn** host `<td-copy data-td-ssr="copy@1">` chứa nguồn `<code>` + nút icon + live region | Không (chưa có JS: hiện mã để bôi đen, ẩn nút) | **Có** — nạp module `copy`: nhận **tại chỗ** |
 | `td_icon` | `svg.td-icon` đủ hình (có `viewBox`) | Không | — |
 | `td_badge` | `span.td-badge…` (thuần CSS) | Không | — |
@@ -106,7 +107,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.45.0/
+public/assets/vendor/td-components/0.46.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -114,7 +115,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.45.0';
+const TD_VERSION = '0.46.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -1603,6 +1604,63 @@ host `hidden`.
 - **Không JS**: nhóm ngày + giờ đã tính sẵn, chi tiết mở bằng `<details>`, "Xem thêm" là link `more_href` (chỉ in khi có
   `has_more` **và** `more_href` hợp lệ). `details: true` (tải lười) chỉ có ở JS.
 - Option khác: `order` (`asc`), `group` (`none`), `heading_level` (2–6), `empty_text`, `now` (test), `id`, `class`, `attrs`.
+
+## td_diff / td_diff_snapshots (0.46.0)
+
+```php
+<?php
+// dsuite audit: cột `changes JSON` — policy fields / keys = danh sách hàng, policy snapshot = { before, after }
+$changes = json_decode($event['changes'], true);
+?>
+<?= td_diff($changes, ['label' => 'Thay đổi đơn ' . $order['code']]) ?>
+
+<?= td_diff_snapshots($event['before_json'], $event['after_json'], [
+    'fields' => [
+        ['path' => 'status', 'label' => 'Trạng thái', 'type' => 'enum', 'options' => ['new' => 'Chờ xác nhận', 'ship' => 'Đang giao']],
+        ['path' => 'lines', 'label' => 'Dòng hàng'],
+        ['path' => ['lines', 0, 'qty'], 'label' => 'SL dòng 1'],   // đường dẫn có kiểu: 0 là chỉ số mảng
+        ['path' => 'card', 'masked' => true],                       // cả nhánh → [ĐÃ ẨN], không bao giờ in
+    ],
+    'json' => true,
+]) ?>
+```
+
+`td_diff($items, $opts)` / `td_diff_snapshots($before, $after, $opts)` **luôn** in phần tử [Diff](../components/diff.md) với
+markup **cuối cùng** — giống hệt `render()` của component cho cùng dữ liệu (test parity model + markup, hợp đồng `diff@1`).
+
+- **Không JS**: bảng hiện ngay; "n trường không đổi", "Xem đầy đủ", "Xem JSON" là `<details>` native. **Nạp
+  `@dazzxq/td-components/diff`**: nhận tại chỗ (không render lại, không đọc dữ liệu ngược từ DOM — `counts` là `null` tới khi
+  JS gán dữ liệu); gán `items` / `before` / `after` sau đó → render lại.
+- **Item** (`td_diff`): mảng hoặc `stdClass` với `key` (chuỗi / số, bắt buộc), `label`, `before`, `after`, `kind`, `masked`,
+  `type`, `options`, `decimals`, `unit` — cùng nghĩa với JS ([diff.md § 2](../components/diff.md#2-item-items)). `masked =>
+  true`: `before` / `after` là **chuỗi** (server đã che: `***678`) → in nguyên văn; khác → `[ĐÃ ẨN]`.
+- **Snapshot** (`td_diff_snapshots`), mỗi bên:
+
+  | Đầu vào | Hiểu là |
+  |---|---|
+  | `string` (**khuyên dùng**) | JSON, giải mã giữ object là object (`{"0": …}`, `{}`). Lớn hơn 2 MB / JSON sai / sâu hơn 64 cấp → ghi chú, **không** hàng, không ném lỗi, không in chuỗi gốc |
+  | `stdClass` | object (khoá luôn là chuỗi, thứ tự khoá như JavaScript) |
+  | `array` | quy tắc **hẹp**: `array_is_list()` → mảng, còn lại → object (khoá số thành chuỗi). Mảng kết hợp có khoá đúng `0..n-1` bị hiểu là mảng; `[]` không phân biệt `{}` (cả hai rỗng). Cần chính xác → truyền chuỗi JSON / `stdClass` |
+  | `null` | rỗng (sự kiện tạo / xoá) |
+  | object khác (`DateTime`, model…) | không nhận ở mức gốc (`TypeError` qua kiểu tham số); lồng bên trong → `[không hỗ trợ]` — tự `json_encode` trước |
+
+- **Số**: cùng luật với JS — số nguyên vượt ±(2⁵³ − 1) → `[số quá lớn]`, `1e309` → `[không hỗ trợ]`, số thực in như
+  `String(n)` của JavaScript, không phụ thuộc `precision` / `serialize_precision`. ID / tiền có thể vượt 2⁵³ − 1 → gửi chuỗi.
+- **Không che gì**: server bỏ / che bí mật trước khi gọi. Lỗi dữ liệu (item không có `key`, `kind` lạ, `fields` sai) → **một**
+  `E_USER_WARNING` mỗi lần gọi (chỉ mã lỗi, không giá trị).
+- `Td::diffModel($input, ['json' => …, 'labels' => …])` trả model (hàng, `counts`, ghi chú) — ví dụ để in "3 trường đổi"
+  trong danh sách sự kiện.
+
+| Option | Ý nghĩa |
+|---|---|
+| `fields` | (`td_diff_snapshots`) `FieldDef`: `['path' => 'status' \| ['lines', 0, 'qty'], 'label', 'type', 'options', 'decimals', 'unit', 'masked']` |
+| `view` | `auto` / `table` / `inline` (giá trị khác: bỏ qua) |
+| `unchanged` | `collapse` / `show` / `hide` |
+| `json` | `true` → khối "Xem JSON" |
+| `label` | tên trợ năng của bảng |
+| `labels` | ghi đè chữ (`Td::DIFF_LABELS`, cùng khoá `TdDiff.labels`) — site đổi chữ JS thì đổi cả ở đây để markup khớp |
+| `id`, `class` | trên host |
+| `attrs` | trên **host** (allowlist + `aria-*` / `data-*`). Giữ chỗ — bị bỏ: `id` `class` `view` `unchanged` `json` `label` + mọi `data-td-*` |
 
 ## An toàn: escape và whitelist
 

@@ -620,6 +620,13 @@
     <p class="demo-note">v0.45.0: thời điểm là ISO có <code>Z</code> / offset (mục thứ ba cố ý thiếu múi giờ → "Không rõ thời gian"); chi tiết "Audit" tải lười 300 ms; "Xem thêm" giả lập 300 ms, cursor = mục có thời điểm cuối cùng.</p>
   </div>
 
+  <!-- ═══════════════════ DIFF (v0.46.0) ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Lịch sử thay đổi <span class="demo-code">&lt;td-diff&gt;</span></h2>
+    <td-diff id="demo-diff" json label="Thay đổi đơn DH10240"></td-diff>
+    <p class="demo-note">v0.46.0: <code>items</code> (dsuite policy <code>fields</code> / <code>keys</code>) — Thêm / Xoá / Đổi bằng chữ, SĐT đã che ở server, mật khẩu chỉ tên trường, quyền so như tập; host hẹp hơn 480px → inline.</p>
+  </div>
+
   <!-- ═══════════════════ TABS ═══════════════════ -->
   <div class="demo-section">
     <h2>Tabs <span class="demo-code">&lt;td-tabs&gt;</span></h2>
@@ -937,6 +944,7 @@
     import './src/display/td-filter-chips.js'; // v0.39
     import './src/display/td-steps.js'; // v0.45
     import './src/display/td-timeline.js'; // v0.45
+    import './src/display/td-diff.js'; // v0.46
     // v0.32
     import { TdMediaPicker } from './src/feedback/td-media-picker.js';
     import './src/form/td-media-field.js';
@@ -1785,6 +1793,17 @@
         { id: 'o1', time: iso(50), title: 'Tạo đơn hàng #DH-1024', actor: 'Website', icon: 'plus', href: '#demo-timeline' },
       ];
     }
+    // ── Diff (v0.46.0) ──
+    document.querySelector('#demo-diff').items = [
+      { key: 'total', label: 'Tổng tiền', type: 'money', before: 32990000, after: 31490000 },
+      { key: 'status', label: 'Trạng thái', type: 'enum', options: { new: 'Chờ xác nhận', ship: 'Đang giao' }, before: 'new', after: 'ship' },
+      { key: 'note', label: 'Ghi chú giao hàng', after: 'Giao giờ hành chính' },
+      { key: 'gift', label: 'Quà tặng', before: 'Ốp lưng' },
+      { key: 'roles', label: 'Quyền', before: ['admin', 'editor'], after: ['editor', 'viewer'] },
+      { key: 'phone', label: 'SĐT khách', masked: true, before: '***678', after: '***901' },
+      { key: 'password', label: 'Mật khẩu', masked: true },
+      { key: 'code', label: 'Mã đơn', before: 'DH10240', after: 'DH10240' },
+    ];
 
     // ── Log all component events ──
     document.addEventListener('change', (e) => {

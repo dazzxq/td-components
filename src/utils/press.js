@@ -25,6 +25,7 @@ export const PRESS_TARGETS = Object.freeze([
   '.td-chip-input__remove',
   '.td-copy',
   '.td-cropper__ratio',
+  '.td-diff__summary',
   '.td-drawer__close',
   '.td-dropdown__option',
   '.td-dropdown__trigger',
