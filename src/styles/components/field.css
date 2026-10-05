@@ -9,7 +9,7 @@
 	:root {
 		--td-field-bg: var(--td-control-bg);
 		--td-field-bg-focus: var(--td-control-bg);
-		--td-field-bg-disabled: var(--td-gray-100);
+		--td-field-bg-disabled: var(--td-color-fill);
 		--td-field-bg-readonly: var(--td-color-surface-muted);
 		--td-field-fg: var(--td-control-fg);
 		--td-field-fg-disabled: var(--td-color-text-muted);
@@ -21,9 +21,9 @@
 		   --td-focus-ring. */
 		--td-field-focus: #3b82f6;
 		--td-field-focus-ring: 0 0 0 3px rgb(59 130 246 / 12%);
-		--td-field-placeholder: var(--td-gray-600);            /* 5.28:1 on white */
+		--td-field-placeholder: var(--td-color-text-muted);    /* 5.28:1 on white (dark: 6.6:1 on #1c1c1e) */
 		--td-field-note: var(--td-color-text-muted);
-		--td-field-label: var(--td-gray-700);
+		--td-field-label: var(--td-color-text-label);
 		--td-field-radius-sm: 10px;
 		--td-field-radius-md: 12px;
 		--td-field-radius-lg: 14px;
@@ -35,8 +35,6 @@
 	:root[data-td-theme="dark"] {
 		--td-field-bg-disabled: var(--td-color-surface-muted);
 		--td-field-bg-readonly: var(--td-color-surface-muted);
-		--td-field-placeholder: var(--td-gray-400);            /* 6.6:1 on #1c1c1e (gray-600 would be 3.2:1) */
-		--td-field-label: var(--td-gray-300);
 		--td-field-focus-ring: 0 0 0 3px rgb(59 130 246 / 22%); /* a 12 % halo vanishes on the dark field */
 	}
 

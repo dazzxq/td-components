@@ -20,21 +20,21 @@
 		--td-badge-radius: var(--td-radius-full);
 		--td-badge-font-family: var(--td-font-sans);
 		--td-badge-font-size: var(--td-text-xs);
-		--td-badge-neutral-bg: var(--td-gray-100);
-		--td-badge-neutral-fg: #3f3f46;
+		--td-badge-neutral-bg: var(--td-color-fill);
+		--td-badge-neutral-fg: var(--td-color-on-fill);
 		/* accent: static fallback (= info) without color-mix(); @supports below follows the site accent */
 		--td-badge-accent-bg: #dbeafe;
 		--td-badge-accent-fg: #1e40af;
 		/* v0.36.0: the semantic badges are solid (tokens.css --td-solid-*); -ink = outline / stamp text on the page */
 		--td-badge-success-bg: var(--td-solid-success-bg);
 		--td-badge-success-fg: var(--td-solid-success-fg);
-		--td-badge-success-ink: #15803d;
+		--td-badge-success-ink: var(--td-color-success);
 		--td-badge-warning-bg: var(--td-solid-warning-bg);
 		--td-badge-warning-fg: var(--td-solid-warning-fg);
-		--td-badge-warning-ink: #b45309;
+		--td-badge-warning-ink: var(--td-color-warning);
 		--td-badge-danger-bg: var(--td-solid-danger-bg);
 		--td-badge-danger-fg: var(--td-solid-danger-fg);
-		--td-badge-danger-ink: #b91c1c;
+		--td-badge-danger-ink: var(--td-color-error);
 		--td-badge-info-bg: var(--td-solid-info-bg);
 		--td-badge-info-fg: var(--td-solid-info-fg);
 		--td-badge-info-ink: #2563eb;
@@ -53,8 +53,6 @@
 	}
 
 	:root[data-td-theme="dark"] {
-		--td-badge-neutral-bg: #2c2c30;
-		--td-badge-neutral-fg: #e4e4e7;
 		--td-badge-accent-bg: #172554;
 		--td-badge-accent-fg: #bfdbfe;
 		/* v0.36.0: outline / stamp ink on the DARK page (the light-theme ~700 inks are too dark there) */

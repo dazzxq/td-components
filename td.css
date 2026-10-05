@@ -105,9 +105,14 @@
 		--td-color-bg: #fbfbfa;
 		--td-color-surface: #fff;
 		--td-color-surface-muted: var(--td-gray-50);
+		/* v0.41.0: the surface of controls, popups, modal — one step above the page when a theme sets it (R1: a site
+		   sets it explicitly; default = --td-color-surface). --td-control-bg / --td-glass-solid read it. */
+		--td-color-surface-raised: var(--td-color-surface);
 		--td-color-text: var(--td-gray-900);
 		--td-color-text-muted: var(--td-gray-600);
+		/* icons, large / disabled / decorative text only (≈ 3.2:1) — never small content text (use -muted, ≥ 4.7) */
 		--td-color-text-subtle: var(--td-gray-500);
+		--td-color-text-label: var(--td-gray-700); /* v0.41.0: field / control labels, a step above muted */
 		--td-color-border: var(--td-gray-200);
 		--td-color-sheen: rgb(255 255 255 / 60%); /* skeleton shimmer highlight */
 		--td-color-border-strong: var(--td-gray-300);
@@ -127,6 +132,11 @@
 		--td-option-active-bar-w: 3px;
 		--td-color-overlay: rgb(10 10 12 / 45%);
 		--td-color-skeleton: var(--td-gray-100);
+		/* v0.41.0: neutral fills on a surface — switch off, secondary button, neutral badge, filter chip, disabled field
+		   (-fill); a chip inside a field (-fill-strong = 8 % black on the white field, precomputed) */
+		--td-color-fill: var(--td-gray-100);
+		--td-color-fill-strong: #ebebeb;
+		--td-color-on-fill: #3f3f46; /* ink on -fill (neutral badge), ≥ 4.7 */
 		--td-color-success: #15803d;
 		--td-color-warning: #b45309;
 		--td-color-error: #b91c1c;
@@ -143,9 +153,9 @@
 		--td-accent-fill: var(--td-accent);
 
 		/* ===== Controls ===== */
-		--td-control-bg: #fff;
-		--td-control-fg: var(--td-gray-900);
-		--td-control-border: var(--td-gray-300);
+		--td-control-bg: var(--td-color-surface-raised);  /* v0.41.0: was #fff */
+		--td-control-fg: var(--td-color-text);
+		--td-control-border: var(--td-color-border-strong);
 		--td-control-radius: var(--td-radius-md);
 		--td-control-border-strong: var(--td-gray-500); /* ≥ 3:1 non-text contrast on white (3.42:1) */
 		/* v0.14.1 (owner request): resting border of fields / dropdown / toggle / checkbox — soft like Apple systemGray4
@@ -207,8 +217,8 @@
 		--td-btn-primary-fg: #fff;
 		--td-btn-primary-hover: #3f3f46;                /* black can't get darker: hover lightens */
 		--td-btn-primary-border: transparent;
-		--td-btn-secondary-bg: var(--td-gray-100);
-		--td-btn-secondary-fg: var(--td-gray-900);
+		--td-btn-secondary-bg: var(--td-color-fill);
+		--td-btn-secondary-fg: var(--td-color-text);
 		--td-btn-secondary-border: rgb(0 0 0 / 12%);
 		--td-btn-secondary-hover: var(--td-gray-200);
 		--td-btn-success-bg: var(--td-solid-success-bg);
@@ -263,13 +273,14 @@
 		/* hover label one step darker than the accent so it keeps ≥ 4.5:1 on the hover fill (the accent alone is ~4.5
 		   there); follows a site's --td-accent. Fallback without color-mix(): the fixed step in button.css. */
 		--td-btn-ghost-hover-fg: color-mix(in srgb, var(--td-btn-ghost-fg) 82%, #000);
+		--td-btn-ghost-hover-fg-fallback: #1d4ed8; /* v0.41.0: was a literal in button.css (dark: theme-dark.css) */
 
 		/* ===== Checkbox / switch — v0.14.1: resting borders use the soft token (~1.5:1, below WCAG 1.4.11 by owner
 		   choice); hover uses --td-control-border-hover (~2.2:1, v0.14.2); switch on-colours still ≥ 3:1 ===== */
 		--td-checkbox-color: var(--td-accent);
 		--td-checkbox-border: var(--td-control-border-soft);
 		--td-switch-on: #16a34a;       /* 3.3:1 vs white page; white thumb on it 3.3:1 */
-		--td-switch-off: var(--td-gray-100);
+		--td-switch-off: var(--td-color-fill);
 		--td-switch-edge: var(--td-control-border-soft);
 		--td-switch-thumb: #fff;
 
@@ -288,7 +299,7 @@
 		   card, tooltip and scroll-top are opaque (--td-glass-solid). The token names keep "glass" (public API). */
 		--td-glass-bg: rgb(255 255 255 / 90%);
 		--td-glass-bg-strong: rgb(255 255 255 / 94%);  /* small popups (blurred) */
-		--td-glass-solid: #fff;                        /* opaque surfaces + every fallback */
+		--td-glass-solid: var(--td-color-surface-raised); /* opaque surfaces + every fallback (v0.41.0: was #fff) */
 		--td-glass-fg: #18181b;
 		--td-glass-border: rgb(0 0 0 / 7%);
 		--td-glass-blur: blur(12px);
@@ -369,6 +380,7 @@
 		--td-color-text: #f5f5f7;
 		--td-color-text-muted: #a1a1aa;
 		--td-color-text-subtle: #8a8a93;
+		--td-color-text-label: #d4d4d8;
 		--td-color-border: #2c2c30;
 		--td-color-sheen: rgb(255 255 255 / 8%);
 		--td-color-border-strong: #45454b;
@@ -377,6 +389,9 @@
 		--td-color-pressed: rgb(255 255 255 / 14%); /* v0.36.2 */
 		--td-color-overlay: rgb(0 0 0 / 60%);
 		--td-color-skeleton: #242427;
+		--td-color-fill: #2c2c30;
+		--td-color-fill-strong: #3c3c3e;                /* = 14 % white over the #1c1c1e field, precomputed */
+		--td-color-on-fill: #e4e4e7;
 		--td-color-success: #22c55e;
 		--td-color-warning: #f59e0b;
 		--td-color-error: #f87171;
@@ -390,9 +405,6 @@
 		--td-accent-contrast: #fff;
 		--td-accent-fill: #2563eb; /* fallback without color-mix(); see @supports below */
 
-		--td-control-bg: #1c1c1e;
-		--td-control-fg: #f5f5f7;
-		--td-control-border: #45454b;
 		--td-control-border-strong: #8a8a93;
 		--td-control-border-soft: #3a3a3c; /* Apple systemGray4 (dark) */
 		--td-control-border-hover: #636366; /* Apple systemGray2 (dark) */
@@ -435,22 +447,19 @@
 		--td-btn-primary-fg: #18181b;
 		--td-btn-primary-hover: #d4d4d8;
 		--td-btn-primary-pressed: #a1a1aa;              /* v0.36.2: one step darker (6.9:1 with the dark label) */
-		--td-btn-secondary-bg: #2c2c30;
-		--td-btn-secondary-fg: #f5f5f7;
 		--td-btn-secondary-border: rgb(255 255 255 / 12%);
 		--td-btn-secondary-hover: #3a3a3e;
 		--td-btn-secondary-pressed: #45454b;            /* v0.36.2 */
 		--td-btn-ghost-hover-fg: color-mix(in srgb, var(--td-btn-ghost-fg) 70%, #fff); /* lighter step on the dark fill */
+		--td-btn-ghost-hover-fg-fallback: #93c5fd;     /* v0.41.0: engines without color-mix() (#1d4ed8 was 2.5:1 here) */
 		--td-btn-disabled-bg: #202024;
 		--td-btn-disabled-fg: #6b6b73;                 /* greyed out, ≥ 2.2:1 (v0.14.3) */
 		--td-btn-disabled-border: rgb(255 255 255 / 6%);
 		--td-btn-lift: 0 1px 3px rgb(0 0 0 / 20%), 0 4px 10px -2px rgb(0 0 0 / 24%); /* v0.21.0: light alpha × 2 */
-		--td-switch-off: #2c2c30;
 
 		/* v0.20.0 minimal surfaces (blur / clear tokens are theme-independent: tokens.css) */
 		--td-glass-bg: rgb(28 28 30 / 90%);
 		--td-glass-bg-strong: rgb(28 28 30 / 94%);
-		--td-glass-solid: #1c1c1e;
 		--td-glass-fg: #f5f5f7;
 		--td-glass-border: rgb(255 255 255 / 10%);
 		--td-glass-shadow: 0 2px 6px rgb(0 0 0 / 12%), 0 8px 24px rgb(0 0 0 / 24%); /* v0.21.0: light alpha × 2 */
@@ -647,7 +656,7 @@
 	:root {
 		--td-field-bg: var(--td-control-bg);
 		--td-field-bg-focus: var(--td-control-bg);
-		--td-field-bg-disabled: var(--td-gray-100);
+		--td-field-bg-disabled: var(--td-color-fill);
 		--td-field-bg-readonly: var(--td-color-surface-muted);
 		--td-field-fg: var(--td-control-fg);
 		--td-field-fg-disabled: var(--td-color-text-muted);
@@ -659,9 +668,9 @@
 		   --td-focus-ring. */
 		--td-field-focus: #3b82f6;
 		--td-field-focus-ring: 0 0 0 3px rgb(59 130 246 / 12%);
-		--td-field-placeholder: var(--td-gray-600);            /* 5.28:1 on white */
+		--td-field-placeholder: var(--td-color-text-muted);    /* 5.28:1 on white (dark: 6.6:1 on #1c1c1e) */
 		--td-field-note: var(--td-color-text-muted);
-		--td-field-label: var(--td-gray-700);
+		--td-field-label: var(--td-color-text-label);
 		--td-field-radius-sm: 10px;
 		--td-field-radius-md: 12px;
 		--td-field-radius-lg: 14px;
@@ -673,8 +682,6 @@
 	:root[data-td-theme="dark"] {
 		--td-field-bg-disabled: var(--td-color-surface-muted);
 		--td-field-bg-readonly: var(--td-color-surface-muted);
-		--td-field-placeholder: var(--td-gray-400);            /* 6.6:1 on #1c1c1e (gray-600 would be 3.2:1) */
-		--td-field-label: var(--td-gray-300);
 		--td-field-focus-ring: 0 0 0 3px rgb(59 130 246 / 22%); /* a 12 % halo vanishes on the dark field */
 	}
 
@@ -1338,7 +1345,7 @@
 	@media (hover: hover) and (pointer: fine) {
 		.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
 			background-color: var(--td-btn-ghost-hover-bg);
-			color: #1d4ed8; /* engines without color-mix(): fixed darker step */
+			color: var(--td-btn-ghost-hover-fg-fallback); /* engines without color-mix(): fixed step */
 		}
 	}
 
@@ -1364,7 +1371,7 @@
 
 	.td-btn--ghost:not(.td-btn--custom):is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
 		background-color: var(--td-btn-ghost-pressed);
-		color: #1d4ed8;
+		color: var(--td-btn-ghost-hover-fg-fallback);
 		transition-duration: 0s;
 	}
 
@@ -1470,12 +1477,12 @@
 		--td-action-btn-size-md: 2.25rem;
 		--td-action-btn-size-lg: 2.5rem;
 		--td-action-btn-radius: var(--td-radius-md);
-		--td-action-btn-standard-fg: var(--td-gray-700);
+		--td-action-btn-standard-fg: var(--td-color-text-label);
 		--td-action-btn-standard-hover-bg: var(--td-color-hover);
-		--td-action-btn-warning-fg: #b45309;
+		--td-action-btn-warning-fg: var(--td-color-warning);
 		/* amber-50, not the pastel warning fill: #b45309 on #fef3c7 is only 4.5:1 (gate ≥ 4.7) */
 		--td-action-btn-warning-hover-bg: #fffbeb;
-		--td-action-btn-danger-fg: #b91c1c;
+		--td-action-btn-danger-fg: var(--td-color-error);
 		--td-action-btn-danger-hover-bg: var(--td-pastel-danger-bg);
 		/* v0.36.2 (ADR 0019) pressed fills (icon ≥ 4.7:1 — contrast gate). Warning: no amber fill keeps #b45309 at 4.7
 		   (#fef3c7 is 4.5), so the pressed icon steps to amber-800 on the amber-100 fill. */
@@ -1487,7 +1494,6 @@
 
 	/* dark (opt-in): light inks on the dark page, translucent tone fills */
 	:root[data-td-theme="dark"] {
-		--td-action-btn-standard-fg: #d4d4d8;
 		--td-action-btn-warning-fg: #fcd34d;
 		--td-action-btn-warning-hover-bg: rgb(245 158 11 / 14%);
 		--td-action-btn-danger-fg: #fca5a5;
@@ -5917,6 +5923,10 @@
 		   accent follows through color-mix() (fallback: the default accent at the same alpha) */
 		--td-table-row-selected: rgb(37 99 235 / 8%);
 		--td-table-card-selected-border: var(--td-accent); /* ≥ 3:1 vs the page (contrast gate) */
+		/* v0.41.0: resting edge of the row-selection mark. Light keeps the v0.37 look (the `.td-table *` border rule painted
+		   it --td-color-border, 1.27:1 on white) — R1 is pixel-identical in light; dark uses the control edge (≥ 3:1, QĐ7).
+		   A site that wants the light mark like td-checkbox: --td-table-check-border: var(--td-checkbox-border). */
+		--td-table-check-border: var(--td-color-border);
 	}
 
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
@@ -5929,6 +5939,7 @@
 		--td-table-zebra: rgb(255 255 255 / 3%);
 		--td-table-sheen: var(--td-skeleton-shine);
 		--td-table-edge-shadow: rgb(0 0 0 / 55%);
+		--td-table-check-border: var(--td-checkbox-border);
 	}
 }
 
@@ -5961,6 +5972,11 @@
 	.td-table *::after {
 		box-sizing: border-box;
 		border-color: var(--td-color-border); /* own it: UA `table { border-color: gray }` vs host resets differ */
+	}
+
+	/* v0.41.0: the selection mark's resting edge (state rules of check.css, 0,2,0, still win) */
+	.td-table :where(.td-check) {
+		border-color: var(--td-table-check-border);
 	}
 
 	/* Header bar: title + top pagination */
@@ -7772,7 +7788,7 @@
  */
 @layer td.tokens {
 	:root {
-		--td-chip-bg: #ebebeb;                 /* opaque (v0.20.0): = rgb(0 0 0 / 8%) over the #fff field */
+		--td-chip-bg: var(--td-color-fill-strong); /* opaque (v0.20.0): = 8 % black over the #fff field */
 		--td-chip-fg: var(--td-color-text);
 		--td-chip-radius: var(--td-radius-full);
 		--td-chip-h: 28px;
@@ -7783,7 +7799,6 @@
 	}
 
 	:root[data-td-theme="dark"] {
-		--td-chip-bg: #3c3c3e;                 /* opaque (v0.20.0): = rgb(255 255 255 / 14%) over the #1c1c1e field */
 		--td-chip-remove-hover: rgb(255 255 255 / 16%);
 	}
 }
@@ -9251,21 +9266,21 @@
 		--td-badge-radius: var(--td-radius-full);
 		--td-badge-font-family: var(--td-font-sans);
 		--td-badge-font-size: var(--td-text-xs);
-		--td-badge-neutral-bg: var(--td-gray-100);
-		--td-badge-neutral-fg: #3f3f46;
+		--td-badge-neutral-bg: var(--td-color-fill);
+		--td-badge-neutral-fg: var(--td-color-on-fill);
 		/* accent: static fallback (= info) without color-mix(); @supports below follows the site accent */
 		--td-badge-accent-bg: #dbeafe;
 		--td-badge-accent-fg: #1e40af;
 		/* v0.36.0: the semantic badges are solid (tokens.css --td-solid-*); -ink = outline / stamp text on the page */
 		--td-badge-success-bg: var(--td-solid-success-bg);
 		--td-badge-success-fg: var(--td-solid-success-fg);
-		--td-badge-success-ink: #15803d;
+		--td-badge-success-ink: var(--td-color-success);
 		--td-badge-warning-bg: var(--td-solid-warning-bg);
 		--td-badge-warning-fg: var(--td-solid-warning-fg);
-		--td-badge-warning-ink: #b45309;
+		--td-badge-warning-ink: var(--td-color-warning);
 		--td-badge-danger-bg: var(--td-solid-danger-bg);
 		--td-badge-danger-fg: var(--td-solid-danger-fg);
-		--td-badge-danger-ink: #b91c1c;
+		--td-badge-danger-ink: var(--td-color-error);
 		--td-badge-info-bg: var(--td-solid-info-bg);
 		--td-badge-info-fg: var(--td-solid-info-fg);
 		--td-badge-info-ink: #2563eb;
@@ -9284,8 +9299,6 @@
 	}
 
 	:root[data-td-theme="dark"] {
-		--td-badge-neutral-bg: #2c2c30;
-		--td-badge-neutral-fg: #e4e4e7;
 		--td-badge-accent-bg: #172554;
 		--td-badge-accent-fg: #bfdbfe;
 		/* v0.36.0: outline / stamp ink on the DARK page (the light-theme ~700 inks are too dark there) */
@@ -9417,22 +9430,22 @@
 		--td-alert-accent-width: 4px;
 		--td-alert-info-bg: #eff6ff;
 		--td-alert-info-border: #93c5fd;
-		--td-alert-info-heading: #1e3a8a;
+		--td-alert-info-heading: var(--td-pastel-info-fg);
 		--td-alert-info-icon: var(--td-solid-info-bg);
 		--td-alert-info-accent: var(--td-solid-info-bg);
 		--td-alert-success-bg: #f0fdf4;
 		--td-alert-success-border: #86efac;
-		--td-alert-success-heading: #14532d;
+		--td-alert-success-heading: var(--td-pastel-success-fg);
 		--td-alert-success-icon: var(--td-solid-success-bg);
 		--td-alert-success-accent: var(--td-solid-success-bg);
 		--td-alert-warning-bg: #fffbeb;
 		--td-alert-warning-border: #fcd34d;
-		--td-alert-warning-heading: #78350f;
-		--td-alert-warning-icon: #b45309;
+		--td-alert-warning-heading: var(--td-pastel-warning-fg);
+		--td-alert-warning-icon: var(--td-color-warning);
 		--td-alert-warning-accent: var(--td-solid-warning-border);
 		--td-alert-danger-bg: #fef2f2;
 		--td-alert-danger-border: #fca5a5;
-		--td-alert-danger-heading: #7f1d1d;
+		--td-alert-danger-heading: var(--td-pastel-danger-fg);
 		--td-alert-danger-icon: var(--td-solid-danger-bg);
 		--td-alert-danger-accent: var(--td-solid-danger-bg);
 	}
@@ -9440,19 +9453,15 @@
 	:root[data-td-theme="dark"] {
 		--td-alert-info-bg: #111c33;
 		--td-alert-info-border: #1e3a8a;
-		--td-alert-info-heading: #bfdbfe;
 		--td-alert-info-icon: #93c5fd;
 		--td-alert-success-bg: #0d2418;
 		--td-alert-success-border: #14532d;
-		--td-alert-success-heading: #bbf7d0;
 		--td-alert-success-icon: #86efac;
 		--td-alert-warning-bg: #261b08;
 		--td-alert-warning-border: #78350f;
-		--td-alert-warning-heading: #fde68a;
 		--td-alert-warning-icon: #fcd34d;
 		--td-alert-danger-bg: #2a1111;
 		--td-alert-danger-border: #7f1d1d;
-		--td-alert-danger-heading: #fecaca;
 		--td-alert-danger-icon: #fca5a5;
 	}
 }
@@ -14605,7 +14614,7 @@
  */
 @layer td.tokens {
 	:root {
-		--td-filter-chip-bg: var(--td-gray-100);
+		--td-filter-chip-bg: var(--td-color-fill);
 		--td-filter-chip-fg: var(--td-color-text);
 		--td-filter-chip-label-fg: var(--td-color-text);
 		--td-filter-chip-border: var(--td-color-border);
@@ -14613,12 +14622,11 @@
 		--td-filter-chip-h: 28px;
 		--td-filter-chip-gap: var(--td-space-xs);
 		--td-filter-chip-max: 16rem; /* max inline size of a value (cut with …, full text in title) */
-		--td-filter-chip-remove-fg: var(--td-gray-700); /* ≥ 4.7 on the chip fill (contrast gate; muted gray-600 = 4.64) */
+		--td-filter-chip-remove-fg: var(--td-color-text-label); /* ≥ 4.7 on the chip fill (contrast gate; muted gray-600 = 4.64) */
 		--td-filter-chip-remove-hover: var(--td-color-hover-strong);
 	}
 
 	:root[data-td-theme="dark"] {
-		--td-filter-chip-bg: #2c2c30;
 		--td-filter-chip-remove-fg: var(--td-color-text-muted);
 	}
 }

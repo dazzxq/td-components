@@ -15,7 +15,7 @@
  */
 @layer td.tokens {
 	:root {
-		--td-filter-chip-bg: var(--td-gray-100);
+		--td-filter-chip-bg: var(--td-color-fill);
 		--td-filter-chip-fg: var(--td-color-text);
 		--td-filter-chip-label-fg: var(--td-color-text);
 		--td-filter-chip-border: var(--td-color-border);
@@ -23,12 +23,11 @@
 		--td-filter-chip-h: 28px;
 		--td-filter-chip-gap: var(--td-space-xs);
 		--td-filter-chip-max: 16rem; /* max inline size of a value (cut with …, full text in title) */
-		--td-filter-chip-remove-fg: var(--td-gray-700); /* ≥ 4.7 on the chip fill (contrast gate; muted gray-600 = 4.64) */
+		--td-filter-chip-remove-fg: var(--td-color-text-label); /* ≥ 4.7 on the chip fill (contrast gate; muted gray-600 = 4.64) */
 		--td-filter-chip-remove-hover: var(--td-color-hover-strong);
 	}
 
 	:root[data-td-theme="dark"] {
-		--td-filter-chip-bg: #2c2c30;
 		--td-filter-chip-remove-fg: var(--td-color-text-muted);
 	}
 }

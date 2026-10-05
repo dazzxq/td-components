@@ -14,7 +14,7 @@
  */
 @layer td.tokens {
 	:root {
-		--td-chip-bg: #ebebeb;                 /* opaque (v0.20.0): = rgb(0 0 0 / 8%) over the #fff field */
+		--td-chip-bg: var(--td-color-fill-strong); /* opaque (v0.20.0): = 8 % black over the #fff field */
 		--td-chip-fg: var(--td-color-text);
 		--td-chip-radius: var(--td-radius-full);
 		--td-chip-h: 28px;
@@ -25,7 +25,6 @@
 	}
 
 	:root[data-td-theme="dark"] {
-		--td-chip-bg: #3c3c3e;                 /* opaque (v0.20.0): = rgb(255 255 255 / 14%) over the #1c1c1e field */
 		--td-chip-remove-hover: rgb(255 255 255 / 16%);
 	}
 }

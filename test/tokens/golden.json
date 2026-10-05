@@ -1509,6 +1509,42 @@
     "--td-z-tooltip": "510",
     "@color-scheme": "dark"
   },
-  "added": {},
+  "added": {
+    "--td-color-surface-raised": {
+      "light": "rgb(255, 255, 255)",
+      "dark": "rgb(28, 28, 30)",
+      "why": "v0.41.0 contract: surface of controls / popups / modal (= --td-color-surface by default)"
+    },
+    "--td-color-text-label": {
+      "light": "rgb(69, 69, 75)",
+      "dark": "rgb(212, 212, 216)",
+      "why": "v0.41.0 contract: field / control labels (was gray-700 / gray-300 in field.css)"
+    },
+    "--td-color-fill": {
+      "light": "rgb(240, 240, 242)",
+      "dark": "rgb(44, 44, 48)",
+      "why": "v0.41.0 contract: neutral fill (switch off, secondary button, neutral badge, filter chip, disabled field)"
+    },
+    "--td-color-fill-strong": {
+      "light": "rgb(235, 235, 235)",
+      "dark": "rgb(60, 60, 62)",
+      "why": "v0.41.0 contract: chip inside a field (was --td-chip-bg literals)"
+    },
+    "--td-btn-ghost-hover-fg-fallback": {
+      "light": "rgb(29, 78, 216)",
+      "dark": "rgb(147, 197, 253)",
+      "why": "v0.41.0: the no-color-mix() ghost hover label (was a #1d4ed8 literal in button.css; dark fixed 2.5 → ≥ 4.7)"
+    },
+    "--td-table-check-border": {
+      "light": "rgb(228, 228, 231)",
+      "dark": "rgb(58, 58, 60)",
+      "why": "v0.41.0: resting edge of the td-table selection mark (light = the v0.37 look; dark = the control edge, QĐ7)"
+    },
+    "--td-color-on-fill": {
+      "light": "rgb(63, 63, 70)",
+      "dark": "rgb(228, 228, 231)",
+      "why": "v0.41.0 contract: ink on --td-color-fill (was the --td-badge-neutral-fg literals)"
+    }
+  },
   "darkDeltas": {}
 }

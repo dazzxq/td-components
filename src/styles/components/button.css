@@ -190,7 +190,7 @@
 	@media (hover: hover) and (pointer: fine) {
 		.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
 			background-color: var(--td-btn-ghost-hover-bg);
-			color: #1d4ed8; /* engines without color-mix(): fixed darker step */
+			color: var(--td-btn-ghost-hover-fg-fallback); /* engines without color-mix(): fixed step */
 		}
 	}
 
@@ -216,7 +216,7 @@
 
 	.td-btn--ghost:not(.td-btn--custom):is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
 		background-color: var(--td-btn-ghost-pressed);
-		color: #1d4ed8;
+		color: var(--td-btn-ghost-hover-fg-fallback);
 		transition-duration: 0s;
 	}
 

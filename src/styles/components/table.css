@@ -65,6 +65,10 @@
 		   accent follows through color-mix() (fallback: the default accent at the same alpha) */
 		--td-table-row-selected: rgb(37 99 235 / 8%);
 		--td-table-card-selected-border: var(--td-accent); /* ≥ 3:1 vs the page (contrast gate) */
+		/* v0.41.0: resting edge of the row-selection mark. Light keeps the v0.37 look (the `.td-table *` border rule painted
+		   it --td-color-border, 1.27:1 on white) — R1 is pixel-identical in light; dark uses the control edge (≥ 3:1, QĐ7).
+		   A site that wants the light mark like td-checkbox: --td-table-check-border: var(--td-checkbox-border). */
+		--td-table-check-border: var(--td-color-border);
 	}
 
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
@@ -77,6 +81,7 @@
 		--td-table-zebra: rgb(255 255 255 / 3%);
 		--td-table-sheen: var(--td-skeleton-shine);
 		--td-table-edge-shadow: rgb(0 0 0 / 55%);
+		--td-table-check-border: var(--td-checkbox-border);
 	}
 }
 
@@ -109,6 +114,11 @@
 	.td-table *::after {
 		box-sizing: border-box;
 		border-color: var(--td-color-border); /* own it: UA `table { border-color: gray }` vs host resets differ */
+	}
+
+	/* v0.41.0: the selection mark's resting edge (state rules of check.css, 0,2,0, still win) */
+	.td-table :where(.td-check) {
+		border-color: var(--td-table-check-border);
 	}
 
 	/* Header bar: title + top pagination */
