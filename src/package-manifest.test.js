@@ -244,7 +244,6 @@ test('v0.38.0: ./scan-input export, sideEffects, barrel TdScanInput, scan-input 
   }
 });
 
-<<<<<<< HEAD
 test('v0.39.0: ./filter-chips export, sideEffects, barrel TdFilterChips, filter-chips CSS before utilities; model internal', async () => {
   assert.equal(pkg.exports['./filter-chips'], './src/display/td-filter-chips.js');
   assert.ok(pkg.sideEffects.includes('./src/display/td-filter-chips.js'));
@@ -254,7 +253,8 @@ test('v0.39.0: ./filter-chips export, sideEffects, barrel TdFilterChips, filter-
   const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
   const i = files.indexOf('components/filter-chips.css');
   assert.ok(i > 0 && i < files.indexOf('utilities.css'));
-=======
+});
+
 test('v0.40.0: ./datetime-range export, sideEffects, barrel TdDatetimeRange, datetime-range CSS before utilities; panel / presets internal', async () => {
   assert.equal(pkg.exports['./datetime-range'], './src/form/td-datetime-range.js');
   assert.ok(pkg.sideEffects.includes('./src/form/td-datetime-range.js'));
@@ -270,5 +270,4 @@ test('v0.40.0: ./datetime-range export, sideEffects, barrel TdDatetimeRange, dat
     'td-datetime-range:not(:defined) .td-dtr__trigger', '--td-dtr-preset-on-bg']) {
     assert.ok(css.includes(sel), sel);
   }
->>>>>>> 886b6c0 (feat(v0.40.0): <td-datetime-range> — date / datetime range with presets (Hôm nay · 7 ngày qua · 30 ngày qua · Tháng này, callback + TdDatetimeRange.now), two editors (side by side ≥ 720, "Từ | Đến" switch < 720), order / max-days / per-side required, FormData name[start] / name[end] (+ start-name / end-name), validity, reset / fieldset disabled / state restore; pure date-presets helpers; CSS, press targets, story, ./datetime-range export (M2))
 });
