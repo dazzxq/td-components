@@ -45,8 +45,8 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
   [v0.41.0-theming](plans/v0.41.0-theming.md)
 - `done` v0.42.0: theming R2 — `palette.js` + CLI `td-theme` + trang builder + theme theo vùng + cầu portal ([ADR 0020](decisions/0020-theme-scope-portal.md))
 - `done` v0.42.1: vá tương phản dark (link khung lỗi form khi nhấn, nút × chip khi nhấn)
-- `todo` v0.43+: field gallery / nhiều ảnh (`td-media-grid` + `td-sortable`) — lùi sau theming (owner 2026-10-05)
-- `todo` sau v0.43: typeToConfirm, `trackFormDirty`, `td-steps`, `td-timeline`, `td-diff`, `td-check-matrix`, `td-color-picker`
+- `done` v0.43.0: `<td-media-gallery>` (field gallery / nhiều ảnh, [ADR 0021](decisions/0021-media-gallery-form-shape.md)) — plan [v0.43.0-media-gallery](plans/v0.43.0-media-gallery.md)
+- `todo` v0.44–v0.50: yêu cầu dsuite còn lại (confirm gõ chữ + form chưa lưu, steps + timeline, diff, check-matrix, color-picker, choice-group + stepper, rating + carousel) — plan từng bản trong `plans/`
 - Ngày từ v0.33 trở đi: **rebaseline từ ngày v0.31 xong thực tế** (không nén test / acceptance để giữ lịch cũ ~11/11 –
   25/11)
 - `todo` B (sau B0 ~01/2027): choice-group, number stepper, rating chỉ đọc, carousel không autoplay

@@ -2,6 +2,24 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.43.0
+
+**`<td-media-gallery>` — trường nhiều ảnh** (roadmap "field gallery"; plan `docs/internal/plans/v0.43.0-media-gallery.md`,
+Codex plan-review APPROVE 3 vòng; [ADR 0021](docs/internal/decisions/0021-media-gallery-form-shape.md)). Không có thay đổi
+phá vỡ.
+
+### Added
+
+- `<td-media-gallery>` (`./media-gallery`, `TdMediaGallery`): lưới ảnh có thứ tự — thêm bằng media picker chọn nhiều
+  (chỉ thêm, bỏ qua ảnh đã có, giới hạn theo `max`), gỡ từng ảnh, sắp xếp lại bằng kéo / chạm để nhấc / bàn phím; alt,
+  vùng cắt và điểm trọng tâm theo từng ảnh (hộp cắt sẵn có, chỉ toạ độ); ảnh đầu là ảnh bìa (badge tuỳ chọn `cover`);
+  `required` / `min` / `max` (trần cứng 100); 2 cột trên điện thoại.
+- Form: `name[]=id` (mặc định) hoặc `name[i][id|alt|crop|focal]` (chế độ `usage`); gallery rỗng gửi `name=`; dữ liệu
+  lỗi hoặc vượt `max` **không gửi gì** (server giữ nguyên, không bao giờ thành "xoá hết").
+- PHP `td_media_gallery()` + SSR `media-gallery@1` (id `int` được chuẩn hoá thành chuỗi; một đường kiểm tra chung với JS).
+- Hướng dẫn vendor PHP: thư mục `bin/` (CLI `td-theme`), chạy bằng `node <vendor>/bin/td-theme.mjs`, sinh lại file theme
+  khi `ALGORITHM_VERSION` đổi.
+
 ## 0.42.1
 
 **Vá tương phản dark** (theme dark có sẵn; light không đổi). Chi tiết: `docs/upgrading/breaking-changes.md#0421`.
