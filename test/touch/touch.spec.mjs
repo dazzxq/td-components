@@ -387,6 +387,53 @@ async function chromiumSemantics(browser) {
       expect(await page.locator('.td-tooltip[data-state="open"]').count() === 0, 'tooltip opened on a tap');
     });
 
+    // v0.48.0 td-color-picker: the 2-D area is touch-action: none (a drag picks, the page stays); the rest of the popup
+    // (presets) keeps the normal vertical scroll
+    const openColor = async () => {
+      await load(page);
+      const pt = await centre(page, '#g-color .td-color__trigger');
+      await page.touchscreen.tap(pt.x, pt.y);
+      await page.locator('body > .td-color-panel[data-state="open"]').waitFor();
+      await page.evaluate(() => {
+        window.__cp = { change: 0 };
+        document.querySelector('#g-color').addEventListener('change', (e) => { if (e.detail) window.__cp.change += 1; });
+      });
+    };
+    await it(tag, 'color picker: a touch drag on the 2-D area picks a colour, the page does not scroll, one change', async () => {
+      await openColor();
+      const b = await page.locator('.td-color-panel__area').boundingBox();
+      const v0 = await page.evaluate(() => document.querySelector('#g-color').value);
+      const y0 = await page.evaluate(() => window.scrollY);
+      await touchDrag(cdp, [{ x: b.x + 10, y: b.y + 10 }, { x: b.x + b.width - 10, y: b.y + b.height - 10 }], { durationMs: 200 });
+      await frames(page, 3);
+      const st = await page.evaluate(() => ({ v: document.querySelector('#g-color').value, y: window.scrollY, c: window.__cp.change,
+        open: !!document.querySelector('body > .td-color-panel') }));
+      expect(st.v !== v0 && /^#[0-9a-f]{6}$/.test(st.v), `value ${v0} → ${st.v}`);
+      expect(st.y === y0, `page scrolled ${y0} → ${st.y}`);
+      expect(st.c === 1, `${st.c} change events`);
+      expect(st.open, 'the popup closed on a drag');
+    });
+    await it(tag, 'color picker: a vertical swipe starting on the presets pans natively (the popup scrolls, nothing picked)', async () => {
+      await openColor();
+      // a short popup (forced through CSSOM) that has to scroll; its scroll is contained (overscroll-behavior), the page stays
+      const top0 = await page.evaluate(() => {
+        const p = document.querySelector('body > .td-color-panel');
+        p.style.setProperty('max-block-size', '140px');
+        p.scrollTop = document.querySelector('.td-color-panel__presets').offsetTop - 8;
+        return p.scrollTop;
+      });
+      await frames(page, 2);
+      const ta = await page.evaluate(() => getComputedStyle(document.querySelector('.td-color-panel__preset')).touchAction);
+      const b = await page.locator('.td-color-panel__preset').first().boundingBox();
+      const x = b.x + b.width / 2;
+      await touchDrag(cdp, [{ x, y: b.y + 4 }, { x, y: b.y + 100 }], { durationMs: 200 });
+      await frames(page, 4);
+      const top1 = await page.evaluate(() => document.querySelector('body > .td-color-panel').scrollTop);
+      expect(ta === 'auto', `preset touch-action ${ta}`);
+      expect(top1 < top0, `the popup did not scroll (${top0} → ${top1})`);
+      expect(await page.evaluate(() => window.__cp.change) === 0, 'a swipe picked a preset');
+    });
+
     // A6: sortable slop
     const list = 'td-sortable[label="Thứ tự section"]';
     const handle = `${list} [data-td-sort-item] .td-sortable__handle`;
@@ -841,6 +888,18 @@ async function webkitSmoke(browser) {
       const b = await m.boundingBox();
       const vp = page.viewportSize();
       expect(b.x >= -1 && b.y >= -1 && b.x + b.width <= vp.width + 1 && b.y + b.height <= vp.height + 1, `menu ${JSON.stringify(b)}`);
+    });
+    await it(tag, 'color picker: opens inside the viewport; a preset tap picks it and closes', async () => {
+      await load(page);
+      await tap('#g-color .td-color__trigger');
+      const m = page.locator('body > .td-color-panel[data-state="open"]');
+      await m.waitFor();
+      const b = await m.boundingBox();
+      const vp = page.viewportSize();
+      expect(b.x >= -1 && b.y >= -1 && b.x + b.width <= vp.width + 1 && b.y + b.height <= vp.height + 1, `popup ${JSON.stringify(b)}`);
+      await tap('.td-color-panel__preset[data-value="#ef4444"]');
+      const st = await page.evaluate(() => ({ v: document.querySelector('#g-color').value, open: !!document.querySelector('body > .td-color-panel') }));
+      expect(st.v === '#ef4444' && !st.open, JSON.stringify(st));
     });
     await it(tag, 'sheet modal: its body contains overscroll, the page does not scroll under it; close + action reachable', async () => {
       await load(page);

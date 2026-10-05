@@ -821,8 +821,14 @@ export class TdColorPicker extends TdFormElement {
   _placePanel() {
     const trigger = this._trigger();
     if (!this._panel || !trigger) return;
-    const { side } = placeFloating(trigger, this._panel, { width: 'auto', align: 'start' });
-    this._panel.setAttribute('data-placement', side);
+    const panel = this._panel;
+    const { side, top } = placeFloating(trigger, panel, { width: 'auto', align: 'start' });
+    panel.setAttribute('data-placement', side);
+    // neither side has room (short landscape phone): keep the whole popup inside the viewport (it may cover the field)
+    const vh = window.visualViewport?.height || window.innerHeight;
+    const h = panel.offsetHeight;
+    const clamped = Math.max(8, Math.min(top, vh - h - 8));
+    if (clamped !== top) panel.style.setProperty('top', `${clamped}px`);
   }
 
   /** @private scroll / resize / reference change: close once the swatch button is hidden, else follow it */

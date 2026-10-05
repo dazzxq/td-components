@@ -59,6 +59,7 @@ const ALLOW = [
   '.td-sr-only, .td-sr-only *',
   // v0.45.0: links INSIDE a line of text (timeline title / actor) — the WCAG 2.5.8 "inline" exception (pressed colour kept)
   'a.td-timeline__title, a.td-timeline__actor',
+  '.td-color-panel__thumb', // v0.48.0: the focus point of the 2-D area — the whole area (≥ 112 px high) is the touch target
 ];
 
 const W8 = [[360, 780], [393, 852], [430, 932], [768, 1024], [884, 1104], [1024, 768], [1280, 800], [1440, 900]];
@@ -78,6 +79,7 @@ const SCENARIOS = [
   { name: 'dropdown', act: (p) => p.click('#g-dd .td-dropdown__trigger'), panel: '.td-dropdown__menu[data-state="open"]' },
   { name: 'datetime', act: (p) => p.click('#g-dtp .td-dtp__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer .td-btn:last-child'] },
   { name: 'datetime-range', act: (p) => p.click('#g-dtr .td-dtr__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer .td-btn:last-child'] }, // v0.40.0
+  { name: 'color-picker', act: (p) => p.click('#g-color .td-color__trigger'), panel: '.td-color-panel' }, // v0.48.0
   { name: 'tree-select', act: (p) => p.click('#g-ts .td-tree-select__trigger'), panel: '.td-tree-select__menu[data-state="open"]' },
   { name: 'multiselect', act: async (p) => { await p.click('#g-chips .td-chip-input__input'); await p.keyboard.press('ArrowDown'); }, panel: '.td-chip-input__menu[data-state="open"]' },
   { name: 'menu', act: (p) => p.click('#rsp-menu-btn button'), panel: '.td-menu' },
