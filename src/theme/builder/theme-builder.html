@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>td-theme — tạo theme màu</title>
+  <!-- v0.42.0 (plan N4): no Node needed — open this file through ANY static web server that serves the package folder
+       (php -S, python3 -m http.server, the site's own server). file:// is not supported (module scripts). CSP-strict:
+       no inline script / style; the preview theme is a constructable stylesheet, outputs are textContent. -->
+  <link rel="stylesheet" href="../../../td.css">
+  <link rel="stylesheet" href="./theme-builder.css">
+  <script type="module" src="./theme-builder.js"></script>
+</head>
+<body class="tb">
+  <header class="tb__head">
+    <h1 class="tb__title">Tạo theme màu</h1>
+    <p class="tb__lead">Chọn nền trang và màu nhấn; kit tự tính chữ, viền, hover, focus, màu trạng thái đạt WCAG AA
+      — hoặc báo mã lỗi khi về toán học không đạt được (nền không bao giờ bị đổi). Cùng thuật toán với
+      <code>npx td-theme</code>: cùng hạt giống → cùng file CSS.</p>
+    <p class="tb__note" id="tb-boot">Đang tải… (trang này cần một web server tĩnh; mở bằng <code>file://</code> sẽ không chạy)</p>
+  </header>
+
+  <main class="tb__main">
+    <form class="tb__seeds" id="tb-form" novalidate>
+      <fieldset class="tb__group">
+        <legend class="tb__legend">Màu gốc</legend>
+        <div class="tb__row" data-seed="bg">
+          <label class="tb__label" for="tb-bg">Nền trang <span class="tb__req">(bắt buộc)</span></label>
+          <input class="tb__color" type="color" id="tb-bg-pick" aria-label="Chọn màu nền trang" tabindex="-1">
+          <input class="tb__text" id="tb-bg" name="bg" value="#ece5d8" maxlength="64" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="tb-bg-err">
+          <p class="tb__err" id="tb-bg-err" hidden></p>
+        </div>
+        <div class="tb__row" data-seed="accent">
+          <label class="tb__label" for="tb-accent">Màu nhấn <span class="tb__req">(bắt buộc)</span></label>
+          <input class="tb__color" type="color" id="tb-accent-pick" aria-label="Chọn màu nhấn" tabindex="-1">
+          <input class="tb__text" id="tb-accent" name="accent" value="#b3261e" maxlength="64" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="tb-accent-err">
+          <p class="tb__err" id="tb-accent-err" hidden></p>
+        </div>
+      </fieldset>
+      <fieldset class="tb__group">
+        <legend class="tb__legend">Bề mặt (tuỳ chọn)</legend>
+        <p class="tb__hint">Trống = tự tính: bề mặt sáng hơn nền một bậc; popup = bề mặt; ô nhập = popup. Ô nhập trắng: <code>#fff</code>.</p>
+        <div class="tb__row" data-seed="surface">
+          <label class="tb__label" for="tb-surface">Bề mặt (thẻ, bảng)</label>
+          <input class="tb__color" type="color" id="tb-surface-pick" aria-label="Chọn màu bề mặt" tabindex="-1">
+          <input class="tb__text" id="tb-surface" name="surface" value="#ffffff" maxlength="64" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="tb-surface-err">
+          <p class="tb__err" id="tb-surface-err" hidden></p>
+        </div>
+        <div class="tb__row" data-seed="raisedSurface">
+          <label class="tb__label" for="tb-raisedSurface">Popup, modal</label>
+          <input class="tb__color" type="color" id="tb-raisedSurface-pick" aria-label="Chọn màu popup" tabindex="-1">
+          <input class="tb__text" id="tb-raisedSurface" name="raisedSurface" maxlength="64" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="tb-raisedSurface-err">
+          <p class="tb__err" id="tb-raisedSurface-err" hidden></p>
+        </div>
+        <div class="tb__row" data-seed="controlSurface">
+          <label class="tb__label" for="tb-controlSurface">Ô nhập, nút chọn</label>
+          <input class="tb__color" type="color" id="tb-controlSurface-pick" aria-label="Chọn màu ô nhập" tabindex="-1">
+          <input class="tb__text" id="tb-controlSurface" name="controlSurface" maxlength="64" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="tb-controlSurface-err">
+          <p class="tb__err" id="tb-controlSurface-err" hidden></p>
+        </div>
+      </fieldset>
+      <fieldset class="tb__group">
+        <legend class="tb__legend">Màu trạng thái (tuỳ chọn)</legend>
+        <div class="tb__row" data-seed="success">
+          <label class="tb__label" for="tb-success">Thành công</label>
+          <input class="tb__color" type="color" id="tb-success-pick" aria-label="Chọn màu thành công" tabindex="-1">
+          <input class="tb__text" id="tb-success" name="success" maxlength="64" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="tb-success-err">
+          <p class="tb__err" id="tb-success-err" hidden></p>
+        </div>
+        <div class="tb__row" data-seed="warning">
+          <label class="tb__label" for="tb-warning">Cảnh báo</label>
+          <input class="tb__color" type="color" id="tb-warning-pick" aria-label="Chọn màu cảnh báo" tabindex="-1">
+          <input class="tb__text" id="tb-warning" name="warning" maxlength="64" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="tb-warning-err">
+          <p class="tb__err" id="tb-warning-err" hidden></p>
+        </div>
+        <div class="tb__row" data-seed="danger">
+          <label class="tb__label" for="tb-danger">Lỗi</label>
+          <input class="tb__color" type="color" id="tb-danger-pick" aria-label="Chọn màu lỗi" tabindex="-1">
+          <input class="tb__text" id="tb-danger" name="danger" maxlength="64" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="tb-danger-err">
+          <p class="tb__err" id="tb-danger-err" hidden></p>
+        </div>
+        <div class="tb__row" data-seed="info">
+          <label class="tb__label" for="tb-info">Thông tin</label>
+          <input class="tb__color" type="color" id="tb-info-pick" aria-label="Chọn màu thông tin" tabindex="-1">
+          <input class="tb__text" id="tb-info" name="info" maxlength="64" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="tb-info-err">
+          <p class="tb__err" id="tb-info-err" hidden></p>
+        </div>
+      </fieldset>
+      <fieldset class="tb__group">
+        <legend class="tb__legend">File xuất</legend>
+        <div class="tb__row tb__row--plain">
+          <label class="tb__label" for="tb-mode">Khe</label>
+          <select class="tb__select" id="tb-mode" name="mode">
+            <option value="light">light — trang mặc định (:root)</option>
+            <option value="dark">dark — data-td-theme="dark" + auto</option>
+          </select>
+        </div>
+        <div class="tb__row tb__row--plain">
+          <label class="tb__label" for="tb-name">Tên theme (tuỳ chọn)</label>
+          <input class="tb__text" id="tb-name" name="name" maxlength="32" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="vd. paper" aria-describedby="tb-name-err">
+          <p class="tb__err" id="tb-name-err" hidden></p>
+        </div>
+      </fieldset>
+    </form>
+
+    <div class="tb__right">
+      <section class="tb__preview" aria-labelledby="tb-preview-h" data-td-theme="tb-preview" id="tb-preview">
+        <h2 class="tb__h2" id="tb-preview-h">Xem trước</h2>
+        <p class="tb-ink tb-ink--text">Chữ chính — tiêu đề, nội dung bảng, nhãn ô chọn.</p>
+        <p class="tb-ink tb-ink--label">Nhãn ô nhập (label)</p>
+        <p class="tb-ink tb-ink--muted">Chữ phụ (muted) — ghi chú, đầu bảng, gợi ý.</p>
+        <p class="tb-ink tb-ink--subtle">Chữ mờ (subtle) — chỉ icon, chữ lớn, trang trí.</p>
+        <div class="tb-card">
+          <div class="tb-card__row">
+            <td-input-field class="tb-card__field" label="Họ tên" placeholder="Nguyễn Văn A" helper-text="Gợi ý dưới ô nhập"></td-input-field>
+            <td-dropdown class="tb-card__field" label="Danh mục" id="tb-demo-dropdown"></td-dropdown>
+          </div>
+          <div class="tb-card__row">
+            <td-checkbox checked label="Đã duyệt"></td-checkbox>
+            <td-checkbox label="Chưa chọn"></td-checkbox>
+            <td-toggle checked label="Bật"></td-toggle>
+          </div>
+          <div class="tb-card__row">
+            <td-button variant="primary" label="Lưu"></td-button>
+            <td-button variant="secondary" label="Huỷ"></td-button>
+            <td-button variant="ghost" label="Xem thêm"></td-button>
+            <td-button variant="danger" label="Xoá"></td-button>
+            <td-button variant="secondary" label="Khoá" disabled></td-button>
+          </div>
+          <div class="tb-card__row">
+            <span class="td-badge td-badge--neutral">Nháp</span>
+            <span class="td-badge td-badge--success">Đã đăng</span>
+            <span class="td-badge td-badge--warning">Chờ</span>
+            <span class="td-badge td-badge--danger">Lỗi</span>
+            <button type="button" class="td-btn td-btn--secondary td-btn--sm" id="tb-demo-menu" data-tooltip="Mở menu (popup theo theme vùng)">Menu…</button>
+          </div>
+          <td-alert variant="warning" heading="Lưu ý">Cảnh báo nền nhạt, chữ đọc được.</td-alert>
+          <td-table class="tb-card__table" id="tb-demo-table"></td-table>
+        </div>
+      </section>
+
+      <section class="tb__report" aria-labelledby="tb-report-h">
+        <h2 class="tb__h2" id="tb-report-h">Kiểm tra tương phản (WCAG 2.x)</h2>
+        <p class="tb__summary" id="tb-summary" role="status" aria-live="polite"></p>
+        <ul class="tb__diags" id="tb-diags"></ul>
+        <details class="tb__pairs">
+          <summary>Mọi cặp bắt buộc</summary>
+          <table class="tb__table">
+            <thead><tr><th scope="col">Token</th><th scope="col">Nền tệ nhất</th><th scope="col">Tỉ lệ</th><th scope="col">Cần</th></tr></thead>
+            <tbody id="tb-pairs"></tbody>
+          </table>
+        </details>
+      </section>
+
+      <section class="tb__output" aria-labelledby="tb-output-h">
+        <h2 class="tb__h2" id="tb-output-h">File CSS</h2>
+        <p class="tb__hint">Đặt sau <code>td.css</code>, trước CSS của site. Tên file nên có hash nội dung (xem docs theming).</p>
+        <div class="tb__actions">
+          <label class="tb__accept" id="tb-accept-row" hidden><input type="checkbox" id="tb-accept"> Xuất dù trượt AA</label>
+          <button type="button" class="td-btn td-btn--primary" id="tb-download">Tải về</button>
+          <button type="button" class="td-btn td-btn--secondary" id="tb-copy">Copy</button>
+          <span class="tb__status" id="tb-status" role="status" aria-live="polite"></span>
+        </div>
+        <pre class="tb__code"><code id="tb-css"></code></pre>
+        <details class="tb__json">
+          <summary>JSON (token chuẩn hoá + chẩn đoán)</summary>
+          <pre class="tb__code"><code id="tb-json"></code></pre>
+        </details>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
