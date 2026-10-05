@@ -16,6 +16,7 @@ Site không phải bật gì: import component như cũ là có. Trang này nói
 | **Dialog nằm trên bàn phím ảo** | Modal, sheet điện thoại, drawer, media picker co theo vùng nhìn thấy khi bàn phím mở; ô đang nhập (cả dòng lỗi) và nút ở footer luôn nhìn thấy được. |
 | **Lightbox vuốt theo ngón** | Ảnh đi theo ngón; thả qua 1/4 bề rộng (hoặc vuốt nhanh) thì sang ảnh, không thì bật về; một ảnh thì "dây chun". Vuốt từ mép màn hình vẫn là cử chỉ back của trình duyệt. |
 | **`enterkeyhint` cho ô số** | `<td-number-input enterkeyhint="next">` đổi nhãn phím Enter trên bàn phím ảo (như `td-input-field`). |
+| **Nhóm lựa chọn, stepper** (0.49.0) | `td-choice-group`: mỗi lựa chọn ≥ 44 × 44, hình nhấn chỉ đổi màu, cuộn trang bắt đầu trên nhóm vẫn cuộn. `td-number-input stepper`: nút − / + ≥ 44px, `touch-action: manipulation` (bấm + nhanh nhiều lần không phóng to iOS), chạm nút không bật bàn phím ảo. |
 
 ## Chỉnh lại
 
@@ -32,7 +33,7 @@ Site không phải bật gì: import component như cũ là có. Trang này nói
 
 Đủ bộ: `--td-btn-{primary,secondary,success,danger,info,warning}-pressed`, `--td-btn-ghost-pressed`,
 `--td-action-btn-{standard,warning,danger}-pressed-bg`, `--td-action-btn-warning-pressed-fg`, `--td-dropzone-bg-pressed`,
-`--td-toast-{success,error,warning,info}-pressed-bg`. Giá trị mặc định ở
+`--td-toast-{success,error,warning,info}-pressed-bg` (nhóm lựa chọn / stepper 0.49.0 dùng `--td-color-pressed`). Giá trị mặc định ở
 [design/touch.md](../internal/design/touch.md#token-nhấn).
 Đổi màu nhấn → giữ chữ / icon ≥ 4.5:1 trên nền nhấn.
 

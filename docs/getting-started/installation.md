@@ -234,6 +234,7 @@ sẽ bị dịch thành `/vendor/td-components-0.48.0/button` (không tồn tạ
     "@dazzxq/td-components/datetime-picker": "/vendor/td-components-0.48.0/src/form/td-datetime-picker.js",
     "@dazzxq/td-components/datetime-range": "/vendor/td-components-0.48.0/src/form/td-datetime-range.js",
     "@dazzxq/td-components/color-picker": "/vendor/td-components-0.48.0/src/form/td-color-picker.js",
+    "@dazzxq/td-components/choice-group": "/vendor/td-components-0.48.0/src/form/td-choice-group.js",
     "@dazzxq/td-components/modal": "/vendor/td-components-0.48.0/src/feedback/td-modal.js",
     "@dazzxq/td-components/modal-stack": "/vendor/td-components-0.48.0/src/feedback/td-modal-stack.js",
     "@dazzxq/td-components/lightbox": "/vendor/td-components-0.48.0/src/feedback/td-lightbox.js",
@@ -494,6 +495,7 @@ Nguồn: `package.json#exports`.
 | `@dazzxq/td-components/datetime-picker` | `src/form/td-datetime-picker.js` | `<td-datetime-picker>`, `TdDatetimePicker` |
 | `@dazzxq/td-components/datetime-range` | `src/form/td-datetime-range.js` | `<td-datetime-range>`, `TdDatetimeRange` (0.40.0) |
 | `@dazzxq/td-components/color-picker` | `src/form/td-color-picker.js` | `<td-color-picker>`, `TdColorPicker` (0.48.0) |
+| `@dazzxq/td-components/choice-group` | `src/form/td-choice-group.js` | `<td-choice-group>`, `TdChoiceGroup` (0.49.0) |
 | `@dazzxq/td-components/datetime` | `src/utils/datetime.js` | `TdDateTime` (tiện ích ngày giờ) |
 | `@dazzxq/td-components/form-validation` | `src/utils/form-validation.js` | `TdFormValidation`, `trackFormDirty` (0.44.0) |
 | `@dazzxq/td-components/breakpoints` | `src/utils/breakpoints.js` | Breakpoint kit (0.34.0, [ADR 0014](../internal/decisions/0014-breakpoints-container-queries.md)): `BREAKPOINTS`, `SHORT_MAX`, `mqBelow`, `matchesBelow`, `isCoarsePointer`, `isShort` — xem [responsive](../concepts/responsive.md) |
