@@ -22,6 +22,8 @@ import '/src/form/td-cropper.js';
 import '/src/form/td-scan-input.js';
 import '/src/display/td-filter-chips.js';
 import '/src/form/td-datetime-range.js';
+import '/src/display/td-steps.js';
+import '/src/display/td-timeline.js';
 import { TdModal } from '/src/feedback/td-modal.js';
 import { TdMediaPicker } from '/src/feedback/td-media-picker.js';
 import { createMockAdapter } from '/test/fixtures/media-adapter.js';
@@ -124,6 +126,13 @@ for (const state of ['row-pressed', 'chip-pressed']) CASES.push({ kind: 'table-s
 // on the chip fill and on its hover / pressed fills, chip edge vs page; the td-table "Cột" ghost button label ≥ 4.7 vs the
 // page, rest + pressed — computed colours (`pairs`), light + dark.
 for (const state of ['chip', 'remove-hover', 'remove-pressed', 'columns-btn']) CASES.push({ kind: 'v039', v: 'filters', state, pageOnly: true });
+// v0.45.0 (plan v0.45.0-steps-timeline M5): td-steps — number ≥ 4.7 on the current / upcoming discs, ✓ / ! icons ≥ 3.2 on
+// the done / error discs, the current ring and the upcoming disc edge ≥ 3 vs the page (WCAG 1.4.11), label / description /
+// error description / summary ≥ 4.7 and the disabled label ≥ 2.2 on the page, a clickable step label ≥ 4.7 on its pressed
+// fill; td-timeline — day heading, title, link, actor, time, meta, detail text, summary ≥ 4.7 on the page (summary also on
+// its pressed fill), the neutral + four tone icons ≥ 3.2 on their discs — computed colours (`pairs`), light + dark.
+for (const state of ['markers', 'text', 'pressed']) CASES.push({ kind: 'v045', v: 'steps', state, pageOnly: true });
+for (const state of ['text', 'tones', 'summary']) CASES.push({ kind: 'v045', v: 'timeline', state, pageOnly: true });
 // v0.36.0 colours/action-button (plan QĐ 12, 18–26): computed-colour pairs (page only, light + dark). Solid semantic
 // tokens: label vs fill and vs hover ≥ 4.7 (buttons / badges read them); badge -ink (outline / stamp) vs the page ≥ 4.7;
 // badge edge vs its own fill / white / #f4f4f5 ≥ 1.6 (light theme); alert icon vs the alert fill ≥ 3.2 and the
@@ -1407,6 +1416,89 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
         { what: 'close glyph vs hover wash', fg: cs.color, bg: hoverBg, min: 3.2 },
       ],
     };
+  } else if (c.kind === 'v045') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const over = overRgb;
+    const raf2 = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const col = (n) => getComputedStyle(n).color;
+    const bgOf = (n, under = page) => over(getComputedStyle(n).backgroundColor, under);
+    let target;
+    let pairs;
+    if (c.v === 'steps') {
+      const host = document.createElement('td-steps');
+      host.style.setProperty('width', '720px');
+      host.setAttribute('current', '3');
+      if (c.state === 'pressed') host.setAttribute('navigation', 'back');
+      stage.appendChild(host);
+      host.steps = [{ label: 'Tải tệp' }, { label: 'Kiểm tra', state: 'error', description: 'Dòng 12: thiếu IMEI' },
+        { label: 'Xem trước', description: 'Đã đọc 1.250 dòng' }, { label: 'Nhập' }, { label: 'Xong', disabled: true }];
+      await raf2();
+      target = host;
+      const li = (st) => host.querySelector(`.td-steps__item[data-state="${st}"]`);
+      const mk = (st) => li(st).querySelector('.td-steps__marker');
+      if (c.state === 'markers') {
+        pairs = [{ what: 'done ✓ vs done disc', fg: col(mk('done').querySelector('svg')), bg: bgOf(mk('done')), min: 3.2 },
+          { what: 'error ! vs error disc', fg: col(mk('error').querySelector('svg')), bg: bgOf(mk('error')), min: 3.2 },
+          { what: 'current number vs current disc', fg: col(mk('current')), bg: bgOf(mk('current')), min: 4.7 },
+          { what: 'upcoming number vs upcoming disc', fg: col(mk('upcoming')), bg: bgOf(mk('upcoming')), min: 4.7 },
+          { what: 'current ring vs page', fg: getComputedStyle(mk('current')).outlineColor, bg: page, min: 3 },
+          { what: 'upcoming disc edge vs page', fg: getComputedStyle(mk('upcoming')).borderTopColor, bg: page, min: 3 }];
+      } else if (c.state === 'text') {
+        host.setAttribute('current', '4');
+        await raf2();
+        const label = (st) => li(st).querySelector('.td-steps__label');
+        pairs = [{ what: 'done label vs page', fg: col(label('done')), bg: page, min: 4.7 },
+          { what: 'current label vs page', fg: col(label('current')), bg: page, min: 4.7 },
+          { what: 'description vs page', fg: col(host.querySelector('.td-steps__item[data-key="3"] .td-steps__desc')), bg: page, min: 4.7 },
+          { what: 'error description vs page', fg: col(li('error').querySelector('.td-steps__desc')), bg: page, min: 4.7 },
+          { what: 'disabled label vs page', fg: col(host.querySelector('.td-steps__item[data-disabled] .td-steps__label')), bg: page, min: 2.2 }];
+        host.style.setProperty('width', '320px');
+        await raf2();
+        pairs.push({ what: 'compact summary vs page', fg: col(host.querySelector('.td-steps__summary')), bg: page, min: 4.7 });
+      } else {
+        const b = host.querySelector('button.td-steps__step');
+        b.setAttribute('data-td-pressed', '');
+        await raf2();
+        const fill = bgOf(b);
+        pairs = [{ what: 'clickable step label vs pressed fill', fg: col(b.querySelector('.td-steps__label')), bg: fill, min: 4.7 },
+          { what: 'pressed fill differs from the page', fg: fill, bg: page, min: 1.05 }];
+      }
+    } else {
+      const host = document.createElement('td-timeline');
+      host.style.setProperty('width', '720px');
+      host.setAttribute('time-zone', 'Asia/Ho_Chi_Minh');
+      host.now = new Date('2026-10-05T03:00:00Z');
+      stage.appendChild(host);
+      host.items = [{ id: 'n', time: '2026-10-05T02:00:00Z', title: 'Tạo đơn', actor: 'An', meta: 'Kho HN', icon: 'plus', details: 'Chi tiết\nthay đổi', expanded: true },
+        { id: 'l', time: '2026-10-05T01:00:00Z', title: 'Đơn #12', href: '#don', actor: { name: 'Bình', href: '#u' } },
+        ...['success', 'warning', 'danger', 'info'].map((tone, i) => ({ id: tone, time: `2026-10-04T0${i + 1}:00:00Z`, title: tone, tone, icon: 'info' }))];
+      await raf2();
+      target = host;
+      const q = (sel) => host.querySelector(sel);
+      if (c.state === 'text') {
+        pairs = [{ what: 'day heading vs page', fg: col(q('.td-timeline__day-title')), bg: page, min: 4.7 },
+          { what: 'title vs page', fg: col(q('span.td-timeline__title')), bg: page, min: 4.7 },
+          { what: 'title link vs page', fg: col(q('a.td-timeline__title')), bg: page, min: 4.7 },
+          { what: 'actor vs page', fg: col(q('span.td-timeline__actor')), bg: page, min: 4.7 },
+          { what: 'actor link vs page', fg: col(q('a.td-timeline__actor')), bg: page, min: 4.7 },
+          { what: 'time vs page', fg: col(q('.td-timeline__time')), bg: page, min: 4.7 },
+          { what: 'meta vs page', fg: col(q('.td-timeline__meta')), bg: page, min: 4.7 },
+          { what: 'detail text vs page', fg: col(q('.td-timeline__detail')), bg: page, min: 4.7 }];
+      } else if (c.state === 'tones') {
+        const m = (id) => q(`li[data-id="${id}"] .td-timeline__marker`);
+        pairs = ['n', 'success', 'warning', 'danger', 'info'].map((id) => ({ what: `${id === 'n' ? 'neutral' : id} icon vs its disc`,
+          fg: col(m(id).querySelector('svg')), bg: bgOf(m(id)), min: 3.2 }));
+      } else {
+        const sum = q('.td-timeline__summary');
+        pairs = [{ what: 'summary vs page', fg: col(sum), bg: page, min: 4.7 }];
+        sum.setAttribute('data-td-pressed', '');
+        await raf2();
+        const fill = bgOf(sum);
+        pairs.push({ what: 'summary vs its pressed fill', fg: col(sum), bg: fill, min: 4.7 }, { what: 'pressed fill differs from the page', fg: fill, bg: page, min: 1.05 });
+      }
+    }
+    const r0 = target.getBoundingClientRect();
+    return { rect: { x: r0.x, y: r0.y, width: r0.width, height: r0.height }, ink: {}, opacity: 1, hover: false, name: `v045:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'focus') {
     let control;
     if (c.v === 'dropdown') {
