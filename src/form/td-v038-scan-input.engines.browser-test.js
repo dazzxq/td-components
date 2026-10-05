@@ -4,8 +4,8 @@ import { TdScanInput } from './td-scan-input.js';
 
 // v0.38.0 (plan v0.38.0-scan-input M2, QĐ 3–18) — <td-scan-input> in Chromium, Firefox AND WebKit (group `engines`).
 // Real signals: `sendKeys` drives Playwright's keyboard (keydown / beforeinput / input / keyup per character). A scan
-// is `type` in ONE command (machine rhythm, no delay); manual typing waits 150 ms between characters (wide margin:
-// the threshold is 40 ms). DOM nodes are compared as booleans (a failing chai assertion carrying nodes hangs the runner).
+// is `type` in ONE command (machine rhythm, no delay); manual typing waits 500 ms between characters (tests run with
+// key-interval 100, see scanEl). DOM nodes are compared as booleans (a failing chai assertion carrying nodes hangs the runner).
 const link = document.createElement('link');
 link.rel = 'stylesheet';
 link.href = '/td.css';
@@ -33,7 +33,11 @@ function mount(html) {
   extra.push(() => wrap.remove());
   return wrap;
 }
-const scanEl = (attrs = '') => mount(`<td-scan-input ${attrs}></td-scan-input>`).querySelector('td-scan-input');
+// Under load (parallel CI / several suites on one machine) Playwright's `type` can stretch key gaps past the 40 ms default,
+// which made machine bursts read as manual (Firefox flakes, CI run 37342699717). Tests use key-interval 100 (scanner: mean
+// ≤ 100 ms, no gap > 400 ms) and hand typing at 500 ms per character, so the two never overlap; the 40 ms default itself
+// is covered by the node tests of src/utils/scan-burst.js.
+const scanEl = (attrs = '') => mount(`<td-scan-input ${/key-interval=/.test(attrs) ? attrs : `${attrs} key-interval="100"`}></td-scan-input>`).querySelector('td-scan-input');
 const inputOf = (el) => el.querySelector('input.td-scan__input');
 const rowsOf = (el) => [...el.querySelectorAll('li.td-scan__item')];
 const rowValues = (el) => rowsOf(el).map((li) => li.querySelector('.td-scan__value').textContent);
@@ -48,12 +52,12 @@ async function scan(el, text, key = 'Enter') {
   await sendKeys({ type: text });
   if (key) await sendKeys({ press: key });
 }
-/** Typed by hand: 150 ms between characters. */
-async function typeSlow(el, text, key = 'Enter') {
+/** Typed by hand: 500 ms between characters (or `gap`) — 5× the test key-interval. */
+async function typeSlow(el, text, key = 'Enter', gap = 500) {
   inputOf(el).focus();
   for (const ch of text) {
     await sendKeys({ type: ch });
-    await wait(150);
+    await wait(gap);
   }
   if (key) await sendKeys({ press: key });
 }
