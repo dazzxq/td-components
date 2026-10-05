@@ -81,3 +81,26 @@ test('v0.42.0: preset shadows / focus ring are the CSS source strings (light: to
     assert.equal(PRESETS.dark[t], dark.get(t), `dark ${t}`);
   }
 });
+
+/**
+ * v0.42.0 impl review ISSUE-1: a generated palette with a dark scheme in the base slot or under a name does not get the
+ * kit's dark blocks — so EVERY token a kit dark rule sets must reach a generated palette some other way: it is in the
+ * contract (THEME_TOKENS), or the generator serializes it (SCHEME_TOKENS), or it is the same in both themes on purpose.
+ */
+const DARK_INVARIANT = new Map([
+  ...['success', 'danger', 'warning', 'info'].flatMap((v) => ['bg', 'fg', 'hover', 'border'].map((p) => [`--td-solid-${v}-${p}`,
+    'solid status buttons: the same values in both themes (white / dark label measured on the fill only)'])),
+]);
+
+test('v0.42.0 ISSUE-1: every token a kit dark rule sets is a contract token, a generated scheme token, or dark-invariant', async () => {
+  const { SCHEME_TOKENS } = await import('./tokens.js');
+  const uncovered = [...dark.keys()].filter((t) => !THEME_TOKENS.includes(t) && !SCHEME_TOKENS.includes(t) && !DARK_INVARIANT.has(t));
+  assert.deepEqual(uncovered, [], `dark-only component colours a generated palette would miss: ${uncovered.join(', ')}`);
+  for (const t of SCHEME_TOKENS) assert.ok(light.has(t), `${t} declared on the scope block (light)`);
+  assert.equal(new Set(SCHEME_TOKENS).size, SCHEME_TOKENS.length);
+  for (const t of SCHEME_TOKENS) assert.ok(!THEME_TOKENS.includes(t), `${t} is not also a contract token`);
+});
+
+test('v0.42.0 ISSUE-1: dark-invariant tokens really have the same value in both themes', () => {
+  for (const t of DARK_INVARIANT.keys()) if (dark.has(t)) assert.equal(dark.get(t), light.get(t), t);
+});

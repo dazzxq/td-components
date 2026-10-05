@@ -8,7 +8,8 @@ import { generatePalette, toCss } from '../../src/theme/index.js';
 
 const read = (f) => readFileSync(fileURLToPath(new URL(`./palettes/${f}`, import.meta.url)), 'utf8');
 
-test('navy.css + beige-gen.css = toCss(generatePalette(seeds))', () => {
+test('navy.css + beige-gen.css + navy-named.css = toCss(generatePalette(seeds))', () => {
   assert.equal(read('navy.css'), toCss(generatePalette({ bg: '#16233a', accent: '#3b82f6' })));
   assert.equal(read('beige-gen.css'), toCss(generatePalette({ bg: '#ece5d8', accent: '#b3261e', surface: '#fff' })));
+  assert.equal(read('navy-named.css'), toCss(generatePalette({ bg: '#16233a', accent: '#3b82f6' }, { name: 'navy' })));
 });

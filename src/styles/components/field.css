@@ -38,7 +38,6 @@
 
 	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-field-bg-disabled: var(--td-color-surface-muted);
-		--td-field-bg-readonly: var(--td-color-surface-muted);
 		--td-field-focus-ring: 0 0 0 3px rgb(59 130 246 / 22%); /* a 12 % halo vanishes on the dark field */
 	}
 

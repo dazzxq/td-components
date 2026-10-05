@@ -10,11 +10,13 @@
  *
  * Nothing from the raw input is ever copied: the header names the algorithm / contract versions and the seeds AS HEX
  * (re-serialised from numbers); the theme name passed the THEME_NAME_RE whitelist; token values are toCss() output or
- * fixed strings. Derived aliases equal to their source are left out (the kit alias keeps following the source).
+ * fixed strings. Derived aliases equal to their source are left out (the kit alias keeps following the source). After the
+ * contract come the scheme-dependent component tokens (tokens.js SCHEME_TOKENS): a dark-scheme palette in the base slot
+ * or under a name gets no kit dark rule, so it carries its own.
  *
  * @module theme/serialize
  */
-import { THEME_TOKENS } from './tokens.js';
+import { THEME_TOKENS, SCHEME_TOKENS } from './tokens.js';
 import { BASE_SELECTOR, DARK_SELECTOR, AUTO_DARK_SELECTOR, AUTO_DARK_MEDIA, variantSelector } from './selectors.js';
 import { redundantAliases, hasAaFailure, SEED_FIELDS } from './palette.js';
 
@@ -60,6 +62,8 @@ export function toCss(result, { acceptAaFailure = false } = {}) {
     if (skip.has(t)) continue;
     decls.push(`${t}: ${result.tokens.get(t)};`);
   }
+  // impl review ISSUE-1: the scheme-dependent component colours, computed for this palette (tokens.js SCHEME_TOKENS)
+  for (const t of SCHEME_TOKENS) if (result.tokens.has(t)) decls.push(`${t}: ${result.tokens.get(t)};`);
   const block = (selector, indent) => [`${indent}${selector} {`, ...decls.map((d) => `${indent}\t${d}`), `${indent}}`];
   const body = [];
   if (result.name) body.push(...block(variantSelector(result.name), '\t'));

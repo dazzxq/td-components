@@ -11,7 +11,8 @@ mọi token giữ giá trị như 0.41 (golden light + dark không đổi). Chi 
 ### Added
 
 - **Bộ sinh màu** `@dazzxq/td-components/theme` (`generatePalette`, `toCss`…): từ `bg` + `accent` (tuỳ chọn `surface`,
-  `raisedSurface`, `controlSurface`, màu trạng thái) sinh ~86 token theme, chữ / viền / focus / accent / trạng thái tự đạt
+  `raisedSurface`, `controlSurface`, màu trạng thái) sinh ~86 token theme + 36 token component phụ thuộc sáng / tối (hover,
+  nhấn, tạo mới, dòng chọn… — theme tối dưới tên riêng không phụ thuộc rule dark của kit), chữ / viền / focus / accent / trạng thái tự đạt
   WCAG AA; nền rơi vào "vùng chết" giữ nguyên màu site, chọn chữ đen / trắng tốt nhất và báo
   `TD_THEME_CONTRAST_UNSATISFIABLE` (không bao giờ tự đổi nền). Tất định: cùng seed → cùng CSS từng byte.
 - **CLI** `npx td-theme --bg '#ece5d8' --accent '#b3261e' > site-theme.css`: CSS tĩnh bọc `@layer td.tokens` ra stdout,
@@ -22,7 +23,8 @@ mọi token giữ giá trị như 0.41 (golden light + dark không đổi). Chi 
 - **Theme theo vùng**: `data-td-theme="dark|light|auto|<tên>"` trên bất kỳ phần tử nào; popup / modal / toast mở từ trong
   vùng đi theo theme của vùng (cầu portal; overlay gọi bằng code nhận `themeRoot`).
 - Gate: fuzz 10 000 seed, so khớp từng byte giữa module / CLI / builder trên 3 engine, first paint với CSS sinh sẵn khi tắt JS,
-  gate toàn trang thêm bảng màu do generator sinh (be, navy).
+  gate toàn trang thêm bảng màu do generator sinh (be, navy ở khe trang và dạng theme có tên) + cặp
+  tương phản trạng thái hover / nhấn / tạo mới / dòng chọn.
 
 ### Changed
 

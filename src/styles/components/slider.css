@@ -32,7 +32,6 @@
 
 	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-slider-track: #3a3a40;
-		--td-slider-thumb-bg: #fff;
 		--td-slider-disabled: #5a5a62;
 	}
 }

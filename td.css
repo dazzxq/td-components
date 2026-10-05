@@ -834,14 +834,12 @@
 
 	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-field-bg-disabled: var(--td-color-surface-muted);
-		--td-field-bg-readonly: var(--td-color-surface-muted);
 		--td-field-focus-ring: 0 0 0 3px rgb(59 130 246 / 22%); /* a 12 % halo vanishes on the dark field */
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
 		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			--td-field-bg-disabled: var(--td-color-surface-muted);
-			--td-field-bg-readonly: var(--td-color-surface-muted);
 			--td-field-focus-ring: 0 0 0 3px rgb(59 130 246 / 22%); /* a 12 % halo vanishes on the dark field */
 		}
 	}
@@ -2364,14 +2362,12 @@
 
 	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-slider-track: #3a3a40;
-		--td-slider-thumb-bg: #fff;
 		--td-slider-disabled: #5a5a62;
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
 		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			--td-slider-track: #3a3a40;
-			--td-slider-thumb-bg: #fff;
 			--td-slider-disabled: #5a5a62;
 		}
 	}
@@ -2683,19 +2679,8 @@
 		:root { --td-pagination-item-size: var(--td-touch-min); }
 	}
 
-	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
-		/* white text on the raw dark accent #3b82f6 is 3.68:1 → the darkened fill, like .td-btn--primary (v0.16.0) */
-		--td-pagination-active: var(--td-accent-fill);
-		--td-pagination-active-fg: #fff;
-	}
-	/* td: generated auto theme (QĐ4) */
-	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
-			/* white text on the raw dark accent #3b82f6 is 3.68:1 → the darkened fill, like .td-btn--primary (v0.16.0) */
-			--td-pagination-active: var(--td-accent-fill);
-			--td-pagination-active-fg: #fff;
-		}
-	}
+	/* v0.42.0: no dark block — the light declarations (accent fill + accent contrast) already resolve to the dark
+	   values (#3c71c6 + white) under data-td-theme="dark", and follow a generated palette in any slot. */
 }
 
 @layer td.component {
@@ -4612,17 +4597,7 @@
 	}
 
 	/* Dark: the solid fills stay (white ink on 600/700 reads on a dark page too — QĐ 18). */
-	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
-		--td-toast-fg: var(--td-glass-fg);
-		--td-toast-close-fg: var(--td-glass-fg);
-	}
-	/* td: generated auto theme (QĐ4) */
-	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
-			--td-toast-fg: var(--td-glass-fg);
-			--td-toast-close-fg: var(--td-glass-fg);
-		}
-	}
+	/* v0.42.0: no dark block — --td-toast-fg = --td-color-text (= --td-glass-fg in dark), close follows it */
 }
 
 @layer td.component {
@@ -5646,15 +5621,11 @@
 
 	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-dropdown-create-fg-fallback: #93c5fd;
-		--td-dropdown-option-active-line: var(--td-control-border-hover);
-		--td-dropdown-search-bg: rgb(255 255 255 / 6%);
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
 		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			--td-dropdown-create-fg-fallback: #93c5fd;
-			--td-dropdown-option-active-line: var(--td-control-border-hover);
-			--td-dropdown-search-bg: rgb(255 255 255 / 6%);
 		}
 	}
 
@@ -6210,14 +6181,12 @@
 
 	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-table-zebra: rgb(255 255 255 / 3%);
-		--td-table-sheen: var(--td-skeleton-shine);
 		--td-table-edge-shadow: rgb(0 0 0 / 55%);
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
 		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			--td-table-zebra: rgb(255 255 255 / 3%);
-			--td-table-sheen: var(--td-skeleton-shine);
 			--td-table-edge-shadow: rgb(0 0 0 / 55%);
 		}
 	}

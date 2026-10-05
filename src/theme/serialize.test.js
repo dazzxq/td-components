@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generatePalette, presetPalette, ThemeInputError } from './palette.js';
 import { toCss, toJson, formatDiagnostics } from './serialize.js';
-import { THEME_TOKENS } from './tokens.js';
+import { THEME_TOKENS, SCHEME_TOKENS } from './tokens.js';
 import { BASE_SELECTOR, DARK_SELECTOR, AUTO_DARK_SELECTOR, variantSelector } from './selectors.js';
 import { PRESETS } from './presets.js';
 
@@ -16,7 +16,7 @@ test('light mode → the kit base slot inside @layer td.tokens, color-scheme fir
   assert.ok(css.includes(`@layer td.tokens {\n\t${BASE_SELECTOR} {\n\t\tcolor-scheme: light;\n\t\t--td-color-bg: #ece5d8;`));
   assert.equal(BASE_SELECTOR, ':root, [data-td-theme]');
   const order = [...css.matchAll(/\t(--td-[a-z0-9-]+):/g)].map((m) => m[1]);
-  assert.deepEqual(order, THEME_TOKENS.filter((t) => order.includes(t)), 'contract order');
+  assert.deepEqual(order, [...THEME_TOKENS, ...SCHEME_TOKENS].filter((t) => order.includes(t)), 'contract order, then scheme tokens');
   assert.ok(css.endsWith('\t}\n}\n'));
   assert.equal((css.match(/\{/g) || []).length, (css.match(/\}/g) || []).length);
 });
@@ -76,7 +76,7 @@ test('AA failures: a conspicuous first line, accepted or not; only codes + token
 
 test('toJson / formatDiagnostics', () => {
   const j = toJson(generatePalette({ bg: '#767676', accent: '#b3261e' }));
-  assert.equal(Object.keys(j.tokens).length, THEME_TOKENS.length);
+  assert.equal(Object.keys(j.tokens).length, THEME_TOKENS.length + SCHEME_TOKENS.length);
   assert.ok(j.diagnostics.some((d) => d.code === 'TD_THEME_CONTRAST_UNSATISFIABLE' && d.severity === 'error-AA' && d.ratio < d.required));
   JSON.parse(JSON.stringify(j));
   const lines = formatDiagnostics(generatePalette({ bg: '#767676', accent: '#b3261e' }));

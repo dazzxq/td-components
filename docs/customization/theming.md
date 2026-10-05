@@ -802,7 +802,11 @@ nó có thể nằm**:
   không đọc được (khi cần, hover đổi chiều thay vì mờ đi);
 - accent tách *mực* (chữ, ≥ 4.7 trên mọi bề mặt) và *nền đặc* (nhãn trắng / đen trên nó ≥ 4.7); mỗi màu trạng thái có
   mực, pastel, nền alert, icon;
-- bóng, overlay, tooltip theo scheme.
+- bóng, overlay, tooltip theo scheme;
+- sau bộ hợp đồng, file sinh còn ghi **token component phụ thuộc sáng / tối** (nền hover / nhấn của nút thao tác, nhãn
+  nút ghost khi hover, mục "tạo mới" của dropdown, dòng chọn / sọc bảng, pill tab, nền dropzone, badge accent, tóm tắt lỗi
+  form…) — tính tĩnh từ chính palette, nên một theme tối đặt ở khe trang hay dưới tên riêng (nơi rule dark của kit không
+  áp) vẫn đúng, và không cần `color-mix()`.
 
 Không cần đọc thêm gì để dùng; file sinh ra **liệt kê đủ hợp đồng** theo thứ tự cố định.
 

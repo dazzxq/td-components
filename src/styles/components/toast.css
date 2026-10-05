@@ -89,10 +89,7 @@
 	}
 
 	/* Dark: the solid fills stay (white ink on 600/700 reads on a dark page too — QĐ 18). */
-	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
-		--td-toast-fg: var(--td-glass-fg);
-		--td-toast-close-fg: var(--td-glass-fg);
-	}
+	/* v0.42.0: no dark block — --td-toast-fg = --td-color-text (= --td-glass-fg in dark), close follows it */
 }
 
 @layer td.component {

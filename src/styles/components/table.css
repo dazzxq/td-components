@@ -82,7 +82,6 @@
 
 	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-table-zebra: rgb(255 255 255 / 3%);
-		--td-table-sheen: var(--td-skeleton-shine);
 		--td-table-edge-shadow: rgb(0 0 0 / 55%);
 	}
 }

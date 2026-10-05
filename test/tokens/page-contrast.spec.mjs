@@ -47,6 +47,9 @@ export const PALETTES = {
   // v0.42.0: generator output (td-theme) — navy.css IS the generator's file now (R1 had it by hand); beige-gen = the 135
   // seeds with white surfaces. test/tokens/palette-fixtures.test.js keeps both byte-equal to the generator.
   'beige-gen': { theme: null, scheme: 'light' },
+  // impl review ISSUE-1: the same navy seeds as a NAMED theme (<html data-td-theme="navy">): no kit dark rule applies,
+  // every scheme-dependent component colour must come from the generated file (navy-named.css)
+  'navy-named': { theme: 'navy', scheme: 'dark' },
 };
 const ENGINES = list('TD_PAGE_ENGINES', ['chromium', 'firefox', 'webkit']);
 const PALETTE_NAMES = list('TD_PAGE_PALETTES', Object.keys(PALETTES));
@@ -78,7 +81,14 @@ const SURFACE_TOKENS = ['--td-color-bg', '--td-color-surface', '--td-color-surfa
   '--td-color-fill', '--td-color-fill-strong', '--td-color-skeleton'];
 const PAIR_TOKENS = [...SURFACE_TOKENS, '--td-control-bg', '--td-color-text', '--td-color-text-muted', '--td-color-hover-strong',
   '--td-control-border-soft', '--td-control-border-hover', '--td-checkbox-border', '--td-switch-edge', '--td-focus',
-  '--td-field-focus', '--td-tooltip-bg', '--td-tooltip-fg'];
+  '--td-field-focus', '--td-tooltip-bg', '--td-tooltip-fg',
+  // impl review ISSUE-1: hover / pressed / create / selected component states (all palettes; generated ones are static)
+  '--td-glass-bg-strong', '--td-color-hover', '--td-color-text-muted',
+  '--td-action-btn-warning-fg', '--td-action-btn-warning-hover-bg', '--td-action-btn-warning-pressed-bg', '--td-action-btn-warning-pressed-fg',
+  '--td-action-btn-danger-fg', '--td-action-btn-danger-hover-bg', '--td-action-btn-danger-pressed-bg',
+  '--td-btn-ghost-hover-fg', '--td-dropdown-create-fg', '--td-badge-accent-bg', '--td-badge-accent-fg', '--td-table-row-selected',
+  '--td-table-zebra', '--td-tabs-pill', '--td-dropzone-bg-active', '--td-dropzone-bg-pressed', '--td-hovercard-link-fg',
+  '--td-hovercard-error-fg', '--td-form-summary-bg'];
 
 function html(palette) {
   const p = PALETTES[palette];
@@ -243,6 +253,25 @@ async function tokenPairs(page, palette, tag) {
     pair(`--td-focus vs ${k}`, t['--td-focus'], s, 3);
   }
   pair('tooltip text on the chip', t['--td-tooltip-fg'], t['--td-tooltip-bg'], 4.7);
+  // impl review ISSUE-1: component states (translucent fills composited over the surface they sit on)
+  const surf = t['--td-color-surface'];
+  const popup = over(t['--td-glass-bg-strong'], surf);
+  pair('action warning icon on hover', t['--td-action-btn-warning-fg'], over(t['--td-action-btn-warning-hover-bg'], surf), 4.7);
+  pair('action warning icon pressed', t['--td-action-btn-warning-pressed-fg'], over(t['--td-action-btn-warning-pressed-bg'], surf), 4.7);
+  pair('action danger icon on hover', t['--td-action-btn-danger-fg'], over(t['--td-action-btn-danger-hover-bg'], surf), 4.7);
+  pair('action danger icon pressed', t['--td-action-btn-danger-fg'], over(t['--td-action-btn-danger-pressed-bg'], surf), 4.7);
+  pair('ghost label on hover (page)', t['--td-btn-ghost-hover-fg'], over(t['--td-color-hover'], t['--td-color-bg']), 4.5);
+  pair('ghost label on hover (surface)', t['--td-btn-ghost-hover-fg'], over(t['--td-color-hover'], surf), 4.5);
+  pair('dropdown create option in the popup', t['--td-dropdown-create-fg'], popup, 4.5);
+  pair('accent badge', t['--td-badge-accent-fg'], t['--td-badge-accent-bg'], 4.5);
+  pair('text on a selected row', t['--td-color-text'], over(t['--td-table-row-selected'], surf), 4.7);
+  pair('text on a zebra row', t['--td-color-text'], over(t['--td-table-zebra'], surf), 4.7);
+  pair('text on the tab pill', t['--td-color-text'], over(t['--td-tabs-pill'], t['--td-color-surface-muted']), 4.7);
+  pair('muted on the dropzone (active)', t['--td-color-text-muted'], t['--td-dropzone-bg-active'], 4.7);
+  pair('muted on the dropzone (pressed)', t['--td-color-text-muted'], t['--td-dropzone-bg-pressed'], 4.7);
+  pair('hovercard link', t['--td-hovercard-link-fg'], popup, 4.5);
+  pair('hovercard error', t['--td-hovercard-error-fg'], popup, 4.5);
+  pair('text on the form summary', t['--td-color-text'], t['--td-form-summary-bg'], 4.7);
   if (PALETTES[palette].scheme === 'dark') {
     for (const b of ['--td-control-border-soft', '--td-control-border-hover', '--td-checkbox-border', '--td-switch-edge']) {
       for (const [k, s] of Object.entries(surfaces)) pair(`${b} vs ${k} (QĐ7)`, t[b], s, 3);

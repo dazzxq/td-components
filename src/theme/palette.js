@@ -33,7 +33,7 @@ import {
   parseColor, srgbToOklch, srgbToOklab, oklabToSrgb, gamutMap, toHex, toCss, luminance, contrast, composite, apcaLc,
   quantize, MAX_COLOR_INPUT,
 } from './color.js';
-import { THEME_TOKENS, THEME_TOKENS_VERSION, DERIVED_ALIASES } from './tokens.js';
+import { THEME_TOKENS, THEME_TOKENS_VERSION, DERIVED_ALIASES, SCHEME_TOKENS } from './tokens.js';
 import { THEME_NAME_RE, RESERVED_THEME_NAMES } from './selectors.js';
 import { PRESETS, SCHEME_SHADOWS, FOCUS_RING } from './presets.js';
 
@@ -529,6 +529,84 @@ export function generatePalette(seeds, options = {}) {
   V.set('--td-tooltip-fg', contrast(WHITE, tipBg) >= contrast(BLACK, tipBg) ? WHITE : BLACK);
   constraints.push({ token: '--td-tooltip-fg', against: ['--td-tooltip-bg'], min: GATE.text, kind: 'text', bgs: [named('--td-tooltip-bg')] });
 
+  // ---- scheme-dependent component tokens (impl review ISSUE-1; tokens.js SCHEME_TOKENS) ----
+  // Static values computed for THIS palette's surfaces (no color-mix() path), serialized after the contract, so a
+  // dark-scheme palette in the base slot / under a name gets them although no kit dark rule applies there.
+  {
+    const isLight = scheme === 'light';
+    const ctrl = V.get('--td-control-bg');
+    const muted = V.get('--td-color-surface-muted');
+    const accent = V.get('--td-accent');
+    const warn = V.get('--td-color-warning');
+    const err = V.get('--td-color-error');
+    const focus = V.get('--td-focus');
+    /** largest alpha ≤ a of `c` over `base` that keeps the result safe for the ink (and `extra(composite)`) */
+    const alphaKeep = (c, a, base, extra = () => true) => {
+      const ok = (x) => { const k = over(alpha(c, x), base); return safeOn(k, base) && extra(k); };
+      if (ok(a)) return a;
+      let lo = 0;
+      let hi = a;
+      for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; if (ok(m)) lo = m; else hi = m; }
+      return Math.floor(lo * 1000) / 1000;
+    };
+    const tintKeep = (c, a, base, fg) => q(over(alpha(c, alphaKeep(c, a, base, (k) => contrast(fg, k) >= SAFE)), base));
+    const set = (n, v) => V.set(n, v);
+    const pct = (x) => Math.round(x * 100) / 100;
+    set('--td-field-bg-disabled', isLight ? V.get('--td-color-fill') : muted);
+    set('--td-field-focus', focus);
+    set('--td-field-focus-ring', `0 0 0 3px ${toCss(alpha(focus, isLight ? 0.12 : 0.22))}`);
+    set('--td-action-btn-warning-fg', warn);
+    set('--td-action-btn-warning-hover-bg', tintKeep(warn, isLight ? 0.08 : 0.14, surface, warn));
+    set('--td-action-btn-warning-pressed-bg', q(over(alpha(warn, alphaKeep(warn, isLight ? 0.16 : 0.26, surface)), surface)));
+    ink('--td-action-btn-warning-pressed-fg', srgbToOklch(warn), [named('--td-action-btn-warning-pressed-bg')],
+      textMins(GATE.text), GATE.text, 'text');
+    set('--td-action-btn-danger-fg', err);
+    set('--td-action-btn-danger-hover-bg', tintKeep(err, isLight ? 0.1 : 0.18, surface, err));
+    set('--td-action-btn-danger-pressed-bg', tintKeep(err, isLight ? 0.16 : 0.3, surface, err));
+    for (const [fg, bgs] of [['--td-action-btn-warning-fg', ['--td-action-btn-warning-hover-bg']],
+      ['--td-action-btn-danger-fg', ['--td-action-btn-danger-hover-bg', '--td-action-btn-danger-pressed-bg']]]) {
+      // with the surfaces the status ink was solved against: a derived state is never claimed on its own when the
+      // ink already cannot read on its base (seed conflict / dead band)
+      need(fg, [...surfaces, ...bgs.map(named)], GATE.text, 'text');
+    }
+    // ghost button label on its hover fill (over the page, the surface, a popup)
+    const ghostBgs = ['--td-color-bg', '--td-color-surface', '--td-color-surface-raised'].map((b) => comp('--td-color-hover', b));
+    const ghost = ink('--td-btn-ghost-hover-fg', srgbToOklch(accent), ghostBgs, textMins(GATE.text), GATE.text, 'text');
+    set('--td-btn-ghost-hover-fg-fallback', ghost);
+    set('--td-slider-track', q(over(alpha(pole, isLight ? 0.105 : 0.12), surface)));
+    set('--td-slider-disabled', q(over(alpha(pole, isLight ? 0.37 : 0.27), surface)));
+    set('--td-tabs-pill', isLight ? surface : alpha(pole, pct(alphaKeep(pole, 0.14, muted))));
+    set('--td-tabs-pill-shadow', isLight ? SCHEME_SHADOWS.light['--td-shadow-1'] : '0 1px 2px rgb(0 0 0 / 40%)');
+    if (!isLight) need('--td-color-text', [...textBgs, comp('--td-tabs-pill', '--td-color-surface-muted')], GATE.text, 'text');
+    set('--td-dropdown-create-fg', accent);
+    set('--td-dropdown-create-fg-fallback', accent);
+    set('--td-table-zebra', alpha(pole, isLight ? 0.02 : 0.03));
+    set('--td-table-row-selected', alpha(accent, pct(alphaKeep(accent, 0.08, surface))));
+    need('--td-color-text', [...textBgs, comp('--td-table-row-selected', '--td-color-surface')], GATE.text, 'text');
+    set('--td-table-edge-shadow', isLight ? 'rgb(0 0 0 / 14%)' : 'rgb(0 0 0 / 55%)');
+    set('--td-form-summary-bg', shade(err, isLight ? 0.08 : 0.12, surface));
+    need('--td-color-text', [...textBgs, named('--td-form-summary-bg')], GATE.text, 'text');
+    ink('--td-form-summary-border', srgbToOklch(err), [named('--td-color-surface'), named('--td-form-summary-bg')],
+      textMins(GATE.nonText), GATE.nonText, 'non-text');
+    set('--td-menu-separator', isLight ? V.get('--td-color-border') : alpha(pole, 0.12));
+    set('--td-chip-remove-hover', alpha(pole, pct(alphaKeep(pole, isLight ? 0.08 : 0.16, V.get('--td-color-fill-strong')))));
+    set('--td-hovercard-error-fg', err);
+    set('--td-hovercard-link-fg', accent);
+    set('--td-dropzone-bg-active', q(over(alpha(accent, alphaKeep(accent, 0.06, ctrl,
+      (k) => contrast(V.get('--td-color-text-muted'), k) >= SAFE)), ctrl)));
+    // pressed zone: a pole step over the field fill, the muted sub-line still readable on it
+    set('--td-dropzone-bg-pressed', q(over(alpha(pole, alphaKeep(pole, isLight ? 0.045 : 0.08, ctrl,
+      (k) => contrast(V.get('--td-color-text-muted'), k) >= SAFE)), ctrl)));
+    need('--td-color-text-muted', [...mutedBgs, ...['--td-dropzone-bg-active', '--td-dropzone-bg-pressed'].map(named)], GATE.text, 'text');
+    set('--td-badge-accent-bg', shade(accent, isLight ? 0.14 : 0.26, surface));
+    ink('--td-badge-accent-fg', srgbToOklch(accent), [named('--td-badge-accent-bg')], textMins(GATE.text), GATE.text, 'text');
+    set('--td-badge-success-ink', V.get('--td-color-success'));
+    set('--td-badge-warning-ink', warn);
+    set('--td-badge-danger-ink', err);
+    set('--td-badge-info-ink', V.get('--td-color-info'));
+    set('--td-filter-chip-remove-fg', isLight ? V.get('--td-color-text-label') : V.get('--td-color-text-muted'));
+  }
+
   // ---- diagnostics ----
   for (const c of constraints) {
     const fg = V.get(c.token);
@@ -566,7 +644,7 @@ export function generatePalette(seeds, options = {}) {
 
   /** @type {Map<string, string>} */
   const tokens = new Map();
-  for (const t of THEME_TOKENS) {
+  for (const t of [...THEME_TOKENS, ...SCHEME_TOKENS]) {
     const v = V.get(t);
     if (v === undefined) throw new Error(`palette: ${t} not generated`); // internal (CLI exit 3)
     tokens.set(t, typeof v === 'string' ? v : toCss(v));
@@ -590,7 +668,7 @@ export function presetPalette(preset, options = {}) {
   const mode = options.mode === undefined ? preset : options.mode;
   if (mode !== 'light' && mode !== 'dark') throw new ThemeInputError('mode', '--mode: light or dark');
   const name = options.name === undefined || options.name === null ? null : checkThemeName(options.name);
-  const tokens = new Map(THEME_TOKENS.map((t) => [t, PRESETS[preset][t]]));
+  const tokens = new Map([...THEME_TOKENS, ...SCHEME_TOKENS].map((t) => [t, PRESETS[preset][t]]));
   return { algorithm: ALGORITHM_VERSION, tokensVersion: THEME_TOKENS_VERSION, scheme: preset, mode, name, preset,
     seeds: {}, tokens, diagnostics: [], constraints: [] };
 }

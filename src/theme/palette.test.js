@@ -16,7 +16,7 @@ import {
 } from './palette.js';
 import { toCss, toJson } from './serialize.js';
 import { parseColor, contrast, luminance, srgbToOklch, composite } from './color.js';
-import { THEME_TOKENS } from './tokens.js';
+import { THEME_TOKENS, SCHEME_TOKENS } from './tokens.js';
 import { PRESETS } from './presets.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -191,8 +191,9 @@ test('fuzz: 10 000 seeded seed sets — finite in-gamut tokens, pass-or-exact-co
     const mode = rand() < 0.3 ? 'dark' : 'light';
     const r = generatePalette(seeds, { mode });
     const tag = `#${i} ${JSON.stringify(seeds)} ${mode}`;
-    for (const t of THEME_TOKENS) {
+    for (const t of [...THEME_TOKENS, ...SCHEME_TOKENS]) {
       const v = r.tokens.get(t);
+      if (SCHEME_TOKENS.includes(t)) assert.ok(!/var\(|color-mix/.test(String(v)), `${tag} ${t} static: ${v}`);
       assert.equal(typeof v, 'string', `${tag} ${t}`);
       if (/^#/.test(v)) assert.match(v, /^#[0-9a-f]{6}$/, `${tag} ${t}`);
       if (/^(#|rgb)/.test(v)) assert.ok(parseColor(v), `${tag} ${t} parses`);
@@ -232,4 +233,23 @@ test('fuzz: 10 000 seeded seed sets — finite in-gamut tokens, pass-or-exact-co
   const secs = (Date.now() - t0) / 1000;
   assert.ok(secs < 30, `fuzz took ${secs}s (budget 30 s)`);
   assert.ok(unsatPalettes / N < 0.2, `${unsatPalettes}/${N} palettes with a mandatory failure`);
+});
+
+test('impl review ISSUE-1: every scheme-dependent component token is generated + serialized, in every slot', () => {
+  for (const [seeds, opts] of [[{ bg: '#16233a', accent: '#3b82f6' }, {}], [{ bg: '#16233a', accent: '#3b82f6' }, { name: 'navy' }],
+    [{ bg: '#16233a', accent: '#3b82f6' }, { mode: 'dark' }], [{ bg: '#ece5d8', accent: '#b3261e' }, {}]]) {
+    const r = generatePalette(seeds, opts);
+    const css = toCss(r);
+    for (const t of SCHEME_TOKENS) {
+      assert.ok(r.tokens.has(t), t);
+      assert.ok(css.includes(`\t${t}: ${r.tokens.get(t)};`), `${t} serialized (${JSON.stringify(opts)})`);
+    }
+  }
+  // a dark-scheme palette gets dark-scheme component values, never the kit's light literals
+  const navy = generatePalette({ bg: '#16233a', accent: '#3b82f6' }, { name: 'navy' }).tokens;
+  for (const t of ['--td-action-btn-warning-hover-bg', '--td-action-btn-danger-pressed-bg', '--td-slider-track', '--td-dropzone-bg-pressed',
+    '--td-badge-accent-bg', '--td-form-summary-bg']) {
+    assert.ok(contrast(navy.get(t), '#ffffff') > 4, `${t} = ${navy.get(t)} is a dark-scheme fill`);
+  }
+  for (const preset of ['light', 'dark']) for (const t of SCHEME_TOKENS) assert.equal(typeof PRESETS[preset][t], 'string', `${preset} ${t}`);
 });

@@ -82,3 +82,31 @@ export const DERIVED_ALIASES = Object.freeze({
   '--td-control-fg': '--td-color-text',
   '--td-control-border': '--td-color-border-strong',
 });
+
+/**
+ * v0.42.0 (impl review ISSUE-1): COMPONENT colour tokens whose kit value depends on the scheme (the kit sets them again
+ * in a `data-td-theme="dark"` rule, or derives them with color-mix()). A generated palette serializes all of them after
+ * the contract (static sRGB values computed from the palette), so a dark-scheme palette in the base slot or under a
+ * name — where no kit dark rule applies — and a `--mode dark` palette — where the kit's dark literals would assume the
+ * kit's dark surfaces — both get colours made for THEIR surfaces, with no color-mix() path. Not part of the contract
+ * (sites need not set them; not bridged across portals — the mirrored attribute re-applies a named theme's rule).
+ * Locked by src/theme/tokens.test.js: every token a kit dark rule sets is in THEME_TOKENS, here, or dark-invariant.
+ */
+export const SCHEME_TOKENS = Object.freeze([
+  '--td-field-bg-disabled', '--td-field-focus', '--td-field-focus-ring',
+  '--td-action-btn-warning-fg', '--td-action-btn-warning-hover-bg', '--td-action-btn-warning-pressed-bg',
+  '--td-action-btn-warning-pressed-fg', '--td-action-btn-danger-fg', '--td-action-btn-danger-hover-bg',
+  '--td-action-btn-danger-pressed-bg',
+  '--td-btn-ghost-hover-fg', '--td-btn-ghost-hover-fg-fallback',
+  '--td-slider-track', '--td-slider-disabled',
+  '--td-tabs-pill', '--td-tabs-pill-shadow',
+  '--td-dropdown-create-fg', '--td-dropdown-create-fg-fallback',
+  '--td-table-zebra', '--td-table-row-selected', '--td-table-edge-shadow',
+  '--td-form-summary-bg', '--td-form-summary-border',
+  '--td-menu-separator', '--td-chip-remove-hover',
+  '--td-hovercard-error-fg', '--td-hovercard-link-fg',
+  '--td-dropzone-bg-active', '--td-dropzone-bg-pressed',
+  '--td-badge-accent-bg', '--td-badge-accent-fg', '--td-badge-success-ink', '--td-badge-warning-ink',
+  '--td-badge-danger-ink', '--td-badge-info-ink',
+  '--td-filter-chip-remove-fg',
+]);
