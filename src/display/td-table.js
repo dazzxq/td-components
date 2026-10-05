@@ -743,7 +743,7 @@ export class TdTable extends TdBaseElement {
       }
     } else {
       const field = this.getAttribute('row-key');
-      k = field && row && typeof row === 'object' && Object.hasOwn(row, field) ? row[field] : undefined;
+      k = field && row && typeof row === 'object' ? row[field] : undefined; // inherited (`constructor`…) → not a valid key
     }
     if (keyId(k) === null) {
       this._warnOnce('td-table: a row has no valid key (non-empty string, finite number or bigint) — it cannot be selected.');
