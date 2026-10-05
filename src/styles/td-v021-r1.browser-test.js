@@ -327,6 +327,7 @@ describe('v0.21.0 P8 — lighter field focus', () => {
   it('buttons keep the strong --td-focus-ring', async () => {
     const b = btn('variant="secondary"');
     expect(await tabTo(b)).to.equal(true);
-    expect(getComputedStyle(b).boxShadow).to.match(/0\.35\)/);
+    // v0.41.0 (ISSUE-1, owner-authorised): a solid 2px --td-focus ring behind a 1px surface gap (was 35 % alpha)
+    expect(getComputedStyle(b).boxShadow).to.match(/^rgb\(255, 255, 255\) 0px 0px 0px 1px, rgb\(37, 99, 235\) 0px 0px 0px 3px$/);
   });
 });

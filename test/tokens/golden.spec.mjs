@@ -175,4 +175,4 @@ if (failures.length) {
   for (const f of failures.slice(0, 80)) console.log(`  ✗ ${f}`);
   process.exit(1);
 }
-console.log(`Golden tokens: all ${checks} checks passed (${names.length} tokens; light = v0.40 baseline + ${Object.keys(golden.lightDeltas || {}).length} reviewed bug fix(es), dark = baseline + ${deltas} intended deltas, ${Object.keys(golden.added).length} added).`);
+console.log(`Golden tokens: all ${checks} checks passed (${names.length} tokens; light = v0.40 baseline + ${Object.keys(golden.lightDeltas || {}).length} reviewed light change(s), dark = baseline + ${deltas} intended deltas, ${Object.keys(golden.added).length} added).`);

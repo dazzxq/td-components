@@ -25,6 +25,9 @@ All notable changes to **td-components** are documented here.
   `#acacb4`, accent `#4b8df8`, tooltip nền xám `#3a3a3e` + viền sáng, `--td-shadow-1..3` và viền / bóng popup rõ hơn.
 - Component đọc token ngữ nghĩa: site đã đổi `--td-color-surface` / `-text` / `-text-muted` / màu trạng thái sẽ thấy ô
   nhập, modal, placeholder, mực badge đi theo.
+- **Vòng focus bàn phím** (`--td-focus-ring`, light + dark, owner duyệt): vòng đặc 2px màu `--td-focus` sau khe 1px màu
+  `--td-color-surface` (cùng bề dày 3px) thay vòng mờ 35 % / 45 % (≈ 1.7:1) → ≥ 3:1 với nền ngoài và nền control; gate
+  toàn trang đo vòng thật sau khi Tab. Khôi phục: `:root { --td-focus-ring: 0 0 0 3px rgb(37 99 235 / 35%); }`.
 
 ### Fixed
 

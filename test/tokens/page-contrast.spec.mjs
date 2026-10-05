@@ -13,6 +13,10 @@
  *   3. ISLANDS: an opaque near-neutral fill lighter than its backdrop (> 1.12, dark-scheme > 1.6) that is not one of the
  *      theme's own surfaces (--td-color-bg / -surface / -surface-muted / -surface-raised, --td-control-bg,
  *      --td-glass-solid, --td-color-fill / -fill-strong) and not raised on purpose (buttons, popups, thumbs, media);
+ *   3b. KEYBOARD FOCUS (v0.41.0, ISSUE-1): representative controls focused with the real keyboard (Tab / Shift+Tab, so
+ *      :focus-visible applies); the RENDERED indicator (outermost box-shadow ring / opaque outline / focus border) composited
+ *      over the background behind it ≥ 3:1 against BOTH neighbours — outside (page / surface) and inside (the ring's gap
+ *      or the control's own fill);
  *   4. TOKEN PAIRS per palette (computed colours): text / muted on every surface it sits on ≥ 4.7; focus ≥ 3 vs the
  *      control fill and the page; dark-scheme: control borders (soft, hover, checkbox, switch edge) ≥ 3 vs control-bg,
  *      surface, surface-muted, raised and bg, hover > soft; the tooltip chip ≥ 1.4 vs bg and surface.
@@ -43,7 +47,24 @@ export const PALETTES = {
 const ENGINES = list('TD_PAGE_ENGINES', ['chromium', 'firefox', 'webkit']);
 const PALETTE_NAMES = list('TD_PAGE_PALETTES', Object.keys(PALETTES));
 const WIDTHS = list('TD_PAGE_WIDTHS', ['1280', '390']).map(Number);
-const STATES = list('TD_PAGE_STATES', ['page', 'dropdown', 'menu', 'toast-tooltip', 'modal', 'dtp', 'focus']);
+const STATES = list('TD_PAGE_STATES', ['page', 'dropdown', 'menu', 'toast-tooltip', 'modal', 'dtp', 'focus', 'keyboard-focus']);
+
+/** v0.41.0 (ISSUE-1): what gets keyboard focus → the element that draws its indicator. */
+const FOCUS_CASES = [
+  { name: 'input field', focus: 'td-input-field .td-field__control' },
+  { name: 'button primary', focus: '.demo-section:not(:has(.demo-glass-stage)) .td-btn--primary:not(:disabled)' },
+  { name: 'button secondary', focus: '.demo-section:not(:has(.demo-glass-stage)) .td-btn--secondary:not(:disabled)' },
+  { name: 'button ghost', focus: '.td-btn--ghost:not(:disabled)' },
+  { name: 'checkbox', focus: '.td-checkbox__input:not(:checked):not(:disabled)', ring: (el) => el.parentElement.querySelector('.td-checkbox__mark') },
+  { name: 'checkbox checked', focus: '.td-checkbox__input:checked:not(:disabled)', ring: (el) => el.parentElement.querySelector('.td-checkbox__mark') },
+  { name: 'toggle', focus: '.td-switch__input:not(:disabled)', ring: (el) => el.parentElement.querySelector('.td-switch__track') },
+  { name: 'dropdown trigger', focus: '.td-dropdown__trigger' },
+  { name: 'tab', focus: '.td-tabs__tab[aria-selected="true"]' },
+  // the page buttons collapse into the compact status form below 720 px (td-pagination) — measured where shown
+  { name: 'pagination current', focus: '.td-pagination__page[aria-current="page"]', optional: true },
+  { name: 'pagination nav', focus: '.td-pagination__nav:not(:disabled)' },
+  { name: 'table select', focus: '.td-table__select:not(:disabled)' },
+];
 const MIME = { '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.html': 'text/html' };
 
 /** The theme's own surfaces (an opaque fill of one of these colours is never an island). --td-control-bg /
@@ -131,6 +152,8 @@ async function trigger(page, state) {
     const t = page.locator('.td-dtp__trigger').first();
     await t.scrollIntoViewIfNeeded(); await t.click();
     await page.locator('.td-dtp-panel').first().waitFor({ state: 'visible' });
+  } else if (state === 'keyboard-focus') {
+    return; // measured case by case in focusCases()
   } else if (state === 'focus') {
     const t = page.locator('td-input-field .td-field__control').first();
     await t.scrollIntoViewIfNeeded(); await t.focus();
@@ -158,6 +181,43 @@ function report(tag, r) {
   for (const c of r.controls) fail(tag, `control boundary < ${c.min} — ${c.el} (border ${c.border}: ${c.vsOuter} vs outer ${c.outer}, ${c.vsFill} vs fill ${c.fill})`);
   for (const i of r.islands) fail(tag, `island ${i.ratio} — ${i.el} (${i.fill} on ${i.outer})`);
 }
+
+/** v0.41.0 (ISSUE-1): real keyboard focus (Tab then Shift+Tab back onto the control) → the rendered indicator. */
+async function focusCases(page, tag) {
+  for (const c of FOCUS_CASES) {
+    const handle = await page.evaluateHandle((sel) => [...document.querySelectorAll(sel)].find((e) => {
+      const r = e.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden' && !e.closest('[hidden], [inert]');
+    }) || null, c.focus);
+    const el = handle.asElement();
+    checks++;
+    if (!el) { if (!c.optional) fail(tag, `keyboard focus: no visible ${c.name} (${c.focus})`); continue; }
+    await el.scrollIntoViewIfNeeded();
+    await el.evaluate((e) => e.focus());
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Shift+Tab');
+    // WebKit (no "full keyboard access") only Tabs to text fields: there the control is focused right after a keyboard
+    // event, which the :focus-visible heuristic treats as keyboard focus — the check below still requires :focus-visible
+    if (!(await el.evaluate((e) => document.activeElement === e))) {
+      await page.keyboard.press('Shift');
+      await el.evaluate((e) => e.focus());
+    }
+    const r = await el.evaluate(async (e, ringFn) => {
+      const m = await import('/test/tokens/page-contrast-probe.js');
+      if (document.activeElement !== e) return { ok: false, why: `Shift+Tab landed on ${document.activeElement?.className || document.activeElement?.tagName}` };
+      if (!e.matches(':focus-visible')) return { ok: false, why: 'not :focus-visible after keyboard navigation' };
+      // eslint-disable-next-line no-new-func
+      const ringEl = ringFn ? new Function('el', `return (${ringFn})(el)`)(e) : e;
+      return m.focusIndicator(ringEl, 3);
+    }, c.ring ? c.ring.toString() : null);
+    const best = (r.candidates || []).filter((k) => k.vsOuter >= 3 && k.vsInner >= 3)
+      .sort((a, b) => Math.min(b.vsOuter, b.vsInner) - Math.min(a.vsOuter, a.vsInner))[0] || (r.candidates || [])[0];
+    focusReport.set(`${tag.split(' ').slice(1, 3).join(' ')} ${c.name}`, best && { ...best, kind: best.kind });
+    if (!r.ok) fail(tag, `keyboard focus indicator < 3:1 — ${c.name}: ${r.why || JSON.stringify(r.candidates)} (shadow ${r.shadow})`);
+    await page.evaluate(() => document.activeElement?.blur());
+  }
+}
+const focusReport = new Map();
 
 async function tokenPairs(page, palette, tag) {
   const t = await page.evaluate(async (names) => (await import('/test/tokens/page-contrast-probe.js')).tokens(names), PAIR_TOKENS);
@@ -205,6 +265,7 @@ async function runEngine(name, launcher) {
           for (const state of STATES) {
             const tag = `${tag0} ${state}`;
             try {
+              if (state === 'keyboard-focus') { await focusCases(page, tag); continue; }
               if (state !== 'page') await trigger(page, state);
               report(tag, await measureState(page, palette, state));
             } catch (e) {
@@ -229,6 +290,10 @@ const launchers = { chromium, firefox, webkit };
 const t0 = Date.now();
 for (const e of ENGINES) await runEngine(e, launchers[e]);
 for (const n of notes) console.log(`  ${n}`);
+if (focusReport.size) {
+  const lows = [...focusReport].filter(([, v]) => v).map(([k, v]) => [k, Math.min(v.vsOuter, v.vsInner), v]).sort((a, b) => a[1] - b[1]).slice(0, Number(process.env.TD_PAGE_FOCUS_REPORT || 8));
+  console.log(`  lowest keyboard focus rings: ${lows.map(([k, m, v]) => `${k} ${m} (${v.kind} ${v.color} vs out ${v.outer} / in ${v.inner})`).join(' · ')}`);
+}
 const secs = Math.round((Date.now() - t0) / 1000);
 if (failures.length) {
   const uniq = [...new Set(failures)];

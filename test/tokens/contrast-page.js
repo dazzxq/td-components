@@ -371,7 +371,8 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       await new Promise((r) => setTimeout(r, 50));
       target = li.querySelector('.td-tree__row');
       const shadow = getComputedStyle(target).boxShadow;
-      const ring = (/(rgba?\([^)]*\)|color\([^)]*\))/.exec(shadow) || [])[1];
+      // v0.41.0: the ring is two layers (1px surface gap + solid ring) — the OUTERMOST (last) colour is the indicator
+      const ring = (String(shadow).match(/rgba?\([^)]*\)|color\([^)]*\)/g) || []).pop();
       if (!ring || !li.matches(':focus-visible')) throw new Error(`tree focus: no visible ring (${shadow})`);
       pairs = [
         { what: 'focus ring vs page', fg: ring, bg: page },

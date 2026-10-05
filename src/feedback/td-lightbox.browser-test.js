@@ -467,9 +467,11 @@ describe('td-lightbox — pointer gestures', () => {
     const lb = TdLightbox.open([IMG(1), IMG(2)]);
     await frames();
     const stage = $('.td-lightbox__stage');
+    // v0.41.0: commit by DISTANCE (past 25 % of the visible column), not by the synthetic events' release velocity
+    const swipe = Math.ceil($('.td-lightbox__col').getBoundingClientRect().width * 0.25) + 40;
     stage.dispatchEvent(pe('pointerdown', 300, 300));
-    stage.dispatchEvent(pe('pointermove', 200, 305));
-    stage.dispatchEvent(pe('pointerup', 150, 305));
+    stage.dispatchEvent(pe('pointermove', 300 - swipe / 2, 305));
+    stage.dispatchEvent(pe('pointerup', 300 - swipe, 305));
     expect(lb.index).to.equal(1);
     stage.dispatchEvent(pe('pointerdown', 300, 200));
     stage.dispatchEvent(pe('pointermove', 302, 260));

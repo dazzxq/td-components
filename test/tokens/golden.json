@@ -1550,6 +1550,10 @@
     "--td-table-check-border": {
       "to": "rgb(209, 209, 214)",
       "why": "bug fix, v0.37 regression: the td-table row-selection mark painted --td-color-border (#e4e4e7, 1.27:1 on white) via the .td-table * border rule; now the shared checkbox edge like every other tick"
+    },
+    "--td-focus-ring": {
+      "to": "rgb(255, 255, 255) 0px 0px 0px 1px, rgb(37, 99, 235) 0px 0px 0px 3px",
+      "why": "owner-authorised: focus ring ≥ 3:1 (WCAG 2.4.11/1.4.11) — solid 2px --td-focus ring behind a 1px surface gap, same 3px footprint (was a 35 % / 45 % translucent 3px ring, ≈ 1.7:1 on white)"
     }
   },
   "darkDeltas": {
@@ -1688,6 +1692,10 @@
     "--td-filter-chip-remove-fg": {
       "to": "rgb(172, 172, 180)",
       "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-focus-ring": {
+      "to": "rgb(28, 28, 30) 0px 0px 0px 1px, rgb(96, 165, 250) 0px 0px 0px 3px",
+      "why": "owner-authorised: focus ring ≥ 3:1 (WCAG 2.4.11/1.4.11) — solid 2px --td-focus ring behind a 1px surface gap, same 3px footprint (was a 35 % / 45 % translucent 3px ring, ≈ 1.7:1 on white)"
     },
     "--td-glass-border": {
       "to": "rgba(255, 255, 255, 0.14)",

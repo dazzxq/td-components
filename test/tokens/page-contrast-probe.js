@@ -154,3 +154,49 @@ export function tokens(names) {
 }
 
 export { over, contrast };
+
+/** Zero-offset, zero-blur box-shadow layers (`spread`-only rings), innermost first: [{ color, spread }]. */
+function rings(shadow) {
+  if (!shadow || shadow === 'none') return [];
+  return String(shadow).split(/,(?![^(]*\))/).map((part) => {
+    const color = (part.match(/rgba?\([^)]*\)|color\([^)]*\)/) || [])[0];
+    const nums = part.replace(/rgba?\([^)]*\)|color\([^)]*\)/, '').trim().split(/\s+/).map(parseFloat);
+    const inset = /inset/.test(part);
+    return { color, x: nums[0], y: nums[1], blur: nums[2], spread: nums[3] || 0, inset };
+  }).filter((r) => r.color && !r.inset && r.x === 0 && r.y === 0 && !r.blur && r.spread > 0)
+    .sort((a, b) => a.spread - b.spread);
+}
+
+/**
+ * v0.41.0 (ISSUE-1): the RENDERED keyboard focus indicator of `ringEl` (the element that draws it) — the outermost
+ * spread ring of its box-shadow, composited over the background behind the element, against BOTH neighbours: what is
+ * outside it (the page / surface) and what is inside it (the next ring, e.g. the gap, or the control's own fill). An
+ * opaque outline, or a focus border (field-like controls), counts the same way. Passes when ANY indicator reaches `min`.
+ */
+export function focusIndicator(ringEl, min = 3) {
+  const cs = getComputedStyle(ringEl);
+  const outer = effectiveBg(ringEl, false);
+  const own = effectiveBg(ringEl);
+  const out = { shadow: cs.boxShadow, outline: `${cs.outlineStyle} ${cs.outlineWidth} ${cs.outlineColor}`, candidates: [] };
+  if (!outer || !own) return { ...out, ok: false, why: 'unknown background' };
+  const rs = rings(cs.boxShadow);
+  if (rs.length) {
+    const ring = rs[rs.length - 1];
+    const inner = rs.length > 1 ? composite(parseColor(rs[rs.length - 2].color), own) : own;
+    const c = composite(parseColor(ring.color), outer);
+    out.candidates.push({ kind: 'ring', color: hex(c), vsOuter: +contrast(c, outer).toFixed(2), vsInner: +contrast(c, inner).toFixed(2), outer: hex(outer), inner: hex(inner) });
+  }
+  const oc = parseColor(cs.outlineColor);
+  if (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 1 && oc && oc.a > 0) {
+    const c = composite(oc, outer);
+    const inner = parseFloat(cs.outlineOffset) > 0 ? outer : own;
+    out.candidates.push({ kind: 'outline', color: hex(c), vsOuter: +contrast(c, outer).toFixed(2), vsInner: +contrast(c, inner).toFixed(2), outer: hex(outer), inner: hex(inner) });
+  }
+  const bc = parseColor(cs.borderTopColor);
+  if (cs.borderTopStyle !== 'none' && parseFloat(cs.borderTopWidth) >= 1 && bc && bc.a > 0) {
+    const c = composite(bc, outer);
+    out.candidates.push({ kind: 'border', color: hex(c), vsOuter: +contrast(c, outer).toFixed(2), vsInner: +contrast(c, own).toFixed(2), outer: hex(outer), inner: hex(own) });
+  }
+  out.ok = out.candidates.some((k) => k.vsOuter >= min && k.vsInner >= min);
+  return out;
+}

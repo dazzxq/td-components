@@ -29,7 +29,7 @@
 	--td-control-border-soft: #7a89a2;
 	--td-control-border-hover: #97a5bc;
 	--td-focus: #7fb0ff;
-	--td-focus-ring: 0 0 0 3px rgb(127 176 255 / 45%);
+	--td-focus-ring: 0 0 0 1px #1e2d48, 0 0 0 3px #7fb0ff;
 	/* interaction */
 	--td-color-hover: rgb(255 255 255 / 6%);
 	--td-color-hover-strong: rgb(255 255 255 / 10%);

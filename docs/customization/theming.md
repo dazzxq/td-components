@@ -358,7 +358,7 @@ Từ 0.36.0 đổi `--td-pastel-*` **không** còn đổi nút / badge (chúng �
 | `--td-accent-contrast` | `#fff` | `#fff` | Chữ đặt trên accent |
 | `--td-accent-fill` | `var(--td-accent)` | `color-mix(in srgb, var(--td-accent) 80%, #000)` (trình duyệt không có `color-mix()`: `#2563eb`) | Nền **đặc** mang chữ trắng: trang hiện tại của pagination (0.16.0); nút primary khi site map `--td-btn-primary-bg` về nó |
 | `--td-focus` | `#2563eb` | `#60a5fa` | Màu focus đậm (trước 0.21.0 là viền focus ô nhập; nay ô nhập dùng `--td-field-focus` nhạt hơn, xem [input-field](../components/input-field.md#tuỳ-biến-giao-diện)) |
-| `--td-focus-ring` | `0 0 0 3px rgb(37 99 235 / 35%)` | `0 0 0 3px rgb(96 165 250 / 45%)` | Vòng focus (`box-shadow`) dùng chung mọi control |
+| `--td-focus-ring` | `0 0 0 1px var(--td-color-surface), 0 0 0 3px var(--td-focus)` (0.41.0; trước `0 0 0 3px rgb(37 99 235 / 35%)`) | cùng công thức (trước `rgb(96 165 250 / 45%)`) | Vòng focus bàn phím (`box-shadow`) dùng chung mọi control: vòng đặc 2px sau khe 1px màu bề mặt, ≥ 3:1 với nền ngoài và nền control (0.41.0, owner duyệt) |
 
 `--td-accent-fill` đi theo `--td-accent`: ở dark nó là accent tối đi 20% (mặc định `#4b8df8` → ≈ `#3c71c6`, chữ trắng
 ≈ 4.8:1), nên đổi **một** token `--td-accent` là trang active (và nút primary nếu bạn map nó về accent) đổi theo ở cả

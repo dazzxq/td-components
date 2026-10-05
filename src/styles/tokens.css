@@ -133,7 +133,10 @@
 		--td-color-info: #1d4ed8;
 		--td-color-on-status: #fff;
 		--td-focus: #2563eb;
-		--td-focus-ring: 0 0 0 3px rgb(37 99 235 / 35%);
+		/* v0.41.0 (owner-authorised, ISSUE-1): a SOLID 2px ring in --td-focus behind a 1px surface-coloured gap — same 3px
+		   footprint, ≥ 3:1 against the page AND against any control fill (the gap separates it from a black / accent
+		   fill). Was 0 0 0 3px rgb(37 99 235 / 35%) ≈ 1.7:1 on white. */
+		--td-focus-ring: 0 0 0 1px var(--td-color-surface), 0 0 0 3px var(--td-focus);
 
 		/* ===== Accent (one primary action per view) ===== */
 		--td-accent: #2563eb;
