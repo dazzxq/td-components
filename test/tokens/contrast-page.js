@@ -1432,6 +1432,9 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       stage.appendChild(wrap);
       await raf2();
       const h = wrap.querySelector('td-carousel');
+      // the current dot's pill grows / darkens with a 150 ms transition: read the settled colours
+      await Promise.all(h.getAnimations({ subtree: true }).map((an) => an.finished.catch(() => {})));
+      await raf2();
       const dots = h.querySelectorAll('.td-carousel__dot');
       const dotInk = (d) => getComputedStyle(d, '::before').backgroundColor;
       const prev = h.querySelector('[data-td-carousel="prev"]'); // at the start: aria-disabled
