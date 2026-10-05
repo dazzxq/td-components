@@ -47,7 +47,7 @@
       "border-top-right-radius": "14px",
       "border-bottom-left-radius": "14px",
       "border-bottom-right-radius": "14px",
-      "box-shadow": "rgba(37, 99, 235, 0.35) 0px 0px 0px 3px",
+      "box-shadow": "rgb(255, 255, 255) 0px 0px 0px 1px, rgb(37, 99, 235) 0px 0px 0px 3px",
       "transform": "none",
       "transition": "all",
       "backdrop-filter": "none",

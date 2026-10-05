@@ -7,13 +7,16 @@
  * `@container` must use a kit breakpoint, and each `@container td-*` block gets a generated `@supports not
  * (container-type: inline-size)` viewport fallback (scripts/css-responsive.mjs). ADR 0019 (v0.36.2): `:hover` only inside
  * `@media (hover: hover) and (pointer: fine)`, and every interactive control has a pressed (`:active` /
- * `[data-td-pressed]`) rule outside it (scripts/css-touch.mjs).
+ * `[data-td-pressed]`) rule outside it (scripts/css-touch.mjs). v0.41.0 (theming QĐ4): every
+ * `:root[data-td-theme="dark"]` rule gets a generated `@media (prefers-color-scheme: dark) { :root[data-td-theme="auto"] }`
+ * copy right after it; hand-written auto rules are rejected (scripts/css-theme.mjs).
  */
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { checkBreakpoints, addContainerFallbacks, expandVariants } from './css-responsive.mjs';
 import { checkHoverGate, checkPressed } from './css-touch.mjs';
+import { expandAutoTheme } from './css-theme.mjs';
 
 
 
@@ -38,7 +41,14 @@ for (const file of manifest.files) {
   bpErrors.push(...checkBreakpoints(css, `src/styles/${file}`));
   touchErrors.push(...checkHoverGate(css, `src/styles/${file}`));
   touchEntries.push({ css, file: `src/styles/${file}` });
-  parts.push(`\n/* ---- src/styles/${file} ---- */\n${addContainerFallbacks(expandVariants(css, `src/styles/${file}`), `src/styles/${file}`)}\n`);
+  let built;
+  try {
+    built = expandAutoTheme(addContainerFallbacks(expandVariants(css, `src/styles/${file}`), `src/styles/${file}`), `src/styles/${file}`);
+  } catch (e) {
+    console.error(e.message);
+    process.exit(1);
+  }
+  parts.push(`\n/* ---- src/styles/${file} ---- */\n${built}\n`);
 }
 if (bpErrors.length) {
   console.error(`Breakpoints (ADR 0014):\n  ${bpErrors.join('\n  ')}`);

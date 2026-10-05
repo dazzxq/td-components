@@ -19,7 +19,10 @@
  *       the -tint alias still colours its button; every fallback still forces them solid / unfiltered;
  *   (C) fallbacks: html[data-td-glass="off"] → opaque --td-glass-solid, no backdrop-filter, on
  *       Regular / Clear / tint / dim — even though the site overrides --td-glass-bg unlayered;
- *   (D) dark tokens only with data-td-theme="dark" (no flip under a dark OS preference);
+ *   (D) dark tokens only with data-td-theme="dark" (no flip under a dark OS preference); v0.41.0: data-td-theme="light"
+ *       stays light under a dark OS preference (color-scheme: light), "auto" follows the OS with CSS only (dark tokens +
+ *       color-scheme: dark under a dark preference, light under a light one), no attribute = no color-scheme; FIRST PAINT
+ *       of an "auto" page under a dark preference with JavaScript DISABLED is already dark (no white flash);
  *   (E) emulated media where the engine supports it: forced-colors, prefers-contrast: more,
  *       prefers-reduced-motion.
  * Informational probe (printed, not gated): CSSOM style writes and constructable stylesheets
@@ -33,6 +36,7 @@ import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
+import { decodePng } from '../visual/png.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const ORIGIN = 'http://tokens.local';
@@ -48,6 +52,8 @@ const SITE_CSS = `
 #s-tooltip-custom { --td-tooltip-bg: rgb(30 60 90); --td-tooltip-fg: rgb(255 255 255); }
 .ref-button { background: ButtonFace; color: ButtonText; }
 `;
+// v0.41.0 first-paint page: the page background is the theme's --td-color-bg (what a site does)
+const PAINT_CSS = 'html, body { margin: 0; height: 100%; background: var(--td-color-bg); }';
 
 const BODY = `
 <div id="page">
@@ -143,26 +149,36 @@ function componentsHtml(profile) {
 
 const MIME = { '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.css': 'text/css' };
 
-function html(profile) {
+function html(profile, theme = null) {
   const n = PROFILES[profile].nonce ? ` nonce="${PROFILES[profile].nonce}"` : '';
-  return `<!doctype html><html lang="vi"><head><meta charset="utf-8">` +
+  return `<!doctype html><html lang="vi"${theme ? ` data-td-theme="${theme}"` : ''}><head><meta charset="utf-8">` +
     `<link rel="stylesheet" href="${ORIGIN}/td.css"${n}>` +
     `<link rel="stylesheet" href="${ORIGIN}/site.css"${n}>` +
     `</head><body>${BODY}</body></html>`;
 }
 
-async function freshPage(browser, profile, media = {}, page0 = 'glass') {
-  const context = await browser.newContext();
+/** v0.41.0: a no-JS page with only td.css + the page background (first paint of a server-rendered attribute). */
+function paintHtml(profile, theme) {
+  const n = PROFILES[profile].nonce ? ` nonce="${PROFILES[profile].nonce}"` : '';
+  return `<!doctype html><html lang="vi" data-td-theme="${theme}"><head><meta charset="utf-8">` +
+    `<link rel="stylesheet" href="${ORIGIN}/td.css"${n}><link rel="stylesheet" href="${ORIGIN}/paint.css"${n}>` +
+    `</head><body><p>Trang</p></body></html>`;
+}
+
+async function freshPage(browser, profile, media = {}, page0 = 'glass', theme = null, contextOptions = {}) {
+  const context = await browser.newContext(contextOptions);
   const page = await context.newPage();
   await page.addInitScript(VIOLATION_INIT);
   await page.route(`${ORIGIN}/**`, (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/' ) {
-      const body = page0 === 'lightbox' ? lightboxHtml(profile) : page0 === 'components' ? componentsHtml(profile) : html(profile);
+      const body = page0 === 'lightbox' ? lightboxHtml(profile) : page0 === 'components' ? componentsHtml(profile)
+        : page0 === 'paint' ? paintHtml(profile, theme) : html(profile, theme);
       return route.fulfill({ status: 200, contentType: 'text/html', headers: { 'content-security-policy': PROFILES[profile].csp }, body });
     }
     if (url.pathname === '/td.css') return route.fulfill({ status: 200, contentType: 'text/css', body: TD_CSS });
     if (url.pathname === '/site.css') return route.fulfill({ status: 200, contentType: 'text/css', body: SITE_CSS });
+    if (url.pathname === '/paint.css') return route.fulfill({ status: 200, contentType: 'text/css', body: PAINT_CSS });
     if (/^\/(src|test)\//.test(url.pathname) && !url.pathname.includes('..')) {
       const ext = url.pathname.slice(url.pathname.lastIndexOf('.'));
       return readFile(join(ROOT, url.pathname))
@@ -172,7 +188,8 @@ async function freshPage(browser, profile, media = {}, page0 = 'glass') {
     return route.fulfill({ status: 404, body: '' });
   });
   if (Object.keys(media).length) await page.emulateMedia(media);
-  await page.goto(`${ORIGIN}/`);
+  await page.goto(`${ORIGIN}/`, { waitUntil: page0 === 'paint' ? 'commit' : 'load' });
+  if (page0 === 'paint') await page.waitForLoadState('load');
   return { page, context };
 }
 
@@ -395,11 +412,12 @@ async function runEngine(name, launcher) {
         check(`${tag} dark toast solid fill (v0.36.0: the same solid colour in both themes)`, opaqueBg(d['s-toast'].bg) && sameColor(d['s-toast'].bg, [21, 128, 61, 1]), d['s-toast'].bg);
         check(`${tag} dark toast no filter`, noFilter(d['s-toast'].bf), d['s-toast'].bf);
         check(`${tag} dark opaque surfaces keep the site solid`, sameColor(d['s-modal'].bg, [9, 9, 9, 1]), d['s-modal'].bg);
-        // v0.21.0: dark keeps the black tooltip (+ a faint light edge); primary inverted; shadows alpha × 2
-        check(`${tag} dark tooltip black + light edge`, sameColor(d['s-tooltip'].bg, [24, 24, 27, 1]) && sameColor(d['s-tooltip'].border, [255, 255, 255, 0.12]), JSON.stringify(d['s-tooltip']));
+        // v0.21.0: primary inverted. v0.41.0 (dark tuning, golden.json darkDeltas): the tooltip is a raised grey chip +
+        // a 16 % light edge (the black chip was 1.06:1 on the dark page); floating shadows deeper (24 % + 40 %)
+        check(`${tag} dark tooltip raised grey chip + light edge`, sameColor(d['s-tooltip'].bg, [58, 58, 62, 1]) && sameColor(d['s-tooltip'].border, [255, 255, 255, 0.16]), JSON.stringify(d['s-tooltip']));
         check(`${tag} dark primary inverted`, sameColor(d['b-primary'].bg, [244, 244, 245, 1]) && sameColor(d['b-primary'].color, [24, 24, 27, 1]), JSON.stringify(d['b-primary']));
         check(`${tag} dark danger solid (v0.36.0: same as light)`, sameColor(d['b-danger'].bg, [220, 38, 38, 1]) && sameColor(d['b-danger'].color, [255, 255, 255, 1]), JSON.stringify(d['b-danger']));
-        check(`${tag} dark --td-glass-shadow ×2`, sameAlphas(d['s-menu'].shadow, [0.12, 0.24]), d['s-menu'].shadow);
+        check(`${tag} dark --td-glass-shadow deeper (v0.41.0: 24 % + 40 %)`, sameAlphas(d['s-menu'].shadow, [0.24, 0.4]), d['s-menu'].shadow);
         check(`${tag} dark --td-btn-lift ×2`, sameAlphas(d['b-primary'].shadow, [0.2, 0.24]), d['b-primary'].shadow);
         check(`${tag} dark skeleton bg (#242427), table follows`, sameColor(d['k-skel'].bg, [36, 36, 39, 1]) && d['k-table-skel'].bg === d['k-skel'].bg, `${d['k-skel'].bg} / ${d['k-table-skel'].bg}`);
         await context.close();
@@ -410,6 +428,34 @@ async function runEngine(name, launcher) {
         const { page, context } = await freshPage(browser, profile, { colorScheme: 'dark' });
         const s = await read(page);
         check(`${tag} no auto dark flip`, sameColor(s.strong.bg, [255, 255, 255, 0.94]), s.strong.bg);
+        const cs = await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme);
+        check(`${tag} no attribute → no color-scheme (v0.41.0, pixel-identical light)`, cs === 'normal', cs);
+        await context.close();
+      }
+
+      // (D) v0.41.0: explicit light / auto (QĐ3) — CSS only, generated from the dark rules (scripts/css-theme.mjs)
+      for (const [theme, os, dark, scheme] of [['light', 'dark', false, 'light'], ['auto', 'dark', true, 'dark'], ['auto', 'light', false, 'light']]) {
+        const { page, context } = await freshPage(browser, profile, { colorScheme: os }, 'glass', theme);
+        const s = await read(page);
+        const want = dark ? [28, 28, 30, 0.94] : [255, 255, 255, 0.94];
+        check(`${tag} data-td-theme="${theme}" under OS ${os} → ${dark ? 'dark' : 'light'} tokens`, sameColor(s.strong.bg, want), s.strong.bg);
+        if (dark) {
+          check(`${tag} auto (OS dark) primary inverted like dark`, sameColor(s['b-primary'].bg, [244, 244, 245, 1]), s['b-primary'].bg);
+          check(`${tag} auto (OS dark) tooltip = the dark chip`, sameColor(s['s-tooltip'].bg, [58, 58, 62, 1]), s['s-tooltip'].bg);
+        }
+        const cs = await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme);
+        check(`${tag} data-td-theme="${theme}" under OS ${os} → color-scheme ${scheme}`, cs === scheme, cs);
+        check(`${tag} data-td-theme="${theme}" zero CSP violations`, s.violations.length === 0, JSON.stringify(s.violations));
+        await context.close();
+      }
+
+      // (D) v0.41.0: FIRST PAINT, JavaScript disabled — a server-rendered "auto" under an OS dark preference paints the
+      // dark --td-color-bg (#111113) from the stylesheet alone; "dark" too; "auto" under light paints the light page.
+      for (const [theme, os, want] of [['auto', 'dark', [17, 17, 19]], ['dark', 'light', [17, 17, 19]], ['auto', 'light', [251, 251, 250]]]) {
+        const { page, context } = await freshPage(browser, profile, {}, 'paint', theme, { javaScriptEnabled: false, colorScheme: os, viewport: { width: 200, height: 120 } });
+        const png = decodePng(await page.screenshot({ clip: { x: 150, y: 80, width: 20, height: 20 } }));
+        const px = png.px(10, 10);
+        check(`${tag} first paint, no JS: data-td-theme="${theme}" under OS ${os} → page ${want.join(',')}`, px.every((v, i) => Math.abs(v - want[i]) <= 2), px.join(','));
         await context.close();
       }
 

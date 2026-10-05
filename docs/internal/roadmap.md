@@ -41,8 +41,9 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.38.0: `td-scan-input` (A3) — plan [v0.38.0-scan-input](plans/v0.38.0-scan-input.md)
 - `done` v0.39.0: hook lọc ngoài + ẩn / hiện cột + `td-filter-chips` — plan [v0.39.0-filters-range](plans/v0.39.0-filters-range.md)
 - `done` v0.40.0: `<td-datetime-range>` + preset — xong P1 — plan [v0.39.0-filters-range](plans/v0.39.0-filters-range.md) (phần v0.40)
-- `todo` v0.41.0 / v0.42.0: theming — dark / light / `auto` + palette sinh màu tự cân tương phản (plan
-  `v0.41.0-theming.md`, nhánh `theming-research`)
+- `done` v0.41.0: theming R1 — light / dark / `auto` chính thức, nối token ngữ nghĩa, dark tinh chỉnh, gate toàn trang — plan
+  [v0.41.0-theming](plans/v0.41.0-theming.md)
+- `todo` v0.42.0: theming R2 — `palette.js` + CLI + trang builder + theme theo vùng + cầu portal (ADR 0020)
 - `todo` v0.43+: field gallery / nhiều ảnh (`td-media-grid` + `td-sortable`) — lùi sau theming (owner 2026-10-05)
 - `todo` sau v0.43: typeToConfirm, `trackFormDirty`, `td-steps`, `td-timeline`, `td-diff`, `td-check-matrix`, `td-color-picker`
 - Ngày từ v0.33 trở đi: **rebaseline từ ngày v0.31 xong thực tế** (không nén test / acceptance để giữ lịch cũ ~11/11 –

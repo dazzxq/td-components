@@ -24,6 +24,8 @@ import '/src/form/td-datetime-range.js';
 import { TdModal } from '/src/feedback/td-modal.js';
 import { TdMediaPicker } from '/src/feedback/td-media-picker.js';
 import { createMockAdapter } from '/test/fixtures/media-adapter.js';
+// v0.41.0 (M0): ONE colour parser for every pair below — understands color(srgb …) (0..1 channels) next to rgb()/rgba()
+import { over as overRgb } from '/test/tokens/color-parse.js';
 
 const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning'];
 const TOASTS = ['success', 'error', 'warning', 'info'];
@@ -179,6 +181,8 @@ async function setBackdrop(kind) {
   if (kind === 'black') bd.style.setProperty('background', '#000');
   else if (kind === 'white') bd.style.setProperty('background', '#fff');
   else if (kind === 'checker') bd.style.setProperty('background', 'repeating-conic-gradient(#000 0 25%, #fff 0 50%) 0 0 / 8px 8px');
+  else if (kind === 'theme-bg') bd.style.setProperty('background', 'var(--td-color-bg)'); // v0.41.0
+  else if (kind === 'theme-surface') bd.style.setProperty('background', 'var(--td-color-surface)');
   else {
     const img = document.createElement('img');
     img.src = '/test/fixtures/photo.svg';
@@ -367,7 +371,8 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       await new Promise((r) => setTimeout(r, 50));
       target = li.querySelector('.td-tree__row');
       const shadow = getComputedStyle(target).boxShadow;
-      const ring = (/(rgba?\([^)]*\)|color\([^)]*\))/.exec(shadow) || [])[1];
+      // v0.41.0: the ring is two layers (1px surface gap + solid ring) — the OUTERMOST (last) colour is the indicator
+      const ring = (String(shadow).match(/rgba?\([^)]*\)|color\([^)]*\)/g) || []).pop();
       if (!ring || !li.matches(':focus-visible')) throw new Error(`tree focus: no visible ring (${shadow})`);
       pairs = [
         { what: 'focus ring vs page', fg: ring, bg: page },
@@ -429,12 +434,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     const tick = tickBtn.querySelector('.td-check');
     const tcs = getComputedStyle(tick);
     const ring = (tcs.boxShadow.match(/rgba?\([^)]*\)|color\([^)]*\)/) || [])[0] || 'rgba(0, 0, 0, 0)';
-    const over = (fg, bg) => {
-      const f = (String(fg).match(/-?[\d.]+/g) || []).map(Number);
-      const b = (String(bg).match(/-?[\d.]+/g) || []).map(Number);
-      const a = f.length > 3 ? f[3] : 1;
-      return `rgb(${[0, 1, 2].map((i) => Math.round(f[i] * a + b[i] * (1 - a))).join(', ')})`;
-    };
+    const over = overRgb;
     const fill = c.v === 'on' ? tcs.backgroundColor : tcs.backgroundColor; // off = the white box
     const pairs = [c.state === 'dark-image'
       ? { what: 'tick box vs dark image', fg: fill, bg: image }
@@ -450,8 +450,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       pairs,
     };
   } else if (c.kind === 'lb-disc' || c.kind === 'lb-thumb') {
-    const rgba = (str) => { const n = (String(str).match(/-?[\d.]+/g) || []).map(Number); return [n[0] || 0, n[1] || 0, n[2] || 0, n.length > 3 ? n[3] : 1]; };
-    const over = (fg, bg) => { const f = rgba(fg); const b = rgba(bg); return `rgb(${[0, 1, 2].map((i) => Math.round(f[i] * f[3] + b[i] * (1 - f[3]))).join(', ')})`; };
+    const over = overRgb;
     const IMGS = ['/test/fixtures/1.svg', '/test/fixtures/2.svg', '/test/fixtures/3.svg'];
     TdLightbox.open(IMGS, { filmstrip: c.kind === 'lb-thumb' });
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -585,8 +584,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       pairs,
     };
   } else if (c.kind === 'cropper') {
-    const rgba = (str) => { const n = (String(str).match(/-?[\d.]+/g) || []).map(Number); return [n[0] || 0, n[1] || 0, n[2] || 0, n.length > 3 ? n[3] : 1]; };
-    const over = (fg, bg) => { const f = rgba(fg); const b = rgba(bg); return `rgb(${[0, 1, 2].map((i) => Math.round(f[i] * f[3] + b[i] * (1 - f[3]))).join(', ')})`; };
+    const over = overRgb;
     const colors = (shadow) => String(shadow).match(/rgba?\([^)]*\)|color\([^)]*\)/g) || [];
     const light = c.state === 'light-image';
     const image = light ? 'rgb(255, 255, 255)' : 'rgb(0, 0, 0)';
@@ -788,11 +786,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     };
   } else if (c.kind === 'dtr') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
-    const over = (top, base) => {
-      const t = top.match(/[\d.]+/g).map(Number); const b = base.match(/[\d.]+/g).map(Number);
-      const a = t.length > 3 ? t[3] : 1;
-      return `rgb(${[0, 1, 2].map((i) => Math.round(t[i] * a + b[i] * (1 - a))).join(', ')})`;
-    };
+    const over = overRgb;
     TdModal.closeAll();
     const C = customElements.get('td-datetime-range');
     C.now = () => new Date(2026, 9, 5, 9, 30);
@@ -832,11 +826,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `dtr:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'scan') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
-    const over = (top, base) => {
-      const t = top.match(/[\d.]+/g).map(Number); const b = base.match(/[\d.]+/g).map(Number);
-      const a = t.length > 3 ? t[3] : 1;
-      return `rgb(${[0, 1, 2].map((i) => Math.round(t[i] * a + b[i] * (1 - a))).join(', ')})`;
-    };
+    const over = overRgb;
     const host = document.createElement('td-scan-input');
     host.setAttribute('label', 'IMEI');
     const multiple = c.state.startsWith('row') || c.state === 'count';
@@ -876,11 +866,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `scan:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'v0362') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
-    const over = (top, base) => {
-      const t = top.match(/[\d.]+/g).map(Number); const b = base.match(/[\d.]+/g).map(Number);
-      const a = t.length > 3 ? t[3] : 1;
-      return `rgb(${[0, 1, 2].map((i) => Math.round(t[i] * a + b[i] * (1 - a))).join(', ')})`;
-    };
+    const over = overRgb;
     let target; let pairs;
     if (c.state === 'toast-pressed') {
       target = TdToast._showSingle('Đã lưu thay đổi của bạn', c.v, 0, 'top-end');
@@ -957,11 +943,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     stage.appendChild(probe);
     const tok = (name) => { probe.style.setProperty('color', `var(${name})`); return getComputedStyle(probe).color; };
     /** translucent colour composited on an opaque one (rgb() strings) */
-    const over = (top, base) => {
-      const t = top.match(/[\d.]+/g).map(Number); const b = base.match(/[\d.]+/g).map(Number);
-      const a = t.length > 3 ? t[3] : 1;
-      return `rgb(${[0, 1, 2].map((i) => Math.round(t[i] * a + b[i] * (1 - a))).join(', ')})`;
-    };
+    const over = overRgb;
     let pairs = [];
     let target = probe;
     if (c.state === 'solid') {
@@ -1078,15 +1060,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     host.appendChild(probe);
     const tok = (name) => { probe.style.setProperty('color', `var(${name})`); return getComputedStyle(probe).color; };
     /** a translucent colour (rgb()/rgba()/color(srgb …)) composited on an opaque rgb() */
-    const parse = (str) => {
-      const n = (String(str).match(/-?[\d.]+/g) || []).map(Number);
-      const k = String(str).startsWith('color(') ? 255 : 1;
-      return [n[0] * k, n[1] * k, n[2] * k, n.length > 3 ? n[3] : 1];
-    };
-    const over = (top, base) => {
-      const t = parse(top); const b = parse(base);
-      return `rgb(${[0, 1, 2].map((i) => Math.round(t[i] * t[3] + b[i] * (1 - t[3]))).join(', ')})`;
-    };
+    const over = overRgb;
     const tr = host.querySelector('tbody tr[data-selected]');
     const tableBg = over(tok('--td-table-bg'), page);
     const sel = over(tok('--td-table-row-selected'), tableBg);
@@ -1123,15 +1097,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     return { rect: { x: b.x, y: b.y, width: b.width, height: b.height }, ink: {}, opacity: 1, hover: false, name: `table-select:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'v039') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
-    const parse = (str) => {
-      const n = (String(str).match(/-?[\d.]+/g) || []).map(Number);
-      const k = String(str).startsWith('color(') ? 255 : 1;
-      return [n[0] * k, n[1] * k, n[2] * k, n.length > 3 ? n[3] : 1];
-    };
-    const over = (top, base) => {
-      const t = parse(top); const b = parse(base);
-      return `rgb(${[0, 1, 2].map((i) => Math.round(t[i] * t[3] + b[i] * (1 - t[3]))).join(', ')})`;
-    };
+    const over = overRgb;
     const raf2 = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     if (c.state === 'columns-btn') {
       const host = document.createElement('td-table');
@@ -1186,13 +1152,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     const textInk = tok('--td-color-text');
     const hoverFill = tok('--td-color-hover-strong');
     probe.remove();
-    const nums = (str) => String(str).match(/-?[\d.]+/g).map(Number);
-    /** an rgba fill composited on an opaque background → rgb() */
-    const over = (fill, bg) => {
-      const [r, g, b, a = 1] = nums(fill);
-      const base = nums(bg);
-      return `rgb(${[r, g, b].map((v, i) => Math.round(v * a + base[i] * (1 - a))).join(', ')})`;
-    };
+    const over = overRgb;
     let target;
     let pairs;
     if (c.kind === 'sortable') {
@@ -1363,11 +1323,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     stage.appendChild(probe);
     const wash = getComputedStyle(probe).color;
     probe.remove();
-    const nums = (str) => str.match(/[\d.]+/g).map(Number);
-    const [br, bgc, bb] = nums(cs.backgroundColor);
-    const [wr, wg, wb, wa = 1] = nums(wash);
-    const mix = (w, b) => Math.round(w * wa + b * (1 - wa));
-    const hoverBg = `rgb(${mix(wr, br)}, ${mix(wg, bgc)}, ${mix(wb, bb)})`;
+    const hoverBg = overRgb(wash, cs.backgroundColor);
     const r0 = t.getBoundingClientRect();
     return {
       rect: { x: r0.x, y: r0.y, width: r0.width, height: r0.height },
@@ -1453,3 +1409,6 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
 };
 window.__contrastCount = CASES.length;
 window.__contrastPageOnly = CASES.map((c) => !!c.pageOnly);
+// v0.41.0 (theming M5): the page-only cases measured from a screenshot (ghost buttons, alerts, badges) are also measured
+// over the theme's REAL page and surface colours (--td-color-bg / --td-color-surface), not only flat white / black
+window.__contrastRealPage = CASES.map((c) => !!c.pageOnly && ['button', 'alert', 'badge'].includes(c.kind));

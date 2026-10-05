@@ -338,7 +338,7 @@ describe('E3 td-button: ghost variant', () => {
     document.documentElement.setAttribute('data-td-theme', 'dark');
     try {
       const b = mount('<td-button variant="ghost">Huỷ</td-button>').querySelector('button');
-      expect(getComputedStyle(b).color).to.equal('rgb(59, 130, 246)');
+      expect(getComputedStyle(b).color).to.equal('rgb(75, 141, 248)'); // v0.41.0 dark accent #4b8df8 (golden darkDeltas)
     } finally {
       document.documentElement.removeAttribute('data-td-theme');
     }

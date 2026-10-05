@@ -424,7 +424,7 @@ Tất cả chữ là **văn bản thuần**.
 
 | Token | Mặc định | Tác dụng |
 |---|---|---|
-| `--td-chip-bg` | `#ebebeb` (dark: `#3c3c3e`) | Nền chip — **đặc** từ 0.20.0 (trước đó là lớp phủ trong suốt `--td-color-hover-strong` / `rgb(255 255 255 / 14%)`; màu mới = đúng màu đó trên nền field) |
+| `--td-chip-bg` | `var(--td-color-fill-strong)` (`#ebebeb`, dark `#3c3c3e`; 0.41.0) | Nền chip — **đặc** từ 0.20.0 (trước đó là lớp phủ trong suốt `--td-color-hover-strong` / `rgb(255 255 255 / 14%)`; màu mới = đúng màu đó trên nền field) |
 | `--td-chip-fg` | `var(--td-color-text)` | Chữ chip |
 | `--td-chip-radius` | `var(--td-radius-full)` | Bo góc chip (viên thuốc) |
 | `--td-chip-h` | `28px` | Chiều cao chip và ô nhập |

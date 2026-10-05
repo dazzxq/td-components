@@ -18,7 +18,7 @@ Mỗi bề mặt nổi = **nền + một viền mảnh + một shadow mềm** (+
 | Lớp | Selector (class JS phát ra, không đổi) | Công thức |
 |---|---|---|
 | Đặc | `.td-modal__dialog`, `.td-loading__card`, `.td-scroll-top` | `--td-glass-solid`, không blur; viền `--td-glass-border` + `--td-glass-shadow` (modal: `--td-glass-shadow-lg`) |
-| Tooltip (0.21.0) | `.td-tooltip` | **Đen** `--td-tooltip-bg` `#18181b` + chữ `#fff` ở cả hai theme (dark thêm viền `rgb(255 255 255 / 12%)`), đặc, không blur, `--td-glass-shadow`; tương phản cao / forced colours vẫn thắng (`--_td-glass-fill-a11y`) |
+| Tooltip (0.21.0) | `.td-tooltip` | **Đen** `--td-tooltip-bg` `#18181b` + chữ `#fff` (dark 0.41.0: chip xám nổi `#3a3a3e` + viền `rgb(255 255 255 / 16%)`), đặc, không blur, `--td-glass-shadow`; tương phản cao / forced colours vẫn thắng (`--_td-glass-fill-a11y`) |
 | Popup nhỏ | `.td-menu`, `.td-dropdown__menu`, `.td-chip-input__menu`, `.td-hovercard` | `--td-glass-bg-strong` (94 %) + `--td-glass-blur` (12px) + viền + `--td-glass-shadow` |
 | Toast (0.21.0) | `.td-toast--{type}` | Viên kiểu dcms, **đặc** pastel theo loại (`--td-pastel-{type}-*`) + viền cùng tông + `--td-glass-shadow`; không blur, không icon hiển thị (tiền tố loại cho trình đọc màn hình) |
 | Lightbox bar | `.td-lightbox__toolbar`, `.td-lightbox__counter` (`--clear`) | Tối `--td-glass-clear-bg` (88 %) + blur 12px + viền + shadow; không dim cục bộ, không glyph shadow. Panel / sheet: đặc `--td-glass-clear-solid`. Caption gradient (để đọc chữ trên ảnh) giữ |
@@ -34,7 +34,7 @@ Mỗi bề mặt nổi = **nền + một viền mảnh + một shadow mềm** (+
 | Nhóm | Light | Dark |
 |---|---|---|
 | Primary (nền / chữ / hover) | `#18181b` / `#fff` / `#3f3f46` | `#f4f4f5` / `#18181b` / `#d4d4d8` |
-| Tooltip (nền / chữ / viền) | `#18181b` / `#fff` / trong suốt | `#18181b` / `#fff` / `rgb(255 255 255 / 12%)` |
+| Tooltip (nền / chữ / viền) | `#18181b` / `#fff` / trong suốt | `#3a3a3e` / `#fff` / `rgb(255 255 255 / 16%)` (0.41.0; trước `#18181b` 1.06:1 trên trang tối) |
 | Đặc success (nền / chữ / hover = viền) | `#15803d` / `#fff` / `#166534` (5.02 · 7.1) | như light |
 | Đặc danger | `#dc2626` / `#fff` / `#b91c1c` (4.83 · 6.47) | như light |
 | Đặc warning | `#f59e0b` / `#18181b` / `#d97706` (8.25 · 5.56) — **chữ tối** | như light |
@@ -42,8 +42,9 @@ Mỗi bề mặt nổi = **nền + một viền mảnh + một shadow mềm** (+
 | Badge viền (neutral · accent · success · danger · warning · info) | `#ababac` · `#99a4b2` · `#0f5a2b` · `#9a1b1b` · `#ac6f08` · `#1a45a5` | như light |
 | Badge mực outline / stamp (success · warning · danger · info) | `#15803d` · `#b45309` · `#b91c1c` · `#2563eb` | `#86efac` · `#fcd34d` · `#fca5a5` · `#93c5fd` |
 | Pastel (deprecated 0.36.0) success / danger / warning / info (nền / viền / chữ) | `#dcfce7`/`#bbf7d0`/`#14532d` · `#fee2e2`/`#fecaca`/`#7f1d1d` · `#fef3c7`/`#fde68a`/`#78350f` · `#dbeafe`/`#bfdbfe`/`#1e3a8a` | `#143121`/`#16472a`/`#bbf7d0` · `#391a1c`/`#542022`/`#fecaca` · `#3a2a12`/`#553b11`/`#fde68a` · `#19253c`/`#1e3357`/`#bfdbfe` |
-| Shadow `--td-glass-shadow` | `0 2px 6px /6%, 0 8px 24px /12%` | alpha × 2 (12 % / 24 %) |
-| Shadow `--td-glass-shadow-lg` | `0 4px 12px /8%, 0 20px 48px /18%` | 16 % / 36 % |
+| Shadow `--td-glass-shadow` | `0 2px 6px /6%, 0 8px 24px /12%` | 24 % / 40 % (0.41.0; trước 12 / 24) |
+| Shadow `--td-glass-shadow-lg` | `0 4px 12px /8%, 0 20px 48px /18%` | 32 % / 56 % (0.41.0; trước 16 / 36) |
+| Viền bề mặt nổi `--td-glass-border` | `rgb(0 0 0 / 7%)` | `rgb(255 255 255 / 14%)` (0.41.0: trên nền tối viền sáng mảnh là thứ tách lớp, bóng gần như không thấy) |
 | Shadow `--td-btn-lift` | `0 1px 3px /10%, 0 4px 10px -2px /12%` | 20 % / 24 % |
 | Nhấn (0.36.2, [touch.md](touch.md)) chung / option / ghost | `rgb(0 0 0 / 12%)` (`--td-color-pressed`, `--td-option-pressed-bg`, `--td-btn-ghost-pressed`) | `rgb(255 255 255 / 14%)` |
 | Nhấn nút primary / secondary | `#52525b` / `#d4d4d8` (gray-300) | `#a1a1aa` / `#45454b` |

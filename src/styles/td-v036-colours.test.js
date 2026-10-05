@@ -46,7 +46,8 @@ test('QĐ 19 + 25: semantic buttons read the solid tokens; the pastel palette st
 test('QĐ 21–22: badge solid fill, -ink for outline / stamp, precomputed hex -border, --td-badge-shadow, no color-mix', async () => {
   const css = await read('src/styles/components/badge.css');
   const t = decls(css, ':root');
-  const INK = { success: '#15803d', danger: '#b91c1c', warning: '#b45309', info: '#2563eb' };
+  // v0.41.0 (theming M2): the inks read the theme contract (same values: #15803d / #b91c1c / #b45309 — golden.json)
+  const INK = { success: 'var(--td-color-success)', danger: 'var(--td-color-error)', warning: 'var(--td-color-warning)', info: '#2563eb' };
   const BORDER = { neutral: '#ababac', accent: '#99a4b2', success: '#0f5a2b', danger: '#9a1b1b', warning: '#ac6f08', info: '#1a45a5' };
   for (const v of Object.keys(SOLID)) {
     assert.equal(t[`--td-badge-${v}-bg`], `var(--td-solid-${v}-bg)`, `${v}-bg`);
@@ -68,7 +69,7 @@ test('QĐ 26: alert accent token per variant, a 4px inline-start bar, stronger b
   assert.equal(t['--td-alert-success-accent'], 'var(--td-solid-success-bg)');
   assert.equal(t['--td-alert-danger-accent'], 'var(--td-solid-danger-bg)');
   assert.equal(t['--td-alert-warning-accent'], 'var(--td-solid-warning-border)'); // amber-500 is < 3:1 on the light fill
-  assert.equal(t['--td-alert-warning-icon'], '#b45309');
+  assert.equal(t['--td-alert-warning-icon'], 'var(--td-color-warning)'); // v0.41.0: = #b45309 (golden.json)
   for (const [v, hex] of Object.entries({ info: '#93c5fd', success: '#86efac', warning: '#fcd34d', danger: '#fca5a5' })) {
     assert.equal(t[`--td-alert-${v}-border`], hex, `${v}-border`);
   }

@@ -6,8 +6,15 @@ Toàn bộ màu, cỡ chữ, bo góc, khoảng cách, chuyển động và bề 
 **CSS custom property** tên `--td-*` (gọi là *token*). Component không bao giờ "cứng" một giá trị màu: chúng chỉ đọc
 `var(--td-…)`. Vì vậy muốn đổi giao diện cho một site, bạn **không sửa lõi**, chỉ ghi đè token trong CSS của site.
 
-Trang này trả lời: token là gì, có những token công khai nào, ghi đè ở đâu cho chắc thắng, bật dark theme / tắt kính
-thế nào, và kit tự xử lý các chế độ trợ năng của hệ điều hành ra sao.
+Trang này trả lời: token là gì, có những token công khai nào, ghi đè ở đâu cho chắc thắng, bật light / dark / auto /
+tắt kính thế nào, site đổi màu nền (vd. giấy be) bằng **hợp đồng theme** ra sao, và kit tự xử lý các chế độ trợ năng
+của hệ điều hành thế nào.
+
+> **0.41.0 — theme chính thức:** `data-td-theme="light" | "dark" | "auto"` (`auto` theo hệ điều hành, CSS thuần, không
+> chớp trắng); dark hết nhãn "thử nghiệm" và được tinh chỉnh trên trang thật; token component đọc từ một bộ token ngữ
+> nghĩa (hợp đồng theme) nên site đặt nền / bề mặt một lần là ô nhập, popup, bảng đi theo. Không đặt attribute = light
+> **giống từng pixel** 0.40 — trừ hai thay đổi light đã duyệt: vòng focus bàn phím ≥ 3:1 và viền checkbox chọn dòng của
+> bảng (lỗi từ 0.37).
 
 > **0.20.0 — minimal surfaces:** bỏ hiệu ứng Liquid Glass giả lập (sheen, rim, film, glow, scale). Mỗi bề mặt chỉ còn
 > nền + một viền mảnh + một shadow mềm; blur 12px chỉ cho popup nhỏ; nút là màu đặc. Tên token `--td-glass-*` giữ
@@ -45,7 +52,8 @@ thế nào, và kit tự xử lý các chế độ trợ năng của hệ điề
   - [Scrim, hình học, chuyển động](#scrim-hình-học-chuyển-động)
   - [Token deprecated (0.20.0)](#token-deprecated-0200)
 - [Viền control mềm và override chuẩn WCAG nghiêm ngặt](#viền-control-mềm-và-override-chuẩn-wcag-nghiêm-ngặt)
-- [Dark theme (opt-in)](#dark-theme-opt-in)
+- [Light / dark / auto](#light--dark--auto)
+- [Hợp đồng theme và công thức nền giấy (0.41.0)](#hợp-đồng-theme-và-công-thức-nền-giấy-0410)
 - [Tắt kính: `data-td-glass="off"`](#tắt-kính-data-td-glassoff)
 - [Kit tự thích ứng với cài đặt trợ năng](#kit-tự-thích-ứng-với-cài-đặt-trợ-năng)
 - [Tinh chỉnh bề mặt cho hợp site](#tinh-chỉnh-bề-mặt-cho-hợp-site)
@@ -119,13 +127,21 @@ Chi tiết về layer và cách override class: [styling.md](styling.md#thứ-t�
 ## Ba bẫy hay gặp khi ghi đè token
 
 **1. Override "light" của bạn cũng áp dụng cho dark.** Dark theme của kit nằm trong `@layer td.tokens` với selector
-`:root[data-td-theme="dark"]`. Rule không layer `:root { --td-color-bg: #fffaf0 }` của bạn thắng cả rule dark đó (layer
-thắng specificity). Nếu site có dark theme, hãy khai báo riêng cho dark, hoặc giới hạn override light:
+`:root[data-td-theme="dark"]` (và bản sao `auto` dưới `@media (prefers-color-scheme: dark)`). Rule không layer
+`:root { --td-color-bg: #fffaf0 }` của bạn thắng cả rule dark đó (layer thắng specificity). Nếu site có dark theme, hãy
+khai báo riêng cho dark, hoặc giới hạn override light:
 
 ```css
 :root:not([data-td-theme="dark"]) { --td-color-bg: #fffaf0; }
 :root[data-td-theme="dark"]       { --td-color-bg: #14120f; }
+/* site dùng auto: thêm nhánh tối của auto (xem Light / dark / auto) */
+@media (prefers-color-scheme: dark) {
+  :root[data-td-theme="auto"]     { --td-color-bg: #14120f; }
+}
 ```
+
+(Với `auto`, rule `:root:not([data-td-theme="dark"])` ở trên cũng khớp nhánh tối của auto — viết nhánh tối sau nó, cùng
+specificity nên rule sau thắng.)
 
 **2. Token được tính tại nơi khai báo.** `--td-checkbox-color: var(--td-accent)` (cũng như `--td-btn-ghost-fg`,
 `--td-accent-fill`) được khai báo trên `:root`, nên `var(--td-accent)` được "giải" tại `:root` rồi mới kế thừa xuống.
@@ -231,9 +247,9 @@ Thang xám **không** đổi trong dark; dark đổi các token ngữ nghĩa bê
 
 | Token | Mặc định | Dark |
 |---|---|---|
-| `--td-shadow-1` | `0 1px 2px rgb(0 0 0 / 6%)` | |
-| `--td-shadow-2` | `0 2px 8px rgb(0 0 0 / 8%)` | |
-| `--td-shadow-3` | `0 8px 24px rgb(0 0 0 / 12%)` | |
+| `--td-shadow-1` | `0 1px 2px rgb(0 0 0 / 6%)` | `0 1px 2px rgb(0 0 0 / 30%)` (0.41.0; trước đó không có giá trị dark) |
+| `--td-shadow-2` | `0 2px 8px rgb(0 0 0 / 8%)` | `0 2px 8px rgb(0 0 0 / 40%)` |
+| `--td-shadow-3` | `0 8px 24px rgb(0 0 0 / 12%)` | `0 8px 24px rgb(0 0 0 / 50%)` |
 | `--td-hairline` | `rgb(0 0 0 / 7%)` | `rgb(255 255 255 / 8%)` |
 
 ### Z-index
@@ -277,16 +293,21 @@ Người dùng bật "giảm chuyển động" (`prefers-reduced-motion: reduce`
 | `--td-color-bg` | `#fbfbfa` | `#111113` | Nền trang (tham chiếu khi tính màu tương phản) |
 | `--td-color-surface` | `#fff` | `#1c1c1e` | Bề mặt đặc (bảng, thẻ, fallback tương phản cao) |
 | `--td-color-surface-muted` | `var(--td-gray-50)` | `#242427` | Bề mặt phụ, readonly |
+| `--td-color-surface-raised` | `var(--td-color-surface)` | (theo surface) | **0.41.0.** Bề mặt nổi: ô nhập (`--td-control-bg`), modal / popup đặc / fallback (`--td-glass-solid`). Đặt riêng khi muốn control + popup sáng hơn surface một bậc |
 | `--td-color-text` | `var(--td-gray-900)` | `#f5f5f7` | Chữ chính |
-| `--td-color-text-muted` | `var(--td-gray-600)` | `#a1a1aa` | Chữ phụ |
-| `--td-color-text-subtle` | `var(--td-gray-500)` | `#8a8a93` | Chữ rất nhạt |
-| `--td-color-border` | `var(--td-gray-200)` | `#2c2c30` | Viền nhẹ |
+| `--td-color-text-muted` | `var(--td-gray-600)` | `#acacb4` (0.41.0, trước `#a1a1aa`) | Chữ phụ — **mọi chữ nhỏ mang nội dung** dùng từ mức này trở lên (≥ 4.7:1) |
+| `--td-color-text-subtle` | `var(--td-gray-500)` | `#8a8a93` | Chỉ cho icon, chữ lớn, disabled, trang trí (≈ 3.2:1) — **không** dùng cho chữ nhỏ mang nội dung |
+| `--td-color-text-label` | `var(--td-gray-700)` | `#d4d4d8` | **0.41.0.** Nhãn field / control (`--td-field-label`, icon nút thao tác, nút gỡ filter chip) |
+| `--td-color-border` | `var(--td-gray-200)` | `#333338` (0.41.0, trước `#2c2c30`) | Viền nhẹ (trang trí, ≈ 1.35:1 ở dark) |
 | `--td-color-border-strong` | `var(--td-gray-300)` | `#45454b` | Viền đậm hơn |
 | `--td-color-sheen` | `rgb(255 255 255 / 60%)` | `rgb(255 255 255 / 8%)` | Ánh sáng lướt của skeleton (qua `--td-skeleton-shine`) |
 | `--td-color-hover` | `rgb(0 0 0 / 5%)` | `rgb(255 255 255 / 6%)` | Nền hover |
 | `--td-color-hover-strong` | `rgb(0 0 0 / 8%)` | `rgb(255 255 255 / 10%)` | Nền hover đậm |
 | `--td-color-overlay` | `rgb(10 10 12 / 45%)` | `rgb(0 0 0 / 60%)` | Scrim sau modal |
 | `--td-color-skeleton` | `var(--td-gray-100)` | `#242427` | Khối skeleton (qua `--td-skeleton-bg`) |
+| `--td-color-fill` | `var(--td-gray-100)` | `#2c2c30` | **0.41.0.** Nền phụ trung tính trên surface: switch tắt, nút secondary, badge neutral, filter chip, field disabled |
+| `--td-color-fill-strong` | `#ebebeb` | `#3c3c3e` | **0.41.0.** Chip trong ô nhập (`--td-chip-bg`) |
+| `--td-color-on-fill` | `#3f3f46` | `#e4e4e7` | **0.41.0.** Chữ trên `--td-color-fill` (badge neutral) |
 | `--td-color-success` | `#15803d` | `#22c55e` | Chữ/biểu tượng trạng thái thành công |
 | `--td-color-warning` | `#b45309` | `#f59e0b` | Cảnh báo |
 | `--td-color-error` | `#b91c1c` | `#f87171` | Lỗi |
@@ -334,14 +355,14 @@ Từ 0.36.0 đổi `--td-pastel-*` **không** còn đổi nút / badge (chúng �
 
 | Token | Mặc định | Dark | Dùng cho |
 |---|---|---|---|
-| `--td-accent` | `#2563eb` | `#3b82f6` | Màu thương hiệu: checkbox, slider, pagination, nút ghost, viền focus ô nhập, link hovercard, spinner loading (từ 0.21.0 nút primary + `.td-glass-tint` là **đen**, không theo accent) |
+| `--td-accent` | `#2563eb` | `#4b8df8` (0.41.0, trước `#3b82f6`: làm chữ ghost trên surface tối chỉ 4.63:1) | Màu thương hiệu: checkbox, slider, pagination, nút ghost, viền focus ô nhập, link hovercard, spinner loading (từ 0.21.0 nút primary + `.td-glass-tint` là **đen**, không theo accent) |
 | `--td-accent-contrast` | `#fff` | `#fff` | Chữ đặt trên accent |
 | `--td-accent-fill` | `var(--td-accent)` | `color-mix(in srgb, var(--td-accent) 80%, #000)` (trình duyệt không có `color-mix()`: `#2563eb`) | Nền **đặc** mang chữ trắng: trang hiện tại của pagination (0.16.0); nút primary khi site map `--td-btn-primary-bg` về nó |
 | `--td-focus` | `#2563eb` | `#60a5fa` | Màu focus đậm (trước 0.21.0 là viền focus ô nhập; nay ô nhập dùng `--td-field-focus` nhạt hơn, xem [input-field](../components/input-field.md#tuỳ-biến-giao-diện)) |
-| `--td-focus-ring` | `0 0 0 3px rgb(37 99 235 / 35%)` | `0 0 0 3px rgb(96 165 250 / 45%)` | Vòng focus (`box-shadow`) dùng chung mọi control |
+| `--td-focus-ring` | `0 0 0 1px var(--td-color-surface), 0 0 0 3px var(--td-focus)` (0.41.0; trước `0 0 0 3px rgb(37 99 235 / 35%)`) | cùng công thức (trước `rgb(96 165 250 / 45%)`) | Vòng focus bàn phím (`box-shadow`) dùng chung mọi control: vòng đặc 2px sau khe 1px màu bề mặt, ≥ 3:1 với nền ngoài và nền control (0.41.0, owner duyệt) |
 
-`--td-accent-fill` đi theo `--td-accent`: ở dark nó là accent tối đi 20% (mặc định `#3b82f6` → ≈ `#2f68c5`, chữ trắng
-≈ 5.3:1), nên đổi **một** token `--td-accent` là trang active (và nút primary nếu bạn map nó về accent) đổi theo ở cả
+`--td-accent-fill` đi theo `--td-accent`: ở dark nó là accent tối đi 20% (mặc định `#4b8df8` → ≈ `#3c71c6`, chữ trắng
+≈ 4.8:1), nên đổi **một** token `--td-accent` là trang active (và nút primary nếu bạn map nó về accent) đổi theo ở cả
 light lẫn dark. Muốn chỉnh riêng màu nền đặc (ví dụ accent của bạn quá sáng để mang chữ trắng), ghi đè
 `--td-accent-fill`.
 
@@ -349,20 +370,22 @@ light lẫn dark. Muốn chỉnh riêng màu nền đặc (ví dụ accent của
 ≥ 3:1) và `--td-field-focus-ring` = quầng 3px accent 12 % (dark 22 %) — tự theo `--td-accent`. Áp cho ô nhập, nút mở
 dropdown, ô tìm dropdown, chip-input. Nút / checkbox / switch vẫn dùng `--td-focus-ring`.
 
-Đổi `--td-accent` mà không đổi `--td-focus` / `--td-focus-ring` thì vòng focus vẫn xanh dương. Thường nên đổi cả ba,
+Đổi `--td-accent` mà không đổi `--td-focus` thì vòng focus vẫn xanh dương. Từ 0.41 `--td-focus-ring` dựng từ
+`--td-focus` (vòng đặc 2px sau khe 1px màu surface, ≥ 3:1) — chỉ cần đổi `--td-focus`, **đừng** ghi đè `--td-focus-ring`
+bằng quầng trong suốt kiểu cũ (≈ 1.7:1, không đạt). Thường nên đổi cả hai,
 xem [ví dụ thương hiệu](#ví-dụ-đầu-cuối-đổi-màu-thương-hiệu-accent).
 
 ### Control (ô nhập, viền mềm)
 
 | Token | Mặc định | Dark | Dùng cho |
 |---|---|---|---|
-| `--td-control-bg` | `#fff` | `#1c1c1e` | Nền ô nhập, nút không variant |
-| `--td-control-fg` | `var(--td-gray-900)` | `#f5f5f7` | Chữ trong control |
-| `--td-control-border` | `var(--td-gray-300)` | `#45454b` | Viền control chung (nút không variant) |
+| `--td-control-bg` | `var(--td-color-surface-raised)` (0.41.0, trước `#fff`) | (theo raised) | Nền ô nhập, nút không variant |
+| `--td-control-fg` | `var(--td-color-text)` | (theo text) | Chữ trong control |
+| `--td-control-border` | `var(--td-color-border-strong)` | (theo border-strong) | Viền control chung (nút không variant) |
 | `--td-control-radius` | `var(--td-radius-md)` | | Bo góc control |
 | `--td-control-border-strong` | `var(--td-gray-500)` | `#8a8a93` | Viền đạt ≥ 3:1 trên nền trắng (3.42:1) |
-| `--td-control-border-soft` | `#d1d1d6` | `#3a3a3c` | **Viền lúc nghỉ** của field, dropdown, datetime, chip-input, toggle, checkbox (~1.5:1, v0.14.1) |
-| `--td-control-border-hover` | `#aeaeb2` | `#636366` | Viền khi hover, viền option đang active (~2.2:1, v0.14.2) |
+| `--td-control-border-soft` | `#d1d1d6` | `#76767c` (0.41.0, trước `#3a3a3c`) | **Viền lúc nghỉ** của field, dropdown, datetime, chip-input, toggle, checkbox (light ~1.5:1, v0.14.1; dark ≥ 3:1 với mọi nền kề, 0.41.0) |
+| `--td-control-border-hover` | `#aeaeb2` | `#8e8e93` (0.41.0, trước `#636366`) | Viền khi hover, viền option đang active (light ~2.2:1, v0.14.2; dark ≥ 4.7:1) |
 | `--td-touch-min` | `44px` | | Vùng chạm tối thiểu trên màn hình cảm ứng |
 
 Xem [Viền control mềm và override chuẩn WCAG nghiêm ngặt](#viền-control-mềm-và-override-chuẩn-wcag-nghiêm-ngặt).
@@ -449,7 +472,7 @@ token chung); `--td-dropdown-option-active-line` hết tác dụng.
 | `--td-checkbox-color` | `var(--td-accent)` | | Nền checkbox khi được chọn |
 | `--td-checkbox-border` | `var(--td-control-border-soft)` | | Viền checkbox lúc nghỉ |
 | `--td-switch-on` | `#16a34a` | | Nền toggle khi bật (3.3:1 trên trang trắng) |
-| `--td-switch-off` | `var(--td-gray-100)` | `#2c2c30` | Nền toggle khi tắt |
+| `--td-switch-off` | `var(--td-color-fill)` | (theo fill) | Nền toggle khi tắt |
 | `--td-switch-edge` | `var(--td-control-border-soft)` | | Viền toggle |
 | `--td-switch-thumb` | `#fff` | | Núm toggle |
 
@@ -499,7 +522,7 @@ token nào ở đây: màu tự theo `--td-color-skeleton` / `--td-color-sheen`.
 
 Mỗi bề mặt nổi = **nền + một viền mảnh + một shadow mềm**. Popup nhỏ (menu, dropdown, gợi ý chip-input, hovercard)
 dùng nền 94 % + `blur(12px)`; modal, thẻ loading và nút scroll-top là **đặc** (`--td-glass-solid`, không blur);
-tooltip đặc **màu đen** (`--td-tooltip-bg`, 0.21.0 — xem [tooltip](../components/tooltip.md#tuỳ-biến-giao-diện)).
+tooltip đặc **màu đen** (`--td-tooltip-bg`, 0.21.0; dark 0.41.0: chip xám nổi `#3a3a3e` + viền sáng — xem [tooltip](../components/tooltip.md#tuỳ-biến-giao-diện)).
 Toast (0.21.0) là viên **đặc pastel** theo loại (`--td-toast-{type}-bg/-fg/-border`, trỏ vào [bộ pastel](#màu-pastel-0210-deprecated-0360)),
 không blur, không icon hiển thị — xem [toast](../components/toast.md).
 
@@ -507,13 +530,13 @@ không blur, không icon hiển thị — xem [toast](../components/toast.md).
 |---|---|---|---|
 | `--td-glass-bg` | `rgb(255 255 255 / 90%)` | `rgb(28 28 30 / 90%)` | Nền mặc định của `.td-glass-surface` |
 | `--td-glass-bg-strong` | `rgb(255 255 255 / 94%)` | `rgb(28 28 30 / 94%)` | Nền popup nhỏ (có blur) |
-| `--td-glass-solid` | `#fff` | `#1c1c1e` | Nền **đặc** (modal, loading, scroll-top) và nền thay thế khi blur bị tắt / không hỗ trợ / giảm trong suốt |
+| `--td-glass-solid` | `var(--td-color-surface-raised)` (0.41.0, trước `#fff`) | (theo raised) | Nền **đặc** (modal, loading, scroll-top) và nền thay thế khi blur bị tắt / không hỗ trợ / giảm trong suốt |
 | `--td-glass-fg` | `#18181b` | `#f5f5f7` | Chữ trên bề mặt |
-| `--td-glass-border` | `rgb(0 0 0 / 7%)` | `rgb(255 255 255 / 10%)` | Viền mảnh (`border`) |
+| `--td-glass-border` | `rgb(0 0 0 / 7%)` | `rgb(255 255 255 / 14%)` (0.41.0, trước 10 %) | Viền mảnh (`border`) — ở dark là thứ tách popup / modal khỏi nền |
 | `--td-glass-blur` | `blur(12px)` | | `backdrop-filter` của popup nhỏ |
 | `--td-glass-blur-lg` | `blur(12px)` | | Giữ cho tương thích (không còn bề mặt nào blur dày hơn) |
-| `--td-glass-shadow` | `0 2px 6px rgb(0 0 0 / 6%), 0 8px 24px rgb(0 0 0 / 12%)` | `0 2px 6px rgb(0 0 0 / 12%), 0 8px 24px rgb(0 0 0 / 24%)` | Shadow mềm (0.21.0: rõ hơn — lớp tiếp xúc + lớp toả) |
-| `--td-glass-shadow-lg` | `0 4px 12px rgb(0 0 0 / 8%), 0 20px 48px rgb(0 0 0 / 18%)` | `0 4px 12px rgb(0 0 0 / 16%), 0 20px 48px rgb(0 0 0 / 36%)` | Shadow của modal (`.td-glass-surface--lg`) |
+| `--td-glass-shadow` | `0 2px 6px rgb(0 0 0 / 6%), 0 8px 24px rgb(0 0 0 / 12%)` | `0 2px 6px rgb(0 0 0 / 24%), 0 8px 24px rgb(0 0 0 / 40%)` (0.41.0) | Shadow mềm (0.21.0: rõ hơn — lớp tiếp xúc + lớp toả) |
+| `--td-glass-shadow-lg` | `0 4px 12px rgb(0 0 0 / 8%), 0 20px 48px rgb(0 0 0 / 18%)` | `0 4px 12px rgb(0 0 0 / 32%), 0 20px 48px rgb(0 0 0 / 56%)` (0.41.0) | Shadow của modal (`.td-glass-surface--lg`) |
 
 ### Thanh lightbox (`--td-glass-clear-*`)
 
@@ -584,6 +607,8 @@ map **cả hai** token về viền đậm:
 }
 ```
 
+- Từ 0.41.0 **dark đã ≥ 3:1 sẵn** (viền mềm `#76767c` đạt 3:1 với ô nhập, surface, surface-muted, nền trang — quyết
+  định owner); khối dưới chỉ còn đổi light.
 - Chỉ cần một khối này cho **cả hai theme**: `--td-control-border-strong` tự có giá trị riêng cho dark (`#8a8a93`),
   và vì override nằm trên cùng phần tử `:root` (không layer, thắng cả giá trị dark của kit) nên dark cũng dùng đúng
   giá trị dark.
@@ -592,42 +617,147 @@ map **cả hai** token về viền đậm:
   trên đặt thẳng token đó.
 - Ghi chú lịch sử: CHANGELOG 0.14.1 chỉ nhắc `--td-control-border-soft`; từ 0.14.2 phải map **cả hai** như trên.
 
-## Dark theme (opt-in)
+## Light / dark / auto
 
-Dark **không bật tự động** theo hệ điều hành (site chỉ có giao diện sáng thì không bao giờ bị lật màu). Bật bằng một
-attribute trên `<html>`:
+Đặt **một** attribute trên `<html>` (từ 0.41.0, dark chính thức — hết "thử nghiệm"):
+
+| `data-td-theme` | Kết quả | `color-scheme` (thanh cuộn, ô native) |
+|---|---|---|
+| *(không đặt)* | Light, **giống từng pixel** 0.40 (trừ vòng focus và checkbox chọn dòng, xem trên). Không bao giờ tự lật theo hệ điều hành | không đặt (như cũ) |
+| `"light"` | Light tường minh | `light` |
+| `"dark"` | Dark | `dark` |
+| `"auto"` | Light khi hệ điều hành sáng, dark khi hệ điều hành tối — **CSS thuần** (`@media (prefers-color-scheme: dark)`), không JS, đổi ngay khi người dùng đổi cài đặt máy | theo nhánh: `light` / `dark` |
 
 ```html
-<html lang="vi" data-td-theme="dark">
+<html lang="vi" data-td-theme="auto">
 ```
 
-- Selector là `:root[data-td-theme="dark"]`, nên attribute **phải** nằm trên `<html>`, không phải `<body>`.
-- Kit đặt `color-scheme: dark` (thanh cuộn, ô nhập native tự tối theo).
-- Dark chỉ **đổi token** (trong `@layer td.tokens`), không có CSS component riêng.
-- Trạng thái: **thử nghiệm** — giá trị đã được tính tương phản trên giấy, chưa tinh chỉnh trên trang thật.
+- Selector là `:root[data-td-theme="…"]`, nên attribute **phải** nằm trên `<html>`, không phải `<body>`. Theme theo
+  vùng (một khối tối trong trang sáng) là việc của 0.42.0 — xem [Theme theo vùng](#theme-theo-vùng).
+- Dark chỉ **đổi token** (trong `@layer td.tokens`), không có CSS component riêng. `auto` không phải bản viết tay: lúc
+  build, mỗi rule `:root[data-td-theme="dark"]` của kit được sao sang nhánh `auto` (nên hai bản không bao giờ lệch).
+- Dark 0.41.0 được tinh chỉnh trên trang thật (3 trình duyệt): viền ô nhập / checkbox chưa chọn / switch ≥ 3:1 với mọi
+  nền kề, chữ phụ ≥ 4.7:1 cả trên nền hover, accent đọc được làm chữ, tooltip là chip xám nổi, bề mặt nổi có viền sáng
+  mảnh + bóng thật. Danh sách giá trị đổi: [breaking-changes § 0.41.0](../upgrading/breaking-changes.md#0410).
 
-Muốn theo cài đặt hệ điều hành, site tự quyết (kit cố ý không làm):
+### Không chớp trắng (no-FOUC)
 
-```js
-// theme-auto.js — nạp sớm trong <head> bằng <script type="module" src="…"> (không inline nếu CSP cấm)
-const root = document.documentElement;
-const mq = window.matchMedia('(prefers-color-scheme: dark)');
-const apply = () => {
-  if (mq.matches) root.setAttribute('data-td-theme', 'dark');
-  else root.removeAttribute('data-td-theme');
-};
-apply();
-mq.addEventListener('change', apply);
-```
+Theme phải có **trước lần vẽ đầu**, nếu không trang chớp màu sáng rồi mới tối:
 
-Tinh chỉnh riêng cho dark bằng rule không layer của site:
+1. **Attribute render từ server.** PHP in sẵn `data-td-theme` theo lựa chọn người dùng — lưu lựa chọn bằng **cookie**
+   (server đọc được), không chỉ `localStorage`:
+
+   ```php
+   <?php
+   $theme = $_COOKIE['td_theme'] ?? 'auto';
+   if (!in_array($theme, ['light', 'dark', 'auto'], true)) $theme = 'auto'; // whitelist, không in chuỗi thô
+   $scheme = ['light' => 'light', 'dark' => 'dark', 'auto' => 'light dark'][$theme];
+   ?>
+   <html lang="vi" data-td-theme="<?= $theme ?>">
+   <head>
+     <meta name="color-scheme" content="<?= $scheme ?>">
+     <link rel="stylesheet" href="/assets/td.css">
+   ```
+
+2. **`<meta name="color-scheme">` khớp attribute** (`light` / `dark` / `light dark` cho auto) để nền mặc định, thanh cuộn
+   và ô tự điền của trình duyệt đúng màu ngay cả trước khi CSS tải xong.
+3. **`auto` không cần JS**: chỉ cần attribute; CSS tự chọn nhánh theo hệ điều hành, kể cả khi JavaScript tắt.
+4. Nếu site đổi theme bằng JS phía client (nút chuyển light / dark / auto): script **đồng bộ, không phải module**, đặt
+   trong `<head>` trước stylesheet (file ngoài `'self'` hoặc có nonce theo CSP — không inline khi CSP cấm). Module
+   (`type="module"`, luôn `defer`) chạy **sau** lần vẽ đầu → chớp. Script đó đặt attribute + ghi cookie:
+
+   ```js
+   // theme-boot.js — <script src="/assets/theme-boot.js"></script> trong <head>, KHÔNG type="module"
+   (function () {
+     var m = document.cookie.match(/(?:^|; )td_theme=(light|dark|auto)/);
+     document.documentElement.setAttribute('data-td-theme', m ? m[1] : 'auto');
+   })();
+   ```
+
+   Nút chuyển (code của site, ví dụ trong module của trang): `document.documentElement.setAttribute('data-td-theme', v)`
+   rồi `document.cookie = 'td_theme=' + v + '; path=/; max-age=31536000; SameSite=Lax'`. Kit không có component
+   chuyển theme (việc của site).
+
+Trước 0.41.0 docs gợi ý một script `matchMedia` tự đặt / gỡ `data-td-theme="dark"`. Bỏ script đó, dùng
+`data-td-theme="auto"` (không JS, không chớp, theo kịp khi hệ điều hành đổi).
+
+### Tinh chỉnh riêng cho dark
+
+Rule không layer của site:
 
 ```css
 :root[data-td-theme="dark"] {
   --td-color-bg: #0d0f12;
-  --td-glass-solid: #16181d;
+  --td-color-surface: #16181d;
+}
+/* site dùng auto: cùng giá trị cho nhánh tối của auto */
+@media (prefers-color-scheme: dark) {
+  :root[data-td-theme="auto"] {
+    --td-color-bg: #0d0f12;
+    --td-color-surface: #16181d;
+  }
 }
 ```
+
+Override của site thắng mọi giá trị của kit (kit nằm trong `@layer td.tokens`). Site ghi đè giá trị dark cũ (trước
+0.41.0) thì đối chiếu lại với [danh sách đổi](../upgrading/breaking-changes.md#0410).
+
+## Hợp đồng theme và công thức nền giấy (0.41.0)
+
+Từ 0.41.0, token của component (ô nhập, popup, bảng, badge, chip, switch, nút secondary, alert…) **chỉ đọc** từ một
+bộ token ngữ nghĩa — *hợp đồng theme*. Site đặt bộ đó (trong CSS không layer) là cả kit đi theo; không còn ô nhập /
+popup trắng cứng trên nền màu.
+
+| Nhóm | Token |
+|---|---|
+| Bề mặt | `--td-color-bg` (nền trang), `--td-color-surface` (thẻ, bảng), `--td-color-surface-muted` (đầu bảng, readonly), `--td-color-surface-raised` (ô nhập + modal / popup đặc; mặc định = surface), `--td-glass-bg`, `--td-glass-bg-strong` (popup nhỏ, có alpha) |
+| Mực | `--td-color-text`, `-text-muted`, `-text-subtle`, `-text-label`, `--td-glass-fg` |
+| Cấu trúc | `--td-color-border`, `-border-strong`, `--td-hairline`, `--td-glass-border`, `--td-control-border-strong`, `-border-soft`, `-border-hover`, `--td-focus`, `--td-focus-ring` |
+| Tương tác / nền phụ | `--td-color-hover`, `-hover-strong`, `-pressed`, `-skeleton`, `-sheen`, `-fill`, `-fill-strong`, `-on-fill` |
+| Accent | `--td-accent`, `--td-accent-fill`, `--td-accent-contrast` |
+| Trạng thái | `--td-color-{success,warning,error,info}`, `--td-color-on-status`, `--td-pastel-*`, `--td-alert-{info,success,warning,danger}-{bg,border,icon}` |
+| Nút | `--td-btn-primary-{bg,fg,hover,pressed}`, `--td-btn-secondary-{hover,pressed,border}`, `--td-btn-disabled-{bg,fg,border}` |
+| Độ nổi | `--td-shadow-1..3`, `--td-glass-shadow(-lg)`, `--td-btn-lift`, `--td-color-overlay`, `--td-tooltip-{bg,fg,border}` |
+
+`--td-control-bg`, `--td-glass-solid` (= `surface-raised`), `--td-control-fg` (= text) và `--td-control-border`
+(= border-strong) là **bí danh**: đặt token gốc là đủ; vẫn ghi đè riêng được.
+
+Đổi **một vài** token của bộ này là đủ cho một nền sáng khác (ví dụ dưới). Bộ đầy đủ chỉ cần khi nền tối mà không bật
+`data-td-theme="dark"`; 0.42.0 sẽ có công cụ sinh cả bộ từ `bg` + `accent` (tự cân tương phản).
+
+**Luật chữ:** `--td-color-text-subtle` (≈ 3.2:1) chỉ cho icon, chữ lớn, disabled, trang trí. Chữ nhỏ mang nội dung dùng
+`--td-color-text-muted` trở lên (≥ 4.7:1). Khi đổi màu nền, kiểm `-text-muted` trên **nền tệ nhất** nó nằm (surface-muted,
+ô nhập, nền hover).
+
+### Công thức 135: trang giấy be, bảng / menu / ô nhập trắng
+
+```css
+/* site-theme.css — không layer, nạp SAU td.css */
+:root {
+  --td-color-bg: #ece5d8;            /* nền trang giấy */
+  --td-color-surface-muted: #ece5d8; /* đầu bảng, ô readonly, nền trang của layout dùng muted */
+  --td-color-surface: #fff;          /* thẻ, bảng */
+  --td-color-surface-raised: #fff;   /* ô nhập, modal, popup đặc: cùng trắng với bảng */
+  --td-color-text-muted: #5c5850;    /* 5.65 trên giấy, 4.75 trên giấy + hover — xám lạnh #6b6b73 chỉ 4.1 */
+  --td-color-text-subtle: #78736a;
+  --td-color-text-label: #46423b;
+  --td-color-border: #d9cfbd;
+  --td-color-border-strong: #c9bfae;
+  --td-control-border-soft: #cfc6b6;
+  --td-control-border-hover: #a89f8f;
+  --td-control-border-strong: #7f7668; /* ≥ 3:1 trên giấy và trên trắng */
+  --td-color-fill: #f2ede4;          /* switch tắt, nút secondary, badge neutral: ngả ấm */
+  --td-color-fill-strong: #e8e1d4;
+  --td-color-skeleton: #e6dfd1;      /* tối hơn surface: không thành "lỗ trắng" */
+}
+```
+
+- Muốn ô nhập / popup **sáng hơn** bảng một bậc: đặt `--td-color-surface-raised` khác `--td-color-surface`. Muốn tất
+  cả theo giấy: đặt `surface` + `surface-raised` cùng màu giấy (ô nhập không còn trắng cứng).
+- Bộ này là fixture `test/tokens/palettes/beige.css` của gate toàn trang (chữ ≥ 4.7, viền control, không "đảo trắng",
+  3 trình duyệt) — copy nguyên là có số đo.
+- Dùng cả dark? Bộ trên chỉ cho light; khai báo dưới `:root:not([data-td-theme="dark"])` hoặc thêm bộ dark riêng
+  (bẫy số 1).
 
 ## Tắt kính: `data-td-glass="off"`
 
@@ -663,14 +793,14 @@ tiên**, nên override token của site (kể cả có `!important`) **không th
 | `forced-colors: active` (Windows High Contrast) | Màu hệ thống `Canvas` / `CanvasText` / `ButtonFace` / `ButtonText`, không shadow, không filter |
 | `prefers-reduced-motion: reduce` | Chuyển động chỉ còn crossfade 120ms, không nhún; sheet modal / toast không trượt |
 
-Vì fallback dùng `--td-glass-solid`, nếu site đổi nền bề mặt (`--td-glass-bg` / `-bg-strong`) sang tông giấy riêng thì
-**nhớ đổi cả** `--td-glass-solid` cho khớp.
+Vì fallback dùng `--td-glass-solid` (0.41.0: = `--td-color-surface-raised`), nếu site đổi nền bề mặt (`--td-glass-bg` /
+`-bg-strong`) sang tông giấy riêng thì **nhớ đổi cả** `--td-color-surface-raised` (hoặc `--td-glass-solid`) cho khớp.
 
 ## Tinh chỉnh bề mặt cho hợp site
 
 | Muốn | Chỉnh | Lưu ý |
 |---|---|---|
-| Bề mặt ngả màu giấy của site | `--td-glass-bg`, `--td-glass-bg-strong`, `--td-glass-solid` | `-bg-strong` đủ đục để chữ ≥ 4.5:1 trên nền tối nhất có thể nằm sau |
+| Bề mặt ngả màu giấy của site | `--td-color-surface-raised` (0.41.0: modal, ô nhập, fallback), `--td-glass-bg`, `--td-glass-bg-strong` | `-bg-strong` đủ đục để chữ ≥ 4.5:1 trên nền tối nhất có thể nằm sau. Cả trang: [công thức nền giấy](#công-thức-135-trang-giấy-be-bảng--menu--ô-nhập-trắng) |
 | Mờ hơn / ít mờ hơn | `--td-glass-blur` | Giữ nhẹ (≤ 20px) — blur tốn GPU |
 | Bóng nhẹ / đậm hơn | `--td-glass-shadow`, `--td-glass-shadow-lg`, `--td-btn-lift` | Một lớp shadow mềm là đủ |
 | Viền rõ hơn | `--td-glass-border` | |
@@ -681,10 +811,10 @@ Vì fallback dùng `--td-glass-solid`, nếu site đổi nền bề mặt (`--td
 :root {
   --td-glass-bg: oklch(98% 0.01 80 / 0.9);
   --td-glass-bg-strong: oklch(98% 0.01 80 / 0.94);
-  --td-glass-solid: #f7f3ea;               /* modal + nền đặc khi fallback: khớp giấy của site (tooltip: --td-tooltip-bg) */
+  --td-color-surface-raised: #f7f3ea;      /* 0.41.0: modal, ô nhập + nền đặc khi fallback (tooltip: --td-tooltip-bg) */
 }
 :root[data-td-theme="dark"] {
-  --td-glass-solid: #1a1714;
+  --td-color-surface-raised: #1a1714;
 }
 ```
 
@@ -699,8 +829,7 @@ Giả sử site dùng đỏ `#b3261e` làm màu chính.
 :root {
   --td-accent: #b3261e;           /* checkbox, slider, pagination, ghost, viền focus ô nhập, link hovercard */
   --td-accent-contrast: #fff;     /* chữ trên nền đỏ: 6.5:1 */
-  --td-focus: #b3261e;
-  --td-focus-ring: 0 0 0 3px rgb(179 38 30 / 35%); /* vòng focus của nút / checkbox / switch */
+  --td-focus: #b3261e;            /* vòng focus của nút / checkbox / switch tự theo (0.41: vòng đặc 2px + khe 1px) */
   /* 0.21.0: primary mặc định đen — muốn primary đỏ theo thương hiệu, map đủ ba token: */
   --td-btn-primary-bg: var(--td-accent-fill);
   --td-btn-primary-fg: var(--td-accent-contrast);
@@ -717,8 +846,7 @@ dark của kit (kể cả primary đảo sáng của dark), và nền trang acti
 :root[data-td-theme="dark"] {
   --td-accent: #f2665c;                      /* chữ/viền trên nền tối */
   --td-accent-fill: #b3261e;                 /* nền đặc mang chữ trắng: tự chọn thay vì 80% của #f2665c */
-  --td-focus: #f2665c;
-  --td-focus-ring: 0 0 0 3px rgb(242 102 92 / 45%);
+  --td-focus: #f2665c;                       /* vòng focus tự theo */
 }
 ```
 
@@ -751,7 +879,7 @@ Token là custom property nên kế thừa theo cây DOM: bạn có thể đổi
 }
 ```
 
-Hai giới hạn:
+Hai giới hạn (0.41.0 vẫn còn; 0.42.0 dự kiến gỡ: `[data-td-theme]` trên một vùng + popup mang theme của vùng):
 
 1. Chỉ token được component **đọc trực tiếp** mới đổi theo vùng. Token được tính trên `:root` từ token khác (như
    `--td-checkbox-color: var(--td-accent)`) thì phải ghi đè token con, không phải token gốc (bẫy số 2 ở trên).

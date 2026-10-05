@@ -95,9 +95,14 @@
 		--td-color-bg: #fbfbfa;
 		--td-color-surface: #fff;
 		--td-color-surface-muted: var(--td-gray-50);
+		/* v0.41.0: the surface of controls, popups, modal — one step above the page when a theme sets it (R1: a site
+		   sets it explicitly; default = --td-color-surface). --td-control-bg / --td-glass-solid read it. */
+		--td-color-surface-raised: var(--td-color-surface);
 		--td-color-text: var(--td-gray-900);
 		--td-color-text-muted: var(--td-gray-600);
+		/* icons, large / disabled / decorative text only (≈ 3.2:1) — never small content text (use -muted, ≥ 4.7) */
 		--td-color-text-subtle: var(--td-gray-500);
+		--td-color-text-label: var(--td-gray-700); /* v0.41.0: field / control labels, a step above muted */
 		--td-color-border: var(--td-gray-200);
 		--td-color-sheen: rgb(255 255 255 / 60%); /* skeleton shimmer highlight */
 		--td-color-border-strong: var(--td-gray-300);
@@ -117,13 +122,21 @@
 		--td-option-active-bar-w: 3px;
 		--td-color-overlay: rgb(10 10 12 / 45%);
 		--td-color-skeleton: var(--td-gray-100);
+		/* v0.41.0: neutral fills on a surface — switch off, secondary button, neutral badge, filter chip, disabled field
+		   (-fill); a chip inside a field (-fill-strong = 8 % black on the white field, precomputed) */
+		--td-color-fill: var(--td-gray-100);
+		--td-color-fill-strong: #ebebeb;
+		--td-color-on-fill: #3f3f46; /* ink on -fill (neutral badge), ≥ 4.7 */
 		--td-color-success: #15803d;
 		--td-color-warning: #b45309;
 		--td-color-error: #b91c1c;
 		--td-color-info: #1d4ed8;
 		--td-color-on-status: #fff;
 		--td-focus: #2563eb;
-		--td-focus-ring: 0 0 0 3px rgb(37 99 235 / 35%);
+		/* v0.41.0 (owner-authorised, ISSUE-1): a SOLID 2px ring in --td-focus behind a 1px surface-coloured gap — same 3px
+		   footprint, ≥ 3:1 against the page AND against any control fill (the gap separates it from a black / accent
+		   fill). Was 0 0 0 3px rgb(37 99 235 / 35%) ≈ 1.7:1 on white. */
+		--td-focus-ring: 0 0 0 1px var(--td-color-surface), 0 0 0 3px var(--td-focus);
 
 		/* ===== Accent (one primary action per view) ===== */
 		--td-accent: #2563eb;
@@ -133,9 +146,9 @@
 		--td-accent-fill: var(--td-accent);
 
 		/* ===== Controls ===== */
-		--td-control-bg: #fff;
-		--td-control-fg: var(--td-gray-900);
-		--td-control-border: var(--td-gray-300);
+		--td-control-bg: var(--td-color-surface-raised);  /* v0.41.0: was #fff */
+		--td-control-fg: var(--td-color-text);
+		--td-control-border: var(--td-color-border-strong);
 		--td-control-radius: var(--td-radius-md);
 		--td-control-border-strong: var(--td-gray-500); /* ≥ 3:1 non-text contrast on white (3.42:1) */
 		/* v0.14.1 (owner request): resting border of fields / dropdown / toggle / checkbox — soft like Apple systemGray4
@@ -197,8 +210,8 @@
 		--td-btn-primary-fg: #fff;
 		--td-btn-primary-hover: #3f3f46;                /* black can't get darker: hover lightens */
 		--td-btn-primary-border: transparent;
-		--td-btn-secondary-bg: var(--td-gray-100);
-		--td-btn-secondary-fg: var(--td-gray-900);
+		--td-btn-secondary-bg: var(--td-color-fill);
+		--td-btn-secondary-fg: var(--td-color-text);
 		--td-btn-secondary-border: rgb(0 0 0 / 12%);
 		--td-btn-secondary-hover: var(--td-gray-200);
 		--td-btn-success-bg: var(--td-solid-success-bg);
@@ -253,13 +266,14 @@
 		/* hover label one step darker than the accent so it keeps ≥ 4.5:1 on the hover fill (the accent alone is ~4.5
 		   there); follows a site's --td-accent. Fallback without color-mix(): the fixed step in button.css. */
 		--td-btn-ghost-hover-fg: color-mix(in srgb, var(--td-btn-ghost-fg) 82%, #000);
+		--td-btn-ghost-hover-fg-fallback: #1d4ed8; /* v0.41.0: was a literal in button.css (dark: theme-dark.css) */
 
 		/* ===== Checkbox / switch — v0.14.1: resting borders use the soft token (~1.5:1, below WCAG 1.4.11 by owner
 		   choice); hover uses --td-control-border-hover (~2.2:1, v0.14.2); switch on-colours still ≥ 3:1 ===== */
 		--td-checkbox-color: var(--td-accent);
 		--td-checkbox-border: var(--td-control-border-soft);
 		--td-switch-on: #16a34a;       /* 3.3:1 vs white page; white thumb on it 3.3:1 */
-		--td-switch-off: var(--td-gray-100);
+		--td-switch-off: var(--td-color-fill);
 		--td-switch-edge: var(--td-control-border-soft);
 		--td-switch-thumb: #fff;
 
@@ -278,7 +292,7 @@
 		   card, tooltip and scroll-top are opaque (--td-glass-solid). The token names keep "glass" (public API). */
 		--td-glass-bg: rgb(255 255 255 / 90%);
 		--td-glass-bg-strong: rgb(255 255 255 / 94%);  /* small popups (blurred) */
-		--td-glass-solid: #fff;                        /* opaque surfaces + every fallback */
+		--td-glass-solid: var(--td-color-surface-raised); /* opaque surfaces + every fallback (v0.41.0: was #fff) */
 		--td-glass-fg: #18181b;
 		--td-glass-border: rgb(0 0 0 / 7%);
 		--td-glass-blur: blur(12px);

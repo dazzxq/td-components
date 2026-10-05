@@ -209,8 +209,8 @@ describe('batch 2 — td-slider focus, dragging, contrast', () => {
     const thumb = wrap.querySelector('.td-slider__thumb');
     await wait(250); // box-shadow transition
     const shadow = getComputedStyle(thumb).boxShadow;
-    expect(shadow).to.contain('3px'); // --td-focus-ring: 0 0 0 3px rgb(37 99 235 / 35%)
-    expect(shadow).to.match(/rgba\(37, 99, 235/);
+    expect(shadow).to.contain('3px'); // --td-focus-ring (v0.41.0): 0 0 0 1px surface gap, 0 0 0 3px solid --td-focus
+    expect(shadow).to.match(/rgba?\(37, 99, 235/);
     input.blur();
     await wait(250);
     expect(getComputedStyle(thumb).boxShadow).to.not.match(/rgba\(37, 99, 235, 0\.35\) 0px 0px 0px 3px/);

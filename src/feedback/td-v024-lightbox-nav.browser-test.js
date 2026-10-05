@@ -164,9 +164,12 @@ describe('v0.24.0 N1 — side navigation (mouse)', () => {
       expect(lb.index, `${pointerType} tap on the strip`).to.equal(0);
       await wait(350); // two taps in a row would be a double-tap zoom
     }
+    // a DISTANCE commit (past 25 % of the visible column), never the flick path: a 120 px swipe used to commit only via
+    // the release velocity of the synthetic events, which a loaded machine slowed below 0.3 px/ms (v0.41.0 flake)
+    const swipe = Math.ceil(rect($('.td-lightbox__col')).width * 0.25) + 40;
     next().dispatchEvent(pe('pointerdown', x, y));
-    next().dispatchEvent(pe('pointermove', x - 60, y + 2));
-    next().dispatchEvent(pe('pointerup', x - 120, y + 2));
+    next().dispatchEvent(pe('pointermove', x - swipe / 2, y + 2));
+    next().dispatchEvent(pe('pointerup', x - swipe, y + 2));
     next().dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }));
     expect(lb.index, 'swipe = exactly one step').to.equal(1);
     prev().dispatchEvent(pe('pointerdown', x, y - 100));

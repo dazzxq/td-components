@@ -28,6 +28,8 @@
  * v0.33.0: td-media-picker (dcms2 parity) — card border tokens hover / viewing / checked ≥ 3:1 vs the card surface and the
  *   list background, `.td-media-picker__label` + card texts + page info / td-pagination "Hiển thị…" + upload dropzone texts and
  *   badges ≥ 4.7 (pairs, page only).
+ * v0.41.0: the page-only screenshot cases (ghost buttons, alerts, badges) also over the theme's real --td-color-bg and
+ *   --td-color-surface (theming plan M5; thresholds unchanged).
  * v0.36.2: pressed states (ADR 0019) — td-button variants + ghost, td-action-button tones, a popup option row carrying
  *   data-td-pressed: label / icon ≥ 4.7 on the pressed fill (pairs, page only).
  * No dependencies: PNGs are decoded with node:zlib.
@@ -41,6 +43,7 @@ import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { decodePng } from '../visual/png.mjs';
+import { parseColor as parseCss } from './color-parse.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const ORIGIN = 'http://td-contrast.test';
@@ -71,12 +74,10 @@ const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
 const lin = (v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
 const lum = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+/** v0.41.0 (M0): the shared parser (test/tokens/color-parse.js) — rgb()/rgba()/color(srgb …)/hex. */
 function parseColor(str) {
-  const m = String(str).match(/-?[\d.]+/g);
-  if (!m) return null;
-  const n = m.map(Number);
-  const k = String(str).startsWith('color(') ? 255 : 1;
-  return { rgb: [n[0] * k, n[1] * k, n[2] * k], a: n.length > 3 ? n[3] : 1 };
+  const c = parseCss(str);
+  return c ? { rgb: [c.r, c.g, c.b], a: c.a } : null;
 }
 const composite = (ink, bg) => ink.rgb.map((v, i) => v * ink.a + bg[i] * (1 - ink.a));
 
@@ -121,10 +122,12 @@ async function runEngine(name, launcher) {
   await page.waitForFunction(() => typeof window.__contrastSetup === 'function');
   const count = await page.evaluate(() => window.__contrastCount);
   const pageOnly = await page.evaluate(() => window.__contrastPageOnly || []);
+  const realPage = await page.evaluate(() => window.__contrastRealPage || []);
   for (const theme of THEMES) {
-    for (const backdrop of BACKDROPS) {
+    for (const backdrop of [...BACKDROPS, 'theme-bg', 'theme-surface']) {
       for (let i = 0; i < count; i++) {
-        if (pageOnly[i] && backdrop !== (theme === 'dark' ? 'black' : 'white')) continue;
+        if (backdrop.startsWith('theme-')) { if (!realPage[i]) continue; } // v0.41.0: the theme's real page / surface
+        else if (pageOnly[i] && backdrop !== (theme === 'dark' ? 'black' : 'white')) continue;
         const info = await page.evaluate(([n, t, b]) => window.__contrastSetup(n, t, b, true), [i, theme, backdrop]);
         const tag = `${name} ${theme} ${backdrop} ${info.name}`;
         if (info.pairs) { // v0.21.0 P8: non-text contrast from computed colours (focus border ≥ 3:1)

@@ -400,12 +400,13 @@ thắng các lớp `td.*`. Xem thêm [Theming](../customization/theming.md) và 
 | `--td-btn-danger-bg` / `-fg` / `-border` / `-hover` | `var(--td-solid-danger-*)`: `#dc2626` / `#fff` / `#b91c1c` / `#b91c1c` | Danger đặc. |
 | `--td-btn-info-bg` / `-fg` / `-border` / `-hover` | `var(--td-solid-info-*)`: `#2563eb` / `#fff` / `#1d4ed8` / `#1d4ed8` | Info đặc. |
 | `--td-btn-warning-bg` / `-fg` / `-border` / `-hover` | `var(--td-solid-warning-*)`: `#f59e0b` / `#18181b` / `#d97706` / `#d97706` | Warning đặc, **chữ tối** (vàng + chữ trắng không bao giờ đạt tương phản). |
-| `--td-btn-secondary-bg` / `-fg` | `var(--td-gray-100)` / `var(--td-gray-900)` | Nền đặc + chữ của secondary. |
+| `--td-btn-secondary-bg` / `-fg` | `var(--td-color-fill)` / `var(--td-color-text)` (0.41.0; = gray-100 / gray-900) | Nền đặc + chữ của secondary. |
 | `--td-btn-secondary-border` | `rgb(0 0 0 / 12%)` | Viền mảnh của secondary. |
 | `--td-btn-secondary-hover` | `var(--td-gray-200)` | Nền secondary khi hover. |
 | `--td-btn-disabled-bg` / `-fg` / `-border` | `#f4f4f5` / `#a1a1aa` / `#e4e4e7` | Trạng thái disabled (xám, đặc, không bóng). |
 | `--td-btn-lift` | `0 1px 3px rgb(0 0 0 / 10%), 0 4px 10px -2px rgb(0 0 0 / 12%)` (0.21.0: rõ hơn) | **Bóng duy nhất** của nút (ghost / disabled không có). |
-| `--td-btn-ghost-fg` | `var(--td-accent)` (#2563eb; dark #3b82f6) | Màu chữ/icon của ghost (0.17.0). |
+| `--td-btn-ghost-fg` | `var(--td-accent)` (#2563eb; dark #4b8df8 từ 0.41.0) | Màu chữ/icon của ghost (0.17.0). |
+| `--td-btn-ghost-hover-fg-fallback` | `#1d4ed8` (dark `#93c5fd`) | 0.41.0: chữ ghost khi hover / nhấn trên trình duyệt **không có** `color-mix()` (trước là màu cứng, dark chỉ 2.5:1). |
 | `--td-btn-ghost-hover-bg` | `var(--td-color-hover)` (`rgb(0 0 0 / 5%)`; dark `rgb(255 255 255 / 6%)`) | Nền khi hover của ghost (0.17.0). |
 
 **Hover (0.21.0):** mỗi variant có nền đọc token `--td-btn-{v}-hover` của nó (primary `#3f3f46`, ngữ nghĩa = bậc đậm
@@ -416,7 +417,7 @@ nên nếu chỉ đổi `-bg`, hover vẫn là màu mặc định — trông l�
 Theme tối (`<html data-td-theme="dark">`) đổi: primary **đảo** (`--td-btn-primary-bg` `#f4f4f5`, `-fg` `#18181b`,
 `-hover` `#d4d4d8` — nền đen sẽ chìm vào trang tối), nút ngữ nghĩa **giữ cùng màu đặc** như theme sáng (0.36.0),
 `--td-btn-secondary-bg` /
-`-fg` / `-border` / `-hover` #2c2c30 / #f5f5f7 / `rgb(255 255 255 / 12%)` / #3a3a3e, `--td-btn-disabled-bg/-fg/-border`
+`-fg` / `-border` / `-hover` #2c2c30 (`--td-color-fill`) / #f5f5f7 (`--td-color-text`) / `rgb(255 255 255 / 12%)` / #3a3a3e, `--td-btn-disabled-bg/-fg/-border`
 #202024 / #6b6b73 / `rgb(255 255 255 / 6%)`, `--td-btn-lift` đậm gấp đôi (20 % / 24 %).
 
 Bảng màu đặc dùng chung (`--td-solid-{success,danger,warning,info}-bg/-fg/-hover/-border`, cũng cho badge): xem

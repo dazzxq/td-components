@@ -2,6 +2,40 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.41.0
+
+**Theme chính thức: light / dark / auto** (theming R1; owner: "hỗ trợ cả dark mode và light mode" + màu nền tuỳ biến;
+đồng thuận Codex think-about; plan `docs/internal/plans/v0.41.0-theming.md`, Codex plan-review APPROVE 2 vòng). Không
+đặt `data-td-theme` → light **giữ y nguyên từng pixel** như 0.40 (golden test khoá), trừ hai thay đổi đã duyệt: vòng focus
+bàn phím ≥ 3:1 và viền checkbox chọn dòng của bảng. Chi tiết nâng cấp:
+`docs/upgrading/breaking-changes.md#0410`; hướng dẫn `docs/customization/theming.md`.
+
+### Added
+
+- `data-td-theme="light|dark|auto"`: `auto` theo `prefers-color-scheme` bằng CSS thuần (sinh lúc build từ khối dark — không
+  JS, không chớp trắng); `color-scheme` theo từng chế độ tường minh.
+- Hợp đồng token theme (`src/theme/tokens.js`): `--td-color-surface-raised`, `--td-color-text-label`, `--td-color-fill`,
+  `--td-color-fill-strong`, `--td-color-on-fill`; ô nhập / popup / glass đọc `surface-raised` (mặc định = surface). Site
+  nền be: đặt `--td-color-bg` + `--td-color-surface` (công thức trong theming.md). Bộ sinh màu tự động là v0.42.
+- Gate mới: golden token (light + dark khoá), quét chữ / viền control / focus / "đảo trắng" toàn trang với 4 bảng màu
+  (light, dark, be, navy) × 3 engine; test first-paint không JS cho `auto`. Demo có chọn theme.
+
+### Changed
+
+- **Dark** (opt-in) tinh chỉnh: viền ô nhập / checkbox / switch ≥ 3:1 (`--td-control-border-soft` `#76767c`), chữ phụ
+  `#acacb4`, accent `#4b8df8`, tooltip nền xám `#3a3a3e` + viền sáng, `--td-shadow-1..3` và viền / bóng popup rõ hơn.
+- Component đọc token ngữ nghĩa: site đã đổi `--td-color-surface` / `-text` / `-text-muted` / màu trạng thái sẽ thấy ô
+  nhập, modal, placeholder, mực badge đi theo.
+- **Vòng focus bàn phím** (`--td-focus-ring`, light + dark, owner duyệt): vòng đặc 2px màu `--td-focus` sau khe 1px màu
+  `--td-color-surface` (cùng bề dày 3px) thay vòng mờ 35 % / 45 % (≈ 1.7:1) → ≥ 3:1 với nền ngoài và nền control; gate
+  toàn trang đo vòng thật sau khi Tab. Khôi phục: `:root { --td-focus-ring: 0 0 0 3px rgb(37 99 235 / 35%); }`.
+
+### Fixed
+
+- Checkbox chọn dòng của `td-table` dùng viền checkbox chung (light 1.27 → 1.52:1 như mọi checkbox; dark ≥ 3:1) — lỗi từ
+  0.37.
+- Test vuốt lightbox chuyển ảnh theo quãng đường (không còn phụ thuộc tốc độ sự kiện giả lập).
+
 ## 0.40.0
 
 **`<td-datetime-range>` — chọn khoảng ngày / giờ + preset** (plan `docs/internal/plans/v0.39.0-filters-range.md` phần

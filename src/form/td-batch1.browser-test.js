@@ -456,7 +456,7 @@ describe('batch 1 — review follow-ups', () => {
     const b = el.querySelector('button');
     expect(document.activeElement === b).to.equal(true);
     await wait(200); // box-shadow transitions in (--td-dur-fast)
-    expect(getComputedStyle(b).boxShadow).to.contain('rgba(37, 99, 235');
+    expect(getComputedStyle(b).boxShadow).to.match(/rgba?\(37, 99, 235/); // v0.41.0: solid ring (was 35 % alpha)
   });
 
   it('a wrap from an older generation cannot release a newer loading session', async () => {

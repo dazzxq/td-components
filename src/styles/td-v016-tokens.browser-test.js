@@ -68,10 +68,10 @@ describe('D2 --td-accent-fill', () => {
     expect(ratio(rgb(cs.color), rgb(cs.backgroundColor))).to.be.at.least(4.5);
   });
 
-  it('dark default: 80 % of the dark accent (≈ #2f68c5), white text ≥ 4.5:1 on the current page', () => {
+  it('dark default: 80 % of the dark accent (v0.41.0 #4b8df8 → ≈ #3c71c6), white text ≥ 4.5:1 on the current page', () => {
     html.setAttribute('data-td-theme', 'dark');
     const fill = tokenColor('--td-accent-fill');
-    expect(near(fill, [47, 104, 197])).to.equal(true);
+    expect(near(fill, [60, 113, 198])).to.equal(true);
     expect(near(tokenColor('--td-btn-primary-bg'), [244, 244, 245])).to.equal(true); // v0.21.0 inverted
     const cs = getComputedStyle(activePage());
     expect(near(rgb(cs.backgroundColor), fill)).to.equal(true);

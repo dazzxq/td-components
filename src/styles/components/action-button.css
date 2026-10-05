@@ -14,12 +14,12 @@
 		--td-action-btn-size-md: 2.25rem;
 		--td-action-btn-size-lg: 2.5rem;
 		--td-action-btn-radius: var(--td-radius-md);
-		--td-action-btn-standard-fg: var(--td-gray-700);
+		--td-action-btn-standard-fg: var(--td-color-text-label);
 		--td-action-btn-standard-hover-bg: var(--td-color-hover);
-		--td-action-btn-warning-fg: #b45309;
+		--td-action-btn-warning-fg: var(--td-color-warning);
 		/* amber-50, not the pastel warning fill: #b45309 on #fef3c7 is only 4.5:1 (gate ≥ 4.7) */
 		--td-action-btn-warning-hover-bg: #fffbeb;
-		--td-action-btn-danger-fg: #b91c1c;
+		--td-action-btn-danger-fg: var(--td-color-error);
 		--td-action-btn-danger-hover-bg: var(--td-pastel-danger-bg);
 		/* v0.36.2 (ADR 0019) pressed fills (icon ≥ 4.7:1 — contrast gate). Warning: no amber fill keeps #b45309 at 4.7
 		   (#fef3c7 is 4.5), so the pressed icon steps to amber-800 on the amber-100 fill. */
@@ -31,7 +31,6 @@
 
 	/* dark (opt-in): light inks on the dark page, translucent tone fills */
 	:root[data-td-theme="dark"] {
-		--td-action-btn-standard-fg: #d4d4d8;
 		--td-action-btn-warning-fg: #fcd34d;
 		--td-action-btn-warning-hover-bg: rgb(245 158 11 / 14%);
 		--td-action-btn-danger-fg: #fca5a5;
