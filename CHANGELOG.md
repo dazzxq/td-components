@@ -2,6 +2,21 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.38.0
+
+**`<td-scan-input>` — ô quét mã vạch** (dsuite A3; plan `docs/internal/plans/v0.38.0-scan-input.md`, Codex plan-review
+APPROVE 3 vòng). Trang: `docs/components/scan-input.md`. Không có thay đổi phá vỡ.
+
+### Added
+
+- `<td-scan-input>` (`./scan-input`, `TdScanInput`): nhận diện lần quét từ máy quét kiểu bàn phím (nhịp gõ nhanh +
+  Enter / Tab) khác người gõ tay; chuẩn hoá (bỏ ký tự điều khiển, cắt 128 ký tự), chống quét trùng, `validate(value,
+  { signal })` bất đồng bộ có hàng đợi theo thứ tự (tối đa 16, bỏ kết quả muộn), âm báo tuỳ chọn (Web Audio, nút tắt
+  tiếng); chế độ **một mã** và **nhiều mã** (`multiple`, danh sách có xoá từng dòng, `max`), form-associated (`name[]` →
+  một mục mỗi mã hợp lệ).
+- PHP `td_scan_input()` + SSR `scan-input@1` (kiểm cấu trúc chặt khi adopt).
+- Icon `scan`, `volume`, `volume-off`; lane `test:engines` chạy mọi `test/engines/*.spec.mjs`.
+
 ## 0.37.0
 
 **`<td-table>` chọn dòng** (plan `docs/internal/plans/v0.37.0-table-row-selection.md`, Codex plan-review APPROVE 2 vòng;
