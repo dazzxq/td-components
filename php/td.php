@@ -229,6 +229,10 @@ namespace TdComponents {
         public const COLOR_LABELS = ['input' => 'Mã màu', 'placeholder' => '#000000', 'hint' => 'Dạng #RRGGBB, ví dụ #1d4ed8'];
         /** v0.48.0: the no-JS pattern — ONLY #RRGGBB without JS (the server normalises with td_color_value()). */
         public const COLOR_PATTERN = '#[0-9a-fA-F]{6}';
+        /** v0.48.0 SEC-01 (= src/utils/color-picker-model.js): longest value / preset looked at, presets inspected, preset string bytes. */
+        public const COLOR_MAX_INPUT = 64;
+        public const COLOR_PRESET_CANDIDATES = 192;
+        public const COLOR_PRESET_STRING = 192 * 64;
         /** v0.36.0: tones / sizes of td_action_button (= TdActionButton). */
         public const ACTION_TONES = ['standard', 'warning', 'danger'];
         public const ACTION_SIZES = ['sm', 'md', 'lg'];
@@ -6684,17 +6688,41 @@ namespace {
             $norm = td_color_value($o['value']);
             if ($norm !== null) {
                 $value = $norm;
-            } else {
+            } elseif (is_string($o['value']) && strlen($o['value']) <= Td::COLOR_MAX_INPUT) {
+                // a short unparsable value is kept (escaped): the element reports badInput, no server data is lost
                 trigger_error('td_color_picker: value is not a #rgb / #rrggbb colour; printed as is (the element reports it)', E_USER_WARNING);
-                $value = is_string($o['value']) ? $o['value'] : '';
+                $value = $o['value'];
+            } else {
+                // SEC-01: never reflect an oversized / non-string value — omitted (the field shows empty)
+                trigger_error('td_color_picker: value is not a #rgb / #rrggbb colour and too long to print; omitted', E_USER_WARNING);
             }
         }
         $presets = null;
         if (array_key_exists('presets', $o) && $o['presets'] !== null) {
-            $list = is_string($o['presets']) ? preg_split('/[\s,]+/', $o['presets'], -1, PREG_SPLIT_NO_EMPTY) : (is_array($o['presets']) ? $o['presets'] : [null]);
+            // SEC-01 bounded work (= src/utils/color-picker-model.js parsePresets): a string over COLOR_PRESET_STRING
+            // bytes is rejected before the split; at most COLOR_PRESET_CANDIDATES entries are ever inspected
             $presets = [];
             $bad = 0;
+            $capped = false;
+            $list = [];
+            if (is_string($o['presets'])) {
+                if (strlen($o['presets']) > Td::COLOR_PRESET_STRING) {
+                    $capped = true;
+                } else {
+                    $list = preg_split('/[\s,]+/', $o['presets'], Td::COLOR_PRESET_CANDIDATES + 2, PREG_SPLIT_NO_EMPTY) ?: [];
+                }
+            } elseif (is_array($o['presets'])) {
+                $list = $o['presets'];
+            } else {
+                $bad = 1;
+            }
+            $seen = 0;
             foreach ($list as $p) {
+                if ($seen >= Td::COLOR_PRESET_CANDIDATES) {
+                    $capped = true;
+                    break;
+                }
+                $seen++;
                 $h = is_string($p) ? td_color_value($p) : null;
                 if ($h === null || $h === '') {
                     $bad++;
@@ -6702,8 +6730,8 @@ namespace {
                     $presets[] = $h;
                 }
             }
-            if ($bad > 0) {
-                trigger_error("td_color_picker: $bad preset(s) dropped (not a #rgb / #rrggbb colour)", E_USER_WARNING);
+            if ($bad > 0 || $capped) {
+                trigger_error('td_color_picker: some presets were dropped (not a #rgb / #rrggbb colour, or over the input limit)', E_USER_WARNING);
             }
         }
         $flag = static fn (string $k): bool => array_key_exists($k, $o) && $o[$k] !== null && !$o[$k];

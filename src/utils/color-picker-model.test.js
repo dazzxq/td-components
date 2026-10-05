@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  parseColorInput, parsePresets, DEFAULT_PRESETS, MAX_PRESETS, HEX_RE, hsvFromHex, hexFromHsv, hueHex, stepArea,
+  PRESET_CAP_CASES, parseColorInput, parsePresets, DEFAULT_PRESETS, MAX_PRESETS, HEX_RE, hsvFromHex, hexFromHsv, hueHex, stepArea,
   areaFromPoint, colorName, areaValueText, fill, MAX_PRESET_LABEL,
 } from './color-picker-model.js';
 
@@ -152,4 +152,59 @@ test('areaValueText / fill', () => {
   assert.equal(areaValueText({ s: 0.62, v: 0.401 }, '#1d4ed8', 'xanh dương'), 'Bão hoà 62 %, độ sáng 40 % — xanh dương, #1d4ed8');
   assert.equal(areaValueText({ s: 1, v: 0 }, '#000000', 'đen', 'S {s} V {v} {name} {hex} {x}'), 'S 100 V 0 đen #000000 {x}');
   assert.equal(fill('{a}-{b}', { a: 1 }), '1-{b}');
+});
+
+// v0.48.0 Codex review SEC-01: bounded work — at most MAX_PRESET_CANDIDATES (= MAX_PRESETS × 4 = 192) entries are
+// ever inspected, a preset string longer than MAX_PRESET_STRING (192 × 64 bytes, UTF-8) is rejected before any split.
+test('SEC-01 parsePresets: candidate limit, string byte cap, sparse arrays — bounded, items from the first 192 only', async () => {
+  const { MAX_PRESET_CANDIDATES, MAX_PRESET_STRING, presetCandidates } = await import('./color-picker-model.js');
+  assert.equal(MAX_PRESET_CANDIDATES, 192);
+  assert.equal(MAX_PRESET_STRING, 192 * 64);
+  // a huge string: rejected as a whole before the split (no grid), quickly
+  const huge = '#fff '.repeat(1_000_000);
+  let t0 = performance.now();
+  assert.deepEqual(parsePresets(huge), { items: [], dropped: 1, capped: true });
+  assert.ok(performance.now() - t0 < 1000 * 20, 'bounded');
+  // just at the cap: accepted (ASCII: bytes = characters)
+  const atCap = '#abc'.padEnd(MAX_PRESET_STRING, ' ');
+  assert.deepEqual(parsePresets(atCap).items.map((p) => p.hex), ['#aabbcc']);
+  assert.equal(parsePresets(`${atCap} `).capped, true);
+  // multi-byte text counts in UTF-8 bytes (parity with php strlen)
+  assert.equal(parsePresets('đ'.repeat(MAX_PRESET_STRING / 2 + 1)).capped, true);
+  // 100 000 duplicates: only 192 candidates looked at
+  const dup = Array(100_000).fill('#fff');
+  t0 = performance.now();
+  const d = parsePresets(dup);
+  assert.deepEqual(d.items.map((p) => p.hex), ['#ffffff']);
+  assert.equal(d.capped, true);
+  assert.ok(performance.now() - t0 < 1000 * 20);
+  // entry 193+ is never inspected, even a valid one
+  const late = [...Array(192).fill('nope'), '#000'];
+  assert.deepEqual(parsePresets(late).items, []);
+  // a string with > 192 codes: the 193rd code is not parsed
+  const many = Array.from({ length: 200 }, (_, i) => `#${(i).toString(16).padStart(6, '0')}`).join(' ');
+  const m = parsePresets(many);
+  assert.equal(m.items.length, MAX_PRESETS);
+  assert.equal(m.capped, true);
+  // sparse arrays: holes count as (dropped) candidates, the length is never walked
+  const sparse = [];
+  sparse[0] = '#111';
+  sparse[5] = '#222';
+  sparse.length = 10_000_000;
+  t0 = performance.now();
+  assert.deepEqual(parsePresets(sparse).items.map((p) => p.hex), ['#111111', '#222222']);
+  assert.ok(performance.now() - t0 < 1000 * 20);
+  // presetCandidates: the copy the element keeps (≤ 192 entries, holes kept as undefined)
+  assert.equal(presetCandidates(sparse).length, 192);
+  assert.equal(presetCandidates(dup).length, 192);
+  assert.deepEqual(presetCandidates(['#a', '#b']), ['#a', '#b']);
+  assert.equal(presetCandidates('x'), null);
+});
+
+test('SEC-01 parity cases (JS side)', () => {
+  for (const [name, make, want] of PRESET_CAP_CASES) {
+    const got = parsePresets(make()).items.map((p) => p.hex);
+    if (want === 'first48') assert.deepEqual(got, Array.from({ length: 48 }, (_, i) => `#${i.toString(16).padStart(6, '0')}`), name);
+    else assert.deepEqual(got, want, name);
+  }
 });

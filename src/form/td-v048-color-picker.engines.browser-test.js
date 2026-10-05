@@ -257,6 +257,56 @@ describe('td-color-picker — popup', () => {
     expect(log.change.length).to.equal(changes + 1);
   });
 
+  it('review ISSUE-1: popup open + a valid colour typed in the text input (uncommitted) + Escape → restored, ONE input + ONE change, focus on the trigger', async () => {
+    const { el, trigger, input, log } = mount('value="#1d4ed8"');
+    trigger.click();
+    expect(!!panel()).to.equal(true);
+    input.focus();
+    input.select();
+    await sendKeys({ type: '#ff0000' });
+    expect(el.value).to.equal('#ff0000');
+    expect(log.change.length, 'typing does not commit').to.equal(0);
+    expect(!!panel(), 'the popup follows the typing').to.equal(true);
+    log.input.length = 0;
+    await sendKeys({ press: 'Escape' });
+    expect(!!panel()).to.equal(false);
+    expect(el.value).to.equal('#1d4ed8');
+    expect(input.value).to.equal('#1d4ed8');
+    expect(log.input).to.deep.equal(['#1d4ed8']);
+    expect(log.change).to.deep.equal(['#1d4ed8']);
+    expect(active() === trigger).to.equal(true);
+    expect(log.native).to.equal(0);
+    // nothing more later (the text input's blur commits nothing new)
+    trigger.blur();
+    expect(log.change.length).to.equal(1);
+  });
+
+  it('presets property: a 100 000-entry / sparse array is bounded (≤ 192 inspected), one fixed warning', () => {
+    const warns = [];
+    const orig = console.warn;
+    console.warn = (...a) => warns.push(String(a[0]));
+    try {
+      const { el, trigger } = mount();
+      const big = Array(100000).fill('#fff');
+      big[150] = '#000';
+      big[500] = '#123';
+      el.presets = big;
+      const sparse = [];
+      sparse[3] = '#abc';
+      sparse.length = 1e7;
+      trigger.click();
+      expect([...panel().querySelectorAll('.td-color-panel__preset')].map((b) => b.dataset.value)).to.deep.equal(['#ffffff', '#000000']);
+      el.close();
+      el.presets = sparse;
+      expect(el.presets.map((p) => p.value)).to.deep.equal(['#aabbcc']);
+    } finally {
+      console.warn = orig;
+    }
+    const mine = warns.filter((w) => w.startsWith('td-color-picker:'));
+    expect(mine.length).to.equal(2); // one per assigned source
+    expect(new Set(mine).size, 'a fixed text (no input reflected)').to.equal(1);
+  });
+
   it('a click outside closes and KEEPS the value', async () => {
     const { el, trigger } = mount('value="#1d4ed8"');
     trigger.click();

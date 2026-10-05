@@ -9,7 +9,7 @@ import { createCheckMark } from '../utils/check-mark.js';
 import { contrast, pickPole } from '../theme/color.js';
 import {
   parseColorInput, parsePresets, DEFAULT_PRESETS, HEX_RE, MAX_COLOR_INPUT, hsvFromHex, hexFromHsv, hueHex, stepArea,
-  areaFromPoint, colorName, areaValueText, fill,
+  areaFromPoint, colorName, areaValueText, fill, presetCandidates,
 } from '../utils/color-picker-model.js';
 
 /** Attributes of the server-rendered input that exist only for the no-JS form (removed on hydrate). */
@@ -238,7 +238,8 @@ export class TdColorPicker extends TdFormElement {
       this.setAttribute('presets', v);
       return;
     }
-    this._presetsProp = Array.isArray(v) ? [...v] : null;
+    this._presetsProp = presetCandidates(v); // SEC-01: ≤ 192 entries copied, a sparse array's length never walked
+    this._presetsCapped = Array.isArray(v) && (v.length >>> 0) > this._presetsProp.length;
     this._warned.delete('presets');
     if (this._panel) this._rebuildPanel();
   }
@@ -625,10 +626,10 @@ export class TdColorPicker extends TdFormElement {
   /** @private resolved presets (property > attribute > defaults), one warning per source when entries are dropped */
   _presetItems() {
     const src = this._presetsProp ?? (this.hasAttribute('presets') ? this.getAttribute('presets') : null);
-    const { items, dropped } = parsePresets(src);
-    if (dropped && !this._warned.has('presets')) {
+    const { items, dropped, capped } = parsePresets(src);
+    if ((dropped || capped || (this._presetsProp && this._presetsCapped)) && !this._warned.has('presets')) {
       this._warned.add('presets');
-      console.warn(`td-color-picker: ${dropped} preset(s) ignored (not a colour, translucent, or over 48).`);
+      console.warn('td-color-picker: some presets were ignored (not a colour, translucent, over 48, or over the input limit).');
     }
     return items;
   }
@@ -842,17 +843,25 @@ export class TdColorPicker extends TdFormElement {
     this._placePanel();
   }
 
-  /** @private Escape: back to the value at opening (one input + one change when it differs) + focus on the swatch */
+  /**
+   * @private Escape: back to the value at opening — when the value differs from it (whatever was committed meanwhile,
+   * e.g. a colour typed but not yet committed): ONE `input` + ONE `change`; then close and focus the swatch button
+   * (also when the focus was in the text input).
+   */
   _cancel() {
     const prev = this.value;
-    if (this._openValue != null && prev !== this._openValue) {
-      this._assign(this._openValue);
+    const open = this._openValue;
+    if (open != null && prev !== open) {
+      this._assign(open);
       if (this._openHsv) this._hsv = { ...this._openHsv };
       this._refresh(true);
       this._changed(prev);
-      this._commit();
+      this._committed = this.value; // the next blur / Enter commits nothing new
+      this.emit('change', { value: this.value });
     }
-    this.close();
+    this.close({ focus: false });
+    const trigger = this._trigger();
+    if (trigger && !trigger.disabled && this.isConnected) trigger.focus({ preventScroll: true });
   }
 
   /** @private Tab / Shift+Tab cycle inside the popup; from the text input (popup open) Tab leaves + closes */

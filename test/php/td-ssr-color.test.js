@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { HAS_PHP, PHP_BIN, ROOT } from './php.mjs';
-import { parseColorInput } from '../../src/utils/color-picker-model.js';
+import { parseColorInput, parsePresets as parsePresetsJs } from '../../src/utils/color-picker-model.js';
 import { COLOR_PICKER_FIXTURE_FILE, renderColorPickerFixture } from '../ssr/ssr.mjs';
 
 if (!HAS_PHP && process.env.TD_REQUIRE_PHP) throw new Error('TD_REQUIRE_PHP=1 but no php >= 8.0 CLI on PATH');
@@ -123,6 +123,62 @@ describe('php/td.php — td_color_value / td_color_picker (v0.48.0, contract col
     assert.ok(r.out.includes(' data-x="1"'), r.out);
     assert.ok(!/onclick|evil|value="#000"|pattern="\.\*"|type="color"|formaction|data-td-ssr="x"|maxlength="9"|autocomplete="on"| title="T"|class="z"/.test(r.out), r.out);
     assert.equal((r.out.match(/ name="c"/g) || []).length, 2, 'host + input only');
+  });
+
+  // v0.48.0 Codex review SEC-01: bounded work + no oversized reflection (same caps as src/utils/color-picker-model.js)
+  /** Run PHP code fed on stdin (big inputs are built IN php — no huge command line); returns its JSON output. */
+  const runCode = (body) => {
+    const code = `<?php require ${JSON.stringify(join(ROOT, 'php/td.php'))}; TdComponents\\Td::configure('/', ${JSON.stringify(ROOT)});`
+      + ' $w = 0; set_error_handler(function (int $no, string $msg) use (&$w): bool {'
+      + " if ($no === E_USER_WARNING && str_starts_with($msg, 'td_color_picker:')) { $w++; return true; } return false; });"
+      + ` $t0 = microtime(true); $out = (function () { ${body} })(); $ms = (microtime(true) - $t0) * 1000;`
+      + ' echo json_encode([\'out\' => $out, \'warns\' => $w, \'ms\' => $ms], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);';
+    const r = spawnSync(PHP_BIN, ['-d', 'display_errors=stderr', '-d', 'log_errors=0', '-d', 'error_reporting=E_ALL', '-d', 'memory_limit=512M'], { input: code, encoding: 'utf8', maxBuffer: 64 << 20 });
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(r.stderr, '', r.stderr);
+    return JSON.parse(r.stdout);
+  };
+  const presetsAttr = (html) => (/ presets="([^"]*)"/.exec(html) || [])[1];
+  const SLACK = process.env.TD_PERF_STRICT === '1' ? 1 : 20;
+
+  test('SEC-01: an invalid value longer than 64 is NOT reflected (omitted + one warning); 1 MiB → output stays small', () => {
+    const r = runCode("return td_color_picker('c', ['element' => true, 'value' => str_repeat('<x>', 349526)]);");
+    assert.equal(r.warns, 1);
+    assert.ok(r.out.length < 1000, `output ${r.out.length} bytes`);
+    assert.ok(!/ value=/.test(r.out), r.out);
+    const n = runCode("return td_color_picker('c', ['value' => str_repeat('x', 65)]);");
+    assert.ok(!/ value=/.test(n.out) && n.warns === 1, n.out);
+    const short = runCode("return td_color_picker('c', ['value' => str_repeat('x', 64)]);");
+    assert.ok(short.out.includes(` value="${'x'.repeat(64)}"`), 'a short invalid value is still kept (escaped)');
+  });
+
+  test('SEC-01: presets — huge string rejected before the split, 100 000 duplicates / sparse keys: ≤ 192 inspected', () => {
+    const big = runCode("return td_color_picker('c', ['element' => true, 'presets' => str_repeat('#fff ', 1000000)]);");
+    assert.equal(presetsAttr(big.out), '');
+    assert.equal(big.warns, 1);
+    assert.ok(big.ms < 200 * SLACK, `${big.ms} ms`);
+    const dup = runCode("return td_color_picker('c', ['element' => true, 'presets' => array_fill(0, 100000, '#fff')]);");
+    assert.equal(presetsAttr(dup.out), '#ffffff');
+    assert.equal(dup.warns, 1, 'one fixed warning for the capped list');
+    const sparse = runCode("return td_color_picker('c', ['element' => true, 'presets' => [0 => '#111', 5000000 => '#222', 9 => 'nope']]);");
+    assert.equal(presetsAttr(sparse.out), '#111111 #222222');
+    assert.equal(sparse.warns, 1);
+  });
+
+  test('SEC-01: JS / PHP parity of the caps (PRESET_CAP_CASES)', async () => {
+    const { PRESET_CAP_CASES } = await import('../../src/utils/color-picker-model.js');
+    const php = {
+      '192 nope + #000 (193rd never inspected)': "array_merge(array_fill(0, 192, 'nope'), ['#000'])",
+      '200 distinct codes → first 48': "array_map(fn ($i) => '#' . str_pad(dechex($i), 6, '0', STR_PAD_LEFT), range(0, 199))",
+      'string at the byte cap': "str_pad('#abc', 192 * 64, ' ')",
+      'string 1 byte over the cap': "str_pad('#abc', 192 * 64 + 1, ' ')",
+    };
+    for (const [name, make] of PRESET_CAP_CASES) {
+      const r = runCode(`return td_color_picker('c', ['element' => true, 'presets' => ${php[name]}]);`);
+      const got = (presetsAttr(r.out) || '').split(' ').filter(Boolean);
+      const js = parsePresetsJs(make()).items.map((p) => p.hex);
+      assert.deepEqual(got, js, name);
+    }
   });
 
   test('test/ssr/fixtures/color-picker.html (browser fixture) is up to date', () => {

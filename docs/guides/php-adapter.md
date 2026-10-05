@@ -1724,7 +1724,8 @@ nguyên ≥ 0. Cờ `locked` / `na` / `collapsed` phải là **bool** thật.
   `aria-labelledby` `aria-invalid` `aria-errormessage` `aria-describedby` + `data-td-*`), `class`, `id` (id **ô chữ**;
   element: host `{id}-host`), `element`.
 - `value` / `presets` qua `td_color_value()`: `#rgb` / `#rrggbb` (có hoặc không `#`) → `#rrggbb` chữ thường; giá trị
-  không hợp lệ được **giữ** (escape) + một `E_USER_WARNING`; preset lỗi bị bỏ + một warning; tối đa 48 preset.
+  không hợp lệ ≤ 64 ký tự được **giữ** (escape) + một `E_USER_WARNING`, dài hơn → **không in** + warning; preset lỗi bị
+  bỏ + một warning; tối đa 48 preset, chỉ 192 mục đầu được xem, chuỗi `presets` > 12 288 byte bị bỏ cả chuỗi.
 
 **`td_color_value(mixed $v): ?string` — gọi khi nhận POST, trước khi kiểm / lưu** (bản không-JS gửi đúng chữ người dùng
 gõ, client bất kỳ POST được chuỗi tuỳ ý):

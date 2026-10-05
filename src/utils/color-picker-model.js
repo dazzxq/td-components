@@ -19,6 +19,36 @@ export { MAX_COLOR_INPUT };
 export const MAX_PRESETS = 48;
 /** Longest preset label kept (characters). */
 export const MAX_PRESET_LABEL = 120;
+/** SEC-01: at most this many preset entries are ever INSPECTED (array items or codes of a string). */
+export const MAX_PRESET_CANDIDATES = MAX_PRESETS * 4;
+/** SEC-01: a preset string longer than this (UTF-8 bytes) is rejected as a whole, before any split. */
+export const MAX_PRESET_STRING = MAX_PRESET_CANDIDATES * 64;
+
+/** UTF-8 byte length of `s`, stopping as soon as it exceeds `max` (bounded work). */
+function utf8Over(s, max) {
+  if (s.length > max) return true;
+  let n = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    n += c < 0x80 ? 1 : c < 0x800 ? 2 : c >= 0xd800 && c <= 0xdbff ? (i++, 4) : 3;
+    if (n > max) return true;
+  }
+  return false;
+}
+
+/**
+ * SEC-01: the bounded copy of a presets array the element keeps — the first MAX_PRESET_CANDIDATES entries (holes of a
+ * sparse array become `undefined`); the array length is never walked. Not an array → null.
+ * @param {unknown} v
+ * @returns {unknown[] | null}
+ */
+export function presetCandidates(v) {
+  if (!Array.isArray(v)) return null;
+  const n = Math.min(v.length >>> 0, MAX_PRESET_CANDIDATES);
+  const out = new Array(n);
+  for (let i = 0; i < n; i++) out[i] = v[i];
+  return out;
+}
 
 /** dcms2 dcms-color-picker DEFAULT_PRESETS, lowercased (greys, then the hue wheel). */
 export const DEFAULT_PRESETS = Object.freeze([
@@ -47,15 +77,23 @@ export function parseColorInput(raw) {
  * Presets from the attribute (a string: codes separated by white space / commas) or the property (an array of
  * `string | { value, label }`). Each entry goes through parseColorInput(); invalid / translucent ones are dropped,
  * duplicates keep the first, at most MAX_PRESETS. `null` / `undefined` → DEFAULT_PRESETS; `''` / `[]` → none.
+ * SEC-01 bounded work: a string over MAX_PRESET_STRING UTF-8 bytes is rejected before the split; at most
+ * MAX_PRESET_CANDIDATES entries are inspected (later ones are ignored, `capped: true`).
  * @param {unknown} input
- * @returns {{ items: Array<{ hex: string, label: string }>, dropped: number }}
+ * @returns {{ items: Array<{ hex: string, label: string }>, dropped: number, capped?: true }}
  */
 export function parsePresets(input) {
   if (input == null) return { items: DEFAULT_PRESETS.map((hex) => ({ hex, label: '' })), dropped: 0 };
   let list;
-  if (typeof input === 'string') list = input.split(/[\s,]+/).filter(Boolean);
-  else if (Array.isArray(input)) list = input;
-  else return { items: [], dropped: 1 };
+  let capped = false;
+  if (typeof input === 'string') {
+    if (utf8Over(input, MAX_PRESET_STRING)) return { items: [], dropped: 1, capped: true };
+    list = input.split(/[\s,]+/, MAX_PRESET_CANDIDATES + 2).filter(Boolean);
+    if (list.length > MAX_PRESET_CANDIDATES) { list.length = MAX_PRESET_CANDIDATES; capped = true; }
+  } else if (Array.isArray(input)) {
+    capped = (input.length >>> 0) > MAX_PRESET_CANDIDATES;
+    list = presetCandidates(input);
+  } else return { items: [], dropped: 1 };
   const items = [];
   const seen = new Set();
   let dropped = 0;
@@ -74,7 +112,7 @@ export function parsePresets(input) {
     seen.add(r.hex);
     items.push({ hex: r.hex, label });
   }
-  return { items, dropped };
+  return capped ? { items, dropped, capped: true } : { items, dropped };
 }
 
 const clamp01 = (n) => (n < 0 ? 0 : n > 1 ? 1 : n);
@@ -186,3 +224,14 @@ export function fill(tpl, vars) {
 export function areaValueText(state, hex, name, tpl = 'Bão hoà {s} %, độ sáng {v} % — {name}, {hex}') {
   return fill(tpl, { s: Math.round(state.s * 100), v: Math.round(state.v * 100), name, hex });
 }
+
+/**
+ * SEC-01 parity cases of the preset caps — [name, make input, expected hexes | 'first48'] (src/utils/color-picker-model.test.js;
+ * test/php/td-ssr-color.test.js runs the same list through td_color_picker()). Same precedent as OTP_CASES.
+ */
+export const PRESET_CAP_CASES = [
+  ['192 nope + #000 (193rd never inspected)', () => [...Array(192).fill('nope'), '#000'], []],
+  ['200 distinct codes → first 48', () => Array.from({ length: 200 }, (_, i) => `#${i.toString(16).padStart(6, '0')}`), 'first48'],
+  ['string at the byte cap', () => '#abc'.padEnd(192 * 64, ' '), ['#aabbcc']],
+  ['string 1 byte over the cap', () => '#abc'.padEnd(192 * 64 + 1, ' '), []],
+];

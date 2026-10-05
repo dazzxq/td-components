@@ -98,8 +98,8 @@ Bấm nút ô màu (bên trái ô chữ), hoặc Enter / Space trên nút đó, 
 Từ trên xuống: vùng 2 chiều → [nút lấy màu] + thanh sắc độ → [tương phản] → màu có sẵn → "Xoá màu".
 
 - Mở ra focus vào **điểm chọn** của vùng 2 chiều (hoặc màu đang chọn khi `custom="false"`). Mở / đóng **không** ghi giá trị.
-- **Tab / Shift+Tab** vòng trong popup. **Escape** → trả lại giá trị lúc mở + đóng + focus về nút ô màu (nếu giá trị đã
-  đổi: một `input` + một `change`). **Bấm ra ngoài**, cuộn làm ô khuất, hoặc một lớp phủ mới che → đóng và **giữ** giá trị.
+- **Tab / Shift+Tab** vòng trong popup. **Escape** → trả lại giá trị lúc mở + đóng + focus về nút ô màu,
+  kể cả khi đang gõ trong ô chữ (giá trị khác lúc mở — kể cả màu vừa gõ chưa xác nhận: đúng một `input` + một `change`). **Bấm ra ngoài**, cuộn làm ô khuất, hoặc một lớp phủ mới che → đóng và **giữ** giá trị.
 - **Bấm một màu có sẵn** → chọn + đóng (như dcms). Kéo vùng / thanh sắc độ không đóng.
 - Gõ trong ô chữ khi popup đang mở → popup theo (vùng / sắc độ / màu có sẵn đang chọn).
 - Popup là bề mặt "popup nhỏ" (đặc 94 % + blur), đưa ra `<body>`, nổi trên modal / drawer; mở từ một vùng
@@ -132,7 +132,10 @@ popup cuộn bình thường. Ô / nút ≥ 44px trên màn hình cảm ứng.
 - **Thuộc tính** `presets`: các mã cách nhau bởi khoảng trắng / dấu phẩy (in được từ PHP): `presets="#b3261e #1f2937 red"`.
 - **Property** `presets` (thắng thuộc tính): mảng `string | { value, label }` — `label` là tên đọc cho trình đọc màn hình
   + tooltip (`title`), **chỉ là chữ** (không HTML).
-- Mỗi mục qua cùng bộ parse; mục lỗi / trong suốt bị bỏ + **một** `console.warn`; trùng → giữ lần đầu; tối đa **48**.
+- Mỗi mục qua cùng bộ parse; mục lỗi / trong suốt bị bỏ + **một** `console.warn` (chữ cố định); trùng → giữ lần đầu;
+  tối đa **48** màu. Giới hạn công việc: chỉ **192** mục đầu (mảng hoặc mã trong chuỗi) được xem — mục sau bị bỏ qua, mảng
+  thưa (sparse) không bị duyệt hết độ dài; chuỗi `presets` dài hơn **12 288 byte** (UTF-8) bị bỏ cả chuỗi (không lưới).
+  PHP áp đúng các giới hạn này.
 - Không đặt → **16 màu mặc định** (như dcms: thang xám + vòng màu; `TdColorPicker.defaultPresets`). `presets=""` hoặc
   `[]` → không có lưới.
 - Lưới là **một điểm Tab** (mũi tên 2 chiều theo số cột thật, Home / End), màu đang chọn có `aria-pressed="true"` + dấu
@@ -225,8 +228,9 @@ bị sửa (thêm `formaction`, ô `type=color`, input thứ hai…) → render 
 Option: `label`, `aria_label`, `value`, `presets` (mảng hoặc chuỗi mã), `required`, `disabled`, `readonly`, `custom`
 (`false` = chỉ preset), `contrast`, `eyedropper` (`false` = ẩn), `placeholder`, `error`, `attrs` (lên ô chữ, allowlist;
 các tên component sở hữu + `data-td-*` bị giữ chỗ), `class`, `id` (id của **ô chữ**; element: host = `{id}-host`),
-`element`. `value` / `presets` qua `td_color_value()`: giá trị không hợp lệ được **giữ nguyên** (escape) + một
-`E_USER_WARNING` (component báo `badInput`, không mất dữ liệu server); preset lỗi bị bỏ + một warning. PHP chỉ nhận preset
+`element`. `value` / `presets` qua `td_color_value()`: giá trị không hợp lệ dài ≤ 64 ký tự được **giữ nguyên** (escape) +
+một `E_USER_WARNING` (component báo `badInput`, không mất dữ liệu server); dài hơn 64 (hoặc không phải chuỗi) thì
+**không in** (ô rỗng) + một warning; preset lỗi bị bỏ + một warning. PHP chỉ nhận preset
 dạng `#rgb` / `#rrggbb`. Chi tiết: [PHP adapter](../guides/php-adapter.md#td_color_picker-và-td_color_value-0480).
 
 ## Tuỳ biến

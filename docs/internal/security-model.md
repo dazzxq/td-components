@@ -485,7 +485,10 @@ người dùng [datetime-range.md](../components/datetime-range.md#bảo-mật))
   cố định + allowlist; `pattern` lần đầu chỉ được là `#[0-9a-fA-F]{6}`). Lệch (thêm `formaction`, `type=color`, input ẩn
   thứ hai, `<button>` lạ…) → render an toàn, giữ chữ đang gõ. Nút mở popup / nút xoá chỉ được tạo **sau** cổng (bước
   bind). Nhận markup: FormData của host trước → gỡ `name` / `value` / `required` / `pattern` / `title`.
+- **Công việc có giới hạn (Codex review SEC-01):** preset — tối đa 192 mục được xem (mảng: chép ≤ 192 phần tử, không
+  duyệt độ dài mảng thưa; chuỗi: tách tối đa 192 mã), chuỗi > 12 288 byte UTF-8 bị bỏ **trước** khi tách; một cảnh báo
+  chữ cố định (không phản chiếu input). JS và PHP cùng giới hạn (case parity `PRESET_CAP_CASES`).
 - **PHP:** `td_color_value()` là điểm chuẩn hoá phía server (không phải chuỗi / > 64 ký tự → `null`; regex neo `/D`);
-  `td_color_picker()` escape mọi thuộc tính, `value` không hợp lệ được giữ nguyên **đã escape** + warning, preset lỗi bị
-  bỏ, `attrs` qua allowlist (tên của component + `data-td-*` giữ chỗ). Kiểm định dạng ở trình duyệt **không phải** kiểm
+  `td_color_picker()` escape mọi thuộc tính, `value` không hợp lệ ≤ 64 ký tự được giữ nguyên **đã escape** + warning,
+  dài hơn thì **không in** (không phản chiếu chuỗi lớn), preset lỗi bị bỏ, `attrs` qua allowlist (tên của component + `data-td-*` giữ chỗ). Kiểm định dạng ở trình duyệt **không phải** kiểm
   soát bảo mật: server luôn gọi `td_color_value()` rồi mới lưu.
