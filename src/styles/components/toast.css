@@ -36,7 +36,6 @@
 		--td-toast-pad-y: 0.75rem;
 		--td-toast-pad-x: 1rem;
 		--td-toast-font-size: var(--td-text-sm);
-		--td-toast-shadow: var(--td-glass-shadow);
 		--td-toast-enter-shift: 1rem;
 		--td-toast-enter-dur: 200ms;
 		--td-toast-exit-dur: 180ms;
@@ -44,6 +43,11 @@
 		--td-toast-offset-top: 5rem;
 		--td-toast-offset-bottom: 1rem;
 		--td-toast-offset-inline: 1rem;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+		--td-toast-shadow: var(--td-glass-shadow);
 		/* v0.36.0 solid per type (QĐ 18 / 20; error ↔ danger). Literals = the shared values, used until/unless the
 		   --td-solid-* tokens exist. Border = the darker hover shade. */
 		--td-toast-success-bg: var(--td-solid-success-bg, #15803d);
@@ -85,10 +89,7 @@
 	}
 
 	/* Dark: the solid fills stay (white ink on 600/700 reads on a dark page too — QĐ 18). */
-	:root[data-td-theme="dark"] {
-		--td-toast-fg: var(--td-glass-fg);
-		--td-toast-close-fg: var(--td-glass-fg);
-	}
+	/* v0.42.0: no dark block — --td-toast-fg = --td-color-text (= --td-glass-fg in dark), close follows it */
 }
 
 @layer td.component {

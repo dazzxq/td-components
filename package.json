@@ -1,14 +1,17 @@
 {
   "name": "@dazzxq/td-components",
-  "version": "0.41.0",
+  "version": "0.42.0",
   "description": "Shared UI Web Components library — single source of truth UI kit (token CSS + minimal surfaces)",
   "type": "module",
   "main": "index.js",
+  "bin": {
+    "td-theme": "bin/td-theme.mjs"
+  },
   "scripts": {
-    "test": "npm run check:css && npm run check:icons && npm run check:stories && npm run test:node && npm run test:browser && npm run test:csp && npm run test:csp:combined && npm run test:tokens && npm run test:golden && npm run test:contrast && npm run test:page-contrast && npm run test:engines && npm run test:responsive && npm run test:touch",
-    "test:ci": "npm run check:css && npm run check:icons && npm run check:stories && npm run test:node && npm run test:browser && npm run test:csp && npm run test:csp:combined && npm run test:tokens && npm run test:golden && npm run test:engines && npm run test:responsive && npm run test:touch",
-    "test:theme": "npm run test:contrast && npm run test:page-contrast",
-    "test:node": "node --test --test-force-exit \"src/**/*.test.js\" \"test/php/*.test.js\" \"test/tokens/*.test.js\"",
+    "test": "npm run check:css && npm run check:icons && npm run check:stories && npm run test:node && npm run test:browser && npm run test:csp && npm run test:csp:combined && npm run test:tokens && npm run test:golden && npm run test:contrast && npm run test:page-contrast && npm run test:theme && npm run test:engines && npm run test:responsive && npm run test:touch",
+    "test:ci": "npm run check:css && npm run check:icons && npm run check:stories && npm run test:node && npm run test:browser && npm run test:csp && npm run test:csp:combined && npm run test:tokens && npm run test:golden && npm run test:theme && npm run test:engines && npm run test:responsive && npm run test:touch",
+    "test:contrast-gates": "npm run test:contrast && npm run test:page-contrast",
+    "test:node": "node --test --test-force-exit \"src/**/*.test.js\" \"test/php/*.test.js\" \"test/tokens/*.test.js\" \"bin/*.test.mjs\"",
     "test:browser": "web-test-runner",
     "test:csp": "node test/csp/csp.spec.mjs",
     "test:csp:combined": "CSP_PROFILE=legacy+td node test/csp/csp.spec.mjs",
@@ -27,6 +30,7 @@
     "test:engines": "node test/engines/run.mjs",
     "test:contrast": "node test/tokens/contrast.spec.mjs",
     "test:page-contrast": "node test/tokens/page-contrast.spec.mjs",
+    "test:theme": "node test/theme/theme.spec.mjs",
     "test:responsive": "node test/responsive/responsive.spec.mjs",
     "test:touch": "node test/touch/touch.spec.mjs",
     "test:visual": "node test/visual/media-picker.visual.mjs"
@@ -86,6 +90,7 @@
     "./dom-utils": "./src/utils/dom-utils.js",
     "./form-validation": "./src/utils/form-validation.js",
     "./breakpoints": "./src/utils/breakpoints.js",
+    "./theme": "./src/theme/index.js",
     "./package.json": "./package.json"
   },
   "files": [
@@ -96,6 +101,8 @@
     "!src/**/*.stories.css",
     "!src/styles/story-layout.css",
     "index.js",
+    "bin",
+    "!bin/*.test.mjs",
     "php",
     "td.css",
     "THIRD_PARTY_NOTICES.md"

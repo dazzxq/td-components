@@ -582,6 +582,7 @@ export class TdDatetimeRange extends TdFormElement {
     this._panel = panel;
     const mode = this._mode();
     this._modalId = TdModal.show({
+      themeRoot: this, // v0.42.0 (ADR 0020): the range dialog follows the host's theme scope
       title: this._text(L, 'title'),
       body: panel,
       size: mode === 'datetime' ? 'lg' : 'md',

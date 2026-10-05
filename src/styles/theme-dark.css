@@ -1,10 +1,15 @@
 /*
  * Dark theme (v0.41.0: official) — <html data-td-theme="dark">, or data-td-theme="auto" to follow the OS: the build
- * (scripts/css-theme.mjs) copies EVERY `:root[data-td-theme="dark"]` rule of src/styles into
- * `@media (prefers-color-scheme: dark) { :root[data-td-theme="auto"] { … } }` right after it — never write an auto
- * block by hand (the build rejects it). No attribute = light, never flips with the OS (light-only sites).
+ * (scripts/css-theme.mjs) copies EVERY dark rule of src/styles into
+ * `@media (prefers-color-scheme: dark) { <auto variant> { … } }` right after it — never write an auto block by hand
+ * (the build rejects it). No attribute = light, never flips with the OS (light-only sites).
+ * v0.42.0 (QĐ15, ADR 0020): themes scope — the selectors come from src/theme/selectors.js: dark =
+ * `:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"]` (0,2,0: beats the base slot
+ * `:root, [data-td-theme]` whatever the file order), so `<section data-td-theme="dark">` in a light page (and
+ * `data-td-theme="light"` inside a dark one) re-resolves every colour token; popups opened from a scope follow it
+ * through the portal bridge (src/utils/layers.js bridgeTheme).
  * Token remap only, inside @layer td.tokens so a site's unlayered token overrides still win; a site tunes dark values
- * with its own `:root[data-td-theme="dark"] { … }` rule (add `:root[data-td-theme="auto"]` inside the same media query
+ * with its own `:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] { … }` rule (add `:root[data-td-theme="auto"]` inside the same media query
  * when the site uses auto).
  * v0.41.0 tuning, rendered on demo.html in 3 engines (test/tokens/page-contrast.spec.mjs; ratios WCAG 2.x, on #1c1c1e
  * surface / #242427 muted / #111113 page): control edges ≥ 3:1 against every surface (QĐ7), muted text ≥ 4.7 also on
@@ -14,16 +19,13 @@
 @layer td.tokens {
 	/* v0.41.0 (QĐ3): an explicit light page, and auto under an OS light preference, declare their scheme (native
 	   controls, scrollbars). No attribute → no color-scheme at all (pixel-identical to v0.40). The OS-dark branch of
-	   auto gets `color-scheme: dark` from the generated copy of the dark rule below (same specificity, later). */
-	:root[data-td-theme="light"] {
+	   auto gets `color-scheme: dark` from the generated copy of the dark rule below (0,2,0 beats this 0,1,0).
+	   v0.42.0: per scope (a light section inside a dark page gets light native controls). */
+	[data-td-theme="light"], [data-td-theme="auto"] {
 		color-scheme: light;
 	}
 
-	:root[data-td-theme="auto"] {
-		color-scheme: light;
-	}
-
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		color-scheme: dark;
 
 		--td-color-bg: #111113;
@@ -129,7 +131,7 @@
 	/* v0.16.0: the dark fill FOLLOWS the site accent — 20% darker so white text stays readable
 	   (default #3b82f6 → ≈ #2f68c5, white ≈ 5.3:1). */
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
-		:root[data-td-theme="dark"] {
+		:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 			--td-accent-fill: color-mix(in srgb, var(--td-accent) 80%, #000);
 		}
 	}

@@ -13,17 +13,21 @@
  */
 @layer td.tokens {
 	:root {
+		--td-tabs-radius: 12px;
+		--td-tabs-pad: 4px;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-tabs-bg: var(--td-color-hover);
 		--td-tabs-pill: var(--td-color-surface);
 		--td-tabs-pill-shadow: var(--td-shadow-1);
 		--td-tabs-fg: var(--td-color-text-muted);
 		--td-tabs-fg-hover: var(--td-color-text);
 		--td-tabs-fg-active: var(--td-color-text);
-		--td-tabs-radius: 12px;
-		--td-tabs-pad: 4px;
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		/* the dark surface is darker than the translucent trough → a lighter translucent pill */
 		--td-tabs-pill: rgb(255 255 255 / 14%);
 		--td-tabs-pill-shadow: 0 1px 2px rgb(0 0 0 / 40%);

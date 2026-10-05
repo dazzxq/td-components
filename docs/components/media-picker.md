@@ -412,6 +412,7 @@ const outcome = await TdMediaPicker.open({
 | `context` | `unknown` | — | Chuyển nguyên vào mọi lời gọi adapter |
 | `locale` | `string` | `vi-VN` | Định dạng ngày (`Intl`) |
 | `messages` | `Record<string, string \| (params) => string>` | `{}` | Ghi đè nhãn **cho lần mở này** |
+| `themeRoot` | `Element` | — | 0.42.0: hiển thị theo theme của vùng `[data-td-theme]` chứa phần tử này ([theming › Theme theo vùng](../customization/theming.md#popup-mở-từ-trong-vùng), ADR 0020). Không truyền → theme của trang. |
 | `title` | `string` | theo `selection.kinds` | "Chọn ảnh" / "Chọn video" / "Chọn tài liệu" / "Chọn media" |
 | `pageSize` | số 1–100 | `30` | → `limit` (0.32: 40) |
 | `pagination` | `'cursor'` \| `'pages'` | `'cursor'` | 0.33 — [Phân trang](#phân-trang--hai-chế-độ) |

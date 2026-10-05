@@ -496,6 +496,7 @@ export class TdDatetimePicker extends TdFormElement {
     const panel = this._buildPanel();
     this._panel = panel;
     this._modalId = TdModal.show({
+      themeRoot: this, // v0.42.0 (ADR 0020): the picker dialog follows the host's theme scope
       title: this._text(L, 'title'),
       body: panel,
       size: 'sm',

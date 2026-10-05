@@ -11,6 +11,7 @@
  *
  * @module utils/dom-utils
  */
+import { luminance, contrast, pickPole } from '../theme/color.js';
 
 /**
  * Convert a string to a URL-friendly slug, with first-class Vietnamese support
@@ -178,10 +179,7 @@ export function parseColorToRgb(color) {
  * @returns {number}
  */
 export function relativeLuminance({ r, g, b }) {
-  const srgb = [r / 255, g / 255, b / 255].map((ch) =>
-    ch <= 0.03928 ? ch / 12.92 : Math.pow((ch + 0.055) / 1.055, 2.4)
-  );
-  return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+  return luminance({ r: r / 255, g: g / 255, b: b / 255 }); // v0.42.0: one implementation (src/theme/color.js)
 }
 
 /**
@@ -196,11 +194,8 @@ export function contrastRatio(color1, color2) {
   const rgb1 = typeof color1 === 'string' ? parseColorToRgb(color1) : color1;
   const rgb2 = typeof color2 === 'string' ? parseColorToRgb(color2) : color2;
   if (!rgb1 || !rgb2) return 1;
-  const l1 = relativeLuminance(rgb1);
-  const l2 = relativeLuminance(rgb2);
-  const lighter = Math.max(l1, l2);
-  const darker = Math.min(l1, l2);
-  return (lighter + 0.05) / (darker + 0.05);
+  const to01 = (c) => ({ r: c.r / 255, g: c.g / 255, b: c.b / 255 });
+  return contrast(to01(rgb1), to01(rgb2));
 }
 
 /**
@@ -213,7 +208,5 @@ export function contrastRatio(color1, color2) {
 export function getAccessibleTextColor(backgroundColor) {
   const rgb = typeof backgroundColor === 'string' ? parseColorToRgb(backgroundColor) : backgroundColor;
   if (!rgb) return '#ffffff';
-  const withWhite = contrastRatio(rgb, { r: 255, g: 255, b: 255 });
-  const withBlack = contrastRatio(rgb, { r: 0, g: 0, b: 0 });
-  return withWhite >= withBlack ? '#ffffff' : '#000000';
+  return pickPole({ r: rgb.r / 255, g: rgb.g / 255, b: rgb.b / 255 }, { tie: 'white' });
 }

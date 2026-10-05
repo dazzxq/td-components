@@ -13,9 +13,13 @@
  */
 @layer td.tokens {
 	:root {
+		--td-pagination-item-size: 2rem;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-pagination-active: var(--td-accent-fill);
 		--td-pagination-active-fg: var(--td-accent-contrast);
-		--td-pagination-item-size: 2rem;
 	}
 
 	/* v0.16.0: touch size on :root too (was .td-pagination), so a site `:root` override wins everywhere */
@@ -23,11 +27,8 @@
 		:root { --td-pagination-item-size: var(--td-touch-min); }
 	}
 
-	:root[data-td-theme="dark"] {
-		/* white text on the raw dark accent #3b82f6 is 3.68:1 → the darkened fill, like .td-btn--primary (v0.16.0) */
-		--td-pagination-active: var(--td-accent-fill);
-		--td-pagination-active-fg: #fff;
-	}
+	/* v0.42.0: no dark block — the light declarations (accent fill + accent contrast) already resolve to the dark
+	   values (#3c71c6 + white) under data-td-theme="dark", and follow a generated palette in any slot. */
 }
 
 @layer td.component {

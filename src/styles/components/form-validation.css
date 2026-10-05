@@ -7,14 +7,18 @@
  */
 @layer td.tokens {
 	:root {
+		--td-form-summary-radius: var(--td-radius-md);
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		/* var() references resolve per theme (theme-dark.css redefines --td-color-error/-surface on :root). */
 		--td-form-summary-bg: color-mix(in srgb, var(--td-color-error) 8%, var(--td-color-surface));
 		--td-form-summary-border: color-mix(in srgb, var(--td-color-error) 75%, var(--td-color-surface)); /* ≥ 3:1 */
 		--td-form-summary-fg: var(--td-color-error);
-		--td-form-summary-radius: var(--td-radius-md);
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-form-summary-bg: color-mix(in srgb, var(--td-color-error) 12%, var(--td-color-surface));
 	}
 }

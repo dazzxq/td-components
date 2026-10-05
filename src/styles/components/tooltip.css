@@ -22,15 +22,19 @@
 		--td-tooltip-leading: 1.4;
 		--td-tooltip-arrow-size: 8px;
 		--td-tooltip-dur: 120ms;
+		--td-tooltip-text-align: center;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		/* v0.21.0: black chip (both themes), solid, no blur; wrapped text centred by default (data-tooltip-align on the
 		   trigger → data-align on the chip overrides per tooltip). */
 		--td-tooltip-bg: #18181b;
 		--td-tooltip-fg: #fff;
 		--td-tooltip-border: transparent;
-		--td-tooltip-text-align: center;
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		/* v0.41.0: a raised grey chip (was #18181b, 1.06:1 on the page): 1.67 page · 1.50 surface, white 11.3, + a light edge */
 		--td-tooltip-bg: #3a3a3e;
 		--td-tooltip-border: rgb(255 255 255 / 16%);

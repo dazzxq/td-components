@@ -1,7 +1,7 @@
 import { fold } from '../utils/typeahead.js';
 import { createCheckMark } from '../utils/check-mark.js';
 import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
-import { LAYERS, register as registerLayer } from '../utils/layers.js';
+import { LAYERS, register as registerLayer, bridgeTheme } from '../utils/layers.js';
 import { TdFormElement } from '../base/td-form-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 
@@ -1794,6 +1794,8 @@ export class TdChipInput extends TdFormElement {
       return;
     }
     this._isOpen = true;
+    // v0.42.0 (ADR 0020): the portaled popup renders in the host's theme scope (undone when the layer is released)
+    if (!this._unbridge) this._unbridge = bridgeTheme(menu, this);
     menu.hidden = false;
     menu.setAttribute('data-state', 'open');
     this._root()?.setAttribute('data-state', 'open');
@@ -1846,6 +1848,10 @@ export class TdChipInput extends TdFormElement {
     if (this._layer) {
       this._layer.release();
       this._layer = null;
+    }
+    if (this._unbridge) {
+      this._unbridge();
+      this._unbridge = null;
     }
   }
 

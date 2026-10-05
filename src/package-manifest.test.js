@@ -271,3 +271,21 @@ test('v0.40.0: ./datetime-range export, sideEffects, barrel TdDatetimeRange, dat
     assert.ok(css.includes(sel), sel);
   }
 });
+
+test('v0.42.0: ./theme subpath (pure: not in sideEffects); the palette golden is not shipped from src', () => {
+  assert.equal(pkg.exports['./theme'], './src/theme/index.js');
+  assert.ok(!pkg.sideEffects.some((f) => f.startsWith('./src/theme/')), 'theme modules have no side effect');
+});
+
+test('v0.42.0: the td-theme bin is declared and shipped (executable, not its test)', { timeout: 60000 }, async () => {
+  assert.deepEqual(pkg.bin, { 'td-theme': 'bin/td-theme.mjs' });
+  const { statSync } = await import('node:fs');
+  assert.ok(statSync(join(ROOT, 'bin', 'td-theme.mjs')).mode & 0o111, 'executable');
+  assert.match(await readFile(join(ROOT, 'bin', 'td-theme.mjs'), 'utf8'), /^#!\/usr\/bin\/env node\n/);
+  const r = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], { cwd: ROOT, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  const paths = JSON.parse(r.stdout)[0].files.map((f) => f.path);
+  for (const f of ['bin/td-theme.mjs', 'src/theme/index.js', 'src/theme/palette.js', 'src/theme/color.js', 'src/theme/serialize.js',
+    'src/theme/presets.js', 'src/theme/selectors.js', 'src/theme/tokens.js']) assert.ok(paths.includes(f), f);
+  assert.ok(!paths.some((p) => /\.test\.(m?js)$/.test(p)), 'no tests shipped');
+});

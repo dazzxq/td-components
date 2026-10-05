@@ -11,10 +11,6 @@
  */
 @layer td.tokens {
 	:root {
-		--td-slider-color: var(--td-accent);
-		--td-slider-track: var(--td-gray-200);
-		--td-slider-thumb-bg: #fff;
-		--td-slider-disabled: var(--td-gray-400);
 		--td-slider-w-sm: 200px;
 		--td-slider-w-md: 300px;
 		--td-slider-w-lg: 400px;
@@ -26,9 +22,16 @@
 		--td-slider-thumb-lg: 22px;
 	}
 
-	:root[data-td-theme="dark"] {
-		--td-slider-track: #3a3a40;
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+		--td-slider-color: var(--td-accent);
+		--td-slider-track: var(--td-gray-200);
 		--td-slider-thumb-bg: #fff;
+		--td-slider-disabled: var(--td-gray-400);
+	}
+
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
+		--td-slider-track: #3a3a40;
 		--td-slider-disabled: #5a5a62;
 	}
 }

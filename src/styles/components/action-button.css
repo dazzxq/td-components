@@ -14,6 +14,10 @@
 		--td-action-btn-size-md: 2.25rem;
 		--td-action-btn-size-lg: 2.5rem;
 		--td-action-btn-radius: var(--td-radius-md);
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-action-btn-standard-fg: var(--td-color-text-label);
 		--td-action-btn-standard-hover-bg: var(--td-color-hover);
 		--td-action-btn-warning-fg: var(--td-color-warning);
@@ -30,7 +34,7 @@
 	}
 
 	/* dark (opt-in): light inks on the dark page, translucent tone fills */
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-action-btn-warning-fg: #fcd34d;
 		--td-action-btn-warning-hover-bg: rgb(245 158 11 / 14%);
 		--td-action-btn-danger-fg: #fca5a5;

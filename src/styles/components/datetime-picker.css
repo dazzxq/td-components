@@ -13,6 +13,10 @@
 		--td-dtp-option-h: 40px;                                  /* wheel row height (44px on coarse pointers) */
 		--td-dtp-visible: 5;                                      /* visible rows → wheel height = row × 5 (odd) */
 		--td-dtp-wheel-w: 5rem;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-dtp-band-bg: var(--td-color-hover-strong);
 		--td-dtp-band-border: var(--td-control-border-hover);     /* v0.14.4: soft like the other control edges; fill + bold mark it too */
 		--td-dtp-option-fg: var(--td-color-text-muted);           /* ≥ 4.5:1 (was gray-400, 2.54:1) */

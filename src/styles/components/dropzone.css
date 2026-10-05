@@ -10,20 +10,10 @@
  */
 @layer td.tokens {
 	:root {
-		--td-dropzone-bg: var(--td-field-bg);
-		--td-dropzone-bg-active: color-mix(in srgb, var(--td-accent) 6%, var(--td-field-bg));
-		--td-dropzone-bg-disabled: var(--td-field-bg-disabled);
-		--td-dropzone-bg-pressed: #f4f4f5; /* v0.36.2: the zone while pressed (opens the picker); muted sub-line keeps 4.81:1 (gray-100 is 4.64) */
-		--td-dropzone-border: var(--td-control-border-strong); /* dashed edge ≥ 3:1 on white */
-		--td-dropzone-border-active: var(--td-accent);
 		--td-dropzone-radius: var(--td-radius-lg);
 		--td-dropzone-pad: var(--td-space-lg) var(--td-space-md);
-		--td-dropzone-icon: var(--td-color-text-muted);
-		--td-dropzone-hint: var(--td-color-text-muted);
-		--td-dropzone-item-bg: var(--td-color-surface-muted);
 		--td-dropzone-item-radius: var(--td-radius-md);
 		--td-dropzone-thumb: 40px;
-		--td-dropzone-reject: var(--td-color-error);
 		/* v0.33.0 stacked presentation (dcms2: py-16 px-8, rounded-2xl, 2px dashed, 64 px icon, title 1.25rem/600) */
 		--td-dropzone-stacked-pad: calc(var(--td-space-md) * 4) calc(var(--td-space-md) * 2);
 		--td-dropzone-stacked-radius: var(--td-radius-xl);
@@ -33,8 +23,22 @@
 		--td-dropzone-title-weight: var(--td-fw-semibold);
 	}
 
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+		--td-dropzone-bg: var(--td-field-bg);
+		--td-dropzone-bg-active: color-mix(in srgb, var(--td-accent) 6%, var(--td-field-bg));
+		--td-dropzone-bg-disabled: var(--td-field-bg-disabled);
+		--td-dropzone-bg-pressed: #f4f4f5; /* v0.36.2: the zone while pressed (opens the picker); muted sub-line keeps 4.81:1 (gray-100 is 4.64) */
+		--td-dropzone-border: var(--td-control-border-strong); /* dashed edge ≥ 3:1 on white */
+		--td-dropzone-border-active: var(--td-accent);
+		--td-dropzone-icon: var(--td-color-text-muted);
+		--td-dropzone-hint: var(--td-color-text-muted);
+		--td-dropzone-item-bg: var(--td-color-surface-muted);
+		--td-dropzone-reject: var(--td-color-error);
+	}
+
 	/* dark (opt-in): the pressed zone one step lighter than the dark field */
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-dropzone-bg-pressed: #2c2c30;
 	}
 }

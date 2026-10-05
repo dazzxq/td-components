@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.42.0](#0420) | Thêm tính năng (palette `td-theme`, builder, theme theo vùng, popup theo vùng) + đổi hành vi **chỉ khi site dùng vùng** | Không bắt buộc. Trang không đặt `data-td-theme` trên phần tử con: không đổi gì (golden light / dark 0 khác biệt). Site **chủ động** đặt `data-td-theme` trên một vùng: override **màu** không layer trên `:root` không còn chảy vào trong vùng — ghi đè thêm trên `[data-td-theme="…"]`. Popup mở từ trong vùng nay theo vùng (trước theo trang). |
 | [0.41.0](#0410) | Đổi giao diện **chỉ ở dark** + thêm tính năng (`light` / `auto`, hợp đồng theme) | Không bắt buộc. Không đặt `data-td-theme` = light **giống từng pixel**, trừ viền ô chọn dòng `td-table` (sửa hồi quy 0.37) và **vòng focus bàn phím** (rõ hơn, ≥ 3:1 — chỉ thấy khi focus bằng bàn phím). Dark đổi một số giá trị (viền control ≥ 3:1, chữ phụ, accent, tooltip, bóng — danh sách dưới); site ghi đè giá trị dark cũ thì xem lại. Site **đổi** `--td-color-surface` / `-text` / `-text-muted` / `-border-strong` / `--td-color-{success,warning,error}` / `--td-pastel-*-fg` ở light: ô nhập, modal, chữ control, placeholder, badge outline, nút thao tác, tiêu đề alert giờ **đi theo** (trước giữ màu cứng). Script `matchMedia` tự bật dark → thay bằng `data-td-theme="auto"`. |
 | [0.39.0](#0390) | Thêm tính năng (bộ lọc ngoài, ẩn / hiện cột, `<td-filter-chips>`) + đổi hành vi nhỏ | Không bắt buộc. Cột có sẵn khoá `hidden: true` trong `columns` giờ **bị ẩn** (trước bị bỏ qua). `getState()` thêm `filters` / `totalItems` / `requestId`. `onPageChange` chạy khi lượt bấm đổi trang kết thúc (vẫn đồng bộ). Import map: thêm `filter-chips`. |
 | [0.37.0](#0370) | Thêm tính năng (chọn dòng `td-table`) + đổi hành vi nhỏ | Không bắt buộc. `<td-table>` giờ **form-associated**: có trong `form.elements`; `disabled` trên chính `td-table` (trước vô nghĩa) giờ làm trình duyệt chặn mọi cú bấm chuột trong bảng. Chọn dòng là opt-in (`selectable` + `row-key`). |
@@ -70,6 +71,42 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.42.0
+
+**Mức: thêm tính năng; đổi hành vi chỉ khi site đặt `data-td-theme` lên một phần tử con của trang.** Không đặt hoặc
+chỉ đặt trên `<html>`: giá trị computed của mọi token như 0.41 (golden light + dark 0 khác biệt, CSP parity không chụp
+lại). Chi tiết: [theming.md › Palette tuỳ biến](../customization/theming.md#palette-tuỳ-biến-td-theme-0420) và
+[Theme theo vùng](../customization/theming.md#theme-theo-vùng); quyết định: [ADR 0020](../internal/decisions/0020-theme-scope-portal.md).
+
+**Thêm:**
+
+- CLI `npx td-theme` (`package.json#bin`) + module `@dazzxq/td-components/theme` (`generatePalette`, `toCss`, …) + trang
+  `src/theme/builder/theme-builder.html`: sinh file CSS tĩnh (bọc `@layer td.tokens`) từ `bg` + `accent` (+ surface,
+  trạng thái), tự cân WCAG AA, mã chẩn đoán ổn định. Nạp **sau** `td.css`, trước CSS site.
+- Theme theo vùng: `data-td-theme="dark" | "light" | "auto" | "<tên>"` trên bất kỳ phần tử nào.
+- Popup ra `<body>` (dropdown, chip-input, tree-select, menu, hovercard, tooltip, modal, drawer, toast, loading, media
+  picker, crop dialog) mở từ trong vùng theo vùng. Overlay gọi bằng code nhận option `themeRoot` (`TdModal.show/confirm/…`,
+  `TdToast.*`, `TdLoading.show`, `TdMenu.open`, `TdDrawer.open`, `TdMediaPicker.open`, `TdCropper.openDialog`).
+
+**Đổi hành vi (chỉ site dùng vùng):**
+
+| Trước (0.41) | Từ 0.42.0 |
+|---|---|
+| `<section data-td-theme="dark">` không có tác dụng | vùng tối thật (token màu giải lại trên vùng) |
+| `:root { --td-accent: red }` (CSS không layer) tô cả phần tử bên trong mọi `<section data-td-theme>` | **không** tới được bên trong vùng: vùng khai báo lại token **màu** của theme đó. Muốn: thêm `[data-td-theme] { --td-accent: red }` (mọi vùng) hoặc `[data-td-theme="dark"] { … }` |
+| Popup mở từ vùng ra theme của `<html>` | ra theme của vùng: token **ngữ nghĩa** (hợp đồng theme, + `color-scheme`) đặt trên phần tử có attribute đi theo; token **riêng của component** đặt trên vùng (`.promo[data-td-theme] { --td-checkbox-color }`) và override cục bộ không đánh dấu (`.card { --td-accent }`) thì **không** — trừ rule chọn theo giá trị attribute (`[data-td-theme="dark"] { … }`), vì attribute được chép sang popup |
+
+Token **hình học** (độ rộng, chữ, khoảng cách, bo góc, z-index, chuyển động, thang xám) vẫn chỉ trên `:root`: override
+của site tới được mọi vùng như cũ.
+
+**Selector trong `td.css` đổi (không đổi giá trị):** khối token màu `:root` → `:root, [data-td-theme]`; khối dark
+`:root[data-td-theme="dark"]` → `:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"]` (nhánh `auto` tương
+tự); light tường minh → `[data-td-theme="light"], [data-td-theme="auto"]`. Rule `:root[data-td-theme="dark"] { … }` của site
+(không layer) vẫn thắng như trước. CSS / test của site **đọc text** của `td.css` theo selector cũ thì cập nhật.
+
+`dom-utils` (`contrastRatio`, `getAccessibleTextColor`, `relativeLuminance`): API + kết quả không đổi (nay dùng chung
+`src/theme/color.js`).
 
 ## 0.41.0
 

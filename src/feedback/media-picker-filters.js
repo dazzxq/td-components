@@ -123,6 +123,7 @@ export function openFilterSheet(o) {
   const handle = openDialogLayer({
     root,
     dialog,
+    themeFrom: o.themeFrom || null, // v0.42.0 (ADR 0020): the picker root (bridged when the picker is)
     viewport: { root, scroller: nearestScroller(root) }, // v0.36.2: above the keyboard
     layer: LAYERS.modal,
     backdrop: root.querySelector('.td-modal__backdrop'),

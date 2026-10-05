@@ -9,6 +9,10 @@
 	:root {
 		--td-repeater-gap: var(--td-space-sm);
 		--td-repeater-btn-size: 2rem;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-repeater-btn-fg: var(--td-color-text-muted);
 		--td-repeater-btn-fg-hover: var(--td-color-text);
 		--td-repeater-btn-bg-hover: var(--td-color-hover-strong);

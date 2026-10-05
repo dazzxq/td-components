@@ -239,6 +239,7 @@ window.addEventListener('beforeunload', (e) => {
 | `focusTarget` | `HTMLElement` | `null` | Phần tử nhận focus ban đầu. Chỉ được dùng khi nó đã gắn vào DOM **và** nằm trong dialog (vì vậy thường là phần tử bạn truyền trong `body`). |
 | `bodyPadding` | `string` | — | Padding của body (giá trị CSS `padding` hợp lệ, ví dụ `'0'`, `'2rem 1rem'`). Dùng chuỗi có đơn vị: số trần như `16` bị từ chối (chỉ `0` hợp lệ). |
 | `bodyOverflow` | `string` | — | `visible` \| `hidden` \| `auto` \| `scroll` \| `clip`. Giá trị khác → bỏ qua + `console.warn`. |
+| `themeRoot` | `Element` | — | 0.42.0: hiển thị theo theme của vùng `[data-td-theme]` chứa phần tử này ([theming › Theme theo vùng](../customization/theming.md#popup-mở-từ-trong-vùng), ADR 0020). Không truyền → theme của trang. |
 
 ### Action (nút footer)
 

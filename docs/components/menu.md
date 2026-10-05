@@ -253,6 +253,7 @@ Named export phụ: `safeMenuHref(href, page = location)` → chuỗi href an to
 | `onClose` | `(reason) => void` | — | Gọi sau khi đóng. `reason`: `'select'`, `'escape'`, `'tab'`, `'outside'`, `'hidden'`, `'api'`. Lỗi trong hàm được log, không ném ra |
 | `ctx` | `object` | — | Dữ liệu ngữ cảnh (xem [ctx](#6-ngữ-cảnh-ctx)) |
 | `isAllowedUrl` | `(url) => boolean` | — | Chính sách URL riêng cho `href` của menu này: **thay** bộ lọc mặc định `safeMenuHref` (bạn chịu trách nhiệm). `false` / ném lỗi → mục disabled. `javascript:` luôn bị chặn. Xem [Mục tải xuống](#mục-tải-xuống-download) |
+| `themeRoot` | `Element` | — | 0.42.0: hiển thị theo theme của vùng `[data-td-theme]` chứa phần tử này ([theming › Theme theo vùng](../customization/theming.md#popup-mở-từ-trong-vùng), ADR 0020). Không truyền → theme của trang. |
 
 Trigger khai báo qua `bindAll()` luôn mở với tuỳ chọn mặc định (align `end`, không `onClose`); cần tuỳ chọn riêng thì
 dùng `bind()`.

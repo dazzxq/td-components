@@ -2,6 +2,36 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.42.0
+
+**Bộ sinh màu tự cân tương phản + theme theo vùng** (theming R2; plan `docs/internal/plans/v0.41.0-theming.md` phần R2;
+[ADR 0020](docs/internal/decisions/0020-theme-scope-portal.md)). Không đặt `data-td-theme` hoặc chỉ đặt trên `<html>`:
+mọi token giữ giá trị như 0.41 (golden light + dark không đổi). Chi tiết nâng cấp: `docs/upgrading/breaking-changes.md#0420`.
+
+### Added
+
+- **Bộ sinh màu** `@dazzxq/td-components/theme` (`generatePalette`, `toCss`…): từ `bg` + `accent` (tuỳ chọn `surface`,
+  `raisedSurface`, `controlSurface`, màu trạng thái) sinh ~86 token theme + 36 token component phụ thuộc sáng / tối (hover,
+  nhấn, tạo mới, dòng chọn… — theme tối dưới tên riêng không phụ thuộc rule dark của kit), chữ / viền / focus / accent / trạng thái tự đạt
+  WCAG AA; nền rơi vào "vùng chết" giữ nguyên màu site, chọn chữ đen / trắng tốt nhất và báo
+  `TD_THEME_CONTRAST_UNSATISFIABLE` (không bao giờ tự đổi nền). Tất định: cùng seed → cùng CSS từng byte.
+- **CLI** `npx td-theme --bg '#ece5d8' --accent '#b3261e' > site-theme.css`: CSS tĩnh bọc `@layer td.tokens` ra stdout,
+  chẩn đoán ra stderr (`--diagnostics=json`), exit 1 khi trượt AA bắt buộc (trừ `--allow-aa-failure`), 2 input sai, 3 lỗi
+  nội bộ; `--preset light|dark` in lại theme có sẵn. Site PHP chỉ cần `<link>` file sinh ra — không cần Node lúc chạy.
+- **Trang chọn màu không cần Node**: `src/theme/builder/theme-builder.html` (mở qua web server tĩnh bất kỳ, không
+  `file://`), xem trước component, bảng tỉ lệ WCAG, copy / tải CSS; trượt AA phải tick "Xuất dù trượt AA".
+- **Theme theo vùng**: `data-td-theme="dark|light|auto|<tên>"` trên bất kỳ phần tử nào; popup / modal / toast mở từ trong
+  vùng đi theo theme của vùng (cầu portal; overlay gọi bằng code nhận `themeRoot`).
+- Gate: fuzz 10 000 seed, so khớp từng byte giữa module / CLI / builder trên 3 engine, first paint với CSS sinh sẵn khi tắt JS,
+  gate toàn trang thêm bảng màu do generator sinh (be, navy ở khe trang và dạng theme có tên) + cặp
+  tương phản trạng thái hover / nhấn / tạo mới / dòng chọn.
+
+### Changed
+
+- Token **màu** khai báo lại trên `[data-td-theme]`: override màu không layer trên `:root` của site không còn chảy vào bên
+  trong vùng có attribute (chỉ ảnh hưởng site **chủ động** dùng vùng); token hình học vẫn chỉ trên `:root`.
+- Gom 4 hàm tính tương phản trùng lặp vào một lõi màu chung (`src/theme/color.js`), không đổi kết quả.
+
 ## 0.41.0
 
 **Theme chính thức: light / dark / auto** (theming R1; owner: "hỗ trợ cả dark mode và light mode" + màu nền tuỳ biến;

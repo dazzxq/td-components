@@ -200,6 +200,8 @@ export class TdModal {
    * @param {HTMLElement|null} [options.focusTarget=null] - Initial focus (honoured only if inside the dialog).
    * @param {string|number} [options.bodyPadding] - Body padding (valid CSS padding).
    * @param {string} [options.bodyOverflow] - visible | hidden | auto | scroll | clip.
+   * @param {Element|null} [options.themeRoot=null] - v0.42.0 (ADR 0020): render in the theme scope
+   *   (`[data-td-theme]`) of this element; without it the dialog follows the page theme.
    * @returns {string} Modal id
    */
   static show(options = {}) {
@@ -249,6 +251,7 @@ export class TdModal {
     instance.handle = openDialogLayer({
       root,
       dialog,
+      themeFrom: typeof Element !== 'undefined' && opts.themeRoot instanceof Element ? opts.themeRoot : null,
       viewport: { root, scroller: dialog.querySelector('.td-modal__body') }, // v0.36.2: above the keyboard
       layer: MODAL_LAYER,
       opener,
@@ -493,6 +496,7 @@ export class TdModal {
    * @param {'primary'|'danger'|'success'|'warning'} [options.confirmVariant='primary']
    * @param {Function} [options.onConfirm]
    * @param {Function} [options.onCancel]
+   * @param {Element|null} [options.themeRoot] - v0.42.0: follow this element's theme scope (see show())
    * @returns {Promise<boolean>}
    */
   static confirm(options = {}) {
@@ -506,6 +510,7 @@ export class TdModal {
         confirmVariant = 'primary',
         onConfirm = () => {},
         onCancel = () => {},
+        themeRoot = null,
       } = options || {};
       let settled = false;
       let confirming = false; // a close during onConfirm() is the confirmation, not a dismissal
@@ -574,6 +579,7 @@ export class TdModal {
         body: wrap,
         footer: [cancelButton, confirmButton],
         size: 'sm',
+        themeRoot,
         focusTarget: cancelButton,
         onClose: () => {
           if (confirming) { settle(true); return; }
@@ -595,6 +601,7 @@ export class TdModal {
         message = defaults.message,
         messageHtml,
         okText = TdModal.labels.ok || 'OK',
+        themeRoot = null,
       } = options || {};
       let settled = false;
       let modalId = '';
@@ -611,6 +618,7 @@ export class TdModal {
         body: wrap,
         footer: [okButton],
         size: 'sm',
+        themeRoot,
         onClose: () => {
           if (settled) return;
           settled = true;
@@ -622,7 +630,7 @@ export class TdModal {
 
   /**
    * Success dialog — OK → true, dismiss → false.
-   * @param {{ title?: string, message?: string, messageHtml?: string, okText?: string }} [options]
+   * @param {{ title?: string, message?: string, messageHtml?: string, okText?: string, themeRoot?: Element|null }} [options]
    *   `messageHtml` is TRUSTED HTML (developer content only).
    * @returns {Promise<boolean>}
    */
@@ -632,7 +640,7 @@ export class TdModal {
 
   /**
    * Error dialog — OK → true, dismiss → false.
-   * @param {{ title?: string, message?: string, messageHtml?: string, okText?: string }} [options]
+   * @param {{ title?: string, message?: string, messageHtml?: string, okText?: string, themeRoot?: Element|null }} [options]
    *   `messageHtml` is TRUSTED HTML (developer content only).
    * @returns {Promise<boolean>}
    */
@@ -642,7 +650,7 @@ export class TdModal {
 
   /**
    * Info dialog — OK → true, dismiss → false.
-   * @param {{ title?: string, message?: string, messageHtml?: string, okText?: string }} [options]
+   * @param {{ title?: string, message?: string, messageHtml?: string, okText?: string, themeRoot?: Element|null }} [options]
    *   `messageHtml` is TRUSTED HTML (developer content only).
    * @returns {Promise<boolean>}
    */

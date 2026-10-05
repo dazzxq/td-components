@@ -12,8 +12,6 @@
  */
 @layer td.tokens {
 	:root {
-		--td-skeleton-bg: var(--td-color-skeleton);
-		--td-skeleton-shine: var(--td-color-sheen);
 		--td-skeleton-radius: var(--td-radius-sm);
 		--td-skeleton-dur: 1.3s;
 		--td-skeleton-h: 1rem;
@@ -21,6 +19,12 @@
 		--td-skeleton-gap: 0.5rem;
 		--td-skeleton-size: 2.5rem;
 		--td-skeleton-ratio: 16 / 9;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+		--td-skeleton-bg: var(--td-color-skeleton);
+		--td-skeleton-shine: var(--td-color-sheen);
 	}
 }
 

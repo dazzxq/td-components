@@ -715,6 +715,7 @@ export class TdScanInput extends TdFormElement {
     if (n >= 5) {
       const { TdModal } = await import('../feedback/td-modal.js');
       const ok = await TdModal.confirm({
+        themeRoot: this, // v0.42.0 (ADR 0020)
         title: TdScanInput.labels.confirmClearTitle,
         message: fill(TdScanInput.labels.confirmClearMessage, { n }),
         confirmText: TdScanInput.labels.clearAll,

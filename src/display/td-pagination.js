@@ -1,5 +1,6 @@
 import { TdBaseElement } from '../base/td-base-element.js';
 import { TdButton } from '../form/td-button.js';
+import { pickPole } from '../theme/color.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 
 /** `{name}` placeholders from `vars`; unknown ones are kept as written. */
@@ -263,8 +264,8 @@ export class TdPagination extends TdBaseElement {
 
   /** @private Black or white, whichever contrasts more with `color` rendered over `under`. */
   static _contrastFg(color, under) {
-    const L = TdButton._luminance(TdPagination._over(color, under));
-    return (L + 0.05) / 0.05 >= 1.05 / (L + 0.05) ? '#000000' : '#ffffff';
+    const c = TdPagination._over(color, under);
+    return pickPole({ r: c.r / 255, g: c.g / 255, b: c.b / 255 }, { tie: 'black' }); // v0.42.0: src/theme/color.js
   }
 
   attributeChangedCallback(name, oldVal, newVal) {

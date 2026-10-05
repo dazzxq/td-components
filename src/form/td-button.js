@@ -1,4 +1,5 @@
 import { TdBaseElement } from '../base/td-base-element.js';
+import { luminance, pickPole } from '../theme/color.js';
 import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
 // v0.36.0: the SSR structure check (allowlists + sameControlStructure) lives in a shared internal module so
 // td-action-button can reuse it with its own allowlists.
@@ -174,11 +175,7 @@ export class TdButton extends TdBaseElement {
 
   /** @param {{r:number,g:number,b:number}} c @returns {number} WCAG relative luminance */
   static _luminance({ r, g, b }) {
-    const lin = (v) => {
-      const s = v / 255;
-      return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-    };
-    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    return luminance({ r: r / 255, g: g / 255, b: b / 255 }); // v0.42.0: src/theme/color.js
   }
 
   /**
@@ -192,11 +189,8 @@ export class TdButton extends TdBaseElement {
     const c = TdButton._parseColor(color);
     let out = '#ffffff';
     if (c) {
-      const over = (v) => v * c.a + 255 * (1 - c.a);
-      const L = TdButton._luminance({ r: over(c.r), g: over(c.g), b: over(c.b) });
-      const withBlack = (L + 0.05) / 0.05;
-      const withWhite = 1.05 / (L + 0.05);
-      out = withBlack >= withWhite ? '#000000' : '#ffffff';
+      const over = (v) => (v * c.a + 255 * (1 - c.a)) / 255;
+      out = pickPole({ r: over(c.r), g: over(c.g), b: over(c.b) }, { tie: 'black' }); // v0.42.0: src/theme/color.js
     }
     if (_contrastCache.size > 500) _contrastCache.clear(); // bounded, like _parseCache
     _contrastCache.set(color, out);

@@ -22,6 +22,8 @@ export const RAISED_ALLOW = [
   '.td-chip-input__menu', '.td-hovercard', '.td-modal', '.td-drawer', '.td-loading', '.td-lightbox', '.td-scroll-top',
   '.td-switch__thumb', '.td-slider__thumb', '.td-slider__input', '.td-media-grid', '.td-media-field__preview',
   '.td-cropper', 'img', 'video', 'canvas', 'svg', '.demo-glass-stage', '.demo-fill', '.demo-lb-gallery',
+  // v0.42.0: demo theme scopes (a light section inside a dark one is different on purpose)
+  '.demo-scope',
 ].join(', ');
 
 const isDisabled = (el) => !!el.closest(':disabled, [aria-disabled="true"], [data-disabled], [disabled], .td-field--disabled, [inert]');

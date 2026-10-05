@@ -10,11 +10,15 @@
 	:root {
 		--td-tree-indent: 1.25rem;
 		--td-tree-row-h: 2rem;
+		--td-tree-check-radius: var(--td-checkbox-radius); /* deprecated v0.36.0 (no effect): the check is the shared td-checkbox mark */
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-tree-row-hover: var(--td-color-hover);
 		--td-tree-row-active: var(--td-color-hover-strong);
 		--td-tree-row-active-line: var(--td-control-border-hover);
 		--td-tree-row-selected: var(--td-color-hover-strong);
-		--td-tree-check-radius: var(--td-checkbox-radius); /* deprecated v0.36.0 (no effect): the check is the shared td-checkbox mark */
 	}
 }
 

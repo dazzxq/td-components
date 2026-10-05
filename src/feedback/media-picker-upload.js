@@ -492,7 +492,7 @@ export function openUploadDialog(o) {
     batch.total = 0; batch.ok = 0; batch.fail = 0;
     if (!total) return;
     if (ok) {
-      try { TdToast.success(t('uploadDone', { ok, total })); } catch { /* ignore */ }
+      try { TdToast.success(t('uploadDone', { ok, total }), { themeRoot: root }); } catch { /* ignore */ }
     }
     if (!fail && ok && !closing && !urlTask) finish();
   }
@@ -572,7 +572,7 @@ export function openUploadDialog(o) {
         return;
       }
       uploaded(res.asset, res.deduplication, 'upload-url');
-      try { TdToast.success(t('urlDone')); } catch { /* ignore */ }
+      try { TdToast.success(t('urlDone'), { themeRoot: root }); } catch { /* ignore */ }
       urlField.value = '';
       urlField.removeAttribute('error-text');
       syncGate();
@@ -613,6 +613,7 @@ export function openUploadDialog(o) {
   const handle = openDialogLayer({
     root,
     dialog,
+    themeFrom: o.themeFrom || null, // v0.42.0 (ADR 0020): the picker root (bridged when the picker is)
     viewport: { root, scroller: nearestScroller(root) }, // v0.36.2: above the keyboard
     layer: LAYERS.modal,
     backdrop: root.querySelector('.td-modal__backdrop'),
@@ -659,7 +660,7 @@ export function openUploadDialog(o) {
     if (destroyed || closing) return closing && !destroyed;
     if (confirm) return false;
     if (busy()) {
-      const c = openCancelConfirm(t);
+      const c = openCancelConfirm(t, root);
       confirm = c;
       const ok = await c.promise;
       if (confirm === c) confirm = null;
@@ -696,7 +697,7 @@ export function openUploadDialog(o) {
  * @param {(key: string) => string} t
  * @returns {{ id: string, promise: Promise<boolean> }}
  */
-function openCancelConfirm(t) {
+function openCancelConfirm(t, themeRoot) {
   let resolve = (_v) => {};
   const promise = new Promise((r) => { resolve = r; });
   const body = document.createElement('p');
@@ -706,6 +707,7 @@ function openCancelConfirm(t) {
     title: t('uploadCancelTitle'),
     body,
     size: 'sm',
+    themeRoot,
     actions: [
       { label: t('uploadCancelKeep'), variant: 'secondary', value: false },
       { label: t('uploadCancelConfirm'), variant: 'danger', value: true },

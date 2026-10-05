@@ -1,5 +1,5 @@
 import { lockScroll } from '../utils/scroll-lock.js';
-import { LAYERS, register as registerLayer, trapTab, restoreFocus } from '../utils/layers.js';
+import { LAYERS, register as registerLayer, trapTab, restoreFocus, bridgeTheme } from '../utils/layers.js';
 
 const LOADING_LAYER = LAYERS.loading; // --td-z-loading
 import { safeColor } from '../utils/css-safe.js';
@@ -59,20 +59,23 @@ export class TdLoading {
 
   /**
    * Show the overlay.
-   * @param {string|{message?: string, maxDuration?: number|false}} [messageOrOptions]
+   * @param {string|{message?: string, maxDuration?: number|false, themeRoot?: Element|null}} [messageOrOptions]
    *   Default message: `TdLoading.labels.loading`. maxDuration defaults to 30000 ms (auto-hide safety net;
-   *   false/0 disables).
+   *   false/0 disables). v0.42.0 `themeRoot` (ADR 0020): the overlay follows that element's theme scope (read when
+   *   the overlay opens; a show() while it is already up keeps the open overlay's theme).
    */
   static show(messageOrOptions) {
     TdLoading.init();
     const fallback = TdLoading._defaultMessage();
     let message = fallback;
     let maxDuration = 30000;
+    let themeRoot = null;
     if (typeof messageOrOptions === 'string') {
       message = messageOrOptions; // verbatim (an explicit '' shows no text)
     } else if (messageOrOptions && typeof messageOrOptions === 'object') {
       message = messageOrOptions.message || fallback;
       if ('maxDuration' in messageOrOptions) maxDuration = messageOrOptions.maxDuration;
+      if (typeof Element !== 'undefined' && messageOrOptions.themeRoot instanceof Element) themeRoot = messageOrOptions.themeRoot;
     }
     const el = TdLoading.element;
     const msgEl = el.querySelector('#td-loading-message');
@@ -85,7 +88,9 @@ export class TdLoading {
 
     if (!TdLoading._active) {
       const saved = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      const unbridge = themeRoot ? bridgeTheme(el, null, { themeRoot }) : () => {};
       TdLoading._active = {
+        unbridge,
         releaseScroll: lockScroll(),
         layer: registerLayer({ // blocking inert lease + keyboard boundary (Escape swallowed, Tab held)
           layer: LOADING_LAYER,
@@ -142,6 +147,7 @@ export class TdLoading {
       el.removeAttribute('aria-busy');
     }
     if (!active) return;
+    active.unbridge();
     active.layer.release();
     active.releaseScroll();
     restoreFocus(active.savedFocus); // follows hand-offs of overlays closed meanwhile (e.g. a modal under us)

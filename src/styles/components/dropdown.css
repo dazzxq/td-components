@@ -13,6 +13,10 @@
 @layer td.tokens {
 	:root {
 		--td-dropdown-option-h: 40px; /* JS mirrors it: max-height = visible options × 40 px */
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		/* v0.36.0: defaults follow the shared option-row tokens (--td-option-*); -active-line no longer has an effect (the
 		   active row shows the inline-start accent bar --td-option-active-bar instead) */
 		--td-dropdown-option-hover: var(--td-option-hover-bg);
@@ -28,18 +32,16 @@
 		--td-dropdown-create-fg: var(--td-dropdown-create-fg-fallback);
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-dropdown-create-fg-fallback: #93c5fd;
-		--td-dropdown-option-active-line: var(--td-control-border-hover);
-		--td-dropdown-search-bg: rgb(255 255 255 / 6%);
 	}
 
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
-		:root {
+		:root, [data-td-theme] {
 			--td-dropdown-create-fg: color-mix(in srgb, var(--td-accent) 82%, #000);
 		}
 
-		:root[data-td-theme="dark"] {
+		:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 			--td-dropdown-create-fg: color-mix(in srgb, var(--td-accent) 55%, #fff); /* lighter step on the dark surface */
 		}
 	}

@@ -11,9 +11,13 @@
 @layer td.tokens {
 	:root {
 		--td-scan-list-max: 50vh;
+		--td-scan-font-size: max(1rem, 16px);
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-scan-ready: var(--td-color-success);   /* indicator text + icon while focused (#15803d: 5.0:1 on white) */
 		--td-scan-idle: var(--td-color-text-muted);
-		--td-scan-font-size: max(1rem, 16px);
 		--td-scan-list-bg: var(--td-color-surface);
 		--td-scan-list-border: var(--td-color-border);
 		--td-scan-row-sep: var(--td-color-border);

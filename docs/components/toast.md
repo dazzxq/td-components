@@ -115,6 +115,8 @@ TdToast.show('Đang đồng bộ…', 'info', { placement: 'bottom-start', durat
 Giá trị sai (vd. `'top-right'`) → một cảnh báo console cho mỗi giá trị, rồi dùng bậc kế. Vị trí được **chốt lúc gọi
 `show()`**: đổi `configure()` sau đó không dời toast đang chờ / đang hiện.
 
+> **0.42.0 — theme theo vùng:** option `themeRoot` (một phần tử): toast hiển thị theo theme của vùng `[data-td-theme]` chứa phần tử đó ([theming › Popup mở từ trong vùng](../customization/theming.md#popup-mở-từ-trong-vùng)). Không truyền → theme của trang. Ví dụ `TdToast.success('Đã lưu', { themeRoot: section })`.
+
 Mỗi vị trí là một chồng riêng; **toast mới nhất nằm sát mép** (chồng trên: mới nhất trên cùng; chồng dưới: mới nhất
 dưới cùng). Giới hạn `MAX_VISIBLE`, FIFO, `clear()` và tạm dừng vẫn là **toàn cục** (rê chuột lên một chồng → mọi toast
 cùng dừng). Hiện / ẩn trượt từ mép của chồng: `*-start` từ mép đầu dòng, `*-end` từ mép cuối dòng, `top-center` từ

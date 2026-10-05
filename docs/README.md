@@ -8,7 +8,7 @@ token `--td-*` chạm được tới nó. Toàn bộ giao diện nằm trong **m
 Triết lý: **lõi nhỏ + hook**. Site tuỳ biến bằng token CSS, attribute/property và hook (callback) — không bao giờ sửa
 code của kit.
 
-Phiên bản hiện tại: **0.41.0** (tag git `v0.41.0`) · Lịch sử thay đổi: [CHANGELOG.md](../CHANGELOG.md)
+Phiên bản hiện tại: **0.42.0** (tag git `v0.42.0`) · Lịch sử thay đổi: [CHANGELOG.md](../CHANGELOG.md)
 
 ---
 
@@ -24,6 +24,7 @@ Phiên bản hiện tại: **0.41.0** (tag git `v0.41.0`) · Lịch sử thay đ
 | Hiển thị đúng từ điện thoại tới desktop (breakpoint, container query, vùng chạm) | [Responsive](concepts/responsive.md) |
 | Tra cứu một component | [Danh sách component](components/README.md) |
 | Đổi màu, font, bo góc, dark mode, bỏ blur | [Theming](customization/theming.md) |
+| Sinh theme màu từ nền + màu nhấn (tự cân tương phản), vùng tối trong trang sáng | [Theming › Palette tuỳ biến (`td-theme`)](customization/theming.md#palette-tuỳ-biến-td-theme-0420) · [Theme theo vùng](customization/theming.md#theme-theo-vùng) |
 | Viết CSS đè lên component | [Styling](customization/styling.md) |
 | Cắm logic riêng của site (hook, callback) | [Danh mục hook](customization/hooks.md) |
 | Tự viết component mới, thêm icon, dịch nhãn | [Mở rộng](customization/extending.md) |
@@ -52,7 +53,7 @@ Xem [danh sách đầy đủ](components/README.md). Tóm tắt:
 
 ## Tuỳ biến
 
-- [Theming](customization/theming.md) — token `--td-*`, dark theme, bề mặt nổi (`--td-glass-*`), viền, chuẩn tương phản.
+- [Theming](customization/theming.md) — token `--td-*`, light / dark / auto, palette `td-theme` (CLI + builder), theme theo vùng, bề mặt nổi (`--td-glass-*`), viền, chuẩn tương phản.
 - [Styling](customization/styling.md) — `@layer`, cách đè CSS an toàn, class BEM ổn định, giá trị per-instance.
 - [Hook](customization/hooks.md) — danh mục mọi hook/callback/option theo component + công thức mẫu.
 - [Mở rộng](customization/extending.md) — viết component mới, đăng ký icon, registry menu, đổi ngôn ngữ nhãn.

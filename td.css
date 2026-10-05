@@ -17,6 +17,10 @@
  * Never override `--_td-*` (private, resolved by the kit's accessibility fallbacks).
  * Base scale adopted from the 135 `td-` kit; surface values from docs/internal/design/liquid-glass.md (minimal surfaces).
  * Light by default. Dark is opt-in: <html data-td-theme="dark"> (theme-dark.css).
+ * v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens are declared on `:root, [data-td-theme]` (they re-resolve in every
+ * theme scope: `<section data-td-theme="dark">`); geometry / type / spacing / radius / z-index / motion and the grey
+ * ramp stay on `:root`, so a site's `:root { --td-radius-lg: … }` still reaches inside scopes. The build lints both
+ * directions (scripts/css-theme.mjs checkThemeScope).
  */
 @layer td.tokens {
 	:root {
@@ -73,12 +77,6 @@
 		--td-radius-xl: 20px;
 		--td-radius-full: 9999px;
 
-		/* ===== Shadow ===== */
-		--td-shadow-1: 0 1px 2px rgb(0 0 0 / 6%);
-		--td-shadow-2: 0 2px 8px rgb(0 0 0 / 8%);
-		--td-shadow-3: 0 8px 24px rgb(0 0 0 / 12%);
-		--td-hairline: rgb(0 0 0 / 7%);
-
 		/* ===== Z-index scale =====
 		   Open dropdown / menu / chip-input / hovercard panels use --td-z-popover (450), not --td-z-dropdown.
 		   --td-z-sticky is used by <td-scroll-top> (v0.17.0). --td-z-dropdown / --td-z-overlay are RESERVED: public
@@ -100,6 +98,73 @@
 		--td-ease: cubic-bezier(0.4, 0, 0.2, 1);
 		--td-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 		--td-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+		/* v0.36.0 popup option rows (dropdown, multiselect, tree-select, menu — dcms2 look): full-bleed rows, a hover fill,
+		   a selected fill (single lists: semibold label + ✓ at the end), the keyboard-active row = fill + an inline-start
+		   accent bar (the focus indicator, ≥ 3:1 vs the popup surface — contrast gate) */
+		--td-option-pad-x: 12px;
+		--td-option-active-bar-w: 3px;
+		--td-control-radius: var(--td-radius-md);
+		--td-touch-min: 44px; /* minimum hit target for touch controls */
+
+		/* ===== Buttons — v0.20.0 minimal surfaces: SOLID fill + one soft shadow (--td-btn-lift), no blur / film / sheen /
+		   rim / glow / scale. v0.21.0: primary is BLACK (dark theme: inverted) with its own hover token. v0.36.0: success /
+		   danger / warning / info are SOLID (--td-solid-*: fill + white / dark label + -border, hover one step darker). Each filled variant reads
+		   -bg / -fg / -border / -hover. A site that changes -bg should set -hover too (otherwise hover keeps the default).
+		   Primary back on the site accent: --td-btn-primary-bg: var(--td-accent-fill) + --td-btn-primary-hover.
+		   Compatibility alias for one cycle: a site that still sets --td-btn-{primary,success,danger,info,warning}-tint
+		   gets that colour as the fill AND border, hover = 8 % darker (button.css) — the kit no longer declares -tint. */
+		--td-btn-radius: var(--td-radius-lg); /* capsule on coarse pointers (button.css) */
+		/* deprecated v0.20.0 — still declared, no effect (removed in a later major): glass-button films / sheen / alpha */
+		--td-btn-primary-alpha: 94%;
+		--td-btn-success-alpha: 94%;
+		--td-btn-danger-alpha: 94%;
+		--td-btn-info-alpha: 94%;
+		--td-btn-warning-alpha: 86%;
+		--td-btn-sheen: none;                           /* deprecated v0.20.0 */
+
+		/* ===== Icons (src/icons) ===== */
+		--td-icon-s: 1rem;
+		--td-icon-m: 1.25rem;
+		--td-icon-l: 1.5rem;
+		--td-icon-stroke: 2;
+		--td-glass-blur: blur(12px);
+		--td-glass-blur-lg: blur(12px);
+
+		/* Lightbox bars (toolbar / counter, `--clear`): dark, never themed (the backdrop is the photo). */
+		--td-glass-clear-bg: rgb(20 20 22 / 88%);
+		--td-glass-clear-solid: #141416;
+		--td-glass-clear-fg: #fff;
+		--td-glass-clear-border: rgb(255 255 255 / 12%);
+		--td-glass-clear-shadow: 0 4px 16px rgb(0 0 0 / 24%);
+		--td-glass-sheen: none;
+		--td-glass-clear-edge: rgb(255 255 255 / 48%);
+		--td-glass-clear-glyph-shadow: none;
+		--td-glass-tint-alpha: 100%;
+		--td-glass-glow-size: 0px;
+		--td-glass-press-scale: 1;
+		--td-glass-lift-scale: 1;
+		--td-glass-enter-scale: 1;
+		--td-scroll-edge-size: 40px;                   /* soft fade under a floating bar */
+
+		/* ================= Glass motion ================= */
+		--td-glass-dur: var(--td-dur-base);
+		--td-glass-ease: var(--td-ease-out);
+		--td-glass-ease-flex: var(--td-ease-spring);
+		--td-glass-radius: 20px;
+		--td-glass-pad: 6px;
+		--td-glass-radius-min: 4px;
+		--td-glass-radius-inner: max(var(--td-glass-radius-min), calc(var(--td-glass-radius) - var(--td-glass-pad)));
+		--td-glass-capsule: 9999px;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+
+		/* ===== Shadow ===== */
+		--td-shadow-1: 0 1px 2px rgb(0 0 0 / 6%);
+		--td-shadow-2: 0 2px 8px rgb(0 0 0 / 8%);
+		--td-shadow-3: 0 8px 24px rgb(0 0 0 / 12%);
+		--td-hairline: rgb(0 0 0 / 7%);
 
 		/* ===== Semantic colours (the theme contract) ===== */
 		--td-color-bg: #fbfbfa;
@@ -120,16 +185,11 @@
 		--td-color-hover-strong: rgb(0 0 0 / 8%);
 		/* v0.36.2 (ADR 0019): the shared PRESSED fill (touch :active / [data-td-pressed]) — colour only, never a scale */
 		--td-color-pressed: rgb(0 0 0 / 12%);
-		/* v0.36.0 popup option rows (dropdown, multiselect, tree-select, menu — dcms2 look): full-bleed rows, a hover fill,
-		   a selected fill (single lists: semibold label + ✓ at the end), the keyboard-active row = fill + an inline-start
-		   accent bar (the focus indicator, ≥ 3:1 vs the popup surface — contrast gate) */
-		--td-option-pad-x: 12px;
 		--td-option-hover-bg: var(--td-color-hover);
 		--td-option-active-bg: var(--td-color-hover-strong);
 		--td-option-selected-bg: var(--td-color-hover-strong);
 		--td-option-pressed-bg: var(--td-color-pressed); /* v0.36.2 */
 		--td-option-active-bar: var(--td-accent);
-		--td-option-active-bar-w: 3px;
 		--td-color-overlay: rgb(10 10 12 / 45%);
 		--td-color-skeleton: var(--td-gray-100);
 		/* v0.41.0: neutral fills on a surface — switch off, secondary button, neutral badge, filter chip, disabled field
@@ -159,7 +219,6 @@
 		--td-control-bg: var(--td-color-surface-raised);  /* v0.41.0: was #fff */
 		--td-control-fg: var(--td-color-text);
 		--td-control-border: var(--td-color-border-strong);
-		--td-control-radius: var(--td-radius-md);
 		--td-control-border-strong: var(--td-gray-500); /* ≥ 3:1 non-text contrast on white (3.42:1) */
 		/* v0.14.1 (owner request): resting border of fields / dropdown / toggle / checkbox — soft like Apple systemGray4
 		   (1.5:1). It steps up to --td-control-border-hover on hover (v0.14.2) and focus shows the ring; sites that need
@@ -168,7 +227,6 @@
 		--td-control-border-soft: #d1d1d6;
 		/* v0.14.2 (owner request): hover border / active option outline — a softer step up (Apple systemGray2). */
 		--td-control-border-hover: #aeaeb2;
-		--td-touch-min: 44px; /* minimum hit target for touch controls */
 
 		/* ===== Pastel semantic palette (v0.21.0) — soft fill (~100) + border (~200) + deep ink (~800/900) of the same hue.
 		   DEPRECATED v0.36.0: no component uses it as its default fill any more (buttons / badges → --td-solid-*); kept so a
@@ -207,15 +265,6 @@
 		--td-solid-info-fg: #fff;
 		--td-solid-info-hover: #1d4ed8;
 		--td-solid-info-border: #1d4ed8;
-
-		/* ===== Buttons — v0.20.0 minimal surfaces: SOLID fill + one soft shadow (--td-btn-lift), no blur / film / sheen /
-		   rim / glow / scale. v0.21.0: primary is BLACK (dark theme: inverted) with its own hover token. v0.36.0: success /
-		   danger / warning / info are SOLID (--td-solid-*: fill + white / dark label + -border, hover one step darker). Each filled variant reads
-		   -bg / -fg / -border / -hover. A site that changes -bg should set -hover too (otherwise hover keeps the default).
-		   Primary back on the site accent: --td-btn-primary-bg: var(--td-accent-fill) + --td-btn-primary-hover.
-		   Compatibility alias for one cycle: a site that still sets --td-btn-{primary,success,danger,info,warning}-tint
-		   gets that colour as the fill AND border, hover = 8 % darker (button.css) — the kit no longer declares -tint. */
-		--td-btn-radius: var(--td-radius-lg); /* capsule on coarse pointers (button.css) */
 		--td-btn-primary-bg: #18181b;
 		--td-btn-primary-fg: #fff;
 		--td-btn-primary-hover: #3f3f46;                /* black can't get darker: hover lightens */
@@ -254,18 +303,11 @@
 		--td-btn-disabled-fg: #a1a1aa;
 		--td-btn-disabled-border: #e4e4e7;
 		--td-btn-lift: 0 1px 3px rgb(0 0 0 / 10%), 0 4px 10px -2px rgb(0 0 0 / 12%); /* the ONE button shadow (v0.21.0: stronger) */
-		/* deprecated v0.20.0 — still declared, no effect (removed in a later major): glass-button films / sheen / alpha */
-		--td-btn-primary-alpha: 94%;
 		--td-btn-primary-film: rgb(0 0 0 / 10%);
-		--td-btn-success-alpha: 94%;
 		--td-btn-success-film: rgb(0 0 0 / 13%);
-		--td-btn-danger-alpha: 94%;
 		--td-btn-danger-film: rgb(0 0 0 / 6%);
-		--td-btn-info-alpha: 94%;
 		--td-btn-info-film: rgb(0 0 0 / 6%);
-		--td-btn-warning-alpha: 86%;
 		--td-btn-warning-film: rgb(255 255 255 / 10%);
-		--td-btn-sheen: none;                           /* deprecated v0.20.0 */
 		--td-btn-secondary-glass: var(--td-btn-secondary-bg);     /* deprecated v0.20.0 → --td-btn-secondary-bg */
 		--td-btn-secondary-edge: var(--td-btn-secondary-border);  /* deprecated v0.20.0 → --td-btn-secondary-border */
 		/* v0.17.0 ghost button: accent label straight on the page background (contrast gate: ≥ 4.7:1 on white in light,
@@ -290,12 +332,6 @@
 		/* ===== Form errors (error contract) ===== */
 		--td-field-error: var(--td-color-error);
 
-		/* ===== Icons (src/icons) ===== */
-		--td-icon-s: 1rem;
-		--td-icon-m: 1.25rem;
-		--td-icon-l: 1.5rem;
-		--td-icon-stroke: 2;
-
 		/* ================= Minimal surfaces (v0.20.0 — replaces Liquid Glass v2) =================
 		   docs/internal/design/liquid-glass.md. Every floating surface = background + ONE thin border + ONE soft shadow,
 		   plus blur(12px) only on small popups (menu, dropdown, chip-input suggestions, hovercard, toast). Modal, loading
@@ -305,18 +341,9 @@
 		--td-glass-solid: var(--td-color-surface-raised); /* opaque surfaces + every fallback (v0.41.0: was #fff) */
 		--td-glass-fg: #18181b;
 		--td-glass-border: rgb(0 0 0 / 7%);
-		--td-glass-blur: blur(12px);
-		--td-glass-blur-lg: blur(12px);
 		/* v0.21.0: stronger — a tight contact layer + a soft ambient layer (one token = one shadow) */
 		--td-glass-shadow: 0 2px 6px rgb(0 0 0 / 6%), 0 8px 24px rgb(0 0 0 / 12%);
 		--td-glass-shadow-lg: 0 4px 12px rgb(0 0 0 / 8%), 0 20px 48px rgb(0 0 0 / 18%);
-
-		/* Lightbox bars (toolbar / counter, `--clear`): dark, never themed (the backdrop is the photo). */
-		--td-glass-clear-bg: rgb(20 20 22 / 88%);
-		--td-glass-clear-solid: #141416;
-		--td-glass-clear-fg: #fff;
-		--td-glass-clear-border: rgb(255 255 255 / 12%);
-		--td-glass-clear-shadow: 0 4px 16px rgb(0 0 0 / 24%);
 
 		/* deprecated v0.20.0 — still declared, no effect (removed in a later major): rims, hairline, sheen, local dim,
 		   glyph shadow, translucent tint, hover glow, decorative scales */
@@ -324,35 +351,16 @@
 		--td-glass-side-edge: rgb(255 255 255 / 22%);
 		--td-glass-bottom: rgb(0 0 0 / 8%);
 		--td-glass-outline: rgb(0 0 0 / 8%);
-		--td-glass-sheen: none;
 		--td-glass-dim: transparent;
 		--td-glass-dim-text: transparent;
-		--td-glass-clear-edge: rgb(255 255 255 / 48%);
-		--td-glass-clear-glyph-shadow: none;
 		--td-glass-tint: var(--td-accent);
-		--td-glass-tint-alpha: 100%;
 		--td-glass-tint-fg: var(--td-accent-contrast);
 		--td-glass-tint-edge: transparent;
 		--td-glass-glow: transparent;
-		--td-glass-glow-size: 0px;
-		--td-glass-press-scale: 1;
-		--td-glass-lift-scale: 1;
-		--td-glass-enter-scale: 1;
 
 		/* ================= Scrim / scroll edge / geometry ================= */
 		--td-glass-scrim: var(--td-color-overlay);     /* behind modals; NOT blurred */
-		--td-scroll-edge-size: 40px;                   /* soft fade under a floating bar */
 		--td-scroll-edge-hard-bg: var(--td-glass-bg-strong); /* hard style: pinned table header */
-
-		/* ================= Glass motion ================= */
-		--td-glass-dur: var(--td-dur-base);
-		--td-glass-ease: var(--td-ease-out);
-		--td-glass-ease-flex: var(--td-ease-spring);
-		--td-glass-radius: 20px;
-		--td-glass-pad: 6px;
-		--td-glass-radius-min: 4px;
-		--td-glass-radius-inner: max(var(--td-glass-radius-min), calc(var(--td-glass-radius) - var(--td-glass-pad)));
-		--td-glass-capsule: 9999px;
 	}
 
 	/* Reduce Motion — "disables any elastic properties" (W219). Literals only (no var() → safe on
@@ -368,11 +376,16 @@
 /* ---- src/styles/theme-dark.css ---- */
 /*
  * Dark theme (v0.41.0: official) — <html data-td-theme="dark">, or data-td-theme="auto" to follow the OS: the build
- * (scripts/css-theme.mjs) copies EVERY `:root[data-td-theme="dark"]` rule of src/styles into
- * `@media (prefers-color-scheme: dark) { :root[data-td-theme="auto"] { … } }` right after it — never write an auto
- * block by hand (the build rejects it). No attribute = light, never flips with the OS (light-only sites).
+ * (scripts/css-theme.mjs) copies EVERY dark rule of src/styles into
+ * `@media (prefers-color-scheme: dark) { <auto variant> { … } }` right after it — never write an auto block by hand
+ * (the build rejects it). No attribute = light, never flips with the OS (light-only sites).
+ * v0.42.0 (QĐ15, ADR 0020): themes scope — the selectors come from src/theme/selectors.js: dark =
+ * `:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"]` (0,2,0: beats the base slot
+ * `:root, [data-td-theme]` whatever the file order), so `<section data-td-theme="dark">` in a light page (and
+ * `data-td-theme="light"` inside a dark one) re-resolves every colour token; popups opened from a scope follow it
+ * through the portal bridge (src/utils/layers.js bridgeTheme).
  * Token remap only, inside @layer td.tokens so a site's unlayered token overrides still win; a site tunes dark values
- * with its own `:root[data-td-theme="dark"] { … }` rule (add `:root[data-td-theme="auto"]` inside the same media query
+ * with its own `:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] { … }` rule (add `:root[data-td-theme="auto"]` inside the same media query
  * when the site uses auto).
  * v0.41.0 tuning, rendered on demo.html in 3 engines (test/tokens/page-contrast.spec.mjs; ratios WCAG 2.x, on #1c1c1e
  * surface / #242427 muted / #111113 page): control edges ≥ 3:1 against every surface (QĐ7), muted text ≥ 4.7 also on
@@ -382,16 +395,13 @@
 @layer td.tokens {
 	/* v0.41.0 (QĐ3): an explicit light page, and auto under an OS light preference, declare their scheme (native
 	   controls, scrollbars). No attribute → no color-scheme at all (pixel-identical to v0.40). The OS-dark branch of
-	   auto gets `color-scheme: dark` from the generated copy of the dark rule below (same specificity, later). */
-	:root[data-td-theme="light"] {
+	   auto gets `color-scheme: dark` from the generated copy of the dark rule below (0,2,0 beats this 0,1,0).
+	   v0.42.0: per scope (a light section inside a dark page gets light native controls). */
+	[data-td-theme="light"], [data-td-theme="auto"] {
 		color-scheme: light;
 	}
 
-	:root[data-td-theme="auto"] {
-		color-scheme: light;
-	}
-
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		color-scheme: dark;
 
 		--td-color-bg: #111113;
@@ -495,7 +505,7 @@
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"] {
+		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			color-scheme: dark;
 	
 			--td-color-bg: #111113;
@@ -602,12 +612,12 @@
 	/* v0.16.0: the dark fill FOLLOWS the site accent — 20% darker so white text stays readable
 	   (default #3b82f6 → ≈ #2f68c5, white ≈ 5.3:1). */
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
-		:root[data-td-theme="dark"] {
+		:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 			--td-accent-fill: color-mix(in srgb, var(--td-accent) 80%, #000);
 		}
 		/* td: generated auto theme (QĐ4) */
 		@media (prefers-color-scheme: dark) {
-			:root[data-td-theme="auto"] {
+			:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 				--td-accent-fill: color-mix(in srgb, var(--td-accent) 80%, #000);
 			}
 		}
@@ -793,6 +803,16 @@
  */
 @layer td.tokens {
 	:root {
+		--td-field-radius-sm: 10px;
+		--td-field-radius-md: 12px;
+		--td-field-radius-lg: 14px;
+		--td-field-h-sm: 32px;
+		--td-field-h-md: 40px;
+		--td-field-h-lg: 48px;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-field-bg: var(--td-control-bg);
 		--td-field-bg-focus: var(--td-control-bg);
 		--td-field-bg-disabled: var(--td-color-fill);
@@ -810,40 +830,32 @@
 		--td-field-placeholder: var(--td-color-text-muted);    /* 5.28:1 on white (dark: 6.6:1 on #1c1c1e) */
 		--td-field-note: var(--td-color-text-muted);
 		--td-field-label: var(--td-color-text-label);
-		--td-field-radius-sm: 10px;
-		--td-field-radius-md: 12px;
-		--td-field-radius-lg: 14px;
-		--td-field-h-sm: 32px;
-		--td-field-h-md: 40px;
-		--td-field-h-lg: 48px;
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-field-bg-disabled: var(--td-color-surface-muted);
-		--td-field-bg-readonly: var(--td-color-surface-muted);
 		--td-field-focus-ring: 0 0 0 3px rgb(59 130 246 / 22%); /* a 12 % halo vanishes on the dark field */
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"] {
+		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			--td-field-bg-disabled: var(--td-color-surface-muted);
-			--td-field-bg-readonly: var(--td-color-surface-muted);
 			--td-field-focus-ring: 0 0 0 3px rgb(59 130 246 / 22%); /* a 12 % halo vanishes on the dark field */
 		}
 	}
 
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
-		:root {
+		:root, [data-td-theme] {
 			--td-field-focus: color-mix(in srgb, var(--td-accent) 85%, #fff);
 			--td-field-focus-ring: 0 0 0 3px color-mix(in srgb, var(--td-accent) 12%, transparent);
 		}
 
-		:root[data-td-theme="dark"] {
+		:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 			--td-field-focus-ring: 0 0 0 3px color-mix(in srgb, var(--td-accent) 22%, transparent);
 		}
 		/* td: generated auto theme (QĐ4) */
 		@media (prefers-color-scheme: dark) {
-			:root[data-td-theme="auto"] {
+			:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 				--td-field-focus-ring: 0 0 0 3px color-mix(in srgb, var(--td-accent) 22%, transparent);
 			}
 		}
@@ -1202,8 +1214,6 @@
  */
 @layer td.tokens {
 	:root {
-		--td-skeleton-bg: var(--td-color-skeleton);
-		--td-skeleton-shine: var(--td-color-sheen);
 		--td-skeleton-radius: var(--td-radius-sm);
 		--td-skeleton-dur: 1.3s;
 		--td-skeleton-h: 1rem;
@@ -1211,6 +1221,12 @@
 		--td-skeleton-gap: 0.5rem;
 		--td-skeleton-size: 2.5rem;
 		--td-skeleton-ratio: 16 / 9;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+		--td-skeleton-bg: var(--td-color-skeleton);
+		--td-skeleton-shine: var(--td-color-sheen);
 	}
 }
 
@@ -1630,6 +1646,10 @@
 		--td-action-btn-size-md: 2.25rem;
 		--td-action-btn-size-lg: 2.5rem;
 		--td-action-btn-radius: var(--td-radius-md);
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-action-btn-standard-fg: var(--td-color-text-label);
 		--td-action-btn-standard-hover-bg: var(--td-color-hover);
 		--td-action-btn-warning-fg: var(--td-color-warning);
@@ -1646,7 +1666,7 @@
 	}
 
 	/* dark (opt-in): light inks on the dark page, translucent tone fills */
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-action-btn-warning-fg: #fcd34d;
 		--td-action-btn-warning-hover-bg: rgb(245 158 11 / 14%);
 		--td-action-btn-danger-fg: #fca5a5;
@@ -1657,7 +1677,7 @@
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"] {
+		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			--td-action-btn-warning-fg: #fcd34d;
 			--td-action-btn-warning-hover-bg: rgb(245 158 11 / 14%);
 			--td-action-btn-danger-fg: #fca5a5;
@@ -2321,10 +2341,6 @@
  */
 @layer td.tokens {
 	:root {
-		--td-slider-color: var(--td-accent);
-		--td-slider-track: var(--td-gray-200);
-		--td-slider-thumb-bg: #fff;
-		--td-slider-disabled: var(--td-gray-400);
 		--td-slider-w-sm: 200px;
 		--td-slider-w-md: 300px;
 		--td-slider-w-lg: 400px;
@@ -2336,16 +2352,22 @@
 		--td-slider-thumb-lg: 22px;
 	}
 
-	:root[data-td-theme="dark"] {
-		--td-slider-track: #3a3a40;
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+		--td-slider-color: var(--td-accent);
+		--td-slider-track: var(--td-gray-200);
 		--td-slider-thumb-bg: #fff;
+		--td-slider-disabled: var(--td-gray-400);
+	}
+
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
+		--td-slider-track: #3a3a40;
 		--td-slider-disabled: #5a5a62;
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"] {
+		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			--td-slider-track: #3a3a40;
-			--td-slider-thumb-bg: #fff;
 			--td-slider-disabled: #5a5a62;
 		}
 	}
@@ -2643,9 +2665,13 @@
  */
 @layer td.tokens {
 	:root {
+		--td-pagination-item-size: 2rem;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-pagination-active: var(--td-accent-fill);
 		--td-pagination-active-fg: var(--td-accent-contrast);
-		--td-pagination-item-size: 2rem;
 	}
 
 	/* v0.16.0: touch size on :root too (was .td-pagination), so a site `:root` override wins everywhere */
@@ -2653,19 +2679,8 @@
 		:root { --td-pagination-item-size: var(--td-touch-min); }
 	}
 
-	:root[data-td-theme="dark"] {
-		/* white text on the raw dark accent #3b82f6 is 3.68:1 → the darkened fill, like .td-btn--primary (v0.16.0) */
-		--td-pagination-active: var(--td-accent-fill);
-		--td-pagination-active-fg: #fff;
-	}
-	/* td: generated auto theme (QĐ4) */
-	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"] {
-			/* white text on the raw dark accent #3b82f6 is 3.68:1 → the darkened fill, like .td-btn--primary (v0.16.0) */
-			--td-pagination-active: var(--td-accent-fill);
-			--td-pagination-active-fg: #fff;
-		}
-	}
+	/* v0.42.0: no dark block — the light declarations (accent fill + accent contrast) already resolve to the dark
+	   values (#3c71c6 + white) under data-td-theme="dark", and follow a generated palette in any slot. */
 }
 
 @layer td.component {
@@ -2947,24 +2962,28 @@
  */
 @layer td.tokens {
 	:root {
+		--td-tabs-radius: 12px;
+		--td-tabs-pad: 4px;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-tabs-bg: var(--td-color-hover);
 		--td-tabs-pill: var(--td-color-surface);
 		--td-tabs-pill-shadow: var(--td-shadow-1);
 		--td-tabs-fg: var(--td-color-text-muted);
 		--td-tabs-fg-hover: var(--td-color-text);
 		--td-tabs-fg-active: var(--td-color-text);
-		--td-tabs-radius: 12px;
-		--td-tabs-pad: 4px;
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		/* the dark surface is darker than the translucent trough → a lighter translucent pill */
 		--td-tabs-pill: rgb(255 255 255 / 14%);
 		--td-tabs-pill-shadow: 0 1px 2px rgb(0 0 0 / 40%);
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"] {
+		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			/* the dark surface is darker than the translucent trough → a lighter translucent pill */
 			--td-tabs-pill: rgb(255 255 255 / 14%);
 			--td-tabs-pill-shadow: 0 1px 2px rgb(0 0 0 / 40%);
@@ -3207,12 +3226,16 @@
  */
 @layer td.tokens {
 	:root {
-		--td-empty-state-bg: var(--td-color-surface);
-		--td-empty-state-border: var(--td-color-border-strong);
-		--td-empty-state-icon: var(--td-color-text-subtle);
 		/* v0.16.0: on :root (was .td-empty-state); --sm / --lg / --compact still set them on the element */
 		--td-empty-state-pad: 22px;
 		--td-empty-state-gap: 10px;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+		--td-empty-state-bg: var(--td-color-surface);
+		--td-empty-state-border: var(--td-color-border-strong);
+		--td-empty-state-icon: var(--td-color-text-subtle);
 	}
 }
 
@@ -4521,7 +4544,6 @@
 		--td-toast-pad-y: 0.75rem;
 		--td-toast-pad-x: 1rem;
 		--td-toast-font-size: var(--td-text-sm);
-		--td-toast-shadow: var(--td-glass-shadow);
 		--td-toast-enter-shift: 1rem;
 		--td-toast-enter-dur: 200ms;
 		--td-toast-exit-dur: 180ms;
@@ -4529,6 +4551,11 @@
 		--td-toast-offset-top: 5rem;
 		--td-toast-offset-bottom: 1rem;
 		--td-toast-offset-inline: 1rem;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+		--td-toast-shadow: var(--td-glass-shadow);
 		/* v0.36.0 solid per type (QĐ 18 / 20; error ↔ danger). Literals = the shared values, used until/unless the
 		   --td-solid-* tokens exist. Border = the darker hover shade. */
 		--td-toast-success-bg: var(--td-solid-success-bg, #15803d);
@@ -4570,17 +4597,7 @@
 	}
 
 	/* Dark: the solid fills stay (white ink on 600/700 reads on a dark page too — QĐ 18). */
-	:root[data-td-theme="dark"] {
-		--td-toast-fg: var(--td-glass-fg);
-		--td-toast-close-fg: var(--td-glass-fg);
-	}
-	/* td: generated auto theme (QĐ4) */
-	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"] {
-			--td-toast-fg: var(--td-glass-fg);
-			--td-toast-close-fg: var(--td-glass-fg);
-		}
-	}
+	/* v0.42.0: no dark block — --td-toast-fg = --td-color-text (= --td-glass-fg in dark), close follows it */
 }
 
 @layer td.component {
@@ -4977,22 +4994,26 @@
 		--td-tooltip-leading: 1.4;
 		--td-tooltip-arrow-size: 8px;
 		--td-tooltip-dur: 120ms;
+		--td-tooltip-text-align: center;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		/* v0.21.0: black chip (both themes), solid, no blur; wrapped text centred by default (data-tooltip-align on the
 		   trigger → data-align on the chip overrides per tooltip). */
 		--td-tooltip-bg: #18181b;
 		--td-tooltip-fg: #fff;
 		--td-tooltip-border: transparent;
-		--td-tooltip-text-align: center;
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		/* v0.41.0: a raised grey chip (was #18181b, 1.06:1 on the page): 1.67 page · 1.50 surface, white 11.3, + a light edge */
 		--td-tooltip-bg: #3a3a3e;
 		--td-tooltip-border: rgb(255 255 255 / 16%);
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"] {
+		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			/* v0.41.0: a raised grey chip (was #18181b, 1.06:1 on the page): 1.67 page · 1.50 surface, white 11.3, + a light edge */
 			--td-tooltip-bg: #3a3a3e;
 			--td-tooltip-border: rgb(255 255 255 / 16%);
@@ -5579,6 +5600,10 @@
 @layer td.tokens {
 	:root {
 		--td-dropdown-option-h: 40px; /* JS mirrors it: max-height = visible options × 40 px */
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		/* v0.36.0: defaults follow the shared option-row tokens (--td-option-*); -active-line no longer has an effect (the
 		   active row shows the inline-start accent bar --td-option-active-bar instead) */
 		--td-dropdown-option-hover: var(--td-option-hover-bg);
@@ -5594,31 +5619,27 @@
 		--td-dropdown-create-fg: var(--td-dropdown-create-fg-fallback);
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-dropdown-create-fg-fallback: #93c5fd;
-		--td-dropdown-option-active-line: var(--td-control-border-hover);
-		--td-dropdown-search-bg: rgb(255 255 255 / 6%);
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"] {
+		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			--td-dropdown-create-fg-fallback: #93c5fd;
-			--td-dropdown-option-active-line: var(--td-control-border-hover);
-			--td-dropdown-search-bg: rgb(255 255 255 / 6%);
 		}
 	}
 
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
-		:root {
+		:root, [data-td-theme] {
 			--td-dropdown-create-fg: color-mix(in srgb, var(--td-accent) 82%, #000);
 		}
 
-		:root[data-td-theme="dark"] {
+		:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 			--td-dropdown-create-fg: color-mix(in srgb, var(--td-accent) 55%, #fff); /* lighter step on the dark surface */
 		}
 		/* td: generated auto theme (QĐ4) */
 		@media (prefers-color-scheme: dark) {
-			:root[data-td-theme="auto"] {
+			:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 				--td-dropdown-create-fg: color-mix(in srgb, var(--td-accent) 55%, #fff); /* lighter step on the dark surface */
 			}
 		}
@@ -6110,10 +6131,25 @@
  */
 @layer td.tokens {
 	:root {
+		--td-table-radius: var(--td-radius-lg);
+		--td-table-cell-px: 1.5rem;
+		--td-table-cell-py: 1rem;
+		--td-table-head-py: 0.75rem;
+		--td-table-ellipsis-max: 18rem; /* v0.34.0: max inline size of an ellipsis cell's content */
+		--td-table-card-radius: var(--td-radius-md);
+		--td-table-card-gap: var(--td-space-xs); /* between cards + around the card list (v0.36.1: was --td-space-sm) */
+		--td-table-card-px: var(--td-space-sm); /* v0.36.1: was --td-space-md */
+		--td-table-card-py: var(--td-space-xs); /* v0.36.1: was --td-space-sm (12px) */
+		--td-table-card-pair-min: 0px; /* v0.36.1: min width of a secondary pair (0 = by content; 100% = one per line) */
+		--td-table-card-cell-py: 2px; /* v0.36.1: block padding of a card cell */
+		--td-table-select-w: 3rem; /* v0.37.0: selection column */
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-table-bg: var(--td-color-surface);
 		--td-table-fg: var(--td-color-text);
 		--td-table-border: var(--td-color-border);
-		--td-table-radius: var(--td-radius-lg);
 		--td-table-shadow: var(--td-shadow-1);
 		--td-table-head-bg: var(--td-color-surface-muted);
 		--td-table-head-fg: var(--td-color-text-muted);
@@ -6122,23 +6158,12 @@
 		--td-table-row-border: var(--td-color-border);
 		--td-table-row-hover: var(--td-color-hover);
 		--td-table-zebra: rgb(0 0 0 / 2%);
-		--td-table-cell-px: 1.5rem;
-		--td-table-cell-py: 1rem;
-		--td-table-head-py: 0.75rem;
 		--td-table-skeleton: var(--td-skeleton-bg); /* v0.27.0: the shared skeleton tokens (components/skeleton.css) */
 		--td-table-sheen: var(--td-skeleton-shine);
-		--td-table-ellipsis-max: 18rem; /* v0.34.0: max inline size of an ellipsis cell's content */
 		--td-table-edge-shadow: rgb(0 0 0 / 14%); /* horizontal scroll hint at the clipped edge */
 		--td-table-card-bg: var(--td-table-bg);
 		--td-table-card-border: var(--td-table-border);
-		--td-table-card-radius: var(--td-radius-md);
-		--td-table-card-gap: var(--td-space-xs); /* between cards + around the card list (v0.36.1: was --td-space-sm) */
-		--td-table-card-px: var(--td-space-sm); /* v0.36.1: was --td-space-md */
-		--td-table-card-py: var(--td-space-xs); /* v0.36.1: was --td-space-sm (12px) */
 		--td-table-label-fg: var(--td-color-text-muted); /* card cell labels + meta line + lead (contrast gate ≥ 4.7) */
-		--td-table-card-pair-min: 0px; /* v0.36.1: min width of a secondary pair (0 = by content; 100% = one per line) */
-		--td-table-card-cell-py: 2px; /* v0.36.1: block padding of a card cell */
-		--td-table-select-w: 3rem; /* v0.37.0: selection column */
 		/* v0.37.0: selected row = a very light accent wash (text contrast gate ≥ 4.7, also with hover on top); a site
 		   accent follows through color-mix() (fallback: the default accent at the same alpha) */
 		--td-table-row-selected: rgb(37 99 235 / 8%);
@@ -6149,21 +6174,19 @@
 	}
 
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
-		:root {
+		:root, [data-td-theme] {
 			--td-table-row-selected: color-mix(in srgb, var(--td-accent) 8%, transparent);
 		}
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-table-zebra: rgb(255 255 255 / 3%);
-		--td-table-sheen: var(--td-skeleton-shine);
 		--td-table-edge-shadow: rgb(0 0 0 / 55%);
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"] {
+		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			--td-table-zebra: rgb(255 255 255 / 3%);
-			--td-table-sheen: var(--td-skeleton-shine);
 			--td-table-edge-shadow: rgb(0 0 0 / 55%);
 		}
 	}
@@ -7024,6 +7047,10 @@
 		--td-dtp-option-h: 40px;                                  /* wheel row height (44px on coarse pointers) */
 		--td-dtp-visible: 5;                                      /* visible rows → wheel height = row × 5 (odd) */
 		--td-dtp-wheel-w: 5rem;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-dtp-band-bg: var(--td-color-hover-strong);
 		--td-dtp-band-border: var(--td-control-border-hover);     /* v0.14.4: soft like the other control edges; fill + bold mark it too */
 		--td-dtp-option-fg: var(--td-color-text-muted);           /* ≥ 4.5:1 (was gray-400, 2.54:1) */
@@ -7510,19 +7537,23 @@
  */
 @layer td.tokens {
 	:root {
+		--td-form-summary-radius: var(--td-radius-md);
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		/* var() references resolve per theme (theme-dark.css redefines --td-color-error/-surface on :root). */
 		--td-form-summary-bg: color-mix(in srgb, var(--td-color-error) 8%, var(--td-color-surface));
 		--td-form-summary-border: color-mix(in srgb, var(--td-color-error) 75%, var(--td-color-surface)); /* ≥ 3:1 */
 		--td-form-summary-fg: var(--td-color-error);
-		--td-form-summary-radius: var(--td-radius-md);
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-form-summary-bg: color-mix(in srgb, var(--td-color-error) 12%, var(--td-color-surface));
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"] {
+		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			--td-form-summary-bg: color-mix(in srgb, var(--td-color-error) 12%, var(--td-color-surface));
 		}
 	}
@@ -7660,6 +7691,11 @@
 		--td-menu-max-w: 22rem;
 		--td-menu-item-py: 0.6rem;
 		--td-menu-item-px: 0.75rem;
+		--td-menu-btn-size: 32px;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-menu-item-hover: var(--td-option-hover-bg); /* v0.36.0: shared option-row tokens */
 		--td-menu-item-active: var(--td-option-active-bg);
 		--td-menu-danger-fg: var(--td-color-error);
@@ -7669,15 +7705,14 @@
 		--td-menu-btn-fg: var(--td-color-text-muted);
 		--td-menu-btn-fg-hover: var(--td-color-text);
 		--td-menu-btn-hover: var(--td-color-hover);
-		--td-menu-btn-size: 32px;
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-menu-separator: rgb(255 255 255 / 12%);
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"] {
+		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			--td-menu-separator: rgb(255 255 255 / 12%);
 		}
 	}
@@ -8026,22 +8061,26 @@
  */
 @layer td.tokens {
 	:root {
-		--td-chip-bg: var(--td-color-fill-strong); /* opaque (v0.20.0): = 8 % black over the #fff field */
-		--td-chip-fg: var(--td-color-text);
 		--td-chip-radius: var(--td-radius-full);
 		--td-chip-h: 28px;
 		--td-chip-gap: 6px;
 		--td-chip-remove-size: 22px;
-		--td-chip-remove-hover: var(--td-color-hover-strong);
 		--td-chip-input-min-w: 8rem;
 	}
 
-	:root[data-td-theme="dark"] {
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+		--td-chip-bg: var(--td-color-fill-strong); /* opaque (v0.20.0): = 8 % black over the #fff field */
+		--td-chip-fg: var(--td-color-text);
+		--td-chip-remove-hover: var(--td-color-hover-strong);
+	}
+
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-chip-remove-hover: rgb(255 255 255 / 16%);
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"] {
+		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			--td-chip-remove-hover: rgb(255 255 255 / 16%);
 		}
 	}
@@ -8576,18 +8615,22 @@
 		--td-hovercard-max-w: 20rem;
 		--td-hovercard-pad-y: 0.75rem;
 		--td-hovercard-pad-x: 0.9rem;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-hovercard-status-fg: var(--td-color-text-muted);
 		--td-hovercard-error-fg: var(--td-color-error);
 		--td-hovercard-link-fg: var(--td-accent);
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-hovercard-error-fg: #fca5a5;
 		--td-hovercard-link-fg: #93c5fd;
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"] {
+		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			--td-hovercard-error-fg: #fca5a5;
 			--td-hovercard-link-fg: #93c5fd;
 		}
@@ -8727,13 +8770,17 @@
 		--td-password-meter-gap: 0.4rem;           /* space between field and meter, bar and text */
 		--td-password-meter-seg-h: 4px;
 		--td-password-meter-seg-gap: 4px;
+		--td-password-meter-font-size: var(--td-text-xs);
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-password-meter-track: var(--td-color-border);
 		--td-password-meter-weak: var(--td-color-error);
 		--td-password-meter-fair: var(--td-color-warning);
 		--td-password-meter-strong: var(--td-color-success);
 		--td-password-meter-fg: var(--td-color-text-muted);
 		--td-password-meter-met: var(--td-color-success);
-		--td-password-meter-font-size: var(--td-text-xs);
 	}
 }
 
@@ -8974,13 +9021,17 @@
 		--td-progress-h-sm: 4px;
 		--td-progress-h-md: 8px;
 		--td-progress-radius: var(--td-radius-full);
+		--td-progress-indeterminate-w: 40%;      /* moving segment width */
+		--td-progress-indeterminate-dur: 1.4s;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-progress-track: var(--td-color-border);
 		--td-progress-primary: var(--td-accent);
 		--td-progress-success: var(--td-color-success);
 		--td-progress-danger: var(--td-color-error);
 		--td-progress-warning: var(--td-color-warning);
-		--td-progress-indeterminate-w: 40%;      /* moving segment width */
-		--td-progress-indeterminate-dur: 1.4s;
 	}
 }
 
@@ -9077,20 +9128,10 @@
  */
 @layer td.tokens {
 	:root {
-		--td-dropzone-bg: var(--td-field-bg);
-		--td-dropzone-bg-active: color-mix(in srgb, var(--td-accent) 6%, var(--td-field-bg));
-		--td-dropzone-bg-disabled: var(--td-field-bg-disabled);
-		--td-dropzone-bg-pressed: #f4f4f5; /* v0.36.2: the zone while pressed (opens the picker); muted sub-line keeps 4.81:1 (gray-100 is 4.64) */
-		--td-dropzone-border: var(--td-control-border-strong); /* dashed edge ≥ 3:1 on white */
-		--td-dropzone-border-active: var(--td-accent);
 		--td-dropzone-radius: var(--td-radius-lg);
 		--td-dropzone-pad: var(--td-space-lg) var(--td-space-md);
-		--td-dropzone-icon: var(--td-color-text-muted);
-		--td-dropzone-hint: var(--td-color-text-muted);
-		--td-dropzone-item-bg: var(--td-color-surface-muted);
 		--td-dropzone-item-radius: var(--td-radius-md);
 		--td-dropzone-thumb: 40px;
-		--td-dropzone-reject: var(--td-color-error);
 		/* v0.33.0 stacked presentation (dcms2: py-16 px-8, rounded-2xl, 2px dashed, 64 px icon, title 1.25rem/600) */
 		--td-dropzone-stacked-pad: calc(var(--td-space-md) * 4) calc(var(--td-space-md) * 2);
 		--td-dropzone-stacked-radius: var(--td-radius-xl);
@@ -9100,13 +9141,27 @@
 		--td-dropzone-title-weight: var(--td-fw-semibold);
 	}
 
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+		--td-dropzone-bg: var(--td-field-bg);
+		--td-dropzone-bg-active: color-mix(in srgb, var(--td-accent) 6%, var(--td-field-bg));
+		--td-dropzone-bg-disabled: var(--td-field-bg-disabled);
+		--td-dropzone-bg-pressed: #f4f4f5; /* v0.36.2: the zone while pressed (opens the picker); muted sub-line keeps 4.81:1 (gray-100 is 4.64) */
+		--td-dropzone-border: var(--td-control-border-strong); /* dashed edge ≥ 3:1 on white */
+		--td-dropzone-border-active: var(--td-accent);
+		--td-dropzone-icon: var(--td-color-text-muted);
+		--td-dropzone-hint: var(--td-color-text-muted);
+		--td-dropzone-item-bg: var(--td-color-surface-muted);
+		--td-dropzone-reject: var(--td-color-error);
+	}
+
 	/* dark (opt-in): the pressed zone one step lighter than the dark field */
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-dropzone-bg-pressed: #2c2c30;
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"] {
+		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			--td-dropzone-bg-pressed: #2c2c30;
 		}
 	}
@@ -9523,6 +9578,14 @@
 		--td-badge-radius: var(--td-radius-full);
 		--td-badge-font-family: var(--td-font-sans);
 		--td-badge-font-size: var(--td-text-xs);
+		--td-badge-stamp-font-family: var(--td-font-mono);
+		--td-badge-stamp-rotate: -4deg;
+		--td-badge-stamp-border: 3px;
+		--td-badge-stamp-radius: var(--td-radius-sm);
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-badge-neutral-bg: var(--td-color-fill);
 		--td-badge-neutral-fg: var(--td-color-on-fill);
 		/* accent: static fallback (= info) without color-mix(); @supports below follows the site accent */
@@ -9549,13 +9612,9 @@
 		--td-badge-warning-border: #ac6f08;
 		--td-badge-info-border: #1a45a5;
 		--td-badge-shadow: 0 1px 2px rgb(0 0 0 / 12%);
-		--td-badge-stamp-font-family: var(--td-font-mono);
-		--td-badge-stamp-rotate: -4deg;
-		--td-badge-stamp-border: 3px;
-		--td-badge-stamp-radius: var(--td-radius-sm);
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-badge-accent-bg: #172554;
 		--td-badge-accent-fg: #bfdbfe;
 		/* v0.36.0: outline / stamp ink on the DARK page (the light-theme ~700 inks are too dark there) */
@@ -9566,7 +9625,7 @@
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"] {
+		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			--td-badge-accent-bg: #172554;
 			--td-badge-accent-fg: #bfdbfe;
 			/* v0.36.0: outline / stamp ink on the DARK page (the light-theme ~700 inks are too dark there) */
@@ -9578,18 +9637,18 @@
 	}
 
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
-		:root {
+		:root, [data-td-theme] {
 			--td-badge-accent-bg: color-mix(in srgb, var(--td-accent) 14%, #fff);
 			--td-badge-accent-fg: color-mix(in srgb, var(--td-accent) 62%, #000);
 		}
 
-		:root[data-td-theme="dark"] {
+		:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 			--td-badge-accent-bg: color-mix(in srgb, var(--td-accent) 26%, #111113);
 			--td-badge-accent-fg: color-mix(in srgb, var(--td-accent) 40%, #fff);
 		}
 		/* td: generated auto theme (QĐ4) */
 		@media (prefers-color-scheme: dark) {
-			:root[data-td-theme="auto"] {
+			:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 				--td-badge-accent-bg: color-mix(in srgb, var(--td-accent) 26%, #111113);
 				--td-badge-accent-fg: color-mix(in srgb, var(--td-accent) 40%, #fff);
 			}
@@ -9700,10 +9759,14 @@
 @layer td.tokens {
 	:root {
 		--td-alert-radius: var(--td-radius-lg);
+		--td-alert-accent-width: 4px;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-alert-fg: var(--td-color-text);
 		--td-alert-close-fg: var(--td-color-text);
 		--td-alert-close-hover: var(--td-color-hover-strong);
-		--td-alert-accent-width: 4px;
 		--td-alert-info-bg: #eff6ff;
 		--td-alert-info-border: #93c5fd;
 		--td-alert-info-heading: var(--td-pastel-info-fg);
@@ -9726,7 +9789,7 @@
 		--td-alert-danger-accent: var(--td-solid-danger-bg);
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-alert-info-bg: #111c33;
 		--td-alert-info-border: #1e3a8a;
 		--td-alert-info-icon: #93c5fd;
@@ -9742,7 +9805,7 @@
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"] {
+		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			--td-alert-info-bg: #111c33;
 			--td-alert-info-border: #1e3a8a;
 			--td-alert-info-icon: #93c5fd;
@@ -9973,14 +10036,6 @@
 		--td-media-grid-tick-inset: 6px;
 		/* tick corner: start | end (read by JS → host [data-td-tick="end"]) */
 		--td-media-grid-tick-inline: start;
-		--td-media-grid-tick-bg: rgb(0 0 0 / 35%);
-		--td-media-grid-tick-border: #fff;
-		--td-media-grid-tick-ring: rgb(0 0 0 / 50%);
-		--td-media-grid-tick-on-bg: var(--td-btn-primary-bg);
-		--td-media-grid-tick-on-fg: var(--td-btn-primary-fg);
-		/* v0.36.0: the kit tick is the shared td-checkbox mark (check.css) — tick-bg / -border / -ring / -on-bg / -on-fg only
-		   style a SITE tick ([data-td-media-tick]); the selected ring follows the checkbox colour */
-		--td-media-grid-selected-ring: var(--td-checkbox-color);
 		--td-media-grid-selected-scale: 1;
 		/* object-fit of the image in a tile (cover | contain) and the tile ratio (auto = as tall as the image) */
 		--td-media-grid-fit: cover;
@@ -9992,6 +10047,18 @@
 		--td-media-grid-row-ratio-md: 4;
 		--td-media-grid-row-ratio-sm: 2.5;
 		--td-media-grid-fallback-ar: 1.5;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+		--td-media-grid-tick-bg: rgb(0 0 0 / 35%);
+		--td-media-grid-tick-border: #fff;
+		--td-media-grid-tick-ring: rgb(0 0 0 / 50%);
+		--td-media-grid-tick-on-bg: var(--td-btn-primary-bg);
+		--td-media-grid-tick-on-fg: var(--td-btn-primary-fg);
+		/* v0.36.0: the kit tick is the shared td-checkbox mark (check.css) — tick-bg / -border / -ring / -on-bg / -on-fg only
+		   style a SITE tick ([data-td-media-tick]); the selected ring follows the checkbox colour */
+		--td-media-grid-selected-ring: var(--td-checkbox-color);
 	}
 }
 
@@ -10358,6 +10425,11 @@
 		--td-otp-cell-aspect: 44 / 52;
 		--td-otp-gap: 0.5rem;
 		--td-otp-radius: var(--td-field-radius-md);
+		--td-otp-font-size: var(--td-text-xl);
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-otp-bg: var(--td-control-bg);
 		--td-otp-fg: var(--td-control-fg);
 		--td-otp-border: var(--td-control-border-strong);   /* ≥ 3:1 at rest: each cell is a boundary */
@@ -10367,7 +10439,6 @@
 		--td-otp-bg-disabled: var(--td-field-bg-disabled);
 		--td-otp-bg-readonly: var(--td-field-bg-readonly);
 		--td-otp-fg-disabled: var(--td-field-fg-disabled);
-		--td-otp-font-size: var(--td-text-xl);
 	}
 }
 
@@ -10886,12 +10957,16 @@
 	:root {
 		--td-copy-size-sm: 1.75rem;
 		--td-copy-size-md: 2.25rem;
+		--td-copy-radius: var(--td-radius-md);
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-copy-fg: var(--td-color-text-muted);
 		--td-copy-fg-hover: var(--td-color-text);
 		--td-copy-bg-hover: var(--td-color-hover-strong);
 		--td-copy-success: var(--td-color-success);
 		--td-copy-error: var(--td-color-error);
-		--td-copy-radius: var(--td-radius-md);
 		--td-copy-source-bg: var(--td-color-surface-muted);
 	}
 }
@@ -11088,11 +11163,15 @@
 	:root {
 		--td-tree-indent: 1.25rem;
 		--td-tree-row-h: 2rem;
+		--td-tree-check-radius: var(--td-checkbox-radius); /* deprecated v0.36.0 (no effect): the check is the shared td-checkbox mark */
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-tree-row-hover: var(--td-color-hover);
 		--td-tree-row-active: var(--td-color-hover-strong);
 		--td-tree-row-active-line: var(--td-control-border-hover);
 		--td-tree-row-selected: var(--td-color-hover-strong);
-		--td-tree-check-radius: var(--td-checkbox-radius); /* deprecated v0.36.0 (no effect): the check is the shared td-checkbox mark */
 	}
 }
 
@@ -11837,8 +11916,12 @@
  */
 @layer td.tokens {
 	:root {
-		--td-number-affix-fg: var(--td-color-text-muted);
 		--td-number-affix-gap: var(--td-space-2xs);
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+		--td-number-affix-fg: var(--td-color-text-muted);
 	}
 }
 
@@ -11998,6 +12081,10 @@
 	:root {
 		--td-repeater-gap: var(--td-space-sm);
 		--td-repeater-btn-size: 2rem;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-repeater-btn-fg: var(--td-color-text-muted);
 		--td-repeater-btn-fg-hover: var(--td-color-text);
 		--td-repeater-btn-bg-hover: var(--td-color-hover-strong);
@@ -12609,14 +12696,18 @@
 		--td-media-picker-detail-w: 25rem;
 		--td-media-picker-col-min: 200px;
 		--td-media-picker-gap: 1rem;
+		--td-media-picker-card-radius: var(--td-radius-lg);
+		--td-media-picker-checked-opacity: 0.7;
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-media-picker-list-bg: var(--td-color-surface-muted);
 		/* card states (decision 12): hover = the contrast-checked "viewing" colour; checked wins over viewing */
 		--td-media-picker-card-viewing: var(--td-accent);
 		--td-media-picker-card-hover: var(--td-media-picker-card-viewing);
 		--td-media-picker-card-checked: var(--td-color-success);
-		--td-media-picker-card-radius: var(--td-radius-lg);
 		--td-media-picker-card-shadow: var(--td-shadow-1);
-		--td-media-picker-checked-opacity: 0.7;
 	}
 
 	@media (min-width: 1280px) {
@@ -14023,6 +14114,10 @@
 @layer td.tokens {
 	:root {
 		--td-cropper-h: min(60vh, 32rem);        /* stage height of an inline cropper */
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-cropper-bg: var(--td-color-surface-muted); /* letterbox around the image */
 		--td-cropper-dim: rgb(0 0 0 / 55%);      /* outside the crop box */
 		--td-cropper-line: #fff;                  /* box line, handle fill, focal ring */
@@ -14574,9 +14669,13 @@
 @layer td.tokens {
 	:root {
 		--td-scan-list-max: 50vh;
+		--td-scan-font-size: max(1rem, 16px);
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-scan-ready: var(--td-color-success);   /* indicator text + icon while focused (#15803d: 5.0:1 on white) */
 		--td-scan-idle: var(--td-color-text-muted);
-		--td-scan-font-size: max(1rem, 16px);
 		--td-scan-list-bg: var(--td-color-surface);
 		--td-scan-list-border: var(--td-color-border);
 		--td-scan-row-sep: var(--td-color-border);
@@ -14907,24 +15006,28 @@
  */
 @layer td.tokens {
 	:root {
-		--td-filter-chip-bg: var(--td-color-fill);
-		--td-filter-chip-fg: var(--td-color-text);
-		--td-filter-chip-label-fg: var(--td-color-text);
-		--td-filter-chip-border: var(--td-color-border);
 		--td-filter-chip-radius: var(--td-radius-full);
 		--td-filter-chip-h: 28px;
 		--td-filter-chip-gap: var(--td-space-xs);
 		--td-filter-chip-max: 16rem; /* max inline size of a value (cut with …, full text in title) */
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+		--td-filter-chip-bg: var(--td-color-fill);
+		--td-filter-chip-fg: var(--td-color-text);
+		--td-filter-chip-label-fg: var(--td-color-text);
+		--td-filter-chip-border: var(--td-color-border);
 		--td-filter-chip-remove-fg: var(--td-color-text-label); /* ≥ 4.7 on the chip fill (contrast gate; muted gray-600 = 4.64) */
 		--td-filter-chip-remove-hover: var(--td-color-hover-strong);
 	}
 
-	:root[data-td-theme="dark"] {
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-filter-chip-remove-fg: var(--td-color-text-muted);
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
-		:root[data-td-theme="auto"] {
+		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			--td-filter-chip-remove-fg: var(--td-color-text-muted);
 		}
 	}
@@ -15163,6 +15266,10 @@
 @layer td.tokens {
 	:root {
 		--td-dtr-preset-h: 2rem;                                   /* chip height (44px on coarse pointers) */
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-dtr-preset-bg: var(--td-field-bg);
 		--td-dtr-preset-fg: var(--td-color-text);
 		--td-dtr-preset-border: var(--td-field-border);

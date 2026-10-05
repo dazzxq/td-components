@@ -236,6 +236,7 @@ Tuỳ chọn của `TdDrawer.open()`:
 | `size` | `'sm' \| 'md' \| 'lg' \| 'xl'` | `'md'` | Như attribute. |
 | `dismissible` | `boolean` | `true` | `false` → chỉ nút × / `close()` đóng được. |
 | `onClose` | `(reason) => void` | — | Gọi sau khi đóng (cùng lúc event `close`). Lỗi ném ra được ghi `console.error`. |
+| `themeRoot` | `Element` | — | 0.42.0: hiển thị theo theme của vùng `[data-td-theme]` chứa phần tử này ([theming › Theme theo vùng](../customization/theming.md#popup-mở-từ-trong-vùng), ADR 0020). Không truyền → theme của trang. |
 
 Giá trị trả về: `element` là host `<td-drawer>` (nghe event, gọi method trên đó được); `close(reason)` = `element.close(reason)`;
 `closed` là `Promise<reason>`.

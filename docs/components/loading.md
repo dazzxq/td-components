@@ -76,6 +76,7 @@ Mặc định overlay **tự ẩn sau 30 giây** (và ghi `console.warn`) để 
 
 ```js
 TdLoading.show({ message: 'Đang xuất báo cáo...', maxDuration: 120000 }); // 2 phút
+TdLoading.show({ message: 'Đang tải…', themeRoot: section });    // 0.42.0: theo theme của vùng chứa `section`
 TdLoading.show({ message: 'Đang đồng bộ...', maxDuration: false });       // tắt hẹn giờ (nhớ tự hide!)
 ```
 

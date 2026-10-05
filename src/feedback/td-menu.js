@@ -73,7 +73,7 @@
  *   lightbox opened over it, or the dialog / hovercard holding its anchor closed). The anchor hidden without a scroll
  *   (tab switch, display:none) or removed from the DOM closes it too ('hidden', watchReference).
  */
-import { LAYERS, register as registerLayer, restoreFocus, swallowPointerPress } from '../utils/layers.js';
+import { LAYERS, register as registerLayer, restoreFocus, swallowPointerPress, bridgeTheme } from '../utils/layers.js';
 import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
 import { nextTypeaheadIndex } from '../utils/typeahead.js';
 import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
@@ -417,6 +417,7 @@ function closeSession(s, reason) {
   if (back && usableAnchor(anchor)) focusEl(anchor);
   else if (back && hadFocus) restoreFocus(anchor);
   menu.remove();
+  if (s.unbridge) s.unbridge();
   if (isFn(s.onClose)) {
     try { s.onClose(reason); } catch (err) { console.error('TdMenu onClose', err); }
   }
@@ -600,8 +601,10 @@ export class TdMenu {
    * @param {string|Array<object>|((ctx: object) => Array<object>)} items a registered menu name (G9), an item list or
    *   a lazy builder (called at open with ctx)
    * @param {{ align?: 'start'|'center'|'end', side?: 'bottom'|'top', label?: string, focus?: 'first'|'last',
-   *           onClose?: (reason: string) => void, ctx?: object, isAllowedUrl?: (url: string) => boolean }} [opts]
-   *   `ctx`: extra context data (see header); `isAllowedUrl`: replaces the default href filter (E5a)
+   *           onClose?: (reason: string) => void, ctx?: object, isAllowedUrl?: (url: string) => boolean,
+   *           themeRoot?: Element }} [opts]
+   *   `ctx`: extra context data (see header); `isAllowedUrl`: replaces the default href filter (E5a); `themeRoot`
+   *   (v0.42.0, ADR 0020): follow that element's theme scope instead of the anchor's
    * @returns {{ element: HTMLElement, close(): void, readonly isOpen: boolean }|null}
    */
   static open(anchor, items, opts = {}) {
@@ -679,6 +682,8 @@ export class TdMenu {
     menu.addEventListener('keydown', (e) => onMenuKeydown(s, e));
     menu.addEventListener('click', (e) => onMenuClick(s, e));
 
+    // v0.42.0 (ADR 0020): the menu renders in the theme scope of `opts.themeRoot`, else of the anchor
+    s.unbridge = bridgeTheme(menu, (typeof Element !== 'undefined' && o.themeRoot instanceof Element) ? o.themeRoot : anchor);
     document.body.appendChild(menu);
     current = s;
     if (!anchor.hasAttribute('aria-haspopup')) anchor.setAttribute('aria-haspopup', 'menu');

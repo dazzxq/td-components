@@ -60,6 +60,7 @@ const res = await TdCropper.openDialog({
   src: asset.urls.preview, alt: asset.name,
   naturalWidth: asset.width, naturalHeight: asset.height,
   aspectRatio: 16 / 9, crop: figure.crop?.normalized ?? null, allowFocalPoint: true,
+  // themeRoot: section,  // 0.42.0: hộp thoại theo theme của vùng [data-td-theme] chứa `section`
 });
 if (res.status === 'applied' && res.changed) {
   figure.crop = res.crop;            // CropValue | null (null = dùng nguyên ảnh)

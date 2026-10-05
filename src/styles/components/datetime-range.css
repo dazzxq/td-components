@@ -11,6 +11,10 @@
 @layer td.tokens {
 	:root {
 		--td-dtr-preset-h: 2rem;                                   /* chip height (44px on coarse pointers) */
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
 		--td-dtr-preset-bg: var(--td-field-bg);
 		--td-dtr-preset-fg: var(--td-color-text);
 		--td-dtr-preset-border: var(--td-field-border);
