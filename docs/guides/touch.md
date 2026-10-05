@@ -31,7 +31,8 @@ Site không phải bật gì: import component như cũ là có. Trang này nói
 ```
 
 Đủ bộ: `--td-btn-{primary,secondary,success,danger,info,warning}-pressed`, `--td-btn-ghost-pressed`,
-`--td-action-btn-{standard,warning,danger}-pressed-bg`, `--td-action-btn-warning-pressed-fg`. Giá trị mặc định ở
+`--td-action-btn-{standard,warning,danger}-pressed-bg`, `--td-action-btn-warning-pressed-fg`, `--td-dropzone-bg-pressed`,
+`--td-toast-{success,error,warning,info}-pressed-bg`. Giá trị mặc định ở
 [design/touch.md](../internal/design/touch.md#token-nhấn).
 Đổi màu nhấn → giữ chữ / icon ≥ 4.5:1 trên nền nhấn.
 

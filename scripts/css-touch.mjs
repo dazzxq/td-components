@@ -8,8 +8,8 @@
  *    half of `:is(:hover, :focus-visible)` must stay outside it). Opt-out: a `hover-exempt: <reason>` comment on the
  *    selector line or the line above (non-empty reason).
  * 2. `checkPressed(entries)` — the interactive controls are (a) the base of every `:hover` selector (the selector up to
- *    the compound holding `:hover`, with the state parts of that compound — pseudo-classes, attribute selectors,
- *    pseudo-elements — dropped) ∪ (b) every selector whose rule sets `cursor: pointer` (same normalisation of its last
+ *    the compound holding `:hover`, with the state parts of every compound — pseudo-classes, attribute selectors,
+ *    pseudo-elements — dropped; a compound that is only state is kept as written) ∪ (b) every selector whose rule sets `cursor: pointer` (same normalisation of its last
  *    compound). Each base needs at least one `<base>:active` (or `[data-td-pressed]`) rule OUTSIDE the hover gate — touch
  *    screens never match the gate. Opt-out: `active-exempt: <reason>` on the selector line or the line above. An
  *    `:active` rule inside the hover gate is an error. Runs over every file at once (a base may get its pressed rule in
@@ -141,11 +141,15 @@ export function baseOf(sel, test) {
   const out = [];
   for (const p of parts) {
     if (p === ' ' || p === '>' || p === '+' || p === '~') { out.push(p); continue; }
+    // every compound loses its state parts (ancestor states such as `.td-dropzone:not([data-disabled])` included), so a
+    // pressed rule that excludes an ancestor state still matches its control; a compound made only of state keeps it
     if (test(p)) {
-      out.push(stripState(p));
+      const own = stripState(p);
+      if (!own) return null; // the control compound itself is only state: nothing to name
+      out.push(own);
       return out.join(' ').replace(/\s+/g, ' ').trim();
     }
-    out.push(p);
+    out.push(stripState(p) || p);
   }
   return null;
 }
@@ -232,6 +236,12 @@ function collect(entries) {
   return { bases, pressed, errors };
 }
 
+/** a pressed rule scoped by an ancestor (`.td-dropzone:not([data-disabled]) .td-dropzone__zone:active`) covers the control */
+function scopedPress(pressed, base) {
+  for (const p of pressed) if (p.endsWith(` ${base}`) || p.endsWith(`> ${base}`)) return true;
+  return false;
+}
+
 /**
  * @param {string | {css: string, file: string}[]} entries
  * @param {string} [file]
@@ -241,7 +251,7 @@ export function checkPressed(entries, file) {
   const { bases, pressed, errors } = collect(norm(entries, file));
   for (const [b, info] of bases) {
     if (info.exempt === 'empty') { errors.push(`${info.file}:${info.line}: active-exempt needs a reason — ${b}`); continue; }
-    if (info.exempt === 'ok' || pressed.has(b)) continue;
+    if (info.exempt === 'ok' || pressed.has(b) || scopedPress(pressed, b)) continue;
     errors.push(`${info.file}:${info.line}: interactive control has no :active / [data-td-pressed] rule outside the hover gate — ${b}`);
   }
   return errors;

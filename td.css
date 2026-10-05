@@ -4353,6 +4353,11 @@
 		--td-toast-error-close-hover: rgb(255 255 255 / 16%);
 		--td-toast-warning-close-hover: rgb(0 0 0 / 8%);
 		--td-toast-info-close-hover: rgb(255 255 255 / 16%);
+		/* v0.36.2 pressed fill per type (tap anywhere = dismiss): one step darker, ink ≥ 4.7:1 (contrast gate) */
+		--td-toast-success-pressed-bg: var(--td-btn-success-pressed, #14532d);
+		--td-toast-error-pressed-bg: var(--td-btn-danger-pressed, #991b1b);
+		--td-toast-warning-pressed-bg: var(--td-btn-warning-pressed, #cc6d05);
+		--td-toast-info-pressed-bg: var(--td-btn-info-pressed, #1e40af);
 		/* deprecated (no effect since v0.36.0: the per-type -close-hover tokens decide) */
 		--td-toast-close-hover: rgb(0 0 0 / 8%);
 		/* deprecated (no effect): v0.20.0 neutral surface + status icons, v0.19 washes */
@@ -4397,13 +4402,13 @@
 		transform: translateX(var(--td-toast-shift));
 	}
 
-	/* active-exempt: tap-to-dismiss surface — the close button carries the pressed state */
 	.td-toast {
 		/* per-type colours (info = default, also for unknown types) */
 		--_td-toast-bg: var(--td-toast-info-bg);
 		--_td-toast-fg: var(--td-toast-info-fg);
 		--_td-toast-border: var(--td-toast-info-border);
 		--_td-toast-close-hover: var(--td-toast-info-close-hover);
+		--_td-toast-pressed-bg: var(--td-toast-info-pressed-bg);
 
 		position: relative;
 		box-sizing: border-box;
@@ -4436,6 +4441,7 @@
 		--_td-toast-fg: var(--td-toast-success-fg);
 		--_td-toast-border: var(--td-toast-success-border);
 		--_td-toast-close-hover: var(--td-toast-success-close-hover);
+		--_td-toast-pressed-bg: var(--td-toast-success-pressed-bg);
 	}
 
 	.td-toast--warning {
@@ -4443,6 +4449,7 @@
 		--_td-toast-fg: var(--td-toast-warning-fg);
 		--_td-toast-border: var(--td-toast-warning-border);
 		--_td-toast-close-hover: var(--td-toast-warning-close-hover);
+		--_td-toast-pressed-bg: var(--td-toast-warning-pressed-bg);
 	}
 
 	.td-toast--error {
@@ -4450,6 +4457,7 @@
 		--_td-toast-fg: var(--td-toast-error-fg);
 		--_td-toast-border: var(--td-toast-error-border);
 		--_td-toast-close-hover: var(--td-toast-error-close-hover);
+		--_td-toast-pressed-bg: var(--td-toast-error-pressed-bg);
 	}
 
 	.td-toast[data-state="open"] {
@@ -4717,6 +4725,7 @@
 
 	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
 	   applied at once; forced colours: a Highlight outline */
+	.td-toast,
 	.td-toast__close {
 		-webkit-tap-highlight-color: transparent;
 	}
@@ -4727,7 +4736,14 @@
 		transition-duration: 0s;
 	}
 
+	/* v0.36.2 review ISSUE-1: the whole toast dismisses on a tap — pressed fill = its type's darker step. The toast
+	   transitions only opacity / transform (enter / exit / reduced motion keep theirs), so the fill switches at once. */
+	.td-toast:is(:active, [data-td-pressed]) {
+		background-color: var(--_td-toast-pressed-bg);
+	}
+
 	@media (forced-colors: active) {
+		.td-toast:is(:active, [data-td-pressed]),
 		.td-toast__close:is(:active, [data-td-pressed]) {
 			outline: 2px solid Highlight;
 		}
@@ -8608,6 +8624,7 @@
 		--td-dropzone-bg: var(--td-field-bg);
 		--td-dropzone-bg-active: color-mix(in srgb, var(--td-accent) 6%, var(--td-field-bg));
 		--td-dropzone-bg-disabled: var(--td-field-bg-disabled);
+		--td-dropzone-bg-pressed: #f4f4f5; /* v0.36.2: the zone while pressed (opens the picker); muted sub-line keeps 4.81:1 (gray-100 is 4.64) */
 		--td-dropzone-border: var(--td-control-border-strong); /* dashed edge ≥ 3:1 on white */
 		--td-dropzone-border-active: var(--td-accent);
 		--td-dropzone-radius: var(--td-radius-lg);
@@ -8625,6 +8642,11 @@
 		--td-dropzone-stacked-icon: 64px;
 		--td-dropzone-title-size: var(--td-text-lg);
 		--td-dropzone-title-weight: var(--td-fw-semibold);
+	}
+
+	/* dark (opt-in): the pressed zone one step lighter than the dark field */
+	:root[data-td-theme="dark"] {
+		--td-dropzone-bg-pressed: #2c2c30;
 	}
 }
 
@@ -8674,7 +8696,6 @@
 		opacity: 0;
 	}
 
-	/* active-exempt: drop target — dragover is its state; the browse button inside is the control */
 	.td-dropzone__zone {
 		display: flex;
 		flex-direction: column;
@@ -8990,7 +9011,8 @@
 
 	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
 	   applied at once; forced colours: a Highlight outline */
-	.td-dropzone__remove {
+	.td-dropzone__remove,
+	.td-dropzone__zone {
 		-webkit-tap-highlight-color: transparent;
 	}
 
@@ -9000,7 +9022,16 @@
 		transition-duration: 0s;
 	}
 
+	/* v0.36.2 review ISSUE-1: the zone is a tap target (opens the file picker) — pressed fill, never while disabled or
+	   while a file is dragged over it (dragover is its own state) */
+	.td-dropzone:not([data-disabled], [data-state="dragover"]) .td-dropzone__zone:is(:active, [data-td-pressed]) {
+		background-color: var(--td-dropzone-bg-pressed);
+		border-color: var(--td-dropzone-border-active);
+		transition-duration: 0s;
+	}
+
 	@media (forced-colors: active) {
+		.td-dropzone:not([data-disabled], [data-state="dragover"]) .td-dropzone__zone:is(:active, [data-td-pressed]),
 		.td-dropzone__remove:is(:active, [data-td-pressed]) {
 			outline: 2px solid Highlight;
 		}

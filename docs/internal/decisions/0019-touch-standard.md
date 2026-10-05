@@ -28,7 +28,7 @@ Tới v0.36.1 kit đã đúng kích thước trên điện thoại (ADR 0014: v�
    chỉ đổi màu (token `--td-color-pressed`, `--td-option-pressed-bg`, `--td-btn-{v}-pressed`, `--td-btn-ghost-pressed`,
    `--td-action-btn-{tone}-pressed-bg`), không scale / dịch (ADR 0011 luật 4), `transition-duration: 0s` khi vào,
    `-webkit-tap-highlight-color: transparent`, forced colours = viền `Highlight`. Lint `checkPressed` suy tập control từ
-   các luật `:hover` + `cursor: pointer`; ngoại lệ `/* active-exempt: <lý do> */` (16 mục đã duyệt, danh sách ở
+   các luật `:hover` + `cursor: pointer`; ngoại lệ `/* active-exempt: <lý do> */` (14 mục đã duyệt sau review vòng 1 — vùng dropzone và toast có hình nhấn; danh sách ở
    design/touch.md). Contrast gate đo cặp chữ / nền nhấn.
 3. **Không dựa vào quirk iOS**: `src/utils/press.js` `ensurePressStates()` gắn một bộ listener **passive** trên `document`
    (lười: lần connect đầu của `TdBaseElement`, `openDialogLayer()`, mở lightbox, container toast) và đặt `data-td-pressed`

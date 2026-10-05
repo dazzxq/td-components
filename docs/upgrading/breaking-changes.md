@@ -80,7 +80,8 @@ theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao
 - **Đổi giao diện — hình nhấn mới** (`:active` + `[data-td-pressed]`) trên mọi control tương tác: chỉ đổi màu, không chuyển
   động. Site có `:active` riêng: luật không layer của site vẫn thắng (kit ở `@layer td.component`). Đổi màu bằng token
   `--td-color-pressed`, `--td-option-pressed-bg`, `--td-btn-{primary,secondary,success,danger,info,warning}-pressed`,
-  `--td-btn-ghost-pressed`, `--td-action-btn-{standard,warning,danger}-pressed-bg`, `--td-action-btn-warning-pressed-fg`.
+  `--td-btn-ghost-pressed`, `--td-action-btn-{standard,warning,danger}-pressed-bg`, `--td-action-btn-warning-pressed-fg`,
+  `--td-dropzone-bg-pressed` (vùng thả), `--td-toast-{success,error,warning,info}-pressed-bg` (thân toast, chạm = đóng).
   Site đã đổi `--td-btn-{v}-bg` nên đặt cả `-pressed`. Trong DOM có thể thấy thuộc tính `data-td-pressed` trong lúc ngón
   tay đang chạm (đừng dùng nó làm API).
 - **Đổi hành vi — tooltip không bật khi chạm** (cả trường hợp focus sinh ra từ cú chạm trên Android / Chromium), khác dwp

@@ -39,19 +39,26 @@ Khai báo ở `tokens.css` / `theme-dark.css` (chung, nút), `action-button.css`
 | `--td-action-btn-standard-pressed-bg` | `var(--td-color-pressed)` | — | |
 | `--td-action-btn-warning-pressed-bg` / `-fg` | `#fef3c7` / `#92400e` | `rgb(245 158 11 / 26%)` / như fg thường | không nền amber nào giữ `#b45309` ≥ 4.7, nên icon đậm thêm một bậc |
 | `--td-action-btn-danger-pressed-bg` | `#fdd5d5` | `rgb(220 38 38 / 30%)` | |
+| `--td-dropzone-bg-pressed` | `#f4f4f5` (+ viền `--td-dropzone-border-active`; gray-100 chỉ 4.64 với dòng phụ) | `#2c2c30` | vùng dropzone |
+| `--td-toast-{success,error,warning,info}-pressed-bg` | `--td-btn-{success,danger,warning,info}-pressed` | như light | toast (chữ ≥ 4.7) |
 | `--td-lb-btn-pressed` / `--td-lb-disc-bg-pressed` | `rgb(255 255 255 / 24%)` / `rgb(64 64 70 / 94%)` | — | nút / đĩa lightbox |
 
 Nút `--custom` / alias `-tint`: nền tối 16 % (`color-mix`), trình duyệt không có `color-mix()` giữ nền hover / nghỉ.
 
-## Ngoại lệ `active-exempt` đã duyệt (16)
+## Ngoại lệ `active-exempt` đã duyệt (14)
 
 `.td-field__control`, `.td-chip-input__box`, `.td-tree-select__control`, `.td-number__box` (ô nhập: focus ring là phản hồi)
 · `td-dropdown > .td-dropdown__native`, `.td-multiselect__native`, `td-chip-input > .td-chip-input__native`,
 `.td-tree-select__native` (select native, UA tự vẽ) · `.td-slider__input` (range native, thumb theo ngón) ·
-`.td-table .td-table__row` (hàng không kích hoạt được) · `.td-dropzone__zone` (vùng thả; nút duyệt bên trong là control) ·
-`.td-lightbox__grab` (tay nắm sheet, sheet theo ngón) · `.td-toast` (chạm để đóng; nút đóng có hình nhấn) ·
+`.td-table .td-table__row` (hàng không kích hoạt được) · `.td-lightbox__grab` (tay nắm sheet, sheet theo ngón) ·
 `.td-media-grid__item` + luật trả lại `[data-selected] … --mark` (opener / tick mang hình nhấn) · tay nắm
 `.td-tree__toggle` của mục disabled (hàng mang hình nhấn). `hover-exempt`: **0**.
+
+Không miễn (review vòng 1, ISSUE-1): **vùng `.td-dropzone__zone`** (chạm = mở chọn file) có hình nhấn
+`--td-dropzone-bg-pressed` + viền accent, **trừ** khi dropzone `data-disabled` hoặc `data-state="dragover"`; **toast**
+(chạm = đóng) có hình nhấn `--td-toast-{success,error,warning,info}-pressed-bg` (= nền nút ngữ nghĩa nhấn). Luật nhấn
+được phép chặn bằng trạng thái của tổ tiên (`.td-dropzone:not([data-disabled]) .td-dropzone__zone:active`): lint chuẩn hoá
+trạng thái ở mọi compound và coi luật có tổ tiên là phủ control.
 
 ## Bảng `touch-action`
 

@@ -7,6 +7,7 @@ import { TdLightbox } from '/src/feedback/td-lightbox.js';
 import { fillIconSlots, tdIcon } from '/src/icons/td-icon.js';
 import '/src/form/td-otp-input.js';
 import '/src/display/td-copy.js';
+import '/src/form/td-dropzone.js';
 import '/src/form/td-tree.js';
 import '/src/form/td-tree-select.js';
 import { createCheckMark } from '/src/utils/check-mark.js';
@@ -125,6 +126,10 @@ for (const v of ['active', 'selected']) CASES.push({ kind: 'v036', v, state: 'op
 for (const v of ['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'ghost']) CASES.push({ kind: 'v0362', v, state: 'btn-pressed', pageOnly: true });
 for (const v of ['standard', 'warning', 'danger']) CASES.push({ kind: 'v0362', v, state: 'action-pressed', pageOnly: true });
 CASES.push({ kind: 'v0362', v: 'option', state: 'option-pressed', pageOnly: true });
+// v0.36.2 review ISSUE-1: the toast surface (tap = dismiss) and the dropzone zone (tap = file picker) are pressed too —
+// toast text ≥ 4.7 and close glyph ≥ 3.2 on the pressed fill per type; dropzone title / sub-line ≥ 4.7 on its pressed fill.
+for (const t of TOASTS) CASES.push({ kind: 'v0362', v: t, state: 'toast-pressed', pageOnly: true });
+CASES.push({ kind: 'v0362', v: 'dropzone', state: 'dropzone-pressed', pageOnly: true });
 // v0.32.0: td-media-field (content layer → page only): prompt + ratio text ≥ 4.7 on the empty frame fill, the empty-frame
 // icon + dashed border ≥ 3.2 (border vs the page and vs the frame fill), the "Video" badge text ≥ 4.7 on its fill, the
 // field error text ≥ 4.7 on the page; td-media-picker (inside the solid dialog): tile name, detail meta label and tray
@@ -767,7 +772,35 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       return `rgb(${[0, 1, 2].map((i) => Math.round(t[i] * a + b[i] * (1 - a))).join(', ')})`;
     };
     let target; let pairs;
-    if (c.state === 'option-pressed') {
+    if (c.state === 'toast-pressed') {
+      target = TdToast._showSingle('Đã lưu thay đổi của bạn', c.v, 0, 'top-end');
+      target.setAttribute('data-td-pressed', '');
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const cs = getComputedStyle(target);
+      const rest = document.createElement('div');
+      rest.className = `td-toast td-toast--${c.v}`;
+      stage.appendChild(rest);
+      const restBg = getComputedStyle(rest).backgroundColor;
+      rest.remove();
+      pairs = [{ what: 'toast text vs pressed fill', fg: cs.color, bg: cs.backgroundColor, min: 4.7 },
+        { what: 'toast close glyph vs pressed fill', fg: cs.color, bg: cs.backgroundColor, min: 3.2 },
+        { what: 'pressed fill differs from rest', fg: cs.backgroundColor, bg: restBg, min: 1.05 }];
+    } else if (c.state === 'dropzone-pressed') {
+      const host = document.createElement('td-dropzone');
+      host.setAttribute('label', 'Tệp đính kèm');
+      host.setAttribute('prompt-title', 'Kéo thả tệp vào đây');
+      host.setAttribute('prompt-text', 'PDF hoặc ảnh, tối đa 5MB');
+      stage.appendChild(host);
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      target = host.querySelector('.td-dropzone__zone');
+      const rest = over(getComputedStyle(target).backgroundColor, page);
+      target.setAttribute('data-td-pressed', '');
+      const fill = over(getComputedStyle(target).backgroundColor, page);
+      pairs = [{ what: 'dropzone title vs pressed fill', fg: getComputedStyle(host.querySelector('.td-dropzone__title')).color, bg: fill, min: 4.7 },
+        { what: 'dropzone icon vs pressed fill', fg: getComputedStyle(host.querySelector('.td-dropzone__icon')).color, bg: fill, min: 3.2 },
+        { what: 'dropzone sub-line vs pressed fill', fg: getComputedStyle(host.querySelector('.td-dropzone__subtext')).color, bg: fill, min: 4.7 },
+        { what: 'pressed fill differs from rest', fg: fill, bg: rest, min: 1.05 }];
+    } else if (c.state === 'option-pressed') {
       const menu = document.createElement('div');
       menu.className = 'td-dropdown__menu td-glass-surface td-glass-surface--strong';
       menu.setAttribute('data-state', 'open');

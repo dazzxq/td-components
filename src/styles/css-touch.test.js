@@ -52,7 +52,10 @@ test('stripState / baseOf / splitList', () => {
   assert.equal(stripState('.a:hover:not(:disabled, [aria-x])[data-y]::before'), '.a');
   assert.equal(stripState('td-x.a#b'), 'td-x.a#b');
   assert.equal(baseOf('.p:hover .c:not(:checked) ~ .m', (p) => p.includes(':hover')), '.p');
-  assert.equal(baseOf('.f[data-state="empty"] > .o:hover:not(:disabled)', (p) => p.includes(':hover')), '.f[data-state="empty"] > .o');
+  assert.equal(baseOf('.f[data-state="empty"] > .o:hover:not(:disabled)', (p) => p.includes(':hover')), '.f > .o');
+  // ancestor state excluded in a pressed rule still names the same control (ISSUE-1: dropzone disabled / dragover)
+  assert.equal(baseOf('.d:not([data-disabled], [data-state="dragover"]) .z:is(:active, [data-td-pressed])', (p) => p.includes(':active')), '.d .z');
+  assert.equal(baseOf('a > [data-x] > .h:hover', (p) => p.includes(':hover')), 'a > [data-x] > .h'); // state-only compound kept
   assert.equal(baseOf('.a:is(:active, [data-td-pressed]):not(:disabled)', (p) => p.includes(':active')), '.a');
   assert.deepEqual(splitList('.a:is(.b, .c), .d').map((p) => p.text), ['.a:is(.b, .c)', '.d']);
 });
@@ -73,6 +76,14 @@ test('checkPressed: active-exempt with a reason passes, empty reason fails; :act
   const e = checkPressed(`${GATE} { .a:hover { color: red } .a:active { color: blue } }`, 'x.css');
   assert.ok(e.some((m) => /inside the hover gate/.test(m)), e.join('\n'));
   assert.ok(e.some((m) => /no :active/.test(m)), e.join('\n'));
+});
+
+test('checkPressed: a pressed rule scoped by an ancestor state covers the control (ISSUE-1)', () => {
+  const css = `.z { cursor: pointer }\n.d:not([data-disabled], [data-state="dragover"]) .z:is(:active, [data-td-pressed]) { color: blue }`;
+  assert.deepEqual(checkPressed(css, 'x.css'), []);
+  assert.deepEqual(pressedBases(css), ['.d .z']);
+  // an unrelated longer name does not count
+  assert.equal(checkPressed('.z { cursor: pointer }\n.d .zz:active { color: blue }', 'x.css').length, 1);
 });
 
 test('checkPressed: a pressed rule in another file counts (entries are checked together)', () => {
@@ -101,4 +112,6 @@ test('the kit CSS: 0 pressed-state errors; press.js PRESS_TARGETS = the pressed 
   // every active-exempt carries a reason (checkPressed enforces it) — the list is reviewed in docs/internal/design/touch.md
   const exempt = entries.flatMap((x) => [...x.css.matchAll(/active-exempt:([^*]*)\*\//g)].map((m) => m[1].trim()));
   assert.ok(exempt.every(Boolean));
+  assert.equal(exempt.length, 14); // ISSUE-1 (v0.36.2 review): the dropzone zone and the toast surface have a pressed look
+  for (const base of ['.td-dropzone .td-dropzone__zone', '.td-toast']) assert.ok(PRESS_TARGETS.includes(base), base);
 });
