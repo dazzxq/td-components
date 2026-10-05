@@ -31,7 +31,9 @@
 	}
 
 	:root[data-td-theme="dark"] {
-		--td-tooltip-border: rgb(255 255 255 / 12%); /* keeps the black chip off the dark page */
+		/* v0.41.0: a raised grey chip (was #18181b, 1.06:1 on the page): 1.67 page · 1.50 surface, white 11.3, + a light edge */
+		--td-tooltip-bg: #3a3a3e;
+		--td-tooltip-border: rgb(255 255 255 / 16%);
 	}
 }
 

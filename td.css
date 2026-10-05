@@ -364,11 +364,17 @@
 
 /* ---- src/styles/theme-dark.css ---- */
 /*
- * Dark theme — OPT-IN ONLY: <html data-td-theme="dark">. No automatic prefers-color-scheme
- * (light-only sites must never flip). Token remap only, inside @layer td.tokens so a site's
- * unlayered token overrides still win; a site tunes dark values with its own
- * `:root[data-td-theme="dark"] { … }` rule.
- * EXPERIMENTAL: values computed (contrast-checked on paper), not yet tuned on real pages.
+ * Dark theme (v0.41.0: official) — <html data-td-theme="dark">, or data-td-theme="auto" to follow the OS: the build
+ * (scripts/css-theme.mjs) copies EVERY `:root[data-td-theme="dark"]` rule of src/styles into
+ * `@media (prefers-color-scheme: dark) { :root[data-td-theme="auto"] { … } }` right after it — never write an auto
+ * block by hand (the build rejects it). No attribute = light, never flips with the OS (light-only sites).
+ * Token remap only, inside @layer td.tokens so a site's unlayered token overrides still win; a site tunes dark values
+ * with its own `:root[data-td-theme="dark"] { … }` rule (add `:root[data-td-theme="auto"]` inside the same media query
+ * when the site uses auto).
+ * v0.41.0 tuning, rendered on demo.html in 3 engines (test/tokens/page-contrast.spec.mjs; ratios WCAG 2.x, on #1c1c1e
+ * surface / #242427 muted / #111113 page): control edges ≥ 3:1 against every surface (QĐ7), muted text ≥ 4.7 also on
+ * the hover fills, accent ≥ 4.7 as text, a lighter tooltip chip, real shadows. Every change: test/tokens/golden.json
+ * darkDeltas.
  */
 @layer td.tokens {
 	:root[data-td-theme="dark"] {
@@ -378,10 +384,10 @@
 		--td-color-surface: #1c1c1e;
 		--td-color-surface-muted: #242427;
 		--td-color-text: #f5f5f7;
-		--td-color-text-muted: #a1a1aa;
+		--td-color-text-muted: #acacb4;                 /* v0.41.0 (was #a1a1aa): 5.59 surface, 5.03 muted + hover-strong */
 		--td-color-text-subtle: #8a8a93;
 		--td-color-text-label: #d4d4d8;
-		--td-color-border: #2c2c30;
+		--td-color-border: #333338;                     /* v0.41.0 (was #2c2c30, 1.22): 1.35 on the surface — decorative */
 		--td-color-sheen: rgb(255 255 255 / 8%);
 		--td-color-border-strong: #45454b;
 		--td-color-hover: rgb(255 255 255 / 6%);
@@ -401,13 +407,16 @@
 		--td-focus-ring: 0 0 0 3px rgb(96 165 250 / 45%);
 		--td-hairline: rgb(255 255 255 / 8%);
 
-		--td-accent: #3b82f6;
+		--td-accent: #4b8df8;                           /* v0.41.0 (was #3b82f6, 4.63 on the surface): 5.24 / 4.77 muted as text */
 		--td-accent-contrast: #fff;
-		--td-accent-fill: #2563eb; /* fallback without color-mix(); see @supports below */
+		--td-accent-fill: #2563eb; /* fallback without color-mix(); see @supports below (white 4.81 on #3c71c6) */
 
 		--td-control-border-strong: #8a8a93;
-		--td-control-border-soft: #3a3a3c; /* Apple systemGray4 (dark) */
-		--td-control-border-hover: #636366; /* Apple systemGray2 (dark) */
+		/* v0.41.0 (owner, QĐ7): dark control edges ≥ 3:1 against EVERY adjacent colour — fields, triggers, unchecked
+		   boxes, switch edge (was #3a3a3c 1.50 / #636366 2.84). soft: 3.77 surface · 3.43 muted · 4.18 page ·
+		   3.08 on the switch-off fill; hover one step past it: 5.22 surface · 4.75 muted. */
+		--td-control-border-soft: #76767c;
+		--td-control-border-hover: #8e8e93;
 
 		/* v0.21.0 pastel semantic palette: semantic colour ~18 % pre-mixed on #111113 (solid), border ~30 %, ink ~200 */
 		--td-pastel-success-bg: #143121;
@@ -461,9 +470,14 @@
 		--td-glass-bg: rgb(28 28 30 / 90%);
 		--td-glass-bg-strong: rgb(28 28 30 / 94%);
 		--td-glass-fg: #f5f5f7;
-		--td-glass-border: rgb(255 255 255 / 10%);
-		--td-glass-shadow: 0 2px 6px rgb(0 0 0 / 12%), 0 8px 24px rgb(0 0 0 / 24%); /* v0.21.0: light alpha × 2 */
-		--td-glass-shadow-lg: 0 4px 12px rgb(0 0 0 / 16%), 0 20px 48px rgb(0 0 0 / 36%);
+		/* v0.41.0: on a dark page a shadow barely shows — floating surfaces are told apart by a thin LIGHT edge (14 %,
+		   was 10 %) plus deeper shadows; --td-shadow-1..3 get dark values (they had none) */
+		--td-glass-border: rgb(255 255 255 / 14%);
+		--td-glass-shadow: 0 2px 6px rgb(0 0 0 / 24%), 0 8px 24px rgb(0 0 0 / 40%);
+		--td-glass-shadow-lg: 0 4px 12px rgb(0 0 0 / 32%), 0 20px 48px rgb(0 0 0 / 56%);
+		--td-shadow-1: 0 1px 2px rgb(0 0 0 / 30%);
+		--td-shadow-2: 0 2px 8px rgb(0 0 0 / 40%);
+		--td-shadow-3: 0 8px 24px rgb(0 0 0 / 50%);
 	}
 
 	/* v0.16.0: the dark fill FOLLOWS the site accent — 20% darker so white text stays readable
@@ -4790,7 +4804,9 @@
 	}
 
 	:root[data-td-theme="dark"] {
-		--td-tooltip-border: rgb(255 255 255 / 12%); /* keeps the black chip off the dark page */
+		/* v0.41.0: a raised grey chip (was #18181b, 1.06:1 on the page): 1.67 page · 1.50 surface, white 11.3, + a light edge */
+		--td-tooltip-bg: #3a3a3e;
+		--td-tooltip-border: rgb(255 255 255 / 16%);
 	}
 }
 

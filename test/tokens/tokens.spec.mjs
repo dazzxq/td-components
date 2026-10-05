@@ -395,11 +395,12 @@ async function runEngine(name, launcher) {
         check(`${tag} dark toast solid fill (v0.36.0: the same solid colour in both themes)`, opaqueBg(d['s-toast'].bg) && sameColor(d['s-toast'].bg, [21, 128, 61, 1]), d['s-toast'].bg);
         check(`${tag} dark toast no filter`, noFilter(d['s-toast'].bf), d['s-toast'].bf);
         check(`${tag} dark opaque surfaces keep the site solid`, sameColor(d['s-modal'].bg, [9, 9, 9, 1]), d['s-modal'].bg);
-        // v0.21.0: dark keeps the black tooltip (+ a faint light edge); primary inverted; shadows alpha × 2
-        check(`${tag} dark tooltip black + light edge`, sameColor(d['s-tooltip'].bg, [24, 24, 27, 1]) && sameColor(d['s-tooltip'].border, [255, 255, 255, 0.12]), JSON.stringify(d['s-tooltip']));
+        // v0.21.0: primary inverted. v0.41.0 (dark tuning, golden.json darkDeltas): the tooltip is a raised grey chip +
+        // a 16 % light edge (the black chip was 1.06:1 on the dark page); floating shadows deeper (24 % + 40 %)
+        check(`${tag} dark tooltip raised grey chip + light edge`, sameColor(d['s-tooltip'].bg, [58, 58, 62, 1]) && sameColor(d['s-tooltip'].border, [255, 255, 255, 0.16]), JSON.stringify(d['s-tooltip']));
         check(`${tag} dark primary inverted`, sameColor(d['b-primary'].bg, [244, 244, 245, 1]) && sameColor(d['b-primary'].color, [24, 24, 27, 1]), JSON.stringify(d['b-primary']));
         check(`${tag} dark danger solid (v0.36.0: same as light)`, sameColor(d['b-danger'].bg, [220, 38, 38, 1]) && sameColor(d['b-danger'].color, [255, 255, 255, 1]), JSON.stringify(d['b-danger']));
-        check(`${tag} dark --td-glass-shadow ×2`, sameAlphas(d['s-menu'].shadow, [0.12, 0.24]), d['s-menu'].shadow);
+        check(`${tag} dark --td-glass-shadow deeper (v0.41.0: 24 % + 40 %)`, sameAlphas(d['s-menu'].shadow, [0.24, 0.4]), d['s-menu'].shadow);
         check(`${tag} dark --td-btn-lift ×2`, sameAlphas(d['b-primary'].shadow, [0.2, 0.24]), d['b-primary'].shadow);
         check(`${tag} dark skeleton bg (#242427), table follows`, sameColor(d['k-skel'].bg, [36, 36, 39, 1]) && d['k-table-skel'].bg === d['k-skel'].bg, `${d['k-skel'].bg} / ${d['k-table-skel'].bg}`);
         await context.close();

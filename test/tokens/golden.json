@@ -1537,7 +1537,7 @@
     },
     "--td-table-check-border": {
       "light": "rgb(228, 228, 231)",
-      "dark": "rgb(58, 58, 60)",
+      "dark": "rgb(118, 118, 124)",
       "why": "v0.41.0: resting edge of the td-table selection mark (light = the v0.37 look; dark = the control edge, QĐ7)"
     },
     "--td-color-on-fill": {
@@ -1546,5 +1546,322 @@
       "why": "v0.41.0 contract: ink on --td-color-fill (was the --td-badge-neutral-fg literals)"
     }
   },
-  "darkDeltas": {}
+  "darkDeltas": {
+    "--td-accent": {
+      "to": "rgb(75, 141, 248)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-accent-fill": {
+      "to": "rgb(60, 113, 198)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-badge-accent-bg": {
+      "to": "rgb(32, 49, 79)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-badge-accent-fg": {
+      "to": "rgb(183, 209, 252)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-btn-ghost-fg": {
+      "to": "rgb(75, 141, 248)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-btn-ghost-hover-fg": {
+      "to": "rgb(129, 175, 250)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-checkbox-border": {
+      "to": "rgb(118, 118, 124)",
+      "why": "QĐ7 (owner): dark control edge --td-control-border-soft #3a3a3c → #76767c, ≥ 3:1 vs control-bg / surface / surface-muted / raised / bg (was 1.50); fields, triggers, unchecked boxes, switch edge follow"
+    },
+    "--td-checkbox-color": {
+      "to": "rgb(75, 141, 248)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-color-border": {
+      "to": "rgb(51, 51, 56)",
+      "why": "dark --td-color-border #2c2c30 → #333338: decorative divider 1.35 on the surface (was 1.22); derived hairlines / dividers follow"
+    },
+    "--td-color-text-muted": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-control-border-hover": {
+      "to": "rgb(142, 142, 147)",
+      "why": "QĐ7: dark --td-control-border-hover #636366 → #8e8e93, one step past the soft edge (≥ 3:1 everywhere, was 2.84)"
+    },
+    "--td-control-border-soft": {
+      "to": "rgb(118, 118, 124)",
+      "why": "QĐ7 (owner): dark control edge --td-control-border-soft #3a3a3c → #76767c, ≥ 3:1 vs control-bg / surface / surface-muted / raised / bg (was 1.50); fields, triggers, unchecked boxes, switch edge follow"
+    },
+    "--td-copy-fg": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-dropdown-create-fg": {
+      "to": "rgb(156, 192, 251)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-dropdown-hairline": {
+      "to": "rgb(51, 51, 56)",
+      "why": "dark --td-color-border #2c2c30 → #333338: decorative divider 1.35 on the surface (was 1.22); derived hairlines / dividers follow"
+    },
+    "--td-dropdown-option-active-line": {
+      "to": "rgb(142, 142, 147)",
+      "why": "QĐ7: dark --td-control-border-hover #636366 → #8e8e93, one step past the soft edge (≥ 3:1 everywhere, was 2.84)"
+    },
+    "--td-dropdown-search-border": {
+      "to": "rgb(118, 118, 124)",
+      "why": "QĐ7 (owner): dark control edge --td-control-border-soft #3a3a3c → #76767c, ≥ 3:1 vs control-bg / surface / surface-muted / raised / bg (was 1.50); fields, triggers, unchecked boxes, switch edge follow"
+    },
+    "--td-dropzone-bg-active": {
+      "to": "rgb(31, 35, 43)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-dropzone-border-active": {
+      "to": "rgb(75, 141, 248)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-dropzone-hint": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-dropzone-icon": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-dtp-band-border": {
+      "to": "rgb(142, 142, 147)",
+      "why": "QĐ7: dark --td-control-border-hover #636366 → #8e8e93, one step past the soft edge (≥ 3:1 everywhere, was 2.84)"
+    },
+    "--td-dtp-option-fg": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-dtr-preset-border": {
+      "to": "rgb(118, 118, 124)",
+      "why": "QĐ7 (owner): dark control edge --td-control-border-soft #3a3a3c → #76767c, ≥ 3:1 vs control-bg / surface / surface-muted / raised / bg (was 1.50); fields, triggers, unchecked boxes, switch edge follow"
+    },
+    "--td-dtr-tab-note": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-field-border": {
+      "to": "rgb(118, 118, 124)",
+      "why": "QĐ7 (owner): dark control edge --td-control-border-soft #3a3a3c → #76767c, ≥ 3:1 vs control-bg / surface / surface-muted / raised / bg (was 1.50); fields, triggers, unchecked boxes, switch edge follow"
+    },
+    "--td-field-border-hover": {
+      "to": "rgb(142, 142, 147)",
+      "why": "QĐ7: dark --td-control-border-hover #636366 → #8e8e93, one step past the soft edge (≥ 3:1 everywhere, was 2.84)"
+    },
+    "--td-field-fg-disabled": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-field-focus": {
+      "to": "rgb(102, 158, 249)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-field-focus-ring": {
+      "to": "rgba(75, 141, 248, 0.22) 0px 0px 0px 3px",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-field-note": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-field-placeholder": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-filter-chip-border": {
+      "to": "rgb(51, 51, 56)",
+      "why": "dark --td-color-border #2c2c30 → #333338: decorative divider 1.35 on the surface (was 1.22); derived hairlines / dividers follow"
+    },
+    "--td-filter-chip-remove-fg": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-glass-border": {
+      "to": "rgba(255, 255, 255, 0.14)",
+      "why": "dark floating surfaces: --td-glass-border 10 % → 14 % white, --td-glass-shadow(-lg) deeper (tell popups / modal / scroll-top apart from the page)"
+    },
+    "--td-glass-shadow": {
+      "to": "rgba(0, 0, 0, 0.24) 0px 2px 6px 0px, rgba(0, 0, 0, 0.4) 0px 8px 24px 0px",
+      "why": "dark floating surfaces: --td-glass-border 10 % → 14 % white, --td-glass-shadow(-lg) deeper (tell popups / modal / scroll-top apart from the page)"
+    },
+    "--td-glass-shadow-lg": {
+      "to": "rgba(0, 0, 0, 0.32) 0px 4px 12px 0px, rgba(0, 0, 0, 0.56) 0px 20px 48px 0px",
+      "why": "dark floating surfaces: --td-glass-border 10 % → 14 % white, --td-glass-shadow(-lg) deeper (tell popups / modal / scroll-top apart from the page)"
+    },
+    "--td-glass-tint": {
+      "to": "rgb(75, 141, 248)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-hovercard-status-fg": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-media-grid-selected-ring": {
+      "to": "rgb(75, 141, 248)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-media-picker-card-hover": {
+      "to": "rgb(75, 141, 248)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-media-picker-card-shadow": {
+      "to": "rgba(0, 0, 0, 0.3) 0px 1px 2px 0px",
+      "why": "dark --td-shadow-1..3 get dark values (they had none: 6–12 % black was invisible on a dark page)"
+    },
+    "--td-media-picker-card-viewing": {
+      "to": "rgb(75, 141, 248)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-menu-btn-fg": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-menu-hint-fg": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-menu-icon-fg": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-number-affix-fg": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-option-active-bar": {
+      "to": "rgb(75, 141, 248)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-otp-border-active": {
+      "to": "rgb(102, 158, 249)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-otp-fg-disabled": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-otp-ring": {
+      "to": "rgba(75, 141, 248, 0.22) 0px 0px 0px 3px",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-pagination-active": {
+      "to": "rgb(60, 113, 198)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-password-meter-fg": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-password-meter-track": {
+      "to": "rgb(51, 51, 56)",
+      "why": "dark --td-color-border #2c2c30 → #333338: decorative divider 1.35 on the surface (was 1.22); derived hairlines / dividers follow"
+    },
+    "--td-progress-primary": {
+      "to": "rgb(75, 141, 248)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-progress-track": {
+      "to": "rgb(51, 51, 56)",
+      "why": "dark --td-color-border #2c2c30 → #333338: decorative divider 1.35 on the surface (was 1.22); derived hairlines / dividers follow"
+    },
+    "--td-repeater-btn-fg": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-repeater-divider": {
+      "to": "rgb(51, 51, 56)",
+      "why": "dark --td-color-border #2c2c30 → #333338: decorative divider 1.35 on the surface (was 1.22); derived hairlines / dividers follow"
+    },
+    "--td-scan-idle": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-scan-list-border": {
+      "to": "rgb(51, 51, 56)",
+      "why": "dark --td-color-border #2c2c30 → #333338: decorative divider 1.35 on the surface (was 1.22); derived hairlines / dividers follow"
+    },
+    "--td-scan-row-sep": {
+      "to": "rgb(51, 51, 56)",
+      "why": "dark --td-color-border #2c2c30 → #333338: decorative divider 1.35 on the surface (was 1.22); derived hairlines / dividers follow"
+    },
+    "--td-shadow-1": {
+      "to": "rgba(0, 0, 0, 0.3) 0px 1px 2px 0px",
+      "why": "dark --td-shadow-1..3 get dark values (they had none: 6–12 % black was invisible on a dark page)"
+    },
+    "--td-shadow-2": {
+      "to": "rgba(0, 0, 0, 0.4) 0px 2px 8px 0px",
+      "why": "dark --td-shadow-1..3 get dark values (they had none: 6–12 % black was invisible on a dark page)"
+    },
+    "--td-shadow-3": {
+      "to": "rgba(0, 0, 0, 0.5) 0px 8px 24px 0px",
+      "why": "dark --td-shadow-1..3 get dark values (they had none: 6–12 % black was invisible on a dark page)"
+    },
+    "--td-slider-color": {
+      "to": "rgb(75, 141, 248)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-switch-edge": {
+      "to": "rgb(118, 118, 124)",
+      "why": "QĐ7 (owner): dark control edge --td-control-border-soft #3a3a3c → #76767c, ≥ 3:1 vs control-bg / surface / surface-muted / raised / bg (was 1.50); fields, triggers, unchecked boxes, switch edge follow"
+    },
+    "--td-table-border": {
+      "to": "rgb(51, 51, 56)",
+      "why": "dark --td-color-border #2c2c30 → #333338: decorative divider 1.35 on the surface (was 1.22); derived hairlines / dividers follow"
+    },
+    "--td-table-card-border": {
+      "to": "rgb(51, 51, 56)",
+      "why": "dark --td-color-border #2c2c30 → #333338: decorative divider 1.35 on the surface (was 1.22); derived hairlines / dividers follow"
+    },
+    "--td-table-card-selected-border": {
+      "to": "rgb(75, 141, 248)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-table-head-fg": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-table-label-fg": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-table-row-border": {
+      "to": "rgb(51, 51, 56)",
+      "why": "dark --td-color-border #2c2c30 → #333338: decorative divider 1.35 on the surface (was 1.22); derived hairlines / dividers follow"
+    },
+    "--td-table-row-selected": {
+      "to": "rgba(75, 141, 248, 0.08)",
+      "why": "dark --td-accent #3b82f6 → #4b8df8: the accent as text reads ≥ 4.7 on the dark surface (was 4.63) / 4.77 on surface-muted; derived accent tokens follow"
+    },
+    "--td-table-shadow": {
+      "to": "rgba(0, 0, 0, 0.3) 0px 1px 2px 0px",
+      "why": "dark --td-shadow-1..3 get dark values (they had none: 6–12 % black was invisible on a dark page)"
+    },
+    "--td-tabs-fg": {
+      "to": "rgb(172, 172, 180)",
+      "why": "dark --td-color-text-muted #a1a1aa → #acacb4: ≥ 4.7 also on the hover fills (was 4.42 on surface-muted + hover-strong); derived muted inks follow"
+    },
+    "--td-toast-shadow": {
+      "to": "rgba(0, 0, 0, 0.24) 0px 2px 6px 0px, rgba(0, 0, 0, 0.4) 0px 8px 24px 0px",
+      "why": "dark floating surfaces: --td-glass-border 10 % → 14 % white, --td-glass-shadow(-lg) deeper (tell popups / modal / scroll-top apart from the page)"
+    },
+    "--td-tooltip-bg": {
+      "to": "rgb(58, 58, 62)",
+      "why": "dark tooltip: a raised grey chip #3a3a3e (+ 16 % white edge) instead of the black chip that measured 1.06:1 on the dark page"
+    },
+    "--td-tooltip-border": {
+      "to": "rgba(255, 255, 255, 0.16)",
+      "why": "dark tooltip: a raised grey chip #3a3a3e (+ 16 % white edge) instead of the black chip that measured 1.06:1 on the dark page"
+    },
+    "--td-tree-row-active-line": {
+      "to": "rgb(142, 142, 147)",
+      "why": "QĐ7: dark --td-control-border-hover #636366 → #8e8e93, one step past the soft edge (≥ 3:1 everywhere, was 2.84)"
+    }
+  }
 }

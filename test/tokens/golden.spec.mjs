@@ -125,6 +125,10 @@ if (CAPTURE) {
   process.exit(0);
 }
 
+if (process.argv.includes('--print-dark-diff')) { // dev aid: every dark value that differs from the baseline
+  for (const k of Object.keys(dark)) if (k in golden.dark && dark[k] !== golden.dark[k]) console.log(`${k}\t${golden.dark[k]}\t${dark[k]}`);
+  process.exit(0);
+}
 const exceptScheme = (k) => k !== '@color-scheme';
 for (const k of Object.keys(light)) {
   if (k in golden.light) {
