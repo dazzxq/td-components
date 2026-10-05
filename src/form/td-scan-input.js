@@ -13,7 +13,7 @@ import { playBeep, prepareBeep } from '../utils/beep.js';
 /** Attributes of the server-rendered single input that exist only for the no-JS form (removed on hydrate). */
 const SSR_ONLY = ['name', 'value', 'required'];
 /** The fixed scanner-safe attributes of the input (QĐ 8). */
-const INPUT_ATTRS = [['autocomplete', 'off'], ['autocapitalize', 'off'], ['autocorrect', 'off'], ['spellcheck', 'false'],
+const INPUT_ATTRS = [['autocomplete', 'off'], ['autocapitalize', 'none'], ['autocorrect', 'off'], ['spellcheck', 'false'],
   ['enterkeyhint', 'done']];
 const INPUT_MODES = new Set(['none', 'text', 'numeric', 'decimal', 'tel', 'search', 'email', 'url']);
 const TEXTAREA_ATTRS = new Set(['class', 'name', 'rows', 'aria-label', 'disabled']);
