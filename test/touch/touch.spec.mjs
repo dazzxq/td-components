@@ -35,6 +35,23 @@ const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="${ORIGIN}/td.css"><link rel="stylesheet" href="${ORIGIN}/test/fixtures/responsive-page.css">
 <style>body{margin:0;background:var(--td-color-surface-muted)} #touch-extra{padding:16px;display:flex;gap:12px;flex-wrap:wrap}</style>
+<script>
+  // timer ledger (no sleeps in the race checks): every setTimeout gets a sequence number and a state
+  // pending → fired | cleared; a check waits until every timer created after a mark has settled
+  (() => {
+    const st = window.setTimeout.bind(window); const ct = window.clearTimeout.bind(window);
+    const led = new Map(); let seq = 0;
+    window.__timers = led;
+    window.__timerSeq = () => seq;
+    window.setTimeout = (fn, ms, ...a) => {
+      const rec = { seq: ++seq, state: 'pending' };
+      const id = st(() => { rec.state = 'fired'; if (typeof fn === 'function') fn(...a); }, ms);
+      led.set(id, rec);
+      return id;
+    };
+    window.clearTimeout = (id) => { const rec = led.get(id); if (rec && rec.state === 'pending') rec.state = 'cleared'; ct(id); };
+  })();
+</script>
 <script type="module">
   import { mountResponsiveFixture } from '${ORIGIN}/test/fixtures/responsive-page.js';
   const extra = document.getElementById('touch-extra');
@@ -99,6 +116,11 @@ async function load(page) {
 /** n animation frames in the page (a real rendering signal) */
 const frames = (page, n = 2) => page.evaluate((k) => new Promise((r) => { const f = (i) => (i ? requestAnimationFrame(() => f(i - 1)) : r()); f(k); }), n);
 
+/** mark the timer ledger; `timersSettled(page, mark)` waits until every timer created after it fired or was cleared */
+const markTimers = (page) => page.evaluate(() => window.__timerSeq());
+const timersSettled = (page, mark) => page.waitForFunction(
+  (m) => [...window.__timers.values()].every((r) => r.seq <= m || r.state !== 'pending'), mark, { polling: 'raf', timeout: 5000 });
+
 /** run one case; a throw or a false check is a failure */
 async function it(tag, name, fn) {
   if (ONLY && !`${tag} ${name}`.includes(ONLY)) return;
@@ -120,7 +142,7 @@ async function centre(page, sel) {
   await loc.scrollIntoViewIfNeeded();
   const b = await loc.boundingBox();
   if (!b) throw new Error(`no box for ${sel}`);
-  return { x: Math.round(b.x + b.width / 2), y: Math.round(b.y + b.height / 2) };
+  return { x: Math.round(b.x + b.width / 2), y: Math.round(b.y + b.height / 2), bb: b };
 }
 
 
@@ -148,7 +170,109 @@ const PRESS_TYPES = [
   // the card's media opener is the innermost control under the finger: its ::after tints the image
   { name: 'picker card', sel: '.td-media-picker__card .td-media-grid__open', token: '--td-color-pressed', pseudo: '::after',
     open: async (page) => { await page.evaluate(() => { window.__openers.picker(); }); await page.locator('.td-media-picker__card').first().waitFor(); await settle(page, '.td-media-picker'); } },
+  // v0.36.2 review ISSUE-1: tap-to-act surfaces (a tap opens the file picker / dismisses) — pressed only (noTap)
+  // the zone's top padding (its centre holds the browse button, a control of its own)
+  { name: 'dropzone', sel: 'td-dropzone .td-dropzone__zone', token: '--td-dropzone-bg-pressed', noTap: true, top: true },
+  { name: 'toast', sel: '.td-toast--error', token: '--td-toast-error-pressed-bg', noTap: true,
+    open: async (page) => { await page.evaluate(() => window.__openers.toast()); await page.locator('.td-toast--error[data-state="open"]').waitFor(); await settle(page, '.td-toast--error'); } },
 ];
+
+/**
+ * The control-type matrix (A3 hover not sticky, A4 pressed) for one engine. `input` abstracts the finger: CDP touch in
+ * Chromium, synthetic touch pointer events in WebKit (state machine only, QĐ 24 — accepted for the smoke engine).
+ */
+async function controlMatrix(tag, page, input) {
+  // A3: hover never sticks — after a tap (once the pressed state is over) the fill equals the one after tapping a
+  // neutral spot (same state, the finger elsewhere)
+  for (const t of PRESS_TYPES.filter((x) => x.name !== 'option' && !x.noTap)) {
+    await it(tag, `hover not sticky: ${t.name}`, async () => {
+      await load(page);
+      if (t.open) await t.open(page);
+      const pt = await centre(page, t.sel);
+      if (t.name === 'picker card') { await input.down(pt); await input.cancel(); } // a tap would open the detail
+      else await input.tap(pt);
+      await quiet(page, t.sel);
+      const after = await bgOf(page, t.sel, t.pseudo);
+      const h = await centre(page, t.name === 'picker card' ? '.td-media-picker .td-modal__title' : '#root h2');
+      await input.tap(h);
+      await quiet(page, t.sel);
+      const away = await bgOf(page, t.sel, t.pseudo);
+      expect(after === away, `${after} ≠ ${away} (a hover style stuck after the tap)`);
+    });
+  }
+  await it(tag, 'hover not sticky: option (finger down + cancel leaves the resting fill)', async () => {
+    await load(page);
+    const t = PRESS_TYPES.find((x) => x.name === 'option');
+    await t.open(page);
+    await settle(page, '.td-dropdown__menu[data-state="open"]');
+    const rest = await bgOf(page, t.sel);
+    const pt = await centre(page, t.sel);
+    await input.down(pt);
+    await input.cancel();
+    await quiet(page, t.sel);
+    expect(await bgOf(page, t.sel) === rest, 'option fill differs from rest after the finger left');
+  });
+
+  // A4: pressed while the finger is down (data-td-pressed + the pressed token), back to rest after a cancel
+  for (const t of PRESS_TYPES) {
+    await it(tag, `pressed: ${t.name}`, async () => {
+      await load(page);
+      if (t.open) await t.open(page);
+      const c = await centre(page, t.sel);
+      const pt = t.top ? { x: c.x, y: Math.round(c.bb.y + 6) } : c;
+      await quiet(page, t.sel);
+      const rest = await bgOf(page, t.sel, t.pseudo);
+      await input.down(pt);
+      await frames(page, 2);
+      const m = await pressedMatches(page, t);
+      expect(m.ok, `pressed look missing: attr ${m.got.attr}, bg ${m.got.bg} (want ${m.want})`);
+      await input.cancel();
+      await quiet(page, t.sel);
+      expect(await bgOf(page, t.sel, t.pseudo) === rest, 'not back to the resting fill');
+    });
+  }
+
+  // ISSUE-1: no pressed fill on a disabled dropzone or during a drag over it
+  for (const [what, setup] of [
+    ['disabled', (h) => h.setAttribute('disabled', '')],
+    ['dragover', (h) => h.querySelector('.td-dropzone').setAttribute('data-state', 'dragover')],
+  ]) {
+    await it(tag, `pressed: dropzone ${what} keeps its own fill`, async () => {
+      await load(page);
+      await page.evaluate((src) => { const h = document.querySelector('td-dropzone'); new Function('h', `(${src})(h)`)(h); }, setup.toString());
+      const sel = 'td-dropzone .td-dropzone__zone';
+      await quiet(page, sel);
+      const rest = await bgOf(page, sel);
+      const pt = await centre(page, sel);
+      await input.down({ x: pt.x, y: pt.bb.y + 6 });
+      await frames(page, 2);
+      const now = await bgOf(page, sel);
+      await input.cancel();
+      expect(now === rest, `${what}: ${now} ≠ ${rest}`);
+    });
+  }
+}
+
+/** CDP touch (Chromium) */
+const cdpInput = (page, cdp) => ({
+  down: (pt) => touchDown(cdp, pt),
+  cancel: () => touchCancel(cdp),
+  tap: (pt) => page.touchscreen.tap(pt.x, pt.y),
+});
+
+/** synthetic touch pointer events on the element under the point (WebKit; the tap itself is the real touchscreen) */
+const syntheticInput = (page) => ({
+  down: (pt) => page.evaluate(({ x, y }) => {
+    const t = document.elementFromPoint(x, y);
+    window.__synth = t;
+    t.dispatchEvent(new PointerEvent('pointerdown', { pointerType: 'touch', pointerId: 31, isPrimary: true, bubbles: true, composed: true, clientX: x, clientY: y }));
+  }, pt),
+  cancel: () => page.evaluate(() => {
+    const t = window.__synth || document.body;
+    t.dispatchEvent(new PointerEvent('pointercancel', { pointerType: 'touch', pointerId: 31, isPrimary: true, bubbles: true, composed: true }));
+  }),
+  tap: (pt) => page.touchscreen.tap(pt.x, pt.y),
+});
 
 /** every animation / transition under `sel` (and the element itself) is over */
 async function settle(page, sel) {
@@ -189,54 +313,7 @@ async function chromiumSemantics(browser) {
   const cdp = await cdpFor(page);
   const has = (sel) => page.evaluate((s) => document.querySelector(s).hasAttribute('data-td-pressed'), sel);
   try {
-    // A3: hover never sticks — after a tap (once the pressed state is over) the fill equals the one after tapping a
-    // neutral spot (same state, the finger elsewhere)
-    for (const t of PRESS_TYPES.filter((x) => x.name !== 'option')) {
-      await it(tag, `hover not sticky: ${t.name}`, async () => {
-        await load(page);
-        if (t.open) await t.open(page);
-        const pt = await centre(page, t.sel);
-        if (t.name === 'picker card') { await touchDown(cdp, pt); await touchCancel(cdp); } // a tap would open the detail
-        else await page.touchscreen.tap(pt.x, pt.y);
-        await quiet(page, t.sel);
-        const after = await bgOf(page, t.sel, t.pseudo);
-        const h = await centre(page, t.name === 'picker card' ? '.td-media-picker .td-modal__title' : '#root h2');
-        await page.touchscreen.tap(h.x, h.y);
-        await quiet(page, t.sel);
-        const away = await bgOf(page, t.sel, t.pseudo);
-        expect(after === away, `${after} ≠ ${away} (a hover style stuck after the tap)`);
-      });
-    }
-    await it(tag, 'hover not sticky: option (finger down + cancel leaves the resting fill)', async () => {
-      await load(page);
-      const t = PRESS_TYPES.find((x) => x.name === 'option');
-      await t.open(page);
-      await settle(page, '.td-dropdown__menu[data-state="open"]');
-      const rest = await bgOf(page, t.sel);
-      const pt = await centre(page, t.sel);
-      await touchDown(cdp, pt);
-      await touchCancel(cdp);
-      await quiet(page, t.sel);
-      expect(await bgOf(page, t.sel) === rest, 'option fill differs from rest after the finger left');
-    });
-
-    // A4: pressed while the finger is down (data-td-pressed + the pressed token), back to rest after a cancel
-    for (const t of PRESS_TYPES) {
-      await it(tag, `pressed: ${t.name}`, async () => {
-        await load(page);
-        if (t.open) await t.open(page);
-        const pt = await centre(page, t.sel);
-        await quiet(page, t.sel);
-        const rest = await bgOf(page, t.sel, t.pseudo);
-        await touchDown(cdp, pt);
-        await frames(page, 2);
-        const m = await pressedMatches(page, t);
-        expect(m.ok, `pressed look missing: attr ${m.got.attr}, bg ${m.got.bg} (want ${m.want})`);
-        await touchCancel(cdp);
-        await quiet(page, t.sel);
-        expect(await bgOf(page, t.sel, t.pseudo) === rest, 'not back to the resting fill');
-      });
-    }
+    await controlMatrix(tag, page, cdpInput(page, cdp));
 
     await it(tag, 'pressed: 6 px keeps it, 12 px clears it (touch slop 10); one holder at a time', async () => {
       await load(page);
@@ -371,6 +448,28 @@ async function chromiumSemantics(browser) {
       await frames(page, 6);
       const states = await page.evaluate(() => window.__copyStates);
       expect(states.length === 1, `state changes: ${states.join(',')}`);
+    });
+
+    await it(tag, 'masked-value: rapid repeated taps while reveal() is pending = one reveal, one state change', async () => {
+      await load(page);
+      await page.evaluate(() => {
+        const el = document.querySelector('td-masked-value');
+        window.__reveals = 0; window.__revealedEvents = 0; window.__textStates = [];
+        el.reveal = () => { window.__reveals += 1; return new Promise((r) => { window.__resolveReveal = () => r('0912 345 123'); }); };
+        el.addEventListener('revealed', () => { window.__revealedEvents += 1; });
+        new MutationObserver(() => {
+          const st = el.querySelector('.td-masked__text')?.getAttribute('data-state') || 'masked';
+          if (window.__textStates[window.__textStates.length - 1] !== st) window.__textStates.push(st);
+        }).observe(el, { subtree: true, attributes: true, attributeFilter: ['data-state'] });
+      });
+      const pt = await centre(page, 'td-masked-value .td-masked__toggle');
+      for (let i = 0; i < 3; i++) await page.touchscreen.tap(pt.x, pt.y);
+      await page.waitForFunction(() => window.__reveals >= 1 && typeof window.__resolveReveal === 'function');
+      await page.evaluate(() => window.__resolveReveal());
+      await page.waitForFunction(() => document.querySelector('td-masked-value').revealed);
+      await frames(page, 2);
+      const r = await page.evaluate(() => [window.__reveals, window.__revealedEvents, window.__textStates.join(',')]);
+      expect(r[0] === 1 && r[1] === 1 && r[2] === 'masked,revealed', `reveal() ×${r[0]}, revealed ×${r[1]}, text states ${r[2]}`); // masked → revealed once
     });
 
     /** wait until a value read in the page stops changing (6 frames) — a scroll / fling is over */
@@ -564,11 +663,12 @@ async function lightboxSuite(browser) {
     await it(tag, 'race: closing during the commit slide → no change, nothing left on the overlay', async () => {
       await load(page); await openLightbox(page);
       const y = await stageY(page);
+      const mark = await markTimers(page);
       await touchDrag(cdp, [{ x: 260, y }, { x: 260 - 0.4 * W, y }], { durationMs: 300 });
       const mid = await swipeAttr(page);
       await page.evaluate(() => window.__lb.close());
       await page.waitForFunction(() => !document.querySelector('.td-lightbox[data-state="open"]'));
-      await page.evaluate(() => new Promise((r) => setTimeout(r, 400))); // past the settle timer (a timer bug would fire here)
+      await timersSettled(page, mark); // the settle timer fired or was cleared (a leaked one would have navigated)
       const left = await page.evaluate(() => { const o = document.querySelector('.td-lightbox'); return [o.getAttribute('data-swiping'), o.style.getPropertyValue('--td-lb-swipe-x')]; });
       expect(mid === 'out', `not mid-commit (${mid})`);
       expect(await page.evaluate(() => window.__changes) === 0, 'navigated after close');
@@ -577,19 +677,21 @@ async function lightboxSuite(browser) {
     await it(tag, 'race: next() during the commit slide → exactly one step', async () => {
       await load(page); await openLightbox(page, 4);
       const y = await stageY(page);
+      const mark = await markTimers(page);
       await touchDrag(cdp, [{ x: 260, y }, { x: 260 - 0.4 * W, y }], { durationMs: 300 });
       await page.evaluate(() => window.__lb.next());
-      await page.evaluate(() => new Promise((r) => setTimeout(r, 400)));
+      await timersSettled(page, mark);
       await settled(page);
       expect(await lbIndex(page) === 1 && await page.evaluate(() => window.__changes) === 1, `index ${await lbIndex(page)} changes ${await page.evaluate(() => window.__changes)}`);
     });
     await it(tag, 'race: a new session during the spring back → clean overlay, index 0', async () => {
       await load(page); await openLightbox(page);
       const y = await stageY(page);
+      const mark = await markTimers(page);
       await touchDrag(cdp, [{ x: 220, y }, { x: 180, y }], { durationMs: 900 });
       const mid = await swipeAttr(page);
       await openLightbox(page, 2);
-      await page.evaluate(() => new Promise((r) => setTimeout(r, 400)));
+      await timersSettled(page, mark);
       expect(mid === 'back', `not mid-spring (${mid})`);
       expect(await swipeAttr(page) === null && await swipeVar(page) === '' && await lbIndex(page) === 0, 'dirty overlay');
     });
@@ -681,22 +783,7 @@ async function webkitSmoke(browser) {
       expect(rest === await bgOf(page, '#g-dd-opt-2'), 'an unpicked option row changed after taps');
     });
 
-    await it(tag, 'pressed (synthetic touch pointer): data-td-pressed + the pressed fill, cleared on pointerup', async () => {
-      await load(page);
-      const r = await page.evaluate(() => {
-        const b = document.querySelector('#t-primary');
-        const probe = document.createElement('span');
-        probe.style.setProperty('background-color', 'var(--td-btn-primary-pressed)');
-        document.body.append(probe);
-        const want = getComputedStyle(probe).backgroundColor;
-        const o = { pointerType: 'touch', pointerId: 7, bubbles: true, composed: true, isPrimary: true, clientX: 10, clientY: 10 };
-        b.dispatchEvent(new PointerEvent('pointerdown', o));
-        const held = [b.hasAttribute('data-td-pressed'), getComputedStyle(b).backgroundColor === want];
-        b.dispatchEvent(new PointerEvent('pointerup', o));
-        return [...held, !b.hasAttribute('data-td-pressed')];
-      });
-      expect(r.every(Boolean), `attr / fill / cleared: ${r.join(' / ')}`);
-    });
+    await controlMatrix(tag, page, syntheticInput(page));
     if (errors.length) failures.push(`${tag}: page errors — ${errors.slice(0, 3).join(' | ')}`);
   } finally {
     await context.close();
