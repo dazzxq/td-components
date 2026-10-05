@@ -70,7 +70,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_masked_value` (0.31.0) | **luôn** host `<td-masked-value data-td-ssr="masked-value@1">` chứa chuỗi che + nút toggle + live region — **không bao giờ** giá trị thật | Không (chưa có JS: chỉ thấy chuỗi che, nút ẩn) | **Có** — nạp module `masked-value`: nhận **tại chỗ** |
 | `td_media_field` (0.32.0) | **luôn** host `<td-media-field data-td-ssr="media-field@1">` chứa sẵn khung (tỉ lệ bằng SVG sizer), ảnh xem trước, nút mở / Đổi / Gỡ + **hidden input** gửi `assetId` (và ô alt / crop ở chế độ usage) | Không (form gửi đúng hình dạng; chưa có JS thì nút ẩn, giữ chỗ) | **Có** — nạp module `media-field`: nhận **tại chỗ**, gỡ hidden input |
 | `td_scan_input` (0.38.0) | `div.td-scan` + `input.td-scan__input` **native** (`autocomplete="off"`, `enterkeyhint="done"`…) | Không (Enter submit form) | Không |
-| `td_scan_input` — **chế độ element** (0.40.0, tự bật) / **`multiple`** (luôn element) | host `<td-scan-input data-td-ssr="scan-input@1">` + cùng input; `multiple`: + `textarea` nhập tay + danh sách + một **hidden input** mỗi mã | Không (form gửi mã in sẵn + dòng textarea) | **Có** — nạp module `scan-input`: nhận **tại chỗ**, gỡ hidden / textarea, dòng textarea qua `validate` |
+| `td_scan_input` — **chế độ element** (0.38.0, tự bật) / **`multiple`** (luôn element) | host `<td-scan-input data-td-ssr="scan-input@1">` + cùng input; `multiple`: + `textarea` nhập tay + danh sách + một **hidden input** mỗi mã | Không (form gửi mã in sẵn + dòng textarea) | **Có** — nạp module `scan-input`: nhận **tại chỗ**, gỡ hidden / textarea, dòng textarea qua `validate` |
 | `td_filter_chips` (0.39.0) | **luôn** host `<td-filter-chips data-td-ssr="filter-chips@1">` chứa sẵn đúng cây component (nhóm, mỗi chip một `li` với nhãn / giá trị / ×, "Xoá tất cả", live region) | Không (× có `href` là **link** chạy ngay; × không link thì vô hình, giữ chỗ) | **Có** — nạp module `filter-chips`: nhận **tại chỗ** |
 | `td_datetime_range` (0.40.0) | **luôn** host `<td-datetime-range data-td-ssr="datetime-range@1">` + hai `<input type="date\|datetime-local">` **native** (`{name}[start]` / `{name}[end]`, `min` / `max`, `required` theo mốc) + trigger ẩn | Không (hai ô ngày native chạy ngay) | **Có** — nạp module `datetime-range`: nhận **tại chỗ**, giữ giá trị đã sửa, gỡ ô native |
 | `td_copy` (0.27.0) | **luôn** host `<td-copy data-td-ssr="copy@1">` chứa nguồn `<code>` + nút icon + live region | Không (chưa có JS: hiện mã để bôi đen, ẩn nút) | **Có** — nạp module `copy`: nhận **tại chỗ** |
@@ -133,7 +133,7 @@ TdComponents\Td::configure(
 
   | Option | Kiểu | Mặc định | Ý nghĩa |
   |---|---|---|---|
-  | `ssr_elements` | `bool` | `false` | `td_button` / `td_link` (không `bare`) — từ 0.26.0 cả `td_field` / `td_toggle` / `td_checkbox` / `td_dropdown`, từ 0.27.0 cả `td_otp_input`, từ 0.30.0 cả `td_number_input`, từ 0.40.0 cả `td_scan_input` (đơn) — in [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) cho **mọi** lần gọi; option `element` của từng lần gọi vẫn ghi đè |
+  | `ssr_elements` | `bool` | `false` | `td_button` / `td_link` (không `bare`) — từ 0.26.0 cả `td_field` / `td_toggle` / `td_checkbox` / `td_dropdown`, từ 0.27.0 cả `td_otp_input`, từ 0.30.0 cả `td_number_input`, từ 0.38.0 cả `td_scan_input` (đơn) — in [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) cho **mọi** lần gọi; option `element` của từng lần gọi vẫn ghi đè |
 
   > **Nâng từ 0.25 lên 0.26 mà đã bật `ssr_elements`:** từ 0.26.0 cờ này áp thêm cho `td_field` / `td_toggle` /
   > `td_checkbox` (đúng hợp đồng ADR 0012: cờ toàn cục áp cho mọi helper **đã có** hợp đồng trong bản đó). Markup đổi
@@ -232,8 +232,8 @@ td_tree_select(string $name, array $tree, string|int|array|null $selected = null
 td_number_input(string $name, mixed $value = null, array $opts = []): string   // 0.30.0
 td_masked_value(string $masked, array $opts = []): string   // 0.31.0 (luôn element, không có tham số giá trị thật)
 td_media_field(string $name, mixed $assetId = null, array $o = []): string    // 0.32.0 (luôn element; $assetId chỉ string | int)
-td_scan_input(string $name, array $o = []): string   // 0.40.0 (multiple: luôn element)
-td_filter_chips(array $items, array $o = []): string        // 0.40.0 (luôn element)
+td_scan_input(string $name, array $o = []): string   // 0.38.0 (multiple: luôn element)
+td_filter_chips(array $items, array $o = []): string        // 0.39.0 (luôn element)
 td_datetime_range(string $name, ?string $start = null, ?string $end = null, array $o = []): string   // 0.40.0 (luôn element)
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
