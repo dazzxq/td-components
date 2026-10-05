@@ -7,7 +7,8 @@
  *     state (data-td-pressed + the pressed token) while a finger is down, cleared on release / cancel / moving past the
  *     slop; tooltip never opens on a tap; sortable slop (touch 8 px no lift, 14 px drag + click swallowed, mouse 5 px
  *     drag, a swipe on the item body scrolls the page); copy double tap = one state change; table / tabs swiped
- *     sideways scroll without sorting / switching.
+ *     sideways scroll without sorting / switching. v0.47.0: td-check-matrix — a tap toggles one cell, a swipe on the grid
+ *     scrolls its box without toggling, a tap on a locked cell shows its note, the pressed look of a cell.
  * (b) Chromium CDP Input.dispatchTouchEvent — continuous swipes and two-finger pinches: lightbox swipe-follow
  *     (commit / spring / flick / RTL / one item rubber band / edge / zoomed / cancel / reduced motion / settle races),
  *     cropper pinch + touchcancel.
@@ -562,6 +563,58 @@ async function chromiumSemantics(browser) {
       await touchDrag(cdp, [{ x: Math.min(pt.x + 120, 370), y: pt.y }, { x: Math.max(pt.x - 120, 20), y: pt.y }], { durationMs: 260 });
       await frames(page, 4);
       expect(await page.evaluate(() => window.__tabs) === 0, 'a swipe switched the tab');
+    });
+
+    // v0.47.0 td-check-matrix (plan M5): at 390 the grid is in its one-column mode inside a 24rem scroll box
+    const matrixCell = '#rsp-matrix tr[data-r="1"] .td-check-matrix__cell[data-col-active]';
+    const matrixChanges = (page) => page.evaluate(() => {
+      window.__cm = [];
+      document.querySelector('#rsp-matrix').addEventListener('change', (e) => { if (e instanceof CustomEvent) window.__cm.push(e.detail.trigger); });
+    });
+    await it(tag, 'check-matrix: a tap toggles exactly one cell (one change)', async () => {
+      await load(page);
+      await matrixChanges(page);
+      const pt = await centre(page, matrixCell);
+      const before = await page.evaluate((s) => document.querySelector(s).querySelector('input').checked, matrixCell);
+      await page.touchscreen.tap(pt.x, pt.y);
+      await frames(page, 2);
+      expect(await page.evaluate(() => window.__cm.join(',')) === 'cell', `changes: ${await page.evaluate(() => window.__cm.join(','))}`);
+      expect(await page.evaluate((s) => document.querySelector(s).querySelector('input').checked, matrixCell) === !before, 'not toggled');
+    });
+    await it(tag, 'check-matrix: a vertical swipe on the grid scrolls its box, never toggles a cell', async () => {
+      await load(page);
+      await matrixChanges(page);
+      const box = '#rsp-matrix .td-check-matrix__scroll';
+      const pt = await centre(page, '#rsp-matrix tr[data-r="3"] .td-check-matrix__cell[data-col-active]');
+      const y0 = await page.evaluate((s) => document.querySelector(s).scrollTop, box);
+      await touchDrag(cdp, [pt, { x: pt.x, y: Math.max(pt.y - 220, 20) }], { durationMs: 300 });
+      const y1 = await stable((s) => document.querySelector(s).scrollTop, box);
+      expect(y1 > y0 + 20, `grid did not scroll (${y0} → ${y1})`);
+      expect(await page.evaluate(() => window.__cm.length) === 0, 'a swipe toggled a cell');
+    });
+    await it(tag, 'check-matrix: a tap on a locked cell shows its note, changes nothing', async () => {
+      await load(page);
+      await matrixChanges(page);
+      const pt = await centre(page, '#rsp-matrix tr[data-r="0"] .td-check-matrix__cell[data-locked]');
+      await page.touchscreen.tap(pt.x, pt.y);
+      await frames(page, 2);
+      expect(await page.evaluate(() => document.querySelector('#rsp-matrix .td-check-matrix__note').textContent) === 'Không tự sửa role của mình', 'note not shown');
+      expect(await page.evaluate(() => window.__cm.length) === 0, 'a locked cell changed');
+    });
+    await it(tag, 'check-matrix: pressed — the cell holds data-td-pressed, its mark the pressed token', async () => {
+      await load(page);
+      const pt = await centre(page, matrixCell);
+      const want = await tokenColour(page, '--td-color-pressed');
+      await touchDown(cdp, pt);
+      await frames(page, 2);
+      const got = await page.evaluate((s) => {
+        const cell = document.querySelector(s);
+        return { attr: cell.hasAttribute('data-td-pressed'), img: getComputedStyle(cell.querySelector('.td-check')).backgroundImage };
+      }, matrixCell);
+      await touchCancel(cdp);
+      expect(got.attr && got.img.includes(want), `pressed look missing: ${JSON.stringify(got)} (want ${want})`);
+      await quiet(page, matrixCell);
+      expect(await page.evaluate((s) => getComputedStyle(document.querySelector(s).querySelector('.td-check')).backgroundImage, matrixCell) === 'none', 'not back to rest');
     });
 
     // cropper pinch (CDP, two real fingers) + touchcancel

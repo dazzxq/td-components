@@ -60,6 +60,7 @@ import '../../src/form/td-datetime-range.js'; // v0.40.0
 import '../../src/form/td-media-gallery.js'; // v0.43.0
 import '../../src/display/td-steps.js'; // v0.45.0
 import '../../src/display/td-timeline.js'; // v0.45.0
+import '../../src/form/td-check-matrix.js'; // v0.47.0
 import { createMockAdapter } from './media-adapter.js';
 
 const LONG = 'Lưu và xuất bản bài viết lên trang chủ ngay bây giờ';
@@ -191,6 +192,9 @@ export function mountResponsiveFixture(root) {
     <td-scan-input id="rsp-scan" label="Mã đơn hàng" placeholder="Quét mã vạch trên phiếu xuất kho" beep></td-scan-input>
     <td-scan-input id="rsp-scan-multi" label="IMEI nhập kho" multiple beep name="imei[]" max="50"></td-scan-input>
   </section>
+  <section class="rsp-section" data-section="check-matrix"><h2>Ma trận quyền</h2>
+    <td-check-matrix id="rsp-matrix" name="perms" label="Quyền theo vai trò" max-height="24rem"></td-check-matrix>
+  </section>
   <section class="rsp-section" data-section="tabs"><h2>Tab</h2>
     <td-tabs id="rsp-tabs"></td-tabs>
     <td-tabs id="rsp-tabs-mixed" size="sm"></td-tabs>
@@ -291,6 +295,17 @@ export function mountResponsiveFixture(root) {
   const imeis = Array.from({ length: 30 }, (_, i) => `35693803564${String(3800 + i).padStart(4, '0')}`);
   root.querySelector('#rsp-scan-multi').values = imeis;
   root.querySelector('#rsp-scan-narrow').values = imeis.slice(0, 3);
+  // v0.47.0: permissions × 12 roles, 40 rows in 4 groups (one collapsed), locks, n/a, notes (auto: one column < 720)
+  const matrixRoles = ['Chủ cửa hàng', 'Quản lý chi nhánh', 'Bán hàng', 'Kho', 'Kế toán', 'Marketing', 'CSKH', 'Giao hàng', 'Thu ngân',
+    'Kiểm toán', 'Đối tác', 'Cộng tác viên'];
+  const mods = ['Sản phẩm', 'Đơn hàng', 'Khách hàng', 'Báo cáo doanh thu theo kênh bán hàng'];
+  root.querySelector('#rsp-matrix').setData({
+    columns: matrixRoles.map((label, i) => ({ key: `role${i}`, label, locked: i === 11 })),
+    rows: mods.map((label, g) => ({ key: `m${g}`, label, collapsed: g === 2,
+      rows: Array.from({ length: 10 }, (_, k) => ({ key: `m${g}.p${k}`, label: `${label}: quyền thao tác số ${k + 1}` })) })),
+    cells: { 'm0.p0': { role0: { locked: true, note: 'Không tự sửa role của mình' }, role2: { na: true } } },
+    value: { role0: ['m0.p0', 'm0.p1', 'm1.p3'], role1: ['m0.p2'] },
+  });
   // v0.39.0: filter bar → chips → controlled server table (column menu, one hidden column)
   root.querySelector('#rsp-filter-status').options = [{ value: '', label: 'Tất cả' }, { value: 'new', label: 'Chờ xác nhận' }, { value: 'ship', label: 'Đang giao' }];
   root.querySelector('#rsp-chips').items = [
