@@ -95,7 +95,7 @@ lại). Chi tiết: [theming.md › Palette tuỳ biến](../customization/themi
 |---|---|
 | `<section data-td-theme="dark">` không có tác dụng | vùng tối thật (token màu giải lại trên vùng) |
 | `:root { --td-accent: red }` (CSS không layer) tô cả phần tử bên trong mọi `<section data-td-theme>` | **không** tới được bên trong vùng: vùng khai báo lại token **màu** của theme đó. Muốn: thêm `[data-td-theme] { --td-accent: red }` (mọi vùng) hoặc `[data-td-theme="dark"] { … }` |
-| Popup mở từ vùng ra theme của `<html>` | ra theme của vùng; override **trên phần tử có attribute** đi theo, override cục bộ không đánh dấu (`.card { --td-accent }`) thì không |
+| Popup mở từ vùng ra theme của `<html>` | ra theme của vùng: token **ngữ nghĩa** (hợp đồng theme, + `color-scheme`) đặt trên phần tử có attribute đi theo; token **riêng của component** đặt trên vùng (`.promo[data-td-theme] { --td-checkbox-color }`) và override cục bộ không đánh dấu (`.card { --td-accent }`) thì **không** — trừ rule chọn theo giá trị attribute (`[data-td-theme="dark"] { … }`), vì attribute được chép sang popup |
 
 Token **hình học** (độ rộng, chữ, khoảng cách, bo góc, z-index, chuyển động, thang xám) vẫn chỉ trên `:root`: override
 của site tới được mọi vùng như cũ.

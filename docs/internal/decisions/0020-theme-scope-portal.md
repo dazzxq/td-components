@@ -50,9 +50,13 @@ QĐ18), `--_td-*`. (Plan cho phép scope cả khối của file component; làm 
    khi vẫn là của nó) — portal root dùng lại không mang trạng thái cũ.
 4. Gọi lại mỗi lần mở; không theo dõi live khi đang mở (đổi theme lúc popup mở: mở lại là đúng).
 
-**Hợp đồng:** override đặt **trên chính phần tử có `data-td-theme`** đi qua portal; **override cục bộ không đánh dấu**
-(`.card { --td-accent: red }` bên trong vùng) **không** đi qua portal. Site muốn popup theo: đặt trên scope, hoặc đánh
-dấu phần tử đó bằng `data-td-theme`.
+**Hợp đồng (chính xác):** đi qua portal chỉ có **token ngữ nghĩa trong allowlist `THEME_TOKENS`** (+ `color-scheme`) với
+giá trị computed **trên scope đã đánh dấu** — nên override token ngữ nghĩa đặt trên chính phần tử có `data-td-theme` thì
+theo. **Không** đi qua portal: (a) token riêng của component đặt trên scope (`.promo[data-td-theme] { --td-checkbox-color:
+… }` — trên gốc popup token component tự giải lại từ token ngữ nghĩa đã chép); (b) **override cục bộ không đánh dấu**
+(`.card { --td-accent: red }` bên trong vùng), kể cả token ngữ nghĩa. Ngoại lệ do thiết kế: rule chọn theo **giá trị**
+attribute (`[data-td-theme="dark"] { … }`, theme có tên do `td-theme --name x` sinh) khớp luôn gốc popup vì attribute được
+chép, nên mọi token trong rule đó — kể cả token component — có hiệu lực trong popup.
 
 Gắn ở điểm mở của mọi portal: `openDialogLayer({ themeFrom })` (TdModal, td-drawer, media picker, crop dialog, sheet
 upload / lọc), dropdown / chip-input / tree-select (host), TdMenu (`themeRoot` hoặc anchor), hovercard + tooltip

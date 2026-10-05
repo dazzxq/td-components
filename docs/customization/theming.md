@@ -1047,9 +1047,15 @@ Dropdown, chip-input, tree-select, menu, hovercard, tooltip, modal, drawer, toas
 attribute + **ảnh chụp các token ngữ nghĩa của vùng** lên gốc popup (CSSOM, hợp CSP), và gỡ đúng những gì đã chép khi
 đóng. Hợp đồng:
 
-- override đặt **trên phần tử có `data-td-theme`** → đi theo popup;
-- override **cục bộ không đánh dấu** (`.card { --td-accent: red }` bên trong vùng) → **không** đi theo popup. Muốn popup
-  theo: chuyển override lên vùng, hoặc đánh dấu `.card` bằng `data-td-theme`;
+- chỉ **token ngữ nghĩa của hợp đồng theme** (`THEME_TOKENS`: `--td-color-*`, `--td-accent*`, `--td-control-*`,
+  `--td-glass-*`, `--td-btn-primary-*`… — bảng [Hợp đồng theme](#hợp-đồng-theme-và-công-thức-nền-giấy-0410)) + `color-scheme`,
+  **đặt trên phần tử có `data-td-theme`**, được chép sang popup. Token component trong popup tự giải lại từ chúng;
+- token **riêng của component** đặt trên vùng (`.promo[data-td-theme] { --td-checkbox-color: red; --td-option-hover-bg: … }`)
+  **không** được chép. Ngoại lệ tự nhiên: rule của site chọn theo **giá trị** attribute (`[data-td-theme="dark"] { … }`,
+  file sinh `td-theme --name x`) cũng khớp gốc popup vì attribute được chép theo — kể cả token component trong rule đó;
+- override **cục bộ không đánh dấu** (`.card { --td-accent: red }` bên trong vùng, `.card` không có `data-td-theme`) →
+  **không** đi theo popup, kể cả token ngữ nghĩa. Muốn popup theo: chuyển override (token ngữ nghĩa) lên phần tử có
+  attribute, hoặc viết rule theo giá trị attribute;
 - popup lồng (menu mở trong modal của vùng) tự đúng;
 - ảnh chụp lấy **lúc mở**: đổi theme khi popup đang mở thì đóng / mở lại;
 - lightbox không theo vùng (luôn tối, nền là ảnh).
