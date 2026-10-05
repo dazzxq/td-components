@@ -66,3 +66,19 @@
 	width: 160px;
 	max-width: 100%;
 }
+
+/* v0.50.0: product cards in the carousel section */
+.rsp-card {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	box-sizing: border-box;
+	min-block-size: 96px;
+	padding: 12px;
+	font: 14px/1.4 var(--td-font-sans);
+	color: var(--td-color-text);
+	text-decoration: none;
+	background: var(--td-color-surface);
+	border: 1px solid var(--td-color-border);
+	border-radius: 12px;
+}

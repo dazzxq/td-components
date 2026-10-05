@@ -16,6 +16,8 @@
  * v0.45.0: section `steps-timeline` — td-steps (6 steps horizontal, vertical, clickable in a 280 px column) and
  * td-timeline (40 items, details open, fixed `now`; again in the 280 px column).
  * v0.48.0: td-color-picker (form grid + 280 px column via controls(); opener `#g-color`).
+ * v0.50.0: section `carousel` — `#rsp-carousel` (16 product cards with a td-rating, per-view 2) + `#rsp-carousel-narrow`
+ *   (4 cards in the 280 px column).
  */
 import '../../src/form/td-button.js';
 import '../../src/form/td-action-button.js'; // v0.36.0
@@ -64,9 +66,14 @@ import '../../src/display/td-steps.js'; // v0.45.0
 import '../../src/display/td-timeline.js'; // v0.45.0
 import '../../src/form/td-check-matrix.js'; // v0.47.0
 import '../../src/form/td-choice-group.js'; // v0.49.0
+import '../../src/display/td-carousel.js'; // v0.50.0
+import '../../src/display/td-rating.js'; // v0.50.0
 import { createMockAdapter } from './media-adapter.js';
 
 const LONG = 'Lưu và xuất bản bài viết lên trang chủ ngay bây giờ';
+/** v0.50.0: product cards (a link + a rating) for the carousel section. */
+const rspCards = (n) => Array.from({ length: n }, (_, i) => `<div><a class="rsp-card" href="#sp${i + 1}">
+  <span>Điện thoại mẫu ${i + 1} — bản 256GB chính hãng</span><td-rating value="${(3.6 + (i % 5) * 0.3).toFixed(1)}" count="${(i + 1) * 37}" size="s"></td-rating></a></div>`).join('');
 const TABS = ['Tất cả đơn hàng', 'Chờ xác nhận', 'Đang giao hàng', 'Đã giao thành công', 'Đã huỷ bởi khách', 'Hoàn tiền', 'Khiếu nại', 'Lưu trữ'];
 
 const tree = () => [
@@ -274,6 +281,10 @@ export function mountResponsiveFixture(root) {
   <section class="rsp-section" data-section="diff"><h2>Lịch sử thay đổi</h2>
     <td-diff id="rsp-diff" json label="Thay đổi đơn DH10240"></td-diff>
     <td-diff id="rsp-diff-table" view="table" unchanged="show"></td-diff>
+  </section>
+  <section class="rsp-section" data-section="carousel"><h2>Băng chuyền sản phẩm</h2>
+    <td-carousel id="rsp-carousel" label="Sản phẩm nổi bật" per-view="2">${rspCards(16)}</td-carousel>
+    <div class="rsp-narrow"><td-carousel id="rsp-carousel-narrow" label="Phụ kiện">${rspCards(4)}</td-carousel></div>
   </section>`;
 
   const options = [

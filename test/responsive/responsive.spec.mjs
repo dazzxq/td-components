@@ -35,6 +35,12 @@
  *
  * v0.47.0: td-check-matrix (12 roles × 40 permissions, max-height 24rem): no page overflow (the grid scrolls inside its
  * box), cells / bulk cells / group buttons / column picker ≥ 44 coarse; < 720 the one-column mode (generic checks).
+ * v0.50.0: td-carousel + td-rating — the `carousel` section of the page (controls inside the section, no overlap, ratings
+ *   on one line) and, on their own pages, the PHP markup of test/ssr/fixtures/carousel.html (3 / 8 / 12 / 13 pages,
+ *   per-view attribute) BEFORE → AFTER the module loads (C21): CLS 0 (controls + host heights equal; Chromium:
+ *   layout-shift entries), narrow (< 480) row 1 = [‹ k / P ›] with ≥ 44 coarse buttons, dot rows 1 / 2 / 2 / 0, every dot a
+ *   ≥ 44 × 44 coarse hit area that never overlaps another dot / a button and selects its page; wide: ≤ 8 pages inline
+ *   (no counter), 12 → 2 rows (8 + 4); a predicted ≠ measured case (per-view-md token) is recorded as a note.
  *
  * Run: npm run test:responsive   (RSP_ENGINES=chromium,webkit RSP_ONLY=<config tag substring> for a subset)
  */
@@ -442,6 +448,29 @@ async function runConfig(browser, c) {
       return errs;
     }, c.touch && c.engine !== 'firefox');
     check(tag, 'td-diff layout + summaries (v0.46.0)', diffErr);
+    // v0.50.0: the carousel section — controls inside the section, buttons / dots never overlap, ratings on one line
+    const carErr = await page.evaluate(() => {
+      const errs = [];
+      for (const id of ['rsp-carousel', 'rsp-carousel-narrow']) {
+        const host = document.getElementById(id);
+        const sec = host.closest('.rsp-section').getBoundingClientRect();
+        const ctl = [...host.querySelectorAll('.td-carousel__btn, .td-carousel__dot')].filter((n) => n.getClientRects().length && getComputedStyle(n).visibility !== 'hidden');
+        if (!ctl.length) errs.push(`#${id}: no controls`);
+        ctl.forEach((a, i) => {
+          const ra = a.getBoundingClientRect();
+          if (ra.left < sec.left - 0.5 || ra.right > sec.right + 0.5) errs.push(`#${id}: control ${i} outside the section`);
+          for (const b of ctl.slice(i + 1)) {
+            const rb = b.getBoundingClientRect();
+            if (Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left) > 0.5 && Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top) > 0.5) errs.push(`#${id}: controls overlap`);
+          }
+        });
+        for (const r of host.querySelectorAll('td-rating')) {
+          if (new Set([...r.querySelectorAll('.td-rating__star')].map((st) => Math.round(st.getBoundingClientRect().top))).size > 1) errs.push(`#${id}: rating stars wrap`);
+        }
+      }
+      return errs;
+    });
+    check(tag, 'td-carousel section (v0.50.0)', carErr);
     // v0.36.0 (plan QĐ 41): td-otp-input cells keep their shape — in columns of 320 / 360 / 390 / 240 px (and the page
     // width when narrower), 6 / 8 / 10 digits and 5 alphanumerics: each cell width / height = 44 / 52 ± 4 % (except a
     // touch cell narrower than 37 px, which grows to the 44 px touch minimum), nothing wider than its column.
@@ -779,6 +808,125 @@ async function hoverSelfTest(browser, engine) {
   }
 }
 
+/** v0.50.0 (plan C13 / C21): PHP carousel markup → module → same box, right rows, every control a real target. */
+async function runCarouselPhp(browser, c) {
+  const tag = `carousel-${tagOf(c)}`;
+  const opts = { viewport: { width: c.w, height: c.h }, deviceScaleFactor: 1, reducedMotion: 'reduce' };
+  if (c.touch) { opts.hasTouch = true; if (c.engine !== 'firefox') opts.isMobile = true; }
+  const context = await browser.newContext(opts);
+  const body = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="${ORIGIN}/td.css"><link rel="stylesheet" href="${ORIGIN}/test/fixtures/carousel-page.css">
+<style>body{margin:0;padding:16px;font:14px system-ui} #mis{--td-carousel-per-view-md:4}</style></head><body>
+${['c-3', 'c-8', 'c-12', 'c-13'].map(carCase).join('\n')}<div id="mis">${carCase('c-8').replace('data-case="c-8"', 'data-case="mis"')}</div></body></html>`;
+  await context.route(`${ORIGIN}/**`, async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/') return route.fulfill({ status: 200, contentType: 'text/html', body });
+    if (url.pathname === '/td.css') return route.fulfill({ status: 200, contentType: 'text/css', body: await css(false) });
+    if (/^\/(src|test\/fixtures)\//.test(url.pathname) && !url.pathname.includes('..')) {
+      const ext = url.pathname.slice(url.pathname.lastIndexOf('.'));
+      try { return route.fulfill({ status: 200, contentType: MIME[ext] || 'application/octet-stream', body: await readFile(join(ROOT, url.pathname)) }); } catch { /* 404 */ }
+    }
+    return route.fulfill({ status: 404, body: '' });
+  });
+  const page = await context.newPage();
+  page.setDefaultTimeout(8000);
+  try {
+    await page.goto(`${ORIGIN}/`);
+    await page.evaluate(settle);
+    const coarse = c.touch && c.engine !== 'firefox';
+    const r = await page.evaluate(async (coarseWant) => {
+      const raf = () => new Promise((res) => requestAnimationFrame(() => res()));
+      const ids = ['c-3', 'c-8', 'c-12', 'c-13', 'mis'];
+      const host = (id) => document.querySelector(`section[data-case="${id}"] > td-carousel`);
+      const box = (id) => ({ ctl: host(id).querySelector('.td-carousel__controls').getBoundingClientRect().height, host: host(id).getBoundingClientRect().height });
+      const before = Object.fromEntries(ids.map((id) => [id, box(id)]));
+      const shifts = [];
+      let obs = null;
+      if (PerformanceObserver.supportedEntryTypes?.includes('layout-shift')) {
+        obs = new PerformanceObserver((l) => { for (const e of l.getEntries()) shifts.push(e); });
+        obs.observe({ type: 'layout-shift' });
+      }
+      await import('/src/display/td-carousel.js');
+      await raf(); await raf(); await raf();
+      if (obs) { for (const e of obs.takeRecords()) shifts.push(e); obs.disconnect(); }
+      const after = Object.fromEntries(ids.map((id) => [id, box(id)]));
+      const errs = [];
+      const notesIn = [];
+      const coarse = matchMedia('(pointer: coarse)').matches;
+      if (coarse !== coarseWant) errs.push(`pointer: coarse ${coarse}, want ${coarseWant}`);
+      for (const id of ids) {
+        const d = Math.abs(after[id].ctl - before[id].ctl) + Math.abs(after[id].host - before[id].host);
+        if (id === 'mis') notesIn.push(`predicted ≠ measured (per-view-md token): pages ${host(id).getAttribute('data-td-pages')}, shift ${d.toFixed(1)}px`);
+        else if (d > 0.5) errs.push(`${id}: controls ${before[id].ctl}→${after[id].ctl}, host ${before[id].host}→${after[id].host} (CLS)`);
+      }
+      const ours = shifts.filter((e) => (e.sources || []).some((s) => s.node && s.node.closest && !s.node.closest('#mis') && s.node.closest('section')));
+      if (ours.length) errs.push(`layout-shift entries: ${ours.map((e) => e.value.toFixed(4)).join(', ')}`);
+      const min = coarse ? 44 : 24;
+      const hitOk = (el) => {
+        const b = el.getBoundingClientRect();
+        if (b.width < min - 0.5 || b.height < min - 0.5) return `${b.width.toFixed(1)}×${b.height.toFixed(1)}`;
+        for (const [x, y] of [[b.left + b.width / 2, b.top + b.height / 2], [b.left + 2, b.top + b.height / 2], [b.right - 2, b.top + b.height / 2], [b.left + b.width / 2, b.top + 2], [b.left + b.width / 2, b.bottom - 2]]) {
+          const h = document.elementFromPoint(x, y);
+          if (!h || !(h === el || el.contains(h))) return `point ${Math.round(x)},${Math.round(y)} hits ${h?.className || h?.tagName}`;
+        }
+        return '';
+      };
+      const want = { 'c-3': [3, 1, 'inline'], 'c-8': [8, 2, 'inline'], 'c-12': [12, 2, 2], 'c-13': [13, 0, 2] };
+      for (const [id, [P, narrowRows, wideRows]] of Object.entries(want)) {
+        const h = host(id);
+        h.scrollIntoView({ block: 'center', behavior: 'instant' });
+        await raf();
+        const wide = h.clientWidth >= 480;
+        const rows = wide ? wideRows : narrowRows;
+        const prev = h.querySelector('[data-td-carousel="prev"]');
+        const next = h.querySelector('[data-td-carousel="next"]');
+        const counter = h.querySelector('.td-carousel__counter');
+        const dots = [...h.querySelectorAll('.td-carousel__dot')];
+        const hr = h.getBoundingClientRect();
+        for (const [n, b] of [['prev', prev], ['next', next]]) {
+          const e = hitOk(b);
+          if (e) errs.push(`${id} ${n}: ${e}`);
+          const r = b.getBoundingClientRect();
+          if (r.left < hr.left - 0.5 || r.right > hr.right + 0.5) errs.push(`${id} ${n} outside the host`);
+        }
+        const cs = getComputedStyle(counter);
+        if (rows === 'inline') {
+          if (cs.display !== 'none') errs.push(`${id}: counter shown in the inline layout`);
+          const tops = new Set([prev, next, ...dots].map((n) => Math.round(n.getBoundingClientRect().top + n.getBoundingClientRect().height / 2)));
+          if (tops.size > 1) errs.push(`${id}: inline layout on ${tops.size} lines`);
+        } else {
+          const cr = counter.getBoundingClientRect();
+          if (cs.display === 'none' || counter.textContent !== `1 / ${P}`) errs.push(`${id}: counter "${counter.textContent}" (${cs.display})`);
+          if (Math.abs((cr.top + cr.bottom) / 2 - (prev.getBoundingClientRect().top + prev.getBoundingClientRect().bottom) / 2) > 1) errs.push(`${id}: counter not on the button row`);
+          if (cr.left < prev.getBoundingClientRect().right - 0.5 || cr.right > next.getBoundingClientRect().left + 0.5) errs.push(`${id}: counter overlaps a button`);
+          const shown = dots.filter((d) => d.getClientRects().length);
+          const dotRows = new Set(shown.map((d) => Math.round(d.getBoundingClientRect().top))).size;
+          if (dotRows !== rows) errs.push(`${id}: ${dotRows} dot row(s), want ${rows} (${wide ? 'wide' : 'narrow'})`);
+          if (rows && shown.length && Math.min(...shown.map((d) => d.getBoundingClientRect().top)) < prev.getBoundingClientRect().bottom - 0.5) errs.push(`${id}: dots overlap the button row`);
+        }
+        // every visible dot: a real target, no overlap, selects its page
+        const shown = dots.filter((d) => d.getClientRects().length);
+        for (let i = 0; i < shown.length; i++) {
+          const e = hitOk(shown[i]);
+          if (e) { errs.push(`${id} dot ${i + 1}: ${e}`); break; }
+        }
+        for (let i = 0; i < shown.length; i++) {
+          shown[i].click();
+          await raf(); await raf();
+          if (shown[i].getAttribute('aria-current') !== 'true') { errs.push(`${id}: dot ${i + 1} did not select its page`); break; }
+        }
+        if (shown.length) shown[0].click();
+        await raf();
+      }
+      return { errs, notes: notesIn };
+    }, coarse);
+    check(tag, 'carousel PHP markup → module (v0.50.0)', r.errs);
+    for (const n of r.notes) notes.push(`${tag}: ${n}`);
+  } finally {
+    await context.close();
+  }
+}
+
 async function runEngine(name, launcher, configs) {
   if (!configs.length) return;
   const browser = await launcher.launch(await launchOptions(name, launcher));
@@ -807,6 +955,26 @@ await Promise.all([
   runEngine('webkit', webkit, selected.filter((c) => c.engine === 'webkit')),
   runEngine('firefox', firefox, selected.filter((c) => c.engine === 'firefox')),
 ]);
+// v0.50.0: carousel PHP markup before / after the module (CLS + C21 layout)
+const CAROUSEL_CONFIGS = [
+  { engine: 'chromium', w: 360, h: 780, touch: true }, { engine: 'chromium', w: 390, h: 844, touch: true },
+  { engine: 'chromium', w: 480, h: 900, touch: true }, { engine: 'chromium', w: 768, h: 1024, touch: true },
+  { engine: 'chromium', w: 1280, h: 800, touch: false }, { engine: 'webkit', w: 390, h: 844, touch: true },
+  { engine: 'firefox', w: 360, h: 780, touch: false },
+].filter((c) => engines.includes(c.engine) && (!only || `carousel-${tagOf(c)}`.includes(only)));
+const carouselFixture = await readFile(join(ROOT, 'test', 'ssr', 'fixtures', 'carousel.html'), 'utf8');
+const carCase = (id) => carouselFixture.split('\n').find((l) => l.includes(`data-case="${id}"`));
+for (const [name, launcher] of [['chromium', chromium], ['webkit', webkit], ['firefox', firefox]]) {
+  const list = CAROUSEL_CONFIGS.filter((c) => c.engine === name);
+  if (!list.length) continue;
+  const browser = await launcher.launch(await launchOptions(name, launcher));
+  try {
+    for (const c of list) await runCarouselPhp(browser, c);
+  } finally {
+    await browser.close();
+  }
+}
+
 for (const n of notes) console.log(`note: ${n}`);
 console.log(`responsive gate: ${selected.length} configurations, ${checks} checks, ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 if (failures.length) {

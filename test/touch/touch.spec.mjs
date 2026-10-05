@@ -17,6 +17,9 @@
  * (c) WebKit `devices['iPhone 13']` smoke — lightbox phone rail next / prev, dropdown inside the viewport, sheet modal
  *     body scroll does not chain to the page, close buttons reachable, hover not sticky, pressed state (synthetic
  *     touch pointer events: state machine only — WebKit Playwright is not Safari, QĐ 24).
+ * v0.50.0 td-carousel (ADR 0024): a sideways swipe on the strip scrolls it (page still), a vertical swipe STARTING on the
+ *   strip scrolls the PAGE (no pan-x trap), a tap on "next" moves exactly one page, buttons / dots show the pressed state,
+ *   touch-action of the viewport stays auto; WebKit smoke: next / prev by tap.
  * Firefox is not in this lane (no reliable touch emulation). Synthetic pointer events only test state machines.
  *
  *   node test/touch/touch.spec.mjs            (npm run test:touch; TOUCH_ONLY=<case substring> for a subset)
@@ -721,6 +724,59 @@ async function chromiumSemantics(browser) {
       expect(await page.evaluate((s) => getComputedStyle(document.querySelector(s).querySelector('.td-check')).backgroundImage, matrixCell) === 'none', 'not back to rest');
     });
 
+    // v0.50.0 td-carousel: native scrolling only (C12)
+    const car = '#rsp-carousel';
+    const carVp = `${car} .td-carousel__viewport`;
+    await it(tag, 'carousel: a sideways swipe scrolls the strip, not the page; touch-action stays auto', async () => {
+      await load(page);
+      await page.locator(carVp).scrollIntoViewIfNeeded();
+      const ta = await page.evaluate((s) => getComputedStyle(document.querySelector(s)).touchAction, carVp);
+      expect(ta === 'auto', `viewport touch-action ${ta}`);
+      const pt = await centre(page, `${car} .td-carousel__slide`);
+      const y0 = await page.evaluate(() => window.scrollY);
+      const x0 = await page.evaluate((s) => document.querySelector(s).scrollLeft, carVp);
+      await touchDrag(cdp, [{ x: 330, y: pt.y }, { x: 60, y: pt.y }], { durationMs: 300 });
+      const x1 = await stable((s) => document.querySelector(s).scrollLeft, carVp);
+      expect(x1 > x0 + 20, `strip did not scroll (${x0} → ${x1})`);
+      expect(await page.evaluate(() => window.scrollY) === y0, 'the page scrolled vertically');
+    });
+
+    await it(tag, 'carousel: a vertical swipe STARTING on the strip scrolls the page (never trapped)', async () => {
+      await load(page);
+      await page.locator(carVp).scrollIntoViewIfNeeded();
+      const pt = await centre(page, `${car} .td-carousel__slide`);
+      const y0 = await page.evaluate(() => window.scrollY);
+      const x0 = await page.evaluate((s) => document.querySelector(s).scrollLeft, carVp);
+      // finger moves DOWN → the page scrolls up (the carousel section is near the end of the page)
+      const start = Math.min(pt.y, 560);
+      expect(await page.evaluate(([x, y, sel]) => !!document.elementFromPoint(x, y)?.closest(sel), [pt.x, start, carVp]), 'the swipe does not start on the strip');
+      await touchDrag(cdp, [{ x: pt.x, y: start }, { x: pt.x, y: start + 240 }], { durationMs: 300 });
+      const y1 = await stable(() => window.scrollY);
+      expect(y1 < y0 - 40, `page did not scroll (${y0} → ${y1})`);
+      expect(await page.evaluate((s) => document.querySelector(s).scrollLeft, carVp) === x0, 'the strip scrolled sideways');
+    });
+
+    await it(tag, 'carousel: a tap on "next" moves exactly one page; buttons and dots show the pressed state', async () => {
+      await load(page);
+      const nb = `${car} [data-td-carousel="next"]`;
+      const pt = await centre(page, nb);
+      await touchDown(cdp, pt);
+      await frames(page, 2);
+      expect(await has(nb), 'next: no pressed state while the finger is down');
+      await touchUp(cdp);
+      await stable((s) => document.querySelector(s).scrollLeft, carVp);
+      const st = await page.evaluate((s) => { const h = document.querySelector(s); return [h.index, h.page]; }, car);
+      expect(st[0] === 2 && st[1] === 1, `after one tap: index ${st[0]} page ${st[1]}`);
+      const dot = `${car} .td-carousel__dot:nth-child(3)`;
+      const dp = await centre(page, dot);
+      await touchDown(cdp, dp);
+      await frames(page, 2);
+      expect(await has(dot), 'dot: no pressed state while the finger is down');
+      await touchUp(cdp);
+      await stable((s) => document.querySelector(s).scrollLeft, carVp);
+      expect(await page.evaluate((s) => document.querySelector(s).page, car) === 2, 'dot 3 did not select page 3');
+    });
+
     // cropper pinch (CDP, two real fingers) + touchcancel
     await it(tag, 'cropper: a two-finger pinch (fingers apart) shrinks the box (one crop-change, source pinch); touchcancel ends cleanly', async () => {
       await load(page);
@@ -1031,6 +1087,15 @@ async function webkitSmoke(browser) {
       expect(m.sw <= m.vw, `horizontal overflow ${m.sw} > ${m.vw}`);
       expect(await reachable('.td-modal__confirm-field input'), 'field not reachable');
       expect(await reachable('.td-modal__footer .td-btn:last-child'), 'confirm button not reachable');
+    });
+
+    await it(tag, 'carousel: next / prev by tap (v0.50.0)', async () => {
+      await load(page);
+      await tap('#rsp-carousel [data-td-carousel="next"]');
+      await page.waitForFunction(() => document.querySelector('#rsp-carousel').index === 2, null, { timeout: 5000 });
+      await tap('#rsp-carousel [data-td-carousel="prev"]');
+      await page.waitForFunction(() => document.querySelector('#rsp-carousel').index === 0, null, { timeout: 5000 });
+      expect(true, '');
     });
 
     await controlMatrix(tag, page, syntheticInput(page));

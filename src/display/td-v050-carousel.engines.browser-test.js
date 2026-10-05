@@ -423,6 +423,15 @@ describe('td-carousel — layout', () => {
     w.remove();
   });
 
+  it('absolutely positioned content inside slides never widens the page (the viewport is a containing block)', async () => {
+    const before = document.documentElement.scrollWidth;
+    const h = await fresh('c-8', 'abs', '720px');
+    for (const sl of parts(h).slides) sl.insertAdjacentHTML('beforeend', '<span class="td-sr-only">ẩn</span>');
+    await raf();
+    expect(document.documentElement.scrollWidth <= Math.max(before, document.documentElement.clientWidth), `${document.documentElement.scrollWidth}`).to.equal(true);
+    h.parentElement.remove();
+  });
+
   it('no periodic timer: idle carousels schedule nothing', async () => {
     const h = await fresh('c-8', 'idle', '720px');
     await stable(parts(h).vp);

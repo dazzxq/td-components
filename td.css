@@ -19227,6 +19227,7 @@
 	/* the scroller */
 	.td-carousel__viewport,
 	td-carousel:not(:defined):not([data-td-ssr]) {
+		position: relative; /* a containing block: absolutely positioned content (.td-sr-only…) is clipped, never widens the page */
 		overflow-x: auto;
 		overflow-y: hidden;
 		overscroll-behavior-x: contain;
@@ -19405,15 +19406,20 @@
 		font-variant-numeric: tabular-nums;
 		color: var(--td-color-text-muted);
 		text-align: center;
+		direction: ltr; /* "3 / 8" reads the same in an RTL page (else the bidi algorithm shows "8 / 3") */
+		unicode-bidi: isolate;
 	}
 
+	/* its own full-width row; the percentage padding (of the controls' width) leaves room for ≤ 6 dots a row (C21) */
 	.td-carousel__dots {
+		--_td-carousel-per-row: 6;
+
+		box-sizing: border-box;
 		display: flex;
 		flex: 1 0 100%;
 		flex-wrap: wrap;
 		justify-content: center;
-		max-inline-size: calc(6 * var(--_td-carousel-step)); /* ≤ 6 a row (C21) */
-		margin-inline: auto;
+		padding-inline: max(0px, calc((100% - var(--_td-carousel-per-row) * var(--_td-carousel-step)) / 2));
 	}
 
 	.td-carousel__dot {
@@ -19476,8 +19482,9 @@
 
 	@container td-carousel (width >= 480px) {
 		td-carousel[data-td-rows-wide] .td-carousel__dots {
+			--_td-carousel-per-row: 8;
+
 			display: flex;
-			max-inline-size: calc(8 * var(--_td-carousel-step)); /* ≤ 8 a row */
 			min-block-size: 0;
 		}
 
@@ -19501,7 +19508,7 @@
 		td-carousel[data-td-rows-wide="inline"] .td-carousel__dots {
 			flex: 0 1 auto;
 			min-block-size: var(--_td-carousel-step);
-			margin-inline: 0;
+			padding-inline: 0;
 		}
 
 		td-carousel[data-td-rows-wide="inline"] .td-carousel__counter {
@@ -19511,7 +19518,7 @@
 
 	/* td: generated container fallback (ADR 0014) */
 	@supports not (container-type: inline-size) {
-		@media (min-width: 480px) {td-carousel[data-td-rows-wide] .td-carousel__dots{display:flex;max-inline-size:calc(8 * var(--_td-carousel-step));min-block-size:0}td-carousel[data-td-rows-wide="0"] .td-carousel__dots{display:none}td-carousel[data-td-rows-wide="1"] .td-carousel__dots{min-block-size:var(--_td-carousel-step)}td-carousel[data-td-rows-wide="2"] .td-carousel__dots{min-block-size:calc(2 * var(--_td-carousel-step))}td-carousel[data-td-rows-wide="inline"] .td-carousel__controls{justify-content:center}td-carousel[data-td-rows-wide="inline"] .td-carousel__dots{flex:0 1 auto;min-block-size:var(--_td-carousel-step);margin-inline:0}td-carousel[data-td-rows-wide="inline"] .td-carousel__counter{display:none}}
+		@media (min-width: 480px) {td-carousel[data-td-rows-wide] .td-carousel__dots{--_td-carousel-per-row:8;display:flex;min-block-size:0}td-carousel[data-td-rows-wide="0"] .td-carousel__dots{display:none}td-carousel[data-td-rows-wide="1"] .td-carousel__dots{min-block-size:var(--_td-carousel-step)}td-carousel[data-td-rows-wide="2"] .td-carousel__dots{min-block-size:calc(2 * var(--_td-carousel-step))}td-carousel[data-td-rows-wide="inline"] .td-carousel__controls{justify-content:center}td-carousel[data-td-rows-wide="inline"] .td-carousel__dots{flex:0 1 auto;min-block-size:var(--_td-carousel-step);padding-inline:0}td-carousel[data-td-rows-wide="inline"] .td-carousel__counter{display:none}}
 	}
 
 	@media (pointer: coarse) {
