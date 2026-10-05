@@ -1,6 +1,7 @@
 import { LAYERS, register as registerLayer } from '../utils/layers.js';
 import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
 import { safeColor } from '../utils/css-safe.js';
+import { pickPole } from '../theme/color.js';
 
 /**
  * TdTooltip — global tooltip singleton with auto-init. Token-native (needs td.css; styles:
@@ -118,15 +119,6 @@ const isTrigger = (el) => el.hasAttribute('data-tooltip') || el.hasAttribute('da
 
 /** Clamp `v` into [min, max]; the midpoint when the range is empty. */
 const clamp = (v, min, max) => (min > max ? (min + max) / 2 : Math.max(min, Math.min(v, max)));
-
-/** Relative luminance (WCAG 2.x) of an {r,g,b} 0–255 colour. */
-function luminance({ r, g, b }) {
-  const f = (v) => {
-    const c = v / 255;
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
-}
 
 export class TdTooltip {
     constructor() {
@@ -719,15 +711,15 @@ export class TdTooltip {
     }
 
     /**
-     * Black or white text, whichever has the higher WCAG contrast on `bgColor`.
+     * Black or white text, whichever has the higher WCAG contrast on `bgColor` (v0.42.0: src/theme/color.js
+     * pickPole, a tie → white as before; the canvas-normalised colour's alpha is ignored as before).
      * @param {string} bgColor
      * @returns {string}
      */
     _getAccessibleTextColor(bgColor) {
         const rgb = this._toComputedRGB(bgColor);
         if (!rgb) return '#ffffff';
-        const l = luminance(rgb);
-        return (1.05 / (l + 0.05)) >= ((l + 0.05) / 0.05) ? '#ffffff' : '#000000';
+        return pickPole({ r: rgb.r / 255, g: rgb.g / 255, b: rgb.b / 255 }, { tie: 'white' });
     }
 }
 
