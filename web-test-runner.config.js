@@ -34,7 +34,9 @@ const POINTER_FILES = ['src/display/td-v031-sortable.engines.browser-test.js', '
   'src/display/td-v036-media-grid-shortcuts.engines.browser-test.js', 'src/feedback/td-v036-media-picker-shortcuts.engines.browser-test.js',
   'src/feedback/td-v036-lightbox-menu-dismiss.engines.browser-test.js',
   // v0.37.0: real (Shift+) clicks on td-table row selection
-  'src/display/td-v037-table-selection.engines.browser-test.js'];
+  'src/display/td-v037-table-selection.engines.browser-test.js',
+  // v0.43.0: real mouse drags on the td-media-gallery handles
+  'src/form/td-v043-media-gallery-sort.engines.browser-test.js'];
 
 /** All src stories (for src/stories-dom.browser-test.js). */
 function storyFiles(dir = 'src', out = []) {
