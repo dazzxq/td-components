@@ -123,6 +123,8 @@ export class TdTimeline extends TdBaseElement {
     this._detailCtl = new Map();
     /** @type {Array<{ d: HTMLDetailsElement, id: string }>} lazy details waiting for a free slot (SEC-04) */
     this._detailQueue = [];
+    /** SEC-04 (review round 3): renderDetails calls not settled yet — an aborted call keeps its slot until it settles */
+    this._detailActive = 0;
     /** @type {Map<string, Node|string>} */
     this._detailCache = new Map();
     /** Review SEC-02: the MAX_TOTAL cap was reached — no more "Xem thêm". */
@@ -713,9 +715,10 @@ export class TdTimeline extends TdBaseElement {
       return;
     }
     if (this._detailCtl.has(id) || this._detailQueue.some((e) => e.d === d)) return;
-    if (this._detailCtl.size >= DETAIL_CONCURRENCY) { // SEC-04: wait for a free slot (FIFO, display order)
+    if (this._detailActive >= DETAIL_CONCURRENCY) { // SEC-04: wait for a free slot, in DISPLAY order
       box.replaceChildren(text('p', 'td-timeline__loading', L.detailsLoading ?? TIMELINE_LABELS.detailsLoading, { role: 'status' }));
-      this._detailQueue.push({ d, id });
+      const at = this._detailQueue.findIndex((e) => !!(d.compareDocumentPosition(e.d) & Node.DOCUMENT_POSITION_FOLLOWING));
+      this._detailQueue.splice(at < 0 ? this._detailQueue.length : at, 0, { d, id });
       return;
     }
     const ctl = new AbortController();
@@ -724,29 +727,40 @@ export class TdTimeline extends TdBaseElement {
     box.replaceChildren(text('p', 'td-timeline__loading', L.detailsLoading ?? TIMELINE_LABELS.detailsLoading, { role: 'status' }));
     const hook = this._renderDetails;
     let res;
+    this._detailActive++;
     try {
       res = await hook(this._copy(it), { signal: ctl.signal });
     } catch {
+      this._settleDetail();
       if (ctl.signal.aborted || !this._gen.isCurrent(gen) || this._renderDetails !== hook || this._detailCtl.get(id) !== ctl) return;
       this._detailCtl.delete(id);
-      this._pumpDetails();
       const err = text('p', 'td-timeline__detail-error', L.detailsError ?? TIMELINE_LABELS.detailsError, { role: 'status' });
       const retry = text('button', 'td-btn td-btn--ghost td-btn--sm td-timeline__retry', L.retry ?? TIMELINE_LABELS.retry, { type: 'button' });
       box.replaceChildren(err, retry);
       return;
     }
+    this._settleDetail();
     if (ctl.signal.aborted || !this._gen.isCurrent(gen) || this._renderDetails !== hook || this._detailCtl.get(id) !== ctl) return;
     this._detailCtl.delete(id);
-    this._pumpDetails();
     const v = res instanceof Node ? res : typeof res === 'string' ? res : res == null ? '' : String(res);
     this._detailCache.set(id, v);
     if (typeof v === 'string') box.textContent = v;
     else box.replaceChildren(v);
   }
 
+  /**
+   * @private SEC-04 (review round 3): a renderDetails call settled (resolved / rejected — aborted or not): its slot frees
+   * now, never earlier; a call that never settles keeps its slot (fail closed). Then the queue moves (next microtask, so
+   * the settling call finishes applying its own result first).
+   */
+  _settleDetail() {
+    this._detailActive--;
+    queueMicrotask(() => this._pumpDetails());
+  }
+
   /** @private SEC-04: start queued lazy details while a slot is free (skipping panels closed / removed meanwhile). */
   _pumpDetails() {
-    while (this._detailCtl.size < DETAIL_CONCURRENCY && this._detailQueue.length) {
+    while (this._detailActive < DETAIL_CONCURRENCY && this._detailQueue.length) {
       const { d, id } = this._detailQueue.shift();
       if (!d.isConnected || !d.open || !this.contains(d)) continue;
       const it = this._items.find((i) => i.id === id);

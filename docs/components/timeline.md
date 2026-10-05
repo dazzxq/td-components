@@ -109,8 +109,9 @@ tìm trong trang tự mở. Event **`item-toggle`** `{ id, open }` khi người 
 Gọi ở lần mở đầu tiên ("Đang tải…"), kết quả cache theo `id`; lỗi → "Không tải được chi tiết." + nút "Thử lại"; đóng khi
 đang tải / gán `items` mới / gỡ phần tử → `signal` bị abort, kết quả cũ bị bỏ. Không có `renderDetails` → mục không có
 "Chi tiết" + một cảnh báo. Đây là chỗ app gắn diff, bảng… (Node do app dựng — app chịu trách nhiệm nội dung đó).
-Tối đa **6** lời gọi `renderDetails` chạy cùng lúc (`DETAIL_CONCURRENCY`); chi tiết mở thêm (vd. nhiều mục
-`expanded: true`) chờ theo thứ tự hiển thị ("Đang tải…"), đóng khi còn chờ thì không bao giờ gọi.
+Tối đa **6** lời gọi `renderDetails` chưa xong cùng lúc (`DETAIL_CONCURRENCY`) — lời gọi bị abort vẫn giữ chỗ tới khi
+promise của nó kết thúc (hook không bao giờ kết thúc thì giữ chỗ mãi: hãy tôn trọng `signal`); chi tiết mở thêm chờ theo
+**thứ tự hiển thị** ("Đang tải…"), đóng khi còn chờ thì không bao giờ gọi.
 
 Đổi `renderDetails` (gán hàm khác) → mọi yêu cầu đang chờ của hàm cũ bị abort và bỏ, cache bị xoá, chi tiết đang **mở** tải
 lại bằng hàm mới, chi tiết đang đóng tải lại khi mở — không có nội dung nào của hàm cũ còn hiện. Vẽ lại cấu trúc (đổi

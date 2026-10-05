@@ -508,8 +508,9 @@ describe('td-timeline — review round 2 (SEC-04: bounded lazy details)', () => 
     const newCalls = [];
     let inFlight = 0;
     let peak = 0;
+    const oldPending = [];
     const el = await mk(lazy(20), undefined, 720, {
-      renderDetails: (it) => { oldCalls.push(it.id); return deferred().p; },
+      renderDetails: (it) => { oldCalls.push(it.id); const d = deferred(); oldPending.push(d); return d.p; },
     });
     expect(oldCalls.length).to.equal(6);
     const pending = [];
@@ -521,6 +522,9 @@ describe('td-timeline — review round 2 (SEC-04: bounded lazy details)', () => 
       pending.push(() => { inFlight--; d.resolve('mới'); });
       return d.p;
     };
+    expect(newCalls.length).to.equal(0); // round 3: the aborted old calls hold their slots until they settle
+    for (const d of oldPending) d.reject(new Error('aborted'));
+    await waitFor(() => newCalls.length === 6);
     expect(newCalls.length).to.equal(6);
     while (pending.length) {
       pending.shift()();
@@ -542,5 +546,59 @@ describe('td-timeline — review round 2 (SEC-04: bounded lazy details)', () => 
     el2.parentElement.remove();
     await tick();
     expect(called.filter((c) => c.startsWith('b-')).length).to.equal(6);
+  });
+});
+
+describe('td-timeline — review round 3 (SEC-04 slots held until settled, display order)', () => {
+  const lazy = (n, expanded = true, p = 'd') => Array.from({ length: n }, (_, i) => ({ id: `${p}${i}`, time: Date.UTC(2026, 9, 5, 1) - i * 60e3, title: `${p}${i}`, details: true, expanded }));
+
+  it('aborted calls keep their slot until they settle: hook replacement, items assignment, re-render never exceed 6 unsettled calls', async () => {
+    let unsettled = 0;
+    let peak = 0;
+    const pending = [];
+    const hook = (tag) => (it) => {
+      unsettled++;
+      peak = Math.max(peak, unsettled);
+      const d = deferred();
+      pending.push({ tag, id: it.id, settle: () => { unsettled--; d.resolve(`${tag} ${it.id}`); } });
+      return d.p;
+    };
+    const el = await mk(lazy(20), undefined, 720, { renderDetails: hook('a') });
+    expect(unsettled).to.equal(6);
+    el.renderDetails = hook('b'); // the 6 old calls never settled: no new call may start
+    expect(unsettled).to.equal(6);
+    expect(pending.filter((p) => p.tag === 'b').length).to.equal(0);
+    el.setAttribute('heading-level', '4'); // structural re-render
+    el.items = lazy(20, true, 'e'); // new items
+    expect(unsettled).to.equal(6);
+    pending.shift().settle(); // an old call settles → exactly one new call starts
+    await tick();
+    expect(unsettled).to.equal(6);
+    expect(pending.filter((p) => p.tag === 'b').length).to.equal(1);
+    while (pending.length) {
+      pending.shift().settle();
+      await tick();
+    }
+    await waitFor(() => [...el.querySelectorAll('.td-timeline__detail')].every((b) => b.textContent.startsWith('b ')));
+    expect(peak).to.equal(6);
+    expect(el.querySelectorAll('.td-timeline__detail').length).to.equal(20);
+  });
+
+  it('the queue follows display order, not open order', async () => {
+    const called = [];
+    const pending = [];
+    const el = await mk(lazy(9, false), undefined, 720, {
+      renderDetails: (it) => { called.push(it.id); const d = deferred(); pending.push(d); return d.p; },
+    });
+    const det = (id) => el.querySelector(`li[data-id="${id}"] details`);
+    for (let i = 0; i < 6; i++) det(`d${i}`).open = true;
+    await waitFor(() => called.length === 6);
+    det('d8').open = true; // lower in the list, opened first
+    await waitFor(() => el.querySelector('li[data-id="d8"] .td-timeline__loading'));
+    det('d7').open = true; // higher, opened second
+    await waitFor(() => el.querySelector('li[data-id="d7"] .td-timeline__loading'));
+    pending.shift().resolve('x');
+    await waitFor(() => called.length === 7);
+    expect(called[6]).to.equal('d7');
   });
 });
