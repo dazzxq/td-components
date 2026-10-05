@@ -281,6 +281,27 @@ describe('td-color-picker — popup', () => {
     expect(log.change.length).to.equal(1);
   });
 
+  it('review r2 #3: invalid text → open → pick in the area → Escape: the raw text comes back SILENTLY (no input / change), badInput again', async () => {
+    const { el, trigger, input, log } = mount();
+    await typeInto(input, 'xyz');
+    expect(el.validity.badInput).to.equal(true);
+    trigger.click();
+    await sendKeys({ press: 'End' }); // a pick on the area (commits a colour)
+    expect(el.validity.badInput).to.equal(false);
+    expect(/^#[0-9a-f]{6}$/.test(el.value)).to.equal(true);
+    log.input.length = 0;
+    log.change.length = 0;
+    await sendKeys({ press: 'Escape' });
+    expect(!!panel()).to.equal(false);
+    expect(el.value).to.equal('xyz');
+    expect(input.value).to.equal('xyz');
+    expect(el.validity.badInput).to.equal(true);
+    expect(log.input).to.deep.equal([]);
+    expect(log.change).to.deep.equal([]);
+    expect(active() === trigger).to.equal(true);
+    expect(log.native).to.equal(0);
+  });
+
   it('presets property: a 100 000-entry / sparse array is bounded (≤ 192 inspected), one fixed warning', () => {
     const warns = [];
     const orig = console.warn;

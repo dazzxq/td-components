@@ -208,3 +208,34 @@ test('SEC-01 parity cases (JS side)', () => {
     else assert.deepEqual(got, want, name);
   }
 });
+
+// v0.48.0 Codex review round 2 #1: a preset label is cut to a fixed bound BEFORE trim (a 20M-character label is never
+// scanned); an oversized label is reported through `capped` (the element's one fixed warning).
+test('review r2 #1: huge preset labels are bounded before trim', () => {
+  const huge = ' '.repeat(20_000_000) + 'Đỏ';
+  const t0 = performance.now();
+  const r = parsePresets([{ value: '#f00', label: huge }]);
+  assert.ok(performance.now() - t0 < 50 * 20, `${performance.now() - t0} ms`);
+  assert.deepEqual(r.items, [{ hex: '#ff0000', label: '' }]);
+  assert.equal(r.capped, true);
+  const long = `  ${'x'.repeat(500)}`;
+  const l = parsePresets([{ value: '#000', label: long }]);
+  assert.equal(l.items[0].label, 'x'.repeat(MAX_PRESET_LABEL));
+  assert.equal(l.capped, true);
+  const ok2 = parsePresets([{ value: '#000', label: `  ${'y'.repeat(MAX_PRESET_LABEL)}  ` }]);
+  assert.equal(ok2.items[0].label, 'y'.repeat(MAX_PRESET_LABEL));
+  assert.equal(ok2.capped, undefined, 'a label within the bound is not reported');
+});
+
+// round 2 #2: utf8Over() counts like TextEncoder — a pair = 4 bytes, a LONE surrogate = 3 (U+FFFD). JS-only: PHP receives
+// UTF-8, a lone surrogate never reaches it.
+test('review r2 #2: utf8Over agrees with TextEncoder on paired and unpaired surrogates', async () => {
+  const { utf8Over } = await import('./color-picker-model.js');
+  const enc = new TextEncoder();
+  const cases = ['a😀b', '\uD800a', 'a\uD800', '\uDC00', '\uDC00\uD800', '\uD800𐀀', 'đ€😀', '\uD83D', 'x'.repeat(10) + '\uDBFF'];
+  for (const s of cases) {
+    const n = enc.encode(s).length;
+    assert.equal(utf8Over(s, n), false, `${JSON.stringify(s)} ≤ ${n}`);
+    assert.equal(utf8Over(s, n - 1), true, `${JSON.stringify(s)} > ${n - 1}`);
+  }
+});

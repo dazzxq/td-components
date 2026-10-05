@@ -855,9 +855,12 @@ export class TdColorPicker extends TdFormElement {
       this._assign(open);
       if (this._openHsv) this._hsv = { ...this._openHsv };
       this._refresh(true);
-      this._changed(prev);
-      this._committed = this.value; // the next blur / Enter commits nothing new
-      this.emit('change', { value: this.value });
+      // review r2 #3: an INVALID snapshot (raw text, badInput) is restored silently — events never carry raw text
+      if (!this._bad) {
+        this._changed(prev);
+        this._committed = this.value; // the next blur / Enter commits nothing new
+        this.emit('change', { value: this.value });
+      }
     }
     this.close({ focus: false });
     const trigger = this._trigger();

@@ -24,13 +24,23 @@ export const MAX_PRESET_CANDIDATES = MAX_PRESETS * 4;
 /** SEC-01: a preset string longer than this (UTF-8 bytes) is rejected as a whole, before any split. */
 export const MAX_PRESET_STRING = MAX_PRESET_CANDIDATES * 64;
 
-/** UTF-8 byte length of `s`, stopping as soon as it exceeds `max` (bounded work). */
-function utf8Over(s, max) {
+/**
+ * Is the UTF-8 byte length of `s` (as TextEncoder encodes it) over `max`? Stops as soon as it is (bounded work). A
+ * surrogate PAIR = 4 bytes; a LONE surrogate = 3 (encoded as U+FFFD). Internal (exported for the tests).
+ * @param {string} s
+ * @param {number} max
+ */
+export function utf8Over(s, max) {
   if (s.length > max) return true;
   let n = 0;
   for (let i = 0; i < s.length; i++) {
     const c = s.charCodeAt(i);
-    n += c < 0x80 ? 1 : c < 0x800 ? 2 : c >= 0xd800 && c <= 0xdbff ? (i++, 4) : 3;
+    if (c < 0x80) n += 1;
+    else if (c < 0x800) n += 2;
+    else if (c >= 0xd800 && c <= 0xdbff && i + 1 < s.length) {
+      const d = s.charCodeAt(i + 1);
+      if (d >= 0xdc00 && d <= 0xdfff) { n += 4; i++; } else n += 3;
+    } else n += 3;
     if (n > max) return true;
   }
   return false;
@@ -103,7 +113,13 @@ export function parsePresets(input) {
     if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
       raw = Object.prototype.hasOwnProperty.call(entry, 'value') ? entry.value : undefined;
       const l = Object.prototype.hasOwnProperty.call(entry, 'label') ? entry.label : undefined;
-      if (typeof l === 'string') label = l.trim().slice(0, MAX_PRESET_LABEL);
+      if (typeof l === 'string') {
+        // review r2 #1: cut to a fixed bound BEFORE trim (a huge label is never scanned); over it → reported
+        if (l.length > MAX_PRESET_LABEL * 2) capped = true;
+        const t = l.slice(0, MAX_PRESET_LABEL * 2).trim();
+        if (t.length > MAX_PRESET_LABEL) capped = true;
+        label = t.slice(0, MAX_PRESET_LABEL);
+      }
     }
     const r = parseColorInput(raw);
     if (!r.ok) { dropped += 1; continue; }
