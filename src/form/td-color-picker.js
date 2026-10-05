@@ -3,7 +3,7 @@ import {
 } from '../base/td-form-element.js';
 import { ssrMarker } from '../base/td-base-element.js';
 import { tdIcon } from '../icons/td-icon.js';
-import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
+import { placeFloating, isReferenceHidden, watchReference, viewportBox } from '../utils/floating.js';
 import { LAYERS, register as registerLayer, bridgeTheme, focusablesIn } from '../utils/layers.js';
 import { createCheckMark } from '../utils/check-mark.js';
 import { contrast, pickPole } from '../theme/color.js';
@@ -825,9 +825,9 @@ export class TdColorPicker extends TdFormElement {
     const { side, top } = placeFloating(trigger, panel, { width: 'auto', align: 'start' });
     panel.setAttribute('data-placement', side);
     // neither side has room (short landscape phone): keep the whole popup inside the viewport (it may cover the field)
-    const vh = window.visualViewport?.height || window.innerHeight;
+    const box = viewportBox();
     const h = panel.offsetHeight;
-    const clamped = Math.max(8, Math.min(top, vh - h - 8));
+    const clamped = Math.max(box.top + 8, Math.min(top, box.bottom - h - 8));
     if (clamped !== top) panel.style.setProperty('top', `${clamped}px`);
   }
 

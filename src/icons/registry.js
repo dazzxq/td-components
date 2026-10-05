@@ -1432,6 +1432,5 @@ export const aliases = {
   "ellipsis": "more",
   "external-link": "external",
   "expand": "fullscreen",
-  "pen": "pencil",
-  "eyedropper": "pipette"
+  "pen": "pencil"
 };
