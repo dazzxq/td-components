@@ -1,6 +1,6 @@
 import { TdBaseElement } from '../base/td-base-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
-import { normalizeItems, cleanHref, fill } from '../utils/filter-chips-model.js';
+import { normalizeItems, cleanHref, fill, MAX_ITEMS } from '../utils/filter-chips-model.js';
 
 const SSR_NAME = 'filter-chips';
 const SSR_SCHEMA = 1;
@@ -73,7 +73,8 @@ function leafText(n) {
  * @attr {string} empty-focus - id of the element focused when the last removable chip is removed (e.g. the search box)
  * @property {Array<{id?, key, label?, value, removable?, href?}>} items - key / value (/ label / id) strings or numbers;
  *   `id` defaults to `key` (a multi-value filter = several items with the same key); `href`: the URL without this
- *   filter (https, http on an http page, relative — anything else is ignored). Read back normalised (copies).
+ *   filter (same origin only: relative, ?query, #hash or an absolute URL of the page origin; anything else is ignored).
+ *   At most 200 items (the rest dropped + one warning). Read back normalised (copies).
  * @fires filter-remove - `{ item, items }` (items = the list after the removal), cancelable
  * @fires filter-clear - `{ items, removed }` (items = what stays: the non-removable chips), cancelable
  */
@@ -127,6 +128,7 @@ export class TdFilterChips extends TdBaseElement {
   set items(v) {
     const r = normalizeItems(v);
     if (r.dropped) this._warnOnce('td-filter-chips: an item was dropped — key / value (/ label / id) must be strings or numbers; one item per value of a multi-value filter.');
+    if (r.capped) this._warnOnce(`td-filter-chips: more than ${MAX_ITEMS} items — only the first ${MAX_ITEMS} are shown.`);
     if (r.renamed) this._warnOnce('td-filter-chips: duplicate item id — renamed with a -2, -3 … suffix (give every item its own id).');
     this._items = r.items;
     if (!this._initialized) {
@@ -367,6 +369,8 @@ export class TdFilterChips extends TdBaseElement {
    */
   canHydrate() {
     if (!this._ssrMatches(SSR_NAME, SSR_SCHEMA)) return false;
+    // review ISSUE-1: the server prints `hidden` only for an empty list — it is ours to remove (early items, re-render)
+    if (this.hasAttribute('hidden')) this._autoHidden = true;
     if (this._earlyItems) return false;
     const items = this._readMarkup();
     if (!items) {

@@ -25,8 +25,9 @@ plan-review APPROVE 3 vòng). Chi tiết nâng cấp: `docs/upgrading/breaking-c
 
 ### Security
 
-- `href` / `clear-href` của chip: một chính sách cho JS và PHP (https; http chỉ trên trang http; tương đối) — chặn
-  `javascript:`, `data:`, `blob:`…; chip chỉ dựng bằng text, cắt độ dài, bỏ ký tự điều khiển. Ẩn cột là hiển thị, không
+- `href` / `clear-href` của chip: link "bỏ lọc" không bao giờ rời site — JS chỉ nhận http(s) cùng origin (tương đối,
+  `?query`, `#hash`), PHP chỉ URL tương đối; chặn `//host`, `\`, `javascript:`, `data:`, `blob:`…; tối đa 200 chip, xử lý
+  có trần (review SEC-1 / SEC-2); chip chỉ dựng bằng text, cắt độ dài, bỏ ký tự điều khiển. Ẩn cột là hiển thị, không
   phải phân quyền (server không gửi cột người dùng không được xem).
 
 ## 0.38.0

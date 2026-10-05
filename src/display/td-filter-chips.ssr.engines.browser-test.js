@@ -49,6 +49,9 @@ const early = document.createElement('div');
 early.innerHTML = basic.replace('<td-filter-chips ', '<td-filter-chips id="early" ');
 document.body.appendChild(early);
 document.getElementById('early').items = [{ key: 'z', label: 'Sớm', value: 'thắng' }];
+// ISSUE-1: early items on an EMPTY server host (printed `hidden`) — the host must show them
+early.insertAdjacentHTML('beforeend', hostHtml('f-empty').replace('<td-filter-chips ', '<td-filter-chips id="early-empty" '));
+document.getElementById('early-empty').items = [{ key: 'q', label: 'Tìm', value: 'a' }];
 
 const before = {};
 for (const c of SPEC.cases) {
@@ -126,6 +129,13 @@ describe('td-filter-chips SSR (filter-chips@1) — adopted in place + PHP ↔ JS
     expect(host.items).to.deep.equal([{ id: 'z', key: 'z', label: 'Sớm', value: 'thắng', removable: true }]);
     expect(host.querySelectorAll('li').length).to.equal(1);
     expect(host.querySelector('li').textContent).to.equal('Sớm: thắng');
+  });
+
+  it('ISSUE-1: early items on an empty (hidden) server host → shown', () => {
+    const host = document.getElementById('early-empty');
+    expect(host.items.length).to.equal(1);
+    expect(host.hidden).to.equal(false);
+    expect(host.getClientRects().length).to.be.greaterThan(0);
   });
 
   it('an adopted chip works: × → filter-remove + removed', () => {

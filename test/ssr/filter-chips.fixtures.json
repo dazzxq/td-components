@@ -75,13 +75,13 @@
       "args": [[
         { "key": "status", "label": "Trạng thái", "value": "Đang bán", "href": "?q=iphone&page=1" },
         { "key": "q", "label": "Tìm", "value": "iphone", "href": "/san-pham?status=selling" },
-        { "key": "brand", "label": "Hãng", "value": "Apple", "href": "https://shop.example/list?x=1" }
+        { "key": "brand", "label": "Hãng", "value": "Apple", "href": "#hang-apple" }
       ], { "clear_href": "?", "label": "Đang lọc" }],
       "expect": {
         "items": [
           { "id": "status", "key": "status", "label": "Trạng thái", "value": "Đang bán", "removable": true, "href": "?q=iphone&page=1" },
           { "id": "q", "key": "q", "label": "Tìm", "value": "iphone", "removable": true, "href": "/san-pham?status=selling" },
-          { "id": "brand", "key": "brand", "label": "Hãng", "value": "Apple", "removable": true, "href": "https://shop.example/list?x=1" }
+          { "id": "brand", "key": "brand", "label": "Hãng", "value": "Apple", "removable": true, "href": "#hang-apple" }
         ],
         "links": ["status", "q", "brand"], "clear": "link", "group": "Đang lọc"
       }

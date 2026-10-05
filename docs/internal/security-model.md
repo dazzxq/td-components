@@ -268,9 +268,12 @@ của người dùng** (sửa được, chia sẻ được qua link) → không 
   `hidden`). Cột người dùng không được xem → server đừng gửi. Nhãn cột trong menu "Cột" là `textContent`.
 - **`td-filter-chips`**: dựng bằng DOM API — `label` / `value` / `key` / `id` là `textContent` / `setAttribute`, không
   có hatch HTML; ký tự điều khiển bị bỏ, độ dài bị cắt (`src/utils/filter-chips-model.js`, PHP `td__filter_items` cùng
-  luật — test parity). `href` / `clear-href`: **một** chính sách cho JS + PHP — `safeLinkUrl` (`https:`, `http:` chỉ trên
-  trang `http:`, tương đối giải ra hai scheme đó; `javascript:` kể cả `java\tscript:`, `data:`, `blob:`, `mailto:`,
-  `tel:` → không phải link) / PHP `Td::safeUrl` rồi loại `mailto:` / `tel:`. Event `filter-remove` / `filter-clear`
+  luật — test parity; review SEC-1: trần 200 chip, chuỗi thô cắt ở 4 × giới hạn **trước** regex / tách code point,
+  bộ đếm hậu tố id theo base — O(n), một cảnh báo mỗi lần gọi). `href` / `clear-href` (review SEC-2, chống điều hướng
+  mở): JS `cleanHref` giải theo `document.baseURI`, chỉ http(s) **cùng origin** (`url.origin === location.origin`),
+  từ chối `//host`, `\`, scheme không kèm `//`; PHP `td__filter_href` chỉ nhận URL **tương đối** (không scheme, không
+  `//`, không `\`) vì không biết origin. Bảng `HREF_CASES` (`src/utils/filter-chips-model.js`) là parity JS ↔ PHP.
+  Không có opt-in cross-origin. Event `filter-remove` / `filter-clear`
   huỷ được (dispatch tay `cancelable: true`); không huỷ + link → trình duyệt điều hướng (không `target`, cùng tab).
 - **Cổng SSR `filter-chips@1`** (bề mặt chèn markup): nhận tại chỗ chỉ khi **toàn bộ** cây khớp hợp đồng — tag, tập thuộc
   tính **chính xác** từng nút (thuộc tính lạ như `onclick` / `style` → từ chối), chữ cố định (`": "`, "Xoá tất cả"), lá

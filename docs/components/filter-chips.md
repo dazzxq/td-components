@@ -49,10 +49,11 @@ Kit **không** dựng thanh lọc, không đọc / ghi URL: chip chỉ hiện + 
 | `label` | string \| number | `key` | Nhãn in đậm trước dấu ":". |
 | `id` | string \| number | `key` | Danh tính chip (bỏ đúng chip). Trùng → thêm hậu tố `-2`, `-3`… + một cảnh báo. |
 | `removable` | boolean | `true` | `false` → chip không có × (bộ lọc bắt buộc, ví dụ "Kho: HN"). |
-| `href` | string | — | × là **link** tới URL **không còn** bộ lọc này (server tính). Chỉ `https:`, `http:` trên trang `http:`, đường dẫn tương đối; khác (`javascript:`, `data:`, `mailto:`…) → bỏ qua (× là nút). |
+| `href` | string | — | × là **link** tới URL **không còn** bộ lọc này (server tính). Chỉ **cùng origin** với trang: đường dẫn tương đối, `?query`, `#hash` (hoặc URL tuyệt đối cùng origin — chỉ JS); không `//host`, không `\`, không scheme khác `http(s)://`; khác (origin khác, `javascript:`, `data:`, `mailto:`…) → bỏ qua (× là nút). Không có tuỳ chọn cho link sang origin khác. |
 
 - Mọi chuỗi là **chữ** (gán `textContent` — không có HTML), ký tự điều khiển bị bỏ, cắt ở 200 ký tự (`key` / `id` /
   `label`) / 500 (`value`). Item sai kiểu (object, boolean, mảng…) bị bỏ + một cảnh báo.
+- Tối đa **200** chip (phần thừa bị bỏ + một cảnh báo) — giới hạn cứng, như PHP.
 - Đọc lại `chips.items` → bản đã chuẩn hoá (bản sao): `{ id, key, label, value, removable, href? }`.
 - Gán `items` **im lặng** (không event). Gán trước khi phần tử được define / gắn vào trang vẫn được.
 
@@ -205,9 +206,13 @@ lại từng trường, không bao giờ tách chữ "nhãn: giá trị". Markup
 
 - Nhãn / giá trị / id / key luôn là **chữ** (DOM API, `textContent`, `setAttribute`) — không có cửa HTML. Chuỗi
   `<img onerror>` hiện nguyên văn.
-- `href` / `clear-href`: chỉ `https:`, `http:` khi chính trang là `http:`, đường dẫn tương đối (giải ra hai scheme
-  đó); `javascript:` (kể cả `java\tscript:`), `data:`, `blob:`, `mailto:`, `tel:` → không phải link. PHP: `Td::safeUrl`
-  rồi loại thêm `mailto:` / `tel:` — cùng một chính sách.
+- `href` / `clear-href`: link "bỏ lọc" **không bao giờ rời site** — JS giải URL theo `document.baseURI` và chỉ nhận
+  http(s) **cùng origin** với trang (tương đối, `?query`, `#hash`, hoặc URL tuyệt đối cùng origin); `//host`
+  (protocol-relative), dấu `\`, `https:host` (thiếu `//`), origin khác, `javascript:` (kể cả `java\tscript:`),
+  `data:`, `blob:`, `mailto:`, `tel:` → không phải link. PHP không biết origin của trang nên **chỉ nhận URL tương đối**
+  (không scheme, không `//`, không `\`). Không có opt-in cho link sang origin khác.
+- Khối lượng xử lý có trần: tối đa 200 chip, chuỗi thô cắt ở 4 × giới hạn trước khi xử lý, id trùng đánh số theo bộ đếm
+  (không bậc hai).
 - Giá trị chip thường lấy từ URL (người dùng sửa được) — chip chỉ hiển thị; server vẫn phải kiểm từng tham số lọc.
 
 ## Cảm ứng

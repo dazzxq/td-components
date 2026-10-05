@@ -2736,7 +2736,7 @@ namespace {
         $L = Td::FILTER_CHIPS_LABELS;
         $list = td__filter_items($items);
         $label = td__str($o['label'] ?? null);
-        $clear = td__media_url($o['clear_href'] ?? null);
+        $clear = td__filter_href($o['clear_href'] ?? null);
         $taken = [];
         $html = '<td-filter-chips' . Td::ownAttrs([
             'data-td-ssr' => Td::SSR_FILTER_CHIPS,
@@ -2781,15 +2781,23 @@ namespace {
 
     /**
      * @internal td_filter_chips items → [['id','key','label','value','removable','href'(?string)]] (= normalizeItems() of
-     * src/utils/filter-chips-model.js). A dropped item → ONE E_USER_WARNING.
+     * src/utils/filter-chips-model.js). Bounded (review SEC-1): at most 200 chips (the rest dropped + ONE
+     * E_USER_WARNING), dropped items → ONE E_USER_WARNING per call, a per-base suffix counter for duplicate ids.
      */
     function td__filter_items(array $items): array
     {
         $out = [];
         $used = [];
+        $next = [];
+        $dropped = 0;
+        $capped = false;
         foreach ($items as $raw) {
+            if (count($out) >= 200) {
+                $capped = true;
+                break;
+            }
             if (!is_array($raw)) {
-                trigger_error('td_filter_chips: an item must be an array with key + value — dropped', E_USER_WARNING);
+                $dropped++;
                 continue;
             }
             $key = td__filter_text($raw['key'] ?? null, 200);
@@ -2797,38 +2805,108 @@ namespace {
             $label = ($raw['label'] ?? null) === null ? $key : td__filter_text($raw['label'], 200);
             $id0 = ($raw['id'] ?? null) === null ? $key : td__filter_text($raw['id'], 200);
             if ($key === null || $key === '' || $value === null || $label === null || $id0 === null) {
-                trigger_error('td_filter_chips: key / value / label / id must be strings or numbers (one item per value) — item dropped', E_USER_WARNING);
+                $dropped++;
                 continue;
             }
             $base = $id0 !== '' ? $id0 : $key;
             $id = $base;
-            for ($n = 2; isset($used['k' . $id]); $n++) {
+            if (isset($used['k' . $id])) {
+                $n = $next['k' . $base] ?? 2;
+                while (isset($used['k' . $base . '-' . $n])) {
+                    $n++;
+                }
                 $id = $base . '-' . $n;
+                $next['k' . $base] = $n + 1;
             }
             $used['k' . $id] = true;
             $removable = ($raw['removable'] ?? true) !== false;
-            $href = $removable && isset($raw['href']) ? td__media_url($raw['href']) : null;
+            $href = $removable && isset($raw['href']) ? td__filter_href($raw['href']) : null;
             $out[] = ['id' => $id, 'key' => $key, 'label' => $label !== '' ? $label : $key, 'value' => $value,
                 'removable' => $removable, 'href' => $href];
+        }
+        if ($dropped) {
+            trigger_error("td_filter_chips: $dropped item(s) dropped — key / value / label / id must be strings or numbers (one item per value)", E_USER_WARNING);
+        }
+        if ($capped) {
+            trigger_error('td_filter_chips: more than 200 items — only the first 200 are printed', E_USER_WARNING);
         }
         return $out;
     }
 
     /**
-     * @internal A chip field: string or finite number (cast like JavaScript String(n) for the usual values: 7 → "7",
-     * 12.5 → "12.5", 3.0 → "3") → control characters removed, first $max code points; anything else → null.
+     * @internal A chip link (review SEC-2): Td::safeUrl(), then RELATIVE only — no scheme, no protocol-relative `//`, no
+     * backslash (PHP cannot know the page origin; the JS side keeps same-origin URLs). ≤ 8192 bytes. Else null.
+     */
+    function td__filter_href(mixed $v): ?string
+    {
+        if (!is_string($v) || strlen($v) > 32768) {
+            return null;
+        }
+        $u = Td::safeUrl($v);
+        if ($u === '' || strlen($u) > 8192 || str_contains($u, '\\') || str_starts_with($u, '//')
+            || preg_match('/^[A-Za-z][A-Za-z0-9+.\-]*:/', $u)) {
+            return null;
+        }
+        return $u;
+    }
+
+    /**
+     * @internal A chip field: string or finite number (cast like JavaScript String(n) — td__js_number) → bounded to 4 ×
+     * $max bytes (a cut UTF-8 sequence trimmed), control characters removed, first $max code points; else null.
      */
     function td__filter_text(mixed $v, int $max): ?string
     {
         if (is_int($v)) {
             $v = (string) $v;
         } elseif (is_float($v) && is_finite($v)) {
-            $v = (string) json_encode($v);
+            $v = td__js_number($v);
         } elseif (!is_string($v)) {
             return null;
         }
+        if (strlen($v) > $max * 4) {
+            $v = substr($v, 0, $max * 4);
+            for ($i = 0; $i < 3 && preg_match('//u', $v) !== 1; $i++) {
+                $v = substr($v, 0, -1); // a multi-byte character cut by the bound
+            }
+        }
         $clean = preg_replace('/[\x{0}-\x{1F}\x{7F}-\x{9F}]/u', '', $v);
         return $clean === null ? null : td__utf8_prefix($clean, $max);
+    }
+
+    /**
+     * @internal ECMAScript Number::toString(x) for a finite float (review ISSUE-2): -0 → "0", shortest round-trip digits
+     * (serialize_precision -1), plain notation for 1e-7 < |x| < 1e21, else "de+n" / "d.ddde-n".
+     */
+    function td__js_number(float $f): string
+    {
+        if ($f == 0.0) {
+            return '0';
+        }
+        $old = ini_set('serialize_precision', '-1');
+        $r = var_export(abs($f), true);
+        if ($old !== false) {
+            ini_set('serialize_precision', $old);
+        }
+        if (!preg_match('/^(\d+)(?:\.(\d+))?(?:E([+-]\d+))?$/i', $r, $m)) {
+            return (string) $f;
+        }
+        $digits = $m[1] . ($m[2] ?? '');
+        $n = strlen($m[1]) + (int) ($m[3] ?? 0);
+        $trimmed = ltrim($digits, '0');
+        $n -= strlen($digits) - strlen($trimmed);
+        $digits = rtrim($trimmed, '0');
+        $k = strlen($digits);
+        if ($k <= $n && $n <= 21) {
+            $s = $digits . str_repeat('0', $n - $k);
+        } elseif (0 < $n && $n <= 21) {
+            $s = substr($digits, 0, $n) . '.' . substr($digits, $n);
+        } elseif (-6 < $n && $n <= 0) {
+            $s = '0.' . str_repeat('0', -$n) . $digits;
+        } else {
+            $e = $n - 1;
+            $s = $digits[0] . ($k > 1 ? '.' . substr($digits, 1) : '') . 'e' . ($e < 0 ? '-' : '+') . abs($e);
+        }
+        return ($f < 0 ? '-' : '') . $s;
     }
 
     /**

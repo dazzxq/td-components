@@ -1380,10 +1380,12 @@ foreach ((array) ($_GET['tag'] ?? []) as $t) {               // nhiều giá tr�
   (huỷ được) rồi để trình duyệt mở link.
 - **Item**: `key`, `value` (bắt buộc), `label` (mặc định `key`), `id` (mặc định `key`; trùng → hậu tố `-2`, `-3`…),
   `removable` (mặc định `true`), `href`. `key` / `value` / `label` / `id` là chuỗi hoặc số; **mảng `value` bị từ chối** (một
-  item mỗi giá trị) — item sai kiểu bị bỏ + một `E_USER_WARNING`. Ký tự điều khiển bị bỏ; cắt 200 / 500 / 200 / 200 ký tự
+  item mỗi giá trị) — item sai kiểu bị bỏ (một `E_USER_WARNING` cho cả lần gọi). Số kiểu float in như `String(n)` của JS. Ký tự điều khiển bị bỏ; cắt 200 / 500 / 200 / 200 ký tự
   (`key` / `value` / `label` / `id`) — **giống hệt** component (test parity PHP ↔ JS).
-- **Chính sách URL** (`href`, `clear_href`): `Td::safeUrl()` rồi chỉ giữ `https:` / `http:` (khi `Td::allowHttpLinks()`) /
-  đường dẫn tương đối — `mailto:` / `tel:` (mà `Td::safeUrl` cho phép) bị loại vì không hợp nghĩa "bỏ lọc".
+- **Chính sách URL** (`href`, `clear_href`): `Td::safeUrl()` rồi **chỉ URL tương đối** (`?…`, `#…`, `/đường-dẫn`,
+  `đường-dẫn`) — không scheme (kể cả `https:`), không `//host`, không `\`: link "bỏ lọc" không bao giờ rời site (PHP không
+  biết origin của trang; JS nhận thêm URL tuyệt đối **cùng origin**). Bị từ chối → × là nút chỉ-JS.
+- Tối đa **200** item (phần thừa bỏ + **một** `E_USER_WARNING`); item sai kiểu cũng chỉ **một** cảnh báo mỗi lần gọi.
 
 | Option | Ý nghĩa |
 |---|---|

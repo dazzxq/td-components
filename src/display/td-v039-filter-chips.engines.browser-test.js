@@ -118,6 +118,23 @@ describe('v0.39.0 td-filter-chips — markup + semantics (QĐ 11, 14)', () => {
     expect(warns.filter((w) => /id/.test(w)).length).to.equal(1);
   });
 
+  it('SEC-1: 10 000 items (identical ids + malformed) → ≤ 200 chips, one warning per kind, fast', async () => {
+    const t0 = performance.now();
+    const el = await mk([...Array.from({ length: 5000 }, () => ({ key: '', value: 1 })), ...Array.from({ length: 5000 }, () => ({ id: 'x', key: 'k', value: 'v' }))]);
+    expect(performance.now() - t0).to.be.below(2000);
+    expect(chips(el).length).to.equal(200);
+    expect(warns.filter((w) => /dropped/.test(w)).length).to.equal(1);
+    expect(warns.filter((w) => /200/.test(w)).length).to.equal(1);
+  });
+
+  it('SEC-2: an href to another origin / protocol-relative / backslash → no link', async () => {
+    const el = await mk([{ key: 'a', value: '1', href: 'https://evil.example/x' }, { key: 'b', value: '2', href: '//evil.example/x' },
+      { key: 'c', value: '3', href: '/\\evil.example/x' }, { key: 'd', value: '4', href: `${location.origin}/ok` }, { key: 'e', value: '5', href: '?q=1' }],
+    'clear-href="//evil.example/"');
+    expect(chips(el).map((li) => li.querySelector('.td-filter-chips__remove').localName)).to.deep.equal(['button', 'button', 'button', 'a', 'a']);
+    expect(clearBtn(el).localName).to.equal('button');
+  });
+
   it('a dropped item (array value) → one warning; the others render', async () => {
     const el = await mk([{ key: 'tag', value: ['a', 'b'] }, { key: 'q', value: 'x' }]);
     expect(chips(el).length).to.equal(1);

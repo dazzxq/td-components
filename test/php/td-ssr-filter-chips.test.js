@@ -12,7 +12,7 @@ import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { HAS_PHP, PHP_BIN, ROOT } from './php.mjs';
 import { FILTER_CHIPS_FIXTURES, FILTER_CHIPS_FIXTURE_FILE, renderFilterChipsFixture } from '../ssr/ssr.mjs';
-import { normalizeItems } from '../../src/utils/filter-chips-model.js';
+import { normalizeItems, HREF_CASES, MAX_ITEMS } from '../../src/utils/filter-chips-model.js';
 
 if (!HAS_PHP && process.env.TD_REQUIRE_PHP) throw new Error('TD_REQUIRE_PHP=1 but no php >= 8.0 CLI on PATH');
 const opts = { skip: !HAS_PHP && 'php >= 8.0 CLI not found' };
@@ -30,12 +30,12 @@ const unesc = (s) => s.replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/
  */
 function run(calls) {
   const code = `require ${JSON.stringify(join(ROOT, 'php/td.php'))}; TdComponents\\Td::configure('/', ${JSON.stringify(ROOT)});`
-    + ` $calls = json_decode(${JSON.stringify(JSON.stringify(calls))}, true, 64, JSON_THROW_ON_ERROR); $out = [];`
+    + ' $calls = json_decode((string) file_get_contents(\'php://stdin\'), true, 64, JSON_THROW_ON_ERROR); $out = [];'
     + ' foreach ($calls as $a) { $w = 0; set_error_handler(function (int $no, string $msg) use (&$w): bool {'
     + " if ($no === E_USER_WARNING && str_starts_with($msg, 'td_filter_chips:')) { $w++; return true; } return false; });"
     + ' $html = td_filter_chips(...$a); restore_error_handler(); $out[] = [\'html\' => $html, \'warns\' => $w]; }'
     + ' echo json_encode($out, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);';
-  const r = spawnSync(PHP_BIN, ['-d', 'display_errors=stderr', '-r', code], { encoding: 'utf8' });
+  const r = spawnSync(PHP_BIN, ['-d', 'display_errors=stderr', '-r', code], { encoding: 'utf8', input: JSON.stringify(calls), maxBuffer: 64 * 1024 * 1024 });
   assert.equal(r.status, 0, r.stderr || r.stdout);
   assert.equal(r.stderr, '', r.stderr);
   return JSON.parse(r.stdout);
@@ -134,7 +134,7 @@ describe('php/td.php — td_filter_chips (v0.39.0, contract filter-chips@1)', op
       [[{ key: 'a', value: true }, { key: 'a', value: '1', label: { x: 1 } }, 'str'], {}],
       [[{ key: 'a', value: '1', id: false }, { key: 'b', value: null }], {}],
     ]);
-    assert.deepEqual(outs.map((o) => o.warns), [1, 2, 3, 2]);
+    assert.deepEqual(outs.map((o) => o.warns), [1, 1, 1, 1]); // SEC-1: ONE warning per call for dropped items
     for (const o of outs) assert.deepEqual(itemsOf(o.html), []);
   });
 
@@ -145,6 +145,45 @@ describe('php/td.php — td_filter_chips (v0.39.0, contract filter-chips@1)', op
     const { html, warns } = one([input, {}]);
     assert.equal(warns, 0);
     assert.deepEqual(itemsOf(html), normalizeItems(input).items);
+  });
+
+  test('SEC-1: 10 000 identical ids / 10 000 malformed items: ≤ MAX_ITEMS chips, ONE warning, fast; huge strings bounded', () => {
+    const t0 = Date.now();
+    const outs = run([
+      [Array.from({ length: 10000 }, () => ({ id: 'x', key: 'k', value: 'v' })), {}],
+      [Array.from({ length: 10000 }, (_, i) => ({ key: '', value: i })), {}],
+      [[{ key: 'k', value: 'é'.repeat(1_000_000) }], {}],
+    ]);
+    assert.ok(Date.now() - t0 < 3000, `${Date.now() - t0}ms`);
+    const ids = itemsOf(outs[0].html).map((i) => i.id);
+    assert.equal(ids.length, MAX_ITEMS);
+    assert.equal(new Set(ids).size, MAX_ITEMS);
+    assert.deepEqual(ids.slice(0, 3), ['x', 'x-2', 'x-3']);
+    assert.equal(outs[0].warns, 1, 'cap: one warning');
+    assert.equal(itemsOf(outs[1].html).length, 0);
+    assert.equal(outs[1].warns, 1, 'malformed: one warning');
+    assert.equal(Array.from(itemsOf(outs[2].html)[0].value).length, 500);
+    assert.equal(outs[2].warns, 0);
+  });
+
+  test('SEC-2: chip links are relative only in PHP (HREF_CASES php column, same table as JS)', () => {
+    const outs = run(HREF_CASES.map(([href]) => [[{ key: 'k', value: 'v', href }], {}]));
+    HREF_CASES.forEach(([href, , php], i) => {
+      const got = itemsOf(outs[i].html)[0].href ?? null;
+      assert.equal(got, php, JSON.stringify(href));
+    });
+    const clear = run([[[{ key: 'a', value: '1' }, { key: 'b', value: '2' }], { clear_href: '//evil.example/' }]])[0].html;
+    assert.ok(!clear.includes('clear-href') && !clear.includes('href='), clear);
+  });
+
+  test('ISSUE-2: numbers are printed like JavaScript String(n) (-0, exponent thresholds, shortest round-trip)', () => {
+    const lits = ['-0.0', '1e-6', '1e-7', '1e20', '1e21', '0.1 + 0.2', '123.456', '5e-324', '12.5', '3.0', '-1.5e-9', '1.7976931348623157e308', '100', '-7'];
+    const js = [-0, 1e-6, 1e-7, 1e20, 1e21, 0.1 + 0.2, 123.456, 5e-324, 12.5, 3.0, -1.5e-9, 1.7976931348623157e308, 100, -7].map((n) => String(n));
+    const r = spawnSync(PHP_BIN, ['-d', 'display_errors=stderr', '-r', `require ${JSON.stringify(join(ROOT, 'php/td.php'))};`
+      + ` echo json_encode([${lits.map((l) => `td__filter_text(${l}, 500)`).join(', ')}]);`], { encoding: 'utf8' });
+    assert.equal(r.stderr, '');
+    assert.deepEqual(JSON.parse(r.stdout), js);
+    assert.equal(js[0], '0');
   });
 
   test('test/ssr/fixtures/filter-chips.html (browser fixture) is up to date', () => {
