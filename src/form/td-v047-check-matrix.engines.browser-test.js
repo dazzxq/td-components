@@ -354,4 +354,32 @@ describe('v0.47.0 td-check-matrix — core (M3)', () => {
     expect(column < 16 * PERF_SLACK, `column ${column.toFixed(1)} ms`).to.equal(true);
     expect(one < 4 * PERF_SLACK, `cell ${one.toFixed(1)} ms`).to.equal(true);
   });
+
+  it('data assigned while detached is rendered on the next connect (never a stale grid)', async () => {
+    const { el, form } = mount();
+    el.remove();
+    el.setData({ columns: [{ key: 'z', label: 'Z' }], rows: [{ key: 'only', label: 'Only' }], value: { z: ['only'] } });
+    form.appendChild(el);
+    expect(el.querySelectorAll('thead th[data-c]').length).to.equal(1);
+    expect(fd(form)).to.deep.equal([['perms[z]', ''], ['perms[z][]', 'only'], ['perms[_v]', '1']]);
+    input(el, 0, 0).click();
+    expect(fd(form)).to.deep.equal([['perms[z]', ''], ['perms[_v]', '1']]);
+  });
+
+  it('an early `value` property wins over the `data` attribute; the defaults stay the attribute\'s', async () => {
+    const json = JSON.stringify({ v: 1, columns: COLS(), rows: ROWS(), value: { owner: ['dash'] } });
+    const tpl = document.createElement('template');
+    tpl.innerHTML = `<form><td-check-matrix name="e" label="L" data='${json}'></td-check-matrix></form>`;
+    const form = tpl.content.firstElementChild;
+    const host = form.firstElementChild;
+    host.value = { sales: ['dash'] }; // own property before the element is upgraded (template content is inert)
+    document.body.appendChild(document.adoptNode(form));
+    extra.push(() => form.remove());
+    await tick();
+    expect(host.value).to.deep.equal({ owner: [], sales: ['dash'], ship: [] });
+    expect(host.changedCount).to.equal(2);
+    form.reset();
+    await tick();
+    expect(host.value.owner).to.deep.equal(['dash']);
+  });
 });

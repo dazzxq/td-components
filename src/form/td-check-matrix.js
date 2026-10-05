@@ -186,6 +186,11 @@ export class TdCheckMatrix extends TdFormElement {
     if (!p) return;
     this._pending = null;
     const dataChanged = 'columns' in p || 'rows' in p || 'cells' in p;
+    if (!dataChanged && !this._model) {
+      // a value before any data (early property, SSR host before its `data` is read): held for the first data
+      this._heldValue = { value: p.value };
+      return;
+    }
     if (!dataChanged && this._model) {
       // value = / setValue() with data in place: refuse an invalid value, keep the state
       const res = validateMatrix({ ...this._raw, value: p.value });
@@ -202,7 +207,14 @@ export class TdCheckMatrix extends TdFormElement {
       rows: 'rows' in p ? p.rows : this._raw?.rows,
       cells: 'cells' in p ? p.cells : this._raw?.cells,
     };
-    this._applyData(raw, 'value' in p ? { value: p.value } : null);
+    this._applyData(raw, 'value' in p ? { value: p.value } : this._takeHeld());
+  }
+
+  /** @private the value held before any data (once) */
+  _takeHeld() {
+    const h = this._heldValue || null;
+    this._heldValue = null;
+    return h;
   }
 
   /**
@@ -283,6 +295,13 @@ export class TdCheckMatrix extends TdFormElement {
       return;
     }
     this._applyData({ columns: o.columns, rows: o.rows, cells: o.cells }, { value: o.value });
+    // an early `value` property wins over the attribute's (ADR 0012 §3); the defaults stay the attribute's
+    const held = this._takeHeld();
+    if (held && this._state) {
+      const res = validateMatrix({ ...this._raw, value: held.value });
+      if (res.ok) this._state.setAll(res.model.value);
+      else console.warn(`td-check-matrix: value refused (${res.reason}) — state unchanged`);
+    }
   }
 
   // --- groups -----------------------------------------------------------------------------------------------------
@@ -410,6 +429,7 @@ export class TdCheckMatrix extends TdFormElement {
 
   /** @private full re-render keeping the active cell (by key) and the focus */
   _rerender() {
+    if (this._initialized && !this.isConnected) this._stale = true; // re-rendered (not re-bound) on the next connect
     if (!this._initialized || !this.isConnected) return;
     const hadFocus = this.contains(this.ownerDocument.activeElement);
     this._cleanups.forEach((fn) => fn());
@@ -424,6 +444,7 @@ export class TdCheckMatrix extends TdFormElement {
   }
 
   afterRender() {
+    this._stale = false;
     const root = this.querySelector(':scope > .td-check-matrix');
     this._root = root;
     this._grid = root?.querySelector('.td-check-matrix__grid') || null;
@@ -1110,6 +1131,7 @@ export class TdCheckMatrix extends TdFormElement {
 
   /** Re-connect: re-bind in place while the parts are still ours (else safe render from the state). */
   canRebind() {
+    if (this._stale) return false; // the data / status changed while detached: render it
     const root = this._root;
     if (!root || root.parentNode !== this || this.children.length !== 1) return false;
     if (this._status !== 'ready') return true;
