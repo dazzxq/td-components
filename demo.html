@@ -549,6 +549,18 @@
     <p class="demo-note">v0.37.0: <code>selectable</code> + <code>row-key="id"</code> — Shift+click chọn dải, ô header chọn cả trang (ba trạng thái); thanh hàng loạt nghe <code>select-change</code>; "Chọn tất cả 8 kết quả" là công thức phía app.</p>
   </div>
 
+  <!-- ═══════════════════ FILTERED LIST (v0.39.0) ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Danh sách có bộ lọc <span class="demo-code">request-change · controlled · setState · &lt;td-filter-chips&gt; · column-menu</span></h2>
+    <form class="demo-row" id="demo-filters" role="search">
+      <td-input-field id="demo-f-q" name="q" label="Tìm sản phẩm" placeholder="Tên, mã…"></td-input-field>
+      <td-dropdown id="demo-f-status" name="status" label="Trạng thái"></td-dropdown>
+    </form>
+    <td-filter-chips id="demo-f-chips" empty-focus="demo-f-q"></td-filter-chips>
+    <td-table id="demo-f-table" title="Sản phẩm" server-mode controlled column-menu per-page="5"></td-table>
+    <p class="demo-note">v0.39.0: bảng <code>controlled</code> chỉ phát <code>request-change</code> và chờ <code>setState()</code>; "server" giả (<code>setTimeout</code> + <code>AbortController</code>, phản hồi về muộn bị bỏ nhờ <code>requestId</code>); URL đồng bộ bằng <code>history.replaceState</code> (<code>?f_q=…</code>) — phần của app; nút "Cột" ẩn / hiện cột, lưu bằng <code>columns-change</code> (localStorage của demo).</p>
+  </div>
+
   <!-- ═══════════════════ TABS ═══════════════════ -->
   <div class="demo-section">
     <h2>Tabs <span class="demo-code">&lt;td-tabs&gt;</span></h2>
@@ -814,6 +826,7 @@
     // v0.31
     import './src/display/td-sortable.js';
     import './src/display/td-masked-value.js';
+    import './src/display/td-filter-chips.js'; // v0.39
     // v0.32
     import { TdMediaPicker } from './src/feedback/td-media-picker.js';
     import './src/form/td-media-field.js';
@@ -1489,6 +1502,98 @@
       });
       showCrop('TdCropper.openDialog() →', res);
     });
+
+    // ── v0.39.0: filtered list (app side: form → chips → controlled server table, URL via history) ──
+    {
+      const STATUS = { selling: 'Đang bán', out: 'Hết hàng', hidden: 'Đã ẩn' };
+      const ROWS = Array.from({ length: 37 }, (_, i) => ({
+        id: i + 1, sku: `SP${String(1000 + i)}`, name: ['iPhone 16 Pro', 'Galaxy S25', 'Pixel 9', 'Ốp lưng MagSafe', 'Sạc 20W'][i % 5] + ` #${i + 1}`,
+        price: (5 + (i * 7) % 30) * 1000000, status: ['selling', 'out', 'hidden'][i % 3], stock: (i * 13) % 50,
+      }));
+      const fmt = (n) => `${n.toLocaleString('vi-VN')} ₫`;
+      const ft = document.querySelector('#demo-f-table');
+      const chips = document.querySelector('#demo-f-chips');
+      const q = document.querySelector('#demo-f-q');
+      const st = document.querySelector('#demo-f-status');
+      st.options = [{ value: '', label: 'Tất cả' }, ...Object.entries(STATUS).map(([value, label]) => ({ value, label }))];
+      ft.columns = [
+        { key: 'sku', label: 'Mã', sortable: true, card: 'lead' },
+        { key: 'name', label: 'Tên', sortable: true, card: 'primary' },
+        { key: 'price', label: 'Giá', sortable: true, align: 'right', render: (r) => fmt(r.price) },
+        { key: 'stock', label: 'Tồn kho', align: 'right', hidden: true },
+        { key: 'status', label: 'Trạng thái', render: (r) => STATUS[r.status], card: 'meta' },
+      ];
+      try { ft.hiddenColumns = JSON.parse(localStorage.getItem('demo.f.cols') || 'null'); } catch { /* private mode */ }
+      ft.addEventListener('columns-change', (e) => { try { localStorage.setItem('demo.f.cols', JSON.stringify(e.detail.hidden)); } catch { /* ignore */ } });
+
+      // fake server: filter + sort + page, random latency (a late answer is dropped by requestId)
+      const server = ({ page, perPage, sort, filters }, signal) => new Promise((resolve, reject) => {
+        const t = setTimeout(() => {
+          let rows = ROWS.filter((r) => (!filters.q || r.name.toLowerCase().includes(String(filters.q).toLowerCase()) || r.sku.includes(filters.q))
+            && (!filters.status || r.status === filters.status));
+          if (sort.key) rows = rows.slice().sort((a, b) => (a[sort.key] > b[sort.key] ? 1 : a[sort.key] < b[sort.key] ? -1 : 0) * (sort.direction === 'desc' ? -1 : 1));
+          resolve({ rows: rows.slice((page - 1) * perPage, page * perPage), total: rows.length });
+        }, 250 + Math.random() * 500);
+        signal.addEventListener('abort', () => { clearTimeout(t); reject(new DOMException('aborted', 'AbortError')); });
+      });
+      const readForm = () => ({ q: q.getValue().trim(), status: st.getValue() || '' });
+      const chipsOf = (f) => [
+        ...(f.q ? [{ key: 'q', label: 'Tìm', value: f.q }] : []),
+        ...(f.status ? [{ key: 'status', label: 'Trạng thái', value: STATUS[f.status] || f.status }] : []),
+      ];
+      const toUrl = ({ page, sort, filters }) => {
+        const u = new URLSearchParams(location.search);
+        for (const k of ['f_q', 'f_status', 'f_sort', 'f_dir', 'f_page']) u.delete(k);
+        if (filters.q) u.set('f_q', filters.q);
+        if (filters.status) u.set('f_status', filters.status);
+        if (sort.key) { u.set('f_sort', sort.key); u.set('f_dir', sort.direction); }
+        if (page > 1) u.set('f_page', page);
+        const qs = u.toString();
+        return `${location.pathname}${qs ? `?${qs}` : ''}${location.hash}`;
+      };
+      let ctrl = null;
+      const load = async (state, requestId) => {
+        ctrl?.abort();
+        ctrl = new AbortController();
+        try {
+          const { rows, total } = await server(state, ctrl.signal);
+          ft.setState({ ...state, data: rows, totalItems: total, requestId });
+        } catch (err) {
+          if (err.name !== 'AbortError') ft.setState({ ...state, data: [], totalItems: 0, requestId });
+        }
+      };
+      ft.addEventListener('request-change', (e) => {
+        const { state, requestId } = e.detail;
+        history.replaceState(null, '', toUrl(state)); // the app owns the URL (the kit never touches location / history)
+        chips.items = chipsOf(state.filters);
+        load(state, requestId);
+      });
+      let typing;
+      document.querySelector('#demo-filters').addEventListener('input', () => {
+        clearTimeout(typing);
+        typing = setTimeout(() => ft.setFilters(readForm()), 300); // debounce = the form's job
+      });
+      st.addEventListener('change', () => ft.setFilters(readForm()));
+      chips.addEventListener('filter-remove', (e) => {
+        if (e.detail.item.key === 'q') q.setValue('');
+        if (e.detail.item.key === 'status') st.setValue('');
+        ft.setFilters(readForm());
+      });
+      chips.addEventListener('filter-clear', () => { q.setValue(''); st.setValue(''); ft.setFilters(readForm()); });
+      // restore from the URL on load
+      const u = new URLSearchParams(location.search);
+      const first = {
+        page: Number(u.get('f_page')) || 1,
+        sort: u.get('f_sort') ? { key: u.get('f_sort'), direction: u.get('f_dir') === 'desc' ? 'desc' : 'asc' } : null,
+        filters: { q: u.get('f_q') || '', status: STATUS[u.get('f_status')] ? u.get('f_status') : '' },
+      };
+      q.setValue(first.filters.q);
+      st.setValue(first.filters.status);
+      chips.items = chipsOf(first.filters);
+      ft.setState(first);
+      ft.setLoading(true);
+      load({ ...ft.getState(), ...first, sort: ft.getState().sort }, 0);
+    }
 
     // ── Log all component events ──
     document.addEventListener('change', (e) => {

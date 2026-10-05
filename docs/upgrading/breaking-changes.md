@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.39.0](#0390) | Thêm tính năng (bộ lọc ngoài, ẩn / hiện cột, `<td-filter-chips>`) + đổi hành vi nhỏ | Không bắt buộc. Cột có sẵn khoá `hidden: true` trong `columns` giờ **bị ẩn** (trước bị bỏ qua). `getState()` thêm `filters` / `totalItems` / `requestId`. `onPageChange` chạy khi lượt bấm đổi trang kết thúc (vẫn đồng bộ). Import map: thêm `filter-chips`. |
 | [0.37.0](#0370) | Thêm tính năng (chọn dòng `td-table`) + đổi hành vi nhỏ | Không bắt buộc. `<td-table>` giờ **form-associated**: có trong `form.elements`; `disabled` trên chính `td-table` (trước vô nghĩa) giờ làm trình duyệt chặn mọi cú bấm chuột trong bảng. Chọn dòng là opt-in (`selectable` + `row-key`). |
 | [0.36.2](#0362) | Đổi hành vi + đổi giao diện trên cảm ứng | Không bắt buộc. Hover chỉ còn trên con trỏ mịn; hình nhấn mới (token `--td-*-pressed`); tooltip không bật khi chạm (nhãn bắt buộc → chữ / menu); kéo bằng ngón cần 10 px; lớp phủ co theo bàn phím ảo — site override `height: 100dvh` trên con của modal / drawer đổi thành `100%`. Thêm `enterkeyhint` cho `<td-number-input>`. |
 | [0.36.1](#0361) | Đổi giao diện card của `td-table` (mật độ) | Không bắt buộc. Cột đầu không khai báo `card` thành `lead` khi cột khác khai báo `card: 'primary'` (giữ cũ: `card: 'secondary'` trên cột đầu); cặp xếp theo nội dung (giữ cũ: `--td-table-card-pair-min: 100%`); action có `icon` chỉ hiện icon ở card; card / khoảng cách gọn hơn (token `--td-table-card-*`). |
@@ -66,6 +67,24 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.39.0
+
+**Thêm** (opt-in): `<td-table>` event `request-change`, `controlled`, `setState()`, `setFilters()` (bộ lọc ngoài + đồng bộ
+URL — [table.md mục 11](../components/table.md#11-bộ-lọc-ngoài--url-request-change-controlled--từ-0390)); ẩn / hiện cột
+(`hideable` / `hidden` trong `columns`, `hiddenColumns`, `columns-change`, `column-menu`, `min-visible` — mục 12);
+`<td-filter-chips>` (`./filter-chips`) + PHP `td_filter_chips()`; TdMenu `ctx.setDisabled(id, disabled, hint?)` cho mục
+checkbox; icon `columns`. Bảng không dùng tính năng mới có markup **giữ nguyên**.
+
+- **Đổi hành vi — `hidden` trong `ColumnDef`.** Trước 0.39 khoá `hidden` của cột không có tác dụng; giờ `hidden: true` ẩn
+  cột lúc đầu (thuộc tính `hidden` trên `th` / `td`). Site lỡ để `hidden` trong định nghĩa cột: bỏ khoá đó.
+- **Đổi hành vi — thời điểm `onPageChange`** (server mode): trước được gọi ngay trong lúc `page-change` còn nổi bọt; giờ
+  gọi khi lượt bấm đổi trang **kết thúc** (sau mọi listener `page-change`, sau `request-change`) — vẫn đồng bộ với cú
+  bấm. Đổi trang bằng `setPage()` của chính `td-pagination` bên trong → `onPageChange` chạy ở microtask kế tiếp.
+- `getState()` thêm `filters`, `totalItems`, `requestId` (test so sánh **toàn bộ** object `getState()` phải cập nhật).
+- Import map tự liệt kê: thêm `filter-chips`. Token mới `--td-filter-chip-*`.
 
 ---
 

@@ -657,6 +657,9 @@ trừ khi có `messages` theo từng lần gọi. `patternMismatch` ưu tiên `t
 | `onSort` | `({ key, direction }) => void` (`direction`: `'asc' \| 'desc' \| null`) | Sau event `sort-change`, **chỉ ở `server-mode`** | Bắt lỗi: `console.error` |
 | `onPageChange` | `(page) => void` | Khi đổi trang, **chỉ ở `server-mode`** | Bắt lỗi: `console.error` (hai thanh phân trang vẫn đồng bộ) |
 | `update({ columns, data, page, onSort, onPageChange })` | | Gộp nhiều thay đổi một lần | Mảng không hợp lệ bị bỏ qua |
+| event `request-change` (0.39.0) | `{ state, reason, requestId }` | Mỗi lần người dùng đổi trang / sort, và `setFilters()` — **mọi** chế độ; với `controlled` bảng chờ `setState()` | — (event) |
+| `setState({ page, perPage, sort, filters, data, totalItems, requestId })` (0.39.0) | `=> boolean` | App áp state (phản hồi server, khôi phục URL), im lặng | `requestId` cũ → bỏ qua (`false`); sort key lạ → bỏ sort + cảnh báo |
+| event `columns-change` (0.39.0) | `{ hidden, reason }` | Người dùng bật / tắt cột trong menu "Cột" — app lưu, gán lại `hiddenColumns` lần sau | — (event) |
 
 Ở chế độ client, sắp xếp / phân trang làm tại chỗ; muốn biết người dùng sắp xếp gì, nghe event `sort-change`.
 

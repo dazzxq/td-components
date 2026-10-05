@@ -155,6 +155,9 @@
 	   looks are button.css's) sits between the title and the top pagination */
 	.td-table__columns {
 		flex: none;
+		/* neutral ink at rest / hover / pressed (the ghost accent ink is 4.6:1 on the dark table fill — contrast gate v039) */
+		--td-btn-ghost-fg: var(--td-table-fg);
+		--td-btn-ghost-hover-fg: var(--td-table-fg);
 	}
 
 	.td-table__columns-icon {

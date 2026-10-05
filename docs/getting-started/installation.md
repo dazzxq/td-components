@@ -249,6 +249,7 @@ sẽ bị dịch thành `/vendor/td-components-0.38.0/button` (không tồn tạ
     "@dazzxq/td-components/media-picker": "/vendor/td-components-0.32.0/src/feedback/td-media-picker.js",
     "@dazzxq/td-components/copy": "/vendor/td-components-0.38.0/src/display/td-copy.js",
     "@dazzxq/td-components/masked-value": "/vendor/td-components-0.38.0/src/display/td-masked-value.js",
+    "@dazzxq/td-components/filter-chips": "/vendor/td-components-0.38.0/src/display/td-filter-chips.js",
     "@dazzxq/td-components/media-grid": "/vendor/td-components-0.38.0/src/display/td-media-grid.js",
     "@dazzxq/td-components/sortable": "/vendor/td-components-0.38.0/src/display/td-sortable.js",
     "@dazzxq/td-components/pagination": "/vendor/td-components-0.38.0/src/display/td-pagination.js",
@@ -504,6 +505,7 @@ Nguồn: `package.json#exports`.
 | `@dazzxq/td-components/media-field` | `src/form/td-media-field.js` | `<td-media-field>`, `TdMediaField` (0.32.0; nạp kèm `media-picker`) |
 | `@dazzxq/td-components/copy` | `src/display/td-copy.js` | `<td-copy>`, `TdCopy` |
 | `@dazzxq/td-components/masked-value` | `src/display/td-masked-value.js` | `<td-masked-value>`, `TdMaskedValue` (nạp kèm `td-copy`) |
+| `@dazzxq/td-components/filter-chips` | `src/display/td-filter-chips.js` | `<td-filter-chips>`, `TdFilterChips` (0.39.0) |
 | `@dazzxq/td-components/media-grid` | `src/display/td-media-grid.js` | `<td-media-grid>`, `TdMediaGrid` |
 | `@dazzxq/td-components/sortable` | `src/display/td-sortable.js` | `<td-sortable>`, `TdSortable` |
 | `@dazzxq/td-components/pagination` | `src/display/td-pagination.js` | `<td-pagination>`, `TdPagination` |

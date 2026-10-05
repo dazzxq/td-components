@@ -4,7 +4,8 @@
 
 Bảng dữ liệu có sắp xếp theo cột, phân trang (trên + dưới), trạng thái đang tải (skeleton), trạng thái rỗng,
 header dính khi cuộn, nút thao tác theo hàng, **dạng card tự động khi chỗ đặt hẹp** (từ 0.34.0) và **chọn dòng**
-theo khoá (một / nhiều, chọn cả trang, Shift chọn dải, giữ qua trang — từ 0.37.0). Cột và dữ liệu đưa vào bằng **JS property** (`columns`, `data`), hỗ trợ cả chế độ client (bảng tự
+theo khoá (một / nhiều, chọn cả trang, Shift chọn dải, giữ qua trang — từ 0.37.0), **bộ lọc ngoài + chế độ
+`controlled`** cho đồng bộ URL và **ẩn / hiện cột** (từ 0.39.0). Cột và dữ liệu đưa vào bằng **JS property** (`columns`, `data`), hỗ trợ cả chế độ client (bảng tự
 sort + cắt trang) lẫn chế độ server (bạn tự gọi API mỗi trang). Dùng cho danh sách dạng hàng/cột; **không** dùng để
 dàn layout (dùng CSS grid) và không dùng cho bảng tĩnh vài dòng không cần sort/phân trang (viết `<table>` thường).
 
@@ -500,6 +501,157 @@ Thêm lớp phòng thủ (không thay CSRF token): cookie phiên `SameSite=Lax` 
   `rowSelectable = () => false`.
 - Back / bfcache **không** khôi phục lựa chọn (dữ liệu bảng có thể chưa tải lại) — tự đặt `selectedKeys` nếu cần.
 
+### 11. Bộ lọc ngoài + URL (`request-change`, `controlled`) — từ 0.39.0
+
+Bảng **không có** giao diện lọc và **không bao giờ tự lọc dữ liệu** (kể cả chế độ client — app lọc rồi gán `data`).
+Thanh lọc là form / component của bạn (thường kèm [`<td-filter-chips>`](filter-chips.md)); bảng chỉ **giữ state** và
+**phát yêu cầu**:
+
+- **State** = `{ page, perPage, sort: { key, direction }, filters }`. `filters` là object của app (chuỗi / số / boolean /
+  mảng…) — bảng chỉ sao nông + đóng băng, không hiểu nội dung.
+- **Event `request-change`** `{ state, reason, requestId }` ở **mọi** chế độ, mỗi khi người dùng đổi trang / sort hoặc
+  bạn gọi `setFilters()`. `state` là state **được yêu cầu** (sau thay đổi; sort mới → `page: 1`), đóng băng.
+  `reason`: `'page'` | `'sort'` | `'filters'` (`'per-page'` dành sẵn — kit chưa có UI chọn số dòng; tự đổi bằng
+  `setState({ perPage })`). `requestId` tăng dần theo từng bảng.
+- **`setState({ page?, perPage?, sort?, filters?, data?, totalItems?, requestId? })`** — áp **một lần**, **im lặng**
+  (không event). Có `data` → tắt `loading`. `requestId` **nhỏ hơn** yêu cầu mới nhất → bỏ qua, trả `false` (phản hồi về
+  muộn không ghi đè phản hồi mới — race khi gõ lọc nhanh). `sort` theo `key` của cột (không có / không `sortable` → bỏ
+  sort + một cảnh báo). Gọi được **trước khi** bảng vào trang (khôi phục từ URL lúc tải).
+- **`setFilters(filters, { resetPage = true })`** — phát `request-change` reason `filters` (về trang 1 trừ khi
+  `resetPage: false`). Không `controlled`: bảng giữ luôn `filters` (đọc qua `getState()`) và về trang 1.
+- **`controlled`** (chỉ có nghĩa cùng `server-mode`; thiếu `server-mode` → một cảnh báo, bỏ qua): bảng **không tự áp**
+  đổi trang / sort. Bấm sort / trang → phát `request-change`, bật skeleton (`loading`, `aria-busy`), **giữ** hai phân
+  trang và focus ở đúng nút vừa bấm (aria-sort / trang hiện tại chưa đổi) rồi chờ bạn gọi `setState()`. Không
+  `controlled` (mặc định) = hành vi cũ + event mới.
+
+**Thứ tự event** (thứ tự cũ giữ nguyên, `request-change` chen vào):
+
+| Thao tác | Thứ tự |
+|---|---|
+| Bấm sort | `sort-change` → `request-change` (reason `sort`) → `onSort` (server mode) |
+| Đổi trang | `page-change` (từ `td-pagination`, nổi bọt hết) → `request-change` (reason `page`) → `onPageChange` (server mode) |
+| `setFilters()` | `request-change` (reason `filters`) |
+| `setState()` / `data =` / `setPage()` | không event |
+
+`controlled` vẫn phát `sort-change` / `page-change` và vẫn gọi `onSort` / `onPageChange` (nếu bạn đặt) — đừng dùng song
+song với `request-change` kẻo tải hai lần.
+
+**Công thức đồng bộ URL** (của app — kit không đọc / ghi `location` / `history`):
+
+```html
+<form id="filters" role="search">
+  <td-input-field id="f-q" name="q" label="Tìm"></td-input-field>
+  <td-dropdown id="f-status" name="status" label="Trạng thái"></td-dropdown>
+</form>
+<td-filter-chips id="chips" empty-focus="f-q"></td-filter-chips>
+<td-table id="orders" title="Đơn hàng" server-mode controlled column-menu per-page="20"></td-table>
+```
+
+```js
+const table = document.querySelector('#orders');
+table.columns = columns;
+
+// URL ⇄ state (kiểu giá trị của bộ lọc là của bạn)
+const fromUrl = () => {
+  const u = new URLSearchParams(location.search);
+  return {
+    page: Number(u.get('page')) || 1,
+    sort: u.get('sort') ? { key: u.get('sort'), direction: u.get('dir') === 'desc' ? 'desc' : 'asc' } : null,
+    filters: { q: u.get('q') || '', status: u.get('status') || '' },
+  };
+};
+const toUrl = ({ page, sort, filters }) => {
+  const u = new URLSearchParams();
+  for (const [k, v] of Object.entries(filters)) if (v !== '' && v != null) u.set(k, v);
+  if (sort.key) { u.set('sort', sort.key); u.set('dir', sort.direction); }
+  if (page > 1) u.set('page', page);
+  return `?${u}`;
+};
+
+let ctrl = null;
+async function load(state, requestId) {
+  ctrl?.abort();
+  ctrl = new AbortController();
+  try {
+    const res = await fetch(`/api/orders${toUrl(state)}`, { signal: ctrl.signal });
+    const { rows, total } = await res.json();
+    table.setState({ ...state, data: rows, totalItems: total, requestId }); // về muộn → tự bỏ qua
+  } catch (e) {
+    if (e.name !== 'AbortError') table.setState({ ...state, data: [], totalItems: 0, requestId });
+  }
+}
+
+table.addEventListener('request-change', (e) => {
+  const { state, reason, requestId } = e.detail;
+  // lọc / sort: thay URL; đổi trang: thêm vào lịch sử (nút Back quay lại trang trước)
+  history[reason === 'page' ? 'pushState' : 'replaceState'](null, '', toUrl(state));
+  load(state, requestId);
+});
+
+addEventListener('popstate', () => {
+  const s = fromUrl();
+  table.setState(s);               // giao diện theo URL ngay (im lặng)
+  load({ ...table.getState(), ...s }, table.getState().requestId);
+});
+
+// lúc tải trang: khôi phục từ URL rồi tải
+const first = fromUrl();
+table.setState(first);
+load({ ...table.getState(), ...first }, 0);
+
+// form của bạn → bảng (debounce ô tìm 300 ms là việc của form)
+let t;
+document.querySelector('#filters').addEventListener('input', () => {
+  clearTimeout(t);
+  t = setTimeout(() => table.setFilters(readForm()), 300);
+});
+```
+
+- Giá trị lọc đến từ **URL** (người dùng sửa được): chỉ đưa vào `setState` / `fetch` qua `URLSearchParams`; server
+  kiểm lại từng tham số (whitelist cột sort, kiểu, độ dài). Kit không render `filters` ở đâu cả.
+- **Lựa chọn dòng (0.37) không bị đụng** khi lọc / đổi trang (đúng quy tắc mục 10) — muốn bỏ chọn khi đổi bộ lọc:
+  gọi `table.clearSelection()` trong handler `request-change` khi `reason === 'filters'`.
+- Chip bộ lọc: `<td-filter-chips>` phát `filter-remove` / `filter-clear` → cập nhật form → `table.setFilters()` (xem
+  [filter-chips.md](filter-chips.md#nối-với-bảng)).
+
+### 12. Ẩn / hiện cột (`column-menu`, `hiddenColumns`) — từ 0.39.0
+
+```html
+<td-table id="orders" title="Đơn hàng" column-menu min-visible="2"></td-table>
+```
+
+```js
+table.columns = [
+  { key: 'code', label: 'Mã đơn', card: 'primary' },          // primary: mặc định KHÔNG ẩn được
+  { key: 'customer', label: 'Khách hàng' },
+  { key: 'phone', label: 'Số điện thoại', hidden: true },     // ẩn lúc đầu ("Khôi phục mặc định" về đây)
+  { key: 'note', label: 'Ghi chú', hideable: false },         // luôn hiện
+  { key: 'act', label: 'Thao tác', actions: [/* … */] },      // cột actions: mặc định không ẩn được
+];
+// app lưu (kit không ghi storage) và gán lại TRƯỚC lần render đầu
+table.hiddenColumns = JSON.parse(localStorage.getItem('orders.cols') || 'null'); // null = theo `hidden` của cột
+table.addEventListener('columns-change', (e) => {
+  localStorage.setItem('orders.cols', JSON.stringify(e.detail.hidden)); // { hidden: ['phone'], reason: 'toggle' | 'reset' }
+});
+```
+
+- **`column-menu`** → nút **"Cột"** (`td-btn` ghost nhỏ, icon `columns`) ở header, giữa tiêu đề và phân trang trên
+  (header hiện cả khi không có tiêu đề). Mở menu (Enter / Space / ↓ / chuột) gồm một mục **checkbox** cho mỗi cột ẩn
+  được: Space / Enter / bấm → bật / tắt **tại chỗ, menu không đóng**; phân cách; **"Khôi phục mặc định"** (về `hidden`
+  của `columns`, `columns-change` reason `reset`, menu đóng, focus về nút). Ở card: cùng nút, trường của cột ẩn biến
+  khỏi card, chip sort của cột ẩn biến khỏi thanh sort.
+- **`hideable`** (mặc định `true`; `false` cho cột `card: 'primary'` — kể cả primary mặc định — và cột `actions`) và
+  **`hidden`** (trạng thái ban đầu). Cột ẩn được phải có `key` **duy nhất, khác rỗng**; không → cột đó không ẩn được +
+  một cảnh báo.
+- **`hiddenColumns`** (mảng `key`, thứ tự cột): get / set **im lặng**; `null` = theo `hidden` của `columns`. Key lạ /
+  cột không ẩn được bị bỏ qua.
+- **`min-visible`** (mặc định 1): số cột **đang hiện** (tính cả cột không ẩn được, không tính cột chọn dòng) không bao giờ
+  dưới mức này. Mục cuối còn được phép tắt chuyển `aria-disabled` + gợi ý "Cần ít nhất {n} cột"; bật lại cột khác → mở
+  khoá ngay khi menu còn mở. Gán `hiddenColumns` vi phạm → các cột cuối danh sách vẫn hiện + một cảnh báo.
+- **Ẩn = thuộc tính `hidden`** trên `th` / `td` / ô skeleton của cột (ra khỏi cây trợ năng, `display: none` cả ở card);
+  đổi **tại chỗ**, không dựng lại bảng → focus trong menu giữ nguyên, lựa chọn dòng giữ nguyên. Cột đang sort bị ẩn →
+  sort giữ (state không đổi); hiện lại → `aria-sort` đúng. `table-layout: fixed` tính trên các cột **đang hiện**.
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
@@ -524,8 +676,11 @@ Thêm lớp phòng thủ (không thay CSRF token): cookie phiên `SameSite=Lax` 
 | `max-selected` | number | — | Trần (số nguyên ≥ 1) cho thao tác **người dùng** ở `multiple`; sai → bỏ qua + cảnh báo. API không bị chặn. Từ 0.37.0. |
 | `name` | string | — | Tên field form: gửi mỗi khoá đã chọn một mục. Từ 0.37.0. |
 | `disabled` | boolean | vắng | Khoá ô tick (lựa chọn giữ, không gửi form). Trình duyệt còn chặn mọi cú bấm chuột trong bảng (control form bị khoá). Từ 0.37.0. |
+| `controlled` | boolean | vắng | Chỉ với `server-mode`: bảng không tự áp đổi trang / sort — phát `request-change`, bật skeleton, chờ `setState()` (mục 11). Thiếu `server-mode` → cảnh báo, bỏ qua. Từ 0.39.0. |
+| `column-menu` | boolean | vắng | Nút "Cột" ở header mở menu ẩn / hiện cột (mục 12). Từ 0.39.0. |
+| `min-visible` | number | `1` | Số cột đang hiện tối thiểu (≥ 1). Từ 0.39.0. |
 
-Các attribute `title`, `heading-level`, `zebra`, `max-height`, `selectable`, `row-key` khi đổi sẽ dựng lại cấu trúc bảng; `layout` /
+Các attribute `title`, `heading-level`, `zebra`, `max-height`, `selectable`, `row-key`, `column-menu` khi đổi sẽ dựng lại cấu trúc bảng; `layout` /
 `card-below` chỉ đổi CSS (không render lại); mọi attribute khác cập nhật tại chỗ (focus được giữ).
 
 ## Property & method
@@ -544,7 +699,10 @@ Các attribute `title`, `heading-level`, `zebra`, `max-height`, `selectable`, `r
 | `setData(data)` | `(Array) => void` | Thay dữ liệu. Client: về trang 1. Server: giữ trang. |
 | `setPage(page)` | `(number) => void` | Chuyển trang (kẹp vào khoảng hợp lệ khi hiển thị). **Không** gọi `onPageChange`, không phát `page-change`. |
 | `setLoading(bool)` | `(boolean) => void` | Bật/tắt attribute `loading`. |
-| `getState()` | `() => { columns, data, page, perPage, sort: { key, direction }, selection: { mode, keys } }` | Trạng thái hiện tại; `sort.key` là `key` gốc của cột. `selection` từ 0.37.0 (`mode`: `'none' \| 'multiple' \| 'single'`). |
+| `getState()` | `() => { columns, data, page, perPage, sort: { key, direction }, filters, totalItems, requestId, selection: { mode, keys } }` | Trạng thái hiện tại; `sort.key` là `key` gốc của cột. `selection` từ 0.37.0 (`mode`: `'none' \| 'multiple' \| 'single'`). 0.39.0: `filters` (đóng băng), `totalItems` (server: `total-items` hoặc `null`; client: số dòng), `requestId` (của `request-change` mới nhất, 0 khi chưa có). |
+| `setState(state)` | `({ page?, perPage?, sort?, filters?, data?, totalItems?, requestId? }) => boolean` | Áp một lần, im lặng; `requestId` cũ → bỏ qua, trả `false`; có `data` → tắt `loading`. Gọi được trước khi gắn vào trang (mục 11). Từ 0.39.0. |
+| `setFilters(filters, { resetPage })` | `(object, { resetPage?: boolean }) => void` | Phát `request-change` reason `filters` (trang 1 trừ khi `resetPage: false`); không `controlled` → bảng giữ `filters` + về trang đó. Từ 0.39.0. |
+| `hiddenColumns` | `string[] \| null` | `key` các cột đang ẩn (get / set im lặng; `null` = theo `hidden` của cột). Từ 0.39.0. |
 | `update(opts)` | `({ columns?, data?, page?, onSort?, onPageChange?, rowKey?, rowSelectable?, selectedKeys? }) => void` | Gộp nhiều thay đổi một lần. `columns`/`data` không phải mảng bị bỏ qua (không throw). `data` theo quy tắc trang của `setData`, sau đó `page` (nếu có) được áp. `rowKey` áp trước (nó bỏ lựa chọn), rồi `selectedKeys` (0.37.0). |
 | `rowKey` | `string \| (row) => key` | Khoá của dòng (mục 10). Chuỗi = phản chiếu `row-key`. Từ 0.37.0. |
 | `rowSelectable` | `(row) => boolean` | `false` / ném lỗi → dòng không chọn được bởi người dùng. Từ 0.37.0. |
@@ -573,6 +731,8 @@ Các attribute `title`, `heading-level`, `zebra`, `max-height`, `selectable`, `r
 | `card` | `'lead'` \| `'primary'` \| `'secondary'` \| `'meta'` \| `'actions'` \| `false` | cột đầu `primary` (hoặc `lead` khi cột khác khai báo `primary` — 0.36.1), cột có `actions` → `actions`, còn lại `secondary` | Vai trò trên card (xem cách dùng số 9). Từ 0.34.0; `lead` từ 0.36.1. |
 | `actions` | `Array<{ id, label, icon?, variant?, hidden?, disabled? }>` | — | Nút thao tác theo hàng (xem cách dùng số 8). Từ 0.34.0. |
 | `render` | `(row, rowIdxInPage) => Node \| string \| any` | — | Ô tuỳ biến (xem cách dùng số 3). Nội dung được **nối sau** nhãn card của ô. |
+| `hideable` | boolean | `true` (`false` cho cột `primary` và cột `actions`) | Cho phép ẩn cột (menu "Cột", `hiddenColumns`). Cần `key` duy nhất khác rỗng. Từ 0.39.0. |
+| `hidden` | boolean | `false` | Ẩn lúc đầu (và khi "Khôi phục mặc định" / `hiddenColumns = null`). Từ 0.39.0. |
 
 "CSS dimension" = số kèm đơn vị tuỳ chọn trong `px`, `em`, `rem`, `%`, `vh`, `vw`, `ch`, `fr` (ví dụ `120px`, `20%`,
 `12rem`). Giá trị khác (có `calc()`, `;`…) bị bỏ qua. Mọi style cột được áp bằng CSSOM, không có `style="…"`.
@@ -598,6 +758,9 @@ Object.assign(TdTable.labels, {
   selectedRow: 'Selected {label}',
   deselected: 'Selection cleared',
   selectLimit: 'At most {max} rows',
+  columns: 'Columns',
+  columnsReset: 'Reset to default',
+  columnsMin: 'At least {n} columns',
 });
 ```
 
@@ -617,6 +780,9 @@ Object.assign(TdTable.labels, {
 | `selectColumn` | `Chọn` | Tên cột chọn ở `single` (chỉ cho trình đọc màn hình) (0.37.0) |
 | `selectedCount` | `Đã chọn {n} dòng` | Thông báo sau thao tác (`multiple`) (0.37.0) |
 | `selectedRow` / `deselected` | `Đã chọn {label}` / `Đã bỏ chọn` | Thông báo sau thao tác (`single`) (0.37.0) |
+| `columns` | `Cột` | Nhãn nút `column-menu` (0.39.0) |
+| `columnsReset` | `Khôi phục mặc định` | Mục cuối của menu cột (0.39.0) |
+| `columnsMin` | `Cần ít nhất {n} cột` | Gợi ý trên mục bị khoá bởi `min-visible` (0.39.0) |
 | `selectLimit` | `Tối đa {max} dòng` | Thông báo khi chạm `max-selected` (0.37.0) |
 
 Đổi `labels` trước khi bảng render (ngay sau import). Các nhãn bên trong `td-pagination` ("Trang trước", "Trang N",
@@ -630,6 +796,8 @@ Object.assign(TdTable.labels, {
 | `page-change` | `{ page }` | Người dùng đổi trang ở một trong hai `td-pagination` bên trong. Event này phát từ `td-pagination` và nổi bọt qua host, nên nghe trên `td-table` được; `e.target` là phần tử `td-pagination`. | có (composed) |
 | `select-change` | `{ keys, added, removed, trigger }` — `keys` = toàn bộ lựa chọn (mọi trang, thứ tự chọn, kiểu gốc); `trigger`: `toggle` \| `range` \| `page` \| `reset` \| `api` | Người dùng đổi lựa chọn (bấm, Space, Shift dải, ô header), `form.reset()`, hoặc API với `{ emit: true }`. **Không** phát khi gán `selectedKeys`, `select()` mặc định, đổi `data` / trang / sort / `selectable` / `rowKey`. Sau `onSelectChange`. Cùng tên với `td-media-grid`. Từ 0.37.0. | có (composed) |
 | `select-limit` | `{ max }` | Một thao tác **người dùng** dừng ở `max-selected` (không bao giờ từ API). Từ 0.37.0. | có (composed) |
+| `request-change` | `{ state: { page, perPage, sort: { key, direction }, filters }, reason: 'page' \| 'sort' \| 'filters', requestId }` — `state` đóng băng | Người dùng đổi trang / sort (mọi chế độ) hoặc `setFilters()`. Sau `sort-change` / `page-change`, trước `onSort` / `onPageChange` (mục 11). Từ 0.39.0. | có (composed) |
+| `columns-change` | `{ hidden: string[], reason: 'toggle' \| 'reset' }` | Người dùng bật / tắt cột hoặc "Khôi phục mặc định" trong menu "Cột". **Không** phát khi gán `hiddenColumns`. Từ 0.39.0. | có (composed) |
 | `row-action` | `{ id, row, rowIndex }` — `id` của action, `row` là chính object hàng trong `data`, `rowIndex` là chỉ số hàng **trong trang hiện tại** (như tham số thứ hai của `render`) | Người dùng bấm một nút action (dạng bảng) hoặc chọn một mục trong menu "Thao tác" (dạng card). Phát **trước** `onRowAction`. Từ 0.34.0. | có (composed) |
 
 ```js
@@ -719,6 +887,10 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
   <div class="td-table td-table--zebra [td-table--fixed] [td-table--scroll-y]" data-state="ready|loading|empty">
     <div class="td-table__header" [hidden]>
       <h3 class="td-table__title" id="{host-id}-title">…</h3>
+      <!-- 0.39.0, chỉ khi column-menu: nút mở TdMenu (mục checkbox mỗi cột ẩn được + "Khôi phục mặc định") -->
+      [<button type="button" class="td-btn td-btn--ghost td-btn--sm td-table__columns" aria-haspopup="menu" aria-expanded="false|true">
+        <span class="td-table__columns-icon" data-td-icon="columns" aria-hidden="true"><svg…></span>
+        <span class="td-table__columns-label">Cột</span></button>]
       <div class="td-table__pagination" [hidden]><td-pagination quiet aria-label="Phân trang (trên)"></td-pagination></div>
     </div>
     <div class="td-table__scroll" [tabindex="0" role="region" aria-labelledby|aria-label]>
@@ -731,7 +903,7 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
               <span class="td-table__select-all-label">Chọn tất cả trên trang</span>
             </button></th>]  <!-- single: th.td-table__th--select > span.td-sr-only "Chọn" -->
           <th class="td-table__th [td-table__th--sortable]" role="columnheader" scope="col" data-col="0" data-col-key="name"
-              data-card="lead|primary|secondary|meta|actions|false" [aria-sort="ascending|descending"]>
+              data-card="lead|primary|secondary|meta|actions|false" [aria-sort="ascending|descending"] [hidden]>  <!-- hidden: cột ẩn (0.39.0) -->
             <button type="button" class="td-table__sort" data-sort-col="0">
               <span class="td-table__sort-label">Tên</span>
               <span class="td-table__sort-icon" aria-hidden="true" data-sort-icon="sort"><svg width="14" height="14" class="td-icon" data-icon="sort" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg></span>  <!-- up / down khi đang sort -->
@@ -781,6 +953,8 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
 - Chọn dòng (0.37.0): trạng thái nằm ở `aria-checked` của nút (mark `.td-check` dùng chung đọc từ đó — ADR 0017);
   `tr[data-selected]` **chỉ để CSS** (không `aria-selected`: ARIA không có nghĩa đó trong `table`). Hàng skeleton có ô
   chọn trống; hàng rỗng `colspan` = số cột + 1.
+- Ẩn cột (0.39.0): thuộc tính `hidden` trên `th` / `td` / ô skeleton có `data-col` của cột đó (không bao giờ trên cột
+  chọn); hàng rỗng `colspan` = số cột **đang hiện** (+ 1 khi có cột chọn). Đổi tại chỗ, không render lại.
 - Hàng skeleton: `tr.td-table__row.td-table__row--skeleton[aria-hidden="true"]` > `td > span.td-table__skeleton`.
 - Hàng rỗng: `tr.td-table__empty-row > td.td-table__empty[colspan] > td-empty-state`.
 - Ô ellipsis: `td.td-table__cell--ellipsis > span.td-table__cell-label + div.td-table__truncate[title]`.
@@ -811,6 +985,11 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
   `columnheader` chứa checkbox ba trạng thái (`aria-checked="mixed"`). Sau mỗi thao tác, `p[role=status]` của bảng đọc
   "Đã chọn {n} dòng" (`single`: "Đã chọn {tên dòng}" / "Đã bỏ chọn"; chạm trần: "Tối đa {max} dòng"); không đè chữ "Đang
   tải". Cảm ứng: ô tick 44 × 44px thật; chuột ≥ 24px. Forced colors: dòng chọn có `outline` Highlight.
+- **Controlled (0.39.0)**: bấm sort / trang khi chờ `setState` → skeleton + `aria-busy` + "Đang tải dữ liệu…", focus ở lại
+  đúng nút vừa bấm (hai phân trang không bị ẩn trong lúc chờ), `aria-sort` / trang hiện tại chỉ đổi khi `setState` áp.
+- **Menu "Cột" (0.39.0)** là APG menu button như menu "Thao tác"; mục là `menuitemcheckbox` (`aria-checked`), Space /
+  Enter bật / tắt và menu **không đóng**; mục bị khoá bởi `min-visible` có `aria-disabled` + gợi ý (`aria-describedby`).
+  Cột ẩn mang `hidden` → không còn `columnheader` / `cell` trong cây trợ năng.
 - Tôn trọng `prefers-reduced-motion` (tắt shimmer, transition) và forced colors (viền `CanvasText`, hover outline).
 
 ## Bảo mật
@@ -826,6 +1005,11 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
   từng khoá. Khoá không in ra DOM (dòng ↔ khoá qua `data-row-idx`). Tên ô tick lấy từ chữ của ô `primary` và được đặt
   bằng `setAttribute` (không đi qua HTML); thông báo dùng `textContent`. `rowKey` / `rowSelectable` / `onSelectChange` là
   callback của dev: ném lỗi → dòng bị khoá (fail closed) / lỗi được ghi, bảng vẫn chạy.
+- **Bộ lọc / URL (0.39.0)**: kit **không** đọc / ghi `location`, không render `filters` ở đâu cả, chỉ sao nông + đóng
+  băng object bạn đưa. Giá trị lấy từ URL là dữ liệu người dùng: parse bằng `URLSearchParams`, gửi lên server qua
+  `URLSearchParams` (không tự ghép chuỗi), server whitelist cột sort / kiểm kiểu + độ dài từng tham số. `requestId` +
+  `AbortController` chống phản hồi cũ ghi đè phản hồi mới; `setState` với `requestId` cũ bị bỏ (kể cả khi app quên abort).
+  Nhãn cột trong menu "Cột" là `textContent`.
 - `width` / `minWidth` / `maxWidth` qua whitelist dimension, `align` qua whitelist, `max-height` qua `CSS.supports` +
   cấm `url()`/`var()`; `active-color` qua `safeColor`. Chi tiết: [guides/security.md](../guides/security.md).
 

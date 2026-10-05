@@ -254,6 +254,34 @@ tạo; `rowKey` / `rowSelectable` / `onSelectChange` là callback của dev; l�
   `onSelectChange` ném → `console.error`, event vẫn phát.
 - **Không `style`**: cột chọn / màu dòng chọn chỉ từ `td.css` (CSP gate `td-table.selection*`).
 
+## 6c. Bộ lọc ngoài, ẩn cột, `td-filter-chips` (v0.39.0)
+
+Plan [v0.39.0-filters-range](plans/v0.39.0-filters-range.md) QĐ 1–16. Mô hình đe doạ: giá trị bộ lọc đến từ **URL / form
+của người dùng** (sửa được, chia sẻ được qua link) → không tin cậy ở mọi nơi kit chạm tới.
+
+- **`td-table` không đọc / ghi `location` / `history`** và không render `filters` ở đâu cả: chỉ sao nông + đóng băng
+  object app đưa (`__proto__` bỏ qua), trả lại qua `request-change` / `getState()`. App parse URL bằng `URLSearchParams`,
+  server whitelist cột sort / kiểm từng tham số. `setState({ sort })` chỉ nhận `key` của cột `sortable` đã khai báo (khác →
+  bỏ sort). **Race**: `requestId` tăng dần + `setState` bỏ phản hồi có `requestId` cũ — phản hồi về muộn không bao giờ ghi
+  đè dữ liệu của yêu cầu mới hơn (kể cả khi app quên `AbortController`).
+- **Ẩn cột** chỉ là trình bày (`hidden`), **không phải phân quyền**: dữ liệu của cột ẩn vẫn nằm trong `data` / DOM (ô có
+  `hidden`). Cột người dùng không được xem → server đừng gửi. Nhãn cột trong menu "Cột" là `textContent`.
+- **`td-filter-chips`**: dựng bằng DOM API — `label` / `value` / `key` / `id` là `textContent` / `setAttribute`, không
+  có hatch HTML; ký tự điều khiển bị bỏ, độ dài bị cắt (`src/utils/filter-chips-model.js`, PHP `td__filter_items` cùng
+  luật — test parity). `href` / `clear-href`: **một** chính sách cho JS + PHP — `safeLinkUrl` (`https:`, `http:` chỉ trên
+  trang `http:`, tương đối giải ra hai scheme đó; `javascript:` kể cả `java\tscript:`, `data:`, `blob:`, `mailto:`,
+  `tel:` → không phải link) / PHP `Td::safeUrl` rồi loại `mailto:` / `tel:`. Event `filter-remove` / `filter-clear`
+  huỷ được (dispatch tay `cancelable: true`); không huỷ + link → trình duyệt điều hướng (không `target`, cùng tab).
+- **Cổng SSR `filter-chips@1`** (bề mặt chèn markup): nhận tại chỗ chỉ khi **toàn bộ** cây khớp hợp đồng — tag, tập thuộc
+  tính **chính xác** từng nút (thuộc tính lạ như `onclick` / `style` → từ chối), chữ cố định (`": "`, "Xoá tất cả"), lá
+  chỉ có text, `aria-label` của × bằng chuỗi tính lại từ nhãn / giá trị, `href` qua lại `cleanHref` không đổi, "Xoá tất cả"
+  có mặt ⇔ ≥ 2 chip bỏ được, và item đọc được đã ở dạng chuẩn hoá (không trùng id, đúng độ dài). Lệch bất kỳ → không lấy
+  item nào từ markup, render rỗng + một cảnh báo; `items` gán sớm luôn thắng. Nội dung ô icon bị thay bằng icon registry.
+- Test: `src/display/td-filter-chips.ssr.engines.browser-test.js` (markup bị sửa: `aria-label`, `data-removable`,
+  `href="javascript:"`, `onclick`, phần tử thừa, dấu phân cách, phần tử trong giá trị, thiếu "Xoá tất cả"),
+  `src/display/td-v039-filter-chips.engines.browser-test.js` (XSS label / value, `javascript:` href),
+  `src/utils/filter-chips-model.test.js`, `test/php/td-ssr-filter-chips.test.js`.
+
 ## 7. Trách nhiệm của site
 
 Những thứ kit **cố ý không làm** và site phải làm, nếu không thì có lỗ hổng dù kit đúng. Trang người dùng tương ứng:

@@ -19,6 +19,7 @@ import '/src/display/td-table.js';
 import '/src/form/td-media-field.js';
 import '/src/form/td-cropper.js';
 import '/src/form/td-scan-input.js';
+import '/src/display/td-filter-chips.js';
 import { TdMediaPicker } from '/src/feedback/td-media-picker.js';
 import { createMockAdapter } from '/test/fixtures/media-adapter.js';
 
@@ -114,6 +115,10 @@ for (const state of ['row', 'card']) CASES.push({ kind: 'table-select', v: 'sele
 // v0.37.0 review ISSUE-5: pressed selection controls (data-td-pressed = the real pressed rule) — the card chip label ≥ 4.7
 // and the ticked mark fill ≥ 3 on the pressed fill, the pressed fill differs from rest — light + dark.
 for (const state of ['row-pressed', 'chip-pressed']) CASES.push({ kind: 'table-select', v: 'selected', state, pageOnly: true });
+// v0.39.0 (plan v0.39.0-filters-range M4): td-filter-chips — chip label (bold) + value ≥ 4.7 on the chip fill, × icon ≥ 3.2
+// on the chip fill and on its hover / pressed fills, chip edge vs page; the td-table "Cột" ghost button label ≥ 4.7 vs the
+// page, rest + pressed — computed colours (`pairs`), light + dark.
+for (const state of ['chip', 'remove-hover', 'remove-pressed', 'columns-btn']) CASES.push({ kind: 'v039', v: 'filters', state, pageOnly: true });
 // v0.36.0 colours/action-button (plan QĐ 12, 18–26): computed-colour pairs (page only, light + dark). Solid semantic
 // tokens: label vs fill and vs hover ≥ 4.7 (buttons / badges read them); badge -ink (outline / stamp) vs the page ≥ 4.7;
 // badge edge vs its own fill / white / #f4f4f5 ≥ 1.6 (light theme); alert icon vs the alert fill ≥ 3.2 and the
@@ -1066,6 +1071,61 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
         { what: 'cell text on the selected tint + hover wash', fg: text, bg: over(tok('--td-table-row-hover'), sel), min: 4.7 }];
     const b = tr.getBoundingClientRect();
     return { rect: { x: b.x, y: b.y, width: b.width, height: b.height }, ink: {}, opacity: 1, hover: false, name: `table-select:${c.v}:${c.state}`, pairs };
+  } else if (c.kind === 'v039') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const parse = (str) => {
+      const n = (String(str).match(/-?[\d.]+/g) || []).map(Number);
+      const k = String(str).startsWith('color(') ? 255 : 1;
+      return [n[0] * k, n[1] * k, n[2] * k, n.length > 3 ? n[3] : 1];
+    };
+    const over = (top, base) => {
+      const t = parse(top); const b = parse(base);
+      return `rgb(${[0, 1, 2].map((i) => Math.round(t[i] * t[3] + b[i] * (1 - t[3]))).join(', ')})`;
+    };
+    const raf2 = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    if (c.state === 'columns-btn') {
+      const host = document.createElement('td-table');
+      host.setAttribute('column-menu', '');
+      stage.appendChild(host);
+      host.columns = [{ key: 'name', label: 'Tên' }, { key: 'role', label: 'Vai trò' }];
+      host.data = [{ name: 'An', role: 'Admin' }];
+      await raf2();
+      const b = host.querySelector('.td-table__columns');
+      const tableBg = over(getComputedStyle(host.querySelector('.td-table')).backgroundColor, page);
+      const pairs = [{ what: '"Cột" label vs table fill', fg: getComputedStyle(b).color, bg: over(getComputedStyle(b).backgroundColor, tableBg), min: 4.7 },
+        { what: '"Cột" icon vs table fill', fg: getComputedStyle(b.querySelector('svg')).color, bg: over(getComputedStyle(b).backgroundColor, tableBg), min: 3.2 }];
+      b.setAttribute('data-td-pressed', '');
+      await raf2();
+      pairs.push({ what: '"Cột" label vs pressed fill', fg: getComputedStyle(b).color, bg: over(getComputedStyle(b).backgroundColor, tableBg), min: 4.7 });
+      const r0 = b.getBoundingClientRect();
+      return { rect: { x: r0.x, y: r0.y, width: r0.width, height: r0.height }, ink: {}, opacity: 1, hover: false, name: `v039:${c.v}:${c.state}`, pairs };
+    }
+    const host = document.createElement('td-filter-chips');
+    host.style.setProperty('width', '600px');
+    stage.appendChild(host);
+    host.items = [{ key: 'status', label: 'Trạng thái', value: 'Đang bán' }, { key: 'kho', label: 'Kho', value: 'HN', removable: false }];
+    await raf2();
+    const li = host.querySelector('.td-filter-chips__item');
+    const x = li.querySelector('.td-filter-chips__remove');
+    const chipBg = over(getComputedStyle(li).backgroundColor, page);
+    let pairs;
+    if (c.state === 'chip') {
+      pairs = [{ what: 'chip label vs chip fill', fg: getComputedStyle(li.querySelector('.td-filter-chips__label')).color, bg: chipBg, min: 4.7 },
+        { what: 'chip value vs chip fill', fg: getComputedStyle(li.querySelector('.td-filter-chips__value')).color, bg: chipBg, min: 4.7 },
+        { what: 'chip × icon vs chip fill', fg: getComputedStyle(x.querySelector('svg')).color, bg: over(getComputedStyle(x).backgroundColor, chipBg), min: 3.2 },
+        { what: 'chip × icon as text-sized ink (≥ 4.7, it names the action)', fg: getComputedStyle(x).color, bg: chipBg, min: 4.7 }];
+    } else {
+      // hover / pressed: the REAL fills of the rules (hover token / data-td-pressed), composited on the chip
+      const fill = c.state === 'remove-hover'
+        ? over((() => { const p = document.createElement('span'); host.appendChild(p); p.style.setProperty('color', 'var(--td-filter-chip-remove-hover)'); const v = getComputedStyle(p).color; p.remove(); return v; })(), chipBg)
+        : (x.setAttribute('data-td-pressed', ''), await raf2(), over(getComputedStyle(x).backgroundColor, chipBg));
+      const ink = c.state === 'remove-hover'
+        ? getComputedStyle(li.querySelector('.td-filter-chips__label')).color
+        : getComputedStyle(x).color;
+      pairs = [{ what: `× icon vs ${c.state} fill`, fg: ink, bg: fill, min: 4.7 }, { what: `${c.state} fill differs from the chip`, fg: fill, bg: chipBg, min: 1.05 }];
+    }
+    const r0 = li.getBoundingClientRect();
+    return { rect: { x: r0.x, y: r0.y, width: r0.width, height: r0.height }, ink: {}, opacity: 1, hover: false, name: `v039:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'sortable' || c.kind === 'masked') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
     const probe = document.createElement('span');

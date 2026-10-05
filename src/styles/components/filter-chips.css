@@ -6,8 +6,9 @@
  * Overflow (ADR 0014): the host is `container: td-filter-chips / inline-size`; ≥ 480px the chips wrap, < 480px they
  * form ONE row that scrolls sideways (scrollbar hidden, scroll-snap) and "Xoá tất cả" stays pinned after it. build-css
  * adds the `@supports not (container-type)` viewport fallback.
- * Coarse pointers: the × keeps its 22px box and grows a 44 × 44 ::before; the scrolling row keeps 10px of block padding
- * (pulled back with a negative margin) so that hit area is never clipped by the scroll container.
+ * Coarse pointers: the × is a real 44 × 44 box (padding around its 24px disc, background clipped to the disc, negative
+ * margins keep the chip size); the scrolling row keeps 10px of block padding (pulled back with a negative margin), 12px
+ * of end padding and scroll-padding so that box is never clipped by the scroll container.
  * SSR (ADR 0012 QĐ 6): until the element is defined, JS-only controls ([data-td-js-only]: the × / "Xoá tất cả" buttons
  * without a link) are invisible (visibility: their box is kept, so the hydrate shifts nothing) — no dead control
  * without JS (not clickable, not focusable); the × links work.
@@ -22,12 +23,13 @@
 		--td-filter-chip-h: 28px;
 		--td-filter-chip-gap: var(--td-space-xs);
 		--td-filter-chip-max: 16rem; /* max inline size of a value (cut with …, full text in title) */
-		--td-filter-chip-remove-fg: var(--td-color-text-muted); /* ≥ 4.7 on the chip fill (contrast gate) */
+		--td-filter-chip-remove-fg: var(--td-gray-700); /* ≥ 4.7 on the chip fill (contrast gate; muted gray-600 = 4.64) */
 		--td-filter-chip-remove-hover: var(--td-color-hover-strong);
 	}
 
 	:root[data-td-theme="dark"] {
 		--td-filter-chip-bg: #2c2c30;
+		--td-filter-chip-remove-fg: var(--td-color-text-muted);
 	}
 }
 
@@ -84,7 +86,7 @@
 		max-inline-size: 100%;
 		min-block-size: var(--td-filter-chip-h);
 		padding-block: 0;
-		padding-inline: 10px 3px;
+		padding-inline: 10px 1px;
 		white-space: nowrap;
 		background: var(--td-filter-chip-bg);
 		border: 1px solid var(--td-filter-chip-border);
@@ -114,13 +116,12 @@
 	}
 
 	.td-filter-chips__remove {
-		position: relative;
 		display: inline-flex;
 		flex: none;
 		align-items: center;
 		justify-content: center;
-		inline-size: 22px;
-		block-size: 22px;
+		inline-size: 24px; /* WCAG 2.5.8 with a mouse; a 44 × 44 ::before on coarse pointers */
+		block-size: 24px;
 		padding: 0;
 		margin-inline-start: 4px;
 		font: inherit;
@@ -187,7 +188,9 @@
 			flex: 1 1 auto;
 			flex-wrap: nowrap;
 			padding-block: 10px; /* room for the coarse ::before hit area (never clipped by the scroller) */
+			padding-inline: 0 12px; /* … also after the last chip, and a chip scrolled into view keeps 12px of room */
 			margin-block: -10px;
+			scroll-padding-inline: 12px;
 			overflow-x: auto;
 			overscroll-behavior-inline: contain;
 			scroll-snap-type: x proximity;
@@ -209,10 +212,15 @@
 			--td-filter-chip-gap: var(--td-space-sm); /* the 44px hit areas of neighbouring × never overlap */
 		}
 
-		.td-filter-chips__remove::before {
-			position: absolute;
-			inset: -11px;
-			content: "";
+		/* a REAL 44 × 44 box (an ::before would be clipped at the edge of the scrolling row): 10px of padding around the
+		   24px disc (the fill is clipped to it), negative margins keep the chip's size and the gap to the next chip */
+		.td-filter-chips__remove {
+			inline-size: var(--td-touch-min);
+			block-size: var(--td-touch-min);
+			padding: 10px;
+			margin-block: -10px;
+			margin-inline: -6px -10px;
+			background-clip: content-box;
 		}
 	}
 
