@@ -22,7 +22,7 @@ function one(fn, args) {
   return r.out;
 }
 
-const FIXED = 'autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done"';
+const FIXED = 'autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"';
 
 describe('php/td.php — td_scan_input (v0.38.0, contract scan-input@1)', opts, () => {
   test('td__scan_value == normalizeScan on SCAN_NORMALIZE_CASES (parity)', () => {

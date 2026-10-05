@@ -70,7 +70,7 @@ describe('td-scan-input — markup + a11y (QĐ 8, 17, 18)', () => {
     const el = scanEl('label="IMEI" name="imei"');
     const input = inputOf(el);
     expect(el.querySelectorAll('input').length).to.equal(1);
-    for (const [k, v] of [['type', 'text'], ['autocomplete', 'off'], ['autocapitalize', 'off'], ['autocorrect', 'off'],
+    for (const [k, v] of [['type', 'text'], ['autocomplete', 'off'], ['autocapitalize', 'none'], ['autocorrect', 'off'],
       ['spellcheck', 'false'], ['enterkeyhint', 'done']]) expect(input.getAttribute(k), k).to.equal(v);
     expect(input.labels[0].textContent).to.equal('IMEI');
     const status = el.querySelector('.td-scan__status');

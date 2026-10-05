@@ -2593,7 +2593,7 @@ namespace {
             'class' => 'td-scan__input',
             'id' => $cid,
             'autocomplete' => 'off',
-            'autocapitalize' => 'off',
+            'autocapitalize' => 'none',
             'autocorrect' => 'off',
             'spellcheck' => 'false',
             'enterkeyhint' => 'done',

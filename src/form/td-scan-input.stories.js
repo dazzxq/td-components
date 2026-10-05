@@ -102,7 +102,7 @@ export const States = {
 export const ServerRenderedMultiple = {
   render: (args) => `<td-scan-input data-td-ssr="scan-input@1" id="scan-ssr" name="imei[]" label="${esc(args.label)}" multiple>
     <div class="td-scan" data-mode="multiple"><label class="td-scan__label" for="scan-ssr-input">${esc(args.label)}</label>
-    <div class="td-scan__box"><input type="text" class="td-scan__input" id="scan-ssr-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done"></div>
+    <div class="td-scan__box"><input type="text" class="td-scan__input" id="scan-ssr-input" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="done"></div>
     <textarea class="td-scan__fallback" name="imei[]" rows="3" aria-label="Nhập tay, mỗi dòng một mã"></textarea>
     <ul class="td-scan__list" aria-label="Mã đã quét"><li class="td-scan__item" data-value="356938035643809"><span class="td-scan__value">356938035643809</span></li></ul></div>
     <input type="hidden" class="td-scan__hidden" name="imei[]" value="356938035643809"></td-scan-input>`,
