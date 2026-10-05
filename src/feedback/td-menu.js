@@ -64,7 +64,9 @@
  * - Keys in the menu (D2, roving real focus): ArrowDown/ArrowUp (wrap), Home/End, type-ahead (diacritic-insensitive,
  *   utils/typeahead.js), Enter/Space activate. aria-disabled items are focusable but inert (APG).
  * - Selection: item/radio → close, focus the trigger, then onSelect(ctx) (errors logged; a promise is not awaited);
- *   checkbox → toggles in place, the menu stays open. Links navigate natively and close the menu.
+ *   checkbox → toggles in place, the menu stays open. Links navigate natively and close the menu. v0.39.0: a
+ *   checkbox item's onSelect ctx also has `setDisabled(id, disabled, hint?)` — lock / unlock another item (by `id`)
+ *   while the menu is open (`hint`: a TEXT hint for it, '' removes it).
  * - Dismiss: outside pointerdown closes (the press continues — D5); the trigger scrolled out of view / removed closes
  *   (isReferenceHidden); scroll/resize reposition (placeFloating, D7: width auto, align end, side bottom, flips).
  * - onClose(reason): 'select' | 'escape' | 'tab' | 'outside' | 'hidden' | 'api' | 'covered' (v0.21.1: a newer modal /
@@ -446,6 +448,7 @@ function activate(s, idx) {
     entry.checked = !entry.checked; // session state only — caller items are never mutated (they may be frozen)
     node.setAttribute('aria-checked', String(entry.checked));
     ctx.checked = entry.checked;
+    ctx.setDisabled = (id, disabled, hint) => setItemDisabled(s, id, disabled, hint); // v0.39.0 (menu stays open)
     safeCall(entry.onSelect, ctx);
     return;
   }
@@ -460,6 +463,41 @@ function activate(s, idx) {
   }
   closeSession(s, 'select');
   safeCall(entry.onSelect, ctx);
+}
+
+/**
+ * v0.39.0 (plan v0.39.0-filters-range QĐ 10): lock / unlock the item with `id` (its `data-item`) while the menu is
+ * open — `aria-disabled` + the session entry (inert like any disabled item). `hint` (optional): a string replaces the
+ * item's hint (TEXT; '' removes it), anything else leaves it. Unknown id / closed menu → nothing.
+ */
+function setItemDisabled(s, id, disabled, hint) {
+  if (s.closed || id == null) return;
+  const rec = s.items.find((r) => r.entry.id !== '' && r.entry.id === String(id));
+  if (!rec) return;
+  const { entry, node } = rec;
+  entry.disabled = !!disabled;
+  if (entry.disabled) node.setAttribute('aria-disabled', 'true');
+  else node.removeAttribute('aria-disabled');
+  if (typeof hint !== 'string') return;
+  let el = node.querySelector(':scope > .td-menu__hint');
+  if (!hint) {
+    if (el) el.remove();
+    node.removeAttribute('aria-describedby');
+    node.removeAttribute('aria-labelledby');
+    return;
+  }
+  const label = node.querySelector(':scope > .td-menu__label');
+  const base = `${s.menu.id}-x${s.items.indexOf(rec)}`;
+  if (label && !label.id) label.id = `${base}-label`;
+  if (!el) {
+    el = document.createElement('span');
+    el.className = 'td-menu__hint';
+    el.id = `${base}-hint`;
+    node.appendChild(el);
+  }
+  el.textContent = hint;
+  if (label) node.setAttribute('aria-labelledby', label.id);
+  node.setAttribute('aria-describedby', el.id);
 }
 
 function indexOfNode(s, node) {

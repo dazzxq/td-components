@@ -41,6 +41,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_masked_value (0.31.0)](#td_masked_value-0310)
 - [td_media_field (0.32.0)](#td_media_field-0320)
 - [td_scan_input (0.38.0)](#td_scan_input-0380)
+- [td_filter_chips (0.39.0)](#td_filter_chips-0390)
 - [An toàn: escape và whitelist](#an-toàn-escape-và-whitelist)
 - [Chuyển từ adapter riêng của 135](#chuyển-từ-adapter-riêng-của-135)
 - [Lỗi thường gặp](#lỗi-thường-gặp)
@@ -68,7 +69,8 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_masked_value` (0.31.0) | **luôn** host `<td-masked-value data-td-ssr="masked-value@1">` chứa chuỗi che + nút toggle + live region — **không bao giờ** giá trị thật | Không (chưa có JS: chỉ thấy chuỗi che, nút ẩn) | **Có** — nạp module `masked-value`: nhận **tại chỗ** |
 | `td_media_field` (0.32.0) | **luôn** host `<td-media-field data-td-ssr="media-field@1">` chứa sẵn khung (tỉ lệ bằng SVG sizer), ảnh xem trước, nút mở / Đổi / Gỡ + **hidden input** gửi `assetId` (và ô alt / crop ở chế độ usage) | Không (form gửi đúng hình dạng; chưa có JS thì nút ẩn, giữ chỗ) | **Có** — nạp module `media-field`: nhận **tại chỗ**, gỡ hidden input |
 | `td_scan_input` (0.38.0) | `div.td-scan` + `input.td-scan__input` **native** (`autocomplete="off"`, `enterkeyhint="done"`…) | Không (Enter submit form) | Không |
-| `td_scan_input` — **chế độ element** (0.38.0, tự bật) / **`multiple`** (luôn element) | host `<td-scan-input data-td-ssr="scan-input@1">` + cùng input; `multiple`: + `textarea` nhập tay + danh sách + một **hidden input** mỗi mã | Không (form gửi mã in sẵn + dòng textarea) | **Có** — nạp module `scan-input`: nhận **tại chỗ**, gỡ hidden / textarea, dòng textarea qua `validate` |
+| `td_scan_input` — **chế độ element** (0.39.0, tự bật) / **`multiple`** (luôn element) | host `<td-scan-input data-td-ssr="scan-input@1">` + cùng input; `multiple`: + `textarea` nhập tay + danh sách + một **hidden input** mỗi mã | Không (form gửi mã in sẵn + dòng textarea) | **Có** — nạp module `scan-input`: nhận **tại chỗ**, gỡ hidden / textarea, dòng textarea qua `validate` |
+| `td_filter_chips` (0.39.0) | **luôn** host `<td-filter-chips data-td-ssr="filter-chips@1">` chứa sẵn đúng cây component (nhóm, mỗi chip một `li` với nhãn / giá trị / ×, "Xoá tất cả", live region) | Không (× có `href` là **link** chạy ngay; × không link thì vô hình, giữ chỗ) | **Có** — nạp module `filter-chips`: nhận **tại chỗ** |
 | `td_copy` (0.27.0) | **luôn** host `<td-copy data-td-ssr="copy@1">` chứa nguồn `<code>` + nút icon + live region | Không (chưa có JS: hiện mã để bôi đen, ẩn nút) | **Có** — nạp module `copy`: nhận **tại chỗ** |
 | `td_icon` | `svg.td-icon` đủ hình (có `viewBox`) | Không | — |
 | `td_badge` | `span.td-badge…` (thuần CSS) | Không | — |
@@ -98,7 +100,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.38.0/
+public/assets/vendor/td-components/0.39.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -106,7 +108,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.38.0';
+const TD_VERSION = '0.39.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -129,7 +131,7 @@ TdComponents\Td::configure(
 
   | Option | Kiểu | Mặc định | Ý nghĩa |
   |---|---|---|---|
-  | `ssr_elements` | `bool` | `false` | `td_button` / `td_link` (không `bare`) — từ 0.26.0 cả `td_field` / `td_toggle` / `td_checkbox` / `td_dropdown`, từ 0.27.0 cả `td_otp_input`, từ 0.30.0 cả `td_number_input`, từ 0.38.0 cả `td_scan_input` (đơn) — in [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) cho **mọi** lần gọi; option `element` của từng lần gọi vẫn ghi đè |
+  | `ssr_elements` | `bool` | `false` | `td_button` / `td_link` (không `bare`) — từ 0.26.0 cả `td_field` / `td_toggle` / `td_checkbox` / `td_dropdown`, từ 0.27.0 cả `td_otp_input`, từ 0.30.0 cả `td_number_input`, từ 0.39.0 cả `td_scan_input` (đơn) — in [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) cho **mọi** lần gọi; option `element` của từng lần gọi vẫn ghi đè |
 
   > **Nâng từ 0.25 lên 0.26 mà đã bật `ssr_elements`:** từ 0.26.0 cờ này áp thêm cho `td_field` / `td_toggle` /
   > `td_checkbox` (đúng hợp đồng ADR 0012: cờ toàn cục áp cho mọi helper **đã có** hợp đồng trong bản đó). Markup đổi
@@ -228,7 +230,8 @@ td_tree_select(string $name, array $tree, string|int|array|null $selected = null
 td_number_input(string $name, mixed $value = null, array $opts = []): string   // 0.30.0
 td_masked_value(string $masked, array $opts = []): string   // 0.31.0 (luôn element, không có tham số giá trị thật)
 td_media_field(string $name, mixed $assetId = null, array $o = []): string    // 0.32.0 (luôn element; $assetId chỉ string | int)
-td_scan_input(string $name, array $o = []): string   // 0.38.0 (multiple: luôn element)
+td_scan_input(string $name, array $o = []): string   // 0.39.0 (multiple: luôn element)
+td_filter_chips(array $items, array $o = []): string        // 0.39.0 (luôn element)
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
 td_stylesheet_tag(?string $nonce = null): string
@@ -1340,6 +1343,76 @@ Cảnh báo (`E_USER_WARNING`) chỉ ghi tên option và kiểu, không in giá 
 
 Markup `multiple` bị sửa (hidden lệch danh sách, hidden thừa, `formaction`…) → component render an toàn, danh sách
 **rỗng** + một cảnh báo console (không lấy giá trị từ markup đáng ngờ); server vẫn là nguồn sự thật khi lưu.
+
+## td_filter_chips (0.39.0)
+
+```php
+<?php
+// URL "không còn bộ lọc này" do server tính (bỏ luôn page — về trang 1)
+$without = static function (string $key, ?string $value = null): string {
+    $q = $_GET;
+    if ($value !== null && is_array($q[$key] ?? null)) {
+        $q[$key] = array_values(array_diff($q[$key], [$value]));
+    } else {
+        unset($q[$key]);
+    }
+    unset($q['page']);
+    return '?' . http_build_query($q);
+};
+$items = [['key' => 'shop', 'label' => 'Kho', 'value' => 'Hà Nội', 'removable' => false]];
+if (($_GET['status'] ?? '') !== '') {
+    $items[] = ['key' => 'status', 'label' => 'Trạng thái', 'value' => $statusLabel[$_GET['status']] ?? '?', 'href' => $without('status')];
+}
+foreach ((array) ($_GET['tag'] ?? []) as $t) {               // nhiều giá trị: một item mỗi giá trị, cùng key, khác id
+    $items[] = ['id' => 'tag-' . $t, 'key' => 'tag', 'label' => 'Nhãn', 'value' => (string) $t, 'href' => $without('tag', (string) $t)];
+}
+?>
+<?= td_filter_chips($items, ['clear_href' => '?', 'empty_focus' => 'search-q']) ?>
+```
+
+`td_filter_chips($items, $opts)` **luôn** in phần tử [Filter chips](../components/filter-chips.md) đầy đủ (hợp đồng
+`filter-chips@1`; `element` / `ssr_elements` không đổi gì). Không có item → host `hidden`.
+
+- **Không JS**: chip hiện ngay (không nháy). Item có `href` an toàn → × là `<a href>` — bấm là sang trang không còn bộ lọc
+  đó (server tính lại danh sách). Không `href` / `href` bị từ chối → × là nút chỉ chạy khi có JS (vô hình, giữ chỗ — không có
+  nút chết). Tương tự "Xoá tất cả" với `clear_href`.
+- **Nạp `@dazzxq/td-components/filter-chips`**: nhận markup **tại chỗ** (cùng node); × là link vẫn phát `filter-remove`
+  (huỷ được) rồi để trình duyệt mở link.
+- **Item**: `key`, `value` (bắt buộc), `label` (mặc định `key`), `id` (mặc định `key`; trùng → hậu tố `-2`, `-3`…),
+  `removable` (mặc định `true`), `href`. `key` / `value` / `label` / `id` là chuỗi hoặc số; **mảng `value` bị từ chối** (một
+  item mỗi giá trị) — item sai kiểu bị bỏ (một `E_USER_WARNING` cho cả lần gọi). Số kiểu float in như `String(n)` của JS. Ký tự điều khiển bị bỏ; cắt 200 / 500 / 200 / 200 ký tự
+  (`key` / `value` / `label` / `id`) — **giống hệt** component (test parity PHP ↔ JS).
+- **Chính sách URL** (`href`, `clear_href`): `Td::safeUrl()` rồi **chỉ URL tương đối** (`?…`, `#…`, `/đường-dẫn`,
+  `đường-dẫn`) — không scheme (kể cả `https:`), không `//host`, không `\`: link "bỏ lọc" không bao giờ rời site (PHP không
+  biết origin của trang; JS nhận thêm URL tuyệt đối **cùng origin**). Bị từ chối → × là nút chỉ-JS.
+- Tối đa **200** item và **800** mục được xét (phần thừa bỏ + **một** `E_USER_WARNING`); item sai kiểu cũng chỉ **một** cảnh báo mỗi lần gọi.
+
+| Option | Ý nghĩa |
+|---|---|
+| `label` | tên nhóm (mặc định "Bộ lọc đang áp dụng") — attribute `label` trên host |
+| `clear_href` | "Xoá tất cả" là link (cùng chính sách URL); bị từ chối → nút chỉ-JS, không in |
+| `empty_focus` | id phần tử nhận focus khi chip cuối bị bỏ (attribute `empty-focus`) |
+| `id`, `class` | trên host |
+| `attrs` | trên **host** (allowlist + `aria-*` / `data-*`). Giữ chỗ — bị bỏ: `id` `class` `label` `clear-href` `empty-focus` `hidden` + mọi `data-td-*` |
+
+```html
+<!-- td_filter_chips([['key' => 'status', 'label' => 'Trạng thái', 'value' => 'Đang bán', 'href' => '?q=ip']]) -->
+<td-filter-chips data-td-ssr="filter-chips@1">
+  <div class="td-filter-chips" role="group" aria-label="Bộ lọc đang áp dụng">
+    <ul class="td-filter-chips__list" role="list">
+      <li class="td-filter-chips__item" data-id="status" data-key="status" data-removable="true">
+        <span class="td-filter-chips__label">Trạng thái</span><span class="td-filter-chips__sep" aria-hidden="true">: </span><span class="td-filter-chips__value">Đang bán</span>
+        <a class="td-filter-chips__remove" href="?q=ip" aria-label="Bỏ lọc Trạng thái: Đang bán">
+          <span class="td-filter-chips__icon" data-td-icon="close" data-td-icon-size="14" aria-hidden="true"><svg class="td-icon …" data-icon="close" …>…</svg></span></a>
+      </li>
+    </ul>
+  </div>
+  <p class="td-sr-only" role="status"></p>
+</td-filter-chips>
+```
+
+(Thực tế in liền một dòng.) Markup bị sửa (thuộc tính lạ, `aria-label` không khớp, `href` không an toàn…) → component
+**không nhận**: render rỗng + một cảnh báo; app gán `items` từ JS thì `items` thắng.
 
 ## An toàn: escape và whitelist
 

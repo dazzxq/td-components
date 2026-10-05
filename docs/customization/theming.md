@@ -793,6 +793,7 @@ diện** của trang component. Cột "Khai báo ở" cho biết ghi đè ở đ
 | TdHovercard | `--td-hovercard-*` | `:root` | [hovercard.md](../components/hovercard.md) |
 | TdLightbox | `--td-lb-*` | `:root` (có `@media (pointer: coarse)` và safe-area); `--td-lb-bar-h` dẫn xuất, tính trên `.td-lightbox` | [lightbox.md](../components/lightbox.md) |
 | td-table | `--td-table-*` | `:root` (riêng `--td-table-cell-px` bị modifier `.td-table__cell--px-*` đặt lại) | [table.md](../components/table.md) |
+| td-filter-chips | `--td-filter-chip-*` — `-bg`, `-fg`, `-label-fg`, `-border`, `-radius`, `-h` (`28px`), `-gap`, `-max` (bề rộng tối đa của giá trị, `16rem`), `-remove-fg` (icon ×, ≥ 4.7:1 trên nền chip), `-remove-hover` (0.39.0). Mặc định qua gate `test:contrast`; ghi đè thì site tự kiểm | `:root` | [filter-chips.md](../components/filter-chips.md) |
 | td-tabs | `--td-tabs-*` | `:root` | [tabs.md](../components/tabs.md) |
 | td-pagination | `--td-pagination-*` | `:root` (có `@media (pointer: coarse)`) | [pagination.md](../components/pagination.md) |
 | td-empty-state | `--td-empty-state-*` | `:root` (`--sm` / `--lg` / `--compact` đặt lại `-pad` / `-gap` trên phần tử) | [empty-state.md](../components/empty-state.md) |

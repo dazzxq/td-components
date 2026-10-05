@@ -2,6 +2,34 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.39.0
+
+**Bộ lọc ngoài, ẩn / hiện cột, chip bộ lọc** (plan `docs/internal/plans/v0.39.0-filters-range.md` phần v0.39, Codex
+plan-review APPROVE 3 vòng). Chi tiết nâng cấp: `docs/upgrading/breaking-changes.md#0390`.
+
+### Added
+
+- `<td-table>`: event `request-change` (lọc / sắp xếp / trang / per-page từ một chỗ), chế độ `controlled` + `setState()`
+  (app giữ trạng thái, đồng bộ URL; `requestId` bỏ phản hồi muộn), `setFilters()`; `getState()` thêm `filters`,
+  `totalItems`, `requestId` (table.md mục 11).
+- Ẩn / hiện cột: `hideable` / `hidden` trong `columns`, `hiddenColumns`, event `columns-change`, nút menu "Cột"
+  (`column-menu`), `min-visible`; cột chọn dòng không bao giờ bị ẩn (table.md mục 12).
+- `<td-filter-chips>` (`./filter-chips`, `TdFilterChips`): chip bộ lọc đang áp, × bỏ từng lọc, "Xoá tất cả"; link × chạy
+  không cần JS; < 480px một hàng cuộn ngang. PHP `td_filter_chips()` + SSR `filter-chips@1`.
+- TdMenu `ctx.setDisabled(id, disabled, hint?)`; icon `columns`.
+
+### Changed
+
+- `hidden: true` trong định nghĩa cột giờ thật sự ẩn cột (trước không có tác dụng).
+- `onPageChange` (server mode) chạy khi lượt bấm đổi trang kết thúc (sau `page-change` và `request-change`).
+
+### Security
+
+- `href` / `clear-href` của chip: link "bỏ lọc" không bao giờ rời site — JS chỉ nhận http(s) cùng origin (tương đối,
+  `?query`, `#hash`), PHP chỉ URL tương đối; chặn `//host`, `\`, `javascript:`, `data:`, `blob:`…; tối đa 200 chip, xử lý
+  có trần (review SEC-1 / SEC-2); chip chỉ dựng bằng text, cắt độ dài, bỏ ký tự điều khiển. Ẩn cột là hiển thị, không
+  phải phân quyền (server không gửi cột người dùng không được xem).
+
 ## 0.38.0
 
 **`<td-scan-input>` — ô quét mã vạch** (dsuite A3; plan `docs/internal/plans/v0.38.0-scan-input.md`, Codex plan-review

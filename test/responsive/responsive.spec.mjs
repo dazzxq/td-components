@@ -17,6 +17,8 @@
  * at 720 — toolbar wraps / detail is a sliding pane below it; short band keeps ≥ 1 row of cards visible), media grid
  * (default, sortable gallery, justified), dropzone, and the ordinary-modal sheet (< 720) vs centred (≥ 720) rule.
  *
+ * v0.39.0: the filter bar section (td-filter-chips one line per chip / one scrolling row < 480; the hidden column of a
+ *   `column-menu` table out of the aria snapshot) — plus every generic check (overflow, 44px targets, overlaps).
  * v0.35.0: td-cropper inline (full width + 280 px column: no overflow, corners / focal / toolbar ≥ 44 coarse incl. corners on
  * the image edge), the crop dialog and the picker crop step (inside the viewport, confirm + back visible, stage ≥ 200 px).
  *
@@ -347,6 +349,32 @@ async function runConfig(browser, c) {
         .filter((s) => !selSnap.includes(s)).map((s) => `aria snapshot lacks "${s}"`),
       ...['- grid', '- radio', '[selected]'].filter((s) => selSnap.includes(s)).map((s) => `aria snapshot has "${s}"`),
     ]);
+    // v0.39.0 (plan v0.39.0-filters-range M4): the filter bar. Hidden column (`hiddenColumns`) out of the accessibility
+    // tree (no columnheader / cell); every chip on ONE line; under 480px of chips container ONE scrolling row with
+    // "Xoá tất cả" fully inside the section; the "Cột" button visible.
+    const fSnap = await page.locator('#rsp-table-filters table').ariaSnapshot();
+    check(tag, 'td-table hidden column semantics (v0.39.0)', [
+      ...['- columnheader "Mã đơn"', '- columnheader "Khách hàng"'].filter((s) => !fSnap.includes(s)).map((s) => `aria snapshot lacks "${s}"`),
+      ...['Số điện thoại', '0912 345 6'].filter((s) => fSnap.includes(s)).map((s) => `aria snapshot has "${s}"`),
+    ]);
+    const chipErr = await page.evaluate(() => {
+      const errs = [];
+      const host = document.querySelector('#rsp-chips');
+      const list = host.querySelector('.td-filter-chips__list');
+      const sec = host.closest('.rsp-section').getBoundingClientRect();
+      for (const li of list.children) {
+        const h = li.getBoundingClientRect().height;
+        if (h > 46) errs.push(`chip "${li.textContent}" ${h.toFixed(1)}px tall (not one line)`);
+      }
+      const narrow = host.getBoundingClientRect().width < 480;
+      if (narrow !== (getComputedStyle(list).flexWrap === 'nowrap')) errs.push(`chips ${narrow ? 'wrap' : 'do not wrap'} at ${host.getBoundingClientRect().width}px`);
+      const clear = host.querySelector('.td-filter-chips__clear').getBoundingClientRect();
+      if (clear.left < sec.left - 0.5 || clear.right > sec.right + 0.5) errs.push('"Xoá tất cả" outside the section');
+      const cols = document.querySelector('#rsp-table-filters .td-table__columns');
+      if (!cols || !cols.getClientRects().length) errs.push('"Cột" button not shown');
+      return errs;
+    });
+    check(tag, 'td-filter-chips + column menu (v0.39.0)', chipErr);
     // v0.36.0 (plan QĐ 41): td-otp-input cells keep their shape — in columns of 320 / 360 / 390 / 240 px (and the page
     // width when narrower), 6 / 8 / 10 digits and 5 alphanumerics: each cell width / height = 44 / 52 ± 4 % (except a
     // touch cell narrower than 37 px, which grows to the 44 px touch minimum), nothing wider than its column.

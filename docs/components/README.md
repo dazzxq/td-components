@@ -18,7 +18,7 @@ Mọi import đều theo dạng `@dazzxq/td-components/<tên>` (xem [Cài đặt
 nạp `td.css` một lần cho cả trang.
 
 **Render phía server (SSR) từ PHP:** dùng [adapter PHP](../guides/php-adapter.md) `php/td.php` ship kèm gói —
-`td_button`, `td_link`, `td_action_button`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_masked_value`, `td_media_field`, `td_scan_input` in đúng markup của component
+`td_button`, `td_link`, `td_action_button`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_masked_value`, `td_media_field`, `td_scan_input`, `td_filter_chips` in đúng markup của component
 (control native, chạy không cần JS). Component không có helper PHP (menu, table, tabs, pagination, empty-state, trigger
 lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong trang của nó (mục cấu trúc DOM / SSR).
 
@@ -68,7 +68,8 @@ lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong 
 
 | Component | Dạng | Import | Dùng để |
 |---|---|---|---|
-| [Table](table.md) | `<td-table>` | `/table` | Bảng dữ liệu: sắp xếp, header dính, cập nhật tại chỗ |
+| [Table](table.md) | `<td-table>` | `/table` | Bảng dữ liệu: sắp xếp, header dính, cập nhật tại chỗ; chọn dòng (0.37); bộ lọc ngoài + `controlled` + `setState` cho đồng bộ URL, ẩn / hiện cột (0.39) |
+| [Filter chips](filter-chips.md) | `<td-filter-chips>` | `/filter-chips` | Chip bộ lọc đang áp dụng ("Trạng thái: Đang bán ×"), "Xoá tất cả", chip cố định, × là link cho trang PHP / không JS, một hàng cuộn khi hẹp; `filter-remove` / `filter-clear` huỷ được; PHP `td_filter_chips` (0.39) |
 | [Tabs](tabs.md) | `<td-tabs>` | `/tabs` | Tab (chuẩn APG, kích hoạt thủ công) |
 | [Pagination](pagination.md) | `<td-pagination>` | `/pagination` | Phân trang |
 | [Empty state](empty-state.md) | `<td-empty-state>` | `/empty-state` | Màn "chưa có dữ liệu" có hành động |

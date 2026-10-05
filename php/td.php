@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.38.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.38.0', __DIR__ . '/public/assets/vendor/td-components/0.38.0');
+ *   require_once '/path/to/vendor/td-components/0.39.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.39.0', __DIR__ . '/public/assets/vendor/td-components/0.39.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -161,6 +161,14 @@ namespace TdComponents {
         public const SSR_SCAN_INPUT = 'scan-input@1';
         /** v0.38.0: texts of td_scan_input = TdScanInput.labels (a site overriding the JS labels gets a safe re-render). */
         public const SCAN_LABELS = ['input' => 'Mã quét', 'list' => 'Mã đã quét', 'fallback' => 'Nhập tay, mỗi dòng một mã'];
+        /** v0.39.0: td_filter_chips (always the element <td-filter-chips> + the chips; × links work without JS). */
+        public const SSR_FILTER_CHIPS = 'filter-chips@1';
+        /** v0.39.0: default texts of td_filter_chips = TdFilterChips.labels (`remove`: {label} / {value}). */
+        public const FILTER_CHIPS_LABELS = [
+            'group' => 'Bộ lọc đang áp dụng',
+            'clearAll' => 'Xoá tất cả',
+            'remove' => 'Bỏ lọc {label}: {value}',
+        ];
         /** v0.36.0: tones / sizes of td_action_button (= TdActionButton). */
         public const ACTION_TONES = ['standard', 'warning', 'danger'];
         public const ACTION_SIZES = ['sm', 'md', 'lg'];
@@ -210,7 +218,7 @@ namespace TdComponents {
         ];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.38.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.39.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -2702,6 +2710,206 @@ namespace {
             }
         }
         return $out;
+    }
+
+    /**
+     * v0.39.0 active filter chips (contract filter-chips@1, plan v0.39.0-filters-range QĐ 11–16) — ALWAYS the element
+     * `<td-filter-chips data-td-ssr="filter-chips@1">` + the exact tree <td-filter-chips> builds, hydrated IN PLACE by
+     * `@dazzxq/td-components/filter-chips`: `div.td-filter-chips[role=group][aria-label]` > `ul.td-filter-chips__list`
+     * > one `li.td-filter-chips__item[data-id][data-key][data-removable]` per item = `span.td-filter-chips__label` +
+     * `span.td-filter-chips__sep` (": ", aria-hidden) + `span.td-filter-chips__value` + the × (`aria-label` "Bỏ lọc
+     * {label}: {value}"): `a.td-filter-chips__remove[href]` when the item has a safe `href` (the URL WITHOUT that filter,
+     * computed by the server — works without JS), else `button[data-td-js-only]` (hidden until the module loads, no dead
+     * control); no × when `removable` is false. "Xoá tất cả" (≥ 2 removable chips): `a[href=clear_href]` or a JS-only
+     * button. Then the live region. No items → the host is `hidden`.
+     * $items: list of ['key' => …, 'value' => …, 'label'?, 'id'?, 'removable'?, 'href'?] — key / value / label / id are
+     * strings or numbers (cast; anything else, e.g. an ARRAY value → the item is dropped + one E_USER_WARNING: one item per
+     * value, same key, different id), control characters removed, cut to 200 / 500 / 200 / 200 code points (key / value /
+     * label / id); label and id default to the key; a duplicate id gets `-2`, `-3`… (= src/utils/filter-chips-model.js).
+     * `href` / `clear_href`: Td::safeUrl(), then http(s) or relative only (mailto: / tel: refused) — refused → no link.
+     * Options: label (group name; default "Bộ lọc đang áp dụng"), clear_href, empty_focus (id of the element that gets
+     * focus when the last chip is removed, e.g. the search box), id, class, attrs (host: allowlisted + aria-* / data-*;
+     * owned names and data-td-* reserved).
+     */
+    function td_filter_chips(array $items, array $o = []): string
+    {
+        $L = Td::FILTER_CHIPS_LABELS;
+        $list = td__filter_items($items);
+        $label = td__str($o['label'] ?? null);
+        $clear = td__filter_href($o['clear_href'] ?? null);
+        $taken = [];
+        $html = '<td-filter-chips' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_FILTER_CHIPS,
+            'id' => td__str($o['id'] ?? null),
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'label' => $label,
+            'clear-href' => $clear,
+            'empty-focus' => td__str($o['empty_focus'] ?? null),
+            'hidden' => !$list,
+        ], $taken);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $taken = td__reserve(['id', 'class', 'label', 'clear-href', 'empty-focus', 'hidden'], $extra, $taken);
+        $html .= Td::attrs($extra, $taken) . '>'
+            . '<div class="td-filter-chips" role="group" aria-label="' . Td::e($label ?? $L['group']) . '">'
+            . '<ul class="td-filter-chips__list" role="list">';
+        $icon = '<span class="td-filter-chips__icon" data-td-icon="close" data-td-icon-size="14" aria-hidden="true">'
+            . Td::icon('close', 14) . '</span>';
+        $removable = 0;
+        foreach ($list as $it) {
+            $html .= '<li class="td-filter-chips__item" data-id="' . Td::e($it['id']) . '" data-key="' . Td::e($it['key'])
+                . '" data-removable="' . ($it['removable'] ? 'true' : 'false') . '">'
+                . '<span class="td-filter-chips__label">' . Td::e($it['label']) . '</span>'
+                . '<span class="td-filter-chips__sep" aria-hidden="true">: </span>'
+                . '<span class="td-filter-chips__value">' . Td::e($it['value']) . '</span>';
+            if ($it['removable']) {
+                $removable++;
+                $name = Td::e(strtr($L['remove'], ['{label}' => $it['label'], '{value}' => $it['value']]));
+                $html .= $it['href'] !== null
+                    ? '<a class="td-filter-chips__remove" href="' . Td::e($it['href']) . '" aria-label="' . $name . '">' . $icon . '</a>'
+                    : '<button type="button" class="td-filter-chips__remove" data-td-js-only aria-label="' . $name . '">' . $icon . '</button>';
+            }
+            $html .= '</li>';
+        }
+        $html .= '</ul>';
+        if ($removable >= 2) {
+            $html .= $clear !== null
+                ? '<a class="td-btn td-btn--ghost td-btn--sm td-filter-chips__clear" href="' . Td::e($clear) . '">' . Td::e($L['clearAll']) . '</a>'
+                : '<button type="button" class="td-btn td-btn--ghost td-btn--sm td-filter-chips__clear" data-td-js-only>' . Td::e($L['clearAll']) . '</button>';
+        }
+        return $html . '</div><p class="td-sr-only" role="status"></p></td-filter-chips>';
+    }
+
+    /**
+     * @internal td_filter_chips items → [['id','key','label','value','removable','href'(?string)]] (= normalizeItems() of
+     * src/utils/filter-chips-model.js). Bounded (review SEC-1): at most 200 chips and 800 inspected entries (the rest
+     * never looked at + ONE E_USER_WARNING), dropped items → ONE E_USER_WARNING per call, a per-base suffix counter for duplicate ids.
+     */
+    function td__filter_items(array $items): array
+    {
+        $out = [];
+        $used = [];
+        $next = [];
+        $dropped = 0;
+        $capped = false;
+        $seen = 0;
+        foreach ($items as $raw) {
+            // review SEC-1 round 2: at most 800 entries are INSPECTED (valid or not), at most 200 chips kept
+            if (count($out) >= 200 || $seen >= 800) {
+                $capped = true;
+                break;
+            }
+            $seen++;
+            if (!is_array($raw)) {
+                $dropped++;
+                continue;
+            }
+            $key = td__filter_text($raw['key'] ?? null, 200);
+            $value = td__filter_text($raw['value'] ?? null, 500);
+            $label = ($raw['label'] ?? null) === null ? $key : td__filter_text($raw['label'], 200);
+            $id0 = ($raw['id'] ?? null) === null ? $key : td__filter_text($raw['id'], 200);
+            if ($key === null || $key === '' || $value === null || $label === null || $id0 === null) {
+                $dropped++;
+                continue;
+            }
+            $base = $id0 !== '' ? $id0 : $key;
+            $id = $base;
+            if (isset($used['k' . $id])) {
+                $n = $next['k' . $base] ?? 2;
+                while (isset($used['k' . $base . '-' . $n])) {
+                    $n++;
+                }
+                $id = $base . '-' . $n;
+                $next['k' . $base] = $n + 1;
+            }
+            $used['k' . $id] = true;
+            $removable = ($raw['removable'] ?? true) !== false;
+            $href = $removable && isset($raw['href']) ? td__filter_href($raw['href']) : null;
+            $out[] = ['id' => $id, 'key' => $key, 'label' => $label !== '' ? $label : $key, 'value' => $value,
+                'removable' => $removable, 'href' => $href];
+        }
+        if ($dropped) {
+            trigger_error("td_filter_chips: $dropped item(s) dropped — key / value / label / id must be strings or numbers (one item per value)", E_USER_WARNING);
+        }
+        if ($capped) {
+            trigger_error('td_filter_chips: too many items — at most 200 chips (800 entries inspected) are printed', E_USER_WARNING);
+        }
+        return $out;
+    }
+
+    /**
+     * @internal A chip link (review SEC-2): Td::safeUrl(), then RELATIVE only — no scheme, no protocol-relative `//`, no
+     * backslash (PHP cannot know the page origin; the JS side keeps same-origin URLs). ≤ 8192 bytes. Else null.
+     */
+    function td__filter_href(mixed $v): ?string
+    {
+        if (!is_string($v) || strlen($v) > 32768) {
+            return null;
+        }
+        $u = Td::safeUrl($v);
+        if ($u === '' || strlen($u) > 8192 || str_contains($u, '\\') || str_starts_with($u, '//')
+            || preg_match('/^[A-Za-z][A-Za-z0-9+.\-]*:/', $u)) {
+            return null;
+        }
+        return $u;
+    }
+
+    /**
+     * @internal A chip field: string or finite number (cast like JavaScript String(n) — td__js_number) → bounded to 4 ×
+     * $max bytes (a cut UTF-8 sequence trimmed), control characters removed, first $max code points; else null.
+     */
+    function td__filter_text(mixed $v, int $max): ?string
+    {
+        if (is_int($v)) {
+            $v = (string) $v;
+        } elseif (is_float($v) && is_finite($v)) {
+            $v = td__js_number($v);
+        } elseif (!is_string($v)) {
+            return null;
+        }
+        if (strlen($v) > $max * 4) {
+            $v = substr($v, 0, $max * 4);
+            for ($i = 0; $i < 3 && preg_match('//u', $v) !== 1; $i++) {
+                $v = substr($v, 0, -1); // a multi-byte character cut by the bound
+            }
+        }
+        $clean = preg_replace('/[\x{0}-\x{1F}\x{7F}-\x{9F}]/u', '', $v);
+        return $clean === null ? null : td__utf8_prefix($clean, $max);
+    }
+
+    /**
+     * @internal ECMAScript Number::toString(x) for a finite float (review ISSUE-2): -0 → "0", shortest round-trip digits
+     * (serialize_precision -1), plain notation for 1e-7 < |x| < 1e21, else "de+n" / "d.ddde-n".
+     */
+    function td__js_number(float $f): string
+    {
+        if ($f == 0.0) {
+            return '0';
+        }
+        $old = ini_set('serialize_precision', '-1');
+        $r = var_export(abs($f), true);
+        if ($old !== false) {
+            ini_set('serialize_precision', $old);
+        }
+        if (!preg_match('/^(\d+)(?:\.(\d+))?(?:E([+-]\d+))?$/i', $r, $m)) {
+            return (string) $f;
+        }
+        $digits = $m[1] . ($m[2] ?? '');
+        $n = strlen($m[1]) + (int) ($m[3] ?? 0);
+        $trimmed = ltrim($digits, '0');
+        $n -= strlen($digits) - strlen($trimmed);
+        $digits = rtrim($trimmed, '0');
+        $k = strlen($digits);
+        if ($k <= $n && $n <= 21) {
+            $s = $digits . str_repeat('0', $n - $k);
+        } elseif (0 < $n && $n <= 21) {
+            $s = substr($digits, 0, $n) . '.' . substr($digits, $n);
+        } elseif (-6 < $n && $n <= 0) {
+            $s = '0.' . str_repeat('0', -$n) . $digits;
+        } else {
+            $e = $n - 1;
+            $s = $digits[0] . ($k > 1 ? '.' . substr($digits, 1) : '') . 'e' . ($e < 0 ? '-' : '+') . abs($e);
+        }
+        return ($f < 0 ? '-' : '') . $s;
     }
 
     /**

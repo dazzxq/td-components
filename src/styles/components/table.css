@@ -27,6 +27,8 @@
  * shared .td-check mark (its states come from check.css via aria-checked / :disabled); selected rows
  * [data-selected] tinted (--td-table-row-selected), selected cards get an accent border; in card mode the control
  * shares the primary line and "select all on this page" is the FIRST chip of the sort bar (label visible).
+ * v0.39.0 (plan v0.39.0-filters-range QĐ 8–10): hidden columns ([hidden] on th / td, both modes) + the column-menu
+ * button .td-table__columns in the header.
  */
 @layer td.tokens {
 	:root {
@@ -146,6 +148,27 @@
 	.td-table__header[hidden],
 	.td-table__pagination[hidden],
 	.td-table__footer[hidden] {
+		display: none;
+	}
+
+	/* v0.39.0 (plan v0.39.0-filters-range QĐ 10): the "Cột" column-menu button (a ghost td-btn: its hover / pressed
+	   looks are button.css's) sits between the title and the top pagination */
+	.td-table__columns {
+		flex: none;
+		/* neutral ink at rest / hover / pressed (the ghost accent ink is 4.6:1 on the dark table fill — contrast gate v039) */
+		--td-btn-ghost-fg: var(--td-table-fg);
+		--td-btn-ghost-hover-fg: var(--td-table-fg);
+	}
+
+	.td-table__columns-icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+
+	/* v0.39.0 (QĐ 8): a hidden column = the `hidden` attribute on its th / td / skeleton cells. Higher specificity than
+	   the card rules (they give cells a display) so a hidden field leaves the card and its sort chip leaves the bar. */
+	.td-table .td-table__th[hidden],
+	.td-table .td-table__cell[hidden] {
 		display: none;
 	}
 

@@ -124,6 +124,21 @@ hàm `() => items` để mỗi lần mở đọc lại model.
 - `checkbox`: bấm là đảo trạng thái **tại chỗ**, menu **vẫn mở**. Từ 0.36.0 mục hiện
   [ô tick chung](checkbox.md#phần-hình-dùng-chung-td-check-0360) cỡ `sm` **luôn hiện** (hộp rỗng khi tắt, đã tick khi bật —
   đúng hình `td-checkbox`); trước là ✓ trần chỉ hiện khi bật.
+- Từ 0.39.0, `onSelect` của mục **checkbox** nhận thêm `ctx.setDisabled(id, disabled, hint?)`: khoá / mở khoá mục
+  khác (theo `id` của item) **ngay khi menu đang mở** (`aria-disabled`, mục khoá không chọn được); `hint` (chữ, tuỳ chọn)
+  thay gợi ý của mục đó (`''` = bỏ gợi ý). Dùng cho luật kiểu "phải còn ít nhất một mục bật" — `td-table` `column-menu`
+  dùng nó cho `min-visible`:
+
+  ```js
+  TdMenu.bind(trigger, () => cols.map((c) => ({
+    type: 'checkbox', id: c.key, label: c.label, checked: c.on, disabled: c.on && onCount() === 1,
+    onSelect: (ctx) => {
+      c.on = ctx.checked;
+      const last = onCount() === 1;
+      for (const o of cols) ctx.setDisabled(o.key, o.on && last, o.on && last ? 'Cần ít nhất 1 cột' : '');
+    },
+  })));
+  ```
 - `radio`: bấm chọn một mục trong cùng `group`, menu **đóng**, `ctx.checked` luôn là `true`. Radio **giữ dấu ✓** (chỉ hiện
   ở mục đang chọn) — ngữ nghĩa chọn một, không phải hộp.
 - Item có `checked` (boolean) mà không có `type` → được coi là `radio` (tương thích dwp).

@@ -114,6 +114,16 @@ v0.37.0 row selection (intentional new states, td.css only, no `style`): `select
 `mixed`, row 0 selected + its control focused, row 1 not selected, row 2 selected AND locked by `rowSelectable` → mark
 50 %), `selection-all` (header `true`), `selection-cards` (layout cards: "Chọn tất cả trên trang" chip first in the sort
 bar, selected card accent border), `selection-single` (exclusive checkbox, header text visually hidden).
+v0.39.0 (intentional new states, td.css only): `column-menu` (title + "Cột" ghost button, a hidden column = `[hidden]`
+th / td `display: none`, the TdMenu of checkbox items open with one locked item + its hint; `min-visible="3"`) and
+`controlled-loading` (`controlled` server mode after `setFilters()`: skeleton + `aria-busy` while both paginations stay).
+`width` / `height` (+ the menu position) excluded: text boxes follow the platform font metrics (Linux CI).
+
+### td-filter-chips (v0.39.0, new component — td.css only)
+States: `default` (720px: a fixed chip + removable chips, label bold, value cut with …, × buttons, "Xoá tất cả"),
+`overflow` (320px container: one scrolling row, `data-scroll-end` edge mask, the 10px block padding pulled back, "Xoá tất
+cả" pinned), `link` (× and "Xoá tất cả" as links — PHP / no-JS chips). `width` / `height` excluded (font metrics); the
+layout budgets are gated by test:responsive and the engines tests. (3)
 
 ### td-modal (1 declarative; portaled to body)
 Styled el: `.td-modal-content` (box-shadow + backdrop-filter), `.td-modal-backdrop`.

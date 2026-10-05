@@ -114,3 +114,12 @@ export const SCAN_INPUT_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'scan-input.htm
 export function renderScanInputFixture() {
   return renderPhp('scan-input-fixture.php');
 }
+
+// v0.39.0: td_filter_chips (always the element <td-filter-chips data-td-ssr="filter-chips@1">).
+export const FILTER_CHIPS_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'filter-chips.fixtures.json'), 'utf8'));
+export const FILTER_CHIPS_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'filter-chips.html');
+
+/** Render test/ssr/filter-chips-fixture.php (the HTML loaded by the filter-chips SSR browser test). */
+export function renderFilterChipsFixture() {
+  return renderPhp('filter-chips-fixture.php');
+}

@@ -43,7 +43,8 @@
       "td-media-field": "/src/form/td-media-field.js",
       "td-cropper": "/src/form/td-cropper.js",
       "td-action-button": "/src/form/td-action-button.js",
-      "td-scan-input": "/src/form/td-scan-input.js"
+      "td-scan-input": "/src/form/td-scan-input.js",
+      "td-filter-chips": "/src/display/td-filter-chips.js"
     },
     "tokenNative": [
       "td-button",
@@ -87,7 +88,8 @@
       "td-media-field",
       "td-cropper",
       "td-action-button",
-      "td-scan-input"
+      "td-scan-input",
+      "td-filter-chips"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -1144,6 +1146,53 @@
         ".td-table__row[data-row-idx=\"1\"] .td-check"
       ],
       "settle": 400
+    },
+    {
+      "state": "column-menu",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('title','Người dùng'); t.setAttribute('column-menu',''); t.setAttribute('min-visible','3'); t.setAttribute('layout','table'); window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên',sortable:true},{key:'role',label:'Vai trò',sortable:true},{key:'email',label:'Email'},{key:'status',label:'Trạng thái',hidden:true}]; t.data=[{id:1,name:'An',role:'Admin',email:'an@x.vn',status:'A'},{id:2,name:'Bình',role:'Editor',email:'binh@x.vn',status:'B'},{id:3,name:'Chi',role:'Viewer',email:'chi@x.vn',status:'A'}]; t.querySelector('.td-table__columns').click();",
+      "selectors": [
+        ".td-table__header",
+        ".td-table__columns",
+        ".td-table__columns-icon",
+        ".td-table__th[hidden]",
+        ".td-table__cell[hidden]",
+        ".td-menu",
+        ".td-menu__item[role=\"menuitemcheckbox\"]",
+        ".td-menu__item[aria-disabled=\"true\"] .td-menu__hint"
+      ],
+      "portal": [
+        ".td-menu",
+        ".td-menu__item[role=\"menuitemcheckbox\"]",
+        ".td-menu__item[aria-disabled=\"true\"] .td-menu__hint"
+      ],
+      "settle": 400,
+      "excludeProps": [
+        "width",
+        "height",
+        "top",
+        "left",
+        "right",
+        "bottom"
+      ],
+      "excludeNote": "v0.39.0: the menu is positioned under the trigger (top / left / right / bottom follow the title width); text-bearing boxes (labels, values, the 'Cột' / 'Xoá tất cả' buttons, menu items) size with the font metrics of the platform (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards): width / height are excluded here; the layout budgets (no overflow, one line per chip, 44px touch targets) are gated by test:responsive and the engines tests"
+    },
+    {
+      "state": "controlled-loading",
+      "setup": "const t=document.createElement('td-table'); t.id='probe'; t.setAttribute('server-mode',''); t.setAttribute('controlled',''); t.setAttribute('total-items','23'); t.setAttribute('per-page','3'); t.setAttribute('loading-rows','3'); t.setAttribute('layout','table'); window.__mount.appendChild(t); t.columns=[{key:'name',label:'Tên',sortable:true},{key:'role',label:'Vai trò',sortable:true},{key:'email',label:'Email'},{key:'status',label:'Trạng thái',hidden:true}]; t.data=[{id:1,name:'An',role:'Admin',email:'an@x.vn',status:'A'},{id:2,name:'Bình',role:'Editor',email:'binh@x.vn',status:'B'},{id:3,name:'Chi',role:'Viewer',email:'chi@x.vn',status:'A'}]; t.setFilters({q:'a'});",
+      "selectors": [
+        ".td-table[data-state=\"loading\"]",
+        ".td-table__table[aria-busy=\"true\"]",
+        ".td-table__footer",
+        ".td-table__row--skeleton",
+        ".td-table__row--skeleton .td-table__cell[hidden]",
+        ".td-table__skeleton"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height"
+      ],
+      "excludeNote": "v0.39.0: a controlled request in flight — skeleton + aria-busy while BOTH paginations stay (focus kept). The footer holds the pagination text; text-bearing boxes (labels, values, the 'Cột' / 'Xoá tất cả' buttons, menu items) size with the font metrics of the platform (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards): width / height are excluded here; the layout budgets (no overflow, one line per chip, 44px touch targets) are gated by test:responsive and the engines tests"
     }
   ],
   "td-modal": [
@@ -3756,6 +3805,63 @@
         "transform"
       ],
       "excludeNote": "the pending spinner rotates (CSS animation): its transform depends on the frame"
+    }
+  ],
+  "td-filter-chips": [
+    {
+      "state": "default",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','720px'); window.__mount.appendChild(w); const c=document.createElement('td-filter-chips'); c.id='probe'; w.appendChild(c); c.items=[{key:'kho',label:'Kho',value:'Hà Nội',removable:false},{key:'status',label:'Trạng thái',value:'Đang bán'},{id:'tag-new',key:'tag',label:'Nhãn',value:'Mới'},{key:'q',label:'Tìm',value:'iphone 15 pro max 256GB chính hãng VN/A'}];",
+      "selectors": [
+        "td-filter-chips",
+        ".td-filter-chips",
+        ".td-filter-chips__list",
+        ".td-filter-chips__item",
+        ".td-filter-chips__item[data-removable=\"false\"]",
+        ".td-filter-chips__label",
+        ".td-filter-chips__sep",
+        ".td-filter-chips__value",
+        "button.td-filter-chips__remove",
+        ".td-filter-chips__icon",
+        "button.td-filter-chips__clear"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height"
+      ],
+      "excludeNote": "v0.39.0: text-bearing boxes (labels, values, the 'Cột' / 'Xoá tất cả' buttons, menu items) size with the font metrics of the platform (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards): width / height are excluded here; the layout budgets (no overflow, one line per chip, 44px touch targets) are gated by test:responsive and the engines tests"
+    },
+    {
+      "state": "overflow",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','320px'); window.__mount.appendChild(w); const c=document.createElement('td-filter-chips'); c.id='probe'; w.appendChild(c); c.items=[{key:'kho',label:'Kho',value:'Hà Nội',removable:false},{key:'status',label:'Trạng thái',value:'Đang bán'},{id:'tag-new',key:'tag',label:'Nhãn',value:'Mới'},{key:'q',label:'Tìm',value:'iphone 15 pro max 256GB chính hãng VN/A'}];",
+      "selectors": [
+        ".td-filter-chips",
+        ".td-filter-chips__list",
+        ".td-filter-chips__list[data-scroll-end]",
+        ".td-filter-chips__item",
+        "button.td-filter-chips__clear"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "width",
+        "height"
+      ],
+      "excludeNote": "v0.39.0: container < 480 → one scrolling row (nowrap, overflow-x auto, edge mask, the 10px block padding pulled back) with 'Xoá tất cả' pinned after it; text-bearing boxes (labels, values, the 'Cột' / 'Xoá tất cả' buttons, menu items) size with the font metrics of the platform (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards): width / height are excluded here; the layout budgets (no overflow, one line per chip, 44px touch targets) are gated by test:responsive and the engines tests"
+    },
+    {
+      "state": "link",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','720px'); window.__mount.appendChild(w); const c=document.createElement('td-filter-chips'); c.id='probe'; c.setAttribute('clear-href','?'); w.appendChild(c); c.items=[{key:'status',label:'Trạng thái',value:'Đang bán',href:'?q=iphone'},{key:'q',label:'Tìm',value:'iphone',href:'?status=selling'}];",
+      "selectors": [
+        "a.td-filter-chips__remove",
+        "a.td-filter-chips__remove .td-icon",
+        "a.td-filter-chips__clear"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height"
+      ],
+      "excludeNote": "v0.39.0: × and 'Xoá tất cả' as links (PHP / no-JS chips): same look as the buttons, no underline; text-bearing boxes (labels, values, the 'Cột' / 'Xoá tất cả' buttons, menu items) size with the font metrics of the platform (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards): width / height are excluded here; the layout budgets (no overflow, one line per chip, 44px touch targets) are gated by test:responsive and the engines tests"
     }
   ]
 }

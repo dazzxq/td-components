@@ -690,3 +690,46 @@ describe('v0.12 TdMenu — golden contract', () => {
     }
   });
 });
+
+describe('v0.39.0 TdMenu — checkbox ctx.setDisabled(id, disabled, hint?) (plan v0.39.0 QĐ 10)', () => {
+  it('locks / unlocks another item while the menu stays open; the hint follows; ids are data-item', async () => {
+    const b = btn();
+    const list = [
+      { label: 'Tên', id: 'a', type: 'checkbox', checked: true, onSelect: (c) => c.setDisabled('b', c.checked === false, c.checked === false ? 'Cần ít nhất 1 cột' : '') },
+      { label: 'Vai trò', id: 'b', type: 'checkbox', checked: true },
+    ];
+    TdMenu.bind(b, list);
+    b.focus();
+    await sendKeys({ press: 'Enter' });
+    const its = items();
+    expect(its[1].hasAttribute('aria-disabled')).to.equal(false);
+    await sendKeys({ press: 'Space' }); // "Tên" off → "Vai trò" locked
+    expect(TdMenu.isOpen(b)).to.equal(true);
+    expect(its[1].getAttribute('aria-disabled')).to.equal('true');
+    const hint = its[1].querySelector('.td-menu__hint');
+    expect(hint.textContent).to.equal('Cần ít nhất 1 cột');
+    expect(its[1].getAttribute('aria-describedby')).to.equal(hint.id);
+    expect(its[1].getAttribute('aria-labelledby')).to.equal(its[1].querySelector('.td-menu__label').id);
+    // a locked item is inert (no toggle)
+    await sendKeys({ press: 'ArrowDown' });
+    await sendKeys({ press: 'Space' });
+    expect(its[1].getAttribute('aria-checked')).to.equal('true');
+    await sendKeys({ press: 'ArrowUp' });
+    await sendKeys({ press: 'Space' }); // "Tên" on again → unlocked, hint removed
+    expect(its[1].hasAttribute('aria-disabled')).to.equal(false);
+    expect(its[1].querySelector('.td-menu__hint')).to.equal(null);
+    expect(its[1].hasAttribute('aria-describedby')).to.equal(false);
+    expect(same(active(), its[0])).to.equal(true);
+  });
+
+  it('unknown id / closed menu / non-string hint: no throw, nothing changes', async () => {
+    const b = btn();
+    let saved = null;
+    TdMenu.open(b, [{ label: 'A', id: 'a', type: 'checkbox', onSelect: (c) => { saved = c.setDisabled; c.setDisabled('zzz', true); } },
+      { label: 'B', id: 'b', type: 'checkbox' }], { focus: 'first' });
+    await sendKeys({ press: 'Space' });
+    expect(items().some((n) => n.hasAttribute('aria-disabled'))).to.equal(false);
+    TdMenu.close();
+    expect(() => saved('b', true)).to.not.throw();
+  });
+});

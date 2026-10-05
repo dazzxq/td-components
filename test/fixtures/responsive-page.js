@@ -8,6 +8,8 @@
  * dropzone are included. v0.35.0: td-cropper (inline: full width + the 280 px column), the crop dialog and the picker crop
  * step (openers `cropDialog` / `pickerCrop`). v0.36.1: `#rsp-table-density` (5 short columns, card density budget). v0.37.0: it is `selectable` (row 2 selected).
  * v0.38.0: td-scan-input (single + multiple with 30 rows, beep; one in the 280 px column).
+ * v0.39.0: section `filters` — a filter bar (search + dropdown) → `#rsp-chips` (td-filter-chips) → `#rsp-table-filters`
+ * (server-mode controlled, column-menu, the "Số điện thoại" column hidden).
  */
 import '../../src/form/td-button.js';
 import '../../src/form/td-action-button.js'; // v0.36.0
@@ -31,6 +33,7 @@ import '../../src/display/td-empty-state.js';
 import '../../src/display/td-copy.js';
 import '../../src/display/td-masked-value.js';
 import '../../src/display/td-sortable.js';
+import '../../src/display/td-filter-chips.js'; // v0.39.0
 import '../../src/feedback/td-alert.js';
 import '../../src/feedback/td-progress.js';
 import '../../src/feedback/td-tooltip.js';
@@ -219,6 +222,14 @@ export function mountResponsiveFixture(root) {
       <figure data-td-lightbox-item data-td-lightbox-src="/test/fixtures/1.svg"><img src="/test/fixtures/1.svg" alt="Ảnh 1" class="rsp-thumb"></figure>
       <figure data-td-lightbox-item data-td-lightbox-src="/test/fixtures/2.svg"><img src="/test/fixtures/2.svg" alt="Ảnh 2" class="rsp-thumb"></figure>
     </div>
+  </section>
+  <section class="rsp-section" data-section="filters"><h2>Danh sách có bộ lọc</h2>
+    <form class="rsp-row" id="rsp-filter-form" role="search">
+      <td-input-field id="rsp-filter-q" label="Tìm đơn" placeholder="Mã đơn, tên khách…" value="iphone"></td-input-field>
+      <td-dropdown id="rsp-filter-status" label="Trạng thái"></td-dropdown>
+    </form>
+    <td-filter-chips id="rsp-chips" empty-focus="rsp-filter-q"></td-filter-chips>
+    <td-table id="rsp-table-filters" title="Đơn hàng" server-mode controlled column-menu total-items="120" per-page="5"></td-table>
   </section>`;
 
   const options = [
@@ -252,6 +263,19 @@ export function mountResponsiveFixture(root) {
   const imeis = Array.from({ length: 30 }, (_, i) => `35693803564${String(3800 + i).padStart(4, '0')}`);
   root.querySelector('#rsp-scan-multi').values = imeis;
   root.querySelector('#rsp-scan-narrow').values = imeis.slice(0, 3);
+  // v0.39.0: filter bar → chips → controlled server table (column menu, one hidden column)
+  root.querySelector('#rsp-filter-status').options = [{ value: '', label: 'Tất cả' }, { value: 'new', label: 'Chờ xác nhận' }, { value: 'ship', label: 'Đang giao' }];
+  root.querySelector('#rsp-chips').items = [
+    { key: 'shop', label: 'Kho', value: 'Hà Nội', removable: false },
+    { key: 'q', label: 'Tìm', value: 'iphone' },
+    { key: 'status', label: 'Trạng thái', value: 'Chờ xác nhận' },
+    { id: 'tag-1', key: 'tag', label: 'Nhãn', value: 'Khách quen' },
+    { id: 'tag-2', key: 'tag', label: 'Nhãn', value: 'Đơn trả góp 0 % kỳ hạn 12 tháng' },
+  ];
+  const ft = root.querySelector('#rsp-table-filters');
+  ft.hiddenColumns = ['phone'];
+  ft.columns = orderColumns();
+  ft.setState({ page: 1, filters: { q: 'iphone', status: 'new' }, data: ORDERS.slice(0, 5).map((o) => ({ ...o })) });
   root.querySelector('#rsp-empty').actions = [{ label: 'Tạo đơn hàng mới', variant: 'primary' }, { label: 'Nhập từ tệp Excel', variant: 'secondary' }];
 
   TdMenu.define('rsp-menu', [
