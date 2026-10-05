@@ -14,6 +14,7 @@ import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { HAS_PHP, PHP_BIN, ROOT } from './php.mjs';
 import { CHOICE_FIXTURES, CHOICE_FIXTURE_FILE, renderChoiceFixture } from '../ssr/ssr.mjs';
+import { CHOICE_LIMITS } from '../../src/utils/choice-options.js';
 
 if (!HAS_PHP && process.env.TD_REQUIRE_PHP) throw new Error('TD_REQUIRE_PHP=1 but no php >= 8.0 CLI on PATH');
 const opts = { skip: !HAS_PHP && 'php >= 8.0 CLI not found' };
@@ -100,13 +101,14 @@ describe('php/td.php — td_choice_group (v0.49.0, contract choice-group@1)', op
     assert.ok(!html.includes('aria-required'));
   });
 
-  test('invalid options dropped with ONE warning each — position / key / type, never the raw value', () => {
+  test('review S1: invalid options dropped, ONE aggregate warning (counts only) — never a raw value', () => {
     const { html, warns } = one('w', [
       { value: 'ok', label: 'OK' }, 'SECRET1', { label: 'SECRET2' }, { value: 'SECRET3' }, { value: ['SECRET4'], label: 'x' },
       { value: 'ok', label: 'SECRET5' }, { value: 'b', label: 'B', swatch: 'red;}SECRET6', image: 'javascript:SECRET7', hint: 5 },
     ], 'SECRET8');
     assert.deepEqual(radios(html).map((r) => /value="([^"]*)"/.exec(r)[1]), ['ok', 'b']);
-    assert.equal(warns.length, 9);
+    assert.equal(warns.length, 1);
+    assert.match(warns[0], /5 option\(s\) dropped, 3 field\(s\) ignored or shortened.*not one of the options/);
     for (const w of warns) assert.doesNotMatch(w, /SECRET/);
     assert.ok(!html.includes('fill=') && !html.includes('<img'));
   });
@@ -116,6 +118,7 @@ describe('php/td.php — td_choice_group (v0.49.0, contract choice-group@1)', op
     assert.equal(radios(html).length, 1);
     assert.ok(/ checked/.test(radios(html)[0]));
     assert.equal(warns.length, 1);
+    assert.match(warns[0], /^td_choice_group: 1 option\(s\) dropped, 0 field/);
   });
 
   test('swatch image URL — test/ssr/media-url.cases.json (php column), with and without Td::allowHttpLinks', () => {
@@ -131,6 +134,54 @@ describe('php/td.php — td_choice_group (v0.49.0, contract choice-group@1)', op
     const { html } = one('', [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }], null, { id: 'g' });
     assert.ok(radios(html).every((r) => r.includes('name="g-group"') && r.includes('form=""')));
     assert.ok(!/<td-choice-group [^>]*name=/.test(html));
+  });
+
+  test('review S1: Td::CHOICE_LIMITS = the JS CHOICE_LIMITS', () => {
+    const r = spawnSync(PHP_BIN, ['-r', `require ${JSON.stringify(join(ROOT, 'php/td.php'))}; echo json_encode(TdComponents\\Td::CHOICE_LIMITS);`], { encoding: 'utf8' });
+    assert.deepEqual(JSON.parse(r.stdout), { ...CHOICE_LIMITS });
+  });
+
+  test('review S1: 100 000 candidates / huge strings → 400 inspected, 100 printed, one warning, bounded time and output', () => {
+    const code = `require ${JSON.stringify(join(ROOT, 'php/td.php'))}; TdComponents\\Td::configure('/', ${JSON.stringify(ROOT)});`
+      + ' $o = []; for ($i = 0; $i < 100000; $i++) { $o[] = ["value" => "v$i", "label" => "L$i"]; }'
+      + ' $o[0] = ["value" => "a", "label" => str_repeat("😀", 300), "hint" => str_repeat("á", 5000000), "unavailable" => true, "unavailable_label" => str_repeat("x", 5000000)];'
+      + ' $o[1] = ["value" => str_repeat("x", 5000000), "label" => "V"];'
+      + ' $o[2] = ["value" => "b", "label" => "B", "swatch" => "#fff" . str_repeat(" ", 5000000), "image" => "https://cdn.test/" . str_repeat("a", 5000000)];'
+      + ' $w = []; set_error_handler(function (int $n, string $m) use (&$w): bool { $w[] = $m; return true; });'
+      + ' $t = microtime(true); $h = td_choice_group("big", $o); $ms = (microtime(true) - $t) * 1000;'
+      + ' echo json_encode(["ms" => $ms, "len" => strlen($h), "radios" => substr_count($h, "<input "), "w" => $w], JSON_UNESCAPED_UNICODE);';
+    const r = spawnSync(PHP_BIN, ['-d', 'memory_limit=512M', '-d', 'xdebug.mode=off', '-r', code], { encoding: 'utf8', maxBuffer: 1 << 26 });
+    assert.equal(r.status, 0, r.stderr);
+    const o = JSON.parse(r.stdout);
+    assert.equal(o.radios, 100);
+    assert.equal(o.w.length, 1, o.w.join('\n'));
+    assert.match(o.w[0], /99900 option\(s\) dropped, 5 field\(s\)/);
+    assert.ok(o.len < 120000, `output ${o.len} bytes`);
+    assert.ok(o.ms < 2000 * (process.env.TD_PERF_STRICT ? 1 : 20), `${o.ms} ms`);
+  });
+
+  test('review S2: canonical values — test/ssr/choice-value.cases.json (shared + php raw-byte cases)', () => {
+    const T = JSON.parse(readFileSync(join(ROOT, 'test/ssr/choice-value.cases.json'), 'utf8'));
+    const items = [...T.cases.map((c) => ({ expr: `json_decode(${JSON.stringify(JSON.stringify(c.in))})`, out: c.out, label: JSON.stringify(c.in).slice(0, 30) })),
+      ...T.phpOnly.map((c) => ({ expr: `hex2bin('${c.hex}')`, out: c.out, label: c.hex }))];
+    const code = `require ${JSON.stringify(join(ROOT, 'php/td.php'))}; echo json_encode([${items.map((x) => `td__choice_value(${x.expr})`).join(', ')}], JSON_UNESCAPED_UNICODE);`;
+    const r = spawnSync(PHP_BIN, ['-r', code], { encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+    const got = JSON.parse(r.stdout);
+    items.forEach((x, i) => assert.equal(got[i], x.out, x.label));
+  });
+
+  test('review S2: rejected values (CRLF, NUL, invalid UTF-8) count into the one warning; duplicates compare canonical values', () => {
+    const code = `require ${JSON.stringify(join(ROOT, 'php/td.php'))}; TdComponents\\Td::configure('/', ${JSON.stringify(ROOT)});`
+      + ' $w = []; set_error_handler(function (int $n, string $m) use (&$w): bool { $w[] = $m; return true; });'
+      + ' $h = td_choice_group("v", [["value" => "a\\r\\nb", "label" => "C"], ["value" => "a\\x00", "label" => "N"], ["value" => "x\\xff", "label" => "U"], ["value" => 5, "label" => "five"], ["value" => "5", "label" => "dup"]]);'
+      + ' echo json_encode(["h" => $h, "w" => $w]);';
+    const r = spawnSync(PHP_BIN, ['-r', code], { encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+    const o = JSON.parse(r.stdout);
+    assert.deepEqual(radios(o.h).map((x) => /value="([^"]*)"/.exec(x)[1]), ['5']);
+    assert.equal(o.w.length, 1);
+    assert.match(o.w[0], /4 option\(s\) dropped/);
   });
 
   test('test/ssr/fixtures/choice.html is up to date (node test/ssr/build-choice-fixture.mjs)', () => {

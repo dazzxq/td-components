@@ -352,6 +352,12 @@ namespace TdComponents {
         public const SSR_CHOICE = 'choice-group@1';
         /** v0.49.0: default texts of td_choice_group = TdChoiceGroup.messages (state: the component re-applies its own). */
         public const CHOICE_LABELS = ['unavailable' => 'Hết hàng'];
+        /**
+         * v0.49.0 review S1: bounded work of td_choice_group = src/utils/choice-options.js CHOICE_LIMITS (entries read, options
+         * accepted, code points per field: text cut, value / swatch / image refused when longer).
+         */
+        public const CHOICE_LIMITS = ['candidates' => 400, 'options' => 100, 'value' => 200, 'label' => 200, 'hint' => 200,
+            'note' => 100, 'swatch' => 128, 'image' => 8192];
 
         /**
          * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.48.0') —
@@ -6850,68 +6856,67 @@ namespace {
      */
     function td_choice_group(string $name, array $options, string|int|null $value = null, array $o = []): string
     {
-        $warn = static function (string $msg): void {
-            trigger_error("td_choice_group: $msg", E_USER_WARNING);
-        };
-        $type = static fn (mixed $v): string => get_debug_type($v);
+        $L = Td::CHOICE_LIMITS;
         $list = [];
         $seen = [];
-        $i = -1;
+        $dropped = 0;
+        $ignored = 0;
+        // review S1: bounded — at most `candidates` entries are read, at most `options` accepted
+        $n = 0;
         foreach ($options as $opt) {
-            $i++;
+            if ($n === $L['candidates'] || count($list) === $L['options']) {
+                break;
+            }
+            $n++;
             if (!is_array($opt)) {
-                $warn("option #$i is not an array ({$type($opt)}) — dropped");
+                $dropped++;
                 continue;
             }
-            $v = $opt['value'] ?? null;
-            if (is_int($v)) {
-                $v = (string) $v;
-            }
-            if (!is_string($v) || $v === '') {
-                $warn("option #$i: value must be a non-empty string or an int ({$type($opt['value'] ?? null)}) — dropped");
-                continue;
-            }
+            $v = td__choice_value($opt['value'] ?? null);
             $label = $opt['label'] ?? null;
-            if (!is_string($label) || trim($label) === '') {
-                $warn("option #$i: label must be a non-empty string ({$type($label)}) — dropped");
+            if ($v === null || !is_string($label) || isset($seen[$v])) {
+                $dropped++;
                 continue;
             }
-            if (isset($seen[$v])) {
-                $warn("option #$i: duplicate value (" . strlen($v) . ' bytes) — dropped');
+            $short = td__choice_text($label, $L['label']);
+            if ($short === null || trim($short) === '') {
+                $dropped++;
                 continue;
+            }
+            if ($short !== $label) {
+                $ignored++;
             }
             $seen[$v] = true;
-            $text = static function (string $k) use ($opt, $i, $warn, $type): string {
+            $text = static function (string $k, int $cap) use ($opt, &$ignored): string {
                 $t = $opt[$k] ?? null;
                 if ($t === null || $t === '') {
                     return '';
                 }
-                if (is_string($t)) {
-                    return $t;
+                $cut = is_string($t) ? td__choice_text($t, $cap) : null;
+                if ($cut !== $t) {
+                    $ignored++;
                 }
-                $warn("option #$i: $k must be a string ({$type($t)}) — ignored");
-                return '';
+                return $cut ?? '';
             };
-            $swatch = '';
-            if (isset($opt['swatch']) && $opt['swatch'] !== '') {
-                $swatch = Td::safeColor($opt['swatch']);
-                if ($swatch === '') {
-                    $warn("option #$i: swatch is not a safe colour ({$type($opt['swatch'])}) — no colour");
+            $gated = static function (mixed $t, int $cap, callable $gate) use (&$ignored): string {
+                if ($t === null || $t === '') {
+                    return '';
                 }
-            }
-            $image = '';
-            if (isset($opt['image']) && $opt['image'] !== '') {
-                $image = td__media_url($opt['image']) ?? '';
-                if ($image === '') {
-                    $warn("option #$i: image URL refused ({$type($opt['image'])}) — not shown");
+                $out = is_string($t) && !td__choice_over($t, $cap) ? (string) ($gate($t) ?? '') : '';
+                if ($out === '') {
+                    $ignored++;
                 }
-            }
+                return $out;
+            };
             $list[] = [
-                'value' => $v, 'label' => $label, 'hint' => $text('hint'), 'swatch' => $swatch, 'image' => $image,
+                'value' => $v, 'label' => $short, 'hint' => $text('hint', $L['hint']),
+                'swatch' => $gated($opt['swatch'] ?? null, $L['swatch'], static fn (string $c): string => Td::safeColor($c)),
+                'image' => $gated($opt['image'] ?? null, $L['image'], static fn (string $u): ?string => td__media_url($u)),
                 'disabled' => ($opt['disabled'] ?? false) === true, 'unavailable' => ($opt['unavailable'] ?? false) === true,
-                'note' => $text('unavailable_label'),
+                'note' => $text('unavailable_label', $L['note']),
             ];
         }
+        $dropped += count($options) - $n;
         $variant = ($o['variant'] ?? null) === 'swatch' ? 'swatch' : 'button';
         $swatchMode = $variant === 'swatch';
         $sel = $value === null ? '' : (string) $value;
@@ -6921,9 +6926,13 @@ namespace {
                 $current = $it;
             }
         }
-        if ($sel !== '' && $current === null) {
-            $warn('value is not one of the options — nothing selected');
+        $missing = $sel !== '' && $current === null;
+        if ($missing) {
             $sel = '';
+        }
+        if ($dropped || $ignored || $missing) { // review S1: ONE aggregate warning, counts only — never a value
+            trigger_error("td_choice_group: $dropped option(s) dropped, $ignored field(s) ignored or shortened (invalid, duplicate or over the limits: {$L['candidates']} inspected, {$L['options']} options)"
+                . ($missing ? '; the selected value is not one of the options — nothing selected' : ''), E_USER_WARNING);
         }
         $host = td__str($o['id'] ?? null) ?? td__host_uid($name);
         $h = Td::e($host);
@@ -7016,5 +7025,56 @@ namespace {
             'error-text' => $error,
             'aria-label' => $aria,
         ], $ht) . '>' . $html . '</td-choice-group>';
+    }
+
+    /** @internal v0.49.0 review S1: is $s longer than $n code points? (byte length answers first; bounded) */
+    function td__choice_over(string $s, int $n): bool
+    {
+        if (strlen($s) <= $n) {
+            return false;
+        }
+        if (strlen($s) > 4 * $n) {
+            return true;
+        }
+        return (int) preg_match_all('/./su', $s) > $n;
+    }
+
+    /**
+     * @internal v0.49.0 review S1: the first $n code points of a text field (cut BEFORE any trim / regex on the whole
+     * string); null when the kept part is not valid UTF-8.
+     */
+    function td__choice_text(string $s, int $n): ?string
+    {
+        if (strlen($s) <= $n) {
+            return preg_match('//u', $s) ? $s : null;
+        }
+        $head = substr($s, 0, 4 * $n);
+        for ($k = 0; $k < 3 && !preg_match('//u', $head); $k++) {
+            $head = substr($head, 0, -1); // a code point cut at the byte limit
+        }
+        if (!preg_match('//u', $head)) {
+            return null;
+        }
+        return preg_match('/^.{0,' . $n . '}/su', $head, $m) === 1 ? $m[0] : null;
+    }
+
+    /**
+     * @internal v0.49.0 review S2 — the canonical option value (= src/utils/choice-options.js canonicalValue, shared cases
+     * test/ssr/choice-value.cases.json): int / finite float → its JS String(); a string must be valid UTF-8, 1–200 code
+     * points, without C0 / DEL / C1 controls (\r \n \t refused — values are identifiers); never trimmed. Else null.
+     */
+    function td__choice_value(mixed $v): ?string
+    {
+        if (is_int($v)) {
+            return (string) $v;
+        }
+        if (is_float($v)) {
+            return is_finite($v) ? td__js_number($v) : null;
+        }
+        if (!is_string($v) || $v === '' || td__choice_over($v, Td::CHOICE_LIMITS['value']) || !preg_match('//u', $v)
+            || preg_match('/[\x{0}-\x{1F}\x{7F}-\x{9F}]/u', $v)) {
+            return null;
+        }
+        return $v;
     }
 }

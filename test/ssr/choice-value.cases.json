@@ -1,0 +1,121 @@
+{
+ "//": "v0.49.0 review S2: canonical choice-group option values — src/utils/choice-options.js canonicalValue() and php td__choice_value() must agree (out = the canonical value, null = refused). Values are identifiers: valid UTF-8 / no lone surrogate, no C0 / DEL / C1 control (\\r \\n \\t included), 1–200 code points, never trimmed. jsOnly: lone surrogates (JS strings); phpOnly: raw bytes as hex (invalid UTF-8, overlong encodings, surrogates).",
+ "cases": [
+  {
+   "in": "128",
+   "out": "128"
+  },
+  {
+   "in": "titan-sa-mạc",
+   "out": "titan-sa-mạc"
+  },
+  {
+   "in": "😀x",
+   "out": "😀x"
+  },
+  {
+   "in": " a b ",
+   "out": " a b "
+  },
+  {
+   "in": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "out": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  },
+  {
+   "in": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+   "out": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+  },
+  {
+   "in": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "out": null
+  },
+  {
+   "in": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+   "out": null
+  },
+  {
+   "in": "a\u0000b",
+   "out": null
+  },
+  {
+   "in": "a\r\nb",
+   "out": null
+  },
+  {
+   "in": "a\nb",
+   "out": null
+  },
+  {
+   "in": "a\tb",
+   "out": null
+  },
+  {
+   "in": "\u001f",
+   "out": null
+  },
+  {
+   "in": "ab",
+   "out": null
+  },
+  {
+   "in": "ab",
+   "out": null
+  },
+  {
+   "in": "ab",
+   "out": null
+  },
+  {
+   "in": "",
+   "out": null
+  },
+  {
+   "in": 5,
+   "out": "5"
+  },
+  {
+   "in": 1.5,
+   "out": "1.5"
+  },
+  {
+   "in": true,
+   "out": null
+  },
+  {
+   "in": null,
+   "out": null
+  }
+ ],
+ "jsOnly": [
+  {
+   "in": "a\ud800b",
+   "out": null
+  },
+  {
+   "in": "\udc00",
+   "out": null
+  },
+  {
+   "in": "ok😀",
+   "out": "ok😀"
+  }
+ ],
+ "phpOnly": [
+  {
+   "hex": "61ff62",
+   "out": null
+  },
+  {
+   "hex": "c0af",
+   "out": null
+  },
+  {
+   "hex": "eda080",
+   "out": null
+  },
+  {
+   "hex": "e1bb87",
+   "out": "ệ"
+  }
+ ]
+}

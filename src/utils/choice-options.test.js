@@ -4,7 +4,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { normalizeOptions, sameValueList } from './choice-options.js';
+import { normalizeOptions, sameValueList, canonicalValue, CHOICE_LIMITS } from './choice-options.js';
 import { safeColor } from './css-safe.js';
 import { safeMediaUrl } from './media-url.js';
 
@@ -64,21 +64,24 @@ describe('normalizeOptions — refused entries (one warning each, never the raw 
     ]);
     assert.deepEqual(r.options.map((o) => o.value), ['ok']);
     assert.equal(r.options[0].index, 0);
-    assert.equal(r.warnings.length, 13);
+    assert.equal(r.dropped, 13);
+    assert.equal(r.warnings.length, 1); // ONE aggregate warning (review S1), counts only
     for (const w of r.warnings) assert.doesNotMatch(w, /ZZ\d|QQ\d/);
   });
 
   it('a duplicate value → the later one is dropped + warning', () => {
     const r = norm([{ value: 'a', label: 'A' }, { value: 'a', label: 'A2' }, { value: 1, label: 'one' }, { value: '1', label: 'uno' }]);
     assert.deepEqual(r.options.map((o) => o.label), ['A', 'one']);
-    assert.equal(r.warnings.length, 2);
+    assert.equal(r.dropped, 2);
+    assert.equal(r.warnings.length, 1);
   });
 
   it('wrong-type hint / unavailableLabel → ignored (option kept) + warning', () => {
     const r = norm([{ value: 'a', label: 'A', hint: 5, unavailableLabel: {} }]);
     assert.equal(r.options[0].hint, '');
     assert.equal(r.options[0].unavailableLabel, '');
-    assert.equal(r.warnings.length, 2);
+    assert.equal(r.ignored, 2);
+    assert.equal(r.warnings.length, 1);
   });
 });
 
@@ -91,7 +94,8 @@ describe('normalizeOptions — swatch colour / image through the gates', () => {
       { value: 'd', label: 'D', swatch: 42 },
     ]);
     assert.deepEqual(r.options.map((o) => o.swatch), ['#3b3b3d', '', '', '']);
-    assert.equal(r.warnings.length, 3);
+    assert.equal(r.ignored, 3);
+    assert.equal(r.warnings.length, 1);
   });
 
   it('image: normalised href through safeMediaUrl; refused → \'\' + warning (swatch kept as the fallback)', () => {
@@ -104,7 +108,8 @@ describe('normalizeOptions — swatch colour / image through the gates', () => {
     assert.deepEqual(r.options.map((o) => [o.image, o.swatch]), [
       ['https://shop.test/sw/a.webp', '#111'], ['', '#222'], ['', ''], ['', ''],
     ]);
-    assert.equal(r.warnings.length, 3);
+    assert.equal(r.ignored, 3);
+    assert.equal(r.warnings.length, 1);
   });
 
   it('gates are required (no implicit pass-through)', () => {
@@ -136,5 +141,71 @@ describe('shared case tables (parity with php)', () => {
       const got = safeMediaUrl(c.url, { baseURI: `${c.page}://shop.test/p/x`, protocol: `${c.page}:` });
       assert.equal(got ? 'keep' : 'refuse', c.js, `${c.url.slice(0, 60)} on ${c.page}`);
     }
+  });
+});
+
+describe('review S1 — bounded work: candidate / option / field limits, one aggregate warning', () => {
+  it('limits are the shared table (php Td::CHOICE_LIMITS is checked against it in test/php/td-ssr-choice.test.js)', () => {
+    assert.deepEqual({ ...CHOICE_LIMITS }, { candidates: 400, options: 100, value: 200, label: 200, hint: 200, note: 100, swatch: 128, image: 8192 });
+    assert.ok(Object.isFrozen(CHOICE_LIMITS));
+  });
+
+  it('100 000 candidates: at most 400 inspected, 100 accepted, ONE warning with the counts, bounded time', () => {
+    const big = Array.from({ length: 100000 }, (_, i) => ({ value: `v${i}`, label: `L${i}` }));
+    const t0 = performance.now();
+    const r = norm(big);
+    const ms = performance.now() - t0;
+    assert.equal(r.options.length, 100);
+    assert.equal(r.dropped, 100000 - 100);
+    assert.equal(r.warnings.length, 1);
+    assert.match(r.warnings[0], /99900 option\(s\) dropped/);
+    assert.ok(ms < 1000 * (process.env.TD_PERF_STRICT ? 1 : 20), `${ms} ms`);
+    // getters past the inspected window are never read
+    let touched = 0;
+    const trap = Array.from({ length: 1000 }, (_, i) => (i < 400 ? { value: `x${i}`, label: 'X' } : { get value() { touched += 1; return 'y'; }, label: 'Y' }));
+    norm(trap);
+    assert.equal(touched, 0);
+  });
+
+  it('many invalid entries → one warning; the inspected window counts invalid ones too', () => {
+    const r = norm([...Array.from({ length: 450 }, () => ({ value: '', label: 'bad' })), { value: 'late', label: 'Late' }]);
+    assert.equal(r.options.length, 0); // the valid one is past the 400 inspected
+    assert.equal(r.dropped, 451);
+    assert.equal(r.warnings.length, 1);
+  });
+
+  it('huge strings: text fields cut to their code-point caps (counted), value / swatch / image over the cap refused, bounded', () => {
+    const huge = 'á'.repeat(5_000_000);
+    const t0 = performance.now();
+    const r = norm([
+      { value: 'a', label: `${'😀'.repeat(300)}`, hint: huge, unavailable: true, unavailableLabel: huge },
+      { value: 'x'.repeat(5_000_000), label: 'V' },
+      { value: 'b', label: 'B', swatch: `#fff${' '.repeat(5_000_000)}`, image: `https://cdn.test/${'a'.repeat(5_000_000)}` },
+    ]);
+    const ms = performance.now() - t0;
+    assert.ok(ms < 500 * (process.env.TD_PERF_STRICT ? 1 : 20), `${ms} ms`);
+    assert.deepEqual(r.options.map((o) => o.value), ['a', 'b']);
+    assert.equal([...r.options[0].label].length, 200);
+    assert.equal([...r.options[0].hint].length, 200);
+    assert.equal([...r.options[0].unavailableLabel].length, 100);
+    assert.equal(r.options[1].swatch, '');
+    assert.equal(r.options[1].image, '');
+    assert.equal(r.dropped, 1);
+    assert.equal(r.ignored, 5); // label + hint + note shortened, swatch + image refused
+    assert.equal(r.warnings.length, 1);
+    assert.ok(r.warnings[0].length < 200);
+  });
+});
+
+describe('review S2 — canonical values (test/ssr/choice-value.cases.json, parity with php td__choice_value)', () => {
+  const T = JSON.parse(readFileSync(new URL('../../test/ssr/choice-value.cases.json', import.meta.url), 'utf8'));
+  it('shared + JS-only cases', () => {
+    for (const c of [...T.cases, ...T.jsOnly]) assert.equal(canonicalValue(c.in), c.out, JSON.stringify(c.in)?.slice(0, 40));
+  });
+  it('rejected values count as dropped options; duplicates compare the canonical value', () => {
+    const r = norm([{ value: 'a\r\nb', label: 'CRLF' }, { value: 'a\nb', label: 'LF' }, { value: 5, label: 'five' }, { value: '5', label: 'dup' }, { value: 'x\ud800', label: 'lone' }]);
+    assert.deepEqual(r.options.map((o) => o.value), ['5']);
+    assert.equal(r.dropped, 4);
+    assert.equal(r.warnings.length, 1);
   });
 });
