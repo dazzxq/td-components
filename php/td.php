@@ -4406,12 +4406,13 @@ namespace {
             . '</td-diff>';
     }
 
-    // --- strings ---
+    // --- strings (bounded: every raw string is cut BEFORE any regex / validation / key building — Codex round 1 I4) ---
 
     /** @internal Code points of a valid UTF-8 string. */
     function td__diff_cplen(string $s): int
     {
-        return (int) preg_match_all('/./su', $s);
+        $n = preg_match_all('/./su', $s);
+        return $n === false ? strlen($s) : $n;
     }
 
     /** @internal UTF-16 code units (the JS string length). */
@@ -4443,35 +4444,56 @@ namespace {
         return $out;
     }
 
-    /** @internal Valid UTF-8 (a broken sequence from a PHP array → U+FFFD bytes). */
+    /** @internal Valid UTF-8 (a broken sequence from a PHP array → U+FFFD bytes). Callers pass bounded strings only. */
     function td__diff_utf8(string $s): string
     {
         return preg_match('//u', $s) === 1 ? $s : (string) preg_replace('/[\x80-\xFF]/', "\xEF\xBF\xBD", $s);
     }
 
-    /** @internal = cleanText(): ['s', 'cut', 'empty'] — cut to 4 × max code points first, C0 (but \t \n) / C1 removed. */
+    /** @internal The first $bytes bytes of $s without a cut multi-byte sequence at the end. */
+    function td__diff_bytes(string $s, int $bytes): string
+    {
+        if (strlen($s) <= $bytes) {
+            return $s;
+        }
+        $h = substr($s, 0, $bytes);
+        for ($i = 0; $i < 3 && preg_match('//u', $h) !== 1; $i++) {
+            $h = substr($h, 0, -1);
+        }
+        return $h;
+    }
+
+    /** @internal = cpOver(): more than $max code points? Never looks at more than 4 × $max bytes. */
+    function td__diff_cpover(string $s, int $max): bool
+    {
+        if (strlen($s) <= $max) {
+            return false;
+        }
+        if (strlen($s) > $max * 4) {
+            return true;
+        }
+        return td__diff_cplen(td__diff_utf8($s)) > $max;
+    }
+
+    /** @internal = headOf(): [first 4 × $max code points (raw, valid UTF-8), longer?]. */
+    function td__diff_head(string $raw, int $max): array
+    {
+        if (strlen($raw) <= $max * 4) {
+            return [td__diff_utf8($raw), false];
+        }
+        $h = td__diff_utf8(td__diff_bytes($raw, $max * 16));
+        $long = strlen($raw) > $max * 16 || td__diff_cplen($h) > $max * 4;
+        return [td__diff_cpslice($h, $max * 4), $long];
+    }
+
+    /** @internal = cleanText(): ['s', 'cut', 'empty', 'head', 'long']. */
     function td__diff_clean(string $raw, int $max): array
     {
-        $s = td__diff_utf8($raw);
-        $cut = false;
-        if (strlen($s) > $max * 4) {
-            $head = substr($s, 0, $max * 16);
-            for ($i = 0; $i < 3 && preg_match('//u', $head) !== 1; $i++) {
-                $head = substr($head, 0, -1);
-            }
-            $head = td__diff_cpslice($head, $max * 4);
-            if (strlen($head) < strlen($s)) {
-                $cut = true;
-            }
-            $s = $head;
-        }
-        $s = (string) preg_replace('/[\x{0}-\x{8}\x{B}-\x{1F}\x{7F}-\x{9F}]/u', '', $s);
-        $empty = preg_match('/^[' . Td::JS_WS . ']*$/u', $s) === 1;
+        [$head, $long] = td__diff_head($raw, $max);
+        $s = (string) preg_replace('/[\x{0}-\x{8}\x{B}-\x{1F}\x{7F}-\x{9F}]/u', '', $head);
         $t = td__diff_cpslice($s, $max);
-        if (strlen($t) < strlen($s)) {
-            $cut = true;
-        }
-        return ['s' => $t, 'cut' => $cut, 'empty' => $empty];
+        return ['s' => $t, 'cut' => $long || strlen($t) < strlen($s),
+            'empty' => !$long && preg_match('/^[' . Td::JS_WS . ']*$/u', $s) === 1, 'head' => $head, 'long' => $long];
     }
 
     /** @internal = cleanLabel(). */
@@ -4481,18 +4503,21 @@ namespace {
         return $r['cut'] ? $r['s'] . '…' : $r['s'];
     }
 
-    /** @internal A path segment from an object key: the first 200 code points. */
-    function td__diff_keyseg(string $k): string
+    /** @internal = keyId(): the raw key up to 1000 code points; a longer one → a unique segment (never merged, too large). */
+    function td__diff_keyid(string $k, array &$ctx, string $side): string
     {
-        $k = td__diff_utf8($k);
-        if (strlen($k) <= 200) {
-            return $k;
+        if (!td__diff_cpover($k, 1000)) {
+            return td__diff_utf8($k);
         }
-        $head = substr($k, 0, 800);
-        for ($i = 0; $i < 3 && preg_match('//u', $head) !== 1; $i++) {
-            $head = substr($head, 0, -1);
-        }
-        return td__diff_cpslice($head, 200);
+        $ctx['tooLarge'] = true;
+        $ctx['overKeys']++;
+        return td__diff_cpslice(td__diff_utf8(td__diff_bytes($k, 4000)), 1000) . '#' . $side . $ctx['overKeys'];
+    }
+
+    /** @internal = keyText(): a key as printed in the JSON view (200 code points + `…`). */
+    function td__diff_keytext(string $k): string
+    {
+        return td__diff_cpover($k, 200) ? td__diff_cpslice(td__diff_utf8(td__diff_bytes($k, 800)), 200) . '…' : td__diff_utf8($k);
     }
 
     /** @internal `{n}` placeholders (strtr: data stays literal). */
@@ -4680,6 +4705,27 @@ namespace {
         return $n;
     }
 
+    /** @internal Shared per-diff work budget (round 1 S2): false once spent. */
+    function td__diff_canwork(array &$ctx): bool
+    {
+        if ($ctx['work'] > 0) {
+            return true;
+        }
+        $ctx['tooLarge'] = true;
+        return false;
+    }
+
+    /** @internal = strEqual(): bounded string equality 1 / 0 / 2. */
+    function td__diff_str_equal(string $a, string $b): int
+    {
+        [$x, $xl] = td__diff_head($a, 10000);
+        [$y, $yl] = td__diff_head($b, 10000);
+        if ($xl || $yl) {
+            return $xl && $yl && $x === $y ? 2 : 0;
+        }
+        return $x === $y ? 1 : 0;
+    }
+
     /** @internal = deepEqual(): 1 / 0 / 2 (cannot tell). */
     function td__diff_equal(mixed $a, mixed $b, array &$budget, int $depth = 0): int
     {
@@ -4704,6 +4750,9 @@ namespace {
                     return 2;
                 }
                 return $ca['s'] === $cb['s'] ? 1 : 0;
+            }
+            if (is_string($a) && is_string($b)) {
+                return td__diff_str_equal($a, $b);
             }
             return $a === $b ? 1 : 0;
         }
@@ -4739,6 +4788,17 @@ namespace {
         $eb = td__diff_entries($b);
         if (count($ea) !== count($eb)) {
             return 0;
+        }
+        $budget['left'] -= count($ea);
+        if ($budget['left'] < 0) {
+            return 2;
+        }
+        foreach ([$ea, $eb] as $list) {
+            foreach ($list as $e) {
+                if (td__diff_cpover($e[0], 1000)) {
+                    return 2;
+                }
+            }
         }
         $mb = [];
         foreach ($eb as $e) {
@@ -4781,7 +4841,7 @@ namespace {
         }, $s) . '"';
     }
 
-    /** @internal Budgeted writer state: ['pretty', 'left', 'lines', 'cur', 'cut', 'L', 'masks', 'unsafe' (by ref)]. */
+    /** @internal Budgeted writer state: ['pretty', 'left', 'lines', 'cur', 'cut', 'L', 'masks', 'unsafe']. */
     function td__diff_put(array &$w, string $t): bool
     {
         if ($w['cut']) {
@@ -4861,6 +4921,10 @@ namespace {
             td__diff_put($w, $arr ? '[]' : '{}');
             return;
         }
+        if ($arr && td__diff_maskbelow($w['masks'], $path) && td__diff_masked_list($v, $len, $path, $w['masks'])) {
+            td__diff_put($w, td__diff_json_string($w['L']['masked']));
+            return;
+        }
         if (!td__diff_put($w, $arr ? '[' : '{')) {
             return;
         }
@@ -4876,12 +4940,12 @@ namespace {
             } elseif ($i > 0 && !td__diff_put($w, ' ')) {
                 break;
             }
-            $seg = $arr ? $i : td__diff_keyseg($entries[$i][0]);
-            if (!$arr && !td__diff_put($w, td__diff_json_string($seg) . ': ')) {
+            $seg = $arr ? $i : (td__diff_cpover($entries[$i][0], 1000) ? null : td__diff_utf8($entries[$i][0]));
+            if (!$arr && !td__diff_put($w, td__diff_json_string(td__diff_keytext($entries[$i][0])) . ': ')) {
                 break;
             }
             $p = array_merge($path, [$seg]);
-            if (td__diff_masked($w['masks'], $p)) {
+            if ($seg !== null && td__diff_masked($w['masks'], $p)) {
                 td__diff_put($w, td__diff_json_string($w['L']['masked']));
                 continue;
             }
@@ -4932,6 +4996,32 @@ namespace {
         return false;
     }
 
+    /** @internal A masked FieldDef lies strictly below $path. */
+    function td__diff_maskbelow(array $masks, array $path): bool
+    {
+        foreach ($masks as $m) {
+            if (count($m) > count($path) && td__diff_prefix($path, $m)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** @internal = maskedList(): the inspected, unmasked elements are all scalars. */
+    function td__diff_masked_list(array $v, int $len, array $path, array $masks): bool
+    {
+        $n = min($len, 200);
+        for ($i = 0; $i < $n; $i++) {
+            if (td__diff_masked($masks, array_merge($path, [$i]))) {
+                continue;
+            }
+            if (td__diff_shape($v[$i]) !== 'scalar') {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /** @internal A FieldDef / item property (array or stdClass); $has = whether it exists. */
     function td__diff_get(array|\stdClass $o, string $k, ?bool &$has = null): mixed
     {
@@ -4962,7 +5052,7 @@ namespace {
         ];
     }
 
-    /** @internal Valid FieldDefs (= readFields()); invalid ones → warning codes `field:i`. */
+    /** @internal Valid FieldDefs (= readFields()); invalid ones → warning codes `field:i`. Segments stay RAW. */
     function td__diff_fields(mixed $fields, array &$warn): array
     {
         $out = [];
@@ -4986,8 +5076,8 @@ namespace {
                 if (is_array($p) && td__diff_is_list($p) && count($p) >= 1 && count($p) <= 7) {
                     $path = [];
                     foreach ($p as $s) {
-                        if (is_string($s) && preg_match('//u', $s) === 1 && td__diff_cplen($s) <= 200) {
-                            $path[] = $s;
+                        if (is_string($s) && !td__diff_cpover($s, 200)) {
+                            $path[] = td__diff_utf8($s);
                         } elseif (is_int($s) && $s >= 0 && $s <= 9007199254740991) {
                             $path[] = $s;
                         } else {
@@ -5017,14 +5107,14 @@ namespace {
 
     // --- descriptors (= diff-model.js) ---
 
-    function td__diff_scalar(mixed $v, array &$ctx): array
+    function td__diff_scalar(mixed $v, array &$ctx, int $max = 10000): array
     {
         if ($v === null) {
             return ['t' => 'e'];
         }
         if (is_string($v)) {
-            $r = td__diff_clean($v, 10000);
-            return $r['empty'] ? ['t' => 'e'] : ['t' => 's', 'raw' => $v, 's' => $r['s'], 'cut' => $r['cut']];
+            $r = td__diff_clean($v, $max);
+            return $r['empty'] ? ['t' => 'e'] : ['t' => 's', 'key' => $r['head'], 'long' => $r['long'], 's' => $r['s'], 'cut' => $r['cut']];
         }
         if (is_bool($v)) {
             return ['t' => 'b', 'v' => $v];
@@ -5036,7 +5126,58 @@ namespace {
         return $c;
     }
 
-    function td__diff_container_leaf(mixed $v, string $shape, array $path, array &$ctx): array
+    /** @internal = listOf(): ['k' => 'list', 'vals'] | ['k' => 'masked'] | ['k' => 'no'] | ['k' => 'skip']. */
+    function td__diff_list_of(array $v, int $len, array $path, array &$ctx): array
+    {
+        if (!td__diff_canwork($ctx)) {
+            return ['k' => 'skip'];
+        }
+        $n = min($len, 200);
+        $ctx['work'] -= $n;
+        $vals = [];
+        $masked = td__diff_maskbelow($ctx['masks'], $path);
+        for ($i = 0; $i < $n; $i++) {
+            if (td__diff_masked($ctx['masks'], array_merge($path, [$i]))) {
+                $masked = true;
+                continue;
+            }
+            if (td__diff_shape($v[$i]) !== 'scalar') {
+                return ['k' => 'no'];
+            }
+            $vals[] = $v[$i];
+        }
+        return $masked ? ['k' => 'masked'] : ['k' => 'list', 'vals' => $vals];
+    }
+
+    /** @internal = jsonDesc(): a value through the bounded one-line JSON writer. */
+    function td__diff_json_desc(mixed $v, array $path, array &$ctx): array
+    {
+        $w = td__diff_writer($ctx['L'], false, 10000, $ctx['masks']);
+        td__diff_wvalue($w, $v, $path, 0, []);
+        if ($w['unsafe']) {
+            $ctx['unsafe'] = true;
+        }
+        return ['t' => 'j', 's' => td__diff_wtext($w), 'cut' => $w['cut'], 'ref' => $v];
+    }
+
+    /** @internal = scalarLeaf(). */
+    function td__diff_scalar_leaf(mixed $v, ?string $type, array $path, array &$ctx): array
+    {
+        $d = td__diff_scalar($v, $ctx);
+        return $d['t'] === 'e' || $type !== 'json' ? $d : td__diff_json_desc($v, $path, $ctx);
+    }
+
+    function td__diff_list_desc(array $vals, int $len, array &$ctx): array
+    {
+        $items = [];
+        foreach ($vals as $x) {
+            $items[] = td__diff_scalar($x, $ctx, 200);
+        }
+        return ['t' => 'l', 'items' => $items, 'len' => $len];
+    }
+
+    /** @internal = containerLeaf(). */
+    function td__diff_container_leaf(mixed $v, string $shape, array $path, array &$ctx, ?string $type): array
     {
         if ($shape === 'other') {
             return ['t' => 'note', 's' => $ctx['L']['unsupported']];
@@ -5051,30 +5192,81 @@ namespace {
             return ['t' => 'note', 's' => td__diff_fill($arr ? $ctx['L']['arraySummary'] : $ctx['L']['objectSummary'], ['n' => $len]), 'ref' => $v];
         }
         if ($arr) {
-            $scalars = true;
-            foreach ($v as $x) {
-                if (td__diff_shape($x) !== 'scalar') {
-                    $scalars = false;
-                    break;
-                }
+            $l = td__diff_list_of($v, $len, $path, $ctx);
+            if ($l['k'] === 'masked') {
+                return ['t' => 'm'];
             }
-            if ($scalars) {
-                $items = [];
-                foreach ($v as $x) {
-                    $items[] = td__diff_scalar($x, $ctx);
-                }
-                return ['t' => 'l', 'items' => $items, 'len' => $len];
+            if ($l['k'] === 'skip') {
+                return ['t' => 'note', 's' => td__diff_fill($ctx['L']['arraySummary'], ['n' => $len])];
+            }
+            if ($l['k'] === 'list') {
+                return $type === 'json' ? td__diff_json_desc($v, $path, $ctx) : td__diff_list_desc($l['vals'], $len, $ctx);
             }
         }
-        $w = td__diff_writer($ctx['L'], false, 10000, $ctx['masks']);
-        td__diff_wvalue($w, $v, $path, 0, []);
-        if ($w['unsafe']) {
-            $ctx['unsafe'] = true;
-        }
-        return ['t' => 'j', 's' => td__diff_wtext($w), 'cut' => $w['cut'], 'ref' => $v];
+        return td__diff_json_desc($v, $path, $ctx);
     }
 
-    function td__diff_desc_equal(array $a, array $b): int
+    function td__diff_unique(array $d): bool
+    {
+        return $d['t'] === 'u' || $d['t'] === 'x' || ($d['t'] === 's' && $d['long']);
+    }
+
+    function td__diff_elem_key(array $d, int $i, string $side): string
+    {
+        if (td__diff_unique($d)) {
+            return '!' . $side . $i;
+        }
+        switch ($d['t']) {
+            case 's':
+                return 's' . $d['key'];
+            case 'n':
+                return 'n' . $d['s'];
+            case 'b':
+                return $d['v'] ? 'b1' : 'b0';
+        }
+        return 'e';
+    }
+
+    /** @internal = setEqual(). */
+    function td__diff_set_equal(array $a, array $b, array &$ctx): int
+    {
+        if (!td__diff_canwork($ctx)) {
+            return 2;
+        }
+        $ctx['work'] -= count($a['items']) + count($b['items']);
+        $ka = [];
+        $kb = [];
+        $ua = 0;
+        $ub = 0;
+        foreach ($a['items'] as $i => $x) {
+            if (td__diff_unique($x)) {
+                $ua++;
+            } else {
+                $ka['k' . td__diff_elem_key($x, $i, 'a')] = true;
+            }
+        }
+        foreach ($b['items'] as $i => $x) {
+            if (td__diff_unique($x)) {
+                $ub++;
+            } else {
+                $kb['k' . td__diff_elem_key($x, $i, 'b')] = true;
+            }
+        }
+        if (count($ka) !== count($kb)) {
+            return 0;
+        }
+        foreach ($ka as $k => $_) {
+            if (!isset($kb[$k])) {
+                return 0;
+            }
+        }
+        if (($ua > 0) !== ($ub > 0)) {
+            return 0;
+        }
+        return $ua > 0 || $a['len'] > count($a['items']) || $b['len'] > count($b['items']) ? 2 : 1;
+    }
+
+    function td__diff_desc_equal(array $a, array $b, array &$ctx): int
     {
         if (in_array($a['t'], ['u', 'x'], true) || in_array($b['t'], ['u', 'x'], true)) {
             return 2;
@@ -5091,46 +5283,35 @@ namespace {
             if (!($ra && $rb)) {
                 return 0;
             }
-            $budget = ['left' => 10000];
-            return td__diff_equal($a['ref'], $b['ref'], $budget);
+            if (!td__diff_canwork($ctx)) {
+                return 2;
+            }
+            $budget = ['left' => min(10000, $ctx['work'])];
+            $start = $budget['left'];
+            $r = td__diff_equal($a['ref'], $b['ref'], $budget);
+            $ctx['work'] -= $start - max($budget['left'], 0);
+            return $r;
         }
         if ($a['t'] !== $b['t']) {
             return 0;
         }
         switch ($a['t']) {
             case 's':
-                return $a['raw'] === $b['raw'] ? 1 : 0;
+                if ($a['long'] || $b['long']) {
+                    return $a['long'] && $b['long'] && $a['key'] === $b['key'] ? 2 : 0;
+                }
+                return $a['key'] === $b['key'] ? 1 : 0;
             case 'n':
                 return $a['s'] === $b['s'] ? 1 : 0;
             case 'b':
                 return $a['v'] === $b['v'] ? 1 : 0;
             case 'l':
-                if ($a['len'] !== $b['len']) {
-                    return 0;
-                }
-                $unsure = false;
-                foreach ($a['items'] as $i => $x) {
-                    $y = $b['items'][$i];
-                    if ($x['t'] === 'e' || $y['t'] === 'e') {
-                        if ($x['t'] !== $y['t']) {
-                            return 0;
-                        }
-                        continue;
-                    }
-                    $r = td__diff_desc_equal($x, $y);
-                    if ($r === 0) {
-                        return 0;
-                    }
-                    if ($r === 2) {
-                        $unsure = true;
-                    }
-                }
-                return $unsure ? 2 : 1;
+                return td__diff_set_equal($a, $b, $ctx);
         }
         return 0;
     }
 
-    function td__diff_kind(array $b, array $a): array
+    function td__diff_kind(array $b, array $a, array &$ctx): array
     {
         $eb = $b['t'] === 'e';
         $ea = $a['t'] === 'e';
@@ -5143,23 +5324,8 @@ namespace {
         if ($ea) {
             return ['removed', false];
         }
-        $r = td__diff_desc_equal($b, $a);
+        $r = td__diff_desc_equal($b, $a, $ctx);
         return $r === 1 ? ['unchanged', false] : ['changed', $r === 2];
-    }
-
-    function td__diff_elem_key(array $d, int $i, string $side): string
-    {
-        switch ($d['t']) {
-            case 's':
-                return 's' . $d['raw'];
-            case 'n':
-                return 'n' . $d['s'];
-            case 'b':
-                return $d['v'] ? 'b1' : 'b0';
-            case 'e':
-                return 'e';
-        }
-        return '!' . $side . $i;
     }
 
     /** @internal = scalarText(): ['s', 'note', 'cut']. */
@@ -5186,7 +5352,7 @@ namespace {
                 return ['s' => td__diff_format_number($d['s'], $def['decimals'], $unit()), 'note' => false, 'cut' => false];
         }
         if ($type === 'enum') {
-            $o = td__diff_option($def['options'], $d['raw']);
+            $o = $d['long'] ? null : td__diff_option($def['options'], $d['key']);
             if ($o !== null) {
                 return ['s' => $o, 'note' => false, 'cut' => false];
             }
@@ -5198,7 +5364,7 @@ namespace {
         } elseif (($type === 'number' || $type === 'money') && !$d['cut'] && preg_match('/^-?(0|[1-9][0-9]*)(\.[0-9]+)?$/', $d['s'])) {
             return ['s' => td__diff_format_number($d['s'] === '-0' ? '0' : $d['s'], $def['decimals'], $unit()), 'note' => false, 'cut' => false];
         }
-        return $inList ? ['s' => td__diff_label($d['s']), 'note' => false, 'cut' => false] : ['s' => $d['s'], 'note' => false, 'cut' => $d['cut']];
+        return $inList ? ['s' => $d['cut'] ? $d['s'] . '…' : $d['s'], 'note' => false, 'cut' => false] : ['s' => $d['s'], 'note' => false, 'cut' => $d['cut']];
     }
 
     /** @internal = cellOf(). */
@@ -5222,18 +5388,16 @@ namespace {
                 if ($marks !== '' && $other['t'] === 'l') {
                     $set = [];
                     foreach ($other['items'] as $i => $x) {
-                        $set[td__diff_elem_key($x, $i, 'o')] = true;
+                        $set['k' . td__diff_elem_key($x, $i, 'o')] = true;
                     }
                 }
                 $items = [];
-                $n = min(count($d['items']), 200);
-                for ($i = 0; $i < $n; $i++) {
-                    $x = $d['items'][$i];
+                foreach ($d['items'] as $i => $x) {
                     $c = td__diff_scalar_text($x, $type === 'enum' ? 'enum' : null, $def, $L, true);
                     $items[] = ['s' => $c['s'], 'note' => $c['note'],
-                        'm' => $set !== null ? (isset($set[td__diff_elem_key($x, $i, 's')]) ? '' : $marks) : ''];
+                        'm' => $set !== null ? (isset($set['k' . td__diff_elem_key($x, $i, 's')]) ? '' : $marks) : ''];
                 }
-                return ['k' => 'list', 'items' => $items, 'more' => count($d['items']) - $n];
+                return ['k' => 'list', 'items' => $items, 'more' => $d['len'] - count($d['items'])];
         }
         $c = td__diff_scalar_text($d, $type, $def, $L, false);
         return $c['note'] ? ['k' => 'note', 's' => $c['s']] : ['k' => 'text', 's' => $c['s'], 'cut' => $c['cut']];
@@ -5259,7 +5423,17 @@ namespace {
 
     // --- flattening (= flatten()) ---
 
-    function td__diff_flatten(mixed $root, array &$ctx): array
+    function td__diff_type_at(array $fields, array $path): ?string
+    {
+        foreach ($fields as $f) {
+            if (count($f['path']) === count($path) && td__diff_prefix($f['path'], $path)) {
+                return $f['type'];
+            }
+        }
+        return null;
+    }
+
+    function td__diff_flatten(mixed $root, array &$ctx, string $side): array
     {
         $map = [];
         $st = ['left' => 10000, 'stop' => false];
@@ -5282,25 +5456,18 @@ namespace {
                 $map['k' . $id] = ['id' => $id, 'path' => $path, 'desc' => $desc];
             }
         };
-        $below = static function (array $path) use (&$ctx): bool {
-            foreach ($ctx['masks'] as $m) {
-                if (count($m) > count($path) && td__diff_prefix($path, $m)) {
-                    return true;
-                }
-            }
-            return false;
-        };
-        $walk = static function (mixed $v, array $path, array $anc) use (&$walk, &$ctx, &$st, $tick, $emit, $below): void {
+        $walk = static function (mixed $v, array $path, array $anc) use (&$walk, &$ctx, &$st, $tick, $emit, $side): void {
             if (!$tick(1)) {
                 return;
             }
             $shape = td__diff_shape($v);
             $M = ['t' => 'm'];
+            $masks = $ctx['masks'];
             if ($shape === 'scalar') {
-                if ($path && $below($path)) {
+                if ($path && td__diff_maskbelow($masks, $path)) {
                     $emit($path, $M);
                 } elseif ($path || $v !== null) {
-                    $emit($path, td__diff_scalar($v, $ctx));
+                    $emit($path, td__diff_scalar_leaf($v, td__diff_type_at($ctx['fields'], $path), $path, $ctx));
                 }
                 return;
             }
@@ -5308,43 +5475,36 @@ namespace {
                 $emit($path, ['t' => 'note', 's' => $ctx['L']['cycle']]);
                 return;
             }
+            $below = td__diff_maskbelow($masks, $path);
             if ($shape === 'other') {
-                $emit($path, $below($path) ? $M : td__diff_container_leaf($v, $shape, $path, $ctx));
+                $emit($path, $below ? $M : td__diff_container_leaf($v, $shape, $path, $ctx, null));
                 return;
             }
             $arr = $shape === 'array';
             $len = td__diff_count($v);
             if ($len === 0) {
                 if ($path) {
-                    $emit($path, $below($path) ? $M : ['t' => 'e']);
+                    $emit($path, $below ? $M : ['t' => 'e']);
                 }
                 return;
             }
-            $bl = $below($path);
             if ($len > 1000 || count($path) >= 6) {
-                $emit($path, $bl ? $M : td__diff_container_leaf($v, $shape, $path, $ctx));
+                $emit($path, $below ? $M : td__diff_container_leaf($v, $shape, $path, $ctx, td__diff_type_at($ctx['fields'], $path)));
                 return;
             }
             if ($arr) {
-                if (!$tick($len)) {
+                $l = td__diff_list_of($v, $len, $path, $ctx);
+                if ($l['k'] === 'masked') {
+                    $emit($path, $M);
                     return;
                 }
-                $masked = [];
-                $scalars = !$bl;
-                foreach ($v as $i => $x) {
-                    if (td__diff_masked($ctx['masks'], array_merge($path, [$i]))) {
-                        $masked[$i] = true;
-                        $scalars = false;
-                    } elseif (td__diff_shape($x) !== 'scalar') {
-                        $scalars = false;
-                    }
+                if ($l['k'] === 'skip') {
+                    $emit($path, ['t' => 'note', 's' => td__diff_fill($ctx['L']['arraySummary'], ['n' => $len])]);
+                    return;
                 }
-                if ($scalars) {
-                    $items = [];
-                    foreach ($v as $x) {
-                        $items[] = td__diff_scalar($x, $ctx);
-                    }
-                    $emit($path, ['t' => 'l', 'items' => $items, 'len' => $len]);
+                if ($l['k'] === 'list') {
+                    $emit($path, td__diff_type_at($ctx['fields'], $path) === 'json' ? td__diff_json_desc($v, $path, $ctx)
+                        : td__diff_list_desc($l['vals'], $len, $ctx));
                     return;
                 }
                 $anc[] = $v;
@@ -5353,7 +5513,7 @@ namespace {
                         break;
                     }
                     $p = array_merge($path, [$i]);
-                    if (isset($masked[$i])) {
+                    if (td__diff_masked($masks, $p)) {
                         if ($tick(1)) {
                             $emit($p, $M);
                         }
@@ -5368,8 +5528,8 @@ namespace {
                 if ($st['stop']) {
                     break;
                 }
-                $p = array_merge($path, [td__diff_keyseg($e[0])]);
-                if (td__diff_masked($ctx['masks'], $p)) {
+                $p = array_merge($path, [td__diff_keyid($e[0], $ctx, $side)]);
+                if (td__diff_masked($masks, $p)) {
                     if ($tick(1)) {
                         $emit($p, $M);
                     }
@@ -5384,7 +5544,7 @@ namespace {
 
     function td__diff_seg_text(string|int $seg): string
     {
-        return is_int($seg) ? '#' . ($seg + 1) : td__diff_clean($seg, 200)['s'];
+        return is_int($seg) ? '#' . ($seg + 1) : td__diff_label($seg);
     }
 
     function td__diff_row_label(array $path, array $fields, array $L): string
@@ -5419,7 +5579,7 @@ namespace {
      * @internal Pretty JSON of one side (QĐ 13): [text, cut]. `$entries` (items mode) = ordered [key, view] where view =
      * ['masked' => true, 'text'] | ['masked' => false, 'value'].
      */
-    function td__diff_pretty(mixed $v, array $ctx, ?array $entries): array
+    function td__diff_pretty(mixed $v, array &$ctx, ?array $entries): array
     {
         $w = td__diff_writer($ctx['L'], true, 100000, $ctx['masks']);
         if ($entries !== null) {
@@ -5437,7 +5597,7 @@ namespace {
                     if (!td__diff_nl($w, 2)) {
                         break;
                     }
-                    if (!td__diff_put($w, td__diff_json_string($e[0]) . ': ')) {
+                    if (!td__diff_put($w, td__diff_json_string(td__diff_keytext($e[0])) . ': ')) {
                         break;
                     }
                     if ($e[1]['masked']) {
@@ -5452,6 +5612,9 @@ namespace {
             }
         } else {
             td__diff_wvalue($w, $v, [], 0, []);
+        }
+        if ($w['unsafe']) {
+            $ctx['unsafe'] = true; // round 1 I6
         }
         return [$w['cut'] ? implode("\n", $w['lines']) : td__diff_wtext($w), $w['cut']];
     }
@@ -5474,12 +5637,12 @@ namespace {
 
     /**
      * @internal = normalize() of src/utils/diff-model.js (without the JS-only cases). Input: ['items' => …] or
-     * ['before', 'after', 'fields', 'decode' (JSON strings)]. Warnings → ONE E_USER_WARNING per code (codes only).
+     * ['before', 'after', 'fields', 'decode' (JSON strings)]. Warnings → ONE E_USER_WARNING per call (codes only).
      */
     function td__diff_model(array $input, array $L, bool $json, string $fn): array
     {
         $warn = [];
-        $ctx = ['L' => $L, 'tooLarge' => false, 'unsafe' => false, 'masks' => []];
+        $ctx = ['L' => $L, 'tooLarge' => false, 'unsafe' => false, 'work' => 100000, 'overKeys' => 0, 'masks' => [], 'fields' => []];
         $rows = [];
         $sides = null;
         $notes0 = [];
@@ -5496,6 +5659,7 @@ namespace {
             $eb = $json ? [] : null;
             $ea = $json ? [] : null;
             foreach (array_slice($list, 0, 1000) as $raw) {
+                $ctx['work'] -= 1;
                 if (!(is_array($raw) && !td__diff_is_list($raw)) && !($raw instanceof \stdClass)) {
                     $warn[] = 'item';
                     continue;
@@ -5509,7 +5673,7 @@ namespace {
                     $warn[] = 'item';
                     continue;
                 }
-                $seg = td__diff_keyseg($key);
+                $seg = td__diff_keyid($key, $ctx, 'i');
                 $o = td__diff_opts($raw);
                 $kindIn = td__diff_get($raw, 'kind', $hasKind);
                 $kind = in_array($kindIn, ['added', 'removed', 'changed', 'unchanged'], true) ? $kindIn : null;
@@ -5519,23 +5683,24 @@ namespace {
                 $bView = null;
                 $aView = null;
                 if ($o['masked']) {
-                    $side = static function (string $k) use ($raw, $L, &$ctx): array {
+                    $sideOf = static function (string $k) use ($raw, $L, &$ctx): array {
                         $v = td__diff_get($raw, $k);
                         if (!is_string($v)) {
                             return [['t' => 'm'], ['masked' => true, 'text' => $L['masked']]];
                         }
                         return [td__diff_scalar($v, $ctx), ['masked' => true, 'text' => $v]];
                     };
-                    [$b, $bView] = $side('before');
-                    [$a, $aView] = $side('after');
+                    [$b, $bView] = $sideOf('before');
+                    [$a, $aView] = $sideOf('after');
                     if ($kind === null) {
-                        $kind = $b['t'] !== 'm' && $a['t'] !== 'm' ? td__diff_kind($b, $a)[0] : 'changed';
+                        $kind = $b['t'] !== 'm' && $a['t'] !== 'm' ? td__diff_kind($b, $a, $ctx)[0] : 'changed';
                     }
                 } else {
-                    $leaf = static function (string $k) use ($raw, $seg, &$ctx): array {
+                    $leaf = static function (string $k) use ($raw, $seg, $o, &$ctx): array {
                         $v = td__diff_get($raw, $k, $has);
                         $shape = td__diff_shape($v);
-                        $d = $shape === 'scalar' ? td__diff_scalar($v, $ctx) : td__diff_container_leaf($v, $shape, [$seg], $ctx);
+                        $d = $shape === 'scalar' ? td__diff_scalar_leaf($v, $o['type'], [$seg], $ctx)
+                            : td__diff_container_leaf($v, $shape, [$seg], $ctx, $o['type']);
                         return [$d, $has ? ['masked' => false, 'value' => $v] : null];
                     };
                     [$b, $bView] = $leaf('before');
@@ -5543,7 +5708,7 @@ namespace {
                 }
                 $uncertain = false;
                 if ($kind === null) {
-                    [$kind, $uncertain] = td__diff_kind($b, $a);
+                    [$kind, $uncertain] = td__diff_kind($b, $a, $ctx);
                 }
                 $rows[] = ['path' => [$seg], 'label' => $o['label'] ?? td__diff_label($key), 'kind' => $kind, 'uncertain' => $uncertain,
                     'masked' => $o['masked'], 'type' => $o['type'] ?? td__diff_infer($a, $b), 'b' => $b, 'a' => $a, 'def' => $o];
@@ -5572,6 +5737,7 @@ namespace {
             }
         } else {
             $fields = td__diff_fields($input['fields'] ?? null, $warn);
+            $ctx['fields'] = $fields;
             foreach ($fields as $f) {
                 if ($f['masked']) {
                     $ctx['masks'][] = $f['path'];
@@ -5593,8 +5759,8 @@ namespace {
                     $json = false;
                 }
             }
-            $fa = td__diff_flatten($after, $ctx);
-            $fb = td__diff_flatten($before, $ctx);
+            $fa = td__diff_flatten($after, $ctx, 'a');
+            $fb = td__diff_flatten($before, $ctx, 'b');
             $ids = array_keys($fa);
             foreach (array_keys($fb) as $k) {
                 if (!isset($fa[$k])) {
@@ -5630,7 +5796,7 @@ namespace {
                 if ($masked) {
                     $kind = 'changed';
                 } else {
-                    [$kind, $uncertain] = td__diff_kind($b, $a);
+                    [$kind, $uncertain] = td__diff_kind($b, $a, $ctx);
                 }
                 $M = ['t' => 'm'];
                 $rows[] = ['path' => $t['path'], 'label' => td__diff_row_label($t['path'], $fields, $L), 'kind' => $kind,
@@ -5665,7 +5831,29 @@ namespace {
         $used = 0;
         $over = false;
         $budget = static function (?array $c) use (&$used, &$over): ?array {
-            if ($c === null || ($c['k'] !== 'text' && $c['k'] !== 'json')) {
+            if ($c === null) {
+                return $c;
+            }
+            if ($c['k'] === 'list') {
+                $keep = [];
+                $cell = 0;
+                foreach ($c['items'] as $it) {
+                    $n = td__diff_cplen($it['s']);
+                    if (!$over && $used + $n <= 300000) {
+                        $used += $n;
+                        $keep[] = $it;
+                        continue;
+                    }
+                    $over = true;
+                    if ($cell + $n > 300) {
+                        break;
+                    }
+                    $cell += $n;
+                    $keep[] = $it;
+                }
+                return count($keep) === count($c['items']) ? $c : ['k' => 'list', 'items' => $keep, 'more' => $c['more'] + count($c['items']) - count($keep)];
+            }
+            if ($c['k'] !== 'text' && $c['k'] !== 'json') {
                 return $c;
             }
             $n = td__diff_cplen($c['s']);
@@ -5711,18 +5899,28 @@ namespace {
 
     // --- markup (= diffMarkup() of src/display/td-diff.js) ---
 
-    /** @internal Escaped text with bidi / invisible characters as `⟨U+202E⟩` spans. */
+    /**
+     * @internal Escaped text with bidi controls / Default_Ignorable_Code_Point as `⟨U+XXXX⟩` spans (= splitInvisible();
+     * round 1 S3 — not the variation selectors U+FE00–FE0F).
+     */
     function td__diff_vis(string $s): string
     {
-        $parts = preg_split('/([\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}\x{FEFF}])/u', $s, -1, PREG_SPLIT_DELIM_CAPTURE);
+        $parts = preg_split('/([\x{AD}\x{34F}\x{61C}\x{115F}\x{1160}\x{17B4}\x{17B5}\x{180B}-\x{180F}\x{200B}-\x{200F}\x{202A}-\x{202E}'
+            . '\x{2060}-\x{206F}\x{3164}\x{FEFF}\x{FFA0}\x{FFF0}-\x{FFF8}\x{1BCA0}-\x{1BCA3}\x{1D173}-\x{1D17A}\x{E0000}-\x{E0FFF}])/u',
+            $s, -1, PREG_SPLIT_DELIM_CAPTURE);
         $out = '';
         foreach ($parts ?: [] as $i => $p) {
             if ($i % 2 === 0) {
                 $out .= Td::e($p);
-            } else {
-                $cp = ((ord($p[0]) & 0x0F) << 12) | ((ord($p[1]) & 0x3F) << 6) | (ord($p[2]) & 0x3F);
-                $out .= '<span class="td-diff__ctl">' . sprintf('⟨U+%04X⟩', $cp) . '</span>';
+                continue;
             }
+            $b = array_map('ord', str_split($p));
+            $cp = match (count($b)) {
+                2 => (($b[0] & 0x1F) << 6) | ($b[1] & 0x3F),
+                3 => (($b[0] & 0x0F) << 12) | (($b[1] & 0x3F) << 6) | ($b[2] & 0x3F),
+                default => (($b[0] & 0x07) << 18) | (($b[1] & 0x3F) << 12) | (($b[2] & 0x3F) << 6) | ($b[3] & 0x3F),
+            };
+            $out .= '<span class="td-diff__ctl">' . sprintf('⟨U+%04X⟩', $cp) . '</span>';
         }
         return $out;
     }

@@ -19,21 +19,24 @@
  * @module utils/diff-model
  */
 
+
 export const LIMITS = Object.freeze({
   nodes: 10000, // visited values per side (snapshots)
   keys: 1000, // keys of one object / elements of one array (and items inspected)
   rows: 500, // rows kept (changed first, then unchanged)
   depth: 6, // flattened levels
-  label: 200, // code points of a key / label
+  label: 200, // code points of a label / list element shown
+  keyCap: 1000, // code points of a key used as an identity (longer: never merged — Codex round 1 S1)
   preview: 300, // code points shown before "Xem đầy đủ"
   full: 10000, // code points of one value
-  total: 300000, // code points of every full value of one diff
+  total: 300000, // code points of every full value (and list element) of one diff
   json: 100000, // UTF-16 code units of one JSON view side
-  list: 200, // elements shown per list side
+  list: 200, // elements inspected / kept per list side (the original length is kept for "+{n}")
   fields: 200, // FieldDefs inspected
   pathSegs: 7, // segments of a FieldDef path
   unit: 20, // code points of a unit
   equal: 10000, // steps of one deep comparison
+  work: 100000, // shared per-diff work: list elements inspected, comparison steps, set elements, items (round 1 S2)
   jsonDepth: 32, // nesting of the JSON view
 });
 
@@ -76,15 +79,25 @@ export const DEFAULT_LABELS = Object.freeze({
   root: 'Giá trị',
 });
 
+
 export const KINDS = Object.freeze(['added', 'removed', 'changed', 'unchanged']);
 export const TYPES = Object.freeze(['text', 'number', 'money', 'boolean', 'date', 'enum', 'list', 'json']);
-/** Bidi / invisible characters shown as `⟨U+XXXX⟩` (QĐ 8). */
-export const INVISIBLE = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/;
-const INVISIBLE_G = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g;
+/**
+ * Bidi controls + Default_Ignorable_Code_Point shown as `⟨U+XXXX⟩` (QĐ 8, round 1 S3): soft hyphen, CGJ, Arabic letter
+ * mark, Hangul fillers, Khmer inherent vowels, Mongolian selectors / vowel separator, ZW space / joiners / marks, bidi
+ * embeddings / overrides / isolates, word joiner + invisible operators + deprecated format controls, BOM, U+FFF0–FFF8,
+ * shorthand format controls, musical format controls, TAG characters. NOT the variation selectors U+FE00–FE0F (emoji
+ * presentation, no reordering power). = PHP `td__diff_vis()`.
+ */
+const INVISIBLE_SRC = '[\\u00AD\\u034F\\u061C\\u115F\\u1160\\u17B4\\u17B5\\u180B-\\u180F\\u200B-\\u200F\\u202A-\\u202E\\u2060-\\u206F'
+  + '\\u3164\\uFEFF\\uFFA0\\uFFF0-\\uFFF8\\u{1BCA0}-\\u{1BCA3}\\u{1D173}-\\u{1D17A}\\u{E0000}-\\u{E0FFF}]';
+export const INVISIBLE = new RegExp(INVISIBLE_SRC, 'u');
+const INVISIBLE_G = new RegExp(INVISIBLE_SRC, 'gu');
 // eslint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g;
 const LONE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
 const DECIMAL = /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/;
+const REPLACEMENT = String.fromCharCode(0xfffd);
 
 /** `{name}` placeholders; a function replacement keeps `$&` in the data literal (precedent v0.37). */
 export function fill(template, vars) {
@@ -104,7 +117,7 @@ export function resolveLabels(over) {
   return L;
 }
 
-// --- strings ---
+// --- strings (bounded: every raw string is cut BEFORE any regex / validation / key building — round 1 I4) ---
 
 /** Number of code points. */
 export function cpLength(s) {
@@ -120,7 +133,7 @@ export function cpLength(s) {
   return n;
 }
 
-/** First `max` code points (and whether something was left out). */
+/** First `max` code points. */
 export function cpSlice(s, max) {
   let n = 0;
   let i = 0;
@@ -132,28 +145,35 @@ export function cpSlice(s, max) {
   return i >= s.length ? s : s.slice(0, i);
 }
 
-/** JS `String.prototype.trim()` whitespace (= PHP Td::JS_WS). */
-const isBlank = (s) => s.trim() === '';
+/** More than `max` code points? Bounded: never counts more than 2 × max code units. */
+export function cpOver(s, max) {
+  if (s.length <= max) return false;
+  if (s.length > max * 2) return true;
+  return cpLength(s) > max;
+}
 
 /**
- * A raw string → `{ s, cut, empty }`: cut to 4 × max code points BEFORE any regex (bounded work), C0 (except \t \n) /
- * C1 removed, lone surrogates → U+FFFD, then the first `max` code points. `empty` = nothing but whitespace (JS trim).
+ * The raw prefix of a string: its first 4 × max code points (`head`, raw — lone surrogates kept, used for equality / set
+ * keys) and whether the string is longer (`long`). Only 8 × max code units are ever looked at.
+ */
+export function headOf(raw, max) {
+  if (raw.length <= max * 4) return { head: raw, long: false };
+  const head = cpSlice(raw.slice(0, max * 8), max * 4);
+  return { head, long: head.length < raw.length };
+}
+
+/**
+ * A raw string → `{ s, cut, empty, head, long }`: `head` / `long` (above), then on the head: C0 (except \t \n) / C1
+ * removed, lone surrogates → U+FFFD (display only), the first `max` code points. `empty` = only whitespace (JS trim), and
+ * never for a `long` string.
  * @param {string} raw
  * @param {number} max
  */
 export function cleanText(raw, max) {
-  let s = raw;
-  let cut = false;
-  if (s.length > max * 4) {
-    const head = cpSlice(s.slice(0, max * 8), max * 4);
-    if (head.length < s.length) cut = true;
-    s = head;
-  }
-  s = s.replace(CONTROL, '').replace(LONE, '\uFFFD');
-  const empty = isBlank(s);
+  const { head, long } = headOf(raw, max);
+  const s = head.replace(CONTROL, '').replace(LONE, REPLACEMENT);
   const t = cpSlice(s, max);
-  if (t.length < s.length) cut = true;
-  return { s: t, cut, empty };
+  return { s: t, cut: long || t.length < s.length, empty: !long && s.trim() === '', head, long };
 }
 
 /** A key / label: cleaned, cut to `max` code points + `…`. */
@@ -162,10 +182,16 @@ export function cleanLabel(raw, max = LIMITS.label) {
   return r.cut ? `${r.s}…` : r.s;
 }
 
-/** A path segment from an object key: the raw key, first 200 code points (lone surrogates → U+FFFD). */
-function keySeg(k) {
-  const s = k.length > LIMITS.label ? cpSlice(k, LIMITS.label) : k;
-  return s.replace(LONE, '\uFFFD');
+/**
+ * The identity segment of an object key (round 1 S1): the RAW key (lone surrogates, NFC / NFD kept apart) up to
+ * LIMITS.keyCap code points; a longer key gets a unique segment (its prefix + `#` + side + counter, longer than the cap
+ * so it can never equal a real key) — never merged with anything, and the diff is marked too large.
+ */
+function keyId(k, ctx, side) {
+  if (!cpOver(k, LIMITS.keyCap)) return k;
+  ctx.tooLarge = true;
+  ctx.overKeys = (ctx.overKeys || 0) + 1;
+  return `${cpSlice(k.slice(0, LIMITS.keyCap * 2), LIMITS.keyCap)}#${side}${ctx.overKeys}`;
 }
 
 /** Split a display string into text / invisible-character parts (the renderer marks the latter). */
@@ -176,8 +202,8 @@ export function splitInvisible(s) {
   let m;
   while ((m = INVISIBLE_G.exec(s))) {
     if (m.index > last) out.push({ t: s.slice(last, m.index) });
-    out.push({ c: `⟨U+${m[0].charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}⟩` });
-    last = m.index + 1;
+    out.push({ c: `⟨U+${m[0].codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}⟩` });
+    last = m.index + m[0].length;
   }
   if (last < s.length) out.push({ t: s.slice(last) });
   return out;
@@ -303,9 +329,24 @@ function lengthOf(a) {
   } catch { return null; }
 }
 
+/** Shared per-diff work budget (round 1 S2): false once spent (nothing more is inspected / compared). */
+function canWork(ctx) {
+  if (ctx.work > 0) return true;
+  ctx.tooLarge = true;
+  return false;
+}
+
+/** Bounded string equality: 1 / 0 / 2 (both longer than 4 × LIMITS.full code points with the same prefix). */
+function strEqual(a, b) {
+  const x = headOf(a, LIMITS.full);
+  const y = headOf(b, LIMITS.full);
+  if (x.long || y.long) return x.long && y.long && x.head === y.head ? 2 : 0;
+  return x.head === y.head ? 1 : 0;
+}
+
 /**
  * Deep equality of two raw values: 1 equal · 0 different · 2 cannot tell (unsafe / non-finite number, unsupported
- * value, budget or depth exhausted). Objects compare by key SET (order free); arrays by index.
+ * value, a key over the cap, a very long string, budget or depth exhausted). Objects compare by key SET; arrays by index.
  */
 export function deepEqual(a, b, budget = { left: LIMITS.equal }, depth = 0) {
   if (--budget.left < 0 || depth > 64) return 2;
@@ -321,6 +362,7 @@ export function deepEqual(a, b, budget = { left: LIMITS.equal }, depth = 0) {
       return ca.s === cb.s ? 1 : 0;
     }
     if (typeof a === 'bigint' || typeof b === 'bigint') return typeof a === typeof b && a === b ? 1 : 0;
+    if (typeof a === 'string' && typeof b === 'string') return strEqual(a, b);
     return a === b ? 1 : 0;
   }
   if (sa !== sb) return sa === 'scalar' || sb === 'scalar' ? 0 : (sa === 'other' || sb === 'other' || sa === 'bad' || sb === 'bad' ? 2 : 0);
@@ -348,6 +390,10 @@ export function deepEqual(a, b, budget = { left: LIMITS.equal }, depth = 0) {
     const kb = keysOf(b);
     if (!ka || !kb) return 2;
     if (ka.length !== kb.length) return 0;
+    budget.left -= ka.length;
+    if (budget.left < 0) return 2;
+    for (const k of ka) if (cpOver(k, LIMITS.keyCap)) return 2;
+    for (const k of kb) if (cpOver(k, LIMITS.keyCap)) return 2;
     const inB = new Set(kb);
     for (const k of ka) if (!inB.has(k)) return 0;
     let unsure = false;
@@ -387,20 +433,29 @@ export function jsonString(s) {
   return `${out}"`;
 }
 
+/** A key as printed in the JSON view: the first 200 code points (+ `…`). */
+function keyText(k) {
+  return cpOver(k, LIMITS.label) ? `${cpSlice(k.slice(0, LIMITS.label * 2), LIMITS.label)}…` : k;
+}
+
+/** The identity of a key in the JSON writer (masks only — a key over the cap never matches a mask). */
+function writerSeg(k) {
+  return cpOver(k, LIMITS.keyCap) ? null : k;
+}
+
 /**
  * Serializer shared by the compact leaf and the pretty view: never JSON.stringify on input (cycles, bigint, no early
- * stop). Masked paths print `"[ĐÃ ẨN]"` without being read.
+ * stop). Masked paths print `"[ĐÃ ẨN]"` without being read; a scalar list with a masked descendant prints it whole.
  */
 class JsonWriter {
   /**
-   * @param {{ L: object, pretty: boolean, budget: number, masked: (path: Array<string|number>) => boolean, onUnsafe?: () => void }} o
+   * @param {{ L: object, pretty: boolean, budget: number, ctx: object }} o
    */
   constructor(o) {
     this.L = o.L;
     this.pretty = o.pretty;
     this.left = o.budget;
-    this.masked = o.masked;
-    this.onUnsafe = o.onUnsafe || (() => {});
+    this.ctx = o.ctx;
     this.lines = [];
     this.cur = '';
     this.cut = false;
@@ -445,13 +500,13 @@ class JsonWriter {
     if (typeof v === 'bigint') return jsonString(v.toString());
     const c = canonicalNumber(v);
     if (c.t === 'n') return c.s;
-    this.onUnsafe();
+    this.ctx.unsafe = true; // round 1 I6: also from the pretty view
     return jsonString(c.t === 'u' ? this.L.unsafeNumber : this.L.unsupported);
   }
 
   /**
    * @param {unknown} v
-   * @param {Array<string|number>} path
+   * @param {Array<string|number|null>} path
    * @param {number} indent
    * @param {object[]} anc ancestors (cycle check)
    */
@@ -473,15 +528,16 @@ class JsonWriter {
     const len = arr ? lengthOf(v) : keys && keys.length;
     if (len === null) { this.put(jsonString(this.L.unreadable)); return; }
     if (len === 0) { this.put(arr ? '[]' : '{}'); return; }
+    if (arr && this.ctx.maskBelow(path) && maskedList(v, len, path, this.ctx)) { this.put(jsonString(this.L.masked)); return; }
     if (!this.put(arr ? '[' : '{')) return;
     anc.push(v);
     for (let i = 0; i < len && !this.cut; i++) {
       if (i > 0 && !this.put(',')) break;
       if (this.pretty) { if (!this.nl(indent + 2)) break; } else if (i > 0 && !this.put(' ')) break;
-      const seg = arr ? i : keySeg(keys[i]);
-      if (!arr && !this.put(`${jsonString(seg)}: `)) break;
+      const seg = arr ? i : writerSeg(keys[i]);
+      if (!arr && !this.put(`${jsonString(keyText(keys[i]))}: `)) break;
       const p = path.concat([seg]);
-      if (this.masked(p)) { this.put(jsonString(this.L.masked)); continue; }
+      if (seg !== null && this.ctx.isMasked(p)) { this.put(jsonString(this.L.masked)); continue; }
       let child;
       try { child = arr ? v[i] : v[keys[i]]; } catch { this.put(jsonString(this.L.unreadable)); continue; }
       this.value(child, p, indent + 2, anc);
@@ -493,16 +549,16 @@ class JsonWriter {
   }
 }
 
-/** One line of JSON for a deep leaf (QĐ 5), cut at LIMITS.full code units. */
+/** One line of JSON for a leaf (QĐ 5, `type: 'json'`), cut at LIMITS.full code units. */
 function compactJson(v, path, ctx) {
-  const w = new JsonWriter({ L: ctx.L, pretty: false, budget: LIMITS.full, masked: ctx.isMasked, onUnsafe: () => { ctx.unsafe = true; } });
+  const w = new JsonWriter({ L: ctx.L, pretty: false, budget: LIMITS.full, ctx });
   w.value(v, path, 0, []);
   return { s: w.text(), cut: w.cut };
 }
 
 /** Pretty JSON view of one side (QĐ 13): 2-space indent, kit key order, ≤ LIMITS.json code units, cut at a line. */
 function prettyJson(v, ctx, entries) {
-  const w = new JsonWriter({ L: ctx.L, pretty: true, budget: LIMITS.json, masked: ctx.isMasked });
+  const w = new JsonWriter({ L: ctx.L, pretty: true, budget: LIMITS.json, ctx });
   if (entries) {
     // items mode: an object built from the items (key → value), kit key order
     const keys = orderKeys([...entries.keys()]);
@@ -511,7 +567,7 @@ function prettyJson(v, ctx, entries) {
       for (let i = 0; i < keys.length && !w.cut; i++) {
         if (i > 0 && !w.put(',')) break;
         if (!w.nl(2)) break;
-        if (!w.put(`${jsonString(keys[i])}: `)) break;
+        if (!w.put(`${jsonString(keyText(keys[i]))}: `)) break;
         const e = entries.get(keys[i]);
         if (e.masked) w.put(w.scalar(e.text));
         else w.value(e.value, [keys[i]], 2, []);
@@ -526,36 +582,83 @@ function prettyJson(v, ctx, entries) {
 }
 
 // --- descriptors (one side of one row) ---
-// { t: 'e' } empty · { t: 'm' } masked label · { t: 's', raw, s, cut } string · { t: 'n', s } number · { t: 'u' } unsafe
-// number · { t: 'x' } non-finite · { t: 'b', v } boolean · { t: 'l', items: desc[], len } scalar list ·
-// { t: 'note', s, ref? } fixed text (+ raw value for equality) · { t: 'j', s, cut, ref } JSON of a deep container
+// { t: 'e' } empty · { t: 'm' } masked label · { t: 's', key, long, s, cut } string (key = bounded raw prefix) ·
+// { t: 'n', s } number · { t: 'u' } unsafe number · { t: 'x' } non-finite · { t: 'b', v } boolean ·
+// { t: 'l', items: desc[] (≤ LIMITS.list), len } scalar list · { t: 'note', s, ref? } fixed text (+ raw value for
+// equality) · { t: 'j', s, cut, ref } JSON of a container (or of a `type: 'json'` value)
 
 const EMPTY = Object.freeze({ t: 'e' });
 const MASKED = Object.freeze({ t: 'm' });
 
-/** A scalar → descriptor. */
-function scalarDesc(v, ctx) {
+/** A scalar → descriptor (strings cut at `max` code points for display). */
+function scalarDesc(v, ctx, max = LIMITS.full) {
   if (v === null || v === undefined) return EMPTY;
   if (typeof v === 'string') {
-    const r = cleanText(v, LIMITS.full);
-    return r.empty ? EMPTY : { t: 's', raw: v, s: r.s, cut: r.cut };
+    const r = cleanText(v, max);
+    return r.empty ? EMPTY : { t: 's', key: r.head, long: r.long, s: r.s, cut: r.cut };
   }
   if (typeof v === 'boolean') return { t: 'b', v };
   if (typeof v === 'bigint') {
     const s = v.toString();
-    return { t: 's', raw: s, s, cut: false };
+    return { t: 's', key: s, long: false, s, cut: false };
   }
   const c = canonicalNumber(v);
   if (c.t !== 'n') ctx.unsafe = true;
   return c;
 }
 
+/**
+ * Is the array `v` (length `len`) a list of scalars? Inspects at most LIMITS.list elements (charged to the shared work
+ * budget; masked indexes never read). → `{ k: 'list', vals }` | `{ k: 'masked' }` (a scalar list with a masked
+ * descendant: ONE masked leaf — round 1 I3) | `{ k: 'no' }` (has a non-scalar / unreadable element) | `{ k: 'skip' }`
+ * (work budget spent).
+ */
+function listOf(v, len, path, ctx) {
+  if (!canWork(ctx)) return { k: 'skip' };
+  const n = Math.min(len, LIMITS.list);
+  ctx.work -= n;
+  const vals = [];
+  let masked = ctx.maskBelow(path);
+  for (let i = 0; i < n; i++) {
+    if (ctx.isMasked(path.concat([i]))) { masked = true; continue; }
+    let x;
+    try { x = v[i]; } catch { return { k: 'no' }; }
+    if (!isScalar(x)) return { k: 'no' };
+    vals.push(x);
+  }
+  return masked ? { k: 'masked' } : { k: 'list', vals };
+}
+
+/** JSON writer helper: a scalar list with a masked descendant (same rule as listOf, no work charged twice). */
+function maskedList(v, len, path, ctx) {
+  const n = Math.min(len, LIMITS.list);
+  for (let i = 0; i < n; i++) {
+    if (ctx.isMasked(path.concat([i]))) continue;
+    let x;
+    try { x = v[i]; } catch { return false; }
+    if (!isScalar(x)) return false;
+  }
+  return true;
+}
+
+/** A `type: 'json'` scalar / list → its JSON (bounded serializer, canonical numbers — round 1 I5). */
+function jsonDesc(v, path, ctx) {
+  const j = compactJson(v, path, ctx);
+  return { t: 'j', s: j.s, cut: j.cut, ref: v };
+}
+
+/** A scalar leaf by its type. */
+function scalarLeaf(v, type, path, ctx) {
+  const d = scalarDesc(v, ctx);
+  return d.t === 'e' || type !== 'json' ? d : jsonDesc(v, path, ctx);
+}
+
 /** A non-scalar leaf value (items mode, or a container that does not descend) → descriptor. */
-function containerLeaf(v, shape, path, ctx) {
+function containerLeaf(v, shape, path, ctx, type) {
   if (shape === 'date') {
     let iso = null;
     try { iso = v.toISOString(); } catch { iso = null; }
-    return iso === null ? { t: 'note', s: ctx.L.unsupported } : { t: 's', raw: iso, s: iso, cut: false };
+    return iso === null ? { t: 'note', s: ctx.L.unsupported } : { t: 's', key: iso, long: false, s: iso, cut: false };
   }
   if (shape === 'bad') return { t: 'note', s: ctx.L.unreadable };
   if (shape !== 'array' && shape !== 'object') return { t: 'note', s: ctx.L.unsupported };
@@ -569,69 +672,83 @@ function containerLeaf(v, shape, path, ctx) {
     return { t: 'note', s: fill(arr ? ctx.L.arraySummary : ctx.L.objectSummary, { n: len }), ref: v };
   }
   if (arr) {
-    const els = [];
-    let scalars = true;
-    for (let i = 0; i < len; i++) {
-      let x;
-      try { x = v[i]; } catch { scalars = false; break; }
-      if (!isScalar(x)) { scalars = false; break; }
-      els.push(x);
-    }
-    if (scalars) return { t: 'l', items: els.map((x) => scalarDesc(x, ctx)), len };
+    const l = listOf(v, len, path, ctx);
+    if (l.k === 'masked') return MASKED;
+    if (l.k === 'skip') return { t: 'note', s: fill(ctx.L.arraySummary, { n: len }) };
+    if (l.k === 'list') return type === 'json' ? jsonDesc(v, path, ctx) : listDesc(l.vals, len, ctx);
   }
-  const j = compactJson(v, path, ctx);
-  return { t: 'j', s: j.s, cut: j.cut, ref: v };
+  return jsonDesc(v, path, ctx);
+}
+
+function listDesc(vals, len, ctx) {
+  return { t: 'l', items: vals.map((x) => scalarDesc(x, ctx, LIMITS.label)), len };
+}
+
+/** An element never equal to another one (unsafe / non-finite number, string over its bounded prefix). */
+const uniqueElem = (d) => d.t === 'u' || d.t === 'x' || (d.t === 's' && d.long);
+
+/** The set key of a list element (a unique element gets a key no other element has). */
+function elemKey(d, i, side) {
+  if (uniqueElem(d)) return `!${side}${i}`;
+  if (d.t === 's') return `s${d.key}`;
+  if (d.t === 'n') return `n${d.s}`;
+  if (d.t === 'b') return d.v ? 'b1' : 'b0';
+  return 'e';
+}
+
+/** Scalar lists compare as SETS (round 1 I1): order + duplicates ignored; unique elements → cannot tell. */
+function setEqual(a, b, ctx) {
+  if (!canWork(ctx)) return 2;
+  ctx.work -= a.items.length + b.items.length;
+  const ka = new Set();
+  const kb = new Set();
+  let ua = 0;
+  let ub = 0;
+  a.items.forEach((x, i) => { if (uniqueElem(x)) ua++; else ka.add(elemKey(x, i, 'a')); });
+  b.items.forEach((x, i) => { if (uniqueElem(x)) ub++; else kb.add(elemKey(x, i, 'b')); });
+  if (ka.size !== kb.size) return 0;
+  for (const k of ka) if (!kb.has(k)) return 0;
+  // a unique element on ONE side only has no counterpart there: a certain change; on both sides: cannot tell
+  if ((ua > 0) !== (ub > 0)) return 0;
+  return ua > 0 || a.len > a.items.length || b.len > b.items.length ? 2 : 1;
 }
 
 /** Equality of two non-empty descriptors: 1 / 0 / 2 (uncertain). */
-function descEqual(a, b) {
+function descEqual(a, b, ctx) {
   if (a.t === 'u' || a.t === 'x' || b.t === 'u' || b.t === 'x') return 2;
   if (a.t === 'note' && !a.ref) return 2;
   if (b.t === 'note' && !b.ref) return 2;
   const ra = a.t === 'j' || a.t === 'note';
   const rb = b.t === 'j' || b.t === 'note';
-  if (ra || rb) return ra && rb ? deepEqual(a.ref, b.ref) : 0;
+  if (ra || rb) {
+    if (!(ra && rb)) return 0;
+    if (!canWork(ctx)) return 2;
+    const budget = { left: Math.min(LIMITS.equal, ctx.work) };
+    const start = budget.left;
+    const r = deepEqual(a.ref, b.ref, budget);
+    ctx.work -= start - Math.max(budget.left, 0);
+    return r;
+  }
   if (a.t !== b.t) return 0;
-  if (a.t === 's') return a.raw === b.raw ? 1 : 0;
+  if (a.t === 's') {
+    if (a.long || b.long) return a.long && b.long && a.key === b.key ? 2 : 0;
+    return a.key === b.key ? 1 : 0;
+  }
   if (a.t === 'n') return a.s === b.s ? 1 : 0;
   if (a.t === 'b') return a.v === b.v ? 1 : 0;
-  if (a.t === 'l') {
-    if (a.len !== b.len) return 0;
-    let unsure = false;
-    for (let i = 0; i < a.items.length; i++) {
-      const x = a.items[i];
-      const y = b.items[i];
-      if (x.t === 'e' || y.t === 'e') {
-        if (x.t !== y.t) return 0;
-        continue;
-      }
-      const r = descEqual(x, y);
-      if (r === 0) return 0;
-      if (r === 2) unsure = true;
-    }
-    return unsure ? 2 : 1;
-  }
+  if (a.t === 'l') return setEqual(a, b, ctx);
   return 0;
 }
 
 /** `{ kind, uncertain }` of two descriptors (QĐ 2 / 7a). */
-function kindOf(b, a) {
+function kindOf(b, a, ctx) {
   const eb = b.t === 'e';
   const ea = a.t === 'e';
   if (eb && ea) return { kind: 'unchanged', uncertain: false };
   if (eb) return { kind: 'added', uncertain: false };
   if (ea) return { kind: 'removed', uncertain: false };
-  const r = descEqual(b, a);
+  const r = descEqual(b, a, ctx);
   return r === 1 ? { kind: 'unchanged', uncertain: false } : { kind: 'changed', uncertain: r === 2 };
-}
-
-/** The set key of a list element (unsafe / non-finite: unique — always marked). */
-function elemKey(d, i, side) {
-  if (d.t === 's') return `s${d.raw}`;
-  if (d.t === 'n') return `n${d.s}`;
-  if (d.t === 'b') return d.v ? 'b1' : 'b0';
-  if (d.t === 'e') return 'e';
-  return `!${side}${i}`;
 }
 
 // --- FieldDefs ---
@@ -669,7 +786,7 @@ function readDef(f) {
       for (let i = 0; i < len; i++) {
         let s;
         try { s = p[i]; } catch { s = undefined; }
-        if (typeof s === 'string' && cpLength(s) <= LIMITS.label) path.push(s.replace(LONE, '\uFFFD'));
+        if (typeof s === 'string' && !cpOver(s, LIMITS.label)) path.push(s); // raw: compared with raw keys
         else if (typeof s === 'number' && Number.isSafeInteger(s) && s >= 0) path.push(s);
         else { path = null; break; }
       }
@@ -682,7 +799,8 @@ function readDef(f) {
 function readOpts(get) {
   const o = {};
   const label = get('label');
-  o.label = typeof label === 'string' && cleanLabel(label) !== '' ? cleanLabel(label) : null;
+  const lab = typeof label === 'string' ? cleanLabel(label) : '';
+  o.label = lab !== '' ? lab : null;
   const type = get('type');
   o.type = TYPES.includes(type) ? type : null;
   const opts = get('options');
@@ -695,10 +813,9 @@ function readOpts(get) {
   return o;
 }
 
-const segEq = (a, b) => a === b; // typed: '0' !== 0
 function isPrefix(pre, path) {
   if (pre.length > path.length) return false;
-  for (let i = 0; i < pre.length; i++) if (!segEq(pre[i], path[i])) return false;
+  for (let i = 0; i < pre.length; i++) if (pre[i] !== path[i]) return false; // typed: '0' !== 0
   return true;
 }
 
@@ -730,14 +847,11 @@ function cellOf(d, type, def, L, other, marks) {
       const items = [];
       let set = null;
       if (marks && other && other.t === 'l') set = new Set(other.items.map((x, i) => elemKey(x, i, 'o')));
-      const n = Math.min(d.items.length, LIMITS.list);
-      for (let i = 0; i < n; i++) {
-        const x = d.items[i];
+      d.items.forEach((x, i) => {
         const c = scalarText(x, type === 'enum' ? 'enum' : null, def, L, true);
-        const key = elemKey(x, i, 's');
-        items.push({ s: c.s, note: c.note, m: set ? (set.has(key) ? '' : marks) : '' });
-      }
-      return { k: 'list', items, more: d.items.length - n };
+        items.push({ s: c.s, note: c.note, m: set ? (set.has(elemKey(x, i, 's')) ? '' : marks) : '' });
+      });
+      return { k: 'list', items, more: d.len - d.items.length };
     }
     default: {
       const c = scalarText(d, type, def, L, false);
@@ -748,7 +862,6 @@ function cellOf(d, type, def, L, other, marks) {
 
 /** Text of a scalar descriptor by type (QĐ 7). */
 function scalarText(d, type, def, L, inList) {
-  const cap = (s) => (inList ? cleanLabel(s) : s);
   if (d.t === 'e') return { s: '—', note: true, cut: false };
   if (d.t === 'u') return { s: L.unsafeNumber, note: true, cut: false };
   if (d.t === 'x') return { s: L.unsupported, note: true, cut: false };
@@ -763,7 +876,7 @@ function scalarText(d, type, def, L, inList) {
   }
   // string
   if (type === 'enum') {
-    const o = optionLabel(def.options, d.raw);
+    const o = d.long ? null : optionLabel(def.options, d.key);
     if (o !== null) return { s: o, note: false, cut: false };
   } else if (type === 'date') {
     const f = formatDate(d.s);
@@ -771,7 +884,7 @@ function scalarText(d, type, def, L, inList) {
   } else if ((type === 'number' || type === 'money') && !d.cut && DECIMAL.test(d.s)) {
     return { s: formatNumber(d.s === '-0' ? '0' : d.s, def.decimals, unitOf(type, def)), note: false, cut: false };
   }
-  return inList ? { s: cap(d.s), note: false, cut: false } : { s: d.s, note: false, cut: d.cut };
+  return inList ? { s: d.cut ? `${d.s}…` : d.s, note: false, cut: false } : { s: d.s, note: false, cut: d.cut };
 }
 
 function unitOf(type, def) {
@@ -793,7 +906,7 @@ function inferType(a, b) {
 
 // --- flattening (snapshots) ---
 
-function flatten(root, ctx) {
+function flatten(root, ctx, side) {
   const map = new Map();
   const st = { left: LIMITS.nodes, stop: false };
   const tick = (n) => {
@@ -806,50 +919,47 @@ function flatten(root, ctx) {
     const id = JSON.stringify(path);
     if (!map.has(id)) map.set(id, { path, desc });
   };
-  /** a masked FieldDef lies strictly below `path` (the leaf there would show it) */
-  const maskBelow = (path) => ctx.masks.some((m) => m.length > path.length && isPrefix(path, m));
 
   const walk = (v, path, anc) => {
     if (!tick(1)) return;
     const shape = shapeOf(v);
     if (shape === 'scalar') {
-      if (path.length && maskBelow(path)) emit(path, MASKED);
-      else if (path.length || (v !== null && v !== undefined)) emit(path, scalarDesc(v, ctx));
+      if (path.length && ctx.maskBelow(path)) emit(path, MASKED);
+      else if (path.length || (v !== null && v !== undefined)) emit(path, scalarLeaf(v, ctx.typeAt(path), path, ctx));
       return;
     }
     if ((shape === 'array' || shape === 'object') && anc.includes(v)) { emit(path, { t: 'note', s: ctx.L.cycle }); return; }
-    if (shape !== 'array' && shape !== 'object') { emit(path, maskBelow(path) ? MASKED : containerLeaf(v, shape, path, ctx)); return; }
+    const below = ctx.maskBelow(path);
+    if (shape !== 'array' && shape !== 'object') { emit(path, below ? MASKED : containerLeaf(v, shape, path, ctx, null)); return; }
     const arr = shape === 'array';
     const keys = arr ? null : keysOf(v);
     const len = arr ? lengthOf(v) : keys && keys.length;
     if (len === null) { emit(path, { t: 'note', s: ctx.L.unreadable }); return; }
-    if (len === 0) { if (path.length) emit(path, maskBelow(path) ? MASKED : EMPTY); return; }
-    const below = maskBelow(path);
-    if (len > LIMITS.keys || path.length >= LIMITS.depth) { emit(path, below ? MASKED : containerLeaf(v, shape, path, ctx)); return; }
+    if (len === 0) { if (path.length) emit(path, below ? MASKED : EMPTY); return; }
+    if (len > LIMITS.keys || path.length >= LIMITS.depth) {
+      emit(path, below ? MASKED : containerLeaf(v, shape, path, ctx, ctx.typeAt(path)));
+      return;
+    }
     if (arr) {
-      // read every element once (counted) — a list of scalars is ONE leaf (QĐ 4); masked indexes are never read
-      if (!tick(len)) return;
-      const els = new Array(len);
-      let scalars = !below;
-      for (let i = 0; i < len; i++) {
-        if (ctx.isMasked(path.concat([i]))) { els[i] = MASKED; scalars = false; continue; }
-        try { els[i] = { v: v[i] }; } catch { els[i] = null; scalars = false; continue; }
-        if (!isScalar(els[i].v)) scalars = false;
-      }
-      if (scalars) { emit(path, { t: 'l', items: els.map((e) => scalarDesc(e.v, ctx)), len }); return; }
+      // a list of scalars is ONE leaf (QĐ 4); with a masked descendant one masked leaf (I3); masked indexes never read
+      const l = listOf(v, len, path, ctx);
+      if (l.k === 'masked') { emit(path, MASKED); return; }
+      if (l.k === 'skip') { emit(path, { t: 'note', s: fill(ctx.L.arraySummary, { n: len }) }); return; }
+      if (l.k === 'list') { emit(path, ctx.typeAt(path) === 'json' ? jsonDesc(v, path, ctx) : listDesc(l.vals, len, ctx)); return; }
       anc.push(v);
       for (let i = 0; i < len && !st.stop; i++) {
         const p = path.concat([i]);
-        if (els[i] === MASKED) { if (tick(1)) emit(p, MASKED); continue; }
-        if (els[i] === null) { if (tick(1)) emit(p, { t: 'note', s: ctx.L.unreadable }); continue; }
-        walk(els[i].v, p, anc);
+        if (ctx.isMasked(p)) { if (tick(1)) emit(p, MASKED); continue; }
+        let child;
+        try { child = v[i]; } catch { if (tick(1)) emit(p, { t: 'note', s: ctx.L.unreadable }); continue; }
+        walk(child, p, anc);
       }
       anc.pop();
       return;
     }
     anc.push(v);
     for (let i = 0; i < len && !st.stop; i++) {
-      const p = path.concat([keySeg(keys[i])]);
+      const p = path.concat([keyId(keys[i], ctx, side)]);
       if (ctx.isMasked(p)) { if (tick(1)) emit(p, MASKED); continue; }
       let child;
       try { child = v[keys[i]]; } catch { if (tick(1)) emit(p, { t: 'note', s: ctx.L.unreadable }); continue; }
@@ -864,7 +974,7 @@ function flatten(root, ctx) {
 // --- labels of snapshot rows ---
 
 function segText(seg) {
-  return typeof seg === 'number' ? `#${seg + 1}` : cleanText(seg, LIMITS.label).s;
+  return typeof seg === 'number' ? `#${seg + 1}` : cleanLabel(seg);
 }
 
 function rowLabel(path, fields, L) {
@@ -890,7 +1000,10 @@ function rowLabel(path, fields, L) {
 export function normalize(input, opts = {}) {
   const L = resolveLabels(opts.labels);
   const warnings = [];
-  const ctx = { L, tooLarge: false, unsafe: false, masks: [], isMasked: () => false };
+  const ctx = {
+    L, tooLarge: false, unsafe: false, work: LIMITS.work, overKeys: 0, masks: [],
+    isMasked: () => false, maskBelow: () => false, typeAt: () => null,
+  };
   const rows = [];
   let jsonSides = null;
   const itemsMode = !!input && input.items !== undefined && input.items !== null;
@@ -903,6 +1016,7 @@ export function normalize(input, opts = {}) {
     if (total > LIMITS.keys) ctx.tooLarge = true;
     const entries = opts.json ? { before: new Map(), after: new Map() } : null;
     for (let i = 0; i < n; i++) {
+      ctx.work -= 1;
       let raw;
       try { raw = list[i]; } catch { raw = null; }
       if (shapeOf(raw) !== 'object') { warnings.push('item'); continue; }
@@ -910,7 +1024,7 @@ export function normalize(input, opts = {}) {
       let key = get('key');
       if (typeof key === 'number') { const c = canonicalNumber(key); key = c.t === 'n' ? c.s : null; }
       if (typeof key !== 'string' || key === '') { warnings.push('item'); continue; }
-      const seg = keySeg(key);
+      const seg = keyId(key, ctx, 'i');
       const o = readOpts(get);
       const kindIn = get('kind');
       let kind = KINDS.includes(kindIn) ? kindIn : null;
@@ -924,18 +1038,17 @@ export function normalize(input, opts = {}) {
         const side = (k) => {
           const v = get(k);
           if (typeof v !== 'string') return { d: MASKED, view: { masked: true, text: L.masked } };
-          const d = scalarDesc(v, ctx);
-          return { d, view: { masked: true, text: v } };
+          return { d: scalarDesc(v, ctx), view: { masked: true, text: v } };
         };
         const sb = side('before');
         const sa = side('after');
         b = sb.d; a = sa.d; bView = sb.view; aView = sa.view;
-        if (kind === null) kind = b.t !== 'm' && a.t !== 'm' ? kindOf(b, a).kind : 'changed';
+        if (kind === null) kind = b.t !== 'm' && a.t !== 'm' ? kindOf(b, a, ctx).kind : 'changed';
       } else {
         const leaf = (k) => {
           const v = get(k);
           const shape = shapeOf(v);
-          return { v, d: shape === 'scalar' ? scalarDesc(v, ctx) : containerLeaf(v, shape, [seg], ctx) };
+          return { v, d: shape === 'scalar' ? scalarLeaf(v, o.type, [seg], ctx) : containerLeaf(v, shape, [seg], ctx, o.type) };
         };
         const lb = leaf('before');
         const la = leaf('after');
@@ -944,7 +1057,7 @@ export function normalize(input, opts = {}) {
         aView = la.v === undefined ? null : { masked: false, value: la.v };
       }
       let uncertain = false;
-      if (kind === null) ({ kind, uncertain } = kindOf(b, a));
+      if (kind === null) ({ kind, uncertain } = kindOf(b, a, ctx));
       const type = o.type ?? inferType(a, b);
       rows.push({ path: [seg], label: o.label ?? cleanLabel(key), kind, uncertain, masked: o.masked, type, b, a, def: o });
       if (entries) {
@@ -960,10 +1073,16 @@ export function normalize(input, opts = {}) {
     const fields = readFields(input && input.fields, warnings);
     ctx.masks = fields.filter((f) => f.masked).map((f) => f.path);
     ctx.isMasked = (p) => ctx.masks.some((m) => isPrefix(m, p));
+    /** a masked FieldDef lies strictly below `path` (a leaf there would show it) */
+    ctx.maskBelow = (p) => ctx.masks.some((m) => m.length > p.length && isPrefix(p, m));
+    ctx.typeAt = (p) => {
+      const f = fields.find((x) => x.path.length === p.length && isPrefix(x.path, p));
+      return f ? f.type : null;
+    };
     const before = input ? input.before : undefined;
     const after = input ? input.after : undefined;
-    const fa = flatten(after, ctx);
-    const fb = flatten(before, ctx);
+    const fa = flatten(after, ctx, 'a');
+    const fb = flatten(before, ctx, 'b');
     const ids = [...fa.keys()];
     for (const id of fb.keys()) if (!fa.has(id)) ids.push(id);
     const rank = (path) => {
@@ -984,7 +1103,7 @@ export function normalize(input, opts = {}) {
       let kind;
       let uncertain = false;
       if (masked) kind = 'changed';
-      else ({ kind, uncertain } = kindOf(b, a));
+      else ({ kind, uncertain } = kindOf(b, a, ctx));
       rows.push({
         path: t.path, label: rowLabel(t.path, fields, L), kind, uncertain, masked,
         type: def.type ?? inferType(a, b), b: masked ? MASKED : b, a: masked ? MASKED : a, def,
@@ -1009,11 +1128,25 @@ export function normalize(input, opts = {}) {
   }
   counts.hidden = rows.length - kept.length;
 
-  // cells + total text budget (QĐ 10)
+  // cells + total text budget (QĐ 10; list elements count too — round 1 S2)
   let used = 0;
   let over = false;
   const budget = (c) => {
-    if (!c || (c.k !== 'text' && c.k !== 'json')) return c;
+    if (!c) return c;
+    if (c.k === 'list') {
+      const keep = [];
+      let cell = 0;
+      for (const it of c.items) {
+        const n = cpLength(it.s);
+        if (!over && used + n <= LIMITS.total) { used += n; keep.push(it); continue; }
+        over = true;
+        if (cell + n > LIMITS.preview) break;
+        cell += n;
+        keep.push(it);
+      }
+      return keep.length === c.items.length ? c : { k: 'list', items: keep, more: c.more + c.items.length - keep.length };
+    }
+    if (c.k !== 'text' && c.k !== 'json') return c;
     const n = cpLength(c.s);
     if (!over && used + n <= LIMITS.total) { used += n; return c; }
     over = true;

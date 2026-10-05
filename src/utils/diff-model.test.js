@@ -25,12 +25,12 @@ describe('diff-model — kinds (QĐ 2)', () => {
     assert.deepEqual(m.counts, { added: 3, removed: 2, changed: 1, unchanged: 3, hidden: 0, truncated: false });
   });
 
-  test('a type change is a real change (1 vs "1"); objects compare by key SET; lists by order', () => {
+  test('a type change is a real change (1 vs "1"); objects compare by key SET; scalar lists as SETS (round 1 I1)', () => {
     const m = normalize({ items: [
       { key: 'n', before: 1, after: '1' }, { key: 'o', before: { a: 1, b: [1, 2] }, after: { b: [1, 2], a: 1 } },
       { key: 'l', before: ['a', 'b'], after: ['b', 'a'] }, { key: 'f', before: 1, after: 1.0 }, { key: 'z', before: -0, after: 0 },
     ] });
-    assert.deepEqual(m.rows.map((r) => r.kind), ['changed', 'unchanged', 'changed', 'unchanged', 'unchanged']);
+    assert.deepEqual(m.rows.map((r) => r.kind), ['changed', 'unchanged', 'unchanged', 'unchanged', 'unchanged']);
   });
 
   test('a given kind is trusted; an invalid one is recomputed + one warning code (no value)', () => {
@@ -380,5 +380,104 @@ describe('diff-model — fuzz (seeded)', () => {
         }
       }
     }
+  });
+});
+
+describe('diff-model — Codex round 1 (S1–S3, I1–I6)', () => {
+  test('S1: keys sharing a 200-code-point prefix stay two rows (identity = raw key; only the label is cut)', () => {
+    const A = 'A'.repeat(200);
+    const m = normalize({ before: { [`${A}x`]: 1, [`${A}y`]: 2 }, after: { [`${A}x`]: 1, [`${A}y`]: 3 } });
+    assert.equal(m.rows.length, 2);
+    assert.deepEqual(m.rows.map((r) => r.kind).sort(), ['changed', 'unchanged']);
+    assert.equal(m.rows[0].label, m.rows[1].label, 'same display label, two rows');
+    assert.notEqual(m.rows[0].id, m.rows[1].id);
+  });
+
+  test('S1: lone surrogates and NFC / NFD keys are distinct identities (replacement is display only)', () => {
+    const lone = normalize({ after: { '\uD800': 1, '\uDC00': 2 } });
+    assert.equal(lone.rows.length, 2);
+    assert.deepEqual(lone.rows.map((r) => r.label), ['\uFFFD', '\uFFFD']);
+    const nf = normalize({ before: { 'é': 1, 'e\u0301': 1 }, after: { 'é': 1, 'e\u0301': 2 } });
+    assert.deepEqual(nf.rows.map((r) => r.kind), ['unchanged', 'changed']);
+  });
+
+  test('S1: a key over the hard cap (1000 code points) is never merged: removed + added, truncated + note', () => {
+    const K = 'k'.repeat(1001);
+    const m = normalize({ before: { [K]: 1 }, after: { [K]: 1 } });
+    assert.deepEqual(m.rows.map((r) => r.kind).sort(), ['added', 'removed']);
+    assert.equal(m.counts.truncated, true);
+    assert.ok(m.notes.includes('tooLarge'));
+    const ok = normalize({ before: { ['k'.repeat(1000)]: 1 }, after: { ['k'.repeat(1000)]: 1 } });
+    assert.deepEqual(ok.rows.map((r) => r.kind), ['unchanged']);
+  });
+
+  test('S2 + I2: 300 items × two 1000-element lists — bounded work, ≤ 200 elements kept, original length, truncated', () => {
+    const items = Array.from({ length: 300 }, (_, i) => ({ key: `k${i}`, before: Array.from({ length: 1000 }, (_, j) => `b${j}`),
+      after: Array.from({ length: 1000 }, (_, j) => `a${j}`) }));
+    const t0 = performance.now();
+    const m = normalize({ items });
+    assert.ok(performance.now() - t0 < 300 * PERF_SLACK, `${(performance.now() - t0).toFixed(0)} ms`);
+    assert.equal(m.counts.truncated, true);
+    assert.ok(m.notes.includes('tooLarge'));
+    assert.equal(m.rows[0].after.items.length, 200);
+    assert.equal(m.rows[0].after.more, 800);
+    // once the shared work budget is spent, later lists are not inspected: a summary, compared as "không so sánh được"
+    const last = m.rows[m.rows.length - 1];
+    assert.deepEqual([last.after.k, last.after.s, last.kind, last.uncertain], ['note', fill(DEFAULT_LABELS.arraySummary, { n: 1000 }), 'changed', true]);
+  });
+
+  test('S2: list strings count toward the 300 000 total text budget', () => {
+    const big = Array.from({ length: 200 }, (_, j) => `${j}${'x'.repeat(198)}`);
+    const m = normalize({ items: Array.from({ length: 10 }, (_, i) => ({ key: `l${i}`, after: big })) });
+    assert.ok(m.notes.includes('textBudget'));
+    assert.equal(m.counts.truncated, true);
+    const total = m.rows.reduce((n, r) => n + (r.after?.items || []).reduce((k, it) => k + Array.from(it.s).length, 0), 0);
+    assert.ok(total <= LIMITS.total + LIMITS.preview * 10, `${total}`);
+  });
+
+  test('S3: every bidi control / default-ignorable shown (U+061C, U+00AD, U+2060, U+2064, U+180E, tags) — not U+FE0F', () => {
+    const s = 'a\u061Cb\u00ADc\u2060d\u2064e\u180Ef\u{E0041}g\uFE0Fh\u034Fi';
+    assert.deepEqual(splitInvisible(s).filter((p) => p.c).map((p) => p.c),
+      ['⟨U+061C⟩', '⟨U+00AD⟩', '⟨U+2060⟩', '⟨U+2064⟩', '⟨U+180E⟩', '⟨U+E0041⟩', '⟨U+034F⟩']);
+    assert.equal(splitInvisible(s).filter((p) => p.t).map((p) => p.t).join(''), 'abcdefg\uFE0Fhi');
+  });
+
+  test('I1: scalar lists compare as SETS (order + duplicates ignored); unsafe elements always differ', () => {
+    const m = normalize({ items: [{ key: 'r', before: ['a', 'b'], after: ['b', 'a', 'a'] }, { key: 'u', before: [2 ** 53], after: [2 ** 53] },
+      { key: 'c', before: ['a'], after: ['a', 'b'] }] });
+    assert.deepEqual(m.rows.map((r) => [r.kind, r.uncertain]), [['unchanged', false], ['changed', true], ['changed', false]]);
+  });
+
+  test('I3: a scalar list with a masked descendant is ONE masked leaf, element never read, JSON view masked', () => {
+    let reads = 0;
+    const tags = ['public'];
+    Object.defineProperty(tags, 1, { enumerable: true, get() { reads++; return 'secret-tag'; } });
+    const m = normalize({ before: { tags: ['public', 'x'] }, after: { tags }, fields: [{ path: ['tags', 1], masked: true }] }, { json: true });
+    assert.equal(reads, 0);
+    assert.deepEqual(m.rows.map((r) => [r.id, r.masked]), [['["tags"]', true]]);
+    assert.match(m.json.after, /"tags": "\[ĐÃ ẨN\]"/);
+    assert.ok(!JSON.stringify(parityModel(m)).includes('secret'));
+  });
+
+  test('I4: 10 MB values / keys — bounded time; equal 40 000-code-point prefixes of long strings → changed + uncertain', () => {
+    const big = 'x'.repeat(10 * 1024 * 1024);
+    const t0 = performance.now();
+    const m = normalize({ items: [{ key: 'a', before: big, after: `${big}y` }, { key: 'b', before: big, after: big }, { key: 'c', before: [big], after: [`${big}z`] }] });
+    normalize({ before: { [big]: 1 }, after: { [big]: 1 }, fields: [{ path: big }] });
+    assert.ok(performance.now() - t0 < 100 * PERF_SLACK, `${(performance.now() - t0).toFixed(0)} ms`);
+    assert.deepEqual(m.rows.map((r) => [r.kind, r.uncertain]), [['changed', true], ['changed', true], ['changed', true]]);
+  });
+
+  test('I5: explicit type json renders strings / booleans / numbers / scalar arrays through the bounded serializer', () => {
+    const m = normalize({ items: [{ key: 's', type: 'json', after: 'chuỗi "x"' }, { key: 'b', type: 'json', after: true },
+      { key: 'n', type: 'json', after: 1.0 }, { key: 'u', type: 'json', after: 2 ** 53 }, { key: 'l', type: 'json', after: ['a', 1, null] }] });
+    assert.deepEqual(m.rows.map((r) => [r.after.k, r.after.s]), [['json', '"chuỗi \\"x\\""'], ['json', 'true'], ['json', '1'],
+      ['json', '"[số quá lớn]"'], ['json', '["a", 1, null]']]);
+    assert.deepEqual(m.notes, ['unsafe']);
+  });
+
+  test('I6: an unsafe number seen only by the JSON view still adds the note', () => {
+    const m = normalize({ after: { l: [...Array(200).fill(1), 2 ** 53] } }, { json: true });
+    assert.ok(m.notes.includes('unsafe'));
   });
 });

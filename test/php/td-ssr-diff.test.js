@@ -18,6 +18,8 @@ import { diffMarkup } from '../../src/utils/diff-markup.js';
 
 if (!HAS_PHP && process.env.TD_REQUIRE_PHP) throw new Error('TD_REQUIRE_PHP=1 but no php >= 8.0 CLI on PATH');
 const opts = { skip: !HAS_PHP && 'php >= 8.0 CLI not found' };
+/** Wall-clock budgets get 20× slack on shared hosts; TD_PERF_STRICT=1 = raw. */
+const PERF_SLACK = process.env.TD_PERF_STRICT ? 1 : 20;
 
 const SPEC = JSON.parse(readFileSync(join(ROOT, 'test/ssr/diff.fixtures.json'), 'utf8'));
 const GEN = generatedCases();
@@ -157,6 +159,39 @@ describe('php/td.php — td_diff / td_diff_snapshots (v0.46.0, contract diff@1)'
       assert.ok(!/<img|<svg/i.test(html), id);
       assert.ok(!/<[a-z][^>]*\s(on\w+|style)=/i.test(html), id); // escaped text has no raw `<`: only real tags are seen
     }
+  });
+
+  test('Codex round 1: identity (S1), work budget (S2), Unicode (S3), sets (I1), masked list (I3), json type (I5) — PHP side', () => {
+    const rows = (id) => JSON.parse(outOf(id).model).rows;
+    assert.equal(rows('r1-prefix-collide').length, 2);
+    assert.deepEqual(rows('r1-nfc-nfd').map((r) => r.kind), ['unchanged', 'changed']);
+    const over = JSON.parse(outOf('r1-overcap-key').model);
+    assert.deepEqual(over.rows.map((r) => r.kind).sort(), ['added', 'changed', 'removed']);
+    assert.equal(over.counts.truncated, true);
+    assert.deepEqual(rows('r1-mask-list').map((r) => [r.id, r.masked]), [['["lines",0]', true], ['["tags"]', true], ['["lines",1,"p"]', false], ['["other"]', true]]);
+    assert.ok(!outOf('r1-mask-list').html.includes('secret'), 'masked list element never printed');
+    const inv = outOf('r1-invisible').html;
+    for (const c of ['061C', '2060', '00AD', '180E', 'E0041', '2064']) assert.ok(inv.includes(`<span class="td-diff__ctl">⟨U+${c}⟩</span>`), c);
+    assert.ok(!inv.includes('⟨U+FE0F⟩'));
+    assert.deepEqual(rows('r1-sets').map((r) => [r.path[0], r.kind, r.uncertain]), [['order', 'unchanged', false], ['dup', 'unchanged', false],
+      ['unsafe', 'changed', true], ['more', 'changed', false], ['mixed', 'unchanged', false], ['nf', 'changed', false]]);
+    assert.deepEqual(rows('r1-json-type').map((r) => r.after && r.after.s), ['"chuỗi \\"x\\""', 'true', '1', '0.1', '"[số quá lớn]"', '["a", 1, null]', null, '{"a": [1]}']);
+    const work = JSON.parse(outOf('g-work-lists').model);
+    assert.equal(work.counts.truncated, true);
+    assert.equal(work.rows[0].after.items.length, 200);
+    assert.equal(work.rows[0].after.more, 800);
+    assert.equal(work.rows.at(-1).after.k, 'note');
+    assert.ok(JSON.parse(outOf('g-list-text').model).notes.includes('textBudget'));
+  });
+
+  test('Codex round 1 I4: 10 MB values / keys / FieldDef segments in PHP — bounded time, cut before any regex', () => {
+    const t0 = Date.now();
+    const r = php("$big = str_repeat('x', 10 * 1024 * 1024); $m = TdComponents\\Td::diffModel(['items' => [['key' => $big, 'before' => $big, 'after' => $big . 'y'],"
+      + " ['key' => 'l', 'before' => [$big], 'after' => [$big . 'z']]]]); $o = new stdClass(); $o->{$big} = 1;"
+      + " $n = TdComponents\\Td::diffModel(['before' => null, 'after' => $o, 'fields' => [['path' => [$big]]]]);"
+      + " echo json_encode([array_map(fn ($r) => [$r['kind'], $r['uncertain']], $m['rows']), count($n['rows']), $n['counts']['truncated']]);");
+    assert.ok(Date.now() - t0 < 2000 * PERF_SLACK, `${Date.now() - t0} ms`);
+    assert.equal(r.out.split('\n').pop(), '[[["changed",true],["changed",true]],1,true]');
   });
 
   test('test/ssr/fixtures/diff.html (browser fixture) is up to date', () => {
