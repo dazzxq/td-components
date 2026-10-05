@@ -1,0 +1,24 @@
+/*
+ * Palette fixture "beige" (v0.41.0, plan M5) — the 135 recipe of docs/customization/theming.md: warm paper page
+ * (#ece5d8) with WHITE surfaces (tables, menus, inputs, popups — owner decision 1, set explicitly in R1). Unlayered
+ * :root, contract tokens only (src/theme/tokens.js THEME_TOKENS); everything else follows. Light scheme.
+ * Measured: text-muted #5c5850 5.65 on the paper, 4.75 on paper + hover-strong, 5.94 on white + hover-strong;
+ * text-subtle 3.76 / 4.71; control-border-strong 3.57 / 4.47.
+ */
+:root {
+	--td-color-bg: #ece5d8;
+	--td-color-surface: #fff;
+	--td-color-surface-raised: #fff;
+	--td-color-surface-muted: #ece5d8;
+	--td-color-text-muted: #5c5850;
+	--td-color-text-subtle: #78736a;
+	--td-color-text-label: #46423b;
+	--td-color-border: #d9cfbd;
+	--td-color-border-strong: #c9bfae;
+	--td-control-border-soft: #cfc6b6;
+	--td-control-border-hover: #a89f8f;
+	--td-control-border-strong: #7f7668;
+	--td-color-fill: #f2ede4;
+	--td-color-fill-strong: #e8e1d4;
+	--td-color-skeleton: #e6dfd1;
+}

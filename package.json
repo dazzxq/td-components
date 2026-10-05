@@ -24,6 +24,7 @@
     "check:stories": "node --import ./scripts/check-stories/register.mjs scripts/check-stories.mjs",
     "test:engines": "node test/engines/run.mjs",
     "test:contrast": "node test/tokens/contrast.spec.mjs",
+    "test:page-contrast": "node test/tokens/page-contrast.spec.mjs",
     "test:responsive": "node test/responsive/responsive.spec.mjs",
     "test:touch": "node test/touch/touch.spec.mjs",
     "test:visual": "node test/visual/media-picker.visual.mjs"

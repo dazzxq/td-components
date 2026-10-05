@@ -1,0 +1,98 @@
+/*
+ * Palette fixture "navy" (v0.41.0, plan M5) — a dark custom palette WITHOUT data-td-theme="dark": the FULL theme
+ * contract (src/theme/tokens.js THEME_TOKENS) hand-written, unlayered :root. Checks the completeness of the semantic
+ * wiring: set only the contract and the whole kit follows (no white control / popup / skeleton island, no dark ink
+ * left on navy). R2 replaces this file with the generator output (differential test).
+ * Measured (WCAG 2.x): text #e8edf5 ≥ 7.8 on every surface; text-muted #b4bfcf 4.76 on raised + hover-strong;
+ * control-border-soft #7a89a2 ≥ 3.12 vs fill / raised / surface / bg; accent-fill #2a63cc + white 5.59.
+ */
+:root {
+	/* surface */
+	--td-color-bg: #16233a;
+	--td-color-surface: #1e2d48;
+	--td-color-surface-muted: #16233a;
+	--td-color-surface-raised: #24365a;
+	--td-glass-bg: rgb(36 54 90 / 90%);
+	--td-glass-bg-strong: rgb(36 54 90 / 94%);
+	/* ink */
+	--td-color-text: #e8edf5;
+	--td-color-text-muted: #b4bfcf;
+	--td-color-text-subtle: #8592a7;
+	--td-color-text-label: #cdd5e2;
+	--td-glass-fg: #e8edf5;
+	/* structure */
+	--td-color-border: #2e4166;
+	--td-color-border-strong: #3d5379;
+	--td-hairline: rgb(255 255 255 / 8%);
+	--td-glass-border: rgb(255 255 255 / 14%);
+	--td-control-border-strong: #8291aa;
+	--td-control-border-soft: #7a89a2;
+	--td-control-border-hover: #97a5bc;
+	--td-focus: #7fb0ff;
+	--td-focus-ring: 0 0 0 3px rgb(127 176 255 / 45%);
+	/* interaction */
+	--td-color-hover: rgb(255 255 255 / 6%);
+	--td-color-hover-strong: rgb(255 255 255 / 10%);
+	--td-color-pressed: rgb(255 255 255 / 14%);
+	--td-color-skeleton: #2a3b5a;
+	--td-color-sheen: rgb(255 255 255 / 8%);
+	--td-color-fill: #2a3c5c;
+	--td-color-fill-strong: #34486b;
+	--td-color-on-fill: #dfe5ee;
+	/* accent */
+	--td-accent: #6ea2ff;
+	--td-accent-fill: #2a63cc;
+	--td-accent-contrast: #fff;
+	/* status */
+	--td-color-success: #4ade80;
+	--td-color-warning: #fbbf24;
+	--td-color-error: #fb8d8d;
+	--td-color-info: #7fb0ff;
+	--td-color-on-status: #0f172a;
+	--td-pastel-success-bg: #1f484c;
+	--td-pastel-success-border: #1f5e4f;
+	--td-pastel-success-fg: #bbf7d0;
+	--td-pastel-danger-bg: #45394f;
+	--td-pastel-danger-border: #644355;
+	--td-pastel-danger-fg: #fecaca;
+	--td-pastel-warning-bg: #45413d;
+	--td-pastel-warning-border: #635134;
+	--td-pastel-warning-fg: #fde68a;
+	--td-pastel-info-bg: #2a4368;
+	--td-pastel-info-border: #335381;
+	--td-pastel-info-fg: #bfdbfe;
+	--td-alert-success-bg: #1e3f4b;
+	--td-alert-success-border: #206a51;
+	--td-alert-success-icon: #86efac;
+	--td-alert-warning-bg: #383b41;
+	--td-alert-warning-border: #745a30;
+	--td-alert-warning-icon: #fcd34d;
+	--td-alert-danger-bg: #38354d;
+	--td-alert-danger-border: #754858;
+	--td-alert-danger-icon: #fca5a5;
+	--td-alert-info-bg: #263b5d;
+	--td-alert-info-border: #385d8f;
+	--td-alert-info-icon: #93c5fd;
+	/* button */
+	--td-btn-primary-bg: #e8edf5;
+	--td-btn-primary-fg: #16233a;
+	--td-btn-primary-hover: #cdd5e2;
+	--td-btn-primary-pressed: #b4bfcf;
+	--td-btn-secondary-hover: #34486b;
+	--td-btn-secondary-pressed: #3d5379;
+	--td-btn-secondary-border: rgb(255 255 255 / 12%);
+	--td-btn-disabled-bg: #1b2a44;
+	--td-btn-disabled-fg: #64738c;
+	--td-btn-disabled-border: rgb(255 255 255 / 6%);
+	/* elevation */
+	--td-shadow-1: 0 1px 2px rgb(0 0 0 / 24%);
+	--td-shadow-2: 0 2px 8px rgb(0 0 0 / 32%);
+	--td-shadow-3: 0 8px 24px rgb(0 0 0 / 40%);
+	--td-glass-shadow: 0 2px 6px rgb(0 0 0 / 20%), 0 8px 24px rgb(0 0 0 / 36%);
+	--td-glass-shadow-lg: 0 4px 12px rgb(0 0 0 / 24%), 0 20px 48px rgb(0 0 0 / 48%);
+	--td-btn-lift: 0 1px 3px rgb(0 0 0 / 24%), 0 4px 10px -2px rgb(0 0 0 / 30%);
+	--td-color-overlay: rgb(0 0 0 / 60%);
+	--td-tooltip-bg: #3a4f75;
+	--td-tooltip-fg: #fff;
+	--td-tooltip-border: rgb(255 255 255 / 16%);
+}
