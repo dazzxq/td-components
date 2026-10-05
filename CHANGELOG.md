@@ -2,6 +2,20 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.40.0
+
+**`<td-datetime-range>` — chọn khoảng ngày / giờ + preset** (plan `docs/internal/plans/v0.39.0-filters-range.md` phần
+v0.40, Codex plan-review APPROVE 3 vòng). Trang: `docs/components/datetime-range.md`. Không có thay đổi phá vỡ. Xong P1.
+
+### Added
+
+- `<td-datetime-range>` (`./datetime-range`, `TdDatetimeRange`): một trigger "Từ – Đến", hộp thoại hai phía (dưới 720px là
+  sheet, chuyển "Từ | Đến"), preset ("Hôm nay", "7 ngày qua", "Tháng này"… hoặc của site), kiểm thứ tự Từ ≤ Đến, giá trị
+  `{ start, end }`, form-associated (`name[start]` / `name[end]`), `required` theo từng phía, khôi phục trạng thái form
+  (JSON v1, giới hạn độ dài). Gợi ý ghép với bộ lọc `<td-table>` + `<td-filter-chips>` (v0.39) trong docs.
+- PHP `td_datetime_range()` + SSR `datetime-range@1` (cổng hydrate riêng, kiểm cấu trúc chặt; ngày kiểm `checkdate`).
+- Nội bộ: phần nhập ngày của `<td-datetime-picker>` tách thành `datetime-panel.js` (picker không đổi hành vi).
+
 ## 0.39.0
 
 **Bộ lọc ngoài, ẩn / hiện cột, chip bộ lọc** (plan `docs/internal/plans/v0.39.0-filters-range.md` phần v0.39, Codex
