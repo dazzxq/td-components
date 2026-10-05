@@ -18,6 +18,7 @@ import '/src/display/td-masked-value.js';
 import '/src/display/td-table.js';
 import '/src/form/td-media-field.js';
 import '/src/form/td-cropper.js';
+import '/src/form/td-scan-input.js';
 import { TdMediaPicker } from '/src/feedback/td-media-picker.js';
 import { createMockAdapter } from '/test/fixtures/media-adapter.js';
 
@@ -136,6 +137,10 @@ CASES.push({ kind: 'v0362', v: 'option', state: 'option-pressed', pageOnly: true
 // toast text ≥ 4.7 and close glyph ≥ 3.2 on the pressed fill per type; dropzone title / sub-line ≥ 4.7 on its pressed fill.
 for (const t of TOASTS) CASES.push({ kind: 'v0362', v: t, state: 'toast-pressed', pageOnly: true });
 CASES.push({ kind: 'v0362', v: 'dropzone', state: 'dropzone-pressed', pageOnly: true });
+// v0.38.0 td-scan-input (content layer → page only): the indicator text "Sẵn sàng quét" (focused, success colour) and
+// "Bấm vào đây để quét" (idle) ≥ 4.7 on the page, also on its pressed fill; a list row's error message, the "Đã quét: n"
+// count and a valid row's state ≥ 4.7 on the list surface; the field edge ≥ 3:1 — computed colours, light + dark.
+for (const state of ['ready', 'idle', 'pressed', 'ready-pressed', 'row-error', 'row-valid', 'count']) CASES.push({ kind: 'scan', v: 'scan-input', state, pageOnly: true });
 // v0.32.0: td-media-field (content layer → page only): prompt + ratio text ≥ 4.7 on the empty frame fill, the empty-frame
 // icon + dashed border ≥ 3.2 (border vs the page and vs the frame fill), the "Video" badge text ≥ 4.7 on its fill, the
 // field error text ≥ 4.7 on the page; td-media-picker (inside the solid dialog): tile name, detail meta label and tray
@@ -770,6 +775,50 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       name: `repeater:${c.v}:${c.state}`,
       pairs,
     };
+  } else if (c.kind === 'scan') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const over = (top, base) => {
+      const t = top.match(/[\d.]+/g).map(Number); const b = base.match(/[\d.]+/g).map(Number);
+      const a = t.length > 3 ? t[3] : 1;
+      return `rgb(${[0, 1, 2].map((i) => Math.round(t[i] * a + b[i] * (1 - a))).join(', ')})`;
+    };
+    const host = document.createElement('td-scan-input');
+    host.setAttribute('label', 'IMEI');
+    const multiple = c.state.startsWith('row') || c.state === 'count';
+    if (multiple) {
+      host.setAttribute('multiple', '');
+      host.setAttribute('name', 'imei[]');
+      host.validate = (v) => (v === 'BAD00001' ? 'Mã không hợp lệ' : true);
+    }
+    stage.appendChild(host);
+    const input = host.querySelector('input');
+    if (multiple) {
+      host.values = ['356938035643809'];
+      input.value = 'BAD00001';
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    }
+    if (c.state.startsWith('ready')) input.focus();
+    await new Promise((r) => setTimeout(r, 200));
+    let target; let pairs;
+    if (multiple) {
+      const list = host.querySelector('.td-scan__list');
+      const surface = over(getComputedStyle(list).backgroundColor, page);
+      target = c.state === 'count' ? host.querySelector('.td-scan__count')
+        : host.querySelector(`.td-scan__item[data-state="${c.state === 'row-error' ? 'invalid' : 'valid'}"] .td-scan__state`);
+      if (!target) throw new Error(`scan ${c.state}: target not found`);
+      const bg = c.state === 'count' ? page : surface;
+      pairs = [{ what: `${c.state} text`, fg: getComputedStyle(target).color, bg, min: 4.7 }];
+      if (c.state === 'row-error') pairs.push({ what: 'invalid value text', fg: getComputedStyle(host.querySelector('.td-scan__item[data-state="invalid"] .td-scan__value')).color, bg, min: 4.7 });
+    } else {
+      target = host.querySelector('.td-scan__status');
+      if (c.state.endsWith('pressed')) target.setAttribute('data-td-pressed', '');
+      const fill = over(getComputedStyle(target).backgroundImage.includes('rgb') ? getComputedStyle(target).backgroundImage.match(/rgba?\([^)]*\)/)[0] : 'rgba(0, 0, 0, 0)', page);
+      pairs = [{ what: `indicator ${c.state} text vs ${c.state.endsWith('pressed') ? 'pressed fill' : 'page'}`, fg: getComputedStyle(target).color, bg: fill, min: 4.7 },
+        { what: 'field edge vs page', fg: getComputedStyle(input).borderTopColor, bg: page, min: c.state.startsWith('ready') ? 3 : 1.2 }];
+      input.blur();
+    }
+    const b = target.getBoundingClientRect();
+    return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `scan:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'v0362') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
     const over = (top, base) => {

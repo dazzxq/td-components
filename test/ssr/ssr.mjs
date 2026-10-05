@@ -105,3 +105,12 @@ export const MEDIA_FIELD_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'media-field.h
 export function renderMediaFieldFixture() {
   return renderPhp('media-field-fixture.php');
 }
+
+// v0.38.0: td_scan_input (single native / element mode, multiple always element — scan-input@1).
+export const SCAN_INPUT_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'scan-input.fixtures.json'), 'utf8'));
+export const SCAN_INPUT_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'scan-input.html');
+
+/** Render test/ssr/scan-input-fixture.php (the HTML loaded by the scan-input SSR browser test). */
+export function renderScanInputFixture() {
+  return renderPhp('scan-input-fixture.php');
+}

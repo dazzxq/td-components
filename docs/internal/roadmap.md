@@ -38,7 +38,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
   [v0.36.2-touch](plans/v0.36.2-touch.md), [ADR 0019](decisions/0019-touch-standard.md)
 - `done` v0.37.0: `td-table` chọn dòng ([ADR 0018](decisions/0018-table-row-selection.md)) — plan
   [v0.37.0-table-row-selection](plans/v0.37.0-table-row-selection.md)
-- `todo` v0.38.0: `td-scan-input` (A3)
+- `done` v0.38.0: `td-scan-input` (A3) — plan [v0.38.0-scan-input](plans/v0.38.0-scan-input.md)
 - `todo` v0.39.0: hook lọc ngoài + ẩn / hiện cột + `td-filter-chips`
 - `todo` v0.40.0: `<td-datetime-range>` + preset — xong P1
 - `todo` v0.41.0 / v0.42.0: theming — dark / light / `auto` + palette sinh màu tự cân tương phản (plan

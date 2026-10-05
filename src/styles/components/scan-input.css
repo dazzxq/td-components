@@ -1,0 +1,322 @@
+/*
+ * td-scan-input (src/form/td-scan-input.js, v0.38.0) + the markup of php/td.php td_scan_input().
+ * Content layer: solid field + solid list (hairline), never glass (ADR 0011). The input has the field look of
+ * field.css in a monospace face, ≥ 16px (no iOS zoom on focus). Container `td-scan-input` (ADR 0014): under 480 the
+ * status indicator wraps below the input and a list row stacks (value on top, state + "Bỏ" below). Touch: the speaker,
+ * "Bỏ" and "Xoá tất cả" buttons are .td-btn (≥ 44 px on coarse pointers); the indicator gets a pressed colour.
+ * State (never visual classes): input :focus / :disabled / [readonly] / [aria-invalid="true"]; indicator
+ * [data-state="idle|ready"]; notice [data-tone="info|error"] / [hidden]; row [data-state="pending|valid|invalid"].
+ * No JS (SSR element mode, multiple): the textarea fallback shows, the input box hides until the element is defined.
+ */
+@layer td.tokens {
+	:root {
+		--td-scan-list-max: 50vh;
+		--td-scan-ready: var(--td-color-success);   /* indicator text + icon while focused (#15803d: 5.0:1 on white) */
+		--td-scan-idle: var(--td-color-text-muted);
+		--td-scan-font-size: max(1rem, 16px);
+		--td-scan-list-bg: var(--td-color-surface);
+		--td-scan-list-border: var(--td-color-border);
+		--td-scan-row-sep: var(--td-color-border);
+		--td-scan-invalid: var(--td-field-error);
+		--td-scan-valid: var(--td-color-success);
+	}
+}
+
+@layer td.component {
+	td-scan-input {
+		display: block;
+		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5) */
+		container: td-scan-input / inline-size;
+	}
+
+	/* safety net (ADR 0012): hand-written host before define → reserve one field height (no fake styling) */
+	td-scan-input:not(:defined):not([data-td-ssr]) {
+		min-height: 2.5rem;
+	}
+
+	.td-scan {
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-2xs);
+		width: 100%;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-fg);
+	}
+
+	.td-scan *,
+	.td-scan *::before {
+		box-sizing: border-box;
+	}
+
+	.td-scan__label {
+		display: block;
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-medium);
+		color: var(--td-field-label);
+	}
+
+	.td-scan__box {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs) var(--td-space-sm);
+		align-items: center;
+		min-width: 0;
+	}
+
+	.td-scan__input {
+		flex: 1 1 12rem;
+		min-width: 0;
+		height: var(--td-field-h-md);
+		padding: 8px 14px;
+		margin: 0;
+		font-family: var(--td-font-mono);
+		font-size: var(--td-scan-font-size);
+		font-variant-numeric: tabular-nums;
+		line-height: normal;
+		color: var(--td-field-fg);
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: none;
+		appearance: none;
+		transition: border-color var(--td-dur-fast) var(--td-ease), box-shadow var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-scan__input::placeholder {
+		font-family: var(--td-font-sans);
+		color: var(--td-field-placeholder);
+		opacity: 1;
+	}
+
+	.td-scan__input:focus {
+		border-color: var(--td-field-focus);
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	.td-scan__input[readonly] { background: var(--td-field-bg-readonly); }
+
+	.td-scan__input:disabled {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-field-bg-disabled);
+	}
+
+	.td-scan__input[aria-invalid="true"] {
+		border-color: var(--td-field-error);
+	}
+
+	/* the indicator: words + icon (never colour alone); clicking it focuses the input */
+	.td-scan__status {
+		display: inline-flex;
+		flex: 0 0 auto;
+		gap: var(--td-space-2xs);
+		align-items: center;
+		min-height: 2rem;
+		padding: 0 var(--td-space-xs);
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-medium);
+		color: var(--td-scan-idle);
+		cursor: pointer;
+		user-select: none;
+		border-radius: var(--td-radius-md);
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-scan__status[data-state="ready"] {
+		color: var(--td-scan-ready);
+	}
+
+	/* pressed: the label ink (the muted / success text is < 4.7 on the pressed fill — contrast gate) */
+	.td-scan__status:is(:active, [data-td-pressed]) {
+		color: var(--td-field-label);
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	.td-scan__status-icon {
+		display: inline-flex;
+	}
+
+	.td-scan__mute {
+		flex: 0 0 auto;
+		padding-inline: var(--td-space-xs);
+	}
+
+	.td-scan__notice {
+		font-size: var(--td-text-xs);
+		color: var(--td-field-note);
+	}
+
+	.td-scan__notice[data-tone="error"] {
+		color: var(--td-field-error);
+	}
+
+	.td-scan__notice[hidden],
+	.td-scan__head[hidden] {
+		display: none;
+	}
+
+	/* multiple: list head + list */
+	.td-scan__head {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+		align-items: center;
+		justify-content: space-between;
+		margin-top: var(--td-space-2xs);
+	}
+
+	.td-scan__count {
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-medium);
+		color: var(--td-field-label);
+	}
+
+	.td-scan__list {
+		max-block-size: var(--td-scan-list-max);
+		padding: 0;
+		margin: 0;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		list-style: none;
+		background: var(--td-scan-list-bg);
+		border: 1px solid var(--td-scan-list-border);
+		border-radius: var(--td-field-radius-md);
+	}
+
+	.td-scan__list:empty {
+		display: none;
+	}
+
+	.td-scan__item {
+		display: flex;
+		gap: var(--td-space-sm);
+		align-items: center;
+		justify-content: space-between;
+		min-width: 0;
+		padding: var(--td-space-2xs) var(--td-space-sm);
+	}
+
+	.td-scan__item + .td-scan__item {
+		border-top: 1px solid var(--td-scan-row-sep);
+	}
+
+	.td-scan__value {
+		min-width: 0;
+		font-family: var(--td-font-mono);
+		font-size: var(--td-text-sm);
+		font-variant-numeric: tabular-nums;
+		overflow-wrap: anywhere;
+	}
+
+	.td-scan__meta {
+		display: inline-flex;
+		flex: 0 1 auto;
+		gap: var(--td-space-xs);
+		align-items: center;
+		min-width: 0;
+	}
+
+	.td-scan__state {
+		display: inline-flex;
+		gap: var(--td-space-2xs);
+		align-items: center;
+		min-width: 0;
+		font-size: var(--td-text-xs);
+		color: var(--td-color-text-muted);
+		overflow-wrap: anywhere;
+	}
+
+	.td-scan__item[data-state="valid"] .td-scan__state { color: var(--td-scan-valid); }
+	.td-scan__item[data-state="invalid"] .td-scan__state { color: var(--td-scan-invalid); }
+	.td-scan__item[data-state="invalid"] .td-scan__value { color: var(--td-scan-invalid); }
+
+	.td-scan__spinner {
+		display: inline-block;
+		flex: 0 0 auto;
+		width: 0.875rem;
+		height: 0.875rem;
+		border: 2px solid currentcolor;
+		border-right-color: transparent;
+		border-radius: 50%;
+		animation: td-scan-spin 0.8s linear infinite;
+	}
+
+	@keyframes td-scan-spin {
+		to { transform: rotate(360deg); }
+	}
+
+	/* no JS (SSR multiple): the textarea is the field; once defined the scanner input takes over */
+	.td-scan__fallback {
+		display: block;
+		width: 100%;
+		min-height: 5rem;
+		padding: 8px 14px;
+		font-family: var(--td-font-mono);
+		font-size: var(--td-scan-font-size);
+		color: var(--td-field-fg);
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+	}
+
+	td-scan-input:defined .td-scan__fallback,
+	td-scan-input:not(:defined) .td-scan[data-mode="multiple"] > .td-scan__box {
+		display: none;
+	}
+
+	@container td-scan-input (width < 480px) {
+		.td-scan__input {
+			flex-basis: 100%;
+		}
+
+		.td-scan__item {
+			flex-direction: column;
+			gap: 0;
+			align-items: stretch;
+		}
+
+		.td-scan__meta {
+			justify-content: space-between;
+		}
+	}
+
+	@media (pointer: coarse) {
+		.td-scan__input {
+			height: max(var(--td-field-h-md), var(--td-touch-min));
+		}
+
+		.td-scan__status {
+			min-height: var(--td-touch-min);
+		}
+
+		.td-scan__mute {
+			min-width: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-scan__input { transition: none; }
+
+		.td-scan__spinner {
+			border-right-color: currentcolor;
+			border-bottom-color: transparent;
+			animation: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-scan__status:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+
+		.td-scan__list {
+			border-color: CanvasText;
+		}
+	}
+}

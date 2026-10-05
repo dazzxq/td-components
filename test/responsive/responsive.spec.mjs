@@ -22,6 +22,9 @@
  *
  * v0.36.1: td-table card density budgets (#rsp-table-density 5 short columns, #rsp-table 9 columns) at 360 / 393 / 768.
  *
+ * v0.38.0: td-scan-input (single + multiple 30 rows + the 280 px column): no overflow, indicator never over the input
+ * (below it under 480), list rows inside the host, speaker / Bỏ / Xoá tất cả ≥ 44 coarse (generic target probe).
+ *
  * Run: npm run test:responsive   (RSP_ENGINES=chromium,webkit RSP_ONLY=<config tag substring> for a subset)
  */
 import { chromium, firefox, webkit } from 'playwright-core';
@@ -378,6 +381,34 @@ async function runConfig(browser, c) {
       return errs;
     });
     check(tag, 'otp cell shape (v0.36.0)', otpErr);
+    // v0.38.0: td-scan-input — the indicator / speaker never overlap the input; under a 480 px host they sit below it;
+    // every list row stays inside the host; the list scrolls inside its own box (max-block-size)
+    const scanErr = await page.evaluate(() => {
+      const errs = [];
+      const hit = (a, b) => a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
+      for (const el of document.querySelectorAll('td-scan-input')) {
+        const host = el.getBoundingClientRect();
+        const input = el.querySelector('.td-scan__input').getBoundingClientRect();
+        const name = `#${el.id} (${Math.round(host.width)}px)`;
+        if (input.right > host.right + 0.5) errs.push(`${name}: input wider than the host`);
+        for (const sel of ['.td-scan__status', '.td-scan__mute']) {
+          const p = el.querySelector(sel);
+          if (!p) continue;
+          const r = p.getBoundingClientRect();
+          if (hit(r, input)) errs.push(`${name}: ${sel} overlaps the input`);
+          if (r.right > host.right + 0.5) errs.push(`${name}: ${sel} outside the host`);
+          if (host.width < 480 && r.top < input.bottom - 0.5) errs.push(`${name}: ${sel} not below the input (< 480)`);
+        }
+        for (const li of el.querySelectorAll('.td-scan__item')) {
+          const r = li.getBoundingClientRect();
+          if (r.right > host.right + 0.5) { errs.push(`${name}: a row wider than the host`); break; }
+        }
+        const list = el.querySelector('.td-scan__list');
+        if (list && list.children.length > 20 && list.scrollHeight <= list.clientHeight) errs.push(`${name}: 30-row list does not scroll in its own box`);
+      }
+      return errs;
+    });
+    check(tag, 'scan input layout (v0.38.0)', scanErr);
     if (errors.length) check(tag, 'page errors', errors);
 
     if (!c.fallback) await runOverlays(page, c, tag, shot);

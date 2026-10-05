@@ -52,6 +52,7 @@ export const PRESS_TARGETS = Object.freeze([
   '.td-pagination__nav',
   '.td-pagination__page',
   '.td-repeater__btn',
+  '.td-scan__status',
   '.td-scroll-top',
   '.td-sortable__handle',
   '.td-switch',

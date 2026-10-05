@@ -37,7 +37,7 @@ if (!isCoarsePointer()) searchInput.focus();                    // không bật 
 - **Theo chỗ đặt** — component nằm trong nội dung trang đổi bố cục theo **bề rộng của chính nó**, nên đặt trong cột hẹp
   của trang desktop cũng gọn như trên điện thoại: `td-table` (dạng card khi khung < 720px), `td-pagination` (gọn khi
   < 480px), Σ dòng của `td-media-grid layout="justified"`, `td-cropper` (0.35: toolbar hai hàng, nút − / + chỉ icon khi
-  < 480px). `td-tabs` tự đo: tab không vừa thì hàng tab cuộn ngang, nhãn không bao giờ bị cắt.
+  < 480px), `td-scan-input` (0.38: chỉ báo / nút loa xuống dưới ô, dòng danh sách xếp dọc khi < 480px). `td-tabs` tự đo: tab không vừa thì hàng tab cuộn ngang, nhãn không bao giờ bị cắt.
 - **Theo màn hình** — lớp phủ (modal, drawer, toast, lightbox, loading, popup) và điều kiện thiết bị (`pointer`,
   `hover`, chiều cao).
 

@@ -226,3 +226,20 @@ test('v0.36.0: ./action-button export, sideEffects, barrel TdActionButton, actio
     assert.ok(css.includes(sel), sel);
   }
 });
+
+test('v0.38.0: ./scan-input export, sideEffects, barrel TdScanInput, scan-input CSS before utilities; scan-burst / beep internal', async () => {
+  assert.equal(pkg.exports['./scan-input'], './src/form/td-scan-input.js');
+  assert.ok(pkg.sideEffects.includes('./src/form/td-scan-input.js'));
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdScanInput \} from '\.\/src\/form\/td-scan-input\.js';/);
+  assert.ok(!/scan-burst|utils\/beep/.test(src), 'scan-burst / beep stay internal');
+  assert.ok(!Object.values(pkg.exports).some((t) => /scan-burst|utils\/beep/.test(t)), 'no scan-burst / beep export');
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  const i = files.indexOf('components/scan-input.css');
+  assert.ok(i > files.indexOf('components/field.css') && i < files.indexOf('utilities.css'), 'scan-input.css after field.css, before utilities.css');
+  const css = await readFile(join(ROOT, 'td.css'), 'utf8');
+  for (const sel of ['.td-scan__input', '.td-scan__status[data-state="ready"]', '.td-scan__list', '@container td-scan-input (width < 480px)',
+    'td-scan-input:defined .td-scan__fallback', '--td-scan-list-max', '--td-scan-ready']) {
+    assert.ok(css.includes(sel), sel);
+  }
+});
