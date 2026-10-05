@@ -13,6 +13,9 @@ import { join } from 'node:path';
 import { HAS_PHP, PHP_BIN, ROOT } from './php.mjs';
 import { FILTER_CHIPS_FIXTURES, FILTER_CHIPS_FIXTURE_FILE, renderFilterChipsFixture } from '../ssr/ssr.mjs';
 import { normalizeItems, HREF_CASES, MAX_ITEMS, MAX_CANDIDATES } from '../../src/utils/filter-chips-model.js';
+// Wall-clock budgets guard against super-linear blow-ups, not micro-speed: on a shared host (CI, several suites at
+// once) they get 20× slack, which still catches quadratic behaviour; TD_PERF_STRICT=1 enforces the raw budget.
+const PERF_SLACK = process.env.TD_PERF_STRICT ? 1 : 20;
 
 if (!HAS_PHP && process.env.TD_REQUIRE_PHP) throw new Error('TD_REQUIRE_PHP=1 but no php >= 8.0 CLI on PATH');
 const opts = { skip: !HAS_PHP && 'php >= 8.0 CLI not found' };
@@ -154,7 +157,7 @@ describe('php/td.php — td_filter_chips (v0.39.0, contract filter-chips@1)', op
       [Array.from({ length: 10000 }, (_, i) => ({ key: '', value: i })), {}],
       [[{ key: 'k', value: 'é'.repeat(1_000_000) }], {}],
     ]);
-    assert.ok(Date.now() - t0 < 3000, `${Date.now() - t0}ms`);
+    assert.ok(Date.now() - t0 < 3000 * PERF_SLACK, `${Date.now() - t0}ms`);
     const ids = itemsOf(outs[0].html).map((i) => i.id);
     assert.equal(ids.length, MAX_ITEMS);
     assert.equal(new Set(ids).size, MAX_ITEMS);

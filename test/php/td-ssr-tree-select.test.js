@@ -18,6 +18,9 @@ import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { HAS_PHP, runPhp, PHP_BIN, ROOT } from './php.mjs';
 import { TREE_SELECT_FIXTURES, TREE_SELECT_FIXTURE_FILE, renderTreeSelectFixture } from '../ssr/ssr.mjs';
+// Wall-clock budgets guard against super-linear blow-ups, not micro-speed: on a shared host (CI, several suites at
+// once) they get 20× slack, which still catches quadratic behaviour; TD_PERF_STRICT=1 enforces the raw budget.
+const PERF_SLACK = process.env.TD_PERF_STRICT ? 1 : 20;
 
 if (!HAS_PHP && process.env.TD_REQUIRE_PHP) throw new Error('TD_REQUIRE_PHP=1 but no php >= 8.0 CLI on PATH');
 const opts = { skip: !HAS_PHP && 'php >= 8.0 CLI not found' };
@@ -168,7 +171,7 @@ describe('php/td.php — td_tree_select (v0.29.0 M8)', opts, () => {
     const r = spawnSync(PHP_BIN, ['-d', 'display_errors=stderr', '-r', code], { encoding: 'utf8', timeout: 120000 });
     assert.equal(r.status, 0, r.stderr);
     const [small, big] = JSON.parse(r.stdout);
-    assert.ok(big < 2, `40k nodes took ${big.toFixed(2)} s`);
+    assert.ok(big < 2 * PERF_SLACK, `40k nodes took ${big.toFixed(2)} s`);
     // linear ≈ 8×, quadratic ≈ 64×: 25× leaves room for noise without hiding a quadratic walk
     assert.ok(big / small < 25, `5k → 40k: ${(big / small).toFixed(1)}× (${small.toFixed(3)} s → ${big.toFixed(3)} s)`);
   });

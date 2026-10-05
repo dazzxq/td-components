@@ -176,6 +176,8 @@ const PRESS_TYPES = [
   // v0.36.2 review ISSUE-1: tap-to-act surfaces (a tap opens the file picker / dismisses) — pressed only (noTap)
   // the zone's top padding (its centre holds the browse button, a control of its own)
   { name: 'dropzone', sel: 'td-dropzone .td-dropzone__zone', token: '--td-dropzone-bg-pressed', noTap: true, top: true },
+  // v0.43.0: td-media-gallery tile button (Gỡ — pressed only: a tap removes the image)
+  { name: 'gallery button', sel: '#rsp-gallery .td-media-gallery__remove', token: '--td-color-pressed', noTap: true },
   { name: 'toast', sel: '.td-toast--error', token: '--td-toast-error-pressed-bg', noTap: true,
     open: async (page) => { await page.evaluate(() => window.__openers.toast()); await page.locator('.td-toast--error[data-state="open"]').waitFor(); await settle(page, '.td-toast--error'); } },
 ];
@@ -432,6 +434,53 @@ async function chromiumSemantics(browser) {
       const s = await sortState();
       expect(y1 < y0 - 50, `page did not scroll (${y0} → ${y1})`);
       expect(!s.includes('dragging') && !s.includes('lifted'), `item state ${s}`);
+    });
+
+    // v0.43.0 (plan M7): td-media-gallery — a touch drag on the handle reorders (one change), tap-to-move, and a
+    // vertical swipe on the tile body scrolls the page (touch-action only on the handle)
+    const gal = '#rsp-gallery';
+    const galIds = () => page.evaluate((s) => document.querySelector(s).value.join(','), gal);
+    const galChanges = () => page.evaluate((s) => {
+      const g = document.querySelector(s);
+      window.__galChanges = [];
+      g.addEventListener('change', (e) => window.__galChanges.push(e.detail.reason));
+    }, gal);
+    await it(tag, 'gallery: a touch drag on the handle (past the slop) reorders, ONE change on drop', async () => {
+      await load(page);
+      await page.locator(`${gal} .td-media-gallery__item`).first().scrollIntoViewIfNeeded();
+      await galChanges();
+      const from = await centre(page, `${gal} .td-media-gallery__item:nth-child(1) .td-media-gallery__handle`);
+      const to = await centre(page, `${gal} .td-media-gallery__item:nth-child(2) .td-media-gallery__media`);
+      await touchDrag(cdp, [from, { x: from.x + 12, y: from.y }, to], { durationMs: 400 });
+      await frames(page, 4);
+      const ids = await galIds();
+      expect(ids.startsWith('m2,m1'), `order after the drag: ${ids}`);
+      expect(JSON.stringify(await page.evaluate(() => window.__galChanges)) === '["reorder"]', 'not exactly one change (reorder)');
+    });
+    await it(tag, 'gallery: tap a handle, tap another handle → moved there (tap-to-move)', async () => {
+      await load(page);
+      await page.locator(`${gal} .td-media-gallery__item`).first().scrollIntoViewIfNeeded();
+      const a = await centre(page, `${gal} .td-media-gallery__item:nth-child(3) .td-media-gallery__handle`);
+      await page.touchscreen.tap(a.x, a.y);
+      await frames(page, 2);
+      const b = await centre(page, `${gal} .td-media-gallery__item:nth-child(1) .td-media-gallery__handle`);
+      await page.touchscreen.tap(b.x, b.y);
+      await frames(page, 2);
+      expect((await galIds()).startsWith('m3,m1,m2'), `order: ${await galIds()}`);
+    });
+    await it(tag, 'gallery: a vertical swipe on the tile image scrolls the page, never lifts', async () => {
+      await load(page);
+      const media = `${gal} .td-media-gallery__item:nth-child(1) .td-media-gallery__media`;
+      await page.locator(media).scrollIntoViewIfNeeded();
+      const b = await page.locator(media).boundingBox();
+      const y0 = await page.evaluate(() => window.scrollY);
+      const pt = { x: Math.round(b.x + b.width * 0.3), y: Math.round(b.y + b.height * 0.6) };
+      await touchDrag(cdp, [pt, { x: pt.x, y: Math.min(pt.y + 260, 830) }], { durationMs: 300 });
+      await page.waitForFunction((y) => window.scrollY < y - 50, y0, { timeout: 3000 }).catch(() => {});
+      const y1 = await page.evaluate(() => window.scrollY);
+      const st = await page.evaluate((s) => [...document.querySelectorAll(`${s} [data-td-sort-state]`)].length, gal);
+      expect(y1 < y0 - 50, `page did not scroll (${y0} → ${y1})`);
+      expect(st === 0, 'a tile lifted / dragged');
     });
 
     await it(tag, 'copy: two quick taps while the copy is pending = one state change', async () => {

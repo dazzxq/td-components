@@ -17,6 +17,7 @@ import '/src/display/td-sortable.js';
 import '/src/display/td-masked-value.js';
 import '/src/display/td-table.js';
 import '/src/form/td-media-field.js';
+import '/src/form/td-media-gallery.js';
 import '/src/form/td-cropper.js';
 import '/src/form/td-scan-input.js';
 import '/src/display/td-filter-chips.js';
@@ -159,6 +160,11 @@ for (const state of ['preset', 'preset-on', 'preset-on-pressed', 'tab-off', 'tab
 // field error text ≥ 4.7 on the page; td-media-picker (inside the solid dialog): tile name, detail meta label and tray
 // count ≥ 4.7 on the dialog surface, the selected tile border ≥ 3.2 vs the dialog surface — computed colours (`pairs`).
 for (const state of ['empty', 'video', 'error']) CASES.push({ kind: 'media-field', v: 'frame', state, pageOnly: true });
+// v0.43.0: td-media-gallery (content layer → page only): the empty Add prompt / ratio ≥ 4.7 and its icon ≥ 3.2 on the
+// muted fill, the dashed edge ≥ 3.2 vs the page and the fill; the count line ≥ 4.7 on the page; tile buttons / handle
+// icon ≥ 3.2 on their surface; the cover badge ≥ 4.7; the alt placeholder ≥ 4.5 (plan QĐ 11) on the input; the broken
+// note ≥ 4.7 — computed colours (`pairs`), light + dark.
+for (const state of ['empty', 'filled', 'broken']) CASES.push({ kind: 'media-gallery', v: 'gallery', state, pageOnly: true });
 // v0.33.0 (dcms2 parity): the picker card state borders (hover / viewing / checked tokens) ≥ 3:1 vs the card surface and
 // the list background (WCAG 1.4.11), card name + meta text, the `.td-media-picker__label` muted label, the cursor page info,
 // the footer count, the `td-pagination` "Hiển thị…" text ('pages' mode) and the upload dialog dropzone texts + badges ≥ 4.7.
@@ -581,6 +587,68 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       opacity: 1,
       hover: false,
       name: `media-field:${c.v}:${c.state}`,
+      pairs,
+    };
+  } else if (c.kind === 'media-gallery') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const host = document.createElement('td-media-gallery');
+    host.setAttribute('name', 'g');
+    host.setAttribute('label', 'Ảnh sản phẩm');
+    host.setAttribute('aspect-ratio', '4/3');
+    host.setAttribute('max', '10');
+    if (c.state === 'filled') {
+      for (const a of ['usage', 'croppable', 'cover']) host.setAttribute(a, '');
+      host.setAttribute('items', JSON.stringify([{ id: 'm1', src: '/test/fixtures/1.svg', name: 'Ảnh 1' }, { id: 'm11', kind: 'file', name: 'a.pdf' }]));
+    }
+    if (c.state === 'broken') host.setAttribute('items', '[');
+    const wrap = document.createElement('div');
+    wrap.style.setProperty('width', '480px');
+    wrap.appendChild(host);
+    stage.appendChild(wrap);
+    await new Promise((r) => setTimeout(r, 300));
+    const cs = (sel) => getComputedStyle(host.querySelector(sel));
+    let pairs;
+    let box;
+    if (c.state === 'empty') {
+      const add = host.querySelector('.td-media-gallery__add');
+      const fill = getComputedStyle(add).backgroundColor;
+      box = add;
+      pairs = [
+        { what: 'Add prompt vs its fill', fg: cs('.td-media-gallery__prompt').color, bg: fill, min: 4.7 },
+        { what: 'Add ratio vs its fill', fg: cs('.td-media-gallery__ratio').color, bg: fill, min: 4.7 },
+        { what: 'Add icon vs its fill', fg: cs('.td-media-gallery__add .td-media-gallery__icon').color, bg: fill, min: 3.2 },
+        { what: 'Add dashed edge vs page', fg: getComputedStyle(add).borderTopColor, bg: page, min: 3.2 },
+        { what: 'Add dashed edge vs its fill', fg: getComputedStyle(add).borderTopColor, bg: fill, min: 3.2 },
+        { what: 'count vs page', fg: cs('.td-media-gallery__count').color, bg: page, min: 4.7 },
+      ];
+    } else if (c.state === 'filled') {
+      const li = host.querySelector('.td-media-gallery__item');
+      const tile = getComputedStyle(li).backgroundColor;
+      const alt = host.querySelector('.td-media-gallery__alt');
+      const handle = host.querySelector('.td-media-gallery__handle');
+      const media = getComputedStyle(host.querySelectorAll('.td-media-gallery__media')[1]).backgroundColor;
+      box = li;
+      pairs = [
+        { what: 'Gỡ icon vs tile', fg: cs('.td-media-gallery__remove').color, bg: tile, min: 3.2 },
+        { what: 'Cắt icon vs tile', fg: cs('.td-media-gallery__crop-btn').color, bg: tile, min: 3.2 },
+        { what: 'handle icon vs its chip', fg: getComputedStyle(handle).color, bg: getComputedStyle(handle).backgroundColor, min: 3.2 },
+        { what: 'cover badge text vs its fill', fg: cs('.td-media-gallery__cover').color, bg: cs('.td-media-gallery__cover').backgroundColor, min: 4.7 },
+        { what: 'alt placeholder vs the input', fg: getComputedStyle(alt).getPropertyValue('--td-field-placeholder').trim(), bg: getComputedStyle(alt).backgroundColor, min: 4.5 },
+        { what: 'file name vs the media box', fg: cs('.td-media-gallery__name').color, bg: media, min: 4.7 },
+        { what: 'Add (filled) text vs its fill', fg: cs('.td-media-gallery__add').color, bg: cs('.td-media-gallery__add').backgroundColor, min: 4.7 },
+      ];
+    } else {
+      const note = host.querySelector('.td-media-gallery__broken');
+      box = note;
+      pairs = [{ what: 'broken note vs its fill', fg: getComputedStyle(note).color, bg: getComputedStyle(note).backgroundColor, min: 4.7 }];
+    }
+    const b = box.getBoundingClientRect();
+    return {
+      rect: { x: b.x, y: b.y, width: b.width, height: b.height },
+      ink: {},
+      opacity: 1,
+      hover: false,
+      name: `media-gallery:${c.v}:${c.state}`,
       pairs,
     };
   } else if (c.kind === 'cropper') {

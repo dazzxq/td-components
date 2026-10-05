@@ -41,6 +41,7 @@ bên trong **không mang `name`** nên không bao giờ bị gửi trùng ([ADR 
 | `<td-dropdown>` | có | có | gửi value của option đã chọn |
 | `<td-chip-input>` | có | có | gửi **nhiều** entry cùng `name` |
 | `<td-datetime-picker>` | có | có | định dạng gửi chọn bằng `form-value-format` |
+| `<td-media-gallery>` | có | có | (0.43.0) danh sách ảnh: `name[]=id` hoặc `name[i][id\|alt\|crop\|focal]`; rỗng → một `name=`; hỏng / vượt `max` → **không gửi gì** ([Media gallery](../components/media-gallery.md#1-hai-dạng-gửi-form-api-công-khai-adr-0021)) |
 | `<td-button>` | **không** (cố ý) | — | bên trong là `<button>` native, form thấy nó như nút thường |
 
 Mọi control form-associated kế thừa [`TdFormElement`](../components/base-element.md) nên có chung bộ API native:

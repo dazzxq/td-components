@@ -68,6 +68,18 @@ export function renderedPairs() {
   add('accent badge', '--td-badge-accent-fg', ['--td-badge-accent-bg']);
   for (const s of PAGE) for (const v of ['success', 'warning', 'danger', 'info']) add(`badge ${v} ink on ${s}`, `--td-badge-${v}-ink`, [s]);
   add('disabled field text', '--td-color-text-muted', ['--td-field-bg-disabled'], 2.2);
+  // v0.43.0 td-media-gallery (media-gallery.css): Add prompt muted on the muted fill, hover / pressed = text on the wash,
+  // dashed edge ≥ 3 vs the fill and the page; tile buttons + handle chip (surface) hover / pressed = text on the wash;
+  // cover / video badge = the tooltip chip; a file name / "no preview" on the muted media box
+  add('gallery add prompt', '--td-color-text-muted', ['--td-color-surface-muted']);
+  add('gallery add hover', '--td-color-text', ['--td-color-hover', '--td-color-surface-muted']);
+  add('gallery add pressed', '--td-color-text', ['--td-color-pressed', '--td-color-surface-muted']);
+  add('gallery add edge vs fill', '--td-color-text-muted', ['--td-color-surface-muted'], 3);
+  for (const s of PAGE) add(`gallery add edge vs ${s}`, '--td-color-text-muted', [s], 3);
+  add('gallery tile button hover', '--td-color-text', ['--td-color-hover-strong', '--td-color-surface']);
+  add('gallery tile button pressed', '--td-color-text', ['--td-color-pressed', '--td-color-surface']);
+  add('gallery badge', '--td-tooltip-fg', ['--td-tooltip-bg']); // cover / video badge = the tooltip chip
+  add('gallery file name', '--td-color-text', ['--td-color-surface-muted']);
   for (const s of ['--td-control-bg', '--td-color-bg']) add(`field focus edge vs ${s}`, '--td-field-focus', [s], 3);
   return P;
 }

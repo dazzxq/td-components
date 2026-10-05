@@ -318,7 +318,7 @@ URL ký chỉ chứng minh "server đã từng sinh URL này", **không** chứn
 
 ## Xem thêm
 
-- [Cropper](../components/cropper.md), [Media field](../components/media-field.md), [Media picker](../components/media-picker.md)
+- [Cropper](../components/cropper.md), [Media field](../components/media-field.md), [Media gallery](../components/media-gallery.md) (0.43.0: mỗi ảnh của gallery theo đúng checklist này — crop / focal theo **chỗ dùng**, render bằng URL ký), [Media picker](../components/media-picker.md)
 - [Bảo mật](security.md) — checklist trước khi lên production
 - Nội bộ: [ADR 0015 td-cropper](../internal/decisions/0015-td-cropper.md),
   [security-model › Trách nhiệm của site](../internal/security-model.md#7-trách-nhiệm-của-site)

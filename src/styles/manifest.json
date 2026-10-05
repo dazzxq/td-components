@@ -50,6 +50,7 @@
     "components/media-picker.css",
     "components/media-picker-upload.css",
     "components/media-field.css",
+    "components/media-gallery.css",
     "components/cropper.css",
     "components/scan-input.css",
     "components/filter-chips.css",

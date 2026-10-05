@@ -31,7 +31,7 @@ Kit **không** publish lên npm registry. Bạn cài thẳng từ repo GitHub `d
 npm install github:dazzxq/td-components
 
 # Khuyên dùng: ghim theo tag phiên bản
-npm install github:dazzxq/td-components#v0.42.1
+npm install github:dazzxq/td-components#v0.43.0
 ```
 
 Sau lệnh trên, `package.json` của site có dòng dạng:
@@ -39,20 +39,20 @@ Sau lệnh trên, `package.json` của site có dòng dạng:
 ```json
 {
   "dependencies": {
-    "@dazzxq/td-components": "github:dazzxq/td-components#v0.42.1"
+    "@dazzxq/td-components": "github:dazzxq/td-components#v0.43.0"
   }
 }
 ```
 
 Ghi chú:
 
-- **Luôn ghim tag** (`#v0.42.1`). Kit đang ở giai đoạn `0.x`: bản minor mới (0.16 → 0.17) có thể đổi hành vi. Nâng cấp
+- **Luôn ghim tag** (`#v0.43.0`). Kit đang ở giai đoạn `0.x`: bản minor mới (0.16 → 0.17) có thể đổi hành vi. Nâng cấp
   là việc có chủ đích, xem [Nâng cấp](../upgrading/README.md).
-- Tag chỉ dùng được khi nó đã được **push lên GitHub**. Nếu `npm install …#v0.42.1` báo không tìm thấy ref, kiểm tra
+- Tag chỉ dùng được khi nó đã được **push lên GitHub**. Nếu `npm install …#v0.43.0` báo không tìm thấy ref, kiểm tra
   `git ls-remote --tags https://github.com/dazzxq/td-components.git`.
 - Package **không có dependency runtime** nào. `package.json#files` giới hạn phần nội dung được tải: `src/` (từ
   0.16.0 **không** còn file test `*.test.js` / `*.browser-test.js` và file story `*.stories.*`), `index.js`, `td.css`,
-  `php/` (adapter PHP `php/td.php`, từ 0.17.0), `THIRD_PARTY_NOTICES.md`; ngoài ra npm luôn tự kèm file metadata như `package.json`, `README.md` (và `LICENSE` nếu
+  `php/` (adapter PHP `php/td.php`, từ 0.17.0), `bin/` (CLI `td-theme`, từ 0.42.0, không kèm `bin/*.test.mjs`), `THIRD_PARTY_NOTICES.md`; ngoài ra npm luôn tự kèm file metadata như `package.json`, `README.md` (và `LICENSE` nếu
   có). `package.json` khai báo `engines.node >= 20` và export cả `@dazzxq/td-components/package.json` (công cụ đọc
   phiên bản kit dùng được).
 - Nâng cấp sau này: đổi tag rồi chạy lại `npm install github:dazzxq/td-components#v<bản-mới>`.
@@ -156,14 +156,22 @@ thư mục** (lý do ở bước 4):
 
 ```bash
 # từ thư mục gốc project
-DEST=public/vendor/td-components-0.42.1
+DEST=public/vendor/td-components-0.43.0
 mkdir -p "$DEST"
 cp node_modules/@dazzxq/td-components/td.css node_modules/@dazzxq/td-components/index.js "$DEST"/
 rsync -a --exclude='*.test.js' --exclude='*.browser-test.js' --exclude='*.stories.js' \
   node_modules/@dazzxq/td-components/src "$DEST"/
 # Dùng adapter PHP (import map + markup SSR)? copy thêm php/ và package.json (adapter đọc exports từ đó)
 cp -R node_modules/@dazzxq/td-components/php node_modules/@dazzxq/td-components/package.json "$DEST"/
+# Dùng CLI td-theme (0.42.0+)? copy bin/ trừ file test
+rsync -a --exclude='*.test.mjs' node_modules/@dazzxq/td-components/bin "$DEST"/
 ```
+
+**Từ 0.42.0 gói có thêm `bin/`** (CLI `td-theme` sinh palette): site copy file bằng tay theo `package.json#files` phải
+copy cả `bin/` và **bỏ** `bin/*.test.mjs` (`npm pack` đã tự loại). CLI chạy thẳng từ thư mục vendor, không cần npx /
+`node_modules`: `node <vendor>/bin/td-theme.mjs …`. CSS theme đã sinh phải **sinh lại sau khi nâng cấp kit** nếu
+`ALGORITHM_VERSION` của bộ sinh đổi (0.42.1 → `2`); nên có một gate so từng byte file theme đã commit với output của CLI
+thuộc **đúng bản kit đang ghim** (phản hồi của 135 sau khi lên 0.42.0).
 
 Từ 0.16.0 package không còn file test/story nên `rsync --exclude` không bắt buộc (giữ cũng không sao, và vẫn có ích nếu
 bạn copy từ một bản clone repo thay vì từ `node_modules`); copy nguyên `src/` cũng chạy được.
@@ -173,7 +181,7 @@ Giữ nguyên cấu trúc thư mục `src/…`: các file import nhau bằng đ�
 ### Bước 2: nạp CSS
 
 ```html
-<link rel="stylesheet" href="/vendor/td-components-0.42.1/td.css">
+<link rel="stylesheet" href="/vendor/td-components-0.43.0/td.css">
 ```
 
 Đặt `<link>` này **trước** CSS của site, để CSS site (không `@layer`) override token dễ dàng. Thực ra thứ tự không quá
@@ -184,14 +192,14 @@ quan trọng: style của kit nằm trong `@layer td.*`, CSS không layer của 
 **Cách A: trỏ thẳng đường dẫn file** (đơn giản nhất, không cần import map)
 
 ```html
-<script type="module" src="/vendor/td-components-0.42.1/src/form/td-button.js"></script>
-<script type="module" src="/vendor/td-components-0.42.1/src/form/td-input-field.js"></script>
+<script type="module" src="/vendor/td-components-0.43.0/src/form/td-button.js"></script>
+<script type="module" src="/vendor/td-components-0.43.0/src/form/td-input-field.js"></script>
 <script type="module" src="/assets/js/app.js"></script>
 ```
 
 ```js
 // /assets/js/app.js — import theo đường dẫn URL
-import { TdToast } from '/vendor/td-components-0.42.1/src/feedback/td-toast.js';
+import { TdToast } from '/vendor/td-components-0.43.0/src/feedback/td-toast.js';
 
 document.querySelector('#save').addEventListener('click', () => TdToast.success('Đã lưu'));
 ```
@@ -199,8 +207,8 @@ document.querySelector('#save').addEventListener('click', () => TdToast.success(
 **Cách B: import map** (để code của site viết `@dazzxq/td-components/...` giống hệt khi dùng Vite)
 
 Import map cho trình duyệt biết tên package trỏ tới URL nào. Trình duyệt **không đọc** `package.json#exports`, nên một
-dòng kiểu `"@dazzxq/td-components/": "/vendor/td-components-0.42.1/"` **không đủ**: tên `@dazzxq/td-components/button`
-sẽ bị dịch thành `/vendor/td-components-0.42.1/button` (không tồn tại). Phải liệt kê từng subpath. Map đầy đủ (đúng
+dòng kiểu `"@dazzxq/td-components/": "/vendor/td-components-0.43.0/"` **không đủ**: tên `@dazzxq/td-components/button`
+sẽ bị dịch thành `/vendor/td-components-0.43.0/button` (không tồn tại). Phải liệt kê từng subpath. Map đầy đủ (đúng
 `package.json#exports` của bản đang ghim; site PHP không phải gõ tay — hàm `td_import_map()` /
 `td_import_map_tag()` của [adapter PHP](../guides/php-adapter.md#css-và-import-map) sinh map này từ `package.json`):
 
@@ -208,56 +216,57 @@ sẽ bị dịch thành `/vendor/td-components-0.42.1/button` (không tồn tạ
 <script type="importmap">
 {
   "imports": {
-    "@dazzxq/td-components": "/vendor/td-components-0.42.1/index.js",
-    "@dazzxq/td-components/icons": "/vendor/td-components-0.42.1/src/icons/td-icon.js",
-    "@dazzxq/td-components/icon-element": "/vendor/td-components-0.42.1/src/icons/td-icon-element.js",
-    "@dazzxq/td-components/base": "/vendor/td-components-0.42.1/src/base/td-base-element.js",
-    "@dazzxq/td-components/form-element": "/vendor/td-components-0.42.1/src/base/td-form-element.js",
-    "@dazzxq/td-components/sample": "/vendor/td-components-0.42.1/src/base/sample/td-sample.js",
-    "@dazzxq/td-components/toggle": "/vendor/td-components-0.42.1/src/form/td-toggle.js",
-    "@dazzxq/td-components/checkbox": "/vendor/td-components-0.42.1/src/form/td-checkbox.js",
-    "@dazzxq/td-components/button": "/vendor/td-components-0.42.1/src/form/td-button.js",
-    "@dazzxq/td-components/input-field": "/vendor/td-components-0.42.1/src/form/td-input-field.js",
-    "@dazzxq/td-components/slider": "/vendor/td-components-0.42.1/src/form/td-slider.js",
-    "@dazzxq/td-components/dropdown": "/vendor/td-components-0.42.1/src/form/td-dropdown.js",
-    "@dazzxq/td-components/chip-input": "/vendor/td-components-0.42.1/src/form/td-chip-input.js",
-    "@dazzxq/td-components/password-meter": "/vendor/td-components-0.42.1/src/form/td-password-meter.js",
-    "@dazzxq/td-components/datetime": "/vendor/td-components-0.42.1/src/utils/datetime.js",
-    "@dazzxq/td-components/datetime-picker": "/vendor/td-components-0.42.1/src/form/td-datetime-picker.js",
-    "@dazzxq/td-components/datetime-range": "/vendor/td-components-0.42.1/src/form/td-datetime-range.js",
-    "@dazzxq/td-components/modal": "/vendor/td-components-0.42.1/src/feedback/td-modal.js",
-    "@dazzxq/td-components/modal-stack": "/vendor/td-components-0.42.1/src/feedback/td-modal-stack.js",
-    "@dazzxq/td-components/lightbox": "/vendor/td-components-0.42.1/src/feedback/td-lightbox.js",
-    "@dazzxq/td-components/toast": "/vendor/td-components-0.42.1/src/feedback/td-toast.js",
-    "@dazzxq/td-components/tooltip": "/vendor/td-components-0.42.1/src/feedback/td-tooltip.js",
-    "@dazzxq/td-components/loading": "/vendor/td-components-0.42.1/src/feedback/td-loading.js",
-    "@dazzxq/td-components/menu": "/vendor/td-components-0.42.1/src/feedback/td-menu.js",
-    "@dazzxq/td-components/hovercard": "/vendor/td-components-0.42.1/src/feedback/td-hovercard.js",
-    "@dazzxq/td-components/scroll-top": "/vendor/td-components-0.42.1/src/feedback/td-scroll-top.js",
-    "@dazzxq/td-components/table": "/vendor/td-components-0.42.1/src/display/td-table.js",
-    "@dazzxq/td-components/tabs": "/vendor/td-components-0.42.1/src/display/td-tabs.js",
-    "@dazzxq/td-components/dropzone": "/vendor/td-components-0.42.1/src/form/td-dropzone.js",
-    "@dazzxq/td-components/progress": "/vendor/td-components-0.42.1/src/feedback/td-progress.js",
-    "@dazzxq/td-components/alert": "/vendor/td-components-0.42.1/src/feedback/td-alert.js",
-    "@dazzxq/td-components/otp-input": "/vendor/td-components-0.42.1/src/form/td-otp-input.js",
-    "@dazzxq/td-components/scan-input": "/vendor/td-components-0.42.1/src/form/td-scan-input.js",
-    "@dazzxq/td-components/tree": "/vendor/td-components-0.42.1/src/form/td-tree.js",
-    "@dazzxq/td-components/tree-select": "/vendor/td-components-0.42.1/src/form/td-tree-select.js",
-    "@dazzxq/td-components/number-input": "/vendor/td-components-0.42.1/src/form/td-number-input.js",
-    "@dazzxq/td-components/repeater": "/vendor/td-components-0.42.1/src/form/td-repeater.js",
-    "@dazzxq/td-components/media-field": "/vendor/td-components-0.42.1/src/form/td-media-field.js",
-    "@dazzxq/td-components/drawer": "/vendor/td-components-0.42.1/src/feedback/td-drawer.js",
-    "@dazzxq/td-components/media-picker": "/vendor/td-components-0.42.1/src/feedback/td-media-picker.js",
-    "@dazzxq/td-components/copy": "/vendor/td-components-0.42.1/src/display/td-copy.js",
-    "@dazzxq/td-components/masked-value": "/vendor/td-components-0.42.1/src/display/td-masked-value.js",
-    "@dazzxq/td-components/filter-chips": "/vendor/td-components-0.42.1/src/display/td-filter-chips.js",
-    "@dazzxq/td-components/media-grid": "/vendor/td-components-0.42.1/src/display/td-media-grid.js",
-    "@dazzxq/td-components/sortable": "/vendor/td-components-0.42.1/src/display/td-sortable.js",
-    "@dazzxq/td-components/pagination": "/vendor/td-components-0.42.1/src/display/td-pagination.js",
-    "@dazzxq/td-components/empty-state": "/vendor/td-components-0.42.1/src/display/td-empty-state.js",
-    "@dazzxq/td-components/dom-utils": "/vendor/td-components-0.42.1/src/utils/dom-utils.js",
-    "@dazzxq/td-components/form-validation": "/vendor/td-components-0.42.1/src/utils/form-validation.js",
-    "@dazzxq/td-components/breakpoints": "/vendor/td-components-0.42.1/src/utils/breakpoints.js"
+    "@dazzxq/td-components": "/vendor/td-components-0.43.0/index.js",
+    "@dazzxq/td-components/icons": "/vendor/td-components-0.43.0/src/icons/td-icon.js",
+    "@dazzxq/td-components/icon-element": "/vendor/td-components-0.43.0/src/icons/td-icon-element.js",
+    "@dazzxq/td-components/base": "/vendor/td-components-0.43.0/src/base/td-base-element.js",
+    "@dazzxq/td-components/form-element": "/vendor/td-components-0.43.0/src/base/td-form-element.js",
+    "@dazzxq/td-components/sample": "/vendor/td-components-0.43.0/src/base/sample/td-sample.js",
+    "@dazzxq/td-components/toggle": "/vendor/td-components-0.43.0/src/form/td-toggle.js",
+    "@dazzxq/td-components/checkbox": "/vendor/td-components-0.43.0/src/form/td-checkbox.js",
+    "@dazzxq/td-components/button": "/vendor/td-components-0.43.0/src/form/td-button.js",
+    "@dazzxq/td-components/input-field": "/vendor/td-components-0.43.0/src/form/td-input-field.js",
+    "@dazzxq/td-components/slider": "/vendor/td-components-0.43.0/src/form/td-slider.js",
+    "@dazzxq/td-components/dropdown": "/vendor/td-components-0.43.0/src/form/td-dropdown.js",
+    "@dazzxq/td-components/chip-input": "/vendor/td-components-0.43.0/src/form/td-chip-input.js",
+    "@dazzxq/td-components/password-meter": "/vendor/td-components-0.43.0/src/form/td-password-meter.js",
+    "@dazzxq/td-components/datetime": "/vendor/td-components-0.43.0/src/utils/datetime.js",
+    "@dazzxq/td-components/datetime-picker": "/vendor/td-components-0.43.0/src/form/td-datetime-picker.js",
+    "@dazzxq/td-components/datetime-range": "/vendor/td-components-0.43.0/src/form/td-datetime-range.js",
+    "@dazzxq/td-components/modal": "/vendor/td-components-0.43.0/src/feedback/td-modal.js",
+    "@dazzxq/td-components/modal-stack": "/vendor/td-components-0.43.0/src/feedback/td-modal-stack.js",
+    "@dazzxq/td-components/lightbox": "/vendor/td-components-0.43.0/src/feedback/td-lightbox.js",
+    "@dazzxq/td-components/toast": "/vendor/td-components-0.43.0/src/feedback/td-toast.js",
+    "@dazzxq/td-components/tooltip": "/vendor/td-components-0.43.0/src/feedback/td-tooltip.js",
+    "@dazzxq/td-components/loading": "/vendor/td-components-0.43.0/src/feedback/td-loading.js",
+    "@dazzxq/td-components/menu": "/vendor/td-components-0.43.0/src/feedback/td-menu.js",
+    "@dazzxq/td-components/hovercard": "/vendor/td-components-0.43.0/src/feedback/td-hovercard.js",
+    "@dazzxq/td-components/scroll-top": "/vendor/td-components-0.43.0/src/feedback/td-scroll-top.js",
+    "@dazzxq/td-components/table": "/vendor/td-components-0.43.0/src/display/td-table.js",
+    "@dazzxq/td-components/tabs": "/vendor/td-components-0.43.0/src/display/td-tabs.js",
+    "@dazzxq/td-components/dropzone": "/vendor/td-components-0.43.0/src/form/td-dropzone.js",
+    "@dazzxq/td-components/progress": "/vendor/td-components-0.43.0/src/feedback/td-progress.js",
+    "@dazzxq/td-components/alert": "/vendor/td-components-0.43.0/src/feedback/td-alert.js",
+    "@dazzxq/td-components/otp-input": "/vendor/td-components-0.43.0/src/form/td-otp-input.js",
+    "@dazzxq/td-components/scan-input": "/vendor/td-components-0.43.0/src/form/td-scan-input.js",
+    "@dazzxq/td-components/tree": "/vendor/td-components-0.43.0/src/form/td-tree.js",
+    "@dazzxq/td-components/tree-select": "/vendor/td-components-0.43.0/src/form/td-tree-select.js",
+    "@dazzxq/td-components/number-input": "/vendor/td-components-0.43.0/src/form/td-number-input.js",
+    "@dazzxq/td-components/repeater": "/vendor/td-components-0.43.0/src/form/td-repeater.js",
+    "@dazzxq/td-components/media-field": "/vendor/td-components-0.43.0/src/form/td-media-field.js",
+    "@dazzxq/td-components/media-gallery": "/vendor/td-components-0.43.0/src/form/td-media-gallery.js",
+    "@dazzxq/td-components/drawer": "/vendor/td-components-0.43.0/src/feedback/td-drawer.js",
+    "@dazzxq/td-components/media-picker": "/vendor/td-components-0.43.0/src/feedback/td-media-picker.js",
+    "@dazzxq/td-components/copy": "/vendor/td-components-0.43.0/src/display/td-copy.js",
+    "@dazzxq/td-components/masked-value": "/vendor/td-components-0.43.0/src/display/td-masked-value.js",
+    "@dazzxq/td-components/filter-chips": "/vendor/td-components-0.43.0/src/display/td-filter-chips.js",
+    "@dazzxq/td-components/media-grid": "/vendor/td-components-0.43.0/src/display/td-media-grid.js",
+    "@dazzxq/td-components/sortable": "/vendor/td-components-0.43.0/src/display/td-sortable.js",
+    "@dazzxq/td-components/pagination": "/vendor/td-components-0.43.0/src/display/td-pagination.js",
+    "@dazzxq/td-components/empty-state": "/vendor/td-components-0.43.0/src/display/td-empty-state.js",
+    "@dazzxq/td-components/dom-utils": "/vendor/td-components-0.43.0/src/utils/dom-utils.js",
+    "@dazzxq/td-components/form-validation": "/vendor/td-components-0.43.0/src/utils/form-validation.js",
+    "@dazzxq/td-components/breakpoints": "/vendor/td-components-0.43.0/src/utils/breakpoints.js"
   }
 }
 </script>
@@ -280,7 +289,7 @@ Trong PHP, bạn có thể sinh map từ một mảng để chỉ phải đổi 
 
 ```php
 <?php
-$tdBase = '/vendor/td-components-0.42.1';
+$tdBase = '/vendor/td-components-0.43.0';
 $tdMap = [
     '@dazzxq/td-components'             => "$tdBase/index.js",
     '@dazzxq/td-components/button'      => "$tdBase/src/form/td-button.js",
@@ -298,12 +307,12 @@ $tdMap = [
 
 ### Bước 4: cache và nâng cấp
 
-Trình duyệt tự tải các file import tương đối **mà không mang query string** của file gốc. Nếu bạn chỉ thêm `?v=0.42.1`
+Trình duyệt tự tải các file import tương đối **mà không mang query string** của file gốc. Nếu bạn chỉ thêm `?v=0.43.0`
 vào file đầu tiên, các file bên trong vẫn có thể lấy từ cache cũ, và trang chạy lẫn hai phiên bản. Vì vậy:
 
-- Đặt kit trong thư mục **có số phiên bản** (`/vendor/td-components-0.42.1/`). Nâng cấp = copy bản mới sang thư mục mới
-  (ví dụ `td-components-0.42.1/`) và đổi đường dẫn gốc (một biến `$tdBase`). Có thể cho cache rất lâu vì URL đổi theo bản.
-- Mọi chỗ trong trang phải nạp kit qua **cùng một URL**. Hai URL khác nhau (ví dụ một chỗ `/vendor/td-components-0.42.1/…`
+- Đặt kit trong thư mục **có số phiên bản** (`/vendor/td-components-0.43.0/`). Nâng cấp = copy bản mới sang thư mục mới
+  (ví dụ `td-components-0.43.0/`) và đổi đường dẫn gốc (một biến `$tdBase`). Có thể cho cache rất lâu vì URL đổi theo bản.
+- Mọi chỗ trong trang phải nạp kit qua **cùng một URL**. Hai URL khác nhau (ví dụ một chỗ `/vendor/td-components-0.43.0/…`
   và một chỗ còn sót `/vendor/td-components-0.16.0/…`) tạo ra hai bản module: hai registry lớp nổi, hai stack modal, và thẻ chỉ
   được đăng ký bởi bản nạp trước. Kết quả là bàn phím/focus giữa các lớp nổi chạy sai.
 
@@ -325,7 +334,7 @@ AddType text/javascript .js .mjs
 ```
 
 Với nginx, đừng đặt khối `types { text/javascript mjs; }` một mình trong `server`/`location`: ở cấp dưới nó **thay hẳn**
-bảng MIME kế thừa. Kiểm tra nhanh: `curl -sI https://site/vendor/td-components-0.42.1/src/form/td-button.js` → dòng
+bảng MIME kế thừa. Kiểm tra nhanh: `curl -sI https://site/vendor/td-components-0.43.0/src/form/td-button.js` → dòng
 `content-type` phải là `text/javascript` (hoặc `application/javascript`). Chi tiết cho WordPress/PHP:
 [WordPress & PHP](../guides/wordpress-php.md#mime-của-module-js).
 
@@ -336,7 +345,7 @@ Nếu site dùng CSP theo nonce (`style-src 'nonce-…'`), gắn cùng một non
 ```php
 <?php $nonce = base64_encode(random_bytes(16)); ?>
 <?php header("Content-Security-Policy: default-src 'self'; style-src 'nonce-$nonce'; style-src-attr 'none'; script-src 'self' 'nonce-$nonce'"); ?>
-<link rel="stylesheet" href="/vendor/td-components-0.42.1/td.css" nonce="<?= $nonce ?>">
+<link rel="stylesheet" href="/vendor/td-components-0.43.0/td.css" nonce="<?= $nonce ?>">
 <script type="importmap" nonce="<?= $nonce ?>"><?= json_encode(['imports' => $tdMap], JSON_UNESCAPED_SLASHES) ?></script>
 <script type="module" src="/assets/js/app.js" nonce="<?= $nonce ?>"></script>
 ```
@@ -349,14 +358,14 @@ Nếu site dùng CSP theo nonce (`style-src 'nonce-…'`), gắn cùng một non
 ## 4. WordPress
 
 Nguyên tắc giống PHP thuần: copy kit vào theme/plugin, enqueue `td.css` và nạp JS dạng module. Ví dụ dưới đặt kit ở
-`wp-content/themes/<theme>/assets/vendor/td-components-0.42.1/`.
+`wp-content/themes/<theme>/assets/vendor/td-components-0.43.0/`.
 
 ### CSS
 
 ```php
 // functions.php
 add_action('wp_enqueue_scripts', function () {
-    $ver  = '0.42.1';
+    $ver  = '0.43.0';
     $base = get_theme_file_uri("assets/vendor/td-components-$ver");
     wp_enqueue_style('td-components', "$base/td.css", [], $ver);
 });
@@ -369,7 +378,7 @@ WordPress 6.5 có `wp_register_script_module` / `wp_enqueue_script_module`. Word
 
 ```php
 add_action('wp_enqueue_scripts', function () {
-    $ver  = '0.42.1';
+    $ver  = '0.43.0';
     $base = get_theme_file_uri("assets/vendor/td-components-$ver");
 
     // Đăng ký các subpath của kit dưới đúng tên package (id = tên trong import map).
@@ -408,7 +417,7 @@ nên `app.js` import theo đường dẫn URL (Cách A ở phần PHP) hoặc b�
 
 ```php
 add_action('wp_enqueue_scripts', function () {
-    $ver  = '0.42.1';
+    $ver  = '0.43.0';
     $base = get_theme_file_uri("assets/vendor/td-components-$ver");
     wp_enqueue_script('td-button', "$base/src/form/td-button.js", [], null, true);
     wp_enqueue_script('theme-app', get_theme_file_uri('assets/js/app.js'), ['td-button'], null, true);
@@ -505,6 +514,7 @@ Nguồn: `package.json#exports`.
 | `@dazzxq/td-components/drawer` | `src/feedback/td-drawer.js` | `<td-drawer>`, `TdDrawer` |
 | `@dazzxq/td-components/media-picker` | `src/feedback/td-media-picker.js` | `<td-media-picker>`, `TdMediaPicker` (0.32.0) |
 | `@dazzxq/td-components/media-field` | `src/form/td-media-field.js` | `<td-media-field>`, `TdMediaField` (0.32.0; nạp kèm `media-picker`) |
+| `@dazzxq/td-components/media-gallery` | `src/form/td-media-gallery.js` | `<td-media-gallery>`, `TdMediaGallery` (0.43.0; nạp kèm `media-picker`) |
 | `@dazzxq/td-components/copy` | `src/display/td-copy.js` | `<td-copy>`, `TdCopy` |
 | `@dazzxq/td-components/masked-value` | `src/display/td-masked-value.js` | `<td-masked-value>`, `TdMaskedValue` (nạp kèm `td-copy`) |
 | `@dazzxq/td-components/filter-chips` | `src/display/td-filter-chips.js` | `<td-filter-chips>`, `TdFilterChips` (0.39.0) |

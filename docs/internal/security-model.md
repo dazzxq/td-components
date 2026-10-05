@@ -301,6 +301,28 @@ Bề mặt input mới: chuỗi màu và tên theme do **người dùng của CL
 
 Ngoài phạm vi: một file CSS sinh ra do **site** sửa tay rồi phục vụ — là CSS của site (tin cậy như mọi CSS của site).
 
+## 6e. Gallery ảnh `td-media-gallery` (v0.43.0)
+
+Ranh giới ở [ADR 0021](decisions/0021-media-gallery-form-shape.md); mọi luật của §6 (URL một cổng, chỉ text, console không
+in giá trị / lỗi gốc của adapter) áp dụng nguyên. Thêm:
+
+- **Fail closed không bao giờ thành "xoá hết":** `items` hỏng (JSON sai, > 256 KiB, > 100, id thiếu / trùng / không phải
+  chuỗi / > 512) hoặc `name` kết thúc `[]` → không có mục FormData **và** không có state khôi phục (một state rỗng khôi
+  phục lại sẽ gửi `name=` = xoá). PHP no-JS: không có input nào, `items="[null]"` để JS cũng fail closed.
+- **Vượt `max` không gửi gì** (JS `setFormValue(null)`, PHP: không control nào có `name`) — validity có thể bị bỏ qua
+  (`novalidate`, `form.submit()`), nên hợp đồng an toàn ở tầng dữ liệu.
+- **Một đường validate** (`validateItems` = `td__media_gallery_items`, bảng `GALLERY_CASES`): API (`value =`,
+  `setSelection`) không hợp lệ bị từ chối, không đổi state; picker bỏ id sai / trùng.
+- **Trần cứng:** 100 ảnh, attribute 256 KiB, id 512, alt 500 (code point), crop 512, focal 128, 4 `adapter.get` song song.
+- **Luồng cắt theo thế hệ + identity** (QĐ 12b): kết quả `adapter.get` / hộp cắt chỉ áp khi chưa abort, cùng thế hệ nguồn,
+  cùng `li` còn trong lưới và cùng id — adapter phớt lờ `AbortSignal` cũng không ghi được gì; áp vào đúng ảnh, không theo
+  index. Lazy get cùng luật (thế hệ + adapter + context + item + id).
+- **Cổng hydrate riêng:** dấu `media-gallery@1`, allowlist attribute host, từng phần so với `render()` (attribute chính
+  xác, text chính xác), hidden input đúng lớp / tên / giá trị / vị trí / `disabled`, ô alt chỉ thêm được `name` / `value`
+  của bản no-JS. Lệch → render an toàn (không lấy node nào của markup lạ), chỉ giữ alt đang gõ + focus (theo id item).
+- **Server phải:** `count ≤ max` **của server**, `distinct`, mọi id tồn tại / đúng loại / có quyền (**một** `whereIn`,
+  so số lượng), cắt alt, kiểm crop / focal như field, ghi theo vị trí trong transaction; "không có key" = giữ nguyên.
+
 ## 7. Trách nhiệm của site
 
 Những thứ kit **cố ý không làm** và site phải làm, nếu không thì có lỗ hổng dù kit đúng. Trang người dùng tương ứng:

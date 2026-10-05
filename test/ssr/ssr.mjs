@@ -132,3 +132,12 @@ export const DATETIME_RANGE_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'datetime-r
 export function renderDatetimeRangeFixture() {
   return renderPhp('datetime-range-fixture.php');
 }
+
+// v0.43.0: td_media_gallery (always the element <td-media-gallery data-td-ssr="media-gallery@1"> + the no-JS inputs).
+export const MEDIA_GALLERY_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'media-gallery.fixtures.json'), 'utf8'));
+export const MEDIA_GALLERY_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'media-gallery.html');
+
+/** Render test/ssr/media-gallery-fixture.php (the HTML loaded by the media-gallery SSR browser test). */
+export function renderMediaGalleryFixture() {
+  return renderPhp('media-gallery-fixture.php');
+}

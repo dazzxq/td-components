@@ -52,6 +52,7 @@ import { TdCropper } from '../../src/form/td-cropper.js';
 import '../../src/form/td-media-field.js';
 import '../../src/form/td-scan-input.js'; // v0.38.0
 import '../../src/form/td-datetime-range.js'; // v0.40.0
+import '../../src/form/td-media-gallery.js'; // v0.43.0
 import { createMockAdapter } from './media-adapter.js';
 
 const LONG = 'Lưu và xuất bản bài viết lên trang chủ ngay bây giờ';
@@ -174,6 +175,10 @@ export function mountResponsiveFixture(root) {
   <section class="rsp-section" data-section="cropper"><h2>Cắt ảnh</h2>
     <td-cropper id="rsp-cropper" src="/test/fixtures/photo.svg" natural-width="1200" natural-height="800" alt="Ảnh phong cảnh" focal-point focal='{"v":1,"x":0.3,"y":0.4}'></td-cropper>
     <td-media-field name="og" label="Ảnh chia sẻ (OG)" usage croppable focal-point aspect-ratio="1.91" value="m1" preview-src="/test/fixtures/1.svg" crop='{"v":1,"x":0,"y":0.1,"width":1,"height":0.785}'></td-media-field>
+  </section>
+  <section class="rsp-section" data-section="media-gallery"><h2>Gallery ảnh</h2>
+    <td-media-gallery id="rsp-gallery" name="gallery" label="Ảnh sản phẩm" usage croppable cover max="10" aspect-ratio="4/3" items='[{"id": "m1", "src": "/test/fixtures/1.svg", "name": "Ảnh 1", "alt": "Áo thun trắng cổ tròn"}, {"id": "m2", "src": "/test/fixtures/2.svg", "name": "Ảnh 2", "alt": ""}, {"id": "m3", "src": "/test/fixtures/3.svg", "name": "Ảnh 3", "alt": ""}, {"id": "m4", "src": "/test/fixtures/4.svg", "name": "Ảnh 4", "alt": ""}, {"id": "m5", "src": "/test/fixtures/1.svg", "name": "Ảnh 5", "alt": ""}, {"id": "m6", "src": "/test/fixtures/2.svg", "name": "Ảnh 6", "alt": ""}, {"id": "m7", "src": "/test/fixtures/3.svg", "name": "Ảnh 7", "alt": ""}]'></td-media-gallery>
+    <div class="rsp-narrow"><td-media-gallery id="rsp-gallery-narrow" name="g2" label="Ảnh (cột hẹp)" usage items='[{"id": "m1", "src": "/test/fixtures/1.svg", "name": "Ảnh 1", "alt": "Áo thun trắng cổ tròn"}, {"id": "m2", "src": "/test/fixtures/2.svg", "name": "Ảnh 2", "alt": ""}, {"id": "m3", "src": "/test/fixtures/3.svg", "name": "Ảnh 3", "alt": ""}, {"id": "m4", "src": "/test/fixtures/4.svg", "name": "Ảnh 4", "alt": ""}, {"id": "m5", "src": "/test/fixtures/1.svg", "name": "Ảnh 5", "alt": ""}, {"id": "m6", "src": "/test/fixtures/2.svg", "name": "Ảnh 6", "alt": ""}, {"id": "m7", "src": "/test/fixtures/3.svg", "name": "Ảnh 7", "alt": ""}]'></td-media-gallery></div>
   </section>
   <section class="rsp-section" data-section="scan-input"><h2>Quét mã</h2>
     <td-scan-input id="rsp-scan" label="Mã đơn hàng" placeholder="Quét mã vạch trên phiếu xuất kho" beep></td-scan-input>

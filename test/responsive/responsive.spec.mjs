@@ -344,6 +344,26 @@ async function runConfig(browser, c) {
       }
     });
     check(tag, 'td-action-button targets', abErr);
+    // v0.43.0 (plan QĐ 21-22): td-media-gallery — a fixed grid: 2 columns below 480 px of viewport, ≥ 4 from 768; every
+    // tile inside its list; the tile buttons ≥ 44 × 44 on a coarse pointer (the handle too); 2 columns in a 280 px column
+    const gal = await page.evaluate(() => ['rsp-gallery', 'rsp-gallery-narrow'].map((id) => {
+      const g = document.getElementById(id);
+      const ul = g.querySelector('.td-media-gallery__list').getBoundingClientRect();
+      const tiles = [...g.querySelectorAll('.td-media-gallery__item')].map((li) => li.getBoundingClientRect());
+      const cols = new Set(tiles.filter((t) => Math.abs(t.top - tiles[0].top) < 1).map((t) => Math.round(t.left))).size;
+      const out = tiles.filter((t) => t.left < ul.left - 0.5 || t.right > ul.right + 0.5).length;
+      const btns = [...g.querySelectorAll('.td-media-gallery__btn:not([hidden]), .td-media-gallery__handle')].map((b) => { const r = b.getBoundingClientRect(); return [r.width, r.height]; });
+      return { id, cols, out, btns };
+    }));
+    const galErr = [];
+    for (const x of gal) {
+      if (x.out) galErr.push(`#${x.id}: ${x.out} tile(s) outside the list`);
+      if (c.touch && c.engine !== 'firefox') for (const [w, h] of x.btns) if (w < 43.5 || h < 43.5) galErr.push(`#${x.id}: a tile button ${w}×${h} < 44 (coarse)`);
+    }
+    if (c.w < 480 && gal[0].cols !== 2) galErr.push(`#rsp-gallery: ${gal[0].cols} columns at ${c.w}px (want 2)`);
+    if (c.w >= 768 && gal[0].cols < 4) galErr.push(`#rsp-gallery: ${gal[0].cols} columns at ${c.w}px (want ≥ 4)`);
+    if (gal[1].cols !== 2) galErr.push(`#rsp-gallery-narrow: ${gal[1].cols} columns in the 280px column (want 2)`);
+    check(tag, 'td-media-gallery grid (v0.43.0)', galErr);
     check(tag, 'card-mode table semantics', ['- table', '- columnheader', '- row', '- cell'].filter((s) => !snap.includes(s)).map((s) => `aria snapshot lacks "${s}"`));
     // v0.37.0 (plan QĐ 5–8): selection keeps role=table — the header and every row control are checkboxes with names,
     // the selected one checked; no grid / radio / aria-selected

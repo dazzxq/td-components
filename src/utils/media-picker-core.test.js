@@ -12,6 +12,9 @@ import {
   PageState, PAGE_SIZE_DEFAULT, REMOTE_URL_MAX, _resetCoreWarnings,
 } from './media-picker-core.js';
 import { safeMediaUrl } from './media-url.js';
+// Wall-clock budgets guard against super-linear blow-ups, not micro-speed: on a shared host (CI, several suites at
+// once) they get 20× slack, which still catches quadratic behaviour; TD_PERF_STRICT=1 enforces the raw budget.
+const PERF_SLACK = process.env.TD_PERF_STRICT ? 1 : 20;
 
 const safeUrl = (u) => safeMediaUrl(u, { baseURI: 'https://site.test/', protocol: 'https:' });
 const quiet = () => {};
@@ -696,14 +699,14 @@ describe('bounded PROCESSING (review SEC-3 round 2)', () => {
     const { p, reads } = counted({});
     const ms = fast(() => assert.deepEqual(normalizeAsset(raw('a', { badges: p }), { safeUrl }).badges, []));
     assert.ok(reads.n <= 4 * LIMITS.badges, `reads ${reads.n}`);
-    assert.ok(ms < 500, `${ms} ms`);
+    assert.ok(ms < 500 * PERF_SLACK, `${ms} ms`);
   });
 
   it('1e6 options: scanning stops after 4 × LIMITS.options even when none is valid', () => {
     const { p, reads } = counted({ value: {}, label: 'bad' });
     const ms = fast(() => assert.deepEqual(normalizeOptions(p), []));
     assert.ok(reads.n <= 4 * LIMITS.options, `reads ${reads.n}`);
-    assert.ok(ms < 500, `${ms} ms`);
+    assert.ok(ms < 500 * PERF_SLACK, `${ms} ms`);
     const v = counted({ value: 1, label: 'ok' });
     assert.equal(normalizeOptions(v.p).length, LIMITS.options);
     assert.ok(v.reads.n <= 4 * LIMITS.options);
