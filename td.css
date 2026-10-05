@@ -377,6 +377,17 @@
  * darkDeltas.
  */
 @layer td.tokens {
+	/* v0.41.0 (QĐ3): an explicit light page, and auto under an OS light preference, declare their scheme (native
+	   controls, scrollbars). No attribute → no color-scheme at all (pixel-identical to v0.40). The OS-dark branch of
+	   auto gets `color-scheme: dark` from the generated copy of the dark rule below (same specificity, later). */
+	:root[data-td-theme="light"] {
+		color-scheme: light;
+	}
+
+	:root[data-td-theme="auto"] {
+		color-scheme: light;
+	}
+
 	:root[data-td-theme="dark"] {
 		color-scheme: dark;
 
@@ -479,12 +490,123 @@
 		--td-shadow-2: 0 2px 8px rgb(0 0 0 / 40%);
 		--td-shadow-3: 0 8px 24px rgb(0 0 0 / 50%);
 	}
+	/* td: generated auto theme (QĐ4) */
+	@media (prefers-color-scheme: dark) {
+		:root[data-td-theme="auto"] {
+			color-scheme: dark;
+	
+			--td-color-bg: #111113;
+			--td-color-surface: #1c1c1e;
+			--td-color-surface-muted: #242427;
+			--td-color-text: #f5f5f7;
+			--td-color-text-muted: #acacb4;                 /* v0.41.0 (was #a1a1aa): 5.59 surface, 5.03 muted + hover-strong */
+			--td-color-text-subtle: #8a8a93;
+			--td-color-text-label: #d4d4d8;
+			--td-color-border: #333338;                     /* v0.41.0 (was #2c2c30, 1.22): 1.35 on the surface — decorative */
+			--td-color-sheen: rgb(255 255 255 / 8%);
+			--td-color-border-strong: #45454b;
+			--td-color-hover: rgb(255 255 255 / 6%);
+			--td-color-hover-strong: rgb(255 255 255 / 10%);
+			--td-color-pressed: rgb(255 255 255 / 14%); /* v0.36.2 */
+			--td-color-overlay: rgb(0 0 0 / 60%);
+			--td-color-skeleton: #242427;
+			--td-color-fill: #2c2c30;
+			--td-color-fill-strong: #3c3c3e;                /* = 14 % white over the #1c1c1e field, precomputed */
+			--td-color-on-fill: #e4e4e7;
+			--td-color-success: #22c55e;
+			--td-color-warning: #f59e0b;
+			--td-color-error: #f87171;
+			--td-color-info: #60a5fa;
+			--td-color-on-status: #111113;
+			--td-focus: #60a5fa;
+			--td-focus-ring: 0 0 0 3px rgb(96 165 250 / 45%);
+			--td-hairline: rgb(255 255 255 / 8%);
+	
+			--td-accent: #4b8df8;                           /* v0.41.0 (was #3b82f6, 4.63 on the surface): 5.24 / 4.77 muted as text */
+			--td-accent-contrast: #fff;
+			--td-accent-fill: #2563eb; /* fallback without color-mix(); see @supports below (white 4.81 on #3c71c6) */
+	
+			--td-control-border-strong: #8a8a93;
+			/* v0.41.0 (owner, QĐ7): dark control edges ≥ 3:1 against EVERY adjacent colour — fields, triggers, unchecked
+			   boxes, switch edge (was #3a3a3c 1.50 / #636366 2.84). soft: 3.77 surface · 3.43 muted · 4.18 page ·
+			   3.08 on the switch-off fill; hover one step past it: 5.22 surface · 4.75 muted. */
+			--td-control-border-soft: #76767c;
+			--td-control-border-hover: #8e8e93;
+	
+			/* v0.21.0 pastel semantic palette: semantic colour ~18 % pre-mixed on #111113 (solid), border ~30 %, ink ~200 */
+			--td-pastel-success-bg: #143121;
+			--td-pastel-success-border: #16472a;
+			--td-pastel-success-fg: #bbf7d0;
+			--td-pastel-danger-bg: #391a1c;
+			--td-pastel-danger-border: #542022;
+			--td-pastel-danger-fg: #fecaca;
+			--td-pastel-warning-bg: #3a2a12;
+			--td-pastel-warning-border: #553b11;
+			--td-pastel-warning-fg: #fde68a;
+			--td-pastel-info-bg: #19253c;
+			--td-pastel-info-border: #1e3357;
+			--td-pastel-info-fg: #bfdbfe;
+	
+			/* v0.36.0 solid semantic palette: the SAME values as light (white on 600/700 and dark on amber-500 read on a dark
+			   page too; the label contrast is measured against the fill only) */
+			--td-solid-success-bg: #15803d;
+			--td-solid-success-fg: #fff;
+			--td-solid-success-hover: #166534;
+			--td-solid-success-border: #166534;
+			--td-solid-danger-bg: #dc2626;
+			--td-solid-danger-fg: #fff;
+			--td-solid-danger-hover: #b91c1c;
+			--td-solid-danger-border: #b91c1c;
+			--td-solid-warning-bg: #f59e0b;
+			--td-solid-warning-fg: #18181b;
+			--td-solid-warning-hover: #d97706;
+			--td-solid-warning-border: #d97706;
+			--td-solid-info-bg: #2563eb;
+			--td-solid-info-fg: #fff;
+			--td-solid-info-hover: #1d4ed8;
+			--td-solid-info-border: #1d4ed8;
+	
+			/* v0.21.0: primary inverted (a black fill would sink into the dark page) */
+			--td-btn-primary-bg: #f4f4f5;
+			--td-btn-primary-fg: #18181b;
+			--td-btn-primary-hover: #d4d4d8;
+			--td-btn-primary-pressed: #a1a1aa;              /* v0.36.2: one step darker (6.9:1 with the dark label) */
+			--td-btn-secondary-border: rgb(255 255 255 / 12%);
+			--td-btn-secondary-hover: #3a3a3e;
+			--td-btn-secondary-pressed: #45454b;            /* v0.36.2 */
+			--td-btn-ghost-hover-fg: color-mix(in srgb, var(--td-btn-ghost-fg) 70%, #fff); /* lighter step on the dark fill */
+			--td-btn-ghost-hover-fg-fallback: #93c5fd;     /* v0.41.0: engines without color-mix() (#1d4ed8 was 2.5:1 here) */
+			--td-btn-disabled-bg: #202024;
+			--td-btn-disabled-fg: #6b6b73;                 /* greyed out, ≥ 2.2:1 (v0.14.3) */
+			--td-btn-disabled-border: rgb(255 255 255 / 6%);
+			--td-btn-lift: 0 1px 3px rgb(0 0 0 / 20%), 0 4px 10px -2px rgb(0 0 0 / 24%); /* v0.21.0: light alpha × 2 */
+	
+			/* v0.20.0 minimal surfaces (blur / clear tokens are theme-independent: tokens.css) */
+			--td-glass-bg: rgb(28 28 30 / 90%);
+			--td-glass-bg-strong: rgb(28 28 30 / 94%);
+			--td-glass-fg: #f5f5f7;
+			/* v0.41.0: on a dark page a shadow barely shows — floating surfaces are told apart by a thin LIGHT edge (14 %,
+			   was 10 %) plus deeper shadows; --td-shadow-1..3 get dark values (they had none) */
+			--td-glass-border: rgb(255 255 255 / 14%);
+			--td-glass-shadow: 0 2px 6px rgb(0 0 0 / 24%), 0 8px 24px rgb(0 0 0 / 40%);
+			--td-glass-shadow-lg: 0 4px 12px rgb(0 0 0 / 32%), 0 20px 48px rgb(0 0 0 / 56%);
+			--td-shadow-1: 0 1px 2px rgb(0 0 0 / 30%);
+			--td-shadow-2: 0 2px 8px rgb(0 0 0 / 40%);
+			--td-shadow-3: 0 8px 24px rgb(0 0 0 / 50%);
+		}
+	}
 
 	/* v0.16.0: the dark fill FOLLOWS the site accent — 20% darker so white text stays readable
 	   (default #3b82f6 → ≈ #2f68c5, white ≈ 5.3:1). */
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
 		:root[data-td-theme="dark"] {
 			--td-accent-fill: color-mix(in srgb, var(--td-accent) 80%, #000);
+		}
+		/* td: generated auto theme (QĐ4) */
+		@media (prefers-color-scheme: dark) {
+			:root[data-td-theme="auto"] {
+				--td-accent-fill: color-mix(in srgb, var(--td-accent) 80%, #000);
+			}
 		}
 	}
 }
@@ -698,6 +820,14 @@
 		--td-field-bg-readonly: var(--td-color-surface-muted);
 		--td-field-focus-ring: 0 0 0 3px rgb(59 130 246 / 22%); /* a 12 % halo vanishes on the dark field */
 	}
+	/* td: generated auto theme (QĐ4) */
+	@media (prefers-color-scheme: dark) {
+		:root[data-td-theme="auto"] {
+			--td-field-bg-disabled: var(--td-color-surface-muted);
+			--td-field-bg-readonly: var(--td-color-surface-muted);
+			--td-field-focus-ring: 0 0 0 3px rgb(59 130 246 / 22%); /* a 12 % halo vanishes on the dark field */
+		}
+	}
 
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
 		:root {
@@ -707,6 +837,12 @@
 
 		:root[data-td-theme="dark"] {
 			--td-field-focus-ring: 0 0 0 3px color-mix(in srgb, var(--td-accent) 22%, transparent);
+		}
+		/* td: generated auto theme (QĐ4) */
+		@media (prefers-color-scheme: dark) {
+			:root[data-td-theme="auto"] {
+				--td-field-focus-ring: 0 0 0 3px color-mix(in srgb, var(--td-accent) 22%, transparent);
+			}
 		}
 	}
 }
@@ -1516,6 +1652,18 @@
 		--td-action-btn-warning-pressed-fg: var(--td-action-btn-warning-fg);
 		--td-action-btn-danger-pressed-bg: rgb(220 38 38 / 30%);
 	}
+	/* td: generated auto theme (QĐ4) */
+	@media (prefers-color-scheme: dark) {
+		:root[data-td-theme="auto"] {
+			--td-action-btn-warning-fg: #fcd34d;
+			--td-action-btn-warning-hover-bg: rgb(245 158 11 / 14%);
+			--td-action-btn-danger-fg: #fca5a5;
+			--td-action-btn-danger-hover-bg: rgb(220 38 38 / 18%);
+			--td-action-btn-warning-pressed-bg: rgb(245 158 11 / 26%);
+			--td-action-btn-warning-pressed-fg: var(--td-action-btn-warning-fg);
+			--td-action-btn-danger-pressed-bg: rgb(220 38 38 / 30%);
+		}
+	}
 }
 
 @layer td.component {
@@ -2190,6 +2338,14 @@
 		--td-slider-thumb-bg: #fff;
 		--td-slider-disabled: #5a5a62;
 	}
+	/* td: generated auto theme (QĐ4) */
+	@media (prefers-color-scheme: dark) {
+		:root[data-td-theme="auto"] {
+			--td-slider-track: #3a3a40;
+			--td-slider-thumb-bg: #fff;
+			--td-slider-disabled: #5a5a62;
+		}
+	}
 }
 
 @layer td.component {
@@ -2499,6 +2655,14 @@
 		--td-pagination-active: var(--td-accent-fill);
 		--td-pagination-active-fg: #fff;
 	}
+	/* td: generated auto theme (QĐ4) */
+	@media (prefers-color-scheme: dark) {
+		:root[data-td-theme="auto"] {
+			/* white text on the raw dark accent #3b82f6 is 3.68:1 → the darkened fill, like .td-btn--primary (v0.16.0) */
+			--td-pagination-active: var(--td-accent-fill);
+			--td-pagination-active-fg: #fff;
+		}
+	}
 }
 
 @layer td.component {
@@ -2794,6 +2958,14 @@
 		/* the dark surface is darker than the translucent trough → a lighter translucent pill */
 		--td-tabs-pill: rgb(255 255 255 / 14%);
 		--td-tabs-pill-shadow: 0 1px 2px rgb(0 0 0 / 40%);
+	}
+	/* td: generated auto theme (QĐ4) */
+	@media (prefers-color-scheme: dark) {
+		:root[data-td-theme="auto"] {
+			/* the dark surface is darker than the translucent trough → a lighter translucent pill */
+			--td-tabs-pill: rgb(255 255 255 / 14%);
+			--td-tabs-pill-shadow: 0 1px 2px rgb(0 0 0 / 40%);
+		}
 	}
 }
 
@@ -4399,6 +4571,13 @@
 		--td-toast-fg: var(--td-glass-fg);
 		--td-toast-close-fg: var(--td-glass-fg);
 	}
+	/* td: generated auto theme (QĐ4) */
+	@media (prefers-color-scheme: dark) {
+		:root[data-td-theme="auto"] {
+			--td-toast-fg: var(--td-glass-fg);
+			--td-toast-close-fg: var(--td-glass-fg);
+		}
+	}
 }
 
 @layer td.component {
@@ -4807,6 +4986,14 @@
 		/* v0.41.0: a raised grey chip (was #18181b, 1.06:1 on the page): 1.67 page · 1.50 surface, white 11.3, + a light edge */
 		--td-tooltip-bg: #3a3a3e;
 		--td-tooltip-border: rgb(255 255 255 / 16%);
+	}
+	/* td: generated auto theme (QĐ4) */
+	@media (prefers-color-scheme: dark) {
+		:root[data-td-theme="auto"] {
+			/* v0.41.0: a raised grey chip (was #18181b, 1.06:1 on the page): 1.67 page · 1.50 surface, white 11.3, + a light edge */
+			--td-tooltip-bg: #3a3a3e;
+			--td-tooltip-border: rgb(255 255 255 / 16%);
+		}
 	}
 }
 
@@ -5409,6 +5596,14 @@
 		--td-dropdown-option-active-line: var(--td-control-border-hover);
 		--td-dropdown-search-bg: rgb(255 255 255 / 6%);
 	}
+	/* td: generated auto theme (QĐ4) */
+	@media (prefers-color-scheme: dark) {
+		:root[data-td-theme="auto"] {
+			--td-dropdown-create-fg-fallback: #93c5fd;
+			--td-dropdown-option-active-line: var(--td-control-border-hover);
+			--td-dropdown-search-bg: rgb(255 255 255 / 6%);
+		}
+	}
 
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
 		:root {
@@ -5417,6 +5612,12 @@
 
 		:root[data-td-theme="dark"] {
 			--td-dropdown-create-fg: color-mix(in srgb, var(--td-accent) 55%, #fff); /* lighter step on the dark surface */
+		}
+		/* td: generated auto theme (QĐ4) */
+		@media (prefers-color-scheme: dark) {
+			:root[data-td-theme="auto"] {
+				--td-dropdown-create-fg: color-mix(in srgb, var(--td-accent) 55%, #fff); /* lighter step on the dark surface */
+			}
 		}
 	}
 }
@@ -5956,6 +6157,15 @@
 		--td-table-sheen: var(--td-skeleton-shine);
 		--td-table-edge-shadow: rgb(0 0 0 / 55%);
 		--td-table-check-border: var(--td-checkbox-border);
+	}
+	/* td: generated auto theme (QĐ4) */
+	@media (prefers-color-scheme: dark) {
+		:root[data-td-theme="auto"] {
+			--td-table-zebra: rgb(255 255 255 / 3%);
+			--td-table-sheen: var(--td-skeleton-shine);
+			--td-table-edge-shadow: rgb(0 0 0 / 55%);
+			--td-table-check-border: var(--td-checkbox-border);
+		}
 	}
 }
 
@@ -7310,6 +7520,12 @@
 	:root[data-td-theme="dark"] {
 		--td-form-summary-bg: color-mix(in srgb, var(--td-color-error) 12%, var(--td-color-surface));
 	}
+	/* td: generated auto theme (QĐ4) */
+	@media (prefers-color-scheme: dark) {
+		:root[data-td-theme="auto"] {
+			--td-form-summary-bg: color-mix(in srgb, var(--td-color-error) 12%, var(--td-color-surface));
+		}
+	}
 }
 
 @layer td.component {
@@ -7458,6 +7674,12 @@
 
 	:root[data-td-theme="dark"] {
 		--td-menu-separator: rgb(255 255 255 / 12%);
+	}
+	/* td: generated auto theme (QĐ4) */
+	@media (prefers-color-scheme: dark) {
+		:root[data-td-theme="auto"] {
+			--td-menu-separator: rgb(255 255 255 / 12%);
+		}
 	}
 }
 
@@ -7816,6 +8038,12 @@
 
 	:root[data-td-theme="dark"] {
 		--td-chip-remove-hover: rgb(255 255 255 / 16%);
+	}
+	/* td: generated auto theme (QĐ4) */
+	@media (prefers-color-scheme: dark) {
+		:root[data-td-theme="auto"] {
+			--td-chip-remove-hover: rgb(255 255 255 / 16%);
+		}
 	}
 }
 
@@ -8357,6 +8585,13 @@
 		--td-hovercard-error-fg: #fca5a5;
 		--td-hovercard-link-fg: #93c5fd;
 	}
+	/* td: generated auto theme (QĐ4) */
+	@media (prefers-color-scheme: dark) {
+		:root[data-td-theme="auto"] {
+			--td-hovercard-error-fg: #fca5a5;
+			--td-hovercard-link-fg: #93c5fd;
+		}
+	}
 }
 
 @layer td.component {
@@ -8869,6 +9104,12 @@
 	:root[data-td-theme="dark"] {
 		--td-dropzone-bg-pressed: #2c2c30;
 	}
+	/* td: generated auto theme (QĐ4) */
+	@media (prefers-color-scheme: dark) {
+		:root[data-td-theme="auto"] {
+			--td-dropzone-bg-pressed: #2c2c30;
+		}
+	}
 }
 
 @layer td.component {
@@ -9323,6 +9564,18 @@
 		--td-badge-danger-ink: #fca5a5;
 		--td-badge-info-ink: #93c5fd;
 	}
+	/* td: generated auto theme (QĐ4) */
+	@media (prefers-color-scheme: dark) {
+		:root[data-td-theme="auto"] {
+			--td-badge-accent-bg: #172554;
+			--td-badge-accent-fg: #bfdbfe;
+			/* v0.36.0: outline / stamp ink on the DARK page (the light-theme ~700 inks are too dark there) */
+			--td-badge-success-ink: #86efac;
+			--td-badge-warning-ink: #fcd34d;
+			--td-badge-danger-ink: #fca5a5;
+			--td-badge-info-ink: #93c5fd;
+		}
+	}
 
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
 		:root {
@@ -9333,6 +9586,13 @@
 		:root[data-td-theme="dark"] {
 			--td-badge-accent-bg: color-mix(in srgb, var(--td-accent) 26%, #111113);
 			--td-badge-accent-fg: color-mix(in srgb, var(--td-accent) 40%, #fff);
+		}
+		/* td: generated auto theme (QĐ4) */
+		@media (prefers-color-scheme: dark) {
+			:root[data-td-theme="auto"] {
+				--td-badge-accent-bg: color-mix(in srgb, var(--td-accent) 26%, #111113);
+				--td-badge-accent-fg: color-mix(in srgb, var(--td-accent) 40%, #fff);
+			}
 		}
 	}
 }
@@ -9479,6 +9739,23 @@
 		--td-alert-danger-bg: #2a1111;
 		--td-alert-danger-border: #7f1d1d;
 		--td-alert-danger-icon: #fca5a5;
+	}
+	/* td: generated auto theme (QĐ4) */
+	@media (prefers-color-scheme: dark) {
+		:root[data-td-theme="auto"] {
+			--td-alert-info-bg: #111c33;
+			--td-alert-info-border: #1e3a8a;
+			--td-alert-info-icon: #93c5fd;
+			--td-alert-success-bg: #0d2418;
+			--td-alert-success-border: #14532d;
+			--td-alert-success-icon: #86efac;
+			--td-alert-warning-bg: #261b08;
+			--td-alert-warning-border: #78350f;
+			--td-alert-warning-icon: #fcd34d;
+			--td-alert-danger-bg: #2a1111;
+			--td-alert-danger-border: #7f1d1d;
+			--td-alert-danger-icon: #fca5a5;
+		}
 	}
 }
 
@@ -14644,6 +14921,12 @@
 
 	:root[data-td-theme="dark"] {
 		--td-filter-chip-remove-fg: var(--td-color-text-muted);
+	}
+	/* td: generated auto theme (QĐ4) */
+	@media (prefers-color-scheme: dark) {
+		:root[data-td-theme="auto"] {
+			--td-filter-chip-remove-fg: var(--td-color-text-muted);
+		}
 	}
 }
 

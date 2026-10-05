@@ -12,6 +12,17 @@
  * darkDeltas.
  */
 @layer td.tokens {
+	/* v0.41.0 (QĐ3): an explicit light page, and auto under an OS light preference, declare their scheme (native
+	   controls, scrollbars). No attribute → no color-scheme at all (pixel-identical to v0.40). The OS-dark branch of
+	   auto gets `color-scheme: dark` from the generated copy of the dark rule below (same specificity, later). */
+	:root[data-td-theme="light"] {
+		color-scheme: light;
+	}
+
+	:root[data-td-theme="auto"] {
+		color-scheme: light;
+	}
+
 	:root[data-td-theme="dark"] {
 		color-scheme: dark;
 
