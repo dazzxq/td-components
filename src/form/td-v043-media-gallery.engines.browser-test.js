@@ -176,7 +176,7 @@ describe('td-media-gallery — add through the picker (decision 5)', () => {
     await tick();
     expect(el.value).to.deep.equal(['m1']);
     expect(c.input + c.change).to.equal(0);
-    expect(status(el)).to.equal('Bỏ qua 1 ảnh đã có. 1 ảnh.');
+    expect(status(el)).to.equal('Bỏ qua 1 ảnh đã có. 1/100 ảnh.');
   });
 
   it('the gallery left the page while the picker was open → the result is dropped; no adapter → one warning', async () => {

@@ -64,7 +64,7 @@ describe('php/td.php — td_media_gallery (v0.43.0, contract media-gallery@1)', 
     assert.deepEqual(warns, []);
     assert.equal(html, '<td-media-gallery data-td-ssr="media-gallery@1" id="g1" class="td-media-gallery" name="gallery" label="Ảnh sản phẩm">'
       + '<div class="td-media-gallery__head"><span class="td-media-gallery__label" id="g1-label">Ảnh sản phẩm</span>'
-      + '<span class="td-media-gallery__count" id="g1-count">0 ảnh</span></div>'
+      + '<span class="td-media-gallery__count" id="g1-count">0/100 ảnh</span></div>'
       + '<ul class="td-media-gallery__list" role="list" aria-labelledby="g1-label" aria-describedby="g1-count"></ul>'
       + '<input type="hidden" class="td-media-gallery__value" name="gallery" value="">'
       + '<button type="button" class="td-media-gallery__add" data-state="empty" aria-haspopup="dialog">'

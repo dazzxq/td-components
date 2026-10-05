@@ -325,7 +325,7 @@ từng byte). Chi tiết option: [PHP adapter › td_media_gallery](../guides/ph
 
 Tiếng Việt, ghi đè được theo site (`TdMediaGallery.labels.add.image = 'Add photos'`). Trang SSR có nhãn khác nhãn của
 PHP (`Td::MEDIA_GALLERY_LABELS`) được render lại an toàn (không nhận tại chỗ). Khoá: `prompt.{kind}`, `add.{kind}`,
-`kinds.{kind}`, `count`, `countMax`, `full`, `over`, `item`, `coverSuffix`, `cover`, `handle`, `remove`, `crop`, `alt`,
+`kinds.{kind}`, `countMax` (vắng `max` → 100), `full`, `over`, `item`, `coverSuffix`, `cover`, `handle`, `remove`, `crop`, `alt`,
 `altPlaceholder`, `noPreview`, `video`, `broken`, `sortHelp`, `added`, `skipped`, `tooMany`, `removed`, `required`,
 `min`, `max`, `cropTitle`, `cropError`. Thông báo khi nhấc / di chuyển / thả dùng `TdSortable.labels`.
 

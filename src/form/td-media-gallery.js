@@ -102,7 +102,6 @@ export class TdMediaGallery extends TdFormElement {
     prompt: { image: 'Chọn ảnh', video: 'Chọn video', file: 'Chọn file' },
     add: { image: 'Thêm ảnh', video: 'Thêm video', file: 'Thêm file' },
     kinds: { image: 'ảnh', video: 'video', file: 'file' },
-    count: '{count} {kind}',
     countMax: '{count}/{max} {kind}',
     full: 'Đã đủ {max} {kind}',
     over: 'Vượt giới hạn: {count}/{max} {kind}',
@@ -624,10 +623,9 @@ export class TdMediaGallery extends TdFormElement {
   /** @private the visible count line */
   _countText() {
     const count = this._items.length;
-    const max = this._maxAttr();
+    const max = this._max(); // ISSUE-7: the effective max (100 when the attribute is absent)
     const kind = this._kindWord();
-    if (count > this._max()) return this._label('over', { count, max: this._max(), kind });
-    if (max == null) return this._label('count', { count, kind });
+    if (count > max) return this._label('over', { count, max, kind });
     return this._label(count === max ? 'full' : 'countMax', { count, max, kind });
   }
 

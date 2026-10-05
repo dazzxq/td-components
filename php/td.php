@@ -230,7 +230,6 @@ namespace TdComponents {
             'prompt' => ['image' => 'Chọn ảnh', 'video' => 'Chọn video', 'file' => 'Chọn file'],
             'add' => ['image' => 'Thêm ảnh', 'video' => 'Thêm video', 'file' => 'Thêm file'],
             'kinds' => ['image' => 'ảnh', 'video' => 'video', 'file' => 'file'],
-            'count' => '{count} {kind}',
             'countMax' => '{count}/{max} {kind}',
             'full' => 'Đã đủ {max} {kind}',
             'over' => 'Vượt giới hạn: {count}/{max} {kind}',
@@ -2699,9 +2698,8 @@ namespace {
         if ($broken) {
             return $html . '</div><span class="td-media-gallery__broken">' . Td::e($L['broken']) . '</span>' . $notes . '</td-media-gallery>';
         }
-        $countText = $overflow ? $f($L['over'], ['count' => $count, 'max' => $limit, 'kind' => $kindWord]) : ($max !== null
-            ? $f($count === $max ? $L['full'] : $L['countMax'], ['count' => $count, 'max' => $max, 'kind' => $kindWord])
-            : $f($L['count'], ['count' => $count, 'kind' => $kindWord]));
+        // ISSUE-7: the effective max (100 without the option), like the element
+        $countText = $f($overflow ? $L['over'] : ($count === $limit ? $L['full'] : $L['countMax']), ['count' => $count, 'max' => $limit, 'kind' => $kindWord]);
         $html .= '<span class="td-media-gallery__count" id="' . $hid . '-count"' . ($overflow ? ' data-state="over"' : '') . '>' . Td::e($countText) . '</span></div>'
             . '<ul class="td-media-gallery__list" role="list" aria-labelledby="' . $hid . '-label" aria-describedby="' . $hid . '-count">';
         $vb = $ratio !== null ? $ratio['w'] . ' ' . $ratio['h'] : '1 1';
