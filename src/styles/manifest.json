@@ -53,6 +53,7 @@
     "components/cropper.css",
     "components/scan-input.css",
     "components/filter-chips.css",
+    "components/datetime-range.css",
     "utilities.css"
   ]
 }

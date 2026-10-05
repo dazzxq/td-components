@@ -62,6 +62,8 @@ export class DatetimeEditor {
     this.pending = o.pending;
     /** opening wheel animation while it waits / runs; null otherwise */
     this.intro = null;
+    /** @type {{ message: string, field: string|null }|null} */
+    this.error = null;
     /** @private wheel → scrollTop its latest programmatic SMOOTH scroll is heading to */
     this._scrollTargets = new Map();
     /** @private scroll-settle fallback timers */
@@ -378,6 +380,8 @@ export class DatetimeEditor {
     if (!panel || !this.pending) return null;
     const p = this.pending;
     const err = this.o.check(p);
+    /** the latest validation result (the range reads it to merge its pair error) */
+    this.error = err;
     const error = panel.querySelector('.td-dtp-panel__error');
     for (const control of panel.querySelectorAll('.td-dtp-panel__input, .td-dtp-wheel__list')) {
       if (err && err.field === control.getAttribute('data-part')) control.setAttribute('aria-invalid', 'true');

@@ -91,4 +91,8 @@ describe('index.js exports', () => {
     expect(typeof kit.TdScanInput).to.equal('function');
     expect(customElements.get('td-scan-input')).to.equal(kit.TdScanInput);
   });
+  it('registers <td-datetime-range> from the root entry (v0.40.0)', () => {
+    expect(typeof kit.TdDatetimeRange).to.equal('function');
+    expect(customElements.get('td-datetime-range')).to.equal(kit.TdDatetimeRange);
+  });
 });

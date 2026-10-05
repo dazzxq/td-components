@@ -22,6 +22,7 @@ export { TdIconElement } from './src/icons/td-icon-element.js';
 export { tdIcon, registerIcons, hasIcon, listIcons, fillIconSlots } from './src/icons/td-icon.js';
 export { TdDateTime } from './src/utils/datetime.js';
 export { TdDatetimePicker } from './src/form/td-datetime-picker.js';
+export { TdDatetimeRange } from './src/form/td-datetime-range.js';
 export { TdModalStackManager } from './src/feedback/td-modal-stack.js';
 export { TdModal } from './src/feedback/td-modal.js';
 export { TdDrawer } from './src/feedback/td-drawer.js';
