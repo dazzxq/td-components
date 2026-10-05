@@ -11,6 +11,16 @@ const FORM_ASSOCIATED = 'input, textarea, select, button, fieldset, output, obje
 /** Attributes a server-rendered radio may carry (php td_choice_group + what the component sets). */
 const RADIO_ATTRS = new Set(['type', 'class', 'id', 'value', 'name', 'form', 'autocomplete', 'aria-labelledby', 'aria-describedby',
   'checked', 'required', 'disabled']);
+/** review r3: the "over the limits" result of the SSR preflight / parse — identity only, can never equal real data */
+const SSR_OVER = Symbol('td-choice-group: SSR over the limits');
+/**
+ * review r3: budget of the SSR preflight (one bounded walk of the whole subtree BEFORE anything enumerates it): nodes of
+ * every kind, depth below the host, attributes per element, siblings per container, attribute value / text node length.
+ */
+const SSR_BUDGET = Object.freeze({
+  nodes: 24 * CHOICE_LIMITS.options + 64, depth: 8, attrs: 16, siblings: 2 * CHOICE_LIMITS.options + 2, text: 4096, attr: 256,
+  attrCap: { value: 2 * CHOICE_LIMITS.value, 'data-td-value': 2 * CHOICE_LIMITS.value, fill: 2 * CHOICE_LIMITS.swatch, src: 2 * CHOICE_LIMITS.image },
+});
 const GROUP_ATTRS = new Set(['class', 'role', 'aria-labelledby', 'aria-label', 'aria-required', 'aria-invalid', 'aria-errormessage',
   'aria-describedby']);
 let _groupCounter = 0;
@@ -590,8 +600,8 @@ export class TdChoiceGroup extends TdFormElement {
   canHydrate() {
     const m = ssrMarker(this);
     if (!m || m.name !== 'choice-group') return false;
-    let parsed = this._ssrParse();
-    if (parsed === 'over') {
+    let parsed = this._ssrPreflight() ? this._ssrParse() : SSR_OVER;
+    if (parsed === SSR_OVER) {
       this._warnOnce('ssr-over', 'td-choice-group: server markup over the limits — not adopted, rendered from scratch.');
       parsed = null;
     }
@@ -659,12 +669,39 @@ export class TdChoiceGroup extends TdFormElement {
    * @private The strict skeleton → the radios + raw option data, or null. Only exact positions are read (an injected
    * control elsewhere is never a state source).
    */
+  _ssrPreflight() {
+    // firstChild / nextSibling only (no childNodes / children / spreads): the walk stops at the first breach
+    const B = SSR_BUDGET;
+    let nodes = 0;
+    const visit = (parent, depth) => {
+      if (depth > B.depth) return false;
+      let siblings = 0;
+      for (let n = parent.firstChild; n; n = n.nextSibling) {
+        if (++nodes > B.nodes || ++siblings > B.siblings) return false;
+        if (n.nodeType === 3 || n.nodeType === 8) {
+          if (n.length > B.text) return false;
+          continue;
+        }
+        if (n.nodeType !== 1) return false;
+        const attrs = n.attributes;
+        if (attrs.length > B.attrs) return false;
+        for (let i = 0; i < attrs.length; i++) {
+          if (attrs[i].value.length > (B.attrCap[attrs[i].name] ?? B.attr)) return false;
+        }
+        if (!visit(n, depth + 1)) return false;
+      }
+      return true;
+    };
+    return visit(this, 1);
+  }
+
+  /** @private Bounded parse of the strict skeleton (only after `_ssrPreflight()`); SSR_OVER past a field cap. */
   _ssrParse() {
     // review round 2: bounded BEFORE extraction — only the expected direct-child shape is walked (no deep query), element
     // counts are checked before iterating, every text / attribute is length-checked before it is copied. Over a limit →
     // OVER (not adopted: fresh render + one fixed warning); a wrong shape → null.
     const L = CHOICE_LIMITS;
-    const OVER = 'over';
+    const OVER = SSR_OVER;
     if (this.childElementCount !== 1) return null;
     const root = this.firstElementChild;
     if (root.localName !== 'div' || !root.classList.contains('td-choice') || root.childElementCount > 8) return null; // label, options, footer (+ slack: a foreign sibling is refused by the gate, the options stay readable)

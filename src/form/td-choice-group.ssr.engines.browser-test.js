@@ -83,10 +83,31 @@ const LIM = {
   'lim-attr': limHost('lim-attr', optHtml('lim-attr', 0).replaceAll('v0', `v${BIG}`)),
   'lim-deep': limHost('lim-deep', optHtml('lim-deep', 0).replace('<span class="td-choice__body">',
     `<span class="td-choice__body">${'<span>'.repeat(60)}x${'</span>'.repeat(60)}`)),
+  // review r3 item 1: real data equal to the old sentinel string → adopted normally
+  'lim-over-literal': limHost('lim-over-literal', optHtml('lim-over-literal', 0).replaceAll('v0', 'over').replace('>V0<', '>over<')),
+  // review r3 item 2: the preflight budget (nodes, depth, attributes per element, attribute length, siblings)
+  'pf-comments': limHost('pf-comments', optHtml('pf-comments', 0).replace('<span class="td-choice__face">', `<span class="td-choice__face">${'<!--c-->'.repeat(100000)}`)),
+  'pf-attrs': limHost('pf-attrs', optHtml('pf-attrs', 0)).replace('role="radiogroup"', `role="radiogroup" ${Array.from({ length: 1000 }, (_, i) => `data-a${i}="1"`).join(' ')}`),
+  'pf-class': limHost('pf-class', optHtml('pf-class', 0)).replace('class="td-field td-choice td-choice--button"', `class="td-field td-choice td-choice--button ${'x'.repeat(3_000_000)}"`),
+  'pf-id': limHost('pf-id', optHtml('pf-id', 0).replace('<span class="td-choice__face">', `<span class="td-choice__face" id="${'i'.repeat(3_000_000)}">`)),
+  'pf-text': limHost('pf-text', optHtml('pf-text', 0)),
 };
+const ADOPTED = new Set(['lim-100', 'lim-over-literal']);
 const late = document.createElement('div');
 late.innerHTML = Object.values(LIM).join('');
 const spy = { reads: 0 };
+{
+  // excessive text siblings in a non-leaf container (separate text nodes: only the DOM API makes them)
+  const g = late.querySelector('#pf-text .td-choice__options');
+  for (let i = 0; i < 5000; i++) g.appendChild(document.createTextNode(' '));
+  // spies on the LAST sibling of the long runs: a budgeted walk stops long before it
+  const lastText = g.lastChild;
+  Object.defineProperty(lastText, 'nextSibling', { get() { spy.reads += 1; return null; } });
+  const face = late.querySelector('#pf-comments .td-choice__face');
+  let c = face.firstChild;
+  while (c && c.nextSibling && c.nextSibling.nodeType === 8) c = c.nextSibling;
+  Object.defineProperty(c, 'nextSibling', { get() { spy.reads += 1; return null; } });
+}
 {
   const last = late.querySelector('#lim-101 .td-choice__option:last-child');
   const r = last.querySelector('input');
@@ -212,7 +233,7 @@ describe('td-choice-group SSR — refused markup renders safely', () => {
 });
 
 describe('td-choice-group SSR — review round 2: hydration honours CHOICE_LIMITS (bounded, before extraction)', () => {
-  it('100 options adopted; 101 / multi-MB text / multi-MB attribute / deep nesting → not adopted, bounded time, one fixed warning, 101st never read', () => {
+  it('100 options + literal "over" data adopted; preflight breaches (100k comments, 1000 attributes, 3 MB class / id, 5000 text siblings, depth) and 101 / multi-MB text / multi-MB attribute / deep nesting → not adopted, bounded time, one fixed warning, 101st never read', () => {
     const warns = [];
     const orig = console.warn;
     console.warn = (...a) => warns.push(a.map(String).join(' '));
@@ -226,7 +247,7 @@ describe('td-choice-group SSR — review round 2: hydration honours CHOICE_LIMIT
         times[id] = performance.now() - t0;
         const now = [...host.querySelectorAll('input')];
         const adopted = radios0.length > 0 && now.length === radios0.length && now.every((r, i) => r === radios0[i]);
-        expect(adopted, id).to.equal(id === 'lim-100');
+        expect(adopted, id).to.equal(ADOPTED.has(id));
         host.remove();
       }
     } finally {
@@ -236,7 +257,7 @@ describe('td-choice-group SSR — review round 2: hydration honours CHOICE_LIMIT
     const slack = window.TD_PERF_STRICT ? 1 : 20;
     for (const [id, ms] of Object.entries(times)) expect(ms < 100 * slack, `${id} ${ms.toFixed(1)} ms`).to.equal(true);
     const over = warns.filter((w) => /server markup over the limits/.test(w));
-    expect(over.length).to.equal(3); // 101 options, multi-MB text, multi-MB attribute; deep nesting = a shape mismatch (no warning)
+    expect(over.length).to.equal(Object.keys(LIM).length - ADOPTED.size); // every over-limit case: one fixed warning each
     expect(new Set(over).size).to.equal(1); // fixed text, never a value
     expect(warns.every((w) => w.length < 300)).to.equal(true);
   });

@@ -209,3 +209,10 @@ describe('review S2 — canonical values (test/ssr/choice-value.cases.json, pari
     assert.equal(r.warnings.length, 1);
   });
 });
+
+describe('review r3 — label emptiness = ECMAScript trim (test/ssr/choice-label.cases.json, parity with php Td::JS_WS)', () => {
+  it('whitespace-only labels drop the option; U+180E / U+200B / U+0085 are text', () => {
+    const { cases } = JSON.parse(readFileSync(new URL('../../test/ssr/choice-label.cases.json', import.meta.url), 'utf8'));
+    for (const c of cases) assert.equal(norm([{ value: 'a', label: c.label }]).options.length === 1, c.ok, JSON.stringify(c.label));
+  });
+});

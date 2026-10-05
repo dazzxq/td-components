@@ -184,6 +184,12 @@ describe('php/td.php — td_choice_group (v0.49.0, contract choice-group@1)', op
     assert.match(o.w[0], /4 option\(s\) dropped/);
   });
 
+  test('review r3: label emptiness uses the ECMAScript trim set (Td::JS_WS) — test/ssr/choice-label.cases.json', () => {
+    const { cases } = JSON.parse(readFileSync(join(ROOT, 'test/ssr/choice-label.cases.json'), 'utf8'));
+    const out = run(cases.map((c) => ['l', [{ value: 'a', label: c.label }], null, {}]));
+    cases.forEach((c, i) => assert.equal(radios(out[i].html).length === 1, c.ok, JSON.stringify(c.label)));
+  });
+
   test('test/ssr/fixtures/choice.html is up to date (node test/ssr/build-choice-fixture.mjs)', () => {
     assert.ok(CHOICE_FIXTURES.cases.length >= 8);
     assert.equal(readFileSync(CHOICE_FIXTURE_FILE, 'utf8'), renderChoiceFixture());

@@ -6882,7 +6882,7 @@ namespace {
                 continue;
             }
             $short = td__choice_text($label, $L['label']);
-            if ($short === null || trim($short) === '') {
+            if ($short === null || preg_match('/^[' . Td::JS_WS . ']*$/uD', $short)) { // ECMAScript trim set (= String.prototype.trim)
                 $dropped++;
                 continue;
             }
