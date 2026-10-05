@@ -4,7 +4,7 @@
  * literal that assumes a white page, so a site that sets this set gets the whole kit.
  *
  * One list for: the golden test, the palette fixtures (test/tokens/palettes/), R2 the generator serializer and the
- * portal bridge allowlist. Internal in R1 (no package export; subpath `./theme` opens in R2).
+ * portal bridge allowlist. R1: internal; R2 (v0.42.0): exported through `./theme` (src/theme/index.js).
  *
  * Rule: adding a token = bump THEME_TOKENS_VERSION + CHANGELOG; a new token's default = the current value in light
  * AND dark (golden test).
@@ -69,3 +69,16 @@ export const THEME_TOKENS = Object.freeze(THEME_GROUPS.flatMap((g) => g.tokens))
 
 /** Tokens a theme may leave out: tokens.css declares them as an alias of another contract token. */
 export const DERIVED_THEME_TOKENS = Object.freeze(THEME_GROUPS.flatMap((g) => g.derived || []));
+
+/**
+ * v0.42.0: what each derived token is an alias OF in tokens.css (`--td-control-bg: var(--td-color-surface-raised)`).
+ * The palette serializer leaves a derived token out when its value equals its source's, so the kit alias keeps working
+ * (a site overriding the source moves the alias too). Locked against tokens.css by tokens.test.js.
+ */
+export const DERIVED_ALIASES = Object.freeze({
+  '--td-color-surface-raised': '--td-color-surface',
+  '--td-control-bg': '--td-color-surface-raised',
+  '--td-glass-solid': '--td-color-surface-raised',
+  '--td-control-fg': '--td-color-text',
+  '--td-control-border': '--td-color-border-strong',
+});

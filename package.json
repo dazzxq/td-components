@@ -86,6 +86,7 @@
     "./dom-utils": "./src/utils/dom-utils.js",
     "./form-validation": "./src/utils/form-validation.js",
     "./breakpoints": "./src/utils/breakpoints.js",
+    "./theme": "./src/theme/index.js",
     "./package.json": "./package.json"
   },
   "files": [

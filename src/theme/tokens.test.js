@@ -63,3 +63,20 @@ test('derived tokens are aliases of another contract token on :root and are not 
     assert.ok(!dark.has(t), `${t} is derived but re-declared in a dark block (the alias already follows the theme)`);
   }
 });
+
+test('v0.42.0: DERIVED_ALIASES names exactly the derived tokens and matches their alias in tokens.css', async () => {
+  const { DERIVED_ALIASES } = await import('./tokens.js');
+  assert.deepEqual(Object.keys(DERIVED_ALIASES).sort(), [...DERIVED_THEME_TOKENS].sort());
+  for (const [t, src] of Object.entries(DERIVED_ALIASES)) {
+    assert.equal(light.get(t), `var(${src})`, `${t} in tokens.css`);
+    assert.ok(THEME_TOKENS.includes(src), `${src} is a contract token`);
+  }
+});
+
+test('v0.42.0: preset shadows / focus ring are the CSS source strings (light: tokens.css, dark: theme-dark.css)', async () => {
+  const { PRESETS } = await import('./presets.js');
+  for (const t of ['--td-shadow-1', '--td-shadow-2', '--td-shadow-3', '--td-glass-shadow', '--td-glass-shadow-lg', '--td-btn-lift', '--td-focus-ring']) {
+    assert.equal(PRESETS.light[t], light.get(t), `light ${t}`);
+    assert.equal(PRESETS.dark[t], dark.get(t), `dark ${t}`);
+  }
+});

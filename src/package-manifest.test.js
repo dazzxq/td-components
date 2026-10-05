@@ -271,3 +271,8 @@ test('v0.40.0: ./datetime-range export, sideEffects, barrel TdDatetimeRange, dat
     assert.ok(css.includes(sel), sel);
   }
 });
+
+test('v0.42.0: ./theme subpath (pure: not in sideEffects); the palette golden is not shipped from src', () => {
+  assert.equal(pkg.exports['./theme'], './src/theme/index.js');
+  assert.ok(!pkg.sideEffects.some((f) => f.startsWith('./src/theme/')), 'theme modules have no side effect');
+});
