@@ -1791,6 +1791,8 @@
  * Size: .td-check--{sm|md|lg} = 1rem / 1.25rem / 1.5rem (the three td-checkbox sizes); a consumer may set
  * --_td-check-size on the mark (e.g. the media grid tick size token).
  * Mixed (indeterminate) = a bar drawn by ::after (no extra node; CSP-safe).
+ * v0.47.0 (ADR 0017 amendment): `.td-check--drawn` = the same mark with the ✓ drawn by ::before (a rotated L of the
+ * Lucide check geometry) instead of an SVG — td-check-matrix prints up to 10 000 marks (plan QĐ 19, M0).
  */
 @layer td.component {
 	.td-check {
@@ -1842,6 +1844,23 @@
 		line-height: 0;
 	}
 
+	/* v0.47.0: the ✓ drawn by CSS — Lucide `check` (4,12 → 9,17 → 20,6 of 24) at 70 % of the box: an L (arms 0.206 /
+	   0.454 of the box + a cap of one stroke, stroke 0.1) turned 45° so its corner sits on (9,17); offsets are from the
+	   padding box (− the 1.5px border). The pseudo-element exists only while ON (`content` set by the ON list below):
+	   10 000 hidden pseudo boxes cost a lot of style + layout (M0) — so no fade-in either */
+	.td-check--drawn::before {
+		position: absolute;
+		box-sizing: border-box;
+		top: calc(var(--_td-check-size) * 0.18 - 1.5px);
+		left: calc(var(--_td-check-size) * 0.347 - 1.5px);
+		width: calc(var(--_td-check-size) * 0.306);
+		height: calc(var(--_td-check-size) * 0.554);
+		border: solid currentcolor;
+		border-width: 0 calc(var(--_td-check-size) * 0.1) calc(var(--_td-check-size) * 0.1) 0;
+		border-radius: 1px;
+		transform: rotate(45deg);
+	}
+
 	:is(.td-check .td-check__svg, .td-checkbox__svg) {
 		width: calc(var(--_td-check-size) * 0.7);
 		height: calc(var(--_td-check-size) * 0.7);
@@ -1853,40 +1872,51 @@
 	/* ---- ON ---- */
 	.td-checkbox__input:checked ~ .td-checkbox__mark,
 	:is([aria-pressed="true"], [aria-checked="true"], [aria-selected="true"]) > .td-check,
-	.td-tree__item[aria-checked="true"] > .td-tree__row > .td-check {
+	.td-tree__item[aria-checked="true"] > .td-tree__row > .td-check,
+	.td-check-matrix__input:checked ~ .td-check {
 		background: var(--td-checkbox-color);
 		border-color: var(--td-checkbox-color);
 	}
 
 	.td-checkbox__input:checked ~ .td-checkbox__mark .td-checkbox__svg,
 	:is([aria-pressed="true"], [aria-checked="true"], [aria-selected="true"]) > .td-check .td-check__svg,
-	.td-tree__item[aria-checked="true"] > .td-tree__row > .td-check .td-check__svg {
+	.td-tree__item[aria-checked="true"] > .td-tree__row > .td-check .td-check__svg,
+	.td-check-matrix__input:checked ~ .td-check--drawn::before {
 		opacity: 1;
+	}
+
+	.td-check-matrix__input:checked ~ .td-check--drawn::before {
+		content: "";
 	}
 
 	/* ---- MIXED (after ON: an indeterminate checkbox that is also :checked shows the bar) ---- */
 	.td-checkbox__input:indeterminate ~ .td-checkbox__mark,
 	[aria-checked="mixed"] > .td-check,
 	[data-td-check-mixed] > .td-check,
-	.td-tree__item[aria-checked="mixed"] > .td-tree__row > .td-check {
+	.td-tree__item[aria-checked="mixed"] > .td-tree__row > .td-check,
+	.td-check-matrix__input:indeterminate ~ .td-check {
 		background: var(--td-checkbox-color);
 		border-color: var(--td-checkbox-color);
 	}
 
 	.td-checkbox__input:indeterminate ~ .td-checkbox__mark .td-checkbox__svg,
-	[data-td-check-mixed] > .td-check .td-check__svg {
+	[data-td-check-mixed] > .td-check .td-check__svg,
+	.td-check-matrix__input:indeterminate ~ .td-check--drawn::before {
 		opacity: 0;
+		content: none;
 	}
 
 	.td-checkbox__input:indeterminate ~ .td-checkbox__mark::after,
 	[aria-checked="mixed"] > .td-check::after,
 	[data-td-check-mixed] > .td-check::after,
-	.td-tree__item[aria-checked="mixed"] > .td-tree__row > .td-check::after {
+	.td-tree__item[aria-checked="mixed"] > .td-tree__row > .td-check::after,
+	.td-check-matrix__input:indeterminate ~ .td-check::after {
 		opacity: 1;
 	}
 
 	/* ---- LOCKED (the container greys itself; the mark follows like td-checkbox's 50 %) ---- */
-	:is([aria-disabled="true"], :disabled) > .td-check {
+	:is([aria-disabled="true"], :disabled) > .td-check,
+	.td-check-matrix__input:disabled ~ .td-check {
 		opacity: 0.5;
 	}
 
@@ -1915,7 +1945,8 @@
 
 		.td-checkbox__input:is(:checked, :indeterminate) ~ .td-checkbox__mark,
 		:is([aria-pressed="true"], [aria-checked="true"], [aria-checked="mixed"], [aria-selected="true"], [data-td-check-mixed]) > .td-check,
-		.td-tree__item:is([aria-checked="true"], [aria-checked="mixed"]) > .td-tree__row > .td-check {
+		.td-tree__item:is([aria-checked="true"], [aria-checked="mixed"]) > .td-tree__row > .td-check,
+		.td-check-matrix__input:is(:checked, :indeterminate) ~ .td-check {
 			color: HighlightText;
 			background: Highlight;
 			border-color: Highlight;
@@ -17387,6 +17418,489 @@
 
 	@media (forced-colors: active) {
 		.td-diff__summary:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
+}
+
+/* ---- src/styles/components/check-matrix.css ---- */
+/*
+ * td-check-matrix (src/form/td-check-matrix.js) — v0.47.0, plan v0.47.0-check-matrix QĐ 15–26, 31–32. Content-layer
+ * control: solid, never glass (minimal surfaces). `<table role="grid">` inside one scroll box (both axes, max-height
+ * token, QĐ 20): sticky header rows + sticky bulk / label columns on OPAQUE fills, hairline at the sticky edges.
+ * Each cell = a native checkbox covering the cell (opacity 0 → the touch target is the whole cell) + the shared tick
+ * mark `.td-check--drawn` (check.css, ADR 0017 amendment: the ✓ is drawn by CSS — no SVG per cell).
+ * State: :checked / :indeterminate / :disabled on the input, [data-locked] / [data-na] / [data-note] / [data-changed]
+ * on the cell, [data-collapsed] on a group tbody (+ aria-expanded on its button), [data-col-active] (narrow mode),
+ * [data-active] on the header of the focused column (crosshair; the row uses :focus-within).
+ * Narrow mode "one column at a time" (QĐ 26): `.td-check-matrix[data-layout-js][data-layout="column"]` and, under a
+ * 720px container, `[data-layout="auto"]` (generated by build-css from the @td-variants block below). Without JS there
+ * is no data-layout-js: the full grid scrolls sideways.
+ */
+@layer td.tokens {
+	:root {
+		--td-check-matrix-cell-size: 2.25rem; /* 36px ≥ WCAG 2.5.8 with a mouse; 44px on coarse pointers below */
+		--td-check-matrix-label-w: clamp(10rem, 28cqi, 18rem); /* cqi of the host container (no container → auto width) */
+		--td-check-matrix-col-w: 5.5rem;
+		--td-check-matrix-max-height: 70vh;
+	}
+
+	@media (pointer: coarse) {
+		:root {
+			--td-check-matrix-cell-size: 2.75rem; /* ADR 0014 §5 */
+		}
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour tokens re-resolve in every theme scope; all derive from the theme contract */
+	:root, [data-td-theme] {
+		--td-check-matrix-head-bg: var(--td-color-surface-muted);
+		--td-check-matrix-group-bg: var(--td-color-surface-muted);
+		--td-check-matrix-row-active: var(--td-color-hover);
+		--td-check-matrix-changed: var(--td-accent);
+		--td-check-matrix-note-mark: var(--td-color-text-muted);
+	}
+}
+
+@layer td.component {
+	td-check-matrix {
+		display: block;
+		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5) */
+		container: td-check-matrix / inline-size;
+	}
+
+	.td-check-matrix {
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-xs);
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text);
+	}
+
+	.td-check-matrix *,
+	.td-check-matrix *::before,
+	.td-check-matrix *::after {
+		box-sizing: border-box;
+	}
+
+	.td-check-matrix .td-field__label {
+		margin: 0;
+	}
+
+	.td-check-matrix__broken {
+		margin: 0;
+		padding: var(--td-space-sm) var(--td-space-md);
+		color: var(--td-color-error);
+		background: var(--td-color-surface);
+		border: 1px solid var(--td-color-border);
+		border-radius: var(--td-radius-md);
+	}
+
+	/* ---- scroll box (QĐ 20) ---- */
+	.td-check-matrix__scroll {
+		width: fit-content; /* hugs the grid (no stretched label column); scrolls when wider than the host */
+		max-width: 100%;
+		max-height: var(--td-check-matrix-max-height);
+		overflow: auto;
+		overscroll-behavior: contain;
+		background: var(--td-color-surface);
+		border: 1px solid var(--td-color-border);
+		border-radius: var(--td-radius-md);
+	}
+
+	.td-check-matrix__grid {
+		width: max-content;
+		margin: 0;
+		border-collapse: separate; /* sticky cells keep their hairlines */
+		border-spacing: 0;
+		color: inherit;
+	}
+
+	.td-check-matrix__grid :is(th, td) {
+		height: var(--td-check-matrix-cell-size);
+		padding: 0;
+		font-weight: var(--td-fw-normal);
+		text-align: center;
+		vertical-align: middle;
+		background: var(--td-color-surface);
+		border-bottom: 1px solid var(--td-color-border);
+	}
+
+	.td-check-matrix__grid :is(th, td):focus-visible {
+		outline: 2px solid var(--td-focus);
+		outline-offset: -2px;
+	}
+
+	/* data columns: wide enough for a wrapped label, never narrower than the cell (QĐ 21) */
+	.td-check-matrix__grid tr > :nth-child(n + 3) {
+		width: var(--td-check-matrix-col-w);
+		min-width: var(--td-check-matrix-cell-size);
+	}
+
+	/* bulk column + label column: sticky on the inline start, opaque (minimal surfaces rule 8) */
+	.td-check-matrix__grid tr > :first-child {
+		position: sticky;
+		inset-inline-start: 0;
+		z-index: 1;
+		width: var(--td-check-matrix-cell-size);
+		min-width: var(--td-check-matrix-cell-size);
+	}
+
+	.td-check-matrix__grid tr > :nth-child(2) {
+		position: sticky;
+		inset-inline-start: var(--td-check-matrix-cell-size);
+		z-index: 1;
+		width: var(--td-check-matrix-label-w);
+		min-width: 8rem;
+		max-width: var(--td-check-matrix-label-w);
+		padding: 0.375rem var(--td-space-sm);
+		text-align: start;
+		border-inline-end: 1px solid var(--td-color-border);
+	}
+
+	/* header rows: sticky on top, above the sticky columns at the corner */
+	.td-check-matrix__grid > thead {
+		position: sticky;
+		top: 0;
+		z-index: 2;
+	}
+
+	.td-check-matrix__grid > thead :is(th, td) {
+		background: var(--td-check-matrix-head-bg);
+	}
+
+	.td-check-matrix__grid > thead > tr:last-child > * {
+		border-bottom-color: var(--td-color-border-strong);
+	}
+
+	.td-check-matrix__colhead {
+		padding: 0.375rem var(--td-space-xs);
+		font-size: var(--td-text-xs);
+		color: var(--td-color-text-label);
+		vertical-align: bottom;
+	}
+
+	.td-check-matrix__grid .td-check-matrix__colhead,
+	.td-check-matrix__grid .td-check-matrix__rowtitle {
+		font-weight: var(--td-fw-semibold);
+	}
+
+	.td-check-matrix__rowtitle {
+		font-size: var(--td-text-xs);
+		color: var(--td-color-text-label);
+		vertical-align: bottom;
+	}
+
+	.td-check-matrix__label {
+		display: block;
+		overflow-wrap: anywhere; /* never cut a permission label (QĐ 21) */
+	}
+
+	.td-check-matrix__desc {
+		display: block;
+		margin-top: 2px;
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-normal);
+		color: var(--td-color-text-muted);
+		overflow-wrap: anywhere;
+	}
+
+	.td-check-matrix__rowhead {
+		color: var(--td-color-text);
+	}
+
+	/* ---- group rows ---- */
+	.td-check-matrix__grouprow > * {
+		background: var(--td-check-matrix-group-bg);
+	}
+
+	.td-check-matrix__grid .td-check-matrix__grouphead {
+		padding: 0;
+	}
+
+	.td-check-matrix__group-toggle {
+		display: flex;
+		gap: var(--td-space-2xs);
+		align-items: center;
+		width: 100%;
+		min-height: var(--td-check-matrix-cell-size);
+		padding: 0.375rem var(--td-space-sm);
+		margin: 0;
+		font: inherit;
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-color-text);
+		text-align: start;
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+		appearance: none;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-check-matrix__group-toggle:focus-visible {
+		outline: 2px solid var(--td-focus);
+		outline-offset: -2px;
+	}
+
+	.td-check-matrix__group-toggle:disabled {
+		cursor: default; /* no JS: the button is the group's label only */
+	}
+
+	.td-check-matrix__group-toggle > .td-check-matrix__label {
+		display: inline;
+	}
+
+	.td-check-matrix__count {
+		font-weight: var(--td-fw-normal);
+		color: var(--td-color-text-muted);
+	}
+
+	.td-check-matrix__chevron {
+		display: inline-flex;
+		flex: 0 0 auto;
+		color: var(--td-color-text-muted);
+	}
+
+	.td-check-matrix__chevron > svg {
+		transition: transform var(--td-dur-fast) var(--td-ease); /* functional turn (minimal surfaces rule 4) */
+	}
+
+	.td-check-matrix__group-toggle[aria-expanded="true"] > .td-check-matrix__chevron > svg {
+		transform: rotate(90deg);
+	}
+
+	.td-check-matrix:dir(rtl) .td-check-matrix__chevron > svg {
+		transform: scaleX(-1);
+	}
+
+	.td-check-matrix:dir(rtl) .td-check-matrix__group-toggle[aria-expanded="true"] > .td-check-matrix__chevron > svg {
+		transform: rotate(90deg);
+	}
+
+	td-check-matrix:not(:defined) .td-check-matrix__chevron {
+		visibility: hidden; /* a group cannot be closed without JS */
+	}
+
+	/* a collapsed group (JS only: without JS every group stays open — QĐ 28) */
+	td-check-matrix:defined .td-check-matrix__group[data-collapsed] > .td-check-matrix__row {
+		display: none;
+	}
+
+	/* ---- cells ---- */
+	.td-check-matrix__cell,
+	.td-check-matrix__bulk {
+		position: relative;
+		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-check-matrix__cell:is([data-locked], [data-na]) {
+		cursor: default;
+	}
+
+	/* the native checkbox covers its cell: the whole cell is the hit area (QĐ 23) */
+	.td-check-matrix__input {
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		width: 100%;
+		height: 100%;
+		margin: 0;
+		cursor: inherit;
+		opacity: 0;
+		appearance: none;
+	}
+
+	.td-check-matrix__input:disabled {
+		pointer-events: none; /* a tap on a locked cell reaches the cell (focus + note line) */
+	}
+
+	/* M0 budget: a data cell is never mixed (no hidden ::after bar) and its mark changes at once (no transition on up to
+	   10 000 marks) */
+	.td-check-matrix__cell > .td-check::after {
+		content: none;
+	}
+
+	.td-check-matrix__grid .td-check {
+		transition: none;
+	}
+
+	.td-check-matrix__input:focus-visible ~ .td-check {
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	/* the bar's column bulk is an inline control, not a cell */
+	.td-check-matrix__bar .td-check-matrix__bulk {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: var(--td-check-matrix-cell-size);
+		height: var(--td-check-matrix-cell-size);
+	}
+
+	.td-check-matrix__na {
+		color: var(--td-color-text-subtle);
+	}
+
+	/* a cell with a note: a corner dot (a shape, not only a colour — QĐ 17) */
+	.td-check-matrix__cell[data-note]::before {
+		content: "";
+		position: absolute;
+		top: 4px;
+		inset-inline-end: 4px;
+		width: 6px;
+		height: 6px;
+		background: var(--td-check-matrix-note-mark);
+		border-radius: 50%;
+	}
+
+	/* a cell that differs from its default: a corner triangle (QĐ 32) */
+	.td-check-matrix__cell[data-changed]::after {
+		content: "";
+		position: absolute;
+		bottom: 0;
+		inset-inline-start: 0;
+		width: 0;
+		height: 0;
+		border-top: 7px solid transparent;
+		border-inline-start: 7px solid var(--td-check-matrix-changed);
+	}
+
+	/* crosshair (QĐ 18): the row holding the focus + the header of the focused column */
+	.td-check-matrix__row:focus-within > *,
+	.td-check-matrix__grid:focus-within .td-check-matrix__colhead[data-active] {
+		background-image: linear-gradient(var(--td-check-matrix-row-active), var(--td-check-matrix-row-active));
+	}
+
+	.td-check-matrix__note {
+		min-height: 1.25rem;
+		margin: 0;
+		font-size: var(--td-text-xs);
+		color: var(--td-color-text-muted);
+	}
+
+	/* ---- bulk / bar / group controls without JS: present, inert, out of sight (QĐ 28) ---- */
+	td-check-matrix:not(:defined) .td-check-matrix__bulk > .td-check-matrix__input ~ .td-check {
+		visibility: hidden;
+	}
+
+	/* ---- narrow mode bar (hidden in the full grid) ---- */
+	.td-check-matrix__bar {
+		display: none;
+		gap: var(--td-space-sm);
+		align-items: center;
+	}
+
+	.td-check-matrix__colpick-label {
+		font-size: var(--td-text-sm);
+		color: var(--td-color-text-label);
+	}
+
+	.td-check-matrix__colpick {
+		min-width: 0;
+		max-width: 100%;
+		height: var(--td-check-matrix-cell-size);
+		padding: 0 var(--td-space-sm);
+		font: inherit;
+		color: var(--td-field-fg);
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-control-border);
+		border-radius: var(--td-radius-md);
+	}
+
+	.td-check-matrix__colpick:focus-visible {
+		outline: 2px solid var(--td-focus);
+		outline-offset: 1px;
+	}
+
+	
+	.td-check-matrix[data-layout-js][data-layout="column"] > .td-check-matrix__bar {
+		display: flex;
+	}
+
+	.td-check-matrix[data-layout-js][data-layout="column"] .td-check-matrix__grid tr > :first-child,
+	.td-check-matrix[data-layout-js][data-layout="column"] .td-check-matrix__grid tr > [data-c]:not([data-col-active]) {
+		display: none;
+	}
+
+	.td-check-matrix[data-layout-js][data-layout="column"] .td-check-matrix__grid tr > :nth-child(2) {
+		inset-inline-start: 0;
+		width: auto;
+		max-width: none;
+	}
+
+	.td-check-matrix[data-layout-js][data-layout="column"] > .td-check-matrix__scroll {
+		width: auto;
+	}
+
+	.td-check-matrix[data-layout-js][data-layout="column"] .td-check-matrix__grid {
+		width: 100%;
+	}
+
+	/* td: generated variant (ADR 0014) */
+	@container td-check-matrix (width < 720px) {.td-check-matrix[data-layout-js][data-layout="auto"]>.td-check-matrix__bar{display:flex}.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid tr>:first-child,.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid tr>[data-c]:not([data-col-active]){display:none}.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid tr>:nth-child(2){inset-inline-start:0;width:auto;max-width:none}.td-check-matrix[data-layout-js][data-layout="auto"]>.td-check-matrix__scroll{width:auto}.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid{width:100%}}
+
+	/* td: generated container fallback (ADR 0014) */
+	@supports not (container-type: inline-size) {
+		@media (max-width: 719.98px) {.td-check-matrix[data-layout-js][data-layout="auto"]>.td-check-matrix__bar{display:flex}.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid tr>:first-child,.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid tr>[data-c]:not([data-col-active]){display:none}.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid tr>:nth-child(2){inset-inline-start:0;width:auto;max-width:none}.td-check-matrix[data-layout-js][data-layout="auto"]>.td-check-matrix__scroll{width:auto}.td-check-matrix[data-layout-js][data-layout="auto"] .td-check-matrix__grid{width:100%}}
+	}
+
+	/* ---- pointer feedback (ADR 0019) ---- */
+	@media (hover: hover) and (pointer: fine) {
+		.td-check-matrix__cell:hover .td-check-matrix__input:not(:checked, :indeterminate, :disabled) ~ .td-check,
+		.td-check-matrix__bulk:hover .td-check-matrix__input:not(:checked, :indeterminate, :disabled) ~ .td-check {
+			border-color: var(--td-control-border-hover);
+		}
+
+		.td-check-matrix__group-toggle:hover:not(:disabled) {
+			background: var(--td-color-hover);
+		}
+	}
+
+	.td-check-matrix__cell:is(:active, [data-td-pressed]) .td-check-matrix__input:not(:disabled) ~ .td-check,
+	.td-check-matrix__bulk:is(:active, [data-td-pressed]) .td-check-matrix__input:not(:disabled) ~ .td-check {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	.td-check-matrix__group-toggle:is(:active, [data-td-pressed]):not(:disabled) {
+		background: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-check-matrix__chevron > svg {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-check-matrix__scroll,
+		.td-check-matrix__grid :is(th, td) {
+			border-color: CanvasText;
+		}
+
+		.td-check-matrix__grid :is(th, td):focus-visible,
+		.td-check-matrix__group-toggle:focus-visible {
+			outline-color: Highlight;
+		}
+
+		.td-check-matrix__cell[data-changed]::after {
+			border-inline-start-color: CanvasText;
+		}
+
+		.td-check-matrix__cell[data-note]::before {
+			background: CanvasText;
+		}
+
+		.td-check-matrix__cell:is(:active, [data-td-pressed]) .td-check,
+		.td-check-matrix__bulk:is(:active, [data-td-pressed]) .td-check,
+		.td-check-matrix__group-toggle:is(:active, [data-td-pressed]) {
 			outline: 2px solid Highlight;
 		}
 	}

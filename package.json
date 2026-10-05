@@ -95,6 +95,7 @@
     "./form-validation": "./src/utils/form-validation.js",
     "./breakpoints": "./src/utils/breakpoints.js",
     "./theme": "./src/theme/index.js",
+    "./check-matrix": "./src/form/td-check-matrix.js",
     "./package.json": "./package.json"
   },
   "files": [
@@ -153,7 +154,8 @@
     "./src/display/td-diff.js",
     "./src/display/td-pagination.js",
     "./src/display/td-table.js",
-    "./src/display/td-tabs.js"
+    "./src/display/td-tabs.js",
+    "./src/form/td-check-matrix.js"
   ],
   "engines": {
     "node": ">=20"

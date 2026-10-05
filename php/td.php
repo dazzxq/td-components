@@ -6500,7 +6500,8 @@ namespace {
         $dis = $disabled ? ' disabled' : '';
         $mark = '<span class="td-check td-check--md td-check--drawn" aria-hidden="true"></span>';
         $lbl = static fn (string $key, array $vars): string => Td::e($fill($L[$key], $vars));
-        $bulkInput = static fn (string $aria, string $desc): string => '<input type="checkbox" class="td-check-matrix__input" tabindex="-1" aria-label="'
+        $bulkInput = static fn (string $aria, string $desc, bool $roving = true): string => '<input type="checkbox" class="td-check-matrix__input"'
+            . ($roving ? ' tabindex="-1"' : '') . ' aria-label="'
             . $aria . '"' . ($desc !== '' ? ' aria-describedby="' . $desc . '"' : '') . ' disabled>' . $mark;
         $bulk = static fn (string $kind, string $aria, string $desc, string $more = ''): string => '<td class="td-check-matrix__bulk" data-kind="'
             . $kind . '"' . $more . ' tabindex="-1">' . $bulkInput($aria, $desc) . '</td>';
@@ -6515,7 +6516,7 @@ namespace {
         foreach ($m['columns'] as $j => $col) {
             $out .= '<option value="' . $j . '">' . Td::e($col['label']) . '</option>';
         }
-        $out .= '</select><span class="td-check-matrix__bulk" data-kind="column-active">' . $bulkInput($lbl('column', ['col' => $m['columns'][0]['label']]), '')
+        $out .= '</select><span class="td-check-matrix__bulk" data-kind="column-active">' . $bulkInput($lbl('column', ['col' => $m['columns'][0]['label']]), '', false)
             . '</span></div>';
         $out .= '<div class="td-check-matrix__scroll"><table class="td-check-matrix__grid" role="grid" aria-labelledby="' . $hid . '-label"><thead>'
             . '<tr class="td-check-matrix__head"><td class="td-check-matrix__corner" tabindex="-1"></td>'

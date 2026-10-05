@@ -74,9 +74,9 @@ export function renderMatrix(o) {
   const C = model.columns.length;
   const L = (key, vars) => escMatrix(fillMatrixLabel(labels[key], vars));
   const dis = disabled ? ' disabled' : '';
-  const bulkInput = (aria, desc, kind, a, b) => {
+  const bulkInput = (aria, desc, kind, a, b, roving = true) => {
     const off = disabled || ssr || (o.bulkDisabled && o.bulkDisabled(kind, a, b));
-    return `<input type="checkbox" class="td-check-matrix__input" tabindex="-1" aria-label="${aria}"`
+    return `<input type="checkbox" class="td-check-matrix__input"${roving ? ' tabindex="-1"' : ''} aria-label="${aria}"`
       + (desc ? ` aria-describedby="${desc}"` : '') + (off ? ' disabled' : '') + `>${MARK}`;
   };
   const bulk = (kind, a, b, aria, desc, extra = '') => `<td class="td-check-matrix__bulk" data-kind="${kind}"${extra} tabindex="-1">`
@@ -88,7 +88,7 @@ export function renderMatrix(o) {
     + `<label class="td-check-matrix__colpick-label" for="${h}-colpick">${escMatrix(labels.columnPick)}</label>`
     + `<select class="td-check-matrix__colpick" id="${h}-colpick"${ssr || disabled ? ' disabled' : ''}>`
     + model.columns.map((c, j) => `<option value="${j}">${escMatrix(c.label)}</option>`).join('') + '</select>'
-    + `<span class="td-check-matrix__bulk" data-kind="column-active">${bulkInput(L('column', { col: model.columns[0].label }), '', 'column', 0)}</span>`
+    + `<span class="td-check-matrix__bulk" data-kind="column-active">${bulkInput(L('column', { col: model.columns[0].label }), '', 'column', 0, 0, false)}</span>`
     + '</div>';
   out += `<div class="td-check-matrix__scroll"><table class="td-check-matrix__grid" role="grid" aria-labelledby="${h}-label"><thead>`;
   // header row 1: titles
