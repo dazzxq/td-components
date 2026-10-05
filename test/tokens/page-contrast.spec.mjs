@@ -2,7 +2,8 @@
 /**
  * Full-page theme gate (v0.41.0, plan M5). demo.html (served through page.route, no Vite) with each palette —
  * light (kit default), dark (data-td-theme="dark"), beige (test/tokens/palettes/beige.css: 135 recipe, white surfaces),
- * navy (navy.css: the full theme contract by hand, no dark attribute) — at 1280 and 390, in Chromium / Firefox / WebKit,
+ * navy (navy.css: v0.42.0 the GENERATOR's file for bg #16233a + accent #3b82f6 — R1 had it by hand), beige-gen (generator,
+ * 135 seeds + white surfaces) — at 1280 and 390, in Chromium / Firefox / WebKit,
  * at rest and with the overlays open (dropdown, menu, toast + tooltip, modal, datetime picker, focused field):
  *   1. TEXT: every element with its own text (and every text input's value / placeholder): computed ink composited on
  *      the effective background (own + ancestors' background colours down to the first opaque one; "page" is the real
@@ -43,6 +44,9 @@ export const PALETTES = {
   dark: { theme: 'dark', scheme: 'dark' },
   beige: { theme: null, scheme: 'light' },
   navy: { theme: null, scheme: 'dark' },
+  // v0.42.0: generator output (td-theme) — navy.css IS the generator's file now (R1 had it by hand); beige-gen = the 135
+  // seeds with white surfaces. test/tokens/palette-fixtures.test.js keeps both byte-equal to the generator.
+  'beige-gen': { theme: null, scheme: 'light' },
 };
 const ENGINES = list('TD_PAGE_ENGINES', ['chromium', 'firefox', 'webkit']);
 const PALETTE_NAMES = list('TD_PAGE_PALETTES', Object.keys(PALETTES));
