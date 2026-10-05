@@ -1926,6 +1926,21 @@
 		opacity: 0.6;
 	}
 
+	/* ---- v0.48.0 td-color-picker preset: the TICK only (no box), in the black / white pole of the swatch (--_td-cp-mark,
+	   pickPole() through CSSOM); hidden until the preset is the value ---- */
+	.td-color-panel__preset > .td-check {
+		visibility: hidden;
+		color: var(--_td-cp-mark, currentcolor);
+		background: transparent;
+		border-color: transparent;
+	}
+
+	.td-color-panel__preset[aria-pressed="true"] > .td-check {
+		visibility: visible;
+		background: transparent;
+		border-color: transparent;
+	}
+
 	/* ---- On a photo (media grid / picker ticks): a dark hairline keeps the white box visible on white images ---- */
 	.td-check--on-media {
 		background: #fff; /* light box in every theme: it sits on a photo, not on the page */
@@ -17923,6 +17938,633 @@
 		.td-check-matrix__bulk:is(:active, [data-td-pressed]) .td-check,
 		.td-check-matrix__group-toggle:is(:active, [data-td-pressed]) {
 			outline: 2px solid Highlight;
+		}
+	}
+}
+
+/* ---- src/styles/components/color-picker.css ---- */
+/*
+ * td-color-picker (src/form/td-color-picker.js, v0.48.0) + the markup of php/td.php td_color_picker().
+ * Control = the field look of field.css on ONE box: [swatch button][text input][clear button] (content layer, solid).
+ * Popup = body-portaled small popup (ADR 0011: .td-glass-surface--strong = 94 % + blur 12px + border + shadow): the
+ * 2-D area (HSV: x = saturation, y = brightness), [eyedropper] + hue range, [contrast row], presets, "Xoá màu".
+ * CSP (QĐ 21): every gradient is static here; JS writes ONLY custom properties through CSSOM — `--_td-cp-color`
+ * (#rrggbb from toHex(): swatch, thumb, samples, a preset), `--_td-cp-hue` (#rrggbb, the area's pure hue),
+ * `--_td-cp-x` / `--_td-cp-y` (0..1), `--_td-cp-mark` (#000000 / #ffffff tick of the selected preset).
+ * State (never visual classes): swatch [data-state="empty|filled|invalid"] (no attribute = the server-rendered grey
+ * square), input :focus / :disabled / [readonly] / [aria-invalid="true"], trigger [aria-expanded], preset
+ * [aria-pressed], panel [data-state] / [data-placement].
+ * The area thumb + the hue thumb carry a white 2px + black 1px double ring: FUNCTIONAL (visible on any colour, ≥ 3:1
+ * with one of the two), not the decorative rim ADR 0011 rule 3 forbids (liquid-glass.md).
+ */
+@layer td.tokens {
+	:root {
+		--td-color-picker-width: 17.5rem;
+		--td-color-picker-area-height: 10rem;
+		--td-color-picker-swatch: 1.5rem;
+	}
+
+	/* colour tokens re-resolve in every theme scope (ADR 0020); both derive from the theme contract */
+	:root, [data-td-theme] {
+		--td-color-swatch-border: var(--td-control-border-strong); /* ≥ 3:1 with the field in light and dark (gate) */
+		--td-color-checker: var(--td-color-border);                /* "no colour" checkerboard */
+	}
+}
+
+@layer td.component {
+	td-color-picker {
+		display: block;
+		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5) */
+	}
+
+	/* safety net (ADR 0012): hand-written host before define → reserve one field height (no fake styling) */
+	td-color-picker:not(:defined):not([data-td-ssr]) {
+		min-height: 2.5rem;
+	}
+
+	.td-color {
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-2xs);
+		width: 100%;
+		min-width: 0;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-fg);
+	}
+
+	.td-color *,
+	.td-color *::before {
+		box-sizing: border-box;
+	}
+
+	.td-color__label {
+		display: block;
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-medium);
+		color: var(--td-field-label);
+	}
+
+	.td-color__box {
+		display: flex;
+		align-items: center;
+		width: 100%;
+		min-width: 0;
+		height: var(--td-field-h-md);
+		padding: 0;
+		margin: 0;
+		color: var(--td-field-fg);
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		transition: border-color var(--td-dur-fast) var(--td-ease), box-shadow var(--td-dur-fast) var(--td-ease);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: text input box — the focus ring is the feedback */
+		.td-color__box:hover:not(:focus-within, :has(> .td-color__input:disabled)) {
+			border-color: var(--td-field-border-hover);
+		}
+	}
+
+	.td-color__box:has(> .td-color__input:focus) {
+		background: var(--td-field-bg-focus);
+		border-color: var(--td-field-focus);
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	.td-color__box:has(> .td-color__input[readonly]) {
+		background: var(--td-field-bg-readonly);
+	}
+
+	.td-color__box:has(> .td-color__input:disabled) {
+		color: var(--td-field-fg-disabled);
+		background: var(--td-field-bg-disabled);
+	}
+
+	.td-color__box:has(> .td-color__input[aria-invalid="true"]) {
+		border-color: var(--td-field-error);
+	}
+
+	/* the swatch: no data-state (server-rendered, before the upgrade) = a neutral grey square of the final size */
+	.td-color__swatch {
+		display: block;
+		flex: 0 0 auto;
+		width: var(--td-color-picker-swatch);
+		height: var(--td-color-picker-swatch);
+		margin-inline: calc((2.5rem - 2px - var(--td-color-picker-swatch)) / 2) 0;
+		background-color: var(--td-color-fill-strong);
+		border: 1px solid var(--td-color-swatch-border);
+		border-radius: var(--td-radius-sm);
+		box-shadow: inset 0 0 0 1px var(--td-field-bg); /* inner ring: a colour equal to the edge stays readable */
+	}
+
+	.td-color__swatch[data-state="filled"] {
+		background-color: var(--_td-cp-color, var(--td-color-fill-strong));
+	}
+
+	.td-color__swatch:is([data-state="empty"], [data-state="invalid"]) {
+		background-color: var(--td-field-bg);
+		background-image: conic-gradient(var(--td-color-checker) 25%, transparent 0 50%, var(--td-color-checker) 0 75%, transparent 0);
+		background-size: 8px 8px;
+	}
+
+	.td-color__swatch[data-state="invalid"] {
+		border-color: var(--td-field-error);
+	}
+
+	.td-color__trigger {
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		align-self: stretch;
+		width: calc(2.5rem - 2px);
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		color: inherit;
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-start-start-radius: calc(var(--td-field-radius-md) - 1px);
+		border-end-start-radius: calc(var(--td-field-radius-md) - 1px);
+		outline: 2px solid transparent;
+		outline-offset: -3px;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-color__trigger > .td-color__swatch {
+		margin: 0;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-color__trigger:hover:not(:disabled) {
+			background: var(--td-color-hover);
+		}
+	}
+
+	.td-color__trigger:is(:active, [data-td-pressed]):not(:disabled) {
+		background: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-color__trigger:focus-visible {
+		outline-color: var(--td-focus);
+	}
+
+	.td-color__trigger:disabled {
+		cursor: not-allowed;
+	}
+
+	.td-color__input {
+		flex: 1 1 auto;
+		width: 100%;
+		min-width: 0;
+		height: 100%;
+		padding: 0 var(--td-space-xs);
+		margin: 0;
+		font-family: var(--td-font-mono);
+		font-size: inherit;
+		line-height: normal;
+		color: inherit;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+		outline: none;
+		box-shadow: none;
+		appearance: none;
+	}
+
+	/* the server-rendered field (no button yet): same inset as the upgraded one */
+	.td-color__swatch + .td-color__input {
+		padding-inline-start: calc((2.5rem - 2px - var(--td-color-picker-swatch)) / 2 + var(--td-space-xs));
+	}
+
+	.td-color__input::placeholder {
+		color: var(--td-field-placeholder);
+		opacity: 1;
+	}
+
+	.td-color__input:disabled {
+		cursor: not-allowed;
+	}
+
+	.td-color__clear {
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		align-self: stretch;
+		width: 2.25rem;
+		padding: 0;
+		margin: 0;
+		color: var(--td-color-text-muted);
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-start-end-radius: calc(var(--td-field-radius-md) - 1px);
+		border-end-end-radius: calc(var(--td-field-radius-md) - 1px);
+		outline: 2px solid transparent;
+		outline-offset: -3px;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-color__clear[hidden] {
+		display: none;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-color__clear:hover {
+			color: var(--td-field-fg);
+			background: var(--td-color-hover);
+		}
+	}
+
+	.td-color__clear:is(:active, [data-td-pressed]) {
+		color: var(--td-field-fg);
+		background: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-color__clear:focus-visible {
+		outline-color: var(--td-focus);
+	}
+
+	/* ---- popup (a <body> child) ---- */
+	.td-color-panel {
+		position: fixed;
+		top: 0;
+		left: 0;
+		z-index: var(--td-z-popover);
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-sm);
+		width: var(--td-color-picker-width);
+		max-inline-size: calc(100vw - 16px);
+		max-block-size: calc(100vh - 16px);
+		padding: var(--td-space-sm);
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-glass-fg);
+		border-radius: var(--td-glass-radius);
+		outline: none;
+	}
+
+	.td-color-panel *,
+	.td-color-panel *::before {
+		box-sizing: border-box;
+	}
+
+	/* fade in only (ADR 0011 rule 4) */
+	.td-color-panel[data-state="open"] {
+		opacity: 1;
+		transition: opacity var(--td-glass-dur) var(--td-glass-ease);
+	}
+
+	@starting-style {
+		.td-color-panel[data-state="open"] {
+			opacity: 0;
+		}
+	}
+
+	.td-color-panel__area {
+		position: relative;
+		flex: 0 0 auto;
+		height: var(--td-color-picker-area-height);
+		cursor: crosshair;
+		background: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent), var(--_td-cp-hue, #f00);
+		border-radius: var(--td-radius-md);
+		touch-action: none; /* direct 2-D drag (WCAG 2.5.7: the keyboard, the text input and the presets are the alternatives) */
+		user-select: none;
+	}
+
+	.td-color-panel__thumb {
+		position: absolute;
+		top: calc((1 - var(--_td-cp-y, 1)) * 100%);
+		left: calc(var(--_td-cp-x, 0) * 100%);
+		width: 1.125rem;
+		height: 1.125rem;
+		background: var(--_td-cp-color, transparent);
+		border-radius: 50%;
+		outline: 2px solid transparent;
+		outline-offset: 4px;
+		box-shadow: 0 0 0 2px #fff, 0 0 0 3px #000; /* functional double ring (see the header) */
+		transform: translate(-50%, -50%);
+	}
+
+	.td-color-panel__thumb:focus-visible {
+		outline-color: var(--td-focus);
+	}
+
+	.td-color-panel__row {
+		display: flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		min-height: 1.75rem;
+	}
+
+	.td-color-panel__eyedropper {
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		width: 1.75rem;
+		height: 1.75rem;
+		padding: 0;
+		margin: 0;
+		color: var(--td-color-text-muted);
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: var(--td-radius-md);
+		outline: 2px solid transparent;
+		outline-offset: 1px;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-color-panel__eyedropper:hover {
+			color: var(--td-glass-fg);
+			background: var(--td-color-hover);
+		}
+	}
+
+	.td-color-panel__eyedropper:is(:active, [data-td-pressed]) {
+		color: var(--td-glass-fg);
+		background: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-color-panel__eyedropper:focus-visible {
+		outline-color: var(--td-focus);
+	}
+
+	/* hue: the NATIVE range (keyboard + mobile screen readers), track = static hue gradient, thumb = the pure hue */
+	/* active-exempt: native range input — the thumb follows the finger */
+	.td-color-panel__hue {
+		flex: 1 1 auto;
+		width: 100%;
+		min-width: 0;
+		height: 1.75rem;
+		padding: 0;
+		margin: 0;
+		background: transparent;
+		border: 0;
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		appearance: none;
+		-webkit-appearance: none;
+		touch-action: none;
+	}
+
+	.td-color-panel__hue:focus-visible {
+		outline-color: var(--td-focus);
+	}
+
+	.td-color-panel__hue::-webkit-slider-runnable-track {
+		height: 0.75rem;
+		background: linear-gradient(to right, #f00 0%, #ff0 16.667%, #0f0 33.333%, #0ff 50%, #00f 66.667%, #f0f 83.333%, #f00 100%);
+		border: 0;
+		border-radius: var(--td-radius-full);
+	}
+
+	.td-color-panel__hue::-moz-range-track {
+		height: 0.75rem;
+		background: linear-gradient(to right, #f00 0%, #ff0 16.667%, #0f0 33.333%, #0ff 50%, #00f 66.667%, #f0f 83.333%, #f00 100%);
+		border: 0;
+		border-radius: var(--td-radius-full);
+	}
+
+	.td-color-panel__hue::-webkit-slider-thumb {
+		width: 1.125rem;
+		height: 1.125rem;
+		margin-top: -0.1875rem;
+		background: var(--_td-cp-hue, #f00);
+		border: 0;
+		border-radius: 50%;
+		box-shadow: 0 0 0 2px #fff, 0 0 0 3px #000;
+		appearance: none;
+		-webkit-appearance: none;
+	}
+
+	.td-color-panel__hue::-moz-range-thumb {
+		width: 1.125rem;
+		height: 1.125rem;
+		background: var(--_td-cp-hue, #f00);
+		border: 0;
+		border-radius: 50%;
+		box-shadow: 0 0 0 2px #fff, 0 0 0 3px #000;
+	}
+
+	.td-color-panel__contrast {
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-2xs);
+		font-size: var(--td-text-xs);
+	}
+
+	.td-color-panel__pair {
+		display: flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+	}
+
+	.td-color-panel__sample {
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		min-width: 2.25rem;
+		height: 1.5rem;
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-semibold);
+		background: var(--_td-cp-color, transparent);
+		border: 1px solid var(--td-color-swatch-border);
+		border-radius: var(--td-radius-sm);
+	}
+
+	.td-color-panel__pair--light .td-color-panel__sample { color: #fff; } /* the sample IS white text on the colour */
+	.td-color-panel__pair--dark .td-color-panel__sample { color: #000; }
+
+	.td-color-panel__ratio {
+		font-variant-numeric: tabular-nums;
+		color: var(--td-glass-fg);
+	}
+
+	.td-color-panel__presets {
+		display: grid;
+		grid-template-columns: repeat(8, minmax(0, 1fr));
+		gap: 6px;
+	}
+
+	.td-color-panel__preset {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 24px;
+		aspect-ratio: 1;
+		padding: 0;
+		margin: 0;
+		cursor: pointer;
+		background-color: var(--_td-cp-color, transparent);
+		border: 1px solid var(--td-color-swatch-border);
+		border-radius: var(--td-radius-sm);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-color-panel__preset:hover {
+			box-shadow: 0 0 0 1px var(--td-color-swatch-border);
+		}
+	}
+
+	.td-color-panel__preset:is(:active, [data-td-pressed]) {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	.td-color-panel__preset[aria-pressed="true"] {
+		box-shadow: 0 0 0 2px var(--td-glass-fg); /* + the tick: never colour alone */
+	}
+
+	.td-color-panel__preset:focus-visible {
+		outline-color: var(--td-focus);
+	}
+
+	.td-color-panel__clear {
+		align-self: flex-start;
+	}
+
+	/* touch: ≥ 44 targets (ADR 0014) */
+	@media (pointer: coarse) {
+		.td-color__box {
+			height: var(--td-touch-min);
+			font-size: max(1rem, 1em); /* ≥ 16px: iOS does not zoom on focus */
+		}
+
+		.td-color__trigger,
+		.td-color__clear {
+			width: var(--td-touch-min);
+		}
+
+		.td-color__swatch + .td-color__input {
+			padding-inline-start: calc((var(--td-touch-min) - var(--td-color-picker-swatch)) / 2 + var(--td-space-xs));
+		}
+
+		.td-color__box > .td-color__swatch {
+			margin-inline-start: calc((var(--td-touch-min) - var(--td-color-picker-swatch)) / 2);
+		}
+
+		.td-color-panel__thumb {
+			width: 1.5rem;
+			height: 1.5rem;
+		}
+
+		.td-color-panel__row {
+			min-height: var(--td-touch-min);
+		}
+
+		.td-color-panel__eyedropper,
+		.td-color-panel__hue {
+			height: var(--td-touch-min);
+		}
+
+		.td-color-panel__eyedropper {
+			width: var(--td-touch-min);
+		}
+
+		.td-color-panel__presets {
+			grid-template-columns: repeat(auto-fill, minmax(var(--td-touch-min), 1fr));
+		}
+
+		.td-color-panel__clear {
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	/* short (landscape phone, ≤ 500 high): smaller area, presets on one scrolling row */
+	@media (max-height: 500px) {
+		.td-color-panel {
+			--td-color-picker-area-height: 7rem;
+		}
+
+		.td-color-panel__presets {
+			grid-template-columns: none;
+			grid-auto-columns: 1.75rem;
+			grid-auto-flow: column;
+			padding-block: 3px;
+			padding-inline: 3px;
+			overflow-x: auto;
+			overscroll-behavior-x: contain;
+		}
+	}
+
+	@media (max-height: 500px) and (pointer: coarse) {
+		.td-color-panel__presets {
+			grid-template-columns: none;
+			grid-auto-columns: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-color__box {
+			transition: none;
+		}
+
+		.td-color-panel[data-state="open"] {
+			transition: opacity var(--td-glass-dur) linear;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-color__box {
+			border-color: CanvasText;
+		}
+
+		.td-color__box:has(> .td-color__input:focus) {
+			outline-color: Highlight;
+		}
+
+		.td-color__box:has(> .td-color__input[aria-invalid="true"]) {
+			border-style: dashed;
+			border-width: 2px;
+		}
+
+		.td-color__swatch,
+		.td-color-panel__preset {
+			forced-color-adjust: none; /* the swatch IS the information */
+			border-color: CanvasText;
+		}
+
+		.td-color-panel {
+			border: 1px solid CanvasText;
+		}
+
+		.td-color-panel__area,
+		.td-color-panel__thumb,
+		.td-color-panel__hue,
+		.td-color-panel__sample {
+			forced-color-adjust: none;
+		}
+
+		.td-color-panel__preset[aria-pressed="true"] {
+			outline: 2px solid Highlight;
+		}
+
+		.td-color__input::placeholder {
+			color: GrayText;
 		}
 	}
 }

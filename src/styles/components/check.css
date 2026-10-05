@@ -144,6 +144,21 @@
 		opacity: 0.6;
 	}
 
+	/* ---- v0.48.0 td-color-picker preset: the TICK only (no box), in the black / white pole of the swatch (--_td-cp-mark,
+	   pickPole() through CSSOM); hidden until the preset is the value ---- */
+	.td-color-panel__preset > .td-check {
+		visibility: hidden;
+		color: var(--_td-cp-mark, currentcolor);
+		background: transparent;
+		border-color: transparent;
+	}
+
+	.td-color-panel__preset[aria-pressed="true"] > .td-check {
+		visibility: visible;
+		background: transparent;
+		border-color: transparent;
+	}
+
 	/* ---- On a photo (media grid / picker ticks): a dark hairline keeps the white box visible on white images ---- */
 	.td-check--on-media {
 		background: #fff; /* light box in every theme: it sits on a photo, not on the page */
