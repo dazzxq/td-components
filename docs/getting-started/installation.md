@@ -52,7 +52,7 @@ Ghi chú:
   `git ls-remote --tags https://github.com/dazzxq/td-components.git`.
 - Package **không có dependency runtime** nào. `package.json#files` giới hạn phần nội dung được tải: `src/` (từ
   0.16.0 **không** còn file test `*.test.js` / `*.browser-test.js` và file story `*.stories.*`), `index.js`, `td.css`,
-  `php/` (adapter PHP `php/td.php`, từ 0.17.0), `THIRD_PARTY_NOTICES.md`; ngoài ra npm luôn tự kèm file metadata như `package.json`, `README.md` (và `LICENSE` nếu
+  `php/` (adapter PHP `php/td.php`, từ 0.17.0), `bin/` (CLI `td-theme`, từ 0.42.0, không kèm `bin/*.test.mjs`), `THIRD_PARTY_NOTICES.md`; ngoài ra npm luôn tự kèm file metadata như `package.json`, `README.md` (và `LICENSE` nếu
   có). `package.json` khai báo `engines.node >= 20` và export cả `@dazzxq/td-components/package.json` (công cụ đọc
   phiên bản kit dùng được).
 - Nâng cấp sau này: đổi tag rồi chạy lại `npm install github:dazzxq/td-components#v<bản-mới>`.
@@ -163,7 +163,15 @@ rsync -a --exclude='*.test.js' --exclude='*.browser-test.js' --exclude='*.storie
   node_modules/@dazzxq/td-components/src "$DEST"/
 # Dùng adapter PHP (import map + markup SSR)? copy thêm php/ và package.json (adapter đọc exports từ đó)
 cp -R node_modules/@dazzxq/td-components/php node_modules/@dazzxq/td-components/package.json "$DEST"/
+# Dùng CLI td-theme (0.42.0+)? copy bin/ trừ file test
+rsync -a --exclude='*.test.mjs' node_modules/@dazzxq/td-components/bin "$DEST"/
 ```
+
+**Từ 0.42.0 gói có thêm `bin/`** (CLI `td-theme` sinh palette): site copy file bằng tay theo `package.json#files` phải
+copy cả `bin/` và **bỏ** `bin/*.test.mjs` (`npm pack` đã tự loại). CLI chạy thẳng từ thư mục vendor, không cần npx /
+`node_modules`: `node <vendor>/bin/td-theme.mjs …`. CSS theme đã sinh phải **sinh lại sau khi nâng cấp kit** nếu
+`ALGORITHM_VERSION` của bộ sinh đổi (0.42.1 → `2`); nên có một gate so từng byte file theme đã commit với output của CLI
+thuộc **đúng bản kit đang ghim** (phản hồi của 135 sau khi lên 0.42.0).
 
 Từ 0.16.0 package không còn file test/story nên `rsync --exclude` không bắt buộc (giữ cũng không sao, và vẫn có ích nếu
 bạn copy từ một bản clone repo thay vì từ `node_modules`); copy nguyên `src/` cũng chạy được.
@@ -246,6 +254,7 @@ sẽ bị dịch thành `/vendor/td-components-0.42.1/button` (không tồn tạ
     "@dazzxq/td-components/number-input": "/vendor/td-components-0.42.1/src/form/td-number-input.js",
     "@dazzxq/td-components/repeater": "/vendor/td-components-0.42.1/src/form/td-repeater.js",
     "@dazzxq/td-components/media-field": "/vendor/td-components-0.42.1/src/form/td-media-field.js",
+    "@dazzxq/td-components/media-gallery": "/vendor/td-components-0.42.1/src/form/td-media-gallery.js",
     "@dazzxq/td-components/drawer": "/vendor/td-components-0.42.1/src/feedback/td-drawer.js",
     "@dazzxq/td-components/media-picker": "/vendor/td-components-0.42.1/src/feedback/td-media-picker.js",
     "@dazzxq/td-components/copy": "/vendor/td-components-0.42.1/src/display/td-copy.js",
@@ -505,6 +514,7 @@ Nguồn: `package.json#exports`.
 | `@dazzxq/td-components/drawer` | `src/feedback/td-drawer.js` | `<td-drawer>`, `TdDrawer` |
 | `@dazzxq/td-components/media-picker` | `src/feedback/td-media-picker.js` | `<td-media-picker>`, `TdMediaPicker` (0.32.0) |
 | `@dazzxq/td-components/media-field` | `src/form/td-media-field.js` | `<td-media-field>`, `TdMediaField` (0.32.0; nạp kèm `media-picker`) |
+| `@dazzxq/td-components/media-gallery` | `src/form/td-media-gallery.js` | `<td-media-gallery>`, `TdMediaGallery` (0.43.0; nạp kèm `media-picker`) |
 | `@dazzxq/td-components/copy` | `src/display/td-copy.js` | `<td-copy>`, `TdCopy` |
 | `@dazzxq/td-components/masked-value` | `src/display/td-masked-value.js` | `<td-masked-value>`, `TdMaskedValue` (nạp kèm `td-copy`) |
 | `@dazzxq/td-components/filter-chips` | `src/display/td-filter-chips.js` | `<td-filter-chips>`, `TdFilterChips` (0.39.0) |

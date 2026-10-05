@@ -9,7 +9,7 @@ Giá trị gửi form là **`assetId`** — không bao giờ là URL. Dùng cho 
 poster video, file đính kèm một-cái.
 
 Cần chèn **nhiều** ảnh vào nội dung → gọi thẳng [`TdMediaPicker.open()`](media-picker.md) chế độ `multiple`. Field
-nhiều ảnh / gallery có ở 0.38+.
+nhiều ảnh có thứ tự (gallery sản phẩm, ảnh bài viết) → [Media gallery](media-gallery.md) (0.43.0).
 
 | | |
 |---|---|
@@ -533,6 +533,7 @@ Shim tương thích cho code dcms2 cũ (nếu cần) nằm ở **dcms2**, không
 
 ## Xem thêm
 
+[Media gallery](media-gallery.md) (nhiều ảnh có thứ tự, 0.43.0) · 
 - [Media picker](media-picker.md) · [Cropper](cropper.md) · [Media grid](media-grid.md) · [Form](../guides/forms.md)
 - [Adapter PHP › td_media_field](../guides/php-adapter.md#td_media_field-0320) · [Theming](../customization/theming.md) ·
   [Hook](../customization/hooks.md#tdmediapicker)

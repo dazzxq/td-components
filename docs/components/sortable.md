@@ -150,6 +150,9 @@ list.addEventListener('order-change', (e) => {
 - Space trên nút mở ảnh = chọn (media grid), Space trên tay nắm = nhấc (sortable) — khác phần tử, không xung đột.
   `selectedIds` của media grid đi theo thứ tự DOM mới.
 
+Cần **ô form** (gửi thứ tự + alt / crop theo ảnh, thêm / gỡ qua picker, SSR PHP) thay vì chỉ lưới hiển thị → dùng
+[`<td-media-gallery>`](media-gallery.md) (0.43.0): cùng bộ điều khiển sắp xếp, FormData là API công khai.
+
 ### 8. Không JS
 
 Danh sách tĩnh theo thứ tự server in. Tay nắm của kit chỉ có khi JS chạy; tay nắm app in sẵn bị ẩn (mục 2). App cần sắp

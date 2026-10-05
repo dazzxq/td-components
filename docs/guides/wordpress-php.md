@@ -51,7 +51,14 @@ td-components/0.42.1/
   php/td.php              (adapter PHP chính thức — import map, td.css, markup SSR)
   src/                    (toàn bộ; adapter đọc src/icons/icons.json)
   THIRD_PARTY_NOTICES.md  (giấy phép icon Lucide)
+  bin/                    (0.42.0+: CLI td-theme — bỏ bin/*.test.mjs)
 ```
+
+**Từ 0.42.0 gói có thêm `bin/`** (CLI `td-theme` sinh palette): site copy file bằng tay theo `package.json#files` phải
+copy cả `bin/` và **bỏ** `bin/*.test.mjs` (`npm pack` đã tự loại). CLI chạy thẳng từ thư mục vendor, không cần npx /
+`node_modules`: `node <vendor>/bin/td-theme.mjs …`. CSS theme đã sinh phải **sinh lại sau khi nâng cấp kit** nếu
+`ALGORITHM_VERSION` của bộ sinh đổi (0.42.1 → `2`); nên có một gate so từng byte file theme đã commit với output của CLI
+thuộc **đúng bản kit đang ghim** (phản hồi của 135 sau khi lên 0.42.0).
 
 Lấy từ tag git hoặc `npm pack`:
 

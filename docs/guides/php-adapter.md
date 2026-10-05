@@ -69,6 +69,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_number_input` — **chế độ element** (0.30.0, tự bật) | host `<td-number-input data-td-ssr="number-input@1">` chứa sẵn cùng cây | Không (input native chạy ngay, gửi số sạch) | **Có** — nạp module `number-input`: nhận **tại chỗ**, hiện `12.990.000` |
 | `td_masked_value` (0.31.0) | **luôn** host `<td-masked-value data-td-ssr="masked-value@1">` chứa chuỗi che + nút toggle + live region — **không bao giờ** giá trị thật | Không (chưa có JS: chỉ thấy chuỗi che, nút ẩn) | **Có** — nạp module `masked-value`: nhận **tại chỗ** |
 | `td_media_field` (0.32.0) | **luôn** host `<td-media-field data-td-ssr="media-field@1">` chứa sẵn khung (tỉ lệ bằng SVG sizer), ảnh xem trước, nút mở / Đổi / Gỡ + **hidden input** gửi `assetId` (và ô alt / crop ở chế độ usage) | Không (form gửi đúng hình dạng; chưa có JS thì nút ẩn, giữ chỗ) | **Có** — nạp module `media-field`: nhận **tại chỗ**, gỡ hidden input |
+| `td_media_gallery` (0.43.0) | **luôn** host `<td-media-gallery data-td-ssr="media-gallery@1">` chứa sẵn lưới ô (tỉ lệ bằng SVG sizer), ảnh, tay nắm / Cắt / Gỡ, nút Thêm + **hidden input** gửi danh sách (`name[]` / `name[i][…]`, ô alt có `name`) | Không (form gửi đúng hình dạng theo thứ tự server in; chưa có JS thì nút ẩn, giữ chỗ) | **Có** — nạp module `media-gallery`: nhận **tại chỗ**, gỡ hidden input |
 | `td_scan_input` (0.38.0) | `div.td-scan` + `input.td-scan__input` **native** (`autocomplete="off"`, `enterkeyhint="done"`…) | Không (Enter submit form) | Không |
 | `td_scan_input` — **chế độ element** (0.38.0, tự bật) / **`multiple`** (luôn element) | host `<td-scan-input data-td-ssr="scan-input@1">` + cùng input; `multiple`: + `textarea` nhập tay + danh sách + một **hidden input** mỗi mã | Không (form gửi mã in sẵn + dòng textarea) | **Có** — nạp module `scan-input`: nhận **tại chỗ**, gỡ hidden / textarea, dòng textarea qua `validate` |
 | `td_filter_chips` (0.39.0) | **luôn** host `<td-filter-chips data-td-ssr="filter-chips@1">` chứa sẵn đúng cây component (nhóm, mỗi chip một `li` với nhãn / giá trị / ×, "Xoá tất cả", live region) | Không (× có `href` là **link** chạy ngay; × không link thì vô hình, giữ chỗ) | **Có** — nạp module `filter-chips`: nhận **tại chỗ** |
@@ -96,6 +97,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
   [td_otp_input](#td_otp_input-0270)). `td_copy` (0.27.0) luôn in `<td-copy>` (xem [td_copy](#td_copy-0270)).
 - `td_media_field` (0.32.0) luôn in `<td-media-field>` — không có control native tương đương (xem
   [td_media_field](#td_media_field-0320)); `ssr_elements` / `element` không áp dụng.
+- `td_media_gallery` (0.43.0) luôn in `<td-media-gallery>` (xem [td_media_gallery](#td_media_gallery-0430)).
 
 ## Cài đặt và cấu hình
 
@@ -1308,6 +1310,82 @@ video, file, disabled, lỗi, URL độc, `name[]`, `attrs`, XSS).
 Đọc giá trị ở server (Laravel / PHP thuần, `crop = 'null'`): [Media field › Hai dạng gửi form](../components/media-field.md#1-hai-dạng-gửi-form-api-công-khai-chốt-từ-032).
 Cảnh báo (`E_USER_WARNING`) chỉ ghi tên option và kiểu, không in giá trị thô.
 
+## td_media_gallery (0.43.0)
+
+```php
+<?= td_media_gallery('gallery', array_map(fn ($u) => [
+        'id'   => $u->asset_id,                    // string | int (int → chuỗi thập phân, 0 → "0")
+        'src'  => $u->thumb_url,                   // chỉ để hiển thị; td__media_url (https: / tương đối)
+        'name' => $u->original_name,
+        'alt'  => $u->alt_text,                    // ≤ 500
+        'crop' => $u->crop,                        // ['x' =>…, 'y' =>…, 'width' =>…, 'height' =>…] | '{"v":1,…}' | null
+        'focal' => $u->focal,                      // ['x' =>…, 'y' =>…] | '{"v":1,…}' | null
+    ], $product->galleryUsages), [
+    'label' => 'Ảnh sản phẩm', 'usage' => true, 'croppable' => true, 'focal_point' => true, 'cover' => true,
+    'max' => 10, 'aspect_ratio' => '1/1', 'helper_text' => 'Ảnh đầu là ảnh bìa',
+]) ?>
+```
+
+`td_media_gallery(string $name, array $items = [], array $o = [])` in [Media gallery](../components/media-gallery.md)
+(hợp đồng `media-gallery@1`, [ADR 0021](../internal/decisions/0021-media-gallery-form-shape.md)). **Luôn element mode.**
+Không in endpoint, quyền hay asset serialize.
+
+- **Không có JS:** lưới ô có dáng ngay; tay nắm / Cắt / Gỡ / Thêm `visibility: hidden` (giữ chỗ). Form gửi **đúng** hình
+  dạng của component, theo thứ tự server in, alt sửa được (ô nhập thật có `name`):
+  - reference: mỗi ô `<input type="hidden" class="td-media-gallery__value" name="gallery[]" value="{id}">`;
+  - usage: hidden `name="gallery[i][id]"`, ô alt `name="gallery[i][alt]"`, hidden `.td-media-gallery__crop`
+    `name="gallery[i][crop]"` (+ `.td-media-gallery__focal` `name="gallery[i][focal]"` với `focal_point`);
+  - rỗng: **một** hidden `name="gallery" value=""` ngay sau lưới.
+- **Có JS:** nạp `@dazzxq/td-components/media-gallery` → nhận markup **tại chỗ** (cùng node ô / ảnh / ô alt, chữ đang gõ
+  giữ nguyên), ElementInternals nhận FormData **trước**, rồi gỡ hidden input + `name` / `value` của ô alt. Markup lệch
+  (sửa tay, nhãn site đổi, URL độc, crop hỏng…) → render lại an toàn, giữ alt đang gõ + focus.
+- `$items` đi qua `td__media_gallery_items()` = `validateItems()` của JS (bảng `GALLERY_CASES` chung).
+
+| Option | Ý nghĩa |
+|---|---|
+| `label`, `helper_text`, `error_text`, `prompt` | nhãn (có `*` khi `required`), ghi chú, lỗi (`aria-invalid` trên nút Thêm), chữ khung rỗng — đều là text |
+| `required`, `min`, `max` | `max` 1…100 (lớn hơn → 100, sai → bỏ; vắng = 100); `min` kẹp ≤ `max`. Không JS thì trình duyệt không kiểm được (hidden input): **kiểm ở server** |
+| `disabled` | mọi nút, ô alt và hidden input `disabled` (không gửi gì) |
+| `usage` | dạng `name[i][id\|alt\|crop]` + ô alt |
+| `croppable`, `crop_ratio`, `focal_point` | cần `usage` (thiếu → bỏ + một `E_USER_WARNING`); `crop_ratio` như field (`free`, `W/H`… trong [0.01, 100]) |
+| `cover` | badge "Ảnh bìa" trên ô đầu |
+| `aspect_ratio`, `preview_fit`, `accept_kind` | tỉ lệ ô (mặc định 1:1), `cover`/`contain`, loại nhận (chữ "ảnh" / "video" / "file") |
+| `id`, `class`, `attrs` | host id (id con suy ra từ nó), class thêm, `attrs` theo allowlist (tên của component + `data-td-*` bị chặn) |
+
+**Fail closed / vượt `max`** (không bao giờ thành "xoá hết"):
+
+- `$items` không phải list, > 100 item, item không phải mảng, id thiếu / rỗng / không phải string-int / dài quá 512 /
+  trùng (sau khi đổi int → chuỗi), JSON `items` > 256 KiB, hoặc `name` kết thúc `[]` → in trạng thái lỗi "Không đọc được
+  danh sách ảnh", **không có input nào**, attribute `items="[null]"` (JS cũng fail closed) + **một** `E_USER_WARNING`
+  chỉ nêu lý do và số lượng — không bao giờ in giá trị.
+- Nhiều item hơn `max` (≤ 100) → in đủ ô nhưng **không control nào có `name`** + một `E_USER_WARNING` với hai con số. Server
+  thấy "không có key" → giữ nguyên.
+- Trường lẻ hỏng thì cắt / bỏ im lặng: alt > 500 (cắt theo code point), crop / focal sai → `null`, `src` không an toàn →
+  không có ảnh (item giữ), `kind` lạ → `image`.
+
+Ví dụ rút gọn (icon SVG lược bớt; nguyên văn ở `test/ssr/fixtures/media-gallery.html`, case `usage`):
+
+```html
+<td-media-gallery data-td-ssr="media-gallery@1" id="td-g-3" class="td-media-gallery" name="g" label="Gallery" items="[{&quot;id&quot;:&quot;m1&quot;,…}]" usage croppable crop-ratio="1:1" focal-point cover aspect-ratio="1/1" min="1" max="4">
+<div class="td-media-gallery__head"><span class="td-media-gallery__label" id="td-g-3-label">Gallery</span><span class="td-media-gallery__count" id="td-g-3-count">2/4 ảnh</span></div>
+<ul class="td-media-gallery__list" role="list" aria-labelledby="td-g-3-label" aria-describedby="td-g-3-count">
+<li class="td-media-gallery__item" data-kind="image"><div class="td-media-gallery__media"><svg class="td-media-gallery__sizer" viewBox="0 0 1 1" aria-hidden="true" focusable="false"></svg><img class="td-media-gallery__img" src="/test/fixtures/1.svg" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"><span class="td-media-gallery__cover">Ảnh bìa</span><button type="button" class="td-sortable__handle td-media-gallery__handle" aria-label="Sắp xếp Ảnh 1 trên 2: Ảnh 1, ảnh bìa" aria-describedby="td-g-3-sort-help">…</button></div>
+<div class="td-media-gallery__bar"><button type="button" class="td-media-gallery__btn td-media-gallery__crop-btn" aria-haspopup="dialog" aria-label="Cắt Ảnh 1 trên 2: Ảnh 1, ảnh bìa">…</button><button type="button" class="td-media-gallery__btn td-media-gallery__remove" aria-label="Gỡ Ảnh 1 trên 2: Ảnh 1, ảnh bìa">…</button></div>
+<input type="hidden" class="td-media-gallery__value" name="g[0][id]" value="m1">
+<label class="td-media-gallery__alt-field"><span class="td-sr-only">Mô tả ảnh 1 (alt)</span><input type="text" class="td-field__control td-media-gallery__alt" maxlength="500" placeholder="Mô tả (alt)" name="g[0][alt]" value="Áo thun trắng"></label>
+<input type="hidden" class="td-media-gallery__crop" name="g[0][crop]" value="{&quot;v&quot;:1,…}"><input type="hidden" class="td-media-gallery__focal" name="g[0][focal]" value="{&quot;v&quot;:1,…}"></li>
+…
+</ul>
+<button type="button" class="td-media-gallery__add" data-state="filled" aria-haspopup="dialog">…<span class="td-media-gallery__prompt">Thêm ảnh</span></button>
+<span class="td-sr-only td-media-gallery__status" role="status"></span><span class="td-sr-only td-media-gallery__sort-status" role="status"></span><span class="td-media-gallery__sort-help" id="td-g-3-sort-help" hidden>…</span>
+</td-media-gallery>
+```
+
+Nguồn chuẩn của markup là fixture `test/ssr/fixtures/media-gallery.html` (sinh bằng
+`test/ssr/build-media-gallery-fixture.mjs`; test so với `render()` của JS trên ba engine — rỗng, reference, usage, kinds,
+đủ, disabled, vượt `max`, id trùng, `name[]`, id số, lỗi, không tên, `attrs`, XSS). Đọc giá trị ở server (Laravel / PHP
+thuần, ba trạng thái): [Media gallery › Hai dạng gửi form](../components/media-gallery.md#1-hai-dạng-gửi-form-api-công-khai-adr-0021).
+
 ## td_scan_input (0.38.0)
 
 ```php
@@ -1550,6 +1628,7 @@ Khác biệt hành vi so với `markup.php` của 135 (cố ý):
 | `td_media_field` không JS không thấy nút Đổi / Gỡ | cố ý: nút `visibility: hidden` tới khi module tải (không nút chết); hidden input vẫn gửi `assetId` | import module `media-field` (và cấu hình adapter: `TdMediaPicker.configureDefaults`) |
 | `td_media_field`: ảnh xem trước không in ra | `preview_src` bị từ chối (`javascript:`, `data:`, `mailto:`, `http:` khi chưa `allowHttpLinks`) | URL `https:` hoặc tương đối |
 | `td_media_field` usage không gửi gì + `Warning` | `name` kết thúc `[]` | bỏ `[]` (`og`, không phải `og[]`) |
+| `td_media_gallery` không gửi gì + `Warning` | `$items` hỏng (id trùng / id không phải string-int / > 100 / không phải list) hoặc `name` kết thúc `[]` → fail closed; hoặc nhiều ảnh hơn `max` → in đủ ô nhưng không `name` | sửa dữ liệu; `name` không có `[]`; `max` ≥ số ảnh thật (server vẫn tự kiểm) |
 | `td_copy` không JS chỉ thấy mã, không có nút | cố ý: nút ẩn khi chưa có JS (không có nút chết), mã bôi đen được | import module `copy` |
 | Ô nhập element mode vẫn render lại khi tải | script đổi `label` / `type` / `size`… trước khi module tải, hoặc markup bị sửa (cố ý render lại; chữ đã gõ được giữ) | đổi thuộc tính sau `customElements.whenDefined('td-input-field')` |
 
@@ -1561,5 +1640,5 @@ Khác biệt hành vi so với `markup.php` của 135 (cố ý):
   [Icons](../components/icons.md) · [Badge](../components/badge.md) · [Alert](../components/alert.md) ·
   [Empty state](../components/empty-state.md) · [OTP input](../components/otp-input.md) · [Copy](../components/copy.md) ·
   [Number input](../components/number-input.md) · [Repeater](../components/repeater.md) ·
-  [Media field](../components/media-field.md) · [Media picker](../components/media-picker.md)
+  [Media field](../components/media-field.md) · [Media gallery](../components/media-gallery.md) · [Media picker](../components/media-picker.md)
 - [Bảo mật](security.md) · [CSP](csp.md) · [Form](forms.md)
