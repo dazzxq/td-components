@@ -258,7 +258,7 @@ component legacy; peer Tailwind bỏ ở 0.11.0).
 |---|---|---|
 | `src/styles/layers.css` | — | Câu khai báo thứ tự layer duy nhất (phải đứng đầu manifest) |
 | `src/styles/tokens.css` | `td.tokens` | Token public: type, spacing, gray, radius, shadow, z-index, motion, màu semantic, accent, control, button, bề mặt `--td-glass-*` (nền / viền / blur / shadow / lightbox / geometry; token deprecated 0.20.0) |
-| `src/styles/theme-dark.css` | `td.tokens` | `:root[data-td-theme="dark"]` — dark **chỉ bật khi site đặt attribute**, không tự theo OS |
+| `src/styles/theme-dark.css` | `td.tokens` | `:root[data-td-theme="dark"]` — dark **chỉ bật khi site đặt attribute**, không tự theo OS. 0.41.0: `light` / `auto` (`color-scheme`); nhánh tối của `auto` = bản sao **sinh lúc build** của mọi rule dark (`scripts/css-theme.mjs`, QĐ4 plan v0.41.0) |
 | `src/styles/glass.css` | `td.component` + `td.tokens` | Recipe `.td-glass-surface(--strong/--lg/--clear)`, nhóm bề mặt đặc (modal / loading / tooltip / scroll-top), `.td-glass-tint` + khối fallback (`.td-glass-dim` deprecated) |
 | `src/styles/utilities.css` | `td.utilities` | `.td-sr-only` |
 | `src/styles/manifest.json` | — | Thứ tự build |
@@ -283,9 +283,9 @@ component legacy; peer Tailwind bỏ ở 0.11.0).
 :root {
   --td-accent: #b3261e;
   --td-glass-bg-strong: oklch(98% 0.01 80 / 0.94);
-  --td-glass-solid: #f7f3ea;          /* modal / tooltip + nền đặc khi fallback: nên khớp giấy của site */
+  --td-color-surface-raised: #f7f3ea; /* 0.41.0: ô nhập + modal / nền đặc khi fallback (--td-glass-solid theo nó) */
 }
-:root[data-td-theme="dark"] { --td-glass-solid: #1a1714; }   /* tinh chỉnh dark riêng */
+:root[data-td-theme="dark"] { --td-color-surface-raised: #1a1714; }   /* tinh chỉnh dark riêng */
 .sidebar { --td-glass-bg: rgb(0 0 0 / 40%); }                /* theme theo vùng: chạy được */
 ```
 

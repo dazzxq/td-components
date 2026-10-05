@@ -67,9 +67,9 @@ mảnh + bóng nhẹ**, nên badge đặt trên nền **trùng màu** vẫn th�
 | `--td-badge-font-family` | `var(--td-font-sans)` | Font của badge (0.19.0) |
 | `--td-badge-stamp-font-family` | `var(--td-font-mono)` | Font của con dấu `--stamp` (0.19.0; trước đó dùng font sans) |
 | `--td-badge-font-size` | `var(--td-text-xs)` | Cỡ chữ |
-| `--td-badge-{variant}-bg` | neutral `var(--td-gray-100)`, accent tông nhạt của accent; success / warning / danger / info `var(--td-solid-{v}-bg)` (0.36.0) | Nền (kiểu thường) |
-| `--td-badge-{variant}-fg` | neutral `#3f3f46`, accent tông đậm; ngữ nghĩa `var(--td-solid-{v}-fg)` (trắng, warning `#18181b`) | Chữ trên nền của badge (neutral / accent: cả outline / stamp) |
-| `--td-badge-{success,warning,danger,info}-ink` | `#15803d` / `#b45309` / `#b91c1c` / `#2563eb` (dark: `#86efac` / `#fcd34d` / `#fca5a5` / `#93c5fd`) | 0.36.0: chữ + viền của `--outline` / `--stamp` (nền trong suốt — chữ trắng của nền đặc sẽ mất), ≥ 4.7:1 trên trang |
+| `--td-badge-{variant}-bg` | neutral `var(--td-color-fill)` (gray-100; 0.41.0), accent tông nhạt của accent; success / warning / danger / info `var(--td-solid-{v}-bg)` (0.36.0) | Nền (kiểu thường) |
+| `--td-badge-{variant}-fg` | neutral `var(--td-color-on-fill)` (`#3f3f46`; 0.41.0), accent tông đậm; ngữ nghĩa `var(--td-solid-{v}-fg)` (trắng, warning `#18181b`) | Chữ trên nền của badge (neutral / accent: cả outline / stamp) |
+| `--td-badge-{success,warning,danger,info}-ink` | `var(--td-color-success)` / `var(--td-color-warning)` / `var(--td-color-error)` (0.41.0; = `#15803d` / `#b45309` / `#b91c1c`) / `#2563eb` (dark: `#86efac` / `#fcd34d` / `#fca5a5` / `#93c5fd`) | 0.36.0: chữ + viền của `--outline` / `--stamp` (nền trong suốt — chữ trắng của nền đặc sẽ mất), ≥ 4.7:1 trên trang |
 | `--td-badge-{variant}-border` | neutral `#ababac`, accent `#99a4b2`, success `#0f5a2b`, danger `#9a1b1b`, warning `#ac6f08`, info `#1a45a5` | 0.36.0: viền 1px của badge có nền = nền trộn 30 % đen, **hex tính sẵn** (không cần `color-mix()`, chạy từ Chrome 102). ≥ 1.6:1 với nền của chính nó, trắng và `#f4f4f5` |
 | `--td-badge-shadow` | `0 1px 2px rgb(0 0 0 / 12%)` | 0.36.0: bóng nhẹ của badge có nền (outline / stamp không có) |
 | `--td-badge-stamp-rotate` | `-4deg` | Độ nghiêng con dấu — **`0deg` để tắt** |

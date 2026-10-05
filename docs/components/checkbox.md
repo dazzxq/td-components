@@ -207,8 +207,8 @@ Trạng thái lưng chừng: xem [`indeterminate`](#trạng-thái-lưng-chừng-
 | `--td-checkbox-box` | `1.25rem` (sm `1rem`, lg `1.5rem`) | Kích thước ô. Cỡ mặc định khai báo trên `:root` (từ 0.16.0): `:root { --td-checkbox-box: 1.1rem; }`. Cỡ `sm` / `lg` đặt lại biến trên `.td-checkbox--sm` / `--lg`; muốn đổi thì nhắm class đó. |
 
 Màu dấu tích là `--td-accent-contrast` (#fff). Nền ô chưa chọn là `--td-control-bg`. Lỗi dùng `--td-field-error`.
-Focus dùng `--td-focus-ring`. Theme tối lấy theo token control chung (`--td-control-border-soft` #3a3a3c,
-`--td-control-border-hover` #636366, accent #3b82f6).
+Focus dùng `--td-focus-ring`. Theme tối lấy theo token control chung (0.41.0: `--td-control-border-soft` #76767c — ô
+chưa chọn ≥ 3:1 với mọi nền kề, `--td-control-border-hover` #8e8e93, accent #4b8df8).
 
 **Viền mềm và WCAG:** viền ô chưa chọn lúc nghỉ ~1.5:1, khi hover ~2.2:1, thấp hơn 3:1 của WCAG 1.4.11 (có chủ đích).
 Site cần tuân thủ nghiêm:

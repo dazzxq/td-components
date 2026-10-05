@@ -203,7 +203,7 @@ Property phản chiếu attribute: `checked`, `controlled` (boolean), `value`, `
 | Token | Mặc định (sáng) | Tác dụng |
 |---|---|---|
 | `--td-switch-on` | `#16a34a` | Màu rãnh khi bật và màu dấu tích trên núm (3.3:1 trên trang trắng; núm trắng trên nó 3.3:1). Attribute `color` đặt biến này trên host. |
-| `--td-switch-off` | `var(--td-gray-100)` (tối: #2c2c30) | Màu rãnh khi tắt. |
+| `--td-switch-off` | `var(--td-color-fill)` (gray-100; tối: #2c2c30) | Màu rãnh khi tắt. |
 | `--td-switch-edge` | `var(--td-control-border-soft)` | Viền rãnh và núm khi tắt (mềm, v0.14.1). |
 | `--td-switch-thumb` | `#fff` | Màu núm. |
 | `--td-control-border-hover` | `#aeaeb2` | Viền khi hover công tắc đang tắt (v0.14.2). |

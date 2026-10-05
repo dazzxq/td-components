@@ -140,9 +140,9 @@ Option: `label`, `icon`, `tone`, `size`, `disabled`, `href`, `target`, `aria_lab
 |---|---|---|
 | `--td-action-btn-size-sm` / `-md` / `-lg` | `2rem` / `2.25rem` / `2.5rem` | Cạnh nút (chuột) |
 | `--td-action-btn-radius` | `var(--td-radius-md)` | Bo góc |
-| `--td-action-btn-standard-fg` / `-hover-bg` | `var(--td-gray-700)` / `var(--td-color-hover)` | Tone standard |
-| `--td-action-btn-warning-fg` / `-hover-bg` | `#b45309` / `#fffbeb` | Tone warning |
-| `--td-action-btn-danger-fg` / `-hover-bg` | `#b91c1c` / `var(--td-pastel-danger-bg)` | Tone danger |
+| `--td-action-btn-standard-fg` / `-hover-bg` | `var(--td-color-text-label)` (gray-700; 0.41.0) / `var(--td-color-hover)` | Tone standard |
+| `--td-action-btn-warning-fg` / `-hover-bg` | `var(--td-color-warning)` (`#b45309`; 0.41.0) / `#fffbeb` | Tone warning |
+| `--td-action-btn-danger-fg` / `-hover-bg` | `var(--td-color-error)` (`#b91c1c`; 0.41.0) / `var(--td-pastel-danger-bg)` | Tone danger |
 
 Icon ≥ 4.7:1 trên trắng **và** trên nền hover của nó (gate `npm run test:contrast`). Warning hover dùng amber-50
 `#fffbeb` thay pastel `#fef3c7` (trên đó `#b45309` chỉ 4.5:1).

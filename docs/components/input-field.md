@@ -337,27 +337,29 @@ cũng được cập nhật (thay đổi bằng code không bị tính là ngư�
 
 | Token | Mặc định (sáng) | Tác dụng |
 |---|---|---|
-| `--td-field-bg` | `var(--td-control-bg)` (#fff) | Nền ô. |
+| `--td-field-bg` | `var(--td-control-bg)` (= `--td-color-surface-raised`, mặc định #fff; 0.41.0) | Nền ô. |
 | `--td-field-bg-focus` | `var(--td-control-bg)` | Nền khi focus. |
-| `--td-field-bg-disabled` | `var(--td-gray-100)` | Nền khi disabled. |
+| `--td-field-bg-disabled` | `var(--td-color-fill)` (gray-100) | Nền khi disabled. |
 | `--td-field-bg-readonly` | `var(--td-color-surface-muted)` | Nền khi read-only. |
 | `--td-field-fg` | `var(--td-control-fg)` | Màu chữ. |
 | `--td-field-fg-disabled` | `var(--td-color-text-muted)` | Màu chữ khi disabled. |
-| `--td-field-border` | `var(--td-control-border-soft)` (#d1d1d6) | Viền lúc nghỉ (mềm, v0.14.1). |
-| `--td-field-border-hover` | `var(--td-control-border-hover)` (#aeaeb2) | Viền khi hover (v0.14.2). |
+| `--td-field-border` | `var(--td-control-border-soft)` (#d1d1d6; dark `#76767c` ≥ 3:1, 0.41.0) | Viền lúc nghỉ (mềm, v0.14.1). |
+| `--td-field-border-hover` | `var(--td-control-border-hover)` (#aeaeb2; dark `#8e8e93`) | Viền khi hover (v0.14.2). |
 | `--td-field-focus` | `color-mix(in srgb, var(--td-accent) 85%, #fff)` (≈ #467aee; không có `color-mix()`: `#3b82f6`) | Màu viền khi focus (0.21.0: nhạt hơn, kiểu dcms; vẫn ≥ 3:1 với nền ô và nền trang — cổng tương phản đo). |
 | `--td-field-focus-ring` | `0 0 0 3px color-mix(in srgb, var(--td-accent) 12%, transparent)` (dark 22 %; fallback `rgb(59 130 246 / 12%)`) | Quầng mờ quanh ô khi focus bàn phím (0.21.0: nhạt, trước là `--td-focus-ring` 35 %). Dùng chung cho ô nhập, nút mở dropdown, ô tìm của dropdown, chip-input. |
-| `--td-field-placeholder` | `var(--td-gray-600)` | Màu placeholder (5.28:1 trên trắng). |
+| `--td-field-placeholder` | `var(--td-color-text-muted)` (gray-600) | Màu placeholder (5.28:1 trên trắng; 0.41.0: theo chữ phụ của theme). |
 | `--td-field-note` | `var(--td-color-text-muted)` | Màu dòng gợi ý và bộ đếm. |
-| `--td-field-label` | `var(--td-gray-700)` | Màu nhãn. |
+| `--td-field-label` | `var(--td-color-text-label)` (gray-700) | Màu nhãn (0.41.0: token hợp đồng theme). |
 | `--td-field-error` | `var(--td-color-error)` | Màu lỗi (viền, chữ lỗi, dấu `*`, bộ đếm khi đạt giới hạn). Dùng chung cho mọi control. |
 | `--td-field-radius-sm` / `-md` / `-lg` | `10px` / `12px` / `14px` | Bo góc theo size. |
 | `--td-field-h-sm` / `-md` / `-lg` | `32px` / `40px` / `48px` | Chiều cao theo size. |
 | `--td-field-autoresize-max` | khoảng 16 dòng | Chiều cao tối đa khi `autoresize` (không khai báo sẵn, đặt khi cần). |
 
-Theme tối đổi `--td-field-bg-disabled`, `--td-field-bg-readonly`, `--td-field-placeholder` (gray-400),
-`--td-field-label` (gray-300) và quầng focus (22 % accent, vì 12 % không thấy trên nền tối); phần còn lại theo token
-control chung.
+Theme tối đổi `--td-field-bg-disabled`, `--td-field-bg-readonly` (surface-muted) và quầng focus (22 % accent, vì 12 %
+không thấy trên nền tối); placeholder / nhãn / viền theo token chung (`--td-color-text-muted` `#acacb4`,
+`--td-color-text-label` `#d4d4d8`, viền mềm `#76767c` ≥ 3:1 — 0.41.0). Site đổi nền bằng
+[hợp đồng theme](../customization/theming.md#hợp-đồng-theme-và-công-thức-nền-giấy-0410): ô nhập theo
+`--td-color-surface-raised`.
 
 **Focus nhạt (0.21.0):** viền focus là accent pha 15 % trắng + quầng 3px rất nhạt, giống ô nhập của dcms. Cả hai theo
 `--td-accent` của site. Muốn focus đậm như trước 0.21.0:

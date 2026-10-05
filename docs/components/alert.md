@@ -119,12 +119,14 @@ bề rộng từ cha (`display: block` — mặc định). Không có container 
 | `--td-alert-close-fg`, `--td-alert-close-hover` | chữ / `--td-color-hover-strong` | Nút đóng |
 | `--td-alert-{info,success,warning,danger}-bg` | `#eff6ff` · `#f0fdf4` · `#fffbeb` · `#fef2f2` | Nền |
 | `--td-alert-{…}-border` | `#93c5fd` · `#86efac` · `#fcd34d` · `#fca5a5` (0.36.0: đậm lên một bậc, ~300) | Viền 1px |
-| `--td-alert-{…}-heading` | tông đậm của loại | Màu tiêu đề |
-| `--td-alert-{…}-icon` | `var(--td-solid-{v}-bg)`; warning `#b45309` (0.36.0) | Màu icon (warning dùng sắc đậm hơn để ≥ 3:1 trên nền nhạt) |
+| `--td-alert-{…}-heading` | `var(--td-pastel-{v}-fg)` (tông đậm của loại; 0.41.0: trỏ vào token pastel, cùng giá trị) | Màu tiêu đề |
+| `--td-alert-{…}-icon` | `var(--td-solid-{v}-bg)`; warning `var(--td-color-warning)` `#b45309` (0.36.0) | Màu icon (warning dùng sắc đậm hơn để ≥ 3:1 trên nền nhạt) |
 | `--td-alert-{…}-accent` | `var(--td-solid-{v}-bg)`; warning `var(--td-solid-warning-border)` `#d97706` (0.36.0) | Vạch mép đầu dòng (`border-inline-start`, RTL tự sang phải). Warning dùng bậc đậm vì amber-500 < 3:1 trên nền nhạt |
 | `--td-alert-accent-width` | `4px` | Độ dày vạch (0.36.0; `1px` = như 0.18–0.35) |
 
-Theme tối (`data-td-theme="dark"`) có bộ giá trị riêng. Alert thuộc **tầng nội dung** → nền đặc, không kính
+Theme tối (`data-td-theme="dark"` / nhánh tối của `auto`) có bộ giá trị riêng. `-bg` / `-border` / `-icon` thuộc
+[hợp đồng theme](../customization/theming.md#hợp-đồng-theme-và-công-thức-nền-giấy-0410) (0.41.0): site nền tối không
+bật dark đặt chúng cùng các token ngữ nghĩa. Alert thuộc **tầng nội dung** → nền đặc, không kính
 ([minimal surfaces](../internal/design/liquid-glass.md)). Chữ ≥ 4.7:1, icon / nút đóng ≥ 3.2:1, vạch mép ≥ 3:1 trên nền
 của nó ở cả light và dark (gate `npm run test:contrast`). Đổi token thì tự kiểm lại tương phản.
 

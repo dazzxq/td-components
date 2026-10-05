@@ -385,8 +385,8 @@ Từ 0.20.0 giao diện kit theo bộ luật **minimal surfaces** (thay Liquid G
   (`prefers-reduced-transparency`), "tăng tương phản" (`prefers-contrast: more`) hoặc chế độ màu cưỡng bức
   (`forced-colors`) → bề mặt chuyển nền đặc, viền rõ. Safari/Firefox chưa báo "giảm trong suốt", nên site có thể bỏ
   blur thủ công: `<html data-td-glass="off">`.
-- **Dark theme chỉ bật khi site yêu cầu**: `<html data-td-theme="dark">`. Kit **không** tự theo chế độ tối của hệ điều
-  hành.
+- **Dark theme chỉ bật khi site yêu cầu**: `<html data-td-theme="dark">`, hoặc `data-td-theme="auto"` (0.41.0) để
+  theo hệ điều hành bằng CSS thuần. Không có attribute thì kit **không** tự theo chế độ tối của hệ điều hành.
 - **Tương phản được đo thật**: `npm run test:contrast` chụp button và toast trên nền đen, trắng, caro, ảnh, trên ba
   engine, đòi chữ ≥ 4.7:1, icon ≥ 3.2:1.
 

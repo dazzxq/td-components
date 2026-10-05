@@ -223,9 +223,9 @@ tooltip vẫn hiện và vẫn được liên kết làm mô tả.
 | `--td-tooltip-leading` | `1.4` | Line-height. |
 | `--td-tooltip-arrow-size` | `8px` | Kích thước mũi tên. |
 | `--td-tooltip-dur` | `120ms` | Thời gian mờ dần khi hiện / ẩn. |
-| `--td-tooltip-bg` | `#18181b` (cả hai theme) | Nền chip mặc định (0.21.0: đen, đặc, không blur). |
+| `--td-tooltip-bg` | `#18181b` (dark `#3a3a3e` từ 0.41.0) | Nền chip mặc định (0.21.0: đen, đặc, không blur; dark 0.41.0: chip xám nổi — chip đen chỉ 1.06:1 trên trang tối). |
 | `--td-tooltip-fg` | `#fff` | Chữ chip mặc định. |
-| `--td-tooltip-border` | `transparent` (dark `rgb(255 255 255 / 12%)`) | Viền chip; theme tối có viền sáng mờ để chip đen không chìm vào nền tối. |
+| `--td-tooltip-border` | `transparent` (dark `rgb(255 255 255 / 16%)`, 0.41.0) | Viền chip; theme tối có viền sáng mờ để chip không chìm vào nền tối. |
 | `--td-tooltip-text-align` | `center` | Căn chữ mặc định (0.21.0); `data-tooltip-align` ghi đè cho từng tooltip. |
 
 Muốn chip sáng như 0.20 (nền bề mặt, chữ tối):

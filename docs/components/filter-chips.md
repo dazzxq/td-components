@@ -157,14 +157,14 @@ Cả hai `bubbles` + `composed`. Gán `items` không phát event.
 
 | Token | Mặc định | |
 |---|---|---|
-| `--td-filter-chip-bg` | `--td-gray-100` (dark `#2c2c30`) | Nền chip |
+| `--td-filter-chip-bg` | `var(--td-color-fill)` (gray-100; dark `#2c2c30`) | Nền chip |
 | `--td-filter-chip-fg` / `--td-filter-chip-label-fg` | `--td-color-text` | Chữ giá trị / nhãn (đậm) |
 | `--td-filter-chip-border` | `--td-color-border` | Viền chip |
 | `--td-filter-chip-radius` | `--td-radius-full` | Bo góc |
 | `--td-filter-chip-h` | `28px` | Chiều cao tối thiểu |
 | `--td-filter-chip-gap` | `--td-space-xs` (cảm ứng `--td-space-sm`) | Khoảng giữa chip |
 | `--td-filter-chip-max` | `16rem` | Bề rộng tối đa của giá trị (cắt `…`) |
-| `--td-filter-chip-remove-fg` | `--td-gray-700` (dark: muted) | Icon × (≥ 4.7:1 trên nền chip) |
+| `--td-filter-chip-remove-fg` | `var(--td-color-text-label)` (gray-700; dark: muted) | Icon × (≥ 4.7:1 trên nền chip) |
 | `--td-filter-chip-remove-hover` | `--td-color-hover-strong` | Nền × khi hover (chuột); nhấn = `--td-color-pressed` |
 
 ## Cấu trúc DOM & class

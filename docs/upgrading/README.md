@@ -153,8 +153,8 @@ Mỗi thay đổi kiểu này được ghi trong mục của bản tương ứng
 - So với bản kit mới trong demo của chính kit: clone repo kit, `git checkout v0.17.0`, `npm install`, rồi
   `npm run demo` (trang `demo.html`) hoặc `npm run storybook`. Nếu site nhìn khác demo, nhiều khả năng CSS của site
   đang ghi đè — xem [Khi thấy giao diện khác lạ](#khi-thấy-giao-diện-khác-lạ).
-- Thử cả chế độ tối nếu site bật `<html data-td-theme="dark">`, và chế độ tắt glass `<html data-td-glass="off">`
-  nếu site dùng.
+- Thử cả chế độ tối nếu site bật `<html data-td-theme="dark">` hoặc `"auto"` (0.41.0; đổi chế độ tối của máy để thấy
+  nhánh tối), và chế độ tắt glass `<html data-td-glass="off">` nếu site dùng.
 
 ### 9. Commit và deploy
 
@@ -293,6 +293,8 @@ Phần lớn "sau khi nâng cấp nhìn lạ" rơi vào một trong các trườ
 |---|---|---|---|
 | Component mất hết style, chỉ còn chữ trần | 0.7.0 – 0.10.0 | Component đã chuyển sang `td.css`, site chưa tải `td.css` | Tải `td.css` (xem [installation.md](../getting-started/installation.md)) |
 | CSS tự viết cho phần bên trong component không còn tác dụng | 0.7.0 – 0.10.0 | Class nội bộ đổi tên sang BEM | Đổi selector theo [class-map.md](class-map.md) |
+| Ô nhập / modal / thẻ loading không còn trắng mà theo màu bề mặt của site | 0.41.0 | Site đã đổi `--td-color-surface`; `--td-control-bg` / `--td-glass-solid` giờ theo `--td-color-surface-raised` (= surface) | Muốn giữ trắng: `--td-color-surface-raised: #fff`; xem [breaking-changes § 0.41.0](breaking-changes.md#0410) |
+| Dark: viền ô nhập / checkbox đậm hơn, tooltip xám, chữ phụ sáng hơn | 0.41.0 | Dark chính thức, tinh chỉnh tương phản | Giá trị cũ + token: [breaking-changes § 0.41.0](breaking-changes.md#0410) |
 | Nút / modal / tooltip đặc, popup mờ nhẹ, hết hiệu ứng kính | 0.20.0 | Minimal surfaces thay Liquid Glass | Popup đặc hẳn: `--td-glass-bg-strong: var(--td-glass-solid)`; tắt blur toàn site: `<html data-td-glass="off">`; xem [theming.md](../customization/theming.md) |
 | Checkbox tròn | 0.14.0 | `--td-checkbox-radius: 50%` mặc định | `:root { --td-checkbox-radius: 6px; }` |
 | Toast nền pastel theo loại, không icon, không nút X hiển thị | 0.21.0 | Toast kiểu dcms (0.20.0 từng là nền trung tính + icon) | Chỉnh `--td-toast-{type}-bg` / `-fg` / `-border`; xem [toast.md](../components/toast.md) |

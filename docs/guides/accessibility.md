@@ -109,8 +109,10 @@ Các nhánh fallback này dùng biến **private** `--_td-*` với `!important` 
 (ví dụ `--td-glass-bg`) **không thể** vô hiệu hoá chúng. Gate `npm run test:tokens` kiểm tra forced-colors,
 prefers-contrast, reduced-motion trên Chromium/Firefox/WebKit.
 
-Chế độ tối **không tự bật** theo `prefers-color-scheme`; site bật bằng `<html data-td-theme="dark">`. Xem
-[Theming](../customization/theming.md).
+Chế độ tối **không tự bật** khi không có attribute; site chọn `<html data-td-theme="dark">`, hoặc
+`data-td-theme="auto"` để theo `prefers-color-scheme` của hệ điều hành bằng CSS thuần (0.41.0, không chớp trắng). Dark
+0.41.0: viền ô nhập / checkbox chưa chọn / switch ≥ 3:1 với mọi nền kề, chữ phụ ≥ 4.7:1 — đo bằng gate toàn trang
+`npm run test:page-contrast`. Xem [Theming › Light / dark / auto](../customization/theming.md#light--dark--auto).
 
 ## Tương phản và các đánh đổi có chủ đích
 
