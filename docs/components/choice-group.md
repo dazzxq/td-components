@@ -53,7 +53,7 @@ Gán bằng **property** `options` (mảng object). Mỗi lựa chọn:
 
 | Khoá | Kiểu | Bắt buộc | Mô tả |
 |---|---|---|---|
-| `value` | `string` (số hữu hạn → `String()`) | có | Duy nhất trong nhóm. Trùng → bỏ bản sau + cảnh báo console; rỗng / kiểu khác → bỏ lựa chọn + cảnh báo |
+| `value` | `string` (số hữu hạn → `String()`) | có | Mã định danh: 1–200 ký tự (code point), không ký tự điều khiển (kể cả xuống dòng, tab), không bao giờ cắt khoảng trắng. Duy nhất trong nhóm (so sau khi chuẩn hoá: `5` và `'5'` là một); trùng → bỏ bản sau; sai → bỏ lựa chọn |
 | `label` | `string` | có | Tên (text). Dạng swatch: ẩn trực quan, vẫn là tên truy cập |
 | `hint` | `string` | — | Dòng phụ trong nút (vd. giá — app tự định dạng). Đọc qua `aria-describedby`. Swatch: không hiện, vẫn đọc |
 | `swatch` | màu CSS | — | Hex / `rgb()` / `hsl()` / tên màu (qua `safeColor`, tối đa 64 ký tự). Sai → ô trung tính + cảnh báo |
@@ -62,7 +62,12 @@ Gán bằng **property** `options` (mảng object). Mỗi lựa chọn:
 | `unavailable` | `boolean` | — | **Chọn được**, gạch chữ + ghi chú (hết hàng) |
 | `unavailableLabel` | `string` | — | Ghi chú thay "Hết hàng" (vd. "Sắp về", "Không có") |
 
-Cảnh báo console chỉ nêu vị trí, khoá và kiểu — không in giá trị. Property `options` đọc ra bản sao đã chuẩn hoá (đông cứng).
+**Giới hạn** (giống hệt PHP `Td::CHOICE_LIMITS`): đọc tối đa **400** phần tử của mảng, nhận tối đa **100** lựa chọn (phần sau bị
+bỏ); `label` / `hint` dài quá 200 ký tự, `unavailableLabel` quá 100 bị **cắt**; `value` quá 200, `swatch` quá 128, `image`
+quá 8192 ký tự bị **từ chối**. Có gì bị bỏ / cắt → **một** cảnh báo console duy nhất với số lượng (không in giá trị). Property
+`options` đọc ra bản sao đã chuẩn hoá (đông cứng).
+
+Gán `options` làm lựa chọn **đang focus** thành `disabled` → focus chuyển sang điểm dừng Tab của nhóm (không cuộn trang).
 
 **Gán lại `options` khi danh sách `value` giữ nguyên thứ tự → vá tại chỗ**: radio giữ nguyên node, focus không mất, không
 phát event; chỉ trạng thái / chữ / màu / ảnh đổi. Đây là ca "HTML trang sản phẩm được cache, app tải tồn kho sau bằng một
