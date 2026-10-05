@@ -2,7 +2,7 @@ import { TdFormElement, ssrClassKey, ssrContentNodes, ssrSameAttrs, ssrIsErrorNo
 import { ssrMarker } from '../base/td-base-element.js';
 import { safeColor } from '../utils/css-safe.js';
 import { safeMediaUrl } from '../utils/media-url.js';
-import { normalizeOptions, sameValueList } from '../utils/choice-options.js';
+import { normalizeOptions, sameValueList, CHOICE_LIMITS } from '../utils/choice-options.js';
 
 const VARIANTS = ['button', 'swatch'];
 const GATES = { safeColor, safeMediaUrl: (u) => safeMediaUrl(u) };
@@ -590,7 +590,11 @@ export class TdChoiceGroup extends TdFormElement {
   canHydrate() {
     const m = ssrMarker(this);
     if (!m || m.name !== 'choice-group') return false;
-    const parsed = this._ssrParse();
+    let parsed = this._ssrParse();
+    if (parsed === 'over') {
+      this._warnOnce('ssr-over', 'td-choice-group: server markup over the limits — not adopted, rendered from scratch.');
+      parsed = null;
+    }
     const active = this.ownerDocument.activeElement;
     let options = null;
     let warnings = [];
@@ -656,35 +660,77 @@ export class TdChoiceGroup extends TdFormElement {
    * control elsewhere is never a state source).
    */
   _ssrParse() {
-    const kids = ssrContentNodes(this);
-    if (kids.length !== 1 || kids[0].nodeType !== 1) return null;
-    const root = kids[0];
-    if (root.localName !== 'div' || !root.classList.contains('td-choice')) return null;
+    // review round 2: bounded BEFORE extraction — only the expected direct-child shape is walked (no deep query), element
+    // counts are checked before iterating, every text / attribute is length-checked before it is copied. Over a limit →
+    // OVER (not adopted: fresh render + one fixed warning); a wrong shape → null.
+    const L = CHOICE_LIMITS;
+    const OVER = 'over';
+    if (this.childElementCount !== 1) return null;
+    const root = this.firstElementChild;
+    if (root.localName !== 'div' || !root.classList.contains('td-choice') || root.childElementCount > 8) return null; // label, options, footer (+ slack: a foreign sibling is refused by the gate, the options stay readable)
     const groups = [...root.children].filter((e) => e.localName === 'div' && e.classList.contains('td-choice__options'));
     if (groups.length !== 1) return null;
+    const group = groups[0];
+    if (group.childElementCount > L.options) return OVER; // the server never prints more: nothing below is read
+    /** text of a leaf span, refused (OVER) past `cap` code points (UTF-16 bound) before it is copied */
+    const leafText = (el, cap) => {
+      if (el.childElementCount !== 0 || el.childNodes.length > 4) return OVER;
+      let n = 0;
+      for (const t of el.childNodes) n += t.nodeType === 3 ? t.length : 0;
+      return n > 2 * cap ? OVER : el.textContent;
+    };
+    /** attribute value, refused (OVER) past `cap` code points; null when absent */
+    const attr = (el, name, cap) => {
+      if (el.attributes.length > 16) return OVER;
+      const a = el.getAttributeNode(name);
+      if (!a) return null;
+      return a.value.length > 2 * cap ? OVER : a.value;
+    };
     const radios = [];
     const raw = [];
-    for (const l of groups[0].children) {
-      if (l.localName !== 'label' || !l.classList.contains('td-choice__option')) return null;
+    for (const l of group.children) {
+      if (l.localName !== 'label' || !l.classList.contains('td-choice__option') || l.childElementCount !== 2) return null;
       const r = l.firstElementChild;
-      const face = r?.nextElementSibling;
-      if (!r || r.localName !== 'input' || r.getAttribute('type') !== 'radio' || !face || !face.classList.contains('td-choice__face')) return null;
-      const q = (sel) => face.querySelector(sel);
-      const note = q('.td-choice__note');
-      raw.push({
-        value: r.getAttribute('value') ?? '',
-        label: q('.td-choice__text')?.textContent ?? '',
-        hint: q('.td-choice__hint')?.textContent ?? '',
-        swatch: q('svg.td-choice__swatch > circle')?.getAttribute('fill') ?? '',
-        image: q('img.td-choice__image')?.getAttribute('src') ?? '',
-        disabled: l.hasAttribute('data-disabled'),
-        unavailable: l.hasAttribute('data-unavailable'),
-        unavailableLabel: note && note.hasAttribute('data-td-custom') ? note.textContent : '',
-      });
+      const face = r.nextElementSibling;
+      if (r.localName !== 'input' || r.getAttribute('type') !== 'radio' || face.localName !== 'span'
+        || !face.classList.contains('td-choice__face') || face.childElementCount > 4) return null;
+      const o = { value: attr(r, 'value', L.value) ?? '', label: '', hint: '', swatch: '', image: '', unavailableLabel: '',
+        disabled: l.hasAttribute('data-disabled'), unavailable: l.hasAttribute('data-unavailable') };
+      if (o.value === OVER) return OVER;
+      // face: [svg.td-choice__swatch > circle | img.td-choice__image] + texts (button: inside span.td-choice__body)
+      let texts = [...face.children];
+      const v = texts[0];
+      if (v && v.localName === 'svg') {
+        if (!v.classList.contains('td-choice__swatch') || v.childElementCount !== 1 || v.firstElementChild.localName !== 'circle') return null;
+        o.swatch = attr(v.firstElementChild, 'fill', L.swatch) ?? '';
+        texts = texts.slice(1);
+      } else if (v && v.localName === 'img') {
+        if (!v.classList.contains('td-choice__image')) return null;
+        o.image = attr(v, 'src', L.image) ?? '';
+        texts = texts.slice(1);
+      }
+      if (o.swatch === OVER || o.image === OVER) return OVER;
+      if (texts.length === 1 && texts[0].classList.contains('td-choice__body')) {
+        if (texts[0].childElementCount > 3) return null;
+        texts = [...texts[0].children];
+      }
+      if (texts.length < 1 || texts.length > 3) return null;
+      for (const t of texts) {
+        if (t.localName !== 'span') return null;
+        const key = t.classList.contains('td-choice__text') ? 'label' : t.classList.contains('td-choice__hint') ? 'hint'
+          : t.classList.contains('td-choice__note') ? 'note' : null;
+        if (!key) return null;
+        const txt = leafText(t, key === 'note' ? L.note : L[key]);
+        if (txt === OVER) return OVER;
+        if (key === 'note') o.unavailableLabel = t.hasAttribute('data-td-custom') ? txt : '';
+        else o[key] = txt;
+      }
+      raw.push(o);
       radios.push(/** @type {HTMLInputElement} */ (r));
     }
-    return { root, group: groups[0], radios, raw };
+    return { root, group, radios, raw };
   }
+
 
   /** @private exactly render()'s tree for `options` (+ the no-JS radio attributes / server state texts) */
   _ssrGate(parsed, options) {

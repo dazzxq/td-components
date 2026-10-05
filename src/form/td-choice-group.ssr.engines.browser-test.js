@@ -67,6 +67,35 @@ mmFocusRadio.click(); // the live choice of refused markup (the focus is tested 
 const focusRadio = radiosOf('c-focus')[1];
 focusRadio.focus();
 
+// review round 2 (item 1): markup over CHOICE_LIMITS — built BEFORE define in a DETACHED container (no upgrade yet), connected
+// one by one after define so each adoption decision can be timed. Spies on the 101st option prove it is never read.
+const optHtml = (h, i) => `<label class="td-choice__option" data-td-value="v${i}"><input type="radio" class="td-choice__input" id="${h}-o${i}" value="v${i}" name="lim"`
+  + ` aria-labelledby="${h}-o${i}-l"><span class="td-choice__face"><span class="td-choice__body"><span class="td-choice__text" id="${h}-o${i}-l">V${i}</span></span></span></label>`;
+const limHost = (h, opts) => `<td-choice-group data-td-ssr="choice-group@1" id="${h}" name="lim"><div class="td-field td-choice td-choice--button">`
+  + `<div class="td-choice__options" role="radiogroup">${opts}</div>`
+  + `<div class="td-field__footer" hidden><div class="td-field__note" id="${h}-note" hidden></div></div></div></td-choice-group>`;
+const many = (h, n) => limHost(h, Array.from({ length: n }, (_, i) => optHtml(h, i)).join(''));
+const BIG = 'á'.repeat(3_000_000);
+const LIM = {
+  'lim-100': many('lim-100', 100), // the limit itself: adopted
+  'lim-101': many('lim-101', 101),
+  'lim-text': limHost('lim-text', optHtml('lim-text', 0).replace('>V0<', `>${BIG}<`)),
+  'lim-attr': limHost('lim-attr', optHtml('lim-attr', 0).replaceAll('v0', `v${BIG}`)),
+  'lim-deep': limHost('lim-deep', optHtml('lim-deep', 0).replace('<span class="td-choice__body">',
+    `<span class="td-choice__body">${'<span>'.repeat(60)}x${'</span>'.repeat(60)}`)),
+};
+const late = document.createElement('div');
+late.innerHTML = Object.values(LIM).join('');
+const spy = { reads: 0 };
+{
+  const last = late.querySelector('#lim-101 .td-choice__option:last-child');
+  const r = last.querySelector('input');
+  const t = last.querySelector('.td-choice__text');
+  r.getAttribute = () => { spy.reads += 1; return 'v100'; };
+  Object.defineProperty(t, 'textContent', { get() { spy.reads += 1; return 'V100'; } });
+  Object.defineProperty(last, 'firstElementChild', { get() { spy.reads += 1; return r; } });
+}
+
 window.__pwned = 0;
 const { TdChoiceGroup } = await import('./td-choice-group.js');
 await new Promise((r) => setTimeout(r, 30));
@@ -179,5 +208,36 @@ describe('td-choice-group SSR — refused markup renders safely', () => {
     const r = [...el.querySelectorAll('input')].find((x) => x.value === '1tb');
     expect(r.checked).to.equal(true);
     expect(r === mmFocusRadio).to.equal(false);
+  });
+});
+
+describe('td-choice-group SSR — review round 2: hydration honours CHOICE_LIMITS (bounded, before extraction)', () => {
+  it('100 options adopted; 101 / multi-MB text / multi-MB attribute / deep nesting → not adopted, bounded time, one fixed warning, 101st never read', () => {
+    const warns = [];
+    const orig = console.warn;
+    console.warn = (...a) => warns.push(a.map(String).join(' '));
+    const times = {};
+    try {
+      for (const id of Object.keys(LIM)) {
+        const host = late.querySelector(`#${id}`);
+        const radios0 = [...host.querySelectorAll('input')];
+        const t0 = performance.now();
+        document.body.appendChild(host); // connect → canHydrate()
+        times[id] = performance.now() - t0;
+        const now = [...host.querySelectorAll('input')];
+        const adopted = radios0.length > 0 && now.length === radios0.length && now.every((r, i) => r === radios0[i]);
+        expect(adopted, id).to.equal(id === 'lim-100');
+        host.remove();
+      }
+    } finally {
+      console.warn = orig;
+    }
+    expect(spy.reads).to.equal(0);
+    const slack = window.TD_PERF_STRICT ? 1 : 20;
+    for (const [id, ms] of Object.entries(times)) expect(ms < 100 * slack, `${id} ${ms.toFixed(1)} ms`).to.equal(true);
+    const over = warns.filter((w) => /server markup over the limits/.test(w));
+    expect(over.length).to.equal(3); // 101 options, multi-MB text, multi-MB attribute; deep nesting = a shape mismatch (no warning)
+    expect(new Set(over).size).to.equal(1); // fixed text, never a value
+    expect(warns.every((w) => w.length < 300)).to.equal(true);
   });
 });
