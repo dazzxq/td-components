@@ -381,9 +381,11 @@ export class TdModal {
       inst.close(value);
       return Promise.resolve(true);
     }
-    const pending = new Promise((res, rej) => {
-      try { then.call(result, res, rej); } catch { rej(); } // the captured `then` — never re-read
-    }).then((v) => {
+    const pending = Promise.resolve().then(() => new Promise((res, rej) => {
+      // the captured `then` — never re-read — called only AFTER the pending Promise is installed below (review r4 E2):
+      // a synchronous thenable re-entering requestClose() gets that same Promise, never a second guard run
+      try { then.call(result, res, rej); } catch { rej(); }
+    })).then((v) => {
       inst.guarding = null;
       if (inst.closed) return true; // closed by code meanwhile: the guard's answer no longer matters
       if (v === false) return false;

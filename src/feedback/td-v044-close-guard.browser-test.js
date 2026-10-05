@@ -209,6 +209,27 @@ describe('TdModal beforeClose / requestClose (v0.44.0 QĐ 12-15)', () => {
     expect(errors.every((a) => a.length === 1 && !String(a[0]).includes('SECRET'))).to.equal(true);
   });
 
+  it('r4 E2: a synchronous thenable whose then() re-enters requestClose → guard once, same pending Promise, no recursion', async () => {
+    let calls = 0;
+    let inner = null;
+    let outer = null;
+    let id = '';
+    const m = await showModal({
+      beforeClose: () => {
+        calls++;
+        return { then(res) { if (!inner) inner = TdModal.requestClose(id); res(false); } };
+      },
+    });
+    id = m.id;
+    outer = TdModal.requestClose(id);
+    expect(await outer).to.equal(false);
+    expect(await inner).to.equal(false);
+    expect(inner === outer).to.equal(true);
+    expect(calls).to.equal(1);
+    expect(isOpen(m.id)).to.equal(true);
+    expect(m.closes()).to.deep.equal([]);
+  });
+
   it('a Promise dialog ignores beforeClose (not an option of confirm)', async () => {
     let called = 0;
     const p = TdModal.confirm({ beforeClose: () => { called++; return false; } });
@@ -336,6 +357,26 @@ describe('<td-drawer> beforeClose / requestClose (v0.44.0 QĐ 16)', () => {
     });
     expect(host.open).to.equal(true);
     expect(errors.every((a) => a.length === 1 && !String(a[0]).includes('SECRET'))).to.equal(true);
+  });
+
+  it('r4 E2: a synchronous thenable whose then() re-enters requestClose → hook once, same pending Promise, no recursion', async () => {
+    const host = mountDrawer();
+    let calls = 0;
+    let inner = null;
+    let events = 0;
+    host.addEventListener('before-close', () => { events++; });
+    host.beforeClose = () => {
+      calls++;
+      return { then(res) { if (!inner) inner = host.requestClose(); res(true); } };
+    };
+    host.show();
+    await until(() => drawerRoot()?.getAttribute('data-state') === 'open');
+    const outer = host.requestClose();
+    expect(await outer).to.equal('request');
+    expect(await inner).to.equal('request');
+    expect(inner === outer).to.equal(true);
+    expect(calls).to.equal(1);
+    expect(events).to.equal(1); // one close, no duplicate before-close
   });
 
   it('drawer removed from the DOM while the hook waits: no error, TdDrawer.open().closed settles', async () => {

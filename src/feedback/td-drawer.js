@@ -313,9 +313,11 @@ export class TdDrawer extends HTMLElement {
     if (typeof then !== 'function') return result === false ? Promise.resolve(null) : this.close(reason);
     const layer = this._layer;
     const live = () => this._state === 'open' && this._layer === layer; // not closed / removed / reopened meanwhile
-    const pending = new Promise((res, rej) => {
-      try { then.call(result, res, rej); } catch { rej(); } // the captured `then` — never re-read
-    }).then((v) => {
+    const pending = Promise.resolve().then(() => new Promise((res, rej) => {
+      // the captured `then` — never re-read — called only AFTER the pending Promise is installed below (review r4 E2):
+      // a synchronous thenable re-entering requestClose() gets that same Promise, never a second guard run
+      try { then.call(result, res, rej); } catch { rej(); }
+    })).then((v) => {
       this._guarding = null;
       if (!live() || v === false) return null;
       return this.close(reason);
