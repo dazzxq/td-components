@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.49.0](#0490) | Thêm tính năng (`<td-choice-group>`, `td-number-input stepper`) + đổi hành vi rất nhỏ | Không bắt buộc. `safeColor()` (và `color` của checkbox / toggle / button…) từ chối chuỗi màu **> 64 ký tự** (trước nhận `rgb(…)` dài bất kỳ). `TdFormElement` có hook `_ariaTarget()` / `_ssrVerifiedParts()` (mặc định giữ hành vi cũ). Import map: thêm `choice-group`. |
 | [0.46.0](#0460) | Thêm tính năng (`<td-diff>`, PHP `td_diff` / `td_diff_snapshots`) | Không bắt buộc. Import map: thêm `diff`. File `td-theme` sinh ra: header `palette algorithm 3` (thêm hai dòng `--td-diff-*-bg`, mọi giá trị khác như cũ) — file cũ vẫn đúng, sinh lại khi tiện. |
 | [0.42.1](#0421) | Đổi giao diện **chỉ ở dark**, hai trạng thái nhấn | Không bắt buộc. Light giống từng pixel. Dark: link trong khung tóm tắt lỗi form khi nhấn làm tối nền (trước phủ trắng, chữ 3.30:1 → 6.34:1); nút × của chip-input hover / nhấn nhạt hơn một chút (16 % → 13 %, chữ khi nhấn 4.22 → 4.88). Site ghi đè giá trị dark cũ: xem dưới. |
 | [0.42.0](#0420) | Thêm tính năng (palette `td-theme`, builder, theme theo vùng, popup theo vùng) + đổi hành vi **chỉ khi site dùng vùng** | Không bắt buộc. Trang không đặt `data-td-theme` trên phần tử con: không đổi gì (golden light / dark 0 khác biệt). Site **chủ động** đặt `data-td-theme` trên một vùng: override **màu** không layer trên `:root` không còn chảy vào trong vùng — ghi đè thêm trên `[data-td-theme="…"]`. Popup mở từ trong vùng nay theo vùng (trước theo trang). |
@@ -73,6 +74,21 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.49.0
+
+**Mức: thêm tính năng; một thay đổi hành vi rất nhỏ.**
+
+- Mới: `<td-choice-group>` (`./choice-group`, PHP `td_choice_group`, hợp đồng SSR `choice-group@1`) và chế độ `stepper` của
+  `<td-number-input>` (PHP `'stepper' => true`, chỉ chế độ element; schema SSR vẫn `number-input@1` — markup không có
+  `stepper` giữ nguyên từng byte, chỉ id tự sinh của các ô in sau trong cùng request tăng thêm khi có ca mới).
+- `safeColor()` thêm giới hạn **64 ký tự** sau khi cắt khoảng trắng (cùng bảng ca với `Td::safeColor` mới của PHP). Màu
+  hợp lệ thật không bao giờ dài thế; một `rgb(…)` dài bất thường giờ về giá trị dự phòng.
+- `TdFormElement` (cho component tự viết kế thừa nó): `_ariaTarget()` — phần tử nhận `aria-invalid` / `aria-errormessage` /
+  `aria-describedby` (mặc định = `_focusTarget()`, như cũ); `_ssrVerifiedParts()` — phần tử đã so khớp đúng `render()` được
+  miễn luật "đúng một control" khi nhận SSR (mặc định rỗng, như cũ).
+- Đổi cấu trúc (`stepper` bật / tắt, `label`, `size`…) của `<td-number-input>` đang focus giờ **giữ focus** trên ô mới (trước
+  mất focus).
 
 ## 0.46.0
 

@@ -23,6 +23,9 @@ echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
 - `td_link(…, ['bare' => true])` prints a plain `<a>` (site class only, no button look).
 - v0.30.0 `td_number_input` prints a native `type=number` field (canonical value, implicit min 0) in the
   `.td-number` box; element mode `<td-number-input data-td-ssr="number-input@1">` is adopted in place (grouped display).
+- v0.49.0 `td_choice_group` always prints `<td-choice-group data-td-ssr="choice-group@1">` with NATIVE radios (real name,
+  `required` on every radio) — the form works without JS; the module adopts it in place. `Td::safeColor()` gates swatch
+  colours (SVG `fill`). `td_number_input(…, ['element' => true, 'stepper' => true])` adds the − / + buttons.
 - Everything is escaped; attribute names, URLs and class tokens are allowlisted.
 
 Full reference (Vietnamese): [docs/guides/php-adapter.md](../docs/guides/php-adapter.md).
