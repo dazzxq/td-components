@@ -286,6 +286,9 @@ export class TdTable extends TdBaseElement {
     this._awaiting = false;
     /** Controlled: the sort (by index) of the latest request, so a second click cycles from it. */
     this._reqSort = null;
+    /** Controlled: the latest requested state while waiting — the next request builds on it (a sort asked for, then a
+     * filter typed before the answer, keeps that sort). */
+    this._lastReq = null;
     /** A page change waiting for the end of its click (`_flushPage`). */
     this._pendingPage = null;
     /** `setState({ sort })` before the columns are known: resolved by key when they arrive. */
@@ -648,7 +651,7 @@ export class TdTable extends TdBaseElement {
     if (name === 'max-selected') return; // read at the next user action
     if (name === 'min-visible') { if (this._root) this._applyHidden(); return; }
     if (name === 'disabled') { this._paintSelection(); return; }
-    if (name === 'loading' && newVal === null) { this._awaiting = false; this._reqSort = null; }
+    if (name === 'loading' && newVal === null) { this._awaiting = false; this._reqSort = null; this._lastReq = null; }
     if (STRUCTURAL.has(name)) this._doRender();
     else this._update();
   }
@@ -1461,7 +1464,7 @@ export class TdTable extends TdBaseElement {
    */
   _request(reason, over) {
     const requestId = ++this._reqSeq;
-    const cur = { page: this._currentPage, perPage: this._getPerPage(), sort: this._sortState(), filters: this._filters };
+    const cur = this._pendingState();
     const s = { ...cur, ...over };
     const state = Object.freeze({
       page: s.page,
@@ -1471,9 +1474,16 @@ export class TdTable extends TdBaseElement {
     });
     if (this._isControlled()) {
       this._awaiting = true;
+      this._lastReq = state;
       if (!this.hasAttribute('loading')) this.setAttribute('loading', '');
     }
     this.emit('request-change', { state, reason, requestId });
+  }
+
+  /** @private The state a new request builds on: the latest one asked for while a controlled request waits, else the table's. */
+  _pendingState() {
+    if (this._awaiting && this._lastReq) return this._lastReq;
+    return { page: this._currentPage, perPage: this._getPerPage(), sort: this._sortState(), filters: this._filters };
   }
 
   /** @private Filters → a frozen shallow copy (arrays copied + frozen); null / undefined → {}; other types → {} + warning. */
@@ -1668,6 +1678,7 @@ export class TdTable extends TdBaseElement {
       if (hasData) {
         this._awaiting = false;
         this._reqSort = null;
+        this._lastReq = null;
         this.removeAttribute('loading');
       }
     } finally {
@@ -1688,7 +1699,7 @@ export class TdTable extends TdBaseElement {
    */
   setFilters(filters, opts = {}) {
     const f = this._normFilters(filters);
-    const page = opts && opts.resetPage === false ? this._currentPage : 1;
+    const page = opts && opts.resetPage === false ? this._pendingState().page : 1;
     if (!this._isControlled()) {
       this._filters = f;
       this._currentPage = page;

@@ -235,6 +235,22 @@ describe('v0.39.0 td-table controlled (QĐ 3–4)', () => {
     expect(rows(el).length).to.equal(3);
   });
 
+  it('a request made while waiting builds on the one asked for (sort clicked, then a filter typed before the answer)', async () => {
+    const el = await ctl();
+    const log = journal(el, ['request-change']);
+    sortBtn(el, 1).focus();
+    await sendKeys({ press: 'Enter' }); // asks role asc
+    await sendKeys({ press: 'Enter' }); // cycles from the REQUESTED sort → role desc
+    el.setFilters({ q: 'x' });
+    expect(log.map((x) => x[1].state.sort)).to.deep.equal([
+      { key: 'role', direction: 'asc' }, { key: 'role', direction: 'desc' }, { key: 'role', direction: 'desc' }]);
+    expect(log[2][1].state.filters).to.deep.equal({ q: 'x' });
+    el.setState({ ...log[2][1].state, data: ROWS.slice(0, 5), requestId: log[2][1].requestId });
+    expect(el.getState().sort).to.deep.equal({ key: 'role', direction: 'desc' });
+    el.setFilters({ q: 'y' }); // not waiting any more: builds on the applied state
+    expect(log[3][1].state.sort).to.deep.equal({ key: 'role', direction: 'desc' });
+  });
+
   it('setFilters: reason filters, page 1, filters copied + frozen; resetPage: false keeps the page', async () => {
     const el = await ctl((t) => t.setState({ page: 3 }));
     expect(el.getState().page).to.equal(3);
@@ -250,8 +266,12 @@ describe('v0.39.0 td-table controlled (QĐ 3–4)', () => {
     expect(Object.isFrozen(d.state.filters)).to.equal(true);
     // controlled: nothing applied yet
     expect(el.getState().filters).to.deep.equal({});
+    // still waiting: builds on the pending request (page 1); answered: on the applied page
     el.setFilters({ q: 'x' }, { resetPage: false });
-    expect(log[1][1].state.page).to.equal(3);
+    expect(log[1][1].state.page).to.equal(1);
+    el.setState({ page: 3, data: ROWS.slice(10, 15), requestId: 2 });
+    el.setFilters({ q: 'z' }, { resetPage: false });
+    expect(log[2][1].state.page).to.equal(3);
   });
 
   it('not controlled: setFilters applies the filters and page 1 (the kit never filters the rows)', async () => {

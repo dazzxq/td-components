@@ -521,8 +521,10 @@ Thanh lọc là form / component của bạn (thường kèm [`<td-filter-chips>
   `resetPage: false`). Không `controlled`: bảng giữ luôn `filters` (đọc qua `getState()`) và về trang 1.
 - **`controlled`** (chỉ có nghĩa cùng `server-mode`; thiếu `server-mode` → một cảnh báo, bỏ qua): bảng **không tự áp**
   đổi trang / sort. Bấm sort / trang → phát `request-change`, bật skeleton (`loading`, `aria-busy`), **giữ** hai phân
-  trang và focus ở đúng nút vừa bấm (aria-sort / trang hiện tại chưa đổi) rồi chờ bạn gọi `setState()`. Không
-  `controlled` (mặc định) = hành vi cũ + event mới.
+  trang và focus ở đúng nút vừa bấm (aria-sort / trang hiện tại chưa đổi) rồi chờ bạn gọi `setState()`. Yêu cầu mới
+  trong lúc chờ được dựng trên **yêu cầu gần nhất** (bấm sort rồi gõ lọc trước khi có kết quả → yêu cầu lọc giữ sort vừa
+  bấm; bấm sort lần hai đi tiếp vòng asc → desc → bỏ từ sort đã yêu cầu). Không `controlled` (mặc định) = hành vi cũ +
+  event mới.
 
 **Thứ tự event** (thứ tự cũ giữ nguyên, `request-change` chen vào):
 
