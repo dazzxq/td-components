@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="./td.css">
   <link rel="stylesheet" href="./demo.css">
   <link rel="stylesheet" href="./test/fixtures/responsive-page.css">
+  <!-- v0.41.0: the 135 paper recipe (docs/customization/theming.md) — switched on by the theme picker below -->
+  <link rel="stylesheet" href="./test/tokens/palettes/beige.css" id="demo-beige" disabled>
 </head>
 <body class="demo-page">
   <!-- ES modules cannot load from file:// (browsers block them: CORS, origin "null"). Explain instead of a blank page. -->
@@ -23,6 +25,14 @@
 
   <h1 class="demo-title">td-components Demo</h1>
   <p class="demo-lead">Test tất cả components trực tiếp (bản 0.36.0: Nút thao tác, toast 6 vị trí, OTP độ dài / bộ ký tự, ô tick chung, màu đặc; 0.35.0: Cropper + cắt ảnh trong Media picker / Media field; 0.32.0: thêm Media picker, Media field; 0.31.0: Sortable, Masked value, Repeater kéo thả; trước đó Number Input, Repeater, Tree, Tree Select, Multi-select, OTP, Drawer, Copy, Skeleton…). Mở DevTools Console để xem events.</p>
+  <div class="demo-row demo-theme" role="group" aria-label="Giao diện">
+    <span class="demo-label">Giao diện (0.41.0):</span>
+    <button type="button" class="td-btn td-btn--primary" data-demo-theme="" aria-pressed="true"><span class="td-btn__label">Mặc định</span></button>
+    <button type="button" class="td-btn td-btn--secondary" data-demo-theme="light" aria-pressed="false"><span class="td-btn__label">Sáng</span></button>
+    <button type="button" class="td-btn td-btn--secondary" data-demo-theme="dark" aria-pressed="false"><span class="td-btn__label">Tối</span></button>
+    <button type="button" class="td-btn td-btn--secondary" data-demo-theme="auto" aria-pressed="false"><span class="td-btn__label">Theo máy (auto)</span></button>
+    <button type="button" class="td-btn td-btn--secondary" data-demo-theme="beige" aria-pressed="false"><span class="td-btn__label">Giấy be (135)</span></button>
+  </div>
 
   <!-- ═══════════════════ SURFACES (v0.14.0; minimal surfaces v0.20.0) ═══════════════════ -->
   <div class="demo-section">
@@ -798,6 +808,21 @@
 
   <!-- ═══════════════════ SCRIPTS ═══════════════════ -->
   <script type="module">
+    // v0.41.0 theme picker: data-td-theme on <html> (light / dark / auto) or the 135 paper recipe (unlayered tokens)
+    document.querySelector('.demo-theme').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-demo-theme]');
+      if (!b) return;
+      const v = b.getAttribute('data-demo-theme');
+      const root = document.documentElement;
+      if (v === '' || v === 'beige') root.removeAttribute('data-td-theme');
+      else root.setAttribute('data-td-theme', v);
+      document.getElementById('demo-beige').disabled = v !== 'beige';
+      for (const x of document.querySelectorAll('[data-demo-theme]')) {
+        x.setAttribute('aria-pressed', String(x === b));
+        x.classList.toggle('td-btn--primary', x === b);
+        x.classList.toggle('td-btn--secondary', x !== b);
+      }
+    });
     // Import tất cả components
     import './src/form/td-toggle.js';
     import './src/form/td-button.js';
