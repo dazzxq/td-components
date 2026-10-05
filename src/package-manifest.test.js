@@ -297,3 +297,25 @@ test('v0.44.0: trackFormDirty is a named export of ./form-validation and of inde
   const index = await readFile(join(ROOT, 'index.js'), 'utf8');
   assert.match(index, /export \{ TdFormValidation, trackFormDirty \} from '\.\/src\/utils\/form-validation\.js';/);
 });
+
+test('v0.45.0: ./steps + ./timeline exports, sideEffects, barrel TdSteps / TdTimeline, CSS before utilities; models internal', async () => {
+  assert.equal(pkg.exports['./steps'], './src/display/td-steps.js');
+  assert.equal(pkg.exports['./timeline'], './src/display/td-timeline.js');
+  for (const f of ['./src/display/td-steps.js', './src/display/td-timeline.js']) assert.ok(pkg.sideEffects.includes(f), f);
+  for (const m of ['steps-model', 'timeline-model', 'ssr-tree']) {
+    assert.ok(!Object.values(pkg.exports).includes(`./src/utils/${m}.js`), `${m} stays internal`);
+  }
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdSteps \} from '\.\/src\/display\/td-steps\.js';/);
+  assert.match(src, /export \{ TdTimeline \} from '\.\/src\/display\/td-timeline\.js';/);
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  for (const f of ['components/steps.css', 'components/timeline.css']) {
+    const i = files.indexOf(f);
+    assert.ok(i > files.indexOf('components/skeleton.css') && i < files.indexOf('utilities.css'), f);
+  }
+  const css = await readFile(join(ROOT, 'td.css'), 'utf8');
+  for (const sel of ['.td-steps__marker', '@container td-steps (width < 480px)', '--td-steps-marker', '.td-timeline__summary',
+    '@container td-timeline (width < 480px)', '--td-timeline-connector']) {
+    assert.ok(css.includes(sel), sel);
+  }
+});
