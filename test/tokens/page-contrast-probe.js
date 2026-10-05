@@ -121,7 +121,7 @@ export function measure(o) {
           const bOut = contrast(border, outer); const bIn = contrast(border, fill);
           const ok = fillVsOuter >= min || (bOut >= min && bIn >= min);
           measured++;
-          if (!ok) controls.push({ tableCheck: el.matches('.td-table .td-check'), el: describe(el), border: hex(composite(border, outer)), outer: hex(outer), fill: hex(fill), vsOuter: +bOut.toFixed(2), vsFill: +bIn.toFixed(2), min });
+          if (!ok) controls.push({ el: describe(el), border: hex(composite(border, outer)), outer: hex(outer), fill: hex(fill), vsOuter: +bOut.toFixed(2), vsFill: +bIn.toFixed(2), min });
         }
       }
     }

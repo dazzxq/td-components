@@ -8,7 +8,7 @@
  *   - shadow tokens → `box-shadow: var(--x)` on the probe, colours normalised;
  *   - everything else → the computed custom-property value (var() substituted).
  * Modes: `light` = no data-td-theme (MUST equal the baseline — pixel-identical light), `dark` = data-td-theme="dark"
- * (equal to the baseline except the intended `darkDeltas`). New tokens must be listed in `added` with their light and
+ * (equal to the baseline except the intended `darkDeltas`); `lightDeltas` = the reviewed light bug fixes only. New tokens must be listed in `added` with their light and
  * dark values. Consistency (same run): data-td-theme="light" = unset; "auto" under an OS light preference = unset;
  * "auto" under an OS dark preference = dark; root `color-scheme` per QĐ3 (unset → normal, light → light, dark → dark,
  * auto → light / dark by branch); unset / light under a dark OS preference = unset (no flip).
@@ -118,7 +118,7 @@ if (CAPTURE) {
   const out = {
     $comment: 'v0.41.0 golden tokens (test/tokens/golden.spec.mjs). light / dark = the v0.40.0 baseline, captured before any theming change — never recapture on a changed tree. Intended dark changes: darkDeltas { name: { to, why } }. New tokens: added { name: { light, dark, why } }.',
     baseline: golden.baseline || 'v0.40.0',
-    light, dark, added: golden.added, darkDeltas: golden.darkDeltas,
+    light, dark, added: golden.added, lightDeltas: golden.lightDeltas || {}, darkDeltas: golden.darkDeltas,
   };
   await writeFile(GOLDEN, `${JSON.stringify(out, null, 2)}\n`);
   console.log(`golden.json captured: ${Object.keys(light).length} light + ${Object.keys(dark).length} dark values.`);
@@ -131,7 +131,10 @@ if (process.argv.includes('--print-dark-diff')) { // dev aid: every dark value t
 }
 const exceptScheme = (k) => k !== '@color-scheme';
 for (const k of Object.keys(light)) {
-  if (k in golden.light) {
+  const ld = (golden.lightDeltas || {})[k];
+  if (ld) {
+    check(`light ${k} = lightDeltas.to (${ld.why})`, light[k] === ld.to, `${light[k]} vs ${ld.to}`);
+  } else if (k in golden.light) {
     check(`light ${k} = baseline`, light[k] === golden.light[k], `${light[k]} (baseline ${golden.light[k]})`);
   } else {
     const a = golden.added[k];
@@ -172,4 +175,4 @@ if (failures.length) {
   for (const f of failures.slice(0, 80)) console.log(`  ✗ ${f}`);
   process.exit(1);
 }
-console.log(`Golden tokens: all ${checks} checks passed (${names.length} tokens; light = v0.40 baseline, dark = baseline + ${deltas} intended deltas, ${Object.keys(golden.added).length} added).`);
+console.log(`Golden tokens: all ${checks} checks passed (${names.length} tokens; light = v0.40 baseline + ${Object.keys(golden.lightDeltas || {}).length} reviewed bug fix(es), dark = baseline + ${deltas} intended deltas, ${Object.keys(golden.added).length} added).`);

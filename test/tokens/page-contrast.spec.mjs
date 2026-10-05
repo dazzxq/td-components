@@ -151,22 +151,11 @@ async function measureState(page, palette, state) {
   }, { scheme: p.scheme, state, surfaceTokens: SURFACE_TOKENS });
 }
 
-/**
- * KNOWN (owner decision pending, reported — not a silent pass): the td-table row-selection mark keeps its v0.37 light
- * edge (--td-table-check-border = --td-color-border, 1.27:1 on white) because R1 is pixel-identical in light. Dark sets
- * it to the control edge (≥ 3:1, measured here). Palettes WITHOUT data-td-theme inherit the light default, so this one
- * mark is listed instead of failed there. Fix = --td-table-check-border: var(--td-checkbox-border) (a light pixel change).
- */
-const known = new Map();
-function report(tag, r, palette) {
+function report(tag, r) {
   checks += r.measured;
   skippedTotal += r.skipped;
   for (const t of r.texts) fail(tag, `text ${t.what} ${t.ratio} < ${t.min} — ${t.el} (${t.ink} on ${t.bg})`);
-  for (const c of r.controls.filter((x) => x.tableCheck && !PALETTES[palette].theme)) {
-    const k = `${palette}: td-table selection mark edge ${c.border} — ${c.vsOuter} vs outer, ${c.vsFill} vs fill`;
-    known.set(k, (known.get(k) || 0) + 1);
-  }
-  for (const c of r.controls.filter((x) => !(x.tableCheck && !PALETTES[palette].theme))) fail(tag, `control boundary < ${c.min} — ${c.el} (border ${c.border}: ${c.vsOuter} vs outer ${c.outer}, ${c.vsFill} vs fill ${c.fill})`);
+  for (const c of r.controls) fail(tag, `control boundary < ${c.min} — ${c.el} (border ${c.border}: ${c.vsOuter} vs outer ${c.outer}, ${c.vsFill} vs fill ${c.fill})`);
   for (const i of r.islands) fail(tag, `island ${i.ratio} — ${i.el} (${i.fill} on ${i.outer})`);
 }
 
@@ -217,7 +206,7 @@ async function runEngine(name, launcher) {
             const tag = `${tag0} ${state}`;
             try {
               if (state !== 'page') await trigger(page, state);
-              report(tag, await measureState(page, palette, state), palette);
+              report(tag, await measureState(page, palette, state));
             } catch (e) {
               fail(tag, `could not measure (${e.message.split('\n')[0]})`);
             }
@@ -240,10 +229,6 @@ const launchers = { chromium, firefox, webkit };
 const t0 = Date.now();
 for (const e of ENGINES) await runEngine(e, launchers[e]);
 for (const n of notes) console.log(`  ${n}`);
-if (known.size) {
-  console.log(`  KNOWN (light default kept pixel-identical, owner decision — see the spec header): ${known.size} distinct`);
-  for (const [k, n] of [...known].sort((a, b) => a[0].localeCompare(b[0])).slice(0, 8)) console.log(`    · ${k} (×${n})`);
-}
 const secs = Math.round((Date.now() - t0) / 1000);
 if (failures.length) {
   const uniq = [...new Set(failures)];

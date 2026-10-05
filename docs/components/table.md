@@ -853,7 +853,7 @@ Token (khai báo trong `@layer td.tokens`, override bằng CSS không layer củ
 | `--td-table-card-pair-min` | `0px` | Bề rộng tối thiểu một cặp `secondary` (0 = theo nội dung; `100%` = một cặp mỗi dòng như trước 0.36.1) (0.36.1) |
 | `--td-table-label-fg` | `var(--td-color-text-muted)` | Nhãn "nhãn:", dòng meta và `lead` trên card |
 | `--td-table-select-w` | `3rem` | Bề rộng cột chọn (0.37.0) |
-| `--td-table-check-border` | `var(--td-color-border)` (dark `var(--td-checkbox-border)`) | 0.41.0: viền lúc nghỉ của ô chọn dòng. Light giữ đúng nét 0.37 (1.27:1 trên trắng); muốn như checkbox: `var(--td-checkbox-border)` |
+| `--td-table-check-border` | `var(--td-checkbox-border)` | 0.41.0: viền lúc nghỉ của ô chọn dòng = viền checkbox chung (sửa hồi quy 0.37: viền từng bị vẽ `--td-color-border`, 1.27:1 trên trắng) |
 | `--td-table-row-selected` | accent 8 % (`color-mix`; fallback `rgb(37 99 235 / 8%)`) | Nền dòng / card đã chọn; hover chồng `--td-table-row-hover` lên (0.37.0) |
 | `--td-table-card-selected-border` | `var(--td-accent)` | Viền card đã chọn (≥ 3:1 với nền trang — contrast gate) (0.37.0) |
 

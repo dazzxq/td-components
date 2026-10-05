@@ -18,7 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
-| [0.41.0](#0410) | Đổi giao diện **chỉ ở dark** + thêm tính năng (`light` / `auto`, hợp đồng theme) | Không bắt buộc. Không đặt `data-td-theme` = light **giống từng pixel**. Dark đổi một số giá trị (viền control ≥ 3:1, chữ phụ, accent, tooltip, bóng — danh sách dưới); site ghi đè giá trị dark cũ thì xem lại. Site **đổi** `--td-color-surface` / `-text` / `-text-muted` / `-border-strong` / `--td-color-{success,warning,error}` / `--td-pastel-*-fg` ở light: ô nhập, modal, chữ control, placeholder, badge outline, nút thao tác, tiêu đề alert giờ **đi theo** (trước giữ màu cứng). Script `matchMedia` tự bật dark → thay bằng `data-td-theme="auto"`. |
+| [0.41.0](#0410) | Đổi giao diện **chỉ ở dark** + thêm tính năng (`light` / `auto`, hợp đồng theme) | Không bắt buộc. Không đặt `data-td-theme` = light **giống từng pixel**, trừ một sửa lỗi: viền ô chọn dòng `td-table` (hồi quy 0.37). Dark đổi một số giá trị (viền control ≥ 3:1, chữ phụ, accent, tooltip, bóng — danh sách dưới); site ghi đè giá trị dark cũ thì xem lại. Site **đổi** `--td-color-surface` / `-text` / `-text-muted` / `-border-strong` / `--td-color-{success,warning,error}` / `--td-pastel-*-fg` ở light: ô nhập, modal, chữ control, placeholder, badge outline, nút thao tác, tiêu đề alert giờ **đi theo** (trước giữ màu cứng). Script `matchMedia` tự bật dark → thay bằng `data-td-theme="auto"`. |
 | [0.39.0](#0390) | Thêm tính năng (bộ lọc ngoài, ẩn / hiện cột, `<td-filter-chips>`) + đổi hành vi nhỏ | Không bắt buộc. Cột có sẵn khoá `hidden: true` trong `columns` giờ **bị ẩn** (trước bị bỏ qua). `getState()` thêm `filters` / `totalItems` / `requestId`. `onPageChange` chạy khi lượt bấm đổi trang kết thúc (vẫn đồng bộ). Import map: thêm `filter-chips`. |
 | [0.37.0](#0370) | Thêm tính năng (chọn dòng `td-table`) + đổi hành vi nhỏ | Không bắt buộc. `<td-table>` giờ **form-associated**: có trong `form.elements`; `disabled` trên chính `td-table` (trước vô nghĩa) giờ làm trình duyệt chặn mọi cú bấm chuột trong bảng. Chọn dòng là opt-in (`selectable` + `row-key`). |
 | [0.36.2](#0362) | Đổi hành vi + đổi giao diện trên cảm ứng | Không bắt buộc. Hover chỉ còn trên con trỏ mịn; hình nhấn mới (token `--td-*-pressed`); tooltip không bật khi chạm (nhãn bắt buộc → chữ / menu); kéo bằng ngón cần 10 px; lớp phủ co theo bàn phím ảo — site override `height: 100dvh` trên con của modal / drawer đổi thành `100%`. Thêm `enterkeyhint` cho `<td-number-input>`. |
@@ -73,8 +73,9 @@ theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao
 
 ## 0.41.0
 
-**Mức: đổi giao diện chỉ ở dark + thêm tính năng.** Không đặt `data-td-theme` → light giống từng pixel 0.40 (khoá bằng
-test golden: mọi token `--td-*` đều giải ra đúng giá trị cũ). Chi tiết: [theming.md › Light / dark / auto](../customization/theming.md#light--dark--auto)
+**Mức: đổi giao diện chỉ ở dark + thêm tính năng + một sửa lỗi light.** Không đặt `data-td-theme` → light giống từng
+pixel 0.40 (khoá bằng test golden: mọi token `--td-*` đều giải ra đúng giá trị cũ), **trừ** viền ô chọn dòng của
+`td-table` (dưới, `lightDeltas` trong golden). Chi tiết: [theming.md › Light / dark / auto](../customization/theming.md#light--dark--auto)
 và [Hợp đồng theme](../customization/theming.md#hợp-đồng-theme-và-công-thức-nền-giấy-0410).
 
 **Thêm:**
@@ -116,7 +117,7 @@ Site muốn giữ ô nhập / modal **trắng** trong khi đổi `--td-color-sur
 | `--td-glass-border` | 10 % trắng | 14 % trắng | Popup / modal / scroll-top tách khỏi nền |
 | `--td-glass-shadow` / `-lg` | 12+24 % / 16+36 % | 24+40 % / 32+56 % | như trên |
 | `--td-btn-ghost-hover-fg-fallback` (mới) | `#1d4ed8` cứng (2.5:1) | `#93c5fd` | Chỉ trình duyệt không có `color-mix()` |
-| `--td-table-check-border` (mới) | `#2c2c30` (luật `.td-table *`) | `#76767c` | Ô chọn dòng của `td-table` ≥ 3:1 |
+| `--td-table-check-border` (mới) | `#2c2c30` (luật `.td-table *`) | `#76767c` (= `--td-checkbox-border`) | Ô chọn dòng của `td-table` ≥ 3:1 |
 
 Danh sách máy đọc được (79 token, gồm token dẫn xuất): `test/tokens/golden.json` → `darkDeltas`.
 
@@ -130,8 +131,12 @@ Danh sách máy đọc được (79 token, gồm token dẫn xuất): `test/toke
 - Site nền màu (vd. 135 giấy be): dùng [công thức nền giấy](../customization/theming.md#công-thức-135-trang-giấy-be-bảng--menu--ô-nhập-trắng)
   (`--td-color-bg` + `--td-color-surface` + `--td-color-surface-raised` + mực muted ấm) thay cho việc đè từng token
   `--td-glass-solid` / `--td-control-bg`.
-- Ô chọn dòng `td-table` ở **light** vẫn viền nhạt như 0.37 (`--td-color-border`, 1.27:1 — giữ đúng từng pixel). Muốn như
-  checkbox: `:root { --td-table-check-border: var(--td-checkbox-border); }`.
+- **Sửa lỗi (light + dark):** ô chọn dòng của `td-table` (0.37.0) bị luật `.td-table * { border-color }` vẽ đè viền
+  thành `--td-color-border` (`#e4e4e7`, 1.27:1 trên trắng — gần như vô hình). Từ 0.41.0 viền theo token mới
+  `--td-table-check-border` = `var(--td-checkbox-border)`, giống mọi ô tick khác của kit (light `#d1d1d6`, viền mềm
+  ~1.5:1 theo lựa chọn v0.14.1; dark `#76767c` ≥ 3:1). Site cần WCAG 1.4.11 nghiêm ngặt ở light: map viền mềm sang
+  `--td-control-border-strong` ([theming](../customization/theming.md#viền-control-mềm-và-override-chuẩn-wcag-nghiêm-ngặt)).
+  Muốn giữ nét cũ: `:root { --td-table-check-border: var(--td-color-border); }`.
 
 ## 0.39.0
 

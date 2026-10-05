@@ -6140,10 +6140,9 @@
 		   accent follows through color-mix() (fallback: the default accent at the same alpha) */
 		--td-table-row-selected: rgb(37 99 235 / 8%);
 		--td-table-card-selected-border: var(--td-accent); /* ≥ 3:1 vs the page (contrast gate) */
-		/* v0.41.0: resting edge of the row-selection mark. Light keeps the v0.37 look (the `.td-table *` border rule painted
-		   it --td-color-border, 1.27:1 on white) — R1 is pixel-identical in light; dark uses the control edge (≥ 3:1, QĐ7).
-		   A site that wants the light mark like td-checkbox: --td-table-check-border: var(--td-checkbox-border). */
-		--td-table-check-border: var(--td-color-border);
+		/* v0.41.0 (bug fix, v0.37 regression): resting edge of the row-selection mark = the shared checkbox edge. The
+		   `.td-table *` border rule had painted it --td-color-border (1.27:1 on white, 1.22 dark). */
+		--td-table-check-border: var(--td-checkbox-border);
 	}
 
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
@@ -6156,7 +6155,6 @@
 		--td-table-zebra: rgb(255 255 255 / 3%);
 		--td-table-sheen: var(--td-skeleton-shine);
 		--td-table-edge-shadow: rgb(0 0 0 / 55%);
-		--td-table-check-border: var(--td-checkbox-border);
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
@@ -6164,7 +6162,6 @@
 			--td-table-zebra: rgb(255 255 255 / 3%);
 			--td-table-sheen: var(--td-skeleton-shine);
 			--td-table-edge-shadow: rgb(0 0 0 / 55%);
-			--td-table-check-border: var(--td-checkbox-border);
 		}
 	}
 }

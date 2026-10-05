@@ -1536,14 +1536,20 @@
       "why": "v0.41.0: the no-color-mix() ghost hover label (was a #1d4ed8 literal in button.css; dark fixed 2.5 → ≥ 4.7)"
     },
     "--td-table-check-border": {
-      "light": "rgb(228, 228, 231)",
+      "light": "rgb(209, 209, 214)",
       "dark": "rgb(118, 118, 124)",
-      "why": "v0.41.0: resting edge of the td-table selection mark (light = the v0.37 look; dark = the control edge, QĐ7)"
+      "why": "v0.41.0: resting edge of the td-table selection mark = --td-checkbox-border (see lightDeltas)"
     },
     "--td-color-on-fill": {
       "light": "rgb(63, 63, 70)",
       "dark": "rgb(228, 228, 231)",
       "why": "v0.41.0 contract: ink on --td-color-fill (was the --td-badge-neutral-fg literals)"
+    }
+  },
+  "lightDeltas": {
+    "--td-table-check-border": {
+      "to": "rgb(209, 209, 214)",
+      "why": "bug fix, v0.37 regression: the td-table row-selection mark painted --td-color-border (#e4e4e7, 1.27:1 on white) via the .td-table * border rule; now the shared checkbox edge like every other tick"
     }
   },
   "darkDeltas": {
