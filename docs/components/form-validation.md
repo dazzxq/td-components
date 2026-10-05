@@ -233,6 +233,85 @@ TdModal.show({
 
 Action trả `false` giữ modal mở; trong lúc Promise chạy nút ở trạng thái bận (xem [Modal](modal.md)).
 
+### 9. Theo dõi thay đổi chưa lưu (`trackFormDirty`, 0.44.0)
+
+```js
+import { TdFormValidation, trackFormDirty } from '@dazzxq/td-components/form-validation';
+
+const tracker = trackFormDirty(form, { ignore: ['_token', 'q'] });
+form.addEventListener('dirty-change', (e) => { badge.hidden = !e.detail.dirty; });   // huy hiệu "Chưa lưu"
+
+TdFormValidation.attach(form, {
+  onValid: async () => {
+    const res = await save(new FormData(form));
+    if (res.ok) tracker.markClean();         // CHỈ khi server lưu thành công; 422 → vẫn bẩn
+  },
+});
+```
+
+**"Bẩn" nghĩa là gì.** Lúc gọi `trackFormDirty(form)` kit chụp **ảnh chụp** (snapshot) = danh sách `[name, value]`
+theo thứ tự của `new FormData(form)`. Form bẩn khi **người dùng đã thao tác** và ảnh chụp hiện tại khác ảnh chụp gốc —
+gõ rồi xoá về giá trị cũ là **sạch** lại. Cụ thể:
+
+- Tính mọi control native (`input`, `textarea`, `select`, checkbox, radio, file) **và** mọi control td form-associated
+  (`td-input-field`, `td-dropdown`, `td-chip-input`, `td-table` có cột chọn, `td-dropzone`, `td-media-field`…), kể cả
+  control ở ngoài form gắn `form="id"`. Control `disabled`, không có `name`, nút submit không tính.
+- Chuỗi so **nguyên văn** (không trim); file so theo **đối tượng** (chọn lại một file khác cùng tên / cỡ vẫn là đổi);
+  **thứ tự** có ý nghĩa (sắp lại gallery / repeater = đổi).
+- Chỉ **sự kiện của người dùng** mới bật trạng thái bẩn: `input`, `change` và các event td đổi FormData mà không phát
+  `change` — `select-change` (td-table), `files-change` (td-dropzone), `rows-change` (td-repeater), `order-change`
+  (td-sortable), `crop-change` / `focal-change` (td-cropper). Event có `detail.trigger === 'api'` hoặc
+  `detail.source === 'api'` không tính. Danh sách ở `trackFormDirty.events`; thêm cho một form bằng `opts.events`.
+- **Giá trị gán bằng code không làm form bẩn** (quy ước "gán im lặng" của kit): component nâng cấp / hydrate SSR /
+  dropdown remote nạp xong sau khi tạo tracker không bao giờ tạo "bẩn giả" — ảnh chụp gốc được chụp lại khi người dùng
+  lần đầu chạm / focus vào form. App tự đổi giá trị cần được tính → `tracker.markDirty()` hoặc `tracker.check()`.
+- State **ngoài FormData** (tab đang mở, cây đang mở rộng…) không được theo dõi → `markDirty()`.
+
+**API**
+
+| Thành viên | Mô tả |
+|---|---|
+| `trackFormDirty(form, opts?)` | Tạo tracker. Chỉ nhận `<form>` (khác → `TypeError`). Gọi lại trên cùng form → trả **tracker cũ** (tuỳ chọn mới bị bỏ + `console.warn`). |
+| `opts.ignore` | `string[]` hoặc `(name) => boolean` — field không bao giờ tính (`_token`, ô tìm kiếm). |
+| `opts.events` | `string[]` — event "người dùng đổi giá trị" thêm cho form này. |
+| `opts.beforeUnload` | `boolean`, mặc định `true` — cảnh báo khi rời trang lúc bẩn. |
+| `tracker.isDirty()` | Tính tươi, không phát event. |
+| `tracker.check()` | Tính lại ngay; phát `dirty-change` nếu đổi; trả `boolean`. |
+| `tracker.markClean()` | Gọi **sau khi lưu thành công**: ảnh chụp gốc = hiện tại, sạch. |
+| `tracker.markDirty()` | Bẩn cho tới `markClean()`. |
+| `tracker.confirmDiscard(opts?)` | `Promise<boolean>`. Sạch → `true` ngay. Bẩn → hộp `TdModal.confirm` màu danger (`Thay đổi chưa lưu` / `Bạn có thay đổi chưa lưu. Bỏ các thay đổi này?` / `Bỏ thay đổi` / `Ở lại`, theo theme của form); `opts` ghi đè tuỳ chọn của `confirm()`; `opts.confirm: (dialogOptions) => Promise<boolean>` thay hộp thoại (site có dialog riêng). **Không** tự `markClean()`. TdModal được nạp lười (`import()`) — trang chỉ validate không kéo modal vào. |
+| `tracker.destroy()` | Gỡ mọi listener. |
+| `trackFormDirty.labels` | `{ discardTitle, discardMessage, discardConfirm, discardCancel }` — đổi cho cả site. |
+| `trackFormDirty.events` | Danh sách event mặc định (mảng, sửa được cho cả site). |
+| event `dirty-change` | Trên form, `detail: { dirty }`, bubbles, không huỷ được. Phát khi trạng thái đổi (sự kiện gõ được gom theo khung hình). |
+
+**Chặn đóng modal / drawer / đổi route** — một dòng:
+
+```js
+TdModal.show({ title: 'Sửa', body: form, beforeClose: () => tracker.confirmDiscard(), actions });  // xem Modal § 8
+drawer.beforeClose = () => tracker.confirmDiscard();                                            // xem Drawer § 6
+router.beforeEach(async () => tracker.confirmDiscard());                                       // SPA
+```
+
+Trong modal: bọc thân modal trong `<form>` (FormData + `reset` chuẩn). Guard chạy cho **mọi** action đóng, kể cả "Lưu"
+→ lưu thành công thì `markClean()` **trước khi** `onClick` trả về, nếu không sẽ bị hỏi "Bỏ thay đổi?" ngay sau khi lưu
+(cố ý: quên `markClean` thì `beforeunload` cũng cảnh báo sai).
+
+**Rời trang (`beforeunload`).** Listener chỉ được đăng ký từ thao tác đầu tiên (và gỡ khi form sạch lại) — trang
+không tương tác vẫn vào bfcache. Khi trang sắp rời đi, kit tính lại ngay: form sạch, đã bị gỡ khỏi DOM, hoặc đang
+**submit native** (submit không bị chặn) → không hỏi. Giới hạn của trình duyệt:
+
+- Chữ trong hộp thoại là của trình duyệt (thông điệp tuỳ biến bị bỏ qua từ lâu).
+- Chrome / Firefox chỉ hiện hộp khi trang **đã có tương tác người dùng**.
+- **Safari iOS và nhiều trình duyệt di động không hiện** (tab bị huỷ / chuyển app không có `beforeunload`) — đừng coi
+  đây là lớp bảo vệ duy nhất; guard modal / drawer vẫn hoạt động.
+- Không chạy cho điều hướng trong SPA → gọi `confirmDiscard()` trong router. Nút Back của trình duyệt trong SPA không
+  chặn được (`popstate` không huỷ được).
+
+**Lưu bằng AJAX / native.** AJAX (`attach({ onValid })`, action modal) → `markClean()` khi server OK; 422 → giữ bẩn.
+Form submit native → không cần gì (trang mới tải lại). `form.reset()` được tính như một thao tác: sau `markClean()`
+với giá trị khác mặc định, reset làm form **bẩn** (đúng — giá trị khác cái đã lưu).
+
 ## API
 
 Tất cả là method tĩnh; không cần tạo instance.
@@ -243,6 +322,7 @@ Tất cả là method tĩnh; không cần tạo instance.
 | `apply(root, serverErrors, opts?)` | `serverErrors: { [key]: string \| string[] }` | `{ applied: Array<{ field, element, message }>, unmapped: Array<{ field, message }>, unmatched }` — `unmatched` là tên khác của `unmapped`. |
 | `clear(root)` | | `void` |
 | `attach(form, opts?)` | `form: HTMLFormElement` | `() => void` (hàm detach). Ném `TypeError` nếu không phải `<form>`. |
+| `trackFormDirty(form, opts?)` | named export (0.44.0) | Tracker thay đổi chưa lưu — xem [mục 9](#9-theo-dõi-thay-đổi-chưa-lưu-trackformdirty-0440). |
 
 **Tuỳ chọn**
 
@@ -403,6 +483,9 @@ Render lỗi phía server (PHP, không JS) chỉ cần in đúng markup trên đ
 - **Field bị disabled / readonly / hidden không được kiểm tra** (`willValidate` là `false`), nhưng `apply()` vẫn gắn được
   lỗi server lên chúng nếu tìm thấy.
 - `detach()` không xoá lỗi đang hiện — gọi `TdFormValidation.clear(form)` nếu cần.
+- **Quên `tracker.markClean()` sau khi lưu** → modal / drawer hỏi "Bỏ thay đổi?" ngay sau khi lưu, `beforeunload`
+  cảnh báo sai. Gọi nó ngay khi server báo thành công.
+- **App gán giá trị bằng code mà muốn tính là thay đổi** → `markDirty()` (gán bằng code không phát event).
 - Khung tổng hợp chèn vào **đầu root**; nếu root là `<form>` có layout grid/flex, cân nhắc `summaryTarget`.
 
 ## Xem thêm

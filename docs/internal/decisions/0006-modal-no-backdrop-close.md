@@ -26,3 +26,18 @@ Modal thường chứa form/thao tác dở. Click nhầm ra ngoài làm mất d�
 - **Chỉ dùng cho dialog mà đóng không mất dữ liệu người dùng** — ví dụ `td-datetime-picker` (giữ bản nháp riêng; giá
   trị đã chọn không đổi khi huỷ). APG Date Picker Dialog yêu cầu ESC đóng. Modal chứa form vẫn giữ mặc định.
 - Backdrop click vẫn không đóng (kể cả với `escapeCloses`).
+
+## Addendum (2026-10-06, v0.44.0) — `beforeClose` + `requestClose()` (plan v0.44.0-confirm-dirty QĐ 12-15)
+
+- Hai loại đường đóng: **người dùng xin đóng** (nút X, action có đóng, Escape khi `escapeCloses`,
+  `TdModal.requestClose(id, value?)`) chạy guard bất đồng bộ `show({ beforeClose })` trước; **app ra lệnh đóng**
+  (`close()` / `closeById()` / `closeAll()`) bỏ qua guard — cùng mô hình `HTMLDialogElement.requestClose()` vs `close()`.
+  Đăng xuất / đổi route không bao giờ bị treo bởi một guard.
+- Guard chạy cho **mọi** action đóng, kể cả "Lưu": sau khi lưu thành công app phải `tracker.markClean()` trước khi
+  `onClick` trả về, nếu không sẽ bị hỏi "Bỏ thay đổi?". Đây là hành vi có chủ đích (nút "Hủy" là action — đúng chỗ cần
+  chặn nhất); quên `markClean` lộ ngay khi dev.
+- Guard `false` / throw / reject → ở lại (an toàn cho dữ liệu). Đang chờ: lần xin đóng thêm dùng chung, action không
+  chạy, không spinner; đóng bằng code trong lúc chờ → kết quả bị bỏ. Hộp thoại Promise không nhận guard.
+- Backdrop vẫn không bao giờ đóng; Escape vẫn chỉ với `escapeCloses`. `<td-drawer>` có cùng mô hình (property
+  `beforeClose` + `requestClose()`, chạy trước event `before-close` v0.27 vốn giữ nguyên).
+
