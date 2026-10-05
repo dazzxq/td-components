@@ -87,7 +87,7 @@ diff.after = event.changes.after;
 | `boolean` (mặc định cho boolean) | "Có" / "Không" |
 | `date` | chỉ `YYYY-MM-DD` hợp lệ → `DD/MM/YYYY`; khác → nguyên văn. **Không đổi múi giờ**: ngày giờ có múi giờ → server định dạng sẵn thành chuỗi `text` |
 | `enum` | `options[giá trị]` → nhãn; không có → mã gốc. Áp cả cho từng phần tử của mảng (quyền: mã → tên) |
-| `list` (mặc định cho mảng toàn giá trị đơn) | từng phần tử (tối đa 200, còn lại "+{n} phần tử"); so như **tập** — thứ tự và phần tử lặp không tính (`['a','b']` = `['b','a','a']`); khi **Đổi**: phần tử mới "+", phần tử bị bỏ "−" |
+| `list` (mặc định cho mảng toàn giá trị đơn) | từng phần tử (tối đa 200, còn lại "+{n} phần tử"); so như **tập** — thứ tự và phần tử lặp không tính (`['a','b']` = `['b','a','a']`); khi **Đổi**: phần tử mới "+", phần tử bị bỏ "−" — chỉ khi bên kia được đọc **hết** (bên kia dài hơn 200 phần tử thì không biết phần tử có nằm ở đoạn sau không: không dấu, và nếu chỉ khác trong 200 phần tử đầu thì "không so sánh được") |
 | `json` (mặc định cho object sâu) | JSON gọn một dòng (cả chuỗi / số / boolean / mảng khi khai báo `type: 'json'`: `"chuỗi"`, `true`, `["a", 1]`; số theo cùng luật số lớn); đầy đủ trong JSON view |
 
 Không có hook định dạng tuỳ ý (giữ JS = PHP và text-only): cần gì khác thì app định dạng sẵn thành chuỗi `text`.
@@ -148,7 +148,7 @@ khoá không quan trọng), mảng giá trị đơn so như **tập** (mảng c�
 | Giới hạn | Giá trị | Vượt thì |
 |---|---|---|
 | Hàng hiển thị | 500 (hàng thay đổi ưu tiên trước hàng không đổi) | ghi chú "Còn {n} trường không hiện." |
-| Nút duyệt mỗi bên / khoá mỗi object / phần tử mỗi mảng / item | 10 000 / 1 000 / 1 000 / 1 000 | dừng + ghi chú "Dữ liệu quá lớn…"; object / mảng quá lớn → "Mảng 1200 phần tử" |
+| Nút duyệt mỗi bên / khoá mỗi object / phần tử mỗi mảng / item | 10 000 / 1 000 / 1 000 / 1 000 | dừng + ghi chú "Dữ liệu quá lớn…"; object / mảng quá lớn → "Mảng 1200 phần tử", **không so sánh** (không bao giờ đọc quá trần): "Đổi" + "không so sánh được" |
 | Giá trị | xem trước 300 ký tự (rồi "Xem đầy đủ"), tối đa 10 000 ký tự ("… đã cắt") | |
 | Tổng chữ của một diff | 300 000 ký tự | các giá trị sau chỉ còn bản xem trước + ghi chú |
 | JSON view mỗi bên | 100 000 ký tự (cắt ở ranh giới dòng) | "… đã cắt" |
@@ -271,6 +271,8 @@ Giá trị dài: bản xem trước + `<details class="td-diff__more">`. Mảng:
 - Snapshot nên truyền **chuỗi JSON** (cột `changes JSON`): object giữ là object (kể cả `{"0": …}`). `stdClass` cũng được.
   **Mảng PHP** theo quy tắc hẹp: `array_is_list()` → mảng, còn lại → object (mảng kết hợp có khoá đúng `0..n-1` bị hiểu là
   mảng; `[]` = `{}` — cả hai rỗng). JSON sai / sâu hơn 64 cấp / lớn hơn 2 MB → ghi chú, không có hàng, không ném lỗi.
+- Mảng / `stdClass` PHP có **chuỗi UTF-8 không hợp lệ**: hiển thị thay bằng U+FFFD, nhưng so sánh dùng **byte gốc** (hai chuỗi
+  hỏng khác nhau không bao giờ "không đổi"); khoá hỏng không bao giờ được ghép (mỗi bên một hàng). `FieldDef` có đoạn hỏng bị bỏ.
 - Options: `fields` (snapshot), `view`, `unchanged`, `json`, `label`, `labels`, `id`, `class`, `attrs` (allowlist; `on*`,
   `style`, `data-td-*` và tên của component bị chặn). Lỗi dữ liệu → **một** `E_USER_WARNING` mỗi lần gọi (chỉ mã, không giá trị).
 - Xem [PHP adapter](../guides/php-adapter.md#td_diff--td_diff_snapshots-0460).

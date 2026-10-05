@@ -27,7 +27,8 @@ const ALL = [...SPEC.cases, ...GEN];
 
 /** Run every case in one php process (extra -d ini flags allowed). */
 function runAll(ini = []) {
-  const r = spawnSync(PHP_BIN, ['-d', 'display_errors=stderr', ...ini, join(ROOT, 'test/ssr/diff-run.php')],
+  // the runner keeps every case's model + markup in memory (not the helper's footprint): 1 GB for the generated cases
+  const r = spawnSync(PHP_BIN, ['-d', 'display_errors=stderr', '-d', 'memory_limit=1G', ...ini, join(ROOT, 'test/ssr/diff-run.php')],
     { encoding: 'utf8', input: JSON.stringify(GEN), maxBuffer: 256 * 1024 * 1024 });
   assert.equal(r.status, 0, r.stderr || r.stdout);
   assert.equal(r.stderr, '', r.stderr);
@@ -196,5 +197,29 @@ describe('php/td.php — td_diff / td_diff_snapshots (v0.46.0, contract diff@1)'
 
   test('test/ssr/fixtures/diff.html (browser fixture) is up to date', () => {
     assert.equal(readFileSync(DIFF_FIXTURE_FILE, 'utf8'), renderDiffFixture(), 'stale fixture: run `node test/ssr/build-diff-fixture.mjs`');
+  });
+});
+
+describe('php/td.php — td-diff Codex round 2 (PHP native input)', opts, () => {
+  test('A: invalid UTF-8 keys never merge, invalid values compare by raw bytes (display keeps U+FFFD)', () => {
+    const r = php("$m = TdComponents\\Td::diffModel(['before' => [\"\\x80\" => 1, 'v' => \"a\\x80\", 'w' => \"\\xC3\"], 'after' => [\"\\x81\" => 1, 'v' => \"a\\x81\", 'w' => \"\\xC3\"]]);"
+      + " $n = TdComponents\\Td::diffModel(['items' => [['key' => 'x', 'before' => \"\\x80\", 'after' => \"\\x81\"], ['key' => \"k\\xFF\", 'after' => 1], ['key' => \"k\\xFE\", 'after' => 2]]]);"
+      + " echo json_encode([array_map(fn ($r) => [$r['label'], $r['kind']], $m['rows']), array_map(fn ($r) => [$r['label'], $r['kind'], $r['after']['s'] ?? null], $n['rows']),"
+      + " count(array_unique(array_column($n['rows'], 'id')))], TdComponents\\Td::DIFF_JSON);");
+    const [snap, items, ids] = JSON.parse(r.out);
+    assert.equal(snap.filter(([l]) => l.startsWith('\uFFFD')).length, 2, 'two invalid keys → two rows (never merged)');
+    assert.deepEqual(snap.filter(([l]) => l === 'v').map(([, k]) => k), ['changed']);
+    assert.deepEqual(snap.filter(([l]) => l === 'w').map(([, k]) => k), ['unchanged']);
+    assert.deepEqual(items[0], ['x', 'changed', '\uFFFD']);
+    assert.equal(ids, 3, 'k\\xFF and k\\xFE stay two rows');
+  });
+
+  test('C: an over-cap container is refused before its values are read (bounded time, uncertain)', () => {
+    const t0 = Date.now();
+    const r = php("$a = array_fill(0, 200000, ['x' => str_repeat('y', 100)]); $b = $a;"
+      + " $m = TdComponents\\Td::diffModel(['items' => [['key' => 'k', 'before' => [$a], 'after' => [$b]]]]);"
+      + " echo json_encode(array_map(fn ($r) => [$r['kind'], $r['uncertain']], $m['rows']));");
+    assert.ok(Date.now() - t0 < 1500 * PERF_SLACK, `${Date.now() - t0} ms`);
+    assert.equal(r.out, '[["changed",true]]');
   });
 });

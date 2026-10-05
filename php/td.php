@@ -4475,25 +4475,32 @@ namespace {
         return td__diff_cplen(td__diff_utf8($s)) > $max;
     }
 
-    /** @internal = headOf(): [first 4 × $max code points (raw, valid UTF-8), longer?]. */
+    /**
+     * @internal = headOf(): [first 4 × $max code points (valid UTF-8, for DISPLAY), longer?, equality key]. The key is the
+     * same head for valid UTF-8 (= JS); for invalid bytes (PHP native input — round 2 A) the bounded RAW bytes, so two
+     * different invalid strings never compare equal after U+FFFD replacement.
+     */
     function td__diff_head(string $raw, int $max): array
     {
         if (strlen($raw) <= $max * 4) {
-            return [td__diff_utf8($raw), false];
+            return preg_match('//u', $raw) === 1 ? [$raw, false, $raw] : [td__diff_utf8($raw), false, $raw];
         }
+        $b = substr($raw, 0, $max * 16);
+        $valid = preg_match('//u', td__diff_bytes($raw, $max * 16)) === 1;
         $h = td__diff_utf8(td__diff_bytes($raw, $max * 16));
         $long = strlen($raw) > $max * 16 || td__diff_cplen($h) > $max * 4;
-        return [td__diff_cpslice($h, $max * 4), $long];
+        $head = td__diff_cpslice($h, $max * 4);
+        return [$head, $long, $valid ? $head : $b];
     }
 
     /** @internal = cleanText(): ['s', 'cut', 'empty', 'head', 'long']. */
     function td__diff_clean(string $raw, int $max): array
     {
-        [$head, $long] = td__diff_head($raw, $max);
+        [$head, $long, $key] = td__diff_head($raw, $max);
         $s = (string) preg_replace('/[\x{0}-\x{8}\x{B}-\x{1F}\x{7F}-\x{9F}]/u', '', $head);
         $t = td__diff_cpslice($s, $max);
         return ['s' => $t, 'cut' => $long || strlen($t) < strlen($s),
-            'empty' => !$long && preg_match('/^[' . Td::JS_WS . ']*$/u', $s) === 1, 'head' => $head, 'long' => $long];
+            'empty' => !$long && preg_match('/^[' . Td::JS_WS . ']*$/u', $s) === 1, 'head' => $key, 'long' => $long];
     }
 
     /** @internal = cleanLabel(). */
@@ -4507,7 +4514,15 @@ namespace {
     function td__diff_keyid(string $k, array &$ctx, string $side): string
     {
         if (!td__diff_cpover($k, 1000)) {
-            return td__diff_utf8($k);
+            if (preg_match('//u', $k) === 1) {
+                return $k;
+            }
+            // round 2 A: invalid UTF-8 (PHP native input) — never merged: the display prefix, padded past the 1000-code-point
+            // cap with C0 controls (removed from labels), then a per-call counter encoded in C0 controls too
+            $ctx['overKeys']++;
+            $p = td__diff_cpslice(td__diff_utf8($k), 200);
+            $n = strtr((string) $ctx['overKeys'], '0123456789', "\x01\x02\x03\x04\x05\x06\x07\x08\x0B\x0C");
+            return $p . str_repeat("\x01", 1001 - td__diff_cplen($p)) . "\x0E" . ['a' => "\x0F", 'b' => "\x10", 'i' => "\x11"][$side] . $n;
         }
         $ctx['tooLarge'] = true;
         $ctx['overKeys']++;
@@ -4706,9 +4721,9 @@ namespace {
     }
 
     /** @internal Shared per-diff work budget (round 1 S2): false once spent. */
-    function td__diff_canwork(array &$ctx): bool
+    function td__diff_canwork(array &$ctx, int $cost): bool
     {
-        if ($ctx['work'] > 0) {
+        if ($ctx['work'] >= $cost) {
             return true;
         }
         $ctx['tooLarge'] = true;
@@ -4718,8 +4733,8 @@ namespace {
     /** @internal = strEqual(): bounded string equality 1 / 0 / 2. */
     function td__diff_str_equal(string $a, string $b): int
     {
-        [$x, $xl] = td__diff_head($a, 10000);
-        [$y, $yl] = td__diff_head($b, 10000);
+        [, $xl, $x] = td__diff_head($a, 10000);
+        [, $yl, $y] = td__diff_head($b, 10000);
         if ($xl || $yl) {
             return $xl && $yl && $x === $y ? 2 : 0;
         }
@@ -4766,6 +4781,9 @@ namespace {
             return 2;
         }
         if ($sa === 'array') {
+            if (count($a) > 1000 || count($b) > 1000) {
+                return 2; // round 2 C: never walk an over-cap container
+            }
             if (count($a) !== count($b)) {
                 return 0;
             }
@@ -4783,6 +4801,9 @@ namespace {
                 }
             }
             return $unsure ? 2 : 1;
+        }
+        if (td__diff_count($a) > 1000 || td__diff_count($b) > 1000) {
+            return 2; // round 2 C
         }
         $ea = td__diff_entries($a);
         $eb = td__diff_entries($b);
@@ -4940,7 +4961,7 @@ namespace {
             } elseif ($i > 0 && !td__diff_put($w, ' ')) {
                 break;
             }
-            $seg = $arr ? $i : (td__diff_cpover($entries[$i][0], 1000) ? null : td__diff_utf8($entries[$i][0]));
+            $seg = $arr ? $i : (td__diff_cpover($entries[$i][0], 1000) || preg_match('//u', $entries[$i][0]) !== 1 ? null : $entries[$i][0]);
             if (!$arr && !td__diff_put($w, td__diff_json_string(td__diff_keytext($entries[$i][0])) . ': ')) {
                 break;
             }
@@ -5076,8 +5097,8 @@ namespace {
                 if (is_array($p) && td__diff_is_list($p) && count($p) >= 1 && count($p) <= 7) {
                     $path = [];
                     foreach ($p as $s) {
-                        if (is_string($s) && !td__diff_cpover($s, 200)) {
-                            $path[] = td__diff_utf8($s);
+                        if (is_string($s) && !td__diff_cpover($s, 200) && preg_match('//u', $s) === 1) {
+                            $path[] = $s;
                         } elseif (is_int($s) && $s >= 0 && $s <= 9007199254740991) {
                             $path[] = $s;
                         } else {
@@ -5129,10 +5150,10 @@ namespace {
     /** @internal = listOf(): ['k' => 'list', 'vals'] | ['k' => 'masked'] | ['k' => 'no'] | ['k' => 'skip']. */
     function td__diff_list_of(array $v, int $len, array $path, array &$ctx): array
     {
-        if (!td__diff_canwork($ctx)) {
+        $n = min($len, 200);
+        if (!td__diff_canwork($ctx, $n)) {
             return ['k' => 'skip'];
         }
-        $n = min($len, 200);
         $ctx['work'] -= $n;
         $vals = [];
         $masked = td__diff_maskbelow($ctx['masks'], $path);
@@ -5189,7 +5210,7 @@ namespace {
         }
         if ($len > 1000) {
             $ctx['tooLarge'] = true;
-            return ['t' => 'note', 's' => td__diff_fill($arr ? $ctx['L']['arraySummary'] : $ctx['L']['objectSummary'], ['n' => $len]), 'ref' => $v];
+            return ['t' => 'note', 's' => td__diff_fill($arr ? $ctx['L']['arraySummary'] : $ctx['L']['objectSummary'], ['n' => $len])];
         }
         if ($arr) {
             $l = td__diff_list_of($v, $len, $path, $ctx);
@@ -5227,13 +5248,14 @@ namespace {
         return 'e';
     }
 
-    /** @internal = setEqual(). */
+    /** @internal = setEqual() (round 2 B: an absence is certain only against a fully inspected opposite side). */
     function td__diff_set_equal(array $a, array $b, array &$ctx): int
     {
-        if (!td__diff_canwork($ctx)) {
+        $cost = count($a['items']) + count($b['items']);
+        if (!td__diff_canwork($ctx, $cost)) {
             return 2;
         }
-        $ctx['work'] -= count($a['items']) + count($b['items']);
+        $ctx['work'] -= $cost;
         $ka = [];
         $kb = [];
         $ua = 0;
@@ -5252,18 +5274,26 @@ namespace {
                 $kb['k' . td__diff_elem_key($x, $i, 'b')] = true;
             }
         }
-        if (count($ka) !== count($kb)) {
-            return 0;
-        }
+        $aOnly = false;
+        $bOnly = false;
         foreach ($ka as $k => $_) {
             if (!isset($kb[$k])) {
-                return 0;
+                $aOnly = true;
+                break;
             }
         }
-        if (($ua > 0) !== ($ub > 0)) {
+        foreach ($kb as $k => $_) {
+            if (!isset($ka[$k])) {
+                $bOnly = true;
+                break;
+            }
+        }
+        $ca = $a['len'] === count($a['items']);
+        $cb = $b['len'] === count($b['items']);
+        if (($aOnly && $cb) || ($bOnly && $ca) || ($ua > 0 && $ub === 0 && $cb) || ($ub > 0 && $ua === 0 && $ca)) {
             return 0;
         }
-        return $ua > 0 || $a['len'] > count($a['items']) || $b['len'] > count($b['items']) ? 2 : 1;
+        return $aOnly || $bOnly || $ua > 0 || $ub > 0 || !$ca || !$cb ? 2 : 1;
     }
 
     function td__diff_desc_equal(array $a, array $b, array &$ctx): int
@@ -5283,10 +5313,10 @@ namespace {
             if (!($ra && $rb)) {
                 return 0;
             }
-            if (!td__diff_canwork($ctx)) {
+            if (!td__diff_canwork($ctx, 10000)) {
                 return 2;
             }
-            $budget = ['left' => min(10000, $ctx['work'])];
+            $budget = ['left' => 10000];
             $start = $budget['left'];
             $r = td__diff_equal($a['ref'], $b['ref'], $budget);
             $ctx['work'] -= $start - max($budget['left'], 0);
@@ -5385,7 +5415,7 @@ namespace {
                 return ['k' => 'json', 's' => $d['s'], 'cut' => $d['cut']];
             case 'l':
                 $set = null;
-                if ($marks !== '' && $other['t'] === 'l') {
+                if ($marks !== '' && $other['t'] === 'l' && $other['len'] === count($other['items'])) {
                     $set = [];
                     foreach ($other['items'] as $i => $x) {
                         $set['k' . td__diff_elem_key($x, $i, 'o')] = true;
@@ -5659,7 +5689,9 @@ namespace {
             $eb = $json ? [] : null;
             $ea = $json ? [] : null;
             foreach (array_slice($list, 0, 1000) as $raw) {
-                $ctx['work'] -= 1;
+                if (td__diff_canwork($ctx, 1)) {
+                    $ctx['work'] -= 1;
+                }
                 if (!(is_array($raw) && !td__diff_is_list($raw)) && !($raw instanceof \stdClass)) {
                     $warn[] = 'item';
                     continue;

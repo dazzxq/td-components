@@ -34,5 +34,12 @@ export function generatedCases() {
       { key: 'd', type: 'enum', options: { x: 'X' }, before: 'é'.repeat(50000), after: 'x' }] },
     { id: 'g-long-keys', mode: 'snapshot', opts: { json: true }, warns: 1, before: JSON.stringify({ ['é'.repeat(1001)]: 1, ['😀'.repeat(999)]: 1 }),
       after: JSON.stringify({ ['é'.repeat(1001)]: 1, ['😀'.repeat(999)]: 2 }), fields: [{ path: ['é'.repeat(201)] }] },
+    // Codex round 2 C: over-cap containers never compared past the cap (summaries non-comparable, nested caps)
+    { id: 'g-overcap-compare', mode: 'items', opts: {}, items: [{ key: 'big', before: Array.from({ length: 1001 }, (_, i) => i), after: Array.from({ length: 1001 }, (_, i) => i) },
+      { key: 'nested', before: [{ l: Array.from({ length: 1001 }, (_, i) => i) }], after: [{ l: Array.from({ length: 1001 }, (_, i) => i) }] },
+      { key: 'obj', before: [Object.fromEntries(Array.from({ length: 1001 }, (_, i) => [`k${i}`, i]))], after: [Object.fromEntries(Array.from({ length: 1001 }, (_, i) => [`k${i}`, i]))] }] },
+    // round 2 D: work reserved before each operation (boundary: 126 items × two 200-element lists)
+    { id: 'g-work-boundary', mode: 'items', opts: {}, items: Array.from({ length: 126 }, (_, i) => ({ key: `k${i}`,
+      before: Array.from({ length: 200 }, (_, j) => `b${j}`), after: Array.from({ length: 200 }, (_, j) => `a${j}`) })) },
   ];
 }

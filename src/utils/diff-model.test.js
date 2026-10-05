@@ -481,3 +481,51 @@ describe('diff-model — Codex round 1 (S1–S3, I1–I6)', () => {
     assert.ok(m.notes.includes('unsafe'));
   });
 });
+
+describe('diff-model — Codex round 2 (B–E)', () => {
+  test('B: truncated lists — a prefix-only difference is uncertain; marks only when the opposite side was fully inspected', () => {
+    const a = Array.from({ length: 250 }, (_, i) => `v${i}`);
+    const b = [...a.slice(0, 199), 'v249', ...a.slice(199, 249)]; // b's prefix lacks v199 (in its tail), has v249 (in a's tail)
+    const m = normalize({ items: [{ key: 'tails', before: a, after: b }, { key: 'complete', before: ['x', 'y'], after: a }] });
+    const [t, c] = m.rows;
+    assert.deepEqual([t.kind, t.uncertain], ['changed', true]);
+    assert.ok(t.before.items.every((it) => it.m === '') && t.after.items.every((it) => it.m === ''), 'no mark against a truncated side');
+    // the opposite side is complete (2 elements): absence is known → certain change, marks on that side's absentees
+    assert.deepEqual([c.kind, c.uncertain], ['changed', false]);
+    assert.deepEqual(c.before.items.map((it) => it.m), ['', ''], 'the after side is truncated: absence unknown');
+    assert.ok(c.after.items.every((it) => it.m === '+'), 'the before side is complete: every after element is known to be new');
+  });
+
+  test('C: over-cap containers are never walked past the cap — summaries non-comparable, nested caps → uncertain before reads', () => {
+    let reads = 0;
+    const counted = (n) => new Proxy(Array.from({ length: n }, (_, i) => i), {
+      get(t, k) { if (typeof k === 'string' && /^\d+$/.test(k)) reads++; return Reflect.get(t, k); },
+    });
+    const m = normalize({ items: [{ key: 'big', before: counted(1001), after: counted(1001) },
+      { key: 'nested', before: [{ l: counted(1001) }], after: [{ l: counted(1001) }] }] });
+    assert.deepEqual(m.rows.map((r) => [r.kind, r.uncertain]), [['changed', true], ['changed', true]]);
+    assert.ok(reads <= 2 * (LIMITS.keys + LIMITS.list), `${reads} element reads`);
+    reads = 0;
+    deepEqual([counted(5000)], [counted(5000)]);
+    assert.equal(reads, 0, 'deepEqual refuses an over-cap container before reading its values');
+  });
+
+  test('D: work is reserved before each operation (insufficient → skipped / uncertain, nothing consumed)', () => {
+    // per item: 1 + 200 + 200 inspected + 400 set elements = 801; after 124 items 676 remain
+    const list = (p) => Array.from({ length: 200 }, (_, j) => `${p}${j}`);
+    const items = Array.from({ length: 126 }, (_, i) => ({ key: `k${i}`, before: list('b'), after: list('a') }));
+    const m = normalize({ items });
+    assert.deepEqual([m.rows[123].kind, m.rows[123].uncertain], ['changed', false]);
+    // item 125: 675 → lists 475 → 275 < 400 for the set compare → uncertain without consuming
+    assert.deepEqual([m.rows[124].kind, m.rows[124].uncertain, m.rows[124].after.k], ['changed', true, 'list']);
+    // item 126: 274 → before list 74 → after list needs 200 → summary
+    assert.deepEqual([m.rows[125].before.k, m.rows[125].after.k], ['list', 'note']);
+    assert.ok(m.notes.includes('tooLarge'));
+  });
+
+  test('E (JS only): type json on a Date → JSON of its ISO string; text otherwise', () => {
+    const d = new Date(Date.UTC(2026, 9, 6));
+    const m = normalize({ items: [{ key: 'j', type: 'json', after: d }, { key: 't', after: d }] });
+    assert.deepEqual(m.rows.map((r) => [r.after.k, r.after.s]), [['json', '"2026-10-06T00:00:00.000Z"'], ['text', '2026-10-06T00:00:00.000Z']]);
+  });
+});

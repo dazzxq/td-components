@@ -329,9 +329,12 @@ function lengthOf(a) {
   } catch { return null; }
 }
 
-/** Shared per-diff work budget (round 1 S2): false once spent (nothing more is inspected / compared). */
-function canWork(ctx) {
-  if (ctx.work > 0) return true;
+/**
+ * Shared per-diff work budget (round 1 S2): reserve `cost` before an operation (round 2 D) — not enough left → false,
+ * too large, nothing consumed (the caller skips / answers "cannot tell").
+ */
+function canWork(ctx, cost) {
+  if (ctx.work >= cost) return true;
   ctx.tooLarge = true;
   return false;
 }
@@ -373,6 +376,7 @@ export function deepEqual(a, b, budget = { left: LIMITS.equal }, depth = 0) {
     const la = lengthOf(a);
     const lb = lengthOf(b);
     if (la === null || lb === null) return 2;
+    if (la > LIMITS.keys || lb > LIMITS.keys) return 2; // round 2 C: never walk an over-cap container
     if (la !== lb) return 0;
     let unsure = false;
     for (let i = 0; i < la; i++) {
@@ -389,6 +393,7 @@ export function deepEqual(a, b, budget = { left: LIMITS.equal }, depth = 0) {
     const ka = keysOf(a);
     const kb = keysOf(b);
     if (!ka || !kb) return 2;
+    if (ka.length > LIMITS.keys || kb.length > LIMITS.keys) return 2; // round 2 C
     if (ka.length !== kb.length) return 0;
     budget.left -= ka.length;
     if (budget.left < 0) return 2;
@@ -614,8 +619,8 @@ function scalarDesc(v, ctx, max = LIMITS.full) {
  * (work budget spent).
  */
 function listOf(v, len, path, ctx) {
-  if (!canWork(ctx)) return { k: 'skip' };
   const n = Math.min(len, LIMITS.list);
+  if (!canWork(ctx, n)) return { k: 'skip' };
   ctx.work -= n;
   const vals = [];
   let masked = ctx.maskBelow(path);
@@ -658,7 +663,8 @@ function containerLeaf(v, shape, path, ctx, type) {
   if (shape === 'date') {
     let iso = null;
     try { iso = v.toISOString(); } catch { iso = null; }
-    return iso === null ? { t: 'note', s: ctx.L.unsupported } : { t: 's', key: iso, long: false, s: iso, cut: false };
+    if (iso === null) return { t: 'note', s: ctx.L.unsupported };
+    return type === 'json' ? jsonDesc(v, path, ctx) : { t: 's', key: iso, long: false, s: iso, cut: false }; // round 2 E
   }
   if (shape === 'bad') return { t: 'note', s: ctx.L.unreadable };
   if (shape !== 'array' && shape !== 'object') return { t: 'note', s: ctx.L.unsupported };
@@ -669,7 +675,7 @@ function containerLeaf(v, shape, path, ctx, type) {
   if (len === 0) return EMPTY;
   if (len > LIMITS.keys) {
     ctx.tooLarge = true;
-    return { t: 'note', s: fill(arr ? ctx.L.arraySummary : ctx.L.objectSummary, { n: len }), ref: v };
+    return { t: 'note', s: fill(arr ? ctx.L.arraySummary : ctx.L.objectSummary, { n: len }) }; // non-comparable (round 2 C)
   }
   if (arr) {
     const l = listOf(v, len, path, ctx);
@@ -696,21 +702,32 @@ function elemKey(d, i, side) {
   return 'e';
 }
 
-/** Scalar lists compare as SETS (round 1 I1): order + duplicates ignored; unique elements → cannot tell. */
+/** Was every element of the list inspected? */
+const complete = (d) => d.len === d.items.length;
+
+/**
+ * Scalar lists compare as SETS (round 1 I1): order + duplicates ignored. An inspected element missing from the other
+ * side is a CERTAIN change only when that side was fully inspected (round 2 B); a unique element (unsafe / non-finite /
+ * over-long) on one side only, likewise; anything else not equal → cannot tell.
+ */
 function setEqual(a, b, ctx) {
-  if (!canWork(ctx)) return 2;
-  ctx.work -= a.items.length + b.items.length;
+  const cost = a.items.length + b.items.length;
+  if (!canWork(ctx, cost)) return 2;
+  ctx.work -= cost;
   const ka = new Set();
   const kb = new Set();
   let ua = 0;
   let ub = 0;
   a.items.forEach((x, i) => { if (uniqueElem(x)) ua++; else ka.add(elemKey(x, i, 'a')); });
   b.items.forEach((x, i) => { if (uniqueElem(x)) ub++; else kb.add(elemKey(x, i, 'b')); });
-  if (ka.size !== kb.size) return 0;
-  for (const k of ka) if (!kb.has(k)) return 0;
-  // a unique element on ONE side only has no counterpart there: a certain change; on both sides: cannot tell
-  if ((ua > 0) !== (ub > 0)) return 0;
-  return ua > 0 || a.len > a.items.length || b.len > b.items.length ? 2 : 1;
+  let aOnly = false;
+  let bOnly = false;
+  for (const k of ka) if (!kb.has(k)) { aOnly = true; break; }
+  for (const k of kb) if (!ka.has(k)) { bOnly = true; break; }
+  const ca = complete(a);
+  const cb = complete(b);
+  if ((aOnly && cb) || (bOnly && ca) || (ua > 0 && ub === 0 && cb) || (ub > 0 && ua === 0 && ca)) return 0;
+  return aOnly || bOnly || ua > 0 || ub > 0 || !ca || !cb ? 2 : 1;
 }
 
 /** Equality of two non-empty descriptors: 1 / 0 / 2 (uncertain). */
@@ -722,8 +739,8 @@ function descEqual(a, b, ctx) {
   const rb = b.t === 'j' || b.t === 'note';
   if (ra || rb) {
     if (!(ra && rb)) return 0;
-    if (!canWork(ctx)) return 2;
-    const budget = { left: Math.min(LIMITS.equal, ctx.work) };
+    if (!canWork(ctx, LIMITS.equal)) return 2;
+    const budget = { left: LIMITS.equal };
     const start = budget.left;
     const r = deepEqual(a.ref, b.ref, budget);
     ctx.work -= start - Math.max(budget.left, 0);
@@ -846,7 +863,8 @@ function cellOf(d, type, def, L, other, marks) {
     case 'l': {
       const items = [];
       let set = null;
-      if (marks && other && other.t === 'l') set = new Set(other.items.map((x, i) => elemKey(x, i, 'o')));
+      // round 2 B: an absence is only known against a fully inspected opposite side
+      if (marks && other && other.t === 'l' && complete(other)) set = new Set(other.items.map((x, i) => elemKey(x, i, 'o')));
       d.items.forEach((x, i) => {
         const c = scalarText(x, type === 'enum' ? 'enum' : null, def, L, true);
         items.push({ s: c.s, note: c.note, m: set ? (set.has(elemKey(x, i, 's')) ? '' : marks) : '' });
@@ -1016,7 +1034,7 @@ export function normalize(input, opts = {}) {
     if (total > LIMITS.keys) ctx.tooLarge = true;
     const entries = opts.json ? { before: new Map(), after: new Map() } : null;
     for (let i = 0; i < n; i++) {
-      ctx.work -= 1;
+      if (canWork(ctx, 1)) ctx.work -= 1;
       let raw;
       try { raw = list[i]; } catch { raw = null; }
       if (shapeOf(raw) !== 'object') { warnings.push('item'); continue; }
