@@ -17749,6 +17749,7 @@
 	/* the bar's column bulk is an inline control, not a cell */
 	.td-check-matrix__bar .td-check-matrix__bulk {
 		display: inline-flex;
+		flex: none; /* never squeezed under 44px by a long column name (the select shrinks instead) */
 		align-items: center;
 		justify-content: center;
 		width: var(--td-check-matrix-cell-size);
@@ -17756,7 +17757,7 @@
 	}
 
 	.td-check-matrix__na {
-		color: var(--td-color-text-subtle);
+		color: var(--td-color-text-muted); /* text (page-contrast gate ≥ 4.7), even though aria-hidden */
 	}
 
 	/* a cell with a note: a corner dot (a shape, not only a colour — QĐ 17) */
@@ -17820,6 +17821,7 @@
 	}
 
 	.td-check-matrix__colpick {
+		flex: 0 1 auto;
 		min-width: 0;
 		max-width: 100%;
 		height: var(--td-check-matrix-cell-size);
