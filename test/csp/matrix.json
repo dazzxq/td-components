@@ -46,7 +46,8 @@
       "td-scan-input": "/src/form/td-scan-input.js",
       "td-filter-chips": "/src/display/td-filter-chips.js",
       "td-datetime-range": "/src/form/td-datetime-range.js",
-      "td-theme-scope": "/src/form/td-dropdown.js"
+      "td-theme-scope": "/src/form/td-dropdown.js",
+      "td-media-gallery": "/src/form/td-media-gallery.js"
     },
     "tokenNative": [
       "td-button",
@@ -93,7 +94,8 @@
       "td-scan-input",
       "td-filter-chips",
       "td-datetime-range",
-      "td-theme-scope"
+      "td-theme-scope",
+      "td-media-gallery"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -4020,6 +4022,125 @@
         "margin-left"
       ],
       "selectorNote": "v0.42.0 (ADR 0020): theme scope + portal bridge — the bridge writes the snapshot with CSSOM only (0 violations under both profiles); height / width / margin-left excluded up front (text line boxes, font metrics)."
+    }
+  ],
+  "td-media-gallery": [
+    {
+      "state": "empty",
+      "markup": "<td-media-gallery name=\"g\" label=\"Ảnh sản phẩm\" helper-text=\"Tối đa 10 ảnh\" max=\"10\" aspect-ratio=\"4/3\"></td-media-gallery>",
+      "selectors": [
+        "td-media-gallery",
+        ".td-media-gallery__head",
+        ".td-media-gallery__label",
+        ".td-media-gallery__count",
+        ".td-media-gallery__add",
+        ".td-media-gallery__add .td-media-gallery__icon",
+        ".td-media-gallery__prompt",
+        ".td-media-gallery__ratio",
+        ".td-media-gallery__help"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.43.0: text-bearing boxes (label, count, the Add prompt, the alt input, the tiles that hold them) size with the font metrics of the platform (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.39 filter chips): width / height / margin-left are excluded from the start; the layout budgets (no horizontal scroll 320–1280, columns, 44px touch targets) are gated by test:responsive and the engines tests"
+    },
+    {
+      "state": "filled",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','600px'); window.__mount.appendChild(w); const g=document.createElement('td-media-gallery'); for (const [k,v] of [['name','g'],['label','Ảnh sản phẩm'],['usage',''],['croppable',''],['cover',''],['max','10'],['aspect-ratio','4/3']]) g.setAttribute(k,v); g.setAttribute('items', \"[{\\\"id\\\": \\\"m1\\\", \\\"src\\\": \\\"/test/fixtures/1.svg\\\", \\\"name\\\": \\\"Ảnh 1\\\", \\\"alt\\\": \\\"Áo thun trắng\\\", \\\"crop\\\": \\\"{\\\\\\\"v\\\\\\\":1,\\\\\\\"x\\\\\\\":0.1,\\\\\\\"y\\\\\\\":0,\\\\\\\"width\\\\\\\":0.5,\\\\\\\"height\\\\\\\":1}\\\"}, {\\\"id\\\": \\\"m2\\\", \\\"src\\\": \\\"/test/fixtures/2.svg\\\", \\\"name\\\": \\\"Ảnh 2\\\"}, {\\\"id\\\": \\\"m4\\\", \\\"kind\\\": \\\"video\\\", \\\"src\\\": \\\"/test/fixtures/4.svg\\\", \\\"name\\\": \\\"clip.mp4\\\"}, {\\\"id\\\": \\\"m11\\\", \\\"kind\\\": \\\"file\\\", \\\"name\\\": \\\"tai-lieu.pdf\\\"}]\"); w.appendChild(g);",
+      "selectors": [
+        "td-media-gallery",
+        ".td-media-gallery__head",
+        ".td-media-gallery__count",
+        ".td-media-gallery__list",
+        ".td-media-gallery__item",
+        ".td-media-gallery__media",
+        ".td-media-gallery__sizer",
+        ".td-media-gallery__img",
+        ".td-media-gallery__cover",
+        ".td-media-gallery__badge",
+        ".td-media-gallery__item[data-kind=\"file\"] .td-media-gallery__file",
+        ".td-media-gallery__handle",
+        ".td-media-gallery__bar",
+        ".td-media-gallery__crop-btn",
+        ".td-media-gallery__remove",
+        ".td-media-gallery__alt-field",
+        ".td-media-gallery__alt",
+        ".td-media-gallery__add"
+      ],
+      "settle": 400,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.43.0: text-bearing boxes (label, count, the Add prompt, the alt input, the tiles that hold them) size with the font metrics of the platform (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.39 filter chips): width / height / margin-left are excluded from the start; the layout budgets (no horizontal scroll 320–1280, columns, 44px touch targets) are gated by test:responsive and the engines tests"
+    },
+    {
+      "state": "dragging",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','600px'); window.__mount.appendChild(w); const g=document.createElement('td-media-gallery'); for (const [k,v] of [['name','g'],['label','Ảnh sản phẩm'],['usage',''],['croppable',''],['cover',''],['max','10'],['aspect-ratio','4/3']]) g.setAttribute(k,v); g.setAttribute('items', \"[{\\\"id\\\": \\\"m1\\\", \\\"src\\\": \\\"/test/fixtures/1.svg\\\", \\\"name\\\": \\\"Ảnh 1\\\", \\\"alt\\\": \\\"Áo thun trắng\\\", \\\"crop\\\": \\\"{\\\\\\\"v\\\\\\\":1,\\\\\\\"x\\\\\\\":0.1,\\\\\\\"y\\\\\\\":0,\\\\\\\"width\\\\\\\":0.5,\\\\\\\"height\\\\\\\":1}\\\"}, {\\\"id\\\": \\\"m2\\\", \\\"src\\\": \\\"/test/fixtures/2.svg\\\", \\\"name\\\": \\\"Ảnh 2\\\"}, {\\\"id\\\": \\\"m4\\\", \\\"kind\\\": \\\"video\\\", \\\"src\\\": \\\"/test/fixtures/4.svg\\\", \\\"name\\\": \\\"clip.mp4\\\"}, {\\\"id\\\": \\\"m11\\\", \\\"kind\\\": \\\"file\\\", \\\"name\\\": \\\"tai-lieu.pdf\\\"}]\"); w.appendChild(g); await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))); const h=g.querySelector('.td-media-gallery__handle'); const r=h.getBoundingClientRect(); const x=Math.round(r.x+r.width/2), y=Math.round(r.y+r.height/2); const pe=(t,xx)=>h.dispatchEvent(new PointerEvent(t,{bubbles:true,cancelable:true,composed:true,clientX:xx,clientY:y,pointerId:5,pointerType:'mouse',isPrimary:true,button:t==='pointermove'?-1:0,buttons:1})); pe('pointerdown',x); pe('pointermove',x+30); await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))); pe('pointermove',x+160); await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));",
+      "selectors": [
+        ".td-media-gallery__list[data-td-dragging]",
+        "[data-td-sort-state=\"dragging\"]",
+        ".td-media-gallery__item:nth-child(2)",
+        ".td-media-gallery__list > .td-sortable__placeholder"
+      ],
+      "settle": 300,
+      "selectorNote": "synthetic pointer down + 2 moves on the first handle, captured mid-drag: the dragged tile (one shadow, offset by CSSOM custom properties), a shifted neighbour, the placeholder in the list",
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.43.0: text-bearing boxes (label, count, the Add prompt, the alt input, the tiles that hold them) size with the font metrics of the platform (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.39 filter chips): width / height / margin-left are excluded from the start; the layout budgets (no horizontal scroll 320–1280, columns, 44px touch targets) are gated by test:responsive and the engines tests"
+    },
+    {
+      "state": "crop-dialog",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','600px'); window.__mount.appendChild(w); const g=document.createElement('td-media-gallery'); for (const [k,v] of [['name','g'],['label','Ảnh sản phẩm'],['usage',''],['croppable',''],['cover',''],['max','10'],['aspect-ratio','4/3']]) g.setAttribute(k,v); g.setAttribute('items', \"[{\\\"id\\\": \\\"m1\\\", \\\"src\\\": \\\"/test/fixtures/1.svg\\\", \\\"name\\\": \\\"Ảnh 1\\\", \\\"alt\\\": \\\"Áo thun trắng\\\", \\\"crop\\\": \\\"{\\\\\\\"v\\\\\\\":1,\\\\\\\"x\\\\\\\":0.1,\\\\\\\"y\\\\\\\":0,\\\\\\\"width\\\\\\\":0.5,\\\\\\\"height\\\\\\\":1}\\\"}, {\\\"id\\\": \\\"m2\\\", \\\"src\\\": \\\"/test/fixtures/2.svg\\\", \\\"name\\\": \\\"Ảnh 2\\\"}, {\\\"id\\\": \\\"m4\\\", \\\"kind\\\": \\\"video\\\", \\\"src\\\": \\\"/test/fixtures/4.svg\\\", \\\"name\\\": \\\"clip.mp4\\\"}, {\\\"id\\\": \\\"m11\\\", \\\"kind\\\": \\\"file\\\", \\\"name\\\": \\\"tai-lieu.pdf\\\"}]\"); w.appendChild(g); await new Promise(r=>setTimeout(r,100)); g.querySelector('.td-media-gallery__crop-btn').click(); await new Promise(r=>setTimeout(r,500));",
+      "selectors": [
+        ".td-crop-dialog",
+        ".td-crop-dialog__dialog",
+        ".td-crop-dialog__footer",
+        ".td-crop-dialog__confirm",
+        ".td-crop-dialog td-cropper",
+        ".td-crop-dialog .td-cropper__stage",
+        ".td-crop-dialog .td-cropper__box"
+      ],
+      "portal": [
+        ".td-crop-dialog",
+        ".td-crop-dialog__dialog",
+        ".td-crop-dialog__footer",
+        ".td-crop-dialog__confirm",
+        ".td-crop-dialog td-cropper",
+        ".td-crop-dialog .td-cropper__stage",
+        ".td-crop-dialog .td-cropper__box"
+      ],
+      "settle": 600,
+      "selectorNote": "v0.43.0: the shared crop dialog opened from a tile's Cắt (no adapter → the tile src)",
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.43.0: text-bearing boxes (label, count, the Add prompt, the alt input, the tiles that hold them) size with the font metrics of the platform (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.39 filter chips): width / height / margin-left are excluded from the start; the layout budgets (no horizontal scroll 320–1280, columns, 44px touch targets) are gated by test:responsive and the engines tests"
+    },
+    {
+      "state": "broken",
+      "markup": "<td-media-gallery name=\"g\" label=\"Ảnh sản phẩm\" items='[{\"id\":\"m1\"},{\"id\":\"m1\"}]'></td-media-gallery>",
+      "selectors": [
+        "td-media-gallery",
+        ".td-media-gallery__label",
+        ".td-media-gallery__broken"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.43.0: text-bearing boxes (label, count, the Add prompt, the alt input, the tiles that hold them) size with the font metrics of the platform (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.39 filter chips): width / height / margin-left are excluded from the start; the layout budgets (no horizontal scroll 320–1280, columns, 44px touch targets) are gated by test:responsive and the engines tests"
     }
   ]
 }

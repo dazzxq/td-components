@@ -318,6 +318,7 @@
 
 	@media (hover: hover) and (pointer: fine) {
 		.td-media-gallery__add:hover:not(:disabled) {
+			color: var(--td-color-text);
 			background-color: var(--td-color-hover);
 		}
 	}
@@ -443,12 +444,14 @@
 	}
 
 	.td-media-gallery__add:is(:active, [data-td-pressed]):not(:disabled) {
+		color: var(--td-color-text);
 		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
 		transition-duration: 0s;
 	}
 
 	/* the handle chip stays solid over the image when pressed (the shared rule's translucent fill would not) */
 	.td-media-gallery__media > .td-sortable__handle:is(:active, [data-td-pressed]):not(:disabled) {
+		color: var(--td-color-text);
 		background-color: var(--td-color-surface);
 		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
 		transition-duration: 0s;

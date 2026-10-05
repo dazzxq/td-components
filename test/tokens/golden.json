@@ -1549,6 +1549,21 @@
       "light": "rgba(0, 0, 0, 0.12)",
       "dark": "rgba(0, 0, 0, 0.4)",
       "why": "v0.42.1: dark pressed pairs ≥ 4.7 — the form-summary link pressed fill (= --td-color-pressed; kit dark darkens the tint: error link 3.30 → 6.3)"
+    },
+    "--td-media-gallery-empty-h": {
+      "light": "8rem",
+      "dark": "8rem",
+      "why": "v0.43.0 td-media-gallery geometry (ADR 0021): tile min width / grid gap / empty Add frame height"
+    },
+    "--td-media-gallery-gap": {
+      "light": "0.5rem",
+      "dark": "0.5rem",
+      "why": "v0.43.0 td-media-gallery geometry (ADR 0021): tile min width / grid gap / empty Add frame height"
+    },
+    "--td-media-gallery-tile-min": {
+      "light": "8rem",
+      "dark": "8rem",
+      "why": "v0.43.0 td-media-gallery geometry (ADR 0021): tile min width / grid gap / empty Add frame height"
     }
   },
   "lightDeltas": {
