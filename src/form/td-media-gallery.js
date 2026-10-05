@@ -1193,6 +1193,7 @@ export class TdMediaGallery extends TdFormElement {
     this._items = this._items.filter((x) => x !== it);
     this._own(() => li.remove());
     this._afterListChange();
+    this._lazyPump(); // ISSUE-5: the aborted get freed a slot — the queue goes on
     this._emit('input', 'remove');
     this._emit('change', 'remove');
     this._announce(this._label('removed', { name: this._baseName(it), count: this._items.length, kind: this._kindWord() }));
