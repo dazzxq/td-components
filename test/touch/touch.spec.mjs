@@ -9,6 +9,8 @@
  *     drag, a swipe on the item body scrolls the page); copy double tap = one state change; table / tabs swiped
  *     sideways scroll without sorting / switching. v0.47.0: td-check-matrix — a tap toggles one cell, a swipe on the grid
  *     scrolls its box without toggling, a tap on a locked cell shows its note, the pressed look of a cell.
+ *     v0.49.0: a choice-group option selects on one tap (pressed while down, nothing stuck), a swipe starting on the
+ *     options scrolls; five quick taps on the stepper + = +5, no zoom.
  * (b) Chromium CDP Input.dispatchTouchEvent — continuous swipes and two-finger pinches: lightbox swipe-follow
  *     (commit / spring / flick / RTL / one item rubber band / edge / zoomed / cancel / reduced motion / settle races),
  *     cropper pinch + touchcancel.
@@ -534,6 +536,61 @@ async function chromiumSemantics(browser) {
       const st = await page.evaluate((s) => [...document.querySelectorAll(`${s} [data-td-sort-state]`)].length, gal);
       expect(y1 < y0 - 50, `page did not scroll (${y0} → ${y1})`);
       expect(st === 0, 'a tile lifted / dragged');
+    });
+
+    // v0.49.0 td-choice-group + number stepper
+    await it(tag, 'choice: a tap selects at once (one input + change), pressed while the finger is down, hover not sticky', async () => {
+      await load(page);
+      const sel = '#rsp-choice .td-choice__option[data-td-value="128"]';
+      await page.evaluate(() => { window.__cg = []; const el = document.querySelector('#rsp-choice'); for (const t of ['input', 'change']) el.addEventListener(t, (e) => window.__cg.push(`${t}:${e.detail.value}`)); });
+      const pt = await centre(page, sel);
+      const face = `${sel} .td-choice__face`;
+      const rest = await bgOf(page, face);
+      await touchDown(cdp, pt);
+      await frames(page, 2);
+      const pressed = await page.evaluate(([s, f]) => ({ attr: document.querySelector(s).hasAttribute('data-td-pressed'), img: getComputedStyle(document.querySelector(f)).backgroundImage }), [sel, face]);
+      const want = await tokenColour(page, '--td-color-pressed');
+      expect(pressed.attr && pressed.img.includes(want), `pressed look missing: ${JSON.stringify(pressed)} (want ${want})`);
+      await touchUp(cdp);
+      await page.waitForFunction(() => document.querySelector('#rsp-choice').value === '128', null, { timeout: 3000 }).catch(() => {});
+      const st = await page.evaluate(() => ({ value: document.querySelector('#rsp-choice').value, log: window.__cg.join(',') }));
+      expect(st.value === '128' && st.log === 'input:128,change:128', `tap: ${JSON.stringify(st)}`);
+      await quiet(page, sel);
+      const h = await centre(page, '#root h2');
+      await page.touchscreen.tap(h.x, h.y);
+      await quiet(page, sel);
+      const unchecked = '#rsp-choice .td-choice__option[data-td-value="512"] .td-choice__face';
+      expect(rest.split(' | ')[1] === 'none' && (await bgOf(page, unchecked)).split(' | ')[1] === 'none', 'a pressed / hover layer stuck after the tap');
+    });
+    await it(tag, 'choice: a vertical swipe starting on the options scrolls the page, selects nothing', async () => {
+      await load(page);
+      const sel = '#rsp-choice-long .td-choice__option';
+      const pt = await centre(page, sel);
+      const y0 = await page.evaluate(() => window.scrollY);
+      await touchDrag(cdp, [pt, { x: pt.x, y: Math.max(pt.y - 260, 10) }], { durationMs: 300 });
+      await page.waitForFunction((y) => window.scrollY > y + 50, y0, { timeout: 3000 }).catch(() => {});
+      const y1 = await page.evaluate(() => window.scrollY);
+      expect(y1 > y0 + 50, `page did not scroll (${y0} → ${y1})`);
+      expect(await page.evaluate(() => document.querySelector('#rsp-choice-long').value) === '', 'a swipe selected an option');
+    });
+    await it(tag, 'stepper: five quick taps on + = +5, no zoom (touch-action manipulation), the field never takes the focus', async () => {
+      await load(page);
+      await page.evaluate(() => {
+        const el = document.querySelector('#rsp-stepper');
+        el.setAttribute('max', '20');
+        window.__st = 0;
+        el.addEventListener('change', () => { window.__st += 1; });
+      });
+      const pt = await centre(page, '#rsp-stepper .td-number__step--up');
+      const ta = await page.evaluate(() => getComputedStyle(document.querySelector('#rsp-stepper .td-number__step--up')).touchAction);
+      expect(ta === 'manipulation', `touch-action ${ta}`);
+      for (let i = 0; i < 5; i++) await page.touchscreen.tap(pt.x, pt.y);
+      await page.waitForFunction(() => document.querySelector('#rsp-stepper').value === '6', null, { timeout: 3000 }).catch(() => {});
+      const st = await page.evaluate(() => ({ value: document.querySelector('#rsp-stepper').value, changes: window.__st,
+        scale: window.visualViewport ? window.visualViewport.scale : 1, focused: document.activeElement?.classList.contains('td-number__control') || false }));
+      expect(st.value === '6' && st.changes === 5, `taps: ${JSON.stringify(st)}`);
+      expect(Math.abs(st.scale - 1) < 0.01, `zoomed: scale ${st.scale}`);
+      expect(!st.focused, 'a tap on + focused the field (virtual keyboard)');
     });
 
     await it(tag, 'copy: two quick taps while the copy is pending = one state change', async () => {
