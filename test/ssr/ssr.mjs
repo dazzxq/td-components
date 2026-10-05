@@ -141,3 +141,12 @@ export const MEDIA_GALLERY_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'media-galle
 export function renderMediaGalleryFixture() {
   return renderPhp('media-gallery-fixture.php');
 }
+
+// v0.46.0: td_diff / td_diff_snapshots (always the element <td-diff data-td-ssr="diff@1">).
+export const DIFF_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'diff.fixtures.json'), 'utf8'));
+export const DIFF_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'diff.html');
+
+/** Render test/ssr/diff-fixture.php (the HTML loaded by the td-diff SSR browser test). */
+export function renderDiffFixture() {
+  return renderPhp('diff-fixture.php');
+}

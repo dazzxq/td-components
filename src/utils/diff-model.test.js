@@ -8,6 +8,8 @@ import {
   splitInvisible, deepEqual, jsonString, LIMITS, DEFAULT_LABELS, fill,
 } from './diff-model.js';
 
+/** Wall-clock budgets get 20× slack on shared hosts (super-linear blow-ups still fail); TD_PERF_STRICT=1 = raw. */
+const PERF_SLACK = process.env.TD_PERF_STRICT ? 1 : 20;
 const rowsOf = (m) => m.rows.map((r) => [r.id, r.kind]);
 const byId = (m, path) => m.rows.find((r) => r.id === JSON.stringify(path));
 const txt = (c) => (c === null ? null : c.k === 'list' ? c.items.map((i) => i.m + i.s) : c.k === 'masked' ? 'MASKED' : c.s);
@@ -233,7 +235,7 @@ describe('diff-model — strings (QĐ 8)', () => {
     assert.equal(Array.from(m.rows[0].label).length, 201);
     assert.equal(m.rows[0].after.s.length, LIMITS.full);
     assert.equal(m.rows[0].after.cut, true);
-    if (ms > 100) console.warn(`perf: 10 MB string took ${ms.toFixed(0)} ms (budget 100 ms local)`);
+    assert.ok(ms < 100 * PERF_SLACK, `10 MB string: ${ms.toFixed(0)} ms`);
   });
 });
 
@@ -299,7 +301,7 @@ describe('diff-model — budgets (QĐ 10)', () => {
     sparse.length = 1e9;
     const t0 = performance.now();
     const s = normalize({ after: { s: sparse } }, { json: true });
-    assert.ok(performance.now() - t0 < 500);
+    assert.ok(performance.now() - t0 < 50 * PERF_SLACK, `sparse 1e9: ${(performance.now() - t0).toFixed(0)} ms`);
     assert.equal(txt(s.rows[0].after), fill(DEFAULT_LABELS.arraySummary, { n: 1e9 }));
     assert.ok(s.json.afterCut);
   });
@@ -309,7 +311,7 @@ describe('diff-model — budgets (QĐ 10)', () => {
     for (let i = 0; i < 20; i++) after[`g${i}`] = Object.fromEntries(Array.from({ length: 600 }, (_, j) => [`k${j}`, j]));
     const t0 = performance.now();
     const m = normalize({ after });
-    if (performance.now() - t0 > 100) console.warn(`perf: 12 000 nodes took ${(performance.now() - t0).toFixed(0)} ms`);
+    assert.ok(performance.now() - t0 < 100 * PERF_SLACK, `12 000 nodes: ${(performance.now() - t0).toFixed(0)} ms`);
     assert.ok(m.notes.includes('tooLarge'));
     assert.equal(m.counts.truncated, true);
     assert.ok(m.counts.added < 10000);
