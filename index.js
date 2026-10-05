@@ -16,6 +16,7 @@ export { TdTreeSelect } from './src/form/td-tree-select.js';
 export { TdNumberInput } from './src/form/td-number-input.js';
 export { TdRepeater } from './src/form/td-repeater.js';
 export { TdMediaField } from './src/form/td-media-field.js';
+export { TdMediaGallery } from './src/form/td-media-gallery.js';
 export { TdCropper } from './src/form/td-cropper.js';
 export { TdScanInput } from './src/form/td-scan-input.js';
 export { TdIconElement } from './src/icons/td-icon-element.js';

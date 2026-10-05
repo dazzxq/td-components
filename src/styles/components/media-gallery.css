@@ -1,0 +1,463 @@
+/*
+ * td-media-gallery (src/form/td-media-gallery.js) — v0.43.0, plan v0.43.0-media-gallery decisions 3, 10-13, 21-23
+ * (ADR 0021). Content layer: solid surfaces, never glass (minimal surfaces). Colours: semantic tokens only (the theme
+ * contract — generated palettes stay readable); no new colour token.
+ * List: a fixed grid `repeat(auto-fill, minmax(--td-media-gallery-tile-min, 1fr))` — never justified (a row height that
+ * changes while sorting would move the target under the finger). Tile: the media box (SVG sizer = the tile ratio, same
+ * markup in PHP and JS, default 1:1; the image covers it, `preview-fit="contain"` fits it), the handle on its top-end
+ * corner on a solid chip, the Cắt / Gỡ buttons in a row UNDER the image (never over it), the alt input (usage).
+ * State: [data-kind] on the tile, [data-state="empty|filled"] / [hidden] / [aria-invalid] / :disabled on the Add button,
+ * the SortableController's [data-td-dragging] on the list + [data-td-sort-state] on a tile, [hidden] on Cắt.
+ * Positions while dragging: CSSOM --_td-sort-x / -y (the shared controller). Crop preview: CSSOM --_td-mg-crop-x / -y /
+ * -w / -h on the `<img>` (unitless; set only when the crop's pixel ratio is within 2 % of the tile's).
+ * Before define (php/td.php td_media_gallery): handle / Cắt / Gỡ / Add are `visibility: hidden` (no dead control; boxes
+ * kept → no layout shift). Responsive (ADR 0014): container `td-media-gallery`; `2xs` (< 360) tighter gaps.
+ * Touch (ADR 0019): `touch-action` only on the handle (shared rule), every tile button ≥ 44px on coarse pointers,
+ * :hover inside the hover gate, pressed = colour only.
+ * Tokens: --td-media-gallery-tile-min, --td-media-gallery-gap, --td-media-gallery-empty-h.
+ * CSP: classes / data / aria attributes only; per-instance values through CSSOM custom properties.
+ */
+@layer td.tokens {
+	:root {
+		--td-media-gallery-tile-min: 8rem;
+		--td-media-gallery-gap: var(--td-space-xs);
+		--td-media-gallery-empty-h: 8rem;
+	}
+}
+
+@layer td.component {
+	td-media-gallery {
+		display: block;
+		box-sizing: border-box;
+		inline-size: 100%;
+		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5) */
+		max-inline-size: 100%;
+		container: td-media-gallery / inline-size;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text);
+	}
+
+	td-media-gallery *,
+	td-media-gallery *::before {
+		box-sizing: border-box;
+	}
+
+	.td-media-gallery__head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: var(--td-space-2xs) var(--td-space-sm);
+		margin: 0 0 var(--td-space-2xs);
+	}
+
+	.td-media-gallery__label {
+		min-inline-size: 0;
+		font-weight: var(--td-fw-medium);
+		color: var(--td-field-label);
+		overflow-wrap: anywhere;
+	}
+
+	.td-media-gallery__count {
+		flex: none;
+		margin-inline-start: auto;
+		font-size: var(--td-text-xs);
+		font-variant-numeric: tabular-nums;
+		color: var(--td-color-text-muted);
+	}
+
+	.td-media-gallery__list {
+		position: relative; /* the drag placeholder is positioned in the list (the controller's host) */
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(min(var(--td-media-gallery-tile-min, 8rem), 100%), 1fr));
+		gap: var(--td-media-gallery-gap, var(--td-space-xs));
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.td-media-gallery__list:empty {
+		display: none;
+	}
+
+	.td-media-gallery__item {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		min-inline-size: 0;
+		margin: 0;
+		border: 1px solid var(--td-color-border);
+		border-radius: var(--td-radius-md);
+		background: var(--td-color-surface);
+	}
+
+	.td-media-gallery__media {
+		position: relative;
+		display: grid;
+		overflow: hidden;
+		border-radius: calc(var(--td-radius-md) - 1px) calc(var(--td-radius-md) - 1px) 0 0;
+		background: var(--td-color-surface-muted);
+	}
+
+	.td-media-gallery__sizer {
+		display: block;
+		grid-area: 1 / 1;
+		inline-size: 100%;
+		block-size: auto;
+		pointer-events: none;
+	}
+
+	.td-media-gallery__img {
+		position: absolute;
+		inset: 0;
+		display: block;
+		inline-size: 100%;
+		max-inline-size: none; /* never a host reset's max-width (Tailwind preflight) */
+		block-size: 100%;
+		object-fit: cover;
+		pointer-events: none;
+		user-select: none;
+		-webkit-user-drag: none;
+	}
+
+	td-media-gallery[preview-fit="contain" i] .td-media-gallery__img {
+		object-fit: contain;
+	}
+
+	/* decision 13: crop preview (vars absent → the same box as above). Physical left / top: image coordinates. */
+	td-media-gallery[croppable] .td-media-gallery__img {
+		inset: auto;
+		top: calc(-100% * var(--_td-mg-crop-y, 0) / var(--_td-mg-crop-h, 1));
+		left: calc(-100% * var(--_td-mg-crop-x, 0) / var(--_td-mg-crop-w, 1));
+		inline-size: calc(100% / var(--_td-mg-crop-w, 1));
+		block-size: calc(100% / var(--_td-mg-crop-h, 1));
+	}
+
+	.td-media-gallery__file {
+		display: flex;
+		grid-area: 1 / 1;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: var(--td-space-2xs);
+		min-inline-size: 0;
+		padding: var(--td-space-xs);
+		text-align: center;
+		color: var(--td-color-text);
+	}
+
+	.td-media-gallery__name {
+		max-inline-size: 100%;
+		font-size: var(--td-text-xs);
+		overflow-wrap: anywhere;
+	}
+
+	.td-media-gallery__icon {
+		display: inline-flex;
+		color: var(--td-color-text-muted);
+		pointer-events: none;
+	}
+
+	.td-media-gallery__badge,
+	.td-media-gallery__cover {
+		position: absolute;
+		inset-inline-start: var(--td-space-2xs);
+		padding: 0.125rem 0.5rem;
+		border-radius: var(--td-radius-full);
+		background: var(--td-color-text);
+		color: var(--td-color-surface);
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-medium);
+		line-height: var(--td-leading-normal);
+		pointer-events: none;
+	}
+
+	.td-media-gallery__badge {
+		inset-block-start: var(--td-space-2xs);
+	}
+
+	.td-media-gallery__cover {
+		inset-block-end: var(--td-space-2xs);
+	}
+
+	/* the handle on the image's top-end corner, on a solid chip (the glyph keeps its contrast over any image) */
+	.td-media-gallery__media > .td-sortable__handle {
+		position: absolute;
+		inset-block-start: var(--td-space-2xs);
+		inset-inline-end: var(--td-space-2xs);
+		z-index: 1;
+		background: var(--td-color-surface);
+		border-color: var(--td-color-border);
+	}
+
+	.td-media-gallery__media > .td-sortable__handle .td-media-gallery__icon,
+	.td-media-gallery__btn .td-media-gallery__icon {
+		color: inherit;
+	}
+
+	.td-media-gallery__media > .td-sortable__handle:disabled {
+		color: var(--td-btn-disabled-fg);
+		cursor: not-allowed;
+	}
+
+	.td-media-gallery__bar {
+		display: flex;
+		justify-content: flex-end;
+		gap: var(--td-space-2xs);
+		padding: var(--td-space-2xs);
+	}
+
+	.td-media-gallery__btn {
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		inline-size: 2rem;
+		block-size: 2rem;
+		margin: 0;
+		padding: 0;
+		border: 1px solid transparent;
+		border-radius: var(--td-radius-md);
+		background: transparent;
+		color: var(--td-color-text-muted);
+		font: inherit;
+		line-height: 0;
+		cursor: pointer;
+		appearance: none;
+		transition: background-color var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-media-gallery__btn[hidden] {
+		display: none;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-gallery__btn:hover:not(:disabled) {
+			color: var(--td-color-text);
+			background: var(--td-color-hover-strong);
+		}
+	}
+
+	.td-media-gallery__btn:focus-visible,
+	.td-media-gallery__add:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-media-gallery__btn:disabled {
+		color: var(--td-btn-disabled-fg);
+		cursor: not-allowed;
+	}
+
+	.td-media-gallery__btn[aria-busy="true"] {
+		cursor: progress;
+	}
+
+	/* the alt input: the kit field control, small, the full width of the tile */
+	.td-media-gallery__alt-field {
+		--_td-field-h: var(--td-field-h-sm);
+		--_td-field-radius: var(--td-field-radius-sm);
+		--_td-field-pad: 4px 8px;
+
+		display: block;
+		padding: 0 var(--td-space-2xs) var(--td-space-2xs);
+		font-size: var(--td-text-xs);
+	}
+
+	.td-media-gallery__alt {
+		min-inline-size: 0;
+	}
+
+	.td-media-gallery__add {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--td-space-xs);
+		inline-size: 100%;
+		min-block-size: 2.75rem;
+		margin: var(--td-space-xs) 0 0;
+		padding: var(--td-space-xs) var(--td-space-md);
+		border: 1px dashed var(--td-color-text-muted);
+		border-radius: var(--td-radius-md);
+		background: var(--td-color-surface-muted);
+		color: var(--td-color-text-muted);
+		font: inherit;
+		font-weight: var(--td-fw-medium);
+		text-align: center;
+		cursor: pointer;
+		appearance: none;
+		transition: background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-media-gallery__add[data-state="empty"] {
+		flex-direction: column;
+		gap: var(--td-space-2xs);
+		min-block-size: var(--td-media-gallery-empty-h, 8rem);
+		margin-block-start: 0;
+	}
+
+	.td-media-gallery__add[hidden] {
+		display: none;
+	}
+
+	.td-media-gallery__add[aria-invalid="true"] {
+		border-color: var(--td-field-error);
+	}
+
+	.td-media-gallery__add .td-media-gallery__icon {
+		color: inherit;
+	}
+
+	.td-media-gallery__add[data-state="empty"] .td-media-gallery__icon svg {
+		inline-size: 1.75rem;
+		block-size: 1.75rem;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-gallery__add:hover:not(:disabled) {
+			background-color: var(--td-color-hover);
+		}
+	}
+
+	.td-media-gallery__add:disabled {
+		cursor: not-allowed;
+	}
+
+	.td-media-gallery__add:disabled > * {
+		opacity: 0.6;
+	}
+
+	.td-media-gallery__ratio {
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-normal);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.td-media-gallery__broken {
+		display: block;
+		padding: var(--td-space-sm);
+		border: 1px solid var(--td-field-error);
+		border-radius: var(--td-radius-md);
+		background: var(--td-color-surface);
+		color: var(--td-field-error);
+	}
+
+	.td-media-gallery__help {
+		display: block;
+		margin-block-start: var(--td-space-2xs);
+		font-size: var(--td-text-xs);
+		color: var(--td-field-note);
+	}
+
+	/* reorder (decision 10): the shared SortableController on the list (sortable.css draws the handle box, the lifted
+	   outline and the placeholder) */
+	.td-media-gallery__list[data-td-dragging] {
+		cursor: grabbing;
+		user-select: none;
+		-webkit-user-select: none;
+	}
+
+	.td-media-gallery__list[data-td-dragging] > .td-media-gallery__item {
+		transform: translate(var(--_td-sort-x, 0px), var(--_td-sort-y, 0px));
+	}
+
+	@media (prefers-reduced-motion: no-preference) {
+		.td-media-gallery__list[data-td-dragging] > .td-media-gallery__item {
+			transition: transform 150ms var(--td-ease);
+		}
+	}
+
+	.td-media-gallery__list[data-td-dragging] > [data-td-sort-state="dragging"] {
+		z-index: 2;
+		box-shadow: var(--td-glass-shadow);
+		transition: none;
+	}
+
+	/* ADR 0012 §6: before define no dead control — the buttons keep their box */
+	td-media-gallery:not(:defined) :is(.td-media-gallery__handle, .td-media-gallery__btn, .td-media-gallery__add) {
+		visibility: hidden;
+	}
+
+	@container td-media-gallery (width < 360px) {
+		.td-media-gallery__list {
+			gap: var(--td-space-2xs);
+		}
+
+		.td-media-gallery__bar {
+			padding: 2px;
+		}
+	}
+
+	@media (pointer: coarse) {
+		.td-media-gallery__btn {
+			inline-size: var(--td-touch-min, 44px);
+			block-size: var(--td-touch-min, 44px);
+		}
+
+		.td-media-gallery__add {
+			min-block-size: var(--td-touch-min, 44px);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-media-gallery__btn,
+		.td-media-gallery__add {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-media-gallery__item,
+		.td-media-gallery__add {
+			border-color: CanvasText;
+		}
+
+		.td-media-gallery__badge,
+		.td-media-gallery__cover {
+			border: 1px solid CanvasText;
+		}
+
+		.td-media-gallery__btn {
+			color: ButtonText;
+		}
+
+		.td-media-gallery__btn:disabled {
+			color: GrayText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-media-gallery__btn,
+	.td-media-gallery__add {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-media-gallery__btn:is(:active, [data-td-pressed]):not(:disabled) {
+		color: var(--td-color-text);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-media-gallery__add:is(:active, [data-td-pressed]):not(:disabled) {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	/* the handle chip stays solid over the image when pressed (the shared rule's translucent fill would not) */
+	.td-media-gallery__media > .td-sortable__handle:is(:active, [data-td-pressed]):not(:disabled) {
+		background-color: var(--td-color-surface);
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-media-gallery__btn:is(:active, [data-td-pressed]),
+		.td-media-gallery__add:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
+}
