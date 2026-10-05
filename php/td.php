@@ -6848,9 +6848,12 @@ namespace {
      * $options: list of ['value' => string|int, 'label' => string, 'hint'?, 'swatch'? (colour → SVG `fill` through
      * Td::safeColor()), 'image'? (td__media_url(): https: / scheme-less; http: only with Td::allowHttpLinks(true)),
      * 'disabled'? (combination that does not exist), 'unavailable'? (selectable, struck through + note), 'unavailable_label'?].
-     * A wrong option (missing / non-string label, value not a non-empty string or int, duplicate value) is dropped + ONE
-     * E_USER_WARNING naming the position, key and type — never the raw value; a refused colour / image is dropped the same
-     * way (the option stays). $value: the selected option (absent → nothing checked).
+     * Bounded by Td::CHOICE_LIMITS (= the JS CHOICE_LIMITS): at most 400 entries read, 100 options printed; label / hint cut
+     * to 200 code points, note to 100; value over 200, swatch over 128, image over 8192 refused. A wrong option (not an
+     * array, value not canonical — td__choice_value: valid UTF-8, no control characters, 1–200 code points — label not a
+     * non-empty string, duplicate value) is dropped; a wrong / refused / cut field is ignored (the option stays). At most
+     * ONE E_USER_WARNING per call with the counts only ("{n} option(s) dropped, {m} field(s) ignored or shortened" + a note
+     * when $value is not one of the options) — never a value. $value: the selected option (absent → nothing checked).
      * Options: label, variant ('button' | 'swatch'), required, disabled, helper_text, error_text, id (the HOST id), aria_label,
      * class.
      */

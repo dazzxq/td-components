@@ -1775,10 +1775,10 @@ host `disabled`).
 | Option | Ý nghĩa |
 |---|---|
 | `$name` | tên field. `''` → radio dùng tên nhóm riêng `{id}-group` + `form=""` (bàn phím vẫn là một nhóm, không bao giờ được gửi) |
-| `$options` | danh sách `['value' => string\|int, 'label' => string, 'hint'?, 'swatch'?, 'image'?, 'disabled'?, 'unavailable'?, 'unavailable_label'?]`. Sai (không phải mảng, thiếu / sai kiểu `value` hoặc `label`, `value` trùng) → **bỏ** lựa chọn + một `E_USER_WARNING`; `hint` / `unavailable_label` sai kiểu → bỏ khoá đó + cảnh báo. `disabled` / `unavailable` chỉ nhận `true` |
-| `swatch` | qua `Td::safeColor()` → thuộc tính `fill` của SVG (không phải inline style). Sai → không màu (ô trung tính) + cảnh báo |
-| `image` | qua `td__media_url()`: `https:` hoặc không scheme (tương đối, `/…`, `//…`). **`http:` bị từ chối** trừ khi site gọi `Td::allowHttpLinks(true)` (site chạy HTTP); trang thực tế HTTPS mà vẫn bật cờ → JS khi nhận markup từ chối ảnh đó → vẽ lại không ảnh. `data:` / `javascript:` / `blob:` / > 8 KiB → từ chối + cảnh báo |
-| `$value` | lựa chọn được chọn (`string` / `int`); không có trong `$options` → không chọn gì + cảnh báo |
+| `$options` | danh sách `['value' => string\|int, 'label' => string, 'hint'?, 'swatch'?, 'image'?, 'disabled'?, 'unavailable'?, 'unavailable_label'?]`. Sai (không phải mảng, `value` không chuẩn — xem dưới —, `label` không phải chuỗi khác rỗng, `value` trùng) → **bỏ** lựa chọn; `hint` / `unavailable_label` sai kiểu → bỏ khoá đó. `disabled` / `unavailable` chỉ nhận `true`. **Giới hạn** `Td::CHOICE_LIMITS` (= JS `CHOICE_LIMITS`): đọc tối đa 400 phần tử, in tối đa 100 lựa chọn; `label` / `hint` cắt ở 200 code point, `unavailable_label` ở 100; `value` > 200, `swatch` > 128, `image` > 8192 → từ chối. `value` chuẩn (`td__choice_value`): `int` → chuỗi, chuỗi hợp lệ UTF-8, 1–200 code point, không ký tự điều khiển (kể cả `\r` `\n` `\t`), không trim |
+| `swatch` | qua `Td::safeColor()` → thuộc tính `fill` của SVG (không phải inline style). Sai → không màu (ô trung tính) |
+| `image` | qua `td__media_url()`: `https:` hoặc không scheme (tương đối, `/…`, `//…`). **`http:` bị từ chối** trừ khi site gọi `Td::allowHttpLinks(true)` (site chạy HTTP); trang thực tế HTTPS mà vẫn bật cờ → JS khi nhận markup từ chối ảnh đó → vẽ lại không ảnh. `data:` / `javascript:` / `blob:` / > 8 KiB → từ chối |
+| `$value` | lựa chọn được chọn (`string` / `int`); không có trong `$options` → không chọn gì (ghi vào cảnh báo gộp) |
 | `label`, `aria_label` | nhãn nhóm (tên của `role="radiogroup"`); `aria_label` khi không có `label` |
 | `variant` | `'button'` (mặc định) \| `'swatch'` |
 | `required`, `disabled` | trên host + mọi radio |
@@ -1790,7 +1790,9 @@ Ghi chú "Hết hàng" mặc định = `Td::CHOICE_LABELS['unavailable']` (= `Td
 site đổi chữ phía JS thì component tự áp lại khi nhận markup (không bị coi là lệch). Ghi chú riêng (`unavailable_label`) mang
 `data-td-custom` và được giữ nguyên.
 
-Cảnh báo chỉ ghi vị trí, khoá và kiểu PHP — không in giá trị thô. Server **vẫn phải** kiểm giá trị gửi lên thuộc tập lựa chọn
+Cảnh báo: **tối đa một** `E_USER_WARNING` mỗi lần gọi, chỉ có số đếm — `td_choice_group: {n} option(s) dropped, {m}
+field(s) ignored or shortened (…)` (+ "the selected value is not one of the options" khi `$value` không khớp) — không bao
+giờ in giá trị. Server **vẫn phải** kiểm giá trị gửi lên thuộc tập lựa chọn
 hợp lệ (và tồn kho) của sản phẩm.
 
 ## An toàn: escape và whitelist
