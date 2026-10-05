@@ -45,7 +45,8 @@
       "td-action-button": "/src/form/td-action-button.js",
       "td-scan-input": "/src/form/td-scan-input.js",
       "td-filter-chips": "/src/display/td-filter-chips.js",
-      "td-datetime-range": "/src/form/td-datetime-range.js"
+      "td-datetime-range": "/src/form/td-datetime-range.js",
+      "td-theme-scope": "/src/form/td-dropdown.js"
     },
     "tokenNative": [
       "td-button",
@@ -91,7 +92,8 @@
       "td-action-button",
       "td-scan-input",
       "td-filter-chips",
-      "td-datetime-range"
+      "td-datetime-range",
+      "td-theme-scope"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -3961,6 +3963,63 @@
         "margin-left"
       ],
       "selectorNote": "v0.40.0: height / margin-left excluded up front — chip rows, legends and the side blocks are text line boxes (font metrics differ on Linux CI, like td-table selection-cards); the dialog size budgets are gated by test:responsive + the engines test. Many presets wrap onto several rows ≥ 480 (the < 480 one-row scroller: engines + responsive gates)."
+    }
+  ],
+  "td-theme-scope": [
+    {
+      "state": "dropdown-dark-scope",
+      "setup": "const s=document.createElement('section'); s.setAttribute('data-td-theme','dark'); window.__mount.appendChild(s); const d=document.createElement('td-dropdown'); d.id='probe'; d.setAttribute('aria-label','Chọn'); s.appendChild(d); d.options=[{value:'a',label:'Apple'},{value:'b',label:'Banana'}]; d.setAttribute('value','b'); d.open();",
+      "selectors": [
+        ".td-dropdown__menu",
+        ".td-dropdown__option"
+      ],
+      "portal": [
+        ".td-dropdown__menu",
+        ".td-dropdown__option"
+      ],
+      "settle": 350,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.42.0 (ADR 0020): theme scope + portal bridge — the bridge writes the snapshot with CSSOM only (0 violations under both profiles); height / width / margin-left excluded up front (text line boxes, font metrics)."
+    },
+    {
+      "state": "modal-theme-root",
+      "module": "/src/feedback/td-modal.js",
+      "setup": "const s=document.createElement('section'); s.setAttribute('data-td-theme','dark'); window.__mount.appendChild(s); TdModal.show({ title:'Tối', body:'<div>Thân</div>', themeRoot: s });",
+      "selectors": [
+        ".td-modal__dialog",
+        ".td-modal__backdrop"
+      ],
+      "portal": [
+        ".td-modal__dialog",
+        ".td-modal__backdrop"
+      ],
+      "settle": 400,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.42.0 (ADR 0020): theme scope + portal bridge — the bridge writes the snapshot with CSSOM only (0 violations under both profiles); height / width / margin-left excluded up front (text line boxes, font metrics)."
+    },
+    {
+      "state": "field-dark-scope",
+      "module": "/src/form/td-input-field.js",
+      "markup": "<section data-td-theme=\"dark\"><td-input-field label=\"Tên\" placeholder=\"Nhập tên\"></td-input-field></section>",
+      "selectors": [
+        ".td-field__control",
+        ".td-field__label"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.42.0 (ADR 0020): theme scope + portal bridge — the bridge writes the snapshot with CSSOM only (0 violations under both profiles); height / width / margin-left excluded up front (text line boxes, font metrics)."
     }
   ]
 }
