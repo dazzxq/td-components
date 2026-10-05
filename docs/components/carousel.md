@@ -95,6 +95,9 @@ cả thanh. Thứ tự DOM = thứ tự hiển thị (Tab / đọc màn hình đ
 - Chiều cao giữ chỗ tính từ số trang **dự đoán** `max(1, ceil(số slide / per_view))`. Khi số slide mỗi khung phụ thuộc bề
   rộng (token responsive, `slide-size`, peek), dự đoán có thể lệch → dịch một hàng chấm (≤ 44 px) **một lần** lúc nâng cấp.
   Trang cần CLS tuyệt đối: dùng `per-view` attribute, hoặc `dots="off"` (chỉ hàng nút, luôn cố định).
+- **Ngoại lệ chấp nhận: `dots="on"` cần hơn 2 hàng chấm** (hẹp: > 12 trang; rộng: > 16). CSS chỉ giữ chỗ tới 2 hàng, nên
+  lúc nâng cấp khung chấm cao thêm (tối đa số hàng thừa × 44 px cảm ứng / 24 px chuột) **một lần**. Muốn không dịch: dùng
+  `dots="auto"` (rơi về bộ đếm) hoặc `dots="off"`. Test: `td-v050-carousel.engines.browser-test.js` (case `c-on17`).
 
 ## Ảnh lười + LCP
 
@@ -105,13 +108,21 @@ sẵn. Khuyên: ảnh có `width` + `height` (hoặc `aspect-ratio`), `loading="
 ## PHP — `td_carousel()`
 
 ```php
-$cards = array_map(fn ($p) => render_product_card($p), $related);   // HTML do TEMPLATE của site sinh
-echo td_carousel($cards, ['label' => 'Sản phẩm liên quan', 'per_view' => 2]);
+use TdComponents\Td;
+
+// $cardHtml do TEMPLATE của site dựng (template đã tự escape tên, giá… bên trong) → đánh dấu tin cậy bằng Td::html()
+$slides = array_map(fn ($p) => Td::html(render_product_card($p)), $related);
+echo td_carousel($slides, ['label' => 'Sản phẩm liên quan', 'per_view' => 2]);
+
+echo td_carousel(['Ưu đãi 1', 'Ưu đãi 2'], ['label' => 'Ưu đãi']);   // chuỗi thường = CHỮ (được escape)
 ```
 
-- `$slides`: mảng **chuỗi HTML tin cậy do template của site sinh** — in **nguyên văn** (raw-HTML hatch,
-  [security-model §2](../internal/security-model.md)). **Không bao giờ** đưa HTML người dùng nhập. Phần tử không phải chuỗi
-  bị bỏ + `E_USER_WARNING`.
+- `$slides` — mỗi phần tử là **một trong hai** (từ 0.50.0, sau Codex review):
+  - `Td::html($cardHtml)` (`TdTrustedHtml`): markup do **template của chính site** sinh, in **nguyên văn** — đường opt-in
+    tường minh duy nhất ([security-model §2](../internal/security-model.md)). **Không bao giờ bọc input người dùng**
+    (mô tả, bình luận, tên do khách nhập…) trong `Td::html()`: escape nó **bên trong** template trước.
+  - chuỗi thường: in như **chữ** (escape bằng `Td::e`) — `<img onerror=…>` hiện thành chữ, không chạy.
+  - Khác (số, mảng, object khác) → bị bỏ + một `E_USER_WARNING`.
 - Options (chữ đều escape): `label` (thiếu → "Băng chuyền" + `E_USER_WARNING`), `per_view` (1–6), `dots`, `step`, `id`,
   `class`, `attrs` (host: allowlist + `aria-*` / `data-*`; tên kit sở hữu và `data-td-*` bị chặn). **Không** có `labels`:
   nhãn khung là mặc định của kit; site đổi `TdCarousel.labels` thì JS ghi lại nhãn **khung** lúc nâng cấp (slide không bị

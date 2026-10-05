@@ -256,7 +256,8 @@ td_color_picker(string $name, array $o = []): string   // 0.48.0
 td_color_value(mixed $v): ?string                      // 0.48.0: chuẩn hoá màu POST → '#rrggbb' | '' | null
 td_choice_group(string $name, array $options, string|int|null $value = null, array $o = []): string   // 0.49.0 (luôn element)
 td_rating(int|float|string|null $value, array $o = []): string   // 0.50.0 (luôn element, chỉ đọc)
-td_carousel(array $slides, array $o = []): string   // 0.50.0 (luôn element; $slides = HTML TIN CẬY của template site)
+td_carousel(array $slides, array $o = []): string   // 0.50.0 (luôn element; slide = Td::html(markup của template) | chuỗi = chữ)
+Td::html(string $html): TdTrustedHtml   // 0.50.0: đánh dấu markup TIN CẬY (opt-in hatch của td_carousel) — không bao giờ cho input người dùng
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
 td_stylesheet_tag(?string $nonce = null): string
@@ -1807,19 +1808,19 @@ hợp lệ (và tồn kho) của sản phẩm.
 ```php
 <?= td_rating($p['rating_avg'], ['count' => $p['rating_count'], 'size' => 's']) ?>   <!-- null → "Chưa có đánh giá" -->
 
-<?= td_carousel(array_map('render_product_card', $related), ['label' => 'Sản phẩm liên quan', 'per_view' => 2]) ?>
+<?= td_carousel(array_map(fn ($p) => Td::html(render_product_card($p)), $related), ['label' => 'Sản phẩm liên quan', 'per_view' => 2]) ?>
 ```
 
 - **`td_rating($value, $o)`** in [Rating](../components/rating.md) đầy đủ (hợp đồng `rating@1`): sao (hai icon `star`,
   `data-fill` bậc 10 %), chữ trợ năng, số lượt — **đủ hình không cần JS**, module nhận tại chỗ. `$value`: số hoặc chuỗi số
   thập phân thường; `null` / khác → "Chưa có đánh giá". Options: `max` (1–10; sai → 5 + `E_USER_WARNING`), `precision`,
-  `count`, `show_value`, `size`, `id`, `class`, `attrs`. Kit **không** in `AggregateRating` / microdata — việc của site,
-  chỉ từ đánh giá thật.
+  `count`, `show_value`, `size`, `id`, `class`, `attrs` (cho phép thêm `itemprop` — tên thuộc tính microdata — trên host). Kit
+  **không** in `AggregateRating` / microdata — việc của site, chỉ từ đánh giá thật.
 - **`td_carousel($slides, $o)`** in [Carousel](../components/carousel.md) (hợp đồng `carousel@1`): mỗi slide bọc trong
   `div.td-carousel__slide` ("n / total"), thanh điều khiển `data-td-js-only` (ẩn nhưng **giữ chỗ** tới khi module tải),
-  `data-td-pages` / `data-td-rows-*` = số trang **dự đoán** `max(1, ceil(n / per_view))`. **`$slides` là chuỗi HTML tin
-  cậy do template của site sinh — in nguyên văn, không lọc** ([security-model §2](../internal/security-model.md)): không bao
-  giờ đưa HTML người dùng nhập vào. Phần tử không phải chuỗi → bỏ + `E_USER_WARNING`; thiếu `label` → "Băng chuyền" +
+  `data-td-pages` / `data-td-rows-*` = số trang **dự đoán** `max(1, ceil(n / per_view))`. **Mỗi slide: `Td::html($markup)`
+  (markup do template của site sinh, in nguyên văn — opt-in tường minh, [security-model §2](../internal/security-model.md);
+  không bao giờ bọc input người dùng) hoặc chuỗi thường (in như chữ, đã escape)**; khác → bỏ + `E_USER_WARNING`; thiếu `label` → "Băng chuyền" +
   `E_USER_WARNING`. Options: `label`, `per_view` (1–6), `dots`, `step`, `id`, `class`, `attrs`.
 - **Nhãn tĩnh toàn site (cả hai):** không có option `labels`. PHP in chữ mặc định tiếng Việt; site đổi `TdRating.labels` /
   `TdCarousel.labels` trong JS thì lúc nâng cấp rating được render lại bằng chữ JS, carousel chỉ ghi lại nhãn **khung**

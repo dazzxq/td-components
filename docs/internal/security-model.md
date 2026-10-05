@@ -46,10 +46,11 @@ Không bao giờ đưa input của người dùng cuối qua các đường này
   khi logout / login / đổi tenant hoặc quyền trong SPA — nếu không, user sau có thể thấy fragment của user trước. Nhãn, tên truy cập,
   trạng thái luôn là text.
 
-- **PHP `td_carousel($slides)`** (0.50.0): mỗi phần tử của `$slides` là **chuỗi HTML tin cậy do template của site sinh**
-  (thẻ sản phẩm…) và được in **nguyên văn** bên trong `div.td-carousel__slide` — kit không lọc. Không bao giờ đưa HTML do
-  người dùng nhập (mô tả, bình luận…) vào thẳng; template của site phải tự escape dữ liệu khi dựng thẻ. Phần tử không phải
-  chuỗi bị bỏ (+ `E_USER_WARNING`). Phía JS **không** có hatch tương ứng: `<td-carousel>` không bao giờ đọc / ghi
+- **PHP `td_carousel($slides)`** (0.50.0, **opt-in tường minh** sau Codex review S1): chỉ slide bọc trong
+  `Td::html($markup)` (`TdComponents\TdTrustedHtml`) được in **nguyên văn** bên trong `div.td-carousel__slide` — markup do
+  template **của site** sinh (thẻ sản phẩm…), kit không lọc. Chuỗi thường là **chữ** (escape bằng `Td::e`). Không bao giờ
+  bọc HTML do người dùng nhập (mô tả, bình luận…) trong `Td::html()`; template phải tự escape dữ liệu khi dựng thẻ. Phần
+  tử khác bị bỏ (+ `E_USER_WARNING`). Phía JS **không** có hatch tương ứng: `<td-carousel>` không bao giờ đọc / ghi
   `innerHTML` của slide (chỉ di chuyển node của site một lần và đặt `class` / `role` / `aria-*` trên slide).
 
 Dưới CSP strict, nội dung đi qua các hatch này cũng phải "sạch CSP" (không `style="…"`, không `<style>`), vì lib
@@ -427,6 +428,11 @@ Server **vẫn phải** kiểm giá trị lựa chọn thuộc tập hợp lệ 
 - **CSP**: tô sao chính xác và khung carousel chỉ dùng CSSOM (`style.setProperty('--_td-rating-fill', …)`); PHP không in
   `style="…"` (bậc `data-fill` 10 % do `td.css`). Probe hướng cuộn RTL dựng phần tử ẩn bằng CSSOM. CSP states
   `td-rating.*`, `td-carousel.*`: 0 violation.
+- **Khung carousel (Codex review S2)**: mọi node khung kit sở hữu (viewport, track, controls, nút, bộ đếm, khung chấm,
+  từng chấm `button[type=button]`, vùng thông báo) phải đúng thẻ + class + **allowlist attribute** (`FRAME_ATTRS` trong
+  `td-carousel.js`); có attribute khác (`onclick`, `form`, `formaction`, `popovertarget`, `style`…) → **thay** bằng node mới
+  của kit (không gỡ tại chỗ). Gắn lại sau khi tách (`canRebind()` = false) chạy lại cùng phép kiểm: node còn đúng giữ nguyên
+  (identity + focus), node bị sửa lúc tách bị thay; slide không bao giờ bị chạm.
 - **Cổng SSR**: `rating@1` nhận tại chỗ chỉ khi con của host **bằng đúng** cây JS tự dựng (`isEqualNode`, kể cả nhãn); lệch
   (thẻ lạ, `onclick`, nhãn khác) → render lại từ attribute. `carousel@1` không bao giờ render lại slide; phần **khung** lệch
   (nút là `<a href="javascript:…">`, phần tử thừa trong thanh điều khiển) bị thay bằng phần của kit / bỏ đi.

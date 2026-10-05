@@ -91,7 +91,8 @@ echo td_rating('4.3', ['count' => 1234, 'show_value' => true, 'size' => 's', 'cl
 - `$value`: `int` / `float` (âm → 0) hoặc chuỗi số thập phân thường (`/^\d+(\.\d+)?$/`, ≤ 16 ký tự); `null` / khác → chưa có
   đánh giá.
 - Options: `max` (1–10; sai → 5 + `E_USER_WARNING`), `precision` (`half` | `exact`), `count`, `show_value`, `size`,
-  `id`, `class`, `attrs` (host: allowlist + `aria-*` / `data-*`; tên kit sở hữu và `data-td-*` bị chặn). **Không** có
+  `id`, `class`, `attrs` (host: allowlist + `aria-*` / `data-*` + `itemprop` (tên thuộc tính microdata, vd.
+  `aggregateRating`); tên kit sở hữu và `data-td-*` bị chặn). **Không** có
   `labels`.
 - In `<td-rating data-td-ssr="rating@1" …>` + đủ cây (sao, chữ) → đúng hình ngay khi tải trang, **không cần JS** (không
   CLS); module JS nhận tại chỗ khi markup khớp đúng cái nó tự dựng.
