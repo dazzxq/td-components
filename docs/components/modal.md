@@ -146,8 +146,10 @@ cách. **Phân biệt hoa thường** (`xoa` ≠ `XOA`) và **phân biệt dấu
 - Bộ gõ tiếng Việt / CJK: chữ đang gõ dở (composition) không được tính; Enter để chốt chữ của bộ gõ không xác nhận.
 - Ô tắt gợi ý / tự sửa / tự viết hoa (`autocomplete="off"`, `autocapitalize="none"`, `autocorrect="off"`,
   `spellcheck="false"`), không có `maxlength`.
-- `typeToConfirm` rỗng / không phải chuỗi → bỏ qua + một `console.warn` (hộp thoại như cũ). Dài hơn 100 ký tự → cắt +
-  `console.warn`.
+- **Fail closed:** có truyền `typeToConfirm` nhưng sai — không phải chuỗi (kể cả `null` / `undefined` viết rõ), rỗng
+  hoặc chỉ khoảng trắng sau chuẩn hoá, hay dài hơn 100 ký tự (code point) — thì `confirm()` trả Promise **bị reject**
+  (`TypeError`, thông điệp cố định, không lặp lại giá trị của bạn), **không mở** hộp thoại nào và **không gọi**
+  `onConfirm`. Không cắt ngắn ngầm. Không truyền option → `confirm` thường như cũ.
 
 **Chọn phrase bền với bộ gõ Telex / VNI:** dùng chữ IN, ngắn, **không dấu**, tránh cặp `aa / ee / oo / dd / w` và
 `s / f / r / x / j` ngay sau nguyên âm (Telex biến chúng thành dấu). `XOA`, `XOA-VINH-VIEN`, mã đơn `DH10240` là an
@@ -376,7 +378,7 @@ Trong lúc bận, bấm lại nút đó hay nút khác đều bị bỏ qua, và
 | `confirmVariant` | `'primary' \| 'danger' \| 'success' \| 'warning'` | `'primary'` | Màu nút xác nhận. Giá trị khác → `primary`. |
 | `onConfirm` | `() => any` | — | Gọi khi bấm xác nhận. Đồng bộ: trả `false` hoặc ném lỗi (ghi `console.error`) → giữ mở (**đổi hành vi 0.16.0**, trước đó resolve `true` và đóng); giá trị khác → `true` và đóng. Trả Promise → nút bận; resolve `false` hoặc reject → giữ mở; giá trị khác → `true` và đóng. |
 | `onCancel` | `() => void` | — | Gọi đúng một lần khi bị huỷ (nút Hủy, X, `closeAll`). Lỗi bị nuốt. |
-| `typeToConfirm` | `string` | — | 0.44.0: phải gõ đúng chuỗi này (≤ 100 ký tự) thì nút xác nhận mới hoạt động. Xem [Xác nhận bằng cách gõ](#3b-xác-nhận-bằng-cách-gõ-typetoconfirm-0440). |
+| `typeToConfirm` | `string` | — | 0.44.0: phải gõ đúng chuỗi này (≤ 100 ký tự) thì nút xác nhận mới hoạt động. Có truyền mà sai → Promise reject `TypeError`, không mở hộp thoại. Xem [Xác nhận bằng cách gõ](#3b-xác-nhận-bằng-cách-gõ-typetoconfirm-0440). |
 
 Focus ban đầu của `confirm` nằm ở nút **Hủy** (an toàn cho thao tác nguy hiểm: nhấn Enter nhầm không xoá gì); có
 `typeToConfirm` thì ở ô gõ.

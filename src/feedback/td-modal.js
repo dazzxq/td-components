@@ -368,8 +368,8 @@ export class TdModal {
     let result;
     try {
       result = guard({ reason, value });
-    } catch (err) {
-      console.error('TdModal beforeClose threw:', err);
+    } catch {
+      console.error('TdModal: beforeClose threw — the dialog stays open'); // fixed text, never the caller's error (SEC-3)
       return Promise.resolve(false);
     }
     if (!isThenable(result)) {
@@ -383,10 +383,10 @@ export class TdModal {
       if (v === false) return false;
       inst.close(value);
       return true;
-    }, (err) => {
+    }, () => {
       inst.guarding = null;
       if (inst.closed) return true;
-      console.error('TdModal beforeClose rejected:', err);
+      console.error('TdModal: beforeClose rejected — the dialog stays open');
       return false;
     });
     inst.guarding = pending;
@@ -573,10 +573,20 @@ export class TdModal {
    * @param {string} [options.typeToConfirm] - v0.44.0: the confirm button works only once this phrase is typed in a
    *   field under the message (NFC, trimmed, whitespace runs = one space; case- and accent-sensitive; ≤ 100 code
    *   points). Until then it is `aria-disabled` (still focusable); a click / Enter shows the mismatch error. The field
-   *   gets the first focus. Empty / not a string → ignored with a console.warn.
+   *   gets the first focus. PRESENT but invalid (not a string — null / undefined included —, empty / blank after
+   *   normalisation, > 100 code points) → FAIL CLOSED: the Promise rejects with a TypeError (fixed message), no dialog
+   *   opens, onConfirm never runs (Codex review round 1, SEC-1).
    * @returns {Promise<boolean>}
    */
   static confirm(options = {}) {
+    const o = options || {};
+    if (Object.prototype.hasOwnProperty.call(o, 'typeToConfirm')) {
+      const prep = preparePhrase(o.typeToConfirm);
+      if (!prep || prep.truncated) {
+        return Promise.reject(new TypeError(
+          'TdModal.confirm: typeToConfirm must be a non-empty string of at most 100 characters'));
+      }
+    }
     return new Promise((resolve) => {
       const {
         title = TdModal.labels.confirmTitle || 'Xác nhận',
@@ -687,13 +697,9 @@ export class TdModal {
    *   describe(id: string): void }}
    */
   static _typeToConfirm(raw, confirmButton) {
-    if (raw === undefined || raw === null) return null;
+    if (raw === undefined) return null; // option absent (validated by confirm(): a present one is a valid phrase)
     const prep = preparePhrase(raw);
-    if (!prep) {
-      console.warn('TdModal.confirm: ignored typeToConfirm (empty or not a string)');
-      return null;
-    }
-    if (prep.truncated) console.warn('TdModal.confirm: typeToConfirm cut to 100 characters');
+    if (!prep || prep.truncated) return null; // unreachable — confirm() rejected it
     const { phrase } = prep;
     const labels = TdModal.labels;
     const id = `td-modal-confirm-${++confirmSeq}`;
@@ -761,6 +767,7 @@ export class TdModal {
     input.addEventListener('compositionstart', () => { composing = true; });
     input.addEventListener('compositionend', () => {
       composing = false;
+      hideError(); // reward early, like the input path (review round 1, ISSUE-1)
       evaluate();
     });
     input.addEventListener('input', (e) => {

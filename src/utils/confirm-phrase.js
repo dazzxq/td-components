@@ -5,7 +5,7 @@
  * Case-sensitive and accent-sensitive (`xoa` ≠ `XOA`, `XOA` ≠ `XÓA`); compared with `===`.
  */
 
-/** Longest phrase in code points (QĐ 1); longer phrases are cut (with one console.warn by the caller). */
+/** Longest phrase in code points (QĐ 1); TdModal.confirm() REJECTS a longer one (`truncated`, review r1 SEC-1). */
 export const PHRASE_MAX = 100;
 
 /**

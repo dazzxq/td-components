@@ -192,28 +192,63 @@ describe('TdModal.confirm typeToConfirm (v0.44.0)', () => {
     } finally { Object.assign(TdModal.labels, saved); }
   });
 
-  it('template without {phrase} appends the phrase; invalid typeToConfirm → plain confirm + one warn; long phrase cut + warn', async () => {
+  it('template without {phrase} appends the phrase', async () => {
     const saved = TdModal.labels.typeToConfirmLabel;
     TdModal.labels.typeToConfirmLabel = 'Nhập chuỗi:';
     try {
       const r = await open();
       expect(r.root.querySelector('.td-modal__confirm-field label').textContent).to.equal('Nhập chuỗi: XOA');
     } finally { TdModal.labels.typeToConfirmLabel = saved; }
-    TdModal.closeAll();
+  });
+
+  it('SEC-1 fail closed: typeToConfirm present but invalid → rejected TypeError (fixed message), no modal, onConfirm never called', async () => {
+    const bad = [null, undefined, 42, '', '   ', '\u00a0\t', { toString: () => 'XOA' }, 'A'.repeat(101), 'XOA<img src=x>'.repeat(10)];
+    const count = () => document.querySelectorAll('body > .td-modal').length;
+    let called = 0;
+    const messages = new Set();
+    for (const v of bad) {
+      const before = count();
+      let err = null;
+      const p = TdModal.confirm({ title: 'T', typeToConfirm: v, onConfirm: () => { called++; } });
+      expect(count()).to.equal(before);
+      try { await p; } catch (e) { err = e; }
+      expect(err instanceof TypeError).to.equal(true);
+      messages.add(err.message);
+      expect(err.message.includes('img')).to.equal(false); // never echoes the caller's value
+    }
+    expect(messages.size).to.equal(1);
+    expect(called).to.equal(0);
+  });
+
+  it('typeToConfirm omitted → plain confirm, no warning; exactly 100 code points → accepted', async () => {
     const warns = [];
     const warn = console.warn;
     console.warn = (...a) => warns.push(a.join(' '));
     try {
-      const p = TdModal.confirm({ typeToConfirm: '   ' });
-      const root = top();
-      expect(root.querySelector('.td-modal__confirm-field')).to.equal(null);
-      expect(warns.length).to.equal(1);
+      const p = TdModal.confirm({ title: 'T' });
+      expect(top().querySelector('.td-modal__confirm-field')).to.equal(null);
       TdModal.closeAll();
-      await p;
-      TdModal.confirm({ typeToConfirm: 'A'.repeat(130) });
+      expect(await p).to.equal(false);
+      TdModal.confirm({ typeToConfirm: '😀'.repeat(100) });
       expect([...top().querySelector('.td-modal__phrase').textContent].length).to.equal(100);
-      expect(warns.length).to.equal(2);
+      expect(warns.length).to.equal(0);
     } finally { console.warn = warn; }
+  });
+
+  it('ISSUE-1: a composition that commits the phrase hides a shown mismatch error', async () => {
+    const r = await open();
+    const { input } = r;
+    r.confirm.click(); // empty → mismatch error
+    const error = r.root.querySelector('.td-modal__confirm-field .td-field-error');
+    expect(error.hidden).to.equal(false);
+    input.dispatchEvent(new CompositionEvent('compositionstart', { data: '' }));
+    input.value = 'XOA';
+    input.dispatchEvent(new InputEvent('input', { inputType: 'insertCompositionText', data: 'XOA', isComposing: true, bubbles: true }));
+    input.dispatchEvent(new CompositionEvent('compositionend', { data: 'XOA' }));
+    expect(error.hidden).to.equal(true);
+    expect(input.hasAttribute('aria-invalid')).to.equal(false);
+    expect(input.hasAttribute('aria-errormessage')).to.equal(false);
+    expect(r.confirm.hasAttribute('aria-disabled')).to.equal(false);
   });
 
   it('without typeToConfirm: DOM and focus as before (no field, Cancel focused, confirm unlocked)', async () => {
