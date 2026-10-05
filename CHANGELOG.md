@@ -2,6 +2,27 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.46.0
+
+**`<td-diff>` — so sánh trước / sau cho audit log** (dsuite; plan `docs/internal/plans/v0.46.0-diff.md`, Codex plan-review
+APPROVE, impl-review 4 vòng + security-review 3 vòng APPROVE). Không có thay đổi phá vỡ. Chi tiết nâng cấp:
+`docs/upgrading/breaking-changes.md#0460`.
+
+### Added
+
+- `<td-diff>` (`./diff`, `TdDiff`): so sánh theo trường — Thêm / Xoá / Đổi bằng chữ (không chỉ màu), bảng (≥ 480px) hoặc
+  từng dòng (hẹp), `items` (policy `fields` / `keys`) hoặc hai snapshot, mảng chuỗi so như **tập** (+ / − cho quyền), giá trị
+  `masked` (chuỗi đã che ở server hiện nguyên văn, còn lại `[ĐÃ ẨN]`, kit không tự che gì), xem JSON, nhóm trường không đổi.
+- PHP `td_diff()` / `td_diff_snapshots()` / `Td::diffModel()` + SSR `diff@1` (model và markup giống từng byte với JS).
+- Theme: `--td-diff-added-bg` / `--td-diff-removed-bg` đăng ký với bộ sinh palette → `ALGORITHM_VERSION` 3 (file `td-theme`
+  cũ vẫn đúng; sinh lại để có hai dòng mới).
+
+### Security
+
+- Dữ liệu không tin cậy: chỉ đọc khoá riêng của object thuần, getter / Proxy ném lỗi → `[không đọc được]`, vòng lặp được
+  bắt; mọi giới hạn (độ sâu, kích thước, một ngân sách việc chung, 200 phần tử mỗi mảng) chạy trước việc tốn kém; khoá dài /
+  UTF-8 hỏng không bao giờ gộp làm mất thay đổi; ký tự bidi / vô hình hiện thành `⟨U+…⟩`.
+
 ## 0.45.0
 
 **`<td-steps>` + `<td-timeline>`** (dsuite #21 wizard nhiều bước, #16 lịch sử sự kiện; plan
