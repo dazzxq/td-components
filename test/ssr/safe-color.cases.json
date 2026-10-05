@@ -1,0 +1,181 @@
+{
+ "//": "v0.49.0 (plan v0.49.0-choice-stepper QD 8): shared safeColor cases — src/utils/css-safe.js safeColor() and php Td::safeColor() must agree (out = the accepted colour, \"\" = refused). Run by src/utils/choice-options.test.js and test/php/td-safe-color.test.js.",
+ "cases": [
+  {
+   "in": "#fff",
+   "out": "#fff"
+  },
+  {
+   "in": "#FFFA",
+   "out": "#FFFA"
+  },
+  {
+   "in": "#3b3b3d",
+   "out": "#3b3b3d"
+  },
+  {
+   "in": "#3b3b3dcc",
+   "out": "#3b3b3dcc"
+  },
+  {
+   "in": "  #1f2937 ",
+   "out": "#1f2937"
+  },
+  {
+   "in": "red",
+   "out": "red"
+  },
+  {
+   "in": "RebeccaPurple",
+   "out": "RebeccaPurple"
+  },
+  {
+   "in": "transparent",
+   "out": "transparent"
+  },
+  {
+   "in": "rgb(59, 59, 61)",
+   "out": "rgb(59, 59, 61)"
+  },
+  {
+   "in": "rgba(0,0,0,.5)",
+   "out": "rgba(0,0,0,.5)"
+  },
+  {
+   "in": "rgb(10 20 30 / 50%)",
+   "out": "rgb(10 20 30 / 50%)"
+  },
+  {
+   "in": "hsl(120, 50%, 50%)",
+   "out": "hsl(120, 50%, 50%)"
+  },
+  {
+   "in": "hsla(120deg 50% 50% / .3)",
+   "out": "hsla(120deg 50% 50% / .3)"
+  },
+  {
+   "in": " #abc﻿",
+   "out": "#abc"
+  },
+  {
+   "in": "",
+   "out": ""
+  },
+  {
+   "in": "   ",
+   "out": ""
+  },
+  {
+   "in": "#ggg",
+   "out": ""
+  },
+  {
+   "in": "#12345",
+   "out": ""
+  },
+  {
+   "in": "#1234567",
+   "out": ""
+  },
+  {
+   "in": "red;} body{display:none}",
+   "out": ""
+  },
+  {
+   "in": "red;",
+   "out": ""
+  },
+  {
+   "in": "\"><img src=x onerror=alert(1)>",
+   "out": ""
+  },
+  {
+   "in": "\" fill=\"red",
+   "out": ""
+  },
+  {
+   "in": "url(javascript:alert(1))",
+   "out": ""
+  },
+  {
+   "in": "url(#x)",
+   "out": ""
+  },
+  {
+   "in": "var(--x)",
+   "out": ""
+  },
+  {
+   "in": "calc(1px)",
+   "out": ""
+  },
+  {
+   "in": "expression(alert(1))",
+   "out": ""
+  },
+  {
+   "in": "rgb(1;2;3)",
+   "out": ""
+  },
+  {
+   "in": "rgb(var(--a),1,1)",
+   "out": ""
+  },
+  {
+   "in": "currentColor;",
+   "out": ""
+  },
+  {
+   "in": "abcdefghijklmnopqrstuvwxy",
+   "out": ""
+  },
+  {
+   "in": "abcdefghijklmnopqrstuvwx",
+   "out": "abcdefghijklmnopqrstuvwx"
+  },
+  {
+   "in": "rgb(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)",
+   "out": ""
+  },
+  {
+   "in": "#fff\n",
+   "out": "#fff"
+  },
+  {
+   "in": "light-dark(#fff,#000)",
+   "out": ""
+  },
+  {
+   "in": "red blue",
+   "out": ""
+  },
+  {
+   "in": "rgb(1,2,3) red",
+   "out": ""
+  },
+  {
+   "in": 123,
+   "out": ""
+  },
+  {
+   "in": null,
+   "out": ""
+  },
+  {
+   "in": true,
+   "out": ""
+  },
+  {
+   "in": [
+    "#fff"
+   ],
+   "out": ""
+  },
+  {
+   "in": {
+    "c": "#fff"
+   },
+   "out": ""
+  }
+ ]
+}

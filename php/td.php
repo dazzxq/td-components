@@ -586,6 +586,29 @@ namespace TdComponents {
             return strpos(substr($url, 0, $firstSep), ':') !== false ? '' : $url;
         }
 
+        /**
+         * v0.49.0 — port of src/utils/css-safe.js safeColor() (shared cases test/ssr/safe-color.cases.json): a string,
+         * trimmed of JS whitespace, at most 64 characters, that is `#rgb[a]` / `#rrggbb[aa]`, an rgb() / rgba() / hsl() /
+         * hsla() with numeric arguments only, or a letter-only name (≤ 24). Anything else (url(, var(, calc(, `;`, `"`,
+         * non-strings…) → ''. For SVG presentation attributes (`fill`), never an inline style.
+         */
+        public static function safeColor(mixed $v): string
+        {
+            if (!is_string($v)) {
+                return '';
+            }
+            $s = (string) preg_replace('/^[' . self::JS_WS . ']+|[' . self::JS_WS . ']+$/u', '', $v);
+            if ($s === '' || (int) preg_match_all('/./su', $s) > 64) {
+                return '';
+            }
+            if (preg_match('/^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/iD', $s)
+                || preg_match('/^(rgb|rgba|hsl|hsla)\([0-9.,%\/deg' . self::JS_WS . ']+\)$/iuD', $s)
+                || (preg_match('/^[a-z]+$/iD', $s) && strlen($s) <= 24)) {
+                return $s;
+            }
+            return '';
+        }
+
         /** Class option → ' tok1 tok2' (valid class tokens only, like the JS CLASS_TOKEN). */
         public static function classTokens(string|array|null $class): string
         {
