@@ -57,6 +57,7 @@
     "components/datetime-range.css",
     "components/steps.css",
     "components/timeline.css",
+    "components/diff.css",
     "utilities.css"
   ]
 }

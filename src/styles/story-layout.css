@@ -19,3 +19,5 @@
 .sb-stack > td-filter-chips { width: min(100%, 40rem); }
 .sb-narrow { width: 320px; }
 .sb-stack > td-datetime-range { width: min(100%, 24rem); }
+/* v0.46.0: td-diff stories — a dark scope with its own page background */
+.sb-dark { padding: 16px; background: var(--td-color-bg); color: var(--td-color-text); color-scheme: dark; }

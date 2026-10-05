@@ -17006,6 +17006,390 @@
 	}
 }
 
+/* ---- src/styles/components/diff.css ---- */
+/*
+ * td-diff (src/display/td-diff.js) — v0.46.0, plan docs/internal/plans/v0.46.0-diff.md QĐ 11–18.
+ * Content layer (minimal surfaces, ADR 0011): solid content on the page — hairlines, a muted head, tinted cells; no
+ * shadow, no blur, no hover on rows (nothing is interactive but the native <summary> controls).
+ * One DOM, two layouts (CSS only, ADR 0014): the host is `container: td-diff / inline-size`; `view="auto"` (default)
+ * shows a table when the host is ≥ 480px wide and the inline layout below; `view="table"` always a table (it scrolls
+ * INSIDE .td-diff__scroll); `view="inline"` always inline. The inline rule set is written ONCE (source prefix =
+ * view="inline") and build-css re-emits it under the container condition (@td-variants) + the viewport fallback.
+ * Roles are explicit in the markup (role=table/row/rowheader/cell): the inline layout's display: block keeps them.
+ * State: [data-kind] on rows / kind labels · [data-mark] on list items · [data-masked] on rows.
+ */
+@layer td.tokens {
+	:root {
+		--td-diff-label-w: 30%; /* field column (table layout) */
+		--td-diff-json-max-h: 24rem; /* JSON view panes scroll inside */
+		--td-diff-font-mono: var(--td-font-mono);
+	}
+
+	/* v0.42.0 (QĐ15, ADR 0020): colour tokens re-resolve in every theme scope. The two tints are static per scheme
+	   (palette.js computes them for generated palettes: text AND muted ≥ 4.7 on them). */
+	:root, [data-td-theme] {
+		--td-diff-added-bg: #edf6f0;
+		--td-diff-removed-bg: #fbf0f0;
+		--td-diff-added-fg: var(--td-color-success);
+		--td-diff-removed-fg: var(--td-color-error);
+		--td-diff-changed-fg: var(--td-color-warning);
+		--td-diff-muted-fg: var(--td-color-text-muted);
+		--td-diff-border: var(--td-color-border);
+		--td-diff-head-bg: var(--td-color-surface-muted);
+	}
+
+	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
+		--td-diff-added-bg: #1b2c21;
+		--td-diff-removed-bg: #33221f;
+	}
+	/* td: generated auto theme (QĐ4) */
+	@media (prefers-color-scheme: dark) {
+		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
+			--td-diff-added-bg: #1b2c21;
+			--td-diff-removed-bg: #33221f;
+		}
+	}
+}
+
+@layer td.component {
+	td-diff {
+		display: block;
+		min-inline-size: 0;
+		container: td-diff / inline-size;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal); /* own it: a host page reset (Tailwind preflight) must not change it */
+		color: var(--td-color-text);
+	}
+
+	td-diff *,
+	td-diff *::before {
+		box-sizing: border-box;
+	}
+
+	.td-diff__scroll {
+		max-inline-size: 100%;
+		overflow-x: auto; /* view="table" on a narrow host: the box scrolls, never the page */
+		border: 1px solid var(--td-diff-border);
+		border-radius: var(--td-radius-md);
+	}
+
+	.td-diff__table {
+		inline-size: 100%;
+		border-spacing: 0;
+		border-collapse: separate;
+		table-layout: fixed;
+	}
+
+	td-diff[view="table"] .td-diff__table {
+		min-inline-size: 30rem;
+	}
+
+	.td-diff__th,
+	.td-diff__field,
+	.td-diff__cell {
+		padding: var(--td-space-xs) var(--td-space-sm);
+		text-align: start;
+		vertical-align: top;
+		overflow-wrap: anywhere;
+		border-block-end: 1px solid var(--td-diff-border);
+	}
+
+	.td-diff__table tbody > tr:last-child > * {
+		border-block-end: 0;
+	}
+
+	.td-diff__head {
+		background: var(--td-diff-head-bg);
+	}
+
+	.td-diff__th {
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-color-text-label);
+	}
+
+	.td-diff__th:first-child,
+	.td-diff__field {
+		inline-size: var(--td-diff-label-w);
+	}
+
+	.td-diff__field {
+		font-weight: var(--td-fw-normal);
+	}
+
+	.td-diff__label {
+		font-weight: var(--td-fw-medium);
+	}
+
+	/* Kind as TEXT (QĐ 14): the tint is only an extra layer; forced colours keep the words */
+	.td-diff__kind,
+	.td-diff__uncertain,
+	.td-diff__badge {
+		display: inline-block;
+		margin-inline-start: var(--td-space-2xs);
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-semibold);
+		white-space: nowrap;
+	}
+
+	.td-diff__kind[data-kind="added"] { color: var(--td-diff-added-fg); }
+	.td-diff__kind[data-kind="removed"] { color: var(--td-diff-removed-fg); }
+	.td-diff__kind[data-kind="changed"] { color: var(--td-diff-changed-fg); }
+
+	.td-diff__uncertain,
+	.td-diff__badge {
+		font-weight: var(--td-fw-normal);
+		color: var(--td-diff-muted-fg);
+	}
+
+	.td-diff__row[data-kind="added"] > .td-diff__cell--after,
+	.td-diff__row[data-kind="changed"] > .td-diff__cell--after {
+		background: var(--td-diff-added-bg);
+	}
+
+	.td-diff__row[data-kind="removed"] > .td-diff__cell--before,
+	.td-diff__row[data-kind="changed"] > .td-diff__cell--before {
+		background: var(--td-diff-removed-bg);
+	}
+
+	.td-diff__row[data-masked] > .td-diff__cell {
+		background: transparent; /* nothing to compare: no tint */
+	}
+
+	.td-diff__side,
+	.td-diff__arrow {
+		display: none; /* inline layout only */
+	}
+
+	.td-diff__value,
+	.td-diff__item-value {
+		white-space: pre-wrap;
+		unicode-bidi: isolate; /* QĐ 8: a value never reorders its neighbours */
+	}
+
+	.td-diff__value--json,
+	.td-diff__pre {
+		font-family: var(--td-diff-font-mono);
+		font-size: var(--td-text-xs);
+	}
+
+	.td-diff__value--empty,
+	.td-diff__value--masked,
+	.td-diff__value--note,
+	.td-diff__ctl,
+	.td-diff__cut,
+	.td-diff__item--more {
+		color: var(--td-diff-muted-fg);
+	}
+
+	.td-diff__ctl {
+		font-family: var(--td-diff-font-mono);
+		font-size: 0.85em;
+	}
+
+	.td-diff__cut {
+		margin-inline-start: var(--td-space-2xs);
+		font-size: var(--td-text-xs);
+	}
+
+	.td-diff__list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-2xs) var(--td-space-xs);
+		padding: 0;
+		margin: 0;
+		list-style: none;
+	}
+
+	.td-diff__item {
+		display: inline-flex;
+		gap: 2px;
+		align-items: baseline;
+		min-inline-size: 0;
+	}
+
+	.td-diff__item[data-mark] {
+		font-weight: var(--td-fw-semibold);
+	}
+
+	.td-diff__item[data-mark="add"] > .td-diff__mark { color: var(--td-diff-added-fg); }
+	.td-diff__item[data-mark="del"] > .td-diff__mark { color: var(--td-diff-removed-fg); }
+
+	.td-diff__item[data-mark="del"] > .td-diff__item-value {
+		text-decoration: line-through;
+		text-decoration-thickness: 1px;
+	}
+
+	/* Native <details>: the only controls (QĐ 14) */
+	.td-diff__more {
+		margin-block-start: var(--td-space-2xs);
+	}
+
+	.td-diff__summary {
+		display: inline-flex;
+		align-items: center;
+		min-block-size: 24px; /* WCAG 2.5.8 with a mouse; 44px on coarse pointers (below) */
+		padding-inline: var(--td-space-2xs);
+		margin-inline-start: calc(-1 * var(--td-space-2xs));
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-color-text-label);
+		cursor: pointer;
+		border-radius: var(--td-radius-sm);
+		-webkit-tap-highlight-color: transparent; /* ADR 0019: the kit's pressed fill replaces the tap flash */
+	}
+
+	.td-diff__unchanged > .td-diff__summary,
+	.td-diff__json > .td-diff__summary {
+		font-size: var(--td-text-sm);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-diff__summary:hover {
+			background-color: var(--td-color-hover);
+		}
+	}
+
+	/* Pressed (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, at once */
+	.td-diff__summary:is(:active, [data-td-pressed]) {
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-diff__summary:focus-visible,
+	.td-diff__pre:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-diff__note,
+	.td-diff__empty {
+		margin: var(--td-space-xs) 0 0;
+		color: var(--td-diff-muted-fg);
+	}
+
+	.td-diff__empty {
+		margin: 0;
+	}
+
+	.td-diff__unchanged,
+	.td-diff__json {
+		margin-block-start: var(--td-space-sm);
+	}
+
+	.td-diff__unchanged > .td-diff__scroll,
+	.td-diff__figure {
+		margin-block-start: var(--td-space-xs);
+	}
+
+	.td-diff__figure {
+		min-inline-size: 0;
+		margin-inline: 0;
+	}
+
+	.td-diff__caption {
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-color-text-label);
+	}
+
+	.td-diff__pre {
+		max-block-size: var(--td-diff-json-max-h);
+		padding: var(--td-space-xs) var(--td-space-sm);
+		margin: var(--td-space-2xs) 0 0;
+		overflow: auto;
+		white-space: pre;
+		background: var(--td-diff-head-bg);
+		border: 1px solid var(--td-diff-border);
+		border-radius: var(--td-radius-sm);
+	}
+
+	@media (pointer: coarse) {
+		.td-diff__summary {
+			min-block-size: var(--td-touch-min);
+		}
+	}
+
+	
+	:where(td-diff[view="inline"]) .td-diff__table,
+	:where(td-diff[view="inline"]) .td-diff__table > tbody,
+	:where(td-diff[view="inline"]) .td-diff__row,
+	:where(td-diff[view="inline"]) .td-diff__field,
+	:where(td-diff[view="inline"]) .td-diff__cell {
+		display: block;
+		inline-size: auto;
+	}
+
+	:where(td-diff[view="inline"]) .td-diff__head {
+		display: none; /* the cells carry their own "Trước" / "Sau" (aria-hidden: the roles already say it) */
+	}
+
+	:where(td-diff[view="inline"]) .td-diff__row {
+		padding: var(--td-space-xs) var(--td-space-sm);
+		border-block-end: 1px solid var(--td-diff-border);
+	}
+
+	:where(td-diff[view="inline"]) .td-diff__table tbody > .td-diff__row:last-child {
+		border-block-end: 0;
+	}
+
+	:where(td-diff[view="inline"]) .td-diff__field,
+	:where(td-diff[view="inline"]) .td-diff__cell {
+		padding: 0;
+		border: 0;
+	}
+
+	:where(td-diff[view="inline"]) .td-diff__cell {
+		padding: 2px var(--td-space-xs);
+		margin-block-start: var(--td-space-2xs);
+		border-radius: var(--td-radius-sm);
+	}
+
+	:where(td-diff[view="inline"]) .td-diff__side {
+		display: inline;
+		margin-inline-end: var(--td-space-xs);
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-color-text-label);
+	}
+
+	:where(td-diff[view="inline"]) .td-diff__arrow {
+		display: inline;
+		margin-inline-end: var(--td-space-2xs);
+		color: var(--td-diff-muted-fg);
+	}
+
+	:where(td-diff[view="inline"]) .td-diff__row[data-kind="added"] > .td-diff__cell--before,
+	:where(td-diff[view="inline"]) .td-diff__row[data-kind="removed"] > .td-diff__cell--after {
+		display: none; /* still in the DOM (and the a11y tree of the table layout) */
+	}
+
+	:where(td-diff[view="inline"]) .td-diff__row[data-kind="added"] .td-diff__arrow {
+		display: none;
+	}
+
+	:where(td-diff[view="inline"]) .td-diff__row:is([data-kind="changed"], [data-kind="removed"]):not([data-masked]) > .td-diff__cell--before > .td-diff__value {
+		text-decoration: line-through;
+		text-decoration-thickness: 1px;
+		text-decoration-color: var(--td-diff-muted-fg);
+	}
+
+	/* td: generated variant (ADR 0014) */
+	@container td-diff (width < 480px) {:where(td-diff:not([view="table"],[view="inline"])) .td-diff__table,:where(td-diff:not([view="table"],[view="inline"])) .td-diff__table>tbody,:where(td-diff:not([view="table"],[view="inline"])) .td-diff__row,:where(td-diff:not([view="table"],[view="inline"])) .td-diff__field,:where(td-diff:not([view="table"],[view="inline"])) .td-diff__cell{display:block;inline-size:auto}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__head{display:none}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__row{padding:var(--td-space-xs) var(--td-space-sm);border-block-end:1px solid var(--td-diff-border)}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__table tbody>.td-diff__row:last-child{border-block-end:0}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__field,:where(td-diff:not([view="table"],[view="inline"])) .td-diff__cell{padding:0;border:0}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__cell{padding:2px var(--td-space-xs);margin-block-start:var(--td-space-2xs);border-radius:var(--td-radius-sm)}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__side{display:inline;margin-inline-end:var(--td-space-xs);font-size:var(--td-text-xs);font-weight:var(--td-fw-semibold);color:var(--td-color-text-label)}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__arrow{display:inline;margin-inline-end:var(--td-space-2xs);color:var(--td-diff-muted-fg)}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__row[data-kind="added"]>.td-diff__cell--before,:where(td-diff:not([view="table"],[view="inline"])) .td-diff__row[data-kind="removed"]>.td-diff__cell--after{display:none}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__row[data-kind="added"] .td-diff__arrow{display:none}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__row:is([data-kind="changed"],[data-kind="removed"]):not([data-masked])>.td-diff__cell--before>.td-diff__value{text-decoration:line-through;text-decoration-thickness:1px;text-decoration-color:var(--td-diff-muted-fg)}}
+
+	/* td: generated container fallback (ADR 0014) */
+	@supports not (container-type: inline-size) {
+		@media (max-width: 479.98px) {:where(td-diff:not([view="table"],[view="inline"])) .td-diff__table,:where(td-diff:not([view="table"],[view="inline"])) .td-diff__table>tbody,:where(td-diff:not([view="table"],[view="inline"])) .td-diff__row,:where(td-diff:not([view="table"],[view="inline"])) .td-diff__field,:where(td-diff:not([view="table"],[view="inline"])) .td-diff__cell{display:block;inline-size:auto}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__head{display:none}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__row{padding:var(--td-space-xs) var(--td-space-sm);border-block-end:1px solid var(--td-diff-border)}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__table tbody>.td-diff__row:last-child{border-block-end:0}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__field,:where(td-diff:not([view="table"],[view="inline"])) .td-diff__cell{padding:0;border:0}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__cell{padding:2px var(--td-space-xs);margin-block-start:var(--td-space-2xs);border-radius:var(--td-radius-sm)}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__side{display:inline;margin-inline-end:var(--td-space-xs);font-size:var(--td-text-xs);font-weight:var(--td-fw-semibold);color:var(--td-color-text-label)}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__arrow{display:inline;margin-inline-end:var(--td-space-2xs);color:var(--td-diff-muted-fg)}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__row[data-kind="added"]>.td-diff__cell--before,:where(td-diff:not([view="table"],[view="inline"])) .td-diff__row[data-kind="removed"]>.td-diff__cell--after{display:none}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__row[data-kind="added"] .td-diff__arrow{display:none}:where(td-diff:not([view="table"],[view="inline"])) .td-diff__row:is([data-kind="changed"],[data-kind="removed"]):not([data-masked])>.td-diff__cell--before>.td-diff__value{text-decoration:line-through;text-decoration-thickness:1px;text-decoration-color:var(--td-diff-muted-fg)}}
+	}
+
+	@media (forced-colors: active) {
+		.td-diff__summary:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
+}
+
 /* ---- src/styles/utilities.css ---- */
 /* Utilities — kept minimal: td.css must stay reset-free (legacy Tailwind components share the page). */
 @layer td.utilities {
