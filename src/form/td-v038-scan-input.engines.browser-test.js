@@ -853,8 +853,10 @@ describe('td-scan-input — review round 2 (SEC-1 / ISSUE-5 / ISSUE-9)', () => {
   it('ISSUE-9: adding `multiple` keeps the single value → values [v] + FormData', () => {
     const wrap = mount('<form><td-scan-input name="c" value="A0001"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
+    inputOf(el).value = 'A0001';
     el.setAttribute('multiple', '');
     expect(el.values).to.deep.equal(['A0001']);
+    expect(inputOf(el).value).to.equal('', 'multiple: the scanner textbox starts empty');
     expect(new FormData(wrap.firstElementChild).getAll('c')).to.deep.equal(['A0001']);
   });
 
@@ -862,8 +864,10 @@ describe('td-scan-input — review round 2 (SEC-1 / ISSUE-5 / ISSUE-9)', () => {
     const wrap = mount('<form><td-scan-input multiple name="c"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
     el.values = ['A0001', 'B0002'];
+    inputOf(el).value = 'TYPED';
     el.removeAttribute('multiple');
     expect(el.value).to.equal('B0002');
+    expect(inputOf(el).value).to.equal('B0002', 'single: the textbox shows the kept value');
     expect(new FormData(wrap.firstElementChild).getAll('c')).to.deep.equal(['B0002']);
   });
 });

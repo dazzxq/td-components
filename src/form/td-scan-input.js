@@ -353,12 +353,21 @@ export class TdScanInput extends TdFormElement {
   _doRender() {
     if (this._suppressRender) return;
     const old = this._bound && !this._ssrFreshRender ? this._focusTarget() : null;
-    const text = old ? old.value : null;
     const focused = !!old && old.ownerDocument.activeElement === old;
+    // ISSUE-9: a mode switch shows the NEW mode's text (multiple: empty; single: the kept value), never the old text
+    const modeSwitch = this._modeSwitch;
+    this._modeSwitch = false;
+    let text = old ? old.value : null;
+    if (modeSwitch) text = this._multiple ? '' : this._value;
     super._doRender();
     const input = this._focusTarget();
     if (input && text != null) input.value = text;
-    if (input && focused) input.focus({ preventScroll: true });
+    if (input && focused) {
+      input.focus({ preventScroll: true });
+      if (modeSwitch && text) {
+        try { input.select(); } catch { /* ignore */ }
+      }
+    }
   }
 
   afterRender() {
@@ -1040,7 +1049,9 @@ export class TdScanInput extends TdFormElement {
         this._rows = vals.map((value) => ({ value, state: 'valid' }));
         this._scanError = '';
         this._errorSeq = 0;
+        this._modeSwitch = true;
         super.attributeChangedCallback(name, oldVal, newVal); // re-render (list in / out)
+        this._modeSwitch = false;
         return;
       }
       case 'readonly': {
