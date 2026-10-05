@@ -203,6 +203,22 @@ namespace TdComponents {
             'moreError' => 'Không tải được, thử lại',
             'loaded' => 'Đã tải thêm {n} mục',
         ];
+        /** v0.47.0: td_check_matrix (always the element <td-check-matrix> + the full no-JS form: markers, checkboxes, sentinel). */
+        public const SSR_CHECK_MATRIX = 'check-matrix@1';
+        /** v0.47.0: default texts of td_check_matrix = TdCheckMatrix.labels (src/utils/check-matrix-render.js MATRIX_LABELS). */
+        public const CHECK_MATRIX_LABELS = [
+            'grid' => 'Ma trận chọn',
+            'rows' => 'Mục',
+            'all' => 'Chọn tất cả',
+            'row' => 'Chọn cả hàng {row}',
+            'column' => 'Chọn cả cột {col}',
+            'group' => 'Chọn cả nhóm {group}',
+            'groupColumn' => 'Chọn cả nhóm {group}, cột {col}',
+            'columnPick' => 'Đang sửa cột',
+            'na' => 'Không áp dụng',
+            'broken' => 'Không đọc được dữ liệu ma trận',
+            'changed' => 'Đã đổi {n} ô',
+        ];
         /** v0.36.0: tones / sizes of td_action_button (= TdActionButton). */
         public const ACTION_TONES = ['standard', 'warning', 'danger'];
         public const ACTION_SIZES = ['sm', 'md', 'lg'];
@@ -6079,5 +6095,507 @@ namespace {
                 . td__diff_pre($j['after'], $j['afterCut'], $L['jsonAfter'], $L) . '</figure></details>';
         }
         return $html;
+    }
+
+    // --- v0.47.0 td_check_matrix (plan docs/internal/plans/v0.47.0-check-matrix.md QĐ 4–6, 10–13, 27–30) -------------
+
+    /**
+     * @internal Text rule of src/utils/check-matrix-model.js normalizeMatrixText() (byte parity): tab / CR / LF / FF /
+     * VT → space, other C0 / C1 controls + DEL removed, runs of U+0020 collapsed, trimmed, cut to $max code points,
+     * trimmed again. Invalid UTF-8 → null (the caller fails closed).
+     */
+    function td__check_matrix_text(string $s, int $max): ?string
+    {
+        $t = preg_replace('/[\x{0000}-\x{001F}\x{007F}-\x{009F}]/u', '', (string) preg_replace('/[\t\n\x0B\f\r]/', ' ', $s));
+        if ($t === null) {
+            return null;
+        }
+        $t = trim((string) preg_replace('/ {2,}/', ' ', $t), ' ');
+        if (preg_match('/^.{0,' . $max . '}/su', $t, $m) === 1 && strlen($m[0]) < strlen($t)) {
+            $t = rtrim($m[0], ' ');
+        }
+        return $t;
+    }
+
+    /** @internal A key (QĐ 4) as given → its string form, or null (int ≥ 0 up to 2^53 − 1, or the key regex). */
+    function td__check_matrix_key(mixed $k): ?string
+    {
+        if (is_int($k)) {
+            return $k >= 0 && $k <= 9007199254740991 ? (string) $k : null;
+        }
+        return is_string($k) && preg_match('/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/D', $k) === 1 ? $k : null;
+    }
+
+    /** @internal PHP 8.0 array_is_list(). */
+    function td__check_matrix_list(array $a): bool
+    {
+        $i = 0;
+        foreach ($a as $k => $_) {
+            if ($k !== $i++) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * @internal The ONE validation path of td_check_matrix — same rules, same order and same `reason` as validateMatrix()
+     * in src/utils/check-matrix-model.js (parity table MATRIX_CASES). A structural error fails CLOSED as a whole.
+     * @return array{ok: bool, reason: ?string, model: ?array}
+     */
+    function td__check_matrix_data(mixed $columns, mixed $rows, mixed $cells = null, mixed $value = null): array
+    {
+        $fail = static fn (string $r): array => ['ok' => false, 'reason' => $r, 'model' => null];
+        // a row / column / group definition: a map (JSON object), never a non-empty list
+        $isMap = static fn (mixed $d): bool => is_array($d) && ($d === [] || !td__check_matrix_list($d));
+        $flag = static fn (mixed $v): ?bool => $v === null ? false : (is_bool($v) ? $v : null);
+        $text = static fn (mixed $v, int $max): ?string => $v === null ? '' : (is_string($v) ? td__check_matrix_text($v, $max) : null);
+        $header = static function (mixed $def, string $kind, array &$keys) use ($isMap, $flag, $text): array|string {
+            if (!$isMap($def)) {
+                return $kind === 'column' ? 'columns-shape' : 'rows-shape';
+            }
+            $key = td__check_matrix_key($def['key'] ?? null);
+            if ($key === null) {
+                return $kind . '-key';
+            }
+            if (isset($keys[$key])) {
+                return 'duplicate-' . $kind;
+            }
+            $keys[$key] = true;
+            $label = $text($def['label'] ?? null, 200);
+            $desc = $kind === 'group' ? '' : $text($def['description'] ?? null, 300);
+            if ($label === null || $desc === null) {
+                return 'label';
+            }
+            $locked = $flag($def['locked'] ?? null);
+            if ($locked === null) {
+                return 'flag';
+            }
+            return ['key' => $key, 'label' => $label !== '' ? $label : $key, 'description' => $desc, 'locked' => $locked];
+        };
+        if (!is_array($columns) || $columns === [] || !td__check_matrix_list($columns)) {
+            return $fail('columns-shape');
+        }
+        if (!is_array($rows) || $rows === [] || !td__check_matrix_list($rows)) {
+            return $fail('rows-shape');
+        }
+        if (count($columns) > 32) {
+            return $fail('too-many-columns');
+        }
+        $colKeys = [];
+        $cols = [];
+        foreach ($columns as $c) {
+            $h = $header($c, 'column', $colKeys);
+            if (is_string($h)) {
+                return $fail($h);
+            }
+            $cols[] = $h;
+        }
+        $rowKeys = [];
+        $groupKeys = [];
+        $leaves = [];
+        $groups = [];
+        $segments = [];
+        foreach ($rows as $def) {
+            if ($isMap($def) && array_key_exists('rows', $def)) {
+                if (!is_array($def['rows']) || !td__check_matrix_list($def['rows'])) {
+                    return $fail('rows-shape');
+                }
+                $h = $header($def, 'group', $groupKeys);
+                if (is_string($h)) {
+                    return $fail($h);
+                }
+                $collapsed = $flag($def['collapsed'] ?? null);
+                if ($collapsed === null) {
+                    return $fail('flag');
+                }
+                $g = count($groups);
+                if ($g >= 64) {
+                    return $fail('too-many-groups');
+                }
+                $start = count($leaves);
+                foreach ($def['rows'] as $child) {
+                    if ($isMap($child) && array_key_exists('rows', $child)) {
+                        return $fail('nested-group');
+                    }
+                    $r = $header($child, 'row', $rowKeys);
+                    if (is_string($r)) {
+                        return $fail($r);
+                    }
+                    $leaves[] = ['locked' => $r['locked'] || $h['locked'], 'group' => $g] + $r;
+                    if (count($leaves) > 500) {
+                        return $fail('too-many-rows');
+                    }
+                }
+                $groups[] = ['key' => $h['key'], 'label' => $h['label'], 'collapsed' => $collapsed, 'locked' => $h['locked'],
+                    'start' => $start, 'end' => count($leaves)];
+                $segments[] = ['group' => $g, 'start' => $start, 'end' => count($leaves)];
+            } else {
+                $n = count($segments);
+                if ($n > 0 && $segments[$n - 1]['group'] < 0) {
+                    $segments[$n - 1]['end']++;
+                } else {
+                    $segments[] = ['group' => -1, 'start' => count($leaves), 'end' => count($leaves) + 1];
+                }
+                $r = $header($def, 'row', $rowKeys);
+                if (is_string($r)) {
+                    return $fail($r);
+                }
+                $leaves[] = ['group' => -1] + $r;
+                if (count($leaves) > 500) {
+                    return $fail('too-many-rows');
+                }
+            }
+        }
+        if ($leaves === []) {
+            return $fail('rows-shape');
+        }
+        $R = count($leaves);
+        $C = count($cols);
+        if ($R * $C > 10000) {
+            return $fail('too-many-cells');
+        }
+        $rowIndex = [];
+        foreach ($leaves as $i => $r) {
+            $rowIndex[$r['key']] = $i;
+        }
+        $colIndex = [];
+        foreach ($cols as $j => $c) {
+            $colIndex[$c['key']] = $j;
+        }
+        $lock = [];  // cell index => own lock
+        $na = [];
+        $notes = [];
+        if ($cells !== null && $cells !== []) {
+            if (!is_array($cells)) {
+                return $fail('cells-shape');
+            }
+            foreach ($cells as $rk => $row) {
+                $r = $rowIndex[(string) $rk] ?? null;
+                if ($r === null) {
+                    return $fail('cells-unknown-row');
+                }
+                if (!is_array($row)) {
+                    return $fail('cells-shape');
+                }
+                foreach ($row as $ck => $cell) {
+                    $c = $colIndex[(string) $ck] ?? null;
+                    if ($c === null) {
+                        return $fail('cells-unknown-column');
+                    }
+                    if (!is_array($cell)) {
+                        return $fail('cells-shape');
+                    }
+                    $l = $flag($cell['locked'] ?? null);
+                    $n = $flag($cell['na'] ?? null);
+                    if ($l === null || $n === null) {
+                        return $fail('cells-flag');
+                    }
+                    $note = $text($cell['note'] ?? null, 300);
+                    if ($note === null) {
+                        return $fail('cells-note');
+                    }
+                    $i = $r * $C + $c;
+                    unset($lock[$i], $na[$i], $notes[$i]);
+                    if ($l) {
+                        $lock[$i] = true;
+                    }
+                    if ($n) {
+                        $na[$i] = true;
+                    }
+                    if ($note !== '') {
+                        $notes[$i] = $note;
+                    }
+                }
+            }
+        }
+        $on = [];
+        if ($value !== null && $value !== []) {
+            if (!is_array($value)) {
+                return $fail('value-shape');
+            }
+            foreach ($value as $ck => $list) {
+                $c = $colIndex[(string) $ck] ?? null;
+                if ($c === null) {
+                    return $fail('value-unknown-column');
+                }
+                if (!is_array($list) || !td__check_matrix_list($list)) {
+                    return $fail('value-shape');
+                }
+                foreach ($list as $item) {
+                    $rk = td__check_matrix_key($item);
+                    if ($rk === null) {
+                        return $fail('value-shape');
+                    }
+                    $r = $rowIndex[$rk] ?? null;
+                    if ($r === null) {
+                        return $fail('value-unknown-row');
+                    }
+                    if (isset($na[$r * $C + $c])) {
+                        return $fail('value-na');
+                    }
+                    $on[$r * $C + $c] = true;
+                }
+            }
+        }
+        return ['ok' => true, 'reason' => null, 'model' => ['columns' => $cols, 'rows' => $leaves, 'groups' => $groups,
+            'segments' => $segments, 'lock' => $lock, 'na' => $na, 'notes' => $notes, 'on' => $on]];
+    }
+
+    /** @internal Cell $i of a validated model: 'na' | 'locked' | 'free'. */
+    function td__check_matrix_cell(array $m, int $r, int $c): string
+    {
+        $i = $r * count($m['columns']) + $c;
+        if (isset($m['na'][$i])) {
+            return 'na';
+        }
+        return isset($m['lock'][$i]) || $m['rows'][$r]['locked'] || $m['columns'][$c]['locked'] ? 'locked' : 'free';
+    }
+
+    /**
+     * @internal Canonical data of a validated model (= canonicalMatrix() in JS): printed in the host `data` attribute,
+     * the ONE source of the hydrate gate and of form reset. Every keyed map is a JSON object (`(object)`): a column key
+     * `0` must never turn a map into a list.
+     */
+    function td__check_matrix_canonical(array $m): array
+    {
+        $C = count($m['columns']);
+        $head = static function (array $h): array {
+            $o = ['key' => $h['key'], 'label' => $h['label']];
+            if (($h['description'] ?? '') !== '') {
+                $o['description'] = $h['description'];
+            }
+            return $o;
+        };
+        $columns = array_map(static fn (array $c): array => $head($c) + ($c['locked'] ? ['locked' => true] : []), $m['columns']);
+        $rowOut = static function (int $r) use ($m, $head): array {
+            $row = $m['rows'][$r];
+            $gLocked = $row['group'] >= 0 && $m['groups'][$row['group']]['locked'];
+            return $head($row) + ($row['locked'] && !$gLocked ? ['locked' => true] : []);
+        };
+        $rows = [];
+        foreach ($m['segments'] as $s) {
+            if ($s['group'] < 0) {
+                for ($r = $s['start']; $r < $s['end']; $r++) {
+                    $rows[] = $rowOut($r);
+                }
+                continue;
+            }
+            $g = $m['groups'][$s['group']];
+            $o = ['key' => $g['key'], 'label' => $g['label']];
+            if ($g['collapsed']) {
+                $o['collapsed'] = true;
+            }
+            if ($g['locked']) {
+                $o['locked'] = true;
+            }
+            $o['rows'] = [];
+            for ($r = $s['start']; $r < $s['end']; $r++) {
+                $o['rows'][] = $rowOut($r);
+            }
+            $rows[] = $o;
+        }
+        $cells = [];
+        foreach ($m['rows'] as $r => $row) {
+            foreach ($m['columns'] as $c => $col) {
+                $i = $r * $C + $c;
+                $cell = [];
+                if (isset($m['lock'][$i])) {
+                    $cell['locked'] = true;
+                }
+                if (isset($m['na'][$i])) {
+                    $cell['na'] = true;
+                }
+                if (isset($m['notes'][$i])) {
+                    $cell['note'] = $m['notes'][$i];
+                }
+                if ($cell !== []) {
+                    $cells[$row['key']][$col['key']] = (object) $cell;
+                }
+            }
+        }
+        $value = [];
+        foreach ($m['columns'] as $c => $col) {
+            $list = [];
+            foreach ($m['rows'] as $r => $row) {
+                if (isset($m['on'][$r * $C + $c])) {
+                    $list[] = $row['key'];
+                }
+            }
+            $value[$col['key']] = $list;
+        }
+        return ['columns' => $columns, 'rows' => $rows,
+            'cells' => (object) array_map(static fn (array $x): object => (object) $x, $cells), 'value' => (object) $value];
+    }
+
+    /**
+     * Permission-style checkbox grid rows × columns (v0.47.0) — `<td-check-matrix data-td-ssr="check-matrix@1">` + the FULL
+     * no-JS form (plan QĐ 27–30): one hidden marker `name[col]=""` per column first, a checkbox `name[col][]=row` per
+     * applicable cell (a locked-ticked cell: disabled checkbox + a hidden input right after it), the sentinel
+     * `name[_v]=1` last. PHP reads `['col' => ['row', …], 'empty-col' => '', '_v' => '1']`. The server MUST reject a post
+     * without `_v` (max_input_vars cut it) and enforce locks itself.
+     *
+     *   echo td_check_matrix('perms', $roles, $perms, $current, ['label' => 'Quyền theo vai trò', 'cells' => $special]);
+     *
+     * $columns: [['key', 'label', 'description'?, 'locked'?], …] (≤ 32); $rows: rows or groups ['key', 'label',
+     * 'collapsed'?, 'locked'?, 'rows' => [...]] (one level, ≤ 500 rows, ≤ 64 groups, ≤ 10 000 cells); $value:
+     * ['col' => ['row', …]]. Keys: `^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$` or int ≥ 0. $o: cells (['row' => ['col' =>
+     * ['locked'?, 'na'?, 'note'?]]]), label, max_height (`none` | number + px/rem/em/vh/svh/dvh/lvh/%), layout
+     * (auto|grid|column), disabled, id, class, attrs (host, allowlisted; `aria-label` names the grid without `label`),
+     * labels (TdCheckMatrix.labels keys). Invalid data / name (empty or ending in `[]`) → the fail-closed state: NO
+     * input at all (the server sees no key → keeps everything) + one E_USER_WARNING naming the reason only.
+     */
+    function td_check_matrix(string $name, array $columns, array $rows, array $value = [], array $o = []): string
+    {
+        $L = Td::CHECK_MATRIX_LABELS;
+        if (is_array($o['labels'] ?? null)) {
+            foreach ($o['labels'] as $k => $v) {
+                if (isset($L[$k]) && is_string($v)) {
+                    $L[$k] = $v;
+                }
+            }
+        }
+        $fill = static fn (string $tpl, array $vars): string => (string) preg_replace_callback('/\{(\w+)\}/',
+            static fn (array $m): string => array_key_exists($m[1], $vars) ? (string) $vars[$m[1]] : $m[0], $tpl);
+        $h = td__str($o['id'] ?? null) ?? Td::uid('td-cm');
+        $hid = Td::e($h);
+        $label = isset($o['label']) && is_string($o['label']) ? $o['label'] : '';
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $aria = '';
+        foreach ($extra as $k => $v) {
+            if (strtolower((string) $k) === 'aria-label' && is_scalar($v) && !is_bool($v)) {
+                $aria = (string) $v;
+            }
+        }
+        $layout = in_array($o['layout'] ?? null, ['auto', 'grid', 'column'], true) ? $o['layout'] : null;
+        $maxH = isset($o['max_height']) && is_string($o['max_height'])
+            && preg_match('/^(none|\d{1,4}(\.\d{1,2})?(px|rem|em|vh|svh|dvh|lvh|%))$/D', $o['max_height']) === 1 ? $o['max_height'] : null;
+        $disabled = !empty($o['disabled']);
+        $res = $name === '' || str_ends_with($name, '[]') ? ['ok' => false, 'reason' => 'name', 'model' => null]
+            : td__check_matrix_data($columns, $rows, $o['cells'] ?? null, $value);
+        $taken = [];
+        $host = '<td-check-matrix' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_CHECK_MATRIX,
+            'id' => $h,
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'name' => $name !== '' ? $name : null,
+            'label' => $label !== '' ? $label : null,
+            'layout' => $layout,
+            'max-height' => $maxH,
+            'disabled' => $disabled,
+            'data' => $res['ok'] ? json_encode(['v' => 1] + td__check_matrix_canonical($res['model']), Td::JSON_FLAGS | JSON_UNESCAPED_UNICODE) : null,
+        ], $taken);
+        $taken = td__reserve(['id', 'class', 'name', 'label', 'layout', 'max-height', 'disabled', 'data', 'value'], $extra, $taken);
+        $host .= Td::attrs($extra, $taken) . '>';
+        $nameEl = $label !== '' ? '<p class="td-field__label" id="' . $hid . '-label">' . Td::e($label) . '</p>'
+            : '<span class="td-sr-only" id="' . $hid . '-label">' . Td::e($aria !== '' ? $aria : $L['grid']) . '</span>';
+        if (!$res['ok']) {
+            trigger_error('td_check_matrix: invalid ' . ($res['reason'] === 'name' ? 'name (empty or ending in [])' : 'data (' . $res['reason'] . ')')
+                . ' — nothing is submitted', E_USER_WARNING);
+            return $host . '<div class="td-check-matrix" data-state="broken">' . $nameEl
+                . '<p class="td-check-matrix__broken">' . Td::e($L['broken']) . '</p></div></td-check-matrix>';
+        }
+        $m = $res['model'];
+        $C = count($m['columns']);
+        $dis = $disabled ? ' disabled' : '';
+        $mark = '<span class="td-check td-check--md td-check--drawn" aria-hidden="true"></span>';
+        $lbl = static fn (string $key, array $vars): string => Td::e($fill($L[$key], $vars));
+        $bulkInput = static fn (string $aria, string $desc): string => '<input type="checkbox" class="td-check-matrix__input" tabindex="-1" aria-label="'
+            . $aria . '"' . ($desc !== '' ? ' aria-describedby="' . $desc . '"' : '') . ' disabled>' . $mark;
+        $bulk = static fn (string $kind, string $aria, string $desc, string $more = ''): string => '<td class="td-check-matrix__bulk" data-kind="'
+            . $kind . '"' . $more . ' tabindex="-1">' . $bulkInput($aria, $desc) . '</td>';
+
+        $out = '';
+        foreach ($m['columns'] as $col) {
+            $out .= '<input type="hidden" name="' . Td::e($name . '[' . $col['key'] . ']') . '" value=""' . $dis . '>';
+        }
+        $out .= '<div class="td-check-matrix" data-state="ready" data-layout="' . ($layout ?? 'auto') . '">' . $nameEl
+            . '<div class="td-check-matrix__bar"><label class="td-check-matrix__colpick-label" for="' . $hid . '-colpick">' . Td::e($L['columnPick'])
+            . '</label><select class="td-check-matrix__colpick" id="' . $hid . '-colpick" disabled>';
+        foreach ($m['columns'] as $j => $col) {
+            $out .= '<option value="' . $j . '">' . Td::e($col['label']) . '</option>';
+        }
+        $out .= '</select><span class="td-check-matrix__bulk" data-kind="column-active">' . $bulkInput($lbl('column', ['col' => $m['columns'][0]['label']]), '')
+            . '</span></div>';
+        $out .= '<div class="td-check-matrix__scroll"><table class="td-check-matrix__grid" role="grid" aria-labelledby="' . $hid . '-label"><thead>'
+            . '<tr class="td-check-matrix__head"><td class="td-check-matrix__corner" tabindex="-1"></td>'
+            . '<th scope="col" class="td-check-matrix__rowtitle" tabindex="-1">' . Td::e($L['rows']) . '</th>';
+        foreach ($m['columns'] as $j => $col) {
+            $out .= '<th scope="col" class="td-check-matrix__colhead" id="' . $hid . '-c' . $j . '" data-c="' . $j . '" tabindex="-1">'
+                . '<span class="td-check-matrix__label">' . Td::e($col['label']) . '</span>'
+                . ($col['description'] !== '' ? '<span class="td-check-matrix__desc" id="' . $hid . '-c' . $j . 'd" aria-hidden="true">' . Td::e($col['description']) . '</span>' : '')
+                . '</th>';
+        }
+        $out .= '</tr><tr class="td-check-matrix__bulkrow">' . $bulk('all', $lbl('all', []), '')
+            . '<td class="td-check-matrix__gap" tabindex="-1"></td>';
+        foreach ($m['columns'] as $j => $col) {
+            $out .= $bulk('column', $lbl('column', ['col' => $col['label']]), $col['description'] !== '' ? $hid . '-c' . $j . 'd' : '', ' data-c="' . $j . '"');
+        }
+        $out .= '</tr></thead>';
+        $note = 0;
+        $row = static function (int $r) use ($m, $C, $hid, $name, $dis, $mark, $lbl, $bulk, $L, &$note): string {
+            $rw = $m['rows'][$r];
+            $s = '<tr class="td-check-matrix__row" data-r="' . $r . '">'
+                . $bulk('row', $lbl('row', ['row' => $rw['label']]), $rw['description'] !== '' ? $hid . '-r' . $r . 'd' : '')
+                . '<th scope="row" class="td-check-matrix__rowhead" id="' . $hid . '-r' . $r . '" tabindex="-1"><span class="td-check-matrix__label">'
+                . Td::e($rw['label']) . '</span>'
+                . ($rw['description'] !== '' ? '<span class="td-check-matrix__desc" id="' . $hid . '-r' . $r . 'd" aria-hidden="true">' . Td::e($rw['description']) . '</span>' : '')
+                . '</th>';
+            for ($c = 0; $c < $C; $c++) {
+                $i = $r * $C + $c;
+                $text = $m['notes'][$i] ?? null;
+                $nid = $text !== null ? $hid . '-n' . ($note++) : '';
+                $noteEl = $text !== null ? '<span class="td-sr-only" id="' . $nid . '">' . Td::e($text) . '</span>' : '';
+                $noteAttr = $text !== null ? ' data-note' : '';
+                $kind = td__check_matrix_cell($m, $r, $c);
+                if ($kind === 'na') {
+                    $s .= '<td class="td-check-matrix__cell" data-c="' . $c . '" data-na' . $noteAttr . ' tabindex="-1">'
+                        . '<span class="td-check-matrix__na" aria-hidden="true">–</span><span class="td-sr-only">' . Td::e($L['na']) . '</span>' . $noteEl . '</td>';
+                    continue;
+                }
+                $locked = $kind === 'locked';
+                $on = isset($m['on'][$i]);
+                $field = Td::e($name . '[' . $m['columns'][$c]['key'] . '][]');
+                $s .= '<td class="td-check-matrix__cell" data-c="' . $c . '"' . ($locked ? ' data-locked' : '') . $noteAttr . ' tabindex="-1">'
+                    . '<input type="checkbox" class="td-check-matrix__input" tabindex="-1" aria-labelledby="' . $hid . '-r' . $r . ' ' . $hid . '-c' . $c . '"'
+                    . ($nid !== '' ? ' aria-describedby="' . $nid . '"' : '')
+                    . (!$locked ? ' name="' . $field . '" value="' . Td::e($rw['key']) . '"' : '')
+                    . ($on ? ' checked' : '') . ($locked ? ' disabled' : $dis) . '>'
+                    . ($locked && $on ? '<input type="hidden" name="' . $field . '" value="' . Td::e($rw['key']) . '"' . $dis . '>' : '')
+                    . $mark . $noteEl . '</td>';
+            }
+            return $s . '</tr>';
+        };
+        foreach ($m['segments'] as $seg) {
+            if ($seg['group'] < 0) {
+                $out .= '<tbody class="td-check-matrix__body">';
+                for ($r = $seg['start']; $r < $seg['end']; $r++) {
+                    $out .= $row($r);
+                }
+                $out .= '</tbody>';
+                continue;
+            }
+            $g = $seg['group'];
+            $grp = $m['groups'][$g];
+            $shut = $grp['collapsed'];
+            $out .= '<tbody class="td-check-matrix__group" id="' . $hid . '-g' . $g . '" data-g="' . $g . '"' . ($shut ? ' data-collapsed' : '') . '>'
+                . '<tr class="td-check-matrix__grouprow">' . $bulk('group', $lbl('group', ['group' => $grp['label']]), '')
+                . '<th scope="row" class="td-check-matrix__grouphead"><button type="button" class="td-check-matrix__group-toggle" tabindex="-1" aria-expanded="'
+                . ($shut ? 'false' : 'true') . '" aria-controls="' . $hid . '-g' . $g . '" disabled>'
+                . '<span class="td-check-matrix__chevron" data-td-icon="next" data-td-icon-size="s" aria-hidden="true">' . Td::icon('next', 's') . '</span>'
+                . '<span class="td-check-matrix__label">' . Td::e($grp['label']) . '</span> <span class="td-check-matrix__count">(' . ($grp['end'] - $grp['start'])
+                . ')</span></button></th>';
+            foreach ($m['columns'] as $j => $col) {
+                $out .= $bulk('group-column', $lbl('groupColumn', ['group' => $grp['label'], 'col' => $col['label']]), '', ' data-c="' . $j . '"');
+            }
+            $out .= '</tr>';
+            for ($r = $seg['start']; $r < $seg['end']; $r++) {
+                $out .= $row($r);
+            }
+            $out .= '</tbody>';
+        }
+        $out .= '</table></div><p class="td-check-matrix__note" aria-hidden="true"></p><p class="td-sr-only" role="status"></p></div>'
+            . '<input type="hidden" name="' . Td::e($name . '[_v]') . '" value="1"' . $dis . '>';
+        return $host . $out . '</td-check-matrix>';
     }
 }
