@@ -14,6 +14,7 @@ import '../form/td-chip-input.js';
 import '../form/td-number-input.js';
 import '../form/td-repeater.js';
 import '../display/td-table.js';
+import '../form/td-media-gallery.js';
 
 const link = document.createElement('link');
 link.rel = 'stylesheet';
@@ -249,6 +250,49 @@ describe('trackFormDirty — td controls', () => {
     await until(() => t.isDirty());
     await sendKeys({ press: 'Backspace' });
     await until(() => !t.isDirty()); // the baseline was re-taken when the user reached the form
+  });
+});
+
+describe('trackFormDirty — td-media-gallery (v0.43, plan M4 step 0)', () => {
+  const ITEMS = JSON.stringify([{ id: 'm1', src: '/test/fixtures/1.svg', name: 'Ảnh 1' }, { id: 'm2', src: '/test/fixtures/2.svg', name: 'Ảnh 2' },
+    { id: 'm3', src: '/test/fixtures/3.svg', name: 'Ảnh 3' }]);
+  const galleryForm = () => mount(`<form id="f"><td-media-gallery name="g" label="Ảnh" usage items='${ITEMS}'></td-media-gallery></form>`);
+
+  it('alt typed → dirty; typed back → clean; remove → dirty; value= / setSelection from code → not dirty', async () => {
+    const form = galleryForm();
+    const g = /** @type {any} */ (form.querySelector('td-media-gallery'));
+    await frames(2);
+    const { t, log } = track(form);
+    const alt = /** @type {HTMLInputElement} */ (g.querySelector('.td-media-gallery__alt'));
+    await typeIn(alt, 'x');
+    await until(() => log.length === 1);
+    expect(t.isDirty()).to.equal(true);
+    await sendKeys({ press: 'Backspace' });
+    await until(() => log.length === 2);
+    expect(t.isDirty()).to.equal(false);
+    g.querySelectorAll('.td-media-gallery__remove')[2].click();
+    await until(() => t.isDirty());
+    t.markClean();
+    g.value = ['m2', 'm1'];
+    await frames(2);
+    expect(new FormData(form).getAll('g[0][id]')).to.deep.equal(['m2']);
+    expect(t.check()).to.equal(false);
+  });
+
+  it('drawer beforeClose = confirmDiscard: × after a gallery removal asks and stays', async () => {
+    const form = document.createElement('form');
+    form.innerHTML = `<td-media-gallery name="g" label="Ảnh" items='${ITEMS}'></td-media-gallery>`;
+    const { t } = track(form);
+    let asked = 0;
+    const h = TdDrawer.open({ title: 'Sửa', body: form, beforeClose: () => t.confirmDiscard({ confirm: () => { asked++; return false; } }) });
+    await until(() => document.querySelector('.td-drawer-root[data-state="open"]'));
+    form.querySelectorAll('.td-media-gallery__remove')[0].click();
+    await until(() => t.isDirty());
+    document.querySelector('.td-drawer-root[data-state="open"] .td-drawer__close').click();
+    await until(() => asked === 1);
+    expect(h.element.open).to.equal(true);
+    h.close();
+    await h.closed;
   });
 });
 

@@ -2,7 +2,8 @@
 // (`formAssociated === true`, registered, exported from index.js) has a fixture here in which a REAL user action
 // (click / sendKeys / file pick) changes its value and trackFormDirty() sees it (`isDirty() === true`), or an entry in
 // EXEMPT with the reason. A new form-associated component whose change event the tracker does not observe turns this red.
-// When v0.43 (gallery) merges: re-run the inventory (plan M4 step 0) and add its fixture / exemption here.
+// Plan M4 step 0 (re-run after v0.43 merged): td-media-gallery emits bubbling input + change (detail.reason add / remove /
+// reorder / alt / crop) for every user change and none for value= / setSelection() — covered by the default events.
 import { expect } from '@esm-bundle/chai';
 import { sendKeys } from '@web/test-runner-commands';
 import * as kit from '../../index.js';
@@ -93,6 +94,10 @@ const FIXTURES = {
       input.dispatchEvent(new Event('change', { bubbles: true }));
     },
   },
+  'td-media-gallery': {
+    html: `<td-media-gallery name="x" label="X" usage items='${JSON.stringify([{ id: 'm1', src: '/test/fixtures/1.svg', name: 'Ảnh 1' }, { id: 'm2', src: '/test/fixtures/2.svg', name: 'Ảnh 2' }])}'></td-media-gallery>`,
+    act: (el) => el.querySelectorAll('.td-media-gallery__list > li .td-media-gallery__remove')[1].click(),
+  },
   'td-table': {
     html: '<td-table name="x" selectable row-key="id"></td-table>',
     setup: (el) => { el.columns = [{ key: 'n', label: 'N' }]; el.data = [{ id: 1, n: 'A' }, { id: 2, n: 'B' }]; },
@@ -126,7 +131,7 @@ afterEach(async () => {
 describe('trackFormDirty contract — every form-associated td element (v0.44.0 QĐ 20a)', () => {
   it('inventory: each form-associated element has a fixture or an exemption (and no stale entry)', () => {
     const tags = inventory();
-    expect(tags.length).to.be.at.least(16);
+    expect(tags.length).to.be.at.least(17);
     const missing = tags.filter((t) => !FIXTURES[t] && !EXEMPT[t]);
     expect(missing, 'form-associated without a dirty fixture').to.deep.equal([]);
     const stale = [...Object.keys(FIXTURES), ...Object.keys(EXEMPT)].filter((t) => !tags.includes(t));

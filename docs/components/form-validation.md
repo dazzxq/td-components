@@ -254,7 +254,7 @@ theo thứ tự của `new FormData(form)`. Form bẩn khi **người dùng đã
 gõ rồi xoá về giá trị cũ là **sạch** lại. Cụ thể:
 
 - Tính mọi control native (`input`, `textarea`, `select`, checkbox, radio, file) **và** mọi control td form-associated
-  (`td-input-field`, `td-dropdown`, `td-chip-input`, `td-table` có cột chọn, `td-dropzone`, `td-media-field`…), kể cả
+  (`td-input-field`, `td-dropdown`, `td-chip-input`, `td-table` có cột chọn, `td-dropzone`, `td-media-field`, `td-media-gallery` — thêm / gỡ / sắp lại / alt / crop…), kể cả
   control ở ngoài form gắn `form="id"`. Control `disabled`, không có `name`, nút submit không tính.
 - Chuỗi so **nguyên văn** (không trim); file so theo **đối tượng** (chọn lại một file khác cùng tên / cỡ vẫn là đổi);
   **thứ tự** có ý nghĩa (sắp lại gallery / repeater = đổi).
