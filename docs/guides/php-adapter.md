@@ -73,6 +73,8 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_scan_input` (0.38.0) | `div.td-scan` + `input.td-scan__input` **native** (`autocomplete="off"`, `enterkeyhint="done"`…) | Không (Enter submit form) | Không |
 | `td_scan_input` — **chế độ element** (0.38.0, tự bật) / **`multiple`** (luôn element) | host `<td-scan-input data-td-ssr="scan-input@1">` + cùng input; `multiple`: + `textarea` nhập tay + danh sách + một **hidden input** mỗi mã | Không (form gửi mã in sẵn + dòng textarea) | **Có** — nạp module `scan-input`: nhận **tại chỗ**, gỡ hidden / textarea, dòng textarea qua `validate` |
 | `td_filter_chips` (0.39.0) | **luôn** host `<td-filter-chips data-td-ssr="filter-chips@1">` chứa sẵn đúng cây component (nhóm, mỗi chip một `li` với nhãn / giá trị / ×, "Xoá tất cả", live region) | Không (× có `href` là **link** chạy ngay; × không link thì vô hình, giữ chỗ) | **Có** — nạp module `filter-chips`: nhận **tại chỗ** |
+| `td_steps` (0.45.0) | **luôn** host `<td-steps data-td-ssr="steps@1">` chứa sẵn đúng cây component (mỗi bước một `li` với marker / nhãn / chữ trạng thái / mô tả, dòng tóm tắt) | Không (bước có `href` là **link**; bước bấm được không link in như bước thường) | **Có** — nạp module `steps`: nhận **tại chỗ** |
+| `td_timeline` (0.45.0) | **luôn** host `<td-timeline data-td-ssr="timeline@1" time-zone="…">` chứa sẵn nhóm ngày, mục, `<details>` chi tiết, "Xem thêm" (link) | Không (chi tiết mở bằng `<details>`, "Xem thêm" là link `more_href`) | **Có** — nạp module `timeline`: nhận **tại chỗ** (tính lại chữ nhãn ngày) |
 | `td_datetime_range` (0.40.0) | **luôn** host `<td-datetime-range data-td-ssr="datetime-range@1">` + hai `<input type="date\|datetime-local">` **native** (`{name}[start]` / `{name}[end]`, `min` / `max`, `required` theo mốc) + trigger ẩn | Không (hai ô ngày native chạy ngay) | **Có** — nạp module `datetime-range`: nhận **tại chỗ**, giữ giá trị đã sửa, gỡ ô native |
 | `td_copy` (0.27.0) | **luôn** host `<td-copy data-td-ssr="copy@1">` chứa nguồn `<code>` + nút icon + live region | Không (chưa có JS: hiện mã để bôi đen, ẩn nút) | **Có** — nạp module `copy`: nhận **tại chỗ** |
 | `td_icon` | `svg.td-icon` đủ hình (có `viewBox`) | Không | — |
@@ -1550,6 +1552,57 @@ foreach ((array) ($_GET['tag'] ?? []) as $t) {               // nhiều giá tr�
 
 Chữ "Từ" / "Đến" / placeholder = `Td::RANGE_LABELS` (= `TdDatetimeRange.labels`); site đổi chữ phía JS thì markup PHP bị
 coi là lệch → render an toàn (vẫn đúng giá trị).
+
+## td_steps (0.45.0)
+
+```php
+<?= td_steps([
+    ['label' => 'Tải tệp', 'description' => $file->name, 'href' => '?step=1'],
+    ['label' => 'Kiểm tra dữ liệu', 'state' => $errors ? 'error' : null, 'description' => $errors ? "Dòng {$errors[0]}: thiếu IMEI" : null],
+    ['label' => 'Nhập kho'],
+], ['current' => '2', 'navigation' => 'back']) ?>
+```
+
+`td_steps($steps, $opts)` **luôn** in phần tử [Steps](../components/steps.md) đầy đủ (hợp đồng `steps@1`). Không có bước →
+host `hidden`.
+
+- **Bước**: `label` (bắt buộc), `description`, `key` (mặc định vị trí từ 1), `state` (`done` | `current` | `error` |
+  `upcoming`), `href`, `disabled`. Cùng chuẩn hoá với component (120 / 300 / 100 ký tự, ký tự điều khiển bị bỏ, key trùng
+  → `-2`, tối đa 20 bước) và **cùng luật trạng thái** (bảng `STATE_CASES`, test parity); xung đột (`current` không khớp,
+  `state: 'current'` thừa…) → **một** `E_USER_WARNING` liệt kê mã.
+- **Không JS**: đủ trạng thái (✓ / ! / số, chữ ẩn cho trình đọc màn hình); bước bấm được có `href` (chỉ URL **tương đối**)
+  là link; không `href` → in như bước thường (`data-td-js-step`), nạp module thì thành nút phát `step-select`.
+
+| Option | Ý nghĩa |
+|---|---|
+| `current`, `complete` | bước hiện tại (key) / mọi bước xong |
+| `orientation`, `narrow` | `vertical` |
+| `navigation` | `back` \| `all` (mặc định không bấm được) |
+| `label` | tên nhóm (mặc định "Tiến trình") |
+| `id`, `class`, `attrs` | trên host; `attrs`: allowlist + `aria-*` / `data-*`, tên của component và `data-td-*` bị bỏ |
+
+## td_timeline (0.45.0)
+
+```php
+<?= td_timeline(array_map(fn ($a) => [
+    'id' => $a->id,
+    'time' => $a->created_at,                 // DateTimeInterface — hoặc ISO có Z / offset, hoặc epoch
+    'title' => $a->description,
+    'actor' => ['name' => $a->user->name, 'href' => '/nhan-vien/' . $a->user->id],
+    'icon' => $a->icon, 'tone' => $a->tone,
+    'details' => $a->changes_text,
+], $activities), ['time_zone' => 'Asia/Ho_Chi_Minh', 'has_more' => $hasMore, 'more_href' => '?page=' . ($page + 1)]) ?>
+```
+
+`td_timeline($items, $opts)` **luôn** in phần tử [Timeline](../components/timeline.md) đầy đủ (hợp đồng `timeline@1`).
+
+- **Thời điểm**: `DateTimeInterface`, số epoch (`< 1e12` = giây), chuỗi ISO 8601 **có** `Z` / offset (1–9 chữ số lẻ giây,
+  cắt về ms — giống JS). Chuỗi không múi giờ → nhóm cuối "Không rõ thời gian" + một `E_USER_WARNING`. Không cần `intl`.
+- **`time_zone`**: tên IANA (`DateTimeZone::listIdentifiers()` hoặc `UTC`); sai → một `E_USER_WARNING` + múi giờ mặc định
+  của PHP. Markup **luôn in** `time-zone` hiệu lực → trình duyệt nhóm đúng cùng ngày.
+- **Không JS**: nhóm ngày + giờ đã tính sẵn, chi tiết mở bằng `<details>`, "Xem thêm" là link `more_href` (chỉ in khi có
+  `has_more` **và** `more_href` hợp lệ). `details: true` (tải lười) chỉ có ở JS.
+- Option khác: `order` (`asc`), `group` (`none`), `heading_level` (2–6), `empty_text`, `now` (test), `id`, `class`, `attrs`.
 
 ## An toàn: escape và whitelist
 

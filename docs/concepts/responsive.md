@@ -38,7 +38,9 @@ if (!isCoarsePointer()) searchInput.focus();                    // không bật 
   của trang desktop cũng gọn như trên điện thoại: `td-table` (dạng card khi khung < 720px), `td-pagination` (gọn khi
   < 480px), Σ dòng của `td-media-grid layout="justified"`, `td-cropper` (0.35: toolbar hai hàng, nút − / + chỉ icon khi
   < 480px), `td-scan-input` (0.38: chỉ báo / nút loa xuống dưới ô, dòng danh sách xếp dọc khi < 480px). `td-tabs` tự đo: tab không vừa thì hàng tab cuộn ngang, nhãn không bao giờ bị cắt. `td-filter-chips`
-  (0.39): ≥ 480px chip xuống dòng, < 480px **một hàng** cuộn ngang với "Xoá tất cả" ghim cuối.
+  (0.39): ≥ 480px chip xuống dòng, < 480px **một hàng** cuộn ngang với "Xoá tất cả" ghim cuối. `td-steps` (0.45): ngang
+  < 480px → hàng marker + một dòng "Bước n/N: nhãn" (`narrow="vertical"`: bố cục dọc); `td-timeline` (0.45): < 480px giờ
+  xuống dưới tiêu đề.
 - **Theo màn hình** — lớp phủ (modal, drawer, toast, lightbox, loading, popup) và điều kiện thiết bị (`pointer`,
   `hover`, chiều cao).
 
