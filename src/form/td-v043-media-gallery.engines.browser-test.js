@@ -237,7 +237,7 @@ describe('td-media-gallery — validity (decision 8)', () => {
     expect(el.validationMessage).to.equal('Tối đa 2 ảnh.');
     expect(fd(form)).to.deep.equal([]);
     expect(addBtn(el).hidden).to.equal(true);
-    expect(q(el, '.td-media-gallery__count').textContent).to.equal('4/2 ảnh');
+    expect(q(el, '.td-media-gallery__count').textContent).to.equal('Vượt giới hạn: 4/2 ảnh');
     removeBtn(lis(el)[0]).click();
     expect(fd(form)).to.deep.equal([]);
     removeBtn(lis(el)[0]).click();

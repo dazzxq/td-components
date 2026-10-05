@@ -105,6 +105,7 @@ export class TdMediaGallery extends TdFormElement {
     count: '{count} {kind}',
     countMax: '{count}/{max} {kind}',
     full: 'Đã đủ {max} {kind}',
+    over: 'Vượt giới hạn: {count}/{max} {kind}',
     item: 'Ảnh {n} trên {count}: {name}',
     coverSuffix: ', ảnh bìa',
     cover: 'Ảnh bìa',
@@ -616,6 +617,7 @@ export class TdMediaGallery extends TdFormElement {
     const count = this._items.length;
     const max = this._maxAttr();
     const kind = this._kindWord();
+    if (count > this._max()) return this._label('over', { count, max: this._max(), kind });
     if (max == null) return this._label('count', { count, kind });
     return this._label(count === max ? 'full' : 'countMax', { count, max, kind });
   }
@@ -697,7 +699,7 @@ export class TdMediaGallery extends TdFormElement {
       return `${head}</div><span class="td-media-gallery__broken">${e(this._label('broken'))}</span>${notes}`;
     }
     const count = this._items.length;
-    return `${head}<span class="td-media-gallery__count" id="${e(id)}-count">${e(this._countText())}</span></div>`
+    return `${head}<span class="td-media-gallery__count" id="${e(id)}-count"${count > this._max() ? ' data-state="over"' : ''}>${e(this._countText())}</span></div>`
       + `<ul class="td-media-gallery__list" role="list" aria-labelledby="${e(id)}-label" aria-describedby="${e(id)}-count">`
       + this._items.map((it, i) => this._itemHtml(it, i, count)).join('') + '</ul>'
       + `<button type="button" class="td-media-gallery__add" data-state="${count ? 'filled' : 'empty'}" aria-haspopup="dialog"`
@@ -909,6 +911,8 @@ export class TdMediaGallery extends TdFormElement {
     const count = this._part('count');
     const ct = this._countText();
     if (count && count.textContent !== ct) count.textContent = ct;
+    if (count && n > this._max()) count.setAttribute('data-state', 'over');
+    else count?.removeAttribute('data-state');
     const add = this._part('add');
     if (add) {
       const state = n ? 'filled' : 'empty';

@@ -68,6 +68,11 @@
 		color: var(--td-color-text-muted);
 	}
 
+	.td-media-gallery__count[data-state="over"] {
+		font-weight: var(--td-fw-medium);
+		color: var(--td-field-error);
+	}
+
 	.td-media-gallery__list {
 		position: relative; /* the drag placeholder is positioned in the list (the controller's host) */
 		display: grid;

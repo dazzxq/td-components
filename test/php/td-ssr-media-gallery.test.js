@@ -188,7 +188,7 @@ describe('php/td.php — td_media_gallery (v0.43.0, contract media-gallery@1)', 
     assert.ok(!/<input[^>]* name="/.test(html), html);
     assert.equal((html.match(/<input type="hidden"/g) || []).length, 0);
     assert.ok(/class="td-media-gallery__add" data-state="filled" aria-haspopup="dialog" hidden>/.test(html), html);
-    assert.ok(html.includes('>4/2 ảnh</span>'), html);
+    assert.ok(html.includes('>Vượt giới hạn: 4/2 ảnh</span>'), html);
   });
 
   test('max: clamped to 100, invalid → dropped (default 100, attribute absent); min clamped to max; full → Add hidden + "Đã đủ"', () => {
