@@ -2,6 +2,26 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.50.0
+
+**`<td-rating>` + `<td-carousel>`** (dsuite; plan `docs/internal/plans/v0.50.0-rating-carousel.md`, Codex plan-review APPROVE,
+impl-review 4 vòng + security-review 3 vòng APPROVE; [ADR 0024](docs/internal/decisions/0024-carousel-native-scroll.md)). Không
+có thay đổi phá vỡ cho component cũ.
+
+### Added
+
+- `<td-rating>` (`./rating`, `TdRating`): sao chỉ đọc, tô phần lẻ chính xác (CSSOM), `max` 1–10, số lượt đánh giá, kích
+  thước. PHP `td_rating()` + SSR `rating@1` (nhận `itemprop` cho microdata).
+- `<td-carousel>` (`./carousel`, `TdCarousel`): cuộn ngang native (scroll-snap, không autoplay), `per-view` 1–6, nút trước /
+  sau, chấm trang, bộ đếm, RTL, bàn phím, giảm chuyển động; giữ chỗ không xô layout khi nâng cấp (trừ `dots="on"` > 2 hàng:
+  xô một lần). PHP `td_carousel()` + SSR `carousel@1`.
+
+### Security
+
+- PHP `td_carousel($slides)`: chuỗi thường được **escape thành chữ**; HTML của template site phải bọc tường minh
+  `Td::html($cardHtml)` (lớp `TdTrustedHtml`) — không bao giờ bọc dữ liệu người dùng nhập. Khung carousel (viewport, track,
+  nút, chấm, bộ đếm) chỉ nhận đúng thẻ + allowlist thuộc tính, lệch → thay bằng node của kit (cả khi gắn lại).
+
 ## 0.49.0
 
 **`<td-choice-group>` + chế độ `stepper` của `<td-number-input>`** (dsuite; plan `docs/internal/plans/v0.49.0-choice-stepper.md`,
