@@ -43,6 +43,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_scan_input (0.38.0)](#td_scan_input-0380)
 - [td_filter_chips (0.39.0)](#td_filter_chips-0390)
 - [td_datetime_range (0.40.0)](#td_datetime_range-0400)
+- [td_check_matrix (0.47.0)](#td_check_matrix-0470)
 - [An toàn: escape và whitelist](#an-toàn-escape-và-whitelist)
 - [Chuyển từ adapter riêng của 135](#chuyển-từ-adapter-riêng-của-135)
 - [Lỗi thường gặp](#lỗi-thường-gặp)
@@ -77,6 +78,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_timeline` (0.45.0) | **luôn** host `<td-timeline data-td-ssr="timeline@1" time-zone="…">` chứa sẵn nhóm ngày, mục, `<details>` chi tiết, "Xem thêm" (link) | Không (chi tiết mở bằng `<details>`, "Xem thêm" là link `more_href`) | **Có** — nạp module `timeline`: nhận **tại chỗ** (tính lại chữ nhãn ngày) |
 | `td_datetime_range` (0.40.0) | **luôn** host `<td-datetime-range data-td-ssr="datetime-range@1">` + hai `<input type="date\|datetime-local">` **native** (`{name}[start]` / `{name}[end]`, `min` / `max`, `required` theo mốc) + trigger ẩn | Không (hai ô ngày native chạy ngay) | **Có** — nạp module `datetime-range`: nhận **tại chỗ**, giữ giá trị đã sửa, gỡ ô native |
 | `td_diff` / `td_diff_snapshots` (0.46.0) | **luôn** host `<td-diff data-td-ssr="diff@1">` chứa sẵn bảng so sánh đầy đủ (hàng không đổi / JSON / giá trị dài là `<details>` native) | Không (đọc được ngay, `<details>` mở được không cần JS) | **Có** — nạp module `diff`: nhận **tại chỗ** (không đọc dữ liệu ngược từ DOM) |
+| `td_check_matrix` (0.47.0) | **luôn** host `<td-check-matrix data-td-ssr="check-matrix@1" data="{JSON}">` + **form không JS đầy đủ**: một hidden `name[col]=""` mỗi cột (đầu), một checkbox `name[col][]=row` mỗi ô áp dụng được (ô khoá-tick: checkbox `disabled` + hidden ngay sau), `name[_v]=1` (cuối); ô hàng loạt / nút nhóm / chọn cột `disabled` | Không (form gửi đúng FormData của component, từng byte) | **Có** — nạp module `check-matrix`: so **từng node** với `data`, nhận **tại chỗ** (giữ ô đã tick trước khi JS tải), gỡ marker / hidden / sentinel |
 | `td_copy` (0.27.0) | **luôn** host `<td-copy data-td-ssr="copy@1">` chứa nguồn `<code>` + nút icon + live region | Không (chưa có JS: hiện mã để bôi đen, ẩn nút) | **Có** — nạp module `copy`: nhận **tại chỗ** |
 | `td_icon` | `svg.td-icon` đủ hình (có `viewBox`) | Không | — |
 | `td_badge` | `span.td-badge…` (thuần CSS) | Không | — |
@@ -240,6 +242,7 @@ td_media_field(string $name, mixed $assetId = null, array $o = []): string    //
 td_scan_input(string $name, array $o = []): string   // 0.38.0 (multiple: luôn element)
 td_filter_chips(array $items, array $o = []): string        // 0.39.0 (luôn element)
 td_datetime_range(string $name, ?string $start = null, ?string $end = null, array $o = []): string   // 0.40.0 (luôn element)
+td_check_matrix(string $name, array $columns, array $rows, array $value = [], array $o = []): string   // 0.47.0 (luôn element + form không JS)
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
 td_stylesheet_tag(?string $nonce = null): string
@@ -1661,6 +1664,42 @@ markup **cuối cùng** — giống hệt `render()` của component cho cùng d
 | `labels` | ghi đè chữ (`Td::DIFF_LABELS`, cùng khoá `TdDiff.labels`) — site đổi chữ JS thì đổi cả ở đây để markup khớp |
 | `id`, `class` | trên host |
 | `attrs` | trên **host** (allowlist + `aria-*` / `data-*`). Giữ chỗ — bị bỏ: `id` `class` `view` `unchanged` `json` `label` + mọi `data-td-*` |
+## td_check_matrix (0.47.0)
+
+```php
+<?= td_check_matrix('perms', $roles, $permissionGroups, $rolePermissions, [
+    'label' => 'Quyền theo vai trò',
+    'cells' => ['orders.refund' => ['sales' => ['locked' => true, 'note' => 'Bán hàng không hoàn tiền']]],
+    'labels' => ['rows' => 'Quyền'],
+]) ?>
+```
+
+`td_check_matrix($name, $columns, $rows, $value, $o)` in [Check matrix](../components/check-matrix.md) (hợp đồng
+`check-matrix@1`, [ADR 0022](../internal/decisions/0022-check-matrix-grid-form-shape.md)). `$columns`: `[['key' => 'owner',
+'label' => 'Chủ cửa hàng', 'description' => …, 'locked' => true], …]` (≤ 32); `$rows`: hàng `['key', 'label',
+'description', 'locked']` hoặc nhóm `['key', 'label', 'collapsed', 'locked', 'rows' => [...]]` (một cấp, ≤ 500 hàng, ≤ 64
+nhóm, ≤ 10 000 ô); `$value`: `['owner' => ['dashboard.view', …]]`. Khoá: `^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$` hoặc số
+nguyên ≥ 0. Cờ `locked` / `na` / `collapsed` phải là **bool** thật.
+
+| Option | Kiểu | Ý nghĩa |
+|---|---|---|
+| `cells` | array | `['hàng' => ['cột' => ['locked' => bool, 'na' => bool, 'note' => string]]]` — chỉ ô đặc biệt |
+| `label` | string | Nhãn hiển thị (tên lưới). Không có → `attrs['aria-label']` → chữ dự phòng "Ma trận chọn" |
+| `layout` | `auto` \| `grid` \| `column` | Chế độ hẹp "một cột một lúc" (sau khi JS chạy) |
+| `max_height` | string | `none` hoặc số + `px`/`rem`/`em`/`vh`/`svh`/`dvh`/`lvh`/`%` (sai → bỏ, không bao giờ `style=""`) |
+| `disabled` | bool | Mọi input `disabled` → không gửi gì |
+| `id`, `class`, `attrs` | | Host (`attrs` theo allowlist; tên của component + `data-td-*` bị chặn) |
+| `labels` | array | Ghi đè chữ (`Td::CHECK_MATRIX_LABELS` = `TdCheckMatrix.labels`) |
+
+- **Form không JS gửi đúng FormData của component, từng byte** (test PHP parse bằng `parse_str` thật): `perms[col]=''` mỗi
+  cột → các ô đang tick (ô khoá-tick qua hidden input ngay sau checkbox `disabled`) → `perms[_v]=1`. `$_POST['perms']` có
+  ba trạng thái mỗi cột: mảng / `''` / không có key.
+- **Server bắt buộc** từ chối (422) khi thiếu `_v` (bị `max_input_vars` cắt), gỡ `_v` trước khi validate, tự cưỡng chế khoá
+  (snippet Laravel + PHP thuần ở [trang component](../components/check-matrix.md#sentinel-_v-và-max_input_vars-bắt-buộc-đọc)).
+- **Fail closed:** dữ liệu sai (khoá trùng / sai, quá trần, `value` lạ, cờ không phải bool…) hoặc `name` rỗng / kết thúc
+  `[]` → in trạng thái lỗi **không một input nào** + một `E_USER_WARNING` chỉ nêu loại lỗi (không in giá trị). Server không
+  thấy key → giữ nguyên quyền, không bao giờ "xoá hết".
+- Attribute `data` (JSON chuẩn hoá) là nguồn của cổng hydrate và của reset; ~30–40 KB cho 200 × 12.
 
 ## An toàn: escape và whitelist
 

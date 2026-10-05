@@ -80,6 +80,9 @@ vuông 4px riêng ([ADR 0017](../internal/decisions/0017-shared-check-mark.md)).
 
 ### 3. `cascade` — cây quyền (ba trạng thái)
 
+> Quyền **theo nhiều vai trò cùng lúc** (quyền × role, có cột khoá, chọn cả cột): dùng
+> [`<td-check-matrix>`](check-matrix.md) (0.47.0). `cascade` hợp khi sửa quyền của **một** đối tượng.
+
 `<td-tree selection="multiple" cascade>`: ô check ba trạng thái, **giá trị = chỉ các LÁ đã check** (nút cha là "nhóm",
 không phải quyền). Vì sao gửi lá: tập gửi đi không mơ hồ ("cha" không ngầm nghĩa "cả nhánh"), server không phải tự bung
 nhánh, thêm quyền con mới vào nhóm sau này không tự cấp ngầm. Không hỗ trợ "gom về cha".

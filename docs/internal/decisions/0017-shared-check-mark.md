@@ -59,3 +59,17 @@ chip-input / tree), hai nguồn trạng thái (ARIA của phần tử chứa và
   luôn hiện hộp.
 - (−) Selector trạng thái phụ thuộc mark là **con trực tiếp** của phần tử mang ARIA (hoặc cấu trúc tree đã liệt kê) — đặt
   mark sâu hơn thì phải thêm selector vào `check.css`.
+
+## Bổ sung v0.47 (chỉ thêm)
+
+`td-check-matrix` in tới 10 000 mark (plan v0.47.0 QĐ 19, M0 đo ba cách vẽ ✓ trên 200 × 12): SVG mỗi mark (như hiện
+tại), `<svg><use>` tới một `<symbol>` của instance, và ✓ vẽ bằng CSS. Chọn **✓ vẽ bằng CSS**: render nhanh gấp ~2 (Chromium
+~40 ms so với ~70–90 ms cho cả lưới không mark), HTML PHP nhỏ một nửa (không SVG inline), cổng hydrate không phải so SVG.
+
+- Modifier `.td-check--drawn`: `::before` là một chữ L (border phải + dưới) xoay 45°, đúng hình học Lucide `check`
+  (4,12 → 9,17 → 20,6, nét 0,1 hộp) ở 70 % hộp — đo trên ảnh 4× lệch < 1,5 % hộp (≈ 0,3 px ở cỡ `md`) so với ✓ SVG của
+  `td-checkbox`. Hộp, nền, viền, bo, thanh lưng chừng (`::after`) vẫn là `.td-check` chung.
+- ✓ ẩn / hiện bằng `visibility` (hộp `::before` luôn tồn tại): tạo / gỡ một hộp giả trên mỗi lần tick làm trình duyệt bố
+  cục lại cả bảng 2 400 ô (đo: lật một ô 4–8 ms → < 1 ms ở Chromium). Không fade-in cho ✓ vẽ.
+- Selector của ma trận nằm trong `check.css` như mọi consumer: `.td-check-matrix__input:checked ~ .td-check`,
+  `:indeterminate ~`, `:disabled ~` (ô khoá 60 % — ≥ 2,2:1 với accent sáng; 50 % chỉ 2,14).

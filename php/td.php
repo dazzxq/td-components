@@ -34,6 +34,10 @@
  *     hydrated in place by `@dazzxq/td-components/empty-state`.
  *   - v0.32.0 td_media_field prints `<td-media-field data-td-ssr="media-field@1">` + the full tree (always element) +
  *     the no-JS hidden inputs (assetId / crop) and the alt input name, adopted in place by `@dazzxq/td-components/media-field`.
+ *   - v0.47.0 td_check_matrix prints `<td-check-matrix data-td-ssr="check-matrix@1" data="{JSON}">` + the full no-JS form
+ *     (column markers `name[col]=""`, one checkbox `name[col][]=row` per applicable cell, a hidden twin after each
+ *     locked-ticked one, the `name[_v]=1` sentinel last) — byte-identical FormData to the JS component, which adopts it
+ *     in place after a node-by-node check against `data`. Invalid data / name → the fail-closed state (no input at all).
  *   - td_icon prints `svg.td-icon` with the full geometry of src/icons/icons.json (+ Td::registerIcons()).
  *   - td_badge prints a CSS-only `span.td-badge…` (no JS, no custom element).
  *   - td_alert prints a `<td-alert>` host that ALREADY contains the full styled markup `div.td-alert` (icon, heading,
