@@ -17120,6 +17120,7 @@
 
 	.td-diff__label {
 		font-weight: var(--td-fw-medium);
+		unicode-bidi: isolate; /* round 1 S3: a key / label never reorders the kind label next to it */
 	}
 
 	/* Kind as TEXT (QĐ 14): the tint is only an extra layer; forced colours keep the words */

@@ -85,6 +85,7 @@ trường cho màn audit log — và PHP `td_diff()` / `td_diff_snapshots()` / `
   tiện để nền ô khớp palette. `--preset light|dark` = giá trị kit.
 - Không đổi gì ở component khác.
 
+## 0.42.1
 
 **Mức: đổi giao diện chỉ ở dark, chỉ hai trạng thái nhấn.** Không đặt `data-td-theme` / light: giống từng pixel 0.42.0
 (golden light 0 khác biệt). Dark (`data-td-theme="dark"` / `auto` ở OS tối): hai cặp chữ / nền khi nhấn dưới ngưỡng 4.7

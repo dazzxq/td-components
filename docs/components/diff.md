@@ -87,8 +87,8 @@ diff.after = event.changes.after;
 | `boolean` (mặc định cho boolean) | "Có" / "Không" |
 | `date` | chỉ `YYYY-MM-DD` hợp lệ → `DD/MM/YYYY`; khác → nguyên văn. **Không đổi múi giờ**: ngày giờ có múi giờ → server định dạng sẵn thành chuỗi `text` |
 | `enum` | `options[giá trị]` → nhãn; không có → mã gốc. Áp cả cho từng phần tử của mảng (quyền: mã → tên) |
-| `list` (mặc định cho mảng toàn giá trị đơn) | từng phần tử; khi **Đổi**: phần tử mới "+", phần tử bị bỏ "−" (so như **tập**) |
-| `json` (mặc định cho object sâu) | JSON gọn một dòng; đầy đủ trong JSON view |
+| `list` (mặc định cho mảng toàn giá trị đơn) | từng phần tử (tối đa 200, còn lại "+{n} phần tử"); so như **tập** — thứ tự và phần tử lặp không tính (`['a','b']` = `['b','a','a']`); khi **Đổi**: phần tử mới "+", phần tử bị bỏ "−" |
+| `json` (mặc định cho object sâu) | JSON gọn một dòng (cả chuỗi / số / boolean / mảng khi khai báo `type: 'json'`: `"chuỗi"`, `true`, `["a", 1]`; số theo cùng luật số lớn); đầy đủ trong JSON view |
 
 Không có hook định dạng tuỳ ý (giữ JS = PHP và text-only): cần gì khác thì app định dạng sẵn thành chuỗi `text`.
 
@@ -109,7 +109,9 @@ rỗng) và có ghi chú "server nên gửi dạng chuỗi". **ID, mã, số ti�
 | bằng nhau / cả hai rỗng | | không đổi (gom vào "n trường không đổi") |
 
 "Bằng nhau" so theo dạng chuẩn: `1` khác `"1"` (đổi kiểu là thay đổi thật), `1` = `1.0`, object so theo **tập khoá** (thứ tự
-khoá không quan trọng), mảng so theo thứ tự.
+khoá không quan trọng), mảng giá trị đơn so như **tập** (mảng có object so theo chỉ số). Phần tử không so được (số quá lớn,
+`1e309`, chuỗi dài hơn 40 000 ký tự) có ở **cả hai** bên → "Đổi" + "không so sánh được"; chỉ ở một bên → "Đổi". Chuỗi dài hơn
+40 000 ký tự so bằng 40 000 ký tự đầu: khác → "Đổi"; giống → "Đổi" + "không so sánh được" (không bao giờ "không đổi").
 
 ### 5. Trường bị che (`masked`)
 
@@ -118,7 +120,9 @@ khoá không quan trọng), mảng so theo thứ tự.
   đi vào bên trong nó. Không có `kind`: hai bên đều là chuỗi → so như chuỗi (bằng nhau → không đổi); còn lại → **Đổi**.
   Hàng có nhãn phụ "Đã che".
 - **Snapshot**: `fields: [{ path: 'card', masked: true }]` che **cả nhánh** (theo đoạn đường dẫn): kit không đọc nhánh đó (kể cả
-  getter), hai ô hiện `[ĐÃ ẨN]`, JSON view in `"[ĐÃ ẨN]"` đúng chỗ.
+  getter), hai ô hiện `[ĐÃ ẨN]`, JSON view in `"[ĐÃ ẨN]"` đúng chỗ. Mảng giá trị đơn có một phần tử bị che (`['tags', 1]`)
+  thành **một** hàng che ở chính mảng đó (không hàng theo chỉ số, phần tử che không bao giờ được đọc; JSON view in cả mảng là
+  `"[ĐÃ ẨN]"`) — không lộ chỉ số nào bị che.
 - Giá trị đã che một phần do server gửi (`"***123"`) **không cần** `masked` — đó là chuỗi thường.
 
 ### 6. Snapshot: đường dẫn, nhãn, thứ tự
@@ -132,6 +136,9 @@ khoá không quan trọng), mảng so theo thứ tự.
   số nguyên ≥ 0) → bỏ + một cảnh báo (chỉ số của nó).
 - `FieldDef`: `{ path, label?, type?, options?, decimals?, unit?, masked? }`. Nhãn: `FieldDef` khớp chính xác; không thì nhãn
   của `FieldDef` khớp tiền tố dài nhất + các đoạn còn lại ("Dòng hàng › #2 › qty").
+- **Định danh hàng = khoá nguyên văn** (không chuẩn hoá Unicode: `é` dựng sẵn và `e` + dấu kết hợp là hai hàng; ký tự lẻ
+  của cặp surrogate giữ nguyên). Nhãn hiển thị bị cắt ở 200 ký tự — hai khoá khác nhau có cùng nhãn vẫn là hai hàng. Khoá dài
+  hơn **1 000 ký tự** không bao giờ được ghép: hai bên thành hai hàng riêng (Xoá + Thêm) + ghi chú "Dữ liệu quá lớn…".
 - Thứ tự hàng: theo `fields` trước, rồi các khoá còn lại theo thứ tự trong `after`, rồi `before` (không sort chữ cái). Thứ tự
   khoá = thứ tự của JavaScript (khoá dạng chỉ số mảng `"1"`, `"10"` đứng trước, tăng dần; còn lại theo thứ tự chèn) — PHP làm
   y hệt.
@@ -145,7 +152,9 @@ khoá không quan trọng), mảng so theo thứ tự.
 | Giá trị | xem trước 300 ký tự (rồi "Xem đầy đủ"), tối đa 10 000 ký tự ("… đã cắt") | |
 | Tổng chữ của một diff | 300 000 ký tự | các giá trị sau chỉ còn bản xem trước + ghi chú |
 | JSON view mỗi bên | 100 000 ký tự (cắt ở ranh giới dòng) | "… đã cắt" |
-| `list` mỗi bên | 200 phần tử | "+{n} phần tử" |
+| `list` mỗi bên | 200 phần tử được đọc / giữ (độ dài gốc vẫn tính cho "+{n} phần tử"); chữ phần tử tính vào trần 300 000 | "+{n} phần tử" |
+| Việc chung của một diff (phần tử mảng được đọc, bước so sánh, item) | 100 000 | mảng sau đó hiện "Mảng {n} phần tử" + "không so sánh được", ghi chú "Dữ liệu quá lớn…" |
+| Khoá dùng làm định danh | 1 000 ký tự | hai hàng riêng + ghi chú (không ghép) |
 
 ## Attribute
 
@@ -231,13 +240,16 @@ Giá trị dài: bản xem trước + `<details class="td-diff__more">`. Mảng:
   hiển thị + nhãn "Đã che"; giá trị không-phải-chuỗi của item che không bao giờ được in (không chuyển thành chữ, không đi vào
   bên trong), nhưng **chuỗi** thì hiện nguyên văn (đã che sẵn ở server).
 - Mọi khoá / nhãn / giá trị / option là **chữ** (template đã escape, PHP `htmlspecialchars`): không có cửa HTML thô, không
-  link hoá URL / email, không markdown. Ký tự điều khiển C0 / C1 bị bỏ; ký tự định hướng / vô hình (U+202E, U+200B, U+FEFF…)
-  **hiện ra** dạng `⟨U+202E⟩` — trang audit cho thấy đúng thứ đã lưu (chống Trojan Source); mỗi giá trị nằm trong phần tử
-  `unicode-bidi: isolate` + `dir="auto"`.
+  link hoá URL / email, không markdown. Ký tự điều khiển C0 / C1 bị bỏ; ký tự điều khiển hướng và ký tự "mặc định vô hình"
+  (U+00AD, U+034F, U+061C, U+115F–1160, U+17B4–17B5, U+180B–180F, U+200B–200F, U+202A–202E, U+2060–206F, U+3164, U+FEFF,
+  U+FFA0, U+FFF0–FFF8, U+1BCA0–1BCA3, U+1D173–1D17A, ký tự TAG U+E0000–E0FFF) **hiện ra** dạng `⟨U+202E⟩` — trang audit cho
+  thấy đúng thứ đã lưu (chống Trojan Source / "ASCII smuggling"); riêng bộ chọn biến thể U+FE00–FE0F (emoji) giữ nguyên. Mỗi
+  giá trị và mỗi nhãn nằm trong phần tử `unicode-bidi: isolate` (giá trị thêm `dir="auto"`).
 - Dữ liệu là **không tin cậy** (giá trị do người dùng khác nhập, khoá JSON tuỳ ý): chỉ duyệt plain object / mảng, khoá riêng
   (`__proto__` từ `JSON.parse` là một hàng bình thường, prototype bị "đầu độc" không thành hàng), getter ném / Proxy →
-  `[không đọc được]`, vòng lặp → `[vòng lặp]`; mọi giới hạn (mục 7) chạy **trước** việc tốn kém, chuỗi thô bị cắt trước mọi regex,
-  JSON view dùng serializer có ngân sách (không `JSON.stringify` trên input).
+  `[không đọc được]`, vòng lặp → `[vòng lặp]`; mọi giới hạn (mục 7) chạy **trước** việc tốn kém: chuỗi thô (giá trị, khoá,
+  đoạn đường dẫn) bị cắt trước mọi regex / kiểm tra / so sánh (JS và PHP), một ngân sách việc chung cho cả diff, JSON view dùng
+  serializer có ngân sách (không `JSON.stringify` trên input).
 - Chi tiết: [security-model §6h](../internal/security-model.md#6h-td-diff-v0460) · [guides/security.md](../guides/security.md#td-diff-che-dữ-liệu-ở-server).
 
 ## PHP (không cần JS)

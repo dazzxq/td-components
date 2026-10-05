@@ -152,6 +152,7 @@ describe('td-diff — render (QĐ 11–15)', () => {
     expect(r.querySelector('.td-diff__cell--before .td-diff__ctl').textContent).to.equal('⟨U+202E⟩');
     expect(r.querySelector('.td-diff__cell--before .td-diff__value').getAttribute('dir')).to.equal('auto');
     expect(getComputedStyle(r.querySelector('.td-diff__value')).unicodeBidi).to.equal('isolate');
+    expect(getComputedStyle(r.querySelector('.td-diff__label')).unicodeBidi).to.equal('isolate'); // round 1 S3
     expect(el.textContent.includes('\u202E')).to.equal(false);
   });
 
