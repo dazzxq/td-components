@@ -43,7 +43,7 @@ async function fakeScan(host, code) {
   for (const ch of code) {
     const ok = input.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: ch }));
     if (ok) {
-      input.value += ch;
+      input.setRangeText(ch, input.selectionStart, input.selectionEnd, 'end'); // like typing: replaces a selection
       input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: ch }));
     }
     await new Promise((r) => setTimeout(r, 3));

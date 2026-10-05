@@ -239,6 +239,7 @@ sẽ bị dịch thành `/vendor/td-components-0.37.0/button` (không tồn tạ
     "@dazzxq/td-components/progress": "/vendor/td-components-0.37.0/src/feedback/td-progress.js",
     "@dazzxq/td-components/alert": "/vendor/td-components-0.37.0/src/feedback/td-alert.js",
     "@dazzxq/td-components/otp-input": "/vendor/td-components-0.37.0/src/form/td-otp-input.js",
+    "@dazzxq/td-components/scan-input": "/vendor/td-components-0.37.0/src/form/td-scan-input.js",
     "@dazzxq/td-components/tree": "/vendor/td-components-0.37.0/src/form/td-tree.js",
     "@dazzxq/td-components/tree-select": "/vendor/td-components-0.37.0/src/form/td-tree-select.js",
     "@dazzxq/td-components/number-input": "/vendor/td-components-0.37.0/src/form/td-number-input.js",
@@ -493,6 +494,7 @@ Nguồn: `package.json#exports`.
 | `@dazzxq/td-components/progress` | `src/feedback/td-progress.js` | `<td-progress>`, `TdProgress` |
 | `@dazzxq/td-components/alert` | `src/feedback/td-alert.js` | `<td-alert>`, `TdAlert` |
 | `@dazzxq/td-components/otp-input` | `src/form/td-otp-input.js` | `<td-otp-input>`, `TdOtpInput` |
+| `@dazzxq/td-components/scan-input` | `src/form/td-scan-input.js` | `<td-scan-input>`, `TdScanInput` (0.38.0) |
 | `@dazzxq/td-components/tree` | `src/form/td-tree.js` | `<td-tree>`, `TdTree` |
 | `@dazzxq/td-components/tree-select` | `src/form/td-tree-select.js` | `<td-tree-select>`, `TdTreeSelect` (nạp kèm `td-tree`) |
 | `@dazzxq/td-components/number-input` | `src/form/td-number-input.js` | `<td-number-input>`, `TdNumberInput` |

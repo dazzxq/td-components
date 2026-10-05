@@ -218,6 +218,27 @@
     <p class="demo-note">Gõ / dán 6 số → event <code>complete</code> (Console). Mã <code>123456</code> đúng; mã khác → <code>setError()</code> + <code>reset()</code>.</p>
   </div>
 
+  <!-- ═══════════════════ QUÉT MÃ (v0.38.0) ═══════════════════ -->
+  <div class="demo-section" id="demo-scan">
+    <h2>Quét mã <span class="demo-code">&lt;td-scan-input&gt;</span></h2>
+    <div class="demo-narrow">
+      <td-scan-input id="demo-scan-order" name="order" label="Mã đơn hàng" placeholder="Quét mã vạch trên phiếu" required></td-scan-input>
+    </div>
+    <form id="demo-scan-form" class="demo-narrow">
+      <td-scan-input id="demo-scan-imei" name="imei[]" label="IMEI nhập kho" multiple inputmode="numeric" max="50" beep></td-scan-input>
+    </form>
+    <div class="demo-row">
+      <button type="button" class="td-btn td-btn--secondary td-btn--sm" data-scan="demo-scan-order" data-code="DH-2026-000123">Giả lập quét mã đơn</button>
+      <button type="button" class="td-btn td-btn--secondary td-btn--sm" data-scan="demo-scan-imei" data-code="356938035643809">Quét IMEI hợp lệ</button>
+      <button type="button" class="td-btn td-btn--secondary td-btn--sm" data-scan="demo-scan-imei" data-code="356938035643801">IMEI sai Luhn</button>
+      <button type="button" class="td-btn td-btn--secondary td-btn--sm" data-scan="demo-scan-imei" data-code="490154203237518">IMEI "đã nhập kho"</button>
+    </div>
+    <p class="demo-note">Máy quét thật: focus ô, bóp cò. Nút "giả lập" gửi từng ký tự qua <code>beforeinput</code> cách 3 ms rồi Enter —
+      <strong>chỉ có trong demo</strong>. Gõ tay rồi Enter → <code>source: 'manual'</code>. IMEI: <code>validate</code> của demo kiểm
+      Luhn + giả lập server 300 ms; quét lại trong 1,5 giây → "Đã quét mã này".</p>
+    <pre id="demo-scan-output" class="demo-output" aria-live="polite"></pre>
+  </div>
+
   <!-- ═══════════════════ PASSWORD METER ═══════════════════ -->
   <div class="demo-section">
     <h2>Password Meter <span class="demo-code">&lt;td-password-meter&gt;</span></h2>
@@ -796,6 +817,8 @@
     // v0.32
     import { TdMediaPicker } from './src/feedback/td-media-picker.js';
     import './src/form/td-media-field.js';
+    // v0.38
+    import './src/form/td-scan-input.js';
     import { createMockAdapter, assetFields, uploadFields } from './test/fixtures/media-adapter.js';
     // v0.35
     import { TdCropper } from './src/form/td-cropper.js';
@@ -1109,6 +1132,51 @@
     document.querySelector('#demo-number-form').addEventListener('change', (e) => {
       if (e.target.tagName === 'TD-NUMBER-INPUT') console.log(`[td-number-input ${e.target.getAttribute('name')}] change:`, e.detail.value);
     });
+
+    // ── Quét mã (v0.38.0) ──
+    {
+      const luhnImei = (v) => {
+        if (!/^\d{15}$/.test(v)) return false;
+        let sum = 0;
+        for (let i = 0; i < 15; i++) {
+          let d = Number(v[14 - i]);
+          if (i % 2 === 1) { d *= 2; if (d > 9) d -= 9; }
+          sum += d;
+        }
+        return sum % 10 === 0;
+      };
+      const imei = document.querySelector('#demo-scan-imei');
+      imei.validate = async (value, { signal }) => {
+        if (!luhnImei(value)) return 'IMEI không hợp lệ (sai Luhn)';
+        await new Promise((resolve, reject) => {
+          const t = setTimeout(resolve, 300);
+          signal.addEventListener('abort', () => { clearTimeout(t); reject(signal.reason); });
+        });
+        return value === '490154203237518' ? 'Máy này đã nhập kho' : true;
+      };
+      const out = document.querySelector('#demo-scan-output');
+      for (const host of document.querySelectorAll('#demo-scan td-scan-input')) {
+        for (const t of ['scan', 'scan-invalid', 'scan-duplicate', 'change']) {
+          host.addEventListener(t, (e) => { out.textContent = `${host.id} ${t}: ${JSON.stringify(e.detail)}`; });
+        }
+      }
+      // DEMO ONLY: a fake keyboard-wedge scanner (one character every 3 ms through beforeinput + input, then Enter)
+      const fakeScan = async (host, code) => {
+        const input = host.querySelector('input.td-scan__input');
+        input.focus();
+        for (const ch of code) {
+          if (input.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: ch }))) {
+            input.setRangeText(ch, input.selectionStart, input.selectionEnd, 'end'); // like typing: replaces a selection
+            input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: ch }));
+          }
+          await new Promise((r) => setTimeout(r, 3));
+        }
+        input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Enter' }));
+      };
+      for (const b of document.querySelectorAll('#demo-scan [data-scan]')) {
+        b.addEventListener('click', () => fakeScan(document.getElementById(b.dataset.scan), b.dataset.code));
+      }
+    }
 
     // ── OTP (v0.27.0) ──
     const otp = document.querySelector('#demo-otp');

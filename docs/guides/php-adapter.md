@@ -40,6 +40,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_number_input (0.30.0)](#td_number_input-0300)
 - [td_masked_value (0.31.0)](#td_masked_value-0310)
 - [td_media_field (0.32.0)](#td_media_field-0320)
+- [td_scan_input (0.38.0)](#td_scan_input-0380)
 - [An toàn: escape và whitelist](#an-toàn-escape-và-whitelist)
 - [Chuyển từ adapter riêng của 135](#chuyển-từ-adapter-riêng-của-135)
 - [Lỗi thường gặp](#lỗi-thường-gặp)
@@ -66,6 +67,8 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_number_input` — **chế độ element** (0.30.0, tự bật) | host `<td-number-input data-td-ssr="number-input@1">` chứa sẵn cùng cây | Không (input native chạy ngay, gửi số sạch) | **Có** — nạp module `number-input`: nhận **tại chỗ**, hiện `12.990.000` |
 | `td_masked_value` (0.31.0) | **luôn** host `<td-masked-value data-td-ssr="masked-value@1">` chứa chuỗi che + nút toggle + live region — **không bao giờ** giá trị thật | Không (chưa có JS: chỉ thấy chuỗi che, nút ẩn) | **Có** — nạp module `masked-value`: nhận **tại chỗ** |
 | `td_media_field` (0.32.0) | **luôn** host `<td-media-field data-td-ssr="media-field@1">` chứa sẵn khung (tỉ lệ bằng SVG sizer), ảnh xem trước, nút mở / Đổi / Gỡ + **hidden input** gửi `assetId` (và ô alt / crop ở chế độ usage) | Không (form gửi đúng hình dạng; chưa có JS thì nút ẩn, giữ chỗ) | **Có** — nạp module `media-field`: nhận **tại chỗ**, gỡ hidden input |
+| `td_scan_input` (0.38.0) | `div.td-scan` + `input.td-scan__input` **native** (`autocomplete="off"`, `enterkeyhint="done"`…) | Không (Enter submit form) | Không |
+| `td_scan_input` — **chế độ element** (0.38.0, tự bật) / **`multiple`** (luôn element) | host `<td-scan-input data-td-ssr="scan-input@1">` + cùng input; `multiple`: + `textarea` nhập tay + danh sách + một **hidden input** mỗi mã | Không (form gửi mã in sẵn + dòng textarea) | **Có** — nạp module `scan-input`: nhận **tại chỗ**, gỡ hidden / textarea, dòng textarea qua `validate` |
 | `td_copy` (0.27.0) | **luôn** host `<td-copy data-td-ssr="copy@1">` chứa nguồn `<code>` + nút icon + live region | Không (chưa có JS: hiện mã để bôi đen, ẩn nút) | **Có** — nạp module `copy`: nhận **tại chỗ** |
 | `td_icon` | `svg.td-icon` đủ hình (có `viewBox`) | Không | — |
 | `td_badge` | `span.td-badge…` (thuần CSS) | Không | — |
@@ -126,7 +129,7 @@ TdComponents\Td::configure(
 
   | Option | Kiểu | Mặc định | Ý nghĩa |
   |---|---|---|---|
-  | `ssr_elements` | `bool` | `false` | `td_button` / `td_link` (không `bare`) — từ 0.26.0 cả `td_field` / `td_toggle` / `td_checkbox` / `td_dropdown`, từ 0.27.0 cả `td_otp_input`, từ 0.30.0 cả `td_number_input` — in [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) cho **mọi** lần gọi; option `element` của từng lần gọi vẫn ghi đè |
+  | `ssr_elements` | `bool` | `false` | `td_button` / `td_link` (không `bare`) — từ 0.26.0 cả `td_field` / `td_toggle` / `td_checkbox` / `td_dropdown`, từ 0.27.0 cả `td_otp_input`, từ 0.30.0 cả `td_number_input`, từ 0.38.0 cả `td_scan_input` (đơn) — in [chế độ element](#chế-độ-element-ssr--hydrate-tại-chỗ-0250) cho **mọi** lần gọi; option `element` của từng lần gọi vẫn ghi đè |
 
   > **Nâng từ 0.25 lên 0.26 mà đã bật `ssr_elements`:** từ 0.26.0 cờ này áp thêm cho `td_field` / `td_toggle` /
   > `td_checkbox` (đúng hợp đồng ADR 0012: cờ toàn cục áp cho mọi helper **đã có** hợp đồng trong bản đó). Markup đổi
@@ -225,6 +228,7 @@ td_tree_select(string $name, array $tree, string|int|array|null $selected = null
 td_number_input(string $name, mixed $value = null, array $opts = []): string   // 0.30.0
 td_masked_value(string $masked, array $opts = []): string   // 0.31.0 (luôn element, không có tham số giá trị thật)
 td_media_field(string $name, mixed $assetId = null, array $o = []): string    // 0.32.0 (luôn element; $assetId chỉ string | int)
+td_scan_input(string $name, array $o = []): string   // 0.38.0 (multiple: luôn element)
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
 td_stylesheet_tag(?string $nonce = null): string
@@ -1297,6 +1301,45 @@ Nguồn chuẩn của markup là fixture `test/ssr/fixtures/media-field.html` (s
 video, file, disabled, lỗi, URL độc, `name[]`, `attrs`, XSS).
 Đọc giá trị ở server (Laravel / PHP thuần, `crop = 'null'`): [Media field › Hai dạng gửi form](../components/media-field.md#1-hai-dạng-gửi-form-api-công-khai-chốt-từ-032).
 Cảnh báo (`E_USER_WARNING`) chỉ ghi tên option và kiểu, không in giá trị thô.
+
+## td_scan_input (0.38.0)
+
+```php
+<?= td_scan_input('order', ['label' => 'Mã đơn hàng', 'required' => true, 'placeholder' => 'Quét mã vạch trên phiếu']) ?>
+<?= td_scan_input('order', ['label' => 'Mã đơn hàng', 'element' => true, 'value' => $order->code, 'beep' => true]) ?>
+<?= td_scan_input('imei[]', ['multiple' => true, 'label' => 'IMEI nhập kho', 'values' => $receipt->imeis, 'max' => 50, 'inputmode' => 'numeric']) ?>
+```
+
+`td_scan_input($name, $opts)` in ô của [Scan input](../components/scan-input.md) (hợp đồng `scan-input@1`).
+
+- **Đơn, mặc định (native)**: `div.td-scan` > [nhãn] + `div.td-scan__box` > `input.td-scan__input` (`type="text"`,
+  `autocomplete` / `autocapitalize` / `autocorrect="off"`, `spellcheck="false"`, `enterkeyhint="done"`, `name`, `value`,
+  `required`…) [+ dòng lỗi]. Không JS: Enter của máy quét **submit form** (chấp nhận khi không có JS).
+- **Đơn, chế độ element** (`'element' => true` hoặc `ssr_elements`): host `<td-scan-input data-td-ssr="scan-input@1">` +
+  cùng ô; module nhận **tại chỗ** qua cổng chung của form (giữ node input, chữ đang gõ, focus), rồi gỡ `name` / `value` /
+  `required` khỏi input (FormData đúng một mục).
+- **`multiple`** (luôn element, `element => false` không đổi gì): host `[multiple]` > `div.td-scan[data-mode="multiple"]` >
+  [nhãn] + box > input (**không** `name`) + `textarea.td-scan__fallback[name]` (nhập tay khi không có JS, mỗi dòng một mã)
+  + `ul.td-scan__list` > `li.td-scan__item[data-value]` > `span.td-scan__value` mỗi mã; rồi một
+  `input[type=hidden].td-scan__hidden[name][value]` mỗi mã (cùng thứ tự), dòng lỗi cuối. `values` = **trạng thái hợp lệ
+  đã có** (kit không gọi lại `validate`, cũng là mặc định `form.reset()`). Không JS: **server phải tách dòng** mục textarea
+  (một mục `imei[]` có thể chứa nhiều dòng) — xem ví dụ ở [trang component](../components/scan-input.md#php-ssr).
+
+| Option | Ý nghĩa |
+|---|---|
+| `$name` | tên field (`multiple`: nên kết thúc `[]`) |
+| `label` / `aria_label` | nhãn `label.td-scan__label[for]` / tên truy cập khi không có nhãn (mặc định `Mã quét`) |
+| `value` (đơn) / `values` (`multiple`) | chuẩn hoá như component: bỏ ký tự điều khiển C0 / C1, trim, ≤ 128 code point; `values` bỏ rỗng / trùng, tối đa 1000 |
+| `placeholder`, `inputmode` | truyền vào input (`inputmode` ngoài `none` / `text` / `numeric` / `decimal` / `tel` / `search` / `email` / `url` → bỏ) |
+| `min_length` (1–64), `max` (`multiple`, ≥ 1), `beep` | attribute của host (`min-length`, `max`, `beep`); giá trị sai → bỏ |
+| `required`, `disabled` | đơn: native trên input; `multiple`: `disabled` trên input / textarea / hidden; cả trên host |
+| `error` | dòng lỗi `span.td-field-error` (+ `aria-invalid` trên input ở chế độ đơn); element: `error-text` trên host |
+| `id` | id của **input**; element: host = `{id}-host` (giống `td_otp_input`) |
+| `class` | native → wrapper `div.td-scan`; element → host |
+| `attrs` | attribute thêm trên **input** (allowlist). Giữ chỗ: `type` `class` `id` `autocomplete` `autocapitalize` `autocorrect` `spellcheck` `enterkeyhint` `inputmode` `placeholder` `name` `value` `required` `disabled` `readonly` `autofocus` `maxlength` `minlength` `pattern` `aria-label` `aria-labelledby` `aria-invalid` `aria-errormessage` `aria-describedby` + mọi `data-td-*` |
+
+Markup `multiple` bị sửa (hidden lệch danh sách, hidden thừa, `formaction`…) → component render an toàn, danh sách
+**rỗng** + một cảnh báo console (không lấy giá trị từ markup đáng ngờ); server vẫn là nguồn sự thật khi lưu.
 
 ## An toàn: escape và whitelist
 

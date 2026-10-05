@@ -18,7 +18,7 @@ Mọi import đều theo dạng `@dazzxq/td-components/<tên>` (xem [Cài đặt
 nạp `td.css` một lần cho cả trang.
 
 **Render phía server (SSR) từ PHP:** dùng [adapter PHP](../guides/php-adapter.md) `php/td.php` ship kèm gói —
-`td_button`, `td_link`, `td_action_button`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_masked_value`, `td_media_field` in đúng markup của component
+`td_button`, `td_link`, `td_action_button`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_masked_value`, `td_media_field`, `td_scan_input` in đúng markup của component
 (control native, chạy không cần JS). Component không có helper PHP (menu, table, tabs, pagination, empty-state, trigger
 lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong trang của nó (mục cấu trúc DOM / SSR).
 
@@ -41,6 +41,7 @@ lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong 
 | [Repeater](repeater.md) | `<td-repeater>` | `/repeater` | không (field trong dòng tự gửi) | Danh sách dòng động (thêm / xoá / sắp xếp bằng nút ↑ ↓ ×, `sortable`: kéo thả + bàn phím) từ `<template>` của app: "Hộp gồm", FAQ, quyền lợi; `min-rows` / `max-rows`; app tự đặt `name` qua `rows-change` |
 | [Password meter](password-meter.md) | `<td-password-meter>` | `/password-meter` | không | Đo độ mạnh mật khẩu tại chỗ: thanh 4 mức, nhãn đọc được, checklist điều kiện, hook `score` |
 | [OTP input](otp-input.md) | `<td-otp-input>` | `/otp-input` | có | Nhập mã một lần 6 chữ số (2FA, xác thực lại): một input thật, dán / tự điền từ SMS; PHP `td_otp_input` |
+| [Scan input](scan-input.md) | `<td-scan-input>` | `/scan-input` | có (đơn: một mục; `multiple`: một mục mỗi mã hợp lệ, `imei[]`) | Ô cho máy quét mã vạch kiểu bàn phím: nhận ra một lần quét (nhịp máy + Enter), phân biệt gõ tay / dán, `validate` của app chạy song song áp theo thứ tự, chống quét trùng, danh sách nhiều mã, âm báo Web Audio tuỳ chọn; PHP `td_scan_input` (0.38.0) |
 | [Media field](media-field.md) | `<td-media-field>` | `/media-field` | có (gửi `assetId`; dạng usage gửi `[id]` / `[alt]` / `[crop]`, `[focal]` khi bật `focal-point`) | Ô chọn **một** ảnh / video / file từ thư viện media: khung theo tỉ lệ, xem trước, Đổi / Gỡ, mở media picker, "Cắt ảnh" (`croppable`, 0.35); PHP `td_media_field` |
 | [Cropper](cropper.md) | `<td-cropper>` + `TdCropper.openDialog()` | `/cropper` | không (giá trị form ở media field) | Khung cắt ảnh theo preset / tỉ lệ khoá + điểm trọng tâm; **chỉ xuất toạ độ** (chuẩn hoá 0..1 + pixel khi biết kích thước gốc), không tạo file, không canvas; zoom bàn phím / lăn chuột / pinch (0.35.0) |
 | [Dropzone](dropzone.md) | `<td-dropzone>` | `/dropzone` | có (gửi file qua `FormData`) | Chọn / kéo thả file: lọc `accept` / `max-size` / `max-files`, danh sách + xoá, hook `upload` có tiến độ từng file, thumbnail ảnh |

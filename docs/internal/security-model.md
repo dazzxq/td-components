@@ -288,3 +288,21 @@ Những thứ kit **cố ý không làm** và site phải làm, nếu không th�
   (escape ngữ cảnh thuộc tính); không có chữ hiển thị, không hatch HTML. PHP `td_action_button()` escape cùng luật, `attrs`
   qua allowlist (`on*`, `style`, `data-td-*` bị chặn); `href` qua `Td::safeUrl` như `td_button`. Quyền của hành động là
   việc của server (nút chỉ là UI).
+
+**Ghi chú v0.38.0 — `td-scan-input`** (plan [v0.38.0-scan-input](plans/v0.38.0-scan-input.md) QĐ 7, 9, 18, 19; trang
+người dùng [scan-input.md](../components/scan-input.md#bảo-mật)):
+
+- **Giá trị quét là input người dùng** (máy quét = bàn phím; tem in có thể chứa bất cứ thứ gì, kể cả `<b>` / `"`): chuẩn
+  hoá (bỏ C0 / C1, trim, ≤ `maxlength` 128 code point, cắt cứng cả khi đang gõ) rồi chỉ vào DOM qua `textContent` /
+  `setAttribute` (`data-value`, `aria-label` "Bỏ {mã}") — không `innerHTML` từ dữ liệu, không selector ghép từ mã.
+- **Thông báo từ `validate` là chữ** (`textContent`, cắt 300 code point); kết quả không đúng hình (`undefined`, số,
+  `valid` không phải boolean) → **không hợp lệ** (fail closed). Lỗi throw chỉ vào `console.error` cùng chữ cố định; UI
+  hiện `messages.validateFailed`. Không hatch HTML mới (§2 không đổi).
+- **Kết quả muộn bị bỏ** bằng bộ đếm thế hệ (reset / form reset / restore / gán giá trị / disconnect) — đúng cả khi
+  `validate` phớt lờ `AbortSignal`; tối đa 16 lần chờ (không hàng đợi vô hạn).
+- **SSR `multiple`**: cổng riêng kiểm cấu trúc + allowlist thuộc tính từng node (hidden chỉ `type` / `class` / `name` /
+  `value` / `disabled`, khớp từng cặp với `li[data-value]`); lệch (hidden thừa, `formaction`, giá trị lệch) → **không lấy
+  giá trị nào** từ markup (danh sách rỗng + một cảnh báo), gỡ mọi hidden / textarea khỏi form. PHP `td_scan_input` escape
+  mọi giá trị, `attrs` qua allowlist (owned names + `data-td-*` giữ chỗ).
+- **Âm báo** dùng Web Audio (không file, không `media-src`); không lưu gì vào storage. `validate` chạy ở trình duyệt nên
+  **không phải kiểm soát bảo mật**: server chuẩn hoá + kiểm lại mọi mã khi lưu (và tự tách dòng của mục textarea không JS).
