@@ -2,6 +2,27 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.47.0
+
+**`<td-check-matrix>` — lưới quyền × vai trò** (dsuite, ưu tiên cao; plan `docs/internal/plans/v0.47.0-check-matrix.md`,
+Codex plan-review APPROVE, impl-review + security-review APPROVE 2 vòng; [ADR 0022](docs/internal/decisions/0022-check-matrix-grid-form-shape.md)).
+Không có thay đổi phá vỡ.
+
+### Added
+
+- `<td-check-matrix>` (`./check-matrix`, `TdCheckMatrix`): lưới checkbox hàng × cột — chọn cả hàng / cột / nhóm / tất cả
+  (ba trạng thái), nhóm thu gọn, ô khoá / không áp dụng / ghi chú, bàn phím lưới một tab stop, header + cột nhãn dính,
+  điện thoại hiện một cột một lúc; ✓ vẽ bằng CSS (`.td-check--drawn`, phụ lục ADR 0017) — 200 × 12 ô vẫn nhẹ.
+- Form (hợp đồng công khai, ADR 0022): đủ tập theo cột `name[col]=''` + `name[col][]=row`, ô khoá đang tick gửi đúng một lần,
+  sentinel `name[_v]=1` cuối — server **phải** từ chối post thiếu `_v` (bị `max_input_vars` cắt) và tự kiểm ô khoá. Dữ liệu
+  hỏng / vượt giới hạn → không gửi gì (không bao giờ thành "xoá hết").
+- PHP `td_check_matrix()` + SSR `check-matrix@1` (form chạy cả khi không có JS; giới hạn `data` 512 KiB UTF-8 giống JS).
+
+### Security
+
+- Khoá hàng / cột của app không bao giờ chạm `Object.prototype` (map không prototype); hydrate / gắn lại so từng node với
+  bản render; mẫu server (Laravel / PHP thuần) khoá bản ghi theo `lock_version`, kiểm 422 từng cột.
+
 ## 0.46.0
 
 **`<td-diff>` — so sánh trước / sau cho audit log** (dsuite; plan `docs/internal/plans/v0.46.0-diff.md`, Codex plan-review

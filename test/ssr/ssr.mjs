@@ -150,3 +150,12 @@ export const DIFF_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'diff.html');
 export function renderDiffFixture() {
   return renderPhp('diff-fixture.php');
 }
+
+// v0.47.0: td_check_matrix (always the element <td-check-matrix data-td-ssr="check-matrix@1"> + the full no-JS form).
+export const CHECK_MATRIX_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'check-matrix.fixtures.json'), 'utf8'));
+export const CHECK_MATRIX_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'check-matrix.html');
+
+/** Render test/ssr/check-matrix-fixture.php (the HTML loaded by the check-matrix SSR browser test). */
+export function renderCheckMatrixFixture() {
+  return renderPhp('check-matrix-fixture.php');
+}

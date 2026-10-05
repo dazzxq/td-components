@@ -58,6 +58,7 @@
     "components/steps.css",
     "components/timeline.css",
     "components/diff.css",
+    "components/check-matrix.css",
     "utilities.css"
   ]
 }

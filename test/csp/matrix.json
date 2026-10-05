@@ -50,7 +50,8 @@
       "td-media-gallery": "/src/form/td-media-gallery.js",
       "td-steps": "/src/display/td-steps.js",
       "td-timeline": "/src/display/td-timeline.js",
-      "td-diff": "/src/display/td-diff.js"
+      "td-diff": "/src/display/td-diff.js",
+      "td-check-matrix": "/src/form/td-check-matrix.js"
     },
     "tokenNative": [
       "td-button",
@@ -101,7 +102,8 @@
       "td-timeline",
       "td-theme-scope",
       "td-media-gallery",
-      "td-diff"
+      "td-diff",
+      "td-check-matrix"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -4579,6 +4581,125 @@
         "margin-left"
       ],
       "excludeNote": "v0.46.0: text-bearing boxes size with the platform font metrics (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards, v0.39 filter chips): width / height / margin-left are excluded up front; the layout budgets (no page overflow, 44px summaries on touch) are gated by test:responsive and the engines tests"
+    }
+  ],
+  "td-check-matrix": [
+    {
+      "state": "full",
+      "setup": "const m=document.createElement('td-check-matrix');m.setAttribute('name','perms');m.setAttribute('label','Quyền theo vai trò');m.setAttribute('layout','grid');window.__mount.appendChild(m); m.setData({columns:[{key:'owner',label:'Chủ cửa hàng',description:'Toàn quyền'},{key:'sales',label:'Bán hàng'},{key:'ship',label:'Kho',locked:true}],rows:[{key:'dash',label:'Xem tổng quan',description:'Trang chủ'},{key:'cat',label:'Sản phẩm',rows:[{key:'cat.view',label:'Xem'},{key:'cat.del',label:'Xoá'}]},{key:'ord',label:'Đơn hàng',collapsed:true,rows:[{key:'ord.list',label:'Danh sách'}]}],cells:{'cat.del':{owner:{locked:true,note:'Không tự sửa role'},sales:{na:true}}},value:{owner:['dash','cat.del'],ship:['dash']}});m.querySelector('tr[data-r=\"1\"]').cells[3].querySelector('input').click(); m.querySelector('tr[data-r=\"1\"]').cells[3].querySelector('input').blur();",
+      "selectors": [
+        ".td-check-matrix",
+        ".td-check-matrix__scroll",
+        ".td-check-matrix__grid",
+        ".td-check-matrix__colhead",
+        ".td-check-matrix__rowtitle",
+        ".td-check-matrix__rowhead",
+        ".td-check-matrix__desc",
+        ".td-check-matrix__bulk[data-kind=\"all\"] .td-check",
+        ".td-check-matrix__bulk[data-kind=\"column\"] .td-check",
+        ".td-check-matrix__cell[data-locked] .td-check",
+        ".td-check-matrix__cell[data-na]",
+        ".td-check-matrix__cell[data-note]",
+        ".td-check-matrix__cell[data-changed]",
+        ".td-check-matrix__input:checked ~ .td-check",
+        ".td-check-matrix__grouprow > th",
+        ".td-check-matrix__group-toggle",
+        ".td-check-matrix__count",
+        ".td-check-matrix__chevron",
+        ".td-check-matrix__note",
+        ".td-check-matrix__bar"
+      ],
+      "settle": 300,
+      "selectorNote": "v0.47.0: full grid (layout grid) — sticky header / columns on opaque fills, groups, locked (50 %) / n/a / note dot / changed triangle (a background layer), the drawn tick; the narrow-mode bar hidden",
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "excludeNote": "font-metric dependent (label wrap / row heights) — excluded up front"
+    },
+    {
+      "state": "collapsed",
+      "setup": "const m=document.createElement('td-check-matrix');m.setAttribute('name','perms');m.setAttribute('label','L');m.setAttribute('layout','grid');window.__mount.appendChild(m); m.setData({columns:[{key:'owner',label:'Chủ cửa hàng',description:'Toàn quyền'},{key:'sales',label:'Bán hàng'},{key:'ship',label:'Kho',locked:true}],rows:[{key:'dash',label:'Xem tổng quan',description:'Trang chủ'},{key:'cat',label:'Sản phẩm',rows:[{key:'cat.view',label:'Xem'},{key:'cat.del',label:'Xoá'}]},{key:'ord',label:'Đơn hàng',collapsed:true,rows:[{key:'ord.list',label:'Danh sách'}]}],cells:{'cat.del':{owner:{locked:true,note:'Không tự sửa role'},sales:{na:true}}},value:{owner:['dash','cat.del'],ship:['dash']}});",
+      "selectors": [
+        ".td-check-matrix__group[data-collapsed] .td-check-matrix__group-toggle",
+        ".td-check-matrix__group[data-collapsed] > .td-check-matrix__row"
+      ],
+      "settle": 300,
+      "selectorNote": "v0.47.0: a collapsed group (aria-expanded false, its rows display none)",
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "excludeNote": "font-metric dependent (label wrap / row heights) — excluded up front"
+    },
+    {
+      "state": "column",
+      "setup": "const m=document.createElement('td-check-matrix');m.setAttribute('name','perms');m.setAttribute('label','L');m.setAttribute('layout','column');window.__mount.appendChild(m); m.setData({columns:[{key:'owner',label:'Chủ cửa hàng',description:'Toàn quyền'},{key:'sales',label:'Bán hàng'},{key:'ship',label:'Kho',locked:true}],rows:[{key:'dash',label:'Xem tổng quan',description:'Trang chủ'},{key:'cat',label:'Sản phẩm',rows:[{key:'cat.view',label:'Xem'},{key:'cat.del',label:'Xoá'}]},{key:'ord',label:'Đơn hàng',collapsed:true,rows:[{key:'ord.list',label:'Danh sách'}]}],cells:{'cat.del':{owner:{locked:true,note:'Không tự sửa role'},sales:{na:true}}},value:{owner:['dash','cat.del'],ship:['dash']}});",
+      "selectors": [
+        ".td-check-matrix__bar",
+        ".td-check-matrix__colpick-label",
+        ".td-check-matrix__colpick",
+        ".td-check-matrix__bar .td-check-matrix__bulk",
+        ".td-check-matrix__grid tr > [data-c]:not([data-col-active])",
+        ".td-check-matrix__grid tr > [data-col-active]",
+        ".td-check-matrix__bulk[data-kind=\"row\"]"
+      ],
+      "settle": 300,
+      "selectorNote": "v0.47.0: one column at a time — the bar (column picker + its bulk), other columns + the bulk column hidden",
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "excludeNote": "font-metric dependent (label wrap / row heights) — excluded up front"
+    },
+    {
+      "state": "broken",
+      "setup": "const m=document.createElement('td-check-matrix'); m.setAttribute('name','perms'); m.setAttribute('label','Quyền'); window.__mount.appendChild(m); m.setData({columns:[{key:'a'}],rows:[{key:'r'},{key:'r'}]});",
+      "selectors": [
+        ".td-check-matrix[data-state=\"broken\"]",
+        ".td-check-matrix__broken"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.47.0: fail closed (QĐ 13) — the error text, no control",
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "excludeNote": "font-metric dependent (label wrap / row heights) — excluded up front"
+    },
+    {
+      "state": "max-height",
+      "setup": "const m=document.createElement('td-check-matrix');m.setAttribute('name','perms');m.setAttribute('label','L');m.setAttribute('layout','grid');m.setAttribute('max-height','24rem');window.__mount.appendChild(m); m.setData({columns:[{key:'owner',label:'Chủ cửa hàng',description:'Toàn quyền'},{key:'sales',label:'Bán hàng'},{key:'ship',label:'Kho',locked:true}],rows:[{key:'dash',label:'Xem tổng quan',description:'Trang chủ'},{key:'cat',label:'Sản phẩm',rows:[{key:'cat.view',label:'Xem'},{key:'cat.del',label:'Xoá'}]},{key:'ord',label:'Đơn hàng',collapsed:true,rows:[{key:'ord.list',label:'Danh sách'}]}],cells:{'cat.del':{owner:{locked:true,note:'Không tự sửa role'},sales:{na:true}}},value:{owner:['dash','cat.del'],ship:['dash']}});",
+      "selectors": [
+        ".td-check-matrix__scroll"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.47.0: max-height=\"24rem\" through CSSOM (the only per-instance style) → computed max-height 384px, 0 violation",
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "excludeNote": "font-metric dependent (label wrap / row heights) — excluded up front"
+    },
+    {
+      "state": "max-height-invalid",
+      "setup": "const m=document.createElement('td-check-matrix');m.setAttribute('name','perms');m.setAttribute('label','L');m.setAttribute('layout','grid');m.setAttribute('max-height','calc(1px)');window.__mount.appendChild(m); m.setData({columns:[{key:'owner',label:'Chủ cửa hàng',description:'Toàn quyền'},{key:'sales',label:'Bán hàng'},{key:'ship',label:'Kho',locked:true}],rows:[{key:'dash',label:'Xem tổng quan',description:'Trang chủ'},{key:'cat',label:'Sản phẩm',rows:[{key:'cat.view',label:'Xem'},{key:'cat.del',label:'Xoá'}]},{key:'ord',label:'Đơn hàng',collapsed:true,rows:[{key:'ord.list',label:'Danh sách'}]}],cells:{'cat.del':{owner:{locked:true,note:'Không tự sửa role'},sales:{na:true}}},value:{owner:['dash','cat.del'],ship:['dash']}});",
+      "selectors": [
+        ".td-check-matrix__scroll"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.47.0: max-height=\"calc(1px)\" refused → the 70vh token kept, 0 violation",
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "excludeNote": "font-metric dependent (label wrap / row heights) — excluded up front"
     }
   ]
 }

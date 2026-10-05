@@ -1043,6 +1043,8 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 - **Lựa chọn còn khoá đã xoá / đã lọc**: bảng không tự bỏ — gọi `deselect(ids)` / `clearSelection()` (mục 10).
 - **`<td-table disabled>` chặn cả sort / phân trang bằng chuột** (0.37.0): bảng là form-associated nên trình duyệt coi nó
   là control bị khoá. Chỉ khoá việc chọn: `rowSelectable = () => false`.
+- **Chọn dòng ≠ ma trận tick** (0.47.0): bảng chọn **dòng** (≤ 1 control mỗi dòng, ô là nội dung tự do). Tick theo
+  **hàng × cột** (quyền × vai trò) là [`<td-check-matrix>`](check-matrix.md) — lưới APG một tab stop, FormData theo cột.
 - `title` hiện tooltip trình duyệt khi hover lên cả bảng (hành vi của attribute HTML toàn cục). Nếu không muốn,
   dùng `aria-label` và tự viết heading ngoài bảng.
 

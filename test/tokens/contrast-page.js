@@ -20,6 +20,7 @@ import '/src/form/td-media-field.js';
 import '/src/form/td-media-gallery.js';
 import '/src/form/td-cropper.js';
 import '/src/form/td-scan-input.js';
+import '/src/form/td-check-matrix.js'; // v0.47.0
 import '/src/display/td-filter-chips.js';
 import '/src/display/td-diff.js';
 import '/src/form/td-datetime-range.js';
@@ -169,6 +170,10 @@ for (const state of ['ready', 'idle', 'pressed', 'ready-pressed', 'row-error', '
 // (aria-pressed) text ≥ 4.7 on the primary fill, also on its touch-pressed fill; the switch tab label / value ≥ 4.7 on the
 // switch track (off) and on the white "on" tab; the pair error line ≥ 4.7 on the dialog surface — computed colours.
 for (const state of ['preset', 'preset-on', 'preset-on-pressed', 'tab-off', 'tab-on', 'pair-error']) CASES.push({ kind: 'dtr', v: 'datetime-range', state, pageOnly: true });
+// v0.47.0 td-check-matrix (content layer → page only, QĐ 31): header label / description ≥ 4.7 on the head fill, row label /
+// description ≥ 4.7 on the crosshair row (focus), group label / count ≥ 4.7 on the group fill, the note line ≥ 4.7 on the
+// page; the changed triangle and the note dot ≥ 3 on the cell (graphics); a locked-ticked mark (50 %) ≥ 2.2 on the cell.
+for (const state of ['head', 'crosshair', 'group', 'note', 'marks']) CASES.push({ kind: 'matrix', v: 'check-matrix', state, pageOnly: true });
 // v0.32.0: td-media-field (content layer → page only): prompt + ratio text ≥ 4.7 on the empty frame fill, the empty-frame
 // icon + dashed border ≥ 3.2 (border vs the page and vs the frame fill), the "Video" badge text ≥ 4.7 on its fill, the
 // field error text ≥ 4.7 on the page; td-media-picker (inside the solid dialog): tile name, detail meta label and tray
@@ -909,6 +914,63 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     const b = target.getBoundingClientRect();
     TdModal.closeAll();
     return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `dtr:${c.v}:${c.state}`, pairs };
+  } else if (c.kind === 'matrix') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const over = overRgb;
+    const host = document.createElement('td-check-matrix');
+    host.setAttribute('label', 'Quyền');
+    host.setAttribute('layout', 'grid');
+    stage.appendChild(host);
+    host.setData({
+      columns: [{ key: 'a', label: 'Chủ cửa hàng', description: 'Toàn quyền' }, { key: 'b', label: 'Bán hàng' }],
+      rows: [{ key: 'g', label: 'Sản phẩm', rows: [{ key: 'r1', label: 'Xem sản phẩm', description: 'Danh sách + chi tiết' }, { key: 'r2', label: 'Xoá' }] }],
+      cells: { r2: { a: { locked: true, note: 'Không tự sửa role của mình' } } },
+      value: { a: ['r2'] },
+    });
+    const bgOf = (el) => over(getComputedStyle(el).backgroundColor, page);
+    const fg = (el) => getComputedStyle(el).color;
+    const layer = (el) => (getComputedStyle(el).backgroundImage.match(/rgba?\([^)]*\)/g) || []);
+    let target; let pairs;
+    if (c.state === 'head') {
+      target = host.querySelector('.td-check-matrix__colhead');
+      const fill = bgOf(target);
+      pairs = [{ what: 'column label vs head fill', fg: fg(target.querySelector('.td-check-matrix__label')), bg: fill, min: 4.7 },
+        { what: 'column description vs head fill', fg: fg(target.querySelector('.td-check-matrix__desc')), bg: fill, min: 4.7 },
+        { what: 'rows title vs head fill', fg: fg(host.querySelector('.td-check-matrix__rowtitle')), bg: bgOf(host.querySelector('.td-check-matrix__rowtitle')), min: 4.7 }];
+    } else if (c.state === 'crosshair') {
+      host.querySelector('tr[data-r="0"]').cells[2].querySelector('input').focus();
+      target = host.querySelector('tr[data-r="0"] .td-check-matrix__rowhead');
+      const wash = layer(target)[0] || 'rgba(0, 0, 0, 0)';
+      const fill = over(wash, bgOf(target));
+      pairs = [{ what: 'row label vs crosshair', fg: fg(target.querySelector('.td-check-matrix__label')), bg: fill, min: 4.7 },
+        { what: 'row description vs crosshair', fg: fg(target.querySelector('.td-check-matrix__desc')), bg: fill, min: 4.7 }];
+      host.querySelector('input').blur();
+    } else if (c.state === 'group') {
+      target = host.querySelector('.td-check-matrix__grouphead');
+      const fill = bgOf(target);
+      pairs = [{ what: 'group label vs group fill', fg: fg(target.querySelector('.td-check-matrix__group-toggle')), bg: fill, min: 4.7 },
+        { what: 'group count vs group fill', fg: fg(target.querySelector('.td-check-matrix__count')), bg: fill, min: 4.7 }];
+    } else if (c.state === 'note') {
+      const locked = host.querySelector('tr[data-r="1"]').cells[2];
+      locked.focus();
+      target = host.querySelector('.td-check-matrix__note');
+      if (target.textContent === '') throw new Error('matrix note: empty note line');
+      pairs = [{ what: 'note line vs page', fg: fg(target), bg: page, min: 4.7 }];
+      locked.blur();
+    } else {
+      const cell = host.querySelector('tr[data-r="0"]').cells[3];
+      cell.querySelector('input').click(); // → data-changed
+      target = cell;
+      const cellBg = bgOf(cell);
+      const lockedCell = host.querySelector('tr[data-r="1"]').cells[2];
+      const mark = lockedCell.querySelector('.td-check');
+      const markFill = over(getComputedStyle(mark).backgroundColor.replace(/rgb\(([^)]*)\)/, (m, x) => `rgba(${x}, ${getComputedStyle(mark).opacity})`), bgOf(lockedCell));
+      pairs = [{ what: 'changed triangle vs cell', fg: layer(cell)[0], bg: cellBg, min: 3 },
+        { what: 'note dot vs cell', fg: getComputedStyle(lockedCell, '::before').backgroundColor, bg: bgOf(lockedCell), min: 3 },
+        { what: 'locked-ticked mark (50 %) vs cell', fg: markFill, bg: bgOf(lockedCell), min: 2.2 }];
+    }
+    const b = target.getBoundingClientRect();
+    return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `matrix:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'scan') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
     const over = overRgb;

@@ -33,6 +33,9 @@
  * side; presets never wider than the dialog, one scrolling row < 480 / short), "Chọn" in the viewport (incl. 844×390);
  * the 160 px host never overflows and its cut trigger text carries a title.
  *
+ * v0.47.0: td-check-matrix (12 roles × 40 permissions, max-height 24rem): no page overflow (the grid scrolls inside its
+ * box), cells / bulk cells / group buttons / column picker ≥ 44 coarse; < 720 the one-column mode (generic checks).
+ *
  * Run: npm run test:responsive   (RSP_ENGINES=chromium,webkit RSP_ONLY=<config tag substring> for a subset)
  */
 import { chromium, firefox, webkit } from 'playwright-core';

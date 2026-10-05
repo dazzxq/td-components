@@ -330,3 +330,19 @@ test('v0.46.0: ./diff export, sideEffects, barrel TdDiff, diff CSS before utilit
   const i = files.indexOf('components/diff.css');
   assert.ok(i > 0 && i < files.indexOf('utilities.css'));
 });
+test('v0.47.0: ./check-matrix export, sideEffects, barrel TdCheckMatrix, check-matrix CSS before utilities; model / render internal', async () => {
+  assert.equal(pkg.exports['./check-matrix'], './src/form/td-check-matrix.js');
+  assert.ok(pkg.sideEffects.includes('./src/form/td-check-matrix.js'));
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdCheckMatrix \} from '\.\/src\/form\/td-check-matrix\.js';/);
+  assert.ok(!/check-matrix-(model|render)/.test(src), 'model / render stay internal');
+  assert.ok(!Object.values(pkg.exports).some((t) => /check-matrix-(model|render)/.test(t)), 'no model / render export');
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  const i = files.indexOf('components/check-matrix.css');
+  assert.ok(i > files.indexOf('components/check.css') && i < files.indexOf('utilities.css'), 'check-matrix.css after check.css, before utilities.css');
+  const css = await readFile(join(ROOT, 'td.css'), 'utf8');
+  for (const sel of ['.td-check-matrix__grid', '.td-check-matrix__input:checked ~ .td-check', '.td-check--drawn::before',
+    '@container td-check-matrix (width < 720px)', '--td-check-matrix-max-height', '--td-check-matrix-changed']) {
+    assert.ok(css.includes(sel), sel);
+  }
+});

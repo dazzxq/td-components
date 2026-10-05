@@ -98,6 +98,16 @@ const FIXTURES = {
     html: `<td-media-gallery name="x" label="X" usage items='${JSON.stringify([{ id: 'm1', src: '/test/fixtures/1.svg', name: 'Ảnh 1' }, { id: 'm2', src: '/test/fixtures/2.svg', name: 'Ảnh 2' }])}'></td-media-gallery>`,
     act: (el) => el.querySelectorAll('.td-media-gallery__list > li .td-media-gallery__remove')[1].click(),
   },
+  // v0.47.0: td-check-matrix — a user tick fires a bubbling `change` (detail.trigger) on the host (+ the native input /
+  // change of the inner checkbox, seen in capture); value= / setValue() / setData() fire nothing (test below).
+  'td-check-matrix': {
+    html: '<td-check-matrix name="x" label="X"></td-check-matrix>',
+    setup: (el) => el.setData({ columns: [{ key: 'a', label: 'A' }, { key: 'b', label: 'B' }], rows: [{ key: 'r1', label: 'R1' }, { key: 'r2', label: 'R2' }], value: { a: ['r1'] } }),
+    act: async (el) => {
+      await until(() => el.querySelector('tr[data-r="1"] .td-check-matrix__cell input'));
+      el.querySelector('tr[data-r="1"] .td-check-matrix__cell input').click();
+    },
+  },
   'td-table': {
     html: '<td-table name="x" selectable row-key="id"></td-table>',
     setup: (el) => { el.columns = [{ key: 'n', label: 'N' }]; el.data = [{ id: 1, n: 'A' }, { id: 2, n: 'B' }]; },
@@ -162,4 +172,23 @@ describe('trackFormDirty contract — every form-associated td element (v0.44.0 
       } finally { tracker.destroy(); }
     });
   }
+
+  it('td-check-matrix: value= / setValue() from code is NOT a user change → isDirty() === false', async () => {
+    const form = document.createElement('form');
+    form.className = 'v044-contract';
+    form.innerHTML = FIXTURES['td-check-matrix'].html;
+    document.body.appendChild(form);
+    const el = /** @type {any} */ (form.firstElementChild);
+    FIXTURES['td-check-matrix'].setup(el);
+    await frames(3);
+    const tracker = trackFormDirty(form);
+    try {
+      const before = JSON.stringify([...new FormData(form)]);
+      el.value = { b: ['r1', 'r2'] };
+      el.setValue({ a: ['r2'], b: ['r1'] });
+      await frames(3);
+      expect(JSON.stringify([...new FormData(form)])).to.not.equal(before, 'the code did change FormData');
+      expect(tracker.isDirty()).to.equal(false);
+    } finally { tracker.destroy(); }
+  });
 });

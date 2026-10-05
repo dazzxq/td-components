@@ -1744,6 +1744,51 @@
       "light": "ui-monospace, \"SFMono-Regular\", \"JetBrains Mono\", Menlo, Consolas, monospace",
       "dark": "ui-monospace, \"SFMono-Regular\", \"JetBrains Mono\", Menlo, Consolas, monospace",
       "why": "v0.46.0 td-diff (diff.css): JSON / ⟨U+…⟩ font = --td-font-mono"
+    },
+    "--td-check-matrix-cell-size": {
+      "light": "2.25rem",
+      "dark": "2.25rem",
+      "why": "v0.47.0 td-check-matrix (plan QĐ 31): cell size (2.75rem on coarse pointers)"
+    },
+    "--td-check-matrix-label-w": {
+      "light": "clamp(10rem, 28cqi, 18rem)",
+      "dark": "clamp(10rem, 28cqi, 18rem)",
+      "why": "v0.47.0 td-check-matrix (plan QĐ 31): sticky label column"
+    },
+    "--td-check-matrix-col-w": {
+      "light": "5.5rem",
+      "dark": "5.5rem",
+      "why": "v0.47.0 td-check-matrix (plan QĐ 31): data column width"
+    },
+    "--td-check-matrix-max-height": {
+      "light": "70vh",
+      "dark": "70vh",
+      "why": "v0.47.0 td-check-matrix (plan QĐ 31): scroll box height (sticky header)"
+    },
+    "--td-check-matrix-head-bg": {
+      "light": "rgb(247, 247, 248)",
+      "dark": "rgb(36, 36, 39)",
+      "why": "v0.47.0 td-check-matrix (plan QĐ 31): header + sticky columns = --td-color-surface-muted"
+    },
+    "--td-check-matrix-group-bg": {
+      "light": "rgb(247, 247, 248)",
+      "dark": "rgb(36, 36, 39)",
+      "why": "v0.47.0 td-check-matrix (plan QĐ 31): group rows = --td-color-surface-muted"
+    },
+    "--td-check-matrix-row-active": {
+      "light": "rgba(0, 0, 0, 0.05)",
+      "dark": "rgba(255, 255, 255, 0.06)",
+      "why": "v0.47.0 td-check-matrix (plan QĐ 31): crosshair row / column header = --td-color-hover"
+    },
+    "--td-check-matrix-changed": {
+      "light": "rgb(37, 99, 235)",
+      "dark": "rgb(75, 141, 248)",
+      "why": "v0.47.0 td-check-matrix (plan QĐ 31): changed-cell triangle = --td-accent"
+    },
+    "--td-check-matrix-note-mark": {
+      "light": "rgb(107, 107, 115)",
+      "dark": "rgb(172, 172, 180)",
+      "why": "v0.47.0 td-check-matrix (plan QĐ 31): note dot = --td-color-text-muted (theme contract; the plan said gray-500 / gray-400)"
     }
   },
   "lightDeltas": {

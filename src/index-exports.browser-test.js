@@ -95,6 +95,10 @@ describe('index.js exports', () => {
     expect(typeof kit.TdDatetimeRange).to.equal('function');
     expect(customElements.get('td-datetime-range')).to.equal(kit.TdDatetimeRange);
   });
+  it('registers <td-check-matrix> from the root entry (v0.47.0)', () => {
+    expect(typeof kit.TdCheckMatrix).to.equal('function');
+    expect(customElements.get('td-check-matrix')).to.equal(kit.TdCheckMatrix);
+  });
 });
 
 describe('index.js exports (v0.44.0)', () => {
