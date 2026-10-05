@@ -382,4 +382,72 @@ describe('v0.47.0 td-check-matrix — core (M3)', () => {
     await tick();
     expect(host.value.owner).to.deep.equal(['dash']);
   });
+
+  it('review r1 #2: the `data` attribute is limited to 512 KiB of UTF-8 (= PHP): limit ok, limit + 1 → broken', async () => {
+    warnings();
+    const { denseMatrixData } = await import('../../test/fixtures/check-matrix-dense.js');
+    const { MATRIX_LIMITS } = await import('../utils/check-matrix-model.js');
+    const ok = denseMatrixData(MATRIX_LIMITS.json);
+    const over = denseMatrixData(MATRIX_LIMITS.json + 1);
+    expect(ok.json.length < MATRIX_LIMITS.json).to.equal(true, 'code units are under the limit: bytes are what counts');
+    const { el, form } = mount('name="z" label="L"', null);
+    el.setAttribute('data', ok.json);
+    expect(el.querySelector('[data-state="ready"]') !== null).to.equal(true);
+    expect(fd(form).length).to.equal(12 + 2 + 1);
+    el.setAttribute('data', over.json);
+    expect(el.querySelector('[data-state="broken"]') !== null).to.equal(true);
+    expect(fd(form)).to.deep.equal([]);
+  });
+
+  it('review r1 #1: row / column keys named like Object members render, submit and never touch Object', () => {
+    const names = ['constructor', 'toString', 'assign', 'prototype', 'hasOwnProperty'];
+    const assign = Object.assign;
+    const { el, form } = mount('name="o" label="L"', {
+      columns: names.map((key) => ({ key })), rows: names.map((key) => ({ key })),
+      cells: Object.fromEntries(names.map((r) => [r, Object.fromEntries(names.map((c) => [c, { note: 'n' }]))])),
+      value: Object.fromEntries(names.map((c) => [c, ['constructor']])),
+    });
+    expect(Object.assign === assign).to.equal(true);
+    expect(({}).constructor === Object).to.equal(true);
+    expect(fd(form).filter(([k]) => k.endsWith('[]')).length).to.equal(5);
+    input(el, 1, 2).click();
+    expect(el.value.assign).to.deep.equal(['constructor', 'toString']);
+    expect(Object.hasOwn(el.value, 'constructor')).to.equal(true);
+  });
+
+  it('review r1 #4: reconnect re-binds in place only while the owned DOM is exactly the current render (+ live state)', async () => {
+    const { el, form } = mount();
+    // live state that is allowed: ticks, changed marks, roving tabindex, crosshair, a collapsed group, the note line
+    input(el, 0, 1).click();
+    input(el, 0, 1).focus();
+    el.querySelector('tbody[data-g="0"] .td-check-matrix__group-toggle').click();
+    cell(el, 3, 0).focus();
+    await tick();
+    let table = el.querySelector('table');
+    el.remove();
+    form.appendChild(el);
+    expect(el.querySelector('table') === table).to.equal(true, 'clean reconnect keeps the nodes');
+    const tamper = {
+      'row index': (h) => h.querySelector('tr[data-r="1"]').setAttribute('data-r', '0'),
+      'bulk kind': (h) => h.querySelector('[data-kind="row"]').setAttribute('data-kind', 'all'),
+      'locked enabled': (h) => h.querySelector('td[data-locked] input').removeAttribute('disabled'),
+      'group id': (h) => h.querySelector('tbody[data-g="0"]').id = 'x',
+      'aria-controls': (h) => h.querySelector('.td-check-matrix__group-toggle').setAttribute('aria-controls', 'x'),
+      'extra attr': (h) => h.querySelector('td.td-check-matrix__cell').setAttribute('data-x', '1'),
+      handler: (h) => h.querySelector('td.td-check-matrix__cell input').setAttribute('onclick', 'window.__cmPwn=1'),
+      'extra node': (h) => h.querySelector('td.td-check-matrix__cell').append(document.createElement('b')),
+      'text changed': (h) => { h.querySelector('.td-check-matrix__rowhead .td-check-matrix__label').textContent = 'X'; },
+      'labelledby': (h) => h.querySelector('td.td-check-matrix__cell input').setAttribute('aria-labelledby', 'x'),
+    };
+    for (const [what, fn] of Object.entries(tamper)) {
+      table = el.querySelector('table');
+      el.remove();
+      fn(el);
+      form.appendChild(el);
+      expect(el.querySelector('table') === table, what).to.equal(false);
+      expect(el.querySelectorAll('[onclick], [data-x], b').length, what).to.equal(0);
+      expect(el.querySelector('tr[data-r="1"]') !== null && el.querySelectorAll('[data-kind="row"]').length === 5, what).to.equal(true);
+    }
+    expect(el.value.sales).to.deep.equal(['dash', 'cat.view'], 'state survives the safe re-render');
+  });
 });

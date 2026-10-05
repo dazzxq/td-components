@@ -2,7 +2,7 @@ import { TdFormElement, ssrClassKey } from '../base/td-form-element.js';
 import { ssrMarker } from '../base/td-base-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import {
-  validateMatrix, MatrixState, decodeMatrixState, isLocked, isNa, MATRIX_LIMITS,
+  validateMatrix, MatrixState, decodeMatrixState, isLocked, isNa, MATRIX_LIMITS, matrixJsonBytes,
 } from '../utils/check-matrix-model.js';
 import { renderMatrix, renderMatrixState, fillMatrixLabel, MATRIX_LABELS, MATRIX_LAYOUTS } from '../utils/check-matrix-render.js';
 
@@ -189,6 +189,7 @@ export class TdCheckMatrix extends TdFormElement {
     if (!dataChanged && !this._model) {
       // a value before any data (early property, SSR host before its `data` is read): held for the first data
       this._heldValue = { value: p.value };
+      this._valueBeforeData = true; // review r1 #3: an app value set before the data wins over SSR live ticks
       return;
     }
     if (!dataChanged && this._model) {
@@ -246,7 +247,7 @@ export class TdCheckMatrix extends TdFormElement {
   /** @private keys { col: [row] } of ticks */
   _keysOf(model, on) {
     const C = model.columns.length;
-    const out = {};
+    const out = Object.create(null); // keyed by app data (review r1 #1)
     model.columns.forEach((c, j) => {
       out[c.key] = model.rows.filter((_, r) => on[r * C + j]).map((r) => r.key);
     });
@@ -279,7 +280,8 @@ export class TdCheckMatrix extends TdFormElement {
 
   /** @private the `data` attribute (SSR / declarative) → atomic data path */
   _applyDataAttr(str) {
-    if (typeof str !== 'string' || str.length > MATRIX_LIMITS.json) {
+    // review r1 #2: UTF-8 bytes (= PHP strlen of the JSON it prints); code units ≤ bytes, so the cheap test goes first
+    if (typeof str !== 'string' || str.length > MATRIX_LIMITS.json || matrixJsonBytes(str) > MATRIX_LIMITS.json) {
       this._fail('data-size');
       return;
     }
@@ -1107,7 +1109,8 @@ export class TdCheckMatrix extends TdFormElement {
     const m = this._model;
     const C = m.columns.length;
     const on = Uint8Array.from(this._state.on);
-    const earlyValue = this._earlyData?.has('value');
+    // ADR 0012 §3: an app value (early property, or assigned on the defined host before its data — review r1 #3) wins
+    const earlyValue = this._earlyData?.has('value') || this._valueBeforeData;
     for (const tr of this.querySelectorAll('tr.td-check-matrix__row')) {
       const r = Number(tr.getAttribute('data-r'));
       for (let c = 0; c < C; c++) {
@@ -1129,16 +1132,57 @@ export class TdCheckMatrix extends TdFormElement {
     }
   }
 
-  /** Re-connect: re-bind in place while the parts are still ours (else safe render from the state). */
+  /**
+   * Re-connect (review r1 #4): re-bind in place only while the owned DOM is EXACTLY render() of the current model / state
+   * (element tree, every attribute and value, text) plus the documented live state; anything else (an index, a bulk kind,
+   * a locked input enabled, an id / ARIA relation, an extra attribute / handler / node) → safe re-render.
+   */
   canRebind() {
     if (this._stale) return false; // the data / status changed while detached: render it
-    const root = this._root;
-    if (!root || root.parentNode !== this || this.children.length !== 1) return false;
-    if (this._status !== 'ready') return true;
-    const expected = this._cache ? this._cache.cells.filter(Boolean).length : -1;
-    const inputs = root.querySelectorAll('input, select, textarea, button, object, output, fieldset');
-    const grid = root.querySelectorAll('td.td-check-matrix__cell').length;
-    return grid === expected && [...inputs].every((el) => !el.hasAttribute('name') && !el.hasAttribute('form'));
+    const tpl = document.createElement('template');
+    tpl.innerHTML = this.render();
+    const want = [...tpl.content.childNodes];
+    const have = [...this.childNodes].filter((n) => n.nodeType !== 3 || n.data.trim());
+    return have.length === want.length && have.every((n, k) => this._ownedSame(n, want[k], false));
+  }
+
+  /**
+   * @private One live node vs its render() twin. Live state allowed (and nothing else): `tabindex` -1 → 0 (roving stop),
+   * valueless `data-changed` (data cell), `data-col-active` (a cell of a column), `data-active` (column header),
+   * `data-layout-js` (root), `data-td-pressed` (press.js); the table's `aria-labelledby` (external labels); the bar's
+   * column bulk `aria-label` / `disabled` (follow the picked column); any text in the note line / live region; the
+   * filled chevron icon slot (allowlisted SVG). `checked` / `indeterminate` / `disabled` of the other inputs are compared.
+   */
+  _ownedSame(live, want, freeText) {
+    if (live.nodeType !== want.nodeType) return false;
+    if (live.nodeType === 3) return freeText || live.data === want.data;
+    if (live.nodeType !== 1 || live.localName !== want.localName || live.namespaceURI !== want.namespaceURI) return false;
+    const cls = live.classList;
+    const inBar = !!live.closest?.('.td-check-matrix__bar') && live.localName === 'input';
+    const extra = (name, v) => (v === '' && ((name === 'data-changed' && cls.contains('td-check-matrix__cell'))
+      || (name === 'data-col-active' && live.hasAttribute('data-c'))
+      || (name === 'data-active' && cls.contains('td-check-matrix__colhead'))
+      || (name === 'data-layout-js' && cls.contains('td-check-matrix') && live.parentNode === this)
+      || name === 'data-td-pressed'))
+      || (inBar && name === 'disabled');
+    for (const a of live.attributes) {
+      if (want.hasAttribute(a.name)) {
+        const w = want.getAttribute(a.name);
+        if (a.name === 'class' ? ssrClassKey(live) === ssrClassKey(want) : a.value === w) continue;
+        if (a.name === 'tabindex' && w === '-1' && a.value === '0') continue;
+        if (a.name === 'aria-labelledby' && live.localName === 'table') continue;
+        if (a.name === 'aria-label' && inBar) continue;
+        return false;
+      }
+      if (!extra(a.name, a.value)) return false;
+    }
+    for (const a of want.attributes) if (!live.hasAttribute(a.name) && !(inBar && a.name === 'disabled')) return false;
+    if (want.hasAttribute('data-td-icon')) return this._ssrIcon(live);
+    const text = cls.contains('td-check-matrix__note') || live.getAttribute('role') === 'status';
+    const a = [...live.childNodes].filter((n) => n.nodeType !== 3 || n.data !== '');
+    if (text) return a.every((n) => n.nodeType === 3);
+    const b = [...want.childNodes];
+    return a.length === b.length && a.every((n, k) => this._ownedSame(n, b[k], false));
   }
 
   /** @protected refused server markup was replaced: focus back on the matching cell */

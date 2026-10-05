@@ -221,4 +221,24 @@ describe('v0.47.0 td-check-matrix — SSR hydrate (M6)', () => {
     expect(ms < 100 * PERF_SLACK, `${ms.toFixed(1)} ms`).to.equal(true);
     form.remove();
   });
+
+  it('review r1 #3: a value set on a DEFINED but detached SSR host before its first connection wins over the live ticks', async () => {
+    const box = document.createElement('div');
+    box.innerHTML = `<form>${basic.replaceAll('cm-basic', 'cm-held')}</form>`;
+    const host = box.querySelector('td-check-matrix');
+    expect(host instanceof TdCheckMatrix).to.equal(true, 'upgraded while detached');
+    host.querySelector('tr[data-r="2"]').cells[2].querySelector('input').checked = true; // a live tick (cat.edit × owner)
+    host.value = { ship: ['dash.view'] };
+    await raf(); // the queued value is flushed while still detached (no data read yet)
+    document.body.appendChild(box);
+    const form = box.firstElementChild;
+    expect(host.querySelector('table') === box.querySelector('table')).to.equal(true);
+    expect(host.value).to.deep.equal({ owner: [], sales: [], ship: ['dash.view'] });
+    expect(fd(form).filter(([k]) => k.endsWith('[]'))).to.deep.equal([['perms[ship][]', 'dash.view']]);
+    expect(host.querySelectorAll('input[name]').length).to.equal(0, 'adopted in place, no-JS form gone');
+    form.reset();
+    await raf();
+    expect(fd(form).filter(([k]) => k.endsWith('[]'))).to.deep.equal(EXPECT_BASIC.filter(([k]) => k.endsWith('[]')), 'defaults = the data attribute');
+    box.remove();
+  });
 });

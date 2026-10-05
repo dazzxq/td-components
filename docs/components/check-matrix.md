@@ -174,52 +174,100 @@ PHP **cắt im lặng** mọi biến vượt `max_input_vars` (mặc định 1 0
 2 400 ô. Mục bị cắt là quyền bị **thu hồi** nếu server đồng bộ theo danh sách. `_v` luôn là mục **cuối cùng** nên mất
 trước tiên:
 
-- Server **bắt buộc từ chối (422) khi thiếu `_v`**, và **gỡ `_v`** trước khi validate từng cột.
+- Server **bắt buộc từ chối (422) khi thiếu `_v`**, và **gỡ `_v`** trước khi validate từng cột (mỗi cột đúng `''` hoặc list chuỗi khoá có thật — sai là 422, không lọc).
 - Đặt `max_input_vars ≥ số ô + số cột + số field khác của form + 1` (php.ini, `.user.ini` hoặc cấu hình pool FPM).
 - `_v` cũng là phiên bản định dạng (đổi định dạng → `2`).
+
+Cả hai ví dụ **kiểm chặt từng cột, không bao giờ lọc im lặng**: khoá cột phải là role có thật; giá trị phải đúng `''`
+hoặc một **list** (khoá `0..n-1`) gồm toàn **chuỗi** là khoá quyền có thật — sai bất kỳ (mảng có khoá chữ, phần tử không
+phải chuỗi, quyền lạ) → 422. Lọc bỏ phần tử lạ rồi lưu phần còn lại = lưu một danh sách người dùng không hề gửi.
 
 **Laravel:**
 
 ```php
+/** array_is_list() có từ PHP 8.1 — PHP 8.0 dùng hàm này */
+function is_list_array(array $a): bool
+{
+    $i = 0;
+    foreach ($a as $k => $_) {
+        if ($k !== $i++) return false;
+    }
+    return true;
+}
+
 public function update(Request $request, Shop $shop)
 {
     $perms = $request->input('perms');
     abort_unless(is_array($perms) && ($perms['_v'] ?? null) === '1', 422, 'Thiếu dữ liệu quyền (form bị cắt?)');
     unset($perms['_v']);
-    validator(['perms' => $perms], [
-        'perms' => ['required', 'array'],
-        'perms.*' => ['present'],                        // '' hoặc mảng
-        'perms.*.*' => ['string', 'max:128'],
-    ])->validate();
+    $roleKeys = $shop->roles()->pluck('key')->map(fn ($k) => (string) $k)->all();
+    $permKeys = array_flip($shop->permissionKeys());            // khoá quyền hợp lệ (danh sách hàng của ma trận)
+    $clean = [];
+    foreach ($perms as $roleKey => $list) {                     // khoá số (cột `0`) → PHP cho ra int: so bằng chuỗi
+        $roleKey = (string) $roleKey;
+        abort_unless(in_array($roleKey, $roleKeys, true), 422, 'Vai trò không hợp lệ');
+        if ($list === '') { $clean[$roleKey] = []; continue; }  // cột không tick ô nào
+        abort_unless(is_array($list) && is_list_array($list), 422, 'Dữ liệu quyền sai dạng');
+        foreach ($list as $key) {
+            abort_unless(is_string($key) && isset($permKeys[$key]), 422, 'Quyền không hợp lệ');
+        }
+        $clean[$roleKey] = array_values(array_unique($list));
+    }
 
-    DB::transaction(function () use ($shop, $perms, $request) {
-        $shop->lockForUpdate()->where('lock_version', $request->integer('lock_version'))->firstOrFail();
-        foreach ($perms as $roleKey => $list) {
-            $role = $shop->roles()->where('key', $roleKey)->firstOrFail();
-            $wanted = $list === '' ? [] : array_values(array_unique($list));
+    DB::transaction(function () use ($shop, $clean, $request) {
+        // khoá ĐÚNG bản ghi của route theo khoá chính + lock_version, trong transaction; dùng chính bản ghi đã khoá
+        $locked = Shop::query()
+            ->whereKey($shop->getKey())
+            ->where('lock_version', $request->integer('lock_version'))
+            ->lockForUpdate()
+            ->first();
+        abort_if($locked === null, 409, 'Quyền vừa được người khác sửa — tải lại trang');
+        foreach ($clean as $roleKey => $wanted) {
+            $role = $locked->roles()->where('key', $roleKey)->firstOrFail();
             $current = $role->permissionKeys();
+            // hiệu đối xứng: mọi ô thêm + mọi ô bỏ (array_merge, KHÔNG dùng `+` — `+` hợp theo khoá số và làm rơi phần tử)
+            $changed = array_unique(array_merge(array_diff($wanted, $current), array_diff($current, $wanted)));
             // chỉ áp những ô người sửa CÓ quyền sửa; ô khoá gửi lên phải đúng như hiện có → khác là 403
-            foreach (array_diff($wanted, $current) + array_diff($current, $wanted) as $key) {
-                abort_unless($request->user()->canGrant($role, $key), 403);
+            foreach ($changed as $key) {
+                abort_unless($request->user()->canGrant($locked, $role, $key), 403);
             }
             $role->syncPermissionKeys($wanted);
         }
-        $shop->increment('lock_version');
+        $locked->increment('lock_version');
     });
 }
 ```
 
-**PHP thuần:**
+**PHP thuần** (PDO; `$pdo`, `$shopId`, `$roleKeys`, `$permKeys` = khoá quyền hợp lệ dạng `array_flip`, `$canGrant` của site):
 
 ```php
+function is_list_array(array $a): bool { $i = 0; foreach ($a as $k => $_) { if ($k !== $i++) return false; } return true; }
+function fail(int $code, string $msg = '') { http_response_code($code); exit($msg); }
+
 $perms = $_POST['perms'] ?? null;
-if (!is_array($perms) || ($perms['_v'] ?? null) !== '1') { http_response_code(422); exit('Form bị cắt — tăng max_input_vars'); }
+if (!is_array($perms) || ($perms['_v'] ?? null) !== '1') fail(422, 'Form bị cắt — tăng max_input_vars');
 unset($perms['_v']);
+$clean = [];
 foreach ($perms as $role => $list) {
-    if (!is_string($role) || !($list === '' || is_array($list))) { http_response_code(422); exit; }
-    $keys = $list === '' ? [] : array_values(array_filter($list, 'is_string'));
-    // … kiểm quyền người sửa + khoá ở server, rồi lưu trong một transaction
+    $role = (string) $role;
+    if (!in_array($role, $roleKeys, true)) fail(422);
+    if ($list === '') { $clean[$role] = []; continue; }
+    if (!is_array($list) || !is_list_array($list)) fail(422);                    // không bao giờ lọc im lặng
+    foreach ($list as $key) if (!is_string($key) || !isset($permKeys[$key])) fail(422);
+    $clean[$role] = array_values(array_unique($list));
 }
+$pdo->beginTransaction();
+$st = $pdo->prepare('SELECT id FROM shops WHERE id = ? AND lock_version = ? FOR UPDATE');
+$st->execute([$shopId, (int) ($_POST['lock_version'] ?? -1)]);
+if ($st->fetchColumn() === false) { $pdo->rollBack(); fail(409, 'Quyền vừa được người khác sửa'); }
+foreach ($clean as $role => $wanted) {
+    $current = current_permission_keys($pdo, $shopId, $role);                       // hàm của site
+    $changed = array_unique(array_merge(array_diff($wanted, $current), array_diff($current, $wanted)));
+    foreach ($changed as $key) if (!$canGrant($role, $key)) { $pdo->rollBack(); fail(403); }
+    sync_permission_keys($pdo, $shopId, $role, $wanted);                            // hàm của site
+}
+$pdo->prepare('UPDATE shops SET lock_version = lock_version + 1 WHERE id = ?')->execute([$shopId]);
+$pdo->commit();
 ```
 
 **Server tự cưỡng chế khoá.** Ô khoá ở UI chỉ là gợi ý: sửa DOM / tự POST là gửi được mọi cặp. Luật "không gán được quyền

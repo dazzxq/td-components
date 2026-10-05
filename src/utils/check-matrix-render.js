@@ -17,7 +17,7 @@ export const escMatrix = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/
   .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 
 /** `{key}` placeholders → values (function replacer: `$&` in data stays literal text, ADR 0018 precedent). */
-export const fillMatrixLabel = (tpl, vars) => String(tpl ?? '').replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
+export const fillMatrixLabel = (tpl, vars) => String(tpl ?? '').replace(/\{(\w+)\}/g, (m, k) => (Object.hasOwn(vars, k) ? String(vars[k]) : m));
 
 /** Default texts (Vietnamese) — TdCheckMatrix.labels and php Td::CHECK_MATRIX_LABELS (same values). */
 export const MATRIX_LABELS = Object.freeze({

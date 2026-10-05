@@ -15,6 +15,8 @@ import { HAS_PHP, PHP_BIN, ROOT, runPhp } from './php.mjs';
 import { MATRIX_CASES, validateMatrix, canonicalMatrix, matrixEntries } from '../../src/utils/check-matrix-model.js';
 import { renderMatrix, renderMatrixState, MATRIX_LABELS } from '../../src/utils/check-matrix-render.js';
 import { CHECK_MATRIX_FIXTURE_FILE, renderCheckMatrixFixture } from '../ssr/ssr.mjs';
+import { denseMatrixData } from '../fixtures/check-matrix-dense.js';
+import { MATRIX_LIMITS, matrixJsonBytes } from '../../src/utils/check-matrix-model.js';
 
 if (!HAS_PHP && process.env.TD_REQUIRE_PHP) throw new Error('TD_REQUIRE_PHP=1 but no php >= 8.0 CLI on PATH');
 const opts = { skip: !HAS_PHP && 'php >= 8.0 CLI not found' };
@@ -25,7 +27,7 @@ function phpCalls(calls, ini = []) {
     + ' $in = json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR); $out = [];'
     + ' foreach ($in as $c) { $out[] = ($c["fn"])(...$c["args"]); } echo json_encode($out, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);';
   const r = spawnSync(PHP_BIN, ['-d', 'display_errors=stderr', '-d', 'log_errors=0', '-d', 'error_reporting=E_ALL', '-d', 'xdebug.mode=off', ...ini, '-r', code],
-    { input: JSON.stringify(calls), encoding: 'utf8' });
+    { input: JSON.stringify(calls), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   assert.equal(r.status, 0, r.stderr);
   return { out: JSON.parse(r.stdout), stderr: r.stderr };
 }
@@ -165,6 +167,21 @@ describe('php/td.php — td_check_matrix (v0.47.0, contract check-matrix@1)', op
     assert.match(stderr, /value-unknown-row/);
     assert.match(stderr, /cells-unknown-row/);
     assert.match(stderr, /invalid name/);
+  });
+
+  test('review r1 #2: the `data` attribute limit = JS (512 KiB of UTF-8, note-dense matrix): limit ok, limit + 1 fails closed', () => {
+    const L = MATRIX_LIMITS.json;
+    const cases = [L - 1, L, L + 1].map((t) => denseMatrixData(t));
+    const { out, stderr } = phpCalls(cases.map(({ data }, i) => ({ fn: 'td_check_matrix', args: ['p', data.columns, data.rows, data.value, { id: `z${i}`, cells: data.cells }] })));
+    for (const i of [0, 1]) {
+      const { open } = hostSplit(out[i]);
+      const attr = / data="([^"]*)"/.exec(open)[1].replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+      assert.equal(attr, cases[i].json, 'PHP prints the same JSON the JS side measures');
+      assert.equal(matrixJsonBytes(attr), L - 1 + i);
+      assert.ok(out[i].includes('name="p[_v]"'));
+    }
+    assert.ok(!/<input/.test(out[2]) && !/ data="/.test(out[2]) && out[2].includes('data-state="broken"'), 'limit + 1 → fail closed');
+    assert.equal((stderr.match(/Warning: +td_check_matrix: invalid data \(data-size\)/g) || []).length, 1, stderr.slice(0, 300));
   });
 
   test('name of the grid: label > attrs aria-label (sr-only span) > fallback text', () => {

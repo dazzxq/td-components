@@ -17,10 +17,20 @@
 /** Key of a row / column / group (QĐ 4): no `[` `]` (PHP splits them), no leading `_` (reserved: `_v`), no spaces. */
 export const CHECK_MATRIX_KEY = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/;
 
-/** Hard limits (QĐ 5). `json` / `state` in UTF-16 code units of the attribute / restore string. */
+/** Hard limits (QĐ 5). `json`: UTF-8 bytes of the `data` attribute (= PHP strlen of the JSON); `state`: UTF-16 code units. */
 export const MATRIX_LIMITS = Object.freeze({
   rows: 500, columns: 32, cells: 10000, groups: 64, label: 200, text: 300, json: 512 * 1024, state: 256 * 1024,
 });
+
+/**
+ * Size of a `data` attribute value (review r1 #2): its UTF-8 bytes — what php/td.php measures with strlen() on the JSON it
+ * prints (the attribute's HTML escaping is undone by the parser, so both sides see the same string).
+ * @param {string} str
+ * @returns {number}
+ */
+export function matrixJsonBytes(str) {
+  return new TextEncoder().encode(String(str)).length;
+}
 
 /** Bit flags of a cell. */
 const LOCK = 1;
@@ -281,7 +291,9 @@ export function canonicalMatrix(model, on = model.value) {
       rows.push(o);
     }
   }
-  const cells = {};
+  // review r1 #1: every map keyed by app data is prototype-less (a row `constructor` + a column `assign` must never
+  // reach Object.assign through `cells.constructor`); JSON.stringify / validateMatrix read them like plain objects
+  const cells = Object.create(null);
   for (let r = 0; r < model.rows.length; r++) {
     for (let c = 0; c < C; c++) {
       const i = r * C + c;
@@ -293,13 +305,16 @@ export function canonicalMatrix(model, on = model.value) {
       if (lock) cell.locked = true;
       if (na) cell.na = true;
       if (note) cell.note = note;
-      (cells[model.rows[r].key] ||= {})[model.columns[c].key] = cell;
+      const rk = model.rows[r].key;
+      if (!Object.hasOwn(cells, rk)) cells[rk] = Object.create(null);
+      cells[rk][model.columns[c].key] = cell;
     }
   }
-  const value = {};
+  const value = Object.create(null);
   model.columns.forEach((col, c) => {
-    value[col.key] = [];
-    for (let r = 0; r < model.rows.length; r++) if (on[r * C + c]) value[col.key].push(model.rows[r].key);
+    const list = [];
+    for (let r = 0; r < model.rows.length; r++) if (on[r * C + c]) list.push(model.rows[r].key);
+    value[col.key] = list;
   });
   return { columns, rows, cells, value };
 }
@@ -498,13 +513,12 @@ export class MatrixState {
   valueObject() {
     const m = this.model;
     const C = m.columns.length;
-    const out = {};
-    m.columns.forEach((col, c) => {
+    // public value: own properties only (Object.fromEntries defines, never assigns through the prototype chain)
+    return Object.fromEntries(m.columns.map((col, c) => {
       const list = [];
       for (let r = 0; r < m.rows.length; r++) if (this.on[r * C + c]) list.push(m.rows[r].raw);
-      out[col.raw] = list;
-    });
-    return out;
+      return [col.raw, list];
+    }));
   }
 
   /** Restore state (QĐ 14): `{"v":1,"value":{col:[row…]}}` with string keys. */

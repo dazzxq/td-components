@@ -4,7 +4,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   validateMatrix, canonicalMatrix, MatrixState, matrixEntries, decodeMatrixState, normalizeMatrixText, matrixKey,
-  isNa, isLocked, MATRIX_CASES, MATRIX_LIMITS, CHECK_MATRIX_KEY,
+  isNa, isLocked, MATRIX_CASES, MATRIX_LIMITS, CHECK_MATRIX_KEY, matrixJsonBytes,
 } from './check-matrix-model.js';
 
 const ok = (data) => {
@@ -277,5 +277,56 @@ describe('check-matrix-model — FormData (QĐ 10–13) + restore state (QĐ 14)
   it('valueObject uses the ORIGINAL keys (numbers stay numbers)', () => {
     const s = new MatrixState(ok({ columns: [{ key: 1 }], rows: [{ key: 7 }, { key: 'x' }], value: { 1: [7] } }));
     assert.deepEqual(s.valueObject(), { 1: [7] });
+  });
+});
+
+describe('check-matrix-model — prototype-named keys (review r1 #1)', () => {
+  const NAMES = ['constructor', 'toString', 'assign', 'prototype', 'hasOwnProperty', 'valueOf', 'isPrototypeOf'];
+  const snapshot = () => [Object.assign, Object.prototype.toString, Object.prototype.hasOwnProperty, Object.prototype.constructor,
+    ...Object.getOwnPropertyNames(Object), ...Object.getOwnPropertyNames(Object.prototype)];
+
+  it('row / column keys named like Object members: serialization works, Object / Object.prototype never touched', () => {
+    const before = snapshot();
+    const descBefore = JSON.stringify(Object.getOwnPropertyNames(Object.prototype).map((n) => [n, typeof Object.getOwnPropertyDescriptor(Object.prototype, n).value]));
+    const columns = NAMES.map((k) => ({ key: k }));
+    const rows = NAMES.map((k) => ({ key: k }));
+    const cells = Object.fromEntries(NAMES.map((r) => [r, Object.fromEntries(NAMES.map((c) => [c, { locked: true, note: `${r}/${c}` }]))]));
+    const value = Object.fromEntries(NAMES.map((c) => [c, [...NAMES]]));
+    const res = validateMatrix({ columns, rows, cells, value });
+    assert.equal(res.reason, null);
+    const can = canonicalMatrix(res.model);
+    const json = JSON.parse(JSON.stringify(can));
+    assert.deepEqual(Object.keys(json.cells), NAMES);
+    assert.equal(json.cells.constructor.assign.note, 'constructor/assign');
+    assert.deepEqual(json.value.toString, NAMES);
+    const again = validateMatrix(json);
+    assert.equal(again.reason, null);
+    const s = new MatrixState(res.model);
+    const v = s.valueObject();
+    assert.deepEqual(Object.keys(v), NAMES);
+    assert.ok(Object.hasOwn(v, 'constructor') && Array.isArray(v.constructor));
+    assert.deepEqual(JSON.parse(s.encodeState()).value.hasOwnProperty, NAMES);
+    assert.ok(decodeMatrixState(s.encodeState(), { columns, rows, cells }));
+    assert.deepEqual(snapshot(), before, 'Object / Object.prototype unchanged');
+    assert.equal(JSON.stringify(Object.getOwnPropertyNames(Object.prototype).map((n) => [n, typeof Object.getOwnPropertyDescriptor(Object.prototype, n).value])), descBefore);
+    assert.equal(typeof Object.assign, 'function');
+    assert.equal(({}).constructor, Object);
+  });
+
+  it('__proto__ is never a key (regex), from JSON it fails closed as an unknown row / column', () => {
+    assert.equal(matrixKey('__proto__'), null);
+    const v = JSON.parse('{"__proto__":["a"]}');
+    assert.equal(validateMatrix({ columns: [{ key: 'a' }], rows: [{ key: 'a' }], value: v }).reason, 'value-unknown-column');
+    assert.equal(({}).polluted, undefined);
+  });
+});
+
+describe('check-matrix-model — data attribute size (review r1 #2)', () => {
+  it('matrixJsonBytes = UTF-8 bytes (PHP strlen), not UTF-16 code units', () => {
+    assert.equal(matrixJsonBytes('abc'), 3);
+    assert.equal(matrixJsonBytes('đ'), 2);
+    assert.equal(matrixJsonBytes('😀'), 4);
+    assert.equal(matrixJsonBytes('Quyền'), 7);
+    assert.equal(MATRIX_LIMITS.json, 524288);
   });
 });

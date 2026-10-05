@@ -6446,7 +6446,8 @@ namespace {
      * ['col' => ['row', …]]. Keys: `^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$` or int ≥ 0. $o: cells (['row' => ['col' =>
      * ['locked'?, 'na'?, 'note'?]]]), label, max_height (`none` | number + px/rem/em/vh/svh/dvh/lvh/%), layout
      * (auto|grid|column), disabled, id, class, attrs (host, allowlisted; `aria-label` names the grid without `label`),
-     * labels (TdCheckMatrix.labels keys). Invalid data / name (empty or ending in `[]`) → the fail-closed state: NO
+     * labels (TdCheckMatrix.labels keys). Invalid data / name (empty or ending in `[]`) / a `data` JSON over 512 KiB of
+     * UTF-8 (the JS limit) → the fail-closed state: NO
      * input at all (the server sees no key → keeps everything) + one E_USER_WARNING naming the reason only.
      */
     function td_check_matrix(string $name, array $columns, array $rows, array $value = [], array $o = []): string
@@ -6477,6 +6478,16 @@ namespace {
         $disabled = !empty($o['disabled']);
         $res = $name === '' || str_ends_with($name, '[]') ? ['ok' => false, 'reason' => 'name', 'model' => null]
             : td__check_matrix_data($columns, $rows, $o['cells'] ?? null, $value);
+        // review r1 #2: the `data` attribute obeys the JS limit — 512 KiB of UTF-8 (strlen of the JSON printed; the
+        // attribute escaping is undone by the HTML parser, so the component measures this very string)
+        $json = null;
+        if ($res['ok']) {
+            $json = json_encode(['v' => 1] + td__check_matrix_canonical($res['model']), Td::JSON_FLAGS | JSON_UNESCAPED_UNICODE);
+            if (strlen($json) > 524288) {
+                $res = ['ok' => false, 'reason' => 'data-size', 'model' => null];
+                $json = null;
+            }
+        }
         $taken = [];
         $host = '<td-check-matrix' . Td::ownAttrs([
             'data-td-ssr' => Td::SSR_CHECK_MATRIX,
@@ -6487,7 +6498,7 @@ namespace {
             'layout' => $layout,
             'max-height' => $maxH,
             'disabled' => $disabled,
-            'data' => $res['ok'] ? json_encode(['v' => 1] + td__check_matrix_canonical($res['model']), Td::JSON_FLAGS | JSON_UNESCAPED_UNICODE) : null,
+            'data' => $json,
         ], $taken);
         $taken = td__reserve(['id', 'class', 'name', 'label', 'layout', 'max-height', 'disabled', 'data', 'value'], $extra, $taken);
         $host .= Td::attrs($extra, $taken) . '>';
