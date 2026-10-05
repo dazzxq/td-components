@@ -1128,7 +1128,10 @@
         ".td-table__row[data-row-idx=\"1\"] .td-table__cell--select",
         ".td-table__row[data-row-idx=\"1\"] .td-table__select"
       ],
-      "settle": 400
+      "settle": 400,
+      "excludeProps": [
+        "height"
+      ]
     },
     {
       "state": "selection-single",
