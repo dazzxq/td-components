@@ -11,6 +11,8 @@
  * v0.39.0: section `filters` — a filter bar (search + dropdown) → `#rsp-chips` (td-filter-chips) → `#rsp-table-filters`
  * (server-mode controlled, column-menu, the "Số điện thoại" column hidden).
  * v0.40.0: td-datetime-range (form grid + 280 px column via controls(); a 160 px datetime host; opener `#g-dtr`).
+ * v0.45.0: section `steps-timeline` — td-steps (6 steps horizontal, vertical, clickable in a 280 px column) and
+ * td-timeline (40 items, details open, fixed `now`; again in the 280 px column).
  */
 import '../../src/form/td-button.js';
 import '../../src/form/td-action-button.js'; // v0.36.0
@@ -53,6 +55,8 @@ import '../../src/form/td-media-field.js';
 import '../../src/form/td-scan-input.js'; // v0.38.0
 import '../../src/form/td-datetime-range.js'; // v0.40.0
 import '../../src/form/td-media-gallery.js'; // v0.43.0
+import '../../src/display/td-steps.js'; // v0.45.0
+import '../../src/display/td-timeline.js'; // v0.45.0
 import { createMockAdapter } from './media-adapter.js';
 
 const LONG = 'Lưu và xuất bản bài viết lên trang chủ ngay bây giờ';
@@ -239,6 +243,15 @@ export function mountResponsiveFixture(root) {
     </form>
     <td-filter-chips id="rsp-chips" empty-focus="rsp-filter-q"></td-filter-chips>
     <td-table id="rsp-table-filters" title="Đơn hàng" server-mode controlled column-menu total-items="120" per-page="5"></td-table>
+  </section>
+  <section class="rsp-section" data-section="steps-timeline"><h2>Tiến trình + lịch sử</h2>
+    <td-steps id="rsp-steps" current="3" navigation="back"></td-steps>
+    <td-steps id="rsp-steps-v" orientation="vertical" current="2"></td-steps>
+    <td-timeline id="rsp-timeline" time-zone="Asia/Ho_Chi_Minh" has-more more-href="#rsp-timeline"></td-timeline>
+    <div class="rsp-narrow">
+      <td-steps id="rsp-steps-narrow" current="4" navigation="back"></td-steps>
+      <td-timeline id="rsp-timeline-narrow" time-zone="Asia/Ho_Chi_Minh"></td-timeline>
+    </div>
   </section>`;
 
   const options = [
@@ -285,6 +298,21 @@ export function mountResponsiveFixture(root) {
   ft.hiddenColumns = ['phone'];
   ft.columns = orderColumns();
   ft.setState({ page: 1, filters: { q: 'iphone', status: 'new' }, data: ORDERS.slice(0, 5).map((o) => ({ ...o })) });
+  // v0.45.0: steps (6, one error with a long description) + timeline (40 items over 10 days, fixed now, details open)
+  const STEPS = [{ label: 'Tải tệp lên' }, { label: 'Kiểm tra dữ liệu', state: 'error', description: 'Dòng 12: thiếu IMEI, dòng 40: trùng mã' },
+    { label: 'Ghép sản phẩm theo mã nội bộ' }, { label: 'Xem trước' }, { label: 'Nhập kho' }, { label: 'Hoàn tất' }];
+  for (const id of ['rsp-steps', 'rsp-steps-v', 'rsp-steps-narrow']) root.querySelector(`#${id}`).steps = STEPS;
+  const tlNow = new Date('2026-10-05T03:00:00Z');
+  const events = Array.from({ length: 40 }, (_, i) => ({ id: `e${i}`, time: new Date(tlNow.getTime() - i * 6 * 3600e3).toISOString(),
+    title: i % 5 === 0 ? 'Đổi trạng thái đơn: Chờ xác nhận → Đang giao cho đơn vị vận chuyển' : `Cập nhật đơn hàng #DH-${1000 + i}`,
+    actor: i % 3 === 0 ? { name: 'Nguyễn Văn An', href: '#rsp-timeline' } : 'Hệ thống', meta: i % 4 === 0 ? 'Kho Hà Nội · IP 113.161.0.1' : undefined,
+    icon: ['pencil', 'send', 'success', 'warning'][i % 4], tone: ['neutral', 'info', 'success', 'warning'][i % 4],
+    details: i % 7 === 0 ? 'Trước: 12 Hàng Bài, Hoàn Kiếm\nSau: 45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội' : undefined, expanded: i === 0 }));
+  for (const id of ['rsp-timeline', 'rsp-timeline-narrow']) {
+    const t = root.querySelector(`#${id}`);
+    t.now = tlNow;
+    t.items = id === 'rsp-timeline' ? events : events.slice(0, 8);
+  }
   root.querySelector('#rsp-empty').actions = [{ label: 'Tạo đơn hàng mới', variant: 'primary' }, { label: 'Nhập từ tệp Excel', variant: 'secondary' }];
 
   TdMenu.define('rsp-menu', [

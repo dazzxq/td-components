@@ -168,6 +168,9 @@ const PRESS_TYPES = [
   { name: 'row select', sel: '#rsp-table-density .td-table__select', token: '--td-color-pressed' },
   { name: 'select all chip', sel: '#rsp-table-density .td-table__select-all', token: '--td-color-pressed' },
   { name: 'tree row', sel: '#g-tree .td-tree__row', token: '--td-option-pressed-bg' },
+  // v0.45.0: a clickable td-steps step (navigation="back") and a td-timeline details summary
+  { name: 'step', sel: '#rsp-steps button.td-steps__step', token: '--td-color-pressed' },
+  { name: 'timeline summary', sel: '#rsp-timeline .td-timeline__summary', token: '--td-color-pressed' },
   { name: 'option', sel: '.td-dropdown__menu[data-state="open"] .td-dropdown__option', token: '--td-option-pressed-bg',
     open: async (page) => { await page.tap('#g-dd .td-dropdown__trigger'); await page.locator('.td-dropdown__menu[data-state="open"] .td-dropdown__option').first().waitFor(); } },
   // the card's media opener is the innermost control under the finger: its ::after tints the image

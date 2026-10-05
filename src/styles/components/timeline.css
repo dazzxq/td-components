@@ -1,0 +1,367 @@
+/*
+ * td-timeline (src/display/td-timeline.js) — v0.45.0, plan v0.45.0-steps-timeline QĐ T5, T8, T9, T11, C1–C3.
+ * Content layer (minimal surfaces, ADR 0011): solid marker discs + one hairline, a plain connector line, no shadow,
+ * no blur. Tone / icon are DECORATION (the marker is aria-hidden): the information is in the title.
+ * State: [data-tone="neutral|success|warning|danger|info"] on the li · details[open] · host [aria-busy] · an empty
+ * icon slot (unknown / not yet registered icon) or no icon → a plain dot.
+ * Colours come ONLY from the theme contract (QĐ C1): fill / border / muted text (neutral), the alert pairs (tones),
+ * the label text (day headings), the accent (links).
+ * Details = native <details> / <summary> (QĐ T8): the UA marker is removed, a registry chevron turns when open
+ * (functional transform), the summary is never display:flex itself (its inner span is — Safari).
+ * Narrow (ADR 0014): the host is `container: td-timeline / inline-size`; under 480px the time goes under the title.
+ * Touch (ADR 0019): summary ≥ 44px tall on coarse pointers; summary + inline links have a pressed colour.
+ */
+@layer td.tokens {
+	:root {
+		--td-timeline-marker: 28px;
+		--td-timeline-line: 2px;
+		--td-timeline-gap: var(--td-space-md); /* between two items */
+	}
+
+	/* QĐ C1 (ADR 0020): every colour is a var() of the theme contract — re-resolved in each theme scope */
+	:root, [data-td-theme] {
+		--td-timeline-marker-bg: var(--td-color-fill);
+		--td-timeline-marker-fg: var(--td-color-text-muted);
+		--td-timeline-marker-border: var(--td-color-border);
+		--td-timeline-connector: var(--td-color-border);
+		--td-timeline-day-fg: var(--td-color-text-label);
+	}
+}
+
+@layer td.component {
+	td-timeline {
+		display: block;
+		min-inline-size: 0;
+		container: td-timeline / inline-size;
+		font-family: var(--td-font-sans);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text);
+	}
+
+	td-timeline:focus {
+		outline: none; /* tabindex="-1" fallback target (not a control) */
+	}
+
+	.td-timeline {
+		min-inline-size: 0;
+		font-size: var(--td-text-sm);
+	}
+
+	.td-timeline *,
+	.td-timeline *::before,
+	.td-timeline *::after {
+		box-sizing: border-box;
+	}
+
+	.td-timeline__day + .td-timeline__day {
+		margin-block-start: var(--td-space-lg);
+	}
+
+	.td-timeline__day-title {
+		margin: 0 0 var(--td-space-sm);
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-semibold);
+		line-height: var(--td-leading-tight);
+		color: var(--td-timeline-day-fg);
+	}
+
+	.td-timeline__list {
+		padding: 0;
+		margin: 0;
+		list-style: none;
+	}
+
+	.td-timeline__item {
+		position: relative;
+		display: grid;
+		grid-template-columns: var(--td-timeline-marker) minmax(0, 1fr);
+		column-gap: 12px;
+		padding-block-end: var(--td-timeline-gap);
+	}
+
+	.td-timeline__item:last-child {
+		padding-block-end: 0;
+	}
+
+	.td-timeline__item[tabindex="-1"]:focus {
+		outline: none; /* focus handed to the first loaded item (not a control) */
+	}
+
+	/* connector: from below this marker to the next item */
+	.td-timeline__item:not(:last-child)::before {
+		position: absolute;
+		inset-block: calc(var(--td-timeline-marker) + 4px) 4px;
+		inset-inline-start: calc(var(--td-timeline-marker) / 2 - var(--td-timeline-line) / 2);
+		inline-size: var(--td-timeline-line);
+		content: "";
+		background: var(--td-timeline-connector);
+		border-radius: var(--td-timeline-line);
+	}
+
+	.td-timeline__marker {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		inline-size: var(--td-timeline-marker);
+		block-size: var(--td-timeline-marker);
+		line-height: 0;
+		color: var(--td-timeline-marker-fg);
+		background: var(--td-timeline-marker-bg);
+		border: 1px solid var(--td-timeline-marker-border);
+		border-radius: 50%;
+	}
+
+	.td-timeline__icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+
+	/* no icon / an unknown one: a plain dot */
+	.td-timeline__marker:empty::before,
+	.td-timeline__icon:empty::before {
+		inline-size: 8px;
+		block-size: 8px;
+		content: "";
+		background: currentcolor;
+		border-radius: 50%;
+	}
+
+	.td-timeline__item[data-tone="success"] .td-timeline__marker {
+		color: var(--td-alert-success-icon);
+		background: var(--td-alert-success-bg);
+		border-color: var(--td-alert-success-border);
+	}
+
+	.td-timeline__item[data-tone="warning"] .td-timeline__marker {
+		color: var(--td-alert-warning-icon);
+		background: var(--td-alert-warning-bg);
+		border-color: var(--td-alert-warning-border);
+	}
+
+	.td-timeline__item[data-tone="danger"] .td-timeline__marker {
+		color: var(--td-alert-danger-icon);
+		background: var(--td-alert-danger-bg);
+		border-color: var(--td-alert-danger-border);
+	}
+
+	.td-timeline__item[data-tone="info"] .td-timeline__marker {
+		color: var(--td-alert-info-icon);
+		background: var(--td-alert-info-bg);
+		border-color: var(--td-alert-info-border);
+	}
+
+	.td-timeline__body {
+		min-inline-size: 0;
+		padding-block-start: 4px; /* first line centred on the 28px marker */
+	}
+
+	.td-timeline__head {
+		display: flex;
+		flex-wrap: wrap;
+		column-gap: 8px;
+		row-gap: 2px;
+		align-items: baseline;
+		margin: 0;
+	}
+
+	.td-timeline__title {
+		min-inline-size: 0;
+		font-weight: var(--td-fw-medium);
+		color: var(--td-color-text);
+		overflow-wrap: anywhere;
+	}
+
+	.td-timeline__actor {
+		min-inline-size: 0;
+		color: var(--td-color-text-muted);
+		overflow-wrap: anywhere;
+	}
+
+	a.td-timeline__title,
+	a.td-timeline__actor {
+		color: var(--td-accent);
+		text-decoration: underline;
+		text-underline-offset: 2px;
+		border-radius: 2px;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		a.td-timeline__title:hover,
+		a.td-timeline__actor:hover {
+			text-decoration-thickness: 2px;
+		}
+	}
+
+	/* Pressed (ADR 0019): inline links keep a pressed colour (size exempt: inline in text, WCAG 2.5.8) */
+	a.td-timeline__title:is(:active, [data-td-pressed]),
+	a.td-timeline__actor:is(:active, [data-td-pressed]) {
+		background-color: var(--td-color-pressed);
+	}
+
+	a.td-timeline__title:focus-visible,
+	a.td-timeline__actor:focus-visible {
+		outline: 2px solid transparent;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-timeline__time {
+		margin-inline-start: auto;
+		font-size: var(--td-text-xs);
+		font-variant-numeric: tabular-nums;
+		color: var(--td-color-text-muted);
+		white-space: nowrap;
+	}
+
+	.td-timeline__meta {
+		margin: 2px 0 0;
+		font-size: var(--td-text-xs);
+		color: var(--td-color-text-muted);
+		overflow-wrap: anywhere;
+	}
+
+	.td-timeline__details {
+		margin-block-start: 4px;
+	}
+
+	.td-timeline__summary {
+		display: block;
+		inline-size: fit-content;
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-medium);
+		color: var(--td-color-text-label);
+		list-style: none;
+		cursor: pointer;
+		border-radius: var(--td-radius-sm);
+		transition: background-color var(--td-dur-fast) var(--td-ease);
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-timeline__summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.td-timeline__summary::marker {
+		content: "";
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-timeline__summary:hover {
+			background-color: var(--td-color-hover);
+		}
+	}
+
+	.td-timeline__summary:is(:active, [data-td-pressed]) {
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-timeline__summary:focus-visible {
+		outline: 2px solid transparent;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-timeline__summary-inner {
+		display: inline-flex;
+		gap: 4px;
+		align-items: center;
+		min-block-size: 28px;
+		padding-inline: 4px;
+	}
+
+	.td-timeline__chevron {
+		display: inline-flex;
+		line-height: 0;
+		transition: transform var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-timeline__details[open] > .td-timeline__summary .td-timeline__chevron {
+		transform: rotate(180deg); /* functional (ADR 0011 rule 4): open / closed */
+	}
+
+	.td-timeline__detail {
+		padding-inline-start: 12px;
+		margin-block-start: 4px;
+		color: var(--td-color-text);
+		white-space: pre-line;
+		overflow-wrap: anywhere;
+		border-inline-start: 2px solid var(--td-timeline-connector);
+	}
+
+	.td-timeline__detail > p {
+		margin: 0;
+	}
+
+	.td-timeline__loading {
+		color: var(--td-color-text-muted);
+	}
+
+	.td-timeline__detail-error {
+		color: var(--td-color-error);
+	}
+
+	.td-timeline__empty {
+		margin: 0;
+		color: var(--td-color-text-muted);
+	}
+
+	.td-timeline__footer {
+		display: flex;
+		justify-content: center;
+		margin-block-start: var(--td-space-md);
+	}
+
+	.td-timeline__skeleton-row {
+		--td-skeleton-size: var(--td-timeline-marker);
+
+		display: grid;
+		grid-template-columns: var(--td-timeline-marker) minmax(0, 1fr);
+		column-gap: 12px;
+		align-items: start;
+	}
+
+	.td-timeline__skeleton-row + .td-timeline__skeleton-row {
+		margin-block-start: var(--td-timeline-gap);
+	}
+
+	.td-timeline__skeleton-row > .td-skeleton--text {
+		margin-block-start: 4px;
+	}
+
+	@container td-timeline (width < 480px) {
+		.td-timeline__time {
+			flex-basis: 100%;
+			margin-inline-start: 0;
+		}
+	}
+
+	@media (pointer: coarse) {
+		.td-timeline__summary-inner {
+			min-block-size: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-timeline__summary,
+		.td-timeline__chevron {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-timeline__marker {
+			border-color: CanvasText;
+		}
+
+		.td-timeline__item:not(:last-child)::before {
+			background: CanvasText;
+			forced-color-adjust: none;
+		}
+
+		.td-timeline__summary:is(:active, [data-td-pressed]),
+		a.td-timeline__title:is(:active, [data-td-pressed]),
+		a.td-timeline__actor:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
+}

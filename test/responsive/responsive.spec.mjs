@@ -52,6 +52,8 @@ const MIME = { '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'ap
 const ALLOW = [
   '.td-toast__close', // visually hidden until focused; the whole toast is the tap target (plan QĐ 5)
   '.td-sr-only, .td-sr-only *',
+  // v0.45.0: links INSIDE a line of text (timeline title / actor) — the WCAG 2.5.8 "inline" exception (pressed colour kept)
+  'a.td-timeline__title, a.td-timeline__actor',
 ];
 
 const W8 = [[360, 780], [393, 852], [430, 932], [768, 1024], [884, 1104], [1024, 768], [1280, 800], [1440, 900]];

@@ -47,7 +47,8 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.42.1: vá tương phản dark (link khung lỗi form khi nhấn, nút × chip khi nhấn)
 - `done` v0.43.0: `<td-media-gallery>` (field gallery / nhiều ảnh, [ADR 0021](decisions/0021-media-gallery-form-shape.md)) — plan [v0.43.0-media-gallery](plans/v0.43.0-media-gallery.md)
 - `done` v0.44.0: `TdModal.confirm({ typeToConfirm })` + `trackFormDirty()` + chặn đóng modal / drawer (`beforeClose`) — plan [v0.44.0-confirm-dirty](plans/v0.44.0-confirm-dirty.md)
-- `todo` v0.45–v0.50: yêu cầu dsuite còn lại (steps + timeline, diff, check-matrix, color-picker, choice-group + stepper, rating + carousel) — plan từng bản trong `plans/`
+- `done` v0.45.0: `<td-steps>` + `<td-timeline>` — plan [v0.45.0-steps-timeline](plans/v0.45.0-steps-timeline.md)
+- `todo` v0.46–v0.50: yêu cầu dsuite còn lại (diff, check-matrix, color-picker, choice-group + stepper, rating + carousel) — plan từng bản trong `plans/`
 - Ngày từ v0.33 trở đi: **rebaseline từ ngày v0.31 xong thực tế** (không nén test / acceptance để giữ lịch cũ ~11/11 –
   25/11)
 - `todo` B (sau B0 ~01/2027): choice-group, number stepper, rating chỉ đọc, carousel không autoplay

@@ -125,6 +125,19 @@ States: `default` (720px: a fixed chip + removable chips, label bold, value cut 
 cả" pinned), `link` (× and "Xoá tất cả" as links — PHP / no-JS chips). `width` / `height` excluded (font metrics); the
 layout budgets are gated by test:responsive and the engines tests. (3)
 
+### td-steps (v0.45.0, new component — td.css only)
+States: `horizontal` (720px: the four marker states in one row — done ✓ accent, error ! danger pair, current accent + 2px
+ring, upcoming surface + strong border; bold current label, error description), `vertical` (grid marker | text),
+`compact` (320px container: labels visually hidden but read, the summary line shown), `clickable` (`navigation="back"`:
+`nav` wrapper, a link step + button steps, transparent, no underline). `width` / `height` / `margin-left` excluded up
+front (font metrics; `compact` also the resolved insets of the hidden label). (4)
+
+### td-timeline (v0.45.0, new component — td.css only)
+States: `grouped` (day groups, neutral + the four tones from the alert pairs, links in the accent, time / meta muted),
+`details-open` (native `<details>` without the UA marker, chevron turned, pre-line detail text), `loading` (skeleton rows +
+`aria-busy`; the shimmer `transform` excluded), `more` ("Xem thêm" as the secondary td-btn link). `width` / `height` /
+`margin-left` excluded up front (font metrics). (4)
+
 ### td-modal (1 declarative; portaled to body)
 Styled el: `.td-modal-content` (box-shadow + backdrop-filter), `.td-modal-backdrop`.
 States: `default` (`TdModal.show({title, body})`). (1)

@@ -330,6 +330,39 @@ in giá trị / lỗi gốc của adapter) áp dụng nguyên. Thêm:
 | Guard đóng (`beforeClose`) | Throw / reject → **ở lại** (fail safe cho dữ liệu) + `console.error` **chuỗi cố định**, không bao giờ in object lỗi của caller (review r1 SEC-3, cũng áp dụng cho `ignore()` và hộp `confirmDiscard` của tracker; `.then` của kết quả guard được đọc trong vùng bảo vệ — getter ném = từ chối, review r2 E); đang chờ: không chạy lại guard, không chạy action; đóng bằng code luôn thắng (không treo đăng xuất) | `td-modal.js` `_requestClose`, `td-drawer.js` `requestClose`, `td-v044-close-guard.browser-test.js` |
 | `trackFormDirty` | Chỉ đọc `FormData` (không gửi đi đâu, không lưu storage); tên field `ignore` so bằng `===` / hàm của app; `beforeunload` chỉ `preventDefault()` + `returnValue = ''` (không thông điệp tuỳ biến); submit native chỉ được miễn **một lần**, chỉ khi `isTrusted` và điều hướng chính cửa sổ này (không `method=dialog`, target rỗng / `_self` theo attribute có mặt trước `<base target>`), xét `defaultPrevented` cuối cùng, hết hạn sau 1 s hoặc lần nhấn / chạm kế tiếp (review r1 SEC-2, r2 B-D); listener `window` chỉ có khi form bẩn | `src/utils/form-dirty.js`, `td-v044-form-dirty.engines.browser-test.js`, `test/engines/form-dirty.spec.mjs` |
 
+## 6f. `td-steps`, `td-timeline` (v0.45.0)
+
+Plan [v0.45.0-steps-timeline](plans/v0.45.0-steps-timeline.md). Dữ liệu (nhãn bước, tiêu đề / người làm / chi tiết sự
+kiện, `href`) đến từ app — thường từ dữ liệu người dùng nhập (ghi chú đơn, tên khách) → không tin cậy.
+
+- **Text, không HTML**: cả hai dựng bằng DOM API (`textContent` / `setAttribute`); không markdown, không `**bold**`, không
+  tự nhận diện link (lỗi 3 của dcms2). Ký tự điều khiển bị bỏ, độ dài bị cắt, trần số phần tử (20 bước; 1 000 mục mỗi lần
+  gán, 4 000 mục được xét, **5 000 mục tổng** qua `append` / "Xem thêm" — review SEC-02: vượt → bỏ phần thừa, một cảnh báo,
+  tắt "Xem thêm") — `src/utils/steps-model.js`, `timeline-model.js`; PHP `td__steps_items` /
+  `td__timeline_items` cùng luật (test parity).
+- **Link** (`href` của bước, của tiêu đề, `actor.href`, `more-href`): cùng chính sách `cleanHref` (JS: http(s) cùng origin)
+  / `td__filter_href` (PHP: chỉ tương đối) với `td-filter-chips` — bảng `HREF_CASES`.
+- **Hook lười `renderDetails`** trả **Node** (app dựng — trách nhiệm của app, như mọi hook trả Node) hoặc chuỗi (luôn là
+  chữ). Kết quả cũ bị bỏ theo thế hệ + `AbortSignal` (đóng chi tiết, gán `items`, gỡ phần tử, vẽ lại nhóm); tương tự
+  `loadMore`. Review SEC-01: **đổi hook** (`renderDetails` / `loadMore` gán hàm khác) cũng abort mọi yêu cầu của hook cũ,
+  xoá cache chi tiết, và mỗi kết quả chỉ được áp khi hook lúc gọi vẫn là hook hiện tại (so identity) — kết quả muộn của
+  hook cũ không bao giờ hiện. Review SEC-04: tối đa **6** `renderDetails` chưa kết thúc cùng lúc (`DETAIL_CONCURRENCY`;
+  lời gọi đã abort vẫn giữ chỗ tới khi promise kết thúc — fail closed), phần còn lại xếp hàng theo thứ tự hiển thị (bỏ khỏi hàng khi đóng trước lượt); hàng đợi bị xả + abort khi gán `items`, gỡ
+  phần tử, vẽ lại nhóm, đổi hook — nhiều mục `expanded: true` hay đổi hook không bắn ra hàng trăm request cùng lúc.
+- **Không lộ lỗi / dữ liệu của app** (review SEC-03): `load-more-error` chỉ mang `{ kind: 'rejected' }`, không kèm lỗi gốc;
+  mọi `console.warn` của hai component là chuỗi cố định (mã cảnh báo, hằng số, số đếm) — không bao giờ lặp lại giá trị /
+  lỗi của caller (kể cả tên icon lạ).
+- **Cổng SSR `steps@1` / `timeline@1`** (bề mặt chèn markup): đọc model từ markup (mỗi trường từ nút riêng, lá chỉ có text,
+  `href` qua lại bộ lọc không đổi, đã chuẩn hoá) rồi **dựng lại cây từ model và so từng nút** với markup
+  (`src/utils/ssr-tree.js`: tag, namespace, tập thuộc tính chính xác, text) — thuộc tính lạ (`onclick`, `style`), phần tử
+  thừa, `data-state` lệch luật trạng thái, hai `aria-current`, `<time>` lệch nhóm / múi giờ, cấu trúc nhóm "Không rõ thời
+  gian" sai → không nhận, vẽ rỗng + một cảnh báo. Hai ngoại lệ có chủ ý: chữ nhãn ngày (tính lại ngay) và ô icon — review
+  ISSUE-1: ô **rỗng** hoặc chứa **đúng** SVG registry của tên đó (cùng cây, thuộc tính, namespace như `tdIcon()` / PHP
+  `Td::icon()` in ra); SVG khác bất kỳ (thêm thuộc tính, thêm phần tử, `path` khác) → không nhận. `time-zone` trình duyệt không biết → vẽ lại từ model đã
+  đọc (đã qua kiểm) theo múi giờ trình duyệt.
+- Test: `src/display/td-{steps,timeline}.ssr.engines.browser-test.js` (markup bị sửa), `td-v045-*.engines.browser-test.js`
+  (XSS mọi trường, `javascript:` href), `src/utils/{steps,timeline}-model.test.js`, `test/php/td-ssr-steps-timeline.test.js`.
+
 ## 7. Trách nhiệm của site
 
 Những thứ kit **cố ý không làm** và site phải làm, nếu không thì có lỗ hổng dù kit đúng. Trang người dùng tương ứng:

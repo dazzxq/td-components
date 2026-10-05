@@ -2,6 +2,27 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.45.0
+
+**`<td-steps>` + `<td-timeline>`** (dsuite #21 wizard nhiều bước, #16 lịch sử sự kiện; plan
+`docs/internal/plans/v0.45.0-steps-timeline.md`, Codex plan-review APPROVE 3 vòng, impl-review + security-review APPROVE).
+Không có thay đổi phá vỡ.
+
+### Added
+
+- `<td-steps>` (`./steps`, `TdSteps`): thanh tiến trình nhiều bước — `current` theo key (fallback số thứ tự 1-based), trạng
+  thái suy từ một luật ưu tiên duy nhất, bước bấm được (`href` / event), dọc / ngang, gọn trên màn hẹp (`narrow`). PHP
+  `td_steps()` + SSR.
+- `<td-timeline>` (`./timeline`, `TdTimeline`): lịch sử sự kiện nhóm theo ngày theo múi giờ IANA (`time-zone`), mục không
+  rõ thời gian vào nhóm "Không rõ thời gian", chi tiết mở bằng `<details>` (tĩnh hoặc lazy `renderDetails`, tối đa 6
+  lời gọi cùng lúc), "Xem thêm" (`loadMore` / `more-href`), `append()` cho realtime; giới hạn 1 000 mục mỗi lần nạp và
+  5 000 mục tổng. PHP `td_timeline()` + SSR. ISO nhận 1–9 chữ số phần giây (cắt giống nhau JS / PHP).
+
+### Security
+
+- Link (`href`, actor, `more-href`) chỉ http(s) cùng origin (JS) / tương đối (PHP); chữ luôn là text; SSR chỉ nhận đúng
+  markup + đúng SVG icon của registry; `load-more-error` không mang lỗi gốc (`{ kind: 'rejected' }`).
+
 ## 0.44.0
 
 **Gõ chữ để xác nhận + theo dõi form chưa lưu + chặn đóng modal / drawer** (dsuite #19, #20; plan
