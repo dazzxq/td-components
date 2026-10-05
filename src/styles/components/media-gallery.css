@@ -1,6 +1,6 @@
 /*
  * td-media-gallery (src/form/td-media-gallery.js) — v0.43.0, plan v0.43.0-media-gallery decisions 3, 10-13, 21-23
- * (ADR 0021). Content layer: solid surfaces, never glass (minimal surfaces). Colours: semantic tokens only (the theme
+ * (ADR 0021). Content layer: solid surfaces, never glass (minimal surfaces). Colours: semantic tokens only (badges = the tooltip chip tokens; the theme
  * contract — generated palettes stay readable); no new colour token.
  * List: a fixed grid `repeat(auto-fill, minmax(--td-media-gallery-tile-min, 1fr))` — never justified (a row height that
  * changes while sorting would move the target under the finger). Tile: the media box (SVG sizer = the tile ratio, same
@@ -170,9 +170,10 @@
 		position: absolute;
 		inset-inline-start: var(--td-space-2xs);
 		padding: 0.125rem 0.5rem;
+		border: 1px solid var(--td-tooltip-border, transparent);
 		border-radius: var(--td-radius-full);
-		background: var(--td-color-text);
-		color: var(--td-color-surface);
+		background: var(--td-tooltip-bg); /* the tooltip chip: dark in both schemes, never a light island on a dark page */
+		color: var(--td-tooltip-fg);
 		font-size: var(--td-text-xs);
 		font-weight: var(--td-fw-medium);
 		line-height: var(--td-leading-normal);
