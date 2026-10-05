@@ -465,7 +465,7 @@ export class TdMediaGallery extends TdFormElement {
     fillIconSlots(li);
     this._itemOf.set(li, it);
     this._liOf.set(it, li);
-    this._bindLi(li);
+    this._syncAlt(li);
     return li;
   }
 
@@ -740,7 +740,6 @@ export class TdMediaGallery extends TdFormElement {
     this._foreignDescribedBy = [];
     this._ownDescribedBy = new Set([`${this.id}-help`, `${this.id}-error`]);
     this._errorNote = [...this.children].find(ssrIsErrorNote) || null;
-    if (add) this.listen(add, 'click', () => this._openPicker());
     const ul = this._ul();
     if (ul) {
       [...ul.children].forEach((li, i) => {
@@ -748,11 +747,17 @@ export class TdMediaGallery extends TdFormElement {
         if (!it) return;
         this._itemOf.set(/** @type {HTMLElement} */ (li), it);
         this._liOf.set(it, /** @type {HTMLElement} */ (li));
-        this._bindLi(/** @type {HTMLElement} */ (li));
+        this._syncAlt(/** @type {HTMLElement} */ (li));
       });
     }
-    if (!this._hostBound) { // host listeners: once per connection (afterRender also runs after each re-render)
+    // ISSUE-8: every listener is CONNECTION-scoped, on the host (delegated) — a full render replaces tiles without
+    // adding listeners / cleanups; afterRender (which runs after each render) never calls listen() again
+    if (!this._hostBound) {
       this._hostBound = true;
+      this.listen(this, 'click', (ev) => this._onClick(ev));
+      // capture: the native input / change of an alt never reaches the page (the host fires its own events)
+      this.listen(this, 'input', (ev) => this._onAlt(ev, 'input'), true);
+      this.listen(this, 'change', (ev) => this._onAlt(ev, 'change'), true);
       this.listen(this, 'focusin', (ev) => { this._focusMark = this._focusInfo(/** @type {Element} */ (ev.target)); });
       this.listen(this, 'focusout', (ev) => {
         if (this.contains(/** @type {Node} */ (ev.relatedTarget))) return;
@@ -769,30 +774,43 @@ export class TdMediaGallery extends TdFormElement {
     this._lazyPump();
   }
 
-  /** @private listeners of one tile (Gỡ, Cắt, alt) */
-  _bindLi(li) {
-    const remove = this._part('remove', li);
-    if (remove) this.listen(remove, 'click', () => this._remove(li));
-    const crop = this._part('crop', li);
-    if (crop) this.listen(crop, 'click', () => this._openCrop(li));
+  /** @private the tile's alt input shows its item's alt */
+  _syncAlt(li) {
     const alt = this._part('alt', li);
-    if (alt) {
-      const it = this._itemOf.get(li);
-      if (it && alt.value !== it.alt) alt.value = it.alt;
-      this.listen(alt, 'input', (ev) => {
-        ev.stopPropagation(); // the host fires its own event (no duplicate native one)
-        const cur = this._itemOf.get(li);
-        if (!cur || !this._items.includes(cur)) return;
-        cur.alt = cap(alt.value);
-        this._relabel();
-        this._syncForm();
-        this._emit('input', 'alt');
-      });
-      this.listen(alt, 'change', (ev) => {
-        ev.stopPropagation();
-        if (this._items.includes(this._itemOf.get(li))) this._emit('change', 'alt');
-      });
-    }
+    const it = this._itemOf.get(li);
+    if (alt && it && alt.value !== it.alt) alt.value = it.alt;
+  }
+
+  /** @private the live tile (direct child of the list) holding `el`, or null */
+  _tileOf(el) {
+    const li = el.closest('li.td-media-gallery__item');
+    return li && li.parentNode === this._ul() ? /** @type {HTMLElement} */ (li) : null;
+  }
+
+  /** @private delegated clicks: Add, Gỡ, Cắt (only this gallery's own buttons) */
+  _onClick(ev) {
+    const btn = ev.target instanceof Element ? ev.target.closest('button') : null;
+    if (!btn || btn.closest('td-media-gallery') !== this) return;
+    if (btn.parentNode === this && btn.classList.contains('td-media-gallery__add')) { this._openPicker(); return; }
+    const li = this._tileOf(btn);
+    if (!li) return;
+    if (btn === this._part('remove', li)) this._remove(li);
+    else if (btn === this._part('crop', li)) this._openCrop(li);
+  }
+
+  /** @private delegated alt input / change (capture): the native event stops here, the host fires its own */
+  _onAlt(ev, type) {
+    const alt = ev.target;
+    if (!(alt instanceof Element) || !alt.classList.contains('td-media-gallery__alt') || alt.closest('td-media-gallery') !== this) return;
+    ev.stopPropagation();
+    const li = this._tileOf(alt);
+    const cur = li && this._itemOf.get(li);
+    if (!cur || !this._items.includes(cur) || alt !== this._part('alt', li)) return;
+    if (type === 'change') { this._emit('change', 'alt'); return; }
+    cur.alt = cap(/** @type {HTMLInputElement} */ (alt).value);
+    this._relabel();
+    this._syncForm();
+    this._emit('input', 'alt');
   }
 
   /** @protected helper note in the Add button's description */
@@ -1234,7 +1252,10 @@ export class TdMediaGallery extends TdFormElement {
       });
       this._mo.observe(ul, { childList: true });
     }
-    this._cleanups.push(() => this._stopSort());
+    if (!this._sortBound) { // ISSUE-8: one cleanup per connection, not one per render
+      this._sortBound = true;
+      this._cleanups.push(() => { this._stopSort(); this._sortBound = false; });
+    }
   }
 
   /** @private */
