@@ -10,6 +10,7 @@
  * v0.38.0: td-scan-input (single + multiple with 30 rows, beep; one in the 280 px column).
  * v0.39.0: section `filters` — a filter bar (search + dropdown) → `#rsp-chips` (td-filter-chips) → `#rsp-table-filters`
  * (server-mode controlled, column-menu, the "Số điện thoại" column hidden).
+ * v0.40.0: td-datetime-range (form grid + 280 px column via controls(); a 160 px datetime host; opener `#g-dtr`).
  */
 import '../../src/form/td-button.js';
 import '../../src/form/td-action-button.js'; // v0.36.0
@@ -50,6 +51,7 @@ import { TdMediaPicker } from '../../src/feedback/td-media-picker.js';
 import { TdCropper } from '../../src/form/td-cropper.js';
 import '../../src/form/td-media-field.js';
 import '../../src/form/td-scan-input.js'; // v0.38.0
+import '../../src/form/td-datetime-range.js'; // v0.40.0
 import { createMockAdapter } from './media-adapter.js';
 
 const LONG = 'Lưu và xuất bản bài viết lên trang chủ ngay bây giờ';
@@ -68,6 +70,7 @@ const controls = (p) => `
   <td-input-field label="Họ và tên khách hàng" placeholder="Nhập họ tên đầy đủ…" required></td-input-field>
   <td-dropdown id="${p}-dd" label="Chuyên mục" placeholder="— Chọn chuyên mục sản phẩm —" searchable></td-dropdown>
   <td-datetime-picker id="${p}-dtp" label="Thời điểm đăng" placeholder="dd/mm/yyyy - hh:mm"></td-datetime-picker>
+  <td-datetime-range id="${p}-dtr" name="${p}-range" label="Khoảng ngày" mode="datetime" minute-step="15" start="29/09/2026 - 00:00" end="05/10/2026 - 23:45"></td-datetime-range>
   <td-chip-input id="${p}-chips" label="Vai trò" placeholder="Lọc vai trò…" selection-only select-all></td-chip-input>
   <td-tree-select id="${p}-ts" label="Danh mục" multiple allow-clear value='["ip16","mac"]'></td-tree-select>
   <td-number-input label="Giá bán" suffix="₫" value="32990000"></td-number-input>
@@ -164,6 +167,7 @@ export function mountResponsiveFixture(root) {
       <td-tabs id="rsp-tabs-narrow"></td-tabs>
       <td-table id="rsp-table-narrow" title="Đơn hàng"></td-table>
       <td-scan-input id="rsp-scan-narrow" label="IMEI" beep multiple name="imei[]"></td-scan-input>
+      <div class="rsp-160"><td-datetime-range id="rsp-dtr-160" name="r160" label="Khoảng" start="29/09/2026" end="05/10/2026"></td-datetime-range></div>
       <td-cropper id="rsp-cropper-narrow" src="/test/fixtures/panorama.svg" natural-width="1800" natural-height="600" aspect-ratio="1.91" alt="Ảnh OG"></td-cropper>
     </div>
   </section>

@@ -254,3 +254,20 @@ test('v0.39.0: ./filter-chips export, sideEffects, barrel TdFilterChips, filter-
   const i = files.indexOf('components/filter-chips.css');
   assert.ok(i > 0 && i < files.indexOf('utilities.css'));
 });
+
+test('v0.40.0: ./datetime-range export, sideEffects, barrel TdDatetimeRange, datetime-range CSS before utilities; panel / presets internal', async () => {
+  assert.equal(pkg.exports['./datetime-range'], './src/form/td-datetime-range.js');
+  assert.ok(pkg.sideEffects.includes('./src/form/td-datetime-range.js'));
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdDatetimeRange \} from '\.\/src\/form\/td-datetime-range\.js';/);
+  assert.ok(!/datetime-panel|date-presets/.test(src), 'datetime-panel / date-presets stay internal');
+  assert.ok(!Object.values(pkg.exports).some((t) => /datetime-panel|date-presets/.test(t)), 'no datetime-panel / date-presets export');
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  const i = files.indexOf('components/datetime-range.css');
+  assert.ok(i > files.indexOf('components/datetime-picker.css') && i < files.indexOf('utilities.css'), 'datetime-range.css after datetime-picker.css, before utilities.css');
+  const css = await readFile(join(ROOT, 'td.css'), 'utf8');
+  for (const sel of ['.td-dtr__trigger', '.td-dtr-panel__preset[aria-pressed="true"]', '.td-dtr-panel__switch',
+    'td-datetime-range:not(:defined) .td-dtr__trigger', '--td-dtr-preset-on-bg']) {
+    assert.ok(css.includes(sel), sel);
+  }
+});

@@ -9,6 +9,8 @@ giờ đăng bài, lịch hẹn, hạn chót…
 Từ 0.18.0 có thêm `mode="date"` (chỉ ngày), `mode="month"` (tháng + năm) và `mode="year"` (chỉ năm) — xem
 [mục 7](#7-chế-độ-mode-date--month--year). Chỉ cần **giờ** → `<td-input-field type="time">` ([input-field](input-field.md)).
 Chỉ cần **định dạng / hiển thị** thời gian (không nhập) → dùng `TdDateTime` trong [Tiện ích](utilities.md).
+Cần một **khoảng** "Từ – Đến" (lọc theo ngày, khung giờ khuyến mãi) → [`<td-datetime-range>`](datetime-range.md) (0.40.0:
+element riêng, dùng chung bộ sửa mốc với picker này; hai mục form + preset).
 
 | | |
 |---|---|

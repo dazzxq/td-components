@@ -123,3 +123,12 @@ export const FILTER_CHIPS_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'filter-chips
 export function renderFilterChipsFixture() {
   return renderPhp('filter-chips-fixture.php');
 }
+
+// v0.40.0: td_datetime_range (always the element <td-datetime-range data-td-ssr="datetime-range@1"> + two native inputs).
+export const DATETIME_RANGE_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'datetime-range.fixtures.json'), 'utf8'));
+export const DATETIME_RANGE_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'datetime-range.html');
+
+/** Render test/ssr/datetime-range-fixture.php (the HTML loaded by the datetime-range SSR browser test). */
+export function renderDatetimeRangeFixture() {
+  return renderPhp('datetime-range-fixture.php');
+}

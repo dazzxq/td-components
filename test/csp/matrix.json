@@ -44,7 +44,8 @@
       "td-cropper": "/src/form/td-cropper.js",
       "td-action-button": "/src/form/td-action-button.js",
       "td-scan-input": "/src/form/td-scan-input.js",
-      "td-filter-chips": "/src/display/td-filter-chips.js"
+      "td-filter-chips": "/src/display/td-filter-chips.js",
+      "td-datetime-range": "/src/form/td-datetime-range.js"
     },
     "tokenNative": [
       "td-button",
@@ -89,7 +90,8 @@
       "td-cropper",
       "td-action-button",
       "td-scan-input",
-      "td-filter-chips"
+      "td-filter-chips",
+      "td-datetime-range"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -3862,6 +3864,103 @@
         "height"
       ],
       "excludeNote": "v0.39.0: × and 'Xoá tất cả' as links (PHP / no-JS chips): same look as the buttons, no underline; text-bearing boxes (labels, values, the 'Cột' / 'Xoá tất cả' buttons, menu items) size with the font metrics of the platform (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards): width / height are excluded here; the layout budgets (no overflow, one line per chip, 44px touch targets) are gated by test:responsive and the engines tests"
+    }
+  ],
+  "td-datetime-range": [
+    {
+      "state": "closed",
+      "markup": "<td-datetime-range name=\"r\" label=\"Khoảng ngày\" start=\"01/10/2026\" end=\"05/10/2026\"></td-datetime-range>",
+      "selectors": [
+        ".td-dtr",
+        ".td-dtr__label",
+        ".td-dtr__trigger",
+        ".td-dtr__value",
+        ".td-dtr__icon"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.40.0: host at rest — field-look trigger with the range text"
+    },
+    {
+      "state": "error",
+      "markup": "<td-datetime-range name=\"r\" label=\"Khoảng ngày\" required error-text=\"Vui lòng chọn khoảng ngày\"></td-datetime-range>",
+      "selectors": [
+        ".td-dtr__label .td-field__required",
+        ".td-dtr__trigger[aria-invalid]",
+        ".td-dtr__value[data-placeholder]",
+        ".td-field-error"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.40.0: error contract on the trigger + required asterisk + placeholder"
+    },
+    {
+      "state": "open-desktop",
+      "setup": "const C=customElements.get('td-datetime-range'); C.now=()=>new Date(2026,9,5,9,30); const p=document.createElement('td-datetime-range'); p.id='probe'; p.setAttribute('name','r'); p.setAttribute('label','Khoảng'); p.setAttribute('mode','datetime'); p.setAttribute('start','29/09/2026 - 00:00'); p.setAttribute('end','05/10/2026 - 23:59'); window.__mount.appendChild(p); p.querySelector('.td-dtr__trigger').click();",
+      "selectors": [
+        ".td-dtr-panel__presets",
+        ".td-dtr-panel__preset[aria-pressed=\"true\"]",
+        ".td-dtr-panel__preset[aria-pressed=\"false\"]",
+        ".td-dtr-panel__switch",
+        ".td-dtr-panel__sides",
+        ".td-dtr-panel__side[data-side=\"end\"]",
+        ".td-dtr-panel__legend",
+        ".td-dtr-panel__next",
+        ".td-modal__footer .td-btn--primary"
+      ],
+      "portal": [
+        ".td-dtr-panel__presets",
+        ".td-dtr-panel__preset[aria-pressed=\"true\"]",
+        ".td-dtr-panel__preset[aria-pressed=\"false\"]",
+        ".td-dtr-panel__switch",
+        ".td-dtr-panel__sides",
+        ".td-dtr-panel__side[data-side=\"end\"]",
+        ".td-dtr-panel__legend",
+        ".td-dtr-panel__next",
+        ".td-modal__footer .td-btn--primary"
+      ],
+      "settle": 500,
+      "excludeProps": [
+        "height",
+        "margin-left"
+      ],
+      "selectorNote": "v0.40.0: height / margin-left excluded up front — chip rows, legends and the side blocks are text line boxes (font metrics differ on Linux CI, like td-table selection-cards); the dialog size budgets are gated by test:responsive + the engines test. ≥ 720 (this harness is 1280×720): two sides side by side, no switch, '7 ngày qua' pressed. The sheet (< 720: switch 'Từ | Đến', one side) and the one-row scrolling presets (< 480 / short) need a viewport this harness does not set: covered by td-v040-datetime-range.engines (393×852, 844×390) + the responsive gate (#rsp-dtr)."
+    },
+    {
+      "state": "open-order",
+      "setup": "const C=customElements.get('td-datetime-range'); C.now=()=>new Date(2026,9,5,9,30); const p=document.createElement('td-datetime-range'); p.id='probe'; p.setAttribute('name','r'); p.setAttribute('start','10/10/2026'); p.setAttribute('end','05/10/2026'); window.__mount.appendChild(p); p.querySelector('.td-dtr__trigger').click();",
+      "selectors": [
+        ".td-dtr-panel__error",
+        ".td-dtr-panel__side[data-side=\"end\"] .td-dtp-panel__input[aria-invalid]"
+      ],
+      "portal": [
+        ".td-dtr-panel__error",
+        ".td-dtr-panel__side[data-side=\"end\"] .td-dtp-panel__input[aria-invalid]"
+      ],
+      "settle": 500,
+      "excludeProps": [
+        "height",
+        "margin-left"
+      ],
+      "selectorNote": "v0.40.0: height / margin-left excluded up front — chip rows, legends and the side blocks are text line boxes (font metrics differ on Linux CI, like td-table selection-cards); the dialog size budgets are gated by test:responsive + the engines test. Order error (start > end) on the pair line + the 'Đến' day field."
+    },
+    {
+      "state": "presets-wrap",
+      "setup": "const C=customElements.get('td-datetime-range'); C.now=()=>new Date(2026,9,5,9,30); C.presets=Array.from({length:12},(_, i)=>({id:'p'+i,label:'Quý '+(i+1)+' năm trước',resolve:(n)=>({start:n,end:n})})); const p=document.createElement('td-datetime-range'); p.id='probe'; p.setAttribute('name','r'); window.__mount.appendChild(p); p.querySelector('.td-dtr__trigger').click();",
+      "selectors": [
+        ".td-dtr-panel__presets",
+        ".td-dtr-panel__preset[data-id=\"p11\"]",
+        ".td-dtr-panel__preset[aria-pressed=\"false\"]"
+      ],
+      "portal": [
+        ".td-dtr-panel__presets",
+        ".td-dtr-panel__preset[data-id=\"p11\"]",
+        ".td-dtr-panel__preset[aria-pressed=\"false\"]"
+      ],
+      "settle": 500,
+      "excludeProps": [
+        "height",
+        "margin-left"
+      ],
+      "selectorNote": "v0.40.0: height / margin-left excluded up front — chip rows, legends and the side blocks are text line boxes (font metrics differ on Linux CI, like td-table selection-cards); the dialog size budgets are gated by test:responsive + the engines test. Many presets wrap onto several rows ≥ 480 (the < 480 one-row scroller: engines + responsive gates)."
     }
   ]
 }

@@ -88,7 +88,8 @@ TdFormValidation.validate(form, { rules });
 - Key là **đúng** attribute `name` của control (kể cả `[]`).
 - Hàm nhận `(value, control, root)`, trả **chuỗi lỗi** hoặc `''` (hợp lệ).
 - `value` là: `getValue()` nếu control có method này (td-dropdown → giá trị, td-chip-input → mảng mục,
-  td-datetime-picker → chuỗi display hoặc `''`); checkbox → `true/false`; radio → value của radio đang chọn hoặc `''`;
+  td-datetime-picker → chuỗi display hoặc `''`; td-datetime-range → object `{ start, end }`, mỗi mốc chuỗi display hoặc
+  `''` — `required` của nó đi qua `validity` như mọi control, xem [datetime-range](datetime-range.md#validity)); checkbox → `true/false`; radio → value của radio đang chọn hoặc `''`;
   `<select multiple>` → mảng; còn lại → `.value`.
 - Kết quả được đẩy vào `setCustomValidity()` của control, nên `form.checkValidity()` gốc cũng thấy. Luật chỉ chạy bên
   trong `validate()` và phần kiểm tra lại của `attach()`; `clear()` gỡ lại.

@@ -1,0 +1,507 @@
+/*
+ * td-datetime-range (src/form/td-datetime-range.js) — v0.40.0, plan v0.39.0-filters-range QĐ 17–26.
+ * Blocks: .td-dtr (host: label + field-look trigger, like .td-dtp), .td-dtr__natives (the no-JS block of php
+ * td_datetime_range: two native date / datetime-local inputs, shown only while the element is not defined),
+ * .td-dtr-panel (dialog body: preset chips, the "Từ | Đến" switch < 720, two sides each holding the shared
+ * .td-dtp-panel editor of datetime-picker.css, the pair error line).
+ * State: [aria-expanded] / :disabled / [aria-invalid] on the trigger, [data-placeholder] on the value, data-state on
+ * .td-dtr, [aria-pressed] / [aria-disabled] on presets, [aria-pressed] on the switch tabs, data-side on the panel.
+ * JS writes no styles here.
+ */
+@layer td.tokens {
+	:root {
+		--td-dtr-preset-h: 2rem;                                   /* chip height (44px on coarse pointers) */
+		--td-dtr-preset-bg: var(--td-field-bg);
+		--td-dtr-preset-fg: var(--td-color-text);
+		--td-dtr-preset-border: var(--td-field-border);
+		--td-dtr-preset-hover-bg: var(--td-color-hover);
+		--td-dtr-preset-on-bg: var(--td-btn-primary-bg);           /* pressed (aria-pressed) = the primary fill */
+		--td-dtr-preset-on-fg: var(--td-btn-primary-fg);
+		--td-dtr-preset-on-pressed: var(--td-btn-primary-pressed);
+		--td-dtr-switch-bg: var(--td-color-hover);
+		--td-dtr-tab-on-bg: var(--td-field-bg);
+		--td-dtr-tab-fg: var(--td-color-text);
+		--td-dtr-tab-note: var(--td-color-text-muted);
+	}
+
+	@media (pointer: coarse) {
+		:root {
+			--td-dtr-preset-h: var(--td-touch-min);
+		}
+	}
+}
+
+@layer td.component {
+	td-datetime-range {
+		display: block;
+		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5) */
+		font-family: var(--td-font-sans);
+	}
+
+	/* hand-written host before define: keep the field's height (no fake style) */
+	td-datetime-range:not(:defined):not([data-td-ssr]) {
+		min-height: var(--td-field-h-md);
+	}
+
+	/* ADR 0012 QĐ 6 safety net: no JS → the native inputs work, the (dead) trigger is hidden */
+	td-datetime-range:not(:defined) .td-dtr__trigger {
+		display: none;
+	}
+
+	/* ---- Host ---- */
+	.td-dtr {
+		box-sizing: border-box;
+		display: block;
+		width: 100%;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-field-fg);
+	}
+
+	.td-dtr *,
+	.td-dtr *::before {
+		box-sizing: border-box;
+	}
+
+	.td-dtr__trigger {
+		display: flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
+		min-width: 0;
+		height: var(--td-field-h-md);
+		padding: 8px 14px;
+		margin: 0;
+		font: inherit;
+		font-variant-numeric: tabular-nums;
+		color: var(--td-field-fg);
+		text-align: left;
+		cursor: pointer;
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: none;
+		appearance: none;
+		transition:
+			border-color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease),
+			background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-dtr__trigger:hover:not(:disabled, :focus-visible, [aria-expanded="true"]) {
+			border-color: var(--td-field-border-hover);
+		}
+	}
+
+	.td-dtr__trigger[aria-expanded="true"] {
+		border-color: var(--td-field-focus);
+	}
+
+	.td-dtr__trigger:focus-visible {
+		border-color: var(--td-field-focus);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-field-focus-ring);
+	}
+
+	.td-dtr__trigger:disabled {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-field-bg-disabled);
+	}
+
+	.td-dtr__trigger[aria-invalid="true"],
+	.td-dtr__trigger[aria-invalid="true"]:focus-visible,
+	.td-dtr__trigger[aria-invalid="true"][aria-expanded="true"] {
+		border-color: var(--td-field-error);
+	}
+
+	.td-dtr__value {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.td-dtr__value[data-placeholder] {
+		color: var(--td-field-placeholder);
+	}
+
+	.td-dtr__trigger:disabled .td-dtr__value {
+		color: var(--td-field-fg-disabled);
+	}
+
+	.td-dtr__icon {
+		display: inline-flex;
+		flex-shrink: 0;
+		color: var(--td-field-placeholder);
+	}
+
+	/* ---- No-JS block (php td_datetime_range; removed when the element adopts the markup) ---- */
+	.td-dtr__natives {
+		display: grid;
+		grid-template-columns: max-content minmax(0, 1fr);
+		gap: var(--td-space-xs) var(--td-space-sm);
+		align-items: center;
+	}
+
+	.td-dtr__native-label {
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-medium);
+		color: var(--td-field-label);
+	}
+
+	.td-dtr__native {
+		width: 100%;
+		min-width: 0;
+		height: var(--td-field-h-md);
+		padding: 6px 10px;
+		margin: 0;
+		font: inherit;
+		color: var(--td-field-fg);
+		background: var(--td-field-bg);
+		border: 1px solid var(--td-field-border);
+		border-radius: var(--td-field-radius-md);
+	}
+
+	/* ---- Dialog body ---- */
+	.td-dtr-panel {
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		gap: var(--td-space-md);
+		min-width: 0;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-normal);
+		color: var(--td-color-text);
+	}
+
+	.td-dtr-panel *,
+	.td-dtr-panel *::before {
+		box-sizing: border-box;
+	}
+
+	.td-dtr-panel__presets {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-space-xs);
+		min-width: 0;
+	}
+
+	.td-dtr-panel__preset {
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		min-height: var(--td-dtr-preset-h);
+		padding: 4px 12px;
+		margin: 0;
+		font: inherit;
+		font-size: var(--td-text-sm);
+		font-weight: var(--td-fw-medium);
+		color: var(--td-dtr-preset-fg);
+		white-space: nowrap;
+		cursor: pointer;
+		background: var(--td-dtr-preset-bg);
+		border: 1px solid var(--td-dtr-preset-border);
+		border-radius: 999px;
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		appearance: none;
+		transition: background-color var(--td-dur-fast) var(--td-ease), border-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-dtr-panel__preset:hover:not([aria-disabled="true"], [aria-pressed="true"]) {
+			background: var(--td-dtr-preset-hover-bg);
+		}
+	}
+
+	.td-dtr-panel__preset:focus-visible {
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-dtr-panel__preset[aria-pressed="true"] {
+		color: var(--td-dtr-preset-on-fg);
+		background: var(--td-dtr-preset-on-bg);
+		border-color: var(--td-dtr-preset-on-bg);
+	}
+
+	.td-dtr-panel__preset[aria-disabled="true"] {
+		color: var(--td-field-fg-disabled);
+		cursor: not-allowed;
+		background: var(--td-field-bg-disabled);
+	}
+
+	/* "Từ | Đến" switch: only in the sheet (< 720) */
+	.td-dtr-panel__switch {
+		display: none;
+	}
+
+	.td-dtr-panel__tab {
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+		align-items: flex-start;
+		min-width: 0;
+		min-height: var(--td-touch-min);
+		padding: 4px 12px;
+		margin: 0;
+		font: inherit;
+		color: var(--td-dtr-tab-fg);
+		text-align: left;
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: var(--td-radius-md);
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		appearance: none;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-dtr-panel__tab:hover:not([aria-pressed="true"]) {
+			background: var(--td-color-hover-strong);
+		}
+	}
+
+	.td-dtr-panel__tab:focus-visible {
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-dtr-panel__tab[aria-pressed="true"] {
+		background: var(--td-dtr-tab-on-bg);
+		box-shadow: var(--td-btn-lift);
+	}
+
+	.td-dtr-panel__tab[aria-pressed="true"]:focus-visible {
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-dtr-panel__tab-label {
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-dtr-tab-note);
+	}
+
+	.td-dtr-panel__tab-value {
+		max-width: 100%;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		font-variant-numeric: tabular-nums;
+		font-weight: var(--td-fw-semibold);
+		white-space: nowrap;
+	}
+
+	.td-dtr-panel__sides {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		gap: var(--td-space-lg);
+	}
+
+	.td-dtr-panel__side {
+		min-width: 0;
+		padding: 0;
+		margin: 0;
+		border: 0;
+	}
+
+	.td-dtr-panel__legend {
+		padding: 0;
+		margin: 0 0 var(--td-space-sm);
+		font-size: var(--td-text-base);
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-color-text);
+	}
+
+	/* the editor's own "Ngày" legend repeats the side legend: visually hidden, still names its fieldset */
+	.td-dtr-panel .td-dtp-panel > fieldset.td-dtp-panel__group > .td-dtp-panel__legend {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	.td-dtr-panel__next {
+		display: none;
+	}
+
+	.td-dtr-panel__error {
+		margin: 0;
+		font-size: var(--td-text-xs);
+		color: var(--td-field-error);
+	}
+
+	.td-dtr-panel__error[hidden] {
+		display: none;
+	}
+
+	/* sheet (< 720): one side at a time behind the "Từ | Đến" switch (two time wheels stacked are too tall) */
+	@media (max-width: 719.98px) {
+		.td-dtr-panel__switch {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+			gap: 4px;
+			padding: 4px;
+			background: var(--td-dtr-switch-bg);
+			border-radius: var(--td-glass-radius-inner);
+		}
+
+		.td-dtr-panel__sides {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.td-dtr-panel[data-side="start"] .td-dtr-panel__side[data-side="end"],
+		.td-dtr-panel[data-side="end"] .td-dtr-panel__side[data-side="start"] {
+			display: none;
+		}
+
+		/* the switch names the shown side: the side legend is visually hidden (still names the fieldset) */
+		.td-dtr-panel__side > .td-dtr-panel__legend {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+			white-space: nowrap;
+			border: 0;
+		}
+
+		.td-dtr-panel__next {
+			display: inline-flex;
+			margin-top: var(--td-space-sm);
+		}
+	}
+
+	/* phones (< 480) and short landscape: presets on ONE row that scrolls sideways */
+	@media (max-width: 479.98px), (max-height: 500px) {
+		.td-dtr-panel__presets {
+			flex-wrap: nowrap;
+			padding-block: 2px; /* room for the focus ring inside the scroller */
+			overflow-x: auto;
+			overscroll-behavior-x: contain;
+			scroll-snap-type: x proximity;
+			scrollbar-width: none;
+		}
+
+		.td-dtr-panel__presets::-webkit-scrollbar {
+			display: none;
+		}
+
+		.td-dtr-panel__preset {
+			scroll-snap-align: start;
+		}
+	}
+
+	@media (max-height: 500px) {
+		.td-dtr-panel {
+			gap: var(--td-space-sm);
+		}
+
+		.td-dtr-panel__legend {
+			margin-bottom: var(--td-space-xs);
+		}
+	}
+
+	@media (pointer: coarse) {
+		.td-dtr__trigger {
+			height: auto;
+			min-height: var(--td-touch-min);
+		}
+
+		.td-dtr__native {
+			height: auto;
+			min-height: var(--td-touch-min);
+			font-size: max(1rem, 1em); /* ≥ 16px: iOS does not zoom on focus */
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-dtr__trigger,
+		.td-dtr-panel__preset {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-dtr__trigger,
+		.td-dtr__native,
+		.td-dtr-panel__preset {
+			border-color: CanvasText;
+		}
+
+		.td-dtr__trigger:focus-visible,
+		.td-dtr-panel__preset:focus-visible,
+		.td-dtr-panel__tab:focus-visible {
+			outline: 2px solid Highlight;
+		}
+
+		.td-dtr__trigger[aria-invalid="true"] {
+			border-style: dashed;
+			border-width: 2px;
+		}
+
+		.td-dtr__value[data-placeholder] {
+			color: GrayText;
+		}
+
+		.td-dtr-panel__preset[aria-pressed="true"],
+		.td-dtr-panel__tab[aria-pressed="true"] {
+			color: HighlightText;
+			background: Highlight;
+			forced-color-adjust: none;
+		}
+
+		.td-dtr-panel__preset[aria-disabled="true"] {
+			color: GrayText;
+		}
+	}
+
+	/* pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, at once */
+	.td-dtr__trigger,
+	.td-dtr-panel__preset,
+	.td-dtr-panel__tab {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-dtr__trigger:is(:active, [data-td-pressed]):not(:disabled) {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	.td-dtr-panel__preset:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	.td-dtr-panel__preset[aria-pressed="true"]:is(:active, [data-td-pressed]) {
+		background: var(--td-dtr-preset-on-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-dtr-panel__tab:is(:active, [data-td-pressed]) {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-dtr__trigger:is(:active, [data-td-pressed]),
+		.td-dtr-panel__preset:is(:active, [data-td-pressed]),
+		.td-dtr-panel__tab:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
+}

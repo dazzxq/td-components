@@ -60,3 +60,9 @@
 	padding: 6px 8px;
 	border-bottom: 1px solid var(--td-color-border);
 }
+
+/* v0.40.0: a 160 px host (QĐ 11 v0.34 — the trigger text is cut with … + title) */
+.rsp-160 {
+	width: 160px;
+	max-width: 100%;
+}

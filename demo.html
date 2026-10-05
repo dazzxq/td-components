@@ -189,6 +189,21 @@
     <p class="demo-note">Click vào input để mở picker. Xem Console khi chọn.</p>
   </div>
 
+  <!-- ═══════════════════ KHOẢNG NGÀY (v0.40.0) ═══════════════════ -->
+  <div class="demo-section" id="demo-range">
+    <h2>Khoảng ngày <span class="demo-code">&lt;td-datetime-range&gt;</span></h2>
+    <form id="demo-range-form" class="demo-grid" method="get" action="#demo-range">
+      <td-datetime-range id="demo-range-log" name="range" label="Nhật ký hoạt động (lọc)"></td-datetime-range>
+      <td-datetime-range id="demo-range-promo" name="promo" label="Khung giờ khuyến mãi" mode="datetime" minute-step="15"
+                         start="01/10/2026 - 08:00" end="05/10/2026 - 22:00" required></td-datetime-range>
+      <td-datetime-range id="demo-range-report" start-name="date_from" end-name="date_to" name="report"
+                         label="Báo cáo (tối đa 92 ngày)" max-days="92" required="start"></td-datetime-range>
+    </form>
+    <p class="demo-note">Chọn nhanh điền cả hai mốc (chưa đóng) → "Chọn". Sửa tay một ô thì preset tự bỏ chọn. Điện thoại
+      (&lt; 720px): công tắc "Từ | Đến". Kết hợp bảng + chip (v0.39.0): công thức trong <code>docs/components/datetime-range.md</code>.</p>
+    <pre id="demo-range-output" class="demo-output" aria-live="polite"></pre>
+  </div>
+
   <!-- ═══════════════════ NUMBER INPUT (v0.30.0) ═══════════════════ -->
   <div class="demo-section">
     <h2>Number Input <span class="demo-code">&lt;td-number-input&gt;</span></h2>
@@ -832,6 +847,8 @@
     import './src/form/td-media-field.js';
     // v0.38
     import './src/form/td-scan-input.js';
+    // v0.40
+    import './src/form/td-datetime-range.js';
     import { createMockAdapter, assetFields, uploadFields } from './test/fixtures/media-adapter.js';
     // v0.35
     import { TdCropper } from './src/form/td-cropper.js';
@@ -1145,6 +1162,17 @@
     document.querySelector('#demo-number-form').addEventListener('change', (e) => {
       if (e.target.tagName === 'TD-NUMBER-INPUT') console.log(`[td-number-input ${e.target.getAttribute('name')}] change:`, e.detail.value);
     });
+
+    // ── Khoảng ngày (v0.40.0) ──
+    {
+      const out = document.querySelector('#demo-range-output');
+      const form = document.querySelector('#demo-range-form');
+      form.addEventListener('change', (e) => {
+        if (e.target.tagName !== 'TD-DATETIME-RANGE') return;
+        const fd = [...new FormData(form).entries()].map(([k, v]) => `${k}=${v}`).join('&');
+        out.textContent = `${e.target.id} change: ${JSON.stringify(e.detail)}\nFormData: ${fd}`;
+      });
+    }
 
     // ── Quét mã (v0.38.0) ──
     {

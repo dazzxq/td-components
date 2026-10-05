@@ -340,3 +340,24 @@ người dùng [scan-input.md](../components/scan-input.md#bảo-mật)):
   mọi giá trị, `attrs` qua allowlist (owned names + `data-td-*` giữ chỗ).
 - **Âm báo** dùng Web Audio (không file, không `media-src`); không lưu gì vào storage. `validate` chạy ở trình duyệt nên
   **không phải kiểm soát bảo mật**: server chuẩn hoá + kiểm lại mọi mã khi lưu (và tự tách dòng của mục textarea không JS).
+
+**Ghi chú v0.40.0 — `td-datetime-range`** (plan [v0.39.0-filters-range](plans/v0.39.0-filters-range.md) QĐ 17–26; trang
+người dùng [datetime-range.md](../components/datetime-range.md#bảo-mật)):
+
+- **Không hatch HTML mới**: nhãn preset (`presets[].label`, có thể từ cấu hình site), thông báo, giá trị hiển thị đều qua
+  `textContent` / `setAttribute`; `data-id` của preset qua `setAttribute`. Preset `resolve` là code của site — throw / trả
+  sai → preset `aria-disabled` + một `console.error` (fail closed, không áp giá trị).
+- **State khôi phục** (`formStateRestoreCallback`) chỉ nhận JSON `{"v":1,"start","end"}` ≤ 512 ký tự, mỗi mốc là chuỗi
+  ≤ 64; khác → bỏ. Chuỗi khôi phục đi qua cùng parser / validity như giá trị gõ tay.
+- **SSR `datetime-range@1`** (bề mặt chèn markup): cổng **riêng** (cổng chung `TdFormElement` không đổi, vẫn đúng một
+  control) so khớp **từng node**: `div.td-dtr` + nhãn + trigger = `render()` (thuộc tính chính xác; ô icon phải **rỗng** —
+  `ssrSamePart` bỏ qua nội dung ô icon nên phải kiểm riêng), khối native = đúng 4 con (label / input × 2) với thuộc tính
+  tính lại từ host (`type` theo `mode`, tên phân giải, `min` / `max`, `required` **theo mốc**, `disabled`, `aria-*` lỗi) —
+  chỉ `value` được tự do và phải là giá trị native hợp lệ; đúng **3** phần tử form-associated (2 input + trigger, theo đúng
+  thứ tự); host chỉ một con thêm là ghi chú lỗi khớp `error-text`. Lệch bất kỳ → render an toàn, **không** lấy giá trị từ
+  ứng viên mơ hồ (mỗi mốc phải đúng một `input[data-part]`, giá trị phải parse được như ngày native). Nhận markup: state
+  → FormData của host → gỡ `name` / `value` / `required` / `min` / `max` → xoá khối native (FormData không bao giờ có hai
+  bộ). PHP `td_datetime_range` chuẩn hoá ngày (checkdate, giờ / phút) — giá trị sai bị bỏ, không in nguyên văn; mọi chữ
+  escape; `attrs` (trên host) qua allowlist, tên của component + `data-td-*` giữ chỗ.
+- Kiểm tra thứ tự / `max-days` / `required` chạy ở trình duyệt → **không phải kiểm soát bảo mật**: server kiểm lại định
+  dạng, thứ tự, độ dài khoảng (truy vấn dùng prepared statement — ví dụ trên trang component).

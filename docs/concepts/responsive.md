@@ -51,7 +51,7 @@ Trình duyệt chưa có container query (Chrome / Edge 102–104 — kit vẫn 
 do `td.css` sinh sẵn: cùng luật, nhưng theo bề rộng viewport. Trên trang một cột ở điện thoại kết quả như nhau; trong
 cột hẹp desktop thì giống bản cũ.
 
-Form control (`td-input-field`, `td-dropdown`, `td-datetime-picker`, `td-chip-input`, `td-tree-select`, `td-tree`,
+Form control (`td-input-field`, `td-dropdown`, `td-datetime-picker`, `td-datetime-range`, `td-chip-input`, `td-tree-select`, `td-tree`,
 `td-number-input`, `td-otp-input`…) co được tới bề rộng cột (`min-inline-size: 0`): lưới hai cột `1fr 1fr` ở 360px
 không còn tràn; chữ giá trị dài cắt `…`. `td-button` nhãn dài **xuống dòng** (không cắt, không đẩy rộng trang).
 

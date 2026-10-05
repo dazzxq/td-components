@@ -20,6 +20,8 @@ import '/src/form/td-media-field.js';
 import '/src/form/td-cropper.js';
 import '/src/form/td-scan-input.js';
 import '/src/display/td-filter-chips.js';
+import '/src/form/td-datetime-range.js';
+import { TdModal } from '/src/feedback/td-modal.js';
 import { TdMediaPicker } from '/src/feedback/td-media-picker.js';
 import { createMockAdapter } from '/test/fixtures/media-adapter.js';
 
@@ -146,6 +148,10 @@ CASES.push({ kind: 'v0362', v: 'dropzone', state: 'dropzone-pressed', pageOnly: 
 // "Bấm vào đây để quét" (idle) ≥ 4.7 on the page, also on its pressed fill; a list row's error message, the "Đã quét: n"
 // count and a valid row's state ≥ 4.7 on the list surface; the field edge ≥ 3:1 — computed colours, light + dark.
 for (const state of ['ready', 'idle', 'pressed', 'ready-pressed', 'row-error', 'row-valid', 'count']) CASES.push({ kind: 'scan', v: 'scan-input', state, pageOnly: true });
+// v0.40.0 td-datetime-range (dialog surface → page only): a preset chip text ≥ 4.7 on its fill, the pressed preset
+// (aria-pressed) text ≥ 4.7 on the primary fill, also on its touch-pressed fill; the switch tab label / value ≥ 4.7 on the
+// switch track (off) and on the white "on" tab; the pair error line ≥ 4.7 on the dialog surface — computed colours.
+for (const state of ['preset', 'preset-on', 'preset-on-pressed', 'tab-off', 'tab-on', 'pair-error']) CASES.push({ kind: 'dtr', v: 'datetime-range', state, pageOnly: true });
 // v0.32.0: td-media-field (content layer → page only): prompt + ratio text ≥ 4.7 on the empty frame fill, the empty-frame
 // icon + dashed border ≥ 3.2 (border vs the page and vs the frame fill), the "Video" badge text ≥ 4.7 on its fill, the
 // field error text ≥ 4.7 on the page; td-media-picker (inside the solid dialog): tile name, detail meta label and tray
@@ -780,6 +786,50 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       name: `repeater:${c.v}:${c.state}`,
       pairs,
     };
+  } else if (c.kind === 'dtr') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const over = (top, base) => {
+      const t = top.match(/[\d.]+/g).map(Number); const b = base.match(/[\d.]+/g).map(Number);
+      const a = t.length > 3 ? t[3] : 1;
+      return `rgb(${[0, 1, 2].map((i) => Math.round(t[i] * a + b[i] * (1 - a))).join(', ')})`;
+    };
+    TdModal.closeAll();
+    const C = customElements.get('td-datetime-range');
+    C.now = () => new Date(2026, 9, 5, 9, 30);
+    const host = document.createElement('td-datetime-range');
+    host.setAttribute('name', 'r');
+    host.setAttribute('start', c.state === 'pair-error' ? '10/10/2026' : '29/09/2026');
+    host.setAttribute('end', '05/10/2026');
+    stage.appendChild(host);
+    host.querySelector('.td-dtr__trigger').click();
+    await new Promise((r) => setTimeout(r, 450));
+    const panel = document.querySelector('.td-modal[data-state="open"] .td-dtr-panel') || document.querySelector('.td-dtr-panel');
+    const dialog = panel.closest('.td-modal__dialog');
+    const surface = over(getComputedStyle(dialog).backgroundColor, page);
+    let target; let pairs;
+    if (c.state.startsWith('preset')) {
+      target = panel.querySelector(c.state === 'preset' ? '.td-dtr-panel__preset[data-id="today"]' : '.td-dtr-panel__preset[data-id="last7"]');
+      if (c.state === 'preset-on-pressed') target.setAttribute('data-td-pressed', '');
+      const cs = getComputedStyle(target);
+      const img = cs.backgroundImage.includes('rgb') ? cs.backgroundImage.match(/rgba?\([^)]*\)/)[0] : null;
+      const fill = over(cs.backgroundColor, surface);
+      pairs = [{ what: `${c.state} text vs fill`, fg: cs.color, bg: img ? over(img, fill) : fill, min: 4.7 }];
+    } else if (c.state.startsWith('tab')) {
+      const sw = panel.querySelector('.td-dtr-panel__switch');
+      const track = over(getComputedStyle(sw).backgroundColor, surface);
+      target = panel.querySelector(`.td-dtr-panel__tab[aria-pressed="${c.state === 'tab-on' ? 'true' : 'false'}"]`);
+      const fill = over(getComputedStyle(target).backgroundColor, track);
+      pairs = [
+        { what: `${c.state} label vs fill`, fg: getComputedStyle(target.querySelector('.td-dtr-panel__tab-label')).color, bg: fill, min: 4.7 },
+        { what: `${c.state} value vs fill`, fg: getComputedStyle(target.querySelector('.td-dtr-panel__tab-value')).color, bg: fill, min: 4.7 },
+      ];
+    } else {
+      target = panel.querySelector('.td-dtr-panel__error');
+      pairs = [{ what: 'pair error vs dialog', fg: getComputedStyle(target).color, bg: surface, min: 4.7 }];
+    }
+    const b = target.getBoundingClientRect();
+    TdModal.closeAll();
+    return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `dtr:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'scan') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
     const over = (top, base) => {
