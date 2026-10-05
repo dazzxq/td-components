@@ -278,6 +278,7 @@ export function mountResponsiveFixture(root) {
       <td-steps id="rsp-steps-narrow" current="4" navigation="back"></td-steps>
       <td-timeline id="rsp-timeline-narrow" time-zone="Asia/Ho_Chi_Minh"></td-timeline>
     </div>
+  </section>
   <section class="rsp-section" data-section="diff"><h2>Lịch sử thay đổi</h2>
     <td-diff id="rsp-diff" json label="Thay đổi đơn DH10240"></td-diff>
     <td-diff id="rsp-diff-table" view="table" unchanged="show"></td-diff>
