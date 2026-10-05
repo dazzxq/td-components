@@ -2,6 +2,26 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.48.0
+
+**`<td-color-picker>` — trường chọn màu `#rrggbb`** (dsuite; plan `docs/internal/plans/v0.48.0-color-picker.md`, Codex plan-review
+APPROVE, impl-review + security-review APPROVE 3 vòng; phụ lục [ADR 0007](docs/internal/decisions/0007-td-canonical-over-dcms.md): color-picker không còn là phần riêng của CMS).
+Không có thay đổi phá vỡ.
+
+### Added
+
+- `<td-color-picker>` (`./color-picker`, `TdColorPicker`): form-associated, ô nhập chữ (`#rgb`, `#rrggbb`, `rgb()`, tên màu
+  tiếng Việt…) + ô màu + nút xoá; popup với vùng HSV, thanh hue, eyedropper (khi trình duyệt có), độ tương phản, preset
+  (tối đa 48). Esc huỷ: trả lại màu lúc mở, phát đúng một `input` + `change` khi có đổi, focus về ô màu.
+- PHP `td_color_picker()` + `td_color_value()` (chuẩn hoá phía server — **gọi trên mọi POST trước khi lưu**) + SSR
+  `color-picker@1`; không JS vẫn gửi được `#RRGGBB`.
+- Icon `pipette`. Token `--td-color-picker-*` (alias của hợp đồng theme, không cần sinh lại `td-theme`).
+
+### Security
+
+- Giá trị gõ / preset / eyedropper chỉ tới CSSOM dưới dạng `#rrggbb` đã chuẩn hoá; preset và nhãn có trần (192 ứng viên,
+  12 288 byte, nhãn 120 ký tự) trước mọi xử lý; PHP không phản chiếu giá trị sai dài quá 64 byte.
+
 ## 0.47.0
 
 **`<td-check-matrix>` — lưới quyền × vai trò** (dsuite, ưu tiên cao; plan `docs/internal/plans/v0.47.0-check-matrix.md`,
