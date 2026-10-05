@@ -249,7 +249,10 @@ test('fuzz: 10 000 seeded seed sets — finite in-gamut tokens, pass-or-exact-co
     if (r.scheme === 'dark') assert.ok(r.constraints.some((c) => c.token === '--td-control-border-soft' && c.min === GATE.nonText), tag);
   }
   const secs = (Date.now() - t0) / 1000;
-  assert.ok(secs < 30, `fuzz took ${secs}s (budget 30 s)`);
+  // Perf guard, not a correctness check: ~15 s on a dev machine; shared CI runners are ~5× slower (75 s seen on
+  // GitHub Actions, run 37326386934), so CI gets a wider budget that still catches an order-of-magnitude regression.
+  const budget = process.env.CI ? 150 : 30;
+  assert.ok(secs < budget, `fuzz took ${secs}s (budget ${budget} s)`);
   assert.ok(unsatPalettes / N < 0.2, `${unsatPalettes}/${N} palettes with a mandatory failure`);
 });
 
