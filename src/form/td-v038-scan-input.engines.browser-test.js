@@ -159,7 +159,7 @@ describe('td-scan-input — scanner vs manual (QĐ 3–6)', () => {
 
 describe('td-scan-input — terminators, no implicit submit (QĐ 4)', () => {
   it('Enter inside a <form> never submits it', async () => {
-    const wrap = mount('<form><td-scan-input name="c"></td-scan-input><button>Gửi</button></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" name="c"></td-scan-input><button>Gửi</button></form>');
     const form = wrap.querySelector('form');
     let submits = 0;
     form.addEventListener('submit', (e) => { submits++; e.preventDefault(); });
@@ -174,7 +174,7 @@ describe('td-scan-input — terminators, no implicit submit (QĐ 4)', () => {
   });
 
   it('terminator="tab": a fast Tab ends the scan and keeps the focus; a Tab after typing by hand leaves', async () => {
-    const wrap = mount('<td-scan-input terminator="tab"></td-scan-input><button id="next">x</button>');
+    const wrap = mount('<td-scan-input key-interval="100" terminator="tab"></td-scan-input><button id="next">x</button>');
     const el = wrap.querySelector('td-scan-input');
     const rec = record(el, 'scan');
     await scan(el, IMEI, 'Tab');
@@ -239,7 +239,7 @@ describe('td-scan-input — dedupe (QĐ 11)', () => {
 
 describe('td-scan-input — async validate (QĐ 9, 10, 13)', () => {
   it('3 scans, promises settle 3-1-2 → list + scan events in scan order 1-2-3; form invalid while pending', async () => {
-    const wrap = mount('<form><td-scan-input multiple name="imei[]"></td-scan-input></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" multiple name="imei[]"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
     const form = wrap.querySelector('form');
     const v = deferred();
@@ -314,7 +314,7 @@ describe('td-scan-input — async validate (QĐ 9, 10, 13)', () => {
   });
 
   it('single: an invalid scan keeps the previous valid form value', async () => {
-    const wrap = mount('<form><td-scan-input name="c"></td-scan-input></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" name="c"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
     el.validate = (v) => v !== 'NOPE01';
     const rec = record(el, 'scan', 'scan-invalid');
@@ -331,7 +331,7 @@ describe('td-scan-input — async validate (QĐ 9, 10, 13)', () => {
 
 describe('td-scan-input — multiple (QĐ 12)', () => {
   it('FormData has only the valid codes; "Bỏ" removes one and refocuses the input; change events', async () => {
-    const wrap = mount('<form><td-scan-input multiple name="imei[]"></td-scan-input></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" multiple name="imei[]"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
     const form = wrap.querySelector('form');
     const v = deferred();
@@ -376,7 +376,7 @@ describe('td-scan-input — multiple (QĐ 12)', () => {
   });
 
   it('values is silent; form.reset() goes back to the default captured at connect', async () => {
-    const wrap = mount('<form><td-scan-input multiple name="c[]"></td-scan-input></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" multiple name="c[]"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
     const rec = record(el, 'change', 'scan');
     el.values = ['X1', ' X2 ', 'X1', ''];
@@ -445,7 +445,7 @@ describe('td-scan-input — composition commit of several characters = a batch i
 describe('td-scan-input — generation (QĐ 10, review R1-2)', () => {
   for (const how of ['reset()', 'form.reset()', 'remove()']) {
     it(`a validator ignoring its signal resolves after ${how} → nothing changes (events, list, FormData, validity, live regions, beeps)`, async () => {
-      const wrap = mount('<form><td-scan-input multiple beep name="c[]"></td-scan-input></form>');
+      const wrap = mount('<form><td-scan-input key-interval="100" multiple beep name="c[]"></td-scan-input></form>');
       const el = wrap.querySelector('td-scan-input');
       const form = wrap.querySelector('form');
       let osc = 0;
@@ -508,7 +508,7 @@ describe('td-scan-input — pending reservations (QĐ 11, review R1-3)', () => {
   });
 
   it('final check: a validator returning a value already listed → the row is invalid alreadyListed, no 2nd FormData entry', async () => {
-    const wrap = mount('<form><td-scan-input multiple name="c[]"></td-scan-input></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" multiple name="c[]"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
     el.values = ['CANON1'];
     el.validate = () => ({ valid: true, value: 'CANON1' });
@@ -554,7 +554,7 @@ describe('td-scan-input — max counts pending scans (QĐ 12, review R2-6)', () 
   });
 
   it('re-check on apply: max=2, A + B pending, max lowered to 1 → A valid, B invalid messages.max', async () => {
-    const wrap = mount('<form><td-scan-input multiple max="2" name="c[]"></td-scan-input></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" multiple max="2" name="c[]"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
     const v = deferred();
     el.validate = v.fn;
@@ -642,7 +642,7 @@ describe('td-scan-input — misc', () => {
 
 describe('td-scan-input — review round 1 (ISSUE-1…8, SEC-1…4)', () => {
   it('ISSUE-1 / SEC-1: older pending scan VALID, newer scan refused → the newer error stays, form invalid until a newer scan succeeds', async () => {
-    const wrap = mount('<form><td-scan-input name="c" manual="reject"></td-scan-input></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" name="c" manual="reject"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
     const form = wrap.querySelector('form');
     const v = deferred();
@@ -727,7 +727,7 @@ describe('td-scan-input — review round 1 (ISSUE-1…8, SEC-1…4)', () => {
 
   it('ISSUE-2: value assigned before the upgrade (multiple) = values [value]', () => {
     const tpl = document.createElement('template');
-    tpl.innerHTML = '<td-scan-input multiple name="c[]"></td-scan-input>';
+    tpl.innerHTML = '<td-scan-input key-interval="100" multiple name="c[]"></td-scan-input>';
     const el = tpl.content.firstElementChild;
     expect(el instanceof TdScanInput).to.equal(false, 'not upgraded yet');
     el.value = 'B0002';
@@ -855,7 +855,7 @@ describe('td-scan-input — review round 2 (SEC-1 / ISSUE-5 / ISSUE-9)', () => {
   });
 
   it('ISSUE-9: adding `multiple` keeps the single value → values [v] + FormData', () => {
-    const wrap = mount('<form><td-scan-input name="c" value="A0001"></td-scan-input></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" name="c" value="A0001"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
     inputOf(el).value = 'A0001';
     el.setAttribute('multiple', '');
@@ -865,7 +865,7 @@ describe('td-scan-input — review round 2 (SEC-1 / ISSUE-5 / ISSUE-9)', () => {
   });
 
   it('ISSUE-9: removing `multiple` keeps the newest valid value + FormData', () => {
-    const wrap = mount('<form><td-scan-input multiple name="c"></td-scan-input></form>');
+    const wrap = mount('<form><td-scan-input key-interval="100" multiple name="c"></td-scan-input></form>');
     const el = wrap.querySelector('td-scan-input');
     el.values = ['A0001', 'B0002'];
     inputOf(el).value = 'TYPED';
