@@ -106,5 +106,5 @@ test('--help / --version', () => {
   assert.match(h.stdout, /^td-theme — generate a td-components theme/);
   const v = cli('--version');
   assert.equal(v.status, 0);
-  assert.match(v.stdout, /^td-theme \d+\.\d+\.\d+ \(palette algorithm 1, THEME_TOKENS v1\)\n$/);
+  assert.match(v.stdout, /^td-theme \d+\.\d+\.\d+ \(palette algorithm 2, THEME_TOKENS v1\)\n$/);
 });

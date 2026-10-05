@@ -327,6 +327,7 @@ bảng `labels`/`messages` của từng component) — xem [Extending](../custom
 | `--td-form-summary-bg` | `color-mix(in srgb, var(--td-color-error) 8%, var(--td-color-surface))` (dark: 12%) | Nền khung tổng hợp |
 | `--td-form-summary-border` | `color-mix(in srgb, var(--td-color-error) 75%, var(--td-color-surface))` | Viền khung |
 | `--td-form-summary-fg` | `var(--td-color-error)` | Màu chữ khung |
+| `--td-form-summary-pressed-bg` | `var(--td-color-pressed)` (dark: `rgb(0 0 0 / 40%)`) | Nền link khi nhấn (0.42.1: dark làm tối nền thay vì phủ trắng — chữ lỗi 6.3:1, trước 3.30) |
 | `--td-form-summary-radius` | `var(--td-radius-md)` | Bo góc khung |
 
 Dòng lỗi dưới field là `.td-field-error` (màu `--td-field-error`, chữ `--td-text-xs`).

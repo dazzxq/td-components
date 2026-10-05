@@ -25,7 +25,7 @@
 
 ## Token nhấn
 
-Khai báo ở `tokens.css` / `theme-dark.css` (chung, nút), `action-button.css`, `lightbox.css`.
+Khai báo ở `tokens.css` / `theme-dark.css` (chung, nút), `action-button.css`, `lightbox.css`, `form-validation.css`, `chip-input.css`.
 
 | Token | Light | Dark | Dùng cho |
 |---|---|---|---|
@@ -39,6 +39,8 @@ Khai báo ở `tokens.css` / `theme-dark.css` (chung, nút), `action-button.css`
 | `--td-action-btn-standard-pressed-bg` | `var(--td-color-pressed)` | — | |
 | `--td-action-btn-warning-pressed-bg` / `-fg` | `#fef3c7` / `#92400e` | `rgb(245 158 11 / 26%)` / như fg thường | không nền amber nào giữ `#b45309` ≥ 4.7, nên icon đậm thêm một bậc |
 | `--td-action-btn-danger-pressed-bg` | `#fdd5d5` | `rgb(220 38 38 / 30%)` | |
+| `--td-form-summary-pressed-bg` | `var(--td-color-pressed)` | `rgb(0 0 0 / 40%)` (0.42.1) | link trong khung tóm tắt lỗi — dark làm **tối** nền tint: không lớp trắng nào giữ chữ lỗi ≥ 4.7 (14 % = 3.30), đen 40 % = 6.34 |
+| `--td-chip-remove-hover` (nhấn = hai lớp) | `var(--td-color-hover-strong)` | `rgb(255 255 255 / 13%)` (0.42.1, trước 16 %) | nút × của chip-input: chữ chip 4.88 khi nhấn (trước 4.22) |
 | `--td-dropzone-bg-pressed` | `#f4f4f5` (+ viền `--td-dropzone-border-active`; gray-100 chỉ 4.64 với dòng phụ) | `#2c2c30` | vùng dropzone |
 | `--td-toast-{success,error,warning,info}-pressed-bg` | `--td-btn-{success,danger,warning,info}-pressed` | như light | toast (chữ ≥ 4.7) |
 | `--td-lb-btn-pressed` / `--td-lb-disc-bg-pressed` | `rgb(255 255 255 / 24%)` / `rgb(64 64 70 / 94%)` | — | nút / đĩa lightbox |

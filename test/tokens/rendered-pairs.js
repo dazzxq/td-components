@@ -11,9 +11,10 @@ const POPUP = (s) => ['--td-glass-bg-strong', s];
 export function renderedPairs() {
   const P = [];
   const add = (id, fg, layers, min = 4.7) => P.push({ id, fg, layers, min });
-  // ISSUE-3 form summary (form-validation.css: colour --td-form-summary-fg = --td-color-error; link pressed = --td-color-pressed)
+  // ISSUE-3 form summary (form-validation.css: colour --td-form-summary-fg = --td-color-error; link pressed =
+  // --td-form-summary-pressed-bg, v0.42.1 — = --td-color-pressed except the kit dark, where a white wash cannot keep 4.7)
   add('summary text', '--td-color-error', ['--td-form-summary-bg']);
-  add('summary link pressed', '--td-color-error', ['--td-color-pressed', '--td-form-summary-bg']);
+  add('summary link pressed', '--td-color-error', ['--td-form-summary-pressed-bg', '--td-form-summary-bg']);
   add('summary border', '--td-form-summary-border', ['--td-form-summary-bg'], 3);
   add('summary border vs surface', '--td-form-summary-border', ['--td-color-surface'], 3);
   // ISSUE-4 table rows (table.css: zebra, hover = --td-color-hover, selected, selected + hover / focus wash)

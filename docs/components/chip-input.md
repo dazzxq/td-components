@@ -430,7 +430,7 @@ Tất cả chữ là **văn bản thuần**.
 | `--td-chip-h` | `28px` | Chiều cao chip và ô nhập |
 | `--td-chip-gap` | `6px` | Khoảng cách giữa các chip |
 | `--td-chip-remove-size` | `22px` | Kích thước nút xoá |
-| `--td-chip-remove-hover` | `var(--td-color-hover-strong)` (dark: `rgb(255 255 255 / 16%)`) | Nền nút xoá khi hover |
+| `--td-chip-remove-hover` | `var(--td-color-hover-strong)` (dark: `rgb(255 255 255 / 13%)`, trước 0.42.1: 16 %) | Nền nút xoá khi hover; nhấn = lớp này hai lần (dark: chữ 4.88:1) |
 | `--td-chip-input-min-w` | `8rem` | Độ rộng tối thiểu ô nhập trước khi xuống dòng |
 
 Khung dùng token field (`--td-field-bg`, `--td-field-border`, `--td-field-border-hover`, `--td-field-focus`,

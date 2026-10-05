@@ -1544,6 +1544,11 @@
       "light": "rgb(63, 63, 70)",
       "dark": "rgb(228, 228, 231)",
       "why": "v0.41.0 contract: ink on --td-color-fill (was the --td-badge-neutral-fg literals)"
+    },
+    "--td-form-summary-pressed-bg": {
+      "light": "rgba(0, 0, 0, 0.12)",
+      "dark": "rgba(0, 0, 0, 0.4)",
+      "why": "v0.42.1: dark pressed pairs ≥ 4.7 — the form-summary link pressed fill (= --td-color-pressed; kit dark darkens the tint: error link 3.30 → 6.3)"
     }
   },
   "lightDeltas": {
@@ -1876,6 +1881,10 @@
     "--td-tree-row-active-line": {
       "to": "rgb(142, 142, 147)",
       "why": "QĐ7: dark --td-control-border-hover #636366 → #8e8e93, one step past the soft edge (≥ 3:1 everywhere, was 2.84)"
+    },
+    "--td-chip-remove-hover": {
+      "to": "rgba(255, 255, 255, 0.13)",
+      "why": "v0.42.1: dark pressed pairs ≥ 4.7 — chip-input remove pressed (wash twice) 4.22 → 4.88; hover 6.22 → 6.83"
     }
   }
 }

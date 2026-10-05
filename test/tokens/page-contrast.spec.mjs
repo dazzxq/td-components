@@ -38,8 +38,9 @@ import { renderedPairs } from './rendered-pairs.js';
 /** impl review round 2: every rendered (foreground, composite) pair of the scheme-dependent component tokens. */
 const RENDERED = renderedPairs();
 const RENDERED_TOKENS = [...new Set(RENDERED.flatMap((p) => [p.fg, ...p.layers]))];
-/** Generated palettes must pass every rendered pair; built-in light / dark are reported (owner keeps built-in values). */
-const GENERATED = new Set(['navy', 'beige-gen', 'navy-named']);
+/** Generated palettes and (v0.42.1) the built-in dark must pass every rendered pair; built-in light and the hand-written
+ *  beige recipe are reported (owner keeps the built-in light values). */
+const GATED = new Set(['navy', 'beige-gen', 'navy-named', 'dark']);
 const builtinNotes = new Set();
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -247,7 +248,7 @@ async function tokenPairs(page, palette, tag) {
     let bg = t[p.layers[p.layers.length - 1]];
     for (let i = p.layers.length - 2; i >= 0; i--) bg = over(t[p.layers[i]], bg);
     const r = contrast(t[p.fg], bg);
-    if (GENERATED.has(palette)) {
+    if (GATED.has(palette)) {
       checks++;
       if (!(r >= p.min)) fail(tag, `rendered pair ${p.id} ${r.toFixed(2)} < ${p.min} (${t[p.fg]} on ${bg})`);
     } else if (!(r >= p.min)) builtinNotes.add(`${palette}: ${p.id} ${r.toFixed(2)} < ${p.min}`);
@@ -340,7 +341,7 @@ const launchers = { chromium, firefox, webkit };
 const t0 = Date.now();
 for (const e of ENGINES) await runEngine(e, launchers[e]);
 for (const n of notes) console.log(`  ${n}`);
-if (builtinNotes.size) console.log(`  built-in palettes below the generated-palette pair gate (reported, not gated — owner keeps built-in values):\n    ${[...builtinNotes].join('\n    ')}`);
+if (builtinNotes.size) console.log(`  built-in light / beige recipe below the rendered-pair gate (reported, not gated — owner keeps built-in light values):\n    ${[...builtinNotes].join('\n    ')}`);
 if (focusReport.size) {
   const lows = [...focusReport].filter(([, v]) => v).map(([k, v]) => [k, Math.min(v.vsOuter, v.vsInner), v]).sort((a, b) => a[1] - b[1]).slice(0, Number(process.env.TD_PAGE_FOCUS_REPORT || 8));
   console.log(`  lowest keyboard focus rings: ${lows.map(([k, m, v]) => `${k} ${m} (${v.kind} ${v.color} vs out ${v.outer} / in ${v.inner})`).join(' · ')}`);

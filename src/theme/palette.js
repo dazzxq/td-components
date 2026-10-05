@@ -38,7 +38,7 @@ import { THEME_NAME_RE, RESERVED_THEME_NAMES } from './selectors.js';
 import { PRESETS, SCHEME_SHADOWS, FOCUS_RING } from './presets.js';
 
 /** Bump when the same seeds produce different output (the CSS header carries it → stale-file detection). */
-export const ALGORITHM_VERSION = 1;
+export const ALGORITHM_VERSION = 2;
 export { THEME_TOKENS_VERSION };
 
 /** WCAG 2.x gate (QĐ9): text 4.7 (a margin over 4.5), icons 3.2, non-text 3.0, disabled 2.2; 7 = preferred body text. */
@@ -626,7 +626,9 @@ export function generatePalette(seeds, options = {}) {
     set('--td-table-zebra', alpha(pole, Math.floor(alphaKeep(pole, isLight ? 0.02 : 0.03, surface, rowOk) * 1000) / 1000));
     set('--td-table-row-selected', alpha(accent, pct(alphaKeep(accent, 0.08, surface, (k) => rowOk(k) && rowOk(over(hoverA, k))))));
     set('--td-table-edge-shadow', isLight ? 'rgb(0 0 0 / 14%)' : 'rgb(0 0 0 / 55%)');
-    // form summary (form-validation.css): error-coloured text + its link pressed (--td-color-pressed over the box)
+    // form summary (form-validation.css): error-coloured text + its link pressed (--td-form-summary-pressed-bg = this
+    // palette's --td-color-pressed, over the box; the box tint is clamped so the pressed link still reads)
+    set('--td-form-summary-pressed-bg', pressedA);
     set('--td-form-summary-bg', q(over(alpha(err, alphaKeep(err, isLight ? 0.08 : 0.12, surface,
       (k) => readsOn(err, k) && readsOn(err, pressedA, k))), surface)));
     ink('--td-form-summary-border', srgbToOklch(err), [named('--td-color-surface'), named('--td-form-summary-bg')],
@@ -659,7 +661,7 @@ export function generatePalette(seeds, options = {}) {
     // set already carry it; the rest are registered with the base set the ink was solved on, so a dead band / seed
     // conflict reports the unsatisfiable base, never a false miss.
     const pageS = ['--td-color-bg', '--td-color-surface'];
-    need('--td-color-error', [...statusSets['--td-color-error'], named('--td-form-summary-bg'), stack('--td-color-pressed', '--td-form-summary-bg'),
+    need('--td-color-error', [...statusSets['--td-color-error'], named('--td-form-summary-bg'), stack('--td-form-summary-pressed-bg', '--td-form-summary-bg'),
       ...pageS.map((s) => stack('--td-glass-bg-strong', s))], GATE.text, 'text');
     need('--td-color-text', [...textBgs, stack('--td-table-zebra', '--td-color-surface'), stack('--td-table-row-selected', '--td-color-surface'),
       stack('--td-color-hover', '--td-table-row-selected', '--td-color-surface'), stack('--td-chip-remove-hover', '--td-color-fill-strong'),

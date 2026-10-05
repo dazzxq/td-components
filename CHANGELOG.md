@@ -2,6 +2,18 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.42.1
+
+**Vá tương phản dark** (theme dark có sẵn; light không đổi). Chi tiết: `docs/upgrading/breaking-changes.md#0421`.
+
+### Fixed
+
+- Link trong khung tóm tắt lỗi form khi **nhấn** ở dark: 3.30 → 6.34:1 — token mới `--td-form-summary-pressed-bg` (dark
+  làm tối nền khi nhấn; light = `var(--td-color-pressed)` như cũ).
+- Nút × xoá chip (`td-chip-input`) khi **nhấn** ở dark: 4.22 → 4.88:1 (`--td-chip-remove-hover` dark 16 % → 13 %).
+- Bộ sinh màu: `ALGORITHM_VERSION` 1 → 2 — file sinh mới có thêm `--td-form-summary-pressed-bg` theo palette; mọi giá
+  trị khác giữ nguyên từng byte, file sinh bằng bản 1 vẫn hiển thị đúng.
+
 ## 0.42.0
 
 **Bộ sinh màu tự cân tương phản + theme theo vùng** (theming R2; plan `docs/internal/plans/v0.41.0-theming.md` phần R2;
