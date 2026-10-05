@@ -141,8 +141,11 @@ describe('td-timeline — day groups (QĐ T3, T4, T5, T9)', () => {
       { time: '2026-10-05T01:00:00Z', title: 'A', icon: 'site-truck' },
       { time: '2026-10-05T02:00:00Z', title: 'B', icon: 'site-truck' },
       { time: '2026-10-05T03:00:00Z', title: 'C' },
+      { time: '2026-10-05T04:00:00Z', title: 'D', icon: 'site-other' },
     ]);
-    expect(warns.filter((w) => w.includes('site-truck')).length).to.equal(1);
+    // SEC-03: a fixed string (never the caller's value), once per distinct name
+    expect(warns.filter((w) => w.includes('unknown icon')).length).to.equal(2);
+    expect(warns.some((w) => w.includes('site-truck') || w.includes('site-other'))).to.equal(false);
     const slot = el.querySelector('.td-timeline__icon');
     expect(slot.children.length).to.equal(0);
     expect(getComputedStyle(slot, '::before').content).to.not.equal('none');
@@ -309,12 +312,12 @@ describe('td-timeline — "Xem thêm" (QĐ T10, review R1-2)', () => {
       loadMore: async () => { n++; if (n === 1) throw new Error('503'); return { items: [{ id: 'b', time: '2026-10-04T01:00:00Z', title: 'B' }] }; },
     });
     const errs = [];
-    el.addEventListener('load-more-error', (e) => errs.push(e.detail.error.message));
+    el.addEventListener('load-more-error', (e) => errs.push(e.detail));
     const btn = el.querySelector('.td-timeline__more');
     btn.click();
     await tick();
     expect(btn.textContent).to.equal('Không tải được, thử lại');
-    expect(errs).to.deep.equal(['503']);
+    expect(errs).to.deep.equal([{ kind: 'rejected' }]); // SEC-03: never the raw error
     await tick();
     expect(el.querySelector('[role="status"]').textContent).to.equal('Không tải được, thử lại');
     btn.click();
@@ -362,5 +365,91 @@ describe('td-timeline — "Xem thêm" (QĐ T10, review R1-2)', () => {
     expect(big.querySelector('li') === keep).to.equal(true);
     expect(big.querySelectorAll('li').length).to.equal(501);
     expect(big.append([{ id: 'first', time: '2026-10-05T09:00:00Z', title: 'dup' }])).to.equal(0);
+  });
+});
+
+describe('td-timeline — review round 1 (SEC-01, SEC-02, ISSUE-2)', () => {
+  it('SEC-01: loadMore replaced while a page is pending → the old page never appears; the new hook is used next', async () => {
+    const d = deferred();
+    let oldSig;
+    const el = await mk([{ id: 'a', time: '2026-10-05T01:00:00Z', title: 'A' }], `time-zone="${VN}" has-more`, 720, {
+      loadMore: ({ signal }) => { oldSig = signal; return d.p; },
+    });
+    el.querySelector('.td-timeline__more').click();
+    el.loadMore = async () => ({ items: [{ id: 'new', time: '2026-10-04T01:00:00Z', title: 'Mới' }] });
+    expect(oldSig.aborted).to.equal(true);
+    d.resolve({ items: [{ id: 'old', time: '2026-10-04T02:00:00Z', title: 'Cũ' }] });
+    await tick();
+    expect(el.querySelector('li[data-id="old"]')).to.equal(null);
+    const btn = el.querySelector('.td-timeline__more');
+    expect(btn.hasAttribute('aria-busy')).to.equal(false);
+    btn.click();
+    await tick();
+    expect(ids(el)).to.deep.equal(['a', 'new']);
+  });
+
+  it('SEC-01: renderDetails replaced while pending → old result dropped, the open detail reloads with the new renderer', async () => {
+    const d = deferred();
+    let oldSig;
+    const el = await mk([{ id: 'a', time: '2026-10-05T01:00:00Z', title: 'A', details: true, expanded: true }], undefined, 720, {
+      renderDetails: (it, { signal }) => { oldSig = signal; return d.p; },
+    });
+    await waitFor(() => !!oldSig);
+    el.renderDetails = async () => 'mới';
+    expect(oldSig.aborted).to.equal(true);
+    d.resolve('cũ');
+    const box = el.querySelector('.td-timeline__detail');
+    await waitFor(() => box.textContent === 'mới');
+    expect(box.textContent).to.equal('mới');
+  });
+
+  it('SEC-01: a cached detail is not shown after renderDetails is replaced (closed → reloads on the next open)', async () => {
+    const el = await mk([{ id: 'a', time: '2026-10-05T01:00:00Z', title: 'A', details: true }], undefined, 720, {
+      renderDetails: async () => 'cũ',
+    });
+    const det = el.querySelector('details');
+    det.open = true;
+    await waitFor(() => det.querySelector('.td-timeline__detail').textContent === 'cũ');
+    det.open = false;
+    await waitFor(() => !det.open);
+    await tick();
+    let calls = 0;
+    el.renderDetails = async () => { calls++; return 'mới'; };
+    const d2 = el.querySelector('details');
+    expect(d2.querySelector('.td-timeline__detail').textContent).to.not.equal('cũ');
+    d2.open = true;
+    await waitFor(() => d2.querySelector('.td-timeline__detail').textContent === 'mới');
+    expect(d2.querySelector('.td-timeline__detail').textContent).to.equal('mới');
+    expect(calls).to.equal(1);
+  });
+
+  it('ISSUE-2: a structural re-render while a lazy detail is pending → the new node loads (not stuck on "Đang tải…")', async () => {
+    const calls = [];
+    const el = await mk([{ id: 'a', time: '2026-10-05T01:00:00Z', title: 'A', details: true, expanded: true }], undefined, 720, {
+      renderDetails: (it, { signal }) => { const d = deferred(); calls.push({ d, signal }); return d.p; },
+    });
+    await waitFor(() => calls.length === 1);
+    el.setAttribute('heading-level', '4'); // groups rebuilt
+    expect(calls[0].signal.aborted).to.equal(true);
+    await waitFor(() => calls.length === 2);
+    calls[1].d.resolve('xong');
+    calls[0].d.resolve('cũ');
+    const box = el.querySelector('.td-timeline__detail');
+    await waitFor(() => box.textContent === 'xong');
+    expect(box.textContent).to.equal('xong');
+    expect(el.querySelector('.td-timeline__loading')).to.equal(null);
+  });
+
+  it('SEC-02: at most MAX_TOTAL items in all (append / loadMore); the rest dropped, ONE warning, "Xem thêm" gone', async () => {
+    const { MAX_TOTAL } = await import('../utils/timeline-model.js');
+    const page = (p) => Array.from({ length: 1000 }, (_, i) => ({ id: `p${p}-${i}`, time: Date.UTC(2026, 0, 1) - (p * 1000 + i) * 60e3, title: 'x' }));
+    const el = await mk(page(0), `time-zone="${VN}" has-more`, 720, { loadMore: async () => ({ items: page(9) }) });
+    for (let p = 1; p < MAX_TOTAL / 1000; p++) el.append(page(p));
+    expect(el.items.length).to.equal(MAX_TOTAL);
+    expect(el.append(page(7))).to.equal(0);
+    expect(el.items.length).to.equal(MAX_TOTAL);
+    expect(el.querySelectorAll('li').length).to.equal(MAX_TOTAL);
+    expect(el.querySelector('.td-timeline__more')).to.equal(null);
+    expect(warns.filter((w) => w.includes('at most') && w.includes('in all')).length).to.equal(1);
   });
 });

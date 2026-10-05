@@ -17,6 +17,8 @@ export const TL_LIMITS = Object.freeze({ id: 200, title: 300, actor: 120, meta: 
 /** Per assignment / append: at most MAX_ITEMS items kept, MAX_CANDIDATES entries inspected. */
 export const MAX_ITEMS = 1000;
 export const MAX_CANDIDATES = MAX_ITEMS * 4;
+/** Review SEC-02: at most MAX_TOTAL items retained in all (initial list + every append / "Xem thêm" page). */
+export const MAX_TOTAL = 5000;
 export const TONES = Object.freeze(['neutral', 'success', 'warning', 'danger', 'info']);
 const ICON_NAME = /^[a-z][a-z0-9-]{0,63}$/;
 

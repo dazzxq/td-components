@@ -5,7 +5,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseInstant, isoOf, normalizeItems, sortItems, groupItems, dayLabel, timeText, lastKnown, mergeAppend, shiftDay,
-  cleanMultiline, Generation, INSTANT_CASES, DAY_CASES, TL_LIMITS, MAX_ITEMS, TIMELINE_LABELS,
+  cleanMultiline, Generation, INSTANT_CASES, DAY_CASES, TL_LIMITS, MAX_ITEMS, MAX_TOTAL, TIMELINE_LABELS,
 } from './timeline-model.js';
 import { dayKey } from './datetime.js';
 
@@ -60,6 +60,10 @@ describe('timeline-model — normalizeItems', () => {
     assert.deepEqual(d.items.map((i) => i.id), ['a', 'a-2', '53']);
     assert.equal(d.renamed, 1);
     assert.equal(cleanMultiline('a\rb\u0085c', 10), 'a\nbc');
+  });
+  test('review SEC-02: the cumulative cap is a documented constant above the per-assignment cap', () => {
+    assert.equal(MAX_TOTAL, 5000);
+    assert.ok(MAX_TOTAL > MAX_ITEMS);
   });
   test(`cap: ${MAX_ITEMS} items kept`, () => {
     const r = normalizeItems(Array.from({ length: MAX_ITEMS + 5 }, (_, i) => ({ title: `t${i}` })));

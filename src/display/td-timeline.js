@@ -2,7 +2,7 @@ import { TdBaseElement } from '../base/td-base-element.js';
 import { tdIcon, resolveIconName } from '../icons/td-icon.js';
 import {
   normalizeItems, sortItems, groupItems, dayLabel, timeText, lastKnown, mergeAppend, isoOf, Generation,
-  TIMELINE_LABELS, MAX_ITEMS,
+  TIMELINE_LABELS, MAX_ITEMS, MAX_TOTAL,
 } from '../utils/timeline-model.js';
 import { isTimeZone } from '../utils/datetime.js';
 import { cleanHref, fill } from '../utils/filter-chips-model.js';
@@ -90,7 +90,7 @@ function spinner() {
  *   details (`details: true`)
  * @property {Date|number} now - "today" for the day labels (tests / SSR parity; default: the clock at each render)
  * @fires item-toggle - `{ id, open }` (a details panel opened / closed by the user)
- * @fires load-more-error - `{ error }`
+ * @fires load-more-error - `{ kind: 'rejected' }` (never the raw error — review SEC-03; wrap loadMore to keep it)
  */
 export class TdTimeline extends TdBaseElement {
   /** Site-overridable texts. */
@@ -110,6 +110,7 @@ export class TdTimeline extends TdBaseElement {
     this._items = [];
     this._earlyItems = false;
     this._warned = new Set();
+    this._unknownIcons = new Set();
     this._gen = new Generation();
     this._now = null;
     this._loadMore = null;
@@ -120,6 +121,8 @@ export class TdTimeline extends TdBaseElement {
     this._detailCtl = new Map();
     /** @type {Map<string, Node|string>} */
     this._detailCache = new Map();
+    /** Review SEC-02: the MAX_TOTAL cap was reached — no more "Xem thêm". */
+    this._full = false;
     /** @type {WeakMap<HTMLDetailsElement, boolean>} last known open state (the initial `open` fires no item-toggle) */
     this._openState = new WeakMap();
     this.addEventListener('click', (e) => this._onClick(e));
@@ -158,6 +161,7 @@ export class TdTimeline extends TdBaseElement {
     const r = normalizeItems(v);
     this._reportNormalise(r);
     this._items = sortItems(r.items, this._order());
+    this._full = false;
     this._gen.next();
     this._abortAll();
     this._detailCache.clear();
@@ -170,15 +174,39 @@ export class TdTimeline extends TdBaseElement {
 
   get loadMore() { return this._loadMore; }
   set loadMore(fn) {
-    this._loadMore = typeof fn === 'function' ? fn : null;
+    const next = typeof fn === 'function' ? fn : null;
+    if (next === this._loadMore) return;
+    this._loadMore = next;
+    // review SEC-01: a page requested through the previous hook never lands
+    if (this._moreCtl) {
+      this._moreCtl.abort();
+      this._moreCtl = null;
+      const btn = this.querySelector(':scope > .td-timeline__footer > .td-timeline__more');
+      btn?.removeAttribute('aria-busy');
+      btn?.querySelector('.td-btn__spinner')?.setAttribute('hidden', '');
+    }
     if (this._root) this._syncMore();
   }
 
   get renderDetails() { return this._renderDetails; }
   set renderDetails(fn) {
+    const next = typeof fn === 'function' ? fn : null;
+    if (next === this._renderDetails) return;
     const had = !!this._renderDetails;
-    this._renderDetails = typeof fn === 'function' ? fn : null;
-    if (this._root && had !== !!this._renderDetails && this._items.some((i) => i.details === true)) this._doRender();
+    this._renderDetails = next;
+    // review SEC-01: nothing produced by the previous renderer survives (pending results, cache, shown content)
+    this._abortDetails();
+    this._detailCache.clear();
+    if (!this._root || !this._items.some((i) => i.details === true)) return;
+    if (had !== !!next) {
+      this._renderBox(); // the "Chi tiết" summaries appear / disappear
+      return;
+    }
+    for (const d of this._box.querySelectorAll('details.td-timeline__details')) {
+      const it = this._items.find((i) => i.id === d.closest('li.td-timeline__item')?.getAttribute('data-id'));
+      if (it && it.details === true) d.querySelector(':scope > .td-timeline__detail')?.replaceChildren();
+    }
+    this._loadOpenLazy(this._box); // open ones reload with the new renderer; closed ones load on open
   }
 
   get now() { return this._now === null ? null : new Date(this._now); }
@@ -237,6 +265,11 @@ export class TdTimeline extends TdBaseElement {
   _abortAll() {
     this._moreCtl?.abort();
     this._moreCtl = null;
+    this._abortDetails();
+  }
+
+  /** @private Abort + forget every pending lazy detail (its node is about to be replaced or its renderer changed). */
+  _abortDetails() {
     for (const c of this._detailCtl.values()) c.abort();
     this._detailCtl.clear();
   }
@@ -333,7 +366,7 @@ export class TdTimeline extends TdBaseElement {
     const marker = el('span', 'td-timeline__marker', { 'aria-hidden': 'true' });
     if (it.icon) {
       const slot = el('span', 'td-timeline__icon', { 'data-td-icon': it.icon });
-      marks?.icons.add(slot);
+      marks?.icons.set(slot, resolveIconName(it.icon) === null ? null : tdIcon(it.icon, { size: 's' }));
       marker.appendChild(slot);
     }
     const body = el('div', 'td-timeline__body');
@@ -357,7 +390,7 @@ export class TdTimeline extends TdBaseElement {
       const sum = el('summary', 'td-timeline__summary');
       const inner = el('span', 'td-timeline__summary-inner');
       const chev = el('span', 'td-timeline__chevron', { 'data-td-icon': 'down', 'aria-hidden': 'true' });
-      marks?.icons.add(chev);
+      marks?.icons.set(chev, tdIcon('down', { size: 's' }));
       inner.append(text('span', 'td-timeline__summary-text', L.details ?? TIMELINE_LABELS.details), chev);
       sum.appendChild(inner);
       const box = el('div', 'td-timeline__detail');
@@ -372,7 +405,7 @@ export class TdTimeline extends TdBaseElement {
 
   /** @private "Xem thêm": a link to `more-href` (no JS needed) or, with `loadMore`, a button (not printed by PHP). */
   _moreEl(L, ssr) {
-    if (!this.hasAttribute('has-more') || (this.hasAttribute('loading') && !this._items.length && !ssr)) return null;
+    if (!this.hasAttribute('has-more') || (this._full && !ssr) || (this.hasAttribute('loading') && !this._items.length && !ssr)) return null;
     const href = this._moreHref();
     let c;
     if (href) c = el('a', MORE_CLASS, { href });
@@ -384,7 +417,8 @@ export class TdTimeline extends TdBaseElement {
 
   _doRender() {
     if (this._suppressRender) return;
-    const marks = { wild: new WeakSet(), icons: new WeakSet() };
+    this._abortDetails(); // review ISSUE-2: the old nodes go — their pending loads too
+    const marks = { wild: new WeakSet(), icons: new WeakMap() };
     this.replaceChildren(...this._tree(TdTimeline.labels, false, marks));
     this._refs();
     this._bindStep();
@@ -392,6 +426,7 @@ export class TdTimeline extends TdBaseElement {
 
   /** @private Re-render the groups only (footer + live region kept). */
   _renderBox() {
+    this._abortDetails(); // review ISSUE-2: a pending detail of a replaced node would block its fresh load
     const box = this._boxEl(TdTimeline.labels, false, null);
     this._box.replaceWith(box);
     this._box = box;
@@ -432,7 +467,10 @@ export class TdTimeline extends TdBaseElement {
       const name = slot.getAttribute('data-td-icon');
       if (resolveIconName(name) === null) {
         slot.replaceChildren();
-        this._warnOnce(`td-timeline: unknown icon "${name}" — a plain dot is shown (register it with registerIcons()).`);
+        if (!this._unknownIcons.has(name)) { // once per name; the message never repeats caller data (review SEC-03)
+          this._unknownIcons.add(name);
+          console.warn('td-timeline: unknown icon — a plain dot is shown (register it with registerIcons()).');
+        }
         continue;
       }
       slot.replaceChildren(tdIcon(name, { size: 's' }));
@@ -516,8 +554,18 @@ export class TdTimeline extends TdBaseElement {
     const r = normalizeItems(raw, { start: this._items.length });
     this._reportNormalise(r);
     const wasEmpty = !this._items.length;
-    const { list, added } = mergeAppend(this._items, r.items, this._order());
+    let { list, added } = mergeAppend(this._items, r.items, this._order());
+    if (list.length > MAX_TOTAL) {
+      // review SEC-02: keep everything shown + the new items that come first in display order, drop the rest
+      const keep = new Set(sortItems(added, this._order()).slice(0, Math.max(0, MAX_TOTAL - this._items.length)).map((i) => i.id));
+      added = added.filter((i) => keep.has(i.id));
+      const shown = new Set(this._items);
+      list = list.filter((i) => shown.has(i) || keep.has(i.id));
+      this._warnOnce(`td-timeline: at most ${MAX_TOTAL} items in all — the rest of the page was dropped and "Xem thêm" is off.`);
+      this._full = true;
+    }
     this._items = list;
+    if (this._full && this._root) this._syncMore();
     if (!added.length || !this._root) return added;
     if (wasEmpty) {
       this._renderBox();
@@ -586,20 +634,21 @@ export class TdTimeline extends TdBaseElement {
       btn.removeAttribute('aria-busy');
       btn.querySelector('.td-btn__spinner')?.setAttribute('hidden', '');
     };
+    const hook = this._loadMore;
     let res;
     try {
-      res = await this._loadMore({ signal: ctl.signal, last: last ? this._copy(last) : null });
-    } catch (error) {
-      if (ctl.signal.aborted || !this._gen.isCurrent(gen)) return;
+      res = await hook({ signal: ctl.signal, last: last ? this._copy(last) : null });
+    } catch {
+      if (ctl.signal.aborted || !this._gen.isCurrent(gen) || this._loadMore !== hook) return;
       this._moreCtl = null;
       done();
       const label = btn.querySelector('.td-btn__label');
       if (label) label.textContent = L.moreError ?? TIMELINE_LABELS.moreError;
       this._announce(L.moreError ?? TIMELINE_LABELS.moreError);
-      this.emit('load-more-error', { error });
+      this.emit('load-more-error', { kind: 'rejected' }); // review SEC-03: the raw error stays with the app
       return;
     }
-    if (ctl.signal.aborted || !this._gen.isCurrent(gen) || !this.isConnected) return;
+    if (ctl.signal.aborted || !this._gen.isCurrent(gen) || !this.isConnected || this._loadMore !== hook) return;
     this._moreCtl = null;
     done();
     const label = btn.querySelector('.td-btn__label');
@@ -657,18 +706,19 @@ export class TdTimeline extends TdBaseElement {
     this._detailCtl.set(id, ctl);
     const gen = this._gen.value;
     box.replaceChildren(text('p', 'td-timeline__loading', L.detailsLoading ?? TIMELINE_LABELS.detailsLoading, { role: 'status' }));
+    const hook = this._renderDetails;
     let res;
     try {
-      res = await this._renderDetails(this._copy(it), { signal: ctl.signal });
+      res = await hook(this._copy(it), { signal: ctl.signal });
     } catch {
-      if (ctl.signal.aborted || !this._gen.isCurrent(gen)) return;
+      if (ctl.signal.aborted || !this._gen.isCurrent(gen) || this._renderDetails !== hook || this._detailCtl.get(id) !== ctl) return;
       this._detailCtl.delete(id);
       const err = text('p', 'td-timeline__detail-error', L.detailsError ?? TIMELINE_LABELS.detailsError, { role: 'status' });
       const retry = text('button', 'td-btn td-btn--ghost td-btn--sm td-timeline__retry', L.retry ?? TIMELINE_LABELS.retry, { type: 'button' });
       box.replaceChildren(err, retry);
       return;
     }
-    if (ctl.signal.aborted || !this._gen.isCurrent(gen)) return;
+    if (ctl.signal.aborted || !this._gen.isCurrent(gen) || this._renderDetails !== hook || this._detailCtl.get(id) !== ctl) return;
     this._detailCtl.delete(id);
     const v = res instanceof Node ? res : typeof res === 'string' ? res : res == null ? '' : String(res);
     this._detailCache.set(id, v);
@@ -695,7 +745,7 @@ export class TdTimeline extends TdBaseElement {
     if (parsed) {
       this._items = sortItems(parsed, this._order());
       for (const L of new Set([TdTimeline.labels, TIMELINE_LABELS])) {
-        const marks = { wild: new WeakSet(), icons: new WeakSet() };
+        const marks = { wild: new WeakSet(), icons: new WeakMap() };
         if (sameChildren(this.childNodes, this._tree(L, true, marks), { wildText: marks.wild, iconSlot: marks.icons })) return true;
       }
     }

@@ -96,7 +96,7 @@ Lỗi cũ của dcms2 (đừng lặp lại): nhóm theo `timeIso.split('T')[0]` 
 
 - `icon` = tên trong registry: icon core (`pencil`, `trash`, `plus`, `upload`, `send`, `history`, `user-x`, `success`,
   `warning`, `info`, `error`…) hoặc icon site đăng ký bằng [`registerIcons()`](icons.md) (**trước** khi gán `items`). Tên
-  lạ → chấm tròn + một cảnh báo mỗi tên.
+  lạ → chấm tròn + một cảnh báo mỗi tên (chữ cảnh báo cố định, không lặp lại tên).
 - `tone` tô marker (cặp màu của [alert](alert.md)). Marker là `aria-hidden`: icon / tông là **trang trí bổ sung** — thông
   tin (lỗi, huỷ, thành công) phải nằm trong `title`.
 
@@ -109,6 +109,9 @@ tìm trong trang tự mở. Event **`item-toggle`** `{ id, open }` khi người 
 Gọi ở lần mở đầu tiên ("Đang tải…"), kết quả cache theo `id`; lỗi → "Không tải được chi tiết." + nút "Thử lại"; đóng khi
 đang tải / gán `items` mới / gỡ phần tử → `signal` bị abort, kết quả cũ bị bỏ. Không có `renderDetails` → mục không có
 "Chi tiết" + một cảnh báo. Đây là chỗ app gắn diff, bảng… (Node do app dựng — app chịu trách nhiệm nội dung đó).
+Đổi `renderDetails` (gán hàm khác) → mọi yêu cầu đang chờ của hàm cũ bị abort và bỏ, cache bị xoá, chi tiết đang **mở** tải
+lại bằng hàm mới, chi tiết đang đóng tải lại khi mở — không có nội dung nào của hàm cũ còn hiện. Vẽ lại cấu trúc (đổi
+`time-zone`, `group`, `order`, `heading-level`) khi đang tải → yêu cầu cũ bị abort, chi tiết mở trên node mới tải lại.
 
 ```js
 history.renderDetails = async (item, { signal }) => {
@@ -142,7 +145,12 @@ history.loadMore = async ({ signal, last }) => {
   thêm** (node cũ giữ nguyên), mục có `id` đã hiển thị bị bỏ (trang chồng nhau), mục được xếp đúng vị trí thời gian (nhập
   nhóm ngày đã có), mục không rõ thời gian nối vào cuối nhóm "Không rõ thời gian". Thông báo "Đã tải thêm {n} mục".
 - `hasMore: false` → nút biến mất, focus sang mục mới đầu tiên. Lỗi → chữ nút "Không tải được, thử lại" + thông báo +
-  event `load-more-error` `{ error }`.
+  event `load-more-error` `{ kind: 'rejected' }` — **không** kèm lỗi gốc (có thể chứa URL / token / dữ liệu nội bộ).
+  App cần lỗi gốc thì tự bắt trong hàm `loadMore` của mình (`try { … } catch (e) { log(e); throw e; }`).
+- Đổi `loadMore` khi đang tải → yêu cầu cũ bị abort, kết quả của nó không bao giờ được chèn; nút hết bận.
+- **Trần tổng: 5 000 mục** (`MAX_TOTAL`, gồm danh sách đầu + mọi lần `append` / "Xem thêm"). Vượt → giữ các mục đang hiện
+  + các mục mới đứng trước theo thứ tự hiển thị cho tới 5 000, bỏ phần còn lại, **một** cảnh báo, và "Xem thêm" tắt (như
+  `has-more` = false). Gán `items` mới thì đếm lại.
 - **Không JS**: thuộc tính `more-href` (URL trang sau, cùng origin) → "Xem thêm" là link; có `loadMore` thì JS chặn click
   và tải tại chỗ. `has-more` mà không có cả hai → không nút + một cảnh báo.
 - `el.append(items)` — cùng luật, cho dữ liệu app tự nhận (realtime, WebSocket). Trả về số mục đã thêm.
@@ -185,7 +193,7 @@ echo td_timeline($events, [
 
 - Không virtualisation, không tự cập nhật "x phút trước", không lọc / tìm trong timeline (app lọc rồi gán `items`), không
   bố cục hai bên, không tiêu đề ngày dính, không chế độ bảng (dùng [`td-table`](table.md)).
-- Tối đa 1 000 mục mỗi lần gán / mỗi trang.
+- Tối đa 1 000 mục mỗi lần gán / mỗi trang, **5 000 mục tổng** (§6).
 
 ## Trợ năng
 

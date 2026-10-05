@@ -48,6 +48,10 @@ const MM = {
   'mm-extra': basic.replace('<span class="td-timeline__title">Liên hệ', '<b>thừa</b><span class="td-timeline__title">Liên hệ'),
   'mm-href': details.replace('href="/don/12"', 'href="javascript:alert(1)"'),
   'mm-icon': basic.replace(/<span class="td-timeline__icon" data-td-icon="plus">.*?<\/span>/s, '<span class="td-timeline__icon" data-td-icon="plus"><i>x</i></span>'),
+  // ISSUE-1: an icon slot holds nothing or EXACTLY the registry SVG
+  'mm-icon-attr': basic.replace('data-icon="plus"', 'data-icon="plus" data-x="1"'),
+  'mm-icon-child': basic.replace(/(data-icon="plus"[^>]*>)/, '$1<circle cx="1" cy="1" r="1"></circle>'),
+  'mm-icon-path': basic.replace(/(data-icon="plus"[^>]*>)<path d="[^"]*"/, '$1<path d="M0 0h24"'),
   'mm-zone': basic.replace('time-zone="Asia/Ho_Chi_Minh"', 'time-zone="Europe/Berlin"'),
   'mm-schema': basic.replace('timeline@1', 'timeline@2'),
 };
@@ -154,7 +158,7 @@ describe('td-timeline SSR (timeline@1) — adopted in place + PHP ↔ JS parity'
     const host = hostOf('t-details');
     expect(host.querySelector('li[data-id="d2"] .td-timeline__icon').children.length).to.equal(0);
     expect(host.querySelector('li[data-id="d1"] .td-timeline__icon svg[data-icon="pencil"]')).to.not.equal(null);
-    expect(warns.filter((w) => w.includes('"site-truck"')).length).to.equal(1);
+    expect(warns.filter((w) => w.includes('unknown icon')).length).to.equal(1);
   });
 
   it('PHP fell back from an invalid time_zone: the printed default zone is adopted in place (review R1-3)', () => {

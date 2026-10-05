@@ -40,6 +40,9 @@ const MM = {
   'mm-jsstep': basic.replace('<li class="td-steps__item" data-key="4" data-state="upcoming"><span class="td-steps__step">', '<li class="td-steps__item" data-key="4" data-state="upcoming"><span class="td-steps__step" data-td-js-step>'),
   'mm-jsstep-missing': back.replace('<span class="td-steps__step" data-td-js-step="">', '<span class="td-steps__step">'),
   'mm-sr': basic.replace('<span class="td-sr-only">, chưa tới</span>', '<span class="td-sr-only">, xong rồi</span>'),
+  // ISSUE-1: icon slot content must be exactly the registry SVG
+  'mm-icon-path': basic.replace(/(data-icon="check"[^>]*>)<path d="[^"]*"/, '$1<path d="M0 0h24"'),
+  'mm-icon-attr': basic.replace('data-icon="check"', 'data-icon="check" onload="window.__pwned=1"'),
   'mm-schema': basic.replace('steps@1', 'steps@2'),
 };
 for (const [id, h] of Object.entries(MM)) if ([basic, links, back].includes(h)) throw new Error(`${id}: the tamper did not apply`);

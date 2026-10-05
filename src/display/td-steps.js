@@ -1,5 +1,5 @@
 import { TdBaseElement } from '../base/td-base-element.js';
-import { fillIconSlots } from '../icons/td-icon.js';
+import { fillIconSlots, tdIcon } from '../icons/td-icon.js';
 import {
   normalizeSteps, deriveStates, isClickable, summaryText, normalizeNavigation, STEPS_LABELS, MAX_STEPS,
 } from '../utils/steps-model.js';
@@ -178,8 +178,9 @@ export class TdSteps extends TdBaseElement {
   _marker(state, i, marks) {
     const m = el('span', 'td-steps__marker', { 'aria-hidden': 'true' });
     if (state === 'done' || state === 'error') {
-      const slot = el('span', 'td-steps__icon', { 'data-td-icon': state === 'done' ? 'check' : 'error' });
-      marks?.add(slot);
+      const name = state === 'done' ? 'check' : 'error';
+      const slot = el('span', 'td-steps__icon', { 'data-td-icon': name });
+      marks?.set(slot, tdIcon(name)); // review ISSUE-1: the exact SVG fillIconSlots / PHP Td::icon() print
       m.appendChild(slot);
     } else {
       m.textContent = String(i + 1);
@@ -291,7 +292,7 @@ export class TdSteps extends TdBaseElement {
     if (steps) {
       this._steps = steps;
       for (const L of new Set([TdSteps.labels, STEPS_LABELS])) {
-        const marks = new WeakSet();
+        const marks = new WeakMap();
         if (sameChildren(this.childNodes, this._tree(L, true, marks), { iconSlot: marks })) return true;
       }
     }

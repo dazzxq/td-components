@@ -6,8 +6,9 @@
  * Two escape hatches, marked on EXPECTED nodes by the builder:
  * - `wildText`: the actual node may hold any TEXT (leaf, no element) — text the component recomputes right after the
  *   hydrate (a day label "Hôm nay" printed by yesterday's cache);
- * - `iconSlot`: the actual node may be empty or hold SVG elements only — the slot is refilled from the registry
- *   (`replaceChildren`) right after the hydrate, so nothing of it survives.
+ * - `iconSlot` (a WeakMap expected slot → the canonical registry `<svg>` for its name, or null for a name the registry
+ *   does not know): the actual slot is EMPTY or holds exactly that SVG (same tree, attributes, namespace — review
+ *   ISSUE-1); anything else is a mismatch.
  * Internal module (no package subpath).
  * @module utils/ssr-tree
  */
@@ -17,7 +18,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 /**
  * @param {Node[]} actual children of the host (live markup)
  * @param {Node[]} expected children built by the component
- * @param {{ wildText?: WeakSet<Element>, iconSlot?: WeakSet<Element> }} [marks]
+ * @param {{ wildText?: WeakSet<Element>, iconSlot?: WeakMap<Element, Element|null> }} [marks]
  * @returns {boolean}
  */
 export function sameChildren(actual, expected, marks = {}) {
@@ -41,6 +42,11 @@ function sameNode(a, e, marks) {
   if (a.getAttributeNames().length !== names.length) return false;
   for (const n of names) if (a.getAttribute(n) !== e.getAttribute(n)) return false;
   if (marks.wildText?.has(e)) return [...a.childNodes].every((c) => c.nodeType === 3);
-  if (marks.iconSlot?.has(e)) return [...a.childNodes].every((c) => c.nodeType === 1 && c.namespaceURI === SVG_NS && c.localName === 'svg');
+  if (marks.iconSlot?.has(e)) {
+    const kids = [...a.childNodes];
+    if (!kids.length) return true;
+    const svg = marks.iconSlot.get(e);
+    return !!svg && kids.length === 1 && svg.namespaceURI === SVG_NS && sameNode(kids[0], svg, {});
+  }
   return sameChildren(a.childNodes, e.childNodes, marks);
 }

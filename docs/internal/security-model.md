@@ -337,18 +337,26 @@ kiện, `href`) đến từ app — thường từ dữ liệu người dùng nh
 
 - **Text, không HTML**: cả hai dựng bằng DOM API (`textContent` / `setAttribute`); không markdown, không `**bold**`, không
   tự nhận diện link (lỗi 3 của dcms2). Ký tự điều khiển bị bỏ, độ dài bị cắt, trần số phần tử (20 bước; 1 000 mục mỗi lần
-  gán, 4 000 mục được xét) — `src/utils/steps-model.js`, `timeline-model.js`; PHP `td__steps_items` /
+  gán, 4 000 mục được xét, **5 000 mục tổng** qua `append` / "Xem thêm" — review SEC-02: vượt → bỏ phần thừa, một cảnh báo,
+  tắt "Xem thêm") — `src/utils/steps-model.js`, `timeline-model.js`; PHP `td__steps_items` /
   `td__timeline_items` cùng luật (test parity).
 - **Link** (`href` của bước, của tiêu đề, `actor.href`, `more-href`): cùng chính sách `cleanHref` (JS: http(s) cùng origin)
   / `td__filter_href` (PHP: chỉ tương đối) với `td-filter-chips` — bảng `HREF_CASES`.
 - **Hook lười `renderDetails`** trả **Node** (app dựng — trách nhiệm của app, như mọi hook trả Node) hoặc chuỗi (luôn là
-  chữ). Kết quả cũ bị bỏ theo thế hệ + `AbortSignal` (đóng chi tiết, gán `items`, gỡ phần tử); tương tự `loadMore`.
+  chữ). Kết quả cũ bị bỏ theo thế hệ + `AbortSignal` (đóng chi tiết, gán `items`, gỡ phần tử, vẽ lại nhóm); tương tự
+  `loadMore`. Review SEC-01: **đổi hook** (`renderDetails` / `loadMore` gán hàm khác) cũng abort mọi yêu cầu của hook cũ,
+  xoá cache chi tiết, và mỗi kết quả chỉ được áp khi hook lúc gọi vẫn là hook hiện tại (so identity) — kết quả muộn của
+  hook cũ không bao giờ hiện.
+- **Không lộ lỗi / dữ liệu của app** (review SEC-03): `load-more-error` chỉ mang `{ kind: 'rejected' }`, không kèm lỗi gốc;
+  mọi `console.warn` của hai component là chuỗi cố định (mã cảnh báo, hằng số, số đếm) — không bao giờ lặp lại giá trị /
+  lỗi của caller (kể cả tên icon lạ).
 - **Cổng SSR `steps@1` / `timeline@1`** (bề mặt chèn markup): đọc model từ markup (mỗi trường từ nút riêng, lá chỉ có text,
   `href` qua lại bộ lọc không đổi, đã chuẩn hoá) rồi **dựng lại cây từ model và so từng nút** với markup
   (`src/utils/ssr-tree.js`: tag, namespace, tập thuộc tính chính xác, text) — thuộc tính lạ (`onclick`, `style`), phần tử
   thừa, `data-state` lệch luật trạng thái, hai `aria-current`, `<time>` lệch nhóm / múi giờ, cấu trúc nhóm "Không rõ thời
-  gian" sai → không nhận, vẽ rỗng + một cảnh báo. Hai ngoại lệ có chủ ý: chữ nhãn ngày (tính lại ngay) và nội dung ô icon
-  (chỉ SVG; thay bằng icon registry ngay) — không gì từ đó sống sót. `time-zone` trình duyệt không biết → vẽ lại từ model đã
+  gian" sai → không nhận, vẽ rỗng + một cảnh báo. Hai ngoại lệ có chủ ý: chữ nhãn ngày (tính lại ngay) và ô icon — review
+  ISSUE-1: ô **rỗng** hoặc chứa **đúng** SVG registry của tên đó (cùng cây, thuộc tính, namespace như `tdIcon()` / PHP
+  `Td::icon()` in ra); SVG khác bất kỳ (thêm thuộc tính, thêm phần tử, `path` khác) → không nhận. `time-zone` trình duyệt không biết → vẽ lại từ model đã
   đọc (đã qua kiểm) theo múi giờ trình duyệt.
 - Test: `src/display/td-{steps,timeline}.ssr.engines.browser-test.js` (markup bị sửa), `td-v045-*.engines.browser-test.js`
   (XSS mọi trường, `javascript:` href), `src/utils/{steps,timeline}-model.test.js`, `test/php/td-ssr-steps-timeline.test.js`.
