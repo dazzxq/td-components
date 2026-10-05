@@ -452,6 +452,23 @@ describe('td-timeline — review round 1 (SEC-01, SEC-02, ISSUE-2)', () => {
     expect(el.querySelector('.td-timeline__more')).to.equal(null);
     expect(warns.filter((w) => w.includes('at most') && w.includes('in all')).length).to.equal(1);
   });
+
+  it('ISSUE-8: a loadMore that crosses MAX_TOTAL (hasMore not false) → "Xem thêm" gone, focus moves to the first added item', async () => {
+    const { MAX_TOTAL } = await import('../utils/timeline-model.js');
+    const page = (p) => Array.from({ length: 1000 }, (_, i) => ({ id: `p${p}-${i}`, time: Date.UTC(2026, 0, 1) - (p * 1000 + i) * 60e3, title: 'x' }));
+    const el = await mk(page(0), `time-zone="${VN}" has-more`, 720, { loadMore: async () => ({ items: page(9), hasMore: true }) });
+    for (let p = 1; p < MAX_TOTAL / 1000 - 1; p++) el.append(page(p));
+    const half = page(8).slice(0, 500);
+    el.append(half);
+    const btn = el.querySelector('button.td-timeline__more');
+    btn.focus();
+    btn.click();
+    await waitFor(() => el.items.length === MAX_TOTAL);
+    await waitFor(() => !el.querySelector('.td-timeline__more'));
+    const li = document.activeElement?.closest?.('li.td-timeline__item');
+    expect(li, 'focus left body').to.not.equal(null);
+    expect(li.getAttribute('data-id')).to.equal('p9-0');
+  });
 });
 
 describe('td-timeline — review round 2 (SEC-04: bounded lazy details)', () => {

@@ -660,10 +660,11 @@ export class TdTimeline extends TdBaseElement {
     done();
     const label = btn.querySelector('.td-btn__label');
     if (label) label.textContent = L.more ?? TIMELINE_LABELS.more;
+    const hadFocus = btn === document.activeElement; // before _appendItems: crossing the cap removes the control
     const added = this._appendItems(res && Array.isArray(res.items) ? res.items : []);
-    const hadFocus = btn === document.activeElement;
-    if (res && res.hasMore === false) {
-      this.removeAttribute('has-more'); // → _syncMore removes the control
+    const ended = !!(res && res.hasMore === false);
+    if (ended) this.removeAttribute('has-more'); // → _syncMore removes the control
+    if (ended || this._full) {
       if (hadFocus || !document.activeElement || document.activeElement === document.body) {
         const ids = new Set(added.map((i) => i.id));
         const first = [...this._box.querySelectorAll('li.td-timeline__item')].find((li) => ids.has(li.getAttribute('data-id')));
