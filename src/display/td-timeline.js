@@ -12,6 +12,8 @@ const SSR_NAME = 'timeline';
 const SSR_SCHEMA = 1;
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const MORE_CLASS = 'td-btn td-btn--secondary td-timeline__more';
+/** Review SEC-04: at most this many renderDetails calls run at once; the rest wait FIFO in display order. */
+export const DETAIL_CONCURRENCY = 6;
 const BAD_TZ = 'td-timeline: time-zone is not an IANA zone name this browser knows — the browser zone is used.';
 
 /** @param {string} tag @param {string} [cls] @param {Record<string, string>} [attrs] */
@@ -119,6 +121,8 @@ export class TdTimeline extends TdBaseElement {
     this._moreCtl = null;
     /** @type {Map<string, AbortController>} */
     this._detailCtl = new Map();
+    /** @type {Array<{ d: HTMLDetailsElement, id: string }>} lazy details waiting for a free slot (SEC-04) */
+    this._detailQueue = [];
     /** @type {Map<string, Node|string>} */
     this._detailCache = new Map();
     /** Review SEC-02: the MAX_TOTAL cap was reached — no more "Xem thêm". */
@@ -272,6 +276,7 @@ export class TdTimeline extends TdBaseElement {
   _abortDetails() {
     for (const c of this._detailCtl.values()) c.abort();
     this._detailCtl.clear();
+    this._detailQueue.length = 0; // SEC-04: the queue goes with them
   }
 
   /** @private A copy of an item for the hooks (time as ISO). */
@@ -678,11 +683,17 @@ export class TdTimeline extends TdBaseElement {
     if (it.details === true) {
       if (d.open) this._loadDetails(d, it);
       else {
+        const q = this._detailQueue.findIndex((e) => e.d === d);
+        if (q >= 0) { // SEC-04: closed before its turn — never requested
+          this._detailQueue.splice(q, 1);
+          d.querySelector('.td-timeline__detail')?.replaceChildren();
+        }
         const c = this._detailCtl.get(id);
         if (c) {
           c.abort();
           this._detailCtl.delete(id);
           d.querySelector('.td-timeline__detail')?.replaceChildren();
+          this._pumpDetails();
         }
       }
     }
@@ -701,7 +712,12 @@ export class TdTimeline extends TdBaseElement {
       else if (!box.contains(v)) box.replaceChildren(v);
       return;
     }
-    if (this._detailCtl.has(id)) return;
+    if (this._detailCtl.has(id) || this._detailQueue.some((e) => e.d === d)) return;
+    if (this._detailCtl.size >= DETAIL_CONCURRENCY) { // SEC-04: wait for a free slot (FIFO, display order)
+      box.replaceChildren(text('p', 'td-timeline__loading', L.detailsLoading ?? TIMELINE_LABELS.detailsLoading, { role: 'status' }));
+      this._detailQueue.push({ d, id });
+      return;
+    }
     const ctl = new AbortController();
     this._detailCtl.set(id, ctl);
     const gen = this._gen.value;
@@ -713,6 +729,7 @@ export class TdTimeline extends TdBaseElement {
     } catch {
       if (ctl.signal.aborted || !this._gen.isCurrent(gen) || this._renderDetails !== hook || this._detailCtl.get(id) !== ctl) return;
       this._detailCtl.delete(id);
+      this._pumpDetails();
       const err = text('p', 'td-timeline__detail-error', L.detailsError ?? TIMELINE_LABELS.detailsError, { role: 'status' });
       const retry = text('button', 'td-btn td-btn--ghost td-btn--sm td-timeline__retry', L.retry ?? TIMELINE_LABELS.retry, { type: 'button' });
       box.replaceChildren(err, retry);
@@ -720,10 +737,21 @@ export class TdTimeline extends TdBaseElement {
     }
     if (ctl.signal.aborted || !this._gen.isCurrent(gen) || this._renderDetails !== hook || this._detailCtl.get(id) !== ctl) return;
     this._detailCtl.delete(id);
+    this._pumpDetails();
     const v = res instanceof Node ? res : typeof res === 'string' ? res : res == null ? '' : String(res);
     this._detailCache.set(id, v);
     if (typeof v === 'string') box.textContent = v;
     else box.replaceChildren(v);
+  }
+
+  /** @private SEC-04: start queued lazy details while a slot is free (skipping panels closed / removed meanwhile). */
+  _pumpDetails() {
+    while (this._detailCtl.size < DETAIL_CONCURRENCY && this._detailQueue.length) {
+      const { d, id } = this._detailQueue.shift();
+      if (!d.isConnected || !d.open || !this.contains(d)) continue;
+      const it = this._items.find((i) => i.id === id);
+      if (it && it.details === true) this._loadDetails(d, it);
+    }
   }
 
   // --- SSR (ADR 0012, contract timeline@1, plan QĐ G3 / T4 / T9) ---

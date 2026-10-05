@@ -453,3 +453,94 @@ describe('td-timeline — review round 1 (SEC-01, SEC-02, ISSUE-2)', () => {
     expect(warns.filter((w) => w.includes('at most') && w.includes('in all')).length).to.equal(1);
   });
 });
+
+describe('td-timeline — review round 2 (SEC-04: bounded lazy details)', () => {
+  const lazy = (n, expanded = true) => Array.from({ length: n }, (_, i) => ({ id: `d${i}`, time: Date.UTC(2026, 9, 5, 1) - i * 60e3, title: `D${i}`, details: true, expanded }));
+
+  it('50 expanded lazy items → at most DETAIL_CONCURRENCY calls in flight, FIFO in display order, all load', async () => {
+    const { DETAIL_CONCURRENCY } = await import('./td-timeline.js');
+    let inFlight = 0;
+    let peak = 0;
+    const order = [];
+    const pending = [];
+    const el = await mk(lazy(50), undefined, 720, {
+      renderDetails: (it) => {
+        order.push(it.id);
+        inFlight++;
+        peak = Math.max(peak, inFlight);
+        const d = deferred();
+        pending.push(() => { inFlight--; d.resolve(`ok ${it.id}`); });
+        return d.p;
+      },
+    });
+    expect(DETAIL_CONCURRENCY).to.equal(6);
+    while (pending.length) {
+      pending.shift()();
+      await tick();
+    }
+    await waitFor(() => [...el.querySelectorAll('.td-timeline__detail')].every((b) => b.textContent.startsWith('ok ')));
+    expect(peak).to.equal(6);
+    expect(order).to.deep.equal(lazy(50).map((i) => i.id));
+    expect([...el.querySelectorAll('.td-timeline__detail')].every((b) => b.textContent === `ok ${b.closest('li').dataset.id}`)).to.equal(true);
+  });
+
+  it('closing a queued panel → its hook is never called', async () => {
+    const called = [];
+    const pending = [];
+    const el = await mk(lazy(8), undefined, 720, {
+      renderDetails: (it) => { called.push(it.id); const d = deferred(); pending.push(d); return d.p; },
+    });
+    expect(called.length).to.equal(6);
+    const queued = el.querySelector('li[data-id="d7"] details');
+    queued.open = false;
+    await waitFor(() => !queued.open);
+    await tick();
+    await tick();
+    for (const d of pending.splice(0)) d.resolve('x');
+    await waitFor(() => called.includes('d6'));
+    for (const d of pending.splice(0)) d.resolve('x');
+    await tick();
+    expect(called.includes('d7')).to.equal(false);
+  });
+
+  it('hook replacement mid-queue → the old queue is dropped (old hook never called again), the new hook is bounded too', async () => {
+    const oldCalls = [];
+    const newCalls = [];
+    let inFlight = 0;
+    let peak = 0;
+    const el = await mk(lazy(20), undefined, 720, {
+      renderDetails: (it) => { oldCalls.push(it.id); return deferred().p; },
+    });
+    expect(oldCalls.length).to.equal(6);
+    const pending = [];
+    el.renderDetails = (it) => {
+      newCalls.push(it.id);
+      inFlight++;
+      peak = Math.max(peak, inFlight);
+      const d = deferred();
+      pending.push(() => { inFlight--; d.resolve('mới'); });
+      return d.p;
+    };
+    expect(newCalls.length).to.equal(6);
+    while (pending.length) {
+      pending.shift()();
+      await tick();
+    }
+    await waitFor(() => newCalls.length === 20);
+    expect(oldCalls.length).to.equal(6);
+    expect(peak).to.equal(6);
+  });
+
+  it('assigning items / removing the element flushes the queue', async () => {
+    const called = [];
+    const el = await mk(lazy(10), undefined, 720, { renderDetails: (it) => { called.push(it.id); return deferred().p; } });
+    expect(called.length).to.equal(6);
+    el.items = [];
+    await tick();
+    expect(called.length).to.equal(6);
+    const el2 = await mk(lazy(10), undefined, 720, { renderDetails: (it) => { called.push(`b-${it.id}`); return deferred().p; } });
+    el2.parentElement.remove();
+    await tick();
+    expect(called.filter((c) => c.startsWith('b-')).length).to.equal(6);
+  });
+});
