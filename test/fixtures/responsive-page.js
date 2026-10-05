@@ -7,6 +7,7 @@
  * M0 (after v0.33): media picker (mock adapter, no network), media grid (default + justified + sortable gallery) and
  * dropzone are included. v0.35.0: td-cropper (inline: full width + the 280 px column), the crop dialog and the picker crop
  * step (openers `cropDialog` / `pickerCrop`). v0.36.1: `#rsp-table-density` (5 short columns, card density budget). v0.37.0: it is `selectable` (row 2 selected).
+ * v0.38.0: td-scan-input (single + multiple with 30 rows, beep; one in the 280 px column).
  */
 import '../../src/form/td-button.js';
 import '../../src/form/td-action-button.js'; // v0.36.0
@@ -45,6 +46,7 @@ import '../../src/display/td-media-grid.js';
 import { TdMediaPicker } from '../../src/feedback/td-media-picker.js';
 import { TdCropper } from '../../src/form/td-cropper.js';
 import '../../src/form/td-media-field.js';
+import '../../src/form/td-scan-input.js'; // v0.38.0
 import { createMockAdapter } from './media-adapter.js';
 
 const LONG = 'Lưu và xuất bản bài viết lên trang chủ ngay bây giờ';
@@ -158,12 +160,17 @@ export function mountResponsiveFixture(root) {
       <td-pagination total-items="2000" items-per-page="10" current-page="57"></td-pagination>
       <td-tabs id="rsp-tabs-narrow"></td-tabs>
       <td-table id="rsp-table-narrow" title="Đơn hàng"></td-table>
+      <td-scan-input id="rsp-scan-narrow" label="IMEI" beep multiple name="imei[]"></td-scan-input>
       <td-cropper id="rsp-cropper-narrow" src="/test/fixtures/panorama.svg" natural-width="1800" natural-height="600" aspect-ratio="1.91" alt="Ảnh OG"></td-cropper>
     </div>
   </section>
   <section class="rsp-section" data-section="cropper"><h2>Cắt ảnh</h2>
     <td-cropper id="rsp-cropper" src="/test/fixtures/photo.svg" natural-width="1200" natural-height="800" alt="Ảnh phong cảnh" focal-point focal='{"v":1,"x":0.3,"y":0.4}'></td-cropper>
     <td-media-field name="og" label="Ảnh chia sẻ (OG)" usage croppable focal-point aspect-ratio="1.91" value="m1" preview-src="/test/fixtures/1.svg" crop='{"v":1,"x":0,"y":0.1,"width":1,"height":0.785}'></td-media-field>
+  </section>
+  <section class="rsp-section" data-section="scan-input"><h2>Quét mã</h2>
+    <td-scan-input id="rsp-scan" label="Mã đơn hàng" placeholder="Quét mã vạch trên phiếu xuất kho" beep></td-scan-input>
+    <td-scan-input id="rsp-scan-multi" label="IMEI nhập kho" multiple beep name="imei[]" max="50"></td-scan-input>
   </section>
   <section class="rsp-section" data-section="tabs"><h2>Tab</h2>
     <td-tabs id="rsp-tabs"></td-tabs>
@@ -241,6 +248,10 @@ export function mountResponsiveFixture(root) {
   posts.columns = densityColumns();
   posts.data = POSTS.map((o) => ({ ...o }));
   posts.selectedKeys = [2]; // v0.37.0: one selected card (accent border) in every screenshot
+  // v0.38.0: 30 scanned IMEI rows (+ one invalid) in the multiple scan input; 3 in the narrow column
+  const imeis = Array.from({ length: 30 }, (_, i) => `35693803564${String(3800 + i).padStart(4, '0')}`);
+  root.querySelector('#rsp-scan-multi').values = imeis;
+  root.querySelector('#rsp-scan-narrow').values = imeis.slice(0, 3);
   root.querySelector('#rsp-empty').actions = [{ label: 'Tạo đơn hàng mới', variant: 'primary' }, { label: 'Nhập từ tệp Excel', variant: 'secondary' }];
 
   TdMenu.define('rsp-menu', [

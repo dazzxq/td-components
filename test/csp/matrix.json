@@ -42,7 +42,8 @@
       "td-media-picker": "/src/feedback/td-media-picker.js",
       "td-media-field": "/src/form/td-media-field.js",
       "td-cropper": "/src/form/td-cropper.js",
-      "td-action-button": "/src/form/td-action-button.js"
+      "td-action-button": "/src/form/td-action-button.js",
+      "td-scan-input": "/src/form/td-scan-input.js"
     },
     "tokenNative": [
       "td-button",
@@ -85,7 +86,8 @@
       "td-media-picker",
       "td-media-field",
       "td-cropper",
-      "td-action-button"
+      "td-action-button",
+      "td-scan-input"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -3687,6 +3689,70 @@
         ".td-btn--action"
       ],
       "selectorNote": "v0.36.0: CSS-only group (gap 4 / 8 coarse)"
+    }
+  ],
+  "td-scan-input": [
+    {
+      "state": "single",
+      "markup": "<td-scan-input name=\"c\" label=\"Mã đơn hàng\" value=\"DH-0001\" placeholder=\"Quét mã\"></td-scan-input>",
+      "selectors": [
+        ".td-scan",
+        ".td-scan__label",
+        ".td-scan__box",
+        ".td-scan__input",
+        ".td-scan__status",
+        ".td-scan__status-text",
+        ".td-scan__notice"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.38.0: single mode at rest — field look (mono ≥ 16px), indicator 'Bấm vào đây để quét'"
+    },
+    {
+      "state": "invalid",
+      "markup": "<td-scan-input name=\"c\" label=\"Mã\" value=\"X1\" error-text=\"Mã không hợp lệ.\"></td-scan-input>",
+      "selectors": [
+        ".td-scan__input",
+        ".td-field-error"
+      ],
+      "settle": 200,
+      "selectorNote": "v0.38.0: error contract (aria-invalid border + note)"
+    },
+    {
+      "state": "ready",
+      "setup": "const t=document.createElement('td-scan-input'); t.setAttribute('label','IMEI'); window.__mount.appendChild(t); t.querySelector('input').focus();",
+      "selectors": [
+        ".td-scan__input",
+        ".td-scan__status[data-state=\"ready\"]",
+        ".td-scan__status-text",
+        ".td-scan__status-icon"
+      ],
+      "settle": 300,
+      "selectorNote": "v0.38.0: focused — indicator 'Sẵn sàng quét' (success colour) + focus ring"
+    },
+    {
+      "state": "multiple",
+      "setup": "const t=document.createElement('td-scan-input'); t.setAttribute('multiple',''); t.setAttribute('beep',''); t.setAttribute('name','imei[]'); t.setAttribute('label','IMEI'); t.validate=(v)=>v==='BAD00001'?'Mã không hợp lệ':new Promise(()=>{}); t.values=['356938035643809']; window.__mount.appendChild(t); const i=t.querySelector('input'); for (const v of ['BAD00001','PEND0001']) { i.value=v; i.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true})); }",
+      "selectors": [
+        ".td-scan__mute",
+        ".td-scan__head",
+        ".td-scan__count",
+        ".td-scan__clear",
+        ".td-scan__list",
+        ".td-scan__item[data-state=\"valid\"]",
+        ".td-scan__item[data-state=\"valid\"] .td-scan__value",
+        ".td-scan__item[data-state=\"valid\"] .td-scan__state",
+        ".td-scan__item[data-state=\"invalid\"] .td-scan__value",
+        ".td-scan__item[data-state=\"invalid\"] .td-scan__state",
+        ".td-scan__item[data-state=\"pending\"] .td-scan__state",
+        ".td-scan__item[data-state=\"pending\"] .td-scan__spinner",
+        ".td-scan__remove"
+      ],
+      "settle": 300,
+      "selectorNote": "v0.38.0: multiple — 3 rows (pending / valid / invalid), list head, speaker button (beep on: Web Audio needs no CSP source)",
+      "excludeProps": [
+        "transform"
+      ],
+      "excludeNote": "the pending spinner rotates (CSS animation): its transform depends on the frame"
     }
   ]
 }

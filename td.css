@@ -14369,7 +14369,9 @@
 		color: var(--td-scan-ready);
 	}
 
+	/* pressed: the label ink (the muted / success text is < 4.7 on the pressed fill — contrast gate) */
 	.td-scan__status:is(:active, [data-td-pressed]) {
+		color: var(--td-field-label);
 		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
 		transition-duration: 0s;
 	}
@@ -14513,6 +14515,7 @@
 
 		.td-scan__item {
 			flex-direction: column;
+			gap: 0;
 			align-items: stretch;
 		}
 
@@ -14523,12 +14526,20 @@
 
 	/* td: generated container fallback (ADR 0014) */
 	@supports not (container-type: inline-size) {
-		@media (max-width: 479.98px) {.td-scan__input{flex-basis:100%}.td-scan__item{flex-direction:column;align-items:stretch}.td-scan__meta{justify-content:space-between}}
+		@media (max-width: 479.98px) {.td-scan__input{flex-basis:100%}.td-scan__item{flex-direction:column;gap:0;align-items:stretch}.td-scan__meta{justify-content:space-between}}
 	}
 
 	@media (pointer: coarse) {
+		.td-scan__input {
+			height: max(var(--td-field-h-md), var(--td-touch-min));
+		}
+
 		.td-scan__status {
 			min-height: var(--td-touch-min);
+		}
+
+		.td-scan__mute {
+			min-width: var(--td-touch-min);
 		}
 	}
 
