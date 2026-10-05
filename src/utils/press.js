@@ -32,6 +32,7 @@ export const PRESS_TARGETS = Object.freeze([
   '.td-dropzone__remove',
   '.td-dtp-wheel__option',
   '.td-dtp__trigger',
+  '.td-filter-chips__remove',
   '.td-form-summary__link',
   '.td-lightbox__back',
   '.td-lightbox__btn',

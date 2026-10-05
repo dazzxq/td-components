@@ -14584,6 +14584,252 @@
 	}
 }
 
+/* ---- src/styles/components/filter-chips.css ---- */
+/*
+ * td-filter-chips (src/display/td-filter-chips.js) — v0.39.0, plan v0.39.0-filters-range QĐ 11–16.
+ * Content layer (minimal surfaces, ADR 0011): solid capsules (fill + one hairline), no shadow, no blur.
+ * State: [hidden] on the host (no items) · [data-removable] on a chip · [data-scroll-start] / [data-scroll-end] on the
+ * list (edge fade while one scrolling row clips, set by JS on scroll / resize) · :focus-visible.
+ * Overflow (ADR 0014): the host is `container: td-filter-chips / inline-size`; ≥ 480px the chips wrap, < 480px they
+ * form ONE row that scrolls sideways (scrollbar hidden, scroll-snap) and "Xoá tất cả" stays pinned after it. build-css
+ * adds the `@supports not (container-type)` viewport fallback.
+ * Coarse pointers: the × keeps its 22px box and grows a 44 × 44 ::before; the scrolling row keeps 10px of block padding
+ * (pulled back with a negative margin) so that hit area is never clipped by the scroll container.
+ * SSR (ADR 0012 QĐ 6): until the element is defined, JS-only controls ([data-td-js-only]: the × / "Xoá tất cả" buttons
+ * without a link) are invisible (visibility: their box is kept, so the hydrate shifts nothing) — no dead control
+ * without JS (not clickable, not focusable); the × links work.
+ */
+@layer td.tokens {
+	:root {
+		--td-filter-chip-bg: var(--td-gray-100);
+		--td-filter-chip-fg: var(--td-color-text);
+		--td-filter-chip-label-fg: var(--td-color-text);
+		--td-filter-chip-border: var(--td-color-border);
+		--td-filter-chip-radius: var(--td-radius-full);
+		--td-filter-chip-h: 28px;
+		--td-filter-chip-gap: var(--td-space-xs);
+		--td-filter-chip-max: 16rem; /* max inline size of a value (cut with …, full text in title) */
+		--td-filter-chip-remove-fg: var(--td-color-text-muted); /* ≥ 4.7 on the chip fill (contrast gate) */
+		--td-filter-chip-remove-hover: var(--td-color-hover-strong);
+	}
+
+	:root[data-td-theme="dark"] {
+		--td-filter-chip-bg: #2c2c30;
+	}
+}
+
+@layer td.component {
+	td-filter-chips {
+		display: block;
+		min-inline-size: 0;
+		container: td-filter-chips / inline-size;
+		font-family: var(--td-font-sans);
+	}
+
+	td-filter-chips[hidden] {
+		display: none;
+	}
+
+	td-filter-chips:not(:defined) [data-td-js-only] {
+		visibility: hidden; /* keeps its box: no layout shift when the module adopts the markup */
+	}
+
+	td-filter-chips:focus {
+		outline: none; /* tabindex="-1" fallback target after the last removal (not a control) */
+	}
+
+	.td-filter-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-filter-chip-gap);
+		align-items: center;
+		min-inline-size: 0;
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-tight);
+		color: var(--td-filter-chip-fg);
+	}
+
+	.td-filter-chips *,
+	.td-filter-chips *::before {
+		box-sizing: border-box;
+	}
+
+	.td-filter-chips__list {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-filter-chip-gap);
+		align-items: center;
+		min-inline-size: 0;
+		padding: 0;
+		margin: 0;
+		list-style: none;
+	}
+
+	.td-filter-chips__item {
+		display: inline-flex;
+		align-items: center;
+		max-inline-size: 100%;
+		min-block-size: var(--td-filter-chip-h);
+		padding-block: 0;
+		padding-inline: 10px 3px;
+		white-space: nowrap;
+		background: var(--td-filter-chip-bg);
+		border: 1px solid var(--td-filter-chip-border);
+		border-radius: var(--td-filter-chip-radius);
+	}
+
+	.td-filter-chips__item[data-removable="false"] {
+		padding-inline-end: 10px;
+	}
+
+	.td-filter-chips__label {
+		flex: none;
+		font-weight: var(--td-fw-semibold);
+		color: var(--td-filter-chip-label-fg);
+	}
+
+	.td-filter-chips__sep {
+		flex: none;
+		white-space: pre;
+	}
+
+	.td-filter-chips__value {
+		min-inline-size: 0;
+		max-inline-size: var(--td-filter-chip-max);
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.td-filter-chips__remove {
+		position: relative;
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		inline-size: 22px;
+		block-size: 22px;
+		padding: 0;
+		margin-inline-start: 4px;
+		font: inherit;
+		color: var(--td-filter-chip-remove-fg);
+		text-decoration: none;
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: var(--td-radius-full);
+		transition: background var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+		-webkit-tap-highlight-color: transparent; /* ADR 0019: the kit's pressed fill replaces the tap flash */
+	}
+
+	.td-filter-chips__icon {
+		display: inline-flex;
+		line-height: 0;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-filter-chips__remove:hover {
+			color: var(--td-filter-chip-fg);
+			background: var(--td-filter-chip-remove-hover);
+		}
+	}
+
+	/* Pressed (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, at once */
+	.td-filter-chips__remove:is(:active, [data-td-pressed]) {
+		color: var(--td-filter-chip-fg);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-filter-chips__remove:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	.td-filter-chips__clear {
+		flex: none;
+	}
+
+	/* Edge fade of the scrolling row (same idea as td-tabs v0.34) */
+	.td-filter-chips__list[data-scroll-end] {
+		mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent);
+	}
+
+	.td-filter-chips__list[data-scroll-start] {
+		mask-image: linear-gradient(to right, transparent, #000 1.5rem);
+	}
+
+	.td-filter-chips__list[data-scroll-start][data-scroll-end] {
+		mask-image: linear-gradient(to right, transparent, #000 1.5rem, #000 calc(100% - 1.5rem), transparent);
+	}
+
+	/* < 480px of container width: ONE scrolling row; "Xoá tất cả" pinned after it (outside the scroller) */
+	@container td-filter-chips (width < 480px) {
+		.td-filter-chips {
+			flex-wrap: nowrap;
+		}
+
+		.td-filter-chips__list {
+			flex: 1 1 auto;
+			flex-wrap: nowrap;
+			padding-block: 10px; /* room for the coarse ::before hit area (never clipped by the scroller) */
+			margin-block: -10px;
+			overflow-x: auto;
+			overscroll-behavior-inline: contain;
+			scroll-snap-type: x proximity;
+			scrollbar-width: none;
+		}
+
+		.td-filter-chips__list::-webkit-scrollbar {
+			display: none;
+		}
+
+		.td-filter-chips__item {
+			flex: none;
+			scroll-snap-align: start;
+		}
+	}
+
+	/* td: generated container fallback (ADR 0014) */
+	@supports not (container-type: inline-size) {
+		@media (max-width: 479.98px) {.td-filter-chips{flex-wrap:nowrap}.td-filter-chips__list{flex:1 1 auto;flex-wrap:nowrap;padding-block:10px;margin-block:-10px;overflow-x:auto;overscroll-behavior-inline:contain;scroll-snap-type:x proximity;scrollbar-width:none}.td-filter-chips__list::-webkit-scrollbar{display:none}.td-filter-chips__item{flex:none;scroll-snap-align:start}}
+	}
+
+	@media (pointer: coarse) {
+		.td-filter-chips {
+			--td-filter-chip-gap: var(--td-space-sm); /* the 44px hit areas of neighbouring × never overlap */
+		}
+
+		.td-filter-chips__remove::before {
+			position: absolute;
+			inset: -11px;
+			content: "";
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-filter-chips__remove {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-filter-chips__item {
+			border-color: CanvasText;
+		}
+
+		.td-filter-chips__remove:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+
+		.td-filter-chips__list[data-scroll-start],
+		.td-filter-chips__list[data-scroll-end] {
+			mask-image: none;
+		}
+	}
+}
+
 /* ---- src/styles/utilities.css ---- */
 /* Utilities — kept minimal: td.css must stay reset-free (legacy Tailwind components share the page). */
 @layer td.utilities {

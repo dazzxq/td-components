@@ -243,3 +243,14 @@ test('v0.38.0: ./scan-input export, sideEffects, barrel TdScanInput, scan-input 
     assert.ok(css.includes(sel), sel);
   }
 });
+
+test('v0.39.0: ./filter-chips export, sideEffects, barrel TdFilterChips, filter-chips CSS before utilities; model internal', async () => {
+  assert.equal(pkg.exports['./filter-chips'], './src/display/td-filter-chips.js');
+  assert.ok(pkg.sideEffects.includes('./src/display/td-filter-chips.js'));
+  assert.ok(!Object.values(pkg.exports).includes('./src/utils/filter-chips-model.js'), 'the model stays internal');
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdFilterChips \} from '\.\/src\/display\/td-filter-chips\.js';/);
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  const i = files.indexOf('components/filter-chips.css');
+  assert.ok(i > 0 && i < files.indexOf('utilities.css'));
+});

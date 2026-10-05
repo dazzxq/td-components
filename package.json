@@ -77,6 +77,7 @@
     "./copy": "./src/display/td-copy.js",
     "./sortable": "./src/display/td-sortable.js",
     "./masked-value": "./src/display/td-masked-value.js",
+    "./filter-chips": "./src/display/td-filter-chips.js",
     "./dom-utils": "./src/utils/dom-utils.js",
     "./form-validation": "./src/utils/form-validation.js",
     "./breakpoints": "./src/utils/breakpoints.js",
@@ -128,6 +129,7 @@
     "./src/display/td-media-grid.js",
     "./src/display/td-sortable.js",
     "./src/display/td-masked-value.js",
+    "./src/display/td-filter-chips.js",
     "./src/display/td-pagination.js",
     "./src/display/td-table.js",
     "./src/display/td-tabs.js"
