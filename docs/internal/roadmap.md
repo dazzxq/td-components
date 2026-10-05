@@ -36,7 +36,8 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.36.2: chuẩn touch toàn kit (hover chỉ con trỏ mịn, hình nhấn, tooltip không bật khi chạm, ngưỡng kéo theo
   loại con trỏ, lớp phủ co theo bàn phím ảo, lightbox vuốt theo ngón, lane `test:touch`) — plan
   [v0.36.2-touch](plans/v0.36.2-touch.md), [ADR 0019](decisions/0019-touch-standard.md)
-- `todo` v0.37.0: `td-table` chọn dòng (ADR 0018)
+- `done` v0.37.0: `td-table` chọn dòng ([ADR 0018](decisions/0018-table-row-selection.md)) — plan
+  [v0.37.0-table-row-selection](plans/v0.37.0-table-row-selection.md)
 - `todo` v0.38.0: `td-scan-input` (A3)
 - `todo` v0.39.0: hook lọc ngoài + ẩn / hiện cột + `td-filter-chips`
 - `todo` v0.40.0: `<td-datetime-range>` + preset — xong P1
