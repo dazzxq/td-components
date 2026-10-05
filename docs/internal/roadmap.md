@@ -44,6 +44,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.41.0: theming R1 — light / dark / `auto` chính thức, nối token ngữ nghĩa, dark tinh chỉnh, gate toàn trang — plan
   [v0.41.0-theming](plans/v0.41.0-theming.md)
 - `done` v0.42.0: theming R2 — `palette.js` + CLI `td-theme` + trang builder + theme theo vùng + cầu portal ([ADR 0020](decisions/0020-theme-scope-portal.md))
+- `done` v0.42.1: vá tương phản dark (link khung lỗi form khi nhấn, nút × chip khi nhấn)
 - `todo` v0.43+: field gallery / nhiều ảnh (`td-media-grid` + `td-sortable`) — lùi sau theming (owner 2026-10-05)
 - `todo` sau v0.43: typeToConfirm, `trackFormDirty`, `td-steps`, `td-timeline`, `td-diff`, `td-check-matrix`, `td-color-picker`
 - Ngày từ v0.33 trở đi: **rebaseline từ ngày v0.31 xong thực tế** (không nén test / acceptance để giữ lịch cũ ~11/11 –
