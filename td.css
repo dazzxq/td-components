@@ -1846,9 +1846,11 @@
 
 	/* v0.47.0: the ✓ drawn by CSS — Lucide `check` (4,12 → 9,17 → 20,6 of 24) at 70 % of the box: an L (arms 0.206 /
 	   0.454 of the box + a cap of one stroke, stroke 0.1) turned 45° so its corner sits on (9,17); offsets are from the
-	   padding box (− the 1.5px border). The pseudo-element exists only while ON (`content` set by the ON list below):
-	   10 000 hidden pseudo boxes cost a lot of style + layout (M0) — so no fade-in either */
+	   padding box (− the 1.5px border). Shown / hidden with `visibility` (the box always exists): creating / removing a
+	   pseudo box on every tick re-lays out a 2 400-cell table (M0) — so no fade-in */
 	.td-check--drawn::before {
+		content: "";
+		visibility: hidden;
 		position: absolute;
 		box-sizing: border-box;
 		top: calc(var(--_td-check-size) * 0.18 - 1.5px);
@@ -1886,7 +1888,7 @@
 	}
 
 	.td-check-matrix__input:checked ~ .td-check--drawn::before {
-		content: "";
+		visibility: visible;
 	}
 
 	/* ---- MIXED (after ON: an indeterminate checkbox that is also :checked shows the bar) ---- */
@@ -1903,7 +1905,7 @@
 	[data-td-check-mixed] > .td-check .td-check__svg,
 	.td-check-matrix__input:indeterminate ~ .td-check--drawn::before {
 		opacity: 0;
-		content: none;
+		visibility: hidden;
 	}
 
 	.td-checkbox__input:indeterminate ~ .td-checkbox__mark::after,
@@ -17759,22 +17761,28 @@
 		border-radius: 50%;
 	}
 
-	/* a cell that differs from its default: a corner triangle (QĐ 32) */
-	.td-check-matrix__cell[data-changed]::after {
-		content: "";
-		position: absolute;
-		bottom: 0;
-		inset-inline-start: 0;
-		width: 0;
-		height: 0;
-		border-top: 7px solid transparent;
-		border-inline-start: 7px solid var(--td-check-matrix-changed);
+	/* a cell that differs from its default: a corner triangle (QĐ 32) — a background layer, never a box (a box created on
+	   every tick re-lays out the whole table, M0) */
+	.td-check-matrix__cell[data-changed] {
+		background-image: linear-gradient(to top right, var(--td-check-matrix-changed) 50%, transparent 50%);
+		background-position: left bottom;
+		background-size: 0.5rem 0.5rem;
+		background-repeat: no-repeat;
 	}
 
 	/* crosshair (QĐ 18): the row holding the focus + the header of the focused column */
 	.td-check-matrix__row:focus-within > *,
 	.td-check-matrix__grid:focus-within .td-check-matrix__colhead[data-active] {
 		background-image: linear-gradient(var(--td-check-matrix-row-active), var(--td-check-matrix-row-active));
+	}
+
+	.td-check-matrix__row:focus-within > .td-check-matrix__cell[data-changed] {
+		background-image:
+			linear-gradient(to top right, var(--td-check-matrix-changed) 50%, transparent 50%),
+			linear-gradient(var(--td-check-matrix-row-active), var(--td-check-matrix-row-active));
+		background-position: left bottom, 0 0;
+		background-size: 0.5rem 0.5rem, auto;
+		background-repeat: no-repeat, repeat;
 	}
 
 	.td-check-matrix__note {
@@ -17890,8 +17898,9 @@
 			outline-color: Highlight;
 		}
 
-		.td-check-matrix__cell[data-changed]::after {
-			border-inline-start-color: CanvasText;
+		.td-check-matrix__cell[data-changed] {
+			outline: 2px dashed CanvasText; /* gradients are dropped in forced colours: a real border-like mark */
+			outline-offset: -4px;
 		}
 
 		.td-check-matrix__cell[data-note]::before {

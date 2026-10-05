@@ -35,6 +35,10 @@ const { TdCheckMatrix } = await import('./td-check-matrix.js');
 
 // ---------------------------------------------------------------- helpers -------------------------------------------
 const tick = () => new Promise((r) => setTimeout(r, 0));
+// budgets are asserted with slack (shared / loaded machines, CI): ×20 unless the page sets window.__TD_PERF_STRICT; the
+// QĐ 19 budgets are Chromium's — Firefox / WebKit lay a 2 400-cell table out several times slower (× 4 more)
+const ENGINE = /Chrome\//.test(navigator.userAgent) ? 1 : 4;
+const PERF_SLACK = (globalThis.__TD_PERF_STRICT ? 1 : 20) * ENGINE;
 const raf = () => new Promise((r) => requestAnimationFrame(() => r()));
 const extra = [];
 afterEach(() => { extra.splice(0).forEach((f) => f()); });
@@ -327,5 +331,27 @@ describe('v0.47.0 td-check-matrix — core (M3)', () => {
     input(el, 0, 1).focus();
     await sendKeys({ press: 'Space' });
     expect(ev).to.deep.equal([{ added: [['dash', 'sales']], removed: [], trigger: 'cell' }]);
+  });
+
+  it(`200 × 12 within the QĐ 19 budgets (render 150 ms, column 16 ms, cell 4 ms; × ${PERF_SLACK} slack)`, () => {
+    const columns = Array.from({ length: 12 }, (_, i) => ({ key: `c${i}`, label: `Vai trò ${i}` }));
+    const rows = Array.from({ length: 20 }, (_, g) => ({ key: `g${g}`, label: `Nhóm ${g}`, rows: Array.from({ length: 10 }, (__, k) => ({ key: `p${g}.${k}`, label: `Quyền ${g}.${k}` })) }));
+    const { el, form } = mount('name="big" label="Lớn" layout="grid"', null);
+    let t0 = performance.now();
+    el.setData({ columns, rows });
+    document.body.offsetHeight; // layout included
+    const render = performance.now() - t0;
+    t0 = performance.now();
+    bulk(el, 'column', '[data-c="5"]').querySelector('input').click();
+    document.body.offsetHeight;
+    const column = performance.now() - t0;
+    t0 = performance.now();
+    input(el, 150, 7).click();
+    document.body.offsetHeight;
+    const one = performance.now() - t0;
+    expect(fd(form).length).to.equal(12 + 200 + 1 + 1);
+    expect(render < 150 * PERF_SLACK, `render ${render.toFixed(1)} ms`).to.equal(true);
+    expect(column < 16 * PERF_SLACK, `column ${column.toFixed(1)} ms`).to.equal(true);
+    expect(one < 4 * PERF_SLACK, `cell ${one.toFixed(1)} ms`).to.equal(true);
   });
 });
