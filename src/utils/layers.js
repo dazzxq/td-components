@@ -20,8 +20,11 @@
  *   opened over a HIGHER in-band one (a lightbox opened from a modal) gets the logical layer above it (capped below
  *   the popover) and a visual z-index of that element's computed z-index + 1 (CSSOM). Loading / toast / tooltip and
  *   everything outside the band never move.
+ * - v0.42.0 theme bridge (ADR 0020): bridgeTheme(portalRoot, anchor, { themeRoot }) carries a theme SCOPE
+ *   (`[data-td-theme]` below <html>) onto a popup portaled to <body>; see its JSDoc.
  */
 import { acquireInert, registerFloating } from './inert-lock.js';
+import { THEME_TOKENS, THEME_TOKENS_VERSION } from '../theme/tokens.js';
 
 export const LAYERS = Object.freeze({
   dropdown: 100,
@@ -453,3 +456,60 @@ export function swallowPointerPress(pointerId) {
   swallowed = st;
 }
 
+
+// ---- v0.42.0 theme bridge (plan N6 / QĐ16, ADR 0020) ---------------------------------------------------------------
+
+/** The bridged custom properties: the theme contract (versioned with THEME_TOKENS_VERSION). */
+export const BRIDGE_TOKENS = THEME_TOKENS;
+export const BRIDGE_TOKENS_VERSION = THEME_TOKENS_VERSION;
+const SCOPE_ATTR = 'data-td-theme';
+const noop = () => {};
+
+/**
+ * Make a popup portaled to <body> render in the theme of the scope it was opened from (ADR 0020).
+ *
+ * 1. `scope = (anchor ?? themeRoot).closest('[data-td-theme]')`. No scope, or the scope is <html> → nothing (a <body>
+ *    child already inherits the page theme; no inline value that could go stale or change precedence).
+ * 2. Otherwise, before the popup shows: `data-td-theme` = the scope's value on `portalRoot`, and a snapshot of
+ *    `getComputedStyle(scope)` — the MARKED scope, not the anchor — for every BRIDGE_TOKENS name + `color-scheme`,
+ *    written with CSSOM (`style.setProperty`, CSP-safe). Contract: an override set on the marked scope travels; an
+ *    unmarked local override (`.card { --td-accent: red }` inside the scope) does not. Component tokens re-resolve on
+ *    the portal root from the snapshot (it is a theme scope itself).
+ * 3. Names that already had an inline value on `portalRoot` are left alone; the returned `unbridge()` removes exactly
+ *    what this call set (attribute restored when still ours) — a reused portal root carries nothing over.
+ * 4. Call it on every open (no live refresh while open). A popup opened from a bridged popup finds that popup's root
+ *    as its scope (attribute + inline snapshot) → nested popups follow too. The lightbox is never bridged (QĐ18).
+ *
+ * @param {HTMLElement} portalRoot the popup root that is (or will be) a <body> child
+ * @param {Element|null|undefined} anchor the trigger / host the popup belongs to (null for programmatic overlays)
+ * @param {{ themeRoot?: Element|null }} [o] programmatic overlays: the element whose theme scope to follow
+ * @returns {() => void} unbridge
+ */
+export function bridgeTheme(portalRoot, anchor, { themeRoot } = {}) {
+  if (typeof Element === 'undefined' || !(portalRoot instanceof Element) || !portalRoot.style) return noop;
+  const from = anchor instanceof Element ? anchor : themeRoot instanceof Element ? themeRoot : null;
+  const scope = from ? from.closest(`[${SCOPE_ATTR}]`) : null;
+  if (!scope || scope === document.documentElement || scope === portalRoot) return noop;
+  const value = scope.getAttribute(SCOPE_ATTR);
+  const cs = getComputedStyle(scope);
+  const prevAttr = portalRoot.getAttribute(SCOPE_ATTR);
+  portalRoot.setAttribute(SCOPE_ATTR, value);
+  const set = [];
+  for (const name of [...BRIDGE_TOKENS, 'color-scheme']) {
+    if (portalRoot.style.getPropertyValue(name)) continue; // someone else's inline value: not ours to touch
+    const v = cs.getPropertyValue(name).trim();
+    if (!v || (name === 'color-scheme' && v === 'normal')) continue;
+    portalRoot.style.setProperty(name, v);
+    set.push(name);
+  }
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    for (const name of set) portalRoot.style.removeProperty(name);
+    if (portalRoot.getAttribute(SCOPE_ATTR) === value) {
+      if (prevAttr === null) portalRoot.removeAttribute(SCOPE_ATTR);
+      else portalRoot.setAttribute(SCOPE_ATTR, prevAttr);
+    }
+  };
+}

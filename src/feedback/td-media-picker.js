@@ -118,7 +118,7 @@ const isMac = () => {
  * @param {(key: string) => string} t
  * @returns {{ id: string, promise: Promise<boolean> }}
  */
-function openDiscardConfirm(t) {
+function openDiscardConfirm(t, themeRoot) {
   let resolve = (_v) => {};
   const promise = new Promise((r) => { resolve = r; });
   const body = document.createElement('p');
@@ -128,6 +128,7 @@ function openDiscardConfirm(t) {
     title: t('discardTitle'),
     body,
     size: 'sm',
+    themeRoot,
     actions: [
       { label: t('keepEditing'), variant: 'secondary', value: false },
       { label: t('discard'), variant: 'danger', value: true },
@@ -280,7 +281,8 @@ export class TdMediaPicker extends HTMLElement {
    * Open a picker built from options (a temporary host on <body>, removed after the close). Resolution order: these
    * options > TdMediaPicker.defaults (shallow, per key). Throws a TypeError synchronously when no valid adapter
    * resolves. Another picker already open → resolves `{ status: 'cancelled', reason: 'programmatic' }` at once.
-   * @param {object} [options] OpenMediaPickerOptions
+   * @param {object} [options] OpenMediaPickerOptions (v0.42.0: + `themeRoot` — an Element whose theme scope the picker and
+   *   its dialogs follow, ADR 0020; a `<td-media-picker>` element follows its own scope)
    * @returns {Promise<import('../utils/media-picker-core.js').PickerOutcome>}
    */
   static open(options) {
@@ -355,6 +357,11 @@ export class TdMediaPicker extends HTMLElement {
     this.dispatchEvent(new CustomEvent(name, { bubbles: true, composed: true, detail }));
   }
 
+  /** @private v0.42.0 (ADR 0020): toasts raised by the picker follow its theme scope (the bridged root) */
+  _toastOptions(duration = 4000) {
+    return { duration, themeRoot: this._s && this._s.root ? this._s.root : null };
+  }
+
   /** @private still the same open session */
   _live(s) {
     return this._s === s && !this._settled;
@@ -422,6 +429,8 @@ export class TdMediaPicker extends HTMLElement {
     s.handle = openDialogLayer({
       root,
       dialog,
+      // v0.42.0 (ADR 0020): options.themeRoot, else the host (a <td-media-picker> inside a theme scope)
+      themeFrom: typeof Element !== 'undefined' && opts.themeRoot instanceof Element ? opts.themeRoot : this,
       viewport: { root, scroller: nearestScroller(root) }, // v0.36.2: above the keyboard
       layer: LAYERS.modal,
       scrollLock: true,
@@ -721,6 +730,7 @@ export class TdMediaPicker extends HTMLElement {
     if (!this._live(s) || s.filterSheet) return;
     s.filterSheet = openFilterSheet({
       t: (k, p) => this._t(k, p),
+      themeFrom: s.root,
       descriptors: s.facetList,
       committed: s.filters,
       idPrefix: `${s.id}-fs`,
@@ -788,6 +798,7 @@ export class TdMediaPicker extends HTMLElement {
     try {
       s.upload = openUploadDialog({
         t: (k, p) => this._t(k, p),
+        themeFrom: s.root,
         adapter: s.adapter,
         context: s.context,
         sources: { ...s.sources },
@@ -1864,7 +1875,7 @@ export class TdMediaPicker extends HTMLElement {
       this._applyFreshAsset(asset);
       const msg = this._t('saved');
       this._announce(msg);
-      try { TdToast.success(msg); } catch { /* ignore */ }
+      try { TdToast.success(msg, this._toastOptions()); } catch { /* ignore */ }
       this._emit('asset-change', { operation: 'update', asset });
       this._loadFacets();
       this._loadPage('reload', { keepGrid: true });
@@ -1930,6 +1941,7 @@ export class TdMediaPicker extends HTMLElement {
     const t = (k, p) => this._t(k, p);
     const name = asset.name || asset.id;
     const done = TdModal.confirm({
+      themeRoot: s.root,
       title: t('deleteTitle'),
       message: t('deleteMessage', { name }), // TEXT (never messageHtml): a name like <b>x</b> shows literally
       confirmText: t('deleteConfirm'),
@@ -1984,7 +1996,7 @@ export class TdMediaPicker extends HTMLElement {
     this._emit('operation-error', { operation, code: n.code, retryable: n.retryable });
     const msg = text || n.userMessage || this._t(`error.${n.code}`);
     this._announce(msg);
-    try { TdToast.error(msg); } catch { /* ignore */ }
+    try { TdToast.error(msg, this._toastOptions(5000)); } catch { /* ignore */ }
   }
 
   /** @private `deleted` → out of the selection, caches dropped, the CURRENT page reloaded, the detail empty */
@@ -2007,7 +2019,7 @@ export class TdMediaPicker extends HTMLElement {
     }
     const msg = this._t('deleted', { name: asset.name || id });
     this._announce(msg);
-    try { TdToast.success(msg); } catch { /* ignore */ }
+    try { TdToast.success(msg, this._toastOptions()); } catch { /* ignore */ }
     this._emit('asset-change', { operation: 'delete', id });
     this._loadFacets({ fresh: true });
     this._loadPage('reload', { keepGrid: true, stepBack: true });
@@ -2151,7 +2163,7 @@ export class TdMediaPicker extends HTMLElement {
   _confirmDiscard() {
     const s = this._s;
     if (s.confirm) return Promise.resolve(false);
-    const c = openDiscardConfirm((k) => this._t(k));
+    const c = openDiscardConfirm((k) => this._t(k), s.root);
     s.confirm = c;
     return c.promise.then((ok) => {
       if (s.confirm === c) s.confirm = null;
@@ -2235,6 +2247,7 @@ export class TdMediaPicker extends HTMLElement {
     let pending;
     try {
       pending = Promise.resolve(openCropDialog({
+        themeRoot: s.root,
         src,
         alt: asset.defaultAltText || asset.name || '',
         naturalWidth: known ? naturalWidth : undefined,

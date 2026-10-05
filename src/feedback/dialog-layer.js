@@ -25,7 +25,7 @@
  */
 import {
   LAYERS, register as registerLayer, trapTab, setFocusHandoff, followFocusHandoff, floatingContains, coverFloatingIn,
-  restoreFocus as restoreTopFocus,
+  restoreFocus as restoreTopFocus, bridgeTheme,
 } from '../utils/layers.js';
 import { lockScroll } from '../utils/scroll-lock.js';
 import { transitionEndMs } from '../utils/transition.js';
@@ -64,6 +64,9 @@ const FALLBACK_EXIT_MS = 240;
  * @param {{ root: HTMLElement, scroller?: HTMLElement | ((active: Element) => HTMLElement | null) | null }} [o.viewport]
  *   v0.36.2 (ADR 0019): follow the on-screen keyboard while open (utils/keyboard-viewport.js) — the root shrinks to the
  *   visual viewport and `scroller` reveals the focused field; stopped (variables removed) when the close starts
+ * @param {Element|null} [o.themeFrom] v0.42.0 (ADR 0020): follow the theme scope of this element (the host of an
+ *   element-driven dialog, or a programmatic overlay's `themeRoot`) — bridgeTheme() before the root shows, removed
+ *   with the root
  * @returns {{ root: HTMLElement, dialog: HTMLElement, layer: ReturnType<typeof registerLayer>, opener: HTMLElement|null,
  *   readonly closed: boolean, close(reason?: *): Promise<*>, release(): void }}
  */
@@ -74,6 +77,7 @@ export function openDialogLayer(o) {
   const active0 = document.activeElement;
   const opener = o.opener !== undefined ? o.opener
     : (active0 instanceof HTMLElement && active0 !== document.body ? active0 : null);
+  const unbridge = o.themeFrom ? bridgeTheme(root, o.themeFrom) : () => {};
   if (!root.isConnected) document.body.appendChild(root);
   const releaseScroll = o.scrollLock ? lockScroll() : null;
   let stopViewport = o.viewport && o.viewport.root ? watchKeyboardViewport(o.viewport) : null;
@@ -111,6 +115,7 @@ export function openDialogLayer(o) {
     timer = 0;
     root.hidden = true;
     if (root.parentNode) root.remove();
+    unbridge();
     resolveClosed(reasonOut);
   };
 

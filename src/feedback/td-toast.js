@@ -53,7 +53,7 @@
  */
 
 import { tdIcon } from '../icons/td-icon.js';
-import { LAYERS, register as registerLayer } from '../utils/layers.js';
+import { LAYERS, register as registerLayer, bridgeTheme } from '../utils/layers.js';
 import { transitionEndMs } from '../utils/transition.js';
 import { ensurePressStates } from '../utils/press.js';
 import {
@@ -70,6 +70,10 @@ const REMOVE_DELAY = 200;
 const REMOVE_MARGIN = 20;
 
 const raf = (fn) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(fn) : setTimeout(fn, 16));
+
+/** v0.42.0 (ADR 0020): the `themeRoot` option of a toast call (an Element), else null. */
+const themeRootOf = (options) => (options && typeof options === 'object' && typeof Element !== 'undefined'
+  && options.themeRoot instanceof Element ? options.themeRoot : null);
 
 export class TdToast {
   /** @type {HTMLElement|null} */
@@ -260,19 +264,20 @@ export class TdToast {
    * Show a toast notification. Uses a staggered queue to prevent lag when many toasts fire at once.
    * @param {string} message - Toast message text (rendered as text, never HTML)
    * @param {'success'|'error'|'warning'|'info'} type - Toast variant (unknown → info)
-   * @param {number|{duration?: number, placement?: string}} [options] - Auto-dismiss delay in ms (≤ 0 = sticky:
-   *   dismissed by a click or the keyboard close button), or `{ duration, placement }` (missing duration → 4000)
+   * @param {number|{duration?: number, placement?: string, themeRoot?: Element|null}} [options] - Auto-dismiss delay in
+   *   ms (≤ 0 = sticky: dismissed by a click or the keyboard close button), or `{ duration, placement, themeRoot }`
+   *   (missing duration → 4000; v0.42.0 `themeRoot`: the toast follows that element's theme scope, ADR 0020)
    * @returns {{ close(): void }} handle of this request (queued, staggered or shown); close() is idempotent
    */
   static show(message, type = 'info', options = 4000) {
     const o = toastOptions(options, 4000);
-    return TdToast._request(message, type, o.duration, o.placement);
+    return TdToast._request(message, type, o.duration, o.placement, themeRootOf(options));
   }
 
   /** @private queue one request; the placement is resolved NOW (snapshot) */
-  static _request(message, type, duration, callPlacement) {
+  static _request(message, type, duration, callPlacement, themeRoot = null) {
     const placement = message ? TdToast._resolvePlacement(callPlacement) : null;
-    const req = { message, type, duration, placement, state: message ? 'queued' : 'closed', timer: null, toast: null };
+    const req = { message, type, duration, placement, themeRoot, state: message ? 'queued' : 'closed', timer: null, toast: null };
     const handle = { close: () => TdToast._cancel(req) };
     if (!message) return handle;
 
@@ -299,7 +304,7 @@ export class TdToast {
         TdToast._scheduled.delete(req);
         if (req.state !== 'scheduled') return;
         req.state = 'shown';
-        req.toast = TdToast._showSingle(req.message, req.type, req.duration, req.placement);
+        req.toast = TdToast._showSingle(req.message, req.type, req.duration, req.placement, req.themeRoot);
       }, i * 80);
     });
   }
@@ -376,7 +381,7 @@ export class TdToast {
    * @param {string} [placement] resolved placement or 'legacy' (omitted → resolved now)
    * @returns {HTMLElement}
    */
-  static _showSingle(message, type, duration, placement) {
+  static _showSingle(message, type, duration, placement, themeRoot = null) {
     TdToast.ensureContainer();
     const container = /** @type {HTMLElement} */ (TdToast.container);
     // Toasts removed behind our back (e.g. container.innerHTML = '') no longer count.
@@ -413,6 +418,8 @@ export class TdToast {
     if (x) close.appendChild(x);
 
     toast.append(prefix, msg, close);
+    // v0.42.0 (ADR 0020): `themeRoot` → this toast renders in that element's theme scope (the toast is the bridged root)
+    const unbridge = themeRoot ? bridgeTheme(toast, null, { themeRoot }) : () => {};
     // newest nearest the edge: top-* prepend, bottom-* append; the legacy stack keeps append (v0.35 order)
     if (where !== LEGACY && edgeOf(where) === 'top') stack.prepend(toast);
     else stack.appendChild(toast);
@@ -461,6 +468,7 @@ export class TdToast {
       const exitMs = transitionEndMs(toast);
       setTimeout(() => {
         toast.remove();
+        unbridge();
         const c = TdToast.container;
         if (!c || !c.querySelector('.td-toast')) {
           TdToast._releaseLayer();
@@ -505,7 +513,7 @@ export class TdToast {
    */
   static success(message, options = 4000) {
     const o = toastOptions(options, 4000);
-    return TdToast._request(message, 'success', o.duration, o.placement);
+    return TdToast._request(message, 'success', o.duration, o.placement, themeRootOf(options));
   }
 
   /**
@@ -516,7 +524,7 @@ export class TdToast {
    */
   static error(message, options = 5000) {
     const o = toastOptions(options, 5000);
-    return TdToast._request(message, 'error', o.duration, o.placement);
+    return TdToast._request(message, 'error', o.duration, o.placement, themeRootOf(options));
   }
 
   /**
@@ -527,7 +535,7 @@ export class TdToast {
    */
   static warning(message, options = 4000) {
     const o = toastOptions(options, 4000);
-    return TdToast._request(message, 'warning', o.duration, o.placement);
+    return TdToast._request(message, 'warning', o.duration, o.placement, themeRootOf(options));
   }
 
   /**
@@ -538,6 +546,6 @@ export class TdToast {
    */
   static info(message, options = 4000) {
     const o = toastOptions(options, 4000);
-    return TdToast._request(message, 'info', o.duration, o.placement);
+    return TdToast._request(message, 'info', o.duration, o.placement, themeRootOf(options));
   }
 }

@@ -1,7 +1,7 @@
 import { TdFormElement } from '../base/td-form-element.js';
 import { ValueTitleWatcher, displayedValueText } from '../utils/value-title.js';
 import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
-import { LAYERS, register as registerLayer } from '../utils/layers.js';
+import { LAYERS, register as registerLayer, bridgeTheme } from '../utils/layers.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import { TreeModel } from '../utils/tree-model.js';
 import { isCoarsePointer } from '../utils/breakpoints.js';
@@ -976,6 +976,8 @@ export class TdTreeSelect extends TdFormElement {
       this._model.revealSelected();
       tree._rerender();
     }
+    // v0.42.0 (ADR 0020): the portaled popup renders in the host's theme scope (undone when the layer is released)
+    if (!this._unbridge) this._unbridge = bridgeTheme(menu, this);
     menu.hidden = false;
     menu.setAttribute('data-state', 'open');
     this.querySelector('.td-tree-select')?.setAttribute('data-state', 'open');
@@ -1054,6 +1056,10 @@ export class TdTreeSelect extends TdFormElement {
     if (this._layer) {
       this._layer.release();
       this._layer = null;
+    }
+    if (this._unbridge) {
+      this._unbridge();
+      this._unbridge = null;
     }
   }
 

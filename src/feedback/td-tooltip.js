@@ -1,4 +1,4 @@
-import { LAYERS, register as registerLayer } from '../utils/layers.js';
+import { LAYERS, register as registerLayer, bridgeTheme } from '../utils/layers.js';
 import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
 import { safeColor } from '../utils/css-safe.js';
 import { pickPole } from '../theme/color.js';
@@ -299,6 +299,7 @@ export class TdTooltip {
         if (this._observer) { this._observer.disconnect(); this._observer = null; }
         if (this._rafReposition) { cancelAnimationFrame(this._rafReposition); this._rafReposition = 0; }
         this._cancelFade();
+        this._dropBridge();
         if (this.tooltip) this.tooltip.remove();
         this.tooltip = null;
         this.tooltipContent = null;
@@ -315,6 +316,7 @@ export class TdTooltip {
         if (!this.tooltip || !this.tooltip.isConnected) this.createTooltipElement();
         this._cancelHide();
         this._cancelFade();
+        this._dropBridge();
 
         if (this.currentElement && this.currentElement !== element) this._unlink();
         this.currentElement = element;
@@ -325,6 +327,8 @@ export class TdTooltip {
 
         const tip = /** @type {HTMLElement} */ (this.tooltip);
         this._refreshContent(element);
+        // v0.42.0 (ADR 0020): the chip follows the trigger's theme scope (after the custom chip colours: those win)
+        this._unbridge = bridgeTheme(tip, element);
         tip.hidden = false;
         tip.removeAttribute('data-state');
         this.position(element);
@@ -377,11 +381,14 @@ export class TdTooltip {
             if (dur > 0) {
                 this._fadeTimeout = setTimeout(() => {
                     this._fadeTimeout = null;
-                    if (!this.isVisible && this.tooltip) this.tooltip.hidden = true;
+                    if (!this.isVisible && this.tooltip) { this.tooltip.hidden = true; this._dropBridge(); }
                 }, dur);
             } else {
                 tip.hidden = true;
+                this._dropBridge();
             }
+        } else {
+            this._dropBridge();
         }
         this._unlink();
         if (this._layer) { this._layer.release(); this._layer = null; this._layerAnchor = null; }
@@ -541,6 +548,11 @@ export class TdTooltip {
     }
 
     /** @private apply the D15 naming policy to one trigger (idempotent). */
+    /** @private v0.42.0: undo the theme bridge of the last shown chip (once it is hidden or re-shown). */
+    _dropBridge() {
+        if (this._unbridge) { this._unbridge(); this._unbridge = null; }
+    }
+
     _prepare(el) {
         if (!triggerKind(el)) return; // unsupported: names and title untouched
         const text = clean(this.getTooltipContent(el) || '');

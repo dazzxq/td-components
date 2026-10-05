@@ -123,6 +123,7 @@ function boxOpt(v) {
  * @param {AbortSignal} [opts.signal] abort ⇒ the dialog closes AND its root is removed at once (no exit transition —
  *   owner teardown), resolves `{ status: 'cancelled' }`
  * @param {HTMLElement|null} [opts.opener] focus restore target (default: the focused element at open)
+ * @param {Element|null} [opts.themeRoot] v0.42.0 (ADR 0020): render in this element's theme scope (`[data-td-theme]`)
  * @returns {Promise<CropDialogResult>} rejects only when another crop dialog is open
  */
 export function openCropDialog(opts = /** @type {any} */ ({})) {
@@ -258,6 +259,7 @@ export function openCropDialog(opts = /** @type {any} */ ({})) {
     layer: LAYERS.modal,
     scrollLock: !o.nested,
     opener: o.opener instanceof HTMLElement ? o.opener : undefined,
+    themeFrom: typeof Element !== 'undefined' && o.themeRoot instanceof Element ? o.themeRoot : null,
     backdrop: root.querySelector('.td-modal__backdrop'),
     onEscape: () => {
       if (cropper.hasAttribute('data-dragging')) return true; // (td-cropper normally swallows it first)

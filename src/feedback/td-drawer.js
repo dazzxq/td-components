@@ -84,6 +84,7 @@ export class TdDrawer extends HTMLElement {
    * @param {'sm'|'md'|'lg'|'xl'} [options.size='md']
    * @param {boolean} [options.dismissible=true]
    * @param {(reason: string) => void} [options.onClose] - after the close (same moment as the `close` event)
+   * @param {Element|null} [options.themeRoot] - v0.42.0 (ADR 0020): follow this element's theme scope (`[data-td-theme]`)
    * @returns {{ element: TdDrawer, close(reason?: string): Promise<string|null>, closed: Promise<string> }}
    */
   static open(options = {}) {
@@ -133,6 +134,8 @@ export class TdDrawer extends HTMLElement {
       }
     }
     host._jsOwned = true;
+    // v0.42.0 (ADR 0020): a programmatic drawer lives under <body> — it follows `themeRoot`'s scope when given
+    if (typeof Element !== 'undefined' && o.themeRoot instanceof Element) host._themeRoot = o.themeRoot;
     let resolveClosed = () => {};
     const closed = new Promise((r) => { resolveClosed = r; });
     host.addEventListener('close', (e) => {
@@ -205,6 +208,7 @@ export class TdDrawer extends HTMLElement {
     this._layer = openDialogLayer({
       root,
       dialog: panel,
+      themeFrom: this._themeRoot || this, // v0.42.0 (ADR 0020): the host's theme scope
       viewport: { root, scroller: panel.querySelector('.td-drawer__body') }, // v0.36.2: above the keyboard
       layer: LAYERS.modal,
       scrollLock: true,

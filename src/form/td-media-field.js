@@ -888,6 +888,7 @@ export class TdMediaField extends TdFormElement {
     };
     const label = this.getAttribute('label');
     if (label) opts.title = label;
+    opts.themeRoot = this; // v0.42.0 (ADR 0020): the picker follows the field's theme scope
     this._picking = true;
     const gen = ++this._pickGen;
     const prov = this._prov(); // review R1 #2: the asset of the outcome comes from THIS source
@@ -1095,6 +1096,7 @@ export class TdMediaField extends TdFormElement {
     try {
       res = await openCropDialog({
         ...source,
+        themeRoot: this, // v0.42.0 (ADR 0020)
         alt: this._alt || this._previewAlt,
         aspectRatio: ratio,
         crop: crop ? { ...crop } : null,

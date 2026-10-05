@@ -68,7 +68,7 @@
  * - Over an open modal the card keeps its small-popup surface (94 % + blur, v0.20.0 minimal surfaces).
  */
 import {
-  LAYERS, register as registerLayer, focusablesIn, childFloatingIn, coverFloatingIn,
+  LAYERS, register as registerLayer, focusablesIn, childFloatingIn, coverFloatingIn, bridgeTheme,
 } from '../utils/layers.js';
 import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
 
@@ -541,6 +541,7 @@ function closeSession(reason) {
     card.setAttribute('data-state', 'closed');
     card.replaceChildren(); // fragments stay cached: a re-open is instant
   }
+  if (s.unbridge) s.unbridge();
 }
 
 /** Open `trigger` now (no delay). */
@@ -568,7 +569,8 @@ function open(trigger, binding) {
   if (cur) closeSession('switch');
   const my = ++token;
   const c = ensureCard();
-  cur = { trigger, binding, layer: null, raf: 0 };
+  // v0.42.0 (ADR 0020): the card renders in the trigger's theme scope (the card element is reused: unbridged on close)
+  cur = { trigger, binding, layer: null, raf: 0, unbridge: bridgeTheme(c, trigger) };
   c.setAttribute('aria-label', nameFor(trigger, binding.opts));
   trigger.setAttribute('aria-haspopup', 'dialog');
   trigger.setAttribute('aria-expanded', 'true');
