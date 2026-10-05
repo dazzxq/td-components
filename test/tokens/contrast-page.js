@@ -776,6 +776,19 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       const viewing = root.querySelector('.td-media-picker__card[data-viewing]:not([data-selected])');
       const rest = root.querySelector('.td-media-picker__card:not([data-viewing]):not([data-selected])');
       if (!checked || !viewing || !rest) throw new Error('media-picker cards: checked / viewing / rest card missing');
+      // a loaded CI runner can still be mid border-colour transition after 500 ms (WebKit read rgba(…, 0) / 0.435): wait for
+      // every running animation on the cards to finish, then for two equal consecutive reads (bounded, real signals)
+      const cards = [checked, viewing, rest];
+      await Promise.race([
+        Promise.all(cards.flatMap((el) => el.getAnimations()).map((a) => a.finished.catch(() => {}))),
+        new Promise((r) => setTimeout(r, 3000)),
+      ]);
+      for (let i = 0, prev = ''; i < 120; i++) {
+        const now = cards.map((el) => getComputedStyle(el).borderTopColor).join('|');
+        if (now === prev) break;
+        prev = now;
+        await new Promise((r) => requestAnimationFrame(r));
+      }
       // hover = the token's resolved colour (the gate cannot hover inside a pairs case): a probe card-less element
       const probe = document.createElement('span');
       probe.style.setProperty('color', 'var(--td-media-picker-card-hover)');
