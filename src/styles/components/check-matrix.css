@@ -92,6 +92,12 @@
 		color: inherit;
 	}
 
+	/* the table and its rows never draw a border (a host reset such as Tailwind's preflight stays inert) */
+	.td-check-matrix__grid,
+	.td-check-matrix__grid tr {
+		border: 0;
+	}
+
 	.td-check-matrix__grid :is(th, td) {
 		height: var(--td-check-matrix-cell-size);
 		padding: 0;
