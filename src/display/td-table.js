@@ -17,7 +17,7 @@ const ACTION_VARIANTS = new Set(['primary', 'secondary', 'success', 'danger', 'w
 /** More visible actions than this → card mode shows one "Thao tác" menu button instead (QĐ 18). */
 const CARD_INLINE_ACTIONS = 2;
 /** Attributes whose change rebuilds the structure; every other observed attribute updates in place (D11). */
-const STRUCTURAL = new Set(['title', 'heading-level', 'zebra', 'max-height']);
+const STRUCTURAL = new Set(['title', 'heading-level', 'zebra', 'max-height', 'column-menu']);
 /** v0.37.0: `selectable` values that turn row selection off (absent attribute = off too). */
 const SELECT_OFF = new Set(['none', 'false', '0', 'off']);
 /** Max length of a row name in the selection control's aria-label (QĐ 7). */
@@ -191,6 +191,18 @@ function safeMaxHeight(value) {
  *   sort itself — it fires `request-change`, shows the skeleton (`loading`, aria-busy; the paginations stay so focus
  *   stays on the activated control) and waits for `setState()`.
  * @fires request-change - `{ state, reason, requestId }`
+ *
+ * v0.39.0 column show / hide (QĐ 6–10): a column may set `hideable` (default true; false for the card `primary` and
+ * the `actions` column) and `hidden` (initial state). A hideable column needs a unique non-empty `key` (else it is not
+ * hideable + one warning). Hiding = the `hidden` attribute on its th / td / skeleton cells — no re-render (focus,
+ * selection kept); the sort of a hidden column is kept. The selection column is never hidden.
+ * @attr {boolean} column-menu - A "Cột" button in the header opens a TdMenu of checkbox items (+ "Khôi phục mặc
+ *   định" = the `hidden` flags of `columns`)
+ * @attr {number} min-visible - Visible columns never go below this (default 1, ≥ 1): the last item that may still be
+ *   turned off is locked (aria-disabled + hint)
+ * @property {string[]} hiddenColumns - Keys of the hidden columns (get / set, silent; `null` → the `hidden` flags).
+ *   The app persists it (from `columns-change`) and sets it back before the first render.
+ * @fires columns-change - `{ hidden: string[], reason: 'toggle'|'reset' }` — user changes only
  */
 export class TdTable extends TdBaseElement {
   /** Site-overridable strings. */
@@ -212,6 +224,10 @@ export class TdTable extends TdBaseElement {
     selectedRow: 'Đã chọn {label}',
     deselected: 'Đã bỏ chọn',
     selectLimit: 'Tối đa {max} dòng',
+    // v0.39.0 column menu
+    columns: 'Cột',
+    columnsReset: 'Khôi phục mặc định',
+    columnsMin: 'Cần ít nhất {n} cột',
   };
 
   /** v0.37.0 (ADR 0018): form-associated for the optional `name` (the selected keys). NOT a TdFormElement. */
@@ -276,6 +292,13 @@ export class TdTable extends TdBaseElement {
     this._pendingSortKey = null;
     /** `setState()` in progress: attribute updates do not re-render until it ends (one atomic update). */
     this._batching = false;
+    // v0.39.0 column show / hide
+    /** Keys asked to be hidden (hiddenColumns / user), or null = the `hidden` flags of `columns`. */
+    this._hiddenKeys = null;
+    /** Hidden column INDICES (resolved from _hiddenKeys, hideable + min-visible applied). */
+    this._hidden = new Set();
+    /** Per column: its key as a string when hideable (unique non-empty key), else null. */
+    this._hideKeys = [];
     this._internals = null;
     if (typeof this.attachInternals === 'function') {
       try { this._internals = this.attachInternals(); } catch { this._internals = null; }
@@ -314,6 +337,17 @@ export class TdTable extends TdBaseElement {
   set onPageChange(fn) { this._onPageChange = typeof fn === 'function' ? fn : null; }
 
   get onRowAction() { return this._onRowAction; }
+
+  /** v0.39.0: keys of the hidden columns, in column order (silent setter; `null` = the `hidden` flags of `columns`). */
+  get hiddenColumns() {
+    if (!this._columns.length) return this._hiddenKeys ? this._hiddenKeys.slice() : [];
+    this._computeHidden();
+    return [...this._hidden].sort((a, b) => a - b).map((ci) => this._hideKeys[ci]);
+  }
+  set hiddenColumns(v) {
+    this._hiddenKeys = Array.isArray(v) ? v.filter((k) => k != null).map(String) : null;
+    if (this._root) this._applyHidden();
+  }
   set onRowAction(fn) { this._onRowAction = typeof fn === 'function' ? fn : null; }
 
   // --- v0.37.0 row selection: properties ---
@@ -426,10 +460,136 @@ export class TdTable extends TdBaseElement {
   }
   _getMaxHeight() { return safeMaxHeight(this.getAttribute('max-height')); }
   _getHostLabel() { return (this.getAttribute('aria-label') || '').trim(); }
-  /** v0.34.0 QĐ 14: `table-layout: fixed` only when EVERY column is `widthType: 'fixed'` with a valid width. */
+  /**
+   * v0.34.0 QĐ 14: `table-layout: fixed` only when EVERY column is `widthType: 'fixed'` with a valid width. v0.39.0
+   * (QĐ 8): every VISIBLE column.
+   */
   _isFixedLayout() {
-    const cols = this._columns;
+    const cols = this._columns.filter((_, ci) => !this._hidden.has(ci));
     return cols.length > 0 && cols.every((c) => c && c.widthType === 'fixed' && safeCssDimension(c.width, ''));
+  }
+
+  // --- v0.39.0 column show / hide (plan v0.39.0-filters-range QĐ 6–10) ---
+
+  /** `min-visible` (integer ≥ 1, default 1), never above the number of columns. */
+  _minVisible() {
+    return Math.max(1, Math.min(this._int('min-visible', 1), Math.max(1, this._columns.length)));
+  }
+
+  _colMenuOn() { return this.hasAttribute('column-menu'); }
+
+  /** @private Resolve `_hideKeys` + `_hidden` from the columns, `_hiddenKeys` and `min-visible`. */
+  _computeHidden() {
+    const cols = this._columns;
+    const roles = this._cardRoles();
+    const counts = new Map();
+    for (const c of cols) {
+      const k = c && c.key != null ? String(c.key) : '';
+      counts.set(k, (counts.get(k) || 0) + 1);
+    }
+    this._hideKeys = cols.map((col, ci) => {
+      const c = col || {};
+      const hideable = typeof c.hideable === 'boolean' ? c.hideable
+        : !(roles[ci] === 'primary' || roles[ci] === 'actions' || Array.isArray(c.actions));
+      if (!hideable) return null;
+      const k = c.key != null ? String(c.key) : '';
+      if (!k || counts.get(k) > 1) {
+        if (this._colMenuOn() || c.hidden === true || c.hideable === true) {
+          this._warnOnce('td-table: a hideable column needs a unique, non-empty `key` — that column cannot be hidden.');
+        }
+        return null;
+      }
+      return k;
+    });
+    const want = new Set(this._hiddenKeys
+      ?? cols.filter((c, ci) => c && c.hidden === true && this._hideKeys[ci] !== null).map((c) => String(c.key)));
+    const hidden = [];
+    this._hideKeys.forEach((k, ci) => { if (k !== null && want.has(k)) hidden.push(ci); });
+    const min = this._minVisible();
+    while (hidden.length && cols.length - hidden.length < min) {
+      hidden.pop();
+      this._warnOnce(`td-table: hiding these columns would leave fewer than min-visible (${min}) — some stay visible.`);
+    }
+    this._hidden = new Set(hidden);
+  }
+
+  /** @private ` hidden` for the cells of column `ci` (render strings). */
+  _hiddenAttr(ci) { return this._hidden.has(ci) ? ' hidden' : ''; }
+
+  /** @private Recompute and apply IN PLACE (no re-render): cells, fixed layout, empty colspan. */
+  _applyHidden() {
+    this._computeHidden();
+    if (!this._table) return;
+    const cells = this._table.querySelectorAll(':scope > thead > tr > [data-col], :scope > tbody > tr > [data-col]');
+    for (const cell of cells) {
+      const h = this._hidden.has(Number(cell.getAttribute('data-col')));
+      if (cell.hidden !== h) cell.hidden = h;
+    }
+    this._root.classList.toggle('td-table--fixed', this._isFixedLayout());
+    const empty = this._tbody.querySelector(':scope > .td-table__empty-row > .td-table__empty');
+    if (empty) empty.setAttribute('colspan', String(this._emptySpan()));
+  }
+
+  _emptySpan() {
+    return Math.max(1, this._columns.length - this._hidden.size) + (this._selOn ? 1 : 0);
+  }
+
+  /** @private Items of the column menu (labels are text; ids `c{index}`). */
+  _columnMenuItems() {
+    this._computeHidden();
+    const L = TdTable.labels;
+    const min = this._minVisible();
+    const visible = this._columns.length - this._hidden.size;
+    const hint = fill(L.columnsMin, { n: min });
+    const items = [];
+    this._columns.forEach((col, ci) => {
+      const key = this._hideKeys[ci];
+      if (key === null) return;
+      const c = col || {};
+      const on = !this._hidden.has(ci);
+      const locked = on && visible <= min;
+      const text = c.label == null ? '' : String(c.label).trim();
+      items.push({
+        type: 'checkbox',
+        id: `c${ci}`,
+        label: text || key,
+        checked: on,
+        disabled: locked,
+        hint: locked ? hint : '',
+        onSelect: (ctx) => this._toggleColumn(ci, ctx.checked, ctx),
+      });
+    });
+    if (!items.length) return [];
+    items.push({ separator: true }, { id: 'reset', label: L.columnsReset, onSelect: () => this._resetColumns() });
+    return items;
+  }
+
+  /** @private A user toggled a column in the menu (it stays open): apply, `columns-change`, re-lock the items. */
+  _toggleColumn(ci, show, ctx) {
+    const key = this._hideKeys[ci];
+    if (key == null) return;
+    const keys = new Set(this.hiddenColumns);
+    if (show) keys.delete(key);
+    else keys.add(key);
+    this._hiddenKeys = [...keys];
+    this._applyHidden();
+    this.emit('columns-change', { hidden: this.hiddenColumns, reason: 'toggle' });
+    if (!ctx || typeof ctx.setDisabled !== 'function') return;
+    const min = this._minVisible();
+    const visible = this._columns.length - this._hidden.size;
+    const hint = fill(TdTable.labels.columnsMin, { n: min });
+    this._hideKeys.forEach((k, i) => {
+      if (k === null) return;
+      const locked = !this._hidden.has(i) && visible <= min;
+      ctx.setDisabled(`c${i}`, locked, locked ? hint : '');
+    });
+  }
+
+  /** @private "Khôi phục mặc định": back to the `hidden` flags of `columns`. */
+  _resetColumns() {
+    this._hiddenKeys = null;
+    this._applyHidden();
+    this.emit('columns-change', { hidden: this.hiddenColumns, reason: 'reset' });
   }
 
   /** Card role of every column (QĐ 16 + v0.36.1 `lead`), computed once per render — see utils/table-card-role.js. */
@@ -486,6 +646,7 @@ export class TdTable extends TdBaseElement {
     }
     if (name === 'name') { this._syncForm(); return; }
     if (name === 'max-selected') return; // read at the next user action
+    if (name === 'min-visible') { if (this._root) this._applyHidden(); return; }
     if (name === 'disabled') { this._paintSelection(); return; }
     if (name === 'loading' && newVal === null) { this._awaiting = false; this._reqSort = null; }
     if (STRUCTURAL.has(name)) this._doRender();
@@ -509,6 +670,7 @@ export class TdTable extends TdBaseElement {
   }
 
   render() {
+    this._computeHidden();
     const title = this._getTitle();
     const h = `h${this._getHeadingLevel()}`;
     const mods = (this._isZebra() ? ' td-table--zebra' : '')
@@ -526,14 +688,20 @@ export class TdTable extends TdBaseElement {
           + '<span class="td-table__sort-icon" aria-hidden="true"></span></button>'
         : label;
       return `<th class="td-table__th${c.sortable ? ' td-table__th--sortable' : ''}${pad}" role="columnheader" scope="col" data-col="${ci}" data-col-key="${key}"`
-        + ` data-card="${roles[ci]}">${inner}</th>`;
+        + ` data-card="${roles[ci]}"${this._hiddenAttr(ci)}>${inner}</th>`;
     }).join('');
     const titleHtml = title ? `<${h} class="td-table__title" id="${esc(this._titleId)}">${esc(title)}</${h}>` : '';
     const selHead = this._selOn ? this._selectHeadHtml() : '';
+    // v0.39.0: the column menu button (between the title and the top pagination)
+    const colBtn = this._colMenuOn()
+      ? '<button type="button" class="td-btn td-btn--ghost td-btn--sm td-table__columns" aria-haspopup="menu" aria-expanded="false">'
+        + '<span class="td-table__columns-icon" data-td-icon="columns" data-td-icon-size="16" aria-hidden="true"></span>'
+        + `<span class="td-table__columns-label">${esc(TdTable.labels.columns)}</span></button>`
+      : '';
     const pag = (cls, label, quiet) => `<div class="${cls}"${quiet ? ' hidden' : ''}><td-pagination${quiet ? ' quiet' : ''}`
       + ` item-label="${esc(TdTable.labels.itemLabel)}" aria-label="${esc(label)}"></td-pagination></div>`;
     return `<div class="td-table${mods}" data-state="ready">`
-      + `<div class="td-table__header">${titleHtml}${pag('td-table__pagination', TdTable.labels.paginationTop, true)}</div>`
+      + `<div class="td-table__header">${titleHtml}${colBtn}${pag('td-table__pagination', TdTable.labels.paginationTop, true)}</div>`
       + '<div class="td-table__scroll"><table class="td-table__table" role="table">'
       + `<thead class="td-table__head" role="rowgroup"><tr role="row">${selHead}${heads}</tr></thead>`
       + '<tbody class="td-table__body" role="rowgroup"></tbody></table></div>'
@@ -565,6 +733,11 @@ export class TdTable extends TdBaseElement {
     this._status = this._root.querySelector(':scope > [role="status"]');
     this._selAll = this._selOn ? this._table.querySelector(':scope > thead > tr > th > .td-table__select-all') : null;
     if (this._selAll) fillIconSlots(this._selAll);
+    const colBtn = this._header.querySelector(':scope > .td-table__columns');
+    if (colBtn) {
+      fillIconSlots(colBtn);
+      TdMenu.bind(colBtn, () => this._columnMenuItems(), { align: 'end' });
+    }
     const mh = this._getMaxHeight();
     if (mh) this._root.style.setProperty('--td-table-max-h', mh);
     else if (this.hasAttribute('max-height')) this._warnOnce(`td-table: ignored invalid max-height "${this.getAttribute('max-height')}".`);
@@ -667,7 +840,7 @@ export class TdTable extends TdBaseElement {
     }
     this._pagTop.parentElement.hidden = !showPag;
     this._footer.hidden = !showPag;
-    this._header.hidden = !showPag && !this._getTitle();
+    this._header.hidden = !showPag && !this._getTitle() && !this._colMenuOn();
 
     // State + naming
     this._root.setAttribute('data-state', loading ? 'loading' : empty ? 'empty' : 'ready');
@@ -723,7 +896,7 @@ export class TdTable extends TdBaseElement {
         const cls = `td-table__cell${c.ellipsis && !actions ? ' td-table__cell--ellipsis' : ''}`
           + `${this._isNowrap(c) ? ' td-table__cell--nowrap' : ''}${actions ? ' td-table__cell--actions' : ''}${pad}`;
         const attrs = `class="${cls}" role="cell" data-col="${ci}" data-col-key="${esc(String(c.key ?? ''))}"`
-          + ` data-card="${roles[ci]}"`;
+          + ` data-card="${roles[ci]}"${this._hiddenAttr(ci)}`;
         if (actions) return `<td ${attrs}>${labels[ci]}${this._actionsHtml(c, row)}</td>`;
         if (typeof c.render === 'function') return `<td ${attrs}>${labels[ci]}</td>`;
         const v = row && typeof row === 'object' ? row[c.key] : undefined;
@@ -1131,7 +1304,7 @@ export class TdTable extends TdBaseElement {
   }
 
   _renderEmpty() {
-    const n = Math.max(1, this._columns.length) + (this._selOn ? 1 : 0);
+    const n = this._emptySpan();
     const level = Math.min(6, (this._getTitle() ? this._getHeadingLevel() : 2) + 1);
     const esc = (v) => this.escapeHtml(v);
     this._tbody.innerHTML = `<tr class="td-table__empty-row" role="row"><td class="td-table__empty" role="cell" colspan="${n}">`
@@ -1144,7 +1317,7 @@ export class TdTable extends TdBaseElement {
     const pad = this._cellPadClass();
     const roles = this._cardRoles();
     const cells = this._columns.map((c, ci) => `<td class="td-table__cell${pad}" role="cell" data-col="${ci}"`
-      + ` data-card="${roles[ci]}"><span class="td-table__skeleton"></span></td>`).join('')
+      + ` data-card="${roles[ci]}"${this._hiddenAttr(ci)}><span class="td-table__skeleton"></span></td>`).join('')
       || `<td class="td-table__cell${pad}" role="cell" data-card="primary"><span class="td-table__skeleton"></span></td>`;
     const selCell = this._selOn ? '<td class="td-table__cell td-table__cell--select td-table__card-select" role="cell" data-card="select"></td>' : '';
     const row = `<tr class="td-table__row td-table__row--skeleton" role="row" aria-hidden="true">${selCell}${cells}</tr>`;
