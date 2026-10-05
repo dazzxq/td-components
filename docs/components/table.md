@@ -428,8 +428,11 @@ bulkClear.addEventListener('click', () => table.clearSelection({ emit: true }));
 #### "Chọn tất cả N kết quả" (server, kiểu Gmail — công thức)
 
 Ô header chỉ chọn **trang này**. Chỉ khi `select-change` có `trigger: 'page'` **và** ô header thành
-`aria-checked="true"` **và** `total-items` lớn hơn số dòng trang → hiện nút "Chọn tất cả {total} kết quả"; mọi thay đổi
-khác (bấm một dòng, Shift dải, bỏ chọn trang…) → ẩn nút. Bấm → app giữ cờ `allMatching` + **bộ lọc hiện tại** và gửi **bộ
+`aria-checked="true"` **và** `total-items` lớn hơn số dòng trang → hiện nút "Chọn tất cả {total} kết quả", ghi lại **khung
+nhìn** lúc đó (`getState()`: trang, `perPage`, sort; bộ lọc; mảng `data`). Ẩn nút (và bỏ cờ) khi: mọi `select-change`
+khác, `page-change`, `sort-change`, đổi bộ lọc / tải lại, gán `data` mới, `setPage()` hay đổi lựa chọn bằng API im lặng
+(hai việc cuối không có event — app tự bỏ cờ khi gọi). Trong handler của nút, **kiểm lại** (ô header vẫn `"true"`, cùng
+khung nhìn) trước khi bật cờ; không khớp → ẩn nút, không làm gì. Bấm → app giữ cờ `allMatching` + **bộ lọc hiện tại** và gửi **bộ
 lọc** (không gửi danh sách khoá) lên server; mọi `select-change` sau đó → bỏ cờ. Bảng không biết cờ này. Demo có ví dụ.
 
 #### Gửi form (`name`)
@@ -437,7 +440,12 @@ lọc** (không gửi danh sách khoá) lên server; mọi `select-change` sau �
 Có `name` → bảng gửi mỗi khoá đã chọn thành **một mục** form (`String(key)`, thứ tự chọn, **gồm cả khoá ở trang khác**),
 không cần tự đồng bộ `<input hidden>`:
 
-```html
+```php
+<?php
+// Trang có form: mở phiên và TẠO token trước khi render (token ngẫu nhiên 256 bit, gắn với phiên).
+session_start();
+$_SESSION['csrf'] ??= bin2hex(random_bytes(32));
+?>
 <form method="post" action="/posts/bulk-delete">
   <!-- CSRF: token gắn với phiên, server kiểm trước khi làm gì -->
   <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf'], ENT_QUOTES) ?>">
@@ -450,9 +458,13 @@ không cần tự đồng bộ `<input hidden>`:
 <?php
 // Mọi chuỗi đều gửi lên được (sửa DOM / tự POST): kiểm CSRF, kiểm hình dạng dữ liệu, rồi kiểm quyền NGAY TRONG câu xoá.
 session_start();
+$stored = $_SESSION['csrf'] ?? null;
+$sent = $_POST['csrf'] ?? null;
+// cả hai phải là chuỗi KHÁC RỖNG (phiên chưa có token → hash_equals('', '') sẽ "đúng" — chặn trước)
 if ($_SERVER['REQUEST_METHOD'] !== 'POST'
-    || !is_string($_POST['csrf'] ?? null)
-    || !hash_equals($_SESSION['csrf'] ?? '', $_POST['csrf'])) {
+    || !is_string($stored) || $stored === ''
+    || !is_string($sent) || $sent === ''
+    || !hash_equals($stored, $sent)) {
     http_response_code(403); exit;
 }
 

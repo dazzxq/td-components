@@ -745,3 +745,71 @@ describe('v0.37.0 td-table selection — review round 1 (SEC-1, SEC-2, ISSUE-3)'
     expect(el.selectedRows, 'no stale rows from before the mode change').to.deep.equal([]);
   });
 });
+
+describe('v0.37.0 td-table selection — review round 2 (ISSUE-4, ISSUE-2)', () => {
+  it('ISSUE-4: the SAME row object at two positions on different pages — only the first occurrence is selectable', async () => {
+    const shared = { id: 9, name: 'Chung' };
+    const data = [shared, { id: 2, name: 'Bình' }, { id: 3, name: 'Chi' }, shared];
+    const el = await mk('selectable row-key="id" per-page="2"', { data });
+    expect(ctl(el, 0).disabled).to.equal(false);
+    el.setPage(2);
+    await frames(1);
+    expect(ctl(el, 1).disabled, 'second occurrence locked').to.equal(true);
+    // sorted desc by name: the second occurrence lands on page 1 before the first one — still locked (source index)
+    el.setPage(1);
+    await click(el.querySelector('.td-table__sort'));
+    await click(el.querySelector('.td-table__sort')); // desc: Chung(0), Chung(3), Chi, Bình — ties keep data order
+    const names = rowsOf(el).map((tr) => tr.querySelector('[data-col="0"]').lastChild.textContent);
+    expect(names).to.deep.equal(['Chung', 'Chung']);
+    expect([ctl(el, 0).disabled, ctl(el, 1).disabled]).to.deep.equal([false, true]);
+    await click(ctl(el, 0));
+    expect(el.selectedKeys).to.deep.equal([9]);
+    // the duplicate occurrence is not the key's owner: never painted selected (like SEC-2's cross-page duplicate)
+    expect(rowsOf(el).map((tr) => tr.hasAttribute('data-selected'))).to.deep.equal([true, false]);
+    expect(ctl(el, 1).disabled).to.equal(true);
+    expect(el.selectedRows).to.deep.equal([shared]);
+  });
+
+  it('ISSUE-2: demo recipe — "all N results" hidden after a page change / sort / silent API change, re-validated on click', async () => {
+    const frame = document.createElement('iframe');
+    frame.style.width = '1280px';
+    frame.style.height = '900px';
+    frame.src = '/demo.html';
+    root.appendChild(frame);
+    await new Promise((r) => { frame.onload = r; });
+    const w = frame.contentWindow;
+    const d = frame.contentDocument;
+    const ready = () => !!d.querySelector('#demo-table .td-table__select-all');
+    expect(await until(ready, 300), 'demo table').to.equal(true);
+    const t = d.querySelector('#demo-table');
+    const all = d.querySelector('#demo-bulk-all');
+    const pressHeader = async () => { t.querySelector('.td-table__select-all').click(); await raf(); };
+    await pressHeader();
+    expect(all.hidden, 'offered after select-all of page 1 (8 > 5)').to.equal(false);
+    // page change (real pagination click) → no longer offered
+    t.querySelector('.td-table__pagination--bottom td-pagination .td-pagination__page:not([aria-current])').click();
+    await raf();
+    expect(all.hidden, 'hidden after page change').to.equal(true);
+    // back, select all again, then sort → hidden
+    t.setPage(1);
+    await raf();
+    t.clearSelection({ emit: true });
+    await pressHeader();
+    expect(all.hidden).to.equal(false);
+    t.querySelector('.td-table__sort').click();
+    await raf();
+    expect(all.hidden, 'hidden after sort').to.equal(true);
+    // silent API change (setPage) while offered → the click re-validates and refuses
+    t.setPage(1);
+    t.clearSelection({ emit: true });
+    await pressHeader();
+    expect(all.hidden).to.equal(false);
+    t.setPage(2);
+    await raf();
+    all.click();
+    await raf();
+    expect(d.querySelector('#demo-bulk-count').textContent).to.not.match(/tất cả/);
+    expect(all.hidden, 'refused + hidden').to.equal(true);
+    expect(w.document).to.equal(d);
+  });
+});

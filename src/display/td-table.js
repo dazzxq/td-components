@@ -326,7 +326,8 @@ export class TdTable extends TdBaseElement {
   get selectedRows() {
     const out = [];
     for (const id of this._sel.ids()) {
-      const row = (this._isServerMode() ? undefined : this._dataRows().get(id)) ?? this._rowCache.get(id);
+      const di = this._isServerMode() ? undefined : this._dataRows().get(id);
+      const row = (di === undefined ? undefined : this._data[di]) ?? this._rowCache.get(id);
       if (row !== undefined) out.push(row);
     }
     return out;
@@ -555,29 +556,35 @@ export class TdTable extends TdBaseElement {
         const pages = Math.max(1, Math.ceil(total / this._getPerPage()));
         this._currentPage = Math.min(Math.max(1, this._currentPage), pages);
       }
-      return { rows: this._data, total };
+      return { rows: this._data, src: null, total };
     }
-    const rows = this._sortedRows();
+    // review ISSUE-4: sort / page SOURCE INDICES (into `data`), so row selection knows which occurrence a row is
+    const order = this._sortedIndices();
     const per = this._getPerPage();
-    const pages = Math.max(1, Math.ceil(rows.length / per));
+    const pages = Math.max(1, Math.ceil(order.length / per));
     this._currentPage = Math.min(Math.max(1, this._currentPage), pages);
     const start = (this._currentPage - 1) * per;
-    return { rows: rows.slice(start, start + per), total: rows.length };
+    const src = order.slice(start, start + per);
+    return { rows: src.map((i) => this._data[i]), src, total: order.length };
   }
 
-  /** @private Client sort (D12): numbers numerically, strings with a vi numeric collator, nulls first in asc. */
-  _sortedRows() {
-    const rows = [...this._data];
+  /**
+   * @private Client sort (D12): numbers numerically, strings with a vi numeric collator, nulls first in asc. Returns
+   * indices into `data` (stable: ties keep data order).
+   */
+  _sortedIndices() {
+    const data = this._data;
+    const idx = data.map((_, i) => i);
     const { col: ci, direction } = this._sort;
     const col = ci === null ? null : this._columns[ci];
-    if (!col || !direction) return rows;
+    if (!col || !direction) return idx;
     const key = col.key;
     const collator = new Intl.Collator('vi', { numeric: true, sensitivity: 'base' });
     const sign = direction === 'asc' ? 1 : -1;
     const val = (row) => (row && typeof row === 'object' ? row[key] : undefined);
-    return rows.sort((a, b) => {
-      const va = val(a);
-      const vb = val(b);
+    return idx.sort((ia, ib) => {
+      const va = val(data[ia]);
+      const vb = val(data[ib]);
       if (va == null && vb == null) return 0;
       if (va == null) return -sign;
       if (vb == null) return sign;
@@ -594,7 +601,7 @@ export class TdTable extends TdBaseElement {
     if (active && (this._pagTop?.contains(active) || this._pagBottom?.contains(active))) {
       this._refocusPagination = this._pagTop.contains(active) ? 'top' : 'bottom';
     }
-    const { rows, total } = this._view();
+    const { rows, src, total } = this._view();
     const empty = !loading && rows.length === 0;
 
     // Body
@@ -605,7 +612,7 @@ export class TdTable extends TdBaseElement {
     }
     if (loading) this._tbody.innerHTML = this._skeletonHtml();
     else if (empty) this._renderEmpty();
-    else this._renderRows(rows);
+    else this._renderRows(rows, src);
     this._pageRows = loading || empty ? [] : rows;
     this._paintSelection();
 
@@ -666,7 +673,7 @@ export class TdTable extends TdBaseElement {
     }
   }
 
-  _renderRows(rows) {
+  _renderRows(rows, src = null) {
     const esc = (v) => this.escapeHtml(v);
     const pad = this._cellPadClass();
     const cols = this._columns;
@@ -676,7 +683,7 @@ export class TdTable extends TdBaseElement {
       return `<span class="td-table__cell-label" aria-hidden="true">${esc(l)}</span>`;
     });
     const sel = this._selOn;
-    if (sel) this._pageSelection(rows);
+    if (sel) this._pageSelection(rows, src);
     // v0.37.0: the selection cell comes first (no data-col: data columns keep 0..n-1); its state is painted after.
     const selCell = sel ? '<td class="td-table__cell td-table__cell--select td-table__card-select" role="cell" data-card="select">'
       + `<button type="button" class="td-table__select" role="checkbox" aria-checked="false">${checkMarkHTML('md')}</button></td>` : '';
@@ -796,14 +803,15 @@ export class TdTable extends TdBaseElement {
    * row with it can be selected: client mode compares against the WHOLE `data` (review SEC-2 — the first row in data
    * order owns the key, on whatever page it is), server mode against the page (keys must be globally unique — docs).
    */
-  _pageSelection(rows) {
+  _pageSelection(rows, src) {
     const seen = new Set();
-    const owners = this._isServerMode() ? null : this._dataRows();
-    this._pageKeys = rows.map((row) => {
+    const owners = src ? this._dataRows() : null;
+    this._pageKeys = rows.map((row, ri) => {
       const k = this._keyOf(row);
       if (k === null) return null;
       const id = keyId(k);
-      if (seen.has(id) || (owners && owners.get(id) !== row)) {
+      // review ISSUE-4: ownership by SOURCE INDEX (the same object twice in data is two occurrences)
+      if (seen.has(id) || (owners && owners.get(id) !== src[ri])) {
         this._warnOnce('td-table: duplicate row key — only the first row with it can be selected (keys must be unique; use a composite key such as `${tenantId}:${id}`).');
         return null;
       }
@@ -947,15 +955,15 @@ export class TdTable extends TdBaseElement {
     });
   }
 
-  /** @private Client mode: id → row of `data` (first row of a key wins), built lazily. */
+  /** @private Client mode: id → index in `data` of the FIRST row with that key (its owner), built lazily. */
   _dataRows() {
     if (!this._dataIndex) {
       const m = new Map();
       if (this._selOn) {
-        for (const row of this._data) {
-          const k = this._keyOf(row);
+        for (let i = 0; i < this._data.length; i++) {
+          const k = this._keyOf(this._data[i]);
           if (k === null) continue;
-          if (!m.has(keyId(k))) m.set(keyId(k), row);
+          if (!m.has(keyId(k))) m.set(keyId(k), i);
           else this._warnOnce('td-table: duplicate row key — only the first row with it can be selected (keys must be unique; use a composite key such as `${tenantId}:${id}`).');
         }
       }

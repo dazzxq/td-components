@@ -889,37 +889,48 @@
     const bulkCount = document.querySelector('#demo-bulk-count');
     const bulkAll = document.querySelector('#demo-bulk-all');
     let allMatching = false;
-    let allEligible = false; // review ISSUE-2: offer "all N results" only right after "select all on this page"
+    // review ISSUE-2: "all N results" is offered only right after "select all on this page", for THAT view (page, sort,
+    // per-page, the data array). Any other change clears it; the click re-validates (silent setPage / data = … too).
+    let eligible = null;
+    const viewOf = () => { const s = table.getState(); return { page: s.page, per: s.perPage, sort: `${s.sort.key}|${s.sort.direction}`, data: table.data }; };
+    const sameView = (a, b) => !!a && !!b && a.page === b.page && a.per === b.per && a.sort === b.sort && a.data === b.data;
+    const pageRows = () => table.querySelectorAll('.td-table__body > .td-table__row:not(.td-table__row--skeleton)').length;
+    const stillEligible = () => sameView(eligible, viewOf())
+      && table.querySelector('.td-table__select-all')?.getAttribute('aria-checked') === 'true'
+      && table.data.length > pageRows();
     const syncBulk = (keys) => {
       const total = table.data.length;
       bulk.hidden = keys.length === 0 && !allMatching;
       bulkCount.textContent = allMatching ? `Đã chọn tất cả ${total} kết quả` : `${keys.length} đã chọn`;
-      bulkAll.hidden = allMatching || !allEligible;
+      bulkAll.hidden = allMatching || !eligible;
       bulkAll.textContent = `Chọn tất cả ${total} kết quả`;
     };
+    const resetAll = () => { allMatching = false; eligible = null; syncBulk(table.selectedKeys); };
     table.addEventListener('select-change', (e) => {
       allMatching = false; // any change by the user drops the "all results" flag
-      const pageRows = table.querySelectorAll('.td-table__body > .td-table__row:not(.td-table__row--skeleton)').length;
-      allEligible = e.detail.trigger === 'page'
-        && table.querySelector('.td-table__select-all')?.getAttribute('aria-checked') === 'true'
-        && table.data.length > pageRows;
+      eligible = e.detail.trigger === 'page' ? viewOf() : null;
+      if (eligible && !stillEligible()) eligible = null;
       syncBulk(e.detail.keys);
     });
+    // the view changed: the offer (and the "all results" flag) belonged to the old view
+    table.addEventListener('page-change', () => queueMicrotask(resetAll));
+    table.addEventListener('sort-change', () => queueMicrotask(resetAll));
     bulkAll.addEventListener('click', () => {
-      allMatching = true;
-      allEligible = false; // a real app would send the CURRENT FILTER to the server, not a list of keys
+      if (!stillEligible()) { resetAll(); return; } // stale (silent setPage / data / filter change) → refuse
+      allMatching = true; // a real app would send the CURRENT FILTER to the server, not a list of keys
+      eligible = null;
       syncBulk(table.selectedKeys);
     });
     document.querySelector('#demo-bulk-clear').addEventListener('click', () => {
       allMatching = false;
-      allEligible = false;
+      eligible = null;
       table.clearSelection({ emit: true });
     });
     document.querySelector('#demo-bulk-delete').addEventListener('click', () => {
       const keys = allMatching ? table.data.map((r) => r.id) : table.selectedKeys;
-      table.data = table.data.filter((r) => !keys.includes(r.id));
+      table.data = table.data.filter((r) => !keys.includes(r.id)); // data replaced → clear the offer
       allMatching = false;
-      allEligible = false;
+      eligible = null;
       table.deselect(keys, { emit: true });
       TdToast.success(`Đã xoá ${keys.length} bài (giả lập)`);
     });
