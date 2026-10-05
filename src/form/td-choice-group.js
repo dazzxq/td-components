@@ -17,10 +17,19 @@ const SSR_OVER = Symbol('td-choice-group: SSR over the limits');
  * review r3: budget of the SSR preflight (one bounded walk of the whole subtree BEFORE anything enumerates it): nodes of
  * every kind, depth below the host, attributes per element, siblings per container, attribute value / text node length.
  */
-const SSR_BUDGET = Object.freeze({
-  nodes: 24 * CHOICE_LIMITS.options + 64, depth: 8, attrs: 16, siblings: 2 * CHOICE_LIMITS.options + 2, text: 4096, attr: 256,
-  attrCap: { value: 2 * CHOICE_LIMITS.value, 'data-td-value': 2 * CHOICE_LIMITS.value, fill: 2 * CHOICE_LIMITS.swatch, src: 2 * CHOICE_LIMITS.image },
-});
+const SSR_BUDGET = (() => {
+  const L = CHOICE_LIMITS;
+  // caps in UTF-16 units = 2 × the code-point caps of the shared table; id references carry two derived ids
+  const ref = 2 * (2 * L.id + 32);
+  // review r4: a NULL-prototype table — an attribute named constructor / __proto__ / toString never reads Object.prototype
+  const attrCap = Object.freeze(Object.assign(Object.create(null), {
+    value: 2 * L.value, 'data-td-value': 2 * L.value, fill: 2 * L.swatch, src: 2 * L.image, name: 2 * L.name, class: 2 * L.class,
+    label: 2 * L.groupLabel, 'aria-label': 2 * L.groupLabel, 'helper-text': 2 * L.helper, 'error-text': 2 * L.error,
+    id: ref, for: ref, 'data-for': ref, 'aria-labelledby': ref, 'aria-describedby': ref, 'aria-errormessage': ref,
+  }));
+  return Object.freeze({ nodes: 24 * L.options + 64, depth: 8, attrs: 16, siblings: 2 * L.options + 2, text: 2 * Math.max(L.helper, L.error) + 64,
+    attr: 256, attrCap });
+})();
 const GROUP_ATTRS = new Set(['class', 'role', 'aria-labelledby', 'aria-label', 'aria-required', 'aria-invalid', 'aria-errormessage',
   'aria-describedby']);
 let _groupCounter = 0;
@@ -673,6 +682,16 @@ export class TdChoiceGroup extends TdFormElement {
     // firstChild / nextSibling only (no childNodes / children / spreads): the walk stops at the first breach
     const B = SSR_BUDGET;
     let nodes = 0;
+    const attrsOk = (el) => {
+      const attrs = el.attributes;
+      if (attrs.length > B.attrs) return false;
+      for (let i = 0; i < attrs.length; i++) {
+        const name = attrs[i].name;
+        const cap = Object.hasOwn(B.attrCap, name) ? B.attrCap[name] : B.attr;
+        if (attrs[i].value.length > cap) return false;
+      }
+      return true;
+    };
     const visit = (parent, depth) => {
       if (depth > B.depth) return false;
       let siblings = 0;
@@ -682,17 +701,13 @@ export class TdChoiceGroup extends TdFormElement {
           if (n.length > B.text) return false;
           continue;
         }
-        if (n.nodeType !== 1) return false;
-        const attrs = n.attributes;
-        if (attrs.length > B.attrs) return false;
-        for (let i = 0; i < attrs.length; i++) {
-          if (attrs[i].value.length > (B.attrCap[attrs[i].name] ?? B.attr)) return false;
-        }
+        if (n.nodeType !== 1 || !attrsOk(n)) return false;
         if (!visit(n, depth + 1)) return false;
       }
       return true;
     };
-    return visit(this, 1);
+    // review r4: the host's own attributes too (read later by the gate / render)
+    return attrsOk(this) && visit(this, 1);
   }
 
   /** @private Bounded parse of the strict skeleton (only after `_ssrPreflight()`); SSR_OVER past a field cap. */

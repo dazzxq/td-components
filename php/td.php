@@ -357,7 +357,9 @@ namespace TdComponents {
          * accepted, code points per field: text cut, value / swatch / image refused when longer).
          */
         public const CHOICE_LIMITS = ['candidates' => 400, 'options' => 100, 'value' => 200, 'label' => 200, 'hint' => 200,
-            'note' => 100, 'swatch' => 128, 'image' => 8192];
+            'note' => 100, 'swatch' => 128, 'image' => 8192,
+            // review r4 — group level: over → td_choice_group prints nothing (the JS SSR preflight accepts exactly up to these)
+            'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
          * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.48.0') —
@@ -6860,6 +6862,19 @@ namespace {
     function td_choice_group(string $name, array $options, string|int|null $value = null, array $o = []): string
     {
         $L = Td::CHOICE_LIMITS;
+        // review r4: group inputs that land in attributes / text are capped like the component's SSR preflight — over a cap
+        // → fail closed (nothing printed) + ONE fixed counts-only warning: the kit never prints markup its JS would refuse
+        $over = 0;
+        foreach ([[$name, 'name'], [$o['id'] ?? null, 'id'], [$o['label'] ?? null, 'groupLabel'], [$o['aria_label'] ?? null, 'groupLabel'],
+            [$o['helper_text'] ?? null, 'helper'], [$o['error_text'] ?? null, 'error'], [ltrim(Td::classTokens($o['class'] ?? null)), 'class']] as [$g, $k]) {
+            if (is_scalar($g) && !is_bool($g) && td__choice_over((string) $g, $L[$k])) {
+                $over++;
+            }
+        }
+        if ($over) {
+            trigger_error("td_choice_group: $over group field(s) over the limits — nothing rendered", E_USER_WARNING);
+            return '';
+        }
         $list = [];
         $seen = [];
         $dropped = 0;

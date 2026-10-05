@@ -146,7 +146,9 @@ describe('shared case tables (parity with php)', () => {
 
 describe('review S1 — bounded work: candidate / option / field limits, one aggregate warning', () => {
   it('limits are the shared table (php Td::CHOICE_LIMITS is checked against it in test/php/td-ssr-choice.test.js)', () => {
-    assert.deepEqual({ ...CHOICE_LIMITS }, { candidates: 400, options: 100, value: 200, label: 200, hint: 200, note: 100, swatch: 128, image: 8192 });
+    assert.deepEqual({ ...CHOICE_LIMITS }, { candidates: 400, options: 100, value: 200, label: 200, hint: 200, note: 100, swatch: 128, image: 8192,
+      // review r4: group-level caps (php td_choice_group fails closed past them; the JS SSR preflight accepts up to them)
+      id: 100, name: 200, class: 256, groupLabel: 200, helper: 1000, error: 1000 });
     assert.ok(Object.isFrozen(CHOICE_LIMITS));
   });
 

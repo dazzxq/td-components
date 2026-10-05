@@ -190,6 +190,29 @@ describe('php/td.php — td_choice_group (v0.49.0, contract choice-group@1)', op
     cases.forEach((c, i) => assert.equal(radios(out[i].html).length === 1, c.ok, JSON.stringify(c.label)));
   });
 
+  test('review r4: group inputs over CHOICE_LIMITS → fail closed (nothing printed) + ONE fixed counts-only warning; at the caps → printed', () => {
+    const L = CHOICE_LIMITS;
+    const E = '😀';
+    const opts = [{ value: 'a', label: 'A' }];
+    const at = run([['n', opts, null, { id: E.repeat(L.id), label: E.repeat(L.groupLabel), helper_text: E.repeat(L.helper), error_text: E.repeat(L.error), class: 'c'.repeat(L.class) }],
+      [E.repeat(L.name), opts, null, { aria_label: E.repeat(L.groupLabel) }]]);
+    for (const o of at) { assert.equal(radios(o.html).length, 1); assert.deepEqual(o.warns, []); }
+    const over = run([
+      [E.repeat(L.name + 1), opts, null, {}],
+      ['n', opts, null, { id: E.repeat(L.id + 1) }],
+      ['n', opts, null, { label: E.repeat(L.groupLabel + 1) }],
+      ['n', opts, null, { aria_label: E.repeat(L.groupLabel + 1) }],
+      ['n', opts, null, { helper_text: E.repeat(L.helper + 1) }],
+      ['n', opts, null, { error_text: E.repeat(L.error + 1) }],
+      ['n', opts, null, { class: 'c'.repeat(L.class + 1) }],
+    ]);
+    for (const o of over) {
+      assert.equal(o.html, '');
+      assert.equal(o.warns.length, 1);
+      assert.match(o.warns[0], /^td_choice_group: 1 group field\(s\) over the limits — nothing rendered$/);
+    }
+  });
+
   test('test/ssr/fixtures/choice.html is up to date (node test/ssr/build-choice-fixture.mjs)', () => {
     assert.ok(CHOICE_FIXTURES.cases.length >= 8);
     assert.equal(readFileSync(CHOICE_FIXTURE_FILE, 'utf8'), renderChoiceFixture());

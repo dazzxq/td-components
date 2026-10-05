@@ -28,7 +28,10 @@ const describe = (v) => (v === null ? 'null' : Array.isArray(v) ? 'array' : type
  * code-point caps per field — text fields (label / hint / note) are CUT to their cap, a longer value / swatch / image is
  * refused. Checked before any trim / regex, so a huge input costs at most a few times the cap.
  */
-export const CHOICE_LIMITS = Object.freeze({ candidates: 400, options: 100, value: 200, label: 200, hint: 200, note: 100, swatch: 128, image: 8192 });
+export const CHOICE_LIMITS = Object.freeze({ candidates: 400, options: 100, value: 200, label: 200, hint: 200, note: 100, swatch: 128, image: 8192,
+  // review r4 — group level (code points): php td_choice_group fails closed past them, so the SSR preflight of the
+  // component (which accepts exactly up to them) never rejects markup the kit printed
+  id: 100, name: 200, class: 256, groupLabel: 200, helper: 1000, error: 1000 });
 
 /** First `n` code points of `s` without walking the rest. */
 function cpSlice(s, n) {

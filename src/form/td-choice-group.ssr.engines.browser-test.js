@@ -71,7 +71,7 @@ focusRadio.focus();
 // one by one after define so each adoption decision can be timed. Spies on the 101st option prove it is never read.
 const optHtml = (h, i) => `<label class="td-choice__option" data-td-value="v${i}"><input type="radio" class="td-choice__input" id="${h}-o${i}" value="v${i}" name="lim"`
   + ` aria-labelledby="${h}-o${i}-l"><span class="td-choice__face"><span class="td-choice__body"><span class="td-choice__text" id="${h}-o${i}-l">V${i}</span></span></span></label>`;
-const limHost = (h, opts) => `<td-choice-group data-td-ssr="choice-group@1" id="${h}" name="lim"><div class="td-field td-choice td-choice--button">`
+const limHost = (h, opts) => `<td-choice-group data-td-ssr="choice-group@1" data-k="${h}" id="${h}" name="lim"><div class="td-field td-choice td-choice--button">`
   + `<div class="td-choice__options" role="radiogroup">${opts}</div>`
   + `<div class="td-field__footer" hidden><div class="td-field__note" id="${h}-note" hidden></div></div></div></td-choice-group>`;
 const many = (h, n) => limHost(h, Array.from({ length: n }, (_, i) => optHtml(h, i)).join(''));
@@ -91,6 +91,16 @@ const LIM = {
   'pf-class': limHost('pf-class', optHtml('pf-class', 0)).replace('class="td-field td-choice td-choice--button"', `class="td-field td-choice td-choice--button ${'x'.repeat(3_000_000)}"`),
   'pf-id': limHost('pf-id', optHtml('pf-id', 0).replace('<span class="td-choice__face">', `<span class="td-choice__face" id="${'i'.repeat(3_000_000)}">`)),
   'pf-text': limHost('pf-text', optHtml('pf-text', 0)),
+  // review r4 item 1: attribute names that exist on Object.prototype never escape the length cap
+  'pf-ctor': limHost('pf-ctor', optHtml('pf-ctor', 0)).replace('role="radiogroup"', `role="radiogroup" constructor="${'x'.repeat(300)}"`),
+  'pf-proto': limHost('pf-proto', optHtml('pf-proto', 0).replace('<span class="td-choice__face">', `<span class="td-choice__face" __proto__="${'x'.repeat(300)}">`)),
+  'pf-tostring': limHost('pf-tostring', optHtml('pf-tostring', 0)).replace('role="radiogroup"', `role="radiogroup" tostring="${'x'.repeat(300)}"`),
+  // review r4 item 2: the HOST's own attributes go through the same preflight
+  'host-id': limHost('host-id', optHtml('host-id', 0)).replace('id="host-id" name', `id="${'h'.repeat(3_000_000)}" name`),
+  'host-label': limHost('host-label', optHtml('host-label', 0)).replace(' name="lim">', ` name="lim" label="${'L'.repeat(3_000_000)}">`),
+  'host-name': limHost('host-name', optHtml('host-name', 0)).replace(' name="lim">', ` name="${'n'.repeat(3_000_000)}">`),
+  'host-data': limHost('host-data', optHtml('host-data', 0)).replace(' name="lim">', ` name="lim" data-x="${'d'.repeat(3_000_000)}">`),
+  'host-many': limHost('host-many', optHtml('host-many', 0)).replace(' name="lim">', ` name="lim" ${Array.from({ length: 40 }, (_, i) => `data-h${i}="1"`).join(' ')}>`),
 };
 const ADOPTED = new Set(['lim-100', 'lim-over-literal']);
 const late = document.createElement('div');
@@ -240,7 +250,7 @@ describe('td-choice-group SSR — review round 2: hydration honours CHOICE_LIMIT
     const times = {};
     try {
       for (const id of Object.keys(LIM)) {
-        const host = late.querySelector(`#${id}`);
+        const host = late.querySelector(`[data-k="${id}"]`);
         const radios0 = [...host.querySelectorAll('input')];
         const t0 = performance.now();
         document.body.appendChild(host); // connect → canHydrate()
