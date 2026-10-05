@@ -29,7 +29,7 @@
 	}
 
 	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
-		--td-chip-remove-hover: rgb(255 255 255 / 16%);
+		--td-chip-remove-hover: rgb(255 255 255 / 13%); /* v0.42.1 (was 16 %): pressed = the wash twice, chip text 4.88:1 (was 4.22) */
 	}
 }
 

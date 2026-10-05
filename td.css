@@ -7546,15 +7546,22 @@
 		--td-form-summary-bg: color-mix(in srgb, var(--td-color-error) 8%, var(--td-color-surface));
 		--td-form-summary-border: color-mix(in srgb, var(--td-color-error) 75%, var(--td-color-surface)); /* ≥ 3:1 */
 		--td-form-summary-fg: var(--td-color-error);
+		--td-form-summary-pressed-bg: var(--td-color-pressed); /* v0.42.1: the link's pressed fill */
 	}
 
 	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
 		--td-form-summary-bg: color-mix(in srgb, var(--td-color-error) 12%, var(--td-color-surface));
+		/* v0.42.1: the dark white wash (--td-color-pressed 14 %) leaves the error link 3.30:1 — no white wash over the
+		   tint keeps 4.7, so the press darkens the tint instead (error link 6.3:1; still a visible step from the rest) */
+		--td-form-summary-pressed-bg: rgb(0 0 0 / 40%);
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
 		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
 			--td-form-summary-bg: color-mix(in srgb, var(--td-color-error) 12%, var(--td-color-surface));
+			/* v0.42.1: the dark white wash (--td-color-pressed 14 %) leaves the error link 3.30:1 — no white wash over the
+			   tint keeps 4.7, so the press darkens the tint instead (error link 6.3:1; still a visible step from the rest) */
+			--td-form-summary-pressed-bg: rgb(0 0 0 / 40%);
 		}
 	}
 }
@@ -7664,7 +7671,7 @@
 
 	.td-form-summary__link:is(:active, [data-td-pressed]) {
 		text-decoration-thickness: 2px;
-		background-color: var(--td-color-pressed);
+		background-color: var(--td-form-summary-pressed-bg);
 		transition-duration: 0s;
 	}
 
@@ -8076,12 +8083,12 @@
 	}
 
 	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
-		--td-chip-remove-hover: rgb(255 255 255 / 16%);
+		--td-chip-remove-hover: rgb(255 255 255 / 13%); /* v0.42.1 (was 16 %): pressed = the wash twice, chip text 4.88:1 (was 4.22) */
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
 		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
-			--td-chip-remove-hover: rgb(255 255 255 / 16%);
+			--td-chip-remove-hover: rgb(255 255 255 / 13%); /* v0.42.1 (was 16 %): pressed = the wash twice, chip text 4.88:1 (was 4.22) */
 		}
 	}
 }

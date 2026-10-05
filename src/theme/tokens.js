@@ -102,7 +102,7 @@ export const SCHEME_TOKENS = Object.freeze([
   '--td-tabs-pill', '--td-tabs-pill-shadow',
   '--td-dropdown-create-fg', '--td-dropdown-create-fg-fallback',
   '--td-table-zebra', '--td-table-row-selected', '--td-table-edge-shadow',
-  '--td-form-summary-bg', '--td-form-summary-border',
+  '--td-form-summary-bg', '--td-form-summary-border', '--td-form-summary-pressed-bg',
   '--td-menu-separator', '--td-chip-remove-hover',
   '--td-hovercard-error-fg', '--td-hovercard-link-fg',
   '--td-dropzone-bg-active', '--td-dropzone-bg-pressed',

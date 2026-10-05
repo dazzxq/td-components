@@ -275,15 +275,17 @@ test('impl review ISSUE-1: every scheme-dependent component token is generated +
   for (const preset of ['light', 'dark']) for (const t of SCHEME_TOKENS) assert.equal(typeof PRESETS[preset][t], 'string', `${preset} ${t}`);
 });
 
-test('round 2: rendered pairs of the built-in presets (reported, not changed — the owner keeps built-in values)', () => {
+test('round 2: rendered pairs of the built-in presets — dark gated (v0.42.1), light reported (owner keeps built-in light)', () => {
   const lines = [];
+  const darkMisses = [];
   for (const preset of ['light', 'dark']) {
     const tokens = new Map(Object.entries(PRESETS[preset]));
     for (const p of PAIRS) {
       const [fg, bg] = resolvePair(tokens, p);
       const ratio = contrast(fg, bg);
-      if (ratio < p.min) lines.push(`${preset}: ${p.id} ${ratio.toFixed(2)} < ${p.min}`);
+      if (!(ratio >= p.min)) (preset === 'dark' ? darkMisses : lines).push(`${preset}: ${p.id} ${ratio.toFixed(2)} < ${p.min}`);
     }
   }
-  if (lines.length) console.log(`built-in pairs below the generated-palette gate:\n  ${lines.join('\n  ')}`);
+  if (lines.length) console.log(`built-in light pairs below the rendered-pair gate (reported):\n  ${lines.join('\n  ')}`);
+  assert.deepEqual(darkMisses, [], 'built-in dark (= --preset dark = kit dark) passes every rendered pair');
 });

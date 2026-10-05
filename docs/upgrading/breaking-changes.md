@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.41)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.42)
 
 Trang này liệt kê, cho từng bản từ **0.35.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.42.1](#0421) | Đổi giao diện **chỉ ở dark**, hai trạng thái nhấn | Không bắt buộc. Light giống từng pixel. Dark: link trong khung tóm tắt lỗi form khi nhấn làm tối nền (trước phủ trắng, chữ 3.30:1 → 6.34:1); nút × của chip-input hover / nhấn nhạt hơn một chút (16 % → 13 %, chữ khi nhấn 4.22 → 4.88). Site ghi đè giá trị dark cũ: xem dưới. |
 | [0.42.0](#0420) | Thêm tính năng (palette `td-theme`, builder, theme theo vùng, popup theo vùng) + đổi hành vi **chỉ khi site dùng vùng** | Không bắt buộc. Trang không đặt `data-td-theme` trên phần tử con: không đổi gì (golden light / dark 0 khác biệt). Site **chủ động** đặt `data-td-theme` trên một vùng: override **màu** không layer trên `:root` không còn chảy vào trong vùng — ghi đè thêm trên `[data-td-theme="…"]`. Popup mở từ trong vùng nay theo vùng (trước theo trang). |
 | [0.41.0](#0410) | Đổi giao diện **chỉ ở dark** + thêm tính năng (`light` / `auto`, hợp đồng theme) | Không bắt buộc. Không đặt `data-td-theme` = light **giống từng pixel**, trừ viền ô chọn dòng `td-table` (sửa hồi quy 0.37) và **vòng focus bàn phím** (rõ hơn, ≥ 3:1 — chỉ thấy khi focus bằng bàn phím). Dark đổi một số giá trị (viền control ≥ 3:1, chữ phụ, accent, tooltip, bóng — danh sách dưới); site ghi đè giá trị dark cũ thì xem lại. Site **đổi** `--td-color-surface` / `-text` / `-text-muted` / `-border-strong` / `--td-color-{success,warning,error}` / `--td-pastel-*-fg` ở light: ô nhập, modal, chữ control, placeholder, badge outline, nút thao tác, tiêu đề alert giờ **đi theo** (trước giữ màu cứng). Script `matchMedia` tự bật dark → thay bằng `data-td-theme="auto"`. |
 | [0.39.0](#0390) | Thêm tính năng (bộ lọc ngoài, ẩn / hiện cột, `<td-filter-chips>`) + đổi hành vi nhỏ | Không bắt buộc. Cột có sẵn khoá `hidden: true` trong `columns` giờ **bị ẩn** (trước bị bỏ qua). `getState()` thêm `filters` / `totalItems` / `requestId`. `onPageChange` chạy khi lượt bấm đổi trang kết thúc (vẫn đồng bộ). Import map: thêm `filter-chips`. |
@@ -71,6 +72,22 @@ Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự c�
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
 
 ---
+
+## 0.42.1
+
+**Mức: đổi giao diện chỉ ở dark, chỉ hai trạng thái nhấn.** Không đặt `data-td-theme` / light: giống từng pixel 0.42.0
+(golden light 0 khác biệt). Dark (`data-td-theme="dark"` / `auto` ở OS tối): hai cặp chữ / nền khi nhấn dưới ngưỡng 4.7
+của kit, nay đạt (gate cặp render chặn cả dark built-in):
+
+| Chỗ | 0.42.0 | 0.42.1 |
+|---|---|---|
+| Link trong `.td-form-summary` khi nhấn | phủ `--td-color-pressed` (trắng 14 %) — chữ lỗi 3.30:1 | token mới `--td-form-summary-pressed-bg` (mặc định `var(--td-color-pressed)`; dark `rgb(0 0 0 / 40%)`): nền tint **tối đi** khi nhấn — 6.34:1 |
+| Nút × của `td-chip-input` (hover; nhấn = lớp đó hai lần) | `--td-chip-remove-hover` dark `rgb(255 255 255 / 16%)` — chữ khi nhấn 4.22:1 | `rgb(255 255 255 / 13%)` — 4.88:1 (hover 6.83:1) |
+
+Muốn giữ cũ (không khuyến nghị, dưới AA): `:root[data-td-theme="dark"] { --td-form-summary-pressed-bg: rgb(255 255 255 / 14%);
+--td-chip-remove-hover: rgb(255 255 255 / 16%); }`. File `td-theme` sinh ra: header ghi `palette algorithm 2` (thêm dòng
+`--td-form-summary-pressed-bg`, mọi giá trị khác như cũ); file thuật toán 1 vẫn đúng, sinh lại khi tiện. `--preset dark`
+ra đúng giá trị dark mới của kit.
 
 ## 0.42.0
 
