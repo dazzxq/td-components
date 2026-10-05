@@ -2,6 +2,7 @@ import { TdFormElement } from '../base/td-form-element.js';
 import { ValueTitleWatcher, displayedValueText } from '../utils/value-title.js';
 import { TdModal } from '../feedback/td-modal.js';
 import { fillIconSlots } from '../icons/td-icon.js';
+import { DatetimeEditor } from './datetime-panel.js';
 import {
   parseBound, invalidReason, normalizeMinuteStep, snapMinuteDown, partsFromDate, compareParts,
   normalizeMode, toModeParts, parseModeValue, parseModeDb, formatModeDisplay, formatModeDb, formatModeIso,
@@ -10,17 +11,10 @@ import {
 
 const DEFAULT_MIN_YEAR = 2000; // dcms parity (D5): the range used when `min` / `max` are not set
 const DEFAULT_MAX_YEAR = 2099;
-const SCROLL_SETTLE_MS = 150; // fallback when `scrollend` is not supported
-const INTRO_FALLBACK_MS = 300; // --td-modal-enter-dur default (used when the token cannot be read)
-const INTRO_SAFETY_MS = 1500; // the intro scroll never suppresses scroll-settle selection longer than this
 const MODE_SUFFIX = { datetime: '', date: 'Date', month: 'Month', year: 'Year' };
 
-const pad2 = (n) => String(n).padStart(2, '0');
 const fill = (template, vars) => String(template).replace(/\{(\w+)\}/g, (_, k) => (k in vars ? String(vars[k]) : ''));
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-const prefersReducedMotion = () => {
-  try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
-};
 
 /**
  * Date-time picker: a field-look trigger that opens a dialog with three date fields and hour/minute wheels.
@@ -136,17 +130,11 @@ export class TdDatetimePicker extends TdFormElement {
     super();
     this._isOpen = false;
     this._modalId = null;
-    /** @private pending parts while the dialog is open (committed only by "Chọn") */
-    this._pending = null;
     /** @private the open panel element */
     this._panel = null;
-    /** @private scroll-settle fallback timers (cancelled on close — bug 1.8.6) */
-    this._scrollTimers = new Set();
-    /** @private opening wheel animation (v0.21.0) while it waits / runs; null otherwise */
-    this._intro = null;
-    /** @private wheel → scrollTop its latest programmatic SMOOTH scroll is heading to (a superseded scroll's
-     *  `scrollend` must not select the option it stopped on) */
-    this._scrollTargets = new Map();
+    /** @private the open one-moment editor (src/form/datetime-panel.js: pending parts, wheels, intro, scroll timers —
+     *  all stopped on close, bug 1.8.6); null when closed */
+    this._dp = null;
   }
 
   // --- Value model (derived from the `value` attribute on demand: nothing to go stale) ---
@@ -356,9 +344,7 @@ export class TdDatetimePicker extends TdFormElement {
         this._updateValueText();
         this._syncForm();
         if (this._panel) { // open dialog: the year field's native bounds + the pending validation follow
-          const years = this._yearRange();
-          const y = this._panel.querySelector('.td-dtp-panel__input[data-part="year"]');
-          if (y) { y.min = String(years.min); y.max = String(years.max); }
+          this._dp.setYearRange(this._yearRange());
           this._refresh();
         }
         return;
@@ -506,7 +492,6 @@ export class TdDatetimePicker extends TdFormElement {
     // every engine) → make that the trigger.
     if (document.activeElement !== trigger) trigger.focus({ preventScroll: true });
     const L = TdDatetimePicker.labels;
-    this._pending = this._initialPending();
     this._isOpen = true;
     const panel = this._buildPanel();
     this._panel = panel;
@@ -527,7 +512,7 @@ export class TdDatetimePicker extends TdFormElement {
     trigger.setAttribute('aria-controls', this._modalId);
     const box = this.querySelector('.td-dtp');
     if (box) box.setAttribute('data-state', 'open');
-    this._startWheelIntro(panel);
+    if (this._dp) this._dp.startIntro();
   }
 
   /** Close the dialog, discarding the pending state. */
@@ -541,13 +526,10 @@ export class TdDatetimePicker extends TdFormElement {
   /** @private every close path ends here (TdModal onClose) */
   _onDialogClosed(panel) {
     if (!this._isOpen || this._panel !== panel) return;
-    this._endWheelIntro();
-    this._scrollTargets.clear();
-    this._scrollTimers.forEach((t) => window.clearTimeout(t));
-    this._scrollTimers.clear();
+    if (this._dp) this._dp.destroy();
+    this._dp = null;
     this._isOpen = false;
     this._modalId = null;
-    this._pending = null;
     this._panel = null;
     const trigger = this._trigger();
     if (trigger) {
@@ -605,357 +587,44 @@ export class TdDatetimePicker extends TdFormElement {
     return this._clampToBounds(p);
   }
 
-  /** @private build the dialog body with DOM APIs (no HTML string, no trusted hatch) */
+  /** @private build the dialog body (v0.40.0: the shared one-moment editor, src/form/datetime-panel.js) */
   _buildPanel() {
     const L = TdDatetimePicker.labels;
     TdDatetimePicker._openSeq = (TdDatetimePicker._openSeq || 0) + 1;
     const prefix = `${this.id}-dtp${TdDatetimePicker._openSeq}`; // unique per open: a closing dialog may linger
-    const years = this._yearRange();
-    const make = (tag, cls, attrs = {}, text) => {
-      const n = document.createElement(tag);
-      if (cls) n.className = cls;
-      for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
-      if (text != null) n.textContent = String(text);
-      return n;
-    };
-
-    const mode = this._mode();
-    const shown = MODE_PARTS[mode];
-    const panel = make('div', 'td-dtp-panel');
-    panel.setAttribute('data-mode', mode);
-    const dateGroup = make('fieldset', 'td-dtp-panel__group');
-    dateGroup.appendChild(make('legend', 'td-dtp-panel__legend', {}, this._text(L, 'date')));
-    const fields = make('div', 'td-dtp-panel__fields');
-    const dateFields = [['day', 1, 31], ['month', 1, 12], ['year', years.min, years.max]].filter(([k]) => shown.includes(k));
-    for (const [part, lo, hi] of dateFields) {
-      const field = make('div', 'td-dtp-panel__field');
-      const id = `${prefix}-${part}`;
-      field.appendChild(make('label', 'td-dtp-panel__label', { for: id }, L[part]));
-      const input = make('input', 'td-dtp-panel__input', {
-        id, type: 'number', inputmode: 'numeric', min: String(lo), max: String(hi), autocomplete: 'off', 'data-part': part,
-      });
-      const v = this._pending[part];
-      input.value = Number.isInteger(v) ? String(v) : '';
-      field.appendChild(input);
-      fields.appendChild(field);
-    }
-    dateGroup.appendChild(fields);
-    panel.appendChild(dateGroup);
-
-    if (mode === 'datetime') this._buildTimeGroup(make, prefix, panel, L);
-
-    panel.appendChild(make('p', 'td-dtp-panel__preview'));
-    const error = make('p', 'td-dtp-panel__error', { id: `${prefix}-error`, role: 'alert' });
-    error.hidden = true;
-    panel.appendChild(error);
-
-    // Date fields: validate on input (no rewriting while typing), clamp on change (D9).
-    panel.addEventListener('input', (e) => {
-      const input = e.target;
-      if (!(input instanceof HTMLInputElement) || !input.classList.contains('td-dtp-panel__input')) return;
-      this._readField(input);
-      this._refresh();
+    this._dp = new DatetimeEditor({
+      mode: this._mode(),
+      prefix,
+      pending: this._initialPending(),
+      years: this._yearRange(),
+      minuteStep: this._minuteStep(),
+      labels: L,
+      legend: this._text(L, 'date'),
+      check: (p) => this._check(p),
     });
-    panel.addEventListener('change', (e) => {
-      const input = e.target;
-      if (!(input instanceof HTMLInputElement) || !input.classList.contains('td-dtp-panel__input')) return;
-      const n = input.valueAsNumber;
-      if (Number.isInteger(n)) input.value = String(clamp(n, Number(input.min), Number(input.max)));
-      this._readField(input);
-      this._refresh();
-    });
-    this._refresh(panel);
-    return panel;
+    return this._dp.el;
   }
 
-  /** @private the hour / minute wheels (datetime mode only) */
-  _buildTimeGroup(make, prefix, panel, L) {
-    const timeGroup = make('div', 'td-dtp-panel__group', { role: 'group', 'aria-labelledby': `${prefix}-time` });
-    timeGroup.appendChild(make('p', 'td-dtp-panel__legend', { id: `${prefix}-time` }, L.time));
-    const wheels = make('div', 'td-dtp-panel__wheels');
-    const step = this._minuteStep();
-    const minutes = [];
-    for (let m = 0; m < 60; m += step) minutes.push(m);
-    wheels.appendChild(this._buildWheel(make, prefix, 'hour', Array.from({ length: 24 }, (_, i) => i), panel));
-    wheels.appendChild(make('span', 'td-dtp-wheel__sep', { 'aria-hidden': 'true' }, ':'));
-    wheels.appendChild(this._buildWheel(make, prefix, 'minute', minutes, panel));
-    timeGroup.appendChild(wheels);
-    panel.appendChild(timeGroup);
-  }
+  /** @private opening wheel animation of the open editor (v0.21.0); null when idle */
+  get _intro() { return this._dp ? this._dp.intro : null; }
 
-  /** @private one listbox wheel (the ONE normative model: listbox = tab stop, options never focusable) */
-  _buildWheel(make, prefix, part, values, panel) {
-    const wrap = make('div', 'td-dtp-wheel');
-    const list = make('div', 'td-dtp-wheel__list', {
-      role: 'listbox', id: `${prefix}-${part}`, 'aria-label': TdDatetimePicker.labels[part], tabindex: '0', 'data-part': part,
-    });
-    const current = this._pending[part];
-    for (const v of values) {
-      const opt = make('div', 'td-dtp-wheel__option', {
-        role: 'option', id: `${prefix}-${part}-${v}`, 'aria-selected': v === current ? 'true' : 'false', 'data-value': String(v),
-      }, pad2(v));
-      if (v === current) list.setAttribute('aria-activedescendant', opt.id);
-      list.appendChild(opt);
-    }
-    wrap.appendChild(list);
-
-    // Direct manipulation cancels the opening animation of this wheel (keys / clicks cancel via _selectWheel).
-    const userScroll = () => {
-      this._scrollTargets.delete(list); // the user's own scroll settles normally
-      this._cancelWheelIntro(list);
-    };
-    list.addEventListener('pointerdown', userScroll);
-    list.addEventListener('wheel', userScroll, { passive: true });
-    list.addEventListener('touchstart', userScroll, { passive: true });
-    list.addEventListener('keydown', (e) => this._onWheelKey(e, list));
-    list.addEventListener('click', (e) => {
-      const opt = e.target instanceof Element ? e.target.closest('.td-dtp-wheel__option') : null;
-      if (opt && list.contains(opt)) this._selectWheel(list, Number(opt.getAttribute('data-value')), true);
-    });
-    // Scrolling (wheel / touch fling, CSS scroll-snap) selects the option that settles in the band.
-    const settle = () => {
-      if (!this._isOpen || this._panel !== panel) return;
-      // The opening scroll passes over other options: it never changes the selection (it ends here).
-      const heading = this._scrollTargets.get(list);
-      if (heading !== undefined) {
-        // a smooth scroll that was superseded (e.g. an arrow key mid-scroll) ended: the newer one is still running
-        if (Math.abs(list.scrollTop - heading) > 2) return;
-        this._scrollTargets.delete(list);
-      }
-      if (this._intro && this._intro.scrolling.has(list)) {
-        this._cancelWheelIntro(list);
-        return;
-      }
-      const opt = this._optionAtCentre(list);
-      if (opt && opt.getAttribute('aria-selected') !== 'true') this._selectWheel(list, Number(opt.getAttribute('data-value')), false);
-    };
-    if ('onscrollend' in window) {
-      list.addEventListener('scrollend', settle);
-    } else {
-      let timer = 0;
-      list.addEventListener('scroll', () => {
-        window.clearTimeout(timer);
-        this._scrollTimers.delete(timer);
-        timer = window.setTimeout(() => { this._scrollTimers.delete(timer); settle(); }, SCROLL_SETTLE_MS);
-        this._scrollTimers.add(timer);
-      });
-    }
-    return wrap;
-  }
-
-  /** @private */
-  _onWheelKey(e, list) {
-    const opts = [...list.children];
-    const cur = Math.max(0, opts.findIndex((o) => o.getAttribute('aria-selected') === 'true'));
-    const page = list.getAttribute('data-part') === 'hour' ? 6 : Math.max(1, Math.round(15 / this._minuteStep()));
-    let i;
-    switch (e.key) {
-      case 'ArrowUp': i = cur - 1; break;
-      case 'ArrowDown': i = cur + 1; break;
-      case 'PageUp': i = cur - page; break;
-      case 'PageDown': i = cur + page; break;
-      case 'Home': i = 0; break;
-      case 'End': i = opts.length - 1; break;
-      default: return;
-    }
-    e.preventDefault(); // no native scroll: the selection drives the scroll position
-    const opt = opts[clamp(i, 0, opts.length - 1)];
-    if (opt) this._selectWheel(list, Number(opt.getAttribute('data-value')), true);
-  }
-
-  /** @private selection follows the active option: aria-selected + aria-activedescendant + pending, together */
-  _selectWheel(list, value, scroll, smooth = true) {
-    const part = list.getAttribute('data-part');
-    let target = null;
-    for (const o of list.children) {
-      const on = Number(o.getAttribute('data-value')) === value;
-      o.setAttribute('aria-selected', on ? 'true' : 'false');
-      if (on) target = o;
-    }
-    if (!target) return;
-    list.setAttribute('aria-activedescendant', target.id);
-    if (this._pending) this._pending[part] = value;
-    if (scroll) {
-      this._cancelWheelIntro(list); // a key / click / "Bây giờ" wins over the opening animation
-      this._centre(list, target, smooth);
-    }
-    this._refresh();
-  }
-
-  /** @private scroll offset of an option inside its list (layout-based: unaffected by the dialog's open transform) */
-  _optionTop(list, opt) {
-    return opt.offsetTop - (opt.offsetParent === list ? 0 : list.offsetTop);
-  }
-
-  /** @private scrollTop that centres `opt` in the band (clamped to the scroll range) */
-  _centreTop(list, opt) {
-    const top = this._optionTop(list, opt) - (list.clientHeight - opt.offsetHeight) / 2;
-    return clamp(top, 0, Math.max(0, list.scrollHeight - list.clientHeight));
-  }
-
-  /** @private */
-  _centre(list, opt, smooth) {
-    // Reduced motion: an instant jump (R11). CSS keeps `scroll-behavior: auto`, so 'auto' is instant.
-    const top = this._centreTop(list, opt);
-    const behavior = smooth && !prefersReducedMotion() ? 'smooth' : 'auto';
-    if (behavior === 'smooth') this._scrollTargets.set(list, top);
-    else this._scrollTargets.delete(list);
-    list.scrollTo({ top, behavior });
-  }
-
-  /**
-   * @private Opening animation (v0.21.0, like dcms): every wheel starts at the top of its list (scrollTop 0), then —
-   * once the modal's entry transition has finished (`transitionend` of opacity / transform on .td-modal__dialog, or
-   * a fallback timeout of --td-modal-enter-dur + 50 ms) — ONE smooth scroll per wheel (all at once) brings the
-   * selected option into the band. The selection / pending value / aria-activedescendant hold the target from the
-   * start; the scroll-settle handler ignores the intro scroll. Pointer / wheel / touch / key / click on a wheel
-   * cancels that wheel's intro. Reduced motion → centred instantly. Closing cancels everything (_endWheelIntro).
-   * @param {HTMLElement} panel
-   */
-  _startWheelIntro(panel) {
-    this._endWheelIntro();
-    const lists = [...panel.querySelectorAll('.td-dtp-wheel__list')];
-    if (!lists.length) return;
-    if (prefersReducedMotion()) {
-      this._centreWheels(false);
-      return;
-    }
-    for (const list of lists) list.scrollTop = 0;
-    const dialog = panel.closest('.td-modal__dialog');
-    const intro = { waiting: new Set(lists), scrolling: new Set(), timer: 0, safety: 0, onEnd: null, dialog };
-    this._intro = intro;
-    const run = () => {
-      if (this._intro !== intro) return;
-      this._stopIntroWait(intro);
-      if (!this._isOpen || this._panel !== panel) { this._endWheelIntro(); return; }
-      for (const list of intro.waiting) {
-        const opt = list.querySelector('[aria-selected="true"]');
-        if (!opt) continue;
-        const top = this._centreTop(list, opt);
-        if (Math.abs(top - list.scrollTop) < 1) continue; // already in the band: no scroll, no scrollend
-        intro.scrolling.add(list);
-        this._scrollTargets.set(list, top);
-        list.scrollTo({ top, behavior: 'smooth' });
-      }
-      intro.waiting.clear();
-      if (!intro.scrolling.size) { this._endWheelIntro(); return; }
-      // never leave the settle handler muted (an engine that drops scrollend for an interrupted scroll)
-      intro.safety = window.setTimeout(() => { if (this._intro === intro) this._endWheelIntro(); }, INTRO_SAFETY_MS);
-    };
-    if (dialog) {
-      intro.onEnd = (e) => {
-        if (e.target === dialog && (e.propertyName === 'opacity' || e.propertyName === 'transform')) run();
-      };
-      dialog.addEventListener('transitionend', intro.onEnd);
-    }
-    const wait = (dialog ? TdModal._cssMs(dialog, '--td-modal-enter-dur', INTRO_FALLBACK_MS) : 0) + 50;
-    intro.timer = window.setTimeout(run, wait);
-  }
-
-  /** @private stop waiting for the modal entry (listener + fallback timer) */
-  _stopIntroWait(intro) {
-    if (intro.timer) window.clearTimeout(intro.timer);
-    intro.timer = 0;
-    if (intro.onEnd && intro.dialog) intro.dialog.removeEventListener('transitionend', intro.onEnd);
-    intro.onEnd = null;
-  }
-
-  /** @private the user took over one wheel: no intro scroll for it, its settle selection works normally again */
-  _cancelWheelIntro(list) {
-    const intro = this._intro;
-    if (!intro) return;
-    intro.waiting.delete(list);
-    intro.scrolling.delete(list);
-    if (!intro.waiting.size && !intro.scrolling.size) this._endWheelIntro();
-  }
-
-  /** @private drop the opening animation entirely (close / re-open / done) */
-  _endWheelIntro() {
-    const intro = this._intro;
-    if (!intro) return;
-    this._intro = null;
-    this._stopIntroWait(intro);
-    if (intro.safety) window.clearTimeout(intro.safety);
-    intro.safety = 0;
-  }
-
-  /** @private */
-  _centreWheels(smooth) {
-    if (!this._panel) return;
-    for (const list of this._panel.querySelectorAll('.td-dtp-wheel__list')) {
-      const opt = list.querySelector('[aria-selected="true"]');
-      if (opt) this._centre(list, opt, smooth);
-    }
-  }
-
-  /** @private the option whose centre is nearest the list's centre */
-  _optionAtCentre(list) {
-    const mid = list.scrollTop + list.clientHeight / 2;
-    let best = null;
-    let dist = Infinity;
-    for (const o of list.children) {
-      const d = Math.abs(this._optionTop(list, o) + o.offsetHeight / 2 - mid);
-      if (d < dist) { dist = d; best = o; }
-    }
-    return best;
-  }
-
-  /** @private */
-  _readField(input) {
-    if (!this._pending) return;
-    const n = input.valueAsNumber; // finite integers (incl. negatives) are kept so range validation names the field
-    this._pending[input.getAttribute('data-part')] = Number.isInteger(n) ? n : NaN;
-  }
+  /** @private pending parts while the dialog is open (committed only by "Chọn"); null when closed */
+  get _pending() { return this._dp ? this._dp.pending : null; }
 
   /**
    * @private validate the pending state, sync field ARIA + the error line + the preview.
    * @returns {ReturnType<TdDatetimePicker['_check']>}
    */
-  _refresh(panel = this._panel) {
-    if (!panel || !this._pending) return null;
-    const p = this._pending;
-    const err = this._check(p);
-    const error = panel.querySelector('.td-dtp-panel__error');
-    for (const control of panel.querySelectorAll('.td-dtp-panel__input, .td-dtp-wheel__list')) {
-      if (err && err.field === control.getAttribute('data-part')) control.setAttribute('aria-invalid', 'true');
-      else control.removeAttribute('aria-invalid');
-      // A hidden element still feeds aria-describedby → only reference the error while it shows.
-      if (err) control.setAttribute('aria-describedby', error.id);
-      else control.removeAttribute('aria-describedby');
-    }
-    if (err) {
-      if (error.textContent !== err.message) error.textContent = err.message;
-      error.hidden = false;
-    } else {
-      error.hidden = true;
-      error.textContent = '';
-    }
-    const f = (n, w = 2) => (Number.isInteger(n) ? String(n).padStart(w, '0') : '-'.repeat(w));
-    const preview = {
-      datetime: () => `${f(p.day)}/${f(p.month)}/${f(p.year, 4)} - ${f(p.hour)}:${f(p.minute)}`,
-      date: () => `${f(p.day)}/${f(p.month)}/${f(p.year, 4)}`,
-      month: () => `${f(p.month)}/${f(p.year, 4)}`,
-      year: () => f(p.year, 4),
-    }[this._mode()];
-    panel.querySelector('.td-dtp-panel__preview').textContent = preview();
-    return err;
+  _refresh() {
+    return this._dp ? this._dp.refresh() : null;
   }
 
   /** @private "Bây giờ": pending = now (minute snapped down) */
   _setNow() {
-    const panel = this._panel;
-    if (!panel) return;
+    if (!this._dp) return;
     const now = partsFromDate(new Date());
     now.minute = snapMinuteDown(now.minute, this._minuteStep());
-    Object.assign(this._pending, toModeParts(now, this._mode())); // components outside the mode keep their defaults
-    for (const input of panel.querySelectorAll('.td-dtp-panel__input')) {
-      input.value = String(now[input.getAttribute('data-part')]);
-      this._readField(input);
-    }
-    for (const list of panel.querySelectorAll('.td-dtp-wheel__list')) {
-      this._selectWheel(list, now[list.getAttribute('data-part')], true);
-    }
-    this._refresh();
+    this._dp.setParts(toModeParts(now, this._mode())); // components outside the mode keep their defaults
   }
 
   /** @private "Chọn": commit the pending state (false keeps the dialog open) */
@@ -964,8 +633,7 @@ export class TdDatetimePicker extends TdFormElement {
     if (!panel || !this._pending) return false;
     const err = this._refresh();
     if (err) {
-      const field = err.field && panel.querySelector(`[data-part="${err.field}"]`);
-      if (field) field.focus();
+      this._dp.focusPart(err.field);
       return false;
     }
     const mode = this._mode();
