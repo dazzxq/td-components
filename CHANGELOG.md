@@ -2,6 +2,27 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.49.0
+
+**`<td-choice-group>` + chế độ `stepper` của `<td-number-input>`** (dsuite; plan `docs/internal/plans/v0.49.0-choice-stepper.md`,
+Codex plan-review APPROVE, impl-review + security-review APPROVE 7 vòng; [ADR 0023](docs/internal/decisions/0023-unowned-radio-group.md)).
+Đổi hành vi rất nhỏ: `safeColor()` từ chối chuỗi màu > 64 ký tự — chi tiết `docs/upgrading/breaking-changes.md#0490`.
+
+### Added
+
+- `<td-choice-group>` (`./choice-group`, `TdChoiceGroup`): chọn một trong các thẻ lựa chọn (chữ, mô tả, ô màu, ảnh, ghi chú,
+  "hết hàng") — radio group riêng không thuộc form (chỉ host gửi), mũi tên vòng ở cả hai đầu, form-associated. PHP
+  `td_choice_group()` + SSR `choice-group@1`.
+- `<td-number-input stepper>`: nút − / + hai bên (PHP `'stepper' => true`). Đổi cấu trúc khi đang focus giữ focus.
+- `TdFormElement`: hook `_ariaTarget()` / `_ssrVerifiedParts()` (mặc định như cũ).
+
+### Security
+
+- Option: tối đa 400 ứng viên đọc / 100 nhận, trần độ dài từng trường trước mọi trim / regex, giá trị chuẩn hoá (không ký tự
+  điều khiển, UTF-8 hợp lệ) trước khi so trùng, **một** cảnh báo gộp chỉ có số đếm. Ô màu chỉ qua `safeColor`, ảnh chỉ qua
+  `safeMediaUrl` / `td__media_url`. SSR được kiểm ngân sách (node, độ sâu, thuộc tính, độ dài) trước khi đọc; PHP kiểm cùng
+  giới hạn nhóm — vượt thì không in gì + một cảnh báo.
+
 ## 0.48.0
 
 **`<td-color-picker>` — trường chọn màu `#rrggbb`** (dsuite; plan `docs/internal/plans/v0.48.0-color-picker.md`, Codex plan-review
