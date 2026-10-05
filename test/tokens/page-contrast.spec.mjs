@@ -33,6 +33,14 @@ import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { contrast, over } from './color-parse.js';
+import { renderedPairs } from './rendered-pairs.js';
+
+/** impl review round 2: every rendered (foreground, composite) pair of the scheme-dependent component tokens. */
+const RENDERED = renderedPairs();
+const RENDERED_TOKENS = [...new Set(RENDERED.flatMap((p) => [p.fg, ...p.layers]))];
+/** Generated palettes must pass every rendered pair; built-in light / dark are reported (owner keeps built-in values). */
+const GENERATED = new Set(['navy', 'beige-gen', 'navy-named']);
+const builtinNotes = new Set();
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const ORIGIN = 'http://td-page-contrast.test';
@@ -234,7 +242,16 @@ async function focusCases(page, tag) {
 const focusReport = new Map();
 
 async function tokenPairs(page, palette, tag) {
-  const t = await page.evaluate(async (names) => (await import('/test/tokens/page-contrast-probe.js')).tokens(names), PAIR_TOKENS);
+  const t = await page.evaluate(async (names) => (await import('/test/tokens/page-contrast-probe.js')).tokens(names), [...new Set([...PAIR_TOKENS, ...RENDERED_TOKENS])]);
+  for (const p of RENDERED) {
+    let bg = t[p.layers[p.layers.length - 1]];
+    for (let i = p.layers.length - 2; i >= 0; i--) bg = over(t[p.layers[i]], bg);
+    const r = contrast(t[p.fg], bg);
+    if (GENERATED.has(palette)) {
+      checks++;
+      if (!(r >= p.min)) fail(tag, `rendered pair ${p.id} ${r.toFixed(2)} < ${p.min} (${t[p.fg]} on ${bg})`);
+    } else if (!(r >= p.min)) builtinNotes.add(`${palette}: ${p.id} ${r.toFixed(2)} < ${p.min}`);
+  }
   const pair = (what, fg, bg, min) => {
     checks++;
     const r = contrast(fg, bg);
@@ -323,6 +340,7 @@ const launchers = { chromium, firefox, webkit };
 const t0 = Date.now();
 for (const e of ENGINES) await runEngine(e, launchers[e]);
 for (const n of notes) console.log(`  ${n}`);
+if (builtinNotes.size) console.log(`  built-in palettes below the generated-palette pair gate (reported, not gated — owner keeps built-in values):\n    ${[...builtinNotes].join('\n    ')}`);
 if (focusReport.size) {
   const lows = [...focusReport].filter(([, v]) => v).map(([k, v]) => [k, Math.min(v.vsOuter, v.vsInner), v]).sort((a, b) => a[1] - b[1]).slice(0, Number(process.env.TD_PAGE_FOCUS_REPORT || 8));
   console.log(`  lowest keyboard focus rings: ${lows.map(([k, m, v]) => `${k} ${m} (${v.kind} ${v.color} vs out ${v.outer} / in ${v.inner})`).join(' · ')}`);

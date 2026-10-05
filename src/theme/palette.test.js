@@ -18,6 +18,16 @@ import { toCss, toJson } from './serialize.js';
 import { parseColor, contrast, luminance, srgbToOklch, composite } from './color.js';
 import { THEME_TOKENS, SCHEME_TOKENS } from './tokens.js';
 import { PRESETS } from './presets.js';
+import { renderedPairs, OPTION_TOKENS } from '../../test/tokens/rendered-pairs.js';
+
+const PAIRS = renderedPairs();
+/** Resolve a rendered pair against a palette token map: [fg colour, composited background]. */
+function resolvePair(tokens, p) {
+  const get = (n) => parseColor(tokens.get(OPTION_TOKENS[n] || n));
+  let base = get(p.layers[p.layers.length - 1]);
+  for (let i = p.layers.length - 2; i >= 0; i--) base = composite(get(p.layers[i]), base);
+  return [get(p.fg), base];
+}
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const GOLDEN_FILE = join(ROOT, 'test', 'tokens', 'palette-golden.json');
@@ -171,10 +181,10 @@ function trulyUnsat(bgs, min) {
 
 /** Background colours of a constraint (`a over b` composites resolved from the token map). */
 function bgColour(tokens, name) {
-  const m = / over /.exec(name);
-  if (!m) return parseColor(tokens.get(name));
-  const [top, base] = name.split(' over ');
-  return composite(parseColor(tokens.get(top)), parseColor(tokens.get(base)));
+  const parts = name.split(' over ');
+  let c = parseColor(tokens.get(parts[parts.length - 1]));
+  for (let i = parts.length - 2; i >= 0; i--) c = composite(parseColor(tokens.get(parts[i])), c);
+  return c;
 }
 
 test('fuzz: 10 000 seeded seed sets — finite in-gamut tokens, pass-or-exact-code, no false claims, hierarchy', () => {
@@ -224,6 +234,14 @@ test('fuzz: 10 000 seeded seed sets — finite in-gamut tokens, pass-or-exact-co
       const [tx, lb, mu, sb] = ['--td-color-text', '--td-color-text-label', '--td-color-text-muted', '--td-color-text-subtle'].map(on);
       assert.ok(tx >= lb - 1e-9 && lb >= mu - 1e-9 && mu >= sb - 1e-9, `${tag}: hierarchy on ${s}: ${tx} ${lb} ${mu} ${sb}`);
     }
+    // round 2: every RENDERED pair of the component CSS passes, or its foreground carries an unsatisfiable code
+    for (const p of PAIRS) {
+      const [fg, bg] = resolvePair(r.tokens, p);
+      const ratio = contrast(fg, bg);
+      if (ratio >= p.min) continue;
+      assert.ok(errors.some((d) => d.token === p.fg && d.code === 'TD_THEME_CONTRAST_UNSATISFIABLE'),
+        `${tag}: rendered pair "${p.id}" ${ratio.toFixed(3)} < ${p.min} with no unsatisfiable code on ${p.fg}`);
+    }
     // the site's colours are kept (QĐ10)
     assert.equal(r.tokens.get('--td-color-bg'), seeds.bg);
     if (seeds.surface) assert.equal(r.tokens.get('--td-color-surface'), seeds.surface);
@@ -252,4 +270,17 @@ test('impl review ISSUE-1: every scheme-dependent component token is generated +
     assert.ok(contrast(navy.get(t), '#ffffff') > 4, `${t} = ${navy.get(t)} is a dark-scheme fill`);
   }
   for (const preset of ['light', 'dark']) for (const t of SCHEME_TOKENS) assert.equal(typeof PRESETS[preset][t], 'string', `${preset} ${t}`);
+});
+
+test('round 2: rendered pairs of the built-in presets (reported, not changed — the owner keeps built-in values)', () => {
+  const lines = [];
+  for (const preset of ['light', 'dark']) {
+    const tokens = new Map(Object.entries(PRESETS[preset]));
+    for (const p of PAIRS) {
+      const [fg, bg] = resolvePair(tokens, p);
+      const ratio = contrast(fg, bg);
+      if (ratio < p.min) lines.push(`${preset}: ${p.id} ${ratio.toFixed(2)} < ${p.min}`);
+    }
+  }
+  if (lines.length) console.log(`built-in pairs below the generated-palette gate:\n  ${lines.join('\n  ')}`);
 });

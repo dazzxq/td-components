@@ -321,6 +321,12 @@ export function generatePalette(seeds, options = {}) {
   const flags = new Map(); // token → { unsat, miss, reduced }
   const named = (n) => ({ name: n, color: V.get(n) });
   const comp = (topName, baseName) => ({ name: `${topName} over ${baseName}`, color: over(V.get(topName), V.get(baseName)) });
+  /** A stack of translucent layers over an opaque base (`stack(top, …, base)`), as the component CSS paints it. */
+  const stack = (...names) => {
+    let color = V.get(names[names.length - 1]);
+    for (let i = names.length - 2; i >= 0; i--) color = over(V.get(names[i]), color);
+    return { name: names.join(' over '), color };
+  };
   const need = (token, bgs, min, kind) => constraints.push({ token, against: bgs.map((b) => b.name), min, kind, bgs });
 
   /** Solve `token` against `bgs`: aims at each of `mins` in turn (first feasible wins), records the gate. */
@@ -364,9 +370,12 @@ export function generatePalette(seeds, options = {}) {
   const surfaces = ['--td-color-bg', '--td-color-surface', '--td-color-surface-muted', '--td-color-surface-raised', '--td-control-bg'].map(named);
 
   // ---- interaction fills (pole composites; one direction for the translucent hover family) ----
+  V.set('--td-color-fill', shade(pole, DESIGN.fill[scheme], surface, true));
+  V.set('--td-color-fill-strong', shade(pole, DESIGN.fillStrong[scheme], V.get('--td-control-bg'), true));
   {
     let a = Infinity;
-    for (const { color: base } of surfaces) {
+    // round 2: the washes also land on the neutral fills (filter-chip remove pressed over --td-color-fill)
+    for (const base of [...surfaces.map((x) => x.color), V.get('--td-color-fill'), V.get('--td-color-fill-strong')]) {
       let lo = 0;
       let hi = 1;
       for (let i = 0; i < 24; i++) {
@@ -375,15 +384,22 @@ export function generatePalette(seeds, options = {}) {
       }
       a = Math.min(a, lo);
     }
-    const top = DESIGN.hover[2];
-    const [ink0, k] = a >= top ? [pole, 1] : a >= top / 2 ? [pole, a / top] : [antipole, 1];
+    // the strongest stack the kit paints with this family: a pressed tab over the hover trough (tabs.css)
+    const stacked = (k) => 1 - (1 - DESIGN.hover[2] * k) * (1 - DESIGN.hover[0] * k);
+    let k = 1;
+    if (stacked(1) > a) {
+      let lo = 0;
+      let hi = 1;
+      for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; if (stacked(m) <= a) lo = m; else hi = m; }
+      k = lo;
+    }
+    const ink0 = k >= 0.5 ? pole : antipole;
+    if (k < 0.5) k = 1;
     const pct = (x) => Math.floor(x * k * 100) / 100;
     V.set('--td-color-hover', alpha(ink0, pct(DESIGN.hover[0])));
     V.set('--td-color-hover-strong', alpha(ink0, pct(DESIGN.hover[1])));
     V.set('--td-color-pressed', alpha(ink0, pct(DESIGN.hover[2])));
   }
-  V.set('--td-color-fill', shade(pole, DESIGN.fill[scheme], surface, true));
-  V.set('--td-color-fill-strong', shade(pole, DESIGN.fillStrong[scheme], V.get('--td-control-bg'), true));
   V.set('--td-color-skeleton', q(over(alpha(pole, DESIGN.skeleton), surface)));
   V.set('--td-btn-secondary-hover', shade(pole, DESIGN.secondary[0], surface, true));
   V.set('--td-btn-secondary-pressed', shade(pole, DESIGN.secondary[1], surface, true));
@@ -399,10 +415,15 @@ export function generatePalette(seeds, options = {}) {
   // ---- status inks, pastels, alert tints ----
   const STATUS = [['success', 'success', 'success'], ['warning', 'warning', 'warning'], ['error', 'danger', 'danger'], ['info', 'info', 'info']];
   const alertBgs = [];
+  /** the background set each status ink was solved on (round 2: derived pairs are registered on top of it) */
+  const statusSets = {};
   for (const [color, seedKey, role] of STATUS) {
     const seed = S[seedKey] || q(parseSeed(seedKey, STATUS_DEFAULTS[scheme][seedKey]));
     const token = `--td-color-${color}`;
-    const c = ink(token, srgbToOklch(seed), surfaces, textMins(GATE.text), GATE.text, 'text');
+    // every surface + the popups (hovercard error line) + for the error colour the pressed link of the form summary
+    const statusBgs0 = [...surfaces, ...glassOver, ...(color === 'error' ? [comp('--td-color-pressed', '--td-color-surface')] : [])];
+    const c = ink(token, srgbToOklch(seed), statusBgs0, textMins(GATE.text), GATE.text, 'text');
+    statusSets[token] = statusBgs0;
     const [pf, pb] = DESIGN.pastel[scheme];
     const [af, ab] = DESIGN.alert[scheme];
     V.set(`--td-pastel-${role}-bg`, shade(c, pf, surface));
@@ -426,7 +447,9 @@ export function generatePalette(seeds, options = {}) {
 
   // ---- ink: text, muted, label, subtle ----
   const fills = ['--td-color-fill', '--td-color-fill-strong', '--td-btn-secondary-hover', '--td-btn-secondary-pressed'].map(named);
-  const textBgs = [...surfaces, ...fills, ...hovers, ...glassOver, ...alertBgs];
+  // round 2 (ISSUE-6): the filter-chip remove button paints the chip text on hover-strong / pressed over the chip fill
+  const fillWashes = ['--td-color-hover-strong', '--td-color-pressed'].map((w) => comp(w, '--td-color-fill'));
+  const textBgs = [...surfaces, ...fills, ...fillWashes, ...hovers, ...glassOver, ...alertBgs];
   {
     // near the pole, tinted, ≥ 7 where possible; where 7 is out of reach the pole itself (the strongest ink — keeps
     // text ≥ label ≥ muted on every background)
@@ -444,7 +467,8 @@ export function generatePalette(seeds, options = {}) {
   const text = V.get('--td-color-text');
   // muted: every surface + the hover-strong composites on the surfaces it sits on (not on the bare page: that
   // composite is the darkest in a light theme and would darken muted text everywhere)
-  const mutedBgs = [...surfaces, ...hovers.slice(0, 4), ...glassOver];
+  // + the tab trough on the page (tabs.css: --td-tabs-bg = hover; the idle tab label is muted)
+  const mutedBgs = [...surfaces, ...hovers.slice(0, 4), comp('--td-color-hover', '--td-color-bg'), ...glassOver];
   const muted = ink('--td-color-text-muted', tinted(surface, bgL.l), mutedBgs, textMins(GATE.text), GATE.text, 'text');
   ink('--td-color-text-label', srgbToOklch(mid(text, muted)), mutedBgs, textMins(GATE.text), GATE.text, 'text');
   ink('--td-color-text-subtle', tinted(surface, bgL.l), surfaces, textMins(GATE.icon), GATE.icon, 'icon');
@@ -481,7 +505,8 @@ export function generatePalette(seeds, options = {}) {
 
   // ---- accent: ink / mark / fill (QĐ: ink ≥ 4.7 on every surface, white-or-black on the fill ≥ 4.7) ----
   const accentSeed = S.accent;
-  const accentInk = ink('--td-accent', srgbToOklch(accentSeed), surfaces, textMins(GATE.text), GATE.text, 'text');
+  // every surface + the popups (hovercard link: glass over the page)
+  const accentInk = ink('--td-accent', srgbToOklch(accentSeed), [...surfaces, ...glassOver], textMins(GATE.text), GATE.text, 'text');
   // the check mark on the accent ink (and the label on the fill): white when it reads (≥ 3:1 + margin, the kit's
   // convention), else whichever pole is stronger
   const markPole = contrast(WHITE, accentInk) >= GATE.nonText + DESIGN.margin
@@ -542,7 +567,7 @@ export function generatePalette(seeds, options = {}) {
     const focus = V.get('--td-focus');
     /** largest alpha ≤ a of `c` over `base` that keeps the result safe for the ink (and `extra(composite)`) */
     const alphaKeep = (c, a, base, extra = () => true) => {
-      const ok = (x) => { const k = over(alpha(c, x), base); return safeOn(k, base) && extra(k); };
+      const ok = (x) => { const k = over(alpha(c, x), base); return safeOn(k, base) && extra(k, x); };
       if (ok(a)) return a;
       let lo = 0;
       let hi = a;
@@ -551,7 +576,7 @@ export function generatePalette(seeds, options = {}) {
     };
     const tintKeep = (c, a, base, fg) => q(over(alpha(c, alphaKeep(c, a, base, (k) => contrast(fg, k) >= SAFE)), base));
     const set = (n, v) => V.set(n, v);
-    const pct = (x) => Math.round(x * 100) / 100;
+    const pct = (x) => Math.floor(x * 100 + 1e-9) / 100; // never round an alpha UP past what was checked
     set('--td-field-bg-disabled', isLight ? V.get('--td-color-fill') : muted);
     set('--td-field-focus', focus);
     set('--td-field-focus-ring', `0 0 0 3px ${toCss(alpha(focus, isLight ? 0.12 : 0.22))}`);
@@ -569,34 +594,55 @@ export function generatePalette(seeds, options = {}) {
       // ink already cannot read on its base (seed conflict / dead band)
       need(fg, [...surfaces, ...bgs.map(named)], GATE.text, 'text');
     }
-    // ghost button label on its hover fill (over the page, the surface, a popup)
-    const ghostBgs = ['--td-color-bg', '--td-color-surface', '--td-color-surface-raised'].map((b) => comp('--td-color-hover', b));
+    // ghost button label on its hover AND pressed fill (button.css: same label), over the page, the surface, a popup
+    const BASES = ['--td-color-bg', '--td-color-surface', '--td-color-surface-raised'];
+    const ghostBgs = ['--td-color-hover', '--td-color-pressed'].flatMap((w) => BASES.map((b) => comp(w, b)));
     const ghost = ink('--td-btn-ghost-hover-fg', srgbToOklch(accent), ghostBgs, textMins(GATE.text), GATE.text, 'text');
     set('--td-btn-ghost-hover-fg-fallback', ghost);
     set('--td-slider-track', q(over(alpha(pole, isLight ? 0.105 : 0.12), surface)));
     set('--td-slider-disabled', q(over(alpha(pole, isLight ? 0.37 : 0.27), surface)));
-    set('--td-tabs-pill', isLight ? surface : alpha(pole, pct(alphaKeep(pole, 0.14, muted))));
+    const pressedA = V.get('--td-color-pressed');
+    const hoverA = V.get('--td-color-hover');
+    const textC = V.get('--td-color-text');
+    const mutedC = V.get('--td-color-text-muted');
+    const readsOn = (fg, ...layers) => { let k = layers[layers.length - 1]; for (let i = layers.length - 2; i >= 0; i--) k = over(layers[i], k); return contrast(fg, k) >= SAFE; };
+    // tabs (tabs.css): pill over the trough (= hover) over the page / surface; the selected label (text) also pressed
+    if (isLight) set('--td-tabs-pill', surface);
+    else {
+      let a = 0.14;
+      for (const s of [bg, surface]) {
+        a = Math.min(a, alphaKeep(pole, 0.14, over(hoverA, s), (k) => readsOn(textC, k) && readsOn(textC, pressedA, k)));
+      }
+      set('--td-tabs-pill', alpha(pole, Math.floor(a * 100) / 100));
+    }
     set('--td-tabs-pill-shadow', isLight ? SCHEME_SHADOWS.light['--td-shadow-1'] : '0 1px 2px rgb(0 0 0 / 40%)');
-    if (!isLight) need('--td-color-text', [...textBgs, comp('--td-tabs-pill', '--td-color-surface-muted')], GATE.text, 'text');
-    set('--td-dropdown-create-fg', accent);
-    set('--td-dropdown-create-fg-fallback', accent);
-    set('--td-table-zebra', alpha(pole, isLight ? 0.02 : 0.03));
-    set('--td-table-row-selected', alpha(accent, pct(alphaKeep(accent, 0.08, surface))));
-    need('--td-color-text', [...textBgs, comp('--td-table-row-selected', '--td-color-surface')], GATE.text, 'text');
+    // dropdown "create" row: accent label on the popup and on the option hover / active / pressed fills
+    const popupBgs = ['--td-color-bg', '--td-color-surface'].flatMap((s) => [stack('--td-glass-bg-strong', s),
+      ...['--td-color-hover', '--td-color-hover-strong', '--td-color-pressed'].map((o) => stack(o, '--td-glass-bg-strong', s))]);
+    const create = ink('--td-dropdown-create-fg', srgbToOklch(accent), popupBgs, textMins(GATE.text), GATE.text, 'text');
+    set('--td-dropdown-create-fg-fallback', create);
+    // table rows (table.css): zebra; selected; selected + hover / focus wash — text AND muted (card labels) readable
+    const rowOk = (k) => readsOn(textC, k) && readsOn(mutedC, k);
+    set('--td-table-zebra', alpha(pole, Math.floor(alphaKeep(pole, isLight ? 0.02 : 0.03, surface, rowOk) * 1000) / 1000));
+    set('--td-table-row-selected', alpha(accent, pct(alphaKeep(accent, 0.08, surface, (k) => rowOk(k) && rowOk(over(hoverA, k))))));
     set('--td-table-edge-shadow', isLight ? 'rgb(0 0 0 / 14%)' : 'rgb(0 0 0 / 55%)');
-    set('--td-form-summary-bg', shade(err, isLight ? 0.08 : 0.12, surface));
-    need('--td-color-text', [...textBgs, named('--td-form-summary-bg')], GATE.text, 'text');
+    // form summary (form-validation.css): error-coloured text + its link pressed (--td-color-pressed over the box)
+    set('--td-form-summary-bg', q(over(alpha(err, alphaKeep(err, isLight ? 0.08 : 0.12, surface,
+      (k) => readsOn(err, k) && readsOn(err, pressedA, k))), surface)));
     ink('--td-form-summary-border', srgbToOklch(err), [named('--td-color-surface'), named('--td-form-summary-bg')],
       textMins(GATE.nonText), GATE.nonText, 'non-text');
     set('--td-menu-separator', isLight ? V.get('--td-color-border') : alpha(pole, 0.12));
-    set('--td-chip-remove-hover', alpha(pole, pct(alphaKeep(pole, isLight ? 0.08 : 0.16, V.get('--td-color-fill-strong')))));
+    // chip-input remove (chip-input.css): the chip text on the wash, and on the wash TWICE when pressed
+    const fs = V.get('--td-color-fill-strong');
+    set('--td-chip-remove-hover', alpha(pole, pct(alphaKeep(pole, isLight ? 0.08 : 0.16, fs,
+      (k, x) => readsOn(textC, k) && readsOn(textC, alpha(pole, x), k)))));
     set('--td-hovercard-error-fg', err);
     set('--td-hovercard-link-fg', accent);
     set('--td-dropzone-bg-active', q(over(alpha(accent, alphaKeep(accent, 0.06, ctrl,
-      (k) => contrast(V.get('--td-color-text-muted'), k) >= SAFE)), ctrl)));
+      (k) => contrast(V.get('--td-color-text-muted'), k) >= SAFE && contrast(accent, k) >= GATE.nonText + DESIGN.margin)), ctrl)));
     // pressed zone: a pole step over the field fill, the muted sub-line still readable on it
     set('--td-dropzone-bg-pressed', q(over(alpha(pole, alphaKeep(pole, isLight ? 0.045 : 0.08, ctrl,
-      (k) => contrast(V.get('--td-color-text-muted'), k) >= SAFE)), ctrl)));
+      (k) => contrast(V.get('--td-color-text-muted'), k) >= SAFE && contrast(accent, k) >= GATE.nonText + DESIGN.margin)), ctrl)));
     need('--td-color-text-muted', [...mutedBgs, ...['--td-dropzone-bg-active', '--td-dropzone-bg-pressed'].map(named)], GATE.text, 'text');
     set('--td-badge-accent-bg', shade(accent, isLight ? 0.14 : 0.26, surface));
     ink('--td-badge-accent-fg', srgbToOklch(accent), [named('--td-badge-accent-bg')], textMins(GATE.text), GATE.text, 'text');
@@ -604,7 +650,37 @@ export function generatePalette(seeds, options = {}) {
     set('--td-badge-warning-ink', warn);
     set('--td-badge-danger-ink', err);
     set('--td-badge-info-ink', V.get('--td-color-info'));
-    set('--td-filter-chip-remove-fg', isLight ? V.get('--td-color-text-label') : V.get('--td-color-text-muted'));
+    // filter chips (filter-chips.css): the remove × rests in this colour on the chip fill
+    ink('--td-filter-chip-remove-fg', srgbToOklch(V.get(isLight ? '--td-color-text-label' : '--td-color-text-muted')),
+      [named('--td-color-fill')], textMins(GATE.text), GATE.text, 'text');
+
+    // round 2: every rendered (foreground, background) pair of the component CSS is a registered constraint (the
+    // fuzz checks the same pairs independently: test/tokens/rendered-pairs.js). Foregrounds solved against their own
+    // set already carry it; the rest are registered with the base set the ink was solved on, so a dead band / seed
+    // conflict reports the unsatisfiable base, never a false miss.
+    const pageS = ['--td-color-bg', '--td-color-surface'];
+    need('--td-color-error', [...statusSets['--td-color-error'], named('--td-form-summary-bg'), stack('--td-color-pressed', '--td-form-summary-bg'),
+      ...pageS.map((s) => stack('--td-glass-bg-strong', s))], GATE.text, 'text');
+    need('--td-color-text', [...textBgs, stack('--td-table-zebra', '--td-color-surface'), stack('--td-table-row-selected', '--td-color-surface'),
+      stack('--td-color-hover', '--td-table-row-selected', '--td-color-surface'), stack('--td-chip-remove-hover', '--td-color-fill-strong'),
+      stack('--td-chip-remove-hover', '--td-chip-remove-hover', '--td-color-fill-strong'),
+      ...pageS.flatMap((s) => [stack('--td-color-hover', s), stack('--td-color-pressed', '--td-color-hover', s),
+        stack('--td-tabs-pill', '--td-color-hover', s), stack('--td-color-pressed', '--td-tabs-pill', '--td-color-hover', s)])],
+    GATE.text, 'text');
+    need('--td-color-text-muted', [...mutedBgs, stack('--td-table-zebra', '--td-color-surface'),
+      stack('--td-table-row-selected', '--td-color-surface'), stack('--td-color-hover', '--td-table-row-selected', '--td-color-surface')],
+    GATE.text, 'text');
+    // (disabled field text = muted on --td-field-bg-disabled ≥ 2.2: implied — the fill / muted surface is one wash off a
+    // surface where muted already reads ≥ 4.7; the fuzz measures the rendered pair)
+    // (the dropzone's accent edge ≥ 3 on its active / pressed fills is guaranteed by their alpha clamp above: at alpha 0
+    // the fill is the control, where the accent already reads ≥ 4.7)
+    need('--td-field-focus', surfaces, GATE.nonText, 'non-text');
+    // components that paint an alias of a semantic colour carry the claim under their own name too
+    need('--td-hovercard-link-fg', [...surfaces, ...glassOver], GATE.text, 'text');
+    need('--td-hovercard-error-fg', statusSets['--td-color-error'], GATE.text, 'text');
+    for (const [v, c] of [['success', 'success'], ['warning', 'warning'], ['danger', 'error'], ['info', 'info']]) {
+      need(`--td-badge-${v}-ink`, statusSets[`--td-color-${c}`], GATE.text, 'text');
+    }
   }
 
   // ---- diagnostics ----
