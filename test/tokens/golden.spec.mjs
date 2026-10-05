@@ -14,6 +14,7 @@
  * auto → light / dark by branch); unset / light under a dark OS preference = unset (no flip).
  *
  *   node test/tokens/golden.spec.mjs              (npm run test:golden)
+ *   node test/tokens/golden.spec.mjs --print-missing   print new tokens missing from "added" (light + dark, JSON)
  *   node test/tokens/golden.spec.mjs --capture    rewrite the light / dark baseline (keeps darkDeltas / added) —
  *                                                 only on an UNCHANGED baseline commit
  */
@@ -127,6 +128,12 @@ if (CAPTURE) {
 
 if (process.argv.includes('--print-dark-diff')) { // dev aid: every dark value that differs from the baseline
   for (const k of Object.keys(dark)) if (k in golden.dark && dark[k] !== golden.dark[k]) console.log(`${k}\t${golden.dark[k]}\t${dark[k]}`);
+  process.exit(0);
+}
+if (process.argv.includes('--print-missing')) { // dev aid: new tokens not yet listed in "added" (JSON, ready to paste + a `why`)
+  const miss = {};
+  for (const k of Object.keys(light)) if (!(k in golden.light) && !golden.added[k] && !(golden.lightDeltas || {})[k]) miss[k] = { light: light[k], dark: dark[k] };
+  console.log(JSON.stringify(miss, null, 2));
   process.exit(0);
 }
 const exceptScheme = (k) => k !== '@color-scheme';

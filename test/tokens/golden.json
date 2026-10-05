@@ -1564,6 +1564,131 @@
       "light": "8rem",
       "dark": "8rem",
       "why": "v0.43.0 td-media-gallery geometry (ADR 0021): tile min width / grid gap / empty Add frame height"
+    },
+    "--td-steps-connector": {
+      "light": "rgb(228, 228, 231)",
+      "dark": "rgb(51, 51, 56)",
+      "why": "v0.45.0 td-steps (steps.css): marker / connector geometry and state colours derived from the theme contract (accent, alert error pair, surface, border)"
+    },
+    "--td-steps-connector-done": {
+      "light": "rgb(37, 99, 235)",
+      "dark": "rgb(60, 113, 198)",
+      "why": "v0.45.0 td-steps (steps.css): marker / connector geometry and state colours derived from the theme contract (accent, alert error pair, surface, border)"
+    },
+    "--td-steps-current-bg": {
+      "light": "rgb(37, 99, 235)",
+      "dark": "rgb(60, 113, 198)",
+      "why": "v0.45.0 td-steps (steps.css): marker / connector geometry and state colours derived from the theme contract (accent, alert error pair, surface, border)"
+    },
+    "--td-steps-current-border": {
+      "light": "rgb(37, 99, 235)",
+      "dark": "rgb(60, 113, 198)",
+      "why": "v0.45.0 td-steps (steps.css): marker / connector geometry and state colours derived from the theme contract (accent, alert error pair, surface, border)"
+    },
+    "--td-steps-current-fg": {
+      "light": "rgb(255, 255, 255)",
+      "dark": "rgb(255, 255, 255)",
+      "why": "v0.45.0 td-steps (steps.css): marker / connector geometry and state colours derived from the theme contract (accent, alert error pair, surface, border)"
+    },
+    "--td-steps-done-bg": {
+      "light": "rgb(37, 99, 235)",
+      "dark": "rgb(60, 113, 198)",
+      "why": "v0.45.0 td-steps (steps.css): marker / connector geometry and state colours derived from the theme contract (accent, alert error pair, surface, border)"
+    },
+    "--td-steps-done-border": {
+      "light": "rgb(37, 99, 235)",
+      "dark": "rgb(60, 113, 198)",
+      "why": "v0.45.0 td-steps (steps.css): marker / connector geometry and state colours derived from the theme contract (accent, alert error pair, surface, border)"
+    },
+    "--td-steps-done-fg": {
+      "light": "rgb(255, 255, 255)",
+      "dark": "rgb(255, 255, 255)",
+      "why": "v0.45.0 td-steps (steps.css): marker / connector geometry and state colours derived from the theme contract (accent, alert error pair, surface, border)"
+    },
+    "--td-steps-error-bg": {
+      "light": "rgb(254, 242, 242)",
+      "dark": "rgb(42, 17, 17)",
+      "why": "v0.45.0 td-steps (steps.css): marker / connector geometry and state colours derived from the theme contract (accent, alert error pair, surface, border)"
+    },
+    "--td-steps-error-border": {
+      "light": "rgb(252, 165, 165)",
+      "dark": "rgb(127, 29, 29)",
+      "why": "v0.45.0 td-steps (steps.css): marker / connector geometry and state colours derived from the theme contract (accent, alert error pair, surface, border)"
+    },
+    "--td-steps-error-fg": {
+      "light": "rgb(220, 38, 38)",
+      "dark": "rgb(252, 165, 165)",
+      "why": "v0.45.0 td-steps (steps.css): marker / connector geometry and state colours derived from the theme contract (accent, alert error pair, surface, border)"
+    },
+    "--td-steps-gap": {
+      "light": "6px",
+      "dark": "6px",
+      "why": "v0.45.0 td-steps (steps.css): marker / connector geometry and state colours derived from the theme contract (accent, alert error pair, surface, border)"
+    },
+    "--td-steps-line": {
+      "light": "2px",
+      "dark": "2px",
+      "why": "v0.45.0 td-steps (steps.css): marker / connector geometry and state colours derived from the theme contract (accent, alert error pair, surface, border)"
+    },
+    "--td-steps-marker": {
+      "light": "28px",
+      "dark": "28px",
+      "why": "v0.45.0 td-steps (steps.css): marker / connector geometry and state colours derived from the theme contract (accent, alert error pair, surface, border)"
+    },
+    "--td-steps-upcoming-bg": {
+      "light": "rgb(255, 255, 255)",
+      "dark": "rgb(28, 28, 30)",
+      "why": "v0.45.0 td-steps (steps.css): marker / connector geometry and state colours derived from the theme contract (accent, alert error pair, surface, border)"
+    },
+    "--td-steps-upcoming-border": {
+      "light": "rgb(138, 138, 147)",
+      "dark": "rgb(138, 138, 147)",
+      "why": "v0.45.0 td-steps (steps.css): marker / connector geometry and state colours derived from the theme contract (accent, alert error pair, surface, border)"
+    },
+    "--td-steps-upcoming-fg": {
+      "light": "rgb(107, 107, 115)",
+      "dark": "rgb(172, 172, 180)",
+      "why": "v0.45.0 td-steps (steps.css): marker / connector geometry and state colours derived from the theme contract (accent, alert error pair, surface, border)"
+    },
+    "--td-timeline-connector": {
+      "light": "rgb(228, 228, 231)",
+      "dark": "rgb(51, 51, 56)",
+      "why": "v0.45.0 td-timeline (timeline.css): marker / connector geometry, neutral marker + day heading colours derived from the theme contract"
+    },
+    "--td-timeline-day-fg": {
+      "light": "rgb(69, 69, 75)",
+      "dark": "rgb(212, 212, 216)",
+      "why": "v0.45.0 td-timeline (timeline.css): marker / connector geometry, neutral marker + day heading colours derived from the theme contract"
+    },
+    "--td-timeline-gap": {
+      "light": "1rem",
+      "dark": "1rem",
+      "why": "v0.45.0 td-timeline (timeline.css): marker / connector geometry, neutral marker + day heading colours derived from the theme contract"
+    },
+    "--td-timeline-line": {
+      "light": "2px",
+      "dark": "2px",
+      "why": "v0.45.0 td-timeline (timeline.css): marker / connector geometry, neutral marker + day heading colours derived from the theme contract"
+    },
+    "--td-timeline-marker": {
+      "light": "28px",
+      "dark": "28px",
+      "why": "v0.45.0 td-timeline (timeline.css): marker / connector geometry, neutral marker + day heading colours derived from the theme contract"
+    },
+    "--td-timeline-marker-bg": {
+      "light": "rgb(240, 240, 242)",
+      "dark": "rgb(44, 44, 48)",
+      "why": "v0.45.0 td-timeline (timeline.css): marker / connector geometry, neutral marker + day heading colours derived from the theme contract"
+    },
+    "--td-timeline-marker-border": {
+      "light": "rgb(228, 228, 231)",
+      "dark": "rgb(51, 51, 56)",
+      "why": "v0.45.0 td-timeline (timeline.css): marker / connector geometry, neutral marker + day heading colours derived from the theme contract"
+    },
+    "--td-timeline-marker-fg": {
+      "light": "rgb(107, 107, 115)",
+      "dark": "rgb(172, 172, 180)",
+      "why": "v0.45.0 td-timeline (timeline.css): marker / connector geometry, neutral marker + day heading colours derived from the theme contract"
     }
   },
   "lightDeltas": {
