@@ -1789,6 +1789,31 @@
       "light": "rgb(107, 107, 115)",
       "dark": "rgb(172, 172, 180)",
       "why": "v0.47.0 td-check-matrix (plan QĐ 31): note dot = --td-color-text-muted (theme contract; the plan said gray-500 / gray-400)"
+    },
+    "--td-color-picker-width": {
+      "light": "17.5rem",
+      "dark": "17.5rem",
+      "why": "v0.48.0 td-color-picker: popup width"
+    },
+    "--td-color-picker-area-height": {
+      "light": "10rem",
+      "dark": "10rem",
+      "why": "v0.48.0 td-color-picker: 2-D area height"
+    },
+    "--td-color-picker-swatch": {
+      "light": "1.5rem",
+      "dark": "1.5rem",
+      "why": "v0.48.0 td-color-picker: swatch size in the field"
+    },
+    "--td-color-swatch-border": {
+      "light": "rgb(138, 138, 147)",
+      "dark": "rgb(138, 138, 147)",
+      "why": "v0.48.0 td-color-picker: swatch / preset edge = --td-control-border-strong (≥ 3:1 with the field, light + dark)"
+    },
+    "--td-color-checker": {
+      "light": "rgb(228, 228, 231)",
+      "dark": "rgb(51, 51, 56)",
+      "why": "v0.48.0 td-color-picker: \"no colour\" checkerboard = --td-color-border"
     }
   },
   "lightDeltas": {

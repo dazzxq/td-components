@@ -218,6 +218,7 @@
 		width: 2.25rem;
 		padding: 0;
 		margin: 0;
+		font: inherit;
 		color: var(--td-color-text-muted);
 		cursor: pointer;
 		background: transparent;
@@ -336,6 +337,7 @@
 		height: 1.75rem;
 		padding: 0;
 		margin: 0;
+		font: inherit;
 		color: var(--td-color-text-muted);
 		cursor: pointer;
 		background: transparent;
@@ -372,8 +374,10 @@
 		height: 1.75rem;
 		padding: 0;
 		margin: 0;
+		font: inherit;
+		color: inherit;        /* own it: host resets (Tailwind preflight) vs UA */
 		background: transparent;
-		border: 0;
+		border: 0 solid transparent;
 		outline: 2px solid transparent;
 		outline-offset: 2px;
 		appearance: none;
@@ -470,6 +474,8 @@
 		aspect-ratio: 1;
 		padding: 0;
 		margin: 0;
+		font: inherit;
+		color: inherit;
 		cursor: pointer;
 		background-color: var(--_td-cp-color, transparent);
 		border: 1px solid var(--td-color-swatch-border);
