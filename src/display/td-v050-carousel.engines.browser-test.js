@@ -51,6 +51,29 @@ const MM = {
   'mm-link': hostHtml('c-3').replace('<button type="button" class="td-carousel__btn" data-td-carousel="next"', '<a href="javascript:alert(1)" class="td-carousel__btn" data-td-carousel="next"').replace(/<\/svg><\/button><div class="td-carousel__dots"/, '</svg></a><div class="td-carousel__dots"'),
   'mm-extra': hostHtml('c-3').replace('<span class="td-carousel__counter"', '<b onclick="window.__pwned=1">x</b><span class="td-carousel__counter"'),
 };
+// Codex review S2: frame nodes with the ACCEPTED shape carrying a non-allowlisted attribute → replaced by kit nodes
+const c3 = hostHtml('c-3');
+const FORBID = {
+  'aa-onclick': c3.replace('data-td-carousel="prev"', 'data-td-carousel="prev" onclick="window.__pwned=1"'),
+  'aa-form': c3.replace('data-td-carousel="next"', 'data-td-carousel="next" form="f" formaction="https://evil.example/"'),
+  'aa-popover': c3.replace('data-td-carousel="prev"', 'data-td-carousel="prev" popovertarget="x"'),
+  'aa-style': c3.replace('<span class="td-carousel__counter"', '<span style="position:fixed" class="td-carousel__counter"'),
+  'aa-dots': c3.replace('<div class="td-carousel__dots"', '<div onmouseover="window.__pwned=1" class="td-carousel__dots"'),
+  'aa-dot': c3.replace('aria-label="Chọn trang"></div>', 'aria-label="Chọn trang"><button type="button" class="td-carousel__dot" onclick="window.__pwned=1"></button><button type="submit" class="td-carousel__dot"></button></div>'),
+  'aa-viewport': c3.replace('<div class="td-carousel__viewport">', '<div class="td-carousel__viewport" onscroll="window.__pwned=1">'),
+  'aa-track': c3.replace('<div class="td-carousel__track">', '<div class="td-carousel__track" style="display:none">'),
+  'aa-status': c3.replace('<p class="td-sr-only" role="status"', '<p class="td-sr-only" role="status" onclick="window.__pwned=1"'),
+  'aa-controls': c3.replace('<div class="td-carousel__controls" data-td-js-only>', '<div class="td-carousel__controls" data-td-js-only formaction="x">'),
+};
+const forbid = document.createElement('div');
+forbid.style.setProperty('width', '720px');
+forbid.innerHTML = Object.entries(FORBID).map(([id, h]) => h.replace('<td-carousel ', `<td-carousel id="${id}" `)).join('');
+document.body.appendChild(forbid);
+const forbidBefore = Object.fromEntries(Object.keys(FORBID).map((id) => {
+  const h = document.getElementById(id);
+  return [id, { slides: [...h.querySelectorAll('.td-carousel__slide')], frame: [...h.querySelectorAll('.td-carousel__viewport, .td-carousel__track, .td-carousel__controls, .td-carousel__btn, .td-carousel__counter, .td-carousel__dots, .td-carousel__dot, :scope > p')] }];
+}));
+
 const mismatch = document.createElement('div');
 mismatch.style.setProperty('width', '720px');
 mismatch.innerHTML = Object.entries(MM).map(([id, h]) => h.replace('<td-carousel ', `<td-carousel id="${id}" `)).join('');
@@ -178,7 +201,7 @@ describe('td-carousel — upgrade / hydrate (carousel@1)', () => {
   });
 
   it('CLS 0: the controls block and the host keep their height through the upgrade (predicted pages = measured)', () => {
-    for (const c of SPEC.cases) {
+    for (const c of SPEC.cases.filter((x) => !x.expect.shift)) {
       const host = hostOf(c.id);
       expect(host.getAttribute('data-td-pages'), c.id).to.equal(String(c.expect.pages));
       expect(host.getAttribute('data-td-rows-narrow'), c.id).to.equal(String(c.expect.narrow));
@@ -189,9 +212,21 @@ describe('td-carousel — upgrade / hydrate (carousel@1)', () => {
     }
     if (shiftObs) {
       shiftObs.takeRecords().forEach((e) => shifts.push(e));
-      const ours = shifts.filter((e) => e.startTime >= t0 - 1 && (e.sources || []).some((s) => s.node && root.contains(s.node)));
+      const noShift = (n) => !n.closest?.('section[data-case="c-on17"]') && root.contains(n);
+      const ours = shifts.filter((e) => e.startTime >= t0 - 1 && (e.sources || []).some((s) => s.node && noShift(s.node)));
       expect(ours.map((e) => e.value).reduce((a, b) => a + b, 0)).to.equal(0);
     }
+  });
+
+  it('Codex review I3: dots="on" ≤ 2 rows reserves its box (no shift); > 2 rows = the documented one-time shift (≤ the extra rows)', () => {
+    const one = hostOf('c-img'); // dots="on", 5 pages → inline / 1 row: reserved
+    expect(Math.abs(one.querySelector('.td-carousel__controls').getBoundingClientRect().height - before['c-img'].controlsH) < 0.5).to.equal(true);
+    const many = hostOf('c-on17'); // dots="on", 17 pages → 3 rows (no CSS reservation beyond 2)
+    expect(many.getAttribute('data-td-rows-wide')).to.equal('3');
+    const step = matchMedia('(pointer: coarse)').matches ? 44 : 24;
+    const grow = many.querySelector('.td-carousel__controls').getBoundingClientRect().height - before['c-on17'].controlsH;
+    expect(grow > 0 && grow <= 3 * step + 0.5, `grew ${grow}px`).to.equal(true);
+    expect(parts(many).dots.length).to.equal(17);
   });
 
   it('dots: one per page (kept rows / inline), counter "k / P", one page → controls hidden', () => {
@@ -240,6 +275,72 @@ describe('td-carousel — upgrade / hydrate (carousel@1)', () => {
     expect(window.__pwned).to.equal(undefined);
   });
 
+  it('Codex review S2: an accepted-shape frame node with onclick / form / formaction / popovertarget / style is REPLACED; slides kept', () => {
+    const ALLOW = {
+      'td-carousel__viewport': ['class', 'tabindex', 'aria-label'], 'td-carousel__track': ['class'],
+      'td-carousel__controls': ['class', 'data-td-js-only', 'hidden'], 'td-carousel__counter': ['class', 'aria-hidden'],
+      'td-carousel__btn': ['class', 'type', 'data-td-carousel', 'aria-label', 'aria-disabled', 'data-td-pressed'],
+      'td-carousel__dots': ['class', 'role', 'aria-label'], 'td-carousel__dot': ['class', 'type', 'aria-label', 'aria-current', 'data-td-pressed'],
+      'td-sr-only': ['class', 'role', 'aria-live', 'aria-atomic'],
+    };
+    for (const id of Object.keys(FORBID)) {
+      const h = document.getElementById(id);
+      const frame = [...h.querySelectorAll('.td-carousel__viewport, .td-carousel__track, .td-carousel__controls, .td-carousel__btn, .td-carousel__counter, .td-carousel__dots, .td-carousel__dot, :scope > p')];
+      for (const n of frame) {
+        const bad = n.getAttributeNames().filter((a) => !ALLOW[n.className].includes(a));
+        expect(bad, `${id} ${n.className}`).to.deep.equal([]);
+      }
+      for (const b of h.querySelectorAll('button')) expect(b.getAttribute('type'), id).to.equal('button');
+      const was = forbidBefore[id];
+      expect(was.frame.filter((n) => [...n.attributes].some((a) => !ALLOW[n.className]?.includes(a.name)) && h.contains(n)).length, `${id}: a tampered node survived`).to.equal(0);
+      const slides = [...h.querySelectorAll('.td-carousel__slide')];
+      expect(slides.length === 6 && slides.every((s, i) => s === was.slides[i]), `${id} slides`).to.equal(true);
+      expect(parts(h).dots.length, `${id} dots`).to.equal(3);
+    }
+    for (const n of document.querySelectorAll('#aa-onclick button, #aa-dot button, #aa-status p')) n.click();
+    document.querySelector('#aa-viewport .td-carousel__viewport').dispatchEvent(new Event('scroll'));
+    expect(window.__pwned).to.equal(undefined);
+  });
+
+  it('Codex review S2: tampering while DETACHED is repaired on re-connect; a clean re-connect keeps every node', async () => {
+    const h = await fresh('c-3', 'reconn', '720px');
+    const parent = h.parentElement;
+    const keep = [...h.querySelectorAll('.td-carousel__viewport, .td-carousel__track, .td-carousel__btn, .td-carousel__dot')];
+    h.remove();
+    parent.appendChild(h);
+    await raf();
+    expect([...h.querySelectorAll('.td-carousel__viewport, .td-carousel__track, .td-carousel__btn, .td-carousel__dot')].every((n, i) => n === keep[i])).to.equal(true);
+    const prev = parts(h).prev;
+    const track = h.querySelector('.td-carousel__track');
+    h.remove();
+    prev.setAttribute('onclick', 'window.__pwned=1');
+    track.setAttribute('style', 'display:none');
+    parent.appendChild(h);
+    await raf();
+    expect(parts(h).prev === prev, 'tampered button replaced').to.equal(false);
+    expect(h.querySelector('.td-carousel__track') === track, 'tampered track replaced').to.equal(false);
+    expect(h.querySelector('[onclick], [style]:not(.td-carousel__slide)') === null).to.equal(true);
+    expect(parts(h).slides.length).to.equal(6);
+    parts(h).prev.click();
+    expect(window.__pwned).to.equal(undefined);
+    parent.remove();
+  });
+
+  it('Codex review I1: disabled controls, hidden inputs, tabindex=-1, inert / hidden content do not count as focusable', async () => {
+    const box = mount('<td-carousel id="nofocus" label="Không focus" per-view="2">'
+      + '<div><button type="button" disabled>A</button></div><div><a href="#b" tabindex="-1">B</a></div>'
+      + '<div><input type="hidden" name="x" value="1"></div><div inert><a href="#d">D</a></div>'
+      + '<div><a href="#e" hidden>E</a><span style="visibility:hidden"><a href="#e2">E2</a></span></div></td-carousel>');
+    await raf();
+    const vp = parts(box.querySelector('td-carousel')).vp;
+    expect(vp.getAttribute('tabindex')).to.equal('0');
+    // a real focusable element arrives → the viewport is no longer a Tab stop
+    box.querySelector('.td-carousel__slide').insertAdjacentHTML('beforeend', '<a href="#ok">OK</a>');
+    await raf();
+    expect(vp.hasAttribute('tabindex')).to.equal(false);
+    box.remove();
+  });
+
   it('viewport is a Tab stop only when no slide holds a focusable element (C10)', () => {
     expect(parts(hostOf('c-img')).vp.getAttribute('tabindex')).to.equal('0');
     expect(parts(hostOf('c-img')).vp.getAttribute('aria-label')).to.equal('Ảnh sản phẩm');
@@ -247,7 +348,7 @@ describe('td-carousel — upgrade / hydrate (carousel@1)', () => {
   });
 
   it('no slide-change while upgrading; no warning for labelled markup; image attributes never touched', () => {
-    expect(events.length).to.equal(0);
+    expect(events.filter((e) => !String(e.id).startsWith('aa-')).length).to.equal(0); // aa-*: clicked on purpose by the S2 test
     expect(warns.filter((w) => w.startsWith('td-carousel')).length).to.equal(0);
     expect(imgChanges).to.deep.equal([]);
   });

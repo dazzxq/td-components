@@ -20,6 +20,33 @@ function el(tag, cls, attrs) {
   return n;
 }
 
+const XHTML = 'http://www.w3.org/1999/xhtml';
+/**
+ * Codex review S2: attribute allowlist of every kit-owned frame node. A server / tampered node with ANY other attribute
+ * (onclick, form, formaction, popovertarget, style…) is REPLACED by a fresh kit node — never stripped in place.
+ */
+const FRAME_ATTRS = Object.freeze({
+  viewport: ['class', 'tabindex', 'aria-label'],
+  track: ['class'],
+  controls: ['class', 'data-td-js-only', 'hidden'],
+  btn: ['class', 'type', 'data-td-carousel', 'aria-label', 'aria-disabled', 'data-td-pressed'],
+  counter: ['class', 'aria-hidden'],
+  dots: ['class', 'role', 'aria-label'],
+  dot: ['class', 'type', 'aria-label', 'aria-current', 'data-td-pressed'],
+  status: ['class', 'role', 'aria-live', 'aria-atomic'],
+});
+
+/** Exact HTML element `tag`, class attribute exactly `cls`, only `allowed` attribute names, `fixed` values. */
+function frameOk(n, tag, cls, allowed, fixed = {}) {
+  if (!n || n.nodeType !== 1 || n.localName !== tag || n.namespaceURI !== XHTML || n.getAttribute('class') !== cls) return false;
+  for (const a of n.getAttributeNames()) if (!allowed.includes(a)) return false;
+  for (const [k, v] of Object.entries(fixed)) if (n.getAttribute(k) !== v) return false;
+  return true;
+}
+
+/** Only text children (counter, live region). */
+const textOnly = (n) => [...n.childNodes].every((c) => c.nodeType === 3);
+
 /** Escape a string for a RegExp. */
 const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -141,8 +168,11 @@ export class TdCarousel extends TdBaseElement {
     return false;
   }
 
-  /** Re-connect: the frame is ours whatever happened — re-bind (no re-render). */
-  canRebind() { return true; }
+  /**
+   * Re-connect (Codex review S2): never trust the frame as it is — `_doRender()` re-runs the frame validation, which keeps
+   * every node still exactly ours (identity + focus) and replaces a node tampered with while detached. Slides untouched.
+   */
+  canRebind() { return false; }
 
   _doRender() {
     if (this._suppressRender) return;
@@ -227,13 +257,29 @@ export class TdCarousel extends TdBaseElement {
         viewport.appendChild(track);
       }
       track.append(...kids);
+    } else {
+      // server / earlier frame: an accepted shape with a foreign attribute is replaced (its children — the slides — move)
+      if (!frameOk(track, 'div', 'td-carousel__track', FRAME_ATTRS.track)) {
+        const t = el('div', 'td-carousel__track');
+        t.append(...track.childNodes);
+        track.replaceWith(t);
+        track = t;
+      }
+      const ti = viewport.getAttribute('tabindex');
+      if (!frameOk(viewport, 'div', 'td-carousel__viewport', FRAME_ATTRS.viewport) || (ti !== null && ti !== '0')) {
+        const v = el('div', 'td-carousel__viewport');
+        v.append(...viewport.childNodes);
+        viewport.replaceWith(v);
+        viewport = v;
+        this._ownTabindex = false;
+      }
     }
     this._viewport = viewport;
     this._track = track;
 
     // controls: keep the server nodes that are exactly ours, replace the others (focus kept on a kept button)
     let controls = this.querySelector(':scope > .td-carousel__controls');
-    if (!controls || controls.localName !== 'div') {
+    if (!frameOk(controls, 'div', 'td-carousel__controls', FRAME_ATTRS.controls)) {
       controls?.remove();
       controls = el('div', 'td-carousel__controls', { 'data-td-js-only': '' });
     }
@@ -243,21 +289,24 @@ export class TdCarousel extends TdBaseElement {
       n?.remove();
       return make();
     };
-    const btnOk = (n) => n.localName === 'button' && n.getAttribute('type') === 'button' && n.className === 'td-carousel__btn';
-    const prevBtn = pick('[data-td-carousel="prev"]', btnOk, () => el('button', 'td-carousel__btn', { type: 'button', 'data-td-carousel': 'prev' }));
-    const nextBtn = pick('[data-td-carousel="next"]', btnOk, () => el('button', 'td-carousel__btn', { type: 'button', 'data-td-carousel': 'next' }));
-    const counter = pick('.td-carousel__counter', (n) => n.localName === 'span', () => el('span', 'td-carousel__counter'));
-    const dots = pick('.td-carousel__dots', (n) => n.localName === 'div', () => el('div', 'td-carousel__dots'));
+    const btnOk = (dir) => (n) => frameOk(n, 'button', 'td-carousel__btn', FRAME_ATTRS.btn, { type: 'button', 'data-td-carousel': dir });
+    const prevBtn = pick('[data-td-carousel="prev"]', btnOk('prev'), () => el('button', 'td-carousel__btn', { type: 'button', 'data-td-carousel': 'prev' }));
+    const nextBtn = pick('[data-td-carousel="next"]', btnOk('next'), () => el('button', 'td-carousel__btn', { type: 'button', 'data-td-carousel': 'next' }));
+    const counter = pick('.td-carousel__counter', (n) => frameOk(n, 'span', 'td-carousel__counter', FRAME_ATTRS.counter) && textOnly(n),
+      () => el('span', 'td-carousel__counter'));
+    const dots = pick('.td-carousel__dots', (n) => frameOk(n, 'div', 'td-carousel__dots', FRAME_ATTRS.dots), () => el('div', 'td-carousel__dots'));
     for (const [b, name, icon] of [[prevBtn, L.prev, 'prev'], [nextBtn, L.next, 'next']]) {
       b.setAttribute('aria-label', String(name));
+      // the icon: exactly the registry's (a server svg that differs in any way is replaced)
       const svg = tdIcon(icon, { size: 'm' });
-      const cur = b.firstElementChild;
-      if (!(b.childNodes.length === 1 && cur?.localName === 'svg' && cur.getAttribute('data-icon') === icon)) b.replaceChildren(...(svg ? [svg] : []));
+      if (!(svg && b.childNodes.length === 1 && b.firstChild.isEqualNode(svg))) b.replaceChildren(...(svg ? [svg] : []));
     }
     counter.setAttribute('aria-hidden', 'true');
     dots.setAttribute('role', 'group');
     dots.setAttribute('aria-label', String(L.dots));
-    for (const n of [...dots.children]) if (!n.matches('button.td-carousel__dot')) n.remove();
+    for (const n of [...dots.childNodes]) {
+      if (!frameOk(n, 'button', 'td-carousel__dot', FRAME_ATTRS.dot, { type: 'button' }) || n.childNodes.length) n.remove();
+    }
     // anything else inside the controls is not ours
     for (const n of [...controls.childNodes]) if (![prevBtn, nextBtn, counter, dots].includes(n)) n.remove();
     this._placeParts(controls, prevBtn, counter, nextBtn, dots, false);
@@ -268,7 +317,10 @@ export class TdCarousel extends TdBaseElement {
     this._dots = dots;
 
     let status = this.querySelector(':scope > p.td-sr-only[role="status"]');
-    if (!status) status = el('p', 'td-sr-only', { role: 'status' });
+    if (!frameOk(status, 'p', 'td-sr-only', FRAME_ATTRS.status, { role: 'status' }) || !textOnly(status)) {
+      status?.remove();
+      status = el('p', 'td-sr-only', { role: 'status' });
+    }
     status.setAttribute('aria-live', 'polite');
     status.setAttribute('aria-atomic', 'true');
     this._status = status;
@@ -334,11 +386,29 @@ export class TdCarousel extends TdBaseElement {
     for (const s of now) if (!this._observed.has(s)) { this._ro.observe(s); this._observed.add(s); }
   }
 
+  /**
+   * @private Codex review I1: a slide element a keyboard user can really Tab to — tabIndex ≥ 0, not disabled (incl. a
+   * disabled fieldset), not `input[type=hidden]`, not inside `[inert]`, rendered and visible (while the whole strip is not
+   * rendered — hidden panel — only `[hidden]` ancestry is checked; re-checked when it is measured).
+   */
+  _hasFocusable() {
+    const shown = this._viewport.getClientRects().length > 0;
+    for (const s of this._slides) {
+      for (const n of [...(s.matches(FOCUSABLE) ? [s] : []), ...s.querySelectorAll(FOCUSABLE)]) {
+        if (n.tabIndex < 0 || n.matches(':disabled') || n.closest('[inert]')) continue;
+        if (n.localName === 'input' && n.type === 'hidden') continue;
+        if (shown ? !n.getClientRects().length || getComputedStyle(n).visibility !== 'visible' : n.closest('[hidden]')) continue;
+        return true;
+      }
+    }
+    return false;
+  }
+
   /** @private C10: no focusable content → the viewport is the Tab stop (arrow keys scroll natively). */
   _syncViewportFocus() {
     const vp = this._viewport;
     if (!vp || !this._slides) return;
-    const focusable = this._slides.some((s) => s.matches(FOCUSABLE) || s.querySelector(FOCUSABLE));
+    const focusable = this._hasFocusable();
     if (!focusable) {
       if (!vp.hasAttribute('tabindex')) {
         vp.setAttribute('tabindex', '0');
@@ -385,6 +455,7 @@ export class TdCarousel extends TdBaseElement {
     const view = vp.clientWidth;
     this._geo = { mode, pad, padEnd, maxPos, view, pos };
     this._pages = pageTargets(this._edges, { view, maxPos, pad, padEnd });
+    this._syncViewportFocus(); // I1: visibility is only known once the strip is rendered
     this._steps = this.getAttribute('step') === 'slide' ? slideTargets(this._edges, { maxPos, pad }) : this._pages;
     this._layout();
     this._update();
