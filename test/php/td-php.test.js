@@ -484,14 +484,15 @@ describe('php/td.php', opts, () => {
     assert.equal(bad[3].out, '<link rel="stylesheet" href="https://cdn.example/td/0.17.0/td.css">');
   });
 
-  test('global namespace: only td_* functions + TdComponents\\Td', () => {
+  test('global namespace: only td_* functions + TdComponents\\Td (+ TdComponents\\TdTrustedHtml)', () => {
     const r = spawnPhpCode(`$before = get_defined_functions()['user']; $cls = get_declared_classes();
       require ${JSON.stringify(join(ROOT, 'php/td.php'))};
       echo json_encode(['f' => array_values(array_diff(get_defined_functions()['user'], $before)), 'c' => array_values(array_diff(get_declared_classes(), $cls))]);`);
     const { f, c } = JSON.parse(r);
     assert.ok(f.length > 0);
     for (const fn of f) assert.match(fn, /^td_/);
-    assert.deepEqual(c, ['TdComponents\\Td']);
+    // v0.50.0 (Codex review S1): + TdComponents\\TdTrustedHtml (Td::html() — the explicit raw-HTML opt-in), namespaced too
+    assert.deepEqual(c.sort(), ['TdComponents\\Td', 'TdComponents\\TdTrustedHtml']);
   });
 
   test('PHP syntax (php -l; CI job php80 runs it on PHP 8.0) and fixture test/php/fixtures/ssr.html is up to date', () => {

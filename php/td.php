@@ -60,6 +60,25 @@ namespace TdComponents {
     use LogicException;
     use RuntimeException;
 
+    /**
+     * v0.50.0 (Codex review S1): markup the CALLER vouches for — the explicit opt-in of a raw-HTML hatch (td_carousel
+     * slides). Build it with Td::html() from the site's own templates only; NEVER wrap user input. PHP 8.0: no readonly.
+     */
+    final class TdTrustedHtml
+    {
+        private string $html;
+
+        public function __construct(string $html)
+        {
+            $this->html = $html;
+        }
+
+        public function html(): string
+        {
+            return $this->html;
+        }
+    }
+
     final class Td
     {
         public const PACKAGE = '@dazzxq/td-components';
@@ -527,6 +546,15 @@ namespace TdComponents {
         }
 
         // --- Escaping / attributes / URLs --------------------------------------------------------------------------
+
+        /**
+         * v0.50.0: mark markup produced by the site's OWN templates as trusted (td_carousel slides). Printed as is — never
+         * wrap user input (descriptions, comments, names…): escape it inside your template first.
+         */
+        public static function html(string $html): TdTrustedHtml
+        {
+            return new TdTrustedHtml($html);
+        }
 
         /** HTML escape for text nodes and double-quoted attribute values. */
         public static function e(string|int|float|null $value): string
@@ -4223,6 +4251,12 @@ namespace {
             'data-empty' => $v === null,
         ], $taken);
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        // Codex review I2: microdata `itemprop` on the host (the site's own AggregateRating) — a property-name list only
+        $itemprop = $extra['itemprop'] ?? null;
+        unset($extra['itemprop']);
+        if (is_string($itemprop) && preg_match('/^[A-Za-z][A-Za-z0-9_.:\/-]{0,127}( [A-Za-z][A-Za-z0-9_.:\/-]{0,127}){0,7}$/', $itemprop)) {
+            $html .= Td::ownAttrs(['itemprop' => $itemprop], $taken);
+        }
         $taken = td__reserve(['id', 'class', 'value', 'max', 'precision', 'count', 'show-value', 'size', 'data-empty'], $extra, $taken);
         $html .= Td::attrs($extra, $taken) . '>';
         if ($v === null) {
@@ -4259,9 +4293,9 @@ namespace {
      * region. Without JS the viewport is a native scroll-snap strip: every slide is in the page (crawlable, Tab-reachable).
      * Pages are PREDICTED as max(1, ceil(n / per_view)) → `data-td-pages`, `data-td-rows-narrow`, `data-td-rows-wide`
      * (controlsLayout(), = src/utils/carousel-model.js); one page → the controls are `hidden`. The module re-measures.
-     * $slides: list of TRUSTED HTML strings produced by the site's own templates (product cards…) — printed AS IS (a
-     * raw-HTML hatch, docs/internal/security-model.md §2): NEVER pass user-entered HTML. A non-string entry is dropped +
-     * one E_USER_WARNING. Options (text escaped): label (region name — recommended; missing → "Băng chuyền" + one
+     * $slides (Codex review S1): each entry is Td::html($markup) — markup of the site's OWN templates (product cards…),
+     * printed as is (the explicit opt-in raw-HTML hatch, docs/internal/security-model.md §2; never wrap user input) — or a
+     * plain string, printed as escaped TEXT. Anything else is dropped + one E_USER_WARNING. Options (text escaped): label (region name — recommended; missing → "Băng chuyền" + one
      * E_USER_WARNING), per_view (integer 1–6), dots ('auto' | 'on' | 'off'), step ('page' | 'slide'), id, class, attrs
      * (host: allowlisted + aria-* / data-*; owned names and data-td-* reserved). No `labels` option (R13).
      */
@@ -4271,14 +4305,16 @@ namespace {
         $list = [];
         $dropped = 0;
         foreach ($slides as $s) {
-            if (is_string($s)) {
-                $list[] = $s;
+            if ($s instanceof TdComponents\TdTrustedHtml) {
+                $list[] = $s->html();          // explicit opt-in: the site's own markup (Td::html)
+            } elseif (is_string($s)) {
+                $list[] = Td::e($s);           // a plain string is TEXT (Codex review S1)
             } else {
                 $dropped++;
             }
         }
         if ($dropped) {
-            trigger_error("td_carousel: $dropped slide(s) dropped — each slide must be an HTML string", E_USER_WARNING);
+            trigger_error("td_carousel: $dropped slide(s) dropped — each slide is a string (text) or Td::html(markup)", E_USER_WARNING);
         }
         $label = isset($o['label']) && is_string($o['label']) && trim($o['label']) !== '' ? trim($o['label']) : null;
         if ($label === null) {
@@ -4353,7 +4389,7 @@ namespace {
             if (!is_finite((float) $v)) {
                 return null;
             }
-            if ((float) $v >= 1e15) {
+            if ((float) $v >= 1e11) { // = MAX_NUMBER of rating-model.js: ×10000 stays an exact integer (Codex review I4)
                 return null;
             }
             $k = td__js_round(max(0.0, (float) $v) * 10000);

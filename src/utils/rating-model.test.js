@@ -3,6 +3,7 @@
 // The PHP parity of the same table lives in test/php/td-ssr-rating.test.js (test/ssr/rating.fixtures.json).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   RATING_LABELS, parseValue, parseMax, parseCount, formatValueAttr, displayValue, starFills, formatDecimal,
   formatCount, fillTemplate, ratingModel,
@@ -119,4 +120,10 @@ test('ratingModel: label text exact while the stars approximate; none when no va
   assert.equal(ratingModel({ value: '4', max: '11' }).maxInvalid, true);
   const custom = ratingModel({ value: '4' }, { ...RATING_LABELS, value: '{value}/{max}' });
   assert.equal(custom.label, '4/5');
+});
+
+test('formatValueAttr boundaries (Codex review I4): numbers ≥ 1e11 refused so ×10000 stays exact — shared with PHP', () => {
+  const { numbers } = JSON.parse(readFileSync(new URL('../../test/ssr/rating.fixtures.json', import.meta.url), 'utf8'));
+  assert.ok(numbers.length >= 8);
+  for (const [n, want] of numbers) assert.equal(formatValueAttr(n), want, String(n));
 });

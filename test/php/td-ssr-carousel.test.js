@@ -21,6 +21,8 @@ function php(calls) {
     + ' $calls = json_decode((string) file_get_contents(\'php://stdin\'), true, 64, JSON_THROW_ON_ERROR); $out = [];'
     + ' foreach ($calls as $c) { $w = 0; set_error_handler(function (int $no, string $msg) use (&$w): bool {'
     + " if ($no === E_USER_WARNING && str_starts_with($msg, 'td_carousel:')) { $w++; return true; } return false; });"
+    // a slide {"html": …} = Td::html(…) (Codex review S1)
+    + " if ($c[0] === 'carousel') { $c[1][0] = array_map(static fn ($s) => is_array($s) && array_keys($s) === ['html'] ? TdComponents\\Td::html((string) $s['html']) : $s, $c[1][0]); }"
     + " $res = $c[0] === 'layout' ? td__carousel_layout(...$c[1]) : td_carousel(...$c[1]); restore_error_handler(); $out[] = ['out' => $res, 'warns' => $w]; }"
     + ' echo json_encode($out, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);';
   const r = spawnSync(PHP_BIN, ['-d', 'display_errors=stderr', '-r', code], { encoding: 'utf8', input: JSON.stringify(calls), maxBuffer: 16 * 1024 * 1024 });
@@ -46,7 +48,7 @@ describe('php/td.php — td_carousel (v0.50.0, contract carousel@1)', opts, () =
   });
 
   test('exact frame: host attributes (predicted pages / rows), slides wrapped with "n / total", controls + live region', () => {
-    const { out, warns } = one([['<b>A</b>', '<i>B</i>', 'C'], { label: 'Nổi bật', per_view: 2 }]);
+    const { out, warns } = one([[{ html: '<b>A</b>' }, { html: '<i>B</i>' }, 'C'], { label: 'Nổi bật', per_view: 2 }]);
     assert.equal(warns, 0);
     const L = CAROUSEL_LABELS;
     const slide = (i, html) => `<div class="td-carousel__slide" role="group" aria-roledescription="${L.roleSlide}" aria-label="${i} / 3">${html}</div>`;
@@ -76,6 +78,25 @@ describe('php/td.php — td_carousel (v0.50.0, contract carousel@1)', opts, () =
       assert.equal((html.match(/class="td-carousel__slide"/g) || []).length, n, c.id);
       assert.ok(html.includes(`aria-label="${n} / ${n}">`), c.id);
     });
+  });
+
+  test('Codex review S1: a plain string slide is TEXT (escaped); Td::html() is the explicit opt-in for markup', () => {
+    const xss = '<img src=x onerror="alert(1)">';
+    const [plain, raw] = php([['carousel', [[xss, 'Tôm & cua'], { label: 'L' }]], ['carousel', [[{ html: '<a href="#p">Thẻ</a>' }], { label: 'L' }]]]);
+    assert.equal(plain.warns, 0);
+    assert.ok(plain.out.includes('aria-label="1 / 2">&lt;img src=x onerror=&quot;alert(1)&quot;&gt;</div>'), plain.out);
+    assert.ok(plain.out.includes('aria-label="2 / 2">Tôm &amp; cua</div>'));
+    assert.ok(!plain.out.includes('<img'));
+    assert.ok(raw.out.includes('aria-label="1 / 1"><a href="#p">Thẻ</a></div>'), raw.out);
+  });
+
+  test('Codex review S1: an object that is not TdTrustedHtml is dropped (+ the one warning); Td::html keeps its string', () => {
+    const r = spawnSync(PHP_BIN, ['-d', 'display_errors=stderr', '-r', `require ${JSON.stringify(join(ROOT, 'php/td.php'))};`
+      + ` TdComponents\\Td::configure('/', ${JSON.stringify(ROOT)}); $w = 0; set_error_handler(function (int $n, string $m) use (&$w): bool { $w++; return true; });`
+      + " $h = td_carousel([new stdClass(), TdComponents\\Td::html('<b>x</b>'), 'y'], ['label' => 'L']);"
+      + " echo json_encode([$w, substr_count($h, 'td-carousel__slide\"'), str_contains($h, '<b>x</b>'), TdComponents\\Td::html('<i>')->html()]);"], { encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+    assert.deepEqual(JSON.parse(r.stdout), [1, 2, true, '<i>']);
   });
 
   test('bad input: non-string slides dropped + ONE warning; missing label → default name + one warning', () => {

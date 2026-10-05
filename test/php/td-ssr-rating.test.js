@@ -97,6 +97,20 @@ describe('php/td.php — td_rating (v0.50.0, contract rating@1)', opts, () => {
     });
   });
 
+  test('Codex review I4: number boundaries = formatValueAttr (shared fixture `numbers`; ≥ 1e11 → no rating)', () => {
+    const out = run(RATING_FIXTURES.numbers.map(([n]) => [n, {}]));
+    RATING_FIXTURES.numbers.forEach(([n, want], i) => {
+      const m = / value="([^"]*)"/.exec(out[i].html);
+      assert.equal(m ? m[1] : null, want, String(n));
+    });
+  });
+
+  test('Codex review I2: attrs may carry `itemprop` (microdata) on the host; a bad itemprop value is dropped', () => {
+    const [ok, bad] = run([['4.5', { attrs: { itemprop: 'aggregateRating' } }], ['4.5', { attrs: { itemprop: '"><script>' } }]]);
+    assert.ok(ok.html.startsWith('<td-rating data-td-ssr="rating@1" value="4.5" max="5" itemprop="aggregateRating">'), ok.html);
+    assert.ok(!bad.html.includes('itemprop') && !bad.html.includes('<script>'), bad.html);
+  });
+
   test('bad input: value strings / types → no rating; max 0 / 11 / 2.5 / "x" → 5 + one warning; bad count / size dropped', () => {
     const vals = ['', ' 4', '-1', '1e3', '4,5', '.5', '12345678901234567', 'NaN'];
     run(vals.map((v) => [v, {}])).forEach((r, i) => {

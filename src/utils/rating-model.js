@@ -13,6 +13,8 @@ export const RATING_LABELS = Object.freeze({
 
 export const MAX_DEFAULT = 5;
 const VALUE_RE = /^\d+(\.\d+)?$/;
+/** Numbers (JS property, PHP int / float) at or above this are refused (no rating): a rating is 0–10 anyway. */
+export const MAX_NUMBER = 1e11;
 
 /**
  * A rating value: a plain decimal string (`/^\d+(\.\d+)?$/`, ≤ 16 characters) or a finite number (negative → 0).
@@ -28,13 +30,13 @@ export function parseValue(raw) {
 
 /**
  * The `value` attribute printed for a NUMBER (JS property setter, PHP int / float): ≥ 0, rounded to 4 decimals, no
- * trailing zeros. Non-finite → null.
+ * trailing zeros. Non-finite or ≥ MAX_NUMBER (1e11) → null.
  * @param {number} n
  * @returns {string|null}
  */
 export function formatValueAttr(n) {
   if (typeof n !== 'number' || !Number.isFinite(n)) return null;
-  if (n >= 1e15) return null; // beyond the 16-character attribute
+  if (n >= MAX_NUMBER) return null; // Codex review I4: ×10000 below stays an exact integer (< 2^53)
   const k = Math.round(Math.max(0, n) * 10000); // integer arithmetic below: PHP prints the same digits
   const frac = String(k % 10000).padStart(4, '0').replace(/0+$/, '');
   return `${Math.floor(k / 10000)}${frac ? `.${frac}` : ''}`;
