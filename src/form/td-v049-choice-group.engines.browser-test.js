@@ -4,7 +4,7 @@ import { TdChoiceGroup } from './td-choice-group.js';
 
 // v0.49.0 (plan docs/internal/plans/v0.49.0-choice-stepper.md M2) — <td-choice-group> in Chromium, Firefox AND WebKit with
 // real key presses. DOM nodes are compared as booleans (`a === b`): a failing chai assertion carrying DOM nodes hangs the
-// runner. WebKit on macOS moves Tab between text fields only (Safari default) — Option+Tab reaches radios (ADR 0022).
+// runner. WebKit on macOS moves Tab between text fields only (Safari default) — Option+Tab reaches radios (ADR 0023).
 const link = document.createElement('link');
 link.rel = 'stylesheet';
 link.href = '/td.css';
@@ -79,7 +79,7 @@ describe('td-choice-group — render (M2)', () => {
     expect(el.querySelector('.td-choice').classList.contains('td-choice--button')).to.equal(true);
     const rs = radios(el);
     expect(rs.map((r) => r.value)).to.deep.equal(['128', '256', '512', '1tb']);
-    // private group, no form owner (ADR 0022)
+    // private group, no form owner (ADR 0023)
     const names = new Set(rs.map((r) => r.name));
     expect(names.size).to.equal(1);
     expect([...names][0]).to.match(/^td-choice-\d+$/);

@@ -6851,7 +6851,7 @@ namespace {
     }
 
     /**
-     * v0.49.0 choice group (contract choice-group@1, plan v0.49.0-choice-stepper QĐ 22, ADR 0022) — ALWAYS the element
+     * v0.49.0 choice group (contract choice-group@1, plan v0.49.0-choice-stepper QĐ 22, ADR 0023) — ALWAYS the element
      * `<td-choice-group data-td-ssr="choice-group@1">` + the exact tree <td-choice-group> renders, with NATIVE radios that
      * carry the real `name` (+ `required` on every radio, `checked` on the selected one): the form submits `name=value`,
      * arrows / Space / Tab work, no JS. `@dazzxq/td-components/choice-group` adopts it IN PLACE (same radio nodes: checked +

@@ -267,7 +267,7 @@ hình dạng, không chỉ màu); focus = viền focus của kit **ngoài** mặ
 Dạng `button`: `.td-choice--button`, chữ / dòng phụ / ghi chú hiện trong `span.td-choice__body`. Trạng thái đọc từ radio
 native: `:checked`, `:disabled`, `:focus-visible` (+ `[data-unavailable]` / `[data-disabled]` trên lựa chọn,
 `[aria-invalid]` trên radiogroup). Radio nằm trong **nhóm riêng không có form owner** (`form=""`,
-[ADR 0022](../internal/decisions/0022-unowned-radio-group.md)): không bao giờ vào FormData, `form.reset()` không đụng — host
+[ADR 0023](../internal/decisions/0023-unowned-radio-group.md)): không bao giờ vào FormData, `form.reset()` không đụng — host
 gửi giá trị.
 
 ### Hợp đồng SSR `choice-group@1`

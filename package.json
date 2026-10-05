@@ -97,8 +97,8 @@
     "./breakpoints": "./src/utils/breakpoints.js",
     "./theme": "./src/theme/index.js",
     "./check-matrix": "./src/form/td-check-matrix.js",
-    "./package.json": "./package.json",
-    "./choice-group": "./src/form/td-choice-group.js"
+    "./choice-group": "./src/form/td-choice-group.js",
+    "./package.json": "./package.json"
   },
   "files": [
     "src",

@@ -1746,6 +1746,7 @@ if ($v === null) { http_response_code(422); exit; }   // lưu $v: khớp ^#[0-9a
 | `'#AABBCC'`, `'aabbcc'`, `' #AbC '`, `'abc'` | `'#aabbcc'` |
 | `''`, `null`, chỉ khoảng trắng | `''` |
 | `'#abcd'`, `'#aabbccdd'`, `'rgb(0,0,0)'`, `'red'`, `'#ggg'`, mảng, số, chuỗi > 64 ký tự | `null` |
+
 ## td_choice_group (0.49.0)
 
 ```php

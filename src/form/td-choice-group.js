@@ -39,7 +39,7 @@ let _groupCounter = 0;
  * as a price) or as swatches (colour or image) — v0.49.0, plan docs/internal/plans/v0.49.0-choice-stepper.md. Token-native:
  * needs td.css (src/styles/components/choice-group.css + the field classes). Form-associated (ADR 0003).
  *
- * - The controls are NATIVE radios in a private group without a form owner (ADR 0022): `name="td-choice-{n}"`,
+ * - The controls are NATIVE radios in a private group without a form owner (ADR 0023): `name="td-choice-{n}"`,
  *   `form=""`, `autocomplete="off"`. Tab / arrows / Space / `disabled` skipping / "n of N" are the browser's; the
  *   component only wraps the arrows at both ends (WebKit does not). The radios never reach FormData: the HOST submits
  *   `name=value` (nothing while nothing is selected).
@@ -452,7 +452,7 @@ export class TdChoiceGroup extends TdFormElement {
   }
 
   /**
-   * @private The native group moves + checks with the arrows; WebKit does not wrap at the ends (ADR 0022) — the
+   * @private The native group moves + checks with the arrows; WebKit does not wrap at the ends (ADR 0023) — the
    * component wraps there itself in every engine (one code path), between ENABLED radios.
    */
   _onKeydown(e) {
