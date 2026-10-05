@@ -4167,11 +4167,20 @@ namespace {
         return array_key_exists('element', $o) && $o['element'] !== null ? (bool) $o['element'] : Td::ssrElements();
     }
 
-    /** @internal Element mode host id without a caller id: `td-{name reduced to [A-Za-z0-9_-]}-{n}` (`td-{n}` for none). */
-    function td__host_uid(string $name): string
+    /**
+     * @internal Element mode host id without a caller id: `td-{name reduced to [A-Za-z0-9_-]}-{n}` (`td-{n}` for none).
+     * v0.49.0 review r6: `$max` (0 = unbounded, the default every other helper keeps) bounds the id length — only the
+     * sanitized NAME part is cut; the `td-` prefix and the unique `-{n}` suffix stay (ASCII: bytes = code points).
+     */
+    function td__host_uid(string $name, int $max = 0): string
     {
         $clean = (string) preg_replace('/[^A-Za-z0-9_-]/', '', $name);
-        return Td::uid($clean !== '' ? 'td-' . $clean : 'td');
+        $id = Td::uid($clean !== '' ? 'td-' . $clean : 'td');
+        if ($max <= 0 || strlen($id) <= $max) {
+            return $id;
+        }
+        $suffix = substr($id, (int) strrpos($id, '-'));
+        return substr($id, 0, max(3, $max - strlen($suffix))) . $suffix;
     }
 
     /** @internal Non-empty scalar option as a string, else null. */
@@ -6975,7 +6984,8 @@ namespace {
             trigger_error("td_choice_group: $dropped option(s) dropped, $ignored field(s) ignored or shortened (invalid, duplicate or over the limits: {$L['candidates']} inspected, {$L['options']} options)"
                 . ($missing ? '; the selected value is not one of the options — nothing selected' : ''), E_USER_WARNING);
         }
-        $host = td__str($o['id'] ?? null) ?? td__host_uid($name);
+        // review r6: an auto id derived from a long name stays within CHOICE_LIMITS.id (the component's SSR preflight cap)
+        $host = td__str($o['id'] ?? null) ?? td__host_uid($name, $L['id']);
         $h = Td::e($host);
         $label = td__str($o['label'] ?? null);
         $aria = td__str($o['aria_label'] ?? null);

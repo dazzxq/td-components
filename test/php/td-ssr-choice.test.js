@@ -232,6 +232,19 @@ describe('php/td.php — td_choice_group (v0.49.0, contract choice-group@1)', op
     assert.ok(out[0].ms < 50 * 20 && out[1].ms < 50 * 20, `${out[0].ms} / ${out[1].ms} ms`);
   });
 
+  test('review r6: auto host id from a 200-char name stays ≤ CHOICE_LIMITS.id (td- prefix + unique suffix kept); other helpers unchanged', () => {
+    const [a, b] = run([['n'.repeat(200), [{ value: 'a', label: 'A' }], null, {}], ['n'.repeat(200), [{ value: 'a', label: 'A' }], null, {}]]);
+    const ids = [a, b].map((o) => /^<td-choice-group data-td-ssr="choice-group@1" id="([^"]*)"/.exec(o.html)[1]);
+    for (const id of ids) {
+      assert.ok(id.length <= CHOICE_LIMITS.id, `${id.length}`);
+      assert.match(id, /^td-n+-\d+$/);
+    }
+    assert.notEqual(ids[0], ids[1]);
+    assert.deepEqual(a.warns, []);
+    const field = spawnSync(PHP_BIN, ['-r', `require ${JSON.stringify(join(ROOT, 'php/td.php'))}; TdComponents\\Td::configure('/', ${JSON.stringify(ROOT)}); echo td_field(str_repeat('n', 200), '', ['element' => true]);`], { encoding: 'utf8' });
+    assert.match(field.stdout, new RegExp(`id="td-${'n'.repeat(200)}-1"`)); // the shared helper keeps its default for others
+  });
+
   test('test/ssr/fixtures/choice.html is up to date (node test/ssr/build-choice-fixture.mjs)', () => {
     assert.ok(CHOICE_FIXTURES.cases.length >= 8);
     assert.equal(readFileSync(CHOICE_FIXTURE_FILE, 'utf8'), renderChoiceFixture());

@@ -1783,7 +1783,7 @@ host `disabled`).
 | `variant` | `'button'` (mặc định) \| `'swatch'` |
 | `required`, `disabled` | trên host + mọi radio |
 | `helper_text`, `error_text` | ghi chú / lỗi dưới nhóm (`aria-describedby` / `aria-invalid` trên radiogroup) |
-| `id` | id của **host** (radio: `{id}-o0`, `{id}-o1`…; mặc định `td-{name}-{n}`) |
+| `id` | id của **host** (radio: `{id}-o0`, `{id}-o1`…; mặc định `td-{name}-{n}`, phần `{name}` bị cắt để cả id ≤ 100 ký tự — giữ tiền tố `td-` và hậu tố số duy nhất) |
 | `class` | class thêm trên host |
 | **Giới hạn nhóm** | `Td::CHOICE_LIMITS` (= JS `CHOICE_LIMITS`, code point): `$name` 200, `id` 100, `class` (sau khi lọc token) 256, `label` / `aria_label` 200, `helper_text` 1000, `error_text` 1000; chuỗi không hợp lệ UTF-8 cũng tính là vượt. `class` được chặn **trước** khi lọc token (chuỗi ≤ 1024 byte; mảng ≤ 64 phần tử, tổng ≤ 1024 byte). Vượt bất kỳ → **không in gì** (`''`) + **một** `E_USER_WARNING` cố định `td_choice_group: {n} group field(s) over the limits — nothing rendered` (chỉ số đếm) — kit không bao giờ in markup mà component sẽ từ chối khi nhận (preflight SSR chấp nhận đúng tới các giới hạn này) |
 
