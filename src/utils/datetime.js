@@ -681,3 +681,68 @@ export function partsFromDate(date) {
     hour: date.getHours(), minute: date.getMinutes(),
   };
 }
+
+// --- v0.45.0 (plan v0.45.0-steps-timeline QĐ T4): calendar parts of an INSTANT in an IANA time zone ---
+
+/** @type {Map<string, Intl.DateTimeFormat>} one formatter per zone ('' = the runtime's zone) */
+const ZONED_FORMATS = new Map();
+const WEEKDAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** @param {string} tz '' = the runtime's zone */
+function zonedFormat(tz) {
+  let f = ZONED_FORMATS.get(tz);
+  if (!f) {
+    f = new Intl.DateTimeFormat('en-US', {
+      ...(tz ? { timeZone: tz } : {}),
+      hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short',
+    });
+    if (ZONED_FORMATS.size > 64) ZONED_FORMATS.clear(); // bounded (a hostile caller cycling names)
+    ZONED_FORMATS.set(tz, f);
+  }
+  return f;
+}
+
+/**
+ * Is `name` an IANA time zone name this runtime knows (`Asia/Ho_Chi_Minh`, `UTC`, `Europe/Berlin`)? Offsets (`+07:00`),
+ * empty / non-strings and names the runtime's ICU rejects → false. (PHP accepts DateTimeZone::listIdentifiers() only —
+ * plan QĐ T4.)
+ * @param {unknown} name
+ * @returns {boolean}
+ */
+export function isTimeZone(name) {
+  if (typeof name !== 'string' || name.length > 64 || !/^[A-Za-z][A-Za-z0-9_+\-/]*$/.test(name)) return false;
+  try {
+    zonedFormat(name);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Wall-clock parts of an instant in `timeZone` (IANA; '' / omitted = the runtime's zone) — Intl formatToParts, never
+ * the machine's local time (partsFromDate) nor UTC (`toISOString().slice(0, 10)` — the dcms2 bug).
+ * @param {number|Date} instant epoch ms or a Date
+ * @param {string} [timeZone]
+ * @returns {{ year: number, month: number, day: number, hour: number, minute: number, weekday: number }} weekday 0 = Sunday
+ */
+export function zonedParts(instant, timeZone = '') {
+  const ms = instant instanceof Date ? instant.getTime() : instant;
+  const out = { year: 0, month: 0, day: 0, hour: 0, minute: 0, weekday: 0 };
+  for (const p of zonedFormat(timeZone || '').formatToParts(ms)) {
+    if (p.type === 'weekday') out.weekday = WEEKDAYS_EN.indexOf(p.value);
+    else if (p.type in out) out[p.type] = Number(p.value);
+  }
+  if (out.hour === 24) out.hour = 0; // engines without hourCycle support
+  return out;
+}
+
+/**
+ * Calendar day of an instant in `timeZone`: `yyyy-mm-dd`.
+ * @param {number|Date} instant
+ * @param {string} [timeZone]
+ */
+export function dayKey(instant, timeZone = '') {
+  const p = zonedParts(instant, timeZone);
+  return `${pad4(p.year)}-${pad2(p.month)}-${pad2(p.day)}`;
+}
