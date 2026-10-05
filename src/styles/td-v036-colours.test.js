@@ -8,13 +8,26 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const read = (p) => readFile(join(ROOT, p), 'utf8');
-/** `--name: value;` declarations of the FIRST block matching `selector {` (no nesting inside the block) */
+/** v0.42.0 (QĐ15, ADR 0020): light colour tokens moved to the scope block, dark to the scoped dark variant */
+const ALIASES = {
+  ':root': [':root', ':root, [data-td-theme]'],
+  ':root[data-td-theme="dark"]': [':root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"]'],
+};
+/** `--name: value;` declarations of the FIRST block matching `selector {` (no nesting inside the block); `:root` and
+ * the dark selector also read their v0.42.0 scoped forms (merged, first block of each). */
 function decls(raw, selector) {
   const css = raw.replace(/\/\*[\s\S]*?\*\//g, ''); // comments may hold braces / example rules
-  const i = css.indexOf(`\t${selector} {`);
-  assert.ok(i >= 0, `block ${selector}`);
-  const body = css.slice(i, css.indexOf('}', i));
-  return Object.fromEntries([...body.matchAll(/(--[a-z0-9-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
+  const out = {};
+  let found = false;
+  for (const sel of ALIASES[selector] || [selector]) {
+    const i = css.indexOf(`\t${sel} {`);
+    if (i < 0) continue;
+    found = true;
+    const body = css.slice(i, css.indexOf('}', i));
+    for (const m of body.matchAll(/(--[a-z0-9-]+):\s*([^;]+);/g)) out[m[1]] = m[2].trim();
+  }
+  assert.ok(found, `block ${selector}`);
+  return out;
 }
 
 const SOLID = {
