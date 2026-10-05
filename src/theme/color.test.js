@@ -109,3 +109,36 @@ test('APCA Lc reference values (0.0.98G-4g)', () => {
   near(apcaLc('#ffffff', '#888888'), -68.54, 0.1);
   assert.equal(apcaLc('#777777', '#777777'), 0);
 });
+
+// v0.48.0 (plan v0.48.0-color-picker QĐ 7, M0): HSV for the colour picker's 2-D area — pure, channels 0..1, h in degrees.
+test('v0.48.0 srgbToHsv / hsvToSrgb: reference vectors and edges', async () => {
+  const { srgbToHsv, hsvToSrgb } = await import('./color.js');
+  assert.deepEqual(srgbToHsv({ r: 1, g: 0, b: 0 }), { h: 0, s: 1, v: 1 });
+  assert.deepEqual(srgbToHsv({ r: 0, g: 1, b: 0 }), { h: 120, s: 1, v: 1 });
+  assert.deepEqual(srgbToHsv({ r: 0, g: 0, b: 1 }), { h: 240, s: 1, v: 1 });
+  assert.deepEqual(srgbToHsv({ r: 0, g: 0, b: 0 }), { h: 0, s: 0, v: 0 }, 'black: s = 0, v = 0, h = 0');
+  assert.deepEqual(srgbToHsv({ r: 0.5, g: 0.5, b: 0.5 }), { h: 0, s: 0, v: 0.5 }, 'grey: s = 0');
+  near(srgbToHsv({ r: 1, g: 0, b: 0.5 }).h, 330, 1e-9, 'magenta side wraps into 0..360');
+  assert.deepEqual(hsvToSrgb({ h: 0, s: 1, v: 1 }), { r: 1, g: 0, b: 0 });
+  assert.deepEqual(hsvToSrgb({ h: 360, s: 1, v: 1 }), { r: 1, g: 0, b: 0 }, 'h = 360 = 0');
+  assert.deepEqual(hsvToSrgb({ h: -120, s: 1, v: 1 }), hsvToSrgb({ h: 240, s: 1, v: 1 }), 'negative hue wraps');
+  assert.deepEqual(hsvToSrgb({ h: 200, s: 0, v: 0.25 }), { r: 0.25, g: 0.25, b: 0.25 }, 's = 0 → grey whatever the hue');
+  assert.deepEqual(hsvToSrgb({ h: 200, s: 1, v: 0 }), { r: 0, g: 0, b: 0 }, 'v = 0 → black');
+  assert.deepEqual(hsvToSrgb({ h: 30, s: 2, v: -1 }), { r: 0, g: 0, b: 0 }, 's / v clamped to 0..1');
+  assert.equal(toHex(hsvToSrgb({ h: 30, s: 1, v: 2 })), '#ff8000');
+});
+
+test('v0.48.0 HSV round trip: toHex(hsvToSrgb(srgbToHsv(c))) is the same hex for all 4096 #rgb + 20 000 random hex', async () => {
+  const { srgbToHsv, hsvToSrgb } = await import('./color.js');
+  const trip = (hex) => toHex(hsvToSrgb(srgbToHsv(parseColor(hex))));
+  for (let i = 0; i < 4096; i++) {
+    const hex = `#${[(i >> 8) & 15, (i >> 4) & 15, i & 15].map((n) => n.toString(16).repeat(2)).join('')}`;
+    assert.equal(trip(hex), hex);
+  }
+  let seed = 48;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed; };
+  for (let i = 0; i < 20000; i++) {
+    const hex = `#${(rnd() & 0xffffff).toString(16).padStart(6, '0')}`;
+    assert.equal(trip(hex), hex);
+  }
+});
