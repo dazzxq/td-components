@@ -366,22 +366,24 @@ export class TdModal {
       return Promise.resolve(true);
     }
     let result;
-    let thenable;
+    let then;
     try {
       result = guard({ reason, value });
-      thenable = isThenable(result); // reads `.then` — a throwing getter is a refusal too (review r2 E)
+      // `.then` is read ONCE, here (review r2 / r3 E): a throwing getter is a refusal; the captured function is the one
+      // called below — a stateful getter cannot answer "thenable" now and "plain value" later
+      then = !!result && (typeof result === 'object' || typeof result === 'function') ? result.then : undefined;
     } catch {
       console.error('TdModal: beforeClose threw — the dialog stays open'); // fixed text, never the caller's error (SEC-3)
       return Promise.resolve(false);
     }
-    if (!thenable) {
+    if (typeof then !== 'function') {
       if (result === false || inst.closed) return Promise.resolve(inst.closed);
       inst.close(value);
       return Promise.resolve(true);
     }
-    // `new Promise(r => r(x))`: assimilating the thenable never throws synchronously (a `then` that throws / a getter that
-    // throws on a second read → a rejection, handled below)
-    const pending = new Promise((r) => { r(result); }).then((v) => {
+    const pending = new Promise((res, rej) => {
+      try { then.call(result, res, rej); } catch { rej(); } // the captured `then` — never re-read
+    }).then((v) => {
       inst.guarding = null;
       if (inst.closed) return true; // closed by code meanwhile: the guard's answer no longer matters
       if (v === false) return false;

@@ -185,6 +185,30 @@ describe('TdModal beforeClose / requestClose (v0.44.0 QĐ 12-15)', () => {
     expect(errors.every((a) => a.length === 1 && typeof a[0] === 'string' && !a[0].includes('SECRET'))).to.equal(true);
   });
 
+  it('r3 E: `then` is read exactly once; the captured function decides (false keeps it open); a getter fn-then-undefined never closes', async () => {
+    let reads = 0;
+    const once = { get then() { reads++; return (res) => res(false); } };
+    let m = await showModal({ beforeClose: () => once });
+    expect(await TdModal.requestClose(m.id)).to.equal(false);
+    expect(reads).to.equal(1);
+    expect(isOpen(m.id)).to.equal(true);
+    TdModal.closeAll();
+    let n = 0;
+    const flip = { get then() { n++; return n === 1 ? (res) => res(false) : undefined; } };
+    m = await showModal({ beforeClose: () => flip });
+    expect(await TdModal.requestClose(m.id)).to.equal(false);
+    expect(isOpen(m.id)).to.equal(true);
+    expect(m.closes()).to.deep.equal([]);
+    TdModal.closeAll();
+    // a captured `then` that throws → refusal + fixed log
+    const errors = await quiet('error', async () => {
+      m = await showModal({ beforeClose: () => ({ then() { throw new Error('SECRET'); } }) });
+      expect(await TdModal.requestClose(m.id)).to.equal(false);
+    });
+    expect(isOpen(m.id)).to.equal(true);
+    expect(errors.every((a) => a.length === 1 && !String(a[0]).includes('SECRET'))).to.equal(true);
+  });
+
   it('a Promise dialog ignores beforeClose (not an option of confirm)', async () => {
     let called = 0;
     const p = TdModal.confirm({ beforeClose: () => { called++; return false; } });
@@ -292,6 +316,26 @@ describe('<td-drawer> beforeClose / requestClose (v0.44.0 QĐ 16)', () => {
     expect(host.open).to.equal(true);
     expect(errors.length).to.equal(2);
     expect(errors.every((a) => a.length === 1 && typeof a[0] === 'string' && !a[0].includes('SECRET'))).to.equal(true);
+  });
+
+  it('r3 E: `then` read exactly once; captured false keeps it open; a getter fn-then-undefined never closes', async () => {
+    const host = mountDrawer();
+    let reads = 0;
+    host.beforeClose = () => ({ get then() { reads++; return (res) => res(false); } });
+    host.show();
+    await until(() => drawerRoot()?.getAttribute('data-state') === 'open');
+    expect(await host.requestClose()).to.equal(null);
+    expect(reads).to.equal(1);
+    let n = 0;
+    host.beforeClose = () => ({ get then() { n++; return n === 1 ? (res) => res(false) : undefined; } });
+    expect(await host.requestClose()).to.equal(null);
+    expect(host.open).to.equal(true);
+    const errors = await quiet('error', async () => {
+      host.beforeClose = () => ({ then() { throw new Error('SECRET'); } });
+      expect(await host.requestClose()).to.equal(null);
+    });
+    expect(host.open).to.equal(true);
+    expect(errors.every((a) => a.length === 1 && !String(a[0]).includes('SECRET'))).to.equal(true);
   });
 
   it('drawer removed from the DOM while the hook waits: no error, TdDrawer.open().closed settles', async () => {
