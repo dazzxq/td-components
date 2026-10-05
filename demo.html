@@ -597,6 +597,29 @@
     <p class="demo-note">v0.39.0: bảng <code>controlled</code> chỉ phát <code>request-change</code> và chờ <code>setState()</code>; "server" giả (<code>setTimeout</code> + <code>AbortController</code>, phản hồi về muộn bị bỏ nhờ <code>requestId</code>); URL đồng bộ bằng <code>history.replaceState</code> (<code>?f_q=…</code>) — phần của app; nút "Cột" ẩn / hiện cột, lưu bằng <code>columns-change</code> (localStorage của demo).</p>
   </div>
 
+  <!-- ═══════════════════ STEPS (v0.45.0) ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Tiến trình <span class="demo-code">&lt;td-steps&gt; · navigation="back" · step-select</span></h2>
+    <td-steps id="demo-steps" current="1" navigation="back" label="Nhập kho"></td-steps>
+    <div class="demo-panel" id="demo-steps-panel">
+      <h3 id="demo-steps-title" tabindex="-1">Tải tệp</h3>
+      <p id="demo-steps-text">Chọn tệp Excel phiếu nhập kho.</p>
+      <div class="demo-row">
+        <button type="button" class="td-btn td-btn--secondary" id="demo-steps-back">Quay lại</button>
+        <button type="button" class="td-btn td-btn--primary" id="demo-steps-next">Tiếp</button>
+        <button type="button" class="td-btn td-btn--ghost" id="demo-steps-fail">Giả lập lỗi kiểm tra</button>
+      </div>
+    </div>
+    <p class="demo-note">v0.45.0: kit không tự đổi bước — app nghe <code>step-select</code> / nút Tiếp, gán <code>current</code> và đưa focus tới tiêu đề panel. Bước lỗi: <code>state: 'error'</code> + mô tả.</p>
+  </div>
+
+  <!-- ═══════════════════ TIMELINE (v0.45.0) ═══════════════════ -->
+  <div class="demo-section">
+    <h2 id="demo-timeline-title">Lịch sử đơn hàng <span class="demo-code">&lt;td-timeline&gt; · time-zone · renderDetails · loadMore</span></h2>
+    <td-timeline id="demo-timeline" time-zone="Asia/Ho_Chi_Minh" has-more aria-labelledby="demo-timeline-title"></td-timeline>
+    <p class="demo-note">v0.45.0: thời điểm là ISO có <code>Z</code> / offset (mục thứ ba cố ý thiếu múi giờ → "Không rõ thời gian"); chi tiết "Audit" tải lười 300 ms; "Xem thêm" giả lập 300 ms, cursor = mục có thời điểm cuối cùng.</p>
+  </div>
+
   <!-- ═══════════════════ TABS ═══════════════════ -->
   <div class="demo-section">
     <h2>Tabs <span class="demo-code">&lt;td-tabs&gt;</span></h2>
@@ -912,6 +935,8 @@
     import './src/display/td-sortable.js';
     import './src/display/td-masked-value.js';
     import './src/display/td-filter-chips.js'; // v0.39
+    import './src/display/td-steps.js'; // v0.45
+    import './src/display/td-timeline.js'; // v0.45
     // v0.32
     import { TdMediaPicker } from './src/feedback/td-media-picker.js';
     import './src/form/td-media-field.js';
@@ -1691,6 +1716,74 @@
       ft.setState(first);
       ft.setLoading(true);
       load({ ...ft.getState(), ...first, sort: ft.getState().sort }, 0);
+    }
+
+    // ── v0.45.0: wizard (app side: the kit never changes the step) + order history ──
+    {
+      const steps = document.querySelector('#demo-steps');
+      const PANELS = [['Tải tệp', 'Chọn tệp Excel phiếu nhập kho.'], ['Kiểm tra dữ liệu', 'Đối chiếu IMEI, mã sản phẩm, giá nhập.'],
+        ['Xem trước', 'Xem lại 1.250 dòng sẽ nhập.'], ['Nhập kho', 'Ghi phiếu nhập và cập nhật tồn kho.']];
+      let failed = false;
+      const render = () => {
+        steps.steps = PANELS.map(([label], i) => (i === 1 && failed ? { label, state: 'error', description: 'Dòng 12: thiếu IMEI' } : { label }));
+      };
+      const go = (key) => {
+        const i = Number(key) - 1;
+        steps.setAttribute('current', key);
+        document.querySelector('#demo-steps-title').textContent = PANELS[i][0];
+        document.querySelector('#demo-steps-text').textContent = PANELS[i][1];
+        document.querySelector('#demo-steps-title').focus();
+      };
+      render();
+      steps.addEventListener('step-select', (e) => go(e.detail.key));
+      document.querySelector('#demo-steps-next').addEventListener('click', () => {
+        const cur = Number(steps.getAttribute('current'));
+        if (cur < PANELS.length) go(String(cur + 1));
+        else steps.complete = true;
+      });
+      document.querySelector('#demo-steps-back').addEventListener('click', () => {
+        steps.complete = false;
+        const cur = Number(steps.getAttribute('current'));
+        if (cur > 1) go(String(cur - 1));
+      });
+      document.querySelector('#demo-steps-fail').addEventListener('click', () => { failed = !failed; render(); go('2'); });
+
+      const tl = document.querySelector('#demo-timeline');
+      const H = 3600e3;
+      const t0 = Date.now();
+      const iso = (h) => new Date(t0 - h * H).toISOString();
+      tl.renderDetails = (item, { signal }) => new Promise((resolve, reject) => {
+        const t = setTimeout(() => {
+          const dl = document.createElement('dl');
+          for (const [k, v] of [['Trường', 'Giá bán'], ['Trước', '12.990.000₫'], ['Sau', '12.490.000₫']]) {
+            const dt = document.createElement('dt');
+            dt.textContent = k;
+            const dd = document.createElement('dd');
+            dd.textContent = v;
+            dl.append(dt, dd);
+          }
+          resolve(dl);
+        }, 300);
+        signal.addEventListener('abort', () => { clearTimeout(t); reject(signal.reason); });
+      });
+      let page = 0;
+      tl.loadMore = ({ signal, last }) => new Promise((resolve) => {
+        const t = setTimeout(() => {
+          page++;
+          const base = last ? Date.parse(last.time) : t0;
+          resolve({ items: Array.from({ length: 4 }, (_, i) => ({ id: `p${page}-${i}`, time: new Date(base - (i + 1) * 9 * H).toISOString(),
+            title: `Cập nhật kho (trang ${page + 1}, mục ${i + 1})`, actor: 'Hệ thống', icon: 'history' })), hasMore: page < 2 });
+        }, 300);
+        signal.addEventListener('abort', () => clearTimeout(t));
+      });
+      tl.items = [
+        { id: 'o6', time: iso(0.5), title: 'Đổi trạng thái: Chờ giao → Đang giao', actor: 'Nguyễn An', icon: 'send', tone: 'info', meta: 'Kho Hà Nội · GHN #A123' },
+        { id: 'o5', time: iso(2), title: 'Đã thanh toán 12.490.000₫', actor: { name: 'Trần Bình', href: '#demo-timeline' }, icon: 'success', tone: 'success' },
+        { id: 'o4', time: '2026-10-05 14:00', title: 'Ghi chú nhập tay (không múi giờ)', actor: 'Lê Chi', icon: 'pencil' },
+        { id: 'o3', time: iso(26), title: 'Sửa giá bán', actor: 'Admin', icon: 'pencil', tone: 'warning', details: true },
+        { id: 'o2', time: iso(27), title: 'Sửa địa chỉ giao hàng', actor: 'Lê Chi', icon: 'pencil', details: 'Trước: 12 Hàng Bài, Hoàn Kiếm\nSau: 45 Lý Thường Kiệt, Hoàn Kiếm', expanded: true },
+        { id: 'o1', time: iso(50), title: 'Tạo đơn hàng #DH-1024', actor: 'Website', icon: 'plus', href: '#demo-timeline' },
+      ];
     }
 
     // ── Log all component events ──
