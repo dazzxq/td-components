@@ -98,14 +98,15 @@ describe('php/td.php — td_rating (v0.50.0, contract rating@1)', opts, () => {
   });
 
   test('bad input: value strings / types → no rating; max 0 / 11 / 2.5 / "x" → 5 + one warning; bad count / size dropped', () => {
-    for (const v of ['', ' 4', '-1', '1e3', '4,5', '.5', '12345678901234567', 'NaN']) {
-      assert.match(one([v, {}]).html, /^<td-rating data-td-ssr="rating@1" max="5" data-empty><span class="td-rating__none">Chưa có đánh giá<\/span><\/td-rating>$/, v);
-    }
-    for (const max of [0, 11, 2.5, 'x', '-3', true]) {
-      const r = one(['4', { max }]);
-      assert.equal(r.warns, 1, String(max));
+    const vals = ['', ' 4', '-1', '1e3', '4,5', '.5', '12345678901234567', 'NaN'];
+    run(vals.map((v) => [v, {}])).forEach((r, i) => {
+      assert.match(r.html, /^<td-rating data-td-ssr="rating@1" max="5" data-empty><span class="td-rating__none">Chưa có đánh giá<\/span><\/td-rating>$/, vals[i]);
+    });
+    const maxes = [0, 11, 2.5, 'x', '-3', true];
+    run(maxes.map((max) => ['4', { max }])).forEach((r, i) => {
+      assert.equal(r.warns, 1, String(maxes[i]));
       assert.match(r.html, / max="5"/);
-    }
+    });
     const r = one(['4', { count: -1, size: 'xl', precision: 'nope', show_value: false }]);
     assert.equal(r.html.startsWith('<td-rating data-td-ssr="rating@1" value="4" max="5">'), true, r.html);
     assert.equal(one(['4', { count: '007' }]).html.includes('count="7"'), true);

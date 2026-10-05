@@ -238,6 +238,11 @@ namespace TdComponents {
         /** v0.50.0: texts of td_rating = TdRating.labels defaults (R13: one static set per site; a site overriding the JS
          * labels gets a re-render with them). */
         public const RATING_LABELS = ['value' => '{value} trên {max} sao', 'count' => '({count} đánh giá)', 'none' => 'Chưa có đánh giá'];
+        /** v0.50.0: td_carousel (always the element <td-carousel> + the frame around the slides; native scroll-snap without JS). */
+        public const SSR_CAROUSEL = 'carousel@1';
+        /** v0.50.0: frame texts of td_carousel = TdCarousel.labels defaults (R13: one static set per site). */
+        public const CAROUSEL_LABELS = ['carousel' => 'Băng chuyền', 'roleCarousel' => 'băng chuyền', 'roleSlide' => 'mục',
+            'slide' => '{n} / {total}', 'prev' => 'Mục trước', 'next' => 'Mục tiếp theo', 'dots' => 'Chọn trang'];
         /** v0.36.0: tones / sizes of td_action_button (= TdActionButton). */
         public const ACTION_TONES = ['standard', 'warning', 'danger'];
         public const ACTION_SIZES = ['sm', 'md', 'lg'];
@@ -4243,6 +4248,98 @@ namespace {
                 . Td::e(strtr($L['count'], ['{count}' => (string) preg_replace('/\B(?=(\d{3})+$)/', '.', $count)])) . '</span>';
         }
         return $html . '</td-rating>';
+    }
+
+    /**
+     * v0.50.0 horizontal carousel (contract carousel@1, plan v0.50.0-rating-carousel C1–C21, ADR 0024) — ALWAYS the
+     * element `<td-carousel data-td-ssr="carousel@1" role="region" aria-roledescription="băng chuyền" aria-label>` + the
+     * frame <td-carousel> builds: `div.td-carousel__viewport` > `div.td-carousel__track` > one `div.td-carousel__slide
+     * [role=group][aria-roledescription=mục][aria-label="n / total"]` per slide; `div.td-carousel__controls[data-td-js-only]`
+     * (prev button, counter, next button, dots group — invisible until the module loads, their box reserved) + the live
+     * region. Without JS the viewport is a native scroll-snap strip: every slide is in the page (crawlable, Tab-reachable).
+     * Pages are PREDICTED as max(1, ceil(n / per_view)) → `data-td-pages`, `data-td-rows-narrow`, `data-td-rows-wide`
+     * (controlsLayout(), = src/utils/carousel-model.js); one page → the controls are `hidden`. The module re-measures.
+     * $slides: list of TRUSTED HTML strings produced by the site's own templates (product cards…) — printed AS IS (a
+     * raw-HTML hatch, docs/internal/security-model.md §2): NEVER pass user-entered HTML. A non-string entry is dropped +
+     * one E_USER_WARNING. Options (text escaped): label (region name — recommended; missing → "Băng chuyền" + one
+     * E_USER_WARNING), per_view (integer 1–6), dots ('auto' | 'on' | 'off'), step ('page' | 'slide'), id, class, attrs
+     * (host: allowlisted + aria-* / data-*; owned names and data-td-* reserved). No `labels` option (R13).
+     */
+    function td_carousel(array $slides, array $o = []): string
+    {
+        $L = Td::CAROUSEL_LABELS;
+        $list = [];
+        $dropped = 0;
+        foreach ($slides as $s) {
+            if (is_string($s)) {
+                $list[] = $s;
+            } else {
+                $dropped++;
+            }
+        }
+        if ($dropped) {
+            trigger_error("td_carousel: $dropped slide(s) dropped — each slide must be an HTML string", E_USER_WARNING);
+        }
+        $label = isset($o['label']) && is_string($o['label']) && trim($o['label']) !== '' ? trim($o['label']) : null;
+        if ($label === null) {
+            trigger_error('td_carousel: give the carousel a `label` (name of the region) — the default name is used', E_USER_WARNING);
+        }
+        $pv = $o['per_view'] ?? null;
+        $perView = is_int($pv) && $pv >= 1 && $pv <= 6 ? $pv
+            : (is_string($pv) && preg_match('/^[1-6]$/', $pv) ? (int) $pv : null);
+        $dots = in_array($o['dots'] ?? null, ['on', 'off'], true) ? $o['dots'] : null;
+        $step = ($o['step'] ?? null) === 'slide' ? 'slide' : null;
+        $n = count($list);
+        $pages = max(1, (int) ceil($n / ($perView ?? 1)));
+        [$hidden, $narrow, $wide] = td__carousel_layout($pages, $dots ?? 'auto');
+        $taken = [];
+        $html = '<td-carousel' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_CAROUSEL,
+            'id' => td__str($o['id'] ?? null),
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'label' => $label,
+            'per-view' => $perView === null ? null : (string) $perView,
+            'dots' => $dots,
+            'step' => $step,
+            'data-td-pages' => (string) $pages,
+            'data-td-rows-narrow' => (string) $narrow,
+            'data-td-rows-wide' => (string) $wide,
+            'role' => 'region',
+            'aria-roledescription' => $L['roleCarousel'],
+            'aria-label' => $label ?? $L['carousel'],
+        ], $taken);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $taken = td__reserve(['id', 'class', 'label', 'per-view', 'dots', 'step', 'role', 'aria-roledescription', 'aria-label'], $extra, $taken);
+        $html .= Td::attrs($extra, $taken) . '><div class="td-carousel__viewport"><div class="td-carousel__track">';
+        foreach ($list as $i => $s) {
+            $html .= '<div class="td-carousel__slide" role="group" aria-roledescription="' . Td::e($L['roleSlide']) . '" aria-label="'
+                . Td::e(strtr($L['slide'], ['{n}' => (string) ($i + 1), '{total}' => (string) $n])) . '">' . $s . '</div>';
+        }
+        return $html . '</div></div>'
+            . '<div class="td-carousel__controls" data-td-js-only' . ($hidden ? ' hidden' : '') . '>'
+            . '<button type="button" class="td-carousel__btn" data-td-carousel="prev" aria-label="' . Td::e($L['prev']) . '">' . Td::icon('prev') . '</button>'
+            . '<span class="td-carousel__counter" aria-hidden="true"></span>'
+            . '<button type="button" class="td-carousel__btn" data-td-carousel="next" aria-label="' . Td::e($L['next']) . '">' . Td::icon('next') . '</button>'
+            . '<div class="td-carousel__dots" role="group" aria-label="' . Td::e($L['dots']) . '"></div></div>'
+            . '<p class="td-sr-only" role="status" aria-live="polite" aria-atomic="true"></p></td-carousel>';
+    }
+
+    /**
+     * @internal C21 controlsLayout(P, dots) of src/utils/carousel-model.js → [hidden, rows narrow, rows wide ('inline' | n)].
+     * @return array{0: bool, 1: int, 2: int|string}
+     */
+    function td__carousel_layout(int $p, string $dots): array
+    {
+        if ($p <= 1 || $dots === 'off') {
+            return [$p <= 1, 0, 0];
+        }
+        $narrow = (int) ceil($p / 6);
+        $wide = $p <= 8 ? 'inline' : (int) ceil($p / 8);
+        if ($dots !== 'on') {
+            $narrow = $narrow > 2 ? 0 : $narrow;
+            $wide = $wide !== 'inline' && $wide > 2 ? 0 : $wide;
+        }
+        return [false, $narrow, $wide];
     }
 
     /**

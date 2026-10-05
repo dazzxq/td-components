@@ -62,6 +62,7 @@
     "components/color-picker.css",
     "components/choice-group.css",
     "components/rating.css",
+    "components/carousel.css",
     "utilities.css"
   ]
 }

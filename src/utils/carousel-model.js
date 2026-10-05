@@ -20,6 +20,11 @@ export const CAROUSEL_LABELS = Object.freeze({
   statusOne: 'Mục {n} / {total}',
 });
 
+/** Fill `{name}` placeholders in ONE pass (a value is never re-expanded; unknown names stay). Text only. */
+export function fill(tpl, vars) {
+  return String(tpl).replace(/\{([a-z]+)\}/g, (m, k) => (Object.hasOwn(vars, k) ? String(vars[k]) : m));
+}
+
 /** Tolerance (px) of every comparison between positions. */
 export const EPS = 1;
 

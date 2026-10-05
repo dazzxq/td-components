@@ -1,0 +1,22 @@
+/* v0.50.0: slide cards of the carousel fixtures (test/ssr/fixtures/carousel.html) — engines / responsive / touch tests. */
+.fx-card {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	block-size: 120px;
+	font: 14px/1.4 system-ui, sans-serif;
+	color: #18181b;
+	text-decoration: none;
+	background: #f4f4f5;
+	border: 1px solid #d4d4d8;
+	border-radius: 8px;
+}
+
+.fx-img {
+	display: block;
+	inline-size: 100%;
+	block-size: auto;
+	aspect-ratio: 4 / 3;
+	border-radius: 8px;
+}

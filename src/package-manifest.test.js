@@ -395,3 +395,21 @@ test('v0.50.0: ./rating export, sideEffects, barrel TdRating, rating CSS before 
     assert.ok(css.includes(sel), sel);
   }
 });
+
+test('v0.50.0: ./carousel export, sideEffects, barrel TdCarousel, carousel CSS before utilities; model / scroll internal', async () => {
+  assert.equal(pkg.exports['./carousel'], './src/display/td-carousel.js');
+  assert.ok(pkg.sideEffects.includes('./src/display/td-carousel.js'));
+  assert.ok(!Object.values(pkg.exports).some((t) => /carousel-(model|scroll)/.test(t)), 'model / scroll helpers stay internal');
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdCarousel \} from '\.\/src\/display\/td-carousel\.js';/);
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  const i = files.indexOf('components/carousel.css');
+  assert.ok(i > files.indexOf('components/button.css') && i < files.indexOf('utilities.css'), 'carousel.css after button.css, before utilities.css');
+  const css = await readFile(join(ROOT, 'td.css'), 'utf8');
+  for (const sel of ['.td-carousel__viewport', 'td-carousel:not(:defined):not([data-td-ssr])', '@container td-carousel (width >= 480px)',
+    'td-carousel[data-td-rows-wide="inline"] .td-carousel__dots', '.td-carousel__dot:is(:active, [data-td-pressed])', '--td-carousel-per-view-xl']) {
+    assert.ok(css.includes(sel), sel);
+  }
+  // C12: the strip never takes touch-action (vertical swipes on it scroll the page)
+  assert.ok(!/td-carousel[^{]*\{[^}]*touch-action/.test(css), 'no touch-action in carousel rules');
+});

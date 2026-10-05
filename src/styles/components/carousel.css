@@ -1,0 +1,370 @@
+/*
+ * td-carousel (src/display/td-carousel.js) — v0.50.0, plan v0.50.0-rating-carousel C1–C21, ADR 0024.
+ * A native horizontal scroller with CSS scroll-snap; no autoplay, no loop, no drag, no custom gesture. The strip has no
+ * surface of its own (minimal surfaces, ADR 0011): the slides are the site's cards. Buttons = solid secondary discs
+ * (one lift shadow); page dots = buttons (current one = a longer pill, not only a colour).
+ * Scroller: `.td-carousel__viewport` (PHP markup / upgraded) — or, before the upgrade of HAND-WRITTEN markup, the host
+ * itself (`td-carousel:not(:defined):not([data-td-ssr])`): the content is a usable snap strip without JS (no `:has()`).
+ * Per-view (ADR 0014): the host is `container: td-carousel / inline-size` (needs its width from its parent); the slide
+ * basis reads `--td-carousel-per-view[-sm|-md|-lg|-xl]` mobile-first (the `per-view` attribute sets the base token);
+ * `--td-carousel-slide-size` fixes the slide width instead; `--td-carousel-peek` shows part of the next slide. build-css
+ * adds the `@supports not (container-type)` viewport fallbacks.
+ * Controls (C21): host `data-td-rows-narrow="0|1|2"` / `data-td-rows-wide="inline|0|1|2"` (PHP predicts, JS writes the
+ * measured value) size the dots box: narrow (< 480px) = [‹ counter ›] row + rows of ≤ 6 dots; wide = [‹ dots ›] when
+ * inline, else like narrow with ≤ 8 dots a row. Dot step 24px (mouse) / 44px (coarse) = the hit area; the dot is drawn
+ * by ::before. Before the upgrade the PHP controls are `visibility: hidden` with the SAME box (no layout shift, D6).
+ * Touch (ADR 0019, C12): no touch-action (vertical swipes on the strip scroll the page), overscroll contained.
+ */
+@layer td.tokens {
+	:root {
+		--td-carousel-gap: var(--td-space-sm);
+		--td-carousel-gutter: 0px;
+		--td-carousel-peek: 0px;
+		--td-carousel-btn-size: 36px;
+		--td-carousel-dot-size: 8px;
+	}
+
+	@media (pointer: coarse) {
+		:root {
+			--td-carousel-btn-size: var(--td-touch-min);
+		}
+	}
+
+	/* colour tokens re-resolve in every theme scope (ADR 0020); aliases of contract tokens */
+	:root, [data-td-theme] {
+		--td-carousel-dot: var(--td-color-text-subtle);       /* ≥ 3.2 on every surface (contract) */
+		--td-carousel-dot-active: var(--td-color-text);
+	}
+}
+
+@layer td.component {
+	td-carousel {
+		display: block;
+		min-inline-size: 0;
+		container: td-carousel / inline-size;
+		font-family: var(--td-font-sans);
+		line-height: var(--td-leading-tight);
+	}
+
+	td-carousel[hidden] {
+		display: none;
+	}
+
+	td-carousel[per-view="1"] { --td-carousel-per-view: 1; }
+	td-carousel[per-view="2"] { --td-carousel-per-view: 2; }
+	td-carousel[per-view="3"] { --td-carousel-per-view: 3; }
+	td-carousel[per-view="4"] { --td-carousel-per-view: 4; }
+	td-carousel[per-view="5"] { --td-carousel-per-view: 5; }
+	td-carousel[per-view="6"] { --td-carousel-per-view: 6; }
+
+	/* the scroller */
+	.td-carousel__viewport,
+	td-carousel:not(:defined):not([data-td-ssr]) {
+		overflow-x: auto;
+		overflow-y: hidden;
+		overscroll-behavior-x: contain;
+		scroll-snap-type: x mandatory;
+		scroll-padding-inline: var(--td-carousel-gutter);
+		scrollbar-width: thin; /* no JS: a thin native scrollbar (mouse users without a trackpad) */
+	}
+
+	.td-carousel__viewport:focus-visible {
+		outline: 2px solid var(--td-focus);
+		outline-offset: 2px;
+	}
+
+	/* upgraded: the buttons replace the scrollbar */
+	td-carousel:defined .td-carousel__viewport {
+		scrollbar-width: none;
+	}
+
+	td-carousel:defined .td-carousel__viewport::-webkit-scrollbar {
+		display: none;
+	}
+
+	.td-carousel__track,
+	td-carousel:not(:defined):not([data-td-ssr]) {
+		display: flex;
+		gap: var(--td-carousel-gap);
+		padding-inline: var(--td-carousel-gutter);
+	}
+
+	.td-carousel__slide,
+	td-carousel:not(:defined):not([data-td-ssr]) > * {
+		--_td-carousel-pv: var(--td-carousel-per-view, 1);
+
+		box-sizing: border-box;
+		flex: 0 0 var(--td-carousel-slide-size, calc((100% - var(--td-carousel-peek) - (var(--_td-carousel-pv) - 1) * var(--td-carousel-gap)) / var(--_td-carousel-pv)));
+		min-inline-size: 0;
+		scroll-snap-align: start;
+		scroll-snap-stop: normal;
+	}
+
+	@container td-carousel (width >= 480px) {
+		.td-carousel__slide,
+		td-carousel:not(:defined):not([data-td-ssr]) > * {
+			--_td-carousel-pv: var(--td-carousel-per-view-sm, var(--td-carousel-per-view, 1));
+		}
+	}
+
+	@container td-carousel (width >= 720px) {
+		.td-carousel__slide,
+		td-carousel:not(:defined):not([data-td-ssr]) > * {
+			--_td-carousel-pv: var(--td-carousel-per-view-md, var(--td-carousel-per-view-sm, var(--td-carousel-per-view, 1)));
+		}
+	}
+
+	@container td-carousel (width >= 1024px) {
+		.td-carousel__slide,
+		td-carousel:not(:defined):not([data-td-ssr]) > * {
+			--_td-carousel-pv: var(--td-carousel-per-view-lg, var(--td-carousel-per-view-md, var(--td-carousel-per-view-sm, var(--td-carousel-per-view, 1))));
+		}
+	}
+
+	@container td-carousel (width >= 1280px) {
+		.td-carousel__slide,
+		td-carousel:not(:defined):not([data-td-ssr]) > * {
+			--_td-carousel-pv: var(--td-carousel-per-view-xl, var(--td-carousel-per-view-lg, var(--td-carousel-per-view-md, var(--td-carousel-per-view-sm, var(--td-carousel-per-view, 1)))));
+		}
+	}
+
+	/* --- controls (C21) --- */
+	.td-carousel__controls {
+		--_td-carousel-step: 24px;
+
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0 var(--td-space-xs);
+		align-items: center;
+		justify-content: space-between;
+		padding-inline: var(--td-carousel-gutter);
+		margin-block-start: var(--td-space-sm);
+	}
+
+	.td-carousel__controls[hidden] {
+		display: none;
+	}
+
+	td-carousel:not(:defined) [data-td-js-only] {
+		visibility: hidden; /* keeps its box: no layout shift when the module adopts the markup (D6) */
+	}
+
+	.td-carousel__btn {
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		inline-size: var(--td-carousel-btn-size);
+		block-size: var(--td-carousel-btn-size);
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		color: var(--td-btn-secondary-fg);
+		cursor: pointer;
+		background-color: var(--td-btn-secondary-bg);
+		border: 1px solid var(--td-btn-secondary-border);
+		border-radius: var(--td-radius-full);
+		box-shadow: var(--td-btn-lift);
+		transition: background-color var(--td-dur-fast) var(--td-ease), color var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+		-webkit-tap-highlight-color: transparent; /* ADR 0019: the kit's pressed fill replaces the tap flash */
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-carousel__btn:hover {
+			background-color: var(--td-btn-secondary-hover);
+		}
+	}
+
+	/* Pressed (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, at once */
+	.td-carousel__btn:is(:active, [data-td-pressed]) {
+		background-color: var(--td-btn-secondary-pressed);
+		transition-duration: 0s;
+	}
+
+	/* at an end: still focusable (no focus drop to <body>), greyed out, inert to clicks (JS) */
+	.td-carousel__btn[aria-disabled="true"] {
+		color: var(--td-btn-disabled-fg);
+		cursor: default;
+		background-color: var(--td-btn-disabled-bg);
+		border-color: var(--td-btn-disabled-border);
+		box-shadow: none;
+	}
+
+	.td-carousel__btn:focus-visible,
+	.td-carousel__dot:focus-visible {
+		outline: 2px solid transparent;
+		outline-offset: 2px;
+		box-shadow: var(--td-focus-ring);
+	}
+
+	/* the chevrons follow the reading direction ([dir] for Chrome 102–119, :dir() where supported) */
+	[dir="rtl"] .td-carousel__btn > .td-icon {
+		transform: scaleX(-1);
+	}
+
+	.td-carousel__btn:dir(rtl) > .td-icon {
+		transform: scaleX(-1);
+	}
+
+	.td-carousel__btn:dir(ltr) > .td-icon {
+		transform: none;
+	}
+
+	.td-carousel__counter {
+		flex: 1 1 auto;
+		font-size: var(--td-text-sm);
+		font-variant-numeric: tabular-nums;
+		color: var(--td-color-text-muted);
+		text-align: center;
+	}
+
+	.td-carousel__dots {
+		display: flex;
+		flex: 1 0 100%;
+		flex-wrap: wrap;
+		justify-content: center;
+		max-inline-size: calc(6 * var(--_td-carousel-step)); /* ≤ 6 a row (C21) */
+		margin-inline: auto;
+	}
+
+	.td-carousel__dot {
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: none;
+		align-items: center;
+		justify-content: center;
+		inline-size: var(--_td-carousel-step); /* the hit area */
+		block-size: var(--_td-carousel-step);
+		padding: 0;
+		margin: 0;
+		font: inherit; /* own it: a host reset (Tailwind preflight) must not change the box */
+		line-height: 0;
+		cursor: pointer;
+		background-color: transparent;
+		border: 0;
+		border-radius: var(--td-radius-full);
+		appearance: none;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-carousel__dot::before {
+		inline-size: var(--td-carousel-dot-size);
+		block-size: var(--td-carousel-dot-size);
+		content: "";
+		background-color: var(--td-carousel-dot);
+		border-radius: var(--td-radius-full);
+		transition: inline-size var(--td-dur-fast) var(--td-ease), background-color var(--td-dur-fast) var(--td-ease);
+	}
+
+	.td-carousel__dot[aria-current="true"]::before {
+		inline-size: calc(3 * var(--td-carousel-dot-size));
+		background-color: var(--td-carousel-dot-active);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-carousel__dot:hover::before {
+			background-color: var(--td-carousel-dot-active);
+		}
+	}
+
+	.td-carousel__dot:is(:active, [data-td-pressed]) {
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	/* rows of dots (narrow first) */
+	td-carousel[data-td-rows-narrow="0"] .td-carousel__dots {
+		display: none;
+	}
+
+	td-carousel[data-td-rows-narrow="1"] .td-carousel__dots {
+		min-block-size: var(--_td-carousel-step);
+	}
+
+	td-carousel[data-td-rows-narrow="2"] .td-carousel__dots {
+		min-block-size: calc(2 * var(--_td-carousel-step));
+	}
+
+	@container td-carousel (width >= 480px) {
+		td-carousel[data-td-rows-wide] .td-carousel__dots {
+			display: flex;
+			max-inline-size: calc(8 * var(--_td-carousel-step)); /* ≤ 8 a row */
+			min-block-size: 0;
+		}
+
+		td-carousel[data-td-rows-wide="0"] .td-carousel__dots {
+			display: none;
+		}
+
+		td-carousel[data-td-rows-wide="1"] .td-carousel__dots {
+			min-block-size: var(--_td-carousel-step);
+		}
+
+		td-carousel[data-td-rows-wide="2"] .td-carousel__dots {
+			min-block-size: calc(2 * var(--_td-carousel-step));
+		}
+
+		/* inline: [‹ ● ● ━ ● ›] in one row, no counter */
+		td-carousel[data-td-rows-wide="inline"] .td-carousel__controls {
+			justify-content: center;
+		}
+
+		td-carousel[data-td-rows-wide="inline"] .td-carousel__dots {
+			flex: 0 1 auto;
+			min-block-size: var(--_td-carousel-step);
+			margin-inline: 0;
+		}
+
+		td-carousel[data-td-rows-wide="inline"] .td-carousel__counter {
+			display: none;
+		}
+	}
+
+	@media (pointer: coarse) {
+		.td-carousel__controls {
+			--_td-carousel-step: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-carousel__btn,
+		.td-carousel__dot::before {
+			transition: none;
+		}
+	}
+
+	@media (prefers-contrast: more) {
+		.td-carousel__btn {
+			border-color: currentcolor;
+			box-shadow: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-carousel__btn {
+			color: ButtonText;
+			background-color: ButtonFace;
+			border-color: ButtonText;
+		}
+
+		.td-carousel__btn[aria-disabled="true"] {
+			color: GrayText;
+			border-color: GrayText;
+		}
+
+		.td-carousel__btn:is(:active, [data-td-pressed]),
+		.td-carousel__dot:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+
+		.td-carousel__dot::before {
+			background-color: CanvasText;
+		}
+
+		.td-carousel__dot[aria-current="true"]::before {
+			background-color: Highlight;
+		}
+	}
+}

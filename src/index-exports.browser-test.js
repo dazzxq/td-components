@@ -107,6 +107,10 @@ describe('index.js exports', () => {
     expect(typeof kit.TdRating).to.equal('function');
     expect(customElements.get('td-rating')).to.equal(kit.TdRating);
   });
+  it('registers <td-carousel> from the root entry (v0.50.0)', () => {
+    expect(typeof kit.TdCarousel).to.equal('function');
+    expect(customElements.get('td-carousel')).to.equal(kit.TdCarousel);
+  });
 });
 
 describe('index.js exports (v0.44.0)', () => {
