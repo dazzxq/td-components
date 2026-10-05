@@ -82,3 +82,17 @@ hr { margin: 32px 0; border: none; border-top: 1px solid var(--td-color-border);
 .demo-fill--success { background: #15803d; }
 .demo-fill--danger { background: #dc2626; }
 .demo-fill--neutral { background: #f4f4f5; }
+
+/* v0.42.0 theme scope demo */
+.demo-scope {
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--td-color-border);
+  background: var(--td-color-bg);
+  color: var(--td-color-text);
+}
+
+.demo-scope--nested {
+  margin-top: 12px;
+  background: var(--td-color-surface);
+}

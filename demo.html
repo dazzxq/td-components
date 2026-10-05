@@ -803,6 +803,25 @@
     <pre id="demo-form-output" class="demo-output" aria-live="polite"></pre>
   </div>
 
+  <div class="demo-section">
+    <h2>Theme theo vùng <span class="demo-code">data-td-theme trên một phần tử · popup theo vùng (0.42.0)</span></h2>
+    <section class="demo-scope" data-td-theme="dark" id="demo-scope-dark">
+      <p>Vùng tối trong trang: mọi token màu giải lại trên vùng; popup mở từ trong vùng (dropdown, menu, tooltip, modal) cũng tối.</p>
+      <div class="demo-row">
+        <td-dropdown id="demo-scope-dropdown" label="Gói"></td-dropdown>
+        <td-checkbox checked label="Đã duyệt"></td-checkbox>
+        <button type="button" class="td-btn td-btn--secondary" id="demo-scope-menu" data-tooltip="Menu theo vùng tối">Menu…</button>
+        <button type="button" class="td-btn td-btn--primary" id="demo-scope-modal">Mở modal (themeRoot)</button>
+      </div>
+      <div class="demo-scope demo-scope--nested" data-td-theme="light">
+        <p>Vùng sáng lồng trong vùng tối.</p>
+        <span class="td-badge td-badge--success">Sáng</span>
+      </div>
+    </section>
+    <p class="demo-note">Tạo palette riêng: <a href="./src/theme/builder/theme-builder.html">trang builder</a> hoặc
+      <code>npx td-theme --bg '#ece5d8' --accent '#b3261e'</code>.</p>
+  </div>
+
   <!-- ═══════════════════ SCROLL TOP (fixed, end of body) ═══════════════════ -->
   <td-scroll-top id="demo-scroll-top" threshold="600"></td-scroll-top>
 
@@ -823,6 +842,21 @@
         x.classList.toggle('td-btn--secondary', x !== b);
       }
     });
+    // v0.42.0 theme scope demo: popups opened from the dark section follow it (bridge), the modal through themeRoot
+    {
+      const scope = document.getElementById('demo-scope-dark');
+      document.getElementById('demo-scope-menu').addEventListener('click', async (e) => {
+        const { TdMenu } = await import('./src/feedback/td-menu.js');
+        TdMenu.open(e.currentTarget, [{ label: 'Sửa', value: 'edit' }, { label: 'Xoá', value: 'del', danger: true }]);
+      });
+      document.getElementById('demo-scope-modal').addEventListener('click', async () => {
+        const { TdModal } = await import('./src/feedback/td-modal.js');
+        TdModal.show({ title: 'Modal theo vùng', body: 'Mở bằng TdModal.show({ themeRoot }).', themeRoot: scope });
+      });
+      customElements.whenDefined('td-dropdown').then(() => {
+        document.getElementById('demo-scope-dropdown').options = [{ value: 'a', label: 'Cơ bản' }, { value: 'b', label: 'Nâng cao' }];
+      });
+    }
     // Import tất cả components
     import './src/form/td-toggle.js';
     import './src/form/td-button.js';
