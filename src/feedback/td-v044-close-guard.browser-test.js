@@ -161,6 +161,7 @@ describe('TdModal beforeClose / requestClose (v0.44.0 QĐ 12-15)', () => {
     top.querySelector('.td-modal__footer button').click(); // Hủy
     await until(() => m.root.contains(document.activeElement));
     expect(isOpen(m.id)).to.equal(true);
+    await frames(1); // the refused guard's Promise chain settles (microtasks) — a real user cannot click sooner
     // second attempt, confirm "discard" → closes
     m.x.click();
     await until(() => confirmRoot() !== m.root);
@@ -168,6 +169,20 @@ describe('TdModal beforeClose / requestClose (v0.44.0 QĐ 12-15)', () => {
     [...top2.querySelectorAll('.td-modal__footer button')].pop().click();
     await until(() => !isOpen(m.id));
     expect(m.closes()).to.deep.equal([undefined]);
+  });
+
+  it('r2 E: a guard result whose `then` getter throws → stays open, requestClose false, only the fixed log', async () => {
+    const evil = { get then() { throw new Error('SECRET'); } };
+    let m;
+    const errors = await quiet('error', async () => {
+      m = await showModal({ beforeClose: () => evil });
+      expect(await TdModal.requestClose(m.id)).to.equal(false);
+      m.x.click();
+      await frames(2);
+    });
+    expect(isOpen(m.id)).to.equal(true);
+    expect(errors.length).to.equal(2);
+    expect(errors.every((a) => a.length === 1 && typeof a[0] === 'string' && !a[0].includes('SECRET'))).to.equal(true);
   });
 
   it('a Promise dialog ignores beforeClose (not an option of confirm)', async () => {
@@ -262,6 +277,21 @@ describe('<td-drawer> beforeClose / requestClose (v0.44.0 QĐ 16)', () => {
     errors = await quiet('error', async () => { expect(await host.requestClose()).to.equal(null); });
     expect(errors.length).to.equal(1);
     expect(host.open).to.equal(true);
+  });
+
+  it('r2 E: a hook result whose `then` getter throws → stays open, requestClose null, only the fixed log', async () => {
+    const host = mountDrawer();
+    host.beforeClose = () => ({ get then() { throw new Error('SECRET'); } });
+    host.show();
+    await until(() => drawerRoot()?.getAttribute('data-state') === 'open');
+    const errors = await quiet('error', async () => {
+      expect(await host.requestClose()).to.equal(null);
+      drawerRoot().querySelector('.td-drawer__close').click();
+      await frames(2);
+    });
+    expect(host.open).to.equal(true);
+    expect(errors.length).to.equal(2);
+    expect(errors.every((a) => a.length === 1 && typeof a[0] === 'string' && !a[0].includes('SECRET'))).to.equal(true);
   });
 
   it('drawer removed from the DOM while the hook waits: no error, TdDrawer.open().closed settles', async () => {

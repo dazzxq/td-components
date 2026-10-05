@@ -220,6 +220,40 @@ describe('TdModal.confirm typeToConfirm (v0.44.0)', () => {
     expect(called).to.equal(0);
   });
 
+  it('r2 A: the option is read ONCE — a getter valid then empty keeps the gate on the first value; a throwing getter rejects', async () => {
+    let reads = 0;
+    const opts = { title: 'T', get typeToConfirm() { reads++; return reads === 1 ? 'DELETE' : ''; } };
+    const p = TdModal.confirm(opts);
+    expect(reads).to.equal(1);
+    const root = top();
+    await until(() => root.getAttribute('data-state') === 'open');
+    expect(root.querySelector('.td-modal__phrase').textContent).to.equal('DELETE');
+    const btn = [...root.querySelectorAll('.td-modal__footer button')].pop();
+    expect(btn.getAttribute('aria-disabled')).to.equal('true');
+    btn.click(); // empty field: still locked
+    await frames(2);
+    expect(top() === root).to.equal(true);
+    TdModal.closeAll();
+    expect(await p).to.equal(false);
+    expect(reads).to.equal(1);
+
+    let called = 0;
+    const before = document.querySelectorAll('body > .td-modal').length;
+    let err = null;
+    try {
+      await TdModal.confirm({ get typeToConfirm() { throw new Error('SECRET'); }, onConfirm: () => { called++; } });
+    } catch (e) { err = e; }
+    expect(err instanceof TypeError).to.equal(true);
+    expect(err.message.includes('SECRET')).to.equal(false);
+    expect(document.querySelectorAll('body > .td-modal').length).to.equal(before);
+    // a Proxy whose `has` / getOwnPropertyDescriptor trap throws → same rejection
+    err = null;
+    const trap = new Proxy({}, { getOwnPropertyDescriptor() { throw new Error('SECRET'); } });
+    try { await TdModal.confirm(trap); } catch (e) { err = e; }
+    expect(err instanceof TypeError).to.equal(true);
+    expect(called).to.equal(0);
+  });
+
   it('typeToConfirm omitted → plain confirm, no warning; exactly 100 code points → accepted', async () => {
     const warns = [];
     const warn = console.warn;

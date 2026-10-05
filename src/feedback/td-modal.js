@@ -366,18 +366,22 @@ export class TdModal {
       return Promise.resolve(true);
     }
     let result;
+    let thenable;
     try {
       result = guard({ reason, value });
+      thenable = isThenable(result); // reads `.then` — a throwing getter is a refusal too (review r2 E)
     } catch {
       console.error('TdModal: beforeClose threw — the dialog stays open'); // fixed text, never the caller's error (SEC-3)
       return Promise.resolve(false);
     }
-    if (!isThenable(result)) {
+    if (!thenable) {
       if (result === false || inst.closed) return Promise.resolve(inst.closed);
       inst.close(value);
       return Promise.resolve(true);
     }
-    const pending = Promise.resolve(result).then((v) => {
+    // `new Promise(r => r(x))`: assimilating the thenable never throws synchronously (a `then` that throws / a getter that
+    // throws on a second read → a rejection, handled below)
+    const pending = new Promise((r) => { r(result); }).then((v) => {
       inst.guarding = null;
       if (inst.closed) return true; // closed by code meanwhile: the guard's answer no longer matters
       if (v === false) return false;
@@ -575,17 +579,22 @@ export class TdModal {
    *   points). Until then it is `aria-disabled` (still focusable); a click / Enter shows the mismatch error. The field
    *   gets the first focus. PRESENT but invalid (not a string — null / undefined included —, empty / blank after
    *   normalisation, > 100 code points) → FAIL CLOSED: the Promise rejects with a TypeError (fixed message), no dialog
-   *   opens, onConfirm never runs (Codex review round 1, SEC-1).
+   *   opens, onConfirm never runs (Codex review round 1, SEC-1). The option is read ONCE (review r2 A): a getter / Proxy
+   *   cannot pass validation with one value and build the gate with another; one that throws → the same rejection.
    * @returns {Promise<boolean>}
    */
   static confirm(options = {}) {
     const o = options || {};
-    if (Object.prototype.hasOwnProperty.call(o, 'typeToConfirm')) {
-      const prep = preparePhrase(o.typeToConfirm);
-      if (!prep || prep.truncated) {
-        return Promise.reject(new TypeError(
-          'TdModal.confirm: typeToConfirm must be a non-empty string of at most 100 characters'));
+    /** @type {string|null} the normalised phrase — the gate is built from this cached value only */
+    let phrase = null;
+    try {
+      if (Object.prototype.hasOwnProperty.call(o, 'typeToConfirm')) {
+        const prep = preparePhrase(o.typeToConfirm); // the ONLY read of the option
+        if (!prep || prep.truncated) return Promise.reject(new TypeError('TdModal.confirm: typeToConfirm must be a non-empty string of at most 100 characters'));
+        phrase = prep.phrase;
       }
+    } catch {
+      return Promise.reject(new TypeError('TdModal.confirm: typeToConfirm must be a non-empty string of at most 100 characters'));
     }
     return new Promise((resolve) => {
       const {
@@ -598,7 +607,6 @@ export class TdModal {
         onConfirm = () => {},
         onCancel = () => {},
         themeRoot = null,
-        typeToConfirm,
       } = options || {};
       let settled = false;
       let confirming = false; // a close during onConfirm() is the confirmation, not a dismissal
@@ -606,7 +614,7 @@ export class TdModal {
       const variant = ['primary', 'danger', 'success', 'warning'].includes(confirmVariant) ? confirmVariant : 'primary';
       const cancelButton = makeButton(cancelText, 'secondary');
       const confirmButton = makeButton(confirmText, variant);
-      const gate = TdModal._typeToConfirm(typeToConfirm, confirmButton);
+      const gate = phrase === null ? null : TdModal._typeToConfirm(phrase, confirmButton);
 
       const settle = (value) => {
         if (settled) return false;
@@ -691,16 +699,12 @@ export class TdModal {
   /**
    * @private v0.44.0 (plan v0.44.0-confirm-dirty QĐ 1-11): the type-to-confirm field of `confirm()` and its gate on the
    * confirm button. Every text (label template, phrase, messages) goes in as TEXT nodes — never innerHTML.
-   * @param {unknown} raw the `typeToConfirm` option
+   * @param {string} phrase the normalised, validated phrase (confirm() reads and checks the option once)
    * @param {HTMLButtonElement} confirmButton
    * @returns {null | { field: HTMLElement, input: HTMLInputElement, check(): boolean, setBusy(b: boolean): void,
    *   describe(id: string): void }}
    */
-  static _typeToConfirm(raw, confirmButton) {
-    if (raw === undefined) return null; // option absent (validated by confirm(): a present one is a valid phrase)
-    const prep = preparePhrase(raw);
-    if (!prep || prep.truncated) return null; // unreachable — confirm() rejected it
-    const { phrase } = prep;
+  static _typeToConfirm(phrase, confirmButton) {
     const labels = TdModal.labels;
     const id = `td-modal-confirm-${++confirmSeq}`;
     const field = document.createElement('div');

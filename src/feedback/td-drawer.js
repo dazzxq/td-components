@@ -300,18 +300,20 @@ export class TdDrawer extends HTMLElement {
     const guard = this._beforeClose;
     if (!guard) return this.close(reason);
     let result;
+    let thenable;
     try {
       result = guard({ reason });
+      // reading `.then` inside the guarded path: a throwing getter is a refusal too (review r2 E)
+      thenable = !!result && (typeof result === 'object' || typeof result === 'function')
+        && typeof result.then === 'function';
     } catch {
       console.error('td-drawer: beforeClose threw — the drawer stays open'); // fixed text, never the caller's error (SEC-3)
       return Promise.resolve(null);
     }
-    const thenable = !!result && (typeof result === 'object' || typeof result === 'function')
-      && typeof result.then === 'function';
     if (!thenable) return result === false ? Promise.resolve(null) : this.close(reason);
     const layer = this._layer;
     const live = () => this._state === 'open' && this._layer === layer; // not closed / removed / reopened meanwhile
-    const pending = Promise.resolve(result).then((v) => {
+    const pending = new Promise((r) => { r(result); }).then((v) => { // assimilation never throws synchronously
       this._guarding = null;
       if (!live() || v === false) return null;
       return this.close(reason);
