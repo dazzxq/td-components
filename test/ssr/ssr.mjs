@@ -149,6 +149,8 @@ export const DIFF_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'diff.html');
 /** Render test/ssr/diff-fixture.php (the HTML loaded by the td-diff SSR browser test). */
 export function renderDiffFixture() {
   return renderPhp('diff-fixture.php');
+}
+
 // v0.47.0: td_check_matrix (always the element <td-check-matrix data-td-ssr="check-matrix@1"> + the full no-JS form).
 export const CHECK_MATRIX_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'check-matrix.fixtures.json'), 'utf8'));
 export const CHECK_MATRIX_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'check-matrix.html');
