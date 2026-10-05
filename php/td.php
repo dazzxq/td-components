@@ -221,6 +221,31 @@ namespace TdComponents {
             /** v0.35 */
             'crop' => 'Cắt ảnh',
         ];
+        /** v0.43.0: td_media_gallery (always the element <td-media-gallery> + the no-JS inputs, ADR 0021). */
+        public const SSR_MEDIA_GALLERY = 'media-gallery@1';
+        /** v0.43.0 (decision 6, owner O2): hard ceiling of a gallery = the default max (TdMediaGallery.MAX_ITEMS). */
+        public const MEDIA_GALLERY_MAX_ITEMS = 100;
+        /** v0.43.0: default texts of td_media_gallery = TdMediaGallery.labels (a site overriding the JS labels gets a safe re-render). */
+        public const MEDIA_GALLERY_LABELS = [
+            'prompt' => ['image' => 'Chọn ảnh', 'video' => 'Chọn video', 'file' => 'Chọn file'],
+            'add' => ['image' => 'Thêm ảnh', 'video' => 'Thêm video', 'file' => 'Thêm file'],
+            'kinds' => ['image' => 'ảnh', 'video' => 'video', 'file' => 'file'],
+            'count' => '{count} {kind}',
+            'countMax' => '{count}/{max} {kind}',
+            'full' => 'Đã đủ {max} {kind}',
+            'item' => 'Ảnh {n} trên {count}: {name}',
+            'coverSuffix' => ', ảnh bìa',
+            'cover' => 'Ảnh bìa',
+            'handle' => 'Sắp xếp {name}',
+            'remove' => 'Gỡ {name}',
+            'crop' => 'Cắt {name}',
+            'alt' => 'Mô tả ảnh {n} (alt)',
+            'altPlaceholder' => 'Mô tả (alt)',
+            'noPreview' => 'Không có ảnh xem trước',
+            'video' => 'Video',
+            'broken' => 'Không đọc được danh sách ảnh',
+            'sortHelp' => 'Nhấn Space hoặc Enter để nhấc, phím mũi tên để di chuyển, Space hoặc Enter để thả, Escape để huỷ.',
+        ];
 
         /**
          * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.42.1') —
@@ -2367,7 +2392,7 @@ namespace {
      * null. An array x / y / width / height (numbers) is encoded first; null / '' / 'null' → null silently; anything
      * invalid → null + ONE E_USER_WARNING.
      */
-    function td__media_crop(mixed $v): ?string
+    function td__media_crop(mixed $v, bool $warn = true): ?string
     {
         if ($v === null || $v === '' || $v === 'null') {
             return null;
@@ -2392,7 +2417,7 @@ namespace {
             }
         }
         $ok = $json !== null ? td__media_crop_parse($json) : null;
-        if ($ok === null) {
+        if ($ok === null && $warn) {
             trigger_error('td_media_field: crop must be x / y / width / height in 0..1 (x + width ≤ 1, y + height ≤ 1) — submitted as null', E_USER_WARNING);
         }
         return $ok;
@@ -2420,7 +2445,7 @@ namespace {
      * FOCAL_CASES), or null. An array x / y (numbers) is encoded first; null / '' / 'null' → null silently; anything
      * invalid → null + ONE E_USER_WARNING.
      */
-    function td__media_focal(mixed $v): ?string
+    function td__media_focal(mixed $v, bool $warn = true): ?string
     {
         if ($v === null || $v === '' || $v === 'null') {
             return null;
@@ -2441,7 +2466,7 @@ namespace {
             }
         }
         $ok = $json !== null ? td__media_focal_parse($json) : null;
-        if ($ok === null) {
+        if ($ok === null && $warn) {
             trigger_error('td_media_field: focal must be x / y in 0..1 (JSON v1 {"v":1,"x","y"}) — submitted as null', E_USER_WARNING);
         }
         return $ok;
@@ -2513,6 +2538,285 @@ namespace {
             return null;
         }
         return $s;
+    }
+
+    /**
+     * v0.43.0 media gallery (contract media-gallery@1, plan v0.43.0-media-gallery decisions 8, 14-15b, 19; ADR 0021) —
+     * ALWAYS the element `<td-media-gallery data-td-ssr="media-gallery@1" …>` + the exact tree <td-media-gallery>
+     * renders (head with label + count, `ul.td-media-gallery__list` with one `li` per item — sizer, preview, handle,
+     * Cắt / Gỡ buttons, the alt input in `usage` mode —, the Add button, the live regions, the sort help, helper + error
+     * notes) + the NO-JS form parts, i.e. exactly the FormData of the component (decision 14): reference → a hidden
+     * `input.td-media-gallery__value` `name[]` per item; usage → hidden `name[i][id]`, the alt input `name[i][alt]`,
+     * hidden `name[i][crop]` (+ `name[i][focal]` with focal_point); empty → ONE hidden `name=` after the list. The
+     * handle / Cắt / Gỡ / Add buttons are hidden by td.css until `@dazzxq/td-components/media-gallery` defines the
+     * element (no dead control); it adopts the markup IN PLACE. Without JS the order is the printed one and the alt is
+     * editable (a real named input).
+     * $items: a LIST of ['id' => string|int, 'src', 'name' (display name), 'kind' (image|video|file), 'alt' (≤ 500),
+     * 'crop' (array x / y / width / height in 0..1 or the JSON v1 string), 'focal' (array x / y or JSON v1)]. An int id
+     * is turned into its decimal string FIRST (0 → "0"); then td__media_gallery_items() = validateItems() of
+     * src/utils/media-field-model.js (GALLERY_CASES parity). src through td__media_url (refused → no image, item kept);
+     * an invalid crop / focal → null; unknown keys ignored.
+     * Options: label, helper_text, error_text, required, disabled, min, max (integer 1..100, default and ceiling 100),
+     * usage, croppable / crop_ratio / focal_point (usage only — else dropped + ONE E_USER_WARNING), cover, aspect_ratio
+     * (`W/H`, `W:H` or one number; the tile ratio, default 1:1), preview_fit (cover|contain), accept_kind, prompt, id,
+     * class, attrs (host: allowlisted; owned names and data-td-* reserved).
+     * Fail closed (decision 15) — items not a list / > 100 / an item without a valid unique id / an id of another type /
+     * the `items` JSON over 256 KiB, or a `name` ending in `[]`: the broken tree, NO input at all + ONE E_USER_WARNING
+     * naming the reason and the count only (never a value); the `items` attribute is `[null]` so the element fails closed
+     * too. Overflow (decision 8) — more items than `max`: every item printed, NO control carries a `name` (nothing is
+     * submitted: the server keeps its data) + ONE E_USER_WARNING with the counts.
+     * Never prints adapter endpoints, permissions or serialized assets. The server must still validate (ADR 0021).
+     */
+    function td_media_gallery(string $name, array $items = [], array $o = []): string
+    {
+        $L = Td::MEDIA_GALLERY_LABELS;
+        $f = static function (string $t, array $p): string {
+            $map = [];
+            foreach ($p as $k => $v) {
+                $map['{' . $k . '}'] = (string) $v;
+            }
+            return strtr($t, $map); // one pass, like the JS template fill: a value is never re-expanded
+        };
+        $hostId = td__str($o['id'] ?? null) ?? td__host_uid($name);
+        $hid = Td::e($hostId);
+        $label = isset($o['label']) && is_scalar($o['label']) && !is_bool($o['label']) ? (string) $o['label'] : '';
+        $help = td__str($o['helper_text'] ?? null);
+        $error = td__str($o['error_text'] ?? null);
+        $prompt = td__str($o['prompt'] ?? null);
+        $required = !empty($o['required']);
+        $disabled = !empty($o['disabled']);
+        $usage = !empty($o['usage']);
+        $cover = !empty($o['cover']);
+        $kinds = td__media_kinds($o['accept_kind'] ?? null);
+        $maxOpt = Td::intOpt($o['max'] ?? null, 1);
+        $max = $maxOpt !== null ? min((int) $maxOpt, Td::MEDIA_GALLERY_MAX_ITEMS) : null;
+        $limit = $max ?? Td::MEDIA_GALLERY_MAX_ITEMS;
+        $minOpt = Td::intOpt($o['min'] ?? null, 0);
+        $min = $minOpt !== null ? min((int) $minOpt, $limit) : null;
+        $ratioRaw = isset($o['aspect_ratio']) && is_scalar($o['aspect_ratio']) && !is_bool($o['aspect_ratio']) ? (string) $o['aspect_ratio'] : null;
+        $ratio = $ratioRaw !== null && $ratioRaw !== '' ? td__media_ratio($ratioRaw) : null;
+        if ($ratio === null && $ratioRaw !== null && $ratioRaw !== '') {
+            trigger_error('td_media_gallery: aspect_ratio is not W/H, W:H or a positive number (≤ 10000, ≤ 4 decimals) — ignored', E_USER_WARNING);
+        }
+        $fit = in_array($o['preview_fit'] ?? null, ['cover', 'contain'], true) ? $o['preview_fit'] : null;
+        // croppable / crop_ratio / focal_point: usage mode only (fail closed: the reference shape has no crop entry)
+        $croppable = false;
+        $focalOn = false;
+        $cropRatio = null;
+        $crRaw = isset($o['crop_ratio']) && is_scalar($o['crop_ratio']) && !is_bool($o['crop_ratio']) ? (string) $o['crop_ratio'] : null;
+        $v35 = !empty($o['croppable']) || !empty($o['focal_point']) || ($crRaw !== null && $crRaw !== '');
+        if ($v35 && !$usage) {
+            trigger_error('td_media_gallery: croppable / crop_ratio / focal_point need usage — ignored', E_USER_WARNING);
+        } elseif ($v35) {
+            $croppable = !empty($o['croppable']);
+            $focalOn = !empty($o['focal_point']);
+            if ($crRaw !== null && $crRaw !== '' && td__media_crop_ratio($crRaw)) {
+                $cropRatio = $crRaw;
+            } elseif ($crRaw !== null && $crRaw !== '') {
+                trigger_error('td_media_gallery: crop_ratio must be free or W/H, W:H, a number with a ratio in [0.01, 100] — ignored', E_USER_WARNING);
+            }
+        }
+
+        // decision 15b / 19: one validation path (ints → strings first), then the items attribute (≤ 256 KiB)
+        $v = td__media_gallery_items($items, $limit);
+        $broken = $v['items'] === null;
+        $reason = (string) $v['reason'];
+        $list = $broken ? [] : $v['items'];
+        $json = null;
+        if (!$broken && $list) {
+            $rows = [];
+            foreach ($list as $it) {
+                $row = ['id' => $it['id']];
+                foreach (['src' => '', 'name' => '', 'kind' => 'image', 'alt' => '', 'crop' => null, 'focal' => null] as $k => $none) {
+                    if ($it[$k] !== $none) {
+                        $row[$k] = $it[$k];
+                    }
+                }
+                $rows[] = $row;
+            }
+            $json = json_encode($rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+            if (td__utf16_length($json) > 262144) {
+                $broken = true;
+                $reason = 'size';
+            }
+        }
+        if ($broken) {
+            trigger_error('td_media_gallery: items rejected (' . $reason . ', ' . count($items) . ' item(s)) — the gallery fails closed, nothing is submitted', E_USER_WARNING);
+            $list = [];
+            $json = '[null]';
+        } elseif ($name !== '' && str_ends_with($name, '[]')) {
+            trigger_error('td_media_gallery: a name ending in [] (the gallery appends [] / [i] itself) — the gallery fails closed, nothing is submitted', E_USER_WARNING);
+            $broken = true;
+            $list = [];
+        }
+        $count = count($list);
+        $overflow = !$broken && $count > $limit;
+        if ($overflow) {
+            trigger_error('td_media_gallery: ' . $count . ' items exceed max ' . $limit . ' — printed without names (nothing is submitted)', E_USER_WARNING);
+        }
+        $named = $name !== '' && !$broken && !$overflow;
+        $dis = $disabled ? ' disabled' : '';
+        $kindWord = $L['kinds'][$kinds[0]];
+        $ico = static fn (string $n): string => '<span class="td-media-gallery__icon" data-td-icon="' . $n . '" aria-hidden="true">' . Td::icon($n) . '</span>';
+        $hidden = static fn (string $class, string $n, string $val): string => '<input type="hidden" class="' . $class . '" name="'
+            . Td::e($n) . '" value="' . Td::e($val) . '"' . $dis . '>';
+
+        $taken = [];
+        $html = '<td-media-gallery' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_MEDIA_GALLERY,
+            'id' => $hostId,
+            'class' => 'td-media-gallery' . Td::classTokens($o['class'] ?? null),
+            'name' => $name !== '' ? $name : null,
+            'label' => $label !== '' ? $label : null,
+            'items' => $json,
+            'usage' => $usage,
+            'croppable' => $croppable,
+            'crop-ratio' => $cropRatio,
+            'focal-point' => $focalOn,
+            'cover' => $cover,
+            'aspect-ratio' => $ratio !== null ? $ratioRaw : null,
+            'preview-fit' => $fit,
+            'accept-kind' => array_key_exists('accept_kind', $o) && $o['accept_kind'] !== null ? implode(' ', $kinds) : null,
+            'min' => $min !== null ? (string) $min : null,
+            'max' => $max !== null ? (string) $max : null,
+            'required' => $required,
+            'disabled' => $disabled,
+            'prompt' => $prompt,
+            'helper-text' => $help,
+            'error-text' => $error,
+        ], $taken);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $taken = td__reserve(['id', 'class', 'name', 'label', 'items', 'usage', 'croppable', 'crop-ratio', 'focal-point', 'cover',
+            'aspect-ratio', 'preview-fit', 'accept-kind', 'min', 'max', 'required', 'disabled', 'prompt', 'helper-text',
+            'error-text', 'value'], $extra, $taken);
+        $html .= Td::attrs($extra, $taken) . '>'
+            . '<div class="td-media-gallery__head"><span class="td-media-gallery__label" id="' . $hid . '-label">' . Td::e($label)
+            . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') . '</span>';
+        $described = implode(' ', array_filter([$help !== null ? $hostId . '-help' : '', $error !== null ? $hostId . '-error' : '']));
+        $notes = ($help !== null ? '<span class="td-media-gallery__help" id="' . $hid . '-help">' . Td::e($help) . '</span>' : '')
+            . ($error !== null ? '<span class="td-field-error" id="' . $hid . '-error" data-for="' . $hid . '">' . Td::e($error) . '</span>' : '');
+        if ($broken) {
+            return $html . '</div><span class="td-media-gallery__broken">' . Td::e($L['broken']) . '</span>' . $notes . '</td-media-gallery>';
+        }
+        $countText = $max !== null
+            ? $f($count === $max ? $L['full'] : $L['countMax'], ['count' => $count, 'max' => $max, 'kind' => $kindWord])
+            : $f($L['count'], ['count' => $count, 'kind' => $kindWord]);
+        $html .= '<span class="td-media-gallery__count" id="' . $hid . '-count">' . Td::e($countText) . '</span></div>'
+            . '<ul class="td-media-gallery__list" role="list" aria-labelledby="' . $hid . '-label" aria-describedby="' . $hid . '-count">';
+        $vb = $ratio !== null ? $ratio['w'] . ' ' . $ratio['h'] : '1 1';
+        foreach ($list as $i => $it) {
+            $base = $it['name'] !== '' ? $it['name'] : ($it['alt'] !== '' ? $it['alt'] : $it['id']);
+            $full = $f($L['item'], ['n' => $i + 1, 'count' => $count, 'name' => $base]) . ($cover && $i === 0 ? $L['coverSuffix'] : '');
+            $k = $it['kind'];
+            $img = $it['src'] !== '' && $k !== 'file';
+            $html .= '<li class="td-media-gallery__item" data-kind="' . $k . '"><div class="td-media-gallery__media">'
+                . '<svg class="td-media-gallery__sizer" viewBox="0 0 ' . $vb . '" aria-hidden="true" focusable="false"></svg>'
+                . ($img
+                    ? '<img class="td-media-gallery__img" src="' . Td::e($it['src']) . '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">'
+                    : '<span class="td-media-gallery__file">' . $ico($k) . '<span class="td-media-gallery__name">'
+                        . Td::e($it['name'] !== '' ? $it['name'] : $L['noPreview']) . '</span></span>')
+                . ($img && $k === 'video' ? '<span class="td-media-gallery__badge">' . Td::e($L['video']) . '</span>' : '')
+                . ($cover && $i === 0 ? '<span class="td-media-gallery__cover">' . Td::e($L['cover']) . '</span>' : '')
+                . '<button type="button" class="td-sortable__handle td-media-gallery__handle" aria-label="' . Td::e($f($L['handle'], ['name' => $full]))
+                . '" aria-describedby="' . $hid . '-sort-help"' . $dis . '>' . $ico('grip') . '</button></div>'
+                . '<div class="td-media-gallery__bar">'
+                . ($croppable
+                    ? '<button type="button" class="td-media-gallery__btn td-media-gallery__crop-btn" aria-haspopup="dialog" aria-label="'
+                        . Td::e($f($L['crop'], ['name' => $full])) . '"' . ($k === 'image' && $it['src'] !== '' ? '' : ' hidden') . $dis . '>' . $ico('crop') . '</button>'
+                    : '')
+                . '<button type="button" class="td-media-gallery__btn td-media-gallery__remove" aria-label="' . Td::e($f($L['remove'], ['name' => $full])) . '"'
+                . $dis . '>' . $ico('trash') . '</button></div>'
+                . ($named ? $hidden('td-media-gallery__value', $usage ? $name . '[' . $i . '][id]' : $name . '[]', $it['id']) : '')
+                . ($usage
+                    ? '<label class="td-media-gallery__alt-field"><span class="td-sr-only">' . Td::e($f($L['alt'], ['n' => $i + 1])) . '</span>'
+                        . '<input type="text" class="td-field__control td-media-gallery__alt" maxlength="500" placeholder="' . Td::e($L['altPlaceholder']) . '"'
+                        . ($named ? ' name="' . Td::e($name . '[' . $i . '][alt]') . '"' : '') . ($it['alt'] !== '' ? ' value="' . Td::e($it['alt']) . '"' : '') . $dis . '></label>'
+                    : '')
+                . ($named && $usage ? $hidden('td-media-gallery__crop', $name . '[' . $i . '][crop]', $it['crop'] ?? 'null') : '')
+                . ($named && $usage && $focalOn ? $hidden('td-media-gallery__focal', $name . '[' . $i . '][focal]', $it['focal'] ?? 'null') : '')
+                . '</li>';
+        }
+        $html .= '</ul>' . ($named && $count === 0 ? $hidden('td-media-gallery__value', $name, '') : '');
+        $empty = $count === 0;
+        $html .= '<button type="button" class="td-media-gallery__add" data-state="' . ($empty ? 'empty' : 'filled') . '" aria-haspopup="dialog"'
+            . ($described !== '' ? ' aria-describedby="' . Td::e($described) . '"' : '')
+            . ($error !== null ? ' aria-invalid="true" aria-errormessage="' . $hid . '-error"' : '')
+            . ($count >= $limit ? ' hidden' : '') . $dis . '>'
+            . ($empty
+                ? $ico($kinds[0]) . '<span class="td-media-gallery__prompt">' . Td::e($prompt ?? $L['prompt'][$kinds[0]]) . '</span>'
+                    . ($ratio !== null ? '<span class="td-media-gallery__ratio">' . Td::e($ratio['text']) . '</span>' : '')
+                : $ico('plus') . '<span class="td-media-gallery__prompt">' . Td::e($L['add'][$kinds[0]]) . '</span>')
+            . '</button>'
+            . '<span class="td-sr-only td-media-gallery__status" role="status"></span>'
+            . '<span class="td-sr-only td-media-gallery__sort-status" role="status"></span>'
+            . '<span class="td-media-gallery__sort-help" id="' . $hid . '-sort-help" hidden>' . Td::e($L['sortHelp']) . '</span>';
+        return $html . $notes . '</td-media-gallery>';
+    }
+
+    /**
+     * @internal v0.43.0 decision 15b: validateItems() of src/utils/media-field-model.js (GALLERY_CASES parity), after the
+     * PHP-only step of decision 19 (an int id → its decimal string; every other non-string id → `id`). Returns
+     * ['ok' => bool, 'reason' => null|'type'|'ceiling'|'item'|'id'|'duplicate'|'max', 'items' => list|null] with items
+     * ['id', 'src' (''), 'name' (''), 'kind', 'alt' (≤ 500 code points), 'crop' (?JSON v1), 'focal' (?JSON v1)].
+     * Structural errors → items null; more than $max → reason `max` WITH the items.
+     */
+    function td__media_gallery_items(mixed $items, int $max = 100): array
+    {
+        $fail = static fn (string $r): array => ['ok' => false, 'reason' => $r, 'items' => null];
+        $isList = static fn (array $a): bool => $a === [] || array_keys($a) === range(0, count($a) - 1);
+        if (!is_array($items) || !$isList($items)) {
+            return $fail('type');
+        }
+        if (count($items) > Td::MEDIA_GALLERY_MAX_ITEMS) {
+            return $fail('ceiling');
+        }
+        foreach ($items as $x) {
+            // a JSON object is a PHP array with string keys; a JSON list (or a scalar / null) is not an item
+            if (!is_array($x) || ($x !== [] && $isList($x))) {
+                return $fail('item');
+            }
+        }
+        $seen = [];
+        $ids = [];
+        foreach ($items as $x) {
+            $id = $x['id'] ?? null;
+            if (is_int($id)) {
+                $id = (string) $id; // decision 19 (plan review r2 #4): 0 → "0", -1 → "-1"
+            }
+            if (!is_string($id) || $id === '' || td__utf16_length($id) > 512) {
+                return $fail('id');
+            }
+            if (isset($seen[$id])) {
+                return $fail('duplicate');
+            }
+            $seen[$id] = true;
+            $ids[] = $id;
+        }
+        $out = [];
+        foreach ($items as $i => $x) {
+            $out[] = [
+                'id' => $ids[$i],
+                'src' => td__media_url($x['src'] ?? null) ?? '',
+                'name' => isset($x['name']) && is_string($x['name']) ? $x['name'] : '',
+                'kind' => in_array($x['kind'] ?? null, ['image', 'video', 'file'], true) ? $x['kind'] : 'image',
+                'alt' => isset($x['alt']) && is_string($x['alt']) ? td__utf8_prefix($x['alt'], 500) : '',
+                'crop' => td__media_crop($x['crop'] ?? null, false),
+                'focal' => td__media_focal($x['focal'] ?? null, false),
+            ];
+        }
+        return count($out) > max(0, min($max, Td::MEDIA_GALLERY_MAX_ITEMS))
+            ? ['ok' => false, 'reason' => 'max', 'items' => $out]
+            : ['ok' => true, 'reason' => null, 'items' => $out];
+    }
+
+    /** @internal v0.43.0: length of a UTF-8 string in UTF-16 code units (JS `String#length`); invalid UTF-8 → PHP_INT_MAX. */
+    function td__utf16_length(string $s): int
+    {
+        $points = preg_match_all('/./su', $s);
+        if ($points === false) {
+            return PHP_INT_MAX;
+        }
+        return $points + (int) preg_match_all('/[\x{10000}-\x{10FFFF}]/u', $s);
     }
 
     /**
