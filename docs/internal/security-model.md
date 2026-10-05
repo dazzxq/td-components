@@ -363,8 +363,6 @@ kiện, `href`) đến từ app — thường từ dữ liệu người dùng nh
 - Test: `src/display/td-{steps,timeline}.ssr.engines.browser-test.js` (markup bị sửa), `td-v045-*.engines.browser-test.js`
   (XSS mọi trường, `javascript:` href), `src/utils/{steps,timeline}-model.test.js`, `test/php/td-ssr-steps-timeline.test.js`.
 
-## 7. Trách nhiệm của site
-
 ## 6h. `td-diff` (v0.46.0)
 
 Bề mặt input: **dữ liệu audit không tin cậy** — giá trị do người dùng khác nhập, khoá JSON tuỳ ý, cấu trúc lớn / sâu /
@@ -381,6 +379,7 @@ vòng lặp — đi vào DOM (JS) và HTML (PHP `td_diff` / `td_diff_snapshots`)
 | SSR `diff@1` | Nhận markup chỉ khi đúng dấu + hình tối thiểu; **không đọc dữ liệu ngược từ DOM** (không có state / event nào lấy từ markup — markup là HTML của chính site); dấu khác → một cảnh báo (không nội dung) + render từ property | `td-diff.js`, `td-diff.ssr.engines.browser-test.js` |
 | PHP host | `attrs` allowlist (`on*`, `style`, `data-td-*`, tên của component bị chặn); `view` / `unchanged` theo whitelist; cảnh báo chỉ chứa mã lỗi | `td__diff_host`, `test/php/td-ssr-diff.test.js` |
 
+## 7. Trách nhiệm của site
 
 Những thứ kit **cố ý không làm** và site phải làm, nếu không thì có lỗ hổng dù kit đúng. Trang người dùng tương ứng:
 [guides/security.md](../guides/security.md), [guides/media-renditions.md](../guides/media-renditions.md).
