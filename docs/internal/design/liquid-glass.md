@@ -71,6 +71,9 @@ Cài đặt: [`src/styles/glass.css`](../../../src/styles/glass.css) (recipe + f
    (scroll-top) và toast là **đặc**.
 3. **Không trang trí giả kính:** không gradient sheen, không rim inset, không hairline ngoài thứ hai, không film /
    tint trong suốt, không status wash, không glow khi hover, không glyph shadow.
+   *Ngoại lệ chức năng (0.48.0):* điểm chọn của vùng 2 chiều và thanh sắc độ trong `td-color-picker` có **vòng kép**
+   trắng 2px + đen 1px — để thấy được trên **mọi** màu (≥ 3:1 với một trong hai vòng, gate đo trên `#fff` / `#000` /
+   `#808080` / `#f00`), không phải rim trang trí.
 4. **Không scale trang trí** (press / lift / pop / enter). Popup chỉ **fade**. **Ngoại lệ duy nhất (0.21.0, owner
    yêu cầu):** modal vào `scale(0.95) → none` 300ms đường cong lò xo
    `cubic-bezier(0.34, 1.56, 0.64, 1)` (vượt nhẹ) + fade 200ms, ra `scale(0.95)` 200ms / fade 150ms

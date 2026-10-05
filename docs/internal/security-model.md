@@ -469,3 +469,23 @@ người dùng [datetime-range.md](../components/datetime-range.md#bảo-mật))
   escape; `attrs` (trên host) qua allowlist, tên của component + `data-td-*` giữ chỗ.
 - Kiểm tra thứ tự / `max-days` / `required` chạy ở trình duyệt → **không phải kiểm soát bảo mật**: server kiểm lại định
   dạng, thứ tự, độ dài khoảng (truy vấn dùng prepared statement — ví dụ trên trang component).
+
+**Ghi chú v0.48.0 — `td-color-picker`** (plan [v0.48.0-color-picker](plans/v0.48.0-color-picker.md) QĐ 1–4, 14–15, 19,
+21; trang người dùng [color-picker.md](../components/color-picker.md#bảo-mật)):
+
+- **Input màu → CSS (bề mặt CSS injection):** chuỗi gõ / dán / `value` / preset / kết quả `EyeDropper` chỉ đi qua
+  `parseColorInput()` (= `parseColor()` của lõi màu — regex neo, đã fuzz ở v0.42 — + hex trần) → `toHex()`. CSSOM
+  (`style.setProperty`, không `style="…"`) chỉ nhận chuỗi khớp `^#[0-9a-f]{6}$` (kiểm lại ngay trước khi ghi — `setVar()`)
+  hoặc số đã kẹp 0..1; chuỗi thô của người dùng **chỉ** nằm trong `input.value` và giá trị form (`badInput`). Gradient
+  vùng 2 chiều / sắc độ / ô cờ là CSS tĩnh trong `td.css` (không `data:` URI).
+- **Không hatch HTML mới:** popup dựng bằng DOM API; nhãn preset (`presets[].label`, có thể từ cấu hình site) qua
+  `setAttribute('aria-label' | 'title')`, chữ tương phản qua `textContent`; `data-value` của preset là hex đã kiểm.
+- **SSR `color-picker@1`:** cổng chung của form (đúng **một** phần tử form-associated — ô chữ; ô màu SSR là `<span>`),
+  so khớp từng node với `render()` (ô màu đúng `span.td-color__swatch[aria-hidden]` rỗng, ô chữ `type=text` + thuộc tính
+  cố định + allowlist; `pattern` lần đầu chỉ được là `#[0-9a-fA-F]{6}`). Lệch (thêm `formaction`, `type=color`, input ẩn
+  thứ hai, `<button>` lạ…) → render an toàn, giữ chữ đang gõ. Nút mở popup / nút xoá chỉ được tạo **sau** cổng (bước
+  bind). Nhận markup: FormData của host trước → gỡ `name` / `value` / `required` / `pattern` / `title`.
+- **PHP:** `td_color_value()` là điểm chuẩn hoá phía server (không phải chuỗi / > 64 ký tự → `null`; regex neo `/D`);
+  `td_color_picker()` escape mọi thuộc tính, `value` không hợp lệ được giữ nguyên **đã escape** + warning, preset lỗi bị
+  bỏ, `attrs` qua allowlist (tên của component + `data-td-*` giữ chỗ). Kiểm định dạng ở trình duyệt **không phải** kiểm
+  soát bảo mật: server luôn gọi `td_color_value()` rồi mới lưu.

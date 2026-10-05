@@ -264,6 +264,19 @@
     <pre id="demo-scan-output" class="demo-output" aria-live="polite"></pre>
   </div>
 
+  <!-- ═══════════════════ CHỌN MÀU (v0.48.0) ═══════════════════ -->
+  <div class="demo-section" id="demo-color">
+    <h2>Chọn màu <span class="demo-code">&lt;td-color-picker&gt;</span></h2>
+    <form id="demo-color-form" class="demo-narrow">
+      <td-color-picker name="brand_color" label="Màu thương hiệu" value="#1d4ed8" required></td-color-picker>
+      <td-color-picker id="demo-color-brand" name="button_bg" label="Nền nút chính (preset có nhãn + tương phản)" value="#b3261e" contrast></td-color-picker>
+      <td-color-picker name="tag_color" label="Màu nhãn (chỉ preset)" custom="false" presets="#ef4444 #f59e0b #10b981 #3b82f6 #8b5cf6" value="#10b981"></td-color-picker>
+    </form>
+    <p class="demo-note">Gõ / dán <code>#ABC</code>, <code>1d4ed8</code>, <code>rgb(…)</code> hoặc mở bảng bằng ô màu (Alt+↓). Form gửi
+      <code>#rrggbb</code> chữ thường; server luôn chuẩn hoá lại bằng <code>td_color_value()</code>.</p>
+    <pre id="demo-color-output" class="demo-output" aria-live="polite"></pre>
+  </div>
+
   <!-- ═══════════════════ PASSWORD METER ═══════════════════ -->
   <div class="demo-section">
     <h2>Password Meter <span class="demo-code">&lt;td-password-meter&gt;</span></h2>
@@ -950,6 +963,7 @@
     import './src/form/td-media-field.js';
     // v0.38
     import './src/form/td-scan-input.js';
+    import './src/form/td-color-picker.js';
     // v0.40
     import './src/form/td-datetime-range.js';
     import { createMockAdapter, assetFields, uploadFields } from './test/fixtures/media-adapter.js';
@@ -1274,6 +1288,21 @@
         if (e.target.tagName !== 'TD-DATETIME-RANGE') return;
         const fd = [...new FormData(form).entries()].map(([k, v]) => `${k}=${v}`).join('&');
         out.textContent = `${e.target.id} change: ${JSON.stringify(e.detail)}\nFormData: ${fd}`;
+      });
+    }
+
+    // ── Chọn màu (v0.48.0) ──
+    {
+      const form = document.querySelector('#demo-color-form');
+      const out = document.querySelector('#demo-color-output');
+      document.querySelector('#demo-color-brand').presets = [
+        { value: '#b3261e', label: 'Đỏ thương hiệu' }, { value: '#1f2937', label: 'Than chì' },
+        { value: '#0f766e', label: 'Xanh ngọc đậm' }, { value: '#f59e0b', label: 'Hổ phách' }, { value: '#ffffff', label: 'Trắng' },
+      ];
+      form.addEventListener('change', (e) => {
+        if (e.target.tagName !== 'TD-COLOR-PICKER' || !e.detail) return;
+        const fd = [...new FormData(form).entries()].map(([k, v]) => `${k}=${v}`).join('&');
+        out.textContent = `${e.target.getAttribute('name')} change: ${e.detail.value || '(rỗng)'}\nFormData: ${fd}`;
       });
     }
 
