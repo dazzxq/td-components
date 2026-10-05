@@ -165,6 +165,8 @@ export class TdCarousel extends TdBaseElement {
       this._ro = new ResizeObserver(() => this._onResize());
       this._ro.observe(this._viewport);
       this._ro.observe(this._track);
+      this._observed = new Set();
+      this._observeSlides();
     }
     if (typeof MutationObserver !== 'undefined' && !this._mo && this._track) {
       this._mo = new MutationObserver(() => this.refresh());
@@ -180,6 +182,7 @@ export class TdCarousel extends TdBaseElement {
     super.disconnectedCallback();
     this._ro?.disconnect();
     this._ro = null;
+    this._observed = null;
     this._mo?.disconnect();
     this._mo = null;
     this._hostMo?.disconnect();
@@ -318,7 +321,16 @@ export class TdCarousel extends TdBaseElement {
       this._kitLabels.add(s);
     });
     this._slides = slides;
+    this._observeSlides();
     this._syncViewportFocus();
+  }
+
+  /** @private Slide sizes change without the viewport (per-view tokens, slide-size, fonts) → re-measure. */
+  _observeSlides() {
+    if (!this._ro || !this._slides) return;
+    const now = new Set(this._slides);
+    for (const s of this._observed) if (!now.has(s)) { this._ro.unobserve(s); this._observed.delete(s); }
+    for (const s of now) if (!this._observed.has(s)) { this._ro.observe(s); this._observed.add(s); }
   }
 
   /** @private C10: no focusable content → the viewport is the Tab stop (arrow keys scroll natively). */

@@ -369,6 +369,8 @@ describe('td-carousel — layout', () => {
     h.style.setProperty('--td-carousel-per-view-md', '3');
     await raf();
     expect(Math.abs(p.slides[0].getBoundingClientRect().width - (p.vp.clientWidth - 2 * gap) / 3) < 1).to.equal(true);
+    await raf();
+    expect(h.pageCount, 'a token change re-measures (slides observed)').to.equal(2);
     h.parentElement.style.setProperty('width', '400px'); // < 720 container → the base per-view (2) again
     await raf();
     expect(Math.abs(p.slides[0].getBoundingClientRect().width - (p.vp.clientWidth - gap) / 2) < 1).to.equal(true);
