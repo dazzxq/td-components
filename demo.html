@@ -889,29 +889,37 @@
     const bulkCount = document.querySelector('#demo-bulk-count');
     const bulkAll = document.querySelector('#demo-bulk-all');
     let allMatching = false;
+    let allEligible = false; // review ISSUE-2: offer "all N results" only right after "select all on this page"
     const syncBulk = (keys) => {
       const total = table.data.length;
       bulk.hidden = keys.length === 0 && !allMatching;
       bulkCount.textContent = allMatching ? `Đã chọn tất cả ${total} kết quả` : `${keys.length} đã chọn`;
-      bulkAll.hidden = allMatching || keys.length >= total;
+      bulkAll.hidden = allMatching || !allEligible;
       bulkAll.textContent = `Chọn tất cả ${total} kết quả`;
     };
     table.addEventListener('select-change', (e) => {
       allMatching = false; // any change by the user drops the "all results" flag
+      const pageRows = table.querySelectorAll('.td-table__body > .td-table__row:not(.td-table__row--skeleton)').length;
+      allEligible = e.detail.trigger === 'page'
+        && table.querySelector('.td-table__select-all')?.getAttribute('aria-checked') === 'true'
+        && table.data.length > pageRows;
       syncBulk(e.detail.keys);
     });
     bulkAll.addEventListener('click', () => {
-      allMatching = true; // a real app would send the CURRENT FILTER to the server, not a list of keys
+      allMatching = true;
+      allEligible = false; // a real app would send the CURRENT FILTER to the server, not a list of keys
       syncBulk(table.selectedKeys);
     });
     document.querySelector('#demo-bulk-clear').addEventListener('click', () => {
       allMatching = false;
+      allEligible = false;
       table.clearSelection({ emit: true });
     });
     document.querySelector('#demo-bulk-delete').addEventListener('click', () => {
       const keys = allMatching ? table.data.map((r) => r.id) : table.selectedKeys;
       table.data = table.data.filter((r) => !keys.includes(r.id));
       allMatching = false;
+      allEligible = false;
       table.deselect(keys, { emit: true });
       TdToast.success(`Đã xoá ${keys.length} bài (giả lập)`);
     });

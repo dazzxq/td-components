@@ -359,7 +359,8 @@ table.addEventListener('select-change', (e) => {
 **Khoá dòng** (`rowKey`): tên trường (`row-key="id"` hoặc `table.rowKey = 'id'`) hoặc hàm
 (`table.rowKey = (row) => row.shop + ':' + row.id`). Khoá hợp lệ: chuỗi khác rỗng, số hữu hạn, `bigint`. Bảng so khoá theo `String(key)` — số
 `1` và chuỗi `"1"` là **một** dòng (API hay trả lẫn kiểu) — nhưng trả lại **đúng giá trị gốc** bạn đưa (lần đầu thấy) trong
-`selectedKeys`. Dòng có khoá sai, khoá trùng trong trang (dòng thứ hai trở đi) hoặc `rowKey` ném lỗi → ô tick bị khoá +
+`selectedKeys`. Dòng có khoá sai, khoá trùng (dòng thứ hai trở đi — sau khi so bằng `String(key)`, nên `1` và `"1"` là
+trùng; chế độ client so trên **toàn bộ** `data`, chế độ server so trong trang) hoặc `rowKey` ném lỗi → ô tick bị khoá +
 một cảnh báo mỗi loại. Đổi `rowKey` → bỏ hết lựa chọn (danh tính đổi), không event. Khoá **không** được in ra DOM.
 
 **Thao tác của người dùng** (chỉ trên ô tick — bấm vào chỗ khác của dòng không chọn, để link / nút trong dòng vẫn dùng
@@ -394,6 +395,11 @@ filter.addEventListener('change', () => { table.clearSelection(); reload(); });
 table.addEventListener('page-change', () => table.clearSelection({ emit: true }));
 ```
 
+**Khoá phải duy nhất toàn cục.** Ở server mode bảng chỉ thấy một trang nên không phát hiện được khoá trùng giữa các
+trang — hai dòng khác nhau cùng khoá sẽ bị coi là một (lựa chọn, `selectedRows`, form). Dữ liệu nhiều nguồn / nhiều tenant:
+dùng khoá ghép, ví dụ `table.rowKey = (r) => \`${r.tenantId}:${r.id}\``. Khoá field chỉ đọc thuộc tính **của chính dòng**
+(hoặc getter của class), không bao giờ từ `Object.prototype`.
+
 **Server mode**: bảng chỉ biết trang đang có. Khoá ở trang khác vẫn nằm trong `selectedKeys`; `selectedRows` trả các dòng
 **đã từng hiện** của khoá đang chọn (khoá chưa thấy bao giờ bị bỏ qua — dùng `selectedKeys`).
 
@@ -421,8 +427,9 @@ bulkClear.addEventListener('click', () => table.clearSelection({ emit: true }));
 
 #### "Chọn tất cả N kết quả" (server, kiểu Gmail — công thức)
 
-Ô header chỉ chọn **trang này**. Khi `select-change` có `trigger: 'page'`, mọi dòng trang đã chọn và `total-items` lớn hơn
-số dòng trang → hiện nút "Chọn tất cả {total} kết quả". Bấm → app giữ cờ `allMatching` + **bộ lọc hiện tại** và gửi **bộ
+Ô header chỉ chọn **trang này**. Chỉ khi `select-change` có `trigger: 'page'` **và** ô header thành
+`aria-checked="true"` **và** `total-items` lớn hơn số dòng trang → hiện nút "Chọn tất cả {total} kết quả"; mọi thay đổi
+khác (bấm một dòng, Shift dải, bỏ chọn trang…) → ẩn nút. Bấm → app giữ cờ `allMatching` + **bộ lọc hiện tại** và gửi **bộ
 lọc** (không gửi danh sách khoá) lên server; mọi `select-change` sau đó → bỏ cờ. Bảng không biết cờ này. Demo có ví dụ.
 
 #### Gửi form (`name`)
@@ -432,6 +439,8 @@ không cần tự đồng bộ `<input hidden>`:
 
 ```html
 <form method="post" action="/posts/bulk-delete">
+  <!-- CSRF: token gắn với phiên, server kiểm trước khi làm gì -->
+  <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf'], ENT_QUOTES) ?>">
   <td-table selectable row-key="id" name="ids[]"></td-table>
   <button type="submit">Xoá đã chọn</button>
 </form>
@@ -439,14 +448,36 @@ không cần tự đồng bộ `<input hidden>`:
 
 ```php
 <?php
-// Mọi chuỗi đều gửi lên được: KIỂM QUYỀN TỪNG ID ở server.
-$ids = array_filter(array_map('intval', (array) ($_POST['ids'] ?? [])), fn ($id) => $id > 0);
-foreach ($ids as $id) {
-    if (!$user->can('delete', $id)) { http_response_code(403); exit; }
+// Mọi chuỗi đều gửi lên được (sửa DOM / tự POST): kiểm CSRF, kiểm hình dạng dữ liệu, rồi kiểm quyền NGAY TRONG câu xoá.
+session_start();
+if ($_SERVER['REQUEST_METHOD'] !== 'POST'
+    || !is_string($_POST['csrf'] ?? null)
+    || !hash_equals($_SESSION['csrf'] ?? '', $_POST['csrf'])) {
+    http_response_code(403); exit;
 }
-$stmt = $pdo->prepare('DELETE FROM posts WHERE id = ?');
-foreach ($ids as $id) $stmt->execute([$id]);
+
+// 1. Hình dạng: mảng, ≤ 500 phần tử, mỗi phần tử là chuỗi số thập phân, trong khoảng hợp lệ; sai → từ chối cả request.
+$raw = $_POST['ids'] ?? null;
+if (!is_array($raw) || count($raw) === 0 || count($raw) > 500) { http_response_code(422); exit; }
+$ids = [];
+foreach ($raw as $v) {
+    if (!is_string($v) || !preg_match('/^[1-9][0-9]{0,17}$/', $v)) { http_response_code(422); exit; }
+    $ids[$v] = (int) $v; // khoá mảng = bỏ trùng
+}
+$ids = array_values($ids);
+
+// 2. Quyền + xoá trong MỘT câu, một transaction: điều kiện chủ sở hữu / tenant nằm trong WHERE
+//    (không "kiểm từng id rồi xoá" — tránh TOCTOU). Số dòng xoá được ≠ số id → huỷ cả lô.
+$in = implode(',', array_fill(0, count($ids), '?'));
+$pdo->beginTransaction();
+$stmt = $pdo->prepare("DELETE FROM posts WHERE tenant_id = ? AND owner_id = ? AND id IN ($in)");
+$stmt->execute([$tenantId, $userId, ...$ids]);
+if ($stmt->rowCount() !== count($ids)) { $pdo->rollBack(); http_response_code(403); exit; }
+$pdo->commit();
 ```
+
+Thêm lớp phòng thủ (không thay CSRF token): cookie phiên `SameSite=Lax` / `Strict`, và kiểm header `Origin` (hoặc
+`Sec-Fetch-Site: same-origin`) với request đổi dữ liệu.
 
 - Không `name` (hoặc `selectable` tắt / chưa chọn gì) → không gửi gì.
 - `form.reset()` → bỏ hết + **một** `select-change` `trigger: 'reset'` (khác input thường vốn im lặng — để thanh hàng

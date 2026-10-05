@@ -677,3 +677,71 @@ describe('v0.37.0 td-table selection — table geometry', () => {
     expect(getComputedStyle(rowsOf(el)[2]).backgroundColor).to.not.equal(before);
   });
 });
+
+describe('v0.37.0 td-table selection — review round 1 (SEC-1, SEC-2, ISSUE-3)', () => {
+  it('SEC-1: an inherited Object.prototype key never makes a keyless row selectable', async () => {
+    try {
+      // eslint-disable-next-line no-extend-native
+      Object.defineProperty(Object.prototype, 'id', { value: 'victim-id', configurable: true, writable: true });
+      const el = await mk('selectable row-key="id"', { data: [{ name: 'Không khoá' }, { id: 2, name: 'Bình' }] });
+      expect(ctl(el, 0).disabled).to.equal(true);
+      expect(ctl(el, 1).disabled).to.equal(false);
+      el.select(['victim-id']);
+      expect(el.selectedRows).to.deep.equal([]);
+    } finally {
+      delete Object.prototype.id;
+    }
+  });
+
+  it('SEC-1: a throwing getter fails closed (row not selectable, render completes); class-instance getters work', async () => {
+    class Post {
+      constructor(n, name) { this._n = n; this.name = name; }
+      get id() { return this._n; }
+    }
+    const bad = { name: 'Lỗi' };
+    Object.defineProperty(bad, 'id', { get() { throw new Error('boom'); } });
+    const el = await mk('selectable row-key="id"', { data: [new Post(1, 'An'), bad, new Post(3, 'Chi')] });
+    expect(rowsOf(el).length).to.equal(3);
+    expect([ctl(el, 0).disabled, ctl(el, 1).disabled, ctl(el, 2).disabled]).to.deep.equal([false, true, false]);
+    await click(ctl(el, 2));
+    expect(el.selectedKeys).to.deep.equal([3]);
+    expect(el.selectedRows[0]).to.be.instanceOf(Post);
+  });
+
+  it('SEC-2: client mode — the same normalised key on another page (1 vs "1") is not selectable; selectedRows = the selectable row', async () => {
+    const data = [{ id: 1, name: 'An' }, { id: 2, name: 'Bình' }, { id: '1', name: 'Giả An' }, { id: 4, name: 'Dũng' }];
+    const el = await mk('selectable row-key="id" per-page="2"', { data });
+    await click(ctl(el, 0));
+    el.setPage(2);
+    await frames(1);
+    expect(ctl(el, 0).disabled, 'cross-page duplicate locked').to.equal(true);
+    expect(ctl(el, 0).getAttribute('aria-checked')).to.equal('false');
+    expect(ctl(el, 1).disabled).to.equal(false);
+    expect(el.selectedRows.map((r) => r.name)).to.deep.equal(['An']);
+    expect(warns.filter((w) => /duplicate/i.test(w)).length).to.equal(1);
+    // sorted so that the duplicate comes first on page 1: still the FIRST row in data order owns the key
+    el.setPage(1);
+    await click(el.querySelector('.td-table__sort'));
+    await click(el.querySelector('.td-table__sort')); // desc: Giả An, Dũng, Bình, An
+    expect(rowsOf(el)[0].querySelector('[data-col="0"]').lastChild.textContent).to.equal('Giả An');
+    expect(ctl(el, 0).disabled).to.equal(true);
+  });
+
+  it('ISSUE-3: turning selection off / switching to single prunes the row cache (server mode)', async () => {
+    const el = await mk('selectable row-key="id" server-mode total-items="6" per-page="3"', { data: PEOPLE.slice(0, 3) });
+    await click(ctl(el, 0));
+    await click(ctl(el, 1));
+    el.setAttribute('selectable', 'single'); // keeps 2, drops 1
+    await frames(1);
+    expect(el.selectedKeys).to.deep.equal([2]);
+    expect(el._rowCache.has('1')).to.equal(false);
+    el.setAttribute('selectable', 'none');
+    await frames(1);
+    expect(el._rowCache.size).to.equal(0);
+    el.setAttribute('selectable', '');
+    el.data = PEOPLE.slice(3, 6);
+    await frames(1);
+    el.select([1, 2]);
+    expect(el.selectedRows, 'no stale rows from before the mode change').to.deep.equal([]);
+  });
+});

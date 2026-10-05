@@ -239,8 +239,13 @@ tạo; `rowKey` / `rowSelectable` / `onSelectChange` là callback của dev; l�
 
 - **Khoá → form**: `name` → `setFormValue(FormData)` một mục mỗi khoá (`String(key)`). Kẻ tấn công gửi lên được **mọi
   chuỗi** (sửa DOM / gọi API / tự POST) → server **luôn** ép kiểu + kiểm quyền từng id (docs có ví dụ PHP). Khoá hợp lệ chỉ
-  là chuỗi khác rỗng / số hữu hạn / `bigint` (`keyId`); object, `NaN`, rỗng bị loại; khoá trùng trong trang → dòng sau
-  không chọn được.
+  là chuỗi khác rỗng / số hữu hạn / `bigint` (`keyId`); object, `NaN`, rỗng bị loại. Khoá trùng (sau `String(key)`) →
+  dòng sau không chọn được: client so trên toàn `data` (review SEC-2: không để `selectedRows` trả dòng khác dòng người
+  dùng chọn), server so trong trang (docs: khoá phải duy nhất toàn cục, khoá ghép `tenant:id`). Docs PHP: CSRF token,
+  mảng ≤ 500 chuỗi số thập phân, bỏ trùng, quyền + xoá trong một câu có điều kiện tenant / owner (không TOCTOU).
+- **Đọc `row-key`** (review SEC-1): chỉ thuộc tính riêng của dòng hoặc getter trên chuỗi prototype của chính nó — dừng ở
+  `Object.prototype` (prototype pollution `Object.prototype.id` không thành khoá); getter / proxy ném → dòng không chọn
+  được, render không gãy.
 - **Khoá không vào DOM**: dòng ↔ khoá qua `data-row-idx` → mảng trong JS; không escape, không lộ kiểu.
 - **Tên ô tick** = chữ của ô `primary` sau render (`textContent`, bỏ nhãn card, ≤ 80 ký tự) đặt bằng `setAttribute`;
   thông báo `role=status` bằng `textContent`; mẫu nhãn thay `{label}` / `{n}` / `{max}` bằng **hàm** (chuỗi dữ liệu có

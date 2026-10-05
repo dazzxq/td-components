@@ -36,6 +36,27 @@ function fill(template, vars) {
   return String(template ?? '').replace(/\{(\w+)\}/g, (m, k) => (Object.hasOwn(vars, k) ? String(vars[k]) : m));
 }
 
+/**
+ * Review SEC-1: the `row-key` field of a row, read without trusting shared prototypes. Own properties first, then the
+ * row's own prototype chain (class-instance getters) — anything that would resolve from `Object.prototype` (or a
+ * built-in prototype after it) is ignored, so a polluted `Object.prototype.id` never becomes a key. A throwing getter /
+ * proxy trap → `undefined` (the row cannot be selected).
+ * @param {object} row @param {string} field
+ */
+function readKeyField(row, field) {
+  try {
+    for (let o = row; o && o !== Object.prototype && o !== Function.prototype && o !== Array.prototype; o = Object.getPrototypeOf(o)) {
+      const d = Object.getOwnPropertyDescriptor(o, field);
+      if (!d) continue;
+      if ('value' in d) return d.value;
+      return typeof d.get === 'function' ? d.get.call(row) : undefined;
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
 /** Visible text of a body cell (the aria-hidden card label excluded), whitespace collapsed, ≤ ROW_LABEL_MAX chars. */
 function cellText(td) {
   let text = '';
@@ -427,6 +448,7 @@ export class TdTable extends TdBaseElement {
       const mode = this._selMode();
       if (mode === 'none') this._sel.clear();
       this._anchor = null;
+      this._pruneRowCache();
       this._doRender(); // the selection column comes / goes (exclusive is synced there)
       return;
     }
@@ -496,6 +518,7 @@ export class TdTable extends TdBaseElement {
     if (!this._titleId) this._titleId = `${this.id || `td-table-${++seq}`}-title`;
     const mode = this._selMode();
     this._sel.setExclusive(mode === 'single');
+    this._pruneRowCache(); // review ISSUE-3: single keeps only the last key
     this._selOn = mode !== 'none' && !!this.rowKey;
     this._dataIndex = null;
     if (mode !== 'none' && !this._selOn) {
@@ -743,7 +766,7 @@ export class TdTable extends TdBaseElement {
       }
     } else {
       const field = this.getAttribute('row-key');
-      k = field && row && typeof row === 'object' ? row[field] : undefined; // inherited (`constructor`…) → not a valid key
+      k = field && row && typeof row === 'object' ? readKeyField(row, field) : undefined;
     }
     if (keyId(k) === null) {
       this._warnOnce('td-table: a row has no valid key (non-empty string, finite number or bigint) — it cannot be selected.');
@@ -763,15 +786,25 @@ export class TdTable extends TdBaseElement {
     }
   }
 
-  /** @private Keys + enabled flags of the rows about to render; a duplicate key on the page → that row is not selectable. */
+  /** @private Review ISSUE-3: the row cache only ever holds rows of SELECTED keys (mode changes bypass _commitSel). */
+  _pruneRowCache() {
+    for (const id of [...this._rowCache.keys()]) if (!this._sel.has(id)) this._rowCache.delete(id);
+  }
+
+  /**
+   * @private Keys + enabled flags of the rows about to render. A duplicate key (after `String(key)`) → only the first
+   * row with it can be selected: client mode compares against the WHOLE `data` (review SEC-2 — the first row in data
+   * order owns the key, on whatever page it is), server mode against the page (keys must be globally unique — docs).
+   */
   _pageSelection(rows) {
     const seen = new Set();
+    const owners = this._isServerMode() ? null : this._dataRows();
     this._pageKeys = rows.map((row) => {
       const k = this._keyOf(row);
       if (k === null) return null;
       const id = keyId(k);
-      if (seen.has(id)) {
-        this._warnOnce('td-table: duplicate row key on this page — only the first row with it can be selected.');
+      if (seen.has(id) || (owners && owners.get(id) !== row)) {
+        this._warnOnce('td-table: duplicate row key — only the first row with it can be selected (keys must be unique; use a composite key such as `${tenantId}:${id}`).');
         return null;
       }
       seen.add(id);
@@ -921,7 +954,9 @@ export class TdTable extends TdBaseElement {
       if (this._selOn) {
         for (const row of this._data) {
           const k = this._keyOf(row);
-          if (k !== null && !m.has(keyId(k))) m.set(keyId(k), row);
+          if (k === null) continue;
+          if (!m.has(keyId(k))) m.set(keyId(k), row);
+          else this._warnOnce('td-table: duplicate row key — only the first row with it can be selected (keys must be unique; use a composite key such as `${tenantId}:${id}`).');
         }
       }
       this._dataIndex = m;
