@@ -2781,8 +2781,8 @@ namespace {
 
     /**
      * @internal td_filter_chips items → [['id','key','label','value','removable','href'(?string)]] (= normalizeItems() of
-     * src/utils/filter-chips-model.js). Bounded (review SEC-1): at most 200 chips (the rest dropped + ONE
-     * E_USER_WARNING), dropped items → ONE E_USER_WARNING per call, a per-base suffix counter for duplicate ids.
+     * src/utils/filter-chips-model.js). Bounded (review SEC-1): at most 200 chips and 800 inspected entries (the rest
+     * never looked at + ONE E_USER_WARNING), dropped items → ONE E_USER_WARNING per call, a per-base suffix counter for duplicate ids.
      */
     function td__filter_items(array $items): array
     {
@@ -2791,11 +2791,14 @@ namespace {
         $next = [];
         $dropped = 0;
         $capped = false;
+        $seen = 0;
         foreach ($items as $raw) {
-            if (count($out) >= 200) {
+            // review SEC-1 round 2: at most 800 entries are INSPECTED (valid or not), at most 200 chips kept
+            if (count($out) >= 200 || $seen >= 800) {
                 $capped = true;
                 break;
             }
+            $seen++;
             if (!is_array($raw)) {
                 $dropped++;
                 continue;
@@ -2828,7 +2831,7 @@ namespace {
             trigger_error("td_filter_chips: $dropped item(s) dropped — key / value / label / id must be strings or numbers (one item per value)", E_USER_WARNING);
         }
         if ($capped) {
-            trigger_error('td_filter_chips: more than 200 items — only the first 200 are printed', E_USER_WARNING);
+            trigger_error('td_filter_chips: too many items — at most 200 chips (800 entries inspected) are printed', E_USER_WARNING);
         }
         return $out;
     }

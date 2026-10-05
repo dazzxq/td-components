@@ -11,7 +11,8 @@
  *   falls back to the key; an empty key drops the item; an empty value is allowed.
  * - Duplicate `id` → suffix `-2`, `-3`… (the first keeps it; a per-base counter keeps it amortised O(n)).
  * - `removable` is true unless exactly `false`. `href` (removable items only) passes `cleanHref()`; refused → absent.
- * - Bounded work (review SEC-1): at most MAX_ITEMS chips (the rest dropped, `capped`); a raw string is cut to 4 × its limit
+ * - Bounded work (review SEC-1): at most MAX_ITEMS chips and MAX_CANDIDATES inspected entries (valid or not — the rest is
+ *   never looked at, `capped`); a raw string is cut to 4 × its limit
  *   (UTF-16 units) BEFORE the control-character regex / code-point split.
  * @module utils/filter-chips-model
  */
@@ -19,6 +20,8 @@
 export const LIMITS = Object.freeze({ key: 200, id: 200, label: 200, value: 500 });
 /** Hard cap on chips (JS = PHP `td__filter_items`). */
 export const MAX_ITEMS = 200;
+/** Hard cap on INSPECTED entries, valid or not (JS = PHP; review SEC-1 round 2): a huge / sparse list stops here. */
+export const MAX_CANDIDATES = MAX_ITEMS * 4;
 
 /**
  * Chip link verdicts shared by the JS and PHP tests (review SEC-2): `[href, JS on https://shop.example/list/, PHP]`
@@ -104,7 +107,12 @@ export function normalizeItems(list, opts = {}) {
   const used = new Set();
   /** base id → next suffix to try (amortised O(n) — SEC-1) */
   const next = new Map();
-  for (const raw of Array.isArray(list) ? list : []) {
+  const arr = Array.isArray(list) ? list : [];
+  // by index, never for…of: a sparse array of length 0xffffffff would visit every hole
+  const end = Math.min(arr.length, MAX_CANDIDATES);
+  if (arr.length > MAX_CANDIDATES) capped = true;
+  for (let i = 0; i < end; i++) {
+    const raw = arr[i];
     if (items.length >= MAX_ITEMS) { capped = true; break; }
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) { dropped++; continue; }
     const key = cleanText(raw.key, LIMITS.key);

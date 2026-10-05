@@ -1385,7 +1385,7 @@ foreach ((array) ($_GET['tag'] ?? []) as $t) {               // nhiều giá tr�
 - **Chính sách URL** (`href`, `clear_href`): `Td::safeUrl()` rồi **chỉ URL tương đối** (`?…`, `#…`, `/đường-dẫn`,
   `đường-dẫn`) — không scheme (kể cả `https:`), không `//host`, không `\`: link "bỏ lọc" không bao giờ rời site (PHP không
   biết origin của trang; JS nhận thêm URL tuyệt đối **cùng origin**). Bị từ chối → × là nút chỉ-JS.
-- Tối đa **200** item (phần thừa bỏ + **một** `E_USER_WARNING`); item sai kiểu cũng chỉ **một** cảnh báo mỗi lần gọi.
+- Tối đa **200** item và **800** mục được xét (phần thừa bỏ + **một** `E_USER_WARNING`); item sai kiểu cũng chỉ **một** cảnh báo mỗi lần gọi.
 
 | Option | Ý nghĩa |
 |---|---|

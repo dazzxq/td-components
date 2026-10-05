@@ -53,7 +53,8 @@ Kit **không** dựng thanh lọc, không đọc / ghi URL: chip chỉ hiện + 
 
 - Mọi chuỗi là **chữ** (gán `textContent` — không có HTML), ký tự điều khiển bị bỏ, cắt ở 200 ký tự (`key` / `id` /
   `label`) / 500 (`value`). Item sai kiểu (object, boolean, mảng…) bị bỏ + một cảnh báo.
-- Tối đa **200** chip (phần thừa bị bỏ + một cảnh báo) — giới hạn cứng, như PHP.
+- Tối đa **200** chip và **800** mục được xét (hợp lệ hay không — mục sau đó không bao giờ được đọc, kể cả mảng thưa rất dài);
+  vượt một trong hai → phần thừa bị bỏ + một cảnh báo. Giới hạn cứng, như PHP.
 - Đọc lại `chips.items` → bản đã chuẩn hoá (bản sao): `{ id, key, label, value, removable, href? }`.
 - Gán `items` **im lặng** (không event). Gán trước khi phần tử được define / gắn vào trang vẫn được.
 
@@ -211,8 +212,8 @@ lại từng trường, không bao giờ tách chữ "nhãn: giá trị". Markup
   (protocol-relative), dấu `\`, `https:host` (thiếu `//`), origin khác, `javascript:` (kể cả `java\tscript:`),
   `data:`, `blob:`, `mailto:`, `tel:` → không phải link. PHP không biết origin của trang nên **chỉ nhận URL tương đối**
   (không scheme, không `//`, không `\`). Không có opt-in cho link sang origin khác.
-- Khối lượng xử lý có trần: tối đa 200 chip, chuỗi thô cắt ở 4 × giới hạn trước khi xử lý, id trùng đánh số theo bộ đếm
-  (không bậc hai).
+- Khối lượng xử lý có trần: tối đa 200 chip và 800 mục được xét (duyệt theo chỉ số, không đi hết mảng thưa), chuỗi thô
+  cắt ở 4 × giới hạn trước khi xử lý, id trùng đánh số theo bộ đếm (không bậc hai).
 - Giá trị chip thường lấy từ URL (người dùng sửa được) — chip chỉ hiển thị; server vẫn phải kiểm từng tham số lọc.
 
 ## Cảm ứng

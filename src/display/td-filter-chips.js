@@ -128,7 +128,7 @@ export class TdFilterChips extends TdBaseElement {
   set items(v) {
     const r = normalizeItems(v);
     if (r.dropped) this._warnOnce('td-filter-chips: an item was dropped — key / value (/ label / id) must be strings or numbers; one item per value of a multi-value filter.');
-    if (r.capped) this._warnOnce(`td-filter-chips: more than ${MAX_ITEMS} items — only the first ${MAX_ITEMS} are shown.`);
+    if (r.capped) this._warnOnce(`td-filter-chips: too many items — at most ${MAX_ITEMS} chips (${MAX_ITEMS * 4} entries inspected) are shown.`);
     if (r.renamed) this._warnOnce('td-filter-chips: duplicate item id — renamed with a -2, -3 … suffix (give every item its own id).');
     this._items = r.items;
     if (!this._initialized) {

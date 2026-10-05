@@ -12,7 +12,7 @@ import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { HAS_PHP, PHP_BIN, ROOT } from './php.mjs';
 import { FILTER_CHIPS_FIXTURES, FILTER_CHIPS_FIXTURE_FILE, renderFilterChipsFixture } from '../ssr/ssr.mjs';
-import { normalizeItems, HREF_CASES, MAX_ITEMS } from '../../src/utils/filter-chips-model.js';
+import { normalizeItems, HREF_CASES, MAX_ITEMS, MAX_CANDIDATES } from '../../src/utils/filter-chips-model.js';
 
 if (!HAS_PHP && process.env.TD_REQUIRE_PHP) throw new Error('TD_REQUIRE_PHP=1 but no php >= 8.0 CLI on PATH');
 const opts = { skip: !HAS_PHP && 'php >= 8.0 CLI not found' };
@@ -161,9 +161,23 @@ describe('php/td.php — td_filter_chips (v0.39.0, contract filter-chips@1)', op
     assert.deepEqual(ids.slice(0, 3), ['x', 'x-2', 'x-3']);
     assert.equal(outs[0].warns, 1, 'cap: one warning');
     assert.equal(itemsOf(outs[1].html).length, 0);
-    assert.equal(outs[1].warns, 1, 'malformed: one warning');
+    assert.equal(outs[1].warns, 2, 'malformed: one dropped warning + one candidate-cap warning');
     assert.equal(Array.from(itemsOf(outs[2].html)[0].value).length, 500);
     assert.equal(outs[2].warns, 0);
+  });
+
+  test('SEC-1 round 2: inspected candidates capped at MAX_CANDIDATES like JS (malformed prefix, then valid entries)', () => {
+    const bad = Array.from({ length: MAX_CANDIDATES - 2 }, () => null);
+    const good = Array.from({ length: 5 }, (_, i) => ({ key: `k${i}`, value: 'v' }));
+    const outs = run([[[...bad, ...good], {}], [Array.from({ length: MAX_CANDIDATES + 5 }, () => ({ key: '' })), {}],
+      [[...bad.slice(2), ...good.slice(0, 2)], {}]]);
+    assert.deepEqual(itemsOf(outs[0].html).map((i) => i.key), ['k0', 'k1']);
+    assert.deepEqual(itemsOf(outs[0].html), normalizeItems([...bad, ...good]).items);
+    assert.equal(outs[0].warns, 2, 'one dropped warning + one cap warning');
+    assert.equal(itemsOf(outs[1].html).length, 0);
+    assert.equal(outs[1].warns, 2);
+    assert.equal(itemsOf(outs[2].html).length, 2);
+    assert.equal(outs[2].warns, 1, 'exactly MAX_CANDIDATES entries: dropped warning only, not capped');
   });
 
   test('SEC-2: chip links are relative only in PHP (HREF_CASES php column, same table as JS)', () => {

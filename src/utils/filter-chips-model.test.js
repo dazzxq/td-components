@@ -2,7 +2,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { normalizeItems, cleanText, cleanHref, fill, LIMITS, MAX_ITEMS, HREF_CASES } from './filter-chips-model.js';
+import { normalizeItems, cleanText, cleanHref, fill, LIMITS, MAX_ITEMS, MAX_CANDIDATES, HREF_CASES } from './filter-chips-model.js';
 
 const SPEC = JSON.parse(readFileSync(new URL('../../test/ssr/filter-chips.fixtures.json', import.meta.url), 'utf8'));
 const HTTPS = { baseURI: 'https://shop.example/list', protocol: 'https:' };
@@ -129,5 +129,37 @@ describe('filter-chips-model — same-origin links (SEC-2)', () => {
   test('the page origin decides (an absolute URL of the SAME origin is kept in JS)', () => {
     assert.equal(cleanHref('https://shop.example/x', PAGE), 'https://shop.example/x');
     assert.equal(cleanHref('https://cdn.shop.example/x', PAGE), '');
+  });
+});
+
+describe('filter-chips-model — inspected candidates are capped too (SEC-1 round 2)', () => {
+  test('MAX_CANDIDATES = MAX_ITEMS × 4', () => assert.equal(MAX_CANDIDATES, MAX_ITEMS * 4));
+
+  test('a max-length sparse array (length 0xffffffff) returns at once, capped', () => {
+    const sparse = [];
+    sparse.length = 0xffffffff;
+    const t0 = performance.now();
+    const r = normalizeItems(sparse);
+    assert.ok(performance.now() - t0 < 100, `${(performance.now() - t0).toFixed(1)}ms`);
+    assert.equal(r.items.length, 0);
+    assert.equal(r.capped, true);
+  });
+
+  test('more than MAX_CANDIDATES malformed entries → capped, nothing kept', () => {
+    const r = normalizeItems(Array.from({ length: MAX_CANDIDATES + 5 }, () => ({ key: '' })));
+    assert.equal(r.items.length, 0);
+    assert.equal(r.capped, true);
+    assert.equal(r.dropped, MAX_CANDIDATES);
+  });
+
+  test('malformed prefix: valid entries within the candidate cap kept, beyond it dropped', () => {
+    const bad = Array.from({ length: MAX_CANDIDATES - 2 }, () => null);
+    const good = Array.from({ length: 5 }, (_, i) => ({ key: `k${i}`, value: 'v' }));
+    const r = normalizeItems([...bad, ...good]);
+    assert.deepEqual(r.items.map((i) => i.key), ['k0', 'k1']);
+    assert.equal(r.capped, true);
+    const ok = normalizeItems([...bad.slice(2), ...good.slice(0, 2)]); // exactly MAX_CANDIDATES entries: not capped
+    assert.equal(ok.items.length, 2);
+    assert.equal(ok.capped, false);
   });
 });

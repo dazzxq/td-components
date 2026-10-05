@@ -120,11 +120,22 @@ describe('v0.39.0 td-filter-chips — markup + semantics (QĐ 11, 14)', () => {
 
   it('SEC-1: 10 000 items (identical ids + malformed) → ≤ 200 chips, one warning per kind, fast', async () => {
     const t0 = performance.now();
-    const el = await mk([...Array.from({ length: 5000 }, () => ({ key: '', value: 1 })), ...Array.from({ length: 5000 }, () => ({ id: 'x', key: 'k', value: 'v' }))]);
+    // a malformed prefix counts toward the 800 inspected entries (round 2): 100 malformed, then identical ids
+    const el = await mk([...Array.from({ length: 100 }, () => ({ key: '', value: 1 })), ...Array.from({ length: 9900 }, () => ({ id: 'x', key: 'k', value: 'v' }))]);
     expect(performance.now() - t0).to.be.below(2000);
     expect(chips(el).length).to.equal(200);
     expect(warns.filter((w) => /dropped/.test(w)).length).to.equal(1);
-    expect(warns.filter((w) => /200/.test(w)).length).to.equal(1);
+    expect(warns.filter((w) => /too many/.test(w)).length).to.equal(1);
+  });
+
+  it('SEC-1 round 2: a max-length sparse array → returns at once, no chip, one warning', async () => {
+    const sparse = [];
+    sparse.length = 0xffffffff;
+    const t0 = performance.now();
+    const el = await mk(sparse);
+    expect(performance.now() - t0).to.be.below(1000);
+    expect(chips(el).length).to.equal(0);
+    expect(warns.filter((w) => /too many/.test(w)).length).to.equal(1);
   });
 
   it('SEC-2: an href to another origin / protocol-relative / backslash → no link', async () => {
