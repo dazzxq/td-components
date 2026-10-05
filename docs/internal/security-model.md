@@ -330,7 +330,7 @@ in giá trị / lỗi gốc của adapter) áp dụng nguyên. Thêm:
 | Guard đóng (`beforeClose`) | Throw / reject → **ở lại** (fail safe cho dữ liệu) + `console.error` **chuỗi cố định**, không bao giờ in object lỗi của caller (review r1 SEC-3, cũng áp dụng cho `ignore()` và hộp `confirmDiscard` của tracker; `.then` của kết quả guard được đọc trong vùng bảo vệ — getter ném = từ chối, review r2 E); đang chờ: không chạy lại guard, không chạy action; đóng bằng code luôn thắng (không treo đăng xuất) | `td-modal.js` `_requestClose`, `td-drawer.js` `requestClose`, `td-v044-close-guard.browser-test.js` |
 | `trackFormDirty` | Chỉ đọc `FormData` (không gửi đi đâu, không lưu storage); tên field `ignore` so bằng `===` / hàm của app; `beforeunload` chỉ `preventDefault()` + `returnValue = ''` (không thông điệp tuỳ biến); submit native chỉ được miễn **một lần**, chỉ khi `isTrusted` và điều hướng chính cửa sổ này (không `method=dialog`, target rỗng / `_self` theo attribute có mặt trước `<base target>`), xét `defaultPrevented` cuối cùng, hết hạn sau 1 s hoặc lần nhấn / chạm kế tiếp (review r1 SEC-2, r2 B-D); listener `window` chỉ có khi form bẩn | `src/utils/form-dirty.js`, `td-v044-form-dirty.engines.browser-test.js`, `test/engines/form-dirty.spec.mjs` |
 
-## 6f. `td-steps`, `td-timeline` (v0.45.0)
+## 6g. `td-steps`, `td-timeline` (v0.45.0)
 
 Plan [v0.45.0-steps-timeline](plans/v0.45.0-steps-timeline.md). Dữ liệu (nhãn bước, tiêu đề / người làm / chi tiết sự
 kiện, `href`) đến từ app — thường từ dữ liệu người dùng nhập (ghi chú đơn, tên khách) → không tin cậy.
@@ -364,6 +364,22 @@ kiện, `href`) đến từ app — thường từ dữ liệu người dùng nh
   (XSS mọi trường, `javascript:` href), `src/utils/{steps,timeline}-model.test.js`, `test/php/td-ssr-steps-timeline.test.js`.
 
 ## 7. Trách nhiệm của site
+
+## 6h. `td-diff` (v0.46.0)
+
+Bề mặt input: **dữ liệu audit không tin cậy** — giá trị do người dùng khác nhập, khoá JSON tuỳ ý, cấu trúc lớn / sâu /
+vòng lặp — đi vào DOM (JS) và HTML (PHP `td_diff` / `td_diff_snapshots`). Plan: `docs/internal/plans/v0.46.0-diff.md`.
+
+| Bề mặt | Luật | Ở đâu |
+|---|---|---|
+| Chữ (khoá, nhãn, giá trị, option enum, `labels`, JSON view) | **Text only**: template đã `escapeHtml` (JS) / `Td::e` (PHP), không có hatch HTML, không link hoá, không markdown. C0 (trừ `\t` `\n`) / C1 bị bỏ; ký tự định hướng / vô hình (U+200B–200F, U+202A–202E, U+2066–2069, U+FEFF) **hiện ra** `⟨U+…⟩` (span muted) — trang audit cho thấy đúng thứ đã lưu (Trojan Source); mỗi giá trị trong phần tử `unicode-bidi: isolate` + `dir="auto"` | `src/utils/diff-markup.js`, `td__diff_markup` (`php/td.php`) |
+| Che (`masked`) | **Trình bày, không phải bảo mật**: server phải bỏ / che trước khi gửi. Item che: chỉ **chuỗi** được in (đã che ở server); giá trị khác không bao giờ được `String()` / duyệt / đưa vào JSON view (`"[ĐÃ ẨN]"`). Nhánh snapshot che theo `FieldDef` (khớp **tiền tố theo đoạn có kiểu**): không đọc (kể cả getter); lá chứa một đường dẫn che bên dưới (mảng giá trị đơn) bị che **cả lá** (không lộ chỉ số che) | `src/utils/diff-model.js`, test spy getter |
+| Duyệt object (JS) | Chỉ plain object (`Object.prototype` / `null`) + mảng; khoá riêng (`Object.keys` trong `try`); getter ném / Proxy ném → `[không đọc được]`; class instance / Map / function → `[không hỗ trợ]` (không gọi `toString`); vòng lặp (theo tổ tiên) → `[vòng lặp]`; `__proto__` từ `JSON.parse` là một hàng thường | `diff-model.js` (`shapeOf`, `keysOf`, `flatten`) |
+| DoS | Mọi trần chạy **trước** việc tốn kém: 10 000 nút / bên, 1 000 khoá / mảng / item, 500 hàng, độ sâu 6, 10 000 ký tự / giá trị, 300 000 / diff, JSON view 100 000 đơn vị (serializer riêng có ngân sách — không `JSON.stringify` trên input), so sánh sâu 10 000 bước; chuỗi thô cắt ở 4 × trần (theo code point) trước mọi regex; mảng thưa duyệt theo chỉ số tới trần. PHP: chuỗi JSON > 2 MB không decode, độ sâu 64 | `LIMITS` (`diff-model.js`) = hằng trong `td__diff_*`; test biên ± 1 + fuzz |
+| Số | Số không an toàn / không hữu hạn không bao giờ hiện chữ số (sai) — `[số quá lớn]` / `[không hỗ trợ]`, luôn "Đổi" + "không so sánh được" (không giấu thay đổi thật); `json_encode(INF)` không bao giờ được gọi | `canonicalNumber` / `td__diff_number` |
+| SSR `diff@1` | Nhận markup chỉ khi đúng dấu + hình tối thiểu; **không đọc dữ liệu ngược từ DOM** (không có state / event nào lấy từ markup — markup là HTML của chính site); dấu khác → một cảnh báo (không nội dung) + render từ property | `td-diff.js`, `td-diff.ssr.engines.browser-test.js` |
+| PHP host | `attrs` allowlist (`on*`, `style`, `data-td-*`, tên của component bị chặn); `view` / `unchanged` theo whitelist; cảnh báo chỉ chứa mã lỗi | `td__diff_host`, `test/php/td-ssr-diff.test.js` |
+
 
 Những thứ kit **cố ý không làm** và site phải làm, nếu không thì có lỗ hổng dù kit đúng. Trang người dùng tương ứng:
 [guides/security.md](../guides/security.md), [guides/media-renditions.md](../guides/media-renditions.md).

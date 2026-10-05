@@ -206,7 +206,19 @@ console, trang lỗi. Lỗi nội bộ của worker hay dịch vụ lưu trữ (
 tầng) chỉ nằm trong log phía server; client chỉ nhận câu chung hoặc câu đã soạn. Kit chỉ kiểm soát chỗ nó hiển thị —
 dữ liệu site gửi xuống trình duyệt ở chỗ khác thì người dùng vẫn đọc được qua DevTools.
 
-## Chính sách URL
+## td-diff: che dữ liệu ở server
+
+`<td-diff>` / `td_diff()` (0.46.0) hiển thị dữ liệu audit đúng như app đưa vào. Kit **không che gì**: mọi giá trị app gán đã
+nằm trong trình duyệt (DevTools, response JSON) dù ô hiện `[ĐÃ ẨN]`.
+
+- **Che ở server, trước khi gửi**: credential / secret → chỉ tên trường (`{ key, masked: true }`, không `before` / `after`);
+  PII → chuỗi đã che (`***678`) — `masked: true` + chuỗi thì kit in nguyên chuỗi đó; HTML / văn bản dài → version + hash.
+- `masked: true` và `fields: [{ path, masked: true }]` chỉ là **chỉ thị hiển thị** (cộng nhãn "Đã che"). Đừng gửi giá trị
+  thật kèm `masked: true` rồi tin kit giấu nó.
+- "Hiện" một giá trị bị che (có audit) là việc của [`<td-masked-value>`](../components/masked-value.md) + endpoint của bạn,
+  không phải của `td-diff`.
+- ID, mã, số tiền có thể vượt 2⁵³ − 1 → gửi **chuỗi** (số lớn hiện `[số quá lớn]`, không bao giờ một con số sai).
+
 
 | Nơi | Chính sách mặc định | Đổi thế nào |
 |---|---|---|

@@ -17213,8 +17213,7 @@
 		font-weight: var(--td-fw-semibold);
 	}
 
-	.td-diff__item[data-mark="add"] > .td-diff__mark { color: var(--td-diff-added-fg); }
-	.td-diff__item[data-mark="del"] > .td-diff__mark { color: var(--td-diff-removed-fg); }
+	/* the + / − marks keep the text colour: success / error ink on the cell tints would read < 4.7 (contrast gate) */
 
 	.td-diff__item[data-mark="del"] > .td-diff__item-value {
 		text-decoration: line-through;

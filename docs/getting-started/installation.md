@@ -262,6 +262,7 @@ sẽ bị dịch thành `/vendor/td-components-0.45.0/button` (không tồn tạ
     "@dazzxq/td-components/filter-chips": "/vendor/td-components-0.45.0/src/display/td-filter-chips.js",
     "@dazzxq/td-components/steps": "/vendor/td-components-0.45.0/src/display/td-steps.js",
     "@dazzxq/td-components/timeline": "/vendor/td-components-0.45.0/src/display/td-timeline.js",
+    "@dazzxq/td-components/diff": "/vendor/td-components-0.45.0/src/display/td-diff.js",
     "@dazzxq/td-components/media-grid": "/vendor/td-components-0.45.0/src/display/td-media-grid.js",
     "@dazzxq/td-components/sortable": "/vendor/td-components-0.45.0/src/display/td-sortable.js",
     "@dazzxq/td-components/pagination": "/vendor/td-components-0.45.0/src/display/td-pagination.js",
@@ -522,6 +523,7 @@ Nguồn: `package.json#exports`.
 | `@dazzxq/td-components/filter-chips` | `src/display/td-filter-chips.js` | `<td-filter-chips>`, `TdFilterChips` (0.39.0) |
 | `@dazzxq/td-components/steps` | `src/display/td-steps.js` | `<td-steps>`, `TdSteps` (0.45.0) |
 | `@dazzxq/td-components/timeline` | `src/display/td-timeline.js` | `<td-timeline>`, `TdTimeline` (0.45.0) |
+| `@dazzxq/td-components/diff` | `src/display/td-diff.js` | `<td-diff>`, `TdDiff` (0.46.0) |
 | `@dazzxq/td-components/media-grid` | `src/display/td-media-grid.js` | `<td-media-grid>`, `TdMediaGrid` |
 | `@dazzxq/td-components/sortable` | `src/display/td-sortable.js` | `<td-sortable>`, `TdSortable` |
 | `@dazzxq/td-components/pagination` | `src/display/td-pagination.js` | `<td-pagination>`, `TdPagination` |

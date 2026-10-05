@@ -901,6 +901,9 @@ Header của file ghi phiên bản thuật toán + hợp đồng (`palette algor
 hex. **Sinh lại khi nâng `td-components`** (so header với `npx td-theme --version`); không sửa tay file sinh.
 Thuật toán 2 (0.42.1) chỉ thêm một dòng `--td-form-summary-pressed-bg` (= `--td-color-pressed` của palette), mọi giá trị
 khác như thuật toán 1; file thuật toán 1 vẫn chạy đúng (thiếu token → mặc định `var(--td-color-pressed)` của kit).
+Thuật toán 3 (0.46.0) chỉ thêm hai dòng `--td-diff-added-bg` / `--td-diff-removed-bg` (nền ô của `td-diff`: success /
+error phủ lên surface, kẹp để chữ / nhãn / chữ muted ≥ 4.7), mọi giá trị khác như thuật toán 2; file cũ vẫn chạy (thiếu
+token → giá trị light / dark của kit — chỉ lệch nếu nền của palette khác xa nền kit).
 
 Dùng palette cho dark: sinh thêm một file `--mode dark` (hoặc `--preset dark` nếu muốn giữ dark của kit) và nạp sau file
 light — khe dark có specificity cao hơn, thứ tự giữa hai file không quan trọng.
@@ -1120,6 +1123,7 @@ diện** của trang component. Cột "Khai báo ở" cho biết ghi đè ở đ
 | td-filter-chips | `--td-filter-chip-*` — `-bg`, `-fg`, `-label-fg`, `-border`, `-radius`, `-h` (`28px`), `-gap`, `-max` (bề rộng tối đa của giá trị, `16rem`), `-remove-fg` (icon ×, ≥ 4.7:1 trên nền chip), `-remove-hover` (0.39.0). Mặc định qua gate `test:contrast`; ghi đè thì site tự kiểm | `:root` | [filter-chips.md](../components/filter-chips.md) |
 | td-steps | Hình học `--td-steps-marker` (`28px`), `--td-steps-line` (`2px`), `--td-steps-gap`; màu `--td-steps-{done,current,upcoming,error}-{bg,fg,border}`, `--td-steps-connector`, `--td-steps-connector-done` (0.45.0) — mặc định là `var()` của hợp đồng theme (accent, surface, viền control, cặp lỗi của alert): dark / palette sinh / theme theo vùng không cần thêm gì | hình học `:root`; màu `:root, [data-td-theme]` | [steps.md](../components/steps.md) |
 | td-timeline | Hình học `--td-timeline-marker` (`28px`), `--td-timeline-line` (`2px`), `--td-timeline-gap`; màu `--td-timeline-marker-{bg,fg,border}`, `--td-timeline-connector`, `--td-timeline-day-fg` (0.45.0); tông dùng `--td-alert-{v}-{bg,border,icon}` | hình học `:root`; màu `:root, [data-td-theme]` | [timeline.md](../components/timeline.md) |
+| td-diff | `--td-diff-*` — `-added-bg` / `-removed-bg` (nền ô "Sau" / "Trước": light `#eef6f1` / `#fbf2f2`, dark `#1d3026` / `#362628` — token phụ thuộc sáng / tối, **palette `td-theme` tự tính** cho nền của site: chữ / nhãn / chữ muted ≥ 4.7 trên chúng), `-added-fg` / `-removed-fg` / `-changed-fg` (chữ "Thêm" / "Xoá" / "Đổi" = màu ngữ nghĩa), `-muted-fg`, `-border`, `-head-bg`, `-label-w` (`30%`), `-json-max-h` (`24rem`), `-font-mono` (0.46.0). Mặc định qua gate `test:contrast` + `test:page-contrast`; ghi đè thì site tự kiểm | `:root` (màu: `:root, [data-td-theme]`) | [diff.md](../components/diff.md) |
 | td-tabs | `--td-tabs-*` | `:root` | [tabs.md](../components/tabs.md) |
 | td-pagination | `--td-pagination-*` | `:root` (có `@media (pointer: coarse)`) | [pagination.md](../components/pagination.md) |
 | td-empty-state | `--td-empty-state-*` | `:root` (`--sm` / `--lg` / `--compact` đặt lại `-pad` / `-gap` trên phần tử) | [empty-state.md](../components/empty-state.md) |

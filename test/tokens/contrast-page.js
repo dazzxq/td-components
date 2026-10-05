@@ -1253,7 +1253,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
         for (const cell of r.querySelectorAll('.td-diff__cell')) {
           if (getComputedStyle(cell).display === 'none') continue;
           const bg = over(getComputedStyle(cell).backgroundColor, tok('--td-color-surface'));
-          for (const n of cell.querySelectorAll('.td-diff__value, .td-diff__ctl, .td-diff__side, .td-diff__arrow')) {
+          for (const n of cell.querySelectorAll('.td-diff__value, .td-diff__ctl, .td-diff__side, .td-diff__arrow, .td-diff__mark, .td-diff__item-value')) {
             if (getComputedStyle(n).display === 'none') continue;
             pairs.push({ what: `${r.dataset.kind} ${cell.className.split('--')[1]} ${n.className}`, fg: getComputedStyle(n).color, bg, min: 4.7 });
           }

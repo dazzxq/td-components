@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.46.0](#0460) | Thêm tính năng (`<td-diff>`, PHP `td_diff` / `td_diff_snapshots`) | Không bắt buộc. Import map: thêm `diff`. File `td-theme` sinh ra: header `palette algorithm 3` (thêm hai dòng `--td-diff-*-bg`, mọi giá trị khác như cũ) — file cũ vẫn đúng, sinh lại khi tiện. |
 | [0.42.1](#0421) | Đổi giao diện **chỉ ở dark**, hai trạng thái nhấn | Không bắt buộc. Light giống từng pixel. Dark: link trong khung tóm tắt lỗi form khi nhấn làm tối nền (trước phủ trắng, chữ 3.30:1 → 6.34:1); nút × của chip-input hover / nhấn nhạt hơn một chút (16 % → 13 %, chữ khi nhấn 4.22 → 4.88). Site ghi đè giá trị dark cũ: xem dưới. |
 | [0.42.0](#0420) | Thêm tính năng (palette `td-theme`, builder, theme theo vùng, popup theo vùng) + đổi hành vi **chỉ khi site dùng vùng** | Không bắt buộc. Trang không đặt `data-td-theme` trên phần tử con: không đổi gì (golden light / dark 0 khác biệt). Site **chủ động** đặt `data-td-theme` trên một vùng: override **màu** không layer trên `:root` không còn chảy vào trong vùng — ghi đè thêm trên `[data-td-theme="…"]`. Popup mở từ trong vùng nay theo vùng (trước theo trang). |
 | [0.41.0](#0410) | Đổi giao diện **chỉ ở dark** + thêm tính năng (`light` / `auto`, hợp đồng theme) | Không bắt buộc. Không đặt `data-td-theme` = light **giống từng pixel**, trừ viền ô chọn dòng `td-table` (sửa hồi quy 0.37) và **vòng focus bàn phím** (rõ hơn, ≥ 3:1 — chỉ thấy khi focus bằng bàn phím). Dark đổi một số giá trị (viền control ≥ 3:1, chữ phụ, accent, tooltip, bóng — danh sách dưới); site ghi đè giá trị dark cũ thì xem lại. Site **đổi** `--td-color-surface` / `-text` / `-text-muted` / `-border-strong` / `--td-color-{success,warning,error}` / `--td-pastel-*-fg` ở light: ô nhập, modal, chữ control, placeholder, badge outline, nút thao tác, tiêu đề alert giờ **đi theo** (trước giữ màu cứng). Script `matchMedia` tự bật dark → thay bằng `data-td-theme="auto"`. |
@@ -73,7 +74,17 @@ theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao
 
 ---
 
-## 0.42.1
+## 0.46.0
+
+**Mức: thêm tính năng, không phá vỡ.** Thêm `<td-diff>` ([diff.md](../components/diff.md)) — so sánh trước / sau theo
+trường cho màn audit log — và PHP `td_diff()` / `td_diff_snapshots()` / `Td::diffModel()` (hợp đồng SSR `diff@1`).
+
+- Import map tự liệt kê: thêm `@dazzxq/td-components/diff`.
+- Palette `td-theme`: thuật toán **3** — chỉ thêm `--td-diff-added-bg` / `--td-diff-removed-bg` (nền ô, tính cho nền của
+  palette), mọi giá trị khác như thuật toán 2. File cũ vẫn chạy (thiếu token → giá trị light / dark của kit); sinh lại khi
+  tiện để nền ô khớp palette. `--preset light|dark` = giá trị kit.
+- Không đổi gì ở component khác.
+
 
 **Mức: đổi giao diện chỉ ở dark, chỉ hai trạng thái nhấn.** Không đặt `data-td-theme` / light: giống từng pixel 0.42.0
 (golden light 0 khác biệt). Dark (`data-td-theme="dark"` / `auto` ở OS tối): hai cặp chữ / nền khi nhấn dưới ngưỡng 4.7

@@ -74,6 +74,7 @@ lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong 
 | [Filter chips](filter-chips.md) | `<td-filter-chips>` | `/filter-chips` | Chip bộ lọc đang áp dụng ("Trạng thái: Đang bán ×"), "Xoá tất cả", chip cố định, × là link cho trang PHP / không JS, một hàng cuộn khi hẹp; `filter-remove` / `filter-clear` huỷ được; PHP `td_filter_chips` (0.39) |
 | [Steps](steps.md) | `<td-steps>` | `/steps` | Tiến trình nhiều bước (wizard, import): xong / hiện tại / lỗi / chưa tới, ngang / dọc, tự gọn khi hẹp, bấm quay lại (`step-select` — kit không tự đổi bước); PHP `td_steps` (0.45) |
 | [Timeline](timeline.md) | `<td-timeline>` | `/timeline` | Dòng sự kiện nhóm theo ngày (múi giờ IANA, "Hôm nay" / "Hôm qua"), icon, tông, người làm, chi tiết `<details>` (tải lười), "Xem thêm"; thời điểm phải có múi giờ; PHP `td_timeline` (0.45) |
+| [Diff](diff.md) | `<td-diff>` | `/diff` | So sánh trước / sau theo trường cho màn audit log: Thêm / Xoá / Đổi bằng chữ, `[ĐÃ ẨN]`, mảng quyền so như tập (+ / −), giá trị dài thu gọn, JSON view tuỳ chọn, inline khi hẹp; chỉ hiển thị (server che dữ liệu); PHP `td_diff` / `td_diff_snapshots` (0.46) |
 | [Tabs](tabs.md) | `<td-tabs>` | `/tabs` | Tab (chuẩn APG, kích hoạt thủ công) |
 | [Pagination](pagination.md) | `<td-pagination>` | `/pagination` | Phân trang |
 | [Empty state](empty-state.md) | `<td-empty-state>` | `/empty-state` | Màn "chưa có dữ liệu" có hành động |
