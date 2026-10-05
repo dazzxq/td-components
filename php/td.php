@@ -233,6 +233,11 @@ namespace TdComponents {
         public const COLOR_MAX_INPUT = 64;
         public const COLOR_PRESET_CANDIDATES = 192;
         public const COLOR_PRESET_STRING = 192 * 64;
+        /** v0.50.0: td_rating (always the element <td-rating> + stars / text — read-only, no JS needed). */
+        public const SSR_RATING = 'rating@1';
+        /** v0.50.0: texts of td_rating = TdRating.labels defaults (R13: one static set per site; a site overriding the JS
+         * labels gets a re-render with them). */
+        public const RATING_LABELS = ['value' => '{value} trên {max} sao', 'count' => '({count} đánh giá)', 'none' => 'Chưa có đánh giá'];
         /** v0.36.0: tones / sizes of td_action_button (= TdActionButton). */
         public const ACTION_TONES = ['standard', 'warning', 'danger'];
         public const ACTION_SIZES = ['sm', 'md', 'lg'];
@@ -4159,6 +4164,132 @@ namespace {
         $v = (string) preg_replace('/\r\n?/', "\n", $v);
         $clean = preg_replace('/[\x{0}-\x{8}\x{B}-\x{1F}\x{7F}-\x{9F}]/u', '', $v);
         return $clean === null ? null : td__utf8_prefix($clean, $max);
+    }
+
+    /**
+     * v0.50.0 read-only star rating (contract rating@1, plan v0.50.0-rating-carousel R1–R13) — ALWAYS the element
+     * `<td-rating data-td-ssr="rating@1">` + the full tree <td-rating> builds (no JS needed: td.css paints it; the module
+     * adopts it in place): [`span.td-rating__value[aria-hidden]` "4,5" when show_value] + `span.td-rating__stars[aria-hidden]`
+     * > `max` × `span.td-rating__star[data-fill=0|10|…|100]` > two `svg.td-icon[data-icon=star]` (`td-rating__off`,
+     * `td-rating__on`) + `span.td-sr-only` "4,5 trên 5 sao" + [`span.td-rating__count` "(1.234 đánh giá)"]. No rating
+     * ($value null / not a number) → `data-empty` + `span.td-rating__none` "Chưa có đánh giá" (no stars, count ignored).
+     * $value: int / float (negative → 0) or a plain decimal string (`/^\d+(\.\d+)?$/`, ≤ 16 characters); clamped to max.
+     * Options: max (integer 1–10, default 5; invalid → 5 + E_USER_WARNING), precision ('half' default | 'exact'), count
+     * (integer ≥ 0), show_value (bool), size ('s' | 'm' | 'l'), id, class, attrs (host: allowlisted + aria-* / data-*; owned
+     * names and data-td-* reserved). No `labels` option (R13): the kit's default Vietnamese texts (Td::RATING_LABELS).
+     * Structured data (AggregateRating) is the site's job — from real reviews only.
+     */
+    function td_rating(int|float|string|null $value, array $o = []): string
+    {
+        $L = Td::RATING_LABELS;
+        $v = td__rating_value($value);
+        $max = 5;
+        $rawMax = $o['max'] ?? null;
+        if ($rawMax !== null && $rawMax !== '') {
+            $m = null;
+            if (is_int($rawMax)) {
+                $m = $rawMax;
+            } elseif (is_float($rawMax) && is_finite($rawMax) && floor($rawMax) === $rawMax) {
+                $m = (int) $rawMax;
+            } elseif (is_string($rawMax) && preg_match('/^\d{1,2}$/', $rawMax)) {
+                $m = (int) $rawMax;
+            }
+            if ($m !== null && $m >= 1 && $m <= 10) {
+                $max = $m;
+            } else {
+                trigger_error('td_rating: max must be an integer 1–10 — 5 used', E_USER_WARNING);
+            }
+        }
+        $exact = ($o['precision'] ?? null) === 'exact';
+        $count = td__rating_count($o['count'] ?? null);
+        $size = in_array($o['size'] ?? null, ['s', 'l'], true) ? $o['size'] : null;
+        $show = !empty($o['show_value']);
+        $taken = [];
+        $html = '<td-rating' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_RATING,
+            'id' => td__str($o['id'] ?? null),
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'value' => $v === null ? null : $v[1],
+            'max' => (string) $max,
+            'precision' => $exact ? 'exact' : null,
+            'count' => $count,
+            'show-value' => $show,
+            'size' => $size,
+            'data-empty' => $v === null,
+        ], $taken);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $taken = td__reserve(['id', 'class', 'value', 'max', 'precision', 'count', 'show-value', 'size', 'data-empty'], $extra, $taken);
+        $html .= Td::attrs($extra, $taken) . '>';
+        if ($v === null) {
+            return $html . '<span class="td-rating__none">' . Td::e($L['none']) . '</span></td-rating>';
+        }
+        $val = min($v[0], (float) $max);
+        $n = (int) td__js_round($val * 10);
+        $text = intdiv($n, 10) . ($n % 10 ? ',' . ($n % 10) : '');
+        if ($show) {
+            $html .= '<span class="td-rating__value" aria-hidden="true">' . Td::e($text) . '</span>';
+        }
+        $shown = $exact ? $val : td__js_round($val * 2) / 2;
+        $off = Td::icon('star', 'm', '', 'td-rating__off');
+        $on = Td::icon('star', 'm', '', 'td-rating__on');
+        $html .= '<span class="td-rating__stars" aria-hidden="true">';
+        for ($i = 0; $i < $max; $i++) {
+            $f = min(1.0, max(0.0, $shown - $i));
+            $html .= '<span class="td-rating__star" data-fill="' . ((int) td__js_round($f * 10) * 10) . '">' . $off . $on . '</span>';
+        }
+        $html .= '</span><span class="td-sr-only">' . Td::e(strtr($L['value'], ['{value}' => $text, '{max}' => (string) $max])) . '</span>';
+        if ($count !== null) {
+            $html .= '<span class="td-rating__count">'
+                . Td::e(strtr($L['count'], ['{count}' => (string) preg_replace('/\B(?=(\d{3})+$)/', '.', $count)])) . '</span>';
+        }
+        return $html . '</td-rating>';
+    }
+
+    /**
+     * @internal td_rating value (= parseValue + formatValueAttr of src/utils/rating-model.js) → [float, attribute string]
+     * or null: a number (finite, negative → 0; attribute rounded to 4 decimals, no trailing zeros) or a plain decimal
+     * string ≤ 16 characters (printed as given).
+     */
+    function td__rating_value(mixed $v): ?array
+    {
+        if (is_int($v) || is_float($v)) {
+            if (!is_finite((float) $v)) {
+                return null;
+            }
+            if ((float) $v >= 1e15) {
+                return null;
+            }
+            $k = td__js_round(max(0.0, (float) $v) * 10000);
+            $frac = rtrim(str_pad((string) (int) fmod($k, 10000), 4, '0', STR_PAD_LEFT), '0');
+            $s = (string) (int) floor($k / 10000) . ($frac !== '' ? '.' . $frac : '');
+            return [(float) $s, $s];
+        }
+        if (!is_string($v) || strlen($v) > 16 || !preg_match('/^\d+(\.\d+)?$/', $v)) {
+            return null;
+        }
+        return [(float) $v, $v];
+    }
+
+    /**
+     * @internal JavaScript Math.round() for x ≥ 0 (ties up; PHP < 8.4 round() pre-rounds to 15 significant digits and
+     * would disagree on values like 2.4999999999999996).
+     */
+    function td__js_round(float $x): float
+    {
+        $r = floor($x);
+        return $x - $r >= 0.5 ? $r + 1 : $r;
+    }
+
+    /** @internal td_rating count (= parseCount): int ≥ 0 or a digit string ≤ 15 characters → canonical digits; else null. */
+    function td__rating_count(mixed $v): ?string
+    {
+        if (is_int($v)) {
+            return $v >= 0 ? (string) $v : null;
+        }
+        if (!is_string($v) || !preg_match('/^\d{1,15}$/', $v)) {
+            return null;
+        }
+        return (string) preg_replace('/^0+(?=\d)/', '', $v);
     }
 
     /** @internal v0.26.0: element mode of a form helper — per call `element` (true/false) overrides Td::configure. */
