@@ -1917,9 +1917,13 @@
 	}
 
 	/* ---- LOCKED (the container greys itself; the mark follows like td-checkbox's 50 %) ---- */
-	:is([aria-disabled="true"], :disabled) > .td-check,
-	.td-check-matrix__input:disabled ~ .td-check {
+	:is([aria-disabled="true"], :disabled) > .td-check {
 		opacity: 0.5;
+	}
+
+	/* v0.47.0: a locked matrix cell — its ticked mark keeps ≥ 2.2:1 on the cell (0.5 gave 2.14 with the light accent) */
+	.td-check-matrix__input:disabled ~ .td-check {
+		opacity: 0.6;
 	}
 
 	/* ---- On a photo (media grid / picker ticks): a dark hairline keeps the white box visible on white images ---- */

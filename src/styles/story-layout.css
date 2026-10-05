@@ -21,3 +21,6 @@
 .sb-stack > td-datetime-range { width: min(100%, 24rem); }
 /* v0.46.0: td-diff stories — a dark scope with its own page background */
 .sb-dark { padding: 16px; background: var(--td-color-bg); color: var(--td-color-text); color-scheme: dark; }
+/* v0.47.0: td-check-matrix is an inline-size container — it must get its width from the column, never from its content */
+.sb-stack > td-check-matrix, .sb-stack > form > td-check-matrix, form.sb-stack > td-check-matrix { align-self: stretch; }
+form.sb-stack.sb-narrow { align-items: stretch; }

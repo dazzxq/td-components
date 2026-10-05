@@ -87,6 +87,17 @@ export function renderedPairs() {
     for (const fg of ['--td-color-text', '--td-color-text-label', '--td-color-text-muted']) add(`diff ${fg} on ${t}`, fg, [t]);
   }
   for (const s of PAGE) for (const c of ['success', 'error', 'warning']) add(`diff kind ${c} on ${s}`, `--td-color-${c}`, [s]);
+  // v0.47.0 td-check-matrix (check-matrix.css: head / group fill = --td-color-surface-muted, crosshair = --td-color-hover over
+  // the grid surface, changed triangle = --td-accent, note dot = --td-color-text-muted — all aliases of contract tokens)
+  add('matrix head label', '--td-color-text-label', ['--td-color-surface-muted']);
+  add('matrix head description', '--td-color-text-muted', ['--td-color-surface-muted']);
+  add('matrix group count', '--td-color-text-muted', ['--td-color-surface-muted']);
+  add('matrix crosshair label', '--td-color-text', ['--td-color-hover', '--td-color-surface']);
+  add('matrix crosshair description', '--td-color-text-muted', ['--td-color-hover', '--td-color-surface']);
+  for (const s of PAGE) add(`matrix note line on ${s}`, '--td-color-text-muted', [s]);
+  add('matrix changed mark', '--td-accent', ['--td-color-surface'], 3);
+  add('matrix changed mark on crosshair', '--td-accent', ['--td-color-hover', '--td-color-surface'], 3);
+  add('matrix note dot', '--td-color-text-muted', ['--td-color-surface'], 3);
   return P;
 }
 
