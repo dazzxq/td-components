@@ -6,7 +6,7 @@
  *
  * M0 (after v0.33): media picker (mock adapter, no network), media grid (default + justified + sortable gallery) and
  * dropzone are included. v0.35.0: td-cropper (inline: full width + the 280 px column), the crop dialog and the picker crop
- * step (openers `cropDialog` / `pickerCrop`). v0.36.1: `#rsp-table-density` (5 short columns, card density budget).
+ * step (openers `cropDialog` / `pickerCrop`). v0.36.1: `#rsp-table-density` (5 short columns, card density budget). v0.37.0: it is `selectable` (row 2 selected).
  */
 import '../../src/form/td-button.js';
 import '../../src/form/td-action-button.js'; // v0.36.0
@@ -174,7 +174,7 @@ export function mountResponsiveFixture(root) {
     <td-pagination total-items="150" items-per-page="10" current-page="3"></td-pagination>
   </section>
   <section class="rsp-section" data-section="table"><h2>Bảng</h2>
-    <td-table id="rsp-table-density" title="Bài viết"></td-table>
+    <td-table id="rsp-table-density" title="Bài viết" selectable row-key="id"></td-table>
     <td-table id="rsp-table" title="Đơn hàng"></td-table>
     <td-table id="rsp-table-scroll" title="Đơn hàng (luôn dạng bảng)" layout="table"></td-table>
   </section>
@@ -240,6 +240,7 @@ export function mountResponsiveFixture(root) {
   const posts = root.querySelector('#rsp-table-density');
   posts.columns = densityColumns();
   posts.data = POSTS.map((o) => ({ ...o }));
+  posts.selectedKeys = [2]; // v0.37.0: one selected card (accent border) in every screenshot
   root.querySelector('#rsp-empty').actions = [{ label: 'Tạo đơn hàng mới', variant: 'primary' }, { label: 'Nhập từ tệp Excel', variant: 'secondary' }];
 
   TdMenu.define('rsp-menu', [

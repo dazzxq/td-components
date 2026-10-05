@@ -2,6 +2,34 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.37.0
+
+**`<td-table>` chọn dòng** (plan `docs/internal/plans/v0.37.0-table-row-selection.md`, Codex plan-review APPROVE 2 vòng;
+[ADR 0018](docs/internal/decisions/0018-table-row-selection.md)). Chi tiết nâng cấp:
+`docs/upgrading/breaking-changes.md#0370`.
+
+### Added
+
+- `selectable="multiple|single"` + `rowKey`: mỗi dòng một `button[role=checkbox]` dùng tick chung `.td-check`; ô chọn tất
+  cả (trang này, ba trạng thái); Shift chọn dải; `max-selected` (chỉ chặn thao tác người dùng); lựa chọn giữ qua trang /
+  sắp xếp / đổi dữ liệu; `rowSelectable` khoá từng dòng.
+- API `selectedKeys` / `selectedRows` / `select()` / `deselect()` / `clearSelection()` (im lặng trừ `{ emit: true }`),
+  event `select-change` (`keys`, `added`, `removed`, `trigger`) và `select-limit`.
+- Tham gia form: có `name` → mỗi khoá đã chọn là một mục FormData (`String(key)`, kể cả khoá ở trang khác).
+- Dạng card: chip "chọn tất cả trang này" đầu thanh sắp xếp, card đã chọn viền accent; ô chọn 44px trên cảm ứng.
+- Công thức thanh thao tác hàng loạt + "chọn tất cả N kết quả" trong docs; ví dụ PHP nhận form có CSRF, giới hạn id, xoá
+  trong một truy vấn có điều kiện chủ sở hữu.
+
+### Changed
+
+- `<td-table disabled>` giờ khoá cả bảng như một control form (trình duyệt chặn click bên trong). Chỉ muốn khoá việc
+  chọn: `rowSelectable = () => false`.
+
+### Security
+
+- Khoá dòng chỉ đọc từ thuộc tính riêng / prototype của lớp (không bao giờ từ `Object.prototype`); getter ném lỗi → dòng
+  không chọn được. Khoá trùng (sau `String(key)`, kể cả `1` và `"1"`) trên toàn dữ liệu client → chỉ dòng đầu chọn được.
+
 ## 0.36.2
 
 **Chuẩn cảm ứng toàn kit** (owner: "hỗ trợ behaviors touch chuẩn nhất có thể cho toàn bộ components"; đồng thuận Codex

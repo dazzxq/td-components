@@ -3,7 +3,8 @@
 # Bảng dữ liệu — `<td-table>`
 
 Bảng dữ liệu có sắp xếp theo cột, phân trang (trên + dưới), trạng thái đang tải (skeleton), trạng thái rỗng,
-header dính khi cuộn, nút thao tác theo hàng và **dạng card tự động khi chỗ đặt hẹp** (từ 0.34.0). Cột và dữ liệu đưa vào bằng **JS property** (`columns`, `data`), hỗ trợ cả chế độ client (bảng tự
+header dính khi cuộn, nút thao tác theo hàng, **dạng card tự động khi chỗ đặt hẹp** (từ 0.34.0) và **chọn dòng**
+theo khoá (một / nhiều, chọn cả trang, Shift chọn dải, giữ qua trang — từ 0.37.0). Cột và dữ liệu đưa vào bằng **JS property** (`columns`, `data`), hỗ trợ cả chế độ client (bảng tự
 sort + cắt trang) lẫn chế độ server (bạn tự gọi API mỗi trang). Dùng cho danh sách dạng hàng/cột; **không** dùng để
 dàn layout (dùng CSS grid) và không dùng cho bảng tĩnh vài dòng không cần sort/phân trang (viết `<table>` thường).
 
@@ -11,7 +12,7 @@ dàn layout (dùng CSS grid) và không dùng cho bảng tĩnh vài dòng không
 |---|---|
 | Import | `import '@dazzxq/td-components/table'` (class: `import { TdTable } from '@dazzxq/td-components'`) |
 | Loại | Custom element |
-| Form-associated | không |
+| Form-associated | có từ 0.37.0, **chỉ để gửi khoá đã chọn** khi có `name` (không phải control nhập liệu: không `value` / validation) |
 | Từ phiên bản | 0.1.0 (token-native từ 0.10.0: cần `td.css`) |
 
 Import `table` tự import luôn `td-pagination`, `td-empty-state` và `TdMenu` (bảng dùng chúng bên trong), bạn không
@@ -307,8 +308,8 @@ Muốn cột đầu vẫn là cặp như cũ: `card: 'secondary'` trên cột đ
 - Giá trị `ellipsis` nằm cùng dòng với nhãn của nó, cắt "…" ở mép card (0.36.1; trước đó rơi xuống dòng dưới nhãn).
 - Mỗi hàng là một card nền đặc, một đường viền mảnh, không bóng, không kính (minimal surfaces). Zebra tắt; hover /
   focus-within giữ. Skeleton loading cũng có dạng card; empty-state trải hết chiều ngang.
-- Khoảng trống cho **chọn hàng** (v0.37): `order: 0` trước `lead` / primary dành cho `.td-table__card-select` — chưa
-  có phần tử nào.
+- **Chọn dòng** (0.37.0): ô chọn (`.td-table__card-select`, `order: 0`) đứng đầu dòng đầu của card —
+  `[chọn][lead][primary]`; "Chọn tất cả trên trang" là **chip đầu** của thanh sắp xếp (chữ hiện). Xem mục 10.
 
 **Host cần bề rộng từ cha.** Host là `container: td-table / inline-size`: bề rộng của nó không còn phụ thuộc nội dung,
 nên đặt bảng ở chỗ "co theo nội dung" (flex item `flex: 0 1 auto` trong hàng flex, `inline-block`, `float`, cột flex
@@ -327,6 +328,177 @@ desktop thì bảng vẫn là bảng cuộn ngang như trước.
 chuột: tối thiểu 24px (chip 32px).
 
 Muốn giữ hành vi cũ ở mọi nơi: `layout="table"`.
+
+### 10. Chọn dòng (`selectable` + `rowKey`) — từ 0.37.0
+
+Bật bằng attribute `selectable` và **bắt buộc** cho bảng biết khoá của dòng (`row-key` / `rowKey`). Thiếu khoá → bảng
+**không** hiện cột chọn và in một cảnh báo: chọn theo chỉ số dòng là sai ngay khi sort / đổi trang / dữ liệu đổi.
+
+```html
+<td-table id="posts" title="Bài viết" selectable row-key="id" per-page="20"></td-table>
+```
+
+```js
+const table = document.querySelector('#posts');
+table.columns = [{ key: 'id', label: 'ID' }, { key: 'title', label: 'Tiêu đề', card: 'primary' }, { key: 'author', label: 'Tác giả' }];
+table.data = posts;
+table.addEventListener('select-change', (e) => {
+  console.log(e.detail); // { keys: [3, 7], added: [7], removed: [], trigger: 'toggle' }
+});
+```
+
+**Chế độ** — `selectable` (vắng, `none`, `false`, `0`, `off` = tắt):
+
+- `selectable` / `selectable="multiple"` (giá trị lạ cũng là `multiple`): mỗi dòng một ô tick + ô **"Chọn tất cả trên
+  trang"** ở đầu header (ba trạng thái: chưa / một phần / tất cả).
+- `selectable="single"`: chọn **một** dòng. Vẫn là ô tick (checkbox độc quyền, không phải radio): chọn dòng B khi A đang
+  chọn thì A tự bỏ (một `select-change` có cả `added` lẫn `removed`); bấm lại dòng đang chọn → bỏ chọn (0 dòng). Không có
+  ô chọn cả trang, không Shift dải, bỏ qua `max-selected`.
+- Đổi `multiple → single` giữ khoá chọn **sau cùng**; tắt → bỏ hết. Đổi chế độ bằng code không phát event.
+
+**Khoá dòng** (`rowKey`): tên trường (`row-key="id"` hoặc `table.rowKey = 'id'`) hoặc hàm
+(`table.rowKey = (row) => row.shop + ':' + row.id`). Khoá hợp lệ: chuỗi khác rỗng, số hữu hạn, `bigint`. Bảng so khoá theo `String(key)` — số
+`1` và chuỗi `"1"` là **một** dòng (API hay trả lẫn kiểu) — nhưng trả lại **đúng giá trị gốc** bạn đưa (lần đầu thấy) trong
+`selectedKeys`. Dòng có khoá sai, khoá trùng (dòng thứ hai trở đi — sau khi so bằng `String(key)`, nên `1` và `"1"` là
+trùng; chế độ client so trên **toàn bộ** `data`, chế độ server so trong trang) hoặc `rowKey` ném lỗi → ô tick bị khoá +
+một cảnh báo mỗi loại. Đổi `rowKey` → bỏ hết lựa chọn (danh tính đổi), không event. Khoá **không** được in ra DOM.
+
+**Thao tác của người dùng** (chỉ trên ô tick — bấm vào chỗ khác của dòng không chọn, để link / nút trong dòng vẫn dùng
+được):
+
+| Thao tác | Kết quả |
+|---|---|
+| Bấm ô tick / Space | Bật / tắt dòng đó (đặt "mốc") |
+| Shift + bấm / Shift + Space | Áp **trạng thái mới của dòng đích** cho cả dải từ mốc tới đích, theo thứ tự **đang hiện** (sau sort), bỏ qua dòng khoá: đích được chọn → cả dải chọn; đích bị bỏ → cả dải bỏ. Mốc ở trang khác (đã đổi trang) → chỉ bật / tắt một dòng |
+| Enter | Không làm gì (đúng chuẩn checkbox) |
+| Ô "Chọn tất cả trên trang" | Chưa chọn hết các dòng chọn được của **trang này** → chọn hết; đã hết → bỏ các dòng đó. Dòng ở trang khác **không bị đụng** |
+
+Ô header tính trên các dòng **chọn được của trang hiện tại**; bị khoá khi trang rỗng / đang tải / không dòng nào chọn
+được. Header không phản ánh lựa chọn ở trang khác — tổng số nằm ở thanh hàng loạt của bạn (dưới).
+
+**Dòng khoá**: `table.rowSelectable = (row) => row.status !== 'locked'` (ném lỗi = khoá). Người dùng không đổi được dòng
+khoá; code (API) **vẫn** chọn được (app là nguồn quyền) → dòng hiện "đã chọn + khoá".
+
+**Tối đa** (`max-selected="50"`, số nguyên ≥ 1, chỉ `multiple`): chặn **thao tác của người dùng** (bấm, Shift dải, ô
+header) — dừng ở trần, phát `select-limit` + thông báo "Tối đa 50 dòng". **API không bao giờ bị chặn**, kể cả
+`{ emit: true }`: lựa chọn đặt bằng code vượt trần được giữ nguyên; khi đó người dùng chỉ bỏ chọn được cho tới khi dưới trần.
+
+**Lựa chọn sống qua** đổi trang, sort, gán `data` (client lẫn server), `columns`, `loading`. Bảng **không** tự bỏ khoá
+không còn trong `data` (không phân biệt "bị lọc ẩn" với "đã xoá") — bạn quyết:
+
+```js
+// sau khi xoá trên server
+table.data = rows; table.deselect(deletedIds);
+// đổi bộ lọc → bỏ chọn (nếu muốn)
+filter.addEventListener('change', () => { table.clearSelection(); reload(); });
+// chỉ giữ lựa chọn trong một trang
+table.addEventListener('page-change', () => table.clearSelection({ emit: true }));
+```
+
+**Khoá phải duy nhất toàn cục.** Ở server mode bảng chỉ thấy một trang nên không phát hiện được khoá trùng giữa các
+trang — hai dòng khác nhau cùng khoá sẽ bị coi là một (lựa chọn, `selectedRows`, form). Dữ liệu nhiều nguồn / nhiều tenant:
+dùng khoá ghép, ví dụ `table.rowKey = (r) => \`${r.tenantId}:${r.id}\``. Khoá field chỉ đọc thuộc tính **của chính dòng**
+(hoặc getter của class), không bao giờ từ `Object.prototype`.
+
+**Server mode**: bảng chỉ biết trang đang có. Khoá ở trang khác vẫn nằm trong `selectedKeys`; `selectedRows` trả các dòng
+**đã từng hiện** của khoá đang chọn (khoá chưa thấy bao giờ bị bỏ qua — dùng `selectedKeys`).
+
+**Sự kiện**: `select-change` chỉ khi **người dùng** đổi (hoặc API với `{ emit: true }`); gán `selectedKeys`,
+`select()`… mặc định im lặng. `onSelectChange(keys)` chạy trước event.
+
+#### Thanh thao tác hàng loạt (công thức, không phải component)
+
+Nội dung (hành động, quyền, xác nhận) là của app, nên bảng không có slot — đặt `div` của bạn **trên** bảng:
+
+```html
+<div id="bulk" hidden><strong id="bulk-count"></strong>
+  <button type="button" class="td-btn td-btn--sm td-btn--danger" id="bulk-delete">Xoá đã chọn</button>
+  <button type="button" class="td-btn td-btn--sm td-btn--ghost" id="bulk-clear">Bỏ chọn</button></div>
+<td-table id="posts" selectable row-key="id"></td-table>
+```
+
+```js
+table.addEventListener('select-change', (e) => {
+  bulk.hidden = e.detail.keys.length === 0;
+  bulkCount.textContent = `${e.detail.keys.length} đã chọn`;
+});
+bulkClear.addEventListener('click', () => table.clearSelection({ emit: true }));
+```
+
+#### "Chọn tất cả N kết quả" (server, kiểu Gmail — công thức)
+
+Ô header chỉ chọn **trang này**. Chỉ khi `select-change` có `trigger: 'page'` **và** ô header thành
+`aria-checked="true"` **và** `total-items` lớn hơn số dòng trang → hiện nút "Chọn tất cả {total} kết quả", ghi lại **khung
+nhìn** lúc đó (`getState()`: trang, `perPage`, sort; bộ lọc; mảng `data`). Ẩn nút (và bỏ cờ) khi: mọi `select-change`
+khác, `page-change`, `sort-change`, đổi bộ lọc / tải lại, gán `data` mới, `setPage()` hay đổi lựa chọn bằng API im lặng
+(hai việc cuối không có event — app tự bỏ cờ khi gọi). Trong handler của nút, **kiểm lại** (ô header vẫn `"true"`, cùng
+khung nhìn) trước khi bật cờ; không khớp → ẩn nút, không làm gì. Bấm → app giữ cờ `allMatching` + **bộ lọc hiện tại** và gửi **bộ
+lọc** (không gửi danh sách khoá) lên server; mọi `select-change` sau đó → bỏ cờ. Bảng không biết cờ này. Demo có ví dụ.
+
+#### Gửi form (`name`)
+
+Có `name` → bảng gửi mỗi khoá đã chọn thành **một mục** form (`String(key)`, thứ tự chọn, **gồm cả khoá ở trang khác**),
+không cần tự đồng bộ `<input hidden>`:
+
+```php
+<?php
+// Trang có form: mở phiên và TẠO token trước khi render (token ngẫu nhiên 256 bit, gắn với phiên).
+session_start();
+$_SESSION['csrf'] ??= bin2hex(random_bytes(32));
+?>
+<form method="post" action="/posts/bulk-delete">
+  <!-- CSRF: token gắn với phiên, server kiểm trước khi làm gì -->
+  <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['csrf'], ENT_QUOTES) ?>">
+  <td-table selectable row-key="id" name="ids[]"></td-table>
+  <button type="submit">Xoá đã chọn</button>
+</form>
+```
+
+```php
+<?php
+// Mọi chuỗi đều gửi lên được (sửa DOM / tự POST): kiểm CSRF, kiểm hình dạng dữ liệu, rồi kiểm quyền NGAY TRONG câu xoá.
+session_start();
+$stored = $_SESSION['csrf'] ?? null;
+$sent = $_POST['csrf'] ?? null;
+// cả hai phải là chuỗi KHÁC RỖNG (phiên chưa có token → hash_equals('', '') sẽ "đúng" — chặn trước)
+if ($_SERVER['REQUEST_METHOD'] !== 'POST'
+    || !is_string($stored) || $stored === ''
+    || !is_string($sent) || $sent === ''
+    || !hash_equals($stored, $sent)) {
+    http_response_code(403); exit;
+}
+
+// 1. Hình dạng: mảng, ≤ 500 phần tử, mỗi phần tử là chuỗi số thập phân, trong khoảng hợp lệ; sai → từ chối cả request.
+$raw = $_POST['ids'] ?? null;
+if (!is_array($raw) || count($raw) === 0 || count($raw) > 500) { http_response_code(422); exit; }
+$ids = [];
+foreach ($raw as $v) {
+    if (!is_string($v) || !preg_match('/^[1-9][0-9]{0,17}$/', $v)) { http_response_code(422); exit; }
+    $ids[$v] = (int) $v; // khoá mảng = bỏ trùng
+}
+$ids = array_values($ids);
+
+// 2. Quyền + xoá trong MỘT câu, một transaction: điều kiện chủ sở hữu / tenant nằm trong WHERE
+//    (không "kiểm từng id rồi xoá" — tránh TOCTOU). Số dòng xoá được ≠ số id → huỷ cả lô.
+$in = implode(',', array_fill(0, count($ids), '?'));
+$pdo->beginTransaction();
+$stmt = $pdo->prepare("DELETE FROM posts WHERE tenant_id = ? AND owner_id = ? AND id IN ($in)");
+$stmt->execute([$tenantId, $userId, ...$ids]);
+if ($stmt->rowCount() !== count($ids)) { $pdo->rollBack(); http_response_code(403); exit; }
+$pdo->commit();
+```
+
+Thêm lớp phòng thủ (không thay CSRF token): cookie phiên `SameSite=Lax` / `Strict`, và kiểm header `Origin` (hoặc
+`Sec-Fetch-Site: same-origin`) với request đổi dữ liệu.
+
+- Không `name` (hoặc `selectable` tắt / chưa chọn gì) → không gửi gì.
+- `form.reset()` → bỏ hết + **một** `select-change` `trigger: 'reset'` (khác input thường vốn im lặng — để thanh hàng
+  loạt không lệch).
+- `<fieldset disabled>` hoặc `disabled` trên bảng → ô tick bị khoá, lựa chọn giữ nguyên, **không gửi**. Lưu ý: bảng giờ
+  là form-associated, nên trình duyệt coi `<td-table disabled>` là **control bị khoá**: mọi cú bấm chuột bên trong (sort,
+  phân trang, nút thao tác) cũng bị chặn (đo ở Chromium / Firefox / WebKit). Chỉ muốn khoá việc chọn thì dùng
+  `rowSelectable = () => false`.
+- Back / bfcache **không** khôi phục lựa chọn (dữ liệu bảng có thể chưa tải lại) — tự đặt `selectedKeys` nếu cần.
 
 ## Attribute
 
@@ -347,8 +519,13 @@ Muốn giữ hành vi cũ ở mọi nơi: `layout="table"`.
 | `total-items` | number | — | Tổng số mục phía server. **Bắt buộc** khi `server-mode`. |
 | `layout` | `auto` \| `table` \| `cards` | `auto` | Dạng hiển thị (xem [Responsive](#9-responsive-bảng-thành-card-khi-chỗ-đặt-hẹp)). Từ 0.34.0. |
 | `card-below` | `sm` \| `md` \| `lg` | `md` | Ngưỡng bề rộng bảng (480 / 720 / 1024px) dưới đó `auto` thành card. Từ 0.34.0. |
+| `selectable` | `multiple` \| `single` | vắng (tắt) | Chọn dòng (mục 10). Có attribute mà rỗng / giá trị lạ = `multiple`; `none` / `false` / `0` / `off` = tắt. Cần `row-key` / `rowKey`. Từ 0.37.0. |
+| `row-key` | string | — | Tên trường khoá của dòng (hoặc property `rowKey`). Đổi → bỏ hết lựa chọn. Từ 0.37.0. |
+| `max-selected` | number | — | Trần (số nguyên ≥ 1) cho thao tác **người dùng** ở `multiple`; sai → bỏ qua + cảnh báo. API không bị chặn. Từ 0.37.0. |
+| `name` | string | — | Tên field form: gửi mỗi khoá đã chọn một mục. Từ 0.37.0. |
+| `disabled` | boolean | vắng | Khoá ô tick (lựa chọn giữ, không gửi form). Trình duyệt còn chặn mọi cú bấm chuột trong bảng (control form bị khoá). Từ 0.37.0. |
 
-Các attribute `title`, `heading-level`, `zebra`, `max-height` khi đổi sẽ dựng lại cấu trúc bảng; `layout` /
+Các attribute `title`, `heading-level`, `zebra`, `max-height`, `selectable`, `row-key` khi đổi sẽ dựng lại cấu trúc bảng; `layout` /
 `card-below` chỉ đổi CSS (không render lại); mọi attribute khác cập nhật tại chỗ (focus được giữ).
 
 ## Property & method
@@ -367,8 +544,17 @@ Các attribute `title`, `heading-level`, `zebra`, `max-height` khi đổi sẽ d
 | `setData(data)` | `(Array) => void` | Thay dữ liệu. Client: về trang 1. Server: giữ trang. |
 | `setPage(page)` | `(number) => void` | Chuyển trang (kẹp vào khoảng hợp lệ khi hiển thị). **Không** gọi `onPageChange`, không phát `page-change`. |
 | `setLoading(bool)` | `(boolean) => void` | Bật/tắt attribute `loading`. |
-| `getState()` | `() => { columns, data, page, perPage, sort: { key, direction } }` | Trạng thái hiện tại; `sort.key` là `key` gốc của cột. |
-| `update(opts)` | `({ columns?, data?, page?, onSort?, onPageChange? }) => void` | Gộp nhiều thay đổi một lần. `columns`/`data` không phải mảng bị bỏ qua (không throw). `data` theo quy tắc trang của `setData`, sau đó `page` (nếu có) được áp. |
+| `getState()` | `() => { columns, data, page, perPage, sort: { key, direction }, selection: { mode, keys } }` | Trạng thái hiện tại; `sort.key` là `key` gốc của cột. `selection` từ 0.37.0 (`mode`: `'none' \| 'multiple' \| 'single'`). |
+| `update(opts)` | `({ columns?, data?, page?, onSort?, onPageChange?, rowKey?, rowSelectable?, selectedKeys? }) => void` | Gộp nhiều thay đổi một lần. `columns`/`data` không phải mảng bị bỏ qua (không throw). `data` theo quy tắc trang của `setData`, sau đó `page` (nếu có) được áp. `rowKey` áp trước (nó bỏ lựa chọn), rồi `selectedKeys` (0.37.0). |
+| `rowKey` | `string \| (row) => key` | Khoá của dòng (mục 10). Chuỗi = phản chiếu `row-key`. Từ 0.37.0. |
+| `rowSelectable` | `(row) => boolean` | `false` / ném lỗi → dòng không chọn được bởi người dùng. Từ 0.37.0. |
+| `selectedKeys` | `Array` | Khoá đã chọn (mọi trang, thứ tự chọn, kiểu gốc). Gán = thay toàn bộ (lọc khoá sai, bỏ trùng; `single` giữ cái cuối), **không** event. Từ 0.37.0. |
+| `selectedRows` | `Array<object>` (chỉ đọc) | Dòng **đã biết** của các khoá đang chọn (thứ tự chọn); khoá chưa từng thấy bị bỏ qua. Từ 0.37.0. |
+| `onSelectChange` | `(keys) => void` | Chạy trước `select-change` (ném → `console.error`, event vẫn phát). Từ 0.37.0. |
+| `select(keys, { emit })` / `deselect(keys, { emit })` | `(key \| key[], { emit?: boolean }) => void` | Thêm / bớt khoá. Mặc định im lặng; `{ emit: true }` → hook + event `trigger: 'api'` + thông báo. **Không** áp `max-selected`. Từ 0.37.0. |
+| `toggle(key, { emit })` | | Đảo một khoá. Từ 0.37.0. |
+| `clearSelection({ emit })` | | Bỏ hết (mọi trang). Tên không phải `clear` để khỏi nhầm "xoá dữ liệu". Từ 0.37.0. |
+| `isSelected(key)` | `(key) => boolean` | `1` và `"1"` là một. Từ 0.37.0. |
 | `TdTable.labels` | static object | Chuỗi hiển thị, site ghi đè được (xem dưới). |
 
 ### `ColumnDef`
@@ -404,6 +590,14 @@ Object.assign(TdTable.labels, {
   emptyTitle: 'No data',
   emptyText: 'Nothing to show yet.',
   actions: 'Actions',
+  selectRow: 'Select {label}',
+  rowFallback: 'row {n}',
+  selectAll: 'Select all on this page',
+  selectColumn: 'Select',
+  selectedCount: '{n} selected',
+  selectedRow: 'Selected {label}',
+  deselected: 'Selection cleared',
+  selectLimit: 'At most {max} rows',
 });
 ```
 
@@ -417,6 +611,13 @@ Object.assign(TdTable.labels, {
 | `emptyTitle` | `Không có dữ liệu` | Tiêu đề rỗng khi không có `empty-title` |
 | `emptyText` | `Chưa có dữ liệu để hiển thị.` | Nội dung rỗng khi không có `empty-text` |
 | `actions` | `Thao tác` | Nhãn nút mở menu thao tác ở dạng card (khi > 2 action) |
+| `selectRow` | `Chọn {label}` | Tên ô tick mỗi dòng; `{label}` = chữ của ô `primary` (bỏ nhãn card, gọn khoảng trắng, ≤ 80 ký tự), không có thì `rowFallback` (0.37.0) |
+| `rowFallback` | `dòng {n}` | Tên dòng khi ô `primary` rỗng (`{n}` = vị trí trong trang) (0.37.0) |
+| `selectAll` | `Chọn tất cả trên trang` | Ô chọn cả trang (ẩn kiểu sr-only ở dạng bảng, hiện ở chip card) (0.37.0) |
+| `selectColumn` | `Chọn` | Tên cột chọn ở `single` (chỉ cho trình đọc màn hình) (0.37.0) |
+| `selectedCount` | `Đã chọn {n} dòng` | Thông báo sau thao tác (`multiple`) (0.37.0) |
+| `selectedRow` / `deselected` | `Đã chọn {label}` / `Đã bỏ chọn` | Thông báo sau thao tác (`single`) (0.37.0) |
+| `selectLimit` | `Tối đa {max} dòng` | Thông báo khi chạm `max-selected` (0.37.0) |
 
 Đổi `labels` trước khi bảng render (ngay sau import). Các nhãn bên trong `td-pagination` ("Trang trước", "Trang N",
 "Hiển thị …") đổi qua `TdPagination.labels`, xem [pagination.md](pagination.md#tdpaginationlabels).
@@ -427,6 +628,8 @@ Object.assign(TdTable.labels, {
 |---|---|---|---|
 | `sort-change` | `{ key, direction }` — `direction` là `'asc'`, `'desc'` hoặc `null`; `key` là `null` khi bỏ sort | Người dùng bấm nút sort (cả hai chế độ). Phát **trước** `onSort`. | có (composed) |
 | `page-change` | `{ page }` | Người dùng đổi trang ở một trong hai `td-pagination` bên trong. Event này phát từ `td-pagination` và nổi bọt qua host, nên nghe trên `td-table` được; `e.target` là phần tử `td-pagination`. | có (composed) |
+| `select-change` | `{ keys, added, removed, trigger }` — `keys` = toàn bộ lựa chọn (mọi trang, thứ tự chọn, kiểu gốc); `trigger`: `toggle` \| `range` \| `page` \| `reset` \| `api` | Người dùng đổi lựa chọn (bấm, Space, Shift dải, ô header), `form.reset()`, hoặc API với `{ emit: true }`. **Không** phát khi gán `selectedKeys`, `select()` mặc định, đổi `data` / trang / sort / `selectable` / `rowKey`. Sau `onSelectChange`. Cùng tên với `td-media-grid`. Từ 0.37.0. | có (composed) |
+| `select-limit` | `{ max }` | Một thao tác **người dùng** dừng ở `max-selected` (không bao giờ từ API). Từ 0.37.0. | có (composed) |
 | `row-action` | `{ id, row, rowIndex }` — `id` của action, `row` là chính object hàng trong `data`, `rowIndex` là chỉ số hàng **trong trang hiện tại** (như tham số thứ hai của `render`) | Người dùng bấm một nút action (dạng bảng) hoặc chọn một mục trong menu "Thao tác" (dạng card). Phát **trước** `onRowAction`. Từ 0.34.0. | có (composed) |
 
 ```js
@@ -479,6 +682,9 @@ Token (khai báo trong `@layer td.tokens`, override bằng CSS không layer củ
 | `--td-table-card-cell-py` | `2px` | Padding dọc của mỗi ô trên card (0.36.1) |
 | `--td-table-card-pair-min` | `0px` | Bề rộng tối thiểu một cặp `secondary` (0 = theo nội dung; `100%` = một cặp mỗi dòng như trước 0.36.1) (0.36.1) |
 | `--td-table-label-fg` | `var(--td-color-text-muted)` | Nhãn "nhãn:", dòng meta và `lead` trên card |
+| `--td-table-select-w` | `3rem` | Bề rộng cột chọn (0.37.0) |
+| `--td-table-row-selected` | accent 8 % (`color-mix`; fallback `rgb(37 99 235 / 8%)`) | Nền dòng / card đã chọn; hover chồng `--td-table-row-hover` lên (0.37.0) |
+| `--td-table-card-selected-border` | `var(--td-accent)` | Viền card đã chọn (≥ 3:1 với nền trang — contrast gate) (0.37.0) |
 
 Từ 0.27.0, hàng skeleton của bảng dùng chung token với class [`.td-skeleton`](loading.md#skeleton-khối-giữ-chỗ-thuần-css):
 `--td-table-skeleton` / `--td-table-sheen` mặc định trỏ vào `--td-skeleton-bg` / `--td-skeleton-shine`, còn bo góc và chu
@@ -518,6 +724,12 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
     <div class="td-table__scroll" [tabindex="0" role="region" aria-labelledby|aria-label]>
       <table class="td-table__table" role="table" aria-labelledby="{host-id}-title" | aria-label="…" [aria-busy="true"]>
         <thead class="td-table__head" role="rowgroup"><tr role="row">
+          <!-- 0.37.0, chỉ khi selectable + rowKey: cột chọn (không data-col; cột dữ liệu giữ 0..n−1) -->
+          [<th class="td-table__th td-table__th--select td-table__th--select-all" role="columnheader" scope="col" data-card="select">
+            <button type="button" class="td-table__select-all" role="checkbox" aria-checked="false|true|mixed" [disabled]>
+              <span class="td-check td-check--md" aria-hidden="true">…</span>
+              <span class="td-table__select-all-label">Chọn tất cả trên trang</span>
+            </button></th>]  <!-- single: th.td-table__th--select > span.td-sr-only "Chọn" -->
           <th class="td-table__th [td-table__th--sortable]" role="columnheader" scope="col" data-col="0" data-col-key="name"
               data-card="lead|primary|secondary|meta|actions|false" [aria-sort="ascending|descending"]>
             <button type="button" class="td-table__sort" data-sort-col="0">
@@ -527,7 +739,10 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
           </th>
         </tr></thead>
         <tbody class="td-table__body" role="rowgroup">
-          <tr class="td-table__row" role="row" data-row-idx="0">
+          <tr class="td-table__row" role="row" data-row-idx="0" [data-selected]>
+            [<td class="td-table__cell td-table__cell--select td-table__card-select" role="cell" data-card="select">
+              <button type="button" class="td-table__select" role="checkbox" aria-checked="true|false" aria-label="Chọn …" [disabled]>
+                <span class="td-check td-check--md" aria-hidden="true">…</span></button></td>]
             <td class="td-table__cell [td-table__cell--ellipsis] [td-table__cell--nowrap] [td-table__cell--px-N]"
                 role="cell" data-col="0" data-col-key="name" data-card="primary">
               <span class="td-table__cell-label" aria-hidden="true">Tên</span>…giá trị…
@@ -563,6 +778,9 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
 - `span.td-table__cell-label` (nhãn cột, `aria-hidden`) nằm đầu **mọi ô dữ liệu**, chỉ hiện ở dạng card. Vì vậy
   `td.textContent` gồm cả nhãn; đọc giá trị thì lấy nội dung trừ `.td-table__cell-label` (hoặc đọc từ `data`).
 - Trạng thái: `data-state` trên `.td-table`, `aria-busy` trên `table`, `aria-sort` trên `th`, `[hidden]` trên các khung.
+- Chọn dòng (0.37.0): trạng thái nằm ở `aria-checked` của nút (mark `.td-check` dùng chung đọc từ đó — ADR 0017);
+  `tr[data-selected]` **chỉ để CSS** (không `aria-selected`: ARIA không có nghĩa đó trong `table`). Hàng skeleton có ô
+  chọn trống; hàng rỗng `colspan` = số cột + 1.
 - Hàng skeleton: `tr.td-table__row.td-table__row--skeleton[aria-hidden="true"]` > `td > span.td-table__skeleton`.
 - Hàng rỗng: `tr.td-table__empty-row > td.td-table__empty[colspan] > td-empty-state`.
 - Ô ellipsis: `td.td-table__cell--ellipsis > span.td-table__cell-label + div.td-table__truncate[title]`.
@@ -585,6 +803,14 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
 - Menu "Thao tác" là APG menu button (`aria-haspopup="menu"`, `aria-expanded`): Enter / Space / ↓ mở và focus mục đầu,
   ↑ mở và focus mục cuối, Esc đóng và trả focus về nút. Mục bị `disabled(row)` có `aria-disabled` (focus được, không chọn được).
 - Loading: `aria-busy="true"` + một thông báo trạng thái; skeleton `aria-hidden`.
+- **Chọn dòng (0.37.0)** — vẫn là `role="table"`, **không** chuyển sang `grid`: grid buộc mô hình phím theo ô (mũi tên
+  giữa ô, Enter / F2 vào nội dung) xung đột với link / nút / `render` tự do trong ô và với dạng card. Mỗi dòng **một**
+  `button[role="checkbox"]` có tên ("Chọn {tên dòng}"), một điểm Tab mỗi dòng (như cột thao tác), không roving. Space
+  bật / tắt, Shift+Space chọn dải, Enter không làm gì, mũi tên không làm gì. `single` cũng là checkbox (độc quyền) — không
+  dùng `radio` vì radio ngoài `radiogroup` và thiếu phím mũi tên là ARIA sai. Ô "Chọn tất cả trên trang" là
+  `columnheader` chứa checkbox ba trạng thái (`aria-checked="mixed"`). Sau mỗi thao tác, `p[role=status]` của bảng đọc
+  "Đã chọn {n} dòng" (`single`: "Đã chọn {tên dòng}" / "Đã bỏ chọn"; chạm trần: "Tối đa {max} dòng"); không đè chữ "Đang
+  tải". Cảm ứng: ô tick 44 × 44px thật; chuột ≥ 24px. Forced colors: dòng chọn có `outline` Highlight.
 - Tôn trọng `prefers-reduced-motion` (tắt shimmer, transition) và forced colors (viền `CanvasText`, hover outline).
 
 ## Bảo mật
@@ -596,6 +822,10 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
 - `render` trả **chuỗi** = cửa sau HTML tin cậy: chuỗi được gán `innerHTML` nguyên văn. Chỉ trả chuỗi do chính bạn viết;
   nếu phải chèn dữ liệu người dùng vào chuỗi thì tự escape từng giá trị. Cách an toàn nhất là **trả về Node**
   (`textContent`, `createElement`). Chuỗi HTML chứa `style="…"` hay `<script>` cũng là trách nhiệm tuân thủ CSP của bạn.
+- **Chọn dòng (0.37.0)**: khoá chọn là trạng thái **phía client** — form gửi lên được mọi chuỗi, server **luôn** kiểm quyền
+  từng khoá. Khoá không in ra DOM (dòng ↔ khoá qua `data-row-idx`). Tên ô tick lấy từ chữ của ô `primary` và được đặt
+  bằng `setAttribute` (không đi qua HTML); thông báo dùng `textContent`. `rowKey` / `rowSelectable` / `onSelectChange` là
+  callback của dev: ném lỗi → dòng bị khoá (fail closed) / lỗi được ghi, bảng vẫn chạy.
 - `width` / `minWidth` / `maxWidth` qua whitelist dimension, `align` qua whitelist, `max-height` qua `CSS.supports` +
   cấm `url()`/`var()`; `active-color` qua `safeColor`. Chi tiết: [guides/security.md](../guides/security.md).
 
@@ -620,6 +850,12 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 - **`zebra="true"` hay `zebra=""` vẫn là bật**; chỉ `false` / `0` / `off` tắt.
 - `setPage()` chỉ đổi hiển thị; ở server mode nó **không** gọi `onPageChange`, bạn phải tự tải trang đó.
 - `per-page` đổi lớn hơn làm số trang giảm: trang hiện tại được kẹp lại, không rơi vào trạng thái rỗng.
+- **`selectable` mà không có cột chọn** (0.37.0): thiếu `row-key` / `rowKey` — xem cảnh báo trong console.
+- **Header "Chọn tất cả" không chọn trang khác**: đúng thiết kế (chỉ trang này); "tất cả kết quả trên server" là công thức
+  phía app (mục 10).
+- **Lựa chọn còn khoá đã xoá / đã lọc**: bảng không tự bỏ — gọi `deselect(ids)` / `clearSelection()` (mục 10).
+- **`<td-table disabled>` chặn cả sort / phân trang bằng chuột** (0.37.0): bảng là form-associated nên trình duyệt coi nó
+  là control bị khoá. Chỉ khoá việc chọn: `rowSelectable = () => false`.
 - `title` hiện tooltip trình duyệt khi hover lên cả bảng (hành vi của attribute HTML toàn cục). Nếu không muốn,
   dùng `aria-label` và tự viết heading ngoài bảng.
 
@@ -627,5 +863,6 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 
 - [Pagination](pagination.md), [Empty state](empty-state.md), [Menu](menu.md) (menu "Thao tác"), [Icons](icons.md) (icon `up` / `down` / `sort` / `more`)
 - [ADR 0014 — breakpoint + container query](../internal/decisions/0014-breakpoints-container-queries.md)
+- [ADR 0018 — `td-table` chọn dòng](../internal/decisions/0018-table-row-selection.md) · [Ô tick chung (ADR 0017)](../internal/decisions/0017-shared-check-mark.md)
 - [Theming](../customization/theming.md) · [Styling](../customization/styling.md) · [Hooks](../customization/hooks.md)
 - [Bảo mật](../guides/security.md) · [Trợ năng](../guides/accessibility.md)

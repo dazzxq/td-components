@@ -66,12 +66,13 @@ const ratio = (a, b) => {
 
 const KEEP = ['type', 'role', 'aria-hidden', 'hidden', 'id', 'scope', 'colspan', 'aria-label', 'aria-labelledby',
   'aria-sort', 'aria-busy', 'data-state', 'data-col', 'data-col-key', 'data-card', 'data-sort-col', 'data-row-idx',
-  'data-sort-icon', 'tabindex', 'quiet', 'heading-level', 'title', 'message', 'compact', 'size'];
+  'data-sort-icon', 'tabindex', 'quiet', 'heading-level', 'title', 'message', 'compact', 'size',
+  'aria-checked', 'data-selected', 'disabled']; // v0.37.0 selection
 const OPAQUE = new Set(['td-pagination', 'td-empty-state']);
 function shape(el) {
   const attrs = KEEP.filter((a) => el.hasAttribute(a)).map((a) => `${a}=${el.getAttribute(a)}`);
   const cls = [...el.classList].sort().join('.');
-  const leaf = OPAQUE.has(el.localName) || el.classList.contains('td-table__sort-icon');
+  const leaf = OPAQUE.has(el.localName) || el.classList.contains('td-table__sort-icon') || el.classList.contains('td-check__icon');
   const kids = leaf ? [] : [...el.children].map(shape);
   const text = el.children.length === 0 && !leaf ? el.textContent.trim() : '';
   return { tag: el.localName, cls, attrs, text, kids };
@@ -79,11 +80,11 @@ function shape(el) {
 const allClasses = (el) => [...el.querySelectorAll('[class]')].flatMap((n) => [...n.classList]);
 
 describe('batch 4 — td-table structure (D11)', () => {
-  it('matches the golden contract (data + sortable, empty, loading)', async () => {
+  it('matches the golden contract (data + sortable, empty, loading, v0.37.0 selection)', async () => {
     const html = await (await fetch('/test/contracts/table.html')).text();
     const doc = new DOMParser().parseFromString(html, 'text/html');
     const ts = [...doc.querySelectorAll('template')];
-    expect(ts.length).to.equal(3);
+    expect(ts.length).to.equal(4);
     for (const t of ts) {
       host.innerHTML = t.getAttribute('data-markup');
       const el = host.firstElementChild;

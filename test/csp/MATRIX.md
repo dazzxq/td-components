@@ -110,6 +110,10 @@ header `th[data-sort-key]`, first cell; loading: `#probe > div` (skeleton card),
 States: `data` (zebra row 1 tinted), `data-no-zebra` (note: `_isZebra()` is structurally
 always-true in v0.2.0, so row 1 is still tinted), `sortable-header`, `loading` (excl. random
 widths), `empty` (renders nested td-empty-state). (5)
+v0.37.0 row selection (intentional new states, td.css only, no `style`): `selection` (multiple, layout table: header
+`mixed`, row 0 selected + its control focused, row 1 not selected, row 2 selected AND locked by `rowSelectable` → mark
+50 %), `selection-all` (header `true`), `selection-cards` (layout cards: "Chọn tất cả trên trang" chip first in the sort
+bar, selected card accent border), `selection-single` (exclusive checkbox, header text visually hidden).
 
 ### td-modal (1 declarative; portaled to body)
 Styled el: `.td-modal-content` (box-shadow + backdrop-filter), `.td-modal-backdrop`.

@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.37.0](#0370) | Thêm tính năng (chọn dòng `td-table`) + đổi hành vi nhỏ | Không bắt buộc. `<td-table>` giờ **form-associated**: có trong `form.elements`; `disabled` trên chính `td-table` (trước vô nghĩa) giờ làm trình duyệt chặn mọi cú bấm chuột trong bảng. Chọn dòng là opt-in (`selectable` + `row-key`). |
 | [0.36.2](#0362) | Đổi hành vi + đổi giao diện trên cảm ứng | Không bắt buộc. Hover chỉ còn trên con trỏ mịn; hình nhấn mới (token `--td-*-pressed`); tooltip không bật khi chạm (nhãn bắt buộc → chữ / menu); kéo bằng ngón cần 10 px; lớp phủ co theo bàn phím ảo — site override `height: 100dvh` trên con của modal / drawer đổi thành `100%`. Thêm `enterkeyhint` cho `<td-number-input>`. |
 | [0.36.1](#0361) | Đổi giao diện card của `td-table` (mật độ) | Không bắt buộc. Cột đầu không khai báo `card` thành `lead` khi cột khác khai báo `card: 'primary'` (giữ cũ: `card: 'secondary'` trên cột đầu); cặp xếp theo nội dung (giữ cũ: `--td-table-card-pair-min: 100%`); action có `icon` chỉ hiện icon ở card; card / khoảng cách gọn hơn (token `--td-table-card-*`). |
 | [0.36.0](#0360) | Đổi giao diện + **DOM toast** (màu ngữ nghĩa, badge, alert, toast, lightbox điện thoại; xem dưới) | CSS / script nhắm `#td-toast-container > .td-toast` phải đổi (toast nằm trong lane > chồng). Còn lại không bắt buộc. Nút / badge ngữ nghĩa thành màu đặc (warning chữ tối), badge viền + bóng, alert vạch mép; muốn pastel cũ: đoạn CSS khôi phục. Thêm `<td-action-button>` / `td_action_button()`. |
@@ -65,6 +66,23 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.37.0
+
+**Thêm chọn dòng cho `<td-table>`** (opt-in: `selectable` + `row-key` / `rowKey`; xem
+[table.md mục 10](../components/table.md#10-chọn-dòng-selectable--rowkey--từ-0370)). Bảng không bật `selectable` có
+markup **giữ nguyên**. Thay đổi đáng chú ý:
+
+- **`td-table` là form-associated** (để gửi khoá đã chọn khi có `name`). Không `name` thì không gửi gì, nhưng phần tử
+  giờ nằm trong `form.elements` của form chứa nó và nhận `<fieldset disabled>`.
+- **`<td-table disabled>`**: trước đây attribute này không có tác dụng; giờ trình duyệt coi bảng là control form bị khoá
+  → **mọi cú bấm chuột bên trong bị chặn** (sort, phân trang, nút thao tác; đo ở Chromium / Firefox / WebKit), ô tick bị
+  khoá. Site lỡ đặt `disabled` trên bảng: bỏ attribute. Chỉ muốn khoá việc chọn: `rowSelectable = () => false`.
+- Nhãn mới trong `TdTable.labels` (`selectRow`, `rowFallback`, `selectAll`, `selectColumn`, `selectedCount`,
+  `selectedRow`, `deselected`, `selectLimit`), token mới `--td-table-select-w`, `--td-table-row-selected`,
+  `--td-table-card-selected-border`. Event mới `select-change` / `select-limit`.
 
 ---
 

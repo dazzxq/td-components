@@ -164,6 +164,9 @@ const PRESS_TYPES = [
   { name: 'action', sel: '#t-action .td-btn--action', token: '--td-action-btn-standard-pressed-bg' },
   { name: 'tab', sel: '#rsp-tabs .td-tabs__tab[aria-selected="true"]', token: '--td-color-pressed' },
   { name: 'page', sel: 'td-pagination .td-pagination__nav:not([aria-disabled="true"])', token: '--td-color-pressed' },
+  // v0.37.0 review ISSUE-5: td-table row selection — the row checkbox and the "select all on this page" chip (card mode at 390)
+  { name: 'row select', sel: '#rsp-table-density .td-table__select', token: '--td-color-pressed' },
+  { name: 'select all chip', sel: '#rsp-table-density .td-table__select-all', token: '--td-color-pressed' },
   { name: 'tree row', sel: '#g-tree .td-tree__row', token: '--td-option-pressed-bg' },
   { name: 'option', sel: '.td-dropdown__menu[data-state="open"] .td-dropdown__option', token: '--td-option-pressed-bg',
     open: async (page) => { await page.tap('#g-dd .td-dropdown__trigger'); await page.locator('.td-dropdown__menu[data-state="open"] .td-dropdown__option').first().waitFor(); } },

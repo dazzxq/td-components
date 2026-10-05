@@ -107,6 +107,12 @@ for (const state of ['label', 'value', 'sort-chip']) CASES.push({ kind: 'table-c
 // v0.36.1: the `lead` (muted id before the primary, xs mouse / sm coarse — same colour) ≥ 4.7 on the card, and an icon-only
 // card action: icon ≥ 3:1 on the button fill — light + dark.
 for (const state of ['lead', 'action-icon']) CASES.push({ kind: 'table-card', v: 'card', state, pageOnly: true });
+// v0.37.0 td-table row selection: cell text on the selected-row tint (and with the hover wash on top) ≥ 4.7 over the
+// table fill; the selected card's accent border ≥ 3 vs the page — computed colours (`pairs`), light + dark.
+for (const state of ['row', 'card']) CASES.push({ kind: 'table-select', v: 'selected', state, pageOnly: true });
+// v0.37.0 review ISSUE-5: pressed selection controls (data-td-pressed = the real pressed rule) — the card chip label ≥ 4.7
+// and the ticked mark fill ≥ 3 on the pressed fill, the pressed fill differs from rest — light + dark.
+for (const state of ['row-pressed', 'chip-pressed']) CASES.push({ kind: 'table-select', v: 'selected', state, pageOnly: true });
 // v0.36.0 colours/action-button (plan QĐ 12, 18–26): computed-colour pairs (page only, light + dark). Solid semantic
 // tokens: label vs fill and vs hover ≥ 4.7 (buttons / badges read them); badge -ink (outline / stamp) vs the page ≥ 4.7;
 // badge edge vs its own fill / white / #f4f4f5 ≥ 1.6 (light theme); alert icon vs the alert fill ≥ 3.2 and the
@@ -952,6 +958,65 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       name: `table-card:${c.v}:${c.state}`,
       pairs: [{ what: `${c.state} ${c.state === 'action-icon' ? 'icon' : 'text'} vs its fill`, fg: ink, bg: fill(target), min: c.state === 'action-icon' ? 3 : 4.7 }],
     };
+  } else if (c.kind === 'table-select') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const host = document.createElement('td-table');
+    host.setAttribute('selectable', '');
+    host.setAttribute('row-key', 'id');
+    host.setAttribute('layout', c.state === 'card' || c.state === 'chip-pressed' ? 'cards' : 'table');
+    host.setAttribute('zebra', 'false');
+    stage.appendChild(host);
+    host.columns = [{ key: 'name', label: 'Tên' }, { key: 'role', label: 'Vai trò' }];
+    host.data = [{ id: 1, name: 'Nguyễn Văn An', role: 'Quản trị' }, { id: 2, name: 'Bình', role: 'Biên tập' }];
+    host.selectedKeys = [1];
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const probe = document.createElement('span');
+    host.appendChild(probe);
+    const tok = (name) => { probe.style.setProperty('color', `var(${name})`); return getComputedStyle(probe).color; };
+    /** a translucent colour (rgb()/rgba()/color(srgb …)) composited on an opaque rgb() */
+    const parse = (str) => {
+      const n = (String(str).match(/-?[\d.]+/g) || []).map(Number);
+      const k = String(str).startsWith('color(') ? 255 : 1;
+      return [n[0] * k, n[1] * k, n[2] * k, n.length > 3 ? n[3] : 1];
+    };
+    const over = (top, base) => {
+      const t = parse(top); const b = parse(base);
+      return `rgb(${[0, 1, 2].map((i) => Math.round(t[i] * t[3] + b[i] * (1 - t[3]))).join(', ')})`;
+    };
+    const tr = host.querySelector('tbody tr[data-selected]');
+    const tableBg = over(tok('--td-table-bg'), page);
+    const sel = over(tok('--td-table-row-selected'), tableBg);
+    const text = getComputedStyle(tr.querySelector('[data-col="0"]')).color;
+    if (c.state === 'row-pressed' || c.state === 'chip-pressed') {
+      const btn = c.state === 'chip-pressed' ? host.querySelector('.td-table__select-all') : tr.querySelector('.td-table__select');
+      const restBg = over(getComputedStyle(btn).backgroundColor, c.state === 'chip-pressed' ? tableBg : sel);
+      btn.setAttribute('data-td-pressed', '');
+      const fill = over(getComputedStyle(btn).backgroundColor, c.state === 'chip-pressed' ? tableBg : sel);
+      // the mark fades its fill in over --td-dur-fast: wait for the settled colour (bounded, real signal)
+      const want = tok('--td-checkbox-color');
+      for (let i = 0; i < 60 && getComputedStyle(btn.querySelector('.td-check')).backgroundColor !== want; i++) {
+        await new Promise((r) => requestAnimationFrame(r));
+      }
+      const markBg = getComputedStyle(btn.querySelector('.td-check')).backgroundColor;
+      const pp = c.state === 'chip-pressed'
+        ? [{ what: 'select-all chip label vs pressed fill', fg: getComputedStyle(host.querySelector('.td-table__select-all-label')).color, bg: fill, min: 4.7 }]
+        // the state is carried by the ✓ on the mark fill (v0.36 tick rule ≥ 3.2, re-measured here while pressed); the
+        // pressed fill is a transient (< 1 s) backdrop: the mark only has to stay clearly apart from it (≥ 2 — dark:
+        // the shared --td-color-pressed vs the dark accent measures 2.70)
+        : [{ what: 'tick glyph vs mark fill (pressed)', fg: getComputedStyle(btn.querySelector('.td-check svg')).color, bg: markBg, min: 3.2 },
+          { what: 'ticked mark fill vs pressed fill', fg: markBg, bg: fill, min: 2 }];
+      pp.push({ what: 'pressed fill differs from rest', fg: fill, bg: restBg, min: 1.05 });
+      const r0 = btn.getBoundingClientRect();
+      return { rect: { x: r0.x, y: r0.y, width: r0.width, height: r0.height }, ink: {}, opacity: 1, hover: false, name: `table-select:${c.v}:${c.state}`, pairs: pp };
+    }
+    const pairs = c.state === 'card'
+      ? [{ what: 'selected card border vs page', fg: getComputedStyle(tr).borderTopColor, bg: page, min: 3 },
+        { what: 'selected card border vs table fill', fg: getComputedStyle(tr).borderTopColor, bg: tableBg, min: 3 },
+        { what: 'card text on the selected tint', fg: text, bg: sel, min: 4.7 }]
+      : [{ what: 'cell text on the selected tint', fg: text, bg: sel, min: 4.7 },
+        { what: 'cell text on the selected tint + hover wash', fg: text, bg: over(tok('--td-table-row-hover'), sel), min: 4.7 }];
+    const b = tr.getBoundingClientRect();
+    return { rect: { x: b.x, y: b.y, width: b.width, height: b.height }, ink: {}, opacity: 1, hover: false, name: `table-select:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'sortable' || c.kind === 'masked') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
     const probe = document.createElement('span');

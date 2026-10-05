@@ -137,6 +137,12 @@ connectedCallback (gắn lại sau disconnect)
 - Helper có cleanup tự động: `listen()`, `setTimeout()`, `setInterval()`. `emit(name, detail)` phát
   `CustomEvent` với `bubbles + composed`. `escapeHtml()`, `safeColor()`.
 
+**Ngoại lệ form-associated (0.37.0, [ADR 0018](decisions/0018-table-row-selection.md)):** `TdTable` khai báo
+`static formAssociated = true` + `attachInternals()` (có guard cho DOM shim) **mà không** kế thừa `TdFormElement`: chỉ
+để gửi khoá dòng đã chọn khi có `name` (`setFormValue(FormData)`), không `value` / validation / `required`.
+`formResetCallback` bỏ chọn (+ `select-change` `trigger: 'reset'`), `formDisabledCallback` khoá ô tick. Hệ quả: host
+`disabled` / `<fieldset disabled>` → trình duyệt chặn cú bấm chuột vào mọi phần tử trong bảng.
+
 **`TdFormElement extends TdBaseElement`** (`src/base/td-form-element.js`), xem [ADR 0003](decisions/0003-elementinternals-form-association.md)
 
 - `static formAssociated = true` + `attachInternals()`: submit qua `FormData`, `required`, constraint validation.

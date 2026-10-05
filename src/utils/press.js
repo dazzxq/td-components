@@ -55,6 +55,8 @@ export const PRESS_TARGETS = Object.freeze([
   '.td-scroll-top',
   '.td-sortable__handle',
   '.td-switch',
+  '.td-table__select',
+  '.td-table__select-all',
   '.td-table__sort',
   '.td-tabs__tab',
   '.td-toast',

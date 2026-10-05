@@ -3,6 +3,8 @@ import { safeCssDimension, applyStyles } from '../utils/css-safe.js';
 import { tdIcon, hasIcon, fillIconSlots } from '../icons/td-icon.js';
 import { TdMenu } from '../feedback/td-menu.js';
 import { cardRoles } from '../utils/table-card-role.js';
+import { KeySelection, keyId } from '../utils/key-selection.js';
+import { checkMarkHTML } from '../utils/check-mark.js';
 import './td-pagination.js';
 import './td-empty-state.js';
 
@@ -16,8 +18,54 @@ const ACTION_VARIANTS = new Set(['primary', 'secondary', 'success', 'danger', 'w
 const CARD_INLINE_ACTIONS = 2;
 /** Attributes whose change rebuilds the structure; every other observed attribute updates in place (D11). */
 const STRUCTURAL = new Set(['title', 'heading-level', 'zebra', 'max-height']);
+/** v0.37.0: `selectable` values that turn row selection off (absent attribute = off too). */
+const SELECT_OFF = new Set(['none', 'false', '0', 'off']);
+/** Max length of a row name in the selection control's aria-label (QĐ 7). */
+const ROW_LABEL_MAX = 80;
+/** Row-selection controls (delegated listeners). */
+const SELECT_CTL = '.td-table__select, .td-table__select-all';
 
 let seq = 0;
+
+/**
+ * A label template with `{name}` placeholders (TdTable.labels). Replaced by a FUNCTION so `$&` / `$1` in row data stay
+ * literal text.
+ * @param {unknown} template @param {Record<string, unknown>} vars
+ */
+function fill(template, vars) {
+  return String(template ?? '').replace(/\{(\w+)\}/g, (m, k) => (Object.hasOwn(vars, k) ? String(vars[k]) : m));
+}
+
+/**
+ * Review SEC-1: the `row-key` field of a row, read without trusting shared prototypes. Own properties first, then the
+ * row's own prototype chain (class-instance getters) — anything that would resolve from `Object.prototype` (or a
+ * built-in prototype after it) is ignored, so a polluted `Object.prototype.id` never becomes a key. A throwing getter /
+ * proxy trap → `undefined` (the row cannot be selected).
+ * @param {object} row @param {string} field
+ */
+function readKeyField(row, field) {
+  try {
+    for (let o = row; o && o !== Object.prototype && o !== Function.prototype && o !== Array.prototype; o = Object.getPrototypeOf(o)) {
+      const d = Object.getOwnPropertyDescriptor(o, field);
+      if (!d) continue;
+      if ('value' in d) return d.value;
+      return typeof d.get === 'function' ? d.get.call(row) : undefined;
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+/** Visible text of a body cell (the aria-hidden card label excluded), whitespace collapsed, ≤ ROW_LABEL_MAX chars. */
+function cellText(td) {
+  let text = '';
+  for (const n of td.childNodes) {
+    if (n.nodeType === 1 && n.classList.contains('td-table__cell-label')) continue;
+    text += n.textContent;
+  }
+  return Array.from(text.replace(/\s+/g, ' ').trim()).slice(0, ROW_LABEL_MAX).join('').trim();
+}
 
 /**
  * A developer CSS value for `max-height`, or '' (D14): it must parse as a `max-height` and must not pull in
@@ -75,6 +123,12 @@ function safeMaxHeight(value) {
  *   table with horizontal scroll — pre-0.34 behaviour, no container) | `cards` (always cards). CSS only.
  * @attr {string} card-below - `sm` (480) | `md` (720, default) | `lg` (1024): container width under which `auto` shows
  *   cards. CSS only.
+ * @attr {string} selectable - v0.37.0 row selection: `multiple` (also empty / unknown values) | `single`; absent /
+ *   `none` / `false` / `0` / `off` = off. Needs `rowKey` (no key → no selection column + one warning, fail closed).
+ * @attr {string} row-key - Field name of the row key (or the `rowKey` property: name or `(row) => key`)
+ * @attr {number} max-selected - Cap (integer ≥ 1) on USER selection in `multiple` mode; the API is never capped
+ * @attr {string} name - Form field name: the selected keys are submitted (one entry per key, `String(key)`)
+ * @attr {boolean} disabled - Locks the selection controls (selection kept; nothing submitted)
  *
  * @property {Array<Object>} columns - Column definitions: `{ key, label, sortable?, width?, widthType?:
  *   'fixed'|'flexible', minWidth?, maxWidth?, align?: 'left'|'center'|'right'|'justify', ellipsis?, nowrap?,
@@ -108,6 +162,24 @@ function safeMaxHeight(value) {
  * @fires page-change - from the inner td-pagination elements, `{ page }` (bubbles through the host)
  * @fires row-action - `{ id, row, rowIndex }` (rowIndex = index in the current page, like `render`), bubbling, then
  *   `onRowAction(detail)` (property; a throw is logged)
+ *
+ * v0.37.0 row selection (plan v0.37.0-table-row-selection, ADR 0018): the table stays `role="table"` (no APG grid);
+ * each row gets `td.td-table__cell--select.td-table__card-select > button.td-table__select[role=checkbox][aria-checked]`
+ * (both modes — `single` is an EXCLUSIVE checkbox, never role=radio) holding the shared `.td-check` mark; `multiple`
+ * adds `th.td-table__th--select > button.td-table__select-all[role=checkbox][aria-checked=false|true|mixed]` (this
+ * page only). Selected rows carry `[data-selected]` (CSS only; no aria-selected in a table). Identity = `String(key)`,
+ * the original key is returned; the key never reaches the DOM (row ↔ key via `data-row-idx`). The selection lives
+ * across pages / sort / `data`; events only for user changes (or `{ emit: true }`). The element is form-associated
+ * (NOT a TdFormElement): with `name`, the keys are its form value.
+ * @property {string|Function} rowKey - Row key: field name or `(row) => key` (valid: non-empty string, finite number,
+ *   bigint). A throwing function / invalid / duplicate key → that row cannot be selected (one warning per kind).
+ * @property {Function} rowSelectable - `(row) => boolean`; false or a throw → the row's control is locked (API can
+ *   still select it)
+ * @property {Array} selectedKeys - Original keys in selection order; set = replace (no event; `single` keeps the last)
+ * @property {Array<Object>} selectedRows - Known rows of the selected keys (read only; never-seen keys are skipped)
+ * @property {Function} onSelectChange - `(keys)` before `select-change` (a throw is logged)
+ * @fires select-change - `{ keys, added, removed, trigger: 'toggle'|'range'|'page'|'reset'|'api' }`
+ * @fires select-limit - `{ max }` — a USER add stopped at `max-selected`
  */
 export class TdTable extends TdBaseElement {
   /** Site-overridable strings. */
@@ -120,16 +192,29 @@ export class TdTable extends TdBaseElement {
     emptyTitle: 'Không có dữ liệu',
     emptyText: 'Chưa có dữ liệu để hiển thị.',
     actions: 'Thao tác',
+    // v0.37.0 row selection. `{label}` = the row's name (its primary cell text, else rowFallback).
+    selectRow: 'Chọn {label}',
+    rowFallback: 'dòng {n}',
+    selectAll: 'Chọn tất cả trên trang',
+    selectColumn: 'Chọn',
+    selectedCount: 'Đã chọn {n} dòng',
+    selectedRow: 'Đã chọn {label}',
+    deselected: 'Đã bỏ chọn',
+    selectLimit: 'Tối đa {max} dòng',
   };
+
+  /** v0.37.0 (ADR 0018): form-associated for the optional `name` (the selected keys). NOT a TdFormElement. */
+  static formAssociated = true;
 
   static get observedAttributes() {
     return ['per-page', 'active-color', 'zebra', 'loading', 'loading-rows', 'title', 'heading-level', 'aria-label',
-      'empty-title', 'empty-text', 'server-mode', 'total-items', 'max-height'];
+      'empty-title', 'empty-text', 'server-mode', 'total-items', 'max-height',
+      'selectable', 'row-key', 'max-selected', 'name', 'disabled'];
   }
 
   // `zebra` is tri-state (default ON), so it is NOT a boolean attribute — see the `zebra` accessor.
   static get booleanAttributes() {
-    return ['loading', 'server-mode'];
+    return ['loading', 'server-mode', 'disabled'];
   }
 
   constructor() {
@@ -148,9 +233,33 @@ export class TdTable extends TdBaseElement {
     this._warned = new Set();
     this._ro = null;
     this._refocusPagination = null;
+    // v0.37.0 row selection
+    this._sel = new KeySelection();
+    this._rowKeyFn = null;
+    this._rowSelectable = null;
+    this._onSelectChange = null;
+    /** Anchor of a Shift range: the key IDENTITY of the last user-toggled row. */
+    this._anchor = null;
+    /** Per rendered row: original key (null = cannot be selected), enabled flag, name for labels / announcements. */
+    this._pageKeys = [];
+    this._pageEnabled = [];
+    this._pageLabels = [];
+    /** Selected rows seen on a rendered page (server mode / filtered data): id → row. */
+    this._rowCache = new Map();
+    /** Client mode: id → row of `data`, built lazily. */
+    this._dataIndex = null;
+    this._selOn = false;
+    this._formDisabled = false;
+    this._internals = null;
+    if (typeof this.attachInternals === 'function') {
+      try { this._internals = this.attachInternals(); } catch { this._internals = null; }
+    }
     // Delegated listeners live for the element's lifetime (survive re-renders and reconnects).
     this.addEventListener('click', (e) => this._onClick(e));
     this.addEventListener('page-change', (e) => this._onPaginationChange(e));
+    this.addEventListener('keydown', (e) => this._onSelectKeydown(e));
+    this.addEventListener('keyup', (e) => this._onSelectKeyup(e));
+    this.addEventListener('mousedown', (e) => this._onSelectMousedown(e));
   }
 
   disconnectedCallback() {
@@ -179,6 +288,50 @@ export class TdTable extends TdBaseElement {
 
   get onRowAction() { return this._onRowAction; }
   set onRowAction(fn) { this._onRowAction = typeof fn === 'function' ? fn : null; }
+
+  // --- v0.37.0 row selection: properties ---
+
+  /** Field name (the `row-key` attribute) or `(row) => key`. Changing it clears the selection (identity changed). */
+  get rowKey() { return this._rowKeyFn || this.getAttribute('row-key') || null; }
+  set rowKey(v) {
+    const prevFn = this._rowKeyFn;
+    if (typeof v === 'function') {
+      this._rowKeyFn = v;
+      if (v !== prevFn) this._rowKeyChanged();
+      return;
+    }
+    this._rowKeyFn = null;
+    const name = v == null ? '' : String(v).trim();
+    const before = this.getAttribute('row-key');
+    if (name) this.setAttribute('row-key', name);
+    else this.removeAttribute('row-key');
+    // attributeChangedCallback covers an attribute change; a function → the same name needs the reset here
+    if (prevFn && before === (name || null)) this._rowKeyChanged();
+  }
+
+  get rowSelectable() { return this._rowSelectable; }
+  set rowSelectable(fn) {
+    this._rowSelectable = typeof fn === 'function' ? fn : null;
+    if (this._initialized) this._update();
+  }
+
+  get onSelectChange() { return this._onSelectChange; }
+  set onSelectChange(fn) { this._onSelectChange = typeof fn === 'function' ? fn : null; }
+
+  /** Original keys in selection order (all pages). Set = replace, no event (`single` keeps the last valid key). */
+  get selectedKeys() { return this._sel.keys(); }
+  set selectedKeys(list) { this._commitSel(this._sel.replace(list), 'api', false); }
+
+  /** Known rows of the selected keys, selection order; a key whose row was never seen is skipped. */
+  get selectedRows() {
+    const out = [];
+    for (const id of this._sel.ids()) {
+      const di = this._isServerMode() ? undefined : this._dataRows().get(id);
+      const row = (di === undefined ? undefined : this._data[di]) ?? this._rowCache.get(id);
+      if (row !== undefined) out.push(row);
+    }
+    return out;
+  }
 
   /** `layout` attribute (`auto` | `table` | `cards`) — CSS only, never re-renders. */
   get layout() {
@@ -269,10 +422,56 @@ export class TdTable extends TdBaseElement {
     console.warn(msg);
   }
 
+  /** v0.37.0: `none` | `multiple` | `single` (the attribute; the column also needs a rowKey — `_selOn`). */
+  _selMode() {
+    if (!this.hasAttribute('selectable')) return 'none';
+    const v = (this.getAttribute('selectable') || '').trim().toLowerCase();
+    if (SELECT_OFF.has(v)) return 'none';
+    return v === 'single' ? 'single' : 'multiple';
+  }
+
+  /** `max-selected` (integer ≥ 1) in multiple mode, else no cap; an invalid value is ignored with one warning. */
+  _maxSelected() {
+    if (this._selMode() !== 'multiple' || !this.hasAttribute('max-selected')) return Infinity;
+    const raw = (this.getAttribute('max-selected') || '').trim();
+    const n = Number(raw);
+    if (/^\d+$/.test(raw) && Number.isSafeInteger(n) && n >= 1) return n;
+    this._warnOnce(`td-table: ignored invalid max-selected "${raw}" — use an integer ≥ 1.`);
+    return Infinity;
+  }
+
+  /** Selection controls locked: host `disabled` or an ancestor `<fieldset disabled>` (QĐ 16). */
+  _selLocked() { return this.hasAttribute('disabled') || this._formDisabled; }
+
   attributeChangedCallback(name, oldVal, newVal) {
     if (oldVal === newVal || !this._initialized) return;
+    if (name === 'selectable') {
+      const mode = this._selMode();
+      if (mode === 'none') this._sel.clear();
+      this._anchor = null;
+      this._pruneRowCache();
+      this._doRender(); // the selection column comes / goes (exclusive is synced there)
+      return;
+    }
+    if (name === 'row-key') {
+      if (!this._rowKeyFn) this._rowKeyChanged();
+      return;
+    }
+    if (name === 'name') { this._syncForm(); return; }
+    if (name === 'max-selected') return; // read at the next user action
+    if (name === 'disabled') { this._paintSelection(); return; }
     if (STRUCTURAL.has(name)) this._doRender();
     else this._update();
+  }
+
+  /** @private The row identity changed: clear the selection (no event) and rebuild. */
+  _rowKeyChanged() {
+    this._dataIndex = null;
+    if (!this._initialized) return;
+    this._sel.clear();
+    this._rowCache.clear();
+    this._anchor = null;
+    this._doRender();
   }
 
   // --- Structure (D11) ---
@@ -302,12 +501,13 @@ export class TdTable extends TdBaseElement {
         + ` data-card="${roles[ci]}">${inner}</th>`;
     }).join('');
     const titleHtml = title ? `<${h} class="td-table__title" id="${esc(this._titleId)}">${esc(title)}</${h}>` : '';
+    const selHead = this._selOn ? this._selectHeadHtml() : '';
     const pag = (cls, label, quiet) => `<div class="${cls}"${quiet ? ' hidden' : ''}><td-pagination${quiet ? ' quiet' : ''}`
       + ` item-label="${esc(TdTable.labels.itemLabel)}" aria-label="${esc(label)}"></td-pagination></div>`;
     return `<div class="td-table${mods}" data-state="ready">`
       + `<div class="td-table__header">${titleHtml}${pag('td-table__pagination', TdTable.labels.paginationTop, true)}</div>`
       + '<div class="td-table__scroll"><table class="td-table__table" role="table">'
-      + `<thead class="td-table__head" role="rowgroup"><tr role="row">${heads}</tr></thead>`
+      + `<thead class="td-table__head" role="rowgroup"><tr role="row">${selHead}${heads}</tr></thead>`
       + '<tbody class="td-table__body" role="rowgroup"></tbody></table></div>'
       + `<div class="td-table__footer" hidden>${pag('td-table__pagination td-table__pagination--bottom', TdTable.labels.paginationBottom, false)}</div>`
       + '<p class="td-sr-only" role="status"></p>'
@@ -317,6 +517,14 @@ export class TdTable extends TdBaseElement {
   /** Structural render: only for columns / title / heading-level / zebra / max-height / cellPaddingClass. */
   _doRender() {
     if (!this._titleId) this._titleId = `${this.id || `td-table-${++seq}`}-title`;
+    const mode = this._selMode();
+    this._sel.setExclusive(mode === 'single');
+    this._pruneRowCache(); // review ISSUE-3: single keeps only the last key
+    this._selOn = mode !== 'none' && !!this.rowKey;
+    this._dataIndex = null;
+    if (mode !== 'none' && !this._selOn) {
+      this._warnOnce('td-table: `selectable` needs `rowKey` (row-key) — no selection column (rows are never selected by index).');
+    }
     this.innerHTML = this.render();
     this._root = this.firstElementChild;
     this._header = this._root.querySelector(':scope > .td-table__header');
@@ -327,11 +535,14 @@ export class TdTable extends TdBaseElement {
     this._pagTop = this._header.querySelector(':scope > .td-table__pagination > td-pagination');
     this._pagBottom = this._footer.querySelector('td-pagination');
     this._status = this._root.querySelector(':scope > [role="status"]');
+    this._selAll = this._selOn ? this._table.querySelector(':scope > thead > tr > th > .td-table__select-all') : null;
+    if (this._selAll) fillIconSlots(this._selAll);
     const mh = this._getMaxHeight();
     if (mh) this._root.style.setProperty('--td-table-max-h', mh);
     else if (this.hasAttribute('max-height')) this._warnOnce(`td-table: ignored invalid max-height "${this.getAttribute('max-height')}".`);
     this._syncSortUi();
     this._update();
+    this._syncForm();
     this._observeOverflow();
   }
 
@@ -345,29 +556,35 @@ export class TdTable extends TdBaseElement {
         const pages = Math.max(1, Math.ceil(total / this._getPerPage()));
         this._currentPage = Math.min(Math.max(1, this._currentPage), pages);
       }
-      return { rows: this._data, total };
+      return { rows: this._data, src: null, total };
     }
-    const rows = this._sortedRows();
+    // review ISSUE-4: sort / page SOURCE INDICES (into `data`), so row selection knows which occurrence a row is
+    const order = this._sortedIndices();
     const per = this._getPerPage();
-    const pages = Math.max(1, Math.ceil(rows.length / per));
+    const pages = Math.max(1, Math.ceil(order.length / per));
     this._currentPage = Math.min(Math.max(1, this._currentPage), pages);
     const start = (this._currentPage - 1) * per;
-    return { rows: rows.slice(start, start + per), total: rows.length };
+    const src = order.slice(start, start + per);
+    return { rows: src.map((i) => this._data[i]), src, total: order.length };
   }
 
-  /** @private Client sort (D12): numbers numerically, strings with a vi numeric collator, nulls first in asc. */
-  _sortedRows() {
-    const rows = [...this._data];
+  /**
+   * @private Client sort (D12): numbers numerically, strings with a vi numeric collator, nulls first in asc. Returns
+   * indices into `data` (stable: ties keep data order).
+   */
+  _sortedIndices() {
+    const data = this._data;
+    const idx = data.map((_, i) => i);
     const { col: ci, direction } = this._sort;
     const col = ci === null ? null : this._columns[ci];
-    if (!col || !direction) return rows;
+    if (!col || !direction) return idx;
     const key = col.key;
     const collator = new Intl.Collator('vi', { numeric: true, sensitivity: 'base' });
     const sign = direction === 'asc' ? 1 : -1;
     const val = (row) => (row && typeof row === 'object' ? row[key] : undefined);
-    return rows.sort((a, b) => {
-      const va = val(a);
-      const vb = val(b);
+    return idx.sort((ia, ib) => {
+      const va = val(data[ia]);
+      const vb = val(data[ib]);
       if (va == null && vb == null) return 0;
       if (va == null) return -sign;
       if (vb == null) return sign;
@@ -384,14 +601,20 @@ export class TdTable extends TdBaseElement {
     if (active && (this._pagTop?.contains(active) || this._pagBottom?.contains(active))) {
       this._refocusPagination = this._pagTop.contains(active) ? 'top' : 'bottom';
     }
-    const { rows, total } = this._view();
+    const { rows, src, total } = this._view();
     const empty = !loading && rows.length === 0;
 
     // Body
+    if (loading || empty) {
+      this._pageKeys = [];
+      this._pageEnabled = [];
+      this._pageLabels = [];
+    }
     if (loading) this._tbody.innerHTML = this._skeletonHtml();
     else if (empty) this._renderEmpty();
-    else this._renderRows(rows);
+    else this._renderRows(rows, src);
     this._pageRows = loading || empty ? [] : rows;
+    this._paintSelection();
 
     // Paginations (updated in place: live region + focus restore stay inside td-pagination)
     let showPag = !loading;
@@ -450,7 +673,7 @@ export class TdTable extends TdBaseElement {
     }
   }
 
-  _renderRows(rows) {
+  _renderRows(rows, src = null) {
     const esc = (v) => this.escapeHtml(v);
     const pad = this._cellPadClass();
     const cols = this._columns;
@@ -459,6 +682,11 @@ export class TdTable extends TdBaseElement {
       const l = col && col.label != null ? String(col.label) : '';
       return `<span class="td-table__cell-label" aria-hidden="true">${esc(l)}</span>`;
     });
+    const sel = this._selOn;
+    if (sel) this._pageSelection(rows, src);
+    // v0.37.0: the selection cell comes first (no data-col: data columns keep 0..n-1); its state is painted after.
+    const selCell = sel ? '<td class="td-table__cell td-table__cell--select td-table__card-select" role="cell" data-card="select">'
+      + `<button type="button" class="td-table__select" role="checkbox" aria-checked="false">${checkMarkHTML('md')}</button></td>` : '';
     this._tbody.innerHTML = rows.map((row, ri) => {
       const cells = cols.map((col, ci) => {
         const c = col || {};
@@ -474,7 +702,7 @@ export class TdTable extends TdBaseElement {
         if (c.ellipsis) return `<td ${attrs}>${labels[ci]}<div class="td-table__truncate" title="${esc(text)}">${esc(text)}</div></td>`;
         return `<td ${attrs}>${labels[ci]}${esc(text)}</td>`;
       }).join('');
-      return `<tr class="td-table__row" role="row" data-row-idx="${ri}">${cells}</tr>`;
+      return `<tr class="td-table__row" role="row" data-row-idx="${ri}">${selCell}${cells}</tr>`;
     }).join('');
 
     const trs = this._tbody.children;
@@ -494,7 +722,7 @@ export class TdTable extends TdBaseElement {
     cols.forEach((col, ci) => {
       if (!col || typeof col.render !== 'function' || Array.isArray(col.actions)) return;
       rows.forEach((row, ri) => {
-        const td = trs[ri].children[ci];
+        const td = trs[ri].children[ci + (sel ? 1 : 0)];
         let out;
         try {
           out = col.render(row, ri);
@@ -514,6 +742,290 @@ export class TdTable extends TdBaseElement {
         if (col.ellipsis && !target.querySelector('[title]')) target.title = target.textContent.trim();
       });
     });
+
+    if (sel) this._bindSelectRows(trs);
+  }
+
+  // --- v0.37.0 row selection (plan v0.37.0-table-row-selection, ADR 0018) ---
+
+  /** @private `th` of the selection column; multiple → the tri-state "select all on this page" checkbox button. */
+  _selectHeadHtml() {
+    const esc = (v) => this.escapeHtml(v);
+    const L = TdTable.labels;
+    if (this._selMode() === 'single') {
+      return '<th class="td-table__th td-table__th--select" role="columnheader" scope="col" data-card="select">'
+        + `<span class="td-sr-only">${esc(L.selectColumn)}</span></th>`;
+    }
+    return '<th class="td-table__th td-table__th--select td-table__th--select-all" role="columnheader" scope="col" data-card="select">'
+      + `<button type="button" class="td-table__select-all" role="checkbox" aria-checked="false">${checkMarkHTML('md')}`
+      + `<span class="td-table__select-all-label">${esc(L.selectAll)}</span></button></th>`;
+  }
+
+  /** @private The key of a row, or null (invalid key / throwing `rowKey` → cannot be selected; one warning per kind). */
+  _keyOf(row) {
+    let k;
+    if (this._rowKeyFn) {
+      try {
+        k = this._rowKeyFn(row);
+      } catch {
+        this._warnOnce('td-table: rowKey threw — that row cannot be selected.');
+        return null;
+      }
+    } else {
+      const field = this.getAttribute('row-key');
+      k = field && row && typeof row === 'object' ? readKeyField(row, field) : undefined;
+    }
+    if (keyId(k) === null) {
+      this._warnOnce('td-table: a row has no valid key (non-empty string, finite number or bigint) — it cannot be selected.');
+      return null;
+    }
+    return k;
+  }
+
+  /** @private `rowSelectable(row)`; a throw counts as false (fail closed, like actions[].disabled). */
+  _isRowSelectable(row) {
+    if (!this._rowSelectable) return true;
+    try {
+      return !!this._rowSelectable(row);
+    } catch (err) {
+      console.error('td-table: rowSelectable threw', err);
+      return false;
+    }
+  }
+
+  /** @private Review ISSUE-3: the row cache only ever holds rows of SELECTED keys (mode changes bypass _commitSel). */
+  _pruneRowCache() {
+    for (const id of [...this._rowCache.keys()]) if (!this._sel.has(id)) this._rowCache.delete(id);
+  }
+
+  /**
+   * @private Keys + enabled flags of the rows about to render. A duplicate key (after `String(key)`) → only the first
+   * row with it can be selected: client mode compares against the WHOLE `data` (review SEC-2 — the first row in data
+   * order owns the key, on whatever page it is), server mode against the page (keys must be globally unique — docs).
+   */
+  _pageSelection(rows, src) {
+    const seen = new Set();
+    const owners = src ? this._dataRows() : null;
+    this._pageKeys = rows.map((row, ri) => {
+      const k = this._keyOf(row);
+      if (k === null) return null;
+      const id = keyId(k);
+      // review ISSUE-4: ownership by SOURCE INDEX (the same object twice in data is two occurrences)
+      if (seen.has(id) || (owners && owners.get(id) !== src[ri])) {
+        this._warnOnce('td-table: duplicate row key — only the first row with it can be selected (keys must be unique; use a composite key such as `${tenantId}:${id}`).');
+        return null;
+      }
+      seen.add(id);
+      if (this._sel.has(k)) this._rowCache.set(id, row);
+      return k;
+    });
+    this._pageEnabled = rows.map((row, ri) => this._pageKeys[ri] !== null && this._isRowSelectable(row));
+  }
+
+  /** @private After the body render: tick icons + names (setAttribute — row data never enters HTML here). */
+  _bindSelectRows(trs) {
+    fillIconSlots(this._tbody, '.td-table__select [data-td-icon]');
+    const pi = this._cardRoles().indexOf('primary');
+    const L = TdTable.labels;
+    this._pageLabels = [];
+    for (let ri = 0; ri < trs.length; ri++) {
+      const tr = trs[ri];
+      const td = pi >= 0 ? tr.querySelector(`:scope > [data-col="${pi}"]`) : null;
+      const name = (td && cellText(td)) || fill(L.rowFallback, { n: ri + 1 });
+      this._pageLabels.push(name);
+      tr.querySelector(':scope > .td-table__cell--select > .td-table__select')?.setAttribute('aria-label', fill(L.selectRow, { label: name }));
+    }
+  }
+
+  /** @private isEnabled(key) over the current page (valid, unique, rowSelectable). */
+  _enabledFn() {
+    const ids = new Set();
+    this._pageKeys.forEach((k, i) => { if (k !== null && this._pageEnabled[i]) ids.add(keyId(k)); });
+    return (k) => ids.has(keyId(k));
+  }
+
+  /** @private Paint the selection IN PLACE (no re-render: focus stays on the activated control). */
+  _paintSelection() {
+    if (!this._selOn || !this._tbody) return;
+    const locked = this._selLocked();
+    for (const tr of this._tbody.children) {
+      const btn = tr.querySelector(':scope > .td-table__cell--select > .td-table__select');
+      if (!btn) continue;
+      const ri = Number(tr.getAttribute('data-row-idx'));
+      const k = this._pageKeys[ri];
+      const on = k != null && this._sel.has(k);
+      btn.setAttribute('aria-checked', on ? 'true' : 'false');
+      btn.disabled = locked || !this._pageEnabled[ri];
+      tr.toggleAttribute('data-selected', on);
+    }
+    if (this._selAll) {
+      const state = this._isLoading() ? 'disabled' : this._sel.headerState(this._pageKeys, this._enabledFn());
+      this._selAll.setAttribute('aria-checked', state === 'all' ? 'true' : state === 'some' ? 'mixed' : 'false');
+      this._selAll.disabled = locked || state === 'disabled';
+    }
+  }
+
+  /** @private A user activated a row control or the header (click / Space / Shift+Space). */
+  _activateSelect(btn, shift) {
+    if (!this._selOn || this._selLocked()) return;
+    const mode = this._selMode();
+    this._sel.max = this._maxSelected();
+    if (btn.classList.contains('td-table__select-all')) {
+      if (mode === 'multiple') this._userResult(this._sel.userPage(this._pageKeys, this._enabledFn()), 'page');
+      return;
+    }
+    const ri = Number(btn.closest('tr')?.getAttribute('data-row-idx'));
+    const k = this._pageKeys[ri];
+    if (k == null || !this._pageEnabled[ri]) return;
+    const anchorOnPage = this._anchor !== null && this._pageKeys.some((p) => p !== null && keyId(p) === this._anchor);
+    let result;
+    let trigger = 'toggle';
+    if (mode === 'multiple' && shift && anchorOnPage) {
+      result = this._sel.userRange(this._pageKeys, this._anchor, k, this._enabledFn());
+      trigger = 'range';
+    } else {
+      result = this._sel.userToggle(k);
+    }
+    if (mode === 'multiple') this._anchor = keyId(k);
+    this._userResult(result, trigger);
+  }
+
+  /** @private Commit a user change; an add stopped at the cap → `select-limit` + announcement (after the change). */
+  _userResult(result, trigger) {
+    this._commitSel(result, trigger, true);
+    if (result.limited) {
+      const max = this._sel.max;
+      this.emit('select-limit', { max });
+      this._announce(fill(TdTable.labels.selectLimit, { max }));
+    }
+  }
+
+  /**
+   * @private Apply a selection diff: paint, form value; `emit` (user action or `{ emit: true }`) → `onSelectChange`,
+   * `select-change`, announcement.
+   */
+  _commitSel(diff, trigger, emit) {
+    if (!diff.added.length && !diff.removed.length) return;
+    for (const k of diff.removed) this._rowCache.delete(keyId(k));
+    if (diff.added.length) {
+      this._pageKeys.forEach((k, ri) => {
+        if (k !== null && this._sel.has(k) && ri < this._pageRows.length) this._rowCache.set(keyId(k), this._pageRows[ri]);
+      });
+    }
+    this._paintSelection();
+    this._syncForm();
+    if (!emit) return;
+    const keys = this._sel.keys();
+    if (this._onSelectChange) {
+      try {
+        this._onSelectChange(keys.slice());
+      } catch (err) {
+        console.error('td-table: onSelectChange threw', err);
+      }
+    }
+    this.emit('select-change', { keys, added: diff.added.slice(), removed: diff.removed.slice(), trigger });
+    const L = TdTable.labels;
+    if (this._selMode() === 'single') {
+      const k = diff.added[diff.added.length - 1];
+      this._announce(k === undefined ? L.deselected : fill(L.selectedRow, { label: this._labelOfKey(k) }));
+    } else {
+      this._announce(fill(L.selectedCount, { n: this._sel.size }));
+    }
+  }
+
+  /** @private Name of a key's row on this page (announcements), else the key as text. */
+  _labelOfKey(k) {
+    const id = keyId(k);
+    const ri = this._pageKeys.findIndex((p) => p !== null && keyId(p) === id);
+    return ri >= 0 && this._pageLabels[ri] ? this._pageLabels[ri] : String(k);
+  }
+
+  /** @private One live-region update per task (the last message wins); never over the loading text. */
+  _announce(text) {
+    if (!this._status || this._isLoading()) return;
+    this._pendingAnnounce = String(text ?? '');
+    if (this._announceQueued) return;
+    this._announceQueued = true;
+    queueMicrotask(() => {
+      this._announceQueued = false;
+      if (!this._status || this._isLoading()) return;
+      // the same text again (e.g. a second limit attempt): clear first so the region mutates and is read again
+      if (this._status.textContent === this._pendingAnnounce) this._status.textContent = '';
+      this._status.textContent = this._pendingAnnounce;
+    });
+  }
+
+  /** @private Client mode: id → index in `data` of the FIRST row with that key (its owner), built lazily. */
+  _dataRows() {
+    if (!this._dataIndex) {
+      const m = new Map();
+      if (this._selOn) {
+        for (let i = 0; i < this._data.length; i++) {
+          const k = this._keyOf(this._data[i]);
+          if (k === null) continue;
+          if (!m.has(keyId(k))) m.set(keyId(k), i);
+          else this._warnOnce('td-table: duplicate row key — only the first row with it can be selected (keys must be unique; use a composite key such as `${tenantId}:${id}`).');
+        }
+      }
+      this._dataIndex = m;
+    }
+    return this._dataIndex;
+  }
+
+  /** @private Form value (QĐ 22): `name` + selection on → one FormData entry per key (`String(key)`); else nothing. */
+  _syncForm() {
+    const internals = this._internals;
+    if (!internals || typeof internals.setFormValue !== 'function') return;
+    const name = this.getAttribute('name') || '';
+    if (!this._selOn || !name || !this._sel.size) {
+      internals.setFormValue(null);
+      return;
+    }
+    const fd = new FormData();
+    for (const id of this._sel.ids()) fd.append(name, id);
+    internals.setFormValue(fd);
+  }
+
+  /** Form reset → the selection is cleared and ONE `select-change` (`trigger: 'reset'`) fires (QĐ 22). */
+  formResetCallback() {
+    this._anchor = null;
+    this._commitSel(this._sel.clear(), 'reset', true);
+  }
+
+  /** Host `disabled` / ancestor `<fieldset disabled>` → the controls are locked; the selection is kept (QĐ 16). */
+  formDisabledCallback(disabled) {
+    this._formDisabled = !!disabled;
+    this._paintSelection();
+  }
+
+  /** Nothing is restored (bfcache / back): the rows may not be loaded yet — the app sets `selectedKeys` (QĐ 22). */
+  formStateRestoreCallback() {}
+
+  /** @private The selection control an event belongs to (this table's own), or null. */
+  _selectTarget(e) {
+    const t = e.target instanceof Element ? e.target : null;
+    const btn = t ? t.closest(SELECT_CTL) : null;
+    return btn && btn.closest('td-table') === this ? btn : null;
+  }
+
+  /** @private Space = click, Shift+Space = Shift+click (a key-generated click has no reliable shiftKey); Enter: nothing. */
+  _onSelectKeydown(e) {
+    if (e.key !== ' ' && e.key !== 'Enter') return;
+    const btn = this._selectTarget(e);
+    if (!btn) return;
+    e.preventDefault();
+    if (e.key === 'Enter' || e.repeat || btn.disabled) return;
+    this._activateSelect(btn, e.shiftKey);
+  }
+
+  /** @private A button activates on Space keyup — keep that from turning into a second toggle. */
+  _onSelectKeyup(e) {
+    if (e.key === ' ' && this._selectTarget(e)) e.preventDefault();
+  }
+
+  /** @private Shift+mousedown on a control: no text selection (the click handler focuses the control). */
+  _onSelectMousedown(e) {
+    if (e.shiftKey && this._selectTarget(e)) e.preventDefault();
   }
 
   // --- Row actions (v0.34.0 QĐ 18) ---
@@ -590,7 +1102,7 @@ export class TdTable extends TdBaseElement {
   }
 
   _renderEmpty() {
-    const n = Math.max(1, this._columns.length);
+    const n = Math.max(1, this._columns.length) + (this._selOn ? 1 : 0);
     const level = Math.min(6, (this._getTitle() ? this._getHeadingLevel() : 2) + 1);
     const esc = (v) => this.escapeHtml(v);
     this._tbody.innerHTML = `<tr class="td-table__empty-row" role="row"><td class="td-table__empty" role="cell" colspan="${n}">`
@@ -605,7 +1117,8 @@ export class TdTable extends TdBaseElement {
     const cells = this._columns.map((c, ci) => `<td class="td-table__cell${pad}" role="cell" data-col="${ci}"`
       + ` data-card="${roles[ci]}"><span class="td-table__skeleton"></span></td>`).join('')
       || `<td class="td-table__cell${pad}" role="cell" data-card="primary"><span class="td-table__skeleton"></span></td>`;
-    const row = `<tr class="td-table__row td-table__row--skeleton" role="row" aria-hidden="true">${cells}</tr>`;
+    const selCell = this._selOn ? '<td class="td-table__cell td-table__cell--select td-table__card-select" role="cell" data-card="select"></td>' : '';
+    const row = `<tr class="td-table__row td-table__row--skeleton" role="row" aria-hidden="true">${selCell}${cells}</tr>`;
     return row.repeat(this._getLoadingRows());
   }
 
@@ -619,7 +1132,7 @@ export class TdTable extends TdBaseElement {
 
   _syncSortUi() {
     if (!this._table) return;
-    for (const th of this._table.querySelectorAll(':scope > thead > tr > th')) {
+    for (const th of this._table.querySelectorAll(':scope > thead > tr > th[data-col]')) {
       const ci = Number(th.getAttribute('data-col'));
       const on = this._sort.col === ci && this._sort.direction;
       if (on) th.setAttribute('aria-sort', this._sort.direction === 'asc' ? 'ascending' : 'descending');
@@ -660,8 +1173,14 @@ export class TdTable extends TdBaseElement {
 
   _onClick(e) {
     const t = e.target instanceof Element ? e.target : null;
-    const btn = t ? t.closest('.td-table__sort, .td-table__action') : null;
+    const btn = t ? t.closest(`.td-table__sort, .td-table__action, ${SELECT_CTL}`) : null;
     if (!btn || btn.closest('td-table') !== this) return;
+    if (btn.matches(SELECT_CTL)) {
+      if (btn.disabled) return;
+      btn.focus(); // WebKit does not focus a clicked button; Shift+mousedown is prevented (no text selection)
+      this._activateSelect(btn, e.shiftKey);
+      return;
+    }
     if (btn.classList.contains('td-table__sort')) {
       this._handleSort(Number(btn.getAttribute('data-sort-col')));
       return;
@@ -768,6 +1287,7 @@ export class TdTable extends TdBaseElement {
   /** Replace the rows. Client mode: back to page 1. Server mode: the current page is kept (fixes 2.8.2). */
   setData(data) {
     this._data = Array.isArray(data) ? data : [];
+    this._dataIndex = null;
     if (!this._isServerMode()) this._currentPage = 1;
     if (this._initialized) this._update();
   }
@@ -793,8 +1313,30 @@ export class TdTable extends TdBaseElement {
       page: this._currentPage,
       perPage: this._getPerPage(),
       sort: { key: col ? col.key : null, direction: this._sort.direction },
+      selection: { mode: this._selMode(), keys: this._sel.keys() },
     };
   }
+
+  /** Add keys to the selection (API: never capped by `max-selected`). No event unless `{ emit: true }`. */
+  select(keys, opts = {}) { this._commitSel(this._sel.add(keys), 'api', !!opts?.emit); }
+
+  /** Remove keys from the selection. No event unless `{ emit: true }`. */
+  deselect(keys, opts = {}) { this._commitSel(this._sel.remove(keys), 'api', !!opts?.emit); }
+
+  /** Flip one key. No event unless `{ emit: true }`. */
+  toggle(key, opts = {}) {
+    if (this._sel.has(key)) this.deselect([key], opts);
+    else this.select([key], opts);
+  }
+
+  /** Clear the selection (all pages). No event unless `{ emit: true }`. */
+  clearSelection(opts = {}) {
+    this._anchor = null;
+    this._commitSel(this._sel.clear(), 'api', !!opts?.emit);
+  }
+
+  /** Is this key selected (1 and "1" are the same row)? */
+  isSelected(key) { return this._sel.has(key); }
 
   /** Merge options (non-array `columns`/`data` are ignored; `data` follows setData's page rule, then `page`). */
   update(opts = {}) {
@@ -807,8 +1349,13 @@ export class TdTable extends TdBaseElement {
     }
     if (Array.isArray(o.data)) {
       this._data = o.data;
+      this._dataIndex = null;
       if (!this._isServerMode()) this._currentPage = 1;
     }
+    // v0.37.0: rowKey first (it clears the selection), then the rest
+    if (typeof o.rowKey === 'function' || typeof o.rowKey === 'string') this.rowKey = o.rowKey;
+    if (o.rowSelectable !== undefined) this._rowSelectable = typeof o.rowSelectable === 'function' ? o.rowSelectable : null;
+    if (o.selectedKeys !== undefined) this._commitSel(this._sel.replace(o.selectedKeys), 'api', false);
     if (o.page != null && Number.isFinite(Number(o.page))) this._currentPage = Math.max(1, Math.trunc(Number(o.page)));
     if (typeof o.onSort === 'function') this._onSort = o.onSort;
     if (typeof o.onPageChange === 'function') this._onPageChange = o.onPageChange;

@@ -517,7 +517,15 @@
   <!-- ═══════════════════ TABLE ═══════════════════ -->
   <div class="demo-section">
     <h2>Table <span class="demo-code">&lt;td-table&gt;</span></h2>
-    <td-table id="demo-table"></td-table>
+    <!-- v0.37.0: thanh hàng loạt = công thức phía app (div của app, ẩn khi 0 dòng chọn) -->
+    <div class="demo-row" id="demo-bulk" hidden>
+      <strong id="demo-bulk-count"></strong>
+      <button type="button" class="td-btn td-btn--sm td-btn--danger" id="demo-bulk-delete">Xoá đã chọn</button>
+      <button type="button" class="td-btn td-btn--sm td-btn--ghost" id="demo-bulk-all" hidden></button>
+      <button type="button" class="td-btn td-btn--sm td-btn--secondary" id="demo-bulk-clear">Bỏ chọn</button>
+    </div>
+    <td-table id="demo-table" selectable row-key="id" per-page="5"></td-table>
+    <p class="demo-note">v0.37.0: <code>selectable</code> + <code>row-key="id"</code> — Shift+click chọn dải, ô header chọn cả trang (ba trạng thái); thanh hàng loạt nghe <code>select-change</code>; "Chọn tất cả 8 kết quả" là công thức phía app.</p>
   </div>
 
   <!-- ═══════════════════ TABS ═══════════════════ -->
@@ -875,6 +883,57 @@
       { id: 7, title: 'Docker Compose Best Practices', author: 'Minh', status: 'published', views: 670 },
       { id: 8, title: 'Git Workflow cho team nhỏ', author: 'Duyệt', status: 'published', views: 1580 },
     ];
+
+    // ── Table selection: bulk bar recipe (app-side; the kit only emits select-change) ──
+    const bulk = document.querySelector('#demo-bulk');
+    const bulkCount = document.querySelector('#demo-bulk-count');
+    const bulkAll = document.querySelector('#demo-bulk-all');
+    let allMatching = false;
+    // review ISSUE-2: "all N results" is offered only right after "select all on this page", for THAT view (page, sort,
+    // per-page, the data array). Any other change clears it; the click re-validates (silent setPage / data = … too).
+    let eligible = null;
+    const viewOf = () => { const s = table.getState(); return { page: s.page, per: s.perPage, sort: `${s.sort.key}|${s.sort.direction}`, data: table.data }; };
+    const sameView = (a, b) => !!a && !!b && a.page === b.page && a.per === b.per && a.sort === b.sort && a.data === b.data;
+    const pageRows = () => table.querySelectorAll('.td-table__body > .td-table__row:not(.td-table__row--skeleton)').length;
+    const stillEligible = () => sameView(eligible, viewOf())
+      && table.querySelector('.td-table__select-all')?.getAttribute('aria-checked') === 'true'
+      && table.data.length > pageRows();
+    const syncBulk = (keys) => {
+      const total = table.data.length;
+      bulk.hidden = keys.length === 0 && !allMatching;
+      bulkCount.textContent = allMatching ? `Đã chọn tất cả ${total} kết quả` : `${keys.length} đã chọn`;
+      bulkAll.hidden = allMatching || !eligible;
+      bulkAll.textContent = `Chọn tất cả ${total} kết quả`;
+    };
+    const resetAll = () => { allMatching = false; eligible = null; syncBulk(table.selectedKeys); };
+    table.addEventListener('select-change', (e) => {
+      allMatching = false; // any change by the user drops the "all results" flag
+      eligible = e.detail.trigger === 'page' ? viewOf() : null;
+      if (eligible && !stillEligible()) eligible = null;
+      syncBulk(e.detail.keys);
+    });
+    // the view changed: the offer (and the "all results" flag) belonged to the old view
+    table.addEventListener('page-change', () => queueMicrotask(resetAll));
+    table.addEventListener('sort-change', () => queueMicrotask(resetAll));
+    bulkAll.addEventListener('click', () => {
+      if (!stillEligible()) { resetAll(); return; } // stale (silent setPage / data / filter change) → refuse
+      allMatching = true; // a real app would send the CURRENT FILTER to the server, not a list of keys
+      eligible = null;
+      syncBulk(table.selectedKeys);
+    });
+    document.querySelector('#demo-bulk-clear').addEventListener('click', () => {
+      allMatching = false;
+      eligible = null;
+      table.clearSelection({ emit: true });
+    });
+    document.querySelector('#demo-bulk-delete').addEventListener('click', () => {
+      const keys = allMatching ? table.data.map((r) => r.id) : table.selectedKeys;
+      table.data = table.data.filter((r) => !keys.includes(r.id)); // data replaced → clear the offer
+      allMatching = false;
+      eligible = null;
+      table.deselect(keys, { emit: true });
+      TdToast.success(`Đã xoá ${keys.length} bài (giả lập)`);
+    });
 
     // ── Tabs ──
     const tabs = document.querySelector('#demo-tabs');
