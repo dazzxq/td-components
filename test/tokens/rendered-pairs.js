@@ -81,6 +81,12 @@ export function renderedPairs() {
   add('gallery badge', '--td-tooltip-fg', ['--td-tooltip-bg']); // cover / video badge = the tooltip chip
   add('gallery file name', '--td-color-text', ['--td-color-surface-muted']);
   for (const s of ['--td-control-bg', '--td-color-bg']) add(`field focus edge vs ${s}`, '--td-field-focus', [s], 3);
+  // v0.46.0 td-diff (diff.css): values, side labels, muted notes / [ĐÃ ẨN] / — on the two cell tints (opaque); the kind
+  // labels (Thêm / Xoá / Đổi) sit on the page
+  for (const t of ['--td-diff-added-bg', '--td-diff-removed-bg']) {
+    for (const fg of ['--td-color-text', '--td-color-text-label', '--td-color-text-muted']) add(`diff ${fg} on ${t}`, fg, [t]);
+  }
+  for (const s of PAGE) for (const c of ['success', 'error', 'warning']) add(`diff kind ${c} on ${s}`, `--td-color-${c}`, [s]);
   return P;
 }
 

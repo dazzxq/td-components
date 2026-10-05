@@ -38,7 +38,7 @@ import { THEME_NAME_RE, RESERVED_THEME_NAMES } from './selectors.js';
 import { PRESETS, SCHEME_SHADOWS, FOCUS_RING } from './presets.js';
 
 /** Bump when the same seeds produce different output (the CSS header carries it → stale-file detection). */
-export const ALGORITHM_VERSION = 2;
+export const ALGORITHM_VERSION = 3;
 export { THEME_TOKENS_VERSION };
 
 /** WCAG 2.x gate (QĐ9): text 4.7 (a margin over 4.5), icons 3.2, non-text 3.0, disabled 2.2; 7 = preferred body text. */
@@ -655,6 +655,11 @@ export function generatePalette(seeds, options = {}) {
     // filter chips (filter-chips.css): the remove × rests in this colour on the chip fill
     ink('--td-filter-chip-remove-fg', srgbToOklch(V.get(isLight ? '--td-color-text-label' : '--td-color-text-muted')),
       [named('--td-color-fill')], textMins(GATE.text), GATE.text, 'text');
+    // v0.46.0 td-diff (diff.css): opaque cell tints — success / error over the surface, clamped so the value text, the
+    // side labels and the muted notes ([ĐÃ ẨN], —, ⟨U+…⟩) still read on them
+    const diffOk = (k) => readsOn(textC, k) && readsOn(mutedC, k) && readsOn(V.get('--td-color-text-label'), k);
+    set('--td-diff-added-bg', q(over(alpha(V.get('--td-color-success'), alphaKeep(V.get('--td-color-success'), isLight ? 0.08 : 0.12, surface, diffOk)), surface)));
+    set('--td-diff-removed-bg', q(over(alpha(err, alphaKeep(err, isLight ? 0.08 : 0.12, surface, diffOk)), surface)));
 
     // round 2: every rendered (foreground, background) pair of the component CSS is a registered constraint (the
     // fuzz checks the same pairs independently: test/tokens/rendered-pairs.js). Foregrounds solved against their own
@@ -677,6 +682,11 @@ export function generatePalette(seeds, options = {}) {
     // (the dropzone's accent edge ≥ 3 on its active / pressed fills is guaranteed by their alpha clamp above: at alpha 0
     // the fill is the control, where the accent already reads ≥ 4.7)
     need('--td-field-focus', surfaces, GATE.nonText, 'non-text');
+    // v0.46.0 td-diff: text / label / muted on the two cell tints (registered with the base set each ink was solved on)
+    const diffBgs = ['--td-diff-added-bg', '--td-diff-removed-bg'].map(named);
+    need('--td-color-text', [...textBgs, ...diffBgs], GATE.text, 'text');
+    need('--td-color-text-label', [...mutedBgs, ...diffBgs], GATE.text, 'text');
+    need('--td-color-text-muted', [...mutedBgs, ...diffBgs], GATE.text, 'text');
     // components that paint an alias of a semantic colour carry the claim under their own name too
     need('--td-hovercard-link-fg', [...surfaces, ...glassOver], GATE.text, 'text');
     need('--td-hovercard-error-fg', statusSets['--td-color-error'], GATE.text, 'text');

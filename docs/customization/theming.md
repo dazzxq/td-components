@@ -897,7 +897,7 @@ mv td-theme.css "public/assets/td-theme.$h.css" && echo "td-theme.$h.css"
 <link rel="stylesheet" href="/assets/site.css">
 ```
 
-Header của file ghi phiên bản thuật toán + hợp đồng (`palette algorithm 2, THEME_TOKENS v1`) và seed đã chuẩn hoá về
+Header của file ghi phiên bản thuật toán + hợp đồng (`palette algorithm 3, THEME_TOKENS v1`) và seed đã chuẩn hoá về
 hex. **Sinh lại khi nâng `td-components`** (so header với `npx td-theme --version`); không sửa tay file sinh.
 Thuật toán 2 (0.42.1) chỉ thêm một dòng `--td-form-summary-pressed-bg` (= `--td-color-pressed` của palette), mọi giá trị
 khác như thuật toán 1; file thuật toán 1 vẫn chạy đúng (thiếu token → mặc định `var(--td-color-pressed)` của kit).

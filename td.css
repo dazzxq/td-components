@@ -17028,8 +17028,8 @@
 	/* v0.42.0 (QĐ15, ADR 0020): colour tokens re-resolve in every theme scope. The two tints are static per scheme
 	   (palette.js computes them for generated palettes: text AND muted ≥ 4.7 on them). */
 	:root, [data-td-theme] {
-		--td-diff-added-bg: #edf6f0;
-		--td-diff-removed-bg: #fbf0f0;
+		--td-diff-added-bg: #eef6f1; /* success 7.1 % over the surface: text 15.5, muted 4.80 */
+		--td-diff-removed-bg: #fbf2f2; /* error 5.7 % over the surface: muted 4.80 */
 		--td-diff-added-fg: var(--td-color-success);
 		--td-diff-removed-fg: var(--td-color-error);
 		--td-diff-changed-fg: var(--td-color-warning);
@@ -17039,14 +17039,14 @@
 	}
 
 	:root[data-td-theme="dark"], [data-td-theme][data-td-theme="dark"] {
-		--td-diff-added-bg: #1b2c21;
-		--td-diff-removed-bg: #33221f;
+		--td-diff-added-bg: #1d3026; /* success 12 % over the dark surface: muted 6.2 */
+		--td-diff-removed-bg: #362628; /* error 12 % (= the dark form summary): muted 6.4 */
 	}
 	/* td: generated auto theme (QĐ4) */
 	@media (prefers-color-scheme: dark) {
 		:root[data-td-theme="auto"], [data-td-theme][data-td-theme="auto"] {
-			--td-diff-added-bg: #1b2c21;
-			--td-diff-removed-bg: #33221f;
+			--td-diff-added-bg: #1d3026; /* success 12 % over the dark surface: muted 6.2 */
+			--td-diff-removed-bg: #362628; /* error 12 % (= the dark form summary): muted 6.4 */
 		}
 	}
 }

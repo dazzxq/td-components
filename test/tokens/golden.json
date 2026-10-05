@@ -1689,6 +1689,61 @@
       "light": "rgb(107, 107, 115)",
       "dark": "rgb(172, 172, 180)",
       "why": "v0.45.0 td-timeline (timeline.css): marker / connector geometry, neutral marker + day heading colours derived from the theme contract"
+    },
+    "--td-diff-added-bg": {
+      "light": "rgb(238, 246, 241)",
+      "dark": "rgb(29, 48, 38)",
+      "why": "v0.46.0 td-diff (diff.css): \"Sau\" cell tint — success over the surface, text / label / muted ≥ 4.8"
+    },
+    "--td-diff-removed-bg": {
+      "light": "rgb(251, 242, 242)",
+      "dark": "rgb(54, 38, 40)",
+      "why": "v0.46.0 td-diff (diff.css): \"Trước\" cell tint — error over the surface, text / label / muted ≥ 4.8"
+    },
+    "--td-diff-added-fg": {
+      "light": "rgb(21, 128, 61)",
+      "dark": "rgb(34, 197, 94)",
+      "why": "v0.46.0 td-diff (diff.css): \"Thêm\" label = --td-color-success"
+    },
+    "--td-diff-removed-fg": {
+      "light": "rgb(185, 28, 28)",
+      "dark": "rgb(248, 113, 113)",
+      "why": "v0.46.0 td-diff (diff.css): \"Xoá\" label = --td-color-error"
+    },
+    "--td-diff-changed-fg": {
+      "light": "rgb(180, 83, 9)",
+      "dark": "rgb(245, 158, 11)",
+      "why": "v0.46.0 td-diff (diff.css): \"Đổi\" label = --td-color-warning"
+    },
+    "--td-diff-muted-fg": {
+      "light": "rgb(107, 107, 115)",
+      "dark": "rgb(172, 172, 180)",
+      "why": "v0.46.0 td-diff (diff.css): [ĐÃ ẨN] / — / ⟨U+…⟩ / notes = --td-color-text-muted"
+    },
+    "--td-diff-border": {
+      "light": "rgb(228, 228, 231)",
+      "dark": "rgb(51, 51, 56)",
+      "why": "v0.46.0 td-diff (diff.css): hairlines = --td-color-border"
+    },
+    "--td-diff-head-bg": {
+      "light": "rgb(247, 247, 248)",
+      "dark": "rgb(36, 36, 39)",
+      "why": "v0.46.0 td-diff (diff.css): table head = --td-color-surface-muted"
+    },
+    "--td-diff-label-w": {
+      "light": "30%",
+      "dark": "30%",
+      "why": "v0.46.0 td-diff (diff.css): field column width"
+    },
+    "--td-diff-json-max-h": {
+      "light": "24rem",
+      "dark": "24rem",
+      "why": "v0.46.0 td-diff (diff.css): JSON view pane height"
+    },
+    "--td-diff-font-mono": {
+      "light": "ui-monospace, \"SFMono-Regular\", \"JetBrains Mono\", Menlo, Consolas, monospace",
+      "dark": "ui-monospace, \"SFMono-Regular\", \"JetBrains Mono\", Menlo, Consolas, monospace",
+      "why": "v0.46.0 td-diff (diff.css): JSON / ⟨U+…⟩ font = --td-font-mono"
     }
   },
   "lightDeltas": {

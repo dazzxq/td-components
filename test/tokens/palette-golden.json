@@ -1,8 +1,8 @@
 {
- "algorithm": 2,
+ "algorithm": 3,
  "palettes": {
   "135-white-surfaces": {
-   "algorithm": 2,
+   "algorithm": 3,
    "tokensVersion": 1,
    "scheme": "light",
    "mode": "light",
@@ -134,7 +134,9 @@
     "--td-badge-warning-ink": "#a14800",
     "--td-badge-danger-ink": "#b61719",
     "--td-badge-info-ink": "#1d4ed8",
-    "--td-filter-chip-remove-fg": "#393939"
+    "--td-filter-chip-remove-fg": "#393939",
+    "--td-diff-added-bg": "#ebf4ef",
+    "--td-diff-removed-bg": "#f9eced"
    },
    "diagnostics": [
     {
@@ -162,7 +164,7 @@
    ]
   },
   "135-default-surfaces": {
-   "algorithm": 2,
+   "algorithm": 3,
    "tokensVersion": 1,
    "scheme": "light",
    "mode": "light",
@@ -293,7 +295,9 @@
     "--td-badge-warning-ink": "#a14800",
     "--td-badge-danger-ink": "#ad050f",
     "--td-badge-info-ink": "#1d4ed8",
-    "--td-filter-chip-remove-fg": "#3c372d"
+    "--td-filter-chip-remove-fg": "#3c372d",
+    "--td-diff-added-bg": "#e5e8d7",
+    "--td-diff-removed-bg": "#f3dfd4"
    },
    "diagnostics": [
     {
@@ -321,7 +325,7 @@
    ]
   },
   "navy": {
-   "algorithm": 2,
+   "algorithm": 3,
    "tokensVersion": 1,
    "scheme": "dark",
    "mode": "light",
@@ -452,7 +456,9 @@
     "--td-badge-warning-ink": "#f59e0b",
     "--td-badge-danger-ink": "#ffa8a4",
     "--td-badge-info-ink": "#60a5fa",
-    "--td-filter-chip-remove-fg": "#acb3c0"
+    "--td-filter-chip-remove-fg": "#acb3c0",
+    "--td-diff-added-bg": "#1f3f48",
+    "--td-diff-removed-bg": "#3a3c50"
    },
    "diagnostics": [
     {
@@ -506,7 +512,7 @@
    ]
   },
   "kit-dark-seeds": {
-   "algorithm": 2,
+   "algorithm": 3,
    "tokensVersion": 1,
    "scheme": "dark",
    "mode": "dark",
@@ -637,7 +643,9 @@
     "--td-badge-warning-ink": "#f59e0b",
     "--td-badge-danger-ink": "#ff8583",
     "--td-badge-info-ink": "#60a5fa",
-    "--td-filter-chip-remove-fg": "#9d9da0"
+    "--td-filter-chip-remove-fg": "#9d9da0",
+    "--td-diff-added-bg": "#1b2f24",
+    "--td-diff-removed-bg": "#352728"
    },
    "diagnostics": [
     {
@@ -685,7 +693,7 @@
    ]
   },
   "teal-light-named": {
-   "algorithm": 2,
+   "algorithm": 3,
    "tokensVersion": 1,
    "scheme": "light",
    "mode": "light",
@@ -817,7 +825,9 @@
     "--td-badge-warning-ink": "#b35206",
     "--td-badge-danger-ink": "#b61719",
     "--td-badge-info-ink": "#1d4ed8",
-    "--td-filter-chip-remove-fg": "#3c3c3c"
+    "--td-filter-chip-remove-fg": "#3c3c3c",
+    "--td-diff-added-bg": "#ecf5ef",
+    "--td-diff-removed-bg": "#f9eced"
    },
    "diagnostics": [
     {
@@ -845,7 +855,7 @@
    ]
   },
   "dead-band-grey": {
-   "algorithm": 2,
+   "algorithm": 3,
    "tokensVersion": 1,
    "scheme": "light",
    "mode": "light",
@@ -976,7 +986,9 @@
     "--td-badge-warning-ink": "#000000",
     "--td-badge-danger-ink": "#000000",
     "--td-badge-info-ink": "#000000",
-    "--td-filter-chip-remove-fg": "#000000"
+    "--td-filter-chip-remove-fg": "#000000",
+    "--td-diff-added-bg": "#797979",
+    "--td-diff-removed-bg": "#797979"
    },
    "diagnostics": [
     {
@@ -1285,6 +1297,88 @@
       "--td-table-zebra over --td-color-surface",
       "--td-table-row-selected over --td-color-surface",
       "--td-color-hover over --td-table-row-selected over --td-color-surface"
+     ],
+     "worst": "--td-color-bg",
+     "ratio": 4.62,
+     "required": 4.7
+    },
+    {
+     "code": "TD_THEME_CONTRAST_UNSATISFIABLE",
+     "severity": "error-AA",
+     "token": "--td-color-text",
+     "against": [
+      "--td-color-bg",
+      "--td-color-surface",
+      "--td-color-surface-muted",
+      "--td-color-surface-raised",
+      "--td-control-bg",
+      "--td-color-fill",
+      "--td-color-fill-strong",
+      "--td-btn-secondary-hover",
+      "--td-btn-secondary-pressed",
+      "--td-color-hover-strong over --td-color-fill",
+      "--td-color-pressed over --td-color-fill",
+      "--td-color-hover-strong over --td-color-surface",
+      "--td-color-hover-strong over --td-color-surface-muted",
+      "--td-color-hover-strong over --td-color-surface-raised",
+      "--td-color-hover-strong over --td-control-bg",
+      "--td-color-hover-strong over --td-color-bg",
+      "--td-glass-bg-strong over --td-color-bg",
+      "--td-glass-bg-strong over --td-color-surface",
+      "--td-alert-success-bg",
+      "--td-alert-warning-bg",
+      "--td-alert-danger-bg",
+      "--td-alert-info-bg",
+      "--td-diff-added-bg",
+      "--td-diff-removed-bg"
+     ],
+     "worst": "--td-color-bg",
+     "ratio": 4.62,
+     "required": 4.7
+    },
+    {
+     "code": "TD_THEME_CONTRAST_UNSATISFIABLE",
+     "severity": "error-AA",
+     "token": "--td-color-text-label",
+     "against": [
+      "--td-color-bg",
+      "--td-color-surface",
+      "--td-color-surface-muted",
+      "--td-color-surface-raised",
+      "--td-control-bg",
+      "--td-color-hover-strong over --td-color-surface",
+      "--td-color-hover-strong over --td-color-surface-muted",
+      "--td-color-hover-strong over --td-color-surface-raised",
+      "--td-color-hover-strong over --td-control-bg",
+      "--td-color-hover over --td-color-bg",
+      "--td-glass-bg-strong over --td-color-bg",
+      "--td-glass-bg-strong over --td-color-surface",
+      "--td-diff-added-bg",
+      "--td-diff-removed-bg"
+     ],
+     "worst": "--td-color-bg",
+     "ratio": 4.62,
+     "required": 4.7
+    },
+    {
+     "code": "TD_THEME_CONTRAST_UNSATISFIABLE",
+     "severity": "error-AA",
+     "token": "--td-color-text-muted",
+     "against": [
+      "--td-color-bg",
+      "--td-color-surface",
+      "--td-color-surface-muted",
+      "--td-color-surface-raised",
+      "--td-control-bg",
+      "--td-color-hover-strong over --td-color-surface",
+      "--td-color-hover-strong over --td-color-surface-muted",
+      "--td-color-hover-strong over --td-color-surface-raised",
+      "--td-color-hover-strong over --td-control-bg",
+      "--td-color-hover over --td-color-bg",
+      "--td-glass-bg-strong over --td-color-bg",
+      "--td-glass-bg-strong over --td-color-surface",
+      "--td-diff-added-bg",
+      "--td-diff-removed-bg"
      ],
      "worst": "--td-color-bg",
      "ratio": 4.62,

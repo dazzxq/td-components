@@ -21,6 +21,7 @@ import '/src/form/td-media-gallery.js';
 import '/src/form/td-cropper.js';
 import '/src/form/td-scan-input.js';
 import '/src/display/td-filter-chips.js';
+import '/src/display/td-diff.js';
 import '/src/form/td-datetime-range.js';
 import '/src/display/td-steps.js';
 import '/src/display/td-timeline.js';
@@ -133,6 +134,10 @@ for (const state of ['chip', 'remove-hover', 'remove-pressed', 'columns-btn']) C
 // its pressed fill), the neutral + four tone icons ≥ 3.2 on their discs — computed colours (`pairs`), light + dark.
 for (const state of ['markers', 'text', 'pressed']) CASES.push({ kind: 'v045', v: 'steps', state, pageOnly: true });
 for (const state of ['text', 'tones', 'summary']) CASES.push({ kind: 'v045', v: 'timeline', state, pageOnly: true });
+// v0.46.0 (plan v0.46.0-diff M3 / QĐ 16–18): td-diff — value / side label / muted text on the two cell tints (table and
+// inline layouts), kind labels (Thêm / Xoá / Đổi) vs the real --td-color-bg and --td-color-surface, the <summary> label at
+// rest and on its pressed fill — computed colours (`pairs`), light + dark.
+for (const state of ['table', 'inline', 'summary']) CASES.push({ kind: 'v046', v: 'diff', state, pageOnly: true });
 // v0.36.0 colours/action-button (plan QĐ 12, 18–26): computed-colour pairs (page only, light + dark). Solid semantic
 // tokens: label vs fill and vs hover ≥ 4.7 (buttons / badges read them); badge -ink (outline / stamp) vs the page ≥ 4.7;
 // badge edge vs its own fill / white / #f4f4f5 ≥ 1.6 (light theme); alert icon vs the alert fill ≥ 3.2 and the
@@ -1222,6 +1227,49 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     }
     const r0 = li.getBoundingClientRect();
     return { rect: { x: r0.x, y: r0.y, width: r0.width, height: r0.height }, ink: {}, opacity: 1, hover: false, name: `v039:${c.v}:${c.state}`, pairs };
+  } else if (c.kind === 'v046') {
+    const parse = (str) => {
+      const n = (String(str).match(/-?[\d.]+/g) || []).map(Number);
+      const k = String(str).startsWith('color(') ? 255 : 1;
+      return [n[0] * k, n[1] * k, n[2] * k, n.length > 3 ? n[3] : 1];
+    };
+    const over = (top, base) => {
+      const t = parse(top); const b = parse(base);
+      return `rgb(${[0, 1, 2].map((i) => Math.round(t[i] * t[3] + b[i] * (1 - t[3]))).join(', ')})`;
+    };
+    const raf2 = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const tok = (name) => { const p = document.createElement('span'); stage.appendChild(p); p.style.setProperty('color', `var(${name})`); const v = getComputedStyle(p).color; p.remove(); return v; };
+    const host = document.createElement('td-diff');
+    host.style.setProperty('width', c.state === 'inline' ? '360px' : '640px');
+    stage.appendChild(host);
+    host.items = [{ key: 'a', label: 'Giá', type: 'money', before: 100, after: 200 }, { key: 'b', label: 'Mới', after: 'x' },
+      { key: 'c', label: 'Cũ', before: 'y' }, { key: 'n', label: 'Ghi chú', before: '', after: 'z\u202Ez' }, { key: 'u', before: 1, after: 1 }];
+    await raf2();
+    const rows = [...host.querySelectorAll(':scope > .td-diff__scroll .td-diff__row')];
+    const pairs = [];
+    const pagesBg = [['bg', tok('--td-color-bg')], ['surface', tok('--td-color-surface')]];
+    if (c.state !== 'summary') {
+      for (const r of rows) {
+        for (const cell of r.querySelectorAll('.td-diff__cell')) {
+          if (getComputedStyle(cell).display === 'none') continue;
+          const bg = over(getComputedStyle(cell).backgroundColor, tok('--td-color-surface'));
+          for (const n of cell.querySelectorAll('.td-diff__value, .td-diff__ctl, .td-diff__side, .td-diff__arrow')) {
+            if (getComputedStyle(n).display === 'none') continue;
+            pairs.push({ what: `${r.dataset.kind} ${cell.className.split('--')[1]} ${n.className}`, fg: getComputedStyle(n).color, bg, min: 4.7 });
+          }
+        }
+        const kind = r.querySelector('.td-diff__kind');
+        if (kind) for (const [k, bg] of pagesBg) pairs.push({ what: `kind ${kind.dataset.kind} vs ${k}`, fg: getComputedStyle(kind).color, bg, min: 4.7 });
+      }
+    } else {
+      const sum = host.querySelector('.td-diff__summary');
+      for (const [k, bg] of pagesBg) pairs.push({ what: `summary label vs ${k}`, fg: getComputedStyle(sum).color, bg, min: 4.7 });
+      sum.setAttribute('data-td-pressed', '');
+      await raf2();
+      for (const [k, bg] of pagesBg) pairs.push({ what: `summary label pressed on ${k}`, fg: getComputedStyle(sum).color, bg: over(getComputedStyle(sum).backgroundColor, bg), min: 4.7 });
+    }
+    const b = host.getBoundingClientRect();
+    return { rect: { x: b.x, y: b.y, width: b.width, height: b.height }, ink: {}, opacity: 1, hover: false, name: `v046:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'sortable' || c.kind === 'masked') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
     const probe = document.createElement('span');

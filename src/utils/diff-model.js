@@ -164,7 +164,7 @@ export function cleanLabel(raw, max = LIMITS.label) {
 
 /** A path segment from an object key: the raw key, first 200 code points (lone surrogates → U+FFFD). */
 function keySeg(k) {
-  const s = k.length > LIMITS.label * 2 ? cpSlice(k, LIMITS.label) : k;
+  const s = k.length > LIMITS.label ? cpSlice(k, LIMITS.label) : k;
   return s.replace(LONE, '\uFFFD');
 }
 
