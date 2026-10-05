@@ -225,8 +225,8 @@ Kiểm tra trong trình duyệt **không phải lớp bảo mật**: server luô
 
 ## Kết hợp với bộ lọc bảng (v0.39.0)
 
-> Công thức này dùng API của **v0.39.0** (`td-table` `setFilters()` / `request-change`, `<td-filter-chips>`) — xem
-> [table.md § 11](table.md) và trang filter-chips khi bản đó phát hành.
+Dùng API của 0.39.0: `td-table` `setFilters()` / `request-change` ([table.md § 11](table.md#11-bộ-lọc-ngoài--url-request-change-controlled--từ-0390))
+và [`<td-filter-chips>`](filter-chips.md). Khoảng ngày là một ô của thanh lọc; chip "Ngày: 29/09 – 05/10":
 
 ```js
 range.addEventListener('change', (e) => {
