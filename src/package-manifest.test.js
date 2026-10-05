@@ -289,3 +289,11 @@ test('v0.42.0: the td-theme bin is declared and shipped (executable, not its tes
     'src/theme/presets.js', 'src/theme/selectors.js', 'src/theme/tokens.js']) assert.ok(paths.includes(f), f);
   assert.ok(!paths.some((p) => /\.test\.(m?js)$/.test(p)), 'no tests shipped');
 });
+
+test('v0.44.0: trackFormDirty is a named export of ./form-validation and of index.js', async () => {
+  assert.equal(pkg.exports['./form-validation'], './src/utils/form-validation.js');
+  const fv = await readFile(join(ROOT, 'src/utils/form-validation.js'), 'utf8');
+  assert.match(fv, /export \{ trackFormDirty \} from '\.\/form-dirty\.js';/);
+  const index = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(index, /export \{ TdFormValidation, trackFormDirty \} from '\.\/src\/utils\/form-validation\.js';/);
+});

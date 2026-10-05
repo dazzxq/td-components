@@ -24,6 +24,13 @@ describe('form-dirty snapshot (v0.44.0 QĐ 19)', () => {
     assert.ok(!sameSnapshot(snapshotOf([['img', f1]]), snapshotOf([['img', 'a.png']])));
   });
 
+  it('"no file chosen" (a new empty File per FormData) is always the same value', () => {
+    const e1 = new FakeFile('', 0);
+    const e2 = new FakeFile('', 0);
+    assert.ok(sameSnapshot(snapshotOf([['img', e1]]), snapshotOf([['img', e2]])));
+    assert.ok(!sameSnapshot(snapshotOf([['img', e1]]), snapshotOf([['img', new FakeFile('a', 1)]])));
+  });
+
   it('ignore: array of names or a predicate', () => {
     const entries = [['_token', 'abc'], ['q', 'search'], ['title', 'A']];
     assert.deepEqual(snapshotOf(entries, ['_token', 'q']), [['title', 'A']]);

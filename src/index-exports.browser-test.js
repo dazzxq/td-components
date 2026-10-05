@@ -96,3 +96,11 @@ describe('index.js exports', () => {
     expect(customElements.get('td-datetime-range')).to.equal(kit.TdDatetimeRange);
   });
 });
+
+describe('index.js exports (v0.44.0)', () => {
+  it('exports trackFormDirty (same function as the ./form-validation subpath)', async () => {
+    const fv = await import('./utils/form-validation.js');
+    expect(typeof kit.trackFormDirty).to.equal('function');
+    expect(kit.trackFormDirty === fv.trackFormDirty).to.equal(true);
+  });
+});

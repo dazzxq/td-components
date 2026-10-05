@@ -707,3 +707,6 @@ export class TdFormValidation {
     if (el && typeof el.focus === 'function') el.focus();
   }
 }
+
+// v0.44.0: unsaved-changes tracking lives in its own file, exported from this subpath (plan QĐ 18)
+export { trackFormDirty } from './form-dirty.js';
