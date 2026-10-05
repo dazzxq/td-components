@@ -100,6 +100,14 @@ const LIM = {
   'host-label': limHost('host-label', optHtml('host-label', 0)).replace(' name="lim">', ` name="lim" label="${'L'.repeat(3_000_000)}">`),
   'host-name': limHost('host-name', optHtml('host-name', 0)).replace(' name="lim">', ` name="${'n'.repeat(3_000_000)}">`),
   'host-data': limHost('host-data', optHtml('host-data', 0)).replace(' name="lim">', ` name="lim" data-x="${'d'.repeat(3_000_000)}">`),
+  // review r5 item 3: one code point over a group cap (ASCII: passes the UTF-16 preflight, fails the exact count)
+  'cp-label': limHost('cp-label', optHtml('cp-label', 0)).replace(' name="lim">', ` name="lim" label="${'L'.repeat(201)}">`),
+  'cp-aria': limHost('cp-aria', optHtml('cp-aria', 0)).replace(' name="lim">', ` name="lim" aria-label="${'A'.repeat(201)}">`),
+  'cp-helper': limHost('cp-helper', optHtml('cp-helper', 0)).replace(' name="lim">', ` name="lim" helper-text="${'H'.repeat(1001)}">`),
+  'cp-error': limHost('cp-error', optHtml('cp-error', 0)).replace(' name="lim">', ` name="lim" error-text="${'E'.repeat(1001)}">`),
+  'cp-name': limHost('cp-name', optHtml('cp-name', 0)).replace(' name="lim">', ` name="${'n'.repeat(201)}">`),
+  'cp-id': limHost('cp-id', optHtml('cp-id', 0)).replace('id="cp-id" name', `id="${'i'.repeat(101)}" name`),
+  'cp-class': limHost('cp-class', optHtml('cp-class', 0)).replace(' name="lim">', ` name="lim" class="${'c'.repeat(257)}">`),
   'host-many': limHost('host-many', optHtml('host-many', 0)).replace(' name="lim">', ` name="lim" ${Array.from({ length: 40 }, (_, i) => `data-h${i}="1"`).join(' ')}>`),
 };
 const ADOPTED = new Set(['lim-100', 'lim-over-literal']);

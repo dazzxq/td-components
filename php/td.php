@@ -6866,10 +6866,33 @@ namespace {
         // → fail closed (nothing printed) + ONE fixed counts-only warning: the kit never prints markup its JS would refuse
         $over = 0;
         foreach ([[$name, 'name'], [$o['id'] ?? null, 'id'], [$o['label'] ?? null, 'groupLabel'], [$o['aria_label'] ?? null, 'groupLabel'],
-            [$o['helper_text'] ?? null, 'helper'], [$o['error_text'] ?? null, 'error'], [ltrim(Td::classTokens($o['class'] ?? null)), 'class']] as [$g, $k]) {
+            [$o['helper_text'] ?? null, 'helper'], [$o['error_text'] ?? null, 'error']] as [$g, $k]) {
             if (is_scalar($g) && !is_bool($g) && td__choice_over((string) $g, $L[$k])) {
                 $over++;
             }
+        }
+        // review r5: the class input is bounded BEFORE Td::classTokens() (string ≤ 4 × cap bytes; array ≤ 64 entries and
+        // ≤ 4 × cap bytes in total, every entry valid UTF-8), normalised ONCE, capped, and that result is what is printed
+        $classRaw = $o['class'] ?? null;
+        $classOk = true;
+        if (is_string($classRaw)) {
+            $classOk = strlen($classRaw) <= 4 * $L['class'] && preg_match('//u', $classRaw) === 1;
+        } elseif (is_array($classRaw)) {
+            $bytes = 0;
+            $classOk = count($classRaw) <= 64;
+            foreach ($classOk ? $classRaw : [] as $c) {
+                if (is_string($c)) {
+                    $bytes += strlen($c);
+                    if ($bytes > 4 * $L['class'] || preg_match('//u', $c) !== 1) {
+                        $classOk = false;
+                        break;
+                    }
+                }
+            }
+        }
+        $class = $classOk ? ltrim(Td::classTokens($classRaw)) : '';
+        if (!$classOk || td__choice_over($class, $L['class'])) {
+            $over++;
         }
         if ($over) {
             trigger_error("td_choice_group: $over group field(s) over the limits — nothing rendered", E_USER_WARNING);
@@ -7032,7 +7055,7 @@ namespace {
         return '<td-choice-group' . Td::ownAttrs([
             'data-td-ssr' => Td::SSR_CHOICE,
             'id' => $host,
-            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'class' => $class !== '' ? $class : null,
             'name' => $name !== '' ? $name : null,
             'value' => $sel !== '' ? $sel : null,
             'label' => $label,
@@ -7045,16 +7068,15 @@ namespace {
         ], $ht) . '>' . $html . '</td-choice-group>';
     }
 
-    /** @internal v0.49.0 review S1: is $s longer than $n code points? (byte length answers first; bounded) */
+    /** @internal v0.49.0 review S1 / r5: is $s longer than $n code points, or not valid UTF-8? (byte length first; bounded) */
     function td__choice_over(string $s, int $n): bool
     {
-        if (strlen($s) <= $n) {
-            return false;
-        }
+        // review r5: malformed UTF-8 counts as over (preg_match_all() === false must never pass as 0)
         if (strlen($s) > 4 * $n) {
             return true;
         }
-        return (int) preg_match_all('/./su', $s) > $n;
+        $c = preg_match_all('/./su', $s);
+        return $c === false || $c > $n;
     }
 
     /**

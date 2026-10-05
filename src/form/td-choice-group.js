@@ -707,7 +707,19 @@ export class TdChoiceGroup extends TdFormElement {
       return true;
     };
     // review r4: the host's own attributes too (read later by the gate / render)
-    return attrsOk(this) && visit(this, 1);
+    if (!attrsOk(this) || !visit(this, 1)) return false;
+    // review r5: then the EXACT code-point caps of the group attributes (their UTF-16 length is already ≤ 2 × the cap)
+    const L = CHOICE_LIMITS;
+    const exact = { label: L.groupLabel, 'aria-label': L.groupLabel, 'helper-text': L.helper, 'error-text': L.error, name: L.name,
+      id: L.id, class: L.class };
+    for (const [name, cap] of Object.entries(exact)) {
+      const v = this.getAttribute(name);
+      if (v != null && v.length > cap) {
+        let n = 0;
+        for (const _ of v) if (++n > cap) return false; // eslint-disable-line no-unused-vars
+      }
+    }
+    return true;
   }
 
   /** @private Bounded parse of the strict skeleton (only after `_ssrPreflight()`); SSR_OVER past a field cap. */

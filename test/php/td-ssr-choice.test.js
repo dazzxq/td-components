@@ -213,6 +213,25 @@ describe('php/td.php — td_choice_group (v0.49.0, contract choice-group@1)', op
     }
   });
 
+  test('review r5: class bounded BEFORE normalising (1M-char string, 100k-entry array) and malformed UTF-8 in every group text field → fail closed, one warning', () => {
+    const code = `require ${JSON.stringify(join(ROOT, 'php/td.php'))}; TdComponents\\Td::configure('/', ${JSON.stringify(ROOT)});`
+      + ' $opts = [["value" => "a", "label" => "A"]]; $bad = "ok\\xff\\xfe";'
+      + ' $calls = [["n", ["class" => str_repeat("tok ", 250000)]], ["n", ["class" => array_fill(0, 100000, "tok")]],'
+      + ' [$bad, []], ["n", ["id" => $bad]], ["n", ["label" => $bad]], ["n", ["aria_label" => $bad]], ["n", ["helper_text" => $bad]],'
+      + ' ["n", ["error_text" => $bad]], ["n", ["class" => ["ok", $bad]]], ["n", ["class" => "a " . $bad]]];'
+      + ' $out = []; foreach ($calls as [$name, $o]) { $w = []; set_error_handler(function (int $n, string $m) use (&$w): bool { $w[] = $m; return true; });'
+      + ' $t = microtime(true); $h = td_choice_group($name, $opts, null, $o); $ms = (microtime(true) - $t) * 1000; restore_error_handler();'
+      + ' $out[] = ["h" => $h, "w" => $w, "ms" => $ms]; } echo json_encode($out);';
+    const r = spawnSync(PHP_BIN, ['-d', 'xdebug.mode=off', '-r', code], { encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+    const out = JSON.parse(r.stdout);
+    out.forEach((o, i) => {
+      assert.equal(o.h, '', `call ${i}`);
+      assert.deepEqual(o.w, ['td_choice_group: 1 group field(s) over the limits — nothing rendered'], `call ${i}`);
+    });
+    assert.ok(out[0].ms < 50 * 20 && out[1].ms < 50 * 20, `${out[0].ms} / ${out[1].ms} ms`);
+  });
+
   test('test/ssr/fixtures/choice.html is up to date (node test/ssr/build-choice-fixture.mjs)', () => {
     assert.ok(CHOICE_FIXTURES.cases.length >= 8);
     assert.equal(readFileSync(CHOICE_FIXTURE_FILE, 'utf8'), renderChoiceFixture());
