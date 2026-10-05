@@ -559,12 +559,15 @@ export class TdMediaGallery extends TdFormElement {
         && Object.is(context, this._resolveContext()) && this._items.includes(it) && it.id === id;
       if (!live) { this._lazyPump(); return; }
       if ('e' in r) {
-        normalizeError(r.e, null, { operation: 'td-media-gallery get' }); // operation + code only (never the raw error)
+        // operation + code only in the console (never the raw error); ISSUE-6: the safe text is announced
+        const err = normalizeError(r.e, null, { operation: 'td-media-gallery get' });
         it.lazyFailed = true;
+        this._announce(err?.userMessage || this._label('noPreview'));
       } else {
         const asset = normalizeAsset(r.v, { safeUrl: (u) => safeMediaUrl(u) });
         if (!asset || asset.id !== id) {
           it.lazyFailed = true;
+          this._announce(this._label('noPreview'));
         } else {
           Object.assign(it, {
             src: safeSrc(asset.urls?.preview), previewAlt: asset.name || '', kind: asset.kind, asset, fromAdapter: true, assetGen: gen,
