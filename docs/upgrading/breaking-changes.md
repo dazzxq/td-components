@@ -119,7 +119,7 @@ Site muốn giữ ô nhập / modal **trắng** trong khi đổi `--td-color-sur
 | `--td-btn-ghost-hover-fg-fallback` (mới) | `#1d4ed8` cứng (2.5:1) | `#93c5fd` | Chỉ trình duyệt không có `color-mix()` |
 | `--td-table-check-border` (mới) | `#2c2c30` (luật `.td-table *`) | `#76767c` (= `--td-checkbox-border`) | Ô chọn dòng của `td-table` ≥ 3:1 |
 
-Danh sách máy đọc được (79 token, gồm token dẫn xuất): `test/tokens/golden.json` → `darkDeltas`.
+Danh sách máy đọc được (80 token, gồm token dẫn xuất): `test/tokens/golden.json` → `darkDeltas`.
 
 **Đổi giao diện — vòng focus bàn phím (light + dark, owner duyệt):** `--td-focus-ring` từ `0 0 0 3px rgb(37 99 235 / 35%)`
 (dark `rgb(96 165 250 / 45%)`) — vòng mờ chỉ ≈ 1.7:1 trên trắng — thành `0 0 0 1px var(--td-color-surface), 0 0 0 3px

@@ -13,7 +13,8 @@ của hệ điều hành thế nào.
 > **0.41.0 — theme chính thức:** `data-td-theme="light" | "dark" | "auto"` (`auto` theo hệ điều hành, CSS thuần, không
 > chớp trắng); dark hết nhãn "thử nghiệm" và được tinh chỉnh trên trang thật; token component đọc từ một bộ token ngữ
 > nghĩa (hợp đồng theme) nên site đặt nền / bề mặt một lần là ô nhập, popup, bảng đi theo. Không đặt attribute = light
-> **giống từng pixel** 0.40.
+> **giống từng pixel** 0.40 — trừ hai thay đổi light đã duyệt: vòng focus bàn phím ≥ 3:1 và viền checkbox chọn dòng của
+> bảng (lỗi từ 0.37).
 
 > **0.20.0 — minimal surfaces:** bỏ hiệu ứng Liquid Glass giả lập (sheen, rim, film, glow, scale). Mỗi bề mặt chỉ còn
 > nền + một viền mảnh + một shadow mềm; blur 12px chỉ cho popup nhỏ; nút là màu đặc. Tên token `--td-glass-*` giữ
@@ -369,7 +370,9 @@ light lẫn dark. Muốn chỉnh riêng màu nền đặc (ví dụ accent của
 ≥ 3:1) và `--td-field-focus-ring` = quầng 3px accent 12 % (dark 22 %) — tự theo `--td-accent`. Áp cho ô nhập, nút mở
 dropdown, ô tìm dropdown, chip-input. Nút / checkbox / switch vẫn dùng `--td-focus-ring`.
 
-Đổi `--td-accent` mà không đổi `--td-focus` / `--td-focus-ring` thì vòng focus vẫn xanh dương. Thường nên đổi cả ba,
+Đổi `--td-accent` mà không đổi `--td-focus` thì vòng focus vẫn xanh dương. Từ 0.41 `--td-focus-ring` dựng từ
+`--td-focus` (vòng đặc 2px sau khe 1px màu surface, ≥ 3:1) — chỉ cần đổi `--td-focus`, **đừng** ghi đè `--td-focus-ring`
+bằng quầng trong suốt kiểu cũ (≈ 1.7:1, không đạt). Thường nên đổi cả hai,
 xem [ví dụ thương hiệu](#ví-dụ-đầu-cuối-đổi-màu-thương-hiệu-accent).
 
 ### Control (ô nhập, viền mềm)
@@ -620,7 +623,7 @@ map **cả hai** token về viền đậm:
 
 | `data-td-theme` | Kết quả | `color-scheme` (thanh cuộn, ô native) |
 |---|---|---|
-| *(không đặt)* | Light, **giống từng pixel** 0.40. Không bao giờ tự lật theo hệ điều hành | không đặt (như cũ) |
+| *(không đặt)* | Light, **giống từng pixel** 0.40 (trừ vòng focus và checkbox chọn dòng, xem trên). Không bao giờ tự lật theo hệ điều hành | không đặt (như cũ) |
 | `"light"` | Light tường minh | `light` |
 | `"dark"` | Dark | `dark` |
 | `"auto"` | Light khi hệ điều hành sáng, dark khi hệ điều hành tối — **CSS thuần** (`@media (prefers-color-scheme: dark)`), không JS, đổi ngay khi người dùng đổi cài đặt máy | theo nhánh: `light` / `dark` |
@@ -826,8 +829,7 @@ Giả sử site dùng đỏ `#b3261e` làm màu chính.
 :root {
   --td-accent: #b3261e;           /* checkbox, slider, pagination, ghost, viền focus ô nhập, link hovercard */
   --td-accent-contrast: #fff;     /* chữ trên nền đỏ: 6.5:1 */
-  --td-focus: #b3261e;
-  --td-focus-ring: 0 0 0 3px rgb(179 38 30 / 35%); /* vòng focus của nút / checkbox / switch */
+  --td-focus: #b3261e;            /* vòng focus của nút / checkbox / switch tự theo (0.41: vòng đặc 2px + khe 1px) */
   /* 0.21.0: primary mặc định đen — muốn primary đỏ theo thương hiệu, map đủ ba token: */
   --td-btn-primary-bg: var(--td-accent-fill);
   --td-btn-primary-fg: var(--td-accent-contrast);
@@ -844,8 +846,7 @@ dark của kit (kể cả primary đảo sáng của dark), và nền trang acti
 :root[data-td-theme="dark"] {
   --td-accent: #f2665c;                      /* chữ/viền trên nền tối */
   --td-accent-fill: #b3261e;                 /* nền đặc mang chữ trắng: tự chọn thay vì 80% của #f2665c */
-  --td-focus: #f2665c;
-  --td-focus-ring: 0 0 0 3px rgb(242 102 92 / 45%);
+  --td-focus: #f2665c;                       /* vòng focus tự theo */
 }
 ```
 

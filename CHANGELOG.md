@@ -6,7 +6,8 @@ All notable changes to **td-components** are documented here.
 
 **Theme chính thức: light / dark / auto** (theming R1; owner: "hỗ trợ cả dark mode và light mode" + màu nền tuỳ biến;
 đồng thuận Codex think-about; plan `docs/internal/plans/v0.41.0-theming.md`, Codex plan-review APPROVE 2 vòng). Không
-đặt `data-td-theme` → light **giữ y nguyên từng pixel** như 0.40 (golden test khoá). Chi tiết nâng cấp:
+đặt `data-td-theme` → light **giữ y nguyên từng pixel** như 0.40 (golden test khoá), trừ hai thay đổi đã duyệt: vòng focus
+bàn phím ≥ 3:1 và viền checkbox chọn dòng của bảng. Chi tiết nâng cấp:
 `docs/upgrading/breaking-changes.md#0410`; hướng dẫn `docs/customization/theming.md`.
 
 ### Added
