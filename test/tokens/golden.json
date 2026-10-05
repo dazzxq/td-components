@@ -1879,6 +1879,81 @@
       "light": "9rem",
       "dark": "9rem",
       "why": "v0.49.0: td-choice-group / number stepper token (reads the theme contract)"
+    },
+    "--td-carousel-btn-size": {
+      "light": "36px",
+      "dark": "36px",
+      "why": "v0.50.0 td-carousel prev / next disc (36px; 44px coarse)"
+    },
+    "--td-carousel-dot": {
+      "light": "rgb(138, 138, 147)",
+      "dark": "rgb(138, 138, 147)",
+      "why": "v0.50.0 td-carousel resting page dot (= --td-color-text-subtle, ≥ 3.2)"
+    },
+    "--td-carousel-dot-active": {
+      "light": "rgb(28, 28, 30)",
+      "dark": "rgb(245, 245, 247)",
+      "why": "v0.50.0 td-carousel current page dot pill (= --td-color-text)"
+    },
+    "--td-carousel-dot-size": {
+      "light": "8px",
+      "dark": "8px",
+      "why": "v0.50.0 td-carousel drawn dot size (hit area = 24 / 44px step)"
+    },
+    "--td-carousel-gap": {
+      "light": "0.75rem",
+      "dark": "0.75rem",
+      "why": "v0.50.0 td-carousel gap between slides (= --td-space-sm)"
+    },
+    "--td-carousel-gutter": {
+      "light": "0px",
+      "dark": "0px",
+      "why": "v0.50.0 td-carousel inline gutter of the strip / controls (0)"
+    },
+    "--td-carousel-peek": {
+      "light": "0px",
+      "dark": "0px",
+      "why": "v0.50.0 td-carousel visible part of the next slide (0)"
+    },
+    "--td-carousel-per-view": {
+      "light": "",
+      "dark": "",
+      "why": "v0.50.0 td-carousel slides per view: set only by the per-view attribute rule on the host (unset on :root; the basis falls back to 1)"
+    },
+    "--td-rating-count-fg": {
+      "light": "rgb(107, 107, 115)",
+      "dark": "rgb(172, 172, 180)",
+      "why": "v0.50.0 td-rating count / \"Chưa có đánh giá\" text (= --td-color-text-muted)"
+    },
+    "--td-rating-empty": {
+      "light": "rgb(212, 212, 216)",
+      "dark": "rgb(69, 69, 75)",
+      "why": "v0.50.0 td-rating empty star, decorative (= --td-color-border-strong, owner D5)"
+    },
+    "--td-rating-fill": {
+      "light": "rgb(245, 158, 11)",
+      "dark": "rgb(245, 158, 11)",
+      "why": "v0.50.0 td-rating star fill (= --td-solid-warning-bg, amber in both themes)"
+    },
+    "--td-rating-gap": {
+      "light": "2px",
+      "dark": "2px",
+      "why": "v0.50.0 td-rating gap between stars"
+    },
+    "--td-rating-size": {
+      "light": "1.25rem",
+      "dark": "1.25rem",
+      "why": "v0.50.0 td-rating star size (= --td-icon-m)"
+    },
+    "--td-rating-stroke": {
+      "light": "rgb(180, 83, 9)",
+      "dark": "rgb(245, 158, 11)",
+      "why": "v0.50.0 td-rating filled-star edge (= --td-color-warning, ≥ 3.2 on every surface)"
+    },
+    "--td-rating-value-fg": {
+      "light": "rgb(28, 28, 30)",
+      "dark": "rgb(245, 245, 247)",
+      "why": "v0.50.0 td-rating shown value (= --td-color-text)"
     }
   },
   "lightDeltas": {
