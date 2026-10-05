@@ -49,6 +49,7 @@ import {
 import { fillIconSlots } from '../icons/td-icon.js';
 import { transitionEndMs } from '../utils/transition.js';
 import { openDialogLayer } from './dialog-layer.js';
+import { preparePhrase, phraseMatches } from '../utils/confirm-phrase.js';
 
 const MODAL_LAYER = LAYERS.modal; // --td-z-modal
 const SIZES = ['xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', 'full'];
@@ -62,6 +63,8 @@ const SPINNER = '<span class="td-btn__spinner td-spinner td-spinner--sm" aria-hi
   + '<svg class="td-spinner__svg" viewBox="0 0 50 50" aria-hidden="true" focusable="false">'
   + '<circle class="td-spinner__track" cx="25" cy="25" r="20"></circle>'
   + '<circle class="td-spinner__arc" cx="25" cy="25" r="20"></circle></svg></span>';
+
+let confirmSeq = 0; // ids of the type-to-confirm field (v0.44.0)
 
 const isThenable = (v) => !!v && (typeof v === 'object' || typeof v === 'function') && typeof v.then === 'function';
 
@@ -132,6 +135,10 @@ export class TdModal {
     successTitle: 'Thành công',
     errorTitle: 'Lỗi',
     infoTitle: 'Thông tin',
+    // v0.44.0 type-to-confirm (`{phrase}` → the phrase, always as text)
+    typeToConfirmLabel: 'Gõ {phrase} để xác nhận',
+    typeToConfirmMismatch: 'Chưa khớp — hãy gõ đúng {phrase}',
+    typeToConfirmMatched: 'Đã khớp, có thể xác nhận',
   };
 
   /**
@@ -202,6 +209,11 @@ export class TdModal {
    * @param {string} [options.bodyOverflow] - visible | hidden | auto | scroll | clip.
    * @param {Element|null} [options.themeRoot=null] - v0.42.0 (ADR 0020): render in the theme scope
    *   (`[data-td-theme]`) of this element; without it the dialog follows the page theme.
+   * @param {(ctx: { reason: 'button'|'escape'|'action'|'request', value: * }) => (boolean|void|PromiseLike<boolean|void>)}
+   *   [options.beforeClose] - v0.44.0 guard of the USER close paths (X, Escape with `escapeCloses`, a closing action —
+   *   also "Lưu": call `tracker.markClean()` before it returns —, `requestClose()`). `false` (sync or resolved) keeps
+   *   the dialog open, so does a throw / rejection (console.error); anything else closes. While it is pending, further
+   *   attempts share it and actions do not run. `close()` / `closeById()` / `closeAll()` never run it.
    * @returns {string} Modal id
    */
   static show(options = {}) {
@@ -232,6 +244,9 @@ export class TdModal {
       closable: opts.closable !== false,
       closed: false,
       busy: false,
+      // v0.44.0: guard of the user close paths (show() only — the Promise dialogs pass no beforeClose)
+      beforeClose: !internal && typeof opts.beforeClose === 'function' ? opts.beforeClose : null,
+      guarding: null, // the pending guard's Promise<boolean>
       layer: null,
       close: (value) => TdModal._closeInstance(instance, value),
     };
@@ -258,7 +273,7 @@ export class TdModal {
       // ADR 0006: Escape never closes (consumed so it cannot reach a layer below) — except `escapeCloses` dialogs
       // whose close loses no user data (e.g. the datetime picker keeps a pending copy); never while busy.
       onEscape: () => {
-        if (opts.escapeCloses === true && !instance.busy) instance.close();
+        if (opts.escapeCloses === true && !instance.busy) TdModal._requestClose(instance, 'escape');
         return true;
       },
       // v0.21.1 F4: opened over a lightbox that sits above the modals (lightbox opened from a modal) → promoted above
@@ -318,6 +333,72 @@ export class TdModal {
       if (tryFocus(close)) return;
     }
     tryFocus(dialog);
+  }
+
+  /**
+   * v0.44.0: ask to close a modal THROUGH its `beforeClose` guard (for a hand-built footer). Not while an action is busy.
+   * `close()` / `closeById()` / `closeAll()` stay unguarded (the app's own decision — logout, route change).
+   * @param {string} modalId
+   * @param {*} [value] passed to the guard and to onClose
+   * @returns {Promise<boolean>} true once closed; false when it stays open (guard refused, busy, unknown id)
+   */
+  static requestClose(modalId, value) {
+    const inst = TdModalStackManager.stack.find((m) => m.id === modalId);
+    if (!inst || typeof inst.close !== 'function' || !inst.handle) return Promise.resolve(false);
+    return TdModal._requestClose(inst, 'request', value);
+  }
+
+  /**
+   * @private v0.44.0 (QĐ 12-15): the guarded close. Sync guard → closes (or not) synchronously; async → `guarding`
+   * until it settles (further attempts get the same Promise); a code close meanwhile drops the result silently.
+   * @param {object} inst
+   * @param {'button'|'escape'|'action'|'request'} reason
+   * @param {*} [value]
+   * @returns {Promise<boolean>}
+   */
+  static _requestClose(inst, reason, value) {
+    if (inst.closed) return Promise.resolve(false);
+    if (inst.guarding) return inst.guarding;
+    if (inst.busy) return Promise.resolve(false);
+    const guard = inst.beforeClose;
+    if (typeof guard !== 'function') {
+      inst.close(value);
+      return Promise.resolve(true);
+    }
+    let result;
+    let then;
+    try {
+      result = guard({ reason, value });
+      // `.then` is read ONCE, here (review r2 / r3 E): a throwing getter is a refusal; the captured function is the one
+      // called below — a stateful getter cannot answer "thenable" now and "plain value" later
+      then = !!result && (typeof result === 'object' || typeof result === 'function') ? result.then : undefined;
+    } catch {
+      console.error('TdModal: beforeClose threw — the dialog stays open'); // fixed text, never the caller's error (SEC-3)
+      return Promise.resolve(false);
+    }
+    if (typeof then !== 'function') {
+      if (result === false || inst.closed) return Promise.resolve(inst.closed);
+      inst.close(value);
+      return Promise.resolve(true);
+    }
+    const pending = Promise.resolve().then(() => new Promise((res, rej) => {
+      // the captured `then` — never re-read — called only AFTER the pending Promise is installed below (review r4 E2):
+      // a synchronous thenable re-entering requestClose() gets that same Promise, never a second guard run
+      try { then.call(result, res, rej); } catch { rej(); }
+    })).then((v) => {
+      inst.guarding = null;
+      if (inst.closed) return true; // closed by code meanwhile: the guard's answer no longer matters
+      if (v === false) return false;
+      inst.close(value);
+      return true;
+    }, () => {
+      inst.guarding = null;
+      if (inst.closed) return true;
+      console.error('TdModal: beforeClose rejected — the dialog stays open');
+      return false;
+    });
+    inst.guarding = pending;
+    return pending;
   }
 
   /** Close the top modal. */
@@ -497,9 +578,28 @@ export class TdModal {
    * @param {Function} [options.onConfirm]
    * @param {Function} [options.onCancel]
    * @param {Element|null} [options.themeRoot] - v0.42.0: follow this element's theme scope (see show())
+   * @param {string} [options.typeToConfirm] - v0.44.0: the confirm button works only once this phrase is typed in a
+   *   field under the message (NFC, trimmed, whitespace runs = one space; case- and accent-sensitive; ≤ 100 code
+   *   points). Until then it is `aria-disabled` (still focusable); a click / Enter shows the mismatch error. The field
+   *   gets the first focus. PRESENT but invalid (not a string — null / undefined included —, empty / blank after
+   *   normalisation, > 100 code points) → FAIL CLOSED: the Promise rejects with a TypeError (fixed message), no dialog
+   *   opens, onConfirm never runs (Codex review round 1, SEC-1). The option is read ONCE (review r2 A): a getter / Proxy
+   *   cannot pass validation with one value and build the gate with another; one that throws → the same rejection.
    * @returns {Promise<boolean>}
    */
   static confirm(options = {}) {
+    const o = options || {};
+    /** @type {string|null} the normalised phrase — the gate is built from this cached value only */
+    let phrase = null;
+    try {
+      if (Object.prototype.hasOwnProperty.call(o, 'typeToConfirm')) {
+        const prep = preparePhrase(o.typeToConfirm); // the ONLY read of the option
+        if (!prep || prep.truncated) return Promise.reject(new TypeError('TdModal.confirm: typeToConfirm must be a non-empty string of at most 100 characters'));
+        phrase = prep.phrase;
+      }
+    } catch {
+      return Promise.reject(new TypeError('TdModal.confirm: typeToConfirm must be a non-empty string of at most 100 characters'));
+    }
     return new Promise((resolve) => {
       const {
         title = TdModal.labels.confirmTitle || 'Xác nhận',
@@ -518,6 +618,7 @@ export class TdModal {
       const variant = ['primary', 'danger', 'success', 'warning'].includes(confirmVariant) ? confirmVariant : 'primary';
       const cancelButton = makeButton(cancelText, 'secondary');
       const confirmButton = makeButton(confirmText, variant);
+      const gate = phrase === null ? null : TdModal._typeToConfirm(phrase, confirmButton);
 
       const settle = (value) => {
         if (settled) return false;
@@ -532,6 +633,7 @@ export class TdModal {
         cancelButton.disabled = busy;
         const x = inst && inst.element.querySelector('.td-modal__close');
         if (x) x.disabled = busy;
+        if (gate) gate.setBusy(busy);
       };
 
       cancelButton.addEventListener('click', () => {
@@ -541,6 +643,7 @@ export class TdModal {
       });
       confirmButton.addEventListener('click', () => {
         if (settled || confirmButton.getAttribute('aria-busy') === 'true') return;
+        if (gate && !gate.check()) return; // v0.44.0: phrase not typed yet → the error, nothing else
         let result;
         confirming = true;
         let threw = false;
@@ -574,20 +677,147 @@ export class TdModal {
       });
 
       const { wrap, text } = TdModal._messageBlock('confirm', message, messageHtml);
+      let body = wrap;
+      if (gate) {
+        body = document.createDocumentFragment();
+        body.append(wrap, gate.field);
+      }
       modalId = TdModal._open({
         title,
-        body: wrap,
+        body,
         footer: [cancelButton, confirmButton],
         size: 'sm',
         themeRoot,
-        focusTarget: cancelButton,
+        // v0.44.0 (QĐ 10): with a phrase the field takes the first focus (the confirm button is locked anyway)
+        focusTarget: gate ? gate.input : cancelButton,
         onClose: () => {
           if (confirming) { settle(true); return; }
           if (!settle(false)) return;
           try { onCancel(); } catch { /* ignore */ }
         },
       }, { role: 'alertdialog', message: text });
+      if (gate) gate.describe(text.id);
     });
+  }
+
+  /**
+   * @private v0.44.0 (plan v0.44.0-confirm-dirty QĐ 1-11): the type-to-confirm field of `confirm()` and its gate on the
+   * confirm button. Every text (label template, phrase, messages) goes in as TEXT nodes — never innerHTML.
+   * @param {string} phrase the normalised, validated phrase (confirm() reads and checks the option once)
+   * @param {HTMLButtonElement} confirmButton
+   * @returns {null | { field: HTMLElement, input: HTMLInputElement, check(): boolean, setBusy(b: boolean): void,
+   *   describe(id: string): void }}
+   */
+  static _typeToConfirm(phrase, confirmButton) {
+    const labels = TdModal.labels;
+    const id = `td-modal-confirm-${++confirmSeq}`;
+    const field = document.createElement('div');
+    field.className = 'td-modal__confirm-field td-field';
+    const label = document.createElement('label');
+    label.className = 'td-field__label';
+    label.htmlFor = `${id}-input`;
+    const strong = document.createElement('strong');
+    strong.className = 'td-modal__phrase';
+    strong.textContent = phrase;
+    const tpl = String(labels.typeToConfirmLabel || 'Gõ {phrase} để xác nhận');
+    const at = tpl.indexOf('{phrase}');
+    if (at === -1) label.append(document.createTextNode(`${tpl} `), strong);
+    else {
+      label.append(document.createTextNode(tpl.slice(0, at)), strong,
+        document.createTextNode(tpl.slice(at + '{phrase}'.length).split('{phrase}').join(phrase)));
+    }
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = `${id}-input`;
+    input.className = 'td-field__control';
+    input.setAttribute('autocomplete', 'off');
+    input.setAttribute('autocapitalize', 'none'); // never "off" (kit rule): "none" is the standard keyword
+    input.setAttribute('autocorrect', 'off');
+    input.setAttribute('spellcheck', 'false');
+    input.setAttribute('enterkeyhint', 'done');
+    const error = document.createElement('span');
+    error.className = 'td-field-error';
+    error.id = `${id}-error`;
+    error.hidden = true;
+    const status = document.createElement('span');
+    status.className = 'td-modal__confirm-status td-sr-only';
+    status.setAttribute('role', 'status');
+    field.append(label, input, error, status);
+
+    let matched = false;
+    let composing = false;
+    let describedBy = '';
+    const lock = () => {
+      if (matched) confirmButton.removeAttribute('aria-disabled');
+      else confirmButton.setAttribute('aria-disabled', 'true');
+    };
+    const syncDescribedBy = () => {
+      const ids = [describedBy, error.hidden ? '' : error.id].filter(Boolean).join(' ');
+      if (ids) input.setAttribute('aria-describedby', ids);
+      else input.removeAttribute('aria-describedby');
+    };
+    const hideError = () => {
+      if (error.hidden) return;
+      error.hidden = true;
+      error.textContent = '';
+      input.removeAttribute('aria-invalid');
+      input.removeAttribute('aria-errormessage');
+      syncDescribedBy();
+    };
+    const evaluate = () => {
+      const now = phraseMatches(input.value, phrase);
+      if (now === matched) return;
+      matched = now;
+      lock();
+      // QĐ 8: announce the unlock once per transition — never every key
+      status.textContent = matched ? String(labels.typeToConfirmMatched || '') : '';
+    };
+    input.addEventListener('compositionstart', () => { composing = true; });
+    input.addEventListener('compositionend', () => {
+      composing = false;
+      hideError(); // reward early, like the input path (review round 1, ISSUE-1)
+      evaluate();
+    });
+    input.addEventListener('input', (e) => {
+      if (composing || /** @type {InputEvent} */ (e).isComposing) return; // QĐ 5: an uncommitted IME word is not typed yet
+      hideError(); // reward early
+      evaluate();
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      if (e.isComposing || e.keyCode === 229 || composing) return; // the IME's own Enter commits the word
+      e.preventDefault();
+      if (input.readOnly) return;
+      confirmButton.click(); // QĐ 9: matched → confirm; else → the error (the click handler checks)
+    });
+    lock();
+    return {
+      field,
+      input,
+      check() {
+        if (!composing) evaluate();
+        if (matched) return true;
+        const tplMsg = String(labels.typeToConfirmMismatch || '');
+        error.textContent = tplMsg.split('{phrase}').join(phrase);
+        error.hidden = false;
+        input.setAttribute('aria-invalid', 'true');
+        input.setAttribute('aria-errormessage', error.id);
+        syncDescribedBy();
+        // the attempt came from the button: back to the field, which now reads as invalid + the error (described-by)
+        if (document.activeElement !== input && !input.readOnly) {
+          try { input.focus({ preventScroll: true }); } catch { /* ignore */ }
+        }
+        return false;
+      },
+      setBusy(busy) {
+        input.readOnly = busy;
+        if (!busy) lock(); // setButtonBusy() cleared aria-disabled
+      },
+      describe(messageId) {
+        describedBy = messageId || '';
+        syncDescribedBy();
+      },
+    };
   }
 
   /**
@@ -698,7 +928,8 @@ export class TdModal {
     closeBtn.hidden = closable === false;
     closeBtn.addEventListener('click', () => {
       if (instance && instance.busy) return;
-      TdModal.closeById(root.id);
+      if (instance && instance.handle) TdModal._requestClose(instance, 'button'); // v0.44.0: through the guard
+      else TdModal.closeById(root.id);
     });
 
     if (typeof body === 'string') bodyEl.innerHTML = body; // TRUSTED hatch (documented)
@@ -736,7 +967,8 @@ export class TdModal {
    */
   static _renderActions(footerEl, actions, instance, root) {
     const buttons = [];
-    const closeWith = (value) => (instance ? instance.close(value) : TdModal.closeById(root.id));
+    // v0.44.0 (QĐ 14): a closing action goes through the guard too (it is the user asking to close)
+    const closeWith = (value) => (instance ? TdModal._requestClose(instance, 'action', value) : TdModal.closeById(root.id));
     const setBusy = (busyBtn, busy) => {
       if (instance) instance.busy = busy;
       for (const b of buttons) {
@@ -753,7 +985,8 @@ export class TdModal {
       btn.disabled = entry.disabled;
       buttons.push(entry);
       btn.addEventListener('click', () => {
-        if ((instance && (instance.busy || instance.closed)) || btn.getAttribute('aria-busy') === 'true') return;
+        if ((instance && (instance.busy || instance.closed || instance.guarding))
+          || btn.getAttribute('aria-busy') === 'true') return;
         const shouldClose = a.close !== false;
         let result;
         try {

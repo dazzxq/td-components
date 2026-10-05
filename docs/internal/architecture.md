@@ -210,6 +210,12 @@ loading 480, toast 500, tooltip 510 — giữ đồng bộ với `tokens.css`).
   chép attribute `data-td-theme` + snapshot allowlist `THEME_TOKENS` của vùng (khác `<html>`) lên gốc popup bằng CSSOM
   lúc mở, `unbridge()` lúc đóng. Gắn ở `openDialogLayer({ themeFrom })` và tại chỗ mở của dropdown / chip-input /
   tree-select / menu / hovercard / tooltip / toast / loading; lightbox không bridge.
+- **Hai đường đóng của dialog (v0.44.0, phụ lục [ADR 0006](decisions/0006-modal-no-backdrop-close.md))**: đường
+  **có guard** (người dùng xin đóng: modal X / action / Escape `escapeCloses` / `TdModal.requestClose`; drawer Escape /
+  nền / × / `requestClose()`) chạy `beforeClose` bất đồng bộ của component trước, rồi mới gọi đường đóng cũ; đường
+  **không guard** (`close()` / `closeById()` / `closeAll()`, drawer `close()` / `open = false`) đi thẳng. Guard nằm ở
+  `td-modal.js` (`_requestClose`) / `td-drawer.js` (`requestClose`); `dialog-layer.js` không đổi. Hộp hỏi của guard là
+  một `TdModal` mở bên trên (registry xử lý inert / focus / Escape như mọi lớp lồng).
 - **Dải modal / lightbox (v0.21.1)** `[LAYERS.lightbox, LAYERS.popover)`: blocking mở trên một blocking **cao hơn** trong
   dải (lightbox mở từ modal) được nâng: layer logic = `min(popover − 1, layer trên + 1)` (registry + inert lease), z-index
   thị giác = z-index **computed** của phần tử bên dưới + 1 (CSSOM, theo token site đã đổi). `restackBand()` tính lại

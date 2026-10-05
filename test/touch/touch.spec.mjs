@@ -835,6 +835,30 @@ async function webkitSmoke(browser) {
       expect(rest === await bgOf(page, '#g-dd-opt-2'), 'an unpicked option row changed after taps');
     });
 
+    // v0.44.0: type-to-confirm on a phone — tap the field: it takes the focus, ≥ 44 px tall, ≥ 16 px text (no iOS zoom);
+    // field + confirm button reachable, the phrase wraps inside the sheet
+    await it(tag, 'type-to-confirm field: tap focuses, ≥ 44 px, ≥ 16 px, field + confirm reachable', async () => {
+      await load(page);
+      await page.evaluate(() => window.__openers.modalTypeConfirm());
+      await page.locator('.td-modal[data-state="open"] .td-modal__confirm-field input').waitFor();
+      await settle(page, '.td-modal');
+      await tap('.td-modal__confirm-field input');
+      const m = await page.evaluate(() => {
+        const i = document.querySelector('.td-modal__confirm-field input');
+        const d = document.querySelector('.td-modal__dialog').getBoundingClientRect();
+        const ph = document.querySelector('.td-modal__phrase').getBoundingClientRect();
+        return { focused: document.activeElement === i, h: i.getBoundingClientRect().height, fs: parseFloat(getComputedStyle(i).fontSize),
+          wraps: ph.right <= d.right + 1 && ph.left >= d.left - 1, vw: innerWidth, sw: document.documentElement.scrollWidth };
+      });
+      expect(m.focused, 'tap did not focus the field');
+      expect(m.h >= 44, `field height ${m.h}`);
+      expect(m.fs >= 16, `field font-size ${m.fs}`);
+      expect(m.wraps, 'phrase outside the dialog');
+      expect(m.sw <= m.vw, `horizontal overflow ${m.sw} > ${m.vw}`);
+      expect(await reachable('.td-modal__confirm-field input'), 'field not reachable');
+      expect(await reachable('.td-modal__footer .td-btn:last-child'), 'confirm button not reachable');
+    });
+
     await controlMatrix(tag, page, syntheticInput(page));
     if (errors.length) failures.push(`${tag}: page errors — ${errors.slice(0, 3).join(' | ')}`);
   } finally {

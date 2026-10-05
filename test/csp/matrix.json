@@ -1253,6 +1253,93 @@
         ".td-modal__backdrop"
       ],
       "settle": 400
+    },
+    {
+      "state": "type-confirm",
+      "setup": "TdModal.confirm({ title:'Xoá vĩnh viễn?', message:'Không thể hoàn tác.', confirmVariant:'danger', typeToConfirm:'XOA' });",
+      "selectors": [
+        ".td-modal__dialog",
+        ".td-modal__confirm-field",
+        ".td-modal__confirm-field .td-field__label",
+        ".td-modal__phrase",
+        ".td-modal__confirm-field .td-field__control",
+        ".td-modal__confirm-field .td-field-error",
+        ".td-modal__footer .td-btn--danger"
+      ],
+      "portal": [
+        ".td-modal__dialog",
+        ".td-modal__confirm-field",
+        ".td-modal__confirm-field .td-field__label",
+        ".td-modal__phrase",
+        ".td-modal__confirm-field .td-field__control",
+        ".td-modal__confirm-field .td-field-error",
+        ".td-modal__footer .td-btn--danger"
+      ],
+      "settle": 450,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.44.0 typeToConfirm: field reuses field.css, phrase + error are text, gate is aria-disabled — 0 violations, no style attribute; height / width / margin-left excluded up front (text line boxes, font metrics)."
+    },
+    {
+      "state": "type-confirm-matched",
+      "setup": "TdModal.confirm({ title:'Xoá vĩnh viễn?', message:'Không thể hoàn tác.', confirmVariant:'danger', typeToConfirm:'XOA' }); setTimeout(() => { const i = document.querySelector('.td-modal__confirm-field input'); i.value = 'XOA'; i.dispatchEvent(new Event('input', { bubbles: true })); }, 50);",
+      "selectors": [
+        ".td-modal__dialog",
+        ".td-modal__confirm-field",
+        ".td-modal__confirm-field .td-field__label",
+        ".td-modal__phrase",
+        ".td-modal__confirm-field .td-field__control",
+        ".td-modal__confirm-field .td-field-error",
+        ".td-modal__footer .td-btn--danger"
+      ],
+      "portal": [
+        ".td-modal__dialog",
+        ".td-modal__confirm-field",
+        ".td-modal__confirm-field .td-field__label",
+        ".td-modal__phrase",
+        ".td-modal__confirm-field .td-field__control",
+        ".td-modal__confirm-field .td-field-error",
+        ".td-modal__footer .td-btn--danger"
+      ],
+      "settle": 450,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.44.0 typeToConfirm: field reuses field.css, phrase + error are text, gate is aria-disabled — 0 violations, no style attribute; height / width / margin-left excluded up front (text line boxes, font metrics)."
+    },
+    {
+      "state": "type-confirm-mismatch",
+      "setup": "TdModal.confirm({ title:'Xoá vĩnh viễn?', message:'Không thể hoàn tác.', confirmVariant:'danger', typeToConfirm:'XOA' }); setTimeout(() => { const i = document.querySelector('.td-modal__confirm-field input'); i.value = 'xo'; i.dispatchEvent(new Event('input', { bubbles: true })); document.querySelector('.td-modal__footer .td-btn--danger').click(); }, 50);",
+      "selectors": [
+        ".td-modal__dialog",
+        ".td-modal__confirm-field",
+        ".td-modal__confirm-field .td-field__label",
+        ".td-modal__phrase",
+        ".td-modal__confirm-field .td-field__control",
+        ".td-modal__confirm-field .td-field-error",
+        ".td-modal__footer .td-btn--danger"
+      ],
+      "portal": [
+        ".td-modal__dialog",
+        ".td-modal__confirm-field",
+        ".td-modal__confirm-field .td-field__label",
+        ".td-modal__phrase",
+        ".td-modal__confirm-field .td-field__control",
+        ".td-modal__confirm-field .td-field-error",
+        ".td-modal__footer .td-btn--danger"
+      ],
+      "settle": 450,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.44.0 typeToConfirm: field reuses field.css, phrase + error are text, gate is aria-disabled — 0 violations, no style attribute; height / width / margin-left excluded up front (text line boxes, font metrics)."
     }
   ],
   "td-toast": [

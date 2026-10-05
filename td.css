@@ -5404,6 +5404,21 @@
 		color: inherit;
 	}
 
+	/* v0.44.0 TdModal.confirm({ typeToConfirm }): a .td-field under the message (field.css does the control) */
+	.td-modal__confirm-field {
+		margin-block-start: var(--td-space-md);
+	}
+
+	.td-modal__confirm-field .td-field-error[hidden] {
+		display: none;
+	}
+
+	.td-modal__phrase {
+		font-family: var(--td-font-mono);
+		font-weight: var(--td-fw-semibold);
+		overflow-wrap: anywhere;
+	}
+
 	.td-modal__message--success .td-modal__text,
 	.td-modal__message--error .td-modal__text,
 	.td-modal__message--info .td-modal__text {

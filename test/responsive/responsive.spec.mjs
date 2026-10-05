@@ -105,6 +105,8 @@ const SCENARIOS = [
   { name: 'crop-dialog', act: (p) => p.evaluate(() => { window.__openers.cropDialog(); }), panel: '.td-crop-dialog .td-modal__dialog', ready: '.td-crop-dialog td-cropper[data-state="ready"]', crop: true, see: ['.td-crop-dialog__confirm', '.td-crop-dialog__cancel'] },
   { name: 'picker-crop', act: async (p) => { await p.evaluate(() => { window.__openers.pickerCrop(); }); await p.locator('.td-media-picker__card').first().click(); await p.click('.td-media-picker__confirm'); }, panel: '.td-crop-dialog .td-modal__dialog', ready: '.td-crop-dialog td-cropper[data-state="ready"]', crop: true, see: ['.td-crop-dialog__confirm', '.td-crop-dialog__cancel'] },
   { name: 'media-picker-upload', act: async (p) => { await p.evaluate(() => { window.__openers.picker(); }); await p.locator('.td-media-picker__card').first().waitFor(); await p.click('.td-media-picker__upload-btn'); }, panel: '.td-modal__dialog', see: ['.td-modal__dialog .td-modal__close'] },
+  // v0.44.0: TdModal.confirm({ typeToConfirm }) with a long unbroken phrase — wraps inside the dialog
+  { name: 'modal-type-confirm', act: (p) => p.evaluate(() => window.__openers.modalTypeConfirm()), panel: '.td-modal__dialog', see: ['.td-modal__confirm-field input', '.td-modal__footer .td-btn:last-child'] },
 ];
 
 const PAGE = `<!doctype html><html lang="vi"><head><meta charset="utf-8">

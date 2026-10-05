@@ -523,6 +523,17 @@
     <p class="demo-note">Đã gõ từ khoá mà đóng (Esc / nền / ×) → <code>before-close</code> chặn và hỏi bằng TdModal.confirm. Event <code>open</code> / <code>close</code> trong Console.</p>
   </div>
 
+  <!-- ═══════════════════ v0.44.0: gõ để xác nhận + thay đổi chưa lưu ═══════════════════ -->
+  <div class="demo-section">
+    <h2>Xác nhận bằng cách gõ · chưa lưu <span class="demo-code">typeToConfirm · beforeClose · trackFormDirty()</span></h2>
+    <div class="demo-row">
+      <td-button variant="danger" id="demo-v044-purge">Xoá vĩnh viễn 12 ảnh (gõ XOA)</td-button>
+      <td-button variant="secondary" id="demo-v044-edit">Sửa sản phẩm trong drawer</td-button>
+      <span class="td-badge td-badge--warning" id="demo-v044-badge" hidden>Chưa lưu</span>
+    </div>
+    <p class="demo-note">Drawer: sửa một ô rồi đóng (Esc / nền / ×) → hỏi "Bỏ thay đổi?"; sửa về như cũ → đóng không hỏi; Lưu → <code>markClean()</code>. Rời trang khi còn thay đổi → trình duyệt cảnh báo.</p>
+  </div>
+
   <!-- ═══════════════════ SCROLL TOP ═══════════════════ -->
   <div class="demo-section">
     <h2>Scroll to top <span class="demo-code">&lt;td-scroll-top&gt;</span></h2>
@@ -1687,6 +1698,52 @@
       if (e.target.tagName?.startsWith('TD-')) {
         console.log(`[${e.target.tagName}] change:`, e.detail);
       }
+    });
+  </script>
+
+  <script type="module">
+    // v0.44.0: TdModal.confirm({ typeToConfirm }) + <td-drawer>.beforeClose + trackFormDirty()
+    import { TdModal } from './src/feedback/td-modal.js';
+    import { TdDrawer } from './src/feedback/td-drawer.js';
+    import { TdToast } from './src/feedback/td-toast.js';
+    import { trackFormDirty } from './src/utils/form-validation.js';
+
+    document.querySelector('#demo-v044-purge').addEventListener('click', async () => {
+      const ok = await TdModal.confirm({
+        title: 'Xoá vĩnh viễn 12 ảnh?',
+        message: 'Ảnh sẽ bị xoá khỏi máy chủ, không thể hoàn tác.',
+        confirmText: 'Xoá vĩnh viễn',
+        confirmVariant: 'danger',
+        typeToConfirm: 'XOA',
+        onConfirm: () => new Promise((r) => setTimeout(r, 800)),
+      });
+      if (ok) TdToast.success('Đã xoá 12 ảnh');
+    });
+
+    const badge = document.querySelector('#demo-v044-badge');
+    document.querySelector('#demo-v044-edit').addEventListener('click', () => {
+      const form = document.createElement('form');
+      form.className = 'demo-stack';
+      form.innerHTML = '<td-input-field name="name" label="Tên sản phẩm" value="iPhone 16 Pro"></td-input-field>'
+        + '<td-number-input name="price" label="Giá" value="28990000"></td-number-input>'
+        + '<td-checkbox name="published" value="1" label="Đang bán"></td-checkbox>';
+      const tracker = trackFormDirty(form);
+      form.addEventListener('dirty-change', (e) => { badge.hidden = !e.detail.dirty; });
+      const save = document.createElement('button');
+      save.type = 'submit';
+      save.className = 'td-btn td-btn--primary';
+      save.textContent = 'Lưu';
+      form.id = 'demo-v044-form';
+      save.setAttribute('form', form.id);
+      const d = TdDrawer.open({ title: 'Sửa sản phẩm', body: form, footer: save, beforeClose: () => tracker.confirmDiscard() });
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await new Promise((r) => setTimeout(r, 400)); // "server"
+        tracker.markClean();
+        TdToast.success('Đã lưu');
+        d.close();
+      });
+      d.closed.then(() => { tracker.destroy(); badge.hidden = true; });
     });
   </script>
 

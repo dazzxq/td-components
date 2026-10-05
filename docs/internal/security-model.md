@@ -322,6 +322,13 @@ in giá trị / lỗi gốc của adapter) áp dụng nguyên. Thêm:
   của bản no-JS. Lệch → render an toàn (không lấy node nào của markup lạ), chỉ giữ alt đang gõ + focus (theo id item).
 - **Server phải:** `count ≤ max` **của server**, `distinct`, mọi id tồn tại / đúng loại / có quyền (**một** `whereIn`,
   so số lượng), cắt alt, kiểm crop / focal như field, ghi theo vị trí trong transaction; "không có key" = giữ nguyên.
+## 6f. Xác nhận bằng cách gõ + theo dõi thay đổi chưa lưu (v0.44.0)
+
+| Bề mặt | Luật | Ở đâu |
+|---|---|---|
+| `typeToConfirm` (phrase) + chữ người dùng gõ | Chỉ là **text**: phrase vào `<strong>` bằng `textContent`, template nhãn (`TdModal.labels.typeToConfirm*`) tách ở `{phrase}` thành text node — không `innerHTML`, không `style`. So khớp sau chuẩn hoá (NFC, trim, gộp khoảng trắng), `===`; dài ≤ 100 code point. **Fail closed** (review r1 SEC-1): option có mặt mà sai (không phải chuỗi, rỗng / trắng, > 100) → `confirm()` reject `TypeError` thông điệp cố định, không mở dialog, không gọi `onConfirm` — không bao giờ rơi về confirm thường. Option được đọc **đúng một lần** (getter / Proxy ném → cùng lỗi; review r2 A). Phrase **không phải bí mật** (hiện trên màn hình) — cho dán. Kiểm tra là UX chống bấm nhầm, **không phải** kiểm soát quyền: server vẫn phải xác thực / phân quyền thao tác xoá | `src/utils/confirm-phrase.js`, `td-modal.js` `_typeToConfirm`, test XSS trong `td-v044-type-confirm.engines.browser-test.js`, CSP state `td-modal.type-confirm*` |
+| Guard đóng (`beforeClose`) | Throw / reject → **ở lại** (fail safe cho dữ liệu) + `console.error` **chuỗi cố định**, không bao giờ in object lỗi của caller (review r1 SEC-3, cũng áp dụng cho `ignore()` và hộp `confirmDiscard` của tracker; `.then` của kết quả guard được đọc trong vùng bảo vệ — getter ném = từ chối, review r2 E); đang chờ: không chạy lại guard, không chạy action; đóng bằng code luôn thắng (không treo đăng xuất) | `td-modal.js` `_requestClose`, `td-drawer.js` `requestClose`, `td-v044-close-guard.browser-test.js` |
+| `trackFormDirty` | Chỉ đọc `FormData` (không gửi đi đâu, không lưu storage); tên field `ignore` so bằng `===` / hàm của app; `beforeunload` chỉ `preventDefault()` + `returnValue = ''` (không thông điệp tuỳ biến); submit native chỉ được miễn **một lần**, chỉ khi `isTrusted` và điều hướng chính cửa sổ này (không `method=dialog`, target rỗng / `_self` theo attribute có mặt trước `<base target>`), xét `defaultPrevented` cuối cùng, hết hạn sau 1 s hoặc lần nhấn / chạm kế tiếp (review r1 SEC-2, r2 B-D); listener `window` chỉ có khi form bẩn | `src/utils/form-dirty.js`, `td-v044-form-dirty.engines.browser-test.js`, `test/engines/form-dirty.spec.mjs` |
 
 ## 7. Trách nhiệm của site
 

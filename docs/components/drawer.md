@@ -129,31 +129,53 @@ trang tự gỡ host khi drawer còn mở, `closed` vẫn resolve. Xem bảng tu
 `dismissible="false"` (đúng chuỗi `false`): Escape và bấm nền không đóng; chỉ nút × và `close()` đóng được. Escape vẫn
 bị drawer "nuốt", không lọt xuống trang hay lớp bên dưới. `TdDrawer.open({ dismissible: false })` tương đương.
 
-### 6. Chặn đóng khi form chưa lưu (`before-close`)
+### 6. Chặn đóng khi form chưa lưu (`beforeClose`, 0.44.0)
 
-Mọi đường đóng (Escape, bấm nền, nút ×, `close()`) đều phát `before-close` **có thể huỷ** trước. Vì `preventDefault()`
-phải gọi **đồng bộ** còn `TdModal.confirm` là bất đồng bộ, mẫu đúng là: chặn trước, hỏi sau, đồng ý thì gọi lại
-`close()` kèm một cờ để lần đó đi qua:
+Gán property `beforeClose` — một hàm **bất đồng bộ được** — rồi nối với
+[`trackFormDirty()`](form-validation.md#9-theo-dõi-thay-đổi-chưa-lưu-trackformdirty-0440):
 
 ```js
-import { TdModal } from '@dazzxq/td-components/modal';
+import { trackFormDirty } from '@dazzxq/td-components/form-validation';
 
+const tracker = trackFormDirty(form);                  // form nằm trong drawer
+drawer.beforeClose = () => tracker.confirmDiscard();   // bẩn → hỏi "Bỏ thay đổi?"; sạch → đóng ngay
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if ((await saveRow(new FormData(form))).ok) {
+    tracker.markClean();                               // lưu xong → sạch
+    drawer.close();                                    // close() không qua beforeClose
+  }
+});
+```
+
+`beforeClose({ reason })` chạy cho Escape, bấm nền, nút × và `requestClose()` — **trước** event `before-close`. Trả
+`false` (đồng bộ hoặc Promise resolve `false`) → drawer ở lại, **không** phát `before-close`; ném lỗi / reject → ở
+lại + `console.error`; giá trị khác → luồng cũ: `before-close` (vẫn huỷ được) → trượt ra. Trong lúc hook đang chờ, xin
+đóng thêm (bấm × lần nữa, Escape) dùng chung lần chờ đó. Drawer bị đóng bằng code / gỡ khỏi DOM trong lúc chờ → kết
+quả bị bỏ qua (`closed` của `TdDrawer.open()` vẫn resolve).
+
+| Đường đóng | Chạy `beforeClose`? | Phát `before-close`? |
+|---|---|---|
+| Escape / bấm nền (khi `dismissible`) / nút × | Có | Có (nếu hook đồng ý) |
+| `requestClose(reason = 'request')` | Có | Có (nếu hook đồng ý) |
+| `close()` / `open = false` / gỡ attribute `open` | **Không** | Có (như 0.27) |
+
+Hộp hỏi là một `TdModal` mở **bên trên** drawer; đóng nó thì focus quay lại trong drawer. Với `TdDrawer.open()`
+truyền thẳng `beforeClose` trong tuỳ chọn.
+
+**Cách cũ vẫn chạy** (event `before-close`, chặn đồng bộ rồi hỏi sau, có cờ để lần đóng sau đi qua):
+
+```js
 let discarding = false;
 drawer.addEventListener('before-close', async (e) => {
-  if (discarding || !isDirty(form)) return;  // không có gì để mất → cho đóng
+  if (discarding || !isDirty(form)) return;
   e.preventDefault();                         // chặn NGAY (đồng bộ)
-  const ok = await TdModal.confirm({
-    message: 'Bỏ các thay đổi chưa lưu?',
-    confirmText: 'Bỏ thay đổi',
-    confirmVariant: 'danger',
-  });
-  if (!ok) return;                            // ở lại drawer
+  if (!(await TdModal.confirm({ message: 'Bỏ các thay đổi chưa lưu?', confirmVariant: 'danger' }))) return;
   discarding = true;
   try { await drawer.close(e.detail.reason); } finally { discarding = false; }
 });
 ```
-
-Modal xác nhận mở **bên trên** drawer (lớp mở sau nằm trên); đóng modal thì focus quay lại trong drawer.
 
 ### 7. Đặt tên cho hộp thoại
 
@@ -218,8 +240,10 @@ người dùng chủ động mở.
 |---|---|---|
 | `open` | `boolean` | Đọc: `true` khi đang mở (không tính lúc đang trượt ra). Gán `true` → `show()`, `false` → `close('programmatic')`. |
 | `show()` | `() => void` | Mở. Đang mở → không làm gì. Đang trượt ra → kết thúc lần đóng đó ngay (`close` phát) rồi mở lại. Host chưa gắn vào document → không làm gì. |
-| `close(reason?)` | `(reason = 'programmatic') => Promise<string \| null>` | Đóng: phát `before-close`, rồi trượt ra; Promise resolve `reason` sau khi xong, `null` nếu bị huỷ hoặc không mở. Gọi lại trong lúc đang đóng → cùng một Promise. |
-| `TdDrawer.open(options)` | `(options?) => { element, close(reason?), closed }` | Tạo, gắn vào `<body>` và mở một drawer; host bị gỡ sau khi đóng. |
+| `close(reason?)` | `(reason = 'programmatic') => Promise<string \| null>` | Đóng: phát `before-close`, rồi trượt ra; Promise resolve `reason` sau khi xong, `null` nếu bị huỷ hoặc không mở. Gọi lại trong lúc đang đóng → cùng một Promise. **Không** chạy `beforeClose`. |
+| `beforeClose` | `({ reason }) => boolean \| void \| PromiseLike<boolean \| void>` \| `null` | 0.44.0: guard bất đồng bộ của Escape / nền / × / `requestClose()`. Gán giá trị không phải hàm → `null`. Gán trước khi element nâng cấp vẫn được giữ. Xem [mục 6](#6-chặn-đóng-khi-form-chưa-lưu-beforeclose-0440). |
+| `requestClose(reason?)` | `(reason = 'request') => Promise<string \| null>` | 0.44.0: xin đóng **qua** `beforeClose`, rồi như `close(reason)`. `null` khi bị từ chối / huỷ / không mở. |
+| `TdDrawer.open(options)` | `(options?) => { element, close(reason?), requestClose(), closed }` | Tạo, gắn vào `<body>` và mở một drawer; host bị gỡ sau khi đóng. |
 | `TdDrawer.labels` | `{ close, drawer }` | Chữ mặc định: `close` = `'Đóng'` (aria-label nút ×), `drawer` = `'Bảng điều khiển'` (tên dự phòng). Gán lại cho cả site: `TdDrawer.labels.close = 'Close'`. |
 
 Tuỳ chọn của `TdDrawer.open()`:
@@ -237,20 +261,21 @@ Tuỳ chọn của `TdDrawer.open()`:
 | `dismissible` | `boolean` | `true` | `false` → chỉ nút × / `close()` đóng được. |
 | `onClose` | `(reason) => void` | — | Gọi sau khi đóng (cùng lúc event `close`). Lỗi ném ra được ghi `console.error`. |
 | `themeRoot` | `Element` | — | 0.42.0: hiển thị theo theme của vùng `[data-td-theme]` chứa phần tử này ([theming › Theme theo vùng](../customization/theming.md#popup-mở-từ-trong-vùng), ADR 0020). Không truyền → theme của trang. |
+| `beforeClose` | `({ reason }) => …` | — | 0.44.0: như property `beforeClose`. |
 
 Giá trị trả về: `element` là host `<td-drawer>` (nghe event, gọi method trên đó được); `close(reason)` = `element.close(reason)`;
-`closed` là `Promise<reason>`.
+`requestClose()` = `element.requestClose()` (0.44.0); `closed` là `Promise<reason>`.
 
 ## Event
 
 | Event | detail | Khi nào | Huỷ được? | bubbles? |
 |---|---|---|---|---|
 | `open` | — | Sau khi chuyển động vào kết thúc (trượt, hoặc fade ngắn khi giảm chuyển động); trạng thái mở + focus ban đầu đã đặt từ đầu chuyển động. Đóng trước khi chuyển động xong → **không** phát. Đúng một lần mỗi lần mở. | không | có (composed) |
-| `before-close` | `{ reason }` | Trước mọi lần đóng. `reason`: `'escape'` \| `'backdrop'` \| `'button'` (nút ×) \| `'programmatic'` (hoặc giá trị bạn truyền vào `close()`). | **có** — `preventDefault()` giữ drawer mở | có (composed) |
+| `before-close` | `{ reason }` | Trước mọi lần đóng (với Escape / nền / × / `requestClose`: sau khi `beforeClose` đồng ý). `reason`: `'escape'` \| `'backdrop'` \| `'button'` (nút ×) \| `'request'` (`requestClose()`, 0.44.0) \| `'programmatic'` (hoặc giá trị bạn truyền vào `close()`). | **có** — `preventDefault()` giữ drawer mở | có (composed) |
 | `close` | `{ reason }` | **Sau** khi trượt ra xong và các node đã về lại host (với `TdDrawer.open()`: ngay trước khi host bị gỡ). | không | có (composed) |
 
 Gọi `close()` ngay **bên trong** handler `before-close` (đồng bộ) bị bỏ qua và trả `null`; muốn đóng lại thì gọi sau
-một `await`, như mẫu ở [mục 6](#6-chặn-đóng-khi-form-chưa-lưu-before-close).
+một `await`, như mẫu "cách cũ" ở [mục 6](#6-chặn-đóng-khi-form-chưa-lưu-beforeclose-0440).
 
 ## Tuỳ biến giao diện
 

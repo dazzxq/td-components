@@ -340,6 +340,9 @@ export function mountResponsiveFixture(root) {
       return TdMediaPicker.open({ adapter, ...(pages ? { pagination: 'pages' } : {}),
         selection: multiple ? { mode: 'multiple', maxItems: 5 } : { mode: 'single' } });
     },
+    // v0.44.0: type-to-confirm with a 60-character phrase without spaces (must wrap, never overflow)
+    modalTypeConfirm: () => { TdModal.confirm({ title: 'Xoá vĩnh viễn đơn hàng', message: 'Không thể hoàn tác.', confirmVariant: 'danger',
+      typeToConfirm: 'XOA-VINH-VIEN-DON-HANG-DH10240-VA-TOAN-BO-LICH-SU-THANH-TOAN' }); },
   };
   return { openers };
 }

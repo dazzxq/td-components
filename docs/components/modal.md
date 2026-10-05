@@ -112,6 +112,51 @@ const deleted = await TdModal.confirm({
 });
 ```
 
+### 3b. Xác nhận bằng cách gõ (`typeToConfirm`, 0.44.0)
+
+Cho thao tác **không hoàn tác được** (xoá vĩnh viễn, purge media…): người dùng phải gõ đúng một chuỗi thì nút xác nhận
+mới hoạt động.
+
+```js
+const ok = await TdModal.confirm({
+  title: 'Xoá vĩnh viễn 12 ảnh?',
+  message: 'Ảnh sẽ bị xoá khỏi máy chủ, không thể hoàn tác.',
+  confirmText: 'Xoá vĩnh viễn',
+  confirmVariant: 'danger',        // nên dùng danger — kit không tự đổi màu
+  typeToConfirm: 'XOA',
+  onConfirm: () => api.purge(ids), // async: nút bận, ô gõ chỉ đọc; reject / false → mở lại, giữ chữ đã gõ
+});
+```
+
+Hành vi:
+
+- Dưới nội dung có một ô `.td-field` với nhãn `Gõ XOA để xác nhận` (phrase in đậm, font mono). **Focus đầu** vào ô
+  này (không phải nút Hủy như `confirm` thường) — nút xác nhận đang khoá nên Enter nhầm không gây hại.
+- Nút xác nhận có `aria-disabled="true"` (vẫn focus được, trình đọc màn hình đọc "mờ") cho tới khi gõ khớp. Khớp →
+  vùng `role="status"` đọc **một lần** `Đã khớp, có thể xác nhận`. Gõ lệch lại → khoá lại.
+- Bấm nút / Enter khi **chưa khớp**: không đóng, ô nhận `aria-invalid="true"` + lỗi `Chưa khớp — hãy gõ đúng XOA`,
+  focus về ô. Gõ tiếp → lỗi biến mất. Enter khi đã khớp = bấm xác nhận.
+- Kết quả Promise, `onConfirm` (đồng bộ / async), `onCancel`, `role="alertdialog"` **không đổi**.
+
+**Luật so khớp** (áp dụng cho cả phrase lẫn chữ đã gõ): chuẩn hoá Unicode NFC (bộ gõ macOS / một số IME cho dạng
+tổ hợp NFD — cùng chữ vẫn khớp) → bỏ khoảng trắng hai đầu → mọi chuỗi khoảng trắng (kể cả NBSP khi dán) thành một dấu
+cách. **Phân biệt hoa thường** (`xoa` ≠ `XOA`) và **phân biệt dấu** (`XOA` ≠ `XÓA`) — như GitHub / Vercel / AWS.
+
+- Được **dán**, kéo thả, đọc chính tả (mục đích là xác nhận ý định, không phải bí mật — phrase hiện ngay trên màn hình).
+- Bộ gõ tiếng Việt / CJK: chữ đang gõ dở (composition) không được tính; Enter để chốt chữ của bộ gõ không xác nhận.
+- Ô tắt gợi ý / tự sửa / tự viết hoa (`autocomplete="off"`, `autocapitalize="none"`, `autocorrect="off"`,
+  `spellcheck="false"`), không có `maxlength`.
+- **Fail closed:** có truyền `typeToConfirm` nhưng sai — không phải chuỗi (kể cả `null` / `undefined` viết rõ), rỗng
+  hoặc chỉ khoảng trắng sau chuẩn hoá, hay dài hơn 100 ký tự (code point) — thì `confirm()` trả Promise **bị reject**
+  (`TypeError`, thông điệp cố định, không lặp lại giá trị của bạn), **không mở** hộp thoại nào và **không gọi**
+  `onConfirm`. Không cắt ngắn ngầm. Không truyền option → `confirm` thường như cũ.
+
+**Chọn phrase bền với bộ gõ Telex / VNI:** dùng chữ IN, ngắn, **không dấu**, tránh cặp `aa / ee / oo / dd / w` và
+`s / f / r / x / j` ngay sau nguyên âm (Telex biến chúng thành dấu). `XOA`, `XOA-VINH-VIEN`, mã đơn `DH10240` là an
+toàn; `XOÁ`, `DELETE` (Telex `ee` → `ê`) thì không.
+
+Chỉ có trên `confirm()` — dialog khác cần kiểu này thì tự dựng bằng `footer`.
+
 ### 4. Footer tự dựng, đóng bằng code
 
 ```js
@@ -169,6 +214,59 @@ TdModal.show({
 TdModal.closeAll();   // đóng từ trên xuống; mỗi modal chạy onClose đúng 1 lần; focus về opener dưới cùng
 ```
 
+### 8. Chặn đóng khi có thay đổi chưa lưu (`beforeClose`, 0.44.0)
+
+`beforeClose({ reason, value })` chạy **trước** khi modal đóng theo yêu cầu của **người dùng**. Trả `false` (đồng bộ
+hoặc Promise resolve `false`) → modal ở lại; ném lỗi / reject → ở lại + `console.error` (an toàn cho dữ liệu); giá trị
+khác → đóng. Nối với [`trackFormDirty()`](form-validation.md#9-theo-dõi-thay-đổi-chưa-lưu-trackformdirty-0440) chỉ bằng
+một dòng:
+
+```js
+import { trackFormDirty } from '@dazzxq/td-components/form-validation';
+
+const form = document.createElement('form');           // bọc thân modal trong <form>
+form.innerHTML = '…';
+const tracker = trackFormDirty(form);
+
+const id = TdModal.show({
+  title: 'Sửa sản phẩm',
+  body: form,
+  beforeClose: () => tracker.confirmDiscard(),          // bẩn → hỏi "Bỏ thay đổi?"; sạch → đóng ngay
+  actions: [
+    { label: 'Hủy', value: false },
+    { label: 'Lưu', variant: 'primary', value: true, onClick: async () => {
+      const res = await save(new FormData(form));
+      if (!res.ok) return false;                        // lỗi → giữ mở, vẫn bẩn
+      tracker.markClean();                              // BẮT BUỘC trước khi trả về, nếu không sẽ bị hỏi
+    } },
+  ],
+});
+```
+
+Đường đóng nào chạy guard:
+
+| Đường đóng | `reason` | Chạy `beforeClose`? |
+|---|---|---|
+| Nút X | `'button'` | Có |
+| Escape (chỉ khi `escapeCloses`) | `'escape'` | Có |
+| Action có đóng (kể cả "Lưu") | `'action'` (`value` = value của action) | Có — nhớ `markClean()` sau khi lưu thành công |
+| `TdModal.requestClose(id, value?)` | `'request'` | Có (cho footer tự dựng) |
+| `TdModal.close()` / `closeById()` / `closeAll()` | — | **Không** — code là ý định của app (đăng xuất, đổi route không được treo) |
+| Bấm nền | — | Không bao giờ đóng (ADR 0006) |
+
+Trong lúc guard đang chờ (ví dụ hộp hỏi đang mở): bấm X / action / Escape / `requestClose` thêm đều dùng chung lần
+chờ đó (action không chạy), modal **không** hiện spinner. Modal bị đóng bằng code trong lúc chờ → kết quả guard bị bỏ
+qua. Hộp hỏi là một `TdModal` mở **trên** modal hiện tại: Escape bị lớp trên nuốt, đóng hộp hỏi thì focus về modal
+dưới. Hộp thoại Promise (`confirm` / `success` / `error` / `info`) không nhận `beforeClose`.
+
+Footer tự dựng muốn đi qua guard thì dùng `requestClose` thay cho `closeById`:
+
+```js
+cancelBtn.addEventListener('click', async () => {
+  if (await TdModal.requestClose(id)) console.log('đã đóng');
+});
+```
+
 ## Property & method
 
 ### `TdModal`
@@ -183,7 +281,8 @@ TdModal.closeAll();   // đóng từ trên xuống; mỗi modal chạy onClose �
 | `TdModal.close()` | `void` | Đóng modal trên cùng. |
 | `TdModal.closeById(id)` | `void` | Đóng modal theo id (ở bất kỳ vị trí nào trong chồng). Id không tồn tại → không làm gì. |
 | `TdModal.closeAll()` | `void` | Đóng mọi modal, trên cùng trước. |
-| `TdModal.labels` | `object` | Nhãn mặc định, sửa được: `{ close: 'Đóng', confirm: 'Xác nhận', cancel: 'Hủy', ok: 'OK', confirmTitle: 'Xác nhận', confirmMessage: 'Bạn có chắc chắn?', successTitle: 'Thành công', errorTitle: 'Lỗi', infoTitle: 'Thông tin' }` (năm khoá cuối từ 0.16.0). |
+| `TdModal.requestClose(id, value?)` | `Promise<boolean>` | 0.44.0: xin đóng **qua** `beforeClose` (reason `'request'`). `true` = đã đóng; `false` = guard từ chối, action đang bận hoặc id không tồn tại. `close` / `closeById` / `closeAll` **không** qua guard. |
+| `TdModal.labels` | `object` | Nhãn mặc định, sửa được: `{ close: 'Đóng', confirm: 'Xác nhận', cancel: 'Hủy', ok: 'OK', confirmTitle: 'Xác nhận', confirmMessage: 'Bạn có chắc chắn?', successTitle: 'Thành công', errorTitle: 'Lỗi', infoTitle: 'Thông tin', typeToConfirmLabel: 'Gõ {phrase} để xác nhận', typeToConfirmMismatch: 'Chưa khớp — hãy gõ đúng {phrase}', typeToConfirmMatched: 'Đã khớp, có thể xác nhận' }` (`*Title` / `confirmMessage` từ 0.16.0, ba khoá `typeToConfirm*` từ 0.44.0). |
 
 Không có `TdModal.loading()` — đã bỏ, dùng [`TdLoading`](loading.md).
 
@@ -240,6 +339,7 @@ window.addEventListener('beforeunload', (e) => {
 | `bodyPadding` | `string` | — | Padding của body (giá trị CSS `padding` hợp lệ, ví dụ `'0'`, `'2rem 1rem'`). Dùng chuỗi có đơn vị: số trần như `16` bị từ chối (chỉ `0` hợp lệ). |
 | `bodyOverflow` | `string` | — | `visible` \| `hidden` \| `auto` \| `scroll` \| `clip`. Giá trị khác → bỏ qua + `console.warn`. |
 | `themeRoot` | `Element` | — | 0.42.0: hiển thị theo theme của vùng `[data-td-theme]` chứa phần tử này ([theming › Theme theo vùng](../customization/theming.md#popup-mở-từ-trong-vùng), ADR 0020). Không truyền → theme của trang. |
+| `beforeClose` | `({ reason, value }) => boolean \| void \| PromiseLike<boolean \| void>` | — | 0.44.0: guard của các đường đóng do người dùng (X, Escape khi `escapeCloses`, action có đóng, `requestClose`). `false` / throw / reject → ở lại. Xem [Chặn đóng khi có thay đổi chưa lưu](#8-chặn-đóng-khi-có-thay-đổi-chưa-lưu-beforeclose-0440). |
 
 ### Action (nút footer)
 
@@ -278,8 +378,10 @@ Trong lúc bận, bấm lại nút đó hay nút khác đều bị bỏ qua, và
 | `confirmVariant` | `'primary' \| 'danger' \| 'success' \| 'warning'` | `'primary'` | Màu nút xác nhận. Giá trị khác → `primary`. |
 | `onConfirm` | `() => any` | — | Gọi khi bấm xác nhận. Đồng bộ: trả `false` hoặc ném lỗi (ghi `console.error`) → giữ mở (**đổi hành vi 0.16.0**, trước đó resolve `true` và đóng); giá trị khác → `true` và đóng. Trả Promise → nút bận; resolve `false` hoặc reject → giữ mở; giá trị khác → `true` và đóng. |
 | `onCancel` | `() => void` | — | Gọi đúng một lần khi bị huỷ (nút Hủy, X, `closeAll`). Lỗi bị nuốt. |
+| `typeToConfirm` | `string` | — | 0.44.0: phải gõ đúng chuỗi này (≤ 100 ký tự) thì nút xác nhận mới hoạt động. Có truyền mà sai → Promise reject `TypeError`, không mở hộp thoại. Xem [Xác nhận bằng cách gõ](#3b-xác-nhận-bằng-cách-gõ-typetoconfirm-0440). |
 
-Focus ban đầu của `confirm` nằm ở nút **Hủy** (an toàn cho thao tác nguy hiểm: nhấn Enter nhầm không xoá gì).
+Focus ban đầu của `confirm` nằm ở nút **Hủy** (an toàn cho thao tác nguy hiểm: nhấn Enter nhầm không xoá gì); có
+`typeToConfirm` thì ở ô gõ.
 
 ### Tuỳ chọn `success()` / `error()` / `info()`
 
@@ -305,6 +407,10 @@ TdModal.labels.confirmMessage = 'Are you sure?';
 TdModal.labels.successTitle = 'Success';
 TdModal.labels.errorTitle = 'Error';
 TdModal.labels.infoTitle = 'Information';
+// từ 0.44.0 (typeToConfirm): `{phrase}` được thay bằng phrase (luôn là text); nhãn thiếu `{phrase}` → phrase nối vào cuối
+TdModal.labels.typeToConfirmLabel = 'Type {phrase} to confirm';
+TdModal.labels.typeToConfirmMismatch = 'Does not match — type {phrase}';
+TdModal.labels.typeToConfirmMatched = 'Matches, you can confirm';
 ```
 
 Nội dung mặc định của `success` / `error` (`'Thao tác đã hoàn tất'`, `'Đã xảy ra lỗi'`) **không** nằm trong `labels`;
@@ -417,6 +523,7 @@ Mỗi modal đang mở là một phần tử gắn thẳng vào `<body>`:
 | `.td-modal__header[hidden]`, `.td-modal__close[hidden]`, `.td-modal__footer[hidden]` | Ẩn theo `showHeader`, `closable`, footer rỗng. |
 | `role="alertdialog"` + `aria-describedby="{id}-message"` | Trên các hộp thoại Promise (`confirm`, `success`, `error`, `info`). |
 | `.td-modal__message`, `.td-modal__message--{success\|error\|info}`, `.td-modal__icon`, `.td-modal__text` | Khối nội dung của hộp thoại Promise. |
+| `.td-modal__confirm-field.td-field` > `label.td-field__label[for]` (+ `strong.td-modal__phrase`) + `input.td-field__control` + `span.td-field-error[hidden]` + `span.td-modal__confirm-status.td-sr-only[role=status]` | 0.44.0 `typeToConfirm`: ô gõ dưới nội dung (dùng lại field.css). Nút xác nhận `[aria-disabled="true"]` khi chưa khớp; ô `[aria-invalid="true"]` + `aria-errormessage` khi bấm lúc chưa khớp. |
 
 Chỉ `.td-modal__body` cuộn; header và footer luôn đứng yên. Trên màn hình < 720px (0.34.0; trước đó ≤ 640px) modal thường thành bottom sheet — `fullViewport` thì luôn phủ kín (không có cử
 chỉ kéo), trừ `fullViewport`. Khi modal mở, trang được khoá cuộn (một khoá cho cả chồng, đặt trên `<html>` và khôi phục

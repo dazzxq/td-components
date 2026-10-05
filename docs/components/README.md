@@ -47,7 +47,7 @@ lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong 
 | [Media gallery](media-gallery.md) | `<td-media-gallery>` | `/media-gallery` | có (reference `name[]=id`; usage `name[i][id\|alt\|crop\|focal]`; rỗng `name=`) | (0.43.0) **Danh sách** ảnh có thứ tự: thêm nhiều qua picker, gỡ, sắp lại (kéo / chạm-để-chuyển / bàn phím), alt + cắt theo từng ảnh, `min` / `max` (≤ 100), ảnh bìa = ảnh đầu; fail closed không xoá; PHP `td_media_gallery` |
 | [Cropper](cropper.md) | `<td-cropper>` + `TdCropper.openDialog()` | `/cropper` | không (giá trị form ở media field) | Khung cắt ảnh theo preset / tỉ lệ khoá + điểm trọng tâm; **chỉ xuất toạ độ** (chuẩn hoá 0..1 + pixel khi biết kích thước gốc), không tạo file, không canvas; zoom bàn phím / lăn chuột / pinch (0.35.0) |
 | [Dropzone](dropzone.md) | `<td-dropzone>` | `/dropzone` | có (gửi file qua `FormData`) | Chọn / kéo thả file: lọc `accept` / `max-size` / `max-files`, danh sách + xoá, hook `upload` có tiến độ từng file, thumbnail ảnh |
-| [Form validation](form-validation.md) | `TdFormValidation` | `/form-validation` | — | Kiểm tra form: ràng buộc gốc + rule riêng + lỗi từ server, tóm tắt lỗi |
+| [Form validation](form-validation.md) | `TdFormValidation` + `trackFormDirty()` | `/form-validation` | — | Kiểm tra form: ràng buộc gốc + rule riêng + lỗi từ server, tóm tắt lỗi; theo dõi thay đổi chưa lưu (0.44.0) |
 
 ## Lớp nổi & phản hồi
 

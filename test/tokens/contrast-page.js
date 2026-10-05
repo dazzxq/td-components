@@ -175,6 +175,9 @@ for (const v of ['cards', 'pages', 'upload']) CASES.push({ kind: 'media-picker',
 // 1.4.11); the focus ring is two-tone (light ring on the dim; corners: light ring over a dark halo) — computed colours
 // (`pairs`) composited in the page, light + dark.
 for (const state of ['light-image', 'dark-image']) CASES.push({ kind: 'cropper', v: 'frame', state, pageOnly: true });
+// v0.44.0: TdModal.confirm({ typeToConfirm }) — the label, the phrase (<strong>), the typed text and the mismatch error
+// vs the dialog surface, ≥ 4.7 (computed colours composited, light + dark).
+for (const state of ['label', 'mismatch']) CASES.push({ kind: 'type-confirm', v: 'modal', state, pageOnly: true });
 
 const stage = document.getElementById('stage');
 const bd = document.getElementById('backdrop');
@@ -1443,6 +1446,38 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
         { what: 'border vs --td-color-bg', fg: ccs.borderTopColor, bg: themeBg },
       ],
     };
+  } else if (c.kind === 'type-confirm') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    TdModal.closeAll();
+    TdModal.confirm({ title: 'Xoá vĩnh viễn?', message: 'Không thể hoàn tác.', confirmVariant: 'danger', typeToConfirm: 'XOA' });
+    await new Promise((r) => setTimeout(r, 450));
+    const dialog = document.querySelector('.td-modal[data-state="open"] .td-modal__dialog');
+    const field = dialog.querySelector('.td-modal__confirm-field');
+    const input = field.querySelector('input');
+    const surface = overRgb(getComputedStyle(dialog).backgroundColor, page);
+    const fieldBg = overRgb(getComputedStyle(input).backgroundColor, surface);
+    let pairs;
+    let target;
+    if (c.state === 'label') {
+      target = field.querySelector('label');
+      pairs = [
+        { what: 'label vs dialog', fg: getComputedStyle(target).color, bg: surface, min: 4.7 },
+        { what: 'phrase vs dialog', fg: getComputedStyle(field.querySelector('.td-modal__phrase')).color, bg: surface, min: 4.7 },
+      ];
+    } else {
+      input.value = 'xo';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      dialog.querySelector('.td-modal__footer .td-btn--danger').click();
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      target = field.querySelector('.td-field-error');
+      pairs = [
+        { what: 'mismatch error vs dialog', fg: getComputedStyle(target).color, bg: surface, min: 4.7 },
+        { what: 'typed text vs field', fg: getComputedStyle(input).color, bg: fieldBg, min: 4.7 },
+      ];
+    }
+    const b = target.getBoundingClientRect();
+    TdModal.closeAll();
+    return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `type-confirm:${c.v}:${c.state}`, pairs };
   } else {
     TdToast._showSingle('Đã lưu thay đổi của bạn', c.v, 0);
     await new Promise((r) => setTimeout(r, 450));
