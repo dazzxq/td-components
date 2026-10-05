@@ -159,6 +159,11 @@ namespace TdComponents {
         public const SSR_ACTION_BUTTON = 'action-button@1';
         /** v0.38.0: td_scan_input (single: element mode opt-in; multiple: always the element + textarea + hidden inputs). */
         public const SSR_SCAN_INPUT = 'scan-input@1';
+        /** v0.40.0: td_datetime_range (always the element <td-datetime-range> + two native date / datetime-local inputs). */
+        public const SSR_DATETIME_RANGE = 'datetime-range@1';
+        /** v0.40.0: texts of td_datetime_range = TdDatetimeRange.labels (a site overriding the JS labels gets a safe re-render). */
+        public const RANGE_LABELS = ['start' => 'Từ', 'end' => 'Đến', 'fromPrefix' => 'Từ', 'toPrefix' => 'Đến',
+            'placeholder' => 'dd/mm/yyyy – dd/mm/yyyy', 'placeholderDatetime' => 'dd/mm/yyyy hh:mm – dd/mm/yyyy hh:mm'];
         /** v0.38.0: texts of td_scan_input = TdScanInput.labels (a site overriding the JS labels gets a safe re-render). */
         public const SCAN_LABELS = ['input' => 'Mã quét', 'list' => 'Mã đã quét', 'fallback' => 'Nhập tay, mỗi dòng một mã'];
         /** v0.39.0: td_filter_chips (always the element <td-filter-chips> + the chips; × links work without JS). */
@@ -2664,6 +2669,163 @@ namespace {
         return $host . '<div class="td-scan" data-mode="multiple">' . $labelHtml . $box . $textarea
             . '<ul class="td-scan__list" aria-label="' . Td::e(Td::SCAN_LABELS['list']) . '">' . $items . '</ul></div>'
             . $hidden . $note . '</td-scan-input>';
+    }
+
+    /**
+     * v0.40.0 (plan v0.39.0-filters-range QĐ 26): a date (or date-time) RANGE — always the element
+     * `<td-datetime-range data-td-ssr="datetime-range@1">`. Without JS it is two native `<input type="date|datetime-local">`
+     * named `{name}[start]` / `{name}[end]` (or `start_name` / `end_name`) with min / max and the per-side `required`
+     * (true / 'both' → both, 'start' / 'end' → that input only); with JS the element adopts the markup in place (its own
+     * gate), takes the LIVE native values and removes the native block (FormData keeps one pair — the host's).
+     * Values: `dd/mm/yyyy[ - hh:mm]`, `yyyy-mm-dd`, `yyyy-mm-ddThh:mm[:ss]` or the DB `yyyy-mm-dd hh:mm[:ss]`; an invalid
+     * value / bound is dropped. Options: label, mode (date | datetime), min, max, required, disabled, max_days,
+     * minute_step, form_value_format (iso | display | db), start_name, end_name, placeholder, error, attrs (host),
+     * class, id.
+     */
+    function td_datetime_range(string $name, ?string $start = null, ?string $end = null, array $o = []): string
+    {
+        $L = Td::RANGE_LABELS;
+        $mode = ($o['mode'] ?? null) === 'datetime' ? 'datetime' : 'date';
+        $id = td__str($o['id'] ?? null) ?? td__host_uid($name);
+        $hid = Td::e($id);
+        $label = isset($o['label']) && is_scalar($o['label']) && !is_bool($o['label']) ? (string) $o['label'] : '';
+        $placeholder = td__str($o['placeholder'] ?? null);
+        $error = td__str($o['error'] ?? null);
+        $disabled = !empty($o['disabled']);
+        $req = td__dtr_required($o['required'] ?? null);
+        $s = $start !== null ? td__dtr_parts($start, $mode, 'start') : null;
+        $e = $end !== null ? td__dtr_parts($end, $mode, 'end') : null;
+        $min = isset($o['min']) && is_string($o['min']) ? td__dtr_parts($o['min'], $mode, 'start') : null;
+        $max = isset($o['max']) && is_string($o['max']) ? td__dtr_parts($o['max'], $mode, 'end') : null;
+        $int = static function (mixed $v, int $lo, int $hi): ?int {
+            $n = is_int($v) ? $v : (is_string($v) && preg_match('/^\s*[0-9]{1,9}\s*$/', $v) ? (int) trim($v) : null);
+            return $n !== null && $n >= $lo && $n <= $hi ? $n : null;
+        };
+        $maxDays = $int($o['max_days'] ?? null, 1, 100000);
+        $step = $int($o['minute_step'] ?? null, 1, 30);
+        if ($step !== null && 60 % $step !== 0) {
+            $step = null;
+        }
+        $fmt = in_array($o['form_value_format'] ?? null, ['iso', 'display', 'db'], true) ? $o['form_value_format'] : null;
+        $startName = td__str($o['start_name'] ?? null);
+        $endName = td__str($o['end_name'] ?? null);
+        $names = [
+            'start' => $startName ?? ($name !== '' ? $name . '[start]' : null),
+            'end' => $endName ?? ($name !== '' ? $name . '[end]' : null),
+        ];
+        $display = static fn (?array $p): ?string => $p === null ? null
+            : sprintf('%02d/%02d/%04d', $p[2], $p[1], $p[0]) . ($mode === 'datetime' ? sprintf(' - %02d:%02d', $p[3], $p[4]) : '');
+        $native = static fn (?array $p): ?string => $p === null ? null
+            : sprintf('%04d-%02d-%02d', $p[0], $p[1], $p[2]) . ($mode === 'datetime' ? sprintf('T%02d:%02d', $p[3], $p[4]) : '');
+        $a = $display($s);
+        $b = $display($e);
+        if ($a === null && $b === null) {
+            $text = $placeholder ?? ($mode === 'datetime' ? $L['placeholderDatetime'] : $L['placeholder']);
+        } elseif ($a !== null && $b !== null) {
+            $text = $a . ' – ' . $b;
+        } else {
+            $text = $a !== null ? $L['fromPrefix'] . ' ' . $a : $L['toPrefix'] . ' ' . $b;
+        }
+        $required = $req['parts'] !== [];
+
+        $taken = [];
+        $html = '<td-datetime-range' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_DATETIME_RANGE,
+            'id' => $id,
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'name' => $name !== '' ? $name : null,
+            'mode' => $mode,
+            'start' => $a,
+            'end' => $b,
+            'start-name' => $startName,
+            'end-name' => $endName,
+            'label' => $label !== '' ? $label : null,
+            'placeholder' => $placeholder,
+            'min' => $native($min),
+            'max' => $native($max),
+            'max-days' => $maxDays !== null ? (string) $maxDays : null,
+            'minute-step' => $step !== null ? (string) $step : null,
+            'form-value-format' => $fmt,
+            'required' => $req['attr'],
+            'disabled' => $disabled,
+            'error-text' => $error,
+        ], $taken);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $taken = td__reserve(['id', 'class', 'name', 'mode', 'start', 'end', 'start-name', 'end-name', 'label', 'placeholder', 'min',
+            'max', 'max-days', 'minute-step', 'form-value-format', 'open-at', 'required', 'disabled', 'error-text', 'value'], $extra, $taken);
+        $html .= Td::attrs($extra, $taken) . '>';
+
+        $natives = '';
+        foreach (['start' => $s, 'end' => $e] as $k => $p) {
+            $natives .= '<label class="td-dtr__native-label" for="' . $hid . '-' . $k . '">' . Td::e($L[$k]) . '</label>'
+                . '<input class="td-dtr__native" type="' . ($mode === 'datetime' ? 'datetime-local' : 'date') . '" id="' . $hid . '-' . $k
+                . '" data-part="' . $k . '"'
+                . ($names[$k] !== null ? ' name="' . Td::e($names[$k]) . '"' : '')
+                . ($p !== null ? ' value="' . Td::e($native($p)) . '"' : '')
+                . ($min !== null ? ' min="' . Td::e($native($min)) . '"' : '')
+                . ($max !== null ? ' max="' . Td::e($native($max)) . '"' : '')
+                . (in_array($k, $req['parts'], true) ? ' required' : '')
+                . ($disabled ? ' disabled' : '')
+                . ($error !== null ? ' aria-invalid="true" aria-describedby="' . $hid . '-error"' : '') . '>';
+        }
+        return $html . '<div class="td-dtr" data-state="closed">'
+            . ($label !== '' ? '<span class="td-field__label td-dtr__label" id="' . $hid . '-label">' . Td::e($label)
+                . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') . '</span>' : '')
+            . '<div class="td-dtr__natives" role="group"' . ($label !== '' ? ' aria-labelledby="' . $hid . '-label"' : '') . '>' . $natives . '</div>'
+            . '<button type="button" class="td-dtr__trigger" id="' . $hid . '-trigger" role="combobox" aria-haspopup="dialog" aria-expanded="false"'
+            . ($label !== '' ? ' aria-labelledby="' . $hid . '-label"' : '') . ($required ? ' aria-required="true"' : '') . ($disabled ? ' disabled' : '') . '>'
+            . '<span class="td-dtr__value"' . ($a === null && $b === null ? ' data-placeholder' : '') . '>' . Td::e($text) . '</span>'
+            . '<span class="td-dtr__icon" data-td-icon="calendar" aria-hidden="true"></span></button></div>'
+            . ($error !== null ? '<span class="td-field-error" id="' . $hid . '-error" data-for="' . $hid . '">' . Td::e($error) . '</span>' : '')
+            . '</td-datetime-range>';
+    }
+
+    /**
+     * @internal v0.40.0 the `required` table of <td-datetime-range> (src/utils/date-presets.js requiredParts, parity
+     * REQUIRED_CASES): null / false → none; true → both (bare); a string trimmed + lower-cased: '' / required / true /
+     * both → both; start / end → that side; anything else → both (the safer reading).
+     * @return array{attr: string|bool|null, parts: array<int,string>}
+     */
+    function td__dtr_required(mixed $v): array
+    {
+        if ($v === null || $v === false) {
+            return ['attr' => null, 'parts' => []];
+        }
+        $s = is_string($v) ? strtolower(trim($v)) : '';
+        if ($s === 'start' || $s === 'end') {
+            return ['attr' => $s, 'parts' => [$s]];
+        }
+        return ['attr' => true, 'parts' => ['start', 'end']];
+    }
+
+    /**
+     * @internal v0.40.0 a range value / bound → [y, m, d, h, i] or null: `dd/mm/yyyy[ - hh:mm]`, `yyyy-mm-dd`,
+     * `yyyy-mm-dd[T| ]hh:mm[:ss]`. A real calendar date (years 1–9999), hour 0–23, minute 0–59. Date mode drops the time;
+     * datetime mode gives a date-only start (or min) 00:00 and a date-only end (or max) 23:59 (like parseBound).
+     * @return array{0:int,1:int,2:int,3:int,4:int}|null
+     */
+    function td__dtr_parts(string $v, string $mode, string $side): ?array
+    {
+        $v = trim($v);
+        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s*-\s*(\d{1,2}):(\d{1,2}))?$/', $v, $m)) {
+            [$y, $mo, $d] = [(int) $m[3], (int) $m[2], (int) $m[1]];
+            $t = isset($m[4]) && $m[4] !== '' ? [(int) $m[4], (int) $m[5]] : null;
+        } elseif (preg_match('/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::([0-5]\d))?)?$/', $v, $m)) {
+            [$y, $mo, $d] = [(int) $m[1], (int) $m[2], (int) $m[3]];
+            $t = isset($m[4]) && $m[4] !== '' ? [(int) $m[4], (int) $m[5]] : null;
+        } else {
+            return null;
+        }
+        if ($y < 1 || $y > 9999 || !checkdate($mo, $d, $y)) {
+            return null;
+        }
+        if ($t !== null && ($t[0] > 23 || $t[1] > 59)) {
+            return null;
+        }
+        if ($mode !== 'datetime') {
+            return [$y, $mo, $d, 0, 0];
+        }
+        return [$y, $mo, $d, ...($t ?? ($side === 'end' ? [23, 59] : [0, 0]))];
     }
 
     /**
