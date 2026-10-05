@@ -18946,6 +18946,12 @@
 		transition-duration: 0s;
 	}
 
+	/* the muted lines (hint / note / struck text) take the full ink on the pressed layer: muted ink on 12 % black is only
+	   4.0:1 (contrast gate v049:choice:pressed ≥ 4.7) — colour only, like every pressed rule */
+	.td-choice__option:is(:active, [data-td-pressed]) > .td-choice__input:not(:disabled) + .td-choice__face :is(.td-choice__hint, .td-choice__note, .td-choice__text) {
+		color: var(--td-control-fg);
+	}
+
 	/* swatch: the colour covers the face background → the layer goes on the edge overlay (::before exists only there) */
 	.td-choice__option:is(:active, [data-td-pressed]) > .td-choice__input:not(:disabled) + .td-choice__face::before {
 		background: var(--td-color-pressed);

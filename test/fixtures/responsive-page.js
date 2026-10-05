@@ -63,6 +63,7 @@ import '../../src/form/td-media-gallery.js'; // v0.43.0
 import '../../src/display/td-steps.js'; // v0.45.0
 import '../../src/display/td-timeline.js'; // v0.45.0
 import '../../src/form/td-check-matrix.js'; // v0.47.0
+import '../../src/form/td-choice-group.js'; // v0.49.0
 import { createMockAdapter } from './media-adapter.js';
 
 const LONG = 'Lưu và xuất bản bài viết lên trang chủ ngay bây giờ';
@@ -180,6 +181,8 @@ export function mountResponsiveFixture(root) {
       <td-table id="rsp-table-narrow" title="Đơn hàng"></td-table>
       <td-scan-input id="rsp-scan-narrow" label="IMEI" beep multiple name="imei[]"></td-scan-input>
       <div class="rsp-160"><td-datetime-range id="rsp-dtr-160" name="r160" label="Khoảng" start="29/09/2026" end="05/10/2026"></td-datetime-range></div>
+      <td-choice-group id="rsp-choice-narrow" name="cap-n" label="Dung lượng" value="256"></td-choice-group>
+      <div class="rsp-160"><td-number-input id="rsp-stepper-160" name="qty160" label="Số lượng" stepper min="1" max="10" value="2" clamp></td-number-input></div>
       <td-cropper id="rsp-cropper-narrow" src="/test/fixtures/panorama.svg" natural-width="1800" natural-height="600" aspect-ratio="1.91" alt="Ảnh OG"></td-cropper>
     </div>
   </section>
@@ -190,6 +193,12 @@ export function mountResponsiveFixture(root) {
   <section class="rsp-section" data-section="media-gallery"><h2>Gallery ảnh</h2>
     <td-media-gallery id="rsp-gallery" name="gallery" label="Ảnh sản phẩm" usage croppable cover max="10" aspect-ratio="4/3" items='[{"id": "m1", "src": "/test/fixtures/1.svg", "name": "Ảnh 1", "alt": "Áo thun trắng cổ tròn"}, {"id": "m2", "src": "/test/fixtures/2.svg", "name": "Ảnh 2", "alt": ""}, {"id": "m3", "src": "/test/fixtures/3.svg", "name": "Ảnh 3", "alt": ""}, {"id": "m4", "src": "/test/fixtures/4.svg", "name": "Ảnh 4", "alt": ""}, {"id": "m5", "src": "/test/fixtures/1.svg", "name": "Ảnh 5", "alt": ""}, {"id": "m6", "src": "/test/fixtures/2.svg", "name": "Ảnh 6", "alt": ""}, {"id": "m7", "src": "/test/fixtures/3.svg", "name": "Ảnh 7", "alt": ""}]'></td-media-gallery>
     <div class="rsp-narrow"><td-media-gallery id="rsp-gallery-narrow" name="g2" label="Ảnh (cột hẹp)" usage items='[{"id": "m1", "src": "/test/fixtures/1.svg", "name": "Ảnh 1", "alt": "Áo thun trắng cổ tròn"}, {"id": "m2", "src": "/test/fixtures/2.svg", "name": "Ảnh 2", "alt": ""}, {"id": "m3", "src": "/test/fixtures/3.svg", "name": "Ảnh 3", "alt": ""}, {"id": "m4", "src": "/test/fixtures/4.svg", "name": "Ảnh 4", "alt": ""}, {"id": "m5", "src": "/test/fixtures/1.svg", "name": "Ảnh 5", "alt": ""}, {"id": "m6", "src": "/test/fixtures/2.svg", "name": "Ảnh 6", "alt": ""}, {"id": "m7", "src": "/test/fixtures/3.svg", "name": "Ảnh 7", "alt": ""}]'></td-media-gallery></div>
+  </section>
+  <section class="rsp-section" data-section="choice"><h2>Lựa chọn (v0.49)</h2>
+    <td-choice-group id="rsp-choice" name="cap" label="Dung lượng" value="256"></td-choice-group>
+    <td-choice-group id="rsp-choice-long" name="pkg" label="Gói bảo hành"></td-choice-group>
+    <td-choice-group id="rsp-choice-swatch" name="color" label="Màu sắc" variant="swatch" value="den"></td-choice-group>
+    <td-number-input id="rsp-stepper" name="qty" label="Số lượng" stepper min="1" max="5" value="1" clamp></td-number-input>
   </section>
   <section class="rsp-section" data-section="scan-input"><h2>Quét mã</h2>
     <td-scan-input id="rsp-scan" label="Mã đơn hàng" placeholder="Quét mã vạch trên phiếu xuất kho" beep></td-scan-input>
@@ -294,6 +303,17 @@ export function mountResponsiveFixture(root) {
   posts.columns = densityColumns();
   posts.data = POSTS.map((o) => ({ ...o }));
   posts.selectedKeys = [2]; // v0.37.0: one selected card (accent border) in every screenshot
+  // v0.49.0: capacity buttons (hint = price), 8 long-label options, colour swatches
+  const caps = [{ value: '128', label: '128GB', hint: '21.990.000₫' }, { value: '256', label: '256GB', hint: '24.990.000₫' },
+    { value: '512', label: '512GB', hint: '29.990.000₫', unavailable: true }, { value: '1tb', label: '1TB', disabled: true }];
+  root.querySelector('#rsp-choice').options = caps;
+  root.querySelector('#rsp-choice-narrow').options = caps;
+  root.querySelector('#rsp-choice-long').options = ['Bảo hành chính hãng 12 tháng tại tất cả trung tâm', 'Bảo hành mở rộng 24 tháng kèm đổi mới 30 ngày',
+    'Bảo hành rơi vỡ vào nước 12 tháng', 'Không mua thêm bảo hành', 'Gói VIP 1 đổi 1 trong 365 ngày toàn quốc', 'Gói doanh nghiệp',
+    'Bảo hành pin 18 tháng', 'Bảo hành màn hình trọn đời máy'].map((label, i) => ({ value: `g${i}`, label, unavailable: i === 2 }));
+  root.querySelector('#rsp-choice-swatch').options = [{ value: 'den', label: 'Titan đen', swatch: '#3b3b3d' },
+    { value: 'trang', label: 'Titan trắng', swatch: '#f4f4f2' }, { value: 'sa', label: 'Titan sa mạc', image: '/test/fixtures/1.svg', unavailable: true },
+    { value: 'xanh', label: 'Titan xanh', swatch: '#1e3a5f' }, { value: 'x', label: 'Hồng', swatch: '#f9a8d4', disabled: true }];
   // v0.38.0: 30 scanned IMEI rows (+ one invalid) in the multiple scan input; 3 in the narrow column
   const imeis = Array.from({ length: 30 }, (_, i) => `35693803564${String(3800 + i).padStart(4, '0')}`);
   root.querySelector('#rsp-scan-multi').values = imeis;

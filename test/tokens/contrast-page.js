@@ -27,11 +27,12 @@ import '/src/display/td-diff.js';
 import '/src/form/td-datetime-range.js';
 import '/src/display/td-steps.js';
 import '/src/display/td-timeline.js';
+import '/src/form/td-choice-group.js';
 import { TdModal } from '/src/feedback/td-modal.js';
 import { TdMediaPicker } from '/src/feedback/td-media-picker.js';
 import { createMockAdapter } from '/test/fixtures/media-adapter.js';
 // v0.41.0 (M0): ONE colour parser for every pair below — understands color(srgb …) (0..1 channels) next to rgb()/rgba()
-import { over as overRgb } from '/test/tokens/color-parse.js';
+import { over as overRgb, contrast as contrastRgb } from '/test/tokens/color-parse.js';
 
 const VARIANTS = ['primary', 'secondary', 'success', 'danger', 'info', 'warning'];
 const TOASTS = ['success', 'error', 'warning', 'info'];
@@ -181,6 +182,13 @@ for (const state of ['preset', 'preset-on', 'preset-on-pressed', 'tab-off', 'tab
 // description ≥ 4.7 on the crosshair row (focus), group label / count ≥ 4.7 on the group fill, the note line ≥ 4.7 on the
 // page; the changed triangle and the note dot ≥ 3 on the cell (graphics); a locked-ticked mark (50 %) ≥ 2.2 on the cell.
 for (const state of ['head', 'crosshair', 'group', 'note', 'marks']) CASES.push({ kind: 'matrix', v: 'check-matrix', state, pageOnly: true });
+// v0.49.0 td-choice-group + number stepper (content layer → page only), computed colours, light + dark: option text / hint /
+// unavailable text + note ≥ 4.7 on the button fill, also on the pressed fill; the selected ink ring ≥ 3 vs the page and vs
+// the button fill; a disabled option ≥ 2.2; the swatch selected ring ≥ 3 vs the page; the unavailable slash (two-tone: the
+// better tone) ≥ 3 on a white and on a black swatch; stepper − / + icon ≥ 3.2 on the box (rest and pressed), aria-disabled
+// ≥ 2.2.
+for (const state of ['button', 'unavailable', 'pressed', 'disabled', 'swatch', 'slash']) CASES.push({ kind: 'v049', v: 'choice', state, pageOnly: true });
+for (const state of ['rest', 'pressed', 'bound']) CASES.push({ kind: 'v049', v: 'stepper', state, pageOnly: true });
 // v0.32.0: td-media-field (content layer → page only): prompt + ratio text ≥ 4.7 on the empty frame fill, the empty-frame
 // icon + dashed border ≥ 3.2 (border vs the page and vs the frame fill), the "Video" badge text ≥ 4.7 on its fill, the
 // field error text ≥ 4.7 on the page; td-media-picker (inside the solid dialog): tile name, detail meta label and tray
@@ -881,6 +889,91 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       name: `repeater:${c.v}:${c.state}`,
       pairs,
     };
+  } else if (c.kind === 'v049') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const over = overRgb;
+    const layer = (n, base) => { // background-color + a pressed gradient layer, composited on `base`
+      const cs = getComputedStyle(n);
+      const fill = over(cs.backgroundColor, base);
+      const img = cs.backgroundImage.includes('rgb') ? cs.backgroundImage.match(/rgba?\([^)]*\)/)[0] : null;
+      return img ? over(img, fill) : fill;
+    };
+    let target; let pairs;
+    if (c.v === 'choice') {
+      const host = document.createElement('td-choice-group');
+      host.setAttribute('label', 'Dung lượng');
+      if (c.state === 'swatch' || c.state === 'slash') host.setAttribute('variant', 'swatch');
+      stage.appendChild(host);
+      host.options = c.state === 'swatch' || c.state === 'slash'
+        ? [{ value: 'w', label: 'Trắng', swatch: '#ffffff', unavailable: true }, { value: 'k', label: 'Đen', swatch: '#000000', unavailable: true }]
+        : [{ value: 'a', label: '128GB', hint: '21.990.000₫' }, { value: 'b', label: '256GB', hint: '24.990.000₫', unavailable: true },
+          { value: 'c', label: '512GB', disabled: true }];
+      host.value = c.state === 'swatch' ? 'k' : 'a';
+      await new Promise((r) => setTimeout(r, 300));
+      const face = (v) => host.querySelector(`.td-choice__option[data-td-value="${v}"] .td-choice__face`);
+      if (c.state === 'button' || c.state === 'pressed') {
+        target = face('a');
+        if (c.state === 'pressed') target.closest('.td-choice__option').setAttribute('data-td-pressed', '');
+        const fill = layer(target, page);
+        const cs = getComputedStyle(target);
+        pairs = [
+          { what: `${c.state} text vs fill`, fg: getComputedStyle(target.querySelector('.td-choice__text')).color, bg: fill, min: 4.7 },
+          { what: `${c.state} hint vs fill`, fg: getComputedStyle(target.querySelector('.td-choice__hint')).color, bg: fill, min: 4.7 },
+        ];
+        if (c.state === 'pressed') { // the unavailable option pressed too (struck muted text + note)
+          const u = face('b');
+          u.closest('.td-choice__option').setAttribute('data-td-pressed', '');
+          const uf = layer(u, page);
+          pairs.push({ what: 'pressed unavailable text vs fill', fg: getComputedStyle(u.querySelector('.td-choice__text')).color, bg: uf, min: 4.7 });
+          pairs.push({ what: 'pressed unavailable note vs fill', fg: getComputedStyle(u.querySelector('.td-choice__note')).color, bg: uf, min: 4.7 });
+        }
+        if (c.state === 'button') {
+          pairs.push({ what: 'selected ring vs page', fg: cs.borderTopColor, bg: page, min: 3 });
+          pairs.push({ what: 'selected ring vs fill', fg: cs.borderTopColor, bg: fill, min: 3 });
+        }
+      } else if (c.state === 'unavailable') {
+        target = face('b');
+        const fill = layer(target, page);
+        pairs = [
+          { what: 'unavailable text vs fill', fg: getComputedStyle(target.querySelector('.td-choice__text')).color, bg: fill, min: 4.7 },
+          { what: 'unavailable note vs fill', fg: getComputedStyle(target.querySelector('.td-choice__note')).color, bg: fill, min: 4.7 },
+        ];
+      } else if (c.state === 'disabled') {
+        target = face('c');
+        pairs = [{ what: 'disabled text vs fill', fg: getComputedStyle(target).color, bg: layer(target, page), min: 2.2 }];
+      } else if (c.state === 'swatch') {
+        target = face('k');
+        const ring = getComputedStyle(target).boxShadow.match(/rgba?\([^)]*\)/g);
+        pairs = [{ what: 'swatch selected ring (outer) vs page', fg: ring[ring.length - 1], bg: page, min: 3 }];
+      } else {
+        pairs = [];
+        for (const [v, sw] of [['w', 'rgb(255, 255, 255)'], ['k', 'rgb(0, 0, 0)']]) {
+          target = face(v);
+          const after = getComputedStyle(target, '::after');
+          const line = after.backgroundColor;
+          const halo = after.boxShadow.match(/rgba?\([^)]*\)/)[0];
+          const best = contrastRgb(line, sw) >= contrastRgb(halo, sw) ? line : halo;
+          pairs.push({ what: `unavailable slash (better tone) on a ${v === 'w' ? 'white' : 'black'} swatch`, fg: best, bg: sw, min: 3 });
+        }
+      }
+    } else {
+      const host = document.createElement('td-number-input');
+      host.setAttribute('stepper', '');
+      host.setAttribute('label', 'Số lượng');
+      host.setAttribute('min', '1');
+      host.setAttribute('max', '5');
+      host.setAttribute('value', c.state === 'bound' ? '1' : '3');
+      stage.appendChild(host);
+      await new Promise((r) => setTimeout(r, 300));
+      target = host.querySelector('.td-number__step--down');
+      if (c.state === 'pressed') target.setAttribute('data-td-pressed', '');
+      const box = layer(host.querySelector('.td-number__box'), page);
+      const ink = getComputedStyle(target.querySelector('svg')).color;
+      const fill = layer(target, box);
+      pairs = [{ what: `stepper − icon (${c.state}) vs its fill`, fg: ink, bg: fill, min: c.state === 'bound' ? 2.2 : 3.2 }];
+    }
+    const b = target.getBoundingClientRect();
+    return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `v049:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'dtr') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
     const over = overRgb;
