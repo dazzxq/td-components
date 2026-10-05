@@ -42,6 +42,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_media_field (0.32.0)](#td_media_field-0320)
 - [td_scan_input (0.38.0)](#td_scan_input-0380)
 - [td_filter_chips (0.39.0)](#td_filter_chips-0390)
+- [td_datetime_range (0.40.0)](#td_datetime_range-0400)
 - [An toàn: escape và whitelist](#an-toàn-escape-và-whitelist)
 - [Chuyển từ adapter riêng của 135](#chuyển-từ-adapter-riêng-của-135)
 - [Lỗi thường gặp](#lỗi-thường-gặp)
@@ -71,6 +72,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_scan_input` (0.38.0) | `div.td-scan` + `input.td-scan__input` **native** (`autocomplete="off"`, `enterkeyhint="done"`…) | Không (Enter submit form) | Không |
 | `td_scan_input` — **chế độ element** (0.39.0, tự bật) / **`multiple`** (luôn element) | host `<td-scan-input data-td-ssr="scan-input@1">` + cùng input; `multiple`: + `textarea` nhập tay + danh sách + một **hidden input** mỗi mã | Không (form gửi mã in sẵn + dòng textarea) | **Có** — nạp module `scan-input`: nhận **tại chỗ**, gỡ hidden / textarea, dòng textarea qua `validate` |
 | `td_filter_chips` (0.39.0) | **luôn** host `<td-filter-chips data-td-ssr="filter-chips@1">` chứa sẵn đúng cây component (nhóm, mỗi chip một `li` với nhãn / giá trị / ×, "Xoá tất cả", live region) | Không (× có `href` là **link** chạy ngay; × không link thì vô hình, giữ chỗ) | **Có** — nạp module `filter-chips`: nhận **tại chỗ** |
+| `td_datetime_range` (0.40.0) | **luôn** host `<td-datetime-range data-td-ssr="datetime-range@1">` + hai `<input type="date\|datetime-local">` **native** (`{name}[start]` / `{name}[end]`, `min` / `max`, `required` theo mốc) + trigger ẩn | Không (hai ô ngày native chạy ngay) | **Có** — nạp module `datetime-range`: nhận **tại chỗ**, giữ giá trị đã sửa, gỡ ô native |
 | `td_copy` (0.27.0) | **luôn** host `<td-copy data-td-ssr="copy@1">` chứa nguồn `<code>` + nút icon + live region | Không (chưa có JS: hiện mã để bôi đen, ẩn nút) | **Có** — nạp module `copy`: nhận **tại chỗ** |
 | `td_icon` | `svg.td-icon` đủ hình (có `viewBox`) | Không | — |
 | `td_badge` | `span.td-badge…` (thuần CSS) | Không | — |
@@ -232,6 +234,7 @@ td_masked_value(string $masked, array $opts = []): string   // 0.31.0 (luôn ele
 td_media_field(string $name, mixed $assetId = null, array $o = []): string    // 0.32.0 (luôn element; $assetId chỉ string | int)
 td_scan_input(string $name, array $o = []): string   // 0.39.0 (multiple: luôn element)
 td_filter_chips(array $items, array $o = []): string        // 0.39.0 (luôn element)
+td_datetime_range(string $name, ?string $start = null, ?string $end = null, array $o = []): string   // 0.40.0 (luôn element)
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
 td_stylesheet_tag(?string $nonce = null): string
@@ -1413,6 +1416,61 @@ foreach ((array) ($_GET['tag'] ?? []) as $t) {               // nhiều giá tr�
 
 (Thực tế in liền một dòng.) Markup bị sửa (thuộc tính lạ, `aria-label` không khớp, `href` không an toàn…) → component
 **không nhận**: render rỗng + một cảnh báo; app gán `items` từ JS thì `items` thắng.
+
+## td_datetime_range (0.40.0)
+
+```php
+<?= td_datetime_range('range', $_GET['range']['start'] ?? null, $_GET['range']['end'] ?? null, ['label' => 'Thời gian', 'max_days' => 92]) ?>
+<?= td_datetime_range('promo', $promo->starts_at, $promo->ends_at, ['mode' => 'datetime', 'minute_step' => 15, 'required' => true]) ?>
+<?= td_datetime_range('filter', $from, $to, ['start_name' => 'date_from', 'end_name' => 'date_to', 'required' => 'start']) ?>
+```
+
+`td_datetime_range($name, $start, $end, $opts)` in khoảng ngày của [Datetime range](../components/datetime-range.md)
+(hợp đồng `datetime-range@1`, **luôn element**):
+
+```
+<td-datetime-range data-td-ssr="datetime-range@1" id name mode [start end start-name end-name label placeholder min max
+                   max-days minute-step form-value-format required disabled error-text] [attrs…]>
+  <div class="td-dtr" data-state="closed">
+    [<span class="td-field__label td-dtr__label" id="{id}-label">nhãn[ *]</span>]
+    <div class="td-dtr__natives" role="group" [aria-labelledby]>
+      <label class="td-dtr__native-label" for="{id}-start">Từ</label>
+      <input class="td-dtr__native" type="date|datetime-local" id="{id}-start" data-part="start" name value min max required disabled>
+      <label class="td-dtr__native-label" for="{id}-end">Đến</label>
+      <input class="td-dtr__native" … data-part="end" …>
+    </div>
+    <button type="button" class="td-dtr__trigger" …>…</button>   ← anh em của khối native, ẩn khi chưa có JS
+  </div>
+  [<span class="td-field-error" id="{id}-error" data-for="{id}">lỗi</span>]
+</td-datetime-range>
+```
+
+- **Không JS**: hai ô ngày native gửi `{name}[start]` / `{name}[end]` (mốc trống = chuỗi rỗng); trình duyệt kiểm `min` /
+  `max` / `required` đúng từng mốc.
+- **Có JS** (nạp module `datetime-range`): component nhận markup **tại chỗ** qua cổng **riêng** (cổng chung của form chỉ
+  cho một control). Thứ tự: giá trị (property gán sớm > **giá trị đang có trong ô native** > thuộc tính) → FormData của host
+  → gỡ `name` / `value` / `required` / `min` / `max` rồi xoá khối native (FormData còn **đúng một** cặp) → ô native đang
+  focus thì focus chuyển sang trigger. `form.reset()` về giá trị server in ra.
+- Markup lệch (input / button thừa, `formaction`, hai ô cùng `data-part`, `type` / `name` / `required` lệch host, trigger
+  nằm trong khối native, thuộc tính lạ, ô icon có nội dung…) → render an toàn; giá trị sống chỉ lấy khi mỗi mốc có
+  **đúng một** ô.
+
+| Option | Ý nghĩa |
+|---|---|
+| `$name` | tên form → `{name}[start]` / `{name}[end]` (`''` → không `name`, cần `start_name` + `end_name`) |
+| `$start`, `$end` | `dd/mm/yyyy[ - hh:mm]`, `yyyy-mm-dd`, `yyyy-mm-ddThh:mm[:ss]` hoặc DB `yyyy-mm-dd hh:mm[:ss]`; ngày không có / sai → **bỏ** (mốc trống). `datetime` + chỉ ngày: Từ 00:00, Đến 23:59 |
+| `mode` | `date` (mặc định) \| `datetime` |
+| `label`, `placeholder` | nhãn / chữ khi trống |
+| `min`, `max` | cùng định dạng; in ra dạng native (`yyyy-mm-dd` / `yyyy-mm-ddThh:mm`; `max` chỉ ngày = 23:59) trên host **và** hai ô; sai → bỏ |
+| `required` | `true` / `'both'` → cả hai (`required` trần); `'start'` / `'end'` → một mốc (`required="start"`); `false` / không có → không |
+| `disabled`, `max_days` (≥ 1), `minute_step` (1–30, chia hết 60), `form_value_format` (`iso` / `display` / `db`) | attribute của host; giá trị sai → bỏ |
+| `start_name`, `end_name` | ghi đè tên hai mục (dcms2: `date_from` / `date_to`) |
+| `error` | `error-text` trên host + dòng lỗi + `aria-invalid` / `aria-describedby` trên hai ô native |
+| `id`, `class` | id / class của **host** (ô native: `{id}-start` / `{id}-end`, trigger `{id}-trigger`) |
+| `attrs` | attribute thêm trên **host** (allowlist). Giữ chỗ: `id` `class` `name` `mode` `start` `end` `start-name` `end-name` `label` `placeholder` `min` `max` `max-days` `minute-step` `form-value-format` `open-at` `required` `disabled` `error-text` `value` + mọi `data-td-*` |
+
+Chữ "Từ" / "Đến" / placeholder = `Td::RANGE_LABELS` (= `TdDatetimeRange.labels`); site đổi chữ phía JS thì markup PHP bị
+coi là lệch → render an toàn (vẫn đúng giá trị).
 
 ## An toàn: escape và whitelist
 

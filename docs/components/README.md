@@ -18,7 +18,7 @@ Mọi import đều theo dạng `@dazzxq/td-components/<tên>` (xem [Cài đặt
 nạp `td.css` một lần cho cả trang.
 
 **Render phía server (SSR) từ PHP:** dùng [adapter PHP](../guides/php-adapter.md) `php/td.php` ship kèm gói —
-`td_button`, `td_link`, `td_action_button`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_masked_value`, `td_media_field`, `td_scan_input`, `td_filter_chips` in đúng markup của component
+`td_button`, `td_link`, `td_action_button`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_masked_value`, `td_media_field`, `td_scan_input`, `td_filter_chips`, `td_datetime_range` in đúng markup của component
 (control native, chạy không cần JS). Component không có helper PHP (menu, table, tabs, pagination, empty-state, trigger
 lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong trang của nó (mục cấu trúc DOM / SSR).
 
@@ -34,6 +34,7 @@ lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong 
 | [Slider](slider.md) | `<td-slider>` | `/slider` | có | Thanh kéo chọn giá trị số |
 | [Dropdown](dropdown.md) | `<td-dropdown>` | `/dropdown` | có | Chọn **một** giá trị, tìm kiếm (combobox); nâng cấp tại chỗ `<select>` con (progressive enhancement, `<select multiple>` giữ native) |
 | [Datetime picker](datetime-picker.md) | `<td-datetime-picker>` | `/datetime-picker` | có | Chọn ngày/giờ với bánh xe, `min`/`max` |
+| [Datetime range](datetime-range.md) | `<td-datetime-range>` | `/datetime-range` | có (hai mục `name[start]` / `name[end]`) | Khoảng "Từ – Đến" (ngày hoặc ngày-giờ) + chọn nhanh Hôm nay / 7 ngày / 30 ngày / Tháng này (callback), kiểm thứ tự / `max-days` / `required` theo mốc; PHP `td_datetime_range` (0.40.0) |
 | [Chip input](chip-input.md) | `<td-chip-input>` | `/chip-input` | có | Nhập nhiều thẻ (tag), gợi ý từ server, tạo mới |
 | [Tree](tree.md) | `<td-tree>` | `/tree` | có | Cây phân cấp (WAI-ARIA tree): không chọn / chọn một / chọn nhiều (độc lập hoặc `cascade` ba trạng thái), nút khoá vẫn gửi, nhánh tải chậm, lọc |
 | [Tree select](tree-select.md) | `<td-tree-select>` | `/tree-select` | có | Chọn một / nhiều nút của cây trong ô gọn (combobox + popup cây): danh mục cha, chuyên mục; nâng cấp `<select>` con; PHP `td_tree_select` |
