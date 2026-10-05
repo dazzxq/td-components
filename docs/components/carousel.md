@@ -161,7 +161,8 @@ Site Blade / viết tay muốn markup có sẵn khung (không dịch layout) dù
 Luật khung (sau Codex review): mọi node khung (viewport, track, nút, chấm…) phải đúng thẻ + class + danh sách attribute
 cho phép, lệch → thay bằng node mới của kit (con được chuyển sang, không clone). Viewport chỉ chứa **đúng một** con là
 track: phần tử (hoặc chữ) nào khác nằm trong viewport trở thành **slide** theo thứ tự DOM — cùng luật với con trực tiếp
-lạc của host; chữ trắng bị bỏ. Kiểm lại mỗi lần phần tử được gắn lại vào trang.
+lạc của host; chữ không trắng được bọc trong một `div` mới (chính node chữ được chuyển vào) để thành slide có nhãn
+"n / total"; chữ trắng bị bỏ. Kiểm lại mỗi lần phần tử được gắn lại vào trang.
 
 ## Token CSS
 

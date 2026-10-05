@@ -47,6 +47,17 @@ function frameOk(n, tag, cls, allowed, fixed = {}) {
 /** Only text children (counter, live region). */
 const textOnly = (n) => [...n.childNodes].every((c) => c.nodeType === 3);
 
+/**
+ * Codex round 3 (ISSUE-6): stray content → a slide node. An element is a slide as it is; a non-blank text node is moved
+ * into a fresh `div` (its own node, never cloned) so it is a counted, labelled slide instead of an anonymous flex item.
+ */
+function asSlide(n) {
+  if (n.nodeType !== 3) return n;
+  const d = document.createElement('div');
+  d.appendChild(n);
+  return d;
+}
+
 /** Escape a string for a RegExp. */
 const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -282,8 +293,8 @@ export class TdCarousel extends TdBaseElement {
       if (n.nodeType === 1 || (n.nodeType === 3 && /\S/.test(n.data))) (before ? lead : tail).push(n);
       else n.remove();
     }
-    if (lead.length) track.prepend(...lead);
-    if (tail.length) track.append(...tail);
+    if (lead.length) track.prepend(...lead.map(asSlide));
+    if (tail.length) track.append(...tail.map(asSlide));
     this._viewport = viewport;
     this._track = track;
 
@@ -598,11 +609,12 @@ export class TdCarousel extends TdBaseElement {
     queueMicrotask(() => { s.textContent = text; });
   }
 
-  /** @private Direct element children that are not frame parts → moved into the track (they become slides). */
+  /** @private Direct children that are not frame parts (elements, non-blank text wrapped) → moved into the track as slides. */
   _adoptStray() {
     if (!this._track) return;
-    const stray = [...this.children].filter((n) => n !== this._viewport && n !== this._controls && n !== this._status);
-    if (stray.length) this._track.append(...stray);
+    const stray = [...this.childNodes].filter((n) => n !== this._viewport && n !== this._controls && n !== this._status
+      && (n.nodeType === 1 || (n.nodeType === 3 && /\S/.test(n.data))));
+    if (stray.length) this._track.append(...stray.map(asSlide));
   }
 
   /** @private Resize / rotate: re-measure; when the WIDTH changed, keep the first slide in view (C5). */

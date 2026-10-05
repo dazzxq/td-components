@@ -621,6 +621,38 @@ describe('td-carousel — layout', () => {
     box.remove();
   });
 
+  it('Codex round 3 (ISSUE-6): non-blank text inside the viewport / on the host becomes a real slide (wrapped), in DOM order', async () => {
+    const check = (h, texts) => {
+      const p = parts(h);
+      expect(p.slides.map((x) => x.textContent.trim())).to.deep.equal(texts);
+      expect(p.slides.map((x) => x.getAttribute('aria-label'))).to.deep.equal(texts.map((_, i) => `${i + 1} / ${texts.length}`));
+      const track = h.querySelector('.td-carousel__track');
+      expect([...track.childNodes].every((n) => n.nodeType === 1), 'no anonymous text item in the track').to.equal(true);
+      expect(h.pageCount).to.equal(Math.ceil(texts.length / 2));
+    };
+    // server frame: text before and after the track inside the viewport
+    const w1 = mount(hostHtml('c-3').replace('<td-carousel ', '<td-carousel id="txt-vp" ')
+      .replace('<div class="td-carousel__track">', 'Trước <div class="td-carousel__track">')
+      .replace('</div></div><div class="td-carousel__controls"', '</div> Sau</div><div class="td-carousel__controls"'));
+    await raf();
+    await raf();
+    check(w1.querySelector('td-carousel'), ['Trước', 'Sản phẩm 1', 'Sản phẩm 2', 'Sản phẩm 3', 'Sản phẩm 4', 'Sản phẩm 5', 'Sản phẩm 6', 'Sau']);
+    w1.remove();
+    // hand-written: text directly on the host (+ blank text dropped)
+    const w2 = mount('<td-carousel id="txt-host" label="Chữ" per-view="2">Đầu <div>A</div>\n  <div>B</div> Cuối</td-carousel>');
+    await raf();
+    await raf();
+    const h2 = w2.querySelector('td-carousel');
+    check(h2, ['Đầu', 'A', 'B', 'Cuối']);
+    // text appended to the host after the upgrade
+    h2.append('Thêm');
+    await raf();
+    await raf();
+    check(h2, ['Đầu', 'A', 'B', 'Cuối', 'Thêm']);
+    expect([...h2.childNodes].filter((n) => n.nodeType === 3 && /\S/.test(n.data)).length, 'no text left on the host').to.equal(0);
+    w2.remove();
+  });
+
   it('children appended after the upgrade become slides (JS-built carousel)', async () => {
     const box = mount('<td-carousel label="JS"></td-carousel>');
     const h = box.querySelector('td-carousel');
