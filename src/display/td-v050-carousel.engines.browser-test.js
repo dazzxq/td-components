@@ -65,11 +65,18 @@ const FORBID = {
   'aa-status': c3.replace('<p class="td-sr-only" role="status"', '<p class="td-sr-only" role="status" onclick="window.__pwned=1"'),
   'aa-controls': c3.replace('<div class="td-carousel__controls" data-td-js-only>', '<div class="td-carousel__controls" data-td-js-only formaction="x">'),
 };
+// Codex round 2 (S2 / ISSUE-5): the viewport is validated in EVERY branch, its children are exactly the track
+const unwrapTrack = (h) => h.replace('<div class="td-carousel__track">', '').replace('</div></div><div class="td-carousel__controls"', '</div><div class="td-carousel__controls"');
+FORBID['vp-notrack-attr'] = unwrapTrack(c3).replace('<div class="td-carousel__viewport">', '<div class="td-carousel__viewport" onclick="window.__pwned=1">');
+FORBID['vp-notrack-tag'] = unwrapTrack(c3).replace('<div class="td-carousel__viewport">', '<section class="td-carousel__viewport" onmouseover="window.__pwned=1">')
+  .replace('</div><div class="td-carousel__controls"', '</section><div class="td-carousel__controls"');
+FORBID['vp-sibling'] = c3.replace('<div class="td-carousel__track">', '<b class="junk" onclick="window.__pwned=1">x</b><div class="td-carousel__track">');
 const forbid = document.createElement('div');
 forbid.style.setProperty('width', '720px');
 forbid.innerHTML = Object.entries(FORBID).map(([id, h]) => h.replace('<td-carousel ', `<td-carousel id="${id}" `)).join('');
 document.body.appendChild(forbid);
 const forbidBefore = Object.fromEntries(Object.keys(FORBID).map((id) => {
+  // (vp-notrack-*: the slides sit straight in the viewport)
   const h = document.getElementById(id);
   return [id, { slides: [...h.querySelectorAll('.td-carousel__slide')], frame: [...h.querySelectorAll('.td-carousel__viewport, .td-carousel__track, .td-carousel__controls, .td-carousel__btn, .td-carousel__counter, .td-carousel__dots, .td-carousel__dot, :scope > p')] }];
 }));
@@ -294,10 +301,20 @@ describe('td-carousel — upgrade / hydrate (carousel@1)', () => {
       const was = forbidBefore[id];
       expect(was.frame.filter((n) => [...n.attributes].some((a) => !ALLOW[n.className]?.includes(a.name)) && h.contains(n)).length, `${id}: a tampered node survived`).to.equal(0);
       const slides = [...h.querySelectorAll('.td-carousel__slide')];
-      expect(slides.length === 6 && slides.every((s, i) => s === was.slides[i]), `${id} slides`).to.equal(true);
-      expect(parts(h).dots.length, `${id} dots`).to.equal(3);
+      const extra = id === 'vp-sibling' ? 1 : 0; // the stray viewport child becomes a slide (same rule as stray host children)
+      expect(slides.length === 6 + extra && was.slides.every((s) => slides.includes(s)), `${id} slides`).to.equal(true);
+      // structure: host > viewport (div, allowlisted) > exactly ONE child, the track; every slide in the track
+      const vp = h.querySelector(':scope > .td-carousel__viewport');
+      expect(vp.localName === 'div' && vp.children.length === 1 && vp.firstElementChild.className === 'td-carousel__track', `${id} structure`).to.equal(true);
+      expect([...vp.childNodes].every((n) => n === vp.firstElementChild), `${id}: only the track inside the viewport`).to.equal(true);
+      expect(h.querySelectorAll('.td-carousel__viewport').length, `${id} one viewport`).to.equal(1);
+      expect(parts(h).dots.length, `${id} dots`).to.equal(id === 'vp-sibling' ? 4 : 3);
     }
-    for (const n of document.querySelectorAll('#aa-onclick button, #aa-dot button, #aa-status p')) n.click();
+    for (const n of document.querySelectorAll('#aa-onclick button, #aa-dot button, #aa-status p, #vp-notrack-attr .td-carousel__viewport')) n.click();
+    // the stray viewport child is SITE content now (a slide, like a stray host child) — never part of the frame
+    expect(document.querySelector('#vp-sibling .junk').parentElement.className).to.equal('td-carousel__track');
+    expect(document.querySelector('#vp-sibling .junk').classList.contains('td-carousel__slide')).to.equal(true);
+    document.querySelector('#vp-notrack-tag .td-carousel__viewport').dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
     document.querySelector('#aa-viewport .td-carousel__viewport').dispatchEvent(new Event('scroll'));
     expect(window.__pwned).to.equal(undefined);
   });
@@ -323,6 +340,24 @@ describe('td-carousel — upgrade / hydrate (carousel@1)', () => {
     expect(parts(h).slides.length).to.equal(6);
     parts(h).prev.click();
     expect(window.__pwned).to.equal(undefined);
+    // round 2: unwrap the track (slides straight in the viewport) + taint the viewport while detached
+    const slides = parts(h).slides;
+    const vp = h.querySelector('.td-carousel__viewport');
+    const tr = h.querySelector('.td-carousel__track');
+    h.remove();
+    vp.append(...tr.childNodes);
+    tr.remove();
+    vp.setAttribute('onclick', 'window.__pwned=1');
+    parent.appendChild(h);
+    await raf();
+    const nvp = h.querySelector(':scope > .td-carousel__viewport');
+    expect(nvp === vp, 'tainted viewport replaced').to.equal(false);
+    expect(nvp.getAttribute('onclick')).to.equal(null);
+    expect(nvp.children.length === 1 && nvp.firstElementChild.className === 'td-carousel__track').to.equal(true);
+    expect(parts(h).slides.length === 6 && parts(h).slides.every((s, i) => s === slides[i]), 'slides preserved in order').to.equal(true);
+    nvp.click();
+    expect(window.__pwned).to.equal(undefined);
+    expect(h.pageCount).to.equal(3);
     parent.remove();
   });
 

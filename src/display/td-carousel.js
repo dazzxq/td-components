@@ -241,30 +241,10 @@ export class TdCarousel extends TdBaseElement {
   /** @private Build the frame around hand-written children, or adopt / repair the server frame. Never touches slide content. */
   _frame() {
     const L = this._L();
+    // 1. the viewport — validated in EVERY branch (Codex round 2): a node carrying the viewport class but not exactly ours
+    //    (tag, namespace, attributes) is replaced by a fresh div whose children are the old one's (moved, never cloned)
     let viewport = this.querySelector(':scope > .td-carousel__viewport');
-    let track = viewport?.querySelector(':scope > .td-carousel__track') || null;
-    if (!viewport || !track) {
-      // hand-written (or broken) markup: every direct child that is not a frame part becomes content of the track
-      const keep = (n) => n.nodeType === 1 && !n.matches('.td-carousel__viewport, .td-carousel__controls, p.td-sr-only[role="status"]');
-      const kids = [...this.childNodes].filter((n) => keep(n) || (n.nodeType === 3 && /\S/.test(n.data)));
-      if (viewport && !track) {
-        track = el('div', 'td-carousel__track');
-        track.append(...viewport.childNodes);
-        viewport.appendChild(track);
-      } else {
-        viewport = el('div', 'td-carousel__viewport');
-        track = el('div', 'td-carousel__track');
-        viewport.appendChild(track);
-      }
-      track.append(...kids);
-    } else {
-      // server / earlier frame: an accepted shape with a foreign attribute is replaced (its children — the slides — move)
-      if (!frameOk(track, 'div', 'td-carousel__track', FRAME_ATTRS.track)) {
-        const t = el('div', 'td-carousel__track');
-        t.append(...track.childNodes);
-        track.replaceWith(t);
-        track = t;
-      }
+    if (viewport) {
       const ti = viewport.getAttribute('tabindex');
       if (!frameOk(viewport, 'div', 'td-carousel__viewport', FRAME_ATTRS.viewport) || (ti !== null && ti !== '0')) {
         const v = el('div', 'td-carousel__viewport');
@@ -273,7 +253,37 @@ export class TdCarousel extends TdBaseElement {
         viewport = v;
         this._ownTabindex = false;
       }
+    } else {
+      // hand-written markup: every direct child that is not a frame part becomes content of the track (step 3)
+      const keep = (n) => n.nodeType === 1 && !n.matches('.td-carousel__controls, p.td-sr-only[role="status"]');
+      const kids = [...this.childNodes].filter((n) => keep(n) || (n.nodeType === 3 && /\S/.test(n.data)));
+      viewport = el('div', 'td-carousel__viewport');
+      viewport.append(...kids);
     }
+    // 2. the track: the viewport's first track child if exactly ours, else a fresh one (an invalid one hands over its children)
+    let track = viewport.querySelector(':scope > .td-carousel__track');
+    if (track && !frameOk(track, 'div', 'td-carousel__track', FRAME_ATTRS.track)) {
+      const t = el('div', 'td-carousel__track');
+      t.append(...track.childNodes);
+      track.replaceWith(t);
+      track = t;
+    }
+    if (!track) {
+      track = el('div', 'td-carousel__track');
+      viewport.prepend(track);
+    }
+    // 3. the viewport holds exactly the track: any other element (or non-blank text) inside it becomes a slide in DOM order —
+    //    the same rule as a stray direct child of the host (_adoptStray); blank text is dropped
+    let before = true;
+    const lead = [];
+    const tail = [];
+    for (const n of [...viewport.childNodes]) {
+      if (n === track) { before = false; continue; }
+      if (n.nodeType === 1 || (n.nodeType === 3 && /\S/.test(n.data))) (before ? lead : tail).push(n);
+      else n.remove();
+    }
+    if (lead.length) track.prepend(...lead);
+    if (tail.length) track.append(...tail);
     this._viewport = viewport;
     this._track = track;
 

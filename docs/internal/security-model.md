@@ -432,7 +432,9 @@ Server **vẫn phải** kiểm giá trị lựa chọn thuộc tập hợp lệ 
   từng chấm `button[type=button]`, vùng thông báo) phải đúng thẻ + class + **allowlist attribute** (`FRAME_ATTRS` trong
   `td-carousel.js`); có attribute khác (`onclick`, `form`, `formaction`, `popovertarget`, `style`…) → **thay** bằng node mới
   của kit (không gỡ tại chỗ). Gắn lại sau khi tách (`canRebind()` = false) chạy lại cùng phép kiểm: node còn đúng giữ nguyên
-  (identity + focus), node bị sửa lúc tách bị thay; slide không bao giờ bị chạm.
+  (identity + focus), node bị sửa lúc tách bị thay; slide không bao giờ bị chạm. Vòng 2: viewport được kiểm **ở mọi
+  nhánh** (kể cả khi thiếu track), và chỉ chứa đúng track — phần tử khác trong viewport thành **slide** (nội dung của site,
+  như con lạc của host; kit không lọc nội dung slide), không bao giờ là một phần của khung.
 - **Cổng SSR**: `rating@1` nhận tại chỗ chỉ khi con của host **bằng đúng** cây JS tự dựng (`isEqualNode`, kể cả nhãn); lệch
   (thẻ lạ, `onclick`, nhãn khác) → render lại từ attribute. `carousel@1` không bao giờ render lại slide; phần **khung** lệch
   (nút là `<a href="javascript:…">`, phần tử thừa trong thanh điều khiển) bị thay bằng phần của kit / bỏ đi.
