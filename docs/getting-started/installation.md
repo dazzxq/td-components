@@ -266,6 +266,8 @@ sẽ bị dịch thành `/vendor/td-components-0.49.0/button` (không tồn tạ
     "@dazzxq/td-components/timeline": "/vendor/td-components-0.49.0/src/display/td-timeline.js",
     "@dazzxq/td-components/diff": "/vendor/td-components-0.49.0/src/display/td-diff.js",
     "@dazzxq/td-components/check-matrix": "/vendor/td-components-0.49.0/src/form/td-check-matrix.js",
+    "@dazzxq/td-components/rating": "/vendor/td-components-0.49.0/src/display/td-rating.js",
+    "@dazzxq/td-components/carousel": "/vendor/td-components-0.49.0/src/display/td-carousel.js",
     "@dazzxq/td-components/media-grid": "/vendor/td-components-0.49.0/src/display/td-media-grid.js",
     "@dazzxq/td-components/sortable": "/vendor/td-components-0.49.0/src/display/td-sortable.js",
     "@dazzxq/td-components/pagination": "/vendor/td-components-0.49.0/src/display/td-pagination.js",
@@ -530,6 +532,8 @@ Nguồn: `package.json#exports`.
 | `@dazzxq/td-components/timeline` | `src/display/td-timeline.js` | `<td-timeline>`, `TdTimeline` (0.45.0) |
 | `@dazzxq/td-components/diff` | `src/display/td-diff.js` | `<td-diff>`, `TdDiff` (0.46.0) |
 | `@dazzxq/td-components/check-matrix` | `src/form/td-check-matrix.js` | `<td-check-matrix>`, `TdCheckMatrix` (0.47.0) |
+| `@dazzxq/td-components/rating` | `src/display/td-rating.js` | `<td-rating>`, `TdRating` (0.50.0) |
+| `@dazzxq/td-components/carousel` | `src/display/td-carousel.js` | `<td-carousel>`, `TdCarousel` (0.50.0) |
 | `@dazzxq/td-components/media-grid` | `src/display/td-media-grid.js` | `<td-media-grid>`, `TdMediaGrid` |
 | `@dazzxq/td-components/sortable` | `src/display/td-sortable.js` | `<td-sortable>`, `TdSortable` |
 | `@dazzxq/td-components/pagination` | `src/display/td-pagination.js` | `<td-pagination>`, `TdPagination` |

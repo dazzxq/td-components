@@ -46,6 +46,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_check_matrix (0.47.0)](#td_check_matrix-0470)
 - [td_color_picker và td_color_value (0.48.0)](#td_color_picker-và-td_color_value-0480)
 - [td_choice_group (0.49.0)](#td_choice_group-0490)
+- [td_rating, td_carousel (0.50.0)](#td_rating-td_carousel-0500)
 - [An toàn: escape và whitelist](#an-toàn-escape-và-whitelist)
 - [Chuyển từ adapter riêng của 135](#chuyển-từ-adapter-riêng-của-135)
 - [Lỗi thường gặp](#lỗi-thường-gặp)
@@ -86,6 +87,8 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_choice_group` (0.49.0) | **luôn** host `<td-choice-group data-td-ssr="choice-group@1">` + radio **native** mang `name` thật (`required` trên mọi radio, `checked` trên lựa chọn đang chọn), ô màu = `fill` của SVG, ảnh = `<img>` | Không (radio native: form gửi `name=value`, mũi tên chạy) | **Có** — nạp module `choice-group`: nhận **tại chỗ** (cùng radio, giữ lựa chọn + focus), radio sang nhóm riêng không form owner |
 | `td_number_input` — **`stepper`** (0.49.0, chỉ element) | như element + hai nút − / + trong hộp (ẩn, giữ chỗ tới khi module tải) | Không (ô native chạy) | **Có** — nhận tại chỗ cả hai nút |
 | `td_copy` (0.27.0) | **luôn** host `<td-copy data-td-ssr="copy@1">` chứa nguồn `<code>` + nút icon + live region | Không (chưa có JS: hiện mã để bôi đen, ẩn nút) | **Có** — nạp module `copy`: nhận **tại chỗ** |
+| `td_rating` (0.50.0) | **luôn** host `<td-rating data-td-ssr="rating@1">` chứa sẵn đủ cây (sao tô theo `data-fill`, chữ "4,3 trên 5 sao", số lượt) | Không (chỉ đọc, đủ hình không JS) | **Có** — nạp module `rating`: nhận tại chỗ khi khớp, ngược lại render lại (không state) |
+| `td_carousel` (0.50.0) | **luôn** host `<td-carousel data-td-ssr="carousel@1">` + khung (viewport > track > slide **HTML tin cậy của site**) + thanh điều khiển JS-only giữ chỗ + live region | Không (dải cuộn snap native) | **Có** — nạp module `carousel`: nhận khung tại chỗ, **không chạm slide**, thêm nút / chấm |
 | `td_icon` | `svg.td-icon` đủ hình (có `viewBox`) | Không | — |
 | `td_badge` | `span.td-badge…` (thuần CSS) | Không | — |
 | `td_alert` | host `<td-alert>` chứa sẵn khối `div.td-alert` đầy đủ | Không (có dáng ngay) | **Có** — nạp module `alert`: nâng cấp tại chỗ + nút đóng |
@@ -252,6 +255,8 @@ td_check_matrix(string $name, array $columns, array $rows, array $value = [], ar
 td_color_picker(string $name, array $o = []): string   // 0.48.0
 td_color_value(mixed $v): ?string                      // 0.48.0: chuẩn hoá màu POST → '#rrggbb' | '' | null
 td_choice_group(string $name, array $options, string|int|null $value = null, array $o = []): string   // 0.49.0 (luôn element)
+td_rating(int|float|string|null $value, array $o = []): string   // 0.50.0 (luôn element, chỉ đọc)
+td_carousel(array $slides, array $o = []): string   // 0.50.0 (luôn element; $slides = HTML TIN CẬY của template site)
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
 td_stylesheet_tag(?string $nonce = null): string
@@ -1796,6 +1801,29 @@ Cảnh báo: **tối đa một** `E_USER_WARNING` mỗi lần gọi, chỉ có s
 field(s) ignored or shortened (…)` (+ "the selected value is not one of the options" khi `$value` không khớp) — không bao
 giờ in giá trị. Server **vẫn phải** kiểm giá trị gửi lên thuộc tập lựa chọn
 hợp lệ (và tồn kho) của sản phẩm.
+
+## td_rating, td_carousel (0.50.0)
+
+```php
+<?= td_rating($p['rating_avg'], ['count' => $p['rating_count'], 'size' => 's']) ?>   <!-- null → "Chưa có đánh giá" -->
+
+<?= td_carousel(array_map('render_product_card', $related), ['label' => 'Sản phẩm liên quan', 'per_view' => 2]) ?>
+```
+
+- **`td_rating($value, $o)`** in [Rating](../components/rating.md) đầy đủ (hợp đồng `rating@1`): sao (hai icon `star`,
+  `data-fill` bậc 10 %), chữ trợ năng, số lượt — **đủ hình không cần JS**, module nhận tại chỗ. `$value`: số hoặc chuỗi số
+  thập phân thường; `null` / khác → "Chưa có đánh giá". Options: `max` (1–10; sai → 5 + `E_USER_WARNING`), `precision`,
+  `count`, `show_value`, `size`, `id`, `class`, `attrs`. Kit **không** in `AggregateRating` / microdata — việc của site,
+  chỉ từ đánh giá thật.
+- **`td_carousel($slides, $o)`** in [Carousel](../components/carousel.md) (hợp đồng `carousel@1`): mỗi slide bọc trong
+  `div.td-carousel__slide` ("n / total"), thanh điều khiển `data-td-js-only` (ẩn nhưng **giữ chỗ** tới khi module tải),
+  `data-td-pages` / `data-td-rows-*` = số trang **dự đoán** `max(1, ceil(n / per_view))`. **`$slides` là chuỗi HTML tin
+  cậy do template của site sinh — in nguyên văn, không lọc** ([security-model §2](../internal/security-model.md)): không bao
+  giờ đưa HTML người dùng nhập vào. Phần tử không phải chuỗi → bỏ + `E_USER_WARNING`; thiếu `label` → "Băng chuyền" +
+  `E_USER_WARNING`. Options: `label`, `per_view` (1–6), `dots`, `step`, `id`, `class`, `attrs`.
+- **Nhãn tĩnh toàn site (cả hai):** không có option `labels`. PHP in chữ mặc định tiếng Việt; site đổi `TdRating.labels` /
+  `TdCarousel.labels` trong JS thì lúc nâng cấp rating được render lại bằng chữ JS, carousel chỉ ghi lại nhãn **khung**
+  (slide không bị chạm) — không bao giờ trộn hai bộ. Cần nhãn theo từng phần tử (site đa ngôn ngữ) → bản sau.
 
 ## An toàn: escape và whitelist
 

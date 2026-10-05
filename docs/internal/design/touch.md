@@ -76,6 +76,11 @@ trạng thái ở mọi compound và coi luật có tổ tiên là phủ control
 | `.td-color-panel__hue` (0.48.0) | `none` | range native như `.td-slider__input` |
 | `.td-number__step` | `manipulation` | nút − / + của `td-number-input stepper` (v0.49.0): bấm liên tục là thao tác chính — không phóng to khi chạm nhanh hai lần trên iOS |
 
+**Không có dòng cho `td-carousel` (v0.50.0, ADR 0024)** — có chủ đích: viewport của carousel giữ `touch-action: auto`
+(cuộn native + scroll-snap; vuốt dọc bắt đầu trên dải cuộn trang). Không listener pointer / touch / wheel; nút `.td-carousel__btn`
+và chấm `.td-carousel__dot` có luật nhấn (`--td-btn-secondary-pressed` / `--td-color-pressed`) và nằm trong `PRESS_TARGETS`.
+Lane touch: vuốt ngang cuộn dải, vuốt dọc cuộn trang, chạm "tiếp" đi đúng một trang, hình nhấn nút / chấm.
+
 ## Ngưỡng và cử chỉ
 
 - `DRAG_SLOP` chuột 4 / bút 8 / chạm 10 px; `axisLock` đường chéo 45° → `y` (cuộn trang thắng).

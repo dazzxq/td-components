@@ -317,7 +317,10 @@ describe('td-carousel — navigation (LTR)', () => {
     const w = p.slides[2].getBoundingClientRect().left - p.slides[0].getBoundingClientRect().left;
     p.vp.scrollLeft = w;
     await stable(p.vp);
-    await new Promise((r) => { setTimeout(r, 200); }); // the scroll-idle fallback (engines without scrollend) is 120 ms
+    // the settle signal: scrollend, or the scroll-idle fallback of engines without it — wait for the EVENT (max 5 s)
+    const end = performance.now() + 5000;
+    while (!events.some((e) => e.id === 'user') && performance.now() < end) await raf();
+    for (let i = 0; i < 10; i++) await raf(); // a second (wrong) event would arrive within these frames
     expect(events.filter((e) => e.id === 'user').map((e) => `${e.index}:${e.reason}`)).to.deep.equal(['2:scroll']);
     expect(p.status.textContent).to.equal('');
     h.parentElement.remove();
@@ -344,7 +347,9 @@ describe('td-carousel — navigation (LTR)', () => {
     await emulateMedia({ reducedMotion: 'no-preference' });
     try {
       h.next();
-      await stable(p.vp);
+      // smooth: wait for the settled index (scrollend / idle), not for a few still frames before the animation starts
+      const end = performance.now() + 5000;
+      while (h.index !== 4 && performance.now() < end) await raf();
       expect(h.index).to.equal(4);
     } finally {
       await emulateMedia({ reducedMotion: 'reduce' });
