@@ -221,11 +221,11 @@ describe('v0.21.0 P2 + P7 — black tooltip, text alignment', () => {
     expect(t.hasAttribute('data-align')).to.equal(false);
   });
 
-  it('dark: still black, faint light edge', async () => {
+  it('dark (v0.41.0): a raised grey chip + a light edge (the black chip was 1.06:1 on the dark page)', async () => {
     html.setAttribute('data-td-theme', 'dark');
     const cs = getComputedStyle(await show(''));
-    expect(near(rgb(cs.backgroundColor), [24, 24, 27])).to.equal(true);
-    expect(cs.borderTopColor).to.match(/0\.12\)$/);
+    expect(near(rgb(cs.backgroundColor), [58, 58, 62])).to.equal(true);
+    expect(cs.borderTopColor).to.match(/0\.16\)$/);
   });
 
   for (const [value, align] of [['start', 'start'], ['center', 'center'], ['end', 'end']]) {
