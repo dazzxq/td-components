@@ -1,5 +1,6 @@
 import { escapeHtml } from '../utils/escape.js';
 import './td-choice-group.js';
+import './td-number-input.js'; // VariantRecipe uses <td-number-input stepper>
 import '../styles/story-layout.css';
 
 export default {

@@ -555,6 +555,9 @@ export class TdChoiceGroup extends TdFormElement {
    */
   _patch() {
     const rs = this._radios();
+    // review I1: the focused radio may become disabled (the browser then drops the focus to <body>)
+    const active = this.ownerDocument.activeElement;
+    const focused = rs.includes(/** @type {HTMLInputElement} */ (active)) ? /** @type {HTMLInputElement} */ (active) : null;
     this._options.forEach((o, i) => {
       const r = rs[i];
       const opt = r.parentElement;
@@ -572,6 +575,7 @@ export class TdChoiceGroup extends TdFormElement {
     this._applyRequired();
     this._applyCurrent();
     this._syncForm();
+    if (focused && focused.disabled) this._tabStop()?.focus({ preventScroll: true });
   }
 
   // --- SSR hydrate (contract choice-group@1, ADR 0012 + 0022) ---

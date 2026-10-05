@@ -379,6 +379,26 @@ describe('td-choice-group — options update (M2)', () => {
     expect(radio(el, '256').hasAttribute('aria-describedby')).to.equal(false);
   });
 
+  it('review I1: a patch that disables the FOCUSED radio moves the focus to the Tab stop (no scroll); none left → engine default', async () => {
+    const el = group('name="cap" value="128"');
+    await wait();
+    radio(el, '256').focus();
+    expect(focusedValue()).to.equal('256');
+    const rec = events(el);
+    const y = window.scrollY;
+    el.options = CAP.map((o) => ({ ...o, disabled: o.value === '256' || o.value === '512' }));
+    expect(focusedValue()).to.equal('128'); // the Tab stop = the checked, enabled one
+    expect(window.scrollY).to.equal(y);
+    expect(rec.log.length).to.equal(0);
+    radio(el, '1tb').focus();
+    el.options = CAP.map((o) => ({ ...o, disabled: o.value !== '128' }));
+    expect(focusedValue()).to.equal('128');
+    // every option disabled: no enabled radio to move to — left to the engine (Chromium blurs, Firefox / WebKit keep the
+    // focus on the now-disabled radio), no error, value kept
+    el.options = CAP.map((o) => ({ ...o, disabled: true }));
+    expect(radios(el).every((r) => r.disabled) && el.value === '128').to.equal(true);
+  });
+
   it('different value list → re-render; focus follows the value; the focused value gone → the Tab stop', async () => {
     const warns = captureWarn();
     const el = group('name="cap" value="256"');
