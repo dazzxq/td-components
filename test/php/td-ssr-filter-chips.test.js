@@ -170,7 +170,8 @@ describe('php/td.php — td_filter_chips (v0.39.0, contract filter-chips@1)', op
     const bad = Array.from({ length: MAX_CANDIDATES - 2 }, () => null);
     const good = Array.from({ length: 5 }, (_, i) => ({ key: `k${i}`, value: 'v' }));
     const outs = run([[[...bad, ...good], {}], [Array.from({ length: MAX_CANDIDATES + 5 }, () => ({ key: '' })), {}],
-      [[...bad.slice(2), ...good.slice(0, 2)], {}]]);
+      [[...bad, ...good.slice(0, 2)], {}]]);
+    assert.equal([...bad, ...good.slice(0, 2)].length, MAX_CANDIDATES);
     assert.deepEqual(itemsOf(outs[0].html).map((i) => i.key), ['k0', 'k1']);
     assert.deepEqual(itemsOf(outs[0].html), normalizeItems([...bad, ...good]).items);
     assert.equal(outs[0].warns, 2, 'one dropped warning + one cap warning');

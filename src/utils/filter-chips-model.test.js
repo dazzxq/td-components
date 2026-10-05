@@ -158,7 +158,9 @@ describe('filter-chips-model — inspected candidates are capped too (SEC-1 roun
     const r = normalizeItems([...bad, ...good]);
     assert.deepEqual(r.items.map((i) => i.key), ['k0', 'k1']);
     assert.equal(r.capped, true);
-    const ok = normalizeItems([...bad.slice(2), ...good.slice(0, 2)]); // exactly MAX_CANDIDATES entries: not capped
+    const exact = [...bad, ...good.slice(0, 2)];
+    assert.equal(exact.length, MAX_CANDIDATES);
+    const ok = normalizeItems(exact); // exactly MAX_CANDIDATES entries: not capped
     assert.equal(ok.items.length, 2);
     assert.equal(ok.capped, false);
   });
