@@ -6,9 +6,9 @@ import { fillIconSlots } from '../icons/td-icon.js';
 import { hasActiveAbove } from '../utils/layers.js';
 import {
   createBurst, normalizeScan, normalizeValues, scanInt, parseTerminator, isDuplicate, createScanQueue, SCAN_LIMITS,
-  MAX_PENDING, MAX_INVALID_ROWS, MAX_VALUES,
+  MAX_PENDING, MAX_INVALID_ROWS, MAX_VALUES, HARD_MAX,
 } from '../utils/scan-burst.js';
-import { playBeep } from '../utils/beep.js';
+import { playBeep, prepareBeep } from '../utils/beep.js';
 
 /** Attributes of the server-rendered single input that exist only for the no-JS form (removed on hydrate). */
 const SSR_ONLY = ['name', 'value', 'required'];
@@ -156,8 +156,11 @@ export class TdScanInput extends TdFormElement {
     this._seq = 0;
     /** @private the last accepted / pending scan `{ value, t, seq }` (dedupe) */
     this._last = null;
-    /** @private single: error of the last scan */
+    /** @private single: error of the last scan + its seq (ISSUE-1: older results never clear / replace it) */
     this._scanError = '';
+    this._errorSeq = 0;
+    /** @private seq of the notice shown (ISSUE-1) */
+    this._noticeSeq = 0;
     this._composing = false;
     this._validate = null;
     this._defaultValues = [];
@@ -234,12 +237,13 @@ export class TdScanInput extends TdFormElement {
 
   /** Set the valid value silently (normalised; pending scans dropped). Multiple: `values = [v]`. */
   set value(v) {
-    if (this._multiple && this._initialized) { this.values = v ? [v] : []; return; }
+    if (this._multiple) { this.values = v ? [v] : []; return; } // ISSUE-2: also before connect / upgrade
     this._value = normalizeScan(v, this._cfg().maxLength);
     this._valueSet = true;
     if (!this._initialized) return;
     this._bump();
     this._scanError = '';
+    this._errorSeq = 0;
     const input = this._focusTarget();
     if (input) input.value = this._value;
     this._afterChange();
@@ -273,8 +277,9 @@ export class TdScanInput extends TdFormElement {
     this._value = '';
     this._rows = [];
     this._scanError = '';
+    this._errorSeq = 0;
     const input = this._focusTarget();
-    if (input && !this._multiple) input.value = '';
+    if (input) input.value = ''; // ISSUE-3: the scanner textbox too (multiple)
     this._renderList();
     this._notice('');
     this._afterChange();
@@ -302,10 +307,13 @@ export class TdScanInput extends TdFormElement {
   reset() {
     this._bump();
     this._scanError = '';
+    this._errorSeq = 0;
     this._notice('');
     if (this._multiple) {
       this._rows = this._defaultValues.map((value) => ({ value, state: 'valid' }));
       this._renderList();
+      const input = this._focusTarget();
+      if (input) input.value = ''; // ISSUE-3
     } else {
       this._value = this._defaultValue || '';
       const input = this._focusTarget();
@@ -362,7 +370,10 @@ export class TdScanInput extends TdFormElement {
     this.listen(input, 'beforeinput', (e) => this._onBeforeInput(/** @type {InputEvent} */ (e)));
     this.listen(input, 'input', () => this._onInput(input));
     this.listen(input, 'keydown', (e) => this._onKeydown(/** @type {KeyboardEvent} */ (e)));
-    this.listen(input, 'compositionstart', () => { this._composing = true; });
+    this.listen(input, 'compositionstart', () => {
+      this._composing = true;
+      window.clearTimeout(this._silence); // ISSUE-8: no terminator="none" end in the middle of a composition
+    });
     this.listen(input, 'compositionend', (e) => {
       this._composing = false;
       // QĐ 8: that run is manual. A commit of several characters at once (Android IME / "send as string"; Firefox
@@ -445,10 +456,15 @@ export class TdScanInput extends TdFormElement {
   /** @private */
   _syncDisabled() {
     const off = this._effectiveDisabled;
+    const locked = this._locked();
     const input = this._focusTarget();
     if (input) input.disabled = off;
-    for (const b of this.querySelectorAll(':scope > .td-scan button')) b.disabled = off;
+    // ISSUE-4: readonly locks the list ("Bỏ", "Xoá tất cả"); the speaker stays usable
+    for (const b of this.querySelectorAll(':scope > .td-scan button')) b.disabled = b.classList.contains('td-scan__mute') ? off : locked;
   }
+
+  /** @private the list cannot change (disabled or readonly) */
+  _locked() { return this._effectiveDisabled || this.hasAttribute('readonly'); }
 
   /** @private Accessible name: label → host aria-label → external labels → labels.input. */
   _applyName() {
@@ -488,8 +504,17 @@ export class TdScanInput extends TdFormElement {
     }
   }
 
-  /** @private feedback line under the input (duplicate, refusals in multiple mode, pending in single mode) */
-  _notice(text, tone = 'info') {
+  /**
+   * @private feedback line under the input (duplicate, refusals in multiple mode, pending in single mode). With `seq`, a
+   * notice of an OLDER scan never replaces / clears a newer one (ISSUE-1); without, it is authoritative (reset / clear).
+   */
+  _notice(text, tone = 'info', seq) {
+    if (seq != null) {
+      if (seq < this._noticeSeq) return;
+      this._noticeSeq = seq;
+    } else {
+      this._noticeSeq = 0;
+    }
     const n = this._part('td-scan__notice');
     if (!n) return;
     n.textContent = text;
@@ -542,7 +567,7 @@ export class TdScanInput extends TdFormElement {
       type: 'button', 'aria-label': fill(TdScanInput.labels.removeLabel, { value: row.value }),
     });
     rm.textContent = TdScanInput.labels.remove;
-    rm.disabled = this._effectiveDisabled;
+    rm.disabled = this._locked();
     meta.append(state, rm);
     li.replaceChildren(value, meta);
   }
@@ -558,7 +583,8 @@ export class TdScanInput extends TdFormElement {
 
   /** @private remove a row (cancels a pending validation) */
   _dropRow(row) {
-    if (row.state === 'pending' && row.entry) this._queue.cancel(row.entry);
+    if (row.entry) this._queue.cancel(row.entry); // ISSUE-6: also settled but not applied yet
+    if (this._last && row.seq != null && this._last.seq === row.seq) this._last = null; // a removed code can be rescanned
     this._rows = this._rows.filter((r) => r !== row);
     row.el?.remove();
     this._paintCount();
@@ -600,7 +626,7 @@ export class TdScanInput extends TdFormElement {
     const cfg = this._cfg();
     if (cfg.terminator.enter || cfg.terminator.tab) return;
     this._silence = window.setTimeout(() => {
-      if (this.isConnected && this._burst.machine()) this._finish();
+      if (this.isConnected && !this._composing && this._burst.machine()) this._finish();
     }, Math.max(3 * cfg.keyInterval, 60));
   }
 
@@ -657,7 +683,7 @@ export class TdScanInput extends TdFormElement {
     if (rm) {
       const li = rm.closest('li.td-scan__item');
       const row = li && li._tdScanRow;
-      if (!row || this._effectiveDisabled) return;
+      if (!row || this._locked()) return;
       const wasValid = row.state === 'valid';
       this._dropRow(row);
       this._afterChange();
@@ -670,7 +696,7 @@ export class TdScanInput extends TdFormElement {
 
   /** @private "Xoá tất cả": confirm from 5 valid codes, then clear + change */
   async _clearAll() {
-    if (this._effectiveDisabled) return;
+    if (this._locked()) return;
     const n = this._validRows().length;
     if (n >= 5) {
       const { TdModal } = await import('../feedback/td-modal.js');
@@ -680,7 +706,7 @@ export class TdScanInput extends TdFormElement {
         confirmText: TdScanInput.labels.clearAll,
         confirmVariant: 'danger',
       });
-      if (!ok) return;
+      if (!ok || this._locked()) return;
     }
     const had = this._validRows().length > 0;
     this.clear();
@@ -707,6 +733,8 @@ export class TdScanInput extends TdFormElement {
     }
     if (!value) return; // QĐ 7: empty → ignored silently
     if (!multiple && !fresh && value === this._value) return; // Enter again on the accepted value
+    // ISSUE-5: unlock Web Audio inside the trusted keystroke; the tones are scheduled later, in scan order (_apply)
+    if (this.hasAttribute('beep') && !this.muted && !TdScanInput.muted) prepareBeep();
     this._accept(value, source, mixed, false);
   }
 
@@ -716,9 +744,9 @@ export class TdScanInput extends TdFormElement {
     const multiple = this._multiple;
     const seq = ++this._seq;
     const now = performance.now();
-    if (!fromServer) this._notice('');
+    if (!fromServer) this._notice('', 'info', seq);
     if (!fromServer && isDuplicate(this._last, value, now, cfg.dedupe)) {
-      this._notice(TdScanInput.messages.duplicate, 'info');
+      this._notice(TdScanInput.messages.duplicate, 'info', seq);
       this._say('polite', TdScanInput.messages.duplicate);
       this._beep('duplicate');
       this.emit('scan-duplicate', { value, source });
@@ -729,7 +757,7 @@ export class TdScanInput extends TdFormElement {
     if (!fromServer && source !== 'scanner' && cfg.manual === 'reject') refusal = source === 'paste' ? M.pasteRejected : M.manualRejected;
     else if (multiple && this._validRows().some((r) => r.value === value)) refusal = M.alreadyListed;
     else if (multiple && this._pendingRows().some((r) => r.value === value)) refusal = M.alreadyPending;
-    else if (multiple && cfg.max && this._validRows().length + this._pendingRows().length >= cfg.max) refusal = fill(M.max, { max: cfg.max });
+    else if (multiple && this._validRows().length + this._pendingRows().length >= this._ceiling(cfg)) refusal = fill(M.max, { max: this._ceiling(cfg) });
     else if (this._queue.size >= MAX_PENDING) refusal = M.busy;
     if (refusal) {
       this._refuse(value, source, seq, refusal);
@@ -752,17 +780,21 @@ export class TdScanInput extends TdFormElement {
       }
       this._paintCount();
     } else if (this._validate) {
-      this._notice(M.pending, 'info');
+      this._notice(M.pending, 'info', seq);
     }
     this._syncForm();
   }
 
+  /** @private SEC-2: valid + pending scans in multiple mode never exceed min(max, HARD_MAX) */
+  _ceiling(cfg) { return cfg.max ? Math.min(cfg.max, HARD_MAX) : HARD_MAX; }
+
   /** @private a scan refused before validate */
   _refuse(value, source, seq, message) {
     if (this._multiple) {
-      this._notice(message, 'error');
+      this._notice(message, 'error', seq);
     } else {
       this._scanError = message;
+      this._errorSeq = seq;
       this._syncForm();
       this._applyErrorState();
     }
@@ -776,14 +808,15 @@ export class TdScanInput extends TdFormElement {
     const r = entry.result;
     const M = TdScanInput.messages;
     const cfg = this._cfg();
-    if (r.kind === 'error') console.error('td-scan-input: validate failed', r.error);
+    // SEC-4: a fixed message only — the thrown / rejected value may carry server text, tokens or PII (the app logs its own)
+    if (r.kind === 'error') console.error('td-scan-input: validate threw or rejected (the app should log its own redacted diagnostics)');
     let valid = r.valid;
     let message = '';
     const finalValue = (valid && r.value && normalizeScan(r.value, cfg.maxLength)) || entry.value;
     const row = entry.data.row;
     if (valid && this._multiple) {
       if (this._validRows().some((x) => x !== row && x.value === finalValue)) { valid = false; message = M.alreadyListed; } // final check (R1-3)
-      else if (cfg.max && this._validRows().length >= cfg.max) { valid = false; message = fill(M.max, { max: cfg.max }); } // R2-6
+      else if (this._validRows().length >= this._ceiling(cfg)) { valid = false; message = fill(M.max, { max: this._ceiling(cfg) }); } // R2-6 / SEC-2
     }
     if (!valid && !message) {
       message = r.kind === 'timeout' ? M.timeout : r.kind === 'error' ? M.validateFailed : (r.message || M.invalid);
@@ -798,12 +831,13 @@ export class TdScanInput extends TdFormElement {
       if (row.el) this._paintRow(row.el, row);
       if (!valid) this._trimInvalid();
       this._paintCount();
-      this._notice('');
+      this._notice('', 'info', entry.seq);
     } else {
       const input = this._focusTarget();
       const latest = entry.seq === this._seq && this._burst.empty;
       if (valid) {
-        this._scanError = '';
+        // ISSUE-1 / SEC-1: an OLDER result never clears the error of a NEWER scan (refused / invalid)
+        if (entry.seq > this._errorSeq) this._scanError = ''; // (the seq stays: still newer than any pending result)
         const changed = finalValue !== this._value;
         this._value = finalValue;
         if (input && latest) {
@@ -813,10 +847,11 @@ export class TdScanInput extends TdFormElement {
           }
         }
         if (changed) this._changed = true;
-      } else {
+      } else if (entry.seq >= this._errorSeq) {
         this._scanError = message;
+        this._errorSeq = entry.seq;
       }
-      if (!this._queue.size) this._notice('');
+      if (!this._queue.size) this._notice('', 'info', entry.seq);
     }
     this._syncForm();
     this._applyErrorState();
@@ -983,12 +1018,14 @@ export class TdScanInput extends TdFormElement {
         this._value = vals[vals.length - 1] || '';
         this._rows = vals.map((value) => ({ value, state: 'valid' }));
         this._scanError = '';
+        this._errorSeq = 0;
         super.attributeChangedCallback(name, oldVal, newVal); // re-render (list in / out)
         return;
       }
       case 'readonly': {
         const input = this._focusTarget();
         if (input) input.readOnly = newVal !== null;
+        this._syncDisabled(); // ISSUE-4
         return;
       }
       case 'placeholder':

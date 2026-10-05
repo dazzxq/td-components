@@ -2,7 +2,7 @@
 // parameters clamped, one oscillator per tone, the context created lazily once and resumed.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { playBeep, clampSound, DEFAULT_SOUNDS, _resetBeep } from './beep.js';
+import { playBeep, prepareBeep, clampSound, DEFAULT_SOUNDS, _resetBeep } from './beep.js';
 
 test('no Web Audio → playBeep is a silent no-op (false)', () => {
   _resetBeep();
@@ -58,4 +58,25 @@ test('a context that throws → silent, false', () => {
     delete globalThis.AudioContext;
     _resetBeep();
   }
+});
+
+test('ISSUE-5: prepareBeep() creates + resumes the context without playing (called in the trusted keystroke)', () => {
+  _resetBeep();
+  const log = { ctx: 0, osc: 0, resume: 0 };
+  class FakeCtx {
+    constructor() { log.ctx++; this.currentTime = 0; this.destination = {}; }
+    resume() { log.resume++; return Promise.resolve(); }
+    createOscillator() { log.osc++; return {}; }
+    createGain() { return {}; }
+  }
+  globalThis.AudioContext = FakeCtx;
+  try {
+    assert.equal(prepareBeep(), true);
+    assert.equal(prepareBeep(), true);
+    assert.deepEqual(log, { ctx: 1, osc: 0, resume: 2 });
+  } finally {
+    delete globalThis.AudioContext;
+    _resetBeep();
+  }
+  assert.equal(prepareBeep(), false, 'no Web Audio → false');
 });

@@ -296,8 +296,10 @@ người dùng [scan-input.md](../components/scan-input.md#bảo-mật)):
   hoá (bỏ C0 / C1, trim, ≤ `maxlength` 128 code point, cắt cứng cả khi đang gõ) rồi chỉ vào DOM qua `textContent` /
   `setAttribute` (`data-value`, `aria-label` "Bỏ {mã}") — không `innerHTML` từ dữ liệu, không selector ghép từ mã.
 - **Thông báo từ `validate` là chữ** (`textContent`, cắt 300 code point); kết quả không đúng hình (`undefined`, số,
-  `valid` không phải boolean) → **không hợp lệ** (fail closed). Lỗi throw chỉ vào `console.error` cùng chữ cố định; UI
-  hiện `messages.validateFailed`. Không hatch HTML mới (§2 không đổi).
+  `valid` không phải boolean) → **không hợp lệ** (fail closed). Lỗi throw / reject **không bao giờ** được log (review
+  SEC-4): chỉ một `console.error` chữ cố định; UI hiện `messages.validateFailed`; app tự log chẩn đoán đã lược bỏ.
+- Trần cứng 1000 mã hợp lệ + đang chờ ở chế độ `multiple` (SEC-2, cả khi không có `max`); timer timeout của từng lần
+  chờ bị huỷ khi xong / huỷ / đổi thế hệ (SEC-3). Kết quả cũ không xoá lỗi của lần quét mới hơn (SEC-1). Không hatch HTML mới (§2 không đổi).
 - **Kết quả muộn bị bỏ** bằng bộ đếm thế hệ (reset / form reset / restore / gán giá trị / disconnect) — đúng cả khi
   `validate` phớt lờ `AbortSignal`; tối đa 16 lần chờ (không hàng đợi vô hạn).
 - **SSR `multiple`**: cổng riêng kiểm cấu trúc + allowlist thuộc tính từng node (hidden chỉ `type` / `class` / `name` /

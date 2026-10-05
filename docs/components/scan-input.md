@@ -92,7 +92,9 @@ el.validate = (value, { source, signal }) => true | false | 'thông báo lỗi' 
 - `true` / `{ valid: true }` hợp lệ; `false` → "Mã không hợp lệ."; **chuỗi = thông báo lỗi** (hiện dưới dạng chữ, cắt 300
   ký tự); `{ valid: true, value: 'X' }` thay giá trị đã chuẩn hoá (ví dụ mã rút gọn → mã chuẩn). Giá trị khác (`undefined`,
   số…) → không hợp lệ.
-- Throw / Promise reject → "Không kiểm tra được mã, vui lòng quét lại." (+ `console.error`). Quá `validate-timeout` ms
+- Throw / Promise reject → "Không kiểm tra được mã, vui lòng quét lại." + **một** `console.error` với chữ cố định — kit
+  không bao giờ log lỗi gốc (có thể chứa chữ của server, token, dữ liệu cá nhân); app tự `try / catch` trong `validate`
+  và log chẩn đoán đã lược bỏ thông tin nhạy cảm. Quá `validate-timeout` ms
   (mặc định 10 000, `0` = không giới hạn) → `signal` bị abort + "Kiểm tra mã quá lâu…".
 - Các lần kiểm tra chạy **song song** (máy quét nhanh hơn server), kết quả **áp theo thứ tự quét** — danh sách, sự kiện,
   âm báo luôn đúng thứ tự. Tối đa 16 lần đang chờ; thêm nữa → "Đang kiểm tra quá nhiều mã, vui lòng chờ."
@@ -123,12 +125,15 @@ function luhnImei(v) {
 
 **Đơn (mặc định).** Mã hợp lệ **ở lại trong ô và được bôi đen** — lần quét kế ghi đè. Giá trị form = mã hợp lệ cuối cùng
 (chữ đang gõ dở chưa kết thúc **không** được gửi). Mã lỗi: ô giữ chữ, viền đỏ + dòng lỗi dưới ô, giá trị form giữ mã hợp
-lệ trước đó, form bị chặn submit tới lần quét hợp lệ kế tiếp.
+lệ trước đó, form bị chặn submit tới lần quét hợp lệ kế tiếp. Kết quả của một lần quét **cũ hơn** (đang chờ `validate`) về
+sau không bao giờ xoá / thay lỗi của lần quét **mới hơn** — form vẫn bị chặn tới khi một lần quét mới hơn hợp lệ, hoặc
+`clear()` / `reset()`.
 
 **Nhiều (`multiple`).** Ô **xoá trắng** sau mỗi lần quét; mỗi lần quét thành một dòng (mới nhất ở trên): mã (chữ đơn cách)
 + trạng thái (đang kiểm tra / hợp lệ / lỗi kèm thông báo) + nút "Bỏ". Đầu danh sách: "Đã quét: n" + "Xoá tất cả" (hỏi lại
 khi ≥ 5 mã). Dòng lỗi không gửi form; giữ tối đa 20 dòng lỗi mới nhất. `max` = số mã hợp lệ tối đa — **tính cả mã đang
-chờ** (quét thêm khi đã đủ → "Đã đủ {max} mã"). Danh sách dài cuộn trong khung `--td-scan-list-max` (50vh).
+chờ** (quét thêm khi đã đủ → "Đã đủ {max} mã"). Trần cứng **1000** mã (hợp lệ + đang chờ) kể cả khi không đặt `max`;
+`max` lớn hơn bị kẹp về 1000. `readonly`: không quét được, nút "Bỏ" / "Xoá tất cả" bị khoá (nút loa vẫn dùng được). Danh sách dài cuộn trong khung `--td-scan-list-max` (50vh).
 
 ## Âm báo, tắt tiếng, focus
 

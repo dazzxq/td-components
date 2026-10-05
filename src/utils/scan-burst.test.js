@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createBurst, normalizeScan, scanInt, parseTerminator, isDuplicate, normalizeResult, createScanQueue, normalizeValues,
-  SCAN_LIMITS, SCAN_NORMALIZE_CASES, MAX_PENDING, MESSAGE_MAX, MAX_VALUES,
+  SCAN_LIMITS, SCAN_NORMALIZE_CASES, MAX_PENDING, MESSAGE_MAX, MAX_VALUES, HARD_MAX,
 } from './scan-burst.js';
 
 /** Feed `n` single-character keys `gap` ms apart (first at `t0`); returns the last timestamp. */
@@ -261,4 +261,50 @@ test('queue: MAX_PENDING = 16; pending() lists the waiting entries in order', ()
   const v = deferredValidator();
   for (let i = 1; i <= 3; i++) q.submit({ seq: i, value: `V${i}`, source: 'scanner', run: v.fn });
   assert.deepEqual(q.pending().map((e) => e.value), ['V1', 'V2', 'V3']);
+});
+
+test('SEC-3 / ISSUE-7: the timeout handle is cleared on cancel() and bump() (validator never resolves, ignores abort)', () => {
+  const active = new Set();
+  const origSet = globalThis.setTimeout;
+  const origClear = globalThis.clearTimeout;
+  globalThis.setTimeout = (fn, ms) => { const id = origSet(fn, ms); active.add(id); return id; };
+  globalThis.clearTimeout = (id) => { active.delete(id); origClear(id); };
+  try {
+    const q = createScanQueue({ onApply: () => {} });
+    const never = () => new Promise(() => {});
+    const a = q.submit({ seq: 1, value: 'A', source: 'scanner', run: never, timeoutMs: 60000 });
+    assert.equal(active.size, 1);
+    q.cancel(a);
+    assert.equal(active.size, 0, 'cancel clears the timer');
+    q.submit({ seq: 2, value: 'B', source: 'scanner', run: never, timeoutMs: 60000 });
+    q.submit({ seq: 3, value: 'C', source: 'scanner', run: never, timeoutMs: 60000 });
+    assert.equal(active.size, 2);
+    q.bump();
+    assert.equal(active.size, 0, 'bump clears every timer');
+  } finally {
+    for (const id of active) origClear(id);
+    globalThis.setTimeout = origSet;
+    globalThis.clearTimeout = origClear;
+  }
+});
+
+test('ISSUE-6: cancel() of an entry already settled but waiting for an older one → never applied', async () => {
+  const applied = [];
+  const q = createScanQueue({ onApply: (e) => applied.push(e.seq) });
+  const v = deferredValidator();
+  q.submit({ seq: 1, value: 'A', source: 'scanner', run: v.fn });
+  const b = q.submit({ seq: 2, value: 'B', source: 'scanner', run: v.fn });
+  v.calls[1].resolve(true);
+  await tick();
+  assert.equal(b.done, true);
+  q.cancel(b);
+  assert.equal(q.size, 1);
+  v.calls[0].resolve(true);
+  await tick();
+  assert.deepEqual(applied, [1]);
+});
+
+test('HARD_MAX: live scans are capped at 1000 (= MAX_VALUES)', () => {
+  assert.equal(HARD_MAX, 1000);
+  assert.equal(HARD_MAX, MAX_VALUES);
 });

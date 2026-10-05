@@ -29,6 +29,8 @@ export const MAX_INVALID_ROWS = 20;
 export const MESSAGE_MAX = 300;
 /** At most this many values in `values` / the server-rendered list (defensive bound). */
 export const MAX_VALUES = 1000;
+/** SEC-2: hard ceiling of valid + pending scans in `multiple` mode (`max` above it is capped). */
+export const HARD_MAX = MAX_VALUES;
 
 /**
  * Integer attribute value: digits only (optional sign), clamped into [min, max]; anything else → the default.
@@ -197,7 +199,8 @@ export function normalizeResult(r, maxLength) {
  * at once (null = valid); `onApply(entry)` receives the entries in submission order once settled, `entry.result` =
  * normalizeResult(...) + `kind` (`result` | `error` | `timeout`) + `error` (the thrown value, for the caller to log).
  * `bump()` aborts + forgets everything (results of the old generation are dropped). `cancel(entry)` aborts one entry,
- * which is then skipped.
+ * which is then skipped (also when it has settled but waits for an older one). Every entry's timeout handle is
+ * cleared on settle / timeout / cancel / bump.
  * @param {{ onApply: (entry: object) => void, maxLength?: number }} opts
  */
 export function createScanQueue({ onApply, maxLength }) {
@@ -205,6 +208,10 @@ export function createScanQueue({ onApply, maxLength }) {
   /** @type {object[]} entries in seq order, not yet applied */
   let order = [];
 
+  const clearTimer = (e) => {
+    if (e.timer) clearTimeout(e.timer);
+    e.timer = 0;
+  };
   const flush = () => {
     while (order.length && order[0].done) {
       const e = order.shift();
@@ -219,11 +226,10 @@ export function createScanQueue({ onApply, maxLength }) {
     pending() { return order.filter((e) => !e.cancelled); },
     submit({ seq, value, source, run, timeoutMs = 0, data }) {
       const controller = new AbortController();
-      const entry = { seq, value, source, data, gen, controller, done: false, cancelled: false, result: null };
+      const entry = { seq, value, source, data, gen, controller, done: false, cancelled: false, result: null, timer: 0 };
       order.push(entry);
-      let timer = 0;
       const settle = (out) => {
-        if (timer) clearTimeout(timer);
+        clearTimer(entry);
         if (entry.done || entry.gen !== gen) return; // late (timeout / cancel already) or an old generation
         entry.done = true;
         if (out.kind === 'result') entry.result = { ...normalizeResult(out.v, maxLength), kind: 'result' };
@@ -235,8 +241,8 @@ export function createScanQueue({ onApply, maxLength }) {
         return entry;
       }
       if (timeoutMs > 0) {
-        timer = setTimeout(() => {
-          timer = 0;
+        entry.timer = setTimeout(() => {
+          entry.timer = 0;
           controller.abort();
           settle({ kind: 'timeout' });
         }, timeoutMs);
@@ -251,16 +257,21 @@ export function createScanQueue({ onApply, maxLength }) {
       Promise.resolve(r).then((v) => settle({ kind: 'result', v }), (error) => settle({ kind: 'error', error }));
       return entry;
     },
+    /** Cancel an entry not applied yet — pending OR settled and waiting for an older one (ISSUE-6). */
     cancel(entry) {
-      if (!entry || entry.done || entry.cancelled) return;
+      if (!entry || entry.cancelled || !order.includes(entry)) return;
       entry.cancelled = true;
       entry.done = true;
+      clearTimer(entry);
       entry.controller.abort();
       flush();
     },
     bump() {
       gen++;
-      for (const e of order) e.controller.abort();
+      for (const e of order) {
+        clearTimer(e); // SEC-3: no timer outlives its generation
+        e.controller.abort();
+      }
       order = [];
     },
   };

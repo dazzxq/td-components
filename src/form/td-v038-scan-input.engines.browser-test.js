@@ -288,6 +288,9 @@ describe('td-scan-input — async validate (QĐ 9, 10, 13)', () => {
     await until(() => rec.length === 2);
     expect(rec[1].message).to.equal(TdScanInput.messages.validateFailed);
     expect(errs.length).to.equal(1);
+    // SEC-4: a fixed message only — never the thrown / rejected value (may carry server text, tokens, PII)
+    expect(errs[0].every((a) => typeof a === 'string')).to.equal(true);
+    expect(errs[0].join(' ').includes('net')).to.equal(false);
     await scan(el, 'OK0001');
     await until(() => rec.length === 3);
     expect(rec[2].type).to.equal('scan');
@@ -630,5 +633,172 @@ describe('td-scan-input — misc', () => {
     expect(btn.getAttribute('aria-pressed')).to.equal('true');
     expect(btn.getAttribute('aria-label')).to.equal(TdScanInput.labels.unmute);
     expect(rec).to.deep.equal([{ type: 'mute-change', muted: true }]);
+  });
+});
+
+describe('td-scan-input — review round 1 (ISSUE-1…8, SEC-1…4)', () => {
+  it('ISSUE-1 / SEC-1: older pending scan VALID, newer scan refused → the newer error stays, form invalid until a newer scan succeeds', async () => {
+    const wrap = mount('<form><td-scan-input name="c" manual="reject"></td-scan-input></form>');
+    const el = wrap.querySelector('td-scan-input');
+    const form = wrap.querySelector('form');
+    const v = deferred();
+    el.validate = v.fn;
+    const rec = record(el, 'scan', 'scan-invalid');
+    await scan(el, 'AAAA0001');
+    await until(() => v.calls.length === 1);
+    await typeSlow(el, 'BB12');
+    await until(() => rec.length === 1);
+    expect(rec[0].message).to.equal(TdScanInput.messages.manualRejected);
+    v.calls[0].resolve(true);
+    await until(() => rec.length === 2);
+    expect(rec[1].type).to.equal('scan');
+    expect(el.validity.customError).to.equal(true, 'B (newer) still refused');
+    expect(form.checkValidity()).to.equal(false);
+    expect(el.querySelector('.td-field-error').textContent).to.equal(TdScanInput.messages.manualRejected);
+    expect(inputOf(el).getAttribute('aria-invalid')).to.equal('true');
+    v.calls.length = 0;
+    await scan(el, 'CCCC0003');
+    await until(() => v.calls.length === 1);
+    v.calls[0].resolve(true);
+    await until(() => rec.length === 3);
+    expect(el.validity.valid).to.equal(true, 'a NEWER success clears it');
+  });
+
+  it('ISSUE-1 / SEC-1: TWO older pending scans both valid after a newer refusal → still invalid', async () => {
+    const el = scanEl('name="c" manual="reject"');
+    const v = deferred();
+    el.validate = v.fn;
+    const rec = record(el, 'scan', 'scan-invalid');
+    await scan(el, 'AAAA0001');
+    await scan(el, 'AAAA0002');
+    await until(() => v.calls.length === 2);
+    await typeSlow(el, 'BB12');
+    await until(() => rec.length === 1);
+    v.calls[0].resolve(true);
+    v.calls[1].resolve(true);
+    await until(() => rec.length === 3);
+    expect(el.validity.customError).to.equal(true);
+    expect(el.validationMessage).to.equal(TdScanInput.messages.manualRejected);
+  });
+
+  it('ISSUE-1 / SEC-1: older pending scan INVALID, newer scan refused → the newer error is not replaced', async () => {
+    const el = scanEl('name="c" manual="reject"');
+    const v = deferred();
+    el.validate = v.fn;
+    const rec = record(el, 'scan-invalid');
+    await scan(el, 'AAAA0001');
+    await until(() => v.calls.length === 1);
+    await typeSlow(el, 'BB12');
+    await until(() => rec.length === 1);
+    v.calls[0].resolve('Lỗi của A');
+    await until(() => rec.length === 2);
+    expect(el.querySelector('.td-field-error').textContent).to.equal(TdScanInput.messages.manualRejected);
+    expect(el.validationMessage).to.equal(TdScanInput.messages.manualRejected);
+  });
+
+  it('SEC-2: live scans stop at the hard ceiling 1000 even without max (and max above it is capped)', async () => {
+    for (const attrs of ['multiple name="c[]"', 'multiple name="c[]" max="5000"']) {
+      const el = scanEl(attrs);
+      el.values = Array.from({ length: 1000 }, (_, i) => `V${String(i).padStart(5, '0')}`);
+      expect(el.values.length).to.equal(1000);
+      const rec = record(el, 'scan', 'scan-invalid');
+      await scan(el, 'ONEMORE1');
+      await until(() => rec.length === 1);
+      expect(rec[0].type).to.equal('scan-invalid', attrs);
+      expect(rec[0].message).to.equal('Đã đủ 1000 mã');
+      expect(el.values.length).to.equal(1000);
+    }
+  });
+
+  it('ISSUE-2: value set on a disconnected multiple element = values [value]', () => {
+    const el = document.createElement('td-scan-input');
+    el.setAttribute('multiple', '');
+    el.setAttribute('name', 'c[]');
+    el.value = '  A0001 ';
+    const wrap = mount('<form></form>');
+    wrap.firstElementChild.appendChild(el);
+    expect(el.values).to.deep.equal(['A0001']);
+    expect(new FormData(wrap.firstElementChild).getAll('c[]')).to.deep.equal(['A0001']);
+  });
+
+  it('ISSUE-2: value assigned before the upgrade (multiple) = values [value]', () => {
+    const tpl = document.createElement('template');
+    tpl.innerHTML = '<td-scan-input multiple name="c[]"></td-scan-input>';
+    const el = tpl.content.firstElementChild;
+    expect(el instanceof TdScanInput).to.equal(false, 'not upgraded yet');
+    el.value = 'B0002';
+    const wrap = mount('<form></form>');
+    wrap.firstElementChild.appendChild(document.adoptNode(el));
+    expect(el instanceof TdScanInput).to.equal(true);
+    expect(el.values).to.deep.equal(['B0002']);
+    expect(new FormData(wrap.firstElementChild).getAll('c[]')).to.deep.equal(['B0002']);
+  });
+
+  it('ISSUE-3: clear() and reset() (multiple) also empty the scanner textbox', async () => {
+    const el = scanEl('multiple name="c[]"');
+    inputOf(el).focus();
+    await sendKeys({ type: 'PART' });
+    el.clear();
+    expect(inputOf(el).value).to.equal('');
+    await sendKeys({ type: 'PART2' });
+    el.reset();
+    expect(inputOf(el).value).to.equal('');
+  });
+
+  it('ISSUE-4: readonly multiple → "Bỏ" and "Xoá tất cả" disabled + guarded; the speaker stays usable', async () => {
+    const el = scanEl('multiple readonly beep name="c[]"');
+    el.values = ['A0001', 'A0002'];
+    const rm = el.querySelector('.td-scan__remove');
+    const clr = el.querySelector('.td-scan__clear');
+    expect(rm.disabled).to.equal(true);
+    expect(clr.disabled).to.equal(true);
+    expect(el.querySelector('.td-scan__mute').disabled).to.equal(false);
+    rm.disabled = false; // even if a script re-enables it, the click is guarded
+    rm.click();
+    clr.disabled = false;
+    clr.click();
+    await wait(30);
+    expect(el.values).to.deep.equal(['A0001', 'A0002']);
+    el.removeAttribute('readonly');
+    expect(el.querySelector('.td-scan__remove').disabled).to.equal(false);
+    expect(el.querySelector('.td-scan__clear').disabled).to.equal(false);
+  });
+
+  it('ISSUE-5: Web Audio is prepared (resume) during the scan keystroke, before validate resolves', async () => {
+    const proto = window.AudioContext && window.AudioContext.prototype;
+    if (!proto) return;
+    let resumes = 0;
+    const orig = proto.resume;
+    proto.resume = function patched(...a) { resumes++; return orig.apply(this, a); };
+    extra.push(() => { proto.resume = orig; });
+    const el = scanEl('beep');
+    const v = deferred();
+    el.validate = v.fn;
+    await scan(el, 'AUDIO001');
+    await until(() => v.calls.length === 1);
+    expect(resumes > 0).to.equal(true);
+  });
+
+  it('ISSUE-6: removing a pending row frees its value for an immediate rescan (no stale dedupe)', async () => {
+    const el = scanEl('multiple name="c[]"');
+    const v = deferred();
+    el.validate = v.fn;
+    const rec = record(el, 'scan-duplicate', 'scan-invalid');
+    await scan(el, 'AAAA0001');
+    await until(() => v.calls.length === 1);
+    el.querySelector('.td-scan__remove').click();
+    expect(v.calls[0].ctx.signal.aborted).to.equal(true);
+    await scan(el, 'AAAA0001');
+    await until(() => v.calls.length === 2);
+    expect(rec.length).to.equal(0);
+  });
+
+  it('ISSUE-8: compositionstart cancels the terminator="none" silence timer', async () => {
+    const el = scanEl('terminator="none" key-interval="200"');
+    const rec = record(el, 'scan');
+    await scan(el, IMEI, null);
+    inputOf(el).dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true, data: '' }));
+    await wait(800);
+    expect(rec.length).to.equal(0);
   });
 });

@@ -89,6 +89,23 @@ export function playBeep(kind, sounds) {
   }
 }
 
+/**
+ * ISSUE-5: create / resume the AudioContext WITHOUT playing — call it synchronously inside the trusted keystroke that
+ * ends a scan, so the tones scheduled later (after an async validate, in scan order) are allowed by autoplay rules.
+ * @returns {boolean} whether a context is available
+ */
+export function prepareBeep() {
+  const c = context();
+  if (!c) return false;
+  try {
+    const p = c.resume?.();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** @internal tests: forget the cached context. */
 export function _resetBeep() {
   ctx = null;
