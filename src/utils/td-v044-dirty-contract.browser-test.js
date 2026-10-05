@@ -127,6 +127,12 @@ const FIXTURES = {
       el.querySelector('.td-table__body .td-table__select').click();
     },
   },
+  // v0.49.0: td-choice-group — a click on an option (native radio in a private group, ADR 0023) → the host's input + change
+  'td-choice-group': {
+    html: '<td-choice-group name="x" label="X" value="a"></td-choice-group>',
+    setup: (el) => { el.options = [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }]; },
+    act: (el) => el.querySelectorAll('input.td-choice__input')[1].click(),
+  },
 };
 
 /** form-associated elements that need no fixture (reason required). */
