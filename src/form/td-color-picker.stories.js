@@ -80,6 +80,6 @@ export const DarkRegion = {
 export const ServerRendered = {
   render: (args) => `<td-color-picker data-td-ssr="color-picker@1" id="cp-ssr-host" name="accent" value="#1d4ed8" label="${esc(args.label)}">
     <div class="td-color"><label class="td-color__label" for="cp-ssr">${esc(args.label)}</label><div class="td-color__box"><span class="td-color__swatch" aria-hidden="true"></span>
-    <input type="text" class="td-color__input" id="cp-ssr" inputmode="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="64" name="accent" value="#1d4ed8" pattern="#[0-9a-fA-F]{6}" title="Dạng #RRGGBB, ví dụ #1d4ed8"></div></div></td-color-picker>`,
+    <input type="text" class="td-color__input" id="cp-ssr" inputmode="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="64" placeholder="#000000" name="accent" value="#1d4ed8" pattern="#[0-9a-fA-F]{6}" title="Dạng #RRGGBB, ví dụ #1d4ed8"></div></div></td-color-picker>`,
   args: { label: 'Màu nhấn (SSR)' },
 };

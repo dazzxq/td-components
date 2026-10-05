@@ -159,3 +159,12 @@ export const CHECK_MATRIX_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'check-matrix
 export function renderCheckMatrixFixture() {
   return renderPhp('check-matrix-fixture.php');
 }
+
+// v0.48.0: td_color_picker (native by default, element mode opt-in — color-picker@1).
+export const COLOR_PICKER_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'color-picker.fixtures.json'), 'utf8'));
+export const COLOR_PICKER_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'color-picker.html');
+
+/** Render test/ssr/color-picker-fixture.php (the HTML loaded by the color-picker SSR browser test). */
+export function renderColorPickerFixture() {
+  return renderPhp('color-picker-fixture.php');
+}

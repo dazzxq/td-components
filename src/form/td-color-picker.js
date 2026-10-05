@@ -103,6 +103,8 @@ export class TdColorPicker extends TdFormElement {
   /** Texts (Vietnamese); override per site. Templates: `{current}`, `{name}`, `{hex}`, `{deg}`, `{s}`, `{v}`, `{ratio}`. */
   static labels = {
     input: 'Mã màu',
+    /** placeholder of the text input when the `placeholder` attribute is absent (= php Td::COLOR_LABELS) */
+    placeholder: '#000000',
     trigger: 'Chọn màu: {current}',
     none: 'chưa chọn',
     panel: 'Bảng chọn màu',
@@ -393,7 +395,7 @@ export class TdColorPicker extends TdFormElement {
   render() {
     const id = this.escapeHtml(this._controlId());
     const label = this.getAttribute('label') || '';
-    const ph = this.getAttribute('placeholder');
+    const ph = this.getAttribute('placeholder') || TdColorPicker.labels.placeholder;
     return '<div class="td-color">'
       + (label ? `<label class="td-color__label" for="${id}">${this.escapeHtml(label)}</label>` : '')
       + '<div class="td-color__box"><span class="td-color__swatch" aria-hidden="true"></span>'
@@ -521,7 +523,8 @@ export class TdColorPicker extends TdFormElement {
       case 'value': this.value = newVal ?? ''; return;
       case 'placeholder': {
         const input = this._focusTarget();
-        if (input) { if (newVal) input.setAttribute('placeholder', newVal); else input.removeAttribute('placeholder'); }
+        const ph = newVal || TdColorPicker.labels.placeholder;
+        if (input) { if (ph) input.setAttribute('placeholder', ph); else input.removeAttribute('placeholder'); }
         return;
       }
       case 'readonly': case 'custom': this._syncDisabled(); this._paint(); if (this._panel) this._rebuildPanel(); return;
