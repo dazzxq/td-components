@@ -1031,6 +1031,7 @@ export class TdNumberInput extends TdFormElement {
     if (have.length !== need.length || have.some((n) => n.nodeType !== 1)) return false;
     return need.every((w, i) => {
       const c = have[i];
+      if (w.classList.contains('td-number__step')) return this._ssrStepOk(c, w);
       if (!w.classList.contains('td-number__control')) return ssrSamePart(c, w);
       if (c.localName !== 'input' || ssrClassKey(c) !== 'td-number__control' || c.id !== w.id) return false;
       const t = c.getAttribute('type');
@@ -1038,6 +1039,24 @@ export class TdNumberInput extends TdFormElement {
       const ok = (n) => (SSR_CONTROL_ATTRS.has(n) && n !== 'checked' && (first || !SSR_ONLY.includes(n))) || SSR_ARIA_DATA.test(n);
       return [...c.attributes].every((a) => ok(a.name));
     });
+  }
+
+  /**
+   * @private v0.49.0 a stepper button = render()'s (tag, type, class, tabindex, aria-controls; one icon slot compared by
+   * its attributes) + only the state the component sets itself (aria-label, aria-disabled, disabled).
+   */
+  _ssrStepOk(b, want) {
+    if (b.nodeType !== 1 || b.localName !== 'button' || ssrClassKey(b) !== ssrClassKey(want)) return false;
+    const state = ['aria-label', 'aria-disabled', 'disabled'];
+    if (![...b.attributes].every((a) => state.includes(a.name) || (a.name !== 'class' && want.getAttribute(a.name) === a.value) || a.name === 'class')) return false;
+    if (![...want.attributes].every((a) => b.hasAttribute(a.name))) return false;
+    const kids = ssrContentNodes(b);
+    return kids.length === 1 && ssrSamePart(kids[0], want.firstElementChild);
+  }
+
+  /** @protected v0.49.0: the stepper buttons were compared exactly (_ssrStepOk) — not a second control */
+  _ssrVerifiedParts() {
+    return this.hasAttribute('stepper') ? this._stepButtons() : [];
   }
 
   /** @private footer: [error note ⇔ an error shows] + the note (text only) */

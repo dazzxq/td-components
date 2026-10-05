@@ -12,11 +12,13 @@
     { "id": "n-disabled", "args": ["p", "1", { "element": true, "disabled": true }], "expect": { "value": "1", "display": "1", "disabled": true } },
     { "id": "n-readonly", "args": ["p", "2000", { "element": true, "readonly": true, "clamp": true, "max": "5000" }], "expect": { "value": "2000", "display": "2.000", "readonly": true } },
     { "id": "n-attrs", "args": ["code", "9", { "element": true, "id": "n-at", "attrs": { "name": "evil", "value": "1", "min": "-5", "Type": "text", "onclick": "alert(1)", "data-td-x": "1", "data-y": "2", "title": "Gợi ý" } }], "expect": { "value": "9", "display": "9", "controlId": "n-at" }, "dropped": ["onclick", "data-td-x"] },
-    { "id": "n-xss", "args": ["x", null, { "element": true, "label": "<img src=x onerror=alert(1)>", "prefix": "<b>", "suffix": "\"><i>", "unit_label": "<svg onload=1>", "hint": "<script>1</script>" }], "expect": { "value": "", "display": "", "label": "<img src=x onerror=alert(1)>" } }
+    { "id": "n-xss", "args": ["x", null, { "element": true, "label": "<img src=x onerror=alert(1)>", "prefix": "<b>", "suffix": "\"><i>", "unit_label": "<svg onload=1>", "hint": "<script>1</script>" }], "expect": { "value": "", "display": "", "label": "<img src=x onerror=alert(1)>" } },
+    { "id": "n-stepper", "args": ["qty", "2", { "element": true, "stepper": true, "label": "Số lượng", "min": "1", "max": "5", "clamp": true }], "expect": { "value": "2", "display": "2", "label": "Số lượng", "stepper": true } }
   ],
   "nativeCases": [
     { "id": "nn-full", "args": ["price", "12990000", { "label": "Giá bán", "required": true, "suffix": "₫", "min": "1000", "max": "100000000" }] },
-    { "id": "nn-decimals", "args": ["rate", "12.5", { "decimals": 2, "suffix": "%", "label": "Tỉ lệ" }] }
+    { "id": "nn-decimals", "args": ["rate", "12.5", { "decimals": 2, "suffix": "%", "label": "Tỉ lệ" }] },
+    { "id": "nn-stepper", "args": ["qty", "3", { "stepper": true, "label": "Số lượng", "min": "1" }] }
   ],
   "modes": [
     { "global": false, "call": "absent", "element": false },

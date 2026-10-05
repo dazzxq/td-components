@@ -1,10 +1,18 @@
-import { TdFormElement } from '../base/td-form-element.js';
+import { TdFormElement, ssrClassKey, ssrContentNodes, ssrSameAttrs, ssrIsErrorNote } from '../base/td-form-element.js';
+import { ssrMarker } from '../base/td-base-element.js';
 import { safeColor } from '../utils/css-safe.js';
 import { safeMediaUrl } from '../utils/media-url.js';
 import { normalizeOptions, sameValueList } from '../utils/choice-options.js';
 
 const VARIANTS = ['button', 'swatch'];
 const GATES = { safeColor, safeMediaUrl: (u) => safeMediaUrl(u) };
+/** Every form-associated element (the adopted markup may hold the radios and nothing else). */
+const FORM_ASSOCIATED = 'input, textarea, select, button, fieldset, output, object';
+/** Attributes a server-rendered radio may carry (php td_choice_group + what the component sets). */
+const RADIO_ATTRS = new Set(['type', 'class', 'id', 'value', 'name', 'form', 'autocomplete', 'aria-labelledby', 'aria-describedby',
+  'checked', 'required', 'disabled']);
+const GROUP_ATTRS = new Set(['class', 'role', 'aria-labelledby', 'aria-label', 'aria-required', 'aria-invalid', 'aria-errormessage',
+  'aria-describedby']);
 let _groupCounter = 0;
 
 /**
@@ -24,6 +32,11 @@ let _groupCounter = 0;
  *   `setValue()`, `options` or a form reset never fires.
  * - `options` with the same value list (same order) → patched IN PLACE (radio nodes + focus kept); otherwise re-rendered
  *   (focus follows the value). A selected option that disappears → value '' (+ one warning).
+ * - SSR (ADR 0012, contract `choice-group@1`, php td_choice_group — always the element): the server prints NATIVE radios
+ *   with the real `name` (the no-JS form works); the markup is adopted IN PLACE when it is exactly render()'s for the
+ *   options read back from it (re-checked through the same gate as the property) — same radio nodes (checked + focus
+ *   kept), ElementInternals first, then the radios move to the private group. Anything else → safe render now, the live
+ *   choice + focus restored. Texts from `messages` (the default "unavailable" note) are state, re-applied on bind.
  * - The app owns the variant logic (combination → variant / price / stock / URL): the kit never reads / writes
  *   `location`, `history`, prices or stock.
  *
@@ -61,6 +74,9 @@ let _groupCounter = 0;
  * @fires change - detail: { value, option } (user, right after `input`)
  */
 export class TdChoiceGroup extends TdFormElement {
+  /** v0.49.0: adopts php td_choice_group markup in place (`choice-group@1`); a re-connect renders again. */
+  static hydratable = true;
+
   /** Texts (Vietnamese); override per site. */
   static messages = {
     valueMissing: 'Vui lòng chọn một mục',
@@ -150,7 +166,7 @@ export class TdChoiceGroup extends TdFormElement {
   _optionHTML(o) {
     const esc = (v) => this.escapeHtml(v);
     const oid = `${esc(this.id)}-o${o.index}`;
-    return `<label class="td-choice__option" data-td-value="${esc(o.value)}"${o.unavailable ? ' data-unavailable' : ''}>`
+    return `<label class="td-choice__option" data-td-value="${esc(o.value)}"${o.unavailable ? ' data-unavailable' : ''}${o.disabled ? ' data-disabled' : ''}>`
       + `<input type="radio" class="td-choice__input" id="${oid}" value="${esc(o.value)}" name="${this._groupName}" form="" autocomplete="off"`
       + ` aria-labelledby="${oid}-l"${this._describedBy(o) ? ` aria-describedby="${esc(this._describedBy(o))}"` : ''}${o.disabled ? ' disabled' : ''}>`
       + `<span class="td-choice__face">${this._faceHTML(o)}</span>`
@@ -179,7 +195,8 @@ export class TdChoiceGroup extends TdFormElement {
     }
     const texts = `<span class="td-choice__text${sr}" id="${oid}-l">${esc(o.label)}</span>`
       + (o.hint ? `<span class="td-choice__hint${sr}" id="${oid}-h">${esc(o.hint)}</span>` : '')
-      + (o.unavailable ? `<span class="td-choice__note${sr}" id="${oid}-n">${esc(this._noteText(o))}</span>` : '');
+      // a site note is marked (`data-td-custom`): the default one is STATE (messages), re-applied on every bind
+      + (o.unavailable ? `<span class="td-choice__note${sr}" id="${oid}-n"${o.unavailableLabel ? ' data-td-custom' : ''}>${esc(this._noteText(o))}</span>` : '');
     return visual + (swatchMode ? texts : `<span class="td-choice__body">${texts}</span>`);
   }
 
@@ -194,6 +211,7 @@ export class TdChoiceGroup extends TdFormElement {
     });
     this.listen(g, 'keydown', (e) => this._onKeydown(/** @type {KeyboardEvent} */ (e)));
     this._applyFills();
+    this._applyNotes();
     this._applyChecked();
     this._applyDisabled();
     this._applyRequired();
@@ -299,6 +317,15 @@ export class TdChoiceGroup extends TdFormElement {
       if (!c) return;
       if (o.swatch) c.setAttribute('fill', o.swatch);
       else c.removeAttribute('fill');
+    });
+  }
+
+  /** @private default "unavailable" notes = the current messages (server markup carries the server's text) */
+  _applyNotes() {
+    const rs = this._radios();
+    this._options.forEach((o, i) => {
+      const n = o.unavailable && !o.unavailableLabel ? rs[i]?.parentElement?.querySelector('.td-choice__face .td-choice__note') : null;
+      if (n && n.textContent !== this._msg('unavailable')) n.textContent = this._msg('unavailable');
     });
   }
 
@@ -531,8 +558,8 @@ export class TdChoiceGroup extends TdFormElement {
     this._options.forEach((o, i) => {
       const r = rs[i];
       const opt = r.parentElement;
-      if (o.unavailable) opt.setAttribute('data-unavailable', '');
-      else opt.removeAttribute('data-unavailable');
+      opt.toggleAttribute('data-unavailable', o.unavailable);
+      opt.toggleAttribute('data-disabled', o.disabled);
       const desc = this._describedBy(o);
       if (desc) r.setAttribute('aria-describedby', desc);
       else r.removeAttribute('aria-describedby');
@@ -545,6 +572,223 @@ export class TdChoiceGroup extends TdFormElement {
     this._applyRequired();
     this._applyCurrent();
     this._syncForm();
+  }
+
+  // --- SSR hydrate (contract choice-group@1, ADR 0012 + 0022) ---
+
+  /**
+   * Marker `choice-group@<n>` → read the options back from the strict skeleton (root > radiogroup > option labels > radio
+   * + face) through normalizeOptions(); adopt only when the schema is 1, no option was refused, no `options` property was
+   * assigned before define, and the markup is exactly render()'s for those options (+ the no-JS radio attributes).
+   * Otherwise: safe render now, the live choice + focus restored (no event).
+   * @returns {boolean}
+   */
+  canHydrate() {
+    const m = ssrMarker(this);
+    if (!m || m.name !== 'choice-group') return false;
+    const parsed = this._ssrParse();
+    const active = this.ownerDocument.activeElement;
+    let options = null;
+    let warnings = [];
+    if (parsed) ({ options, warnings } = normalizeOptions(parsed.raw, GATES));
+    const liveValue = parsed ? (parsed.radios.find((r) => r.checked)?.value ?? '') : null;
+    if (parsed) this._ssrDefaults = { value: parsed.radios.find((r) => r.defaultChecked)?.value ?? '' };
+    const ok = m.schema === 1 && !!parsed && !this._optionsSet && !warnings.length && options.length === parsed.radios.length
+      && this._ssrGate(parsed, options);
+    if (ok) {
+      this._ssrAdopt = { radios: parsed.radios, options, liveValue };
+      return true;
+    }
+    // refused: the component renders from the host (+ the options read back, when the skeleton was readable)
+    if (!this._optionsSet && options) {
+      for (const w of warnings) this._warnOnce(`opt:${w}`, `td-choice-group: ${w}`);
+      this._options = options;
+      this._optionsSet = true;
+    }
+    if (liveValue != null && !this._earlyProps?.has('value')) {
+      this._value = liveValue;
+      this._valueSet = true;
+    }
+    this._reconcileValue();
+    const inside = !!active && active !== this && this.contains(active);
+    this._ssrRestore = { refocus: inside, focusValue: inside && parsed?.radios.includes(active) ? active.value : null };
+    return false;
+  }
+
+  /** A re-connect renders again (the model — options + value — is the component's after adoption). */
+  canRebind() { return false; }
+
+  hydrateExisting() {
+    const a = this._ssrAdopt;
+    this._ssrAdopt = null;
+    if (!a) return;
+    this._options = a.options;
+    this._optionsSet = true;
+    if (!this._earlyProps?.has('value')) {
+      this._value = a.liveValue;
+      this._valueSet = true;
+    }
+    this._reconcileValue();
+    const note = this.querySelector('.td-choice > .td-field__footer > .td-field-error');
+    if (note) this._errorNote = note;
+    this._syncForm(); // ElementInternals FIRST…
+    for (const r of a.radios) { // …then the radios leave the form: private group, no form owner (same nodes)
+      r.name = this._groupName;
+      r.setAttribute('form', '');
+      r.setAttribute('autocomplete', 'off');
+      r.removeAttribute('required');
+    }
+  }
+
+  /** @protected refused markup was replaced: the focus goes to the radio of the same value (or the Tab stop) */
+  _restoreSsrState(state) {
+    if (!state.refocus) return;
+    const t = (state.focusValue != null && this._radios().find((r) => r.value === state.focusValue && !r.disabled)) || this._tabStop();
+    t?.focus({ preventScroll: true });
+  }
+
+  /**
+   * @private The strict skeleton → the radios + raw option data, or null. Only exact positions are read (an injected
+   * control elsewhere is never a state source).
+   */
+  _ssrParse() {
+    const kids = ssrContentNodes(this);
+    if (kids.length !== 1 || kids[0].nodeType !== 1) return null;
+    const root = kids[0];
+    if (root.localName !== 'div' || !root.classList.contains('td-choice')) return null;
+    const groups = [...root.children].filter((e) => e.localName === 'div' && e.classList.contains('td-choice__options'));
+    if (groups.length !== 1) return null;
+    const radios = [];
+    const raw = [];
+    for (const l of groups[0].children) {
+      if (l.localName !== 'label' || !l.classList.contains('td-choice__option')) return null;
+      const r = l.firstElementChild;
+      const face = r?.nextElementSibling;
+      if (!r || r.localName !== 'input' || r.getAttribute('type') !== 'radio' || !face || !face.classList.contains('td-choice__face')) return null;
+      const q = (sel) => face.querySelector(sel);
+      const note = q('.td-choice__note');
+      raw.push({
+        value: r.getAttribute('value') ?? '',
+        label: q('.td-choice__text')?.textContent ?? '',
+        hint: q('.td-choice__hint')?.textContent ?? '',
+        swatch: q('svg.td-choice__swatch > circle')?.getAttribute('fill') ?? '',
+        image: q('img.td-choice__image')?.getAttribute('src') ?? '',
+        disabled: l.hasAttribute('data-disabled'),
+        unavailable: l.hasAttribute('data-unavailable'),
+        unavailableLabel: note && note.hasAttribute('data-td-custom') ? note.textContent : '',
+      });
+      radios.push(/** @type {HTMLInputElement} */ (r));
+    }
+    return { root, group: groups[0], radios, raw };
+  }
+
+  /** @private exactly render()'s tree for `options` (+ the no-JS radio attributes / server state texts) */
+  _ssrGate(parsed, options) {
+    const tpl = document.createElement('template');
+    const prev = this._options;
+    this._options = options;
+    try {
+      tpl.innerHTML = this.render();
+    } finally {
+      this._options = prev;
+    }
+    const want = tpl.content.firstElementChild;
+    if (!ssrSameAttrs(parsed.root, want)) return false;
+    const have = ssrContentNodes(parsed.root);
+    const need = [...want.children];
+    if (have.length !== need.length || have.some((n) => n.nodeType !== 1)) return false;
+    const partsOk = need.every((w, i) => {
+      const l = /** @type {Element} */ (have[i]);
+      if (w.classList.contains('td-choice__label')) return this._ssrLabelOk(l, w);
+      if (w.classList.contains('td-choice__options')) return this._ssrGroupOk(l, w, options);
+      return this._ssrFooterOk(l);
+    });
+    if (!partsOk) return false;
+    const controls = [...this.querySelectorAll(FORM_ASSOCIATED)];
+    return controls.length === parsed.radios.length && controls.every((c, i) => c === parsed.radios[i]);
+  }
+
+  /** @private label div: text, [star ⇔ required], [current span ⇔ swatch] */
+  _ssrLabelOk(l, w) {
+    if (l.localName !== 'div' || !ssrSameAttrs(l, w)) return false;
+    const nodes = ssrContentNodes(l);
+    const cur = this._variant() === 'swatch' ? nodes.pop() : null;
+    if (cur && !(cur.nodeType === 1 && cur.localName === 'span' && ssrClassKey(cur) === 'td-choice__current'
+      && cur.attributes.length === 2 && cur.getAttribute('aria-hidden') === 'true' && cur.children.length === 0)) return false;
+    const star = nodes.length && nodes[nodes.length - 1].nodeType === 1 ? nodes.pop() : null;
+    if (!!star !== this.hasAttribute('required')) return false;
+    if (star && !(star.localName === 'span' && ssrClassKey(star) === 'td-field__required' && star.attributes.length === 2
+      && star.getAttribute('aria-hidden') === 'true' && star.children.length === 0 && star.textContent === ' *')) return false;
+    return nodes.every((n) => n.nodeType === 3) && nodes.map((n) => n.data).join('') === (this.getAttribute('label') || '');
+  }
+
+  /** @private the radiogroup + one option label per option (radio attribute allowlist, face exactly render()'s) */
+  _ssrGroupOk(g, w, options) {
+    if (g.localName !== 'div' || ssrClassKey(g) !== ssrClassKey(w) || g.getAttribute('role') !== 'radiogroup') return false;
+    if (![...g.attributes].every((a) => GROUP_ATTRS.has(a.name))) return false;
+    if (w.hasAttribute('aria-labelledby') && g.getAttribute('aria-labelledby') !== w.getAttribute('aria-labelledby')) return false;
+    const have = ssrContentNodes(g);
+    if (have.length !== options.length || have.length !== w.children.length) return false;
+    const name = this.getAttribute('name') || '';
+    return options.every((o, i) => {
+      const l = /** @type {Element} */ (have[i]);
+      const wl = w.children[i];
+      if (l.nodeType !== 1 || !ssrSameAttrs(l, wl)) return false;
+      const parts = ssrContentNodes(l);
+      if (parts.length !== 2 || parts.some((n) => n.nodeType !== 1)) return false;
+      const [r, face] = /** @type {Element[]} */ (parts);
+      const wr = wl.children[0];
+      if (![...r.attributes].every((a) => RADIO_ATTRS.has(a.name))) return false;
+      if (ssrClassKey(r) !== 'td-choice__input' || r.id !== wr.id || r.getAttribute('value') !== o.value
+        || r.getAttribute('aria-labelledby') !== wr.getAttribute('aria-labelledby')
+        || r.getAttribute('aria-describedby') !== wr.getAttribute('aria-describedby')) return false;
+      // the no-JS form attributes still agree with the host (a nameless group: the private server name + no form owner)
+      const nameOk = name ? r.getAttribute('name') === name && !r.hasAttribute('form')
+        : r.getAttribute('name') === `${this.id}-group` && r.getAttribute('form') === '';
+      if (!nameOk || r.hasAttribute('autocomplete')) return false;
+      if (r.hasAttribute('required') !== this.hasAttribute('required')) return false;
+      if (r.hasAttribute('disabled') !== (this.hasAttribute('disabled') || o.disabled)) return false;
+      return this._ssrSame(face, wl.children[1], o);
+    });
+  }
+
+  /**
+   * @private A face part equals render()'s: same tag / attributes / children; the swatch circle may carry the option's
+   * own `fill`; an image `src` may be the server's (unnormalised) form of the option's URL; the default note text is
+   * state (not compared).
+   */
+  _ssrSame(live, want, o) {
+    if (live.nodeType !== want.nodeType) return false;
+    if (live.nodeType === 3) return live.data === want.data;
+    if (live.localName !== want.localName || live.namespaceURI !== want.namespaceURI) return false;
+    if (want.localName === 'circle') {
+      const fill = live.getAttribute('fill');
+      if ((o.swatch ? fill !== o.swatch : fill !== null) || live.attributes.length !== want.attributes.length + (o.swatch ? 1 : 0)) return false;
+      if (![...want.attributes].every((a) => live.getAttribute(a.name) === a.value)) return false;
+      return live.childNodes.length === 0;
+    }
+    if (want.localName === 'img') {
+      if (live.attributes.length !== want.attributes.length || safeMediaUrl(live.getAttribute('src')) !== want.getAttribute('src')) return false;
+      return [...want.attributes].every((a) => a.name === 'src' || live.getAttribute(a.name) === a.value) && live.childNodes.length === 0;
+    }
+    if (!ssrSameAttrs(live, want)) return false;
+    const a = ssrContentNodes(live);
+    const b = ssrContentNodes(want);
+    if (want.classList?.contains('td-choice__note') && !o.unavailableLabel) return a.length <= 1 && a.every((n) => n.nodeType === 3);
+    return a.length === b.length && a.every((n, i) => this._ssrSame(n, b[i], o));
+  }
+
+  /** @private footer: [error note ⇔ an error shows] + the note div (text only) */
+  _ssrFooterOk(f) {
+    if (f.localName !== 'div' || ssrClassKey(f) !== 'td-field__footer'
+      || ![...f.attributes].every((a) => a.name === 'class' || a.name === 'hidden')) return false;
+    const have = ssrContentNodes(f);
+    const note = have.length > 0 && ssrIsErrorNote(have[0]);
+    if (note !== !!this.errorMessage) return false;
+    if (note) have.shift();
+    return have.length === 1 && have[0].nodeType === 1 && have[0].localName === 'div' && ssrClassKey(have[0]) === 'td-field__note'
+      && have[0].id === `${this.id}-note` && have[0].children.length === 0
+      && [...have[0].attributes].every((a) => ['class', 'id', 'hidden'].includes(a.name));
   }
 
   /** @private */

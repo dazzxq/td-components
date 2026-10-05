@@ -348,6 +348,11 @@ namespace TdComponents {
         /** @internal v0.46.0: json_encode flags of the td-diff model (= JSON.stringify of the same strings). */
         public const DIFF_JSON = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_LINE_TERMINATORS | JSON_THROW_ON_ERROR;
 
+        /** v0.49.0: td_choice_group (always the element <td-choice-group> + native radios — works without JS). */
+        public const SSR_CHOICE = 'choice-group@1';
+        /** v0.49.0: default texts of td_choice_group = TdChoiceGroup.messages (state: the component re-applies its own). */
+        public const CHOICE_LABELS = ['unavailable' => 'Hết hàng'];
+
         /**
          * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.48.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
@@ -2097,6 +2102,9 @@ namespace {
      * group_separator ('.' | ',' | ' ' | ''), decimal_separator (',' | '.'), prefix, suffix, unit_label, clamp, size
      * (sm|md|lg), aria_label (when there is no label), id (the CONTROL id — `<label for>`; element mode: host =
      * {id}-host), class (wrapper / host), attrs (the control: allowlisted; owned names and data-td-* reserved), element.
+     * v0.49.0 `stepper` (element mode only — native mode keeps the browser's own spin buttons): the box also holds the − / +
+     * buttons of <td-number-input stepper> (`type=button`, `tabindex=-1`, icon slots; hidden by td.css until the module
+     * defines the element — the place is kept, no dead control; their names are set by the component).
      */
     function td_number_input(string $name, mixed $value = null, array $o = []): string
     {
@@ -2186,15 +2194,21 @@ namespace {
             ? '<label class="td-field__label" id="' . $b . '-label" for="' . Td::e($cid) . '">' . Td::e($label)
                 . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') . '</label>'
             : '';
+        $stepper = $element && !empty($o['stepper']);
+        $stepBtn = static fn (string $dir, string $icon): string => '<button type="button" class="td-number__step td-number__step--' . $dir
+            . '" tabindex="-1" aria-controls="' . Td::e($cid) . '"><span class="td-number__step-icon" data-td-icon="' . $icon
+            . '" data-td-icon-class="td-number__step-svg">' . Td::icon($icon, 'm', '', 'td-number__step-svg') . '</span></button>';
         $box = '<div class="td-number__box">'
+            . ($stepper ? $stepBtn('down', 'minus') : '')
             . ($prefix !== null ? '<span class="td-number__affix td-number__affix--prefix" aria-hidden="true">' . Td::e($prefix) . '</span>' : '')
             . $control
             . ($suffix !== null ? '<span class="td-number__affix td-number__affix--suffix" aria-hidden="true">' . Td::e($suffix) . '</span>' : '')
             . ($unit !== null ? '<span id="' . $b . '-unit" hidden>' . Td::e($unit) . '</span>' : '')
+            . ($stepper ? $stepBtn('up', 'plus') : '')
             . '</div>';
         $footer = $error !== null ? '<span class="td-field-error" id="' . $b . '-error" data-for="' . $b . '">' . Td::e($error) . '</span>' : '';
         $footer .= '<div class="td-field__note" id="' . $b . '-note"' . ($hint === null ? ' hidden' : '') . '>' . Td::e($hint ?? '') . '</div>';
-        $inner = '<div class="td-field td-field--' . $size . ' td-number' . ($element ? '' : Td::e(Td::classTokens($o['class'] ?? null))) . '">'
+        $inner = '<div class="td-field td-field--' . $size . ' td-number' . ($stepper ? ' td-number--stepper' : '') . ($element ? '' : Td::e(Td::classTokens($o['class'] ?? null))) . '">'
             . $labelHtml . $box
             . '<div class="td-field__footer"' . ($hint === null && $error === null ? ' hidden' : '') . '>' . $footer . '</div>'
             . '<span class="td-sr-only" id="' . $b . '-status" role="status"></span></div>';
@@ -2227,6 +2241,7 @@ namespace {
             'unit-label' => $unitLabel,
             'clamp' => !empty($o['clamp']),
             'aria-label' => $aria,
+            'stepper' => $stepper,
         ], $hostTaken) . '>' . $inner . '</td-number-input>';
     }
 
@@ -6816,5 +6831,190 @@ namespace {
             'error-text' => $error,
             'aria-label' => $aria,
         ], $hostTaken) . '><div class="td-color">' . $labelHtml . $box . '</div>' . $note . '</td-color-picker>';
+    }
+
+    /**
+     * v0.49.0 choice group (contract choice-group@1, plan v0.49.0-choice-stepper QĐ 22, ADR 0022) — ALWAYS the element
+     * `<td-choice-group data-td-ssr="choice-group@1">` + the exact tree <td-choice-group> renders, with NATIVE radios that
+     * carry the real `name` (+ `required` on every radio, `checked` on the selected one): the form submits `name=value`,
+     * arrows / Space / Tab work, no JS. `@dazzxq/td-components/choice-group` adopts it IN PLACE (same radio nodes: checked +
+     * focus kept; the radios move to a private group without a form owner and the HOST submits).
+     * $options: list of ['value' => string|int, 'label' => string, 'hint'?, 'swatch'? (colour → SVG `fill` through
+     * Td::safeColor()), 'image'? (td__media_url(): https: / scheme-less; http: only with Td::allowHttpLinks(true)),
+     * 'disabled'? (combination that does not exist), 'unavailable'? (selectable, struck through + note), 'unavailable_label'?].
+     * A wrong option (missing / non-string label, value not a non-empty string or int, duplicate value) is dropped + ONE
+     * E_USER_WARNING naming the position, key and type — never the raw value; a refused colour / image is dropped the same
+     * way (the option stays). $value: the selected option (absent → nothing checked).
+     * Options: label, variant ('button' | 'swatch'), required, disabled, helper_text, error_text, id (the HOST id), aria_label,
+     * class.
+     */
+    function td_choice_group(string $name, array $options, string|int|null $value = null, array $o = []): string
+    {
+        $warn = static function (string $msg): void {
+            trigger_error("td_choice_group: $msg", E_USER_WARNING);
+        };
+        $type = static fn (mixed $v): string => get_debug_type($v);
+        $list = [];
+        $seen = [];
+        $i = -1;
+        foreach ($options as $opt) {
+            $i++;
+            if (!is_array($opt)) {
+                $warn("option #$i is not an array ({$type($opt)}) — dropped");
+                continue;
+            }
+            $v = $opt['value'] ?? null;
+            if (is_int($v)) {
+                $v = (string) $v;
+            }
+            if (!is_string($v) || $v === '') {
+                $warn("option #$i: value must be a non-empty string or an int ({$type($opt['value'] ?? null)}) — dropped");
+                continue;
+            }
+            $label = $opt['label'] ?? null;
+            if (!is_string($label) || trim($label) === '') {
+                $warn("option #$i: label must be a non-empty string ({$type($label)}) — dropped");
+                continue;
+            }
+            if (isset($seen[$v])) {
+                $warn("option #$i: duplicate value (" . strlen($v) . ' bytes) — dropped');
+                continue;
+            }
+            $seen[$v] = true;
+            $text = static function (string $k) use ($opt, $i, $warn, $type): string {
+                $t = $opt[$k] ?? null;
+                if ($t === null || $t === '') {
+                    return '';
+                }
+                if (is_string($t)) {
+                    return $t;
+                }
+                $warn("option #$i: $k must be a string ({$type($t)}) — ignored");
+                return '';
+            };
+            $swatch = '';
+            if (isset($opt['swatch']) && $opt['swatch'] !== '') {
+                $swatch = Td::safeColor($opt['swatch']);
+                if ($swatch === '') {
+                    $warn("option #$i: swatch is not a safe colour ({$type($opt['swatch'])}) — no colour");
+                }
+            }
+            $image = '';
+            if (isset($opt['image']) && $opt['image'] !== '') {
+                $image = td__media_url($opt['image']) ?? '';
+                if ($image === '') {
+                    $warn("option #$i: image URL refused ({$type($opt['image'])}) — not shown");
+                }
+            }
+            $list[] = [
+                'value' => $v, 'label' => $label, 'hint' => $text('hint'), 'swatch' => $swatch, 'image' => $image,
+                'disabled' => ($opt['disabled'] ?? false) === true, 'unavailable' => ($opt['unavailable'] ?? false) === true,
+                'note' => $text('unavailable_label'),
+            ];
+        }
+        $variant = ($o['variant'] ?? null) === 'swatch' ? 'swatch' : 'button';
+        $swatchMode = $variant === 'swatch';
+        $sel = $value === null ? '' : (string) $value;
+        $current = null;
+        foreach ($list as $it) {
+            if ($it['value'] === $sel) {
+                $current = $it;
+            }
+        }
+        if ($sel !== '' && $current === null) {
+            $warn('value is not one of the options — nothing selected');
+            $sel = '';
+        }
+        $host = td__str($o['id'] ?? null) ?? td__host_uid($name);
+        $h = Td::e($host);
+        $label = td__str($o['label'] ?? null);
+        $aria = td__str($o['aria_label'] ?? null);
+        $hint = td__str($o['helper_text'] ?? null);
+        $error = td__str($o['error_text'] ?? null);
+        $required = !empty($o['required']);
+        $disabled = !empty($o['disabled']);
+        $enabled = false;
+        foreach ($list as $it) {
+            $enabled = $enabled || !$it['disabled'];
+        }
+        $L = Td::CHOICE_LABELS;
+        $noteOf = static fn (array $it): string => $it['note'] !== '' ? $it['note'] : $L['unavailable'];
+        // a nameless group still needs ONE name for the native keyboard group — private + no form owner (never submitted)
+        $radioName = $name !== '' ? $name : $host . '-group';
+        $html = '<div class="td-field td-choice td-choice--' . $variant . '">';
+        if ($label !== null) {
+            $html .= '<div class="td-field__label td-choice__label" id="' . $h . '-label">' . Td::e($label)
+                . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '')
+                . ($swatchMode ? '<span class="td-choice__current" aria-hidden="true">'
+                    . ($current !== null ? Td::e(': ' . $current['label'] . ($current['unavailable'] ? ' — ' . $noteOf($current) : '')) : '')
+                    . '</span>' : '')
+                . '</div>';
+        }
+        $desc = trim(($hint !== null ? "$host-note " : '') . ($error !== null ? "$host-error" : ''));
+        $taken = [];
+        $html .= '<div' . Td::ownAttrs([
+            'class' => 'td-choice__options',
+            'role' => 'radiogroup',
+            'aria-labelledby' => $label !== null ? "$host-label" : null,
+            'aria-label' => $label === null ? $aria : null,
+            'aria-required' => $required && $enabled ? 'true' : null,
+            'aria-invalid' => $error !== null ? 'true' : null,
+            'aria-errormessage' => $error !== null ? "$host-error" : null,
+            'aria-describedby' => $desc !== '' ? $desc : null,
+        ], $taken) . '>';
+        foreach ($list as $n => $it) {
+            $oid = "$host-o$n";
+            $e = Td::e($oid);
+            $d = trim(($it['hint'] !== '' ? "$oid-h " : '') . ($it['unavailable'] ? "$oid-n" : ''));
+            $sr = $swatchMode ? ' td-sr-only' : '';
+            $visual = '';
+            if ($it['image'] !== '') {
+                $visual = '<img class="td-choice__image" src="' . Td::e($it['image']) . '" alt="" width="32" height="32" loading="lazy" decoding="async">';
+            } elseif ($it['swatch'] !== '' || $swatchMode) {
+                $visual = '<svg class="td-choice__swatch' . ($it['swatch'] !== '' ? '' : ' td-choice__swatch--none') . '" viewBox="0 0 32 32" aria-hidden="true">'
+                    . '<circle cx="16" cy="16" r="16"' . ($it['swatch'] !== '' ? ' fill="' . Td::e($it['swatch']) . '"' : '') . '></circle></svg>';
+            }
+            $texts = '<span class="td-choice__text' . $sr . '" id="' . $e . '-l">' . Td::e($it['label']) . '</span>'
+                . ($it['hint'] !== '' ? '<span class="td-choice__hint' . $sr . '" id="' . $e . '-h">' . Td::e($it['hint']) . '</span>' : '')
+                . ($it['unavailable'] ? '<span class="td-choice__note' . $sr . '" id="' . $e . '-n"' . ($it['note'] !== '' ? ' data-td-custom' : '')
+                    . '>' . Td::e($noteOf($it)) . '</span>' : '');
+            $rt = [];
+            $html .= '<label class="td-choice__option" data-td-value="' . Td::e($it['value']) . '"'
+                . ($it['unavailable'] ? ' data-unavailable' : '') . ($it['disabled'] ? ' data-disabled' : '') . '>'
+                . '<input' . Td::ownAttrs([
+                    'type' => 'radio',
+                    'class' => 'td-choice__input',
+                    'id' => $oid,
+                    'value' => $it['value'],
+                    'name' => $radioName,
+                    'form' => $name === '' ? '' : null,
+                    'aria-labelledby' => "$oid-l",
+                    'aria-describedby' => $d !== '' ? $d : null,
+                    'checked' => $it['value'] === $sel,
+                    'required' => $required,
+                    'disabled' => $disabled || $it['disabled'],
+                ], $rt) . '>'
+                . '<span class="td-choice__face">' . $visual . ($swatchMode ? $texts : '<span class="td-choice__body">' . $texts . '</span>') . '</span>'
+                . '</label>';
+        }
+        $html .= '</div>';
+        $footer = $error !== null ? '<span class="td-field-error" id="' . $h . '-error" data-for="' . $h . '">' . Td::e($error) . '</span>' : '';
+        $footer .= '<div class="td-field__note" id="' . $h . '-note"' . ($hint === null ? ' hidden' : '') . '>' . Td::e($hint ?? '') . '</div>';
+        $html .= '<div class="td-field__footer"' . ($hint === null && $error === null ? ' hidden' : '') . '>' . $footer . '</div></div>';
+        $ht = [];
+        return '<td-choice-group' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_CHOICE,
+            'id' => $host,
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'name' => $name !== '' ? $name : null,
+            'value' => $sel !== '' ? $sel : null,
+            'label' => $label,
+            'variant' => $swatchMode ? 'swatch' : null,
+            'required' => $required,
+            'disabled' => $disabled,
+            'helper-text' => $hint,
+            'error-text' => $error,
+            'aria-label' => $aria,
+        ], $ht) . '>' . $html . '</td-choice-group>';
     }
 }

@@ -35,6 +35,11 @@ const MM = {
   'mm-second-input': full.replace('<span class="td-number__affix', '<input type="hidden" name="price" value="1"><span class="td-number__affix'),
   'mm-name': full.replace(' name="price" value="12990000" label', ' name="other" value="12990000" label'),
   'mm-min': full.replace(' min="1000" suffix', ' min="2000" suffix'),
+  // v0.49.0 stepper: a foreign attribute on a step button / a third button → refused
+  'mm-step-onclick': hostHtml('n-stepper').replace('<button type="button" class="td-number__step td-number__step--up"',
+    '<button type="button" onclick="window.__pwned = 1" class="td-number__step td-number__step--up"').replaceAll('td-qty-10', 'td-price-2'),
+  'mm-step-extra': hostHtml('n-stepper').replace('<button type="button" class="td-number__step td-number__step--up"',
+    '<button type="submit" class="td-number__step">x</button><button type="button" class="td-number__step td-number__step--up"').replaceAll('td-qty-10', 'td-price-2'),
 };
 const mismatch = document.createElement('form');
 mismatch.innerHTML = Object.entries(MM).map(([id, html]) => html.replaceAll('td-price-2', id)).join('');
@@ -48,6 +53,11 @@ const noJs = {
   submit: new FormData(root.querySelector('form[data-case="nn-full"]')).get('price'),
   elementSubmit: new FormData(root.querySelector('form[data-case="n-full"]')).get('price'),
 };
+
+// v0.49.0 stepper before define: the buttons keep their place, hidden (no dead control)
+const stepBefore = [...hostOf('n-stepper').querySelectorAll('button.td-number__step')];
+const stepHidden = stepBefore.map((b) => getComputedStyle(b).visibility);
+const stepWidth = stepBefore.map((b) => b.getBoundingClientRect().width);
 
 // State before the module loads: typed value (adopted case), focus (adopted case), early property, refused + focused.
 const before = {};
@@ -142,12 +152,36 @@ describe('td-number-input SSR (number-input@1) — adopted in place', () => {
   });
 });
 
+describe('td-number-input SSR — v0.49.0 stepper', () => {
+  it('the step buttons are adopted in place (same nodes), named by the component, visible once defined', () => {
+    const host = hostOf('n-stepper');
+    const now = [...host.querySelectorAll('button.td-number__step')];
+    expect(stepHidden).to.deep.equal(['hidden', 'hidden']);
+    expect(stepWidth.every((w) => w > 20)).to.equal(true);
+    expect(now.length === 2 && now.every((b, i) => b === stepBefore[i])).to.equal(true);
+    expect(now.map((b) => getComputedStyle(b).visibility)).to.deep.equal(['visible', 'visible']);
+    expect(now[0].getAttribute('aria-label')).to.equal('Giảm Số lượng');
+    expect(now[1].getAttribute('aria-label')).to.equal('Tăng Số lượng');
+    now[1].click();
+    expect(host.value).to.equal('3');
+    expect(new FormData(host.closest('form')).getAll('qty')).to.deep.equal(['3']);
+  });
+
+  it('native mode ignores stepper (the browser number control, no kit buttons)', () => {
+    const f = root.querySelector('form[data-case="nn-stepper"]');
+    expect(f.querySelector('.td-number__step')).to.equal(null);
+    expect(f.querySelector('input').type).to.equal('number');
+  });
+});
+
 describe('td-number-input SSR — refused markup renders safely, value restored', () => {
   for (const id of Object.keys(MM)) {
     it(`${id}: re-rendered, nothing foreign survives`, () => {
       const host = mismatch.querySelector(`#${id}`);
       expect(host.hasAttribute('data-td-ssr')).to.equal(false);
       expect(host.querySelectorAll('input').length).to.equal(1);
+      expect(host.querySelectorAll('button').length).to.equal(host.hasAttribute('stepper') ? 2 : 0);
+      expect(!!host.querySelector('button[type="submit"]')).to.equal(false);
       expect(host.querySelector('input').type).to.equal('text');
       expect(!!host.querySelector('[onclick], [style], b, p, input[type="hidden"]')).to.equal(false);
       expect(window.__pwned).to.equal(undefined);
