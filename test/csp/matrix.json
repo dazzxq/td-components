@@ -53,7 +53,8 @@
       "td-diff": "/src/display/td-diff.js",
       "td-check-matrix": "/src/form/td-check-matrix.js",
       "td-color-picker": "/src/form/td-color-picker.js",
-      "td-choice-group": "/src/form/td-choice-group.js"
+      "td-choice-group": "/src/form/td-choice-group.js",
+      "td-rating": "/src/display/td-rating.js"
     },
     "tokenNative": [
       "td-button",
@@ -107,7 +108,8 @@
       "td-diff",
       "td-check-matrix",
       "td-color-picker",
-      "td-choice-group"
+      "td-choice-group",
+      "td-rating"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -4939,6 +4941,60 @@
         "margin-left"
       ],
       "selectorNote": "v0.49.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets (wrap, 44px targets) are gated by test:responsive and the engines tests."
+    }
+  ],
+  "td-rating": [
+    {
+      "state": "half",
+      "markup": "<td-rating value=\"4.5\" count=\"123\" show-value></td-rating>",
+      "selectors": [
+        "td-rating",
+        ".td-rating__value",
+        ".td-rating__stars",
+        ".td-rating__star",
+        ".td-rating__star[data-fill=\"50\"]",
+        ".td-rating__star[data-fill=\"50\"] .td-rating__on",
+        ".td-rating__off",
+        ".td-rating__count"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.50.0: read-only stars (data-fill 50 → clip-path from --_td-rating-fill), shown value + count text; height / width / margin-left excluded up front (text line boxes, font metrics)."
+    },
+    {
+      "state": "exact",
+      "markup": "<td-rating value=\"3.37\" precision=\"exact\"></td-rating>",
+      "selectors": [
+        ".td-rating__star[data-fill=\"40\"]",
+        ".td-rating__star[data-fill=\"40\"] .td-rating__on",
+        ".td-rating__star[data-fill=\"0\"] .td-rating__on"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.50.0: precision exact — the partly filled star gets --_td-rating-fill: 37% through CSSOM (0 violations); height / width / margin-left excluded up front (text line boxes, font metrics)."
+    },
+    {
+      "state": "empty",
+      "markup": "<td-rating count=\"5\"></td-rating>",
+      "selectors": [
+        "td-rating",
+        ".td-rating__none"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.50.0: no rating — muted text only, no stars; height / width / margin-left excluded up front (text line boxes, font metrics)."
     }
   ]
 }

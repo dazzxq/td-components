@@ -380,3 +380,18 @@ test('v0.49.0: ./choice-group export, sideEffects, barrel TdChoiceGroup, choice-
     assert.ok(css.includes(sel), sel);
   }
 });
+
+test('v0.50.0: ./rating export, sideEffects, barrel TdRating, rating CSS before utilities; model internal', async () => {
+  assert.equal(pkg.exports['./rating'], './src/display/td-rating.js');
+  assert.ok(pkg.sideEffects.includes('./src/display/td-rating.js'));
+  assert.ok(!Object.values(pkg.exports).includes('./src/utils/rating-model.js'), 'the model stays internal');
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdRating \} from '\.\/src\/display\/td-rating\.js';/);
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  const i = files.indexOf('components/rating.css');
+  assert.ok(i > files.indexOf('components/icon.css') && i < files.indexOf('utilities.css'), 'rating.css after icon.css, before utilities.css');
+  const css = await readFile(join(ROOT, 'td.css'), 'utf8');
+  for (const sel of ['.td-rating__star[data-fill="50"]', '.td-rating__on', '.td-rating__star:dir(rtl) > .td-rating__on', '--td-rating-stroke']) {
+    assert.ok(css.includes(sel), sel);
+  }
+});

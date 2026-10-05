@@ -61,6 +61,7 @@
     "components/check-matrix.css",
     "components/color-picker.css",
     "components/choice-group.css",
+    "components/rating.css",
     "utilities.css"
   ]
 }
