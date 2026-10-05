@@ -99,7 +99,8 @@ Từ trên xuống: vùng 2 chiều → [nút lấy màu] + thanh sắc độ �
 
 - Mở ra focus vào **điểm chọn** của vùng 2 chiều (hoặc màu đang chọn khi `custom="false"`). Mở / đóng **không** ghi giá trị.
 - **Tab / Shift+Tab** vòng trong popup. **Escape** → trả lại giá trị lúc mở + đóng + focus về nút ô màu,
-  kể cả khi đang gõ trong ô chữ (giá trị khác lúc mở — kể cả màu vừa gõ chưa xác nhận: đúng một `input` + một `change`). **Bấm ra ngoài**, cuộn làm ô khuất, hoặc một lớp phủ mới che → đóng và **giữ** giá trị.
+  kể cả khi đang gõ trong ô chữ (giá trị khác lúc mở — kể cả màu vừa gõ chưa xác nhận: đúng một `input` + một `change`; nếu lúc mở ô chữ đang là mã **không hợp lệ**, chữ đó được trả lại
+  **im lặng** — không sự kiện, lại `badInput`). **Bấm ra ngoài**, cuộn làm ô khuất, hoặc một lớp phủ mới che → đóng và **giữ** giá trị.
 - **Bấm một màu có sẵn** → chọn + đóng (như dcms). Kéo vùng / thanh sắc độ không đóng.
 - Gõ trong ô chữ khi popup đang mở → popup theo (vùng / sắc độ / màu có sẵn đang chọn).
 - Popup là bề mặt "popup nhỏ" (đặc 94 % + blur), đưa ra `<body>`, nổi trên modal / drawer; mở từ một vùng
@@ -135,7 +136,8 @@ popup cuộn bình thường. Ô / nút ≥ 44px trên màn hình cảm ứng.
 - Mỗi mục qua cùng bộ parse; mục lỗi / trong suốt bị bỏ + **một** `console.warn` (chữ cố định); trùng → giữ lần đầu;
   tối đa **48** màu. Giới hạn công việc: chỉ **192** mục đầu (mảng hoặc mã trong chuỗi) được xem — mục sau bị bỏ qua, mảng
   thưa (sparse) không bị duyệt hết độ dài; chuỗi `presets` dài hơn **12 288 byte** (UTF-8) bị bỏ cả chuỗi (không lưới).
-  PHP áp đúng các giới hạn này.
+  Nhãn preset dài hơn 240 ký tự bị cắt **trước** khi trim (rồi còn tối đa 120) và cũng gây cảnh báo. PHP áp đúng giới
+  hạn số mục / độ dài chuỗi (PHP không có nhãn preset).
 - Không đặt → **16 màu mặc định** (như dcms: thang xám + vòng màu; `TdColorPicker.defaultPresets`). `presets=""` hoặc
   `[]` → không có lưới.
 - Lưới là **một điểm Tab** (mũi tên 2 chiều theo số cột thật, Home / End), màu đang chọn có `aria-pressed="true"` + dấu
