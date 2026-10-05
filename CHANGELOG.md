@@ -2,6 +2,29 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.44.0
+
+**Gõ chữ để xác nhận + theo dõi form chưa lưu + chặn đóng modal / drawer** (dsuite #19, #20; plan
+`docs/internal/plans/v0.44.0-confirm-dirty.md`, Codex plan-review APPROVE 2 vòng, impl-review + security-review APPROVE;
+phụ lục [ADR 0006](docs/internal/decisions/0006-modal-no-backdrop-close.md)). Không có thay đổi phá vỡ; PHP / SSR không đổi.
+
+### Added
+
+- `TdModal.confirm({ typeToConfirm: 'XOA' })`: nút xác nhận chỉ hoạt động khi đã gõ đúng chuỗi (NFC, bỏ khoảng trắng hai
+  đầu, phân biệt hoa thường và dấu, tối đa 100 ký tự); chạy đúng với bộ gõ tiếng Việt (IME) và bàn phím ảo; gõ sai rồi bấm
+  → báo lỗi tại ô nhập. Truyền `typeToConfirm` nhưng giá trị không hợp lệ (rỗng, không phải chuỗi, quá dài) → **không mở
+  modal**, Promise bị từ chối (`TypeError`) — không bao giờ lùi về hộp xác nhận thường.
+- Chặn đóng bất đồng bộ: `TdModal.show({ beforeClose })` + `TdModal.requestClose()`; `<td-drawer>.beforeClose` +
+  `requestClose()` + `TdDrawer.open({ beforeClose })`. Guard trả `false` / throw / reject → giữ mở (fail closed).
+- `trackFormDirty(form)` (`./form-validation`): biết form có thay đổi chưa lưu (so snapshot: đổi rồi đổi lại = sạch; native
+  + mọi control td form-associated, kể cả `td-media-gallery`, `td-table` chọn dòng), cảnh báo khi rời trang
+  (`beforeunload` chỉ bật khi bẩn), `confirmDiscard()` cho drawer / modal, `markClean()` sau khi lưu. Submit điều hướng
+  chính cửa sổ này được miễn cảnh báo một lần (submit thật, ngắn hạn).
+
+### Security
+
+- Log của guard / tracker chỉ in chuỗi cố định, không in đối tượng lỗi của app (có thể chứa token / URL).
+
 ## 0.43.0
 
 **`<td-media-gallery>` — trường nhiều ảnh** (roadmap "field gallery"; plan `docs/internal/plans/v0.43.0-media-gallery.md`,
