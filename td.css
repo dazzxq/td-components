@@ -18824,6 +18824,8 @@
 
 	.td-choice__image {
 		display: block;
+		max-width: none; /* fixed swatch box: a host reset (Tailwind preflight img { max-width: 100% }) must not change it */
+		height: auto;
 		object-fit: cover;
 	}
 
