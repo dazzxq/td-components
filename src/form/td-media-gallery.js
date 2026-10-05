@@ -425,7 +425,8 @@ export class TdMediaGallery extends TdFormElement {
     this._liveReady = true;
     const wasBroken = this._isBroken();
     this._broken = broken;
-    const items = this._isBroken() ? [] : next;
+    // ISSUE-1: only broken ITEMS empty the list; a bad `name` blocks rendering / submitting but keeps the valid state
+    const items = broken ? [] : next;
     const prev = this._items;
     this._items = items;
     for (const it of prev) if (!items.includes(it)) this._abortGet(it);
