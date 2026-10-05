@@ -10,6 +10,11 @@ Trang này trả lời: token là gì, có những token công khai nào, ghi đ
 tắt kính thế nào, site đổi màu nền (vd. giấy be) bằng **hợp đồng theme** ra sao, và kit tự xử lý các chế độ trợ năng
 của hệ điều hành thế nào.
 
+> **0.42.0 — palette tuỳ biến + theme theo vùng:** đưa `bg` + `accent` cho CLI `td-theme` (hoặc trang builder trong
+> package) → một file CSS tĩnh với chữ, viền, hover, focus, màu trạng thái đạt WCAG AA, hoặc mã lỗi khi về toán học không
+> đạt ([Palette tuỳ biến](#palette-tuỳ-biến-td-theme-0420)). `<section data-td-theme="dark">` trong trang sáng (và ngược
+> lại) chạy bằng token gốc, popup mở từ trong vùng theo vùng ([Theme theo vùng](#theme-theo-vùng)).
+
 > **0.41.0 — theme chính thức:** `data-td-theme="light" | "dark" | "auto"` (`auto` theo hệ điều hành, CSS thuần, không
 > chớp trắng); dark hết nhãn "thử nghiệm" và được tinh chỉnh trên trang thật; token component đọc từ một bộ token ngữ
 > nghĩa (hợp đồng theme) nên site đặt nền / bề mặt một lần là ô nhập, popup, bảng đi theo. Không đặt attribute = light
@@ -54,11 +59,12 @@ của hệ điều hành thế nào.
 - [Viền control mềm và override chuẩn WCAG nghiêm ngặt](#viền-control-mềm-và-override-chuẩn-wcag-nghiêm-ngặt)
 - [Light / dark / auto](#light--dark--auto)
 - [Hợp đồng theme và công thức nền giấy (0.41.0)](#hợp-đồng-theme-và-công-thức-nền-giấy-0410)
+- [Palette tuỳ biến: `td-theme` (0.42.0)](#palette-tuỳ-biến-td-theme-0420)
 - [Tắt kính: `data-td-glass="off"`](#tắt-kính-data-td-glassoff)
 - [Kit tự thích ứng với cài đặt trợ năng](#kit-tự-thích-ứng-với-cài-đặt-trợ-năng)
 - [Tinh chỉnh bề mặt cho hợp site](#tinh-chỉnh-bề-mặt-cho-hợp-site)
 - [Ví dụ đầu-cuối: đổi màu thương hiệu (accent)](#ví-dụ-đầu-cuối-đổi-màu-thương-hiệu-accent)
-- [Theme theo vùng](#theme-theo-vùng)
+- [Theme theo vùng](#theme-theo-vùng) (0.42.0: vùng + popup portal)
 - [Token riêng của từng component](#token-riêng-của-từng-component)
 - [Không bao giờ đụng vào token private](#không-bao-giờ-đụng-vào-token-private)
 
@@ -153,6 +159,9 @@ Hệ quả:
 - Ghi đè `--td-accent` trên **một vùng** (`.sidebar { --td-accent: red }`) → **không** làm checkbox trong vùng đó
   đổi, vì `--td-checkbox-color` đã được tính ở `:root`. Muốn đổi theo vùng, ghi đè thẳng token con
   (`.sidebar { --td-checkbox-color: red; --td-btn-ghost-fg: red; }`). Xem [Theme theo vùng](#theme-theo-vùng).
+- **Từ 0.42.0:** phần tử có `data-td-theme` (bất kỳ giá trị nào) là một *vùng theme*: token **màu** dẫn xuất được giải
+  lại ngay trên nó. Với `<aside class="sidebar" data-td-theme="light">`, đặt `--td-accent` trên chính phần tử có
+  attribute (CSS của site: `.sidebar[data-td-theme] { --td-accent: red }`) là checkbox, ghost, slider trong vùng đổi theo.
 
 **3. Modifier kích thước đặt token trên chính phần tử.** Từ 0.16.0 mọi token kích thước **mặc định** đều khai báo trên
 `:root` (trước đó `--td-lb-*`, `--td-checkbox-box`, `--td-switch-w/-h/-thumb-d`, `--td-spinner-size`,
@@ -632,10 +641,10 @@ map **cả hai** token về viền đậm:
 <html lang="vi" data-td-theme="auto">
 ```
 
-- Selector là `:root[data-td-theme="…"]`, nên attribute **phải** nằm trên `<html>`, không phải `<body>`. Theme theo
-  vùng (một khối tối trong trang sáng) là việc của 0.42.0 — xem [Theme theo vùng](#theme-theo-vùng).
+- Đặt attribute trên `<html>` cho cả trang (không phải `<body>`). Từ 0.42.0 attribute cũng chạy trên **một vùng**
+  (`<section data-td-theme="dark">`) — xem [Theme theo vùng](#theme-theo-vùng).
 - Dark chỉ **đổi token** (trong `@layer td.tokens`), không có CSS component riêng. `auto` không phải bản viết tay: lúc
-  build, mỗi rule `:root[data-td-theme="dark"]` của kit được sao sang nhánh `auto` (nên hai bản không bao giờ lệch).
+  build, mỗi rule dark của kit được sao sang nhánh `auto` (nên hai bản không bao giờ lệch).
 - Dark 0.41.0 được tinh chỉnh trên trang thật (3 trình duyệt): viền ô nhập / checkbox chưa chọn / switch ≥ 3:1 với mọi
   nền kề, chữ phụ ≥ 4.7:1 cả trên nền hover, accent đọc được làm chữ, tooltip là chip xám nổi, bề mặt nổi có viền sáng
   mảnh + bóng thật. Danh sách giá trị đổi: [breaking-changes § 0.41.0](../upgrading/breaking-changes.md#0410).
@@ -723,7 +732,8 @@ popup trắng cứng trên nền màu.
 (= border-strong) là **bí danh**: đặt token gốc là đủ; vẫn ghi đè riêng được.
 
 Đổi **một vài** token của bộ này là đủ cho một nền sáng khác (ví dụ dưới). Bộ đầy đủ chỉ cần khi nền tối mà không bật
-`data-td-theme="dark"`; 0.42.0 sẽ có công cụ sinh cả bộ từ `bg` + `accent` (tự cân tương phản).
+`data-td-theme="dark"` — từ 0.42.0 dùng [`td-theme`](#palette-tuỳ-biến-td-theme-0420) để sinh cả bộ từ `bg` + `accent`
+(tự cân tương phản) thay vì viết tay.
 
 **Luật chữ:** `--td-color-text-subtle` (≈ 3.2:1) chỉ cho icon, chữ lớn, disabled, trang trí. Chữ nhỏ mang nội dung dùng
 `--td-color-text-muted` trở lên (≥ 4.7:1). Khi đổi màu nền, kiểm `-text-muted` trên **nền tệ nhất** nó nằm (surface-muted,
@@ -758,6 +768,139 @@ popup trắng cứng trên nền màu.
   3 trình duyệt) — copy nguyên là có số đo.
 - Dùng cả dark? Bộ trên chỉ cho light; khai báo dưới `:root:not([data-td-theme="dark"])` hoặc thêm bộ dark riêng
   (bẫy số 1).
+
+## Palette tuỳ biến: `td-theme` (0.42.0)
+
+Bộ hợp đồng theme ở trên có ~90 token. Viết tay cho một nền màu (be, navy, xanh thương hiệu…) vừa mệt vừa dễ trượt tương
+phản. Từ 0.42.0 kit **tự tính** cả bộ từ vài màu gốc (*seed*) và sinh ra một **file CSS tĩnh**: không JS lúc chạy, không
+chớp trắng, chạy được trên sàn trình duyệt cũ (giá trị là hex sRGB tính sẵn, không `color-mix()` / `oklch()`).
+
+### Seed
+
+| Seed | Bắt buộc | Mặc định khi bỏ trống |
+|---|---|---|
+| `bg` — nền trang | có | — (không bao giờ bị đổi) |
+| `accent` — màu nhấn (link, checkbox, nút ghost, focus) | có | — |
+| `surface` — thẻ, bảng | | sáng hơn `bg` một bậc (OKLCH +0.04) |
+| `raisedSurface` — popup, modal | | = `surface` |
+| `controlSurface` — ô nhập, trigger | | = `raisedSurface`; `#fff` = ép ô nhập trắng |
+| `success` / `warning` / `danger` / `info` | | màu trạng thái của kit (light hoặc dark theo nền) |
+
+Seed chỉ nhận `#rgb`, `#rrggbb`, `rgb(r g b)` / `rgb(r, g, b)` — **không alpha**, tối đa 64 ký tự. Sai → lỗi input (CLI
+thoát mã 2), không sinh gì.
+
+### Kit tính gì
+
+Nền sáng hay tối (*scheme*) = cực đen / trắng tương phản cao hơn trên `bg`. Từ đó, trong không gian OKLCH (giữ hue,
+chỉ dịch độ sáng; chroma chỉ giảm khi ra ngoài sRGB), mọi màu được **làm tròn về hex rồi mới đo** WCAG 2.x trên **mọi nền
+nó có thể nằm**:
+
+- chữ chính gần cực (mục tiêu 7:1), chữ label, chữ phụ (`-muted`) ≥ 4.7:1 trên mọi bề mặt + nền hover, chữ mờ
+  (`-subtle`) ≥ 3.2:1 — thứ bậc chính > label > phụ > mờ luôn giữ;
+- viền control: light giữ nét mềm ~1.5:1 (lựa chọn của owner), **dark ≥ 3:1** với mọi màu kề; viền strict ≥ 3:1;
+- hover / pressed / fill / skeleton / nút secondary là pha cực vào bề mặt — **không bao giờ** đẩy nền vào vùng chữ
+  không đọc được (khi cần, hover đổi chiều thay vì mờ đi);
+- accent tách *mực* (chữ, ≥ 4.7 trên mọi bề mặt) và *nền đặc* (nhãn trắng / đen trên nó ≥ 4.7); mỗi màu trạng thái có
+  mực, pastel, nền alert, icon;
+- bóng, overlay, tooltip theo scheme.
+
+Không cần đọc thêm gì để dùng; file sinh ra **liệt kê đủ hợp đồng** theo thứ tự cố định.
+
+### Dải chết: vì sao có màu nền "không đạt" và kit làm gì
+
+Với nền xám tầm trung (luminance ≈ 0.17–0.19, kiểu `#767676`–`#777777`), **không có màu chữ nào** — kể cả đen tuyền hay
+trắng tuyền — đạt 4.7:1. Đây là giới hạn toán học, không phải lỗi của kit. Kit **giữ nguyên nền của site** (không tự đổi
+màu thương hiệu), dùng cực đen / trắng tốt nhất và báo mã ổn định `TD_THEME_CONTRAST_UNSATISFIABLE` cho từng cặp trượt.
+Cách sửa nằm ở site: nhích `bg` sáng hơn hoặc tối hơn một chút.
+
+### CLI
+
+```bash
+npx td-theme --bg '#ece5d8' --accent '#b3261e' --surface '#fff' > td-theme.css
+npx td-theme --bg '#16233a' --accent '#3b82f6' --mode dark > td-theme-dark.css   # khe dark + nhánh tối của auto
+npx td-theme --bg '#f4faf9' --accent '#0f766e' --name paper > td-theme-paper.css  # data-td-theme="paper"
+npx td-theme --preset dark --name night > night.css                                 # giá trị dark CỦA KIT dưới tên "night"
+```
+
+| Tham số | Ý nghĩa |
+|---|---|
+| `--bg`, `--accent`, `--surface`, `--raised-surface`, `--control-surface`, `--success`, `--warning`, `--danger`, `--info` | seed |
+| `--mode light` (mặc định) | khe trang: `:root, [data-td-theme]` |
+| `--mode dark` | khe `data-td-theme="dark"` + nhánh tối của `auto` |
+| `--name <tên>` | theme có tên `data-td-theme="<tên>"` (chữ thường, số, `-`, ≤ 32 ký tự, không `light` / `dark` / `auto`) |
+| `--preset light\|dark` | giá trị có sẵn của kit (không sinh) — light / dark dựng sẵn chỉ lấy qua preset, generator không tái tạo chúng |
+| `--diagnostics=json` | chẩn đoán dạng một JSON trên stderr (token chuẩn hoá + mã) |
+| `--allow-aa-failure` | thoát 0 dù có cặp bắt buộc trượt; file mở đầu bằng comment cảnh báo |
+| `--version`, `--help` | |
+
+**Đầu ra:** CSS ra **stdout** (chỉ CSS), chẩn đoán ra **stderr**. CLI không đọc / ghi file — bạn tự chuyển hướng `>`.
+
+| Mã thoát | Nghĩa | stdout |
+|---|---|---|
+| `0` | ổn (hoặc trượt AA nhưng có `--allow-aa-failure`) | CSS |
+| `1` | có cặp bắt buộc trượt WCAG AA (dải chết) | CSS, dòng đầu `/* td-theme: WARNING — … NOT accepted … */` |
+| `2` | input / tham số sai | rỗng |
+| `3` | lỗi nội bộ (báo lại cho kit) | rỗng |
+
+**Đọc chẩn đoán** (mỗi dòng: mức · mã · token · nền tệ nhất · tỉ lệ < cần):
+
+| Mã | Mức | Nghĩa |
+|---|---|---|
+| `TD_THEME_CONTRAST_UNSATISFIABLE` | error-AA | không màu nào đạt ngưỡng trên mọi nền của token (dải chết); token giữ cực tốt nhất |
+| `TD_THEME_CONTRAST_MISS` | error-AA | trượt dù có màu đạt — lỗi của generator, hãy báo lại |
+| `TD_THEME_PREFERRED_MISS` | info | chữ chính dưới mục tiêu 7:1 (vẫn ≥ 4.7) |
+| `TD_THEME_ACCENT_ADJUSTED` | warn | mực / nền accent khác seed (đã chỉnh độ sáng để đọc được), kèm `từ → thành` |
+| `TD_THEME_GAMUT_REDUCED` | info | màu chỉnh đã mất chroma để nằm trong sRGB |
+| `TD_THEME_APCA` | info | Lc APCA của chữ chính / phụ — chỉ tham khảo, cổng là WCAG 2.x |
+
+Chỉ `error-AA` làm CLI thoát 1. Trong CI: để mặc định (fail khi trượt); chỉ dùng `--allow-aa-failure` khi đã chấp nhận rủi ro.
+
+### Trang builder (không cần Node)
+
+Package có sẵn `src/theme/builder/theme-builder.html`: nhập seed (ô text + bảng màu), xem trước control / bảng / menu /
+trạng thái / thứ bậc chữ ngay trên palette, bảng tỉ lệ từng cặp bắt buộc + mã chẩn đoán, nút **Copy** / **Tải về**.
+Cùng module + serializer với CLI: **cùng seed → cùng từng byte**. Khi có cặp trượt AA, nút xuất bị khoá cho tới khi tick
+**"Xuất dù trượt AA"** (file có cùng comment cảnh báo như CLI).
+
+Mở nó qua **bất kỳ web server tĩnh** đang phục vụ thư mục package — `file://` **không chạy** (trình duyệt chặn module
+script):
+
+```bash
+cd node_modules/@dazzxq/td-components && php -S 127.0.0.1:8080
+# hoặc: python3 -m http.server 8080
+# mở http://127.0.0.1:8080/src/theme/builder/theme-builder.html
+```
+
+Site PHP vốn đã phục vụ `td.css` + module của kit thì mở thẳng đường dẫn tương ứng. Trang tuân CSP strict (không
+inline script / style; xem trước bằng constructable stylesheet).
+
+### Dùng file sinh ra
+
+**Thứ tự nạp: `td.css` → file sinh → CSS của site.** File sinh bọc `@layer td.tokens` với **đúng selector + specificity**
+của khe kit tương ứng, nạp sau nên thắng kit; CSS không layer của site vẫn thắng cả hai.
+
+Với site PHP, đặt file vào thư mục asset public với **tên có hash nội dung** để cache không giữ bản cũ:
+
+```bash
+npx td-theme --bg '#ece5d8' --accent '#b3261e' --surface '#fff' > td-theme.css
+h=$(shasum -a 256 td-theme.css | cut -c1-8)   # Linux: sha256sum
+mv td-theme.css "public/assets/td-theme.$h.css" && echo "td-theme.$h.css"
+```
+
+```php
+<link rel="stylesheet" href="/assets/td.css">
+<link rel="stylesheet" href="/assets/td-theme.7d92c1ab.css">   <!-- tên in ra ở trên -->
+<link rel="stylesheet" href="/assets/site.css">
+```
+
+Header của file ghi phiên bản thuật toán + hợp đồng (`palette algorithm 1, THEME_TOKENS v1`) và seed đã chuẩn hoá về
+hex. **Sinh lại khi nâng `td-components`** (so header với `npx td-theme --version`); không sửa tay file sinh.
+
+Dùng palette cho dark: sinh thêm một file `--mode dark` (hoặc `--preset dark` nếu muốn giữ dark của kit) và nạp sau file
+light — khe dark có specificity cao hơn, thứ tự giữa hai file không quan trọng.
+
+Từ JS (build của site, hoặc trang admin): `import { generatePalette, toCss } from '@dazzxq/td-components/theme'` — module
+thuần, không DOM.
 
 ## Tắt kính: `data-td-glass="off"`
 
@@ -869,23 +1012,63 @@ làm chữ/viền trên nền trang ≥ 3:1.
 
 ## Theme theo vùng
 
-Token là custom property nên kế thừa theo cây DOM: bạn có thể đổi theo vùng.
+Từ 0.42.0 ([ADR 0020](../internal/decisions/0020-theme-scope-portal.md)) attribute `data-td-theme` chạy trên **bất kỳ
+phần tử nào**, không chỉ `<html>`:
 
-```css
-.admin-sidebar {
-  --td-glass-bg: rgb(0 0 0 / 40%);          /* đọc trực tiếp bởi .td-glass-surface → đổi ngay */
-  --td-btn-primary-bg: #0f766e;            /* token CON: đổi được theo vùng */
-  --td-checkbox-color: #0f766e;
-}
+```html
+<html lang="vi">                                  <!-- trang sáng -->
+  …
+  <section class="promo" data-td-theme="dark">     <!-- vùng tối: bảng, ô nhập, badge, nút… theo dark -->
+    <td-dropdown label="Gói"></td-dropdown>       <!-- menu của nó (ra <body>) cũng tối -->
+    <div data-td-theme="light">…</div>             <!-- lồng: sáng lại trong vùng tối -->
+  </section>
+  <aside data-td-theme="paper">…</aside>          <!-- theme có tên do td-theme --name paper sinh -->
 ```
 
-Hai giới hạn (0.41.0 vẫn còn; 0.42.0 dự kiến gỡ: `[data-td-theme]` trên một vùng + popup mang theme của vùng):
+- Mọi token **màu / bóng** được giải lại trên phần tử có attribute, nên token gốc là đủ (không cần ghi đè từng token
+  con như trước). `color-scheme` (thanh cuộn, ô native) cũng theo vùng.
+- Token **hình học** (độ rộng, chữ, khoảng cách, bo góc, z-index, chuyển động) ở lại `:root`: `:root { --td-radius-lg:
+  10px }` của site vẫn tới được trong vùng.
+- Ghi đè màu **theo vùng**: đặt trên chính phần tử có attribute (CSS của site):
 
-1. Chỉ token được component **đọc trực tiếp** mới đổi theo vùng. Token được tính trên `:root` từ token khác (như
-   `--td-checkbox-color: var(--td-accent)`) thì phải ghi đè token con, không phải token gốc (bẫy số 2 ở trên).
-2. Phần tử **được đưa ra `<body>`** (portal) không nằm trong vùng của bạn nên không nhận token vùng: menu của
-   td-dropdown, popup gợi ý của td-chip-input, TdMenu, tooltip, hovercard, toast, modal, loading, lightbox. Muốn đổi
-   riêng chúng, nhắm đúng phần tử đó (xem [styling.md › Nhắm một instance](styling.md#nhắm-một-instance-duy-nhất)).
+  ```css
+  .promo[data-td-theme] { --td-accent: #f59e0b; }   /* checkbox, ghost, focus, slider… trong vùng đổi theo */
+  [data-td-theme="dark"] { --td-color-surface: #18181b; } /* mọi vùng dark */
+  ```
+
+### Popup mở từ trong vùng
+
+Dropdown, chip-input, tree-select, menu, hovercard, tooltip, modal, drawer, toast, loading, media picker được đưa ra
+`<body>` (để không bị cắt). Khi mở từ trong một vùng (phần tử có `data-td-theme` **không phải** `<html>`), kit chép
+attribute + **ảnh chụp các token ngữ nghĩa của vùng** lên gốc popup (CSSOM, hợp CSP), và gỡ đúng những gì đã chép khi
+đóng. Hợp đồng:
+
+- override đặt **trên phần tử có `data-td-theme`** → đi theo popup;
+- override **cục bộ không đánh dấu** (`.card { --td-accent: red }` bên trong vùng) → **không** đi theo popup. Muốn popup
+  theo: chuyển override lên vùng, hoặc đánh dấu `.card` bằng `data-td-theme`;
+- popup lồng (menu mở trong modal của vùng) tự đúng;
+- ảnh chụp lấy **lúc mở**: đổi theme khi popup đang mở thì đóng / mở lại;
+- lightbox không theo vùng (luôn tối, nền là ảnh).
+
+Overlay gọi bằng code không có "trigger" trong vùng → truyền `themeRoot` (một phần tử bất kỳ trong vùng); không truyền thì
+theo theme của trang:
+
+```js
+TdModal.show({ title: 'Xoá?', body, themeRoot: section });
+TdModal.confirm({ message: 'Chắc chắn?', themeRoot: section });
+TdToast.success('Đã lưu', { themeRoot: section });
+TdLoading.show({ message: 'Đang tải…', themeRoot: section });
+TdMenu.open(button, items, { themeRoot: section });
+TdDrawer.open({ title: 'Chi tiết', body, themeRoot: section });
+TdMediaPicker.open({ adapter, themeRoot: section });
+TdCropper.openDialog({ src, themeRoot: section });
+```
+
+Component của kit tự truyền host của nó (datetime-picker / -range, scan-input, media-field), nên không cần làm gì.
+
+**Đổi hành vi so với 0.41 (chỉ khi site dùng vùng):** override **màu** không layer trên `:root` (`:root { --td-accent:
+red }`) không còn chảy vào bên trong `[data-td-theme]` — vùng khai báo lại giá trị của theme đó. Ghi đè thêm trên
+`[data-td-theme="…"]` nếu muốn. Trang không dùng vùng: không đổi gì. Chi tiết: [breaking-changes § 0.42.0](../upgrading/breaking-changes.md#0420).
 
 ## Token riêng của từng component
 

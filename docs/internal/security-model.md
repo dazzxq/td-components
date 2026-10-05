@@ -286,6 +286,21 @@ của người dùng** (sửa được, chia sẻ được qua link) → không 
   `src/display/td-v039-filter-chips.engines.browser-test.js` (XSS label / value, `javascript:` href),
   `src/utils/filter-chips-model.test.js`, `test/php/td-ssr-filter-chips.test.js`.
 
+## 6d. Palette `td-theme` (CLI, builder) và cầu portal theme (v0.42.0)
+
+Bề mặt input mới: chuỗi màu và tên theme do **người dùng của CLI / builder** nhập (dev hoặc admin của site), thành CSS.
+
+| Bề mặt | Luật | Ở đâu |
+|---|---|---|
+| Seed màu | Chỉ `#rgb` / `#rrggbb` / `rgb()` (`rgba()` không alpha < 1) — regex neo đầu-cuối, số có giới hạn chữ số, ≤ 64 ký tự, số không hữu hạn (`1e999`) bị từ chối; không `eval`, không `new Function`, không parse bằng DOM. Sai → `ThemeInputError` (CLI thoát 2, không in CSS) | `src/theme/palette.js` `parseSeed`, `src/theme/color.js` `parseColor` |
+| Tên theme (`--name`) | Whitelist `^[a-z][a-z0-9-]{0,31}$`, không `light` / `dark` / `auto` → không thể thoát khỏi chuỗi selector `[data-td-theme="…"]` | `checkThemeName`, `selectors.js` `variantSelector` (ném lỗi nếu lọt) |
+| CSS sinh ra | **Không bao giờ chép chuỗi input thô**, kể cả trong comment: seed được đọc thành số rồi in lại dạng hex; token là output của `toCss()` (hex / `rgb(R G B / P%)`) hoặc chuỗi cố định (bóng, vòng focus). Dòng cảnh báo AA chỉ chứa mã + tên token. Test: seed chứa `*/`, `<`, `;`, `}` bị từ chối trước khi tới serializer; mỗi dòng có tối đa một `*/` | `src/theme/serialize.js`, `serialize.test.js` |
+| CLI | `node:util.parseArgs` strict (không tham số lạ / vị trí / lặp), mọi giá trị ≤ 64 ký tự; **không đọc / ghi file** (stdout / stderr); thông báo lỗi chỉ nêu tên cờ, không lặp lại input (chặn escape sequence của terminal); tính xong mọi thứ rồi mới ghi (lỗi nội bộ → thoát 3, stdout rỗng) | `bin/td-theme.mjs`, `bin/td-theme.test.mjs` (input độc hại) |
+| Builder | Không inline script / style; xem trước bằng **constructable stylesheet** (`adoptedStyleSheets`, được phép dưới CSP strict — §3); CSS / JSON / chẩn đoán / bảng cặp viết bằng `textContent`; tải về qua Blob URL; chỉ import tương đối trong package. Không mở bằng `file://` | `src/theme/builder/*`, `test/theme/theme.spec.mjs` (CSP `'self'` + `style-src-attr 'none'`: 0 violation, input độc hại bị chặn tại chỗ) |
+| Cầu portal (`bridgeTheme`) | Chỉ chép **allowlist** `THEME_TOKENS` (có version) + `color-scheme` + attribute `data-td-theme`, giá trị lấy từ `getComputedStyle` của vùng (đã là giá trị CSS hợp lệ), ghi bằng CSSOM `style.setProperty` (một giá trị, không chèn được khai báo); không đụng tên đã có inline; gỡ đúng những gì đã đặt | `src/utils/layers.js`, `td-v042-theme-scope.engines.browser-test.js`, CSP state `td-theme-scope.*` |
+
+Ngoài phạm vi: một file CSS sinh ra do **site** sửa tay rồi phục vụ — là CSS của site (tin cậy như mọi CSS của site).
+
 ## 7. Trách nhiệm của site
 
 Những thứ kit **cố ý không làm** và site phải làm, nếu không thì có lỗ hổng dù kit đúng. Trang người dùng tương ứng:

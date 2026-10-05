@@ -206,6 +206,10 @@ loading 480, toast 500, tooltip 510 — giữ đồng bộ với `tokens.css`).
     reposition (đóng khi `isReferenceHidden`). Dùng cho dropdown, chip-input, TdMenu, hovercard, tooltip.
   - Escape: boundary cao nhất có `wantsEscape(e) !== false`. Tooltip chỉ nhận Escape khi là đăng ký boundary mới nhất
     (`isNewest()`) hoặc focus đang ở trigger của nó — tooltip hover không cướp Escape của dropdown / menu.
+- **Cầu theme (v0.42.0, [ADR 0020](decisions/0020-theme-scope-portal.md))**: `bridgeTheme(portalRoot, anchor, { themeRoot })`
+  chép attribute `data-td-theme` + snapshot allowlist `THEME_TOKENS` của vùng (khác `<html>`) lên gốc popup bằng CSSOM
+  lúc mở, `unbridge()` lúc đóng. Gắn ở `openDialogLayer({ themeFrom })` và tại chỗ mở của dropdown / chip-input /
+  tree-select / menu / hovercard / tooltip / toast / loading; lightbox không bridge.
 - **Dải modal / lightbox (v0.21.1)** `[LAYERS.lightbox, LAYERS.popover)`: blocking mở trên một blocking **cao hơn** trong
   dải (lightbox mở từ modal) được nâng: layer logic = `min(popover − 1, layer trên + 1)` (registry + inert lease), z-index
   thị giác = z-index **computed** của phần tử bên dưới + 1 (CSSOM, theo token site đã đổi). `restackBand()` tính lại
@@ -235,6 +239,9 @@ Chốt ở [ADR 0008](decisions/0008-drop-tailwind-token-css.md) (2026-09-27). �
 component legacy; peer Tailwind bỏ ở 0.11.0).
 
 - **Token** `--td-*` + **layer** khai báo một lần, đứng đầu: `@layer td.tokens, td.component, td.utilities;`.
+  v0.42.0 (ADR 0020): token màu / bóng trên `:root, [data-td-theme]` (vùng theme giải lại), token hình học trên `:root`;
+  biến thể (`dark`, theme có tên) `[data-td-theme][data-td-theme="x"]` — selector từ `src/theme/selectors.js`, build
+  lint (`scripts/css-theme.mjs`). Palette sinh sẵn: `src/theme/` (`color.js`, `palette.js`, `serialize.js`, CLI `bin/td-theme.mjs`).
   Site override token bằng CSS **không layer** (thắng mọi layer), không sửa lõi.
 - **Một file `td.css` duy nhất**, build bằng script node concat tất định từ `src/styles/*.css` theo manifest:
   prelude layer → tokens → foundations → components → utilities. File build được commit; CI build lại và diff.
