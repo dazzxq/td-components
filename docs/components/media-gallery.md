@@ -204,7 +204,7 @@ Attribute `items` sai JSON / quá 256 KiB / quá 100 ảnh / item thiếu `id`, 
 ký tự, hoặc `name` kết thúc `[]` → gallery hiện "Không đọc được danh sách ảnh", khoá thao tác, **không gửi mục nào** +
 một cảnh báo console (không in giá trị). Coi dữ liệu hỏng là rỗng rồi gửi `name=` sẽ âm thầm xoá gallery thật — nên kit
 không làm vậy. Trường lẻ thì **cắt / bỏ**, không từ chối: alt > 500 ký tự bị cắt, crop / focal sai → `null`, `src` không an
-toàn → bỏ ảnh xem trước (giữ item), `kind` lạ → `image`.
+toàn → bỏ ảnh xem trước (giữ item), tên hiển thị cắt 512 ký tự, `kind` lạ → `image`. PHP: chuỗi UTF-8 hỏng → bỏ trường đó (không bao giờ lỗi 500).
 
 ### 10. Đặt giá trị từ code
 
@@ -392,7 +392,7 @@ lưới + nút Thêm.
   `td__media_url`, `referrerpolicy="no-referrer"`).
 - Mọi chuỗi đi qua `textContent` / attribute đã escape; PHP qua `Td::e`. Không `style=""` (vùng cắt / vị trí khi kéo là
   CSSOM).
-- Trần cứng: 100 ảnh, `items` ≤ 256 KiB, id ≤ 512, alt 500, crop 512, focal 128, 4 `adapter.get` song song.
+- Trần cứng: 100 ảnh, `items` ≤ 256 KiB, id ≤ 512, alt 500, tên hiển thị 512, crop 512, focal 128, URL 8192 byte, 4 `adapter.get` song song.
 - Console không bao giờ in giá trị hay lỗi gốc của adapter (chỉ mã lỗi).
 - **Server phải:** kiểm `count ≤ max` **của server**, `distinct`, mọi id tồn tại / đúng loại / người dùng có quyền
   (**một** `whereIn`, so số lượng), cắt alt, kiểm crop / focal (cùng code với field), ghi theo vị trí trong transaction.

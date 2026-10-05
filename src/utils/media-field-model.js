@@ -311,6 +311,8 @@ export const GALLERY_MAX_ITEMS = 100;
 export const GALLERY_ITEMS_MAX_LEN = 262144;
 
 const capAlt = (s) => [...s].slice(0, ALT_MAX).join('');
+/** Review round 1 ISSUE-3: the display name of an item, capped like the alt (code points), never refused. */
+export const GALLERY_NAME_MAX = 512;
 
 /**
  * The FormData entries of a gallery (decision 14) — the public form shape (ADR 0021).
@@ -343,7 +345,7 @@ export function galleryEntries(name, items, opts = {}) {
  * restore, `value =`, `setSelection()`, picker). In order:
  *   1. an array of at most `ceiling` (100) entries → else `type` / `ceiling`; every entry an object → else `item`;
  *   2. every `id` a non-empty string of ≤ 512 code units → else `id`; unique (case-sensitive) → else `duplicate`;
- *   3. fields capped, never refused: alt cut to 500 code points, crop (≤ 512, parseCrop) / focal (≤ 128, parseFocal)
+ *   3. fields capped, never refused: alt cut to 500 code points, the display name to 512, crop (≤ 512, parseCrop) / focal (≤ 128, parseFocal)
  *      invalid → null, `src` through the URL gate (refused → '' — the item is kept), `kind` outside KINDS → image;
  *   4. more items than `max` → reason `max` WITH the normalised items (the caller keeps them — attribute / restore —
  *      or refuses — API).
@@ -375,7 +377,7 @@ export function validateItems(list, o = {}) {
     return {
       id: x.id,
       src: typeof x.src === 'string' && x.src && okUrl(x.src) ? x.src : '',
-      previewAlt: typeof x.name === 'string' ? x.name : '',
+      previewAlt: typeof x.name === 'string' ? [...x.name].slice(0, GALLERY_NAME_MAX).join('') : '',
       kind: /** @type {'image'|'video'|'file'} */ (KINDS.includes(x.kind) ? x.kind : 'image'),
       alt: typeof x.alt === 'string' ? capAlt(x.alt) : '',
       cropRaw: crop ? crop.raw : null,
@@ -471,6 +473,8 @@ export const GALLERY_CASES = Object.freeze([
   { id: 'at-ceiling', items: gIds(100).map((id) => ({ id })), expect: { reason: null, ids: gIds(100) } },
   { id: 'over-max', items: gIds(5).map((id) => ({ id })), max: 3, expect: { reason: 'max', ids: gIds(5) } },
   { id: 'at-max', items: gIds(3).map((id) => ({ id })), max: 3, expect: { reason: null, ids: gIds(3) } },
+  // review round 1 ISSUE-3: the display name is capped like the alt (512 code points), never refused
+  { id: 'name-cap', items: [{ id: 'm1', name: 'ả'.repeat(600) }], expect: { reason: null, ids: ['m1'], items: [{ previewAlt: 'ả'.repeat(512) }] } },
   { id: 'caps', items: [{ id: 'm1', alt: 'é'.repeat(600), crop: '{"v":1,"x":0.9,"y":0,"width":0.5,"height":1}', focal: '{"v":1,"x":2,"y":0}', src: 'javascript:alert(1)', kind: 'pdf' },
     { id: 'm2', src: 'data:image/png;base64,AAAA', crop: `${G_CROP}${' '.repeat(600)}`, alt: 7, name: 9 }],
     expect: { reason: null, ids: ['m1', 'm2'],

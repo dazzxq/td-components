@@ -20,6 +20,12 @@ phá vỡ.
 - Hướng dẫn vendor PHP: thư mục `bin/` (CLI `td-theme`), chạy bằng `node <vendor>/bin/td-theme.mjs`, sinh lại file theme
   khi `ALGORITHM_VERSION` đổi.
 
+### Fixed
+
+- PHP `td_media_field()` / `td_media_gallery()`: `preview_src` / `src` có UTF-8 hỏng hoặc dài hơn 8192 byte bị bỏ (không
+  có ảnh) thay vì in ra; `td_media_gallery()` không bao giờ ném `JsonException` (UTF-8 hỏng → bỏ trường, mã hoá lỗi →
+  fail closed) và giới hạn mọi chuỗi trước khi mã hoá (tên hiển thị tối đa 512 ký tự, như JS).
+
 ## 0.42.1
 
 **Vá tương phản dark** (theme dark có sẵn; light không đổi). Chi tiết: `docs/upgrading/breaking-changes.md#0421`.

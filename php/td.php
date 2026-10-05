@@ -2374,7 +2374,8 @@ namespace {
      */
     function td__media_url(mixed $v): ?string
     {
-        if (!is_string($v)) {
+        // v0.43.0 review round 1 SEC-1: bounded before any scan, and valid UTF-8 only (else a JSON encode of it throws)
+        if (!is_string($v) || strlen($v) > 8192 || preg_match('//u', $v) !== 1) {
             return null;
         }
         $u = Td::safeUrl($v);
@@ -2634,8 +2635,16 @@ namespace {
                 }
                 $rows[] = $row;
             }
-            $json = json_encode($rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
-            if (td__utf16_length($json) > 262144) {
+            // every string is bounded + valid UTF-8 by now (id ≤ 2048 B, src ≤ 8192 B, name 512 / alt 500 code points, crop 512,
+            // focal 128 → ≤ ~1.5 MB for 100 items); an encoding failure still fails closed, never a 500
+            try {
+                $json = json_encode($rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+            } catch (\JsonException) {
+                $json = '';
+                $broken = true;
+                $reason = 'json';
+            }
+            if (!$broken && td__utf16_length($json) > 262144) {
                 $broken = true;
                 $reason = 'size';
             }
@@ -2782,7 +2791,8 @@ namespace {
             if (is_int($id)) {
                 $id = (string) $id; // decision 19 (plan review r2 #4): 0 → "0", -1 → "-1"
             }
-            if (!is_string($id) || $id === '' || td__utf16_length($id) > 512) {
+            // review round 1 SEC-1: bytes bounded BEFORE any scan (512 UTF-16 units ≤ 2048 UTF-8 bytes), valid UTF-8 only
+            if (!is_string($id) || $id === '' || strlen($id) > 2048 || preg_match('//u', $id) !== 1 || td__utf16_length($id) > 512) {
                 return $fail('id');
             }
             if (isset($seen[$id])) {
@@ -2796,7 +2806,8 @@ namespace {
             $out[] = [
                 'id' => $ids[$i],
                 'src' => td__media_url($x['src'] ?? null) ?? '',
-                'name' => isset($x['name']) && is_string($x['name']) ? $x['name'] : '',
+                // review round 1 ISSUE-3 / SEC-1: valid UTF-8, capped like the JS normaliser (512 code points; invalid → '')
+                'name' => isset($x['name']) && is_string($x['name']) ? td__utf8_prefix($x['name'], 512) : '',
                 'kind' => in_array($x['kind'] ?? null, ['image', 'video', 'file'], true) ? $x['kind'] : 'image',
                 'alt' => isset($x['alt']) && is_string($x['alt']) ? td__utf8_prefix($x['alt'], 500) : '',
                 'crop' => td__media_crop($x['crop'] ?? null, false),

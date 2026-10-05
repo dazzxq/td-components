@@ -1360,8 +1360,9 @@ Không in endpoint, quyền hay asset serialize.
   chỉ nêu lý do và số lượng — không bao giờ in giá trị.
 - Nhiều item hơn `max` (≤ 100) → in đủ ô nhưng **không control nào có `name`** + một `E_USER_WARNING` với hai con số. Server
   thấy "không có key" → giữ nguyên.
-- Trường lẻ hỏng thì cắt / bỏ im lặng: alt > 500 (cắt theo code point), crop / focal sai → `null`, `src` không an toàn →
-  không có ảnh (item giữ), `kind` lạ → `image`.
+- Trường lẻ hỏng thì cắt / bỏ im lặng: alt > 500 / `name` > 512 (cắt theo code point), crop / focal sai → `null`, `src`
+  không an toàn / UTF-8 hỏng / > 8192 byte → không có ảnh (item giữ), `name` / `alt` UTF-8 hỏng → rỗng, `kind` lạ → `image`.
+  Mọi chuỗi bị giới hạn **trước** khi mã hoá JSON; không bao giờ ném `JsonException`.
 
 Ví dụ rút gọn (icon SVG lược bớt; nguyên văn ở `test/ssr/fixtures/media-gallery.html`, case `usage`):
 

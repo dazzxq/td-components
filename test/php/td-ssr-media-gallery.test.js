@@ -22,6 +22,7 @@ import { GALLERY_CASES, GALLERY_MAX_ITEMS } from '../../src/utils/media-field-mo
 
 if (!HAS_PHP && process.env.TD_REQUIRE_PHP) throw new Error('TD_REQUIRE_PHP=1 but no php >= 8.0 CLI on PATH');
 const opts = { skip: !HAS_PHP && 'php >= 8.0 CLI not found' };
+const PERF_SLACK = process.env.TD_PERF_STRICT ? 1 : 20;
 
 /** htmlspecialchars(ENT_QUOTES | ENT_SUBSTITUTE) as Td::e() prints it. */
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -254,6 +255,47 @@ describe('php/td.php — td_media_gallery (v0.43.0, contract media-gallery@1)', 
     const { html } = one('h', [{ id: 'm1', asset: { urls: { original: 'https://secret.example/o.jpg' } }, permissions: ['delete'] }],
       { endpoint: 'https://api.example/media' });
     assert.ok(!/api\.example|secret\.example|delete|permissions/.test(html), html);
+  });
+
+  test('ISSUE-3 / SEC-1: invalid UTF-8 and multi-MB strings never throw; strings bounded before encoding; time / output bounded', () => {
+    const out = php(` $r = []; $cases = [
+        ['name' => "\\xFF"], ['src' => "/\\xFF"], ['alt' => "\\xFF"],
+        ['name' => str_repeat('a', 5000000)], ['src' => '/' . str_repeat('a', 5000000)], ['alt' => str_repeat('é', 2000000)],
+        ['name' => str_repeat("\\xFF", 3000000)], ['crop' => str_repeat('{', 3000000)], ['focal' => str_repeat('x', 3000000)],
+      ];
+      foreach ($cases as $extra) {
+        $t = microtime(true); $W = [];
+        $h = td_media_gallery('g', [['id' => 'm1'] + $extra], ['usage' => true, 'focal_point' => true]);
+        $r[] = ['len' => strlen($h), 'ms' => (microtime(true) - $t) * 1000, 'warns' => count($W), 'img' => str_contains($h, '<img'),
+          'broken' => str_contains($h, 'td-media-gallery__broken'), 'named' => str_contains($h, 'name="g[0][id]"'),
+          'items' => preg_match('/ items="([^"]*)"/', $h, $m) ? html_entity_decode($m[1], ENT_QUOTES, 'UTF-8') : null];
+      }
+      foreach (["\\xFF", str_repeat('i', 5000000)] as $id) {
+        $W = []; $h = td_media_gallery('g', [['id' => $id]], []);
+        $r[] = ['len' => strlen($h), 'warns' => count($W), 'broken' => str_contains($h, 'td-media-gallery__broken'), 'named' => str_contains($h, '<input')];
+      }
+      echo json_encode($r);`);
+    out.slice(0, 9).forEach((r, i) => {
+      assert.equal(r.broken, false, `case ${i}: the item is kept`);
+      assert.equal(r.named, true, `case ${i}`);
+      assert.ok(r.len < 20000, `case ${i}: output ${r.len} bytes`);
+      assert.ok(r.ms < 1000 * PERF_SLACK, `case ${i}: ${r.ms} ms`);
+      assert.doesNotThrow(() => JSON.parse(r.items), `case ${i}: items JSON`);
+    });
+    assert.equal(out[1].img, false, 'invalid UTF-8 src → no image');
+    assert.equal(out[4].img, false, 'multi-MB src → no image');
+    const it = (i) => JSON.parse(out[i].items)[0];
+    assert.equal(it(0).name, undefined, 'invalid UTF-8 name dropped');
+    assert.equal(it(2).alt, undefined, 'invalid UTF-8 alt dropped');
+    assert.equal([...it(3).name].length, 512, 'name capped like the JS normaliser (512 code points)');
+    assert.equal([...it(5).alt].length, 500);
+    assert.equal(it(6).name, undefined);
+    for (const r of out.slice(9)) {
+      assert.equal(r.broken, true);
+      assert.equal(r.named, false);
+      assert.equal(r.warns, 1);
+      assert.ok(r.len < 20000);
+    }
   });
 
   test('test/ssr/fixtures/media-gallery.html (browser fixture) is up to date', () => {
