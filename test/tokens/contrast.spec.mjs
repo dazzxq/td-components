@@ -28,6 +28,8 @@
  * v0.33.0: td-media-picker (dcms2 parity) — card border tokens hover / viewing / checked ≥ 3:1 vs the card surface and the
  *   list background, `.td-media-picker__label` + card texts + page info / td-pagination "Hiển thị…" + upload dropzone texts and
  *   badges ≥ 4.7 (pairs, page only).
+ * v0.41.0: the page-only screenshot cases (ghost buttons, alerts, badges) also over the theme's real --td-color-bg and
+ *   --td-color-surface (theming plan M5; thresholds unchanged).
  * v0.36.2: pressed states (ADR 0019) — td-button variants + ghost, td-action-button tones, a popup option row carrying
  *   data-td-pressed: label / icon ≥ 4.7 on the pressed fill (pairs, page only).
  * No dependencies: PNGs are decoded with node:zlib.
@@ -120,10 +122,12 @@ async function runEngine(name, launcher) {
   await page.waitForFunction(() => typeof window.__contrastSetup === 'function');
   const count = await page.evaluate(() => window.__contrastCount);
   const pageOnly = await page.evaluate(() => window.__contrastPageOnly || []);
+  const realPage = await page.evaluate(() => window.__contrastRealPage || []);
   for (const theme of THEMES) {
-    for (const backdrop of BACKDROPS) {
+    for (const backdrop of [...BACKDROPS, 'theme-bg', 'theme-surface']) {
       for (let i = 0; i < count; i++) {
-        if (pageOnly[i] && backdrop !== (theme === 'dark' ? 'black' : 'white')) continue;
+        if (backdrop.startsWith('theme-')) { if (!realPage[i]) continue; } // v0.41.0: the theme's real page / surface
+        else if (pageOnly[i] && backdrop !== (theme === 'dark' ? 'black' : 'white')) continue;
         const info = await page.evaluate(([n, t, b]) => window.__contrastSetup(n, t, b, true), [i, theme, backdrop]);
         const tag = `${name} ${theme} ${backdrop} ${info.name}`;
         if (info.pairs) { // v0.21.0 P8: non-text contrast from computed colours (focus border ≥ 3:1)

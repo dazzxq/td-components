@@ -181,6 +181,8 @@ async function setBackdrop(kind) {
   if (kind === 'black') bd.style.setProperty('background', '#000');
   else if (kind === 'white') bd.style.setProperty('background', '#fff');
   else if (kind === 'checker') bd.style.setProperty('background', 'repeating-conic-gradient(#000 0 25%, #fff 0 50%) 0 0 / 8px 8px');
+  else if (kind === 'theme-bg') bd.style.setProperty('background', 'var(--td-color-bg)'); // v0.41.0
+  else if (kind === 'theme-surface') bd.style.setProperty('background', 'var(--td-color-surface)');
   else {
     const img = document.createElement('img');
     img.src = '/test/fixtures/photo.svg';
@@ -1406,3 +1408,6 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
 };
 window.__contrastCount = CASES.length;
 window.__contrastPageOnly = CASES.map((c) => !!c.pageOnly);
+// v0.41.0 (theming M5): the page-only cases measured from a screenshot (ghost buttons, alerts, badges) are also measured
+// over the theme's REAL page and surface colours (--td-color-bg / --td-color-surface), not only flat white / black
+window.__contrastRealPage = CASES.map((c) => !!c.pageOnly && ['button', 'alert', 'badge'].includes(c.kind));
