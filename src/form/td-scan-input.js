@@ -363,9 +363,13 @@ export class TdScanInput extends TdFormElement {
     this.listen(input, 'input', () => this._onInput(input));
     this.listen(input, 'keydown', (e) => this._onKeydown(/** @type {KeyboardEvent} */ (e)));
     this.listen(input, 'compositionstart', () => { this._composing = true; });
-    this.listen(input, 'compositionend', () => {
+    this.listen(input, 'compositionend', (e) => {
       this._composing = false;
-      this._burst.taint(); // QĐ 8: that run is manual
+      // QĐ 8: that run is manual. A commit of several characters at once (Android IME / "send as string"; Firefox
+      // delivers Playwright's insertText this way too) is one batch insert (QĐ 5a): ≥ 50 % of the value → paste.
+      const n = [...(/** @type {CompositionEvent} */ (e).data || '')].length;
+      if (n > 1) this._burst.add(e.timeStamp, 'batch', n);
+      this._burst.taint();
     });
     this.listen(input, 'focus', () => {
       if (!this._multiple && input.value && input.value === this._value) {

@@ -418,6 +418,23 @@ describe('td-scan-input — composition (synthetic contract, all engines — QĐ
   });
 });
 
+describe('td-scan-input — composition commit of several characters = a batch insert (QĐ 5a)', () => {
+  it('compositionend with a 15-character commit + Enter → source paste (Android IME / Firefox insertText shape)', async () => {
+    const el = scanEl();
+    const rec = record(el, 'scan');
+    const input = inputOf(el);
+    input.focus();
+    input.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true, data: '' }));
+    input.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertCompositionText', data: IMEI, isComposing: true }));
+    input.value = IMEI;
+    input.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: IMEI }));
+    input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertCompositionText', data: IMEI }));
+    await sendKeys({ press: 'Enter' });
+    await until(() => rec.length === 1);
+    expect(rec[0].source).to.equal('paste');
+  });
+});
+
 describe('td-scan-input — generation (QĐ 10, review R1-2)', () => {
   for (const how of ['reset()', 'form.reset()', 'remove()']) {
     it(`a validator ignoring its signal resolves after ${how} → nothing changes (events, list, FormData, validity, live regions, beeps)`, async () => {
