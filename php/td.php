@@ -174,6 +174,35 @@ namespace TdComponents {
             'clearAll' => 'Xoá tất cả',
             'remove' => 'Bỏ lọc {label}: {value}',
         ];
+        /** v0.45.0: td_steps / td_timeline (always the element + the full tree, hydrated in place). */
+        public const SSR_STEPS = 'steps@1';
+        public const SSR_TIMELINE = 'timeline@1';
+        /** v0.45.0: texts of td_steps = TdSteps.labels (src/utils/steps-model.js STEPS_LABELS). */
+        public const STEPS_LABELS = [
+            'group' => 'Tiến trình',
+            'done' => ', đã xong',
+            'error' => ', có lỗi',
+            'upcoming' => ', chưa tới',
+            'summary' => 'Bước {n}/{total}: {label}',
+            'summaryComplete' => 'Đã hoàn tất {total}/{total} bước',
+            'summaryNone' => '{total} bước',
+        ];
+        /** v0.45.0: texts of td_timeline = TdTimeline.labels (src/utils/timeline-model.js TIMELINE_LABELS). */
+        public const TIMELINE_LABELS = [
+            'empty' => 'Chưa có hoạt động nào',
+            'today' => 'Hôm nay',
+            'yesterday' => 'Hôm qua',
+            'day' => '{weekday}, {dd}/{mm}/{yyyy}',
+            'weekdays' => ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'],
+            'unknownDay' => 'Không rõ thời gian',
+            'details' => 'Chi tiết',
+            'detailsLoading' => 'Đang tải…',
+            'detailsError' => 'Không tải được chi tiết.',
+            'retry' => 'Thử lại',
+            'more' => 'Xem thêm',
+            'moreError' => 'Không tải được, thử lại',
+            'loaded' => 'Đã tải thêm {n} mục',
+        ];
         /** v0.36.0: tones / sizes of td_action_button (= TdActionButton). */
         public const ACTION_TONES = ['standard', 'warning', 'danger'];
         public const ACTION_SIZES = ['sm', 'md', 'lg'];
@@ -3394,6 +3423,609 @@ namespace {
     function td__utf8_prefix(string $s, int $max): string
     {
         return preg_match('/^.{0,' . $max . '}/su', $s, $m) === 1 ? $m[0] : '';
+    }
+
+    // --- v0.45.0 td_steps / td_timeline (plan v0.45.0-steps-timeline) ------------------------------------------------
+
+    /**
+     * v0.45.0 multi-step progress (contract steps@1, plan v0.45.0-steps-timeline QĐ S1–S6, G3) — ALWAYS the element
+     * `<td-steps data-td-ssr="steps@1">` + the exact tree <td-steps> builds, hydrated IN PLACE by
+     * `@dazzxq/td-components/steps`: `div.td-steps[role=group][aria-label]` (navigation none) | `nav.td-steps[aria-label]`
+     * > `ol.td-steps__list[role=list]` > `li.td-steps__item[data-key][data-state][data-disabled?]` > the step
+     * (`span` | `a[href]` | `span[data-td-js-step]` = a clickable step without href, made a button by the hydrate — no dead
+     * control without JS; `aria-current="step"` on the current step) > marker (number or ✓ / ! icon), label, state text
+     * for screen readers, description; then `p.td-steps__summary[aria-hidden]` (compact line). No steps → host `hidden`.
+     * $steps: list of ['label' => …, 'key'?, 'description'?, 'state'? (done|current|error|upcoming), 'href'?, 'disabled'?]
+     * — same normalisation as src/utils/steps-model.js (label ≤ 120 / description ≤ 300 / key ≤ 100 code points, control
+     * characters removed, key default = position from 1, duplicate key → -2, at most 20 steps; a step without a label is
+     * dropped + one E_USER_WARNING). States: ONE precedence rule (QĐ S2, = deriveStates()); conflicts → one
+     * E_USER_WARNING listing the codes (current-unmatched, extra-current, anchor-state, complete-current).
+     * Options: current (key), complete (bool), orientation (vertical), narrow (vertical), navigation (back | all), label,
+     * id, class, attrs (host: allowlisted + aria-* / data-*; owned names and data-td-* reserved).
+     */
+    function td_steps(array $steps, array $o = []): string
+    {
+        $L = Td::STEPS_LABELS;
+        $list = td__steps_items($steps);
+        $current = td__str($o['current'] ?? null);
+        $complete = !empty($o['complete']);
+        $nav = in_array($o['navigation'] ?? null, ['back', 'all'], true) ? (string) $o['navigation'] : 'none';
+        $label = td__str($o['label'] ?? null);
+        $d = td__steps_states($list, $current, $complete);
+        if ($d['warnings']) {
+            trigger_error('td_steps: ' . implode(', ', $d['warnings']) . ' — see docs/components/steps.md (state precedence)', E_USER_WARNING);
+        }
+        $taken = [];
+        $html = '<td-steps' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_STEPS,
+            'id' => td__str($o['id'] ?? null),
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'current' => $current,
+            'complete' => $complete,
+            'orientation' => ($o['orientation'] ?? null) === 'vertical' ? 'vertical' : null,
+            'narrow' => ($o['narrow'] ?? null) === 'vertical' ? 'vertical' : null,
+            'navigation' => $nav !== 'none' ? $nav : null,
+            'label' => $label,
+            'hidden' => !$list,
+        ], $taken);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $taken = td__reserve(['id', 'class', 'current', 'complete', 'orientation', 'narrow', 'navigation', 'label', 'hidden'], $extra, $taken);
+        $aria = td__js_trim($label ?? '');
+        $aria = $aria !== '' ? $aria : $L['group'];
+        $html .= Td::attrs($extra, $taken) . '>'
+            . ($nav === 'none' ? '<div class="td-steps" role="group" aria-label="' . Td::e($aria) . '">' : '<nav class="td-steps" aria-label="' . Td::e($aria) . '">')
+            . '<ol class="td-steps__list" role="list">';
+        foreach ($list as $i => $s) {
+            $state = $d['states'][$i];
+            $click = td__steps_clickable($state, $i, $d['anchor'], $complete, $nav, $s['disabled']);
+            $cur = $i === $d['anchor'] ? ' aria-current="step"' : '';
+            if ($click && $s['href'] !== null) {
+                $open = '<a class="td-steps__step" href="' . Td::e($s['href']) . '"' . $cur . '>';
+                $close = '</a>';
+            } else {
+                $open = '<span class="td-steps__step"' . ($click ? ' data-td-js-step' : '') . $cur . '>';
+                $close = '</span>';
+            }
+            $marker = $state === 'done' || $state === 'error'
+                ? '<span class="td-steps__icon" data-td-icon="' . ($state === 'done' ? 'check' : 'error') . '">' . Td::icon($state === 'done' ? 'check' : 'error') . '</span>'
+                : (string) ($i + 1);
+            $html .= '<li class="td-steps__item" data-key="' . Td::e($s['key']) . '" data-state="' . $state . '"' . ($s['disabled'] ? ' data-disabled' : '') . '>'
+                . $open . '<span class="td-steps__marker" aria-hidden="true">' . $marker . '</span>'
+                . '<span class="td-steps__label">' . Td::e($s['label']) . '</span>'
+                . '<span class="td-sr-only">' . ($state === 'current' ? '' : Td::e($L[$state])) . '</span>'
+                . ($s['description'] !== '' ? '<span class="td-steps__desc">' . Td::e($s['description']) . '</span>' : '')
+                . $close . '</li>';
+        }
+        $html .= '</ol>';
+        if ($list) {
+            $html .= '<p class="td-steps__summary" aria-hidden="true">'
+                . Td::e(td__steps_summary($d['anchor'], count($list), $complete, $L, $d['anchor'] >= 0 ? $list[$d['anchor']]['label'] : '')) . '</p>';
+        }
+        return $html . ($nav === 'none' ? '</div>' : '</nav>') . '</td-steps>';
+    }
+
+    /**
+     * @internal td_steps steps → [['key','label','description','state'(?string),'href'(?string),'disabled']] (=
+     * normalizeSteps() of src/utils/steps-model.js): ≤ 20 steps, ≤ 80 entries inspected, one E_USER_WARNING per kind.
+     */
+    function td__steps_items(array $steps): array
+    {
+        $out = [];
+        $used = [];
+        $next = [];
+        $dropped = 0;
+        $renamed = 0;
+        $capped = false;
+        $seen = 0;
+        foreach ($steps as $raw) {
+            if (count($out) >= 20 || $seen >= 80) {
+                $capped = true;
+                break;
+            }
+            $seen++;
+            if (!is_array($raw)) {
+                $dropped++;
+                continue;
+            }
+            $label = td__filter_text($raw['label'] ?? null, 120);
+            if ($label === null || td__js_trim($label) === '') {
+                $dropped++;
+                continue;
+            }
+            $desc = ($raw['description'] ?? null) === null ? '' : (td__filter_text($raw['description'], 300) ?? '');
+            $k = ($raw['key'] ?? null) === null ? null : td__filter_text($raw['key'], 100);
+            $base = $k !== null && $k !== '' ? $k : (string) (count($out) + 1);
+            $key = $base;
+            if (isset($used['k' . $key])) {
+                $n = $next['k' . $base] ?? 2;
+                while (isset($used['k' . $base . '-' . $n])) {
+                    $n++;
+                }
+                $key = $base . '-' . $n;
+                $next['k' . $base] = $n + 1;
+                $renamed++;
+            }
+            $used['k' . $key] = true;
+            $state = $raw['state'] ?? null;
+            $out[] = ['key' => $key, 'label' => $label, 'description' => $desc,
+                'state' => in_array($state, ['done', 'current', 'error', 'upcoming'], true) ? $state : null,
+                'href' => isset($raw['href']) ? td__filter_href($raw['href']) : null,
+                'disabled' => ($raw['disabled'] ?? null) === true];
+        }
+        if ($dropped) {
+            trigger_error("td_steps: $dropped step(s) dropped — every step needs a non-empty text label", E_USER_WARNING);
+        }
+        if ($capped) {
+            trigger_error('td_steps: too many steps — at most 20 are printed', E_USER_WARNING);
+        }
+        if ($renamed) {
+            trigger_error('td_steps: duplicate step key — renamed with a -2, -3 … suffix', E_USER_WARNING);
+        }
+        return $out;
+    }
+
+    /**
+     * @internal QĐ S2 — the single precedence rule (= deriveStates() of src/utils/steps-model.js; parity STATE_CASES):
+     * ['anchor' => int (-1 none), 'states' => string[], 'warnings' => string[]].
+     */
+    function td__steps_states(array $list, ?string $current, bool $complete): array
+    {
+        if (!$list) {
+            return ['anchor' => -1, 'states' => [], 'warnings' => []];
+        }
+        $warn = [];
+        $explicit = [];
+        foreach ($list as $i => $s) {
+            if ($s['state'] === 'current') {
+                $explicit[] = $i;
+            }
+        }
+        $anchor = -1;
+        $has = $current !== null && $current !== '';
+        if ($complete) {
+            if ($has || $explicit) {
+                $warn['complete-current'] = true;
+            }
+        } else {
+            if ($has) {
+                foreach ($list as $i => $s) {
+                    if ($s['key'] === $current) {
+                        $anchor = $i;
+                        break;
+                    }
+                }
+                if ($anchor < 0) {
+                    $warn['current-unmatched'] = true;
+                }
+            }
+            if ($anchor < 0 && $explicit) {
+                $anchor = $explicit[0];
+            }
+            foreach ($explicit as $i) {
+                if ($i !== $anchor) {
+                    $warn['extra-current'] = true;
+                }
+            }
+            if ($anchor >= 0 && in_array($list[$anchor]['state'], ['done', 'upcoming'], true)) {
+                $warn['anchor-state'] = true;
+            }
+        }
+        $states = [];
+        foreach ($list as $i => $s) {
+            if ($i === $anchor) {
+                $states[] = $s['state'] === 'error' ? 'error' : 'current';
+            } elseif (in_array($s['state'], ['done', 'error', 'upcoming'], true)) {
+                $states[] = $s['state'];
+            } elseif ($anchor >= 0) {
+                $states[] = $i < $anchor ? 'done' : 'upcoming';
+            } else {
+                $states[] = $complete ? 'done' : 'upcoming';
+            }
+        }
+        $codes = array_values(array_filter(['current-unmatched', 'extra-current', 'anchor-state', 'complete-current'], fn ($c) => isset($warn[$c])));
+        return ['anchor' => $anchor, 'states' => $states, 'warnings' => $codes];
+    }
+
+    /** @internal QĐ S4 (= isClickable() of src/utils/steps-model.js). */
+    function td__steps_clickable(string $state, int $i, int $anchor, bool $complete, string $nav, bool $disabled): bool
+    {
+        if ($disabled || $nav === 'none') {
+            return false;
+        }
+        if ($nav === 'all') {
+            return $i !== $anchor;
+        }
+        if ($state !== 'done' && $state !== 'error') {
+            return false;
+        }
+        return $anchor >= 0 ? $i < $anchor : $complete;
+    }
+
+    /** @internal QĐ S3 / review R2-5 (= summaryText() of src/utils/steps-model.js; parity SUMMARY_CASES). */
+    function td__steps_summary(int $anchor, int $total, bool $complete, array $L, string $label): string
+    {
+        if ($total === 0) {
+            return '';
+        }
+        if ($anchor >= 0) {
+            return strtr($L['summary'], ['{n}' => (string) ($anchor + 1), '{total}' => (string) $total, '{label}' => $label]);
+        }
+        return strtr($complete ? $L['summaryComplete'] : $L['summaryNone'], ['{total}' => (string) $total]);
+    }
+
+    /** @internal JavaScript String.prototype.trim(): Unicode white space + line terminators at both ends. */
+    function td__js_trim(string $s): string
+    {
+        return (string) preg_replace('/^[\s\p{Zs}\x{FEFF}\x{2028}\x{2029}]+|[\s\p{Zs}\x{FEFF}\x{2028}\x{2029}]+$/u', '', $s);
+    }
+
+    /**
+     * v0.45.0 event timeline (contract timeline@1, plan v0.45.0-steps-timeline QĐ T1–T10, G3) — ALWAYS the element
+     * `<td-timeline data-td-ssr="timeline@1" time-zone="…">` + the exact tree <td-timeline> builds, hydrated IN PLACE by
+     * `@dazzxq/td-components/timeline`: `div.td-timeline` > day groups `div.td-timeline__day[data-day]` (heading
+     * `h{n}.td-timeline__day-title` > `time.td-timeline__day-label[datetime]`; group "none": one `data-day="all"` group
+     * without heading) + at most one LAST group `data-day="unknown"` ("Không rõ thời gian", `span` label, items without
+     * `<time>`) > `ol.td-timeline__list` > `li.td-timeline__item[data-id][data-tone]` (marker + icon, title, actor, time,
+     * meta, `<details>` with the text details — opens without JS); then "Xem thêm" (`a[href=more_href]`, only with
+     * has_more) and the live region.
+     * $items: list of ['time' => DateTimeInterface | int / float epoch (< 1e12 = seconds) | ISO 8601 string WITH `Z` /
+     * offset (1–9 fraction digits, truncated to ms), 'title' => …, 'href'?, 'actor'? (string | ['name', 'href'?]), 'meta'?,
+     * 'icon'? (registry name; a site icon unknown here → an empty slot JS fills), 'tone'? (neutral | success | warning |
+     * danger | info), 'details'? (text, line breaks kept), 'expanded'?, 'id'?] — same normalisation as
+     * src/utils/timeline-model.js. A time that is not an instant (zone-less `2026-10-05 14:00`) is never guessed: the item
+     * goes to "Không rõ thời gian" + one E_USER_WARNING. `details: true` (lazy) is JS only — ignored here.
+     * Options: time_zone (IANA name of DateTimeZone::listIdentifiers() or UTC; invalid → one E_USER_WARNING; default and
+     * fallback date_default_timezone_get() — always printed, so server and browser group the same days), now (test),
+     * order (asc), group (none), heading_level (2–6, default 3), has_more, more_href (relative URL), empty_text, id, class,
+     * attrs.
+     */
+    function td_timeline(array $items, array $o = []): string
+    {
+        $L = Td::TIMELINE_LABELS;
+        $tz = td__timeline_tz($o);
+        $now = array_key_exists('now', $o) ? td__timeline_instant($o['now']) : null;
+        $now ??= (int) floor(microtime(true) * 1000);
+        $order = ($o['order'] ?? null) === 'asc' ? 'asc' : 'desc';
+        $group = ($o['group'] ?? null) === 'none' ? 'none' : 'day';
+        $level = Td::intOpt($o['heading_level'] ?? null, 2);
+        $level = $level !== null && (int) $level <= 6 ? (int) $level : 3;
+        $list = td__timeline_sort(td__timeline_items($items), $order);
+        $more = td__filter_href($o['more_href'] ?? null);
+        $hasMore = !empty($o['has_more']);
+        $empty = td__str($o['empty_text'] ?? null);
+        $taken = [];
+        $html = '<td-timeline' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_TIMELINE,
+            'id' => td__str($o['id'] ?? null),
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'time-zone' => $tz,
+            'order' => $order === 'asc' ? 'asc' : null,
+            'group' => $group === 'none' ? 'none' : null,
+            'heading-level' => $level !== 3 ? (string) $level : null,
+            'has-more' => $hasMore,
+            'more-href' => $more,
+            'empty-text' => $empty,
+        ], $taken);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $taken = td__reserve(['id', 'class', 'time-zone', 'order', 'group', 'heading-level', 'has-more', 'more-href', 'empty-text',
+            'loading', 'aria-busy'], $extra, $taken);
+        $html .= Td::attrs($extra, $taken) . '><div class="td-timeline">';
+        if (!$list) {
+            $e = td__js_trim($empty ?? '');
+            $html .= '<p class="td-timeline__empty">' . Td::e($e !== '' ? $e : $L['empty']) . '</p>';
+        }
+        $zone = new DateTimeZone($tz);
+        foreach (td__timeline_groups($list, $group, $zone) as [$key, $its]) {
+            $html .= '<div class="td-timeline__day" data-day="' . $key . '">';
+            if ($key === 'unknown') {
+                $html .= "<h$level class=\"td-timeline__day-title\"><span class=\"td-timeline__day-label\">" . Td::e($L['unknownDay']) . "</span></h$level>";
+            } elseif ($key !== 'all') {
+                $html .= "<h$level class=\"td-timeline__day-title\"><time class=\"td-timeline__day-label\" datetime=\"$key\">"
+                    . Td::e(td__timeline_day_label($key, $zone, $now, $L)) . "</time></h$level>";
+            }
+            $html .= '<ol class="td-timeline__list" role="list">';
+            foreach ($its as $it) {
+                $html .= td__timeline_item($it, $group, $zone, $L);
+            }
+            $html .= '</ol></div>';
+        }
+        $html .= '</div>';
+        if ($hasMore && $more !== null) {
+            $html .= '<div class="td-timeline__footer"><a class="td-btn td-btn--secondary td-timeline__more" href="' . Td::e($more) . '">'
+                . '<span class="td-btn__label">' . Td::e($L['more']) . '</span>'
+                . '<span class="td-btn__spinner td-spinner td-spinner--sm" aria-hidden="true" hidden><svg class="td-spinner__svg" viewBox="0 0 50 50" aria-hidden="true" focusable="false">'
+                . '<circle class="td-spinner__track" cx="25" cy="25" r="20"></circle><circle class="td-spinner__arc" cx="25" cy="25" r="20"></circle></svg></span></a></div>';
+        }
+        return $html . '<p class="td-sr-only" role="status"></p></td-timeline>';
+    }
+
+    /** @internal One timeline `li` (= TdTimeline#_itemEl). */
+    function td__timeline_item(array $it, string $group, DateTimeZone $zone, array $L): string
+    {
+        $marker = '';
+        if ($it['icon'] !== null) {
+            $marker = '<span class="td-timeline__icon" data-td-icon="' . Td::e($it['icon']) . '">' . Td::icon($it['icon'], 's') . '</span>';
+        }
+        $head = $it['href'] !== null
+            ? '<a class="td-timeline__title" href="' . Td::e($it['href']) . '">' . Td::e($it['title']) . '</a>'
+            : '<span class="td-timeline__title">' . Td::e($it['title']) . '</span>';
+        if ($it['actor'] !== null) {
+            $a = $it['actor'];
+            $head .= $a['href'] !== null
+                ? '<a class="td-timeline__actor" href="' . Td::e($a['href']) . '">' . Td::e($a['name']) . '</a>'
+                : '<span class="td-timeline__actor">' . Td::e($a['name']) . '</span>';
+        }
+        if ($it['time'] !== null) {
+            $head .= '<time class="td-timeline__time" datetime="' . td__timeline_iso($it['time']) . '">'
+                . td__timeline_time_text($it['time'], $zone, $group) . '</time>';
+        }
+        $html = '<li class="td-timeline__item" data-id="' . Td::e($it['id']) . '" data-tone="' . $it['tone'] . '">'
+            . '<span class="td-timeline__marker" aria-hidden="true">' . $marker . '</span>'
+            . '<div class="td-timeline__body"><p class="td-timeline__head">' . $head . '</p>';
+        if ($it['meta'] !== null) {
+            $html .= '<p class="td-timeline__meta">' . Td::e($it['meta']) . '</p>';
+        }
+        if ($it['details'] !== null) {
+            $html .= '<details class="td-timeline__details"' . ($it['expanded'] ? ' open' : '') . '><summary class="td-timeline__summary">'
+                . '<span class="td-timeline__summary-inner"><span class="td-timeline__summary-text">' . Td::e($L['details']) . '</span>'
+                . '<span class="td-timeline__chevron" data-td-icon="down" aria-hidden="true">' . Td::icon('down', 's') . '</span></span></summary>'
+                . '<div class="td-timeline__detail">' . Td::e($it['details']) . '</div></details>';
+        }
+        return $html . '</div></li>';
+    }
+
+    /**
+     * @internal QĐ T4 — the effective zone: option `time_zone` when it is an IANA name of
+     * DateTimeZone::listIdentifiers() (or UTC); absent → date_default_timezone_get(); anything else (offset, abbreviation,
+     * '', non-string) → one E_USER_WARNING + date_default_timezone_get().
+     */
+    function td__timeline_tz(array $o): string
+    {
+        $fallback = date_default_timezone_get();
+        if (!array_key_exists('time_zone', $o) || $o['time_zone'] === null) {
+            return $fallback;
+        }
+        $v = $o['time_zone'];
+        if (is_string($v) && ($v === 'UTC' || in_array($v, DateTimeZone::listIdentifiers(), true))) {
+            return $v;
+        }
+        trigger_error('td_timeline: time_zone must be an IANA zone name (Asia/Ho_Chi_Minh) — ' . $fallback . ' is used', E_USER_WARNING);
+        return $fallback;
+    }
+
+    /**
+     * @internal QĐ T3 (= parseInstant() of src/utils/timeline-model.js; parity INSTANT_CASES): epoch ms or null.
+     * DateTimeInterface; int / finite float (< 1e12 = seconds, truncated); ISO 8601 WITH `Z` / ±hh[[:]mm] (1–9 fraction
+     * digits truncated to ms). Range: 1000-01-02 … 9999-12-30 UTC.
+     */
+    function td__timeline_instant(mixed $v): ?int
+    {
+        $min = -30610137600000; // Date.UTC(1000, 0, 2)
+        $max = 253402214399999; // Date.UTC(9999, 11, 30, 23, 59, 59, 999)
+        $ms = null;
+        if ($v instanceof DateTimeInterface) {
+            $ms = $v->getTimestamp() * 1000 + (int) $v->format('v');
+        } elseif (is_int($v) || (is_float($v) && is_finite($v))) {
+            $x = $v < 1e12 ? $v * 1000 : $v;
+            $x = $x < 0 ? ceil($x) : floor($x);
+            if ($x < $min || $x > $max) {
+                return null;
+            }
+            $ms = (int) $x;
+        } elseif (is_string($v) && strlen($v) <= 40
+            && preg_match('/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?(Z|[+-]\d{2}(?::?\d{2})?)$/D', $v, $m)) {
+            [$y, $mo, $d, $h, $mi] = [(int) $m[1], (int) $m[2], (int) $m[3], (int) $m[4], (int) $m[5]];
+            $s = isset($m[6]) && $m[6] !== '' ? (int) $m[6] : 0;
+            $frac = isset($m[7]) && $m[7] !== '' ? (int) substr($m[7] . '00', 0, 3) : 0;
+            $dim = $mo === 2 ? (($y % 4 === 0 && $y % 100 !== 0) || $y % 400 === 0 ? 29 : 28) : (in_array($mo, [4, 6, 9, 11], true) ? 30 : 31);
+            if ($mo < 1 || $mo > 12 || $d < 1 || $d > $dim || $h > 23 || $mi > 59 || $s > 59) {
+                return null;
+            }
+            $off = 0;
+            if ($m[8] !== 'Z') {
+                preg_match('/^([+-])(\d{2}):?(\d{2})?$/', $m[8], $om);
+                $oh = (int) $om[2];
+                $omin = isset($om[3]) && $om[3] !== '' ? (int) $om[3] : 0;
+                if ($oh > 23 || $omin > 59) {
+                    return null;
+                }
+                $off = ($om[1] === '-' ? -1 : 1) * ($oh * 60 + $omin);
+            }
+            $t = new DateTimeImmutable(sprintf('%04d-%02d-%02dT%02d:%02d:%02d', $y, $mo, $d, $h, $mi, $s), new DateTimeZone('UTC'));
+            $ms = $t->getTimestamp() * 1000 + $frac - $off * 60000;
+        }
+        return $ms !== null && $ms >= $min && $ms <= $max ? $ms : null;
+    }
+
+    /** @internal Canonical ISO of an instant (UTC, ms) = new Date(ms).toISOString(). */
+    function td__timeline_iso(int $ms): string
+    {
+        $s = intdiv($ms, 1000);
+        $f = $ms % 1000;
+        if ($f < 0) {
+            $s--;
+            $f += 1000;
+        }
+        return (new DateTimeImmutable('@' . $s))->format('Y-m-d\TH:i:s') . sprintf('.%03dZ', $f);
+    }
+
+    /** @internal Wall clock of an instant in a zone. */
+    function td__timeline_local(int $ms, DateTimeZone $zone): DateTimeImmutable
+    {
+        $s = intdiv($ms, 1000);
+        if ($ms % 1000 < 0) {
+            $s--;
+        }
+        return (new DateTimeImmutable('@' . $s))->setTimezone($zone);
+    }
+
+    /** @internal QĐ T5: `HH:mm` (day groups) / `dd/mm/yyyy HH:mm` (group none) (= timeText()). */
+    function td__timeline_time_text(int $ms, DateTimeZone $zone, string $group): string
+    {
+        return td__timeline_local($ms, $zone)->format($group === 'none' ? 'd/m/Y H:i' : 'H:i');
+    }
+
+    /** @internal QĐ T5: "Hôm nay" / "Hôm qua" / "{Thứ}, dd/mm/yyyy" (= dayLabel(); parity DAY_CASES). */
+    function td__timeline_day_label(string $key, DateTimeZone $zone, int $now, array $L): string
+    {
+        $today = td__timeline_local($now, $zone)->format('Y-m-d');
+        if ($key === $today) {
+            return $L['today'];
+        }
+        $utc = new DateTimeZone('UTC');
+        if ($key === (new DateTimeImmutable($today, $utc))->modify('-1 day')->format('Y-m-d')) {
+            return $L['yesterday'];
+        }
+        [$y, $m, $d] = explode('-', $key);
+        $wd = (int) (new DateTimeImmutable($key, $utc))->format('w');
+        return strtr($L['day'], ['{weekday}' => $L['weekdays'][$wd], '{dd}' => $d, '{mm}' => $m, '{yyyy}' => $y]);
+    }
+
+    /** @internal Stable sort (= sortItems()): timed by time (asc / desc, ties in given order), then unknown-time items. */
+    function td__timeline_sort(array $list, string $order): array
+    {
+        $timed = [];
+        $untimed = [];
+        foreach ($list as $i => $it) {
+            if ($it['time'] === null) {
+                $untimed[] = $it;
+            } else {
+                $timed[] = [$it, $i];
+            }
+        }
+        $dir = $order === 'asc' ? 1 : -1;
+        usort($timed, fn ($a, $b) => (($a[0]['time'] <=> $b[0]['time']) * $dir) ?: ($a[1] <=> $b[1]));
+        return array_merge(array_map(fn ($x) => $x[0], $timed), $untimed);
+    }
+
+    /** @internal Groups of a sorted list (= groupItems()): [[key, items]] — day keys / 'all', then 'unknown' last. */
+    function td__timeline_groups(array $sorted, string $group, DateTimeZone $zone): array
+    {
+        $out = [];
+        $unknown = [];
+        foreach ($sorted as $it) {
+            if ($it['time'] === null) {
+                $unknown[] = $it;
+                continue;
+            }
+            $key = $group === 'none' ? 'all' : td__timeline_local($it['time'], $zone)->format('Y-m-d');
+            $n = count($out);
+            if ($n && $out[$n - 1][0] === $key) {
+                $out[$n - 1][1][] = $it;
+            } else {
+                $out[] = [$key, [$it]];
+            }
+        }
+        if ($unknown) {
+            $out[] = ['unknown', $unknown];
+        }
+        return $out;
+    }
+
+    /**
+     * @internal td_timeline items (= normalizeItems() of src/utils/timeline-model.js): ≤ 1000 items, ≤ 4000 entries
+     * inspected; title ≤ 300, actor ≤ 120, meta ≤ 200, details ≤ 5000 (line breaks kept), id ≤ 200 code points;
+     * one E_USER_WARNING per kind (dropped, capped, renamed, unknown time).
+     */
+    function td__timeline_items(array $items): array
+    {
+        $out = [];
+        $used = [];
+        $next = [];
+        $dropped = 0;
+        $renamed = 0;
+        $untimed = 0;
+        $capped = false;
+        $seen = 0;
+        foreach ($items as $raw) {
+            if (count($out) >= 1000 || $seen >= 4000) {
+                $capped = true;
+                break;
+            }
+            $seen++;
+            if (!is_array($raw)) {
+                $dropped++;
+                continue;
+            }
+            $title = td__filter_text($raw['title'] ?? null, 300);
+            if ($title === null || td__js_trim($title) === '') {
+                $dropped++;
+                continue;
+            }
+            $id0 = ($raw['id'] ?? null) === null ? null : td__filter_text($raw['id'], 200);
+            $base = $id0 !== null && $id0 !== '' ? $id0 : (string) (count($out) + 1);
+            $id = $base;
+            if (isset($used['k' . $id])) {
+                $n = $next['k' . $base] ?? 2;
+                while (isset($used['k' . $base . '-' . $n])) {
+                    $n++;
+                }
+                $id = $base . '-' . $n;
+                $next['k' . $base] = $n + 1;
+                $renamed++;
+            }
+            $used['k' . $id] = true;
+            $time = td__timeline_instant($raw['time'] ?? null);
+            if ($time === null) {
+                $untimed++;
+            }
+            $actor = null;
+            $a = $raw['actor'] ?? null;
+            if ($a !== null) {
+                $name = td__filter_text(is_array($a) ? ($a['name'] ?? null) : $a, 120);
+                if ($name !== null && td__js_trim($name) !== '') {
+                    $actor = ['name' => $name, 'href' => is_array($a) && isset($a['href']) ? td__filter_href($a['href']) : null];
+                }
+            }
+            $meta = ($raw['meta'] ?? null) === null ? null : td__filter_text($raw['meta'], 200);
+            $details = ($raw['details'] ?? null) === null || ($raw['details'] ?? null) === true ? null : td__timeline_multiline($raw['details'], 5000);
+            $icon = $raw['icon'] ?? null;
+            $tone = $raw['tone'] ?? null;
+            $out[] = [
+                'id' => $id, 'time' => $time, 'title' => $title,
+                'tone' => in_array($tone, ['neutral', 'success', 'warning', 'danger', 'info'], true) ? $tone : 'neutral',
+                'expanded' => ($raw['expanded'] ?? null) === true,
+                'href' => isset($raw['href']) ? td__filter_href($raw['href']) : null,
+                'actor' => $actor,
+                'meta' => $meta !== null && td__js_trim($meta) !== '' ? $meta : null,
+                'icon' => is_string($icon) && preg_match('/^[a-z][a-z0-9-]{0,63}$/D', $icon) ? $icon : null,
+                'details' => $details !== null && td__js_trim($details) !== '' ? $details : null,
+            ];
+        }
+        if ($dropped) {
+            trigger_error("td_timeline: $dropped item(s) dropped — every item needs a non-empty text title", E_USER_WARNING);
+        }
+        if ($capped) {
+            trigger_error('td_timeline: too many items — at most 1000 are printed', E_USER_WARNING);
+        }
+        if ($renamed) {
+            trigger_error('td_timeline: duplicate item id — renamed with a -2, -3 … suffix', E_USER_WARNING);
+        }
+        if ($untimed) {
+            trigger_error("td_timeline: $untimed item(s) without a valid instant — shown under \"Không rõ thời gian\" (an ISO time needs Z or an offset)", E_USER_WARNING);
+        }
+        return $out;
+    }
+
+    /** @internal Text keeping its line breaks (= cleanMultiline()): CR LF / CR → LF, controls but TAB / LF removed. */
+    function td__timeline_multiline(mixed $v, int $max): ?string
+    {
+        if (is_int($v)) {
+            $v = (string) $v;
+        } elseif (is_float($v) && is_finite($v)) {
+            $v = td__js_number($v);
+        } elseif (!is_string($v)) {
+            return null;
+        }
+        if (strlen($v) > $max * 4) {
+            $v = substr($v, 0, $max * 4);
+            for ($i = 0; $i < 3 && preg_match('//u', $v) !== 1; $i++) {
+                $v = substr($v, 0, -1);
+            }
+        }
+        $v = (string) preg_replace('/\r\n?/', "\n", $v);
+        $clean = preg_replace('/[\x{0}-\x{8}\x{B}-\x{1F}\x{7F}-\x{9F}]/u', '', $v);
+        return $clean === null ? null : td__utf8_prefix($clean, $max);
     }
 
     /** @internal v0.26.0: element mode of a form helper — per call `element` (true/false) overrides Td::configure. */
