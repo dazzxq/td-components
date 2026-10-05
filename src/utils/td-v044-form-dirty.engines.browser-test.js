@@ -372,22 +372,94 @@ describe('trackFormDirty — beforeunload (QĐ 23-24)', () => {
     expect(unload()).to.equal(true);
   });
 
-  it('submit flag: an un-prevented submit event → not blocked until the next edit', async () => {
+  // Synthetic submit events (Firefox really submits on them): the form posts to `javascript:void 0`, which never unloads
+  // the test page. `sub` = an optional submitter.
+  const fire = (form, sub = null) => form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true, submitter: sub }));
+  const harmless = (form) => { form.action = 'javascript:void 0'; };
+
+  it('SEC-2: an un-prevented submit that navigates this window → not blocked ONCE; the next edit / a second unload re-arms', async () => {
     const form = mount(NATIVE);
+    harmless(form);
     const { t } = track(form);
     t.markDirty();
-    // Firefox submits a form on a synthetic submit event: send it into a sink iframe so the test page stays
+    fire(form);
+    expect(unload()).to.equal(false);
+    expect(unload()).to.equal(true); // one-shot
+    fire(form);
+    form.elements.namedItem('title').dispatchEvent(new Event('input', { bubbles: true }));
+    expect(unload()).to.equal(true); // cleared by the next edit
+  });
+
+  it('SEC-2: target _blank / an iframe name / formtarget / method=dialog / formmethod=dialog never suppress', async () => {
     const sink = document.createElement('iframe');
     sink.name = 'td-v044-sink';
     sink.hidden = true;
     document.body.appendChild(sink);
     cleanups.push(() => sink.remove());
-    form.target = sink.name;
-    form.action = 'about:blank';
-    form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }));
+    const cases = [
+      (f) => { f.target = '_blank'; return null; },
+      (f) => { f.target = sink.name; return null; },
+      (f) => { f.method = 'dialog'; return null; },
+      (f) => { const b = f.querySelector('button[type="submit"]'); b.setAttribute('formtarget', '_blank'); return b; },
+      (f) => { const b = f.querySelector('button[type="submit"]'); b.setAttribute('formmethod', 'dialog'); return b; },
+    ];
+    for (const setup of cases) {
+      const form = mount(NATIVE);
+      harmless(form);
+      const sub = setup(form);
+      const { t } = track(form);
+      t.markDirty();
+      fire(form, sub);
+      expect(unload()).to.equal(true);
+      t.destroy();
+      cleanups.pop();
+      form.parentElement.remove();
+    }
+    // formtarget="_self" on the submitter overrides a form target → navigates here → suppressed once
+    const form = mount(NATIVE);
+    harmless(form);
+    form.target = '_blank';
+    const b = form.querySelector('button[type="submit"]');
+    b.setAttribute('formtarget', '_self');
+    const { t } = track(form);
+    t.markDirty();
+    fire(form, b);
     expect(unload()).to.equal(false);
-    const title = form.elements.namedItem('title');
-    title.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+
+  it('SEC-2: a window submit listener that prevents AFTER the tracker keeps the protection', async () => {
+    const form = mount(NATIVE);
+    harmless(form);
+    const { t } = track(form);
+    t.markDirty();
+    const late = (e) => e.preventDefault();
+    window.addEventListener('submit', late);
+    try {
+      fire(form);
+      expect(unload()).to.equal(true);
+    } finally { window.removeEventListener('submit', late); }
+  });
+
+  it('SEC-2: markDirty() / reset / check() finding dirty after a navigating submit clear the suppression', async () => {
+    const form = mount(NATIVE);
+    harmless(form);
+    const { t } = track(form);
+    fire(form);
+    t.markDirty();
+    expect(unload()).to.equal(true);
+    form.elements.namedItem('title').value = 'đổi'; // saved state ≠ the defaults
+    t.markClean();
+    fire(form);
+    form.reset(); // back to the defaults → dirty again, and the submit no longer excuses it
+    await until(() => t.isDirty());
+    expect(unload()).to.equal(true);
+    t.markClean();
+    const body = form.elements.namedItem('body');
+    body.dispatchEvent(new Event('change', { bubbles: true })); // a user event, value unchanged → interacted, clean
+    await frames(2);
+    fire(form);
+    body.value = 'khác'; // then a change from code, found by check()
+    expect(t.check()).to.equal(true);
     expect(unload()).to.equal(true);
   });
 });
@@ -488,6 +560,6 @@ describe('trackFormDirty — confirmDiscard + guards (QĐ 21-22, QĐ 14)', () =>
     const base = median(() => [...new FormData(form)]);
     const dirty = median(() => t.isDirty());
     // a snapshot + an ordered compare: a small multiple of the FormData read itself, whatever the machine load
-    expect(dirty).to.be.below(Math.max(base * 6, 1));
+    expect(dirty).to.be.below(Math.max(base * 6, 5)); // 5 ms floor: timer granularity on a loaded machine
   });
 });

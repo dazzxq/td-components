@@ -302,8 +302,8 @@ export class TdDrawer extends HTMLElement {
     let result;
     try {
       result = guard({ reason });
-    } catch (err) {
-      console.error('td-drawer beforeClose threw:', err);
+    } catch {
+      console.error('td-drawer: beforeClose threw — the drawer stays open'); // fixed text, never the caller's error (SEC-3)
       return Promise.resolve(null);
     }
     const thenable = !!result && (typeof result === 'object' || typeof result === 'function')
@@ -315,9 +315,9 @@ export class TdDrawer extends HTMLElement {
       this._guarding = null;
       if (!live() || v === false) return null;
       return this.close(reason);
-    }, (err) => {
+    }, () => {
       this._guarding = null;
-      if (live()) console.error('td-drawer beforeClose rejected:', err);
+      if (live()) console.error('td-drawer: beforeClose rejected — the drawer stays open');
       return null;
     });
     this._guarding = pending;

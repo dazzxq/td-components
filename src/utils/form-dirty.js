@@ -12,8 +12,8 @@
  *   `markDirty()` / `check()` for those. `interacted` = one user event of `trackFormDirty.events` from a control of the
  *   form (also `form="id"` controls outside it).
  * - `beforeunload` (default on) is armed SYNCHRONOUSLY by the first user event / markDirty() and disarmed once the form
- *   is clean again (keeps the bfcache); its handler always recomputes before blocking. A native submit of the form
- *   (not prevented) is never blocked.
+ *   is clean again (keeps the bfcache); its handler always recomputes before blocking. A native submit of the form that
+ *   navigates this window (not prevented in the end; not method="dialog"; target "" / "_self") is not blocked — once.
  * - `dirty-change` ({ dirty }, bubbles) on the form whenever the computed state flips (user events are batched per
  *   animation frame).
  */
@@ -53,7 +53,7 @@ function ignoreTest(ignore) {
   }
   if (typeof ignore === 'function') {
     return (n) => {
-      try { return ignore(n) === true; } catch (err) { console.error('trackFormDirty: ignore() threw', err); return false; }
+      try { return ignore(n) === true; } catch { console.error('trackFormDirty: ignore() threw — the field is kept'); return false; }
     };
   }
   return () => false;
@@ -121,7 +121,8 @@ export function trackFormDirty(form, opts = {}) {
   let manual = false; // markDirty()
   let reported = false; // last state announced through dirty-change
   let armed = false; // beforeunload listener registered
-  let submitting = false; // a native submit of this form is under way
+  /** @type {Event|null} the last submit of this form that navigates THIS window (one-shot, read by beforeunload) */
+  let submitEvent = null;
   let destroyed = false;
   let frame = 0;
   let resetTimer = 0;
@@ -133,8 +134,13 @@ export function trackFormDirty(form, opts = {}) {
     form.dispatchEvent(new CustomEvent('dirty-change', { bubbles: true, composed: true, detail: { dirty } }));
   };
   const onBeforeUnload = (e) => {
+    // A native submit of this form that navigates this window is not "leaving with unsaved changes" — read ONCE, with
+    // its FINAL defaultPrevented (a window listener added after ours may have prevented it).
+    const sub = submitEvent;
+    submitEvent = null;
+    if (sub && !sub.defaultPrevented) return;
     // always fresh: a revert in the same task as the unload must not block it
-    if (destroyed || submitting || !form.isConnected || !compute()) return;
+    if (destroyed || !form.isConnected || !compute()) return;
     e.preventDefault();
     e.returnValue = '';
   };
@@ -151,6 +157,7 @@ export function trackFormDirty(form, opts = {}) {
   const sync = () => {
     if (destroyed) return false;
     const dirty = compute();
+    if (dirty && !reported) submitEvent = null; // newly dirty after a submit: protect again
     if (dirty) arm();
     else disarm(); // clean again → no listener (bfcache); the next user event arms it synchronously
     announce(dirty);
@@ -185,7 +192,7 @@ export function trackFormDirty(form, opts = {}) {
       if (d.trigger === 'reset') { onReset(); return; }
     }
     interacted = true;
-    submitting = false;
+    submitEvent = null;
     arm(); // QĐ 23: synchronously — no gap before the batched recompute
     schedule();
   };
@@ -198,14 +205,29 @@ export function trackFormDirty(form, opts = {}) {
   function onReset(e) {
     if (destroyed || (e && e.target !== form)) return;
     interacted = true;
+    submitEvent = null;
     arm();
     clearTimeout(resetTimer);
     resetTimer = setTimeout(() => { resetTimer = 0; sync(); }, 0); // `reset` fires before the values change
   }
-  const onSubmit = (e) => {
-    if (e.target === form && !e.defaultPrevented) submitting = true; // after the app's / attach()'s handlers
+  /**
+   * Review round 1 SEC-2: only a submit that navigates THIS browsing context counts — method "dialog" or a target other
+   * than "" / "_self" (submitter formmethod / formtarget first, then the form, then <base target>) keeps the page.
+   * @param {SubmitEvent} e
+   */
+  const navigatesHere = (e) => {
+    const sub = e.submitter instanceof Element ? e.submitter : null;
+    const attr = (own, name) => (sub && sub.hasAttribute(own) ? sub.getAttribute(own) : form.getAttribute(name));
+    if (String(attr('formmethod', 'method') || '').trim().toLowerCase() === 'dialog') return false;
+    let target = attr('formtarget', 'target');
+    if (target == null || target === '') target = document.querySelector('base[target]')?.getAttribute('target') || '';
+    target = String(target).trim().toLowerCase();
+    return target === '' || target === '_self';
   };
-  const onPageShow = () => { submitting = false; };
+  const onSubmit = (e) => {
+    if (e.target === form && navigatesHere(/** @type {SubmitEvent} */ (e))) submitEvent = e;
+  };
+  const onPageShow = () => { submitEvent = null; };
 
   for (const t of events) document.addEventListener(t, onUserChange, true);
   document.addEventListener('focusin', onApproach, true);
@@ -227,13 +249,14 @@ export function trackFormDirty(form, opts = {}) {
       baseline = take();
       interacted = false;
       manual = false;
-      submitting = false;
+      submitEvent = null;
       disarm();
       announce(false);
     },
     markDirty() {
       if (destroyed) return;
       manual = true;
+      submitEvent = null;
       arm();
       announce(true);
     },
@@ -254,9 +277,9 @@ export function trackFormDirty(form, opts = {}) {
         ? () => confirm(dialog)
         : () => import('../feedback/td-modal.js').then(({ TdModal }) => TdModal.confirm(dialog));
       let pending;
-      try { pending = Promise.resolve(ask()); } catch (err) { pending = Promise.reject(err); }
-      return pending.then((v) => v === true, (err) => {
-        console.error('trackFormDirty: confirmDiscard failed', err);
+      try { pending = Promise.resolve(ask()); } catch { pending = Promise.reject(new Error('confirm threw')); }
+      return pending.then((v) => v === true, () => {
+        console.error('trackFormDirty: the discard dialog failed — the changes are kept'); // fixed text (SEC-3)
         return false; // keep the data
       });
     },

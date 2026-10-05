@@ -298,8 +298,11 @@ Trong modal: bọc thân modal trong `<form>` (FormData + `reset` chuẩn). Guar
 (cố ý: quên `markClean` thì `beforeunload` cũng cảnh báo sai).
 
 **Rời trang (`beforeunload`).** Listener chỉ được đăng ký từ thao tác đầu tiên (và gỡ khi form sạch lại) — trang
-không tương tác vẫn vào bfcache. Khi trang sắp rời đi, kit tính lại ngay: form sạch, đã bị gỡ khỏi DOM, hoặc đang
-**submit native** (submit không bị chặn) → không hỏi. Giới hạn của trình duyệt:
+không tương tác vẫn vào bfcache. Khi trang sắp rời đi, kit tính lại ngay: form sạch hoặc đã bị gỡ khỏi DOM → không
+hỏi. **Submit native** của form được miễn **một lần** khi nó thật sự điều hướng chính cửa sổ này: cuối cùng không bị
+`preventDefault()` (kể cả handler `window` đăng ký sau kit), không phải `method="dialog"`, và `target` (của nút submit
+`formtarget`, rồi của form, rồi `<base target>`) rỗng hoặc `_self` — `_blank`, tên iframe… không được miễn. Thao tác
+tiếp theo, `markDirty()`, `reset`, `check()` thấy bẩn mới đều huỷ lần miễn đó. Giới hạn của trình duyệt:
 
 - Chữ trong hộp thoại là của trình duyệt (thông điệp tuỳ biến bị bỏ qua từ lâu).
 - Chrome / Firefox chỉ hiện hộp khi trang **đã có tương tác người dùng**.
