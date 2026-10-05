@@ -41,7 +41,7 @@ const LOAD_BOUND = new WeakSet();
 /**
  * @typedef {{ id: string, src: string, previewAlt: string, kind: 'image'|'video'|'file', alt: string,
  *   cropRaw: string|null, focalRaw: string|null, asset: object|null, fromAdapter: boolean, assetGen?: number,
- *   explicit: { src: string, previewAlt: string, kind: string }|null, lazyFailed?: boolean }} GalleryItem
+ *   explicit: { src: string, previewAlt: string, kind: string }|null, lazyFailed?: boolean, resolved?: boolean }} GalleryItem
  */
 
 /**
@@ -292,7 +292,7 @@ export class TdMediaGallery extends TdFormElement {
     });
     const r = validateItems(raw, { max: this._max(), safeUrl: okUrl });
     if (!r.ok) { this._refuse('setSelection', r.reason); return; }
-    this._commit(r.items.map((n, i) => ({ ...this._newItem(n), asset: assets[i] ?? null })));
+    this._commit(r.items.map((n, i) => ({ ...this._newItem(n), asset: assets[i] ?? null, resolved: !!assets[i] })));
   }
 
   // --- Configuration ---
@@ -508,6 +508,7 @@ export class TdMediaGallery extends TdFormElement {
     let repaint = false;
     for (const it of this._items) {
       it.lazyFailed = false;
+      it.resolved = false;
       if (!it.fromAdapter) continue;
       const ex = it.explicit;
       Object.assign(it, {
@@ -524,9 +525,12 @@ export class TdMediaGallery extends TdFormElement {
 
   // --- Lazy get (decision 18) ---
 
-  /** @private an id with nothing to show, nothing fetched yet */
+  /**
+   * @private an id without a preview URL, not fetched under this source yet (ISSUE-4: a display name alone is not a
+   * preview — a name-only item is fetched once; resolved without a URL / failed → never again until the source changes)
+   */
   _needsPreview(it) {
-    return !it.src && !it.previewAlt && !it.asset && !it.lazyFailed;
+    return !it.src && !it.resolved && !it.lazyFailed;
   }
 
   /** @private start gets for items without a preview, at most LAZY_CONCURRENCY at once */
@@ -564,6 +568,7 @@ export class TdMediaGallery extends TdFormElement {
         } else {
           Object.assign(it, {
             src: safeSrc(asset.urls?.preview), previewAlt: asset.name || '', kind: asset.kind, asset, fromAdapter: true, assetGen: gen,
+            resolved: true,
           });
           this._paintPreview(it);
           this._relabel();
@@ -1149,6 +1154,7 @@ export class TdMediaGallery extends TdFormElement {
       added.push({
         id, src: asset ? safeSrc(asset.urls?.preview) : '', previewAlt: asset?.name || '', kind: asset?.kind ?? kind0,
         alt: cap(alt), cropRaw: null, focalRaw: null, asset, fromAdapter: !!asset, assetGen: srcGen, explicit: null,
+        resolved: !!asset,
       });
     }
     const kind = this._kindWord();
