@@ -72,6 +72,7 @@
  *   </div>
  */
 import { openDialogLayer } from './dialog-layer.js';
+import { nearestScroller } from '../utils/keyboard-viewport.js';
 import { TdModal } from './td-modal.js';
 import { TdToast } from './td-toast.js';
 import { LAYERS } from '../utils/layers.js';
@@ -612,6 +613,7 @@ export function openUploadDialog(o) {
   const handle = openDialogLayer({
     root,
     dialog,
+    viewport: { root, scroller: nearestScroller(root) }, // v0.36.2: above the keyboard
     layer: LAYERS.modal,
     backdrop: root.querySelector('.td-modal__backdrop'),
     onEscape: () => { void close(); return true; },

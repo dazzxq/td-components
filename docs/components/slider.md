@@ -276,6 +276,12 @@ trên (fixture `test/contracts/slider.html` của repo chỉ dùng cho test, kh�
 `label`, nhãn giá trị, `error-text` là text (escape). `color`/`track-color` qua `safeColor`. `min`/`max`/`step`/`value`
 được parse thành số trước khi đưa vào markup.
 
+## Cảm ứng
+
+- Input range đặt `touch-action: none`: chạm để chọn giá trị, kéo thumb chắc tay. Đánh đổi: **vuốt dọc bắt đầu trên slider không cuộn trang** — trên điện thoại chừa chỗ cuộn quanh slider.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **`getValue()` khác giá trị gửi trong form**: `getValue()` là giá trị hiển thị (đã kẹp/làm tròn); form gửi attribute

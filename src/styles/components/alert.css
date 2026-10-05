@@ -186,8 +186,10 @@
 		transition: background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-alert__close:hover {
-		background: var(--td-alert-close-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-alert__close:hover {
+			background: var(--td-alert-close-hover);
+		}
 	}
 
 	.td-alert__close:focus-visible {
@@ -220,6 +222,23 @@
 		}
 
 		.td-alert__close:focus-visible {
+			outline: 2px solid Highlight;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-alert__close {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-alert__close:is(:active, [data-td-pressed]) {
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-alert__close:is(:active, [data-td-pressed]) {
 			outline: 2px solid Highlight;
 		}
 	}

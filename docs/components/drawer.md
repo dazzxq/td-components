@@ -360,6 +360,12 @@ là node do bạn (hoặc server) tạo, kit chỉ di chuyển, không parse l�
 dùng (CWE-79). Không có `style="…"`; độ rộng per-instance ghi bằng CSSOM — chạy được dưới CSP nghiêm
 ngặt.
 
+## Cảm ứng
+
+- Như [modal](modal.md#cảm-ứng): khi bàn phím ảo mở, `.td-drawer-root` co theo vùng nhìn thấy, `.td-drawer__body` cuộn tới ô đang nhập, footer ở trên bàn phím. Nút đóng có hình nhấn.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **Trong lúc mở, nội dung không nằm trong host.** `drawer.querySelector('#f-q')` trả `null` khi drawer đang mở; tìm

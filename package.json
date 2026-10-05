@@ -1,11 +1,11 @@
 {
   "name": "@dazzxq/td-components",
-  "version": "0.36.1",
+  "version": "0.36.2",
   "description": "Shared UI Web Components library — single source of truth UI kit (token CSS + minimal surfaces)",
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "npm run check:css && npm run check:icons && npm run check:stories && npm run test:node && npm run test:browser && npm run test:csp && npm run test:csp:combined && npm run test:tokens && npm run test:contrast && npm run test:engines && npm run test:responsive",
+    "test": "npm run check:css && npm run check:icons && npm run check:stories && npm run test:node && npm run test:browser && npm run test:csp && npm run test:csp:combined && npm run test:tokens && npm run test:contrast && npm run test:engines && npm run test:responsive && npm run test:touch",
     "test:node": "node --test --test-force-exit \"src/**/*.test.js\" \"test/php/*.test.js\"",
     "test:browser": "web-test-runner",
     "test:csp": "node test/csp/csp.spec.mjs",
@@ -24,6 +24,7 @@
     "test:engines": "node test/engines/menu-tab.spec.mjs",
     "test:contrast": "node test/tokens/contrast.spec.mjs",
     "test:responsive": "node test/responsive/responsive.spec.mjs",
+    "test:touch": "node test/touch/touch.spec.mjs",
     "test:visual": "node test/visual/media-picker.visual.mjs"
   },
   "exports": {

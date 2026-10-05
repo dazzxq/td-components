@@ -307,6 +307,12 @@ dùng làm `order` trong lane < 480.
 hay dữ liệu người dùng vào là an toàn. Hệ quả: không thể in đậm / chèn link trong toast. Cần nội dung có định dạng thì
 dùng [modal](modal.md).
 
+## Cảm ứng
+
+- Chạm vào thân toast để đóng: toast có hình nhấn (nền tối thêm một bậc theo loại, `--td-toast-{success,error,warning,info}-pressed-bg`), nút đóng có hình nhấn riêng. Không chuyển động thêm khi nhấn.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **Toast không hiện:** kiểm tra `message` có rỗng không (`''`, `null`, `undefined`, `0` đều bị bỏ qua) và `td.css` đã

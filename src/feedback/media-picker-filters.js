@@ -16,6 +16,7 @@
  * @module feedback/media-picker-filters
  */
 import { openDialogLayer } from './dialog-layer.js';
+import { nearestScroller } from '../utils/keyboard-viewport.js';
 import { LAYERS } from '../utils/layers.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import { createFacetControl } from './media-picker-fields.js';
@@ -122,6 +123,7 @@ export function openFilterSheet(o) {
   const handle = openDialogLayer({
     root,
     dialog,
+    viewport: { root, scroller: nearestScroller(root) }, // v0.36.2: above the keyboard
     layer: LAYERS.modal,
     backdrop: root.querySelector('.td-modal__backdrop'),
     onEscape: () => { close(); return true; },

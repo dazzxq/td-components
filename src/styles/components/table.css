@@ -242,9 +242,11 @@
 		appearance: none;
 	}
 
-	.td-table__sort:hover {
-		color: var(--td-table-fg);
-		background: var(--td-color-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-table__sort:hover {
+			color: var(--td-table-fg);
+			background: var(--td-color-hover);
+		}
 	}
 
 	.td-table__sort:focus-visible {
@@ -278,9 +280,15 @@
 		background: var(--td-table-zebra);
 	}
 
-	.td-table .td-table__row:not(.td-table__row--skeleton):hover,
 	.td-table .td-table__row:not(.td-table__row--skeleton):focus-within {
 		background: var(--td-table-row-hover);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: table rows are not activatable (cells / buttons inside are) */
+		.td-table .td-table__row:not(.td-table__row--skeleton):hover {
+			background: var(--td-table-row-hover);
+		}
 	}
 
 	.td-table__row {
@@ -665,9 +673,11 @@
 			color: CanvasText;
 		}
 
-		.td-table .td-table__row:not(.td-table__row--skeleton):hover {
-			outline: 2px solid Highlight;
-			outline-offset: -2px;
+		@media (hover: hover) and (pointer: fine) {
+			.td-table .td-table__row:not(.td-table__row--skeleton):hover {
+				outline: 2px solid Highlight;
+				outline-offset: -2px;
+			}
 		}
 
 		.td-table__skeleton {
@@ -676,6 +686,24 @@
 
 		.td-table__skeleton::after {
 			display: none;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-table__sort {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-table__sort:is(:active, [data-td-pressed]) {
+		color: var(--td-table-fg);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-table__sort:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }

@@ -193,6 +193,7 @@
 	}
 
 	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: not a control — its opener and tick carry the pressed state */
 		.td-media-grid__item:hover .td-media-grid__tick {
 			opacity: 1;
 		}
@@ -268,6 +269,7 @@
 			border-color: var(--td-control-border-hover);
 		}
 
+		/* active-exempt: selected-state restore of the hover rule — .td-media-grid__tick--mark carries the pressed state */
 		.td-media-grid__item[data-selected] .td-media-grid__tick--mark:hover > .td-check {
 			border-color: var(--td-checkbox-color);
 		}
@@ -347,6 +349,36 @@
 			border-color: Highlight;
 			background: Highlight;
 			color: HighlightText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-media-grid__open,
+	.td-media-grid__tick {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-media-grid__open:is(:active, [data-td-pressed])::after {
+		background: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-media-grid__tick:is(:active, [data-td-pressed]):not(:disabled) {
+		opacity: 1;
+		color: var(--td-media-grid-tick-border);
+		transition-duration: 0s;
+	}
+
+	.td-media-grid__tick--mark:is(:active, [data-td-pressed]):not(:disabled) > .td-check {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-media-grid__open:is(:active, [data-td-pressed]),
+		.td-media-grid__tick:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }

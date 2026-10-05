@@ -77,9 +77,11 @@
 		appearance: none;
 	}
 
-	.td-repeater__btn:hover {
-		color: var(--td-repeater-btn-fg-hover);
-		background: var(--td-repeater-btn-bg-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-repeater__btn:hover {
+			color: var(--td-repeater-btn-fg-hover);
+			background: var(--td-repeater-btn-bg-hover);
+		}
 	}
 
 	.td-repeater__btn:focus-visible {
@@ -89,11 +91,18 @@
 	}
 
 	.td-repeater__btn[aria-disabled="true"],
-	.td-repeater__btn[aria-disabled="true"]:hover,
 	.td-repeater__btn:disabled {
 		color: var(--td-repeater-btn-disabled-fg);
 		cursor: not-allowed;
 		background: transparent;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-repeater__btn[aria-disabled="true"]:hover {
+			color: var(--td-repeater-btn-disabled-fg);
+			cursor: not-allowed;
+			background: transparent;
+		}
 	}
 
 	.td-repeater__btn .td-icon {
@@ -165,6 +174,24 @@
 
 		.td-repeater__btn[aria-disabled="true"] {
 			color: GrayText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-repeater__btn {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-repeater__btn:is(:active, [data-td-pressed]):not(:disabled, [aria-disabled="true"]) {
+		color: var(--td-repeater-btn-fg-hover);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-repeater__btn:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }

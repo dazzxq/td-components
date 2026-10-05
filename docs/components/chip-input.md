@@ -578,6 +578,12 @@ Khác:
 
 Xem [Bảo mật](../guides/security.md).
 
+## Cảm ứng
+
+- Option gợi ý và nút xoá chip có hình nhấn; hover chỉ trên con trỏ mịn. Hộp nhập không có hình nhấn (focus ring là phản hồi).
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **Quên `[]` trong `name`** khi gửi về PHP → chỉ nhận được mục cuối.

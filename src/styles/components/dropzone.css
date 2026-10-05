@@ -13,6 +13,7 @@
 		--td-dropzone-bg: var(--td-field-bg);
 		--td-dropzone-bg-active: color-mix(in srgb, var(--td-accent) 6%, var(--td-field-bg));
 		--td-dropzone-bg-disabled: var(--td-field-bg-disabled);
+		--td-dropzone-bg-pressed: #f4f4f5; /* v0.36.2: the zone while pressed (opens the picker); muted sub-line keeps 4.81:1 (gray-100 is 4.64) */
 		--td-dropzone-border: var(--td-control-border-strong); /* dashed edge ≥ 3:1 on white */
 		--td-dropzone-border-active: var(--td-accent);
 		--td-dropzone-radius: var(--td-radius-lg);
@@ -30,6 +31,11 @@
 		--td-dropzone-stacked-icon: 64px;
 		--td-dropzone-title-size: var(--td-text-lg);
 		--td-dropzone-title-weight: var(--td-fw-semibold);
+	}
+
+	/* dark (opt-in): the pressed zone one step lighter than the dark field */
+	:root[data-td-theme="dark"] {
+		--td-dropzone-bg-pressed: #2c2c30;
 	}
 }
 
@@ -96,9 +102,14 @@
 			border-color var(--td-dur-base) var(--td-ease);
 	}
 
-	.td-dropzone__zone:hover,
 	.td-dropzone[data-state="dragover"] .td-dropzone__zone {
 		border-color: var(--td-dropzone-border-active);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropzone__zone:hover {
+			border-color: var(--td-dropzone-border-active);
+		}
 	}
 
 	.td-dropzone[data-state="dragover"] .td-dropzone__zone {
@@ -337,9 +348,11 @@
 		transition: background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-dropzone__remove:hover:not(:disabled) {
-		color: var(--td-color-text);
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropzone__remove:hover:not(:disabled) {
+			color: var(--td-color-text);
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-dropzone__remove:focus-visible {
@@ -377,6 +390,34 @@
 		.td-dropzone[data-disabled] .td-dropzone__zone {
 			color: GrayText;
 			border-color: GrayText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-dropzone__remove,
+	.td-dropzone__zone {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-dropzone__remove:is(:active, [data-td-pressed]):not(:disabled) {
+		color: var(--td-color-text);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	/* v0.36.2 review ISSUE-1: the zone is a tap target (opens the file picker) — pressed fill, never while disabled or
+	   while a file is dragged over it (dragover is its own state) */
+	.td-dropzone:not([data-disabled], [data-state="dragover"]) .td-dropzone__zone:is(:active, [data-td-pressed]) {
+		background-color: var(--td-dropzone-bg-pressed);
+		border-color: var(--td-dropzone-border-active);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-dropzone:not([data-disabled], [data-state="dragover"]) .td-dropzone__zone:is(:active, [data-td-pressed]),
+		.td-dropzone__remove:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }

@@ -113,6 +113,8 @@
 		--td-color-border-strong: var(--td-gray-300);
 		--td-color-hover: rgb(0 0 0 / 5%);
 		--td-color-hover-strong: rgb(0 0 0 / 8%);
+		/* v0.36.2 (ADR 0019): the shared PRESSED fill (touch :active / [data-td-pressed]) — colour only, never a scale */
+		--td-color-pressed: rgb(0 0 0 / 12%);
 		/* v0.36.0 popup option rows (dropdown, multiselect, tree-select, menu — dcms2 look): full-bleed rows, a hover fill,
 		   a selected fill (single lists: semibold label + ✓ at the end), the keyboard-active row = fill + an inline-start
 		   accent bar (the focus indicator, ≥ 3:1 vs the popup surface — contrast gate) */
@@ -120,6 +122,7 @@
 		--td-option-hover-bg: var(--td-color-hover);
 		--td-option-active-bg: var(--td-color-hover-strong);
 		--td-option-selected-bg: var(--td-color-hover-strong);
+		--td-option-pressed-bg: var(--td-color-pressed); /* v0.36.2 */
 		--td-option-active-bar: var(--td-accent);
 		--td-option-active-bar-w: 3px;
 		--td-color-overlay: rgb(10 10 12 / 45%);
@@ -224,6 +227,14 @@
 		--td-btn-warning-fg: var(--td-solid-warning-fg);
 		--td-btn-warning-border: var(--td-solid-warning-border);
 		--td-btn-warning-hover: var(--td-solid-warning-hover);
+		/* v0.36.2 (ADR 0019): pressed = one step past hover (primary black: one step lighter), label still ≥ 4.7:1
+		   (contrast gate); precomputed hex, no color-mix() in tokens. A site that changes -bg should set -pressed too. */
+		--td-btn-primary-pressed: #52525b;
+		--td-btn-secondary-pressed: var(--td-gray-300);
+		--td-btn-success-pressed: #14532d;
+		--td-btn-danger-pressed: #991b1b;
+		--td-btn-warning-pressed: #cc6d05;              /* dark label keeps 4.86:1 (amber-700 would be 3.5) */
+		--td-btn-info-pressed: #1e40af;
 		/* v0.14.3: disabled reads as greyed out — pale fill, muted label (WCAG 1.4.3 exempts disabled controls; the
 		   contrast gate keeps it ≥ 2.2:1 so it stays legible). Opaque: a state colour, never element opacity. */
 		--td-btn-disabled-bg: #f4f4f5;
@@ -248,6 +259,7 @@
 		   black in dark), a soft hover fill. Both follow the theme (dark remaps --td-accent / --td-color-hover). */
 		--td-btn-ghost-fg: var(--td-accent);
 		--td-btn-ghost-hover-bg: var(--td-color-hover);
+		--td-btn-ghost-pressed: var(--td-color-pressed); /* v0.36.2 */
 		/* hover label one step darker than the accent so it keeps ≥ 4.5:1 on the hover fill (the accent alone is ~4.5
 		   there); follows a site's --td-accent. Fallback without color-mix(): the fixed step in button.css. */
 		--td-btn-ghost-hover-fg: color-mix(in srgb, var(--td-btn-ghost-fg) 82%, #000);
@@ -362,6 +374,7 @@
 		--td-color-border-strong: #45454b;
 		--td-color-hover: rgb(255 255 255 / 6%);
 		--td-color-hover-strong: rgb(255 255 255 / 10%);
+		--td-color-pressed: rgb(255 255 255 / 14%); /* v0.36.2 */
 		--td-color-overlay: rgb(0 0 0 / 60%);
 		--td-color-skeleton: #242427;
 		--td-color-success: #22c55e;
@@ -421,10 +434,12 @@
 		--td-btn-primary-bg: #f4f4f5;
 		--td-btn-primary-fg: #18181b;
 		--td-btn-primary-hover: #d4d4d8;
+		--td-btn-primary-pressed: #a1a1aa;              /* v0.36.2: one step darker (6.9:1 with the dark label) */
 		--td-btn-secondary-bg: #2c2c30;
 		--td-btn-secondary-fg: #f5f5f7;
 		--td-btn-secondary-border: rgb(255 255 255 / 12%);
 		--td-btn-secondary-hover: #3a3a3e;
+		--td-btn-secondary-pressed: #45454b;            /* v0.36.2 */
 		--td-btn-ghost-hover-fg: color-mix(in srgb, var(--td-btn-ghost-fg) 70%, #fff); /* lighter step on the dark fill */
 		--td-btn-disabled-bg: #202024;
 		--td-btn-disabled-fg: #6b6b73;                 /* greyed out, ≥ 2.2:1 (v0.14.3) */
@@ -804,8 +819,11 @@
 		content: attr(data-placeholder);
 	}
 
-	.td-field__control:hover:not(:disabled, [aria-disabled="true"], :focus) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: text input — the focus ring is the feedback */
+		.td-field__control:hover:not(:disabled, [aria-disabled="true"], :focus) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-field__control:focus {
@@ -831,9 +849,14 @@
 
 	/* A visible error keeps the red border, focused or not (only a shown error — never the counter). */
 	.td-field__control[aria-invalid="true"],
-	.td-field__control[aria-invalid="true"]:focus,
-	.td-field__control[aria-invalid="true"]:hover {
+	.td-field__control[aria-invalid="true"]:focus {
 		border-color: var(--td-field-error);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-field__control[aria-invalid="true"]:hover {
+			border-color: var(--td-field-error);
+		}
 	}
 
 	.td-field__footer {
@@ -1218,6 +1241,7 @@
 		--td-btn-fg-v: var(--td-btn-primary-fg);
 		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-primary-border));
 		--_td-btn-variant-hover: var(--td-btn-primary-hover);
+		--_td-btn-variant-pressed: var(--td-btn-primary-pressed);
 	}
 
 	.td-btn--secondary {
@@ -1232,6 +1256,7 @@
 		--td-btn-fg-v: var(--td-btn-success-fg);
 		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-success-border));
 		--_td-btn-variant-hover: var(--td-btn-success-hover);
+		--_td-btn-variant-pressed: var(--td-btn-success-pressed);
 	}
 
 	.td-btn--danger {
@@ -1240,6 +1265,7 @@
 		--td-btn-fg-v: var(--td-btn-danger-fg);
 		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-danger-border));
 		--_td-btn-variant-hover: var(--td-btn-danger-hover);
+		--_td-btn-variant-pressed: var(--td-btn-danger-pressed);
 	}
 
 	.td-btn--warning {
@@ -1248,6 +1274,7 @@
 		--td-btn-fg-v: var(--td-btn-warning-fg);
 		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-warning-border));
 		--_td-btn-variant-hover: var(--td-btn-warning-hover);
+		--_td-btn-variant-pressed: var(--td-btn-warning-pressed);
 	}
 
 	.td-btn--info {
@@ -1256,6 +1283,7 @@
 		--td-btn-fg-v: var(--td-btn-info-fg);
 		--td-btn-border-v: var(--_td-btn-tint, var(--td-btn-info-border));
 		--_td-btn-variant-hover: var(--td-btn-info-hover);
+		--_td-btn-variant-pressed: var(--td-btn-info-pressed);
 	}
 
 	/* v0.17.0 ghost: no fill, no border, no shadow — just the accent label on the page background.
@@ -1281,33 +1309,67 @@
 	@supports (color: color-mix(in srgb, red 50%, blue)) {
 		.td-btn {
 			--td-btn-hover-v: color-mix(in srgb, var(--td-btn-bg-v) 92%, #000);
+			--td-btn-pressed-v: color-mix(in srgb, var(--td-btn-bg-v) 84%, #000); /* v0.36.2 */
 		}
 
 		.td-btn:is(.td-btn--primary, .td-btn--success, .td-btn--danger, .td-btn--warning, .td-btn--info):not(.td-btn--custom) {
 			--_td-btn-tint-hover: color-mix(in srgb, var(--_td-btn-tint) 92%, #000); /* invalid when no -tint */
+			--_td-btn-tint-pressed: color-mix(in srgb, var(--_td-btn-tint) 84%, #000);
 		}
 	}
 
 	.td-btn:is(.td-btn--primary, .td-btn--success, .td-btn--danger, .td-btn--warning, .td-btn--info):not(.td-btn--custom) {
 		--td-btn-hover-v: var(--_td-btn-tint-hover, var(--_td-btn-variant-hover));
+		--td-btn-pressed-v: var(--_td-btn-tint-pressed, var(--_td-btn-variant-pressed));
 	}
 
 	.td-btn--secondary:not(.td-btn--custom) {
 		--td-btn-hover-v: var(--td-btn-secondary-hover);
+		--td-btn-pressed-v: var(--td-btn-secondary-pressed);
 	}
 
-	.td-btn:hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"], .td-btn--ghost) {
-		background-color: var(--td-btn-hover-v, var(--td-btn-bg-v));
+	@media (hover: hover) and (pointer: fine) {
+		.td-btn:hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"], .td-btn--ghost) {
+			background-color: var(--td-btn-hover-v, var(--td-btn-bg-v));
+		}
 	}
 
 	/* ghost hover: the fill only. :not(.td-btn--custom) keeps the specificity above the base hover rule. */
-	.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
-		background-color: var(--td-btn-ghost-hover-bg);
-		color: #1d4ed8; /* engines without color-mix(): fixed darker step */
+	@media (hover: hover) and (pointer: fine) {
+		.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+			background-color: var(--td-btn-ghost-hover-bg);
+			color: #1d4ed8; /* engines without color-mix(): fixed darker step */
+		}
 	}
 
 	@supports (color: color-mix(in srgb, red 50%, transparent)) {
-		.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+		@media (hover: hover) and (pointer: fine) {
+			.td-btn--ghost:not(.td-btn--custom):hover:not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+				color: var(--td-btn-ghost-hover-fg);
+			}
+		}
+	}
+
+	/* v0.36.2 pressed (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — a SOLID fill one step past
+	   hover (--td-btn-{v}-pressed; -tint / custom: 16 % darker), applied at once (no transition in), colour only.
+	   Engines without color-mix(): a custom button falls back to its hover / resting fill. */
+	.td-btn {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-btn:is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"], .td-btn--ghost) {
+		background-color: var(--td-btn-pressed-v, var(--td-btn-hover-v, var(--td-btn-bg-v)));
+		transition-duration: 0s;
+	}
+
+	.td-btn--ghost:not(.td-btn--custom):is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+		background-color: var(--td-btn-ghost-pressed);
+		color: #1d4ed8;
+		transition-duration: 0s;
+	}
+
+	@supports (color: color-mix(in srgb, red 50%, transparent)) {
+		.td-btn--ghost:not(.td-btn--custom):is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
 			color: var(--td-btn-ghost-hover-fg);
 		}
 	}
@@ -1387,6 +1449,7 @@
 
 	@media (forced-colors: active) {
 		.td-btn { border-color: ButtonText; }
+		.td-btn:is(:active, [data-td-pressed]) { outline: 2px solid Highlight; }
 	}
 }
 
@@ -1414,6 +1477,12 @@
 		--td-action-btn-warning-hover-bg: #fffbeb;
 		--td-action-btn-danger-fg: #b91c1c;
 		--td-action-btn-danger-hover-bg: var(--td-pastel-danger-bg);
+		/* v0.36.2 (ADR 0019) pressed fills (icon ≥ 4.7:1 — contrast gate). Warning: no amber fill keeps #b45309 at 4.7
+		   (#fef3c7 is 4.5), so the pressed icon steps to amber-800 on the amber-100 fill. */
+		--td-action-btn-standard-pressed-bg: var(--td-color-pressed);
+		--td-action-btn-warning-pressed-bg: #fef3c7;
+		--td-action-btn-warning-pressed-fg: #92400e;
+		--td-action-btn-danger-pressed-bg: #fdd5d5;
 	}
 
 	/* dark (opt-in): light inks on the dark page, translucent tone fills */
@@ -1423,6 +1492,9 @@
 		--td-action-btn-warning-hover-bg: rgb(245 158 11 / 14%);
 		--td-action-btn-danger-fg: #fca5a5;
 		--td-action-btn-danger-hover-bg: rgb(220 38 38 / 18%);
+		--td-action-btn-warning-pressed-bg: rgb(245 158 11 / 26%);
+		--td-action-btn-warning-pressed-fg: var(--td-action-btn-warning-fg);
+		--td-action-btn-danger-pressed-bg: rgb(220 38 38 / 30%);
 	}
 }
 
@@ -1453,6 +1525,7 @@
 		--td-btn-border-v: transparent;
 		--td-btn-fg-v: var(--td-action-btn-standard-fg);
 		--td-btn-hover-v: var(--td-action-btn-standard-hover-bg);
+		--td-btn-pressed-v: var(--td-action-btn-standard-pressed-bg);
 		--_td-btn-lift: none;
 		--_td-action-size: var(--td-action-btn-size-md);
 		--_td-action-icon: 1.125rem;
@@ -1472,11 +1545,17 @@
 	.td-btn--action.td-btn--action-warning {
 		--td-btn-fg-v: var(--td-action-btn-warning-fg);
 		--td-btn-hover-v: var(--td-action-btn-warning-hover-bg);
+		--td-btn-pressed-v: var(--td-action-btn-warning-pressed-bg);
+	}
+
+	.td-btn--action.td-btn--action-warning:is(:active, [data-td-pressed]):not(:disabled, [aria-busy="true"], [aria-disabled="true"]) {
+		color: var(--td-action-btn-warning-pressed-fg);
 	}
 
 	.td-btn--action.td-btn--action-danger {
 		--td-btn-fg-v: var(--td-action-btn-danger-fg);
 		--td-btn-hover-v: var(--td-action-btn-danger-hover-bg);
+		--td-btn-pressed-v: var(--td-action-btn-danger-pressed-bg);
 	}
 
 	.td-btn--action .td-btn__icon .td-icon {
@@ -1717,8 +1796,10 @@
 	}
 
 	/* soft border at rest (v0.14.1), one soft step darker under the pointer (v0.14.2) */
-	.td-checkbox:hover .td-checkbox__input:not(:checked, :indeterminate, :disabled) ~ .td-checkbox__mark {
-		border-color: var(--td-control-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-checkbox:hover .td-checkbox__input:not(:checked, :indeterminate, :disabled) ~ .td-checkbox__mark {
+			border-color: var(--td-control-border-hover);
+		}
 	}
 
 	.td-checkbox__input:focus-visible ~ .td-checkbox__mark {
@@ -1744,6 +1825,23 @@
 		.td-checkbox {
 			min-width: var(--td-touch-min);
 			min-height: var(--td-touch-min);
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-checkbox {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-checkbox:is(:active, [data-td-pressed]) .td-checkbox__input:not(:disabled) ~ .td-checkbox__mark {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-checkbox:is(:active, [data-td-pressed]) .td-checkbox__mark {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -1875,9 +1973,11 @@
 		opacity: 0;
 	}
 
-	.td-switch:hover .td-switch__input:not(:checked, :disabled) + .td-switch__track,
-	.td-switch:hover .td-switch__input:not(:checked, :disabled) + .td-switch__track .td-switch__thumb {
-		border-color: var(--td-control-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-switch:hover .td-switch__input:not(:checked, :disabled) + .td-switch__track,
+		.td-switch:hover .td-switch__input:not(:checked, :disabled) + .td-switch__track .td-switch__thumb {
+			border-color: var(--td-control-border-hover);
+		}
 	}
 
 	.td-switch__input:checked + .td-switch__track {
@@ -1954,6 +2054,23 @@
 		.td-switch__input:checked + .td-switch__track {
 			background: Highlight;
 			border-color: Highlight;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-switch {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-switch:is(:active, [data-td-pressed]) .td-switch__input:not(:disabled) + .td-switch__track {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-switch:is(:active, [data-td-pressed]) .td-switch__track {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -2125,6 +2242,7 @@
 	}
 
 	/* Native range: invisible, covers the whole control, thumb width = --td-slider-thumb (pointer ↔ value). */
+	/* active-exempt: native range input — the thumb follows the finger */
 	.td-slider__input {
 		position: absolute;
 		inset: 0;
@@ -2476,9 +2594,11 @@
 		line-height: 0;
 	}
 
-	.td-pagination__page:hover:not([aria-current="page"]),
-	.td-pagination__nav:hover:not([aria-disabled="true"]) {
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-pagination__page:hover:not([aria-current="page"]),
+		.td-pagination__nav:hover:not([aria-disabled="true"]) {
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-pagination__page[aria-current="page"] {
@@ -2602,6 +2722,26 @@
 		}
 		.td-pagination__nav[aria-disabled="true"] { color: GrayText; border-color: GrayText; opacity: 1; }
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-pagination__page,
+	.td-pagination__nav {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-pagination__page:is(:active, [data-td-pressed]):not([aria-current="page"]),
+	.td-pagination__nav:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-pagination__page:is(:active, [data-td-pressed]),
+		.td-pagination__nav:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/tabs.css ---- */
@@ -2714,8 +2854,10 @@
 		padding: 6px 12px;
 	}
 
-	.td-tabs__tab:hover {
-		color: var(--td-tabs-fg-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-tabs__tab:hover {
+			color: var(--td-tabs-fg-hover);
+		}
 	}
 
 	.td-tabs__tab[aria-selected="true"] {
@@ -2839,6 +2981,24 @@
 
 		.td-tabs__tab[aria-selected="true"] {
 			border-color: Highlight;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-tabs__tab {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-tabs__tab:is(:active, [data-td-pressed]):not(:disabled, [aria-disabled="true"]) {
+		color: var(--td-tabs-fg-hover);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-tabs__tab:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -3002,6 +3162,8 @@
 		--td-lb-disc: 48px;
 		--td-lb-disc-bg: var(--td-glass-clear-bg); /* dark 88 % */
 		--td-lb-disc-bg-hover: rgb(44 44 48 / 92%);
+		--td-lb-disc-bg-pressed: rgb(64 64 70 / 94%); /* v0.36.2 */
+		--td-lb-btn-pressed: rgb(255 255 255 / 24%); /* v0.36.2: bar buttons (hover 14 %) */
 		--td-lb-disc-border: rgb(255 255 255 / 40%); /* ≥ 3:1 on a black photo (contrast gate) */
 		/* v0.24.0 filmstrip */
 		--td-lb-thumb-size: 56px;
@@ -3014,6 +3176,7 @@
 		/* v0.24.0 slide on navigation */
 		--td-lb-slide-dist: 24px;
 		--td-lb-slide-dur: 160ms;
+		--td-lb-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* v0.36.2: swipe spring back (the modal enter curve) */
 	}
 
 	/* Touch: 44 px hit targets (docs/internal/design/liquid-glass.md geometry rule). */
@@ -3202,13 +3365,20 @@
 		transition: background var(--td-lb-dur-fast) var(--td-lb-ease);
 	}
 
-	.td-lightbox__nav > .td-lightbox__btn:is(:hover, :focus-visible) {
+	.td-lightbox__nav > .td-lightbox__btn:focus-visible {
 		background: transparent;
 		outline: none;
 	}
 
-	.td-lightbox__nav > .td-lightbox__btn:hover::before {
-		background: var(--td-lb-disc-bg-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-lightbox__nav > .td-lightbox__btn:hover {
+			background: transparent;
+			outline: none;
+		}
+
+		.td-lightbox__nav > .td-lightbox__btn:hover::before {
+			background: var(--td-lb-disc-bg-hover);
+		}
 	}
 
 	/* focus ring on the disc, not around the whole strip */
@@ -3288,8 +3458,10 @@
 		transition: background var(--td-lb-dur-fast) var(--td-lb-ease);
 	}
 
-	.td-lightbox__error-btn:hover {
-		background: #26262a;
+	@media (hover: hover) and (pointer: fine) {
+		.td-lightbox__error-btn:hover {
+			background: #26262a;
+		}
 	}
 
 	.td-lightbox__error-btn:focus-visible {
@@ -3305,6 +3477,26 @@
 
 	.td-lightbox[data-dragging] {
 		opacity: clamp(0.45, calc(1 - var(--td-lb-drag, 0px) / 320px), 1);
+	}
+
+	/* v0.36.2 (ADR 0019, QĐ 19–21): the media frame follows a horizontal swipe (--td-lb-swipe-x, written per frame by JS —
+	   a functional transform, ADR 0011 rule 4), then slides out (commit) or springs back; "reset" returns it to 0 with no
+	   transition (and hides the outgoing image where it is). */
+	.td-lightbox[data-swiping] .td-lightbox__stage {
+		translate: var(--td-lb-swipe-x, 0px) 0;
+		transition: none;
+	}
+
+	.td-lightbox[data-swiping="out"] .td-lightbox__stage {
+		transition: translate var(--td-lb-dur-fast) var(--td-ease-out);
+	}
+
+	.td-lightbox[data-swiping="back"] .td-lightbox__stage {
+		transition: translate var(--td-lb-dur) var(--td-lb-spring);
+	}
+
+	.td-lightbox[data-swiping="reset"] .td-lightbox__img {
+		transition: none;
 	}
 
 	.td-lightbox[data-closing-down] .td-lightbox__stage {
@@ -3467,9 +3659,11 @@
 		opacity: 1;
 	}
 
-	.td-lightbox__btn:hover {
-		background: rgb(255 255 255 / 14%);
-		opacity: 1;
+	@media (hover: hover) and (pointer: fine) {
+		.td-lightbox__btn:hover {
+			background: rgb(255 255 255 / 14%);
+			opacity: 1;
+		}
 	}
 
 	.td-lightbox__btn:focus-visible {
@@ -3480,8 +3674,14 @@
 	}
 
 	/* after the generic hover / focus rules: the back button stays solid in every state */
-	.td-lightbox__back:is(:hover, :focus-visible) {
+	.td-lightbox__back:focus-visible {
 		background: var(--td-glass-clear-solid);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-lightbox__back:hover {
+			background: var(--td-glass-clear-solid);
+		}
 	}
 
 	.td-lightbox__btn[aria-pressed="true"],
@@ -3710,6 +3910,7 @@
 			translate: 0 0;
 		}
 
+		/* active-exempt: sheet grab handle — the sheet follows the finger */
 		.td-lightbox__grab {
 			all: unset;
 			position: sticky;
@@ -3893,8 +4094,10 @@
 		-webkit-user-drag: none;
 	}
 
-	.td-lightbox__thumb:hover {
-		opacity: 0.85;
+	@media (hover: hover) and (pointer: fine) {
+		.td-lightbox__thumb:hover {
+			opacity: 0.85;
+		}
 	}
 
 	.td-lightbox__thumb[aria-current="true"] {
@@ -4022,10 +4225,64 @@
 			transform: none;
 		}
 
+		/* v0.36.2: no swipe follow / slide out / spring (JS does not start them either) */
+		.td-lightbox[data-swiping] .td-lightbox__stage {
+			translate: 0 0;
+			transition: none;
+		}
+
 		/* The swipe still closes — it just does not slide. */
 		.td-lightbox[data-closing-down] .td-lightbox__stage {
 			scale: 1;
 			translate: 0 0;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-lightbox__btn,
+	.td-lightbox__error-btn,
+	.td-lightbox__thumb {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-lightbox__btn:is(:active, [data-td-pressed]):not(:disabled) {
+		background-color: var(--td-lb-btn-pressed);
+		opacity: 1;
+		transition-duration: 0s;
+	}
+
+	.td-lightbox__nav > .td-lightbox__btn:is(:active, [data-td-pressed]) {
+		background: transparent;
+		transition-duration: 0s;
+	}
+
+	.td-lightbox__nav > .td-lightbox__btn:is(:active, [data-td-pressed])::before {
+		background: var(--td-lb-disc-bg-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-lightbox__back:is(:active, [data-td-pressed]) {
+		background-color: var(--td-glass-clear-solid);
+		background-image: linear-gradient(var(--td-lb-btn-pressed), var(--td-lb-btn-pressed));
+		transition-duration: 0s;
+	}
+
+	.td-lightbox__error-btn:is(:active, [data-td-pressed]) {
+		background: #34343a;
+		transition-duration: 0s;
+	}
+
+	.td-lightbox__thumb:is(:active, [data-td-pressed]) {
+		opacity: 0.7;
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-lightbox__btn:is(:active, [data-td-pressed]),
+		.td-lightbox__error-btn:is(:active, [data-td-pressed]),
+		.td-lightbox__thumb:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -4096,6 +4353,11 @@
 		--td-toast-error-close-hover: rgb(255 255 255 / 16%);
 		--td-toast-warning-close-hover: rgb(0 0 0 / 8%);
 		--td-toast-info-close-hover: rgb(255 255 255 / 16%);
+		/* v0.36.2 pressed fill per type (tap anywhere = dismiss): one step darker, ink ≥ 4.7:1 (contrast gate) */
+		--td-toast-success-pressed-bg: var(--td-btn-success-pressed, #14532d);
+		--td-toast-error-pressed-bg: var(--td-btn-danger-pressed, #991b1b);
+		--td-toast-warning-pressed-bg: var(--td-btn-warning-pressed, #cc6d05);
+		--td-toast-info-pressed-bg: var(--td-btn-info-pressed, #1e40af);
 		/* deprecated (no effect since v0.36.0: the per-type -close-hover tokens decide) */
 		--td-toast-close-hover: rgb(0 0 0 / 8%);
 		/* deprecated (no effect): v0.20.0 neutral surface + status icons, v0.19 washes */
@@ -4146,6 +4408,7 @@
 		--_td-toast-fg: var(--td-toast-info-fg);
 		--_td-toast-border: var(--td-toast-info-border);
 		--_td-toast-close-hover: var(--td-toast-info-close-hover);
+		--_td-toast-pressed-bg: var(--td-toast-info-pressed-bg);
 
 		position: relative;
 		box-sizing: border-box;
@@ -4178,6 +4441,7 @@
 		--_td-toast-fg: var(--td-toast-success-fg);
 		--_td-toast-border: var(--td-toast-success-border);
 		--_td-toast-close-hover: var(--td-toast-success-close-hover);
+		--_td-toast-pressed-bg: var(--td-toast-success-pressed-bg);
 	}
 
 	.td-toast--warning {
@@ -4185,6 +4449,7 @@
 		--_td-toast-fg: var(--td-toast-warning-fg);
 		--_td-toast-border: var(--td-toast-warning-border);
 		--_td-toast-close-hover: var(--td-toast-warning-close-hover);
+		--_td-toast-pressed-bg: var(--td-toast-warning-pressed-bg);
 	}
 
 	.td-toast--error {
@@ -4192,6 +4457,7 @@
 		--_td-toast-fg: var(--td-toast-error-fg);
 		--_td-toast-border: var(--td-toast-error-border);
 		--_td-toast-close-hover: var(--td-toast-error-close-hover);
+		--_td-toast-pressed-bg: var(--td-toast-error-pressed-bg);
 	}
 
 	.td-toast[data-state="open"] {
@@ -4245,8 +4511,10 @@
 		white-space: nowrap;
 	}
 
-	.td-toast__close:hover {
-		background: var(--_td-toast-close-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-toast__close:hover {
+			background: var(--_td-toast-close-hover);
+		}
 	}
 
 	.td-toast__close:focus-visible {
@@ -4454,6 +4722,32 @@
 			outline: 2px solid Highlight;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-toast,
+	.td-toast__close {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-toast__close:is(:active, [data-td-pressed]) {
+		background-color: var(--_td-toast-close-hover);
+		background-image: linear-gradient(var(--_td-toast-close-hover), var(--_td-toast-close-hover)); /* the hover wash, twice */
+		transition-duration: 0s;
+	}
+
+	/* v0.36.2 review ISSUE-1: the whole toast dismisses on a tap — pressed fill = its type's darker step. The toast
+	   transitions only opacity / transform (enter / exit / reduced motion keep theirs), so the fill switches at once. */
+	.td-toast:is(:active, [data-td-pressed]) {
+		background-color: var(--_td-toast-pressed-bg);
+	}
+
+	@media (forced-colors: active) {
+		.td-toast:is(:active, [data-td-pressed]),
+		.td-toast__close:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/tooltip.css ---- */
@@ -4620,7 +4914,8 @@
  * Per-instance CSSOM custom properties on .td-modal__dialog (validated in JS):
  *   --td-modal-w, --td-modal-h, --td-modal-body-pad, --td-modal-body-overflow
  * Only .td-modal__body scrolls (header/footer pinned, D21). < 720 px (ADR 0014 md): bottom sheet (except --viewport).
- * --viewport (v0.33.0): header / footer / body add env(safe-area-inset-*) to their padding (100dvh, never vh).
+ * --viewport (v0.33.0): header / footer / body add env(safe-area-inset-*) to their padding (100dvh, never vh; v0.36.2:
+ *   100 % of the root, which follows the visual viewport while the on-screen keyboard is up).
  * Motion (v0.22.1, ported from dcms-modal): opening → scrim fades in (--td-modal-scrim-dur 120ms ease-out), the dialog
  * fades in (--td-modal-fade-dur 200ms, --td-modal-fade-ease) and scales from --td-modal-enter-from scale(0.95) with a
  * slight spring overshoot (--td-modal-enter-dur 300ms, --td-modal-enter-ease); closing scales back (--td-modal-exit-dur
@@ -4667,6 +4962,11 @@
 
 		position: fixed;
 		inset: 0;
+		/* v0.36.2 (ADR 0019): the root follows the VISUAL viewport while an on-screen keyboard is up (--td-vv-* written
+		   by utils/keyboard-viewport.js, not an API) — dialog, sheet, full-viewport surface and footer stay above it */
+		top: var(--td-vv-top, 0);
+		bottom: auto;
+		height: var(--td-vv-height, 100%);
 		/* scroll lock's padding fallback (utils/scroll-lock.js): the viewport grew by the hidden scrollbar's width →
 		   keep the centred dialog where it was (0 when scrollbar-gutter held or there was no classic scrollbar) */
 		inset-inline-end: var(--td-scroll-lock-gap, 0px);
@@ -4731,7 +5031,7 @@
 		flex-direction: column;
 		width: min(var(--td-modal-w, var(--_td-modal-size)), 100%);
 		height: var(--td-modal-h, auto);
-		max-height: calc(100dvh - 2 * var(--td-modal-gap));
+		max-height: 100%; /* the root content box = viewport − 2 × gap (v0.36.2: was calc(100dvh − 2 × gap)) */
 		overflow: hidden;
 		border-radius: var(--td-modal-radius);
 		outline: none;
@@ -4800,9 +5100,11 @@
 		appearance: none;
 	}
 
-	.td-modal__close:hover:not(:disabled) {
-		color: var(--td-color-text);
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-modal__close:hover:not(:disabled) {
+			color: var(--td-color-text);
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-modal__close:focus-visible {
@@ -4885,7 +5187,7 @@
 	.td-modal--viewport .td-modal__dialog {
 		--td-modal-enter-from: none; /* a full-viewport surface only fades */
 		width: 100%;
-		height: 100dvh;
+		height: 100%; /* the root = the (visual) viewport (v0.36.2: was 100dvh) */
 		max-height: none;
 		border-radius: 0;
 	}
@@ -4924,7 +5226,7 @@
 
 		.td-modal:not(.td-modal--viewport) .td-modal__dialog {
 			width: 100%;
-			max-height: min(var(--td-modal-h, 90dvh), 90dvh);
+			max-height: min(var(--td-modal-h, 90%), 90%); /* of the root (v0.36.2: was 90dvh) */
 			padding-bottom: env(safe-area-inset-bottom, 0);
 			border-bottom-width: 0;
 			border-radius: var(--td-modal-sheet-radius) var(--td-modal-sheet-radius) 0 0;
@@ -5029,6 +5331,24 @@
 			color: CanvasText;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-modal__close {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-modal__close:is(:active, [data-td-pressed]):not(:disabled) {
+		color: var(--td-color-text);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-modal__close:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/dropdown.css ---- */
@@ -5105,6 +5425,7 @@
 		color: var(--td-field-fg);
 	}
 
+	/* active-exempt: native select — the UA draws it */
 	td-dropdown > .td-dropdown__native {
 		box-sizing: border-box;
 		display: block;
@@ -5124,8 +5445,10 @@
 		box-shadow: none;
 	}
 
-	td-dropdown > .td-dropdown__native:hover:not(:disabled, :focus-visible) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		td-dropdown > .td-dropdown__native:hover:not(:disabled, :focus-visible) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	td-dropdown > .td-dropdown__native:focus-visible {
@@ -5181,8 +5504,10 @@
 			background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-dropdown__trigger:hover:not(:disabled, :focus-visible, [aria-expanded="true"]) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropdown__trigger:hover:not(:disabled, :focus-visible, [aria-expanded="true"]) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-dropdown__trigger[aria-expanded="true"] {
@@ -5347,8 +5672,10 @@
 		border-radius: 0; /* v0.36.0: full-bleed row (dcms2) */
 	}
 
-	.td-dropdown__option:hover {
-		background: var(--td-dropdown-option-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropdown__option:hover {
+			background: var(--td-dropdown-option-hover);
+		}
 	}
 
 	/* selected = semibold label + the ✓ at the inline end (JS prints .td-dropdown__check on the selected row) */
@@ -5373,8 +5700,10 @@
 		opacity: 0.55;
 	}
 
-	.td-dropdown__option[aria-disabled="true"]:hover {
-		background: none;
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropdown__option[aria-disabled="true"]:hover {
+			background: none;
+		}
 	}
 
 	.td-dropdown__option--clear {
@@ -5492,6 +5821,30 @@
 		.td-dropdown__option--create {
 			color: LinkText;
 			border-top-color: CanvasText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-dropdown__trigger,
+	.td-dropdown__option {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-dropdown__trigger:is(:active, [data-td-pressed]):not(:disabled) {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	.td-dropdown__option:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		background: var(--td-option-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-dropdown__trigger:is(:active, [data-td-pressed]),
+		.td-dropdown__option:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -5741,9 +6094,11 @@
 		appearance: none;
 	}
 
-	.td-table__sort:hover {
-		color: var(--td-table-fg);
-		background: var(--td-color-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-table__sort:hover {
+			color: var(--td-table-fg);
+			background: var(--td-color-hover);
+		}
 	}
 
 	.td-table__sort:focus-visible {
@@ -5777,9 +6132,15 @@
 		background: var(--td-table-zebra);
 	}
 
-	.td-table .td-table__row:not(.td-table__row--skeleton):hover,
 	.td-table .td-table__row:not(.td-table__row--skeleton):focus-within {
 		background: var(--td-table-row-hover);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: table rows are not activatable (cells / buttons inside are) */
+		.td-table .td-table__row:not(.td-table__row--skeleton):hover {
+			background: var(--td-table-row-hover);
+		}
 	}
 
 	.td-table__row {
@@ -6180,9 +6541,11 @@
 			color: CanvasText;
 		}
 
-		.td-table .td-table__row:not(.td-table__row--skeleton):hover {
-			outline: 2px solid Highlight;
-			outline-offset: -2px;
+		@media (hover: hover) and (pointer: fine) {
+			.td-table .td-table__row:not(.td-table__row--skeleton):hover {
+				outline: 2px solid Highlight;
+				outline-offset: -2px;
+			}
 		}
 
 		.td-table__skeleton {
@@ -6191,6 +6554,24 @@
 
 		.td-table__skeleton::after {
 			display: none;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-table__sort {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-table__sort:is(:active, [data-td-pressed]) {
+		color: var(--td-table-fg);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-table__sort:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -6289,8 +6670,10 @@
 			background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-dtp__trigger:hover:not(:disabled, :focus-visible, [aria-expanded="true"]) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-dtp__trigger:hover:not(:disabled, :focus-visible, [aria-expanded="true"]) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-dtp__trigger[aria-expanded="true"] {
@@ -6524,8 +6907,10 @@
 		scroll-snap-align: center;
 	}
 
-	.td-dtp-wheel__option:hover {
-		color: var(--td-dtp-option-selected-fg);
+	@media (hover: hover) and (pointer: fine) {
+		.td-dtp-wheel__option:hover {
+			color: var(--td-dtp-option-selected-fg);
+		}
 	}
 
 	.td-dtp-wheel__option[aria-selected="true"] {
@@ -6620,6 +7005,31 @@
 			color: HighlightText;
 			background: Highlight;
 			forced-color-adjust: none;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-dtp__trigger,
+	.td-dtp-wheel__option {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-dtp__trigger:is(:active, [data-td-pressed]):not(:disabled) {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	.td-dtp-wheel__option:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		color: var(--td-dtp-option-selected-fg);
+		background: var(--td-option-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-dtp__trigger:is(:active, [data-td-pressed]),
+		.td-dtp-wheel__option:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -6737,8 +7147,10 @@
 		outline-offset: 2px;
 	}
 
-	.td-form-summary__link:hover {
-		text-decoration-thickness: 2px;
+	@media (hover: hover) and (pointer: fine) {
+		.td-form-summary__link:hover {
+			text-decoration-thickness: 2px;
+		}
 	}
 
 	.td-form-summary__link:focus-visible {
@@ -6772,6 +7184,24 @@
 
 		.td-form-summary__link:focus-visible {
 			outline-color: Highlight;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-form-summary__link {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-form-summary__link:is(:active, [data-td-pressed]) {
+		text-decoration-thickness: 2px;
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-form-summary__link:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -6886,8 +7316,10 @@
 		appearance: none;
 	}
 
-	.td-menu__item:hover {
-		background: var(--td-menu-item-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-menu__item:hover {
+			background: var(--td-menu-item-hover);
+		}
 	}
 
 	.td-menu__item:focus {
@@ -6915,8 +7347,10 @@
 		opacity: 0.55;
 	}
 
-	.td-menu__item[aria-disabled="true"]:hover {
-		background: none;
+	@media (hover: hover) and (pointer: fine) {
+		.td-menu__item[aria-disabled="true"]:hover {
+			background: none;
+		}
 	}
 
 	.td-menu__label {
@@ -7024,10 +7458,16 @@
 		padding-inline: var(--td-space-xs);
 	}
 
-	.td-menu-btn:hover,
 	.td-menu-btn[aria-expanded="true"] {
 		color: var(--td-menu-btn-fg-hover);
 		background: var(--td-menu-btn-hover);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-menu-btn:hover {
+			color: var(--td-menu-btn-fg-hover);
+			background: var(--td-menu-btn-hover);
+		}
 	}
 
 	.td-menu-btn:focus-visible {
@@ -7096,6 +7536,31 @@
 
 		.td-menu-btn[aria-expanded="true"] {
 			outline: 1px solid CanvasText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-menu__item,
+	.td-menu-btn {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-menu__item:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		background: var(--td-option-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	.td-menu-btn:is(:active, [data-td-pressed]) {
+		color: var(--td-menu-btn-fg-hover);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-menu__item:is(:active, [data-td-pressed]),
+		.td-menu-btn:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -7175,8 +7640,11 @@
 			box-shadow var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-chip-input__box:hover:not(:has(.td-chip-input__input:disabled, .td-chip-input__input:focus)) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: text input box — the focus ring is the feedback */
+		.td-chip-input__box:hover:not(:has(.td-chip-input__input:disabled, .td-chip-input__input:focus)) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-chip-input__box:has(.td-chip-input__input:focus) {
@@ -7260,8 +7728,10 @@
 		transition: background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-chip-input__remove:hover:not(:disabled) {
-		background: var(--td-chip-remove-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-chip-input__remove:hover:not(:disabled) {
+			background: var(--td-chip-remove-hover);
+		}
 	}
 
 	.td-chip-input__remove:focus-visible {
@@ -7373,8 +7843,10 @@
 		border-radius: 0; /* v0.36.0: full-bleed row (dcms2) */
 	}
 
-	.td-chip-input__option:hover {
-		background: var(--td-option-hover-bg);
+	@media (hover: hover) and (pointer: fine) {
+		.td-chip-input__option:hover {
+			background: var(--td-option-hover-bg);
+		}
 	}
 
 	/* highlight: aria-selected in the single list, data-active in the multi-select one (aria-selected = membership) */
@@ -7403,8 +7875,10 @@
 		cursor: not-allowed;
 	}
 
-	.td-chip-input__option[aria-disabled="true"]:hover {
-		background: none;
+	@media (hover: hover) and (pointer: fine) {
+		.td-chip-input__option[aria-disabled="true"]:hover {
+			background: none;
+		}
 	}
 
 	.td-chip-input__option--all {
@@ -7468,9 +7942,11 @@
 		box-shadow: none;
 	}
 
-	.td-multiselect__native:hover:not(:disabled, :focus-visible),
-	td-chip-input > .td-chip-input__native:hover:not(:disabled, :focus-visible) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-multiselect__native:hover:not(:disabled, :focus-visible), /* active-exempt: native select — the UA draws it */
+		td-chip-input > .td-chip-input__native:hover:not(:disabled, :focus-visible) { /* active-exempt: native select — the UA draws it */
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-multiselect__native:focus-visible,
@@ -7608,6 +8084,31 @@
 		.td-multiselect__native,
 		td-chip-input > .td-chip-input__native {
 			border-color: CanvasText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-chip-input__remove,
+	.td-chip-input__option {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-chip-input__remove:is(:active, [data-td-pressed]):not(:disabled) {
+		background-color: var(--td-chip-remove-hover);
+		background-image: linear-gradient(var(--td-chip-remove-hover), var(--td-chip-remove-hover)); /* the hover wash, twice */
+		transition-duration: 0s;
+	}
+
+	.td-chip-input__option:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		background: var(--td-option-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-chip-input__remove:is(:active, [data-td-pressed]),
+		.td-chip-input__option:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -7987,6 +8488,23 @@
 			transition: none;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-scroll-top {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-scroll-top:is(:active, [data-td-pressed]) {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-scroll-top:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/progress.css ---- */
@@ -8106,6 +8624,7 @@
 		--td-dropzone-bg: var(--td-field-bg);
 		--td-dropzone-bg-active: color-mix(in srgb, var(--td-accent) 6%, var(--td-field-bg));
 		--td-dropzone-bg-disabled: var(--td-field-bg-disabled);
+		--td-dropzone-bg-pressed: #f4f4f5; /* v0.36.2: the zone while pressed (opens the picker); muted sub-line keeps 4.81:1 (gray-100 is 4.64) */
 		--td-dropzone-border: var(--td-control-border-strong); /* dashed edge ≥ 3:1 on white */
 		--td-dropzone-border-active: var(--td-accent);
 		--td-dropzone-radius: var(--td-radius-lg);
@@ -8123,6 +8642,11 @@
 		--td-dropzone-stacked-icon: 64px;
 		--td-dropzone-title-size: var(--td-text-lg);
 		--td-dropzone-title-weight: var(--td-fw-semibold);
+	}
+
+	/* dark (opt-in): the pressed zone one step lighter than the dark field */
+	:root[data-td-theme="dark"] {
+		--td-dropzone-bg-pressed: #2c2c30;
 	}
 }
 
@@ -8189,9 +8713,14 @@
 			border-color var(--td-dur-base) var(--td-ease);
 	}
 
-	.td-dropzone__zone:hover,
 	.td-dropzone[data-state="dragover"] .td-dropzone__zone {
 		border-color: var(--td-dropzone-border-active);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropzone__zone:hover {
+			border-color: var(--td-dropzone-border-active);
+		}
 	}
 
 	.td-dropzone[data-state="dragover"] .td-dropzone__zone {
@@ -8435,9 +8964,11 @@
 		transition: background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-dropzone__remove:hover:not(:disabled) {
-		color: var(--td-color-text);
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropzone__remove:hover:not(:disabled) {
+			color: var(--td-color-text);
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-dropzone__remove:focus-visible {
@@ -8475,6 +9006,34 @@
 		.td-dropzone[data-disabled] .td-dropzone__zone {
 			color: GrayText;
 			border-color: GrayText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-dropzone__remove,
+	.td-dropzone__zone {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-dropzone__remove:is(:active, [data-td-pressed]):not(:disabled) {
+		color: var(--td-color-text);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	/* v0.36.2 review ISSUE-1: the zone is a tap target (opens the file picker) — pressed fill, never while disabled or
+	   while a file is dragged over it (dragover is its own state) */
+	.td-dropzone:not([data-disabled], [data-state="dragover"]) .td-dropzone__zone:is(:active, [data-td-pressed]) {
+		background-color: var(--td-dropzone-bg-pressed);
+		border-color: var(--td-dropzone-border-active);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-dropzone:not([data-disabled], [data-state="dragover"]) .td-dropzone__zone:is(:active, [data-td-pressed]),
+		.td-dropzone__remove:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -8834,8 +9393,10 @@
 		transition: background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-alert__close:hover {
-		background: var(--td-alert-close-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-alert__close:hover {
+			background: var(--td-alert-close-hover);
+		}
 	}
 
 	.td-alert__close:focus-visible {
@@ -8868,6 +9429,23 @@
 		}
 
 		.td-alert__close:focus-visible {
+			outline: 2px solid Highlight;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-alert__close {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-alert__close:is(:active, [data-td-pressed]) {
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-alert__close:is(:active, [data-td-pressed]) {
 			outline: 2px solid Highlight;
 		}
 	}
@@ -9079,6 +9657,7 @@
 	}
 
 	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: not a control — its opener and tick carry the pressed state */
 		.td-media-grid__item:hover .td-media-grid__tick {
 			opacity: 1;
 		}
@@ -9154,6 +9733,7 @@
 			border-color: var(--td-control-border-hover);
 		}
 
+		/* active-exempt: selected-state restore of the hover rule — .td-media-grid__tick--mark carries the pressed state */
 		.td-media-grid__item[data-selected] .td-media-grid__tick--mark:hover > .td-check {
 			border-color: var(--td-checkbox-color);
 		}
@@ -9233,6 +9813,36 @@
 			border-color: Highlight;
 			background: Highlight;
 			color: HighlightText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-media-grid__open,
+	.td-media-grid__tick {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-media-grid__open:is(:active, [data-td-pressed])::after {
+		background: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-media-grid__tick:is(:active, [data-td-pressed]):not(:disabled) {
+		opacity: 1;
+		color: var(--td-media-grid-tick-border);
+		transition-duration: 0s;
+	}
+
+	.td-media-grid__tick--mark:is(:active, [data-td-pressed]):not(:disabled) > .td-check {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-media-grid__open:is(:active, [data-td-pressed]),
+		.td-media-grid__tick:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -9512,6 +10122,9 @@
 
 		position: fixed;
 		inset: 0;
+		top: var(--td-vv-top, 0); /* v0.36.2 (ADR 0019): follows the visual viewport while the keyboard is up */
+		bottom: auto;
+		height: var(--td-vv-height, 100%);
 		z-index: var(--td-z-modal);
 		box-sizing: border-box;
 		font-family: var(--td-font-sans);
@@ -9639,9 +10252,11 @@
 		appearance: none;
 	}
 
-	.td-drawer__close:hover {
-		color: var(--td-color-text);
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-drawer__close:hover {
+			color: var(--td-color-text);
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-drawer__close:focus-visible {
@@ -9747,6 +10362,24 @@
 			border-color: ButtonText;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-drawer__close {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-drawer__close:is(:active, [data-td-pressed]) {
+		color: var(--td-color-text);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-drawer__close:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/copy.css ---- */
@@ -9831,9 +10464,11 @@
 		height: var(--td-copy-size-sm);
 	}
 
-	.td-copy:hover {
-		color: var(--td-copy-fg-hover);
-		background: var(--td-copy-bg-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-copy:hover {
+			color: var(--td-copy-fg-hover);
+			background: var(--td-copy-bg-hover);
+		}
 	}
 
 	.td-copy:focus-visible {
@@ -9842,14 +10477,24 @@
 		box-shadow: var(--td-focus-ring);
 	}
 
-	.td-copy[data-state="copied"],
-	.td-copy[data-state="copied"]:hover {
+	.td-copy[data-state="copied"] {
 		color: var(--td-copy-success);
 	}
 
-	.td-copy[data-state="error"],
-	.td-copy[data-state="error"]:hover {
+	@media (hover: hover) and (pointer: fine) {
+		.td-copy[data-state="copied"]:hover {
+			color: var(--td-copy-success);
+		}
+	}
+
+	.td-copy[data-state="error"] {
 		color: var(--td-copy-error);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-copy[data-state="error"]:hover {
+			color: var(--td-copy-error);
+		}
 	}
 
 	.td-copy__icon {
@@ -9917,6 +10562,23 @@
 
 		.td-copy[data-state] {
 			border-color: Highlight;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-copy {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-copy:is(:active, [data-td-pressed]) {
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-copy:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -10029,8 +10691,10 @@
 		border-radius: var(--td-glass-radius-inner);
 	}
 
-	.td-tree__row:hover {
-		background: var(--td-tree-row-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-tree__row:hover {
+			background: var(--td-tree-row-hover);
+		}
 	}
 
 	.td-tree__item[aria-selected="true"] > .td-tree__row {
@@ -10117,6 +10781,7 @@
 		opacity: 0.55;
 	}
 
+	/* active-exempt: part of the row — .td-tree__row carries the pressed state */
 	.td-tree__item[aria-disabled="true"] > .td-tree__row > .td-tree__toggle {
 		cursor: pointer;
 	}
@@ -10181,6 +10846,23 @@
 			outline: 1px solid CanvasText;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-tree__row {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-tree__row:is(:active, [data-td-pressed]) {
+		background: var(--td-option-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-tree__row:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/tree-select.css ---- */
@@ -10217,6 +10899,7 @@
 	}
 
 	/* the native select (PHP td_tree_select): a field in native mode … */
+	/* active-exempt: native select — the UA draws it */
 	.td-tree-select__native {
 		box-sizing: border-box;
 		display: block;
@@ -10259,8 +10942,10 @@
 		overflow-y: auto;
 	}
 
-	.td-tree-select__native:hover:not(:disabled, :focus-visible) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-tree-select__native:hover:not(:disabled, :focus-visible) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-tree-select__native:focus-visible {
@@ -10284,6 +10969,7 @@
 		box-sizing: border-box;
 	}
 
+	/* active-exempt: text input box — the focus ring is the feedback */
 	.td-tree-select__control {
 		position: relative;
 		display: flex;
@@ -10303,8 +10989,10 @@
 			background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-tree-select__control:hover:not([data-disabled], :has(:focus-visible), :has([aria-expanded="true"])) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-tree-select__control:hover:not([data-disabled], :has(:focus-visible), :has([aria-expanded="true"])) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-tree-select__control:has([aria-expanded="true"]) {
@@ -10402,9 +11090,11 @@
 		display: none;
 	}
 
-	.td-tree-select__clear:hover {
-		color: var(--td-field-fg);
-		background: var(--td-color-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-tree-select__clear:hover {
+			color: var(--td-field-fg);
+			background: var(--td-color-hover);
+		}
 	}
 
 	.td-tree-select__clear:focus-visible {
@@ -10523,8 +11213,10 @@
 		pointer-events: none;
 	}
 
-	.td-tree-select__menu .td-tree__row:hover::before {
-		background: var(--td-option-hover-bg);
+	@media (hover: hover) and (pointer: fine) {
+		.td-tree-select__menu .td-tree__row:hover::before {
+			background: var(--td-option-hover-bg);
+		}
 	}
 
 	.td-tree-select__menu .td-tree__item[aria-selected="true"] > .td-tree__row {
@@ -10611,6 +11303,34 @@
 			outline: 2px solid Highlight;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-tree-select__clear {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-tree-select__clear:is(:active, [data-td-pressed]) {
+		color: var(--td-field-fg);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	.td-tree-select__menu .td-tree__row:is(:active, [data-td-pressed]) {
+		background: none; /* the inset ::before is the row fill here */
+		transition-duration: 0s;
+	}
+
+	.td-tree-select__menu .td-tree__row:is(:active, [data-td-pressed])::before {
+		background: var(--td-option-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-tree-select__clear:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/number-input.css ---- */
@@ -10665,8 +11385,11 @@
 			background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-number__box:hover:not(:focus-within, :has(> .td-number__control:disabled)) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: text input box — the focus ring is the feedback */
+		.td-number__box:hover:not(:focus-within, :has(> .td-number__control:disabled)) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-number__box:focus-within {
@@ -10851,9 +11574,11 @@
 		appearance: none;
 	}
 
-	.td-repeater__btn:hover {
-		color: var(--td-repeater-btn-fg-hover);
-		background: var(--td-repeater-btn-bg-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-repeater__btn:hover {
+			color: var(--td-repeater-btn-fg-hover);
+			background: var(--td-repeater-btn-bg-hover);
+		}
 	}
 
 	.td-repeater__btn:focus-visible {
@@ -10863,11 +11588,18 @@
 	}
 
 	.td-repeater__btn[aria-disabled="true"],
-	.td-repeater__btn[aria-disabled="true"]:hover,
 	.td-repeater__btn:disabled {
 		color: var(--td-repeater-btn-disabled-fg);
 		cursor: not-allowed;
 		background: transparent;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-repeater__btn[aria-disabled="true"]:hover {
+			color: var(--td-repeater-btn-disabled-fg);
+			cursor: not-allowed;
+			background: transparent;
+		}
 	}
 
 	.td-repeater__btn .td-icon {
@@ -10944,6 +11676,24 @@
 
 		.td-repeater__btn[aria-disabled="true"] {
 			color: GrayText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-repeater__btn {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-repeater__btn:is(:active, [data-td-pressed]):not(:disabled, [aria-disabled="true"]) {
+		color: var(--td-repeater-btn-fg-hover);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-repeater__btn:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -11052,9 +11802,11 @@
 		appearance: none;
 	}
 
-	.td-sortable__handle:hover {
-		color: var(--td-color-text);
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-sortable__handle:hover {
+			color: var(--td-color-text);
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-sortable__handle:focus-visible {
@@ -11063,11 +11815,18 @@
 		box-shadow: var(--td-focus-ring);
 	}
 
-	.td-sortable__handle[aria-disabled="true"],
-	.td-sortable__handle[aria-disabled="true"]:hover {
+	.td-sortable__handle[aria-disabled="true"] {
 		color: var(--td-btn-disabled-fg);
 		cursor: not-allowed;
 		background: transparent;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-sortable__handle[aria-disabled="true"]:hover {
+			color: var(--td-btn-disabled-fg);
+			cursor: not-allowed;
+			background: transparent;
+		}
 	}
 
 	td-repeater button[data-td-sort-handle][hidden] {
@@ -11089,9 +11848,14 @@
 		border-color: var(--td-color-border);
 	}
 
-	td-media-grid > td-sortable > [data-td-sort-item] > .td-sortable__handle:hover,
 	td-media-grid > td-sortable > [data-td-sort-item] > .td-sortable__handle[aria-disabled="true"] {
 		background: var(--td-color-surface);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		td-media-grid > td-sortable > [data-td-sort-item] > .td-sortable__handle:hover {
+			background: var(--td-color-surface);
+		}
 	}
 
 	/* an app placeholder for the kit handle keeps its 32px box before JS runs (no layout shift) */
@@ -11145,6 +11909,30 @@
 
 		.td-sortable__placeholder {
 			border-color: CanvasText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-sortable__handle {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-sortable__handle:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		color: var(--td-color-text);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	td-media-grid > td-sortable > [data-td-sort-item] > .td-sortable__handle:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		background-color: var(--td-color-surface);
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-sortable__handle:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -11206,9 +11994,11 @@
 		appearance: none;
 	}
 
-	.td-masked__toggle:hover {
-		color: var(--td-color-text);
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-masked__toggle:hover {
+			color: var(--td-color-text);
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-masked__toggle:focus-visible {
@@ -11217,17 +12007,30 @@
 		box-shadow: var(--td-focus-ring);
 	}
 
-	.td-masked__toggle[aria-disabled="true"],
-	.td-masked__toggle[aria-disabled="true"]:hover {
+	.td-masked__toggle[aria-disabled="true"] {
 		color: var(--td-btn-disabled-fg);
 		cursor: not-allowed;
 		background: transparent;
 	}
 
-	.td-masked__toggle[data-state="loading"],
-	.td-masked__toggle[data-state="loading"]:hover {
+	@media (hover: hover) and (pointer: fine) {
+		.td-masked__toggle[aria-disabled="true"]:hover {
+			color: var(--td-btn-disabled-fg);
+			cursor: not-allowed;
+			background: transparent;
+		}
+	}
+
+	.td-masked__toggle[data-state="loading"] {
 		color: var(--td-color-text-muted);
 		cursor: progress;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-masked__toggle[data-state="loading"]:hover {
+			color: var(--td-color-text-muted);
+			cursor: progress;
+		}
 	}
 
 	.td-masked__icon {
@@ -11275,6 +12078,24 @@
 
 		.td-masked__toggle[aria-disabled="true"] {
 			color: GrayText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-masked__toggle {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-masked__toggle:is(:active, [data-td-pressed]):not([aria-disabled="true"], [data-state="loading"]) {
+		color: var(--td-color-text);
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-masked__toggle:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -11569,8 +12390,10 @@
 		transition: border-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-media-picker__card:hover {
-		border-color: var(--td-media-picker-card-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-picker__card:hover {
+			border-color: var(--td-media-picker-card-hover);
+		}
 	}
 
 	.td-media-picker__card[data-viewing] {
@@ -11578,9 +12401,14 @@
 	}
 
 	/* checked wins over viewing / hover */
-	.td-media-picker__card[data-selected],
-	.td-media-picker__card[data-selected]:hover {
+	.td-media-picker__card[data-selected] {
 		border-color: var(--td-media-picker-card-checked);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-picker__card[data-selected]:hover {
+			border-color: var(--td-media-picker-card-checked);
+		}
 	}
 
 	.td-media-picker__card .td-media-picker__open {
@@ -11783,8 +12611,10 @@
 		border-radius: var(--td-radius-full);
 	}
 
-	.td-media-picker__back:hover {
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-picker__back:hover {
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-media-picker__back:focus-visible {
@@ -12182,15 +13012,26 @@
 			border-color: CanvasText;
 		}
 
-		.td-media-picker__card:hover,
 		.td-media-picker__card[data-viewing] {
 			border-color: Highlight;
 		}
 
-		.td-media-picker__card[data-selected],
-		.td-media-picker__card[data-selected]:hover {
+		@media (hover: hover) and (pointer: fine) {
+			.td-media-picker__card:hover {
+				border-color: Highlight;
+			}
+		}
+
+		.td-media-picker__card[data-selected] {
 			border-color: Highlight;
 			outline: 2px solid Highlight;
+		}
+
+		@media (hover: hover) and (pointer: fine) {
+			.td-media-picker__card[data-selected]:hover {
+				border-color: Highlight;
+				outline: 2px solid Highlight;
+			}
 		}
 
 		.td-media-picker__kind,
@@ -12201,6 +13042,36 @@
 		.td-media-picker__detail,
 		.td-media-picker__content {
 			border-color: CanvasText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-media-picker__card,
+	.td-media-picker__back {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-media-picker__card:is(:active, [data-td-pressed]) {
+		border-color: var(--td-media-picker-card-hover);
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	.td-media-picker__card[data-selected]:is(:active, [data-td-pressed]) {
+		border-color: var(--td-media-picker-card-checked);
+		transition-duration: 0s;
+	}
+
+	.td-media-picker__back:is(:active, [data-td-pressed]) {
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-media-picker__card:is(:active, [data-td-pressed]),
+		.td-media-picker__back:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
@@ -12438,8 +13309,10 @@
 		cursor: not-allowed;
 	}
 
-	.td-media-field__frame[data-state="empty"] > .td-media-field__open:hover:not(:disabled) {
-		background: var(--td-color-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-media-field__frame[data-state="empty"] > .td-media-field__open:hover:not(:disabled) {
+			background: var(--td-color-hover);
+		}
 	}
 
 	.td-media-field__open:disabled > :not(.td-sr-only) {
@@ -12617,6 +13490,29 @@
 			outline-color: Highlight;
 		}
 	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-media-field__open {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-media-field__open:is(:active, [data-td-pressed]):not(:disabled) {
+		filter: brightness(0.88); /* the opener is the media box: a pressed tint over the image */
+		transition-duration: 0s;
+	}
+
+	.td-media-field__frame[data-state="empty"] > .td-media-field__open:is(:active, [data-td-pressed]):not(:disabled) {
+		filter: none;
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-media-field__open:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
+		}
+	}
 }
 
 /* ---- src/styles/components/cropper.css ---- */
@@ -12719,8 +13615,10 @@
 		appearance: none;
 	}
 
-	.td-cropper__ratio:hover:not(:disabled, [aria-checked="true"]) {
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-cropper__ratio:hover:not(:disabled, [aria-checked="true"]) {
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-cropper__ratio[aria-checked="true"] {
@@ -13149,6 +14047,23 @@
 
 		.td-crop-dialog__cropper .td-cropper__toolbar {
 			margin-block-end: var(--td-space-2xs);
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-cropper__ratio {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-cropper__ratio:is(:active, [data-td-pressed]):not(:disabled, [aria-checked="true"]) {
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-cropper__ratio:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }

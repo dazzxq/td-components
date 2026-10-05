@@ -561,6 +561,12 @@ Chi tiết: [Trợ năng](../guides/accessibility.md).
 
 Xem [Bảo mật](../guides/security.md).
 
+## Cảm ứng
+
+- Trigger và hàng option có hình nhấn (`--td-option-pressed-bg`); hover chỉ trên con trỏ mịn — không còn hàng "dính" màu sau khi chạm. `<select>` native (chế độ nâng cấp) do trình duyệt vẽ.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **Menu đi theo "chủ" của nó (0.21.1).** Popup tự đóng khi trigger bị khung cuộn cắt, bị ẩn mà không cần

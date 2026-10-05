@@ -61,8 +61,10 @@
 	}
 
 	/* soft border at rest (v0.14.1), one soft step darker under the pointer (v0.14.2) */
-	.td-checkbox:hover .td-checkbox__input:not(:checked, :indeterminate, :disabled) ~ .td-checkbox__mark {
-		border-color: var(--td-control-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-checkbox:hover .td-checkbox__input:not(:checked, :indeterminate, :disabled) ~ .td-checkbox__mark {
+			border-color: var(--td-control-border-hover);
+		}
 	}
 
 	.td-checkbox__input:focus-visible ~ .td-checkbox__mark {
@@ -88,6 +90,23 @@
 		.td-checkbox {
 			min-width: var(--td-touch-min);
 			min-height: var(--td-touch-min);
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-checkbox {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-checkbox:is(:active, [data-td-pressed]) .td-checkbox__input:not(:disabled) ~ .td-checkbox__mark {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-checkbox:is(:active, [data-td-pressed]) .td-checkbox__mark {
+			outline: 2px solid Highlight;
 		}
 	}
 }

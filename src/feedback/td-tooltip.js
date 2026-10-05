@@ -25,14 +25,16 @@ import { safeColor } from '../utils/css-safe.js';
  *   chip's padding box, so the arrow keeps pointing at the trigger when the chip is clamped to the viewport.
  *   trigger while shown: aria-describedby="{existing ids} td-tooltip" (own id only; removed on hide)
  *
- * Behaviour (dwp): shows on pointerenter for every pointer type (touch included) and on ANY focus; hides on
+ * Behaviour (dwp; v0.36.2 touch rule, ADR 0019): shows on pointerenter of a MOUSE or PEN (a touch pointerenter is
+ * ignored) and on any focus EXCEPT the one a tap gives the trigger (a touch pointerdown on a trigger is remembered per
+ * trigger; a focusin on that same trigger within TOUCH_FOCUS_MS is the tap's — Chromium / Android focus a tapped
+ * <button>); keyboard, programmatic and mouse focus still show it. A tooltip is never required information. Hides on
  * pointerleave of the trigger after a short grace so the pointer can move ONTO the chip (hoverable, WCAG 1.4.13),
  * on focusout, any scroll (capture), resize, window blur, Escape (layer registry: tooltip layer 510, keyboard boundary
  * without Tab handling, so Escape over a modal hides only the tooltip) or when the trigger leaves the DOM. No
  * auto-hide timer. td a11y refinements: while the trigger holds KEYBOARD focus (:focus-visible) pointerleave does
  * not hide it and a scroll (e.g. the browser scrolling the focused trigger into view) repositions instead of hiding;
- * a lifted finger is not a hover-out, so a touch-shown chip stays until focus leaves, the next tap elsewhere, a
- * scroll or Escape.
+ * a lifted finger is not a hover-out; a tap elsewhere hides a shown chip.
  *
  * Accessible-name policy (D15, deterministic and conservative) — names are touched ONLY for supported triggers:
  * native <button>, <a href>, input[type=button|submit|reset|image], and elements whose explicit role is
@@ -45,6 +47,10 @@ import { safeColor } from '../utils/css-safe.js';
 
 const TIP_ID = 'td-tooltip';
 const HIDE_GRACE_MS = 100;
+/** v0.36.2: a focusin this soon (ms) after a touch press on the same trigger is the tap's focus — no tooltip */
+const TOUCH_FOCUS_MS = 1000;
+/** trigger → time of the last touch pointerdown on it */
+const lastTouch = new WeakMap();
 /** v0.21.0: `data-tooltip-align` values mirrored onto the chip as `data-align` (anything else → token default). */
 const ALIGNS = ['start', 'center', 'end'];
 const EDGE = 8;
@@ -196,6 +202,7 @@ export class TdTooltip {
                 if (this.isVisible) { this._pointerIn = true; this._cancelHide(); }
                 return;
             }
+            if (e.pointerType === 'touch') return; // v0.36.2: a finger never hovers
             const trigger = /** @type {HTMLElement|null} */ (t.closest(TRIGGER));
             if (!trigger || !this.getTooltipContent(trigger)) return;
             if (trigger === this.currentElement && this.isVisible) {
@@ -220,6 +227,10 @@ export class TdTooltip {
         }, opts);
 
         document.addEventListener('pointerdown', (e) => {
+            if (e.pointerType === 'touch' && e.target instanceof Element) {
+                const tr = e.target.closest(TRIGGER);
+                if (tr) lastTouch.set(tr, Date.now()); // v0.36.2: its focus is the tap's (focusin below)
+            }
             if (!this.isVisible || !(e.target instanceof Node)) return;
             const cur = this.currentElement;
             if ((cur && cur.contains(e.target)) || (this.tooltip && this.tooltip.contains(e.target))) return;
@@ -231,7 +242,8 @@ export class TdTooltip {
             if (!(t instanceof Element)) return;
             const trigger = /** @type {HTMLElement|null} */ (t.closest(TRIGGER));
             if (!trigger || !this.getTooltipContent(trigger)) return;
-            if (trigger !== this.currentElement || !this.isVisible) this.show(trigger); // ANY focus (dwp)
+            if (Date.now() - (lastTouch.get(trigger) ?? -Infinity) < TOUCH_FOCUS_MS) return; // v0.36.2: a tap's focus
+            if (trigger !== this.currentElement || !this.isVisible) this.show(trigger); // any other focus (dwp)
             this._focusIn = true;
             this._cancelHide();
         }, opts);

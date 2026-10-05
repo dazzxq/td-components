@@ -205,6 +205,7 @@ export class TdDrawer extends HTMLElement {
     this._layer = openDialogLayer({
       root,
       dialog: panel,
+      viewport: { root, scroller: panel.querySelector('.td-drawer__body') }, // v0.36.2: above the keyboard
       layer: LAYERS.modal,
       scrollLock: true,
       backdrop,

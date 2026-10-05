@@ -150,6 +150,7 @@ hàng nghìn). Module tải → nhận tại chỗ, hiện `12.990.000`. Helper 
 | `unit-label` | string | `suffix` / `prefix` | Chữ trình đọc màn hình đọc cho đơn vị (vd. `đồng`), qua `aria-describedby`. |
 | `clamp` | boolean | — | Kẹp vào `[min, max]` khi rời ô + thông báo. |
 | `inputmode` | string | tự suy | Ghi đè bàn phím ảo. Mặc định: `numeric` (không lẻ, không âm) / `decimal` (có lẻ) / `text` (cho phép âm — bàn phím số iOS không có dấu trừ). |
+| `enterkeyhint` | string | — | 0.36.2: nhãn phím Enter của bàn phím ảo — `enter` · `done` · `go` · `next` · `previous` · `search` · `send` (giá trị khác bị bỏ); chuyển xuống ô tại chỗ, không render lại. SSR: áp sau khi nhận markup. |
 | `validate-on` | `blur` \| `change` \| `input` | — | Tự hiện thông báo ràng buộc thành lỗi. |
 | `aria-label` | string | — | Tên truy cập khi không có `label`. |
 
@@ -263,6 +264,13 @@ Số căn **trái** (như mọi ô nhập — không đổi thói quen gõ), ch�
 - Giá trị gửi đi chỉ có thể là chuỗi chuẩn (hoặc rỗng) — không có đường nào để chuỗi định dạng lọt vào FormData.
 - Server **vẫn phải** kiểm giá trị (khoảng, bước, số lẻ) và parse bằng kiểu chính xác (`BIGINT` / `DECIMAL`, `bcmath`,
   `brick/math`) — đừng ép qua `float`, đừng `(int) "12.990.000"`.
+
+## Cảm ứng
+
+- `enterkeyhint` (0.36.2) đặt nhãn phím Enter trên bàn phím ảo (`next` cho form nhiều ô, `done` cho ô cuối). Trong dialog, ô đang nhập luôn nằm trên bàn phím (xem [modal](modal.md#cảm-ứng)).
+- Hộp số không có hình nhấn (focus ring là phản hồi).
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
 
 ## Lưu ý & lỗi thường gặp
 

@@ -239,6 +239,13 @@ Xem bảng ở mục 3. Thêm:
 - `order-change` chỉ mang `data-id` của app. Server vẫn phải kiểm `order` là hoán vị đúng của các bản ghi người dùng được
   sửa.
 
+## Cảm ứng
+
+- Kéo bắt đầu sau **10 px** với ngón tay, 8 px với bút, 4 px với chuột (đọc theo từng sự kiện — máy lai đúng). Chạm nhẹ (dưới ngưỡng) vẫn là "chạm để nhấc" rồi chạm vị trí mới.
+- Chỉ tay nắm có `touch-action: none`; vuốt trên thân item cuộn trang bình thường. Tay nắm có hình nhấn.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **Tay nắm mờ, không nhấc được** → có mục thiếu / trùng `data-id` (xem console) hoặc `disabled`.

@@ -1,6 +1,6 @@
 [Tài liệu](../README.md) › [Nâng cấp](README.md) › Thay đổi phá vỡ theo phiên bản
 
-# Thay đổi phá vỡ theo phiên bản (0.4 → 0.35)
+# Thay đổi phá vỡ theo phiên bản (0.4 → 0.36)
 
 Trang này liệt kê, cho từng bản từ **0.35.0** (mới nhất) ngược về **0.4.0**, những gì có thể làm site của bạn chạy
 khác hoặc nhìn khác sau khi nâng cấp, và **chính xác site phải sửa gì**. Nguồn sự thật là
@@ -18,6 +18,7 @@ Nhãn dùng trong trang:
 
 | Bản | Mức | Việc chính site phải làm |
 |---|---|---|
+| [0.36.2](#0362) | Đổi hành vi + đổi giao diện trên cảm ứng | Không bắt buộc. Hover chỉ còn trên con trỏ mịn; hình nhấn mới (token `--td-*-pressed`); tooltip không bật khi chạm (nhãn bắt buộc → chữ / menu); kéo bằng ngón cần 10 px; lớp phủ co theo bàn phím ảo — site override `height: 100dvh` trên con của modal / drawer đổi thành `100%`. Thêm `enterkeyhint` cho `<td-number-input>`. |
 | [0.36.1](#0361) | Đổi giao diện card của `td-table` (mật độ) | Không bắt buộc. Cột đầu không khai báo `card` thành `lead` khi cột khác khai báo `card: 'primary'` (giữ cũ: `card: 'secondary'` trên cột đầu); cặp xếp theo nội dung (giữ cũ: `--td-table-card-pair-min: 100%`); action có `icon` chỉ hiện icon ở card; card / khoảng cách gọn hơn (token `--td-table-card-*`). |
 | [0.36.0](#0360) | Đổi giao diện + **DOM toast** (màu ngữ nghĩa, badge, alert, toast, lightbox điện thoại; xem dưới) | CSS / script nhắm `#td-toast-container > .td-toast` phải đổi (toast nằm trong lane > chồng). Còn lại không bắt buộc. Nút / badge ngữ nghĩa thành màu đặc (warning chữ tối), badge viền + bóng, alert vạch mép; muốn pastel cũ: đoạn CSS khôi phục. Thêm `<td-action-button>` / `td_action_button()`. |
 | [0.35.0](#0350) | Đổi hành vi (nhỏ, chỉ khi đã bật `crop` / `focal-point`) | Không bắt buộc. Thêm `<td-cropper>` (`./cropper`), `TdCropper.openDialog()`, field `croppable` / `focal-point` / `name[focal]` (opt-in), PHP `croppable` / `crop_ratio` / `focal_point` / `focal`. Site đã truyền `crop: { enabled: true }` cho picker: "Chèn" giờ mở **bước cắt**, `urls.preview` phải là ảnh nguyên, `aspectRatio` trong [0.01, 100]. Field không `croppable` không đổi; `selection.focalPoint` thật khi có `focal-point`. Import map: thêm `cropper`. |
@@ -64,6 +65,40 @@ Nhãn dùng trong trang:
 
 Nhảy nhiều bản một lúc (ví dụ 0.6 → 0.15)? Làm theo thứ tự cũ → mới: tải `td.css` (0.7) trước, rồi đổi selector
 theo [class-map.md](class-map.md) (0.7–0.10), rồi xử lý hành vi và giao diện.
+
+---
+
+## 0.36.2
+
+**Chuẩn cảm ứng toàn kit** ([ADR 0019](../internal/decisions/0019-touch-standard.md), hướng dẫn
+[Cảm ứng](../guides/touch.md)). Không đổi DOM, không đổi API công khai ngoài phần "Thêm" dưới đây.
+
+- **Đổi giao diện — hover chỉ còn trên con trỏ mịn.** Mọi hiệu ứng hover của kit nằm trong
+  `@media (hover: hover) and (pointer: fine)`. Thiết bị có con trỏ chính là cảm ứng (điện thoại, iPad — kể cả iPad có
+  trackpad) không còn kiểu hover nào; hết "hover dính" sau khi chạm. Site muốn hover trên máy lai: tự thêm luật ở layer
+  của site.
+- **Đổi giao diện — hình nhấn mới** (`:active` + `[data-td-pressed]`) trên mọi control tương tác: chỉ đổi màu, không chuyển
+  động. Site có `:active` riêng: luật không layer của site vẫn thắng (kit ở `@layer td.component`). Đổi màu bằng token
+  `--td-color-pressed`, `--td-option-pressed-bg`, `--td-btn-{primary,secondary,success,danger,info,warning}-pressed`,
+  `--td-btn-ghost-pressed`, `--td-action-btn-{standard,warning,danger}-pressed-bg`, `--td-action-btn-warning-pressed-fg`,
+  `--td-dropzone-bg-pressed` (vùng thả), `--td-toast-{success,error,warning,info}-pressed-bg` (thân toast, chạm = đóng).
+  Site đã đổi `--td-btn-{v}-bg` nên đặt cả `-pressed`. Trong DOM có thể thấy thuộc tính `data-td-pressed` trong lúc ngón
+  tay đang chạm (đừng dùng nó làm API).
+- **Đổi hành vi — tooltip không bật khi chạm** (cả trường hợp focus sinh ra từ cú chạm trên Android / Chromium), khác dwp
+  v0.14. Bàn phím, chuột, bút và trình đọc màn hình không đổi. Site đang dựa vào tooltip để hiện nhãn trên điện thoại (nút
+  chỉ icon, `td-action-button`): dùng nút có chữ hoặc menu trên điện thoại.
+- **Đổi hành vi — ngưỡng kéo theo loại con trỏ** ở `<td-sortable>`, `<td-repeater sortable>`, `<td-media-grid>` sắp xếp:
+  chạm 10 px (trước 4), bút 8 px, chuột 4 px như cũ. Chạm nhẹ vẫn là "chạm để nhấc".
+- **Đổi hành vi — lớp phủ co theo bàn phím ảo**: khi bàn phím mở, gốc `.td-modal` / `.td-drawer-root` nhận
+  `top` / `height` theo vùng nhìn thấy (biến nội bộ `--td-vv-top` / `--td-vv-height` — không phải API) và thân dialog cuộn
+  tới ô đang nhập. Con của modal dùng `100%` thay `100dvh`. **Site override `height: 100dvh` / `max-height: …dvh` trên
+  `.td-modal__dialog` / panel drawer: đổi thành `100%`** để không bị bàn phím che.
+- **Đổi hành vi — lightbox vuốt theo ngón**: ảnh đi theo ngón; chuyển khi kéo qua 1/4 bề rộng hoặc vuốt nhanh (trước:
+  50 px khi nhả tay), không thì bật về; một ảnh = dây chun. Reduced motion: không theo ngón, đổi ngay.
+- **Thêm**: thuộc tính `enterkeyhint` cho `<td-number-input>` (`enter|done|go|next|previous|search|send`, giá trị khác bị
+  bỏ). PHP `td_number_input()` truyền qua `attrs` như trước.
+
+Nguồn: [CHANGELOG.md](../../CHANGELOG.md) 0.36.2.
 
 ---
 

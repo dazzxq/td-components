@@ -71,6 +71,7 @@
 		color: var(--td-field-fg);
 	}
 
+	/* active-exempt: native select — the UA draws it */
 	td-dropdown > .td-dropdown__native {
 		box-sizing: border-box;
 		display: block;
@@ -90,8 +91,10 @@
 		box-shadow: none;
 	}
 
-	td-dropdown > .td-dropdown__native:hover:not(:disabled, :focus-visible) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		td-dropdown > .td-dropdown__native:hover:not(:disabled, :focus-visible) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	td-dropdown > .td-dropdown__native:focus-visible {
@@ -147,8 +150,10 @@
 			background-color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-dropdown__trigger:hover:not(:disabled, :focus-visible, [aria-expanded="true"]) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropdown__trigger:hover:not(:disabled, :focus-visible, [aria-expanded="true"]) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-dropdown__trigger[aria-expanded="true"] {
@@ -313,8 +318,10 @@
 		border-radius: 0; /* v0.36.0: full-bleed row (dcms2) */
 	}
 
-	.td-dropdown__option:hover {
-		background: var(--td-dropdown-option-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropdown__option:hover {
+			background: var(--td-dropdown-option-hover);
+		}
 	}
 
 	/* selected = semibold label + the ✓ at the inline end (JS prints .td-dropdown__check on the selected row) */
@@ -339,8 +346,10 @@
 		opacity: 0.55;
 	}
 
-	.td-dropdown__option[aria-disabled="true"]:hover {
-		background: none;
+	@media (hover: hover) and (pointer: fine) {
+		.td-dropdown__option[aria-disabled="true"]:hover {
+			background: none;
+		}
 	}
 
 	.td-dropdown__option--clear {
@@ -458,6 +467,30 @@
 		.td-dropdown__option--create {
 			color: LinkText;
 			border-top-color: CanvasText;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-dropdown__trigger,
+	.td-dropdown__option {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-dropdown__trigger:is(:active, [data-td-pressed]):not(:disabled) {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	.td-dropdown__option:is(:active, [data-td-pressed]):not([aria-disabled="true"]) {
+		background: var(--td-option-pressed-bg);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-dropdown__trigger:is(:active, [data-td-pressed]),
+		.td-dropdown__option:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }

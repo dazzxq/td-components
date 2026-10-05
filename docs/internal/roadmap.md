@@ -33,8 +33,9 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
   kiểu dcms2 — plan [v0.36.0-polish](plans/v0.36.0-polish.md)
 - `done` v0.36.1: `td-table` card gọn (QĐ 62) — vai trò `lead`, cặp theo nội dung, action chỉ icon, thanh sắp xếp một hàng — plan
   [v0.36.1-table-card-density](plans/v0.36.1-table-card-density.md)
-- `todo` v0.36.2: chuẩn touch toàn kit (hover gate, `:active`, tooltip cảm ứng, ngưỡng kéo, visualViewport cho overlay,
-  lane test touch, lightbox vuốt theo ngón) — đồng thuận Codex 2026-10-05
+- `done` v0.36.2: chuẩn touch toàn kit (hover chỉ con trỏ mịn, hình nhấn, tooltip không bật khi chạm, ngưỡng kéo theo
+  loại con trỏ, lớp phủ co theo bàn phím ảo, lightbox vuốt theo ngón, lane `test:touch`) — plan
+  [v0.36.2-touch](plans/v0.36.2-touch.md), [ADR 0019](decisions/0019-touch-standard.md)
 - `todo` v0.37.0: `td-table` chọn dòng (ADR 0018)
 - `todo` v0.38.0: `td-scan-input` (A3)
 - `todo` v0.39.0: hook lọc ngoài + ẩn / hiện cột + `td-filter-chips`

@@ -239,6 +239,12 @@ trả focus); ô bị cuộn khuất / ẩn → đóng; gỡ phần tử khi đa
 Như [`td-tree`](tree.md#bảo-mật): mọi chữ qua `textContent`, id từ bộ đếm, không `style=""`. `value-labels` chỉ được
 `JSON.parse` và dùng làm text. Khoá chỉ là khoá giao diện — server tự kiểm.
 
+## Cảm ứng
+
+- Hàng trong menu và nút xoá có hình nhấn; hover chỉ trên con trỏ mịn. Hộp control không có hình nhấn (focus ring là phản hồi).
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **Nhiều mà không có chip**: chủ ý (tóm tắt chữ). Cần chip → `td-chip-input`.

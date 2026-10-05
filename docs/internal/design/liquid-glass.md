@@ -45,6 +45,10 @@ Mỗi bề mặt nổi = **nền + một viền mảnh + một shadow mềm** (+
 | Shadow `--td-glass-shadow` | `0 2px 6px /6%, 0 8px 24px /12%` | alpha × 2 (12 % / 24 %) |
 | Shadow `--td-glass-shadow-lg` | `0 4px 12px /8%, 0 20px 48px /18%` | 16 % / 36 % |
 | Shadow `--td-btn-lift` | `0 1px 3px /10%, 0 4px 10px -2px /12%` | 20 % / 24 % |
+| Nhấn (0.36.2, [touch.md](touch.md)) chung / option / ghost | `rgb(0 0 0 / 12%)` (`--td-color-pressed`, `--td-option-pressed-bg`, `--td-btn-ghost-pressed`) | `rgb(255 255 255 / 14%)` |
+| Nhấn nút primary / secondary | `#52525b` / `#d4d4d8` (gray-300) | `#a1a1aa` / `#45454b` |
+| Nhấn nút success / danger / info / warning | `#14532d` / `#991b1b` / `#1e40af` / `#cc6d05` (chữ tối 4.86) | như light |
+| Nhấn nút thao tác standard / warning (nền · icon) / danger | `--td-color-pressed` / `#fef3c7` · `#92400e` / `#fdd5d5` | — / `rgb(245 158 11 / 26%)` / `rgb(220 38 38 / 30%)` |
 | Focus ô nhập (viền / quầng) | `color-mix(accent 85%, #fff)` / `0 0 0 3px` accent 12 % | cùng công thức / quầng 22 % |
 
 Đặc (`--td-solid-{v}-bg/-fg/-hover/-border`, 0.36.0) dùng chung cho nút ngữ nghĩa và badge (toast: token riêng cùng
@@ -74,7 +78,7 @@ Cài đặt: [`src/styles/glass.css`](../../../src/styles/glass.css) (recipe + f
    điện thoại, slide nhẹ của toast / scroll-top.
 5. **Một shadow.** Mỗi bề mặt một token `box-shadow` (0.21.0: hai lớp — tiếp xúc + toả — vẫn tính là một token; nút:
    `--td-btn-lift`).
-6. **Hover = nền đặc khác.** Mỗi variant có nền đọc `--td-btn-{v}-hover` (0.21.0; primary đen thì hover sáng lên);
+6. **Hover = nền đặc khác** (0.36.2: chỉ trong `@media (hover: hover) and (pointer: fine)`; **nhấn** = nền đặc thêm một bậc `--td-btn-{v}-pressed`, chỉ đổi màu — [touch.md](touch.md)). Mỗi variant có nền đọc `--td-btn-{v}-hover` (0.21.0; primary đen thì hover sáng lên);
    `--custom` và alias `-tint` dùng `color-mix(in srgb, <nền> 92%, #000)`; trình duyệt không có `color-mix()` giữ nền cũ.
 7. **Màu nút theo token.** Primary = đen (0.21.0; site muốn theo accent: `--td-btn-primary-bg: var(--td-accent-fill)` +
    `--td-btn-primary-fg: var(--td-accent-contrast)` + `--td-btn-primary-hover`). Nút ngữ nghĩa = đặc `--td-solid-*`
@@ -105,7 +109,8 @@ Nút luôn đặc nên chỉ còn contrast (viền rõ, bỏ shadow) và forced 
 `-radius-inner`, `-capsule`, `-dur`, `-ease`, `-ease-flex`), `--td-btn-*-bg/-fg/-border/-hover`, `--td-btn-lift`;
 0.21.0: `--td-pastel-{success,danger,warning,info}-bg/-border/-fg` (deprecated 0.36.0, giữ), `--td-tooltip-bg/-fg/-border/-text-align`;
 0.36.0: `--td-solid-{success,danger,warning,info}-bg/-fg/-hover/-border`, `--td-badge-{v}-border`, `--td-badge-{v}-ink`,
-`--td-badge-shadow`, `--td-alert-{v}-accent`, `--td-alert-accent-width`, `--td-action-btn-*`.
+`--td-badge-shadow`, `--td-alert-{v}-accent`, `--td-alert-accent-width`, `--td-action-btn-*`; 0.36.2: `--td-color-pressed`, `--td-option-pressed-bg`,
+`--td-btn-{v}-pressed`, `--td-btn-ghost-pressed`, `--td-action-btn-{tone}-pressed-bg`, `--td-action-btn-warning-pressed-fg`.
 
 **Deprecated v0.20.0** (vẫn khai báo, không tác dụng; xoá ở bản lớn sau): `--td-glass-edge`, `-side-edge`,
 `-bottom`, `-outline`, `-sheen`, `-dim`, `-dim-text`, `-clear-edge`, `-clear-glyph-shadow`, `-tint`, `-tint-alpha`,

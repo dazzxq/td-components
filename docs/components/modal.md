@@ -480,6 +480,13 @@ Nếu cần hiển thị dữ liệu người dùng có định dạng, hãy d�
 escape theo ngữ cảnh trước (xem [hướng dẫn bảo mật](../guides/security.md)). Modal không dùng `style="…"` hay chèn
 `<style>` nên chạy được dưới CSP nghiêm ngặt.
 
+## Cảm ứng
+
+- Khi bàn phím ảo mở, gốc lớp phủ co theo vùng nhìn thấy (`visualViewport`): dialog giữa, sheet `< 720` và `--viewport` nằm gọn trên bàn phím, footer luôn thấy; thân dialog cuộn tới ô đang nhập (cả nhãn và dòng lỗi). Kit không gọi `focus()` / `scrollIntoView()` và không can thiệp khi người dùng đang pinch zoom.
+- Site override chiều cao con của modal: dùng `100%` (của gốc), không `100dvh`. Nút đóng có hình nhấn.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **Popup trong modal (0.21.1):** modal mới mở bằng code (timer, hết phiên…) đóng mọi dropdown / menu / hovercard

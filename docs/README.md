@@ -8,7 +8,7 @@ token `--td-*` chạm được tới nó. Toàn bộ giao diện nằm trong **m
 Triết lý: **lõi nhỏ + hook**. Site tuỳ biến bằng token CSS, attribute/property và hook (callback) — không bao giờ sửa
 code của kit.
 
-Phiên bản hiện tại: **0.36.1** (tag git `v0.36.1`) · Lịch sử thay đổi: [CHANGELOG.md](../CHANGELOG.md)
+Phiên bản hiện tại: **0.36.2** (tag git `v0.36.2`) · Lịch sử thay đổi: [CHANGELOG.md](../CHANGELOG.md)
 
 ---
 
@@ -61,6 +61,7 @@ Xem [danh sách đầy đủ](components/README.md). Tóm tắt:
 
 - [Form](guides/forms.md) — form-associated, FormData, validation, lỗi từ server, submit AJAX.
 - [Trợ năng (a11y)](guides/accessibility.md) — bàn phím, ARIA, focus, các đánh đổi có chủ đích.
+- [Cảm ứng](guides/touch.md) — hover chỉ cho chuột, hình nhấn, tooltip khi chạm, bàn phím ảo trong dialog, vuốt lightbox; token `--td-*-pressed`.
 - [Bảo mật](guides/security.md) — text vs HTML, các "cửa" HTML tin cậy, URL, checklist cho site.
 - [CSP](guides/csp.md) — header nên dùng, nonce, những gì kit không bao giờ làm.
 - [Biến thể ảnh đã cắt](guides/media-renditions.md) — **bắt buộc** khi dùng crop / focal: URL ký HMAC, giới hạn biến thể,

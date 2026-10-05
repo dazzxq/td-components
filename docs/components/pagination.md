@@ -261,6 +261,12 @@ chỉ `active-color` mới tự tính màu chữ.
 `item-label`, `aria-label` và `TdPagination.labels` được escape; `active-color` qua `safeColor` (giá trị như `red;}` bị bỏ). Số trang tối đa trong
 DOM bị chặn bởi `max-pages ≤ 25`, nên giá trị lớn từ API/CMS không làm phình DOM.
 
+## Cảm ứng
+
+- Nút trang và nút trước / sau có hình nhấn; hover chỉ trên con trỏ mịn. Vùng chạm ≥ 44 px trên con trỏ thô.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **`setPage()` phát event**, còn `td-table.setPage()` thì không — đừng nhầm hai hành vi.

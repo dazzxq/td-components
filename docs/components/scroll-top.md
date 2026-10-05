@@ -129,6 +129,12 @@ mảnh `--td-glass-border` + một bóng mềm `--td-glass-shadow`, không blur,
 
 - `label` được escape; `target` chỉ dùng cho `document.querySelector` trong `try/catch` (selector sai → bỏ qua).
 
+## Cảm ứng
+
+- Nút có hình nhấn (lớp phủ `--td-color-pressed`); không chuyển động thêm khi nhấn.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **Nút không hiện**: trang cuộn trong một khung riêng (`overflow: auto` trên `div`) thay vì cửa sổ — component chỉ

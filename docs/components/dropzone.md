@@ -332,6 +332,12 @@ Danh sách được dựng bằng DOM API (`textContent`, `setAttribute`) — kh
   tên do server sinh, ngoài web root. Chi tiết: [Bảo mật › td-dropzone](../guides/security.md#td-dropzone-upload-file).
 - Kit không đọc nội dung file; object URL chỉ khi bật `preview` (ảnh), luôn được thu hồi.
 
+## Cảm ứng
+
+- Chạm vùng thả để mở hộp chọn file: vùng có hình nhấn (`--td-dropzone-bg-pressed` + viền accent), trừ khi `disabled` hoặc đang kéo file vào (`data-state="dragover"`). Nút "Chọn file" và nút xoá tệp có hình nhấn riêng; hover chỉ trên con trỏ mịn.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **Server không nhận được file**: form thiếu `enctype="multipart/form-data"`, hoặc dropzone thiếu `name`, hoặc đang

@@ -256,6 +256,12 @@ cột hẹp của trang desktop cũng đúng như trên điện thoại.
 
 `label`, `id`, `icon`, `panel` đều được escape khi vào markup; class icon cũ qua whitelist ký tự. Không có cửa sau HTML.
 
+## Cảm ứng
+
+- Tab có hình nhấn; hover chỉ trên con trỏ mịn. Vuốt ngang dải tab (khi tràn) cuộn dải, không đổi tab.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **Panel nằm trong td-tabs** sẽ không được quản lý (td-tabs render đè nội dung của chính nó). Đặt panel ở ngoài.

@@ -181,8 +181,11 @@
 		content: attr(data-placeholder);
 	}
 
-	.td-field__control:hover:not(:disabled, [aria-disabled="true"], :focus) {
-		border-color: var(--td-field-border-hover);
+	@media (hover: hover) and (pointer: fine) {
+		/* active-exempt: text input — the focus ring is the feedback */
+		.td-field__control:hover:not(:disabled, [aria-disabled="true"], :focus) {
+			border-color: var(--td-field-border-hover);
+		}
 	}
 
 	.td-field__control:focus {
@@ -208,9 +211,14 @@
 
 	/* A visible error keeps the red border, focused or not (only a shown error — never the counter). */
 	.td-field__control[aria-invalid="true"],
-	.td-field__control[aria-invalid="true"]:focus,
-	.td-field__control[aria-invalid="true"]:hover {
+	.td-field__control[aria-invalid="true"]:focus {
 		border-color: var(--td-field-error);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-field__control[aria-invalid="true"]:hover {
+			border-color: var(--td-field-error);
+		}
 	}
 
 	.td-field__footer {

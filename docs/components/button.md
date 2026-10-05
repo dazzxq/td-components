@@ -625,6 +625,14 @@ Xem [Trợ năng](../guides/accessibility.md).
   khi kiểm (bỏ ký tự điều khiển/khoảng trắng hai đầu, tab/xuống dòng ở giữa: `" java\tscript:"` vẫn bị chặn).
   `target` theo danh sách trắng, `_blank` luôn có `rel="noopener noreferrer"`; tên file `download` được lọc.
 
+## Cảm ứng
+
+- Hover chỉ áp trên con trỏ mịn (chuột / trackpad); trên điện thoại không có màu hover sau khi chạm.
+- Hình nhấn: nền đặc thêm một bậc (`--td-btn-{v}-pressed`; ghost `--td-btn-ghost-pressed`; `--custom` tối 16 %), chỉ đổi màu, áp ngay khi ngón chạm (cả iPhone).
+- Vùng chạm ≥ 44 px trên con trỏ thô (đã có từ 0.34).
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **Quên `type="submit"`**: mặc định là `button`, bấm không submit form.

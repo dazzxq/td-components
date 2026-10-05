@@ -63,6 +63,11 @@
 		--td-toast-error-close-hover: rgb(255 255 255 / 16%);
 		--td-toast-warning-close-hover: rgb(0 0 0 / 8%);
 		--td-toast-info-close-hover: rgb(255 255 255 / 16%);
+		/* v0.36.2 pressed fill per type (tap anywhere = dismiss): one step darker, ink ≥ 4.7:1 (contrast gate) */
+		--td-toast-success-pressed-bg: var(--td-btn-success-pressed, #14532d);
+		--td-toast-error-pressed-bg: var(--td-btn-danger-pressed, #991b1b);
+		--td-toast-warning-pressed-bg: var(--td-btn-warning-pressed, #cc6d05);
+		--td-toast-info-pressed-bg: var(--td-btn-info-pressed, #1e40af);
 		/* deprecated (no effect since v0.36.0: the per-type -close-hover tokens decide) */
 		--td-toast-close-hover: rgb(0 0 0 / 8%);
 		/* deprecated (no effect): v0.20.0 neutral surface + status icons, v0.19 washes */
@@ -113,6 +118,7 @@
 		--_td-toast-fg: var(--td-toast-info-fg);
 		--_td-toast-border: var(--td-toast-info-border);
 		--_td-toast-close-hover: var(--td-toast-info-close-hover);
+		--_td-toast-pressed-bg: var(--td-toast-info-pressed-bg);
 
 		position: relative;
 		box-sizing: border-box;
@@ -145,6 +151,7 @@
 		--_td-toast-fg: var(--td-toast-success-fg);
 		--_td-toast-border: var(--td-toast-success-border);
 		--_td-toast-close-hover: var(--td-toast-success-close-hover);
+		--_td-toast-pressed-bg: var(--td-toast-success-pressed-bg);
 	}
 
 	.td-toast--warning {
@@ -152,6 +159,7 @@
 		--_td-toast-fg: var(--td-toast-warning-fg);
 		--_td-toast-border: var(--td-toast-warning-border);
 		--_td-toast-close-hover: var(--td-toast-warning-close-hover);
+		--_td-toast-pressed-bg: var(--td-toast-warning-pressed-bg);
 	}
 
 	.td-toast--error {
@@ -159,6 +167,7 @@
 		--_td-toast-fg: var(--td-toast-error-fg);
 		--_td-toast-border: var(--td-toast-error-border);
 		--_td-toast-close-hover: var(--td-toast-error-close-hover);
+		--_td-toast-pressed-bg: var(--td-toast-error-pressed-bg);
 	}
 
 	.td-toast[data-state="open"] {
@@ -212,8 +221,10 @@
 		white-space: nowrap;
 	}
 
-	.td-toast__close:hover {
-		background: var(--_td-toast-close-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-toast__close:hover {
+			background: var(--_td-toast-close-hover);
+		}
 	}
 
 	.td-toast__close:focus-visible {
@@ -418,6 +429,32 @@
 		}
 
 		.td-toast__close:focus-visible {
+			outline: 2px solid Highlight;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-toast,
+	.td-toast__close {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-toast__close:is(:active, [data-td-pressed]) {
+		background-color: var(--_td-toast-close-hover);
+		background-image: linear-gradient(var(--_td-toast-close-hover), var(--_td-toast-close-hover)); /* the hover wash, twice */
+		transition-duration: 0s;
+	}
+
+	/* v0.36.2 review ISSUE-1: the whole toast dismisses on a tap — pressed fill = its type's darker step. The toast
+	   transitions only opacity / transform (enter / exit / reduced motion keep theirs), so the fill switches at once. */
+	.td-toast:is(:active, [data-td-pressed]) {
+		background-color: var(--_td-toast-pressed-bg);
+	}
+
+	@media (forced-colors: active) {
+		.td-toast:is(:active, [data-td-pressed]),
+		.td-toast__close:is(:active, [data-td-pressed]) {
 			outline: 2px solid Highlight;
 		}
 	}

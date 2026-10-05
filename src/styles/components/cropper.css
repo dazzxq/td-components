@@ -97,8 +97,10 @@
 		appearance: none;
 	}
 
-	.td-cropper__ratio:hover:not(:disabled, [aria-checked="true"]) {
-		background: var(--td-color-hover-strong);
+	@media (hover: hover) and (pointer: fine) {
+		.td-cropper__ratio:hover:not(:disabled, [aria-checked="true"]) {
+			background: var(--td-color-hover-strong);
+		}
 	}
 
 	.td-cropper__ratio[aria-checked="true"] {
@@ -522,6 +524,23 @@
 
 		.td-crop-dialog__cropper .td-cropper__toolbar {
 			margin-block-end: var(--td-space-2xs);
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-cropper__ratio {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-cropper__ratio:is(:active, [data-td-pressed]):not(:disabled, [aria-checked="true"]) {
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-cropper__ratio:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }

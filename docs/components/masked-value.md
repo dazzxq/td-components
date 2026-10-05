@@ -200,6 +200,12 @@ Kit **không** bảo đảm: xoá giá trị khỏi bộ nhớ JS (chuỗi bất
 hình / quay phim, chống extension đọc DOM **trong lúc** đang hiện. Quyền / 2FA / audit là việc của endpoint. Xem
 [security model](../internal/security-model.md#5-bí-mật-của-td-masked-value-v0310).
 
+## Cảm ứng
+
+- Nút hiện / ẩn có hình nhấn (trừ khi đang tải / disabled); hover chỉ trên con trỏ mịn.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **Bấm không làm gì** → chưa có hook (xem console) hoặc `disabled`.

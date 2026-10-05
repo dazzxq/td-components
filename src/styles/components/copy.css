@@ -79,9 +79,11 @@
 		height: var(--td-copy-size-sm);
 	}
 
-	.td-copy:hover {
-		color: var(--td-copy-fg-hover);
-		background: var(--td-copy-bg-hover);
+	@media (hover: hover) and (pointer: fine) {
+		.td-copy:hover {
+			color: var(--td-copy-fg-hover);
+			background: var(--td-copy-bg-hover);
+		}
 	}
 
 	.td-copy:focus-visible {
@@ -90,14 +92,24 @@
 		box-shadow: var(--td-focus-ring);
 	}
 
-	.td-copy[data-state="copied"],
-	.td-copy[data-state="copied"]:hover {
+	.td-copy[data-state="copied"] {
 		color: var(--td-copy-success);
 	}
 
-	.td-copy[data-state="error"],
-	.td-copy[data-state="error"]:hover {
+	@media (hover: hover) and (pointer: fine) {
+		.td-copy[data-state="copied"]:hover {
+			color: var(--td-copy-success);
+		}
+	}
+
+	.td-copy[data-state="error"] {
 		color: var(--td-copy-error);
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-copy[data-state="error"]:hover {
+			color: var(--td-copy-error);
+		}
 	}
 
 	.td-copy__icon {
@@ -165,6 +177,23 @@
 
 		.td-copy[data-state] {
 			border-color: Highlight;
+		}
+	}
+
+	/* v0.36.2 pressed state (ADR 0019): touch :active / [data-td-pressed] (src/utils/press.js) — colour only, no motion,
+	   applied at once; forced colours: a Highlight outline */
+	.td-copy {
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	.td-copy:is(:active, [data-td-pressed]) {
+		background-color: var(--td-color-pressed);
+		transition-duration: 0s;
+	}
+
+	@media (forced-colors: active) {
+		.td-copy:is(:active, [data-td-pressed]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }

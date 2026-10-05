@@ -450,6 +450,13 @@ cho chuột / chạm (`aria-hidden`, không focus) — 4 góc đã chỉnh đư�
 - **Toạ độ chỉ là UX.** Server validate lại mọi giá trị và không coi crop là quyền; URL biến đổi ảnh công khai chỉ do
   server ký từ giá trị đã lưu ([mục 8](#8-dùng-toạ-độ-ở-server-cắt-thật-bằng-tham-số-đã-ký)).
 
+## Cảm ứng
+
+- **Cắt ảnh là thao tác kéo thiết yếu** (WCAG 2.5.7 "essential"): kéo khung, kéo tay nắm, pinch hai ngón để zoom. Cách thay thế không cần kéo: bàn phím (tay nắm + phím mũi tên) và ô tỉ lệ. Mặt cắt `touch-action: none`.
+- Ô tỉ lệ có hình nhấn; hover chỉ trên con trỏ mịn. Ngón tay bị huỷ giữa chừng (`pointercancel`) kết thúc cử chỉ gọn.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **Cropper báo lỗi tỉ lệ (`ratio`)** → `src` là ảnh đã cắt sẵn (thumbnail vuông…) trong khi `natural-*` là của ảnh gốc.

@@ -599,6 +599,12 @@ Cấu trúc được render **một lần**; dữ liệu, sort, trang, loading v
 - `width` / `minWidth` / `maxWidth` qua whitelist dimension, `align` qua whitelist, `max-height` qua `CSS.supports` +
   cấm `url()`/`var()`; `active-color` qua `safeColor`. Chi tiết: [guides/security.md](../guides/security.md).
 
+## Cảm ứng
+
+- Nút sắp xếp có hình nhấn; hover hàng chỉ trên con trỏ mịn (hàng không kích hoạt được nên không có hình nhấn). Vuốt ngang bảng cuộn (dạng bảng) không sắp xếp / không chọn.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **`render` chạy lại mỗi lần cập nhật** (đổi trang, sort, tắt loading, gán `data`…): `tbody` được dựng mới. Vì vậy hàm

@@ -301,6 +301,13 @@ vào `data-tooltip` là an toàn (miễn là bạn escape đúng ngữ cảnh **
 </button>
 ```
 
+## Cảm ứng
+
+- **Không hiện khi chạm** (0.36.2): bỏ qua `pointerenter` của ngón tay và focus mà cú chạm sinh ra trên cùng trigger (trong 1 s). Chuột, bút, bàn phím (Tab), focus bằng code vẫn hiện như cũ; `aria-describedby` gắn khi tooltip hiện.
+- Tooltip là thông tin phụ: **không đặt thông tin bắt buộc trong tooltip** (người dùng điện thoại không bao giờ thấy). Chạm chỗ khác vẫn ẩn tooltip đang hiện.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Lưu ý & lỗi thường gặp
 
 - **Tooltip ẩn ngay khi một lớp chặn mới mở (0.21.1):** modal, lightbox hoặc loading mở bằng code khi tooltip đang

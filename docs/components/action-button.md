@@ -147,6 +147,13 @@ Option: `label`, `icon`, `tone`, `size`, `disabled`, `href`, `target`, `aria_lab
 Icon ≥ 4.7:1 trên trắng **và** trên nền hover của nó (gate `npm run test:contrast`). Warning hover dùng amber-50
 `#fffbeb` thay pastel `#fef3c7` (trên đó `#b45309` chỉ 4.5:1).
 
+## Cảm ứng
+
+- Hover chỉ áp trên con trỏ mịn (chuột / trackpad); trên điện thoại không có màu hover sau khi chạm. Hình nhấn: `--td-action-btn-{standard,warning,danger}-pressed-bg` (warning: icon đậm thêm `--td-action-btn-warning-pressed-fg`).
+- **Nút chỉ có icon không có nhãn nhìn thấy trên cảm ứng** (tooltip không bật khi chạm). Trên điện thoại, dùng nút có chữ hoặc gom thao tác vào menu "Thêm"; tên cho trình đọc màn hình vẫn đúng.
+
+Chuẩn chung: [Cảm ứng](../guides/touch.md).
+
 ## Trợ năng & bảo mật
 
 - Tên luôn có (`aria-label` = nhãn); tooltip không lặp lại tên (td-tooltip bỏ mô tả trùng tên).

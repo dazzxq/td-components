@@ -37,6 +37,7 @@ nâng cấp). Tài liệu nội bộ (vision, roadmap, architecture, conventions
 - [docs/internal/conventions.md](docs/internal/conventions.md): cấu trúc file, đặt tên, escaping, test, release
 - [docs/internal/architecture.md](docs/internal/architecture.md): base class, mô hình style, kiến trúc style mục tiêu
 - [docs/internal/design/liquid-glass.md](docs/internal/design/liquid-glass.md): **Minimal surfaces — UI mới bắt buộc theo bộ luật này** (ADR 0011, thay Liquid Glass)
+- [docs/internal/design/touch.md](docs/internal/design/touch.md): **Chuẩn cảm ứng — UI mới bắt buộc** (hover gate, hình nhấn, `touch-action`, bàn phím ảo; ADR 0019)
 - [docs/internal/security-model.md](docs/internal/security-model.md): XSS theo ngữ cảnh, CSP
 
 ## Workflow
