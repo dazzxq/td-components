@@ -127,7 +127,8 @@ function luhnImei(v) {
 (chữ đang gõ dở chưa kết thúc **không** được gửi). Mã lỗi: ô giữ chữ, viền đỏ + dòng lỗi dưới ô, giá trị form giữ mã hợp
 lệ trước đó, form bị chặn submit tới lần quét hợp lệ kế tiếp. Kết quả của một lần quét **cũ hơn** (đang chờ `validate`) về
 sau không bao giờ xoá / thay lỗi của lần quét **mới hơn** — form vẫn bị chặn tới khi một lần quét mới hơn hợp lệ, hoặc
-`clear()` / `reset()`.
+`clear()` / `reset()`. Kết quả cũ đó vẫn phát sự kiện (`scan` / `scan-invalid`) cho app và cập nhật dòng của nó, nhưng
+**không** đọc qua trình đọc màn hình và **không** phát âm báo (tránh mâu thuẫn với phản hồi của lần quét mới hơn).
 
 **Nhiều (`multiple`).** Ô **xoá trắng** sau mỗi lần quét; mỗi lần quét thành một dòng (mới nhất ở trên): mã (chữ đơn cách)
 + trạng thái (đang kiểm tra / hợp lệ / lỗi kèm thông báo) + nút "Bỏ". Đầu danh sách: "Đã quét: n" + "Xoá tất cả" (hỏi lại
@@ -137,7 +138,7 @@ chờ** (quét thêm khi đã đủ → "Đã đủ {max} mã"). Trần cứng *
 
 ## Âm báo, tắt tiếng, focus
 
-- `beep` bật âm báo (tắt mặc định): Web Audio, **không file âm thanh**, không cần thêm nguồn CSP. Hợp lệ: 1 tiếng cao;
+- `beep` bật âm báo (tắt mặc định; Web Audio được mở khoá ngay trong phím đầu của lần quét — kể cả `terminator="none"`): Web Audio, **không file âm thanh**, không cần thêm nguồn CSP. Hợp lệ: 1 tiếng cao;
   lỗi: 2 tiếng trầm; trùng: 2 tiếng ngắn. Ghi đè: `TdScanInput.sounds = { ok: { freq: 1500, ms: 80, count: 1 } }` (kẹp
   100–4000 Hz, ≤ 400 ms, 1–3 tiếng).
 - Có `beep` → nút loa cạnh ô ("Tắt âm báo" / "Bật âm báo", `aria-pressed`) → thuộc tính `muted` + sự kiện `mute-change`.

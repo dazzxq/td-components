@@ -802,3 +802,68 @@ describe('td-scan-input — review round 1 (ISSUE-1…8, SEC-1…4)', () => {
     expect(rec.length).to.equal(0);
   });
 });
+
+describe('td-scan-input — review round 2 (SEC-1 / ISSUE-5 / ISSUE-9)', () => {
+  /** count started oscillators + resume() calls on the real AudioContext prototype */
+  function spyAudio() {
+    const s = { osc: 0, resume: 0 };
+    const proto = window.AudioContext && window.AudioContext.prototype;
+    if (!proto) return s;
+    const o = proto.createOscillator;
+    const r = proto.resume;
+    proto.createOscillator = function patched(...a) { s.osc++; return o.apply(this, a); };
+    proto.resume = function patched(...a) { s.resume++; return r.apply(this, a); };
+    extra.push(() => { proto.createOscillator = o; proto.resume = r; });
+    return s;
+  }
+  const regions = (el) => [...el.querySelectorAll('[role="status"], [aria-live="assertive"]')].map((n) => n.textContent);
+
+  for (const outcome of ['valid', 'invalid']) {
+    it(`SEC-1: an OLDER ${outcome} result after a newer refusal → live regions unchanged, no tone (app event still fires)`, async () => {
+      const el = scanEl('name="c" manual="reject" beep');
+      const audio = spyAudio();
+      const v = deferred();
+      el.validate = v.fn;
+      const rec = record(el, 'scan', 'scan-invalid');
+      await scan(el, 'AAAA0001');
+      await until(() => v.calls.length === 1);
+      await typeSlow(el, 'BB12');
+      await until(() => rec.length === 1);
+      await wait(400); // polite debounce of anything earlier
+      const before = JSON.stringify({ r: regions(el), osc: audio.osc });
+      v.calls[0].resolve(outcome === 'valid' ? true : 'Lỗi của A');
+      await until(() => rec.length === 2);
+      expect(rec[1].type).to.equal(outcome === 'valid' ? 'scan' : 'scan-invalid', 'the app event still fires');
+      await wait(450);
+      expect(JSON.stringify({ r: regions(el), osc: audio.osc })).to.equal(before);
+    });
+  }
+
+  it('ISSUE-5: terminator="none" + beep → Web Audio is prepared in the keystrokes, before the silence timer', async () => {
+    const audio = spyAudio();
+    if (!window.AudioContext) return;
+    const el = scanEl('terminator="none" key-interval="200" beep');
+    const rec = record(el, 'scan');
+    await scan(el, IMEI, null);
+    expect(rec.length).to.equal(0, 'the silence timer has not fired yet');
+    expect(audio.resume > 0).to.equal(true);
+    await until(() => rec.length === 1);
+  });
+
+  it('ISSUE-9: adding `multiple` keeps the single value → values [v] + FormData', () => {
+    const wrap = mount('<form><td-scan-input name="c" value="A0001"></td-scan-input></form>');
+    const el = wrap.querySelector('td-scan-input');
+    el.setAttribute('multiple', '');
+    expect(el.values).to.deep.equal(['A0001']);
+    expect(new FormData(wrap.firstElementChild).getAll('c')).to.deep.equal(['A0001']);
+  });
+
+  it('ISSUE-9: removing `multiple` keeps the newest valid value + FormData', () => {
+    const wrap = mount('<form><td-scan-input multiple name="c"></td-scan-input></form>');
+    const el = wrap.querySelector('td-scan-input');
+    el.values = ['A0001', 'B0002'];
+    el.removeAttribute('multiple');
+    expect(el.value).to.equal('B0002');
+    expect(new FormData(wrap.firstElementChild).getAll('c')).to.deep.equal(['B0002']);
+  });
+});

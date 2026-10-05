@@ -159,6 +159,8 @@ export class TdScanInput extends TdFormElement {
     /** @private single: error of the last scan + its seq (ISSUE-1: older results never clear / replace it) */
     this._scanError = '';
     this._errorSeq = 0;
+    /** @private seq of the last live-region / tone feedback (round 2 SEC-1) */
+    this._feedbackSeq = 0;
     /** @private seq of the notice shown (ISSUE-1) */
     this._noticeSeq = 0;
     this._composing = false;
@@ -608,6 +610,7 @@ export class TdScanInput extends TdFormElement {
     } else {
       return;
     }
+    if (this._burst.size === 1) this._prepareAudio(); // ISSUE-5: Android IME (keyCode 229) has no usable keydown.key
     this._scheduleSilence();
   }
 
@@ -626,12 +629,14 @@ export class TdScanInput extends TdFormElement {
     const cfg = this._cfg();
     if (cfg.terminator.enter || cfg.terminator.tab) return;
     this._silence = window.setTimeout(() => {
-      if (this.isConnected && !this._composing && this._burst.machine()) this._finish();
+      if (this.isConnected && !this._composing && this._burst.machine()) this._finish(false); // a timer: not a user activation
     }, Math.max(3 * cfg.keyInterval, 60));
   }
 
   /** @private */
   _onKeydown(e) {
+    // ISSUE-5: unlock Web Audio in the trusted keystroke that starts a burst (terminator="none" ends on a timer)
+    if (e.key && e.key.length === 1 && this._burst.empty) this._prepareAudio();
     if (e.key === 'Enter') {
       if (e.isComposing || e.keyCode === 229 || this._composing) return; // the IME's Enter (QĐ 8)
       e.preventDefault(); // never an implicit form submit
@@ -717,7 +722,7 @@ export class TdScanInput extends TdFormElement {
   // --- one scan ---
 
   /** @private end of a scan (terminator / silence) */
-  _finish() {
+  _finish(trusted = true) {
     window.clearTimeout(this._silence);
     const input = this._focusTarget();
     if (!input || this._effectiveDisabled || this.hasAttribute('readonly')) { this._burst.reset(); return; }
@@ -734,7 +739,7 @@ export class TdScanInput extends TdFormElement {
     if (!value) return; // QĐ 7: empty → ignored silently
     if (!multiple && !fresh && value === this._value) return; // Enter again on the accepted value
     // ISSUE-5: unlock Web Audio inside the trusted keystroke; the tones are scheduled later, in scan order (_apply)
-    if (this.hasAttribute('beep') && !this.muted && !TdScanInput.muted) prepareBeep();
+    if (trusted) this._prepareAudio();
     this._accept(value, source, mixed, false);
   }
 
@@ -747,6 +752,7 @@ export class TdScanInput extends TdFormElement {
     if (!fromServer) this._notice('', 'info', seq);
     if (!fromServer && isDuplicate(this._last, value, now, cfg.dedupe)) {
       this._notice(TdScanInput.messages.duplicate, 'info', seq);
+      this._feedbackSeq = seq;
       this._say('polite', TdScanInput.messages.duplicate);
       this._beep('duplicate');
       this.emit('scan-duplicate', { value, source });
@@ -798,6 +804,7 @@ export class TdScanInput extends TdFormElement {
       this._syncForm();
       this._applyErrorState();
     }
+    this._feedbackSeq = seq;
     this._sayError(value, message);
     this._beep('error');
     this.emit('scan-invalid', { value, source, seq, message });
@@ -855,15 +862,23 @@ export class TdScanInput extends TdFormElement {
     }
     this._syncForm();
     this._applyErrorState();
+    // SEC-1: an OLDER result (a newer scan already gave feedback) updates its own row and fires its app event, but never
+    // touches the live regions or plays a tone that would contradict the newer feedback
+    const fresh = entry.seq > this._feedbackSeq;
+    if (fresh) this._feedbackSeq = entry.seq;
     if (valid) {
-      this._announceValid(finalValue);
-      this._beep('ok');
+      if (fresh) {
+        this._announceValid(finalValue);
+        this._beep('ok');
+      }
       if (this._multiple) this.emit('change', { values: this.values });
       else if (this._changed) { this._changed = false; this.emit('change', { value: this._value }); }
       this.emit('scan', { value: finalValue, source: entry.source, seq: entry.seq, mixed: !!entry.data.mixed });
     } else {
-      this._sayError(entry.value, message);
-      this._beep('error');
+      if (fresh) {
+        this._sayError(entry.value, message);
+        this._beep('error');
+      }
       this.emit('scan-invalid', { value: entry.value, source: entry.source, seq: entry.seq, message });
     }
     this._refocusAfter(entry);
@@ -909,6 +924,11 @@ export class TdScanInput extends TdFormElement {
   }
 
   // --- feedback ---
+
+  /** @private ISSUE-5: create / resume the AudioContext in a trusted interaction (no sound) */
+  _prepareAudio() {
+    if (this.hasAttribute('beep') && !this.muted && !TdScanInput.muted) prepareBeep();
+  }
 
   /** @private */
   _beep(kind) {
@@ -1013,7 +1033,8 @@ export class TdScanInput extends TdFormElement {
         if (!this._multiple) this.value = newVal ?? '';
         return;
       case 'multiple': {
-        const vals = this.values;
+        // ISSUE-9: read the PREVIOUS mode's state (the attribute has already changed, so `values` reads the new mode)
+        const vals = newVal !== null ? (this._value ? [this._value] : []) : this._validRows().map((r) => r.value);
         this._bump();
         this._value = vals[vals.length - 1] || '';
         this._rows = vals.map((value) => ({ value, state: 'valid' }));
