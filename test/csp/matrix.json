@@ -49,7 +49,8 @@
       "td-theme-scope": "/src/form/td-dropdown.js",
       "td-media-gallery": "/src/form/td-media-gallery.js",
       "td-steps": "/src/display/td-steps.js",
-      "td-timeline": "/src/display/td-timeline.js"
+      "td-timeline": "/src/display/td-timeline.js",
+      "td-diff": "/src/display/td-diff.js"
     },
     "tokenNative": [
       "td-button",
@@ -99,7 +100,8 @@
       "td-steps",
       "td-timeline",
       "td-theme-scope",
-      "td-media-gallery"
+      "td-media-gallery",
+      "td-diff"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -4399,6 +4401,184 @@
         "margin-left"
       ],
       "excludeNote": "v0.45.0: text-bearing boxes (labels, descriptions, summary, titles, times, day headings, the 'Xem thêm' button) size with the platform font metrics (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards, v0.39 filter-chips) and centred / auto margins follow them: width / height / margin-left are excluded up front; the layout budgets (no overflow, one row of markers, 44px touch targets) are gated by test:responsive and the engines tests; 'Xem thêm' as a link (more-href, no loadMore): the secondary td-btn"
+    }
+  ],
+  "td-diff": [
+    {
+      "state": "table",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','720px'); window.__mount.appendChild(w); const c=document.createElement('td-diff'); c.id='probe'; w.appendChild(c); c.items=[{key:'price',label:'Giá bán',type:'money',before:12990000,after:11990000},{key:'status',label:'Trạng thái',type:'enum',options:{a:'Đang bán',b:'Ẩn'},before:'a',after:'b'},{key:'note',label:'Ghi chú',after:'Mới'},{key:'gift',label:'Quà',before:'Ốp lưng'},{key:'roles',label:'Quyền',before:['admin','editor'],after:['editor','viewer']},{key:'same',label:'SKU',before:'A1',after:'A1'}]; await new Promise((r) => setTimeout(r, 0)); ",
+      "selectors": [
+        "td-diff",
+        ".td-diff__scroll",
+        ".td-diff__table",
+        ".td-diff__head",
+        ".td-diff__th",
+        ".td-diff__row[data-kind=\"changed\"]",
+        ".td-diff__field",
+        ".td-diff__label",
+        ".td-diff__kind[data-kind=\"changed\"]",
+        ".td-diff__kind[data-kind=\"added\"]",
+        ".td-diff__kind[data-kind=\"removed\"]",
+        ".td-diff__row[data-kind=\"changed\"] > .td-diff__cell--before",
+        ".td-diff__row[data-kind=\"changed\"] > .td-diff__cell--after",
+        ".td-diff__value",
+        ".td-diff__value--empty",
+        ".td-diff__side",
+        ".td-diff__arrow",
+        ".td-diff__list",
+        ".td-diff__item[data-mark=\"add\"]",
+        ".td-diff__item[data-mark=\"del\"] > .td-diff__item-value",
+        ".td-diff__mark",
+        "details.td-diff__unchanged > .td-diff__summary"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.46.0: text-bearing boxes size with the platform font metrics (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards, v0.39 filter chips): width / height / margin-left are excluded up front; the layout budgets (no page overflow, 44px summaries on touch) are gated by test:responsive and the engines tests"
+    },
+    {
+      "state": "inline",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','360px'); window.__mount.appendChild(w); const c=document.createElement('td-diff'); c.id='probe'; w.appendChild(c); c.items=[{key:'price',label:'Giá bán',type:'money',before:12990000,after:11990000},{key:'status',label:'Trạng thái',type:'enum',options:{a:'Đang bán',b:'Ẩn'},before:'a',after:'b'},{key:'note',label:'Ghi chú',after:'Mới'},{key:'gift',label:'Quà',before:'Ốp lưng'},{key:'roles',label:'Quyền',before:['admin','editor'],after:['editor','viewer']},{key:'same',label:'SKU',before:'A1',after:'A1'}]; await new Promise((r) => setTimeout(r, 0)); ",
+      "selectors": [
+        "td-diff",
+        ".td-diff__scroll",
+        ".td-diff__table",
+        ".td-diff__head",
+        ".td-diff__th",
+        ".td-diff__row[data-kind=\"changed\"]",
+        ".td-diff__field",
+        ".td-diff__label",
+        ".td-diff__kind[data-kind=\"changed\"]",
+        ".td-diff__kind[data-kind=\"added\"]",
+        ".td-diff__kind[data-kind=\"removed\"]",
+        ".td-diff__row[data-kind=\"changed\"] > .td-diff__cell--before",
+        ".td-diff__row[data-kind=\"changed\"] > .td-diff__cell--after",
+        ".td-diff__value",
+        ".td-diff__value--empty",
+        ".td-diff__side",
+        ".td-diff__arrow",
+        ".td-diff__list",
+        ".td-diff__item[data-mark=\"add\"]",
+        ".td-diff__item[data-mark=\"del\"] > .td-diff__item-value",
+        ".td-diff__mark",
+        "details.td-diff__unchanged > .td-diff__summary"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.46.0: text-bearing boxes size with the platform font metrics (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards, v0.39 filter chips): width / height / margin-left are excluded up front; the layout budgets (no page overflow, 44px summaries on touch) are gated by test:responsive and the engines tests"
+    },
+    {
+      "state": "masked",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','720px'); window.__mount.appendChild(w); const c=document.createElement('td-diff'); c.id='probe'; w.appendChild(c); c.items=[{key:'pw',label:'Mật khẩu',masked:true},{key:'phone',label:'SĐT',masked:true,before:'***678',after:'***901'},{key:'n',label:'Số lớn',before:2**53,after:2**53+1}]; await new Promise((r) => setTimeout(r, 0)); ",
+      "selectors": [
+        ".td-diff__row[data-masked]",
+        ".td-diff__row[data-masked] > .td-diff__cell--before",
+        ".td-diff__value--masked",
+        ".td-diff__badge",
+        ".td-diff__uncertain",
+        ".td-diff__value--note",
+        ".td-diff__note"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.46.0: text-bearing boxes size with the platform font metrics (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards, v0.39 filter chips): width / height / margin-left are excluded up front; the layout budgets (no page overflow, 44px summaries on touch) are gated by test:responsive and the engines tests"
+    },
+    {
+      "state": "json-open",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','720px'); window.__mount.appendChild(w); const c=document.createElement('td-diff'); c.id='probe'; c.setAttribute('json',''); w.appendChild(c); c.items=[{key:'price',label:'Giá bán',type:'money',before:12990000,after:11990000},{key:'status',label:'Trạng thái',type:'enum',options:{a:'Đang bán',b:'Ẩn'},before:'a',after:'b'},{key:'note',label:'Ghi chú',after:'Mới'},{key:'gift',label:'Quà',before:'Ốp lưng'},{key:'roles',label:'Quyền',before:['admin','editor'],after:['editor','viewer']},{key:'same',label:'SKU',before:'A1',after:'A1'}]; await new Promise((r) => setTimeout(r, 0)); c.querySelector('.td-diff__json').open=true;",
+      "selectors": [
+        "details.td-diff__json",
+        ".td-diff__json > .td-diff__summary",
+        ".td-diff__figure",
+        ".td-diff__caption",
+        ".td-diff__pre"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.46.0: text-bearing boxes size with the platform font metrics (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards, v0.39 filter chips): width / height / margin-left are excluded up front; the layout budgets (no page overflow, 44px summaries on touch) are gated by test:responsive and the engines tests"
+    },
+    {
+      "state": "unchanged-open",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','720px'); window.__mount.appendChild(w); const c=document.createElement('td-diff'); c.id='probe'; w.appendChild(c); c.items=[{key:'price',label:'Giá bán',type:'money',before:12990000,after:11990000},{key:'status',label:'Trạng thái',type:'enum',options:{a:'Đang bán',b:'Ẩn'},before:'a',after:'b'},{key:'note',label:'Ghi chú',after:'Mới'},{key:'gift',label:'Quà',before:'Ốp lưng'},{key:'roles',label:'Quyền',before:['admin','editor'],after:['editor','viewer']},{key:'same',label:'SKU',before:'A1',after:'A1'}]; await new Promise((r) => setTimeout(r, 0)); c.querySelector('.td-diff__unchanged').open=true;",
+      "selectors": [
+        "details.td-diff__unchanged",
+        "details.td-diff__unchanged > .td-diff__scroll",
+        ".td-diff__unchanged .td-diff__row[data-kind=\"unchanged\"]",
+        ".td-diff__unchanged .td-diff__cell--before"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.46.0: text-bearing boxes size with the platform font metrics (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards, v0.39 filter chips): width / height / margin-left are excluded up front; the layout budgets (no page overflow, 44px summaries on touch) are gated by test:responsive and the engines tests"
+    },
+    {
+      "state": "long-open",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','720px'); window.__mount.appendChild(w); const c=document.createElement('td-diff'); c.id='probe'; w.appendChild(c); c.items=[{key:'desc',label:'Mô tả',before:'Ngắn',after:'Điện thoại chính hãng, bảo hành 12 tháng. '.repeat(12)},{key:'file',label:'Tệp',before:'hoa-don.pdf',after:'hoa-don'+String.fromCharCode(0x202e)+'fdp.exe'}]; await new Promise((r) => setTimeout(r, 0)); c.querySelector('.td-diff__more').open=true;",
+      "selectors": [
+        "details.td-diff__more",
+        ".td-diff__more > .td-diff__summary",
+        ".td-diff__value--full",
+        ".td-diff__ctl"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.46.0: text-bearing boxes size with the platform font metrics (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards, v0.39 filter chips): width / height / margin-left are excluded up front; the layout budgets (no page overflow, 44px summaries on touch) are gated by test:responsive and the engines tests"
+    },
+    {
+      "state": "empty",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','720px'); window.__mount.appendChild(w); const c=document.createElement('td-diff'); c.id='probe'; w.appendChild(c);",
+      "selectors": [
+        "td-diff",
+        ".td-diff__empty"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.46.0: text-bearing boxes size with the platform font metrics (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards, v0.39 filter chips): width / height / margin-left are excluded up front; the layout budgets (no page overflow, 44px summaries on touch) are gated by test:responsive and the engines tests"
+    },
+    {
+      "state": "ssr",
+      "markup": "<td-diff id=\"probe\" data-td-ssr=\"diff@1\"><div class=\"td-diff__scroll\"><table class=\"td-diff__table\" role=\"table\" aria-label=\"So sánh thay đổi\"><thead class=\"td-diff__head\" role=\"rowgroup\"><tr role=\"row\"><th class=\"td-diff__th\" role=\"columnheader\" scope=\"col\">Trường</th><th class=\"td-diff__th\" role=\"columnheader\" scope=\"col\">Trước</th><th class=\"td-diff__th\" role=\"columnheader\" scope=\"col\">Sau</th></tr></thead><tbody role=\"rowgroup\"><tr class=\"td-diff__row\" role=\"row\" data-kind=\"changed\" data-type=\"money\"><th class=\"td-diff__field\" role=\"rowheader\" scope=\"row\"><span class=\"td-diff__label\">Giá bán</span> <span class=\"td-diff__kind\" data-kind=\"changed\">Đổi</span></th><td class=\"td-diff__cell td-diff__cell--before\" role=\"cell\"><span class=\"td-diff__side\" aria-hidden=\"true\">Trước</span><span class=\"td-diff__value\" dir=\"auto\">12.990.000 ₫</span></td><td class=\"td-diff__cell td-diff__cell--after\" role=\"cell\"><span class=\"td-diff__arrow\" aria-hidden=\"true\">→</span><span class=\"td-diff__side\" aria-hidden=\"true\">Sau</span><span class=\"td-diff__value\" dir=\"auto\">11.990.000 ₫</span></td></tr><tr class=\"td-diff__row\" role=\"row\" data-kind=\"added\" data-type=\"text\"><th class=\"td-diff__field\" role=\"rowheader\" scope=\"row\"><span class=\"td-diff__label\">Ghi chú</span> <span class=\"td-diff__kind\" data-kind=\"added\">Thêm</span></th><td class=\"td-diff__cell td-diff__cell--before\" role=\"cell\"><span class=\"td-diff__side\" aria-hidden=\"true\">Trước</span><span class=\"td-diff__value td-diff__value--empty\"><span aria-hidden=\"true\">—</span><span class=\"td-sr-only\">trống</span></span></td><td class=\"td-diff__cell td-diff__cell--after\" role=\"cell\"><span class=\"td-diff__arrow\" aria-hidden=\"true\">→</span><span class=\"td-diff__side\" aria-hidden=\"true\">Sau</span><span class=\"td-diff__value\" dir=\"auto\">Mới</span></td></tr></tbody></table></div><details class=\"td-diff__unchanged\"><summary class=\"td-diff__summary\">1 trường không đổi</summary><div class=\"td-diff__scroll\"><table class=\"td-diff__table\" role=\"table\" aria-label=\"1 trường không đổi\"><thead class=\"td-diff__head\" role=\"rowgroup\"><tr role=\"row\"><th class=\"td-diff__th\" role=\"columnheader\" scope=\"col\">Trường</th><th class=\"td-diff__th\" role=\"columnheader\" scope=\"col\">Trước</th><th class=\"td-diff__th\" role=\"columnheader\" scope=\"col\">Sau</th></tr></thead><tbody role=\"rowgroup\"><tr class=\"td-diff__row\" role=\"row\" data-kind=\"unchanged\" data-type=\"number\"><th class=\"td-diff__field\" role=\"rowheader\" scope=\"row\"><span class=\"td-diff__label\">same</span></th><td class=\"td-diff__cell td-diff__cell--before\" role=\"cell\"><span class=\"td-diff__side\" aria-hidden=\"true\">Trước</span><span class=\"td-diff__value\" dir=\"auto\">1</span></td><td class=\"td-diff__cell td-diff__cell--after\" role=\"cell\"><span class=\"td-diff__arrow\" aria-hidden=\"true\">→</span><span class=\"td-diff__side\" aria-hidden=\"true\">Sau</span><span class=\"td-diff__value\" dir=\"auto\">1</span></td></tr></tbody></table></div></details></td-diff>",
+      "selectors": [
+        "td-diff",
+        ".td-diff__scroll",
+        ".td-diff__table",
+        ".td-diff__row[data-kind=\"changed\"] > .td-diff__cell--after",
+        ".td-diff__kind[data-kind=\"added\"]",
+        "details.td-diff__unchanged > .td-diff__summary"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "width",
+        "height",
+        "margin-left"
+      ],
+      "excludeNote": "v0.46.0: text-bearing boxes size with the platform font metrics (Linux CI renders Vietnamese glyphs 1px taller / narrower than macOS — v0.35 cropper, v0.36.1 cards-density, v0.37 selection-cards, v0.39 filter chips): width / height / margin-left are excluded up front; the layout budgets (no page overflow, 44px summaries on touch) are gated by test:responsive and the engines tests"
     }
   ]
 }

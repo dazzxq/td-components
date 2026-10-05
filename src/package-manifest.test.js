@@ -319,3 +319,14 @@ test('v0.45.0: ./steps + ./timeline exports, sideEffects, barrel TdSteps / TdTim
     assert.ok(css.includes(sel), sel);
   }
 });
+
+test('v0.46.0: ./diff export, sideEffects, barrel TdDiff, diff CSS before utilities; model + markup internal', async () => {
+  assert.equal(pkg.exports['./diff'], './src/display/td-diff.js');
+  assert.ok(pkg.sideEffects.includes('./src/display/td-diff.js'));
+  for (const m of ['./src/utils/diff-model.js', './src/utils/diff-markup.js']) assert.ok(!Object.values(pkg.exports).includes(m), `${m} stays internal`);
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdDiff \} from '\.\/src\/display\/td-diff\.js';/);
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  const i = files.indexOf('components/diff.css');
+  assert.ok(i > 0 && i < files.indexOf('utilities.css'));
+});

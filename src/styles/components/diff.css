@@ -49,6 +49,7 @@
 	td-diff *,
 	td-diff *::before {
 		box-sizing: border-box;
+		border: 0 solid var(--td-diff-border); /* own it: a host reset (Tailwind preflight) must not recolour the hairlines */
 	}
 
 	.td-diff__scroll {
@@ -270,6 +271,7 @@
 	.td-diff__figure {
 		min-inline-size: 0;
 		margin-inline: 0;
+		margin-block-end: 0;
 	}
 
 	.td-diff__caption {

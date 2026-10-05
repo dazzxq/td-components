@@ -90,6 +90,7 @@
     "./filter-chips": "./src/display/td-filter-chips.js",
     "./steps": "./src/display/td-steps.js",
     "./timeline": "./src/display/td-timeline.js",
+    "./diff": "./src/display/td-diff.js",
     "./dom-utils": "./src/utils/dom-utils.js",
     "./form-validation": "./src/utils/form-validation.js",
     "./breakpoints": "./src/utils/breakpoints.js",
@@ -149,6 +150,7 @@
     "./src/display/td-filter-chips.js",
     "./src/display/td-steps.js",
     "./src/display/td-timeline.js",
+    "./src/display/td-diff.js",
     "./src/display/td-pagination.js",
     "./src/display/td-table.js",
     "./src/display/td-tabs.js"

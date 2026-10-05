@@ -17,6 +17,8 @@
  * at 720 — toolbar wraps / detail is a sliding pane below it; short band keeps ≥ 1 row of cards visible), media grid
  * (default, sortable gallery, justified), dropzone, and the ordinary-modal sheet (< 720) vs centred (≥ 720) rule.
  *
+ * v0.46.0: the td-diff section (inline under 480px of host / table above; view="table" scrolls inside its box; every
+ *   row inside the section; <summary> ≥ 44 coarse / ≥ 24 mouse) — plus every generic check.
  * v0.39.0: the filter bar section (td-filter-chips one line per chip / one scrolling row < 480; the hidden column of a
  *   `column-menu` table out of the aria snapshot) — plus every generic check (overflow, 44px targets, overlaps).
  * v0.35.0: td-cropper inline (full width + 280 px column: no overflow, corners / focal / toolbar ≥ 44 coarse incl. corners on
@@ -404,6 +406,37 @@ async function runConfig(browser, c) {
       return errs;
     });
     check(tag, 'td-filter-chips + column menu (v0.39.0)', chipErr);
+    // v0.46.0 (plan v0.46.0-diff M5): td-diff — layout by host width, the forced table scrolls INSIDE its box, rows and
+    // values inside the section, summaries ≥ 44 (coarse) / ≥ 24 (mouse)
+    const diffErr = await page.evaluate((coarse) => {
+      const errs = [];
+      const sec = document.querySelector('[data-section="diff"]').getBoundingClientRect();
+      for (const id of ['rsp-diff', 'rsp-diff-table']) {
+        const host = document.getElementById(id);
+        const w = host.getBoundingClientRect().width;
+        const table = host.querySelector('.td-diff__table');
+        const inline = getComputedStyle(table).display === 'block';
+        const want = id === 'rsp-diff' ? w < 480 : false;
+        if (inline !== want) errs.push(`#${id} ${inline ? 'inline' : 'table'} at ${w.toFixed(0)}px`);
+        const box = host.querySelector('.td-diff__scroll');
+        const b = box.getBoundingClientRect();
+        if (b.left < sec.left - 0.5 || b.right > sec.right + 0.5) errs.push(`#${id} box outside the section`);
+        if (id === 'rsp-diff') {
+          for (const r of host.querySelectorAll(':scope > .td-diff__scroll .td-diff__row')) {
+            const rr = r.getBoundingClientRect();
+            if (rr.right > b.right + 0.5) errs.push(`#${id} row "${r.querySelector('.td-diff__label').textContent}" wider than its box`);
+          }
+          if (box.scrollWidth > box.clientWidth + 1) errs.push(`#${id} scrolls sideways (${box.scrollWidth} > ${box.clientWidth})`);
+        }
+        for (const s of host.querySelectorAll('summary')) {
+          const sr = s.getBoundingClientRect();
+          if (!sr.height) continue;
+          if (sr.height < (coarse ? 44 : 24) - 0.5) errs.push(`#${id} summary "${s.textContent}" ${sr.height.toFixed(1)}px tall`);
+        }
+      }
+      return errs;
+    }, c.touch && c.engine !== 'firefox');
+    check(tag, 'td-diff layout + summaries (v0.46.0)', diffErr);
     // v0.36.0 (plan QĐ 41): td-otp-input cells keep their shape — in columns of 320 / 360 / 390 / 240 px (and the page
     // width when narrower), 6 / 8 / 10 digits and 5 alphanumerics: each cell width / height = 44 / 52 ± 4 % (except a
     // touch cell narrower than 37 px, which grows to the 44 px touch minimum), nothing wider than its column.

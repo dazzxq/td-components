@@ -138,6 +138,14 @@ States: `grouped` (day groups, neutral + the four tones from the alert pairs, li
 `aria-busy`; the shimmer `transform` excluded), `more` ("Xem thêm" as the secondary td-btn link). `width` / `height` /
 `margin-left` excluded up front (font metrics). (4)
 
+### td-diff (v0.46.0, new component — td.css only)
+States: `table` (720px host: Trường · Trước · Sau, tinted before / after cells, kind labels, list + / −), `inline` (360px host:
+block rows, "Trước" / "Sau" labels, arrow, struck-through before value), `masked` ([ĐÃ ẨN] + "Đã che" badge, server-masked
+strings, "không so sánh được", the unsafe-number note), `json-open`, `unchanged-open`, `long-open` (native `<details>` opened:
+JSON panes, the unchanged table, "Xem đầy đủ" + a visible ⟨U+202E⟩), `empty` ("Không có thay đổi."), `ssr` (PHP `td_diff()`
+markup adopted in place). `width` / `height` / `margin-left` excluded up front (font metrics); the host owns its border colour
+and figure margin (Tailwind preflight, combined profile). (8)
+
 ### td-modal (1 declarative; portaled to body)
 Styled el: `.td-modal-content` (box-shadow + backdrop-filter), `.td-modal-backdrop`.
 States: `default` (`TdModal.show({title, body})`). (1)
