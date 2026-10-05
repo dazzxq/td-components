@@ -36,8 +36,8 @@ function mount(html) {
 // Under load (parallel CI / several suites on one machine) Playwright's `type` can stretch key gaps past the 40 ms default,
 // which made machine bursts read as manual (Firefox flakes, CI run 37342699717). Tests use key-interval 100 (scanner: mean
 // ≤ 100 ms, no gap > 400 ms) and hand typing at 500 ms per character, so the two never overlap; the 40 ms default itself
-// is covered by the node tests of src/utils/scan-burst.js.
-const scanEl = (attrs = '') => mount(`<td-scan-input ${/key-interval=/.test(attrs) ? attrs : `${attrs} key-interval="100"`}></td-scan-input>`).querySelector('td-scan-input');
+// is covered by the node tests in src/utils/scan-burst.test.js.
+const scanEl = (attrs = '') => mount(`<td-scan-input ${/(?:^|\s)key-interval\s*=/i.test(attrs) ? attrs : `${attrs} key-interval="100"`}></td-scan-input>`).querySelector('td-scan-input');
 const inputOf = (el) => el.querySelector('input.td-scan__input');
 const rowsOf = (el) => [...el.querySelectorAll('li.td-scan__item')];
 const rowValues = (el) => rowsOf(el).map((li) => li.querySelector('.td-scan__value').textContent);
@@ -117,7 +117,7 @@ describe('td-scan-input — scanner vs manual (QĐ 3–6)', () => {
     expect(document.activeElement === input).to.equal(true);
   });
 
-  it('typed by hand (150 ms apart) + Enter → source manual (allowed by default)', async () => {
+  it('typed by hand (500 ms apart) + Enter → source manual (allowed by default)', async () => {
     const el = scanEl();
     const rec = record(el, 'scan');
     await typeSlow(el, 'AB12');
