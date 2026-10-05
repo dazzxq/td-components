@@ -49,6 +49,7 @@ import {
 import { fillIconSlots } from '../icons/td-icon.js';
 import { transitionEndMs } from '../utils/transition.js';
 import { openDialogLayer } from './dialog-layer.js';
+import { preparePhrase, phraseMatches } from '../utils/confirm-phrase.js';
 
 const MODAL_LAYER = LAYERS.modal; // --td-z-modal
 const SIZES = ['xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', 'full'];
@@ -62,6 +63,8 @@ const SPINNER = '<span class="td-btn__spinner td-spinner td-spinner--sm" aria-hi
   + '<svg class="td-spinner__svg" viewBox="0 0 50 50" aria-hidden="true" focusable="false">'
   + '<circle class="td-spinner__track" cx="25" cy="25" r="20"></circle>'
   + '<circle class="td-spinner__arc" cx="25" cy="25" r="20"></circle></svg></span>';
+
+let confirmSeq = 0; // ids of the type-to-confirm field (v0.44.0)
 
 const isThenable = (v) => !!v && (typeof v === 'object' || typeof v === 'function') && typeof v.then === 'function';
 
@@ -132,6 +135,10 @@ export class TdModal {
     successTitle: 'Thành công',
     errorTitle: 'Lỗi',
     infoTitle: 'Thông tin',
+    // v0.44.0 type-to-confirm (`{phrase}` → the phrase, always as text)
+    typeToConfirmLabel: 'Gõ {phrase} để xác nhận',
+    typeToConfirmMismatch: 'Chưa khớp — hãy gõ đúng {phrase}',
+    typeToConfirmMatched: 'Đã khớp, có thể xác nhận',
   };
 
   /**
@@ -497,6 +504,10 @@ export class TdModal {
    * @param {Function} [options.onConfirm]
    * @param {Function} [options.onCancel]
    * @param {Element|null} [options.themeRoot] - v0.42.0: follow this element's theme scope (see show())
+   * @param {string} [options.typeToConfirm] - v0.44.0: the confirm button works only once this phrase is typed in a
+   *   field under the message (NFC, trimmed, whitespace runs = one space; case- and accent-sensitive; ≤ 100 code
+   *   points). Until then it is `aria-disabled` (still focusable); a click / Enter shows the mismatch error. The field
+   *   gets the first focus. Empty / not a string → ignored with a console.warn.
    * @returns {Promise<boolean>}
    */
   static confirm(options = {}) {
@@ -511,6 +522,7 @@ export class TdModal {
         onConfirm = () => {},
         onCancel = () => {},
         themeRoot = null,
+        typeToConfirm,
       } = options || {};
       let settled = false;
       let confirming = false; // a close during onConfirm() is the confirmation, not a dismissal
@@ -518,6 +530,7 @@ export class TdModal {
       const variant = ['primary', 'danger', 'success', 'warning'].includes(confirmVariant) ? confirmVariant : 'primary';
       const cancelButton = makeButton(cancelText, 'secondary');
       const confirmButton = makeButton(confirmText, variant);
+      const gate = TdModal._typeToConfirm(typeToConfirm, confirmButton);
 
       const settle = (value) => {
         if (settled) return false;
@@ -532,6 +545,7 @@ export class TdModal {
         cancelButton.disabled = busy;
         const x = inst && inst.element.querySelector('.td-modal__close');
         if (x) x.disabled = busy;
+        if (gate) gate.setBusy(busy);
       };
 
       cancelButton.addEventListener('click', () => {
@@ -541,6 +555,7 @@ export class TdModal {
       });
       confirmButton.addEventListener('click', () => {
         if (settled || confirmButton.getAttribute('aria-busy') === 'true') return;
+        if (gate && !gate.check()) return; // v0.44.0: phrase not typed yet → the error, nothing else
         let result;
         confirming = true;
         let threw = false;
@@ -574,20 +589,154 @@ export class TdModal {
       });
 
       const { wrap, text } = TdModal._messageBlock('confirm', message, messageHtml);
+      let body = wrap;
+      if (gate) {
+        body = document.createDocumentFragment();
+        body.append(wrap, gate.field);
+      }
       modalId = TdModal._open({
         title,
-        body: wrap,
+        body,
         footer: [cancelButton, confirmButton],
         size: 'sm',
         themeRoot,
-        focusTarget: cancelButton,
+        // v0.44.0 (QĐ 10): with a phrase the field takes the first focus (the confirm button is locked anyway)
+        focusTarget: gate ? gate.input : cancelButton,
         onClose: () => {
           if (confirming) { settle(true); return; }
           if (!settle(false)) return;
           try { onCancel(); } catch { /* ignore */ }
         },
       }, { role: 'alertdialog', message: text });
+      if (gate) gate.describe(text.id);
     });
+  }
+
+  /**
+   * @private v0.44.0 (plan v0.44.0-confirm-dirty QĐ 1-11): the type-to-confirm field of `confirm()` and its gate on the
+   * confirm button. Every text (label template, phrase, messages) goes in as TEXT nodes — never innerHTML.
+   * @param {unknown} raw the `typeToConfirm` option
+   * @param {HTMLButtonElement} confirmButton
+   * @returns {null | { field: HTMLElement, input: HTMLInputElement, check(): boolean, setBusy(b: boolean): void,
+   *   describe(id: string): void }}
+   */
+  static _typeToConfirm(raw, confirmButton) {
+    if (raw === undefined || raw === null) return null;
+    const prep = preparePhrase(raw);
+    if (!prep) {
+      console.warn('TdModal.confirm: ignored typeToConfirm (empty or not a string)');
+      return null;
+    }
+    if (prep.truncated) console.warn('TdModal.confirm: typeToConfirm cut to 100 characters');
+    const { phrase } = prep;
+    const labels = TdModal.labels;
+    const id = `td-modal-confirm-${++confirmSeq}`;
+    const field = document.createElement('div');
+    field.className = 'td-modal__confirm-field td-field';
+    const label = document.createElement('label');
+    label.className = 'td-field__label';
+    label.htmlFor = `${id}-input`;
+    const strong = document.createElement('strong');
+    strong.className = 'td-modal__phrase';
+    strong.textContent = phrase;
+    const tpl = String(labels.typeToConfirmLabel || 'Gõ {phrase} để xác nhận');
+    const at = tpl.indexOf('{phrase}');
+    if (at === -1) label.append(document.createTextNode(`${tpl} `), strong);
+    else {
+      label.append(document.createTextNode(tpl.slice(0, at)), strong,
+        document.createTextNode(tpl.slice(at + '{phrase}'.length).split('{phrase}').join(phrase)));
+    }
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = `${id}-input`;
+    input.className = 'td-field__control';
+    input.setAttribute('autocomplete', 'off');
+    input.setAttribute('autocapitalize', 'none'); // never "off" (kit rule): "none" is the standard keyword
+    input.setAttribute('autocorrect', 'off');
+    input.setAttribute('spellcheck', 'false');
+    input.setAttribute('enterkeyhint', 'done');
+    const error = document.createElement('span');
+    error.className = 'td-field-error';
+    error.id = `${id}-error`;
+    error.hidden = true;
+    const status = document.createElement('span');
+    status.className = 'td-modal__confirm-status td-sr-only';
+    status.setAttribute('role', 'status');
+    field.append(label, input, error, status);
+
+    let matched = false;
+    let composing = false;
+    let describedBy = '';
+    const lock = () => {
+      if (matched) confirmButton.removeAttribute('aria-disabled');
+      else confirmButton.setAttribute('aria-disabled', 'true');
+    };
+    const syncDescribedBy = () => {
+      const ids = [describedBy, error.hidden ? '' : error.id].filter(Boolean).join(' ');
+      if (ids) input.setAttribute('aria-describedby', ids);
+      else input.removeAttribute('aria-describedby');
+    };
+    const hideError = () => {
+      if (error.hidden) return;
+      error.hidden = true;
+      error.textContent = '';
+      input.removeAttribute('aria-invalid');
+      input.removeAttribute('aria-errormessage');
+      syncDescribedBy();
+    };
+    const evaluate = () => {
+      const now = phraseMatches(input.value, phrase);
+      if (now === matched) return;
+      matched = now;
+      lock();
+      // QĐ 8: announce the unlock once per transition — never every key
+      status.textContent = matched ? String(labels.typeToConfirmMatched || '') : '';
+    };
+    input.addEventListener('compositionstart', () => { composing = true; });
+    input.addEventListener('compositionend', () => {
+      composing = false;
+      evaluate();
+    });
+    input.addEventListener('input', (e) => {
+      if (composing || /** @type {InputEvent} */ (e).isComposing) return; // QĐ 5: an uncommitted IME word is not typed yet
+      hideError(); // reward early
+      evaluate();
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      if (e.isComposing || e.keyCode === 229 || composing) return; // the IME's own Enter commits the word
+      e.preventDefault();
+      if (input.readOnly) return;
+      confirmButton.click(); // QĐ 9: matched → confirm; else → the error (the click handler checks)
+    });
+    lock();
+    return {
+      field,
+      input,
+      check() {
+        if (!composing) evaluate();
+        if (matched) return true;
+        const tplMsg = String(labels.typeToConfirmMismatch || '');
+        error.textContent = tplMsg.split('{phrase}').join(phrase);
+        error.hidden = false;
+        input.setAttribute('aria-invalid', 'true');
+        input.setAttribute('aria-errormessage', error.id);
+        syncDescribedBy();
+        // the attempt came from the button: back to the field, which now reads as invalid + the error (described-by)
+        if (document.activeElement !== input && !input.readOnly) {
+          try { input.focus({ preventScroll: true }); } catch { /* ignore */ }
+        }
+        return false;
+      },
+      setBusy(busy) {
+        input.readOnly = busy;
+        if (!busy) lock(); // setButtonBusy() cleared aria-disabled
+      },
+      describe(messageId) {
+        describedBy = messageId || '';
+        syncDescribedBy();
+      },
+    };
   }
 
   /**
