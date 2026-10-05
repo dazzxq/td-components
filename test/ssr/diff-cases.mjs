@@ -41,5 +41,12 @@ export function generatedCases() {
     // round 2 D: work reserved before each operation (boundary: 126 items × two 200-element lists)
     { id: 'g-work-boundary', mode: 'items', opts: {}, items: Array.from({ length: 126 }, (_, i) => ({ key: `k${i}`,
       before: Array.from({ length: 200 }, (_, j) => `b${j}`), after: Array.from({ length: 200 }, (_, j) => `a${j}`) })) },
+    // Codex round 3: 14 budget spent before a list with a masked descendant (still one masked leaf); 15 no item read after
+    { id: 'g-mask-after-budget', mode: 'snapshot', opts: { json: true },
+      before: JSON.stringify({ ...Object.fromEntries(Array.from({ length: 260 }, (_, i) => [`l${i}`, Array.from({ length: 200 }, (_, j) => j)])), tags: ['a', 'secret'] }),
+      after: JSON.stringify(Object.fromEntries(Array.from({ length: 260 }, (_, i) => [`l${i}`, Array.from({ length: 200 }, (_, j) => j)]))),
+      fields: [{ path: ['tags', 1], masked: true }] },
+    { id: 'g-items-after-budget', mode: 'items', opts: {}, items: Array.from({ length: 300 }, (_, i) => ({ key: `k${i}`,
+      before: Array.from({ length: 200 }, (_, j) => `b${j}`), after: Array.from({ length: 200 }, (_, j) => `a${j}`) })) },
   ];
 }

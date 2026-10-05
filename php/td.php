@@ -4522,7 +4522,9 @@ namespace {
             $ctx['overKeys']++;
             $p = td__diff_cpslice(td__diff_utf8($k), 200);
             $n = strtr((string) $ctx['overKeys'], '0123456789', "\x01\x02\x03\x04\x05\x06\x07\x08\x0B\x0C");
-            return $p . str_repeat("\x01", 1001 - td__diff_cplen($p)) . "\x0E" . ['a' => "\x0F", 'b' => "\x10", 'i' => "\x11"][$side] . $n;
+            $id = $p . str_repeat("\x01", 1001 - td__diff_cplen($p)) . "\x0E" . ['a' => "\x0F", 'b' => "\x10", 'i' => "\x11"][$side] . $n;
+            $ctx['disp'][$id] = $k; // round 3 #13: the identity matches rows only; labels / paths / JSON keys show the raw key
+            return $id;
         }
         $ctx['tooLarge'] = true;
         $ctx['overKeys']++;
@@ -5151,12 +5153,13 @@ namespace {
     function td__diff_list_of(array $v, int $len, array $path, array &$ctx): array
     {
         $n = min($len, 200);
+        $masked = td__diff_maskbelow($ctx['masks'], $path);
+        // round 3 #14: a descendant mask is checked FIRST — without budget the array is conservatively one masked leaf
         if (!td__diff_canwork($ctx, $n)) {
-            return ['k' => 'skip'];
+            return $masked ? ['k' => 'masked'] : ['k' => 'skip'];
         }
         $ctx['work'] -= $n;
         $vals = [];
-        $masked = td__diff_maskbelow($ctx['masks'], $path);
         for ($i = 0; $i < $n; $i++) {
             if (td__diff_masked($ctx['masks'], array_merge($path, [$i]))) {
                 $masked = true;
@@ -5572,12 +5575,23 @@ namespace {
         return $map;
     }
 
-    function td__diff_seg_text(string|int $seg): string
+    function td__diff_seg_text(string|int $seg, array $disp = []): string
     {
-        return is_int($seg) ? '#' . ($seg + 1) : td__diff_label($seg);
+        return is_int($seg) ? '#' . ($seg + 1) : td__diff_label($disp[$seg] ?? $seg);
     }
 
-    function td__diff_row_label(array $path, array $fields, array $L): string
+    /** @internal round 3 #13: a path as shown (an invalid-UTF-8 key → its U+FFFD text, never its internal identity). */
+    function td__diff_disp_path(array $path, array $disp): array
+    {
+        foreach ($path as $i => $seg) {
+            if (is_string($seg) && isset($disp[$seg])) {
+                $path[$i] = td__diff_utf8($disp[$seg]);
+            }
+        }
+        return $path;
+    }
+
+    function td__diff_row_label(array $path, array $fields, array $L, array $disp = []): string
     {
         if (!$path) {
             return $L['root'];
@@ -5599,7 +5613,7 @@ namespace {
             $parts[] = $best['label'];
         }
         for ($i = $best ? count($best['path']) : 0; $i < count($path); $i++) {
-            $parts[] = td__diff_seg_text($path[$i]);
+            $parts[] = td__diff_seg_text($path[$i], $disp);
         }
         $s = implode(' › ', $parts);
         return td__diff_cplen($s) > 200 ? td__diff_cpslice($s, 200) . '…' : $s;
@@ -5627,7 +5641,7 @@ namespace {
                     if (!td__diff_nl($w, 2)) {
                         break;
                     }
-                    if (!td__diff_put($w, td__diff_json_string(td__diff_keytext($e[0])) . ': ')) {
+                    if (!td__diff_put($w, td__diff_json_string(td__diff_keytext($ctx['disp'][$e[0]] ?? $e[0])) . ': ')) {
                         break;
                     }
                     if ($e[1]['masked']) {
@@ -5672,7 +5686,7 @@ namespace {
     function td__diff_model(array $input, array $L, bool $json, string $fn): array
     {
         $warn = [];
-        $ctx = ['L' => $L, 'tooLarge' => false, 'unsafe' => false, 'work' => 100000, 'overKeys' => 0, 'masks' => [], 'fields' => []];
+        $ctx = ['L' => $L, 'tooLarge' => false, 'unsafe' => false, 'work' => 100000, 'overKeys' => 0, 'masks' => [], 'fields' => [], 'disp' => []];
         $rows = [];
         $sides = null;
         $notes0 = [];
@@ -5688,10 +5702,13 @@ namespace {
             }
             $eb = $json ? [] : null;
             $ea = $json ? [] : null;
-            foreach (array_slice($list, 0, 1000) as $raw) {
-                if (td__diff_canwork($ctx, 1)) {
-                    $ctx['work'] -= 1;
+            $end = min(count($list), 1000);
+            for ($ii = 0; $ii < $end; $ii++) {
+                if (!td__diff_canwork($ctx, 1)) {
+                    break; // round 3 #15: no further item is read once the budget is spent
                 }
+                $ctx['work'] -= 1;
+                $raw = $list[$ii];
                 if (!(is_array($raw) && !td__diff_is_list($raw)) && !($raw instanceof \stdClass)) {
                     $warn[] = 'item';
                     continue;
@@ -5831,7 +5848,7 @@ namespace {
                     [$kind, $uncertain] = td__diff_kind($b, $a, $ctx);
                 }
                 $M = ['t' => 'm'];
-                $rows[] = ['path' => $t['path'], 'label' => td__diff_row_label($t['path'], $fields, $L), 'kind' => $kind,
+                $rows[] = ['path' => $t['path'], 'label' => td__diff_row_label($t['path'], $fields, $L, $ctx['disp']), 'kind' => $kind,
                     'uncertain' => $uncertain, 'masked' => $masked, 'type' => $def['type'] ?? td__diff_infer($a, $b),
                     'b' => $masked ? $M : $b, 'a' => $masked ? $M : $a, 'def' => $def];
             }
@@ -5904,7 +5921,7 @@ namespace {
             $marks = $r['kind'] === 'changed' && $r['b']['t'] === 'l' && $r['a']['t'] === 'l';
             $before = $budget(td__diff_cell($r['b'], $r['type'], $r['def'], $L, $r['a'], $marks ? '-' : ''));
             $after = $budget(td__diff_cell($r['a'], $r['type'], $r['def'], $L, $r['b'], $marks ? '+' : ''));
-            $out[] = ['id' => json_encode($r['path'], Td::DIFF_JSON), 'path' => $r['path'], 'label' => $r['label'], 'kind' => $r['kind'],
+            $out[] = ['id' => json_encode($r['path'], Td::DIFF_JSON), 'path' => td__diff_disp_path($r['path'], $ctx['disp']), 'label' => $r['label'], 'kind' => $r['kind'],
                 'uncertain' => $r['uncertain'], 'masked' => $r['masked'], 'type' => $r['type'], 'before' => $before, 'after' => $after];
         }
         $counts['truncated'] = $ctx['tooLarge'] || $counts['hidden'] > 0 || $over || in_array('tooLarge', $notes0, true);

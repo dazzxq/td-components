@@ -529,3 +529,27 @@ describe('diff-model — Codex round 2 (B–E)', () => {
     assert.deepEqual(m.rows.map((r) => [r.after.k, r.after.s]), [['json', '"2026-10-06T00:00:00.000Z"'], ['text', '2026-10-06T00:00:00.000Z']]);
   });
 });
+
+describe('diff-model — Codex round 3 (14, 15)', () => {
+  test('14: work budget spent + a list with a masked descendant → still ONE masked leaf (no unmasked summary / length)', () => {
+    const big = Object.fromEntries(Array.from({ length: 260 }, (_, i) => [`l${i}`, Array.from({ length: 200 }, (_, j) => j)]));
+    // the after side (walked first) spends most of the budget; `tags` exists only on the before side, walked when it is gone
+    const m = normalize({ before: { ...big, tags: ['a', 'secret'] }, after: { ...big }, fields: [{ path: ['tags', 1], masked: true }] });
+    const tags = m.rows.find((r) => r.path[0] === 'tags');
+    assert.deepEqual([tags.masked, tags.before, tags.after], [true, { k: 'masked' }, { k: 'masked' }]);
+    assert.ok(!JSON.stringify(parityModel(m)).includes('secret'));
+    assert.ok(m.notes.includes('tooLarge'), 'the budget was spent before the tags list');
+    assert.ok(!JSON.stringify(parityModel(m)).includes(fill(DEFAULT_LABELS.arraySummary, { n: 2 })));
+  });
+
+  test('15: once the work budget is spent no further item is read (break before list[i])', () => {
+    const list = (p) => Array.from({ length: 200 }, (_, j) => `${p}${j}`);
+    const raw = Array.from({ length: 300 }, (_, i) => ({ key: `k${i}`, before: list('b'), after: list('a') }));
+    const read = new Set();
+    const items = new Proxy(raw, { get(t, k) { if (typeof k === 'string' && /^\d+$/.test(k)) read.add(Number(k)); return Reflect.get(t, k); } });
+    const m = normalize({ items });
+    assert.ok(m.rows.length < 300);
+    assert.equal(read.size, m.rows.length, 'only the items that became rows were read');
+    assert.equal(Math.max(...read), m.rows.length - 1);
+  });
+});

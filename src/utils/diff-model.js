@@ -620,10 +620,11 @@ function scalarDesc(v, ctx, max = LIMITS.full) {
  */
 function listOf(v, len, path, ctx) {
   const n = Math.min(len, LIMITS.list);
-  if (!canWork(ctx, n)) return { k: 'skip' };
+  let masked = ctx.maskBelow(path);
+  // round 3 #14: a descendant mask is checked FIRST — without budget the array is conservatively one masked leaf
+  if (!canWork(ctx, n)) return masked ? { k: 'masked' } : { k: 'skip' };
   ctx.work -= n;
   const vals = [];
-  let masked = ctx.maskBelow(path);
   for (let i = 0; i < n; i++) {
     if (ctx.isMasked(path.concat([i]))) { masked = true; continue; }
     let x;
@@ -1034,7 +1035,8 @@ export function normalize(input, opts = {}) {
     if (total > LIMITS.keys) ctx.tooLarge = true;
     const entries = opts.json ? { before: new Map(), after: new Map() } : null;
     for (let i = 0; i < n; i++) {
-      if (canWork(ctx, 1)) ctx.work -= 1;
+      if (!canWork(ctx, 1)) break; // round 3 #15: no further item is read once the budget is spent
+      ctx.work -= 1;
       let raw;
       try { raw = list[i]; } catch { raw = null; }
       if (shapeOf(raw) !== 'object') { warnings.push('item'); continue; }

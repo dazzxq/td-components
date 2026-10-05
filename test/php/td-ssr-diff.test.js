@@ -214,6 +214,22 @@ describe('php/td.php — td-diff Codex round 2 (PHP native input)', opts, () => 
     assert.equal(ids, 3, 'k\\xFF and k\\xFE stay two rows');
   });
 
+  test('13: an invalid-UTF-8 key shows U+FFFD in labels, model paths, markup and the JSON view — never its internal identity', () => {
+    const r = php("$m = TdComponents\\Td::diffModel(['before' => [\"k\\x80\" => 1], 'after' => [\"k\\x80\" => 2, \"k\\x81\" => 3]], ['json' => true]);"
+      + " $n = TdComponents\\Td::diffModel(['items' => [['key' => \"k\\xFF\", 'after' => 1]]], ['json' => true]);"
+      + " $h = td_diff_snapshots([\"k\\x80\" => 1], [\"k\\x81\" => 2], ['json' => true]) . td_diff([['key' => \"k\\xFF\", 'after' => 1]], ['json' => true]);"
+      + " echo json_encode([array_map(fn ($r) => [$r['label'], $r['path']], $m['rows']), $m['json']['after'], $n['rows'][0]['label'], $n['rows'][0]['path'], $n['json']['after'], $h], TdComponents\\Td::DIFF_JSON);");
+    const [rows, json, ilabel, ipath, ijson, html] = JSON.parse(r.out);
+    assert.deepEqual(rows.map(([l]) => l).sort(), ['k\uFFFD', 'k\uFFFD', 'k\uFFFD']);
+    assert.ok(rows.every(([, p]) => p.length === 1 && p[0] === 'k\uFFFD'), JSON.stringify(rows));
+    assert.equal(rows.length, 3, 'still never merged');
+    assert.deepEqual([ilabel, ipath], ['k\uFFFD', ['k\uFFFD']]);
+    assert.match(ijson, /^\{\n {2}"k\uFFFD": 1\n\}$/);
+    assert.ok(json.includes('"k\uFFFD": 2'));
+    // no synthetic identity (C0 padding / counters) anywhere
+    for (const s of [json, ijson, html, JSON.stringify(rows)]) assert.ok(!/[\u0001-\u0008\u000b\u000c\u000e-\u0011]|\\u00(0[1-8bce]|1[01])/.test(s), s.slice(0, 200));
+  });
+
   test('C: an over-cap container is refused before its values are read (bounded time, uncertain)', () => {
     const t0 = Date.now();
     const r = php("$a = array_fill(0, 200000, ['x' => str_repeat('y', 100)]); $b = $a;"
