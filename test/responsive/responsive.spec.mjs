@@ -27,6 +27,10 @@
  * v0.38.0: td-scan-input (single + multiple 30 rows + the 280 px column): no overflow, indicator never over the input
  * (below it under 480), list rows inside the host, speaker / Bỏ / Xoá tất cả ≥ 44 coarse (generic target probe).
  *
+ * v0.40.0: td-datetime-range — dialog (sheet < 720: the "Từ | Đến" switch shows ONE side; ≥ 720 two sides side by
+ * side; presets never wider than the dialog, one scrolling row < 480 / short), "Chọn" in the viewport (incl. 844×390);
+ * the 160 px host never overflows and its cut trigger text carries a title.
+ *
  * Run: npm run test:responsive   (RSP_ENGINES=chromium,webkit RSP_ONLY=<config tag substring> for a subset)
  */
 import { chromium, firefox, webkit } from 'playwright-core';
@@ -66,6 +70,7 @@ const tagOf = (c) => `${c.engine}-${c.w}x${c.h}-${c.touch ? 'touch' : 'mouse'}${
 const SCENARIOS = [
   { name: 'dropdown', act: (p) => p.click('#g-dd .td-dropdown__trigger'), panel: '.td-dropdown__menu[data-state="open"]' },
   { name: 'datetime', act: (p) => p.click('#g-dtp .td-dtp__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer .td-btn:last-child'] },
+  { name: 'datetime-range', act: (p) => p.click('#g-dtr .td-dtr__trigger'), panel: '.td-modal__dialog', see: ['.td-modal__close', '.td-modal__footer .td-btn:last-child'] }, // v0.40.0
   { name: 'tree-select', act: (p) => p.click('#g-ts .td-tree-select__trigger'), panel: '.td-tree-select__menu[data-state="open"]' },
   { name: 'multiselect', act: async (p) => { await p.click('#g-chips .td-chip-input__input'); await p.keyboard.press('ArrowDown'); }, panel: '.td-chip-input__menu[data-state="open"]' },
   { name: 'menu', act: (p) => p.click('#rsp-menu-btn button'), panel: '.td-menu' },
@@ -437,6 +442,20 @@ async function runConfig(browser, c) {
       return errs;
     });
     check(tag, 'scan input layout (v0.38.0)', scanErr);
+    // v0.40.0: td-datetime-range hosts never overflow; the 160 px host's cut trigger text has a title (value-title)
+    await page.waitForFunction(() => { const v = document.querySelector('#rsp-dtr-160 .td-dtr__value'); return !v || v.scrollWidth <= v.clientWidth || v.hasAttribute('title'); }, null, { timeout: 2000 }).catch(() => {});
+    const dtrErr = await page.evaluate(() => {
+      const errs = [];
+      for (const el of document.querySelectorAll('td-datetime-range')) {
+        const host = el.getBoundingClientRect();
+        const t = el.querySelector('.td-dtr__trigger').getBoundingClientRect();
+        if (t.right > host.right + 0.5 || t.left < host.left - 0.5) errs.push(`#${el.id}: trigger outside the host`);
+      }
+      const v = document.querySelector('#rsp-dtr-160 .td-dtr__value');
+      if (v && v.scrollWidth > v.clientWidth && v.getAttribute('title') !== v.textContent) errs.push('#rsp-dtr-160: cut text without title');
+      return errs;
+    });
+    check(tag, 'datetime range host (v0.40.0)', dtrErr);
     if (errors.length) check(tag, 'page errors', errors);
 
     if (!c.fallback) await runOverlays(page, c, tag, shot);
@@ -555,6 +574,28 @@ async function runOverlays(page, c, tag, shot) {
       if (s.name === 'datetime' && vp.w < 720 && vp.h > 500) {
         // v0.36.0 (plan QĐ 61): the datetime sheet takes ≤ 70 % of the viewport height
         check(tag, `${s.name}: sheet height budget`, m.height <= vp.h * 0.7 + 0.5 ? [] : [`sheet ${Math.round(m.height)} > 70 % of ${vp.h}`]);
+      }
+      if (s.name === 'datetime-range') {
+        // v0.40.0 (plan QĐ 24): < 720 the switch + one side; ≥ 720 both sides on one row; presets inside the dialog
+        // (one scrolling row < 480 / short); the side shown fits the dialog width
+        const dr = await page.evaluate(() => {
+          const p = [...document.querySelectorAll('.td-dtr-panel')].pop();
+          const d = p.closest('.td-modal__dialog').getBoundingClientRect();
+          const vis = (el) => !!el && getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().height > 0;
+          const sides = [...p.querySelectorAll('.td-dtr-panel__side')].filter(vis).map((x) => x.getBoundingClientRect());
+          const row = p.querySelector('.td-dtr-panel__presets');
+          const rr = row.getBoundingClientRect();
+          return { sw: vis(p.querySelector('.td-dtr-panel__switch')), n: sides.length, sameRow: sides.length === 2 && Math.abs(sides[0].top - sides[1].top) < 2,
+            sideOut: sides.some((x) => x.left < d.left - 0.5 || x.right > d.right + 0.5), rowOut: rr.left < d.left - 0.5 || rr.right > d.right + 0.5,
+            wrap: getComputedStyle(row).flexWrap };
+        });
+        const err = [];
+        if (vp.w < 720 && !(dr.sw && dr.n === 1)) err.push(`< 720: switch ${dr.sw}, sides shown ${dr.n} (switch + one side expected)`);
+        if (vp.w >= 720 && !(dr.n === 2 && dr.sameRow && !dr.sw)) err.push(`≥ 720: sides ${dr.n}, same row ${dr.sameRow}, switch ${dr.sw}`);
+        if (dr.sideOut) err.push('a side wider than the dialog');
+        if (dr.rowOut) err.push('presets row wider than the dialog');
+        if ((vp.w < 480 || vp.h <= 500) && dr.wrap !== 'nowrap') err.push(`presets wrap (${dr.wrap}) < 480 / short`);
+        check(tag, `${s.name}: layout`, err);
       }
       if (s.name === 'lightbox' || s.name === 'lightbox-panel') {
         // v0.36.0 (plan QĐ 59 revised): < 480 the bottom rail holds ‹ counter › (inside the viewport, ≥ 44 px, not over the
