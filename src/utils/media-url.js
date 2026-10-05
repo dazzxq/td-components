@@ -15,6 +15,19 @@
 
 const MAX_LEN = 8192;
 
+/** UTF-8 byte length (a lone surrogate counts as 3, like the U+FFFD TextEncoder writes). */
+function utf8Bytes(str) {
+  let n = 0;
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    if (c < 0x80) n += 1;
+    else if (c < 0x800) n += 2;
+    else if (c >= 0xd800 && c <= 0xdbff && i + 1 < str.length && (str.charCodeAt(i + 1) & 0xfc00) === 0xdc00) { n += 4; i++; }
+    else n += 3;
+  }
+  return n;
+}
+
 /**
  * @param {unknown} url
  * @param {{ allowBlob?: boolean, baseURI?: string, protocol?: string }} [opts] `baseURI` / `protocol` default to the
@@ -23,6 +36,9 @@ const MAX_LEN = 8192;
  */
 export function safeMediaUrl(url, opts = {}) {
   if (typeof url !== 'string') return '';
+  // ≤ MAX_LEN UTF-8 BYTES of the original input, like PHP td__media_url (strlen before normalising). UTF-8 bytes ≥ UTF-16
+  // units, so the cheap length check rejects most oversized input before encoding.
+  if (url.length > MAX_LEN || utf8Bytes(url) > MAX_LEN) return '';
   // Like the URL parser: tab / CR / LF removed anywhere, C0 controls + space trimmed at both ends.
   // eslint-disable-next-line no-control-regex
   const raw = url.replace(/[\t\r\n]+/g, '').replace(/^[\u0000- ]+|[\u0000- ]+$/g, '');

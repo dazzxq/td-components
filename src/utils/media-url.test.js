@@ -89,3 +89,18 @@ describe('safeLinkUrl — usage links', () => {
     assert.equal(safeLinkUrl(`https://x.test/${'a'.repeat(9000)}`, HTTPS), '');
   });
 });
+
+it('v0.43.0 review: the 8192 limit counts UTF-8 bytes of the original input (PHP parity)', () => {
+  const opts = { baseURI: 'https://site.example/', protocol: 'https:' };
+  const at = (n) => `/p/${'a'.repeat(n - 3)}`;
+  assert.notEqual(safeMediaUrl(at(8192), opts), '', 'exactly 8192 ASCII bytes allowed');
+  assert.equal(safeMediaUrl(at(8193), opts), '', '8193 bytes refused');
+  // 'ạ' = 3 bytes, 1 UTF-16 unit: 2731 × 3 + 3 = 8196 bytes but only 2734 units
+  assert.equal(safeMediaUrl(`/p/${'ạ'.repeat(2731)}`, opts), '', 'multibyte over the byte limit refused');
+  assert.notEqual(safeMediaUrl(`/p/${'ạ'.repeat(2729)}`, opts), '', '2729 × 3 + 3 = 8190 bytes allowed');
+  // emoji = 4 bytes / 2 units
+  assert.equal(safeMediaUrl(`/p/${'😀'.repeat(2048)}`, opts), '', '8195 bytes of emoji refused');
+  // stripped controls still count: the limit applies to the ORIGINAL input, like PHP strlen before safeUrl
+  assert.equal(safeMediaUrl(`/p/${'\t'.repeat(8190)}x`, opts), '', 'controls count before stripping');
+});
+
