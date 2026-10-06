@@ -345,4 +345,3 @@ describe('td-media-gallery SSR — v0.51.0 caption (QĐ 19, Codex plan-review r1
     expect(ta.value).to.equal('a\nb <b>x</b>');
   });
 });
-

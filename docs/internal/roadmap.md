@@ -53,6 +53,7 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.48.0: `<td-color-picker>` — plan [v0.48.0-color-picker](plans/v0.48.0-color-picker.md)
 - `done` v0.49.0: `<td-choice-group>` + `<td-number-input stepper>` ([ADR 0023](decisions/0023-unowned-radio-group.md)) — plan [v0.49.0-choice-stepper](plans/v0.49.0-choice-stepper.md)
 - `done` v0.50.0: `<td-rating>` + `<td-carousel>` ([ADR 0024](decisions/0024-carousel-native-scroll.md)) — plan [v0.50.0-rating-carousel](plans/v0.50.0-rating-carousel.md); hết hàng đợi yêu cầu dsuite
+- `done` v0.51.0: `<td-media-gallery>` chú thích từng ảnh + `alt-maxlength` / `caption-maxlength` (dsuite A2.10) — plan [v0.51.0-gallery-caption](plans/v0.51.0-gallery-caption.md)
 - Ngày từ v0.33 trở đi: **rebaseline từ ngày v0.31 xong thực tế** (không nén test / acceptance để giữ lịch cũ ~11/11 –
   25/11)
 - B (sau B0 ~01/2027): choice-group + number stepper làm sớm ở v0.49.0 (dsuite); rating chỉ đọc + carousel không autoplay làm ở v0.50.0

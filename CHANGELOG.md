@@ -2,6 +2,29 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.51.0
+
+**`<td-media-gallery>`: chú thích từng ảnh + giới hạn độ dài alt / chú thích** (dsuite A2.10; plan
+`docs/internal/plans/v0.51.0-gallery-caption.md`, Codex plan-review APPROVE 3 vòng, impl-review 3 vòng + security-review 4
+vòng APPROVE; phụ lục [ADR 0021](docs/internal/decisions/0021-media-gallery-form-shape.md)). Không có thay đổi phá vỡ: không
+bật thuộc tính mới thì markup, FormData và state giống từng byte với 0.50.
+
+### Added
+
+- `caption` (chế độ `usage`): `caption` / `caption="line"` (mặc định) = ô một dòng (xuống dòng khi dán thành một dấu cách),
+  `caption="multiline"` = textarea giữ xuống dòng. Gửi `name[i][caption]` sau `alt`; **vắng khoá = server giữ nguyên chú
+  thích**, chuỗi rỗng = xoá. Chỉ là chữ (không HTML), trần cứng 1 000 ký tự, `trackFormDirty` thấy thay đổi.
+- `alt-maxlength` / `caption-maxlength` (mặc định tắt): đếm code point sau khi bỏ khoảng trắng hai đầu (cùng luật JS / PHP),
+  bộ đếm hiện từ 80 %, quá giới hạn → lỗi ngay ở ô + chặn submit (`customError`), **không bao giờ tự cắt**.
+- PHP `td_media_gallery()`: `'caption' => true|'line'|'multiline'`, `'alt_maxlength'`, `'caption_maxlength'`; SSR vẫn
+  `media-gallery@1` (markup 0.43–0.50 vẫn hydrate tại chỗ).
+
+### Security
+
+- Chú thích chỉ đọc 4 000 code point đầu trước mọi regex / chuẩn hoá (JS và PHP); PHP không đọc chú thích khi tắt
+  `caption`. Mẫu server trong docs: từ chối chuỗi > 16 KiB trước khi xử lý, kiểm số ảnh trước khi lặp, hình dữ liệu lạ → 422
+  (không bao giờ thành "gỡ hết"), chuẩn hoá CRLF → LF trước khi đếm.
+
 ## 0.50.0
 
 **`<td-rating>` + `<td-carousel>`** (dsuite; plan `docs/internal/plans/v0.50.0-rating-carousel.md`, Codex plan-review APPROVE,
