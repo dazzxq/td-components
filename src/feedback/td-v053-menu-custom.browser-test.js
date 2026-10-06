@@ -526,4 +526,3 @@ describe('v0.53 TdMenu panel — one radio index per navigation (Codex r2 sec #3
     expect(n).to.equal(1);
   });
 });
-
