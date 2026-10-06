@@ -476,7 +476,7 @@ function closeSession(s, reason) {
   const { anchor, menu } = s;
   // v0.53.0: focus inside a custom row's shadow tree / a popup opened from a custom row counts as "in the menu"
   const hadFocus = menu.contains(document.activeElement)
-    || (s.panel && (composedContains(menu, deepActiveElement()) || floatingContains(menu, document.activeElement)));
+    || (s.panel && (composedContains(menu, deepActiveElement()) || floatingContains(menu, deepActiveElement())));
   clearTimeout(s.typeTimer);
   if (s.raf) cancelAnimationFrame(s.raf);
   document.removeEventListener('pointerdown', s.onPointerDown, true);
@@ -503,9 +503,30 @@ function closeSession(s, reason) {
   for (const e of s.customs || []) abortRow(e);
   menu.remove();
   if (s.unbridge) s.unbridge();
-  if (isFn(s.onClose)) {
-    try { s.onClose(reason); } catch (err) { console.error('TdMenu onClose', err); }
+  const { onClose } = s;
+  releaseSession(s);
+  if (isFn(onClose)) {
+    try { onClose(reason); } catch (err) { console.error('TdMenu onClose', err); }
   }
+}
+
+/**
+ * v0.53.0 (Codex impl r1 #1): a closed session drops every DOM-bearing reference — a closed handle kept by the caller
+ * (its `element` is the detached menu) must not keep the caller's custom content reachable: custom rows leave the
+ * detached menu, their entries forget their node / controller, and the session fields are cleared.
+ */
+function releaseSession(s) {
+  for (const e of s.customs || []) {
+    if (e.node) {
+      const row = e.node.parentNode;
+      if (row) row.remove(); // the .td-menu__custom row leaves the detached menu
+      e.node.remove(); // the caller's node leaves the row: nothing of the closed menu points at it
+    }
+    e.node = null;
+    e.ac = null;
+  }
+  for (const k of ['menu', 'rows', 'items', 'customs', 'ctx', 'layer', 'ro', 'unwatch', 'unbridge', 'onPointerDown',
+    'onScroll', 'onResize', 'onClose', 'anchor']) s[k] = null;
 }
 
 function place(s) {
@@ -766,7 +787,7 @@ function renderCustom(e, ctx, close) {
   try {
     node = e.render({ ...ctx, item: e.src, close, signal: e.ac.signal });
   } catch (err) {
-    console.warn('TdMenu: custom item render() threw — row omitted', err);
+    console.warn('TdMenu: custom item render() threw — row omitted'); // fixed string only (Codex security r1 #6)
     return null;
   }
   if (node == null) return null;
@@ -787,7 +808,7 @@ function renderCustom(e, ctx, close) {
 
 function abortRow(e) {
   if (!e.ac || e.ac.signal.aborted) return;
-  try { e.ac.abort(); } catch (err) { console.error('TdMenu custom abort', err); }
+  try { e.ac.abort(); } catch { console.error('TdMenu: custom item abort failed'); } // fixed string only
 }
 
 /** Separators collapsed again after dropped custom rows (no leading / trailing / double). */
@@ -810,9 +831,10 @@ function onMenuClick(s, e) {
   if (rec.node.localName === 'a') {
     // Native navigation proceeds (an <a> navigates even once detached); close right after the activation.
     const { entry } = rec;
+    const ctx = { ...s.ctx, item: entry.src, anchor: s.anchor, checked: false }; // the session is released on close
     setTimeout(() => {
       closeSession(s, 'select');
-      safeCall(entry.onSelect, { ...s.ctx, item: entry.src, anchor: s.anchor, checked: false });
+      safeCall(entry.onSelect, ctx);
     }, 0);
     return;
   }
@@ -1032,11 +1054,14 @@ export class TdMenu {
       }
     }
 
-    return {
+    const handle = {
       element: menu,
       close: () => closeSession(s, 'api'),
       get isOpen() { return !s.closed; },
     };
+    // test hook, not API (td-v053-menu-custom.browser-test.js: the session is released on close)
+    Object.defineProperty(handle, Symbol.for('td.menu.session'), { value: s });
+    return handle;
   }
 
   /** Close the open menu (no-op when none). */

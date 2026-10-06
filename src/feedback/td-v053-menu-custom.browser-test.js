@@ -34,6 +34,15 @@ function spyWarn() {
   return { calls, restore: () => { console.warn = orig; } };
 }
 
+function spyError() {
+  const calls = [];
+  const orig = console.error;
+  console.error = (...a) => { calls.push(a); };
+  return { calls, restore: () => { console.error = orig; } };
+}
+
+const SESSION = Symbol.for('td.menu.session'); // test hook (not API): the handle's session
+
 const box = (text = 'Nội dung') => {
   const d = document.createElement('div');
   d.className = 'site-box';
@@ -268,18 +277,23 @@ describe('v0.53 TdMenu custom — rejection paths (QĐ 7)', () => {
     });
   }
 
-  it('render throws → row dropped, fixed warning (+ the error), listeners added before the throw are cleaned', () => {
+  it('render throws → row dropped, ONE fixed warning (never the error: Codex security r1 #6), listeners cleaned', () => {
     const b = btn();
     const w = spyWarn();
+    const e = spyError();
     let fired = 0;
     const target = new EventTarget();
     TdMenu.open(b, [{ label: 'A' }, { type: 'custom', render: ({ signal }) => {
       target.addEventListener('ping', () => { fired += 1; }, { signal });
-      throw new Error('boom');
+      const err = new Error('secret-token-123');
+      err.userEmail = 'lan@example.com';
+      throw err;
     } }]);
     w.restore();
-    expect(w.calls[0][0]).to.equal('TdMenu: custom item render() threw — row omitted');
-    expect(w.calls[0][1] instanceof Error).to.equal(true);
+    e.restore();
+    expect(w.calls).to.deep.equal([['TdMenu: custom item render() threw — row omitted']]);
+    expect(e.calls).to.deep.equal([]);
+    expect(JSON.stringify(w.calls)).to.not.include('secret');
     target.dispatchEvent(new Event('ping'));
     expect(fired).to.equal(0);
   });
@@ -408,3 +422,51 @@ describe('v0.53 TdMenu custom — lifecycle (QĐ 10)', () => {
     expect(fired).to.equal(1);
   });
 });
+
+describe('v0.53 TdMenu custom — a closed handle releases the custom DOM (Codex impl r1 #1)', () => {
+  for (const how of ['handle.close()', 'ctx.close()', 'Escape', 'another menu']) {
+    it(`${how}: caller node detached from the closed panel, DOM-bearing session fields cleared`, () => {
+      const b = btn();
+      let node;
+      let ctx;
+      const h = TdMenu.open(b, [{ label: 'A' }, { type: 'custom', render: (c) => { ctx = c; node = box(); return node; } }]);
+      const s = h[SESSION];
+      expect(!!s && s.rows.length === 2).to.equal(true);
+      if (how === 'handle.close()') h.close();
+      else if (how === 'ctx.close()') ctx.close();
+      else if (how === 'Escape') document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      else TdMenu.open(btn('2'), [{ label: 'B' }]);
+      expect(h.isOpen).to.equal(false);
+      expect(node.parentNode === null).to.equal(true);
+      expect(h.element.contains(node)).to.equal(false);
+      expect(h.element.querySelector('.td-menu__custom') === null).to.equal(true);
+      for (const k of ['menu', 'rows', 'items', 'customs', 'ctx', 'layer', 'ro', 'unwatch', 'unbridge', 'onPointerDown',
+        'onScroll', 'onResize', 'onClose', 'anchor']) {
+        expect(s[k] == null, k).to.equal(true); // booleans only: chai hangs inspecting DOM
+      }
+      expect(ctx.signal.aborted).to.equal(true);
+      h.close(); // still a no-op
+      ctx.close();
+    });
+  }
+
+  it('a plain menu (no custom row) clears its session too', () => {
+    const b = btn();
+    const h = TdMenu.open(b, [{ label: 'A' }]);
+    const s = h[SESSION];
+    h.close();
+    expect(s.items == null && s.menu == null).to.equal(true);
+  });
+
+  it('WeakRef: the custom node of a closed, retained handle is collectable (when the engine exposes gc)', async function weak() {
+    if (typeof globalThis.gc !== 'function') this.skip();
+    const b = btn();
+    let ref;
+    const h = TdMenu.open(b, [{ type: 'custom', render: () => { const n = box(); ref = new WeakRef(n); return n; } }]);
+    h.close();
+    for (let i = 0; i < 5 && ref.deref(); i++) { globalThis.gc(); await new Promise((r) => setTimeout(r, 0)); }
+    expect(ref.deref() === undefined).to.equal(true);
+    expect(h.isOpen).to.equal(false);
+  });
+});
+
