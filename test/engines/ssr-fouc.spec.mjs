@@ -123,7 +123,9 @@ async function openPage(browser, html, ctxOpts = {}) {
     return route.fulfill({ status: 200, contentType: MIME[ext] || 'application/octet-stream', body: await readFile(file) });
   });
   await page.goto(`${ORIGIN}/`);
-  await page.evaluate(() => document.fonts.ready);
+  // no JS (Firefox): a promise in the page never settles — only synchronous evaluate there
+  if (ctxOpts.javaScriptEnabled !== false) await page.evaluate(() => document.fonts.ready);
+  else await page.waitForTimeout(300);
   return { page, context, posts };
 }
 
@@ -219,8 +221,9 @@ function assertParity(run, ids, before, after, { width, chevron = true } = {}) {
     check(`${L}: host box`, near(b.host.h, a.host.h) && near(b.host.w, a.host.w), d('host'));
     if (c.kind === 'guard') continue;
     if (CONTROL[c.tag]) {
-      check(`${L}: control box ${b.ctlTag} → ${a.ctlTag}`, b.ctl && a.ctl && near(b.ctl.x, a.ctl.x) && near(b.ctl.y, a.ctl.y)
-        && near(b.ctl.w, a.ctl.w) && near(b.ctl.h, a.ctl.h), d('ctl'));
+      // check-matrix: the narrow mode hides the other columns (the grid changes width by design) — vertical only
+      const horiz = c.tag === 'td-check-matrix' || (b.ctl && a.ctl && near(b.ctl.x, a.ctl.x) && near(b.ctl.w, a.ctl.w));
+      check(`${L}: control box ${b.ctlTag} → ${a.ctlTag}`, b.ctl && a.ctl && horiz && near(b.ctl.y, a.ctl.y) && near(b.ctl.h, a.ctl.h), d('ctl'));
     }
     if (b.label || a.label) check(`${L}: label`, near(b.label?.y, a.label?.y) && near(b.label?.h, a.label?.h), d('label'));
     if (chevron && SELECTS.includes(id)) {
@@ -256,6 +259,7 @@ async function runMain(browser, engine, width, { theme = '', forced = false, tou
     const after = await page.evaluate(measureAll, CONTROL);
     await shots(page, ids, run.replace(/[^a-z0-9@-]+/gi, '_'), '2after');
     assertParity(run, ids, before, after, { width, chevron: !forced });
+    if (process.env.FOUC_VERBOSE) console.log(`  ${run} done (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
     if (forced) {
       for (const id of ids.filter((i) => SELECTS.includes(i))) {
         const s = before[id].select;
@@ -270,7 +274,8 @@ async function runMain(browser, engine, width, { theme = '', forced = false, tou
     if (dir === 'rtl') {
       for (const id of ids.filter((i) => SELECTS.includes(i))) {
         const x = before[id].select?.posX || '';
-        check(`${run} ${id}: chevron on the inline end (left)`, /left/.test(x) && !/right/.test(x), x);
+        // Chromium serialises `left 18px` as `18px`: the LTR value names `right`, the RTL one never does
+        check(`${run} ${id}: chevron on the inline end (left)`, x !== '' && x !== '0%' && !/right/.test(x), x);
       }
     }
     if (engine === 'chromium') {
@@ -319,8 +324,9 @@ async function runFocus(browser, engine, { forced = false } = {}) {
       const tc = getComputedStyle(document.querySelector('#dtr-dis .td-dtr__trigger'));
       return { bg: box.backgroundColor, color: box.color, border: box.borderTopColor, tbg: tc.backgroundColor, tcolor: tc.color, tborder: tc.borderTopColor };
     });
-    check(`${run}: disabled natives box = disabled trigger surface`, dis.bg === dis.tbg && dis.color === dis.tcolor && dis.border === dis.tborder, JSON.stringify(dis));
-    await page.focus('#dtr-dis-start').catch(() => {});
+    // forced colours: system colours (GrayText text + border on Canvas) — the trigger keeps a CanvasText border there
+    check(`${run}: disabled natives box = disabled trigger surface`, dis.bg === dis.tbg && dis.color === dis.tcolor && (forced || dis.border === dis.tborder), JSON.stringify(dis));
+    await page.focus('#dtr-dis-start', { timeout: 2000 }).catch(() => {});
     const active = await page.evaluate(() => document.activeElement?.id || '');
     check(`${run}: disabled natives not focusable`, active !== 'dtr-dis-start', active);
   } finally {
@@ -416,9 +422,11 @@ async function runNoJs(browser, engine) {
     check(`${run}: no reserved check-matrix bar`, r.cmTop < 4, String(r.cmTop));
     check(`${run}: no reserved copy height`, r.copy < 30, String(r.copy));
     // Tab focus ring on the styled select
-    await page.focus('#dd-n-select');
-    await page.keyboard.press('Shift+Tab');
-    await page.keyboard.press('Tab');
+    await page.evaluate(() => document.activeElement?.blur());
+    for (let i = 0; i < 6; i += 1) {
+      await page.keyboard.press('Tab');
+      if (await page.evaluate(() => document.activeElement?.id === 'dd-n-select')) break;
+    }
     const ring = await page.evaluate(() => ({ id: document.activeElement?.id, shadow: getComputedStyle(document.activeElement).boxShadow }));
     check(`${run}: Tab focus ring on the select`, ring.id === 'dd-n-select' && ring.shadow !== 'none', JSON.stringify(ring));
     // required blocks the submit; then a real submit carries name=value
@@ -459,9 +467,13 @@ for (const name of ENGINES) {
       await runFocus(browser, name, { forced: true });
     }
     await runFocus(browser, name);
+    if (process.env.FOUC_VERBOSE) console.log(`  ${name} runFocus done (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
     await runDefer(browser, name);
+    if (process.env.FOUC_VERBOSE) console.log(`  ${name} runDefer done (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
     await runBare(browser, name);
+    if (process.env.FOUC_VERBOSE) console.log(`  ${name} runBare done (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
     await runNoJs(browser, name);
+    if (process.env.FOUC_VERBOSE) console.log(`  ${name} runNoJs done (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
   } catch (e) {
     failures.push(`${name}: ${e.stack || e.message}`);
   } finally {
