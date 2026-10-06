@@ -654,6 +654,10 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
   - **Shadow DOM:** control trong shadow root **mở** (kể cả `delegatesFocus`, slot) đi được bằng ↑ ↓ / Tab của menu.
     Shadow root **đóng**: kit chỉ thấy host — host có `tabindex` thì là một điểm dừng, không thì control bên trong
     **không** vào được bằng phím của menu (chuột vẫn được). Tránh shadow root đóng trong nội dung menu.
+  - **Ô bị khoá (`disabled`) trong nội dung, theme sáng:** menu là kính 94 % — nằm trên vùng trang **tối** (ảnh, banner
+    đậm) thì ô disabled của segmented chỉ còn ~2.0–2.15:1 (dưới mức 2.2 nội bộ của kit; WCAG 1.4.3 / 1.4.11 miễn trừ
+    control không hoạt động). Chữ / icon ô thường, ô đang chọn, vòng chọn và caption vẫn đạt chuẩn trên mọi nền. Cần ô
+    disabled rõ hơn trên nền tối → đặt menu trên nền sáng, hoặc bỏ kính toàn site (`<html data-td-glass="off">`).
   - Không có `type: 'segmented'`: dùng `type: 'custom'` + `td-choice-group` (công thức ở mục 7).
   - Form dài / nhiều bước, ô nhập chữ trên điện thoại (bàn phím ảo làm co khung nhìn) → dùng [`TdModal`](modal.md) /
     [drawer](drawer.md), không nhồi vào menu.
