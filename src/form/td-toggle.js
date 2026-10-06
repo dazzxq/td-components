@@ -3,8 +3,20 @@ import { fillIconSlots } from '../icons/td-icon.js';
 
 /** v0.52.0: code-point cap of status-text / locked-reason (= php Td::TOGGLE_TEXT_MAX; longer is cut). */
 const TEXT_MAX = 200;
-/** @param {string} v */
-const cut = (v) => (v.length <= TEXT_MAX ? v : [...v].slice(0, TEXT_MAX).join(''));
+/**
+ * The first TEXT_MAX code points of `v` by a BOUNDED walk (Codex review r1 #3: never `[...v]` of a multi-MB attribute);
+ * a surrogate pair is one code point, a lone surrogate too (= the iterator), like choice-options cpSlice.
+ * @param {string} v
+ */
+const cut = (v) => {
+  if (v.length <= TEXT_MAX) return v;
+  let i = 0;
+  for (let n = 0; n < TEXT_MAX && i < v.length; n++) {
+    const c = v.charCodeAt(i);
+    i += c >= 0xd800 && c <= 0xdbff && i + 1 < v.length && (v.charCodeAt(i + 1) & 0xfc00) === 0xdc00 ? 2 : 1;
+  }
+  return v.slice(0, i);
+};
 
 /** v0.52.0: attributes patched in place (no re-render). */
 const EXTRAS = new Set(['tone', 'status-text', 'locked', 'locked-reason']);

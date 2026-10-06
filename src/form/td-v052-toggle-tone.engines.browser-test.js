@@ -226,3 +226,28 @@ describe('td-toggle tone (v0.52 M2)', () => {
     expect(getComputedStyle(track(el)).backgroundColor).to.not.equal(tokenColor('--td-color-warning'));
   });
 });
+
+// Codex review r1 #3: status-text / locked-reason are cut at 200 code points by a BOUNDED walk (never `[...v]` of the whole
+// attribute) — a multi-MB attribute costs the same as a short one.
+const PERF_SLACK = 20; // ×20 under load
+describe('td-toggle text cut (v0.52 review r1)', () => {
+  it('200 code points (surrogate pairs whole, a lone surrogate = one), bounded on a 16 MB attribute', async () => {
+    const el = mount('<td-toggle id="t-cut" label="X" tone="success" checked locked></td-toggle>');
+    await wait();
+    el.setAttribute('status-text', `${'😀'.repeat(199)}ab`);
+    expect(describedText(el).split(' | ')[0]).to.equal(`${'😀'.repeat(199)}a`);
+    el.setAttribute('status-text', `${'a'.repeat(199)}𐀀z`);
+    expect(describedText(el).split(' | ')[0]).to.equal(`${'a'.repeat(199)}𐀀`);
+    el.setAttribute('status-text', `${'a'.repeat(199)}\ud800z`);
+    expect(describedText(el).split(' | ')[0]).to.equal(`${'a'.repeat(199)}\ud800`);
+    const huge = 'é'.repeat(16 * 1024 * 1024);
+    const t0 = performance.now();
+    el.setAttribute('status-text', huge);
+    el.setAttribute('locked-reason', huge);
+    const ms = performance.now() - t0;
+    expect(ms < 5 * PERF_SLACK, `${ms.toFixed(1)} ms`).to.equal(true);
+    const [status, lock] = describedText(el).split(' | ');
+    expect(status).to.equal('é'.repeat(200));
+    expect(lock).to.equal(`Không thể thay đổi: ${'é'.repeat(200)}`);
+  });
+});
