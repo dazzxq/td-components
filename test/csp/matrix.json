@@ -5123,9 +5123,10 @@
       "excludeProps": [
         "height",
         "width",
-        "margin-left"
+        "margin-left",
+        "grid-template-columns"
       ],
-      "selectorNote": "v0.52.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
+      "selectorNote": "v0.52.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests. grid-template-columns excluded: equal-width segments resolve from the content width (font metrics differ on Linux CI)."
     },
     {
       "state": "segmented-icon-only",
@@ -5143,9 +5144,10 @@
       "excludeProps": [
         "height",
         "width",
-        "margin-left"
+        "margin-left",
+        "grid-template-columns"
       ],
-      "selectorNote": "v0.52.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
+      "selectorNote": "v0.52.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests. grid-template-columns excluded: equal-width segments resolve from the content width (font metrics differ on Linux CI)."
     },
     {
       "state": "segmented-sm",
@@ -5163,9 +5165,10 @@
       "excludeProps": [
         "height",
         "width",
-        "margin-left"
+        "margin-left",
+        "grid-template-columns"
       ],
-      "selectorNote": "v0.52.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
+      "selectorNote": "v0.52.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests. grid-template-columns excluded: equal-width segments resolve from the content width (font metrics differ on Linux CI)."
     },
     {
       "state": "segmented-disabled",
@@ -5177,9 +5180,10 @@
       "excludeProps": [
         "height",
         "width",
-        "margin-left"
+        "margin-left",
+        "grid-template-columns"
       ],
-      "selectorNote": "v0.52.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests."
+      "selectorNote": "v0.52.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests. grid-template-columns excluded: equal-width segments resolve from the content width (font metrics differ on Linux CI)."
     }
   ],
   "td-rating": [
