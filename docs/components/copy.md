@@ -139,6 +139,10 @@ liền là chụp nhầm trạng thái "đã copy").
 `td_copy()` luôn in phần tử đầy đủ (hợp đồng `copy@1`): host + `<code class="td-copy__source">` + nút + live region —
 không JS thì thấy mã, có JS thì nhận markup **tại chỗ**. Chi tiết: [Adapter PHP › td_copy](../guides/php-adapter.md#td_copy-0270).
 
+**Trước khi JS tải (0.51.1, [ADR 0025](../internal/decisions/0025-pre-upgrade-parity.md)):** khi trình duyệt chạy JS, host
+chưa define đã cao bằng nút (36 / 28 px, 44 px trên cảm ứng) → chữ mã đổi thành nút không làm dòng nhảy dọc. **Bề rộng
+vẫn đổi** (chữ mã → nút icon) — theo thiết kế: giá trị phải đọc được cho tới khi (và nếu) nút tồn tại.
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |

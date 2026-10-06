@@ -7,6 +7,10 @@
  * [aria-invalid] on the combobox / trigger, [data-placeholder] on the value, [hidden] / data-placement on the menu.
  * SSR shell (contract tree-select@1, PHP td_tree_select element mode): the native select gets the exact control box
  * (single AND multiple) → the upgrade moves nothing. Native mode (no marker): the select is a plain field.
+ * v0.51.1 pre-upgrade parity (ADR 0025): while the host is undefined the single select gets the control's exact box and
+ * look (height — WebKit ignores min-height on a native select —, appearance none + the gradient chevron, host typography)
+ * in both modes; with scripting enabled the native-mode multiple list is one control high too (no JS: the list keeps its
+ * `size` rows). Forced colours: the system arrow.
  */
 @layer td.component {
 	td-tree-select {
@@ -20,7 +24,9 @@
 		min-height: 2.5rem;
 	}
 
-	/* SSR shell: the host has the wrapper typography (the label then has the same box as after the upgrade) */
+	/* SSR shell / before the upgrade: the host has the wrapper typography (the label then has the same box as after the
+	   upgrade) */
+	td-tree-select:not(:defined),
 	td-tree-select[data-td-ssr="tree-select@1"],
 	.td-tree-select {
 		box-sizing: border-box;
@@ -72,6 +78,39 @@
 	td-tree-select[data-td-ssr] > .td-tree-select__native[multiple] {
 		padding-block: 4px;
 		overflow-y: auto;
+	}
+
+	/* v0.51.1: a single select before the upgrade (both modes) = the control box + its chevron (gradient, no image) */
+	td-tree-select:not(:defined) > .td-tree-select__native:not([multiple]),
+	td-tree-select[data-td-ssr] > .td-tree-select__native:not([multiple]) {
+		--_td-chev-c: var(--td-field-placeholder);
+		--_td-chev-x: calc(12px + var(--td-icon-m) / 2); /* chevron centre from the inline end = the control arrow's */
+		height: var(--td-field-h-md);
+		padding-inline-end: calc(12px + var(--td-icon-m) + var(--td-space-xs));
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		background-image:
+			linear-gradient(45deg, transparent calc(50% - 0.85px), var(--_td-chev-c) calc(50% - 0.85px), var(--_td-chev-c) calc(50% + 0.85px), transparent calc(50% + 0.85px)),
+			linear-gradient(-45deg, transparent calc(50% - 0.85px), var(--_td-chev-c) calc(50% - 0.85px), var(--_td-chev-c) calc(50% + 0.85px), transparent calc(50% + 0.85px));
+		background-repeat: no-repeat;
+		background-position: right var(--_td-chev-x) center, right calc(var(--_td-chev-x) - 6px) center;
+		background-size: 6px 6px;
+		appearance: none;
+	}
+
+	/* RTL: the chevron on the inline end (own rule — a browser without :dir() drops only this one) */
+	td-tree-select:not(:defined) > .td-tree-select__native:not([multiple]):dir(rtl),
+	td-tree-select[data-td-ssr] > .td-tree-select__native:not([multiple]):dir(rtl) {
+		background-position: left calc(var(--_td-chev-x) - 6px) center, left var(--_td-chev-x) center;
+	}
+
+	/* v0.51.1: native-mode multiple list before the upgrade, JS expected → one control high, scrollable (ADR 0025) */
+	@media (scripting: enabled) {
+		td-tree-select:not(:defined) > .td-tree-select__native[multiple] {
+			height: var(--td-field-h-md);
+			padding-block: 4px;
+			overflow-y: auto;
+		}
 	}
 
 	@media (hover: hover) and (pointer: fine) {
@@ -382,10 +421,39 @@
 
 	@media (pointer: coarse) {
 		.td-tree-select__control,
+		td-tree-select:not(:defined) > .td-tree-select__native:not([multiple]),
 		td-tree-select[data-td-ssr] > .td-tree-select__native {
 			height: auto;
 			min-height: var(--td-touch-min);
 		}
+
+		/* v0.51.1 (ADR 0019, Q1): select ≥ 16px before the upgrade (iOS does not zoom); a multiple list stays one
+		   44px control high (the upgraded control's height) */
+		td-tree-select:not(:defined) > .td-tree-select__native,
+		td-tree-select[data-td-ssr] > .td-tree-select__native {
+			font-size: max(1rem, 1em);
+		}
+
+		td-tree-select[data-td-ssr] > .td-tree-select__native[multiple] {
+			height: var(--td-touch-min);
+		}
+	}
+
+	@media (pointer: coarse) and (scripting: enabled) {
+		td-tree-select:not(:defined) > .td-tree-select__native[multiple] {
+			height: var(--td-touch-min);
+		}
+	}
+
+	/* the upgraded control grows to 44px content + border when the 44px clear button shows (allow-clear + a value) —
+	   own rule: no :has() → only that 2px is missed */
+	@media (pointer: coarse) {
+		td-tree-select[allow-clear]:not(:defined) > .td-tree-select__native:not([multiple], :disabled):has(> option:checked:not([value=""])) {
+			min-height: calc(var(--td-touch-min) + 2px);
+		}
+	}
+
+	@media (pointer: coarse) {
 
 		.td-tree-select__search,
 		.td-tree-select__input {
@@ -427,6 +495,12 @@
 		.td-tree-select__search,
 		.td-tree-select__native {
 			border-color: CanvasText;
+		}
+
+		td-tree-select:not(:defined) > .td-tree-select__native:not([multiple]),
+		td-tree-select[data-td-ssr] > .td-tree-select__native:not([multiple]) {
+			background-image: none;
+			appearance: auto;
 		}
 
 		.td-tree-select__control:has(:focus-visible),

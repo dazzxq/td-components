@@ -50,7 +50,7 @@ Nút `--custom` / alias `-tint`: nền tối 16 % (`color-mix`), trình duyệt 
 ## Ngoại lệ `active-exempt` đã duyệt (16)
 
 `.td-field__control`, `.td-chip-input__box`, `.td-tree-select__control`, `.td-number__box` (ô nhập: focus ring là phản hồi)
-· `td-dropdown > .td-dropdown__native`, `.td-multiselect__native`, `td-chip-input > .td-chip-input__native`,
+· `td-dropdown > .td-dropdown__native` (0.51.1: cùng luật với `td-dropdown:not(:defined) > select`), `.td-multiselect__native`, `td-chip-input > .td-chip-input__native`,
 `.td-tree-select__native` (select native, UA tự vẽ) · `.td-slider__input` (range native, thumb theo ngón) · 0.48.0: `.td-color__box` (ô nhập màu: focus ring là phản hồi), `.td-color-panel__hue` (range native sắc độ) ·
 `.td-table .td-table__row` (hàng không kích hoạt được) · `.td-lightbox__grab` (tay nắm sheet, sheet theo ngón) ·
 `.td-media-grid__item` + luật trả lại `[data-selected] … --mark` (opener / tick mang hình nhấn) · tay nắm

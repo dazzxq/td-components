@@ -57,6 +57,28 @@
 		display: none;
 	}
 
+	/*
+	 * v0.51.1 (ADR 0025, plan Q3): JS expected → the undefined host already has the button's HEIGHT (no vertical jump when
+	 * the source text becomes the icon button). The width changes by design: the value must stay visible until (and
+	 * unless) the button exists. No JS: the plain source text.
+	 */
+	@media (scripting: enabled) {
+		td-copy:not(:defined) {
+			min-height: var(--td-copy-size-md);
+		}
+
+		td-copy[size="sm"]:not(:defined) {
+			min-height: var(--td-copy-size-sm);
+		}
+	}
+
+	@media (scripting: enabled) and (pointer: coarse) {
+		td-copy:not(:defined),
+		td-copy[size="sm"]:not(:defined) {
+			min-height: var(--td-touch-min);
+		}
+	}
+
 	.td-copy {
 		box-sizing: border-box;
 		display: inline-flex;

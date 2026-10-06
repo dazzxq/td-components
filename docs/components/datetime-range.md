@@ -223,6 +223,14 @@ Kiểm tra trong trình duyệt **không phải lớp bảo mật**: server luô
 `required` lệch mốc…) → render an toàn, chỉ giữ giá trị sống khi mỗi mốc có **đúng một** ô. Chi tiết tuỳ chọn:
 [PHP adapter › td_datetime_range](../guides/php-adapter.md#td_datetime_range-0400).
 
+**Trước khi JS tải (0.51.1, [ADR 0025](../internal/decisions/0025-pre-upgrade-parity.md)):** khi trình duyệt chạy JS
+(`@media (scripting: enabled)`), hai ô native nằm trong **một hộp field giống trigger đóng** (viền, bo góc, cao, padding,
+vòng focus khi một ô đang focus, nền / chữ disabled khi host `disabled`, forced colors = màu hệ thống + viền Highlight),
+"Từ" chỉ còn là tên cho trình đọc màn hình, "Đến" hiện thành dấu "–" → nâng cấp không xô lệch. **Khác biệt chấp nhận:**
+chữ ngày trong hộp là định dạng của trình duyệt (và icon lịch của nó), không phải chuỗi `01/10/2026 – 05/10/2026` của
+trigger. **Ngoại lệ:** `mode="datetime"` trong container hẹp — hai ô `datetime-local` bị co (chữ có thể bị cắt) trong ~1 s
+trước nâng cấp; lệch hộp nếu có được ghi lại, không bảo đảm ≤ 1 px. Tắt JS: hai ô hai dòng có nhãn như trên.
+
 ## Kết hợp với bộ lọc bảng (v0.39.0)
 
 Dùng API của 0.39.0: `td-table` `setFilters()` / `request-change` ([table.md § 11](table.md#11-bộ-lọc-ngoài--url-request-change-controlled--từ-0390))

@@ -2,6 +2,27 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.51.1
+
+**Vá: form in từ PHP không còn "nháy" control gốc của trình duyệt trước khi JS nạp** (dsuite: dropdown trạng thái hiện
+`<select>` thô ~1 s rồi nhảy sang nút trigger). Plan `docs/internal/plans/v0.51.1-ssr-fouc.md` (Codex plan-review APPROVE
+3 vòng, impl-review APPROVE); [ADR 0025](docs/internal/decisions/0025-pre-upgrade-parity.md). **Chỉ CSS** — không đổi
+markup PHP, JS hay hợp đồng hydrate; site chỉ cần nâng version.
+
+### Fixed
+
+- Trạng thái trước nâng cấp (`:not(:defined)`) khớp trạng thái đóng sau nâng cấp (≤ 1 px, Chromium / Firefox / WebKit, 390 /
+  1280): `td_dropdown` mặc định (trước: xô 18–21 px, select thô), `td_tree_select` (đơn / nhiều), `td_multiselect` chế độ
+  element, `td_datetime_range` (hai ô ngày trong một khung giống trigger), `td_scan_input` / `td_check_matrix` khi container
+  hẹp (giữ chỗ phần JS thêm), `td_copy` (giữ chiều cao). Mũi tên select vẽ bằng gradient (CSP-safe), có RTL và forced-colors.
+- Không JS: control native vẫn dùng được đầy đủ (luật chỉ áp khi `@media (scripting: enabled)` với các trường hợp thu gọn).
+- Ngoại lệ có ghi trong docs: chip-input khi chip xuống nhiều dòng (xô đúng bằng số dòng thêm); chữ ngày trong
+  datetime-range theo định dạng trình duyệt.
+
+### Added
+
+- Gate `test/engines/ssr-fouc.spec.mjs` (render fixture PHP với `td.css` rồi nâng cấp, so kích thước cùng lượt chạy).
+
 ## 0.51.0
 
 **`<td-media-gallery>`: chú thích từng ảnh + giới hạn độ dài alt / chú thích** (dsuite A2.10; plan

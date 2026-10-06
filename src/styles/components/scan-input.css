@@ -274,6 +274,27 @@
 		display: none;
 	}
 
+	/*
+	 * v0.51.1 pre-upgrade parity (ADR 0025): under a 480px container the status row the module adds (`.td-scan__status`,
+	 * min-height 2rem; 44px on touch) wraps below the input — JS expected → reserve that row (a flex item of the same
+	 * height, the box gap included) so the upgrade moves nothing. No JS: no empty row.
+	 */
+	@container td-scan-input (width < 480px) {
+		@media (scripting: enabled) {
+			td-scan-input[data-td-ssr]:not(:defined) .td-scan:not([data-mode="multiple"]) > .td-scan__box::after {
+				flex: 0 0 100%;
+				min-height: 2rem;
+				content: "";
+			}
+		}
+
+		@media (scripting: enabled) and (pointer: coarse) {
+			td-scan-input[data-td-ssr]:not(:defined) .td-scan:not([data-mode="multiple"]) > .td-scan__box::after {
+				min-height: var(--td-touch-min);
+			}
+		}
+	}
+
 	@container td-scan-input (width < 480px) {
 		.td-scan__input {
 			flex-basis: 100%;

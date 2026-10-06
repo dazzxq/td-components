@@ -122,10 +122,12 @@ describe('v0.26.0 SSR dropdown shell — td_dropdown element mode (dropdown@1)',
       expect(r0('d-disabled-opt').select.options[1].disabled).to.equal(true);
     });
 
-    it('the select keeps the NATIVE arrow (appearance not none, no background image) — CSP-safe, no data: URL', () => {
+    // v0.51.1 (ADR 0025): the trigger chevron drawn with gradients (appearance none) — still CSP-safe, no url() / data:
+    it('the select shows the kit chevron (appearance none + linear-gradient, no url()) — CSP-safe, no data: URL', () => {
       for (const r of R.values()) {
-        expect(r.appearance, `${r.c.id} appearance`).to.not.equal('none');
-        expect(r.bgImage, `${r.c.id} background-image`).to.equal('none');
+        expect(r.appearance, `${r.c.id} appearance`).to.equal('none');
+        expect(r.bgImage, `${r.c.id} background-image`).to.match(/^linear-gradient\(/);
+        expect(r.bgImage, `${r.c.id} background-image`).to.not.match(/url\(/);
         expect(r.select.classList.contains('td-dropdown__native'), r.c.id).to.equal(true);
       }
     });
