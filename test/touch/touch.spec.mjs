@@ -597,6 +597,27 @@ async function chromiumSemantics(browser) {
     });
 
     // v0.52.0 segmented (size sm, icon-only) + locked switch
+    // v0.53.1: the sidebar rail (216 px, fit — inline) and the 140 px rail (stacked, overflowing on a coarse pointer)
+    for (const [id, want] of [['#rsp-seg-side', 'light'], ['#rsp-seg-140', 'light']]) {
+      await it(tag, `segmented ${id} (v0.53.1): every segment ≥ 44 × 44, a tap selects at once, the page does not move sideways`, async () => {
+        await load(page);
+        const st0 = await page.evaluate((s) => {
+          const el = document.querySelector(s);
+          el.scrollIntoView({ block: 'center' });
+          return { sizes: [...el.querySelectorAll('.td-choice__face')].map((f) => { const r = f.getBoundingClientRect(); return [r.width, r.height]; }),
+            layout: el.querySelector('.td-choice__options').getAttribute('data-layout'), sx: window.scrollX };
+        }, id);
+        expect(st0.sizes.every(([w, h]) => w >= 43.5 && h >= 43.5), `${id} segments ${JSON.stringify(st0.sizes)}`);
+        expect(['equal', 'fit', 'stacked'].includes(st0.layout), `${id} data-layout ${st0.layout}`);
+        const sel = `${id} .td-choice__option[data-td-value="${want}"]`;
+        const pt = await centre(page, sel);
+        await page.touchscreen.tap(pt.x, pt.y);
+        await page.waitForFunction(([s, v]) => document.querySelector(s).value === v, [id, want], { timeout: 3000 }).catch(() => {});
+        const st = await page.evaluate((s) => ({ value: document.querySelector(s).value, sx: window.scrollX,
+          over: document.documentElement.scrollWidth > window.innerWidth }), id);
+        expect(st.value === want && st.sx === st0.sx && !st.over, `${id} tap: ${JSON.stringify(st)}`);
+      });
+    }
     await it(tag, 'segmented sm icon-only: every segment ≥ 44 × 44, a tap selects at once (one input + change), nothing stuck', async () => {
       await load(page);
       const sizes = await page.evaluate(() => [...document.querySelectorAll('#rsp-seg-sm .td-choice__face')]

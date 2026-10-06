@@ -296,6 +296,9 @@ export function mountResponsiveFixture(root) {
     <td-toggle id="rsp-tfa-ok" label="Bắt buộc 2FA" tone="success" checked></td-toggle>
     <td-toggle id="rsp-tfa-locked" label="Bắt buộc 2FA theo chính sách công ty cho mọi tài khoản quản trị" checked locked locked-reason="Chính sách công ty"></td-toggle>
     <div class="rsp-narrow"><td-choice-group id="rsp-seg-narrow" name="theme-n" aria-label="Giao diện" variant="segmented" value="light"></td-choice-group></div>
+    <!-- v0.53.1: the dsuite sidebar (216 px, sm, stretch, caption) and a 140 px column -->
+    <div class="rsp-side216"><td-choice-group id="rsp-seg-side" name="theme-side" label="Giao diện" variant="segmented" size="sm" stretch value="auto"></td-choice-group></div>
+    <div class="rsp-side140"><td-choice-group id="rsp-seg-140" name="theme-140" aria-label="Giao diện" variant="segmented" size="sm" stretch value="dark"></td-choice-group></div>
   </section>`;
 
   const options = [
@@ -338,7 +341,7 @@ export function mountResponsiveFixture(root) {
     { value: 'xanh', label: 'Titan xanh', swatch: '#1e3a5f' }, { value: 'x', label: 'Hồng', swatch: '#f9a8d4', disabled: true }];
   // v0.52.0: theme switcher (icons + labels), icon-only sm, 5 long labels (wrap inside equal segments)
   const theme = [{ value: 'auto', label: 'Tự động', icon: 'monitor' }, { value: 'light', label: 'Sáng', icon: 'sun' }, { value: 'dark', label: 'Tối', icon: 'moon' }];
-  for (const id of ['#rsp-seg', '#rsp-seg-sm', '#rsp-seg-narrow']) root.querySelector(id).options = theme;
+  for (const id of ['#rsp-seg', '#rsp-seg-sm', '#rsp-seg-narrow', '#rsp-seg-side', '#rsp-seg-140']) root.querySelector(id).options = theme;
   root.querySelector('#rsp-seg-long').options = ['Danh sách chi tiết', 'Lưới ảnh lớn', 'Bảng so sánh nhiều cột', 'Bản đồ cửa hàng', 'Lịch']
     .map((label, i) => ({ value: `v${i + 1}`, label, icon: ['menu', 'image', 'columns', 'search', 'calendar'][i] }));
   // v0.38.0: 30 scanned IMEI rows (+ one invalid) in the multiple scan input; 3 in the narrow column
@@ -415,6 +418,7 @@ export function mountResponsiveFixture(root) {
       const g = document.createElement('td-choice-group');
       g.setAttribute('variant', 'segmented');
       g.setAttribute('size', 'sm');
+      g.setAttribute('stretch', ''); // v0.53.1 recipe: the rail fills the row
       g.setAttribute('value', 'auto');
       g.options = [{ value: 'auto', label: 'Tự động', icon: 'monitor' }, { value: 'light', label: 'Sáng', icon: 'sun' },
         { value: 'dark', label: 'Tối', icon: 'moon' }];

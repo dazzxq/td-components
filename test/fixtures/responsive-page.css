@@ -82,3 +82,7 @@
 	border: 1px solid var(--td-color-border);
 	border-radius: 12px;
 }
+
+/* v0.53.1: the dsuite sidebar column (232 px sidebar → 216 px content) and a 140 px column, for segmented */
+.rsp-side216 { width: 216px; max-width: 100%; }
+.rsp-side140 { width: 140px; max-width: 100%; }
