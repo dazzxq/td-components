@@ -89,6 +89,8 @@ const SCENARIOS = [
   { name: 'tree-select', act: (p) => p.click('#g-ts .td-tree-select__trigger'), panel: '.td-tree-select__menu[data-state="open"]' },
   { name: 'multiselect', act: async (p) => { await p.click('#g-chips .td-chip-input__input'); await p.keyboard.press('ArrowDown'); }, panel: '.td-chip-input__menu[data-state="open"]' },
   { name: 'menu', act: (p) => p.click('#rsp-menu-btn button'), panel: '.td-menu' },
+  // v0.53.0: the menu panel (static header, segmented theme row, td-input-field row)
+  { name: 'menu-panel', act: (p) => p.click('#rsp-menu-panel button'), panel: '.td-menu--panel' },
   // v0.36.2 (ADR 0019): a tap never opens the tooltip — on touch configs it opens from KEYBOARD focus (a key press, then
   // focus), and `tooltip-tap` asserts a tap leaves it closed.
   { name: 'tooltip', act: async (p, c) => {

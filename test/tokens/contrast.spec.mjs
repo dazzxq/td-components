@@ -30,6 +30,8 @@
  *   badges ≥ 4.7 (pairs, page only).
  * v0.41.0: the page-only screenshot cases (ghost buttons, alerts, badges) also over the theme's real --td-color-bg and
  *   --td-color-surface (theming plan M5; thresholds unchanged).
+ * v0.53.0: a real TdMenu panel (translucent glass) over every backdrop — the custom row caption ≥ 4.7 and a td-choice-group
+ *   segmented inside it (idle / selected label ≥ 4.7, icons ≥ 3.2, disabled ≥ 2.2, selected ring ≥ 3 vs trough + pill).
  * v0.36.2: pressed states (ADR 0019) — td-button variants + ghost, td-action-button tones, a popup option row carrying
  *   data-td-pressed: label / icon ≥ 4.7 on the pressed fill (pairs, page only).
  * No dependencies: PNGs are decoded with node:zlib.
@@ -209,6 +211,12 @@ console.log(`  lowest pressed-state ratios (v0.36.2): ${[...focusWorst.entries()
   const v046 = [...focusWorst.entries()].filter(([k]) => k.includes('v046:'));
   if (!v046.length) { console.log('  v046: no td-diff pair measured'); process.exitCode = 1; }
   console.log(`  lowest td-diff ratios (v0.46.0): ${v046.sort((a, b) => a[1] - b[1]).slice(0, 6).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
+}
+// v0.53.0: the TdMenu panel custom row (caption, segmented on the glass) — fail when nothing was measured
+{
+  const v053 = [...worst.entries(), ...focusWorst.entries()].filter(([k]) => k.includes('v053:'));
+  if (!v053.length) { console.log('  v053: no menu panel case measured'); process.exitCode = 1; }
+  console.log(`  lowest menu panel ratios (v0.53.0): ${v053.sort((a, b) => a[1] - b[1]).slice(0, 6).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 }
 console.log(`  lowest otp / copy / skeleton ratios (v0.27.0): ${[...focusWorst.entries()].filter(([k]) => /(otp|copy|skeleton):/.test(k)).sort((a, b) => a[1] - b[1]).slice(0, 5).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);
 console.log(`  lowest chip-input multi-select label ratios (v0.28.0): ${[...worst.entries()].filter(([k]) => k.includes('chip-multi:')).sort((a, b) => a[1] - b[1]).slice(0, 4).map(([k, v]) => `${k} ${v.toFixed(2)}`).join(' · ')}`);

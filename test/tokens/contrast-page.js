@@ -32,6 +32,7 @@ import '/src/display/td-rating.js'; // v0.50.0
 import '/src/display/td-carousel.js'; // v0.50.0
 import '/src/form/td-toggle.js'; // v0.52.0
 import { TdModal } from '/src/feedback/td-modal.js';
+import { TdMenu } from '/src/feedback/td-menu.js'; // v0.53.0
 import { TdMediaPicker } from '/src/feedback/td-media-picker.js';
 import { createMockAdapter } from '/test/fixtures/media-adapter.js';
 // v0.41.0 (M0): ONE colour parser for every pair below — understands color(srgb …) (0..1 channels) next to rgb()/rgba()
@@ -228,6 +229,14 @@ for (const state of ['label', 'mismatch']) CASES.push({ kind: 'type-confirm', v:
 // a disabled segment ≥ 2.2 — computed colours (`pairs`), light + dark.
 for (const state of ['tone-success', 'tone-warning', 'locked-on', 'locked-off', 'locked-tone']) CASES.push({ kind: 'v052', v: 'toggle', state, pageOnly: true });
 for (const state of ['rest', 'pressed', 'disabled']) CASES.push({ kind: 'v052', v: 'segmented', state, pageOnly: true });
+// v0.53.0 (plan v0.53.0-menu-custom-item M4, risk R2): a REAL TdMenu panel (translucent strong glass) hosting a custom row
+// over every backdrop — the row caption ≥ 4.7; the td-choice-group segmented inside it: idle label ≥ 4.7 + icon ≥ 3.2 on
+// the trough as it renders over the glass, selected label + icon on the pill, a disabled segment ≥ 2.2 (screenshot
+// interior, ink hidden) — and the selected ring ≥ 3 vs the trough and vs the pill with the glass composited over a black
+// AND a white page (computed `pairs`).
+for (const v of ['caption', 'seg-idle', 'seg-selected']) CASES.push({ kind: 'v053', v, state: 'rest' });
+CASES.push({ kind: 'v053', v: 'seg-disabled', state: 'disabled' });
+CASES.push({ kind: 'v053', v: 'seg-ring', state: 'rest', pageOnly: true });
 
 const stage = document.getElementById('stage');
 const bd = document.getElementById('backdrop');
@@ -258,6 +267,7 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
   document.documentElement.toggleAttribute('data-td-theme', false);
   if (theme === 'dark') document.documentElement.setAttribute('data-td-theme', 'dark');
   await setBackdrop(backdrop);
+  TdMenu.close(); // v0.53.0: a panel opened by a previous case never covers the next one
   stage.replaceChildren();
   for (const h of document.querySelectorAll('td-media-picker')) { if (h.isOpen) h.close(); h.remove(); }
   document.querySelectorAll('body > .td-media-picker, body > .td-media-picker-upload').forEach((n) => n.remove());
@@ -1972,6 +1982,48 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
     }
     const b = target.getBoundingClientRect();
     return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: `v052:${c.v}:${c.state}`, pairs };
+  } else if (c.kind === 'v053') {
+    TdMenu.close();
+    const trig = document.createElement('button');
+    trig.type = 'button';
+    trig.textContent = 'Tài khoản';
+    stage.appendChild(trig);
+    let g;
+    TdMenu.open(trig, [{ label: 'Hồ sơ' }, { type: 'custom', label: 'Giao diện', render: () => {
+      g = document.createElement('td-choice-group');
+      g.setAttribute('variant', 'segmented');
+      g.setAttribute('size', 'sm');
+      g.options = [{ value: 'auto', label: 'Tự động', icon: 'monitor' }, { value: 'light', label: 'Sáng', icon: 'sun' },
+        { value: 'dark', label: 'Tối', icon: 'moon', disabled: true }];
+      g.value = 'auto';
+      return g;
+    } }], { align: 'start' });
+    const panel = document.querySelector('body > .td-menu');
+    await new Promise((r) => setTimeout(r, 300));
+    for (const a of panel.getAnimations({ subtree: true })) a.finish();
+    const face = (v) => g.querySelector(`.td-choice__option[data-td-value="${v}"] .td-choice__face`);
+    if (c.v === 'seg-ring') {
+      const pairs = [];
+      for (const extreme of ['rgb(0, 0, 0)', 'rgb(255, 255, 255)']) {
+        const glass = overRgb(getComputedStyle(panel).backgroundColor, extreme);
+        const trough = overRgb(getComputedStyle(g.querySelector('.td-choice__options')).backgroundColor, glass);
+        const sel = face('auto');
+        const pill = overRgb(getComputedStyle(sel).backgroundColor, trough);
+        const ring = getComputedStyle(sel).boxShadow.match(/rgba?\([^)]*\)/)[0];
+        pairs.push({ what: `selected ring vs trough (glass over ${extreme})`, fg: ring, bg: trough, min: 3 });
+        pairs.push({ what: `selected ring vs pill (glass over ${extreme})`, fg: ring, bg: pill, min: 3 });
+        pairs.push({ what: `idle label vs trough (glass over ${extreme})`, fg: getComputedStyle(face('light')).color, bg: trough, min: 4.7 });
+      }
+      const b = face('auto').getBoundingClientRect();
+      return { rect: { x: b.x, y: b.y, width: b.width || 1, height: b.height || 1 }, ink: {}, opacity: 1, hover: false, name: 'v053:seg-ring:rest', pairs };
+    }
+    if (c.v === 'caption') {
+      el = panel.querySelector('.td-menu__custom-label');
+      parts = { label: el };
+    } else {
+      el = face({ 'seg-idle': 'light', 'seg-selected': 'auto', 'seg-disabled': 'dark' }[c.v]);
+      parts = { label: el.querySelector('.td-choice__text'), icon: el.querySelector('.td-choice__icon') };
+    }
   } else if (c.kind === 'type-confirm') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
     TdModal.closeAll();

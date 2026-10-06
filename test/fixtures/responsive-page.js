@@ -165,6 +165,7 @@ export function mountResponsiveFixture(root) {
       <td-button variant="secondary">Huỷ</td-button>
       <td-button variant="danger" id="rsp-menu-btn" icon="more">Thao tác</td-button>
       <td-button variant="secondary" id="rsp-hovercard">Hồ sơ tác giả</td-button>
+      <td-button variant="secondary" id="rsp-menu-panel">Tài khoản</td-button>
       <button type="button" class="td-btn td-btn--secondary" id="rsp-tooltip" data-tooltip="Tooltip dài hơn một chút để thử xuống dòng khi màn hình hẹp"><span class="td-btn__label">Tooltip</span></button>
     </div>
   </section>
@@ -400,6 +401,34 @@ export function mountResponsiveFixture(root) {
     { label: 'Sửa bài viết', icon: 'plus' }, { label: 'Chia sẻ' }, { separator: true }, { label: 'Xoá', danger: true },
   ]);
   TdMenu.bind(root.querySelector('#rsp-menu-btn button'), 'rsp-menu');
+  // v0.53.0: an account menu PANEL — static header row, a td-choice-group segmented theme row, a small form row
+  TdMenu.bind(root.querySelector('#rsp-menu-panel button'), () => [
+    { type: 'custom', id: 'who', render: () => {
+      const d = document.createElement('div');
+      d.textContent = 'Nguyễn Văn An · an.nguyen.bien.tap.vien@example.com';
+      return d;
+    } },
+    { separator: true },
+    { label: 'Hồ sơ cá nhân' }, { label: 'Cài đặt tài khoản' },
+    { separator: true },
+    { type: 'custom', id: 'theme', label: 'Giao diện', render: () => {
+      const g = document.createElement('td-choice-group');
+      g.setAttribute('variant', 'segmented');
+      g.setAttribute('size', 'sm');
+      g.setAttribute('value', 'auto');
+      g.options = [{ value: 'auto', label: 'Tự động', icon: 'monitor' }, { value: 'light', label: 'Sáng', icon: 'sun' },
+        { value: 'dark', label: 'Tối', icon: 'moon' }];
+      return g;
+    } },
+    { type: 'custom', id: 'note', label: 'Ghi chú nhanh', render: () => {
+      const f = document.createElement('td-input-field');
+      f.setAttribute('label', 'Nội dung');
+      f.setAttribute('name', 'quick-note');
+      return f;
+    } },
+    { separator: true },
+    { label: 'Đăng xuất', icon: 'log-out', danger: true },
+  ], { label: 'Tài khoản' });
   TdHovercard.bind(root.querySelector('#rsp-hovercard'), {
     label: 'Hồ sơ tác giả',
     content: () => {
