@@ -14,6 +14,7 @@
  * @property {string} hint - secondary line ('' = none)
  * @property {string} swatch - a safe colour ('' = none)
  * @property {string} image - a safe, normalised image URL ('' = none); wins over `swatch` when set
+ * @property {string} icon - v0.52.0: an icon registry name ('' = none); shown by the segmented variant
  * @property {boolean} disabled - not selectable (a combination that does not exist)
  * @property {boolean} unavailable - selectable, struck through + a note (out of stock)
  * @property {string} unavailableLabel - the note ('' = the component's default message)
@@ -28,7 +29,7 @@ const describe = (v) => (v === null ? 'null' : Array.isArray(v) ? 'array' : type
  * code-point caps per field — text fields (label / hint / note) are CUT to their cap, a longer value / swatch / image is
  * refused. Checked before any trim / regex, so a huge input costs at most a few times the cap.
  */
-export const CHOICE_LIMITS = Object.freeze({ candidates: 400, options: 100, value: 200, label: 200, hint: 200, note: 100, swatch: 128, image: 8192,
+export const CHOICE_LIMITS = Object.freeze({ candidates: 400, options: 100, value: 200, label: 200, hint: 200, note: 100, swatch: 128, image: 8192, icon: 64,
   // review r4 — group level (code points): php td_choice_group fails closed past them, so the SSR preflight of the
   // component (which accepts exactly up to them) never rejects markup the kit printed
   id: 100, name: 200, class: 256, groupLabel: 200, helper: 1000, error: 1000 });
@@ -53,6 +54,9 @@ function cpOver(s, n) {
   return cpSlice(s, n + 1).length !== cpSlice(s, n).length;
 }
 
+/** v0.52.0: an icon registry name (same rule as src/icons/td-icon.js / php Td::icon). */
+const ICON_NAME = /^[a-z][a-z0-9-]{0,63}$/;
+
 // lone surrogate, C0 / DEL / C1 control (\r \n \t included)
 const BAD_VALUE = /[\u0000-\u001f\u007f-\u009f]|[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
 
@@ -73,7 +77,9 @@ export function canonicalValue(v) {
 
 /**
  * @param {unknown} raw the caller's list
- * @param {{ safeColor: (v: unknown, fallback?: string) => string, safeMediaUrl: (v: unknown) => string }} gates
+ * @param {{ safeColor: (v: unknown, fallback?: string) => string, safeMediaUrl: (v: unknown) => string,
+ *   hasIcon?: (name: string) => boolean }} gates  v0.52.0: `hasIcon` (optional) = the icon registry; without it only the
+ *   name pattern is checked
  * @returns {{ options: ReadonlyArray<Readonly<ChoiceOption>>, warnings: string[], dropped: number, ignored: number }}
  *   review S1: at most ONE warning, counts only (never a value): `dropped` options (invalid, duplicate, over the limits,
  *   past the inspected window) and `ignored` fields (wrong type, refused colour / URL, text cut to its cap)
@@ -131,6 +137,7 @@ export function normalizeOptions(raw, gates) {
       hint: text('hint', L.hint),
       swatch: gated(o.swatch, L.swatch, (v) => gates.safeColor(v, '')),
       image: gated(o.image, L.image, (v) => gates.safeMediaUrl(v)),
+      icon: gated(o.icon, L.icon, (v) => (ICON_NAME.test(v) && (typeof gates.hasIcon !== 'function' || gates.hasIcon(v)) ? v : '')),
       disabled: o.disabled === true,
       unavailable: o.unavailable === true,
       unavailableLabel: text('unavailableLabel', L.note),

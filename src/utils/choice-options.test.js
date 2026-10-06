@@ -21,9 +21,9 @@ describe('normalizeOptions — shape', () => {
     ]);
     assert.deepEqual(warnings, []);
     assert.deepEqual(options.map((o) => ({ ...o })), [
-      { value: '128', label: '128GB', hint: '21.990.000₫', swatch: '', image: '', disabled: false, unavailable: false, unavailableLabel: '', index: 0 },
-      { value: '256', label: '256GB', hint: '', swatch: '', image: '', disabled: false, unavailable: true, unavailableLabel: 'Sắp về', index: 1 },
-      { value: '1tb', label: '1TB', hint: '', swatch: '', image: '', disabled: true, unavailable: false, unavailableLabel: '', index: 2 },
+      { value: '128', label: '128GB', hint: '21.990.000₫', swatch: '', image: '', icon: '', disabled: false, unavailable: false, unavailableLabel: '', index: 0 },
+      { value: '256', label: '256GB', hint: '', swatch: '', image: '', icon: '', disabled: false, unavailable: true, unavailableLabel: 'Sắp về', index: 1 },
+      { value: '1tb', label: '1TB', hint: '', swatch: '', image: '', icon: '', disabled: true, unavailable: false, unavailableLabel: '', index: 2 },
     ]);
   });
 
@@ -117,6 +117,36 @@ describe('normalizeOptions — swatch colour / image through the gates', () => {
   });
 });
 
+describe('v0.52.0 — icon (registry name; segmented variant)', () => {
+  it('a valid name kept; wrong type / pattern / too long → \'\' + counted; the optional registry gate decides', () => {
+    const known = new Set(['sun', 'moon', 'monitor']);
+    const g = { ...gates, hasIcon: (n) => known.has(n) };
+    const { options, ignored, warnings } = normalizeOptions([
+      { value: 'a', label: 'A', icon: 'sun' },
+      { value: 'b', label: 'B', icon: 'Sun' },
+      { value: 'c', label: 'C', icon: '"><img src=x onerror=alert(1)>' },
+      { value: 'd', label: 'D', icon: 7 },
+      { value: 'e', label: 'E', icon: `a${'b'.repeat(64)}` },
+      { value: 'f', label: 'F', icon: 'rocket' },
+      { value: 'g', label: 'G' },
+      { value: 'h', label: 'H', icon: '' },
+    ], g);
+    assert.deepEqual(options.map((o) => o.icon), ['sun', '', '', '', '', '', '', '']);
+    assert.equal(ignored, 5);
+    assert.equal(warnings.length, 1);
+    assert.equal(warnings[0].includes('rocket'), false);
+  });
+
+  it('without a registry gate: the name pattern only', () => {
+    const { options } = norm([{ value: 'a', label: 'A', icon: 'rocket' }, { value: 'b', label: 'B', icon: 'x y' }]);
+    assert.deepEqual(options.map((o) => o.icon), ['rocket', '']);
+  });
+
+  it('CHOICE_LIMITS.icon = 64 code points', () => {
+    assert.equal(CHOICE_LIMITS.icon, 64);
+  });
+});
+
 describe('sameValueList', () => {
   it('same values in the same order', () => {
     const a = norm([{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }]).options;
@@ -146,7 +176,7 @@ describe('shared case tables (parity with php)', () => {
 
 describe('review S1 — bounded work: candidate / option / field limits, one aggregate warning', () => {
   it('limits are the shared table (php Td::CHOICE_LIMITS is checked against it in test/php/td-ssr-choice.test.js)', () => {
-    assert.deepEqual({ ...CHOICE_LIMITS }, { candidates: 400, options: 100, value: 200, label: 200, hint: 200, note: 100, swatch: 128, image: 8192,
+    assert.deepEqual({ ...CHOICE_LIMITS }, { candidates: 400, options: 100, value: 200, label: 200, hint: 200, note: 100, swatch: 128, image: 8192, icon: 64,
       // review r4: group-level caps (php td_choice_group fails closed past them; the JS SSR preflight accepts up to them)
       id: 100, name: 200, class: 256, groupLabel: 200, helper: 1000, error: 1000 });
     assert.ok(Object.isFrozen(CHOICE_LIMITS));
