@@ -8107,12 +8107,14 @@
 		padding: var(--td-menu-item-py) var(--td-menu-item-px);
 	}
 
+	/* label ink, not the hint's muted one: muted on the 94 % light glass over a dark page region = 4.63:1 (< 4.7,
+	   test:contrast v053:caption); --td-color-text-label is kept ≥ 4.7 on every surface by the palette solver */
 	.td-menu__custom-label {
 		margin-block-end: var(--td-space-2xs);
 		font-size: var(--td-text-xs);
 		font-weight: var(--td-fw-medium);
 		line-height: var(--td-leading-normal);
-		color: var(--td-menu-hint-fg);
+		color: var(--td-color-text-label);
 	}
 
 	/* ---- Menu button ("···") — content layer ---- */
