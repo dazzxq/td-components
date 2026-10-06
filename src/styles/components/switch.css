@@ -125,8 +125,8 @@
 	}
 
 	@media (hover: hover) and (pointer: fine) {
-		.td-switch:hover .td-switch__input:not(:checked, :disabled) + .td-switch__track,
-		.td-switch:hover .td-switch__input:not(:checked, :disabled) + .td-switch__track .td-switch__thumb {
+		.td-switch:hover .td-switch__input:not(:checked, :disabled, [aria-readonly="true"]) + .td-switch__track,
+		.td-switch:hover .td-switch__input:not(:checked, :disabled, [aria-readonly="true"]) + .td-switch__track .td-switch__thumb {
 			border-color: var(--td-control-border-hover);
 		}
 	}
@@ -137,6 +137,7 @@
 	}
 
 	.td-switch__input:checked + .td-switch__track .td-switch__thumb {
+		background: var(--td-switch-thumb-on); /* v0.52.0: = the knob unless a tone sets it */
 		border-color: transparent;
 		transform: translate(calc(var(--td-switch-w) - var(--td-switch-thumb-d) - var(--td-switch-pad) - 1px), -50%);
 	}
@@ -214,14 +215,66 @@
 		-webkit-tap-highlight-color: transparent;
 	}
 
-	.td-switch:is(:active, [data-td-pressed]) .td-switch__input:not(:disabled) + .td-switch__track {
+	.td-switch:is(:active, [data-td-pressed]) .td-switch__input:not(:disabled, [aria-readonly="true"]) + .td-switch__track {
 		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
 		transition-duration: 0s;
 	}
 
 	@media (forced-colors: active) {
-		.td-switch:is(:active, [data-td-pressed]) .td-switch__track {
+		.td-switch:is(:active, [data-td-pressed]) .td-switch__input:not(:disabled, [aria-readonly="true"]) + .td-switch__track {
 			outline: 2px solid Highlight;
+		}
+	}
+
+	/* v0.52.0 tone (plan v0.52.0-toggle-tone-segmented QĐ 1–3): the ON colour from the theme contract — status colour
+	   track, on-status knob (both ≥ 4.7 by the palette solver), the ✓ / clock icon in the status colour on the knob.
+	   Host attribute selectors: the server prints `tone` on the host, so the colour is right before the upgrade too.
+	   `color` (an inline CSSOM custom property) wins the track; `:not([color])` keeps the default knob with it. */
+	td-toggle[tone="success"]:not([color]) {
+		--td-switch-on: var(--td-switch-on-success);
+		--td-switch-thumb-on: var(--td-switch-thumb-tone);
+	}
+
+	td-toggle[tone="warning"]:not([color]) {
+		--td-switch-on: var(--td-switch-on-warning);
+		--td-switch-thumb-on: var(--td-switch-thumb-tone);
+	}
+
+	/* v0.52.0 locked (QĐ 6–7, 11): not dimmed (it is not disabled), a lock in the knob instead of ✓ / ✕ / clock, no
+	   hover / pressed (above), a not-allowed cursor. The input carries aria-readonly (also printed by the server). */
+	td-toggle[locked] .td-switch {
+		cursor: not-allowed;
+	}
+
+	td-toggle[locked] .td-switch__input + .td-switch__track .td-switch__icon:not(.td-switch__icon--lock) {
+		opacity: 0;
+	}
+
+	.td-switch__icon--lock {
+		opacity: 0;
+	}
+
+	td-toggle[locked] .td-switch__icon--lock {
+		opacity: 1;
+	}
+
+	.td-switch__input:checked + .td-switch__track .td-switch__icon--lock {
+		color: var(--td-switch-on);
+	}
+
+	/* before the module upgrades (ADR 0025 pattern): the native checkbox cannot be made read-only — this only stops the
+	   mouse / touch on the switch itself; Space and an external <label for> still flip it (documented: the server must
+	   ignore changes of a locked field) */
+	@media (scripting: enabled) {
+		td-toggle[locked]:not(:defined) .td-switch {
+			pointer-events: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		/* the knob is CanvasText: its icons (✓ / ✕ / clock / lock) in Canvas stay visible (the shape carries the state) */
+		.td-switch__input + .td-switch__track .td-switch__thumb .td-switch__icon {
+			color: Canvas;
 		}
 	}
 }

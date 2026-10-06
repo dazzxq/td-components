@@ -1,5 +1,5 @@
 import {
-  TdFormElement, ssrClassKey, ssrContentNodes, ssrSamePart, ssrIsErrorNote, SSR_ARIA_DATA, SSR_CONTROL_ATTRS,
+  TdFormElement, ssrClassKey, ssrContentNodes, ssrSamePart, ssrSameAttrs, ssrIsErrorNote, SSR_ARIA_DATA, SSR_CONTROL_ATTRS,
 } from './td-form-element.js';
 import { fillIconSlots } from '../icons/td-icon.js';
 import { ssrMarker } from './td-base-element.js';
@@ -7,7 +7,10 @@ import { ssrMarker } from './td-base-element.js';
 /** v0.26.0: attributes of the server-rendered input that exist only for the no-JS form (removed on hydrate). */
 const SSR_ONLY = ['name', 'value', 'checked', 'required'];
 /** Attributes the component itself puts on its input / wrapping label (state, not structure). */
-const OWN_INPUT_ATTRS = ['aria-busy', 'aria-invalid', 'aria-errormessage', 'aria-describedby', 'aria-label', 'aria-labelledby'];
+const OWN_INPUT_ATTRS = ['aria-busy', 'aria-invalid', 'aria-errormessage', 'aria-describedby', 'aria-label', 'aria-labelledby',
+  'aria-readonly'];
+/** v0.52.0 (td-toggle): text-only description spans render() may put after the label (their text is state). */
+const DESC_PARTS = ['td-switch__status', 'td-switch__lock-reason'];
 const LABEL_ATTRS = ['class', 'data-pending', 'data-dragging'];
 
 /**
@@ -206,7 +209,12 @@ export class TdCheckableElement extends TdFormElement {
   _ssrSkeletonOk() {
     const block = this.constructor.SSR_NAME === 'toggle' ? 'td-switch' : 'td-checkbox';
     const kids = ssrContentNodes(this);
-    if (!kids.length || kids.length > 2 || kids.some((n) => n.nodeType !== 1) || (kids[1] && !ssrIsErrorNote(kids[1]))) return false;
+    if (!kids.length || kids.some((n) => n.nodeType !== 1)) return false;
+    // v0.52.0: td-toggle may carry its description spans (text only) between the label and the error note
+    const tail = kids.slice(1);
+    if (tail.length && ssrIsErrorNote(tail[tail.length - 1])) tail.pop();
+    if (tail.length > (block === 'td-switch' ? DESC_PARTS.length : 0)
+      || !tail.every((n) => n.localName === 'span' && DESC_PARTS.some((c) => n.classList.contains(c)) && n.children.length === 0)) return false;
     const label = kids[0];
     if (label.localName !== 'label' || !label.classList.contains(block)) return false;
     const parts = ssrContentNodes(label);
@@ -260,13 +268,20 @@ export class TdCheckableElement extends TdFormElement {
    */
   _markupMatches(first) {
     const kids = ssrContentNodes(this);
-    if (!kids.length || kids.length > 2 || (kids.length === 2 && !ssrIsErrorNote(kids[1]))) return false;
-    // review round 1 IMPL-4: the error note is there exactly when the component shows an error
-    if ((kids.length === 2) !== !!this.errorMessage) return false;
-    const live = kids[0];
     const tpl = document.createElement('template');
     tpl.innerHTML = this.render();
-    const want = tpl.content.firstElementChild;
+    const [want, ...extras] = [...tpl.content.children];
+    // review round 1 IMPL-4: the error note is there exactly when the component shows an error
+    const err = this.errorMessage ? 1 : 0;
+    if (!kids.length || kids.length !== 1 + extras.length + err || (err && !ssrIsErrorNote(kids[kids.length - 1]))) return false;
+    // v0.52.0: render()'s description spans after the label — same tag + attributes, text only (the text is state:
+    // messages / attributes, re-applied on bind)
+    const extrasOk = extras.every((w, i) => {
+      const n = kids[1 + i];
+      return n.nodeType === 1 && n.localName === w.localName && ssrSameAttrs(n, w) && n.children.length === 0;
+    });
+    if (!extrasOk) return false;
+    const live = kids[0];
     if (live.nodeType !== 1 || live.localName !== 'label' || ssrClassKey(live) !== ssrClassKey(want)) return false;
     if (![...live.attributes].every((a) => LABEL_ATTRS.includes(a.name))) return false;
     const have = ssrContentNodes(live);
