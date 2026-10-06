@@ -139,3 +139,19 @@ export const ThemeSwitcher = {
     });
   },
 };
+
+/** v0.53.1: narrow columns — ONE layout for the whole rail (data-layout equal / fit / stacked, + data-overflow), `stretch`. */
+export const SegmentedNarrow = {
+  render: () => `<div class="sb-stack">
+    <div class="sb-side216"><td-choice-group id="cg-n-216" label="Giao diện" variant="segmented" size="sm" stretch value="auto"></td-choice-group></div>
+    <div class="sb-side140"><td-choice-group id="cg-n-140" aria-label="Giao diện" variant="segmented" size="sm" stretch value="dark"></td-choice-group></div>
+    <div class="sb-side216"><td-choice-group id="cg-n-5" aria-label="Chế độ xem" variant="segmented" size="sm" stretch value="list"></td-choice-group></div>
+  </div>`,
+  play: ({ canvasElement }) => {
+    canvasElement.querySelector('#cg-n-216').options = THEME;
+    canvasElement.querySelector('#cg-n-140').options = THEME;
+    canvasElement.querySelector('#cg-n-5').options = [{ value: 'list', label: 'Danh sách', icon: 'menu' },
+      { value: 'grid', label: 'Lưới', icon: 'image' }, { value: 'cols', label: 'So sánh', icon: 'columns' },
+      { value: 'map', label: 'Bản đồ', icon: 'search' }, { value: 'cal', label: 'Lịch', icon: 'calendar' }];
+  },
+};

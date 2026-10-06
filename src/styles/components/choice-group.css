@@ -18,6 +18,13 @@
 		--td-choice-seg-pad: 3px;
 		--td-choice-seg-radius: var(--td-radius-full);
 		--td-choice-seg-h: 2.5rem;
+		/* v0.53.1 (plan v0.53.1-segmented-layout QĐ 4): segment geometry — md values = v0.52; sm / lg set again on the
+		   variant (.td-choice--sm / --lg) */
+		--td-choice-seg-gap: 2px;
+		--td-choice-seg-px: 0.875rem;
+		--td-choice-seg-font: var(--td-text-sm);
+		--td-choice-seg-icon: 1.25rem;
+		--td-choice-seg-icon-gap: 0.375rem;
 	}
 
 	/* ADR 0020: colour tokens re-resolve in every theme scope */
@@ -343,59 +350,149 @@
 	   switcher: Tự động / Sáng / Tối). Radio-group semantics (ADR 0023), NOT a tablist. Equal-width segments (= the
 	   widest), a STATIC pill per selected segment (no sliding indicator): control surface + a 1px ring ≥ 3:1 against the
 	   trough AND the pill + semibold text (shape + weight, not only colour — WCAG 1.4.1 / 1.4.11). --- */
-	.td-choice--sm { --td-choice-seg-h: 2rem; }
-	.td-choice--lg { --td-choice-seg-h: 3rem; }
+	/* v0.53.1 (plan v0.53.1-segmented-layout): sm is tighter (px 0.375rem, icon 1rem, icon gap 0.25rem — RL5) */
+	.td-choice--sm {
+		--td-choice-seg-h: 2rem;
+		--td-choice-seg-px: 0.375rem;
+		--td-choice-seg-font: var(--td-text-xs);
+		--td-choice-seg-icon: 1rem;
+		--td-choice-seg-icon-gap: 0.25rem;
+	}
 
+	.td-choice--lg {
+		--td-choice-seg-h: 3rem;
+		--td-choice-seg-px: 1.125rem;
+		--td-choice-seg-font: var(--td-text-base);
+	}
+
+	/* v0.53.1 — the rail. ONE layout for the whole rail (data-layout, written by the component from one measuring pass:
+	   src/utils/segmented-layout.js) — equal | fit | stacked (+ data-overflow); never a per-segment wrap. Without
+	   data-layout (before the upgrade, without JS) = the v0.52 equal rail. The rail always contains itself: content wider
+	   than the rail (44 px touch segments in a very narrow container, a long unbreakable label) scrolls INSIDE it, the page
+	   never overflows (QĐ 5). Columns never shrink below their content (minmax(min-content, 1fr)): a too-narrow rail
+	   scrolls instead of squeezing labels out of their segments. */
 	.td-choice--segmented .td-choice__options {
 		display: inline-grid;
-		grid-auto-columns: minmax(0, 1fr);
+		grid-auto-columns: minmax(min-content, 1fr);
 		grid-auto-flow: column;
-		gap: 2px;
+		gap: var(--td-choice-seg-gap);
 		align-self: flex-start; /* content-sized inside the field column (a flex parent would stretch it) */
 		width: fit-content;
 		max-inline-size: 100%;
 		padding: var(--td-choice-seg-pad);
+		overflow-x: auto;
+		overscroll-behavior-x: contain;
+		scroll-behavior: auto; /* reveal / focus scrolling is instant (no smooth branch needed for reduced motion) */
 		background: var(--td-choice-seg-bg);
 		border-radius: var(--td-choice-seg-radius);
 	}
 
+	/* stretch (host attribute — printed by PHP, so it holds before the upgrade too), and every level that ran out of room */
+	td-choice-group[stretch] > .td-choice--segmented > .td-choice__options,
+	.td-choice--segmented .td-choice__options:is([data-layout="fit"], [data-layout="stacked"]) {
+		align-self: stretch;
+		width: 100%;
+	}
+
+	/* fit: a segment never narrower than its one-line content, the others share the rest equally (the flexible-track
+	   algorithm) — the same columns the pre-upgrade rail draws (minmax(min-content, 1fr) with one-line segments), so the
+	   upgrade does not move the segments */
+	.td-choice--segmented .td-choice__options[data-layout="fit"] {
+		grid-auto-columns: minmax(max-content, 1fr);
+	}
+
 	.td-choice--segmented .td-choice__option {
+		position: relative;
 		display: flex;
 		min-width: 0;
 	}
 
 	.td-choice--segmented .td-choice__face {
+		--_td-seg-icon: var(--td-choice-seg-icon);
+
 		flex: 1 1 auto;
-		flex-wrap: wrap; /* a narrow segment puts the icon above the label instead of overflowing */
-		min-width: 0;
-		gap: 0.375rem;
+		gap: var(--td-choice-seg-icon-gap);
 		justify-content: center;
+		min-width: 0;
 		min-height: var(--td-choice-seg-h);
-		padding: 0.25rem 0.875rem;
-		font-size: var(--td-text-sm);
+		padding: 0.25rem var(--td-choice-seg-px);
+		font-size: var(--td-choice-seg-font);
 		line-height: var(--td-leading-tight);
 		color: var(--td-choice-seg-fg);
 		text-align: center;
 		border-radius: var(--td-choice-seg-radius);
-		outline-offset: 1px;
+		outline-offset: calc(var(--td-choice-seg-pad) - 2px); /* the 2px focus outline stays inside the rail padding */
 		transition:
 			background-color var(--td-dur-fast) var(--td-ease),
 			box-shadow var(--td-dur-fast) var(--td-ease),
 			color var(--td-dur-fast) var(--td-ease);
 	}
 
-	.td-choice--sm .td-choice__face {
-		padding-inline: 0.625rem;
-		font-size: var(--td-text-xs);
+	.td-choice--segmented .td-choice__icon .td-icon {
+		width: var(--_td-seg-icon);
+		height: var(--_td-seg-icon);
 	}
 
-	.td-choice--lg .td-choice__face {
-		padding-inline: 1.125rem;
-		font-size: var(--td-text-base);
+	/* inline levels: one line per segment (the level was chosen because it fits) */
+	.td-choice--segmented .td-choice__options:is([data-layout="equal"], [data-layout="fit"]) .td-choice__face {
+		white-space: nowrap;
 	}
 
-	.td-choice--icon-only .td-choice__face {
-		padding-inline: 0.625rem;
+	/* stacked (and its measuring state): icon above label in EVERY segment, the icon shrinks so a one-line label keeps the
+	   segment height (no host shift between levels); a long label wraps inside its segment, never cut */
+	.td-choice--segmented .td-choice__options:is([data-layout="stacked"], [data-measuring="min"]) .td-choice__face {
+		--_td-seg-icon: min(var(--td-choice-seg-icon), calc(var(--td-choice-seg-h) - 1.15em - 0.25rem));
+
+		flex-direction: column;
+		gap: 1px;
+		padding-block: 1px;
+		line-height: 1.15;
+	}
+
+	/* measuring states (one synchronous pass, never painted): natural one-line widths / min-content widths. Only track
+	   sizes and face widths change — never `display` / `overflow` of the rail: a new box type would re-create its layout
+	   object and Chromium would report a layout shift from (0, 0) although nothing was painted in between */
+	.td-choice--segmented .td-choice__options[data-measuring] {
+		grid-auto-columns: max-content;
+	}
+
+	/* the inline read restores the INLINE geometry explicitly — the rail may be measured while data-layout="stacked"
+	   (same specificity as the stacked rule, later in the file: this one wins) */
+	.td-choice--segmented .td-choice__options[data-measuring="inline"] .td-choice__face {
+		--_td-seg-icon: var(--td-choice-seg-icon);
+
+		flex: none;
+		flex-direction: row;
+		gap: var(--td-choice-seg-icon-gap);
+		width: max-content;
+		padding-block: 0.25rem;
+		line-height: var(--td-leading-tight);
+		white-space: nowrap;
+	}
+
+	.td-choice--segmented .td-choice__options[data-measuring="min"] .td-choice__face {
+		flex: none;
+		width: min-content;
+		white-space: normal;
+	}
+
+	/* the native radio covers the segment (still transparent): the browser's scroll-the-focused-element-into-view brings the
+	   whole segment + its outline into an overflowing rail (QĐ 5b) — button / swatch keep the 1 × 1 radio */
+	.td-choice--segmented .td-choice__input {
+		inset: 0;
+		z-index: 1;
+		width: auto;
+		height: auto;
+		margin: 0;
+		overflow: visible;
+		clip: auto;
+		cursor: inherit;
+		opacity: 0;
+		scroll-margin-inline: var(--td-choice-seg-pad);
+	}
+
+	.td-choice--icon-only {
+		--td-choice-seg-px: 0.625rem;
 	}
 
 	.td-choice__icon {
@@ -406,12 +503,14 @@
 	}
 
 	/* the label box = max(regular, semibold): the selected label turning bold never moves the segments (td-tabs 0.36) */
+	/* v0.53.1: no percentage max-width and no `overflow-wrap: anywhere` (both shrink the label's min-content below its
+	   longest word, so a word could be squeezed / broken inside its segment); the rail scrolls instead (QĐ 1 / QĐ 5) */
 	.td-choice--segmented .td-choice__text:not(.td-sr-only) {
 		display: inline-flex;
 		flex-direction: column;
 		align-items: center;
 		min-width: 0;
-		max-width: 100%;
+		overflow-wrap: normal; /* words stay whole (min-content = the longest word); the rail scrolls instead */
 	}
 
 	.td-choice--segmented .td-choice__text:not(.td-sr-only)::after {
@@ -482,6 +581,15 @@
 		.td-choice--segmented .td-choice__input:checked + .td-choice__face {
 			outline: 2px solid Highlight;
 			outline-offset: -2px;
+		}
+	}
+
+	/* v0.53.1 before the upgrade (ADR 0025 pattern): one line per segment (the height of every upgraded level); wider content
+	   scrolls inside the self-contained rail — labels are never clipped. Without JS (scripting: none) labels may wrap
+	   inside their segment, the icon stays beside them: never mixed either. */
+	@media (scripting: enabled) {
+		td-choice-group[variant="segmented"]:not(:defined) .td-choice__face {
+			white-space: nowrap;
 		}
 	}
 }

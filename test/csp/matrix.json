@@ -5267,6 +5267,69 @@
         "grid-template-columns"
       ],
       "selectorNote": "v0.52.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets are gated by test:responsive and the engines tests. grid-template-columns excluded: equal-width segments resolve from the content width (font metrics differ on Linux CI)."
+    },
+    {
+      "state": "segmented-stretch",
+      "setup": "const w=document.createElement('div'); w.style.width='600px'; window.__mount.appendChild(w); const c=document.createElement('td-choice-group'); c.id='probe'; c.setAttribute('name','theme'); c.setAttribute('aria-label','Giao diện'); c.setAttribute('variant','segmented'); c.setAttribute('size','sm'); c.setAttribute('stretch',''); c.setAttribute('value','auto'); w.appendChild(c); c.options=[{value:'auto',label:'Tự động',icon:'monitor'},{value:'light',label:'Sáng',icon:'sun'},{value:'dark',label:'Tối',icon:'moon'}]; ",
+      "selectors": [
+        ".td-choice",
+        ".td-choice__options",
+        ".td-choice__option",
+        ".td-choice__face",
+        ".td-choice__icon",
+        ".td-choice__text",
+        ".td-choice__input:checked + .td-choice__face"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left",
+        "grid-template-columns"
+      ],
+      "selectorNote": "v0.53.1 (plan v0.53.1-segmented-layout): a fixed-width container (CSSOM) — the layout level (data-layout) is decided after the upgrade; text-bearing boxes / track sizes follow the platform font metrics (height / width / margin-left / grid-template-columns excluded)."
+    },
+    {
+      "state": "segmented-fit-216",
+      "setup": "const w=document.createElement('div'); w.style.width='216px'; window.__mount.appendChild(w); const c=document.createElement('td-choice-group'); c.id='probe'; c.setAttribute('name','theme'); c.setAttribute('aria-label','Giao diện'); c.setAttribute('variant','segmented'); c.setAttribute('size','sm'); c.setAttribute('stretch',''); c.setAttribute('value','auto'); w.appendChild(c); c.options=[{value:'auto',label:'Tự động',icon:'monitor'},{value:'light',label:'Sáng',icon:'sun'},{value:'dark',label:'Tối',icon:'moon'}]; ",
+      "selectors": [
+        ".td-choice",
+        ".td-choice__options",
+        ".td-choice__option",
+        ".td-choice__face",
+        ".td-choice__icon",
+        ".td-choice__text",
+        ".td-choice__input:checked + .td-choice__face"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left",
+        "grid-template-columns"
+      ],
+      "selectorNote": "v0.53.1 (plan v0.53.1-segmented-layout): a fixed-width container (CSSOM) — the layout level (data-layout) is decided after the upgrade; text-bearing boxes / track sizes follow the platform font metrics (height / width / margin-left / grid-template-columns excluded)."
+    },
+    {
+      "state": "segmented-stacked-140",
+      "setup": "const w=document.createElement('div'); w.style.width='140px'; window.__mount.appendChild(w); const c=document.createElement('td-choice-group'); c.id='probe'; c.setAttribute('name','theme'); c.setAttribute('aria-label','Giao diện'); c.setAttribute('variant','segmented'); c.setAttribute('size','sm'); c.setAttribute('stretch',''); c.setAttribute('value','auto'); w.appendChild(c); c.options=[{value:'auto',label:'Tự động',icon:'monitor'},{value:'light',label:'Sáng',icon:'sun'},{value:'dark',label:'Tối',icon:'moon'}]; ",
+      "selectors": [
+        ".td-choice",
+        ".td-choice__options",
+        ".td-choice__option",
+        ".td-choice__face",
+        ".td-choice__icon",
+        ".td-choice__text",
+        ".td-choice__input:checked + .td-choice__face"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left",
+        "grid-template-columns"
+      ],
+      "selectorNote": "v0.53.1 (plan v0.53.1-segmented-layout): a fixed-width container (CSSOM) — the layout level (data-layout) is decided after the upgrade; text-bearing boxes / track sizes follow the platform font metrics (height / width / margin-left / grid-template-columns excluded)."
     }
   ],
   "td-rating": [

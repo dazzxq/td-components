@@ -2,6 +2,30 @@
 
 All notable changes to **td-components** are documented here.
 
+## 0.53.1
+
+**Vá: `td-choice-group variant="segmented"` trong container hẹp** (dsuite: sidebar 216 px — các ô xuống dòng không đều, thanh
+không giãn hết chiều rộng). Plan `docs/internal/plans/v0.53.1-segmented-layout.md` (Codex plan-review APPROVE 7 vòng,
+impl-review 2 vòng APPROVE). Đổi giao diện nhỏ ở `size="sm"` — `docs/upgrading/breaking-changes.md#0531`.
+
+### Fixed
+
+- Một quyết định bố cục cho **cả thanh**, không bao giờ lẫn: `equal` (ô bằng nhau, icon + chữ cùng dòng) → `fit` (cùng dòng,
+  ô theo nội dung + chia đều phần dư) → `stacked` (icon trên chữ ở mọi ô). Trạng thái chỉ đọc `data-layout` /
+  `data-overflow` trên `.td-choice__options`. 3 ô + icon `sm` ở 216 px nằm trên một dòng.
+- Thanh không bao giờ làm tràn trang: hẹp quá (ô ≥ 44 px trên cảm ứng) thì cuộn ngang **bên trong** thanh, cả trước khi JS nạp;
+  bàn phím / đổi chọn bằng code luôn đưa ô được chọn vào tầm nhìn (LTR + RTL).
+
+### Added
+
+- `stretch` (attribute + property; PHP `'stretch' => true`): thanh giãn hết container.
+- Token `--td-choice-seg-gap`, `--td-choice-seg-px`, `--td-choice-seg-font`, `--td-choice-seg-icon`, `--td-choice-seg-icon-gap`;
+  method `relayout()` (đổi token kích thước lúc chạy mà chiều rộng không đổi).
+
+### Changed
+
+- `size="sm"` gọn hơn (đệm ngang 6 px, icon 16 px, khoảng icon 4 px, chữ `text-xs`) để vừa sidebar / menu hẹp.
+
 ## 0.53.0
 
 **`TdMenu`: item `type: 'custom'` — đặt bất kỳ Element nào vào menu** (dsuite: thanh chọn theme trong menu tài khoản; owner:

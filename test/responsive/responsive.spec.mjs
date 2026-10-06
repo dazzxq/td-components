@@ -567,6 +567,8 @@ async function runConfig(browser, c) {
       const errs = [];
       const hit = (a, b) => a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
       for (const el of document.querySelectorAll('td-choice-group')) {
+        // v0.53.1: an overflowing segmented rail scrolls its segments inside itself (checked by SEG_CHECK below)
+        if (el.querySelector('.td-choice__options[data-overflow]')) continue;
         const host = el.getBoundingClientRect();
         const faces = [...el.querySelectorAll('.td-choice__option')].map((o) => o.getBoundingClientRect());
         faces.forEach((r, i) => {
@@ -585,28 +587,30 @@ async function runConfig(browser, c) {
       return errs;
     });
     check(tag, 'choice group + stepper (v0.49.0)', v049Err);
-    // v0.52.0: segmented — equal segments (±1 px) inside the host / column, labels wrap (never cut); a toned / locked switch
-    // keeps its switch box inside the host
-    const v052Err = await page.evaluate(() => {
+    // v0.52.0 → v0.53.1: segmented — ONE layout per rail (never mixed), equal segments when data-layout="equal", the rail
+    // inside its host (overflow scrolls INSIDE the rail, exactly when minRail > room — the shared formula), labels never
+    // cut; a toned / locked switch keeps its switch box inside the host
+    const v052Err = await page.evaluate(SEG_CHECK, 'td-choice-group[variant="segmented"]');
+    v052Err.push(...await page.evaluate(() => {
       const errs = [];
-      for (const el of document.querySelectorAll('td-choice-group[variant="segmented"]')) {
-        const host = el.getBoundingClientRect();
-        const opts = [...el.querySelectorAll('.td-choice__option')].map((o) => o.getBoundingClientRect());
-        const ws = opts.map((r) => r.width);
-        if (Math.max(...ws) - Math.min(...ws) > 1) errs.push(`#${el.id}: unequal segments ${ws.map((w) => w.toFixed(1)).join('/')}`);
-        if (opts.some((r) => r.right > host.right + 0.5)) errs.push(`#${el.id}: a segment outside the host`);
-        for (const t of el.querySelectorAll('.td-choice__text:not(.td-sr-only)')) {
-          if (t.scrollWidth > t.clientWidth + 1) errs.push(`#${el.id}: a cut label`);
-        }
-      }
       for (const el of document.querySelectorAll('td-toggle[tone], td-toggle[locked]')) {
         const host = el.getBoundingClientRect();
         const tr = el.querySelector('.td-switch__track').getBoundingClientRect();
         if (tr.right > host.right + 0.5 || tr.left < host.left - 0.5) errs.push(`#${el.id}: switch outside the host`);
       }
       return errs;
-    });
-    check(tag, 'segmented + toned / locked switch (v0.52.0)', v052Err);
+    }));
+    // v0.53.1: the dsuite sidebar (216 px, sm, stretch) is inline, filling its column
+    v052Err.push(...await page.evaluate(() => {
+      const el = document.querySelector('#rsp-seg-side');
+      if (!el || el.getBoundingClientRect().width < 215) return []; // a viewport narrower than the column: covered by the generic check
+      const r = el.querySelector('.td-choice__options');
+      const errs = [];
+      if (!['equal', 'fit'].includes(r.getAttribute('data-layout'))) errs.push(`#rsp-seg-side: ${r.getAttribute('data-layout')} (inline expected)`);
+      if (Math.abs(r.getBoundingClientRect().width - el.getBoundingClientRect().width) > 1) errs.push('#rsp-seg-side: the rail does not fill 216 px');
+      return errs;
+    }));
+    check(tag, 'segmented (v0.53.1 layout levels) + toned / locked switch (v0.52.0)', v052Err);
     if (errors.length) check(tag, 'page errors', errors);
 
     if (!c.fallback) await runOverlays(page, c, tag, shot);
@@ -617,6 +621,51 @@ async function runConfig(browser, c) {
   } finally {
     await context.close();
   }
+}
+
+/**
+ * v0.53.1 (plan v0.53.1-segmented-layout QĐ 1, QĐ 5): in-page check of every segmented rail under `sel` — one relation
+ * icon ↔ label for every segment (never mixed) matching data-layout, equal widths in `equal`, the rail inside its host, the
+ * page never overflowing horizontally, labels never cut, and data-overflow ⇔ the shared formula fed with the component's
+ * own measurements (src/utils/segmented-layout.js, imported in the page).
+ */
+async function SEG_CHECK(sel) {
+  const { decideLayout } = await import('/src/utils/segmented-layout.js');
+  const errs = [];
+  for (const el of document.querySelectorAll(sel)) {
+    const host = el.getBoundingClientRect();
+    if (!host.width) continue;
+    const rail = el.querySelector('.td-choice__options');
+    const layout = rail.getAttribute('data-layout');
+    if (!['equal', 'fit', 'stacked'].includes(layout)) { errs.push(`#${el.id}: data-layout ${layout}`); continue; }
+    const rel = [...el.querySelectorAll('.td-choice__face')].map((f) => {
+      const i = f.querySelector('.td-choice__icon');
+      const t = f.querySelector('.td-choice__text:not(.td-sr-only)');
+      if (!i || !t) return null;
+      const a = i.getBoundingClientRect();
+      const b = t.getBoundingClientRect();
+      if (a.bottom <= b.top + 1) return 'stacked';
+      const ic = (a.top + a.bottom) / 2;
+      return ic > b.top && ic < b.bottom ? 'inline' : 'other';
+    }).filter(Boolean);
+    if (new Set(rel).size > 1) errs.push(`#${el.id}: mixed ${rel.join(',')}`);
+    if (rel.length && rel[0] !== (layout === 'stacked' ? 'stacked' : 'inline')) errs.push(`#${el.id}: ${rel[0]} in ${layout}`);
+    if (layout === 'equal') {
+      const ws = [...el.querySelectorAll('.td-choice__option')].map((o) => o.getBoundingClientRect().width);
+      if (Math.max(...ws) - Math.min(...ws) > 1) errs.push(`#${el.id}: unequal segments ${ws.map((w) => w.toFixed(1)).join('/')}`);
+    }
+    const rb = rail.getBoundingClientRect();
+    if (rb.right > host.right + 0.5 || rb.left < host.left - 0.5) errs.push(`#${el.id}: the rail outside its host`);
+    for (const t of el.querySelectorAll('.td-choice__text:not(.td-sr-only)')) if (t.scrollWidth > t.clientWidth + 1) errs.push(`#${el.id}: a cut label`);
+    const m = el._segMeasure;
+    if (m) {
+      const want = decideLayout({ avail: m.avail, inline: m.inline, min: m.min, gap: m.gap, pad: m.pad });
+      if (want.overflow !== rail.hasAttribute('data-overflow')) errs.push(`#${el.id}: data-overflow ${rail.hasAttribute('data-overflow')} ≠ formula ${want.overflow}`);
+    }
+    if (rail.hasAttribute('data-overflow') !== (rail.scrollWidth > rail.clientWidth)) errs.push(`#${el.id}: data-overflow ≠ the rail scrolls`);
+  }
+  if (document.documentElement.scrollWidth > window.innerWidth) errs.push('the page overflows horizontally');
+  return errs;
 }
 
 async function runOverlays(page, c, tag, shot) {
@@ -646,6 +695,8 @@ async function runOverlays(page, c, tag, shot) {
       if (s.ready) await page.locator(s.ready).first().waitFor({ state: 'visible' });
       await page.evaluate(settle);
       const m = await page.evaluate(panel, s.panel);
+      // v0.53.1: the segmented theme row of the menu panel (recipe: sm + stretch) — the same layout invariants
+      if (s.name === 'menu-panel') check(tag, 'menu-panel: segmented layout (v0.53.1)', await page.evaluate(SEG_CHECK, '.td-menu--panel td-choice-group'));
       const vp = await page.evaluate(() => ({ w: document.documentElement.clientWidth, h: window.innerHeight }));
       if (s.picker) {
         // always full viewport (v0.33 decision 4); inner layout: toolbar wraps < 720 (ADR 0014), one row ≥ 720
