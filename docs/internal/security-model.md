@@ -46,6 +46,13 @@ Không bao giờ đưa input của người dùng cuối qua các đường này
   khi logout / login / đổi tenant hoặc quyền trong SPA — nếu không, user sau có thể thấy fragment của user trước. Nhãn, tên truy cập,
   trạng thái luôn là text.
 
+- **PHP `td_carousel($slides)`** (0.50.0, **opt-in tường minh** sau Codex review S1): chỉ slide bọc trong
+  `Td::html($markup)` (`TdComponents\TdTrustedHtml`) được in **nguyên văn** bên trong `div.td-carousel__slide` — markup do
+  template **của site** sinh (thẻ sản phẩm…), kit không lọc. Chuỗi thường là **chữ** (escape bằng `Td::e`). Không bao giờ
+  bọc HTML do người dùng nhập (mô tả, bình luận…) trong `Td::html()`; template phải tự escape dữ liệu khi dựng thẻ. Phần
+  tử khác bị bỏ (+ `E_USER_WARNING`). Phía JS **không** có hatch tương ứng: `<td-carousel>` không bao giờ đọc / ghi
+  `innerHTML` của slide (chỉ di chuyển node của site một lần và đặt `class` / `role` / `aria-*` trên slide).
+
 Dưới CSP strict, nội dung đi qua các hatch này cũng phải "sạch CSP" (không `style="…"`, không `<style>`), vì lib
 không bảo đảm được phần đó.
 
@@ -409,6 +416,33 @@ trang người dùng [check-matrix.md](../components/check-matrix.md#bảo-mật
 | Stepper | Không thêm đường dữ liệu mới: bấm − / + đi qua `_stepBy` → `_commitValue` chuẩn BigInt sẵn có (cùng cổng 30 chữ số). SSR: hai nút được so đúng `render()` (`_ssrStepOk`) rồi mới được miễn khỏi luật "đúng một control" (`TdFormElement._ssrVerifiedParts()`); cây con của chúng vẫn qua allowlist thẻ / thuộc tính; nút `type=submit` / thuộc tính lạ → từ chối | `td-number-input.js`, `td-number-input.ssr.engines.browser-test.js` |
 
 Server **vẫn phải** kiểm giá trị lựa chọn thuộc tập hợp lệ của sản phẩm, tồn kho và giới hạn giỏ (kit chỉ là UI).
+
+## 6k. `td-rating`, `td-carousel` (v0.50.0)
+
+- **Chữ chỉ là text**: nhãn (`TdRating.labels`, `TdCarousel.labels`, `label` của carousel) đi qua `textContent` /
+  `setAttribute` (JS) và `Td::e` (PHP); template `{value}` / `{n}`… thay **một lượt** (giá trị không bao giờ được mở rộng
+  lại). Không có option `labels` ở PHP (R13). Không có hatch HTML mới phía JS.
+- **Số được kiểm theo dạng trước khi dùng**: `value` của rating chỉ nhận số thập phân thường (`/^\d+(\.\d+)?$/`, ≤ 16 ký tự)
+  hoặc số hữu hạn; `max` 1–10; `count` chữ số ≤ 15; carousel `per_view` 1–6, `dots` / `step` enum. Sai → mặc định / không
+  có đánh giá (+ cảnh báo), không bao giờ chèn chuỗi thô vào attribute / CSS.
+- **CSP**: tô sao chính xác và khung carousel chỉ dùng CSSOM (`style.setProperty('--_td-rating-fill', …)`); PHP không in
+  `style="…"` (bậc `data-fill` 10 % do `td.css`). Probe hướng cuộn RTL dựng phần tử ẩn bằng CSSOM. CSP states
+  `td-rating.*`, `td-carousel.*`: 0 violation.
+- **Khung carousel (Codex review S2)**: mọi node khung kit sở hữu (viewport, track, controls, nút, bộ đếm, khung chấm,
+  từng chấm `button[type=button]`, vùng thông báo) phải đúng thẻ + class + **allowlist attribute** (`FRAME_ATTRS` trong
+  `td-carousel.js`); có attribute khác (`onclick`, `form`, `formaction`, `popovertarget`, `style`…) → **thay** bằng node mới
+  của kit (không gỡ tại chỗ). Gắn lại sau khi tách (`canRebind()` = false) chạy lại cùng phép kiểm: node còn đúng giữ nguyên
+  (identity + focus), node bị sửa lúc tách bị thay; slide không bao giờ bị chạm. Vòng 2: viewport được kiểm **ở mọi
+  nhánh** (kể cả khi thiếu track), và chỉ chứa đúng track — phần tử khác trong viewport thành **slide** (nội dung của site,
+  như con lạc của host; kit không lọc nội dung slide), không bao giờ là một phần của khung.
+- **Cổng SSR**: `rating@1` nhận tại chỗ chỉ khi con của host **bằng đúng** cây JS tự dựng (`isEqualNode`, kể cả nhãn); lệch
+  (thẻ lạ, `onclick`, nhãn khác) → render lại từ attribute. `carousel@1` không bao giờ render lại slide; phần **khung** lệch
+  (nút là `<a href="javascript:…">`, phần tử thừa trong thanh điều khiển) bị thay bằng phần của kit / bỏ đi.
+- **`attrs` của PHP**: allowlist + `aria-*` / `data-*`; tên kit sở hữu (`value`, `max`, `role`, `aria-label`, `data-td-*`…) bị
+  chặn (`td__reserve`).
+- Test: `test/php/td-ssr-rating.test.js`, `test/php/td-ssr-carousel.test.js` (escape `<script>`, `attrs` độc hại, option
+  `labels` bị bỏ qua), `src/display/td-v050-rating.engines.browser-test.js` / `td-v050-carousel.engines.browser-test.js`
+  (markup bị sửa không chạy được `onclick` / link `javascript:`).
 
 ## 7. Trách nhiệm của site
 

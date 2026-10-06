@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.49.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.49.0', __DIR__ . '/public/assets/vendor/td-components/0.49.0');
+ *   require_once '/path/to/vendor/td-components/0.50.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.50.0', __DIR__ . '/public/assets/vendor/td-components/0.50.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -59,6 +59,25 @@ namespace TdComponents {
     use InvalidArgumentException;
     use LogicException;
     use RuntimeException;
+
+    /**
+     * v0.50.0 (Codex review S1): markup the CALLER vouches for — the explicit opt-in of a raw-HTML hatch (td_carousel
+     * slides). Build it with Td::html() from the site's own templates only; NEVER wrap user input. PHP 8.0: no readonly.
+     */
+    final class TdTrustedHtml
+    {
+        private string $html;
+
+        public function __construct(string $html)
+        {
+            $this->html = $html;
+        }
+
+        public function html(): string
+        {
+            return $this->html;
+        }
+    }
 
     final class Td
     {
@@ -233,6 +252,16 @@ namespace TdComponents {
         public const COLOR_MAX_INPUT = 64;
         public const COLOR_PRESET_CANDIDATES = 192;
         public const COLOR_PRESET_STRING = 192 * 64;
+        /** v0.50.0: td_rating (always the element <td-rating> + stars / text — read-only, no JS needed). */
+        public const SSR_RATING = 'rating@1';
+        /** v0.50.0: texts of td_rating = TdRating.labels defaults (R13: one static set per site; a site overriding the JS
+         * labels gets a re-render with them). */
+        public const RATING_LABELS = ['value' => '{value} trên {max} sao', 'count' => '({count} đánh giá)', 'none' => 'Chưa có đánh giá'];
+        /** v0.50.0: td_carousel (always the element <td-carousel> + the frame around the slides; native scroll-snap without JS). */
+        public const SSR_CAROUSEL = 'carousel@1';
+        /** v0.50.0: frame texts of td_carousel = TdCarousel.labels defaults (R13: one static set per site). */
+        public const CAROUSEL_LABELS = ['carousel' => 'Băng chuyền', 'roleCarousel' => 'băng chuyền', 'roleSlide' => 'mục',
+            'slide' => '{n} / {total}', 'prev' => 'Mục trước', 'next' => 'Mục tiếp theo', 'dots' => 'Chọn trang'];
         /** v0.36.0: tones / sizes of td_action_button (= TdActionButton). */
         public const ACTION_TONES = ['standard', 'warning', 'danger'];
         public const ACTION_SIZES = ['sm', 'md', 'lg'];
@@ -362,7 +391,7 @@ namespace TdComponents {
             'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.49.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.50.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -517,6 +546,15 @@ namespace TdComponents {
         }
 
         // --- Escaping / attributes / URLs --------------------------------------------------------------------------
+
+        /**
+         * v0.50.0: mark markup produced by the site's OWN templates as trusted (td_carousel slides). Printed as is — never
+         * wrap user input (descriptions, comments, names…): escape it inside your template first.
+         */
+        public static function html(string $html): TdTrustedHtml
+        {
+            return new TdTrustedHtml($html);
+        }
 
         /** HTML escape for text nodes and double-quoted attribute values. */
         public static function e(string|int|float|null $value): string
@@ -4159,6 +4197,232 @@ namespace {
         $v = (string) preg_replace('/\r\n?/', "\n", $v);
         $clean = preg_replace('/[\x{0}-\x{8}\x{B}-\x{1F}\x{7F}-\x{9F}]/u', '', $v);
         return $clean === null ? null : td__utf8_prefix($clean, $max);
+    }
+
+    /**
+     * v0.50.0 read-only star rating (contract rating@1, plan v0.50.0-rating-carousel R1–R13) — ALWAYS the element
+     * `<td-rating data-td-ssr="rating@1">` + the full tree <td-rating> builds (no JS needed: td.css paints it; the module
+     * adopts it in place): [`span.td-rating__value[aria-hidden]` "4,5" when show_value] + `span.td-rating__stars[aria-hidden]`
+     * > `max` × `span.td-rating__star[data-fill=0|10|…|100]` > two `svg.td-icon[data-icon=star]` (`td-rating__off`,
+     * `td-rating__on`) + `span.td-sr-only` "4,5 trên 5 sao" + [`span.td-rating__count` "(1.234 đánh giá)"]. No rating
+     * ($value null / not a number) → `data-empty` + `span.td-rating__none` "Chưa có đánh giá" (no stars, count ignored).
+     * $value: int / float (negative → 0) or a plain decimal string (`/^\d+(\.\d+)?$/`, ≤ 16 characters); clamped to max.
+     * Options: max (integer 1–10, default 5; invalid → 5 + E_USER_WARNING), precision ('half' default | 'exact'), count
+     * (integer ≥ 0), show_value (bool), size ('s' | 'm' | 'l'), id, class, attrs (host: allowlisted + aria-* / data-*; owned
+     * names and data-td-* reserved). No `labels` option (R13): the kit's default Vietnamese texts (Td::RATING_LABELS).
+     * Structured data (AggregateRating) is the site's job — from real reviews only.
+     */
+    function td_rating(int|float|string|null $value, array $o = []): string
+    {
+        $L = Td::RATING_LABELS;
+        $v = td__rating_value($value);
+        $max = 5;
+        $rawMax = $o['max'] ?? null;
+        if ($rawMax !== null && $rawMax !== '') {
+            $m = null;
+            if (is_int($rawMax)) {
+                $m = $rawMax;
+            } elseif (is_float($rawMax) && is_finite($rawMax) && floor($rawMax) === $rawMax) {
+                $m = (int) $rawMax;
+            } elseif (is_string($rawMax) && preg_match('/^\d{1,2}$/', $rawMax)) {
+                $m = (int) $rawMax;
+            }
+            if ($m !== null && $m >= 1 && $m <= 10) {
+                $max = $m;
+            } else {
+                trigger_error('td_rating: max must be an integer 1–10 — 5 used', E_USER_WARNING);
+            }
+        }
+        $exact = ($o['precision'] ?? null) === 'exact';
+        $count = td__rating_count($o['count'] ?? null);
+        $size = in_array($o['size'] ?? null, ['s', 'l'], true) ? $o['size'] : null;
+        $show = !empty($o['show_value']);
+        $taken = [];
+        $html = '<td-rating' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_RATING,
+            'id' => td__str($o['id'] ?? null),
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'value' => $v === null ? null : $v[1],
+            'max' => (string) $max,
+            'precision' => $exact ? 'exact' : null,
+            'count' => $count,
+            'show-value' => $show,
+            'size' => $size,
+            'data-empty' => $v === null,
+        ], $taken);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        // Codex review I2: microdata `itemprop` on the host (the site's own AggregateRating) — a property-name list only
+        $itemprop = $extra['itemprop'] ?? null;
+        unset($extra['itemprop']);
+        if (is_string($itemprop) && preg_match('/^[A-Za-z][A-Za-z0-9_.:\/-]{0,127}( [A-Za-z][A-Za-z0-9_.:\/-]{0,127}){0,7}$/', $itemprop)) {
+            $html .= Td::ownAttrs(['itemprop' => $itemprop], $taken);
+        }
+        $taken = td__reserve(['id', 'class', 'value', 'max', 'precision', 'count', 'show-value', 'size', 'data-empty'], $extra, $taken);
+        $html .= Td::attrs($extra, $taken) . '>';
+        if ($v === null) {
+            return $html . '<span class="td-rating__none">' . Td::e($L['none']) . '</span></td-rating>';
+        }
+        $val = min($v[0], (float) $max);
+        $n = (int) td__js_round($val * 10);
+        $text = intdiv($n, 10) . ($n % 10 ? ',' . ($n % 10) : '');
+        if ($show) {
+            $html .= '<span class="td-rating__value" aria-hidden="true">' . Td::e($text) . '</span>';
+        }
+        $shown = $exact ? $val : td__js_round($val * 2) / 2;
+        $off = Td::icon('star', 'm', '', 'td-rating__off');
+        $on = Td::icon('star', 'm', '', 'td-rating__on');
+        $html .= '<span class="td-rating__stars" aria-hidden="true">';
+        for ($i = 0; $i < $max; $i++) {
+            $f = min(1.0, max(0.0, $shown - $i));
+            $html .= '<span class="td-rating__star" data-fill="' . ((int) td__js_round($f * 10) * 10) . '">' . $off . $on . '</span>';
+        }
+        $html .= '</span><span class="td-sr-only">' . Td::e(strtr($L['value'], ['{value}' => $text, '{max}' => (string) $max])) . '</span>';
+        if ($count !== null) {
+            $html .= '<span class="td-rating__count">'
+                . Td::e(strtr($L['count'], ['{count}' => (string) preg_replace('/\B(?=(\d{3})+$)/', '.', $count)])) . '</span>';
+        }
+        return $html . '</td-rating>';
+    }
+
+    /**
+     * v0.50.0 horizontal carousel (contract carousel@1, plan v0.50.0-rating-carousel C1–C21, ADR 0024) — ALWAYS the
+     * element `<td-carousel data-td-ssr="carousel@1" role="region" aria-roledescription="băng chuyền" aria-label>` + the
+     * frame <td-carousel> builds: `div.td-carousel__viewport` > `div.td-carousel__track` > one `div.td-carousel__slide
+     * [role=group][aria-roledescription=mục][aria-label="n / total"]` per slide; `div.td-carousel__controls[data-td-js-only]`
+     * (prev button, counter, next button, dots group — invisible until the module loads, their box reserved) + the live
+     * region. Without JS the viewport is a native scroll-snap strip: every slide is in the page (crawlable, Tab-reachable).
+     * Pages are PREDICTED as max(1, ceil(n / per_view)) → `data-td-pages`, `data-td-rows-narrow`, `data-td-rows-wide`
+     * (controlsLayout(), = src/utils/carousel-model.js); one page → the controls are `hidden`. The module re-measures.
+     * $slides (Codex review S1): each entry is Td::html($markup) — markup of the site's OWN templates (product cards…),
+     * printed as is (the explicit opt-in raw-HTML hatch, docs/internal/security-model.md §2; never wrap user input) — or a
+     * plain string, printed as escaped TEXT. Anything else is dropped + one E_USER_WARNING. Options (text escaped): label (region name — recommended; missing → "Băng chuyền" + one
+     * E_USER_WARNING), per_view (integer 1–6), dots ('auto' | 'on' | 'off'), step ('page' | 'slide'), id, class, attrs
+     * (host: allowlisted + aria-* / data-*; owned names and data-td-* reserved). No `labels` option (R13).
+     */
+    function td_carousel(array $slides, array $o = []): string
+    {
+        $L = Td::CAROUSEL_LABELS;
+        $list = [];
+        $dropped = 0;
+        foreach ($slides as $s) {
+            if ($s instanceof TdComponents\TdTrustedHtml) {
+                $list[] = $s->html();          // explicit opt-in: the site's own markup (Td::html)
+            } elseif (is_string($s)) {
+                $list[] = Td::e($s);           // a plain string is TEXT (Codex review S1)
+            } else {
+                $dropped++;
+            }
+        }
+        if ($dropped) {
+            trigger_error("td_carousel: $dropped slide(s) dropped — each slide is a string (text) or Td::html(markup)", E_USER_WARNING);
+        }
+        $label = isset($o['label']) && is_string($o['label']) && trim($o['label']) !== '' ? trim($o['label']) : null;
+        if ($label === null) {
+            trigger_error('td_carousel: give the carousel a `label` (name of the region) — the default name is used', E_USER_WARNING);
+        }
+        $pv = $o['per_view'] ?? null;
+        $perView = is_int($pv) && $pv >= 1 && $pv <= 6 ? $pv
+            : (is_string($pv) && preg_match('/^[1-6]$/', $pv) ? (int) $pv : null);
+        $dots = in_array($o['dots'] ?? null, ['on', 'off'], true) ? $o['dots'] : null;
+        $step = ($o['step'] ?? null) === 'slide' ? 'slide' : null;
+        $n = count($list);
+        $pages = max(1, (int) ceil($n / ($perView ?? 1)));
+        [$hidden, $narrow, $wide] = td__carousel_layout($pages, $dots ?? 'auto');
+        $taken = [];
+        $html = '<td-carousel' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_CAROUSEL,
+            'id' => td__str($o['id'] ?? null),
+            'class' => ltrim(Td::classTokens($o['class'] ?? null)) ?: null,
+            'label' => $label,
+            'per-view' => $perView === null ? null : (string) $perView,
+            'dots' => $dots,
+            'step' => $step,
+            'data-td-pages' => (string) $pages,
+            'data-td-rows-narrow' => (string) $narrow,
+            'data-td-rows-wide' => (string) $wide,
+            'role' => 'region',
+            'aria-roledescription' => $L['roleCarousel'],
+            'aria-label' => $label ?? $L['carousel'],
+        ], $taken);
+        $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
+        $taken = td__reserve(['id', 'class', 'label', 'per-view', 'dots', 'step', 'role', 'aria-roledescription', 'aria-label'], $extra, $taken);
+        $html .= Td::attrs($extra, $taken) . '><div class="td-carousel__viewport"><div class="td-carousel__track">';
+        foreach ($list as $i => $s) {
+            $html .= '<div class="td-carousel__slide" role="group" aria-roledescription="' . Td::e($L['roleSlide']) . '" aria-label="'
+                . Td::e(strtr($L['slide'], ['{n}' => (string) ($i + 1), '{total}' => (string) $n])) . '">' . $s . '</div>';
+        }
+        return $html . '</div></div>'
+            . '<div class="td-carousel__controls" data-td-js-only' . ($hidden ? ' hidden' : '') . '>'
+            . '<button type="button" class="td-carousel__btn" data-td-carousel="prev" aria-label="' . Td::e($L['prev']) . '">' . Td::icon('prev') . '</button>'
+            . '<span class="td-carousel__counter" aria-hidden="true"></span>'
+            . '<button type="button" class="td-carousel__btn" data-td-carousel="next" aria-label="' . Td::e($L['next']) . '">' . Td::icon('next') . '</button>'
+            . '<div class="td-carousel__dots" role="group" aria-label="' . Td::e($L['dots']) . '"></div></div>'
+            . '<p class="td-sr-only" role="status" aria-live="polite" aria-atomic="true"></p></td-carousel>';
+    }
+
+    /**
+     * @internal C21 controlsLayout(P, dots) of src/utils/carousel-model.js → [hidden, rows narrow, rows wide ('inline' | n)].
+     * @return array{0: bool, 1: int, 2: int|string}
+     */
+    function td__carousel_layout(int $p, string $dots): array
+    {
+        if ($p <= 1 || $dots === 'off') {
+            return [$p <= 1, 0, 0];
+        }
+        $narrow = (int) ceil($p / 6);
+        $wide = $p <= 8 ? 'inline' : (int) ceil($p / 8);
+        if ($dots !== 'on') {
+            $narrow = $narrow > 2 ? 0 : $narrow;
+            $wide = $wide !== 'inline' && $wide > 2 ? 0 : $wide;
+        }
+        return [false, $narrow, $wide];
+    }
+
+    /**
+     * @internal td_rating value (= parseValue + formatValueAttr of src/utils/rating-model.js) → [float, attribute string]
+     * or null: a number (finite, negative → 0; attribute rounded to 4 decimals, no trailing zeros) or a plain decimal
+     * string ≤ 16 characters (printed as given).
+     */
+    function td__rating_value(mixed $v): ?array
+    {
+        if (is_int($v) || is_float($v)) {
+            if (!is_finite((float) $v)) {
+                return null;
+            }
+            if ((float) $v >= 1e11) { // = MAX_NUMBER of rating-model.js: ×10000 stays an exact integer (Codex review I4)
+                return null;
+            }
+            $k = td__js_round(max(0.0, (float) $v) * 10000);
+            $frac = rtrim(str_pad((string) (int) fmod($k, 10000), 4, '0', STR_PAD_LEFT), '0');
+            $s = (string) (int) floor($k / 10000) . ($frac !== '' ? '.' . $frac : '');
+            return [(float) $s, $s];
+        }
+        if (!is_string($v) || strlen($v) > 16 || !preg_match('/^\d+(\.\d+)?$/', $v)) {
+            return null;
+        }
+        return [(float) $v, $v];
+    }
+
+    /**
+     * @internal JavaScript Math.round() for x ≥ 0 (ties up; PHP < 8.4 round() pre-rounds to 15 significant digits and
+     * would disagree on values like 2.4999999999999996).
+     */
+    function td__js_round(float $x): float
+    {
+        $r = floor($x);
+        return $x - $r >= 0.5 ? $r + 1 : $r;
+    }
+
+    /** @internal td_rating count (= parseCount): int ≥ 0 or a digit string ≤ 15 characters → canonical digits; else null. */
+    function td__rating_count(mixed $v): ?string
+    {
+        if (is_int($v)) {
+            return $v >= 0 ? (string) $v : null;
+        }
+        if (!is_string($v) || !preg_match('/^\d{1,15}$/', $v)) {
+            return null;
+        }
+        return (string) preg_replace('/^0+(?=\d)/', '', $v);
     }
 
     /** @internal v0.26.0: element mode of a form helper — per call `element` (true/false) overrides Td::configure. */

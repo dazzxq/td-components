@@ -28,6 +28,8 @@ import '/src/form/td-datetime-range.js';
 import '/src/display/td-steps.js';
 import '/src/display/td-timeline.js';
 import '/src/form/td-choice-group.js';
+import '/src/display/td-rating.js'; // v0.50.0
+import '/src/display/td-carousel.js'; // v0.50.0
 import { TdModal } from '/src/feedback/td-modal.js';
 import { TdMediaPicker } from '/src/feedback/td-media-picker.js';
 import { createMockAdapter } from '/test/fixtures/media-adapter.js';
@@ -141,6 +143,11 @@ for (const state of ['text', 'tones', 'summary']) CASES.push({ kind: 'v045', v: 
 // inline layouts), kind labels (Thêm / Xoá / Đổi) vs the real --td-color-bg and --td-color-surface, the <summary> label at
 // rest and on its pressed fill — computed colours (`pairs`), light + dark.
 for (const state of ['table', 'inline', 'summary']) CASES.push({ kind: 'v046', v: 'diff', state, pageOnly: true });
+// v0.50.0 (plan v0.50.0-rating-carousel R7 / C15): td-rating — the filled star's edge ≥ 3.2 (the amber fill alone is 2.15
+// on white), count / "Chưa có đánh giá" / shown value ≥ 4.7; td-carousel — resting dot ≥ 3.2, current dot ≥ 4.7, the button
+// chevron ≥ 3.2 on its rest / pressed fill, a disabled (end) chevron ≥ 2.2 — over the page, --td-color-bg and
+// --td-color-surface (computed colours, light + dark).
+for (const state of ['rating', 'carousel']) CASES.push({ kind: 'v050', v: state, state, pageOnly: true });
 // v0.36.0 colours/action-button (plan QĐ 12, 18–26): computed-colour pairs (page only, light + dark). Solid semantic
 // tokens: label vs fill and vs hover ≥ 4.7 (buttons / badges read them); badge -ink (outline / stamp) vs the page ≥ 4.7;
 // badge edge vs its own fill / white / #f4f4f5 ≥ 1.6 (light theme); alert icon vs the alert fill ≥ 3.2 and the
@@ -1406,6 +1413,61 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
         { what: 'cell text on the selected tint + hover wash', fg: text, bg: over(tok('--td-table-row-hover'), sel), min: 4.7 }];
     const b = tr.getBoundingClientRect();
     return { rect: { x: b.x, y: b.y, width: b.width, height: b.height }, ink: {}, opacity: 1, hover: false, name: `table-select:${c.v}:${c.state}`, pairs };
+  } else if (c.kind === 'v050') {
+    const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+    const over = overRgb;
+    const raf2 = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const probe = document.createElement('span');
+    stage.appendChild(probe);
+    const tok = (name) => { probe.style.setProperty('color', `var(${name})`); return getComputedStyle(probe).color; };
+    const grounds = [['page', page], ['--td-color-bg', over(tok('--td-color-bg'), page)], ['--td-color-surface', over(tok('--td-color-surface'), page)]];
+    probe.remove();
+    const pairs = [];
+    let target;
+    if (c.v === 'rating') {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = '<td-rating value="4.5" count="1234" show-value></td-rating> <td-rating></td-rating>';
+      stage.appendChild(wrap);
+      await raf2();
+      const [r1, r2] = wrap.querySelectorAll('td-rating');
+      const on = getComputedStyle(r1.querySelector('.td-rating__on'));
+      for (const [n, g] of grounds) {
+        pairs.push({ what: `filled star edge vs ${n}`, fg: on.stroke, bg: g, min: 3.2 },
+          { what: `count vs ${n}`, fg: getComputedStyle(r1.querySelector('.td-rating__count')).color, bg: g, min: 4.7 },
+          { what: `shown value vs ${n}`, fg: getComputedStyle(r1.querySelector('.td-rating__value')).color, bg: g, min: 4.7 },
+          { what: `"Chưa có đánh giá" vs ${n}`, fg: getComputedStyle(r2.querySelector('.td-rating__none')).color, bg: g, min: 4.7 });
+      }
+      target = r1;
+    } else {
+      const wrap = document.createElement('div');
+      wrap.style.setProperty('width', '600px');
+      wrap.innerHTML = `<td-carousel label="Đo tương phản" per-view="2">${'<div><a href="#x">Mục</a></div>'.repeat(6)}</td-carousel>`;
+      stage.appendChild(wrap);
+      await raf2();
+      const h = wrap.querySelector('td-carousel');
+      // the current dot's pill grows / darkens with a 150 ms transition: read the settled colours
+      await Promise.all(h.getAnimations({ subtree: true }).map((an) => an.finished.catch(() => {})));
+      await raf2();
+      const dots = h.querySelectorAll('.td-carousel__dot');
+      const dotInk = (d) => getComputedStyle(d, '::before').backgroundColor;
+      const prev = h.querySelector('[data-td-carousel="prev"]'); // at the start: aria-disabled
+      const next = h.querySelector('[data-td-carousel="next"]');
+      for (const [n, g] of grounds) {
+        pairs.push({ what: `resting dot vs ${n}`, fg: dotInk(dots[1]), bg: g, min: 3.2 },
+          { what: `current dot vs ${n}`, fg: dotInk(dots[0]), bg: g, min: 4.7 });
+        const bg = over(getComputedStyle(next).backgroundColor, g);
+        pairs.push({ what: `chevron vs button fill on ${n}`, fg: getComputedStyle(next.querySelector('svg')).color, bg, min: 3.2 },
+          { what: `disabled chevron vs its fill on ${n}`, fg: getComputedStyle(prev.querySelector('svg')).color, bg: over(getComputedStyle(prev).backgroundColor, g), min: 2.2 });
+      }
+      next.setAttribute('data-td-pressed', '');
+      await raf2();
+      for (const [n, g] of grounds) {
+        pairs.push({ what: `chevron vs pressed fill on ${n}`, fg: getComputedStyle(next.querySelector('svg')).color, bg: over(getComputedStyle(next).backgroundColor, g), min: 3.2 });
+      }
+      target = h;
+    }
+    const r0 = target.getBoundingClientRect();
+    return { rect: { x: r0.x, y: r0.y, width: r0.width, height: r0.height }, ink: {}, opacity: 1, hover: false, name: `v050:${c.v}:${c.state}`, pairs };
   } else if (c.kind === 'v039') {
     const page = theme === 'dark' ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
     const over = overRgb;

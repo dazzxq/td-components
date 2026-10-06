@@ -26,3 +26,7 @@
 form.sb-stack.sb-narrow { align-items: stretch; }
 .sb-stack > td-color-picker, .sb-stack td-color-picker { width: min(100%, 20rem); }
 .sb-dark-region { padding: 16px; color: var(--td-color-text); background: var(--td-color-bg); border-radius: 12px; }
+/* v0.50.0: td-carousel slide cards + responsive / fixed-width examples (site CSS, token overrides) */
+.sb-card { display: flex; flex-direction: column; gap: 6px; padding: 16px; min-height: 120px; box-sizing: border-box; border: 1px solid var(--td-color-border); border-radius: 12px; background: var(--td-color-surface); color: var(--td-color-text); text-decoration: none; font: 14px/1.4 var(--td-font-sans); }
+.sb-carousel-responsive { --td-carousel-peek: 12%; --td-carousel-per-view-sm: 2; --td-carousel-per-view-lg: 4; }
+.sb-carousel-fixed { --td-carousel-slide-size: 220px; }

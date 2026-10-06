@@ -177,3 +177,21 @@ export const CHOICE_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'choice.html');
 export function renderChoiceFixture() {
   return renderPhp('choice-fixture.php');
 }
+
+// v0.50.0: td_rating (always the element <td-rating data-td-ssr="rating@1">).
+export const RATING_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'rating.fixtures.json'), 'utf8'));
+export const RATING_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'rating.html');
+
+/** Render test/ssr/rating-fixture.php (the HTML loaded by the rating engines browser test). */
+export function renderRatingFixture() {
+  return renderPhp('rating-fixture.php');
+}
+
+// v0.50.0: td_carousel (always the element <td-carousel data-td-ssr="carousel@1"> + the frame around the slides).
+export const CAROUSEL_FIXTURES = JSON.parse(readFileSync(join(SSR_DIR, 'carousel.fixtures.json'), 'utf8'));
+export const CAROUSEL_FIXTURE_FILE = join(SSR_DIR, 'fixtures', 'carousel.html');
+
+/** Render test/ssr/carousel-fixture.php (the HTML loaded by the carousel engines browser test and the gates). */
+export function renderCarouselFixture() {
+  return renderPhp('carousel-fixture.php');
+}

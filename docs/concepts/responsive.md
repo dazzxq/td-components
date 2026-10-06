@@ -40,7 +40,9 @@ if (!isCoarsePointer()) searchInput.focus();                    // không bật 
   < 480px), `td-scan-input` (0.38: chỉ báo / nút loa xuống dưới ô, dòng danh sách xếp dọc khi < 480px). `td-tabs` tự đo: tab không vừa thì hàng tab cuộn ngang, nhãn không bao giờ bị cắt. `td-filter-chips`
   (0.39): ≥ 480px chip xuống dòng, < 480px **một hàng** cuộn ngang với "Xoá tất cả" ghim cuối. `td-steps` (0.45): ngang
   < 480px → hàng marker + một dòng "Bước n/N: nhãn" (`narrow="vertical"`: bố cục dọc); `td-timeline` (0.45): < 480px giờ
-  xuống dưới tiêu đề.
+  xuống dưới tiêu đề. `td-carousel` (0.50): số
+  slide mỗi khung theo `--td-carousel-per-view[-sm|-md|-lg|-xl]` ở mốc 480 / 720 / 1024 / 1280 của **chính carousel**;
+  thanh điều khiển < 480px = hàng `[‹ k / P ›]` + hàng chấm (6 / hàng), ≥ 480px = `[‹ ● ● ━ ›]` khi ≤ 8 trang.
 - **Theo màn hình** — lớp phủ (modal, drawer, toast, lightbox, loading, popup) và điều kiện thiết bị (`pointer`,
   `hover`, chiều cao).
 

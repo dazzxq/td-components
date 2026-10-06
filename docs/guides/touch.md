@@ -15,6 +15,7 @@ Site không phải bật gì: import component như cũ là có. Trang này nói
 | **Kéo đúng ngưỡng** | Sortable / repeater / media grid: ngón tay phải di 10 px mới thành kéo (chuột 4 px như cũ, bút 8 px). Chạm nhẹ vẫn là "chạm để nhấc" (tap-to-move). |
 | **Dialog nằm trên bàn phím ảo** | Modal, sheet điện thoại, drawer, media picker co theo vùng nhìn thấy khi bàn phím mở; ô đang nhập (cả dòng lỗi) và nút ở footer luôn nhìn thấy được. |
 | **Lightbox vuốt theo ngón** | Ảnh đi theo ngón; thả qua 1/4 bề rộng (hoặc vuốt nhanh) thì sang ảnh, không thì bật về; một ảnh thì "dây chun". Vuốt từ mép màn hình vẫn là cử chỉ back của trình duyệt. |
+| **Carousel cuộn native** (0.50.0) | `<td-carousel>` chỉ dùng cuộn của trình duyệt + scroll-snap: vuốt ngang cuộn dải, vuốt dọc bắt đầu trên dải **cuộn trang** (không `pan-x`, không kẹt), vuốt hết dải không kích hoạt "back" (`overscroll-behavior-x: contain`). Không kéo bằng chuột, không cử chỉ tự viết. Nút / chấm có hình nhấn, vùng chạm ≥ 44 × 44. |
 | **`enterkeyhint` cho ô số** | `<td-number-input enterkeyhint="next">` đổi nhãn phím Enter trên bàn phím ảo (như `td-input-field`). |
 | **Nhóm lựa chọn, stepper** (0.49.0) | `td-choice-group`: mỗi lựa chọn ≥ 44 × 44, hình nhấn chỉ đổi màu, cuộn trang bắt đầu trên nhóm vẫn cuộn. `td-number-input stepper`: nút − / + ≥ 44px, `touch-action: manipulation` (bấm + nhanh nhiều lần không phóng to iOS), chạm nút không bật bàn phím ảo. |
 
@@ -61,6 +62,8 @@ layout viewport — kit nhận ra và **không** áp lần hai. Không cần là
   `width=device-width` đã bỏ trễ 300 ms).
 - **Slider**: vuốt dọc bắt đầu trên thanh slider không cuộn trang (để kéo thumb chắc tay). Đặt slider sao cho còn chỗ cuộn
   quanh nó trên điện thoại.
+- **Carousel tràn mép màn hình** (full-bleed): giữ `--td-carousel-gutter` ≥ lề trang để slide đầu không nằm trong 24 px mép
+  (vùng vuốt "back" của iOS). Đừng thêm `touch-action: pan-x` lên dải — vuốt dọc trên dải sẽ không cuộn được trang.
 - **Cắt ảnh** (`td-cropper`) là thao tác kéo thiết yếu (WCAG 2.5.7 "essential"); bàn phím (tay nắm + phím mũi tên) và ô tỉ
   lệ là cách thay thế.
 

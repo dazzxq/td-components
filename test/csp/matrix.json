@@ -53,7 +53,9 @@
       "td-diff": "/src/display/td-diff.js",
       "td-check-matrix": "/src/form/td-check-matrix.js",
       "td-color-picker": "/src/form/td-color-picker.js",
-      "td-choice-group": "/src/form/td-choice-group.js"
+      "td-choice-group": "/src/form/td-choice-group.js",
+      "td-rating": "/src/display/td-rating.js",
+      "td-carousel": "/src/display/td-carousel.js"
     },
     "tokenNative": [
       "td-button",
@@ -107,7 +109,9 @@
       "td-diff",
       "td-check-matrix",
       "td-color-picker",
-      "td-choice-group"
+      "td-choice-group",
+      "td-rating",
+      "td-carousel"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -4939,6 +4943,122 @@
         "margin-left"
       ],
       "selectorNote": "v0.49.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets (wrap, 44px targets) are gated by test:responsive and the engines tests."
+    }
+  ],
+  "td-rating": [
+    {
+      "state": "half",
+      "markup": "<td-rating value=\"4.5\" count=\"123\" show-value></td-rating>",
+      "selectors": [
+        "td-rating",
+        ".td-rating__value",
+        ".td-rating__stars",
+        ".td-rating__star",
+        ".td-rating__star[data-fill=\"50\"]",
+        ".td-rating__star[data-fill=\"50\"] .td-rating__on",
+        ".td-rating__off",
+        ".td-rating__count"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.50.0: read-only stars (data-fill 50 → clip-path from --_td-rating-fill), shown value + count text; height / width / margin-left excluded up front (text line boxes, font metrics)."
+    },
+    {
+      "state": "exact",
+      "markup": "<td-rating value=\"3.37\" precision=\"exact\"></td-rating>",
+      "selectors": [
+        ".td-rating__star[data-fill=\"40\"]",
+        ".td-rating__star[data-fill=\"40\"] .td-rating__on",
+        ".td-rating__star[data-fill=\"0\"] .td-rating__on"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.50.0: precision exact — the partly filled star gets --_td-rating-fill: 37% through CSSOM (0 violations); height / width / margin-left excluded up front (text line boxes, font metrics)."
+    },
+    {
+      "state": "empty",
+      "markup": "<td-rating count=\"5\"></td-rating>",
+      "selectors": [
+        "td-rating",
+        ".td-rating__none"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.50.0: no rating — muted text only, no stars; height / width / margin-left excluded up front (text line boxes, font metrics)."
+    }
+  ],
+  "td-carousel": [
+    {
+      "state": "default",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','720px'); window.__mount.appendChild(w); w.innerHTML=\"<td-carousel id='probe' label='Nổi bật' per-view='2'><div><a class=\\\"x\\\" href=\\\"#p1\\\">Sản phẩm 1</a></div><div><a class=\\\"x\\\" href=\\\"#p2\\\">Sản phẩm 2</a></div><div><a class=\\\"x\\\" href=\\\"#p3\\\">Sản phẩm 3</a></div><div><a class=\\\"x\\\" href=\\\"#p4\\\">Sản phẩm 4</a></div><div><a class=\\\"x\\\" href=\\\"#p5\\\">Sản phẩm 5</a></div><div><a class=\\\"x\\\" href=\\\"#p6\\\">Sản phẩm 6</a></div></td-carousel>\"; ",
+      "selectors": [
+        "td-carousel",
+        ".td-carousel__viewport",
+        ".td-carousel__track",
+        ".td-carousel__slide",
+        ".td-carousel__controls",
+        ".td-carousel__btn",
+        ".td-carousel__btn[aria-disabled=\"true\"]",
+        ".td-carousel__dots",
+        ".td-carousel__dot",
+        ".td-carousel__dot[aria-current=\"true\"]"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.50.0: hand-written slides wrapped once (viewport > track), 2 per view (attribute → token → container query basis), wide inline controls: secondary discs + page dots (current = pill), prev aria-disabled at the start; height / width / margin-left excluded up front (text line boxes, font metrics)."
+    },
+    {
+      "state": "end",
+      "setup": "const w=document.createElement('div'); w.style.setProperty('width','720px'); window.__mount.appendChild(w); w.innerHTML=\"<td-carousel id='probe' label='Nổi bật' per-view='2'><div><a class=\\\"x\\\" href=\\\"#p1\\\">Sản phẩm 1</a></div><div><a class=\\\"x\\\" href=\\\"#p2\\\">Sản phẩm 2</a></div><div><a class=\\\"x\\\" href=\\\"#p3\\\">Sản phẩm 3</a></div><div><a class=\\\"x\\\" href=\\\"#p4\\\">Sản phẩm 4</a></div><div><a class=\\\"x\\\" href=\\\"#p5\\\">Sản phẩm 5</a></div><div><a class=\\\"x\\\" href=\\\"#p6\\\">Sản phẩm 6</a></div></td-carousel>\"; customElements.get('td-carousel') && document.getElementById('probe').goTo(5);",
+      "selectors": [
+        ".td-carousel__btn[aria-disabled=\"true\"]",
+        ".td-carousel__dot[aria-current=\"true\"]",
+        ".td-carousel__viewport"
+      ],
+      "settle": 900,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left",
+        "transform"
+      ],
+      "selectorNote": "v0.50.0: scrolled to the last page: next aria-disabled, the last dot current (scrollTo via JS only); height / width / margin-left excluded up front (text line boxes, font metrics)."
+    },
+    {
+      "state": "undefined",
+      "module": "/src/icons/td-icon.js",
+      "markup": "<div><td-carousel data-td-ssr=\"carousel@1\" label=\"Nổi bật\" per-view=\"2\" data-td-pages=\"3\" data-td-rows-narrow=\"1\" data-td-rows-wide=\"inline\" role=\"region\" aria-roledescription=\"băng chuyền\" aria-label=\"Nổi bật\"><div class=\"td-carousel__viewport\"><div class=\"td-carousel__track\"><div class=\"td-carousel__slide\" role=\"group\" aria-roledescription=\"mục\" aria-label=\"1 / 6\"><a href=\"#p1\">Sản phẩm 1</a></div><div class=\"td-carousel__slide\" role=\"group\" aria-roledescription=\"mục\" aria-label=\"2 / 6\"><a href=\"#p2\">Sản phẩm 2</a></div><div class=\"td-carousel__slide\" role=\"group\" aria-roledescription=\"mục\" aria-label=\"3 / 6\"><a href=\"#p3\">Sản phẩm 3</a></div><div class=\"td-carousel__slide\" role=\"group\" aria-roledescription=\"mục\" aria-label=\"4 / 6\"><a href=\"#p4\">Sản phẩm 4</a></div><div class=\"td-carousel__slide\" role=\"group\" aria-roledescription=\"mục\" aria-label=\"5 / 6\"><a href=\"#p5\">Sản phẩm 5</a></div><div class=\"td-carousel__slide\" role=\"group\" aria-roledescription=\"mục\" aria-label=\"6 / 6\"><a href=\"#p6\">Sản phẩm 6</a></div></div></div><div class=\"td-carousel__controls\" data-td-js-only><button type=\"button\" class=\"td-carousel__btn\" data-td-carousel=\"prev\" aria-label=\"Mục trước\"></button><span class=\"td-carousel__counter\" aria-hidden=\"true\"></span><button type=\"button\" class=\"td-carousel__btn\" data-td-carousel=\"next\" aria-label=\"Mục tiếp theo\"></button><div class=\"td-carousel__dots\" role=\"group\" aria-label=\"Chọn trang\"></div></div><p class=\"td-sr-only\" role=\"status\" aria-live=\"polite\" aria-atomic=\"true\"></p></td-carousel></div>",
+      "selectors": [
+        ".td-carousel__viewport",
+        ".td-carousel__track",
+        ".td-carousel__slide",
+        ".td-carousel__controls",
+        ".td-carousel__btn",
+        ".td-carousel__dots"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.50.0: no JS (the carousel module is not loaded): PHP markup = a native scroll-snap strip with a thin scrollbar; the JS-only controls are visibility: hidden with their box (rows-narrow / rows-wide reserve the dots row); height / width / margin-left excluded up front (text line boxes, font metrics)."
     }
   ]
 }

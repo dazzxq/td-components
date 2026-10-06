@@ -20,6 +20,8 @@ export const PRESS_TARGETS = Object.freeze([
   '.td-btn',
   '.td-btn--action.td-btn--action-warning',
   '.td-btn--ghost',
+  '.td-carousel__btn',
+  '.td-carousel__dot',
   '.td-check-matrix__bulk',
   '.td-check-matrix__cell',
   '.td-check-matrix__group-toggle',

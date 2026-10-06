@@ -98,6 +98,15 @@ export function renderedPairs() {
   add('matrix changed mark', '--td-accent', ['--td-color-surface'], 3);
   add('matrix changed mark on crosshair', '--td-accent', ['--td-color-hover', '--td-color-surface'], 3);
   add('matrix note dot', '--td-color-text-muted', ['--td-color-surface'], 3);
+  // v0.50.0 td-rating (rating.css: filled star edge = --td-color-warning; count / none = muted) and td-carousel
+  // (carousel.css: dots = subtle / text on the page; chevron = text on the secondary fill, its hover / pressed fills)
+  for (const s of PAGE) {
+    add(`rating star edge on ${s}`, '--td-color-warning', [s], 3.2);
+    add(`rating count on ${s}`, '--td-color-text-muted', [s]);
+    add(`carousel dot on ${s}`, '--td-color-text-subtle', [s], 3.2);
+    add(`carousel current dot on ${s}`, '--td-color-text', [s]);
+  }
+  for (const f of ['--td-color-fill', '--td-btn-secondary-hover', '--td-btn-secondary-pressed']) add(`carousel chevron on ${f}`, '--td-color-text', [f], 3.2);
   return P;
 }
 

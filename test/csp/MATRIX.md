@@ -146,6 +146,17 @@ JSON panes, the unchanged table, "Xem đầy đủ" + a visible ⟨U+202E⟩), `
 markup adopted in place). `width` / `height` / `margin-left` excluded up front (font metrics); the host owns its border colour
 and figure margin (Tailwind preflight, combined profile). (8)
 
+### td-rating (v0.50.0, new component — td.css only)
+States: `half` (4.5 / 5 with the shown value and the count: the half star's "on" layer clipped by `--_td-rating-fill` from
+`data-fill="50"`), `exact` (`precision="exact"`, 3.37: the partly filled star refined to 37 % through CSSOM — 0 violations),
+`empty` (no rating: muted text only). `width` / `height` / `margin-left` excluded up front (font metrics). (3)
+
+### td-carousel (v0.50.0, new component — td.css only)
+States: `default` (hand-written slides wrapped once, 2 per view, wide inline controls: secondary discs + dots, prev
+aria-disabled), `end` (after `goTo(5)`: next aria-disabled, last dot current — `scrollTo()` only), `undefined` (module not
+loaded: the PHP frame is a native scroll-snap strip, JS-only controls `visibility: hidden` with their box). `width` /
+`height` / `margin-left` (+ `transform` in `end`) excluded up front (font metrics). (3)
+
 ### td-modal (1 declarative; portaled to body)
 Styled el: `.td-modal-content` (box-shadow + backdrop-filter), `.td-modal-backdrop`.
 States: `default` (`TdModal.show({title, body})`). (1)

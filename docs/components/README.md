@@ -18,7 +18,7 @@ Mọi import đều theo dạng `@dazzxq/td-components/<tên>` (xem [Cài đặt
 nạp `td.css` một lần cho cả trang.
 
 **Render phía server (SSR) từ PHP:** dùng [adapter PHP](../guides/php-adapter.md) `php/td.php` ship kèm gói —
-`td_button`, `td_link`, `td_action_button`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_masked_value`, `td_media_field`, `td_media_gallery`, `td_scan_input`, `td_filter_chips`, `td_datetime_range`, `td_check_matrix` in đúng markup của component
+`td_button`, `td_link`, `td_action_button`, `td_field`, `td_dropdown`, `td_toggle`, `td_checkbox`, `td_icon`, `td_badge`, `td_alert`, `td_otp_input`, `td_copy`, `td_multiselect`, `td_tree_select`, `td_number_input`, `td_masked_value`, `td_media_field`, `td_media_gallery`, `td_scan_input`, `td_filter_chips`, `td_datetime_range`, `td_check_matrix`, `td_rating`, `td_carousel` in đúng markup của component
 (control native, chạy không cần JS). Component không có helper PHP (menu, table, tabs, pagination, empty-state, trigger
 lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong trang của nó (mục cấu trúc DOM / SSR).
 
@@ -78,6 +78,8 @@ lightbox, hovercard, drawer, repeater, sortable…) có mẫu markup ngay trong 
 | [Steps](steps.md) | `<td-steps>` | `/steps` | Tiến trình nhiều bước (wizard, import): xong / hiện tại / lỗi / chưa tới, ngang / dọc, tự gọn khi hẹp, bấm quay lại (`step-select` — kit không tự đổi bước); PHP `td_steps` (0.45) |
 | [Timeline](timeline.md) | `<td-timeline>` | `/timeline` | Dòng sự kiện nhóm theo ngày (múi giờ IANA, "Hôm nay" / "Hôm qua"), icon, tông, người làm, chi tiết `<details>` (tải lười), "Xem thêm"; thời điểm phải có múi giờ; PHP `td_timeline` (0.45) |
 | [Diff](diff.md) | `<td-diff>` | `/diff` | So sánh trước / sau theo trường cho màn audit log: Thêm / Xoá / Đổi bằng chữ, `[ĐÃ ẨN]`, mảng quyền so như tập (+ / −), giá trị dài thu gọn, JSON view tuỳ chọn, inline khi hẹp; chỉ hiển thị (server che dữ liệu); PHP `td_diff` / `td_diff_snapshots` (0.46) |
+| [Rating](rating.md) | `<td-rating>` | `/rating` | Đánh giá sao **chỉ đọc**: số lẻ (nửa sao / tô đúng tỉ lệ), tên đọc bằng chữ "4,3 trên 5 sao", số lượt "(1.234 đánh giá)", "Chưa có đánh giá"; PHP `td_rating` chạy không JS (0.50) |
+| [Carousel](carousel.md) | `<td-carousel>` | `/carousel` | Dải cuộn ngang native + scroll-snap: nút trước / sau, chấm, bộ đếm, số slide mỗi khung theo container query (token); không JS vẫn cuộn được; **không autoplay / loop / drag**; PHP `td_carousel` giữ chỗ (không CLS) (0.50) |
 | [Tabs](tabs.md) | `<td-tabs>` | `/tabs` | Tab (chuẩn APG, kích hoạt thủ công) |
 | [Pagination](pagination.md) | `<td-pagination>` | `/pagination` | Phân trang |
 | [Empty state](empty-state.md) | `<td-empty-state>` | `/empty-state` | Màn "chưa có dữ liệu" có hành động |

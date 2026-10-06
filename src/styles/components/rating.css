@@ -1,0 +1,145 @@
+/*
+ * td-rating (src/display/td-rating.js) — v0.50.0, plan v0.50.0-rating-carousel R1–R13. Read-only stars, content layer
+ * (minimal surfaces, ADR 0011): no surface, no shadow. Works without JS (PHP td_rating prints the full tree).
+ * Each star = two registry `star` icons stacked: `.td-rating__off` (decorative light fill — the value is always given as
+ * text) + `.td-rating__on` clipped to `--_td-rating-fill` from the inline-start edge. The fill comes from `data-fill`
+ * (10 % steps, the no-JS / SSR path) or, for `precision="exact"`, an inline CSSOM value on the star (wins).
+ * State: [data-empty] on the host (no rating: text only) · [size] on the host · [data-fill] on a star.
+ * RTL (R9): :dir(rtl) (Chrome 120+, Firefox, Safari 16.4) + [dir="rtl"] for Chrome 102–119 (a direction set only by the
+ * CSS `direction` property is not seen there — documented limit).
+ */
+@layer td.tokens {
+	:root {
+		--td-rating-size: var(--td-icon-m);
+		--td-rating-gap: 2px;
+	}
+
+	/* colour tokens re-resolve in every theme scope (ADR 0020); all aliases of contract tokens (R7) */
+	:root, [data-td-theme] {
+		--td-rating-fill: var(--td-solid-warning-bg);   /* amber (same in dark) */
+		--td-rating-stroke: var(--td-color-warning);    /* edge of a filled star ≥ 3.2 on every surface (amber alone: 2.15) */
+		--td-rating-empty: var(--td-color-border-strong); /* empty star: decorative (~1.5:1 on purpose, owner D5) */
+		--td-rating-value-fg: var(--td-color-text);
+		--td-rating-count-fg: var(--td-color-text-muted);
+	}
+}
+
+@layer td.component {
+	td-rating {
+		--_td-rating-size: var(--td-rating-size);
+
+		display: inline-flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		vertical-align: middle;
+		font-family: var(--td-font-sans);
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-tight); /* own it: a host page reset must not change it */
+		color: var(--td-rating-value-fg);
+		white-space: nowrap; /* never breaks between the stars */
+	}
+
+	td-rating[hidden] {
+		display: none;
+	}
+
+	td-rating[size="s"] {
+		--_td-rating-size: var(--td-icon-s);
+
+		font-size: var(--td-text-xs);
+	}
+
+	td-rating[size="l"] {
+		--_td-rating-size: var(--td-icon-l);
+
+		font-size: var(--td-text-base);
+	}
+
+	.td-rating__value {
+		font-weight: var(--td-fw-semibold);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.td-rating__stars {
+		display: inline-flex;
+		flex: none;
+		gap: var(--td-rating-gap);
+	}
+
+	.td-rating__star {
+		--_td-rating-fill: 0%;
+
+		position: relative;
+		display: inline-flex;
+		flex: none;
+		inline-size: var(--_td-rating-size);
+		block-size: var(--_td-rating-size);
+	}
+
+	.td-rating__star[data-fill="10"] { --_td-rating-fill: 10%; }
+	.td-rating__star[data-fill="20"] { --_td-rating-fill: 20%; }
+	.td-rating__star[data-fill="30"] { --_td-rating-fill: 30%; }
+	.td-rating__star[data-fill="40"] { --_td-rating-fill: 40%; }
+	.td-rating__star[data-fill="50"] { --_td-rating-fill: 50%; }
+	.td-rating__star[data-fill="60"] { --_td-rating-fill: 60%; }
+	.td-rating__star[data-fill="70"] { --_td-rating-fill: 70%; }
+	.td-rating__star[data-fill="80"] { --_td-rating-fill: 80%; }
+	.td-rating__star[data-fill="90"] { --_td-rating-fill: 90%; }
+	.td-rating__star[data-fill="100"] { --_td-rating-fill: 100%; }
+
+	.td-rating__star > .td-icon {
+		width: 100%;
+		height: 100%;
+	}
+
+	.td-rating__off {
+		fill: var(--td-rating-empty);
+		stroke: var(--td-rating-empty);
+	}
+
+	.td-rating__on {
+		position: absolute;
+		inset: 0;
+		fill: var(--td-rating-fill);
+		stroke: var(--td-rating-stroke);
+		clip-path: inset(0 calc(100% - var(--_td-rating-fill)) 0 0);
+	}
+
+	/* RTL: filled from the inline-start (right) edge. [dir] for Chrome 102–119; :dir() wins where supported (and puts
+	   an LTR island inside an RTL page back). Separate rules: an unknown :dir() would drop a whole selector list. */
+	[dir="rtl"] .td-rating__on {
+		clip-path: inset(0 0 0 calc(100% - var(--_td-rating-fill)));
+	}
+
+	.td-rating__star:dir(rtl) > .td-rating__on {
+		clip-path: inset(0 0 0 calc(100% - var(--_td-rating-fill)));
+	}
+
+	.td-rating__star:dir(ltr) > .td-rating__on {
+		clip-path: inset(0 calc(100% - var(--_td-rating-fill)) 0 0);
+	}
+
+	.td-rating__count,
+	.td-rating__none {
+		color: var(--td-rating-count-fg);
+		font-variant-numeric: tabular-nums;
+	}
+
+	@media (prefers-contrast: more) {
+		.td-rating__off {
+			stroke: currentcolor;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-rating__off {
+			fill: Canvas;
+			stroke: CanvasText;
+		}
+
+		.td-rating__on {
+			fill: CanvasText;
+			stroke: CanvasText;
+		}
+	}
+}
