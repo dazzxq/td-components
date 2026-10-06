@@ -1831,8 +1831,8 @@ hợp lệ (và tồn kho) của sản phẩm.
 <?= td_toggle('require_2fa', true, 'Bắt buộc 2FA', ['locked' => true, 'locked_reason' => 'Chính sách công ty']) ?>
 ```
 
-Bất kỳ option nào trong `tone` / `status_text` / `locked` / `locked_reason` (khác `null` / `false`) **ép chế độ element**
-(kể cả `'element' => false`): công tắc native trần không có host để mang chúng. `td_checkbox` bỏ qua cả bốn.
+Chỉ cần **có khoá** `tone` / `status_text` / `locked` / `locked_reason` trong `$opts` (`array_key_exists` — giá trị gì
+cũng vậy, kể cả `null` / `false` / `''`) là **ép chế độ element** (kể cả `'element' => false`): công tắc native trần không có host để mang chúng. `td_checkbox` bỏ qua cả bốn.
 
 | Option | Host | Input / phần in thêm |
 |---|---|---|

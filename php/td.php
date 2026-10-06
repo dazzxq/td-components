@@ -1793,15 +1793,16 @@ namespace {
      * class (label), attrs (label), input_attrs (input).
      * v0.26.0 `element` (bool, default Td::configure ssr_elements): `<td-toggle data-td-ssr="toggle@1">` host + the
      * markup <td-toggle> renders (the input keeps name / value / checked / required / id); class + attrs → host.
-     * v0.52.0: `tone` ('success' | 'warning'), `status_text`, `locked` (bool), `locked_reason` — any of them (not null)
-     * FORCES element mode (a bare native switch cannot carry them). `locked` is a UI state only: the native checkbox can
+     * v0.52.0: `tone` ('success' | 'warning'), `status_text`, `locked` (bool), `locked_reason` — the presence of any of
+     * these keys (array_key_exists, whatever the value) FORCES element mode (a bare native switch cannot carry them). `locked` is a UI state only: the native checkbox can
      * still be flipped before the module upgrades / without JS — the server must ignore changes of a locked field.
      */
     function td_toggle(string $name, bool $checked = false, string $label = '', array $o = []): string
     {
+        // RL6 (Codex r1 #2): the PRESENCE of any of the four keys forces element mode, whatever its value
         $extras = false;
         foreach (['tone', 'status_text', 'locked', 'locked_reason'] as $k) {
-            $extras = $extras || (array_key_exists($k, $o) && $o[$k] !== null && $o[$k] !== false);
+            $extras = $extras || array_key_exists($k, $o);
         }
         if ($extras || td__element($o)) {
             return td__check_element(true, $name, $checked, $label, $o);

@@ -45,18 +45,25 @@ describe('php/td.php — td_toggle tone / locked (v0.52.0, contract toggle@1)', 
     assert.ok(r.html.includes('data-icon="clock"') && r.html.includes('data-icon="lock"'));
   });
 
-  test('any of the four options forces element mode (also with element => false); none of them → native as before', () => {
+  test('RL6: the PRESENCE of any of the four keys forces element mode (array_key_exists — any value, also null / false / an '
+    + 'empty string, also with element => false); none of them → native as before', () => {
     const out = run([
       ['td_toggle', ['a', false, 'A', { tone: 'success', element: false }]],
       ['td_toggle', ['b', false, 'B', { status_text: 'x' }]],
       ['td_toggle', ['c', false, 'C', { locked: true }]],
       ['td_toggle', ['d', false, 'D', { locked_reason: 'r' }]],
-      ['td_toggle', ['e', false, 'E', { locked: false, tone: null }]],
+      ['td_toggle', ['e', false, 'E', { locked: false }]],
+      ['td_toggle', ['g', false, 'G', { tone: null }]],
+      ['td_toggle', ['h', false, 'H', { status_text: '', element: false }]],
+      ['td_toggle', ['i', false, 'I', { locked_reason: null }]],
       ['td_toggle', ['f', false, 'F', {}]],
+      ['td_toggle', ['j', false, 'J', { element: false }]],
     ]);
-    out.slice(0, 4).forEach((r, i) => assert.ok(r.html.startsWith('<td-toggle data-td-ssr="toggle@1"'), `${i}: ${r.html.slice(0, 60)}`));
-    assert.ok(out[4].html.startsWith('<label class="td-switch'), out[4].html.slice(0, 60));
-    assert.ok(out[5].html.startsWith('<label class="td-switch'), out[5].html.slice(0, 60));
+    out.slice(0, 8).forEach((r, i) => assert.ok(r.html.startsWith('<td-toggle data-td-ssr="toggle@1"'), `${i}: ${r.html.slice(0, 60)}`));
+    // present but empty / off: element mode, but no part, no attribute (= the plain element markup)
+    assert.ok(!/tone=|locked|td-switch__status|aria-readonly/.test(out[4].html + out[5].html + out[6].html + out[7].html));
+    assert.ok(out[8].html.startsWith('<label class="td-switch'), out[8].html.slice(0, 60));
+    assert.ok(out[9].html.startsWith('<label class="td-switch'), out[9].html.slice(0, 60));
   });
 
   test('OFF with a tone: the status span exists, the input is not described by it; unknown tone → ignored + ONE fixed warning', () => {
