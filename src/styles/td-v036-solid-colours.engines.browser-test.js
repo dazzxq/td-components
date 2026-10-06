@@ -36,6 +36,8 @@ describe('v0.36.0 solid semantic buttons (QĐ 19, 24)', () => {
       expect(cs.borderTopColor).to.equal(rgb(hover));
       const r = b.getBoundingClientRect();
       await sendMouse({ type: 'move', position: [Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2)] });
+      // a loaded Firefox runner can apply :hover a few frames after the move (CI flake): wait for the real signal, bounded
+      for (let i = 0; i < 60 && !b.matches(':hover'); i++) await raf();
       await raf();
       cs = getComputedStyle(b);
       expect(b.matches(':hover')).to.equal(true);
