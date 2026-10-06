@@ -273,7 +273,7 @@ async function runEngine(name, launcher, which) {
   }
 }
 
-const FIXTURES = (process.env.TD_PANEL_FIXTURES || 'proto,alt').split(',');
+const FIXTURES = (process.env.TD_PANEL_FIXTURES || 'proto,alt,real').split(',');
 for (const which of FIXTURES) {
   await runEngine('chromium', chromium, which);
   await runEngine('firefox', firefox, which);

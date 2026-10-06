@@ -221,6 +221,33 @@
 		background: var(--td-menu-separator);
 	}
 
+	/* ---- v0.53.0 menu panel (plan v0.53.0-menu-custom-item QĐ 1 / QĐ 11, ADR 0026): role="dialog" hosting role="menu"
+	   sections + custom rows. The row inherits the surface; the caller's content brings its own controls (no hover, no
+	   pressed fill, no min-height on the row). No new token. ---- */
+	.td-menu--panel:focus {
+		outline: 2px solid transparent;
+	}
+
+	.td-menu__section {
+		display: flex; /* never display: contents — older engines drop the role of such an element */
+		flex: none;
+		flex-direction: column;
+	}
+
+	.td-menu__custom {
+		flex: none;
+		min-width: 0;
+		padding: var(--td-menu-item-py) var(--td-menu-item-px);
+	}
+
+	.td-menu__custom-label {
+		margin-block-end: var(--td-space-2xs);
+		font-size: var(--td-text-xs);
+		font-weight: var(--td-fw-medium);
+		line-height: var(--td-leading-normal);
+		color: var(--td-menu-hint-fg);
+	}
+
 	/* ---- Menu button ("···") — content layer ---- */
 	.td-menu-btn {
 		box-sizing: border-box;
@@ -323,6 +350,10 @@
 
 		.td-menu__separator {
 			background: CanvasText;
+		}
+
+		.td-menu__custom-label {
+			color: CanvasText;
 		}
 
 		.td-menu-btn:focus-visible {

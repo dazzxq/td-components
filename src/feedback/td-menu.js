@@ -73,7 +73,10 @@
  *   lightbox opened over it, or the dialog / hovercard holding its anchor closed). The anchor hidden without a scroll
  *   (tab switch, display:none) or removed from the DOM closes it too ('hidden', watchReference).
  */
-import { LAYERS, register as registerLayer, restoreFocus, swallowPointerPress, bridgeTheme } from '../utils/layers.js';
+import {
+  LAYERS, register as registerLayer, restoreFocus, swallowPointerPress, bridgeTheme, tabSequence, deepActiveElement,
+  composedContains, composedClosest, floatingContains, coverFloatingIn,
+} from '../utils/layers.js';
 import { placeFloating, isReferenceHidden, watchReference } from '../utils/floating.js';
 import { nextTypeaheadIndex } from '../utils/typeahead.js';
 import { fillIconSlots, hasIcon } from '../icons/td-icon.js';
@@ -243,6 +246,17 @@ function normalise(list, isAllowedUrl) {
       if (out.length && !out[out.length - 1].separator) out.push({ separator: true });
       continue;
     }
+    if (it.type === 'custom') { // v0.53.0 (plan v0.53.0-menu-custom-item QĐ 6): render(ctx) → Element, called at open
+      if (!isFn(it.render)) {
+        console.warn('TdMenu: custom item needs a render(ctx) function — row omitted');
+        continue;
+      }
+      out.push({
+        custom: true, src: it, render: it.render, node: null, ac: null,
+        label: it.label == null ? '' : String(it.label), id: it.id == null ? '' : String(it.id),
+      });
+      continue;
+    }
     const label = it.label == null ? '' : String(it.label);
     if (!label) continue;
     let type = it.type === 'radio' || it.type === 'checkbox' ? it.type : 'item';
@@ -287,8 +301,15 @@ function el(tag, cls) {
   return n;
 }
 
+function separatorEl() {
+  const sep = el('div', 'td-menu__separator');
+  sep.setAttribute('role', 'separator');
+  return sep;
+}
+
 /** Build the menu DOM (DOM APIs only: labels/hints are textContent). */
 function build(entries, menuId) {
+  if (entries.some((e) => e.custom)) return buildPanel(entries, menuId);
   const menu = el('div', 'td-menu td-glass-surface td-glass-surface--strong');
   menu.id = menuId;
   menu.setAttribute('role', 'menu');
@@ -296,77 +317,135 @@ function build(entries, menuId) {
   const items = [];
   entries.forEach((e, i) => {
     if (e.separator) {
-      const sep = el('div', 'td-menu__separator');
-      sep.setAttribute('role', 'separator');
-      menu.appendChild(sep);
+      menu.appendChild(separatorEl());
       return;
     }
-    const link = !!e.href && !e.disabled;
-    const node = el(link ? 'a' : 'button', `td-menu__item${e.danger ? ' td-menu__item--danger' : ''}`);
-    if (link) {
-      node.setAttribute('href', e.href);
-      if (e.newTab) {
-        node.setAttribute('target', '_blank');
-        node.setAttribute('rel', 'noopener noreferrer');
-      }
-      if (e.download != null) node.setAttribute('download', e.download);
-    } else {
-      node.setAttribute('type', 'button');
-    }
-    node.setAttribute('role', e.type === 'radio' ? 'menuitemradio' : e.type === 'checkbox' ? 'menuitemcheckbox' : 'menuitem');
-    node.setAttribute('tabindex', '-1');
-    if (e.type !== 'item') node.setAttribute('aria-checked', String(e.checked));
-    if (e.disabled) node.setAttribute('aria-disabled', 'true');
-    if (e.id) node.setAttribute('data-item', e.id);
-
-    const label = el('span', 'td-menu__label');
-    label.textContent = e.label;
-    node.appendChild(label);
-
-    if (e.icon && hasIcon(e.icon)) {
-      const ic = el('span', 'td-menu__icon');
-      ic.setAttribute('data-td-icon', e.icon);
-      ic.setAttribute('aria-hidden', 'true');
-      node.appendChild(ic);
-    } else if (e.iconNode) {
-      const ic = el('span', 'td-menu__icon');
-      ic.setAttribute('aria-hidden', 'true');
-      const clone = e.iconNode.cloneNode(true);
-      if (clone instanceof Element) {
-        clone.setAttribute('aria-hidden', 'true');
-        if (clone.localName === 'svg') clone.setAttribute('focusable', 'false');
-      }
-      ic.appendChild(clone);
-      node.appendChild(ic);
-    }
-    if (e.type === 'checkbox') {
-      // v0.36.0 (ADR 0017): checkbox items show the shared td-checkbox mark (always visible); radio items keep the ✓
-      const check = createCheckMark('sm');
-      check.classList.add('td-menu__check');
-      node.appendChild(check);
-    } else if (e.type !== 'item') {
-      const check = el('span', 'td-menu__check');
-      check.setAttribute('data-td-icon', 'check');
-      check.setAttribute('aria-hidden', 'true');
-      node.appendChild(check);
-    }
-    if (e.hint) {
-      // Name = label only; the hint is the description (not a duplicated name, not a `title`).
-      label.id = `${menuId}-label-${i}`;
-      const hint = el('span', 'td-menu__hint');
-      hint.id = `${menuId}-hint-${i}`;
-      hint.textContent = e.hint;
-      // v0.36.0 (plan QĐ 65): a 1–3 character hint is a keyboard shortcut → hidden on touch screens (CSS)
-      if (/^\S{1,3}$/.test(String(e.hint).trim())) hint.classList.add('td-menu__hint--kbd');
-      node.appendChild(hint);
-      node.setAttribute('aria-labelledby', label.id);
-      node.setAttribute('aria-describedby', hint.id);
-    }
+    const node = buildItem(e, i, menuId);
     menu.appendChild(node);
     items.push({ node, entry: e });
   });
   fillIconSlots(menu);
-  return { menu, items };
+  return { menu, items, rows: items.map((rec) => ({ rec })), panel: false };
+}
+
+/**
+ * v0.53.0 (plan v0.53.0-menu-custom-item QĐ 1, ADR 0026): a menu hosting custom rows is a non-modal DIALOG ("menu
+ * panel"): runs of plain items live in unnamed role="menu" sections (item markup unchanged), a separator next to a
+ * custom row sits at panel level, a custom row is role="group" named by its caption (or a plain div without a
+ * label) and holds the caller's Element as is. Icons are filled per section — never inside the caller's content.
+ */
+function buildPanel(entries, menuId) {
+  const menu = el('div', 'td-menu td-menu--panel td-glass-surface td-glass-surface--strong');
+  menu.id = menuId;
+  menu.setAttribute('role', 'dialog');
+  menu.setAttribute('tabindex', '-1');
+  menu.setAttribute('data-state', 'open');
+  const items = [];
+  const rows = [];
+  let section = null;
+  entries.forEach((e, i) => {
+    if (e.separator) {
+      const next = entries[i + 1];
+      if (section && next && !next.separator && !next.custom) section.appendChild(separatorEl());
+      else { section = null; menu.appendChild(separatorEl()); }
+      return;
+    }
+    if (e.custom) {
+      section = null;
+      const row = el('div', 'td-menu__custom');
+      if (e.id) row.setAttribute('data-item', e.id);
+      if (e.label) {
+        const cap = el('div', 'td-menu__custom-label');
+        cap.id = `${menuId}-c${i}-label`;
+        cap.textContent = e.label;
+        row.setAttribute('role', 'group');
+        row.setAttribute('aria-labelledby', cap.id);
+        row.appendChild(cap);
+      }
+      row.appendChild(e.node);
+      menu.appendChild(row);
+      rows.push({ row, entry: e });
+      return;
+    }
+    if (!section) {
+      section = el('div', 'td-menu__section');
+      section.setAttribute('role', 'menu');
+      menu.appendChild(section);
+    }
+    const node = buildItem(e, i, menuId);
+    section.appendChild(node);
+    fillIconSlots(node);
+    const rec = { node, entry: e };
+    items.push(rec);
+    rows.push({ rec });
+  });
+  return { menu, items, rows, panel: true };
+}
+
+/** One plain / checkable / link item (markup unchanged since v0.36). */
+function buildItem(e, i, menuId) {
+  const link = !!e.href && !e.disabled;
+  const node = el(link ? 'a' : 'button', `td-menu__item${e.danger ? ' td-menu__item--danger' : ''}`);
+  if (link) {
+    node.setAttribute('href', e.href);
+    if (e.newTab) {
+      node.setAttribute('target', '_blank');
+      node.setAttribute('rel', 'noopener noreferrer');
+    }
+    if (e.download != null) node.setAttribute('download', e.download);
+  } else {
+    node.setAttribute('type', 'button');
+  }
+  node.setAttribute('role', e.type === 'radio' ? 'menuitemradio' : e.type === 'checkbox' ? 'menuitemcheckbox' : 'menuitem');
+  node.setAttribute('tabindex', '-1');
+  if (e.type !== 'item') node.setAttribute('aria-checked', String(e.checked));
+  if (e.disabled) node.setAttribute('aria-disabled', 'true');
+  if (e.id) node.setAttribute('data-item', e.id);
+
+  const label = el('span', 'td-menu__label');
+  label.textContent = e.label;
+  node.appendChild(label);
+
+  if (e.icon && hasIcon(e.icon)) {
+    const ic = el('span', 'td-menu__icon');
+    ic.setAttribute('data-td-icon', e.icon);
+    ic.setAttribute('aria-hidden', 'true');
+    node.appendChild(ic);
+  } else if (e.iconNode) {
+    const ic = el('span', 'td-menu__icon');
+    ic.setAttribute('aria-hidden', 'true');
+    const clone = e.iconNode.cloneNode(true);
+    if (clone instanceof Element) {
+      clone.setAttribute('aria-hidden', 'true');
+      if (clone.localName === 'svg') clone.setAttribute('focusable', 'false');
+    }
+    ic.appendChild(clone);
+    node.appendChild(ic);
+  }
+  if (e.type === 'checkbox') {
+    // v0.36.0 (ADR 0017): checkbox items show the shared td-checkbox mark (always visible); radio items keep the ✓
+    const check = createCheckMark('sm');
+    check.classList.add('td-menu__check');
+    node.appendChild(check);
+  } else if (e.type !== 'item') {
+    const check = el('span', 'td-menu__check');
+    check.setAttribute('data-td-icon', 'check');
+    check.setAttribute('aria-hidden', 'true');
+    node.appendChild(check);
+  }
+  if (e.hint) {
+    // Name = label only; the hint is the description (not a duplicated name, not a `title`).
+    label.id = `${menuId}-label-${i}`;
+    const hint = el('span', 'td-menu__hint');
+    hint.id = `${menuId}-hint-${i}`;
+    hint.textContent = e.hint;
+    // v0.36.0 (plan QĐ 65): a 1–3 character hint is a keyboard shortcut → hidden on touch screens (CSS)
+    if (/^\S{1,3}$/.test(String(e.hint).trim())) hint.classList.add('td-menu__hint--kbd');
+    node.appendChild(hint);
+    node.setAttribute('aria-labelledby', label.id);
+    node.setAttribute('aria-describedby', hint.id);
+  }
+  return node;
 }
 
 function focusEl(node) {
@@ -395,7 +474,9 @@ function closeSession(s, reason) {
   s.closed = true;
   if (current === s) current = null;
   const { anchor, menu } = s;
-  const hadFocus = menu.contains(document.activeElement);
+  // v0.53.0: focus inside a custom row's shadow tree / a popup opened from a custom row counts as "in the menu"
+  const hadFocus = menu.contains(document.activeElement)
+    || (s.panel && (composedContains(menu, deepActiveElement()) || floatingContains(menu, document.activeElement)));
   clearTimeout(s.typeTimer);
   if (s.raf) cancelAnimationFrame(s.raf);
   document.removeEventListener('pointerdown', s.onPointerDown, true);
@@ -403,6 +484,8 @@ function closeSession(s, reason) {
   window.removeEventListener('resize', s.onResize);
   if (s.unwatch) s.unwatch();
   if (s.layer) s.layer.release();
+  if (s.ro) s.ro.disconnect();
+  if (s.panel) coverFloatingIn(menu); // v0.53.0 QĐ 9: popups opened from a custom row close first
   if (anchor instanceof HTMLElement) {
     anchor.setAttribute('aria-expanded', 'false');
     if (anchor.getAttribute('aria-controls') === menu.id) anchor.removeAttribute('aria-controls');
@@ -416,6 +499,8 @@ function closeSession(s, reason) {
     || (hadFocus && (reason === 'api' || reason === 'hidden'));
   if (back && usableAnchor(anchor)) focusEl(anchor);
   else if (back && hadFocus) restoreFocus(anchor);
+  // v0.53.0 QĐ 10: custom rows' signals abort while their elements are still in the DOM, before onClose
+  for (const e of s.customs || []) abortRow(e);
   menu.remove();
   if (s.unbridge) s.unbridge();
   if (isFn(s.onClose)) {
@@ -505,26 +590,64 @@ function indexOfNode(s, node) {
   return s.items.findIndex((r) => r.node === node || r.node.contains(node));
 }
 
+/** v0.53.0: index of the row (item or custom row) holding `node` (composed tree), -1 when none. */
+function rowIndexOf(s, node) {
+  if (!node) return -1;
+  return s.rows.findIndex((r) => (r.rec ? r.rec.node === node || r.rec.node.contains(node) : composedContains(r.row, node)));
+}
+
+/** v0.53.0 QĐ 3: the focus stops of a custom row (computed now: the content may change while open). */
+const rowStops = (r) => tabSequence(r.row);
+
+/** Focus `node` (also inside an open shadow root); true when it took focus. */
+function focusDeep(node) {
+  if (!(node instanceof HTMLElement) || !node.isConnected) return false;
+  try { node.focus({ preventScroll: true }); } catch { return false; }
+  const a = deepActiveElement();
+  return a === node || (a !== null && a.shadowRoot === null && node.contains(a)) || document.activeElement === node;
+}
+
+/**
+ * Move to the row `i` (wrapping), going in `dir` past custom rows with no focus stop (a static header, all-disabled
+ * content). `last`: enter a custom row on its last stop (ArrowUp / End). Menus without custom rows: exactly the v0.52
+ * item roving (every row is an item).
+ * @returns {boolean} whether something took focus
+ */
+function focusRow(s, i, dir, last) {
+  const n = s.rows.length;
+  for (let k = 0; k < n; k++) {
+    const r = s.rows[(((i + k * dir) % n) + n) % n];
+    if (r.rec) return focusEl(r.rec.node) || true;
+    const stops = rowStops(r);
+    if (stops.length) return focusDeep(last ? stops[stops.length - 1] : stops[0]) || true;
+  }
+  return false;
+}
+
 function onMenuKeydown(s, e) {
   if (s.closed || e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
-  const n = s.items.length;
-  const cur = indexOfNode(s, document.activeElement);
-  const go = (i) => { e.preventDefault(); focusEl(s.items[(i + n) % n].node); };
+  const n = s.rows.length;
+  const cur = rowIndexOf(s, deepActiveElement());
+  // v0.53.0 QĐ 4: inside a custom row every key belongs to the content (↑ / ↓ are taken in the capture phase,
+  // onPanelKeyCapture; Escape / Tab by the layer registry)
+  if (cur >= 0 && !s.rows[cur].rec) return;
+  const go = (i, dir, last = false) => { e.preventDefault(); focusRow(s, i, dir, last); };
   switch (e.key) {
-    case 'ArrowDown': go(cur < 0 ? 0 : cur + 1); return;
-    case 'ArrowUp': go(cur < 0 ? n - 1 : cur - 1); return;
-    case 'Home': case 'PageUp': go(0); return;
-    case 'End': case 'PageDown': go(n - 1); return;
+    case 'ArrowDown': go(cur < 0 ? 0 : cur + 1, 1); return;
+    case 'ArrowUp': go(cur < 0 ? n - 1 : cur - 1, -1, true); return;
+    case 'Home': case 'PageUp': go(0, 1); return;
+    case 'End': case 'PageDown': go(n - 1, -1, true); return;
     case 'Enter':
     case ' ': {
       if (cur < 0) return;
-      const rec = s.items[cur];
+      const idx = s.items.indexOf(s.rows[cur].rec);
+      const rec = s.items[idx];
       if (rec.node.localName === 'a') {
         if (e.key === ' ') { e.preventDefault(); rec.node.click(); } // Enter follows the link natively
         return;
       }
       e.preventDefault(); // no synthetic click: activation happens once, here
-      activate(s, cur);
+      activate(s, idx);
       return;
     }
     default: break;
@@ -534,9 +657,148 @@ function onMenuKeydown(s, e) {
     s.typeBuffer += e.key;
     clearTimeout(s.typeTimer);
     s.typeTimer = setTimeout(() => { s.typeBuffer = ''; }, TYPEAHEAD_MS);
-    const i = nextTypeaheadIndex(s.items.map((r) => r.entry.label), cur, s.typeBuffer);
-    if (i >= 0) focusEl(s.items[i].node);
+    // custom rows are never matched (null label — utils/typeahead.js)
+    const i = nextTypeaheadIndex(s.rows.map((r) => (r.rec ? r.rec.entry.label : null)), cur, s.typeBuffer);
+    if (i >= 0) focusEl(s.rows[i].rec.node);
   }
+}
+
+/** Controls that use ↑ / ↓ themselves (QĐ 4): the menu leaves those keys to them. */
+const OWN_ARROW_ROLES = '[role="slider"], [role="spinbutton"], [role="listbox"], [role="combobox"], [role="textbox"], '
+  + '[role="tree"], [role="treegrid"], [role="grid"], [data-td-menu-keys="content"]';
+const NO_ARROW_INPUTS = new Set(['checkbox', 'radio', 'button', 'submit', 'reset', 'image', 'file', 'color']);
+
+function ownsArrows(t, row) {
+  if (!(t instanceof Element)) return false;
+  if (t.localName === 'textarea' || t.localName === 'select') return true;
+  if (t.localName === 'input' && !NO_ARROW_INPUTS.has(/** @type {HTMLInputElement} */ (t).type)) return true;
+  if (t instanceof HTMLElement && t.isContentEditable) return true;
+  return !!composedClosest(t, OWN_ARROW_ROLES, row);
+}
+
+/**
+ * v0.53.0 QĐ 4 (panel only, CAPTURE on the panel): ↑ / ↓ from inside a custom row move to the previous / next row
+ * before the content sees them — unless the real target (composedPath()[0], through shadow roots) uses vertical
+ * arrows itself. Capture, not bubble: td-choice-group prevents the default only at the ends of its group, so a
+ * bubble handler would behave differently by position.
+ */
+function onPanelKeyCapture(s, e) {
+  if (s.closed || e.defaultPrevented || e.isComposing || e.keyCode === 229) return;
+  if ((e.key !== 'ArrowDown' && e.key !== 'ArrowUp') || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+  const t = typeof e.composedPath === 'function' ? e.composedPath()[0] : e.target;
+  const cur = rowIndexOf(s, /** @type {Node} */ (t));
+  if (cur < 0 || s.rows[cur].rec) return;
+  if (ownsArrows(t, s.rows[cur].row)) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const down = e.key === 'ArrowDown';
+  focusRow(s, cur + (down ? 1 : -1), down ? 1 : -1, !down);
+}
+
+/**
+ * v0.53.0 QĐ 4 (RL Q5): Tab / Shift+Tab in a panel walk every focus stop — each plain item, then every stop of each
+ * custom row (tabSequence), in order — and moved explicitly (native Tab skips the tabindex=-1 items, unchecked radios
+ * and leaves a <body>-end popup). Past either edge: the v0.52 D4 behaviour (close, the trigger is where the native
+ * Tab continues).
+ */
+function onPanelTab(s, e) {
+  const stops = [];
+  for (const r of s.rows) {
+    if (r.rec) stops.push(r.rec.node);
+    else stops.push(...rowStops(r));
+  }
+  const back = e.shiftKey;
+  const a = deepActiveElement();
+  let i = stops.indexOf(/** @type {HTMLElement} */ (a));
+  if (i < 0 && a) i = stops.findIndex((st) => st.contains(a) || composedContains(st, a));
+  if (i < 0 && a instanceof HTMLInputElement && a.type === 'radio' && a.name) {
+    i = stops.findIndex((st) => st instanceof HTMLInputElement && st.type === 'radio' && st.name === a.name
+      && st.getRootNode() === a.getRootNode() && st.form === a.form);
+  }
+  let next;
+  if (i >= 0) next = i + (back ? -1 : 1);
+  else {
+    // not on a stop (the panel, a caption, inside a nested widget): continue from the row holding focus
+    const r = rowIndexOf(s, a);
+    if (r < 0) next = back ? stops.length - 1 : 0;
+    else {
+      const before = s.rows.slice(0, r).reduce((k, row) => k + (row.rec ? 1 : rowStops(row).length), 0);
+      const own = s.rows[r].rec ? 1 : rowStops(s.rows[r]).length;
+      next = back ? before - 1 : before + own;
+    }
+  }
+  if (next < 0 || next >= stops.length) {
+    closeSession(s, 'tab');
+    return 'pass';
+  }
+  e.preventDefault();
+  focusDeep(stops[next]);
+  return 'handled';
+}
+
+/**
+ * v0.53.0 QĐ 5b (Codex plan-review r1 #1): after a click inside a custom row, if focus did not land in that row
+ * (WebKit / Safari iOS do not focus a clicked radio / button), focus the clicked control — the nearest focus stop on
+ * the click path (a <label> → its control) — else the panel. Controls that took focus themselves are never touched.
+ */
+function onPanelClick(s, e) {
+  if (s.closed || e.defaultPrevented) return;
+  const path = typeof e.composedPath === 'function' ? e.composedPath() : [e.target];
+  const r = s.rows.find((row) => !row.rec && path.includes(row.row));
+  if (!r) return;
+  const a = deepActiveElement();
+  if (a && (composedContains(r.row, a) || floatingContains(s.menu, a))) return;
+  const stops = rowStops(r);
+  let target = null;
+  for (const n of path) {
+    if (n === r.row) break;
+    if (!(n instanceof HTMLElement)) continue;
+    const c = n.localName === 'label' && /** @type {HTMLLabelElement} */ (n).control ? /** @type {HTMLLabelElement} */ (n).control : n;
+    if (stops.includes(/** @type {HTMLElement} */ (c))) { target = c; break; }
+  }
+  if (!target || !focusDeep(/** @type {HTMLElement} */ (target))) focusEl(s.menu);
+}
+
+/** v0.53.0 QĐ 7: call a custom row's render(ctx); the Element or null (row dropped, its signal aborted). */
+function renderCustom(e, ctx, close) {
+  e.ac = new AbortController();
+  let node;
+  try {
+    node = e.render({ ...ctx, item: e.src, close, signal: e.ac.signal });
+  } catch (err) {
+    console.warn('TdMenu: custom item render() threw — row omitted', err);
+    return null;
+  }
+  if (node == null) return null;
+  if (typeof node === 'string') {
+    console.warn('TdMenu: custom item render() must return an Element — strings are not rendered (no HTML)');
+    return null;
+  }
+  if (!(typeof Element !== 'undefined' && node instanceof Element)) {
+    console.warn('TdMenu: custom item render() must return an Element');
+    return null;
+  }
+  if (node.isConnected) {
+    console.warn('TdMenu: custom item render() must return a detached Element');
+    return null;
+  }
+  return node;
+}
+
+function abortRow(e) {
+  if (!e.ac || e.ac.signal.aborted) return;
+  try { e.ac.abort(); } catch (err) { console.error('TdMenu custom abort', err); }
+}
+
+/** Separators collapsed again after dropped custom rows (no leading / trailing / double). */
+function collapse(entries) {
+  const out = [];
+  for (const e of entries) {
+    if (e.separator && (!out.length || out[out.length - 1].separator)) continue;
+    out.push(e);
+  }
+  while (out.length && out[out.length - 1].separator) out.pop();
+  return out;
 }
 
 function onMenuClick(s, e) {
@@ -570,6 +832,8 @@ const TRIGGER_SNAP = ['id', 'aria-haspopup', 'aria-expanded', 'aria-controls'];
  * @type {WeakMap<HTMLElement, { snap: Array<[string, string|null]>, owners: Set<object> }>}
  */
 const TRIGGER_OWNERS = new WeakMap();
+/** v0.53.0: anchors whose aria-haspopup open() itself added (it follows the menu / panel mode afterwards) */
+const HASPOPUP_BY_OPEN = new WeakSet();
 
 function acquireTrigger(t, owner) {
   let rec = TRIGGER_OWNERS.get(t);
@@ -629,11 +893,27 @@ export class TdMenu {
       list = callItems(list, ctx);
       if (list == null) return null;
     }
-    const entries = normalise(Array.isArray(list) ? list.filter((it) => visible(it, ctx)) : list, o.isAllowedUrl);
+    let entries = normalise(Array.isArray(list) ? list.filter((it) => visible(it, ctx)) : list, o.isAllowedUrl);
     if (!entries.some((e) => !e.separator)) return null;
 
+    // v0.53.0 QĐ 7 / QĐ 8: custom rows render now (fresh Element each open); dropped rows abort their signal at once
+    /** @type {object|null} */
+    let sRef = null;
+    const closeFromRow = () => { if (sRef && !sRef.closed) closeSession(sRef, 'select'); };
+    const customs = [];
+    if (entries.some((e) => e.custom)) {
+      entries = collapse(entries.filter((e) => {
+        if (!e.custom) return true;
+        e.node = renderCustom(e, ctx, closeFromRow);
+        if (!e.node) { abortRow(e); return false; }
+        customs.push(e);
+        return true;
+      }));
+      if (!entries.some((e) => !e.separator)) return null;
+    }
+
     const menuId = `td-menu-${++menuSeq}`;
-    const { menu, items: recs } = build(entries, menuId);
+    const { menu, items: recs, rows, panel } = build(entries, menuId);
     const align = ALIGNS.includes(o.align) ? o.align : 'end';
     menu.setAttribute('data-align', align);
     const label = typeof o.label === 'string' ? o.label.trim() : '';
@@ -644,6 +924,10 @@ export class TdMenu {
       anchor,
       menu,
       items: recs,
+      rows, // v0.53.0: items + custom rows in DOM order (menu without custom rows: one row per item)
+      panel,
+      customs,
+      ro: null,
       align,
       side: o.side === 'top' ? 'top' : 'bottom',
       onClose: o.onClose,
@@ -656,9 +940,12 @@ export class TdMenu {
       raf: 0,
       layer: null,
     };
+    sRef = s;
     s.onPointerDown = (e) => {
       const path = typeof e.composedPath === 'function' ? e.composedPath() : [e.target];
       if (path.includes(menu) || path.includes(anchor)) return; // the trigger's own click toggles
+      // v0.53.0 QĐ 9: a press in a popup opened from a custom row (td-dropdown list…) is inside the panel
+      if (panel && floatingContains(menu, /** @type {Node} */ (path[0]))) return;
       // default (D5): close, the press continues. 'swallow' (internal): a MOUSE press that is not on another popup trigger
       // only dismisses — the pointerdown / pointerup / click never reach the page, focus returns to the trigger.
       // Touch / pen stay pass-through (scrolling, gestures); another trigger opens its popup in the same press.
@@ -681,12 +968,20 @@ export class TdMenu {
     s.onResize = () => reposition(s);
     menu.addEventListener('keydown', (e) => onMenuKeydown(s, e));
     menu.addEventListener('click', (e) => onMenuClick(s, e));
+    if (panel) {
+      menu.addEventListener('keydown', (e) => onPanelKeyCapture(s, e), true);
+      menu.addEventListener('click', (e) => onPanelClick(s, e));
+    }
 
     // v0.42.0 (ADR 0020): the menu renders in the theme scope of `opts.themeRoot`, else of the anchor
     s.unbridge = bridgeTheme(menu, (typeof Element !== 'undefined' && o.themeRoot instanceof Element) ? o.themeRoot : anchor);
     document.body.appendChild(menu);
     current = s;
-    if (!anchor.hasAttribute('aria-haspopup')) anchor.setAttribute('aria-haspopup', 'menu');
+    // v0.53.0 (QĐ 1, codex r1 #3): "dialog" only once a custom row was really built; kit-owned triggers follow the mode
+    if (!anchor.hasAttribute('aria-haspopup') || TRIGGER_OWNERS.has(anchor) || HASPOPUP_BY_OPEN.has(anchor)) {
+      if (!anchor.hasAttribute('aria-haspopup')) HASPOPUP_BY_OPEN.add(anchor);
+      anchor.setAttribute('aria-haspopup', panel ? 'dialog' : 'menu');
+    }
     anchor.setAttribute('aria-expanded', 'true');
     anchor.setAttribute('aria-controls', menuId);
     place(s);
@@ -696,7 +991,12 @@ export class TdMenu {
       keyboard: 'boundary',
       onEscape: () => { closeSession(s, 'escape'); return true; },
       // D4: close; the trigger (re-focused) is where the native Tab / a lower focus trap continues from.
-      onTab: () => { closeSession(s, 'tab'); return 'pass'; },
+      // v0.53.0 panel: Tab walks the stops, D4 only past the edges (onPanelTab)
+      onTab: (e) => {
+        if (panel) return onPanelTab(s, e);
+        closeSession(s, 'tab');
+        return 'pass';
+      },
       anchor, // v0.21.1: covered by a newer modal / lightbox, or by the closing dialog / hovercard it lives in
       onCovered: () => closeSession(s, 'covered'),
     });
@@ -705,9 +1005,32 @@ export class TdMenu {
     window.addEventListener('scroll', s.onScroll, true);
     window.addEventListener('resize', s.onResize);
 
-    const enabled = recs.filter((r) => !r.entry.disabled);
-    const pool = enabled.length ? enabled : recs;
-    focusEl((o.focus === 'last' ? pool[pool.length - 1] : pool[0]).node);
+    if (panel && typeof ResizeObserver !== 'undefined') {
+      // v0.53.0 QĐ 11: content that grows / shrinks (td-tabs switching panels) re-places the panel (one rAF)
+      s.ro = new ResizeObserver(() => {
+        if (s.closed || s.raf) return;
+        s.raf = requestAnimationFrame(() => { s.raf = 0; reposition(s); });
+      });
+      for (const r of rows) if (!r.rec) s.ro.observe(r.row);
+    }
+
+    if (!panel) {
+      const enabled = recs.filter((r) => !r.entry.disabled);
+      const pool = enabled.length ? enabled : recs;
+      focusEl((o.focus === 'last' ? pool[pool.length - 1] : pool[0]).node);
+    } else {
+      // QĐ 5: enabled items and custom rows with a focus stop first; else disabled items; else the panel itself
+      const last = o.focus === 'last';
+      const order = last ? [...rows].reverse() : rows;
+      const ok = order.find((r) => (r.rec ? !r.rec.entry.disabled : rowStops(r).length > 0))
+        || order.find((r) => r.rec);
+      if (!ok) focusEl(menu);
+      else if (ok.rec) focusEl(ok.rec.node);
+      else {
+        const st = rowStops(ok);
+        focusDeep(last ? st[st.length - 1] : st[0]);
+      }
+    }
 
     return {
       element: menu,
