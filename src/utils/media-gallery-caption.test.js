@@ -19,6 +19,8 @@ describe('normCaption / captionValue / limitCount (QĐ 3, 9 — media-text.cases
     let n = 0;
     for (const c of TEXT) {
       if (c.php_hex) continue;
+      if (c.units) Object.assign(c, { input: String.fromCharCode(...c.units) });
+      if (c.same) Object.assign(c, { norm: c.input, line: c.input });
       const tag = JSON.stringify(c.input);
       assert.equal(normCaption(c.input), c.norm, `norm ${tag}`);
       assert.equal(captionValue(c.norm, 'line'), c.line, `line ${tag}`);

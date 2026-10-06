@@ -76,6 +76,37 @@ const tampered = mismatch.querySelector('#mm-onerror').querySelectorAll('.td-med
 tampered.value = 'Gõ dở';
 tampered.focus();
 
+// v0.51.0 (plan v0.51.0-gallery-caption QĐ 19, Codex plan-review r1 #2) — copies of the caption fixtures: adopted /
+// refused, untouched / typed before define (the line control shows the PROJECTION: an untouched control must never
+// overwrite the raw caption), + hand-made caption mismatches (must render, never adopt).
+const lineHost = hostHtml('v051-line');
+const multiHost = hostHtml('v051-multiline');
+const limitHost = hostHtml('v051-limits');
+const copy = (h, id, edit = (x) => x) => edit(h.outerHTML).replaceAll(h.id, id);
+const V51 = {
+  'v51-acc': copy(lineHost, 'v51-acc'),
+  'v51-same': copy(lineHost, 'v51-same'),
+  'v51-typed': copy(limitHost, 'v51-typed'),
+  'v51-ref': copy(lineHost, 'v51-ref', (x) => x.replace('>Thêm ảnh<', '>Add photo<')),
+  'v51-ref-typed': copy(lineHost, 'v51-ref-typed', (x) => x.replace('>Thêm ảnh<', '>Add photo<')),
+  'mm51-name': copy(multiHost, 'mm51-name', (x) => x.replace('name="m[1][caption]"', 'name="m[1][steal]"')),
+  'mm51-order': copy(multiHost, 'mm51-order', (x) => x.replace(/(<label class="td-media-gallery__alt-field">(?:(?!<\/label>)[\s\S])*<\/label>)(<label class="td-media-gallery__caption-field">(?:(?!<\/label>)[\s\S])*<\/label>)/, '$2$1')),
+  'mm51-count': copy(multiHost, 'mm51-count', (x) => x.replace('>12/15<', '>99/15<')),
+  'mm51-attr': copy(multiHost, 'mm51-attr', (x) => x.replace('<textarea ', '<textarea onfocus="window.__pwned51 = 1" ')),
+  'mm51-extra': copy(multiHost, 'mm51-extra', (x) => x.replace('</label><span class="td-media-gallery__counter"', '<textarea name="extra"></textarea></label><span class="td-media-gallery__counter"')),
+};
+const v51 = document.createElement('form');
+v51.innerHTML = Object.values(V51).join('');
+document.body.appendChild(v51);
+for (const [id, html] of Object.entries(V51)) expect(html !== (id.startsWith('mm51') ? copy(multiHost, id) : html), id).to.equal(!id.startsWith('v51'));
+const v51El = (id) => v51.querySelector(`#${id}`);
+const capsOf = (h) => [...h.querySelectorAll('.td-media-gallery__caption')];
+capsOf(v51El('v51-same'))[0].value = 'Dòng 1 Dòng 2'; // typed back to exactly the projection: "not edited" (documented)
+v51El('v51-typed').querySelectorAll('.td-media-gallery__alt')[0].value = '123456789AB';
+capsOf(v51El('v51-typed'))[1].value = 'xyz';
+capsOf(v51El('v51-ref-typed'))[1].value = 'gõ dở';
+const v51Before = Object.fromEntries(Object.keys(V51).map((id) => [id, { lis: lis(v51El(id)), caps: capsOf(v51El(id)) }]));
+
 const warns = [];
 const realWarn = console.warn;
 console.warn = (...a) => { warns.push(a.map(String).join(' ')); };
@@ -241,3 +272,77 @@ describe('td-media-gallery SSR — re-bind on move / tamper while detached', () 
     expect(fd(form)).to.deep.equal([['m[]', 'm14'], ['m[]', 'm11'], ['m[]', 'm9']]);
   });
 });
+
+describe('td-media-gallery SSR — v0.51.0 caption (QĐ 19, Codex plan-review r1 #2)', () => {
+  it('adopted caption cases: the caption controls kept, name / value / text removed, FormData before == after', () => {
+    for (const id of ['v051-line', 'v051-multiline', 'v051-limits']) {
+      const host = hostOf(id);
+      const caps = [...host.querySelectorAll('.td-media-gallery__caption')];
+      expect(caps.length, id).to.equal(2);
+      for (const c of caps) expect(c.hasAttribute('name') || c.hasAttribute('value') || c.childNodes.length > 0, id).to.equal(false);
+    }
+    expect(capsOf(hostOf('v051-multiline'))[1].value).to.equal('\nđầu xuống dòng');
+    expect(hostOf('v051-off').querySelectorAll('.td-media-gallery__caption').length).to.equal(0);
+  });
+
+  for (const id of ['v51-acc', 'v51-same', 'v51-ref']) {
+    it(`${id}: an untouched line caption keeps its RAW newline (FormData sends the projection); → multiline shows it`, () => {
+      const host = v51El(id);
+      expect(host instanceof TdMediaGallery).to.equal(true);
+      const adopted = lis(host)[0] === v51Before[id].lis[0];
+      expect(adopted, `${id} adopted?`).to.equal(id !== 'v51-ref');
+      expect(fd(v51).find(([k]) => k === 'c[0][caption]') !== undefined).to.equal(true);
+      expect(capsOf(host)[0].value).to.equal('Dòng 1 Dòng 2');
+      expect(host.selection[0].usage.caption).to.equal('Dòng 1 Dòng 2');
+      host.setAttribute('caption', 'multiline');
+      expect(capsOf(host)[0].value).to.equal('Dòng 1\nDòng 2');
+      expect(host.selection[0].usage.caption).to.equal('Dòng 1\nDòng 2');
+    });
+  }
+
+  it('typed before define wins (adopted + refused); the counter / error / validity follow the typed text', () => {
+    const t = v51El('v51-typed');
+    expect(lis(t)[0] === v51Before['v51-typed'].lis[0], 'adopted').to.equal(true);
+    expect(t.selection.map((x) => x.usage.caption)).to.deep.equal(['abcdef', 'xyz']);
+    expect(t.selection[0].usage.altText).to.equal('123456789AB');
+    const cnt = lis(t)[0].querySelector('[id$="-0-alt-count"]');
+    expect([cnt.textContent, cnt.dataset.state]).to.deep.equal(['11/10', 'over']);
+    expect(lis(t)[0].querySelector('.td-media-gallery__alt').getAttribute('aria-invalid')).to.equal('true');
+    expect(lis(t)[1].querySelector('[id$="-1-caption-count"]').hidden).to.equal(true, 'xyz = 3/5 < 80 %');
+    expect(t.validity.customError).to.equal(true);
+    const r = v51El('v51-ref-typed');
+    expect(lis(r)[0] === v51Before['v51-ref-typed'].lis[0], 'refused').to.equal(false);
+    expect(r.selection.map((x) => x.usage.caption)).to.deep.equal(['Dòng 1 Dòng 2', 'gõ dở']);
+    r.setAttribute('caption', 'multiline');
+    expect(capsOf(r)[0].value).to.equal('Dòng 1\nDòng 2', 'the untouched one keeps its raw caption');
+  });
+
+  for (const id of ['mm51-name', 'mm51-order', 'mm51-count', 'mm51-attr', 'mm51-extra']) {
+    it(`${id}: caption markup mismatch → re-rendered, nothing foreign survives`, () => {
+      const host = v51El(id);
+      expect(host instanceof TdMediaGallery).to.equal(true);
+      expect(lis(host)[0] === v51Before[id].lis[0]).to.equal(false);
+      expect(host.querySelectorAll('[onfocus], textarea[name], input[type="hidden"]').length).to.equal(0);
+      expect(capsOf(host).length).to.equal(2);
+      expect(window.__pwned51).to.equal(undefined);
+    });
+  }
+
+  it('FormData of the v0.51 copies: no foreign entry, one [caption] per item', () => {
+    const e = fd(v51);
+    expect(e.filter(([k]) => k === 'extra' || k.endsWith('[steal]'))).to.deep.equal([]);
+    expect(e.filter(([k]) => /^m\[\d\]\[caption\]$/.test(k)).length).to.equal(2 * 5);
+  });
+
+  it('re-bind on move: the (emptied) textarea stays, value kept', () => {
+    const host = hostOf('v051-multiline');
+    const tiles = lis(host);
+    const ta = capsOf(host)[0];
+    const parent = host.parentNode;
+    parent.appendChild(host);
+    expect(lis(host).every((li, i) => li === tiles[i])).to.equal(true);
+    expect(capsOf(host)[0] === ta).to.equal(true);
+    expect(ta.value).to.equal('a\nb <b>x</b>');
+  });
+});
+

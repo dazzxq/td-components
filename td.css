@@ -14294,7 +14294,8 @@
  * List: a fixed grid `repeat(auto-fill, minmax(--td-media-gallery-tile-min, 1fr))` — never justified (a row height that
  * changes while sorting would move the target under the finger). Tile: the media box (SVG sizer = the tile ratio, same
  * markup in PHP and JS, default 1:1; the image covers it, `preview-fit="contain"` fits it), the handle on its top-end
- * corner on a solid chip, the Cắt / Gỡ buttons in a row UNDER the image (never over it), the alt input (usage).
+ * corner on a solid chip, the Cắt / Gỡ buttons in a row UNDER the image (never over it), the alt input (usage), the
+ * v0.51.0 caption (input / textarea) + the counter / error of a limited field ([hidden], [data-state="limit|over"]).
  * State: [data-kind] on the tile, [data-state="empty|filled"] / [hidden] / [aria-invalid] / :disabled on the Add button,
  * the SortableController's [data-td-dragging] on the list + [data-td-sort-state] on a tile, [hidden] on Cắt.
  * Positions while dragging: CSSOM --_td-sort-x / -y (the shared controller). Crop preview: CSSOM --_td-mg-crop-x / -y /
@@ -14566,6 +14567,54 @@
 		min-inline-size: 0;
 	}
 
+	/* v0.51.0 (plan v0.51.0-gallery-caption QĐ 20): the caption = the alt's twin (same small field control, full tile
+	   width); multiline = a 2-row textarea the user may grow (block axis only) */
+	.td-media-gallery__caption-field {
+		--_td-field-h: var(--td-field-h-sm);
+		--_td-field-radius: var(--td-field-radius-sm);
+		--_td-field-pad: 4px 8px;
+
+		display: block;
+		padding: 0 var(--td-space-2xs) var(--td-space-2xs);
+		font-size: var(--td-text-xs);
+	}
+
+	.td-media-gallery__caption {
+		min-inline-size: 0;
+	}
+
+	textarea.td-media-gallery__caption {
+		block-size: auto;
+		min-block-size: var(--td-field-h-sm);
+		resize: block;
+	}
+
+	/* v0.51.0 QĐ 10: counter (from 80 %) + inline error under a limited control — the field note / error tokens */
+	.td-media-gallery__counter,
+	.td-media-gallery__error {
+		margin: calc(-1 * var(--td-space-2xs)) 0 var(--td-space-2xs);
+		padding: 0 var(--td-space-2xs);
+		font-size: var(--td-text-xs);
+		line-height: var(--td-leading-normal);
+		overflow-wrap: anywhere;
+	}
+
+	.td-media-gallery__counter {
+		font-variant-numeric: tabular-nums;
+		color: var(--td-field-note);
+		text-align: end;
+	}
+
+	.td-media-gallery__counter:is([data-state="limit"], [data-state="over"]),
+	.td-media-gallery__error {
+		color: var(--td-field-error);
+	}
+
+	.td-media-gallery__counter[hidden],
+	.td-media-gallery__error[hidden] {
+		display: none;
+	}
+
 	.td-media-gallery__add {
 		display: flex;
 		align-items: center;
@@ -14696,6 +14745,12 @@
 		.td-media-gallery__btn {
 			inline-size: var(--td-touch-min, 44px);
 			block-size: var(--td-touch-min, 44px);
+		}
+
+		/* v0.51.0 (v0.36 QĐ 67): the counter / error under a control ≥ 14px on touch screens */
+		.td-media-gallery__counter,
+		.td-media-gallery__error {
+			font-size: var(--td-text-sm);
 		}
 
 		.td-media-gallery__add {
