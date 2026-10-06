@@ -1814,6 +1814,71 @@
       "light": "rgb(228, 228, 231)",
       "dark": "rgb(51, 51, 56)",
       "why": "v0.48.0 td-color-picker: \"no colour\" checkerboard = --td-color-border"
+    },
+    "--td-choice-bg": {
+      "light": "rgb(255, 255, 255)",
+      "dark": "rgb(28, 28, 30)",
+      "why": "v0.49.0: td-choice-group / number stepper token (reads the theme contract)"
+    },
+    "--td-choice-border": {
+      "light": "rgb(209, 209, 214)",
+      "dark": "rgb(118, 118, 124)",
+      "why": "v0.49.0: td-choice-group / number stepper token (reads the theme contract)"
+    },
+    "--td-choice-border-hover": {
+      "light": "rgb(174, 174, 178)",
+      "dark": "rgb(142, 142, 147)",
+      "why": "v0.49.0: td-choice-group / number stepper token (reads the theme contract)"
+    },
+    "--td-choice-gap": {
+      "light": "0.5rem",
+      "dark": "0.5rem",
+      "why": "v0.49.0: td-choice-group / number stepper token (reads the theme contract)"
+    },
+    "--td-choice-h": {
+      "light": "2.5rem",
+      "dark": "2.5rem",
+      "why": "v0.49.0: td-choice-group / number stepper token (reads the theme contract)"
+    },
+    "--td-choice-hint-fg": {
+      "light": "rgb(107, 107, 115)",
+      "dark": "rgb(172, 172, 180)",
+      "why": "v0.49.0: td-choice-group / number stepper token (reads the theme contract)"
+    },
+    "--td-choice-radius": {
+      "light": "8px",
+      "dark": "8px",
+      "why": "v0.49.0: td-choice-group / number stepper token (reads the theme contract)"
+    },
+    "--td-choice-selected": {
+      "light": "rgb(28, 28, 30)",
+      "dark": "rgb(245, 245, 247)",
+      "why": "v0.49.0: td-choice-group / number stepper token (reads the theme contract)"
+    },
+    "--td-choice-swatch-edge": {
+      "light": "rgb(212, 212, 216)",
+      "dark": "rgb(69, 69, 75)",
+      "why": "v0.49.0: td-choice-group / number stepper token (reads the theme contract)"
+    },
+    "--td-choice-swatch-size": {
+      "light": "2rem",
+      "dark": "2rem",
+      "why": "v0.49.0: td-choice-group / number stepper token (reads the theme contract)"
+    },
+    "--td-number-step-fg": {
+      "light": "rgb(28, 28, 30)",
+      "dark": "rgb(245, 245, 247)",
+      "why": "v0.49.0: td-choice-group / number stepper token (reads the theme contract)"
+    },
+    "--td-number-step-size": {
+      "light": "2.5rem",
+      "dark": "2.5rem",
+      "why": "v0.49.0: td-choice-group / number stepper token (reads the theme contract)"
+    },
+    "--td-number-stepper-w": {
+      "light": "9rem",
+      "dark": "9rem",
+      "why": "v0.49.0: td-choice-group / number stepper token (reads the theme contract)"
     }
   },
   "lightDeltas": {

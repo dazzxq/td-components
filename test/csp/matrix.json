@@ -52,7 +52,8 @@
       "td-timeline": "/src/display/td-timeline.js",
       "td-diff": "/src/display/td-diff.js",
       "td-check-matrix": "/src/form/td-check-matrix.js",
-      "td-color-picker": "/src/form/td-color-picker.js"
+      "td-color-picker": "/src/form/td-color-picker.js",
+      "td-choice-group": "/src/form/td-choice-group.js"
     },
     "tokenNative": [
       "td-button",
@@ -105,7 +106,8 @@
       "td-media-gallery",
       "td-diff",
       "td-check-matrix",
-      "td-color-picker"
+      "td-color-picker",
+      "td-choice-group"
     ],
     "tokenNativeNote": "Components migrated to token CSS (ADR 0008). Their baselines are captured with td.css ONLY (no Tailwind). csp.spec: the default run serves td.css only for them; the legacy+td run serves Tailwind + td.css and compares against the SAME baselines (host Tailwind must not alter them).",
     "mixed": [],
@@ -2746,6 +2748,39 @@
         ".td-number__affix--suffix"
       ],
       "selectorNote": "php/td.php td_number_input default (no JS, no custom element): the native type=number control in the same box (spin buttons hidden)"
+    },
+    {
+      "state": "stepper",
+      "markup": "<td-number-input name=\"qty\" label=\"Số lượng\" stepper min=\"1\" max=\"5\" value=\"3\" clamp></td-number-input>",
+      "selectors": [
+        ".td-number--stepper .td-number__box",
+        ".td-number__control",
+        ".td-number__step--down",
+        ".td-number__step--up",
+        ".td-number__step svg"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.49.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets (wrap, 44px targets) are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "stepper-min",
+      "markup": "<td-number-input name=\"qty\" label=\"Số lượng\" stepper min=\"1\" max=\"5\" value=\"1\"></td-number-input>",
+      "selectors": [
+        ".td-number__step--down",
+        ".td-number__step--up"
+      ],
+      "settle": 300,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.49.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets (wrap, 44px targets) are gated by test:responsive and the engines tests. Minus at the minimum: aria-disabled colour."
     }
   ],
   "td-repeater": [
@@ -4797,6 +4832,113 @@
         "transform"
       ],
       "excludeNote": "font-metric dependent box sizes (label / text line boxes, Linux CI fonts differ from macOS) are excluded up front; the popup position (top / left) follows the trigger, the thumb translate is resolved from its size"
+    }
+  ],
+  "td-choice-group": [
+    {
+      "state": "button",
+      "setup": "const c=document.createElement('td-choice-group'); c.id='probe'; c.setAttribute('name','cap'); c.setAttribute('label','Dung lượng'); c.setAttribute('value','128'); window.__mount.appendChild(c); c.options=[{value:'128',label:'128GB',hint:'21.990.000₫'},{value:'256',label:'256GB',hint:'24.990.000₫',unavailable:true},{value:'512',label:'512GB',disabled:true},{value:'1tb',label:'1TB'}]; ",
+      "selectors": [
+        ".td-choice",
+        ".td-choice__label",
+        ".td-choice__options",
+        ".td-choice__option",
+        ".td-choice__face",
+        ".td-choice__text",
+        ".td-choice__hint",
+        ".td-choice__input:checked + .td-choice__face"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.49.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets (wrap, 44px targets) are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "unavailable",
+      "setup": "const c=document.createElement('td-choice-group'); c.id='probe'; c.setAttribute('name','cap'); c.setAttribute('label','Dung lượng'); c.setAttribute('value','256'); window.__mount.appendChild(c); c.options=[{value:'128',label:'128GB',hint:'21.990.000₫'},{value:'256',label:'256GB',hint:'24.990.000₫',unavailable:true},{value:'512',label:'512GB',disabled:true},{value:'1tb',label:'1TB'}]; ",
+      "selectors": [
+        ".td-choice__option[data-unavailable] .td-choice__face",
+        ".td-choice__option[data-unavailable] .td-choice__text",
+        ".td-choice__note"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.49.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets (wrap, 44px targets) are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "disabled",
+      "setup": "const c=document.createElement('td-choice-group'); c.id='probe'; c.setAttribute('name','cap'); c.setAttribute('label','Dung lượng'); window.__mount.appendChild(c); c.options=[{value:'128',label:'128GB',hint:'21.990.000₫'},{value:'256',label:'256GB',hint:'24.990.000₫',unavailable:true},{value:'512',label:'512GB',disabled:true},{value:'1tb',label:'1TB'}]; ",
+      "selectors": [
+        ".td-choice__option[data-disabled] .td-choice__face",
+        ".td-choice__option[data-disabled] .td-choice__text"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.49.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets (wrap, 44px targets) are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "error",
+      "setup": "const c=document.createElement('td-choice-group'); c.id='probe'; c.setAttribute('name','cap'); c.setAttribute('label','Dung lượng'); c.setAttribute('required',''); c.setAttribute('error-text','Vui lòng chọn một mục'); window.__mount.appendChild(c); c.options=[{value:'128',label:'128GB',hint:'21.990.000₫'},{value:'256',label:'256GB',hint:'24.990.000₫',unavailable:true},{value:'512',label:'512GB',disabled:true},{value:'1tb',label:'1TB'}]; ",
+      "selectors": [
+        ".td-choice__options",
+        ".td-choice__option .td-choice__face",
+        ".td-field-error"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.49.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets (wrap, 44px targets) are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "swatch",
+      "setup": "const c=document.createElement('td-choice-group'); c.id='probe'; c.setAttribute('name','color'); c.setAttribute('label','Màu sắc'); c.setAttribute('variant','swatch'); c.setAttribute('value','den'); window.__mount.appendChild(c); c.options=[{value:'den',label:'Titan đen',swatch:'#3b3b3d'},{value:'trang',label:'Titan trắng',swatch:'#f4f4f2'},{value:'sa',label:'Titan sa mạc',swatch:'rgb(191, 160, 126)',unavailable:true},{value:'x',label:'Không có',swatch:'#1d4ed8',disabled:true}]; ",
+      "selectors": [
+        ".td-choice__label",
+        ".td-choice__current",
+        ".td-choice__options",
+        ".td-choice__option",
+        ".td-choice__face",
+        ".td-choice__swatch",
+        ".td-choice__input:checked + .td-choice__face",
+        ".td-choice__option[data-unavailable] .td-choice__face",
+        ".td-choice__option[data-disabled] .td-choice__face"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.49.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets (wrap, 44px targets) are gated by test:responsive and the engines tests."
+    },
+    {
+      "state": "image",
+      "setup": "const c=document.createElement('td-choice-group'); c.id='probe'; c.setAttribute('name','img'); c.setAttribute('label','Ảnh'); c.setAttribute('variant','swatch'); c.setAttribute('value','a'); window.__mount.appendChild(c); c.options=[{value:'a',label:'Ảnh A',image:'/test/fixtures/1.svg'},{value:'b',label:'Ảnh B',image:'/test/fixtures/2.svg',unavailable:true}]; ",
+      "selectors": [
+        ".td-choice__face",
+        ".td-choice__image"
+      ],
+      "settle": 200,
+      "excludeProps": [
+        "height",
+        "width",
+        "margin-left"
+      ],
+      "selectorNote": "v0.49.0: text-bearing boxes size with the platform font metrics — height / width / margin-left excluded up front; layout budgets (wrap, 44px targets) are gated by test:responsive and the engines tests."
     }
   ]
 }

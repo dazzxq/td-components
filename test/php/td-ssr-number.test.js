@@ -181,4 +181,16 @@ describe('php/td.php — td_number_input (v0.30.0, contract number-input@1)', op
     const long = rawPhp(`'p', str_repeat('x', 100000)`);
     assert.ok(long.stderr.length < 400, `bounded: ${long.stderr.length}`);
   });
+
+  test('v0.49.0 stepper: element mode adds the two buttons (type=button, tabindex=-1, icon slots, no name text) + host `stepper`; native mode ignores it', () => {
+    const el = one('td_number_input', ['qty', '2', { element: true, stepper: true, id: 'q', label: 'Số lượng', min: '1', max: '5' }]);
+    assert.ok(el.startsWith('<td-number-input data-td-ssr="number-input@1" id="q-host" name="qty" value="2" label="Số lượng" min="1" max="5" stepper>'), el.slice(0, 160));
+    assert.ok(el.includes('<div class="td-field td-field--md td-number td-number--stepper">'));
+    const box = /<div class="td-number__box">(.*?)<\/div>/.exec(el)[1];
+    assert.match(box, /^<button type="button" class="td-number__step td-number__step--down" tabindex="-1" aria-controls="q"><span class="td-number__step-icon" data-td-icon="minus" data-td-icon-class="td-number__step-svg"><svg [^>]*data-icon="minus"/);
+    assert.match(box, /<input type="number" [^>]*><button type="button" class="td-number__step td-number__step--up" tabindex="-1" aria-controls="q"><span [^>]*data-td-icon="plus"[^>]*><svg [^>]*data-icon="plus"[^>]*>.*<\/svg><\/span><\/button>$/);
+    assert.ok(!/aria-label="(Giảm|Tăng)/.test(el), 'names are the component\'s (messages = state)');
+    const native = one('td_number_input', ['qty', '2', { stepper: true, label: 'Số lượng' }]);
+    assert.ok(!native.includes('td-number__step') && !native.includes('td-number--stepper') && !native.includes('stepper'), native);
+  });
 });

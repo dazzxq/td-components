@@ -2,6 +2,7 @@ import {
   TdFormElement, ssrClassKey, ssrContentNodes, ssrSameAttrs, ssrSamePart, ssrIsErrorNote, SSR_ARIA_DATA, SSR_CONTROL_ATTRS,
 } from '../base/td-form-element.js';
 import { ssrMarker } from '../base/td-base-element.js';
+import { fillIconSlots } from '../icons/td-icon.js';
 import {
   asciiDigit, parseCanonical, format, edit, parseLoose, compare, clamp, step as stepValue, stepAligned, fromNumberString,
   MAX_DIGITS,
@@ -40,10 +41,13 @@ const GROUPS = ['.', ',', ' ', ''];
  *     <div class="td-field td-field--{sm|md|lg} td-number">
  *       [<label class="td-field__label" id="{h}-label" for="{h}-control">…[<span class="td-field__required" aria-hidden="true"> *</span>]</label>]
  *       <div class="td-number__box">
+ *         [<button type="button" class="td-number__step td-number__step--down" tabindex="-1" aria-controls="{h}-control"
+ *                  aria-label="Giảm {label}">(icon minus)</button>  (v0.49.0 `stepper`; `.td-field` + `td-number--stepper`)]
  *         [<span class="td-number__affix td-number__affix--prefix" aria-hidden="true">$</span>]
  *         <input type="text" class="td-number__control" id="{h}-control" inputmode autocomplete="off" spellcheck="false">
  *         [<span class="td-number__affix td-number__affix--suffix" aria-hidden="true">₫</span>]
  *         [<span id="{h}-unit" hidden>{unit-label | suffix | prefix}</span>]
+ *         [<button … class="td-number__step td-number__step--up" … aria-label="Tăng {label}">(icon plus)</button>]
  *       </div>
  *       <div class="td-field__footer" [hidden]>[error note]<div class="td-field__note" id="{h}-note" [hidden]>…</div></div>
  *       <span class="td-sr-only" id="{h}-status" role="status"></span>
@@ -64,6 +68,9 @@ const GROUPS = ['.', ',', ' ', ''];
  * @attr {string} inputmode - overrides the derived keyboard hint
  * @attr {string} enterkeyhint - enter|done|go|next|previous|search|send → the control (v0.36.2; other values dropped)
  * @attr {string} validate-on - blur|change|input
+ * @attr {boolean} stepper - v0.49.0: − / + buttons around the field (structural). Out of the Tab order (↑ / ↓ / typing are
+ *   the keyboard path); a press never moves the focus; `aria-disabled` at min / max; every press that changes the value
+ *   fires `input` + `change` at once and is read through the live region. Host disabled / readonly → both `disabled`.
  * @fires input - detail: { value } — the canonical value changed (user)
  * @fires change - detail: { value } — on blur, when it differs from the value at focus
  */
@@ -84,20 +91,23 @@ export class TdNumberInput extends TdFormElement {
     tooManyDecimals: 'Tối đa {decimals} chữ số thập phân',
     pasteRejected: 'Không dán được: giá trị không hợp lệ',
     clamped: 'Đã chỉnh về {value}',
+    /** v0.49.0 stepper button names; `{label}` = the field label / aria-label (none → the verb alone) */
+    decrease: 'Giảm {label}',
+    increase: 'Tăng {label}',
   };
 
   static get observedAttributes() {
     return [...super.observedAttributes, 'value', 'label', 'placeholder', 'helper-text', 'error-text', 'size', 'readonly',
       'min', 'max', 'step', 'decimals', 'group-separator', 'decimal-separator', 'prefix', 'suffix', 'unit-label', 'clamp',
-      'inputmode', 'enterkeyhint', 'validate-on', 'aria-label'];
+      'inputmode', 'enterkeyhint', 'validate-on', 'aria-label', 'stepper'];
   }
 
-  static get booleanAttributes() { return [...super.booleanAttributes, 'readonly', 'clamp']; }
+  static get booleanAttributes() { return [...super.booleanAttributes, 'readonly', 'clamp', 'stepper']; }
 
   static get errorContract() { return true; }
 
   /** @private attributes that change the DOM structure → re-render */
-  static _structural = new Set(['label', 'size', 'prefix', 'suffix', 'unit-label']);
+  static _structural = new Set(['label', 'size', 'prefix', 'suffix', 'unit-label', 'stepper']);
 
   constructor() {
     super();
@@ -232,13 +242,19 @@ export class TdNumberInput extends TdFormElement {
     const prefix = this.getAttribute('prefix') || '';
     const suffix = this.getAttribute('suffix') || '';
     const unit = this._unitText();
-    return `<div class="td-field td-field--${this._size()} td-number">`
+    const stepper = this.hasAttribute('stepper');
+    // v0.49.0: the button names are STATE (messages), applied in afterRender — never part of the SSR comparison
+    const step = (dir, icon) => `<button type="button" class="td-number__step td-number__step--${dir}" tabindex="-1" aria-controls="${cid}">`
+      + `<span class="td-number__step-icon" data-td-icon="${icon}" data-td-icon-class="td-number__step-svg"></span></button>`;
+    return `<div class="td-field td-field--${this._size()} td-number${stepper ? ' td-number--stepper' : ''}">`
       + (label ? `<label class="td-field__label" id="${id}-label" for="${cid}">${esc(label)}</label>` : '')
       + '<div class="td-number__box">'
+      + (stepper ? step('down', 'minus') : '')
       + (prefix ? `<span class="td-number__affix td-number__affix--prefix" aria-hidden="true">${esc(prefix)}</span>` : '')
       + `<input type="text" class="td-number__control" id="${cid}" inputmode="${esc(this._inputMode())}"${this._enterKeyHint() ? ` enterkeyhint="${this._enterKeyHint()}"` : ''} autocomplete="off" spellcheck="false">`
       + (suffix ? `<span class="td-number__affix td-number__affix--suffix" aria-hidden="true">${esc(suffix)}</span>` : '')
       + (unit ? `<span id="${id}-unit" hidden>${esc(unit)}</span>` : '')
+      + (stepper ? step('up', 'plus') : '')
       + '</div>'
       + `<div class="td-field__footer"><div class="td-field__note" id="${id}-note" hidden></div></div>`
       + `<span class="td-sr-only" id="${id}-status" role="status"></span>`
@@ -263,8 +279,15 @@ export class TdNumberInput extends TdFormElement {
       this.listen(box, 'mousedown', (e) => {
         if (e.target === c || c.disabled) return;
         e.preventDefault();
+        // v0.49.0: a stepper button never moves the focus (the field being typed in stays focused, an unfocused field
+        // stays unfocused — no virtual keyboard on a tap)
+        if (/** @type {Element} */ (e.target).closest?.('.td-number__step')) return;
         c.focus();
       });
+      for (const b of box.querySelectorAll(':scope > .td-number__step')) {
+        this.listen(b, 'click', () => this._onStepButton(b.classList.contains('td-number__step--up') ? 1 : -1, b));
+      }
+      fillIconSlots(box, ':scope > .td-number__step > [data-td-icon]');
     }
     this._paintValue();
     this._applyPlaceholder();
@@ -273,6 +296,7 @@ export class TdNumberInput extends TdFormElement {
     this._applyRequired();
     this._applyName();
     this._applyHelper();
+    this._applyStepNames();
     this._syncForm();
     this._applyErrorState();
   }
@@ -285,7 +309,14 @@ export class TdNumberInput extends TdFormElement {
       return;
     }
     if (TdNumberInput._structural.has(name)) {
-      super.attributeChangedCallback(name, oldVal, newVal); // re-render (value kept: render paints this._value)
+      // re-render (value kept: render paints this._value); v0.49.0: a focused control gets the focus back (same baseline)
+      const focused = this._focusTarget() === this.ownerDocument.activeElement;
+      super.attributeChangedCallback(name, oldVal, newVal);
+      if (focused) {
+        const atFocus = this._valueAtFocus;
+        this._focusTarget()?.focus({ preventScroll: true });
+        this._valueAtFocus = atFocus;
+      }
       return;
     }
     switch (name) {
@@ -316,6 +347,7 @@ export class TdNumberInput extends TdFormElement {
         return;
       case 'aria-label':
         this._applyName();
+        this._applyStepNames();
         return;
       case 'inputmode':
         this._applyInputMode();
@@ -372,6 +404,52 @@ export class TdNumberInput extends TdFormElement {
     if (!c) return;
     c.disabled = this._effectiveDisabled;
     c.readOnly = this.hasAttribute('readonly');
+    for (const b of this._stepButtons()) b.disabled = this._effectiveDisabled || c.readOnly;
+  }
+
+  /** @private v0.49.0 stepper buttons [down, up] (empty without `stepper`) */
+  _stepButtons() {
+    return [...this.querySelectorAll('.td-number > .td-number__box > .td-number__step')];
+  }
+
+  /** @private v0.49.0 "Giảm {label}" / "Tăng {label}" (messages = state, applied in place) */
+  _applyStepNames() {
+    const label = this.getAttribute('label') || this.getAttribute('aria-label') || '';
+    for (const b of this._stepButtons()) {
+      const key = b.classList.contains('td-number__step--up') ? 'increase' : 'decrease';
+      b.setAttribute('aria-label', this._msg(key, { label }).trim());
+    }
+  }
+
+  /** @private v0.49.0 `aria-disabled` at the bounds: − when value ≤ min, + when value ≥ max (empty: both on) */
+  _syncStepBounds() {
+    const [downBtn, upBtn] = [this.querySelector('.td-number__step--down'), this.querySelector('.td-number__step--up')];
+    if (!downBtn && !upBtn) return;
+    const v = this._value;
+    const max = this._max();
+    const set = (b, on) => {
+      if (!b) return;
+      if (on) b.setAttribute('aria-disabled', 'true');
+      else b.removeAttribute('aria-disabled');
+    };
+    set(downBtn, !!v && compare(v, this._min()) <= 0);
+    set(upBtn, !!v && !!max && compare(v, max) >= 0);
+  }
+
+  /**
+   * @private v0.49.0 a press on − / +: the same step path as ↑ / ↓; a change fires `input` + `change` at once (like a
+   * native spin button), is read through the live region and resets the focus baseline (no 2nd `change` on blur).
+   */
+  _onStepButton(dir, b) {
+    if (b.getAttribute('aria-disabled') === 'true' || b.disabled) return;
+    const before = this._value;
+    if (!this._stepBy(dir)) return;
+    const v = this._value;
+    if (v === before) return;
+    const c = this._focusTarget();
+    if (c && c.ownerDocument.activeElement === c) this._valueAtFocus = v;
+    this.emit('change', { value: v });
+    this._announce(this._withUnit(v));
   }
 
   /** @private */
@@ -591,12 +669,21 @@ export class TdNumberInput extends TdFormElement {
     const dir = { ArrowUp: 1, ArrowDown: -1, PageUp: 10, PageDown: -10 }[e.key];
     if (!dir || e.shiftKey) return; // Shift+↑ / ↓ keeps the native selection
     e.preventDefault();
-    if (!this._editable()) return;
+    this._stepBy(dir);
+  }
+
+  /**
+   * @private v0.49.0: one step path for ↑ / ↓ / PageUp / PageDown and the stepper buttons. Fires `input` when the value
+   * changes (through _commitValue). @returns {boolean} whether a new value was committed
+   */
+  _stepBy(dir) {
+    if (!this._editable()) return false;
     const min = this._min();
     const next = stepValue(this._value, dir, { step: this._stepAttr() || '1', base: min, min, max: this._max() });
     // same gate as typing: a result past 30 digits (or `decimals`) is refused, the value stays
-    if (parseCanonical(next, this._decimals()) == null) return;
+    if (parseCanonical(next, this._decimals()) == null) return false;
     this._commitValue(next, true);
+    return true;
   }
 
   /** @private type `text` at the selection through the same structural check + edit() */
@@ -663,6 +750,7 @@ export class TdNumberInput extends TdFormElement {
 
   /** @private */
   _syncForm() {
+    this._syncStepBounds();
     this._setFormValue(this._value, this._value);
     const { flags, message } = this._computeValidity();
     this._setValidity(flags, message, this._focusTarget() || undefined);
@@ -943,6 +1031,7 @@ export class TdNumberInput extends TdFormElement {
     if (have.length !== need.length || have.some((n) => n.nodeType !== 1)) return false;
     return need.every((w, i) => {
       const c = have[i];
+      if (w.classList.contains('td-number__step')) return this._ssrStepOk(c, w);
       if (!w.classList.contains('td-number__control')) return ssrSamePart(c, w);
       if (c.localName !== 'input' || ssrClassKey(c) !== 'td-number__control' || c.id !== w.id) return false;
       const t = c.getAttribute('type');
@@ -950,6 +1039,24 @@ export class TdNumberInput extends TdFormElement {
       const ok = (n) => (SSR_CONTROL_ATTRS.has(n) && n !== 'checked' && (first || !SSR_ONLY.includes(n))) || SSR_ARIA_DATA.test(n);
       return [...c.attributes].every((a) => ok(a.name));
     });
+  }
+
+  /**
+   * @private v0.49.0 a stepper button = render()'s (tag, type, class, tabindex, aria-controls; one icon slot compared by
+   * its attributes) + only the state the component sets itself (aria-label, aria-disabled, disabled).
+   */
+  _ssrStepOk(b, want) {
+    if (b.nodeType !== 1 || b.localName !== 'button' || ssrClassKey(b) !== ssrClassKey(want)) return false;
+    const state = ['aria-label', 'aria-disabled', 'disabled'];
+    if (![...b.attributes].every((a) => state.includes(a.name) || (a.name !== 'class' && want.getAttribute(a.name) === a.value) || a.name === 'class')) return false;
+    if (![...want.attributes].every((a) => b.hasAttribute(a.name))) return false;
+    const kids = ssrContentNodes(b);
+    return kids.length === 1 && ssrSamePart(kids[0], want.firstElementChild);
+  }
+
+  /** @protected v0.49.0: the stepper buttons were compared exactly (_ssrStepOk) — not a second control */
+  _ssrVerifiedParts() {
+    return this.hasAttribute('stepper') ? this._stepButtons() : [];
   }
 
   /** @private footer: [error note ⇔ an error shows] + the note (text only) */

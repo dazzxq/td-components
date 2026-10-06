@@ -1,0 +1,326 @@
+/*
+ * td-choice-group (src/form/td-choice-group.js, v0.49.0 — plan v0.49.0-choice-stepper) — one of N as buttons or swatches.
+ * Minimal surfaces (ADR 0011): solid control fill, one thin border, no shadow; selected = a 2px INK ring (shape, not only
+ * colour — WCAG 1.4.1) drawn without layout shift; focus = the kit focus colour as an outline outside the face.
+ * State (never visual classes): the native radio's :checked / :disabled / :focus-visible, read on its sibling face
+ * (`input + .td-choice__face`, no :has()), [data-unavailable] on the option, [aria-invalid] on the radiogroup.
+ * Colours only read theme-contract tokens (control / colour / focus / pressed) → dark, auto, theme scopes and generated
+ * palettes follow (no THEME_TOKENS of its own). Swatch colour = SVG `fill` presentation attribute (CSP-safe, works
+ * without JS), image = <img>; both keep their colours in forced-colours mode (content, like a photo).
+ */
+@layer td.tokens {
+	:root {
+		--td-choice-gap: var(--td-space-xs);
+		--td-choice-h: 2.5rem;
+		--td-choice-radius: var(--td-radius-md);
+		--td-choice-swatch-size: 2rem;
+	}
+
+	/* ADR 0020: colour tokens re-resolve in every theme scope */
+	:root, [data-td-theme] {
+		--td-choice-bg: var(--td-control-bg);
+		--td-choice-border: var(--td-control-border-soft);
+		--td-choice-border-hover: var(--td-control-border-hover);
+		--td-choice-selected: var(--td-color-text);
+		--td-choice-hint-fg: var(--td-color-text-muted);
+		--td-choice-swatch-edge: var(--td-color-border-strong);
+	}
+}
+
+@layer td.component {
+	td-choice-group {
+		display: block;
+		min-inline-size: 0; /* shrink in grid / flex tracks (ADR 0014 §5) */
+	}
+
+	/* ADR 0012 safety net: hand-written host before define → reserve one row (no fake styling) */
+	td-choice-group:not(:defined):not([data-td-ssr]) {
+		display: block;
+		min-height: 2.5rem;
+	}
+
+	.td-choice__current {
+		font-weight: var(--td-fw-normal, 400);
+		color: var(--td-control-fg);
+	}
+
+	.td-choice__options {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--td-choice-gap);
+		align-items: stretch;
+		min-width: 0;
+		padding: 0;
+		margin: 0;
+	}
+
+	.td-choice__option {
+		position: relative;
+		display: inline-flex;
+		min-width: 0;
+		max-width: 100%;
+		cursor: pointer;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	/* the native radio: visually hidden, still focusable, keyboard + group native */
+	.td-choice__input {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	.td-choice__face {
+		position: relative;
+		display: inline-flex;
+		gap: var(--td-space-xs);
+		align-items: center;
+		min-width: 0;
+		max-width: 100%;
+		color: var(--td-control-fg);
+		outline: 2px solid transparent; /* visible in forced colours */
+		outline-offset: 2px;
+		transition:
+			border-color var(--td-dur-fast) var(--td-ease),
+			box-shadow var(--td-dur-fast) var(--td-ease);
+	}
+
+	/* --- button --- */
+	.td-choice--button .td-choice__face {
+		min-height: var(--td-choice-h);
+		padding: 0.375rem 0.875rem;
+		font-size: var(--td-text-sm);
+		line-height: var(--td-leading-snug, 1.375);
+		text-align: start;
+		background: var(--td-choice-bg);
+		border: 1px solid var(--td-choice-border);
+		border-radius: var(--td-choice-radius);
+	}
+
+	.td-choice__body {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+	}
+
+	.td-choice__text {
+		font-weight: var(--td-fw-medium);
+		overflow-wrap: anywhere; /* long labels wrap inside the button — never cut with … (information) */
+	}
+
+	.td-choice__hint,
+	.td-choice__note {
+		font-size: var(--td-text-xs);
+		color: var(--td-choice-hint-fg);
+		overflow-wrap: anywhere;
+	}
+
+	.td-choice--button .td-choice__swatch,
+	.td-choice--button .td-choice__image {
+		flex: 0 0 auto;
+		width: 1.25rem;
+		height: 1.25rem;
+		border-radius: var(--td-radius-full);
+		box-shadow: 0 0 0 1px var(--td-choice-swatch-edge);
+	}
+
+	.td-choice__image {
+		display: block;
+		max-width: none; /* fixed swatch box: a host reset (Tailwind preflight img { max-width: 100% }) must not change it */
+		height: auto;
+		object-fit: cover;
+	}
+
+	.td-choice__swatch,
+	.td-choice__image {
+		forced-color-adjust: none; /* the colour / picture is content */
+	}
+
+	.td-choice__swatch--none circle {
+		fill: var(--td-color-fill); /* no valid colour / image: a neutral disc */
+	}
+
+	.td-choice--button .td-choice__input:checked + .td-choice__face {
+		border-color: var(--td-choice-selected);
+		box-shadow: inset 0 0 0 1px var(--td-choice-selected); /* border + inset = a 2px ring, no layout shift */
+	}
+
+	.td-choice__option[data-unavailable] .td-choice__text {
+		color: var(--td-choice-hint-fg);
+		text-decoration-line: line-through;
+	}
+
+	.td-choice--button .td-choice__input:disabled + .td-choice__face {
+		color: var(--td-btn-disabled-fg);
+		cursor: not-allowed;
+		background: var(--td-btn-disabled-bg);
+		border-color: var(--td-btn-disabled-border);
+	}
+
+	.td-choice--button .td-choice__input:disabled + .td-choice__face :is(.td-choice__hint, .td-choice__note, .td-choice__text) {
+		color: inherit;
+	}
+
+	.td-choice__options[aria-invalid="true"] .td-choice__input:not(:checked, :disabled) + .td-choice__face {
+		border-color: var(--td-field-error);
+	}
+
+	.td-choice__input:focus-visible + .td-choice__face {
+		outline: 2px solid var(--td-focus);
+	}
+
+	/* --- swatch --- */
+	.td-choice--swatch .td-choice__options {
+		gap: calc(var(--td-choice-gap) + 0.25rem); /* room for the selected ring + the focus outline */
+	}
+
+	.td-choice--swatch .td-choice__option {
+		align-items: center;
+		justify-content: center;
+	}
+
+	.td-choice--swatch .td-choice__face {
+		flex: 0 0 auto;
+		width: var(--td-choice-swatch-size);
+		height: var(--td-choice-swatch-size);
+		border-radius: var(--td-radius-full);
+	}
+
+	.td-choice--swatch .td-choice__swatch,
+	.td-choice--swatch .td-choice__image {
+		display: block;
+		width: 100%;
+		height: 100%;
+		border-radius: var(--td-radius-full);
+	}
+
+	/* inner edge so a white swatch shows on a white page (drawn over the colour / picture) */
+	.td-choice--swatch .td-choice__face::before {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		content: "";
+		border-radius: inherit;
+		box-shadow: inset 0 0 0 1px var(--td-choice-swatch-edge);
+	}
+
+	.td-choice--swatch .td-choice__input:checked + .td-choice__face {
+		box-shadow: 0 0 0 2px var(--td-color-surface), 0 0 0 4px var(--td-choice-selected);
+	}
+
+	.td-choice--swatch .td-choice__input:focus-visible + .td-choice__face {
+		outline-offset: 6px;
+	}
+
+	/* unavailable: a two-tone diagonal (dark line, light halo) that shows on any colour */
+	.td-choice--swatch .td-choice__option[data-unavailable] .td-choice__face::after {
+		position: absolute;
+		top: 50%;
+		left: -2px;
+		width: calc(100% + 4px);
+		height: 2px;
+		pointer-events: none;
+		content: "";
+		background: var(--td-color-text);
+		border-radius: 1px;
+		box-shadow: 0 0 0 1px var(--td-color-surface);
+		transform: translateY(-50%) rotate(-45deg);
+	}
+
+	.td-choice--swatch .td-choice__input:disabled + .td-choice__face {
+		cursor: not-allowed;
+		opacity: 0.4;
+	}
+
+	/* hover: a darker border (fine pointers only, ADR 0019) */
+	@media (hover: hover) and (pointer: fine) {
+		.td-choice__option:hover > .td-choice__input:not(:checked, :disabled) + .td-choice__face {
+			border-color: var(--td-choice-border-hover);
+		}
+
+		/* swatch edge (::before exists only in the swatch variant) */
+		.td-choice__option:hover > .td-choice__input:not(:checked, :disabled) + .td-choice__face::before {
+			box-shadow: inset 0 0 0 1px var(--td-choice-border-hover);
+		}
+	}
+
+	/* pressed (ADR 0019): colour only, at once */
+	.td-choice__option:is(:active, [data-td-pressed]) > .td-choice__input:not(:disabled) + .td-choice__face {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	/* the muted lines (hint / note / struck text) take the full ink on the pressed layer: muted ink on 12 % black is only
+	   4.0:1 (contrast gate v049:choice:pressed ≥ 4.7) — colour only, like every pressed rule */
+	.td-choice__option:is(:active, [data-td-pressed]) > .td-choice__input:not(:disabled) + .td-choice__face :is(.td-choice__hint, .td-choice__note, .td-choice__text) {
+		color: var(--td-control-fg);
+	}
+
+	/* swatch: the colour covers the face background → the layer goes on the edge overlay (::before exists only there) */
+	.td-choice__option:is(:active, [data-td-pressed]) > .td-choice__input:not(:disabled) + .td-choice__face::before {
+		background: var(--td-color-pressed);
+	}
+
+	@media (pointer: coarse) {
+		.td-choice--button .td-choice__face {
+			min-height: var(--td-touch-min);
+		}
+
+		.td-choice--swatch .td-choice__options {
+			gap: var(--td-space-2xs);
+		}
+
+		/* the 44px target is the option (label) around the 32px swatch: targets never overlap */
+		.td-choice--swatch .td-choice__option {
+			min-width: var(--td-touch-min);
+			min-height: var(--td-touch-min);
+		}
+	}
+
+	@media (prefers-contrast: more) {
+		.td-choice--button .td-choice__face {
+			border-color: currentcolor;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.td-choice__face {
+			transition: none;
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-choice--button .td-choice__face {
+			border-color: ButtonText;
+		}
+
+		.td-choice--button .td-choice__input:checked + .td-choice__face {
+			border-color: Highlight;
+			box-shadow: inset 0 0 0 1px Highlight;
+		}
+
+		.td-choice--swatch .td-choice__input:checked + .td-choice__face {
+			outline: 2px solid Highlight;
+			outline-offset: 2px;
+		}
+
+		.td-choice__input:focus-visible + .td-choice__face {
+			outline-color: Highlight;
+		}
+
+		.td-choice__input:disabled + .td-choice__face {
+			color: GrayText;
+			border-color: GrayText;
+		}
+
+		.td-choice__option:is(:active, [data-td-pressed]) > .td-choice__input:not(:disabled) + .td-choice__face {
+			outline: 2px solid Highlight;
+		}
+	}
+}

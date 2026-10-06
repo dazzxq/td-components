@@ -344,7 +344,7 @@ export class TdFormElement extends TdBaseElement {
    * @protected
    */
   _syncDescribedBy() {
-    const target = this._focusTarget();
+    const target = this._ariaTarget();
     if (!target) return;
     const own = [...this._describedByIds()];
     if (this.constructor.errorContract && this.errorMessage) own.push(`${this.id}-error`);
@@ -392,7 +392,7 @@ export class TdFormElement extends TdBaseElement {
   _applyErrorState() {
     if (!this.constructor.errorContract || !this._initialized) return;
     const msg = this.errorMessage;
-    const target = this._focusTarget();
+    const target = this._ariaTarget();
     const id = `${this.id}-error`;
     // Direct reference (no selector built from the id); a re-render detaches it → recreate.
     let note = this._errorNote && this.contains(this._errorNote) ? this._errorNote : null;
@@ -643,9 +643,13 @@ export class TdFormElement extends TdBaseElement {
    * @returns {boolean}
    */
   _ssrUnsafe() {
+    // v0.49.0: parts the subclass already compared EXACTLY with render() (e.g. the number stepper's buttons) are not
+    // re-checked against the generic tag / attribute allowlist, nor counted as a second control; their subtree is.
+    const verified = new Set(this._ssrVerifiedParts());
     const walk = (node) => [...node.childNodes].some((n) => {
       if (n.nodeType === 3 || n.nodeType === 8) return false;
       if (n.nodeType !== 1) return true;
+      if (verified.has(n)) return walk(n);
       const svg = n.namespaceURI === 'http://www.w3.org/2000/svg';
       if (svg ? !SSR_SVG_TAGS.has(n.localName) : (n.namespaceURI !== 'http://www.w3.org/1999/xhtml' || !SSR_HTML_TAGS.has(n.localName))) return true;
       const control = n.localName === 'input' || n.localName === 'textarea';
@@ -658,9 +662,16 @@ export class TdFormElement extends TdBaseElement {
     if (walk(this)) return true;
     // Review round 2: exactly ONE native control — any other form-associated element (an injected hidden input /
     // textarea would submit with the form) makes the markup unsafe.
-    const controls = this.querySelectorAll(SSR_FORM_ASSOCIATED);
+    const controls = [...this.querySelectorAll(SSR_FORM_ASSOCIATED)].filter((c) => !verified.has(c));
     return controls.length !== 1 || controls[0] !== this._ssrControl;
   }
+
+  /**
+   * @protected v0.49.0: elements under the host that the subclass verified exactly against render() before calling
+   * `_ssrDecide()` (structure + attributes) and that may therefore be extra form-associated elements (buttons). Default: none.
+   * @returns {Element[]}
+   */
+  _ssrVerifiedParts() { return []; }
 
   /**
    * @protected Hydrate step 4: only EXTERNAL `<label for="{control id}">` (outside the host) move to the host, like a
@@ -692,6 +703,16 @@ export class TdFormElement extends TdBaseElement {
    */
   _focusTarget() {
     return this.querySelector('input, textarea, select, [contenteditable="true"], button, [tabindex]');
+  }
+
+  /**
+   * v0.49.0: the element carrying the error / description ARIA (`aria-invalid`, `aria-errormessage`, `aria-describedby`).
+   * Default: the focus target; a group control (td-choice-group) returns its `role="radiogroup"` element.
+   * @returns {HTMLElement|null}
+   * @protected
+   */
+  _ariaTarget() {
+    return this._focusTarget();
   }
 
   /**

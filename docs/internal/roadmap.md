@@ -51,10 +51,11 @@ Nguồn gốc các item B/a11y: [history/2026-09-sync-dcms-dwp.md](history/2026-
 - `done` v0.46.0: `<td-diff>` (audit log trước / sau) — plan [v0.46.0-diff](plans/v0.46.0-diff.md)
 - `done` v0.47.0: `<td-check-matrix>` (lưới quyền × vai trò, [ADR 0022](decisions/0022-check-matrix-grid-form-shape.md)) — plan [v0.47.0-check-matrix](plans/v0.47.0-check-matrix.md)
 - `done` v0.48.0: `<td-color-picker>` — plan [v0.48.0-color-picker](plans/v0.48.0-color-picker.md)
-- `todo` v0.49–v0.50: yêu cầu dsuite còn lại (choice-group + stepper, rating + carousel) — plan từng bản trong `plans/`
+- `done` v0.49.0: `<td-choice-group>` + `<td-number-input stepper>` ([ADR 0023](decisions/0023-unowned-radio-group.md)) — plan [v0.49.0-choice-stepper](plans/v0.49.0-choice-stepper.md)
+- `todo` v0.50: rating + carousel — plan [v0.50.0-rating-carousel](plans/v0.50.0-rating-carousel.md)
 - Ngày từ v0.33 trở đi: **rebaseline từ ngày v0.31 xong thực tế** (không nén test / acceptance để giữ lịch cũ ~11/11 –
   25/11)
-- `todo` B (sau B0 ~01/2027): choice-group, number stepper, rating chỉ đọc, carousel không autoplay
+- B (sau B0 ~01/2027): choice-group + number stepper làm sớm ở v0.49.0 (dsuite); rating chỉ đọc + carousel không autoplay → v0.50.0
 
 ## Done — v0.4.1 bugfix (2026-09-27, xem CHANGELOG)
 

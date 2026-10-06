@@ -8,8 +8,9 @@
 thập phân: chính xác tới **30 chữ số**, không bao giờ qua `Number` (không có lỗi `0.1 + 0.2`, không mất chính xác trên
 9 triệu tỷ).
 
-Khi nào dùng cái nào: cần số trần không định dạng (số lượng 1–10, năm) → [input field](input-field.md) `type="number"`;
-cần định dạng tiền / số lớn / dán từ Excel, hoá đơn → `<td-number-input>`.
+Khi nào dùng cái nào: cần số trần không định dạng (năm) → [input field](input-field.md) `type="number"`;
+cần định dạng tiền / số lớn / dán từ Excel, hoá đơn → `<td-number-input>`; số lượng trong giỏ (nút − / +) →
+`<td-number-input stepper>` ([mục 8](#8-stepper)).
 
 | | |
 |---|---|
@@ -130,6 +131,42 @@ hàng nghìn). Module tải → nhận tại chỗ, hiện `12.990.000`. Helper 
 `12.5` bị từ chối, không lặng lẽ thành `12` — truyền `'12.5'`). Chi tiết option và id:
 [Adapter PHP › td_number_input](../guides/php-adapter.md#td_number_input-0300).
 
+### 8. Stepper
+
+`stepper` (0.49.0) thêm nút − / + ở hai đầu ô — số lượng trong giỏ, số khách, số phòng. Mọi thứ khác (gõ, dán, ↑ / ↓,
+`clamp`, validity, reset, SSR) y hệt; dùng đúng `decimals` / `step` của ô (không giới hạn số nguyên).
+
+```html
+<td-number-input name="qty" label="Số lượng" stepper min="1" max="5" value="1" clamp></td-number-input>
+```
+
+- Bấm − / + = ↑ / ↓ (± `step`, kẹp khoảng; ô rỗng → `min`). Mỗi lần bấm làm đổi giá trị phát **`input` và `change` ngay**
+  (như nút xoay native) và đọc giá trị mới qua live region ("2 cái").
+- **Biên:** giá trị ≤ `min` → nút − `aria-disabled` (vẫn bấm được nhưng không làm gì — không mất focus, không nuốt cú bấm kế
+  tiếp vào trang); ≥ `max` → nút + tương tự. Ô rỗng → cả hai bật. Đổi `min` / `max` / `step` lúc chạy → biên cập nhật tại
+  chỗ. Host `disabled` / `readonly` / `<fieldset disabled>` → hai nút `disabled`.
+- **Focus không đi đâu:** nút ngoài vòng Tab (`tabindex="-1"`; bàn phím đã có ↑ / ↓ / PageUp / PageDown + gõ). Bấm nút không
+  lấy focus: ô đang gõ vẫn focus (và rời ô sau đó không phát `change` lần hai), ô chưa focus vẫn không focus (không bật bàn
+  phím ảo khi chạm +). Trình đọc màn hình di động / Switch Control vẫn tới nút (duyệt cây trợ năng).
+- Tên nút: `messages.decrease` / `increase` = "Giảm {label}" / "Tăng {label}" (`{label}` = `label` hoặc `aria-label`; không có
+  → "Giảm" / "Tăng"), `aria-controls` = id ô.
+- Chữ số căn **giữa** (ngoại lệ có chủ đích: ô hẹp chỉ số lượng); host rộng `--td-number-stepper-w` (9rem).
+- Không nhấn giữ tự lặp (số lượng giỏ nhỏ; số lớn thì gõ).
+
+**Công thức giỏ hàng** — bấm + liên tục phát nhiều `change`; app gộp lệnh cập nhật giỏ bằng `debounce`:
+
+```js
+import { debounce } from '@dazzxq/td-components/dom-utils';
+const save = debounce((qty) => fetch('/cart/line/42', { method: 'PATCH', body: new URLSearchParams({ qty }) }), 400);
+document.querySelector('td-number-input[name=qty]').addEventListener('change', (e) => save(e.detail.value));
+```
+
+`max` = giới hạn của app (tồn / giới hạn giỏ); server vẫn kiểm tồn khi đặt hàng. Nút xoá dòng khi số lượng về 1 là của app.
+
+PHP: `td_number_input('qty', 1, ['element' => true, 'stepper' => true, 'min' => '1', 'max' => '5'])` in thêm hai nút — ẩn
+nhưng **giữ chỗ** tới khi module tải (không xô lệch, không có nút chết khi chưa có JS). Chế độ native (`element` false) bỏ qua
+`stepper` (ô `type=number` có nút xoay của trình duyệt).
+
 ## Attribute
 
 | Attribute | Kiểu | Mặc định | Mô tả |
@@ -153,6 +190,7 @@ hàng nghìn). Module tải → nhận tại chỗ, hiện `12.990.000`. Helper 
 | `enterkeyhint` | string | — | 0.36.2: nhãn phím Enter của bàn phím ảo — `enter` · `done` · `go` · `next` · `previous` · `search` · `send` (giá trị khác bị bỏ); chuyển xuống ô tại chỗ, không render lại. SSR: áp sau khi nhận markup. |
 | `validate-on` | `blur` \| `change` \| `input` | — | Tự hiện thông báo ràng buộc thành lỗi. |
 | `aria-label` | string | — | Tên truy cập khi không có `label`. |
+| `stepper` | boolean | — | 0.49.0: nút − / + quanh ô ([mục 8](#8-stepper)). Thuộc tính cấu trúc: bật / tắt lúc chạy → vẽ lại, giữ giá trị + focus. |
 
 Dấu phân cách là attribute — kit **không đọc** cài đặt tiền tệ nào của site (đó là logic của app).
 
@@ -174,12 +212,14 @@ Object.assign(TdNumberInput.messages, {
   valueMissing: 'Required', badInput: 'Invalid number', rangeUnderflow: 'Minimum is {min}', rangeOverflow: 'Maximum is {max}',
   stepMismatch: 'Must be a multiple of {step}', tooManyDecimals: 'At most {decimals} decimals',
   pasteRejected: 'Could not paste: invalid number', clamped: 'Adjusted to {value}',
+  decrease: 'Decrease {label}', increase: 'Increase {label}', // 0.49.0 stepper
 });
 ```
 
 Mặc định: `valueMissing` "Trường này là bắt buộc", `badInput` "Giá trị không hợp lệ", `rangeUnderflow` "Giá trị tối thiểu là
 {min}", `rangeOverflow` "Giá trị tối đa là {max}", `stepMismatch` "Giá trị phải theo bước {step}", `tooManyDecimals` "Tối đa
-{decimals} chữ số thập phân", `pasteRejected` "Không dán được: giá trị không hợp lệ", `clamped` "Đã chỉnh về {value}".
+{decimals} chữ số thập phân", `pasteRejected` "Không dán được: giá trị không hợp lệ", `clamped` "Đã chỉnh về {value}",
+`decrease` / `increase` "Giảm {label}" / "Tăng {label}" (0.49.0, tên nút stepper).
 `{min}` / `{max}` / `{value}` đã định dạng kèm đơn vị.
 
 ## Event
@@ -187,7 +227,7 @@ Mặc định: `valueMissing` "Trường này là bắt buộc", `badInput` "Gi�
 | Event | detail | Khi nào |
 |---|---|---|
 | `input` | `{ value }` | Mỗi lần **giá trị chuẩn** đổi do người dùng (gõ, xoá, dán, ↑ / ↓, kẹp khi rời ô). Phím bị từ chối không phát. |
-| `change` | `{ value }` | Rời ô, nếu giá trị khác lúc focus. |
+| `change` | `{ value }` | Rời ô, nếu giá trị khác lúc focus; 0.49.0: **ngay** sau mỗi lần bấm − / + làm đổi giá trị (`input` + `change`). |
 
 `input` / `change` native của ô bên trong **dừng ở host**; `e.target` là host → `e.target.value` luôn là số sạch (không lỡ
 đọc chuỗi đã định dạng). Gán `value` / `setValue()` / `form.reset()` không phát event.
@@ -201,6 +241,9 @@ readonly) — nhìn y hệt input field. Thêm:
 |---|---|---|
 | `--td-number-affix-fg` | `var(--td-color-text-muted)` | Màu chữ tiền tố / hậu tố (≥ 4.7:1 trên nền ô) |
 | `--td-number-affix-gap` | `var(--td-space-2xs)` | Khoảng cách affix ↔ số |
+| `--td-number-step-size` | `2.5rem` | 0.49.0: bề rộng nút − / + (≥ 44px trên cảm ứng) |
+| `--td-number-step-fg` | `var(--td-control-fg)` | 0.49.0: icon − / + (≥ 3.2:1; `aria-disabled` dùng màu disabled của nút, ≥ 2.2:1) |
+| `--td-number-stepper-w` | `9rem` | 0.49.0: bề rộng host ở chế độ `stepper` |
 
 Số căn **trái** (như mọi ô nhập — không đổi thói quen gõ), chữ số dạng bảng (`tabular-nums`).
 
@@ -224,6 +267,9 @@ Số căn **trái** (như mọi ô nhập — không đổi thói quen gõ), ch�
 
 - Trạng thái đọc từ control: `:focus` (hộp có `:focus-within`), `:disabled`, `[readonly]`, `[aria-invalid="true"]`.
 - Bấm vào hộp / affix → focus ô.
+- `stepper` (0.49.0): `.td-field` thêm `td-number--stepper`; hộp = `button.td-number__step.td-number__step--down` (`type=button`,
+  `tabindex=-1`, `aria-controls`, `aria-label`, icon `minus`) + [tiền tố] + ô + [hậu tố] + [đơn vị ẩn] +
+  `button.td-number__step.td-number__step--up` (icon `plus`); biên = `aria-disabled="true"`.
 
 ### Hợp đồng SSR `number-input@1` — hydrate tại chỗ
 
@@ -241,6 +287,8 @@ Số căn **trái** (như mọi ô nhập — không đổi thói quen gõ), ch�
   `step` / `required` → FormData đúng một mục. `<label for="{id control}">` ngoài host chuyển sang host.
 - Không khớp (markup bị sửa, `p` thay cho `span`, input thứ hai, attribute lạ, dấu `@2`…) → render an toàn ngay, giữ giá trị
   + focus.
+- `stepper` (0.49.0, schema **vẫn** `@1`): hai nút được so đúng `render()` (thẻ, `type`, class, `tabindex`, `aria-controls`,
+  ô icon); tên nút là trạng thái (áp sau khi nhận, không so). Kit cũ gặp markup có nút → từ chối → render an toàn (không hỏng).
 
 ## Bàn phím & trợ năng
 
@@ -250,6 +298,7 @@ Số căn **trái** (như mọi ô nhập — không đổi thói quen gõ), ch�
 | `.` bàn phím số | Dấu thập phân của ô |
 | ↑ / ↓ | ± `step` (kẹp khoảng) |
 | PageUp / PageDown | ± 10 × `step` |
+| (chuột / chạm) − / + | ± `step` — `stepper`, ngoài vòng Tab |
 | Backspace / Delete qua dấu nhóm | Xoá chữ số bên kia dấu nhóm |
 | Ctrl/⌘+V | Dán (luật mục 3) |
 
@@ -268,7 +317,8 @@ Số căn **trái** (như mọi ô nhập — không đổi thói quen gõ), ch�
 ## Cảm ứng
 
 - `enterkeyhint` (0.36.2) đặt nhãn phím Enter trên bàn phím ảo (`next` cho form nhiều ô, `done` cho ô cuối). Trong dialog, ô đang nhập luôn nằm trên bàn phím (xem [modal](modal.md#cảm-ứng)).
-- Hộp số không có hình nhấn (focus ring là phản hồi).
+- Hộp số không có hình nhấn (focus ring là phản hồi). Nút − / + của `stepper` có hình nhấn (chỉ đổi màu), ≥ 44px trên cảm
+  ứng, `touch-action: manipulation` (bấm + nhanh nhiều lần không phóng to trang trên iOS).
 
 Chuẩn chung: [Cảm ứng](../guides/touch.md).
 
@@ -281,11 +331,11 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 - **`el.prefix = '$'` không có tác dụng** → `prefix` là property native của DOM (namespace); dùng `setAttribute('prefix', '$')`.
 - **Server nhận `12`** → đang đọc ô không phải td-number-input (hoặc tự ghép chuỗi hiển thị); `FormData` của component luôn
   là số sạch.
-- Không có: nhóm kiểu Ấn Độ (lakh), `locale` / `Intl`, làm tròn / pad phần lẻ, rút gọn `K` / `M`, ngoặc kế toán, nút −/+,
-  số khoa học, RTL.
+- Không có: nhóm kiểu Ấn Độ (lakh), `locale` / `Intl`, làm tròn / pad phần lẻ, rút gọn `K` / `M`, ngoặc kế toán,
+  số khoa học, RTL, nhấn giữ − / + để tự lặp.
 
 ## Xem thêm
 
-- [Input field](input-field.md) · [Repeater](repeater.md) · [Form validation](form-validation.md)
+- [Input field](input-field.md) · [Repeater](repeater.md) · [Choice group](choice-group.md) · [Form validation](form-validation.md)
 - [Adapter PHP › td_number_input](../guides/php-adapter.md#td_number_input-0300) · [Form](../guides/forms.md) ·
   [Trợ năng](../guides/accessibility.md) · [Theming](../customization/theming.md)

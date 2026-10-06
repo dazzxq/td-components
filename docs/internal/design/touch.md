@@ -29,7 +29,7 @@ Khai báo ở `tokens.css` / `theme-dark.css` (chung, nút), `action-button.css`
 
 | Token | Light | Dark | Dùng cho |
 |---|---|---|---|
-| `--td-color-pressed` | `rgb(0 0 0 / 12%)` | `rgb(255 255 255 / 14%)` | nút icon, tab, trang, card, scroll-top (lớp phủ `background-image`) |
+| `--td-color-pressed` | `rgb(0 0 0 / 12%)` | `rgb(255 255 255 / 14%)` | nút icon, tab, trang, card, scroll-top (lớp phủ `background-image`); v0.49.0: lựa chọn của `td-choice-group` (chữ phụ / ghi chú lấy màu chữ đầy đủ khi nhấn: chữ muted trên 12 % đen chỉ 4.0:1) và nút − / + của stepper |
 | `--td-option-pressed-bg` | `var(--td-color-pressed)` | — | hàng option / menu / tree / bánh xe datetime |
 | `--td-btn-primary-pressed` | `#52525b` | `#a1a1aa` | primary (đen sáng thêm một bậc; dark tối thêm) |
 | `--td-btn-secondary-pressed` | `--td-gray-300` | `#45454b` | |
@@ -74,6 +74,7 @@ trạng thái ở mọi compound và coi luật có tổ tiên là phủ control
 | `.td-lightbox__filmstrip` | `pan-x` | dải thumb cuộn ngang native |
 | `.td-color-panel__area` (0.48.0) | `none` | kéo 2 chiều trực tiếp (bão hoà × độ sáng; WCAG 2.5.7: bàn phím, ô chữ, preset là lối thay thế). Chỉ vùng 10rem × 17.5rem; phần còn lại của popup cuộn bình thường |
 | `.td-color-panel__hue` (0.48.0) | `none` | range native như `.td-slider__input` |
+| `.td-number__step` | `manipulation` | nút − / + của `td-number-input stepper` (v0.49.0): bấm liên tục là thao tác chính — không phóng to khi chạm nhanh hai lần trên iOS |
 
 ## Ngưỡng và cử chỉ
 

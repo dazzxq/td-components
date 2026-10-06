@@ -518,6 +518,30 @@ async function runConfig(browser, c) {
       return errs;
     });
     check(tag, 'datetime range host (v0.40.0)', dtrErr);
+    // v0.49.0: td-choice-group options stay inside the host and never overlap (long labels wrap inside the button); the
+    // 160 px stepper keeps its box inside the column with a usable field between the two buttons
+    const v049Err = await page.evaluate(() => {
+      const errs = [];
+      const hit = (a, b) => a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
+      for (const el of document.querySelectorAll('td-choice-group')) {
+        const host = el.getBoundingClientRect();
+        const faces = [...el.querySelectorAll('.td-choice__option')].map((o) => o.getBoundingClientRect());
+        faces.forEach((r, i) => {
+          if (r.right > host.right + 0.5 || r.left < host.left - 0.5) errs.push(`#${el.id}: option ${i} outside the host`);
+          for (let j = i + 1; j < faces.length; j++) if (hit(r, faces[j])) errs.push(`#${el.id}: options ${i} / ${j} overlap`);
+        });
+      }
+      const st = document.querySelector('#rsp-stepper-160');
+      if (st) {
+        const col = st.parentElement.getBoundingClientRect();
+        const box = st.querySelector('.td-number__box').getBoundingClientRect();
+        const ctl = st.querySelector('.td-number__control').getBoundingClientRect();
+        if (box.right > col.right + 0.5) errs.push('#rsp-stepper-160: box wider than its 160 px column');
+        if (ctl.width < 24) errs.push(`#rsp-stepper-160: field only ${ctl.width.toFixed(1)}px between the buttons`);
+      }
+      return errs;
+    });
+    check(tag, 'choice group + stepper (v0.49.0)', v049Err);
     if (errors.length) check(tag, 'page errors', errors);
 
     if (!c.fallback) await runOverlays(page, c, tag, shot);

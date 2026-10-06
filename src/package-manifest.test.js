@@ -363,3 +363,20 @@ test('v0.47.0: ./check-matrix export, sideEffects, barrel TdCheckMatrix, check-m
     assert.ok(css.includes(sel), sel);
   }
 });
+
+test('v0.49.0: ./choice-group export, sideEffects, barrel TdChoiceGroup, choice-group CSS before utilities; choice-options internal', async () => {
+  assert.equal(pkg.exports['./choice-group'], './src/form/td-choice-group.js');
+  assert.ok(pkg.sideEffects.includes('./src/form/td-choice-group.js'));
+  const src = await readFile(join(ROOT, 'index.js'), 'utf8');
+  assert.match(src, /export \{ TdChoiceGroup \} from '\.\/src\/form\/td-choice-group\.js';/);
+  assert.ok(!/choice-options/.test(src), 'choice-options stays internal');
+  assert.ok(!Object.values(pkg.exports).some((t) => /choice-options/.test(t)), 'no choice-options export');
+  const { files } = JSON.parse(await readFile(join(ROOT, 'src/styles/manifest.json'), 'utf8'));
+  const i = files.indexOf('components/choice-group.css');
+  assert.ok(i > files.indexOf('components/field.css') && i < files.indexOf('utilities.css'), 'choice-group.css after field.css, before utilities.css');
+  const css = await readFile(join(ROOT, 'td.css'), 'utf8');
+  for (const sel of ['.td-choice__options', '.td-choice--swatch .td-choice__face', '.td-choice__option:is(:active, [data-td-pressed])',
+    '--td-choice-selected', '--td-choice-swatch-size']) {
+    assert.ok(css.includes(sel), sel);
+  }
+});

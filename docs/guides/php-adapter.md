@@ -45,6 +45,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 - [td_datetime_range (0.40.0)](#td_datetime_range-0400)
 - [td_check_matrix (0.47.0)](#td_check_matrix-0470)
 - [td_color_picker và td_color_value (0.48.0)](#td_color_picker-và-td_color_value-0480)
+- [td_choice_group (0.49.0)](#td_choice_group-0490)
 - [An toàn: escape và whitelist](#an-toàn-escape-và-whitelist)
 - [Chuyển từ adapter riêng của 135](#chuyển-từ-adapter-riêng-của-135)
 - [Lỗi thường gặp](#lỗi-thường-gặp)
@@ -82,6 +83,8 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 | `td_check_matrix` (0.47.0) | **luôn** host `<td-check-matrix data-td-ssr="check-matrix@1" data="{JSON}">` + **form không JS đầy đủ**: một hidden `name[col]=""` mỗi cột (đầu), một checkbox `name[col][]=row` mỗi ô áp dụng được (ô khoá-tick: checkbox `disabled` + hidden ngay sau), `name[_v]=1` (cuối); ô hàng loạt / nút nhóm / chọn cột `disabled` | Không (form gửi đúng FormData của component, từng byte) | **Có** — nạp module `check-matrix`: so **từng node** với `data`, nhận **tại chỗ** (giữ ô đã tick trước khi JS tải), gỡ marker / hidden / sentinel |
 | `td_color_picker` (0.48.0) | `div.td-color` + ô màu xám + `input.td-color__input` **chữ** (`pattern="#[0-9a-fA-F]{6}"` — **không** `type=color`) | Không (chỉ nhận `#RRGGBB`) | Không |
 | `td_color_picker` — **chế độ element** (0.48.0, tự bật) | host `<td-color-picker data-td-ssr="color-picker@1">` + cùng ô | Không (ô chữ native chạy ngay) | **Có** — nạp module `color-picker`: nhận **tại chỗ**, bọc ô màu vào nút mở popup |
+| `td_choice_group` (0.49.0) | **luôn** host `<td-choice-group data-td-ssr="choice-group@1">` + radio **native** mang `name` thật (`required` trên mọi radio, `checked` trên lựa chọn đang chọn), ô màu = `fill` của SVG, ảnh = `<img>` | Không (radio native: form gửi `name=value`, mũi tên chạy) | **Có** — nạp module `choice-group`: nhận **tại chỗ** (cùng radio, giữ lựa chọn + focus), radio sang nhóm riêng không form owner |
+| `td_number_input` — **`stepper`** (0.49.0, chỉ element) | như element + hai nút − / + trong hộp (ẩn, giữ chỗ tới khi module tải) | Không (ô native chạy) | **Có** — nhận tại chỗ cả hai nút |
 | `td_copy` (0.27.0) | **luôn** host `<td-copy data-td-ssr="copy@1">` chứa nguồn `<code>` + nút icon + live region | Không (chưa có JS: hiện mã để bôi đen, ẩn nút) | **Có** — nạp module `copy`: nhận **tại chỗ** |
 | `td_icon` | `svg.td-icon` đủ hình (có `viewBox`) | Không | — |
 | `td_badge` | `span.td-badge…` (thuần CSS) | Không | — |
@@ -112,7 +115,7 @@ có tiền tố `td_` — không biến toàn cục, không hàm `h()`, không a
 File nằm trong thư mục kit đã vendor (có phiên bản trong đường dẫn):
 
 ```text
-public/assets/vendor/td-components/0.48.0/
+public/assets/vendor/td-components/0.49.0/
   td.css  index.js  package.json  src/  php/td.php  THIRD_PARTY_NOTICES.md
 ```
 
@@ -120,7 +123,7 @@ Nạp **một lần** trong bootstrap của site, rồi cấu hình:
 
 ```php
 <?php
-const TD_VERSION = '0.48.0';
+const TD_VERSION = '0.49.0';
 $tdDir = __DIR__ . '/public/assets/vendor/td-components/' . TD_VERSION;
 require_once $tdDir . '/php/td.php';
 
@@ -248,6 +251,7 @@ td_datetime_range(string $name, ?string $start = null, ?string $end = null, arra
 td_check_matrix(string $name, array $columns, array $rows, array $value = [], array $o = []): string   // 0.47.0 (luôn element + form không JS)
 td_color_picker(string $name, array $o = []): string   // 0.48.0
 td_color_value(mixed $v): ?string                      // 0.48.0: chuẩn hoá màu POST → '#rrggbb' | '' | null
+td_choice_group(string $name, array $options, string|int|null $value = null, array $o = []): string   // 0.49.0 (luôn element)
 td_import_map(array $extra = []): array
 td_import_map_tag(array $extra = [], ?string $nonce = null): string
 td_stylesheet_tag(?string $nonce = null): string
@@ -258,7 +262,8 @@ Class `TdComponents\Td` (static): `configure` (+ option `ssr_elements`, 0.25.0),
 `registerIcons`, `siteIcons`, `hasIcon`, `iconAliases()`, `icon($name, $size, $label, $class)` (0.26.0: `$size` nhận cả số
 nguyên 8–128 = px → `width` / `height`, như `tdIcon(name, { size: n })`), và các tiện ích an toàn dùng lại được
 trong template của site: `e()` (escape), `attrs()` (in attribute đã lọc), `safeUrl()`, `classTokens()`, `uid()`,
-`safeFilename()`. Hằng `Td::JSON_FLAGS` cho JSON in vào HTML.
+`safeFilename()`, `safeColor()` (0.49.0: màu CSS an toàn hoặc `''`, cùng bảng ca với `safeColor` của JS). Hằng
+`Td::JSON_FLAGS` cho JSON in vào HTML.
 
 Mọi option không nhận ra bị **bỏ qua** (không lỗi); giá trị ngoài whitelist rơi về mặc định.
 
@@ -1150,6 +1155,7 @@ Không có helper cho `<td-tree>` dạng cây luôn hiện (cây quyền là tra
 | `id` | id của **input** (`<label for>` của site). Element: host = `{id}-host`; native: ghi chú / lỗi / đơn vị = `{id}-note`… |
 | `class` | native → wrapper `div.td-field`; element → host |
 | `attrs` | attribute thêm trên **input** (allowlist). Giữ chỗ (bị bỏ, không phân biệt hoa thường): `type` `class` `id` `inputmode` `autocomplete` `spellcheck` `name` `value` `min` `max` `step` `placeholder` `required` `aria-required` `disabled` `readonly` `aria-label` `aria-labelledby` `aria-describedby` `aria-invalid` `aria-errormessage` `pattern` `maxlength` `minlength` `list` + mọi `data-td-*` |
+| `stepper` | 0.49.0, **chỉ chế độ element**: host `stepper` + `td-number--stepper` + hai `button.td-number__step` (`type=button`, `tabindex=-1`, `aria-controls`, icon `minus` / `plus`) ở hai đầu hộp — `td.css` ẩn chúng (vẫn giữ chỗ) tới khi module định nghĩa element; tên nút ("Giảm / Tăng {label}") do component đặt. Chế độ native bỏ qua (`type=number` có nút xoay của trình duyệt) |
 
 ```html
 <!-- td_number_input('price', '12990000', ['label' => 'Giá bán', 'suffix' => '₫', 'required' => true, 'element' => true]) -->
@@ -1740,6 +1746,56 @@ if ($v === null) { http_response_code(422); exit; }   // lưu $v: khớp ^#[0-9a
 | `'#AABBCC'`, `'aabbcc'`, `' #AbC '`, `'abc'` | `'#aabbcc'` |
 | `''`, `null`, chỉ khoảng trắng | `''` |
 | `'#abcd'`, `'#aabbccdd'`, `'rgb(0,0,0)'`, `'red'`, `'#ggg'`, mảng, số, chuỗi > 64 ký tự | `null` |
+
+## td_choice_group (0.49.0)
+
+```php
+<?= td_choice_group('capacity', [
+    ['value' => '128', 'label' => '128GB', 'hint' => '21.990.000₫'],
+    ['value' => '256', 'label' => '256GB', 'hint' => '24.990.000₫', 'unavailable' => true],
+    ['value' => '1tb', 'label' => '1TB', 'disabled' => true],
+], $variant->capacity, ['label' => 'Dung lượng', 'required' => true]) ?>
+<?= td_choice_group('color', [
+    ['value' => 'titan-den', 'label' => 'Titan đen', 'swatch' => '#3b3b3d'],
+    ['value' => 'titan-sa-mac', 'label' => 'Titan sa mạc', 'image' => $media->url('sw-sa-mac'), 'unavailable' => true, 'unavailable_label' => 'Sắp về'],
+], $variant->color, ['label' => 'Màu sắc', 'variant' => 'swatch']) ?>
+```
+
+`td_choice_group($name, $options, $value, $opts)` in nhóm lựa chọn của [Choice group](../components/choice-group.md) (hợp
+đồng `choice-group@1`, **luôn element**): host + đúng cây component, với **radio native** mang `name` thật, `required` trên
+**mọi** radio (khi `required`), `checked` trên lựa chọn bằng `$value`, `disabled` trên lựa chọn `disabled` (và mọi radio khi
+host `disabled`).
+
+- **Không JS**: form gửi `name=value` của radio đang chọn (chưa chọn → không có mục), trình duyệt kiểm `required` (mọi lựa
+  chọn `disabled` → hợp lệ), mũi tên / Space / Tab chạy. Dòng "lựa chọn hiện tại" của swatch là chữ tĩnh lúc in.
+- **Có JS** (nạp module `choice-group`): component đọc lại lựa chọn từ markup qua **cùng cổng** với property `options` (màu,
+  URL ảnh kiểm lại), so với `render()`, rồi nhận **tại chỗ**: ElementInternals trước, rồi trên cùng node radio đổi `name`
+  sang nhóm riêng + `form=""` + `autocomplete="off"`, gỡ `required` — FormData còn **đúng một** mục (của host). Lựa chọn
+  người dùng đổi trước khi module tải được giữ; focus giữ. Markup lệch → render an toàn, giữ lựa chọn + focus.
+
+| Option | Ý nghĩa |
+|---|---|
+| `$name` | tên field. `''` → radio dùng tên nhóm riêng `{id}-group` + `form=""` (bàn phím vẫn là một nhóm, không bao giờ được gửi) |
+| `$options` | danh sách `['value' => string\|int\|float, 'label' => string, 'hint'?, 'swatch'?, 'image'?, 'disabled'?, 'unavailable'?, 'unavailable_label'?]`. Sai (không phải mảng, `value` không chuẩn — xem dưới —, `label` không phải chuỗi hoặc rỗng sau khi bỏ khoảng trắng theo ECMAScript (`Td::JS_WS`: cả NBSP, U+2000–U+200A, U+3000, U+FEFF…), `value` trùng) → **bỏ** lựa chọn; `hint` / `unavailable_label` sai kiểu → bỏ khoá đó. `disabled` / `unavailable` chỉ nhận `true`. **Giới hạn** `Td::CHOICE_LIMITS` (= JS `CHOICE_LIMITS`): đọc tối đa 400 phần tử, in tối đa 100 lựa chọn; `label` / `hint` cắt ở 200 code point, `unavailable_label` ở 100; `value` > 200, `swatch` > 128, `image` > 8192 → từ chối. `value` chuẩn (`td__choice_value`): `int` / `float` hữu hạn → chuỗi như `String()` của JS (`5` → `"5"`, `1.5` → `"1.5"`; `INF` / `NAN` bị từ chối), chuỗi hợp lệ UTF-8, 1–200 code point, không ký tự điều khiển (kể cả `\r` `\n` `\t`), không trim |
+| `swatch` | qua `Td::safeColor()` → thuộc tính `fill` của SVG (không phải inline style). Sai → không màu (ô trung tính) |
+| `image` | qua `td__media_url()`: `https:` hoặc không scheme (tương đối, `/…`, `//…`). **`http:` bị từ chối** trừ khi site gọi `Td::allowHttpLinks(true)` (site chạy HTTP); trang thực tế HTTPS mà vẫn bật cờ → JS khi nhận markup từ chối ảnh đó → vẽ lại không ảnh. `data:` / `javascript:` / `blob:` / > 8 KiB → từ chối |
+| `$value` | lựa chọn được chọn (`string` / `int`); không có trong `$options` → không chọn gì (ghi vào cảnh báo gộp) |
+| `label`, `aria_label` | nhãn nhóm (tên của `role="radiogroup"`); `aria_label` khi không có `label` |
+| `variant` | `'button'` (mặc định) \| `'swatch'` |
+| `required`, `disabled` | trên host + mọi radio |
+| `helper_text`, `error_text` | ghi chú / lỗi dưới nhóm (`aria-describedby` / `aria-invalid` trên radiogroup) |
+| `id` | id của **host** (radio: `{id}-o0`, `{id}-o1`…; mặc định `td-{name}-{n}`, phần `{name}` bị cắt để cả id ≤ 100 ký tự — giữ tiền tố `td-` và hậu tố số duy nhất) |
+| `class` | class thêm trên host |
+| **Giới hạn nhóm** | `Td::CHOICE_LIMITS` (= JS `CHOICE_LIMITS`, code point): `$name` 200, `id` 100, `class` (sau khi lọc token) 256, `label` / `aria_label` 200, `helper_text` 1000, `error_text` 1000; chuỗi không hợp lệ UTF-8 cũng tính là vượt. `class` được chặn **trước** khi lọc token (chuỗi ≤ 1024 byte; mảng ≤ 64 phần tử, tổng ≤ 1024 byte). Vượt bất kỳ → **không in gì** (`''`) + **một** `E_USER_WARNING` cố định `td_choice_group: {n} group field(s) over the limits — nothing rendered` (chỉ số đếm) — kit không bao giờ in markup mà component sẽ từ chối khi nhận (preflight SSR chấp nhận đúng tới các giới hạn này) |
+
+Ghi chú "Hết hàng" mặc định = `Td::CHOICE_LABELS['unavailable']` (= `TdChoiceGroup.messages.unavailable`) — là **trạng thái**:
+site đổi chữ phía JS thì component tự áp lại khi nhận markup (không bị coi là lệch). Ghi chú riêng (`unavailable_label`) mang
+`data-td-custom` và được giữ nguyên.
+
+Cảnh báo: **tối đa một** `E_USER_WARNING` mỗi lần gọi, chỉ có số đếm — `td_choice_group: {n} option(s) dropped, {m}
+field(s) ignored or shortened (…)` (+ "the selected value is not one of the options" khi `$value` không khớp) — không bao
+giờ in giá trị. Server **vẫn phải** kiểm giá trị gửi lên thuộc tập lựa chọn
+hợp lệ (và tồn kho) của sản phẩm.
 
 ## An toàn: escape và whitelist
 

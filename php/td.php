@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.48.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.48.0', __DIR__ . '/public/assets/vendor/td-components/0.48.0');
+ *   require_once '/path/to/vendor/td-components/0.49.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.49.0', __DIR__ . '/public/assets/vendor/td-components/0.49.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -348,8 +348,21 @@ namespace TdComponents {
         /** @internal v0.46.0: json_encode flags of the td-diff model (= JSON.stringify of the same strings). */
         public const DIFF_JSON = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_LINE_TERMINATORS | JSON_THROW_ON_ERROR;
 
+        /** v0.49.0: td_choice_group (always the element <td-choice-group> + native radios — works without JS). */
+        public const SSR_CHOICE = 'choice-group@1';
+        /** v0.49.0: default texts of td_choice_group = TdChoiceGroup.messages (state: the component re-applies its own). */
+        public const CHOICE_LABELS = ['unavailable' => 'Hết hàng'];
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.48.0') —
+         * v0.49.0 review S1: bounded work of td_choice_group = src/utils/choice-options.js CHOICE_LIMITS (entries read, options
+         * accepted, code points per field: text cut, value / swatch / image refused when longer).
+         */
+        public const CHOICE_LIMITS = ['candidates' => 400, 'options' => 100, 'value' => 200, 'label' => 200, 'hint' => 200,
+            'note' => 100, 'swatch' => 128, 'image' => 8192,
+            // review r4 — group level: over → td_choice_group prints nothing (the JS SSR preflight accepts exactly up to these)
+            'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
+
+        /**
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.49.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -584,6 +597,29 @@ namespace TdComponents {
             // or '#' would be read as a scheme by the browser — refuse it.
             $firstSep = strcspn($url, '/?#');
             return strpos(substr($url, 0, $firstSep), ':') !== false ? '' : $url;
+        }
+
+        /**
+         * v0.49.0 — port of src/utils/css-safe.js safeColor() (shared cases test/ssr/safe-color.cases.json): a string,
+         * trimmed of JS whitespace, at most 64 characters, that is `#rgb[a]` / `#rrggbb[aa]`, an rgb() / rgba() / hsl() /
+         * hsla() with numeric arguments only, or a letter-only name (≤ 24). Anything else (url(, var(, calc(, `;`, `"`,
+         * non-strings…) → ''. For SVG presentation attributes (`fill`), never an inline style.
+         */
+        public static function safeColor(mixed $v): string
+        {
+            if (!is_string($v)) {
+                return '';
+            }
+            $s = (string) preg_replace('/^[' . self::JS_WS . ']+|[' . self::JS_WS . ']+$/u', '', $v);
+            if ($s === '' || (int) preg_match_all('/./su', $s) > 64) {
+                return '';
+            }
+            if (preg_match('/^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/iD', $s)
+                || preg_match('/^(rgb|rgba|hsl|hsla)\([0-9.,%\/deg' . self::JS_WS . ']+\)$/iuD', $s)
+                || (preg_match('/^[a-z]+$/iD', $s) && strlen($s) <= 24)) {
+                return $s;
+            }
+            return '';
         }
 
         /** Class option → ' tok1 tok2' (valid class tokens only, like the JS CLASS_TOKEN). */
@@ -2074,6 +2110,9 @@ namespace {
      * group_separator ('.' | ',' | ' ' | ''), decimal_separator (',' | '.'), prefix, suffix, unit_label, clamp, size
      * (sm|md|lg), aria_label (when there is no label), id (the CONTROL id — `<label for>`; element mode: host =
      * {id}-host), class (wrapper / host), attrs (the control: allowlisted; owned names and data-td-* reserved), element.
+     * v0.49.0 `stepper` (element mode only — native mode keeps the browser's own spin buttons): the box also holds the − / +
+     * buttons of <td-number-input stepper> (`type=button`, `tabindex=-1`, icon slots; hidden by td.css until the module
+     * defines the element — the place is kept, no dead control; their names are set by the component).
      */
     function td_number_input(string $name, mixed $value = null, array $o = []): string
     {
@@ -2163,15 +2202,21 @@ namespace {
             ? '<label class="td-field__label" id="' . $b . '-label" for="' . Td::e($cid) . '">' . Td::e($label)
                 . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') . '</label>'
             : '';
+        $stepper = $element && !empty($o['stepper']);
+        $stepBtn = static fn (string $dir, string $icon): string => '<button type="button" class="td-number__step td-number__step--' . $dir
+            . '" tabindex="-1" aria-controls="' . Td::e($cid) . '"><span class="td-number__step-icon" data-td-icon="' . $icon
+            . '" data-td-icon-class="td-number__step-svg">' . Td::icon($icon, 'm', '', 'td-number__step-svg') . '</span></button>';
         $box = '<div class="td-number__box">'
+            . ($stepper ? $stepBtn('down', 'minus') : '')
             . ($prefix !== null ? '<span class="td-number__affix td-number__affix--prefix" aria-hidden="true">' . Td::e($prefix) . '</span>' : '')
             . $control
             . ($suffix !== null ? '<span class="td-number__affix td-number__affix--suffix" aria-hidden="true">' . Td::e($suffix) . '</span>' : '')
             . ($unit !== null ? '<span id="' . $b . '-unit" hidden>' . Td::e($unit) . '</span>' : '')
+            . ($stepper ? $stepBtn('up', 'plus') : '')
             . '</div>';
         $footer = $error !== null ? '<span class="td-field-error" id="' . $b . '-error" data-for="' . $b . '">' . Td::e($error) . '</span>' : '';
         $footer .= '<div class="td-field__note" id="' . $b . '-note"' . ($hint === null ? ' hidden' : '') . '>' . Td::e($hint ?? '') . '</div>';
-        $inner = '<div class="td-field td-field--' . $size . ' td-number' . ($element ? '' : Td::e(Td::classTokens($o['class'] ?? null))) . '">'
+        $inner = '<div class="td-field td-field--' . $size . ' td-number' . ($stepper ? ' td-number--stepper' : '') . ($element ? '' : Td::e(Td::classTokens($o['class'] ?? null))) . '">'
             . $labelHtml . $box
             . '<div class="td-field__footer"' . ($hint === null && $error === null ? ' hidden' : '') . '>' . $footer . '</div>'
             . '<span class="td-sr-only" id="' . $b . '-status" role="status"></span></div>';
@@ -2204,6 +2249,7 @@ namespace {
             'unit-label' => $unitLabel,
             'clamp' => !empty($o['clamp']),
             'aria-label' => $aria,
+            'stepper' => $stepper,
         ], $hostTaken) . '>' . $inner . '</td-number-input>';
     }
 
@@ -4121,11 +4167,20 @@ namespace {
         return array_key_exists('element', $o) && $o['element'] !== null ? (bool) $o['element'] : Td::ssrElements();
     }
 
-    /** @internal Element mode host id without a caller id: `td-{name reduced to [A-Za-z0-9_-]}-{n}` (`td-{n}` for none). */
-    function td__host_uid(string $name): string
+    /**
+     * @internal Element mode host id without a caller id: `td-{name reduced to [A-Za-z0-9_-]}-{n}` (`td-{n}` for none).
+     * v0.49.0 review r6: `$max` (0 = unbounded, the default every other helper keeps) bounds the id length — only the
+     * sanitized NAME part is cut; the `td-` prefix and the unique `-{n}` suffix stay (ASCII: bytes = code points).
+     */
+    function td__host_uid(string $name, int $max = 0): string
     {
         $clean = (string) preg_replace('/[^A-Za-z0-9_-]/', '', $name);
-        return Td::uid($clean !== '' ? 'td-' . $clean : 'td');
+        $id = Td::uid($clean !== '' ? 'td-' . $clean : 'td');
+        if ($max <= 0 || strlen($id) <= $max) {
+            return $id;
+        }
+        $suffix = substr($id, (int) strrpos($id, '-'));
+        return substr($id, 0, max(3, $max - strlen($suffix))) . $suffix;
     }
 
     /** @internal Non-empty scalar option as a string, else null. */
@@ -6793,5 +6848,283 @@ namespace {
             'error-text' => $error,
             'aria-label' => $aria,
         ], $hostTaken) . '><div class="td-color">' . $labelHtml . $box . '</div>' . $note . '</td-color-picker>';
+    }
+
+    /**
+     * v0.49.0 choice group (contract choice-group@1, plan v0.49.0-choice-stepper QĐ 22, ADR 0023) — ALWAYS the element
+     * `<td-choice-group data-td-ssr="choice-group@1">` + the exact tree <td-choice-group> renders, with NATIVE radios that
+     * carry the real `name` (+ `required` on every radio, `checked` on the selected one): the form submits `name=value`,
+     * arrows / Space / Tab work, no JS. `@dazzxq/td-components/choice-group` adopts it IN PLACE (same radio nodes: checked +
+     * focus kept; the radios move to a private group without a form owner and the HOST submits).
+     * $options: list of ['value' => string|int|float (finite; canonical = its JS String(): 5 → "5", 1.5 → "1.5"), 'label' => string, 'hint'?, 'swatch'? (colour → SVG `fill` through
+     * Td::safeColor()), 'image'? (td__media_url(): https: / scheme-less; http: only with Td::allowHttpLinks(true)),
+     * 'disabled'? (combination that does not exist), 'unavailable'? (selectable, struck through + note), 'unavailable_label'?].
+     * Bounded by Td::CHOICE_LIMITS (= the JS CHOICE_LIMITS): at most 400 entries read, 100 options printed; label / hint cut
+     * to 200 code points, note to 100; value over 200, swatch over 128, image over 8192 refused. A wrong option (not an
+     * array, value not canonical — td__choice_value: valid UTF-8, no control characters, 1–200 code points — label not a
+     * string or empty after the ECMAScript trim (Td::JS_WS), duplicate canonical value) is dropped; a wrong / refused / cut field is ignored (the option stays). At most
+     * ONE E_USER_WARNING per call with the counts only ("{n} option(s) dropped, {m} field(s) ignored or shortened" + a note
+     * when $value is not one of the options) — never a value. $value: the selected option (absent → nothing checked).
+     * Options: label, variant ('button' | 'swatch'), required, disabled, helper_text, error_text, id (the HOST id), aria_label,
+     * class.
+     */
+    function td_choice_group(string $name, array $options, string|int|null $value = null, array $o = []): string
+    {
+        $L = Td::CHOICE_LIMITS;
+        // review r4: group inputs that land in attributes / text are capped like the component's SSR preflight — over a cap
+        // → fail closed (nothing printed) + ONE fixed counts-only warning: the kit never prints markup its JS would refuse
+        $over = 0;
+        foreach ([[$name, 'name'], [$o['id'] ?? null, 'id'], [$o['label'] ?? null, 'groupLabel'], [$o['aria_label'] ?? null, 'groupLabel'],
+            [$o['helper_text'] ?? null, 'helper'], [$o['error_text'] ?? null, 'error']] as [$g, $k]) {
+            if (is_scalar($g) && !is_bool($g) && td__choice_over((string) $g, $L[$k])) {
+                $over++;
+            }
+        }
+        // review r5: the class input is bounded BEFORE Td::classTokens() (string ≤ 4 × cap bytes; array ≤ 64 entries and
+        // ≤ 4 × cap bytes in total, every entry valid UTF-8), normalised ONCE, capped, and that result is what is printed
+        $classRaw = $o['class'] ?? null;
+        $classOk = true;
+        if (is_string($classRaw)) {
+            $classOk = strlen($classRaw) <= 4 * $L['class'] && preg_match('//u', $classRaw) === 1;
+        } elseif (is_array($classRaw)) {
+            $bytes = 0;
+            $classOk = count($classRaw) <= 64;
+            foreach ($classOk ? $classRaw : [] as $c) {
+                if (is_string($c)) {
+                    $bytes += strlen($c);
+                    if ($bytes > 4 * $L['class'] || preg_match('//u', $c) !== 1) {
+                        $classOk = false;
+                        break;
+                    }
+                }
+            }
+        }
+        $class = $classOk ? ltrim(Td::classTokens($classRaw)) : '';
+        if (!$classOk || td__choice_over($class, $L['class'])) {
+            $over++;
+        }
+        if ($over) {
+            trigger_error("td_choice_group: $over group field(s) over the limits — nothing rendered", E_USER_WARNING);
+            return '';
+        }
+        $list = [];
+        $seen = [];
+        $dropped = 0;
+        $ignored = 0;
+        // review S1: bounded — at most `candidates` entries are read, at most `options` accepted
+        $n = 0;
+        foreach ($options as $opt) {
+            if ($n === $L['candidates'] || count($list) === $L['options']) {
+                break;
+            }
+            $n++;
+            if (!is_array($opt)) {
+                $dropped++;
+                continue;
+            }
+            $v = td__choice_value($opt['value'] ?? null);
+            $label = $opt['label'] ?? null;
+            if ($v === null || !is_string($label) || isset($seen[$v])) {
+                $dropped++;
+                continue;
+            }
+            $short = td__choice_text($label, $L['label']);
+            if ($short === null || preg_match('/^[' . Td::JS_WS . ']*$/uD', $short)) { // ECMAScript trim set (= String.prototype.trim)
+                $dropped++;
+                continue;
+            }
+            if ($short !== $label) {
+                $ignored++;
+            }
+            $seen[$v] = true;
+            $text = static function (string $k, int $cap) use ($opt, &$ignored): string {
+                $t = $opt[$k] ?? null;
+                if ($t === null || $t === '') {
+                    return '';
+                }
+                $cut = is_string($t) ? td__choice_text($t, $cap) : null;
+                if ($cut !== $t) {
+                    $ignored++;
+                }
+                return $cut ?? '';
+            };
+            $gated = static function (mixed $t, int $cap, callable $gate) use (&$ignored): string {
+                if ($t === null || $t === '') {
+                    return '';
+                }
+                $out = is_string($t) && !td__choice_over($t, $cap) ? (string) ($gate($t) ?? '') : '';
+                if ($out === '') {
+                    $ignored++;
+                }
+                return $out;
+            };
+            $list[] = [
+                'value' => $v, 'label' => $short, 'hint' => $text('hint', $L['hint']),
+                'swatch' => $gated($opt['swatch'] ?? null, $L['swatch'], static fn (string $c): string => Td::safeColor($c)),
+                'image' => $gated($opt['image'] ?? null, $L['image'], static fn (string $u): ?string => td__media_url($u)),
+                'disabled' => ($opt['disabled'] ?? false) === true, 'unavailable' => ($opt['unavailable'] ?? false) === true,
+                'note' => $text('unavailable_label', $L['note']),
+            ];
+        }
+        $dropped += count($options) - $n;
+        $variant = ($o['variant'] ?? null) === 'swatch' ? 'swatch' : 'button';
+        $swatchMode = $variant === 'swatch';
+        $sel = $value === null ? '' : (string) $value;
+        $current = null;
+        foreach ($list as $it) {
+            if ($it['value'] === $sel) {
+                $current = $it;
+            }
+        }
+        $missing = $sel !== '' && $current === null;
+        if ($missing) {
+            $sel = '';
+        }
+        if ($dropped || $ignored || $missing) { // review S1: ONE aggregate warning, counts only — never a value
+            trigger_error("td_choice_group: $dropped option(s) dropped, $ignored field(s) ignored or shortened (invalid, duplicate or over the limits: {$L['candidates']} inspected, {$L['options']} options)"
+                . ($missing ? '; the selected value is not one of the options — nothing selected' : ''), E_USER_WARNING);
+        }
+        // review r6: an auto id derived from a long name stays within CHOICE_LIMITS.id (the component's SSR preflight cap)
+        $host = td__str($o['id'] ?? null) ?? td__host_uid($name, $L['id']);
+        $h = Td::e($host);
+        $label = td__str($o['label'] ?? null);
+        $aria = td__str($o['aria_label'] ?? null);
+        $hint = td__str($o['helper_text'] ?? null);
+        $error = td__str($o['error_text'] ?? null);
+        $required = !empty($o['required']);
+        $disabled = !empty($o['disabled']);
+        $enabled = false;
+        foreach ($list as $it) {
+            $enabled = $enabled || !$it['disabled'];
+        }
+        $L = Td::CHOICE_LABELS;
+        $noteOf = static fn (array $it): string => $it['note'] !== '' ? $it['note'] : $L['unavailable'];
+        // a nameless group still needs ONE name for the native keyboard group — private + no form owner (never submitted)
+        $radioName = $name !== '' ? $name : $host . '-group';
+        $html = '<div class="td-field td-choice td-choice--' . $variant . '">';
+        if ($label !== null) {
+            $html .= '<div class="td-field__label td-choice__label" id="' . $h . '-label">' . Td::e($label)
+                . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '')
+                . ($swatchMode ? '<span class="td-choice__current" aria-hidden="true">'
+                    . ($current !== null ? Td::e(': ' . $current['label'] . ($current['unavailable'] ? ' — ' . $noteOf($current) : '')) : '')
+                    . '</span>' : '')
+                . '</div>';
+        }
+        $desc = trim(($hint !== null ? "$host-note " : '') . ($error !== null ? "$host-error" : ''));
+        $taken = [];
+        $html .= '<div' . Td::ownAttrs([
+            'class' => 'td-choice__options',
+            'role' => 'radiogroup',
+            'aria-labelledby' => $label !== null ? "$host-label" : null,
+            'aria-label' => $label === null ? $aria : null,
+            'aria-required' => $required && $enabled ? 'true' : null,
+            'aria-invalid' => $error !== null ? 'true' : null,
+            'aria-errormessage' => $error !== null ? "$host-error" : null,
+            'aria-describedby' => $desc !== '' ? $desc : null,
+        ], $taken) . '>';
+        foreach ($list as $n => $it) {
+            $oid = "$host-o$n";
+            $e = Td::e($oid);
+            $d = trim(($it['hint'] !== '' ? "$oid-h " : '') . ($it['unavailable'] ? "$oid-n" : ''));
+            $sr = $swatchMode ? ' td-sr-only' : '';
+            $visual = '';
+            if ($it['image'] !== '') {
+                $visual = '<img class="td-choice__image" src="' . Td::e($it['image']) . '" alt="" width="32" height="32" loading="lazy" decoding="async">';
+            } elseif ($it['swatch'] !== '' || $swatchMode) {
+                $visual = '<svg class="td-choice__swatch' . ($it['swatch'] !== '' ? '' : ' td-choice__swatch--none') . '" viewBox="0 0 32 32" aria-hidden="true">'
+                    . '<circle cx="16" cy="16" r="16"' . ($it['swatch'] !== '' ? ' fill="' . Td::e($it['swatch']) . '"' : '') . '></circle></svg>';
+            }
+            $texts = '<span class="td-choice__text' . $sr . '" id="' . $e . '-l">' . Td::e($it['label']) . '</span>'
+                . ($it['hint'] !== '' ? '<span class="td-choice__hint' . $sr . '" id="' . $e . '-h">' . Td::e($it['hint']) . '</span>' : '')
+                . ($it['unavailable'] ? '<span class="td-choice__note' . $sr . '" id="' . $e . '-n"' . ($it['note'] !== '' ? ' data-td-custom' : '')
+                    . '>' . Td::e($noteOf($it)) . '</span>' : '');
+            $rt = [];
+            $html .= '<label class="td-choice__option" data-td-value="' . Td::e($it['value']) . '"'
+                . ($it['unavailable'] ? ' data-unavailable' : '') . ($it['disabled'] ? ' data-disabled' : '') . '>'
+                . '<input' . Td::ownAttrs([
+                    'type' => 'radio',
+                    'class' => 'td-choice__input',
+                    'id' => $oid,
+                    'value' => $it['value'],
+                    'name' => $radioName,
+                    'form' => $name === '' ? '' : null,
+                    'aria-labelledby' => "$oid-l",
+                    'aria-describedby' => $d !== '' ? $d : null,
+                    'checked' => $it['value'] === $sel,
+                    'required' => $required,
+                    'disabled' => $disabled || $it['disabled'],
+                ], $rt) . '>'
+                . '<span class="td-choice__face">' . $visual . ($swatchMode ? $texts : '<span class="td-choice__body">' . $texts . '</span>') . '</span>'
+                . '</label>';
+        }
+        $html .= '</div>';
+        $footer = $error !== null ? '<span class="td-field-error" id="' . $h . '-error" data-for="' . $h . '">' . Td::e($error) . '</span>' : '';
+        $footer .= '<div class="td-field__note" id="' . $h . '-note"' . ($hint === null ? ' hidden' : '') . '>' . Td::e($hint ?? '') . '</div>';
+        $html .= '<div class="td-field__footer"' . ($hint === null && $error === null ? ' hidden' : '') . '>' . $footer . '</div></div>';
+        $ht = [];
+        return '<td-choice-group' . Td::ownAttrs([
+            'data-td-ssr' => Td::SSR_CHOICE,
+            'id' => $host,
+            'class' => $class !== '' ? $class : null,
+            'name' => $name !== '' ? $name : null,
+            'value' => $sel !== '' ? $sel : null,
+            'label' => $label,
+            'variant' => $swatchMode ? 'swatch' : null,
+            'required' => $required,
+            'disabled' => $disabled,
+            'helper-text' => $hint,
+            'error-text' => $error,
+            'aria-label' => $aria,
+        ], $ht) . '>' . $html . '</td-choice-group>';
+    }
+
+    /** @internal v0.49.0 review S1 / r5: is $s longer than $n code points, or not valid UTF-8? (byte length first; bounded) */
+    function td__choice_over(string $s, int $n): bool
+    {
+        // review r5: malformed UTF-8 counts as over (preg_match_all() === false must never pass as 0)
+        if (strlen($s) > 4 * $n) {
+            return true;
+        }
+        $c = preg_match_all('/./su', $s);
+        return $c === false || $c > $n;
+    }
+
+    /**
+     * @internal v0.49.0 review S1: the first $n code points of a text field (cut BEFORE any trim / regex on the whole
+     * string); null when the kept part is not valid UTF-8.
+     */
+    function td__choice_text(string $s, int $n): ?string
+    {
+        if (strlen($s) <= $n) {
+            return preg_match('//u', $s) ? $s : null;
+        }
+        $head = substr($s, 0, 4 * $n);
+        for ($k = 0; $k < 3 && !preg_match('//u', $head); $k++) {
+            $head = substr($head, 0, -1); // a code point cut at the byte limit
+        }
+        if (!preg_match('//u', $head)) {
+            return null;
+        }
+        return preg_match('/^.{0,' . $n . '}/su', $head, $m) === 1 ? $m[0] : null;
+    }
+
+    /**
+     * @internal v0.49.0 review S2 — the canonical option value (= src/utils/choice-options.js canonicalValue, shared cases
+     * test/ssr/choice-value.cases.json): int / finite float → its JS String(); a string must be valid UTF-8, 1–200 code
+     * points, without C0 / DEL / C1 controls (\r \n \t refused — values are identifiers); never trimmed. Else null.
+     */
+    function td__choice_value(mixed $v): ?string
+    {
+        if (is_int($v)) {
+            return (string) $v;
+        }
+        if (is_float($v)) {
+            return is_finite($v) ? td__js_number($v) : null;
+        }
+        if (!is_string($v) || $v === '' || td__choice_over($v, Td::CHOICE_LIMITS['value']) || !preg_match('//u', $v)
+            || preg_match('/[\x{0}-\x{1F}\x{7F}-\x{9F}]/u', $v)) {
+            return null;
+        }
+        return $v;
     }
 }

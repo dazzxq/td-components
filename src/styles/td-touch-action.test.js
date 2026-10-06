@@ -22,6 +22,8 @@ const TABLE = {
   // hue is a native range like td-slider — a vertical swipe starting on either does not scroll the page
   '.td-color-panel__area': 'none',
   '.td-color-panel__hue': 'none',
+  // v0.49.0 number stepper − / +: repeated taps are the main use — no double-tap zoom on iOS
+  '.td-number__step': 'manipulation',
 };
 
 test('touch-action declarations = the reviewed table (no new none, nothing on html / body)', async () => {

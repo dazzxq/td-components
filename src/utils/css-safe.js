@@ -15,8 +15,9 @@ const HEX = /^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 const FUNC = /^(rgb|rgba|hsl|hsla)\(\s*[0-9.,%/\sdeg]+\)$/i;
 
 /**
- * Return `value` only if it is a safe CSS color (hex, a letter-only named color, or an
- * rgb/rgba/hsl/hsla function with numeric args); otherwise return `fallback`.
+ * Return `value` only if it is a safe CSS color (hex, a letter-only named color ≤ 24 letters, or an
+ * rgb/rgba/hsl/hsla function with numeric args; at most 64 characters after trimming); otherwise return `fallback`.
+ * PHP port: Td::safeColor() (v0.49.0) — same cases.
  * @param {*} value
  * @param {string} [fallback='']
  * @returns {string}
@@ -24,7 +25,7 @@ const FUNC = /^(rgb|rgba|hsl|hsla)\(\s*[0-9.,%/\sdeg]+\)$/i;
 export function safeColor(value, fallback = '') {
   if (typeof value !== 'string') return fallback;
   const s = value.trim();
-  if (!s) return fallback;
+  if (!s || s.length > 64) return fallback; // v0.49.0: a colour is short (shared cases test/ssr/safe-color.cases.json)
   if (HEX.test(s)) return s;
   if (FUNC.test(s)) return s;
   if (NAMED.test(s) && s.length <= 24) return s;

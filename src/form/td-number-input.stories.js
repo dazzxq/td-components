@@ -65,3 +65,16 @@ export const ServerRendered = {
     <div class="td-field__footer" hidden><div class="td-field__note" id="ni-ssr-note" hidden></div></div><span class="td-sr-only" id="ni-ssr-status" role="status"></span></div></td-number-input></form>`,
   args: { label: 'Giá bán (SSR)' },
 };
+
+/** v0.49.0 `stepper`: − / + around the field (cart quantity) — out of the Tab order, aria-disabled at the bounds. */
+export const Stepper = {
+  render: () => `<form class="sb-stack" id="ni-stepper">
+    <td-number-input name="qty" label="Số lượng" stepper min="1" max="5" value="1" clamp suffix="cái" unit-label="cái"></td-number-input>
+    <td-number-input name="w" label="Khối lượng (kg)" stepper decimals="1" step="0.5" min="0" value="2.5"></td-number-input>
+    <td-number-input name="locked" label="Khoá" stepper value="3" disabled></td-number-input>
+    <p class="sb-note" id="ni-stepper-out">change: —</p></form>`,
+  play: ({ canvasElement }) => {
+    const out = canvasElement.querySelector('#ni-stepper-out');
+    canvasElement.querySelector('#ni-stepper').addEventListener('change', (e) => { out.textContent = `change: ${e.detail?.value ?? ''}`; });
+  },
+};

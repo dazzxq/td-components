@@ -10,11 +10,15 @@
 @layer td.tokens {
 	:root {
 		--td-number-affix-gap: var(--td-space-2xs);
+		/* v0.49.0 stepper */
+		--td-number-step-size: 2.5rem;
+		--td-number-stepper-w: 9rem;
 	}
 
 	/* v0.42.0 (QĐ15, ADR 0020): colour / shadow tokens re-resolve in every theme scope */
 	:root, [data-td-theme] {
 		--td-number-affix-fg: var(--td-color-text-muted);
+		--td-number-step-fg: var(--td-control-fg); /* v0.49.0: − / + icon (≥ 3.2); aria-disabled → --td-btn-disabled-fg */
 	}
 }
 
@@ -158,6 +162,116 @@
 		.td-number__affix,
 		.td-number__control::placeholder {
 			color: GrayText;
+		}
+	}
+
+	/*
+	 * v0.49.0 stepper (`<td-number-input stepper>`, plan v0.49.0-choice-stepper QĐ 14–21): − / + real buttons at both
+	 * ends of the box, out of the Tab order, centred digits. Pressed = colour only (ADR 0019); touch action
+	 * "manipulation" (fast repeated taps never double-tap zoom on iOS — design/touch.md table). Before define (SSR) the
+	 * buttons keep their place but are hidden: no layout shift, no dead control.
+	 */
+	td-number-input[stepper] {
+		inline-size: var(--td-number-stepper-w);
+		max-inline-size: 100%;
+	}
+
+	.td-number--stepper .td-number__box {
+		gap: 0;
+		padding-inline: 0;
+	}
+
+	.td-number--stepper .td-number__control {
+		text-align: center;
+	}
+
+	.td-number--stepper .td-number__affix {
+		padding-inline: var(--td-number-affix-gap);
+	}
+
+	.td-number__step {
+		box-sizing: border-box;
+		display: inline-flex;
+		flex: 0 0 auto;
+		align-items: center;
+		justify-content: center;
+		inline-size: var(--td-number-step-size);
+		block-size: 100%;
+		padding: 0;
+		margin: 0;
+		font: inherit;
+		line-height: 0;
+		color: var(--td-number-step-fg);
+		cursor: pointer;
+		touch-action: manipulation;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+		outline: 2px solid transparent;
+		outline-offset: -2px;
+		box-shadow: none;
+		-webkit-tap-highlight-color: transparent;
+		transition: background-color var(--td-dur-fast) var(--td-ease);
+		appearance: none;
+	}
+
+	.td-number__step--down {
+		border-start-start-radius: calc(var(--_td-field-radius) - 1px);
+		border-end-start-radius: calc(var(--_td-field-radius) - 1px);
+	}
+
+	.td-number__step--up {
+		border-start-end-radius: calc(var(--_td-field-radius) - 1px);
+		border-end-end-radius: calc(var(--_td-field-radius) - 1px);
+	}
+
+	.td-number__step .td-icon {
+		pointer-events: none;
+	}
+
+	td-number-input:not(:defined) .td-number__step {
+		visibility: hidden;
+	}
+
+	@media (hover: hover) and (pointer: fine) {
+		.td-number__step:hover:not(:disabled, [aria-disabled="true"]) {
+			background: var(--td-color-hover-strong);
+		}
+	}
+
+	.td-number__step:focus-visible {
+		outline-color: var(--td-focus);
+	}
+
+	.td-number__step:is(:active, [data-td-pressed]):not(:disabled, [aria-disabled="true"]) {
+		background-image: linear-gradient(var(--td-color-pressed), var(--td-color-pressed));
+		transition-duration: 0s;
+	}
+
+	.td-number__step[aria-disabled="true"],
+	.td-number__step:disabled {
+		color: var(--td-btn-disabled-fg);
+		cursor: not-allowed;
+	}
+
+	@media (pointer: coarse) {
+		.td-number__step {
+			inline-size: max(var(--td-number-step-size), var(--td-touch-min));
+		}
+	}
+
+	@media (forced-colors: active) {
+		.td-number__step {
+			color: ButtonText;
+		}
+
+		.td-number__step[aria-disabled="true"],
+		.td-number__step:disabled {
+			color: GrayText;
+		}
+
+		.td-number__step:is(:active, [data-td-pressed]):not(:disabled, [aria-disabled="true"]) {
+			outline: 2px solid Highlight;
 		}
 	}
 }
