@@ -71,6 +71,27 @@ export const UsageCrop = {
   args: { label: 'Gallery sản phẩm' },
 };
 
+/** v0.51.0: caption per image (one line: a pasted line break becomes a space) — name[i][caption] after [alt]. */
+export const CaptionLine = {
+  render: (args) => gallery('usage caption max="6"', ITEMS.slice(0, 3).map((x, i) => (i === 0 ? { ...x, alt: 'Áo thun trắng', caption: 'Mặt trước' } : x)), args),
+  args: { label: 'Gallery có chú thích' },
+};
+
+/** v0.51.0: multi-line caption (textarea, line breaks kept). */
+export const CaptionMultiline = {
+  render: (args) => gallery('usage caption="multiline" max="6"', ITEMS.slice(0, 3).map((x, i) => (i === 0 ? { ...x, caption: 'Dòng 1\nDòng 2' } : x)), args),
+  args: { label: 'Chú thích nhiều dòng' },
+};
+
+/** v0.51.0: soft limits (dsuite: alt ≤ 255, caption ≤ 500 — small here): counter from 80 %, inline error, submit blocked, never cut. */
+export const CaptionLimits = {
+  render: (args) => gallery('usage caption alt-maxlength="20" caption-maxlength="24" max="6"', ITEMS.slice(0, 3).map((x, i) => [
+    { ...x, alt: 'Áo thun trắng cổ tròn', caption: 'Mặt trước, nền trắng' },
+    { ...x, alt: 'Áo', caption: 'Chú thích này dài quá giới hạn của ô' },
+    x][i]), args),
+  args: { label: 'Giới hạn độ dài' },
+};
+
 /** Full: Add hidden, the count says "Đã đủ". */
 export const Full = {
   render: (args) => gallery('max="5"', ITEMS, args),

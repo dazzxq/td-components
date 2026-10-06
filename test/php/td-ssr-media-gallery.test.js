@@ -53,10 +53,14 @@ const hostAttr = (html, name) => {
   const m = new RegExp(` ${name}(?:="([^"]*)")?[ >]`).exec(/^<td-media-gallery[^>]*>/.exec(html)[0]);
   return m ? (m[1] ?? true) : null;
 };
-/** The no-JS FormData of printed markup: named, not disabled inputs in tree order. */
-const entries = (html) => [...html.matchAll(/<input([^>]*)>/g)].map((m) => m[1])
-  .filter((a) => / name="/.test(a) && !/ disabled/.test(a))
-  .map((a) => [unesc(/ name="([^"]*)"/.exec(a)[1]), unesc(/ value="([^"]*)"/.exec(a)?.[1] ?? '')]);
+/**
+ * The no-JS FormData of printed markup: named, not disabled inputs + textareas (v0.51.0 caption) in tree order. A
+ * textarea's value = its text minus the ONE leading LF the HTML parser drops.
+ */
+const entries = (html) => [...html.matchAll(/<input([^>]*)>|<textarea([^>]*)>([\s\S]*?)<\/textarea>/g)]
+  .map((m) => (m[1] != null ? { a: m[1], v: unesc(/ value="([^"]*)"/.exec(m[1])?.[1] ?? '') } : { a: m[2], v: unesc(m[3].replace(/^\n/, '')) }))
+  .filter(({ a }) => / name="/.test(a) && !/ disabled/.test(a))
+  .map(({ a, v }) => [unesc(/ name="([^"]*)"/.exec(a)[1]), v]);
 const icon = (name) => php(` echo json_encode(TdComponents\\Td::icon(${JSON.stringify(name)}));`);
 
 describe('php/td.php — td_media_gallery (v0.43.0, contract media-gallery@1)', opts, () => {
@@ -148,7 +152,7 @@ describe('php/td.php — td_media_gallery (v0.43.0, contract media-gallery@1)', 
       assert.equal(got[i].reason, want.reason, c.id);
       if (want.ids) assert.deepEqual((got[i].items || []).map((x) => x.id), want.ids, c.id);
       if (want.items && !c.php) {
-        const map = { src: 'src', previewAlt: 'name', kind: 'kind', alt: 'alt', cropRaw: 'crop', focalRaw: 'focal' };
+        const map = { src: 'src', previewAlt: 'name', kind: 'kind', alt: 'alt', cropRaw: 'crop', focalRaw: 'focal', caption: 'caption' };
         want.items.forEach((w, k) => {
           for (const [jsKey, v] of Object.entries(w)) {
             const pv = got[i].items[k][map[jsKey]];

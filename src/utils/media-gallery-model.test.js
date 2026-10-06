@@ -60,9 +60,9 @@ describe('validateItems (decision 15b — the one validation path)', () => {
     assert.equal(r.ok, true);
     assert.equal(r.reason, null);
     assert.deepEqual(r.items, [
-      { id: 'm1', src: 'https://cdn.example/1.jpg', previewAlt: 'anh-1.jpg', kind: 'image', alt: 'Một', cropRaw: CROP, focalRaw: FOCAL },
-      { id: 'm2', src: '', previewAlt: '', kind: 'image', alt: '', cropRaw: null, focalRaw: null },
-    ]);
+      { id: 'm1', src: 'https://cdn.example/1.jpg', previewAlt: 'anh-1.jpg', kind: 'image', alt: 'Một', cropRaw: CROP, focalRaw: FOCAL, caption: '' },
+      { id: 'm2', src: '', previewAlt: '', kind: 'image', alt: '', cropRaw: null, focalRaw: null, caption: '' },
+    ]); // v0.51.0: every normalised item also carries `caption` (QĐ 14)
   });
 
   it('structure: not an array → type; > 100 → ceiling; an entry not an object → item', () => {

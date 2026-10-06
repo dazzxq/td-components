@@ -205,7 +205,9 @@ for (const state of ['empty', 'video', 'error']) CASES.push({ kind: 'media-field
 // muted fill, the dashed edge ≥ 3.2 vs the page and the fill; the count line ≥ 4.7 on the page; tile buttons / handle
 // icon ≥ 3.2 on their surface; the cover badge ≥ 4.7; the alt placeholder ≥ 4.5 (plan QĐ 11) on the input; the broken
 // note ≥ 4.7 — computed colours (`pairs`), light + dark.
-for (const state of ['empty', 'filled', 'broken']) CASES.push({ kind: 'media-gallery', v: 'gallery', state, pageOnly: true });
+// v0.51.0 (plan v0.51.0-gallery-caption M6): + `limits` — the counter (shown / over) and the inline error ≥ 4.7 on the
+// tile, the caption placeholder ≥ 4.5 on its control.
+for (const state of ['empty', 'filled', 'broken', 'limits']) CASES.push({ kind: 'media-gallery', v: 'gallery', state, pageOnly: true });
 // v0.33.0 (dcms2 parity): the picker card state borders (hover / viewing / checked tokens) ≥ 3:1 vs the card surface and
 // the list background (WCAG 1.4.11), card name + meta text, the `.td-media-picker__label` muted label, the cursor page info,
 // the footer count, the `td-pagination` "Hiển thị…" text ('pages' mode) and the upload dialog dropzone texts + badges ≥ 4.7.
@@ -645,6 +647,11 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
       host.setAttribute('items', JSON.stringify([{ id: 'm1', src: '/test/fixtures/1.svg', name: 'Ảnh 1' }, { id: 'm11', kind: 'file', name: 'a.pdf' }]));
     }
     if (c.state === 'broken') host.setAttribute('items', '[');
+    if (c.state === 'limits') {
+      for (const [a, v] of [['usage', ''], ['caption', ''], ['alt-maxlength', '10'], ['caption-maxlength', '5']]) host.setAttribute(a, v);
+      host.setAttribute('items', JSON.stringify([{ id: 'm1', src: '/test/fixtures/1.svg', name: 'Ảnh 1', alt: '12345678' },
+        { id: 'm2', src: '/test/fixtures/2.svg', name: 'Ảnh 2', alt: '0123456789A', caption: 'abcdef' }]));
+    }
     const wrap = document.createElement('div');
     wrap.style.setProperty('width', '480px');
     wrap.appendChild(host);
@@ -680,6 +687,18 @@ window.__contrastSetup = async (i, theme, backdrop, hideInk) => {
         { what: 'alt placeholder vs the input', fg: getComputedStyle(alt).getPropertyValue('--td-field-placeholder').trim(), bg: getComputedStyle(alt).backgroundColor, min: 4.5 },
         { what: 'file name vs the media box', fg: cs('.td-media-gallery__name').color, bg: media, min: 4.7 },
         { what: 'Add (filled) text vs its fill', fg: cs('.td-media-gallery__add').color, bg: cs('.td-media-gallery__add').backgroundColor, min: 4.7 },
+      ];
+    } else if (c.state === 'limits') {
+      const [li1, li2] = host.querySelectorAll('.td-media-gallery__item');
+      const tile = getComputedStyle(li1).backgroundColor;
+      const capCtl = li1.querySelector('.td-media-gallery__caption');
+      const counter = (li, f) => getComputedStyle(li.querySelector(`[id$="-${f}-count"]`)).color;
+      box = li2;
+      pairs = [
+        { what: 'counter (80 %) vs tile', fg: counter(li1, 'alt'), bg: tile, min: 4.7 },
+        { what: 'counter over vs tile', fg: counter(li2, 'alt'), bg: tile, min: 4.7 },
+        { what: 'inline error vs tile', fg: getComputedStyle(li2.querySelector('.td-media-gallery__error:not([hidden])')).color, bg: tile, min: 4.7 },
+        { what: 'caption placeholder vs the input', fg: getComputedStyle(capCtl).getPropertyValue('--td-field-placeholder').trim(), bg: getComputedStyle(capCtl).backgroundColor, min: 4.5 },
       ];
     } else {
       const note = host.querySelector('.td-media-gallery__broken');

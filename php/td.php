@@ -4,8 +4,8 @@
  * dependency.
  * Docs: docs/guides/php-adapter.md.
  *
- *   require_once '/path/to/vendor/td-components/0.50.0/php/td.php';
- *   TdComponents\Td::configure('/assets/vendor/td-components/0.50.0', __DIR__ . '/public/assets/vendor/td-components/0.50.0');
+ *   require_once '/path/to/vendor/td-components/0.51.0/php/td.php';
+ *   TdComponents\Td::configure('/assets/vendor/td-components/0.51.0', __DIR__ . '/public/assets/vendor/td-components/0.51.0');
  *   echo td_stylesheet_tag($nonce), td_import_map_tag(['app' => '/assets/app.js'], $nonce);
  *   echo td_field('email', $email, ['label' => 'Email', 'type' => 'email', 'autocomplete' => 'email', 'required' => true]);
  *   echo td_button('Lưu', ['type' => 'submit', 'variant' => 'primary']);
@@ -313,6 +313,9 @@ namespace TdComponents {
         public const SSR_MEDIA_GALLERY = 'media-gallery@1';
         /** v0.43.0 (decision 6, owner O2): hard ceiling of a gallery = the default max (TdMediaGallery.MAX_ITEMS). */
         public const MEDIA_GALLERY_MAX_ITEMS = 100;
+        /** v0.51.0 (plan v0.51.0-gallery-caption QĐ 7 / 8): the alt / caption hard ceilings (code points) = GALLERY_ALT_MAX / GALLERY_CAPTION_MAX. */
+        public const MEDIA_GALLERY_ALT_MAX = 500;
+        public const MEDIA_GALLERY_CAPTION_MAX = 1000;
         /** v0.43.0: default texts of td_media_gallery = TdMediaGallery.labels (a site overriding the JS labels gets a safe re-render). */
         public const MEDIA_GALLERY_LABELS = [
             'prompt' => ['image' => 'Chọn ảnh', 'video' => 'Chọn video', 'file' => 'Chọn file'],
@@ -333,6 +336,12 @@ namespace TdComponents {
             'video' => 'Video',
             'broken' => 'Không đọc được danh sách ảnh',
             'sortHelp' => 'Nhấn Space hoặc Enter để nhấc, phím mũi tên để di chuyển, Space hoặc Enter để thả, Escape để huỷ.',
+            /** v0.51.0: caption + the soft length limits (counter / inline error) */
+            'caption' => 'Chú thích ảnh {n}',
+            'captionPlaceholder' => 'Chú thích',
+            'counter' => '{count}/{max}',
+            'altTooLong' => 'Mô tả (alt) tối đa {max} ký tự.',
+            'captionTooLong' => 'Chú thích tối đa {max} ký tự.',
         ];
         /** v0.46.0: td_diff / td_diff_snapshots (always the element <td-diff data-td-ssr="diff@1"> + the full markup). */
         public const SSR_DIFF = 'diff@1';
@@ -391,7 +400,7 @@ namespace TdComponents {
             'id' => 100, 'name' => 200, 'class' => 256, 'groupLabel' => 200, 'helper' => 1000, 'error' => 1000];
 
         /**
-         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.50.0') —
+         * @param string $baseUrl URL of the VERSIONED vendor directory (e.g. '/assets/vendor/td-components/0.51.0') —
          *                        the version lives in the path, never in `?v=` (module identity).
          * @param string $kitDir  Filesystem path of the same directory (reads package.json + src/icons/icons.json).
          * @param array{ssr_elements?: bool} $options v0.25.0. `ssr_elements` (default false): td_button / td_link
@@ -2818,8 +2827,40 @@ namespace {
             }
         }
 
+        // v0.51.0 (plan v0.51.0-gallery-caption QĐ 1-2, 8, 18): the caption (usage only; true | 'line' | 'multiline',
+        // anything else → line + a warning) and the soft length limits (strict integers; invalid → off + ONE warning each,
+        // never the value)
+        $captionMode = null;
+        if (array_key_exists('caption', $o) && $o['caption'] !== null && $o['caption'] !== false) {
+            if (!$usage) {
+                trigger_error('td_media_gallery: caption needs usage — ignored', E_USER_WARNING);
+            } elseif ($o['caption'] === true || $o['caption'] === 'line' || $o['caption'] === 'multiline') {
+                $captionMode = $o['caption'] === 'multiline' ? 'multiline' : 'line';
+            } else {
+                trigger_error("td_media_gallery: caption must be true, 'line' or 'multiline' — line is used", E_USER_WARNING);
+                $captionMode = 'line';
+            }
+        }
+        $limitOpt = static function (string $key, int $ceiling, bool $ready, string $needs) use ($o): ?int {
+            if (!array_key_exists($key, $o) || $o[$key] === null) {
+                return null;
+            }
+            [$n, $bad] = td__media_limit_opt($o[$key], $ceiling);
+            if ($bad) {
+                trigger_error('td_media_gallery: ' . $key . ' must be an integer 1..' . $ceiling . ' — ignored', E_USER_WARNING);
+                return null;
+            }
+            if (!$ready) {
+                trigger_error('td_media_gallery: ' . $key . ' needs ' . $needs . ' — ignored', E_USER_WARNING);
+                return null;
+            }
+            return $n;
+        };
+        $altMax = $limitOpt('alt_maxlength', Td::MEDIA_GALLERY_ALT_MAX, $usage, 'usage');
+        $capMax = $limitOpt('caption_maxlength', Td::MEDIA_GALLERY_CAPTION_MAX, $captionMode !== null, 'caption');
+
         // decision 15b / 19: one validation path (ints → strings first), then the items attribute (≤ 256 KiB)
-        $v = td__media_gallery_items($items, $limit);
+        $v = td__media_gallery_items($items, $limit, $captionMode !== null);
         $broken = $v['items'] === null;
         $reason = (string) $v['reason'];
         $list = $broken ? [] : $v['items'];
@@ -2832,6 +2873,9 @@ namespace {
                     if ($it[$k] !== $none) {
                         $row[$k] = $it[$k];
                     }
+                }
+                if ($captionMode !== null && $it['caption'] !== '') {
+                    $row['caption'] = $it['caption']; // v0.51.0: the RAW caption (a line gallery keeps its newlines)
                 }
                 $rows[] = $row;
             }
@@ -2879,6 +2923,7 @@ namespace {
             'label' => $label !== '' ? $label : null,
             'items' => $json,
             'usage' => $usage,
+            'caption' => $captionMode,
             'croppable' => $croppable,
             'crop-ratio' => $cropRatio,
             'focal-point' => $focalOn,
@@ -2888,6 +2933,8 @@ namespace {
             'accept-kind' => array_key_exists('accept_kind', $o) && $o['accept_kind'] !== null ? implode(' ', $kinds) : null,
             'min' => $min !== null ? (string) $min : null,
             'max' => $max !== null ? (string) $max : null,
+            'alt-maxlength' => $altMax !== null ? (string) $altMax : null,
+            'caption-maxlength' => $capMax !== null ? (string) $capMax : null,
             'required' => $required,
             'disabled' => $disabled,
             'prompt' => $prompt,
@@ -2897,7 +2944,7 @@ namespace {
         $extra = is_array($o['attrs'] ?? null) ? $o['attrs'] : [];
         $taken = td__reserve(['id', 'class', 'name', 'label', 'items', 'usage', 'croppable', 'crop-ratio', 'focal-point', 'cover',
             'aspect-ratio', 'preview-fit', 'accept-kind', 'min', 'max', 'required', 'disabled', 'prompt', 'helper-text',
-            'error-text', 'value'], $extra, $taken);
+            'error-text', 'value', 'caption', 'alt-maxlength', 'caption-maxlength'], $extra, $taken);
         $html .= Td::attrs($extra, $taken) . '>'
             . '<div class="td-media-gallery__head"><span class="td-media-gallery__label" id="' . $hid . '-label">' . Td::e($label)
             . ($required ? '<span class="td-field__required" aria-hidden="true"> *</span>' : '') . '</span>';
@@ -2912,7 +2959,31 @@ namespace {
         $html .= '<span class="td-media-gallery__count" id="' . $hid . '-count"' . ($overflow ? ' data-state="over"' : '') . '>' . Td::e($countText) . '</span></div>'
             . '<ul class="td-media-gallery__list" role="list" aria-labelledby="' . $hid . '-label" aria-describedby="' . $hid . '-count">';
         $vb = $ratio !== null ? $ratio['w'] . ' ' . $ratio['h'] : '1 1';
+        // v0.51.0 QĐ 10: a limited field → [aria on its control, counter + error spans] (= the element's render())
+        $limitParts = static function (string $field, int $i, string $value, ?int $max) use ($L, $f, $hid): array {
+            if ($max === null) {
+                return ['', ''];
+            }
+            $n = td__media_text_count($value);
+            $shown = $n * 5 >= $max * 4;
+            $over = $n > $max;
+            $state = $over ? 'over' : ($n === $max ? 'limit' : null);
+            $cid = $hid . '-' . $i . '-' . $field . '-count';
+            $eid = $hid . '-' . $i . '-' . $field . '-error';
+            return [
+                ($shown ? ' aria-describedby="' . $cid . ($over ? ' ' . $eid : '') . '"' : '') . ($over ? ' aria-invalid="true"' : ''),
+                '<span class="td-media-gallery__counter" id="' . $cid . '"' . ($state !== null ? ' data-state="' . $state . '"' : '') . ($shown ? '' : ' hidden') . '>'
+                    . Td::e($f($L['counter'], ['count' => $n, 'max' => $max])) . '</span>'
+                    . '<span class="td-media-gallery__error" id="' . $eid . '"' . ($over ? '' : ' hidden') . '>'
+                    . Td::e($f($L[$field === 'alt' ? 'altTooLong' : 'captionTooLong'], ['max' => $max])) . '</span>',
+            ];
+        };
         foreach ($list as $i => $it) {
+            [$altAria, $altSpans] = $usage ? $limitParts('alt', $i, $it['alt'], $altMax) : ['', ''];
+            $cap = $captionMode !== null ? td__media_caption_value($it['caption'], $captionMode) : '';
+            [$capAria, $capSpans] = $captionMode !== null ? $limitParts('caption', $i, $cap, $capMax) : ['', ''];
+            $capName = $named ? ' name="' . Td::e($name . '[' . $i . '][caption]') . '"' : '';
+            $capHead = 'class="td-field__control td-media-gallery__caption"';
             $base = $it['name'] !== '' ? $it['name'] : ($it['alt'] !== '' ? $it['alt'] : $it['id']);
             $full = $f($L['item'], ['n' => $i + 1, 'count' => $count, 'name' => $base]) . ($cover && $i === 0 ? $L['coverSuffix'] : '');
             $k = $it['kind'];
@@ -2937,8 +3008,19 @@ namespace {
                 . ($named ? $hidden('td-media-gallery__value', $usage ? $name . '[' . $i . '][id]' : $name . '[]', $it['id']) : '')
                 . ($usage
                     ? '<label class="td-media-gallery__alt-field"><span class="td-sr-only">' . Td::e($f($L['alt'], ['n' => $i + 1])) . '</span>'
-                        . '<input type="text" class="td-field__control td-media-gallery__alt" maxlength="500" placeholder="' . Td::e($L['altPlaceholder']) . '"'
+                        . '<input type="text" class="td-field__control td-media-gallery__alt" maxlength="500" placeholder="' . Td::e($L['altPlaceholder']) . '"' . $altAria
                         . ($named ? ' name="' . Td::e($name . '[' . $i . '][alt]') . '"' : '') . ($it['alt'] !== '' ? ' value="' . Td::e($it['alt']) . '"' : '') . $dis . '></label>'
+                        . $altSpans
+                    : '')
+                . ($captionMode !== null
+                    ? '<label class="td-media-gallery__caption-field"><span class="td-sr-only">' . Td::e($f($L['caption'], ['n' => $i + 1])) . '</span>'
+                        . ($captionMode === 'multiline'
+                            // the HTML parser drops ONE leading LF after <textarea>: print one so a caption starting with a newline keeps it
+                            ? '<textarea ' . $capHead . ' rows="2" maxlength="1000" placeholder="' . Td::e($L['captionPlaceholder']) . '"' . $capAria . $capName . $dis . '>'
+                                . ($cap !== '' ? "\n" . Td::e($cap) : '') . '</textarea>'
+                            : '<input type="text" ' . $capHead . ' maxlength="1000" placeholder="' . Td::e($L['captionPlaceholder']) . '"' . $capAria . $capName
+                                . ($cap !== '' ? ' value="' . Td::e($cap) . '"' : '') . $dis . '>')
+                        . '</label>' . $capSpans
                     : '')
                 . ($named && $usage ? $hidden('td-media-gallery__crop', $name . '[' . $i . '][crop]', $it['crop'] ?? 'null') : '')
                 . ($named && $usage && $focalOn ? $hidden('td-media-gallery__focal', $name . '[' . $i . '][focal]', $it['focal'] ?? 'null') : '')
@@ -2968,7 +3050,7 @@ namespace {
      * ['id', 'src' (''), 'name' (''), 'kind', 'alt' (≤ 500 code points), 'crop' (?JSON v1), 'focal' (?JSON v1)].
      * Structural errors → items null; more than $max → reason `max` WITH the items.
      */
-    function td__media_gallery_items(mixed $items, int $max = 100): array
+    function td__media_gallery_items(mixed $items, int $max = 100, bool $caption = true): array
     {
         $fail = static fn (string $r): array => ['ok' => false, 'reason' => $r, 'items' => null];
         $isList = static fn (array $a): bool => $a === [] || array_keys($a) === range(0, count($a) - 1);
@@ -3010,6 +3092,9 @@ namespace {
                 'name' => isset($x['name']) && is_string($x['name']) ? td__utf8_prefix($x['name'], 512) : '',
                 'kind' => in_array($x['kind'] ?? null, ['image', 'video', 'file'], true) ? $x['kind'] : 'image',
                 'alt' => isset($x['alt']) && is_string($x['alt']) ? td__utf8_prefix($x['alt'], 500) : '',
+                // v0.51.0 QĐ 3: always normalised (the mode is only a projection)
+                // Codex review r1 SEC-01: a disabled caption is neither printed nor sent → never read
+                'caption' => $caption ? td__media_caption($x['caption'] ?? null) : '',
                 'crop' => td__media_crop($x['crop'] ?? null, false),
                 'focal' => td__media_focal($x['focal'] ?? null, false),
             ];
@@ -3020,6 +3105,75 @@ namespace {
     }
 
     /** @internal v0.43.0: length of a UTF-8 string in UTF-16 code units (JS `String#length`); invalid UTF-8 → PHP_INT_MAX. */
+    /**
+     * @internal v0.51.0 (plan v0.51.0-gallery-caption QĐ 3) = normCaption() of src/utils/media-field-model.js
+     * (test/ssr/media-text.cases.json): not a string / invalid UTF-8 within the first 4000 code points → ''; only those 4000 code points read; CRLF / CR → LF; C0 except TAB / LF, DEL and C1
+     * dropped; cut at 1000 code points (Td::MEDIA_GALLERY_CAPTION_MAX). Never trimmed.
+     */
+    function td__media_caption(mixed $s): string
+    {
+        if (!is_string($s) || $s === '') {
+            return '';
+        }
+        // Codex review r1 SEC-01 + r2 #1: the raw read budget = normCaption() — only the first 4000 code points are ever
+        // inspected. At most 4000 × 4 bytes are cut first; a byte-level (non-/u) walk then takes up to 4000 WELL-FORMED UTF-8
+        // sequences (possessive: no backtracking) and stops there — bytes after the prefix are never looked at. Stopped
+        // early on an ill-formed sequence (not at the end of the string) → invalid inside the budget → ''.
+        $budget = 4 * Td::MEDIA_GALLERY_CAPTION_MAX;
+        $buf = strlen($s) > 4 * $budget ? substr($s, 0, 4 * $budget) : $s;
+        $seq = '(?:[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}'
+            . '|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2})';
+        // in chunks of ≤ 100 sequences (one `{0,4000}` would exceed the PCRE compile limit); a chunk is a possessive
+        // run from the current offset, its code points = bytes − continuation bytes
+        $pos = 0;
+        $n = 0;
+        $len = strlen($buf);
+        while ($n < $budget && $pos < $len) {
+            $want = min(100, $budget - $n);
+            if (preg_match('/\G' . $seq . '{1,' . $want . '}+/', $buf, $m, 0, $pos) !== 1) {
+                return ''; // an ill-formed sequence inside the first 4000 code points
+            }
+            $pos += strlen($m[0]);
+            $n += strlen($m[0]) - (int) preg_match_all('/[\x80-\xBF]/', $m[0]);
+        }
+        $s = substr($buf, 0, $pos);
+        $t = (string) preg_replace('/[\x{0}-\x{8}\x{B}-\x{1F}\x{7F}-\x{9F}]/u', '', (string) preg_replace('/\r\n?/', "\n", $s));
+        return td__utf8_prefix($t, Td::MEDIA_GALLERY_CAPTION_MAX);
+    }
+
+    /** @internal v0.51.0 QĐ 3 = captionValue(): `line` → every run of LF becomes ONE space; else unchanged. */
+    function td__media_caption_value(string $c, ?string $mode): string
+    {
+        return $mode === 'line' ? (string) preg_replace('/\n+/', ' ', $c) : $c;
+    }
+
+    /**
+     * @internal v0.51.0 QĐ 9 = limitCount(): code points after the ECMAScript trim (Td::JS_WS). Invalid UTF-8 → 0 (never
+     * reached: every caller passes normalised / validated text).
+     */
+    function td__media_text_count(string $s): int
+    {
+        $t = preg_replace('/^[' . Td::JS_WS . ']+|[' . Td::JS_WS . ']+$/u', '', $s);
+        return is_string($t) ? (int) preg_match_all('/./su', $t) : 0;
+    }
+
+    /**
+     * @internal v0.51.0 QĐ 8 (Codex plan-review r1 #4) = parseLimit() (test/ssr/media-limit.cases.json): an int (not a
+     * bool) or a string matching exactly `^[1-9][0-9]{0,6}$`, within 1..$ceiling → [n, false]; null → [null, false]
+     * (absent: off, silent); anything else → [null, true] (off + the caller's warning).
+     * @return array{0: ?int, 1: bool}
+     */
+    function td__media_limit_opt(mixed $v, int $ceiling): array
+    {
+        if ($v === null) {
+            return [null, false];
+        }
+        if (is_string($v) && preg_match('/^[1-9][0-9]{0,6}$/D', $v) === 1) {
+            $v = (int) $v;
+        }
+        return is_int($v) && $v >= 1 && $v <= $ceiling ? [$v, false] : [null, true];
+    }
+
     function td__utf16_length(string $s): int
     {
         $points = preg_match_all('/./su', $s);

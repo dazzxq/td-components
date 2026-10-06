@@ -311,6 +311,93 @@ export const GALLERY_MAX_ITEMS = 100;
 export const GALLERY_ITEMS_MAX_LEN = 262144;
 
 const capAlt = (s) => [...s].slice(0, ALT_MAX).join('');
+/** v0.51.0: the alt hard ceiling (code points), = the `maxlength` of the alt input and the top of `alt-maxlength`. */
+export const GALLERY_ALT_MAX = ALT_MAX;
+
+// --- v0.51.0 caption + length limits (plan v0.51.0-gallery-caption QĐ 3 / 7–10; PHP td__media_caption & co.) ---
+
+/** QĐ 7: the caption hard ceiling (code points; cut, never refused) = the `maxlength` of the caption control. */
+export const GALLERY_CAPTION_MAX = 1000;
+/**
+ * Codex review r1 SEC-01: the raw read budget — normCaption() reads only the first 4000 code points (4 × the ceiling)
+ * BEFORE any replace / regex, whatever the source (picker, setSelection, a restore) = PHP td__media_caption().
+ */
+export const GALLERY_CAPTION_RAW_MAX = 4 * GALLERY_CAPTION_MAX;
+/** @private the first `n` code points of `s` (a lone surrogate = one) — a walk of at most 2n code units */
+function codePointPrefix(s, n) {
+  if (s.length <= n) return s;
+  let i = 0;
+  for (let k = 0; k < n && i < s.length; k += 1) {
+    const c = s.charCodeAt(i);
+    i += c >= 0xd800 && c <= 0xdbff && i + 1 < s.length && (s.charCodeAt(i + 1) & 0xfc00) === 0xdc00 ? 2 : 1;
+  }
+  return s.slice(0, i);
+}
+/** C0 except TAB / LF, DEL, C1 (CR is already LF when this runs). */
+const CAPTION_CONTROLS = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g;
+
+/**
+ * QĐ 3: the ONE caption normaliser (every way in: `items`, restore, setSelection, picker, typing) = PHP
+ * td__media_caption(): not a string → ''; only the first GALLERY_CAPTION_RAW_MAX code points are read; CRLF / CR → LF; C0 except TAB / LF, DEL and C1 dropped; cut at 1000 code
+ * points. Never trimmed (the server trims; `''` = null there). Bidi / zero-width characters are the user's text.
+ * @param {unknown} s
+ * @returns {string}
+ */
+export function normCaption(s) {
+  if (typeof s !== 'string' || !s) return '';
+  const t = codePointPrefix(s, GALLERY_CAPTION_RAW_MAX).replace(/\r\n?/g, '\n').replace(CAPTION_CONTROLS, '');
+  return t.length <= GALLERY_CAPTION_MAX ? t : [...t].slice(0, GALLERY_CAPTION_MAX).join('');
+}
+
+/**
+ * QĐ 3: the projection of a (normalised) caption for a mode — what the control shows, FormData sends, the counter
+ * counts and PHP prints. `line`: every run of LF → ONE space; anything else: unchanged.
+ * @param {string} c
+ * @param {'line'|'multiline'|null|undefined} mode
+ * @returns {string}
+ */
+export function captionValue(c, mode) {
+  const s = typeof c === 'string' ? c : '';
+  return mode === 'line' ? s.replace(/\n+/g, ' ') : s;
+}
+
+/**
+ * QĐ 9: the length rule of `alt-maxlength` / `caption-maxlength` = PHP td__media_text_count(): code points after the
+ * ECMAScript trim (String.prototype.trim ≡ Td::JS_WS). No collapsing (a server that collapses counts ≤ this).
+ * @param {unknown} s
+ * @returns {number}
+ */
+export function limitCount(s) {
+  if (typeof s !== 'string' || !s) return 0;
+  let n = 0;
+  for (const _ of s.trim()) n += 1; // eslint-disable-line no-unused-vars
+  return n;
+}
+
+/**
+ * QĐ 10: the counter state — shown from 80 % (`count × 5 ≥ max × 4`, integers), `limit` at max, `over` above it.
+ * @param {number} count
+ * @param {number|null|undefined} max
+ * @returns {{ shown: boolean, state: null|'limit'|'over' }}
+ */
+export function limitState(count, max) {
+  if (!Number.isInteger(max) || max < 1) return { shown: false, state: null };
+  return { shown: count * 5 >= max * 4, state: count > max ? 'over' : count === max ? 'limit' : null };
+}
+
+/**
+ * QĐ 8 (Codex plan-review r1 #4): `alt-maxlength` / `caption-maxlength` = PHP td__media_limit_opt() for strings:
+ * exactly `^[1-9][0-9]{0,6}$` (no sign, space, leading zero, dot, exponent, hex) and 1…ceiling; else null (off). Not a
+ * string (an absent attribute) → null — the caller warns only when the attribute is present.
+ * @param {unknown} v
+ * @param {number} ceiling
+ * @returns {number|null}
+ */
+export function parseLimit(v, ceiling) {
+  if (typeof v !== 'string' || !/^[1-9][0-9]{0,6}$/.test(v)) return null;
+  const n = Number(v);
+  return n <= ceiling ? n : null;
+}
 /** Review round 1 ISSUE-3: the display name of an item, capped like the alt (code points), never refused. */
 export const GALLERY_NAME_MAX = 512;
 
@@ -318,11 +405,13 @@ export const GALLERY_NAME_MAX = 512;
  * The FormData entries of a gallery (decision 14) — the public form shape (ADR 0021).
  * Reference (default): `name[]=<id>` per item, in order. Usage: `name[i][id]`, `name[i][alt]`, `name[i][crop]`
  * (+ `name[i][focal]` with `opts.focal`), i = 0…n−1, in this key order; crop / focal = the validated string or `null`.
+ * v0.51.0: `opts.caption` (`'line'|'multiline'`, usage only) adds `name[i][caption]` right after `[alt]` = the caption
+ * projected by the mode (always sent while on, even ''); off / reference → never a `[caption]` (server: keep).
  * Empty (both shapes): exactly ONE `name=` (the server reads "removed all"). No name, or a name ending in `[]` (the
  * gallery appends `[]` / `[i]` itself) → null (nothing submitted — the gallery fails closed).
  * @param {unknown} name
  * @param {Array<{ id: string, alt?: string, cropRaw?: string|null, focalRaw?: string|null }>} items
- * @param {{ usage?: boolean, focal?: boolean }} [opts]
+ * @param {{ usage?: boolean, focal?: boolean, caption?: 'line'|'multiline'|null }} [opts]
  * @returns {Array<[string, string]> | null}
  */
 export function galleryEntries(name, items, opts = {}) {
@@ -333,8 +422,9 @@ export function galleryEntries(name, items, opts = {}) {
   const out = [];
   list.forEach((it, i) => {
     const k = `${name}[${i}]`;
-    out.push([`${k}[id]`, String(it.id)], [`${k}[alt]`, typeof it.alt === 'string' ? it.alt : ''],
-      [`${k}[crop]`, typeof it.cropRaw === 'string' && it.cropRaw ? it.cropRaw : 'null']);
+    out.push([`${k}[id]`, String(it.id)], [`${k}[alt]`, typeof it.alt === 'string' ? it.alt : '']);
+    if (opts.caption === 'line' || opts.caption === 'multiline') out.push([`${k}[caption]`, captionValue(it.caption, opts.caption)]);
+    out.push([`${k}[crop]`, typeof it.cropRaw === 'string' && it.cropRaw ? it.cropRaw : 'null']);
     if (opts.focal) out.push([`${k}[focal]`, typeof it.focalRaw === 'string' && it.focalRaw ? it.focalRaw : 'null']);
   });
   return /** @type {Array<[string, string]>} */ (out);
@@ -346,7 +436,8 @@ export function galleryEntries(name, items, opts = {}) {
  *   1. an array of at most `ceiling` (100) entries → else `type` / `ceiling`; every entry an object → else `item`;
  *   2. every `id` a non-empty string of ≤ 512 code units → else `id`; unique (case-sensitive) → else `duplicate`;
  *   3. fields capped, never refused: alt cut to 500 code points, the display name to 512, crop (≤ 512, parseCrop) / focal (≤ 128, parseFocal)
- *      invalid → null, `src` through the URL gate (refused → '' — the item is kept), `kind` outside KINDS → image;
+ *      invalid → null, `src` through the URL gate (refused → '' — the item is kept), `kind` outside KINDS → image,
+ *      v0.51.0 `caption` through normCaption() (always — the mode is only a projection);
  *   4. more items than `max` → reason `max` WITH the normalised items (the caller keeps them — attribute / restore —
  *      or refuses — API).
  * Structural errors (1-2) return `items: null`. Input keys: `id`, `src`, `name` (display name), `kind`, `alt`, `crop`,
@@ -355,7 +446,7 @@ export function galleryEntries(name, items, opts = {}) {
  * @param {{ max?: number, ceiling?: number, safeUrl?: (u: string) => boolean }} [o]
  * @returns {{ ok: boolean, reason: null|'type'|'ceiling'|'item'|'id'|'duplicate'|'max', items: Array<{ id: string,
  *   src: string, previewAlt: string, kind: 'image'|'video'|'file', alt: string, cropRaw: string|null,
- *   focalRaw: string|null }>|null }}
+ *   focalRaw: string|null, caption: string }>|null }}
  */
 export function validateItems(list, o = {}) {
   const ceiling = Number.isInteger(o.ceiling) && o.ceiling >= 0 ? o.ceiling : GALLERY_MAX_ITEMS;
@@ -382,6 +473,7 @@ export function validateItems(list, o = {}) {
       alt: typeof x.alt === 'string' ? capAlt(x.alt) : '',
       cropRaw: crop ? crop.raw : null,
       focalRaw: focal ? focal.raw : null,
+      caption: normCaption(x.caption),
     };
   });
   return items.length > max ? { ok: false, reason: 'max', items } : { ok: true, reason: null, items };
@@ -406,17 +498,22 @@ export function parseItems(str, o = {}) {
 /**
  * Restore state of a gallery (decision 16, review SEC-1 of the field): `{"v":1,"items":[{"id","alt","crop","focal"}]}`
  * — never a preview URL, a display name or an asset (the browser may persist it; previews come back through
- * `adapter.get`).
- * @param {Array<{ id: string, alt?: string, cropRaw?: string|null, focalRaw?: string|null }>} items
+ * `adapter.get`). v0.51.0 (plan QĐ 15, Codex plan-review r1 #3 / r2): `opts.caption` true → EVERY item also gets
+ * `"caption"` = the raw normalised caption (not the line projection; `""` too — a cleared caption must not come back);
+ * false (default) → no caption key at all: the v0.50 bytes.
+ * @param {Array<{ id: string, alt?: string, cropRaw?: string|null, focalRaw?: string|null, caption?: string }>} items
+ * @param {{ caption?: boolean }} [opts]
  * @returns {string}
  */
-export function encodeGalleryState(items) {
+export function encodeGalleryState(items, { caption = false } = {}) {
   return JSON.stringify({
     v: 1,
     items: (items || []).map((it) => {
       const crop = typeof it.cropRaw === 'string' ? parseCrop(it.cropRaw) : null;
       const focal = typeof it.focalRaw === 'string' ? parseFocal(it.focalRaw) : null;
-      return { id: String(it.id ?? ''), alt: String(it.alt ?? ''), crop: crop ? crop.raw : null, focal: focal ? focal.raw : null };
+      const o = { id: String(it.id ?? ''), alt: String(it.alt ?? ''), crop: crop ? crop.raw : null, focal: focal ? focal.raw : null };
+      if (caption) o.caption = typeof it.caption === 'string' ? it.caption : '';
+      return o;
     }),
   });
 }
@@ -424,6 +521,8 @@ export function encodeGalleryState(items) {
 /**
  * Parse a restore state (v1 only, ≤ 256 KiB) into the INPUT shape of validateItems (`{ id, alt, crop, focal }` — any
  * other key dropped); null when broken. The caller still runs validateItems (ids, duplicates, caps, max).
+ * v0.51.0: a string `caption` key is kept (`""` included — "cleared"); absent / another type → no key (an old / off
+ * state: the caller falls back to the live caption of the same id).
  * @param {unknown} str
  * @returns {Array<{ id: unknown, alt: unknown, crop: unknown, focal: unknown }> | null}
  */
@@ -433,7 +532,7 @@ export function decodeGalleryState(str) {
   try { o = JSON.parse(str); } catch { return null; }
   if (!o || typeof o !== 'object' || Array.isArray(o) || o.v !== 1 || !Array.isArray(o.items)) return null;
   return o.items.map((x) => (x && typeof x === 'object' && !Array.isArray(x)
-    ? { id: x.id, alt: x.alt ?? '', crop: x.crop ?? null, focal: x.focal ?? null }
+    ? { id: x.id, alt: x.alt ?? '', crop: x.crop ?? null, focal: x.focal ?? null, ...(typeof x.caption === 'string' ? { caption: x.caption } : {}) }
     : x));
 }
 
@@ -480,4 +579,11 @@ export const GALLERY_CASES = Object.freeze([
     expect: { reason: null, ids: ['m1', 'm2'],
       items: [{ alt: 'é'.repeat(500), cropRaw: null, focalRaw: null, src: '', kind: 'image', previewAlt: '' },
         { alt: '', cropRaw: null, focalRaw: null, src: '', kind: 'image', previewAlt: '' }] } },
+  // v0.51.0 (plan QĐ 3): the caption is normalised on every item, never refused
+  { id: 'caption-crlf', items: [{ id: 'm1', caption: 'a\r\nb\rc' }], expect: { reason: null, ids: ['m1'], items: [{ caption: 'a\nb\nc' }] } },
+  { id: 'caption-controls', items: [{ id: 'm1', caption: '\u0000a\u0007\tb\u0085' }], expect: { reason: null, ids: ['m1'], items: [{ caption: 'a\tb' }] } },
+  { id: 'caption-cap', items: [{ id: 'm1', caption: 'ả'.repeat(1100) }], expect: { reason: null, ids: ['m1'], items: [{ caption: 'ả'.repeat(1000) }] } },
+  { id: 'caption-astral-cap', items: [{ id: 'm1', caption: '😀'.repeat(1001) }], expect: { reason: null, ids: ['m1'], items: [{ caption: '😀'.repeat(1000) }] } },
+  { id: 'caption-type', items: [{ id: 'm1', caption: 7 }, { id: 'm2', caption: null }, { id: 'm3', caption: ['x'] }],
+    expect: { reason: null, ids: ['m1', 'm2', 'm3'], items: [{ caption: '' }, { caption: '' }, { caption: '' }] } },
 ]);

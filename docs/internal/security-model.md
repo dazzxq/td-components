@@ -329,6 +329,31 @@ in giá trị / lỗi gốc của adapter) áp dụng nguyên. Thêm:
   của bản no-JS. Lệch → render an toàn (không lấy node nào của markup lạ), chỉ giữ alt đang gõ + focus (theo id item).
 - **Server phải:** `count ≤ max` **của server**, `distinct`, mọi id tồn tại / đúng loại / có quyền (**một** `whereIn`,
   so số lượng), cắt alt, kiểm crop / focal như field, ghi theo vị trí trong transaction; "không có key" = giữ nguyên.
+- **v0.51.0 chú thích + giới hạn độ dài** (plan [v0.51.0-gallery-caption](plans/v0.51.0-gallery-caption.md), phụ lục ADR
+  0021):
+  - **Chỉ là chữ:** control được render **rỗng**, giá trị gán bằng property `.value`; nhãn / bộ đếm / lỗi qua
+    `textContent` / `escapeHtml`; PHP `Td::e` (textarea in `"\n" . Td::e($caption)` — `</textarea>` thành
+    `&lt;/textarea&gt;`, test XSS ở JS + PHP). Không HTML / markdown / link.
+  - **Một hàm chuẩn hoá** `normCaption` = `td__media_caption` (bảng `test/ssr/media-text.cases.json`): CRLF / CR → LF,
+    bỏ C0 trừ tab / LF, DEL, C1; UTF-8 hỏng (PHP) → `''`; **trần cứng 1000 code point** (cắt). **Ngân sách đọc thô**
+    (Codex review r1 SEC-01): chỉ 4000 code point đầu được đọc **trước** mọi regex / replace (JS: bước đi theo code point
+    có giới hạn; PHP: `substr` 16 000 byte rồi duyệt từng chuỗi UTF-8 hợp lệ theo khối, dừng ở code point thứ 4000 — byte
+    sau đó không bao giờ được xem, UTF-8 hỏng **trong** 4000 code point đầu → `''`, review r2 #1) — mọi lối vào
+    (picker, `setSelection`, khôi phục, `$items`) có chi phí cố định; PHP không đọc chú thích khi `caption` tắt (bảng
+    `bounded` của `media-text.cases.json`, test 30 MB). Ký tự định hướng /
+    zero-width giữ nguyên (chữ của người dùng — trang hiển thị của site tự quyết `unicode-bidi`).
+  - **Ngân sách:** trần `items` / state khôi phục giữ 256 KiB (100 × 1000 chú thích BMP = 100 k đơn vị); 100 × 5 mục =
+    500 biến `max_input_vars`.
+  - **Giới hạn mềm không phải kiểm soát:** `alt-maxlength` / `caption-maxlength` chỉ đặt `customError` (chặn submit có
+    validate) — không cắt, FormData vẫn gửi đủ, `novalidate` / `form.submit()` / no-JS bỏ qua được → **server tự kiểm độ
+    dài** và trả 422. Parser chặt (`parseLimit` = `td__media_limit_opt`, bảng `media-limit.cases.json`); cảnh báo không
+    in giá trị.
+  - **CRLF trên dây:** trình duyệt gửi xuống dòng là CRLF (đã đo 3 engine) → server chuẩn hoá trước khi đếm.
+  - **Vắng `[caption]` = giữ** (đã chốt với dsuite): gallery tắt `caption` / lệch phiên bản không bao giờ gửi `''` thay
+    cho "không đụng tới" → không xoá chú thích ngoài ý muốn. Server phải đọc bằng `array_key_exists`, không `?? null`.
+  - **Cổng hydrate:** control chú thích so như alt (chỉ lần nhận đầu mới cho `name` + `value` / **một** text node của
+    textarea, giá trị so với state); bộ đếm / lỗi so từng byte; thứ tự hidden value < alt < chú thích < crop / focal.
+    Ô chưa sửa không bao giờ ghi đè chú thích gốc (chế độ line chỉ hiện bản chiếu).
 ## 6f. Xác nhận bằng cách gõ + theo dõi thay đổi chưa lưu (v0.44.0)
 
 | Bề mặt | Luật | Ở đâu |

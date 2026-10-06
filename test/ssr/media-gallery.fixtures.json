@@ -48,6 +48,34 @@
     { "id": "attrs", "args": ["att", [], { "label": "Attrs", "id": "mg-att", "class": "a b", "attrs": { "data-x": "1", "title": "Gợi ý", "onclick": "alert(1)", "style": "color:red", "ITEMS": "[]", "data-td-z": "1", "max": "9" } }],
       "expect": { "value": [], "state": "ok", "entries": [["att", ""]] } },
     { "id": "xss", "args": ["x\"y", [{ "id": "id\"<1>", "src": "/test/fixtures/1.svg", "name": "<img src=x onerror=alert(1)>", "alt": "<script>alert(1)</script>" }], { "label": "<b>nhãn</b>", "usage": true, "prompt": "<i>p</i>" }],
-      "expect": { "value": ["id\"<1>"], "state": "ok", "entries": [["x\"y[0][id]", "id\"<1>"], ["x\"y[0][alt]", "<script>alert(1)</script>"], ["x\"y[0][crop]", "null"]] } }
+      "expect": { "value": ["id\"<1>"], "state": "ok", "entries": [["x\"y[0][id]", "id\"<1>"], ["x\"y[0][alt]", "<script>alert(1)</script>"], ["x\"y[0][crop]", "null"]] } },
+    { "id": "v051-line", "args": ["c", [
+        { "id": "m1", "src": "/test/fixtures/1.svg", "name": "Ảnh 1", "alt": "Áo", "caption": "Dòng 1\nDòng 2" },
+        { "id": "m2", "src": "/test/fixtures/2.svg", "name": "Ảnh 2" }
+      ], { "label": "Caption một dòng", "usage": true, "caption": true }],
+      "expect": { "value": ["m1", "m2"], "state": "ok", "entries": [
+        ["c[0][id]", "m1"], ["c[0][alt]", "Áo"], ["c[0][caption]", "Dòng 1 Dòng 2"], ["c[0][crop]", "null"],
+        ["c[1][id]", "m2"], ["c[1][alt]", ""], ["c[1][caption]", ""], ["c[1][crop]", "null"]] } },
+    { "id": "v051-multiline", "args": ["m", [
+        { "id": "m1", "src": "/test/fixtures/1.svg", "name": "Ảnh 1", "caption": "a\nb <b>x</b>" },
+        { "id": "m2", "src": "/test/fixtures/2.svg", "name": "Ảnh 2", "caption": "\nđầu xuống dòng" }
+      ], { "label": "Caption nhiều dòng", "usage": true, "caption": "multiline", "caption_maxlength": 15 }],
+      "expect": { "value": ["m1", "m2"], "state": "ok", "entries": [
+        ["m[0][id]", "m1"], ["m[0][alt]", ""], ["m[0][caption]", "a\nb <b>x</b>"], ["m[0][crop]", "null"],
+        ["m[1][id]", "m2"], ["m[1][alt]", ""], ["m[1][caption]", "\nđầu xuống dòng"], ["m[1][crop]", "null"]] } },
+    { "id": "v051-limits", "args": ["l", [
+        { "id": "m1", "src": "/test/fixtures/1.svg", "name": "Ảnh 1", "alt": "12345678", "caption": "abcdef" },
+        { "id": "m2", "src": "/test/fixtures/2.svg", "name": "Ảnh 2", "alt": "0123456789A", "caption": "abcde" }
+      ], { "label": "Giới hạn", "usage": true, "caption": true, "alt_maxlength": 10, "caption_maxlength": 5 }],
+      "expect": { "value": ["m1", "m2"], "state": "ok", "entries": [
+        ["l[0][id]", "m1"], ["l[0][alt]", "12345678"], ["l[0][caption]", "abcdef"], ["l[0][crop]", "null"],
+        ["l[1][id]", "m2"], ["l[1][alt]", "0123456789A"], ["l[1][caption]", "abcde"], ["l[1][crop]", "null"]] } },
+    { "id": "v051-off", "args": ["o", [
+        { "id": "m1", "src": "/test/fixtures/1.svg", "name": "Ảnh 1", "alt": "Áo", "caption": "Bị bỏ qua" }
+      ], { "label": "Không caption", "usage": true }],
+      "expect": { "value": ["m1"], "state": "ok", "entries": [["o[0][id]", "m1"], ["o[0][alt]", "Áo"], ["o[0][crop]", "null"]] } },
+    { "id": "v051-ref-caption", "warns": true, "args": ["r", [{ "id": "m1", "src": "/test/fixtures/1.svg", "caption": "x" }],
+        { "label": "Reference + caption", "caption": true }],
+      "expect": { "value": ["m1"], "state": "ok", "entries": [["r[]", "m1"]] } }
   ]
 }

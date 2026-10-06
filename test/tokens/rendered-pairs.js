@@ -80,6 +80,12 @@ export function renderedPairs() {
   add('gallery tile button pressed', '--td-color-text', ['--td-color-pressed', '--td-color-surface']);
   add('gallery badge', '--td-tooltip-fg', ['--td-tooltip-bg']); // cover / video badge = the tooltip chip
   add('gallery file name', '--td-color-text', ['--td-color-surface-muted']);
+  // v0.51.0 (plan v0.51.0-gallery-caption QĐ 10, M6): the counter (note / limit / over) + the inline error sit on the tile
+  // surface; the caption placeholder on the field control (field.css: --td-field-note / --td-field-placeholder =
+  // --td-color-text-muted, --td-field-error = --td-color-error, --td-field-bg = --td-control-bg — the theme tokens)
+  add('gallery counter', '--td-color-text-muted', ['--td-color-surface']);
+  add('gallery counter limit / over + error', '--td-color-error', ['--td-color-surface']);
+  add('gallery caption placeholder', '--td-color-text-muted', ['--td-control-bg']);
   for (const s of ['--td-control-bg', '--td-color-bg']) add(`field focus edge vs ${s}`, '--td-field-focus', [s], 3);
   // v0.46.0 td-diff (diff.css): values, side labels, muted notes / [ĐÃ ẨN] / — on the two cell tints (opaque); the kind
   // labels (Thêm / Xoá / Đổi) sit on the page

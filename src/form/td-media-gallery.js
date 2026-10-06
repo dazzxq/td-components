@@ -12,7 +12,7 @@ import { OrderedCollectionModel } from '../utils/ordered-collection.js';
 import {
   parseAspectRatio, parseCrop, parseFocal, parseKinds, parseCropRatio, serializeCrop, serializeFocal,
   cropRatioInRange, cropPreviewVars, galleryEntries, validateItems, parseItems, encodeGalleryState, decodeGalleryState,
-  GALLERY_MAX_ITEMS,
+  GALLERY_MAX_ITEMS, GALLERY_ALT_MAX, GALLERY_CAPTION_MAX, normCaption, captionValue, limitCount, limitState, parseLimit,
 } from '../utils/media-field-model.js';
 
 const ALT_MAX = 500;
@@ -23,11 +23,14 @@ const CROP_VARS = ['--_td-mg-crop-x', '--_td-mg-crop-y', '--_td-mg-crop-w', '--_
 const HIDDEN_ATTRS = ['type', 'class', 'name', 'value', 'disabled'];
 /** Host attributes an adopted server gallery may carry (owned names + the PHP `attrs` allowlist + aria-* / data-*). */
 const HOST_ATTRS = new Set(['data-td-ssr', 'name', 'label', 'items', 'usage', 'croppable', 'crop-ratio', 'focal-point', 'cover',
-  'aspect-ratio', 'preview-fit', 'accept-kind', 'min', 'max', 'required', 'disabled', 'prompt', 'helper-text', 'error-text']);
+  'aspect-ratio', 'preview-fit', 'accept-kind', 'min', 'max', 'required', 'disabled', 'prompt', 'helper-text', 'error-text',
+  'caption', 'alt-maxlength', 'caption-maxlength']);
 const ROLES = {
   handle: 'td-media-gallery__handle', crop: 'td-media-gallery__crop-btn', remove: 'td-media-gallery__remove',
-  alt: 'td-media-gallery__alt', add: 'td-media-gallery__add',
+  alt: 'td-media-gallery__alt', caption: 'td-media-gallery__caption', add: 'td-media-gallery__add',
 };
+/** v0.51.0: the text controls of a tile (alt, caption) */
+const TEXT_FIELDS = ['alt', 'caption'];
 const posInt = (n) => (Number.isInteger(n) && n > 0 && n <= 100000 ? n : undefined);
 const cap = (s) => [...String(s ?? '')].slice(0, ALT_MAX).join('');
 /** The attribute string when it passes the URL gate (kept as given — PHP prints the same string), else ''. */
@@ -41,7 +44,8 @@ const LOAD_BOUND = new WeakSet();
 /**
  * @typedef {{ id: string, src: string, previewAlt: string, kind: 'image'|'video'|'file', alt: string,
  *   cropRaw: string|null, focalRaw: string|null, asset: object|null, fromAdapter: boolean, assetGen?: number,
- *   explicit: { src: string, previewAlt: string, kind: string }|null, lazyFailed?: boolean, resolved?: boolean }} GalleryItem
+ *   explicit: { src: string, previewAlt: string, kind: string }|null, lazyFailed?: boolean, resolved?: boolean,
+ *   caption: string }} GalleryItem — `caption` is the RAW normalised caption (normCaption); the mode only projects it
  */
 
 /**
@@ -64,6 +68,11 @@ const LOAD_BOUND = new WeakSet();
  *   not validate is dropped, `value =` / `setSelection()` that do not validate are refused (state unchanged).
  * - SSR (ADR 0012): php/td.php td_media_gallery() prints exactly render()'s tree + the no-JS inputs — adopted IN PLACE;
  *   anything else → safe render keeping the alts being typed + the focus.
+ * - v0.51.0 (plan v0.51.0-gallery-caption, ADR 0021 addendum): `caption` (usage only; `""` / `line` → one-line input,
+ *   `multiline` → textarea) adds `name[i][caption]` right after `[alt]` (the projection of the raw caption: line = LF
+ *   runs → one space); off → never a `[caption]` (the server keeps its caption). `alt-maxlength` / `caption-maxlength`
+ *   (strict 1…500 / 1…1000): counter from 80 %, inline error + aria on the control, `customError` — the text is never cut
+ *   and FormData is still sent (the server answers 422).
  *
  * DOM contract (JS render() = PHP; see php/td.php td_media_gallery() for the full tree):
  *   <td-media-gallery class="td-media-gallery" name label [items] [usage] [croppable] [crop-ratio] [focal-point] [cover]
@@ -73,6 +82,9 @@ const LOAD_BOUND = new WeakSet();
  *       div.td-media-gallery__media (svg sizer, img | span.__file, [badge], [cover], button.td-sortable__handle.__handle)
  *       div.td-media-gallery__bar ([button.__btn.__crop-btn], button.__btn.__remove)
  *       [label.td-media-gallery__alt-field > span.td-sr-only + input.td-field__control.td-media-gallery__alt]
+ *       [span.td-media-gallery__counter#{id}-{i}-alt-count + span.td-media-gallery__error#{id}-{i}-alt-error]
+ *       [label.td-media-gallery__caption-field > span.td-sr-only + (input | textarea).td-field__control.td-media-gallery__caption]
+ *       [span.td-media-gallery__counter#{id}-{i}-caption-count + span.td-media-gallery__error#{id}-{i}-caption-error]
  *     button.td-media-gallery__add[data-state=empty|filled] · span.__status[role=status] · span.__sort-status[role=status]
  *     span.__sort-help#{id}-sort-help[hidden] · [span.__help#{id}-help] · [span.td-field-error#{id}-error]
  *
@@ -84,7 +96,10 @@ const LOAD_BOUND = new WeakSet();
  * @attr {string} accept-kind @attr {number} min @attr {number} max - 1…100 (default 100)
  * @attr {boolean} required @attr {boolean} disabled @attr {string} prompt @attr {string} helper-text
  * @attr {string} error-text
- * @fires input - detail: { value, selection, reason: 'add'|'remove'|'reorder'|'alt'|'crop' }
+ * @attr {string} caption - v0.51.0: per-item caption (usage only): "" | line | multiline
+ * @attr {number} alt-maxlength - v0.51.0: 1…500 (soft limit, code points after trim)
+ * @attr {number} caption-maxlength - v0.51.0: 1…1000
+ * @fires input - detail: { value, selection, reason: 'add'|'remove'|'reorder'|'alt'|'caption'|'crop' }
  * @fires change - same detail (alt: on blur after an edit; reorder: once, on drop)
  */
 export class TdMediaGallery extends TdFormElement {
@@ -96,6 +111,9 @@ export class TdMediaGallery extends TdFormElement {
 
   /** Previews fetched with `adapter.get()` at the same time (decision 18). */
   static LAZY_CONCURRENCY = 4;
+
+  /** v0.51.0 QĐ 13: a limit announcement waits for this pause in typing (ms). */
+  static LIMIT_ANNOUNCE_DELAY = 1000;
 
   /** Texts (Vietnamese); override per site (an SSR page whose texts differ is safely re-rendered). = Td::MEDIA_GALLERY_LABELS */
   static labels = {
@@ -117,7 +135,16 @@ export class TdMediaGallery extends TdFormElement {
     video: 'Video',
     broken: 'Không đọc được danh sách ảnh',
     sortHelp: SORTABLE_LABELS.help,
+    // v0.51.0: caption + the soft length limits (= Td::MEDIA_GALLERY_LABELS)
+    caption: 'Chú thích ảnh {n}',
+    captionPlaceholder: 'Chú thích',
+    counter: '{count}/{max}',
+    altTooLong: 'Mô tả (alt) tối đa {max} ký tự.',
+    captionTooLong: 'Chú thích tối đa {max} ký tự.',
     // JS only (live region, validity, dialog)
+    tooLongItem: 'Ảnh {n}: {message}',
+    limitLeft: '{field}: còn {n} ký tự.',
+    limitOver: '{field}: vượt {n} ký tự.',
     added: 'Đã thêm {n} {kind}.',
     skipped: 'Bỏ qua {n} {kind} đã có.',
     tooMany: 'Bỏ qua {n} {kind} vượt quá giới hạn.',
@@ -131,7 +158,8 @@ export class TdMediaGallery extends TdFormElement {
 
   static get observedAttributes() {
     return [...super.observedAttributes, 'label', 'items', 'usage', 'croppable', 'crop-ratio', 'focal-point', 'cover',
-      'aspect-ratio', 'preview-fit', 'accept-kind', 'min', 'max', 'prompt', 'helper-text', 'error-text'];
+      'aspect-ratio', 'preview-fit', 'accept-kind', 'min', 'max', 'prompt', 'helper-text', 'error-text', 'caption',
+      'alt-maxlength', 'caption-maxlength'];
   }
 
   static get booleanAttributes() { return [...super.booleanAttributes, 'usage', 'croppable', 'focal-point', 'cover']; }
@@ -166,6 +194,11 @@ export class TdMediaGallery extends TdFormElement {
     this._warned = new Set();
     this._ctl = null;
     this._mo = null;
+    /** @type {{ alt: number|null, caption: number|null }|null} v0.51.0: the effective limits of the last render */
+    this._limits = null;
+    this._limitTimer = 0;
+    /** @type {Map<string, string>} the last limit sentence announced per `${id}:${field}` */
+    this._limitSaid = new Map();
   }
 
   connectedCallback() {
@@ -195,6 +228,7 @@ export class TdMediaGallery extends TdFormElement {
     this._abortCrop();
     this._cancelPicker(); // a picker result arriving after the gallery left is dropped AND the picker closes
     this._abortGets();
+    this._cancelLimitSay();
     for (const it of this._items) this._clearCropPreview(this._liOf.get(it)); // re-bind compares the markup
   }
 
@@ -252,13 +286,17 @@ export class TdMediaGallery extends TdFormElement {
   get selection() {
     this._initLive();
     const focalOn = this._focalOn();
+    const mode = this._captionMode();
     return this._items.map((it) => {
       const c = it.cropRaw ? parseCrop(it.cropRaw) : null;
       const f = focalOn && it.focalRaw ? parseFocal(it.focalRaw) : null;
       return {
         assetId: it.id,
         asset: it.asset,
-        usage: { altText: it.alt, crop: c ? { normalized: { ...c.crop } } : null, focalPoint: f ? { ...f.focal } : null },
+        usage: {
+          altText: it.alt, crop: c ? { normalized: { ...c.crop } } : null, focalPoint: f ? { ...f.focal } : null,
+          ...(mode ? { caption: captionValue(it.caption, mode) } : {}), // v0.51.0: only while `caption` is on
+        },
       };
     });
   }
@@ -286,7 +324,7 @@ export class TdMediaGallery extends TdFormElement {
       const alt = typeof s.usage?.altText === 'string' ? s.usage.altText : (asset?.defaultAltText ?? '');
       return {
         id: s.assetId, src: asset ? safeSrc(asset.urls?.preview) : '', name: asset?.name || '', kind: asset?.kind ?? this._kinds()[0],
-        alt, crop, focal,
+        alt, crop, focal, caption: s.usage?.caption, // v0.51.0: normalised by validateItems (not a string → '')
       };
     });
     const r = validateItems(raw, { max: this._max(), safeUrl: okUrl });
@@ -325,6 +363,62 @@ export class TdMediaGallery extends TdFormElement {
     const r = parseAspectRatio(raw);
     if (!r) this._warnOnce(`ratio:${raw}`, 'td-media-gallery: aspect-ratio is not W/H, W:H or a positive number — ignored.');
     return r;
+  }
+
+  /**
+   * @private v0.51.0 QĐ 1-2: the caption mode — null (off, or without usage: warned once), `line` (`""` / `line` /
+   * anything else, warned once) or `multiline`.
+   * @returns {'line'|'multiline'|null}
+   */
+  _captionMode() {
+    if (!this.hasAttribute('caption')) return null;
+    if (!this.hasAttribute('usage')) {
+      this._warnOnce('caption-usage', 'td-media-gallery: caption needs the usage attribute — ignored.');
+      return null;
+    }
+    const v = this.getAttribute('caption');
+    if (v === 'multiline') return 'multiline';
+    if (v !== '' && v !== 'line') {
+      this._warnOnce(`caption-mode:${v}`, 'td-media-gallery: caption must be empty, line or multiline — line is used.');
+    }
+    return 'line';
+  }
+
+  /**
+   * @private v0.51.0 QĐ 8: the effective limits from the attributes (strict parseLimit; invalid / missing prerequisite
+   * → null + one warning per value, never the value itself).
+   * @returns {{ alt: number|null, caption: number|null }}
+   */
+  _limitsNow() {
+    const one = (attr, ceiling, ready, needs) => {
+      const raw = this.getAttribute(attr);
+      if (raw == null) return null;
+      const n = parseLimit(raw, ceiling);
+      if (n == null) {
+        this._warnOnce(`limit:${attr}:${raw}`, `td-media-gallery: ${attr} must be an integer 1…${ceiling} — ignored.`);
+        return null;
+      }
+      if (!ready) {
+        this._warnOnce(`limit-needs:${attr}`, `td-media-gallery: ${attr} needs the ${needs} attribute — ignored.`);
+        return null;
+      }
+      return n;
+    };
+    return {
+      alt: one('alt-maxlength', GALLERY_ALT_MAX, this.hasAttribute('usage'), 'usage'),
+      caption: one('caption-maxlength', GALLERY_CAPTION_MAX, this._captionMode() !== null, 'caption'),
+    };
+  }
+
+  /** @private the limits of the current tree (computed by render(); before the first render: now) */
+  _curLimits() {
+    if (!this._limits) this._limits = this._limitsNow();
+    return this._limits;
+  }
+
+  /** @private the text a limited field holds: the alt, or the caption projected by the mode */
+  _fieldValue(it, field) {
+    return field === 'alt' ? it.alt : captionValue(it.caption, this._captionMode());
   }
 
   /** @private croppable / crop-ratio / focal-point need usage (warned once, ignored) */
@@ -375,13 +469,13 @@ export class TdMediaGallery extends TdFormElement {
   _newItem(n) {
     return {
       id: n.id, src: n.src, previewAlt: n.previewAlt, kind: n.kind, alt: n.alt, cropRaw: n.cropRaw, focalRaw: n.focalRaw,
-      asset: null, fromAdapter: false, explicit: { src: n.src, previewAlt: n.previewAlt, kind: n.kind },
+      caption: n.caption ?? '', asset: null, fromAdapter: false, explicit: { src: n.src, previewAlt: n.previewAlt, kind: n.kind },
     };
   }
 
   /** @private a live item back to the validateItems() input shape */
   _rawOf(it) {
-    return { id: it.id, src: it.src, name: it.previewAlt, kind: it.kind, alt: it.alt, crop: it.cropRaw, focal: it.focalRaw };
+    return { id: it.id, src: it.src, name: it.previewAlt, kind: it.kind, alt: it.alt, crop: it.cropRaw, focal: it.focalRaw, caption: it.caption };
   }
 
   /** @private API refusal (decision 15b): one warning per reason, never a value */
@@ -444,8 +538,7 @@ export class TdMediaGallery extends TdFormElement {
       if (li && li.parentNode === ul && o.src === it.src && o.previewAlt === it.previewAlt && o.kind === it.kind) {
         this._itemOf.set(li, it);
         this._liOf.set(it, li);
-        const alt = this._part('alt', li);
-        if (alt && alt.value !== it.alt) alt.value = it.alt;
+        this._syncText(li);
         return li;
       }
       return this._createLi(it);
@@ -465,7 +558,7 @@ export class TdMediaGallery extends TdFormElement {
     fillIconSlots(li);
     this._itemOf.set(li, it);
     this._liOf.set(it, li);
-    this._syncAlt(li);
+    this._syncText(li);
     return li;
   }
 
@@ -667,11 +760,128 @@ export class TdMediaGallery extends TdFormElement {
           + `${this._cropBtnShown(it) ? '' : ' hidden'}${dis}>${icon('crop')}</button>`
         : '')
       + `<button type="button" class="td-media-gallery__btn td-media-gallery__remove" aria-label="${e(this._label('remove', { name: full }))}"${dis}>${icon('trash')}</button></div>`
-      + (this.hasAttribute('usage')
-        ? `<label class="td-media-gallery__alt-field"><span class="td-sr-only">${e(this._label('alt', { n: i + 1 }))}</span>`
-          + `<input type="text" class="td-field__control td-media-gallery__alt" maxlength="${ALT_MAX}" placeholder="${e(this._label('altPlaceholder'))}"${dis}></label>`
-        : '')
+      + this._textFieldsHtml(it, i)
       + '</li>';
+  }
+
+  /**
+   * @private the alt (usage) + the v0.51.0 caption of a tile, each with its counter / error when limited (= PHP). The
+   * controls are printed EMPTY: their values are set as properties (`_syncText`) — never interpolated into markup.
+   */
+  _textFieldsHtml(it, i) {
+    if (!this.hasAttribute('usage')) return '';
+    const e = (s) => this.escapeHtml(String(s ?? ''));
+    const dis = this._effectiveDisabled ? ' disabled' : '';
+    const lim = this._curLimits();
+    const a = this._limitHtml('alt', i, it.alt, lim.alt);
+    let html = `<label class="td-media-gallery__alt-field"><span class="td-sr-only">${e(this._label('alt', { n: i + 1 }))}</span>`
+      + `<input type="text" class="td-field__control td-media-gallery__alt" maxlength="${ALT_MAX}" placeholder="${e(this._label('altPlaceholder'))}"${a.aria}${dis}></label>${a.spans}`;
+    const mode = this._captionMode();
+    if (mode) {
+      const c = this._limitHtml('caption', i, captionValue(it.caption, mode), lim.caption);
+      const attrs = `class="td-field__control td-media-gallery__caption"${mode === 'multiline' ? ' rows="2"' : ''} maxlength="${GALLERY_CAPTION_MAX}" placeholder="${e(this._label('captionPlaceholder'))}"${c.aria}${dis}`;
+      html += `<label class="td-media-gallery__caption-field"><span class="td-sr-only">${e(this._label('caption', { n: i + 1 }))}</span>`
+        + (mode === 'multiline' ? `<textarea ${attrs}></textarea>` : `<input type="text" ${attrs}>`) + `</label>${c.spans}`;
+    }
+    return html;
+  }
+
+  /** @private v0.51.0 QĐ 10: the aria of a limited control + its counter / error spans (`max` null → none) */
+  _limitHtml(field, i, value, max) {
+    if (max == null) return { aria: '', spans: '' };
+    const e = (s) => this.escapeHtml(String(s ?? ''));
+    const n = limitCount(value);
+    const st = limitState(n, max);
+    const over = st.state === 'over';
+    const cid = `${this.id}-${i}-${field}-count`;
+    const eid = `${this.id}-${i}-${field}-error`;
+    return {
+      aria: (st.shown ? ` aria-describedby="${e(over ? `${cid} ${eid}` : cid)}"` : '') + (over ? ' aria-invalid="true"' : ''),
+      spans: `<span class="td-media-gallery__counter" id="${e(cid)}"${st.state ? ` data-state="${st.state}"` : ''}${st.shown ? '' : ' hidden'}>`
+        + `${e(this._label('counter', { count: n, max }))}</span>`
+        + `<span class="td-media-gallery__error" id="${e(eid)}"${over ? '' : ' hidden'}>${e(this._label(field === 'alt' ? 'altTooLong' : 'captionTooLong', { max }))}</span>`,
+    };
+  }
+
+  /**
+   * @private v0.51.0 QĐ 10: counters / errors / aria of the limited fields from the state — one tile (typing) or every
+   * tile (list change: the ids follow the positions). The structure itself only comes from render().
+   */
+  _syncLimits(only = null) {
+    const lim = this._curLimits();
+    if (lim.alt == null && lim.caption == null) return;
+    const set = (el, a, v) => { if (el.getAttribute(a) !== v) el.setAttribute(a, v); };
+    const drop = (el, a) => { if (el.hasAttribute(a)) el.removeAttribute(a); };
+    this._items.forEach((it, i) => {
+      const li = this._liOf.get(it);
+      if (!li || (only && li !== only)) return;
+      for (const field of TEXT_FIELDS) {
+        const max = lim[field];
+        const ctl = this._part(field, li);
+        const cnt = this._part(`${field}Count`, li);
+        const err = this._part(`${field}Error`, li);
+        if (max == null || !ctl || !cnt || !err) continue;
+        const n = limitCount(this._fieldValue(it, field));
+        const st = limitState(n, max);
+        const over = st.state === 'over';
+        const cid = `${this.id}-${i}-${field}-count`;
+        const eid = `${this.id}-${i}-${field}-error`;
+        set(cnt, 'id', cid);
+        set(err, 'id', eid);
+        const ct = this._label('counter', { count: n, max });
+        if (cnt.textContent !== ct) cnt.textContent = ct;
+        if (st.state) set(cnt, 'data-state', st.state);
+        else drop(cnt, 'data-state');
+        if (cnt.hidden !== !st.shown) cnt.hidden = !st.shown;
+        const et = this._label(field === 'alt' ? 'altTooLong' : 'captionTooLong', { max });
+        if (err.textContent !== et) err.textContent = et;
+        if (err.hidden !== !over) err.hidden = !over;
+        if (st.shown) set(ctl, 'aria-describedby', over ? `${cid} ${eid}` : cid);
+        else drop(ctl, 'aria-describedby');
+        if (over) set(ctl, 'aria-invalid', 'true');
+        else drop(ctl, 'aria-invalid');
+      }
+    });
+  }
+
+  /** @private v0.51.0 QĐ 11: the first over-long field in display order, or null */
+  _firstOver() {
+    const lim = this._curLimits();
+    if (lim.alt == null && lim.caption == null) return null;
+    for (let i = 0; i < this._items.length; i += 1) {
+      for (const field of TEXT_FIELDS) {
+        const max = lim[field];
+        if (max != null && limitCount(this._fieldValue(this._items[i], field)) > max) return { i, field, max };
+      }
+    }
+    return null;
+  }
+
+  /** @private v0.51.0 QĐ 13: one polite sentence after a pause in typing, from 80 %, never the same one twice in a row */
+  _scheduleLimitSay(li, field) {
+    this._cancelLimitSay();
+    if (this._curLimits()[field] == null) return;
+    this._limitTimer = setTimeout(() => {
+      this._limitTimer = 0;
+      const max = this._curLimits()[field];
+      const it = this._itemOf.get(li);
+      const i = it ? this._items.indexOf(it) : -1;
+      if (max == null || !this.isConnected || i < 0 || (this._ctl && this._ctl.state !== 'idle')) return;
+      const n = limitCount(this._fieldValue(it, field));
+      const key = `${it.id}:${field}`;
+      if (!limitState(n, max).shown) { this._limitSaid.delete(key); return; }
+      const name = this._label(field, { n: i + 1 });
+      const text = n > max ? this._label('limitOver', { field: name, n: n - max }) : this._label('limitLeft', { field: name, n: max - n });
+      if (this._limitSaid.get(key) === text) return;
+      this._limitSaid.set(key, text);
+      this._announce(text);
+    }, TdMediaGallery.LIMIT_ANNOUNCE_DELAY);
+  }
+
+  /** @private */
+  _cancelLimitSay() {
+    if (this._limitTimer) clearTimeout(this._limitTimer);
+    this._limitTimer = 0;
   }
 
   /** @private the Add button's content */
@@ -690,6 +900,7 @@ export class TdMediaGallery extends TdFormElement {
 
   render() {
     this._initLive();
+    this._limits = this._limitsNow(); // v0.51.0: the limits of THIS tree (attributeChangedCallback compares against it)
     const e = (s) => this.escapeHtml(String(s ?? ''));
     const id = this.id;
     const dis = this._effectiveDisabled ? ' disabled' : '';
@@ -727,6 +938,7 @@ export class TdMediaGallery extends TdFormElement {
     // ISSUE-2: a full render replaces every tile — the crop flow's captured tile goes, so the flow is aborted first
     // (dialog closed through its signal, lock released); a picker survives (its result is appended to the new list)
     this._abortCrop();
+    this._cancelLimitSay();
     if ((this._effectiveDisabled || this._isBroken()) && this._busy) this._cancelPicker();
     this._stopSort();
     super._doRender();
@@ -747,7 +959,7 @@ export class TdMediaGallery extends TdFormElement {
         if (!it) return;
         this._itemOf.set(/** @type {HTMLElement} */ (li), it);
         this._liOf.set(it, /** @type {HTMLElement} */ (li));
-        this._syncAlt(/** @type {HTMLElement} */ (li));
+        this._syncText(/** @type {HTMLElement} */ (li));
       });
     }
     // ISSUE-8: every listener is CONNECTION-scoped, on the host (delegated) — a full render replaces tiles without
@@ -755,11 +967,13 @@ export class TdMediaGallery extends TdFormElement {
     if (!this._hostBound) {
       this._hostBound = true;
       this.listen(this, 'click', (ev) => this._onClick(ev));
-      // capture: the native input / change of an alt never reaches the page (the host fires its own events)
-      this.listen(this, 'input', (ev) => this._onAlt(ev, 'input'), true);
-      this.listen(this, 'change', (ev) => this._onAlt(ev, 'change'), true);
+      // capture: the native input / change of an alt / caption never reaches the page (the host fires its own events)
+      this.listen(this, 'input', (ev) => this._onText(ev, 'input'), true);
+      this.listen(this, 'change', (ev) => this._onText(ev, 'change'), true);
       this.listen(this, 'focusin', (ev) => { this._focusMark = this._focusInfo(/** @type {Element} */ (ev.target)); });
       this.listen(this, 'focusout', (ev) => {
+        const t = /** @type {Element} */ (ev.target);
+        if (t?.classList && TEXT_FIELDS.some((f) => t.classList.contains(ROLES[f]))) this._cancelLimitSay(); // QĐ 13
         if (this.contains(/** @type {Node} */ (ev.relatedTarget))) return;
         queueMicrotask(() => {
           if (this.isConnected && !this.contains(this.ownerDocument.activeElement)) this._focusMark = null;
@@ -774,11 +988,20 @@ export class TdMediaGallery extends TdFormElement {
     this._lazyPump();
   }
 
-  /** @private the tile's alt input shows its item's alt */
-  _syncAlt(li) {
-    const alt = this._part('alt', li);
+  /**
+   * @private the tile's alt / caption controls show their item's state — ONE way (state → control): a control is never
+   * read back without a user event (v0.51.0 QĐ 19: a line control holds the projection, the state the raw caption).
+   */
+  _syncText(li) {
     const it = this._itemOf.get(li);
-    if (alt && it && alt.value !== it.alt) alt.value = it.alt;
+    if (!it) return;
+    const alt = this._part('alt', li);
+    if (alt && alt.value !== it.alt) alt.value = it.alt;
+    const c = /** @type {HTMLInputElement|null} */ (this._part('caption', li));
+    if (c) {
+      const v = captionValue(it.caption, this._captionMode());
+      if (c.value !== v) c.value = v;
+    }
   }
 
   /** @private the live tile (direct child of the list) holding `el`, or null */
@@ -798,19 +1021,31 @@ export class TdMediaGallery extends TdFormElement {
     else if (btn === this._part('crop', li)) this._openCrop(li);
   }
 
-  /** @private delegated alt input / change (capture): the native event stops here, the host fires its own */
-  _onAlt(ev, type) {
-    const alt = ev.target;
-    if (!(alt instanceof Element) || !alt.classList.contains('td-media-gallery__alt') || alt.closest('td-media-gallery') !== this) return;
+  /**
+   * @private delegated alt / caption input / change (capture): the native event stops here, the host fires its own
+   * (reason `alt` / `caption`). Only a user event writes a control's text into the state.
+   */
+  _onText(ev, type) {
+    const ctl = ev.target;
+    if (!(ctl instanceof Element) || ctl.closest('td-media-gallery') !== this) return;
+    const field = TEXT_FIELDS.find((f) => ctl.classList.contains(ROLES[f]));
+    if (!field) return;
     ev.stopPropagation();
-    const li = this._tileOf(alt);
+    const li = this._tileOf(ctl);
     const cur = li && this._itemOf.get(li);
-    if (!cur || !this._items.includes(cur) || alt !== this._part('alt', li)) return;
-    if (type === 'change') { this._emit('change', 'alt'); return; }
-    cur.alt = cap(/** @type {HTMLInputElement} */ (alt).value);
-    this._relabel();
+    if (!cur || !this._items.includes(cur) || ctl !== this._part(field, li)) return;
+    if (type === 'change') { this._emit('change', field); return; }
+    const v = /** @type {HTMLInputElement} */ (ctl).value;
+    if (field === 'alt') {
+      cur.alt = cap(v);
+      this._relabel(); // the alt is part of the tile names (and _relabel syncs every limit)
+    } else {
+      cur.caption = normCaption(v);
+      this._syncLimits(li);
+    }
     this._syncForm();
-    this._emit('input', 'alt');
+    this._emit('input', field);
+    this._scheduleLimitSay(li, field);
   }
 
   /** @protected helper note in the Add button's description */
@@ -849,6 +1084,12 @@ export class TdMediaGallery extends TdFormElement {
         remove: ':scope > .td-media-gallery__bar > button.td-media-gallery__remove',
         alt: ':scope > .td-media-gallery__alt-field > input.td-media-gallery__alt',
         altLabel: ':scope > .td-media-gallery__alt-field > span.td-sr-only',
+        caption: ':scope > .td-media-gallery__caption-field > .td-media-gallery__caption',
+        captionLabel: ':scope > .td-media-gallery__caption-field > span.td-sr-only',
+        altCount: ':scope > .td-media-gallery__alt-field + span.td-media-gallery__counter',
+        altError: ':scope > .td-media-gallery__alt-field + span.td-media-gallery__counter + span.td-media-gallery__error',
+        captionCount: ':scope > .td-media-gallery__caption-field + span.td-media-gallery__counter',
+        captionError: ':scope > .td-media-gallery__caption-field + span.td-media-gallery__counter + span.td-media-gallery__error',
         cover: ':scope > .td-media-gallery__media > span.td-media-gallery__cover',
       }[role];
       return sel ? /** @type {HTMLElement|null} */ (li.querySelector(sel)) : null;
@@ -921,6 +1162,9 @@ export class TdMediaGallery extends TdFormElement {
       const al = this._part('altLabel', li);
       const at = this._label('alt', { n: i + 1 });
       if (al && al.textContent !== at) al.textContent = at;
+      const cl = this._part('captionLabel', li);
+      const ctx = this._label('caption', { n: i + 1 });
+      if (cl && cl.textContent !== ctx) cl.textContent = ctx;
       const badge = this._part('cover', li);
       if (cover && i === 0 && !badge) {
         const b = document.createElement('span');
@@ -949,6 +1193,7 @@ export class TdMediaGallery extends TdFormElement {
       const hide = n >= this._max();
       if (add.hidden !== hide) add.hidden = hide;
     }
+    this._syncLimits(); // v0.51.0: the counter / error ids follow the positions
   }
 
   /** @private "Cắt" buttons follow the source (adapter appeared / removed) */
@@ -1003,7 +1248,9 @@ export class TdMediaGallery extends TdFormElement {
   /** @private the FormData entries (decision 14), null when nothing is submitted */
   _entries() {
     if (this._isBroken() || this._isOverflow()) return null;
-    return galleryEntries(this.getAttribute('name'), this._items, { usage: this.hasAttribute('usage'), focal: this._focalOn() });
+    return galleryEntries(this.getAttribute('name'), this._items, {
+      usage: this.hasAttribute('usage'), focal: this._focalOn(), caption: this._captionMode(),
+    });
   }
 
   /** @private FormData by hand + the restore state + validity (decision 8) */
@@ -1020,7 +1267,8 @@ export class TdMediaGallery extends TdFormElement {
       fd = new FormData();
       for (const [k, v] of entries) fd.append(k, v);
     }
-    this._setFormValue(fd, encodeGalleryState(this._items));
+    // v0.51.0 QĐ 15: caption on → every item carries its raw caption ("" too); off → the v0.50 bytes
+    this._setFormValue(fd, encodeGalleryState(this._items, { caption: this._captionMode() !== null }));
     const n = this._items.length;
     const max = this._max();
     const min = this._min();
@@ -1029,7 +1277,17 @@ export class TdMediaGallery extends TdFormElement {
     if (n > max) this._setValidity({ rangeOverflow: true }, this._label('max', { max, kind }), anchor);
     else if (n === 0 && min >= 1) this._setValidity({ valueMissing: true }, this._label('required', { kind }), anchor);
     else if (n < min) this._setValidity({ rangeUnderflow: true }, this._label('min', { min, kind }), anchor);
-    else this._setValidity({});
+    else {
+      // v0.51.0 QĐ 11: an over-long alt / caption → customError on its control (never cut; FormData still sent)
+      const o = this._firstOver();
+      const li = o && this._liOf.get(this._items[o.i]);
+      if (o && li) {
+        const message = this._label(o.field === 'alt' ? 'altTooLong' : 'captionTooLong', { max: o.max });
+        this._setValidity({ customError: true }, this._label('tooLongItem', { n: o.i + 1, message }), this._part(o.field, li) || anchor);
+      } else {
+        this._setValidity({});
+      }
+    }
   }
 
   _captureDefaults() {}
@@ -1047,6 +1305,14 @@ export class TdMediaGallery extends TdFormElement {
   _restoreState(state) {
     if (typeof state !== 'string') return;
     const raw = decodeGalleryState(state);
+    // v0.51.0 QĐ 15 (Codex plan-review r2): a caption key present ("" included) is the value; absent (an old / off
+    // state) → the live caption of the same id
+    for (const x of raw || []) {
+      if (x && typeof x === 'object' && x.caption === undefined) {
+        const live = this._items.find((it) => it.id === x.id);
+        x.caption = live ? live.caption : '';
+      }
+    }
     const r = raw ? validateItems(raw.map((x) => (x && typeof x === 'object' ? { ...x, kind: this._kinds()[0] } : x)), { max: this._max(), safeUrl: okUrl }) : null;
     if (!r || (!r.ok && r.reason !== 'max')) {
       this._warnOnce('restore', `td-media-gallery: a restored form state was dropped (${r ? r.reason : 'state'}) — the gallery is unchanged.`);
@@ -1071,6 +1337,21 @@ export class TdMediaGallery extends TdFormElement {
       case 'crop-ratio':
       case 'preview-fit':
         return; // read when the dialog opens / CSS only
+      case 'alt-maxlength':
+      case 'caption-maxlength': {
+        // v0.51.0 QĐ 8 (Codex plan-review r1 #5): on ↔ off → render (render() alone builds counters / errors: the tree
+        // equals a gallery never limited); a number → another number → texts / states only (tiles + focus kept)
+        const field = name === 'alt-maxlength' ? 'alt' : 'caption';
+        const prev = this._curLimits();
+        const next = this._limitsNow();
+        if ((prev[field] == null) !== (next[field] == null)) { this._doRender(); return; }
+        this._limits = next;
+        if (prev[field] !== next[field]) {
+          this._syncLimits();
+          this._syncForm();
+        }
+        return;
+      }
       default:
         super.attributeChangedCallback(name, oldVal, newVal);
     }
@@ -1173,7 +1454,7 @@ export class TdMediaGallery extends TdFormElement {
       added.push({
         id, src: asset ? safeSrc(asset.urls?.preview) : '', previewAlt: asset?.name || '', kind: asset?.kind ?? kind0,
         alt: cap(alt), cropRaw: null, focalRaw: null, asset, fromAdapter: !!asset, assetGen: srcGen, explicit: null,
-        resolved: !!asset,
+        resolved: !!asset, caption: normCaption(sel.usage?.caption),
       });
     }
     const kind = this._kindWord();
@@ -1456,10 +1737,18 @@ export class TdMediaGallery extends TdFormElement {
       return lis.length === this._items.length ? this._items[i]?.id ?? null : null;
     };
     const alts = new Map();
+    // v0.51.0 QĐ 19 (Codex plan-review r1 #2): a caption is carried over ONLY when its control differs from the expected
+    // projection (edited before define) — an untouched line control holds "a b", the state keeps the raw "a\nb"
+    const captions = new Map();
+    const mode = this._captionMode();
     lis.forEach((li, i) => {
       const input = li.querySelector(':scope > .td-media-gallery__alt-field > input.td-media-gallery__alt');
       const id = idOf(li, i);
       if (input && id != null) alts.set(id, cap(input.value));
+      const c = li.querySelector(':scope > .td-media-gallery__caption-field > .td-media-gallery__caption');
+      if (!c || id == null || !mode) return;
+      const it = this._items.find((x) => x.id === id);
+      if (/** @type {HTMLInputElement} */ (c).value !== captionValue(it ? it.caption : '', mode)) captions.set(id, normCaption(/** @type {HTMLInputElement} */ (c).value));
     });
     const active = this.ownerDocument.activeElement;
     let focus = null;
@@ -1468,7 +1757,7 @@ export class TdMediaGallery extends TdFormElement {
       const li = active.closest('li');
       focus = role ? { role, id: li ? idOf(li, lis.indexOf(li)) : null } : null;
     }
-    this._ssrRestore = { alts: this.hasAttribute('usage') ? alts : null, focus };
+    this._ssrRestore = { alts: this.hasAttribute('usage') ? alts : null, captions: mode ? captions : null, focus };
     this._ssrFreshRender = true;
     return false;
   }
@@ -1484,13 +1773,21 @@ export class TdMediaGallery extends TdFormElement {
   hydrateExisting() {
     const ul = this._ul();
     const lis = ul ? [...ul.children] : [];
+    const mode = this._captionMode();
     lis.forEach((li, i) => {
       const alt = li.querySelector(':scope > .td-media-gallery__alt-field > input.td-media-gallery__alt');
       const it = this._items[i];
       if (!alt || !it) return;
       it.alt = cap(alt.value); // the live native state (typed before define) > the attribute
       alt.value = it.alt; // dirty: removing the value attribute below changes nothing
+      // v0.51.0 QĐ 19 (r1 #2): keep the RAW caption unless the control was really edited before define
+      const c = /** @type {HTMLInputElement|null} */ (li.querySelector(':scope > .td-media-gallery__caption-field > .td-media-gallery__caption'));
+      if (c && mode) {
+        if (c.value !== captionValue(it.caption, mode)) it.caption = normCaption(c.value);
+        c.value = captionValue(it.caption, mode); // dirty first: clearing the no-JS value / text below changes nothing
+      }
     });
+    this._syncLimits(); // text typed before define may change a count
     this._errorNote = [...this.children].find(ssrIsErrorNote) || null;
     this._syncForm(); // ElementInternals FIRST…
     for (const h of this._ssrHidden()) h.remove(); // …then the no-JS parts: FormData has ONE set of entries
@@ -1498,18 +1795,25 @@ export class TdMediaGallery extends TdFormElement {
       const alt = li.querySelector(':scope > .td-media-gallery__alt-field > input.td-media-gallery__alt');
       alt?.removeAttribute('name');
       alt?.removeAttribute('value');
+      const c = li.querySelector(':scope > .td-media-gallery__caption-field > .td-media-gallery__caption');
+      if (c) {
+        c.removeAttribute('name');
+        c.removeAttribute('value');
+        if (c.localName === 'textarea') c.textContent = '';
+      }
     }
   }
 
   /** @protected after refused / tampered markup was replaced: the alts being typed + the focus */
   _restoreSsrState(s) {
-    if (s.alts && s.alts.size) {
+    const alts = s.alts && s.alts.size ? s.alts : null;
+    const caps = s.captions && s.captions.size ? s.captions : null;
+    if (alts || caps) {
       for (const it of this._items) {
-        if (!s.alts.has(it.id)) continue;
-        it.alt = s.alts.get(it.id);
+        if (alts && alts.has(it.id)) it.alt = alts.get(it.id);
+        if (caps && caps.has(it.id)) it.caption = caps.get(it.id);
         const li = this._liOf.get(it);
-        const alt = li && this._part('alt', li);
-        if (alt) alt.value = it.alt;
+        if (li) this._syncText(li);
       }
       this._relabel();
       this._syncForm();
@@ -1553,15 +1857,20 @@ export class TdMediaGallery extends TdFormElement {
   _ssrSame(live, want, first) {
     if (live.nodeType !== 1 || live.localName !== want.localName || live.namespaceURI !== want.namespaceURI) return false;
     if (want.hasAttribute('data-td-icon')) return ssrSameAttrs(live, want);
-    if (want.classList.contains('td-media-gallery__alt')) {
+    if (want.classList.contains('td-media-gallery__alt') || want.classList.contains('td-media-gallery__caption')) {
+      // the no-JS form parts: `name` (+ `value` of an input / ONE text node of a textarea), first adoption only; the
+      // value itself is checked against the state in _ssrFormOk()
+      const area = want.localName === 'textarea';
       for (const a of live.attributes) {
         if (want.hasAttribute(a.name)) {
           if (a.name === 'class' ? ssrClassKey(live) !== ssrClassKey(want) : a.value !== want.getAttribute(a.name)) return false;
-        } else if (!(first && (a.name === 'name' || a.name === 'value'))) {
+        } else if (!(first && (a.name === 'name' || (a.name === 'value' && !area)))) {
           return false;
         }
       }
-      return [...want.attributes].every((a) => live.hasAttribute(a.name)) && live.childNodes.length === 0;
+      if (![...want.attributes].every((a) => live.hasAttribute(a.name))) return false;
+      const kids = live.childNodes;
+      return kids.length === 0 || (first && area && kids.length === 1 && kids[0].nodeType === 3);
     }
     if (!ssrSameAttrs(live, want)) return false;
     let a = ssrContentNodes(live);
@@ -1578,9 +1887,10 @@ export class TdMediaGallery extends TdFormElement {
     const name = this.getAttribute('name');
     const usage = this.hasAttribute('usage');
     const focal = this._focalOn();
+    const mode = this._captionMode();
     const printed = name && !this._isBroken() && !this._isOverflow()
-      ? galleryEntries(name, this._items, { usage, focal }) || [] : [];
-    const expect = printed.filter(([k]) => !(usage && k.endsWith('[alt]')));
+      ? galleryEntries(name, this._items, { usage, focal, caption: mode }) || [] : [];
+    const expect = printed.filter(([k]) => !(usage && (k.endsWith('[alt]') || k.endsWith('[caption]'))));
     const hidden = this._ssrHidden();
     if (hidden.length !== expect.length) return false;
     const classOf = (k) => (k.endsWith('[crop]') ? 'td-media-gallery__crop' : k.endsWith('[focal]') ? 'td-media-gallery__focal' : 'td-media-gallery__value');
@@ -1602,12 +1912,23 @@ export class TdMediaGallery extends TdFormElement {
       const it = this._items[i];
       const nameOk = altName ? alt.getAttribute('name') === altName : !alt.hasAttribute('name');
       const valueOk = it.alt ? alt.getAttribute('value') === it.alt : !alt.hasAttribute('value');
-      // a tile's hidden inputs: value before the alt, crop / focal after it
+      // a tile's hidden inputs: value before the alt, crop / focal after the alt (and after the v0.51.0 caption)
       const kids = [...li.children];
       const hs = kids.filter(isHiddenInput);
       const at = kids.indexOf(alt.parentElement);
-      const orderOk = hs.every((h) => (h.classList.contains('td-media-gallery__value') ? kids.indexOf(h) < at : kids.indexOf(h) > at));
-      return nameOk && valueOk && orderOk;
+      let last = at;
+      let capOk = true;
+      const c = li.querySelector(':scope > .td-media-gallery__caption-field > .td-media-gallery__caption');
+      if (c) {
+        const capName = printed.find(([k]) => k === `${name}[${i}][caption]`)?.[0];
+        const want = captionValue(it.caption, mode);
+        const got = c.localName === 'textarea' ? c.textContent : c.getAttribute('value');
+        capOk = (capName ? c.getAttribute('name') === capName : !c.hasAttribute('name'))
+          && (want ? got === want : (c.localName === 'textarea' ? got === '' : !c.hasAttribute('value')));
+        last = kids.indexOf(c.parentElement);
+      }
+      const orderOk = hs.every((h) => (h.classList.contains('td-media-gallery__value') ? kids.indexOf(h) < at : kids.indexOf(h) > last));
+      return nameOk && valueOk && capOk && orderOk;
     });
   }
 }

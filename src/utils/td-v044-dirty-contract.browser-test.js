@@ -3,7 +3,8 @@
 // (click / sendKeys / file pick) changes its value and trackFormDirty() sees it (`isDirty() === true`), or an entry in
 // EXEMPT with the reason. A new form-associated component whose change event the tracker does not observe turns this red.
 // Plan M4 step 0 (re-run after v0.43 merged): td-media-gallery emits bubbling input + change (detail.reason add / remove /
-// reorder / alt / crop) for every user change and none for value= / setSelection() — covered by the default events.
+// reorder / alt / crop — v0.51.0: + caption) for every user change and none for value= / setSelection() — covered by the
+// default events (the tracker listens in capture on `document` and compares FormData; nothing to change in it).
 import { expect } from '@esm-bundle/chai';
 import { sendKeys } from '@web/test-runner-commands';
 import * as kit from '../../index.js';
@@ -220,6 +221,37 @@ describe('trackFormDirty contract — every form-associated td element (v0.44.0 
       expect(tracker.isDirty()).to.equal(false);
     } finally { tracker.destroy(); }
   });
+
+  // v0.51.0 (plan v0.51.0-gallery-caption QĐ 6, M3): a typed caption (line AND multiline) makes the form dirty, typing
+  // it back clean; value= / setSelection() carrying captions from code never does.
+  for (const mode of ['line', 'multiline']) {
+    it(`td-media-gallery caption (${mode}): typing → dirty, back to the original → clean, from code → not dirty`, async () => {
+      const form = document.createElement('form');
+      form.className = 'v044-contract';
+      form.innerHTML = `<td-media-gallery name="x" label="X" usage caption="${mode}" items='${JSON.stringify([{ id: 'm1', caption: 'ab' }, { id: 'm2' }])}'></td-media-gallery>`;
+      document.body.appendChild(form);
+      const el = /** @type {any} */ (form.firstElementChild);
+      await frames(3);
+      const tracker = trackFormDirty(form);
+      try {
+        const ctl = el.querySelector('.td-media-gallery__caption');
+        await typeIn(ctl, 'c');
+        await frames(3);
+        expect(tracker.isDirty()).to.equal(true);
+        expect([...new FormData(form)].find(([k]) => k === 'x[0][caption]')[1]).to.equal('abc');
+        ctl.focus();
+        await sendKeys({ press: 'Backspace' });
+        await frames(3);
+        expect(tracker.isDirty()).to.equal(false, 'typed back to the original');
+        tracker.markClean();
+        el.setSelection([{ assetId: 'm1', asset: null, usage: { altText: '', caption: 'từ code' } }]);
+        el.value = ['m1'];
+        await frames(3);
+        expect([...new FormData(form)].find(([k]) => k === 'x[0][caption]')[1]).to.equal('từ code');
+        expect(tracker.isDirty()).to.equal(false);
+      } finally { tracker.destroy(); form.remove(); }
+    });
+  }
 
   it('td-check-matrix: value= / setValue() from code is NOT a user change → isDirty() === false', async () => {
     const form = document.createElement('form');
