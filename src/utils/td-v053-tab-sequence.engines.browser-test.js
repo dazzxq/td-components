@@ -15,10 +15,10 @@ const seq = (root) => tabSequence(root).map(name);
 // the native walk must be an in-order SUBSEQUENCE of tabSequence (the menu moves Tab itself, so every stop is reached
 // in every engine); Chromium / Firefox must match exactly.
 const WEBKIT = /AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium|Firefox/.test(navigator.userAgent);
-/** ids of every radio under `root`, including open shadow roots. */
+/** names (as `name()` prints them) of every radio under `root`, including open shadow roots. */
 function radioIds(root = document.body, out = new Set()) {
   for (const el of root.querySelectorAll('*')) {
-    if (el.localName === 'input' && el.type === 'radio' && el.id) out.add(el.id);
+    if (el.localName === 'input' && el.type === 'radio') out.add(name(el)); // same naming as the walks (data-k / id)
     if (el.shadowRoot) radioIds(el.shadowRoot, out);
   }
   return out;
