@@ -85,6 +85,7 @@ function spyState(el) {
 }
 
 const realDelay = TdMediaGallery.LIMIT_ANNOUNCE_DELAY;
+const PERF_SLACK = 20; // ×20 under load (TD_PERF_STRICT is a node-side switch)
 beforeEach(() => {
   opens = [];
   warns.length = 0;
@@ -392,18 +393,20 @@ describe('td-media-gallery limits — counter, error, validity (QĐ 8-12)', () =
     await until(() => status(el) !== '');
     expect(status(el)).to.equal('Chú thích ảnh 1: còn 1 ký tự.');
     q(el, '.td-media-gallery__status').textContent = '';
-    await typeIn(ctl, 'e');
-    await sendKeys({ press: 'Backspace' });
+    // the same count again (an input event with the same text — deterministic, no timing between two key presses)
+    ctl.dispatchEvent(new Event('input', { bubbles: true }));
     await new Promise((r) => setTimeout(r, 200));
     expect(status(el)).to.equal('', 'same sentence → not repeated');
     await typeIn(ctl, 'ef');
     await until(() => status(el) !== '');
     expect(status(el)).to.equal('Chú thích ảnh 1: vượt 1 ký tự.');
     q(el, '.td-media-gallery__status').textContent = '';
+    TdMediaGallery.LIMIT_ANNOUNCE_DELAY = 60000; // a pending timer for sure (no race with the key round-trip under load)
     await typeIn(ctl, 'g');
+    expect(el._limitTimer !== 0, 'a pending announcement').to.equal(true);
     ctl.blur();
-    await new Promise((r) => setTimeout(r, 200));
-    expect(status(el)).to.equal('', 'blur cancels');
+    expect(el._limitTimer, 'blur cancels').to.equal(0);
+    expect(status(el)).to.equal('');
   });
 
   it('server data already over the limit shows the error at render; trim: ECMAScript whitespace not counted', () => {
@@ -411,5 +414,39 @@ describe('td-media-gallery limits — counter, error, validity (QĐ 8-12)', () =
     expect(part(lis(el)[0], 'alt', 'counter').textContent).to.equal('4/3');
     expect(alt(lis(el)[0]).getAttribute('aria-invalid')).to.equal('true');
     expect(part(lis(el)[1], 'alt', 'counter').textContent).to.equal('3/3');
+  });
+});
+
+describe('td-media-gallery caption — raw read budget (Codex review r1 SEC-01)', () => {
+  const huge = `${'\u0000'.repeat(3999)}${'§'.repeat(30 * 1024 * 1024)}`; // 30 M code units after 3999 controls
+  const timed = (fn) => { const t0 = performance.now(); fn(); return performance.now() - t0; };
+
+  it('setSelection() with a 30 MB caption: bounded time, the bounded rule ("§")', () => {
+    const { el, form } = mk({ name: 'g', usage: true, caption: 'multiline' });
+    const ms = timed(() => el.setSelection([{ assetId: 'a1', asset: null, usage: { altText: '', caption: huge } }]));
+    expect(ms < 50 * PERF_SLACK, `${ms} ms`).to.equal(true);
+    expect(el.selection[0].usage.caption).to.equal('§');
+    expect(fd(form)[2]).to.deep.equal(['g[0][caption]', '§']);
+  });
+
+  it('the picker with a 30 MB caption: bounded time, the bounded rule', async () => {
+    const { el } = mk({ name: 'g', usage: true, caption: true, max: '5' });
+    q(el, '.td-media-gallery__add').click();
+    const id = [...ad.db.keys()][0];
+    const t0 = performance.now();
+    opens[0].resolve({ status: 'selected', selection: [{ assetId: id, asset: JSON.parse(JSON.stringify(ad.db.get(id))), usage: { altText: '', caption: huge } }] });
+    await until(() => lis(el).length === 1);
+    expect(performance.now() - t0 < 200 * PERF_SLACK).to.equal(true);
+    expect(cap(lis(el)[0]).value).to.equal('§');
+  });
+
+  it('items attribute: over 256 KiB fails closed before any parse; within it, a long caption is cut by the rule', () => {
+    const a = mk({ name: 'g', usage: true, caption: true });
+    const big = JSON.stringify([{ id: 'm1', caption: huge.slice(0, 1024 * 1024) }]);
+    const ms = timed(() => a.el.setAttribute('items', big));
+    expect(ms < 50 * PERF_SLACK, `${ms} ms`).to.equal(true);
+    expect(fd(a.form)).to.deep.equal([], 'fail closed');
+    const b = mk({ name: 'g', usage: true, caption: true, items: JSON.stringify([{ id: 'm1', caption: 'é'.repeat(5000) }]) });
+    expect(cap(lis(b.el)[0]).value).to.equal('é'.repeat(1000));
   });
 });

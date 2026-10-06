@@ -2860,7 +2860,7 @@ namespace {
         $capMax = $limitOpt('caption_maxlength', Td::MEDIA_GALLERY_CAPTION_MAX, $captionMode !== null, 'caption');
 
         // decision 15b / 19: one validation path (ints → strings first), then the items attribute (≤ 256 KiB)
-        $v = td__media_gallery_items($items, $limit);
+        $v = td__media_gallery_items($items, $limit, $captionMode !== null);
         $broken = $v['items'] === null;
         $reason = (string) $v['reason'];
         $list = $broken ? [] : $v['items'];
@@ -3050,7 +3050,7 @@ namespace {
      * ['id', 'src' (''), 'name' (''), 'kind', 'alt' (≤ 500 code points), 'crop' (?JSON v1), 'focal' (?JSON v1)].
      * Structural errors → items null; more than $max → reason `max` WITH the items.
      */
-    function td__media_gallery_items(mixed $items, int $max = 100): array
+    function td__media_gallery_items(mixed $items, int $max = 100, bool $caption = true): array
     {
         $fail = static fn (string $r): array => ['ok' => false, 'reason' => $r, 'items' => null];
         $isList = static fn (array $a): bool => $a === [] || array_keys($a) === range(0, count($a) - 1);
@@ -3093,7 +3093,8 @@ namespace {
                 'kind' => in_array($x['kind'] ?? null, ['image', 'video', 'file'], true) ? $x['kind'] : 'image',
                 'alt' => isset($x['alt']) && is_string($x['alt']) ? td__utf8_prefix($x['alt'], 500) : '',
                 // v0.51.0 QĐ 3: always normalised (the mode is only a projection)
-                'caption' => td__media_caption($x['caption'] ?? null),
+                // Codex review r1 SEC-01: a disabled caption is neither printed nor sent → never read
+                'caption' => $caption ? td__media_caption($x['caption'] ?? null) : '',
                 'crop' => td__media_crop($x['crop'] ?? null, false),
                 'focal' => td__media_focal($x['focal'] ?? null, false),
             ];
@@ -3106,14 +3107,28 @@ namespace {
     /** @internal v0.43.0: length of a UTF-8 string in UTF-16 code units (JS `String#length`); invalid UTF-8 → PHP_INT_MAX. */
     /**
      * @internal v0.51.0 (plan v0.51.0-gallery-caption QĐ 3) = normCaption() of src/utils/media-field-model.js
-     * (test/ssr/media-text.cases.json): not a string / invalid UTF-8 → ''; CRLF / CR → LF; C0 except TAB / LF, DEL and C1
+     * (test/ssr/media-text.cases.json): not a string / invalid UTF-8 → ''; only the first 4000 code points read; CRLF / CR → LF; C0 except TAB / LF, DEL and C1
      * dropped; cut at 1000 code points (Td::MEDIA_GALLERY_CAPTION_MAX). Never trimmed.
      */
     function td__media_caption(mixed $s): string
     {
-        if (!is_string($s) || $s === '' || preg_match('//u', $s) !== 1) {
+        if (!is_string($s) || $s === '') {
             return '';
         }
+        // Codex review r1 SEC-01: the raw read budget = normCaption() — only the first 4000 code points are read; bytes are
+        // cut to 4000 × 4 BEFORE any UTF-8 check / regex (a sequence cut in two is trimmed: ≤ 3 bytes), then the first
+        // 4000 code points. Invalid UTF-8 inside the budget → ''.
+        $budget = 4 * Td::MEDIA_GALLERY_CAPTION_MAX;
+        if (strlen($s) > 4 * $budget) {
+            $s = substr($s, 0, 4 * $budget);
+            for ($k = 0; $k < 3 && preg_match('//u', $s) !== 1; $k++) {
+                $s = substr($s, 0, -1);
+            }
+        }
+        if (preg_match('//u', $s) !== 1) {
+            return '';
+        }
+        $s = td__utf8_prefix($s, $budget);
         $t = (string) preg_replace('/[\x{0}-\x{8}\x{B}-\x{1F}\x{7F}-\x{9F}]/u', '', (string) preg_replace('/\r\n?/', "\n", $s));
         return td__utf8_prefix($t, Td::MEDIA_GALLERY_CAPTION_MAX);
     }

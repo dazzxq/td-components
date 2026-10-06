@@ -7,10 +7,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   normCaption, captionValue, limitCount, limitState, parseLimit, galleryEntries, validateItems, encodeGalleryState,
-  decodeGalleryState, GALLERY_CAPTION_MAX, GALLERY_ALT_MAX, GALLERY_CASES,
+  decodeGalleryState, GALLERY_CAPTION_MAX, GALLERY_CAPTION_RAW_MAX, GALLERY_ALT_MAX, GALLERY_CASES,
 } from './media-field-model.js';
 
-const TEXT = JSON.parse(readFileSync(new URL('../../test/ssr/media-text.cases.json', import.meta.url), 'utf8')).cases;
+const TEXT_FILE = JSON.parse(readFileSync(new URL('../../test/ssr/media-text.cases.json', import.meta.url), 'utf8'));
+const TEXT = TEXT_FILE.cases;
+const PERF_SLACK = process.env.TD_PERF_STRICT ? 1 : 20;
+const build = (segs) => segs.map(([t, n]) => t.repeat(n)).join('');
 const LIMIT = JSON.parse(readFileSync(new URL('../../test/ssr/media-limit.cases.json', import.meta.url), 'utf8')).cases;
 const CROP = '{"v":1,"x":0.1,"y":0,"width":0.5,"height":1}';
 
@@ -41,6 +44,24 @@ describe('normCaption / captionValue / limitCount (QĐ 3, 9 — media-text.cases
     assert.equal(normCaption('😀'.repeat(1001)), '😀'.repeat(1000));
     // controls are dropped BEFORE the cut: 1500 NULs + 1000 letters keep the 1000 letters
     assert.equal(normCaption(`${'\u0000'.repeat(1500)}${'x'.repeat(1000)}`), 'x'.repeat(1000));
+  });
+});
+
+describe('normCaption raw budget (Codex review r1 SEC-01)', () => {
+  it('only the first 4000 code points are read (bounded table); 30 MB → bounded time, same result as the rule', () => {
+    assert.equal(GALLERY_CAPTION_RAW_MAX, 4000);
+    for (const c of TEXT_FILE.bounded) {
+      if (c.php_hex_build) continue;
+      assert.equal(normCaption(build(c.build)), build(c.norm), JSON.stringify(c.build).slice(0, 60));
+    }
+    const big = `${'\u0000'.repeat(3999)}${'y'.repeat(30 * 1024 * 1024)}`;
+    const t0 = performance.now();
+    const out = normCaption(big);
+    const ms = performance.now() - t0;
+    assert.equal(out, 'y');
+    assert.ok(ms < 5 * PERF_SLACK, `${ms} ms`);
+    // a lone high surrogate at the budget edge is one code point (as [...s] counts it)
+    assert.equal(normCaption(`${'\u0000'.repeat(3999)}\ud800\ud800x`), '\ud800');
   });
 });
 

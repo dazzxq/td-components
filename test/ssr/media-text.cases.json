@@ -1,23 +1,308 @@
 {
-  "//": "v0.51.0 (plan v0.51.0-gallery-caption QĐ 3 / 9): the caption normaliser + the length rule, JS (src/utils/media-field-model.js normCaption / captionValue / limitCount) = PHP (td__media_caption / td__media_caption_value / td__media_text_count). count = limitCount(input) (the alt rule: no normalisation); countNorm = limitCount(norm); countLine = limitCount(line). js_only: a lone surrogate, given as UTF-16 `units` (PHP json_decode refuses an unpaired \\uD800; `same`: norm = line = the input); php_hex: raw bytes for PHP only (invalid UTF-8).",
-  "cases": [
-    { "input": "a\r\nb\rc", "norm": "a\nb\nc", "line": "a b c", "count": 6, "countNorm": 5, "countLine": 5 },
-    { "input": "\u0000a\u0007\tb\u0085", "norm": "a\tb", "line": "a\tb", "count": 6, "countNorm": 3, "countLine": 3 },
-    { "input": "  héllo  ", "norm": "  héllo  ", "line": "  héllo  ", "count": 5, "countNorm": 5, "countLine": 5 },
-    { "input": "　 x﻿", "norm": "　 x﻿", "line": "　 x﻿", "count": 1, "countNorm": 1, "countLine": 1 },
-    { "input": "᠎x​", "norm": "᠎x​", "line": "᠎x​", "count": 3, "countNorm": 3, "countLine": 3 },
-    { "input": "\n\n a \n\nb\n", "norm": "\n\n a \n\nb\n", "line": "  a  b ", "count": 5, "countNorm": 5, "countLine": 4 },
-    { "input": "   ", "norm": "   ", "line": "   ", "count": 0, "countNorm": 0, "countLine": 0 },
-    { "input": "", "norm": "", "line": "", "count": 0, "countNorm": 0, "countLine": 0 },
-    { "input": "😀x😀", "norm": "😀x😀", "line": "😀x😀", "count": 3, "countNorm": 3, "countLine": 3 },
-    { "input": "\t a\t", "norm": "\t a\t", "line": "\t a\t", "count": 1, "countNorm": 1, "countLine": 1 },
-    { "input": " x ", "norm": " x ", "line": " x ", "count": 1, "countNorm": 1, "countLine": 1 },
-    { "input": "x\u007f\u0080\u009fy", "norm": "xy", "line": "xy", "count": 5, "countNorm": 2, "countLine": 2 },
-    { "input": "\r", "norm": "\n", "line": " ", "count": 0, "countNorm": 0, "countLine": 0 },
-    { "input": "a\u000bb\u000cc", "norm": "abc", "line": "abc", "count": 5, "countNorm": 3, "countLine": 3 },
-    { "input": "\u0085x", "norm": "x", "line": "x", "count": 2, "countNorm": 1, "countLine": 1 },
-    { "input": "<b>&amp;</b>", "norm": "<b>&amp;</b>", "line": "<b>&amp;</b>", "count": 12, "countNorm": 12, "countLine": 12 },
-    { "js_only": true, "units": [97, 55296, 98], "same": true, "count": 3, "countNorm": 3, "countLine": 3 },
-    { "php_hex": "61ff62", "norm": "", "line": "", "countNorm": 0, "countLine": 0 }
-  ]
+ "//": "v0.51.0 (plan v0.51.0-gallery-caption QĐ 3 / 9): the caption normaliser + the length rule, JS (src/utils/media-field-model.js normCaption / captionValue / limitCount) = PHP (td__media_caption / td__media_caption_value / td__media_text_count). count = limitCount(input) (the alt rule: no normalisation); countNorm = limitCount(norm); countLine = limitCount(line). js_only: a lone surrogate, given as UTF-16 `units` (PHP json_decode refuses an unpaired \\uD800; `same`: norm = line = the input); php_hex: raw bytes for PHP only (invalid UTF-8).",
+ "cases": [
+  {
+   "input": "a\r\nb\rc",
+   "norm": "a\nb\nc",
+   "line": "a b c",
+   "count": 6,
+   "countNorm": 5,
+   "countLine": 5
+  },
+  {
+   "input": "\u0000a\u0007\tb",
+   "norm": "a\tb",
+   "line": "a\tb",
+   "count": 6,
+   "countNorm": 3,
+   "countLine": 3
+  },
+  {
+   "input": "  héllo  ",
+   "norm": "  héllo  ",
+   "line": "  héllo  ",
+   "count": 5,
+   "countNorm": 5,
+   "countLine": 5
+  },
+  {
+   "input": "　 x﻿",
+   "norm": "　 x﻿",
+   "line": "　 x﻿",
+   "count": 1,
+   "countNorm": 1,
+   "countLine": 1
+  },
+  {
+   "input": "᠎x​",
+   "norm": "᠎x​",
+   "line": "᠎x​",
+   "count": 3,
+   "countNorm": 3,
+   "countLine": 3
+  },
+  {
+   "input": "\n\n a \n\nb\n",
+   "norm": "\n\n a \n\nb\n",
+   "line": "  a  b ",
+   "count": 5,
+   "countNorm": 5,
+   "countLine": 4
+  },
+  {
+   "input": "   ",
+   "norm": "   ",
+   "line": "   ",
+   "count": 0,
+   "countNorm": 0,
+   "countLine": 0
+  },
+  {
+   "input": "",
+   "norm": "",
+   "line": "",
+   "count": 0,
+   "countNorm": 0,
+   "countLine": 0
+  },
+  {
+   "input": "😀x😀",
+   "norm": "😀x😀",
+   "line": "😀x😀",
+   "count": 3,
+   "countNorm": 3,
+   "countLine": 3
+  },
+  {
+   "input": "\t a\t",
+   "norm": "\t a\t",
+   "line": "\t a\t",
+   "count": 1,
+   "countNorm": 1,
+   "countLine": 1
+  },
+  {
+   "input": " x ",
+   "norm": " x ",
+   "line": " x ",
+   "count": 1,
+   "countNorm": 1,
+   "countLine": 1
+  },
+  {
+   "input": "xy",
+   "norm": "xy",
+   "line": "xy",
+   "count": 5,
+   "countNorm": 2,
+   "countLine": 2
+  },
+  {
+   "input": "\r",
+   "norm": "\n",
+   "line": " ",
+   "count": 0,
+   "countNorm": 0,
+   "countLine": 0
+  },
+  {
+   "input": "a\u000bb\fc",
+   "norm": "abc",
+   "line": "abc",
+   "count": 5,
+   "countNorm": 3,
+   "countLine": 3
+  },
+  {
+   "input": "x",
+   "norm": "x",
+   "line": "x",
+   "count": 2,
+   "countNorm": 1,
+   "countLine": 1
+  },
+  {
+   "input": "<b>&amp;</b>",
+   "norm": "<b>&amp;</b>",
+   "line": "<b>&amp;</b>",
+   "count": 12,
+   "countNorm": 12,
+   "countLine": 12
+  },
+  {
+   "js_only": true,
+   "units": [
+    97,
+    55296,
+    98
+   ],
+   "same": true,
+   "count": 3,
+   "countNorm": 3,
+   "countLine": 3
+  },
+  {
+   "php_hex": "61ff62",
+   "norm": "",
+   "line": "",
+   "countNorm": 0,
+   "countLine": 0
+  }
+ ],
+ "//bounded": "v0.51.0 Codex review r1 SEC-01: the raw read budget — only the FIRST 4000 code points (GALLERY_CAPTION_RAW_MAX = 4 × the 1000 ceiling) are ever read (JS: a bounded code-point walk; PHP: substr to 4000 × 4 bytes, a cut UTF-8 sequence trimmed, then the first 4000 code points) BEFORE any regex / replace. `build`: [segment, repeat] pairs concatenated; `norm`: the same for the expected result. php_hex_build: PHP-only raw bytes.",
+ "bounded": [
+  {
+   "build": [
+    [
+     "\u0000",
+     3500
+    ],
+    [
+     "x",
+     1000
+    ]
+   ],
+   "norm": [
+    [
+     "x",
+     500
+    ]
+   ]
+  },
+  {
+   "build": [
+    [
+     "\u0000",
+     3000
+    ],
+    [
+     "x",
+     1000
+    ]
+   ],
+   "norm": [
+    [
+     "x",
+     1000
+    ]
+   ]
+  },
+  {
+   "build": [
+    [
+     "\u0000",
+     3999
+    ],
+    [
+     "😀",
+     2
+    ]
+   ],
+   "norm": [
+    [
+     "😀",
+     1
+    ]
+   ]
+  },
+  {
+   "build": [
+    [
+     "😀",
+     5000
+    ]
+   ],
+   "norm": [
+    [
+     "😀",
+     1000
+    ]
+   ]
+  },
+  {
+   "build": [
+    [
+     "ab\r\n",
+     2000
+    ]
+   ],
+   "norm": [
+    [
+     "ab\n",
+     333
+    ],
+    [
+     "a",
+     1
+    ]
+   ]
+  },
+  {
+   "build": [
+    [
+     "x",
+     3000000
+    ]
+   ],
+   "norm": [
+    [
+     "x",
+     1000
+    ]
+   ]
+  },
+  {
+   "php_hex_build": [
+    [
+     "78",
+     16000
+    ],
+    [
+     "ff",
+     1
+    ]
+   ],
+   "norm": [
+    [
+     "x",
+     1000
+    ]
+   ]
+  },
+  {
+   "php_hex_build": [
+    [
+     "00",
+     3999
+    ],
+    [
+     "78",
+     12000
+    ],
+    [
+     "c3a9",
+     1
+    ]
+   ],
+   "norm": [
+    [
+     "x",
+     1
+    ]
+   ]
+  },
+  {
+   "php_hex_build": [
+    [
+     "ff",
+     1
+    ],
+    [
+     "78",
+     100
+    ]
+   ],
+   "norm": []
+  }
+ ]
 }

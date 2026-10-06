@@ -318,19 +318,34 @@ export const GALLERY_ALT_MAX = ALT_MAX;
 
 /** QĐ 7: the caption hard ceiling (code points; cut, never refused) = the `maxlength` of the caption control. */
 export const GALLERY_CAPTION_MAX = 1000;
+/**
+ * Codex review r1 SEC-01: the raw read budget — normCaption() reads only the first 4000 code points (4 × the ceiling)
+ * BEFORE any replace / regex, whatever the source (picker, setSelection, a restore) = PHP td__media_caption().
+ */
+export const GALLERY_CAPTION_RAW_MAX = 4 * GALLERY_CAPTION_MAX;
+/** @private the first `n` code points of `s` (a lone surrogate = one) — a walk of at most 2n code units */
+function codePointPrefix(s, n) {
+  if (s.length <= n) return s;
+  let i = 0;
+  for (let k = 0; k < n && i < s.length; k += 1) {
+    const c = s.charCodeAt(i);
+    i += c >= 0xd800 && c <= 0xdbff && i + 1 < s.length && (s.charCodeAt(i + 1) & 0xfc00) === 0xdc00 ? 2 : 1;
+  }
+  return s.slice(0, i);
+}
 /** C0 except TAB / LF, DEL, C1 (CR is already LF when this runs). */
 const CAPTION_CONTROLS = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g;
 
 /**
  * QĐ 3: the ONE caption normaliser (every way in: `items`, restore, setSelection, picker, typing) = PHP
- * td__media_caption(): not a string → ''; CRLF / CR → LF; C0 except TAB / LF, DEL and C1 dropped; cut at 1000 code
+ * td__media_caption(): not a string → ''; only the first GALLERY_CAPTION_RAW_MAX code points are read; CRLF / CR → LF; C0 except TAB / LF, DEL and C1 dropped; cut at 1000 code
  * points. Never trimmed (the server trims; `''` = null there). Bidi / zero-width characters are the user's text.
  * @param {unknown} s
  * @returns {string}
  */
 export function normCaption(s) {
   if (typeof s !== 'string' || !s) return '';
-  const t = s.replace(/\r\n?/g, '\n').replace(CAPTION_CONTROLS, '');
+  const t = codePointPrefix(s, GALLERY_CAPTION_RAW_MAX).replace(/\r\n?/g, '\n').replace(CAPTION_CONTROLS, '');
   return t.length <= GALLERY_CAPTION_MAX ? t : [...t].slice(0, GALLERY_CAPTION_MAX).join('');
 }
 

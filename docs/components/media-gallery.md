@@ -67,6 +67,28 @@ Server đọc **theo kiểu** của giá trị — ba trạng thái, giống [Me
   **không có** `[caption]` = **giữ** chú thích đang lưu của ảnh đó; `[caption]=` (rỗng, hoặc chỉ khoảng trắng sau trim) =
   **null** (xoá); có chữ = lưu chữ. Gallery tắt `caption` không bao giờ gửi khoá; bật thì luôn gửi (kể cả rỗng).
 
+**Chuẩn hoá chữ trước khi đếm (0.51).** Khi submit, trình duyệt đổi mọi xuống dòng LF thành **CRLF** (cả textarea no-JS
+lẫn FormData của component — đã đo trên Chromium / Firefox / WebKit), và kit đếm độ dài **sau khi trim** theo bộ khoảng
+trắng của `String.prototype.trim` (= `Td::JS_WS`). Server phải làm **đúng hai bước đó** trước `max:N` / `mb_strlen`, nếu
+không một chú thích kit coi là hợp lệ có thể bị 422 (mỗi xuống dòng thành 2 ký tự, khoảng trắng hai đầu bị đếm). Hàm dùng
+chung cho hai ví dụ dưới (PHP 8.0+):
+
+```php
+/** Luật của kit: CRLF / CR → LF, trim theo bộ khoảng trắng ECMAScript; rỗng → null; UTF-8 hỏng / không phải chuỗi → false (validate từ chối). */
+function gallery_text(mixed $v): string|null|false
+{
+    if (!is_string($v)) {
+        return false;
+    }
+    $ws = '\t\n\x{0B}\f\r \x{A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}'; // = Td::JS_WS
+    $t = preg_replace('/^[' . $ws . ']+|[' . $ws . ']+$/u', '', str_replace(["\r\n", "\r"], "\n", $v));
+    return $t === null ? false : ($t === '' ? null : $t);
+}
+```
+
+Kit đếm **không gộp** khoảng trắng giữa chữ; server gộp rồi mới đếm (như dsuite) thì luôn đếm **ít hơn hoặc bằng** kit — vẫn
+an toàn. `max:N` của Laravel đếm `mb_strlen` (code point) — cùng đơn vị với kit.
+
 **Laravel:**
 
 ```php
@@ -76,16 +98,29 @@ use Illuminate\Validation\ValidationException;
 if ($request->has('gallery')) {                          // không có key = disabled / fail closed / vượt max → giữ nguyên
     $raw = $request->input('gallery');                   // ConvertEmptyStringsToNull: '' → null = đã gỡ hết
     $rows = is_array($raw) ? array_values($raw) : [];
+    foreach ($rows as $i => $r) {                        // chuẩn hoá TRƯỚC validate (luật đếm của kit)
+        if (!is_array($r)) {
+            continue;
+        }
+        foreach (['alt', 'caption'] as $k) {
+            if (array_key_exists($k, $r)) {              // vắng [caption] = giữ: không thêm khoá
+                $rows[$i][$k] = gallery_text($r[$k] ?? '');   // ConvertEmptyStringsToNull đã biến '' thành null
+            }
+        }
+    }
+    if (is_array($raw)) {
+        $request->merge(['gallery' => $rows]);
+    }
     if (count($rows) > 10) {                             // max CỦA SERVER — không tin max của client
         throw ValidationException::withMessages(['gallery' => 'Tối đa 10 ảnh.']);
     }
-    $request->validate([
-        'gallery'         => ['nullable', 'array', 'max:10'],
-        'gallery.*.id'    => ['required', 'string', 'max:512', 'distinct'],
-        'gallery.*.alt'   => ['nullable', 'string', 'max:500'],      // dsuite: max:255 (+ alt-maxlength="255")
-        'gallery.*.caption' => ['sometimes', 'nullable', 'string', 'max:500'], // 0.51: chỉ khi gallery có `caption`
-        'gallery.*.crop'  => ['nullable', 'string', 'max:512'],
-        'gallery.*.focal' => ['nullable', 'string', 'max:128'],
+    $request->validate([                                 // lỗi → 422 (không bao giờ cắt)
+        'gallery'           => ['nullable', 'array', 'max:10'],
+        'gallery.*.id'      => ['required', 'string', 'max:512', 'distinct'],
+        'gallery.*.alt'     => ['nullable', 'string', 'max:255'],             // dsuite: + alt-maxlength="255"
+        'gallery.*.caption' => ['sometimes', 'nullable', 'string', 'max:500'], // 0.51: + caption-maxlength="500"
+        'gallery.*.crop'    => ['nullable', 'string', 'max:512'],
+        'gallery.*.focal'   => ['nullable', 'string', 'max:128'],
     ]);
     $ids = array_column($rows, 'id');
     $oldCaptions = $product->mediaUsages()->where('role', 'gallery')->pluck('caption', 'asset_id'); // vắng [caption] = giữ
@@ -100,13 +135,11 @@ if ($request->has('gallery')) {                          // không có key = dis
         foreach ($rows as $pos => $row) {
             $product->mediaUsages()->create([
                 'asset_id' => $row['id'], 'role' => 'gallery', 'position' => $pos,
-                'alt_text' => mb_substr(trim((string) ($row['alt'] ?? '')), 0, 500),
+                'alt_text' => $row['alt'] ?? null,                         // đã chuẩn hoá + kiểm ≤ 255
                 'crop_json' => parse_crop($row['crop'] ?? 'null'),     // cùng hàm kiểm của media field (null khi sai)
                 'focal_point_json' => parse_focal($row['focal'] ?? 'null'),
                 // 0.51: array_key_exists — KHÔNG dùng `$row['caption'] ?? null` (biến "vắng" thành "xoá")
-                'caption' => array_key_exists('caption', $row)
-                    ? (trim((string) $row['caption']) === '' ? null : trim((string) $row['caption']))
-                    : ($oldCaptions[$row['id']] ?? null),
+                'caption' => array_key_exists('caption', $row) ? $row['caption'] : ($oldCaptions[$row['id']] ?? null),
             ]);
         }
     });
@@ -115,34 +148,31 @@ if ($request->has('gallery')) {                          // không có key = dis
 
 Dạng reference (`images[]`): `'images' => ['nullable', 'array', 'max:10']`, `'images.*' => ['string', 'max:512', 'distinct']`.
 
-**Đếm độ dài phía server (0.51):** khi submit, trình duyệt đổi mọi xuống dòng LF thành **CRLF** (cả textarea no-JS lẫn
-FormData của component — đã đo trên Chromium / Firefox / WebKit). Kit đếm `\n` là 1, nên server đếm chuỗi thô sẽ thấy mỗi
-xuống dòng là 2 và có thể trả 422 cho một chú thích kit coi là hợp lệ. Chuẩn hoá **trước** khi validate:
-
-```php
-// FormRequest::prepareForValidation()
-$this->merge(['gallery' => collect($this->input('gallery', []))->map(fn ($r) => is_array($r) && array_key_exists('caption', $r)
-    ? ['caption' => str_replace(["\r\n", "\r"], "\n", (string) $r['caption'])] + $r : $r)->all()]);
-```
-
-`max:N` của Laravel đếm `mb_strlen` (code point) — cùng đơn vị với kit (kit đếm sau trim theo bộ khoảng trắng ECMAScript;
-server gộp khoảng trắng rồi trim thì luôn đếm **ít hơn hoặc bằng** kit).
-
 **PHP thuần:**
 
 ```php
+$fail = static function (string $msg): void { http_response_code(422); exit($msg); };
 if (array_key_exists('gallery', $_POST)) {               // không có key → giữ nguyên
     $raw = $_POST['gallery'];
     $rows = is_array($raw) ? array_values($raw) : [];    // '' (chuỗi) = gỡ hết → []
-    if (count($rows) > 10) { /* lỗi: vượt max của server */ }
+    if (count($rows) > 10) { $fail('Tối đa 10 ảnh.'); }  // max CỦA SERVER
     $ids = [];
-    foreach ($rows as $r) {
+    foreach ($rows as $i => $r) {
         $id = is_array($r) && is_string($r['id'] ?? null) ? $r['id'] : '';   // reference: is_string($r) ? $r : ''
-        if ($id === '' || strlen($id) > 512 || isset($ids[$id])) { /* lỗi: id sai / trùng */ }
+        if ($id === '' || strlen($id) > 512 || isset($ids[$id])) { $fail('Ảnh không hợp lệ.'); }
         $ids[$id] = true;
+        foreach (['alt' => 255, 'caption' => 500] as $k => $max) {
+            if (!array_key_exists($k, $r)) {
+                continue;                                // vắng [caption] = giữ chú thích đang lưu
+            }
+            $t = gallery_text($r[$k]);                   // CRLF → LF + trim như kit
+            if ($t === false || ($t !== null && mb_strlen($t, 'UTF-8') > $max)) { $fail("$k quá dài."); } // không bao giờ cắt
+            $rows[$i][$k] = $t;                          // null = xoá
+        }
     }
     // SELECT COUNT(*) FROM media WHERE id IN (…) AND kind = 'image' AND owner_id = ? → phải bằng count($ids)
     // rồi trong MỘT transaction: DELETE usages role=gallery của bản ghi này; INSERT lại theo $pos
+    // (caption: array_key_exists('caption', $rows[$pos]) ? $rows[$pos]['caption'] : caption cũ của asset đó)
 }
 ```
 
@@ -472,7 +502,7 @@ lưới + nút Thêm.
   `td__media_url`, `referrerpolicy="no-referrer"`).
 - Mọi chuỗi đi qua `textContent` / attribute đã escape; PHP qua `Td::e`. Không `style=""` (vùng cắt / vị trí khi kéo là
   CSSOM).
-- Trần cứng: 100 ảnh, `items` ≤ 256 KiB, id ≤ 512, alt 500, chú thích 1000 (0.51), tên hiển thị 512, crop 512, focal 128, URL 8192 byte, 4 `adapter.get` song song.
+- Trần cứng: 100 ảnh, `items` ≤ 256 KiB, id ≤ 512, alt 500, chú thích 1000 (0.51; chỉ 4000 ký tự đầu được đọc, mọi lối vào), tên hiển thị 512, crop 512, focal 128, URL 8192 byte, 4 `adapter.get` song song.
 - Chú thích (0.51) chỉ là chữ: không HTML / markdown / link, ký tự điều khiển bị bỏ; ký tự định hướng / zero-width giữ
   nguyên (chữ của người dùng) — server muốn lọc thì tự lọc. `alt-maxlength` / `caption-maxlength` là **UX**, không phải
   kiểm soát: server tự kiểm độ dài (chuẩn hoá CRLF trước) và trả 422.

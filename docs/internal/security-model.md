@@ -335,7 +335,11 @@ in giá trị / lỗi gốc của adapter) áp dụng nguyên. Thêm:
     `textContent` / `escapeHtml`; PHP `Td::e` (textarea in `"\n" . Td::e($caption)` — `</textarea>` thành
     `&lt;/textarea&gt;`, test XSS ở JS + PHP). Không HTML / markdown / link.
   - **Một hàm chuẩn hoá** `normCaption` = `td__media_caption` (bảng `test/ssr/media-text.cases.json`): CRLF / CR → LF,
-    bỏ C0 trừ tab / LF, DEL, C1; UTF-8 hỏng (PHP) → `''`; **trần cứng 1000 code point** (cắt). Ký tự định hướng /
+    bỏ C0 trừ tab / LF, DEL, C1; UTF-8 hỏng (PHP) → `''`; **trần cứng 1000 code point** (cắt). **Ngân sách đọc thô**
+    (Codex review r1 SEC-01): chỉ 4000 code point đầu được đọc **trước** mọi regex / replace (JS: bước đi theo code point
+    có giới hạn; PHP: `substr` 16 000 byte, bỏ ≤ 3 byte của chuỗi UTF-8 bị cắt, rồi 4000 code point) — mọi lối vào
+    (picker, `setSelection`, khôi phục, `$items`) có chi phí cố định; PHP không đọc chú thích khi `caption` tắt (bảng
+    `bounded` của `media-text.cases.json`, test 30 MB). Ký tự định hướng /
     zero-width giữ nguyên (chữ của người dùng — trang hiển thị của site tự quyết `unicode-bidi`).
   - **Ngân sách:** trần `items` / state khôi phục giữ 256 KiB (100 × 1000 chú thích BMP = 100 k đơn vị); 100 × 5 mục =
     500 biến `max_input_vars`.

@@ -71,6 +71,31 @@ describe('php/td.php — td_media_gallery caption + length limits (v0.51.0)', op
     assert.deepEqual(cap, [1000, 1000, '', '', '', true]);
   });
 
+  test('Codex review r1 SEC-01: the raw budget (bounded table, PHP raw bytes too); disabled captions are never read', () => {
+    const file = JSON.parse(readFileSync(join(ROOT, 'test/ssr/media-text.cases.json'), 'utf8'));
+    const got = php(` $c = json_decode(file_get_contents(${JSON.stringify(join(ROOT, 'test/ssr/media-text.cases.json'))}), true, 64, JSON_THROW_ON_ERROR)['bounded']; $o = [];`
+      + ' $b = static fn (array $segs, bool $hex): string => implode(\'\', array_map(static fn ($x) => str_repeat($hex ? hex2bin($x[0]) : $x[0], $x[1]), $segs));'
+      + ' foreach ($c as $x) { $in = isset($x[\'php_hex_build\']) ? $b($x[\'php_hex_build\'], true) : $b($x[\'build\'], false);'
+      + ' $o[] = [td__media_caption($in) === $b($x[\'norm\'], false)]; } echo json_encode($o);');
+    file.bounded.forEach((c, i) => assert.deepEqual(got[i], [true], JSON.stringify(c.build ?? c.php_hex_build).slice(0, 80)));
+    // 30 MB through td_media_gallery: caption on → bounded time / output; caption off → the caption is not even read
+    const perf = php(" $big = str_repeat(\"\\0\", 3999) . str_repeat('§', 15 * 1024 * 1024); $r = [];"
+      + " foreach ([['usage' => true, 'caption' => 'multiline'], ['usage' => true]] as $o) { $t = microtime(true); $m0 = memory_get_usage();"
+      + " $h = td_media_gallery('g', [['id' => 'm1', 'caption' => $big]], $o);"
+      + " $r[] = ['ms' => (microtime(true) - $t) * 1000, 'mem' => memory_get_usage() - $m0, 'len' => strlen($h), 'y' => substr_count($h, '§')]; }"
+      + " $r[] = td__media_gallery_items([['id' => 'm1', 'caption' => 'x']], 100, false)['items'][0]['caption'];"
+      + " $r[] = td__media_gallery_items([['id' => 'm1', 'caption' => 'x']], 100)['items'][0]['caption'];"
+      + ' echo json_encode($r);');
+    for (const r of perf.slice(0, 2)) {
+      assert.ok(r.ms < 50 * PERF_SLACK, `${r.ms} ms`);
+      assert.ok(r.mem < 1024 * 1024, `${r.mem} bytes`);
+      assert.ok(r.len < 20000, `${r.len} bytes`);
+    }
+    assert.ok(perf[0].y >= 2, 'caption on: the one kept "§" (control + items)');
+    assert.equal(perf[1].y, 0, 'caption off: never printed');
+    assert.deepEqual(perf.slice(2), ['', 'x'], 'disabled → not normalised (""); the parity default normalises');
+  });
+
   test('media-limit.cases.json: td__media_limit_opt = parseLimit (+ PHP-only ints, floats, bools, arrays, null)', () => {
     const got = php(` $c = json_decode(file_get_contents(${JSON.stringify(join(ROOT, 'test/ssr/media-limit.cases.json'))}), true, 64, JSON_THROW_ON_ERROR)['cases']; $o = [];`
       + ' foreach ($c as $x) { if (!empty($x[\'php_float\'])) { if (!is_float($x[\'input\'])) { throw new Exception(\'not a float\'); } }'
