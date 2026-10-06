@@ -266,7 +266,7 @@ ctx = {
 | Chuỗi (kể cả HTML) | Bỏ hàng + `console.warn` "…strings are not rendered (no HTML)" — **không bao giờ** thành DOM |
 | Số, `DocumentFragment`, Text node, Promise… | Bỏ hàng + `console.warn` "…must return an Element" |
 | Element **đang gắn** trong trang | Bỏ hàng + `console.warn` "…must return a detached Element" (đặt vào menu sẽ giật nó khỏi trang) |
-| Ném lỗi | Bỏ hàng + `console.warn` "…render() threw — row omitted" (kèm lỗi) |
+| Ném lỗi | Bỏ hàng + `console.warn` "…render() threw — row omitted" (chuỗi cố định, không ghi lỗi) |
 
 Mọi trường hợp bỏ hàng: `ctx.signal` của hàng đó abort ngay. Không còn hàng nào → `open()` trả `null`.
 
@@ -654,6 +654,11 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
   - **Shadow DOM:** control trong shadow root **mở** (kể cả `delegatesFocus`, slot) đi được bằng ↑ ↓ / Tab của menu.
     Shadow root **đóng**: kit chỉ thấy host — host có `tabindex` thì là một điểm dừng, không thì control bên trong
     **không** vào được bằng phím của menu (chuột vẫn được). Tránh shadow root đóng trong nội dung menu.
+  - **Thứ tự đi bằng phím = thứ tự cây phẳng (flat tree) của DOM:** ↑ ↓ / Tab của panel đi theo thứ tự phần tử trong
+    nội dung (shadow root mở được duyệt tại chỗ, phần tử gán vào `<slot>` nằm ở vị trí slot). `tabindex` **dương**
+    (`tabindex="1"`…) **không** được hỗ trợ — thứ tự của nó bị bỏ qua (phần tử vẫn là một điểm dừng theo vị trí DOM).
+    Nhóm radio tính trên **toàn nhóm native** (cùng gốc + form + `name`): chỉ radio đang chọn (hoặc radio dùng được đầu
+    tiên) là điểm dừng, kể cả khi nhóm nằm rải ở nhiều hàng.
   - **Ô bị khoá (`disabled`) trong nội dung, theme sáng:** menu là kính 94 % — nằm trên vùng trang **tối** (ảnh, banner
     đậm) thì ô disabled của segmented chỉ còn ~2.0–2.15:1 (dưới mức 2.2 nội bộ của kit; WCAG 1.4.3 / 1.4.11 miễn trừ
     control không hoạt động). Chữ / icon ô thường, ô đang chọn, vòng chọn và caption vẫn đạt chuẩn trên mọi nền. Cần ô
