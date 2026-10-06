@@ -1341,11 +1341,13 @@ Cảnh báo (`E_USER_WARNING`) chỉ ghi tên option và kiểu, không in giá 
         'src'  => $u->thumb_url,                   // chỉ để hiển thị; td__media_url (https: / tương đối)
         'name' => $u->original_name,
         'alt'  => $u->alt_text,                    // ≤ 500
+        'caption' => $u->caption,                  // 0.51: chữ thường (CRLF → \n, ký tự điều khiển bỏ, ≤ 1000)
         'crop' => $u->crop,                        // ['x' =>…, 'y' =>…, 'width' =>…, 'height' =>…] | '{"v":1,…}' | null
         'focal' => $u->focal,                      // ['x' =>…, 'y' =>…] | '{"v":1,…}' | null
     ], $product->galleryUsages), [
     'label' => 'Ảnh sản phẩm', 'usage' => true, 'croppable' => true, 'focal_point' => true, 'cover' => true,
     'max' => 10, 'aspect_ratio' => '1/1', 'helper_text' => 'Ảnh đầu là ảnh bìa',
+    'caption' => true, 'alt_maxlength' => 255, 'caption_maxlength' => 500,   // 0.51
 ]) ?>
 ```
 
@@ -1356,7 +1358,8 @@ Không in endpoint, quyền hay asset serialize.
 - **Không có JS:** lưới ô có dáng ngay; tay nắm / Cắt / Gỡ / Thêm `visibility: hidden` (giữ chỗ). Form gửi **đúng** hình
   dạng của component, theo thứ tự server in, alt sửa được (ô nhập thật có `name`):
   - reference: mỗi ô `<input type="hidden" class="td-media-gallery__value" name="gallery[]" value="{id}">`;
-  - usage: hidden `name="gallery[i][id]"`, ô alt `name="gallery[i][alt]"`, hidden `.td-media-gallery__crop`
+  - usage: hidden `name="gallery[i][id]"`, ô alt `name="gallery[i][alt]"`, [0.51 `caption`: ô chú thích
+    `name="gallery[i][caption]"` — `<input>` (line) hoặc `<textarea>` (multiline)], hidden `.td-media-gallery__crop`
     `name="gallery[i][crop]"` (+ `.td-media-gallery__focal` `name="gallery[i][focal]"` với `focal_point`);
   - rỗng: **một** hidden `name="gallery" value=""` ngay sau lưới.
 - **Có JS:** nạp `@dazzxq/td-components/media-gallery` → nhận markup **tại chỗ** (cùng node ô / ảnh / ô alt, chữ đang gõ
@@ -1370,6 +1373,8 @@ Không in endpoint, quyền hay asset serialize.
 | `required`, `min`, `max` | `max` 1…100 (lớn hơn → 100, sai → bỏ; vắng = 100); `min` kẹp ≤ `max`. Không JS thì trình duyệt không kiểm được (hidden input): **kiểm ở server** |
 | `disabled` | mọi nút, ô alt và hidden input `disabled` (không gửi gì) |
 | `usage` | dạng `name[i][id\|alt\|crop]` + ô alt |
+| `caption` (0.51) | `true` / `'line'` (ô một dòng) / `'multiline'` (textarea) → `name[i][caption]` sau `[alt]`; giá trị khác → `'line'` + một `E_USER_WARNING`; không có `usage` → bỏ + warning. Tắt → không gửi khoá (server **giữ** chú thích; `''` = null). Line in bản đã gộp xuống dòng thành dấu cách, `items` giữ chữ gốc |
+| `alt_maxlength`, `caption_maxlength` (0.51) | giới hạn mềm: `int` hoặc chuỗi đúng `^[1-9][0-9]{0,6}$`, trong 1…500 / 1…1000 (không dùng `Td::intOpt`: `'255 '`, `'2.5e2'`, `true`, `255.0` đều sai) → sai / thiếu `usage` / thiếu `caption` = tắt + một warning (không in giá trị). In bộ đếm `{count}/{max}` từ 80 % + dòng lỗi + `aria-invalid` khi vượt — **không cắt**, form no-JS vẫn gửi đủ chữ (server 422) |
 | `croppable`, `crop_ratio`, `focal_point` | cần `usage` (thiếu → bỏ + một `E_USER_WARNING`); `crop_ratio` như field (`free`, `W/H`… trong [0.01, 100]) |
 | `cover` | badge "Ảnh bìa" trên ô đầu |
 | `aspect_ratio`, `preview_fit`, `accept_kind` | tỉ lệ ô (mặc định 1:1), `cover`/`contain`, loại nhận (chữ "ảnh" / "video" / "file") |

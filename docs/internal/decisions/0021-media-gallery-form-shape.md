@@ -73,3 +73,21 @@ có ở 0.43 (owner O1) — thêm sau bằng opt-in `caption` → `name[i][capti
 - Field không đổi một byte (luồng lấy nguồn cắt của gallery là bản riêng gọn: thế hệ nguồn chung + identity `li` + id —
   tách `_cropSource` của field sẽ đụng provenance của nó; xem kết quả M0 của plan).
 - Hai element dùng chung model (`media-field-model.js`) và CSS token; một site có thể dùng cả hai trong một form.
+
+## Phụ lục v0.51.0 (2026-10-06) — chú thích theo ảnh + giới hạn độ dài mềm
+
+Plan [v0.51.0-gallery-caption](../plans/v0.51.0-gallery-caption.md) (QĐ 1–23, Codex plan-review r1–r3). Additive: không ADR
+mới, không đổi version hình dạng form, hợp đồng SSR vẫn `media-gallery@1` (markup không bật tính năng mới giống từng byte
+0.50, nên markup 0.43–0.50 vẫn được nhận tại chỗ).
+
+- **`name[i][caption]`** ngay sau `[alt]`, **chỉ dạng usage** (opt-in `caption`; thiếu `usage` → bỏ + cảnh báo). Hai chế
+  độ, cùng tên field: `line` (mặc định, ô một dòng, xuống dòng → một dấu cách) và `multiline` (textarea, giữ `\n`).
+- **Ba trạng thái của khoá con** (chốt với dsuite), cùng tinh thần "vắng = giữ" của §2: hàng **không có** `[caption]` =
+  **giữ** chú thích đang lưu; `[caption]=` = null; chữ = lưu. Kit tắt `caption` → không bao giờ gửi khoá; bật → luôn gửi
+  (kể cả rỗng). Lệch phiên bản PHP / JS vì thế không xoá chú thích.
+- **Giới hạn mềm** (`alt-maxlength` 1…500, `caption-maxlength` 1…1000; đếm code point sau trim ECMAScript, JS ≡ PHP) =
+  validity `customError` + lỗi inline, **không cắt**, FormData vẫn gửi đủ (server 422). Khác vượt `max` (§3): gửi một
+  phần danh sách làm mất ảnh, còn gửi đủ chữ quá dài thì server chỉ từ chối.
+- **Trần cứng chú thích 1000 code point** (cắt, như alt 500), giữ trần `items` / state 256 KiB.
+- State khôi phục: bật `caption` → mọi item có khoá `caption` (kể cả `""` — chữ đã xoá không hồi sinh); tắt → đúng byte
+  0.50.
