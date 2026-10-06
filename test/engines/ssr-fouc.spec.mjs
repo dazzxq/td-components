@@ -12,6 +12,8 @@
  *             kind wrap (chip-input exception): the shift equals the extra chip rows only — Δ host = Δ chip box,
  *             label / box top / width within 1 px. kind height (td_copy, Q3): host height only. kind record (narrow
  *             datetime-local, Q2): asserted at 1280 only, logged at 390. kind guard: hydrated-in-place helpers (net).
+ *             kind arrange (v0.53.1 segmented `stacked`): boxes as parity, but the segments re-arrange INSIDE the rail
+ *             by design (the layout level is decided after the upgrade) — no layout-shift assertion.
  *             Chromium: no layout-shift entry whose source sits in a parity / guard case.
  *   dark      data-td-theme="dark" (Chromium) — same geometry.
  *   forced    forcedColors "active" (Chromium): geometry; selects fall back to appearance auto, no gradient.

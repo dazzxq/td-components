@@ -7346,7 +7346,8 @@ namespace {
      * id), aria_label, class. v0.52.0 segmented: `size` ('sm' | 'md' | 'lg', default md), `icon_only` (bool: labels become
      * visually hidden names; an option without a valid icon keeps its label), option key `icon` (icon registry name —
      * /^[a-z][a-z0-9-]{0,63}$/ and known to Td::icon(); otherwise ignored + counted); segmented shows no swatch / image and
-     * the hint only as a description (never <td-tabs>: a tablist is navigation, this is a form value).
+     * the hint only as a description (never <td-tabs>: a tablist is navigation, this is a form value). v0.53.1 segmented:
+     * `stretch` (bool) → host attribute `stretch` (the rail fills its container; the rest of the markup is unchanged).
      */
     function td_choice_group(string $name, array $options, string|int|null $value = null, array $o = []): string
     {
@@ -7455,6 +7456,7 @@ namespace {
         $segmented = $variant === 'segmented';
         $segSize = $segmented && in_array($o['size'] ?? null, ['sm', 'md', 'lg'], true) ? $o['size'] : 'md';
         $iconOnly = $segmented && !empty($o['icon_only']);
+        $stretch = $segmented && !empty($o['stretch']); // v0.53.1: the rail fills its container (host attribute only)
         $sel = $value === null ? '' : (string) $value;
         $current = null;
         foreach ($list as $it) {
@@ -7569,6 +7571,7 @@ namespace {
             'variant' => $variant !== 'button' ? $variant : null,
             'size' => $segmented && $segSize !== 'md' ? $segSize : null,
             'icon-only' => $iconOnly,
+            'stretch' => $stretch,
             'required' => $required,
             'disabled' => $disabled,
             'helper-text' => $hint,

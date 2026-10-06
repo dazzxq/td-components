@@ -394,9 +394,11 @@
 		width: 100%;
 	}
 
-	/* fit: content-sized columns that share the rest equally (auto tracks stretch) */
+	/* fit: a segment never narrower than its one-line content, the others share the rest equally (the flexible-track
+	   algorithm) — the same columns the pre-upgrade rail draws (minmax(min-content, 1fr) with one-line segments), so the
+	   upgrade does not move the segments */
 	.td-choice--segmented .td-choice__options[data-layout="fit"] {
-		grid-auto-columns: auto;
+		grid-auto-columns: minmax(max-content, 1fr);
 	}
 
 	.td-choice--segmented .td-choice__option {
@@ -447,16 +449,11 @@
 		line-height: 1.15;
 	}
 
-	/* measuring states (one synchronous pass, never painted): natural one-line widths / min-content widths */
+	/* measuring states (one synchronous pass, never painted): natural one-line widths / min-content widths. Only track
+	   sizes and face widths change — never `display` / `overflow` of the rail: a new box type would re-create its layout
+	   object and Chromium would report a layout shift from (0, 0) although nothing was painted in between */
 	.td-choice--segmented .td-choice__options[data-measuring] {
-		display: flex;
-		width: max-content;
-		max-inline-size: none;
-		overflow: visible;
-	}
-
-	.td-choice--segmented .td-choice__options[data-measuring] > .td-choice__option {
-		flex: none;
+		grid-auto-columns: max-content;
 	}
 
 	.td-choice--segmented .td-choice__options[data-measuring="inline"] .td-choice__face {
