@@ -55,6 +55,7 @@ describe('normCaption raw budget (Codex review r1 SEC-01)', () => {
       assert.equal(normCaption(build(c.build)), build(c.norm), JSON.stringify(c.build).slice(0, 60));
     }
     const big = `${'\u0000'.repeat(3999)}${'y'.repeat(30 * 1024 * 1024)}`;
+    big.charCodeAt(big.length - 1); // flatten V8's rope NOW (a request / JSON string is already flat): time only normCaption
     const t0 = performance.now();
     const out = normCaption(big);
     const ms = performance.now() - t0;

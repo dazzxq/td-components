@@ -3107,7 +3107,7 @@ namespace {
     /** @internal v0.43.0: length of a UTF-8 string in UTF-16 code units (JS `String#length`); invalid UTF-8 → PHP_INT_MAX. */
     /**
      * @internal v0.51.0 (plan v0.51.0-gallery-caption QĐ 3) = normCaption() of src/utils/media-field-model.js
-     * (test/ssr/media-text.cases.json): not a string / invalid UTF-8 → ''; only the first 4000 code points read; CRLF / CR → LF; C0 except TAB / LF, DEL and C1
+     * (test/ssr/media-text.cases.json): not a string / invalid UTF-8 within the first 4000 code points → ''; only those 4000 code points read; CRLF / CR → LF; C0 except TAB / LF, DEL and C1
      * dropped; cut at 1000 code points (Td::MEDIA_GALLERY_CAPTION_MAX). Never trimmed.
      */
     function td__media_caption(mixed $s): string
@@ -3115,20 +3115,28 @@ namespace {
         if (!is_string($s) || $s === '') {
             return '';
         }
-        // Codex review r1 SEC-01: the raw read budget = normCaption() — only the first 4000 code points are read; bytes are
-        // cut to 4000 × 4 BEFORE any UTF-8 check / regex (a sequence cut in two is trimmed: ≤ 3 bytes), then the first
-        // 4000 code points. Invalid UTF-8 inside the budget → ''.
+        // Codex review r1 SEC-01 + r2 #1: the raw read budget = normCaption() — only the first 4000 code points are ever
+        // inspected. At most 4000 × 4 bytes are cut first; a byte-level (non-/u) walk then takes up to 4000 WELL-FORMED UTF-8
+        // sequences (possessive: no backtracking) and stops there — bytes after the prefix are never looked at. Stopped
+        // early on an ill-formed sequence (not at the end of the string) → invalid inside the budget → ''.
         $budget = 4 * Td::MEDIA_GALLERY_CAPTION_MAX;
-        if (strlen($s) > 4 * $budget) {
-            $s = substr($s, 0, 4 * $budget);
-            for ($k = 0; $k < 3 && preg_match('//u', $s) !== 1; $k++) {
-                $s = substr($s, 0, -1);
+        $buf = strlen($s) > 4 * $budget ? substr($s, 0, 4 * $budget) : $s;
+        $seq = '(?:[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}'
+            . '|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2})';
+        // in chunks of ≤ 100 sequences (one `{0,4000}` would exceed the PCRE compile limit); a chunk is a possessive
+        // run from the current offset, its code points = bytes − continuation bytes
+        $pos = 0;
+        $n = 0;
+        $len = strlen($buf);
+        while ($n < $budget && $pos < $len) {
+            $want = min(100, $budget - $n);
+            if (preg_match('/\G' . $seq . '{1,' . $want . '}+/', $buf, $m, 0, $pos) !== 1) {
+                return ''; // an ill-formed sequence inside the first 4000 code points
             }
+            $pos += strlen($m[0]);
+            $n += strlen($m[0]) - (int) preg_match_all('/[\x80-\xBF]/', $m[0]);
         }
-        if (preg_match('//u', $s) !== 1) {
-            return '';
-        }
-        $s = td__utf8_prefix($s, $budget);
+        $s = substr($buf, 0, $pos);
         $t = (string) preg_replace('/[\x{0}-\x{8}\x{B}-\x{1F}\x{7F}-\x{9F}]/u', '', (string) preg_replace('/\r\n?/', "\n", $s));
         return td__utf8_prefix($t, Td::MEDIA_GALLERY_CAPTION_MAX);
     }

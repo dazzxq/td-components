@@ -303,6 +303,102 @@
     ]
    ],
    "norm": []
+  },
+  {
+   "php_hex_build": [
+    [
+     "78",
+     4000
+    ],
+    [
+     "ff",
+     1
+    ]
+   ],
+   "norm": [
+    [
+     "x",
+     1000
+    ]
+   ],
+   "//": "review r2: invalid bytes AFTER the 4000th code point are never inspected"
+  },
+  {
+   "php_hex_build": [
+    [
+     "78",
+     3999
+    ],
+    [
+     "ff",
+     1
+    ],
+    [
+     "78",
+     10
+    ]
+   ],
+   "norm": [],
+   "//": "invalid inside the first 4000 code points → ''"
+  },
+  {
+   "php_hex_build": [
+    [
+     "c3a9",
+     4000
+    ],
+    [
+     "e2",
+     1
+    ]
+   ],
+   "norm": [
+    [
+     "é",
+     1000
+    ]
+   ],
+   "//": "a truncated sequence right after the prefix"
+  },
+  {
+   "php_hex_build": [
+    [
+     "00",
+     3999
+    ],
+    [
+     "f09f9880",
+     1
+    ],
+    [
+     "ff",
+     1
+    ]
+   ],
+   "norm": [
+    [
+     "😀",
+     1
+    ]
+   ]
+  },
+  {
+   "php_hex_build": [
+    [
+     "78",
+     10
+    ],
+    [
+     "ed",
+     1
+    ],
+    [
+     "a080",
+     1
+    ]
+   ],
+   "norm": [],
+   "//": "a UTF-16 surrogate encoded in UTF-8 is invalid"
   }
  ]
 }

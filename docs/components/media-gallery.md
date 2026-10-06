@@ -74,15 +74,23 @@ không một chú thích kit coi là hợp lệ có thể bị 422 (mỗi xuốn
 chung cho hai ví dụ dưới (PHP 8.0+):
 
 ```php
-/** Luật của kit: CRLF / CR → LF, trim theo bộ khoảng trắng ECMAScript; rỗng → null; UTF-8 hỏng / không phải chuỗi → false (validate từ chối). */
+/**
+ * Luật của kit: CRLF / CR → LF, trim theo bộ khoảng trắng ECMAScript; rỗng → null. Không phải chuỗi, quá 16 KiB thô
+ * (kiểm TRƯỚC mọi xử lý — chặn chuỗi nhiều MB) hoặc UTF-8 hỏng → false (validate từ chối, 422). Độ dài (code point) kiểm
+ * sau đó bằng `max:N` / `mb_strlen`.
+ */
 function gallery_text(mixed $v): string|null|false
 {
-    if (!is_string($v)) {
+    if (!is_string($v) || strlen($v) > 16384) {          // 500 code point × 4 byte × 2 (CRLF) < 16 KiB
+        return false;
+    }
+    $v = str_replace(["\r\n", "\r"], "\n", $v);
+    if (preg_match('//u', $v) !== 1) {
         return false;
     }
     $ws = '\t\n\x{0B}\f\r \x{A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}'; // = Td::JS_WS
-    $t = preg_replace('/^[' . $ws . ']+|[' . $ws . ']+$/u', '', str_replace(["\r\n", "\r"], "\n", $v));
-    return $t === null ? false : ($t === '' ? null : $t);
+    $t = (string) preg_replace('/^[' . $ws . ']+|[' . $ws . ']+$/u', '', $v);
+    return $t === '' ? null : $t;
 }
 ```
 
@@ -97,10 +105,13 @@ use Illuminate\Validation\ValidationException;
 
 if ($request->has('gallery')) {                          // không có key = disabled / fail closed / vượt max → giữ nguyên
     $raw = $request->input('gallery');                   // ConvertEmptyStringsToNull: '' → null = đã gỡ hết
-    $rows = is_array($raw) ? array_values($raw) : [];
+    if ($raw !== null && $raw !== '' && !is_array($raw)) { // chỉ hai hình hợp lệ: rỗng (gỡ hết) hoặc mảng
+        throw ValidationException::withMessages(['gallery' => 'Gallery không hợp lệ.']);
+    }
+    $rows = is_array($raw) ? array_values($raw) : [];    // null / '' → [] = gỡ hết
     foreach ($rows as $i => $r) {                        // chuẩn hoá TRƯỚC validate (luật đếm của kit)
-        if (!is_array($r)) {
-            continue;
+        if (!is_array($r)) {                             // usage: mỗi hàng là mảng
+            throw ValidationException::withMessages(['gallery' => 'Gallery không hợp lệ.']);
         }
         foreach (['alt', 'caption'] as $k) {
             if (array_key_exists($k, $r)) {              // vắng [caption] = giữ: không thêm khoá
@@ -146,7 +157,8 @@ if ($request->has('gallery')) {                          // không có key = dis
 }
 ```
 
-Dạng reference (`images[]`): `'images' => ['nullable', 'array', 'max:10']`, `'images.*' => ['string', 'max:512', 'distinct']`.
+Dạng reference (`images[]`): cùng luật hình dạng (vắng = giữ, `''` / null = gỡ hết, mảng = thay, **hình khác → 422**),
+`'images' => ['nullable', 'array', 'max:10']`, `'images.*' => ['string', 'max:512', 'distinct']`.
 
 **PHP thuần:**
 
@@ -154,11 +166,18 @@ Dạng reference (`images[]`): `'images' => ['nullable', 'array', 'max:10']`, `'
 $fail = static function (string $msg): void { http_response_code(422); exit($msg); };
 if (array_key_exists('gallery', $_POST)) {               // không có key → giữ nguyên
     $raw = $_POST['gallery'];
-    $rows = is_array($raw) ? array_values($raw) : [];    // '' (chuỗi) = gỡ hết → []
+    if ($raw === '') {
+        $rows = [];                                      // '' (chuỗi) = gỡ hết
+    } elseif (is_array($raw)) {
+        $rows = array_values($raw);
+    } else {
+        $fail('Gallery không hợp lệ.');                  // hình khác: không bao giờ coi là "gỡ hết"
+    }
     if (count($rows) > 10) { $fail('Tối đa 10 ảnh.'); }  // max CỦA SERVER
     $ids = [];
     foreach ($rows as $i => $r) {
-        $id = is_array($r) && is_string($r['id'] ?? null) ? $r['id'] : '';   // reference: is_string($r) ? $r : ''
+        if (!is_array($r)) { $fail('Gallery không hợp lệ.'); }               // reference: is_string($r) thay cho dòng này
+        $id = is_string($r['id'] ?? null) ? $r['id'] : '';                   // reference: $id = $r
         if ($id === '' || strlen($id) > 512 || isset($ids[$id])) { $fail('Ảnh không hợp lệ.'); }
         $ids[$id] = true;
         foreach (['alt' => 255, 'caption' => 500] as $k => $max) {
