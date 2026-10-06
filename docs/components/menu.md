@@ -13,7 +13,7 @@ tin khi rê chuột (dùng [`TdHovercard`](hovercard.md)).
 | Import | `import { TdMenu } from '@dazzxq/td-components/menu'` |
 | Loại | API JS tĩnh (static class), không có tag |
 | Form-associated | không |
-| Từ phiên bản | 0.12.0 (registry tuỳ chọn `define` / `register` / `bindAll`: 0.14.0) |
+| Từ phiên bản | 0.12.0 (registry tuỳ chọn `define` / `register` / `bindAll`: 0.14.0; mục tuỳ biến `type: 'custom'`: 0.53.0) |
 | CSS | cần `td.css` (phần `src/styles/components/menu.css`) |
 
 Import không có side effect: không có gì chạy, không lắng nghe sự kiện nào cho tới khi bạn gọi `open`, `bind`,
@@ -222,6 +222,141 @@ onSelect nhận thêm: item (object item gốc của bạn), checked (boolean)
 - Các khoá dành riêng bị bỏ qua nếu bạn truyền: `__proto__`, `constructor`, `prototype`, `anchor`, `name`, `item`,
   `checked`.
 
+### 7. Mục tuỳ biến — `type: 'custom'` (0.53.0)
+
+Menu chứa được **nội dung bất kỳ** do bạn dựng: thanh chọn [`td-choice-group variant="segmented"`](choice-group.md),
+[`td-tabs`](tabs.md), một công tắc, một form nhỏ, khối thông tin (avatar + email)… Kit không có item cứng kiểu
+`segmented` / `theme`: bạn trả về một **Element**, kit đặt nó vào một hàng của menu.
+
+```js
+{
+  type: 'custom',                       // bắt buộc
+  render(ctx) { return element; },      // bắt buộc: Element MỚI, chưa gắn vào trang — hoặc null (không có hàng)
+  label: 'Giao diện',                   // tuỳ chọn: caption hiển thị (TEXT) + tên của hàng (role="group")
+  id: 'theme',                          // tuỳ chọn: data-item="theme" trên hàng
+  order: 500, when: (ctx) => true,      // như mọi item (registry / ẩn hiện)
+}
+```
+
+`render(ctx)` được gọi **mỗi lần mở** (giống danh sách dạng hàm: luôn đọc trạng thái hiện tại), với:
+
+```text
+ctx = {
+  ...opts.ctx, ...data-td-menu-*,   // như ctx của menu (mục 6)
+  anchor, name,
+  item,                             // object item của bạn (không bị sửa)
+  close(),                          // đóng menu (lý do 'select', focus về trigger); gọi sau khi đã đóng: không làm gì
+  signal,                           // AbortSignal — abort khi menu đóng (mọi lý do): gắn listener với { signal }
+}
+```
+
+`close` / `signal` thắng khoá trùng tên trong `opts.ctx`; `onSelect` / `when` của các mục khác không thấy chúng.
+
+- **Bấm / nhập trong nội dung không đóng menu.** Muốn đóng sau khi chọn → gọi `ctx.close()`.
+- **Dọn dẹp:** listener gắn với `{ signal: ctx.signal }` tự gỡ khi menu đóng; `signal` abort khi element **còn** trong
+  DOM, trước `onClose`.
+- `onSelect`, `href`, `icon`, `hint`, `danger`, `disabled`, `checked` trên item custom bị bỏ qua — nội dung tự lo.
+
+#### Chỉ nhận Element (không nhận chuỗi HTML)
+
+| `render` trả / làm | Kết quả |
+|---|---|
+| `Element` chưa gắn vào trang | Được đặt vào hàng **nguyên trạng** (không clone, không thêm attribute / class / style) |
+| `null` / `undefined` | Không có hàng, không cảnh báo (như `when` → `false`) |
+| Chuỗi (kể cả HTML) | Bỏ hàng + `console.warn` "…strings are not rendered (no HTML)" — **không bao giờ** thành DOM |
+| Số, `DocumentFragment`, Text node, Promise… | Bỏ hàng + `console.warn` "…must return an Element" |
+| Element **đang gắn** trong trang | Bỏ hàng + `console.warn` "…must return a detached Element" (đặt vào menu sẽ giật nó khỏi trang) |
+| Ném lỗi | Bỏ hàng + `console.warn` "…render() threw — row omitted" (kèm lỗi) |
+
+Mọi trường hợp bỏ hàng: `ctx.signal` của hàng đó abort ngay. Không còn hàng nào → `open()` trả `null`.
+
+Markup viết sẵn → dùng `<template>` rồi **clone** (không `innerHTML` từ chuỗi):
+
+```html
+<template id="tpl-quick-note">
+  <form class="quick-note"><td-input-field label="Ghi chú" name="note"></td-input-field>
+    <td-button type="submit" variant="primary" size="sm">Lưu</td-button></form>
+</template>
+```
+
+```js
+{ type: 'custom', label: 'Ghi chú nhanh', render: ({ close, signal }) => {
+  const form = document.importNode(document.getElementById('tpl-quick-note').content, true).firstElementChild;
+  form.addEventListener('submit', (e) => { e.preventDefault(); saveNote(new FormData(form)); close(); }, { signal });
+  return form;
+} }
+```
+
+#### Công thức: chuyển theme trong menu tài khoản
+
+Ghép mục custom với [segmented](choice-group.md#công-thức-chuyển-theme-tự-động--sáng--tối) và API theme của kit
+(`data-td-theme` trên `<html>` + cookie, [Theming › Light / dark / auto](../customization/theming.md#light--dark--auto)).
+Kit không có code theme riêng.
+
+```js
+import { TdMenu } from '@dazzxq/td-components/menu';
+import '@dazzxq/td-components/choice-group';
+
+const THEMES = [
+  { value: 'auto', label: 'Tự động', icon: 'monitor' },
+  { value: 'light', label: 'Sáng', icon: 'sun' },
+  { value: 'dark', label: 'Tối', icon: 'moon' },
+];
+const currentTheme = () => {
+  const v = document.documentElement.getAttribute('data-td-theme');
+  return THEMES.some((t) => t.value === v) ? v : 'auto';
+};
+
+TdMenu.bind(profileCard, () => [
+  { label: 'Hồ sơ', href: '/profile' },
+  { separator: true },
+  {
+    type: 'custom', id: 'theme', label: 'Giao diện',
+    render: ({ signal }) => {
+      const g = document.createElement('td-choice-group');
+      g.setAttribute('variant', 'segmented');
+      g.setAttribute('size', 'sm');
+      g.setAttribute('value', currentTheme());
+      g.options = THEMES;                         // không đặt aria-label: hàng đã mang tên "Giao diện"
+      g.addEventListener('change', (e) => {
+        const v = e.detail.value;                 // 'auto' | 'light' | 'dark'
+        document.documentElement.setAttribute('data-td-theme', v);
+        document.cookie = `td_theme=${v}; path=/; max-age=31536000; SameSite=Lax`;
+      }, { signal });                             // tự gỡ khi menu đóng
+      return g;
+    },
+  },
+  { separator: true },
+  { label: 'Đăng xuất', icon: 'log-out', danger: true, onSelect: logout },
+], { label: 'Tài khoản' });
+```
+
+- Đổi theme **không** đóng menu (người dùng thấy ngay kết quả); muốn đóng → `ctx.close()` trong `change`.
+- Lần vẽ đầu đúng theme nhờ PHP in `data-td-theme` từ cookie đã whitelist + `theme-boot.js` (công thức ở
+  [choice-group](choice-group.md#công-thức-chuyển-theme-tự-động--sáng--tối)); menu chỉ đổi attribute + cookie.
+- `label` của item **hoặc** tên của widget, không cả hai (tránh trình đọc màn hình đọc "Giao diện" hai lần).
+
+#### Menu panel: ngữ nghĩa và bàn phím
+
+Một menu có hàng custom **không còn là `role="menu"` thuần** (ARIA không cho radio / ô nhập nằm trong menu). Kit chuyển
+popup thành **menu panel** ([ADR 0026](../internal/decisions/0026-menu-panel-custom-rows.md)): hộp thoại không modal
+(`role="dialog"`, tên = trigger / `label`), các mục thường nằm trong khúc `role="menu"` (giữ nguyên vai trò, `aria-checked`,
+type-ahead), hàng custom là nhóm có tên. Trình đọc màn hình: "Tài khoản, hộp thoại" → "Hồ sơ, mục menu" → "Giao diện,
+nhóm, Sáng, nút radio, đã chọn". Menu **không** có hàng custom giữ đúng markup và hành vi cũ.
+
+| Phím | Trên mục thường | Trong nội dung custom |
+|---|---|---|
+| `↑` / `↓` | Hàng trước / sau (vòng lại). Hàng custom = **một điểm dừng**: vào ở control đầu (↓) / cuối (↑); nhóm radio vào ở radio đang chọn; hàng không có gì focus được (khối tĩnh) bị bỏ qua | Rời hàng — **trừ** control tự dùng ↑ ↓: ô chữ, `number`, `range`, `select`, `textarea`, `contenteditable`, `role` slider / spinbutton / listbox / combobox / textbox / tree / treegrid / grid, và mọi thứ trong `[data-td-menu-keys="content"]` |
+| `←` `→` `Home` `End` `Enter` `Space`, gõ chữ | Như menu thường (Home / End, kích hoạt, type-ahead — bỏ qua hàng custom) | Của nội dung (segmented ← → đổi chọn ngay; td-tabs ← → Home End) |
+| `Tab` / `Shift+Tab` | Điểm dừng kế / trước: **mỗi mục thường** + **mọi** control của hàng custom, theo thứ tự; qua mép → đóng, focus đi tiếp từ trigger (như menu thường) | như cột bên |
+| `Escape` | Đóng, focus trigger | **Luôn đóng** (kể cả trong ô nhập), focus trigger. Popup con đang mở (dropdown) → Escape đầu đóng popup con |
+
+- Bấm chuột / chạm vào control trong hàng: focus theo control đó ở mọi trình duyệt (Safari không tự focus radio / nút
+  khi bấm — kit bù). Bấm vào caption / chữ tĩnh → focus panel (↓ đi tiếp được).
+- Popup mở từ nội dung (`td-dropdown`, color picker…) được coi là bên trong panel: bấm trong danh sách của nó không đóng
+  panel; panel đóng thì popup con đóng trước. Mở **`TdMenu` khác** từ nội dung sẽ đóng panel (một menu một lúc).
+- Nội dung lớn lên / co lại (td-tabs đổi nội dung) → panel tự đặt lại vị trí.
+
 ## Property & method
 
 Tất cả là static trên `TdMenu`.
@@ -264,7 +399,7 @@ dùng `bind()`.
 
 | Thuộc tính | Kiểu | Mô tả |
 |---|---|---|
-| `label` | `string` | **Bắt buộc**. Chữ hiển thị, luôn là text (`textContent`). Item không có label bị bỏ |
+| `label` | `string` | **Bắt buộc** (trừ `type: 'custom'`, ở đó là caption tuỳ chọn). Chữ hiển thị, luôn là text (`textContent`). Item không có label bị bỏ |
 | `onSelect` (alias `onClick`) | `(ctx) => void \| Promise` | Gọi khi chọn. Lỗi hoặc promise reject được `console.error`, không phá menu. Promise **không được await** |
 | `href` | `string` | Biến mục thành `<a>`. Chỉ `https:`, `http:` (khi trang là http) hoặc URL tương đối (hoặc theo option `isAllowedUrl` nếu có). Khác → mục disabled + warn |
 | `newTab` | `boolean` | Link mở tab mới: `target="_blank" rel="noopener noreferrer"` |
@@ -274,7 +409,8 @@ dùng `bind()`.
 | `hint` | `string` | Dòng phụ dưới label (phím tắt, mô tả), là text; trở thành `aria-describedby` |
 | `danger` | `boolean` | Kiểu nguy hiểm (màu `--td-menu-danger-fg`) |
 | `disabled` | `boolean` | `aria-disabled="true"`: vẫn focus được bằng phím (theo APG) nhưng không kích hoạt được |
-| `type` | `'item' \| 'checkbox' \| 'radio'` | Mặc định `'item'` |
+| `type` | `'item' \| 'checkbox' \| 'radio' \| 'custom'` | Mặc định `'item'`. `'custom'` (0.53.0): hàng nội dung tuỳ biến — xem [mục 7](#7-mục-tuỳ-biến--type-custom-0530); giá trị lạ khác (vd. `'segmented'`) = `'item'` |
+| `render` | `(ctx) => Element \| null` | Chỉ với `type: 'custom'` (bắt buộc): dựng nội dung của hàng, gọi mỗi lần mở |
 | `checked` | `boolean` | Trạng thái của checkbox/radio lúc mở |
 | `group` | `string` | Khoá nhóm radio (mặc định `''`) |
 | `id` | `string` | Xuất ra `data-item="{id}"` trên phần tử mục (để test/style) |
@@ -372,6 +508,26 @@ Menu (tạo khi mở, gỡ khi đóng; `{m}` = `td-menu-{n}`):
 </div>
 ```
 
+Menu panel (0.53.0 — khi có ít nhất một hàng `type: 'custom'`):
+
+```html
+<div class="td-menu td-menu--panel td-glass-surface td-glass-surface--strong" id="{m}" role="dialog" tabindex="-1"
+     aria-labelledby="{id trigger}" data-state="open" data-placement="bottom" data-align="end">
+  <div class="td-menu__section" role="menu">            <!-- dãy mục thường liền nhau; markup mục như trên -->
+    <button type="button" class="td-menu__item" role="menuitem" tabindex="-1">…</button>
+  </div>
+  <div class="td-menu__separator" role="separator"></div>   <!-- separator giáp hàng custom: ở cấp panel -->
+  <div class="td-menu__custom" role="group" aria-labelledby="{m}-c{i}-label" data-item="theme">
+    <div class="td-menu__custom-label" id="{m}-c{i}-label">Giao diện</div>   <!-- chỉ khi có label -->
+    <!-- Element của bạn, nguyên trạng -->
+  </div>
+  <div class="td-menu__section" role="menu">…</div>
+</div>
+```
+
+Hàng không có `label`: `<div class="td-menu__custom">` (không `role`, không caption). Trigger: `aria-haspopup="dialog"` sau
+lần mở dựng được hàng custom.
+
 | Selector / attribute | Ý nghĩa |
 |---|---|
 | `.td-menu[data-placement="bottom\|top"]` | Phía thực tế sau khi tự lật |
@@ -381,6 +537,8 @@ Menu (tạo khi mở, gỡ khi đóng; `{m}` = `td-menu-{n}`):
 | `.td-menu__check.td-check` | 0.36.0: mục checkbox — ô tick chung, luôn hiện; trạng thái từ `aria-checked` (`check.css`) |
 | `.td-menu__item--danger` | Mục nguy hiểm |
 | Trigger `[aria-expanded="true"]` | Menu của trigger đang mở (`.td-menu-btn` tô nền) |
+| `.td-menu--panel` | 0.53.0: menu panel (có hàng custom) |
+| `.td-menu__section` / `.td-menu__custom` / `.td-menu__custom-label` | 0.53.0: khúc mục thường / hàng custom (padding = mục, không nền, không hover) / caption (`--td-color-text-label`) |
 
 Nút do `TdMenu.button()` tạo (site render server-side có thể in đúng markup này rồi `bind()` hoặc dùng `data-td-menu`):
 
@@ -421,6 +579,8 @@ rê chuột / được bấm.
 | Trong menu | `Escape` | Đóng, focus về trigger (phím được "tiêu thụ", không lọt xuống modal bên dưới) |
 | Trong menu | `Tab` / `Shift+Tab` | Đóng và đi tiếp: focus rơi vào phần tử **sau / trước** trigger (không quay lại trigger). Trong modal, focus trap của modal tiếp tục |
 
+- Menu panel (có hàng `type: 'custom'`, 0.53.0): bảng phím riêng ở [mục 7](#menu-panel-ngữ-nghĩa-và-bàn-phím) — Tab đi qua
+  các điểm dừng thay vì đóng ngay, phím trong nội dung thuộc về nội dung.
 - Focus thật di chuyển giữa các mục (roving focus, `tabindex="-1"`).
 - Chọn một mục thường/radio: đóng menu, **focus trigger trước** rồi mới gọi `onSelect` — nên nếu `onSelect` mở một
   `TdModal`, modal đóng sẽ trả focus về trigger.
@@ -451,6 +611,9 @@ rê chuột / được bấm.
 - Tên file `download` luôn được lọc (không có ký tự đường dẫn / điều khiển), kể cả khi lấy từ dữ liệu người dùng.
 
 - `iconNode` là **DOM tin cậy**: chỉ truyền SVG do code của bạn dựng; kit clone nó nguyên trạng.
+- Mục `type: 'custom'` (0.53.0): `render(ctx)` trả **Element** — DOM tin cậy của bạn, kit đặt nguyên trạng, không
+  sanitize. **Chuỗi bị từ chối** (không có đường HTML). Dữ liệu người dùng vào nội dung qua `textContent` / attribute như
+  mọi Node hook; nội dung phải sạch CSP (không `style="…"`, không `<style>`). `label` của item custom là text.
 - `when()` chỉ ẩn mục trên giao diện, **không phải phân quyền**. Server vẫn phải kiểm tra quyền khi xử lý hành động.
 
 Xem thêm [Hướng dẫn bảo mật](../guides/security.md).
@@ -483,6 +646,17 @@ Chuẩn chung: [Cảm ứng](../guides/touch.md).
 - **`ctx.postId` là chuỗi**, không phải số, khi lấy từ `data-td-menu-post-id`.
 - `onSelect` async: kit không chờ promise; lỗi reject chỉ được log. Tự hiển thị lỗi (ví dụ `TdToast`) trong hàm.
 - Link `mailto:` / `tel:` bị disabled là **cố ý** (fail closed).
+- **Mục custom (0.53.0):**
+  - **`aria-haspopup` trước lần mở đầu:** `bind()` / `bindAll()` đặt `"menu"`; chỉ sau khi một lần mở dựng được hàng
+    custom thì trigger mới báo `"dialog"` (kit không đoán trước — `when` / `render` có thể bỏ hàng). Cần đúng ngay từ
+    đầu: tự đặt `aria-haspopup="dialog"` trên trigger và mở bằng `TdMenu.open()` (kit không đổi attribute do bạn đặt).
+  - **Escape luôn đóng menu**, kể cả khi focus đang ở ô nhập trong nội dung (widget không nhận được Escape để xoá ô).
+  - **Shadow DOM:** control trong shadow root **mở** (kể cả `delegatesFocus`, slot) đi được bằng ↑ ↓ / Tab của menu.
+    Shadow root **đóng**: kit chỉ thấy host — host có `tabindex` thì là một điểm dừng, không thì control bên trong
+    **không** vào được bằng phím của menu (chuột vẫn được). Tránh shadow root đóng trong nội dung menu.
+  - Không có `type: 'segmented'`: dùng `type: 'custom'` + `td-choice-group` (công thức ở mục 7).
+  - Form dài / nhiều bước, ô nhập chữ trên điện thoại (bàn phím ảo làm co khung nhìn) → dùng [`TdModal`](modal.md) /
+    [drawer](drawer.md), không nhồi vào menu.
 
 ## Xem thêm
 

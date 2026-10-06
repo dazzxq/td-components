@@ -202,7 +202,7 @@ Dưới Trusted Types enforcement, một chuỗi thường sẽ bị trình duy�
 | `side` | `'bottom' \| 'top'` | `'bottom'` | Phía ưu tiên (tự lật nếu không đủ chỗ) |
 | `label` | `string` | — | `aria-label` của menu; không có → `aria-labelledby` = id của anchor |
 | `focus` | `'first' \| 'last'` | `'first'` | Mục được focus khi mở |
-| `onClose` | `(reason) => void` | — | `reason` ∈ `'select' \| 'escape' \| 'tab' \| 'outside' \| 'hidden' \| 'api'`. Ném lỗi → `console.error` |
+| `onClose` | `(reason) => void` | — | `reason` ∈ `'select' \| 'escape' \| 'tab' \| 'outside' \| 'hidden' \| 'api' \| 'covered'` (`ctx.close()` của mục custom = `'select'`). Ném lỗi → `console.error` |
 | `ctx` | `object` | — | Dữ liệu thêm cho `ctx` (khoá dành riêng `anchor`, `name`, `item`, `checked`, `__proto__`… bị bỏ) |
 | `isAllowedUrl` | `(url) => boolean` | — | Chính sách `href` của menu này (0.17.0): **thay** bộ lọc mặc định `safeMenuHref`. `false` / ném lỗi → mục disabled + `console.warn`. `javascript:` luôn bị chặn |
 
@@ -226,7 +226,8 @@ không còn mục hiển thị nào; builder ném lỗi → `console.error`).
 | `hint` | `string` | Chữ phụ bên phải (text) |
 | `danger` | `boolean` | Kiểu nguy hiểm |
 | `disabled` | `boolean` | Focus được nhưng không kích hoạt |
-| `type` | `'item' \| 'radio' \| 'checkbox'` | `checked` mà không có `type` → radio (tương thích dwp) |
+| `type` | `'item' \| 'radio' \| 'checkbox' \| 'custom'` | `checked` mà không có `type` → radio (tương thích dwp). `'custom'` (0.53.0): hàng nội dung tuỳ biến, xem dưới |
+| `render` | `(ctx) => Element \| null` | Chỉ `type: 'custom'` (0.53.0): `ctx = { ...ctx menu, item, close(), signal }`, gọi **mỗi lần mở**. Phải trả **Element mới chưa gắn vào trang**; `null` → không có hàng. Chuỗi (HTML) / kiểu khác / element đang gắn / ném lỗi → bỏ hàng + `console.warn` cố định, `signal` abort. `signal` abort khi menu đóng (mọi lý do) — gắn listener với `{ signal }`. Menu có hàng custom là **menu panel** (`role="dialog"`) — [menu.md mục 7](../components/menu.md#7-mục-tuỳ-biến--type-custom-0530) |
 | `checked` | `boolean` | Trạng thái ban đầu. Kit **không** sửa object của bạn; trạng thái mới nằm ở `ctx.checked` |
 | `group` | `string` | Nhóm radio |
 | `id` | `string` | Ghi ra `data-item` |

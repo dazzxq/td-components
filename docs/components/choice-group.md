@@ -257,6 +257,8 @@ document.getElementById('theme-switch').addEventListener('change', (e) => {
 - `name` rỗng: nhóm không gửi form (chỉ là điều khiển của trang). Bàn phím: Tab vào, ← → đổi theme ngay.
 - `theme-boot.js` (mục [Không chớp trắng](../customization/theming.md#không-chớp-trắng-no-fouc)) vẫn cần cho trang
   không render PHP / cache HTML; nút chuyển chỉ đổi attribute + cookie.
+- Đặt công tắc **trong menu tài khoản** (`TdMenu`, 0.53.0): mục `type: 'custom'` trả về chính `td-choice-group` này —
+  [công thức](menu.md#công-thức-chuyển-theme-trong-menu-tài-khoản).
 
 ## Attribute
 
