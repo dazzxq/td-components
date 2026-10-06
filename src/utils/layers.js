@@ -307,6 +307,106 @@ export function focusablesIn(root) {
 }
 
 /**
+ * v0.53.0 (plan v0.53.0-menu-custom-item QĐ 3): the focused element, looking through open shadow roots.
+ * @param {Document} [doc]
+ * @returns {Element|null}
+ */
+export function deepActiveElement(doc = document) {
+  let a = doc.activeElement;
+  while (a && a.shadowRoot && a.shadowRoot.activeElement) a = a.shadowRoot.activeElement;
+  return a;
+}
+
+/**
+ * v0.53.0: `root` contains `node` in the COMPOSED tree (a node inside an open or closed shadow root of a descendant
+ * counts: the walk climbs host by host).
+ * @param {Node|null} root
+ * @param {Node|null} node
+ * @returns {boolean}
+ */
+export function composedContains(root, node) {
+  if (typeof Node === 'undefined' || !(root instanceof Node) || !(node instanceof Node)) return false;
+  for (let n = node; n;) {
+    if (n === root || root.contains(n)) return true;
+    const r = n.getRootNode();
+    n = typeof ShadowRoot !== 'undefined' && r instanceof ShadowRoot ? r.host : null;
+  }
+  return false;
+}
+
+/** v0.53.0: `el` or a composed-tree ancestor matches `sel` (stops at `stop`, which is not tested). */
+export function composedClosest(el, sel, stop = null) {
+  const SR = typeof ShadowRoot !== 'undefined' ? ShadowRoot : null;
+  let n = el;
+  while (n && n !== stop) {
+    if (n instanceof Element && n.matches(sel)) return n;
+    const p = n.parentNode;
+    n = SR && p instanceof SR ? p.host : p;
+  }
+  return null;
+}
+
+/** Flat-tree element walk (open shadow roots entered, slots replaced by their assigned elements). */
+function flatWalk(parent, out) {
+  const kids = parent.shadowRoot ? parent.shadowRoot.children : parent.children;
+  for (const el of kids) {
+    if (el.localName === 'slot' && typeof el.assignedElements === 'function') {
+      const assigned = el.assignedElements({ flatten: true });
+      if (assigned.length) {
+        for (const a of assigned) { out.push(a); flatWalk(a, out); }
+        continue;
+      }
+    }
+    out.push(el);
+    flatWalk(el, out);
+  }
+  return out;
+}
+
+/**
+ * v0.53.0 (plan v0.53.0-menu-custom-item QĐ 3, Codex plan-review r1 #2): the sequential focus stops of `root` in
+ * FLAT-TREE order, the way native Tab visits them — open shadow roots are entered (slotted light children at their
+ * slot, unassigned ones skipped), a `delegatesFocus` host is not a stop of its own (its inner focusables are), a host
+ * whose shadow root is closed is one stop when it is itself focusable (tabIndex ≥ 0), and every named radio group
+ * (same root node + form + name) collapses to ONE stop: its checked radio, else its first enabled radio — in both
+ * directions (M1: native Shift+Tab lands on the FIRST radio of an unchecked group in Chromium, Firefox and WebKit). Filtered like focusablesIn (tabIndex ≥ 0, not disabled, rendered, visible, no
+ * composed [hidden] / [inert] ancestor).
+ * @param {Element} root
+ * @returns {HTMLElement[]}
+ */
+export function tabSequence(root) {
+  if (!root) return [];
+  const usable = (el) => el instanceof HTMLElement && el.matches(FOCUSABLE) && el.tabIndex >= 0
+    && !(el.shadowRoot && el.shadowRoot.delegatesFocus) && !el.matches(':disabled')
+    && !composedClosest(el, '[hidden], [inert]', root) && el.getClientRects().length > 0
+    && getComputedStyle(el).visibility !== 'hidden';
+  const list = flatWalk(root, []).filter(usable);
+  const groups = new Map();
+  const keyOf = (el) => {
+    if (el.localName !== 'input' || el.type !== 'radio' || !el.name) return null;
+    let k = groups.get(el.getRootNode());
+    if (!k) groups.set(el.getRootNode(), (k = new Map()));
+    const f = el.form || null;
+    let byForm = k.get(f);
+    if (!byForm) k.set(f, (byForm = new Map()));
+    let g = byForm.get(el.name);
+    if (!g) byForm.set(el.name, (g = []));
+    return g;
+  };
+  const owner = new Map();
+  for (const el of list) {
+    const g = keyOf(el);
+    if (g) { g.push(el); owner.set(el, g); }
+  }
+  return list.filter((el) => {
+    const g = owner.get(el);
+    if (!g) return true;
+    const checked = g.find((r) => r.checked);
+    return el === (checked || g[0]);
+  });
+}
+
+/**
  * Tab-trap helper for blocking boundaries: cycles through `container`'s focusables plus those of higher
  * `includeInTrap` registrations (toasts). Inside the container, Tab moves natively (media controls keep their
  * internal order); at the edges, into/out of the extra containers, and from anywhere outside, focus is moved
